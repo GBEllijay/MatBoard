@@ -235,6 +235,10 @@ p {
   font-size: 0.95rem;
 }
 
+.home__hint + .home__hint {
+  margin-top: 0.45rem;
+}
+
 .display {
   min-height: 100vh;
   min-height: 100dvh;
