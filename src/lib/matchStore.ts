@@ -114,7 +114,10 @@ function clone(s: MatchState): MatchState {
   };
 }
 
-export function remainingNow(s: MatchState, now = Date.now()): number {
+export function remainingNow(
+  s: Pick<MatchState, 'running' | 'startedAt' | 'remainingMs'>,
+  now = Date.now(),
+): number {
   if (!s.running || s.startedAt == null) return s.remainingMs;
   return Math.max(0, s.remainingMs - (now - s.startedAt));
 }
@@ -125,6 +128,23 @@ export function remainingCapMs(durationMs: number): number {
 
 export function clampRemainingMs(ms: number, durationMs: number): number {
   return clamp(Math.round(ms), 0, remainingCapMs(durationMs));
+}
+
+export function applyAdjustClock(
+  current: Pick<MatchState, 'running' | 'startedAt' | 'remainingMs' | 'durationMs'>,
+  deltaMs: number,
+  now = Date.now(),
+): Pick<MatchState, 'remainingMs' | 'running' | 'startedAt'> {
+  const remaining = remainingNow(current, now);
+  const nextRemaining = clampRemainingMs(remaining + deltaMs, current.durationMs);
+  if (nextRemaining <= 0) {
+    return { running: false, remainingMs: 0, startedAt: null };
+  }
+  return {
+    remainingMs: nextRemaining,
+    startedAt: current.running ? now : null,
+    running: current.running,
+  };
 }
 
 function persist(next: MatchState): void {
@@ -191,21 +211,10 @@ function applyAction(current: MatchState, action: MatchAction): MatchState {
         startedAt: null,
       });
     case 'adjustClock': {
-      const remaining = remainingNow(current);
-      const nextRemaining = clampRemainingMs(remaining + action.deltaMs, current.durationMs);
-      if (nextRemaining <= 0) {
-        return bumpRevision({
-          ...current,
-          running: false,
-          remainingMs: 0,
-          startedAt: null,
-        });
-      }
+      const now = Date.now();
       return bumpRevision({
         ...current,
-        remainingMs: nextRemaining,
-        startedAt: current.running ? Date.now() : null,
-        running: current.running,
+        ...applyAdjustClock(current, action.deltaMs, now),
       });
     }
     case 'resetScores':
