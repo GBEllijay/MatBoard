@@ -1,7 +1,9 @@
 import { useCallback, useState, type MouseEvent } from 'react';
 import { Chrome } from '../components/Chrome';
+import { FullscreenChip } from '../components/FullscreenChip';
 import { Sheet } from '../components/Sheet';
 import { useInterval } from '../hooks/useClock';
+import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useAudioPrefs, useTrainingState } from '../hooks/useStores';
 import { patchAudioPrefs, unlockAudio } from '../lib/audio';
@@ -24,6 +26,7 @@ export function TrainingPage() {
   const [options, setOptions] = useState(false);
   const [, setTick] = useState(0);
   const remaining = remainingTraining(training);
+  const fs = usePlayFullscreen();
 
   useWakeLock(training.running);
   useInterval(
@@ -47,14 +50,22 @@ export function TrainingPage() {
 
   return (
     <main
-      className={`training training--${training.phase}`}
+      className={`training training--${training.phase}${fs.className ? ` ${fs.className}` : ''}`}
       onClick={(event) => {
         const target = event.target as HTMLElement;
-        if (target.closest('.sheet, .training__clock, .chrome, .btn, input, fieldset, label')) return;
+        if (target.closest('.sheet, .training__clock, .chrome, .btn, input, fieldset, label, .play-fs')) return;
         setOptions(true);
       }}
     >
       <Chrome ghost title="" />
+      <div className="play-fs-slot">
+        <FullscreenChip
+          supported={fs.supported}
+          active={fs.active}
+          nudge={fs.showFallback}
+          onToggle={() => void fs.toggle()}
+        />
+      </div>
       <p className="training__phase">
         {training.phase === 'work' ? 'Work' : 'Break'} · {roundLabel}
       </p>

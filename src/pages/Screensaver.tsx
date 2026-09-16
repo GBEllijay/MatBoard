@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chrome } from '../components/Chrome';
+import { FullscreenChip } from '../components/FullscreenChip';
 import { Sheet } from '../components/Sheet';
+import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { formatMss, secondsToMs } from '../lib/format';
@@ -30,6 +32,7 @@ export function ScreensaverPage() {
   const [shuffle, setShuffle] = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
   const intervalMs = secondsToMs(intervalSec);
+  const fs = usePlayFullscreen();
 
   useVisibleViewportHeight();
   useWakeLock(playing && photos.length > 0);
@@ -86,16 +89,29 @@ export function ScreensaverPage() {
 
   return (
     <main
-      className="saver"
+      className={`saver${fs.className ? ` ${fs.className}` : ''}`}
       onClick={(event) => {
         const target = event.target as HTMLElement;
-        if (target.closest('.sheet, .chrome, .saver__empty, .btn, input, label')) return;
+        if (target.closest('.sheet, .chrome, .saver__empty, .btn, input, label, .play-fs')) return;
         if (photos.length) setOptions(true);
       }}
     >
       <Chrome ghost title={current ? '' : 'Slideshow'} />
+      <div className="play-fs-slot">
+        <FullscreenChip
+          supported={fs.supported}
+          active={fs.active}
+          nudge={fs.showFallback}
+          onToggle={() => void fs.toggle()}
+        />
+      </div>
       {current ? (
-        <img className="saver__img" src={current} alt="" />
+        <img
+          key={current}
+          className={`saver__img${index % 2 ? ' saver__img--alt' : ''}`}
+          src={current}
+          alt=""
+        />
       ) : (
         <div className="saver__empty" onClick={(e) => e.stopPropagation()}>
           <h1>Slideshow</h1>
