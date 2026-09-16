@@ -10,7 +10,7 @@ export function HomePage() {
           <span className="home__badge-white" />
         </div>
         <h1>MatBoard</h1>
-        <p>Gym scoreboard, round timer, and photo loop. Original tools — no federation branding.</p>
+        <p>Gym scoreboard, round timer and photo slideshow.</p>
       </div>
 
       <nav className="home__modes" aria-label="Modes">
@@ -41,10 +41,8 @@ export function HomePage() {
         </Link>
       </nav>
 
-      <p className="home__hint">
-        Install MatBoard as an app from your browser menu. Open Match Controller on a phone, then Cast or pop out the
-        scoreboard for the TV.
-      </p>
+      <p className="home__hint">Install MatBoard as an app from your browser menu.</p>
+      <p className="home__hint">Control from your phone. Cast the scoreboard to your TV, or open Display on a second screen.</p>
     </main>
   );
 }
