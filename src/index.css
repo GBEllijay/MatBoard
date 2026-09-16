@@ -148,27 +148,13 @@ p {
   margin-bottom: 1.6rem;
 }
 
-.home__badge {
-  width: 64px;
-  height: 64px;
-  border-radius: 18px;
-  overflow: hidden;
-  display: grid;
-  grid-template-rows: 1fr 8px 1fr;
-  margin-bottom: 1rem;
-  box-shadow: var(--shadow);
-}
-
-.home__badge-blue {
-  background: var(--blue-2);
-}
-
-.home__badge-gold {
-  background: var(--gold);
-}
-
-.home__badge-white {
-  background: var(--white);
+.home__logo {
+  width: clamp(8rem, 42vw, 11.5rem);
+  height: auto;
+  aspect-ratio: 1;
+  display: block;
+  margin: 0 0 1.05rem;
+  filter: drop-shadow(0 16px 36px rgba(0, 0, 0, 0.42));
 }
 
 .home h1 {
