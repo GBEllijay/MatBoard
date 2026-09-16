@@ -4,11 +4,7 @@ export function HomePage() {
   return (
     <main className="home">
       <div className="home__mark">
-        <div className="home__badge" aria-hidden="true">
-          <span className="home__badge-blue" />
-          <span className="home__badge-gold" />
-          <span className="home__badge-white" />
-        </div>
+        <img className="home__logo" src="/advantage-icon.png" alt="" width={687} height={687} />
         <h1>Advantage</h1>
         <p>Gym scoreboard, round timer and photo slideshow.</p>
       </div>
