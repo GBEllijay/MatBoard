@@ -236,14 +236,28 @@ p {
 }
 
 .display {
+  min-height: 100vh;
   min-height: 100dvh;
+  min-height: 100svh;
+  height: 100vh;
   height: 100dvh;
+  height: 100svh;
+  height: var(--visible-vh, 100svh);
+  max-height: 100vh;
+  max-height: 100dvh;
+  max-height: 100svh;
+  max-height: var(--visible-vh, 100svh);
   display: grid;
-  grid-template-rows: 1fr auto 1fr;
+  grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr);
   overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
   touch-action: manipulation;
+}
+
+.display > .bout,
+.display > .display__mid {
+  min-height: 0;
 }
 
 .display__chrome {
@@ -394,9 +408,34 @@ p {
   font-size: clamp(3.4rem, 18vw, 6rem);
 }
 
+.clock-nudges {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin: 0.35rem 0 0.15rem;
+}
+
+.clock-nudge {
+  min-height: 64px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.clock-nudge:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
 .controller {
   min-height: 100dvh;
   padding-bottom: calc(1.4rem + var(--safe-b));
+}
+
+.controller__help {
+  margin: 0.2rem 0.9rem 0.4rem;
 }
 
 .pad {
@@ -644,7 +683,19 @@ fieldset {
 }
 
 .saver {
+  min-height: 100vh;
   min-height: 100dvh;
+  min-height: 100svh;
+  height: 100vh;
+  height: 100dvh;
+  height: 100svh;
+  height: var(--visible-vh, 100svh);
+  max-height: 100vh;
+  max-height: 100dvh;
+  max-height: 100svh;
+  max-height: var(--visible-vh, 100svh);
+  width: 100%;
+  position: relative;
   background: #000;
   overflow: hidden;
 }
@@ -654,8 +705,22 @@ fieldset {
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  animation: saver-pan 9s ease-in-out alternate infinite;
+  object-fit: contain;
+  object-position: center;
+  background: #000;
+}
+
+.saver:fullscreen,
+.saver:-webkit-full-screen {
+  width: 100%;
+  height: 100%;
+  background: #000;
+}
+
+.saver:fullscreen .saver__img,
+.saver:-webkit-full-screen .saver__img {
+  object-fit: contain;
+  object-position: center;
 }
 
 .saver__empty {
@@ -676,23 +741,30 @@ fieldset {
 }
 
 .saver__list li {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.5rem;
   align-items: center;
   padding: 0.4rem 0;
   border-bottom: 1px solid var(--line);
 }
 
-@keyframes saver-pan {
-  from {
-    transform: scale(1);
-  }
-  to {
-    transform: scale(1.08);
-  }
+.interval-stepper {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) 72px;
+  gap: 0.45rem;
+  align-items: center;
+  margin: 0.45rem 0 0.2rem;
 }
 
-@media (max-width: 820px) {
+.interval-stepper strong {
+  text-align: center;
+  font-size: 1.7rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+@media (max-width: 820px) and (orientation: portrait) and (min-height: 521px) {
   .bout {
     grid-template-columns: 1fr;
     padding: 0.8rem;
@@ -715,16 +787,112 @@ fieldset {
   }
 }
 
-@media (orientation: landscape) and (max-height: 500px) {
+/* Phone landscape, in-app browsers, and any short viewport: both athletes + timer on screen. */
+@media (orientation: landscape), (max-height: 520px) {
+  .display {
+    grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr);
+  }
+
+  .display__chrome {
+    top: calc(0.2rem + var(--safe-t));
+    left: calc(0.2rem + var(--safe-l));
+    right: calc(0.2rem + var(--safe-r));
+  }
+
+  .display__chrome .chip {
+    min-height: 28px;
+    padding: 0.08rem 0.5rem;
+    font-size: 0.72rem;
+  }
+
+  .bout {
+    grid-template-columns: minmax(96px, 0.78fr) minmax(0, 1.6fr);
+    gap: 0.4rem;
+    padding: 0.22rem 0.65rem;
+    min-height: 0;
+    overflow: hidden;
+    align-items: stretch;
+  }
+
+  .bout--blue {
+    padding-top: calc(2.2rem + var(--safe-t));
+  }
+
+  .bout--white {
+    padding-bottom: calc(0.22rem + var(--safe-b));
+  }
+
+  .bout__who {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
   .bout__who h1 {
-    font-size: clamp(1.2rem, 4.2vh, 2.4rem);
+    font-size: clamp(0.95rem, 5.2vh, 2rem);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  .score {
-    min-height: 72px;
+  .bout__who p {
+    font-size: clamp(0.62rem, 2.4vh, 0.95rem);
+    margin-top: 0.06rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  .clock-btn {
-    font-size: clamp(2.4rem, 14vh, 5.4rem);
+  .bout__scores {
+    min-height: 0;
+    gap: 0.3rem;
+  }
+
+  .display .score {
+    min-height: 0;
+    padding: 0.22rem 0.35rem 0.12rem;
+    border-radius: 12px;
+  }
+
+  .score__label {
+    font-size: 0.58rem;
+  }
+
+  .score__value {
+    font-size: clamp(1.25rem, 10vh, 3.2rem);
+  }
+
+  .display__mid {
+    grid-template-columns: 1fr auto 1fr;
+    justify-items: stretch;
+    text-align: start;
+    padding: 0.02rem 0.65rem;
+    gap: 0.3rem;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+  }
+
+  .display__meta {
+    text-align: left;
+    font-size: 0.68rem;
+  }
+
+  .display__clock-hint {
+    text-align: right;
+    font-size: 0.68rem;
+  }
+
+  .display .clock-btn {
+    font-size: clamp(1.45rem, 11vh, 3.2rem);
+  }
+
+  .saver {
+    background: #000;
+  }
+
+  .saver__img {
+    object-fit: contain;
+    object-position: center;
   }
 }

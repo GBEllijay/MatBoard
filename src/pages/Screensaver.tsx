@@ -1,11 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chrome } from '../components/Chrome';
 import { Sheet } from '../components/Sheet';
+import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
-import { addPhotos, clearPhotos, listPhotos, removePhoto, type StoredPhoto } from '../lib/photoStore';
-
-const INTERVAL_MS = 9000;
-const OPTIONS = [8000, 9000, 10000] as const;
+import { formatMss, secondsToMs } from '../lib/format';
+import {
+  addPhotos,
+  clearPhotos,
+  clampIntervalSec,
+  DEFAULT_INTERVAL_SEC,
+  getSaverPrefs,
+  INTERVAL_PRESETS_SEC,
+  listPhotos,
+  MAX_INTERVAL_SEC,
+  MIN_INTERVAL_SEC,
+  removePhoto,
+  renamePhoto,
+  setSaverIntervalSec,
+  type StoredPhoto,
+} from '../lib/photoStore';
 
 export function ScreensaverPage() {
   const [photos, setPhotos] = useState<StoredPhoto[]>([]);
@@ -13,10 +26,12 @@ export function ScreensaverPage() {
   const [index, setIndex] = useState(0);
   const [options, setOptions] = useState(false);
   const [playing, setPlaying] = useState(true);
-  const [intervalMs, setIntervalMs] = useState(INTERVAL_MS);
+  const [intervalSec, setIntervalSec] = useState(DEFAULT_INTERVAL_SEC);
   const [shuffle, setShuffle] = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
+  const intervalMs = secondsToMs(intervalSec);
 
+  useVisibleViewportHeight();
   useWakeLock(playing && photos.length > 0);
 
   const refresh = async () => {
@@ -26,6 +41,7 @@ export function ScreensaverPage() {
 
   useEffect(() => {
     void refresh();
+    void getSaverPrefs().then((prefs) => setIntervalSec(prefs.intervalSec));
   }, []);
 
   useEffect(() => {
@@ -55,6 +71,12 @@ export function ScreensaverPage() {
 
   const current = urls[order[index] ?? 0];
 
+  const commitInterval = (next: number) => {
+    const clamped = clampIntervalSec(next);
+    setIntervalSec(clamped);
+    void setSaverIntervalSec(clamped);
+  };
+
   const onFiles = async (files: FileList | null) => {
     if (!files?.length) return;
     await addPhotos([...files]);
@@ -73,16 +95,14 @@ export function ScreensaverPage() {
     >
       <Chrome ghost title="Screensaver" />
       {current ? (
-        <img
-          className="saver__img"
-          src={current}
-          alt=""
-          style={{ animationDuration: `${intervalMs}ms` }}
-        />
+        <img className="saver__img" src={current} alt="" />
       ) : (
         <div className="saver__empty" onClick={(e) => e.stopPropagation()}>
           <h1>Screensaver</h1>
-          <p>Pick photos from this device. They loop fullscreen every 8–10 seconds. This mode never auto-starts from Match or Training.</p>
+          <p>
+            Pick photos from this device. They loop fullscreen. Set how long each slide stays on screen (1 second to
+            5:00). This mode never auto-starts from Match or Training.
+          </p>
           <button type="button" className="btn" onClick={() => fileRef.current?.click()}>
             Choose photos
           </button>
@@ -91,18 +111,42 @@ export function ScreensaverPage() {
 
       <Sheet open={options} title="Screensaver options" onClose={() => setOptions(false)}>
         <p>Manual home card only — Match and Training never time out into this loop.</p>
-        <div className="presets">
-          {OPTIONS.map((ms) => (
+        <fieldset>
+          <legend>Slide interval</legend>
+          <div className="interval-stepper" role="group" aria-label="Slide interval">
             <button
-              key={ms}
               type="button"
-              className={`preset${intervalMs === ms ? ' preset--on' : ''}`}
-              onClick={() => setIntervalMs(ms)}
+              className="clock-nudge"
+              disabled={intervalSec <= MIN_INTERVAL_SEC}
+              aria-label="Subtract one second"
+              onClick={() => commitInterval(intervalSec - 1)}
             >
-              {ms / 1000}s
+              −
             </button>
-          ))}
-        </div>
+            <strong aria-live="polite">{formatMss(intervalSec)}</strong>
+            <button
+              type="button"
+              className="clock-nudge"
+              disabled={intervalSec >= MAX_INTERVAL_SEC}
+              aria-label="Add one second"
+              onClick={() => commitInterval(intervalSec + 1)}
+            >
+              +
+            </button>
+          </div>
+          <div className="presets" role="group" aria-label="Slide interval presets">
+            {INTERVAL_PRESETS_SEC.map((seconds) => (
+              <button
+                key={seconds}
+                type="button"
+                className={`preset${intervalSec === seconds ? ' preset--on' : ''}`}
+                onClick={() => commitInterval(seconds)}
+              >
+                {seconds === 60 ? '1:00' : `${seconds}s`}
+              </button>
+            ))}
+          </div>
+        </fieldset>
         <label className="toggle">
           <input type="checkbox" checked={shuffle} onChange={(e) => setShuffle(e.target.checked)} />
           Shuffle
@@ -130,19 +174,19 @@ export function ScreensaverPage() {
         {photos.length ? (
           <ul className="saver__list">
             {photos.map((photo, i) => (
-              <li key={photo.id}>
-                <span>Photo {i + 1}</span>
-                <button
-                  type="button"
-                  className="btn btn--ghost"
-                  onClick={async () => {
-                    await removePhoto(photo.id);
-                    await refresh();
-                  }}
-                >
-                  Remove
-                </button>
-              </li>
+              <PhotoRow
+                key={photo.id}
+                photo={photo}
+                fallback={`Photo ${i + 1}`}
+                onRename={async (label) => {
+                  await renamePhoto(photo.id, label);
+                  setPhotos((rows) => rows.map((row) => (row.id === photo.id ? { ...row, label } : row)));
+                }}
+                onRemove={async () => {
+                  await removePhoto(photo.id);
+                  await refresh();
+                }}
+              />
             ))}
           </ul>
         ) : null}
@@ -160,5 +204,42 @@ export function ScreensaverPage() {
         }}
       />
     </main>
+  );
+}
+
+function PhotoRow({
+  photo,
+  fallback,
+  onRename,
+  onRemove,
+}: {
+  photo: StoredPhoto;
+  fallback: string;
+  onRename: (label: string) => Promise<void>;
+  onRemove: () => Promise<void>;
+}) {
+  const [label, setLabel] = useState(photo.label);
+  useEffect(() => {
+    setLabel(photo.label);
+  }, [photo.label]);
+
+  return (
+    <li>
+      <input
+        value={label}
+        placeholder={fallback}
+        aria-label={`Label for ${fallback}`}
+        onChange={(e) => setLabel(e.target.value)}
+        onBlur={() => {
+          if (label !== photo.label) void onRename(label);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+        }}
+      />
+      <button type="button" className="btn btn--ghost" onClick={() => void onRemove()}>
+        Remove
+      </button>
+    </li>
   );
 }

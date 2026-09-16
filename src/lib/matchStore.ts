@@ -1,4 +1,4 @@
-import { clamp, minutesToMs } from './format';
+import { clamp, minutesToMs, secondsToMs } from './format';
 import { playEndBuzzer } from './audio';
 
 export type Side = 'blue' | 'white';
@@ -30,6 +30,7 @@ export type MatchAction =
   | { type: 'bump'; side: Side; kind: ScoreKind; delta: number }
   | { type: 'toggleClock' }
   | { type: 'resetClock' }
+  | { type: 'adjustClock'; deltaMs: number }
   | { type: 'resetScores' }
   | { type: 'setDuration'; durationMs: number }
   | { type: 'setField'; field: 'round' | 'division'; value: string }
@@ -40,6 +41,11 @@ export type MatchAction =
 const STORAGE_KEY = 'matboard.match.v1';
 const CHANNEL_NAME = 'matboard-match-v1';
 export const TIME_PRESETS_MIN = [5, 6, 7, 8, 10, 20, 30] as const;
+export const CLOCK_NUDGES_SEC = [-5, -1, 1, 5] as const;
+/** Existing custom duration ceiling (180 minutes). */
+export const MAX_REMAINING_MS = minutesToMs(180);
+/** Display-friendly nudge cap (99:59) unless the match duration is longer. */
+const NUDGE_DISPLAY_CAP_MS = secondsToMs(99 * 60 + 59);
 
 const LIMITS: Record<ScoreKind, number> = {
   points: 99,
@@ -76,7 +82,7 @@ export function defaultMatch(): MatchState {
     remainingMs: durationMs,
     running: false,
     startedAt: null,
-    endBuzzer: false,
+    endBuzzer: true,
     revision: 1,
   };
 }
@@ -92,7 +98,7 @@ function loadState(): MatchState {
       ...parsed,
       blue: { ...base.blue, ...parsed.blue },
       white: { ...base.white, ...parsed.white },
-      endBuzzer: Boolean(parsed.endBuzzer),
+      endBuzzer: typeof parsed.endBuzzer === 'boolean' ? parsed.endBuzzer : true,
       revision: Number(parsed.revision ?? 1),
     };
   } catch {
@@ -108,9 +114,37 @@ function clone(s: MatchState): MatchState {
   };
 }
 
-export function remainingNow(s: MatchState, now = Date.now()): number {
+export function remainingNow(
+  s: Pick<MatchState, 'running' | 'startedAt' | 'remainingMs'>,
+  now = Date.now(),
+): number {
   if (!s.running || s.startedAt == null) return s.remainingMs;
   return Math.max(0, s.remainingMs - (now - s.startedAt));
+}
+
+export function remainingCapMs(durationMs: number): number {
+  return Math.min(MAX_REMAINING_MS, Math.max(durationMs, NUDGE_DISPLAY_CAP_MS));
+}
+
+export function clampRemainingMs(ms: number, durationMs: number): number {
+  return clamp(Math.round(ms), 0, remainingCapMs(durationMs));
+}
+
+export function applyAdjustClock(
+  current: Pick<MatchState, 'running' | 'startedAt' | 'remainingMs' | 'durationMs'>,
+  deltaMs: number,
+  now = Date.now(),
+): Pick<MatchState, 'remainingMs' | 'running' | 'startedAt'> {
+  const remaining = remainingNow(current, now);
+  const nextRemaining = clampRemainingMs(remaining + deltaMs, current.durationMs);
+  if (nextRemaining <= 0) {
+    return { running: false, remainingMs: 0, startedAt: null };
+  }
+  return {
+    remainingMs: nextRemaining,
+    startedAt: current.running ? now : null,
+    running: current.running,
+  };
 }
 
 function persist(next: MatchState): void {
@@ -176,6 +210,13 @@ function applyAction(current: MatchState, action: MatchAction): MatchState {
         remainingMs: current.durationMs,
         startedAt: null,
       });
+    case 'adjustClock': {
+      const now = Date.now();
+      return bumpRevision({
+        ...current,
+        ...applyAdjustClock(current, action.deltaMs, now),
+      });
+    }
     case 'resetScores':
       return bumpRevision({
         ...current,

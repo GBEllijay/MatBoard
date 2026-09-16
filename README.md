@@ -6,9 +6,9 @@ Installable as a Progressive Web App. Built for Cloudflare Pages.
 
 ## Modes
 
-- **Match** — Blue competitor on top, white below. Name + gym, green points (0–99), orange advantages (0–99), red disadvantages (0–9). Landscape scoreboard at `/match` (tap a score +1, long-press −1, tap `MM:SS` to start/pause). Fat-thumb controller at `/match/control` for names, round, division, clock presets, and optional match-end buzzer (off by default).
+- **Match** — Blue competitor on top, white below. Name + gym, green points (0–99), orange advantages (0–99), red disadvantages (0–9). Landscape scoreboard at `/match` (tap a score +1, long-press −1, tap `MM:SS` to start/pause). Fat-thumb controller at `/match/control` for names, round, division, clock presets, second nudges, and match-end buzzer (on by default).
 - **Training** — Black fullscreen `MM:SS`. Tap the clock to start/pause. Tap anywhere else for options (round 1/2/5/10, break 00:00 / 00:30 / 01:00, rounds 1–99 or Endless, mute / volume / vibrate). Quieter start cue, 10-second warning, louder end buzzer. Screen wake lock while running.
-- **Screensaver** — Manual only from the home card. Never auto-starts from Match or Training. Pick photos on device, fullscreen loop about 8–10 seconds, options sheet, wake lock while playing.
+- **Screensaver** — Manual only from the home card. Never auto-starts from Match or Training. Pick photos on device, name them, and set slide interval from 1 second to 5:00. Fullscreen loop with letterboxed photos, options sheet, wake lock while playing.
 
 Default match names are **Competitor 1** / **Competitor 2** with empty gyms.
 
