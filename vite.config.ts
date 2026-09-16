@@ -10,8 +10,8 @@ export default defineConfig({
       injectRegister: false,
       includeAssets: ['favicon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'],
       manifest: {
-        name: 'MatBoard',
-        short_name: 'MatBoard',
+        name: 'Advantage',
+        short_name: 'Advantage',
         description: 'Gym match scoreboard, round timer, and photo slideshow.',
         theme_color: '#0b0d10',
         background_color: '#0b0d10',

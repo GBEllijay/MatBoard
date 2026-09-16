@@ -9,7 +9,7 @@ export function HomePage() {
           <span className="home__badge-gold" />
           <span className="home__badge-white" />
         </div>
-        <h1>MatBoard</h1>
+        <h1>Advantage</h1>
         <p>Gym scoreboard, round timer and photo slideshow.</p>
       </div>
 
@@ -41,7 +41,7 @@ export function HomePage() {
         </Link>
       </nav>
 
-      <p className="home__hint">Install MatBoard as an app from your browser menu.</p>
+      <p className="home__hint">Install Advantage as an app from your browser menu.</p>
       <p className="home__hint">Control from your phone. Cast the scoreboard to your TV, or open Display on a second screen.</p>
     </main>
   );
