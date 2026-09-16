@@ -82,7 +82,7 @@ export function defaultMatch(): MatchState {
     remainingMs: durationMs,
     running: false,
     startedAt: null,
-    endBuzzer: false,
+    endBuzzer: true,
     revision: 1,
   };
 }
@@ -98,7 +98,7 @@ function loadState(): MatchState {
       ...parsed,
       blue: { ...base.blue, ...parsed.blue },
       white: { ...base.white, ...parsed.white },
-      endBuzzer: Boolean(parsed.endBuzzer),
+      endBuzzer: typeof parsed.endBuzzer === 'boolean' ? parsed.endBuzzer : true,
       revision: Number(parsed.revision ?? 1),
     };
   } catch {

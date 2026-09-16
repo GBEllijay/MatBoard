@@ -21,6 +21,11 @@ export function secondsToMs(seconds: number): number {
   return Math.round(seconds * 1000);
 }
 
+export function formatMss(totalSeconds: number): string {
+  const n = Math.max(0, Math.floor(totalSeconds));
+  return `${Math.floor(n / 60)}:${pad2(n % 60)}`;
+}
+
 export function parseMmSs(value: string): number | null {
   const trimmed = value.trim();
   const match = /^(\d{1,3}):(\d{2})$/.exec(trimmed);

@@ -180,17 +180,9 @@ export function MatchControllerPage() {
             checked={match.endBuzzer}
             onChange={(e) => dispatchMatch({ type: 'setEndBuzzer', value: e.target.checked })}
           />
-          Match end buzzer (off by default)
+          Match end buzzer
         </label>
         {castNote ? <p className="cast-note">{castNote}</p> : null}
-        <p className="cast-note">
-          Cast notes: keep this Controller on the table. Tap <strong>Cast</strong> to send the landscape scoreboard to a
-          Chromecast / extra display, or <strong>Display</strong> to pop a window you can fullscreen or HDMI to a TV.
-          Same-browser windows stay in sync automatically.
-        </p>
-        <Link className="text-link" to="/match">
-          Open scoreboard on this device
-        </Link>
       </section>
 
       <CompetitorPad
@@ -202,6 +194,17 @@ export function MatchControllerPage() {
         advantages={match.white.advantages}
         disadvantages={match.white.disadvantages}
       />
+
+      <section className="controller__help">
+        <p className="cast-note">
+          Cast notes: keep this Controller on the table. Tap <strong>Cast</strong> to send the landscape scoreboard to a
+          Chromecast / extra display, or <strong>Display</strong> to pop a window you can fullscreen or HDMI to a TV.
+          Same-browser windows stay in sync automatically.
+        </p>
+        <Link className="text-link" to="/match">
+          Open scoreboard on this device
+        </Link>
+      </section>
     </main>
   );
 }
