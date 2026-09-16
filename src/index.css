@@ -125,6 +125,8 @@ p {
   display: flex;
   align-items: center;
   gap: 0.55rem;
+  min-height: 44px;
+  min-width: 44px;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;

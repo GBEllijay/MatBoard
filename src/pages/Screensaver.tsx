@@ -93,7 +93,7 @@ export function ScreensaverPage() {
         if (photos.length) setOptions(true);
       }}
     >
-      <Chrome ghost title="Screensaver" />
+      <Chrome ghost title={current ? '' : 'Screensaver'} />
       {current ? (
         <img className="saver__img" src={current} alt="" />
       ) : (
