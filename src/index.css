@@ -792,7 +792,7 @@ fieldset {
   }
 
   .bout--blue {
-    padding-top: 0.22rem;
+    padding-top: calc(2.2rem + var(--safe-t));
   }
 
   .bout--white {
@@ -804,10 +804,6 @@ fieldset {
     display: flex;
     flex-direction: column;
     justify-content: center;
-  }
-
-  .bout--blue .bout__who {
-    padding-top: calc(1.55rem + var(--safe-t));
   }
 
   .bout__who h1 {
