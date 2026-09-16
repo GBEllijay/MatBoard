@@ -683,8 +683,18 @@ fieldset {
 }
 
 .saver {
+  min-height: 100vh;
   min-height: 100dvh;
+  min-height: 100svh;
+  height: 100vh;
   height: 100dvh;
+  height: 100svh;
+  height: var(--visible-vh, 100svh);
+  max-height: 100vh;
+  max-height: 100dvh;
+  max-height: 100svh;
+  max-height: var(--visible-vh, 100svh);
+  width: 100%;
   position: relative;
   background: #000;
   overflow: hidden;
@@ -698,6 +708,19 @@ fieldset {
   object-fit: contain;
   object-position: center;
   background: #000;
+}
+
+.saver:fullscreen,
+.saver:-webkit-full-screen {
+  width: 100%;
+  height: 100%;
+  background: #000;
+}
+
+.saver:fullscreen .saver__img,
+.saver:-webkit-full-screen .saver__img {
+  object-fit: contain;
+  object-position: center;
 }
 
 .saver__empty {
@@ -862,5 +885,14 @@ fieldset {
 
   .display .clock-btn {
     font-size: clamp(1.45rem, 11vh, 3.2rem);
+  }
+
+  .saver {
+    background: #000;
+  }
+
+  .saver__img {
+    object-fit: contain;
+    object-position: center;
   }
 }

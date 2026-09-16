@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chrome } from '../components/Chrome';
 import { Sheet } from '../components/Sheet';
+import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { formatMss, secondsToMs } from '../lib/format';
 import {
@@ -30,6 +31,7 @@ export function ScreensaverPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const intervalMs = secondsToMs(intervalSec);
 
+  useVisibleViewportHeight();
   useWakeLock(playing && photos.length > 0);
 
   const refresh = async () => {

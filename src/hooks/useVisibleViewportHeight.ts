@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-/** Keep the scoreboard sized to the visible viewport (in-app browsers, toolbars). */
+/** Size fullscreen views to the visible viewport (in-app browsers, toolbars). */
 export function useVisibleViewportHeight(): void {
   useEffect(() => {
     const root = document.documentElement;
