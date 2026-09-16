@@ -54,7 +54,7 @@ export function TrainingPage() {
         setOptions(true);
       }}
     >
-      <Chrome ghost title="Training" />
+      <Chrome ghost title="" />
       <p className="training__phase">
         {training.phase === 'work' ? 'Work' : 'Break'} · {roundLabel}
       </p>
