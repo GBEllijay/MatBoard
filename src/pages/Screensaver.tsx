@@ -93,24 +93,21 @@ export function ScreensaverPage() {
         if (photos.length) setOptions(true);
       }}
     >
-      <Chrome ghost title={current ? '' : 'Screensaver'} />
+      <Chrome ghost title={current ? '' : 'Slideshow'} />
       {current ? (
         <img className="saver__img" src={current} alt="" />
       ) : (
         <div className="saver__empty" onClick={(e) => e.stopPropagation()}>
-          <h1>Screensaver</h1>
-          <p>
-            Pick photos from this device. They loop fullscreen. Set how long each slide stays on screen (1 second to
-            5:00). This mode never auto-starts from Match or Training.
-          </p>
+          <h1>Slideshow</h1>
+          <p>Pick photos from this device. They loop fullscreen. Set how long each slide stays on screen.</p>
           <button type="button" className="btn" onClick={() => fileRef.current?.click()}>
             Choose photos
           </button>
         </div>
       )}
 
-      <Sheet open={options} title="Screensaver options" onClose={() => setOptions(false)}>
-        <p>Manual home card only — Match and Training never time out into this loop.</p>
+      <Sheet open={options} title="Slideshow options" onClose={() => setOptions(false)}>
+        <p>Choose photos, names, and how long each slide stays on screen.</p>
         <fieldset>
           <legend>Slide interval</legend>
           <div className="interval-stepper" role="group" aria-label="Slide interval">

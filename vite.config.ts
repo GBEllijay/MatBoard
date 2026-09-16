@@ -12,7 +12,7 @@ export default defineConfig({
       manifest: {
         name: 'MatBoard',
         short_name: 'MatBoard',
-        description: 'Gym match scoreboard, round timer, and photo screensaver.',
+        description: 'Gym match scoreboard, round timer, and photo slideshow.',
         theme_color: '#0b0d10',
         background_color: '#0b0d10',
         display: 'standalone',
