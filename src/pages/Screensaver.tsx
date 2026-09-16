@@ -93,12 +93,7 @@ export function ScreensaverPage() {
     >
       <Chrome ghost title="Screensaver" />
       {current ? (
-        <img
-          className="saver__img"
-          src={current}
-          alt=""
-          style={{ animationDuration: `${intervalMs}ms` }}
-        />
+        <img className="saver__img" src={current} alt="" />
       ) : (
         <div className="saver__empty" onClick={(e) => e.stopPropagation()}>
           <h1>Screensaver</h1>
