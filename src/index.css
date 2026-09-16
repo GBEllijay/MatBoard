@@ -772,6 +772,10 @@ fieldset {
     padding: 0.8rem;
   }
 
+  .bout--blue {
+    padding-top: calc(3.4rem + var(--safe-t));
+  }
+
   .bout__scores,
   .pad__scores {
     grid-template-columns: 1fr 1fr 0.8fr;
