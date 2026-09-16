@@ -240,6 +240,7 @@ p {
 }
 
 .display {
+  position: relative;
   min-height: 100vh;
   min-height: 100dvh;
   min-height: 100svh;
@@ -278,6 +279,34 @@ p {
 .display__chrome .chip {
   pointer-events: auto;
   opacity: 0.72;
+}
+
+.display__chrome-end {
+  display: flex;
+  gap: 0.45rem;
+  pointer-events: none;
+}
+
+.display__chrome-end .chip {
+  pointer-events: auto;
+}
+
+.play-fs-slot {
+  position: absolute;
+  top: calc(0.55rem + var(--safe-t));
+  right: calc(0.55rem + var(--safe-r));
+  z-index: 5;
+}
+
+.play-fs--nudge {
+  animation: fs-nudge 1.8s ease-in-out infinite;
+}
+
+@keyframes fs-nudge {
+  50% {
+    transform: scale(1.04);
+    box-shadow: 0 0 0 3px rgba(212, 160, 23, 0.35);
+  }
 }
 
 .bout {
@@ -598,6 +627,7 @@ label {
 }
 
 .training {
+  position: relative;
   min-height: 100dvh;
   background: #050505;
   display: grid;
@@ -709,9 +739,34 @@ fieldset {
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
   object-position: center;
   background: #000;
+  transform-origin: center center;
+  animation: kenburns-in 16s ease-in-out alternate infinite;
+}
+
+.saver__img--alt {
+  animation-name: kenburns-out;
+  transform-origin: 58% 42%;
+}
+
+@keyframes kenburns-in {
+  from {
+    transform: scale(1) translate(0, 0);
+  }
+  to {
+    transform: scale(1.07) translate(-1.2%, -0.8%);
+  }
+}
+
+@keyframes kenburns-out {
+  from {
+    transform: scale(1.07) translate(1%, 0.6%);
+  }
+  to {
+    transform: scale(1) translate(0, 0);
+  }
 }
 
 .saver:fullscreen,
@@ -719,12 +774,6 @@ fieldset {
   width: 100%;
   height: 100%;
   background: #000;
-}
-
-.saver:fullscreen .saver__img,
-.saver:-webkit-full-screen .saver__img {
-  object-fit: contain;
-  object-position: center;
 }
 
 .saver__empty {
@@ -900,7 +949,52 @@ fieldset {
   }
 
   .saver__img {
-    object-fit: contain;
+    object-fit: cover;
     object-position: center;
+  }
+}
+
+/* Immersive play: hide in-app chrome in landscape / fullscreen. */
+.play--landscape .display__chrome .chip:not(.play-fs),
+.play--fs .display__chrome .chip:not(.play-fs),
+.play--landscape .chrome,
+.play--fs .chrome,
+.play--landscape .training__hint,
+.play--fs .training__hint {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.play--landscape .bout--blue,
+.play--fs .bout--blue {
+  padding-top: calc(0.28rem + var(--safe-t));
+}
+
+.play--landscape.training,
+.play--fs.training {
+  padding-top: 2.2rem;
+}
+
+.play--landscape .training__phase {
+  top: calc(0.7rem + var(--safe-t));
+}
+
+.play--landscape .play-fs {
+  min-height: 40px;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.9rem;
+  opacity: 1;
+}
+
+.play--fs .play-fs {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .saver__img,
+  .saver__img--alt,
+  .play-fs--nudge {
+    animation: none;
+    transform: none;
   }
 }

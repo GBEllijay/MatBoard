@@ -1,7 +1,9 @@
 import { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { FullscreenChip } from '../components/FullscreenChip';
 import { ScoreBox } from '../components/ScoreBox';
 import { useInterval } from '../hooks/useClock';
+import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useMatchState } from '../hooks/useStores';
@@ -13,6 +15,7 @@ export function MatchDisplayPage() {
   const match = useMatchState();
   const [, setTick] = useState(0);
   const remaining = remainingNow(match);
+  const fs = usePlayFullscreen();
 
   useVisibleViewportHeight();
   useWakeLock(match.running);
@@ -31,14 +34,22 @@ export function MatchDisplayPage() {
   };
 
   return (
-    <main className="display">
+    <main className={`display${fs.className ? ` ${fs.className}` : ''}`}>
       <div className="display__chrome">
         <Link to="/" className="chip">
           Home
         </Link>
-        <Link to="/match/control" className="chip chip--gold">
-          Controller
-        </Link>
+        <div className="display__chrome-end">
+          <FullscreenChip
+            supported={fs.supported}
+            active={fs.active}
+            nudge={fs.showFallback}
+            onToggle={() => void fs.toggle()}
+          />
+          <Link to="/match/control" className="chip chip--gold">
+            Controller
+          </Link>
+        </div>
       </div>
 
       <section className="bout bout--blue" aria-label="Blue competitor">
