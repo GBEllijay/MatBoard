@@ -4,7 +4,9 @@ Gym match scoreboard, round timer, and photo screensaver. Original UI and origin
 
 Installable as a Progressive Web App. Built for Cloudflare Pages.
 
-Browsers cannot permanently hide the address bar in a normal tab. For gym TV / cast without URL chrome: **install MatBoard as an app** (browser menu → Add to Home Screen / Install) so it opens standalone, **or** tap **Fullscreen** on Display, Training, or Slideshow (rotating to landscape also tries fullscreen; tap the control if the browser blocks it). Home is left as a normal page.
+The consumer product name is **Advantage**. This GitHub repo and Cloudflare project stay MatBoard.
+
+Browsers cannot permanently hide the address bar in a normal tab. For gym TV / cast without URL chrome: **install Advantage as an app** (browser menu → Add to Home Screen / Install) so it opens standalone, **or** tap **Fullscreen** on Display, Training, or Slideshow (rotating to landscape also tries fullscreen; tap the control if the browser blocks it). Home is left as a normal page.
 
 ## Modes
 

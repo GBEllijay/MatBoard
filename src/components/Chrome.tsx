@@ -7,7 +7,7 @@ type Props = {
   ghost?: boolean;
 };
 
-export function Chrome({ title = 'MatBoard', right, ghost }: Props) {
+export function Chrome({ title = 'Advantage', right, ghost }: Props) {
   return (
     <header className={`chrome${ghost ? ' chrome--ghost' : ''}`} onClick={(event) => event.stopPropagation()}>
       <Link to="/" className="chrome__home" aria-label="Home">
