@@ -12,7 +12,7 @@ export function Chrome({ title = 'MatBoard', right, ghost }: Props) {
     <header className={`chrome${ghost ? ' chrome--ghost' : ''}`} onClick={(event) => event.stopPropagation()}>
       <Link to="/" className="chrome__home" aria-label="Home">
         <span aria-hidden="true">←</span>
-        <span className="chrome__brand">{title}</span>
+        {title ? <span className="chrome__brand">{title}</span> : null}
       </Link>
       <div className="chrome__right">{right}</div>
     </header>

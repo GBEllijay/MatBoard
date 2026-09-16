@@ -73,16 +73,6 @@ export function MatchControllerPage() {
         }
       />
 
-      <CompetitorPad
-        side="blue"
-        title="Blue"
-        name={match.blue.name}
-        gym={match.blue.gym}
-        points={match.blue.points}
-        advantages={match.blue.advantages}
-        disadvantages={match.blue.disadvantages}
-      />
-
       <section className="controller__clock">
         <button
           type="button"
@@ -184,6 +174,16 @@ export function MatchControllerPage() {
         </label>
         {castNote ? <p className="cast-note">{castNote}</p> : null}
       </section>
+
+      <CompetitorPad
+        side="blue"
+        title="Blue"
+        name={match.blue.name}
+        gym={match.blue.gym}
+        points={match.blue.points}
+        advantages={match.blue.advantages}
+        disadvantages={match.blue.disadvantages}
+      />
 
       <CompetitorPad
         side="white"
