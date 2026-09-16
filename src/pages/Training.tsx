@@ -10,6 +10,9 @@ import { patchAudioPrefs, unlockAudio } from '../lib/audio';
 import { formatMmSs } from '../lib/format';
 import {
   BREAK_PRESETS_MS,
+  isWorkPreset,
+  MAX_WORK_MS,
+  MIN_WORK_MS,
   remainingTraining,
   resetTrainingSession,
   setBreakMs,
@@ -24,9 +27,12 @@ export function TrainingPage() {
   const training = useTrainingState();
   const audio = useAudioPrefs();
   const [options, setOptions] = useState(false);
+  const [customOpen, setCustomOpen] = useState(false);
   const [, setTick] = useState(0);
   const remaining = remainingTraining(training);
   const fs = usePlayFullscreen();
+  const customWork = !isWorkPreset(training.workMs);
+  const showCustomWork = customOpen || customWork;
 
   useWakeLock(training.running);
   useInterval(
@@ -77,18 +83,71 @@ export function TrainingPage() {
       <Sheet open={options} title="Training options" onClose={() => setOptions(false)}>
         <fieldset>
           <legend>Round length</legend>
-          <div className="presets">
+          <div className="presets" role="group" aria-label="Round length">
             {WORK_PRESETS_MIN.map((minutes) => (
               <button
                 key={minutes}
                 type="button"
                 className={`preset${training.workMs === minutes * 60_000 ? ' preset--on' : ''}`}
-                onClick={() => setWorkMs(minutes * 60_000)}
+                onClick={() => {
+                  setCustomOpen(false);
+                  setWorkMs(minutes * 60_000);
+                }}
               >
                 {minutes}:00
               </button>
             ))}
+            <button
+              type="button"
+              className={`preset${customWork ? ' preset--on' : ''}`}
+              onClick={() => setCustomOpen(true)}
+            >
+              Custom
+            </button>
           </div>
+          {showCustomWork ? (
+            <div className="custom-round">
+              <strong aria-live="polite">{formatMmSs(training.workMs)}</strong>
+              <div className="clock-nudges" role="group" aria-label="Custom round length">
+                <button
+                  type="button"
+                  className="clock-nudge"
+                  disabled={training.workMs <= MIN_WORK_MS}
+                  aria-label="Subtract one minute"
+                  onClick={() => setWorkMs(training.workMs - 60_000)}
+                >
+                  −1m
+                </button>
+                <button
+                  type="button"
+                  className="clock-nudge"
+                  disabled={training.workMs <= MIN_WORK_MS}
+                  aria-label="Subtract one second"
+                  onClick={() => setWorkMs(training.workMs - 1_000)}
+                >
+                  −1s
+                </button>
+                <button
+                  type="button"
+                  className="clock-nudge"
+                  disabled={training.workMs >= MAX_WORK_MS}
+                  aria-label="Add one second"
+                  onClick={() => setWorkMs(training.workMs + 1_000)}
+                >
+                  +1s
+                </button>
+                <button
+                  type="button"
+                  className="clock-nudge"
+                  disabled={training.workMs >= MAX_WORK_MS}
+                  aria-label="Add one minute"
+                  onClick={() => setWorkMs(training.workMs + 60_000)}
+                >
+                  +1m
+                </button>
+              </div>
+            </div>
+          ) : null}
         </fieldset>
 
         <fieldset>

@@ -793,6 +793,22 @@ fieldset {
   letter-spacing: 0.04em;
 }
 
+.custom-round {
+  margin-top: 0.45rem;
+}
+
+.custom-round strong {
+  display: block;
+  text-align: center;
+  font-size: 1.9rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+.custom-round .clock-nudges {
+  margin: 0.35rem 0 0;
+}
+
 @media (max-width: 820px) and (orientation: portrait) and (min-height: 521px) {
   .bout {
     grid-template-columns: 1fr;
