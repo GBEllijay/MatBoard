@@ -394,6 +394,27 @@ p {
   font-size: clamp(3.4rem, 18vw, 6rem);
 }
 
+.clock-nudges {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin: 0.35rem 0 0.15rem;
+}
+
+.clock-nudge {
+  min-height: 64px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.clock-nudge:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
 .controller {
   min-height: 100dvh;
   padding-bottom: calc(1.4rem + var(--safe-b));

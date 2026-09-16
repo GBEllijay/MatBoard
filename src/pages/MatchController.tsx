@@ -6,8 +6,17 @@ import { useWakeLock } from '../hooks/useWakeLock';
 import { useMatchState } from '../hooks/useStores';
 import { unlockAudio } from '../lib/audio';
 import { openDisplayWindow, openOrCastDisplay } from '../lib/cast';
-import { minutesToMs, formatMmSs } from '../lib/format';
-import { dispatchMatch, expireMatchClock, remainingNow, TIME_PRESETS_MIN, type ScoreKind, type Side } from '../lib/matchStore';
+import { minutesToMs, formatMmSs, secondsToMs } from '../lib/format';
+import {
+  CLOCK_NUDGES_SEC,
+  dispatchMatch,
+  expireMatchClock,
+  remainingCapMs,
+  remainingNow,
+  TIME_PRESETS_MIN,
+  type ScoreKind,
+  type Side,
+} from '../lib/matchStore';
 
 export function MatchControllerPage() {
   const match = useMatchState();
@@ -85,6 +94,26 @@ export function MatchControllerPage() {
         >
           {formatMmSs(remaining)}
         </button>
+        <div className="clock-nudges" role="group" aria-label="Adjust remaining time">
+          {CLOCK_NUDGES_SEC.map((seconds) => {
+            const atFloor = remaining <= 0;
+            const atCeil = remaining >= remainingCapMs(match.durationMs);
+            const disabled = seconds < 0 ? atFloor : atCeil;
+            const label = `${seconds < 0 ? '−' : '+'}${Math.abs(seconds)}s`;
+            return (
+              <button
+                key={seconds}
+                type="button"
+                className="clock-nudge"
+                disabled={disabled}
+                aria-label={seconds < 0 ? `Subtract ${Math.abs(seconds)} seconds` : `Add ${seconds} seconds`}
+                onClick={() => dispatchMatch({ type: 'adjustClock', deltaMs: secondsToMs(seconds) })}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
         <div className="controller__clock-actions">
           <button type="button" className="btn" onClick={() => dispatchMatch({ type: 'toggleClock' })}>
             {match.running ? 'Pause' : remaining <= 0 ? 'Restart' : 'Start'}

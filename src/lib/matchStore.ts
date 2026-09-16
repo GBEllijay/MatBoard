@@ -1,4 +1,4 @@
-import { clamp, minutesToMs } from './format';
+import { clamp, minutesToMs, secondsToMs } from './format';
 import { playEndBuzzer } from './audio';
 
 export type Side = 'blue' | 'white';
@@ -30,6 +30,7 @@ export type MatchAction =
   | { type: 'bump'; side: Side; kind: ScoreKind; delta: number }
   | { type: 'toggleClock' }
   | { type: 'resetClock' }
+  | { type: 'adjustClock'; deltaMs: number }
   | { type: 'resetScores' }
   | { type: 'setDuration'; durationMs: number }
   | { type: 'setField'; field: 'round' | 'division'; value: string }
@@ -40,6 +41,11 @@ export type MatchAction =
 const STORAGE_KEY = 'matboard.match.v1';
 const CHANNEL_NAME = 'matboard-match-v1';
 export const TIME_PRESETS_MIN = [5, 6, 7, 8, 10, 20, 30] as const;
+export const CLOCK_NUDGES_SEC = [-5, -1, 1, 5] as const;
+/** Existing custom duration ceiling (180 minutes). */
+export const MAX_REMAINING_MS = minutesToMs(180);
+/** Display-friendly nudge cap (99:59) unless the match duration is longer. */
+const NUDGE_DISPLAY_CAP_MS = secondsToMs(99 * 60 + 59);
 
 const LIMITS: Record<ScoreKind, number> = {
   points: 99,
@@ -113,6 +119,14 @@ export function remainingNow(s: MatchState, now = Date.now()): number {
   return Math.max(0, s.remainingMs - (now - s.startedAt));
 }
 
+export function remainingCapMs(durationMs: number): number {
+  return Math.min(MAX_REMAINING_MS, Math.max(durationMs, NUDGE_DISPLAY_CAP_MS));
+}
+
+export function clampRemainingMs(ms: number, durationMs: number): number {
+  return clamp(Math.round(ms), 0, remainingCapMs(durationMs));
+}
+
 function persist(next: MatchState): void {
   state = next;
   if (!applyingRemote) {
@@ -176,6 +190,24 @@ function applyAction(current: MatchState, action: MatchAction): MatchState {
         remainingMs: current.durationMs,
         startedAt: null,
       });
+    case 'adjustClock': {
+      const remaining = remainingNow(current);
+      const nextRemaining = clampRemainingMs(remaining + action.deltaMs, current.durationMs);
+      if (nextRemaining <= 0) {
+        return bumpRevision({
+          ...current,
+          running: false,
+          remainingMs: 0,
+          startedAt: null,
+        });
+      }
+      return bumpRevision({
+        ...current,
+        remainingMs: nextRemaining,
+        startedAt: current.running ? Date.now() : null,
+        running: current.running,
+      });
+    }
     case 'resetScores':
       return bumpRevision({
         ...current,
