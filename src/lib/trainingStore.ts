@@ -19,6 +19,17 @@ export type TrainingState = {
 const STORAGE_KEY = 'matboard.training.v1';
 export const WORK_PRESETS_MIN = [1, 2, 5, 10] as const;
 export const BREAK_PRESETS_MS = [0, 30_000, 60_000] as const;
+export const MIN_WORK_MS = 1_000;
+export const MAX_WORK_MS = (99 * 60 + 59) * 1_000;
+
+export function clampWorkMs(ms: number): number {
+  if (!Number.isFinite(ms)) return 5 * 60_000;
+  return clamp(Math.round(ms / 1000) * 1000, MIN_WORK_MS, MAX_WORK_MS);
+}
+
+export function isWorkPreset(ms: number): boolean {
+  return WORK_PRESETS_MIN.some((minutes) => minutes * 60_000 === ms);
+}
 
 const listeners = new Set<() => void>();
 
@@ -47,6 +58,7 @@ function load(): TrainingState {
     return {
       ...base,
       ...parsed,
+      workMs: clampWorkMs(typeof parsed.workMs === 'number' ? parsed.workMs : base.workMs),
       running: false,
       startedAt: null,
       warned: Boolean(parsed.warned),
@@ -84,10 +96,11 @@ export function patchTraining(partial: Partial<TrainingState>): void {
 }
 
 export function setWorkMs(workMs: number): void {
+  const next = clampWorkMs(workMs);
   persist({
     ...state,
-    workMs,
-    remainingMs: state.phase === 'work' && !state.running ? workMs : state.remainingMs,
+    workMs: next,
+    remainingMs: state.phase === 'work' && !state.running ? next : state.remainingMs,
     running: false,
     startedAt: null,
     warned: false,
