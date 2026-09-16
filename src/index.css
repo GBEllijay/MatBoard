@@ -281,16 +281,6 @@ p {
   opacity: 0.72;
 }
 
-.display__chrome-end {
-  display: flex;
-  gap: 0.45rem;
-  pointer-events: none;
-}
-
-.display__chrome-end .chip {
-  pointer-events: auto;
-}
-
 .play-fs-slot {
   position: absolute;
   top: calc(0.55rem + var(--safe-t));
@@ -956,13 +946,20 @@ fieldset {
 
 /* Immersive play: hide in-app chrome in landscape / fullscreen. */
 .play--landscape .display__chrome .chip:not(.play-fs),
-.play--fs .display__chrome .chip:not(.play-fs),
+.play--fs .display__chrome .chip:not(.play-fs) {
+  display: none;
+}
+
 .play--landscape .chrome,
 .play--fs .chrome,
 .play--landscape .training__hint,
 .play--fs .training__hint {
   opacity: 0;
   pointer-events: none;
+}
+
+.play--landscape .display__chrome {
+  justify-content: flex-start;
 }
 
 .play--landscape .bout--blue,

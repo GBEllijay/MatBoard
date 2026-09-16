@@ -39,17 +39,15 @@ export function MatchDisplayPage() {
         <Link to="/" className="chip">
           Home
         </Link>
-        <div className="display__chrome-end">
-          <FullscreenChip
-            supported={fs.supported}
-            active={fs.active}
-            nudge={fs.showFallback}
-            onToggle={() => void fs.toggle()}
-          />
-          <Link to="/match/control" className="chip chip--gold">
-            Controller
-          </Link>
-        </div>
+        <FullscreenChip
+          supported={fs.supported}
+          active={fs.active}
+          nudge={fs.showFallback}
+          onToggle={() => void fs.toggle()}
+        />
+        <Link to="/match/control" className="chip chip--gold">
+          Controller
+        </Link>
       </div>
 
       <section className="bout bout--blue" aria-label="Blue competitor">
