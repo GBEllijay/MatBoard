@@ -206,12 +206,10 @@ p {
   letter-spacing: -0.04em;
 }
 
-.mode-card__kicker {
-  font-size: 0.76rem;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+.mode-card__sub {
+  font-weight: 700;
   color: var(--gold-2);
+  font-size: 1rem;
 }
 
 .mode-card--match {

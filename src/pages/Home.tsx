@@ -15,9 +15,11 @@ export function HomePage() {
 
       <nav className="home__modes" aria-label="Modes">
         <article className="mode-card mode-card--match">
-          <span className="mode-card__kicker">Live bout</span>
-          <strong>Match</strong>
-          <span>Landscape scoreboard plus a fat-thumb controller. Blue on top, white below.</span>
+          <strong>Live Bout</strong>
+          <span className="mode-card__sub">Match Timer &amp; Scoreboard</span>
+          <span>
+            Run a tournament-style match. Control the clock and scores from your phone while casting to your TV.
+          </span>
           <div className="mode-card__actions">
             <Link className="btn" to="/match">
               Scoreboard
@@ -28,14 +30,14 @@ export function HomePage() {
           </div>
         </article>
         <Link className="mode-card mode-card--training" to="/training">
-          <span className="mode-card__kicker">Rounds</span>
-          <strong>Training</strong>
-          <span>Fullscreen MM:SS with start, 10-second warning, and end buzzer.</span>
+          <strong>Rounds</strong>
+          <span className="mode-card__sub">Training Timer</span>
+          <span>Round timer that can be cast to your TV. Set round length, rest time, and how many rounds.</span>
         </Link>
         <Link className="mode-card mode-card--saver" to="/screensaver">
-          <span className="mode-card__kicker">Manual only</span>
-          <strong>Screensaver</strong>
-          <span>Pick gym photos and loop them fullscreen. Never auto-starts from other modes.</span>
+          <strong>Slideshow</strong>
+          <span className="mode-card__sub">Gallery</span>
+          <span>Easily display photos, logos and gym information on your TV.</span>
         </Link>
       </nav>
 
