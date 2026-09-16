@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ScoreBox } from '../components/ScoreBox';
 import { useInterval } from '../hooks/useClock';
+import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useMatchState } from '../hooks/useStores';
 import { unlockAudio } from '../lib/audio';
@@ -13,6 +14,7 @@ export function MatchDisplayPage() {
   const [, setTick] = useState(0);
   const remaining = remainingNow(match);
 
+  useVisibleViewportHeight();
   useWakeLock(match.running);
   useInterval(
     useCallback(() => {
