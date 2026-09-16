@@ -42,7 +42,7 @@ export function HomePage() {
       </nav>
 
       <p className="home__hint">Install MatBoard as an app from your browser menu.</p>
-      <p className="home__hint">Control from your phone. Cast or open Display fullscreen on your TV.</p>
+      <p className="home__hint">Control from your phone. Cast the scoreboard to your TV, or open Display on a second screen.</p>
     </main>
   );
 }
