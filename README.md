@@ -10,8 +10,8 @@ Browsers cannot permanently hide the address bar in a normal tab. For gym TV / c
 
 ## Modes
 
-- **Match** — Blue competitor on top, white below. Name + gym, green points (0–99), orange advantages (0–99), red disadvantages (0–9). Landscape scoreboard at `/match` (tap a score +1, long-press −1, tap `MM:SS` to start/pause). Fat-thumb controller at `/match/control` for names, round, division, clock presets, second nudges, and match-end buzzer (on by default).
-- **Training** — Black fullscreen `MM:SS`. Tap the clock to start/pause. Tap anywhere else for options (round 1/2/5/10 or custom `MM:SS` up to 99:59, break 00:00 / 00:30 / 01:00, rounds 1–99 or Endless, mute / volume / vibrate, and cue previews). Original start cue, lighter 10-second warning, louder end buzzer. Screen wake lock while running.
+- **Match** — Blue competitor on top, white below. Name + gym, green points (0–99), orange advantages (0–99), red disadvantages (0–9). Landscape scoreboard at `/match` (tap a score +1, long-press −1, tap `MM:SS` to start/pause). Fat-thumb controller at `/match/control` for names, round, division, clock presets, second nudges, and match-end sound (on by default; **Buzzer** or owner-recorded **Parou**).
+- **Training** — Black fullscreen `MM:SS`. Tap the clock to start/pause. Tap anywhere else for options (round 1/2/5/10 or custom `MM:SS` up to 99:59, break 00:00 / 00:30 / 01:00, rounds 1–99 or Endless, mute / volume / vibrate, end sound **Buzzer** or **Parou**, and cue previews). Quieter start cue, 10-second warning, selected end cue. Screen wake lock while running.
 - **Screensaver** — Manual only from the home card. Never auto-starts from Match or Training. Pick photos on device, name them, and set slide interval from 1 second to 5:00. Fullscreen loop with cover-framed photos (center crop), a gentle Ken Burns zoom, options sheet, and wake lock while playing.
 
 Default match names are **Competitor 1** / **Competitor 2** with empty gyms.
@@ -57,21 +57,24 @@ Windows opened from the same origin stay in sync automatically. A phone Controll
 
 ## Sounds
 
-All Match / Training cues are **original procedural tones** synthesized in-app with the Web Audio API (oscillators + a short generated noise burst). There are no sampled federation buzzers and no third-party MP3/WAV files.
+Start and warning cues, and the default **Buzzer** end cue, are **original procedural tones** synthesized in-app with the Web Audio API (oscillators + a short generated noise burst). There are no sampled federation buzzers and no third-party / Pixabay files.
 
-A compressor and soft clipper sit on the master bus so the end buzzer can be loud in a gym without harsh DAC clipping.
+**Parou** is an owner-recorded voice saying “parou”, stored at `public/sounds/parou.mp3` (trimmed and loudness-normalized for a phone / gym floor). On the Match Controller, choose **Buzzer** or **Parou** as the match end cue. The same choice is available under Training sound options. Preference is saved in `localStorage` (`matboard.audio.v1` and the match state).
+
+A compressor and soft clipper sit on the master bus so end cues can be loud in a gym without harsh DAC clipping.
 
 | Cue | Where | How it sounds | How it is made |
 | --- | --- | --- | --- |
 | **Start** | Training only (round / clock start) | Two rising “go” notes, brighter and shorter than the warning | Sine at 784 Hz then 1175 Hz, light octave shimmer |
 | **10-second warning** | Training work phase only | Three light staccato ticks on one pitch | Quiet triangle pulses at 1047 Hz |
-| **End buzzer** | Training round/session end; Match when the clock hits 0:00 (optional, on by default) | Classic electric gym buzzer: sustained, raspy, mid-forward | Detuned square pair (~392/406 Hz) + saw sub + 23 Hz rasp + a few ms of synthesized noise. Match holds it longer and a bit louder than Training. |
+| **End buzzer** | Training round/session end; Match when the clock hits 0:00 (optional, on by default) if **Buzzer** is selected | Classic electric gym buzzer: sustained, raspy, mid-forward | Detuned square pair (~392/406 Hz) + saw sub + 23 Hz rasp + a few ms of synthesized noise. Match holds it longer and a bit louder than Training. |
+| **Parou** | Same end slots as the buzzer, when **Parou** is selected | Owner voice: “parou” | Gym-owned MP3, decoded into the same Web Audio master bus (mute / volume apply) |
 
-Match has **no** 10-second warning and **no** start cue.
+Match has **no** 10-second warning and **no** start cue. Match end sound still respects the on/off toggle.
 
-Preview the three cues from Training options. On the Match Controller, **Test end buzzer** plays the Match end sound (honors mute / volume and the Match end buzzer toggle).
+Preview start / 10s / end from Training options. On the Match Controller, tap **Buzzer** or **Parou** (or **Test end sound**) to hear the Match end cue (honors mute / volume and the Match end sound toggle).
 
-First tap on Display, Controller, or Training unlocks audio on iOS/Android. Volume, mute, and vibrate live in Training options and apply app-wide.
+First tap on Display, Controller, or Training unlocks audio on iOS/Android (and preloads Parou). Volume, mute, and vibrate live in Training options and apply app-wide.
 
 ## License
 

@@ -612,6 +612,14 @@ label {
   margin: 0.35rem 0 0;
 }
 
+.controller__clock .cue-preview {
+  margin: 0.1rem 0 0.15rem;
+}
+
+.controller__clock .cue-preview .presets {
+  margin: 0.35rem 0 0.5rem;
+}
+
 .cast-note,
 .text-link {
   font-size: 0.92rem;

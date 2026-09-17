@@ -1,15 +1,26 @@
 const STORAGE_KEY = 'matboard.audio.v1';
 
+export type EndCue = 'buzzer' | 'parou';
+
 export type AudioPrefs = {
   muted: boolean;
   volume: number;
   vibrate: boolean;
+  endCue: EndCue;
 };
+
+export const END_CUE_OPTIONS: { id: EndCue; label: string }[] = [
+  { id: 'buzzer', label: 'Buzzer' },
+  { id: 'parou', label: 'Parou' },
+];
+
+const PAROU_URL = '/sounds/parou.mp3';
 
 const DEFAULT_PREFS: AudioPrefs = {
   muted: false,
   volume: 0.8,
   vibrate: true,
+  endCue: 'buzzer',
 };
 
 let prefs: AudioPrefs = loadPrefs();
@@ -24,6 +35,7 @@ function loadPrefs(): AudioPrefs {
       muted: Boolean(parsed.muted),
       volume: clampVolume(Number(parsed.volume ?? DEFAULT_PREFS.volume)),
       vibrate: parsed.vibrate !== false,
+      endCue: parseEndCue(parsed.endCue),
     };
   } catch {
     return { ...DEFAULT_PREFS };
@@ -49,11 +61,16 @@ export function subscribeAudioPrefs(fn: () => void): () => void {
   return () => listeners.delete(fn);
 }
 
+export function parseEndCue(value: unknown, fallback: EndCue = DEFAULT_PREFS.endCue): EndCue {
+  return value === 'parou' || value === 'buzzer' ? value : fallback;
+}
+
 export function patchAudioPrefs(partial: Partial<AudioPrefs>): void {
   prefs = {
     ...prefs,
     ...partial,
     volume: clampVolume(partial.volume ?? prefs.volume),
+    endCue: parseEndCue(partial.endCue ?? prefs.endCue),
   };
   persist();
 }
@@ -61,12 +78,15 @@ export function patchAudioPrefs(partial: Partial<AudioPrefs>): void {
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 let noiseBuffer: AudioBuffer | null = null;
+let parouBuffer: AudioBuffer | null = null;
+let parouLoad: Promise<AudioBuffer | null> | null = null;
 
 export async function unlockAudio(): Promise<void> {
   const audio = getContext();
   if (audio.state === 'suspended') {
     await audio.resume();
   }
+  void loadParouBuffer();
 }
 
 function getContext(): AudioContext {
@@ -403,9 +423,12 @@ function endBuzzerVoices(duration: number, level: number): Voice[] {
   ];
 }
 
+const MATCH_END_VIBE = [280, 70, 280, 70, 420];
+const TRAIN_END_VIBE = [220, 80, 220, 80, 320];
+
 /** Training / round-end buzzer — original electric square-wave horn. */
 export function playEndBuzzer(): void {
-  playCue(endBuzzerVoices(1.05, 1), [220, 80, 220, 80, 320]);
+  playCue(endBuzzerVoices(1.05, 1), TRAIN_END_VIBE);
 }
 
 /**
@@ -413,8 +436,69 @@ export function playEndBuzzer(): void {
  * longer and a bit more present so it cuts through a gym without clipping.
  */
 export function playMatchEndBuzzer(): void {
-  playCue(endBuzzerVoices(1.45, 1.12), [280, 70, 280, 70, 420]);
+  playCue(endBuzzerVoices(1.45, 1.12), MATCH_END_VIBE);
 }
 
-/** Time to wait after a Training end buzzer before a back-to-back start cue. */
+async function loadParouBuffer(): Promise<AudioBuffer | null> {
+  if (parouBuffer) return parouBuffer;
+  if (!parouLoad) {
+    parouLoad = (async () => {
+      try {
+        const audio = getContext();
+        const res = await fetch(PAROU_URL);
+        if (!res.ok) return null;
+        const data = await res.arrayBuffer();
+        parouBuffer = await audio.decodeAudioData(data.slice(0));
+        return parouBuffer;
+      } catch {
+        parouLoad = null;
+        return null;
+      }
+    })();
+  }
+  return parouLoad;
+}
+
+function startParou(buffer: AudioBuffer): void {
+  const audio = getContext();
+  const volume = masterGain();
+  if (volume <= 0) return;
+  const src = audio.createBufferSource();
+  const amp = audio.createGain();
+  src.buffer = buffer;
+  amp.gain.value = volume * 1.15;
+  src.connect(amp);
+  amp.connect(getMaster());
+  src.start();
+}
+
+function playParouCue(kind: 'match' | 'training'): void {
+  buzz(kind === 'match' ? MATCH_END_VIBE : TRAIN_END_VIBE);
+  void playAfterResume(() => {
+    void loadParouBuffer().then((buffer) => {
+      if (buffer) {
+        startParou(buffer);
+        return;
+      }
+      playVoices(endBuzzerVoices(kind === 'match' ? 1.45 : 1.05, kind === 'match' ? 1.12 : 1));
+    });
+  });
+}
+
+/** Play the user-selected end cue (original synth buzzer or owner-recorded Parou). */
+export function playSelectedEndCue(kind: 'match' | 'training' = 'match', cue: EndCue = prefs.endCue): void {
+  if (parseEndCue(cue) === 'parou') {
+    playParouCue(kind);
+    return;
+  }
+  if (kind === 'match') playMatchEndBuzzer();
+  else playEndBuzzer();
+}
+
+/** Time to wait after a Training end cue before a back-to-back start cue. */
 export const END_BUZZER_MS = 1100;
+
+export function endCueFollowMs(): number {
+  if (prefs.endCue === 'parou') return 1000;
+  return END_BUZZER_MS;
+}

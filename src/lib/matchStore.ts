@@ -1,5 +1,5 @@
 import { clamp, minutesToMs, secondsToMs } from './format';
-import { playMatchEndBuzzer } from './audio';
+import { getAudioPrefs, parseEndCue, playSelectedEndCue, type EndCue } from './audio';
 
 export type Side = 'blue' | 'white';
 export type ScoreKind = 'points' | 'advantages' | 'disadvantages';
@@ -22,6 +22,7 @@ export type MatchState = {
   running: boolean;
   startedAt: number | null;
   endBuzzer: boolean;
+  endCue: EndCue;
   revision: number;
 };
 
@@ -36,6 +37,7 @@ export type MatchAction =
   | { type: 'setField'; field: 'round' | 'division'; value: string }
   | { type: 'setCompetitor'; side: Side; field: 'name' | 'gym'; value: string }
   | { type: 'setEndBuzzer'; value: boolean }
+  | { type: 'setEndCue'; value: EndCue }
   | { type: 'expireClock' };
 
 const STORAGE_KEY = 'matboard.match.v1';
@@ -83,6 +85,7 @@ export function defaultMatch(): MatchState {
     running: false,
     startedAt: null,
     endBuzzer: true,
+    endCue: getAudioPrefs().endCue,
     revision: 1,
   };
 }
@@ -99,6 +102,7 @@ function loadState(): MatchState {
       blue: { ...base.blue, ...parsed.blue },
       white: { ...base.white, ...parsed.white },
       endBuzzer: typeof parsed.endBuzzer === 'boolean' ? parsed.endBuzzer : true,
+      endCue: parsed.endCue != null ? parseEndCue(parsed.endCue) : getAudioPrefs().endCue,
       revision: Number(parsed.revision ?? 1),
     };
   } catch {
@@ -242,6 +246,8 @@ function applyAction(current: MatchState, action: MatchAction): MatchState {
       });
     case 'setEndBuzzer':
       return bumpRevision({ ...current, endBuzzer: action.value });
+    case 'setEndCue':
+      return bumpRevision({ ...current, endCue: parseEndCue(action.value) });
     case 'expireClock': {
       if (!current.running || remainingNow(current) > 0) return current;
       return bumpRevision({
@@ -269,7 +275,7 @@ function maybeBuzz(prev: MatchState, next: MatchState): void {
   if (!(prev.running && !next.running && next.remainingMs === 0 && next.endBuzzer)) return;
   if (buzzedRevision === next.revision) return;
   buzzedRevision = next.revision;
-  playMatchEndBuzzer();
+  playSelectedEndCue('match', next.endCue);
 }
 
 export function dispatchMatch(action: MatchAction): void {
