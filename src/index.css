@@ -595,6 +595,12 @@ label {
   margin: 0.55rem 0;
 }
 
+.cue-preview-label {
+  margin: 0.7rem 0 0;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
 .cast-note,
 .text-link {
   font-size: 0.92rem;

@@ -6,7 +6,7 @@ import { useInterval } from '../hooks/useClock';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useAudioPrefs, useTrainingState } from '../hooks/useStores';
-import { patchAudioPrefs, unlockAudio } from '../lib/audio';
+import { patchAudioPrefs, playEndBuzzer, playStartCue, playWarningCue, unlockAudio } from '../lib/audio';
 import { formatMmSs } from '../lib/format';
 import {
   BREAK_PRESETS_MS,
@@ -50,8 +50,15 @@ export function TrainingPage() {
 
   const onClock = (event: MouseEvent) => {
     event.stopPropagation();
-    void unlockAudio();
-    toggleTrainingClock();
+    void unlockAudio()
+      .catch(() => undefined)
+      .then(() => {
+        toggleTrainingClock();
+      });
+  };
+
+  const previewCue = (play: () => void) => {
+    void unlockAudio().then(play);
   };
 
   return (
@@ -227,6 +234,18 @@ export function TrainingPage() {
             />
             Vibrate
           </label>
+          <p className="cue-preview-label">Preview original cues</p>
+          <div className="presets" role="group" aria-label="Preview original cues">
+            <button type="button" className="preset" onClick={() => previewCue(playStartCue)}>
+              Start
+            </button>
+            <button type="button" className="preset" onClick={() => previewCue(playWarningCue)}>
+              10s
+            </button>
+            <button type="button" className="preset" onClick={() => previewCue(playEndBuzzer)}>
+              End
+            </button>
+          </div>
         </fieldset>
 
         <button

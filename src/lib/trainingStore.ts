@@ -1,5 +1,5 @@
 import { clamp } from './format';
-import { playEndBuzzer, playStartCue, playWarningCue } from './audio';
+import { END_BUZZER_MS, playEndBuzzer, playStartCue, playWarningCue } from './audio';
 
 export type TrainingPhase = 'work' | 'break';
 
@@ -183,7 +183,7 @@ function nextAfterWork(): void {
       warned: false,
     });
     playEndBuzzer();
-    window.setTimeout(() => playStartCue(), 700);
+    window.setTimeout(() => playStartCue(), END_BUZZER_MS);
     return;
   }
   persist({

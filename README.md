@@ -11,7 +11,7 @@ Browsers cannot permanently hide the address bar in a normal tab. For gym TV / c
 ## Modes
 
 - **Match** — Blue competitor on top, white below. Name + gym, green points (0–99), orange advantages (0–99), red disadvantages (0–9). Landscape scoreboard at `/match` (tap a score +1, long-press −1, tap `MM:SS` to start/pause). Fat-thumb controller at `/match/control` for names, round, division, clock presets, second nudges, and match-end buzzer (on by default).
-- **Training** — Black fullscreen `MM:SS`. Tap the clock to start/pause. Tap anywhere else for options (round 1/2/5/10 or custom `MM:SS` up to 99:59, break 00:00 / 00:30 / 01:00, rounds 1–99 or Endless, mute / volume / vibrate). Quieter start cue, 10-second warning, louder end buzzer. Screen wake lock while running.
+- **Training** — Black fullscreen `MM:SS`. Tap the clock to start/pause. Tap anywhere else for options (round 1/2/5/10 or custom `MM:SS` up to 99:59, break 00:00 / 00:30 / 01:00, rounds 1–99 or Endless, mute / volume / vibrate, and cue previews). Original start cue, lighter 10-second warning, louder end buzzer. Screen wake lock while running.
 - **Screensaver** — Manual only from the home card. Never auto-starts from Match or Training. Pick photos on device, name them, and set slide interval from 1 second to 5:00. Fullscreen loop with cover-framed photos (center crop), a gentle Ken Burns zoom, options sheet, and wake lock while playing.
 
 Default match names are **Competitor 1** / **Competitor 2** with empty gyms.
@@ -57,11 +57,21 @@ Windows opened from the same origin stay in sync automatically. A phone Controll
 
 ## Sounds
 
-All cues are generated with the Web Audio API on device (no sampled federation buzzers):
+All Match / Training cues are **original procedural tones** synthesized in-app with the Web Audio API (oscillators + a short generated noise burst). There are no sampled federation buzzers and no third-party MP3/WAV files.
 
-- Match: louder **end buzzer** when the clock hits 0:00 (optional, on by default). No 10-second warning on Match.
-- Training: quieter two-tone **start**, triple **10-second warning**, **end buzzer**
-- First tap on Display or Controller unlocks audio on iOS. Volume, mute, and vibrate live in Training options and apply app-wide.
+A compressor and soft clipper sit on the master bus so the end buzzer can be loud in a gym without harsh DAC clipping.
+
+| Cue | Where | How it sounds | How it is made |
+| --- | --- | --- | --- |
+| **Start** | Training only (round / clock start) | Two rising “go” notes, brighter and shorter than the warning | Sine at 784 Hz then 1175 Hz, light octave shimmer |
+| **10-second warning** | Training work phase only | Three light staccato ticks on one pitch | Quiet triangle pulses at 1047 Hz |
+| **End buzzer** | Training round/session end; Match when the clock hits 0:00 (optional, on by default) | Classic electric gym buzzer: sustained, raspy, mid-forward | Detuned square pair (~392/406 Hz) + saw sub + 23 Hz rasp + a few ms of synthesized noise. Match holds it longer and a bit louder than Training. |
+
+Match has **no** 10-second warning and **no** start cue.
+
+Preview the three cues from Training options. On the Match Controller, **Test end buzzer** plays the Match end sound (honors mute / volume and the Match end buzzer toggle).
+
+First tap on Display, Controller, or Training unlocks audio on iOS/Android. Volume, mute, and vibrate live in Training options and apply app-wide.
 
 ## License
 

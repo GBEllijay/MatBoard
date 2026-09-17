@@ -59,6 +59,8 @@ export function patchAudioPrefs(partial: Partial<AudioPrefs>): void {
 }
 
 let ctx: AudioContext | null = null;
+let master: GainNode | null = null;
+let noiseBuffer: AudioBuffer | null = null;
 
 export async function unlockAudio(): Promise<void> {
   const audio = getContext();
@@ -74,8 +76,55 @@ function getContext(): AudioContext {
       throw new Error('Web Audio is not available');
     }
     ctx = new Ctor();
+    master = buildMaster(ctx);
   }
   return ctx;
+}
+
+function getMaster(): GainNode {
+  getContext();
+  return master!;
+}
+
+/**
+ * Voices mix into a compressor + soft clipper so gym-level buzzers stay
+ * present without DAC clipping.
+ */
+function buildMaster(audio: AudioContext): GainNode {
+  const input = audio.createGain();
+  input.gain.value = 1;
+
+  const compressor = audio.createDynamicsCompressor();
+  compressor.threshold.value = -14;
+  compressor.knee.value = 10;
+  compressor.ratio.value = 6;
+  compressor.attack.value = 0.004;
+  compressor.release.value = 0.16;
+
+  const clip = audio.createWaveShaper();
+  clip.curve = makeSoftClipCurve();
+  clip.oversample = '2x';
+
+  const output = audio.createGain();
+  output.gain.value = 0.92;
+
+  input.connect(compressor);
+  compressor.connect(clip);
+  clip.connect(output);
+  output.connect(audio.destination);
+  return input;
+}
+
+function makeSoftClipCurve() {
+  const n = 4096;
+  const curve = new Float32Array(n);
+  const k = 1.15;
+  const denom = Math.tanh(k);
+  for (let i = 0; i < n; i++) {
+    const x = (i * 2) / n - 1;
+    curve[i] = Math.tanh(x * k) / denom;
+  }
+  return curve;
 }
 
 function masterGain(): number {
@@ -92,99 +141,158 @@ function buzz(pattern: number[]): void {
   }
 }
 
-type Tone = {
+function getNoiseBuffer(audio: AudioContext): AudioBuffer {
+  if (noiseBuffer && noiseBuffer.sampleRate === audio.sampleRate) return noiseBuffer;
+  const length = Math.max(1, Math.floor(audio.sampleRate * 0.5));
+  const buffer = audio.createBuffer(1, length, audio.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
+  noiseBuffer = buffer;
+  return buffer;
+}
+
+type OscVoice = {
+  kind?: 'osc';
   freq: number;
   duration: number;
   type: OscillatorType;
   gain: number;
   delay?: number;
   slideTo?: number;
+  attack?: number;
+  release?: number;
+  detune?: number;
+  filterFreq?: number;
+  filterType?: BiquadFilterType;
+  filterQ?: number;
+  /** Amplitude-modulation Hz — gives an electric-buzzer rasp. */
+  raspHz?: number;
+  raspDepth?: number;
 };
 
-function playTones(tones: Tone[]): void {
+type NoiseVoice = {
+  kind: 'noise';
+  duration: number;
+  gain: number;
+  delay?: number;
+  attack?: number;
+  release?: number;
+  filterFreq?: number;
+  filterType?: BiquadFilterType;
+  filterQ?: number;
+};
+
+type Voice = OscVoice | NoiseVoice;
+
+function playVoices(voices: Voice[]): void {
   let audio: AudioContext;
   try {
     audio = getContext();
   } catch {
     return;
   }
-  if (audio.state === 'suspended') {
-    void audio.resume();
-  }
-  const now = audio.currentTime;
   const volume = masterGain();
   if (volume <= 0) return;
+  const now = audio.currentTime;
+  const bus = getMaster();
 
-  for (const tone of tones) {
-    const osc = audio.createOscillator();
-    const gain = audio.createGain();
-    const filter = audio.createBiquadFilter();
-    osc.type = tone.type;
-    osc.frequency.setValueAtTime(tone.freq, now + (tone.delay ?? 0));
-    if (tone.slideTo != null) {
-      osc.frequency.exponentialRampToValueAtTime(
-        Math.max(20, tone.slideTo),
-        now + (tone.delay ?? 0) + tone.duration,
-      );
+  for (const voice of voices) {
+    if (voice.kind === 'noise') {
+      scheduleNoise(audio, bus, now, volume, voice);
+    } else {
+      scheduleOsc(audio, bus, now, volume, voice);
     }
-    filter.type = 'lowpass';
-    filter.frequency.value = tone.type === 'sine' ? 4000 : 1800;
-    const start = now + (tone.delay ?? 0);
-    const peak = Math.max(0.0001, tone.gain * volume);
-    gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.exponentialRampToValueAtTime(peak, start + 0.012);
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + tone.duration);
-    osc.connect(filter);
-    filter.connect(gain);
-    gain.connect(audio.destination);
-    osc.start(start);
-    osc.stop(start + tone.duration + 0.02);
   }
 }
 
-/** Quieter two-blip cue used when a round or clock starts. */
-export function playStartCue(): void {
-  playTones([
-    { freq: 660, duration: 0.12, type: 'sine', gain: 0.18 },
-    { freq: 880, duration: 0.16, type: 'sine', gain: 0.22, delay: 0.14 },
-  ]);
-  buzz([18, 30, 18]);
+function envelope(
+  gain: AudioParam,
+  start: number,
+  duration: number,
+  peak: number,
+  attack: number,
+  release: number,
+): void {
+  const a = Math.min(attack, duration * 0.45);
+  const r = Math.min(release, Math.max(0.02, duration - a));
+  const peakTime = start + a;
+  const end = start + duration;
+  gain.cancelScheduledValues(start);
+  gain.setValueAtTime(0.0001, start);
+  gain.exponentialRampToValueAtTime(Math.max(0.0001, peak), peakTime);
+  const hold = end - r;
+  if (hold > peakTime + 0.01) {
+    gain.setValueAtTime(Math.max(0.0001, peak), hold);
+  }
+  gain.exponentialRampToValueAtTime(0.0001, end);
 }
 
-/** Distinct 10-second warning. */
-export function playWarningCue(): void {
-  playTones([
-    { freq: 494, duration: 0.11, type: 'triangle', gain: 0.32 },
-    { freq: 494, duration: 0.11, type: 'triangle', gain: 0.32, delay: 0.16 },
-    { freq: 392, duration: 0.22, type: 'triangle', gain: 0.36, delay: 0.32 },
-  ]);
-  buzz([40, 40, 40, 40, 80]);
+function scheduleOsc(
+  audio: AudioContext,
+  bus: GainNode,
+  now: number,
+  volume: number,
+  voice: OscVoice,
+): void {
+  const osc = audio.createOscillator();
+  const amp = audio.createGain();
+  const filter = audio.createBiquadFilter();
+  osc.type = voice.type;
+  const start = now + (voice.delay ?? 0);
+  osc.frequency.setValueAtTime(voice.freq, start);
+  if (voice.detune != null) osc.detune.setValueAtTime(voice.detune, start);
+  if (voice.slideTo != null) {
+    osc.frequency.exponentialRampToValueAtTime(Math.max(20, voice.slideTo), start + voice.duration);
+  }
+
+  filter.type = voice.filterType ?? 'lowpass';
+  filter.frequency.value = voice.filterFreq ?? (voice.type === 'sine' ? 6000 : 2400);
+  filter.Q.value = voice.filterQ ?? 0.7;
+
+  const peak = Math.max(0.0001, voice.gain * volume);
+  envelope(amp.gain, start, voice.duration, peak, voice.attack ?? 0.012, voice.release ?? 0.06);
+
+  if (voice.raspHz && voice.raspDepth) {
+    const lfo = audio.createOscillator();
+    const lfoGain = audio.createGain();
+    lfo.frequency.setValueAtTime(voice.raspHz, start);
+    lfoGain.gain.setValueAtTime(peak * voice.raspDepth, start);
+    lfo.connect(lfoGain);
+    lfoGain.connect(amp.gain);
+    lfo.start(start);
+    lfo.stop(start + voice.duration + 0.03);
+  }
+
+  osc.connect(filter);
+  filter.connect(amp);
+  amp.connect(bus);
+  osc.start(start);
+  osc.stop(start + voice.duration + 0.03);
 }
 
-/** Louder original end buzzer — not sampled from any federation. */
-export function playEndBuzzer(): void {
-  void playAfterResume(() => {
-    playTones([
-      { freq: 196, duration: 0.85, type: 'square', gain: 0.55, slideTo: 98 },
-      { freq: 98, duration: 0.85, type: 'sawtooth', gain: 0.22 },
-      { freq: 147, duration: 0.28, type: 'square', gain: 0.4, delay: 0.9 },
-    ]);
-    buzz([220, 80, 220, 80, 320]);
-  });
-}
-
-/** Match clock hit 0:00 — longer and more present than the training end cue. */
-export function playMatchEndBuzzer(): void {
-  void playAfterResume(() => {
-    playTones([
-      { freq: 185, duration: 1.2, type: 'square', gain: 0.72, slideTo: 92 },
-      { freq: 92, duration: 1.2, type: 'sawtooth', gain: 0.36 },
-      { freq: 277, duration: 0.2, type: 'square', gain: 0.5, delay: 0.16 },
-      { freq: 165, duration: 0.42, type: 'square', gain: 0.68, delay: 1.22 },
-      { freq: 110, duration: 0.42, type: 'sawtooth', gain: 0.3, delay: 1.22 },
-    ]);
-    buzz([280, 70, 280, 70, 420]);
-  });
+function scheduleNoise(
+  audio: AudioContext,
+  bus: GainNode,
+  now: number,
+  volume: number,
+  voice: NoiseVoice,
+): void {
+  const src = audio.createBufferSource();
+  src.buffer = getNoiseBuffer(audio);
+  src.loop = true;
+  const amp = audio.createGain();
+  const filter = audio.createBiquadFilter();
+  filter.type = voice.filterType ?? 'bandpass';
+  filter.frequency.value = voice.filterFreq ?? 1600;
+  filter.Q.value = voice.filterQ ?? 1.2;
+  const start = now + (voice.delay ?? 0);
+  const peak = Math.max(0.0001, voice.gain * volume);
+  envelope(amp.gain, start, voice.duration, peak, voice.attack ?? 0.006, voice.release ?? 0.04);
+  src.connect(filter);
+  filter.connect(amp);
+  amp.connect(bus);
+  src.start(start);
+  src.stop(start + voice.duration + 0.03);
 }
 
 async function playAfterResume(play: () => void): Promise<void> {
@@ -197,3 +305,116 @@ async function playAfterResume(play: () => void): Promise<void> {
     /* no Web Audio */
   }
 }
+
+function playCue(voices: Voice[], vibe: number[]): void {
+  buzz(vibe);
+  void playAfterResume(() => playVoices(voices));
+}
+
+/**
+ * Original gym "go" — two rising sine notes (not a sampled whistle).
+ * Brighter and shorter than the warning ticks.
+ */
+export function playStartCue(): void {
+  playCue(
+    [
+      { freq: 784, duration: 0.11, type: 'sine', gain: 0.26, attack: 0.008, release: 0.04, filterFreq: 7000 },
+      { freq: 1568, duration: 0.11, type: 'sine', gain: 0.07, attack: 0.008, release: 0.04, filterFreq: 8000 },
+      { freq: 1175, duration: 0.18, type: 'sine', gain: 0.3, delay: 0.13, attack: 0.008, release: 0.05, filterFreq: 7000 },
+      { freq: 2350, duration: 0.18, type: 'sine', gain: 0.08, delay: 0.13, attack: 0.008, release: 0.05, filterFreq: 8000 },
+    ],
+    [18, 30, 18],
+  );
+}
+
+/**
+ * Original 10-second warning — three light staccato ticks on one pitch.
+ * Distinct from the rising start cue and much lighter than the end buzzer.
+ */
+export function playWarningCue(): void {
+  playCue(
+    [
+      { freq: 1047, duration: 0.07, type: 'triangle', gain: 0.2, attack: 0.004, release: 0.03, filterFreq: 4200 },
+      { freq: 1047, duration: 0.07, type: 'triangle', gain: 0.2, delay: 0.13, attack: 0.004, release: 0.03, filterFreq: 4200 },
+      { freq: 1047, duration: 0.09, type: 'triangle', gain: 0.22, delay: 0.26, attack: 0.004, release: 0.04, filterFreq: 4200 },
+    ],
+    [40, 40, 40, 40, 80],
+  );
+}
+
+function endBuzzerVoices(duration: number, level: number): Voice[] {
+  const body = duration;
+  const tail = 0.12;
+  return [
+    {
+      kind: 'noise',
+      duration: 0.045,
+      gain: 0.1 * level,
+      attack: 0.002,
+      release: 0.03,
+      filterType: 'bandpass',
+      filterFreq: 1400,
+      filterQ: 1.4,
+    },
+    {
+      freq: 392,
+      duration: body,
+      type: 'square',
+      gain: 0.4 * level,
+      attack: 0.01,
+      release: tail,
+      filterFreq: 2200,
+      filterQ: 0.8,
+      raspHz: 23,
+      raspDepth: 0.18,
+    },
+    {
+      freq: 406,
+      duration: body,
+      type: 'square',
+      gain: 0.34 * level,
+      attack: 0.01,
+      release: tail,
+      filterFreq: 2200,
+      filterQ: 0.8,
+      raspHz: 23,
+      raspDepth: 0.16,
+    },
+    {
+      freq: 196,
+      duration: body,
+      type: 'sawtooth',
+      gain: 0.2 * level,
+      attack: 0.012,
+      release: tail,
+      filterFreq: 900,
+      filterQ: 0.6,
+    },
+    {
+      freq: 784,
+      duration: body * 0.22,
+      type: 'triangle',
+      gain: 0.1 * level,
+      delay: 0.02,
+      attack: 0.006,
+      release: 0.05,
+      filterFreq: 3200,
+    },
+  ];
+}
+
+/** Training / round-end buzzer — original electric square-wave horn. */
+export function playEndBuzzer(): void {
+  playCue(endBuzzerVoices(1.05, 1), [220, 80, 220, 80, 320]);
+}
+
+/**
+ * Match clock hit 0:00. Same original buzzer character as Training, held
+ * longer and a bit more present so it cuts through a gym without clipping.
+ */
+export function playMatchEndBuzzer(): void {
+  playCue(endBuzzerVoices(1.45, 1.12), [280, 70, 280, 70, 420]);
+}
+
+/** Time to wait after a Training end buzzer before a back-to-back start cue. */
+export const END_BUZZER_MS = 1100;

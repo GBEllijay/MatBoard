@@ -4,7 +4,7 @@ import { Chrome } from '../components/Chrome';
 import { useInterval } from '../hooks/useClock';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useMatchState } from '../hooks/useStores';
-import { unlockAudio } from '../lib/audio';
+import { playMatchEndBuzzer, unlockAudio } from '../lib/audio';
 import { openDisplayWindow, openOrCastDisplay } from '../lib/cast';
 import { minutesToMs, formatMmSs, secondsToMs } from '../lib/format';
 import {
@@ -172,6 +172,16 @@ export function MatchControllerPage() {
           />
           Match end buzzer
         </label>
+        <button
+          type="button"
+          className="btn btn--ghost"
+          disabled={!match.endBuzzer}
+          onClick={() => {
+            void unlockAudio().then(() => playMatchEndBuzzer());
+          }}
+        >
+          Test end buzzer
+        </button>
         {castNote ? <p className="cast-note">{castNote}</p> : null}
       </section>
 
