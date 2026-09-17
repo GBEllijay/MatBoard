@@ -318,10 +318,10 @@ function playCue(voices: Voice[], vibe: number[]): void {
 export function playStartCue(): void {
   playCue(
     [
-      { freq: 784, duration: 0.11, type: 'sine', gain: 0.26, attack: 0.008, release: 0.04, filterFreq: 7000 },
-      { freq: 1568, duration: 0.11, type: 'sine', gain: 0.07, attack: 0.008, release: 0.04, filterFreq: 8000 },
-      { freq: 1175, duration: 0.18, type: 'sine', gain: 0.3, delay: 0.13, attack: 0.008, release: 0.05, filterFreq: 7000 },
-      { freq: 2350, duration: 0.18, type: 'sine', gain: 0.08, delay: 0.13, attack: 0.008, release: 0.05, filterFreq: 8000 },
+      { freq: 784, duration: 0.11, type: 'sine', gain: 0.18, attack: 0.008, release: 0.04, filterFreq: 7000 },
+      { freq: 1568, duration: 0.11, type: 'sine', gain: 0.05, attack: 0.008, release: 0.04, filterFreq: 8000 },
+      { freq: 1175, duration: 0.18, type: 'sine', gain: 0.22, delay: 0.13, attack: 0.008, release: 0.05, filterFreq: 7000 },
+      { freq: 2350, duration: 0.18, type: 'sine', gain: 0.06, delay: 0.13, attack: 0.008, release: 0.05, filterFreq: 8000 },
     ],
     [18, 30, 18],
   );
@@ -334,9 +334,9 @@ export function playStartCue(): void {
 export function playWarningCue(): void {
   playCue(
     [
-      { freq: 1047, duration: 0.07, type: 'triangle', gain: 0.2, attack: 0.004, release: 0.03, filterFreq: 4200 },
-      { freq: 1047, duration: 0.07, type: 'triangle', gain: 0.2, delay: 0.13, attack: 0.004, release: 0.03, filterFreq: 4200 },
-      { freq: 1047, duration: 0.09, type: 'triangle', gain: 0.22, delay: 0.26, attack: 0.004, release: 0.04, filterFreq: 4200 },
+      { freq: 1047, duration: 0.07, type: 'triangle', gain: 0.14, attack: 0.004, release: 0.03, filterFreq: 4200 },
+      { freq: 1047, duration: 0.07, type: 'triangle', gain: 0.14, delay: 0.13, attack: 0.004, release: 0.03, filterFreq: 4200 },
+      { freq: 1047, duration: 0.09, type: 'triangle', gain: 0.16, delay: 0.26, attack: 0.004, release: 0.04, filterFreq: 4200 },
     ],
     [40, 40, 40, 40, 80],
   );

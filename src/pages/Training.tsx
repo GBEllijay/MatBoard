@@ -234,17 +234,19 @@ export function TrainingPage() {
             />
             Vibrate
           </label>
-          <p className="cue-preview-label">Preview original cues</p>
-          <div className="presets" role="group" aria-label="Preview original cues">
-            <button type="button" className="preset" onClick={() => previewCue(playStartCue)}>
-              Start
-            </button>
-            <button type="button" className="preset" onClick={() => previewCue(playWarningCue)}>
-              10s
-            </button>
-            <button type="button" className="preset" onClick={() => previewCue(playEndBuzzer)}>
-              End
-            </button>
+          <div className="cue-preview">
+            <p className="cue-preview-label">Preview original cues</p>
+            <div className="presets" role="group" aria-label="Preview original cues">
+              <button type="button" className="preset" onClick={() => previewCue(playStartCue)}>
+                Start
+              </button>
+              <button type="button" className="preset" onClick={() => previewCue(playWarningCue)}>
+                10s
+              </button>
+              <button type="button" className="preset" onClick={() => previewCue(playEndBuzzer)}>
+                End
+              </button>
+            </div>
           </div>
         </fieldset>
 
