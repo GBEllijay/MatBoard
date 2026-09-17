@@ -93,16 +93,16 @@ p {
   border: 1px solid var(--line);
 }
 
-.chip {
-  min-height: 40px;
-  padding: 0.35rem 0.85rem;
-  font-size: 0.9rem;
-}
-
 .chip--gold {
   background: var(--gold);
   color: #1a1404;
   border-color: transparent;
+}
+
+.chip {
+  min-height: 40px;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.9rem;
 }
 
 .chrome {
@@ -437,7 +437,8 @@ p {
   font-weight: 800;
 }
 
-.clock-nudge:disabled {
+.clock-nudge:disabled,
+.btn:disabled {
   opacity: 0.38;
   cursor: default;
 }
@@ -610,6 +611,14 @@ label {
 
 .cue-preview .presets {
   margin: 0.35rem 0 0;
+}
+
+.controller__clock .cue-preview {
+  margin: 0.1rem 0 0.15rem;
+}
+
+.controller__clock .cue-preview .presets {
+  margin: 0.35rem 0 0.5rem;
 }
 
 .cast-note,

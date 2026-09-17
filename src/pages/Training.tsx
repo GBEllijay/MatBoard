@@ -6,7 +6,7 @@ import { useInterval } from '../hooks/useClock';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useAudioPrefs, useTrainingState } from '../hooks/useStores';
-import { patchAudioPrefs, playEndBuzzer, playStartCue, playWarningCue, unlockAudio } from '../lib/audio';
+import { END_CUE_OPTIONS, patchAudioPrefs, playSelectedEndCue, playStartCue, playWarningCue, unlockAudio, type EndCue } from '../lib/audio';
 import { formatMmSs } from '../lib/format';
 import {
   BREAK_PRESETS_MS,
@@ -22,6 +22,7 @@ import {
   toggleTrainingClock,
   WORK_PRESETS_MIN,
 } from '../lib/trainingStore';
+import { dispatchMatch } from '../lib/matchStore';
 
 export function TrainingPage() {
   const training = useTrainingState();
@@ -59,6 +60,12 @@ export function TrainingPage() {
 
   const previewCue = (play: () => void) => {
     void unlockAudio().then(play);
+  };
+
+  const chooseEndCue = (cue: EndCue) => {
+    patchAudioPrefs({ endCue: cue });
+    dispatchMatch({ type: 'setEndCue', value: cue });
+    previewCue(() => playSelectedEndCue('training', cue));
   };
 
   return (
@@ -235,15 +242,36 @@ export function TrainingPage() {
             Vibrate
           </label>
           <div className="cue-preview">
-            <p className="cue-preview-label">Preview original cues</p>
-            <div className="presets" role="group" aria-label="Preview original cues">
+            <p className="cue-preview-label">End sound</p>
+            <div className="presets" role="radiogroup" aria-label="End sound">
+              {END_CUE_OPTIONS.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={audio.endCue === option.id}
+                  className={`preset${audio.endCue === option.id ? ' preset--on' : ''}`}
+                  onClick={() => chooseEndCue(option.id)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="cue-preview">
+            <p className="cue-preview-label">Preview cues</p>
+            <div className="presets" role="group" aria-label="Preview cues">
               <button type="button" className="preset" onClick={() => previewCue(playStartCue)}>
                 Start
               </button>
               <button type="button" className="preset" onClick={() => previewCue(playWarningCue)}>
                 10s
               </button>
-              <button type="button" className="preset" onClick={() => previewCue(playEndBuzzer)}>
+              <button
+                type="button"
+                className="preset"
+                onClick={() => previewCue(() => playSelectedEndCue('training', audio.endCue))}
+              >
                 End
               </button>
             </div>

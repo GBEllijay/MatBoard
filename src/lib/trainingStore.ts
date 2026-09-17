@@ -1,5 +1,5 @@
 import { clamp } from './format';
-import { END_BUZZER_MS, playEndBuzzer, playStartCue, playWarningCue } from './audio';
+import { endCueFollowMs, playSelectedEndCue, playStartCue, playWarningCue } from './audio';
 
 export type TrainingPhase = 'work' | 'break';
 
@@ -169,7 +169,7 @@ function nextAfterWork(): void {
       startedAt: null,
       warned: false,
     });
-    playEndBuzzer();
+    playSelectedEndCue('training');
     return;
   }
   if (state.breakMs <= 0) {
@@ -182,8 +182,8 @@ function nextAfterWork(): void {
       running: true,
       warned: false,
     });
-    playEndBuzzer();
-    window.setTimeout(() => playStartCue(), END_BUZZER_MS);
+    playSelectedEndCue('training');
+    window.setTimeout(() => playStartCue(), endCueFollowMs());
     return;
   }
   persist({
@@ -194,7 +194,7 @@ function nextAfterWork(): void {
     running: true,
     warned: false,
   });
-  playEndBuzzer();
+  playSelectedEndCue('training');
 }
 
 function nextAfterBreak(): void {

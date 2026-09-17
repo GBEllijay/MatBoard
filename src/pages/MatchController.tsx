@@ -4,7 +4,7 @@ import { Chrome } from '../components/Chrome';
 import { useInterval } from '../hooks/useClock';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useMatchState } from '../hooks/useStores';
-import { playMatchEndBuzzer, unlockAudio } from '../lib/audio';
+import { END_CUE_OPTIONS, patchAudioPrefs, playSelectedEndCue, unlockAudio, type EndCue } from '../lib/audio';
 import { openDisplayWindow, openOrCastDisplay } from '../lib/cast';
 import { minutesToMs, formatMmSs, secondsToMs } from '../lib/format';
 import {
@@ -45,6 +45,14 @@ export function MatchControllerPage() {
     if (!Number.isFinite(minutes) || minutes <= 0 || minutes > 180) return;
     dispatchMatch({ type: 'setDuration', durationMs: minutesToMs(minutes) });
     setCustomOpen(false);
+  };
+
+  const chooseMatchEndCue = (cue: EndCue) => {
+    patchAudioPrefs({ endCue: cue });
+    dispatchMatch({ type: 'setEndCue', value: cue });
+    void unlockAudio().then(() => {
+      if (match.endBuzzer) playSelectedEndCue('match', cue);
+    });
   };
 
   const onCast = async () => {
@@ -170,17 +178,34 @@ export function MatchControllerPage() {
             checked={match.endBuzzer}
             onChange={(e) => dispatchMatch({ type: 'setEndBuzzer', value: e.target.checked })}
           />
-          Match end buzzer
+          Match end sound
         </label>
+        <div className="cue-preview">
+          <p className="cue-preview-label">End cue</p>
+          <div className="presets" role="radiogroup" aria-label="Match end sound">
+            {END_CUE_OPTIONS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                role="radio"
+                aria-checked={match.endCue === option.id}
+                className={`preset${match.endCue === option.id ? ' preset--on' : ''}`}
+                onClick={() => chooseMatchEndCue(option.id)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
         <button
           type="button"
           className="btn btn--ghost"
           disabled={!match.endBuzzer}
           onClick={() => {
-            void unlockAudio().then(() => playMatchEndBuzzer());
+            void unlockAudio().then(() => playSelectedEndCue('match', match.endCue));
           }}
         >
-          Test end buzzer
+          Test end sound
         </button>
         {castNote ? <p className="cast-note">{castNote}</p> : null}
       </section>

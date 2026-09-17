@@ -8,7 +8,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: false,
-      includeAssets: ['favicon.png', 'favicon.svg', 'advantage-icon.png', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'],
+      includeAssets: ['favicon.png', 'favicon.svg', 'advantage-icon.png', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'sounds/parou.mp3'],
       manifest: {
         name: 'Advantage',
         short_name: 'Advantage',
@@ -40,7 +40,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,webp}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,webp,mp3}'],
         globIgnores: ['**/branding/**'],
         navigateFallback: '/index.html',
       },
