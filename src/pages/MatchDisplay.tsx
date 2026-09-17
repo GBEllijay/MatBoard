@@ -34,7 +34,12 @@ export function MatchDisplayPage() {
   };
 
   return (
-    <main className={`display${fs.className ? ` ${fs.className}` : ''}`}>
+    <main
+      className={`display${fs.className ? ` ${fs.className}` : ''}`}
+      onPointerDown={() => {
+        void unlockAudio();
+      }}
+    >
       <div className="display__chrome">
         <Link to="/" className="chip">
           Home

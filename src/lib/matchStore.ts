@@ -1,5 +1,5 @@
 import { clamp, minutesToMs, secondsToMs } from './format';
-import { playEndBuzzer } from './audio';
+import { playMatchEndBuzzer } from './audio';
 
 export type Side = 'blue' | 'white';
 export type ScoreKind = 'points' | 'advantages' | 'disadvantages';
@@ -148,6 +148,7 @@ export function applyAdjustClock(
 }
 
 function persist(next: MatchState): void {
+  const prev = state;
   state = next;
   if (!applyingRemote) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -161,6 +162,7 @@ function persist(next: MatchState): void {
       }
     }
   }
+  maybeBuzz(prev, next);
   listeners.forEach((fn) => fn());
 }
 
@@ -265,16 +267,9 @@ export function subscribeMatch(fn: () => void): () => void {
 
 function maybeBuzz(prev: MatchState, next: MatchState): void {
   if (!(prev.running && !next.running && next.remainingMs === 0 && next.endBuzzer)) return;
-  const token = String(next.revision);
   if (buzzedRevision === next.revision) return;
-  try {
-    if (localStorage.getItem('matboard.match.lastBuzz') === token) return;
-    localStorage.setItem('matboard.match.lastBuzz', token);
-  } catch {
-    /* ignore quota */
-  }
   buzzedRevision = next.revision;
-  playEndBuzzer();
+  playMatchEndBuzzer();
 }
 
 export function dispatchMatch(action: MatchAction): void {
@@ -282,10 +277,8 @@ export function dispatchMatch(action: MatchAction): void {
     sendToPresenters(action);
     return;
   }
-  const prev = state;
   const next = applyAction(state, action);
   persist(next);
-  if (action.type === 'expireClock') maybeBuzz(prev, next);
 }
 
 export function expireMatchClock(): boolean {
@@ -306,10 +299,8 @@ function incoming(data: unknown): void {
     return;
   }
   if (msg.type === 'action' && msg.action && !isPresentationReceiver()) {
-    const prev = state;
     const next = applyAction(state, msg.action);
     persist(next);
-    if (msg.action.type === 'expireClock') maybeBuzz(prev, next);
   }
 }
 

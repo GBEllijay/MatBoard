@@ -163,10 +163,37 @@ export function playWarningCue(): void {
 
 /** Louder original end buzzer — not sampled from any federation. */
 export function playEndBuzzer(): void {
-  playTones([
-    { freq: 196, duration: 0.85, type: 'square', gain: 0.55, slideTo: 98 },
-    { freq: 98, duration: 0.85, type: 'sawtooth', gain: 0.22 },
-    { freq: 147, duration: 0.28, type: 'square', gain: 0.4, delay: 0.9 },
-  ]);
-  buzz([220, 80, 220, 80, 320]);
+  void playAfterResume(() => {
+    playTones([
+      { freq: 196, duration: 0.85, type: 'square', gain: 0.55, slideTo: 98 },
+      { freq: 98, duration: 0.85, type: 'sawtooth', gain: 0.22 },
+      { freq: 147, duration: 0.28, type: 'square', gain: 0.4, delay: 0.9 },
+    ]);
+    buzz([220, 80, 220, 80, 320]);
+  });
+}
+
+/** Match clock hit 0:00 — longer and more present than the training end cue. */
+export function playMatchEndBuzzer(): void {
+  void playAfterResume(() => {
+    playTones([
+      { freq: 185, duration: 1.2, type: 'square', gain: 0.72, slideTo: 92 },
+      { freq: 92, duration: 1.2, type: 'sawtooth', gain: 0.36 },
+      { freq: 277, duration: 0.2, type: 'square', gain: 0.5, delay: 0.16 },
+      { freq: 165, duration: 0.42, type: 'square', gain: 0.68, delay: 1.22 },
+      { freq: 110, duration: 0.42, type: 'sawtooth', gain: 0.3, delay: 1.22 },
+    ]);
+    buzz([280, 70, 280, 70, 420]);
+  });
+}
+
+async function playAfterResume(play: () => void): Promise<void> {
+  try {
+    const audio = getContext();
+    if (audio.state === 'suspended') await audio.resume();
+    if (audio.state === 'suspended') return;
+    play();
+  } catch {
+    /* no Web Audio */
+  }
 }
