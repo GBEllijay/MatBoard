@@ -4,7 +4,7 @@ export function HomePage() {
   return (
     <main className="home">
       <div className="home__mark">
-        <img className="home__logo" src="/advantage-icon.png" alt="" width={687} height={687} />
+        <img className="home__logo" src="/advantage-icon.png" alt="" width={713} height={713} />
         <h1>Advantage</h1>
         <p>Gym scoreboard, round timer and photo slideshow.</p>
       </div>
