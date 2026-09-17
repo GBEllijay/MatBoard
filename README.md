@@ -59,11 +59,9 @@ Windows opened from the same origin stay in sync automatically. A phone Controll
 
 All cues are generated with the Web Audio API on device (no sampled federation buzzers):
 
-- quieter two-tone **start**
-- triple **10-second warning**
-- louder **end buzzer**
-
-First tap unlocks audio on iOS. Volume, mute, and vibrate live in Training options and apply app-wide.
+- Match: louder **end buzzer** when the clock hits 0:00 (optional, on by default). No 10-second warning on Match.
+- Training: quieter two-tone **start**, triple **10-second warning**, **end buzzer**
+- First tap on Display or Controller unlocks audio on iOS. Volume, mute, and vibrate live in Training options and apply app-wide.
 
 ## License
 

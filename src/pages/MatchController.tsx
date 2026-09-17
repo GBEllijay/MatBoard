@@ -249,7 +249,7 @@ function CompetitorPad({
       <div className="pad__scores">
         <FatScore side={side} kind="points" label="Points" value={points} />
         <FatScore side={side} kind="advantages" label="Adv" value={advantages} />
-        <FatScore side={side} kind="disadvantages" label="Neg" value={disadvantages} />
+        <FatScore side={side} kind="disadvantages" label="Pen" value={disadvantages} />
       </div>
     </section>
   );
