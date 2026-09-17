@@ -106,12 +106,13 @@ export function ScreensaverPage() {
         />
       </div>
       {current ? (
-        <img
+        <div
           key={current}
-          className={`saver__img${index % 2 ? ' saver__img--alt' : ''}`}
-          src={current}
-          alt=""
-        />
+          className={`saver__frame${index % 2 ? ' saver__frame--alt' : ''}`}
+        >
+          <img className="saver__fill" src={current} alt="" aria-hidden="true" />
+          <img className="saver__img" src={current} alt="" />
+        </div>
       ) : (
         <div className="saver__empty" onClick={(e) => e.stopPropagation()}>
           <h1>Slideshow</h1>
