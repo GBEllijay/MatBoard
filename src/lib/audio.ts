@@ -11,7 +11,7 @@ export type AudioPrefs = {
 
 export const END_CUE_OPTIONS: { id: EndCue; label: string }[] = [
   { id: 'buzzer', label: 'Buzzer' },
-  { id: 'parou', label: 'Parou ("stop")' },
+  { id: 'parou', label: 'Parou, stop!' },
 ];
 
 const PAROU_URL = '/sounds/parou-stop-v4.mp3';
