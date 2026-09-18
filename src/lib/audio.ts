@@ -14,7 +14,7 @@ export const END_CUE_OPTIONS: { id: EndCue; label: string }[] = [
   { id: 'parou', label: 'Parou ("stop")' },
 ];
 
-const PAROU_URL = '/sounds/parou.mp3';
+const PAROU_URL = '/sounds/parou-stop.mp3';
 
 const DEFAULT_PREFS: AudioPrefs = {
   muted: false,
@@ -499,6 +499,6 @@ export function playSelectedEndCue(kind: 'match' | 'training' = 'match', cue: En
 export const END_BUZZER_MS = 1100;
 
 export function endCueFollowMs(): number {
-  if (prefs.endCue === 'parou') return 1000;
+  if (prefs.endCue === 'parou') return 2200;
   return END_BUZZER_MS;
 }
