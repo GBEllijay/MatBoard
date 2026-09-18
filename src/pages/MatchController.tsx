@@ -25,6 +25,7 @@ export function MatchControllerPage() {
   const [customMinutes, setCustomMinutes] = useState('4');
   const [castNote, setCastNote] = useState('');
   const remaining = remainingNow(match);
+  const durationIsPreset = TIME_PRESETS_MIN.some((minutes) => match.durationMs === minutesToMs(minutes));
 
   useWakeLock(match.running);
   useInterval(
@@ -123,18 +124,24 @@ export function MatchControllerPage() {
             Reset scores
           </button>
         </div>
-        <div className="presets" role="group" aria-label="Match length presets">
+        <div className="presets presets--match-length" role="group" aria-label="Match length presets">
           {TIME_PRESETS_MIN.map((minutes) => (
             <button
               key={minutes}
               type="button"
               className={`preset${match.durationMs === minutesToMs(minutes) ? ' preset--on' : ''}`}
+              aria-label={`${minutes} minutes`}
               onClick={() => setPreset(minutes)}
             >
               {minutes}
             </button>
           ))}
-          <button type="button" className="preset" onClick={() => setCustomOpen((v) => !v)}>
+          <button
+            type="button"
+            className={`preset${!durationIsPreset ? ' preset--on' : ''}`}
+            aria-expanded={customOpen}
+            onClick={() => setCustomOpen((v) => !v)}
+          >
             Custom
           </button>
         </div>
@@ -181,8 +188,8 @@ export function MatchControllerPage() {
           Match end sound
         </label>
         <div className="cue-preview">
-          <p className="cue-preview-label">End cue</p>
-          <div className="presets" role="radiogroup" aria-label="Match end sound">
+          <p className="cue-preview-label">Match end cue</p>
+          <div className="presets presets--end-cue" role="radiogroup" aria-label="Match end cue">
             {END_CUE_OPTIONS.map((option) => (
               <button
                 key={option.id}
@@ -232,9 +239,10 @@ export function MatchControllerPage() {
 
       <section className="controller__help">
         <p className="cast-note">
-          Cast notes: keep this Controller on the table. Tap <strong>Cast</strong> to send the landscape scoreboard to a
-          Chromecast / extra display, or <strong>Display</strong> to pop a window you can fullscreen or HDMI to a TV.
-          Same-browser windows stay in sync automatically.
+          Keep this Controller on the table. <strong>Display</strong> opens the scoreboard in a new window.{' '}
+          <strong>Cast</strong> can send it to a Chromecast or extra display, but on many phones it just opens that same
+          window — it does not start Samsung Smart View or iPhone AirPlay. After the scoreboard is open, use the phone’s
+          screen mirroring to show it on a TV. Same-browser windows stay in sync.
         </p>
         <Link className="text-link" to="/match">
           Open scoreboard on this device

@@ -42,7 +42,7 @@ export type MatchAction =
 
 const STORAGE_KEY = 'matboard.match.v1';
 const CHANNEL_NAME = 'matboard-match-v1';
-export const TIME_PRESETS_MIN = [5, 6, 7, 8, 10, 20, 30] as const;
+export const TIME_PRESETS_MIN = [3, 5, 10] as const;
 export const CLOCK_NUDGES_SEC = [-5, -1, 1, 5] as const;
 /** Existing custom duration ceiling (180 minutes). */
 export const MAX_REMAINING_MS = minutesToMs(180);
