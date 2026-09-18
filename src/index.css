@@ -441,6 +441,50 @@ p {
   z-index: 5;
 }
 
+/* Slideshow play watermark: quiet top-left, fat-thumb hit, leaves the bottom free for name labels. */
+.play-exit {
+  position: absolute;
+  top: calc(0.2rem + var(--safe-t));
+  left: calc(0.15rem + var(--safe-l));
+  z-index: 6;
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 18px;
+  background: radial-gradient(circle at 50% 48%, rgba(0, 0, 0, 0.22) 0%, rgba(0, 0, 0, 0.08) 42%, transparent 68%);
+  display: grid;
+  place-items: center;
+  opacity: 0.34;
+  appearance: none;
+  -webkit-appearance: none;
+  color: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.play-exit img {
+  width: 38px;
+  height: 38px;
+  display: block;
+  border-radius: 50%;
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.55));
+}
+
+.play-exit:focus-visible {
+  opacity: 0.7;
+  outline: 2px solid rgba(240, 194, 75, 0.55);
+  outline-offset: 2px;
+}
+
+.play-exit:active {
+  opacity: 0.55;
+}
+
 .play-fs--nudge {
   animation: fs-nudge 1.8s ease-in-out infinite;
 }
@@ -1241,6 +1285,7 @@ fieldset {
 
 .play--landscape .chrome,
 .play--fs .chrome,
+.saver--play .chrome,
 .play--landscape .training__hint,
 .play--fs .training__hint {
   opacity: 0;

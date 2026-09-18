@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
 import { FullscreenChip } from '../components/FullscreenChip';
+import { PlayExitMark } from '../components/PlayExitMark';
 import { Sheet } from '../components/Sheet';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
@@ -33,6 +35,7 @@ export function ScreensaverPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const intervalMs = secondsToMs(intervalSec);
   const fs = usePlayFullscreen();
+  const navigate = useNavigate();
 
   useVisibleViewportHeight();
   useWakeLock(playing && photos.length > 0);
@@ -87,16 +90,23 @@ export function ScreensaverPage() {
     setPlaying(true);
   };
 
+  const exitSlideshow = () => {
+    void fs.exit().finally(() => {
+      navigate('/');
+    });
+  };
+
   return (
     <main
-      className={`saver${fs.className ? ` ${fs.className}` : ''}`}
+      className={`saver${current ? ' saver--play' : ''}${fs.className ? ` ${fs.className}` : ''}`}
       onClick={(event) => {
         const target = event.target as HTMLElement;
-        if (target.closest('.sheet, .chrome, .saver__empty, .btn, input, label, .play-fs')) return;
+        if (target.closest('.sheet, .chrome, .saver__empty, .btn, input, label, .play-fs, .play-exit')) return;
         if (photos.length) setOptions(true);
       }}
     >
       <Chrome ghost title={current ? '' : 'Slideshow'} />
+      {current ? <PlayExitMark onExit={exitSlideshow} /> : null}
       <div className="play-fs-slot">
         <FullscreenChip
           supported={fs.supported}

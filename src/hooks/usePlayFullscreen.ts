@@ -54,6 +54,13 @@ export function usePlayFullscreen() {
     await enter();
   }, [enter]);
 
+  const exit = useCallback(async () => {
+    if (fullscreenElement()) {
+      await exitPageFullscreen();
+    }
+    setActive(false);
+  }, []);
+
   useEffect(() => {
     if (!supported || !landscape || active) return;
     let cancelled = false;
@@ -79,7 +86,7 @@ export function usePlayFullscreen() {
     let cancelled = false;
     const onGesture = (event: PointerEvent) => {
       const target = event.target as HTMLElement | null;
-      if (target?.closest('a, .sheet, input, textarea, select')) return;
+      if (target?.closest('a, .sheet, input, textarea, select, .play-exit')) return;
       void requestPageFullscreen().then((ok) => {
         if (cancelled) {
           void exitPageFullscreen();
@@ -109,6 +116,7 @@ export function usePlayFullscreen() {
     /** Landscape (or a failed auto-request) and the browser still shows chrome. */
     showFallback: supported && !active && (blocked || landscape),
     enter,
+    exit,
     toggle,
     className,
   };
