@@ -474,11 +474,17 @@ p {
   font-size: 0.85rem;
 }
 
-.pad__fields,
 .controller__meta,
 .custom-time {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  margin-bottom: 0.8rem;
+}
+
+.pad__fields {
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 0.6rem;
   margin-bottom: 0.8rem;
 }
@@ -559,12 +565,54 @@ p {
   border: 1px solid var(--line);
 }
 
-.controller__clock-actions,
+.controller__clock-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin: 0.7rem 0;
+}
+
+.controller__clock-actions .btn {
+  width: 100%;
+  min-height: 56px;
+  padding: 0.65rem 0.4rem;
+  text-align: center;
+  white-space: normal;
+  line-height: 1.2;
+}
+
 .presets {
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
   margin: 0.7rem 0;
+}
+
+.presets--match-length {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.presets--match-length .preset {
+  min-width: 0;
+  width: 100%;
+  min-height: 64px;
+  font-size: 1.15rem;
+}
+
+.presets--end-cue {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+  width: 100%;
+  gap: 0.55rem;
+}
+
+.presets--end-cue .preset {
+  min-width: 0;
+  width: 100%;
+  min-height: 56px;
+  padding: 0.45rem 0.55rem;
 }
 
 .preset {
@@ -615,6 +663,8 @@ label {
 
 .controller__clock .cue-preview {
   margin: 0.1rem 0 0.15rem;
+  justify-items: stretch;
+  width: 100%;
 }
 
 .controller__clock .cue-preview .presets {
