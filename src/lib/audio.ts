@@ -14,7 +14,7 @@ export const END_CUE_OPTIONS: { id: EndCue; label: string }[] = [
   { id: 'parou', label: 'Parou ("stop")' },
 ];
 
-const PAROU_URL = '/sounds/parou-stop.mp3';
+const PAROU_URL = '/sounds/parou-stop-v4.mp3';
 
 const DEFAULT_PREFS: AudioPrefs = {
   muted: false,
