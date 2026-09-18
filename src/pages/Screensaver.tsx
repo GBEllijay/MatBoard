@@ -201,6 +201,7 @@ export function ScreensaverPage() {
               <PhotoRow
                 key={photo.id}
                 photo={photo}
+                src={urls[i]}
                 fallback={`Photo ${i + 1}`}
                 onRename={async (label) => {
                   await renamePhoto(photo.id, label);
@@ -233,22 +234,38 @@ export function ScreensaverPage() {
 
 function PhotoRow({
   photo,
+  src,
   fallback,
   onRename,
   onRemove,
 }: {
   photo: StoredPhoto;
+  src?: string;
   fallback: string;
   onRename: (label: string) => Promise<void>;
   onRemove: () => Promise<void>;
 }) {
   const [label, setLabel] = useState(photo.label);
+  const [thumbFailed, setThumbFailed] = useState(false);
   useEffect(() => {
     setLabel(photo.label);
   }, [photo.label]);
+  useEffect(() => {
+    setThumbFailed(false);
+  }, [src]);
 
   return (
     <li>
+      <span className="saver__thumb" aria-hidden="true">
+        {src && !thumbFailed ? (
+          <img
+            src={src}
+            alt=""
+            draggable={false}
+            onError={() => setThumbFailed(true)}
+          />
+        ) : null}
+      </span>
       <input
         value={label}
         placeholder={fallback}
