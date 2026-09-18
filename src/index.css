@@ -140,28 +140,12 @@ p {
 .home {
   min-height: 100dvh;
   isolation: isolate;
-  background-color: #0a1830;
+  background-color: #08111c;
   background-image:
-    radial-gradient(120% 88% at 50% 16%, rgba(5, 12, 24, 0.12), rgba(4, 8, 16, 0.38) 72%, rgba(3, 6, 12, 0.52) 100%),
-    repeating-linear-gradient(
-      102deg,
-      transparent 0 19.55%,
-      rgba(0, 0, 0, 0.34) 19.55% 20.05%,
-      transparent 20.05% 39.55%,
-      rgba(0, 0, 0, 0.28) 39.55% 40.05%,
-      transparent 40.05% 100%
-    ),
-    repeating-linear-gradient(
-      8deg,
-      transparent 0 31.65%,
-      rgba(0, 0, 0, 0.3) 31.65% 32.15%,
-      transparent 32.15% 63.7%,
-      rgba(0, 0, 0, 0.24) 63.7% 64.15%,
-      transparent 64.15% 100%
-    ),
+    radial-gradient(120% 88% at 50% 16%, rgba(5, 12, 24, 0.14), rgba(4, 8, 16, 0.4) 78%, rgba(3, 6, 12, 0.52) 100%),
     url('/mat-bg.jpg');
-  background-size: cover, 135% 135%, 155% 155%, cover;
-  background-position: center, 18% 8%, 36% 28%, 26% 48%;
+  background-size: cover;
+  background-position: center;
   background-repeat: no-repeat;
 }
 
