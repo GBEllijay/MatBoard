@@ -7,15 +7,19 @@ import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useAudioPrefs, useTrainingState } from '../hooks/useStores';
 import { END_CUE_OPTIONS, patchAudioPrefs, playSelectedEndCue, playStartCue, playWarningCue, unlockAudio, type EndCue } from '../lib/audio';
-import { formatMmSs } from '../lib/format';
+import { formatMmSs, formatMss } from '../lib/format';
 import {
   BREAK_PRESETS_MS,
+  isBreakPreset,
   isWorkPreset,
+  MAX_BREAK_MS,
   MAX_WORK_MS,
+  MIN_BREAK_MS,
   MIN_WORK_MS,
   remainingTraining,
   resetTrainingSession,
   setBreakMs,
+  setEndSound,
   setRounds,
   setWorkMs,
   tickTraining,
@@ -28,12 +32,17 @@ export function TrainingPage() {
   const training = useTrainingState();
   const audio = useAudioPrefs();
   const [options, setOptions] = useState(false);
-  const [customOpen, setCustomOpen] = useState(false);
+  const [customWorkOpen, setCustomWorkOpen] = useState(false);
+  const [customBreakOpen, setCustomBreakOpen] = useState(false);
   const [, setTick] = useState(0);
   const remaining = remainingTraining(training);
   const fs = usePlayFullscreen();
   const customWork = !isWorkPreset(training.workMs);
-  const showCustomWork = customOpen || customWork;
+  const customBreak = !isBreakPreset(training.breakMs);
+  const showCustomWork = customWorkOpen || customWork;
+  const showCustomBreak = customBreakOpen || customBreak;
+  const workCustomOn = customWorkOpen || customWork;
+  const breakCustomOn = customBreakOpen || customBreak;
 
   useWakeLock(training.running);
   useInterval(
@@ -65,7 +74,9 @@ export function TrainingPage() {
   const chooseEndCue = (cue: EndCue) => {
     patchAudioPrefs({ endCue: cue });
     dispatchMatch({ type: 'setEndCue', value: cue });
-    previewCue(() => playSelectedEndCue('training', cue));
+    if (training.endSound) {
+      previewCue(() => playSelectedEndCue('training', cue));
+    }
   };
 
   return (
@@ -97,14 +108,14 @@ export function TrainingPage() {
       <Sheet open={options} title="Training options" onClose={() => setOptions(false)}>
         <fieldset>
           <legend>Round length</legend>
-          <div className="presets" role="group" aria-label="Round length">
+          <div className="presets presets--round-length" role="group" aria-label="Round length">
             {WORK_PRESETS_MIN.map((minutes) => (
               <button
                 key={minutes}
                 type="button"
-                className={`preset${training.workMs === minutes * 60_000 ? ' preset--on' : ''}`}
+                className={`preset${!workCustomOn && training.workMs === minutes * 60_000 ? ' preset--on' : ''}`}
                 onClick={() => {
-                  setCustomOpen(false);
+                  setCustomWorkOpen(false);
                   setWorkMs(minutes * 60_000);
                 }}
               >
@@ -113,76 +124,63 @@ export function TrainingPage() {
             ))}
             <button
               type="button"
-              className={`preset${customWork ? ' preset--on' : ''}`}
-              onClick={() => setCustomOpen(true)}
+              className={`preset${workCustomOn ? ' preset--on' : ''}`}
+              aria-expanded={showCustomWork}
+              onClick={() => setCustomWorkOpen((open) => (customWork ? true : !open))}
             >
               Custom
             </button>
           </div>
           {showCustomWork ? (
-            <div className="custom-round">
-              <strong aria-live="polite">{formatMmSs(training.workMs)}</strong>
-              <div className="clock-nudges" role="group" aria-label="Custom round length">
-                <button
-                  type="button"
-                  className="clock-nudge"
-                  disabled={training.workMs <= MIN_WORK_MS}
-                  aria-label="Subtract one minute"
-                  onClick={() => setWorkMs(training.workMs - 60_000)}
-                >
-                  −1m
-                </button>
-                <button
-                  type="button"
-                  className="clock-nudge"
-                  disabled={training.workMs <= MIN_WORK_MS}
-                  aria-label="Subtract one second"
-                  onClick={() => setWorkMs(training.workMs - 1_000)}
-                >
-                  −1s
-                </button>
-                <button
-                  type="button"
-                  className="clock-nudge"
-                  disabled={training.workMs >= MAX_WORK_MS}
-                  aria-label="Add one second"
-                  onClick={() => setWorkMs(training.workMs + 1_000)}
-                >
-                  +1s
-                </button>
-                <button
-                  type="button"
-                  className="clock-nudge"
-                  disabled={training.workMs >= MAX_WORK_MS}
-                  aria-label="Add one minute"
-                  onClick={() => setWorkMs(training.workMs + 60_000)}
-                >
-                  +1m
-                </button>
-              </div>
-            </div>
+            <TimeNudges
+              valueMs={training.workMs}
+              minMs={MIN_WORK_MS}
+              maxMs={MAX_WORK_MS}
+              label="Custom round length"
+              onChange={setWorkMs}
+            />
           ) : null}
         </fieldset>
 
         <fieldset>
           <legend>Break</legend>
-          <div className="presets">
+          <div className="presets presets--break-length" role="group" aria-label="Break length">
             {BREAK_PRESETS_MS.map((ms) => (
               <button
                 key={ms}
                 type="button"
-                className={`preset${training.breakMs === ms ? ' preset--on' : ''}`}
-                onClick={() => setBreakMs(ms)}
+                className={`preset${!breakCustomOn && training.breakMs === ms ? ' preset--on' : ''}`}
+                onClick={() => {
+                  setCustomBreakOpen(false);
+                  setBreakMs(ms);
+                }}
               >
-                {formatMmSs(ms)}
+                {formatMss(ms / 1000)}
               </button>
             ))}
+            <button
+              type="button"
+              className={`preset${breakCustomOn ? ' preset--on' : ''}`}
+              aria-expanded={showCustomBreak}
+              onClick={() => setCustomBreakOpen((open) => (customBreak ? true : !open))}
+            >
+              Custom
+            </button>
           </div>
+          {showCustomBreak ? (
+            <TimeNudges
+              valueMs={training.breakMs}
+              minMs={MIN_BREAK_MS}
+              maxMs={MAX_BREAK_MS}
+              label="Custom break length"
+              onChange={setBreakMs}
+            />
+          ) : null}
         </fieldset>
 
         <fieldset>
           <legend>Rounds</legend>
-          <div className="presets">
+          <div className="presets presets--split" role="group" aria-label="Round mode">
             <button
               type="button"
               className={`preset${!training.endless ? ' preset--on' : ''}`}
@@ -217,6 +215,50 @@ export function TrainingPage() {
           <label className="toggle">
             <input
               type="checkbox"
+              checked={training.endSound}
+              onChange={(e) => setEndSound(e.target.checked)}
+            />
+            Training end sound
+          </label>
+          <div className="cue-preview">
+            <p className="cue-preview-label">Training end cue</p>
+            <div className="presets presets--end-cue" role="radiogroup" aria-label="Training end cue">
+              {END_CUE_OPTIONS.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={audio.endCue === option.id}
+                  className={`preset${audio.endCue === option.id ? ' preset--on' : ''}`}
+                  onClick={() => chooseEndCue(option.id)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="cue-preview">
+            <p className="cue-preview-label">Preview cues</p>
+            <div className="presets presets--three" role="group" aria-label="Preview cues">
+              <button type="button" className="preset" onClick={() => previewCue(playStartCue)}>
+                Start
+              </button>
+              <button type="button" className="preset" onClick={() => previewCue(playWarningCue)}>
+                10s
+              </button>
+              <button
+                type="button"
+                className="preset"
+                disabled={!training.endSound}
+                onClick={() => previewCue(() => playSelectedEndCue('training', audio.endCue))}
+              >
+                End
+              </button>
+            </div>
+          </div>
+          <label className="toggle">
+            <input
+              type="checkbox"
               checked={audio.muted}
               onChange={(e) => patchAudioPrefs({ muted: e.target.checked })}
             />
@@ -241,41 +283,6 @@ export function TrainingPage() {
             />
             Vibrate
           </label>
-          <div className="cue-preview">
-            <p className="cue-preview-label">End sound</p>
-            <div className="presets" role="radiogroup" aria-label="End sound">
-              {END_CUE_OPTIONS.map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={audio.endCue === option.id}
-                  className={`preset${audio.endCue === option.id ? ' preset--on' : ''}`}
-                  onClick={() => chooseEndCue(option.id)}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="cue-preview">
-            <p className="cue-preview-label">Preview cues</p>
-            <div className="presets" role="group" aria-label="Preview cues">
-              <button type="button" className="preset" onClick={() => previewCue(playStartCue)}>
-                Start
-              </button>
-              <button type="button" className="preset" onClick={() => previewCue(playWarningCue)}>
-                10s
-              </button>
-              <button
-                type="button"
-                className="preset"
-                onClick={() => previewCue(() => playSelectedEndCue('training', audio.endCue))}
-              >
-                End
-              </button>
-            </div>
-          </div>
         </fieldset>
 
         <button
@@ -290,5 +297,63 @@ export function TrainingPage() {
         </button>
       </Sheet>
     </main>
+  );
+}
+
+function TimeNudges({
+  valueMs,
+  minMs,
+  maxMs,
+  label,
+  onChange,
+}: {
+  valueMs: number;
+  minMs: number;
+  maxMs: number;
+  label: string;
+  onChange: (ms: number) => void;
+}) {
+  return (
+    <div className="custom-round">
+      <strong aria-live="polite">{formatMmSs(valueMs)}</strong>
+      <div className="clock-nudges" role="group" aria-label={label}>
+        <button
+          type="button"
+          className="clock-nudge"
+          disabled={valueMs <= minMs}
+          aria-label="Subtract one minute"
+          onClick={() => onChange(valueMs - 60_000)}
+        >
+          −1m
+        </button>
+        <button
+          type="button"
+          className="clock-nudge"
+          disabled={valueMs <= minMs}
+          aria-label="Subtract one second"
+          onClick={() => onChange(valueMs - 1_000)}
+        >
+          −1s
+        </button>
+        <button
+          type="button"
+          className="clock-nudge"
+          disabled={valueMs >= maxMs}
+          aria-label="Add one second"
+          onClick={() => onChange(valueMs + 1_000)}
+        >
+          +1s
+        </button>
+        <button
+          type="button"
+          className="clock-nudge"
+          disabled={valueMs >= maxMs}
+          aria-label="Add one minute"
+          onClick={() => onChange(valueMs + 60_000)}
+        >
+          +1m
+        </button>
+      </div>
+    </div>
   );
 }
