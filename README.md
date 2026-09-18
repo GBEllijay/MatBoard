@@ -11,7 +11,7 @@ Browsers cannot permanently hide the address bar in a normal tab. For gym TV / c
 ## Modes
 
 - **Match** — Blue competitor on top, white below. Name + gym, green points (0–99), orange advantages (0–99), red disadvantages (0–9). Landscape scoreboard at `/match` (tap a score +1, long-press −1, tap `MM:SS` to start/pause). Fat-thumb controller at `/match/control` for names, round, division, clock presets, second nudges, and match-end sound (on by default; **Buzzer** or owner-recorded **Parou**).
-- **Training** — Black fullscreen `MM:SS`. Tap the clock to start/pause. Tap anywhere else for options (round 1/2/5/10 or custom `MM:SS` up to 99:59, break 00:00 / 00:30 / 01:00, rounds 1–99 or Endless, mute / volume / vibrate, end sound **Buzzer** or **Parou**, and cue previews). Quieter start cue, 10-second warning, selected end cue. Screen wake lock while running.
+- **Training** — Black fullscreen `MM:SS`. Tap the clock to start/pause. Tap anywhere else for options (round **1:00 / 2:00 / 5:00 / 10:00** or custom `MM:SS` up to 99:59, break **0:00 / 0:30 / 1:00** or custom up to 10:00, rounds 1–99 or Endless, Training end sound on/off with **Buzzer** or **Parou ("stop")**, Start / 10s / End cue previews, plus mute / volume / vibrate). Quieter start cue, 10-second warning, selected end cue. Screen wake lock while running.
 - **Screensaver** — Manual only from the home card. Never auto-starts from Match or Training. Pick photos on device, name them, and set slide interval from 1 second to 5:00. Fullscreen loop with the full photo visible (`object-fit: contain`), letterbox/pillarbox filled by a blurred copy of the same image, a very gentle Ken Burns zoom, options sheet, and wake lock while playing.
 
 Default match names are **Competitor 1** / **Competitor 2** with empty gyms.
@@ -72,7 +72,7 @@ A compressor and soft clipper sit on the master bus so end cues can be loud in a
 
 Match has **no** 10-second warning and **no** start cue. Match end sound still respects the on/off toggle.
 
-Preview start / 10s / end from Training options. On the Match Controller, tap **Buzzer** or **Parou** (or **Test end sound**) to hear the Match end cue (honors mute / volume and the Match end sound toggle).
+Preview start / 10s / end from Training options (End honors the Training end sound toggle). On the Match Controller, tap **Buzzer** or **Parou ("stop")** (or **Test end sound**) to hear the Match end cue (honors mute / volume and the Match end sound toggle).
 
 First tap on Display, Controller, or Training unlocks audio on iOS/Android (and preloads Parou). Volume, mute, and vibrate live in Training options and apply app-wide.
 

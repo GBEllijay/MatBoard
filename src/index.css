@@ -438,7 +438,8 @@ p {
 }
 
 .clock-nudge:disabled,
-.btn:disabled {
+.btn:disabled,
+.preset:disabled {
   opacity: 0.38;
   cursor: default;
 }
@@ -588,17 +589,45 @@ p {
   margin: 0.7rem 0;
 }
 
-.presets--match-length {
+.presets--match-length,
+.presets--break-length {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.55rem;
 }
 
-.presets--match-length .preset {
+.presets--round-length {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.presets--split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.presets--three {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.presets--match-length .preset,
+.presets--break-length .preset,
+.presets--round-length .preset,
+.presets--split .preset,
+.presets--three .preset {
   min-width: 0;
   width: 100%;
   min-height: 64px;
   font-size: 1.15rem;
+}
+
+.presets--round-length .preset {
+  font-size: 1rem;
+  padding: 0.4rem 0.25rem;
 }
 
 .presets--end-cue {
@@ -613,6 +642,20 @@ p {
   width: 100%;
   min-height: 56px;
   padding: 0.45rem 0.55rem;
+}
+
+@media (max-width: 420px) {
+  .presets--round-length {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .presets--round-length .preset:nth-child(-n + 3) {
+    grid-column: span 2;
+  }
+
+  .presets--round-length .preset:nth-child(n + 4) {
+    grid-column: span 3;
+  }
 }
 
 .preset {
@@ -669,6 +712,20 @@ label {
 
 .controller__clock .cue-preview .presets {
   margin: 0.35rem 0 0.5rem;
+}
+
+.sheet .cue-preview {
+  justify-items: stretch;
+  width: 100%;
+}
+
+.sheet .cue-preview .presets {
+  width: 100%;
+}
+
+.sheet__body > .btn {
+  width: 100%;
+  min-height: 56px;
 }
 
 .cast-note,

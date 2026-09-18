@@ -14,6 +14,8 @@ export type TrainingState = {
   phase: TrainingPhase;
   currentRound: number;
   warned: boolean;
+  /** Round/session end cue. Parallel to Match `endBuzzer`. */
+  endSound: boolean;
 };
 
 const STORAGE_KEY = 'matboard.training.v1';
@@ -21,14 +23,25 @@ export const WORK_PRESETS_MIN = [1, 2, 5, 10] as const;
 export const BREAK_PRESETS_MS = [0, 30_000, 60_000] as const;
 export const MIN_WORK_MS = 1_000;
 export const MAX_WORK_MS = (99 * 60 + 59) * 1_000;
+export const MIN_BREAK_MS = 0;
+export const MAX_BREAK_MS = 10 * 60_000;
 
 export function clampWorkMs(ms: number): number {
   if (!Number.isFinite(ms)) return 5 * 60_000;
   return clamp(Math.round(ms / 1000) * 1000, MIN_WORK_MS, MAX_WORK_MS);
 }
 
+export function clampBreakMs(ms: number): number {
+  if (!Number.isFinite(ms)) return 30_000;
+  return clamp(Math.round(ms / 1000) * 1000, MIN_BREAK_MS, MAX_BREAK_MS);
+}
+
 export function isWorkPreset(ms: number): boolean {
   return WORK_PRESETS_MIN.some((minutes) => minutes * 60_000 === ms);
+}
+
+export function isBreakPreset(ms: number): boolean {
+  return BREAK_PRESETS_MS.some((preset) => preset === ms);
 }
 
 const listeners = new Set<() => void>();
@@ -46,6 +59,7 @@ export function defaultTraining(): TrainingState {
     phase: 'work',
     currentRound: 1,
     warned: false,
+    endSound: true,
   };
 }
 
@@ -59,6 +73,8 @@ function load(): TrainingState {
       ...base,
       ...parsed,
       workMs: clampWorkMs(typeof parsed.workMs === 'number' ? parsed.workMs : base.workMs),
+      breakMs: clampBreakMs(typeof parsed.breakMs === 'number' ? parsed.breakMs : base.breakMs),
+      endSound: parsed.endSound !== false,
       running: false,
       startedAt: null,
       warned: Boolean(parsed.warned),
@@ -108,13 +124,18 @@ export function setWorkMs(workMs: number): void {
 }
 
 export function setBreakMs(breakMs: number): void {
+  const next = clampBreakMs(breakMs);
   persist({
     ...state,
-    breakMs,
-    remainingMs: state.phase === 'break' && !state.running ? breakMs : state.remainingMs,
+    breakMs: next,
+    remainingMs: state.phase === 'break' && !state.running ? next : state.remainingMs,
     running: false,
     startedAt: null,
   });
+}
+
+export function setEndSound(endSound: boolean): void {
+  persist({ ...state, endSound });
 }
 
 export function setRounds(rounds: number, endless: boolean): void {
@@ -159,6 +180,19 @@ export function toggleTrainingClock(): void {
   playStartCue();
 }
 
+function playTrainEndCue(): void {
+  if (!state.endSound) return;
+  playSelectedEndCue('training');
+}
+
+function followWithStartCue(): void {
+  if (state.endSound) {
+    window.setTimeout(() => playStartCue(), endCueFollowMs());
+    return;
+  }
+  playStartCue();
+}
+
 function nextAfterWork(): void {
   const lastRound = !state.endless && state.currentRound >= state.rounds;
   if (lastRound) {
@@ -169,7 +203,7 @@ function nextAfterWork(): void {
       startedAt: null,
       warned: false,
     });
-    playSelectedEndCue('training');
+    playTrainEndCue();
     return;
   }
   if (state.breakMs <= 0) {
@@ -182,8 +216,8 @@ function nextAfterWork(): void {
       running: true,
       warned: false,
     });
-    playSelectedEndCue('training');
-    window.setTimeout(() => playStartCue(), endCueFollowMs());
+    playTrainEndCue();
+    followWithStartCue();
     return;
   }
   persist({
@@ -194,7 +228,7 @@ function nextAfterWork(): void {
     running: true,
     warned: false,
   });
-  playSelectedEndCue('training');
+  playTrainEndCue();
 }
 
 function nextAfterBreak(): void {
