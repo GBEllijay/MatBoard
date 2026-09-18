@@ -140,12 +140,28 @@ p {
 .home {
   min-height: 100dvh;
   isolation: isolate;
-  background-color: #071018;
+  background-color: #0a1830;
   background-image:
-    radial-gradient(125% 88% at 50% 12%, rgba(6, 12, 24, 0.22), rgba(4, 8, 16, 0.58) 58%, rgba(3, 6, 12, 0.78) 100%),
+    radial-gradient(120% 88% at 50% 16%, rgba(5, 12, 24, 0.12), rgba(4, 8, 16, 0.38) 72%, rgba(3, 6, 12, 0.52) 100%),
+    repeating-linear-gradient(
+      102deg,
+      transparent 0 19.55%,
+      rgba(0, 0, 0, 0.34) 19.55% 20.05%,
+      transparent 20.05% 39.55%,
+      rgba(0, 0, 0, 0.28) 39.55% 40.05%,
+      transparent 40.05% 100%
+    ),
+    repeating-linear-gradient(
+      8deg,
+      transparent 0 31.65%,
+      rgba(0, 0, 0, 0.3) 31.65% 32.15%,
+      transparent 32.15% 63.7%,
+      rgba(0, 0, 0, 0.24) 63.7% 64.15%,
+      transparent 64.15% 100%
+    ),
     url('/mat-bg.jpg');
-  background-size: cover;
-  background-position: 32% 42%;
+  background-size: cover, 135% 135%, 155% 155%, cover;
+  background-position: center, 18% 8%, 36% 28%, 26% 48%;
   background-repeat: no-repeat;
 }
 
@@ -288,7 +304,7 @@ p {
     max-width: 1180px;
     min-height: 100dvh;
     display: grid;
-    grid-template-columns: minmax(200px, 0.82fr) minmax(0, 2.2fr);
+    grid-template-columns: minmax(210px, 0.72fr) minmax(0, 2.35fr);
     grid-template-rows: 1fr auto;
     grid-template-areas:
       'brand modes'
@@ -307,7 +323,11 @@ p {
 
   .home__logo {
     margin: 0 0 1rem;
-    width: clamp(6.8rem, 14vw, 10.5rem);
+    width: clamp(6.4rem, 12vw, 9.6rem);
+  }
+
+  .home h1 {
+    font-size: clamp(2.05rem, 3.5vw, 3.15rem);
   }
 
   .home h1::after {
@@ -338,39 +358,40 @@ p {
 
 @media (orientation: landscape) and (max-height: 520px) {
   .home__inner {
+    grid-template-columns: minmax(128px, 0.46fr) minmax(0, 2.9fr);
     padding: calc(0.7rem + var(--safe-t)) 1.1rem calc(0.7rem + var(--safe-b));
     row-gap: 0.65rem;
-    column-gap: 1.1rem;
+    column-gap: 0.9rem;
   }
 
   .home__logo {
-    width: clamp(4.4rem, 12vh, 6.2rem);
+    width: clamp(4.2rem, 11vh, 5.8rem);
     margin-bottom: 0.45rem;
   }
 
   .home h1 {
-    font-size: clamp(1.7rem, 6vh, 2.4rem);
+    font-size: clamp(1.45rem, 5.2vh, 2rem);
   }
 
   .mode-card {
     min-height: 0;
-    padding: 0.85rem 0.9rem 0.95rem;
-    gap: 0.28rem;
+    padding: 0.7rem 0.75rem 0.8rem;
+    gap: 0.22rem;
   }
 
   .mode-card strong {
-    font-size: 1.35rem;
+    font-size: 1.2rem;
   }
 
   .mode-card__actions {
-    margin-top: 0.45rem;
-    gap: 0.45rem;
+    margin-top: 0.4rem;
+    gap: 0.4rem;
   }
 
   .mode-card__actions .btn {
-    min-height: 40px;
-    padding: 0.4rem 0.55rem;
-    font-size: 0.88rem;
+    min-height: 34px;
+    padding: 0.28rem 0.4rem;
+    font-size: 0.72rem;
   }
 
   .home__hint {
