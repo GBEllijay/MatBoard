@@ -44,7 +44,7 @@ export function HomePage() {
               {FOLDERS.map((folder) => (
                 <Link
                   key={folder.id}
-                  className={`btn${folder.id === 'gallery' ? '' : ' btn--ghost'}`}
+                  className={`btn${folder.ready ? '' : ' btn--ghost'}`}
                   to={`/slideshow?folder=${folder.id}`}
                 >
                   {folder.label}

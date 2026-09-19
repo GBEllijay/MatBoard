@@ -8,15 +8,7 @@ export const MAX_INTERVAL_SEC = 300;
 export const DEFAULT_INTERVAL_SEC = 10;
 export const INTERVAL_PRESETS_SEC = [5, 10, 30, 60] as const;
 
-export const FOLDER_IDS = ['gallery', 'videos', 'shop', 'events'] as const;
-export type FolderId = (typeof FOLDER_IDS)[number];
-
-export const FOLDERS: readonly {
-  id: FolderId;
-  label: string;
-  ready: boolean;
-  comingSoon: string;
-}[] = [
+export const FOLDERS = [
   { id: 'gallery', label: 'Gallery', ready: true, comingSoon: '' },
   {
     id: 'videos',
@@ -36,14 +28,22 @@ export const FOLDERS: readonly {
     ready: false,
     comingSoon: 'Coming soon. Tournament flyers and QR codes will live in this folder.',
   },
-];
+] as const;
 
-export const DEFAULT_FOLDER_PLAY: Record<FolderId, boolean> = {
-  gallery: true,
-  videos: true,
-  shop: true,
-  events: true,
-};
+export type FolderId = (typeof FOLDERS)[number]['id'];
+export const FOLDER_IDS: readonly FolderId[] = FOLDERS.map((folder) => folder.id);
+
+function folderFlagRecord(value: boolean | ((id: FolderId) => boolean)): Record<FolderId, boolean> {
+  return Object.fromEntries(
+    FOLDERS.map((folder) => [folder.id, typeof value === 'function' ? value(folder.id) : value]),
+  ) as Record<FolderId, boolean>;
+}
+
+export const DEFAULT_FOLDER_PLAY = folderFlagRecord(true);
+
+export function folderExpandedState(openId: FolderId | null): Record<FolderId, boolean> {
+  return folderFlagRecord((id) => id === openId);
+}
 
 export type StoredPhoto = {
   id: string;
@@ -113,12 +113,7 @@ function normalizePhoto(row: PhotoRow, index: number): StoredPhoto {
 
 function normalizeFolderPlay(raw: unknown): Record<FolderId, boolean> {
   const obj = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
-  return {
-    gallery: obj.gallery !== false,
-    videos: obj.videos !== false,
-    shop: obj.shop !== false,
-    events: obj.events !== false,
-  };
+  return folderFlagRecord((id) => obj[id] !== false);
 }
 
 export function clampIntervalSec(n: number): number {
@@ -126,7 +121,7 @@ export function clampIntervalSec(n: number): number {
   return Math.min(MAX_INTERVAL_SEC, Math.max(MIN_INTERVAL_SEC, Math.round(n)));
 }
 
-/** Enabled folders play in Gallery → Videos → Pro Shop → Events order, upload order inside each. */
+/** Enabled folders play in FOLDERS order, upload order inside each. */
 export function playablePhotos(
   photos: StoredPhoto[],
   folderPlay: Record<FolderId, boolean>,

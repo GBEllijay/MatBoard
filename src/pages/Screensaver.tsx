@@ -16,6 +16,7 @@ import {
   DEFAULT_FOLDER_PLAY,
   DEFAULT_INTERVAL_SEC,
   FOLDERS,
+  folderExpandedState,
   getSaverPrefs,
   INTERVAL_PRESETS_SEC,
   isFolderId,
@@ -40,12 +41,9 @@ export function ScreensaverPage() {
   const [intervalSec, setIntervalSec] = useState(DEFAULT_INTERVAL_SEC);
   const [shuffle, setShuffle] = useState(true);
   const [folderPlay, setFolderPlayState] = useState(DEFAULT_FOLDER_PLAY);
-  const [expanded, setExpanded] = useState<Record<FolderId, boolean>>({
-    gallery: true,
-    videos: false,
-    shop: false,
-    events: false,
-  });
+  const [expanded, setExpanded] = useState<Record<FolderId, boolean>>(() =>
+    folderExpandedState('gallery'),
+  );
   const fileRef = useRef<HTMLInputElement>(null);
   const intervalMs = secondsToMs(intervalSec);
   const fs = usePlayFullscreen();
@@ -56,12 +54,7 @@ export function ScreensaverPage() {
 
   useEffect(() => {
     if (!requestedFolder) return;
-    setExpanded({
-      gallery: requestedFolder === 'gallery',
-      videos: requestedFolder === 'videos',
-      shop: requestedFolder === 'shop',
-      events: requestedFolder === 'events',
-    });
+    setExpanded(folderExpandedState(requestedFolder));
     setOptions(true);
   }, [requestedFolder]);
 
@@ -197,8 +190,8 @@ export function ScreensaverPage() {
 
       <Sheet open={options} title="Owner’s Toolbox" onClose={() => setOptions(false)}>
         <p>
-          Four folders. Gold <strong>On</strong> means that folder plays on the TV. Gallery is the
-          photo library; the others are coming later.
+          Gold <strong>On</strong> means that folder plays on the TV. Gallery is the photo library;
+          more folders can be added later.
         </p>
         <fieldset>
           <legend>Slide interval</legend>
@@ -289,12 +282,12 @@ export function ScreensaverPage() {
                           type="button"
                           className="btn btn--ghost"
                           onClick={async () => {
-                            await clearFolder('gallery');
+                            await clearFolder(folder.id);
                             await refresh();
                             setOptions(true);
                           }}
                         >
-                          Clear Gallery
+                          Clear {folder.label}
                         </button>
                       ) : null}
                       {folderItems.length ? (
