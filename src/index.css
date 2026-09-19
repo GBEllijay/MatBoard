@@ -738,10 +738,6 @@ p {
   padding-bottom: calc(1.4rem + var(--safe-b));
 }
 
-.controller > .play-exit {
-  position: fixed;
-}
-
 .controller__help {
   margin: 0.2rem 0.9rem 0.4rem;
 }
