@@ -1153,6 +1153,12 @@ fieldset {
   font-weight: 700;
 }
 
+.training .sheet .cue-preview-label {
+  font-size: clamp(1.12rem, 4vw, 1.28rem);
+  font-weight: 800;
+  color: var(--ink);
+}
+
 .saver {
   min-height: 100vh;
   min-height: 100dvh;
