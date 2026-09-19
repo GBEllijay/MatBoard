@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
 import { ToolboxFolder } from '../components/ToolboxFolder';
@@ -23,10 +23,11 @@ import {
   getSaverPrefs,
   INTERVAL_PRESETS_SEC,
   isFolderId,
+  isVideoItem,
   listPhotos,
   MAX_INTERVAL_SEC,
   MIN_INTERVAL_SEC,
-  playablePhotos,
+  playableItems,
   removePhoto,
   renamePhoto,
   reorderFolderItems,
@@ -47,6 +48,7 @@ export function ScreensaverPage() {
   const [playing, setPlaying] = useState(true);
   const [intervalSec, setIntervalSec] = useState(DEFAULT_INTERVAL_SEC);
   const [shuffle, setShuffle] = useState(DEFAULT_SHUFFLE);
+  const [pickerNote, setPickerNote] = useState('');
   const [folderPlay, setFolderPlayState] = useState(DEFAULT_FOLDER_PLAY);
   const [expanded, setExpanded] = useState<Record<FolderId, boolean>>(() =>
     folderExpandedState('gallery'),
@@ -66,11 +68,9 @@ export function ScreensaverPage() {
     setOptions(true);
   }, [requestedFolder]);
 
-  const galleryPhotos = useMemo(
-    () => photos.filter((photo) => photo.folderId === 'gallery'),
-    [photos],
-  );
-  const queue = useMemo(() => playablePhotos(photos, folderPlay), [photos, folderPlay]);
+  const focusFolder = requestedFolder ?? 'gallery';
+  const focusConfig = folderById(focusFolder);
+  const queue = useMemo(() => playableItems(photos, folderPlay), [photos, folderPlay]);
 
   useVisibleViewportHeight();
   useWakeLock(playing && queue.length > 0);
@@ -120,16 +120,20 @@ export function ScreensaverPage() {
     setIndex((n) => (order.length === 0 ? 0 : n % order.length));
   }, [order.length]);
 
-  useEffect(() => {
-    if (!playing || order.length <= 1) return;
-    const id = window.setInterval(() => {
-      setIndex((n) => (n + 1) % order.length);
-    }, intervalMs);
-    return () => window.clearInterval(id);
-  }, [playing, order.length, intervalMs]);
-
   const currentPhoto = queue[order[index] ?? 0];
   const current = currentPhoto ? urlById[currentPhoto.id] : undefined;
+  const currentIsVideo = Boolean(currentPhoto && isVideoItem(currentPhoto));
+
+  const advance = useCallback(() => {
+    setIndex((n) => (order.length === 0 ? 0 : (n + 1) % order.length));
+  }, [order.length]);
+
+  useEffect(() => {
+    if (!playing || !currentPhoto || currentIsVideo) return;
+    if (order.length <= 1) return;
+    const id = window.setTimeout(advance, intervalMs);
+    return () => window.clearTimeout(id);
+  }, [playing, currentPhoto, currentIsVideo, order.length, intervalMs, advance, index]);
 
   const commitInterval = (next: number) => {
     const clamped = clampIntervalSec(next);
@@ -165,9 +169,17 @@ export function ScreensaverPage() {
 
   const onFiles = async (files: FileList | null) => {
     if (!files?.length) return;
-    await addFolderFiles([...files], addFolderRef.current);
+    const folder = folderById(addFolderRef.current);
+    const added = await addFolderFiles([...files], addFolderRef.current);
+    setPickerNote(
+      added
+        ? ''
+        : folder.id === 'videos'
+          ? 'That file cannot play here. Try MP4 or WebM from this device.'
+          : 'That file is not an image this folder can keep.',
+    );
     await refresh();
-    setPlaying(true);
+    if (added) setPlaying(true);
   };
 
   const exitSlideshow = () => {
@@ -176,17 +188,20 @@ export function ScreensaverPage() {
     });
   };
 
+  const focusEmpty = itemsInFolder(photos, focusFolder).length === 0;
   const emptyCopy =
-    galleryPhotos.length === 0
-      ? 'Pick photos from this device. They loop fullscreen. On a computer plugged into the TV, press F for fullscreen. Set how long each slide stays on screen.'
-      : 'Nothing is set to play. Turn on Gallery, or another folder that has media, in options.';
+    photos.length === 0
+      ? focusFolder === 'videos'
+        ? 'Pick videos from this device. They stay on this phone or computer — nothing is uploaded. Clips play in full on the TV. Press F for fullscreen on a computer plugged into the TV.'
+        : 'Pick photos from this device. They loop fullscreen. On a computer plugged into the TV, press F for fullscreen. Set how long each slide stays on screen.'
+      : 'Nothing is set to play. Turn on Gallery or Videos, or another folder that has media, in options.';
 
   return (
     <main
       className={`saver${current ? ' saver--play' : ''}${fs.className ? ` ${fs.className}` : ''}`}
       onClick={(event) => {
         const target = event.target as HTMLElement;
-        if (target.closest('.sheet, .chrome, .saver__empty, .btn, input, label, .play-fs, .play-exit, .tv-tip')) return;
+        if (target.closest('.sheet, .chrome, .saver__empty, .btn, input, label, .play-fs, .play-exit, .tv-tip, .saver__unmute')) return;
         if (queue.length) setOptions(true);
       }}
     >
@@ -202,21 +217,23 @@ export function ScreensaverPage() {
         />
       </div>
       <TvTip onFullscreen={() => void fs.enter()} />
-      {current ? (
-        <div
-          key={current}
-          className={`saver__frame${index % 2 ? ' saver__frame--alt' : ''}`}
-        >
-          <img className="saver__fill" src={current} alt="" aria-hidden="true" />
-          <img className="saver__img" src={current} alt="" />
-        </div>
+      {current && currentPhoto ? (
+        <SaverSlide
+          key={currentPhoto.id}
+          item={currentPhoto}
+          src={current}
+          altFrame={index % 2 === 1}
+          playing={playing}
+          loop={order.length <= 1}
+          onEnded={advance}
+        />
       ) : (
         <div className="saver__empty" onClick={(e) => e.stopPropagation()}>
           <h1>Owner’s Toolbox</h1>
           <p>{emptyCopy}</p>
-          {galleryPhotos.length === 0 ? (
-            <button type="button" className="btn" onClick={() => openAdd('gallery')}>
-              Choose photos
+          {focusConfig.ready && focusEmpty ? (
+            <button type="button" className="btn" onClick={() => openAdd(focusFolder)}>
+              Choose {focusConfig.itemNounPlural}
             </button>
           ) : null}
           <button type="button" className="btn btn--ghost" onClick={() => setOptions(true)}>
@@ -227,13 +244,15 @@ export function ScreensaverPage() {
 
       <Sheet open={options} title="Owner’s Toolbox" onClose={() => setOptions(false)}>
         <p>
-          Gold <strong>On</strong> means that folder plays on the TV. Every folder uses the same
-          list: thumbnail, name, Up / Down, and drag. Gallery is ready now; Videos, Pro Shop, and
-          Events plug into that list later.
+          Gold <strong>On</strong> means that folder plays on the TV. Enabled folders play in folder
+          order — Gallery, then Videos — each in its list order. Photos use the interval below;
+          videos play all the way through, then the next item. Shuffle randomizes that combined
+          queue.
         </p>
+        {pickerNote ? <p className="saver-folder__empty">{pickerNote}</p> : null}
         <fieldset>
-          <legend>Slide interval</legend>
-          <div className="interval-stepper" role="group" aria-label="Slide interval">
+          <legend>Photo interval</legend>
+          <div className="interval-stepper" role="group" aria-label="Photo interval">
             <button
               type="button"
               className="clock-nudge"
@@ -254,7 +273,7 @@ export function ScreensaverPage() {
               +
             </button>
           </div>
-          <div className="presets" role="group" aria-label="Slide interval presets">
+          <div className="presets" role="group" aria-label="Photo interval presets">
             {INTERVAL_PRESETS_SEC.map((seconds) => (
               <button
                 key={seconds}
@@ -344,5 +363,99 @@ export function ScreensaverPage() {
         }}
       />
     </main>
+  );
+}
+
+function SaverSlide({
+  item,
+  src,
+  altFrame,
+  playing,
+  loop,
+  onEnded,
+}: {
+  item: StoredPhoto;
+  src: string;
+  altFrame: boolean;
+  playing: boolean;
+  loop: boolean;
+  onEnded: () => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [needsUnmute, setNeedsUnmute] = useState(false);
+  const video = isVideoItem(item);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el || !video) return;
+    el.loop = loop;
+    if (!playing) {
+      el.pause();
+      return;
+    }
+    let cancelled = false;
+    const start = async () => {
+      try {
+        await el.play();
+      } catch {
+        if (cancelled) return;
+        el.muted = true;
+        setNeedsUnmute(true);
+        try {
+          await el.play();
+        } catch {
+          if (!cancelled && !loop) onEnded();
+        }
+      }
+    };
+    void start();
+    return () => {
+      cancelled = true;
+      el.pause();
+    };
+  }, [playing, src, video, loop, onEnded]);
+
+  if (video) {
+    return (
+      <div className="saver__frame saver__frame--video">
+        <video
+          ref={videoRef}
+          className="saver__video"
+          src={src}
+          playsInline
+          autoPlay
+          loop={loop}
+          onEnded={() => {
+            if (!loop) onEnded();
+          }}
+          onError={() => {
+            if (!loop) onEnded();
+          }}
+        />
+        {needsUnmute ? (
+          <button
+            type="button"
+            className="saver__unmute"
+            onClick={(event) => {
+              event.stopPropagation();
+              const el = videoRef.current;
+              if (!el) return;
+              el.muted = false;
+              setNeedsUnmute(false);
+              void el.play();
+            }}
+          >
+            Tap for sound
+          </button>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className={`saver__frame${altFrame ? ' saver__frame--alt' : ''}`}>
+      <img className="saver__fill" src={src} alt="" aria-hidden="true" />
+      <img className="saver__img" src={src} alt="" />
+    </div>
   );
 }

@@ -10,7 +10,12 @@ const EDGE_PX = 56;
 export type FolderListItem = {
   id: string;
   label: string;
+  mime?: string;
 };
+
+function isVideoMime(mime?: string): boolean {
+  return Boolean(mime?.startsWith('video/'));
+}
 
 type Props = {
   folder: FolderConfig;
@@ -354,7 +359,24 @@ function FolderItemRow({
       </button>
       <span className="saver__thumb" aria-hidden="true">
         {src && !thumbFailed ? (
-          <img src={src} alt="" draggable={false} onError={() => setThumbFailed(true)} />
+          isVideoMime(item.mime) ? (
+            <video
+              src={src}
+              muted
+              playsInline
+              preload="metadata"
+              draggable={false}
+              onLoadedMetadata={(event) => {
+                const video = event.currentTarget;
+                if (video.duration > 0.15 && video.currentTime < 0.05) {
+                  video.currentTime = Math.min(0.2, video.duration * 0.04);
+                }
+              }}
+              onError={() => setThumbFailed(true)}
+            />
+          ) : (
+            <img src={src} alt="" draggable={false} onError={() => setThumbFailed(true)} />
+          )
         ) : null}
       </span>
       <input

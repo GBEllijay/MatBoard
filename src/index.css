@@ -1320,6 +1320,33 @@ fieldset {
   transform-origin: 54% 46%;
 }
 
+.saver__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  background: #000;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.saver__unmute {
+  position: absolute;
+  left: 50%;
+  bottom: calc(1.2rem + var(--safe-b));
+  transform: translateX(-50%);
+  z-index: 3;
+  min-height: 48px;
+  padding: 0.7rem 1.15rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--gold);
+  color: #1a1404;
+  font-weight: 800;
+}
+
 @keyframes kenburns-in {
   from {
     transform: scale(1) translate(0, 0);
@@ -1609,7 +1636,8 @@ fieldset {
   border: 0;
 }
 
-.saver__thumb img {
+.saver__thumb img,
+.saver__thumb video {
   width: 100%;
   height: 100%;
   object-fit: cover;

@@ -18,6 +18,50 @@ export function itemsInFolder<T extends PlaylistItem>(items: T[], folderId: stri
   return items.filter((item) => item.folderId === folderId).sort(comparePlaylistItems);
 }
 
+/**
+ * Play queue for the TV loop.
+ *
+ * Default (no storyIds): enabled folders in `folderIds` order, items in each
+ * folder’s `sortOrder`. That is today’s Gallery-then-Videos combined play.
+ *
+ * Later cross-folder story editor: pass `storyIds` (a single ordered id list
+ * across folders). Disabled folders and unplayable items are still skipped;
+ * ids missing from the story list append in the default folder order.
+ */
+export function buildPlayQueue<T extends PlaylistItem>(
+  items: T[],
+  options: {
+    folderIds: readonly string[];
+    folderEnabled: Record<string, boolean>;
+    isPlayable: (item: T) => boolean;
+    storyIds?: readonly string[] | null;
+  },
+): T[] {
+  const eligible = items.filter(
+    (item) => options.folderEnabled[item.folderId] !== false && options.isPlayable(item),
+  );
+  if (options.storyIds && options.storyIds.length > 0) {
+    const byId = new Map(eligible.map((item) => [item.id, item]));
+    const used = new Set<string>();
+    const ordered: T[] = [];
+    for (const id of options.storyIds) {
+      const item = byId.get(id);
+      if (!item || used.has(id)) continue;
+      used.add(id);
+      ordered.push(item);
+    }
+    for (const item of eligible.sort(comparePlaylistItems)) {
+      if (!used.has(item.id)) ordered.push(item);
+    }
+    return ordered;
+  }
+  return options.folderIds.flatMap((folderId) =>
+    options.folderEnabled[folderId] === false
+      ? []
+      : eligible.filter((item) => item.folderId === folderId).sort(comparePlaylistItems),
+  );
+}
+
 export function moveItemIds(ids: string[], from: number, to: number): string[] {
   if (from === to || from < 0 || to < 0 || from >= ids.length || to >= ids.length) {
     return ids;
