@@ -1124,6 +1124,41 @@ fieldset {
   padding: 0.8rem;
 }
 
+/* Training options only: legends start at the browser default (~1rem) and look
+   thin next to 64px fat-thumb presets. Keep Match / Slideshow sheets unchanged. */
+.training .sheet__head h2 {
+  font-size: clamp(1.4rem, 5vw, 1.7rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.training .sheet legend {
+  font-size: clamp(1.35rem, 1.1rem + 1.4vw, 1.85rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  padding-inline: 0.4rem;
+  color: var(--ink);
+}
+
+.training .sheet .stepper {
+  font-size: clamp(1.22rem, 1rem + 1.1vw, 1.65rem);
+  font-weight: 800;
+  margin-top: 0.2rem;
+}
+
+.training .sheet .stepper input {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.training .sheet .cue-preview-label {
+  font-size: clamp(1.18rem, 0.95rem + 1vw, 1.5rem);
+  font-weight: 800;
+  color: var(--ink);
+}
+
 .saver {
   min-height: 100vh;
   min-height: 100dvh;
