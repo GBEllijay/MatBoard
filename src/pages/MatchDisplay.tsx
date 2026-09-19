@@ -1,5 +1,5 @@
-import { useCallback, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useCallback, useState, type MouseEvent } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { TvTip } from '../components/TvTip';
 import { ScoreBox } from '../components/ScoreBox';
@@ -9,7 +9,8 @@ import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useMatchState } from '../hooks/useStores';
 import { unlockAudio } from '../lib/audio';
-import { dispatchMatch, expireMatchClock, remainingNow } from '../lib/matchStore';
+import { competitorFocusPath, type CompetitorFocusField } from '../lib/matchFocus';
+import { dispatchMatch, expireMatchClock, remainingNow, type Side } from '../lib/matchStore';
 import { formatMmSs } from '../lib/format';
 
 export function MatchDisplayPage() {
@@ -17,6 +18,7 @@ export function MatchDisplayPage() {
   const [, setTick] = useState(0);
   const remaining = remainingNow(match);
   const fs = usePlayFullscreen();
+  const navigate = useNavigate();
 
   useVisibleViewportHeight();
   useWakeLock(match.running);
@@ -34,12 +36,25 @@ export function MatchDisplayPage() {
     dispatchMatch({ type: 'toggleClock' });
   };
 
+  const openController = (path = '/match/control') => {
+    void fs.exit().finally(() => navigate(path));
+  };
+
+  const onBoardClick = (event: MouseEvent<HTMLElement>) => {
+    const target = event.target as HTMLElement;
+    if (target.closest('a, button, .score, .tv-tip, .display__chrome')) return;
+    // Landscape / fullscreen / TV: leave empty taps for play chrome (F, idle cursor). Portrait phone can open Controller.
+    if (fs.active || fs.landscape || fs.tvStation) return;
+    openController();
+  };
+
   return (
     <main
       className={`display${fs.className ? ` ${fs.className}` : ''}`}
       onPointerDown={() => {
         void unlockAudio();
       }}
+      onClick={onBoardClick}
     >
       <div className="display__chrome">
         <Link to="/" className="chip">
@@ -58,17 +73,16 @@ export function MatchDisplayPage() {
       </div>
       <TvTip onFullscreen={() => void fs.enter()} />
 
-      <section className="bout bout--blue" aria-label="Blue competitor">
-        <div className="bout__who">
-          <h1>{match.blue.name || 'Competitor 1'}</h1>
-          <p>{match.blue.gym || '\u00a0'}</p>
-        </div>
-        <div className="bout__scores">
-          <ScoreBox side="blue" kind="points" value={match.blue.points} />
-          <ScoreBox side="blue" kind="advantages" value={match.blue.advantages} />
-          <ScoreBox side="blue" kind="disadvantages" value={match.blue.disadvantages} />
-        </div>
-      </section>
+      <CompetitorBand
+        side="blue"
+        name={match.blue.name}
+        gym={match.blue.gym}
+        points={match.blue.points}
+        advantages={match.blue.advantages}
+        disadvantages={match.blue.disadvantages}
+        fallbackName="Competitor 1"
+        onOpenController={openController}
+      />
 
       <section className="display__mid">
         <div className="display__meta">
@@ -81,17 +95,90 @@ export function MatchDisplayPage() {
         <p className="display__clock-hint">{match.running ? 'Running' : remaining <= 0 ? 'Ended' : 'Paused'}</p>
       </section>
 
-      <section className="bout bout--white" aria-label="White competitor">
-        <div className="bout__who">
-          <h1>{match.white.name || 'Competitor 2'}</h1>
-          <p>{match.white.gym || '\u00a0'}</p>
-        </div>
-        <div className="bout__scores">
-          <ScoreBox side="white" kind="points" value={match.white.points} />
-          <ScoreBox side="white" kind="advantages" value={match.white.advantages} />
-          <ScoreBox side="white" kind="disadvantages" value={match.white.disadvantages} />
-        </div>
-      </section>
+      <CompetitorBand
+        side="white"
+        name={match.white.name}
+        gym={match.white.gym}
+        points={match.white.points}
+        advantages={match.white.advantages}
+        disadvantages={match.white.disadvantages}
+        fallbackName="Competitor 2"
+        onOpenController={openController}
+      />
     </main>
+  );
+}
+
+function CompetitorBand({
+  side,
+  name,
+  gym,
+  points,
+  advantages,
+  disadvantages,
+  fallbackName,
+  onOpenController,
+}: {
+  side: Side;
+  name: string;
+  gym: string;
+  points: number;
+  advantages: number;
+  disadvantages: number;
+  fallbackName: string;
+  onOpenController: (path: string) => void;
+}) {
+  const label = side === 'blue' ? 'Blue' : 'White';
+
+  return (
+    <section className={`bout bout--${side}`} aria-label={`${label} competitor`}>
+      <div className="bout__who">
+        <h1>
+          <WhoLink side={side} field="name" label={`Edit ${label} name on Controller`} onOpenController={onOpenController}>
+            {name || fallbackName}
+          </WhoLink>
+        </h1>
+        <p>
+          <WhoLink side={side} field="gym" label={`Edit ${label} gym on Controller`} onOpenController={onOpenController}>
+            {gym || '\u00a0'}
+          </WhoLink>
+        </p>
+      </div>
+      <div className="bout__scores">
+        <ScoreBox side={side} kind="points" value={points} />
+        <ScoreBox side={side} kind="advantages" value={advantages} />
+        <ScoreBox side={side} kind="disadvantages" value={disadvantages} />
+      </div>
+    </section>
+  );
+}
+
+function WhoLink({
+  side,
+  field,
+  label,
+  onOpenController,
+  children,
+}: {
+  side: Side;
+  field: CompetitorFocusField;
+  label: string;
+  onOpenController: (path: string) => void;
+  children: string;
+}) {
+  const to = competitorFocusPath(side, field);
+
+  return (
+    <Link
+      to={to}
+      aria-label={label}
+      onClick={(event) => {
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        onOpenController(to);
+      }}
+    >
+      {children}
+    </Link>
   );
 }

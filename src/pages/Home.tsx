@@ -13,6 +13,7 @@ export function HomePage() {
 
         <nav className="home__modes" aria-label="Modes">
           <article className="mode-card mode-card--match">
+            <Link className="mode-card__hit" to="/match" tabIndex={-1} aria-label="Open Scoreboard" />
             <strong>Live Bout</strong>
             <span className="mode-card__sub">Match Timer &amp; Scoreboard</span>
             <span>
@@ -37,6 +38,12 @@ export function HomePage() {
             </span>
           </Link>
           <article className="mode-card mode-card--saver">
+            <Link
+              className="mode-card__hit"
+              to="/slideshow?folder=gallery"
+              tabIndex={-1}
+              aria-label="Open Gallery"
+            />
             <strong>Owner’s Toolbox</strong>
             <span className="mode-card__sub">Pro</span>
             <span>Gallery, videos, Pro Shop, and event flyers for your gym TV.</span>
