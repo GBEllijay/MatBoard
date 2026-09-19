@@ -1134,16 +1134,16 @@ fieldset {
 }
 
 .training .sheet legend {
-  font-size: clamp(1.28rem, 4.8vw, 1.5rem);
+  font-size: clamp(1.35rem, 1.1rem + 1.4vw, 1.85rem);
   font-weight: 800;
   letter-spacing: -0.02em;
   line-height: 1.15;
-  padding-inline: 0.35rem;
+  padding-inline: 0.4rem;
   color: var(--ink);
 }
 
 .training .sheet .stepper {
-  font-size: clamp(1.15rem, 4.2vw, 1.32rem);
+  font-size: clamp(1.22rem, 1rem + 1.1vw, 1.65rem);
   font-weight: 800;
   margin-top: 0.2rem;
 }
@@ -1154,7 +1154,7 @@ fieldset {
 }
 
 .training .sheet .cue-preview-label {
-  font-size: clamp(1.12rem, 4vw, 1.28rem);
+  font-size: clamp(1.18rem, 0.95rem + 1vw, 1.5rem);
   font-weight: 800;
   color: var(--ink);
 }
