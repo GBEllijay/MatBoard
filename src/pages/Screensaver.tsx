@@ -153,8 +153,8 @@ export function ScreensaverPage() {
         if (queue.length) setOptions(true);
       }}
     >
-      <Chrome ghost title={current ? '' : 'Owner’s Toolbox'} />
-      {current ? <PlayExitMark onExit={exitSlideshow} /> : null}
+      <Chrome ghost />
+      <PlayExitMark onExit={exitSlideshow} />
       <div className="play-fs-slot">
         <FullscreenChip
           supported={fs.supported}

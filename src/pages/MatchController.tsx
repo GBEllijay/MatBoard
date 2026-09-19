@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
+import { PlayExitMark } from '../components/PlayExitMark';
 import { useInterval } from '../hooks/useClock';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useMatchState } from '../hooks/useStores';
@@ -80,8 +81,8 @@ export function MatchControllerPage() {
 
   return (
     <main className="controller">
+      <PlayExitMark />
       <Chrome
-        title="Controller"
         right={
           <>
             <button type="button" className="chip" onClick={openDisplayWindow}>
