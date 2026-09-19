@@ -1221,32 +1221,59 @@ fieldset {
   pointer-events: none;
 }
 
-.saver-folder .toggle {
-  margin: 0.2rem 0;
-}
-
-.saver-folder__tab {
+.saver-folders {
   display: grid;
-  justify-items: center;
-  align-content: center;
-  gap: 0.15rem;
-  line-height: 1.15;
+  gap: 0.55rem;
 }
 
-.saver-folder__tab small {
-  font-size: 0.72rem;
+.saver-folder {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 0.15rem 0.8rem 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.saver-folder__summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 92px;
+  gap: 0.55rem;
+  align-items: center;
+  min-height: 64px;
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 1.12rem;
+  list-style: none;
+}
+
+.saver-folder__summary::-webkit-details-marker,
+.saver-folder__summary::marker {
+  display: none;
+  content: '';
+}
+
+.saver-folder__title {
+  display: grid;
+  justify-items: start;
+  gap: 0.1rem;
+}
+
+.saver-folder__title small {
+  font-size: 0.75rem;
   font-weight: 700;
-  letter-spacing: 0.02em;
   color: var(--muted);
 }
 
-.preset--on.saver-folder__tab small {
-  color: #4a3a10;
+.saver-folder__play {
+  min-width: 0;
+  width: 100%;
+  min-height: 48px;
+  font-size: 1rem;
 }
 
 .saver-folder__panel {
   display: grid;
   gap: 0.7rem;
+  padding-bottom: 0.2rem;
 }
 
 .saver-folder__panel .btn {

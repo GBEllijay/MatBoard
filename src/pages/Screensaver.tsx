@@ -39,7 +39,12 @@ export function ScreensaverPage() {
   const [intervalSec, setIntervalSec] = useState(DEFAULT_INTERVAL_SEC);
   const [shuffle, setShuffle] = useState(true);
   const [folderPlay, setFolderPlayState] = useState(DEFAULT_FOLDER_PLAY);
-  const [openFolder, setOpenFolder] = useState<FolderId>('gallery');
+  const [expanded, setExpanded] = useState<Record<FolderId, boolean>>({
+    gallery: true,
+    videos: false,
+    shop: false,
+    events: false,
+  });
   const fileRef = useRef<HTMLInputElement>(null);
   const intervalMs = secondsToMs(intervalSec);
   const fs = usePlayFullscreen();
@@ -118,7 +123,6 @@ export function ScreensaverPage() {
     await addPhotos([...files], 'gallery');
     await refresh();
     setPlaying(true);
-    setOpenFolder('gallery');
   };
 
   const exitSlideshow = () => {
@@ -177,7 +181,10 @@ export function ScreensaverPage() {
       )}
 
       <Sheet open={options} title="Slideshow options" onClose={() => setOptions(false)}>
-        <p>Choose which folders play, then add photos in Gallery. Names and slide interval stay the same.</p>
+        <p>
+          Four folders. Gold <strong>On</strong> means that folder plays on the TV. Gallery is the
+          photo library; the others are coming later.
+        </p>
         <fieldset>
           <legend>Slide interval</legend>
           <div className="interval-stepper" role="group" aria-label="Slide interval">
@@ -223,95 +230,94 @@ export function ScreensaverPage() {
           Playing
         </label>
 
-        <fieldset className="saver-folder">
-          <legend>Play folders</legend>
-          {FOLDERS.map((folder) => (
-            <label key={folder.id} className="toggle">
-              <input
-                type="checkbox"
-                checked={folderPlay[folder.id]}
-                onChange={(e) => commitFolderPlay(folder.id, e.target.checked)}
-              />
-              {folder.label}
-            </label>
-          ))}
-        </fieldset>
-
-        <fieldset className="saver-folder">
-          <legend>Folders</legend>
-          <div className="presets presets--split" role="tablist" aria-label="Slideshow folders">
-            {FOLDERS.map((folder) => (
-              <button
-                key={folder.id}
-                type="button"
-                role="tab"
-                aria-selected={openFolder === folder.id}
-                className={`preset saver-folder__tab${openFolder === folder.id ? ' preset--on' : ''}`}
-                onClick={() => setOpenFolder(folder.id)}
-              >
-                <span>{folder.label}</span>
-                {folder.ready ? null : <small>Coming soon</small>}
-              </button>
-            ))}
-          </div>
+        <div className="saver-folders">
           {FOLDERS.map((folder) => {
-            if (openFolder !== folder.id) return null;
             const folderItems = photos.filter((photo) => photo.folderId === folder.id);
             return (
-              <div key={folder.id} className="saver-folder__panel" role="tabpanel">
-                {folder.ready ? (
-                  <>
-                    <button type="button" className="btn" onClick={() => fileRef.current?.click()}>
-                      Add photos
-                    </button>
-                    {folderItems.length ? (
-                      <button
-                        type="button"
-                        className="btn btn--ghost"
-                        onClick={async () => {
-                          await clearFolder('gallery');
-                          await refresh();
-                          setOptions(true);
-                        }}
-                      >
-                        Clear Gallery
+              <details
+                key={folder.id}
+                className="saver-folder"
+                open={expanded[folder.id]}
+                onToggle={(event) => {
+                  const next = event.currentTarget.open;
+                  setExpanded((prev) => (prev[folder.id] === next ? prev : { ...prev, [folder.id]: next }));
+                }}
+              >
+                <summary className="saver-folder__summary">
+                  <span className="saver-folder__title">
+                    {folder.label}
+                    {folder.ready ? null : <small>Coming soon</small>}
+                  </span>
+                  <button
+                    type="button"
+                    className={`preset saver-folder__play${folderPlay[folder.id] ? ' preset--on' : ''}`}
+                    aria-pressed={folderPlay[folder.id]}
+                    aria-label={`Play ${folder.label}`}
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      commitFolderPlay(folder.id, !folderPlay[folder.id]);
+                    }}
+                  >
+                    {folderPlay[folder.id] ? 'On' : 'Off'}
+                  </button>
+                </summary>
+                <div className="saver-folder__panel">
+                  {folder.ready ? (
+                    <>
+                      <button type="button" className="btn" onClick={() => fileRef.current?.click()}>
+                        Add photos
                       </button>
-                    ) : null}
-                    {folderItems.length ? (
-                      <ul className="saver__list">
-                        {folderItems.map((photo, i) => (
-                          <PhotoRow
-                            key={photo.id}
-                            photo={photo}
-                            src={urlById[photo.id]}
-                            fallback={`Photo ${i + 1}`}
-                            onRename={async (label) => {
-                              await renamePhoto(photo.id, label);
-                              setPhotos((rows) =>
-                                rows.map((row) => (row.id === photo.id ? { ...row, label } : row)),
-                              );
-                            }}
-                            onRemove={async () => {
-                              await removePhoto(photo.id);
-                              await refresh();
-                            }}
-                          />
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="saver-folder__empty">
-                        No photos yet. Add kids, promotions, or gym photos. Each row keeps a thumbnail
-                        next to the name.
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <p className="saver-folder__empty">{folder.comingSoon}</p>
-                )}
-              </div>
+                      {folderItems.length ? (
+                        <button
+                          type="button"
+                          className="btn btn--ghost"
+                          onClick={async () => {
+                            await clearFolder('gallery');
+                            await refresh();
+                            setOptions(true);
+                          }}
+                        >
+                          Clear Gallery
+                        </button>
+                      ) : null}
+                      {folderItems.length ? (
+                        <ul className="saver__list">
+                          {folderItems.map((photo, i) => (
+                            <PhotoRow
+                              key={photo.id}
+                              photo={photo}
+                              src={urlById[photo.id]}
+                              fallback={`Photo ${i + 1}`}
+                              onRename={async (label) => {
+                                await renamePhoto(photo.id, label);
+                                setPhotos((rows) =>
+                                  rows.map((row) => (row.id === photo.id ? { ...row, label } : row)),
+                                );
+                              }}
+                              onRemove={async () => {
+                                await removePhoto(photo.id);
+                                await refresh();
+                              }}
+                            />
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="saver-folder__empty">
+                          No photos yet. Add kids, promotions, or gym photos. Each row keeps a
+                          thumbnail next to the name.
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="saver-folder__empty">{folder.comingSoon}</p>
+                  )}
+                </div>
+              </details>
             );
           })}
-        </fieldset>
+        </div>
       </Sheet>
 
       <input
