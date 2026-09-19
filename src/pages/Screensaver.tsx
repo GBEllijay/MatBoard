@@ -49,6 +49,7 @@ export function ScreensaverPage() {
   const [intervalSec, setIntervalSec] = useState(DEFAULT_INTERVAL_SEC);
   const [shuffle, setShuffle] = useState(DEFAULT_SHUFFLE);
   const [pickerNote, setPickerNote] = useState('');
+  const [unlockSound, setUnlockSound] = useState(false);
   const [folderPlay, setFolderPlayState] = useState(DEFAULT_FOLDER_PLAY);
   const [expanded, setExpanded] = useState<Record<FolderId, boolean>>(() =>
     folderExpandedState('gallery'),
@@ -66,6 +67,9 @@ export function ScreensaverPage() {
     if (!requestedFolder) return;
     setExpanded(folderExpandedState(requestedFolder));
     setOptions(true);
+    addFolderRef.current = requestedFolder;
+    const input = fileRef.current;
+    if (input) input.accept = folderById(requestedFolder).accept;
   }, [requestedFolder]);
 
   const focusFolder = requestedFolder ?? 'gallery';
@@ -202,6 +206,7 @@ export function ScreensaverPage() {
       onClick={(event) => {
         const target = event.target as HTMLElement;
         if (target.closest('.sheet, .chrome, .saver__empty, .btn, input, label, .play-fs, .play-exit, .tv-tip, .saver__unmute')) return;
+        setUnlockSound(true);
         if (queue.length) setOptions(true);
       }}
     >
@@ -225,6 +230,7 @@ export function ScreensaverPage() {
           altFrame={index % 2 === 1}
           playing={playing}
           loop={order.length <= 1}
+          unlockSound={unlockSound}
           onEnded={advance}
         />
       ) : (
@@ -242,7 +248,14 @@ export function ScreensaverPage() {
         </div>
       )}
 
-      <Sheet open={options} title="Owner’s Toolbox" onClose={() => setOptions(false)}>
+      <Sheet
+        open={options}
+        title="Owner’s Toolbox"
+        onClose={() => {
+          setUnlockSound(true);
+          setOptions(false);
+        }}
+      >
         <p>
           Gold <strong>On</strong> means that folder plays on the TV. Enabled folders play in folder
           order — Gallery, then Videos — each in its list order. Photos use the interval below;
@@ -372,6 +385,7 @@ function SaverSlide({
   altFrame,
   playing,
   loop,
+  unlockSound,
   onEnded,
 }: {
   item: StoredPhoto;
@@ -379,6 +393,7 @@ function SaverSlide({
   altFrame: boolean;
   playing: boolean;
   loop: boolean;
+  unlockSound: boolean;
   onEnded: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -396,9 +411,12 @@ function SaverSlide({
     let cancelled = false;
     const start = async () => {
       try {
+        if (unlockSound) el.muted = false;
         await el.play();
-      } catch {
+        if (!el.muted) setNeedsUnmute(false);
+      } catch (err) {
         if (cancelled) return;
+        if (err instanceof DOMException && err.name === 'AbortError') return;
         el.muted = true;
         setNeedsUnmute(true);
         try {
@@ -413,7 +431,7 @@ function SaverSlide({
       cancelled = true;
       el.pause();
     };
-  }, [playing, src, video, loop, onEnded]);
+  }, [playing, src, video, loop, onEnded, unlockSound]);
 
   if (video) {
     return (
