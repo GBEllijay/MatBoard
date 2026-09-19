@@ -6,13 +6,13 @@ Installable as a Progressive Web App. Built for Cloudflare Pages.
 
 The consumer product name is **Advantage**. This GitHub repo and Cloudflare project stay MatBoard.
 
-Browsers cannot permanently hide the address bar in a normal tab. For gym TV / cast without URL chrome: **install Advantage as an app** (browser menu → Add to Home Screen / Install) so it opens standalone, **or** press **F** / tap **Fullscreen** on Display, Training, or Slideshow (rotating to landscape also tries fullscreen; tap the control if the browser blocks it). Home is left as a normal page. A computer plugged into the TV can run this same site as an always-on browser station.
+Browsers cannot permanently hide the address bar in a normal tab. For gym TV / cast without URL chrome: **install Advantage as an app** (browser menu → Add to Home Screen / Install) so it opens standalone, **or** press **F** / tap **Fullscreen** on Display, Training, or Owner’s Toolbox (rotating to landscape also tries fullscreen; tap the control if the browser blocks it). Home is left as a normal page. A computer plugged into the TV can run this same site as an always-on browser station.
 
 ## Modes
 
 - **Match** — Blue competitor on top, white below. Name + gym, green points (0–99), orange advantages (0–99), red disadvantages (0–9). Landscape scoreboard at `/match` (tap a score +1, long-press −1, tap `MM:SS` to start/pause). Fat-thumb controller at `/match/control` for names, round, division, clock presets, second nudges, and match-end sound (on by default; **Buzzer** or owner-recorded **Parou**).
 - **Training** — Black fullscreen `MM:SS`. Tap the clock to start/pause. Tap anywhere else for options (round **1:00 / 2:00 / 5:00 / 10:00** or custom `MM:SS` up to 99:59, break **0:00 / 0:30 / 1:00** or custom up to 10:00, rounds 1–99 or Endless, Training end sound on/off with **Buzzer** or **Parou, stop!**, Start / 10s / End cue previews, plus mute / volume / vibrate). Quieter start cue, 10-second warning, selected end cue. Screen wake lock while running.
-- **Screensaver** — Manual only from the home card. Never auto-starts from Match or Training. Pick photos on device, name them, and set slide interval from 1 second to 5:00. Fullscreen loop with the full photo visible (`object-fit: contain`), letterbox/pillarbox filled by a blurred copy of the same image, a very gentle Ken Burns zoom, options sheet, and wake lock while playing.
+- **Owner’s Toolbox** — Home card title (subtitle **Pro**). Folder buttons sit under that card, rendered from the `FOLDERS` list (initial set: Gallery, Videos, Pro Shop, Events). Tapping one opens that folder’s manage UI (`/slideshow?folder=…`; `/screensaver` still works). Manual only; never auto-starts from Match or Training. Playlists have on/off play toggles on the manage screen. Gallery is the working photo library: pick photos on device, name them (thumbnail next to the name), and set slide interval from 1 second to 5:00. Videos / Pro Shop / Events are visible shells for later. Playback concatenates enabled folders in list order (or shuffles that list). Existing saved photos migrate into Gallery. Fullscreen loop with the full photo visible (`object-fit: contain`), letterbox/pillarbox filled by a blurred copy of the same image, a very gentle Ken Burns zoom, options sheet, and wake lock while playing.
 
 Default match names are **Competitor 1** / **Competitor 2** with empty gyms.
 
@@ -45,7 +45,7 @@ Match is split into two views that stay in sync in the same browser profile (`Br
 **Recommended gym setups**
 
 1. **Computer plugged into the TV (simplest gym-owner path)**  
-   On a laptop or desktop connected with HDMI (or any browser URL on that computer), open this site and go to **Scoreboard** (`/match`), **Rounds**, or **Slideshow**. Press **F** (or tap **Fullscreen**) so it fills the TV. No phone cast required.
+   On a laptop or desktop connected with HDMI (or any browser URL on that computer), open this site and go to **Scoreboard** (`/match`), **Rounds**, or **Owner’s Toolbox**. Press **F** (or tap **Fullscreen**) so it fills the TV. No phone cast required.
 
 2. **Cast from the Controller (phone or tablet)**  
    Open `/match/control`, tap **Cast**, pick a Chromecast / extra display. Chrome’s Presentation API sends the scoreboard URL to that screen. Keep the Controller in your hands. If Cast is canceled, nothing is sent. On many phones Cast just opens a window — then use the phone’s screen mirroring.

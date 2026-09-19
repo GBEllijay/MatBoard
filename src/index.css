@@ -132,6 +132,10 @@ p {
   text-transform: uppercase;
 }
 
+.chrome__brand {
+  line-height: 1.15;
+}
+
 .chrome__right {
   display: flex;
   gap: 0.45rem;
@@ -277,6 +281,14 @@ p {
 .mode-card__actions .btn--ghost {
   background: rgba(10, 14, 24, 0.55);
   border-color: rgba(255, 255, 255, 0.22);
+}
+
+.mode-card__actions--folders {
+  gap: 0.5rem;
+}
+
+.mode-card__actions--folders .btn {
+  min-height: 52px;
 }
 
 .home__hints {
@@ -1219,6 +1231,72 @@ fieldset {
   overflow: hidden;
   display: block;
   pointer-events: none;
+}
+
+.saver-folders {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.saver-folder {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 0.15rem 0.8rem 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.saver-folder__summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 92px;
+  gap: 0.55rem;
+  align-items: center;
+  min-height: 64px;
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 1.12rem;
+  list-style: none;
+}
+
+.saver-folder__summary::-webkit-details-marker,
+.saver-folder__summary::marker {
+  display: none;
+  content: '';
+}
+
+.saver-folder__title {
+  display: grid;
+  justify-items: start;
+  gap: 0.1rem;
+}
+
+.saver-folder__title small {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.saver-folder__play {
+  min-width: 0;
+  width: 100%;
+  min-height: 48px;
+  font-size: 1rem;
+}
+
+.saver-folder__panel {
+  display: grid;
+  gap: 0.7rem;
+  padding-bottom: 0.2rem;
+}
+
+.saver-folder__panel .btn {
+  width: 100%;
+  min-height: 56px;
+}
+
+.saver-folder__empty {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 600;
 }
 
 .saver__list li input {

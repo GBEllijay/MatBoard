@@ -12,7 +12,7 @@ export default defineConfig({
       manifest: {
         name: 'Advantage',
         short_name: 'Advantage',
-        description: 'Gym match scoreboard, round timer, and photo slideshow.',
+        description: 'Gym match scoreboard, round timer, and owner’s toolbox.',
         theme_color: '#0b0d10',
         background_color: '#0b0d10',
         display: 'standalone',

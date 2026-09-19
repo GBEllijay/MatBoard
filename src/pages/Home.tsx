@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { FOLDERS } from '../lib/photoStore';
 
 export function HomePage() {
   return (
@@ -7,7 +8,7 @@ export function HomePage() {
         <div className="home__mark">
           <img className="home__logo" src="/advantage-icon.png" alt="" width={713} height={713} />
           <h1>Advantage</h1>
-          <p>Gym scoreboard, round timer and photo slideshow.</p>
+          <p>Gym scoreboard, round timer and owner’s toolbox.</p>
         </div>
 
         <nav className="home__modes" aria-label="Modes">
@@ -35,21 +36,29 @@ export function HomePage() {
               your phone. Set round length, rest time, and how many rounds.
             </span>
           </Link>
-          <Link className="mode-card mode-card--saver" to="/screensaver">
-            <strong>Slideshow</strong>
-            <span className="mode-card__sub">Gallery</span>
-            <span>
-              Show photos, logos and gym information on the TV. Open Slideshow on a computer plugged
-              into the TV, or cast from your phone.
-            </span>
-          </Link>
+          <article className="mode-card mode-card--saver">
+            <strong>Owner’s Toolbox</strong>
+            <span className="mode-card__sub">Pro</span>
+            <span>Gallery, videos, Pro Shop, and event flyers for your gym TV.</span>
+            <div className="mode-card__actions mode-card__actions--folders" aria-label="Owner folders">
+              {FOLDERS.map((folder) => (
+                <Link
+                  key={folder.id}
+                  className={`btn${folder.ready ? '' : ' btn--ghost'}`}
+                  to={`/slideshow?folder=${folder.id}`}
+                >
+                  {folder.label}
+                </Link>
+              ))}
+            </div>
+          </article>
         </nav>
 
         <div className="home__hints">
           <p className="home__hint">Install Advantage as an app from your browser menu.</p>
           <p className="home__hint">
             Gym TV: open this site on a computer plugged into the TV, then fullscreen Display,
-            Rounds, or Slideshow. Press F for fullscreen.
+            Rounds, or Owner’s Toolbox. Press F for fullscreen.
           </p>
           <p className="home__hint">
             Control from your phone. Cast the scoreboard to your TV, or open Display on a second
