@@ -46,7 +46,7 @@ export function HomePage() {
             />
             <strong>Owner’s Toolbox</strong>
             <span className="mode-card__sub">Pro</span>
-            <span>Gallery, videos, Pro Shop, and event flyers for your gym TV.</span>
+            <span>Gallery, videos, Pro Shop, event flyers, and a mock tournament bracket.</span>
             <div className="mode-card__actions mode-card__actions--folders" aria-label="Owner folders">
               {FOLDERS.map((folder) => (
                 <Link
@@ -58,6 +58,11 @@ export function HomePage() {
                 </Link>
               ))}
             </div>
+            <div className="mode-card__actions mode-card__actions--tools" aria-label="Owner tools">
+              <Link className="btn" to="/tournament">
+                Mock Tournament
+              </Link>
+            </div>
           </article>
         </nav>
 
@@ -65,7 +70,7 @@ export function HomePage() {
           <p className="home__hint">Install Advantage as an app from your browser menu.</p>
           <p className="home__hint">
             Gym TV: open this site on a computer plugged into the TV, then fullscreen Display,
-            Rounds, or Owner’s Toolbox. Press F for fullscreen.
+            Rounds, Owner’s Toolbox, or Mock Tournament. Press F for fullscreen.
           </p>
           <p className="home__hint">
             Control from your phone. Cast the scoreboard to your TV, or open Display on a second

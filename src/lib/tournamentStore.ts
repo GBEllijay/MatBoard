@@ -1,0 +1,323 @@
+/** 16-person single-elim mock bracket. On-device only — no tournament server. */
+
+export const TOURNAMENT_SIZE = 16 as const;
+
+export const MATCH_IDS = [
+  'r16-0',
+  'r16-1',
+  'r16-2',
+  'r16-3',
+  'r16-4',
+  'r16-5',
+  'r16-6',
+  'r16-7',
+  'qf-0',
+  'qf-1',
+  'qf-2',
+  'qf-3',
+  'sf-0',
+  'sf-1',
+  'final-0',
+] as const;
+
+export type BracketMatchId = (typeof MATCH_IDS)[number];
+export type MatchSide = 'a' | 'b';
+/** How the winner of a bout advanced. Phase 2 live scoreboard should send the same kinds. */
+export type BoutOutcomeKind = 'win' | 'dq' | 'tech';
+export type SlotId = `${BracketMatchId}-${MatchSide}` | 'champion';
+
+export type BoutResult = {
+  winnerSide: MatchSide;
+  kind: BoutOutcomeKind;
+};
+
+export type TournamentState = {
+  version: 1;
+  /** Reserved so Phase 2 can add an 8-person board without a new storage key. */
+  size: typeof TOURNAMENT_SIZE;
+  title: string;
+  entries: Record<string, string>;
+  results: Partial<Record<BracketMatchId, BoutResult>>;
+};
+
+/**
+ * Phase 2 hook points (do not wire Display/Controller Winner/DQ in this phase):
+ * - Live bout `MatchState.bracketMatchId` should be one of `MATCH_IDS`.
+ * - Scoreboard Win / DQ / technical loss should call `setMatchOutcome(id, side, kind)`.
+ * - Same on-device store; no cloud pairing yet.
+ */
+export const PHASE2_BOUT_LINK = {
+  matchStateField: 'bracketMatchId',
+  outcomes: ['win', 'dq', 'tech'] as const,
+  matchIds: MATCH_IDS,
+} as const;
+
+export const STORAGE_KEY = 'matboard.tournament.v1';
+
+export const LEFT_R16 = ['r16-0', 'r16-1', 'r16-2', 'r16-3'] as const;
+export const RIGHT_R16 = ['r16-4', 'r16-5', 'r16-6', 'r16-7'] as const;
+export const LEFT_QF = ['qf-0', 'qf-1'] as const;
+export const RIGHT_QF = ['qf-2', 'qf-3'] as const;
+
+const NEXT_SLOT: Record<BracketMatchId, SlotId> = {
+  'r16-0': 'qf-0-a',
+  'r16-1': 'qf-0-b',
+  'r16-2': 'qf-1-a',
+  'r16-3': 'qf-1-b',
+  'r16-4': 'qf-2-a',
+  'r16-5': 'qf-2-b',
+  'r16-6': 'qf-3-a',
+  'r16-7': 'qf-3-b',
+  'qf-0': 'sf-0-a',
+  'qf-1': 'sf-0-b',
+  'qf-2': 'sf-1-a',
+  'qf-3': 'sf-1-b',
+  'sf-0': 'final-0-a',
+  'sf-1': 'final-0-b',
+  'final-0': 'champion',
+};
+
+const ROUND_LABEL: Record<string, string> = {
+  r16: 'Round of 16',
+  qf: 'Quarterfinals',
+  sf: 'Semifinals',
+  final: 'Final',
+};
+
+const listeners = new Set<() => void>();
+let state: TournamentState = loadState();
+
+export function isBracketMatchId(value: unknown): value is BracketMatchId {
+  return typeof value === 'string' && (MATCH_IDS as readonly string[]).includes(value);
+}
+
+export function slotId(matchId: BracketMatchId, side: MatchSide): SlotId {
+  return `${matchId}-${side}`;
+}
+
+export function matchIdFromSlot(id: SlotId): BracketMatchId | null {
+  if (id === 'champion') return 'final-0';
+  const matchId = id.slice(0, id.lastIndexOf('-'));
+  return isBracketMatchId(matchId) ? matchId : null;
+}
+
+export function sideFromSlot(id: SlotId): MatchSide | null {
+  if (id === 'champion') return null;
+  const side = id.slice(id.lastIndexOf('-') + 1);
+  return side === 'a' || side === 'b' ? side : null;
+}
+
+export function otherSide(side: MatchSide): MatchSide {
+  return side === 'a' ? 'b' : 'a';
+}
+
+export function nextSlot(matchId: BracketMatchId): SlotId {
+  return NEXT_SLOT[matchId];
+}
+
+export function roundLabel(matchId: BracketMatchId): string {
+  return ROUND_LABEL[matchId.split('-')[0] ?? ''] ?? matchId;
+}
+
+export function seedSlots(): SlotId[] {
+  return [...LEFT_R16, ...RIGHT_R16].flatMap((id) => [slotId(id, 'a'), slotId(id, 'b')]);
+}
+
+export function slotName(current: TournamentState, id: SlotId | string): string {
+  return current.entries[id] ?? '';
+}
+
+export function defaultTournament(): TournamentState {
+  return {
+    version: 1,
+    size: TOURNAMENT_SIZE,
+    title: '',
+    entries: {},
+    results: {},
+  };
+}
+
+function normalizeResult(raw: unknown): BoutResult | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const row = raw as Partial<BoutResult>;
+  if (row.winnerSide !== 'a' && row.winnerSide !== 'b') return null;
+  if (row.kind !== 'win' && row.kind !== 'dq' && row.kind !== 'tech') return null;
+  return { winnerSide: row.winnerSide, kind: row.kind };
+}
+
+function loadState(): TournamentState {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return defaultTournament();
+    const parsed = JSON.parse(raw) as Partial<TournamentState>;
+    const entries =
+      parsed.entries && typeof parsed.entries === 'object' ? parsed.entries : {};
+    const results: TournamentState['results'] = {};
+    if (parsed.results && typeof parsed.results === 'object') {
+      for (const id of MATCH_IDS) {
+        const result = normalizeResult(parsed.results[id]);
+        if (result) results[id] = result;
+      }
+    }
+    const cleanEntries: Record<string, string> = {};
+    for (const [key, value] of Object.entries(entries)) {
+      if (typeof value === 'string' && value.trim()) cleanEntries[key] = value;
+    }
+    return {
+      version: 1,
+      size: TOURNAMENT_SIZE,
+      title: typeof parsed.title === 'string' ? parsed.title : '',
+      entries: cleanEntries,
+      results,
+    };
+  } catch {
+    return defaultTournament();
+  }
+}
+
+function clone(current: TournamentState): TournamentState {
+  return {
+    version: 1,
+    size: TOURNAMENT_SIZE,
+    title: current.title,
+    entries: { ...current.entries },
+    results: { ...current.results },
+  };
+}
+
+function persist(next: TournamentState): void {
+  state = next;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    /* quota / private mode */
+  }
+  listeners.forEach((fn) => fn());
+}
+
+export function getTournament(): TournamentState {
+  return state;
+}
+
+export function subscribeTournament(fn: () => void): () => void {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+
+export function initTournamentSync(): void {
+  window.addEventListener('storage', (ev) => {
+    if (ev.key !== STORAGE_KEY) return;
+    state = loadState();
+    listeners.forEach((fn) => fn());
+  });
+}
+
+function writeSlot(next: TournamentState, id: SlotId, name: string): void {
+  const trimmed = name.trim();
+  if (trimmed) next.entries[id] = name;
+  else delete next.entries[id];
+}
+
+/** Re-apply a stored result so the next-round name stays in sync. */
+function cascadeWinner(next: TournamentState, matchId: BracketMatchId, seen: Set<BracketMatchId>): void {
+  if (seen.has(matchId)) return;
+  seen.add(matchId);
+  const result = next.results[matchId];
+  const dest = NEXT_SLOT[matchId];
+  if (!result) {
+    writeSlot(next, dest, '');
+    if (dest !== 'champion') {
+      const child = matchIdFromSlot(dest);
+      const side = sideFromSlot(dest);
+      if (child && side && next.results[child]?.winnerSide === side) {
+        delete next.results[child];
+        cascadeWinner(next, child, seen);
+      }
+    }
+    return;
+  }
+  writeSlot(next, dest, slotName(next, slotId(matchId, result.winnerSide)));
+  if (dest !== 'champion') {
+    const child = matchIdFromSlot(dest);
+    if (child && next.results[child]) cascadeWinner(next, child, seen);
+  }
+}
+
+export function applySlotName(current: TournamentState, id: SlotId, name: string): TournamentState {
+  const next = clone(current);
+  writeSlot(next, id, name);
+  if (id === 'champion') return next;
+  const matchId = matchIdFromSlot(id);
+  const side = sideFromSlot(id);
+  if (matchId && side && next.results[matchId]?.winnerSide === side) {
+    cascadeWinner(next, matchId, new Set());
+  }
+  return next;
+}
+
+export function applyMatchOutcome(
+  current: TournamentState,
+  matchId: BracketMatchId,
+  side: MatchSide,
+  kind: BoutOutcomeKind,
+): TournamentState {
+  const next = clone(current);
+  const existing = next.results[matchId];
+  const same =
+    existing &&
+    ((kind === 'win' && existing.kind === 'win' && existing.winnerSide === side) ||
+      (kind !== 'win' && existing.kind === kind && existing.winnerSide === otherSide(side)));
+  if (same) {
+    delete next.results[matchId];
+  } else if (kind === 'win') {
+    next.results[matchId] = { winnerSide: side, kind: 'win' };
+  } else {
+    next.results[matchId] = { winnerSide: otherSide(side), kind };
+  }
+  cascadeWinner(next, matchId, new Set());
+  return next;
+}
+
+export function applyClearResult(current: TournamentState, matchId: BracketMatchId): TournamentState {
+  if (!current.results[matchId]) return current;
+  const next = clone(current);
+  delete next.results[matchId];
+  cascadeWinner(next, matchId, new Set());
+  return next;
+}
+
+export function slotMark(
+  result: BoutResult | undefined,
+  side: MatchSide,
+): BoutOutcomeKind | 'advanced' | 'lost' | null {
+  if (!result) return null;
+  if (result.winnerSide === side) {
+    return result.kind === 'win' ? 'win' : 'advanced';
+  }
+  if (result.kind === 'dq' || result.kind === 'tech') return result.kind;
+  return 'lost';
+}
+
+export function setTournamentTitle(title: string): void {
+  persist({ ...state, title });
+}
+
+export function setSlotName(id: SlotId, name: string): void {
+  persist(applySlotName(state, id, name));
+}
+
+export function setMatchOutcome(matchId: BracketMatchId, side: MatchSide, kind: BoutOutcomeKind): void {
+  persist(applyMatchOutcome(state, matchId, side, kind));
+}
+
+export function clearMatchResult(matchId: BracketMatchId): void {
+  persist(applyClearResult(state, matchId));
+}
+
+export function resetTournament(): void {
+  persist(defaultTournament());
+}
+
+export function seedPlaceholder(index: number): string {
+  return `Competitor ${index + 1}`;
+}
