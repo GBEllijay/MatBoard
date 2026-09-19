@@ -94,6 +94,7 @@ export function TrainingPage() {
           supported={fs.supported}
           active={fs.active}
           nudge={fs.showFallback}
+          shortcut={fs.tvStation}
           onToggle={() => void fs.toggle()}
         />
       </div>

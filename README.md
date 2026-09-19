@@ -6,7 +6,7 @@ Installable as a Progressive Web App. Built for Cloudflare Pages.
 
 The consumer product name is **Advantage**. This GitHub repo and Cloudflare project stay MatBoard.
 
-Browsers cannot permanently hide the address bar in a normal tab. For gym TV / cast without URL chrome: **install Advantage as an app** (browser menu → Add to Home Screen / Install) so it opens standalone, **or** tap **Fullscreen** on Display, Training, or Slideshow (rotating to landscape also tries fullscreen; tap the control if the browser blocks it). Home is left as a normal page.
+Browsers cannot permanently hide the address bar in a normal tab. For gym TV / cast without URL chrome: **install Advantage as an app** (browser menu → Add to Home Screen / Install) so it opens standalone, **or** press **F** / tap **Fullscreen** on Display, Training, or Slideshow (rotating to landscape also tries fullscreen; tap the control if the browser blocks it). Home is left as a normal page. A computer plugged into the TV can run this same site as an always-on browser station.
 
 ## Modes
 
@@ -44,16 +44,19 @@ Match is split into two views that stay in sync in the same browser profile (`Br
 
 **Recommended gym setups**
 
-1. **Cast from the Controller (phone or tablet)**  
-   Open `/match/control`, tap **Cast**, pick a Chromecast / extra display. Chrome’s Presentation API sends the scoreboard URL to that screen. Keep the Controller in your hands. If Cast is canceled, nothing is sent.
+1. **Computer plugged into the TV (simplest gym-owner path)**  
+   On a laptop or desktop connected with HDMI (or any browser URL on that computer), open this site and go to **Scoreboard** (`/match`), **Rounds**, or **Slideshow**. Press **F** (or tap **Fullscreen**) so it fills the TV. No phone cast required.
 
-2. **Pop-out Display + HDMI**  
-   On a laptop, open the Controller (or keep it in a window), tap **Display** to open `/match` in a second window, tap **Fullscreen** (or rotate to landscape), and send it to the TV with HDMI or “Cast tab”.
+2. **Cast from the Controller (phone or tablet)**  
+   Open `/match/control`, tap **Cast**, pick a Chromecast / extra display. Chrome’s Presentation API sends the scoreboard URL to that screen. Keep the Controller in your hands. If Cast is canceled, nothing is sent. On many phones Cast just opens a window — then use the phone’s screen mirroring.
 
-3. **One tablet on a stand**  
+3. **Pop-out Display + HDMI**  
+   On a laptop, open the Controller (or keep it in a window), tap **Display** to open `/match` in a second window, press **F** or tap **Fullscreen**, and send it to the TV with HDMI.
+
+4. **One tablet on a stand**  
    Open `/match` only. The scoreboard itself is tappable: score boxes +1 / long-press −1, clock start/pause. Edit names, round, and division on the Controller.
 
-Windows opened from the same origin stay in sync automatically. A phone Controller and a totally separate TV browser (different device, no Cast connection) will not share live state — use Cast or two windows on the same computer for that.
+Windows opened from the same browser stay in sync automatically. A phone Controller and a totally separate computer/TV browser do not share live scores yet — that pairing comes later. Until then, run Controller and Display on the same computer, or cast/mirror from the phone.
 
 ## Sounds
 

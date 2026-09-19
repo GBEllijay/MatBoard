@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FullscreenChip } from '../components/FullscreenChip';
+import { TvTip } from '../components/TvTip';
 import { ScoreBox } from '../components/ScoreBox';
 import { useInterval } from '../hooks/useClock';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
@@ -48,12 +49,14 @@ export function MatchDisplayPage() {
           supported={fs.supported}
           active={fs.active}
           nudge={fs.showFallback}
+          shortcut={fs.tvStation}
           onToggle={() => void fs.toggle()}
         />
         <Link to="/match/control" className="chip chip--gold">
           Controller
         </Link>
       </div>
+      <TvTip onFullscreen={() => void fs.enter()} />
 
       <section className="bout bout--blue" aria-label="Blue competitor">
         <div className="bout__who">

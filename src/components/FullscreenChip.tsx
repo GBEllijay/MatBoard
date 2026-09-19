@@ -2,10 +2,11 @@ type Props = {
   supported: boolean;
   active: boolean;
   nudge?: boolean;
+  shortcut?: boolean;
   onToggle: () => void;
 };
 
-export function FullscreenChip({ supported, active, nudge, onToggle }: Props) {
+export function FullscreenChip({ supported, active, nudge, shortcut, onToggle }: Props) {
   if (!supported || active) return null;
   return (
     <button
@@ -16,7 +17,7 @@ export function FullscreenChip({ supported, active, nudge, onToggle }: Props) {
         onToggle();
       }}
     >
-      Fullscreen
+      {shortcut ? 'Fullscreen · F' : 'Fullscreen'}
     </button>
   );
 }

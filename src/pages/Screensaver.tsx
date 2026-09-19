@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { PlayExitMark } from '../components/PlayExitMark';
+import { TvTip } from '../components/TvTip';
 import { Sheet } from '../components/Sheet';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
@@ -101,7 +102,7 @@ export function ScreensaverPage() {
       className={`saver${current ? ' saver--play' : ''}${fs.className ? ` ${fs.className}` : ''}`}
       onClick={(event) => {
         const target = event.target as HTMLElement;
-        if (target.closest('.sheet, .chrome, .saver__empty, .btn, input, label, .play-fs, .play-exit')) return;
+        if (target.closest('.sheet, .chrome, .saver__empty, .btn, input, label, .play-fs, .play-exit, .tv-tip')) return;
         if (photos.length) setOptions(true);
       }}
     >
@@ -112,9 +113,11 @@ export function ScreensaverPage() {
           supported={fs.supported}
           active={fs.active}
           nudge={fs.showFallback}
+          shortcut={fs.tvStation}
           onToggle={() => void fs.toggle()}
         />
       </div>
+      <TvTip onFullscreen={() => void fs.enter()} />
       {current ? (
         <div
           key={current}
@@ -126,7 +129,10 @@ export function ScreensaverPage() {
       ) : (
         <div className="saver__empty" onClick={(e) => e.stopPropagation()}>
           <h1>Slideshow</h1>
-          <p>Pick photos from this device. They loop fullscreen. Set how long each slide stays on screen.</p>
+          <p>
+            Pick photos from this device. They loop fullscreen. On a computer plugged into the TV, press F for
+            fullscreen. Set how long each slide stays on screen.
+          </p>
           <button type="button" className="btn" onClick={() => fileRef.current?.click()}>
             Choose photos
           </button>

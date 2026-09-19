@@ -485,6 +485,55 @@ p {
   opacity: 0.55;
 }
 
+.tv-tip {
+  position: absolute;
+  z-index: 8;
+  left: 50%;
+  bottom: calc(1rem + var(--safe-b));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: min(42rem, calc(100% - 1.6rem));
+  padding: 0.5rem 0.5rem 0.5rem 1rem;
+  border-radius: 999px;
+  background: rgba(8, 10, 16, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 650;
+  line-height: 1.3;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
+}
+
+.tv-tip__actions {
+  display: flex;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.tv-tip__go,
+.tv-tip__dismiss {
+  min-height: 36px;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  border: 0;
+  font-weight: 800;
+  font-size: 0.82rem;
+}
+
+.tv-tip__go {
+  background: var(--gold);
+  color: #1a1404;
+}
+
+.tv-tip__dismiss {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
 .play-fs--nudge {
   animation: fs-nudge 1.8s ease-in-out infinite;
 }
@@ -944,6 +993,10 @@ label {
   font-size: 0.92rem;
 }
 
+.controller__help .cast-note + .cast-note {
+  margin-top: 0.65rem;
+}
+
 .text-link {
   color: var(--gold-2);
   display: inline-block;
@@ -1358,9 +1411,10 @@ fieldset {
   }
 }
 
-/* Immersive play: hide in-app chrome in landscape / fullscreen. */
+/* Immersive play: hide in-app chrome in landscape / fullscreen / TV station. */
 .play--landscape .display__chrome .chip:not(.play-fs),
-.play--fs .display__chrome .chip:not(.play-fs) {
+.play--fs .display__chrome .chip:not(.play-fs),
+.play--tv .display__chrome .chip:not(.play-fs) {
   display: none;
 }
 
@@ -1400,6 +1454,55 @@ fieldset {
 
 .play--fs .play-fs {
   display: none;
+}
+
+/* Desktop / HDMI: read at TV distance, hide leftover phone chrome. */
+@media (pointer: fine) and (min-width: 1100px) and (min-height: 700px) {
+  .display .clock-btn {
+    font-size: clamp(4.4rem, 11vw, 8.6rem);
+  }
+
+  .display .score__value {
+    font-size: clamp(3.4rem, 8.2vw, 7.2rem);
+  }
+
+  .display .bout__who h1 {
+    font-size: clamp(2.2rem, 4.6vw, 4.8rem);
+  }
+
+  .display .bout__who p {
+    font-size: clamp(1.15rem, 2.1vw, 1.85rem);
+  }
+
+  .display__meta,
+  .display__clock-hint {
+    font-size: 1.05rem;
+  }
+
+  .play--tv .bout--blue {
+    padding-top: calc(0.4rem + var(--safe-t));
+  }
+}
+
+.play--tv .display__chrome,
+.play--tv .play-fs-slot,
+.play--tv .chrome--ghost {
+  transition: opacity 0.35s ease;
+}
+
+.play--tv.play--idle {
+  cursor: none;
+}
+
+.play--tv.play--idle .display__chrome,
+.play--tv.play--idle .play-fs-slot,
+.play--tv.play--idle .chrome--ghost {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.play--tv.play--idle .play-exit {
+  opacity: 0.18;
 }
 
 @media (prefers-reduced-motion: reduce) {

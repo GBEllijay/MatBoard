@@ -60,7 +60,11 @@ export function MatchControllerPage() {
     void unlockAudio();
     try {
       const mode = await openOrCastDisplay();
-      setCastNote(mode === 'cast' ? 'Display sent to the chosen screen.' : 'Scoreboard opened in a new window.');
+      setCastNote(
+        mode === 'cast'
+          ? 'Display sent to the chosen screen.'
+          : 'Scoreboard opened in a new window on this computer. Press F there for fullscreen.',
+      );
     } catch {
       setCastNote('Cast canceled. Use Open Display if you want a window instead.');
     }
@@ -239,10 +243,18 @@ export function MatchControllerPage() {
 
       <section className="controller__help">
         <p className="cast-note">
-          Keep this Controller on the table. <strong>Display</strong> opens the scoreboard in a new window.{' '}
-          <strong>Cast</strong> can send it to a Chromecast or extra display, but on many phones it just opens that same
-          window — it does not start Samsung Smart View or iPhone AirPlay. After the scoreboard is open, use the phone’s
-          screen mirroring to show it on a TV. Same-browser windows stay in sync.
+          Gym TV from a computer: plug the computer into the TV, open this site in a browser, tap{' '}
+          <strong>Display</strong> (or Scoreboard), and press F for fullscreen.
+        </p>
+        <p className="cast-note">
+          Keep this Controller on the table. <strong>Display</strong> opens the scoreboard in a new window on this same
+          device. <strong>Cast</strong> can send it to a Chromecast or extra display, but on many phones it just opens
+          that same window — it does not start Samsung Smart View or iPhone AirPlay. After the scoreboard is open, use
+          the phone’s screen mirroring to show it on a TV.
+        </p>
+        <p className="cast-note">
+          Windows in the same browser stay in sync. A phone and a separate computer do not share live scores yet — that
+          pairing comes later.
         </p>
         <Link className="text-link" to="/match">
           Open scoreboard on this device
