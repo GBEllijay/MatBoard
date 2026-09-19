@@ -1221,6 +1221,45 @@ fieldset {
   pointer-events: none;
 }
 
+.saver-folder .toggle {
+  margin: 0.2rem 0;
+}
+
+.saver-folder__tab {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 0.15rem;
+  line-height: 1.15;
+}
+
+.saver-folder__tab small {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+.preset--on.saver-folder__tab small {
+  color: #4a3a10;
+}
+
+.saver-folder__panel {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.saver-folder__panel .btn {
+  width: 100%;
+  min-height: 56px;
+}
+
+.saver-folder__empty {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 600;
+}
+
 .saver__list li input {
   min-width: 0;
 }
