@@ -1009,6 +1009,39 @@ label {
   margin: 0.35rem 0 0.5rem;
 }
 
+/* Match Controller only: section/field headers were default or muted gray
+   next to fat-thumb Start / Reset / preset / cue buttons. Mirror Training
+   options ink weight. Leave clock, buttons, toggles, and scores alone. */
+.controller legend {
+  font-size: clamp(1.35rem, 1.1rem + 1.4vw, 1.85rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  padding-inline: 0.4rem;
+  color: var(--ink);
+}
+
+.controller__meta label,
+.custom-time label {
+  font-size: clamp(1.22rem, 1rem + 1.1vw, 1.65rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--ink);
+}
+
+.controller__meta input,
+.custom-time input {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.controller .cue-preview-label {
+  font-size: clamp(1.18rem, 0.95rem + 1vw, 1.5rem);
+  font-weight: 800;
+  color: var(--ink);
+}
+
 .sheet .cue-preview {
   justify-items: stretch;
   width: 100%;
@@ -1130,7 +1163,7 @@ fieldset {
 }
 
 /* Training options only: legends start at the browser default (~1rem) and look
-   thin next to 64px fat-thumb presets. Keep Match / Slideshow sheets unchanged. */
+   thin next to 64px fat-thumb presets. Slideshow options stay unchanged. */
 .training .sheet__head h2 {
   font-size: clamp(1.4rem, 5vw, 1.7rem);
   font-weight: 800;
