@@ -134,7 +134,7 @@ export function ScreensaverPage() {
   const emptyCopy =
     galleryPhotos.length === 0
       ? 'Pick photos from this device. They loop fullscreen. On a computer plugged into the TV, press F for fullscreen. Set how long each slide stays on screen.'
-      : 'Nothing is set to play. Turn on Gallery, or another folder that has media, in Slideshow options.';
+      : 'Nothing is set to play. Turn on Gallery, or another folder that has media, in options.';
 
   return (
     <main
@@ -145,7 +145,7 @@ export function ScreensaverPage() {
         if (queue.length) setOptions(true);
       }}
     >
-      <Chrome ghost title={current ? '' : 'Slideshow'} />
+      <Chrome ghost title={current ? '' : 'Owner’s Toolbox'} />
       {current ? <PlayExitMark onExit={exitSlideshow} /> : null}
       <div className="play-fs-slot">
         <FullscreenChip
@@ -167,7 +167,7 @@ export function ScreensaverPage() {
         </div>
       ) : (
         <div className="saver__empty" onClick={(e) => e.stopPropagation()}>
-          <h1>Slideshow</h1>
+          <h1>Owner’s Toolbox</h1>
           <p>{emptyCopy}</p>
           {galleryPhotos.length === 0 ? (
             <button type="button" className="btn" onClick={() => fileRef.current?.click()}>
@@ -175,12 +175,12 @@ export function ScreensaverPage() {
             </button>
           ) : null}
           <button type="button" className="btn btn--ghost" onClick={() => setOptions(true)}>
-            Slideshow options
+            Options
           </button>
         </div>
       )}
 
-      <Sheet open={options} title="Slideshow options" onClose={() => setOptions(false)}>
+      <Sheet open={options} title="Owner’s Toolbox" onClose={() => setOptions(false)}>
         <p>
           Four folders. Gold <strong>On</strong> means that folder plays on the TV. Gallery is the
           photo library; the others are coming later.

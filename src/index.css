@@ -132,6 +132,10 @@ p {
   text-transform: uppercase;
 }
 
+.chrome__brand {
+  line-height: 1.15;
+}
+
 .chrome__right {
   display: flex;
   gap: 0.45rem;

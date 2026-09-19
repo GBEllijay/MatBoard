@@ -12,6 +12,7 @@ export default function App() {
       <Route path="/match" element={<MatchDisplayPage />} />
       <Route path="/match/control" element={<MatchControllerPage />} />
       <Route path="/training" element={<TrainingPage />} />
+      <Route path="/slideshow" element={<ScreensaverPage />} />
       <Route path="/screensaver" element={<ScreensaverPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
