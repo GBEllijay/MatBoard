@@ -8,7 +8,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: false,
-      includeAssets: ['favicon.png', 'favicon.svg', 'advantage-icon.png', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'home-mat-tatami.png', 'sounds/parou-stop.mp3', 'sounds/parou.mp3'],
+      includeAssets: ['favicon.png', 'favicon.svg', 'advantage-icon.png', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'home-mat-tatami.png', 'sounds/parou-tts-parou-only.mp3', 'sounds/parou-stop.mp3', 'sounds/parou.mp3'],
       manifest: {
         name: 'Advantage',
         short_name: 'Advantage',
