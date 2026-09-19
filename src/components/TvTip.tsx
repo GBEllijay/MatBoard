@@ -1,22 +1,13 @@
-import { useEffect, useState } from 'react';
-import { dismissTvTip, tvStationQuery, tvTipDismissed } from '../lib/tvTip';
+import { useState } from 'react';
+import { dismissTvTip, tvTipDismissed } from '../lib/tvTip';
 
 type Props = {
   onFullscreen?: () => void;
 };
 
-/** One-time desktop/TV hint. Hidden after dismiss, and never shown on phones. */
+/** One-time desktop/TV hint. CSS hides it on phones; dismiss persists in localStorage. */
 export function TvTip({ onFullscreen }: Props) {
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    if (tvTipDismissed()) return;
-    const mq = window.matchMedia(tvStationQuery());
-    const sync = () => setOpen(mq.matches && !tvTipDismissed());
-    sync();
-    mq.addEventListener('change', sync);
-    return () => mq.removeEventListener('change', sync);
-  }, []);
+  const [open, setOpen] = useState(() => !tvTipDismissed());
 
   if (!open) return null;
 
