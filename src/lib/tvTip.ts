@@ -1,11 +1,8 @@
 const STORAGE_KEY = 'matboard.tvTip.v1';
 
+/** Large enough to be a laptop / HDMI station — not a phone, even in landscape. */
 export function tvStationQuery(): string {
-  return '(pointer: fine) and (min-width: 800px)';
-}
-
-export function isTvStationViewport(): boolean {
-  return typeof window !== 'undefined' && window.matchMedia(tvStationQuery()).matches;
+  return '(min-width: 900px) and (min-height: 560px)';
 }
 
 export function tvTipDismissed(): boolean {

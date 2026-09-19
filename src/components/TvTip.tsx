@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { dismissTvTip, isTvStationViewport, tvTipDismissed } from '../lib/tvTip';
+import { dismissTvTip, tvStationQuery, tvTipDismissed } from '../lib/tvTip';
 
 type Props = {
   onFullscreen?: () => void;
@@ -10,8 +10,12 @@ export function TvTip({ onFullscreen }: Props) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    if (tvTipDismissed() || !isTvStationViewport()) return;
-    setOpen(true);
+    if (tvTipDismissed()) return;
+    const mq = window.matchMedia(tvStationQuery());
+    const sync = () => setOpen(mq.matches && !tvTipDismissed());
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
   }, []);
 
   if (!open) return null;

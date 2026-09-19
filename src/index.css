@@ -489,12 +489,13 @@ p {
   position: absolute;
   z-index: 8;
   left: 50%;
-  bottom: calc(1rem + var(--safe-b));
+  top: calc(0.65rem + var(--safe-t));
+  bottom: auto;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  max-width: min(42rem, calc(100% - 1.6rem));
+  max-width: min(42rem, calc(100% - 8.5rem));
   padding: 0.5rem 0.5rem 0.5rem 1rem;
   border-radius: 999px;
   background: rgba(8, 10, 16, 0.78);
@@ -1457,7 +1458,7 @@ fieldset {
 }
 
 /* Desktop / HDMI: read at TV distance, hide leftover phone chrome. */
-@media (pointer: fine) and (min-width: 1100px) and (min-height: 700px) {
+@media (min-width: 1100px) and (min-height: 700px) {
   .display .clock-btn {
     font-size: clamp(4.4rem, 11vw, 8.6rem);
   }
