@@ -726,12 +726,29 @@ p {
   font-size: 0.9rem;
 }
 
+.display__meta a {
+  color: inherit;
+  border-radius: 6px;
+  min-height: 1.4em;
+}
+
+.display__meta a:focus-visible,
+.display__clock-hint:focus-visible {
+  outline: 2px solid var(--gold-2);
+  outline-offset: 2px;
+}
+
 .display__clock-hint {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  width: 100%;
   text-align: right;
   color: var(--muted);
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+  min-height: 44px;
 }
 
 .clock-btn {
@@ -1604,6 +1621,7 @@ fieldset {
   .display__clock-hint {
     text-align: right;
     font-size: 0.78rem;
+    min-height: 0;
   }
 
   .display .clock-btn {

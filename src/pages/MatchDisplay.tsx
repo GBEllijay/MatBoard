@@ -1,4 +1,4 @@
-import { useCallback, useState, type MouseEvent } from 'react';
+import { useCallback, useState, type MouseEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { TvTip } from '../components/TvTip';
@@ -9,7 +9,11 @@ import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useMatchState } from '../hooks/useStores';
 import { unlockAudio } from '../lib/audio';
-import { competitorFocusPath, type CompetitorFocusField } from '../lib/matchFocus';
+import {
+  competitorFocus,
+  controllerFocusPath,
+  type DisplayFocus,
+} from '../lib/matchFocus';
 import { dispatchMatch, expireMatchClock, remainingNow, type Side } from '../lib/matchStore';
 import { formatMmSs } from '../lib/format';
 
@@ -36,7 +40,8 @@ export function MatchDisplayPage() {
     dispatchMatch({ type: 'toggleClock' });
   };
 
-  const openController = (path = '/match/control') => {
+  const openController = (focus?: DisplayFocus) => {
+    const path = controllerFocusPath(focus);
     void fs.exit().finally(() => navigate(path));
   };
 
@@ -47,6 +52,9 @@ export function MatchDisplayPage() {
     if (fs.active || fs.landscape || fs.tvStation) return;
     openController();
   };
+
+  const clockStatus = match.running ? 'Running' : remaining <= 0 ? 'Ended' : 'Paused';
+  const clockStatusAction = match.running ? 'Pause match clock' : remaining <= 0 ? 'Restart match clock' : 'Start match clock';
 
   return (
     <main
@@ -86,13 +94,19 @@ export function MatchDisplayPage() {
 
       <section className="display__mid">
         <div className="display__meta">
-          <span>Round {match.round || '—'}</span>
-          <span>{match.division || 'Open'}</span>
+          <ControllerFocusLink focus="round" label="Edit round on Controller" onOpen={openController}>
+            Round {match.round || '—'}
+          </ControllerFocusLink>
+          <ControllerFocusLink focus="division" label="Edit division on Controller" onOpen={openController}>
+            {match.division || 'Open'}
+          </ControllerFocusLink>
         </div>
         <button type="button" className="clock-btn" onClick={toggleClock} aria-label="Start or pause match clock">
           {formatMmSs(remaining)}
         </button>
-        <p className="display__clock-hint">{match.running ? 'Running' : remaining <= 0 ? 'Ended' : 'Paused'}</p>
+        <button type="button" className="display__clock-hint" onClick={toggleClock} aria-label={clockStatusAction}>
+          {clockStatus}
+        </button>
       </section>
 
       <CompetitorBand
@@ -126,7 +140,7 @@ function CompetitorBand({
   advantages: number;
   disadvantages: number;
   fallbackName: string;
-  onOpenController: (path: string) => void;
+  onOpenController: (focus?: DisplayFocus) => void;
 }) {
   const label = side === 'blue' ? 'Blue' : 'White';
 
@@ -134,14 +148,22 @@ function CompetitorBand({
     <section className={`bout bout--${side}`} aria-label={`${label} competitor`}>
       <div className="bout__who">
         <h1>
-          <WhoLink side={side} field="name" label={`Edit ${label} name on Controller`} onOpenController={onOpenController}>
+          <ControllerFocusLink
+            focus={competitorFocus(side, 'name')}
+            label={`Edit ${label} name on Controller`}
+            onOpen={onOpenController}
+          >
             {name || fallbackName}
-          </WhoLink>
+          </ControllerFocusLink>
         </h1>
         <p>
-          <WhoLink side={side} field="gym" label={`Edit ${label} gym on Controller`} onOpenController={onOpenController}>
+          <ControllerFocusLink
+            focus={competitorFocus(side, 'gym')}
+            label={`Edit ${label} gym on Controller`}
+            onOpen={onOpenController}
+          >
             {gym || '\u00a0'}
-          </WhoLink>
+          </ControllerFocusLink>
         </p>
       </div>
       <div className="bout__scores">
@@ -153,29 +175,25 @@ function CompetitorBand({
   );
 }
 
-function WhoLink({
-  side,
-  field,
+function ControllerFocusLink({
+  focus,
   label,
-  onOpenController,
+  onOpen,
   children,
 }: {
-  side: Side;
-  field: CompetitorFocusField;
+  focus: DisplayFocus;
   label: string;
-  onOpenController: (path: string) => void;
-  children: string;
+  onOpen: (focus: DisplayFocus) => void;
+  children: ReactNode;
 }) {
-  const to = competitorFocusPath(side, field);
-
   return (
     <Link
-      to={to}
+      to={controllerFocusPath(focus)}
       aria-label={label}
       onClick={(event) => {
         if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
         event.preventDefault();
-        onOpenController(to);
+        onOpen(focus);
       }}
     >
       {children}

@@ -16,7 +16,7 @@ import {
 } from '../lib/audio';
 import { openDisplayWindow, openOrCastDisplay } from '../lib/cast';
 import { minutesToMs, formatMmSs, secondsToMs } from '../lib/format';
-import { competitorFocusId, parseCompetitorFocus } from '../lib/matchFocus';
+import { competitorFocus, displayFocusId, parseDisplayFocus } from '../lib/matchFocus';
 import {
   CLOCK_NUDGES_SEC,
   dispatchMatch,
@@ -40,9 +40,9 @@ export function MatchControllerPage() {
   const focusParam = searchParams.get('focus');
 
   useEffect(() => {
-    const focusTarget = parseCompetitorFocus(focusParam);
-    if (!focusTarget) return;
-    const id = competitorFocusId(focusTarget.side, focusTarget.field);
+    const focus = parseDisplayFocus(focusParam);
+    if (!focus) return;
+    const id = displayFocusId(focus);
     const run = () => {
       const el = document.getElementById(id);
       if (!(el instanceof HTMLInputElement)) return;
@@ -196,6 +196,7 @@ export function MatchControllerPage() {
           <label>
             Round
             <input
+              id={displayFocusId('round')}
               value={match.round}
               onChange={(e) => dispatchMatch({ type: 'setField', field: 'round', value: e.target.value })}
             />
@@ -203,6 +204,7 @@ export function MatchControllerPage() {
           <label>
             Division
             <input
+              id={displayFocusId('division')}
               value={match.division}
               onChange={(e) => dispatchMatch({ type: 'setField', field: 'division', value: e.target.value })}
               placeholder="Optional"
@@ -357,7 +359,7 @@ function CompetitorPad({
         <label>
           Name
           <input
-            id={competitorFocusId(side, 'name')}
+            id={displayFocusId(competitorFocus(side, 'name'))}
             value={name}
             onChange={(e) => dispatchMatch({ type: 'setCompetitor', side, field: 'name', value: e.target.value })}
           />
@@ -365,7 +367,7 @@ function CompetitorPad({
         <label>
           Gym
           <input
-            id={competitorFocusId(side, 'gym')}
+            id={displayFocusId(competitorFocus(side, 'gym'))}
             value={gym}
             placeholder="Optional"
             onChange={(e) => dispatchMatch({ type: 'setCompetitor', side, field: 'gym', value: e.target.value })}
