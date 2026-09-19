@@ -1,4 +1,5 @@
 import {
+  buildPlayQueue,
   comparePlaylistItems,
   moveItemIds,
   withFolderOrder as applyFolderOrder,
@@ -14,6 +15,10 @@ export const MIN_INTERVAL_SEC = 1;
 export const MAX_INTERVAL_SEC = 300;
 export const DEFAULT_INTERVAL_SEC = 10;
 export const INTERVAL_PRESETS_SEC = [5, 10, 30, 60] as const;
+
+/** Phone/PC pickers: `video/*` plus common gym-TV extensions. H.264 MP4 is the safest; WebM on Chromium; MOV often on Safari. */
+export const VIDEO_ACCEPT = 'video/*,.mp4,.m4v,.webm,.mov,.ogg,.ogv';
+const VIDEO_EXTENSIONS = ['.mp4', '.m4v', '.webm', '.mov', '.ogg', '.ogv'] as const;
 
 export const FOLDERS = [
   {
@@ -34,17 +39,18 @@ export const FOLDERS = [
   {
     id: 'videos',
     label: 'Videos',
-    ready: false,
-    comingSoon: 'Coming soon. Gym videos will use this same list: name, thumbnail, Up / Down, and drag.',
+    ready: true,
+    comingSoon: '',
     itemNoun: 'video',
     itemNounPlural: 'videos',
     addLabel: 'Add videos',
-    accept: 'video/*',
+    accept: VIDEO_ACCEPT,
     mimePrefix: 'video/',
     labelPrefix: 'Video',
     emptyCopy:
-      'No videos yet. When this folder opens, videos will reorder with the same Up / Down and drag controls as Gallery.',
-    orderHint: 'Top video plays first when In order is on. Hold the grip, then drag — or tap Up / Down.',
+      'No videos yet. Pick clips from this phone or computer — they stay on this device, nothing is uploaded. MP4 and WebM play most reliably. Long videos are fine; very large files can take a moment to add.',
+    orderHint:
+      'Top video plays first when In order is on. Hold the grip, then drag — or tap Up / Down. Videos play all the way through, then the next item.',
   },
   {
     id: 'shop',
@@ -189,6 +195,43 @@ export function isImageItem(item: StoredPhoto): boolean {
   return item.mime.startsWith('image/');
 }
 
+export function isVideoItem(item: StoredPhoto): boolean {
+  return item.mime.startsWith('video/');
+}
+
+export function isPlayableItem(item: StoredPhoto): boolean {
+  return isImageItem(item) || isVideoItem(item);
+}
+
+export function mediaKind(item: StoredPhoto): 'image' | 'video' | null {
+  if (isImageItem(item)) return 'image';
+  if (isVideoItem(item)) return 'video';
+  return null;
+}
+
+function fileExtension(name: string): string {
+  const index = name.lastIndexOf('.');
+  return index >= 0 ? name.slice(index).toLowerCase() : '';
+}
+
+export function fileMatchesFolder(file: File, folder: FolderConfig): boolean {
+  if (file.type && file.type.startsWith(folder.mimePrefix)) return true;
+  if (folder.mimePrefix === 'video/') {
+    return (VIDEO_EXTENSIONS as readonly string[]).includes(fileExtension(file.name));
+  }
+  return false;
+}
+
+export function mimeFromFile(file: File, folder: FolderConfig): string {
+  if (file.type) return file.type;
+  const ext = fileExtension(file.name);
+  if (ext === '.mp4' || ext === '.m4v') return 'video/mp4';
+  if (ext === '.webm') return 'video/webm';
+  if (ext === '.mov') return 'video/quicktime';
+  if (ext === '.ogg' || ext === '.ogv') return 'video/ogg';
+  return folder.mimePrefix === 'video/' ? 'video/mp4' : 'image/jpeg';
+}
+
 function normalizeFolderPlay(raw: unknown): Record<FolderId, boolean> {
   const obj = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
   return folderFlagRecord((id) => obj[id] !== false);
@@ -203,17 +246,25 @@ export function clampIntervalSec(n: number): number {
   return Math.min(MAX_INTERVAL_SEC, Math.max(MIN_INTERVAL_SEC, Math.round(n)));
 }
 
-/** Enabled folders play in FOLDERS order, list order (sortOrder) inside each. Slideshow skips non-images. */
-export function playablePhotos(
-  photos: StoredPhoto[],
+/**
+ * Enabled folders play in FOLDERS order, list order (sortOrder) inside each.
+ * Images and videos both participate. Pass `storyIds` later for one cross-folder
+ * story order (Gallery + Videos interleaved) without changing per-folder lists.
+ */
+export function playableItems(
+  items: StoredPhoto[],
   folderPlay: Record<FolderId, boolean>,
+  storyIds?: readonly string[] | null,
 ): StoredPhoto[] {
-  return FOLDER_IDS.flatMap((id) =>
-    folderPlay[id]
-      ? photos.filter((photo) => photo.folderId === id && isImageItem(photo)).sort(comparePhotos)
-      : [],
-  );
+  return buildPlayQueue(items, {
+    folderIds: FOLDER_IDS,
+    folderEnabled: folderPlay,
+    isPlayable: isPlayableItem,
+    storyIds,
+  });
 }
+
+export const playablePhotos = playableItems;
 
 export async function listPhotos(folderId?: FolderId): Promise<StoredPhoto[]> {
   const db = await openDb();
@@ -245,7 +296,7 @@ async function persistLegacyGallery(): Promise<void> {
   await txDone(tx);
 }
 
-export async function addFolderFiles(files: File[], folderId: FolderId): Promise<void> {
+export async function addFolderFiles(files: File[], folderId: FolderId): Promise<number> {
   const folder = folderById(folderId);
   const existing = await listPhotos(folderId);
   const db = await openDb();
@@ -253,13 +304,15 @@ export async function addFolderFiles(files: File[], folderId: FolderId): Promise
   const store = tx.objectStore(STORE);
   let nextIndex = existing.length;
   let nextOrder = existing.reduce((max, photo) => Math.max(max, photo.sortOrder), -1);
+  let added = 0;
   for (const file of files) {
-    if (!file.type.startsWith(folder.mimePrefix)) continue;
+    if (!fileMatchesFolder(file, folder)) continue;
     nextIndex += 1;
     nextOrder += 1;
+    added += 1;
     const photo: StoredPhoto = {
       id: crypto.randomUUID(),
-      mime: file.type,
+      mime: mimeFromFile(file, folder),
       addedAt: Date.now(),
       blob: file,
       label: `${folder.labelPrefix} ${nextIndex}`,
@@ -269,6 +322,7 @@ export async function addFolderFiles(files: File[], folderId: FolderId): Promise
     store.put(photo);
   }
   await txDone(tx);
+  return added;
 }
 
 export async function addPhotos(files: File[], folderId: FolderId = 'gallery'): Promise<void> {
