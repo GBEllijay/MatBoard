@@ -283,6 +283,14 @@ p {
   border-color: rgba(255, 255, 255, 0.22);
 }
 
+.mode-card__actions--folders {
+  gap: 0.5rem;
+}
+
+.mode-card__actions--folders .btn {
+  min-height: 52px;
+}
+
 .home__hints {
   margin-top: 1.4rem;
 }

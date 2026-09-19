@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { FOLDERS } from '../lib/photoStore';
 
 export function HomePage() {
   return (
@@ -35,11 +36,22 @@ export function HomePage() {
               your phone. Set round length, rest time, and how many rounds.
             </span>
           </Link>
-          <Link className="mode-card mode-card--saver" to="/slideshow">
+          <article className="mode-card mode-card--saver">
             <strong>Owner’s Toolbox</strong>
             <span className="mode-card__sub">Pro</span>
             <span>Gallery, videos, Pro Shop, and event flyers for your gym TV.</span>
-          </Link>
+            <div className="mode-card__actions mode-card__actions--folders" aria-label="Owner folders">
+              {FOLDERS.map((folder) => (
+                <Link
+                  key={folder.id}
+                  className={`btn${folder.id === 'gallery' ? '' : ' btn--ghost'}`}
+                  to={`/slideshow?folder=${folder.id}`}
+                >
+                  {folder.label}
+                </Link>
+              ))}
+            </div>
+          </article>
         </nav>
 
         <div className="home__hints">

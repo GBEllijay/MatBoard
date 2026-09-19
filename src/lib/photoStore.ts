@@ -61,7 +61,7 @@ export type SaverPrefs = {
 
 type PhotoRow = Omit<StoredPhoto, 'folderId'> & { folderId?: FolderId | string };
 
-function isFolderId(value: unknown): value is FolderId {
+export function isFolderId(value: unknown): value is FolderId {
   return typeof value === 'string' && (FOLDER_IDS as readonly string[]).includes(value);
 }
 

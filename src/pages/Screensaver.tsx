@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { PlayExitMark } from '../components/PlayExitMark';
@@ -18,6 +18,7 @@ import {
   FOLDERS,
   getSaverPrefs,
   INTERVAL_PRESETS_SEC,
+  isFolderId,
   listPhotos,
   MAX_INTERVAL_SEC,
   MIN_INTERVAL_SEC,
@@ -49,6 +50,20 @@ export function ScreensaverPage() {
   const intervalMs = secondsToMs(intervalSec);
   const fs = usePlayFullscreen();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const folderParam = searchParams.get('folder');
+  const requestedFolder = isFolderId(folderParam) ? folderParam : null;
+
+  useEffect(() => {
+    if (!requestedFolder) return;
+    setExpanded({
+      gallery: requestedFolder === 'gallery',
+      videos: requestedFolder === 'videos',
+      shop: requestedFolder === 'shop',
+      events: requestedFolder === 'events',
+    });
+    setOptions(true);
+  }, [requestedFolder]);
 
   const galleryPhotos = useMemo(
     () => photos.filter((photo) => photo.folderId === 'gallery'),
