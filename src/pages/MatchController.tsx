@@ -4,7 +4,15 @@ import { Chrome } from '../components/Chrome';
 import { useInterval } from '../hooks/useClock';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useMatchState } from '../hooks/useStores';
-import { END_CUE_OPTIONS, patchAudioPrefs, playSelectedEndCue, unlockAudio, type EndCue } from '../lib/audio';
+import {
+  END_CUE_OPTIONS,
+  patchAudioPrefs,
+  playSelectedEndCue,
+  playStartCue,
+  playWarningCue,
+  unlockAudio,
+  type EndCue,
+} from '../lib/audio';
 import { openDisplayWindow, openOrCastDisplay } from '../lib/cast';
 import { minutesToMs, formatMmSs, secondsToMs } from '../lib/format';
 import {
@@ -183,41 +191,83 @@ export function MatchControllerPage() {
           </label>
         </div>
 
-        <label className="toggle">
-          <input
-            type="checkbox"
-            checked={match.endBuzzer}
-            onChange={(e) => dispatchMatch({ type: 'setEndBuzzer', value: e.target.checked })}
-          />
-          Match end sound
-        </label>
-        <div className="cue-preview">
-          <p className="cue-preview-label">Match end cue</p>
-          <div className="presets presets--end-cue" role="radiogroup" aria-label="Match end cue">
-            {END_CUE_OPTIONS.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                role="radio"
-                aria-checked={match.endCue === option.id}
-                className={`preset${match.endCue === option.id ? ' preset--on' : ''}`}
-                onClick={() => chooseMatchEndCue(option.id)}
-              >
-                {option.label}
-              </button>
-            ))}
+        <fieldset>
+          <legend>Match sounds</legend>
+          <label className="toggle">
+            <input
+              type="checkbox"
+              checked={match.startBeep}
+              onChange={(e) => dispatchMatch({ type: 'setStartBeep', value: e.target.checked })}
+            />
+            Start beep
+          </label>
+          <label className="toggle">
+            <input
+              type="checkbox"
+              checked={match.warningBeep}
+              onChange={(e) => dispatchMatch({ type: 'setWarningBeep', value: e.target.checked })}
+            />
+            10-second warning
+          </label>
+          <label className="toggle">
+            <input
+              type="checkbox"
+              checked={match.endBuzzer}
+              onChange={(e) => dispatchMatch({ type: 'setEndBuzzer', value: e.target.checked })}
+            />
+            Match end sound
+          </label>
+          <div className="cue-preview">
+            <p className="cue-preview-label">Match end cue</p>
+            <div className="presets presets--end-cue" role="radiogroup" aria-label="Match end cue">
+              {END_CUE_OPTIONS.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={match.endCue === option.id}
+                  className={`preset${match.endCue === option.id ? ' preset--on' : ''}`}
+                  onClick={() => chooseMatchEndCue(option.id)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-        <button
-          type="button"
-          className="btn btn--ghost"
-          disabled={!match.endBuzzer}
-          onClick={() => {
-            void unlockAudio().then(() => playSelectedEndCue('match', match.endCue));
-          }}
-        >
-          Test end sound
-        </button>
+          <div className="cue-preview">
+            <p className="cue-preview-label">Preview cues</p>
+            <div className="presets presets--three" role="group" aria-label="Preview match cues">
+              <button
+                type="button"
+                className="preset"
+                onClick={() => {
+                  void unlockAudio().then(() => playStartCue());
+                }}
+              >
+                Start
+              </button>
+              <button
+                type="button"
+                className="preset"
+                onClick={() => {
+                  void unlockAudio().then(() => playWarningCue());
+                }}
+              >
+                10s
+              </button>
+              <button
+                type="button"
+                className="preset"
+                disabled={!match.endBuzzer}
+                onClick={() => {
+                  void unlockAudio().then(() => playSelectedEndCue('match', match.endCue));
+                }}
+              >
+                End
+              </button>
+            </div>
+          </div>
+        </fieldset>
         {castNote ? <p className="cast-note">{castNote}</p> : null}
       </section>
 
