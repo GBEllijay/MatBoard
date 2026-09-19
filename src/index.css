@@ -2031,6 +2031,11 @@ fieldset {
   font-size: 16px;
 }
 
+.tournament input::placeholder {
+  color: var(--muted);
+  opacity: 0.72;
+}
+
 .tournament__actions {
   display: flex;
   flex-wrap: wrap;
@@ -2184,7 +2189,7 @@ fieldset {
   top: 50%;
   width: 0.7rem;
   height: 2px;
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.28);
 }
 
 .bracket__side--left .t-match::after {
@@ -2193,22 +2198,6 @@ fieldset {
 
 .bracket__side--right .t-match::after {
   left: 0;
-}
-
-.t-match__tag {
-  position: absolute;
-  right: 0.15rem;
-  bottom: -0.15rem;
-  font-size: 0.62rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.bracket__side--right .t-match__tag {
-  right: auto;
-  left: 0.15rem;
 }
 
 .t-slot {

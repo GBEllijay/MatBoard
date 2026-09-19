@@ -28,7 +28,7 @@ import {
 const MARKS: { kind: BoutOutcomeKind; label: string }[] = [
   { kind: 'win', label: 'Win' },
   { kind: 'dq', label: 'DQ' },
-  { kind: 'tech', label: 'Tech' },
+  { kind: 'tech', label: 'T-loss' },
 ];
 
 export function TournamentPage() {
@@ -59,7 +59,7 @@ export function TournamentPage() {
           <input
             value={tournament.title}
             onChange={(event) => setTournamentTitle(event.target.value)}
-            placeholder="Gi · Adult · Medium-Heavy"
+            placeholder="Division or class (optional)"
             aria-label="Division or class name"
           />
         </label>
@@ -101,7 +101,8 @@ export function TournamentPage() {
 
       <p className="tournament__hint">
         Type names in each slot. Tap <strong>Win</strong> on the fighter who won, or <strong>DQ</strong> /{' '}
-        <strong>Tech</strong> on the fighter who is out — the other person moves on. Saved on this device.
+        <strong>T-loss</strong> (technical loss) on the fighter who is out — the other person moves on. Saved
+        on this device.
       </p>
 
       <div className="tournament__board">
@@ -119,7 +120,7 @@ export function TournamentPage() {
               <input
                 value={champion}
                 onChange={(event) => setSlotName('champion', event.target.value)}
-                placeholder="Winner of the final"
+                placeholder="Winner"
                 aria-label="Champion"
               />
             </div>
@@ -174,14 +175,10 @@ function RoundColumn({ ids, label }: { ids: readonly BracketMatchId[]; label: st
 }
 
 function MatchCard({ matchId }: { matchId: BracketMatchId }) {
-  const tournament = useTournamentState();
-  const result = tournament.results[matchId];
-
   return (
     <article className="t-match" aria-label={roundLabel(matchId)}>
       <SlotRow matchId={matchId} side="a" />
       <SlotRow matchId={matchId} side="b" />
-      {result ? <span className="t-match__tag">{outcomeTag(result.kind)}</span> : null}
     </article>
   );
 }
@@ -193,7 +190,7 @@ function SlotRow({ matchId, side }: { matchId: BracketMatchId; side: MatchSide }
   const mark = slotMark(tournament.results[matchId], side);
   const seeds = seedSlots();
   const seedIndex = seeds.indexOf(id);
-  const placeholder = seedIndex >= 0 ? seedPlaceholder(seedIndex) : 'Winner advances here';
+  const placeholder = seedIndex >= 0 ? seedPlaceholder(seedIndex) : 'Winner';
 
   return (
     <div
@@ -227,8 +224,3 @@ function SlotRow({ matchId, side }: { matchId: BracketMatchId; side: MatchSide }
   );
 }
 
-function outcomeTag(kind: BoutOutcomeKind): string {
-  if (kind === 'dq') return 'DQ';
-  if (kind === 'tech') return 'Technical loss';
-  return 'Win';
-}
