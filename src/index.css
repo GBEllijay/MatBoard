@@ -453,7 +453,7 @@ p {
   z-index: 5;
 }
 
-/* Slideshow play watermark: quiet top-left, fat-thumb hit, leaves the bottom free for name labels. */
+/* Play watermark: quiet top-left, fat-thumb hit. Slideshow keeps the bottom free for name labels; Training keeps the clock clear. */
 .play-exit {
   position: absolute;
   top: calc(0.2rem + var(--safe-t));
@@ -1064,6 +1064,7 @@ label {
   top: calc(4.2rem + var(--safe-t));
   left: 0;
   right: 0;
+  padding-inline: 4.75rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   font-weight: 800;
@@ -1518,6 +1519,7 @@ fieldset {
 .play--landscape .chrome,
 .play--fs .chrome,
 .saver--play .chrome,
+.training .chrome,
 .play--landscape .training__hint,
 .play--fs .training__hint {
   opacity: 0;
@@ -1538,7 +1540,8 @@ fieldset {
   padding-top: 2.2rem;
 }
 
-.play--landscape .training__phase {
+.play--landscape .training__phase,
+.play--tv .training__phase {
   top: calc(0.7rem + var(--safe-t));
 }
 

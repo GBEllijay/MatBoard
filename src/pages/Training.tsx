@@ -1,6 +1,8 @@
 import { useCallback, useState, type MouseEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
 import { FullscreenChip } from '../components/FullscreenChip';
+import { PlayExitMark } from '../components/PlayExitMark';
 import { Sheet } from '../components/Sheet';
 import { useInterval } from '../hooks/useClock';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
@@ -37,6 +39,7 @@ export function TrainingPage() {
   const [, setTick] = useState(0);
   const remaining = remainingTraining(training);
   const fs = usePlayFullscreen();
+  const navigate = useNavigate();
   const customWork = !isWorkPreset(training.workMs);
   const customBreak = !isBreakPreset(training.breakMs);
   const showCustomWork = customWorkOpen || customWork;
@@ -67,6 +70,12 @@ export function TrainingPage() {
       });
   };
 
+  const exitTraining = () => {
+    void fs.exit().finally(() => {
+      navigate('/');
+    });
+  };
+
   const previewCue = (play: () => void) => {
     void unlockAudio().then(play);
   };
@@ -84,11 +93,12 @@ export function TrainingPage() {
       className={`training training--${training.phase}${fs.className ? ` ${fs.className}` : ''}`}
       onClick={(event) => {
         const target = event.target as HTMLElement;
-        if (target.closest('.sheet, .training__clock, .chrome, .btn, input, fieldset, label, .play-fs')) return;
+        if (target.closest('.sheet, .training__clock, .chrome, .btn, input, fieldset, label, .play-fs, .play-exit')) return;
         setOptions(true);
       }}
     >
       <Chrome ghost title="" />
+      <PlayExitMark onExit={exitTraining} />
       <div className="play-fs-slot">
         <FullscreenChip
           supported={fs.supported}
