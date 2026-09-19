@@ -1251,6 +1251,7 @@ fieldset {
   text-align: center;
 }
 
+.folder-list,
 .saver__list {
   list-style: none;
   padding: 0;
@@ -1259,14 +1260,17 @@ fieldset {
   gap: 0.4rem;
 }
 
+.folder-list--dragging,
 .saver__list--dragging {
   user-select: none;
 }
 
+.folder-list--dragging input,
 .saver__list--dragging input {
   pointer-events: none;
 }
 
+.folder-row,
 .saver__row {
   display: grid;
   grid-template-columns: 56px 48px minmax(0, 1fr);
@@ -1282,12 +1286,14 @@ fieldset {
   -webkit-touch-callout: none;
 }
 
+.folder-row--dragging,
 .saver__row--dragging {
   background: rgba(212, 160, 23, 0.14);
   outline: 1px solid rgba(240, 194, 75, 0.45);
   z-index: 2;
 }
 
+.folder-row__drag,
 .saver__drag {
   grid-area: drag;
   align-self: stretch;
@@ -1302,6 +1308,7 @@ fieldset {
   cursor: grab;
 }
 
+.folder-row--dragging .folder-row__drag,
 .saver__row--dragging .saver__drag {
   cursor: grabbing;
   background: rgba(212, 160, 23, 0.22);
@@ -1321,15 +1328,18 @@ fieldset {
   opacity: 0.72;
 }
 
+.folder-row .saver__thumb,
 .saver__row .saver__thumb {
   grid-area: thumb;
 }
 
+.folder-row input,
 .saver__row input {
   grid-area: name;
   min-width: 0;
 }
 
+.folder-row__actions,
 .saver__row-actions {
   grid-area: actions;
   display: grid;
@@ -1337,6 +1347,7 @@ fieldset {
   gap: 0.4rem;
 }
 
+.folder-row__move,
 .saver__move {
   min-height: 52px;
   min-width: 52px;
@@ -1354,23 +1365,27 @@ fieldset {
   padding: 0.2rem 0.25rem;
 }
 
+.folder-row__move span:last-child,
 .saver__move span:last-child {
   font-size: 0.72rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
+.folder-row__move:disabled,
 .saver__move:disabled {
   opacity: 0.38;
   cursor: default;
 }
 
+.saver-folder__panel .folder-row__remove,
 .saver-folder__panel .saver__remove {
   width: 100%;
   min-height: 52px;
   padding-inline: 0.6rem;
 }
 
+.folder-list__hint,
 .saver-folder__hint {
   margin: 0;
   color: var(--muted);
@@ -1379,16 +1394,19 @@ fieldset {
 }
 
 @media (min-width: 720px) {
+  .folder-row,
   .saver__row {
     grid-template-columns: 56px 48px minmax(0, 1fr) auto;
     grid-template-areas: 'drag thumb name actions';
     padding: 0.45rem 0.15rem;
   }
 
+  .folder-row__actions,
   .saver__row-actions {
     grid-template-columns: 64px 64px auto;
   }
 
+  .folder-row__move,
   .saver__move {
     min-width: 64px;
   }

@@ -1,15 +1,21 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { movePhotoIds, type StoredPhoto } from '../lib/photoStore';
+import { moveItemIds } from '../lib/playlist';
+import type { FolderConfig } from '../lib/photoStore';
 
 const TOUCH_HOLD_MS = 430;
 const MOUSE_HOLD_MS = 140;
 const CANCEL_PX = 12;
 const EDGE_PX = 56;
 
+export type FolderListItem = {
+  id: string;
+  label: string;
+};
+
 type Props = {
-  folderLabel: string;
-  photos: StoredPhoto[];
-  urlById: Record<string, string>;
+  folder: FolderConfig;
+  items: FolderListItem[];
+  thumbById: Record<string, string>;
   onRename: (id: string, label: string) => Promise<void>;
   onRemove: (id: string) => Promise<void>;
   onReorder: (orderedIds: string[]) => Promise<void>;
@@ -21,27 +27,25 @@ type DragSession = {
   startX: number;
   startY: number;
   lastY: number;
-  armed: boolean;
   dragging: boolean;
   fromHandle: boolean;
-  originIds: string[];
   draftIds: string[];
   timer: number | null;
   raf: number | null;
 };
 
-function idsOf(photos: StoredPhoto[]): string[] {
-  return photos.map((photo) => photo.id);
+function idsOf(items: FolderListItem[]): string[] {
+  return items.map((item) => item.id);
 }
 
 function sameIds(a: string[], b: string[]): boolean {
   return a.length === b.length && a.every((id, index) => id === b[index]);
 }
 
-export function FolderPhotoList({
-  folderLabel,
-  photos,
-  urlById,
+export function FolderItemList({
+  folder,
+  items,
+  thumbById,
   onRename,
   onRemove,
   onReorder,
@@ -51,15 +55,15 @@ export function FolderPhotoList({
   const listRef = useRef<HTMLUListElement>(null);
   const rowRefs = useRef<Record<string, HTMLLIElement | null>>({});
   const dragRef = useRef<DragSession | null>(null);
-  const photosRef = useRef(photos);
-  photosRef.current = photos;
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
 
-  const visibleIds = draftIds ?? idsOf(photos);
-  const byId = new Map(photos.map((photo) => [photo.id, photo]));
+  const visibleIds = draftIds ?? idsOf(items);
+  const byId = new Map(items.map((item) => [item.id, item]));
 
   useEffect(() => {
     if (!dragRef.current?.dragging) setDraftIds(null);
-  }, [photos]);
+  }, [items]);
 
   useEffect(() => {
     return () => {
@@ -72,7 +76,7 @@ export function FolderPhotoList({
   }, []);
 
   const persist = (orderedIds: string[]) => {
-    if (sameIds(orderedIds, idsOf(photosRef.current))) return;
+    if (sameIds(orderedIds, idsOf(itemsRef.current))) return;
     void onReorder(orderedIds);
   };
 
@@ -99,7 +103,7 @@ export function FolderPhotoList({
     if (prev) {
       const rect = prev.getBoundingClientRect();
       if (clientY < rect.top + rect.height * 0.42) {
-        const nextIds = movePhotoIds(drag.draftIds, from, from - 1);
+        const nextIds = moveItemIds(drag.draftIds, from, from - 1);
         drag.draftIds = nextIds;
         setDraftIds(nextIds);
         return;
@@ -108,7 +112,7 @@ export function FolderPhotoList({
     if (next) {
       const rect = next.getBoundingClientRect();
       if (clientY > rect.top + rect.height * 0.58) {
-        const nextIds = movePhotoIds(drag.draftIds, from, from + 1);
+        const nextIds = moveItemIds(drag.draftIds, from, from + 1);
         drag.draftIds = nextIds;
         setDraftIds(nextIds);
       }
@@ -134,7 +138,6 @@ export function FolderPhotoList({
   const beginDrag = () => {
     const drag = dragRef.current;
     if (!drag || drag.dragging) return;
-    drag.armed = true;
     drag.dragging = true;
     setDraftIds(drag.draftIds);
     setDraggingId(drag.id);
@@ -142,23 +145,21 @@ export function FolderPhotoList({
     drag.raf = window.requestAnimationFrame(tick);
   };
 
-  const onRowPointerDown = (photoId: string, event: ReactPointerEvent<HTMLLIElement>) => {
-    if (photos.length < 2) return;
+  const onRowPointerDown = (itemId: string, event: ReactPointerEvent<HTMLLIElement>) => {
+    if (items.length < 2) return;
     if (event.pointerType === 'mouse' && event.button !== 0) return;
     const target = event.target as HTMLElement;
-    if (target.closest('input, .saver__move, .saver__remove')) return;
+    if (target.closest('input, .folder-row__move, .folder-row__remove')) return;
     stopDrag(false);
-    const originIds = idsOf(photosRef.current);
+    const originIds = idsOf(itemsRef.current);
     const session: DragSession = {
       pointerId: event.pointerId,
-      id: photoId,
+      id: itemId,
       startX: event.clientX,
       startY: event.clientY,
       lastY: event.clientY,
-      armed: false,
       dragging: false,
-      fromHandle: Boolean((event.target as HTMLElement).closest('.saver__drag')),
-      originIds,
+      fromHandle: Boolean((event.target as HTMLElement).closest('.folder-row__drag')),
       draftIds: originIds.slice(),
       timer: null,
       raf: null,
@@ -223,52 +224,44 @@ export function FolderPhotoList({
   };
 
   const moveBy = (from: number, to: number) => {
-    persist(movePhotoIds(draftIds ?? idsOf(photosRef.current), from, to));
+    persist(moveItemIds(draftIds ?? idsOf(itemsRef.current), from, to));
   };
 
-  if (!photos.length) {
-    return (
-      <p className="saver-folder__empty">
-        No photos yet. Add kids, promotions, or gym photos. Each row keeps a thumbnail next to the
-        name. Hold the grip, then drag to set the slideshow story — or tap Up / Down.
-      </p>
-    );
+  if (!items.length) {
+    return <p className="saver-folder__empty">{folder.emptyCopy}</p>;
   }
 
   return (
     <>
-      <p className="saver-folder__hint">
-        Top photo plays first when <strong>In order</strong> is on. Hold the grip, then drag — or
-        tap Up / Down.
-      </p>
+      <p className="folder-list__hint saver-folder__hint">{folder.orderHint}</p>
       <ul
         ref={listRef}
-        className={`saver__list${draggingId ? ' saver__list--dragging' : ''}`}
-        aria-label={`${folderLabel} photos`}
+        className={`folder-list saver__list${draggingId ? ' folder-list--dragging saver__list--dragging' : ''}`}
+        aria-label={`${folder.label} ${folder.itemNounPlural}`}
       >
         {visibleIds.map((id, index) => {
-          const photo = byId.get(id);
-          if (!photo) return null;
+          const item = byId.get(id);
+          if (!item) return null;
           return (
-            <PhotoRow
-              key={photo.id}
-              photo={photo}
-              src={urlById[photo.id]}
-              fallback={`Photo ${index + 1}`}
+            <FolderItemRow
+              key={item.id}
+              item={item}
+              src={thumbById[item.id]}
+              fallback={`${folder.labelPrefix} ${index + 1}`}
               index={index}
               isFirst={index === 0}
               isLast={index === visibleIds.length - 1}
-              dragging={draggingId === photo.id}
+              dragging={draggingId === item.id}
               rowRef={(node) => {
-                rowRefs.current[photo.id] = node;
+                rowRefs.current[item.id] = node;
               }}
-              onPointerDown={(event) => onRowPointerDown(photo.id, event)}
+              onPointerDown={(event) => onRowPointerDown(item.id, event)}
               onPointerMove={onRowPointerMove}
               onPointerUp={onRowPointerEnd}
               onPointerCancel={onRowPointerEnd}
               onLostPointerCapture={onRowPointerEnd}
-              onRename={async (label) => onRename(photo.id, label)}
-              onRemove={async () => onRemove(photo.id)}
+              onRename={async (label) => onRename(item.id, label)}
+              onRemove={async () => onRemove(item.id)}
               onMoveUp={() => moveBy(index, index - 1)}
               onMoveDown={() => moveBy(index, index + 1)}
             />
@@ -279,8 +272,8 @@ export function FolderPhotoList({
   );
 }
 
-function PhotoRow({
-  photo,
+function FolderItemRow({
+  item,
   src,
   fallback,
   index,
@@ -298,7 +291,7 @@ function PhotoRow({
   onMoveUp,
   onMoveDown,
 }: {
-  photo: StoredPhoto;
+  item: FolderListItem;
   src?: string;
   fallback: string;
   index: number;
@@ -316,11 +309,11 @@ function PhotoRow({
   onMoveUp: () => void;
   onMoveDown: () => void;
 }) {
-  const [label, setLabel] = useState(photo.label);
+  const [label, setLabel] = useState(item.label);
   const [thumbFailed, setThumbFailed] = useState(false);
   useEffect(() => {
-    setLabel(photo.label);
-  }, [photo.label]);
+    setLabel(item.label);
+  }, [item.label]);
   useEffect(() => {
     setThumbFailed(false);
   }, [src]);
@@ -330,7 +323,7 @@ function PhotoRow({
   return (
     <li
       ref={rowRef}
-      className={`saver__row${dragging ? ' saver__row--dragging' : ''}`}
+      className={`folder-row saver__row${dragging ? ' folder-row--dragging saver__row--dragging' : ''}`}
       style={{ touchAction: dragging ? 'none' : 'pan-y' }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -344,9 +337,9 @@ function PhotoRow({
     >
       <button
         type="button"
-        className="saver__drag"
+        className="folder-row__drag saver__drag"
         aria-label={`Hold, then drag to move ${name}`}
-        aria-describedby={`photo-order-${photo.id}`}
+        aria-describedby={`folder-item-order-${item.id}`}
         tabIndex={-1}
         onClick={(event) => event.preventDefault()}
       >
@@ -370,16 +363,16 @@ function PhotoRow({
         aria-label={`Label for ${fallback}`}
         onChange={(e) => setLabel(e.target.value)}
         onBlur={() => {
-          if (label !== photo.label) void onRename(label);
+          if (label !== item.label) void onRename(label);
         }}
         onKeyDown={(e) => {
           if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
         }}
       />
-      <div className="saver__row-actions">
+      <div className="folder-row__actions saver__row-actions">
         <button
           type="button"
-          className="saver__move"
+          className="folder-row__move saver__move"
           aria-label={`Move ${name} up`}
           disabled={isFirst}
           onClick={onMoveUp}
@@ -389,7 +382,7 @@ function PhotoRow({
         </button>
         <button
           type="button"
-          className="saver__move"
+          className="folder-row__move saver__move"
           aria-label={`Move ${name} down`}
           disabled={isLast}
           onClick={onMoveDown}
@@ -397,11 +390,15 @@ function PhotoRow({
           <span aria-hidden="true">↓</span>
           <span>Down</span>
         </button>
-        <button type="button" className="btn btn--ghost saver__remove" onClick={() => void onRemove()}>
+        <button
+          type="button"
+          className="btn btn--ghost folder-row__remove saver__remove"
+          onClick={() => void onRemove()}
+        >
           Remove
         </button>
       </div>
-      <span id={`photo-order-${photo.id}`} className="sr-only">
+      <span id={`folder-item-order-${item.id}`} className="sr-only">
         Position {index + 1}
       </span>
     </li>

@@ -1,3 +1,10 @@
+import {
+  comparePlaylistItems,
+  moveItemIds,
+  withFolderOrder as applyFolderOrder,
+  type PlaylistItem,
+} from './playlist';
+
 const DB_NAME = 'matboard';
 const STORE = 'photos';
 const PREFS = 'prefs';
@@ -9,29 +16,75 @@ export const DEFAULT_INTERVAL_SEC = 10;
 export const INTERVAL_PRESETS_SEC = [5, 10, 30, 60] as const;
 
 export const FOLDERS = [
-  { id: 'gallery', label: 'Gallery', ready: true, comingSoon: '' },
+  {
+    id: 'gallery',
+    label: 'Gallery',
+    ready: true,
+    comingSoon: '',
+    itemNoun: 'photo',
+    itemNounPlural: 'photos',
+    addLabel: 'Add photos',
+    accept: 'image/*',
+    mimePrefix: 'image/',
+    labelPrefix: 'Photo',
+    emptyCopy:
+      'No photos yet. Add kids, promotions, or gym photos. Each row keeps a thumbnail next to the name. Hold the grip, then drag to set the slideshow story — or tap Up / Down.',
+    orderHint: 'Top photo plays first when In order is on. Hold the grip, then drag — or tap Up / Down.',
+  },
   {
     id: 'videos',
     label: 'Videos',
     ready: false,
-    comingSoon: 'Coming soon. Gym videos will live in this folder.',
+    comingSoon: 'Coming soon. Gym videos will use this same list: name, thumbnail, Up / Down, and drag.',
+    itemNoun: 'video',
+    itemNounPlural: 'videos',
+    addLabel: 'Add videos',
+    accept: 'video/*',
+    mimePrefix: 'video/',
+    labelPrefix: 'Video',
+    emptyCopy:
+      'No videos yet. When this folder opens, videos will reorder with the same Up / Down and drag controls as Gallery.',
+    orderHint: 'Top video plays first when In order is on. Hold the grip, then drag — or tap Up / Down.',
   },
   {
     id: 'shop',
     label: 'Pro Shop',
     ready: false,
-    comingSoon: 'Coming soon. Pro Shop flyers and QR codes will live in this folder.',
+    comingSoon: 'Coming soon. Pro Shop cards will use this same list: name, thumbnail, Up / Down, and drag.',
+    itemNoun: 'card',
+    itemNounPlural: 'cards',
+    addLabel: 'Add cards',
+    accept: 'image/*',
+    mimePrefix: 'image/',
+    labelPrefix: 'Card',
+    emptyCopy:
+      'No Pro Shop cards yet. Product flyers will reorder with the same Up / Down and drag controls as Gallery.',
+    orderHint: 'Top card shows first when In order is on. Hold the grip, then drag — or tap Up / Down.',
   },
   {
     id: 'events',
     label: 'Events',
     ready: false,
-    comingSoon: 'Coming soon. Tournament flyers and QR codes will live in this folder.',
+    comingSoon: 'Coming soon. Event flyers will use this same list: name, thumbnail, Up / Down, and drag.',
+    itemNoun: 'flyer',
+    itemNounPlural: 'flyers',
+    addLabel: 'Add flyers',
+    accept: 'image/*',
+    mimePrefix: 'image/',
+    labelPrefix: 'Flyer',
+    emptyCopy:
+      'No event flyers yet. Tournament flyers will reorder with the same Up / Down and drag controls as Gallery.',
+    orderHint: 'Top flyer shows first when In order is on. Hold the grip, then drag — or tap Up / Down.',
   },
 ] as const;
 
 export type FolderId = (typeof FOLDERS)[number]['id'];
+export type FolderConfig = (typeof FOLDERS)[number];
 export const FOLDER_IDS: readonly FolderId[] = FOLDERS.map((folder) => folder.id);
+
+export function folderById(id: FolderId): FolderConfig {
+  return FOLDERS.find((folder) => folder.id === id) ?? FOLDERS[0];
+}
 
 function folderFlagRecord(value: boolean | ((id: FolderId) => boolean)): Record<FolderId, boolean> {
   return Object.fromEntries(
@@ -45,15 +98,10 @@ export function folderExpandedState(openId: FolderId | null): Record<FolderId, b
   return folderFlagRecord((id) => id === openId);
 }
 
-export type StoredPhoto = {
-  id: string;
+export type StoredPhoto = PlaylistItem & {
   mime: string;
-  addedAt: number;
   blob: Blob;
-  label: string;
   folderId: FolderId;
-  /** List position within the folder. Legacy rows fall back to addedAt. */
-  sortOrder: number;
 };
 
 export const DEFAULT_SHUFFLE = false;
@@ -126,42 +174,19 @@ function normalizePhoto(row: PhotoRow, index: number): StoredPhoto {
   };
 }
 
-export function comparePhotos(a: StoredPhoto, b: StoredPhoto): number {
-  if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
-  if (a.addedAt !== b.addedAt) return a.addedAt - b.addedAt;
-  return a.id.localeCompare(b.id);
-}
-
-export function movePhotoIds(ids: string[], from: number, to: number): string[] {
-  if (from === to || from < 0 || to < 0 || from >= ids.length || to >= ids.length) {
-    return ids;
-  }
-  const next = ids.slice();
-  const [item] = next.splice(from, 1);
-  next.splice(to, 0, item);
-  return next;
-}
+export const comparePhotos = comparePlaylistItems;
+export const movePhotoIds = moveItemIds;
 
 export function withFolderOrder(
   photos: StoredPhoto[],
   folderId: FolderId,
   orderedIds: string[],
 ): StoredPhoto[] {
-  const inFolder = photos.filter((photo) => photo.folderId === folderId);
-  const byId = new Map(inFolder.map((photo) => [photo.id, photo]));
-  const used = new Set<string>();
-  const nextFolder: StoredPhoto[] = [];
-  const push = (id: string) => {
-    const photo = byId.get(id);
-    if (!photo || used.has(id)) return;
-    used.add(id);
-    nextFolder.push({ ...photo, sortOrder: nextFolder.length });
-  };
-  for (const id of orderedIds) push(id);
-  for (const photo of inFolder) push(photo.id);
-  return FOLDER_IDS.flatMap((id) =>
-    id === folderId ? nextFolder : photos.filter((photo) => photo.folderId === id).sort(comparePhotos),
-  );
+  return applyFolderOrder(photos, folderId, orderedIds, FOLDER_IDS);
+}
+
+export function isImageItem(item: StoredPhoto): boolean {
+  return item.mime.startsWith('image/');
 }
 
 function normalizeFolderPlay(raw: unknown): Record<FolderId, boolean> {
@@ -178,13 +203,15 @@ export function clampIntervalSec(n: number): number {
   return Math.min(MAX_INTERVAL_SEC, Math.max(MIN_INTERVAL_SEC, Math.round(n)));
 }
 
-/** Enabled folders play in FOLDERS order, list order (sortOrder) inside each. */
+/** Enabled folders play in FOLDERS order, list order (sortOrder) inside each. Slideshow skips non-images. */
 export function playablePhotos(
   photos: StoredPhoto[],
   folderPlay: Record<FolderId, boolean>,
 ): StoredPhoto[] {
   return FOLDER_IDS.flatMap((id) =>
-    folderPlay[id] ? photos.filter((photo) => photo.folderId === id).sort(comparePhotos) : [],
+    folderPlay[id]
+      ? photos.filter((photo) => photo.folderId === id && isImageItem(photo)).sort(comparePhotos)
+      : [],
   );
 }
 
@@ -218,7 +245,8 @@ async function persistLegacyGallery(): Promise<void> {
   await txDone(tx);
 }
 
-export async function addPhotos(files: File[], folderId: FolderId = 'gallery'): Promise<void> {
+export async function addFolderFiles(files: File[], folderId: FolderId): Promise<void> {
+  const folder = folderById(folderId);
   const existing = await listPhotos(folderId);
   const db = await openDb();
   const tx = db.transaction(STORE, 'readwrite');
@@ -226,7 +254,7 @@ export async function addPhotos(files: File[], folderId: FolderId = 'gallery'): 
   let nextIndex = existing.length;
   let nextOrder = existing.reduce((max, photo) => Math.max(max, photo.sortOrder), -1);
   for (const file of files) {
-    if (!file.type.startsWith('image/')) continue;
+    if (!file.type.startsWith(folder.mimePrefix)) continue;
     nextIndex += 1;
     nextOrder += 1;
     const photo: StoredPhoto = {
@@ -234,13 +262,17 @@ export async function addPhotos(files: File[], folderId: FolderId = 'gallery'): 
       mime: file.type,
       addedAt: Date.now(),
       blob: file,
-      label: `Photo ${nextIndex}`,
+      label: `${folder.labelPrefix} ${nextIndex}`,
       folderId,
       sortOrder: nextOrder,
     };
     store.put(photo);
   }
   await txDone(tx);
+}
+
+export async function addPhotos(files: File[], folderId: FolderId = 'gallery'): Promise<void> {
+  await addFolderFiles(files, folderId);
 }
 
 export async function renamePhoto(id: string, label: string): Promise<void> {
@@ -264,7 +296,7 @@ export async function removePhoto(id: string): Promise<void> {
   await txDone(tx);
 }
 
-export async function reorderPhotos(folderId: FolderId, orderedIds: string[]): Promise<void> {
+export async function reorderFolderItems(folderId: FolderId, orderedIds: string[]): Promise<void> {
   const db = await openDb();
   const tx = db.transaction(STORE, 'readwrite');
   const store = tx.objectStore(STORE);
@@ -287,6 +319,10 @@ export async function reorderPhotos(folderId: FolderId, orderedIds: string[]): P
   for (const id of orderedIds) putOrdered(id);
   for (const row of inFolder) putOrdered(row.id);
   await txDone(tx);
+}
+
+export async function reorderPhotos(folderId: FolderId, orderedIds: string[]): Promise<void> {
+  await reorderFolderItems(folderId, orderedIds);
 }
 
 export async function clearFolder(folderId: FolderId): Promise<void> {
