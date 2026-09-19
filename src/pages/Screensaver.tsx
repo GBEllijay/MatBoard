@@ -16,6 +16,7 @@ import {
   clampIntervalSec,
   DEFAULT_FOLDER_PLAY,
   DEFAULT_INTERVAL_SEC,
+  DEFAULT_MUTE_VIDEO,
   DEFAULT_SHUFFLE,
   FOLDERS,
   folderById,
@@ -33,6 +34,7 @@ import {
   reorderFolderItems,
   setFolderPlay,
   setSaverIntervalSec,
+  setSaverMuteVideo,
   setSaverShuffle,
   withFolderOrder,
   type FolderId,
@@ -48,6 +50,7 @@ export function ScreensaverPage() {
   const [playing, setPlaying] = useState(true);
   const [intervalSec, setIntervalSec] = useState(DEFAULT_INTERVAL_SEC);
   const [shuffle, setShuffle] = useState(DEFAULT_SHUFFLE);
+  const [muteVideo, setMuteVideo] = useState(DEFAULT_MUTE_VIDEO);
   const [pickerNote, setPickerNote] = useState('');
   const [unlockSound, setUnlockSound] = useState(false);
   const [folderPlay, setFolderPlayState] = useState(DEFAULT_FOLDER_PLAY);
@@ -90,6 +93,7 @@ export function ScreensaverPage() {
       setIntervalSec(prefs.intervalSec);
       setFolderPlayState(prefs.folderPlay);
       setShuffle(prefs.shuffle);
+      setMuteVideo(prefs.muteVideo);
     });
   }, []);
 
@@ -164,6 +168,12 @@ export function ScreensaverPage() {
     void setSaverShuffle(next);
   };
 
+  const commitMuteVideo = (next: boolean) => {
+    setMuteVideo(next);
+    void setSaverMuteVideo(next);
+    if (!next) setUnlockSound(true);
+  };
+
   const openAdd = (folderId: FolderId) => {
     addFolderRef.current = folderId;
     const input = fileRef.current;
@@ -196,7 +206,7 @@ export function ScreensaverPage() {
   const emptyCopy =
     photos.length === 0
       ? focusFolder === 'videos'
-        ? 'Pick videos from this device. They stay on this phone or computer — nothing is uploaded. Clips play in full on the TV. Press F for fullscreen on a computer plugged into the TV.'
+        ? 'Pick videos from this device. They stay on this phone or computer — nothing is uploaded. Clips play in full on the TV, muted by default so gym music can keep playing. Press F for fullscreen on a computer plugged into the TV.'
         : 'Pick photos from this device. They loop fullscreen. On a computer plugged into the TV, press F for fullscreen. Set how long each slide stays on screen.'
       : 'Nothing is set to play. Turn on Gallery or Videos, or another folder that has media, in options.';
 
@@ -206,7 +216,7 @@ export function ScreensaverPage() {
       onClick={(event) => {
         const target = event.target as HTMLElement;
         if (target.closest('.sheet, .chrome, .saver__empty, .btn, input, label, .play-fs, .play-exit, .tv-tip, .saver__unmute')) return;
-        setUnlockSound(true);
+        if (!muteVideo) setUnlockSound(true);
         if (queue.length) setOptions(true);
       }}
     >
@@ -230,6 +240,7 @@ export function ScreensaverPage() {
           altFrame={index % 2 === 1}
           playing={playing}
           loop={order.length <= 1}
+          muted={muteVideo}
           unlockSound={unlockSound}
           onEnded={advance}
         />
@@ -252,15 +263,16 @@ export function ScreensaverPage() {
         open={options}
         title="Owner’s Toolbox"
         onClose={() => {
-          setUnlockSound(true);
+          if (!muteVideo) setUnlockSound(true);
           setOptions(false);
         }}
       >
         <p>
           Gold <strong>On</strong> means that folder plays on the TV. Enabled folders play in folder
           order — Gallery, then Videos — each in its list order. Photos use the interval below;
-          videos play all the way through, then the next item. Shuffle randomizes that combined
-          queue.
+          videos play all the way through, then the next item. Clips stay muted unless you turn on
+          Play video sound, so Spotify or another tab can keep the gym music going. Shuffle
+          randomizes that combined queue.
         </p>
         {pickerNote ? <p className="saver-folder__empty">{pickerNote}</p> : null}
         <fieldset>
@@ -319,6 +331,33 @@ export function ScreensaverPage() {
               onClick={() => commitShuffle(true)}
             >
               Shuffle
+            </button>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Video sound</legend>
+          <p className="saver-sound-hint">
+            Mute clips so gym-floor music keeps playing. Match and Training buzzers still cut
+            through — they are separate from clip audio.
+          </p>
+          <div className="presets presets--split" role="radiogroup" aria-label="Video sound">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={muteVideo}
+              className={`preset${muteVideo ? ' preset--on' : ''}`}
+              onClick={() => commitMuteVideo(true)}
+            >
+              Mute clips
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={!muteVideo}
+              className={`preset${!muteVideo ? ' preset--on' : ''}`}
+              onClick={() => commitMuteVideo(false)}
+            >
+              Play video sound
             </button>
           </div>
         </fieldset>
@@ -385,6 +424,7 @@ function SaverSlide({
   altFrame,
   playing,
   loop,
+  muted,
   unlockSound,
   onEnded,
 }: {
@@ -393,6 +433,7 @@ function SaverSlide({
   altFrame: boolean;
   playing: boolean;
   loop: boolean;
+  muted: boolean;
   unlockSound: boolean;
   onEnded: () => void;
 }) {
@@ -404,6 +445,9 @@ function SaverSlide({
     const el = videoRef.current;
     if (!el || !video) return;
     el.loop = loop;
+    el.defaultMuted = muted;
+    el.muted = muted;
+    if (muted) setNeedsUnmute(false);
     if (!playing) {
       el.pause();
       return;
@@ -411,14 +455,25 @@ function SaverSlide({
     let cancelled = false;
     const start = async () => {
       try {
-        if (unlockSound) el.muted = false;
+        el.muted = muted;
+        if (!muted && unlockSound) el.muted = false;
         await el.play();
-        if (!el.muted) setNeedsUnmute(false);
+        if (cancelled) return;
+        if (muted) {
+          setNeedsUnmute(false);
+          try {
+            if ('mediaSession' in navigator) navigator.mediaSession.metadata = null;
+          } catch {
+            /* ignore */
+          }
+        } else if (!el.muted) {
+          setNeedsUnmute(false);
+        }
       } catch (err) {
         if (cancelled) return;
         if (err instanceof DOMException && err.name === 'AbortError') return;
         el.muted = true;
-        setNeedsUnmute(true);
+        if (!muted) setNeedsUnmute(true);
         try {
           await el.play();
         } catch {
@@ -431,7 +486,7 @@ function SaverSlide({
       cancelled = true;
       el.pause();
     };
-  }, [playing, src, video, loop, onEnded, unlockSound]);
+  }, [playing, src, video, loop, onEnded, muted, unlockSound]);
 
   if (video) {
     return (
@@ -440,9 +495,11 @@ function SaverSlide({
           ref={videoRef}
           className="saver__video"
           src={src}
+          muted={muted}
           playsInline
           autoPlay
           loop={loop}
+          disableRemotePlayback
           onEnded={() => {
             if (!loop) onEnded();
           }}
@@ -450,7 +507,7 @@ function SaverSlide({
             if (!loop) onEnded();
           }}
         />
-        {needsUnmute ? (
+        {!muted && needsUnmute ? (
           <button
             type="button"
             className="saver__unmute"

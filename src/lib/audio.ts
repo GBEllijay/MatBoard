@@ -95,6 +95,8 @@ function getContext(): AudioContext {
     if (!Ctor) {
       throw new Error('Web Audio is not available');
     }
+    // Synth + decoded Parou stay on this context (not <audio>/<video>) so short
+    // gym cues mix over floor music instead of taking the media session.
     ctx = new Ctor();
     master = buildMaster(ctx);
   }

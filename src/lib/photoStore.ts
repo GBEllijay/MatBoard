@@ -50,7 +50,7 @@ export const FOLDERS = [
     emptyCopy:
       'No videos yet. Pick clips from this phone or computer — they stay on this device, nothing is uploaded. MP4 and WebM play most reliably. Long videos are fine; very large files can take a moment to add.',
     orderHint:
-      'Top video plays first when In order is on. Hold the grip, then drag — or tap Up / Down. Videos play all the way through, then the next item.',
+      'Top video plays first when In order is on. Hold the grip, then drag — or tap Up / Down. Videos play all the way through, then the next item. Clips are muted by default so gym music can keep playing.',
   },
   {
     id: 'shop',
@@ -111,11 +111,14 @@ export type StoredPhoto = PlaylistItem & {
 };
 
 export const DEFAULT_SHUFFLE = false;
+/** Clips start silent so gym-floor music in another tab can keep playing. */
+export const DEFAULT_MUTE_VIDEO = true;
 
 export type SaverPrefs = {
   intervalSec: number;
   folderPlay: Record<FolderId, boolean>;
   shuffle: boolean;
+  muteVideo: boolean;
 };
 
 type PhotoRow = Omit<StoredPhoto, 'folderId' | 'sortOrder'> & {
@@ -239,6 +242,11 @@ function normalizeFolderPlay(raw: unknown): Record<FolderId, boolean> {
 
 function normalizeShuffle(raw: unknown): boolean {
   return raw === true;
+}
+
+/** Missing key means muted (default). Only an explicit false plays clip audio. */
+export function normalizeMuteVideo(raw: unknown): boolean {
+  return raw !== false;
 }
 
 export function clampIntervalSec(n: number): number {
@@ -401,11 +409,13 @@ export async function getSaverPrefs(): Promise<SaverPrefs> {
       const intervalReq = store.get('intervalSec');
       const playReq = store.get('folderPlay');
       const shuffleReq = store.get('shuffle');
+      const muteVideoReq = store.get('muteVideo');
       tx.oncomplete = () => {
         resolve({
           intervalSec: clampIntervalSec(Number(intervalReq.result ?? DEFAULT_INTERVAL_SEC)),
           folderPlay: normalizeFolderPlay(playReq.result),
           shuffle: normalizeShuffle(shuffleReq.result),
+          muteVideo: normalizeMuteVideo(muteVideoReq.result),
         });
       };
       tx.onerror = () => reject(tx.error);
@@ -415,6 +425,7 @@ export async function getSaverPrefs(): Promise<SaverPrefs> {
       intervalSec: DEFAULT_INTERVAL_SEC,
       folderPlay: { ...DEFAULT_FOLDER_PLAY },
       shuffle: DEFAULT_SHUFFLE,
+      muteVideo: DEFAULT_MUTE_VIDEO,
     };
   }
 }
@@ -438,5 +449,12 @@ export async function setSaverShuffle(shuffle: boolean): Promise<void> {
   const db = await openDb();
   const tx = db.transaction(PREFS, 'readwrite');
   tx.objectStore(PREFS).put(shuffle, 'shuffle');
+  await txDone(tx);
+}
+
+export async function setSaverMuteVideo(muteVideo: boolean): Promise<void> {
+  const db = await openDb();
+  const tx = db.transaction(PREFS, 'readwrite');
+  tx.objectStore(PREFS).put(Boolean(muteVideo), 'muteVideo');
   await txDone(tx);
 }
