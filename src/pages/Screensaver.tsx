@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
+import { FolderPhotoList } from '../components/FolderPhotoList';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { TvTip } from '../components/TvTip';
@@ -13,8 +14,10 @@ import {
   addPhotos,
   clearFolder,
   clampIntervalSec,
+  comparePhotos,
   DEFAULT_FOLDER_PLAY,
   DEFAULT_INTERVAL_SEC,
+  DEFAULT_SHUFFLE,
   FOLDERS,
   folderExpandedState,
   getSaverPrefs,
@@ -26,8 +29,11 @@ import {
   playablePhotos,
   removePhoto,
   renamePhoto,
+  reorderPhotos,
   setFolderPlay,
   setSaverIntervalSec,
+  setSaverShuffle,
+  withFolderOrder,
   type FolderId,
   type StoredPhoto,
 } from '../lib/photoStore';
@@ -39,7 +45,7 @@ export function ScreensaverPage() {
   const [options, setOptions] = useState(false);
   const [playing, setPlaying] = useState(true);
   const [intervalSec, setIntervalSec] = useState(DEFAULT_INTERVAL_SEC);
-  const [shuffle, setShuffle] = useState(true);
+  const [shuffle, setShuffle] = useState(DEFAULT_SHUFFLE);
   const [folderPlay, setFolderPlayState] = useState(DEFAULT_FOLDER_PLAY);
   const [expanded, setExpanded] = useState<Record<FolderId, boolean>>(() =>
     folderExpandedState('gallery'),
@@ -77,18 +83,22 @@ export function ScreensaverPage() {
     void getSaverPrefs().then((prefs) => {
       setIntervalSec(prefs.intervalSec);
       setFolderPlayState(prefs.folderPlay);
+      setShuffle(prefs.shuffle);
     });
   }, []);
 
+  const photosRef = useRef(photos);
+  photosRef.current = photos;
+  const photoIdsKey = photos.map((photo) => photo.id).join('|');
+
   useEffect(() => {
     const next: Record<string, string> = {};
-    for (const photo of photos) {
+    for (const photo of photosRef.current) {
       next[photo.id] = URL.createObjectURL(photo.blob);
     }
     setUrlById(next);
-    setIndex(0);
     return () => Object.values(next).forEach((url) => URL.revokeObjectURL(url));
-  }, [photos]);
+  }, [photoIdsKey]);
 
   useEffect(() => {
     setIndex(0);
@@ -103,6 +113,10 @@ export function ScreensaverPage() {
     }
     return ids;
   }, [queue, shuffle]);
+
+  useEffect(() => {
+    setIndex((n) => (order.length === 0 ? 0 : n % order.length));
+  }, [order.length]);
 
   useEffect(() => {
     if (!playing || order.length <= 1) return;
@@ -124,6 +138,20 @@ export function ScreensaverPage() {
   const commitFolderPlay = (folderId: FolderId, enabled: boolean) => {
     setFolderPlayState((prev) => ({ ...prev, [folderId]: enabled }));
     void setFolderPlay(folderId, enabled);
+  };
+
+  const persistFolderOrder = async (folderId: FolderId, orderedIds: string[]) => {
+    setPhotos((rows) => withFolderOrder(rows, folderId, orderedIds));
+    try {
+      await reorderPhotos(folderId, orderedIds);
+    } catch {
+      await refresh();
+    }
+  };
+
+  const commitShuffle = (next: boolean) => {
+    setShuffle(next);
+    void setSaverShuffle(next);
   };
 
   const onFiles = async (files: FileList | null) => {
@@ -191,7 +219,7 @@ export function ScreensaverPage() {
       <Sheet open={options} title="Owner’s Toolbox" onClose={() => setOptions(false)}>
         <p>
           Gold <strong>On</strong> means that folder plays on the TV. Gallery is the photo library;
-          more folders can be added later.
+          drag or use Up / Down to set the story. More folders can be added later.
         </p>
         <fieldset>
           <legend>Slide interval</legend>
@@ -229,10 +257,29 @@ export function ScreensaverPage() {
             ))}
           </div>
         </fieldset>
-        <label className="toggle">
-          <input type="checkbox" checked={shuffle} onChange={(e) => setShuffle(e.target.checked)} />
-          Shuffle
-        </label>
+        <fieldset>
+          <legend>Play order</legend>
+          <div className="presets presets--split" role="radiogroup" aria-label="Play order">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={!shuffle}
+              className={`preset${!shuffle ? ' preset--on' : ''}`}
+              onClick={() => commitShuffle(false)}
+            >
+              In order
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={shuffle}
+              className={`preset${shuffle ? ' preset--on' : ''}`}
+              onClick={() => commitShuffle(true)}
+            >
+              Shuffle
+            </button>
+          </div>
+        </fieldset>
         <label className="toggle">
           <input type="checkbox" checked={playing} onChange={(e) => setPlaying(e.target.checked)} />
           Playing
@@ -240,7 +287,9 @@ export function ScreensaverPage() {
 
         <div className="saver-folders">
           {FOLDERS.map((folder) => {
-            const folderItems = photos.filter((photo) => photo.folderId === folder.id);
+            const folderItems = photos
+              .filter((photo) => photo.folderId === folder.id)
+              .sort(comparePhotos);
             return (
               <details
                 key={folder.id}
@@ -290,33 +339,22 @@ export function ScreensaverPage() {
                           Clear {folder.label}
                         </button>
                       ) : null}
-                      {folderItems.length ? (
-                        <ul className="saver__list">
-                          {folderItems.map((photo, i) => (
-                            <PhotoRow
-                              key={photo.id}
-                              photo={photo}
-                              src={urlById[photo.id]}
-                              fallback={`Photo ${i + 1}`}
-                              onRename={async (label) => {
-                                await renamePhoto(photo.id, label);
-                                setPhotos((rows) =>
-                                  rows.map((row) => (row.id === photo.id ? { ...row, label } : row)),
-                                );
-                              }}
-                              onRemove={async () => {
-                                await removePhoto(photo.id);
-                                await refresh();
-                              }}
-                            />
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="saver-folder__empty">
-                          No photos yet. Add kids, promotions, or gym photos. Each row keeps a
-                          thumbnail next to the name.
-                        </p>
-                      )}
+                      <FolderPhotoList
+                        folderLabel={folder.label}
+                        photos={folderItems}
+                        urlById={urlById}
+                        onRename={async (id, label) => {
+                          await renamePhoto(id, label);
+                          setPhotos((rows) =>
+                            rows.map((row) => (row.id === id ? { ...row, label } : row)),
+                          );
+                        }}
+                        onRemove={async (id) => {
+                          await removePhoto(id);
+                          await refresh();
+                        }}
+                        onReorder={async (orderedIds) => persistFolderOrder(folder.id, orderedIds)}
+                      />
                     </>
                   ) : (
                     <p className="saver-folder__empty">{folder.comingSoon}</p>
@@ -340,58 +378,5 @@ export function ScreensaverPage() {
         }}
       />
     </main>
-  );
-}
-
-function PhotoRow({
-  photo,
-  src,
-  fallback,
-  onRename,
-  onRemove,
-}: {
-  photo: StoredPhoto;
-  src?: string;
-  fallback: string;
-  onRename: (label: string) => Promise<void>;
-  onRemove: () => Promise<void>;
-}) {
-  const [label, setLabel] = useState(photo.label);
-  const [thumbFailed, setThumbFailed] = useState(false);
-  useEffect(() => {
-    setLabel(photo.label);
-  }, [photo.label]);
-  useEffect(() => {
-    setThumbFailed(false);
-  }, [src]);
-
-  return (
-    <li>
-      <span className="saver__thumb" aria-hidden="true">
-        {src && !thumbFailed ? (
-          <img
-            src={src}
-            alt=""
-            draggable={false}
-            onError={() => setThumbFailed(true)}
-          />
-        ) : null}
-      </span>
-      <input
-        value={label}
-        placeholder={fallback}
-        aria-label={`Label for ${fallback}`}
-        onChange={(e) => setLabel(e.target.value)}
-        onBlur={() => {
-          if (label !== photo.label) void onRename(label);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-        }}
-      />
-      <button type="button" className="btn btn--ghost" onClick={() => void onRemove()}>
-        Remove
-      </button>
-    </li>
   );
 }
