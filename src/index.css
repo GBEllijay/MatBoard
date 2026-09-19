@@ -959,6 +959,12 @@ label {
   margin: 0.55rem 0;
 }
 
+.controller .toggle input[type='checkbox'] {
+  width: 1.4rem;
+  height: 1.4rem;
+  accent-color: var(--gold);
+}
+
 .cue-preview {
   display: grid;
   justify-items: start;
