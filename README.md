@@ -10,7 +10,7 @@ Browsers cannot permanently hide the address bar in a normal tab. For gym TV / c
 
 ## Modes
 
-- **Match** — Blue competitor on top, white below. Name + gym, green points (0–99), orange advantages (0–99), red disadvantages (0–9). Landscape scoreboard at `/match` (tap a score +1, long-press −1, tap `MM:SS` to start/pause). Fat-thumb controller at `/match/control` for names, round, division, clock presets, second nudges, and match-end sound (on by default; **Buzzer** or owner-recorded **Parou**).
+- **Match** — Blue competitor on top, white below. Name + gym, green points (0–99), orange advantages (0–99), red disadvantages (0–9). Landscape scoreboard at `/match` (tap a score +1, long-press −1, tap `MM:SS` to start/pause). Fat-thumb controller at `/match/control` for names, round, division, clock presets, second nudges, and match sounds: optional start beep (off), optional 10-second warning (off), and match-end sound (on by default; **Buzzer** or owner-recorded **Parou**).
 - **Training** — Black fullscreen `MM:SS`. Tap the clock to start/pause. Tap anywhere else for options (round **1:00 / 2:00 / 5:00 / 10:00** or custom `MM:SS` up to 99:59, break **0:00 / 0:30 / 1:00** or custom up to 10:00, rounds 1–99 or Endless, Training end sound on/off with **Buzzer** or **Parou, stop!**, Start / 10s / End cue previews, plus mute / volume / vibrate). Quieter start cue, 10-second warning, selected end cue. Screen wake lock while running.
 - **Owner’s Toolbox** — Home card title (subtitle **Pro**). Folder buttons sit under that card, rendered from the `FOLDERS` list (initial set: Gallery, Videos, Pro Shop, Events). Tapping one opens that folder’s manage UI (`/slideshow?folder=…`; `/screensaver` still works). Manual only; never auto-starts from Match or Training. Playlists have on/off play toggles on the manage screen. Gallery is the working photo library: pick photos on device, name them (thumbnail next to the name), and set slide interval from 1 second to 5:00. Videos / Pro Shop / Events are visible shells for later. Playback concatenates enabled folders in list order (or shuffles that list). Existing saved photos migrate into Gallery. Fullscreen loop with the full photo visible (`object-fit: contain`), letterbox/pillarbox filled by a blurred copy of the same image, a very gentle Ken Burns zoom, options sheet, and wake lock while playing.
 
@@ -68,14 +68,14 @@ A compressor and soft clipper sit on the master bus so end cues can be loud in a
 
 | Cue | Where | How it sounds | How it is made |
 | --- | --- | --- | --- |
-| **Start** | Training only (round / clock start) | Two rising “go” notes, brighter and shorter than the warning | Sine at 784 Hz then 1175 Hz, light octave shimmer |
-| **10-second warning** | Training work phase only | Three light staccato ticks on one pitch | Quiet triangle pulses at 1047 Hz |
+| **Start** | Training (round / clock start); Match when **Start beep** is on | Two rising “go” notes, brighter and shorter than the warning | Sine at 784 Hz then 1175 Hz, light octave shimmer |
+| **10-second warning** | Training work phase; Match when **10-second warning** is on | Three light staccato ticks on one pitch | Quiet triangle pulses at 1047 Hz |
 | **End buzzer** | Training round/session end; Match when the clock hits 0:00 (optional, on by default) if **Buzzer** is selected | Classic electric gym buzzer: sustained, raspy, mid-forward | Detuned square pair (~392/406 Hz) + saw sub + 23 Hz rasp + a few ms of synthesized noise. Match holds it longer and a bit louder than Training. |
 | **Parou** | Same end slots as the buzzer, when **Parou** is selected | Owner voice: “parou” | Gym-owned MP3, decoded into the same Web Audio master bus (mute / volume apply) |
 
-Match has **no** 10-second warning and **no** start cue. Match end sound still respects the on/off toggle.
+Match start beep and 10-second warning default **off** (IBJJF-style matches do not use a 10s warning). Match end sound defaults **on**. All three persist in match state.
 
-Preview start / 10s / end from Training options (End honors the Training end sound toggle). On the Match Controller, tap **Buzzer** or **Parou, stop!** (or **Test end sound**) to hear the Match end cue (honors mute / volume and the Match end sound toggle).
+Preview start / 10s / end from Training options or the Match Controller (End honors the matching end-sound toggle). On the Match Controller, tap **Buzzer** or **Parou, stop!** to pick the Match end cue (honors mute / volume and the Match end sound toggle).
 
 First tap on Display, Controller, or Training unlocks audio on iOS/Android (and preloads Parou). Volume, mute, and vibrate live in Training options and apply app-wide.
 

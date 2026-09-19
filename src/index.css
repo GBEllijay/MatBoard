@@ -629,6 +629,11 @@ p {
   opacity: 0.8;
 }
 
+/* Match Display: column labels should read at least as large as Round / Open / Paused. */
+.display .score__label {
+  font-size: clamp(0.9rem, 1.8vw, 1.15rem);
+}
+
 .score__label--wide {
   display: none;
 }
@@ -964,6 +969,12 @@ label {
   grid-template-columns: auto 1fr;
   align-items: center;
   margin: 0.55rem 0;
+}
+
+.controller .toggle input[type='checkbox'] {
+  width: 1.4rem;
+  height: 1.4rem;
+  accent-color: var(--gold);
 }
 
 .cue-preview {
@@ -1437,8 +1448,8 @@ fieldset {
     border-radius: 12px;
   }
 
-  .score__label {
-    font-size: 0.58rem;
+  .display .score__label {
+    font-size: clamp(0.82rem, 1.15vw + 0.45vh, 1.15rem);
   }
 
   .score__value {
@@ -1488,8 +1499,9 @@ fieldset {
 
   .display .score__label--wide {
     display: block;
-    font-size: 0.55rem;
-    letter-spacing: 0.1em;
+    font-size: clamp(0.88rem, 1.35vw + 0.5vh, 1.3rem);
+    letter-spacing: 0.08em;
+    line-height: 1.1;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1562,6 +1574,17 @@ fieldset {
   .display__meta,
   .display__clock-hint {
     font-size: 1.05rem;
+  }
+
+  .display .score {
+    padding: 0.55rem 0.75rem 0.35rem;
+  }
+
+  .display .score__label,
+  .display .score__label--wide {
+    font-size: clamp(1.15rem, 1.55vw, 1.65rem);
+    letter-spacing: 0.1em;
+    opacity: 0.9;
   }
 
   .play--tv .bout--blue {

@@ -1,5 +1,12 @@
 import { clamp, minutesToMs, secondsToMs } from './format';
-import { getAudioPrefs, parseEndCue, playSelectedEndCue, type EndCue } from './audio';
+import {
+  getAudioPrefs,
+  parseEndCue,
+  playSelectedEndCue,
+  playStartCue,
+  playWarningCue,
+  type EndCue,
+} from './audio';
 
 export type Side = 'blue' | 'white';
 export type ScoreKind = 'points' | 'advantages' | 'disadvantages';
@@ -21,6 +28,9 @@ export type MatchState = {
   remainingMs: number;
   running: boolean;
   startedAt: number | null;
+  startBeep: boolean;
+  warningBeep: boolean;
+  warned: boolean;
   endBuzzer: boolean;
   endCue: EndCue;
   revision: number;
@@ -36,6 +46,9 @@ export type MatchAction =
   | { type: 'setDuration'; durationMs: number }
   | { type: 'setField'; field: 'round' | 'division'; value: string }
   | { type: 'setCompetitor'; side: Side; field: 'name' | 'gym'; value: string }
+  | { type: 'setStartBeep'; value: boolean }
+  | { type: 'setWarningBeep'; value: boolean }
+  | { type: 'markWarned' }
   | { type: 'setEndBuzzer'; value: boolean }
   | { type: 'setEndCue'; value: EndCue }
   | { type: 'expireClock' };
@@ -44,6 +57,8 @@ const STORAGE_KEY = 'matboard.match.v1';
 const CHANNEL_NAME = 'matboard-match-v1';
 export const TIME_PRESETS_MIN = [3, 5, 10] as const;
 export const CLOCK_NUDGES_SEC = [-5, -1, 1, 5] as const;
+/** Optional Match 10-second warning; off by default (IBJJF does not use one). */
+export const MATCH_WARNING_MS = 10_000;
 /** Existing custom duration ceiling (180 minutes). */
 export const MAX_REMAINING_MS = minutesToMs(180);
 /** Display-friendly nudge cap (99:59) unless the match duration is longer. */
@@ -62,6 +77,8 @@ let channel: BroadcastChannel | null = null;
 let applyingRemote = false;
 let state: MatchState = loadState();
 let buzzedRevision = -1;
+let startedRevision = -1;
+let warnedRevision = -1;
 
 type PresentationLike = {
   send: (data: string) => void;
@@ -84,6 +101,9 @@ export function defaultMatch(): MatchState {
     remainingMs: durationMs,
     running: false,
     startedAt: null,
+    startBeep: false,
+    warningBeep: false,
+    warned: false,
     endBuzzer: true,
     endCue: getAudioPrefs().endCue,
     revision: 1,
@@ -101,6 +121,9 @@ function loadState(): MatchState {
       ...parsed,
       blue: { ...base.blue, ...parsed.blue },
       white: { ...base.white, ...parsed.white },
+      startBeep: parsed.startBeep === true,
+      warningBeep: parsed.warningBeep === true,
+      warned: Boolean(parsed.warned),
       endBuzzer: typeof parsed.endBuzzer === 'boolean' ? parsed.endBuzzer : true,
       endCue: parsed.endCue != null ? parseEndCue(parsed.endCue) : getAudioPrefs().endCue,
       revision: Number(parsed.revision ?? 1),
@@ -166,7 +189,7 @@ function persist(next: MatchState): void {
       }
     }
   }
-  maybeBuzz(prev, next);
+  maybeMatchCues(prev, next);
   listeners.forEach((fn) => fn());
 }
 
@@ -200,6 +223,7 @@ function applyAction(current: MatchState, action: MatchAction): MatchState {
           running: true,
           remainingMs: current.durationMs,
           startedAt: Date.now(),
+          warned: false,
         });
       }
       return bumpRevision({
@@ -207,6 +231,7 @@ function applyAction(current: MatchState, action: MatchAction): MatchState {
         running: true,
         remainingMs: remaining,
         startedAt: Date.now(),
+        warned: remaining > MATCH_WARNING_MS ? false : current.warned,
       });
     }
     case 'resetClock':
@@ -215,12 +240,15 @@ function applyAction(current: MatchState, action: MatchAction): MatchState {
         running: false,
         remainingMs: current.durationMs,
         startedAt: null,
+        warned: false,
       });
     case 'adjustClock': {
       const now = Date.now();
+      const next = applyAdjustClock(current, action.deltaMs, now);
       return bumpRevision({
         ...current,
-        ...applyAdjustClock(current, action.deltaMs, now),
+        ...next,
+        warned: next.remainingMs > MATCH_WARNING_MS ? false : current.warned,
       });
     }
     case 'resetScores':
@@ -236,6 +264,7 @@ function applyAction(current: MatchState, action: MatchAction): MatchState {
         remainingMs: action.durationMs,
         running: false,
         startedAt: null,
+        warned: false,
       });
     case 'setField':
       return bumpRevision({ ...current, [action.field]: action.value });
@@ -244,6 +273,13 @@ function applyAction(current: MatchState, action: MatchAction): MatchState {
         ...current,
         [action.side]: { ...current[action.side], [action.field]: action.value },
       });
+    case 'setStartBeep':
+      return bumpRevision({ ...current, startBeep: action.value });
+    case 'setWarningBeep':
+      return bumpRevision({ ...current, warningBeep: action.value, warned: action.value ? current.warned : false });
+    case 'markWarned':
+      if (current.warned) return current;
+      return bumpRevision({ ...current, warned: true });
     case 'setEndBuzzer':
       return bumpRevision({ ...current, endBuzzer: action.value });
     case 'setEndCue':
@@ -271,7 +307,15 @@ export function subscribeMatch(fn: () => void): () => void {
   return () => listeners.delete(fn);
 }
 
-function maybeBuzz(prev: MatchState, next: MatchState): void {
+function maybeMatchCues(prev: MatchState, next: MatchState): void {
+  if (!prev.running && next.running && next.startBeep && startedRevision !== next.revision) {
+    startedRevision = next.revision;
+    playStartCue();
+  }
+  if (!prev.warned && next.warned && next.warningBeep && warnedRevision !== next.revision) {
+    warnedRevision = next.revision;
+    playWarningCue();
+  }
   if (!(prev.running && !next.running && next.remainingMs === 0 && next.endBuzzer)) return;
   if (buzzedRevision === next.revision) return;
   buzzedRevision = next.revision;
@@ -288,6 +332,12 @@ export function dispatchMatch(action: MatchAction): void {
 }
 
 export function expireMatchClock(): boolean {
+  if (state.running && state.warningBeep && !state.warned) {
+    const left = remainingNow(state);
+    if (left <= MATCH_WARNING_MS && left > 0) {
+      dispatchMatch({ type: 'markWarned' });
+    }
+  }
   if (!state.running) return false;
   if (remainingNow(state) > 0) return false;
   dispatchMatch({ type: 'expireClock' });
