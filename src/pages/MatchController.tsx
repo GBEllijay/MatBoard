@@ -1,5 +1,5 @@
-import { useCallback, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useCallback, useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { useInterval } from '../hooks/useClock';
@@ -16,6 +16,7 @@ import {
 } from '../lib/audio';
 import { openDisplayWindow, openOrCastDisplay } from '../lib/cast';
 import { minutesToMs, formatMmSs, secondsToMs } from '../lib/format';
+import { competitorFocus, displayFocusId, parseDisplayFocus } from '../lib/matchFocus';
 import {
   CLOCK_NUDGES_SEC,
   dispatchMatch,
@@ -33,8 +34,25 @@ export function MatchControllerPage() {
   const [customOpen, setCustomOpen] = useState(false);
   const [customMinutes, setCustomMinutes] = useState('4');
   const [castNote, setCastNote] = useState('');
+  const [searchParams] = useSearchParams();
   const remaining = remainingNow(match);
   const durationIsPreset = TIME_PRESETS_MIN.some((minutes) => match.durationMs === minutesToMs(minutes));
+  const focusParam = searchParams.get('focus');
+
+  useEffect(() => {
+    const focus = parseDisplayFocus(focusParam);
+    if (!focus) return;
+    const id = displayFocusId(focus);
+    const run = () => {
+      const el = document.getElementById(id);
+      if (!(el instanceof HTMLInputElement)) return;
+      el.focus({ preventScroll: true });
+      el.select();
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    };
+    const raf = window.requestAnimationFrame(run);
+    return () => window.cancelAnimationFrame(raf);
+  }, [focusParam]);
 
   useWakeLock(match.running);
   useInterval(
@@ -178,6 +196,7 @@ export function MatchControllerPage() {
           <label>
             Round
             <input
+              id={displayFocusId('round')}
               value={match.round}
               onChange={(e) => dispatchMatch({ type: 'setField', field: 'round', value: e.target.value })}
             />
@@ -185,6 +204,7 @@ export function MatchControllerPage() {
           <label>
             Division
             <input
+              id={displayFocusId('division')}
               value={match.division}
               onChange={(e) => dispatchMatch({ type: 'setField', field: 'division', value: e.target.value })}
               placeholder="Optional"
@@ -339,6 +359,7 @@ function CompetitorPad({
         <label>
           Name
           <input
+            id={displayFocusId(competitorFocus(side, 'name'))}
             value={name}
             onChange={(e) => dispatchMatch({ type: 'setCompetitor', side, field: 'name', value: e.target.value })}
           />
@@ -346,6 +367,7 @@ function CompetitorPad({
         <label>
           Gym
           <input
+            id={displayFocusId(competitorFocus(side, 'gym'))}
             value={gym}
             placeholder="Optional"
             onChange={(e) => dispatchMatch({ type: 'setCompetitor', side, field: 'gym', value: e.target.value })}

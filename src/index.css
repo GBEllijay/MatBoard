@@ -232,6 +232,20 @@ p {
   position: relative;
 }
 
+/* Whole-card hit sits under the action buttons so Live Bout → Scoreboard and Toolbox → Gallery. */
+.mode-card__hit {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+}
+
+@media (hover: hover) {
+  .mode-card:has(> .mode-card__hit:hover) {
+    border-color: rgba(255, 255, 255, 0.32);
+  }
+}
+
 .mode-card strong {
   font-size: 1.8rem;
   letter-spacing: -0.04em;
@@ -267,6 +281,8 @@ p {
   margin-top: 0.85rem;
   width: 100%;
   min-width: 0;
+  position: relative;
+  z-index: 2;
 }
 
 .mode-card__actions .btn {
@@ -587,6 +603,14 @@ p {
   padding-bottom: calc(1rem + var(--safe-b));
 }
 
+.bout__who {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-self: stretch;
+}
+
 .bout__who h1 {
   font-size: clamp(1.6rem, 5.4vw, 4rem);
   line-height: 0.95;
@@ -597,6 +621,25 @@ p {
   opacity: 0.8;
   margin-top: 0.35rem;
   font-size: clamp(1rem, 2.4vw, 1.6rem);
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 1.2em;
+}
+
+.bout__who a {
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+  border-radius: 8px;
+}
+
+.bout__who p a {
+  flex: 1;
+}
+
+.bout__who a:focus-visible {
+  outline: 2px solid var(--gold-2);
+  outline-offset: 3px;
 }
 
 .bout__scores {
@@ -683,12 +726,29 @@ p {
   font-size: 0.9rem;
 }
 
+.display__meta a {
+  color: inherit;
+  border-radius: 6px;
+  min-height: 1.4em;
+}
+
+.display__meta a:focus-visible,
+.display__clock-hint:focus-visible {
+  outline: 2px solid var(--gold-2);
+  outline-offset: 2px;
+}
+
 .display__clock-hint {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  width: 100%;
   text-align: right;
   color: var(--muted);
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+  min-height: 44px;
 }
 
 .clock-btn {
@@ -782,6 +842,11 @@ p {
 .pad--white input {
   background: #fff;
   color: var(--white-ink);
+}
+
+.pad input:focus {
+  outline: 2px solid var(--gold-2);
+  border-color: var(--gold);
 }
 
 .pad__scores {
@@ -1511,6 +1576,12 @@ fieldset {
     white-space: nowrap;
   }
 
+  .bout__who a {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .bout__scores {
     min-height: 0;
     gap: 0.3rem;
@@ -1550,6 +1621,7 @@ fieldset {
   .display__clock-hint {
     text-align: right;
     font-size: 0.78rem;
+    min-height: 0;
   }
 
   .display .clock-btn {
