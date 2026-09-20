@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { BeltRail } from '../components/BeltRail';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { OutcomePickSheet } from '../components/OutcomeCalls';
@@ -51,6 +52,7 @@ export function TournamentPage() {
 
   return (
     <main className={`tournament${fs.className ? ` ${fs.className}` : ''}`}>
+      <BeltRail kind="tournament" />
       <PlayExitMark to="/pro" onExit={exitBoard} />
       <header className="tournament__bar">
         <div className="tournament__brand">
@@ -127,6 +129,7 @@ export function TournamentPage() {
           <div className="bracket__finals">
             <MatchCard matchId="final-0" liveMatchId={liveMatchId} />
             <div className={`bracket__champ${champion ? ' is-filled' : ''}`}>
+              <BeltRail kind="tournament" />
               <span>Champion</span>
               <RosterNameField
                 value={champion}

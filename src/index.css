@@ -243,8 +243,10 @@ p {
 .belt-rail {
   --belt-rail-width: 5px;
   --belt-tip-size: 0.85rem;
+  --belt-tip-2-size: 0px;
   --belt-fill: var(--white);
   --belt-tip: #14161c;
+  --belt-tip-2: transparent;
   --belt-edge: rgba(8, 10, 16, 0.35);
   position: absolute;
   inset: 0;
@@ -262,9 +264,11 @@ p {
     ),
     linear-gradient(
       to top,
-      var(--belt-tip) 0,
-      var(--belt-tip) var(--belt-tip-size),
-      var(--belt-fill) var(--belt-tip-size)
+      var(--belt-tip-2) 0,
+      var(--belt-tip-2) var(--belt-tip-2-size),
+      var(--belt-tip) var(--belt-tip-2-size),
+      var(--belt-tip) calc(var(--belt-tip-size) + var(--belt-tip-2-size)),
+      var(--belt-fill) calc(var(--belt-tip-size) + var(--belt-tip-2-size))
     );
   -webkit-mask-image: linear-gradient(
     to right,
@@ -296,6 +300,23 @@ p {
   --belt-fill: #0c0e12;
   --belt-tip: var(--neg);
   --belt-edge: rgba(255, 255, 255, 0.2);
+}
+
+.belt-rail--tournament {
+  --belt-fill: #2d7a3a;
+  --belt-tip: #e4c430;
+  --belt-edge: rgba(8, 10, 16, 0.38);
+}
+
+.btn:has(> .belt-rail),
+.tournament,
+.bracket__champ {
+  position: relative;
+}
+
+.btn .belt-rail {
+  --belt-rail-width: 4px;
+  --belt-tip-size: 0.55rem;
 }
 
 button.mode-card {
@@ -2611,6 +2632,7 @@ fieldset {
 
 /* Mock Tournament — landscape-first 16-person tree. */
 .tournament {
+  position: relative;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
@@ -2775,6 +2797,7 @@ fieldset {
 }
 
 .bracket__champ {
+  position: relative;
   display: grid;
   gap: 0.35rem;
   padding: 0.85rem 0.8rem 0.95rem;
