@@ -210,6 +210,17 @@ export function outcomeSubtitle(outcome: MatchOutcome | null): string | null {
   return DQ_REASON_LABELS[outcome.reason];
 }
 
+/** Gym-TV splash line. Win names the method; DQ names the penalty — never “loser”. */
+export function outcomeSplashLine(outcome: MatchOutcome | null): string | null {
+  if (!outcome) return null;
+  if (outcome.call === 'win') {
+    if (outcome.method === 'submission') return 'Winner by submission';
+    if (outcome.method === 'decision') return 'Winner by decision';
+    return 'Winner by points';
+  }
+  return outcome.reason === 'medical' ? 'Disqualified — Medical' : 'Disqualified — Technical';
+}
+
 export function needsRefDecision(match: {
   autoAnnounce: boolean;
   remainingMs: number;

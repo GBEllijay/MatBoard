@@ -14,7 +14,7 @@ export function useBoutQuerySync(): void {
 }
 
 /**
- * After a Win / DQ flash: keep the banner, then
+ * After a Win / DQ splash: hold the center flash, then
  * return to the bracket when this bout is linked. Gym matches stay on the board.
  * Chromecast / Presentation receivers stay on the scoreboard (no shared tournament store).
  */

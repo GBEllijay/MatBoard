@@ -1,7 +1,7 @@
 import { useCallback, useState, type MouseEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FullscreenChip } from '../components/FullscreenChip';
-import { OutcomeCalls, OutcomePickSheet, useOutcomeSheet } from '../components/OutcomeCalls';
+import { OutcomeSplash } from '../components/OutcomeSplash';
 import { TvTip } from '../components/TvTip';
 import { RankChip } from '../components/RankChip';
 import { ScoreBox } from '../components/ScoreBox';
@@ -12,19 +12,10 @@ import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useMatchState } from '../hooks/useStores';
 import { unlockAudio } from '../lib/audio';
-import {
-  controllerPath,
-  declareMatchOutcome,
-  linkedBracketMatchId,
-  roundDisplay,
-  visibleOutcomeBanner,
-} from '../lib/bracketBout';
-import {
-  competitorFocus,
-  type DisplayFocus,
-} from '../lib/matchFocus';
+import { controllerPath, linkedBracketMatchId, roundDisplay } from '../lib/bracketBout';
+import { competitorFocus, type DisplayFocus } from '../lib/matchFocus';
 import { dispatchMatch, expireMatchClock, remainingNow, type Side } from '../lib/matchStore';
-import { needsRefDecision, outcomeSubtitle } from '../lib/outcomes';
+import { needsRefDecision } from '../lib/outcomes';
 import { formatMmSs } from '../lib/format';
 
 export function MatchDisplayPage() {
@@ -34,10 +25,13 @@ export function MatchDisplayPage() {
   const fs = usePlayFullscreen();
   const navigate = useNavigate();
   const linkedId = linkedBracketMatchId(match.bracketMatchId);
-  const banner = visibleOutcomeBanner(match);
   const refNeeded = needsRefDecision({ ...match, remainingMs: remaining });
   const endedWithoutWinner = remaining <= 0 && !match.running && !match.outcome;
-  const outcomeSheet = useOutcomeSheet();
+  const splash = match.outcomeFlash && match.outcome ? match.outcome : null;
+  const splashName = splash
+    ? (splash.side === 'blue' ? match.blue.name : match.white.name).trim() ||
+      (splash.side === 'blue' ? 'Competitor 1' : 'Competitor 2')
+    : '';
 
   useBoutQuerySync();
   useBracketOutcomeReturn();
@@ -64,7 +58,7 @@ export function MatchDisplayPage() {
 
   const onBoardClick = (event: MouseEvent<HTMLElement>) => {
     const target = event.target as HTMLElement;
-    if (target.closest('a, button, .score, .tv-tip, .display__chrome, .bout__calls, .sheet')) return;
+    if (target.closest('a, button, .score, .tv-tip, .display__chrome, .display-splash')) return;
     // Landscape / fullscreen / TV: leave empty taps for play chrome (F, idle cursor). Portrait phone can open Controller.
     if (fs.active || fs.landscape || fs.tvStation) return;
     openController(endedWithoutWinner ? 'outcome' : undefined);
@@ -72,11 +66,10 @@ export function MatchDisplayPage() {
 
   const clockStatus = match.running ? 'Running' : remaining <= 0 ? 'Ended' : 'Paused';
   const clockStatusAction = match.running ? 'Pause match clock' : remaining <= 0 ? 'Restart match clock' : 'Start match clock';
-  const flashing = Boolean(match.outcomeFlash);
 
   return (
     <main
-      className={`display${linkedId ? ' display--linked' : ''}${fs.className ? ` ${fs.className}` : ''}`}
+      className={`display${linkedId ? ' display--linked' : ''}${splash ? ' display--splash' : ''}${fs.className ? ` ${fs.className}` : ''}`}
       onPointerDown={() => {
         void unlockAudio();
       }}
@@ -119,13 +112,7 @@ export function MatchDisplayPage() {
         disadvantages={match.blue.disadvantages}
         fallbackName="Competitor 1"
         linked={Boolean(linkedId)}
-        banner={banner?.side === 'blue' ? banner : null}
-        reason={banner?.side === 'blue' ? outcomeSubtitle(match.outcome) : null}
-        flashing={flashing}
-        highlightCalls={refNeeded}
         onOpenController={openController}
-        onWin={() => outcomeSheet.openWin('blue', match.blue.name || 'Competitor 1')}
-        onDq={() => outcomeSheet.openDq('blue', match.blue.name || 'Competitor 1')}
       />
 
       <section className="display__mid">
@@ -165,34 +152,10 @@ export function MatchDisplayPage() {
         disadvantages={match.white.disadvantages}
         fallbackName="Competitor 2"
         linked={Boolean(linkedId)}
-        banner={banner?.side === 'white' ? banner : null}
-        reason={banner?.side === 'white' ? outcomeSubtitle(match.outcome) : null}
-        flashing={flashing}
-        highlightCalls={refNeeded}
         onOpenController={openController}
-        onWin={() => outcomeSheet.openWin('white', match.white.name || 'Competitor 2')}
-        onDq={() => outcomeSheet.openDq('white', match.white.name || 'Competitor 2')}
       />
 
-      <OutcomePickSheet
-        open={outcomeSheet.sheet?.call ?? null}
-        title={
-          outcomeSheet.sheet?.call === 'dq'
-            ? `${outcomeSheet.sheet.label} DQ`
-            : `${outcomeSheet.sheet?.label ?? ''} win`
-        }
-        onClose={outcomeSheet.close}
-        onPickWin={(method) => {
-          if (!outcomeSheet.sheet) return;
-          declareMatchOutcome(outcomeSheet.sheet.side, { call: 'win', method });
-          outcomeSheet.close();
-        }}
-        onPickDq={(reason) => {
-          if (!outcomeSheet.sheet) return;
-          declareMatchOutcome(outcomeSheet.sheet.side, { call: 'dq', reason });
-          outcomeSheet.close();
-        }}
-      />
+      {splash ? <OutcomeSplash outcome={splash} name={splashName} /> : null}
     </main>
   );
 }
@@ -207,13 +170,7 @@ function CompetitorBand({
   disadvantages,
   fallbackName,
   linked,
-  banner,
-  reason,
-  flashing,
-  highlightCalls,
   onOpenController,
-  onWin,
-  onDq,
 }: {
   side: Side;
   name: string;
@@ -224,13 +181,7 @@ function CompetitorBand({
   disadvantages: number;
   fallbackName: string;
   linked: boolean;
-  banner: { kind: 'win' | 'dq'; text: string } | null;
-  reason: string | null;
-  flashing: boolean;
-  highlightCalls: boolean;
   onOpenController: (focus?: DisplayFocus) => void;
-  onWin: () => void;
-  onDq: () => void;
 }) {
   const label = side === 'blue' ? 'Blue' : 'White';
 
@@ -247,12 +198,6 @@ function CompetitorBand({
           </ControllerFocusLink>
           {rank ? <RankChip belt={rank} /> : null}
         </h1>
-        {banner ? (
-          <p className={`bout__banner bout__banner--${banner.kind}`} aria-live="polite">
-            {banner.text}
-            {reason ? <span className="bout__banner-reason">{reason}</span> : null}
-          </p>
-        ) : null}
         <p>
           <ControllerFocusLink
             focus={competitorFocus(side, 'gym')}
@@ -262,16 +207,6 @@ function CompetitorBand({
             {gym || '\u00a0'}
           </ControllerFocusLink>
         </p>
-        {linked ? (
-          <OutcomeCalls
-            sideLabel={label}
-            disabled={flashing}
-            highlight={highlightCalls}
-            variant="bout"
-            onWin={onWin}
-            onDq={onDq}
-          />
-        ) : null}
       </div>
       <div className="bout__scores">
         <ScoreBox side={side} kind="points" value={points} />

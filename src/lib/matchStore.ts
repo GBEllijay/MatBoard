@@ -61,7 +61,7 @@ export type MatchState = {
   autoAnnounce: boolean;
   /** Last Win (Submission / Points / Decision) or DQ (Technical / Medical). Survives reload; flash does not. */
   outcome: MatchOutcome | null;
-  /** Brief Winner / Disqualification banner; not restored after reload. */
+  /** Brief center splash; not restored after reload. */
   outcomeFlash: OutcomeFlash | null;
   revision: number;
 };

@@ -112,8 +112,8 @@ export function TournamentPage() {
 
       <p className="tournament__hint">
         Tap <strong>Score</strong> to open the match board with those two names. <strong>Win</strong> or{' '}
-        <strong>DQ</strong> there (or here) opens how the bout ended. <strong>Undo last</strong> backs out a mistaken
-        tap without wiping later bouts that already have their own result. Saved on this device.
+        <strong>DQ</strong> on the Controller (or here) opens how the bout ended. <strong>Undo last</strong> backs out a
+        mistaken tap without wiping later bouts that already have their own result. Saved on this device.
       </p>
 
       <div className="tournament__board">

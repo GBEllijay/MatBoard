@@ -5,6 +5,7 @@ import {
   decideClockEnd,
   inferScoreReason,
   needsRefDecision,
+  outcomeSplashLine,
   parseBoutOutcome,
   parseMatchOutcome,
 } from './outcomes.ts';
@@ -147,5 +148,61 @@ describe('parse helpers', () => {
     const white = { points: 0, advantages: 5, disadvantages: 0 };
     assert.equal(inferScoreReason('blue', blue, white), 'points');
     assert.equal(inferScoreReason('white', blue, white), undefined);
+  });
+});
+
+describe('outcomeSplashLine', () => {
+  it('names the win method, including auto points', () => {
+    assert.equal(
+      outcomeSplashLine({
+        side: 'blue',
+        call: 'win',
+        method: 'points',
+        scoreReason: 'advantages',
+        source: 'auto',
+        at: 1,
+      }),
+      'Winner by points',
+    );
+    assert.equal(
+      outcomeSplashLine({
+        side: 'white',
+        call: 'win',
+        method: 'submission',
+        source: 'manual',
+        at: 1,
+      }),
+      'Winner by submission',
+    );
+    assert.equal(
+      outcomeSplashLine({
+        side: 'blue',
+        call: 'win',
+        method: 'decision',
+        source: 'manual',
+        at: 1,
+      }),
+      'Winner by decision',
+    );
+  });
+
+  it('names the disqualified athlete’s reason and never says loser', () => {
+    const technical = outcomeSplashLine({
+      side: 'white',
+      call: 'dq',
+      reason: 'technical',
+      source: 'manual',
+      at: 1,
+    });
+    const medical = outcomeSplashLine({
+      side: 'blue',
+      call: 'dq',
+      reason: 'medical',
+      source: 'manual',
+      at: 1,
+    });
+    assert.equal(technical, 'Disqualified — Technical');
+    assert.equal(medical, 'Disqualified — Medical');
+    assert.equal(/loser/i.test(`${technical} ${medical}`), false);
   });
 });
