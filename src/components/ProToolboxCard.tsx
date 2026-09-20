@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { BeltRail } from './BeltRail';
 import { FOLDERS } from '../lib/photoStore';
 
 export function ProToolboxCard() {
@@ -29,6 +30,7 @@ export function ProToolboxCard() {
       </div>
       <div className="mode-card__actions mode-card__actions--tools" aria-label="Owner tools">
         <Link className="btn" to="/tournament">
+          <BeltRail kind="tournament" />
           Mock Tournament
         </Link>
         <Link className="btn" to="/schedule">

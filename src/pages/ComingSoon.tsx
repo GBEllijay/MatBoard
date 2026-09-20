@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { BeltRail } from '../components/BeltRail';
 import { HomeMark } from '../components/HomeMark';
 import { ProUnlockSheet } from '../components/ProUnlockSheet';
 import { useProUnlocked } from '../hooks/useProUnlocked';
@@ -27,6 +28,7 @@ export function ComingSoonPage() {
               Open Pro toolbox
             </Link>
             <Link className="btn" to="/tournament">
+              <BeltRail kind="tournament" />
               Mock Tournament
             </Link>
             <Link className="btn" to="/schedule">
