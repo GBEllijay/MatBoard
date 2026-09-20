@@ -39,7 +39,7 @@ export const TECHNIQUE_FOLDER = {
   mimePrefix: 'video/',
   labelPrefix: 'Clip',
   emptyCopy:
-    'No clips yet. Pick 1 to 10 videos from this phone or computer — they stay on this device, nothing is uploaded. Select a clip, tap Start, and it loops until you tap Stop.',
+    'No clips yet. Pick 1 to 10 videos from this phone or computer — they stay on this device, nothing is uploaded. Select a clip, tap Start, and it loops while the drill timer counts down.',
   orderHint: 'Tap Play to select a clip. Hold the grip, then drag — or tap Up / Down.',
 } as const;
 

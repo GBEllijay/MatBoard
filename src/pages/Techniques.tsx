@@ -8,7 +8,7 @@ import { useInterval } from '../hooks/useClock';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
-import { formatMmSs, secondsToMs } from '../lib/format';
+import { formatMmSs, formatMss, secondsToMs } from '../lib/format';
 import {
   DEFAULT_MUTE_VIDEO,
   getSaverPrefs,
@@ -296,7 +296,7 @@ export function TechniquesPage() {
                     commitDrill(seconds);
                   }}
                 >
-                  {formatMmSs(secondsToMs(seconds))}
+                  {formatMss(seconds)}
                 </button>
               ))}
               <button
@@ -321,7 +321,7 @@ export function TechniquesPage() {
                 >
                   −
                 </button>
-                <strong aria-live="polite">{formatMmSs(secondsToMs(drillSec))}</strong>
+                <strong aria-live="polite">{formatMss(drillSec)}</strong>
                 <button
                   type="button"
                   className="clock-nudge"
