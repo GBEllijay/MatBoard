@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  ROSTER_CSV_WORKBOOK_ERROR,
   formatRosterCsvSummary,
   importRosterCsv,
+  isSpreadsheetWorkbook,
   parseCsv,
   parseImportDate,
   rosterCsvTemplate,
@@ -91,6 +93,34 @@ describe('importRosterCsv', () => {
     assert.equal(next.students.every((row) => row.belt === 'Blue'), true);
   });
 
+  it('reads an Excel-saved quoted CSV with BOM, blank columns, and extra empty rows', () => {
+    const people = Array.from({ length: 20 }, (_, index) => {
+      const n = String(index + 1).padStart(2, '0');
+      const belt = index === 0 ? 'blackbelt' : 'Blue';
+      return `"Student ${n}","${belt}","2026-01-${n}","",,`;
+    });
+    const csv = `\uFEFF" name "," BELT ","Last  Promotion"," notes ",,\r\n\r\n${people.join('\r\n')}\r\n\r\n`;
+    const next = importRosterCsv(csv);
+    assert.equal(next.error, undefined);
+    assert.equal(next.imported, 20);
+    assert.equal(next.skipped, 0);
+    assert.equal(next.students[0]?.name, 'Student 01');
+    assert.equal(next.students[0]?.belt, 'Black');
+    assert.equal(next.students[19]?.name, 'Student 20');
+  });
+
+  it('rejects an Excel workbook instead of silently importing junk', () => {
+    assert.equal(isSpreadsheetWorkbook({ name: 'roster.xlsx' }), true);
+    assert.equal(isSpreadsheetWorkbook({ name: 'roster.csv' }), false);
+    const zip = importRosterCsv('PK\u0003\u0004[Content_Types].xml');
+    assert.equal(zip.error, ROSTER_CSV_WORKBOOK_ERROR);
+    assert.equal(zip.imported, 0);
+    const person = importRosterCsv('Name,Belt\nPK Smith,bluebelt\n');
+    assert.equal(person.imported, 1);
+    assert.equal(person.students[0]?.name, 'PK Smith');
+    assert.equal(person.students[0]?.belt, 'Blue');
+  });
+
   it('maps flexible belt spellings including blackbelt and black belt', () => {
     const csv = [
       'Name,Belt',
@@ -160,7 +190,7 @@ describe('importRosterCsv', () => {
 describe('serializeRosterCsv', () => {
   it('writes the template headers plus one example row', () => {
     const csv = rosterCsvTemplate();
-    assert.equal(csv.startsWith('# Belts'), true);
+    assert.match(csv, /^# Save as CSV/);
     assert.match(csv, /blackbelt/i);
     assert.match(csv, /black belt/i);
     assert.equal(csv.includes('Name,Belt,Last promotion,Notes\r\n'), true);

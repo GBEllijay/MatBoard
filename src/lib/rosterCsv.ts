@@ -3,8 +3,12 @@
 import { studentFromInput, type Student } from './rosterStore.ts';
 
 export const ROSTER_CSV_HEADERS = ['Name', 'Belt', 'Last promotion', 'Notes'] as const;
+export const ROSTER_CSV_SAVE_HINT =
+  'Save as CSV (comma-separated), not an Excel workbook (.xlsx).';
+export const ROSTER_CSV_WORKBOOK_ERROR =
+  'That looks like an Excel workbook. Save as CSV (comma-separated), then import.';
 export const ROSTER_CSV_BELT_GUIDE =
-  '# Belts (required on every row): White, Blue, Purple, Brown, Black, Coral; kids Grey, Yellow, Orange, Green. Also accepted: black, Black, blackbelt, black belt, Black Belt, BB, white belt, bluebelt, and the same color + belt spellings for each rank.';
+  `# ${ROSTER_CSV_SAVE_HINT} Belts (required on every row): White, Blue, Purple, Brown, Black, Coral; kids Grey, Yellow, Orange, Green. Also accepted: black, Black, blackbelt, black belt, Black Belt, BB, white belt, bluebelt, and the same color + belt spellings for each rank.`;
 export const ROSTER_CSV_EXAMPLE = {
   name: 'Alex Rivera',
   belt: 'Purple',
@@ -280,7 +284,37 @@ export function formatRosterCsvSummary(imported: number, skipped: number): strin
   return `${imported} imported, ${skipped} skipped`;
 }
 
+export function isSpreadsheetWorkbook(file: { name?: string; type?: string }): boolean {
+  const name = (file.name ?? '').toLowerCase();
+  const type = (file.type ?? '').toLowerCase();
+  return (
+    name.endsWith('.xlsx') ||
+    name.endsWith('.xlsm') ||
+    name.endsWith('.xls') ||
+    name.endsWith('.ods') ||
+    type.includes('spreadsheetml') ||
+    type.includes('ms-excel') ||
+    type.includes('opendocument.spreadsheet')
+  );
+}
+
+export function looksLikeWorkbookText(text: string): boolean {
+  if (
+    text.startsWith('PK\u0003\u0004') ||
+    text.startsWith('PK\u0005\u0006') ||
+    text.startsWith('PK\u0007\u0008')
+  ) {
+    return true;
+  }
+  const head = text.slice(0, 256);
+  if (head.includes('[Content_Types].xml') || head.includes('xl/workbook')) return true;
+  return head.charCodeAt(0) === 0xd0 && head.charCodeAt(1) === 0xcf;
+}
+
 export function importRosterCsv(text: string): RosterCsvImport {
+  if (looksLikeWorkbookText(text)) {
+    return { students: [], imported: 0, skipped: 0, error: ROSTER_CSV_WORKBOOK_ERROR };
+  }
   const rows = parseCsv(text, detectCsvDelimiter(text));
   if (!rows.length) {
     return { students: [], imported: 0, skipped: 0, error: 'Need a Name and Belt column.' };

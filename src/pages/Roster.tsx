@@ -5,8 +5,11 @@ import { RankChip } from '../components/RankChip';
 import { Sheet } from '../components/Sheet';
 import { useRosterState } from '../hooks/useStores';
 import {
+  ROSTER_CSV_SAVE_HINT,
+  ROSTER_CSV_WORKBOOK_ERROR,
   formatRosterCsvSummary,
   importRosterCsv,
+  isSpreadsheetWorkbook,
   rosterCsvTemplate,
   serializeRosterCsv,
 } from '../lib/rosterCsv';
@@ -55,6 +58,10 @@ export function RosterPage() {
   const onImportFiles = (files: FileList | null) => {
     const file = files?.[0];
     if (!file) return;
+    if (isSpreadsheetWorkbook(file)) {
+      setCsvNote(ROSTER_CSV_WORKBOOK_ERROR);
+      return;
+    }
     void file
       .text()
       .then((text) => {
@@ -120,9 +127,9 @@ export function RosterPage() {
         </div>
         <p className="roster__csv-hint">
           Competitor roster stays on this device. CSV is for backup or a move — cloud sync comes
-          later. Import adds competitors; it does not replace the list. Every row needs a name and a
-          belt — <code>blackbelt</code>, <code>black belt</code>, and <code>BB</code> count as
-          Black.
+          later. Import adds competitors; it does not replace the list. {ROSTER_CSV_SAVE_HINT} Every
+          row needs a name and a belt — <code>blackbelt</code>, <code>black belt</code>, and{' '}
+          <code>BB</code> count as Black.
         </p>
         {csvNote ? (
           <p className="roster__csv-summary" role="status">
