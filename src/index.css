@@ -610,10 +610,6 @@ p {
   align-items: center;
 }
 
-.bout--linked {
-  grid-template-columns: minmax(140px, 1fr) auto minmax(240px, 1.4fr);
-}
-
 .bout--blue {
   background: linear-gradient(180deg, #1a4cd0, #102f8a);
   padding-top: calc(2.6rem + var(--safe-t));
@@ -627,19 +623,20 @@ p {
 
 .bout__calls {
   display: grid;
+  grid-template-columns: 1.25fr 1fr;
   gap: 0.4rem;
-  align-content: center;
-  min-width: 5.2rem;
+  margin-top: 0.55rem;
+  max-width: 18rem;
 }
 
 .bout-call {
   min-height: 56px;
-  min-width: 4.8rem;
+  min-width: 0;
   padding: 0.35rem 0.7rem;
   border: 0;
   border-radius: 14px;
   font-weight: 800;
-  font-size: 0.95rem;
+  font-size: 1rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   touch-action: manipulation;
@@ -660,14 +657,11 @@ p {
 }
 
 .bout__banner {
-  position: absolute;
-  left: 0.9rem;
-  top: 50%;
+  position: static;
   z-index: 3;
-  margin: 0;
-  transform: translateY(-50%);
+  margin: 0.35rem 0 0;
   pointer-events: none;
-  font-size: clamp(1.35rem, 4.2vw, 2.7rem);
+  font-size: clamp(1.2rem, 3.4vw, 2.1rem);
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -697,11 +691,11 @@ p {
 @keyframes bout-banner-pop {
   from {
     opacity: 0;
-    transform: translateY(-50%) scale(0.86);
+    transform: scale(0.86);
   }
   to {
     opacity: 1;
-    transform: translateY(-50%) scale(1);
+    transform: scale(1);
   }
 }
 
@@ -711,6 +705,7 @@ p {
   flex-direction: column;
   justify-content: center;
   align-self: stretch;
+  position: relative;
 }
 
 .bout__who h1 {
@@ -726,6 +721,10 @@ p {
   flex: 1 1 auto;
   display: flex;
   min-height: 1.2em;
+}
+
+.bout--linked .bout__who p {
+  flex: 0 1 auto;
 }
 
 .bout__who a {
@@ -1838,16 +1837,15 @@ fieldset {
   }
 
   .bout__calls {
-    grid-template-columns: 1fr 1fr;
-    min-width: 0;
+    max-width: none;
   }
 
   .bout__banner {
-    left: 0.8rem;
-    right: 0.8rem;
-    top: 0.85rem;
+    left: auto;
+    right: auto;
+    top: auto;
     transform: none;
-    text-align: center;
+    text-align: start;
   }
 
   .bout--blue {
@@ -1898,26 +1896,21 @@ fieldset {
     align-items: stretch;
   }
 
-  .bout--linked {
-    grid-template-columns: minmax(88px, 0.7fr) auto minmax(0, 1.55fr);
-  }
-
   .bout__calls {
-    gap: 0.22rem;
-    min-width: 3.6rem;
+    margin-top: 0.28rem;
+    gap: 0.28rem;
+    max-width: 14rem;
   }
 
   .bout-call {
-    min-height: 0;
-    min-width: 3.4rem;
-    padding: 0.2rem 0.4rem;
-    font-size: 0.72rem;
+    min-height: 44px;
+    padding: 0.2rem 0.45rem;
+    font-size: 0.82rem;
     border-radius: 10px;
   }
 
   .bout__banner {
-    left: 0.55rem;
-    font-size: clamp(1.05rem, 4.4vh, 2rem);
+    font-size: clamp(1.05rem, 3.6vh, 1.7rem);
   }
 
   .bout__banner--dq {
@@ -2070,6 +2063,11 @@ fieldset {
   padding-top: calc(0.28rem + var(--safe-t));
 }
 
+.play--landscape.display--linked .bout--blue,
+.play--fs.display--linked .bout--blue {
+  padding-top: calc(2.2rem + var(--safe-t));
+}
+
 .play--landscape.training,
 .play--fs.training {
   padding-top: 2.2rem;
@@ -2158,10 +2156,6 @@ fieldset {
   .bout__banner {
     animation: none;
     transform: none;
-  }
-
-  .bout__banner {
-    transform: translateY(-50%);
   }
 }
 

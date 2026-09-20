@@ -180,11 +180,6 @@ function CompetitorBand({
 
   return (
     <section className={`bout bout--${side}${linked ? ' bout--linked' : ''}`} aria-label={`${label} competitor`}>
-      {banner ? (
-        <p className={`bout__banner bout__banner--${flash?.kind}`} aria-live="polite">
-          {banner}
-        </p>
-      ) : null}
       <div className="bout__who">
         <h1>
           <ControllerFocusLink
@@ -195,6 +190,11 @@ function CompetitorBand({
             {name || fallbackName}
           </ControllerFocusLink>
         </h1>
+        {banner ? (
+          <p className={`bout__banner bout__banner--${flash?.kind}`} aria-live="polite">
+            {banner}
+          </p>
+        ) : null}
         <p>
           <ControllerFocusLink
             focus={competitorFocus(side, 'gym')}
@@ -204,27 +204,27 @@ function CompetitorBand({
             {gym || '\u00a0'}
           </ControllerFocusLink>
         </p>
+        {linked ? (
+          <div className="bout__calls" role="group" aria-label={`${label} bout result`}>
+            <button
+              type="button"
+              className="bout-call bout-call--win"
+              disabled={flashing}
+              onClick={() => declareLinkedOutcome(side, 'win')}
+            >
+              Win
+            </button>
+            <button
+              type="button"
+              className="bout-call bout-call--dq"
+              disabled={flashing}
+              onClick={() => declareLinkedOutcome(side, 'dq')}
+            >
+              DQ
+            </button>
+          </div>
+        ) : null}
       </div>
-      {linked ? (
-        <div className="bout__calls" role="group" aria-label={`${label} bout result`}>
-          <button
-            type="button"
-            className="bout-call bout-call--win"
-            disabled={flashing}
-            onClick={() => declareLinkedOutcome(side, 'win')}
-          >
-            Win
-          </button>
-          <button
-            type="button"
-            className="bout-call bout-call--dq"
-            disabled={flashing}
-            onClick={() => declareLinkedOutcome(side, 'dq')}
-          >
-            DQ
-          </button>
-        </div>
-      ) : null}
       <div className="bout__scores">
         <ScoreBox side={side} kind="points" value={points} />
         <ScoreBox side={side} kind="advantages" value={advantages} />
