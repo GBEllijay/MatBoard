@@ -446,9 +446,33 @@ button.mode-card {
   color: #f0b4b4;
 }
 
+.sheet--ad .sheet__panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: calc(100vh - 0.75rem);
+  max-height: calc(100dvh - 0.75rem);
+  overflow: hidden;
+}
+
+.sheet--ad .sheet__head {
+  flex: 0 0 auto;
+}
+
 .sheet--ad .sheet__head .btn {
   min-width: 5.75rem;
   min-height: 48px;
+}
+
+.sheet--ad .sheet__body {
+  overflow: auto;
+  min-height: 0;
+  padding-bottom: 0.2rem;
+}
+
+.sheet--ad .sheet__footer {
+  flex: 0 0 auto;
+  padding-top: 0.75rem;
 }
 
 .soon-ad {
@@ -515,12 +539,8 @@ button.mode-card {
 }
 
 .soon-ad__actions {
-  position: sticky;
-  bottom: 0;
   display: grid;
   gap: 0.55rem;
-  padding-top: 0.45rem;
-  background: linear-gradient(to top, #161b24 74%, rgba(22, 27, 36, 0.92) 90%, transparent);
 }
 
 .soon-ad__dismiss,
@@ -603,6 +623,14 @@ button.mode-card {
     grid-template-columns: none;
     grid-template-rows: none;
     grid-template-areas: none;
+  }
+
+  .soon-ad__features {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .soon-ad__feature:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
 }
 

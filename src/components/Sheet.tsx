@@ -7,9 +7,18 @@ type Props = {
   children: ReactNode;
   stacked?: boolean;
   className?: string;
+  footer?: ReactNode;
 };
 
-export function Sheet({ open, title, onClose, children, stacked = false, className }: Props) {
+export function Sheet({
+  open,
+  title,
+  onClose,
+  children,
+  stacked = false,
+  className,
+  footer,
+}: Props) {
   if (!open) return null;
   return (
     <div
@@ -27,6 +36,7 @@ export function Sheet({ open, title, onClose, children, stacked = false, classNa
           </button>
         </div>
         <div className="sheet__body">{children}</div>
+        {footer ? <div className="sheet__footer">{footer}</div> : null}
       </div>
     </div>
   );

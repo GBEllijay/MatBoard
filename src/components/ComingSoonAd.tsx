@@ -1,15 +1,21 @@
 import { COMING_SOON_ADS, type SoonProduct } from '../lib/comingSoonAds';
 
-type Props = {
-  product: SoonProduct;
-  onDismiss: () => void;
-  extraAction?: {
-    label: string;
-    onClick: () => void;
-  };
+type ExtraAction = {
+  label: string;
+  onClick: () => void;
 };
 
-export function ComingSoonAd({ product, onDismiss, extraAction }: Props) {
+type Props = {
+  product: SoonProduct;
+};
+
+type ActionsProps = {
+  product: SoonProduct;
+  onDismiss: () => void;
+  extraAction?: ExtraAction;
+};
+
+export function ComingSoonAd({ product }: Props) {
   const ad = COMING_SOON_ADS[product];
 
   return (
@@ -24,16 +30,23 @@ export function ComingSoonAd({ product, onDismiss, extraAction }: Props) {
           </li>
         ))}
       </ul>
-      <div className="soon-ad__actions">
-        <button type="button" className="btn soon-ad__dismiss" onClick={onDismiss}>
-          {ad.dismiss}
+    </div>
+  );
+}
+
+export function ComingSoonAdActions({ product, onDismiss, extraAction }: ActionsProps) {
+  const ad = COMING_SOON_ADS[product];
+
+  return (
+    <div className="soon-ad__actions">
+      <button type="button" className="btn soon-ad__dismiss" onClick={onDismiss}>
+        {ad.dismiss}
+      </button>
+      {extraAction ? (
+        <button type="button" className="btn btn--ghost" onClick={extraAction.onClick}>
+          {extraAction.label}
         </button>
-        {extraAction ? (
-          <button type="button" className="btn btn--ghost" onClick={extraAction.onClick}>
-            {extraAction.label}
-          </button>
-        ) : null}
-      </div>
+      ) : null}
     </div>
   );
 }

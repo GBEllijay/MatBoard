@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ComingSoonAd } from '../components/ComingSoonAd';
+import { ComingSoonAd, ComingSoonAdActions } from '../components/ComingSoonAd';
 import { HomeMark } from '../components/HomeMark';
 import { ProUnlockSheet } from '../components/ProUnlockSheet';
 import { Sheet } from '../components/Sheet';
@@ -107,18 +107,19 @@ export function HomePage() {
         open={soon !== null}
         title={soon ? COMING_SOON_ADS[soon].title : 'Coming soon'}
         onClose={() => setSoon(null)}
+        footer={
+          soon ? (
+            <ComingSoonAdActions
+              product={soon}
+              onDismiss={() => setSoon(null)}
+              extraAction={
+                soon === 'pro' ? { label: 'Owner unlock', onClick: openUnlock } : undefined
+              }
+            />
+          ) : null
+        }
       >
-        {soon ? (
-          <ComingSoonAd
-            product={soon}
-            onDismiss={() => setSoon(null)}
-            extraAction={
-              soon === 'pro'
-                ? { label: 'Owner unlock', onClick: openUnlock }
-                : undefined
-            }
-          />
-        ) : null}
+        {soon ? <ComingSoonAd product={soon} /> : null}
       </Sheet>
       <ProUnlockSheet open={unlockOpen} onClose={() => setUnlockOpen(false)} />
     </main>
