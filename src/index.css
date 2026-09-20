@@ -239,6 +239,52 @@ p {
   position: relative;
 }
 
+/* Home product cards: a few-px left rail with a small belt-tip wink. */
+.belt-rail {
+  --belt-rail-width: 5px;
+  --belt-tip-size: 0.8rem;
+  --belt-fill: var(--white);
+  --belt-tip: #14161c;
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(
+    to top,
+    var(--belt-tip) 0,
+    var(--belt-tip) var(--belt-tip-size),
+    var(--belt-fill) var(--belt-tip-size)
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    #000 0,
+    #000 var(--belt-rail-width),
+    transparent var(--belt-rail-width)
+  );
+  mask-image: linear-gradient(
+    to right,
+    #000 0,
+    #000 var(--belt-rail-width),
+    transparent var(--belt-rail-width)
+  );
+}
+
+.belt-rail--white {
+  --belt-fill: #f4f1ea;
+  --belt-tip: #14161c;
+}
+
+.belt-rail--blue {
+  --belt-fill: var(--blue-2);
+  --belt-tip: #14161c;
+}
+
+.belt-rail--black {
+  --belt-fill: #1a1c22;
+  --belt-tip: #dc2626;
+}
+
 button.mode-card {
   appearance: none;
   width: 100%;
@@ -655,6 +701,11 @@ button.mode-card {
     min-height: 0;
     padding: 0.7rem 0.75rem 0.8rem;
     gap: 0.22rem;
+  }
+
+  .belt-rail {
+    --belt-rail-width: 4px;
+    --belt-tip-size: 0.55rem;
   }
 
   .mode-card strong {

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { BeltRail } from '../components/BeltRail';
 import { ComingSoonAd, ComingSoonAdActions } from '../components/ComingSoonAd';
 import { HomeMark } from '../components/HomeMark';
 import { ProUnlockSheet } from '../components/ProUnlockSheet';
@@ -25,6 +26,7 @@ export function HomePage() {
 
         <nav className="home__modes" aria-label="Products">
           <Link className="mode-card mode-card--white" to="/white">
+            <BeltRail kind="white" />
             <strong>Advantage White</strong>
             <span className="mode-card__sub">BJJ Scoreboard and Timer</span>
             <span>Live Bout + Rounds</span>
@@ -37,6 +39,7 @@ export function HomePage() {
             aria-label="Advantage Coach, coming soon"
             onClick={() => setSoon('coach')}
           >
+            <BeltRail kind="blue" />
             <strong>Advantage Coach</strong>
             <span className="mode-card__sub">Coming soon</span>
             <span>{PRODUCT_TEASERS.coach}</span>
@@ -50,6 +53,7 @@ export function HomePage() {
                 tabIndex={-1}
                 aria-label="Open Pro toolbox"
               />
+              <BeltRail kind="black" />
               <strong>Advantage Pro</strong>
               <span className="mode-card__sub">Owner’s Toolbox</span>
               <span>{PRODUCT_TEASERS.proUnlocked}</span>
@@ -67,6 +71,7 @@ export function HomePage() {
               aria-label="Advantage Pro, coming soon"
               onClick={() => setSoon('pro')}
             >
+              <BeltRail kind="black" />
               <strong>Advantage Pro</strong>
               <span className="mode-card__sub">Coming soon</span>
               <span>{PRODUCT_TEASERS.pro}</span>
