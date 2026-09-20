@@ -14,9 +14,9 @@ export type ComingSoonAdCopy = {
 };
 
 export const PRODUCT_TEASERS = {
-  coach: 'Mock brackets + Daily Techniques.',
-  pro: 'Gym TV, ProShop, and instructor seats.',
-  proUnlocked: 'Owner’s Toolbox is on this browser.',
+  coach: 'Mock + Daily Techniques.',
+  pro: 'ProShop + instructor seats.',
+  proUnlocked: 'Toolbox is on this browser.',
 } as const;
 
 export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
