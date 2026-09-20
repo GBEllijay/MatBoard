@@ -24,7 +24,7 @@ test('Coach ad sells bout tools, Daily Techniques, and no price', () => {
   assert.doesNotMatch(text, /GB Members/i);
   assert.doesNotMatch(text, /\$\d/);
   assert.doesNotMatch(PRODUCT_TEASERS.coach, /\$\d/);
-  assert.match(PRODUCT_TEASERS.coach, /Mock tournaments/);
+  assert.match(PRODUCT_TEASERS.coach, /Mock brackets/);
   assert.match(PRODUCT_TEASERS.coach, /Daily Techniques/);
 });
 
@@ -50,9 +50,9 @@ test('Pro ad sells owner TV tools, ProShop display, and no price', () => {
   assert.doesNotMatch(text, /checkout/i);
   assert.doesNotMatch(text, /free-for-all/i);
   assert.doesNotMatch(text, /\$\d/);
-  assert.match(PRODUCT_TEASERS.pro, /instructor seats you control/);
-  assert.match(PRODUCT_TEASERS.pro, /ProShop display/);
-  assert.match(PRODUCT_TEASERS.proUnlocked, /ProShop display/);
+  assert.match(PRODUCT_TEASERS.pro, /instructor seats/);
+  assert.match(PRODUCT_TEASERS.pro, /ProShop/);
+  assert.match(PRODUCT_TEASERS.proUnlocked, /Toolbox/);
   assert.equal(COMING_SOON_ADS.coach.title, 'Advantage Coach');
   assert.equal(COMING_SOON_ADS.pro.title, 'Advantage Pro');
 });

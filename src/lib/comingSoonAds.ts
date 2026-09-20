@@ -14,10 +14,9 @@ export type ComingSoonAdCopy = {
 };
 
 export const PRODUCT_TEASERS = {
-  coach: 'Mock tournaments on the gym TV, plus Daily Techniques that loop while the class drills.',
-  pro: 'Class Schedule, Gallery, Videos, ProShop display, Events, and instructor seats you control.',
-  proUnlocked:
-    'Class Schedule, Gallery, Videos, ProShop display, Events, instructor seats, and competitor tools.',
+  coach: 'Mock brackets + Daily Techniques.',
+  pro: 'Gym TV, ProShop, and instructor seats.',
+  proUnlocked: 'Owner’s Toolbox is on this browser.',
 } as const;
 
 export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {

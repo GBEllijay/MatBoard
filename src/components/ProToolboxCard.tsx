@@ -29,7 +29,7 @@ export function ProToolboxCard() {
         ))}
       </div>
       <div className="mode-card__actions mode-card__actions--tools" aria-label="Owner tools">
-        <Link className="btn" to="/tournament">
+        <Link className="btn btn--white" to="/tournament">
           <BeltRail kind="tournament" />
           Mock Tournament
         </Link>

@@ -29,7 +29,7 @@ export function HomePage() {
             <BeltRail kind="white" />
             <strong>Advantage White</strong>
             <span className="mode-card__sub">BJJ Scoreboard and Timer</span>
-            <span>Live Bout + Rounds</span>
+            <span className="mode-card__teaser">Live Bout + Rounds</span>
           </Link>
 
           <button
@@ -42,7 +42,7 @@ export function HomePage() {
             <BeltRail kind="blue" />
             <strong>Advantage Coach</strong>
             <span className="mode-card__sub">Coming soon</span>
-            <span>{PRODUCT_TEASERS.coach}</span>
+            <span className="mode-card__teaser">{PRODUCT_TEASERS.coach}</span>
           </button>
 
           {unlocked ? (
@@ -56,9 +56,9 @@ export function HomePage() {
               <BeltRail kind="black" />
               <strong>Advantage Pro</strong>
               <span className="mode-card__sub">Owner’s Toolbox</span>
-              <span>{PRODUCT_TEASERS.proUnlocked}</span>
+              <span className="mode-card__teaser">{PRODUCT_TEASERS.proUnlocked}</span>
               <div className="mode-card__actions">
-                <Link className="btn" to="/pro">
+                <Link className="btn btn--white" to="/pro">
                   Open Pro toolbox
                 </Link>
               </div>
@@ -74,7 +74,7 @@ export function HomePage() {
               <BeltRail kind="black" />
               <strong>Advantage Pro</strong>
               <span className="mode-card__sub">Coming soon</span>
-              <span>{PRODUCT_TEASERS.pro}</span>
+              <span className="mode-card__teaser">{PRODUCT_TEASERS.pro}</span>
             </button>
           )}
         </nav>
