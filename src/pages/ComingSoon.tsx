@@ -29,6 +29,9 @@ export function ComingSoonPage() {
             <Link className="btn" to="/tournament">
               Mock Tournament
             </Link>
+            <Link className="btn" to="/schedule">
+              Class Schedule
+            </Link>
             <Link className="btn btn--ghost" to="/">
               Home
             </Link>

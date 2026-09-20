@@ -1,6 +1,14 @@
 import { useSyncExternalStore } from 'react';
 import { getAudioPrefs, subscribeAudioPrefs, type AudioPrefs } from '../lib/audio';
 import { getMatch, subscribeMatch, type MatchState } from '../lib/matchStore';
+import {
+  getSchedule,
+  getScheduleAssets,
+  subscribeSchedule,
+  subscribeScheduleAssets,
+  type ScheduleAssets,
+  type ScheduleState,
+} from '../lib/scheduleStore';
 import { getTournament, subscribeTournament, type TournamentState } from '../lib/tournamentStore';
 import { getTraining, subscribeTraining, type TrainingState } from '../lib/trainingStore';
 
@@ -18,4 +26,12 @@ export function useAudioPrefs(): AudioPrefs {
 
 export function useTournamentState(): TournamentState {
   return useSyncExternalStore(subscribeTournament, getTournament, getTournament);
+}
+
+export function useScheduleState(): ScheduleState {
+  return useSyncExternalStore(subscribeSchedule, getSchedule, getSchedule);
+}
+
+export function useScheduleAssets(): ScheduleAssets {
+  return useSyncExternalStore(subscribeScheduleAssets, getScheduleAssets, getScheduleAssets);
 }
