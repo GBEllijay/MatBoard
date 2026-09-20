@@ -75,7 +75,7 @@ export function HomePage() {
             )}
             <span>
               {unlocked
-                ? 'Gallery, videos, Pro Shop, event flyers, a mock tournament, and a class schedule.'
+                ? 'Gallery, videos, Pro Shop, event flyers, a mock tournament, a class schedule, and a roster.'
                 : 'Coming soon — Advantage Coach and Advantage Pro.'}
             </span>
             <div className="mode-card__actions mode-card__actions--folders" aria-label="Owner folders">
@@ -119,6 +119,15 @@ export function HomePage() {
                   Class Schedule
                 </button>
               )}
+              {unlocked ? (
+                <Link className="btn" to="/roster">
+                  Roster
+                </Link>
+              ) : (
+                <button type="button" className="btn" disabled>
+                  Roster
+                </button>
+              )}
             </div>
           </article>
         </nav>
@@ -127,7 +136,7 @@ export function HomePage() {
           <p className="home__hint">Install Advantage as an app from your browser menu.</p>
           <p className="home__hint">
             {unlocked
-              ? 'Gym TV: open this site on a computer plugged into the TV, then fullscreen Display, Rounds, Owner’s Toolbox, Mock Tournament, or Class Schedule. Press F for fullscreen.'
+              ? 'Gym TV: open this site on a computer plugged into the TV, then fullscreen Display, Rounds, Owner’s Toolbox, Mock Tournament, or Class Schedule. Press F for fullscreen. Roster lives on the phone.'
               : 'Gym TV: open this site on a computer plugged into the TV, then fullscreen Display or Rounds. Press F for fullscreen.'}
           </p>
           <p className="home__hint">

@@ -32,6 +32,9 @@ export function ComingSoonPage() {
             <Link className="btn" to="/schedule">
               Class Schedule
             </Link>
+            <Link className="btn" to="/roster">
+              Roster
+            </Link>
             <Link className="btn btn--ghost" to="/">
               Home
             </Link>

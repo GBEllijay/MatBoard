@@ -3,6 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
 import { OutcomeCalls, OutcomePickSheet, useOutcomeSheet } from '../components/OutcomeCalls';
 import { PlayExitMark } from '../components/PlayExitMark';
+import { RankChip } from '../components/RankChip';
+import { RosterNameField } from '../components/RosterNameField';
 import { useBoutQuerySync, useBracketOutcomeReturn } from '../hooks/useBracketBoutReturn';
 import { useInterval } from '../hooks/useClock';
 import { useWakeLock } from '../hooks/useWakeLock';
@@ -337,6 +339,7 @@ export function MatchControllerPage() {
         title="Blue"
         name={match.blue.name}
         gym={match.blue.gym}
+        rank={match.blue.rank}
         points={match.blue.points}
         advantages={match.blue.advantages}
         disadvantages={match.blue.disadvantages}
@@ -354,6 +357,7 @@ export function MatchControllerPage() {
         title="White"
         name={match.white.name}
         gym={match.white.gym}
+        rank={match.white.rank}
         points={match.white.points}
         advantages={match.white.advantages}
         disadvantages={match.white.disadvantages}
@@ -413,6 +417,7 @@ function CompetitorPad({
   title,
   name,
   gym,
+  rank,
   points,
   advantages,
   disadvantages,
@@ -428,6 +433,7 @@ function CompetitorPad({
   title: string;
   name: string;
   gym: string;
+  rank: string;
   points: number;
   advantages: number;
   disadvantages: number;
@@ -444,11 +450,19 @@ function CompetitorPad({
       <h2>{title}</h2>
       <div className="pad__fields">
         <label>
-          Name
-          <input
+          <span className="pad__name-label">
+            Name
+            {rank ? <RankChip belt={rank} compact /> : null}
+          </span>
+          <RosterNameField
             id={displayFocusId(competitorFocus(side, 'name'))}
             value={name}
-            onChange={(e) => dispatchMatch({ type: 'setCompetitor', side, field: 'name', value: e.target.value })}
+            ariaLabel={`${title} name`}
+            onChange={(value) => dispatchMatch({ type: 'setCompetitor', side, field: 'name', value })}
+            onPrefill={(prefill) => {
+              dispatchMatch({ type: 'setCompetitor', side, field: 'name', value: prefill.name });
+              dispatchMatch({ type: 'setCompetitor', side, field: 'rank', value: prefill.belt });
+            }}
           />
         </label>
         <label>

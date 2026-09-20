@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { OutcomePickSheet } from '../components/OutcomeCalls';
+import { RosterNameField } from '../components/RosterNameField';
 import { Sheet } from '../components/Sheet';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useMatchState, useTournamentState } from '../hooks/useStores';
@@ -127,11 +128,13 @@ export function TournamentPage() {
             <MatchCard matchId="final-0" liveMatchId={liveMatchId} />
             <div className={`bracket__champ${champion ? ' is-filled' : ''}`}>
               <span>Champion</span>
-              <input
+              <RosterNameField
                 value={champion}
-                onChange={(event) => setSlotName('champion', event.target.value)}
+                onChange={(value) => setSlotName('champion', value)}
+                onPrefill={(prefill) => setSlotName('champion', prefill.name)}
                 placeholder="Winner"
-                aria-label="Champion"
+                ariaLabel="Champion"
+                compact
               />
             </div>
           </div>
@@ -153,11 +156,12 @@ export function TournamentPage() {
             <li key={id}>
               <label>
                 <span>{index + 1}</span>
-                <input
+                <RosterNameField
                   value={slotName(tournament, id)}
-                  onChange={(event) => setSlotName(id, event.target.value)}
+                  onChange={(value) => setSlotName(id, value)}
+                  onPrefill={(prefill) => setSlotName(id, prefill.name)}
                   placeholder={seedPlaceholder(index)}
-                  aria-label={`Competitor ${index + 1}`}
+                  ariaLabel={`Competitor ${index + 1}`}
                 />
               </label>
             </li>
@@ -262,11 +266,13 @@ function SlotRow({ matchId, side }: { matchId: BracketMatchId; side: MatchSide }
         mark === 'dq' ? ' t-slot--dq' : ''
       }${mark === 'lost' ? ' t-slot--lost' : ''}`}
     >
-      <input
+      <RosterNameField
         value={name}
-        onChange={(event) => setSlotName(id, event.target.value)}
+        onChange={(value) => setSlotName(id, value)}
+        onPrefill={(prefill) => setSlotName(id, prefill.name)}
         placeholder={placeholder}
-        aria-label={`${roundLabel(matchId)}, ${side === 'a' ? 'top' : 'bottom'} competitor`}
+        ariaLabel={`${roundLabel(matchId)}, ${side === 'a' ? 'top' : 'bottom'} competitor`}
+        compact
       />
       <div className="t-slot__marks" role="group" aria-label="Bout result">
         <button

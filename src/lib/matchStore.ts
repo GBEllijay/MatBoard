@@ -28,6 +28,8 @@ export type OutcomeFlash = {
 export type Competitor = {
   name: string;
   gym: string;
+  /** Belt / rank chip from Roster pick. Empty when typed by hand. */
+  rank: string;
   points: number;
   advantages: number;
   disadvantages: number;
@@ -73,7 +75,7 @@ export type MatchAction =
   | { type: 'resetScores' }
   | { type: 'setDuration'; durationMs: number }
   | { type: 'setField'; field: 'round' | 'division'; value: string }
-  | { type: 'setCompetitor'; side: Side; field: 'name' | 'gym'; value: string }
+  | { type: 'setCompetitor'; side: Side; field: 'name' | 'gym' | 'rank'; value: string }
   | { type: 'setStartBeep'; value: boolean }
   | { type: 'setWarningBeep'; value: boolean }
   | { type: 'markWarned' }
@@ -127,7 +129,7 @@ type PresentationLike = {
 };
 
 function defaultCompetitor(name: string): Competitor {
-  return { name, gym: '', points: 0, advantages: 0, disadvantages: 0 };
+  return { name, gym: '', rank: '', points: 0, advantages: 0, disadvantages: 0 };
 }
 
 export function defaultMatch(): MatchState {
@@ -163,8 +165,16 @@ function loadState(): MatchState {
     return {
       ...base,
       ...parsed,
-      blue: { ...base.blue, ...parsed.blue },
-      white: { ...base.white, ...parsed.white },
+      blue: {
+        ...base.blue,
+        ...parsed.blue,
+        rank: typeof parsed.blue?.rank === 'string' ? parsed.blue.rank : '',
+      },
+      white: {
+        ...base.white,
+        ...parsed.white,
+        rank: typeof parsed.white?.rank === 'string' ? parsed.white.rank : '',
+      },
       startBeep: parsed.startBeep === true,
       warningBeep: parsed.warningBeep === true,
       warned: Boolean(parsed.warned),
@@ -359,11 +369,14 @@ function applyAction(current: MatchState, action: MatchAction): MatchState {
       );
     case 'setField':
       return bumpRevision({ ...current, [action.field]: action.value });
-    case 'setCompetitor':
+    case 'setCompetitor': {
+      const competitor = { ...current[action.side], [action.field]: action.value };
+      if (action.field === 'name' && !action.value.trim()) competitor.rank = '';
       return bumpRevision({
         ...current,
-        [action.side]: { ...current[action.side], [action.field]: action.value },
+        [action.side]: competitor,
       });
+    }
     case 'setStartBeep':
       return bumpRevision({ ...current, startBeep: action.value });
     case 'setWarningBeep':
@@ -389,8 +402,8 @@ function applyAction(current: MatchState, action: MatchAction): MatchState {
       return bumpRevision(
         withoutOutcome({
           ...current,
-          blue: { name: action.blueName, gym: '', points: 0, advantages: 0, disadvantages: 0 },
-          white: { name: action.whiteName, gym: '', points: 0, advantages: 0, disadvantages: 0 },
+          blue: { name: action.blueName, gym: '', rank: '', points: 0, advantages: 0, disadvantages: 0 },
+          white: { name: action.whiteName, gym: '', rank: '', points: 0, advantages: 0, disadvantages: 0 },
           round: action.round,
           division: action.division,
           remainingMs: current.durationMs,
