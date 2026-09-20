@@ -1,5 +1,7 @@
 import {
+  clampDrillSec,
   clipSlotsLeft,
+  DEFAULT_DRILL_SEC,
   pickAddableVideos,
   resolveSelectedId,
 } from './techniqueLogic';
@@ -10,7 +12,13 @@ import {
 } from './playlist';
 import { mimeFromFile, VIDEO_ACCEPT } from './photoStore';
 
-export { clipSlotsLeft, MAX_TECHNIQUE_CLIPS, pickAddableVideos, resolveSelectedId } from './techniqueLogic';
+export {
+  clipSlotsLeft,
+  DEFAULT_DRILL_SEC,
+  MAX_TECHNIQUE_CLIPS,
+  pickAddableVideos,
+  resolveSelectedId,
+} from './techniqueLogic';
 
 const DB_NAME = 'matboard-techniques';
 const CLIPS = 'clips';
@@ -48,6 +56,7 @@ type ClipRow = Omit<TechniqueClip, 'folderId' | 'sortOrder'> & {
 
 export type TechniquePrefs = {
   selectedId: string | null;
+  drillSec: number;
 };
 
 function openDb(): Promise<IDBDatabase> {
@@ -198,16 +207,18 @@ export async function getTechniquePrefs(): Promise<TechniquePrefs> {
     const db = await openDb();
     return await new Promise((resolve, reject) => {
       const tx = db.transaction(PREFS, 'readonly');
-      const req = tx.objectStore(PREFS).get('selectedId');
+      const selectedReq = tx.objectStore(PREFS).get('selectedId');
+      const drillReq = tx.objectStore(PREFS).get('drillSec');
       tx.oncomplete = () => {
         resolve({
-          selectedId: typeof req.result === 'string' ? req.result : null,
+          selectedId: typeof selectedReq.result === 'string' ? selectedReq.result : null,
+          drillSec: clampDrillSec(Number(drillReq.result ?? DEFAULT_DRILL_SEC)),
         });
       };
       tx.onerror = () => reject(tx.error);
     });
   } catch {
-    return { selectedId: null };
+    return { selectedId: null, drillSec: DEFAULT_DRILL_SEC };
   }
 }
 
@@ -215,5 +226,12 @@ export async function setTechniqueSelectedId(selectedId: string | null): Promise
   const db = await openDb();
   const tx = db.transaction(PREFS, 'readwrite');
   tx.objectStore(PREFS).put(selectedId, 'selectedId');
+  await txDone(tx);
+}
+
+export async function setTechniqueDrillSec(drillSec: number): Promise<void> {
+  const db = await openDb();
+  const tx = db.transaction(PREFS, 'readwrite');
+  tx.objectStore(PREFS).put(clampDrillSec(drillSec), 'drillSec');
   await txDone(tx);
 }

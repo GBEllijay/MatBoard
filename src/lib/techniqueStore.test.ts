@@ -2,10 +2,18 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { withFolderOrder } from './playlist.ts';
 import {
+  clampDrillSec,
   clipSlotsLeft,
+  DEFAULT_DRILL_SEC,
+  DRILL_PRESETS_SEC,
+  isDrillPreset,
+  MAX_DRILL_SEC,
   MAX_TECHNIQUE_CLIPS,
+  MIN_DRILL_SEC,
   pickAddableVideos,
+  remainingOnStart,
   resolveSelectedId,
+  tickRemainingMs,
 } from './techniqueLogic.ts';
 
 const TECHNIQUE_FOLDER_ID = 'techniques';
@@ -69,6 +77,31 @@ describe('resolveSelectedId', () => {
 
   it('clears selection when the list is empty', () => {
     assert.equal(resolveSelectedId('a', []), null);
+  });
+});
+
+describe('drill timer', () => {
+  it('keeps 2:30, 5:00, and 7:00 as presets', () => {
+    assert.deepEqual([...DRILL_PRESETS_SEC], [150, 300, 420]);
+    assert.equal(isDrillPreset(300), true);
+    assert.equal(isDrillPreset(90), false);
+  });
+
+  it('clamps custom drill length', () => {
+    assert.equal(clampDrillSec(Number.NaN), DEFAULT_DRILL_SEC);
+    assert.equal(clampDrillSec(1), MIN_DRILL_SEC);
+    assert.equal(clampDrillSec(99_999), MAX_DRILL_SEC);
+  });
+
+  it('resumes leftover time, then resets after 0:00', () => {
+    assert.equal(remainingOnStart(45_000, 300_000), 45_000);
+    assert.equal(remainingOnStart(0, 300_000), 300_000);
+  });
+
+  it('counts down to zero and stops there', () => {
+    assert.equal(tickRemainingMs(250, 100), 150);
+    assert.equal(tickRemainingMs(80, 100), 0);
+    assert.equal(tickRemainingMs(0, 100), 0);
   });
 });
 

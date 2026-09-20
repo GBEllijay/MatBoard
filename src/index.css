@@ -2823,14 +2823,42 @@ fieldset {
   min-height: 16rem;
 }
 
+.techniques__player {
+  position: relative;
+  min-height: 12rem;
+  height: 100%;
+}
+
 .techniques__frame,
 .techniques__empty {
   position: relative;
   min-height: 12rem;
+  height: 100%;
   border-radius: var(--radius);
   background: #000;
   overflow: hidden;
   border: 1px solid var(--line);
+}
+
+.techniques__clock {
+  position: absolute;
+  left: 50%;
+  bottom: 0.8rem;
+  transform: translateX(-50%);
+  z-index: 2;
+  margin: 0;
+  font-size: clamp(2.6rem, 9vw, 5.2rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.05em;
+  line-height: 0.95;
+  color: #fff;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.82);
+  pointer-events: none;
+}
+
+.techniques__clock--done {
+  color: var(--gold-2);
 }
 
 .techniques__empty {

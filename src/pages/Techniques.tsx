@@ -1,17 +1,29 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FolderItemList } from '../components/FolderItemList';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { TvTip } from '../components/TvTip';
+import { useInterval } from '../hooks/useClock';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
+import { formatMmSs, secondsToMs } from '../lib/format';
 import {
   DEFAULT_MUTE_VIDEO,
   getSaverPrefs,
   setSaverMuteVideo,
 } from '../lib/photoStore';
+import {
+  clampDrillSec,
+  DEFAULT_DRILL_SEC,
+  DRILL_PRESETS_SEC,
+  isDrillPreset,
+  MAX_DRILL_SEC,
+  MIN_DRILL_SEC,
+  remainingOnStart,
+  tickRemainingMs,
+} from '../lib/techniqueLogic';
 import {
   addTechniqueFiles,
   clearTechniqueClips,
@@ -23,6 +35,7 @@ import {
   renameTechniqueClip,
   reorderTechniqueClips,
   resolveSelectedId,
+  setTechniqueDrillSec,
   setTechniqueSelectedId,
   TECHNIQUE_FOLDER,
   withTechniqueOrder,
@@ -37,6 +50,9 @@ export function TechniquesPage() {
   const [muteVideo, setMuteVideo] = useState(DEFAULT_MUTE_VIDEO);
   const [unlockSound, setUnlockSound] = useState(false);
   const [pickerNote, setPickerNote] = useState('');
+  const [drillSec, setDrillSec] = useState(DEFAULT_DRILL_SEC);
+  const [remainingMs, setRemainingMs] = useState(secondsToMs(DEFAULT_DRILL_SEC));
+  const [customOpen, setCustomOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const fs = usePlayFullscreen();
   const navigate = useNavigate();
@@ -50,6 +66,8 @@ export function TechniquesPage() {
     const nextSelected = resolveSelectedId(prefs.selectedId, ids);
     setClips(rows);
     setSelectedId(nextSelected);
+    setDrillSec(prefs.drillSec);
+    setRemainingMs(secondsToMs(prefs.drillSec));
     if (prefs.selectedId !== nextSelected) void setTechniqueSelectedId(nextSelected);
   };
 
@@ -77,6 +95,9 @@ export function TechniquesPage() {
   );
   const selectedSrc = selected ? urlById[selected.id] : undefined;
   const slotsLeft = clipSlotsLeft(clips.length);
+  const canStart = Boolean(selected && selectedSrc);
+  const drillDone = remainingMs === 0;
+  const customDrill = customOpen || !isDrillPreset(drillSec);
 
   const selectClip = (id: string) => {
     setSelectedId(id);
@@ -88,6 +109,34 @@ export function TechniquesPage() {
     void setSaverMuteVideo(next);
     if (!next) setUnlockSound(true);
   };
+
+  const commitDrill = (next: number) => {
+    const clamped = clampDrillSec(next);
+    setDrillSec(clamped);
+    setRemainingMs(secondsToMs(clamped));
+    void setTechniqueDrillSec(clamped);
+  };
+
+  const startDrill = () => {
+    if (!canStart) return;
+    if (!muteVideo) setUnlockSound(true);
+    setRemainingMs((ms) => remainingOnStart(ms, secondsToMs(drillSec)));
+    setPlaying(true);
+  };
+
+  const stopDrill = () => setPlaying(false);
+
+  useInterval(
+    useCallback(() => {
+      setRemainingMs((ms) => {
+        const next = tickRemainingMs(ms, 100);
+        if (next === 0) setPlaying(false);
+        return next;
+      });
+    }, []),
+    100,
+    playing,
+  );
 
   const onFiles = async (files: FileList | null) => {
     if (!files?.length) return;
@@ -130,8 +179,6 @@ export function TechniquesPage() {
     });
   };
 
-  const canStart = Boolean(selected && selectedSrc);
-
   return (
     <main className={`techniques${playing ? ' techniques--play' : ''}${fs.className ? ` ${fs.className}` : ''}`}>
       <PlayExitMark onExit={exitBoard} />
@@ -145,10 +192,7 @@ export function TechniquesPage() {
             type="button"
             className="btn"
             disabled={!canStart || playing}
-            onClick={() => {
-              if (!muteVideo) setUnlockSound(true);
-              setPlaying(true);
-            }}
+            onClick={startDrill}
           >
             Start
           </button>
@@ -156,7 +200,7 @@ export function TechniquesPage() {
             type="button"
             className="btn btn--ghost"
             disabled={!playing}
-            onClick={() => setPlaying(false)}
+            onClick={stopDrill}
           >
             Stop
           </button>
@@ -172,28 +216,37 @@ export function TechniquesPage() {
 
       <p className="techniques__hint">
         Pick 1 to 10 clips on this phone or computer. They stay here — nothing is uploaded. Select
-        one, tap <strong>Start</strong>, and it loops until <strong>Stop</strong>.
+        one, tap <strong>Start</strong>, and the clip loops while the drill timer counts down.
+        <strong> Stop</strong> pauses both. At 0:00 the loop pauses.
       </p>
 
       <div className="techniques__layout">
         <section className="techniques__stage" aria-label="Technique player">
-          {selected && selectedSrc ? (
-            <LoopClip
-              key={selected.id}
-              src={selectedSrc}
-              label={selected.label}
-              playing={playing}
-              muted={muteVideo}
-              unlockSound={unlockSound}
-            />
-          ) : (
-            <div className="techniques__empty">
-              <p>Add a clip, then tap Play on that row and Start.</p>
-              <button type="button" className="btn" onClick={() => fileRef.current?.click()}>
-                Add clips
-              </button>
-            </div>
-          )}
+          <div className="techniques__player">
+            {selected && selectedSrc ? (
+              <LoopClip
+                key={selected.id}
+                src={selectedSrc}
+                label={selected.label}
+                playing={playing}
+                muted={muteVideo}
+                unlockSound={unlockSound}
+              />
+            ) : (
+              <div className="techniques__empty">
+                <p>Add a clip, then tap Play on that row and Start.</p>
+                <button type="button" className="btn" onClick={() => fileRef.current?.click()}>
+                  Add clips
+                </button>
+              </div>
+            )}
+            <p
+              className={`techniques__clock${drillDone ? ' techniques__clock--done' : ''}`}
+              aria-live="polite"
+            >
+              {formatMmSs(remainingMs)}
+            </p>
+          </div>
           {selected ? <p className="techniques__now">{selected.label}</p> : null}
         </section>
 
@@ -224,6 +277,63 @@ export function TechniquesPage() {
               </button>
             ) : null}
           </div>
+          <fieldset>
+            <legend>Drill length</legend>
+            <p className="saver-sound-hint">
+              Countdown on the video. Start runs the loop and the timer together.
+            </p>
+            <div className="presets presets--match-length" role="radiogroup" aria-label="Drill length">
+              {DRILL_PRESETS_SEC.map((seconds) => (
+                <button
+                  key={seconds}
+                  type="button"
+                  role="radio"
+                  aria-checked={drillSec === seconds && !customOpen}
+                  className={`preset${drillSec === seconds && !customOpen ? ' preset--on' : ''}`}
+                  disabled={playing}
+                  onClick={() => {
+                    setCustomOpen(false);
+                    commitDrill(seconds);
+                  }}
+                >
+                  {formatMmSs(secondsToMs(seconds))}
+                </button>
+              ))}
+              <button
+                type="button"
+                role="radio"
+                aria-checked={customDrill}
+                className={`preset${customDrill ? ' preset--on' : ''}`}
+                disabled={playing}
+                onClick={() => setCustomOpen(true)}
+              >
+                Custom
+              </button>
+            </div>
+            {customDrill ? (
+              <div className="interval-stepper" role="group" aria-label="Custom drill length">
+                <button
+                  type="button"
+                  className="clock-nudge"
+                  disabled={playing || drillSec <= MIN_DRILL_SEC}
+                  aria-label="Subtract 15 seconds"
+                  onClick={() => commitDrill(drillSec - 15)}
+                >
+                  −
+                </button>
+                <strong aria-live="polite">{formatMmSs(secondsToMs(drillSec))}</strong>
+                <button
+                  type="button"
+                  className="clock-nudge"
+                  disabled={playing || drillSec >= MAX_DRILL_SEC}
+                  aria-label="Add 15 seconds"
+                  onClick={() => commitDrill(drillSec + 15)}
+                >
+                  +
+                </button>
+              </div>
+            ) : null}
+          </fieldset>
           <fieldset>
             <legend>Video sound</legend>
             <p className="saver-sound-hint">
