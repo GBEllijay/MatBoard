@@ -1,4 +1,4 @@
-/** Gym roster. On-device only — name + belt prefill Match and Mock Tournament. */
+/** Gym competitor roster. On-device only — name + belt prefill Match and Mock Tournament. */
 
 export const STORAGE_KEY = 'matboard.roster.v1';
 export const NOTE_MAX = 160;

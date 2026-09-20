@@ -33,7 +33,7 @@ export function ComingSoonPage() {
               Class Schedule
             </Link>
             <Link className="btn" to="/roster">
-              Roster
+              Competitor roster
             </Link>
             <Link className="btn btn--ghost" to="/">
               Home

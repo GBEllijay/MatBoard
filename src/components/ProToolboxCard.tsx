@@ -13,7 +13,8 @@ export function ProToolboxCard() {
       <strong>Owner’s Toolbox</strong>
       <span className="mode-card__sub">Pro</span>
       <span>
-        Gallery, videos, Pro Shop, event flyers, a mock tournament, a class schedule, and a roster.
+        Gallery, videos, Pro Shop, event flyers, a mock tournament, a class schedule, and a
+        competitor roster.
       </span>
       <div className="mode-card__actions mode-card__actions--folders" aria-label="Owner folders">
         {FOLDERS.map((folder) => (
@@ -34,7 +35,7 @@ export function ProToolboxCard() {
           Class Schedule
         </Link>
         <Link className="btn" to="/roster">
-          Roster
+          Competitor roster
         </Link>
       </div>
     </article>

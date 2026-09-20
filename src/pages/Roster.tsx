@@ -82,20 +82,20 @@ export function RosterPage() {
       <header className="roster__bar">
         <div className="roster__brand">
           <p className="roster__eyebrow">Owner’s Toolbox</p>
-          <h1>Roster</h1>
+          <h1>Competitor roster</h1>
         </div>
         <button
           type="button"
           className="btn"
           onClick={() => setEditor({ id: null, draft: emptyDraft() })}
         >
-          Add student
+          Add competitor
         </button>
       </header>
 
       <p className="roster__lead">
-        Gym names and belt ranks for this device. Pick them into Match and Mock Tournament — notes
-        and last promotion stay here.
+        Competitor names and belt ranks for this device. Pick them into Match and Mock Tournament —
+        notes and last promotion stay here.
       </p>
 
       <div className="roster__csv">
@@ -119,8 +119,8 @@ export function RosterPage() {
           </button>
         </div>
         <p className="roster__csv-hint">
-          Saved on this device. CSV is for backup or a move — cloud sync comes later. Import adds
-          rows; it does not replace the list.
+          Competitor roster stays on this device. CSV is for backup or a move — cloud sync comes
+          later. Import adds competitors; it does not replace the list.
         </p>
         {csvNote ? (
           <p className="roster__csv-summary" role="status">
@@ -146,7 +146,7 @@ export function RosterPage() {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Name or belt"
-          aria-label="Find student"
+          aria-label="Find competitor"
           autoComplete="off"
         />
       </label>
@@ -172,13 +172,13 @@ export function RosterPage() {
         <p className="roster__empty">
           {roster.students.length
             ? 'No match on this roster.'
-            : 'No students yet. Add a name and belt, then pick them into a match or bracket.'}
+            : 'No competitors yet. Add a name and belt, then pick them into a match or bracket.'}
         </p>
       )}
 
       <StudentEditor
         open={Boolean(editor)}
-        title={editor?.id ? 'Edit student' : 'Add student'}
+        title={editor?.id ? 'Edit competitor' : 'Add competitor'}
         draft={editor?.draft ?? emptyDraft()}
         onChange={(draft) => setEditor((current) => (current ? { ...current, draft } : current))}
         onClose={() => setEditor(null)}
@@ -273,13 +273,13 @@ function StudentEditor({
           value={draft.name}
           onChange={(event) => patch({ name: event.target.value })}
           placeholder="Required"
-          aria-label="Student name"
+          aria-label="Competitor name"
           autoComplete="off"
         />
       </label>
       <fieldset className="roster-edit__belts">
         <legend>Belt rank</legend>
-        <p className="roster-edit__hint">Required to pick this student into Match or a bracket.</p>
+        <p className="roster-edit__hint">Required to pick this competitor into Match or a bracket.</p>
         <div className="presets roster-edit__belt-row" role="radiogroup" aria-label="Adult belts">
           {ADULT_BELTS.map((belt) => (
             <button
@@ -343,7 +343,7 @@ function StudentEditor({
       </label>
       {!ready ? <p className="roster-edit__error">Add a name and a belt to save.</p> : null}
       <button type="button" className="btn" disabled={!ready} onClick={onSave}>
-        Save student
+        Save competitor
       </button>
     </Sheet>
   );

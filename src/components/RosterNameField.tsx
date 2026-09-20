@@ -129,12 +129,12 @@ function RosterPicker({
         Name and belt only. Notes and last promotion stay on the roster card.
       </p>
       <label>
-        Find student
+        Find competitor
         <input
           value={query}
           onChange={(event) => onQuery(event.target.value)}
           placeholder="Name or belt"
-          aria-label="Find student"
+          aria-label="Find competitor"
           autoComplete="off"
         />
       </label>
@@ -159,11 +159,11 @@ function RosterPicker({
         <p className="roster-pick__empty">
           {roster.students.length
             ? 'No match on this device.'
-            : 'No students yet. Add them on Roster, then pick a name here.'}
+            : 'No competitors yet. Add them on Competitor roster, then pick a name here.'}
         </p>
       )}
       <Link className="text-link" to="/roster">
-        Open Roster
+        Open competitor roster
       </Link>
     </>
   );
