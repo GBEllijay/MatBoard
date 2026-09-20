@@ -43,11 +43,16 @@ test('Pro ad sells owner TV tools, ProShop display, and no price', () => {
   assert.match(text, /QR to your shop/);
   assert.match(text, /Events and flyers/);
   assert.match(text, /Instructor seats/);
-  assert.match(text, /instructors you add and control/);
+  assert.match(text, /instructors you add and revoke/);
   assert.match(text, /Competitor tools/);
+  assert.match(text, /instructors you seat/);
+  assert.doesNotMatch(text, /coaches you seat/);
   assert.doesNotMatch(text, /checkout/i);
   assert.doesNotMatch(text, /free-for-all/i);
   assert.doesNotMatch(text, /\$\d/);
+  assert.match(PRODUCT_TEASERS.pro, /instructor seats you control/);
   assert.match(PRODUCT_TEASERS.pro, /ProShop display/);
   assert.match(PRODUCT_TEASERS.proUnlocked, /ProShop display/);
+  assert.equal(COMING_SOON_ADS.coach.title, 'Advantage Coach');
+  assert.equal(COMING_SOON_ADS.pro.title, 'Advantage Pro');
 });
