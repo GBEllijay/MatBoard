@@ -3307,7 +3307,7 @@ fieldset {
 
 .schedule-edit__add {
   grid-template-columns: minmax(9.5rem, 1fr) minmax(0, 1.15fr);
-  align-items: end;
+  align-items: start;
 }
 
 .schedule-edit__add .schedule-edit__title,
@@ -3362,11 +3362,22 @@ fieldset {
   background: rgba(0, 0, 0, 0.14);
 }
 
+.schedule-edit__slot-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.45rem;
+  align-items: center;
+}
+
 .schedule-edit__slot-time {
   margin: 0;
   color: var(--gold-2);
   font-size: 1.05rem;
   font-weight: 800;
+}
+
+.schedule-edit__another-mat {
+  min-height: 48px;
 }
 
 .schedule-edit__group ul {
@@ -3391,10 +3402,6 @@ fieldset {
   gap: 0.25rem;
   font-size: 0.78rem;
   font-weight: 700;
-}
-
-.schedule-edit__another-mat {
-  width: 100%;
 }
 
 .schedule-edit__class .schedule-edit__title,
@@ -3465,8 +3472,13 @@ fieldset {
   .schedule-edit__class,
   .schedule-edit__specials li,
   .schedule__month-specials li,
-  .schedule__month-week li {
+  .schedule__month-week li,
+  .schedule-edit__slot-head {
     grid-template-columns: 1fr;
+  }
+
+  .schedule-edit__another-mat {
+    width: 100%;
   }
 
   .schedule-edit__add--special .schedule-edit__title,

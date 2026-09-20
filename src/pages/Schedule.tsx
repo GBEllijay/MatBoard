@@ -705,7 +705,16 @@ function ScheduleEditor({
                 <h3>{WEEKDAY_LABELS[id]}</h3>
                 {groupClassesByTime(rows).map((group) => (
                   <div key={`${id}-${group.time}`} className="schedule-edit__slot">
-                    <p className="schedule-edit__slot-time">{formatClassTime(group.time)}</p>
+                    <div className="schedule-edit__slot-head">
+                      <p className="schedule-edit__slot-time">{formatClassTime(group.time)}</p>
+                      <button
+                        type="button"
+                        className="btn btn--ghost schedule-edit__another-mat"
+                        onClick={() => addAnotherMat(group)}
+                      >
+                        Another mat
+                      </button>
+                    </div>
                     <ul>
                       {group.items.map((item) => (
                         <li key={item.id} className="schedule-edit__class">
@@ -753,13 +762,6 @@ function ScheduleEditor({
                         </li>
                       ))}
                     </ul>
-                    <button
-                      type="button"
-                      className="btn btn--ghost schedule-edit__another-mat"
-                      onClick={() => addAnotherMat(group)}
-                    >
-                      Another mat at {formatClassTime(group.time)}
-                    </button>
                   </div>
                 ))}
               </section>
