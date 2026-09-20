@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { moveItemIds } from '../lib/playlist';
+import { isItemPlayEnabled, moveItemIds } from '../lib/playlist';
+
 export type FolderListConfig = {
   label: string;
   labelPrefix: string;
@@ -17,6 +18,7 @@ export type FolderListItem = {
   id: string;
   label: string;
   mime?: string;
+  playEnabled?: boolean;
 };
 
 function isVideoMime(mime?: string): boolean {
@@ -32,6 +34,7 @@ type Props = {
   onRename: (id: string, label: string) => Promise<void>;
   onRemove: (id: string) => Promise<void>;
   onReorder: (orderedIds: string[]) => Promise<void>;
+  onPlayToggle?: (id: string, enabled: boolean) => Promise<void>;
 };
 
 type DragSession = {
@@ -64,6 +67,7 @@ export function FolderItemList({
   onRename,
   onRemove,
   onReorder,
+  onPlayToggle,
 }: Props) {
   const [draftIds, setDraftIds] = useState<string[] | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -164,7 +168,12 @@ export function FolderItemList({
     if (items.length < 2) return;
     if (event.pointerType === 'mouse' && event.button !== 0) return;
     const target = event.target as HTMLElement;
-    if (target.closest('input, .folder-row__move, .folder-row__remove, .folder-row__play')) return;
+    if (
+      target.closest(
+        'input, .folder-row__move, .folder-row__remove, .folder-row__play, .folder-row__preview',
+      )
+    )
+      return;
     stopDrag(false);
     const originIds = idsOf(itemsRef.current);
     const session: DragSession = {
@@ -279,6 +288,7 @@ export function FolderItemList({
               onLostPointerCapture={onRowPointerEnd}
               onRename={async (label) => onRename(item.id, label)}
               onRemove={async () => onRemove(item.id)}
+              onPlayToggle={onPlayToggle ? async (enabled) => onPlayToggle(item.id, enabled) : undefined}
               onMoveUp={() => moveBy(index, index - 1)}
               onMoveDown={() => moveBy(index, index + 1)}
             />
@@ -307,6 +317,7 @@ function FolderItemRow({
   onLostPointerCapture,
   onRename,
   onRemove,
+  onPlayToggle,
   onMoveUp,
   onMoveDown,
 }: {
@@ -327,6 +338,7 @@ function FolderItemRow({
   onLostPointerCapture: (event: ReactPointerEvent<HTMLLIElement>) => void;
   onRename: (label: string) => Promise<void>;
   onRemove: () => Promise<void>;
+  onPlayToggle?: (enabled: boolean) => Promise<void>;
   onMoveUp: () => void;
   onMoveDown: () => void;
 }) {
@@ -340,11 +352,35 @@ function FolderItemRow({
   }, [src]);
 
   const name = label.trim() || fallback;
+  const playEnabled = isItemPlayEnabled(item);
+  const thumb =
+    src && !thumbFailed ? (
+      isVideoMime(item.mime) ? (
+        <video
+          src={src}
+          muted
+          playsInline
+          preload="metadata"
+          draggable={false}
+          onLoadedMetadata={(event) => {
+            const video = event.currentTarget;
+            if (video.duration > 0.15 && video.currentTime < 0.05) {
+              video.currentTime = Math.min(0.2, video.duration * 0.04);
+            }
+          }}
+          onError={() => setThumbFailed(true)}
+        />
+      ) : (
+        <img src={src} alt="" draggable={false} onError={() => setThumbFailed(true)} />
+      )
+    ) : null;
 
   return (
     <li
       ref={rowRef}
-      className={`folder-row saver__row${dragging ? ' folder-row--dragging saver__row--dragging' : ''}${selected ? ' folder-row--selected' : ''}`}
+      className={`folder-row saver__row${dragging ? ' folder-row--dragging saver__row--dragging' : ''}${
+        selected ? ' folder-row--selected' : ''
+      }${playEnabled || !onPlayToggle ? '' : ' folder-row--off'}`}
       style={{ touchAction: dragging ? 'none' : 'pan-y' }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -373,28 +409,30 @@ function FolderItemRow({
           <i />
         </span>
       </button>
-      <span className="saver__thumb" aria-hidden="true">
-        {src && !thumbFailed ? (
-          isVideoMime(item.mime) ? (
-            <video
-              src={src}
-              muted
-              playsInline
-              preload="metadata"
-              draggable={false}
-              onLoadedMetadata={(event) => {
-                const video = event.currentTarget;
-                if (video.duration > 0.15 && video.currentTime < 0.05) {
-                  video.currentTime = Math.min(0.2, video.duration * 0.04);
-                }
-              }}
-              onError={() => setThumbFailed(true)}
-            />
-          ) : (
-            <img src={src} alt="" draggable={false} onError={() => setThumbFailed(true)} />
-          )
-        ) : null}
-      </span>
+      {onPlayToggle ? (
+        <button
+          type="button"
+          className={`folder-row__preview${playEnabled ? ' folder-row__preview--on' : ' folder-row__preview--off'}`}
+          aria-pressed={playEnabled}
+          aria-label={
+            playEnabled ? `Exclude ${name} from playback` : `Include ${name} in playback`
+          }
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={() => void onPlayToggle(!playEnabled)}
+        >
+          <span className="saver__thumb" aria-hidden="true">
+            {thumb}
+          </span>
+          <span className="folder-row__preview-check" aria-hidden="true" />
+          <span className="folder-row__preview-state" aria-hidden="true">
+            {playEnabled ? 'On' : 'Off'}
+          </span>
+        </button>
+      ) : (
+        <span className="saver__thumb" aria-hidden="true">
+          {thumb}
+        </span>
+      )}
       <input
         value={label}
         placeholder={fallback}
