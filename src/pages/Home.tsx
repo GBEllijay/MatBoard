@@ -114,7 +114,7 @@ export function HomePage() {
             {proUnlocked
               ? `Gym TV: open White for Display or Rounds, or Pro for ${GYM_CONSOLE_NAME}, Mock Tournament, or Class Schedule. Press F for fullscreen. Roster lives on the phone.`
               : coachUnlocked
-                ? 'Gym TV: open White for Display or Rounds, or Coach for Mock Tournament, Daily Techniques, or Competitor Management. Press F for fullscreen.'
+                ? 'Gym TV: open White for Display or Rounds, or Coach for Mock Tournament or Daily Training Videos. Press F for fullscreen.'
                 : 'Gym TV: open White, then fullscreen Display or Rounds. Press F for fullscreen.'}
           </p>
           <p className="home__hint">

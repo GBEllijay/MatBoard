@@ -19,7 +19,7 @@ export type ComingSoonAdCopy = {
 export const COMING_SOON_LABEL = 'Coming Soon';
 
 export const PRODUCT_TEASERS = {
-  coach: 'Mock Tournament, Daily Techniques, Competitor Management.',
+  coach: 'Mock Tournament, Daily Training Videos, Competitor roster.',
   coachUnlocked: 'Coach tools on this browser.',
   pro: GYM_CONSOLE_NAME,
   proUnlocked: 'Console is on this browser.',
@@ -40,8 +40,8 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
         body: 'Run a 16-person bracket on the gym TV. Score each bout and track winners on the same easy to use scoreboard.',
       },
       {
-        title: 'Daily Techniques',
-        body: 'Record morning clips for screencasting. Loop one while the class drills, with a timer on the screen. Each coach keeps their own bank of clips.',
+        title: 'Daily Training Videos',
+        body: 'Record up to 10 on-device clips for screencasting. Loop one while the class drills, with a timer on the screen. Each coach keeps their own bank of clips.',
       },
     ],
     dismiss: 'Got it',

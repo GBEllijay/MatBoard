@@ -9,7 +9,10 @@ export function CoachPage() {
   return (
     <main className="home home--coach">
       <div className="home__inner">
-        <HomeMark to="/" tagline="Coach — mock tournament, Daily Techniques, and competitors." />
+        <HomeMark
+          to="/"
+          tagline="Coach — Mock Tournament, Competitor roster, Training notes, Daily Training Videos."
+        />
 
         <nav className="home__modes" aria-label="Advantage Coach">
           <CoachToolsCard />
@@ -19,8 +22,8 @@ export function CoachPage() {
           <p className="home__hint">Install Advantage as an app from your browser menu.</p>
           <p className="home__hint">
             Gym TV: open this site on a computer plugged into the TV, then fullscreen Display,
-            Rounds, Mock Tournament, or Daily Techniques. Press F for fullscreen. Competitor
-            Management lives on the phone.
+            Rounds, Mock Tournament, or Daily Training Videos. Press F for fullscreen. Competitor
+            roster and Training notes live on the phone.
           </p>
           <p className="home__hint">
             Control from your phone. Cast the scoreboard to your TV, or open Display on a second

@@ -13,7 +13,7 @@ Browsers cannot permanently hide the address bar in a normal tab. For gym TV / c
 ## Products
 
 - **Advantage White** (`/white`, `/lite` redirects here) — BJJ scoreboard and timer. Home card opens this page. **Live Bout** and **Rounds** live here (same Scoreboard / Controller / Training destinations as before).
-- **Advantage Coach** — Coming soon on public home. Card teases Mock Tournament, Daily Techniques, and Competitor Management. Tap opens a Coming soon **ad** (not checkout) with the full line: run a Mock Tournament, record Daily Techniques for screencasting with Competitor Management System (bout roster — not student progress / not GB Members). No prices. When Coach is unlocked on this browser, the Coach card is active and **Open Coach** goes to `/coach` (Mock Tournament, Daily Techniques / Videos, Competitor Management System). Public deep links to those routes stay gated unless Coach or Pro is on.
+- **Advantage Coach** — Coming soon on public home. When unlocked (`?coach=gbellijay`), **Open Coach** goes to `/coach` with four tools only: **Mock Tournament**, **Competitor roster** (Competitor Management System — local-only, no CSV), **Training notes** (local class notes), and **Daily Training Videos** (up to 10 on-device clips with loop + drill timer). Coach does not open Gallery or Gym Owner Console folders (Pro Shop, Events, Class Schedule, slideshow). Public deep links stay gated.
 - **Advantage Pro** — Coming soon on public home. Compact card teases gym-TV and tournament tools. Tap opens a Coming soon ad with the full **Gym Owner and Instructor's Console** paragraph (cast Pro-Shop, Class Schedules, Recent Promotions, Upcoming Events and Competitions; in-house tournament suite; instructor licenses). No prices. When Pro is unlocked on this browser, the Pro card is active and **Open Console** goes to `/pro` (Gallery, Videos, Pro Shop, Events, Mock Tournament, Class Schedule, Competitor Management System). Public deep links to those routes stay gated.
 
 ## Modes
@@ -40,7 +40,7 @@ Unlocked home shows an active Pro card and **Open Console**. The code lives in `
 
 **Advantage Coach** (same pattern, separate flag and code)
 
-1. Open the site with `?coach=gbellijay` (or `?coach=1`).
+1. Open the site with `/?coach=gbellijay` (or `?coach=1`).
 2. Or tap **Advantage Coach** → **Owner unlock** (or **Unlock Coach** on Coming soon) and enter `gbellijay`.
 3. Or set `localStorage` key `advantage.coachUnlocked` to `1`.
 

@@ -1,4 +1,4 @@
-/** Ordered playlist helpers shared by Gallery, Videos, Pro Shop, and Events. */
+/** Ordered playlist helpers shared by Gallery, Videos, Pro Shop, Events, and Daily Training Videos. */
 
 export type PlaylistItem = {
   id: string;

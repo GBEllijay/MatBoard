@@ -40,19 +40,31 @@ export function ComingSoonPage() {
               <BeltRail kind="tournament" />
               Mock Tournament
             </Link>
-            {proUnlocked ? (
-              <Link className="btn" to="/schedule">
-                Class Schedule
-              </Link>
-            ) : null}
             {coachUnlocked ? (
-              <Link className="btn" to="/techniques">
-                Daily Techniques
-              </Link>
+              <>
+                <Link className="btn" to="/roster">
+                  Competitor roster
+                </Link>
+                <Link className="btn" to="/notes">
+                  Training notes
+                </Link>
+                <Link className="btn" to="/techniques">
+                  Daily Training Videos
+                </Link>
+              </>
             ) : null}
-            <Link className="btn" to="/roster">
-              Competitor Management System
-            </Link>
+            {proUnlocked ? (
+              <>
+                <Link className="btn" to="/schedule">
+                  Class Schedule
+                </Link>
+                {!coachUnlocked ? (
+                  <Link className="btn" to="/roster">
+                    Competitor roster
+                  </Link>
+                ) : null}
+              </>
+            ) : null}
             <Link className="btn btn--ghost" to="/">
               Home
             </Link>

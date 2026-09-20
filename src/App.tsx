@@ -13,7 +13,9 @@ import { ProPage } from './pages/Pro';
 import { RosterPage } from './pages/Roster';
 import { ScreensaverPage } from './pages/Screensaver';
 import { SchedulePage } from './pages/Schedule';
+import { TechniquesPage } from './pages/Techniques';
 import { TournamentPage } from './pages/Tournament';
+import { TrainingNotesPage } from './pages/TrainingNotes';
 import { TrainingPage } from './pages/Training';
 import { WhitePage } from './pages/White';
 
@@ -73,7 +75,15 @@ export default function App() {
         path="/techniques"
         element={
           <CoachRoute>
-            <Navigate to="/slideshow?folder=videos" replace />
+            <TechniquesPage />
+          </CoachRoute>
+        }
+      />
+      <Route
+        path="/notes"
+        element={
+          <CoachRoute>
+            <TrainingNotesPage />
           </CoachRoute>
         }
       />
@@ -96,17 +106,17 @@ export default function App() {
       <Route
         path="/slideshow"
         element={
-          <CoachRoute>
+          <ProRoute>
             <ScreensaverPage />
-          </CoachRoute>
+          </ProRoute>
         }
       />
       <Route
         path="/screensaver"
         element={
-          <CoachRoute>
+          <ProRoute>
             <ScreensaverPage />
-          </CoachRoute>
+          </ProRoute>
         }
       />
       <Route path="/coming-soon" element={<ComingSoonPage />} />

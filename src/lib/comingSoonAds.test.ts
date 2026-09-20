@@ -23,7 +23,7 @@ test('Coach ad sells bout tools, Daily Techniques, and no price', () => {
     text,
     /Score each bout and track winners on the same easy to use scoreboard/,
   );
-  assert.match(text, /Daily Techniques/);
+  assert.match(text, /Daily Training Videos/);
   assert.match(text, /screencasting/i);
   assert.match(text, /loop/i);
   assert.match(text, /timer/i);
@@ -31,11 +31,14 @@ test('Coach ad sells bout tools, Daily Techniques, and no price', () => {
   assert.doesNotMatch(text, /membership app/i);
   assert.doesNotMatch(text, /student progress/i);
   assert.doesNotMatch(text, /GB Members/i);
+  assert.doesNotMatch(text, /Gallery/i);
+  assert.doesNotMatch(text, /Pro-Shop|Pro Shop/i);
+  assert.doesNotMatch(text, /Class Schedule/i);
   assert.doesNotMatch(text, /\$\d/);
   assert.doesNotMatch(PRODUCT_TEASERS.coach, /\$\d/);
   assert.match(PRODUCT_TEASERS.coach, /Mock Tournament/);
-  assert.match(PRODUCT_TEASERS.coach, /Daily Techniques/);
-  assert.match(PRODUCT_TEASERS.coach, /Competitor Management/);
+  assert.match(PRODUCT_TEASERS.coach, /Daily Training Videos/);
+  assert.match(PRODUCT_TEASERS.coach, /Competitor roster/);
 });
 
 test('Pro ad sells the Console paragraph and no price', () => {
