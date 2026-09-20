@@ -3,11 +3,17 @@
 import { studentFromInput, type Student } from './rosterStore.ts';
 
 export const ROSTER_CSV_HEADERS = ['Name', 'Belt', 'Last promotion', 'Notes'] as const;
+export const ROSTER_CSV_SAVE_HINT =
+  'Save as CSV (comma-separated), not an Excel workbook (.xlsx).';
+export const ROSTER_CSV_WORKBOOK_ERROR =
+  'That looks like an Excel workbook. Save as CSV (comma-separated), then import.';
+export const ROSTER_CSV_BELT_GUIDE =
+  `# ${ROSTER_CSV_SAVE_HINT} Belts (required on every row): White, Blue, Purple, Brown, Black, Coral; kids Grey, Yellow, Orange, Green. Also accepted: black, Black, blackbelt, black belt, Black Belt, BB, white belt, bluebelt, and the same color + belt spellings for each rank.`;
 export const ROSTER_CSV_EXAMPLE = {
   name: 'Alex Rivera',
   belt: 'Purple',
   lastPromotion: '2026-03-12',
-  note: 'Example - delete this row',
+  note: 'Example - delete this row. Belts: white / blue / purple / brown / black (blackbelt, black belt, BB) / coral; kids grey yellow orange green.',
 } as const;
 
 export type RosterCsvRow = Pick<Student, 'name' | 'belt' | 'lastPromotion' | 'note'>;
@@ -19,14 +25,24 @@ export type RosterCsvImport = {
   error?: string;
 };
 
-const HEADER_FIELDS = ['name', 'belt', 'lastPromotion', 'note'] as const;
-type HeaderField = (typeof HEADER_FIELDS)[number];
+type HeaderField = 'name' | 'firstName' | 'lastName' | 'belt' | 'lastPromotion' | 'note';
 
 const HEADER_ALIASES: Record<string, HeaderField> = {
   name: 'name',
   student: 'name',
+  competitor: 'name',
   'student name': 'name',
   'full name': 'name',
+  'competitor name': 'name',
+  first: 'firstName',
+  'first name': 'firstName',
+  firstname: 'firstName',
+  'given name': 'firstName',
+  last: 'lastName',
+  'last name': 'lastName',
+  lastname: 'lastName',
+  surname: 'lastName',
+  'family name': 'lastName',
   belt: 'belt',
   rank: 'belt',
   'belt rank': 'belt',
@@ -44,6 +60,12 @@ const HEADER_ALIASES: Record<string, HeaderField> = {
   comment: 'note',
 };
 
+const DELIMITERS = [',', ';', '\t'] as const;
+
+function normalizeCsvText(text: string): string {
+  return text.replace(/^\uFEFF/, '').replace(/\u0000/g, '');
+}
+
 function normalizeHeader(value: string): string {
   return value
     .replace(/^\uFEFF/, '')
@@ -53,8 +75,52 @@ function normalizeHeader(value: string): string {
     .trim();
 }
 
-export function parseCsv(text: string): string[][] {
-  const src = text.replace(/^\uFEFF/, '');
+function countUnquoted(line: string, delimiter: string): number {
+  let count = 0;
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        i += 1;
+        continue;
+      }
+      inQuotes = !inQuotes;
+      continue;
+    }
+    if (!inQuotes && char === delimiter) count += 1;
+  }
+  return count;
+}
+
+function firstContentLines(text: string): string[] {
+  return normalizeCsvText(text)
+    .split(/\r\n|\n|\r/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+export function detectCsvDelimiter(text: string): string {
+  const lines = firstContentLines(text);
+  for (const line of lines) {
+    const sep = line.match(/^sep=(.)$/i);
+    if (sep) return sep[1];
+  }
+  const header = lines.find((line) => !line.startsWith('#') && !/^sep=/i.test(line)) ?? '';
+  let best: string = ',';
+  let bestCount = 0;
+  for (const delimiter of DELIMITERS) {
+    const count = countUnquoted(header, delimiter);
+    if (count > bestCount) {
+      best = delimiter;
+      bestCount = count;
+    }
+  }
+  return best;
+}
+
+export function parseCsv(text: string, delimiter = ','): string[][] {
+  const src = normalizeCsvText(text);
   const rows: string[][] = [];
   let row: string[] = [];
   let field = '';
@@ -90,7 +156,7 @@ export function parseCsv(text: string): string[][] {
       i += 1;
       continue;
     }
-    if (char === ',') {
+    if (char === delimiter) {
       row.push(field);
       field = '';
       i += 1;
@@ -128,14 +194,14 @@ export function serializeRosterCsv(rows: RosterCsvRow[]): string {
 }
 
 export function rosterCsvTemplate(): string {
-  return serializeRosterCsv([
+  return `${ROSTER_CSV_BELT_GUIDE}\r\n${serializeRosterCsv([
     {
       name: ROSTER_CSV_EXAMPLE.name,
       belt: ROSTER_CSV_EXAMPLE.belt,
       lastPromotion: ROSTER_CSV_EXAMPLE.lastPromotion,
       note: ROSTER_CSV_EXAMPLE.note,
     },
-  ]);
+  ])}`;
 }
 
 export function parseImportDate(value: string): string {
@@ -171,30 +237,114 @@ function mapHeaders(headerRow: string[]): Partial<Record<HeaderField, number>> {
   return map;
 }
 
+function isSkippableRow(row: string[]): boolean {
+  const first = row[0]?.trim() ?? '';
+  return first.startsWith('#') || /^sep=/i.test(first);
+}
+
+function hasRequiredColumns(columns: Partial<Record<HeaderField, number>>): boolean {
+  const hasName = columns.name != null || columns.firstName != null || columns.lastName != null;
+  return hasName && columns.belt != null;
+}
+
+function cell(row: string[], index: number | undefined): string {
+  if (index == null || index < 0) return '';
+  return row[index] ?? '';
+}
+
+function combineName(row: string[], columns: Partial<Record<HeaderField, number>>): string {
+  const full = cell(row, columns.name).trim();
+  const first = cell(row, columns.firstName).trim();
+  const last = cell(row, columns.lastName).trim();
+  if (full) {
+    if (last && !full.toLowerCase().includes(last.toLowerCase())) return `${full} ${last}`.trim();
+    return full;
+  }
+  return [first, last].filter(Boolean).join(' ');
+}
+
+function splitNames(name: string): string[] {
+  const parts = name
+    .split(/\r\n|\n|\r/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  return parts;
+}
+
+function findHeaderRow(rows: string[][]): { index: number; columns: Partial<Record<HeaderField, number>> } | null {
+  for (let index = 0; index < rows.length; index += 1) {
+    if (isSkippableRow(rows[index])) continue;
+    const columns = mapHeaders(rows[index]);
+    if (hasRequiredColumns(columns)) return { index, columns };
+  }
+  return null;
+}
+
 export function formatRosterCsvSummary(imported: number, skipped: number): string {
   return `${imported} imported, ${skipped} skipped`;
 }
 
+export function isSpreadsheetWorkbook(file: { name?: string; type?: string }): boolean {
+  const name = (file.name ?? '').toLowerCase();
+  const type = (file.type ?? '').toLowerCase();
+  return (
+    name.endsWith('.xlsx') ||
+    name.endsWith('.xlsm') ||
+    name.endsWith('.xls') ||
+    name.endsWith('.ods') ||
+    type.includes('spreadsheetml') ||
+    type.includes('ms-excel') ||
+    type.includes('opendocument.spreadsheet')
+  );
+}
+
+export function looksLikeWorkbookText(text: string): boolean {
+  if (
+    text.startsWith('PK\u0003\u0004') ||
+    text.startsWith('PK\u0005\u0006') ||
+    text.startsWith('PK\u0007\u0008')
+  ) {
+    return true;
+  }
+  const head = text.slice(0, 256);
+  if (head.includes('[Content_Types].xml') || head.includes('xl/workbook')) return true;
+  return head.charCodeAt(0) === 0xd0 && head.charCodeAt(1) === 0xcf;
+}
+
 export function importRosterCsv(text: string): RosterCsvImport {
-  const rows = parseCsv(text);
+  if (looksLikeWorkbookText(text)) {
+    return { students: [], imported: 0, skipped: 0, error: ROSTER_CSV_WORKBOOK_ERROR };
+  }
+  const rows = parseCsv(text, detectCsvDelimiter(text));
   if (!rows.length) {
     return { students: [], imported: 0, skipped: 0, error: 'Need a Name and Belt column.' };
   }
-  const columns = mapHeaders(rows[0]);
-  if (columns.name == null || columns.belt == null) {
+  const header = findHeaderRow(rows);
+  if (!header) {
     return { students: [], imported: 0, skipped: 0, error: 'Need a Name and Belt column.' };
   }
 
   const students: Student[] = [];
   let skipped = 0;
-  for (const row of rows.slice(1)) {
-    const name = row[columns.name] ?? '';
-    const belt = row[columns.belt] ?? '';
-    const lastPromotion = parseImportDate(row[columns.lastPromotion ?? -1] ?? '');
-    const note = row[columns.note ?? -1] ?? '';
-    const next = studentFromInput({ name, belt, lastPromotion, note });
-    if (next) students.push(next);
-    else skipped += 1;
+  for (const row of rows.slice(header.index + 1)) {
+    if (isSkippableRow(row)) continue;
+    const names = splitNames(combineName(row, header.columns));
+    const belt = cell(row, header.columns.belt);
+    const lastPromotion = parseImportDate(cell(row, header.columns.lastPromotion));
+    const note = cell(row, header.columns.note);
+    if (!names.length) {
+      skipped += 1;
+      continue;
+    }
+    let added = 0;
+    for (const name of names) {
+      const next = studentFromInput({ name, belt, lastPromotion, note });
+      if (next) {
+        students.push(next);
+        added += 1;
+      }
+    }
+    if (!added) skipped += 1;
   }
   return { students, imported: students.length, skipped };
 }

@@ -154,6 +154,16 @@ describe('belt and date helpers', () => {
   it('canonicalizes known belts and formats promotion dates', () => {
     assert.equal(canonicalBelt('  blue  '), 'Blue');
     assert.equal(canonicalBelt('Grey'), 'Grey');
+    assert.equal(canonicalBelt('blackbelt'), 'Black');
+    assert.equal(canonicalBelt('black belt'), 'Black');
+    assert.equal(canonicalBelt('Black Belt'), 'Black');
+    assert.equal(canonicalBelt('BB'), 'Black');
+    assert.equal(canonicalBelt('white belt'), 'White');
+    assert.equal(canonicalBelt('bluebelt'), 'Blue');
+    assert.equal(canonicalBelt('purple'), 'Purple');
+    assert.equal(canonicalBelt('brown belt'), 'Brown');
+    assert.equal(canonicalBelt('coral belt'), 'Coral');
+    assert.equal(canonicalBelt('gray'), 'Grey');
     assert.equal(normalizeDate('2026-03-12'), '2026-03-12');
     assert.equal(normalizeDate('03/12/2026'), '');
     assert.equal(formatPromotion('2026-03-12').includes('2026'), true);

@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  ROSTER_CSV_WORKBOOK_ERROR,
   formatRosterCsvSummary,
   importRosterCsv,
+  isSpreadsheetWorkbook,
   parseCsv,
   parseImportDate,
   rosterCsvTemplate,
@@ -22,6 +24,17 @@ describe('parseCsv', () => {
       ['Notes'],
       ['Left knee, rest'],
       ['He said "go"'],
+    ]);
+  });
+
+  it('splits semicolon and tab files when a delimiter is passed', () => {
+    assert.deepEqual(parseCsv('Name;Belt\nSam;Blue\n', ';'), [
+      ['Name', 'Belt'],
+      ['Sam', 'Blue'],
+    ]);
+    assert.deepEqual(parseCsv('Name\tBelt\nSam\tBlue\n', '\t'), [
+      ['Name', 'Belt'],
+      ['Sam', 'Blue'],
     ]);
   });
 });
@@ -64,16 +77,128 @@ describe('importRosterCsv', () => {
     assert.equal(missing.error, 'Need a Name and Belt column.');
     assert.equal(missing.imported, 0);
   });
+
+  it('imports every data row from a 20-person Excel CRLF spreadsheet', () => {
+    const people = Array.from({ length: 20 }, (_, index) => {
+      const n = String(index + 1).padStart(2, '0');
+      return `Student ${n},Blue,2026-01-${n},Row ${n}`;
+    });
+    const csv = ['Name,Belt,Last promotion,Notes', ...people].join('\r\n');
+    const next = importRosterCsv(csv);
+    assert.equal(next.error, undefined);
+    assert.equal(next.imported, 20);
+    assert.equal(next.skipped, 0);
+    assert.equal(next.students[0]?.name, 'Student 01');
+    assert.equal(next.students[19]?.name, 'Student 20');
+    assert.equal(next.students.every((row) => row.belt === 'Blue'), true);
+  });
+
+  it('reads an Excel-saved quoted CSV with BOM, blank columns, and extra empty rows', () => {
+    const people = Array.from({ length: 20 }, (_, index) => {
+      const n = String(index + 1).padStart(2, '0');
+      const belt = index === 0 ? 'blackbelt' : 'Blue';
+      return `"Student ${n}","${belt}","2026-01-${n}","",,`;
+    });
+    const csv = `\uFEFF" name "," BELT ","Last  Promotion"," notes ",,\r\n\r\n${people.join('\r\n')}\r\n\r\n`;
+    const next = importRosterCsv(csv);
+    assert.equal(next.error, undefined);
+    assert.equal(next.imported, 20);
+    assert.equal(next.skipped, 0);
+    assert.equal(next.students[0]?.name, 'Student 01');
+    assert.equal(next.students[0]?.belt, 'Black');
+    assert.equal(next.students[19]?.name, 'Student 20');
+  });
+
+  it('rejects an Excel workbook instead of silently importing junk', () => {
+    assert.equal(isSpreadsheetWorkbook({ name: 'roster.xlsx' }), true);
+    assert.equal(isSpreadsheetWorkbook({ name: 'roster.csv' }), false);
+    const zip = importRosterCsv('PK\u0003\u0004[Content_Types].xml');
+    assert.equal(zip.error, ROSTER_CSV_WORKBOOK_ERROR);
+    assert.equal(zip.imported, 0);
+    const person = importRosterCsv('Name,Belt\nPK Smith,bluebelt\n');
+    assert.equal(person.imported, 1);
+    assert.equal(person.students[0]?.name, 'PK Smith');
+    assert.equal(person.students[0]?.belt, 'Blue');
+  });
+
+  it('maps flexible belt spellings including blackbelt and black belt', () => {
+    const csv = [
+      'Name,Belt',
+      'Pat,blackbelt',
+      'Alex,black belt',
+      'Sam,Black Belt',
+      'Kim,BB',
+      'Lee,BLACK',
+      'Jo,white belt',
+      'Bo,bluebelt',
+      'Ty,purple',
+      'Cy,brown belt',
+      'Val,coral belt',
+      'Gray Kid,gray',
+    ].join('\n');
+    const next = importRosterCsv(csv);
+    assert.equal(next.imported, 11);
+    assert.deepEqual(
+      next.students.map((row) => `${row.name}:${row.belt}`),
+      [
+        'Pat:Black',
+        'Alex:Black',
+        'Sam:Black',
+        'Kim:Black',
+        'Lee:Black',
+        'Jo:White',
+        'Bo:Blue',
+        'Ty:Purple',
+        'Cy:Brown',
+        'Val:Coral',
+        'Gray Kid:Grey',
+      ],
+    );
+  });
+
+  it('reads semicolon CSV, tab CSV, and a # belt-guide row above the header', () => {
+    const semi = importRosterCsv('Name;Belt\nPat;blackbelt\nSam;Blue\n');
+    assert.equal(semi.imported, 2);
+    assert.equal(semi.students[0]?.belt, 'Black');
+
+    const tabs = importRosterCsv('Name\tBelt\nPat\tblack belt\n');
+    assert.equal(tabs.imported, 1);
+    assert.equal(tabs.students[0]?.name, 'Pat');
+
+    const guided = importRosterCsv(
+      '# Belts: blackbelt, black belt, BB\r\nName,Belt\r\nAlex,blackbelt\r\n',
+    );
+    assert.equal(guided.imported, 1);
+    assert.equal(guided.students[0]?.belt, 'Black');
+  });
+
+  it('joins first + last name columns and splits a multiline Name cell', () => {
+    const split = importRosterCsv('First name,Last name,Belt\nJohn,Smith,blackbelt\n');
+    assert.equal(split.imported, 1);
+    assert.equal(split.students[0]?.name, 'John Smith');
+    assert.equal(split.students[0]?.belt, 'Black');
+
+    const stacked = importRosterCsv('Name,Belt\n"Pat Lee\nAlex Kim\nSam Jo",purple\n');
+    assert.equal(stacked.imported, 3);
+    assert.deepEqual(
+      stacked.students.map((row) => `${row.name}:${row.belt}`),
+      ['Pat Lee:Purple', 'Alex Kim:Purple', 'Sam Jo:Purple'],
+    );
+  });
 });
 
 describe('serializeRosterCsv', () => {
   it('writes the template headers plus one example row', () => {
     const csv = rosterCsvTemplate();
-    assert.equal(csv.startsWith('Name,Belt,Last promotion,Notes\r\n'), true);
-    assert.equal(csv.includes('Alex Rivera,Purple,2026-03-12,Example - delete this row'), true);
+    assert.match(csv, /^# Save as CSV/);
+    assert.match(csv, /blackbelt/i);
+    assert.match(csv, /black belt/i);
+    assert.equal(csv.includes('Name,Belt,Last promotion,Notes\r\n'), true);
+    assert.equal(csv.includes('Alex Rivera,Purple,2026-03-12,'), true);
     const roundTrip = importRosterCsv(csv);
     assert.equal(roundTrip.imported, 1);
     assert.equal(roundTrip.students[0]?.name, 'Alex Rivera');
+    assert.equal(roundTrip.students[0]?.belt, 'Purple');
   });
 
   it('quotes notes so a round-trip keeps commas', () => {
