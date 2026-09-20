@@ -3,13 +3,13 @@
 export const COACH_UNLOCK_STORAGE_KEY = 'advantage.coachUnlocked';
 
 /**
- * Gym-owner code for Coach unlock. Change this anytime, or set VITE_COACH_UNLOCK_CODE
- * at build time. Compared case-insensitively after trim.
+ * Gym-owner code for Coach unlock. Default is the locked owner code `gbellijay`.
+ * Override at build time with VITE_COACH_UNLOCK_CODE. Compared case-insensitively after trim.
  */
 export const COACH_UNLOCK_CODE =
   (typeof import.meta.env?.VITE_COACH_UNLOCK_CODE === 'string'
     ? import.meta.env.VITE_COACH_UNLOCK_CODE.trim()
-    : '') || 'advantage';
+    : '') || 'gbellijay';
 
 const listeners = new Set<() => void>();
 

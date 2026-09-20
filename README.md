@@ -38,13 +38,13 @@ This is not a login. The gym owner can keep testing Coach / Console / Tournament
 
 Unlocked home shows an active Pro card and **Open Console**. The code lives in `src/lib/proUnlock.ts` as `PRO_UNLOCK_CODE` (default `advantage`). Override at build time with `VITE_PRO_UNLOCK_CODE`. Lock again with **Lock Pro** on home, `?pro=0`, or by clearing that flag.
 
-**Advantage Coach** (same pattern, separate flag)
+**Advantage Coach** (same pattern, separate flag and code)
 
-1. Open the site with `?coach=advantage` (or `?coach=1`).
-2. Or tap **Advantage Coach** → **Owner unlock** (or **Unlock Coach** on Coming soon) and enter the code.
+1. Open the site with `?coach=gbellijay` (or `?coach=1`).
+2. Or tap **Advantage Coach** → **Owner unlock** (or **Unlock Coach** on Coming soon) and enter `gbellijay`.
 3. Or set `localStorage` key `advantage.coachUnlocked` to `1`.
 
-Unlocked home shows an active Coach card and **Open Coach**. The code lives in `src/lib/coachUnlock.ts` as `COACH_UNLOCK_CODE` (default `advantage`). Override at build time with `VITE_COACH_UNLOCK_CODE`. Lock again with **Lock Coach** on home, `?coach=0`, or by clearing that flag. Coach and Pro unlocks are independent.
+Unlocked home shows an active Coach card and **Open Coach**. The code lives in `src/lib/coachUnlock.ts` as `COACH_UNLOCK_CODE` (default `gbellijay`). Override at build time with `VITE_COACH_UNLOCK_CODE`. Lock again with **Lock Coach** on home, `?coach=0`, or by clearing that flag. Coach and Pro unlocks are independent — Pro still uses `?pro=advantage`.
 
 ## Scripts
 
