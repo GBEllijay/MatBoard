@@ -23,6 +23,27 @@ export const WEEKDAY_SHORT: Record<Weekday, string> = {
   sun: 'Sun',
 };
 
+/** Owner-picked gym-TV layout. Weekly list is the default flyer-style board. */
+export const SCHEDULE_TEMPLATES = ['weekly-list', 'week-grid', 'monthly'] as const;
+export type ScheduleTemplate = (typeof SCHEDULE_TEMPLATES)[number];
+export const DEFAULT_SCHEDULE_TEMPLATE: ScheduleTemplate = 'weekly-list';
+
+export const SCHEDULE_TEMPLATE_LABELS: Record<ScheduleTemplate, string> = {
+  'weekly-list': 'Weekly list',
+  'week-grid': 'Week grid',
+  monthly: 'Monthly',
+};
+
+export const SCHEDULE_TEMPLATE_HINTS: Record<ScheduleTemplate, string> = {
+  'weekly-list': 'Day banners with time, mat, and class rows — the gym-TV flyer.',
+  'week-grid': 'Compact Monday–Sunday columns. Best on a landscape TV.',
+  monthly: 'Special dates first, with a compact recap of the regular week.',
+};
+
+export function isScheduleTemplate(value: unknown): value is ScheduleTemplate {
+  return typeof value === 'string' && (SCHEDULE_TEMPLATES as readonly string[]).includes(value);
+}
+
 /** Recurring weekly slot on the Class Schedule board. */
 export type WeeklyClassSlot = {
   id: string;
@@ -30,7 +51,40 @@ export type WeeklyClassSlot = {
   day: Weekday;
   time: string;
   title: string;
+  /** Mat / room for this slot. Same day + time on MAT 1 and MAT 2 are two rows. */
+  location: string;
+  /** Optional detail under the title, e.g. "Blue belt & up". */
+  subtitle: string;
 };
+
+export type ClassTimeGroup = {
+  time: string;
+  items: WeeklyClassSlot[];
+};
+
+/** Common gym mats. Owners can still type a custom room. */
+export const DEFAULT_MATS = ['MAT 1', 'MAT 2'] as const;
+
+export function compareMatLocation(a: string, b: string): number {
+  const num = (value: string) => {
+    const match = /(\d+)/.exec(value.trim());
+    return match ? Number(match[1]) : Number.POSITIVE_INFINITY;
+  };
+  const byNum = num(a) - num(b);
+  if (byNum !== 0) return byNum;
+  return a.localeCompare(b, undefined, { sensitivity: 'base' });
+}
+
+/** Next unused MAT n for a same-time group (MAT 1 → MAT 2 → MAT 3…). */
+export function suggestNextMat(used: readonly string[]): string {
+  const taken = new Set(used.map((value) => value.trim().toUpperCase()).filter(Boolean));
+  for (const mat of DEFAULT_MATS) {
+    if (!taken.has(mat)) return mat;
+  }
+  let n = DEFAULT_MATS.length + 1;
+  while (taken.has(`MAT ${n}`)) n += 1;
+  return `MAT ${n}`;
+}
 
 /**
  * Dated or ongoing notice. Phase 1 shows these on the notices strip.
@@ -54,6 +108,8 @@ export type GymCalendarState = {
   qrUrl: string;
   /** Free-text strip. Still the fastest way to post a gym-TV notice. */
   notes: string;
+  /** Display template for the Class Schedule TV board. */
+  template: ScheduleTemplate;
   classes: WeeklyClassSlot[];
   specials: SpecialDate[];
 };
@@ -155,6 +211,8 @@ export function compareClasses(a: WeeklyClassSlot, b: WeeklyClassSlot): number {
   if (day !== 0) return day;
   const time = parseTimeMinutes(a.time) - parseTimeMinutes(b.time);
   if (time !== 0) return time;
+  const location = compareMatLocation(a.location, b.location);
+  if (location !== 0) return location;
   return a.title.localeCompare(b.title);
 }
 
@@ -164,6 +222,48 @@ export function sortClasses(classes: readonly WeeklyClassSlot[]): WeeklyClassSlo
 
 export function classesOnDay(classes: readonly WeeklyClassSlot[], day: Weekday): WeeklyClassSlot[] {
   return sortClasses(classes.filter((row) => row.day === day));
+}
+
+/** Days that actually have a class. Empty board falls back to Mon–Sun so the layout still reads. */
+export function boardWeekdays(classes: readonly WeeklyClassSlot[]): Weekday[] {
+  const present = new Set(classes.map((row) => row.day));
+  const days = WEEKDAYS.filter((day) => present.has(day));
+  return days.length ? days : [...WEEKDAYS];
+}
+
+/** Group a day's classes under shared clock times (5:00 PM → MAT 1 / MAT 2). */
+export function groupClassesByTime(classes: readonly WeeklyClassSlot[]): ClassTimeGroup[] {
+  const groups: ClassTimeGroup[] = [];
+  for (const item of sortClasses(classes)) {
+    const last = groups[groups.length - 1];
+    if (last && last.time === item.time && last.items[0]?.day === item.day) {
+      last.items.push(item);
+    } else {
+      groups.push({ time: item.time, items: [item] });
+    }
+  }
+  return groups;
+}
+
+/** Gym-TV / monthly recap: "5:00 PM MAT 1 Tiny Champions / MAT 2 Advanced Kids". */
+export function formatTimeGroupLine(group: ClassTimeGroup): string {
+  const when = formatClassTime(group.time);
+  const classes = group.items
+    .map((item) => {
+      const mat = item.location.trim();
+      const title = item.title.trim() || 'Class';
+      const detail = item.subtitle.trim();
+      const name = detail ? `${title} (${detail})` : title;
+      return mat ? `${mat} ${name}` : name;
+    })
+    .join(' / ');
+  return `${when} ${classes}`.trim();
+}
+
+/** "SEPTEMBER 2026" for the board header stamp. */
+export function formatBoardStamp(now = new Date()): string {
+  const month = now.toLocaleString('en-US', { month: 'long' }).toUpperCase();
+  return `${month} ${now.getFullYear()}`;
 }
 
 export function compareSpecials(a: SpecialDate, b: SpecialDate): number {
@@ -197,9 +297,56 @@ export function defaultGymCalendar(): GymCalendarState {
     title: '',
     qrUrl: '',
     notes: '',
+    template: DEFAULT_SCHEDULE_TEMPLATE,
     classes: [],
     specials: [],
   };
+}
+
+export const SAMPLE_WEEK_TITLE = 'Ellijay BJJ';
+export const SAMPLE_WEEK_NOTES = 'Open mat Saturday. No classes Friday.';
+
+/** Flyer-shaped week for preview — generic class names, not a branded theme. */
+export const SAMPLE_WEEK_SLOTS: ReadonlyArray<Omit<WeeklyClassSlot, 'id' | 'kind'>> = [
+  { day: 'mon', time: '12:00', title: 'Advanced', location: 'MAT 2', subtitle: 'Blue belt & up' },
+  { day: 'mon', time: '17:00', title: 'Tiny Champions', location: 'MAT 1', subtitle: '' },
+  { day: 'mon', time: '17:00', title: 'Advanced Kids', location: 'MAT 2', subtitle: 'Grey & White+' },
+  { day: 'mon', time: '18:00', title: 'Little Champions', location: 'MAT 1', subtitle: '' },
+  { day: 'mon', time: '18:00', title: 'Fundamentals', location: 'MAT 2', subtitle: '' },
+  { day: 'tue', time: '17:00', title: 'Little Champions', location: 'MAT 1', subtitle: '' },
+  { day: 'tue', time: '17:00', title: 'Fundamentals', location: 'MAT 2', subtitle: 'All Levels' },
+  { day: 'tue', time: '18:00', title: 'Youth Competition', location: 'MAT 1', subtitle: '' },
+  { day: 'tue', time: '18:00', title: 'Intermediate', location: 'MAT 2', subtitle: '3 stripes & up' },
+  { day: 'wed', time: '10:00', title: 'Youth Homeschool', location: 'MAT 1', subtitle: '' },
+  { day: 'wed', time: '12:00', title: 'Advanced', location: 'MAT 2', subtitle: 'Blue belt & up' },
+  { day: 'wed', time: '17:00', title: 'Tiny Champions', location: 'MAT 1', subtitle: '' },
+  { day: 'wed', time: '18:00', title: 'Little Champions', location: 'MAT 1', subtitle: '' },
+  { day: 'wed', time: '18:00', title: 'Fundamentals', location: 'MAT 2', subtitle: 'All Levels' },
+  { day: 'thu', time: '17:00', title: 'Fundamentals — Week Review', location: 'MAT 1', subtitle: '' },
+  { day: 'thu', time: '17:00', title: 'No-Gi', location: 'MAT 2', subtitle: 'All Levels' },
+  { day: 'thu', time: '18:00', title: 'Competition Class', location: 'MAT 1', subtitle: '' },
+  { day: 'sat', time: '11:00', title: 'Open Mat', location: 'MAT 1', subtitle: '' },
+];
+
+export function sampleWeekClasses(): WeeklyClassSlot[] {
+  return SAMPLE_WEEK_SLOTS.map((slot) => ({
+    ...slot,
+    id: createClassId(),
+    kind: 'class',
+  }));
+}
+
+export function sampleWeekSpecials(): SpecialDate[] {
+  return [
+    {
+      id: createSpecialId(),
+      kind: 'special',
+      date: '',
+      title: 'Seminar — ask at the desk',
+      body: '',
+      flyerId: null,
+    },
+  ];
 }
 
 function newId(prefix: string): string {
@@ -225,7 +372,9 @@ function normalizeClass(raw: unknown, fallbackId: string): WeeklyClassSlot | nul
   const time = typeof row.time === 'string' ? row.time.trim() : '';
   if (!title && !time) return null;
   const id = typeof row.id === 'string' && row.id.trim() ? row.id.trim() : fallbackId;
-  return { id, kind: 'class', day: row.day, time, title };
+  const location = typeof row.location === 'string' ? row.location.trim() : '';
+  const subtitle = typeof row.subtitle === 'string' ? row.subtitle.trim() : '';
+  return { id, kind: 'class', day: row.day, time, title, location, subtitle };
 }
 
 function normalizeSpecial(raw: unknown, fallbackId: string): SpecialDate | null {
@@ -266,6 +415,7 @@ export function normalizeGymCalendar(raw: unknown): GymCalendarState {
     title: typeof parsed.title === 'string' ? parsed.title : '',
     qrUrl: typeof parsed.qrUrl === 'string' ? parsed.qrUrl : '',
     notes: typeof parsed.notes === 'string' ? parsed.notes : '',
+    template: isScheduleTemplate(parsed.template) ? parsed.template : DEFAULT_SCHEDULE_TEMPLATE,
     classes: sortClasses(classes),
     specials: sortSpecials(specials),
   };

@@ -1,17 +1,25 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  boardWeekdays,
   classesOnDay,
   compareClasses,
+  compareMatLocation,
+  DEFAULT_SCHEDULE_TEMPLATE,
   defaultGymCalendar,
+  formatBoardStamp,
   formatClassTime,
   formatSpecialDate,
+  formatTimeGroupLine,
+  groupClassesByTime,
   normalizeGymCalendar,
   normalizeQrUrl,
   noticeLines,
   parseTimeMinutes,
+  SAMPLE_WEEK_SLOTS,
   sortClasses,
   specialsThisWeek,
+  suggestNextMat,
   weekdayFromJsDay,
   type SpecialDate,
   type WeeklyClassSlot,
@@ -23,6 +31,8 @@ function row(partial: Partial<WeeklyClassSlot> & Pick<WeeklyClassSlot, 'id'>): W
     day: 'mon',
     time: '18:00',
     title: 'Adults',
+    location: '',
+    subtitle: '',
     ...partial,
   };
 }
@@ -81,8 +91,9 @@ describe('normalizeGymCalendar', () => {
       title: 'Ellijay BJJ',
       qrUrl: 'https://gym.example',
       notes: 'Closed Monday',
+      template: 'week-grid',
       classes: [
-        { id: 'a', day: 'wed', time: '18:00', title: 'Adults' },
+        { id: 'a', day: 'wed', time: '18:00', title: 'Adults', location: 'MAT 2', subtitle: 'All Levels' },
         { id: 'skip', day: 'mon', time: '', title: '' },
         { day: 'nope', time: '10:00', title: 'Kids' },
         { id: 'b', day: 'mon', time: '09:00', title: 'Kids' },
@@ -94,11 +105,15 @@ describe('normalizeGymCalendar', () => {
     });
     assert.equal(next.title, 'Ellijay BJJ');
     assert.equal(next.notes, 'Closed Monday');
+    assert.equal(next.template, 'week-grid');
     assert.deepEqual(
       next.classes.map((item) => item.id),
       ['b', 'a'],
     );
     assert.equal(next.classes[0]?.kind, 'class');
+    assert.equal(next.classes[0]?.location, '');
+    assert.equal(next.classes[1]?.location, 'MAT 2');
+    assert.equal(next.classes[1]?.subtitle, 'All Levels');
     assert.deepEqual(next.specials, [
       {
         id: 's1',
@@ -110,25 +125,79 @@ describe('normalizeGymCalendar', () => {
       },
     ]);
   });
+
+  it('defaults the TV template to weekly list and ignores junk values', () => {
+    assert.equal(defaultGymCalendar().template, DEFAULT_SCHEDULE_TEMPLATE);
+    assert.equal(normalizeGymCalendar({ template: 'gb-red' }).template, 'weekly-list');
+    assert.equal(normalizeGymCalendar({ template: 'monthly' }).template, 'monthly');
+  });
 });
 
 describe('sortClasses', () => {
-  it('orders by weekday then clock then title', () => {
+  it('orders by weekday then clock then mat then title', () => {
     const rows = [
-      row({ id: '2', day: 'mon', time: '18:00', title: 'Adults' }),
+      row({ id: '2', day: 'mon', time: '18:00', title: 'Adults', location: 'MAT 2' }),
       row({ id: '1', day: 'mon', time: '09:00', title: 'Kids' }),
+      row({ id: '4', day: 'mon', time: '18:00', title: 'Kids', location: 'MAT 1' }),
       row({ id: '3', day: 'tue', time: '18:00', title: 'Adults' }),
     ];
     assert.deepEqual(
       sortClasses(rows).map((item) => item.id),
-      ['1', '2', '3'],
+      ['1', '4', '2', '3'],
     );
     assert.equal(compareClasses(rows[0], rows[1]) > 0, true);
     assert.deepEqual(
       classesOnDay(rows, 'mon').map((item) => item.title),
-      ['Kids', 'Adults'],
+      ['Kids', 'Kids', 'Adults'],
     );
     assert.deepEqual(classesOnDay(rows, 'sun'), []);
+  });
+});
+
+describe('weekly list helpers', () => {
+  it('groups same-time classes and hides empty weekdays', () => {
+    const rows = [
+      row({ id: 'a', day: 'mon', time: '17:00', title: 'Tiny Champions', location: 'MAT 1' }),
+      row({ id: 'b', day: 'mon', time: '17:00', title: 'Advanced Kids', location: 'MAT 2', subtitle: 'Grey & White+' }),
+      row({ id: 'c', day: 'sat', time: '11:00', title: 'Open Mat', location: 'MAT 1' }),
+    ];
+    const groups = groupClassesByTime(classesOnDay(rows, 'mon'));
+    assert.equal(groups.length, 1);
+    assert.equal(groups[0]?.time, '17:00');
+    assert.deepEqual(
+      groups[0]?.items.map((item) => item.location),
+      ['MAT 1', 'MAT 2'],
+    );
+    assert.deepEqual(boardWeekdays(rows), ['mon', 'sat']);
+    assert.deepEqual(boardWeekdays([]), ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']);
+    assert.equal(
+      formatTimeGroupLine(groups[0]!),
+      '5:00 PM MAT 1 Tiny Champions / MAT 2 Advanced Kids (Grey & White+)',
+    );
+  });
+
+  it('suggests the next free mat for a parallel class', () => {
+    assert.equal(suggestNextMat([]), 'MAT 1');
+    assert.equal(suggestNextMat(['MAT 1']), 'MAT 2');
+    assert.equal(suggestNextMat(['mat 1', 'MAT 2']), 'MAT 3');
+    assert.equal(compareMatLocation('MAT 2', 'MAT 10') < 0, true);
+    assert.equal(compareMatLocation('MAT 1', '') < 0, true);
+  });
+
+  it('stamps the board with month and year', () => {
+    assert.equal(formatBoardStamp(new Date(2026, 8, 20)), 'SEPTEMBER 2026');
+  });
+
+  it('ships a sample week with mats and optional details', () => {
+    assert.equal(SAMPLE_WEEK_SLOTS.length > 10, true);
+    assert.equal(
+      SAMPLE_WEEK_SLOTS.some((slot) => slot.location === 'MAT 1' && slot.subtitle === ''),
+      true,
+    );
+    assert.equal(
+      SAMPLE_WEEK_SLOTS.some((slot) => slot.subtitle.includes('Blue belt')),
+      true,
+    );
   });
 });
 

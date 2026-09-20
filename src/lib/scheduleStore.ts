@@ -4,11 +4,18 @@ import {
   createClassId,
   createSpecialId,
   defaultGymCalendar,
+  isScheduleTemplate,
   isWeekday,
   normalizeGymCalendar,
+  SAMPLE_WEEK_NOTES,
+  SAMPLE_WEEK_TITLE,
+  sampleWeekClasses,
+  sampleWeekSpecials,
   sortClasses,
   sortSpecials,
+  suggestNextMat,
   type GymCalendarState,
+  type ScheduleTemplate,
   type SpecialDate,
   type Weekday,
   type WeeklyClassSlot,
@@ -18,19 +25,35 @@ export {
   WEEKDAYS,
   WEEKDAY_LABELS,
   WEEKDAY_SHORT,
+  SCHEDULE_TEMPLATES,
+  SCHEDULE_TEMPLATE_HINTS,
+  SCHEDULE_TEMPLATE_LABELS,
+  DEFAULT_SCHEDULE_TEMPLATE,
+  boardWeekdays,
   classesOnDay,
   compareClasses,
+  DEFAULT_MATS,
+  formatBoardStamp,
   formatClassTime,
   formatSpecialDate,
+  formatTimeGroupLine,
+  groupClassesByTime,
+  isScheduleTemplate,
   isWeekday,
   normalizeQrUrl,
   noticeLines,
   parseTimeMinutes,
+  SAMPLE_WEEK_NOTES,
+  SAMPLE_WEEK_SLOTS,
+  SAMPLE_WEEK_TITLE,
   sortClasses,
   specialsThisWeek,
+  suggestNextMat,
   todayWeekday,
   weekdayFromJsDay,
+  type ClassTimeGroup,
   type GymCalendarState,
+  type ScheduleTemplate,
   type SpecialDate,
   type Weekday,
   type WeeklyClassSlot,
@@ -99,6 +122,11 @@ function patch(partial: Partial<Omit<ScheduleState, 'version'>>): void {
   persist({ ...state, ...partial, version: 1 });
 }
 
+export function setScheduleTemplate(template: ScheduleTemplate): void {
+  if (!isScheduleTemplate(template)) return;
+  patch({ template });
+}
+
 export function getSchedule(): ScheduleState {
   return state;
 }
@@ -138,22 +166,40 @@ export function setQrUrl(qrUrl: string): void {
   patch({ qrUrl });
 }
 
-export function addClass(day: Weekday, time: string, title: string): WeeklyClassSlot | null {
+export function addClass(
+  day: Weekday,
+  time: string,
+  title: string,
+  location = '',
+  subtitle = '',
+): WeeklyClassSlot | null {
   const next: WeeklyClassSlot = {
     id: createClassId(),
     kind: 'class',
     day,
     time: time.trim(),
     title: title.trim(),
+    location: location.trim(),
+    subtitle: subtitle.trim(),
   };
   if (!next.time && !next.title) return null;
   patch({ classes: sortClasses([...state.classes, next]) });
   return next;
 }
 
+/** Same day + time on the next free mat (MAT 1 → MAT 2). Title is filled in Edit. */
+export function addParallelClass(id: string): WeeklyClassSlot | null {
+  const source = state.classes.find((row) => row.id === id);
+  if (!source || !source.time) return null;
+  const used = state.classes
+    .filter((row) => row.day === source.day && row.time === source.time)
+    .map((row) => row.location);
+  return addClass(source.day, source.time, '', suggestNextMat(used));
+}
+
 export function updateClass(
   id: string,
-  partial: Partial<Pick<WeeklyClassSlot, 'day' | 'time' | 'title'>>,
+  partial: Partial<Pick<WeeklyClassSlot, 'day' | 'time' | 'title' | 'location' | 'subtitle'>>,
 ): void {
   patch({
     classes: sortClasses(
@@ -165,9 +211,21 @@ export function updateClass(
           day: partial.day && isWeekday(partial.day) ? partial.day : row.day,
           time: typeof partial.time === 'string' ? partial.time : row.time,
           title: typeof partial.title === 'string' ? partial.title : row.title,
+          location: typeof partial.location === 'string' ? partial.location : row.location,
+          subtitle: typeof partial.subtitle === 'string' ? partial.subtitle : row.subtitle,
         };
       }),
     ),
+  });
+}
+
+/** Replaces weekly classes with a flyer-shaped sample week for TV preview. */
+export function loadSampleWeek(): void {
+  patch({
+    title: state.title.trim() || SAMPLE_WEEK_TITLE,
+    notes: state.notes.trim() || SAMPLE_WEEK_NOTES,
+    classes: sortClasses(sampleWeekClasses()),
+    specials: state.specials.length ? state.specials : sampleWeekSpecials(),
   });
 }
 

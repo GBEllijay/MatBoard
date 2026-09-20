@@ -11,11 +11,21 @@ import {
   WEEKDAYS,
   WEEKDAY_LABELS,
   WEEKDAY_SHORT,
+  SCHEDULE_TEMPLATES,
+  SCHEDULE_TEMPLATE_HINTS,
+  SCHEDULE_TEMPLATE_LABELS,
+  DEFAULT_MATS,
   addClass,
+  addParallelClass,
   addSpecial,
+  boardWeekdays,
   classesOnDay,
+  formatBoardStamp,
   formatClassTime,
   formatSpecialDate,
+  formatTimeGroupLine,
+  groupClassesByTime,
+  loadSampleWeek,
   noticeLines,
   normalizeQrUrl,
   readPickedImage,
@@ -26,13 +36,23 @@ import {
   setQrImageBlob,
   setQrUrl,
   setScheduleNotes,
+  setScheduleTemplate,
+  suggestNextMat,
   todayWeekday,
   updateClass,
   updateSpecial,
+  type ClassTimeGroup,
+  type ScheduleTemplate,
+  type SpecialDate,
   type Weekday,
+  type WeeklyClassSlot,
 } from '../lib/scheduleStore';
 
-type BoardView = 'weekly' | 'monthly';
+const TEMPLATE_CHROME: Record<ScheduleTemplate, string> = {
+  'weekly-list': 'List',
+  'week-grid': 'Grid',
+  monthly: 'Month',
+};
 
 export function SchedulePage() {
   const schedule = useScheduleState();
@@ -40,12 +60,13 @@ export function SchedulePage() {
   const fs = usePlayFullscreen();
   const navigate = useNavigate();
   const [editOpen, setEditOpen] = useState(false);
-  const [view, setView] = useState<BoardView>('weekly');
   const [logoUrl, setLogoUrl] = useState('');
   const [qrImageUrl, setQrImageUrl] = useState('');
   const [qrBuilt, setQrBuilt] = useState('');
   const [qrNote, setQrNote] = useState('');
   const today = todayWeekday();
+  const stamp = formatBoardStamp();
+  const gymName = schedule.title.trim();
 
   useWakeLock(true);
 
@@ -96,6 +117,7 @@ export function SchedulePage() {
   const notices = noticeLines(schedule.notes, schedule.specials);
   const emptyBoard =
     schedule.classes.length === 0 && notices.length === 0 && !logoUrl && !qrSrc;
+  const template = schedule.template;
 
   const exitBoard = () => {
     void fs.exit().finally(() => {
@@ -112,25 +134,20 @@ export function SchedulePage() {
           <h1>Class Schedule</h1>
         </div>
         <div className="schedule__actions">
-          <div className="presets presets--split schedule__views" role="radiogroup" aria-label="Schedule view">
-            <button
-              type="button"
-              role="radio"
-              aria-checked={view === 'weekly'}
-              className={`preset${view === 'weekly' ? ' preset--on' : ''}`}
-              onClick={() => setView('weekly')}
-            >
-              Weekly
-            </button>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={view === 'monthly'}
-              className={`preset${view === 'monthly' ? ' preset--on' : ''}`}
-              onClick={() => setView('monthly')}
-            >
-              Monthly
-            </button>
+          <div className="presets presets--three schedule__views" role="radiogroup" aria-label="Display template">
+            {SCHEDULE_TEMPLATES.map((id) => (
+              <button
+                key={id}
+                type="button"
+                role="radio"
+                aria-checked={template === id}
+                aria-label={SCHEDULE_TEMPLATE_LABELS[id]}
+                className={`preset${template === id ? ' preset--on' : ''}`}
+                onClick={() => setScheduleTemplate(id)}
+              >
+                {TEMPLATE_CHROME[id]}
+              </button>
+            ))}
           </div>
           <button type="button" className="btn" onClick={() => setEditOpen(true)}>
             Edit
@@ -145,79 +162,35 @@ export function SchedulePage() {
         </div>
       </header>
 
-      <section className="schedule__stage" aria-label="Gym class schedule">
-        <div className="schedule__pins">
-          <div className={`schedule__logo${logoUrl ? ' is-filled' : ''}`}>
-            {logoUrl ? <img src={logoUrl} alt="" /> : <span>Gym logo</span>}
-          </div>
-          <div className="schedule__heading">
-            <p className="schedule__kicker">{schedule.title.trim() || 'This week'}</p>
-            <h2>{schedule.title.trim() ? 'Class Schedule' : 'Set your week'}</h2>
-            <p className="schedule__lead">
-              {emptyBoard
-                ? 'Tap Edit to add a logo, a QR code, and Monday–Sunday classes. Saved on this device.'
-                : 'Hours and class names for the gym TV. Phone can edit — same browser, this device.'}
-            </p>
-          </div>
-          <div className={`schedule__qr${qrSrc ? ' is-filled' : ''}`}>
-            {qrSrc ? (
-              <img src={qrSrc} alt={qrHref ? `QR code for ${qrHref}` : 'QR code'} />
-            ) : (
-              <span>QR code</span>
-            )}
-          </div>
-        </div>
+      <section
+        className={`schedule__stage schedule__stage--${template}${emptyBoard ? ' schedule__stage--hint' : ''}`}
+        aria-label="Gym class schedule"
+      >
+        <BoardHeader
+          logoUrl={logoUrl}
+          qrSrc={qrSrc}
+          qrHref={qrHref}
+          gymName={gymName}
+          stamp={stamp}
+        />
 
-        {view === 'weekly' ? (
-          <div className="schedule__week" role="list">
-            {WEEKDAYS.map((day) => {
-              const rows = classesOnDay(schedule.classes, day);
-              return (
-                <article
-                  key={day}
-                  className={`schedule__day${day === today ? ' is-today' : ''}`}
-                  role="listitem"
-                  aria-current={day === today ? 'date' : undefined}
-                >
-                  <h3>
-                    <span className="schedule__day-full">{WEEKDAY_LABELS[day]}</span>
-                    <span className="schedule__day-short">{WEEKDAY_SHORT[day]}</span>
-                  </h3>
-                  {rows.length ? (
-                    <ol>
-                      {rows.map((item) => (
-                        <li key={item.id}>
-                          <time dateTime={item.time || undefined}>{formatClassTime(item.time)}</time>
-                          <strong>{item.title.trim() || 'Class'}</strong>
-                        </li>
-                      ))}
-                    </ol>
-                  ) : (
-                    <p className="schedule__empty-day">—</p>
-                  )}
-                </article>
-              );
-            })}
-          </div>
+        {emptyBoard ? (
+          <p className="schedule__lead">
+            Tap Edit to add a logo, a QR code, and Monday–Sunday classes. Saved on this device.
+          </p>
+        ) : null}
+
+        {template === 'weekly-list' ? (
+          <WeeklyListBoard classes={schedule.classes} today={today} />
+        ) : template === 'week-grid' ? (
+          <WeekGridBoard classes={schedule.classes} today={today} />
         ) : (
-          <div className="schedule__month">
-            <p>
-              A full month grid comes later. Use <strong>Weekly</strong> for regular classes. Special
-              dates below can later show an Events flyer on that day.
-            </p>
-            {schedule.specials.length ? (
-              <ul>
-                {schedule.specials.map((item) => (
-                  <li key={item.id}>
-                    <strong>{formatSpecialDate(item.date) || 'Anytime'}</strong>
-                    <span>{item.title.trim() || item.body.trim() || 'Special date'}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="schedule__month-empty">No special dates yet. Add one in Edit.</p>
-            )}
-          </div>
+          <MonthlyBoard
+            stamp={stamp}
+            classes={schedule.classes}
+            specials={schedule.specials}
+            today={today}
+          />
         )}
 
         <aside className={`schedule__notes${notices.length ? ' is-filled' : ''}`} aria-label="Notices">
@@ -242,6 +215,212 @@ export function SchedulePage() {
   );
 }
 
+function BoardHeader({
+  logoUrl,
+  qrSrc,
+  qrHref,
+  gymName,
+  stamp,
+}: {
+  logoUrl: string;
+  qrSrc: string;
+  qrHref: string;
+  gymName: string;
+  stamp: string;
+}) {
+  return (
+    <div className="schedule__pins">
+      <div className={`schedule__logo${logoUrl ? ' is-filled' : ''}`}>
+        {logoUrl ? <img src={logoUrl} alt="" /> : <span>Gym logo</span>}
+      </div>
+      <div className="schedule__heading">
+        <h2>{gymName || 'Class Schedule'}</h2>
+        <p className="schedule__kicker">
+          {stamp} • {gymName ? 'CLASS SCHEDULE' : 'SET YOUR WEEK'}
+        </p>
+      </div>
+      <div className={`schedule__qr${qrSrc ? ' is-filled' : ''}`}>
+        {qrSrc ? (
+          <img src={qrSrc} alt={qrHref ? `QR code for ${qrHref}` : 'QR code'} />
+        ) : (
+          <span>QR code</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ClassCopy({ item }: { item: WeeklyClassSlot }) {
+  const subtitle = item.subtitle.trim();
+  const title = item.title.trim() || 'Class';
+  return (
+    <span className="schedule__class">
+      <strong>{title}</strong>
+      {subtitle ? <em>{subtitle}</em> : null}
+    </span>
+  );
+}
+
+function ClassRow({ item, showMat }: { item: WeeklyClassSlot; showMat: boolean }) {
+  const location = item.location.trim();
+  return (
+    <li>
+      {showMat ? (
+        location ? (
+          <span className="schedule__mat">{location}</span>
+        ) : (
+          <span className="schedule__mat schedule__mat--empty">Mat</span>
+        )
+      ) : null}
+      <ClassCopy item={item} />
+    </li>
+  );
+}
+
+function TimeBlocks({
+  classes,
+  emptyLabel = 'No classes',
+}: {
+  classes: readonly WeeklyClassSlot[];
+  emptyLabel?: string;
+}) {
+  if (!classes.length) return <p className="schedule__empty-day">{emptyLabel}</p>;
+  return (
+    <>
+      {groupClassesByTime(classes).map((group) => {
+        const parallel = group.items.length > 1;
+        const showMat = parallel || group.items.some((item) => item.location.trim());
+        return (
+          <div
+            className={`schedule__time-block${parallel ? ' schedule__time-block--parallel' : ''}`}
+            key={`${group.items[0]?.id}-${group.time}`}
+          >
+            <time dateTime={group.time || undefined}>{formatClassTime(group.time)}</time>
+            <ul className={showMat ? 'schedule__time-rows schedule__time-rows--mats' : 'schedule__time-rows'}>
+              {group.items.map((item) => (
+                <ClassRow key={item.id} item={item} showMat={showMat} />
+              ))}
+            </ul>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+function WeeklyListBoard({
+  classes,
+  today,
+}: {
+  classes: readonly WeeklyClassSlot[];
+  today: Weekday;
+}) {
+  return (
+    <div className="schedule__list">
+      {boardWeekdays(classes).map((day) => {
+        const rows = classesOnDay(classes, day);
+        return (
+          <section
+            key={day}
+            className={`schedule__list-day${day === today ? ' is-today' : ''}`}
+            aria-current={day === today ? 'date' : undefined}
+          >
+            <h3>{WEEKDAY_LABELS[day]}</h3>
+            <TimeBlocks classes={rows} />
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+function WeekGridBoard({
+  classes,
+  today,
+}: {
+  classes: readonly WeeklyClassSlot[];
+  today: Weekday;
+}) {
+  return (
+    <div className="schedule__week" role="list">
+      {WEEKDAYS.map((day) => {
+        const rows = classesOnDay(classes, day);
+        return (
+          <article
+            key={day}
+            className={`schedule__day${day === today ? ' is-today' : ''}`}
+            role="listitem"
+            aria-current={day === today ? 'date' : undefined}
+          >
+            <h3>
+              <span className="schedule__day-full">{WEEKDAY_LABELS[day]}</span>
+              <span className="schedule__day-short">{WEEKDAY_SHORT[day]}</span>
+            </h3>
+            <TimeBlocks classes={rows} emptyLabel="—" />
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
+function MonthlyBoard({
+  stamp,
+  classes,
+  specials,
+  today,
+}: {
+  stamp: string;
+  classes: readonly WeeklyClassSlot[];
+  specials: readonly SpecialDate[];
+  today: Weekday;
+}) {
+  const days = boardWeekdays(classes);
+  return (
+    <div className="schedule__month">
+      <p className="schedule__month-lead">
+        <strong>{stamp}</strong> — special dates first. Regular classes stay on List and Grid.
+      </p>
+      {specials.length ? (
+        <ul className="schedule__month-specials">
+          {specials.map((item) => (
+            <li key={item.id}>
+              <strong>{formatSpecialDate(item.date) || 'Anytime'}</strong>
+              <span>
+                {item.title.trim() || item.body.trim() || 'Special date'}
+                {item.body.trim() && item.title.trim() ? ` — ${item.body.trim()}` : ''}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="schedule__month-empty">No special dates yet. Add one in Edit.</p>
+      )}
+      {classes.length ? (
+        <div className="schedule__month-week">
+          <h3>Regular week</h3>
+          <ol>
+            {days.map((day) => {
+              const rows = classesOnDay(classes, day);
+              if (!rows.length) return null;
+              return (
+                <li key={day} className={day === today ? 'is-today' : undefined}>
+                  <strong>{WEEKDAY_SHORT[day]}</strong>
+                  <span>
+                    {groupClassesByTime(rows)
+                      .map((group) => formatTimeGroupLine(group))
+                      .join(' · ')}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function ScheduleEditor({
   open,
   onClose,
@@ -261,9 +440,42 @@ function ScheduleEditor({
   const logoRef = useRef<HTMLInputElement>(null);
   const qrRef = useRef<HTMLInputElement>(null);
   const [day, setDay] = useState<Weekday>('mon');
-  const [time, setTime] = useState('18:00');
+  const [time, setTime] = useState('17:00');
   const [title, setTitle] = useState('');
+  const [location, setLocation] = useState<string>(DEFAULT_MATS[0]);
+  const [subtitle, setSubtitle] = useState('');
   const [pickerNote, setPickerNote] = useState('');
+  const titleRef = useRef<HTMLInputElement>(null);
+
+  const usedMatsAtTime = classesOnDay(schedule.classes, day)
+    .filter((row) => row.time === time)
+    .map((row) => row.location);
+
+  const addRow = () => {
+    if (!title.trim()) {
+      titleRef.current?.focus();
+      return;
+    }
+    const added = addClass(day, time, title, location, subtitle);
+    if (added) {
+      setTitle('');
+      setSubtitle('');
+      setLocation(suggestNextMat([...usedMatsAtTime, location]));
+      titleRef.current?.focus();
+    }
+  };
+
+  const addAnotherMat = (group: ClassTimeGroup) => {
+    const source = group.items[0];
+    if (!source) return;
+    const added = addParallelClass(source.id);
+    if (!added) return;
+    setDay(source.day);
+    setTime(source.time);
+    setLocation(added.location);
+    setTitle('');
+    setSubtitle('');
+  };
 
   const onLogo = async (files: FileList | null) => {
     const file = files?.[0];
@@ -289,11 +501,6 @@ function ScheduleEditor({
     }
   };
 
-  const addRow = () => {
-    const added = addClass(day, time, title);
-    if (added) setTitle('');
-  };
-
   return (
     <Sheet open={open} title="Edit class schedule" onClose={onClose}>
       <p className="schedule-edit__copy">
@@ -302,19 +509,39 @@ function ScheduleEditor({
       </p>
       {pickerNote ? <p className="schedule-edit__error">{pickerNote}</p> : null}
 
+      <fieldset>
+        <legend>Display template</legend>
+        <p className="schedule-edit__hint">Saved on this device. List is the default gym-TV flyer.</p>
+        <div className="presets presets--three schedule-edit__templates" role="radiogroup" aria-label="Display template">
+          {SCHEDULE_TEMPLATES.map((id) => (
+            <button
+              key={id}
+              type="button"
+              role="radio"
+              aria-checked={schedule.template === id}
+              className={`preset${schedule.template === id ? ' preset--on' : ''}`}
+              onClick={() => setScheduleTemplate(id)}
+            >
+              {SCHEDULE_TEMPLATE_LABELS[id]}
+            </button>
+          ))}
+        </div>
+        <p className="schedule-edit__hint">{SCHEDULE_TEMPLATE_HINTS[schedule.template]}</p>
+      </fieldset>
+
       <label>
         Gym name
         <input
           value={schedule.title}
           onChange={(event) => setBoardTitle(event.target.value)}
-          placeholder="Optional — shows above the week"
+          placeholder="Shows on the board header"
           aria-label="Gym name"
         />
       </label>
 
       <fieldset>
         <legend>Logo</legend>
-        <p className="schedule-edit__hint">Pinned on the board. Pick a picture from this device.</p>
+        <p className="schedule-edit__hint">Left side of the board. Pick a picture from this device.</p>
         <div className="schedule-edit__preview-row">
           <div className={`schedule-edit__thumb${logoUrl ? ' is-filled' : ''}`}>
             {logoUrl ? <img src={logoUrl} alt="" /> : <span>No logo</span>}
@@ -338,7 +565,7 @@ function ScheduleEditor({
       <fieldset>
         <legend>QR code</legend>
         <p className="schedule-edit__hint">
-          Paste a web address and we make the QR here. Or upload a QR picture you already have.
+          Right side of the board. Paste a web address and we make the QR here, or upload a picture.
         </p>
         <label>
           Web address
@@ -380,7 +607,13 @@ function ScheduleEditor({
 
       <fieldset>
         <legend>Weekly classes</legend>
-        <p className="schedule-edit__hint">Day, time, and class name. Add as many as you need.</p>
+        <p className="schedule-edit__hint">
+          Same time, two mats: add the first class, then tap <strong>Another mat</strong> — or keep
+          the time and switch MAT 1 / MAT 2.
+        </p>
+        <button type="button" className="btn btn--ghost schedule-edit__sample" onClick={() => loadSampleWeek()}>
+          Load sample week
+        </button>
         <div className="presets schedule-edit__days" role="radiogroup" aria-label="Class day">
           {WEEKDAYS.map((id) => (
             <button
@@ -405,13 +638,52 @@ function ScheduleEditor({
               aria-label="Class time"
             />
           </label>
+          <div className="schedule-edit__mat-field">
+            <span id="schedule-mat-label">Mat</span>
+            <div className="presets schedule-edit__mats" role="radiogroup" aria-labelledby="schedule-mat-label">
+              {DEFAULT_MATS.map((mat) => (
+                <button
+                  key={mat}
+                  type="button"
+                  role="radio"
+                  aria-checked={location === mat}
+                  className={`preset${location === mat ? ' preset--on' : ''}`}
+                  onClick={() => setLocation(mat)}
+                >
+                  {mat}
+                </button>
+              ))}
+            </div>
+            <input
+              value={location}
+              onChange={(event) => setLocation(event.target.value)}
+              placeholder="MAT 1"
+              aria-label="Mat or location"
+            />
+          </div>
           <label className="schedule-edit__title">
             Class name
             <input
+              ref={titleRef}
               value={title}
               onChange={(event) => setTitle(event.target.value)}
-              placeholder="Kids, Adults, Open mat…"
+              placeholder="Tiny Champions, Fundamentals…"
               aria-label="Class name"
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  addRow();
+                }
+              }}
+            />
+          </label>
+          <label className="schedule-edit__title">
+            Detail
+            <input
+              value={subtitle}
+              onChange={(event) => setSubtitle(event.target.value)}
+              placeholder="Blue belt & up (optional)"
+              aria-label="Class detail"
               onKeyDown={(event) => {
                 if (event.key === 'Enter') {
                   event.preventDefault();
@@ -431,42 +703,72 @@ function ScheduleEditor({
             return (
               <section key={id} className="schedule-edit__group">
                 <h3>{WEEKDAY_LABELS[id]}</h3>
-                <ul>
-                  {rows.map((item) => (
-                    <li key={item.id}>
-                      <label>
-                        <span className="sr-only">Time</span>
-                        <input
-                          type="time"
-                          value={item.time}
-                          onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                            updateClass(item.id, { time: event.target.value })
-                          }
-                        />
-                      </label>
-                      <label className="schedule-edit__title">
-                        <span className="sr-only">Class name</span>
-                        <input
-                          value={item.title}
-                          onChange={(event) => updateClass(item.id, { title: event.target.value })}
-                          placeholder="Class name"
-                        />
-                      </label>
+                {groupClassesByTime(rows).map((group) => (
+                  <div key={`${id}-${group.time}`} className="schedule-edit__slot">
+                    <div className="schedule-edit__slot-head">
+                      <p className="schedule-edit__slot-time">{formatClassTime(group.time)}</p>
                       <button
                         type="button"
-                        className="btn btn--ghost"
-                        onClick={() => removeClass(item.id)}
+                        className="btn btn--ghost schedule-edit__another-mat"
+                        onClick={() => addAnotherMat(group)}
                       >
-                        Remove
+                        Another mat
                       </button>
-                    </li>
-                  ))}
-                </ul>
+                    </div>
+                    <ul>
+                      {group.items.map((item) => (
+                        <li key={item.id} className="schedule-edit__class">
+                          <label>
+                            Time
+                            <input
+                              type="time"
+                              value={item.time}
+                              onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                                updateClass(item.id, { time: event.target.value })
+                              }
+                            />
+                          </label>
+                          <label>
+                            Mat
+                            <input
+                              value={item.location}
+                              onChange={(event) => updateClass(item.id, { location: event.target.value })}
+                              placeholder="MAT 1"
+                            />
+                          </label>
+                          <label className="schedule-edit__title">
+                            Class name
+                            <input
+                              value={item.title}
+                              onChange={(event) => updateClass(item.id, { title: event.target.value })}
+                              placeholder="Class name"
+                            />
+                          </label>
+                          <label className="schedule-edit__title">
+                            Detail
+                            <input
+                              value={item.subtitle}
+                              onChange={(event) => updateClass(item.id, { subtitle: event.target.value })}
+                              placeholder="Blue belt & up"
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            className="btn btn--ghost"
+                            onClick={() => removeClass(item.id)}
+                          >
+                            Remove
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
               </section>
             );
           })}
           {schedule.classes.length === 0 ? (
-            <p className="schedule-edit__hint">No classes yet. Add one above.</p>
+            <p className="schedule-edit__hint">No classes yet. Add one above, or load the sample week.</p>
           ) : null}
         </div>
       </fieldset>
