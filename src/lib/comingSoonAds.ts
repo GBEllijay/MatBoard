@@ -64,11 +64,11 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
       },
       {
         title: 'Instructor seats',
-        body: 'Seats for instructors you add and control.',
+        body: 'Seats for instructors you add and revoke.',
       },
       {
         title: 'Competitor tools',
-        body: 'Bout roster, mock tournament, and Daily Techniques for the coaches you seat.',
+        body: 'Bout roster, mock tournament, and Daily Techniques for the instructors you seat.',
       },
     ],
     dismiss: 'Got it',
