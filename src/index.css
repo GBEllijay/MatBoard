@@ -308,9 +308,7 @@ p {
   --belt-edge: rgba(8, 10, 16, 0.38);
 }
 
-.btn:has(> .belt-rail),
-.tournament,
-.bracket__champ {
+.btn:has(> .belt-rail) {
   position: relative;
 }
 
