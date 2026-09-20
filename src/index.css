@@ -246,13 +246,14 @@ p {
 
 /* Thin left-edge belt ribbon (~few px). Rank belts: fill + rank bar + tiny tip. */
 .belt-rail {
-  --belt-rail-width: 6px;
-  --belt-tip-size: 0.78rem;
-  --belt-tip-2-size: 0.26rem;
+  --belt-rail-width: 7px;
+  --belt-tip-size: 0.92rem;
+  --belt-tip-2-size: 0.32rem;
+  --belt-corner: 1.15rem;
   --belt-fill: var(--white);
   --belt-tip: #14161c;
   --belt-tip-2: #f4f1ea;
-  --belt-edge: rgba(8, 10, 16, 0.42);
+  --belt-edge: rgba(8, 10, 16, 0.55);
   --belt-block: 0.7rem;
   position: absolute;
   inset: 0;
@@ -270,11 +271,13 @@ p {
     ),
     linear-gradient(
       to top,
-      var(--belt-tip-2) 0,
-      var(--belt-tip-2) var(--belt-tip-2-size),
-      var(--belt-tip) var(--belt-tip-2-size),
-      var(--belt-tip) calc(var(--belt-tip-size) + var(--belt-tip-2-size)),
-      var(--belt-fill) calc(var(--belt-tip-size) + var(--belt-tip-2-size))
+      var(--belt-fill) 0,
+      var(--belt-fill) var(--belt-corner),
+      var(--belt-tip-2) var(--belt-corner),
+      var(--belt-tip-2) calc(var(--belt-corner) + var(--belt-tip-2-size)),
+      var(--belt-tip) calc(var(--belt-corner) + var(--belt-tip-2-size)),
+      var(--belt-tip) calc(var(--belt-corner) + var(--belt-tip-size) + var(--belt-tip-2-size)),
+      var(--belt-fill) calc(var(--belt-corner) + var(--belt-tip-size) + var(--belt-tip-2-size))
     );
   -webkit-mask-image: linear-gradient(
     to right,
@@ -342,9 +345,10 @@ p {
 }
 
 .btn .belt-rail {
-  --belt-rail-width: 5px;
+  --belt-rail-width: 6px;
   --belt-tip-size: 0.55rem;
-  --belt-tip-2-size: 0.18rem;
+  --belt-tip-2-size: 0.2rem;
+  --belt-corner: 0.85rem;
   --belt-block: 0.42rem;
 }
 
@@ -890,15 +894,29 @@ button.mode-card {
   }
 
   .belt-rail {
-    --belt-rail-width: 5px;
-    --belt-tip-size: 0.55rem;
-    --belt-tip-2-size: 0.18rem;
+    --belt-rail-width: 6px;
+    --belt-tip-size: 0.7rem;
+    --belt-tip-2-size: 0.24rem;
+    --belt-corner: 0.9rem;
     --belt-block: 0.48rem;
   }
 
+  .home--ladder .home__inner {
+    display: flex;
+    flex-direction: column;
+    grid-template-columns: none;
+    grid-template-rows: none;
+    grid-template-areas: none;
+  }
+
   .home--ladder .home__modes {
+    grid-area: auto;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     grid-template-rows: minmax(0, 1fr);
+  }
+
+  .home--ladder .home__hints {
+    grid-area: auto;
   }
 
   .home--ladder .home__mark {
