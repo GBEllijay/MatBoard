@@ -1,4 +1,6 @@
-import { attachPresentation } from './matchStore';
+import { scoreboardPath } from './bracketBout';
+import { attachPresentation, getMatch } from './matchStore';
+import { isBracketMatchId } from './tournamentStore';
 
 type PresentationRequestCtor = new (urls: string[]) => {
   start: () => Promise<{
@@ -9,7 +11,9 @@ type PresentationRequestCtor = new (urls: string[]) => {
 };
 
 export function displayUrl(): string {
-  return new URL('/match', window.location.origin).toString();
+  const bout = getMatch().bracketMatchId;
+  const path = isBracketMatchId(bout) ? scoreboardPath(bout) : '/match';
+  return new URL(path, window.location.origin).toString();
 }
 
 export function controllerUrl(): string {

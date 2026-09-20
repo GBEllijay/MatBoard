@@ -11,6 +11,12 @@ import {
 export type Side = 'blue' | 'white';
 export type ScoreKind = 'points' | 'advantages' | 'disadvantages';
 
+export type OutcomeFlash = {
+  kind: 'win' | 'dq';
+  side: Side;
+  at: number;
+};
+
 export type Competitor = {
   name: string;
   gym: string;
@@ -34,10 +40,12 @@ export type MatchState = {
   endBuzzer: boolean;
   endCue: EndCue;
   /**
-   * Phase 2: when set, this live bout reports Win/DQ/tech into that mock-bracket match.
-   * One of `MATCH_IDS` from tournamentStore. Unused in Phase 1.
+   * When set, this live bout reports Win/DQ into that mock-bracket match.
+   * One of `MATCH_IDS` from tournamentStore.
    */
   bracketMatchId: string | null;
+  /** Brief Winner / Disqualification banner; not restored after reload. */
+  outcomeFlash: OutcomeFlash | null;
   revision: number;
 };
 
@@ -57,6 +65,16 @@ export type MatchAction =
   | { type: 'setEndBuzzer'; value: boolean }
   | { type: 'setEndCue'; value: EndCue }
   | { type: 'setBracketMatchId'; value: string | null }
+  | { type: 'setOutcomeFlash'; value: OutcomeFlash | null }
+  | {
+      type: 'loadBracketBout';
+      matchId: string;
+      blueName: string;
+      whiteName: string;
+      round: string;
+      division: string;
+    }
+  | { type: 'beginBracketOutcome'; flash: OutcomeFlash }
   | { type: 'expireClock' };
 
 const STORAGE_KEY = 'matboard.match.v1';
@@ -113,6 +131,7 @@ export function defaultMatch(): MatchState {
     endBuzzer: true,
     endCue: getAudioPrefs().endCue,
     bracketMatchId: null,
+    outcomeFlash: null,
     revision: 1,
   };
 }
@@ -134,6 +153,7 @@ function loadState(): MatchState {
       endBuzzer: typeof parsed.endBuzzer === 'boolean' ? parsed.endBuzzer : true,
       endCue: parsed.endCue != null ? parseEndCue(parsed.endCue) : getAudioPrefs().endCue,
       bracketMatchId: typeof parsed.bracketMatchId === 'string' ? parsed.bracketMatchId : null,
+      outcomeFlash: null,
       revision: Number(parsed.revision ?? 1),
     };
   } catch {
@@ -294,6 +314,32 @@ function applyAction(current: MatchState, action: MatchAction): MatchState {
       return bumpRevision({ ...current, endCue: parseEndCue(action.value) });
     case 'setBracketMatchId':
       return bumpRevision({ ...current, bracketMatchId: action.value });
+    case 'setOutcomeFlash':
+      return bumpRevision({ ...current, outcomeFlash: action.value });
+    case 'loadBracketBout':
+      return bumpRevision({
+        ...current,
+        blue: { name: action.blueName, gym: '', points: 0, advantages: 0, disadvantages: 0 },
+        white: { name: action.whiteName, gym: '', points: 0, advantages: 0, disadvantages: 0 },
+        round: action.round,
+        division: action.division,
+        remainingMs: current.durationMs,
+        running: false,
+        startedAt: null,
+        warned: false,
+        bracketMatchId: action.matchId,
+        outcomeFlash: null,
+      });
+    case 'beginBracketOutcome': {
+      const paused = current.running
+        ? { running: false, remainingMs: remainingNow(current), startedAt: null }
+        : {};
+      return bumpRevision({
+        ...current,
+        ...paused,
+        outcomeFlash: action.flash,
+      });
+    }
     case 'expireClock': {
       if (!current.running || remainingNow(current) > 0) return current;
       return bumpRevision({

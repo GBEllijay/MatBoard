@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { unlinkBracketBout } from '../lib/bracketBout';
 import { FOLDERS } from '../lib/photoStore';
 
 export function HomePage() {
@@ -13,7 +14,13 @@ export function HomePage() {
 
         <nav className="home__modes" aria-label="Modes">
           <article className="mode-card mode-card--match">
-            <Link className="mode-card__hit" to="/match" tabIndex={-1} aria-label="Open Scoreboard" />
+            <Link
+              className="mode-card__hit"
+              to="/match"
+              tabIndex={-1}
+              aria-label="Open Scoreboard"
+              onClick={() => unlinkBracketBout()}
+            />
             <strong>Live Bout</strong>
             <span className="mode-card__sub">Match Timer &amp; Scoreboard</span>
             <span>
@@ -21,10 +28,10 @@ export function HomePage() {
               control from your phone and cast.
             </span>
             <div className="mode-card__actions">
-              <Link className="btn" to="/match">
+              <Link className="btn" to="/match" onClick={() => unlinkBracketBout()}>
                 Scoreboard
               </Link>
-              <Link className="btn btn--ghost" to="/match/control">
+              <Link className="btn btn--ghost" to="/match/control" onClick={() => unlinkBracketBout()}>
                 Controller
               </Link>
             </div>

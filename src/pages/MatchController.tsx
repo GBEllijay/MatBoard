@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
 import { PlayExitMark } from '../components/PlayExitMark';
+import { useBoutQuerySync, useBracketOutcomeReturn } from '../hooks/useBracketBoutReturn';
 import { useInterval } from '../hooks/useClock';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useMatchState } from '../hooks/useStores';
@@ -14,6 +15,11 @@ import {
   unlockAudio,
   type EndCue,
 } from '../lib/audio';
+import {
+  declareLinkedOutcome,
+  linkedBracketMatchId,
+  scoreboardPath,
+} from '../lib/bracketBout';
 import { openDisplayWindow, openOrCastDisplay } from '../lib/cast';
 import { minutesToMs, formatMmSs, secondsToMs } from '../lib/format';
 import { competitorFocus, displayFocusId, parseDisplayFocus } from '../lib/matchFocus';
@@ -38,6 +44,11 @@ export function MatchControllerPage() {
   const remaining = remainingNow(match);
   const durationIsPreset = TIME_PRESETS_MIN.some((minutes) => match.durationMs === minutesToMs(minutes));
   const focusParam = searchParams.get('focus');
+  const linkedId = linkedBracketMatchId(match.bracketMatchId);
+  const flashing = Boolean(match.outcomeFlash);
+
+  useBoutQuerySync();
+  useBracketOutcomeReturn();
 
   useEffect(() => {
     const focus = parseDisplayFocus(focusParam);
@@ -103,6 +114,11 @@ export function MatchControllerPage() {
       <Chrome
         right={
           <>
+            {linkedId ? (
+              <Link to="/tournament" className="chip">
+                Back to bracket
+              </Link>
+            ) : null}
             <button type="button" className="chip" onClick={openDisplayWindow}>
               Display
             </button>
@@ -300,6 +316,9 @@ export function MatchControllerPage() {
         points={match.blue.points}
         advantages={match.blue.advantages}
         disadvantages={match.blue.disadvantages}
+        linked={Boolean(linkedId)}
+        flashing={flashing}
+        flashKind={match.outcomeFlash?.side === 'blue' ? match.outcomeFlash.kind : null}
       />
 
       <CompetitorPad
@@ -310,6 +329,9 @@ export function MatchControllerPage() {
         points={match.white.points}
         advantages={match.white.advantages}
         disadvantages={match.white.disadvantages}
+        linked={Boolean(linkedId)}
+        flashing={flashing}
+        flashKind={match.outcomeFlash?.side === 'white' ? match.outcomeFlash.kind : null}
       />
 
       <section className="controller__help">
@@ -327,7 +349,7 @@ export function MatchControllerPage() {
           Windows in the same browser stay in sync. A phone and a separate computer do not share live scores yet — that
           pairing comes later.
         </p>
-        <Link className="text-link" to="/match">
+        <Link className="text-link" to={scoreboardPath(linkedId)}>
           Open scoreboard on this device
         </Link>
       </section>
@@ -343,6 +365,9 @@ function CompetitorPad({
   points,
   advantages,
   disadvantages,
+  linked,
+  flashing,
+  flashKind,
 }: {
   side: Side;
   title: string;
@@ -351,6 +376,9 @@ function CompetitorPad({
   points: number;
   advantages: number;
   disadvantages: number;
+  linked: boolean;
+  flashing: boolean;
+  flashKind: 'win' | 'dq' | null;
 }) {
   return (
     <section className={`pad pad--${side}`}>
@@ -379,6 +407,31 @@ function CompetitorPad({
         <FatScore side={side} kind="advantages" label="Adv" value={advantages} />
         <FatScore side={side} kind="disadvantages" label="Pen" value={disadvantages} />
       </div>
+      {linked ? (
+        <div className="pad__calls" role="group" aria-label={`${title} bout result`}>
+          <button
+            type="button"
+            className="btn pad-call pad-call--win"
+            disabled={flashing}
+            onClick={() => declareLinkedOutcome(side, 'win')}
+          >
+            Win
+          </button>
+          <button
+            type="button"
+            className="btn pad-call pad-call--dq"
+            disabled={flashing}
+            onClick={() => declareLinkedOutcome(side, 'dq')}
+          >
+            DQ
+          </button>
+        </div>
+      ) : null}
+      {flashKind ? (
+        <p className="pad__banner" aria-live="polite">
+          {flashKind === 'win' ? 'Winner' : 'Disqualification'}
+        </p>
+      ) : null}
     </section>
   );
 }
