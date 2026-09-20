@@ -623,10 +623,17 @@ p {
 
 .bout__calls {
   display: grid;
-  grid-template-columns: 1.25fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 0.4rem;
   margin-top: 0.55rem;
   max-width: 18rem;
+}
+
+.bout__calls--needed,
+.pad__calls--needed {
+  outline: 2px solid var(--gold);
+  outline-offset: 4px;
+  border-radius: 16px;
 }
 
 .bout-call {
@@ -647,9 +654,19 @@ p {
   color: #1a1404;
 }
 
+.bout-call--sub {
+  background: #f3e6c4;
+  color: #1a1404;
+}
+
 .bout-call--dq {
   background: var(--neg);
   color: #fff;
+}
+
+.bout-call--tech {
+  background: var(--adv);
+  color: #1a1404;
 }
 
 .bout-call:disabled {
@@ -686,6 +703,31 @@ p {
   border-radius: 12px;
   font-size: clamp(0.95rem, 2.4vw, 1.45rem);
   letter-spacing: 0.06em;
+}
+
+.bout__banner--tech {
+  color: #1a1404;
+  background: rgba(245, 158, 11, 0.92);
+  padding: 0.4rem 0.75rem;
+  border-radius: 12px;
+  font-size: clamp(0.95rem, 2.4vw, 1.45rem);
+  letter-spacing: 0.06em;
+}
+
+.bout__banner-reason {
+  display: block;
+  margin-top: 0.28rem;
+  font-size: 0.42em;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+.pad__banner-reason {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  font-weight: 700;
 }
 
 @keyframes bout-banner-pop {
@@ -852,6 +894,11 @@ p {
   min-height: 44px;
 }
 
+.display__clock-hint--ref {
+  color: var(--gold-2);
+  letter-spacing: 0.08em;
+}
+
 .clock-btn {
   appearance: none;
   border: 0;
@@ -1015,9 +1062,10 @@ p {
 
 .pad__calls {
   display: grid;
-  grid-template-columns: 1.35fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 0.55rem;
   margin-top: 0.85rem;
+  margin-bottom: 0.85rem;
 }
 
 .pad__calls .btn {
@@ -1030,9 +1078,19 @@ p {
   color: #1a1404;
 }
 
+.pad-call--sub {
+  background: #f3e6c4;
+  color: #1a1404;
+}
+
 .pad-call--dq {
   background: var(--neg);
   color: #fff;
+}
+
+.pad-call--tech {
+  background: var(--adv);
+  color: #1a1404;
 }
 
 .pad--white .pad-call--dq {
@@ -1046,6 +1104,10 @@ p {
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
+}
+
+.controller__ref-note {
+  margin: 0.4rem 1.2rem 0;
 }
 
 .pad--blue .pad__banner {
@@ -1913,7 +1975,8 @@ fieldset {
     font-size: clamp(1.05rem, 3.6vh, 1.7rem);
   }
 
-  .bout__banner--dq {
+  .bout__banner--dq,
+  .bout__banner--tech {
     font-size: clamp(0.72rem, 2.6vh, 1.05rem);
     padding: 0.2rem 0.45rem;
   }

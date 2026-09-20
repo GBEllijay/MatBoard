@@ -1,5 +1,14 @@
 /** 16-person single-elim mock bracket. On-device only — no tournament server. */
 
+import {
+  isWinMethod,
+  parseBoutOutcomeKind,
+  type BoutOutcomeKind,
+  type Side,
+} from './outcomes';
+
+export type { BoutOutcomeKind };
+
 export const TOURNAMENT_SIZE = 16 as const;
 
 export const MATCH_IDS = [
@@ -22,8 +31,6 @@ export const MATCH_IDS = [
 
 export type BracketMatchId = (typeof MATCH_IDS)[number];
 export type MatchSide = 'a' | 'b';
-/** How the winner of a bout advanced. Phase 2 live scoreboard should send the same kinds. */
-export type BoutOutcomeKind = 'win' | 'dq' | 'tech';
 export type SlotId = `${BracketMatchId}-${MatchSide}` | 'champion';
 
 export type BoutResult = {
@@ -44,15 +51,19 @@ export type TournamentState = {
 
 /**
  * Scoreboard ↔ bracket: live bout `MatchState.bracketMatchId` is one of `MATCH_IDS`.
- * Win / DQ call `setMatchOutcome(id, side, kind, { toggle: false })`. Same on-device store.
+ * Win / Sub / DQ / T-loss call `setMatchOutcome(id, side, kind, { toggle: false })`. Same on-device store.
  */
 export const PHASE2_BOUT_LINK = {
   matchStateField: 'bracketMatchId',
-  outcomes: ['win', 'dq', 'tech'] as const,
+  outcomes: ['score', 'submission', 'dq', 'tech'] as const,
   matchIds: MATCH_IDS,
   /** Bracket slot `a` (top) is Blue on the scoreboard; `b` is White. */
   scoreboardSides: { a: 'blue', b: 'white' } as const,
 } as const;
+
+export function scoreboardSideToBracket(side: Side): MatchSide {
+  return side === 'blue' ? 'a' : 'b';
+}
 
 export const STORAGE_KEY = 'matboard.tournament.v1';
 
@@ -144,8 +155,9 @@ function normalizeResult(raw: unknown): BoutResult | null {
   if (!raw || typeof raw !== 'object') return null;
   const row = raw as Partial<BoutResult>;
   if (row.winnerSide !== 'a' && row.winnerSide !== 'b') return null;
-  if (row.kind !== 'win' && row.kind !== 'dq' && row.kind !== 'tech') return null;
-  return { winnerSide: row.winnerSide, kind: row.kind };
+  const kind = parseBoutOutcomeKind(row.kind);
+  if (!kind) return null;
+  return { winnerSide: row.winnerSide, kind };
 }
 
 function loadState(): TournamentState {
@@ -270,15 +282,16 @@ export function applyMatchOutcome(
   const toggle = options?.toggle !== false;
   const next = clone(current);
   const existing = next.results[matchId];
+  const winCall = isWinMethod(kind);
   const same =
     existing &&
-    ((kind === 'win' && existing.kind === 'win' && existing.winnerSide === side) ||
-      (kind !== 'win' && existing.kind === kind && existing.winnerSide === otherSide(side)));
+    existing.kind === kind &&
+    (winCall ? existing.winnerSide === side : existing.winnerSide === otherSide(side));
   if (same && toggle) {
     delete next.results[matchId];
     if (next.lastOutcomeMatchId === matchId) next.lastOutcomeMatchId = null;
-  } else if (kind === 'win') {
-    next.results[matchId] = { winnerSide: side, kind: 'win' };
+  } else if (winCall) {
+    next.results[matchId] = { winnerSide: side, kind };
     next.lastOutcomeMatchId = matchId;
   } else {
     next.results[matchId] = { winnerSide: otherSide(side), kind };
@@ -331,13 +344,15 @@ export function applyUndoOutcome(current: TournamentState, matchId: BracketMatch
   return applyClearResult(current, matchId);
 }
 
+export type SlotMark = 'win' | 'dq' | 'tech' | 'advanced' | 'lost';
+
 export function slotMark(
   result: BoutResult | undefined,
   side: MatchSide,
-): BoutOutcomeKind | 'advanced' | 'lost' | null {
+): SlotMark | null {
   if (!result) return null;
   if (result.winnerSide === side) {
-    return result.kind === 'win' ? 'win' : 'advanced';
+    return isWinMethod(result.kind) ? 'win' : 'advanced';
   }
   if (result.kind === 'dq' || result.kind === 'tech') return result.kind;
   return 'lost';

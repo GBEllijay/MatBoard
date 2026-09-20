@@ -30,7 +30,7 @@ import {
 } from '../lib/tournamentStore';
 
 const MARKS: { kind: BoutOutcomeKind; label: string }[] = [
-  { kind: 'win', label: 'Win' },
+  { kind: 'score', label: 'Win' },
   { kind: 'dq', label: 'DQ' },
   { kind: 'tech', label: 'T-loss' },
 ];
@@ -115,9 +115,10 @@ export function TournamentPage() {
       </header>
 
       <p className="tournament__hint">
-        Tap <strong>Score</strong> to open the match board with those two names. <strong>Win</strong> or{' '}
-        <strong>DQ</strong> there (or here) advances the winner. <strong>Undo last</strong> backs out a mistaken
-        tap without wiping later bouts that already have their own result. Saved on this device.
+        Tap <strong>Score</strong> to open the match board with those two names. <strong>Win</strong>,{' '}
+        <strong>Sub</strong>, <strong>DQ</strong>, or <strong>T-loss</strong> there (or <strong>Win</strong> /{' '}
+        <strong>DQ</strong> / <strong>T-loss</strong> here) advances the winner. <strong>Undo last</strong> backs out a
+        mistaken tap without wiping later bouts that already have their own result. Saved on this device.
       </p>
 
       <div className="tournament__board">
@@ -270,12 +271,15 @@ function SlotRow({ matchId, side }: { matchId: BracketMatchId; side: MatchSide }
       />
       <div className="t-slot__marks" role="group" aria-label="Bout result">
         {MARKS.map(({ kind, label }) => {
-          const pressed = mark === kind;
+          const result = tournament.results[matchId];
+          const pressed =
+            kind === 'score' ? mark === 'win' && result?.kind === 'score' : mark === kind;
+          const markClass = kind === 'score' ? 'win' : kind;
           return (
             <button
               key={kind}
               type="button"
-              className={`t-mark t-mark--${kind}${pressed ? ' is-on' : ''}`}
+              className={`t-mark t-mark--${markClass}${pressed ? ' is-on' : ''}`}
               aria-pressed={pressed}
               onClick={() => setMatchOutcome(matchId, side, kind)}
             >

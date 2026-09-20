@@ -1,6 +1,7 @@
 import { useCallback, useState, type MouseEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FullscreenChip } from '../components/FullscreenChip';
+import { OutcomeCalls } from '../components/OutcomeCalls';
 import { TvTip } from '../components/TvTip';
 import { ScoreBox } from '../components/ScoreBox';
 import { useBoutQuerySync, useBracketOutcomeReturn } from '../hooks/useBracketBoutReturn';
@@ -12,15 +13,16 @@ import { useMatchState } from '../hooks/useStores';
 import { unlockAudio } from '../lib/audio';
 import {
   controllerPath,
-  declareLinkedOutcome,
   linkedBracketMatchId,
   roundDisplay,
+  visibleOutcomeBanner,
 } from '../lib/bracketBout';
 import {
   competitorFocus,
   type DisplayFocus,
 } from '../lib/matchFocus';
 import { dispatchMatch, expireMatchClock, remainingNow, type Side } from '../lib/matchStore';
+import { needsRefDecision, SCORE_REASON_LABELS } from '../lib/outcomes';
 import { formatMmSs } from '../lib/format';
 
 export function MatchDisplayPage() {
@@ -30,6 +32,9 @@ export function MatchDisplayPage() {
   const fs = usePlayFullscreen();
   const navigate = useNavigate();
   const linkedId = linkedBracketMatchId(match.bracketMatchId);
+  const banner = visibleOutcomeBanner(match);
+  const refNeeded = needsRefDecision({ ...match, remainingMs: remaining });
+  const endedWithoutWinner = remaining <= 0 && !match.running && !match.outcome;
 
   useBoutQuerySync();
   useBracketOutcomeReturn();
@@ -59,7 +64,7 @@ export function MatchDisplayPage() {
     if (target.closest('a, button, .score, .tv-tip, .display__chrome, .bout__calls')) return;
     // Landscape / fullscreen / TV: leave empty taps for play chrome (F, idle cursor). Portrait phone can open Controller.
     if (fs.active || fs.landscape || fs.tvStation) return;
-    openController();
+    openController(endedWithoutWinner ? 'outcome' : undefined);
   };
 
   const clockStatus = match.running ? 'Running' : remaining <= 0 ? 'Ended' : 'Paused';
@@ -94,7 +99,7 @@ export function MatchDisplayPage() {
             shortcut={fs.tvStation}
             onToggle={() => void fs.toggle()}
           />
-          <Link to={controllerPath(linkedId)} className="chip chip--gold">
+          <Link to={controllerPath(linkedId, endedWithoutWinner ? 'outcome' : undefined)} className="chip chip--gold">
             Controller
           </Link>
         </div>
@@ -110,8 +115,14 @@ export function MatchDisplayPage() {
         disadvantages={match.blue.disadvantages}
         fallbackName="Competitor 1"
         linked={Boolean(linkedId)}
-        flash={match.outcomeFlash}
+        banner={banner?.side === 'blue' ? banner : null}
+        reason={
+          banner?.side === 'blue' && match.outcome?.method === 'score' && match.outcome.reason
+            ? SCORE_REASON_LABELS[match.outcome.reason]
+            : null
+        }
         flashing={flashing}
+        highlightCalls={refNeeded}
         onOpenController={openController}
       />
 
@@ -127,9 +138,19 @@ export function MatchDisplayPage() {
         <button type="button" className="clock-btn" onClick={toggleClock} aria-label="Start or pause match clock">
           {formatMmSs(remaining)}
         </button>
-        <button type="button" className="display__clock-hint" onClick={toggleClock} aria-label={clockStatusAction}>
-          {clockStatus}
-        </button>
+        {refNeeded ? (
+          <button
+            type="button"
+            className="display__clock-hint display__clock-hint--ref"
+            onClick={() => openController('outcome')}
+          >
+            Referee decision
+          </button>
+        ) : (
+          <button type="button" className="display__clock-hint" onClick={toggleClock} aria-label={clockStatusAction}>
+            {clockStatus}
+          </button>
+        )}
       </section>
 
       <CompetitorBand
@@ -141,8 +162,14 @@ export function MatchDisplayPage() {
         disadvantages={match.white.disadvantages}
         fallbackName="Competitor 2"
         linked={Boolean(linkedId)}
-        flash={match.outcomeFlash}
+        banner={banner?.side === 'white' ? banner : null}
+        reason={
+          banner?.side === 'white' && match.outcome?.method === 'score' && match.outcome.reason
+            ? SCORE_REASON_LABELS[match.outcome.reason]
+            : null
+        }
         flashing={flashing}
+        highlightCalls={refNeeded}
         onOpenController={openController}
       />
     </main>
@@ -158,8 +185,10 @@ function CompetitorBand({
   disadvantages,
   fallbackName,
   linked,
-  flash,
+  banner,
+  reason,
   flashing,
+  highlightCalls,
   onOpenController,
 }: {
   side: Side;
@@ -170,13 +199,13 @@ function CompetitorBand({
   disadvantages: number;
   fallbackName: string;
   linked: boolean;
-  flash: { kind: 'win' | 'dq'; side: Side } | null;
+  banner: { kind: 'win' | 'dq' | 'tech'; text: string } | null;
+  reason: string | null;
   flashing: boolean;
+  highlightCalls: boolean;
   onOpenController: (focus?: DisplayFocus) => void;
 }) {
   const label = side === 'blue' ? 'Blue' : 'White';
-  const showFlash = flash?.side === side;
-  const banner = showFlash ? (flash.kind === 'win' ? 'Winner' : 'Disqualification') : null;
 
   return (
     <section className={`bout bout--${side}${linked ? ' bout--linked' : ''}`} aria-label={`${label} competitor`}>
@@ -191,8 +220,9 @@ function CompetitorBand({
           </ControllerFocusLink>
         </h1>
         {banner ? (
-          <p className={`bout__banner bout__banner--${flash?.kind}`} aria-live="polite">
-            {banner}
+          <p className={`bout__banner bout__banner--${banner.kind}`} aria-live="polite">
+            {banner.text}
+            {reason ? <span className="bout__banner-reason">{reason}</span> : null}
           </p>
         ) : null}
         <p>
@@ -205,24 +235,14 @@ function CompetitorBand({
           </ControllerFocusLink>
         </p>
         {linked ? (
-          <div className="bout__calls" role="group" aria-label={`${label} bout result`}>
-            <button
-              type="button"
-              className="bout-call bout-call--win"
-              disabled={flashing}
-              onClick={() => declareLinkedOutcome(side, 'win')}
-            >
-              Win
-            </button>
-            <button
-              type="button"
-              className="bout-call bout-call--dq"
-              disabled={flashing}
-              onClick={() => declareLinkedOutcome(side, 'dq')}
-            >
-              DQ
-            </button>
-          </div>
+          <OutcomeCalls
+            side={side}
+            label={label}
+            disabled={flashing}
+            compact
+            highlight={highlightCalls}
+            variant="bout"
+          />
         ) : null}
       </div>
       <div className="bout__scores">

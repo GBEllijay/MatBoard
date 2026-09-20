@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
+import { OutcomeCalls } from '../components/OutcomeCalls';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { useBoutQuerySync, useBracketOutcomeReturn } from '../hooks/useBracketBoutReturn';
 import { useInterval } from '../hooks/useClock';
@@ -16,9 +17,9 @@ import {
   type EndCue,
 } from '../lib/audio';
 import {
-  declareLinkedOutcome,
   linkedBracketMatchId,
   scoreboardPath,
+  visibleOutcomeBanner,
 } from '../lib/bracketBout';
 import { openDisplayWindow, openOrCastDisplay } from '../lib/cast';
 import { minutesToMs, formatMmSs, secondsToMs } from '../lib/format';
@@ -33,6 +34,7 @@ import {
   type ScoreKind,
   type Side,
 } from '../lib/matchStore';
+import { needsRefDecision, SCORE_REASON_LABELS } from '../lib/outcomes';
 
 export function MatchControllerPage() {
   const match = useMatchState();
@@ -46,6 +48,8 @@ export function MatchControllerPage() {
   const focusParam = searchParams.get('focus');
   const linkedId = linkedBracketMatchId(match.bracketMatchId);
   const flashing = Boolean(match.outcomeFlash);
+  const banner = visibleOutcomeBanner(match);
+  const refNeeded = needsRefDecision({ ...match, remainingMs: remaining });
 
   useBoutQuerySync();
   useBracketOutcomeReturn();
@@ -56,10 +60,14 @@ export function MatchControllerPage() {
     const id = displayFocusId(focus);
     const run = () => {
       const el = document.getElementById(id);
-      if (!(el instanceof HTMLInputElement)) return;
-      el.focus({ preventScroll: true });
-      el.select();
+      if (!(el instanceof HTMLElement)) return;
       el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      if (el instanceof HTMLInputElement) {
+        el.focus({ preventScroll: true });
+        el.select();
+      } else {
+        el.focus({ preventScroll: true });
+      }
     };
     const raf = window.requestAnimationFrame(run);
     return () => window.cancelAnimationFrame(raf);
@@ -305,8 +313,22 @@ export function MatchControllerPage() {
             </div>
           </div>
         </fieldset>
+        <label className="toggle">
+          <input
+            type="checkbox"
+            checked={match.autoAnnounce}
+            onChange={(e) => dispatchMatch({ type: 'setAutoAnnounce', value: e.target.checked })}
+          />
+          Auto-announce winner
+        </label>
         {castNote ? <p className="cast-note">{castNote}</p> : null}
       </section>
+
+      {refNeeded ? (
+        <p className="cast-note controller__ref-note" role="status">
+          Clock ended in a tie. Pick Win, Submission, DQ, or T-loss next to a name.
+        </p>
+      ) : null}
 
       <CompetitorPad
         side="blue"
@@ -316,9 +338,15 @@ export function MatchControllerPage() {
         points={match.blue.points}
         advantages={match.blue.advantages}
         disadvantages={match.blue.disadvantages}
-        linked={Boolean(linkedId)}
         flashing={flashing}
-        flashKind={match.outcomeFlash?.side === 'blue' ? match.outcomeFlash.kind : null}
+        highlightCalls={refNeeded}
+        focusCalls
+        banner={banner?.side === 'blue' ? banner : null}
+        reason={
+          banner?.side === 'blue' && match.outcome?.method === 'score' && match.outcome.reason
+            ? SCORE_REASON_LABELS[match.outcome.reason]
+            : null
+        }
       />
 
       <CompetitorPad
@@ -329,9 +357,14 @@ export function MatchControllerPage() {
         points={match.white.points}
         advantages={match.white.advantages}
         disadvantages={match.white.disadvantages}
-        linked={Boolean(linkedId)}
         flashing={flashing}
-        flashKind={match.outcomeFlash?.side === 'white' ? match.outcomeFlash.kind : null}
+        highlightCalls={refNeeded}
+        banner={banner?.side === 'white' ? banner : null}
+        reason={
+          banner?.side === 'white' && match.outcome?.method === 'score' && match.outcome.reason
+            ? SCORE_REASON_LABELS[match.outcome.reason]
+            : null
+        }
       />
 
       <section className="controller__help">
@@ -365,9 +398,11 @@ function CompetitorPad({
   points,
   advantages,
   disadvantages,
-  linked,
   flashing,
-  flashKind,
+  highlightCalls,
+  focusCalls = false,
+  banner,
+  reason,
 }: {
   side: Side;
   title: string;
@@ -376,9 +411,11 @@ function CompetitorPad({
   points: number;
   advantages: number;
   disadvantages: number;
-  linked: boolean;
   flashing: boolean;
-  flashKind: 'win' | 'dq' | null;
+  highlightCalls: boolean;
+  focusCalls?: boolean;
+  banner: { kind: 'win' | 'dq' | 'tech'; text: string } | null;
+  reason: string | null;
 }) {
   return (
     <section className={`pad pad--${side}`}>
@@ -402,34 +439,23 @@ function CompetitorPad({
           />
         </label>
       </div>
+      <OutcomeCalls
+        side={side}
+        label={title}
+        disabled={flashing}
+        highlight={highlightCalls}
+        focusId={focusCalls}
+        variant="pad"
+      />
       <div className="pad__scores">
         <FatScore side={side} kind="points" label="Points" value={points} />
         <FatScore side={side} kind="advantages" label="Adv" value={advantages} />
         <FatScore side={side} kind="disadvantages" label="Pen" value={disadvantages} />
       </div>
-      {linked ? (
-        <div className="pad__calls" role="group" aria-label={`${title} bout result`}>
-          <button
-            type="button"
-            className="btn pad-call pad-call--win"
-            disabled={flashing}
-            onClick={() => declareLinkedOutcome(side, 'win')}
-          >
-            Win
-          </button>
-          <button
-            type="button"
-            className="btn pad-call pad-call--dq"
-            disabled={flashing}
-            onClick={() => declareLinkedOutcome(side, 'dq')}
-          >
-            DQ
-          </button>
-        </div>
-      ) : null}
-      {flashKind ? (
+      {banner ? (
         <p className="pad__banner" aria-live="polite">
-          {flashKind === 'win' ? 'Winner' : 'Disqualification'}
+          {banner.text}
+          {reason ? <span className="pad__banner-reason">{reason}</span> : null}
         </p>
       ) : null}
     </section>

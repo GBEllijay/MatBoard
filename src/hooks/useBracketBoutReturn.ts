@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { flashDurationMs, syncBoutFromQuery } from '../lib/bracketBout';
-import { dispatchMatch, isPresentationReceiver } from '../lib/matchStore';
+import { flashDurationMs, linkedBracketMatchId, syncBoutFromQuery } from '../lib/bracketBout';
+import { dispatchMatch, getMatch, isPresentationReceiver } from '../lib/matchStore';
 import { useMatchState } from './useStores';
 
 /** Load `?bout=` into match state once, without resetting an already-open bout. */
@@ -14,7 +14,8 @@ export function useBoutQuerySync(): void {
 }
 
 /**
- * After a linked Win/DQ: keep the Display flash, then go to the bracket.
+ * After a Win / Sub / DQ / T-loss flash: keep the banner, then
+ * return to the bracket when this bout is linked. Gym matches stay on the board.
  * Chromecast / Presentation receivers stay on the scoreboard (no shared tournament store).
  */
 export function useBracketOutcomeReturn(): void {
@@ -27,8 +28,9 @@ export function useBracketOutcomeReturn(): void {
     const wait = Math.max(0, flashDurationMs() - (Date.now() - flash.at));
     const timer = window.setTimeout(() => {
       if (isPresentationReceiver()) return;
+      const linked = linkedBracketMatchId(getMatch().bracketMatchId);
       dispatchMatch({ type: 'setOutcomeFlash', value: null });
-      navigate('/tournament');
+      if (linked) navigate('/tournament');
     }, wait);
     return () => window.clearTimeout(timer);
   }, [flash, navigate]);
