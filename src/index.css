@@ -242,20 +242,30 @@ p {
 /* Home product cards: a few-px left rail with a small belt-tip wink. */
 .belt-rail {
   --belt-rail-width: 5px;
-  --belt-tip-size: 0.8rem;
+  --belt-tip-size: 0.85rem;
   --belt-fill: var(--white);
   --belt-tip: #14161c;
+  --belt-edge: rgba(8, 10, 16, 0.35);
   position: absolute;
   inset: 0;
   z-index: 3;
   pointer-events: none;
   border-radius: inherit;
-  background: linear-gradient(
-    to top,
-    var(--belt-tip) 0,
-    var(--belt-tip) var(--belt-tip-size),
-    var(--belt-fill) var(--belt-tip-size)
-  );
+  background:
+    linear-gradient(
+      to right,
+      transparent 0,
+      transparent calc(var(--belt-rail-width) - 1px),
+      var(--belt-edge) calc(var(--belt-rail-width) - 1px),
+      var(--belt-edge) var(--belt-rail-width),
+      transparent var(--belt-rail-width)
+    ),
+    linear-gradient(
+      to top,
+      var(--belt-tip) 0,
+      var(--belt-tip) var(--belt-tip-size),
+      var(--belt-fill) var(--belt-tip-size)
+    );
   -webkit-mask-image: linear-gradient(
     to right,
     #000 0,
@@ -273,16 +283,19 @@ p {
 .belt-rail--white {
   --belt-fill: #f4f1ea;
   --belt-tip: #14161c;
+  --belt-edge: rgba(20, 22, 28, 0.28);
 }
 
 .belt-rail--blue {
   --belt-fill: var(--blue-2);
   --belt-tip: #14161c;
+  --belt-edge: rgba(8, 10, 16, 0.4);
 }
 
 .belt-rail--black {
-  --belt-fill: #1a1c22;
-  --belt-tip: #dc2626;
+  --belt-fill: #0c0e12;
+  --belt-tip: var(--neg);
+  --belt-edge: rgba(255, 255, 255, 0.2);
 }
 
 button.mode-card {
@@ -341,9 +354,13 @@ button.mode-card {
 
 .mode-card--locked {
   opacity: 0.72;
-  filter: saturate(0.45);
   border-color: rgba(168, 188, 214, 0.14);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.36);
+}
+
+/* Keep copy grayed without washing out the left-rail belt wink. */
+.mode-card--locked > :not(.belt-rail) {
+  filter: saturate(0.45);
 }
 
 .mode-card--match,
