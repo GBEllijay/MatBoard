@@ -8,6 +8,7 @@ import {
   type EndCue,
 } from './audio';
 import {
+  autoPointsOutcome,
   decideClockEnd,
   parseMatchOutcome,
   type MatchOutcome,
@@ -19,7 +20,7 @@ export type { MatchOutcome, Side };
 export type ScoreKind = 'points' | 'advantages' | 'disadvantages';
 
 export type OutcomeFlash = {
-  kind: 'win' | 'dq' | 'tech';
+  kind: 'win' | 'dq';
   side: Side;
   at: number;
 };
@@ -56,7 +57,7 @@ export type MatchState = {
    * Gym default on; persist with the match.
    */
   autoAnnounce: boolean;
-  /** Last Win / Sub / DQ / T-loss (or auto score decision). Survives reload; flash does not. */
+  /** Last Win (Submission / Points / Decision) or DQ (Technical / Medical). Survives reload; flash does not. */
   outcome: MatchOutcome | null;
   /** Brief Winner / Disqualification banner; not restored after reload. */
   outcomeFlash: OutcomeFlash | null;
@@ -256,13 +257,7 @@ function maybeAutoAnnounce(current: MatchState): MatchState {
   const at = Date.now();
   return {
     ...current,
-    outcome: {
-      side: verdict.side,
-      method: 'score',
-      reason: verdict.reason,
-      source: 'auto',
-      at,
-    },
+    outcome: autoPointsOutcome(verdict.side, verdict.reason, at),
     outcomeFlash: { kind: 'win', side: verdict.side, at },
   };
 }
@@ -270,14 +265,17 @@ function maybeAutoAnnounce(current: MatchState): MatchState {
 function maybeWriteAutoBracket(prev: MatchState, next: MatchState): void {
   if (applyingRemote || isPresentationReceiver()) return;
   const outcome = next.outcome;
-  if (!outcome || outcome.source !== 'auto') return;
-  if (prev.outcome?.at === outcome.at && prev.outcome.side === outcome.side && prev.outcome.method === outcome.method) {
+  if (!outcome || outcome.source !== 'auto' || outcome.call !== 'win') return;
+  if (prev.outcome?.at === outcome.at && prev.outcome.side === outcome.side && prev.outcome.call === outcome.call) {
     return;
   }
   if (!isBracketMatchId(next.bracketMatchId)) return;
-  setMatchOutcome(next.bracketMatchId, scoreboardSideToBracket(outcome.side), outcome.method, {
-    toggle: false,
-  });
+  setMatchOutcome(
+    next.bracketMatchId,
+    scoreboardSideToBracket(outcome.side),
+    { call: 'win', method: outcome.method, scoreReason: outcome.scoreReason },
+    { toggle: false },
+  );
 }
 
 function applyAction(current: MatchState, action: MatchAction): MatchState {

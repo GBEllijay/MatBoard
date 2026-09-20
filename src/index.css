@@ -623,7 +623,7 @@ p {
 
 .bout__calls {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1.25fr 1fr;
   gap: 0.4rem;
   margin-top: 0.55rem;
   max-width: 18rem;
@@ -654,19 +654,9 @@ p {
   color: #1a1404;
 }
 
-.bout-call--sub {
-  background: #f3e6c4;
-  color: #1a1404;
-}
-
 .bout-call--dq {
   background: var(--neg);
   color: #fff;
-}
-
-.bout-call--tech {
-  background: var(--adv);
-  color: #1a1404;
 }
 
 .bout-call:disabled {
@@ -699,15 +689,6 @@ p {
 .bout__banner--dq {
   color: #fff;
   background: rgba(127, 29, 29, 0.92);
-  padding: 0.4rem 0.75rem;
-  border-radius: 12px;
-  font-size: clamp(0.95rem, 2.4vw, 1.45rem);
-  letter-spacing: 0.06em;
-}
-
-.bout__banner--tech {
-  color: #1a1404;
-  background: rgba(245, 158, 11, 0.92);
   padding: 0.4rem 0.75rem;
   border-radius: 12px;
   font-size: clamp(0.95rem, 2.4vw, 1.45rem);
@@ -1062,7 +1043,7 @@ p {
 
 .pad__calls {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1.35fr 1fr;
   gap: 0.55rem;
   margin-top: 0.85rem;
   margin-bottom: 0.85rem;
@@ -1078,19 +1059,9 @@ p {
   color: #1a1404;
 }
 
-.pad-call--sub {
-  background: #f3e6c4;
-  color: #1a1404;
-}
-
 .pad-call--dq {
   background: var(--neg);
   color: #fff;
-}
-
-.pad-call--tech {
-  background: var(--adv);
-  color: #1a1404;
 }
 
 .pad--white .pad-call--dq {
@@ -1394,7 +1365,7 @@ label {
 .sheet {
   position: fixed;
   inset: 0;
-  z-index: 20;
+  z-index: 40;
   display: grid;
   align-items: end;
 }
@@ -1425,6 +1396,62 @@ label {
 .sheet__body {
   display: grid;
   gap: 0.9rem;
+}
+
+.outcome-picks {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.outcome-pick {
+  display: grid;
+  justify-items: start;
+  gap: 0.12rem;
+  width: 100%;
+  min-height: 64px;
+  padding: 0.75rem 1rem;
+  text-align: start;
+  border: 0;
+  border-radius: 16px;
+}
+
+.outcome-pick strong {
+  font-size: 1.12rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.outcome-pick span {
+  font-size: 0.88rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  opacity: 0.72;
+}
+
+.outcome-pick--submission {
+  background: var(--gold);
+  color: #1a1404;
+}
+
+.outcome-pick--points {
+  background: #f3e6c4;
+  color: #1a1404;
+}
+
+.outcome-pick--decision {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--ink);
+}
+
+.outcome-pick--technical {
+  background: var(--neg);
+  color: #fff;
+}
+
+.outcome-pick--medical {
+  background: var(--adv);
+  color: #1a1404;
 }
 
 fieldset {
@@ -1975,8 +2002,7 @@ fieldset {
     font-size: clamp(1.05rem, 3.6vh, 1.7rem);
   }
 
-  .bout__banner--dq,
-  .bout__banner--tech {
+  .bout__banner--dq {
     font-size: clamp(0.72rem, 2.6vh, 1.05rem);
     padding: 0.2rem 0.45rem;
   }
@@ -2527,7 +2553,7 @@ fieldset {
 
 .t-slot__marks {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.22rem;
 }
 

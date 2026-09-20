@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
-import { OutcomeCalls } from '../components/OutcomeCalls';
+import { OutcomeCalls, OutcomePickSheet, useOutcomeSheet } from '../components/OutcomeCalls';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { useBoutQuerySync, useBracketOutcomeReturn } from '../hooks/useBracketBoutReturn';
 import { useInterval } from '../hooks/useClock';
@@ -17,6 +17,7 @@ import {
   type EndCue,
 } from '../lib/audio';
 import {
+  declareMatchOutcome,
   linkedBracketMatchId,
   scoreboardPath,
   visibleOutcomeBanner,
@@ -34,7 +35,7 @@ import {
   type ScoreKind,
   type Side,
 } from '../lib/matchStore';
-import { needsRefDecision, SCORE_REASON_LABELS } from '../lib/outcomes';
+import { needsRefDecision, outcomeSubtitle } from '../lib/outcomes';
 
 export function MatchControllerPage() {
   const match = useMatchState();
@@ -50,6 +51,7 @@ export function MatchControllerPage() {
   const flashing = Boolean(match.outcomeFlash);
   const banner = visibleOutcomeBanner(match);
   const refNeeded = needsRefDecision({ ...match, remainingMs: remaining });
+  const outcomeSheet = useOutcomeSheet();
 
   useBoutQuerySync();
   useBracketOutcomeReturn();
@@ -326,7 +328,7 @@ export function MatchControllerPage() {
 
       {refNeeded ? (
         <p className="cast-note controller__ref-note" role="status">
-          Clock ended in a tie. Pick Win, Submission, DQ, or T-loss next to a name.
+          Clock ended in a tie. Pick Win or DQ next to a name.
         </p>
       ) : null}
 
@@ -342,11 +344,9 @@ export function MatchControllerPage() {
         highlightCalls={refNeeded}
         focusCalls
         banner={banner?.side === 'blue' ? banner : null}
-        reason={
-          banner?.side === 'blue' && match.outcome?.method === 'score' && match.outcome.reason
-            ? SCORE_REASON_LABELS[match.outcome.reason]
-            : null
-        }
+        reason={banner?.side === 'blue' ? outcomeSubtitle(match.outcome) : null}
+        onWin={() => outcomeSheet.openWin('blue', 'Blue')}
+        onDq={() => outcomeSheet.openDq('blue', 'Blue')}
       />
 
       <CompetitorPad
@@ -360,11 +360,29 @@ export function MatchControllerPage() {
         flashing={flashing}
         highlightCalls={refNeeded}
         banner={banner?.side === 'white' ? banner : null}
-        reason={
-          banner?.side === 'white' && match.outcome?.method === 'score' && match.outcome.reason
-            ? SCORE_REASON_LABELS[match.outcome.reason]
-            : null
+        reason={banner?.side === 'white' ? outcomeSubtitle(match.outcome) : null}
+        onWin={() => outcomeSheet.openWin('white', 'White')}
+        onDq={() => outcomeSheet.openDq('white', 'White')}
+      />
+
+      <OutcomePickSheet
+        open={outcomeSheet.sheet?.call ?? null}
+        title={
+          outcomeSheet.sheet?.call === 'dq'
+            ? `${outcomeSheet.sheet.label} DQ`
+            : `${outcomeSheet.sheet?.label ?? ''} win`
         }
+        onClose={outcomeSheet.close}
+        onPickWin={(method) => {
+          if (!outcomeSheet.sheet) return;
+          declareMatchOutcome(outcomeSheet.sheet.side, { call: 'win', method });
+          outcomeSheet.close();
+        }}
+        onPickDq={(reason) => {
+          if (!outcomeSheet.sheet) return;
+          declareMatchOutcome(outcomeSheet.sheet.side, { call: 'dq', reason });
+          outcomeSheet.close();
+        }}
       />
 
       <section className="controller__help">
@@ -403,6 +421,8 @@ function CompetitorPad({
   focusCalls = false,
   banner,
   reason,
+  onWin,
+  onDq,
 }: {
   side: Side;
   title: string;
@@ -414,8 +434,10 @@ function CompetitorPad({
   flashing: boolean;
   highlightCalls: boolean;
   focusCalls?: boolean;
-  banner: { kind: 'win' | 'dq' | 'tech'; text: string } | null;
+  banner: { kind: 'win' | 'dq'; text: string } | null;
   reason: string | null;
+  onWin: () => void;
+  onDq: () => void;
 }) {
   return (
     <section className={`pad pad--${side}`}>
@@ -440,12 +462,14 @@ function CompetitorPad({
         </label>
       </div>
       <OutcomeCalls
-        side={side}
-        label={title}
+        sideLabel={title}
         disabled={flashing}
         highlight={highlightCalls}
         focusId={focusCalls}
+        focusDomId={focusCalls ? displayFocusId('outcome') : undefined}
         variant="pad"
+        onWin={onWin}
+        onDq={onDq}
       />
       <div className="pad__scores">
         <FatScore side={side} kind="points" label="Points" value={points} />

@@ -1,7 +1,7 @@
 import { useCallback, useState, type MouseEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FullscreenChip } from '../components/FullscreenChip';
-import { OutcomeCalls } from '../components/OutcomeCalls';
+import { OutcomeCalls, OutcomePickSheet, useOutcomeSheet } from '../components/OutcomeCalls';
 import { TvTip } from '../components/TvTip';
 import { ScoreBox } from '../components/ScoreBox';
 import { useBoutQuerySync, useBracketOutcomeReturn } from '../hooks/useBracketBoutReturn';
@@ -13,6 +13,7 @@ import { useMatchState } from '../hooks/useStores';
 import { unlockAudio } from '../lib/audio';
 import {
   controllerPath,
+  declareMatchOutcome,
   linkedBracketMatchId,
   roundDisplay,
   visibleOutcomeBanner,
@@ -22,7 +23,7 @@ import {
   type DisplayFocus,
 } from '../lib/matchFocus';
 import { dispatchMatch, expireMatchClock, remainingNow, type Side } from '../lib/matchStore';
-import { needsRefDecision, SCORE_REASON_LABELS } from '../lib/outcomes';
+import { needsRefDecision, outcomeSubtitle } from '../lib/outcomes';
 import { formatMmSs } from '../lib/format';
 
 export function MatchDisplayPage() {
@@ -35,6 +36,7 @@ export function MatchDisplayPage() {
   const banner = visibleOutcomeBanner(match);
   const refNeeded = needsRefDecision({ ...match, remainingMs: remaining });
   const endedWithoutWinner = remaining <= 0 && !match.running && !match.outcome;
+  const outcomeSheet = useOutcomeSheet();
 
   useBoutQuerySync();
   useBracketOutcomeReturn();
@@ -61,7 +63,7 @@ export function MatchDisplayPage() {
 
   const onBoardClick = (event: MouseEvent<HTMLElement>) => {
     const target = event.target as HTMLElement;
-    if (target.closest('a, button, .score, .tv-tip, .display__chrome, .bout__calls')) return;
+    if (target.closest('a, button, .score, .tv-tip, .display__chrome, .bout__calls, .sheet')) return;
     // Landscape / fullscreen / TV: leave empty taps for play chrome (F, idle cursor). Portrait phone can open Controller.
     if (fs.active || fs.landscape || fs.tvStation) return;
     openController(endedWithoutWinner ? 'outcome' : undefined);
@@ -116,14 +118,12 @@ export function MatchDisplayPage() {
         fallbackName="Competitor 1"
         linked={Boolean(linkedId)}
         banner={banner?.side === 'blue' ? banner : null}
-        reason={
-          banner?.side === 'blue' && match.outcome?.method === 'score' && match.outcome.reason
-            ? SCORE_REASON_LABELS[match.outcome.reason]
-            : null
-        }
+        reason={banner?.side === 'blue' ? outcomeSubtitle(match.outcome) : null}
         flashing={flashing}
         highlightCalls={refNeeded}
         onOpenController={openController}
+        onWin={() => outcomeSheet.openWin('blue', match.blue.name || 'Competitor 1')}
+        onDq={() => outcomeSheet.openDq('blue', match.blue.name || 'Competitor 1')}
       />
 
       <section className="display__mid">
@@ -163,14 +163,32 @@ export function MatchDisplayPage() {
         fallbackName="Competitor 2"
         linked={Boolean(linkedId)}
         banner={banner?.side === 'white' ? banner : null}
-        reason={
-          banner?.side === 'white' && match.outcome?.method === 'score' && match.outcome.reason
-            ? SCORE_REASON_LABELS[match.outcome.reason]
-            : null
-        }
+        reason={banner?.side === 'white' ? outcomeSubtitle(match.outcome) : null}
         flashing={flashing}
         highlightCalls={refNeeded}
         onOpenController={openController}
+        onWin={() => outcomeSheet.openWin('white', match.white.name || 'Competitor 2')}
+        onDq={() => outcomeSheet.openDq('white', match.white.name || 'Competitor 2')}
+      />
+
+      <OutcomePickSheet
+        open={outcomeSheet.sheet?.call ?? null}
+        title={
+          outcomeSheet.sheet?.call === 'dq'
+            ? `${outcomeSheet.sheet.label} DQ`
+            : `${outcomeSheet.sheet?.label ?? ''} win`
+        }
+        onClose={outcomeSheet.close}
+        onPickWin={(method) => {
+          if (!outcomeSheet.sheet) return;
+          declareMatchOutcome(outcomeSheet.sheet.side, { call: 'win', method });
+          outcomeSheet.close();
+        }}
+        onPickDq={(reason) => {
+          if (!outcomeSheet.sheet) return;
+          declareMatchOutcome(outcomeSheet.sheet.side, { call: 'dq', reason });
+          outcomeSheet.close();
+        }}
       />
     </main>
   );
@@ -190,6 +208,8 @@ function CompetitorBand({
   flashing,
   highlightCalls,
   onOpenController,
+  onWin,
+  onDq,
 }: {
   side: Side;
   name: string;
@@ -199,11 +219,13 @@ function CompetitorBand({
   disadvantages: number;
   fallbackName: string;
   linked: boolean;
-  banner: { kind: 'win' | 'dq' | 'tech'; text: string } | null;
+  banner: { kind: 'win' | 'dq'; text: string } | null;
   reason: string | null;
   flashing: boolean;
   highlightCalls: boolean;
   onOpenController: (focus?: DisplayFocus) => void;
+  onWin: () => void;
+  onDq: () => void;
 }) {
   const label = side === 'blue' ? 'Blue' : 'White';
 
@@ -236,12 +258,12 @@ function CompetitorBand({
         </p>
         {linked ? (
           <OutcomeCalls
-            side={side}
-            label={label}
+            sideLabel={label}
             disabled={flashing}
-            compact
             highlight={highlightCalls}
             variant="bout"
+            onWin={onWin}
+            onDq={onDq}
           />
         ) : null}
       </div>

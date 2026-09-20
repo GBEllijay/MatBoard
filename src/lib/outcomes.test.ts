@@ -5,7 +5,7 @@ import {
   decideClockEnd,
   inferScoreReason,
   needsRefDecision,
-  parseBoutOutcomeKind,
+  parseBoutOutcome,
   parseMatchOutcome,
 } from './outcomes.ts';
 
@@ -53,7 +53,7 @@ describe('needsRefDecision', () => {
     autoAnnounce: true,
     remainingMs: 0,
     running: false,
-    outcome: null,
+    outcome: null as null,
     blue: zero,
     white: zero,
   };
@@ -71,7 +71,14 @@ describe('needsRefDecision', () => {
       needsRefDecision({
         ...ended,
         blue: { ...zero, points: 2 },
-        outcome: { side: 'blue', method: 'score', reason: 'points', source: 'auto', at: 1 },
+        outcome: {
+          side: 'blue',
+          call: 'win',
+          method: 'points',
+          scoreReason: 'points',
+          source: 'auto',
+          at: 1,
+        },
       }),
       false,
     );
@@ -79,26 +86,59 @@ describe('needsRefDecision', () => {
 });
 
 describe('parse helpers', () => {
-  it('maps legacy tournament win to score', () => {
-    assert.equal(parseBoutOutcomeKind('win'), 'score');
-    assert.equal(parseBoutOutcomeKind('submission'), 'submission');
-    assert.equal(parseBoutOutcomeKind('nope'), null);
+  it('maps legacy tournament kinds into Win/DQ', () => {
+    assert.deepEqual(parseBoutOutcome('win'), { call: 'win', method: 'points' });
+    assert.deepEqual(parseBoutOutcome('score'), { call: 'win', method: 'points' });
+    assert.deepEqual(parseBoutOutcome('submission'), { call: 'win', method: 'submission' });
+    assert.deepEqual(parseBoutOutcome('dq'), { call: 'dq', reason: 'technical' });
+    assert.deepEqual(parseBoutOutcome('tech'), { call: 'dq', reason: 'technical' });
+    assert.equal(parseBoutOutcome('nope'), null);
   });
 
-  it('restores a persisted match outcome', () => {
+  it('restores a persisted points win', () => {
     const parsed = parseMatchOutcome({
       side: 'white',
-      method: 'score',
-      reason: 'advantages',
+      call: 'win',
+      method: 'points',
+      scoreReason: 'advantages',
       source: 'auto',
       at: 42,
     });
     assert.deepEqual(parsed, {
       side: 'white',
-      method: 'score',
-      reason: 'advantages',
+      call: 'win',
+      method: 'points',
+      scoreReason: 'advantages',
       source: 'auto',
       at: 42,
+    });
+  });
+
+  it('migrates the previous match score method', () => {
+    const parsed = parseMatchOutcome({
+      side: 'blue',
+      method: 'score',
+      reason: 'penalties',
+      source: 'auto',
+      at: 7,
+    });
+    assert.deepEqual(parsed, {
+      side: 'blue',
+      call: 'win',
+      method: 'points',
+      scoreReason: 'penalties',
+      source: 'auto',
+      at: 7,
+    });
+  });
+
+  it('migrates a bare submission and T-loss', () => {
+    assert.equal(parseMatchOutcome({ side: 'blue', method: 'submission', source: 'manual', at: 1 })?.call, 'win');
+    assert.equal(parseMatchOutcome({ side: 'blue', method: 'submission', source: 'manual', at: 1 })?.method, 'submission');
+    const tloss = parseMatchOutcome({ side: 'white', method: 'tech', source: 'manual', at: 1 });
+    assert.deepEqual(tloss && { call: tloss.call, reason: tloss.call === 'dq' ? tloss.reason : null }, {
+      call: 'dq',
+      reason: 'technical',
     });
   });
 

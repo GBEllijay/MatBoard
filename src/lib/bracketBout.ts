@@ -5,9 +5,8 @@ import { dispatchMatch, getMatch, type OutcomeFlash, type Side } from './matchSt
 import {
   inferScoreReason,
   outcomeBanner,
-  type BoutOutcomeKind,
+  type BoutOutcome,
   type MatchOutcome,
-  type ScoreDecisionReason,
 } from './outcomes';
 import {
   getTournament,
@@ -86,9 +85,8 @@ export function controllerPath(matchId?: BracketMatchId | null, focus?: DisplayF
 }
 
 function flashFromOutcome(outcome: MatchOutcome): OutcomeFlash {
-  const banner = outcomeBanner(outcome);
   return {
-    kind: banner?.kind ?? 'win',
+    kind: outcome.call,
     side: outcome.side,
     at: Date.now(),
   };
@@ -96,25 +94,29 @@ function flashFromOutcome(outcome: MatchOutcome): OutcomeFlash {
 
 export function declareMatchOutcome(
   side: Side,
-  method: BoutOutcomeKind,
-  options?: { reason?: ScoreDecisionReason; source?: MatchOutcome['source'] },
+  pick: BoutOutcome,
+  options?: { source?: MatchOutcome['source'] },
 ): boolean {
   const match = getMatch();
   const linked = linkedBracketMatchId(match.bracketMatchId);
   if (linked && match.outcomeFlash) return false;
 
   const source = options?.source ?? 'manual';
-  const reason =
-    method === 'score'
-      ? (options?.reason ?? inferScoreReason(side, match.blue, match.white))
-      : undefined;
-  const outcome: MatchOutcome = {
-    side,
-    method,
-    reason,
-    source,
-    at: Date.now(),
-  };
+  const at = Date.now();
+  const outcome: MatchOutcome =
+    pick.call === 'win'
+      ? {
+          side,
+          call: 'win',
+          method: pick.method,
+          scoreReason:
+            pick.method === 'points'
+              ? (pick.scoreReason ?? inferScoreReason(side, match.blue, match.white))
+              : undefined,
+          source,
+          at,
+        }
+      : { side, call: 'dq', reason: pick.reason, source, at };
 
   dispatchMatch({
     type: 'beginOutcome',
@@ -123,14 +125,13 @@ export function declareMatchOutcome(
   });
 
   if (linked) {
-    setMatchOutcome(linked, scoreboardSideToBracket(side), method, { toggle: false });
+    const stored: BoutOutcome =
+      outcome.call === 'win'
+        ? { call: 'win', method: outcome.method, scoreReason: outcome.scoreReason }
+        : { call: 'dq', reason: outcome.reason };
+    setMatchOutcome(linked, scoreboardSideToBracket(side), stored, { toggle: false });
   }
   return true;
-}
-
-/** Phase 2 scoreboard Win / DQ — richer methods go through `declareMatchOutcome`. */
-export function declareLinkedOutcome(side: Side, kind: 'win' | 'dq'): boolean {
-  return declareMatchOutcome(side, kind === 'win' ? 'score' : 'dq');
 }
 
 export function roundDisplay(round: string, linked: boolean): string {
@@ -144,13 +145,11 @@ export function visibleOutcomeBanner(match: {
   outcome: MatchOutcome | null;
 }): ReturnType<typeof outcomeBanner> {
   if (match.outcomeFlash) {
-    const text =
-      match.outcomeFlash.kind === 'win'
-        ? 'Winner'
-        : match.outcomeFlash.kind === 'dq'
-          ? 'Disqualification'
-          : 'T-loss';
-    return { side: match.outcomeFlash.side, kind: match.outcomeFlash.kind, text };
+    return {
+      side: match.outcomeFlash.side,
+      kind: match.outcomeFlash.kind,
+      text: match.outcomeFlash.kind === 'win' ? 'Winner' : 'Disqualification',
+    };
   }
   return outcomeBanner(match.outcome);
 }
