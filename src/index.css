@@ -3787,11 +3787,39 @@ fieldset {
 }
 
 .roster__lead,
+.roster__csv,
 .roster__search,
 .roster__list,
 .roster__empty {
   width: min(42rem, calc(100% - 2rem));
   margin-inline: auto;
+}
+
+.roster__csv {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.roster__csv-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.roster__csv-actions .btn {
+  min-height: 48px;
+  flex: 1 1 9.5rem;
+}
+
+.roster__csv-hint,
+.roster__csv-summary {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.roster__csv-summary {
+  color: var(--gold-2);
 }
 
 .roster__lead,

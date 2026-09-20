@@ -1,4 +1,4 @@
-/** Gym roster. On-device only — name + belt prefill Match and Mock Tournament. */
+/** Gym competitor roster. On-device only — name + belt prefill Match and Mock Tournament. */
 
 export const STORAGE_KEY = 'matboard.roster.v1';
 export const NOTE_MAX = 160;
@@ -216,6 +216,13 @@ export function addStudent(draft: StudentDraft): Student | null {
   if (!next) return null;
   persist({ version: 1, students: sortStudents([...state.students, next]) });
   return next;
+}
+
+/** Append already-validated cards in one write. Used by CSV import. */
+export function addStudents(students: Student[]): Student[] {
+  if (!students.length) return [];
+  persist({ version: 1, students: sortStudents([...state.students, ...students]) });
+  return students;
 }
 
 export function updateStudent(id: string, draft: Partial<StudentDraft>): Student | null {

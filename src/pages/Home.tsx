@@ -64,8 +64,8 @@ export function HomePage() {
               <strong>Advantage Pro</strong>
               <span className="mode-card__sub">Owner’s Toolbox</span>
               <span>
-                Class schedule, gallery, videos, events, Pro Shop, mock tournament, roster, and
-                more.
+                Class schedule, gallery, videos, events, Pro Shop, mock tournament, competitor
+                roster, and more.
               </span>
               <div className="mode-card__actions">
                 <Link className="btn" to="/pro">

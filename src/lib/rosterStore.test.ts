@@ -1,13 +1,16 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  addStudents,
   canPrefill,
   canonicalBelt,
   defaultRoster,
   formatPromotion,
+  getRoster,
   normalizeDate,
   normalizeRoster,
   prefillFields,
+  resetRoster,
   searchStudents,
   sortStudents,
   studentFromInput,
@@ -115,6 +118,22 @@ describe('searchStudents', () => {
       searchStudents(rows, '').some((row) => row.id === '4'),
       false,
     );
+  });
+});
+
+describe('addStudents', () => {
+  it('appends valid cards in one write and sorts by name', () => {
+    resetRoster();
+    const added = addStudents([
+      student({ id: 'z', name: 'Sam', belt: 'Blue' }),
+      student({ id: 'a', name: 'Alex', belt: 'Purple' }),
+    ]);
+    assert.equal(added.length, 2);
+    assert.deepEqual(
+      getRoster().students.map((row) => row.name),
+      ['Alex', 'Sam'],
+    );
+    resetRoster();
   });
 });
 
