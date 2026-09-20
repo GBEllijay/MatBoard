@@ -446,6 +446,90 @@ button.mode-card {
   color: #f0b4b4;
 }
 
+.sheet--ad .sheet__head .btn {
+  min-width: 5.75rem;
+  min-height: 48px;
+}
+
+.soon-ad {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.home .soon-ad__kicker,
+.soon-ad__kicker {
+  margin: 0;
+  color: var(--gold-2);
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+}
+
+.home .soon-ad__lead,
+.soon-ad__lead {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1.05rem;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.soon-ad__features {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.soon-ad__feature {
+  display: grid;
+  gap: 0.28rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.soon-ad__feature strong {
+  color: var(--ink);
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+
+.soon-ad__feature span {
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.soon-ad--coach .soon-ad__feature {
+  border-color: rgba(140, 168, 148, 0.24);
+  background: linear-gradient(145deg, rgba(36, 48, 44, 0.62), rgba(12, 17, 24, 0.42));
+}
+
+.soon-ad--pro .soon-ad__feature {
+  border-color: rgba(168, 188, 214, 0.22);
+  background: linear-gradient(145deg, rgba(42, 53, 70, 0.55), rgba(12, 17, 24, 0.42));
+}
+
+.soon-ad__actions {
+  position: sticky;
+  bottom: 0;
+  display: grid;
+  gap: 0.55rem;
+  padding-top: 0.45rem;
+  background: linear-gradient(to top, #161b24 74%, rgba(22, 27, 36, 0.92) 90%, transparent);
+}
+
+.soon-ad__dismiss,
+.soon-ad__actions .btn {
+  width: 100%;
+  min-height: 56px;
+  font-size: 1.05rem;
+}
+
 @media (min-width: 740px) and (orientation: landscape), (min-width: 1100px) {
   .home__inner {
     max-width: 1180px;

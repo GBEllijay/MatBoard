@@ -1,23 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { ComingSoonAd } from '../components/ComingSoonAd';
 import { HomeMark } from '../components/HomeMark';
 import { ProUnlockSheet } from '../components/ProUnlockSheet';
 import { Sheet } from '../components/Sheet';
 import { useProUnlocked } from '../hooks/useProUnlocked';
+import { COMING_SOON_ADS, PRODUCT_TEASERS, type SoonProduct } from '../lib/comingSoonAds';
 import { lockPro } from '../lib/proUnlock';
-
-type SoonProduct = 'coach' | 'pro';
-
-const SOON_COPY: Record<SoonProduct, { title: string; body: string }> = {
-  coach: {
-    title: 'Advantage Coach',
-    body: 'Coming soon. Run mock tournaments, daily techniques, and roster tools for coaches. Nothing here opens those tools yet.',
-  },
-  pro: {
-    title: 'Advantage Pro',
-    body: 'Coming soon. Gym owner suite — class schedule, gallery, videos, events, Pro Shop, and instructor seats.',
-  },
-};
 
 export function HomePage() {
   const unlocked = useProUnlocked();
@@ -50,7 +39,7 @@ export function HomePage() {
           >
             <strong>Advantage Coach</strong>
             <span className="mode-card__sub">Coming soon</span>
-            <span>Run mock tournaments, daily techniques, and roster tools for coaches.</span>
+            <span>{PRODUCT_TEASERS.coach}</span>
           </button>
 
           {unlocked ? (
@@ -63,10 +52,7 @@ export function HomePage() {
               />
               <strong>Advantage Pro</strong>
               <span className="mode-card__sub">Owner’s Toolbox</span>
-              <span>
-                Class schedule, gallery, videos, events, Pro Shop, mock tournament, competitor
-                roster, and more.
-              </span>
+              <span>{PRODUCT_TEASERS.proUnlocked}</span>
               <div className="mode-card__actions">
                 <Link className="btn" to="/pro">
                   Open Pro toolbox
@@ -83,10 +69,7 @@ export function HomePage() {
             >
               <strong>Advantage Pro</strong>
               <span className="mode-card__sub">Coming soon</span>
-              <span>
-                Gym owner suite — class schedule, gallery, videos, events, Pro Shop, and instructor
-                seats.
-              </span>
+              <span>{PRODUCT_TEASERS.pro}</span>
             </button>
           )}
         </nav>
@@ -120,15 +103,21 @@ export function HomePage() {
       </div>
 
       <Sheet
+        className="sheet--ad"
         open={soon !== null}
-        title={soon ? SOON_COPY[soon].title : 'Coming soon'}
+        title={soon ? COMING_SOON_ADS[soon].title : 'Coming soon'}
         onClose={() => setSoon(null)}
       >
-        {soon ? <p className="home__unlock-copy">{SOON_COPY[soon].body}</p> : null}
-        {soon === 'pro' ? (
-          <button type="button" className="btn btn--ghost" onClick={openUnlock}>
-            Owner unlock
-          </button>
+        {soon ? (
+          <ComingSoonAd
+            product={soon}
+            onDismiss={() => setSoon(null)}
+            extraAction={
+              soon === 'pro'
+                ? { label: 'Owner unlock', onClick: openUnlock }
+                : undefined
+            }
+          />
         ) : null}
       </Sheet>
       <ProUnlockSheet open={unlockOpen} onClose={() => setUnlockOpen(false)} />

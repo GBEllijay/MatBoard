@@ -6,13 +6,14 @@ type Props = {
   onClose: () => void;
   children: ReactNode;
   stacked?: boolean;
+  className?: string;
 };
 
-export function Sheet({ open, title, onClose, children, stacked = false }: Props) {
+export function Sheet({ open, title, onClose, children, stacked = false, className }: Props) {
   if (!open) return null;
   return (
     <div
-      className={`sheet${stacked ? ' sheet--stack' : ''}`}
+      className={`sheet${stacked ? ' sheet--stack' : ''}${className ? ` ${className}` : ''}`}
       role="dialog"
       aria-modal="true"
       aria-labelledby="sheet-title"

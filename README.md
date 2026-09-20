@@ -13,8 +13,8 @@ Browsers cannot permanently hide the address bar in a normal tab. For gym TV / c
 ## Products
 
 - **Advantage White** (`/white`, `/lite` redirects here) — BJJ scoreboard and timer. Home card opens this page. **Live Bout** and **Rounds** live here (same Scoreboard / Controller / Training destinations as before).
-- **Advantage Coach** — Coming soon on public home. Tease only: mock tournaments, daily techniques, roster tools for coaches. Tap opens a Coming soon sheet; it does not open real coach tools.
-- **Advantage Pro** — Coming soon on public home (class schedule, gallery, videos, events, Pro Shop, instructor seats). When Pro is unlocked on this browser, the Pro card is active and **Open Pro toolbox** goes to `/pro` (Gallery, Videos, Pro Shop, Events, Mock Tournament, Class Schedule, Roster). Public deep links to those routes stay gated.
+- **Advantage Coach** — Coming soon on public home. Card teases mock tournaments and Daily Techniques. Tap opens a Coming soon **ad** (not checkout): Competitor Management System (bout roster — not student progress / not GB Members), mock tournaments, and Daily Techniques (morning clips, loop while drilling, timer; each coach keeps their own bank). It does not open real coach tools. No prices.
+- **Advantage Pro** — Coming soon on public home. Card teases owner tools including **ProShop display**. Tap opens a separate Coming soon ad: Class Schedule (logo + QR + multi-mat), Gallery/Videos, ProShop display, Events/flyers, owner-controlled instructor seats, and competitor tools. No prices. When Pro is unlocked on this browser, the Pro card is active and **Open Pro toolbox** goes to `/pro` (Gallery, Videos, Pro Shop, Events, Mock Tournament, Class Schedule, Roster). Public deep links to those routes stay gated.
 
 ## Modes
 
@@ -26,7 +26,7 @@ Default match names are **Competitor 1** / **Competitor 2** with empty gyms.
 
 ## Soft beta (public White)
 
-Public testers land on three product cards. **Advantage White** is the live path (Live Bout + Rounds on `/white`). **Advantage Coach** and **Advantage Pro** stay grayed and open Coming soon. `/slideshow`, `/screensaver`, `/tournament`, `/schedule`, `/roster`, and `/pro` go to a Coming soon page unless Pro is on.
+Public testers land on three product cards. **Advantage White** is the live path (Live Bout + Rounds on `/white`). **Advantage Coach** and **Advantage Pro** stay grayed and open Coming soon ads (Coach-angled vs gym-owner — not checkout). `/slideshow`, `/screensaver`, `/tournament`, `/schedule`, `/roster`, and `/pro` go to a Coming soon page unless Pro is on.
 
 This is not a login. The gym owner can keep testing Toolbox / Tournament on the same build:
 
