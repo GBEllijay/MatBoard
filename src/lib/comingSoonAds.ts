@@ -24,15 +24,15 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
   coach: {
     title: 'Advantage Coach',
     kicker: 'Coming soon',
-    lead: 'Built for coaches on the gym floor. Not a membership app. Not student progress.',
+    lead: 'Built for coaches on the gym floor.',
     features: [
       {
         title: 'Competitor Management System',
-        body: 'Keep a roster for bouts — names and belts you pick into Live Bout and mock brackets. This is not student progress, and it is not GB Members.',
+        body: 'Keep a roster for bouts — names and belts you pick into Live Bout and mock brackets.',
       },
       {
         title: 'Mock tournaments',
-        body: 'Run a 16-person bracket on the gym TV. Score each bout on the same scoreboard you already use.',
+        body: 'Run a 16-person bracket on the gym TV. Score each bout and track winners on the same easy to use scoreboard.',
       },
       {
         title: 'Daily Techniques',
@@ -56,7 +56,7 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
       },
       {
         title: 'ProShop display',
-        body: 'Product cards on the gym TV. Not a checkout.',
+        body: 'Product cards on the gym TV.',
       },
       {
         title: 'Events and flyers',
@@ -64,7 +64,7 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
       },
       {
         title: 'Instructor seats',
-        body: 'You control who gets a seat — coaches you add, not a free-for-all.',
+        body: 'You control who gets a seat — coaches you add.',
       },
       {
         title: 'Competitor tools',

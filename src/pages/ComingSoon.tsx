@@ -46,8 +46,8 @@ export function ComingSoonPage() {
           <nav className="home__soon-actions" aria-label="Coming soon">
             <p className="home__soon-lead">
               Advantage White is ready now — Live Bout and Rounds. Advantage Coach and Advantage
-              Pro stay Coming soon on home (no checkout). Gym-owner tools stay off until Pro is
-              unlocked on this browser.
+              Pro stay Coming soon on home. Gym-owner tools stay off until Pro is unlocked on this
+              browser.
             </p>
             <Link className="btn" to="/white">
               Advantage White

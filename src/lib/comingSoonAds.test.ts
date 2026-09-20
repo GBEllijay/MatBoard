@@ -10,13 +10,18 @@ function adText(product: keyof typeof COMING_SOON_ADS): string {
 test('Coach ad sells bout tools, Daily Techniques, and no price', () => {
   const text = adText('coach');
   assert.match(text, /Competitor Management System/);
-  assert.match(text, /not GB Members/i);
-  assert.match(text, /not student progress/i);
   assert.match(text, /Mock tournaments/i);
+  assert.match(
+    text,
+    /Score each bout and track winners on the same easy to use scoreboard/,
+  );
   assert.match(text, /Daily Techniques/);
   assert.match(text, /loop/i);
   assert.match(text, /timer/i);
   assert.match(text, /own bank/i);
+  assert.doesNotMatch(text, /membership app/i);
+  assert.doesNotMatch(text, /student progress/i);
+  assert.doesNotMatch(text, /GB Members/i);
   assert.doesNotMatch(text, /\$\d/);
   assert.doesNotMatch(PRODUCT_TEASERS.coach, /\$\d/);
   assert.match(PRODUCT_TEASERS.coach, /Mock tournaments/);
@@ -35,6 +40,8 @@ test('Pro ad sells owner TV tools, ProShop display, and no price', () => {
   assert.match(text, /Instructor seats/);
   assert.match(text, /You control who gets a seat/);
   assert.match(text, /Competitor tools/);
+  assert.doesNotMatch(text, /checkout/i);
+  assert.doesNotMatch(text, /free-for-all/i);
   assert.doesNotMatch(text, /\$\d/);
   assert.match(PRODUCT_TEASERS.pro, /ProShop display/);
   assert.match(PRODUCT_TEASERS.proUnlocked, /ProShop display/);
