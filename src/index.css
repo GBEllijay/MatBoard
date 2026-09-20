@@ -765,11 +765,11 @@ p {
   place-items: center;
   padding: 1.2rem;
   pointer-events: auto;
-  background: radial-gradient(circle at 50% 46%, rgba(8, 10, 16, 0.42) 0%, rgba(8, 10, 16, 0.72) 70%);
+  background: radial-gradient(circle at 50% 46%, rgba(8, 10, 16, 0.78) 0%, rgba(8, 10, 16, 0.9) 72%);
 }
 
 .display-splash--dq {
-  background: radial-gradient(circle at 50% 46%, rgba(140, 18, 18, 0.58) 0%, rgba(42, 4, 6, 0.82) 72%);
+  background: radial-gradient(circle at 50% 46%, rgba(92, 10, 14, 0.84) 0%, rgba(28, 3, 6, 0.92) 72%);
 }
 
 .display-splash__card {
@@ -792,7 +792,7 @@ p {
   line-height: 0.95;
   letter-spacing: -0.04em;
   overflow-wrap: anywhere;
-  text-shadow: 0 4px 28px rgba(0, 0, 0, 0.72);
+  text-shadow: 0 6px 32px rgba(0, 0, 0, 0.92), 0 0 48px rgba(0, 0, 0, 0.55);
 }
 
 .display-splash__line {
@@ -819,6 +819,12 @@ p {
 .display--splash .tv-tip {
   opacity: 0;
   pointer-events: none;
+}
+
+.display--splash .clock-btn,
+.display--splash .display__clock-hint,
+.display--splash .display__meta {
+  opacity: 0.08;
 }
 
 @keyframes display-splash-float-blue {
