@@ -34,8 +34,9 @@ export function RosterPage() {
   return (
     <main className="roster">
       <PlayExitMark
+        to="/pro"
         onExit={() => {
-          navigate('/');
+          navigate('/pro');
         }}
       />
       <header className="roster__bar">

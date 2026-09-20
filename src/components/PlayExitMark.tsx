@@ -1,15 +1,17 @@
 import { Link } from 'react-router-dom';
 
 type Props = {
-  /** Exit play (fullscreen) then go Home. Omit to navigate Home immediately. */
+  /** Exit play (fullscreen) then go Home. Omit to navigate immediately. */
   onExit?: () => void;
+  /** Parent page. White tools go to `/white`; Pro toolbox tools go to `/pro`. */
+  to?: string;
 };
 
 /** Subtle Advantage corner mark that goes Home. Shared by play and manage screens. */
-export function PlayExitMark({ onExit }: Props) {
+export function PlayExitMark({ onExit, to = '/' }: Props) {
   return (
     <Link
-      to="/"
+      to={to}
       className="play-exit"
       aria-label="Home"
       onPointerDown={(event) => event.stopPropagation()}

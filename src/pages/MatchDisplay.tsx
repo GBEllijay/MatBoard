@@ -82,7 +82,7 @@ export function MatchDisplayPage() {
               Back to bracket
             </Link>
           ) : (
-            <Link to="/" className="chip">
+            <Link to="/white" className="chip">
               Home
             </Link>
           )}

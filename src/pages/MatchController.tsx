@@ -122,7 +122,7 @@ export function MatchControllerPage() {
 
   return (
     <main className="controller">
-      <PlayExitMark />
+      <PlayExitMark to="/white" />
       <Chrome
         right={
           <>
