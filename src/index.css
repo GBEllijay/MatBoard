@@ -715,6 +715,13 @@ p {
   max-width: 18rem;
 }
 
+.bout__calls--needed,
+.pad__calls--needed {
+  outline: 2px solid var(--gold);
+  outline-offset: 4px;
+  border-radius: 16px;
+}
+
 .bout-call {
   min-height: 56px;
   min-width: 0;
@@ -772,6 +779,22 @@ p {
   border-radius: 12px;
   font-size: clamp(0.95rem, 2.4vw, 1.45rem);
   letter-spacing: 0.06em;
+}
+
+.bout__banner-reason {
+  display: block;
+  margin-top: 0.28rem;
+  font-size: 0.42em;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+.pad__banner-reason {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  font-weight: 700;
 }
 
 @keyframes bout-banner-pop {
@@ -936,6 +959,11 @@ p {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   min-height: 44px;
+}
+
+.display__clock-hint--ref {
+  color: var(--gold-2);
+  letter-spacing: 0.08em;
 }
 
 .clock-btn {
@@ -1104,6 +1132,7 @@ p {
   grid-template-columns: 1.35fr 1fr;
   gap: 0.55rem;
   margin-top: 0.85rem;
+  margin-bottom: 0.85rem;
 }
 
 .pad__calls .btn {
@@ -1132,6 +1161,10 @@ p {
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
+}
+
+.controller__ref-note {
+  margin: 0.4rem 1.2rem 0;
 }
 
 .pad--blue .pad__banner {
@@ -1418,7 +1451,7 @@ label {
 .sheet {
   position: fixed;
   inset: 0;
-  z-index: 20;
+  z-index: 40;
   display: grid;
   align-items: end;
 }
@@ -1449,6 +1482,62 @@ label {
 .sheet__body {
   display: grid;
   gap: 0.9rem;
+}
+
+.outcome-picks {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.outcome-pick {
+  display: grid;
+  justify-items: start;
+  gap: 0.12rem;
+  width: 100%;
+  min-height: 64px;
+  padding: 0.75rem 1rem;
+  text-align: start;
+  border: 0;
+  border-radius: 16px;
+}
+
+.outcome-pick strong {
+  font-size: 1.12rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.outcome-pick span {
+  font-size: 0.88rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  opacity: 0.72;
+}
+
+.outcome-pick--submission {
+  background: var(--gold);
+  color: #1a1404;
+}
+
+.outcome-pick--points {
+  background: #f3e6c4;
+  color: #1a1404;
+}
+
+.outcome-pick--decision {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--ink);
+}
+
+.outcome-pick--technical {
+  background: var(--neg);
+  color: #fff;
+}
+
+.outcome-pick--medical {
+  background: var(--adv);
+  color: #1a1404;
 }
 
 fieldset {
@@ -2550,7 +2639,7 @@ fieldset {
 
 .t-slot__marks {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.22rem;
 }
 

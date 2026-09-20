@@ -8,6 +8,7 @@ export const DISPLAY_FOCUS_IDS = {
   'white-gym': 'match-field-white-gym',
   round: 'match-field-round',
   division: 'match-field-division',
+  outcome: 'match-field-outcome',
 } as const;
 
 export type DisplayFocus = keyof typeof DISPLAY_FOCUS_IDS;

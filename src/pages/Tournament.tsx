@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { PlayExitMark } from '../components/PlayExitMark';
+import { OutcomePickSheet } from '../components/OutcomeCalls';
 import { Sheet } from '../components/Sheet';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useMatchState, useTournamentState } from '../hooks/useStores';
@@ -24,16 +25,10 @@ import {
   slotName,
   undoLastOutcome,
   undoMatchOutcome,
-  type BoutOutcomeKind,
   type BracketMatchId,
   type MatchSide,
 } from '../lib/tournamentStore';
-
-const MARKS: { kind: BoutOutcomeKind; label: string }[] = [
-  { kind: 'win', label: 'Win' },
-  { kind: 'dq', label: 'DQ' },
-  { kind: 'tech', label: 'T-loss' },
-];
+import { type OutcomeCall } from '../lib/outcomes';
 
 export function TournamentPage() {
   const tournament = useTournamentState();
@@ -116,7 +111,7 @@ export function TournamentPage() {
 
       <p className="tournament__hint">
         Tap <strong>Score</strong> to open the match board with those two names. <strong>Win</strong> or{' '}
-        <strong>DQ</strong> there (or here) advances the winner. <strong>Undo last</strong> backs out a mistaken
+        <strong>DQ</strong> there (or here) opens how the bout ended. <strong>Undo last</strong> backs out a mistaken
         tap without wiping later bouts that already have their own result. Saved on this device.
       </p>
 
@@ -255,12 +250,17 @@ function SlotRow({ matchId, side }: { matchId: BracketMatchId; side: MatchSide }
   const seeds = seedSlots();
   const seedIndex = seeds.indexOf(id);
   const placeholder = seedIndex >= 0 ? seedPlaceholder(seedIndex) : 'Winner';
+  const result = tournament.results[matchId];
+  const winOn = result?.call === 'win' && result.winnerSide === side;
+  const dqOn = result?.call === 'dq' && result.winnerSide !== side;
+  const [sheet, setSheet] = useState<OutcomeCall | null>(null);
+  const label = name.trim() || placeholder;
 
   return (
     <div
       className={`t-slot${mark === 'win' || mark === 'advanced' ? ' t-slot--won' : ''}${
         mark === 'dq' ? ' t-slot--dq' : ''
-      }${mark === 'tech' ? ' t-slot--tech' : ''}${mark === 'lost' ? ' t-slot--lost' : ''}`}
+      }${mark === 'lost' ? ' t-slot--lost' : ''}`}
     >
       <input
         value={name}
@@ -269,21 +269,38 @@ function SlotRow({ matchId, side }: { matchId: BracketMatchId; side: MatchSide }
         aria-label={`${roundLabel(matchId)}, ${side === 'a' ? 'top' : 'bottom'} competitor`}
       />
       <div className="t-slot__marks" role="group" aria-label="Bout result">
-        {MARKS.map(({ kind, label }) => {
-          const pressed = mark === kind;
-          return (
-            <button
-              key={kind}
-              type="button"
-              className={`t-mark t-mark--${kind}${pressed ? ' is-on' : ''}`}
-              aria-pressed={pressed}
-              onClick={() => setMatchOutcome(matchId, side, kind)}
-            >
-              {label}
-            </button>
-          );
-        })}
+        <button
+          type="button"
+          className={`t-mark t-mark--win${winOn ? ' is-on' : ''}`}
+          aria-pressed={winOn}
+          aria-haspopup="dialog"
+          onClick={() => setSheet('win')}
+        >
+          Win
+        </button>
+        <button
+          type="button"
+          className={`t-mark t-mark--dq${dqOn ? ' is-on' : ''}`}
+          aria-pressed={dqOn}
+          aria-haspopup="dialog"
+          onClick={() => setSheet('dq')}
+        >
+          DQ
+        </button>
       </div>
+      <OutcomePickSheet
+        open={sheet}
+        title={sheet === 'dq' ? `${label} DQ` : `${label} win`}
+        onClose={() => setSheet(null)}
+        onPickWin={(method) => {
+          setMatchOutcome(matchId, side, { call: 'win', method });
+          setSheet(null);
+        }}
+        onPickDq={(reason) => {
+          setMatchOutcome(matchId, side, { call: 'dq', reason });
+          setSheet(null);
+        }}
+      />
     </div>
   );
 }

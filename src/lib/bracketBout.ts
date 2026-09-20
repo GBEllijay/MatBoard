@@ -1,11 +1,18 @@
 /** Wire a mock-bracket bout to the live Match scoreboard (same device, Phase 1 store). */
 
 import { controllerFocusPath, type DisplayFocus } from './matchFocus';
-import { dispatchMatch, getMatch, type Side } from './matchStore';
+import { dispatchMatch, getMatch, type OutcomeFlash, type Side } from './matchStore';
+import {
+  inferScoreReason,
+  outcomeBanner,
+  type BoutOutcome,
+  type MatchOutcome,
+} from './outcomes';
 import {
   getTournament,
   isBracketMatchId,
   roundLabel,
+  scoreboardSideToBracket,
   seedPlaceholder,
   seedSlots,
   setMatchOutcome,
@@ -14,6 +21,8 @@ import {
   type BracketMatchId,
   type MatchSide,
 } from './tournamentStore';
+
+export { scoreboardSideToBracket };
 
 /** Brief Winner / Disqualification hold on the Display before returning to the tree. */
 export const BOUT_FLASH_MS = 1700;
@@ -31,10 +40,6 @@ export function flashDurationMs(): number {
 
 export function linkedBracketMatchId(value: string | null | undefined): BracketMatchId | null {
   return isBracketMatchId(value) ? value : null;
-}
-
-export function scoreboardSideToBracket(side: Side): MatchSide {
-  return side === 'blue' ? 'a' : 'b';
 }
 
 export function boutCompetitorName(matchId: BracketMatchId, side: MatchSide): string {
@@ -79,15 +84,53 @@ export function controllerPath(matchId?: BracketMatchId | null, focus?: DisplayF
   return `${base}${base.includes('?') ? '&' : '?'}bout=${matchId}`;
 }
 
-export function declareLinkedOutcome(side: Side, kind: 'win' | 'dq'): boolean {
+function flashFromOutcome(outcome: MatchOutcome): OutcomeFlash {
+  return {
+    kind: outcome.call,
+    side: outcome.side,
+    at: Date.now(),
+  };
+}
+
+export function declareMatchOutcome(
+  side: Side,
+  pick: BoutOutcome,
+  options?: { source?: MatchOutcome['source'] },
+): boolean {
   const match = getMatch();
-  const matchId = linkedBracketMatchId(match.bracketMatchId);
-  if (!matchId || match.outcomeFlash) return false;
-  setMatchOutcome(matchId, scoreboardSideToBracket(side), kind, { toggle: false });
+  const linked = linkedBracketMatchId(match.bracketMatchId);
+  if (linked && match.outcomeFlash) return false;
+
+  const source = options?.source ?? 'manual';
+  const at = Date.now();
+  const outcome: MatchOutcome =
+    pick.call === 'win'
+      ? {
+          side,
+          call: 'win',
+          method: pick.method,
+          scoreReason:
+            pick.method === 'points'
+              ? (pick.scoreReason ?? inferScoreReason(side, match.blue, match.white))
+              : undefined,
+          source,
+          at,
+        }
+      : { side, call: 'dq', reason: pick.reason, source, at };
+
   dispatchMatch({
-    type: 'beginBracketOutcome',
-    flash: { kind, side, at: Date.now() },
+    type: 'beginOutcome',
+    flash: flashFromOutcome(outcome),
+    outcome,
   });
+
+  if (linked) {
+    const stored: BoutOutcome =
+      outcome.call === 'win'
+        ? { call: 'win', method: outcome.method, scoreReason: outcome.scoreReason }
+        : { call: 'dq', reason: outcome.reason };
+    setMatchOutcome(linked, scoreboardSideToBracket(side), stored, { toggle: false });
+  }
   return true;
 }
 
@@ -95,4 +138,18 @@ export function roundDisplay(round: string, linked: boolean): string {
   if (!round) return linked ? 'Bout' : 'Round —';
   if (linked) return round;
   return `Round ${round}`;
+}
+
+export function visibleOutcomeBanner(match: {
+  outcomeFlash: OutcomeFlash | null;
+  outcome: MatchOutcome | null;
+}): ReturnType<typeof outcomeBanner> {
+  if (match.outcomeFlash) {
+    return {
+      side: match.outcomeFlash.side,
+      kind: match.outcomeFlash.kind,
+      text: match.outcomeFlash.kind === 'win' ? 'Winner' : 'Disqualification',
+    };
+  }
+  return outcomeBanner(match.outcome);
 }
