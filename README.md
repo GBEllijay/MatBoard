@@ -16,6 +16,18 @@ Browsers cannot permanently hide the address bar in a normal tab. For gym TV / c
 
 Default match names are **Competitor 1** / **Competitor 2** with empty gyms.
 
+## Soft beta (public Lite)
+
+Public testers get **Live Bout** and **Rounds**. Owner’s Toolbox stays on the home card but does not navigate until Pro is unlocked on that browser. `/slideshow`, `/screensaver`, and `/tournament` go to a Coming soon page.
+
+This is not a login. The gym owner can keep testing Toolbox / Tournament on the same build:
+
+1. Open the site with `?pro=advantage` (or `?pro=1`).
+2. Or tap **Pro** / **Owner** on home (or **Owner unlock** on Coming soon) and enter the code.
+3. Or set `localStorage` key `advantage.proUnlocked` to `1`.
+
+The code lives in `src/lib/proUnlock.ts` as `PRO_UNLOCK_CODE` (default `advantage`). Override at build time with `VITE_PRO_UNLOCK_CODE`. Lock again with **Lock Pro** on home, `?pro=0`, or by clearing that flag.
+
 ## Scripts
 
 ```bash
