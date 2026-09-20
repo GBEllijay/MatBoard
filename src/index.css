@@ -329,8 +329,12 @@ p {
 }
 
 .mode-card__actions--tools {
-  grid-template-columns: 1fr;
+  grid-template-columns: 1fr 1fr;
   margin-top: 0.5rem;
+}
+
+.mode-card__actions--tools .btn {
+  min-height: 52px;
 }
 
 .home__hints {
@@ -1742,6 +1746,11 @@ fieldset {
   z-index: 2;
 }
 
+.folder-row--selected {
+  background: rgba(212, 160, 23, 0.1);
+  outline: 1px solid rgba(240, 194, 75, 0.35);
+}
+
 .folder-row__drag,
 .saver__drag {
   grid-area: drag;
@@ -1794,6 +1803,16 @@ fieldset {
   display: grid;
   grid-template-columns: minmax(52px, 1fr) minmax(52px, 1fr) minmax(72px, 1.15fr);
   gap: 0.4rem;
+}
+
+.folder-row__actions--select {
+  grid-template-columns: minmax(64px, 1.15fr) minmax(52px, 1fr) minmax(52px, 1fr) minmax(72px, 1.15fr);
+}
+
+.folder-row__play {
+  min-height: 52px;
+  min-width: 64px;
+  width: 100%;
 }
 
 .folder-row__move,
@@ -1853,6 +1872,10 @@ fieldset {
   .folder-row__actions,
   .saver__row-actions {
     grid-template-columns: 64px 64px auto;
+  }
+
+  .folder-row__actions--select {
+    grid-template-columns: 72px 64px 64px auto;
   }
 
   .folder-row__move,
@@ -2729,4 +2752,187 @@ fieldset {
 .play--tv.play--idle .tournament__bar,
 .play--tv.play--idle .tournament__hint {
   opacity: 0.18;
+}
+
+.techniques {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.techniques__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1rem;
+  padding: calc(0.7rem + var(--safe-t)) calc(1rem + var(--safe-r)) 0.65rem calc(4.4rem + var(--safe-l));
+}
+
+.techniques__brand h1 {
+  font-size: clamp(1.35rem, 3vw, 2rem);
+  letter-spacing: -0.04em;
+}
+
+.techniques__eyebrow {
+  color: var(--gold-2);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.techniques__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin-left: auto;
+}
+
+.techniques__actions .btn {
+  min-height: 52px;
+  min-width: 6.4rem;
+  padding: 0.55rem 1.15rem;
+}
+
+.techniques__hint {
+  margin: 0 calc(1rem + var(--safe-r)) 0.55rem calc(1rem + var(--safe-l));
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.techniques__hint strong {
+  color: var(--gold-2);
+  font-weight: 700;
+}
+
+.techniques__layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.85rem;
+  padding: 0 calc(1rem + var(--safe-r)) calc(1.1rem + var(--safe-b)) calc(1rem + var(--safe-l));
+  min-height: 0;
+}
+
+.techniques__stage {
+  display: grid;
+  grid-template-rows: minmax(12rem, 1fr) auto;
+  gap: 0.55rem;
+  min-height: 16rem;
+}
+
+.techniques__frame,
+.techniques__empty {
+  position: relative;
+  min-height: 12rem;
+  border-radius: var(--radius);
+  background: #000;
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+
+.techniques__empty {
+  display: grid;
+  place-content: center;
+  gap: 0.75rem;
+  padding: 1.4rem;
+  text-align: center;
+  color: var(--muted);
+  background: var(--bg-2);
+}
+
+.techniques__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
+.techniques__now {
+  color: var(--ink);
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+
+.techniques__manage {
+  display: grid;
+  gap: 0.7rem;
+  align-content: start;
+  min-width: 0;
+}
+
+.techniques__manage-head {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.techniques__count {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.techniques fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.techniques legend {
+  padding: 0;
+  color: var(--gold-2);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.techniques > .play-exit {
+  z-index: 21;
+}
+
+@media (orientation: landscape) {
+  .techniques__hint {
+    display: none;
+  }
+
+  .techniques__layout {
+    grid-template-columns: minmax(0, 1.35fr) minmax(18rem, 0.9fr);
+    align-items: stretch;
+  }
+
+  .techniques__stage {
+    min-height: 0;
+    height: calc(100dvh - 5.6rem);
+  }
+
+  .techniques__manage {
+    max-height: calc(100dvh - 5.6rem);
+    overflow: auto;
+  }
+}
+
+@media (min-width: 1100px) and (orientation: landscape) {
+  .techniques__bar {
+    align-items: center;
+    flex-wrap: nowrap;
+  }
+}
+
+.play--tv.play--idle .techniques__bar,
+.play--tv.play--idle .techniques__hint,
+.play--tv.play--idle .techniques__manage {
+  opacity: 0.18;
+}
+
+.techniques--play .techniques__actions .btn:disabled {
+  opacity: 0.45;
 }

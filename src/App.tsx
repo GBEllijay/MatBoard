@@ -7,6 +7,7 @@ import { HomePage } from './pages/Home';
 import { MatchControllerPage } from './pages/MatchController';
 import { MatchDisplayPage } from './pages/MatchDisplay';
 import { ScreensaverPage } from './pages/Screensaver';
+import { TechniquesPage } from './pages/Techniques';
 import { TournamentPage } from './pages/Tournament';
 import { TrainingPage } from './pages/Training';
 
@@ -32,6 +33,14 @@ export default function App() {
         element={
           <ProRoute>
             <TournamentPage />
+          </ProRoute>
+        }
+      />
+      <Route
+        path="/techniques"
+        element={
+          <ProRoute>
+            <TechniquesPage />
           </ProRoute>
         }
       />

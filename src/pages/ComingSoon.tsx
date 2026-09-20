@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ProUnlockSheet } from '../components/ProUnlockSheet';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { lockPro } from '../lib/proUnlock';
+import { TOOLBOX_TOOLS } from '../lib/toolboxTools';
 
 export function ComingSoonPage() {
   const unlocked = useProUnlocked();
@@ -26,9 +27,11 @@ export function ComingSoonPage() {
             <Link className="btn" to="/slideshow?folder=gallery">
               Owner’s Toolbox
             </Link>
-            <Link className="btn" to="/tournament">
-              Mock Tournament
-            </Link>
+            {TOOLBOX_TOOLS.map((tool) => (
+              <Link key={tool.id} className="btn" to={tool.to}>
+                {tool.label}
+              </Link>
+            ))}
             <Link className="btn btn--ghost" to="/">
               Home
             </Link>

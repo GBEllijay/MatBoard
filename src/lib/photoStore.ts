@@ -217,15 +217,18 @@ function fileExtension(name: string): string {
   return index >= 0 ? name.slice(index).toLowerCase() : '';
 }
 
-export function fileMatchesFolder(file: File, folder: FolderConfig): boolean {
+export function isAcceptedVideoFile(file: File): boolean {
+  if (file.type && file.type.startsWith('video/')) return true;
+  return (VIDEO_EXTENSIONS as readonly string[]).includes(fileExtension(file.name));
+}
+
+export function fileMatchesFolder(file: File, folder: { mimePrefix: string }): boolean {
   if (file.type && file.type.startsWith(folder.mimePrefix)) return true;
-  if (folder.mimePrefix === 'video/') {
-    return (VIDEO_EXTENSIONS as readonly string[]).includes(fileExtension(file.name));
-  }
+  if (folder.mimePrefix === 'video/') return isAcceptedVideoFile(file);
   return false;
 }
 
-export function mimeFromFile(file: File, folder: FolderConfig): string {
+export function mimeFromFile(file: File, folder: { mimePrefix: string }): string {
   if (file.type) return file.type;
   const ext = fileExtension(file.name);
   if (ext === '.mp4' || ext === '.m4v') return 'video/mp4';

@@ -1,11 +1,18 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { moveItemIds } from '../lib/playlist';
-import type { FolderConfig } from '../lib/photoStore';
 
 const TOUCH_HOLD_MS = 430;
 const MOUSE_HOLD_MS = 140;
 const CANCEL_PX = 12;
 const EDGE_PX = 56;
+
+export type FolderListConfig = {
+  label: string;
+  labelPrefix: string;
+  itemNounPlural: string;
+  emptyCopy: string;
+  orderHint: string;
+};
 
 export type FolderListItem = {
   id: string;
@@ -18,9 +25,11 @@ function isVideoMime(mime?: string): boolean {
 }
 
 type Props = {
-  folder: FolderConfig;
+  folder: FolderListConfig;
   items: FolderListItem[];
   thumbById: Record<string, string>;
+  selectedId?: string | null;
+  onSelect?: (id: string) => void;
   onRename: (id: string, label: string) => Promise<void>;
   onRemove: (id: string) => Promise<void>;
   onReorder: (orderedIds: string[]) => Promise<void>;
@@ -51,6 +60,8 @@ export function FolderItemList({
   folder,
   items,
   thumbById,
+  selectedId,
+  onSelect,
   onRename,
   onRemove,
   onReorder,
@@ -154,7 +165,7 @@ export function FolderItemList({
     if (items.length < 2) return;
     if (event.pointerType === 'mouse' && event.button !== 0) return;
     const target = event.target as HTMLElement;
-    if (target.closest('input, .folder-row__move, .folder-row__remove')) return;
+    if (target.closest('input, .folder-row__move, .folder-row__remove, .folder-row__play')) return;
     stopDrag(false);
     const originIds = idsOf(itemsRef.current);
     const session: DragSession = {
@@ -257,6 +268,8 @@ export function FolderItemList({
               isFirst={index === 0}
               isLast={index === visibleIds.length - 1}
               dragging={draggingId === item.id}
+              selected={selectedId === item.id}
+              onSelect={onSelect ? () => onSelect(item.id) : undefined}
               rowRef={(node) => {
                 rowRefs.current[item.id] = node;
               }}
@@ -285,6 +298,8 @@ function FolderItemRow({
   isFirst,
   isLast,
   dragging,
+  selected,
+  onSelect,
   rowRef,
   onPointerDown,
   onPointerMove,
@@ -303,6 +318,8 @@ function FolderItemRow({
   isFirst: boolean;
   isLast: boolean;
   dragging: boolean;
+  selected: boolean;
+  onSelect?: () => void;
   rowRef: (node: HTMLLIElement | null) => void;
   onPointerDown: (event: ReactPointerEvent<HTMLLIElement>) => void;
   onPointerMove: (event: ReactPointerEvent<HTMLLIElement>) => void;
@@ -328,7 +345,7 @@ function FolderItemRow({
   return (
     <li
       ref={rowRef}
-      className={`folder-row saver__row${dragging ? ' folder-row--dragging saver__row--dragging' : ''}`}
+      className={`folder-row saver__row${dragging ? ' folder-row--dragging saver__row--dragging' : ''}${selected ? ' folder-row--selected' : ''}`}
       style={{ touchAction: dragging ? 'none' : 'pan-y' }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -391,7 +408,18 @@ function FolderItemRow({
           if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
         }}
       />
-      <div className="folder-row__actions saver__row-actions">
+      <div className={`folder-row__actions saver__row-actions${onSelect ? ' folder-row__actions--select' : ''}`}>
+        {onSelect ? (
+          <button
+            type="button"
+            className={`folder-row__play preset${selected ? ' preset--on' : ''}`}
+            aria-pressed={selected}
+            aria-label={selected ? `${name} selected` : `Play ${name}`}
+            onClick={onSelect}
+          >
+            {selected ? 'On' : 'Play'}
+          </button>
+        ) : null}
         <button
           type="button"
           className="folder-row__move saver__move"

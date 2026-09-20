@@ -5,6 +5,7 @@ import { useProUnlocked } from '../hooks/useProUnlocked';
 import { unlinkBracketBout } from '../lib/bracketBout';
 import { FOLDERS } from '../lib/photoStore';
 import { lockPro } from '../lib/proUnlock';
+import { TOOLBOX_TOOLS } from '../lib/toolboxTools';
 
 export function HomePage() {
   const unlocked = useProUnlocked();
@@ -75,7 +76,7 @@ export function HomePage() {
             )}
             <span>
               {unlocked
-                ? 'Gallery, videos, Pro Shop, event flyers, and a mock tournament bracket.'
+                ? 'Gallery, videos, Pro Shop, event flyers, a mock tournament, and daily techniques.'
                 : 'Coming soon — Advantage Coach and Advantage Pro.'}
             </span>
             <div className="mode-card__actions mode-card__actions--folders" aria-label="Owner folders">
@@ -101,14 +102,16 @@ export function HomePage() {
               )}
             </div>
             <div className="mode-card__actions mode-card__actions--tools" aria-label="Owner tools">
-              {unlocked ? (
-                <Link className="btn" to="/tournament">
-                  Mock Tournament
-                </Link>
-              ) : (
-                <button type="button" className="btn" disabled>
-                  Mock Tournament
-                </button>
+              {TOOLBOX_TOOLS.map((tool) =>
+                unlocked ? (
+                  <Link key={tool.id} className="btn" to={tool.to}>
+                    {tool.label}
+                  </Link>
+                ) : (
+                  <button key={tool.id} type="button" className="btn" disabled>
+                    {tool.label}
+                  </button>
+                ),
               )}
             </div>
           </article>
@@ -118,7 +121,7 @@ export function HomePage() {
           <p className="home__hint">Install Advantage as an app from your browser menu.</p>
           <p className="home__hint">
             {unlocked
-              ? 'Gym TV: open this site on a computer plugged into the TV, then fullscreen Display, Rounds, Owner’s Toolbox, or Mock Tournament. Press F for fullscreen.'
+              ? 'Gym TV: open this site on a computer plugged into the TV, then fullscreen Display, Rounds, Owner’s Toolbox, Mock Tournament, or Daily Techniques. Press F for fullscreen.'
               : 'Gym TV: open this site on a computer plugged into the TV, then fullscreen Display or Rounds. Press F for fullscreen.'}
           </p>
           <p className="home__hint">
