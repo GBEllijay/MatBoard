@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { COMING_SOON_ADS, PRODUCT_TEASERS } from './comingSoonAds.ts';
+import { COMING_SOON_ADS, COMING_SOON_LABEL, PRODUCT_TEASERS } from './comingSoonAds.ts';
 import { GYM_CONSOLE_NAME } from './productNames.ts';
 
 function adText(product: keyof typeof COMING_SOON_ADS): string {
@@ -11,7 +11,8 @@ function adText(product: keyof typeof COMING_SOON_ADS): string {
 test('Coach ad sells bout tools, Daily Techniques, and no price', () => {
   const text = adText('coach');
   assert.equal(COMING_SOON_ADS.coach.title, 'Advantage Coach');
-  assert.match(COMING_SOON_ADS.coach.kicker, /Coming soon/i);
+  assert.equal(COMING_SOON_ADS.coach.kicker, COMING_SOON_LABEL);
+  assert.equal(COMING_SOON_LABEL, 'Coming Soon');
   assert.match(
     text,
     /Run a Mock Tournament, Record Daily Techniques for Screencasting with Competitor Management System/,
@@ -56,8 +57,8 @@ test('Pro ad sells the Console paragraph and no price', () => {
   assert.doesNotMatch(text, /GB Members/i);
   assert.doesNotMatch(text, /checkout/i);
   assert.doesNotMatch(text, /\$\d/);
-  assert.match(PRODUCT_TEASERS.pro, /Pro-Shop/);
-  assert.match(PRODUCT_TEASERS.pro, /tournament suite/i);
+  assert.equal(COMING_SOON_ADS.pro.kicker, COMING_SOON_LABEL);
+  assert.equal(PRODUCT_TEASERS.pro, GYM_CONSOLE_NAME);
   assert.match(PRODUCT_TEASERS.proUnlocked, /Console/);
   assert.doesNotMatch(PRODUCT_TEASERS.proUnlocked, /Toolbox/i);
 });

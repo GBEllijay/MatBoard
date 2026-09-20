@@ -8,7 +8,12 @@ import { Sheet } from '../components/Sheet';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { lockCoach } from '../lib/coachUnlock';
-import { COMING_SOON_ADS, PRODUCT_TEASERS, type SoonProduct } from '../lib/comingSoonAds';
+import {
+  COMING_SOON_ADS,
+  COMING_SOON_LABEL,
+  PRODUCT_TEASERS,
+  type SoonProduct,
+} from '../lib/comingSoonAds';
 import { GYM_CONSOLE_NAME } from '../lib/productNames';
 import { lockPro } from '../lib/proUnlock';
 
@@ -64,7 +69,7 @@ export function HomePage() {
             >
               <BeltRail kind="blue" />
               <strong>Advantage Coach</strong>
-              <span className="mode-card__sub">Coming soon</span>
+              <span className="mode-card__sub">{COMING_SOON_LABEL}</span>
               <span className="mode-card__teaser">{PRODUCT_TEASERS.coach}</span>
             </button>
           )}
@@ -97,7 +102,7 @@ export function HomePage() {
             >
               <BeltRail kind="black" />
               <strong>Advantage Pro</strong>
-              <span className="mode-card__sub">Coming soon</span>
+              <span className="mode-card__sub">{COMING_SOON_LABEL}</span>
               <span className="mode-card__teaser">{PRODUCT_TEASERS.pro}</span>
             </button>
           )}

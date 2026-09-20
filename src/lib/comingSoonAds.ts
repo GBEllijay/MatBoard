@@ -15,17 +15,20 @@ export type ComingSoonAdCopy = {
   dismiss: string;
 };
 
+/** Locked-card gold label. Same wording on Coach and Pro / Console. */
+export const COMING_SOON_LABEL = 'Coming Soon';
+
 export const PRODUCT_TEASERS = {
   coach: 'Mock Tournament, Daily Techniques, Competitor Management.',
   coachUnlocked: 'Coach tools on this browser.',
-  pro: 'Pro-Shop, schedules, events, tournament suite.',
+  pro: GYM_CONSOLE_NAME,
   proUnlocked: 'Console is on this browser.',
 } as const;
 
 export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
   coach: {
     title: 'Advantage Coach',
-    kicker: 'Coming soon',
+    kicker: COMING_SOON_LABEL,
     lead: 'Run a Mock Tournament, Record Daily Techniques for Screencasting with Competitor Management System.',
     features: [
       {
@@ -45,7 +48,7 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
   },
   pro: {
     title: 'Advantage Pro',
-    kicker: 'Coming soon',
+    kicker: COMING_SOON_LABEL,
     lead: `${GYM_CONSOLE_NAME}. Easily cast to your gym TV and display: Pro-Shop, Class Schedules, Recent Promotions, Upcoming Events and Competitions. Full In-House Tournament Management Suite with Auto-Fill Bracketing and Result Tracking. Assignable Instructor Licenses with Cross Platform Access to Updates and more.`,
     features: [
       {
