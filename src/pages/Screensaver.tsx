@@ -198,7 +198,7 @@ export function ScreensaverPage() {
 
   const exitSlideshow = () => {
     void fs.exit().finally(() => {
-      navigate('/');
+      navigate('/pro');
     });
   };
 
@@ -221,7 +221,7 @@ export function ScreensaverPage() {
       }}
     >
       <Chrome ghost />
-      <PlayExitMark onExit={exitSlideshow} />
+      <PlayExitMark to="/pro" onExit={exitSlideshow} />
       <div className="play-fs-slot">
         <FullscreenChip
           supported={fs.supported}

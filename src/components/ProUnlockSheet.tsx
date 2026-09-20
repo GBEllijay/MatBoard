@@ -31,7 +31,7 @@ export function ProUnlockSheet({ open, onClose }: Props) {
   return (
     <Sheet open={open} title="Owner unlock" onClose={close}>
       <p className="home__unlock-copy">
-        Turns on Owner’s Toolbox and Advantage Pro on this browser. Soft beta only — not a login.
+        Turns on Advantage Pro and Owner’s Toolbox on this browser. Soft beta only — not a login.
       </p>
       <form className="home__unlock-form" onSubmit={submit}>
         <label>

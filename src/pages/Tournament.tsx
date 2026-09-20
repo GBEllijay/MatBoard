@@ -45,13 +45,13 @@ export function TournamentPage() {
 
   const exitBoard = () => {
     void fs.exit().finally(() => {
-      navigate('/');
+      navigate('/pro');
     });
   };
 
   return (
     <main className={`tournament${fs.className ? ` ${fs.className}` : ''}`}>
-      <PlayExitMark onExit={exitBoard} />
+      <PlayExitMark to="/pro" onExit={exitBoard} />
       <header className="tournament__bar">
         <div className="tournament__brand">
           <p className="tournament__eyebrow">Owner’s Toolbox</p>

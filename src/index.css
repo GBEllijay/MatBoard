@@ -199,6 +199,11 @@ p {
   background: linear-gradient(90deg, var(--gold), var(--gold-2));
 }
 
+.home__brand {
+  display: block;
+  color: inherit;
+}
+
 .home__mark p {
   max-width: 22rem;
   margin-inline: auto;
@@ -234,6 +239,16 @@ p {
   position: relative;
 }
 
+button.mode-card {
+  appearance: none;
+  width: 100%;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
 /* Whole-card hit sits under the action buttons so Live Bout → Scoreboard and Toolbox → Gallery. */
 .mode-card__hit {
   position: absolute;
@@ -243,7 +258,9 @@ p {
 }
 
 @media (hover: hover) {
-  .mode-card:has(> .mode-card__hit:hover) {
+  .mode-card:has(> .mode-card__hit:hover),
+  a.mode-card:hover,
+  button.mode-card:hover {
     border-color: rgba(255, 255, 255, 0.32);
   }
 }
@@ -277,12 +294,22 @@ p {
 }
 
 .mode-card--locked {
+  opacity: 0.72;
+  filter: saturate(0.45);
   border-color: rgba(168, 188, 214, 0.14);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.36);
 }
 
-.mode-card--match {
-  background: linear-gradient(165deg, rgba(22, 62, 168, 0.92) 0%, #0d1736 46%, #12141c 100%);
-  border-color: rgba(92, 140, 230, 0.28);
+.mode-card--match,
+.mode-card--white {
+  background:
+    radial-gradient(120% 80% at 0% 0%, rgba(239, 235, 227, 0.26), transparent 52%),
+    linear-gradient(165deg, rgba(22, 62, 168, 0.95) 0%, #0d1736 46%, #12141c 100%);
+  border-color: rgba(239, 235, 227, 0.38);
+}
+
+.mode-card--white {
+  min-height: 10.5rem;
 }
 
 .mode-card--training {
@@ -292,9 +319,28 @@ p {
   border-color: rgba(212, 160, 23, 0.2);
 }
 
-.mode-card--saver {
+.mode-card--coach {
+  min-height: 10.5rem;
+  background: linear-gradient(165deg, #24302c 0%, #141a18 48%, #0c1118 100%);
+  border-color: rgba(140, 168, 148, 0.18);
+}
+
+.mode-card--saver,
+.mode-card--pro {
   background: linear-gradient(145deg, #2a3546 0%, #151c28 48%, #0c1118 100%);
   border-color: rgba(168, 188, 214, 0.2);
+}
+
+.mode-card--pro {
+  min-height: 10.5rem;
+}
+
+.mode-card--pro:not(.mode-card--locked) {
+  border-color: rgba(212, 160, 23, 0.38);
+}
+
+.home--ladder .mode-card--pro .mode-card__actions {
+  grid-template-columns: 1fr;
 }
 
 .mode-card__actions {
@@ -443,6 +489,14 @@ p {
     grid-area: modes;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     align-items: stretch;
+  }
+
+  .home--white .home__modes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home--pro .home__modes {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .mode-card {

@@ -72,7 +72,7 @@ export function TrainingPage() {
 
   const exitTraining = () => {
     void fs.exit().finally(() => {
-      navigate('/');
+      navigate('/white');
     });
   };
 
@@ -98,7 +98,7 @@ export function TrainingPage() {
       }}
     >
       <Chrome ghost title="" />
-      <PlayExitMark onExit={exitTraining} />
+      <PlayExitMark to="/white" onExit={exitTraining} />
       <div className="play-fs-slot">
         <FullscreenChip
           supported={fs.supported}

@@ -121,13 +121,13 @@ export function SchedulePage() {
 
   const exitBoard = () => {
     void fs.exit().finally(() => {
-      navigate('/');
+      navigate('/pro');
     });
   };
 
   return (
     <main className={`schedule${fs.className ? ` ${fs.className}` : ''}`}>
-      <PlayExitMark onExit={exitBoard} />
+      <PlayExitMark to="/pro" onExit={exitBoard} />
       <header className="schedule__bar">
         <div className="schedule__brand">
           <p className="schedule__eyebrow">Owner’s Toolbox</p>

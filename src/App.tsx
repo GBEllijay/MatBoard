@@ -6,11 +6,13 @@ import { ComingSoonPage } from './pages/ComingSoon';
 import { HomePage } from './pages/Home';
 import { MatchControllerPage } from './pages/MatchController';
 import { MatchDisplayPage } from './pages/MatchDisplay';
+import { ProPage } from './pages/Pro';
 import { RosterPage } from './pages/Roster';
 import { ScreensaverPage } from './pages/Screensaver';
 import { SchedulePage } from './pages/Schedule';
 import { TournamentPage } from './pages/Tournament';
 import { TrainingPage } from './pages/Training';
+import { WhitePage } from './pages/White';
 
 consumeUnlockQueryNow();
 
@@ -26,9 +28,19 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
+      <Route path="/white" element={<WhitePage />} />
+      <Route path="/lite" element={<Navigate to="/white" replace />} />
       <Route path="/match" element={<MatchDisplayPage />} />
       <Route path="/match/control" element={<MatchControllerPage />} />
       <Route path="/training" element={<TrainingPage />} />
+      <Route
+        path="/pro"
+        element={
+          <ProRoute>
+            <ProPage />
+          </ProRoute>
+        }
+      />
       <Route
         path="/tournament"
         element={
