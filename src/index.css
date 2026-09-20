@@ -93,6 +93,11 @@ p {
   border: 1px solid var(--line);
 }
 
+.btn--white {
+  background: var(--white);
+  color: var(--white-ink);
+}
+
 .chip--gold {
   background: var(--gold);
   color: #1a1404;
@@ -239,15 +244,16 @@ p {
   position: relative;
 }
 
-/* Home product cards: a few-px left rail with a small belt-tip wink. */
+/* Thin left-edge belt ribbon (~few px). Rank belts: fill + rank bar + tiny tip. */
 .belt-rail {
-  --belt-rail-width: 5px;
-  --belt-tip-size: 0.85rem;
-  --belt-tip-2-size: 0px;
+  --belt-rail-width: 6px;
+  --belt-tip-size: 0.78rem;
+  --belt-tip-2-size: 0.26rem;
   --belt-fill: var(--white);
   --belt-tip: #14161c;
-  --belt-tip-2: transparent;
-  --belt-edge: rgba(8, 10, 16, 0.35);
+  --belt-tip-2: #f4f1ea;
+  --belt-edge: rgba(8, 10, 16, 0.42);
+  --belt-block: 0.7rem;
   position: absolute;
   inset: 0;
   z-index: 3;
@@ -287,25 +293,48 @@ p {
 .belt-rail--white {
   --belt-fill: #f4f1ea;
   --belt-tip: #14161c;
-  --belt-edge: rgba(20, 22, 28, 0.28);
+  --belt-tip-2: #f4f1ea;
+  --belt-edge: rgba(20, 22, 28, 0.45);
 }
 
 .belt-rail--blue {
-  --belt-fill: var(--blue-2);
+  --belt-fill: #2a5cf0;
   --belt-tip: #14161c;
-  --belt-edge: rgba(8, 10, 16, 0.4);
+  --belt-tip-2: #f4f1ea;
+  --belt-edge: rgba(8, 10, 16, 0.5);
 }
 
 .belt-rail--black {
-  --belt-fill: #0c0e12;
-  --belt-tip: var(--neg);
-  --belt-edge: rgba(255, 255, 255, 0.2);
+  --belt-fill: #0a0b0e;
+  --belt-tip: #ef4444;
+  --belt-tip-2: #0a0b0e;
+  --belt-edge: rgba(255, 255, 255, 0.34);
 }
 
+/* Same-gi corner belts: forest + bright yellow blocks only — no tip stack. */
 .belt-rail--tournament {
-  --belt-fill: #2d7a3a;
-  --belt-tip: #e4c430;
-  --belt-edge: rgba(8, 10, 16, 0.38);
+  --belt-fill: #1c6b30;
+  --belt-tip: #ffe24a;
+  --belt-tip-2: transparent;
+  --belt-tip-size: 0px;
+  --belt-tip-2-size: 0px;
+  --belt-edge: rgba(8, 10, 16, 0.42);
+  background:
+    linear-gradient(
+      to right,
+      transparent 0,
+      transparent calc(var(--belt-rail-width) - 1px),
+      var(--belt-edge) calc(var(--belt-rail-width) - 1px),
+      var(--belt-edge) var(--belt-rail-width),
+      transparent var(--belt-rail-width)
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      #1c6b30 0,
+      #1c6b30 var(--belt-block),
+      #ffe24a var(--belt-block),
+      #ffe24a calc(var(--belt-block) * 2)
+    );
 }
 
 .btn:has(> .belt-rail) {
@@ -313,8 +342,10 @@ p {
 }
 
 .btn .belt-rail {
-  --belt-rail-width: 4px;
+  --belt-rail-width: 5px;
   --belt-tip-size: 0.55rem;
+  --belt-tip-2-size: 0.18rem;
+  --belt-block: 0.42rem;
 }
 
 button.mode-card {
@@ -423,6 +454,107 @@ button.mode-card {
 
 .home--ladder .mode-card--pro .mode-card__actions {
   grid-template-columns: 1fr;
+}
+
+/* Product ladder: keep the three mode cards on-screen without a first-screen scroll. */
+.home--ladder .home__inner {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: calc(0.65rem + var(--safe-t)) 1rem calc(0.7rem + var(--safe-b));
+}
+
+.home--ladder .home__mark {
+  flex: 0 0 auto;
+  margin-bottom: clamp(0.4rem, 1.5vh, 0.85rem);
+}
+
+.home--ladder .home__logo {
+  width: clamp(4.4rem, 13.5vh, 7rem);
+  margin-bottom: clamp(0.28rem, 0.9vh, 0.65rem);
+}
+
+.home--ladder h1 {
+  font-size: clamp(1.7rem, 5.2vh, 2.55rem);
+}
+
+.home--ladder h1::after {
+  margin-top: 0.28rem;
+}
+
+.home--ladder .home__mark p {
+  font-size: clamp(0.82rem, 1.8vh, 0.95rem);
+}
+
+.home--ladder .home__modes {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: repeat(3, minmax(4.5rem, 1fr));
+  gap: clamp(0.38rem, 1.2vh, 0.7rem);
+}
+
+.home--ladder .mode-card,
+.home--ladder .mode-card--white,
+.home--ladder .mode-card--coach,
+.home--ladder .mode-card--pro {
+  min-height: 0;
+  align-content: center;
+  padding: clamp(0.48rem, 1.35vh, 0.78rem) 0.95rem clamp(0.5rem, 1.4vh, 0.82rem) 1.05rem;
+  gap: 0.1rem;
+}
+
+.home--ladder .mode-card strong {
+  font-size: clamp(1.22rem, 3.6vh, 1.55rem);
+}
+
+.home--ladder .mode-card__sub,
+.home--ladder .mode-card__teaser {
+  font-size: clamp(0.78rem, 1.7vh, 0.9rem);
+  line-height: 1.28;
+}
+
+.home--ladder .mode-card__teaser {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  overflow: hidden;
+}
+
+.home--ladder .mode-card__actions {
+  margin-top: 0.38rem;
+  gap: 0.4rem;
+}
+
+.home--ladder .mode-card__actions .btn {
+  min-height: 40px;
+  padding: 0.4rem 0.75rem;
+}
+
+.home--ladder .home__hints {
+  flex: 0 1 auto;
+  margin-top: clamp(0.4rem, 1.3vh, 0.75rem);
+}
+
+.home--ladder .home__hint,
+.home--ladder .home__soon {
+  font-size: clamp(0.75rem, 1.55vh, 0.88rem);
+}
+
+.home--ladder .home__hint + .home__hint {
+  margin-top: 0.22rem;
+}
+
+.home--ladder .home .home__soon,
+.home--ladder .home__soon {
+  margin-top: 0.4rem;
+}
+
+@media (max-height: 720px) and (orientation: portrait) {
+  .home--ladder .home__hint:nth-of-type(3) {
+    display: none;
+  }
 }
 
 .mode-card__actions {
@@ -690,6 +822,24 @@ button.mode-card {
     align-content: start;
   }
 
+  .home--ladder .home__inner {
+    display: grid;
+    min-height: 100dvh;
+  }
+
+  .home--ladder .home__modes {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .home--ladder .mode-card,
+  .home--ladder .mode-card--white,
+  .home--ladder .mode-card--coach,
+  .home--ladder .mode-card--pro {
+    min-height: 0;
+    align-content: center;
+  }
+
   .home__hints {
     grid-area: hint;
     margin-top: 0;
@@ -740,8 +890,43 @@ button.mode-card {
   }
 
   .belt-rail {
-    --belt-rail-width: 4px;
+    --belt-rail-width: 5px;
     --belt-tip-size: 0.55rem;
+    --belt-tip-2-size: 0.18rem;
+    --belt-block: 0.48rem;
+  }
+
+  .home--ladder .home__modes {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .home--ladder .home__mark {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    column-gap: 0.65rem;
+    align-items: center;
+    text-align: left;
+    margin-bottom: 0.3rem;
+  }
+
+  .home--ladder .home__logo {
+    grid-row: 1 / span 2;
+    width: clamp(3.1rem, 16vh, 4.2rem);
+    margin: 0;
+  }
+
+  .home--ladder h1::after {
+    display: none;
+  }
+
+  .home--ladder .home__mark p {
+    margin-inline: 0;
+  }
+
+  .home--ladder .home__hint:nth-of-type(n + 2) {
+    display: none;
   }
 
   .mode-card strong {

@@ -27,7 +27,7 @@ export function ComingSoonPage() {
             <Link className="btn" to="/pro">
               Open Pro toolbox
             </Link>
-            <Link className="btn" to="/tournament">
+            <Link className="btn btn--white" to="/tournament">
               <BeltRail kind="tournament" />
               Mock Tournament
             </Link>
