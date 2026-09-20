@@ -3077,6 +3077,10 @@ fieldset {
   gap: 0.05rem;
 }
 
+.schedule__day .schedule__mat {
+  font-size: 0.7rem;
+}
+
 .schedule__day .schedule__mat--empty {
   display: none;
 }
