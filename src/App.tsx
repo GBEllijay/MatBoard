@@ -6,6 +6,7 @@ import { ComingSoonPage } from './pages/ComingSoon';
 import { HomePage } from './pages/Home';
 import { MatchControllerPage } from './pages/MatchController';
 import { MatchDisplayPage } from './pages/MatchDisplay';
+import { RosterPage } from './pages/Roster';
 import { ScreensaverPage } from './pages/Screensaver';
 import { SchedulePage } from './pages/Schedule';
 import { TournamentPage } from './pages/Tournament';
@@ -41,6 +42,14 @@ export default function App() {
         element={
           <ProRoute>
             <SchedulePage />
+          </ProRoute>
+        }
+      />
+      <Route
+        path="/roster"
+        element={
+          <ProRoute>
+            <RosterPage />
           </ProRoute>
         }
       />

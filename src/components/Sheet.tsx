@@ -5,12 +5,18 @@ type Props = {
   title: string;
   onClose: () => void;
   children: ReactNode;
+  stacked?: boolean;
 };
 
-export function Sheet({ open, title, onClose, children }: Props) {
+export function Sheet({ open, title, onClose, children, stacked = false }: Props) {
   if (!open) return null;
   return (
-    <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <div
+      className={`sheet${stacked ? ' sheet--stack' : ''}`}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="sheet-title"
+    >
       <button className="sheet__backdrop" aria-label="Close options" onClick={onClose} />
       <div className="sheet__panel" onClick={(event) => event.stopPropagation()}>
         <div className="sheet__head">

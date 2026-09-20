@@ -9,6 +9,7 @@ import {
   type ScheduleAssets,
   type ScheduleState,
 } from '../lib/scheduleStore';
+import { getRoster, subscribeRoster, type RosterState } from '../lib/rosterStore';
 import { getTournament, subscribeTournament, type TournamentState } from '../lib/tournamentStore';
 import { getTraining, subscribeTraining, type TrainingState } from '../lib/trainingStore';
 
@@ -34,4 +35,8 @@ export function useScheduleState(): ScheduleState {
 
 export function useScheduleAssets(): ScheduleAssets {
   return useSyncExternalStore(subscribeScheduleAssets, getScheduleAssets, getScheduleAssets);
+}
+
+export function useRosterState(): RosterState {
+  return useSyncExternalStore(subscribeRoster, getRoster, getRoster);
 }

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { OutcomeCalls, OutcomePickSheet, useOutcomeSheet } from '../components/OutcomeCalls';
 import { TvTip } from '../components/TvTip';
+import { RankChip } from '../components/RankChip';
 import { ScoreBox } from '../components/ScoreBox';
 import { useBoutQuerySync, useBracketOutcomeReturn } from '../hooks/useBracketBoutReturn';
 import { useInterval } from '../hooks/useClock';
@@ -112,6 +113,7 @@ export function MatchDisplayPage() {
         side="blue"
         name={match.blue.name}
         gym={match.blue.gym}
+        rank={match.blue.rank}
         points={match.blue.points}
         advantages={match.blue.advantages}
         disadvantages={match.blue.disadvantages}
@@ -157,6 +159,7 @@ export function MatchDisplayPage() {
         side="white"
         name={match.white.name}
         gym={match.white.gym}
+        rank={match.white.rank}
         points={match.white.points}
         advantages={match.white.advantages}
         disadvantages={match.white.disadvantages}
@@ -198,6 +201,7 @@ function CompetitorBand({
   side,
   name,
   gym,
+  rank,
   points,
   advantages,
   disadvantages,
@@ -214,6 +218,7 @@ function CompetitorBand({
   side: Side;
   name: string;
   gym: string;
+  rank: string;
   points: number;
   advantages: number;
   disadvantages: number;
@@ -240,6 +245,7 @@ function CompetitorBand({
           >
             {name || fallbackName}
           </ControllerFocusLink>
+          {rank ? <RankChip belt={rank} /> : null}
         </h1>
         {banner ? (
           <p className={`bout__banner bout__banner--${banner.kind}`} aria-live="polite">
