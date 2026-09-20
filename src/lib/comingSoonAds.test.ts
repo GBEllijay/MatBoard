@@ -38,7 +38,7 @@ test('Pro ad sells owner TV tools, ProShop display, and no price', () => {
   assert.match(text, /ProShop display/);
   assert.match(text, /Events and flyers/);
   assert.match(text, /Instructor seats/);
-  assert.match(text, /You control who gets a seat/);
+  assert.match(text, /instructors you add and control/);
   assert.match(text, /Competitor tools/);
   assert.doesNotMatch(text, /checkout/i);
   assert.doesNotMatch(text, /free-for-all/i);

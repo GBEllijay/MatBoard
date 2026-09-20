@@ -64,7 +64,7 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
       },
       {
         title: 'Instructor seats',
-        body: 'You control who gets a seat — coaches you add.',
+        body: 'Seats for instructors you add and control.',
       },
       {
         title: 'Competitor tools',
