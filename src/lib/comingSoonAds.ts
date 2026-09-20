@@ -56,7 +56,7 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
       },
       {
         title: 'ProShop display',
-        body: 'Product cards on the gym TV.',
+        body: 'Product cards on the gym TV, with a QR to your shop.',
       },
       {
         title: 'Events and flyers',

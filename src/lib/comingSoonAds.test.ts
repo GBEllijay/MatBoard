@@ -36,6 +36,7 @@ test('Pro ad sells owner TV tools, ProShop display, and no price', () => {
   assert.match(text, /multi-mat/i);
   assert.match(text, /Gallery and Videos/);
   assert.match(text, /ProShop display/);
+  assert.match(text, /QR to your shop/);
   assert.match(text, /Events and flyers/);
   assert.match(text, /Instructor seats/);
   assert.match(text, /instructors you add and control/);
