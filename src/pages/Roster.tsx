@@ -1,14 +1,21 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { RankChip } from '../components/RankChip';
 import { Sheet } from '../components/Sheet';
 import { useRosterState } from '../hooks/useStores';
 import {
+  formatRosterCsvSummary,
+  importRosterCsv,
+  rosterCsvTemplate,
+  serializeRosterCsv,
+} from '../lib/rosterCsv';
+import {
   ADULT_BELTS,
   KIDS_BELTS,
   NOTE_MAX,
   addStudent,
+  addStudents,
   isKnownBelt,
   draftFromStudent,
   emptyDraft,
@@ -20,16 +27,49 @@ import {
   type StudentDraft,
 } from '../lib/rosterStore';
 
+function downloadRosterCsv(filename: string, csv: string): void {
+  const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 export function RosterPage() {
   const roster = useRosterState();
   const navigate = useNavigate();
+  const csvRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [editor, setEditor] = useState<{ id: string | null; draft: StudentDraft } | null>(null);
   const [pendingRemove, setPendingRemove] = useState<string | null>(null);
+  const [csvNote, setCsvNote] = useState('');
   const students = useMemo(
     () => (query.trim() ? searchStudents(roster.students, query) : roster.students),
     [query, roster.students],
   );
+
+  const onImportFiles = (files: FileList | null) => {
+    const file = files?.[0];
+    if (!file) return;
+    void file
+      .text()
+      .then((text) => {
+        const result = importRosterCsv(text);
+        if (result.error) {
+          setCsvNote(result.error);
+          return;
+        }
+        addStudents(result.students);
+        setCsvNote(formatRosterCsvSummary(result.imported, result.skipped));
+      })
+      .catch(() => {
+        setCsvNote('Could not read that file.');
+      });
+  };
 
   return (
     <main className="roster">
@@ -57,6 +97,48 @@ export function RosterPage() {
         Gym names and belt ranks for this device. Pick them into Match and Mock Tournament — notes
         and last promotion stay here.
       </p>
+
+      <div className="roster__csv">
+        <div className="roster__csv-actions">
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={() => downloadRosterCsv('advantage-roster-template.csv', rosterCsvTemplate())}
+          >
+            Download template
+          </button>
+          <button type="button" className="btn btn--ghost" onClick={() => csvRef.current?.click()}>
+            Import CSV
+          </button>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={() => downloadRosterCsv('advantage-roster.csv', serializeRosterCsv(roster.students))}
+          >
+            Export CSV
+          </button>
+        </div>
+        <p className="roster__csv-hint">
+          Saved on this device. CSV is for backup or a move — cloud sync comes later. Import adds
+          rows; it does not replace the list.
+        </p>
+        {csvNote ? (
+          <p className="roster__csv-summary" role="status">
+            {csvNote}
+          </p>
+        ) : null}
+        <input
+          ref={csvRef}
+          type="file"
+          accept=".csv,text/csv,text/plain"
+          hidden
+          aria-label="Import roster CSV"
+          onChange={(event) => {
+            onImportFiles(event.target.files);
+            event.target.value = '';
+          }}
+        />
+      </div>
 
       <label className="roster__search">
         Find
