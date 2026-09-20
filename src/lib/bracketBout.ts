@@ -24,9 +24,9 @@ import {
 
 export { scoreboardSideToBracket };
 
-/** Brief Winner / Disqualification hold on the Display before returning to the tree. */
-export const BOUT_FLASH_MS = 1700;
-export const BOUT_FLASH_MS_REDUCED = 400;
+/** Brief center splash on the Display before returning to the board / tree. */
+export const BOUT_FLASH_MS = 2600;
+export const BOUT_FLASH_MS_REDUCED = 500;
 
 export function flashDurationMs(): number {
   try {

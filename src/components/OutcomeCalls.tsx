@@ -112,7 +112,7 @@ export function OutcomeCalls({
   );
 }
 
-/** One sheet for a Blue/White pair (Controller or Display). */
+/** One sheet for a Blue/White pair on the Controller (or bracket). */
 export function useOutcomeSheet() {
   const [sheet, setSheet] = useState<{ call: OutcomeCall; side: 'blue' | 'white'; label: string } | null>(
     null,
