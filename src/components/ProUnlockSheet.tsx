@@ -1,19 +1,46 @@
 import { type FormEvent, useState } from 'react';
+import { tryCoachUnlock } from '../lib/coachUnlock';
+import { GYM_CONSOLE_NAME } from '../lib/productNames';
 import { tryUnlock } from '../lib/proUnlock';
 import { Sheet } from './Sheet';
+
+type Product = 'coach' | 'pro';
 
 type Props = {
   open: boolean;
   onClose: () => void;
+  product?: Product;
 };
 
-export function ProUnlockSheet({ open, onClose }: Props) {
+const COPY: Record<
+  Product,
+  { title: string; body: string; name: string; placeholder: string; submit: string }
+> = {
+  pro: {
+    title: 'Owner unlock',
+    body: `Turns on Advantage Pro and ${GYM_CONSOLE_NAME} on this browser. Soft beta only — not a login.`,
+    name: 'pro-unlock',
+    placeholder: 'Owner code',
+    submit: 'Unlock Pro',
+  },
+  coach: {
+    title: 'Owner unlock',
+    body: 'Turns on Advantage Coach on this browser. Soft beta only — not a login.',
+    name: 'coach-unlock',
+    placeholder: 'Owner code',
+    submit: 'Unlock Coach',
+  },
+};
+
+export function ProUnlockSheet({ open, onClose, product = 'pro' }: Props) {
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
+  const copy = COPY[product];
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (tryUnlock(code)) {
+    const ok = product === 'coach' ? tryCoachUnlock(code) : tryUnlock(code);
+    if (ok) {
       setCode('');
       setError('');
       onClose();
@@ -29,18 +56,16 @@ export function ProUnlockSheet({ open, onClose }: Props) {
   };
 
   return (
-    <Sheet open={open} title="Owner unlock" onClose={close}>
-      <p className="home__unlock-copy">
-        Turns on Advantage Pro and Owner’s Toolbox on this browser. Soft beta only — not a login.
-      </p>
+    <Sheet open={open} title={copy.title} onClose={close}>
+      <p className="home__unlock-copy">{copy.body}</p>
       <form className="home__unlock-form" onSubmit={submit}>
         <label>
           <span className="sr-only">Owner unlock code</span>
           <input
             type="password"
-            name="pro-unlock"
+            name={copy.name}
             autoComplete="off"
-            placeholder="Owner code"
+            placeholder={copy.placeholder}
             value={code}
             onChange={(event) => {
               setCode(event.target.value);
@@ -50,7 +75,7 @@ export function ProUnlockSheet({ open, onClose }: Props) {
         </label>
         {error ? <p className="home__unlock-error">{error}</p> : null}
         <button type="submit" className="btn">
-          Unlock Pro
+          {copy.submit}
         </button>
       </form>
     </Sheet>

@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
+import { useCoachUnlocked } from './hooks/useCoachUnlocked';
 import { useProUnlocked } from './hooks/useProUnlocked';
+import { consumeCoachUnlockQueryNow } from './lib/coachUnlock';
 import { consumeUnlockQueryNow } from './lib/proUnlock';
+import { CoachPage } from './pages/Coach';
 import { ComingSoonPage } from './pages/ComingSoon';
 import { HomePage } from './pages/Home';
 import { MatchControllerPage } from './pages/MatchController';
@@ -10,11 +13,14 @@ import { ProPage } from './pages/Pro';
 import { RosterPage } from './pages/Roster';
 import { ScreensaverPage } from './pages/Screensaver';
 import { SchedulePage } from './pages/Schedule';
+import { TechniquesPage } from './pages/Techniques';
 import { TournamentPage } from './pages/Tournament';
+import { TrainingNotesPage } from './pages/TrainingNotes';
 import { TrainingPage } from './pages/Training';
 import { WhitePage } from './pages/White';
 
 consumeUnlockQueryNow();
+consumeCoachUnlockQueryNow();
 
 function ProRoute({ children }: { children: ReactNode }) {
   const unlocked = useProUnlocked();
@@ -22,8 +28,16 @@ function ProRoute({ children }: { children: ReactNode }) {
   return children;
 }
 
+function CoachRoute({ children }: { children: ReactNode }) {
+  const coach = useCoachUnlocked();
+  const pro = useProUnlocked();
+  if (!coach && !pro) return <Navigate to="/coming-soon" replace />;
+  return children;
+}
+
 export default function App() {
   useProUnlocked();
+  useCoachUnlocked();
 
   return (
     <Routes>
@@ -33,6 +47,14 @@ export default function App() {
       <Route path="/match" element={<MatchDisplayPage />} />
       <Route path="/match/control" element={<MatchControllerPage />} />
       <Route path="/training" element={<TrainingPage />} />
+      <Route
+        path="/coach"
+        element={
+          <CoachRoute>
+            <CoachPage />
+          </CoachRoute>
+        }
+      />
       <Route
         path="/pro"
         element={
@@ -44,9 +66,25 @@ export default function App() {
       <Route
         path="/tournament"
         element={
-          <ProRoute>
+          <CoachRoute>
             <TournamentPage />
-          </ProRoute>
+          </CoachRoute>
+        }
+      />
+      <Route
+        path="/techniques"
+        element={
+          <CoachRoute>
+            <TechniquesPage />
+          </CoachRoute>
+        }
+      />
+      <Route
+        path="/notes"
+        element={
+          <CoachRoute>
+            <TrainingNotesPage />
+          </CoachRoute>
         }
       />
       <Route
@@ -60,9 +98,9 @@ export default function App() {
       <Route
         path="/roster"
         element={
-          <ProRoute>
+          <CoachRoute>
             <RosterPage />
-          </ProRoute>
+          </CoachRoute>
         }
       />
       <Route

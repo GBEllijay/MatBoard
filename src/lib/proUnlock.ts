@@ -1,4 +1,4 @@
-/** Soft-beta owner unlock. Not real auth — keeps Toolbox / Pro off the public home. */
+/** Soft-beta owner unlock. Not real auth — keeps Pro / Console off the public home. */
 
 export const PRO_UNLOCK_STORAGE_KEY = 'advantage.proUnlocked';
 
@@ -7,7 +7,7 @@ export const PRO_UNLOCK_STORAGE_KEY = 'advantage.proUnlocked';
  * at build time. Compared case-insensitively after trim.
  */
 export const PRO_UNLOCK_CODE =
-  (typeof import.meta.env.VITE_PRO_UNLOCK_CODE === 'string'
+  (typeof import.meta.env?.VITE_PRO_UNLOCK_CODE === 'string'
     ? import.meta.env.VITE_PRO_UNLOCK_CODE.trim()
     : '') || 'advantage';
 

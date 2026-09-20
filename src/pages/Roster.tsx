@@ -1,6 +1,8 @@
 import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlayExitMark } from '../components/PlayExitMark';
+import { useProUnlocked } from '../hooks/useProUnlocked';
+import { useToolboxParent } from '../hooks/useToolboxParent';
 import { RankChip } from '../components/RankChip';
 import { Sheet } from '../components/Sheet';
 import { useRosterState } from '../hooks/useStores';
@@ -45,6 +47,8 @@ function downloadRosterCsv(filename: string, csv: string): void {
 export function RosterPage() {
   const roster = useRosterState();
   const navigate = useNavigate();
+  const parent = useToolboxParent();
+  const proUnlocked = useProUnlocked();
   const csvRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [editor, setEditor] = useState<{ id: string | null; draft: StudentDraft } | null>(null);
@@ -81,15 +85,15 @@ export function RosterPage() {
   return (
     <main className="roster">
       <PlayExitMark
-        to="/pro"
+        to={parent.path}
         onExit={() => {
-          navigate('/pro');
+          navigate(parent.path);
         }}
       />
       <header className="roster__bar">
         <div className="roster__brand">
-          <p className="roster__eyebrow">Owner’s Toolbox</p>
-          <h1>Competitor roster</h1>
+          <p className="roster__eyebrow">{parent.eyebrow}</p>
+          <h1>Competitor Management System</h1>
         </div>
         <button
           type="button"
@@ -101,10 +105,12 @@ export function RosterPage() {
       </header>
 
       <p className="roster__lead">
-        Competitor names and belt ranks for this device. Pick them into Match and Mock Tournament —
-        notes and last promotion stay here.
+        {proUnlocked
+          ? 'Competitor Management System — names and belts for this device. Pick them into Match and Mock Tournament. CSV backup stays in this browser. Not student progress.'
+          : 'Competitor Management System — names and belts for this device. Pick them into Match and Mock Tournament. Local only and not downloadable. Not student progress.'}
       </p>
 
+      {proUnlocked ? (
       <div className="roster__csv">
         <div className="roster__csv-actions">
           <button
@@ -148,6 +154,7 @@ export function RosterPage() {
           }}
         />
       </div>
+      ) : null}
 
       <label className="roster__search">
         Find

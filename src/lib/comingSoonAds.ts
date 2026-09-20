@@ -1,3 +1,5 @@
+import { GYM_CONSOLE_NAME } from './productNames.ts';
+
 export type SoonProduct = 'coach' | 'pro';
 
 export type ComingSoonFeature = {
@@ -13,61 +15,53 @@ export type ComingSoonAdCopy = {
   dismiss: string;
 };
 
+/** Locked-card gold label. Same wording on Coach and Pro / Console. */
+export const COMING_SOON_LABEL = 'Coming Soon';
+
 export const PRODUCT_TEASERS = {
-  coach: 'Mock + Daily Techniques.',
-  pro: 'ProShop + instructor seats.',
-  proUnlocked: 'Toolbox is on this browser.',
+  coach: 'Mock Tournament, Daily Training Videos, Competitor roster.',
+  coachUnlocked: 'Coach tools on this browser.',
+  pro: GYM_CONSOLE_NAME,
+  proUnlocked: 'Console is on this browser.',
 } as const;
 
 export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
   coach: {
     title: 'Advantage Coach',
-    kicker: 'Coming soon',
-    lead: 'Built for coaches on the gym floor.',
+    kicker: COMING_SOON_LABEL,
+    lead: 'Run a Mock Tournament, Record Daily Techniques for Screencasting with Competitor Management System.',
     features: [
       {
         title: 'Competitor Management System',
         body: 'Keep a roster for bouts — names and belts you pick into Live Bout and mock brackets.',
       },
       {
-        title: 'Mock tournaments',
+        title: 'Mock Tournament',
         body: 'Run a 16-person bracket on the gym TV. Score each bout and track winners on the same easy to use scoreboard.',
       },
       {
-        title: 'Daily Techniques',
-        body: 'Drop morning clips on the TV. Loop one while the class drills, with a timer on the screen. Each coach keeps their own bank of clips.',
+        title: 'Daily Training Videos',
+        body: 'Record up to 10 on-device clips for screencasting. Loop one while the class drills, with a timer on the screen. Each coach keeps their own bank of clips.',
       },
     ],
     dismiss: 'Got it',
   },
   pro: {
     title: 'Advantage Pro',
-    kicker: 'Coming soon',
-    lead: 'Gym owner tools for black belts, instructors and program managers who run the gym — the wall TV, the shop, and the people on the mat.',
+    kicker: COMING_SOON_LABEL,
+    lead: `${GYM_CONSOLE_NAME}. Easily cast to your gym TV and display: Pro-Shop, Class Schedules, Recent Promotions, Upcoming Events and Competitions. Full In-House Tournament Management Suite with Auto-Fill Bracketing and Result Tracking. Assignable Instructor Licenses with Cross Platform Access to Updates and more.`,
     features: [
       {
-        title: 'Class Schedule',
-        body: 'Gym logo, QR, and a multi-mat week on the wall TV.',
+        title: 'Gym TV cast',
+        body: 'Pro-Shop, Class Schedules, Recent Promotions, and Upcoming Events and Competitions on the wall board.',
       },
       {
-        title: 'Gallery and Videos',
-        body: 'Photos and clips looping between classes.',
+        title: 'In-House Tournament Suite',
+        body: 'Auto-fill bracketing and result tracking for gym-floor tournaments.',
       },
       {
-        title: 'ProShop display',
-        body: 'Product cards on the gym TV, with a QR to your shop.',
-      },
-      {
-        title: 'Events and flyers',
-        body: 'Tournament and promo flyers on the same board.',
-      },
-      {
-        title: 'Instructor seats',
-        body: 'Seats for instructors you add and revoke.',
-      },
-      {
-        title: 'Competitor tools',
-        body: 'Bout roster, mock tournament, and Daily Techniques for the instructors you seat.',
+        title: 'Instructor licenses',
+        body: 'Assignable instructor licenses with cross-platform access to updates.',
       },
     ],
     dismiss: 'Got it',

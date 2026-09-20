@@ -1,5 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useRosterState } from '../hooks/useStores';
 import { prefillFields, searchStudents, type RosterPrefill } from '../lib/rosterStore';
@@ -25,7 +26,9 @@ export function RosterNameField({
   ariaLabel,
   compact = false,
 }: Props) {
-  const unlocked = useProUnlocked();
+  const proUnlocked = useProUnlocked();
+  const coachUnlocked = useCoachUnlocked();
+  const unlocked = proUnlocked || coachUnlocked;
   const roster = useRosterState();
   const listId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
