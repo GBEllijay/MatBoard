@@ -50,6 +50,16 @@ export function codesMatch(code: string): boolean {
   return code.trim().toLowerCase() === PRO_UNLOCK_CODE.toLowerCase();
 }
 
+/** Preview a `?pro=` / `?unlock=` value without writing storage. `null` = no recognized override. */
+export function previewUnlockFromSearch(search: URLSearchParams): boolean | null {
+  const raw = search.get('pro') ?? search.get('unlock');
+  if (raw == null) return null;
+  const trimmed = raw.trim();
+  if (trimmed === '0' || trimmed.toLowerCase() === 'lock') return false;
+  if (trimmed === '1' || codesMatch(trimmed)) return true;
+  return null;
+}
+
 /** Accepts the owner code, or `1` as a short query/localStorage-style flag. */
 export function tryUnlock(code: string): boolean {
   const trimmed = code.trim();

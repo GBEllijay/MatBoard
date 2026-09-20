@@ -3,13 +3,15 @@ import { useSearchParams } from 'react-router-dom';
 import {
   applyUnlockSearch,
   isProUnlocked,
+  previewUnlockFromSearch,
   stripUnlockParams,
   subscribeProUnlock,
 } from '../lib/proUnlock';
 
 export function useProUnlocked(): boolean {
   const [searchParams, setSearchParams] = useSearchParams();
-  const unlocked = useSyncExternalStore(subscribeProUnlock, isProUnlocked, isProUnlocked);
+  const stored = useSyncExternalStore(subscribeProUnlock, isProUnlocked, isProUnlocked);
+  const preview = previewUnlockFromSearch(searchParams);
 
   useEffect(() => {
     if (!searchParams.has('pro') && !searchParams.has('unlock')) return;
@@ -19,5 +21,5 @@ export function useProUnlocked(): boolean {
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
 
-  return unlocked;
+  return preview ?? stored;
 }
