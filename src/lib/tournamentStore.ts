@@ -38,18 +38,20 @@ export type TournamentState = {
   title: string;
   entries: Record<string, string>;
   results: Partial<Record<BracketMatchId, BoutResult>>;
+  /** Most recent bout written from Scoreboard or bracket marks — one-level Undo. */
+  lastOutcomeMatchId: BracketMatchId | null;
 };
 
 /**
- * Phase 2 hook points (do not wire Display/Controller Winner/DQ in this phase):
- * - Live bout `MatchState.bracketMatchId` should be one of `MATCH_IDS`.
- * - Scoreboard Win / DQ / technical loss should call `setMatchOutcome(id, side, kind)`.
- * - Same on-device store; no cloud pairing yet.
+ * Scoreboard ↔ bracket: live bout `MatchState.bracketMatchId` is one of `MATCH_IDS`.
+ * Win / DQ call `setMatchOutcome(id, side, kind, { toggle: false })`. Same on-device store.
  */
 export const PHASE2_BOUT_LINK = {
   matchStateField: 'bracketMatchId',
   outcomes: ['win', 'dq', 'tech'] as const,
   matchIds: MATCH_IDS,
+  /** Bracket slot `a` (top) is Blue on the scoreboard; `b` is White. */
+  scoreboardSides: { a: 'blue', b: 'white' } as const,
 } as const;
 
 export const STORAGE_KEY = 'matboard.tournament.v1';
@@ -134,6 +136,7 @@ export function defaultTournament(): TournamentState {
     title: '',
     entries: {},
     results: {},
+    lastOutcomeMatchId: null,
   };
 }
 
@@ -169,6 +172,7 @@ function loadState(): TournamentState {
       title: typeof parsed.title === 'string' ? parsed.title : '',
       entries: cleanEntries,
       results,
+      lastOutcomeMatchId: isBracketMatchId(parsed.lastOutcomeMatchId) ? parsed.lastOutcomeMatchId : null,
     };
   } catch {
     return defaultTournament();
@@ -182,6 +186,7 @@ function clone(current: TournamentState): TournamentState {
     title: current.title,
     entries: { ...current.entries },
     results: { ...current.results },
+    lastOutcomeMatchId: current.lastOutcomeMatchId ?? null,
   };
 }
 
@@ -260,19 +265,24 @@ export function applyMatchOutcome(
   matchId: BracketMatchId,
   side: MatchSide,
   kind: BoutOutcomeKind,
+  options?: { toggle?: boolean },
 ): TournamentState {
+  const toggle = options?.toggle !== false;
   const next = clone(current);
   const existing = next.results[matchId];
   const same =
     existing &&
     ((kind === 'win' && existing.kind === 'win' && existing.winnerSide === side) ||
       (kind !== 'win' && existing.kind === kind && existing.winnerSide === otherSide(side)));
-  if (same) {
+  if (same && toggle) {
     delete next.results[matchId];
+    if (next.lastOutcomeMatchId === matchId) next.lastOutcomeMatchId = null;
   } else if (kind === 'win') {
     next.results[matchId] = { winnerSide: side, kind: 'win' };
+    next.lastOutcomeMatchId = matchId;
   } else {
     next.results[matchId] = { winnerSide: otherSide(side), kind };
+    next.lastOutcomeMatchId = matchId;
   }
   cascadeWinner(next, matchId, new Set());
   return next;
@@ -282,8 +292,43 @@ export function applyClearResult(current: TournamentState, matchId: BracketMatch
   if (!current.results[matchId]) return current;
   const next = clone(current);
   delete next.results[matchId];
+  if (next.lastOutcomeMatchId === matchId) next.lastOutcomeMatchId = null;
   cascadeWinner(next, matchId, new Set());
   return next;
+}
+
+/**
+ * Gym-owner undo: clear this bout’s result.
+ * If the next-round slot was auto-filled from this winner and that later bout has no result yet,
+ * the name is removed (same as Phase 1 cascade). If a later bout already has its own result,
+ * or the next name was overwritten, those later slots stay put — this bout is unmarked only.
+ */
+export function applyUndoOutcome(current: TournamentState, matchId: BracketMatchId): TournamentState {
+  const result = current.results[matchId];
+  if (!result) return current;
+  const dest = NEXT_SLOT[matchId];
+  const winnerName = slotName(current, slotId(matchId, result.winnerSide));
+  const destName = slotName(current, dest);
+  const destWasAutoFilled = !destName || destName === winnerName;
+
+  if (dest !== 'champion') {
+    const child = matchIdFromSlot(dest);
+    if (child && current.results[child]) {
+      const next = clone(current);
+      delete next.results[matchId];
+      if (next.lastOutcomeMatchId === matchId) next.lastOutcomeMatchId = null;
+      return next;
+    }
+  }
+
+  if (!destWasAutoFilled) {
+    const next = clone(current);
+    delete next.results[matchId];
+    if (next.lastOutcomeMatchId === matchId) next.lastOutcomeMatchId = null;
+    return next;
+  }
+
+  return applyClearResult(current, matchId);
 }
 
 export function slotMark(
@@ -306,12 +351,31 @@ export function setSlotName(id: SlotId, name: string): void {
   persist(applySlotName(state, id, name));
 }
 
-export function setMatchOutcome(matchId: BracketMatchId, side: MatchSide, kind: BoutOutcomeKind): void {
-  persist(applyMatchOutcome(state, matchId, side, kind));
+export function setMatchOutcome(
+  matchId: BracketMatchId,
+  side: MatchSide,
+  kind: BoutOutcomeKind,
+  options?: { toggle?: boolean },
+): void {
+  persist(applyMatchOutcome(state, matchId, side, kind, options));
 }
 
 export function clearMatchResult(matchId: BracketMatchId): void {
   persist(applyClearResult(state, matchId));
+}
+
+export function undoMatchOutcome(matchId: BracketMatchId): void {
+  persist(applyUndoOutcome(state, matchId));
+}
+
+export function undoLastOutcome(): void {
+  if (!state.lastOutcomeMatchId || !state.results[state.lastOutcomeMatchId]) return;
+  persist(applyUndoOutcome(state, state.lastOutcomeMatchId));
+}
+
+export function canUndoLast(current: TournamentState = state): boolean {
+  const id = current.lastOutcomeMatchId;
+  return Boolean(id && current.results[id]);
 }
 
 export function resetTournament(): void {

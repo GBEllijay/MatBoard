@@ -4,12 +4,14 @@ import { FullscreenChip } from '../components/FullscreenChip';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { Sheet } from '../components/Sheet';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
-import { useTournamentState } from '../hooks/useStores';
+import { useMatchState, useTournamentState } from '../hooks/useStores';
+import { linkedBracketMatchId, openBracketBout, scoreboardPath } from '../lib/bracketBout';
 import {
   LEFT_QF,
   LEFT_R16,
   RIGHT_QF,
   RIGHT_R16,
+  canUndoLast,
   resetTournament,
   roundLabel,
   seedPlaceholder,
@@ -20,6 +22,8 @@ import {
   slotId,
   slotMark,
   slotName,
+  undoLastOutcome,
+  undoMatchOutcome,
   type BoutOutcomeKind,
   type BracketMatchId,
   type MatchSide,
@@ -33,12 +37,15 @@ const MARKS: { kind: BoutOutcomeKind; label: string }[] = [
 
 export function TournamentPage() {
   const tournament = useTournamentState();
+  const match = useMatchState();
   const fs = usePlayFullscreen();
   const navigate = useNavigate();
   const [namesOpen, setNamesOpen] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const seeds = seedSlots();
   const champion = slotName(tournament, 'champion');
+  const liveMatchId = linkedBracketMatchId(match.bracketMatchId);
+  const undoReady = canUndoLast(tournament);
 
   const exitBoard = () => {
     void fs.exit().finally(() => {
@@ -66,6 +73,14 @@ export function TournamentPage() {
         <div className="tournament__actions">
           <button type="button" className="btn btn--ghost" onClick={() => setNamesOpen(true)}>
             Edit names
+          </button>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            disabled={!undoReady}
+            onClick={() => undoLastOutcome()}
+          >
+            Undo last
           </button>
           {confirmReset ? (
             <div className="tournament__confirm">
@@ -100,21 +115,21 @@ export function TournamentPage() {
       </header>
 
       <p className="tournament__hint">
-        Type names in each slot. Tap <strong>Win</strong> on the fighter who won, or <strong>DQ</strong> /{' '}
-        <strong>T-loss</strong> (technical loss) on the fighter who is out — the other person moves on. Saved
-        on this device.
+        Tap <strong>Score</strong> to open the match board with those two names. <strong>Win</strong> or{' '}
+        <strong>DQ</strong> there (or here) advances the winner. <strong>Undo last</strong> backs out a mistaken
+        tap without wiping later bouts that already have their own result. Saved on this device.
       </p>
 
       <div className="tournament__board">
         <div className="bracket" role="group" aria-label="16-person single-elimination bracket">
           <div className="bracket__side bracket__side--left">
-            <RoundColumn ids={LEFT_R16} label="Round of 16" />
-            <RoundColumn ids={LEFT_QF} label="Quarterfinals" />
-            <RoundColumn ids={['sf-0']} label="Semifinals" />
+            <RoundColumn ids={LEFT_R16} label="Round of 16" liveMatchId={liveMatchId} />
+            <RoundColumn ids={LEFT_QF} label="Quarterfinals" liveMatchId={liveMatchId} />
+            <RoundColumn ids={['sf-0']} label="Semifinals" liveMatchId={liveMatchId} />
           </div>
 
           <div className="bracket__finals">
-            <MatchCard matchId="final-0" />
+            <MatchCard matchId="final-0" liveMatchId={liveMatchId} />
             <div className={`bracket__champ${champion ? ' is-filled' : ''}`}>
               <span>Champion</span>
               <input
@@ -127,9 +142,9 @@ export function TournamentPage() {
           </div>
 
           <div className="bracket__side bracket__side--right">
-            <RoundColumn ids={['sf-1']} label="Semifinals" />
-            <RoundColumn ids={RIGHT_QF} label="Quarterfinals" />
-            <RoundColumn ids={RIGHT_R16} label="Round of 16" />
+            <RoundColumn ids={['sf-1']} label="Semifinals" liveMatchId={liveMatchId} />
+            <RoundColumn ids={RIGHT_QF} label="Quarterfinals" liveMatchId={liveMatchId} />
+            <RoundColumn ids={RIGHT_R16} label="Round of 16" liveMatchId={liveMatchId} />
           </div>
         </div>
       </div>
@@ -161,24 +176,73 @@ export function TournamentPage() {
   );
 }
 
-function RoundColumn({ ids, label }: { ids: readonly BracketMatchId[]; label: string }) {
+function RoundColumn({
+  ids,
+  label,
+  liveMatchId,
+}: {
+  ids: readonly BracketMatchId[];
+  label: string;
+  liveMatchId: BracketMatchId | null;
+}) {
   return (
     <div className={`bracket__round bracket__round--${ids.length}`}>
       <h2>{label}</h2>
       <div className="bracket__matches">
         {ids.map((id) => (
-          <MatchCard key={id} matchId={id} />
+          <MatchCard key={id} matchId={id} liveMatchId={liveMatchId} />
         ))}
       </div>
     </div>
   );
 }
 
-function MatchCard({ matchId }: { matchId: BracketMatchId }) {
+function MatchCard({
+  matchId,
+  liveMatchId,
+}: {
+  matchId: BracketMatchId;
+  liveMatchId: BracketMatchId | null;
+}) {
+  const tournament = useTournamentState();
+  const navigate = useNavigate();
+  const hasResult = Boolean(tournament.results[matchId]);
+  const live = liveMatchId === matchId;
+
+  const openScore = () => {
+    openBracketBout(matchId);
+    navigate(scoreboardPath(matchId));
+  };
+
   return (
-    <article className="t-match" aria-label={roundLabel(matchId)}>
-      <SlotRow matchId={matchId} side="a" />
-      <SlotRow matchId={matchId} side="b" />
+    <article
+      className={`t-match${live ? ' t-match--live' : ''}`}
+      aria-label={roundLabel(matchId)}
+    >
+      <div className="t-match__bouts">
+        <SlotRow matchId={matchId} side="a" />
+        <SlotRow matchId={matchId} side="b" />
+      </div>
+      <div className="t-match__play">
+        <button
+          type="button"
+          className="t-score"
+          onClick={openScore}
+          aria-label={`Open ${roundLabel(matchId)} on scoreboard`}
+        >
+          Score
+        </button>
+        {hasResult ? (
+          <button
+            type="button"
+            className="t-undo"
+            onClick={() => undoMatchOutcome(matchId)}
+            aria-label={`Undo ${roundLabel(matchId)} result`}
+          >
+            Undo
+          </button>
+        ) : null}
+      </div>
     </article>
   );
 }
