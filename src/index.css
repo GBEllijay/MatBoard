@@ -4115,27 +4115,18 @@ fieldset {
   position: relative;
   display: grid;
   gap: 0.35rem;
+  min-width: 0;
 }
 
 .roster-field__row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.45rem;
-  align-items: center;
-}
-
-.roster-field__pick {
-  min-width: 5.6rem;
-}
-
-.roster-field__pick--compact {
-  min-height: 36px;
   min-width: 0;
-  padding: 0.2rem 0.55rem;
-  font-size: 0.72rem;
 }
 
-.roster-field__suggest,
+.roster-field input[readonly] {
+  cursor: pointer;
+}
+
 .roster-pick__list {
   list-style: none;
   margin: 0;
@@ -4144,20 +4135,6 @@ fieldset {
   gap: 0.28rem;
 }
 
-.roster-field__suggest {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(100% + 0.2rem);
-  z-index: 6;
-  padding: 0.35rem;
-  border-radius: 14px;
-  border: 1px solid var(--line);
-  background: #161b24;
-  box-shadow: var(--shadow);
-}
-
-.roster-field__suggest button,
 .roster-pick__row {
   display: flex;
   width: 100%;
@@ -4172,14 +4149,11 @@ fieldset {
   text-align: left;
 }
 
-.pad--white .roster-field__suggest {
-  background: #efebe3;
-  color: var(--white-ink);
-}
-
-.pad--white .roster-field__suggest button,
-.pad--white .roster-field__pick {
-  color: var(--white-ink);
+.roster-pick__row span {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
 }
 
 .roster-pick__copy,
@@ -4194,6 +4168,29 @@ fieldset {
 
 .roster-pick__list {
   gap: 0.4rem;
+}
+
+.roster-pick__manual {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.75rem 0.8rem 0.85rem;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.roster-pick__add {
+  margin: 0;
+}
+
+.roster-pick__add input[type='checkbox'] {
+  width: 1.35rem;
+  height: 1.35rem;
+  accent-color: var(--gold);
+}
+
+.roster-pick__use {
+  width: 100%;
 }
 
 .rank-chip {
@@ -4442,16 +4439,10 @@ fieldset {
   font-weight: 700;
 }
 
-.t-slot .roster-field__row,
-.bracket__champ .roster-field__row,
-.tournament__seeds .roster-field__row {
-  gap: 0.28rem;
-}
-
-.t-slot .roster-field__suggest,
-.bracket__champ .roster-field__suggest,
-.tournament__seeds .roster-field__suggest {
-  min-width: 12rem;
+.t-slot .roster-field,
+.bracket__champ .roster-field,
+.tournament__seeds .roster-field {
+  min-width: 0;
 }
 
 @media (max-width: 720px) {

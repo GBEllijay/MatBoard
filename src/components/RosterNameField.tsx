@@ -1,9 +1,16 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useRosterState } from '../hooks/useStores';
-import { prefillFields, searchStudents, type RosterPrefill } from '../lib/rosterStore';
+import {
+  ADULT_BELTS,
+  KIDS_BELTS,
+  confirmManualCompetitor,
+  prefillFields,
+  searchStudents,
+  type RosterPrefill,
+} from '../lib/rosterStore';
 import { RankChip } from './RankChip';
 import { Sheet } from './Sheet';
 
@@ -29,32 +36,30 @@ export function RosterNameField({
   const proUnlocked = useProUnlocked();
   const coachUnlocked = useCoachUnlocked();
   const unlocked = proUnlocked || coachUnlocked;
-  const roster = useRosterState();
-  const listId = useId();
-  const rootRef = useRef<HTMLDivElement>(null);
-  const [open, setOpen] = useState(false);
   const [pickOpen, setPickOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const suggestions = useMemo(
-    () => (unlocked ? searchStudents(roster.students, value).slice(0, 6) : []),
-    [unlocked, roster.students, value],
-  );
-  const showSuggest = unlocked && open && suggestions.length > 0 && value.trim().length > 0;
+  const [addToRoster, setAddToRoster] = useState(false);
+  const [belt, setBelt] = useState('');
+  const skipFocusRef = useRef(false);
 
-  useEffect(() => {
-    if (!open) return;
-    const onPointer = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    window.addEventListener('pointerdown', onPointer);
-    return () => window.removeEventListener('pointerdown', onPointer);
-  }, [open]);
+  const openPicker = () => {
+    setQuery(value);
+    setAddToRoster(false);
+    setBelt('');
+    setPickOpen(true);
+  };
+
+  const closePicker = () => {
+    skipFocusRef.current = true;
+    setPickOpen(false);
+    setQuery('');
+    setAddToRoster(false);
+    setBelt('');
+  };
 
   const pick = (prefill: RosterPrefill) => {
     onPrefill(prefill);
-    setOpen(false);
-    setPickOpen(false);
-    setQuery('');
+    closePicker();
   };
 
   const input = (
@@ -66,13 +71,21 @@ export function RosterNameField({
       autoComplete="off"
       autoCorrect="off"
       spellCheck={false}
-      aria-autocomplete={unlocked ? 'list' : undefined}
-      aria-controls={showSuggest ? listId : undefined}
-      aria-expanded={unlocked ? showSuggest : undefined}
-      onFocus={() => setOpen(true)}
-      onChange={(event) => {
-        onChange(event.target.value);
-        setOpen(true);
+      readOnly={unlocked}
+      inputMode={unlocked ? 'none' : undefined}
+      aria-haspopup={unlocked ? 'dialog' : undefined}
+      aria-expanded={unlocked ? pickOpen : undefined}
+      onChange={unlocked ? undefined : (event) => onChange(event.target.value)}
+      onFocus={() => {
+        if (!unlocked) return;
+        if (skipFocusRef.current) {
+          skipFocusRef.current = false;
+          return;
+        }
+        openPicker();
+      }}
+      onClick={() => {
+        if (unlocked) openPicker();
       }}
     />
   );
@@ -80,35 +93,18 @@ export function RosterNameField({
   if (!unlocked) return input;
 
   return (
-    <div ref={rootRef} className={`roster-field${compact ? ' roster-field--compact' : ''}`}>
-      <div className="roster-field__row">
-        {input}
-        <button
-          type="button"
-          className={`btn btn--ghost roster-field__pick${compact ? ' roster-field__pick--compact' : ''}`}
-          onClick={() => setPickOpen(true)}
-        >
-          {compact ? 'Pick' : 'Roster'}
-        </button>
-      </div>
-      {showSuggest ? (
-        <ul id={listId} className="roster-field__suggest" role="listbox" aria-label="Roster matches">
-          {suggestions.map((student) => {
-            const prefill = prefillFields(student);
-            if (!prefill) return null;
-            return (
-              <li key={student.id}>
-                <button type="button" role="option" onClick={() => pick(prefill)}>
-                  <strong>{student.name}</strong>
-                  <RankChip belt={student.belt} compact />
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      ) : null}
-      <Sheet open={pickOpen} title="Pick from roster" onClose={() => setPickOpen(false)} stacked>
-        <RosterPicker query={query} onQuery={setQuery} onPick={pick} />
+    <div className={`roster-field${compact ? ' roster-field--compact' : ''}`}>
+      <div className="roster-field__row">{input}</div>
+      <Sheet open={pickOpen} title="Pick a competitor" onClose={closePicker} stacked>
+        <RosterPicker
+          query={query}
+          onQuery={setQuery}
+          addToRoster={addToRoster}
+          onAddToRoster={setAddToRoster}
+          belt={belt}
+          onBelt={setBelt}
+          onPick={pick}
+        />
       </Sheet>
     </div>
   );
@@ -117,30 +113,120 @@ export function RosterNameField({
 function RosterPicker({
   query,
   onQuery,
+  addToRoster,
+  onAddToRoster,
+  belt,
+  onBelt,
   onPick,
 }: {
   query: string;
   onQuery: (value: string) => void;
+  addToRoster: boolean;
+  onAddToRoster: (value: boolean) => void;
+  belt: string;
+  onBelt: (value: string) => void;
   onPick: (prefill: RosterPrefill) => void;
 }) {
   const roster = useRosterState();
   const matches = searchStudents(roster.students, query);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const typed = query.trim();
+  const canUseTyped = Boolean(typed);
+  const canAdd = canUseTyped && Boolean(belt.trim());
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  const useTypedName = () => {
+    const next = confirmManualCompetitor(query, { addToRoster, belt });
+    if (!next) return;
+    onPick(next);
+  };
 
   return (
     <>
       <p className="roster-pick__copy">
-        Name and belt only. Notes and last promotion stay on the roster card.
+        Type a name or pick one already on this device. Notes and last promotion stay on the roster
+        card.
       </p>
-      <label>
-        Find competitor
-        <input
-          value={query}
-          onChange={(event) => onQuery(event.target.value)}
-          placeholder="Name or belt"
-          aria-label="Find competitor"
-          autoComplete="off"
-        />
-      </label>
+      <div className="roster-pick__manual">
+        <label>
+          Competitor name
+          <input
+            ref={inputRef}
+            value={query}
+            onChange={(event) => onQuery(event.target.value)}
+            placeholder="Type a name not on the roster"
+            aria-label="Competitor name"
+            autoComplete="off"
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter') return;
+              if (!canUseTyped) return;
+              if (addToRoster && !canAdd) return;
+              event.preventDefault();
+              useTypedName();
+            }}
+          />
+        </label>
+        <label className="toggle roster-pick__add">
+          <input
+            type="checkbox"
+            checked={addToRoster}
+            onChange={(event) => onAddToRoster(event.target.checked)}
+          />
+          Add Competitor to Roster?
+        </label>
+        {addToRoster ? (
+          <fieldset className="roster-edit__belts">
+            <legend>Belt rank</legend>
+            <p className="roster-edit__hint">Needed to save this name on the local roster.</p>
+            <div className="presets roster-edit__belt-row" role="radiogroup" aria-label="Adult belts">
+              {ADULT_BELTS.map((choice) => (
+                <button
+                  key={choice}
+                  type="button"
+                  role="radio"
+                  aria-checked={belt === choice}
+                  className={`preset${belt === choice ? ' preset--on' : ''}`}
+                  onClick={() => onBelt(choice)}
+                >
+                  {choice}
+                </button>
+              ))}
+            </div>
+            <div className="presets roster-edit__belt-row" role="radiogroup" aria-label="Kids belts">
+              {KIDS_BELTS.map((choice) => (
+                <button
+                  key={choice}
+                  type="button"
+                  role="radio"
+                  aria-checked={belt === choice}
+                  className={`preset${belt === choice ? ' preset--on' : ''}`}
+                  onClick={() => onBelt(choice)}
+                >
+                  {choice}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+        ) : null}
+        <button
+          type="button"
+          className="btn roster-pick__use"
+          disabled={!canUseTyped || (addToRoster && !canAdd)}
+          onClick={useTypedName}
+        >
+          {addToRoster ? 'Use name and add to roster' : 'Use this name'}
+        </button>
+        {addToRoster && canUseTyped && !canAdd ? (
+          <p className="roster-edit__error">Pick a belt to add this competitor to the roster.</p>
+        ) : null}
+      </div>
       {matches.length ? (
         <ul className="roster-pick__list">
           {matches.map((student) => {
@@ -161,8 +247,8 @@ function RosterPicker({
       ) : (
         <p className="roster-pick__empty">
           {roster.students.length
-            ? 'No match on this device.'
-            : 'No competitors yet. Add them on Competitor roster, then pick a name here.'}
+            ? 'No match on this device. Use the name above, or add it to the roster.'
+            : 'No competitors yet. Type a name above, or add them on Competitor roster.'}
         </p>
       )}
       <Link className="text-link" to="/roster">

@@ -181,6 +181,35 @@ export function searchStudents(students: Student[], query: string): Student[] {
     .map((row) => row.student);
 }
 
+export function findStudentByName(students: Student[], name: string): Student | undefined {
+  const key = clipName(name).toLowerCase();
+  if (!key) return undefined;
+  return students.find((row) => clipName(row.name).toLowerCase() === key);
+}
+
+/** Typed name for a bracket/match. Optionally append a new local roster card. */
+export function confirmManualCompetitor(
+  name: string,
+  options: { addToRoster: boolean; belt?: string },
+): RosterPrefill | null {
+  const clipped = clipName(name);
+  if (!clipped) return null;
+
+  const existing = findStudentByName(state.students, clipped);
+  if (existing) {
+    return prefillFields(existing) ?? { name: existing.name, belt: existing.belt };
+  }
+
+  const belt = canonicalBelt(options.belt ?? '');
+  if (options.addToRoster) {
+    if (!belt) return null;
+    const added = addStudent({ name: clipped, belt, lastPromotion: '', note: '' });
+    return added ? { name: added.name, belt: added.belt } : null;
+  }
+
+  return { name: clipped, belt };
+}
+
 export function normalizeStudent(raw: unknown): Student | null {
   if (!raw || typeof raw !== 'object') return null;
   const row = raw as Partial<Student>;

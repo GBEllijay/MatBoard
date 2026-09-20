@@ -16,13 +16,13 @@ export function CoachToolsCard() {
           <BeltRail kind="tournament" />
           Mock Tournament
         </Link>
-        <Link className="btn" to="/roster">
+        <Link className="btn btn--white" to="/roster">
           Competitor roster
         </Link>
-        <Link className="btn" to="/notes">
+        <Link className="btn btn--white" to="/notes">
           Training notes
         </Link>
-        <Link className="btn" to="/techniques">
+        <Link className="btn btn--white" to="/techniques">
           Daily Training Videos
         </Link>
       </div>
