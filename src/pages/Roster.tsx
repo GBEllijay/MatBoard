@@ -120,7 +120,9 @@ export function RosterPage() {
         </div>
         <p className="roster__csv-hint">
           Competitor roster stays on this device. CSV is for backup or a move — cloud sync comes
-          later. Import adds competitors; it does not replace the list.
+          later. Import adds competitors; it does not replace the list. Every row needs a name and a
+          belt — <code>blackbelt</code>, <code>black belt</code>, and <code>BB</code> count as
+          Black.
         </p>
         {csvNote ? (
           <p className="roster__csv-summary" role="status">

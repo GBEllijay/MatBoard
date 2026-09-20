@@ -39,8 +39,11 @@ const listeners = new Set<() => void>();
 
 let state: RosterState = loadState();
 
+let studentSeq = 0;
+
 export function createStudentId(): string {
-  return `r-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  studentSeq += 1;
+  return `r-${Date.now().toString(36)}-${studentSeq.toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 export function defaultRoster(): RosterState {
@@ -60,6 +63,41 @@ export function draftFromStudent(student: Student): StudentDraft {
   };
 }
 
+const BELT_ALIAS_CANONICAL: Record<string, string> = {
+  white: 'White',
+  whitebelt: 'White',
+  wb: 'White',
+  blue: 'Blue',
+  bluebelt: 'Blue',
+  purple: 'Purple',
+  purplebelt: 'Purple',
+  brown: 'Brown',
+  brownbelt: 'Brown',
+  black: 'Black',
+  blackbelt: 'Black',
+  bb: 'Black',
+  coral: 'Coral',
+  coralbelt: 'Coral',
+  grey: 'Grey',
+  greybelt: 'Grey',
+  gray: 'Grey',
+  graybelt: 'Grey',
+  yellow: 'Yellow',
+  yellowbelt: 'Yellow',
+  orange: 'Orange',
+  orangebelt: 'Orange',
+  green: 'Green',
+  greenbelt: 'Green',
+};
+
+function beltLookupKey(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/['’]/g, '')
+    .replace(/[^a-z0-9]+/g, '');
+}
+
 export function isKnownBelt(value: string): boolean {
   const key = value.trim().toLowerCase();
   return BELT_CHOICES.some((belt) => belt.toLowerCase() === key);
@@ -69,7 +107,8 @@ export function canonicalBelt(value: string): string {
   const trimmed = value.trim().slice(0, BELT_MAX);
   if (!trimmed) return '';
   const known = BELT_CHOICES.find((belt) => belt.toLowerCase() === trimmed.toLowerCase());
-  return known ?? trimmed;
+  if (known) return known;
+  return BELT_ALIAS_CANONICAL[beltLookupKey(trimmed)] ?? trimmed;
 }
 
 export function normalizeDate(value: string): string {
