@@ -33,6 +33,11 @@ export type MatchState = {
   warned: boolean;
   endBuzzer: boolean;
   endCue: EndCue;
+  /**
+   * Phase 2: when set, this live bout reports Win/DQ/tech into that mock-bracket match.
+   * One of `MATCH_IDS` from tournamentStore. Unused in Phase 1.
+   */
+  bracketMatchId: string | null;
   revision: number;
 };
 
@@ -51,6 +56,7 @@ export type MatchAction =
   | { type: 'markWarned' }
   | { type: 'setEndBuzzer'; value: boolean }
   | { type: 'setEndCue'; value: EndCue }
+  | { type: 'setBracketMatchId'; value: string | null }
   | { type: 'expireClock' };
 
 const STORAGE_KEY = 'matboard.match.v1';
@@ -106,6 +112,7 @@ export function defaultMatch(): MatchState {
     warned: false,
     endBuzzer: true,
     endCue: getAudioPrefs().endCue,
+    bracketMatchId: null,
     revision: 1,
   };
 }
@@ -126,6 +133,7 @@ function loadState(): MatchState {
       warned: Boolean(parsed.warned),
       endBuzzer: typeof parsed.endBuzzer === 'boolean' ? parsed.endBuzzer : true,
       endCue: parsed.endCue != null ? parseEndCue(parsed.endCue) : getAudioPrefs().endCue,
+      bracketMatchId: typeof parsed.bracketMatchId === 'string' ? parsed.bracketMatchId : null,
       revision: Number(parsed.revision ?? 1),
     };
   } catch {
@@ -284,6 +292,8 @@ function applyAction(current: MatchState, action: MatchAction): MatchState {
       return bumpRevision({ ...current, endBuzzer: action.value });
     case 'setEndCue':
       return bumpRevision({ ...current, endCue: parseEndCue(action.value) });
+    case 'setBracketMatchId':
+      return bumpRevision({ ...current, bracketMatchId: action.value });
     case 'expireClock': {
       if (!current.running || remainingNow(current) > 0) return current;
       return bumpRevision({
