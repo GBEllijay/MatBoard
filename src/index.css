@@ -2977,19 +2977,27 @@ fieldset {
   gap: 0.12rem;
 }
 
-.schedule__time-block li {
+.schedule__time-block--parallel ul {
+  gap: 0.28rem;
+}
+
+.schedule__time-rows--mats > li {
   display: grid;
-  grid-template-columns: 5.4rem minmax(0, 1fr);
-  gap: 0.65rem;
+  grid-template-columns: 5.6rem minmax(0, 1fr);
+  gap: 0.7rem;
   align-items: baseline;
 }
 
 .schedule__mat {
-  color: #5c574c;
-  font-size: clamp(0.78rem, 1.4vw, 0.95rem);
+  color: var(--board-ink);
+  font-size: clamp(0.82rem, 1.5vw, 1.02rem);
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.schedule__time-block--parallel .schedule__mat {
+  font-size: clamp(0.88rem, 1.6vw, 1.08rem);
 }
 
 .schedule__mat--empty {
@@ -3076,16 +3084,27 @@ fieldset {
 }
 
 .schedule__day .schedule__time-block li {
-  grid-template-columns: 1fr;
-  gap: 0.05rem;
+  display: block;
+}
+
+.schedule__day .schedule__time-rows--mats > li {
+  display: grid;
+  grid-template-columns: 3.8rem minmax(0, 1fr);
+  gap: 0.28rem;
+  align-items: baseline;
 }
 
 .schedule__day .schedule__mat {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
+}
+
+.schedule__day .schedule__time-block--parallel .schedule__mat {
+  font-size: 0.78rem;
 }
 
 .schedule__day .schedule__mat--empty {
-  display: none;
+  visibility: hidden;
+  display: block;
 }
 
 .schedule__day .schedule__class strong {
@@ -3267,6 +3286,25 @@ fieldset {
   font-size: 0.78rem;
 }
 
+.schedule-edit__mat-field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.schedule-edit__mat-field > span {
+  font-weight: 700;
+}
+
+.schedule-edit__mats {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.schedule-edit__mats .preset {
+  min-height: 48px;
+}
+
 .schedule-edit__add {
   grid-template-columns: minmax(9.5rem, 1fr) minmax(0, 1.15fr);
   align-items: end;
@@ -3314,6 +3352,23 @@ fieldset {
   text-transform: uppercase;
 }
 
+.schedule-edit__slot {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 0.75rem;
+  padding: 0.65rem;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.schedule-edit__slot-time {
+  margin: 0;
+  color: var(--gold-2);
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
 .schedule-edit__group ul {
   list-style: none;
   margin: 0;
@@ -3329,6 +3384,17 @@ fieldset {
   border-radius: 14px;
   border: 1px solid var(--line);
   background: rgba(0, 0, 0, 0.18);
+}
+
+.schedule-edit__class label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.schedule-edit__another-mat {
+  width: 100%;
 }
 
 .schedule-edit__class .schedule-edit__title,

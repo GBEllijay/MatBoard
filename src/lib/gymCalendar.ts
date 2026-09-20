@@ -51,7 +51,7 @@ export type WeeklyClassSlot = {
   day: Weekday;
   time: string;
   title: string;
-  /** Optional mat / room, e.g. "MAT 1". */
+  /** Mat / room for this slot. Same day + time on MAT 1 and MAT 2 are two rows. */
   location: string;
   /** Optional detail under the title, e.g. "Blue belt & up". */
   subtitle: string;
@@ -61,6 +61,30 @@ export type ClassTimeGroup = {
   time: string;
   items: WeeklyClassSlot[];
 };
+
+/** Common gym mats. Owners can still type a custom room. */
+export const DEFAULT_MATS = ['MAT 1', 'MAT 2'] as const;
+
+export function compareMatLocation(a: string, b: string): number {
+  const num = (value: string) => {
+    const match = /(\d+)/.exec(value.trim());
+    return match ? Number(match[1]) : Number.POSITIVE_INFINITY;
+  };
+  const byNum = num(a) - num(b);
+  if (byNum !== 0) return byNum;
+  return a.localeCompare(b, undefined, { sensitivity: 'base' });
+}
+
+/** Next unused MAT n for a same-time group (MAT 1 → MAT 2 → MAT 3…). */
+export function suggestNextMat(used: readonly string[]): string {
+  const taken = new Set(used.map((value) => value.trim().toUpperCase()).filter(Boolean));
+  for (const mat of DEFAULT_MATS) {
+    if (!taken.has(mat)) return mat;
+  }
+  let n = DEFAULT_MATS.length + 1;
+  while (taken.has(`MAT ${n}`)) n += 1;
+  return `MAT ${n}`;
+}
 
 /**
  * Dated or ongoing notice. Phase 1 shows these on the notices strip.
@@ -187,7 +211,7 @@ export function compareClasses(a: WeeklyClassSlot, b: WeeklyClassSlot): number {
   if (day !== 0) return day;
   const time = parseTimeMinutes(a.time) - parseTimeMinutes(b.time);
   if (time !== 0) return time;
-  const location = a.location.localeCompare(b.location);
+  const location = compareMatLocation(a.location, b.location);
   if (location !== 0) return location;
   return a.title.localeCompare(b.title);
 }
@@ -219,6 +243,21 @@ export function groupClassesByTime(classes: readonly WeeklyClassSlot[]): ClassTi
     }
   }
   return groups;
+}
+
+/** Gym-TV / monthly recap: "5:00 PM MAT 1 Tiny Champions / MAT 2 Advanced Kids". */
+export function formatTimeGroupLine(group: ClassTimeGroup): string {
+  const when = formatClassTime(group.time);
+  const classes = group.items
+    .map((item) => {
+      const mat = item.location.trim();
+      const title = item.title.trim() || 'Class';
+      const detail = item.subtitle.trim();
+      const name = detail ? `${title} (${detail})` : title;
+      return mat ? `${mat} ${name}` : name;
+    })
+    .join(' / ');
+  return `${when} ${classes}`.trim();
 }
 
 /** "SEPTEMBER 2026" for the board header stamp. */

@@ -13,6 +13,7 @@ import {
   sampleWeekSpecials,
   sortClasses,
   sortSpecials,
+  suggestNextMat,
   type GymCalendarState,
   type ScheduleTemplate,
   type SpecialDate,
@@ -31,9 +32,11 @@ export {
   boardWeekdays,
   classesOnDay,
   compareClasses,
+  DEFAULT_MATS,
   formatBoardStamp,
   formatClassTime,
   formatSpecialDate,
+  formatTimeGroupLine,
   groupClassesByTime,
   isScheduleTemplate,
   isWeekday,
@@ -45,6 +48,7 @@ export {
   SAMPLE_WEEK_TITLE,
   sortClasses,
   specialsThisWeek,
+  suggestNextMat,
   todayWeekday,
   weekdayFromJsDay,
   type ClassTimeGroup,
@@ -181,6 +185,16 @@ export function addClass(
   if (!next.time && !next.title) return null;
   patch({ classes: sortClasses([...state.classes, next]) });
   return next;
+}
+
+/** Same day + time on the next free mat (MAT 1 → MAT 2). Title is filled in Edit. */
+export function addParallelClass(id: string): WeeklyClassSlot | null {
+  const source = state.classes.find((row) => row.id === id);
+  if (!source || !source.time) return null;
+  const used = state.classes
+    .filter((row) => row.day === source.day && row.time === source.time)
+    .map((row) => row.location);
+  return addClass(source.day, source.time, '', suggestNextMat(used));
 }
 
 export function updateClass(

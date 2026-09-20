@@ -4,11 +4,13 @@ import {
   boardWeekdays,
   classesOnDay,
   compareClasses,
+  compareMatLocation,
   DEFAULT_SCHEDULE_TEMPLATE,
   defaultGymCalendar,
   formatBoardStamp,
   formatClassTime,
   formatSpecialDate,
+  formatTimeGroupLine,
   groupClassesByTime,
   normalizeGymCalendar,
   normalizeQrUrl,
@@ -17,6 +19,7 @@ import {
   SAMPLE_WEEK_SLOTS,
   sortClasses,
   specialsThisWeek,
+  suggestNextMat,
   weekdayFromJsDay,
   type SpecialDate,
   type WeeklyClassSlot,
@@ -167,6 +170,18 @@ describe('weekly list helpers', () => {
     );
     assert.deepEqual(boardWeekdays(rows), ['mon', 'sat']);
     assert.deepEqual(boardWeekdays([]), ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']);
+    assert.equal(
+      formatTimeGroupLine(groups[0]!),
+      '5:00 PM MAT 1 Tiny Champions / MAT 2 Advanced Kids (Grey & White+)',
+    );
+  });
+
+  it('suggests the next free mat for a parallel class', () => {
+    assert.equal(suggestNextMat([]), 'MAT 1');
+    assert.equal(suggestNextMat(['MAT 1']), 'MAT 2');
+    assert.equal(suggestNextMat(['mat 1', 'MAT 2']), 'MAT 3');
+    assert.equal(compareMatLocation('MAT 2', 'MAT 10') < 0, true);
+    assert.equal(compareMatLocation('MAT 1', '') < 0, true);
   });
 
   it('stamps the board with month and year', () => {

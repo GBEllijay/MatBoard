@@ -14,13 +14,16 @@ import {
   SCHEDULE_TEMPLATES,
   SCHEDULE_TEMPLATE_HINTS,
   SCHEDULE_TEMPLATE_LABELS,
+  DEFAULT_MATS,
   addClass,
+  addParallelClass,
   addSpecial,
   boardWeekdays,
   classesOnDay,
   formatBoardStamp,
   formatClassTime,
   formatSpecialDate,
+  formatTimeGroupLine,
   groupClassesByTime,
   loadSampleWeek,
   noticeLines,
@@ -34,9 +37,11 @@ import {
   setQrUrl,
   setScheduleNotes,
   setScheduleTemplate,
+  suggestNextMat,
   todayWeekday,
   updateClass,
   updateSpecial,
+  type ClassTimeGroup,
   type ScheduleTemplate,
   type SpecialDate,
   type Weekday,
@@ -247,19 +252,26 @@ function BoardHeader({
 
 function ClassCopy({ item }: { item: WeeklyClassSlot }) {
   const subtitle = item.subtitle.trim();
+  const title = item.title.trim() || 'Class';
   return (
     <span className="schedule__class">
-      <strong>{item.title.trim() || 'Class'}</strong>
+      <strong>{title}</strong>
       {subtitle ? <em>{subtitle}</em> : null}
     </span>
   );
 }
 
-function ClassRow({ item }: { item: WeeklyClassSlot }) {
+function ClassRow({ item, showMat }: { item: WeeklyClassSlot; showMat: boolean }) {
   const location = item.location.trim();
   return (
     <li>
-      {location ? <span className="schedule__mat">{location}</span> : <span className="schedule__mat schedule__mat--empty" />}
+      {showMat ? (
+        location ? (
+          <span className="schedule__mat">{location}</span>
+        ) : (
+          <span className="schedule__mat schedule__mat--empty">Mat</span>
+        )
+      ) : null}
       <ClassCopy item={item} />
     </li>
   );
@@ -275,16 +287,23 @@ function TimeBlocks({
   if (!classes.length) return <p className="schedule__empty-day">{emptyLabel}</p>;
   return (
     <>
-      {groupClassesByTime(classes).map((group) => (
-        <div className="schedule__time-block" key={`${group.items[0]?.id}-${group.time}`}>
-          <time dateTime={group.time || undefined}>{formatClassTime(group.time)}</time>
-          <ul>
-            {group.items.map((item) => (
-              <ClassRow key={item.id} item={item} />
-            ))}
-          </ul>
-        </div>
-      ))}
+      {groupClassesByTime(classes).map((group) => {
+        const parallel = group.items.length > 1;
+        const showMat = parallel || group.items.some((item) => item.location.trim());
+        return (
+          <div
+            className={`schedule__time-block${parallel ? ' schedule__time-block--parallel' : ''}`}
+            key={`${group.items[0]?.id}-${group.time}`}
+          >
+            <time dateTime={group.time || undefined}>{formatClassTime(group.time)}</time>
+            <ul className={showMat ? 'schedule__time-rows schedule__time-rows--mats' : 'schedule__time-rows'}>
+              {group.items.map((item) => (
+                <ClassRow key={item.id} item={item} showMat={showMat} />
+              ))}
+            </ul>
+          </div>
+        );
+      })}
     </>
   );
 }
@@ -388,12 +407,8 @@ function MonthlyBoard({
                 <li key={day} className={day === today ? 'is-today' : undefined}>
                   <strong>{WEEKDAY_SHORT[day]}</strong>
                   <span>
-                    {rows
-                      .map((item) => {
-                        const when = formatClassTime(item.time);
-                        const mat = item.location.trim();
-                        return `${when}${mat ? ` ${mat}` : ''} ${item.title.trim() || 'Class'}`;
-                      })
+                    {groupClassesByTime(rows)
+                      .map((group) => formatTimeGroupLine(group))
                       .join(' · ')}
                   </span>
                 </li>
@@ -425,11 +440,42 @@ function ScheduleEditor({
   const logoRef = useRef<HTMLInputElement>(null);
   const qrRef = useRef<HTMLInputElement>(null);
   const [day, setDay] = useState<Weekday>('mon');
-  const [time, setTime] = useState('18:00');
+  const [time, setTime] = useState('17:00');
   const [title, setTitle] = useState('');
-  const [location, setLocation] = useState('');
+  const [location, setLocation] = useState<string>(DEFAULT_MATS[0]);
   const [subtitle, setSubtitle] = useState('');
   const [pickerNote, setPickerNote] = useState('');
+  const titleRef = useRef<HTMLInputElement>(null);
+
+  const usedMatsAtTime = classesOnDay(schedule.classes, day)
+    .filter((row) => row.time === time)
+    .map((row) => row.location);
+
+  const addRow = () => {
+    if (!title.trim()) {
+      titleRef.current?.focus();
+      return;
+    }
+    const added = addClass(day, time, title, location, subtitle);
+    if (added) {
+      setTitle('');
+      setSubtitle('');
+      setLocation(suggestNextMat([...usedMatsAtTime, location]));
+      titleRef.current?.focus();
+    }
+  };
+
+  const addAnotherMat = (group: ClassTimeGroup) => {
+    const source = group.items[0];
+    if (!source) return;
+    const added = addParallelClass(source.id);
+    if (!added) return;
+    setDay(source.day);
+    setTime(source.time);
+    setLocation(added.location);
+    setTitle('');
+    setSubtitle('');
+  };
 
   const onLogo = async (files: FileList | null) => {
     const file = files?.[0];
@@ -452,14 +498,6 @@ function ScheduleEditor({
       setPickerNote('');
     } catch {
       setPickerNote('That file is not a picture this board can keep.');
-    }
-  };
-
-  const addRow = () => {
-    const added = addClass(day, time, title, location, subtitle);
-    if (added) {
-      setTitle('');
-      setSubtitle('');
     }
   };
 
@@ -570,7 +608,8 @@ function ScheduleEditor({
       <fieldset>
         <legend>Weekly classes</legend>
         <p className="schedule-edit__hint">
-          Day, time, optional mat, class name, and optional detail. Add as many as you need.
+          Same time, two mats: add the first class, then tap <strong>Another mat</strong> — or keep
+          the time and switch MAT 1 / MAT 2.
         </p>
         <button type="button" className="btn btn--ghost schedule-edit__sample" onClick={() => loadSampleWeek()}>
           Load sample week
@@ -599,21 +638,36 @@ function ScheduleEditor({
               aria-label="Class time"
             />
           </label>
-          <label>
-            Mat / location
+          <div className="schedule-edit__mat-field">
+            <span id="schedule-mat-label">Mat</span>
+            <div className="presets schedule-edit__mats" role="radiogroup" aria-labelledby="schedule-mat-label">
+              {DEFAULT_MATS.map((mat) => (
+                <button
+                  key={mat}
+                  type="button"
+                  role="radio"
+                  aria-checked={location === mat}
+                  className={`preset${location === mat ? ' preset--on' : ''}`}
+                  onClick={() => setLocation(mat)}
+                >
+                  {mat}
+                </button>
+              ))}
+            </div>
             <input
               value={location}
               onChange={(event) => setLocation(event.target.value)}
               placeholder="MAT 1"
               aria-label="Mat or location"
             />
-          </label>
+          </div>
           <label className="schedule-edit__title">
             Class name
             <input
+              ref={titleRef}
               value={title}
               onChange={(event) => setTitle(event.target.value)}
-              placeholder="Kids, Adults, Open mat…"
+              placeholder="Tiny Champions, Fundamentals…"
               aria-label="Class name"
               onKeyDown={(event) => {
                 if (event.key === 'Enter') {
@@ -649,53 +703,65 @@ function ScheduleEditor({
             return (
               <section key={id} className="schedule-edit__group">
                 <h3>{WEEKDAY_LABELS[id]}</h3>
-                <ul>
-                  {rows.map((item) => (
-                    <li key={item.id} className="schedule-edit__class">
-                      <label>
-                        <span className="sr-only">Time</span>
-                        <input
-                          type="time"
-                          value={item.time}
-                          onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                            updateClass(item.id, { time: event.target.value })
-                          }
-                        />
-                      </label>
-                      <label>
-                        <span className="sr-only">Mat or location</span>
-                        <input
-                          value={item.location}
-                          onChange={(event) => updateClass(item.id, { location: event.target.value })}
-                          placeholder="MAT 1"
-                        />
-                      </label>
-                      <label className="schedule-edit__title">
-                        <span className="sr-only">Class name</span>
-                        <input
-                          value={item.title}
-                          onChange={(event) => updateClass(item.id, { title: event.target.value })}
-                          placeholder="Class name"
-                        />
-                      </label>
-                      <label className="schedule-edit__title">
-                        <span className="sr-only">Class detail</span>
-                        <input
-                          value={item.subtitle}
-                          onChange={(event) => updateClass(item.id, { subtitle: event.target.value })}
-                          placeholder="Detail (optional)"
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        className="btn btn--ghost"
-                        onClick={() => removeClass(item.id)}
-                      >
-                        Remove
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                {groupClassesByTime(rows).map((group) => (
+                  <div key={`${id}-${group.time}`} className="schedule-edit__slot">
+                    <p className="schedule-edit__slot-time">{formatClassTime(group.time)}</p>
+                    <ul>
+                      {group.items.map((item) => (
+                        <li key={item.id} className="schedule-edit__class">
+                          <label>
+                            Time
+                            <input
+                              type="time"
+                              value={item.time}
+                              onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                                updateClass(item.id, { time: event.target.value })
+                              }
+                            />
+                          </label>
+                          <label>
+                            Mat
+                            <input
+                              value={item.location}
+                              onChange={(event) => updateClass(item.id, { location: event.target.value })}
+                              placeholder="MAT 1"
+                            />
+                          </label>
+                          <label className="schedule-edit__title">
+                            Class name
+                            <input
+                              value={item.title}
+                              onChange={(event) => updateClass(item.id, { title: event.target.value })}
+                              placeholder="Class name"
+                            />
+                          </label>
+                          <label className="schedule-edit__title">
+                            Detail
+                            <input
+                              value={item.subtitle}
+                              onChange={(event) => updateClass(item.id, { subtitle: event.target.value })}
+                              placeholder="Blue belt & up"
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            className="btn btn--ghost"
+                            onClick={() => removeClass(item.id)}
+                          >
+                            Remove
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    <button
+                      type="button"
+                      className="btn btn--ghost schedule-edit__another-mat"
+                      onClick={() => addAnotherMat(group)}
+                    >
+                      Another mat at {formatClassTime(group.time)}
+                    </button>
+                  </div>
+                ))}
               </section>
             );
           })}
