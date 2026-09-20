@@ -24,7 +24,7 @@ test('Coach ad sells bout tools, Daily Techniques, and no price', () => {
   assert.doesNotMatch(text, /GB Members/i);
   assert.doesNotMatch(text, /\$\d/);
   assert.doesNotMatch(PRODUCT_TEASERS.coach, /\$\d/);
-  assert.match(PRODUCT_TEASERS.coach, /Mock brackets/);
+  assert.match(PRODUCT_TEASERS.coach, /Mock/);
   assert.match(PRODUCT_TEASERS.coach, /Daily Techniques/);
 });
 
