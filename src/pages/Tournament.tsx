@@ -7,6 +7,7 @@ import { OutcomePickSheet } from '../components/OutcomeCalls';
 import { RosterNameField } from '../components/RosterNameField';
 import { Sheet } from '../components/Sheet';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
+import { useToolboxParent } from '../hooks/useToolboxParent';
 import { useMatchState, useTournamentState } from '../hooks/useStores';
 import { linkedBracketMatchId, openBracketBout, scoreboardPath } from '../lib/bracketBout';
 import {
@@ -37,6 +38,7 @@ export function TournamentPage() {
   const match = useMatchState();
   const fs = usePlayFullscreen();
   const navigate = useNavigate();
+  const parent = useToolboxParent();
   const [namesOpen, setNamesOpen] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const seeds = seedSlots();
@@ -46,17 +48,17 @@ export function TournamentPage() {
 
   const exitBoard = () => {
     void fs.exit().finally(() => {
-      navigate('/pro');
+      navigate(parent.path);
     });
   };
 
   return (
     <main className={`tournament${fs.className ? ` ${fs.className}` : ''}`}>
       <BeltRail kind="tournament" />
-      <PlayExitMark to="/pro" onExit={exitBoard} />
+      <PlayExitMark to={parent.path} onExit={exitBoard} />
       <header className="tournament__bar">
         <div className="tournament__brand">
-          <p className="tournament__eyebrow">Owner’s Toolbox</p>
+          <p className="tournament__eyebrow">{parent.eyebrow}</p>
           <h1>Mock Tournament</h1>
         </div>
         <label className="tournament__title">

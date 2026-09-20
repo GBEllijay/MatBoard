@@ -16,7 +16,7 @@ type Props = {
   onReorder: (orderedIds: string[]) => Promise<void>;
 };
 
-/** Shared Owner’s Toolbox folder chrome: play toggle + ordered list (Gallery first; Videos / Pro Shop / Events plug in here). */
+/** Shared Console folder chrome: play toggle + ordered list (Gallery first; Videos / Pro Shop / Events plug in here). */
 export function ToolboxFolder({
   folder,
   open,

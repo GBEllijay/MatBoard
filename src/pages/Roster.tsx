@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlayExitMark } from '../components/PlayExitMark';
+import { useToolboxParent } from '../hooks/useToolboxParent';
 import { RankChip } from '../components/RankChip';
 import { Sheet } from '../components/Sheet';
 import { useRosterState } from '../hooks/useStores';
@@ -45,6 +46,7 @@ function downloadRosterCsv(filename: string, csv: string): void {
 export function RosterPage() {
   const roster = useRosterState();
   const navigate = useNavigate();
+  const parent = useToolboxParent();
   const csvRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [editor, setEditor] = useState<{ id: string | null; draft: StudentDraft } | null>(null);
@@ -81,15 +83,15 @@ export function RosterPage() {
   return (
     <main className="roster">
       <PlayExitMark
-        to="/pro"
+        to={parent.path}
         onExit={() => {
-          navigate('/pro');
+          navigate(parent.path);
         }}
       />
       <header className="roster__bar">
         <div className="roster__brand">
-          <p className="roster__eyebrow">Owner’s Toolbox</p>
-          <h1>Competitor roster</h1>
+          <p className="roster__eyebrow">{parent.eyebrow}</p>
+          <h1>Competitor Management System</h1>
         </div>
         <button
           type="button"

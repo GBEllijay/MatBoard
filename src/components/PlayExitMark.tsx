@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 type Props = {
   /** Exit play (fullscreen) then go Home. Omit to navigate immediately. */
   onExit?: () => void;
-  /** Parent page. White tools go to `/white`; Pro toolbox tools go to `/pro`. */
+  /** Parent page. White tools go to `/white`; Pro/Coach tools go to `/pro` or `/coach`. */
   to?: string;
 };
 

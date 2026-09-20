@@ -7,6 +7,9 @@ import { PlayExitMark } from '../components/PlayExitMark';
 import { TvTip } from '../components/TvTip';
 import { Sheet } from '../components/Sheet';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
+import { useProUnlocked } from '../hooks/useProUnlocked';
+import { useToolboxParent } from '../hooks/useToolboxParent';
+import { GYM_CONSOLE_NAME } from '../lib/productNames';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { formatMss, secondsToMs } from '../lib/format';
@@ -62,6 +65,8 @@ export function ScreensaverPage() {
   const intervalMs = secondsToMs(intervalSec);
   const fs = usePlayFullscreen();
   const navigate = useNavigate();
+  const parent = useToolboxParent();
+  const proUnlocked = useProUnlocked();
   const [searchParams] = useSearchParams();
   const folderParam = searchParams.get('folder');
   const requestedFolder = isFolderId(folderParam) ? folderParam : null;
@@ -198,9 +203,12 @@ export function ScreensaverPage() {
 
   const exitSlideshow = () => {
     void fs.exit().finally(() => {
-      navigate('/pro');
+      navigate(parent.path);
     });
   };
+
+  const hubTitle =
+    !proUnlocked && focusFolder === 'videos' ? 'Daily Techniques' : GYM_CONSOLE_NAME;
 
   const focusEmpty = itemsInFolder(photos, focusFolder).length === 0;
   const emptyCopy =
@@ -221,7 +229,7 @@ export function ScreensaverPage() {
       }}
     >
       <Chrome ghost />
-      <PlayExitMark to="/pro" onExit={exitSlideshow} />
+      <PlayExitMark to={parent.path} onExit={exitSlideshow} />
       <div className="play-fs-slot">
         <FullscreenChip
           supported={fs.supported}
@@ -246,7 +254,7 @@ export function ScreensaverPage() {
         />
       ) : (
         <div className="saver__empty" onClick={(e) => e.stopPropagation()}>
-          <h1>Owner’s Toolbox</h1>
+          <h1>{hubTitle}</h1>
           <p>{emptyCopy}</p>
           {focusConfig.ready && focusEmpty ? (
             <button type="button" className="btn" onClick={() => openAdd(focusFolder)}>
@@ -261,7 +269,7 @@ export function ScreensaverPage() {
 
       <Sheet
         open={options}
-        title="Owner’s Toolbox"
+        title={hubTitle}
         onClose={() => {
           if (!muteVideo) setUnlockSound(true);
           setOptions(false);

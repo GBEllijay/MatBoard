@@ -452,10 +452,15 @@ button.mode-card {
   min-height: 10.5rem;
 }
 
+.mode-card--coach:not(.mode-card--locked) {
+  border-color: rgba(140, 168, 148, 0.42);
+}
+
 .mode-card--pro:not(.mode-card--locked) {
   border-color: rgba(212, 160, 23, 0.38);
 }
 
+.home--ladder .mode-card--coach .mode-card__actions,
 .home--ladder .mode-card--pro .mode-card__actions {
   grid-template-columns: 1fr;
 }
@@ -516,6 +521,14 @@ button.mode-card {
 .home--ladder .mode-card__teaser {
   font-size: clamp(0.78rem, 1.7vh, 0.9rem);
   line-height: 1.28;
+}
+
+.home--ladder .mode-card__sub {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
 }
 
 .home--ladder .mode-card__teaser {
@@ -817,6 +830,7 @@ button.mode-card {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .home--coach .home__modes,
   .home--pro .home__modes {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1050,7 +1064,7 @@ button.mode-card {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Owner’s Toolbox manage sheet covers the page; keep Home above the dimmed top gap. */
+/* Console manage sheet covers the page; keep Home above the dimmed top gap. */
 .saver > .play-exit,
 .controller > .play-exit {
   z-index: 21;

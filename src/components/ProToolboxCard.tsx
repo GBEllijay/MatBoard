@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { BeltRail } from './BeltRail';
 import { FOLDERS } from '../lib/photoStore';
+import { GYM_CONSOLE_NAME } from '../lib/productNames';
 
 export function ProToolboxCard() {
   return (
@@ -11,11 +12,13 @@ export function ProToolboxCard() {
         tabIndex={-1}
         aria-label="Open Gallery"
       />
-      <strong>Owner’s Toolbox</strong>
+      <strong>{GYM_CONSOLE_NAME}</strong>
       <span className="mode-card__sub">Pro</span>
       <span>
-        Gallery, videos, Pro Shop, event flyers, a mock tournament, a class schedule, and a
-        competitor roster.
+        Easily cast to your gym TV and display: Pro-Shop, Class Schedules, Recent Promotions,
+        Upcoming Events and Competitions. Full In-House Tournament Management Suite with Auto-Fill
+        Bracketing and Result Tracking. Assignable Instructor Licenses with Cross Platform Access to
+        Updates and more.
       </span>
       <div className="mode-card__actions mode-card__actions--folders" aria-label="Owner folders">
         {FOLDERS.map((folder) => (
@@ -37,7 +40,7 @@ export function ProToolboxCard() {
           Class Schedule
         </Link>
         <Link className="btn" to="/roster">
-          Competitor roster
+          Competitor Management System
         </Link>
       </div>
     </article>
