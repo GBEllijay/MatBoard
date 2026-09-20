@@ -30,6 +30,10 @@ test('Coach ad sells bout tools, Daily Techniques, and no price', () => {
 
 test('Pro ad sells owner TV tools, ProShop display, and no price', () => {
   const text = adText('pro');
+  assert.match(
+    text,
+    /Gym owner tools for black belts, instructors and program managers who run the gym/,
+  );
   assert.match(text, /Class Schedule/);
   assert.match(text, /logo/i);
   assert.match(text, /QR/);

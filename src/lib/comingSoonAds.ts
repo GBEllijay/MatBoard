@@ -44,7 +44,7 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
   pro: {
     title: 'Advantage Pro',
     kicker: 'Coming soon',
-    lead: 'Owner tools for the black belt who runs the gym — the wall TV, the shop, and the people on the mat.',
+    lead: 'Gym owner tools for black belts, instructors and program managers who run the gym — the wall TV, the shop, and the people on the mat.',
     features: [
       {
         title: 'Class Schedule',
