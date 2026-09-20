@@ -14,9 +14,10 @@ type Props = {
   onRename: (id: string, label: string) => Promise<void>;
   onRemove: (id: string) => Promise<void>;
   onReorder: (orderedIds: string[]) => Promise<void>;
+  onItemPlayToggle: (id: string, enabled: boolean) => Promise<void>;
 };
 
-/** Shared Console folder chrome: play toggle + ordered list (Gallery first; Videos / Pro Shop / Events plug in here). */
+/** Shared Console folder chrome: folder play toggle + ordered list (Gallery first; Videos / Pro Shop / Events plug in here). */
 export function ToolboxFolder({
   folder,
   open,
@@ -30,6 +31,7 @@ export function ToolboxFolder({
   onRename,
   onRemove,
   onReorder,
+  onItemPlayToggle,
 }: Props) {
   return (
     <details
@@ -80,6 +82,7 @@ export function ToolboxFolder({
               onRename={onRename}
               onRemove={onRemove}
               onReorder={onReorder}
+              onPlayToggle={onItemPlayToggle}
             />
           </>
         ) : (
@@ -93,6 +96,7 @@ export function ToolboxFolder({
                 onRename={onRename}
                 onRemove={onRemove}
                 onReorder={onReorder}
+                onPlayToggle={onItemPlayToggle}
               />
             ) : null}
           </>

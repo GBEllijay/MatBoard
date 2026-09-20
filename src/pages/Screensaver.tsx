@@ -36,6 +36,7 @@ import {
   renamePhoto,
   reorderFolderItems,
   setFolderPlay,
+  setItemPlay,
   setSaverIntervalSec,
   setSaverMuteVideo,
   setSaverShuffle,
@@ -216,7 +217,7 @@ export function ScreensaverPage() {
       ? focusFolder === 'videos'
         ? 'Pick videos from this device. They stay on this phone or computer — nothing is uploaded. Clips play in full on the TV, muted by default so gym music can keep playing. Press F for fullscreen on a computer plugged into the TV.'
         : 'Pick photos from this device. They loop fullscreen. On a computer plugged into the TV, press F for fullscreen. Set how long each slide stays on screen.'
-      : 'Nothing is set to play. Turn on Gallery or Videos, or another folder that has media, in options.';
+      : 'Nothing is set to play. Turn on Gallery or Videos in options, then tap a left preview so at least one photo or video is On.';
 
   return (
     <main
@@ -276,11 +277,13 @@ export function ScreensaverPage() {
         }}
       >
         <p>
-          Gold <strong>On</strong> means that folder plays on the TV. Enabled folders play in folder
-          order — Gallery, then Videos — each in its list order. Photos use the interval below;
-          videos play all the way through, then the next item. Clips stay muted unless you turn on
-          Play video sound, so Spotify or another tab can keep the gym music going. Shuffle
-          randomizes that combined queue.
+          Gold <strong>On</strong> means that folder plays on the TV. Tap the left preview on a
+          photo or video to include or skip it — checked and bright is On, dimmed is Off. Off items
+          stay in the list and keep their order. One On clip loops alone; several play in list
+          order. Enabled folders play Gallery, then Videos. Photos use the interval below; videos
+          play all the way through, then the next item. Clips stay muted unless you turn on Play
+          video sound, so Spotify or another tab can keep the gym music going. Shuffle randomizes
+          that combined queue.
         </p>
         {pickerNote ? <p className="saver-folder__empty">{pickerNote}</p> : null}
         <fieldset>
@@ -404,6 +407,16 @@ export function ScreensaverPage() {
               onRemove={async (id) => {
                 await removePhoto(id);
                 await refresh();
+              }}
+              onItemPlayToggle={async (id, enabled) => {
+                setPhotos((rows) =>
+                  rows.map((row) => (row.id === id ? { ...row, playEnabled: enabled } : row)),
+                );
+                try {
+                  await setItemPlay(id, enabled);
+                } catch {
+                  await refresh();
+                }
               }}
               onReorder={async (orderedIds) => persistFolderOrder(folder.id, orderedIds)}
             />
