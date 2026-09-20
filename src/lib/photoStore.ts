@@ -33,8 +33,9 @@ export const FOLDERS = [
     mimePrefix: 'image/',
     labelPrefix: 'Photo',
     emptyCopy:
-      'No photos yet. Add kids, promotions, or gym photos. Each row keeps a thumbnail next to the name. Hold the grip, then drag to set the slideshow story — or tap Up / Down.',
-    orderHint: 'Top photo plays first when In order is on. Hold the grip, then drag — or tap Up / Down.',
+      'No photos yet. Add kids, promotions, or gym photos. Each row keeps a thumbnail next to the name. Hold the grip, then drag to set the slideshow story — or tap Up / Down. Play On/Off includes or skips a photo without removing it.',
+    orderHint:
+      'Top photo plays first when In order is on. Hold the grip, then drag — or tap Up / Down. Play On/Off includes or skips a photo without removing it.',
   },
   {
     id: 'videos',
@@ -48,15 +49,16 @@ export const FOLDERS = [
     mimePrefix: 'video/',
     labelPrefix: 'Video',
     emptyCopy:
-      'No videos yet. Pick clips from this phone or computer — they stay on this device, nothing is uploaded. MP4 and WebM play most reliably. Long videos are fine; very large files can take a moment to add.',
+      'No videos yet. Pick clips from this phone or computer — they stay on this device, nothing is uploaded. MP4 and WebM play most reliably. Long videos are fine; very large files can take a moment to add. Play On/Off includes or skips a clip without removing it.',
     orderHint:
-      'Top video plays first when In order is on. Hold the grip, then drag — or tap Up / Down. Videos play all the way through, then the next item. Clips are muted by default so gym music can keep playing.',
+      'Top video plays first when In order is on. Hold the grip, then drag — or tap Up / Down. Play On/Off includes or skips a clip without removing it. Videos play all the way through, then the next item. Clips are muted by default so gym music can keep playing.',
   },
   {
     id: 'shop',
     label: 'Pro Shop',
     ready: false,
-    comingSoon: 'Coming soon. Pro Shop cards will use this same list: name, thumbnail, Up / Down, and drag.',
+    comingSoon:
+      'Coming soon. Pro Shop cards will use this same list: name, thumbnail, Play On/Off, Up / Down, and drag.',
     itemNoun: 'card',
     itemNounPlural: 'cards',
     addLabel: 'Add cards',
@@ -71,7 +73,8 @@ export const FOLDERS = [
     id: 'events',
     label: 'Events',
     ready: false,
-    comingSoon: 'Coming soon. Event flyers will use this same list: name, thumbnail, Up / Down, and drag.',
+    comingSoon:
+      'Coming soon. Event flyers will use this same list: name, thumbnail, Play On/Off, Up / Down, and drag.',
     itemNoun: 'flyer',
     itemNounPlural: 'flyers',
     addLabel: 'Add flyers',
@@ -121,9 +124,10 @@ export type SaverPrefs = {
   muteVideo: boolean;
 };
 
-type PhotoRow = Omit<StoredPhoto, 'folderId' | 'sortOrder'> & {
+type PhotoRow = Omit<StoredPhoto, 'folderId' | 'sortOrder' | 'playEnabled'> & {
   folderId?: FolderId | string;
   sortOrder?: number;
+  playEnabled?: boolean;
 };
 
 export function isFolderId(value: unknown): value is FolderId {
@@ -180,6 +184,7 @@ function normalizePhoto(row: PhotoRow, index: number): StoredPhoto {
     label: typeof row.label === 'string' ? row.label : `Photo ${index + 1}`,
     folderId: isFolderId(row.folderId) ? row.folderId : 'gallery',
     sortOrder: photoSortOrder(row),
+    playEnabled: row.playEnabled !== false,
   };
 }
 
@@ -256,7 +261,8 @@ export function clampIntervalSec(n: number): number {
 
 /**
  * Enabled folders play in FOLDERS order, list order (sortOrder) inside each.
- * Images and videos both participate. Pass `storyIds` later for one cross-folder
+ * Images and videos both participate. Items with Play Off stay in the folder
+ * list but skip the TV queue. Pass `storyIds` later for one cross-folder
  * story order (Gallery + Videos interleaved) without changing per-folder lists.
  */
 export function playableItems(
@@ -326,6 +332,7 @@ export async function addFolderFiles(files: File[], folderId: FolderId): Promise
       label: `${folder.labelPrefix} ${nextIndex}`,
       folderId,
       sortOrder: nextOrder,
+      playEnabled: true,
     };
     store.put(photo);
   }
@@ -335,6 +342,20 @@ export async function addFolderFiles(files: File[], folderId: FolderId): Promise
 
 export async function addPhotos(files: File[], folderId: FolderId = 'gallery'): Promise<void> {
   await addFolderFiles(files, folderId);
+}
+
+export async function setItemPlay(id: string, enabled: boolean): Promise<void> {
+  const db = await openDb();
+  const tx = db.transaction(STORE, 'readwrite');
+  const store = tx.objectStore(STORE);
+  const current = await new Promise<PhotoRow | undefined>((resolve, reject) => {
+    const req = store.get(id);
+    req.onsuccess = () => resolve(req.result as PhotoRow | undefined);
+    req.onerror = () => reject(req.error);
+  });
+  if (!current) return;
+  store.put({ ...normalizePhoto(current, 0), playEnabled: enabled });
+  await txDone(tx);
 }
 
 export async function renamePhoto(id: string, label: string): Promise<void> {

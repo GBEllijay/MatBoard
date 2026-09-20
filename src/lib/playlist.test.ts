@@ -1,0 +1,90 @@
+import assert from 'node:assert/strict';
+import { describe, it } from 'node:test';
+import { buildPlayQueue, type PlaylistItem } from './playlist.ts';
+
+function item(
+  partial: Partial<PlaylistItem> & Pick<PlaylistItem, 'id' | 'folderId'>,
+): PlaylistItem {
+  return {
+    label: partial.id,
+    sortOrder: 0,
+    addedAt: 0,
+    playEnabled: true,
+    ...partial,
+  };
+}
+
+function queue(
+  items: PlaylistItem[],
+  extra?: Partial<Parameters<typeof buildPlayQueue>[1]>,
+) {
+  return buildPlayQueue(items, {
+    folderIds: ['gallery', 'videos'],
+    folderEnabled: { gallery: true, videos: true },
+    isPlayable: () => true,
+    ...extra,
+  });
+}
+
+describe('buildPlayQueue item Play On/Off', () => {
+  it('keeps Play On items in folder list order and skips Play Off', () => {
+    const a = item({ id: 'a', folderId: 'videos', sortOrder: 0 });
+    const b = item({ id: 'b', folderId: 'videos', sortOrder: 1, playEnabled: false });
+    const c = item({ id: 'c', folderId: 'videos', sortOrder: 2 });
+    assert.deepEqual(
+      queue([c, b, a]).map((row) => row.id),
+      ['a', 'c'],
+    );
+  });
+
+  it('treats a missing playEnabled flag as On so older saved clips still play', () => {
+    const legacy = item({ id: 'legacy', folderId: 'videos' });
+    delete (legacy as { playEnabled?: boolean }).playEnabled;
+    assert.deepEqual(queue([legacy]).map((row) => row.id), ['legacy']);
+  });
+
+  it('returns a single enabled clip so the player can loop it alone', () => {
+    const items = [
+      item({ id: 'off', folderId: 'videos', sortOrder: 0, playEnabled: false }),
+      item({ id: 'solo', folderId: 'videos', sortOrder: 1 }),
+    ];
+    assert.deepEqual(queue(items).map((row) => row.id), ['solo']);
+  });
+
+  it('returns an empty queue when every clip is Play Off', () => {
+    const items = [
+      item({ id: 'a', folderId: 'videos', sortOrder: 0, playEnabled: false }),
+      item({ id: 'b', folderId: 'videos', sortOrder: 1, playEnabled: false }),
+    ];
+    assert.deepEqual(queue(items), []);
+  });
+
+  it('still skips a Play On item when its folder is Off', () => {
+    const clip = item({ id: 'clip', folderId: 'videos' });
+    assert.deepEqual(
+      queue([clip], { folderEnabled: { gallery: true, videos: false } }),
+      [],
+    );
+  });
+
+  it('plays Gallery then enabled Videos without changing per-folder order', () => {
+    const items = [
+      item({ id: 'photo', folderId: 'gallery', sortOrder: 0 }),
+      item({ id: 'skip', folderId: 'videos', sortOrder: 0, playEnabled: false }),
+      item({ id: 'clip', folderId: 'videos', sortOrder: 1 }),
+    ];
+    assert.deepEqual(queue(items).map((row) => row.id), ['photo', 'clip']);
+  });
+
+  it('skips Play Off ids in a cross-folder story list', () => {
+    const items = [
+      item({ id: 'a', folderId: 'videos', sortOrder: 0 }),
+      item({ id: 'b', folderId: 'videos', sortOrder: 1, playEnabled: false }),
+      item({ id: 'c', folderId: 'videos', sortOrder: 2 }),
+    ];
+    assert.deepEqual(
+      queue(items, { storyIds: ['b', 'c', 'a'] }).map((row) => row.id),
+      ['c', 'a'],
+    );
+  });
+});

@@ -6,6 +6,8 @@ export type PlaylistItem = {
   sortOrder: number;
   addedAt: number;
   folderId: string;
+  /** Default true. Off items stay in the list (and keep order) but skip the TV queue. */
+  playEnabled: boolean;
 };
 
 export function comparePlaylistItems(a: PlaylistItem, b: PlaylistItem): number {
@@ -25,8 +27,9 @@ export function itemsInFolder<T extends PlaylistItem>(items: T[], folderId: stri
  * folder’s `sortOrder`. That is today’s Gallery-then-Videos combined play.
  *
  * Later cross-folder story editor: pass `storyIds` (a single ordered id list
- * across folders). Disabled folders and unplayable items are still skipped;
- * ids missing from the story list append in the default folder order.
+ * across folders). Disabled folders, items with Play Off, and unplayable
+ * items are still skipped; ids missing from the story list append in the
+ * default folder order.
  */
 export function buildPlayQueue<T extends PlaylistItem>(
   items: T[],
@@ -38,7 +41,10 @@ export function buildPlayQueue<T extends PlaylistItem>(
   },
 ): T[] {
   const eligible = items.filter(
-    (item) => options.folderEnabled[item.folderId] !== false && options.isPlayable(item),
+    (item) =>
+      options.folderEnabled[item.folderId] !== false &&
+      item.playEnabled !== false &&
+      options.isPlayable(item),
   );
   if (options.storyIds && options.storyIds.length > 0) {
     const byId = new Map(eligible.map((item) => [item.id, item]));

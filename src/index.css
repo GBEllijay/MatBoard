@@ -1922,17 +1922,19 @@ fieldset {
 }
 
 .folder-list--dragging input,
-.saver__list--dragging input {
+.saver__list--dragging input,
+.folder-list--dragging .folder-row__play,
+.saver__list--dragging .folder-row__play {
   pointer-events: none;
 }
 
 .folder-row,
 .saver__row {
   display: grid;
-  grid-template-columns: 56px 48px minmax(0, 1fr);
+  grid-template-columns: 56px 48px minmax(0, 1fr) 76px;
   grid-template-areas:
-    'drag thumb name'
-    'drag actions actions';
+    'drag thumb name play'
+    'drag actions actions actions';
   gap: 0.45rem 0.5rem;
   align-items: center;
   padding: 0.55rem 0.1rem 0.7rem;
@@ -1947,6 +1949,11 @@ fieldset {
   background: rgba(212, 160, 23, 0.14);
   outline: 1px solid rgba(240, 194, 75, 0.45);
   z-index: 2;
+}
+
+.folder-row--off .saver__thumb,
+.folder-row--off input {
+  opacity: 0.45;
 }
 
 .folder-row__drag,
@@ -2049,11 +2056,40 @@ fieldset {
   font-size: 0.92rem;
 }
 
+.folder-row__play {
+  grid-area: play;
+  min-width: 0;
+  width: 100%;
+  min-height: 52px;
+  padding: 0.2rem 0.3rem;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  line-height: 1.05;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.folder-row__play span:first-child {
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.folder-row__play span:last-child {
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
 @media (min-width: 720px) {
   .folder-row,
   .saver__row {
-    grid-template-columns: 56px 48px minmax(0, 1fr) auto;
-    grid-template-areas: 'drag thumb name actions';
+    grid-template-columns: 56px 48px minmax(0, 1fr) 80px auto;
+    grid-template-areas: 'drag thumb name play actions';
     padding: 0.45rem 0.15rem;
   }
 

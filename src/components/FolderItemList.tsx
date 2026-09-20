@@ -11,6 +11,7 @@ export type FolderListItem = {
   id: string;
   label: string;
   mime?: string;
+  playEnabled?: boolean;
 };
 
 function isVideoMime(mime?: string): boolean {
@@ -24,6 +25,7 @@ type Props = {
   onRename: (id: string, label: string) => Promise<void>;
   onRemove: (id: string) => Promise<void>;
   onReorder: (orderedIds: string[]) => Promise<void>;
+  onPlayToggle: (id: string, enabled: boolean) => Promise<void>;
 };
 
 type DragSession = {
@@ -54,6 +56,7 @@ export function FolderItemList({
   onRename,
   onRemove,
   onReorder,
+  onPlayToggle,
 }: Props) {
   const [draftIds, setDraftIds] = useState<string[] | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -154,7 +157,7 @@ export function FolderItemList({
     if (items.length < 2) return;
     if (event.pointerType === 'mouse' && event.button !== 0) return;
     const target = event.target as HTMLElement;
-    if (target.closest('input, .folder-row__move, .folder-row__remove')) return;
+    if (target.closest('input, .folder-row__move, .folder-row__remove, .folder-row__play')) return;
     stopDrag(false);
     const originIds = idsOf(itemsRef.current);
     const session: DragSession = {
@@ -267,6 +270,7 @@ export function FolderItemList({
               onLostPointerCapture={onRowPointerEnd}
               onRename={async (label) => onRename(item.id, label)}
               onRemove={async () => onRemove(item.id)}
+              onPlayToggle={async (enabled) => onPlayToggle(item.id, enabled)}
               onMoveUp={() => moveBy(index, index - 1)}
               onMoveDown={() => moveBy(index, index + 1)}
             />
@@ -293,6 +297,7 @@ function FolderItemRow({
   onLostPointerCapture,
   onRename,
   onRemove,
+  onPlayToggle,
   onMoveUp,
   onMoveDown,
 }: {
@@ -311,6 +316,7 @@ function FolderItemRow({
   onLostPointerCapture: (event: ReactPointerEvent<HTMLLIElement>) => void;
   onRename: (label: string) => Promise<void>;
   onRemove: () => Promise<void>;
+  onPlayToggle: (enabled: boolean) => Promise<void>;
   onMoveUp: () => void;
   onMoveDown: () => void;
 }) {
@@ -324,11 +330,14 @@ function FolderItemRow({
   }, [src]);
 
   const name = label.trim() || fallback;
+  const playEnabled = item.playEnabled !== false;
 
   return (
     <li
       ref={rowRef}
-      className={`folder-row saver__row${dragging ? ' folder-row--dragging saver__row--dragging' : ''}`}
+      className={`folder-row saver__row${dragging ? ' folder-row--dragging saver__row--dragging' : ''}${
+        playEnabled ? '' : ' folder-row--off'
+      }`}
       style={{ touchAction: dragging ? 'none' : 'pan-y' }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -391,6 +400,17 @@ function FolderItemRow({
           if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
         }}
       />
+      <button
+        type="button"
+        className={`preset folder-row__play${playEnabled ? ' preset--on' : ''}`}
+        aria-pressed={playEnabled}
+        aria-label={playEnabled ? `Play ${name} on` : `Play ${name} off`}
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={() => void onPlayToggle(!playEnabled)}
+      >
+        <span>Play</span>
+        <span>{playEnabled ? 'On' : 'Off'}</span>
+      </button>
       <div className="folder-row__actions saver__row-actions">
         <button
           type="button"
