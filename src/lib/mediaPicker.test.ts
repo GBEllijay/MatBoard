@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  isImageAccept,
   isVideoAccept,
   openDeviceMediaPicker,
+  PHOTO_CAPTURE_LABEL,
+  PHOTO_PICKER_ACCEPT,
   VIDEO_CAPTURE,
   VIDEO_LIBRARY_LABEL,
   VIDEO_PICKER_ACCEPT,
@@ -33,6 +36,22 @@ describe('video device picker accept', () => {
   });
 });
 
+describe('photo device picker accept', () => {
+  it('Take photo and Pick from gallery share image/*; capture is only on Take photo', () => {
+    assert.equal(PHOTO_PICKER_ACCEPT, 'image/*');
+    assert.equal(PHOTO_CAPTURE_LABEL, 'Take photo');
+    assert.equal(VIDEO_LIBRARY_LABEL, 'Pick from gallery');
+    assert.equal(VIDEO_CAPTURE, 'environment');
+  });
+
+  it('treats image accept tokens as photos, not videos', () => {
+    assert.equal(isImageAccept(PHOTO_PICKER_ACCEPT), true);
+    assert.equal(isImageAccept('image/jpeg'), true);
+    assert.equal(isImageAccept(VIDEO_PICKER_ACCEPT), false);
+    assert.equal(isImageAccept(VIDEO_RECORD_ACCEPT), false);
+  });
+});
+
 describe('openDeviceMediaPicker', () => {
   function fakeInput() {
     const attrs: Record<string, string> = {};
@@ -54,7 +73,7 @@ describe('openDeviceMediaPicker', () => {
     return { input, calls, attrs };
   }
 
-  it('Record sets capture=environment then clicks (photo Add still uses this helper)', () => {
+  it('Record sets capture=environment then clicks', () => {
     const { input, calls, attrs } = fakeInput();
 
     openDeviceMediaPicker(input, { accept: VIDEO_PICKER_ACCEPT, mode: 'record' });
@@ -73,10 +92,10 @@ describe('openDeviceMediaPicker', () => {
     assert.deepEqual(calls, ['remove:capture', 'click']);
   });
 
-  it('defaults to library (no capture) for photo Add and other non-record taps', () => {
+  it('defaults to library (no capture) when mode is omitted', () => {
     const { input, calls } = fakeInput();
 
-    openDeviceMediaPicker(input, { accept: 'image/*' });
+    openDeviceMediaPicker(input, { accept: PHOTO_PICKER_ACCEPT });
 
     assert.equal(input.accept, 'image/*');
     assert.deepEqual(calls, ['remove:capture', 'click']);

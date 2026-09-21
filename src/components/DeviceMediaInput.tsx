@@ -6,7 +6,7 @@ type Props = {
   inputRef: RefObject<HTMLInputElement | null>;
   id?: string;
   accept: string;
-  /** Baked into markup for Record. Omit for library / photos so capture is absent. */
+  /** Baked into markup for Record / Take photo. Omit for Pick from gallery. */
   capture?: CaptureFacing;
   multiple?: boolean;
   onFiles: (files: FileList | null) => void | Promise<void>;
@@ -16,7 +16,7 @@ type Props = {
  * Visually hidden file input for device camera / library.
  * Avoid the HTML `hidden` attribute (`display: none`) — iOS/Android can skip
  * the camera and go library-only. `.sr-only` keeps it in the layout.
- * Record inputs pass `capture` here so it is in the HTML from first paint.
+ * Record / Take photo pass `capture` here so it is in the HTML from first paint.
  */
 export function DeviceMediaInput({
   inputRef,

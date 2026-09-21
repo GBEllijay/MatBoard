@@ -1,4 +1,4 @@
-import { VIDEO_PICKER_ACCEPT } from './mediaPicker';
+import { PHOTO_PICKER_ACCEPT, VIDEO_PICKER_ACCEPT } from './mediaPicker';
 import {
   buildPlayQueue,
   comparePlaylistItems,
@@ -20,10 +20,11 @@ export const INTERVAL_PRESETS_SEC = [5, 10, 30, 60] as const;
 /**
  * Phone/PC picker token. Library uses `video/*` with no capture. Record uses
  * a separate input with `capture="environment"` (and `video/*,image/*`) so
- * Android Chrome opens Camera instead of Google Photos. Extra extensions
- * (`.mp4,.mov,…`) force a documents picker on some phones. Gym-TV types are
- * still accepted after pick — see VIDEO_EXTENSIONS / isAcceptedVideoFile.
- * Clips stay on this device.
+ * Android Chrome opens Camera instead of Google Photos. Gallery photos use
+ * `image/*` the same way: Take photo has capture, Pick from gallery does not.
+ * Extra extensions (`.mp4,.mov,…`) force a documents picker on some phones.
+ * Gym-TV types are still accepted after pick — see VIDEO_EXTENSIONS /
+ * isAcceptedVideoFile. Media stays on this device.
  */
 export const VIDEO_ACCEPT = VIDEO_PICKER_ACCEPT;
 const VIDEO_EXTENSIONS = ['.mp4', '.m4v', '.webm', '.mov', '.ogg', '.ogv'] as const;
@@ -37,11 +38,11 @@ export const FOLDERS = [
     itemNoun: 'photo',
     itemNounPlural: 'photos',
     addLabel: 'Add photos',
-    accept: 'image/*',
+    accept: PHOTO_PICKER_ACCEPT,
     mimePrefix: 'image/',
     labelPrefix: 'Photo',
     emptyCopy:
-      'No photos yet. Add kids, promotions, or gym photos. Tap the left preview to include or skip a photo. Hold the grip, then drag to set the slideshow story — or tap Up / Down.',
+      'No photos yet. Add photos opens Take photo or Pick from gallery — kids, promotions, or gym shots stay on this device, nothing is uploaded. Tap the left preview to include or skip a photo. Hold the grip, then drag to set the slideshow story — or tap Up / Down.',
     orderHint:
       'Tap the left preview to play or skip that photo. Checked / bright = On. Top photo plays first when In order is on. Hold the grip, then drag — or tap Up / Down.',
   },
