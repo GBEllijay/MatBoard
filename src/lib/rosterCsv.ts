@@ -1,19 +1,20 @@
-/** Roster CSV. Browser file in/out only — UTF-8 for Excel / Sheets / Numbers. */
+/** Roster CSV. Browser file in/out — UTF-8 (BOM), Excel CRLF, Windows-1252 fallback. */
 
 import { studentFromInput, type Student } from './rosterStore.ts';
 
 export const ROSTER_CSV_HEADERS = ['Name', 'Belt', 'Last promotion', 'Notes'] as const;
+export const ROSTER_CSV_SEP_LINE = 'sep=,';
 export const ROSTER_CSV_SAVE_HINT =
-  'Save as CSV (comma-separated), not an Excel workbook (.xlsx).';
+  'Save as CSV UTF-8 (comma-separated), not an Excel workbook (.xlsx).';
 export const ROSTER_CSV_WORKBOOK_ERROR =
-  'That looks like an Excel workbook. Save as CSV (comma-separated), then import.';
+  'That looks like an Excel workbook. Save as CSV UTF-8 (comma-separated), then import.';
 export const ROSTER_CSV_BELT_GUIDE =
-  `# ${ROSTER_CSV_SAVE_HINT} Belts (required on every row): White, Blue, Purple, Brown, Black, Coral; kids Grey, Yellow, Orange, Green. Also accepted: black, Black, blackbelt, black belt, Black Belt, BB, white belt, bluebelt, and the same color + belt spellings for each rank.`;
+  `# ${ROSTER_CSV_SAVE_HINT} One competitor per row. Belts (required on every row): White, Blue, Purple, Brown, Black, Coral; kids Grey, Yellow, Orange, Green. Also accepted: black, Black, blackbelt, black belt, Black Belt, BB, white belt, bluebelt, and the same color + belt spellings for each rank.`;
 export const ROSTER_CSV_EXAMPLE = {
   name: 'Alex Rivera',
   belt: 'Purple',
   lastPromotion: '2026-03-12',
-  note: 'Example - delete this row. Belts: white / blue / purple / brown / black (blackbelt, black belt, BB) / coral; kids grey yellow orange green.',
+  note: 'Example - delete this row. Save as CSV UTF-8.',
 } as const;
 
 export type RosterCsvRow = Pick<Student, 'name' | 'belt' | 'lastPromotion' | 'note'>;
@@ -23,6 +24,7 @@ export type RosterCsvImport = {
   imported: number;
   skipped: number;
   error?: string;
+  skippedDetail?: string;
 };
 
 type HeaderField = 'name' | 'firstName' | 'lastName' | 'belt' | 'lastPromotion' | 'note';
@@ -62,8 +64,75 @@ const HEADER_ALIASES: Record<string, HeaderField> = {
 
 const DELIMITERS = [',', ';', '\t'] as const;
 
+export function withUtf8Bom(text: string): string {
+  return text.startsWith('\uFEFF') ? text : `\uFEFF${text}`;
+}
+
 function normalizeCsvText(text: string): string {
   return text.replace(/^\uFEFF/, '').replace(/\u0000/g, '');
+}
+
+function looksLikeUtf16Le(bytes: Uint8Array): boolean {
+  if (bytes.length < 8) return false;
+  const even = bytes.length % 2 === 0;
+  const sample = Math.min(bytes.length, even ? bytes.length : bytes.length - 1);
+  if (sample < 8) return false;
+  let oddNuls = 0;
+  let pairs = 0;
+  for (let i = 0; i + 1 < sample; i += 2) {
+    pairs += 1;
+    if (bytes[i + 1] === 0) oddNuls += 1;
+  }
+  return pairs >= 4 && oddNuls / pairs >= 0.6;
+}
+
+function looksLikeUtf16Be(bytes: Uint8Array): boolean {
+  if (bytes.length < 8) return false;
+  const sample = Math.min(bytes.length, bytes.length % 2 === 0 ? bytes.length : bytes.length - 1);
+  if (sample < 8) return false;
+  let evenNuls = 0;
+  let pairs = 0;
+  for (let i = 0; i + 1 < sample; i += 2) {
+    pairs += 1;
+    if (bytes[i] === 0) evenNuls += 1;
+  }
+  return pairs >= 4 && evenNuls / pairs >= 0.6;
+}
+
+export function looksLikeWorkbookBytes(bytes: Uint8Array): boolean {
+  if (bytes.length < 4) return false;
+  if (bytes[0] === 0x50 && bytes[1] === 0x4b && (bytes[2] === 0x03 || bytes[2] === 0x05 || bytes[2] === 0x07)) {
+    return true;
+  }
+  return bytes[0] === 0xd0 && bytes[1] === 0xcf && bytes[2] === 0x11 && bytes[3] === 0xe0;
+}
+
+/** Decode Excel / Sheets / Numbers CSV bytes. UTF-8 (+ BOM), UTF-16, then Windows-1252. */
+export function decodeRosterCsvBytes(bytes: Uint8Array): string {
+  if (!bytes.length) return '';
+  if (bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
+    return new TextDecoder('utf-8').decode(bytes).replace(/^\uFEFF/, '');
+  }
+  if (bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xfe) {
+    return new TextDecoder('utf-16le').decode(bytes).replace(/^\uFEFF/, '');
+  }
+  if (bytes.length >= 2 && bytes[0] === 0xfe && bytes[1] === 0xff) {
+    return new TextDecoder('utf-16be').decode(bytes).replace(/^\uFEFF/, '');
+  }
+  if (looksLikeWorkbookBytes(bytes)) {
+    return new TextDecoder('latin1').decode(bytes);
+  }
+  if (looksLikeUtf16Le(bytes)) {
+    return new TextDecoder('utf-16le').decode(bytes).replace(/^\uFEFF/, '');
+  }
+  if (looksLikeUtf16Be(bytes)) {
+    return new TextDecoder('utf-16be').decode(bytes).replace(/^\uFEFF/, '');
+  }
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    return new TextDecoder('windows-1252').decode(bytes);
+  }
 }
 
 function normalizeHeader(value: string): string {
@@ -100,20 +169,32 @@ function firstContentLines(text: string): string[] {
     .filter(Boolean);
 }
 
+function isPreambleLine(line: string): boolean {
+  const trimmed = line.trim().replace(/^\uFEFF/, '');
+  if (!trimmed) return true;
+  if (/^sep=/i.test(trimmed)) return true;
+  if (trimmed.startsWith('#')) return true;
+  if (trimmed.startsWith('"#')) return true;
+  return false;
+}
+
 export function detectCsvDelimiter(text: string): string {
   const lines = firstContentLines(text);
   for (const line of lines) {
     const sep = line.match(/^sep=(.)$/i);
     if (sep) return sep[1];
   }
-  const header = lines.find((line) => !line.startsWith('#') && !/^sep=/i.test(line)) ?? '';
+  const candidates = lines.filter((line) => !isPreambleLine(line)).slice(0, 6);
+  const scan = candidates.length ? candidates : lines;
   let best: string = ',';
   let bestCount = 0;
-  for (const delimiter of DELIMITERS) {
-    const count = countUnquoted(header, delimiter);
-    if (count > bestCount) {
-      best = delimiter;
-      bestCount = count;
+  for (const line of scan) {
+    for (const delimiter of DELIMITERS) {
+      const count = countUnquoted(line, delimiter);
+      if (count > bestCount) {
+        best = delimiter;
+        bestCount = count;
+      }
     }
   }
   return best;
@@ -130,7 +211,7 @@ export function parseCsv(text: string, delimiter = ','): string[][] {
   const pushRow = () => {
     row.push(field);
     field = '';
-    if (row.some((cell) => cell.trim())) rows.push(row);
+    if (row.some((cellValue) => cellValue.trim())) rows.push(row);
     row = [];
   };
 
@@ -194,7 +275,7 @@ export function serializeRosterCsv(rows: RosterCsvRow[]): string {
 }
 
 export function rosterCsvTemplate(): string {
-  return `${ROSTER_CSV_BELT_GUIDE}\r\n${serializeRosterCsv([
+  return `${ROSTER_CSV_SEP_LINE}\r\n${csvField(ROSTER_CSV_BELT_GUIDE)}\r\n${serializeRosterCsv([
     {
       name: ROSTER_CSV_EXAMPLE.name,
       belt: ROSTER_CSV_EXAMPLE.belt,
@@ -230,8 +311,8 @@ export function parseImportDate(value: string): string {
 
 function mapHeaders(headerRow: string[]): Partial<Record<HeaderField, number>> {
   const map: Partial<Record<HeaderField, number>> = {};
-  headerRow.forEach((cell, index) => {
-    const field = HEADER_ALIASES[normalizeHeader(cell)];
+  headerRow.forEach((cellValue, index) => {
+    const field = HEADER_ALIASES[normalizeHeader(cellValue)];
     if (field && map[field] == null) map[field] = index;
   });
   return map;
@@ -263,12 +344,11 @@ function combineName(row: string[], columns: Partial<Record<HeaderField, number>
   return [first, last].filter(Boolean).join(' ');
 }
 
-function splitNames(name: string): string[] {
-  const parts = name
+function splitLines(value: string): string[] {
+  return value
     .split(/\r\n|\n|\r/)
     .map((part) => part.trim())
     .filter(Boolean);
-  return parts;
 }
 
 function findHeaderRow(rows: string[][]): { index: number; columns: Partial<Record<HeaderField, number>> } | null {
@@ -280,8 +360,51 @@ function findHeaderRow(rows: string[][]): { index: number; columns: Partial<Reco
   return null;
 }
 
-export function formatRosterCsvSummary(imported: number, skipped: number): string {
-  return `${imported} imported, ${skipped} skipped`;
+function looksLikeHeaderText(text: string): boolean {
+  const inner = parseCsv(`${text}\n`, detectCsvDelimiter(`${text}\n`))[0] ?? [];
+  return hasRequiredColumns(mapHeaders(inner));
+}
+
+function expandEmbeddedSingleColumn(rows: string[][]): string[][] {
+  if (rows.length < 2) return rows;
+  const singles = rows.filter((row) => row.length === 1);
+  if (singles.length < rows.length / 2) return rows;
+  if (!singles.some((row) => looksLikeHeaderText(row[0] ?? ''))) return rows;
+  return rows.map((row) => {
+    if (row.length !== 1) return row;
+    const text = row[0] ?? '';
+    if (!/[,;\t]/.test(text)) return row;
+    const inner = parseCsv(`${text}\n`, detectCsvDelimiter(`${text}\n`))[0];
+    return inner && inner.length > 1 ? inner : row;
+  });
+}
+
+function peopleFromCells(
+  nameCell: string,
+  beltCell: string,
+  lastPromotion: string,
+  note: string,
+): Array<{ name: string; belt: string; lastPromotion: string; note: string }> {
+  const names = splitLines(nameCell);
+  const belts = splitLines(beltCell);
+  if (!names.length) return [];
+  if (names.length === 1) {
+    return [{ name: names[0], belt: belts[0] ?? beltCell.trim(), lastPromotion, note }];
+  }
+  if (belts.length === names.length) {
+    return names.map((name, index) => ({
+      name,
+      belt: belts[index],
+      lastPromotion,
+      note,
+    }));
+  }
+  return names.map((name) => ({ name, belt: belts[0] ?? beltCell.trim(), lastPromotion, note }));
+}
+
+export function formatRosterCsvSummary(imported: number, skipped: number, skippedDetail?: string): string {
+  const base = `${imported} imported, ${skipped} skipped`;
+  return skippedDetail ? `${base} (${skippedDetail})` : base;
 }
 
 export function isSpreadsheetWorkbook(file: { name?: string; type?: string }): boolean {
@@ -311,40 +434,126 @@ export function looksLikeWorkbookText(text: string): boolean {
   return head.charCodeAt(0) === 0xd0 && head.charCodeAt(1) === 0xcf;
 }
 
-export function importRosterCsv(text: string): RosterCsvImport {
-  if (looksLikeWorkbookText(text)) {
-    return { students: [], imported: 0, skipped: 0, error: ROSTER_CSV_WORKBOOK_ERROR };
-  }
-  const rows = parseCsv(text, detectCsvDelimiter(text));
-  if (!rows.length) {
+function chunkLooksLikeRosterCsv(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed || !/[,;\t]/.test(trimmed)) return false;
+  const lines = trimmed.split(/\r\n|\n|\r/).filter((line) => line.trim());
+  if (lines.length < 1) return false;
+  return lines.some((line) => countUnquoted(line, ',') >= 1 || countUnquoted(line, ';') >= 1 || countUnquoted(line, '\t') >= 1);
+}
+
+type ImportOptions = { salvage?: boolean };
+
+function importParsedRows(rows: string[][], options: ImportOptions): RosterCsvImport {
+  const expanded = expandEmbeddedSingleColumn(rows);
+  if (!expanded.length) {
     return { students: [], imported: 0, skipped: 0, error: 'Need a Name and Belt column.' };
   }
-  const header = findHeaderRow(rows);
+  const header = findHeaderRow(expanded);
   if (!header) {
     return { students: [], imported: 0, skipped: 0, error: 'Need a Name and Belt column.' };
   }
+  const { columns } = header;
+  const start = header.index + 1;
 
   const students: Student[] = [];
+  const skippedReasons: string[] = [];
   let skipped = 0;
-  for (const row of rows.slice(header.index + 1)) {
-    if (isSkippableRow(row)) continue;
-    const names = splitNames(combineName(row, header.columns));
-    const belt = cell(row, header.columns.belt);
-    const lastPromotion = parseImportDate(cell(row, header.columns.lastPromotion));
-    const note = cell(row, header.columns.note);
-    if (!names.length) {
-      skipped += 1;
-      continue;
+
+  const pushStudent = (input: { name: string; belt: string; lastPromotion: string; note: string }) => {
+    const next = studentFromInput(input);
+    if (next) {
+      students.push(next);
+      return true;
     }
-    let added = 0;
-    for (const name of names) {
-      const next = studentFromInput({ name, belt, lastPromotion, note });
-      if (next) {
-        students.push(next);
-        added += 1;
+    skipped += 1;
+    const label = input.name.trim() || 'row';
+    skippedReasons.push(input.name.trim() ? `${label}: no belt` : 'missing name');
+    return false;
+  };
+
+  const salvageChunk = (text: string): Student[] => {
+    if (!options.salvage || !chunkLooksLikeRosterCsv(text)) return [];
+    const nested = importRosterCsvInternal(text, { salvage: false });
+    if (nested.imported) return nested.students;
+    const headed = importRosterCsvInternal(`${ROSTER_CSV_HEADERS.join(',')}\r\n${text}`, { salvage: false });
+    return headed.imported ? headed.students : [];
+  };
+
+  for (const row of expanded.slice(start)) {
+    if (isSkippableRow(row)) continue;
+
+    const nameCell = combineName(row, columns);
+    const beltCell = cell(row, columns.belt);
+    const lastPromotion = parseImportDate(cell(row, columns.lastPromotion));
+    let note = cell(row, columns.note);
+
+    if (options.salvage && !studentFromInput({ name: splitLines(nameCell)[0] ?? '', belt: splitLines(beltCell)[0] ?? '' })) {
+      const fat = [nameCell, beltCell, note].find((value) => splitLines(value).length > 1 && /[,;\t]/.test(value));
+      if (fat) {
+        const recovered = salvageChunk(fat);
+        if (recovered.length) {
+          students.push(...recovered);
+          continue;
+        }
       }
     }
-    if (!added) skipped += 1;
+
+    if (options.salvage && /[\r\n]/.test(note) && /[,;\t]/.test(note)) {
+      const lines = splitLines(note);
+      for (let index = 1; index < lines.length; index += 1) {
+        const chunk = lines.slice(index).join('\n');
+        const recovered = salvageChunk(chunk);
+        if (recovered.length) {
+          note = lines.slice(0, index).join('\n');
+          students.push(...recovered);
+          break;
+        }
+      }
+    }
+
+    const people = peopleFromCells(nameCell, beltCell, lastPromotion, note);
+    if (!people.length) {
+      skipped += 1;
+      skippedReasons.push('missing name');
+      continue;
+    }
+    for (const person of people) pushStudent(person);
   }
-  return { students, imported: students.length, skipped };
+
+  const skippedDetail = skippedReasons.length
+    ? skippedReasons.slice(0, 4).join('; ') + (skippedReasons.length > 4 ? '…' : '')
+    : undefined;
+  return { students, imported: students.length, skipped, skippedDetail };
+}
+
+function importRosterCsvInternal(text: string, options: ImportOptions): RosterCsvImport {
+  if (looksLikeWorkbookText(text)) {
+    return { students: [], imported: 0, skipped: 0, error: ROSTER_CSV_WORKBOOK_ERROR };
+  }
+  const delimiter = detectCsvDelimiter(text);
+  return importParsedRows(parseCsv(text, delimiter), options);
+}
+
+export function importRosterCsv(text: string): RosterCsvImport {
+  return importRosterCsvInternal(text, { salvage: true });
+}
+
+export function importRosterCsvBytes(bytes: Uint8Array): RosterCsvImport {
+  if (looksLikeWorkbookBytes(bytes)) {
+    return { students: [], imported: 0, skipped: 0, error: ROSTER_CSV_WORKBOOK_ERROR };
+  }
+  return importRosterCsv(decodeRosterCsvBytes(bytes));
+}
+
+export async function importRosterCsvFile(file: {
+  name?: string;
+  type?: string;
+  arrayBuffer: () => Promise<ArrayBuffer>;
+}): Promise<RosterCsvImport> {
+  if (isSpreadsheetWorkbook(file)) {
+    return { students: [], imported: 0, skipped: 0, error: ROSTER_CSV_WORKBOOK_ERROR };
+  }
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  return importRosterCsvBytes(bytes);
 }

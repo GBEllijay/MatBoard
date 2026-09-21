@@ -2,14 +2,56 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   ROSTER_CSV_WORKBOOK_ERROR,
+  csvField,
+  decodeRosterCsvBytes,
+  detectCsvDelimiter,
   formatRosterCsvSummary,
   importRosterCsv,
+  importRosterCsvBytes,
+  importRosterCsvFile,
   isSpreadsheetWorkbook,
   parseCsv,
   parseImportDate,
   rosterCsvTemplate,
   serializeRosterCsv,
+  withUtf8Bom,
 } from './rosterCsv.ts';
+
+const THREE_ROW_PEOPLE = [
+  { name: 'Hapkidoka', belt: 'Blue' },
+  { name: 'Kristofer Núñez', belt: 'Black' },
+  { name: 'José Peña', belt: 'Purple' },
+] as const;
+
+function threeRowCsv(eol = '\r\n', bom = false): string {
+  const body = [
+    'Name,Belt,Last promotion,Notes',
+    'Hapkidoka,Blue,,',
+    'Kristofer Núñez,Black,,',
+    'José Peña,Purple,,',
+  ].join(eol);
+  return `${bom ? '\uFEFF' : ''}${body}${eol}`;
+}
+
+function encodeWindows1252(text: string): Uint8Array {
+  const bytes: number[] = [];
+  for (const char of text) {
+    const code = char.charCodeAt(0);
+    if (code > 255) throw new Error(`Cannot encode ${char}`);
+    bytes.push(code);
+  }
+  return Uint8Array.from(bytes);
+}
+
+function assertThreeRowImport(next: ReturnType<typeof importRosterCsv>) {
+  assert.equal(next.error, undefined);
+  assert.equal(next.imported, 3);
+  assert.equal(next.skipped, 0);
+  assert.deepEqual(
+    next.students.map((row) => `${row.name}:${row.belt}`),
+    THREE_ROW_PEOPLE.map((row) => `${row.name}:${row.belt}`),
+  );
+}
 
 describe('parseCsv', () => {
   it('splits comma fields and strips a UTF-8 BOM', () => {
@@ -188,17 +230,31 @@ describe('importRosterCsv', () => {
 });
 
 describe('serializeRosterCsv', () => {
-  it('writes the template headers plus one example row', () => {
+  it('writes an Excel-friendly UTF-8 template with a single-cell belt guide', () => {
     const csv = rosterCsvTemplate();
-    assert.match(csv, /^# Save as CSV/);
+    assert.match(csv, /^sep=,/);
+    assert.match(csv, /Save as CSV UTF-8/);
     assert.match(csv, /blackbelt/i);
     assert.match(csv, /black belt/i);
     assert.equal(csv.includes('Name,Belt,Last promotion,Notes\r\n'), true);
     assert.equal(csv.includes('Alex Rivera,Purple,2026-03-12,'), true);
+    const guideRow = parseCsv(csv, detectCsvDelimiter(csv)).find((row) => row[0]?.trim().startsWith('#'));
+    assert.equal(guideRow?.length, 1);
+    assert.equal(withUtf8Bom(csv).startsWith('\uFEFF'), true);
     const roundTrip = importRosterCsv(csv);
     assert.equal(roundTrip.imported, 1);
     assert.equal(roundTrip.students[0]?.name, 'Alex Rivera');
     assert.equal(roundTrip.students[0]?.belt, 'Purple');
+  });
+
+  it('imports every filled template row with mixed belts and an accented name', () => {
+    const csv = `${rosterCsvTemplate().trimEnd()}\r\n${THREE_ROW_PEOPLE.map((row) => `${csvField(row.name)},${row.belt},,`).join('\r\n')}\r\n`;
+    const next = importRosterCsv(csv);
+    assert.equal(next.imported, 4);
+    assert.deepEqual(
+      next.students.map((row) => `${row.name}:${row.belt}`),
+      ['Alex Rivera:Purple', ...THREE_ROW_PEOPLE.map((row) => `${row.name}:${row.belt}`)],
+    );
   });
 
   it('quotes notes so a round-trip keeps commas', () => {
@@ -220,5 +276,67 @@ describe('parseImportDate and summary', () => {
     assert.equal(parseImportDate('03-12-2026'), '2026-03-12');
     assert.equal(parseImportDate('2026-13-01'), '');
     assert.equal(formatRosterCsvSummary(12, 2), '12 imported, 2 skipped');
+    assert.equal(
+      formatRosterCsvSummary(1, 2, 'Kristofer Núñez: no belt; José Peña: no belt'),
+      '1 imported, 2 skipped (Kristofer Núñez: no belt; José Peña: no belt)',
+    );
+  });
+});
+
+describe('Excel / encoding roster CSV', () => {
+  it('imports a 3-row Excel CRLF file with a UTF-8 BOM, accented name, and mixed belts', () => {
+    assertThreeRowImport(importRosterCsv(threeRowCsv('\r\n', true)));
+  });
+
+  it('imports the same 3-row file from Windows-1252 bytes (Excel ANSI CSV)', () => {
+    const bytes = encodeWindows1252(threeRowCsv('\r\n', false));
+    assert.match(decodeRosterCsvBytes(bytes), /Kristofer Núñez/);
+    assert.match(decodeRosterCsvBytes(bytes), /José Peña/);
+    assertThreeRowImport(importRosterCsvBytes(bytes));
+  });
+
+  it('does not misread a real UTF-8 accented file as Windows-1252', () => {
+    const bytes = new TextEncoder().encode(threeRowCsv('\n', false));
+    assertThreeRowImport(importRosterCsvBytes(bytes));
+  });
+
+  it('reads UTF-16 LE BOM bytes the way Excel Unicode CSV is saved', () => {
+    const bytes = new Uint8Array(Buffer.from(`\uFEFF${threeRowCsv('\r\n', false)}`, 'utf16le'));
+    assertThreeRowImport(importRosterCsvBytes(bytes));
+  });
+
+  it('maps belts per row when Excel quotes every cell', () => {
+    const csv = `\uFEFF"Name","Belt","Last promotion","Notes"\r\n"Hapkidoka","Blue","",""\r\n"Kristofer Núñez","blackbelt","",""\r\n"José Peña","purple","",""\r\n`;
+    const next = importRosterCsv(csv);
+    assert.deepEqual(
+      next.students.map((row) => `${row.name}:${row.belt}`),
+      ['Hapkidoka:Blue', 'Kristofer Núñez:Black', 'José Peña:Purple'],
+    );
+  });
+
+  it('recovers a one-column Excel export where each line is a quoted CSV row', () => {
+    const csv = [
+      '"Name,Belt,Last promotion,Notes"',
+      '"Hapkidoka,Blue,,"',
+      '"Kristofer Núñez,Black,,"',
+      '"José Peña,Purple,,"',
+    ].join('\r\n');
+    assertThreeRowImport(importRosterCsv(csv));
+  });
+
+  it('does not bleed belts when an unclosed quote swallows later rows', () => {
+    const csv = 'Name,Belt\r\nHapkidoka,Blue\r\n"Kristofer Núñez,Black\r\nJosé Peña,Purple\r\n';
+    assertThreeRowImport(importRosterCsv(csv));
+  });
+
+  it('zips stacked Name and Belt cells so each person keeps their own rank', () => {
+    const csv = 'Name,Belt\n"Hapkidoka\nKristofer Núñez\nJosé Peña","Blue\nBlack\nPurple"\n';
+    assertThreeRowImport(importRosterCsv(csv));
+  });
+
+  it('reads Windows-1252 bytes through importRosterCsvFile the way the roster page does', async () => {
+    const bytes = encodeWindows1252(threeRowCsv('\r\n', false));
+    const file = new File([bytes], 'roster.csv', { type: 'text/csv' });
+    assertThreeRowImport(await importRosterCsvFile(file));
   });
 });
