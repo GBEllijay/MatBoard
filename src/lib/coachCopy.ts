@@ -26,7 +26,11 @@ export const EMPTY_VIDEOS_BODY =
 
 export const EMPTY_BRACKET_TITLE = 'Empty bracket';
 export const EMPTY_BRACKET_BODY =
-  'Tap Edit names to fill 16 competitors, then Score a bout.';
+  'Tap Edit names to fill this bracket, then Score a bout.';
+
+/** Gym Owner Console — local saves ship now; cloud is the next owner step. */
+export const OWNER_BRACKET_CLOUD_NOTE =
+  'Saved brackets stay on this device. Cloud sync so owners can run several division brackets (more than 16 fighters) comes next.';
 
 export const ROSTER_LEAD_COACH =
   'Competitor Management — names and belts for Match and Mock Tournament.';

@@ -20,7 +20,13 @@ import {
   type ScheduleState,
 } from '../lib/scheduleStore';
 import { getRoster, subscribeRoster, type RosterState } from '../lib/rosterStore';
-import { getTournament, subscribeTournament, type TournamentState } from '../lib/tournamentStore';
+import {
+  getTournament,
+  getLibrary,
+  subscribeTournament,
+  type TournamentLibrary,
+  type TournamentState,
+} from '../lib/tournamentStore';
 import { getTraining, subscribeTraining, type TrainingState } from '../lib/trainingStore';
 
 export function useMatchState(): MatchState {
@@ -37,6 +43,10 @@ export function useAudioPrefs(): AudioPrefs {
 
 export function useTournamentState(): TournamentState {
   return useSyncExternalStore(subscribeTournament, getTournament, getTournament);
+}
+
+export function useTournamentLibrary(): TournamentLibrary {
+  return useSyncExternalStore(subscribeTournament, getLibrary, getLibrary);
 }
 
 export function useBracketTheme(): BracketTheme {
