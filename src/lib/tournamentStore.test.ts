@@ -160,6 +160,14 @@ describe('named on-device bracket library', () => {
     assert.equal(lib.activeId, lib.saved[0].id);
   });
 
+  it('keeps a named board when a new empty one is added', () => {
+    let lib = applyRenameBracket(defaultLibrary(), 'bracket-1', 'Gi Blue Belt');
+    lib = applyNewBracket(lib, 8);
+    assert.equal(displayBracketName(lib.saved[0]), 'Gi Blue Belt');
+    assert.equal(lib.activeId, lib.saved[1].id);
+    assert.equal(displayBracketName(lib.saved[1]), 'Untitled');
+  });
+
   it('documents owner cloud sync as later work', () => {
     assert.equal(OWNER_BRACKET_CLOUD.status, 'planned');
     assert.equal(OWNER_BRACKET_CLOUD.coachSaves, 'local-only');

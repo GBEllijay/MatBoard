@@ -757,7 +757,11 @@ export function setCompetitorCount(size: number): void {
 }
 
 export function renameActiveBracket(name: string): void {
-  persistLibrary(applyRenameBracket(library, library.activeId, name));
+  const trimmed = name.trim().slice(0, BRACKET_NAME_MAX);
+  persistLibrary(applyRenameBracket(library, library.activeId, trimmed));
+  if (trimmed && !getTournament().title.trim()) {
+    patchActive((board) => ({ ...clone(board), title: trimmed }));
+  }
 }
 
 export function switchBracket(id: string): void {
