@@ -9,9 +9,10 @@ import { RosterNameField } from '../components/RosterNameField';
 import { Sheet } from '../components/Sheet';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useToolboxParent } from '../hooks/useToolboxParent';
-import { useMatchState, useTournamentState } from '../hooks/useStores';
+import { useBracketTheme, useMatchState, useTournamentState } from '../hooks/useStores';
 import { EMPTY_BRACKET_BODY, EMPTY_BRACKET_TITLE } from '../lib/coachCopy';
 import { linkedBracketMatchId, openBracketBout, scoreboardPath } from '../lib/bracketBout';
+import { setBracketTheme } from '../lib/bracketTheme';
 import {
   LEFT_QF,
   LEFT_R16,
@@ -39,6 +40,7 @@ import { type OutcomeCall } from '../lib/outcomes';
 export function TournamentPage() {
   const tournament = useTournamentState();
   const match = useMatchState();
+  const theme = useBracketTheme();
   const fs = usePlayFullscreen();
   const navigate = useNavigate();
   const parent = useToolboxParent();
@@ -59,7 +61,11 @@ export function TournamentPage() {
   };
 
   return (
-    <main className={`tournament${fs.className ? ` ${fs.className}` : ''}`}>
+    <main
+      className={`tournament${theme === 'bright' ? ' tournament--bright' : ''}${
+        fs.className ? ` ${fs.className}` : ''
+      }`}
+    >
       <BeltRail kind="tournament" />
       <PlayExitMark to={parent.path} onExit={exitBoard} />
       <header className="tournament__bar">
@@ -77,6 +83,26 @@ export function TournamentPage() {
           />
         </label>
         <div className="tournament__actions">
+          <div className="tournament__theme" role="radiogroup" aria-label="Bracket theme">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={theme === 'bright'}
+              className={`chip${theme === 'bright' ? ' chip--gold' : ''}`}
+              onClick={() => setBracketTheme('bright')}
+            >
+              Bright
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={theme === 'dark'}
+              className={`chip${theme === 'dark' ? ' chip--gold' : ''}`}
+              onClick={() => setBracketTheme('dark')}
+            >
+              Dark
+            </button>
+          </div>
           <button type="button" className="btn btn--ghost" onClick={() => setNamesOpen(true)}>
             Edit names
           </button>

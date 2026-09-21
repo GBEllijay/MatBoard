@@ -10,6 +10,11 @@
   --blue-2: #1c4fd4;
   --white: #efebe3;
   --white-ink: #14161c;
+  --logo-yellow: #fcc000;
+  --logo-blue: #004eba;
+  --mat-fill: #12243a;
+  --mat-tile: min(100vw, 24rem);
+  --mat-image: url('/home-mat-tatami.png');
   --points: #22c55e;
   --adv: #f59e0b;
   --neg: #ef4444;
@@ -32,7 +37,11 @@ body,
 #root {
   min-height: 100%;
   margin: 0;
-  background: var(--bg);
+  background-color: var(--mat-fill);
+  background-image: var(--mat-image);
+  background-size: var(--mat-tile) calc(var(--mat-tile) * 4 / 3);
+  background-position: center;
+  background-repeat: repeat;
   color: var(--ink);
 }
 
@@ -146,16 +155,22 @@ p {
   gap: 0.45rem;
 }
 
-.home {
-  --mat-tile: min(100vw, 24rem);
-  min-height: 100dvh;
-  isolation: isolate;
-  position: relative;
-  background-color: #12243a;
-  background-image: url('/home-mat-tatami.png');
+.mat-surface,
+.home,
+.sheet--ad .sheet__panel,
+.saver:not(.saver--play),
+.controller {
+  background-color: var(--mat-fill);
+  background-image: var(--mat-image);
   background-size: var(--mat-tile) calc(var(--mat-tile) * 4 / 3);
   background-position: center;
   background-repeat: repeat;
+}
+
+.home {
+  min-height: 100dvh;
+  isolation: isolate;
+  position: relative;
 }
 
 .home::before {
@@ -988,6 +1003,7 @@ button.mode-card {
 
 .display {
   position: relative;
+  background: #07080b;
   min-height: 100vh;
   min-height: 100dvh;
   min-height: 100svh;
@@ -2986,6 +3002,30 @@ fieldset {
     linear-gradient(180deg, #121820 0%, #07080b 42%, #05060a 100%);
 }
 
+.tournament--bright {
+  background-color: var(--mat-fill);
+  background-image: var(--mat-image);
+  background-size: var(--mat-tile) calc(var(--mat-tile) * 4 / 3);
+  background-position: center;
+  background-repeat: repeat;
+}
+
+.tournament__theme {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.tournament__theme .chip {
+  min-height: 36px;
+  padding: 0.28rem 0.8rem;
+}
+
+.tournament > .play-exit {
+  z-index: 21;
+}
+
 .tournament__bar {
   display: flex;
   flex-wrap: wrap;
@@ -3408,6 +3448,132 @@ fieldset {
   opacity: 0.18;
 }
 
+/* Locked Bright Bracket: homepage mat + logo white / royal / yellow cards. */
+.tournament--bright .bracket__side--left .t-slot {
+  background: #fff;
+  color: var(--white-ink);
+  border-color: rgba(20, 22, 28, 0.16);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.28);
+}
+
+.tournament--bright .bracket__side--right .t-slot {
+  background: var(--logo-blue);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.32);
+}
+
+.tournament--bright .bracket__finals .t-slot,
+.tournament--bright .bracket__champ {
+  background: var(--logo-yellow);
+  color: #14161c;
+  border-color: rgba(20, 22, 28, 0.2);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.3);
+}
+
+.tournament--bright .bracket__champ {
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(255, 255, 255, 0.22), transparent 58%),
+    var(--logo-yellow);
+}
+
+.tournament--bright .bracket__side--left .t-slot input,
+.tournament--bright .bracket__finals .t-slot input,
+.tournament--bright .bracket__champ input,
+.tournament--bright .tournament__title input {
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--white-ink);
+  border-color: rgba(20, 22, 28, 0.16);
+}
+
+.tournament--bright .bracket__side--right .t-slot input {
+  background: rgba(0, 18, 56, 0.28);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.tournament--bright .bracket__side--left .t-slot input::placeholder,
+.tournament--bright .bracket__finals .t-slot input::placeholder,
+.tournament--bright .bracket__champ input::placeholder,
+.tournament--bright .tournament__title input::placeholder {
+  color: #5c6574;
+}
+
+.tournament--bright .bracket__side--right .t-slot input::placeholder {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.tournament--bright .bracket__champ span,
+.tournament--bright .bracket__round h2,
+.tournament--bright .bracket__finals > .t-match::before,
+.tournament--bright .tournament__eyebrow,
+.tournament--bright .tournament__title {
+  color: var(--logo-yellow);
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.55);
+}
+
+.tournament--bright .bracket__champ span {
+  color: #14161c;
+  text-shadow: none;
+}
+
+.tournament--bright .t-slot--won {
+  outline: 2px solid rgba(20, 22, 28, 0.55);
+  outline-offset: 1px;
+}
+
+.tournament--bright .bracket__side--right .t-slot--won {
+  outline-color: var(--logo-yellow);
+}
+
+.tournament--bright .t-slot--dq {
+  box-shadow: inset 0 0 0 2px rgba(239, 68, 68, 0.85);
+}
+
+.tournament--bright .t-slot--lost {
+  opacity: 0.7;
+}
+
+.tournament--bright .bracket__side--left .t-mark,
+.tournament--bright .bracket__finals .t-mark {
+  background: rgba(20, 22, 28, 0.08);
+  color: #14161c;
+  border-color: rgba(20, 22, 28, 0.18);
+}
+
+.tournament--bright .bracket__side--right .t-mark {
+  background: rgba(0, 0, 0, 0.22);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.tournament--bright .t-mark--win.is-on,
+.tournament--bright .t-score {
+  background: #14161c;
+  color: var(--logo-yellow);
+  border-color: transparent;
+}
+
+.tournament--bright .bracket__side--right .t-mark--win.is-on,
+.tournament--bright .bracket__side--right .t-score {
+  background: var(--logo-yellow);
+  color: #14161c;
+}
+
+.tournament--bright .t-undo {
+  background: rgba(8, 10, 16, 0.35);
+  color: var(--ink);
+}
+
+.tournament--bright .bracket__side--left .t-match__bouts::after,
+.tournament--bright .bracket__side--right .t-match__bouts::after {
+  background: rgba(252, 192, 0, 0.7);
+}
+
+.tournament--bright .t-match--live .t-match__bouts {
+  outline-color: var(--logo-yellow);
+}
+
 /* Class Schedule — gym TV board. Default is a weekly flyer list. */
 .schedule {
   min-height: 100dvh;
@@ -3416,9 +3582,11 @@ fieldset {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  background:
-    radial-gradient(90% 70% at 50% 0%, rgba(212, 160, 23, 0.12), transparent 52%),
-    linear-gradient(180deg, #121820 0%, #07080b 42%, #05060a 100%);
+  background-color: var(--mat-fill);
+  background-image: var(--mat-image);
+  background-size: var(--mat-tile) calc(var(--mat-tile) * 4 / 3);
+  background-position: center;
+  background-repeat: repeat;
 }
 
 .schedule > .play-exit {
@@ -4407,9 +4575,11 @@ fieldset {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  background:
-    radial-gradient(90% 70% at 50% 0%, rgba(212, 160, 23, 0.12), transparent 52%),
-    linear-gradient(180deg, #121820 0%, #07080b 42%, #05060a 100%);
+  background-color: var(--mat-fill);
+  background-image: var(--mat-image);
+  background-size: var(--mat-tile) calc(var(--mat-tile) * 4 / 3);
+  background-position: center;
+  background-repeat: repeat;
 }
 
 .roster__bar {
@@ -4469,6 +4639,13 @@ fieldset {
 
 .roster__csv-summary {
   color: var(--gold-2);
+}
+
+.roster__lead,
+.roster__empty,
+.notes__lead,
+.techniques__hint {
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.55);
 }
 
 .roster__lead,
@@ -4585,7 +4762,11 @@ fieldset {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  background: var(--bg);
+  background-color: var(--mat-fill);
+  background-image: var(--mat-image);
+  background-size: var(--mat-tile) calc(var(--mat-tile) * 4 / 3);
+  background-position: center;
+  background-repeat: repeat;
 }
 
 .techniques__bar {
@@ -4827,7 +5008,11 @@ fieldset {
   min-height: 100dvh;
   padding: calc(0.7rem + var(--safe-t)) calc(1rem + var(--safe-r)) calc(1.4rem + var(--safe-b))
     calc(1rem + var(--safe-l));
-  background: var(--bg);
+  background-color: var(--mat-fill);
+  background-image: var(--mat-image);
+  background-size: var(--mat-tile) calc(var(--mat-tile) * 4 / 3);
+  background-position: center;
+  background-repeat: repeat;
 }
 
 .notes__bar {
@@ -4874,7 +5059,7 @@ fieldset {
   resize: vertical;
   border: 1px solid var(--line);
   border-radius: 16px;
-  background: rgba(0, 0, 0, 0.28);
+  background: rgba(8, 10, 16, 0.78);
   color: var(--ink);
   font: inherit;
   font-size: 1.05rem;
