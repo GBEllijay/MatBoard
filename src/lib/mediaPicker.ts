@@ -17,7 +17,8 @@ export const VIDEO_PICKER_ACCEPT = 'video/*';
 /** Rear camera when the platform honors `capture` (iOS Safari, Android Chrome). */
 export const VIDEO_CAPTURE = 'environment';
 
-export const VIDEO_LIBRARY_LABEL = 'From library';
+export const VIDEO_LIBRARY_LABEL = 'Pick from gallery';
+export const VIDEO_RECORD_LABEL = 'Record';
 
 export type MediaPickerMode = 'record' | 'library';
 

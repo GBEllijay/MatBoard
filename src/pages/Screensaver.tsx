@@ -7,6 +7,7 @@ import { FullscreenChip } from '../components/FullscreenChip';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { TvTip } from '../components/TvTip';
 import { Sheet } from '../components/Sheet';
+import { VideoSourceSheet } from '../components/VideoSourceSheet';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useToolboxParent } from '../hooks/useToolboxParent';
@@ -17,7 +18,6 @@ import { formatMss, secondsToMs } from '../lib/format';
 import {
   isVideoAccept,
   openDeviceMediaPicker,
-  VIDEO_LIBRARY_LABEL,
   type MediaPickerMode,
 } from '../lib/mediaPicker';
 import {
@@ -63,6 +63,7 @@ export function ScreensaverPage() {
   const [shuffle, setShuffle] = useState(DEFAULT_SHUFFLE);
   const [muteVideo, setMuteVideo] = useState(DEFAULT_MUTE_VIDEO);
   const [pickerNote, setPickerNote] = useState('');
+  const [addOpen, setAddOpen] = useState(false);
   const [unlockSound, setUnlockSound] = useState(false);
   const [folderPlay, setFolderPlayState] = useState(DEFAULT_FOLDER_PLAY);
   const [expanded, setExpanded] = useState<Record<FolderId, boolean>>(() =>
@@ -187,12 +188,16 @@ export function ScreensaverPage() {
     if (!next) setUnlockSound(true);
   };
 
-  const openAdd = (folderId: FolderId, mode: MediaPickerMode = 'library') => {
+  const openAdd = (folderId: FolderId, mode?: MediaPickerMode) => {
     addFolderRef.current = folderId;
     const accept = folderById(folderId).accept;
+    if (isVideoAccept(accept) && mode == null) {
+      setAddOpen(true);
+      return;
+    }
     openDeviceMediaPicker(fileRef.current, {
       accept,
-      mode: isVideoAccept(accept) ? mode : 'library',
+      mode: isVideoAccept(accept) ? mode ?? 'library' : 'library',
     });
   };
 
@@ -224,7 +229,7 @@ export function ScreensaverPage() {
   const emptyCopy =
     photos.length === 0
       ? focusFolder === 'videos'
-        ? 'Add videos opens the camera on a phone, or pick From library. They stay on this phone or computer — nothing is uploaded. Clips play in full on the TV, muted by default so gym music can keep playing. Press F for fullscreen on a computer plugged into the TV.'
+        ? 'Add videos opens Record or Pick from gallery. They stay on this phone or computer — nothing is uploaded. Clips play in full on the TV, muted by default so gym music can keep playing. Press F for fullscreen on a computer plugged into the TV.'
         : 'Pick photos from this device. They loop fullscreen. On a computer plugged into the TV, press F for fullscreen. Set how long each slide stays on screen.'
       : 'Nothing is set to play. Turn on Gallery or Videos in options, then tap a left preview so at least one photo or video is On.';
 
@@ -267,13 +272,7 @@ export function ScreensaverPage() {
           <h1>{hubTitle}</h1>
           <p>{emptyCopy}</p>
           {focusConfig.ready && focusEmpty ? (
-            <button
-              type="button"
-              className="btn"
-              onClick={() =>
-                openAdd(focusFolder, isVideoAccept(focusConfig.accept) ? 'record' : 'library')
-              }
-            >
+            <button type="button" className="btn" onClick={() => openAdd(focusFolder)}>
               {isVideoAccept(focusConfig.accept)
                 ? focusConfig.addLabel
                 : `Choose ${focusConfig.itemNounPlural}`}
@@ -407,17 +406,7 @@ export function ScreensaverPage() {
                 setExpanded((prev) => (prev[folder.id] === next ? prev : { ...prev, [folder.id]: next }));
               }}
               onPlayToggle={commitFolderPlay}
-              onAdd={
-                folder.ready
-                  ? () => openAdd(folder.id, isVideoAccept(folder.accept) ? 'record' : 'library')
-                  : undefined
-              }
-              onAddLibrary={
-                folder.ready && isVideoAccept(folder.accept)
-                  ? () => openAdd(folder.id, 'library')
-                  : undefined
-              }
-              libraryLabel={VIDEO_LIBRARY_LABEL}
+              onAdd={folder.ready ? () => openAdd(folder.id) : undefined}
               onClear={
                 folder.ready
                   ? async () => {
@@ -451,6 +440,14 @@ export function ScreensaverPage() {
         </div>
       </Sheet>
 
+      <VideoSourceSheet
+        open={addOpen}
+        title={folderById(addFolderRef.current).addLabel}
+        stacked={options}
+        onClose={() => setAddOpen(false)}
+        onRecord={() => openAdd(addFolderRef.current, 'record')}
+        onLibrary={() => openAdd(addFolderRef.current, 'library')}
+      />
       <DeviceMediaInput
         inputRef={fileRef}
         accept={folderById(addFolderRef.current).accept}

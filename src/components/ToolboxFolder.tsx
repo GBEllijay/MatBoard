@@ -1,4 +1,3 @@
-import { VIDEO_LIBRARY_LABEL } from '../lib/mediaPicker';
 import type { FolderConfig, FolderId, StoredPhoto } from '../lib/photoStore';
 import { FolderItemList } from './FolderItemList';
 
@@ -11,8 +10,6 @@ type Props = {
   onToggle: (open: boolean) => void;
   onPlayToggle: (folderId: FolderId, enabled: boolean) => void;
   onAdd?: () => void;
-  onAddLibrary?: () => void;
-  libraryLabel?: string;
   onClear?: () => Promise<void>;
   onRename: (id: string, label: string) => Promise<void>;
   onRemove: (id: string) => Promise<void>;
@@ -30,8 +27,6 @@ export function ToolboxFolder({
   onToggle,
   onPlayToggle,
   onAdd,
-  onAddLibrary,
-  libraryLabel = VIDEO_LIBRARY_LABEL,
   onClear,
   onRename,
   onRemove,
@@ -73,11 +68,6 @@ export function ToolboxFolder({
             {onAdd ? (
               <button type="button" className="btn" onClick={onAdd}>
                 {folder.addLabel}
-              </button>
-            ) : null}
-            {onAddLibrary ? (
-              <button type="button" className="btn btn--ghost" onClick={onAddLibrary}>
-                {libraryLabel}
               </button>
             ) : null}
             {items.length && onClear ? (

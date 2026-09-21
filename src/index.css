@@ -2166,6 +2166,11 @@ label {
   opacity: 0.72;
 }
 
+.outcome-pick--library {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--ink);
+}
+
 .outcome-pick--submission {
   background: var(--gold);
   color: #1a1404;
@@ -5421,10 +5426,6 @@ fieldset {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.5rem;
-}
-
-.techniques__manage-clear {
-  grid-column: 1 / -1;
 }
 
 .techniques__count {

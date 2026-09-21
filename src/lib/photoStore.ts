@@ -57,7 +57,7 @@ export const FOLDERS = [
     mimePrefix: 'video/',
     labelPrefix: 'Video',
     emptyCopy:
-      'No videos yet. Add videos opens the camera on a phone, or pick From library — clips stay on this device, nothing is uploaded. Tap the left preview to include or skip a clip. MP4 and WebM play most reliably. Long videos are fine; very large files can take a moment to add.',
+      'No videos yet. Add videos opens Record or Pick from gallery — clips stay on this device, nothing is uploaded. Tap the left preview to include or skip a clip. MP4 and WebM play most reliably. Long videos are fine; very large files can take a moment to add.',
     orderHint:
       'Tap the left preview to play or skip that clip. Checked / bright = On. Top video plays first when In order is on. Hold the grip, then drag — or tap Up / Down. Videos play all the way through, then the next item. Clips are muted by default so gym music can keep playing.',
   },

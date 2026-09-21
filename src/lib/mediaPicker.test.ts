@@ -6,13 +6,15 @@ import {
   VIDEO_CAPTURE,
   VIDEO_LIBRARY_LABEL,
   VIDEO_PICKER_ACCEPT,
+  VIDEO_RECORD_LABEL,
 } from './mediaPicker.ts';
 
 describe('video device picker accept', () => {
   it('uses video/* so phones can open a video camera, not a documents-only list', () => {
     assert.equal(VIDEO_PICKER_ACCEPT, 'video/*');
     assert.equal(VIDEO_CAPTURE, 'environment');
-    assert.equal(VIDEO_LIBRARY_LABEL, 'From library');
+    assert.equal(VIDEO_LIBRARY_LABEL, 'Pick from gallery');
+    assert.equal(VIDEO_RECORD_LABEL, 'Record');
     assert.doesNotMatch(VIDEO_PICKER_ACCEPT, /\.mp4|\.mov|\.webm/);
   });
 
