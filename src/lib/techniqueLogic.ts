@@ -1,4 +1,4 @@
-/** Pure Daily Techniques helpers — no IndexedDB. Shared by the store and tests. */
+/** Pure Daily Training Videos helpers — no IndexedDB. Shared by the store and tests. */
 
 export const MAX_TECHNIQUE_CLIPS = 10;
 

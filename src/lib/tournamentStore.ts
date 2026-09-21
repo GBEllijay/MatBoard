@@ -7,7 +7,7 @@ import {
   type DqReason,
   type Side,
   type WinMethod,
-} from './outcomes';
+} from './outcomes.ts';
 
 export type { BoutOutcome, DqReason, WinMethod };
 
@@ -408,4 +408,14 @@ export function resetTournament(): void {
 
 export function seedPlaceholder(index: number): string {
   return `Competitor ${index + 1}`;
+}
+
+export function bracketHasCompetitors(current: TournamentState): boolean {
+  return seedSlots().some((id) => slotName(current, id).trim());
+}
+
+export function bracketHasContent(current: TournamentState): boolean {
+  if (current.title.trim()) return true;
+  if (Object.values(current.entries).some((name) => name.trim())) return true;
+  return Object.keys(current.results).length > 0;
 }

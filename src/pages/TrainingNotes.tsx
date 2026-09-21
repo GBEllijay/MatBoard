@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { EmptyHint } from '../components/EmptyHint';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { useToolboxParent } from '../hooks/useToolboxParent';
+import { EMPTY_NOTES_BODY, EMPTY_NOTES_TITLE, NOTES_LEAD, TRAINING_NOTES_LABEL } from '../lib/coachCopy';
 import {
   TRAINING_NOTES_MAX,
   loadTrainingNotes,
@@ -28,13 +30,11 @@ export function TrainingNotesPage() {
       <header className="notes__bar">
         <div className="notes__brand">
           <p className="notes__eyebrow">{parent.eyebrow}</p>
-          <h1>Training notes</h1>
+          <h1>{TRAINING_NOTES_LABEL}</h1>
         </div>
       </header>
-      <p className="notes__lead">
-        Class plans and cues for this coach on this device. Local only — not student progress, and
-        nothing is uploaded.
-      </p>
+      <p className="notes__lead">{NOTES_LEAD}</p>
+      {!text.trim() ? <EmptyHint title={EMPTY_NOTES_TITLE} body={EMPTY_NOTES_BODY} /> : null}
       <label className="notes__field">
         Notes
         <textarea
@@ -43,7 +43,7 @@ export function TrainingNotesPage() {
           rows={16}
           maxLength={TRAINING_NOTES_MAX}
           placeholder="Warm-up, techniques, positional rounds…"
-          aria-label="Training notes"
+          aria-label={TRAINING_NOTES_LABEL}
         />
         <span className="notes__count">
           {text.trim().length}/{TRAINING_NOTES_MAX}

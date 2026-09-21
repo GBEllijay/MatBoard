@@ -5,6 +5,7 @@ import { HomeMark } from '../components/HomeMark';
 import { ProUnlockSheet } from '../components/ProUnlockSheet';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
+import { COMPETITOR_ROSTER_LABEL, TRAINING_NOTES_LABEL } from '../lib/coachCopy';
 import { lockCoach } from '../lib/coachUnlock';
 import { lockPro } from '../lib/proUnlock';
 
@@ -43,10 +44,10 @@ export function ComingSoonPage() {
             {coachUnlocked ? (
               <>
                 <Link className="btn" to="/roster">
-                  Competitor roster
+                  {COMPETITOR_ROSTER_LABEL}
                 </Link>
                 <Link className="btn" to="/notes">
-                  Training notes
+                  {TRAINING_NOTES_LABEL}
                 </Link>
                 <Link className="btn" to="/techniques">
                   Daily Training Videos
@@ -60,7 +61,7 @@ export function ComingSoonPage() {
                 </Link>
                 {!coachUnlocked ? (
                   <Link className="btn" to="/roster">
-                    Competitor roster
+                    {COMPETITOR_ROSTER_LABEL}
                   </Link>
                 ) : null}
               </>

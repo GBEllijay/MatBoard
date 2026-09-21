@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BeltRail } from '../components/BeltRail';
+import { EmptyHint } from '../components/EmptyHint';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { OutcomePickSheet } from '../components/OutcomeCalls';
@@ -9,12 +10,14 @@ import { Sheet } from '../components/Sheet';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useToolboxParent } from '../hooks/useToolboxParent';
 import { useMatchState, useTournamentState } from '../hooks/useStores';
+import { EMPTY_BRACKET_BODY, EMPTY_BRACKET_TITLE } from '../lib/coachCopy';
 import { linkedBracketMatchId, openBracketBout, scoreboardPath } from '../lib/bracketBout';
 import {
   LEFT_QF,
   LEFT_R16,
   RIGHT_QF,
   RIGHT_R16,
+  bracketHasContent,
   canUndoLast,
   resetTournament,
   roundLabel,
@@ -45,6 +48,9 @@ export function TournamentPage() {
   const champion = slotName(tournament, 'champion');
   const liveMatchId = linkedBracketMatchId(match.bracketMatchId);
   const undoReady = canUndoLast(tournament);
+  // Results or names count as content — a win on placeholders must hide the empty banner.
+  const emptyBracket = !bracketHasContent(tournament);
+  const canReset = bracketHasContent(tournament);
 
   const exitBoard = () => {
     void fs.exit().finally(() => {
@@ -76,34 +82,20 @@ export function TournamentPage() {
           </button>
           <button
             type="button"
-            className="btn btn--ghost"
+            className={`btn${undoReady ? '' : ' btn--ghost'}`}
             disabled={!undoReady}
             onClick={() => undoLastOutcome()}
           >
-            Undo last
+            Undo last result
           </button>
-          {confirmReset ? (
-            <div className="tournament__confirm">
-              <span>Clear this bracket?</span>
-              <button
-                type="button"
-                className="btn"
-                onClick={() => {
-                  resetTournament();
-                  setConfirmReset(false);
-                }}
-              >
-                Yes, clear
-              </button>
-              <button type="button" className="btn btn--ghost" onClick={() => setConfirmReset(false)}>
-                Keep
-              </button>
-            </div>
-          ) : (
-            <button type="button" className="btn btn--ghost" onClick={() => setConfirmReset(true)}>
-              Reset
-            </button>
-          )}
+          <button
+            type="button"
+            className="btn btn--ghost"
+            disabled={!canReset}
+            onClick={() => setConfirmReset(true)}
+          >
+            Reset
+          </button>
           <FullscreenChip
             supported={fs.supported}
             active={fs.active}
@@ -115,10 +107,22 @@ export function TournamentPage() {
       </header>
 
       <p className="tournament__hint">
-        Tap <strong>Score</strong> to open the match board with those two names. <strong>Win</strong> or{' '}
-        <strong>DQ</strong> on the Controller (or here) opens how the bout ended. <strong>Undo last</strong> backs out a
-        mistaken tap without wiping later bouts that already have their own result. Saved on this device.
+        Tap <strong>Score</strong> to open the match board. <strong>Win</strong> or <strong>DQ</strong>{' '}
+        flash the winner. <strong>Undo last result</strong> backs out a mistaken tap. Reset asks first
+        so a demo cannot wipe the bracket by accident.
       </p>
+
+      {emptyBracket ? (
+        <EmptyHint
+          title={EMPTY_BRACKET_TITLE}
+          body={EMPTY_BRACKET_BODY}
+          action={
+            <button type="button" className="btn" onClick={() => setNamesOpen(true)}>
+              Edit names
+            </button>
+          }
+        />
+      ) : null}
 
       <div className="tournament__board">
         <div className="bracket" role="group" aria-label="16-person single-elimination bracket">
@@ -133,6 +137,11 @@ export function TournamentPage() {
             <div className={`bracket__champ${champion ? ' is-filled' : ''}`}>
               <BeltRail kind="tournament" />
               <span>Champion</span>
+              {champion ? (
+                <p className="bracket__champ-flash" role="status">
+                  {champion}
+                </p>
+              ) : null}
               <RosterNameField
                 value={champion}
                 onChange={(value) => setSlotName('champion', value)}
@@ -153,9 +162,7 @@ export function TournamentPage() {
       </div>
 
       <Sheet open={namesOpen} title="Competitor names" onClose={() => setNamesOpen(false)}>
-        <p className="tournament__sheet-copy">
-          Sixteen people, one bracket. Names stay on this phone or computer — nothing is uploaded.
-        </p>
+        <p className="tournament__sheet-copy">Sixteen competitors, one bracket.</p>
         <ol className="tournament__seeds">
           {seeds.map((id, index) => (
             <li key={id}>
@@ -175,6 +182,32 @@ export function TournamentPage() {
         <button type="button" className="btn" onClick={() => setNamesOpen(false)}>
           Done
         </button>
+      </Sheet>
+      <Sheet
+        open={confirmReset}
+        title="Reset this bracket?"
+        onClose={() => setConfirmReset(false)}
+        footer={
+          <>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => {
+                resetTournament();
+                setConfirmReset(false);
+              }}
+            >
+              Yes, clear bracket
+            </button>
+            <button type="button" className="btn btn--ghost" onClick={() => setConfirmReset(false)}>
+              Keep bracket
+            </button>
+          </>
+        }
+      >
+        <p className="tournament__sheet-copy">
+          This clears names and results. Keep the bracket unless you mean to start over.
+        </p>
       </Sheet>
     </main>
   );
@@ -220,7 +253,7 @@ function MatchCard({
 
   return (
     <article
-      className={`t-match${live ? ' t-match--live' : ''}`}
+      className={`t-match${live ? ' t-match--live' : ''}${hasResult ? ' t-match--done' : ''}`}
       aria-label={roundLabel(matchId)}
     >
       <div className="t-match__bouts">

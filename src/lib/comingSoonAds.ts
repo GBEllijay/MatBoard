@@ -1,3 +1,9 @@
+import {
+  COACH_AD_LEAD,
+  COACH_HOME_TEASER,
+  COMPETITOR_ROSTER_LABEL,
+  TRAINING_NOTES_LABEL,
+} from './coachCopy.ts';
 import { GYM_CONSOLE_NAME } from './productNames.ts';
 
 export type SoonProduct = 'coach' | 'pro';
@@ -19,8 +25,8 @@ export type ComingSoonAdCopy = {
 export const COMING_SOON_LABEL = 'Coming Soon';
 
 export const PRODUCT_TEASERS = {
-  coach: 'Mock Tournament, Daily Training Videos, Competitor roster.',
-  coachUnlocked: 'Coach tools on this browser.',
+  coach: COACH_HOME_TEASER,
+  coachUnlocked: COACH_HOME_TEASER,
   pro: GYM_CONSOLE_NAME,
   proUnlocked: 'Console is on this browser.',
 } as const;
@@ -29,19 +35,23 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
   coach: {
     title: 'Advantage Coach',
     kicker: COMING_SOON_LABEL,
-    lead: 'Run a Mock Tournament, Record Daily Techniques for Screencasting with Competitor Management System.',
+    lead: COACH_AD_LEAD,
     features: [
-      {
-        title: 'Competitor Management System',
-        body: 'Keep a roster for bouts — names and belts you pick into Live Bout and mock brackets.',
-      },
       {
         title: 'Mock Tournament',
         body: 'Run a 16-person bracket on the gym TV. Score each bout and track winners on the same easy to use scoreboard.',
       },
       {
+        title: 'Competitor Management',
+        body: `Keep a ${COMPETITOR_ROSTER_LABEL} for bouts — names and belts you pick into Live Bout and mock brackets.`,
+      },
+      {
+        title: TRAINING_NOTES_LABEL,
+        body: 'Jot class plans and cues on this phone. Warm-up, drills, who goes first.',
+      },
+      {
         title: 'Daily Training Videos',
-        body: 'Record up to 10 on-device clips for screencasting. Loop one while the class drills, with a timer on the screen. Each coach keeps their own bank of clips.',
+        body: 'Up to 10 on-device clips. Loop one while the class drills, with a 2:30 / 5:00 / 7:00 timer on the screen.',
       },
     ],
     dismiss: 'Got it',

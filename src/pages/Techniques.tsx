@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FolderItemList } from '../components/FolderItemList';
 import { FullscreenChip } from '../components/FullscreenChip';
+import { EmptyHint } from '../components/EmptyHint';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { TvTip } from '../components/TvTip';
 import { useInterval } from '../hooks/useClock';
@@ -10,6 +11,7 @@ import { useToolboxParent } from '../hooks/useToolboxParent';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { formatMmSs, formatMss, secondsToMs } from '../lib/format';
+import { EMPTY_VIDEOS_BODY, EMPTY_VIDEOS_TITLE } from '../lib/coachCopy';
 import {
   DEFAULT_MUTE_VIDEO,
   getSaverPrefs,
@@ -217,9 +219,8 @@ export function TechniquesPage() {
       </header>
 
       <p className="techniques__hint">
-        Pick 1 to 10 clips on this phone or computer. They stay here — nothing is uploaded. Select
-        one, tap <strong>Start</strong>, and the clip loops while the drill timer counts down.
-        <strong> Stop</strong> pauses both. At 0:00 the loop pauses.
+        Up to 10 clips. <strong>Start</strong> loops the selected clip with the drill timer (2:30 /
+        5:00 / 7:00). Mute is on so gym music can keep playing. <strong>Stop</strong> pauses both.
       </p>
 
       <div className="techniques__layout">
@@ -236,18 +237,26 @@ export function TechniquesPage() {
               />
             ) : (
               <div className="techniques__empty">
-                <p>Add a clip, then tap Play on that row and Start.</p>
-                <button type="button" className="btn" onClick={() => fileRef.current?.click()}>
-                  Add clips
-                </button>
+                <EmptyHint
+                  title={EMPTY_VIDEOS_TITLE}
+                  body={EMPTY_VIDEOS_BODY}
+                  action={
+                    <button type="button" className="btn" onClick={() => fileRef.current?.click()}>
+                      Add clips
+                    </button>
+                  }
+                />
               </div>
             )}
-            <p
-              className={`techniques__clock${drillDone ? ' techniques__clock--done' : ''}`}
-              aria-live="polite"
-            >
-              {formatMmSs(remainingMs)}
-            </p>
+            {selected && selectedSrc ? (
+              <p
+                className={`techniques__clock${playing ? ' techniques__clock--play' : ''}${drillDone ? ' techniques__clock--done' : ''}`}
+                aria-live="polite"
+              >
+                {playing ? <span className="techniques__loop">Loop</span> : null}
+                {formatMmSs(remainingMs)}
+              </p>
+            ) : null}
           </div>
           {selected ? <p className="techniques__now">{selected.label}</p> : null}
         </section>
@@ -339,7 +348,7 @@ export function TechniquesPage() {
           <fieldset>
             <legend>Video sound</legend>
             <p className="saver-sound-hint">
-              Mute clips so gym-floor music keeps playing. Match and Training buzzers stay separate.
+              Mute clips so gym-floor music keeps playing. Mute is the default.
             </p>
             <div className="presets presets--split" role="radiogroup" aria-label="Video sound">
               <button

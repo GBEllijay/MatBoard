@@ -11,6 +11,7 @@ import {
   searchStudents,
   type RosterPrefill,
 } from '../lib/rosterStore';
+import { COMPETITOR_ROSTER_LABEL } from '../lib/coachCopy';
 import { RankChip } from './RankChip';
 import { Sheet } from './Sheet';
 
@@ -248,11 +249,11 @@ function RosterPicker({
         <p className="roster-pick__empty">
           {roster.students.length
             ? 'No match on this device. Use the name above, or add it to the roster.'
-            : 'No competitors yet. Type a name above, or add them on Competitor roster.'}
+            : `No competitors yet. Type a name above, or add them on ${COMPETITOR_ROSTER_LABEL}.`}
         </p>
       )}
       <Link className="text-link" to="/roster">
-        Open competitor roster
+        Open {COMPETITOR_ROSTER_LABEL}
       </Link>
     </>
   );

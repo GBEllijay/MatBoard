@@ -1,11 +1,19 @@
 import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { EmptyHint } from '../components/EmptyHint';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useToolboxParent } from '../hooks/useToolboxParent';
 import { RankChip } from '../components/RankChip';
 import { Sheet } from '../components/Sheet';
 import { useRosterState } from '../hooks/useStores';
+import {
+  EMPTY_ROSTER_BODY,
+  EMPTY_ROSTER_SEARCH,
+  EMPTY_ROSTER_TITLE,
+  ROSTER_LEAD_COACH,
+  ROSTER_LEAD_PRO,
+} from '../lib/coachCopy';
 import {
   ROSTER_CSV_SAVE_HINT,
   ROSTER_CSV_WORKBOOK_ERROR,
@@ -54,10 +62,11 @@ export function RosterPage() {
   const [editor, setEditor] = useState<{ id: string | null; draft: StudentDraft } | null>(null);
   const [pendingRemove, setPendingRemove] = useState<string | null>(null);
   const [csvNote, setCsvNote] = useState('');
-  const students = useMemo(
+  const competitors = useMemo(
     () => (query.trim() ? searchStudents(roster.students, query) : roster.students),
     [query, roster.students],
   );
+  const openAdd = () => setEditor({ id: null, draft: emptyDraft() });
 
   const onImportFiles = (files: FileList | null) => {
     const file = files?.[0];
@@ -93,22 +102,14 @@ export function RosterPage() {
       <header className="roster__bar">
         <div className="roster__brand">
           <p className="roster__eyebrow">{parent.eyebrow}</p>
-          <h1>Competitor Management System</h1>
+          <h1>Competitor Management</h1>
         </div>
-        <button
-          type="button"
-          className="btn"
-          onClick={() => setEditor({ id: null, draft: emptyDraft() })}
-        >
+        <button type="button" className="btn" onClick={openAdd}>
           Add competitor
         </button>
       </header>
 
-      <p className="roster__lead">
-        {proUnlocked
-          ? 'Competitor Management System — names and belts for this device. Pick them into Match and Mock Tournament. CSV backup stays in this browser. Not student progress.'
-          : 'Competitor Management System — names and belts for this device. Pick them into Match and Mock Tournament. Local only and not downloadable. Not student progress.'}
-      </p>
+      <p className="roster__lead">{proUnlocked ? ROSTER_LEAD_PRO : ROSTER_LEAD_COACH}</p>
 
       {proUnlocked ? (
       <div className="roster__csv">
@@ -132,7 +133,7 @@ export function RosterPage() {
           </button>
         </div>
         <p className="roster__csv-hint">
-          Competitor roster stays on this device. CSV is for backup or a move — cloud sync comes
+          Competitor Roster stays on this device. CSV is for backup or a move — cloud sync comes
           later. Import adds competitors; it does not replace the list. {ROSTER_CSV_SAVE_HINT} Every
           row needs a name and a belt — <code>blackbelt</code>, <code>black belt</code>, and{' '}
           <code>BB</code> count as Black.
@@ -156,6 +157,7 @@ export function RosterPage() {
       </div>
       ) : null}
 
+      {roster.students.length ? (
       <label className="roster__search">
         Find
         <input
@@ -166,30 +168,37 @@ export function RosterPage() {
           autoComplete="off"
         />
       </label>
+      ) : null}
 
-      {students.length ? (
+      {competitors.length ? (
         <ul className="roster__list">
-          {students.map((student) => (
+          {competitors.map((competitor) => (
             <StudentCard
-              key={student.id}
-              student={student}
-              pending={pendingRemove === student.id}
-              onEdit={() => setEditor({ id: student.id, draft: draftFromStudent(student) })}
-              onAskRemove={() => setPendingRemove(student.id)}
+              key={competitor.id}
+              student={competitor}
+              pending={pendingRemove === competitor.id}
+              onEdit={() => setEditor({ id: competitor.id, draft: draftFromStudent(competitor) })}
+              onAskRemove={() => setPendingRemove(competitor.id)}
               onCancelRemove={() => setPendingRemove(null)}
               onConfirmRemove={() => {
-                removeStudent(student.id);
+                removeStudent(competitor.id);
                 setPendingRemove(null);
               }}
             />
           ))}
         </ul>
       ) : (
-        <p className="roster__empty">
-          {roster.students.length
-            ? 'No match on this roster.'
-            : 'No competitors yet. Add a name and belt, then pick them into a match or bracket.'}
-        </p>
+        <EmptyHint
+          title={roster.students.length ? 'No match' : EMPTY_ROSTER_TITLE}
+          body={roster.students.length ? EMPTY_ROSTER_SEARCH : EMPTY_ROSTER_BODY}
+          action={
+            roster.students.length ? undefined : (
+              <button type="button" className="btn" onClick={openAdd}>
+                Add competitor
+              </button>
+            )
+          }
+        />
       )}
 
       <StudentEditor
