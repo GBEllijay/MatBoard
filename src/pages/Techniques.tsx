@@ -6,6 +6,7 @@ import { FullscreenChip } from '../components/FullscreenChip';
 import { EmptyHint } from '../components/EmptyHint';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { TvTip } from '../components/TvTip';
+import { VideoSourceSheet } from '../components/VideoSourceSheet';
 import { useInterval } from '../hooks/useClock';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useToolboxParent } from '../hooks/useToolboxParent';
@@ -13,7 +14,7 @@ import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { EMPTY_VIDEOS_BODY, EMPTY_VIDEOS_TITLE } from '../lib/coachCopy';
 import { formatMmSs, formatMss, secondsToMs } from '../lib/format';
-import { openDeviceMediaPicker } from '../lib/mediaPicker';
+import { openDeviceMediaPicker, type MediaPickerMode } from '../lib/mediaPicker';
 import {
   DEFAULT_MUTE_VIDEO,
   getSaverPrefs,
@@ -55,6 +56,7 @@ export function TechniquesPage() {
   const [muteVideo, setMuteVideo] = useState(DEFAULT_MUTE_VIDEO);
   const [unlockSound, setUnlockSound] = useState(false);
   const [pickerNote, setPickerNote] = useState('');
+  const [addOpen, setAddOpen] = useState(false);
   const [drillSec, setDrillSec] = useState(DEFAULT_DRILL_SEC);
   const [remainingMs, setRemainingMs] = useState(secondsToMs(DEFAULT_DRILL_SEC));
   const [customOpen, setCustomOpen] = useState(false);
@@ -169,9 +171,14 @@ export function TechniquesPage() {
     }
   };
 
-  const openAdd = () => {
+  const openChooser = () => {
     if (slotsLeft === 0) return;
-    openDeviceMediaPicker(fileRef.current, { accept: TECHNIQUE_FOLDER.accept });
+    setAddOpen(true);
+  };
+
+  const pickVideo = (mode: MediaPickerMode) => {
+    if (slotsLeft === 0) return;
+    openDeviceMediaPicker(fileRef.current, { accept: TECHNIQUE_FOLDER.accept, mode });
   };
 
   const persistOrder = async (orderedIds: string[]) => {
@@ -226,9 +233,9 @@ export function TechniquesPage() {
       </header>
 
       <p className="techniques__hint">
-        Film or pick up to 10 clips on this device. <strong>Start</strong> loops the selected clip
-        with the drill timer (2:30 / 5:00 / 7:00). Mute is on so gym music can keep playing.{' '}
-        <strong>Stop</strong> pauses both.
+        Film or pick up to 10 clips on this device. <strong>Add clips</strong> opens Record or Pick
+        from gallery. <strong>Start</strong> loops the selected clip with the drill timer (2:30 /
+        5:00 / 7:00). Mute is on so gym music can keep playing. <strong>Stop</strong> pauses both.
       </p>
 
       <div className="techniques__layout">
@@ -249,7 +256,7 @@ export function TechniquesPage() {
                   title={EMPTY_VIDEOS_TITLE}
                   body={EMPTY_VIDEOS_BODY}
                   action={
-                    <button type="button" className="btn" onClick={openAdd}>
+                    <button type="button" className="btn" onClick={openChooser}>
                       Add clips
                     </button>
                   }
@@ -275,7 +282,7 @@ export function TechniquesPage() {
               type="button"
               className="btn"
               disabled={slotsLeft === 0}
-              onClick={openAdd}
+              onClick={openChooser}
             >
               Add clips
             </button>
@@ -407,6 +414,13 @@ export function TechniquesPage() {
       </div>
 
       <TvTip onFullscreen={() => void fs.enter()} />
+      <VideoSourceSheet
+        open={addOpen}
+        title="Add clips"
+        onClose={() => setAddOpen(false)}
+        onRecord={() => pickVideo('record')}
+        onLibrary={() => pickVideo('library')}
+      />
       <DeviceMediaInput
         inputRef={fileRef}
         accept={TECHNIQUE_FOLDER.accept}

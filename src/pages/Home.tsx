@@ -14,7 +14,7 @@ import {
   PRODUCT_TEASERS,
   type SoonProduct,
 } from '../lib/comingSoonAds';
-import { GYM_CONSOLE_NAME } from '../lib/productNames';
+import { GYM_CONSOLE_NAME, TOURNAMENT_SOFTWARE_NAME } from '../lib/productNames';
 import { lockPro } from '../lib/proUnlock';
 
 export function HomePage() {
@@ -112,7 +112,7 @@ export function HomePage() {
           <p className="home__hint">Install Advantage as an app from your browser menu.</p>
           <p className="home__hint">
             {proUnlocked
-              ? `Gym TV: open White for Display or Rounds, or Pro for ${GYM_CONSOLE_NAME}, Mock Tournament, or Class Schedule. Press F for fullscreen. Roster lives on the phone.`
+              ? `Gym TV: open White for Display or Rounds, or Pro for ${GYM_CONSOLE_NAME}, ${TOURNAMENT_SOFTWARE_NAME}, or Class Schedule. Press F for fullscreen. Roster lives on the phone.`
               : coachUnlocked
                 ? 'Gym TV: open White for Display or Rounds, or Coach for Mock Tournament or Daily Training Videos. Press F for fullscreen.'
                 : 'Gym TV: open White, then fullscreen Display or Rounds. Press F for fullscreen.'}

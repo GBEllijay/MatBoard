@@ -57,6 +57,8 @@ test('Pro ad sells the Console paragraph and no price', () => {
   assert.match(text, /Recent Promotions/);
   assert.match(text, /Upcoming Events and Competitions/);
   assert.match(text, /In-House Tournament Management Suite/i);
+  assert.match(text, /Tournament Software/);
+  assert.doesNotMatch(text, /Mock Tournament/);
   assert.match(text, /Auto-Fill Bracketing/i);
   assert.match(text, /Result Tracking/i);
   assert.match(text, /Instructor Licenses/i);

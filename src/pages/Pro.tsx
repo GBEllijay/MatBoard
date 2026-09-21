@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { HomeMark } from '../components/HomeMark';
 import { ProToolboxCard } from '../components/ProToolboxCard';
-import { GYM_CONSOLE_NAME } from '../lib/productNames';
+import { GYM_CONSOLE_NAME, TOURNAMENT_SOFTWARE_NAME } from '../lib/productNames';
 import { lockPro } from '../lib/proUnlock';
 
 export function ProPage() {
@@ -20,8 +20,8 @@ export function ProPage() {
           <p className="home__hint">Install Advantage as an app from your browser menu.</p>
           <p className="home__hint">
             Gym TV: open this site on a computer plugged into the TV, then fullscreen Display,
-            Rounds, {GYM_CONSOLE_NAME}, Mock Tournament, or Class Schedule. Press F for fullscreen.
-            Roster lives on the phone.
+            Rounds, {GYM_CONSOLE_NAME}, {TOURNAMENT_SOFTWARE_NAME}, or Class Schedule. Press F for
+            fullscreen. Roster lives on the phone.
           </p>
           <p className="home__hint">
             Control from your phone. Cast the scoreboard to your TV, or open Display on a second

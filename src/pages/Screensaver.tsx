@@ -7,6 +7,7 @@ import { FullscreenChip } from '../components/FullscreenChip';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { TvTip } from '../components/TvTip';
 import { Sheet } from '../components/Sheet';
+import { VideoSourceSheet } from '../components/VideoSourceSheet';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useToolboxParent } from '../hooks/useToolboxParent';
@@ -14,7 +15,11 @@ import { GYM_CONSOLE_NAME } from '../lib/productNames';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { formatMss, secondsToMs } from '../lib/format';
-import { openDeviceMediaPicker } from '../lib/mediaPicker';
+import {
+  isVideoAccept,
+  openDeviceMediaPicker,
+  type MediaPickerMode,
+} from '../lib/mediaPicker';
 import {
   addFolderFiles,
   clearFolder,
@@ -58,6 +63,7 @@ export function ScreensaverPage() {
   const [shuffle, setShuffle] = useState(DEFAULT_SHUFFLE);
   const [muteVideo, setMuteVideo] = useState(DEFAULT_MUTE_VIDEO);
   const [pickerNote, setPickerNote] = useState('');
+  const [addOpen, setAddOpen] = useState(false);
   const [unlockSound, setUnlockSound] = useState(false);
   const [folderPlay, setFolderPlayState] = useState(DEFAULT_FOLDER_PLAY);
   const [expanded, setExpanded] = useState<Record<FolderId, boolean>>(() =>
@@ -182,9 +188,17 @@ export function ScreensaverPage() {
     if (!next) setUnlockSound(true);
   };
 
-  const openAdd = (folderId: FolderId) => {
+  const openAdd = (folderId: FolderId, mode?: MediaPickerMode) => {
     addFolderRef.current = folderId;
-    openDeviceMediaPicker(fileRef.current, { accept: folderById(folderId).accept });
+    const accept = folderById(folderId).accept;
+    if (isVideoAccept(accept) && mode == null) {
+      setAddOpen(true);
+      return;
+    }
+    openDeviceMediaPicker(fileRef.current, {
+      accept,
+      mode: isVideoAccept(accept) ? mode ?? 'library' : 'library',
+    });
   };
 
   const onFiles = async (files: FileList | null) => {
@@ -215,7 +229,7 @@ export function ScreensaverPage() {
   const emptyCopy =
     photos.length === 0
       ? focusFolder === 'videos'
-        ? 'Pick videos from this device. They stay on this phone or computer — nothing is uploaded. Clips play in full on the TV, muted by default so gym music can keep playing. Press F for fullscreen on a computer plugged into the TV.'
+        ? 'Add videos opens Record or Pick from gallery. They stay on this phone or computer — nothing is uploaded. Clips play in full on the TV, muted by default so gym music can keep playing. Press F for fullscreen on a computer plugged into the TV.'
         : 'Pick photos from this device. They loop fullscreen. On a computer plugged into the TV, press F for fullscreen. Set how long each slide stays on screen.'
       : 'Nothing is set to play. Turn on Gallery or Videos in options, then tap a left preview so at least one photo or video is On.';
 
@@ -259,7 +273,9 @@ export function ScreensaverPage() {
           <p>{emptyCopy}</p>
           {focusConfig.ready && focusEmpty ? (
             <button type="button" className="btn" onClick={() => openAdd(focusFolder)}>
-              Choose {focusConfig.itemNounPlural}
+              {isVideoAccept(focusConfig.accept)
+                ? focusConfig.addLabel
+                : `Choose ${focusConfig.itemNounPlural}`}
             </button>
           ) : null}
           <button type="button" className="btn btn--ghost" onClick={() => setOptions(true)}>
@@ -424,6 +440,14 @@ export function ScreensaverPage() {
         </div>
       </Sheet>
 
+      <VideoSourceSheet
+        open={addOpen}
+        title={folderById(addFolderRef.current).addLabel}
+        stacked={options}
+        onClose={() => setAddOpen(false)}
+        onRecord={() => openAdd(addFolderRef.current, 'record')}
+        onLibrary={() => openAdd(addFolderRef.current, 'library')}
+      />
       <DeviceMediaInput
         inputRef={fileRef}
         accept={folderById(addFolderRef.current).accept}

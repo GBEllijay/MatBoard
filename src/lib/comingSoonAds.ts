@@ -4,7 +4,7 @@ import {
   COMPETITOR_ROSTER_LABEL,
   TRAINING_NOTES_LABEL,
 } from './coachCopy.ts';
-import { GYM_CONSOLE_NAME } from './productNames.ts';
+import { GYM_CONSOLE_NAME, TOURNAMENT_SOFTWARE_NAME } from './productNames.ts';
 
 export type SoonProduct = 'coach' | 'pro';
 
@@ -66,7 +66,7 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
         body: 'Pro-Shop, Class Schedules, Recent Promotions, and Upcoming Events and Competitions on the wall board.',
       },
       {
-        title: 'In-House Tournament Suite',
+        title: TOURNAMENT_SOFTWARE_NAME,
         body: 'Auto-fill bracketing and result tracking for gym-floor tournaments.',
       },
       {
