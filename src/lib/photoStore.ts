@@ -1,3 +1,4 @@
+import { VIDEO_PICKER_ACCEPT } from './mediaPicker';
 import {
   buildPlayQueue,
   comparePlaylistItems,
@@ -16,8 +17,14 @@ export const MAX_INTERVAL_SEC = 300;
 export const DEFAULT_INTERVAL_SEC = 10;
 export const INTERVAL_PRESETS_SEC = [5, 10, 30, 60] as const;
 
-/** Phone/PC pickers: `video/*` plus common gym-TV extensions. H.264 MP4 is the safest; WebM on Chromium; MOV often on Safari. */
-export const VIDEO_ACCEPT = 'video/*,.mp4,.m4v,.webm,.mov,.ogg,.ogv';
+/**
+ * Phone/PC picker token. `video/*` lets iOS/Android offer Record / Take Video
+ * plus the library. Extra extensions (`.mp4,.mov,…`) force a documents picker
+ * on some phones (library-only). Gym-TV types are still accepted after pick —
+ * see VIDEO_EXTENSIONS / isAcceptedVideoFile. H.264 MP4 is the safest; WebM on
+ * Chromium; MOV often on Safari.
+ */
+export const VIDEO_ACCEPT = VIDEO_PICKER_ACCEPT;
 const VIDEO_EXTENSIONS = ['.mp4', '.m4v', '.webm', '.mov', '.ogg', '.ogv'] as const;
 
 export const FOLDERS = [
