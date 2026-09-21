@@ -4,6 +4,8 @@ import {
   COACH_AD_LEAD,
   COACH_HOME_TEASER,
   COACH_TOOLS_TEASER,
+  COMPETITOR_ROSTER_LABEL,
+  TRAINING_NOTES_LABEL,
   EMPTY_BRACKET_BODY,
   EMPTY_BRACKET_TITLE,
   EMPTY_NOTES_BODY,
@@ -20,6 +22,8 @@ import {
 
 function allCopy(): string {
   return [
+    COMPETITOR_ROSTER_LABEL,
+    TRAINING_NOTES_LABEL,
     COACH_TOOLS_TEASER,
     COACH_HOME_TEASER,
     COACH_AD_LEAD,
@@ -39,18 +43,20 @@ function allCopy(): string {
 }
 
 test('Coach teasers list the four hub tools', () => {
+  assert.equal(COMPETITOR_ROSTER_LABEL, 'Competitor Roster');
+  assert.equal(TRAINING_NOTES_LABEL, 'Training Notes');
   assert.match(COACH_TOOLS_TEASER, /Mock Tournament/);
-  assert.match(COACH_TOOLS_TEASER, /Competitor roster/);
-  assert.match(COACH_TOOLS_TEASER, /Training notes/);
+  assert.match(COACH_TOOLS_TEASER, /Competitor Roster/);
+  assert.match(COACH_TOOLS_TEASER, /Training Notes/);
   assert.match(COACH_TOOLS_TEASER, /Daily Training Videos/);
   assert.match(COACH_HOME_TEASER, /Mock Tournament/);
-  assert.match(COACH_HOME_TEASER, /roster/);
-  assert.match(COACH_HOME_TEASER, /notes/);
+  assert.match(COACH_HOME_TEASER, /Roster/);
+  assert.match(COACH_HOME_TEASER, /Notes/);
   assert.match(COACH_HOME_TEASER, /Daily Videos/);
   assert.ok(COACH_HOME_TEASER.length < 55);
   assert.match(COACH_AD_LEAD, /Mock Tournament/);
   assert.match(COACH_AD_LEAD, /Competitor Management/);
-  assert.match(COACH_AD_LEAD, /Training notes/);
+  assert.match(COACH_AD_LEAD, /Training Notes/);
   assert.match(COACH_AD_LEAD, /Daily Training Videos/);
   assert.doesNotMatch(COACH_AD_LEAD, /Daily Techniques/);
 });

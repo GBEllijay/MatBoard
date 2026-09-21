@@ -1,4 +1,9 @@
-import { COACH_AD_LEAD, COACH_HOME_TEASER } from './coachCopy.ts';
+import {
+  COACH_AD_LEAD,
+  COACH_HOME_TEASER,
+  COMPETITOR_ROSTER_LABEL,
+  TRAINING_NOTES_LABEL,
+} from './coachCopy.ts';
 import { GYM_CONSOLE_NAME } from './productNames.ts';
 
 export type SoonProduct = 'coach' | 'pro';
@@ -38,10 +43,10 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
       },
       {
         title: 'Competitor Management',
-        body: 'Keep a competitor roster for bouts — names and belts you pick into Live Bout and mock brackets.',
+        body: `Keep a ${COMPETITOR_ROSTER_LABEL} for bouts — names and belts you pick into Live Bout and mock brackets.`,
       },
       {
-        title: 'Training notes',
+        title: TRAINING_NOTES_LABEL,
         body: 'Jot class plans and cues on this phone. Warm-up, drills, who goes first.',
       },
       {

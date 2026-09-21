@@ -17,7 +17,7 @@ test('Coach ad sells the four hub tools and no price', () => {
   assert.equal(COMING_SOON_ADS.coach.lead, COACH_AD_LEAD);
   assert.match(text, /Mock Tournament/i);
   assert.match(text, /Competitor Management/);
-  assert.match(text, /Training notes/);
+  assert.match(text, /Training Notes/);
   assert.match(
     text,
     /Score each bout and track winners on the same easy to use scoreboard/,
@@ -42,8 +42,8 @@ test('Coach ad sells the four hub tools and no price', () => {
   assert.equal(PRODUCT_TEASERS.coachUnlocked, COACH_HOME_TEASER);
   assert.match(PRODUCT_TEASERS.coach, /Mock Tournament/);
   assert.match(PRODUCT_TEASERS.coach, /Daily Videos/);
-  assert.match(PRODUCT_TEASERS.coach, /roster/);
-  assert.match(PRODUCT_TEASERS.coach, /notes/);
+  assert.match(PRODUCT_TEASERS.coach, /Roster/);
+  assert.match(PRODUCT_TEASERS.coach, /Notes/);
   assert.ok(PRODUCT_TEASERS.coach.length < 55);
 });
 
