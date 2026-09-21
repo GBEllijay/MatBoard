@@ -1030,6 +1030,7 @@ button.mode-card {
 .display {
   position: relative;
   background: #07080b;
+  background-image: none;
   min-height: 100vh;
   min-height: 100dvh;
   min-height: 100svh;
@@ -1078,6 +1079,15 @@ button.mode-card {
 .display__chrome .chip {
   pointer-events: auto;
   opacity: 0.72;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
+.display__chrome .chip--gold {
+  background: var(--gold);
+  color: #1a1404;
+  border-color: transparent;
 }
 
 .play-fs-slot {
@@ -2019,6 +2029,11 @@ label {
 .training:not(.training--themed) .preset--on {
   background: var(--gold);
   color: #1a1404;
+}
+
+.training:not(.training--themed) .sheet__panel {
+  background: #161b24;
+  background-image: none;
 }
 
 .training--themed {
