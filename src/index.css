@@ -3107,6 +3107,7 @@ fieldset {
 .tournament {
   position: relative;
   min-height: 100dvh;
+  min-height: var(--visible-vh, 100dvh);
   display: flex;
   flex-direction: column;
   background:
@@ -3223,7 +3224,11 @@ fieldset {
 
 .tournament__board {
   flex: 1;
+  min-height: 0;
   overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
   padding: 0.25rem calc(0.7rem + var(--safe-r)) calc(1rem + var(--safe-b)) calc(0.7rem + var(--safe-l));
 }
 
@@ -3557,12 +3562,26 @@ fieldset {
 }
 
 @media (orientation: landscape) {
+  .tournament {
+    height: var(--visible-vh, 100dvh);
+    max-height: var(--visible-vh, 100dvh);
+    min-height: 0;
+    overflow: hidden;
+  }
+
   .tournament__hint {
     display: none;
   }
 
+  .tournament .empty-hint,
+  .tournament--bright .empty-hint {
+    margin-bottom: 0.35rem;
+    padding: 0.35rem 0.7rem 0.4rem;
+  }
+
   .bracket {
-    height: max(32rem, calc(100dvh - 6.8rem));
+    min-height: 0;
+    height: 100%;
   }
 
   .t-mark {
@@ -3976,6 +3995,58 @@ fieldset {
   background: transparent;
   color: #14161c;
   border: 0;
+}
+
+/* iPhone / iPad landscape: fill the rotated viewport and let columns shrink so the tree goes horizontal. */
+@media (orientation: landscape) {
+  .tournament__bar {
+    padding-top: calc(0.28rem + var(--safe-t));
+    padding-left: calc(4.2rem + var(--safe-l));
+    padding-right: calc(0.7rem + var(--safe-r));
+  }
+
+  .bracket {
+    min-width: 0;
+    width: 100%;
+    min-height: 0;
+    height: 100%;
+  }
+
+  .tournament--bright .bracket {
+    min-width: 0;
+    grid-template-columns: minmax(0, 1.28fr) minmax(10rem, 16rem) minmax(0, 1.28fr);
+  }
+
+  .tournament--bright .bracket__side--left {
+    grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr) minmax(0, 0.82fr);
+  }
+
+  .tournament--bright .bracket__side--right {
+    grid-template-columns: minmax(0, 0.82fr) minmax(0, 1fr) minmax(0, 1.8fr);
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .tournament--bright .t-slot {
+    min-height: 1.85rem;
+    padding: 0.06rem 0.16rem 0.06rem 0.45rem;
+  }
+
+  .tournament--bright .t-slot input {
+    font-size: 0.72rem;
+  }
+
+  .tournament--bright .t-mark {
+    min-height: 22px;
+  }
+
+  .tournament--bright .t-match--final {
+    padding: 0.45rem 0.55rem 0.4rem;
+  }
+
+  .tournament--bright .t-match__finals-label strong {
+    font-size: clamp(1.05rem, 3.2vh, 1.7rem);
+  }
 }
 
 /* Class Schedule — gym TV board. Default is a weekly flyer list. */

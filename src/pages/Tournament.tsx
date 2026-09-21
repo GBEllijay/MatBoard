@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BeltRail } from '../components/BeltRail';
 import { EmptyHint } from '../components/EmptyHint';
@@ -7,8 +7,10 @@ import { PlayExitMark } from '../components/PlayExitMark';
 import { OutcomePickSheet } from '../components/OutcomeCalls';
 import { RosterNameField } from '../components/RosterNameField';
 import { Sheet } from '../components/Sheet';
+import { useAllowZoomOut, usePinchZoom } from '../hooks/usePinchZoom';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useToolboxParent } from '../hooks/useToolboxParent';
+import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useBracketTheme, useMatchState, useTournamentState } from '../hooks/useStores';
 import { EMPTY_BRACKET_BODY, EMPTY_BRACKET_TITLE } from '../lib/coachCopy';
 import { linkedBracketMatchId, openBracketBout, scoreboardPath } from '../lib/bracketBout';
@@ -42,6 +44,8 @@ export function TournamentPage() {
   const match = useMatchState();
   const theme = useBracketTheme();
   const fs = usePlayFullscreen();
+  const boardRef = useRef<HTMLDivElement>(null);
+  const bracketRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const parent = useToolboxParent();
   const [namesOpen, setNamesOpen] = useState(false);
@@ -53,6 +57,10 @@ export function TournamentPage() {
   // Results or names count as content — a win on placeholders must hide the empty banner.
   const emptyBracket = !bracketHasContent(tournament);
   const canReset = bracketHasContent(tournament);
+
+  useVisibleViewportHeight();
+  useAllowZoomOut();
+  usePinchZoom(boardRef, bracketRef);
 
   const exitBoard = () => {
     void fs.exit().finally(() => {
@@ -153,8 +161,13 @@ export function TournamentPage() {
         />
       ) : null}
 
-      <div className="tournament__board">
-        <div className="bracket" role="group" aria-label="16-person single-elimination bracket">
+      <div className="tournament__board" ref={boardRef}>
+        <div
+          className="bracket"
+          ref={bracketRef}
+          role="group"
+          aria-label="16-person single-elimination bracket"
+        >
           <div className="bracket__side bracket__side--left">
             <RoundColumn ids={LEFT_R16} label="Round of 16" liveMatchId={liveMatchId} />
             <RoundColumn ids={LEFT_QF} label="Quarterfinals" liveMatchId={liveMatchId} />
