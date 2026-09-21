@@ -3658,11 +3658,21 @@ fieldset {
 }
 
 .tournament--bright .bracket {
-  gap: 0.2rem;
+  min-width: 92rem;
+  grid-template-columns: minmax(0, 1.28fr) minmax(16rem, 18rem) minmax(0, 1.28fr);
+  gap: 0.45rem;
 }
 
 .tournament--bright .bracket__side {
-  gap: 1.15rem;
+  gap: 1.05rem;
+}
+
+.tournament--bright .bracket__side--left {
+  grid-template-columns: minmax(16.5rem, 1.8fr) minmax(11rem, 1fr) minmax(10rem, 0.82fr);
+}
+
+.tournament--bright .bracket__side--right {
+  grid-template-columns: minmax(10rem, 0.82fr) minmax(11rem, 1fr) minmax(16.5rem, 1.8fr);
 }
 
 .tournament--bright .bracket__matches {
@@ -3685,11 +3695,12 @@ fieldset {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 0.2rem 0.35rem;
-  padding: 0.16rem 0.28rem 0.16rem 0.72rem;
+  gap: 0.16rem 0.28rem;
+  padding: 0.12rem 0.2rem 0.12rem 0.62rem;
   border-radius: 999px;
   border: 0;
-  min-height: 2.5rem;
+  min-height: 2.4rem;
+  overflow: hidden;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
 }
 
@@ -3700,12 +3711,15 @@ fieldset {
 
 .tournament--bright .t-slot input {
   min-height: 0;
-  padding: 0.18rem 0.1rem;
+  padding: 0.16rem 0.08rem;
   border: 0;
   background: transparent;
   border-radius: 0;
-  font-size: 0.9rem;
+  font-size: 0.84rem;
   font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tournament--bright .t-slot__marks {
@@ -3713,10 +3727,10 @@ fieldset {
 }
 
 .tournament--bright .t-mark {
-  min-height: 26px;
-  min-width: 2.55rem;
-  padding: 0.12rem 0.48rem;
-  font-size: 0.62rem;
+  min-height: 24px;
+  min-width: 2.05rem;
+  padding: 0.08rem 0.32rem;
+  font-size: 0.58rem;
 }
 
 .tournament--bright .bracket__side--left .t-slot {
@@ -3895,6 +3909,10 @@ fieldset {
 .tournament--bright .t-match--final .t-match__play {
   width: 100%;
   justify-items: center;
+}
+
+.tournament--bright .bracket__champ .belt-rail {
+  display: none;
 }
 
 .tournament--bright .bracket__champ {
