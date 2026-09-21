@@ -7,7 +7,7 @@ type Props = {
   to?: string;
 };
 
-/** Subtle Advantage corner mark that goes Home. Shared by play and manage screens. */
+/** Subtle Advantage corner mark. Goes Home (`/`) or the parent product page. */
 export function PlayExitMark({ onExit, to = '/' }: Props) {
   return (
     <Link

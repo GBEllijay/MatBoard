@@ -1,4 +1,4 @@
-/** Coach-only class notes. Local device storage — not student progress. */
+/** Coach-only class notes. Local device storage. */
 
 export const TRAINING_NOTES_STORAGE_KEY = 'matboard.trainingNotes.v1';
 export const TRAINING_NOTES_MAX = 8_000;

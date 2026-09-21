@@ -111,6 +111,12 @@ export function canonicalBelt(value: string): string {
   return BELT_ALIAS_CANONICAL[beltLookupKey(trimmed)] ?? trimmed;
 }
 
+/** CSS key for RankChip — known belts color the chip; aliases (gray, BB) resolve first. */
+export function beltChipKey(value: string): string {
+  const canonical = canonicalBelt(value);
+  return isKnownBelt(canonical) ? canonical.toLowerCase() : 'custom';
+}
+
 export function normalizeDate(value: string): string {
   const trimmed = value.trim();
   return /^\d{4}-\d{2}-\d{2}$/.test(trimmed) ? trimmed : '';

@@ -8,8 +8,8 @@ export function CoachToolsCard() {
       <strong>Advantage Coach</strong>
       <span className="mode-card__sub">Coach</span>
       <span>
-        Run a Mock Tournament, record Daily Training Videos for screencasting, keep a local
-        Competitor Management System, and jot Training notes.
+        Run a Mock Tournament, loop Daily Training Videos, keep Competitor Management, and jot
+        Training notes.
       </span>
       <div className="mode-card__actions mode-card__actions--tools" aria-label="Coach tools">
         <Link className="btn btn--white" to="/tournament">
