@@ -4027,9 +4027,28 @@ fieldset {
 }
 
 @media (orientation: landscape) and (max-height: 520px) {
+  .tournament .empty-hint,
+  .tournament--bright .empty-hint,
+  .tournament--bright .tournament__center {
+    display: none;
+  }
+
+  .tournament__board {
+    padding-top: 0;
+    padding-bottom: 0.3rem;
+  }
+
+  .tournament--bright .tournament__bar {
+    min-height: 2.7rem;
+  }
+
   .tournament--bright .t-slot {
     min-height: 1.85rem;
     padding: 0.06rem 0.16rem 0.06rem 0.45rem;
+  }
+
+  .tournament--bright .t-slot__who {
+    min-width: 3.2rem;
   }
 
   .tournament--bright .t-slot input {
