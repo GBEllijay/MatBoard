@@ -7,7 +7,8 @@ import { Sheet } from '../components/Sheet';
 import { useInterval } from '../hooks/useClock';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useWakeLock } from '../hooks/useWakeLock';
-import { useAudioPrefs, useTrainingState } from '../hooks/useStores';
+import { useAudioPrefs, useTrainingSkin, useTrainingState } from '../hooks/useStores';
+import { setTrainingSkin } from '../lib/trainingSkin';
 import { END_CUE_OPTIONS, patchAudioPrefs, playSelectedEndCue, playStartCue, playWarningCue, unlockAudio, type EndCue } from '../lib/audio';
 import { formatMmSs, formatMss } from '../lib/format';
 import {
@@ -33,6 +34,7 @@ import { dispatchMatch } from '../lib/matchStore';
 export function TrainingPage() {
   const training = useTrainingState();
   const audio = useAudioPrefs();
+  const skin = useTrainingSkin();
   const [options, setOptions] = useState(false);
   const [customWorkOpen, setCustomWorkOpen] = useState(false);
   const [customBreakOpen, setCustomBreakOpen] = useState(false);
@@ -90,7 +92,9 @@ export function TrainingPage() {
 
   return (
     <main
-      className={`training training--${training.phase}${fs.className ? ` ${fs.className}` : ''}`}
+      className={`training training--${training.phase}${skin === 'themed' ? ' training--themed' : ''}${
+        fs.className ? ` ${fs.className}` : ''
+      }`}
       onClick={(event) => {
         const target = event.target as HTMLElement;
         if (target.closest('.sheet, .training__clock, .chrome, .btn, input, fieldset, label, .play-fs, .play-exit')) return;
@@ -294,6 +298,30 @@ export function TrainingPage() {
             />
             Vibrate
           </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Skin</legend>
+          <div className="presets presets--split" role="radiogroup" aria-label="Timer skin">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={skin === 'classic'}
+              className={`preset${skin === 'classic' ? ' preset--on' : ''}`}
+              onClick={() => setTrainingSkin('classic')}
+            >
+              Classic
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={skin === 'themed'}
+              className={`preset${skin === 'themed' ? ' preset--on' : ''}`}
+              onClick={() => setTrainingSkin('themed')}
+            >
+              Advantage
+            </button>
+          </div>
         </fieldset>
 
         <button

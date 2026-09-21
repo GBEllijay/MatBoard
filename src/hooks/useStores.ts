@@ -7,6 +7,11 @@ import {
 } from '../lib/bracketTheme';
 import { getMatch, subscribeMatch, type MatchState } from '../lib/matchStore';
 import {
+  getTrainingSkin,
+  subscribeTrainingSkin,
+  type TrainingSkin,
+} from '../lib/trainingSkin';
+import {
   getSchedule,
   getScheduleAssets,
   subscribeSchedule,
@@ -36,6 +41,10 @@ export function useTournamentState(): TournamentState {
 
 export function useBracketTheme(): BracketTheme {
   return useSyncExternalStore(subscribeBracketTheme, getBracketTheme, getBracketTheme);
+}
+
+export function useTrainingSkin(): TrainingSkin {
+  return useSyncExternalStore(subscribeTrainingSkin, getTrainingSkin, getTrainingSkin);
 }
 
 export function useScheduleState(): ScheduleState {

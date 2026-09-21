@@ -90,8 +90,8 @@ p {
   padding: 0.7rem 1rem;
   border-radius: 999px;
   border: 0;
-  background: var(--gold);
-  color: #1a1404;
+  background: var(--logo-yellow);
+  color: #14161c;
   font-weight: 700;
 }
 
@@ -102,9 +102,29 @@ p {
   border: 1px solid var(--line);
 }
 
+.controller .btn--ghost,
+.roster .btn--ghost,
+.notes .btn--ghost,
+.techniques .btn--ghost,
+.schedule .btn--ghost,
+.tournament .btn--ghost,
+.saver .btn--ghost,
+.home--soon .btn--ghost,
+.home--coach .btn--ghost,
+.home--pro .btn--ghost,
+.sheet--ad .btn--ghost {
+  background: rgba(0, 78, 186, 0.28);
+  border-color: rgba(252, 192, 0, 0.28);
+}
+
 .btn--white {
   background: var(--white);
   color: var(--white-ink);
+}
+
+.btn--blue {
+  background: var(--logo-blue);
+  color: #fff;
 }
 
 .chip--gold {
@@ -567,6 +587,12 @@ button.mode-card {
 .home--ladder .mode-card__actions .btn {
   min-height: 40px;
   padding: 0.4rem 0.75rem;
+}
+
+/* Locked: do not restyle homepage White / Coach / Pro card CTAs. */
+.home--ladder .mode-card__actions .btn--white {
+  background: var(--white);
+  color: var(--white-ink);
 }
 
 .home--ladder .home__hints {
@@ -1357,6 +1383,13 @@ button.mode-card {
   position: relative;
 }
 
+/* Fullscreen / landscape iPhone: scoot names inward so Dynamic Island does not cover Competitor 1. */
+.play--fs .bout__who,
+.play--landscape .bout__who,
+.play--tv .bout__who {
+  padding-left: env(safe-area-inset-left, 0px);
+}
+
 .bout__who h1 {
   display: flex;
   flex-wrap: wrap;
@@ -1825,8 +1858,8 @@ button.mode-card {
 }
 
 .preset--on {
-  background: var(--gold);
-  color: #1a1404;
+  background: var(--logo-yellow);
+  color: #14161c;
   border-color: transparent;
 }
 
@@ -1962,6 +1995,34 @@ label {
 
 .training--break {
   background: #120e08;
+}
+
+.training:not(.training--themed) .btn,
+.training:not(.training--themed) .preset--on {
+  background: var(--gold);
+  color: #1a1404;
+}
+
+.training--themed {
+  background-color: var(--mat-fill);
+  background-image: var(--mat-image);
+  background-size: var(--mat-tile) calc(var(--mat-tile) * 4 / 3);
+  background-position: center;
+  background-repeat: repeat;
+}
+
+.training--themed.training--break {
+  background-color: #122032;
+  background-image: var(--mat-image);
+}
+
+.training--themed .training__clock {
+  color: var(--logo-yellow);
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.7);
+}
+
+.training--themed .training__phase {
+  color: #fff;
 }
 
 .training__clock {
