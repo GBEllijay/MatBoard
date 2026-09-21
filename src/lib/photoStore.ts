@@ -18,12 +18,12 @@ export const DEFAULT_INTERVAL_SEC = 10;
 export const INTERVAL_PRESETS_SEC = [5, 10, 30, 60] as const;
 
 /**
- * Phone/PC picker token. `video/*` plus `capture="environment"` on Record
- * opens the camera in video mode on iOS/Android. From library uses the same
- * accept with capture off. Extra extensions (`.mp4,.mov,…`) force a documents
- * picker on some phones (library-only). Gym-TV types are still accepted after
- * pick — see VIDEO_EXTENSIONS / isAcceptedVideoFile. H.264 MP4 is the safest;
- * WebM on Chromium; MOV often on Safari. Clips stay on this device.
+ * Phone/PC picker token. Library uses `video/*` with no capture. Record uses
+ * a separate input with `capture="environment"` (and `video/*,image/*`) so
+ * Android Chrome opens Camera instead of Google Photos. Extra extensions
+ * (`.mp4,.mov,…`) force a documents picker on some phones. Gym-TV types are
+ * still accepted after pick — see VIDEO_EXTENSIONS / isAcceptedVideoFile.
+ * Clips stay on this device.
  */
 export const VIDEO_ACCEPT = VIDEO_PICKER_ACCEPT;
 const VIDEO_EXTENSIONS = ['.mp4', '.m4v', '.webm', '.mov', '.ogg', '.ogv'] as const;

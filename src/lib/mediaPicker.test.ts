@@ -6,21 +6,29 @@ import {
   VIDEO_CAPTURE,
   VIDEO_LIBRARY_LABEL,
   VIDEO_PICKER_ACCEPT,
+  VIDEO_RECORD_ACCEPT,
   VIDEO_RECORD_LABEL,
 } from './mediaPicker.ts';
 
 describe('video device picker accept', () => {
-  it('uses video/* so phones can open a video camera, not a documents-only list', () => {
+  it('uses video/* for gallery picks so the OS photo/files picker stays available', () => {
     assert.equal(VIDEO_PICKER_ACCEPT, 'video/*');
-    assert.equal(VIDEO_CAPTURE, 'environment');
-    assert.equal(VIDEO_LIBRARY_LABEL, 'Pick from gallery');
-    assert.equal(VIDEO_RECORD_LABEL, 'Record');
     assert.doesNotMatch(VIDEO_PICKER_ACCEPT, /\.mp4|\.mov|\.webm/);
   });
 
-  it('treats video/* as a video accept token', () => {
+  it('Record accept prefers video and allows image so Camera can still open', () => {
+    assert.equal(VIDEO_RECORD_ACCEPT, 'video/*,image/*');
+    assert.match(VIDEO_RECORD_ACCEPT, /video\/\*/);
+    assert.match(VIDEO_RECORD_ACCEPT, /image\/\*/);
+    assert.equal(VIDEO_CAPTURE, 'environment');
+    assert.equal(VIDEO_LIBRARY_LABEL, 'Pick from gallery');
+    assert.equal(VIDEO_RECORD_LABEL, 'Record');
+  });
+
+  it('treats video accept tokens as video', () => {
     assert.equal(isVideoAccept('video/*'), true);
     assert.equal(isVideoAccept('video/mp4'), true);
+    assert.equal(isVideoAccept(VIDEO_RECORD_ACCEPT), true);
     assert.equal(isVideoAccept('image/*'), false);
   });
 });
@@ -46,7 +54,7 @@ describe('openDeviceMediaPicker', () => {
     return { input, calls, attrs };
   }
 
-  it('Record sets capture=environment then clicks so the phone camera opens in video mode', () => {
+  it('Record sets capture=environment then clicks (photo Add still uses this helper)', () => {
     const { input, calls, attrs } = fakeInput();
 
     openDeviceMediaPicker(input, { accept: VIDEO_PICKER_ACCEPT, mode: 'record' });

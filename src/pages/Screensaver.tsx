@@ -18,7 +18,9 @@ import { formatMss, secondsToMs } from '../lib/format';
 import {
   isVideoAccept,
   openDeviceMediaPicker,
-  type MediaPickerMode,
+  VIDEO_CAPTURE,
+  VIDEO_PICKER_ACCEPT,
+  VIDEO_RECORD_ACCEPT,
 } from '../lib/mediaPicker';
 import {
   addFolderFiles,
@@ -69,7 +71,9 @@ export function ScreensaverPage() {
   const [expanded, setExpanded] = useState<Record<FolderId, boolean>>(() =>
     folderExpandedState('gallery'),
   );
-  const fileRef = useRef<HTMLInputElement>(null);
+  const photoRef = useRef<HTMLInputElement>(null);
+  const videoRecordRef = useRef<HTMLInputElement>(null);
+  const videoLibraryRef = useRef<HTMLInputElement>(null);
   const addFolderRef = useRef<FolderId>('gallery');
   const intervalMs = secondsToMs(intervalSec);
   const fs = usePlayFullscreen();
@@ -85,8 +89,6 @@ export function ScreensaverPage() {
     setExpanded(folderExpandedState(requestedFolder));
     setOptions(true);
     addFolderRef.current = requestedFolder;
-    const input = fileRef.current;
-    if (input) input.accept = folderById(requestedFolder).accept;
   }, [requestedFolder]);
 
   const focusFolder = requestedFolder ?? 'gallery';
@@ -188,28 +190,25 @@ export function ScreensaverPage() {
     if (!next) setUnlockSound(true);
   };
 
-  const openAdd = (folderId: FolderId, mode?: MediaPickerMode) => {
+  const openAdd = (folderId: FolderId) => {
     addFolderRef.current = folderId;
-    const accept = folderById(folderId).accept;
-    if (isVideoAccept(accept) && mode == null) {
+    if (isVideoAccept(folderById(folderId).accept)) {
       setAddOpen(true);
       return;
     }
-    openDeviceMediaPicker(fileRef.current, {
-      accept,
-      mode: isVideoAccept(accept) ? mode ?? 'library' : 'library',
-    });
+    openDeviceMediaPicker(photoRef.current, { accept: folderById(folderId).accept });
   };
 
   const onFiles = async (files: FileList | null) => {
     if (!files?.length) return;
+    setAddOpen(false);
     const folder = folderById(addFolderRef.current);
     const added = await addFolderFiles([...files], addFolderRef.current);
     setPickerNote(
       added
         ? ''
         : folder.id === 'videos'
-          ? 'That file cannot play here. Try MP4 or WebM from this device.'
+          ? 'That file cannot play here. Switch the camera to video, or pick an MP4 / WebM.'
           : 'That file is not an image this folder can keep.',
     );
     await refresh();
@@ -443,14 +442,28 @@ export function ScreensaverPage() {
       <VideoSourceSheet
         open={addOpen}
         title={folderById(addFolderRef.current).addLabel}
+        recordInputId="saver-video-record"
+        libraryInputId="saver-video-library"
         stacked={options}
         onClose={() => setAddOpen(false)}
-        onRecord={() => openAdd(addFolderRef.current, 'record')}
-        onLibrary={() => openAdd(addFolderRef.current, 'library')}
       />
       <DeviceMediaInput
-        inputRef={fileRef}
-        accept={folderById(addFolderRef.current).accept}
+        inputRef={photoRef}
+        accept="image/*"
+        multiple
+        onFiles={onFiles}
+      />
+      <DeviceMediaInput
+        id="saver-video-record"
+        inputRef={videoRecordRef}
+        accept={VIDEO_RECORD_ACCEPT}
+        capture={VIDEO_CAPTURE}
+        onFiles={onFiles}
+      />
+      <DeviceMediaInput
+        id="saver-video-library"
+        inputRef={videoLibraryRef}
+        accept={VIDEO_PICKER_ACCEPT}
         multiple
         onFiles={onFiles}
       />

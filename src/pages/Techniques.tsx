@@ -14,7 +14,7 @@ import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { EMPTY_VIDEOS_BODY, EMPTY_VIDEOS_TITLE } from '../lib/coachCopy';
 import { formatMmSs, formatMss, secondsToMs } from '../lib/format';
-import { openDeviceMediaPicker, type MediaPickerMode } from '../lib/mediaPicker';
+import { VIDEO_CAPTURE, VIDEO_PICKER_ACCEPT, VIDEO_RECORD_ACCEPT } from '../lib/mediaPicker';
 import {
   DEFAULT_MUTE_VIDEO,
   getSaverPrefs,
@@ -60,7 +60,8 @@ export function TechniquesPage() {
   const [drillSec, setDrillSec] = useState(DEFAULT_DRILL_SEC);
   const [remainingMs, setRemainingMs] = useState(secondsToMs(DEFAULT_DRILL_SEC));
   const [customOpen, setCustomOpen] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const recordRef = useRef<HTMLInputElement>(null);
+  const libraryRef = useRef<HTMLInputElement>(null);
   const fs = usePlayFullscreen();
   const navigate = useNavigate();
   const parent = useToolboxParent();
@@ -148,6 +149,7 @@ export function TechniquesPage() {
 
   const onFiles = async (files: FileList | null) => {
     if (!files?.length) return;
+    setAddOpen(false);
     const before = clips.length;
     const result = await addTechniqueFiles([...files]);
     if (result.added) {
@@ -166,7 +168,7 @@ export function TechniquesPage() {
       setPickerNote(
         result.atCap
           ? `You can keep ${MAX_TECHNIQUE_CLIPS} clips on this device. Remove one to add another.`
-          : 'That file cannot play here. Try MP4 or WebM from this device.',
+          : 'That file cannot play here. Switch the camera to video, or pick an MP4 / WebM.',
       );
     }
   };
@@ -174,11 +176,6 @@ export function TechniquesPage() {
   const openChooser = () => {
     if (slotsLeft === 0) return;
     setAddOpen(true);
-  };
-
-  const pickVideo = (mode: MediaPickerMode) => {
-    if (slotsLeft === 0) return;
-    openDeviceMediaPicker(fileRef.current, { accept: TECHNIQUE_FOLDER.accept, mode });
   };
 
   const persistOrder = async (orderedIds: string[]) => {
@@ -417,13 +414,21 @@ export function TechniquesPage() {
       <VideoSourceSheet
         open={addOpen}
         title="Add clips"
+        recordInputId="techniques-video-record"
+        libraryInputId="techniques-video-library"
         onClose={() => setAddOpen(false)}
-        onRecord={() => pickVideo('record')}
-        onLibrary={() => pickVideo('library')}
       />
       <DeviceMediaInput
-        inputRef={fileRef}
-        accept={TECHNIQUE_FOLDER.accept}
+        id="techniques-video-record"
+        inputRef={recordRef}
+        accept={VIDEO_RECORD_ACCEPT}
+        capture={VIDEO_CAPTURE}
+        onFiles={onFiles}
+      />
+      <DeviceMediaInput
+        id="techniques-video-library"
+        inputRef={libraryRef}
+        accept={VIDEO_PICKER_ACCEPT}
         onFiles={onFiles}
       />
     </main>
