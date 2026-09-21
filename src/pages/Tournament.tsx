@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BeltRail } from '../components/BeltRail';
 import { EmptyHint } from '../components/EmptyHint';
@@ -7,11 +7,14 @@ import { PlayExitMark } from '../components/PlayExitMark';
 import { OutcomePickSheet } from '../components/OutcomeCalls';
 import { RosterNameField } from '../components/RosterNameField';
 import { Sheet } from '../components/Sheet';
+import { useAllowZoomOut, usePinchZoom } from '../hooks/usePinchZoom';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useToolboxParent } from '../hooks/useToolboxParent';
-import { useMatchState, useTournamentState } from '../hooks/useStores';
+import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
+import { useBracketTheme, useMatchState, useTournamentState } from '../hooks/useStores';
 import { EMPTY_BRACKET_BODY, EMPTY_BRACKET_TITLE } from '../lib/coachCopy';
 import { linkedBracketMatchId, openBracketBout, scoreboardPath } from '../lib/bracketBout';
+import { setBracketTheme } from '../lib/bracketTheme';
 import {
   LEFT_QF,
   LEFT_R16,
@@ -39,7 +42,10 @@ import { type OutcomeCall } from '../lib/outcomes';
 export function TournamentPage() {
   const tournament = useTournamentState();
   const match = useMatchState();
+  const theme = useBracketTheme();
   const fs = usePlayFullscreen();
+  const boardRef = useRef<HTMLDivElement>(null);
+  const bracketRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const parent = useToolboxParent();
   const [namesOpen, setNamesOpen] = useState(false);
@@ -52,6 +58,10 @@ export function TournamentPage() {
   const emptyBracket = !bracketHasContent(tournament);
   const canReset = bracketHasContent(tournament);
 
+  useVisibleViewportHeight();
+  useAllowZoomOut();
+  usePinchZoom(boardRef, bracketRef);
+
   const exitBoard = () => {
     void fs.exit().finally(() => {
       navigate(parent.path);
@@ -59,7 +69,11 @@ export function TournamentPage() {
   };
 
   return (
-    <main className={`tournament${fs.className ? ` ${fs.className}` : ''}`}>
+    <main
+      className={`tournament${theme === 'bright' ? ' tournament--bright' : ''}${
+        fs.className ? ` ${fs.className}` : ''
+      }`}
+    >
       <BeltRail kind="tournament" />
       <PlayExitMark to={parent.path} onExit={exitBoard} />
       <header className="tournament__bar">
@@ -67,16 +81,39 @@ export function TournamentPage() {
           <p className="tournament__eyebrow">{parent.eyebrow}</p>
           <h1>Mock Tournament</h1>
         </div>
-        <label className="tournament__title">
-          <span>Division</span>
-          <input
-            value={tournament.title}
-            onChange={(event) => setTournamentTitle(event.target.value)}
-            placeholder="Division or class (optional)"
-            aria-label="Division or class name"
-          />
-        </label>
+        <div className="tournament__center">
+          <p className="tournament__roundline">Round of 16</p>
+          <label className="tournament__title">
+            <span>Division</span>
+            <input
+              value={tournament.title}
+              onChange={(event) => setTournamentTitle(event.target.value)}
+              placeholder="Division or class (optional)"
+              aria-label="Division or class name"
+            />
+          </label>
+        </div>
         <div className="tournament__actions">
+          <div className="tournament__theme" role="radiogroup" aria-label="Bracket theme">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={theme === 'bright'}
+              className={`chip${theme === 'bright' ? ' chip--gold' : ''}`}
+              onClick={() => setBracketTheme('bright')}
+            >
+              Bright
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={theme === 'dark'}
+              className={`chip${theme === 'dark' ? ' chip--gold' : ''}`}
+              onClick={() => setBracketTheme('dark')}
+            >
+              Dark
+            </button>
+          </div>
           <button type="button" className="btn btn--ghost" onClick={() => setNamesOpen(true)}>
             Edit names
           </button>
@@ -124,8 +161,13 @@ export function TournamentPage() {
         />
       ) : null}
 
-      <div className="tournament__board">
-        <div className="bracket" role="group" aria-label="16-person single-elimination bracket">
+      <div className="tournament__board" ref={boardRef}>
+        <div
+          className="bracket"
+          ref={bracketRef}
+          role="group"
+          aria-label="16-person single-elimination bracket"
+        >
           <div className="bracket__side bracket__side--left">
             <RoundColumn ids={LEFT_R16} label="Round of 16" liveMatchId={liveMatchId} />
             <RoundColumn ids={LEFT_QF} label="Quarterfinals" liveMatchId={liveMatchId} />
@@ -253,9 +295,15 @@ function MatchCard({
 
   return (
     <article
-      className={`t-match${live ? ' t-match--live' : ''}${hasResult ? ' t-match--done' : ''}`}
+      className={`t-match${matchId === 'final-0' ? ' t-match--final' : ''}${live ? ' t-match--live' : ''}${hasResult ? ' t-match--done' : ''}`}
       aria-label={roundLabel(matchId)}
     >
+      {matchId === 'final-0' ? (
+        <p className="t-match__finals-label">
+          <span>Championship match</span>
+          <strong>Finals</strong>
+        </p>
+      ) : null}
       <div className="t-match__bouts">
         <SlotRow matchId={matchId} side="a" />
         <SlotRow matchId={matchId} side="b" />
@@ -302,16 +350,19 @@ function SlotRow({ matchId, side }: { matchId: BracketMatchId; side: MatchSide }
     <div
       className={`t-slot${mark === 'win' || mark === 'advanced' ? ' t-slot--won' : ''}${
         mark === 'dq' ? ' t-slot--dq' : ''
-      }${mark === 'lost' ? ' t-slot--lost' : ''}`}
+      }${mark === 'lost' ? ' t-slot--lost' : ''}${seedIndex >= 0 ? ' t-slot--seed' : ''}`}
     >
-      <RosterNameField
-        value={name}
-        onChange={(value) => setSlotName(id, value)}
-        onPrefill={(prefill) => setSlotName(id, prefill.name)}
-        placeholder={placeholder}
-        ariaLabel={`${roundLabel(matchId)}, ${side === 'a' ? 'top' : 'bottom'} competitor`}
-        compact
-      />
+      <div className="t-slot__who">
+        {seedIndex >= 0 ? <span className="t-slot__seed">{seedIndex + 1}.</span> : null}
+        <RosterNameField
+          value={name}
+          onChange={(value) => setSlotName(id, value)}
+          onPrefill={(prefill) => setSlotName(id, prefill.name)}
+          placeholder={placeholder}
+          ariaLabel={`${roundLabel(matchId)}, ${side === 'a' ? 'top' : 'bottom'} competitor`}
+          compact
+        />
+      </div>
       <div className="t-slot__marks" role="group" aria-label="Bout result">
         <button
           type="button"
