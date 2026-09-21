@@ -3172,6 +3172,10 @@ fieldset {
   font-weight: 700;
 }
 
+.tournament__roundline {
+  display: none;
+}
+
 .tournament__board {
   flex: 1;
   overflow: auto;
@@ -3396,6 +3400,28 @@ fieldset {
   overflow: visible;
 }
 
+.t-slot__who {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.t-slot__seed {
+  flex: 0 0 auto;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.t-slot__who .roster-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.t-match__finals-label {
+  display: none;
+}
+
 .t-slot input {
   padding: 0.45rem 0.55rem;
   border-radius: 10px;
@@ -3515,130 +3541,378 @@ fieldset {
   opacity: 0.18;
 }
 
-/* Locked Bright Bracket: homepage mat + logo white / royal / yellow cards. */
+.tournament__center {
+  display: contents;
+}
+
+/* Locked Bright Bracket mock: homepage mat, pill cards, one yellow Finals.
+   Paint only — Win/DQ, Score, Undo, names, Reset, theme, Champion stay. */
+.tournament--bright > .belt-rail {
+  display: none;
+}
+
+.tournament--bright > .play-exit {
+  opacity: 0.96;
+  width: 52px;
+  height: 52px;
+  top: calc(0.28rem + var(--safe-t));
+  left: calc(0.28rem + var(--safe-l));
+  background: none;
+}
+
+.tournament--bright > .play-exit img {
+  width: 46px;
+  height: 46px;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.45));
+}
+
+.tournament--bright .tournament__bar {
+  align-items: center;
+  justify-content: flex-end;
+  position: relative;
+  min-height: 3.6rem;
+  padding-top: calc(0.45rem + var(--safe-t));
+}
+
+.tournament--bright .tournament__brand h1,
+.tournament--bright .tournament__eyebrow {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.tournament--bright .tournament__center {
+  display: flex;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  align-items: center;
+  gap: 0.4rem;
+  max-width: min(28rem, calc(100% - 16rem));
+  color: rgba(245, 241, 232, 0.9);
+  font-size: 0.98rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.55);
+}
+
+.tournament--bright .tournament__roundline {
+  display: block;
+  position: static;
+  transform: none;
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.tournament--bright .tournament__roundline::after {
+  content: '|';
+  margin-left: 0.4rem;
+  opacity: 0.7;
+}
+
+.tournament--bright .tournament__title {
+  display: flex;
+  flex: 1 1 8rem;
+  min-width: 7rem;
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: none;
+}
+
+.tournament--bright .tournament__title span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.tournament--bright .tournament__title input {
+  min-height: 0;
+  padding: 0.15rem 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+}
+
+.tournament--bright .tournament__hint {
+  display: none;
+}
+
+.tournament--bright .tournament__actions .btn,
+.tournament--bright .tournament__theme .chip {
+  min-height: 34px;
+  padding: 0.22rem 0.7rem;
+  font-size: 0.78rem;
+}
+
+.tournament--bright .bracket {
+  gap: 0.2rem;
+}
+
+.tournament--bright .bracket__side {
+  gap: 1.15rem;
+}
+
+.tournament--bright .bracket__matches {
+  gap: 0.55rem;
+}
+
+.tournament--bright .bracket__round h2 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.tournament--bright .bracket__finals > .t-match::before {
+  content: none;
+}
+
+.tournament--bright .t-slot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.2rem 0.35rem;
+  padding: 0.16rem 0.28rem 0.16rem 0.72rem;
+  border-radius: 999px;
+  border: 0;
+  min-height: 2.5rem;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+}
+
+.tournament--bright .t-slot__seed {
+  color: inherit;
+  font-size: 0.9rem;
+}
+
+.tournament--bright .t-slot input {
+  min-height: 0;
+  padding: 0.18rem 0.1rem;
+  border: 0;
+  background: transparent;
+  border-radius: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.tournament--bright .t-slot__marks {
+  grid-template-columns: auto auto;
+}
+
+.tournament--bright .t-mark {
+  min-height: 26px;
+  min-width: 2.55rem;
+  padding: 0.12rem 0.48rem;
+  font-size: 0.62rem;
+}
+
 .tournament--bright .bracket__side--left .t-slot {
   background: #fff;
   color: var(--white-ink);
-  border-color: rgba(20, 22, 28, 0.16);
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.28);
 }
 
 .tournament--bright .bracket__side--right .t-slot {
   background: var(--logo-blue);
   color: #fff;
-  border-color: rgba(255, 255, 255, 0.28);
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.32);
-}
-
-.tournament--bright .bracket__finals .t-slot,
-.tournament--bright .bracket__champ {
-  background: var(--logo-yellow);
-  color: #14161c;
-  border-color: rgba(20, 22, 28, 0.2);
-  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.3);
-}
-
-.tournament--bright .bracket__champ {
-  background:
-    radial-gradient(120% 80% at 50% 0%, rgba(255, 255, 255, 0.22), transparent 58%),
-    var(--logo-yellow);
 }
 
 .tournament--bright .bracket__side--left .t-slot input,
-.tournament--bright .bracket__finals .t-slot input,
-.tournament--bright .bracket__champ input,
-.tournament--bright .tournament__title input {
-  background: rgba(255, 255, 255, 0.92);
+.tournament--bright .bracket__champ input {
   color: var(--white-ink);
-  border-color: rgba(20, 22, 28, 0.16);
 }
 
 .tournament--bright .bracket__side--right .t-slot input {
-  background: rgba(0, 18, 56, 0.28);
   color: #fff;
-  border-color: rgba(255, 255, 255, 0.28);
 }
 
 .tournament--bright .bracket__side--left .t-slot input::placeholder,
-.tournament--bright .bracket__finals .t-slot input::placeholder,
 .tournament--bright .bracket__champ input::placeholder,
 .tournament--bright .tournament__title input::placeholder {
-  color: #5c6574;
+  color: #6b7382;
 }
 
 .tournament--bright .bracket__side--right .t-slot input::placeholder {
   color: rgba(255, 255, 255, 0.72);
 }
 
-.tournament--bright .bracket__champ span,
-.tournament--bright .bracket__round h2,
-.tournament--bright .bracket__finals > .t-match::before,
-.tournament--bright .tournament__eyebrow,
-.tournament--bright .tournament__title {
-  color: var(--logo-yellow);
-  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.55);
-}
-
-.tournament--bright .bracket__champ span {
-  color: #14161c;
-  text-shadow: none;
-}
-
-.tournament--bright .t-slot--won {
-  outline: 2px solid rgba(20, 22, 28, 0.55);
-  outline-offset: 1px;
-}
-
-.tournament--bright .bracket__side--right .t-slot--won {
-  outline-color: var(--logo-yellow);
-}
-
-.tournament--bright .t-slot--dq {
-  box-shadow: inset 0 0 0 2px rgba(239, 68, 68, 0.85);
-}
-
-.tournament--bright .t-slot--lost {
-  opacity: 0.7;
-}
-
-.tournament--bright .bracket__side--left .t-mark,
-.tournament--bright .bracket__finals .t-mark {
-  background: rgba(20, 22, 28, 0.08);
-  color: #14161c;
-  border-color: rgba(20, 22, 28, 0.18);
-}
-
-.tournament--bright .bracket__side--right .t-mark {
-  background: rgba(0, 0, 0, 0.22);
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.28);
-}
-
-.tournament--bright .t-mark--win.is-on,
-.tournament--bright .t-score {
-  background: #14161c;
-  color: var(--logo-yellow);
+.tournament--bright .bracket__side--left .t-mark {
+  background: #eef1f6;
+  color: #1d2430;
   border-color: transparent;
 }
 
-.tournament--bright .bracket__side--right .t-mark--win.is-on,
-.tournament--bright .bracket__side--right .t-score {
-  background: var(--logo-yellow);
-  color: #14161c;
+.tournament--bright .bracket__side--right .t-mark {
+  background: rgba(0, 18, 56, 0.28);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.22);
 }
 
+.tournament--bright .t-mark--win.is-on {
+  background: #fff;
+  color: var(--logo-blue);
+}
+
+.tournament--bright .bracket__side--left .t-mark--win.is-on {
+  background: var(--logo-blue);
+  color: #fff;
+}
+
+.tournament--bright .t-mark--dq.is-on {
+  background: var(--neg);
+  color: #fff;
+}
+
+.tournament--bright .t-slot--lost {
+  opacity: 0.62;
+}
+
+.tournament--bright .t-match__play {
+  justify-items: start;
+}
+
+.tournament--bright .t-score,
 .tournament--bright .t-undo {
-  background: rgba(8, 10, 16, 0.35);
-  color: var(--ink);
+  min-height: 26px;
+  font-size: 0.62rem;
+  padding: 0.12rem 0.55rem;
+  background: transparent;
+  color: rgba(245, 241, 232, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.tournament--bright .bracket__side--left .t-match,
+.tournament--bright .bracket__side--right .t-match {
+  position: relative;
+}
+
+.tournament--bright .bracket__side--left .t-match {
+  padding-right: 1.25rem;
+}
+
+.tournament--bright .bracket__side--right .t-match {
+  padding-left: 1.25rem;
 }
 
 .tournament--bright .bracket__side--left .t-match__bouts::after,
 .tournament--bright .bracket__side--right .t-match__bouts::after {
-  background: rgba(252, 192, 0, 0.7);
+  width: 1.25rem;
+  height: 2px;
+  background: #8ec3ef;
+}
+
+.tournament--bright .bracket__side--left .t-match__bouts::after {
+  right: -1.25rem;
+}
+
+.tournament--bright .bracket__side--right .t-match__bouts::after {
+  left: -1.25rem;
 }
 
 .tournament--bright .t-match--live .t-match__bouts {
-  outline-color: var(--logo-yellow);
+  outline-color: #8ec3ef;
+}
+
+.tournament--bright .t-match--final {
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
+  padding: 1.05rem 1.1rem 0.9rem;
+  border-radius: 22px;
+  background: var(--logo-yellow);
+  color: #14161c;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.32);
+}
+
+.tournament--bright .t-match__finals-label {
+  display: grid;
+  justify-items: center;
+  gap: 0.12rem;
+  margin: 0;
+}
+
+.tournament--bright .t-match__finals-label span {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.tournament--bright .t-match__finals-label strong {
+  font-size: clamp(1.7rem, 3.6vw, 2.45rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  line-height: 0.95;
+}
+
+.tournament--bright .t-match--final .t-match__bouts {
+  width: 100%;
+}
+
+.tournament--bright .t-match--final .t-slot {
+  background: rgba(255, 255, 255, 0.9);
+  color: #14161c;
+  box-shadow: none;
+}
+
+.tournament--bright .t-match--final .t-slot input {
+  color: #14161c;
+  text-align: center;
+}
+
+.tournament--bright .t-match--final .t-mark {
+  background: rgba(20, 22, 28, 0.08);
+  color: #14161c;
+}
+
+.tournament--bright .t-match--final .t-mark--win.is-on,
+.tournament--bright .t-match--final .t-score {
+  background: var(--logo-blue);
+  color: #fff;
+  border-color: transparent;
+}
+
+.tournament--bright .t-match--final .t-score {
+  min-height: 40px;
+  min-width: 7.5rem;
+  padding: 0.35rem 1.1rem;
+  font-size: 0.92rem;
+}
+
+.tournament--bright .t-match--final .t-match__play {
+  width: 100%;
+  justify-items: center;
+}
+
+.tournament--bright .bracket__champ {
+  background: rgba(255, 255, 255, 0.92);
+  color: #14161c;
+  border: 0;
+  border-radius: 18px;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
+}
+
+.tournament--bright .bracket__champ span {
+  color: #14161c;
+}
+
+.tournament--bright .bracket__champ input {
+  background: transparent;
+  color: #14161c;
+  border: 0;
 }
 
 /* Class Schedule — gym TV board. Default is a weekly flyer list. */

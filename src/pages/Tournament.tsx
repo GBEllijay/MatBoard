@@ -73,15 +73,18 @@ export function TournamentPage() {
           <p className="tournament__eyebrow">{parent.eyebrow}</p>
           <h1>Mock Tournament</h1>
         </div>
-        <label className="tournament__title">
-          <span>Division</span>
-          <input
-            value={tournament.title}
-            onChange={(event) => setTournamentTitle(event.target.value)}
-            placeholder="Division or class (optional)"
-            aria-label="Division or class name"
-          />
-        </label>
+        <div className="tournament__center">
+          <p className="tournament__roundline">Round of 16</p>
+          <label className="tournament__title">
+            <span>Division</span>
+            <input
+              value={tournament.title}
+              onChange={(event) => setTournamentTitle(event.target.value)}
+              placeholder="Division or class (optional)"
+              aria-label="Division or class name"
+            />
+          </label>
+        </div>
         <div className="tournament__actions">
           <div className="tournament__theme" role="radiogroup" aria-label="Bracket theme">
             <button
@@ -279,9 +282,15 @@ function MatchCard({
 
   return (
     <article
-      className={`t-match${live ? ' t-match--live' : ''}${hasResult ? ' t-match--done' : ''}`}
+      className={`t-match${matchId === 'final-0' ? ' t-match--final' : ''}${live ? ' t-match--live' : ''}${hasResult ? ' t-match--done' : ''}`}
       aria-label={roundLabel(matchId)}
     >
+      {matchId === 'final-0' ? (
+        <p className="t-match__finals-label">
+          <span>Championship match</span>
+          <strong>Finals</strong>
+        </p>
+      ) : null}
       <div className="t-match__bouts">
         <SlotRow matchId={matchId} side="a" />
         <SlotRow matchId={matchId} side="b" />
@@ -328,16 +337,19 @@ function SlotRow({ matchId, side }: { matchId: BracketMatchId; side: MatchSide }
     <div
       className={`t-slot${mark === 'win' || mark === 'advanced' ? ' t-slot--won' : ''}${
         mark === 'dq' ? ' t-slot--dq' : ''
-      }${mark === 'lost' ? ' t-slot--lost' : ''}`}
+      }${mark === 'lost' ? ' t-slot--lost' : ''}${seedIndex >= 0 ? ' t-slot--seed' : ''}`}
     >
-      <RosterNameField
-        value={name}
-        onChange={(value) => setSlotName(id, value)}
-        onPrefill={(prefill) => setSlotName(id, prefill.name)}
-        placeholder={placeholder}
-        ariaLabel={`${roundLabel(matchId)}, ${side === 'a' ? 'top' : 'bottom'} competitor`}
-        compact
-      />
+      <div className="t-slot__who">
+        {seedIndex >= 0 ? <span className="t-slot__seed">{seedIndex + 1}.</span> : null}
+        <RosterNameField
+          value={name}
+          onChange={(value) => setSlotName(id, value)}
+          onPrefill={(prefill) => setSlotName(id, prefill.name)}
+          placeholder={placeholder}
+          ariaLabel={`${roundLabel(matchId)}, ${side === 'a' ? 'top' : 'bottom'} competitor`}
+          compact
+        />
+      </div>
       <div className="t-slot__marks" role="group" aria-label="Bout result">
         <button
           type="button"
