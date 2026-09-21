@@ -539,6 +539,11 @@ button.mode-card {
   overflow: hidden;
 }
 
+.home--ladder .mode-card--coach .mode-card__teaser {
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
 .home--ladder .mode-card__actions {
   margin-top: 0.38rem;
   gap: 0.4rem;
@@ -1088,6 +1093,14 @@ button.mode-card {
 
 .play-exit:active {
   opacity: 0.55;
+}
+
+.roster > .play-exit,
+.notes > .play-exit,
+.techniques > .play-exit,
+.tournament > .play-exit {
+  z-index: 21;
+  opacity: 0.78;
 }
 
 .tv-tip {
@@ -1893,6 +1906,17 @@ label {
 .sheet__body > .btn {
   width: 100%;
   min-height: 56px;
+}
+
+.sheet__footer {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.85rem;
+}
+
+.sheet__footer .btn {
+  width: 100%;
+  min-height: 52px;
 }
 
 .cast-note,
@@ -2962,10 +2986,6 @@ fieldset {
     linear-gradient(180deg, #121820 0%, #07080b 42%, #05060a 100%);
 }
 
-.tournament > .play-exit {
-  z-index: 21;
-}
-
 .tournament__bar {
   display: flex;
   flex-wrap: wrap;
@@ -3141,6 +3161,41 @@ fieldset {
 
 .bracket__champ.is-filled {
   border-color: var(--gold);
+  animation: champ-flash 1.15s ease-out;
+}
+
+.bracket__champ-flash {
+  margin: 0;
+  text-align: center;
+  font-size: clamp(1.2rem, 2.6vw, 1.8rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--gold-2);
+  text-shadow: 0 0 18px rgba(240, 194, 75, 0.45);
+}
+
+@keyframes champ-flash {
+  0% {
+    box-shadow: 0 0 0 0 rgba(240, 194, 75, 0.75);
+    transform: scale(0.98);
+  }
+  40% {
+    box-shadow: 0 0 28px 8px rgba(240, 194, 75, 0.42);
+    transform: scale(1.02);
+  }
+  100% {
+    box-shadow: 0 0 12px 0 rgba(240, 194, 75, 0.2);
+    transform: none;
+  }
+}
+
+@keyframes slot-win {
+  0% {
+    box-shadow: 0 0 0 0 rgba(240, 194, 75, 0.55);
+  }
+  100% {
+    box-shadow: none;
+  }
 }
 
 .t-match {
@@ -3201,10 +3256,10 @@ fieldset {
 
 .t-score,
 .t-undo {
-  min-height: 34px;
-  padding: 0.15rem 0.55rem;
+  min-height: 38px;
+  padding: 0.2rem 0.6rem;
   border-radius: 999px;
-  font-size: 0.7rem;
+  font-size: 0.74rem;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -3218,9 +3273,10 @@ fieldset {
 }
 
 .t-undo {
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--ink);
+  min-width: 4.8rem;
+  border: 1px solid var(--gold);
+  background: rgba(212, 160, 23, 0.14);
+  color: var(--gold-2);
 }
 
 .t-slot {
@@ -3241,6 +3297,7 @@ fieldset {
 .t-slot--won {
   border-color: rgba(240, 194, 75, 0.7);
   background: rgba(212, 160, 23, 0.12);
+  animation: slot-win 0.9s ease-out;
 }
 
 .t-slot--dq {
@@ -4196,28 +4253,52 @@ fieldset {
 .rank-chip {
   display: inline-flex;
   align-items: center;
-  min-height: 1.55rem;
-  padding: 0.12rem 0.55rem;
+  gap: 0.35rem;
+  min-height: 1.7rem;
+  padding: 0.16rem 0.55rem 0.16rem 0.38rem;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.22);
   background: rgba(255, 255, 255, 0.1);
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   font-weight: 800;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   line-height: 1;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.28);
+}
+
+.rank-chip__bar {
+  width: 0.42rem;
+  height: 0.95rem;
+  border-radius: 1px 2px 2px 1px;
+  background: currentColor;
+  box-shadow:
+    inset 0 -2px 0 rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(0, 0, 0, 0.2);
+  flex: 0 0 auto;
 }
 
 .rank-chip--compact {
-  min-height: 1.35rem;
-  padding: 0.08rem 0.45rem;
+  min-height: 1.4rem;
+  padding: 0.08rem 0.42rem 0.08rem 0.3rem;
   font-size: 0.64rem;
+  gap: 0.28rem;
+}
+
+.rank-chip--compact .rank-chip__bar {
+  width: 0.32rem;
+  height: 0.78rem;
 }
 
 .rank-chip--white {
   background: #f4f1ea;
   color: #1a1404;
-  border-color: rgba(20, 22, 28, 0.2);
+  border-color: rgba(20, 22, 28, 0.35);
+}
+
+.rank-chip--white .rank-chip__bar {
+  background: #f4f1ea;
+  box-shadow: inset 0 0 0 1px rgba(20, 22, 28, 0.35);
 }
 
 .rank-chip--blue {
@@ -4225,9 +4306,19 @@ fieldset {
   color: #fff;
 }
 
+.rank-chip--blue .rank-chip__bar {
+  background: #1c4fd4;
+  box-shadow: inset 0 -3px 0 #0d2a80;
+}
+
 .rank-chip--purple {
   background: #6b3fa0;
   color: #fff;
+}
+
+.rank-chip--purple .rank-chip__bar {
+  background: #6b3fa0;
+  box-shadow: inset 0 -3px 0 #3d1f62;
 }
 
 .rank-chip--brown {
@@ -4235,14 +4326,30 @@ fieldset {
   color: #fff;
 }
 
+.rank-chip--brown .rank-chip__bar {
+  background: #6b3a1f;
+  box-shadow: inset 0 -3px 0 #3d1f0e;
+}
+
 .rank-chip--black {
   background: #14161c;
   color: #f5f1e8;
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.rank-chip--black .rank-chip__bar {
+  background: #14161c;
+  box-shadow: inset 0 -3px 0 #f5f1e8;
 }
 
 .rank-chip--grey {
-  background: #7a7f8a;
+  background: #6a6f7a;
   color: #fff;
+}
+
+.rank-chip--grey .rank-chip__bar {
+  background: #6a6f7a;
+  box-shadow: inset 0 -3px 0 #14161c;
 }
 
 .rank-chip--yellow {
@@ -4250,14 +4357,29 @@ fieldset {
   color: #1a1404;
 }
 
+.rank-chip--yellow .rank-chip__bar {
+  background: #d4b000;
+  box-shadow: inset 0 -3px 0 #1a1404;
+}
+
 .rank-chip--orange {
   background: #d46b00;
   color: #fff;
 }
 
+.rank-chip--orange .rank-chip__bar {
+  background: #d46b00;
+  box-shadow: inset 0 -3px 0 #7a3a00;
+}
+
 .rank-chip--green {
   background: #2d7a3a;
   color: #fff;
+}
+
+.rank-chip--green .rank-chip__bar {
+  background: #2d7a3a;
+  box-shadow: inset 0 -3px 0 #143a1a;
 }
 
 .rank-chip--custom {
@@ -4266,22 +4388,28 @@ fieldset {
   border-color: rgba(212, 160, 23, 0.4);
 }
 
+.rank-chip--custom .rank-chip__bar {
+  background: var(--gold-2);
+}
+
+.bout--white .rank-chip--white,
+.pad--white .rank-chip--white {
+  box-shadow: 0 0 0 1px rgba(20, 22, 28, 0.45);
+}
+
 .bout--white .rank-chip--custom,
 .pad--white .rank-chip--custom {
   color: #6b4d00;
 }
 
 .roster {
+  position: relative;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
   background:
     radial-gradient(90% 70% at 50% 0%, rgba(212, 160, 23, 0.12), transparent 52%),
     linear-gradient(180deg, #121820 0%, #07080b 42%, #05060a 100%);
-}
-
-.roster > .play-exit {
-  z-index: 21;
 }
 
 .roster__bar {
@@ -4453,6 +4581,7 @@ fieldset {
 }
 
 .techniques {
+  position: relative;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
@@ -4544,7 +4673,15 @@ fieldset {
   bottom: 0.8rem;
   transform: translateX(-50%);
   z-index: 2;
+  display: grid;
+  justify-items: center;
+  gap: 0.02em;
   margin: 0;
+  padding: 0.12em 0.48em 0.18em;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(6, 8, 12, 0.55);
+  backdrop-filter: blur(10px);
   font-size: clamp(2.6rem, 9vw, 5.2rem);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
@@ -4555,8 +4692,22 @@ fieldset {
   pointer-events: none;
 }
 
+.techniques__loop {
+  font-size: 0.26em;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--gold-2);
+  text-shadow: none;
+}
+
+.techniques__clock--play {
+  border-color: rgba(240, 194, 75, 0.5);
+}
+
 .techniques__clock--done {
   color: var(--gold-2);
+  border-color: rgba(240, 194, 75, 0.55);
 }
 
 .techniques__empty {
@@ -4621,10 +4772,6 @@ fieldset {
   text-transform: uppercase;
 }
 
-.techniques > .play-exit {
-  z-index: 21;
-}
-
 @media (orientation: landscape) {
   .techniques__hint {
     display: none;
@@ -4676,6 +4823,7 @@ fieldset {
 }
 
 .notes {
+  position: relative;
   min-height: 100dvh;
   padding: calc(0.7rem + var(--safe-t)) calc(1rem + var(--safe-r)) calc(1.4rem + var(--safe-b))
     calc(1rem + var(--safe-l));
@@ -4743,4 +4891,61 @@ fieldset {
   font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
+}
+
+.empty-hint {
+  display: grid;
+  gap: 0.4rem;
+  justify-items: start;
+  width: min(42rem, calc(100% - 2rem));
+  margin: 0 auto 1rem;
+  padding: 1.05rem 1.1rem 1.15rem;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: rgba(16, 19, 26, 0.82);
+  box-shadow: var(--shadow);
+}
+
+.empty-hint__title {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.empty-hint__body {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.empty-hint__action {
+  margin-top: 0.2rem;
+}
+
+.empty-hint__action .btn {
+  min-height: 48px;
+}
+
+.notes .empty-hint {
+  width: min(44rem, 100%);
+  margin: 0 0 0.9rem;
+}
+
+.tournament .empty-hint {
+  width: min(42rem, calc(100% - 2rem));
+  margin: 0 auto 0.85rem;
+}
+
+.techniques__empty .empty-hint {
+  width: min(28rem, 100%);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  justify-items: center;
+  text-align: center;
 }

@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import {
   addStudents,
   addStudent,
+  beltChipKey,
   canPrefill,
   canonicalBelt,
   confirmManualCompetitor,
@@ -204,6 +205,10 @@ describe('belt and date helpers', () => {
     assert.equal(canonicalBelt('brown belt'), 'Brown');
     assert.equal(canonicalBelt('coral belt'), 'Coral');
     assert.equal(canonicalBelt('gray'), 'Grey');
+    assert.equal(beltChipKey('Blue'), 'blue');
+    assert.equal(beltChipKey('gray'), 'grey');
+    assert.equal(beltChipKey('BB'), 'black');
+    assert.equal(beltChipKey('Coral'), 'custom');
     assert.equal(normalizeDate('2026-03-12'), '2026-03-12');
     assert.equal(normalizeDate('03/12/2026'), '');
     assert.equal(formatPromotion('2026-03-12').includes('2026'), true);

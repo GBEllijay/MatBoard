@@ -38,8 +38,7 @@ export const TECHNIQUE_FOLDER = {
   accept: VIDEO_ACCEPT,
   mimePrefix: 'video/',
   labelPrefix: 'Clip',
-  emptyCopy:
-    'No clips yet. Pick 1 to 10 videos from this phone or computer — they stay on this device, nothing is uploaded. Select a clip, tap Start, and it loops while the drill timer counts down.',
+  emptyCopy: 'No clips yet. Tap Add clips — up to 10.',
   orderHint: 'Tap Play to select a clip. Hold the grip, then drag — or tap Up / Down.',
 } as const;
 

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { COMING_SOON_ADS, COMING_SOON_LABEL, PRODUCT_TEASERS } from './comingSoonAds.ts';
+import { COACH_AD_LEAD, COACH_TOOLS_TEASER } from './coachCopy.ts';
 import { GYM_CONSOLE_NAME } from './productNames.ts';
 
 function adText(product: keyof typeof COMING_SOON_ADS): string {
@@ -8,37 +9,41 @@ function adText(product: keyof typeof COMING_SOON_ADS): string {
   return [ad.title, ad.kicker, ad.lead, ...ad.features.flatMap((f) => [f.title, f.body])].join('\n');
 }
 
-test('Coach ad sells bout tools, Daily Techniques, and no price', () => {
+test('Coach ad sells the four hub tools and no price', () => {
   const text = adText('coach');
   assert.equal(COMING_SOON_ADS.coach.title, 'Advantage Coach');
   assert.equal(COMING_SOON_ADS.coach.kicker, COMING_SOON_LABEL);
   assert.equal(COMING_SOON_LABEL, 'Coming Soon');
-  assert.match(
-    text,
-    /Run a Mock Tournament, Record Daily Techniques for Screencasting with Competitor Management System/,
-  );
-  assert.match(text, /Competitor Management System/);
+  assert.equal(COMING_SOON_ADS.coach.lead, COACH_AD_LEAD);
   assert.match(text, /Mock Tournament/i);
+  assert.match(text, /Competitor Management/);
+  assert.match(text, /Training notes/);
   assert.match(
     text,
     /Score each bout and track winners on the same easy to use scoreboard/,
   );
   assert.match(text, /Daily Training Videos/);
-  assert.match(text, /screencasting/i);
+  assert.match(text, /2:30/);
+  assert.match(text, /5:00/);
+  assert.match(text, /7:00/);
   assert.match(text, /loop/i);
   assert.match(text, /timer/i);
-  assert.match(text, /own bank/i);
+  assert.doesNotMatch(text, /Daily Techniques/);
   assert.doesNotMatch(text, /membership app/i);
   assert.doesNotMatch(text, /student progress/i);
+  assert.doesNotMatch(text, /\bstudents?\b/i);
   assert.doesNotMatch(text, /GB Members/i);
   assert.doesNotMatch(text, /Gallery/i);
   assert.doesNotMatch(text, /Pro-Shop|Pro Shop/i);
   assert.doesNotMatch(text, /Class Schedule/i);
   assert.doesNotMatch(text, /\$\d/);
   assert.doesNotMatch(PRODUCT_TEASERS.coach, /\$\d/);
+  assert.equal(PRODUCT_TEASERS.coach, COACH_TOOLS_TEASER);
+  assert.equal(PRODUCT_TEASERS.coachUnlocked, COACH_TOOLS_TEASER);
   assert.match(PRODUCT_TEASERS.coach, /Mock Tournament/);
   assert.match(PRODUCT_TEASERS.coach, /Daily Training Videos/);
   assert.match(PRODUCT_TEASERS.coach, /Competitor roster/);
+  assert.match(PRODUCT_TEASERS.coach, /Training notes/);
 });
 
 test('Pro ad sells the Console paragraph and no price', () => {
