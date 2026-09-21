@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
+import { DeviceMediaInput } from '../components/DeviceMediaInput';
 import { ToolboxFolder } from '../components/ToolboxFolder';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { PlayExitMark } from '../components/PlayExitMark';
@@ -13,6 +14,7 @@ import { GYM_CONSOLE_NAME } from '../lib/productNames';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { formatMss, secondsToMs } from '../lib/format';
+import { openDeviceMediaPicker } from '../lib/mediaPicker';
 import {
   addFolderFiles,
   clearFolder,
@@ -182,9 +184,7 @@ export function ScreensaverPage() {
 
   const openAdd = (folderId: FolderId) => {
     addFolderRef.current = folderId;
-    const input = fileRef.current;
-    if (input) input.accept = folderById(folderId).accept;
-    input?.click();
+    openDeviceMediaPicker(fileRef.current, { accept: folderById(folderId).accept });
   };
 
   const onFiles = async (files: FileList | null) => {
@@ -424,16 +424,11 @@ export function ScreensaverPage() {
         </div>
       </Sheet>
 
-      <input
-        ref={fileRef}
-        type="file"
+      <DeviceMediaInput
+        inputRef={fileRef}
         accept={folderById(addFolderRef.current).accept}
         multiple
-        hidden
-        onChange={(e) => {
-          void onFiles(e.target.files);
-          e.target.value = '';
-        }}
+        onFiles={onFiles}
       />
     </main>
   );

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { DeviceMediaInput } from '../components/DeviceMediaInput';
 import { FolderItemList } from '../components/FolderItemList';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { EmptyHint } from '../components/EmptyHint';
@@ -10,8 +11,9 @@ import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useToolboxParent } from '../hooks/useToolboxParent';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
-import { formatMmSs, formatMss, secondsToMs } from '../lib/format';
 import { EMPTY_VIDEOS_BODY, EMPTY_VIDEOS_TITLE } from '../lib/coachCopy';
+import { formatMmSs, formatMss, secondsToMs } from '../lib/format';
+import { openDeviceMediaPicker } from '../lib/mediaPicker';
 import {
   DEFAULT_MUTE_VIDEO,
   getSaverPrefs,
@@ -167,6 +169,11 @@ export function TechniquesPage() {
     }
   };
 
+  const openAdd = () => {
+    if (slotsLeft === 0) return;
+    openDeviceMediaPicker(fileRef.current, { accept: TECHNIQUE_FOLDER.accept });
+  };
+
   const persistOrder = async (orderedIds: string[]) => {
     setClips((rows) => withTechniqueOrder(rows, orderedIds));
     try {
@@ -219,8 +226,9 @@ export function TechniquesPage() {
       </header>
 
       <p className="techniques__hint">
-        Up to 10 clips. <strong>Start</strong> loops the selected clip with the drill timer (2:30 /
-        5:00 / 7:00). Mute is on so gym music can keep playing. <strong>Stop</strong> pauses both.
+        Film or pick up to 10 clips on this device. <strong>Start</strong> loops the selected clip
+        with the drill timer (2:30 / 5:00 / 7:00). Mute is on so gym music can keep playing.{' '}
+        <strong>Stop</strong> pauses both.
       </p>
 
       <div className="techniques__layout">
@@ -241,7 +249,7 @@ export function TechniquesPage() {
                   title={EMPTY_VIDEOS_TITLE}
                   body={EMPTY_VIDEOS_BODY}
                   action={
-                    <button type="button" className="btn" onClick={() => fileRef.current?.click()}>
+                    <button type="button" className="btn" onClick={openAdd}>
                       Add clips
                     </button>
                   }
@@ -267,7 +275,7 @@ export function TechniquesPage() {
               type="button"
               className="btn"
               disabled={slotsLeft === 0}
-              onClick={() => fileRef.current?.click()}
+              onClick={openAdd}
             >
               Add clips
             </button>
@@ -399,16 +407,10 @@ export function TechniquesPage() {
       </div>
 
       <TvTip onFullscreen={() => void fs.enter()} />
-      <input
-        ref={fileRef}
-        type="file"
+      <DeviceMediaInput
+        inputRef={fileRef}
         accept={TECHNIQUE_FOLDER.accept}
-        multiple
-        hidden
-        onChange={(e) => {
-          void onFiles(e.target.files);
-          e.target.value = '';
-        }}
+        onFiles={onFiles}
       />
     </main>
   );

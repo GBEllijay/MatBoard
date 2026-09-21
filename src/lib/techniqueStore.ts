@@ -38,7 +38,7 @@ export const TECHNIQUE_FOLDER = {
   accept: VIDEO_ACCEPT,
   mimePrefix: 'video/',
   labelPrefix: 'Clip',
-  emptyCopy: 'No clips yet. Tap Add clips — up to 10.',
+  emptyCopy: 'No clips yet. Film a technique or pick a clip — up to 10 on this device.',
   orderHint: 'Tap Play to select a clip. Hold the grip, then drag — or tap Up / Down.',
 } as const;
 
