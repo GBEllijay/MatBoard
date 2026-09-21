@@ -3585,8 +3585,11 @@ fieldset {
   }
 
   .bracket {
-    min-height: 0;
-    height: 100%;
+    /* Keep the designed 72rem/92rem floor. Fitting the tree is pinch-zoom, not
+       min-width: 0 — that crushed Bright name pills into vertical strips. */
+    width: 100%;
+    min-height: 36rem;
+    height: max(36rem, 100%);
   }
 
   .t-mark {
@@ -3653,7 +3656,7 @@ fieldset {
 }
 
 .tournament--bright .tournament__center {
-  display: flex;
+  display: none;
   position: absolute;
   left: 50%;
   top: 50%;
@@ -3762,12 +3765,13 @@ fieldset {
 
 .tournament--bright .t-slot {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(5.75rem, 1fr) auto;
   align-items: center;
   gap: 0.16rem 0.28rem;
   padding: 0.12rem 0.2rem 0.12rem 0.62rem;
   border-radius: 999px;
   border: 0;
+  min-width: 9.5rem;
   min-height: 2.4rem;
   overflow: hidden;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
@@ -3778,8 +3782,13 @@ fieldset {
   font-size: 0.9rem;
 }
 
+.tournament--bright .t-slot__who {
+  min-width: 5.75rem;
+}
+
 .tournament--bright .t-slot input {
   min-height: 0;
+  min-width: 0;
   padding: 0.16rem 0.08rem;
   border: 0;
   background: transparent;
@@ -3879,6 +3888,7 @@ fieldset {
 .tournament--bright .bracket__side--left .t-match,
 .tournament--bright .bracket__side--right .t-match {
   position: relative;
+  flex: 0 0 auto;
 }
 
 .tournament--bright .bracket__side--left .t-match {
@@ -4002,32 +4012,19 @@ fieldset {
   border: 0;
 }
 
-/* iPhone / iPad landscape: fill the rotated viewport and let columns shrink so the tree goes horizontal. */
+/* iPhone / iPad landscape: fill the rotated viewport. Keep Bright/Dark column
+   mins so name pills stay horizontal; pinch-out still shrinks the whole tree. */
 @media (orientation: landscape) {
   .tournament__bar {
     padding-top: calc(0.28rem + var(--safe-t));
     padding-left: calc(4.2rem + var(--safe-l));
     padding-right: calc(0.7rem + var(--safe-r));
   }
+}
 
-  .bracket {
-    min-width: 0;
-    width: 100%;
-    min-height: 0;
-    height: 100%;
-  }
-
-  .tournament--bright .bracket {
-    min-width: 0;
-    grid-template-columns: minmax(0, 1.28fr) minmax(10rem, 16rem) minmax(0, 1.28fr);
-  }
-
-  .tournament--bright .bracket__side--left {
-    grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr) minmax(0, 0.82fr);
-  }
-
-  .tournament--bright .bracket__side--right {
-    grid-template-columns: minmax(0, 0.82fr) minmax(0, 1fr) minmax(0, 1.8fr);
+@media (min-width: 1100px) {
+  .tournament--bright .tournament__center {
+    display: flex;
   }
 }
 
@@ -4045,23 +4042,6 @@ fieldset {
 
   .tournament--bright .tournament__bar {
     min-height: 2.7rem;
-  }
-
-  .tournament--bright .t-slot {
-    min-height: 1.85rem;
-    padding: 0.06rem 0.16rem 0.06rem 0.45rem;
-  }
-
-  .tournament--bright .t-slot__who {
-    min-width: 3.2rem;
-  }
-
-  .tournament--bright .t-slot input {
-    font-size: 0.72rem;
-  }
-
-  .tournament--bright .t-mark {
-    min-height: 22px;
   }
 
   .tournament--bright .t-match--final {

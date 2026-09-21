@@ -29,6 +29,13 @@ describe('minScaleForView', () => {
     assert.ok(min < 0.3);
   });
 
+  it('fits a 92rem Bright tree into phone landscape without going below the floor', () => {
+    const min = minScaleForView(844, 390, 92 * 16, 36 * 16);
+    assert.ok(min < 1);
+    assert.ok(min >= MIN_SCALE_FLOOR);
+    assert.equal(Number(min.toFixed(3)), Number((844 / (92 * 16)).toFixed(3)));
+  });
+
   it('stays at 1 when the tree already fits', () => {
     assert.equal(minScaleForView(1600, 900, 1200, 600), 1);
   });
