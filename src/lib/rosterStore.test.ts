@@ -2,9 +2,12 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   addStudents,
+  addStudent,
   canPrefill,
   canonicalBelt,
+  confirmManualCompetitor,
   defaultRoster,
+  findStudentByName,
   formatPromotion,
   getRoster,
   normalizeDate,
@@ -118,6 +121,43 @@ describe('searchStudents', () => {
       searchStudents(rows, '').some((row) => row.id === '4'),
       false,
     );
+  });
+});
+
+describe('confirmManualCompetitor', () => {
+  it('uses a typed name on the bracket without writing a roster card', () => {
+    resetRoster();
+    const next = confirmManualCompetitor('  Jordan Lee  ', { addToRoster: false });
+    assert.deepEqual(next, { name: 'Jordan Lee', belt: '' });
+    assert.equal(getRoster().students.length, 0);
+    resetRoster();
+  });
+
+  it('adds a new local card when asked, and reuses an exact name instead of duplicating', () => {
+    resetRoster();
+    const added = confirmManualCompetitor('Pat Mora', { addToRoster: true, belt: 'blue' });
+    assert.deepEqual(added, { name: 'Pat Mora', belt: 'Blue' });
+    assert.equal(getRoster().students.length, 1);
+
+    const again = confirmManualCompetitor('pat mora', { addToRoster: true, belt: 'Purple' });
+    assert.deepEqual(again, { name: 'Pat Mora', belt: 'Blue' });
+    assert.equal(getRoster().students.length, 1);
+    resetRoster();
+  });
+
+  it('will not add a roster card without a belt', () => {
+    resetRoster();
+    assert.equal(confirmManualCompetitor('Sam', { addToRoster: true }), null);
+    assert.equal(getRoster().students.length, 0);
+    resetRoster();
+  });
+
+  it('finds an existing card by name ignoring case', () => {
+    resetRoster();
+    addStudent({ name: 'Alex Rivera', belt: 'Purple', lastPromotion: '', note: '' });
+    const found = findStudentByName(getRoster().students, '  alex rivera ');
+    assert.equal(found?.belt, 'Purple');
+    resetRoster();
   });
 });
 
