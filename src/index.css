@@ -4038,6 +4038,9 @@ fieldset {
 
 .tournament--bright .t-bye-note {
   color: #14161c;
+  padding: 0 0.4rem;
+  letter-spacing: 0.08em;
+  font-size: 0.68rem;
 }
 
 .tournament--bright .t-match__play {
@@ -4061,6 +4064,7 @@ fieldset {
 
 .tournament--bright .bracket__side--left .t-match {
   padding-right: 1.25rem;
+  padding-left: 0.35rem;
 }
 
 .tournament--bright .bracket__side--right .t-match {
