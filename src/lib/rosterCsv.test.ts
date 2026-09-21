@@ -339,4 +339,59 @@ describe('Excel / encoding roster CSV', () => {
     const file = new File([bytes], 'roster.csv', { type: 'text/csv' });
     assertThreeRowImport(await importRosterCsvFile(file));
   });
+
+  it('imports the owner advantage-roster.csv: UTF-8 BOM + Kristofer Lamèy, belts per row', () => {
+    const csv = [
+      'Name,Belt,Last promotion,Notes',
+      'Justin Guise,Black,2026-03-12,Jokes too much in class.',
+      'Kristofer Lamèy,Purple,2026-05-20,Needs to attack more from his guard and rack up advantage',
+      'Paige Galitello,Brown,2024-09-24,"Amazing, jiu jitsu. Internationally renowned competitor and"',
+    ].join('\r\n');
+    const expected = [
+      'Justin Guise:Black',
+      'Kristofer Lamèy:Purple',
+      'Paige Galitello:Brown',
+    ];
+
+    const withBom = `\uFEFF${csv}\r\n`;
+    const bomImport = importRosterCsv(withBom);
+    assert.equal(bomImport.error, undefined);
+    assert.equal(bomImport.imported, 3);
+    assert.deepEqual(
+      bomImport.students.map((row) => `${row.name}:${row.belt}`),
+      expected,
+    );
+
+    const utf8Bytes = new TextEncoder().encode(withBom);
+    assert.deepEqual(utf8Bytes.slice(0, 3), Uint8Array.from([0xef, 0xbb, 0xbf]));
+    const fromBytes = importRosterCsvBytes(utf8Bytes);
+    assert.deepEqual(
+      fromBytes.students.map((row) => `${row.name}:${row.belt}`),
+      expected,
+    );
+
+    // Google Sheets / Android: UTF-8 BOM file opened as Latin-1 → ï»¿Name and LamÃ¨y
+    const sheetsView = new TextDecoder('windows-1252').decode(utf8Bytes);
+    assert.equal(sheetsView.startsWith('ï»¿Name'), true);
+    assert.equal(sheetsView.includes('LamÃ¨y'), true);
+    const recovered = importRosterCsv(sheetsView);
+    assert.equal(recovered.error, undefined);
+    assert.equal(recovered.imported, 3);
+    assert.equal(recovered.skipped, 0);
+    assert.deepEqual(
+      recovered.students.map((row) => `${row.name}:${row.belt}`),
+      expected,
+    );
+    assert.equal(recovered.students[1]?.name, 'Kristofer Lamèy');
+    assert.equal(recovered.students[0]?.belt, 'Black');
+    assert.equal(recovered.students[1]?.belt, 'Purple');
+    assert.equal(recovered.students[2]?.belt, 'Brown');
+
+    const sheetsResave = importRosterCsvBytes(new TextEncoder().encode(sheetsView));
+    assert.deepEqual(
+      sheetsResave.students.map((row) => `${row.name}:${row.belt}`),
+      expected,
+    );
+    assert.equal(sheetsResave.students[1]?.name, 'Kristofer Lamèy');
+  });
 });

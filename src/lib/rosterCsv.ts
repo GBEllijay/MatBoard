@@ -64,12 +64,50 @@ const HEADER_ALIASES: Record<string, HeaderField> = {
 
 const DELIMITERS = [',', ';', '\t'] as const;
 
+/** UTF-8 BOM (EF BB BF) mis-read as Latin-1 / Windows-1252 — Sheets shows `ï»¿Name`. */
+const UTF8_BOM_MOJIBAKE = '\u00EF\u00BB\u00BF';
+
 export function withUtf8Bom(text: string): string {
   return text.startsWith('\uFEFF') ? text : `\uFEFF${text}`;
 }
 
+function stripBomPrefix(text: string): string {
+  if (text.startsWith('\uFEFF')) return text.slice(1);
+  if (text.startsWith(UTF8_BOM_MOJIBAKE)) return text.slice(UTF8_BOM_MOJIBAKE.length);
+  return text;
+}
+
+function latin1Bytes(text: string): Uint8Array | null {
+  const bytes = new Uint8Array(text.length);
+  for (let i = 0; i < text.length; i += 1) {
+    const code = text.charCodeAt(i);
+    if (code > 255) return null;
+    bytes[i] = code;
+  }
+  return bytes;
+}
+
+/** True when UTF-8 was decoded as Latin-1 (`ï»¿`, `LamÃ¨y`). */
+export function looksLikeUtf8Mojibake(text: string): boolean {
+  if (text.includes(UTF8_BOM_MOJIBAKE)) return true;
+  return /Ã[\u0080-\u00BF]|Â[\u0080-\u00BF]/.test(text);
+}
+
+/** Turn `ï»¿Name` / `LamÃ¨y` back into a BOM-free UTF-8 string (`Name` / `Lamèy`). */
+export function repairUtf8Mojibake(text: string): string {
+  const stripped = stripBomPrefix(text);
+  if (!looksLikeUtf8Mojibake(text)) return stripped.replace(/\u0000/g, '');
+  const bytes = latin1Bytes(text.startsWith('\uFEFF') ? stripped : text);
+  if (!bytes) return stripped.replace(/\u0000/g, '');
+  try {
+    return stripBomPrefix(new TextDecoder('utf-8', { fatal: true }).decode(bytes)).replace(/\u0000/g, '');
+  } catch {
+    return stripped.replace(/\u0000/g, '');
+  }
+}
+
 function normalizeCsvText(text: string): string {
-  return text.replace(/^\uFEFF/, '').replace(/\u0000/g, '');
+  return repairUtf8Mojibake(text).replace(/\u0000/g, '');
 }
 
 function looksLikeUtf16Le(bytes: Uint8Array): boolean {
@@ -111,33 +149,32 @@ export function looksLikeWorkbookBytes(bytes: Uint8Array): boolean {
 export function decodeRosterCsvBytes(bytes: Uint8Array): string {
   if (!bytes.length) return '';
   if (bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
-    return new TextDecoder('utf-8').decode(bytes).replace(/^\uFEFF/, '');
+    return repairUtf8Mojibake(new TextDecoder('utf-8').decode(bytes));
   }
   if (bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xfe) {
-    return new TextDecoder('utf-16le').decode(bytes).replace(/^\uFEFF/, '');
+    return repairUtf8Mojibake(new TextDecoder('utf-16le').decode(bytes));
   }
   if (bytes.length >= 2 && bytes[0] === 0xfe && bytes[1] === 0xff) {
-    return new TextDecoder('utf-16be').decode(bytes).replace(/^\uFEFF/, '');
+    return repairUtf8Mojibake(new TextDecoder('utf-16be').decode(bytes));
   }
   if (looksLikeWorkbookBytes(bytes)) {
     return new TextDecoder('latin1').decode(bytes);
   }
   if (looksLikeUtf16Le(bytes)) {
-    return new TextDecoder('utf-16le').decode(bytes).replace(/^\uFEFF/, '');
+    return repairUtf8Mojibake(new TextDecoder('utf-16le').decode(bytes));
   }
   if (looksLikeUtf16Be(bytes)) {
-    return new TextDecoder('utf-16be').decode(bytes).replace(/^\uFEFF/, '');
+    return repairUtf8Mojibake(new TextDecoder('utf-16be').decode(bytes));
   }
   try {
-    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    return repairUtf8Mojibake(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
   } catch {
-    return new TextDecoder('windows-1252').decode(bytes);
+    return repairUtf8Mojibake(new TextDecoder('windows-1252').decode(bytes));
   }
 }
 
 function normalizeHeader(value: string): string {
-  return value
-    .replace(/^\uFEFF/, '')
+  return stripBomPrefix(value)
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, ' ')
@@ -170,7 +207,7 @@ function firstContentLines(text: string): string[] {
 }
 
 function isPreambleLine(line: string): boolean {
-  const trimmed = line.trim().replace(/^\uFEFF/, '');
+  const trimmed = stripBomPrefix(line.trim());
   if (!trimmed) return true;
   if (/^sep=/i.test(trimmed)) return true;
   if (trimmed.startsWith('#')) return true;
