@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   COACH_AD_LEAD,
+  COACH_HOME_TEASER,
   COACH_TOOLS_TEASER,
   EMPTY_BRACKET_BODY,
   EMPTY_BRACKET_TITLE,
@@ -20,6 +21,7 @@ import {
 function allCopy(): string {
   return [
     COACH_TOOLS_TEASER,
+    COACH_HOME_TEASER,
     COACH_AD_LEAD,
     EMPTY_ROSTER_TITLE,
     EMPTY_ROSTER_BODY,
@@ -41,6 +43,11 @@ test('Coach teasers list the four hub tools', () => {
   assert.match(COACH_TOOLS_TEASER, /Competitor roster/);
   assert.match(COACH_TOOLS_TEASER, /Training notes/);
   assert.match(COACH_TOOLS_TEASER, /Daily Training Videos/);
+  assert.match(COACH_HOME_TEASER, /Mock Tournament/);
+  assert.match(COACH_HOME_TEASER, /roster/);
+  assert.match(COACH_HOME_TEASER, /notes/);
+  assert.match(COACH_HOME_TEASER, /Daily Videos/);
+  assert.ok(COACH_HOME_TEASER.length < 55);
   assert.match(COACH_AD_LEAD, /Mock Tournament/);
   assert.match(COACH_AD_LEAD, /Competitor Management/);
   assert.match(COACH_AD_LEAD, /Training notes/);

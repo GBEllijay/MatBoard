@@ -3,6 +3,9 @@
 export const COACH_TOOLS_TEASER =
   'Mock Tournament, Competitor roster, Training notes, Daily Training Videos.';
 
+/** Short home-card line so Coming Soon and unlocked teasers both fit. */
+export const COACH_HOME_TEASER = 'Mock Tournament, roster, notes, Daily Videos.';
+
 export const COACH_AD_LEAD =
   'Run a Mock Tournament, keep Competitor Management, jot Training notes, and loop Daily Training Videos on the gym TV.';
 

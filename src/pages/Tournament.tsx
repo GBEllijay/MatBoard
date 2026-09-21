@@ -17,7 +17,6 @@ import {
   LEFT_R16,
   RIGHT_QF,
   RIGHT_R16,
-  bracketHasCompetitors,
   bracketHasContent,
   canUndoLast,
   resetTournament,
@@ -49,7 +48,8 @@ export function TournamentPage() {
   const champion = slotName(tournament, 'champion');
   const liveMatchId = linkedBracketMatchId(match.bracketMatchId);
   const undoReady = canUndoLast(tournament);
-  const emptyBracket = !bracketHasCompetitors(tournament);
+  // Results or names count as content — a win on placeholders must hide the empty banner.
+  const emptyBracket = !bracketHasContent(tournament);
   const canReset = bracketHasContent(tournament);
 
   const exitBoard = () => {

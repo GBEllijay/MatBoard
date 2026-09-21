@@ -1,4 +1,4 @@
-import { COACH_AD_LEAD, COACH_TOOLS_TEASER } from './coachCopy.ts';
+import { COACH_AD_LEAD, COACH_HOME_TEASER } from './coachCopy.ts';
 import { GYM_CONSOLE_NAME } from './productNames.ts';
 
 export type SoonProduct = 'coach' | 'pro';
@@ -20,8 +20,8 @@ export type ComingSoonAdCopy = {
 export const COMING_SOON_LABEL = 'Coming Soon';
 
 export const PRODUCT_TEASERS = {
-  coach: COACH_TOOLS_TEASER,
-  coachUnlocked: COACH_TOOLS_TEASER,
+  coach: COACH_HOME_TEASER,
+  coachUnlocked: COACH_HOME_TEASER,
   pro: GYM_CONSOLE_NAME,
   proUnlocked: 'Console is on this browser.',
 } as const;

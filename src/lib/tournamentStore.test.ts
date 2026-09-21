@@ -30,6 +30,7 @@ describe('bracket empty helpers', () => {
       call: 'win',
       method: 'submission',
     });
+    assert.equal(bracketHasCompetitors(scored), false);
     assert.equal(bracketHasContent(scored), true);
   });
 

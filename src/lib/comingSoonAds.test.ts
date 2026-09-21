@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { COMING_SOON_ADS, COMING_SOON_LABEL, PRODUCT_TEASERS } from './comingSoonAds.ts';
-import { COACH_AD_LEAD, COACH_TOOLS_TEASER } from './coachCopy.ts';
+import { COACH_AD_LEAD, COACH_HOME_TEASER } from './coachCopy.ts';
 import { GYM_CONSOLE_NAME } from './productNames.ts';
 
 function adText(product: keyof typeof COMING_SOON_ADS): string {
@@ -38,12 +38,13 @@ test('Coach ad sells the four hub tools and no price', () => {
   assert.doesNotMatch(text, /Class Schedule/i);
   assert.doesNotMatch(text, /\$\d/);
   assert.doesNotMatch(PRODUCT_TEASERS.coach, /\$\d/);
-  assert.equal(PRODUCT_TEASERS.coach, COACH_TOOLS_TEASER);
-  assert.equal(PRODUCT_TEASERS.coachUnlocked, COACH_TOOLS_TEASER);
+  assert.equal(PRODUCT_TEASERS.coach, COACH_HOME_TEASER);
+  assert.equal(PRODUCT_TEASERS.coachUnlocked, COACH_HOME_TEASER);
   assert.match(PRODUCT_TEASERS.coach, /Mock Tournament/);
-  assert.match(PRODUCT_TEASERS.coach, /Daily Training Videos/);
-  assert.match(PRODUCT_TEASERS.coach, /Competitor roster/);
-  assert.match(PRODUCT_TEASERS.coach, /Training notes/);
+  assert.match(PRODUCT_TEASERS.coach, /Daily Videos/);
+  assert.match(PRODUCT_TEASERS.coach, /roster/);
+  assert.match(PRODUCT_TEASERS.coach, /notes/);
+  assert.ok(PRODUCT_TEASERS.coach.length < 55);
 });
 
 test('Pro ad sells the Console paragraph and no price', () => {
