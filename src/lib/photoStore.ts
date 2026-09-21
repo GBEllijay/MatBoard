@@ -18,11 +18,12 @@ export const DEFAULT_INTERVAL_SEC = 10;
 export const INTERVAL_PRESETS_SEC = [5, 10, 30, 60] as const;
 
 /**
- * Phone/PC picker token. `video/*` lets iOS/Android offer Record / Take Video
- * plus the library. Extra extensions (`.mp4,.mov,…`) force a documents picker
- * on some phones (library-only). Gym-TV types are still accepted after pick —
- * see VIDEO_EXTENSIONS / isAcceptedVideoFile. H.264 MP4 is the safest; WebM on
- * Chromium; MOV often on Safari.
+ * Phone/PC picker token. `video/*` plus `capture="environment"` on Record
+ * opens the camera in video mode on iOS/Android. From library uses the same
+ * accept with capture off. Extra extensions (`.mp4,.mov,…`) force a documents
+ * picker on some phones (library-only). Gym-TV types are still accepted after
+ * pick — see VIDEO_EXTENSIONS / isAcceptedVideoFile. H.264 MP4 is the safest;
+ * WebM on Chromium; MOV often on Safari. Clips stay on this device.
  */
 export const VIDEO_ACCEPT = VIDEO_PICKER_ACCEPT;
 const VIDEO_EXTENSIONS = ['.mp4', '.m4v', '.webm', '.mov', '.ogg', '.ogv'] as const;
@@ -56,7 +57,7 @@ export const FOLDERS = [
     mimePrefix: 'video/',
     labelPrefix: 'Video',
     emptyCopy:
-      'No videos yet. Pick clips from this phone or computer — they stay on this device, nothing is uploaded. Tap the left preview to include or skip a clip. MP4 and WebM play most reliably. Long videos are fine; very large files can take a moment to add.',
+      'No videos yet. Add videos opens the camera on a phone, or pick From library — clips stay on this device, nothing is uploaded. Tap the left preview to include or skip a clip. MP4 and WebM play most reliably. Long videos are fine; very large files can take a moment to add.',
     orderHint:
       'Tap the left preview to play or skip that clip. Checked / bright = On. Top video plays first when In order is on. Hold the grip, then drag — or tap Up / Down. Videos play all the way through, then the next item. Clips are muted by default so gym music can keep playing.',
   },

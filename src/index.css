@@ -5423,6 +5423,10 @@ fieldset {
   gap: 0.5rem;
 }
 
+.techniques__manage-clear {
+  grid-column: 1 / -1;
+}
+
 .techniques__count {
   margin: 0;
   color: var(--muted);

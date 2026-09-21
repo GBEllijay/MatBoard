@@ -9,12 +9,14 @@ import { RosterNameField } from '../components/RosterNameField';
 import { Sheet } from '../components/Sheet';
 import { useAllowZoomOut, usePinchZoom } from '../hooks/usePinchZoom';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
+import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useToolboxParent } from '../hooks/useToolboxParent';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useBracketTheme, useMatchState, useTournamentState } from '../hooks/useStores';
 import { EMPTY_BRACKET_BODY, EMPTY_BRACKET_TITLE } from '../lib/coachCopy';
 import { linkedBracketMatchId, openBracketBout, scoreboardPath } from '../lib/bracketBout';
 import { setBracketTheme } from '../lib/bracketTheme';
+import { tournamentToolLabel } from '../lib/productNames';
 import {
   LEFT_QF,
   LEFT_R16,
@@ -48,6 +50,7 @@ export function TournamentPage() {
   const bracketRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const parent = useToolboxParent();
+  const proUnlocked = useProUnlocked();
   const [namesOpen, setNamesOpen] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const seeds = seedSlots();
@@ -79,7 +82,7 @@ export function TournamentPage() {
       <header className="tournament__bar">
         <div className="tournament__brand">
           <p className="tournament__eyebrow">{parent.eyebrow}</p>
-          <h1>Mock Tournament</h1>
+          <h1>{tournamentToolLabel(proUnlocked)}</h1>
         </div>
         <div className="tournament__center">
           <p className="tournament__roundline">Round of 16</p>

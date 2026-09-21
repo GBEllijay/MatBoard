@@ -14,7 +14,12 @@ import { GYM_CONSOLE_NAME } from '../lib/productNames';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { formatMss, secondsToMs } from '../lib/format';
-import { openDeviceMediaPicker } from '../lib/mediaPicker';
+import {
+  isVideoAccept,
+  openDeviceMediaPicker,
+  VIDEO_LIBRARY_LABEL,
+  type MediaPickerMode,
+} from '../lib/mediaPicker';
 import {
   addFolderFiles,
   clearFolder,
@@ -182,9 +187,13 @@ export function ScreensaverPage() {
     if (!next) setUnlockSound(true);
   };
 
-  const openAdd = (folderId: FolderId) => {
+  const openAdd = (folderId: FolderId, mode: MediaPickerMode = 'library') => {
     addFolderRef.current = folderId;
-    openDeviceMediaPicker(fileRef.current, { accept: folderById(folderId).accept });
+    const accept = folderById(folderId).accept;
+    openDeviceMediaPicker(fileRef.current, {
+      accept,
+      mode: isVideoAccept(accept) ? mode : 'library',
+    });
   };
 
   const onFiles = async (files: FileList | null) => {
@@ -215,7 +224,7 @@ export function ScreensaverPage() {
   const emptyCopy =
     photos.length === 0
       ? focusFolder === 'videos'
-        ? 'Pick videos from this device. They stay on this phone or computer — nothing is uploaded. Clips play in full on the TV, muted by default so gym music can keep playing. Press F for fullscreen on a computer plugged into the TV.'
+        ? 'Add videos opens the camera on a phone, or pick From library. They stay on this phone or computer — nothing is uploaded. Clips play in full on the TV, muted by default so gym music can keep playing. Press F for fullscreen on a computer plugged into the TV.'
         : 'Pick photos from this device. They loop fullscreen. On a computer plugged into the TV, press F for fullscreen. Set how long each slide stays on screen.'
       : 'Nothing is set to play. Turn on Gallery or Videos in options, then tap a left preview so at least one photo or video is On.';
 
@@ -258,8 +267,16 @@ export function ScreensaverPage() {
           <h1>{hubTitle}</h1>
           <p>{emptyCopy}</p>
           {focusConfig.ready && focusEmpty ? (
-            <button type="button" className="btn" onClick={() => openAdd(focusFolder)}>
-              Choose {focusConfig.itemNounPlural}
+            <button
+              type="button"
+              className="btn"
+              onClick={() =>
+                openAdd(focusFolder, isVideoAccept(focusConfig.accept) ? 'record' : 'library')
+              }
+            >
+              {isVideoAccept(focusConfig.accept)
+                ? focusConfig.addLabel
+                : `Choose ${focusConfig.itemNounPlural}`}
             </button>
           ) : null}
           <button type="button" className="btn btn--ghost" onClick={() => setOptions(true)}>
@@ -390,7 +407,17 @@ export function ScreensaverPage() {
                 setExpanded((prev) => (prev[folder.id] === next ? prev : { ...prev, [folder.id]: next }));
               }}
               onPlayToggle={commitFolderPlay}
-              onAdd={folder.ready ? () => openAdd(folder.id) : undefined}
+              onAdd={
+                folder.ready
+                  ? () => openAdd(folder.id, isVideoAccept(folder.accept) ? 'record' : 'library')
+                  : undefined
+              }
+              onAddLibrary={
+                folder.ready && isVideoAccept(folder.accept)
+                  ? () => openAdd(folder.id, 'library')
+                  : undefined
+              }
+              libraryLabel={VIDEO_LIBRARY_LABEL}
               onClear={
                 folder.ready
                   ? async () => {

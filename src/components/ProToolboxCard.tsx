@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { BeltRail } from './BeltRail';
 import { FOLDERS } from '../lib/photoStore';
-import { GYM_CONSOLE_NAME } from '../lib/productNames';
+import { GYM_CONSOLE_NAME, TOURNAMENT_SOFTWARE_NAME } from '../lib/productNames';
 
 export function ProToolboxCard() {
   return (
@@ -34,7 +34,7 @@ export function ProToolboxCard() {
       <div className="mode-card__actions mode-card__actions--tools" aria-label="Owner tools">
         <Link className="btn btn--white" to="/tournament">
           <BeltRail kind="tournament" />
-          Mock Tournament
+          {TOURNAMENT_SOFTWARE_NAME}
         </Link>
         <Link className="btn" to="/schedule">
           Class Schedule

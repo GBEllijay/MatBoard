@@ -1,11 +1,25 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { GYM_CONSOLE_NAME, parentToolboxPath, toolEyebrow } from './productNames.ts';
+import {
+  GYM_CONSOLE_NAME,
+  MOCK_TOURNAMENT_NAME,
+  parentToolboxPath,
+  TOURNAMENT_SOFTWARE_NAME,
+  toolEyebrow,
+  tournamentToolLabel,
+} from './productNames.ts';
 
 test('Console name uses the exact Instructor apostrophe', () => {
   assert.equal(GYM_CONSOLE_NAME, "Gym Owner and Instructor's Console");
   assert.doesNotMatch(GYM_CONSOLE_NAME, /Owner.?s Toolbox/i);
   assert.doesNotMatch(GYM_CONSOLE_NAME, /Owners Toolbox/i);
+});
+
+test('Owner tournament tool is Tournament Software; Coach keeps Mock Tournament', () => {
+  assert.equal(TOURNAMENT_SOFTWARE_NAME, 'Tournament Software');
+  assert.equal(MOCK_TOURNAMENT_NAME, 'Mock Tournament');
+  assert.equal(tournamentToolLabel(true), TOURNAMENT_SOFTWARE_NAME);
+  assert.equal(tournamentToolLabel(false), MOCK_TOURNAMENT_NAME);
 });
 
 test('Shared tools prefer Pro console, then Coach', () => {

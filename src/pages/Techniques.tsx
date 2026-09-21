@@ -13,7 +13,7 @@ import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { EMPTY_VIDEOS_BODY, EMPTY_VIDEOS_TITLE } from '../lib/coachCopy';
 import { formatMmSs, formatMss, secondsToMs } from '../lib/format';
-import { openDeviceMediaPicker } from '../lib/mediaPicker';
+import { openDeviceMediaPicker, VIDEO_LIBRARY_LABEL, type MediaPickerMode } from '../lib/mediaPicker';
 import {
   DEFAULT_MUTE_VIDEO,
   getSaverPrefs,
@@ -169,9 +169,9 @@ export function TechniquesPage() {
     }
   };
 
-  const openAdd = () => {
+  const openAdd = (mode: MediaPickerMode = 'record') => {
     if (slotsLeft === 0) return;
-    openDeviceMediaPicker(fileRef.current, { accept: TECHNIQUE_FOLDER.accept });
+    openDeviceMediaPicker(fileRef.current, { accept: TECHNIQUE_FOLDER.accept, mode });
   };
 
   const persistOrder = async (orderedIds: string[]) => {
@@ -226,9 +226,10 @@ export function TechniquesPage() {
       </header>
 
       <p className="techniques__hint">
-        Film or pick up to 10 clips on this device. <strong>Start</strong> loops the selected clip
-        with the drill timer (2:30 / 5:00 / 7:00). Mute is on so gym music can keep playing.{' '}
-        <strong>Stop</strong> pauses both.
+        Film or pick up to 10 clips on this device. <strong>Add clips</strong> opens the camera on a
+        phone; <strong>From library</strong> picks an existing video. <strong>Start</strong> loops
+        the selected clip with the drill timer (2:30 / 5:00 / 7:00). Mute is on so gym music can
+        keep playing. <strong>Stop</strong> pauses both.
       </p>
 
       <div className="techniques__layout">
@@ -249,7 +250,7 @@ export function TechniquesPage() {
                   title={EMPTY_VIDEOS_TITLE}
                   body={EMPTY_VIDEOS_BODY}
                   action={
-                    <button type="button" className="btn" onClick={openAdd}>
+                    <button type="button" className="btn" onClick={() => openAdd('record')}>
                       Add clips
                     </button>
                   }
@@ -275,14 +276,22 @@ export function TechniquesPage() {
               type="button"
               className="btn"
               disabled={slotsLeft === 0}
-              onClick={openAdd}
+              onClick={() => openAdd('record')}
             >
               Add clips
+            </button>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              disabled={slotsLeft === 0}
+              onClick={() => openAdd('library')}
+            >
+              {VIDEO_LIBRARY_LABEL}
             </button>
             {clips.length ? (
               <button
                 type="button"
-                className="btn btn--ghost"
+                className="btn btn--ghost techniques__manage-clear"
                 onClick={() => {
                   void clearTechniqueClips().then(() => {
                     setClips([]);
