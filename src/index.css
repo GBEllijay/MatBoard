@@ -1390,6 +1390,12 @@ button.mode-card {
   padding-left: env(safe-area-inset-left, 0px);
 }
 
+@media (orientation: portrait) {
+  .play--fs .bout__who {
+    padding-left: max(1.15rem, env(safe-area-inset-left, 0px));
+  }
+}
+
 .bout__who h1 {
   display: flex;
   flex-wrap: wrap;
