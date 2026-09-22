@@ -2,6 +2,7 @@ import {
   COACH_AD_LEAD,
   COACH_HOME_TEASER,
   COMPETITOR_ROSTER_LABEL,
+  TECHNIQUE_TREE_LABEL,
   TRAINING_NOTES_LABEL,
 } from './coachCopy.ts';
 import { GYM_CONSOLE_NAME, TOURNAMENT_SOFTWARE_NAME } from './productNames.ts';
@@ -44,6 +45,10 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
       {
         title: 'Daily Training Videos',
         body: 'Up to 10 on-device clips. Loop one while the class drills, with a 2:30 / 5:00 / 7:00 timer on the screen.',
+      },
+      {
+        title: TECHNIQUE_TREE_LABEL,
+        body: 'Map a base position into branches and defenses. One tree stays on this phone.',
       },
       {
         title: 'Mock Tournament',

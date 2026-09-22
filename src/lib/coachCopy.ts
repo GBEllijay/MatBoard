@@ -2,6 +2,10 @@
 
 export const COMPETITOR_ROSTER_LABEL = 'Competitor Roster';
 export const TRAINING_NOTES_LABEL = 'Daily Lesson Plan';
+export const TECHNIQUE_TREE_LABEL = 'Technique Tree';
+
+export const TECHNIQUE_TREE_LEAD =
+  'One tree on this phone. Start from a base position, then add a branch or a defense.';
 
 export const COACH_TOOLS_TEASER =
   `${TRAINING_NOTES_LABEL}, Daily Training Videos, Mock Tournament, ${COMPETITOR_ROSTER_LABEL}.`;
@@ -11,11 +15,11 @@ export const COACH_HOME_TEASER =
   'Daily Lesson Plan, Daily Training Videos, Mock Tournament, Roster.';
 
 export const COACH_AD_LEAD =
-  `Coach tools: write a ${TRAINING_NOTES_LABEL}, loop Daily Training Videos, run a Mock Tournament, and keep a ${COMPETITOR_ROSTER_LABEL}.`;
+  `Coach tools: write a ${TRAINING_NOTES_LABEL}, loop Daily Training Videos, build a ${TECHNIQUE_TREE_LABEL}, run a Mock Tournament, and keep a ${COMPETITOR_ROSTER_LABEL}.`;
 
 /** Hub card sentence under Advantage Coach. Same priority as the yellow-line list. */
 export const COACH_HUB_BLURB =
-  `${TRAINING_NOTES_LABEL}, Daily Training Videos, run a Mock Tournament, and keep a ${COMPETITOR_ROSTER_LABEL}.`;
+  `${TRAINING_NOTES_LABEL}, Daily Training Videos, ${TECHNIQUE_TREE_LABEL}, run a Mock Tournament, and keep a ${COMPETITOR_ROSTER_LABEL}.`;
 
 export const EMPTY_ROSTER_TITLE = 'No competitors yet';
 export const EMPTY_ROSTER_BODY =

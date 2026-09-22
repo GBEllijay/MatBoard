@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "test": "node --experimental-strip-types --test src/lib/outcomes.test.ts src/lib/scheduleStore.test.ts src/lib/rosterStore.test.ts src/lib/rosterCsv.test.ts src/lib/comingSoonAds.test.ts src/lib/proUnlock.test.ts src/lib/coachUnlock.test.ts src/lib/productNames.test.ts src/lib/techniqueStore.test.ts src/lib/trainingNotesStore.test.ts src/lib/playlist.test.ts src/lib/coachCopy.test.ts src/lib/tournamentStore.test.ts src/lib/bracketTheme.test.ts src/lib/trainingSkin.test.ts src/lib/mediaPicker.test.ts src/lib/photoStore.test.ts src/lib/pinchZoom.test.ts src/lib/keepFieldVisible.test.ts src/lib/roundDisplay.test.ts"
+    "test": "node --experimental-strip-types --test src/lib/outcomes.test.ts src/lib/scheduleStore.test.ts src/lib/rosterStore.test.ts src/lib/rosterCsv.test.ts src/lib/comingSoonAds.test.ts src/lib/proUnlock.test.ts src/lib/coachUnlock.test.ts src/lib/productNames.test.ts src/lib/techniqueStore.test.ts src/lib/trainingNotesStore.test.ts src/lib/techniqueTreeStore.test.ts src/lib/playlist.test.ts src/lib/coachCopy.test.ts src/lib/tournamentStore.test.ts src/lib/bracketTheme.test.ts src/lib/trainingSkin.test.ts src/lib/mediaPicker.test.ts src/lib/photoStore.test.ts src/lib/pinchZoom.test.ts src/lib/keepFieldVisible.test.ts src/lib/roundDisplay.test.ts"
   },
   "dependencies": {
     "qrcode": "^1.5.4",

@@ -14,6 +14,7 @@ import { ProPage } from './pages/Pro';
 import { RosterPage } from './pages/Roster';
 import { ScreensaverPage } from './pages/Screensaver';
 import { SchedulePage } from './pages/Schedule';
+import { TechniqueTreePage } from './pages/TechniqueTree';
 import { TechniquesPage } from './pages/Techniques';
 import { TournamentPage } from './pages/Tournament';
 import { TrainingNotesPage } from './pages/TrainingNotes';
@@ -80,6 +81,14 @@ export default function App() {
         element={
           <CoachRoute>
             <TechniquesPage />
+          </CoachRoute>
+        }
+      />
+      <Route
+        path="/technique-tree"
+        element={
+          <CoachRoute>
+            <TechniqueTreePage />
           </CoachRoute>
         }
       />
