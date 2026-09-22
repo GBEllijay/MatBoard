@@ -11,10 +11,21 @@ export type AudioPrefs = {
 
 export const END_CUE_OPTIONS: { id: EndCue; label: string }[] = [
   { id: 'buzzer', label: 'Buzzer' },
-  { id: 'parou', label: 'Parou, stop!' },
+  { id: 'parou', label: 'PAROU! ("STOP!")' },
 ];
 
+/**
+ * Spoken cue is Portuguese “Parou!” only. The English “STOP!” is the button
+ * translation and is not in the audio.
+ *
+ * Swap hook for a louder take: replace `public/sounds/parou-tts-parou-only.mp3`
+ * (served as this URL) with the chosen file, or point PAROU_URL at a new file
+ * under `public/sounds/`. Keep the clip Portuguese-only. Do not wire a quieter take.
+ */
 const PAROU_URL = '/sounds/parou-tts-parou-only.mp3';
+
+/** Cue-only trim above the user volume slider. A hotter source file is the real fix. */
+const PAROU_CUE_GAIN = 1.35;
 
 const DEFAULT_PREFS: AudioPrefs = {
   muted: false,
@@ -468,7 +479,7 @@ function startParou(buffer: AudioBuffer): void {
   const src = audio.createBufferSource();
   const amp = audio.createGain();
   src.buffer = buffer;
-  amp.gain.value = volume * 1.15;
+  amp.gain.value = volume * PAROU_CUE_GAIN;
   src.connect(amp);
   amp.connect(getMaster());
   src.start();
