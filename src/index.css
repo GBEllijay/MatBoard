@@ -6276,7 +6276,8 @@ fieldset {
 .tree__bar {
   display: flex;
   align-items: flex-end;
-  padding-left: 3.4rem;
+  /* Clear the 64px corner mark. Page padding is already 1rem. */
+  padding-left: 4.35rem;
   margin-bottom: 0.55rem;
 }
 
