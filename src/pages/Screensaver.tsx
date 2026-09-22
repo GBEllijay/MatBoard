@@ -7,7 +7,7 @@ import { FullscreenChip } from '../components/FullscreenChip';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { TvTip } from '../components/TvTip';
 import { Sheet } from '../components/Sheet';
-import { VideoSourceSheet } from '../components/VideoSourceSheet';
+import { MediaSourceSheet } from '../components/VideoSourceSheet';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useToolboxParent } from '../hooks/useToolboxParent';
@@ -16,9 +16,13 @@ import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { formatMss, secondsToMs } from '../lib/format';
 import {
+  isImageAccept,
   isVideoAccept,
-  openDeviceMediaPicker,
-  type MediaPickerMode,
+  PHOTO_PICKER_ACCEPT,
+  VIDEO_CAPTURE,
+  VIDEO_PICKER_ACCEPT,
+  VIDEO_RECORD_ACCEPT,
+  type MediaSourceKind,
 } from '../lib/mediaPicker';
 import {
   addFolderFiles,
@@ -64,12 +68,16 @@ export function ScreensaverPage() {
   const [muteVideo, setMuteVideo] = useState(DEFAULT_MUTE_VIDEO);
   const [pickerNote, setPickerNote] = useState('');
   const [addOpen, setAddOpen] = useState(false);
+  const [addKind, setAddKind] = useState<MediaSourceKind>('photo');
   const [unlockSound, setUnlockSound] = useState(false);
   const [folderPlay, setFolderPlayState] = useState(DEFAULT_FOLDER_PLAY);
   const [expanded, setExpanded] = useState<Record<FolderId, boolean>>(() =>
     folderExpandedState('gallery'),
   );
-  const fileRef = useRef<HTMLInputElement>(null);
+  const photoCaptureRef = useRef<HTMLInputElement>(null);
+  const photoLibraryRef = useRef<HTMLInputElement>(null);
+  const videoRecordRef = useRef<HTMLInputElement>(null);
+  const videoLibraryRef = useRef<HTMLInputElement>(null);
   const addFolderRef = useRef<FolderId>('gallery');
   const intervalMs = secondsToMs(intervalSec);
   const fs = usePlayFullscreen();
@@ -85,8 +93,6 @@ export function ScreensaverPage() {
     setExpanded(folderExpandedState(requestedFolder));
     setOptions(true);
     addFolderRef.current = requestedFolder;
-    const input = fileRef.current;
-    if (input) input.accept = folderById(requestedFolder).accept;
   }, [requestedFolder]);
 
   const focusFolder = requestedFolder ?? 'gallery';
@@ -188,28 +194,30 @@ export function ScreensaverPage() {
     if (!next) setUnlockSound(true);
   };
 
-  const openAdd = (folderId: FolderId, mode?: MediaPickerMode) => {
+  const openAdd = (folderId: FolderId) => {
     addFolderRef.current = folderId;
     const accept = folderById(folderId).accept;
-    if (isVideoAccept(accept) && mode == null) {
+    if (isVideoAccept(accept)) {
+      setAddKind('video');
       setAddOpen(true);
       return;
     }
-    openDeviceMediaPicker(fileRef.current, {
-      accept,
-      mode: isVideoAccept(accept) ? mode ?? 'library' : 'library',
-    });
+    if (isImageAccept(accept)) {
+      setAddKind('photo');
+      setAddOpen(true);
+    }
   };
 
   const onFiles = async (files: FileList | null) => {
     if (!files?.length) return;
+    setAddOpen(false);
     const folder = folderById(addFolderRef.current);
     const added = await addFolderFiles([...files], addFolderRef.current);
     setPickerNote(
       added
         ? ''
         : folder.id === 'videos'
-          ? 'That file cannot play here. Try MP4 or WebM from this device.'
+          ? 'That file cannot play here. Switch the camera to video, or pick an MP4 / WebM.'
           : 'That file is not an image this folder can keep.',
     );
     await refresh();
@@ -230,7 +238,7 @@ export function ScreensaverPage() {
     photos.length === 0
       ? focusFolder === 'videos'
         ? 'Add videos opens Record or Pick from gallery. They stay on this phone or computer — nothing is uploaded. Clips play in full on the TV, muted by default so gym music can keep playing. Press F for fullscreen on a computer plugged into the TV.'
-        : 'Pick photos from this device. They loop fullscreen. On a computer plugged into the TV, press F for fullscreen. Set how long each slide stays on screen.'
+        : 'Add photos opens Take photo or Pick from gallery. They loop fullscreen. On a computer plugged into the TV, press F for fullscreen. Set how long each slide stays on screen.'
       : 'Nothing is set to play. Turn on Gallery or Videos in options, then tap a left preview so at least one photo or video is On.';
 
   return (
@@ -273,9 +281,7 @@ export function ScreensaverPage() {
           <p>{emptyCopy}</p>
           {focusConfig.ready && focusEmpty ? (
             <button type="button" className="btn" onClick={() => openAdd(focusFolder)}>
-              {isVideoAccept(focusConfig.accept)
-                ? focusConfig.addLabel
-                : `Choose ${focusConfig.itemNounPlural}`}
+              {focusConfig.addLabel}
             </button>
           ) : null}
           <button type="button" className="btn btn--ghost" onClick={() => setOptions(true)}>
@@ -440,17 +446,40 @@ export function ScreensaverPage() {
         </div>
       </Sheet>
 
-      <VideoSourceSheet
+      <MediaSourceSheet
         open={addOpen}
+        kind={addKind}
         title={folderById(addFolderRef.current).addLabel}
+        captureInputId={addKind === 'video' ? 'saver-video-record' : 'saver-photo-capture'}
+        libraryInputId={addKind === 'video' ? 'saver-video-library' : 'saver-photo-library'}
         stacked={options}
         onClose={() => setAddOpen(false)}
-        onRecord={() => openAdd(addFolderRef.current, 'record')}
-        onLibrary={() => openAdd(addFolderRef.current, 'library')}
       />
       <DeviceMediaInput
-        inputRef={fileRef}
-        accept={folderById(addFolderRef.current).accept}
+        id="saver-photo-capture"
+        inputRef={photoCaptureRef}
+        accept={PHOTO_PICKER_ACCEPT}
+        capture={VIDEO_CAPTURE}
+        onFiles={onFiles}
+      />
+      <DeviceMediaInput
+        id="saver-photo-library"
+        inputRef={photoLibraryRef}
+        accept={PHOTO_PICKER_ACCEPT}
+        multiple
+        onFiles={onFiles}
+      />
+      <DeviceMediaInput
+        id="saver-video-record"
+        inputRef={videoRecordRef}
+        accept={VIDEO_RECORD_ACCEPT}
+        capture={VIDEO_CAPTURE}
+        onFiles={onFiles}
+      />
+      <DeviceMediaInput
+        id="saver-video-library"
+        inputRef={videoLibraryRef}
+        accept={VIDEO_PICKER_ACCEPT}
         multiple
         onFiles={onFiles}
       />
