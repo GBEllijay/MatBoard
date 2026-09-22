@@ -37,4 +37,4 @@ export const ROSTER_LEAD_COACH =
 export const ROSTER_LEAD_PRO =
   'Competitor Management — names and belts for Match and Mock Tournament. CSV backup stays in this browser.';
 
-export const NOTES_LEAD = "Today's class plan on this phone. Saved on this device.";
+export const NOTES_LEAD = "Today on this phone. Yesterday and the last 14 days stay on this device.";

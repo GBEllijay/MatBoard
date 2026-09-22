@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { useToolboxParent } from '../hooks/useToolboxParent';
@@ -14,20 +14,99 @@ import {
   TECHNIQUE_TITLE_MAX,
   WARMUP_NOTE_MAX,
   addTechnique,
-  loadTrainingNotes,
+  copyPlan,
+  emptyPlan,
+  loadTrainingArchive,
+  localDateKey,
+  planDayStamp,
+  planDayTitle,
+  planHasContent,
+  recentDateKeys,
   removeTechnique,
-  saveTrainingNotes,
+  saveDay,
+  shiftDateKey,
   type TechniqueBlock,
+  type TrainingNotesArchive,
   type TrainingNotesPlan,
 } from '../lib/trainingNotesStore';
 
 export function TrainingNotesPage() {
   const navigate = useNavigate();
   const parent = useToolboxParent();
-  const [plan, setPlan] = useState(loadTrainingNotes);
+  const [boot] = useState(() => {
+    const today = localDateKey();
+    const archive = loadTrainingArchive(today);
+    return { today, archive, plan: archive.days[today] ?? emptyPlan() };
+  });
+  const [todayKey, setTodayKey] = useState(boot.today);
+  const [archive, setArchive] = useState<TrainingNotesArchive>(boot.archive);
+  const [viewKey, setViewKey] = useState(boot.today);
+  const [plan, setPlan] = useState<TrainingNotesPlan>(boot.plan);
+  const [recentOpen, setRecentOpen] = useState(false);
+  const [confirmKey, setConfirmKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    const roll = () => {
+      const next = localDateKey();
+      setTodayKey((current) => {
+        if (current === next) return current;
+        const loaded = loadTrainingArchive(next);
+        setArchive(loaded);
+        setViewKey(next);
+        setPlan(loaded.days[next] ?? emptyPlan());
+        setConfirmKey(null);
+        setRecentOpen(false);
+        return next;
+      });
+    };
+    document.addEventListener('visibilitychange', roll);
+    const id = window.setInterval(roll, 60_000);
+    return () => {
+      document.removeEventListener('visibilitychange', roll);
+      window.clearInterval(id);
+    };
+  }, []);
+
+  const editingToday = viewKey === todayKey;
+  const yesterdayKey = shiftDateKey(todayKey, -1);
+  const recent = recentDateKeys(archive, todayKey);
+  const sourceKey = editingToday ? yesterdayKey : viewKey;
+  const sourcePlan = archive.days[sourceKey];
+  const canCopy = Boolean(sourcePlan && planHasContent(sourcePlan) && sourceKey !== todayKey);
 
   const commit = (next: TrainingNotesPlan) => {
-    setPlan(saveTrainingNotes(next));
+    if (!editingToday) return;
+    const saved = saveDay(todayKey, next, todayKey);
+    setArchive(saved.archive);
+    setPlan(saved.plan);
+  };
+
+  const openDay = (key: string) => {
+    setViewKey(key);
+    setConfirmKey(null);
+    setRecentOpen(false);
+    setPlan(archive.days[key] ?? emptyPlan());
+  };
+
+  const applyCopy = (key: string) => {
+    const source = archive.days[key];
+    if (!source || !planHasContent(source)) return;
+    const saved = saveDay(todayKey, copyPlan(source), todayKey);
+    setArchive(saved.archive);
+    setPlan(saved.plan);
+    setViewKey(todayKey);
+    setConfirmKey(null);
+    setRecentOpen(false);
+  };
+
+  const requestCopy = () => {
+    if (!canCopy) return;
+    const todayPlan = editingToday ? plan : (archive.days[todayKey] ?? emptyPlan());
+    if (planHasContent(todayPlan)) {
+      setConfirmKey(sourceKey);
+      return;
+    }
+    applyCopy(sourceKey);
   };
 
   const patchTechnique = (id: string, patch: Partial<TechniqueBlock>) => {
@@ -38,6 +117,7 @@ export function TrainingNotesPage() {
   };
 
   const atMax = plan.techniques.length >= MAX_TECHNIQUES;
+  const copyLabel = editingToday ? 'Copy yesterday' : 'Copy into today';
 
   return (
     <main className="notes">
@@ -56,6 +136,87 @@ export function TrainingNotesPage() {
       <p className="notes__lead">{NOTES_LEAD}</p>
 
       <div className="notes__plan">
+        <section className="notes__archive" aria-label="Saved days">
+          <div className="notes__days">
+            <button
+              type="button"
+              className={viewKey === todayKey ? 'notes__day notes__day--on' : 'notes__day'}
+              aria-pressed={viewKey === todayKey}
+              onClick={() => openDay(todayKey)}
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              className={viewKey === yesterdayKey ? 'notes__day notes__day--on' : 'notes__day'}
+              aria-pressed={viewKey === yesterdayKey}
+              onClick={() => openDay(yesterdayKey)}
+            >
+              Yesterday
+            </button>
+            <button
+              type="button"
+              className={recentOpen ? 'notes__day notes__day--on' : 'notes__day'}
+              aria-expanded={recentOpen}
+              onClick={() => {
+                setConfirmKey(null);
+                setRecentOpen((open) => !open);
+              }}
+            >
+              Recent
+            </button>
+          </div>
+          <p className="notes__when">
+            {planDayTitle(viewKey, todayKey)} · {planDayStamp(viewKey)}
+            {editingToday ? '' : ' · View only'}
+          </p>
+          {recentOpen ? (
+            recent.length ? (
+              <ul className="notes__recent">
+                {recent.map((key) => {
+                  const title = planDayTitle(key, todayKey);
+                  const stamp = planDayStamp(key);
+                  return (
+                    <li key={key}>
+                      <button
+                        type="button"
+                        className={key === viewKey ? 'notes__recent-btn notes__recent-btn--on' : 'notes__recent-btn'}
+                        onClick={() => openDay(key)}
+                      >
+                        <span>{title}</span>
+                        {title === stamp ? null : <span>{stamp}</span>}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="notes__recent-empty">No saved days yet.</p>
+            )
+          ) : null}
+          {canCopy && confirmKey ? (
+            <div className="notes__confirm" role="group" aria-label="Replace today's plan">
+              <p>Replace today's plan with {planDayTitle(confirmKey, todayKey)}?</p>
+              <div className="notes__confirm-actions">
+                <button type="button" className="btn btn--ghost" onClick={() => setConfirmKey(null)}>
+                  Cancel
+                </button>
+                <button type="button" className="btn" onClick={() => applyCopy(confirmKey)}>
+                  Copy into today
+                </button>
+              </div>
+            </div>
+          ) : null}
+          {canCopy && !confirmKey ? (
+            <button type="button" className="btn notes__copy" onClick={requestCopy}>
+              {copyLabel}
+            </button>
+          ) : null}
+          {!editingToday && !planHasContent(plan) ? (
+            <p className="notes__recent-empty">No plan saved for this day.</p>
+          ) : null}
+        </section>
+
         <section className="notes__card">
           <label className="notes__field" htmlFor="notes-coach">
             Coach name
@@ -63,8 +224,8 @@ export function TrainingNotesPage() {
               id="notes-coach"
               value={plan.coachName}
               maxLength={COACH_NAME_MAX}
-              autoComplete="name"
-              placeholder="Whose class this is"
+              autoComplete="off"
+              readOnly={!editingToday}
               onChange={(event) => commit({ ...plan, coachName: event.target.value })}
             />
           </label>
@@ -75,7 +236,7 @@ export function TrainingNotesPage() {
               value={plan.intro}
               rows={4}
               maxLength={INTRO_MAX}
-              placeholder="Announcements or a brief description of today's plan"
+              readOnly={!editingToday}
               onChange={(event) => commit({ ...plan, intro: event.target.value })}
             />
           </label>
@@ -87,7 +248,7 @@ export function TrainingNotesPage() {
           label="Special note"
           value={plan.warmupNote}
           maxLength={WARMUP_NOTE_MAX}
-          placeholder="Sprawls, hard cardio, add push-ups"
+          readOnly={!editingToday}
           onChange={(warmupNote) => commit({ ...plan, warmupNote })}
         />
 
@@ -96,20 +257,23 @@ export function TrainingNotesPage() {
             key={tech.id}
             index={index}
             tech={tech}
-            canRemove={index >= MIN_TECHNIQUES}
+            readOnly={!editingToday}
+            canRemove={editingToday && index >= MIN_TECHNIQUES}
             onChange={(patch) => patchTechnique(tech.id, patch)}
             onRemove={() => commit(removeTechnique(plan, tech.id))}
           />
         ))}
 
-        <button
-          type="button"
-          className="btn notes__add"
-          disabled={atMax}
-          onClick={() => commit(addTechnique(plan))}
-        >
-          + Add another
-        </button>
+        {editingToday ? (
+          <button
+            type="button"
+            className="btn notes__add"
+            disabled={atMax}
+            onClick={() => commit(addTechnique(plan))}
+          >
+            + Add another
+          </button>
+        ) : null}
 
         <NoteSection
           id="notes-cooldown"
@@ -117,7 +281,7 @@ export function TrainingNotesPage() {
           label="Special note"
           value={plan.cooldownNote}
           maxLength={COOLDOWN_NOTE_MAX}
-          placeholder="Anything special for cool-down today"
+          readOnly={!editingToday}
           onChange={(cooldownNote) => commit({ ...plan, cooldownNote })}
         />
 
@@ -129,7 +293,7 @@ export function TrainingNotesPage() {
               value={plan.closing}
               rows={4}
               maxLength={CLOSING_MAX}
-              placeholder="Seminar date, promotion party, schedule changes"
+              readOnly={!editingToday}
               onChange={(event) => commit({ ...plan, closing: event.target.value })}
             />
           </label>
@@ -145,7 +309,7 @@ function NoteSection({
   label,
   value,
   maxLength,
-  placeholder,
+  readOnly,
   onChange,
 }: {
   id: string;
@@ -153,7 +317,7 @@ function NoteSection({
   label: string;
   value: string;
   maxLength: number;
-  placeholder: string;
+  readOnly: boolean;
   onChange: (value: string) => void;
 }) {
   return (
@@ -170,7 +334,7 @@ function NoteSection({
         value={value}
         rows={3}
         maxLength={maxLength}
-        placeholder={placeholder}
+        readOnly={readOnly}
         onChange={(event) => onChange(event.target.value)}
       />
     </section>
@@ -180,12 +344,14 @@ function NoteSection({
 function TechniqueBlockView({
   index,
   tech,
+  readOnly,
   canRemove,
   onChange,
   onRemove,
 }: {
   index: number;
   tech: TechniqueBlock;
+  readOnly: boolean;
   canRemove: boolean;
   onChange: (patch: Partial<TechniqueBlock>) => void;
   onRemove: () => void;
@@ -210,7 +376,8 @@ function TechniqueBlockView({
             id={titleId}
             value={tech.title}
             maxLength={TECHNIQUE_TITLE_MAX}
-            placeholder="Drop seoi nage"
+            readOnly={readOnly}
+            autoComplete="off"
             onChange={(event) => onChange({ title: event.target.value })}
           />
         </label>
@@ -221,7 +388,7 @@ function TechniqueBlockView({
             value={tech.notes}
             rows={4}
             maxLength={TECHNIQUE_NOTES_MAX}
-            placeholder="Stance, grips, turn, throw…"
+            readOnly={readOnly}
             onChange={(event) => onChange({ notes: event.target.value })}
           />
         </label>
@@ -232,14 +399,13 @@ function TechniqueBlockView({
         role="switch"
         aria-checked={tech.waterBreak}
         aria-label={`Water break after Technique / Drill ${number}`}
+        disabled={readOnly}
         onClick={() => onChange({ waterBreak: !tech.waterBreak })}
       >
         <span className="notes__switch" aria-hidden="true" />
         <span className="notes__break-copy">
           <span className="notes__break-label">Water break</span>
-          {tech.waterBreak ? (
-            <span className="notes__break-hint">Before the next section</span>
-          ) : null}
+          {tech.waterBreak ? <span className="notes__break-hint">Before the next section</span> : null}
         </span>
         <span className="notes__break-state">{tech.waterBreak ? 'On' : 'Off'}</span>
       </button>
