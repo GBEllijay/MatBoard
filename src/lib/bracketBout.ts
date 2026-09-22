@@ -11,7 +11,6 @@ import {
 import {
   getTournament,
   isBracketMatchId,
-  roundLabel,
   scoreboardSideToBracket,
   seedPlaceholder,
   seedSlots,
@@ -63,7 +62,7 @@ export function openBracketBout(matchId: BracketMatchId): void {
     matchId,
     blueName: boutCompetitorName(matchId, 'a'),
     whiteName: boutCompetitorName(matchId, 'b'),
-    round: roundLabel(matchId),
+    round: '',
     division: tournament.title.trim(),
   });
 }
@@ -132,12 +131,6 @@ export function declareMatchOutcome(
     setMatchOutcome(linked, scoreboardSideToBracket(side), stored, { toggle: false });
   }
   return true;
-}
-
-export function roundDisplay(round: string, linked: boolean): string {
-  if (!round) return linked ? 'Bout' : 'Round —';
-  if (linked) return round;
-  return `Round ${round}`;
 }
 
 export function visibleOutcomeBanner(match: {

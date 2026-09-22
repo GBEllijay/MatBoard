@@ -228,6 +228,7 @@ export function MatchControllerPage() {
             <input
               id={displayFocusId('round')}
               value={match.round}
+              placeholder="Optional"
               onChange={(e) => dispatchMatch({ type: 'setField', field: 'round', value: e.target.value })}
             />
           </label>

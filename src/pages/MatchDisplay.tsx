@@ -12,7 +12,8 @@ import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useMatchState } from '../hooks/useStores';
 import { unlockAudio } from '../lib/audio';
-import { controllerPath, linkedBracketMatchId, roundDisplay } from '../lib/bracketBout';
+import { controllerPath, linkedBracketMatchId } from '../lib/bracketBout';
+import { roundDisplay } from '../lib/roundDisplay';
 import { competitorFocus, type DisplayFocus } from '../lib/matchFocus';
 import { dispatchMatch, expireMatchClock, remainingNow, type Side } from '../lib/matchStore';
 import { needsRefDecision } from '../lib/outcomes';
@@ -64,6 +65,7 @@ export function MatchDisplayPage() {
     openController(endedWithoutWinner ? 'outcome' : undefined);
   };
 
+  const roundLine = roundDisplay(match.round, Boolean(linkedId));
   const clockStatus = match.running ? 'Running' : remaining <= 0 ? 'Ended' : 'Paused';
   const clockStatusAction = match.running ? 'Pause match clock' : remaining <= 0 ? 'Restart match clock' : 'Start match clock';
 
@@ -117,9 +119,11 @@ export function MatchDisplayPage() {
 
       <section className="display__mid">
         <div className="display__meta">
-          <ControllerFocusLink focus="round" label="Edit round on Controller" onOpen={openController}>
-            {roundDisplay(match.round, Boolean(linkedId))}
-          </ControllerFocusLink>
+          {roundLine ? (
+            <ControllerFocusLink focus="round" label="Edit round on Controller" onOpen={openController}>
+              {roundLine}
+            </ControllerFocusLink>
+          ) : null}
           <ControllerFocusLink focus="division" label="Edit division on Controller" onOpen={openController}>
             {match.division || 'Open'}
           </ControllerFocusLink>
