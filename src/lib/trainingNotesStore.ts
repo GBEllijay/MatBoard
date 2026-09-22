@@ -1,7 +1,7 @@
-/** Coach class plan. One plan on this device — no cloud, no history. */
+/** Coach Daily Lesson Plan. On-device days only — no cloud, no Pro archive. */
 
 export const TRAINING_NOTES_STORAGE_KEY = 'matboard.coach.trainingNotes.v1';
-/** Previous free-text jot. Read once into Intro, then removed. */
+/** Previous free-text jot. Read once into today's Intro, then removed. */
 export const LEGACY_TRAINING_NOTES_STORAGE_KEY = 'matboard.trainingNotes.v1';
 
 export const COACH_NAME_MAX = 80;
@@ -13,6 +13,11 @@ export const TECHNIQUE_TITLE_MAX = 120;
 export const TECHNIQUE_NOTES_MAX = 2_000;
 export const MIN_TECHNIQUES = 3;
 export const MAX_TECHNIQUES = 20;
+/** Today plus the previous 13 local dates. */
+export const PLAN_RETENTION_DAYS = 14;
+
+const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
+const DAY_MS = 86_400_000;
 
 export type TechniqueBlock = {
   id: string;
@@ -36,6 +41,16 @@ export type TrainingNotesPlan = {
   closing: string;
 };
 
+/**
+ * Same storage key as the single-plan card.
+ * `version: 2` holds one plan per local calendar date (`YYYY-MM-DD`).
+ * A stored `version: 1` plan is moved onto today the first time it is read.
+ */
+export type TrainingNotesArchive = {
+  version: 2;
+  days: Record<string, TrainingNotesPlan>;
+};
+
 let idSeq = 0;
 
 function createId(prefix: string): string {
@@ -51,6 +66,45 @@ function clampText(value: unknown, max: number): string {
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   return value as Record<string, unknown>;
+}
+
+/** Device local calendar date. A phone set to America/New_York rolls over at local midnight. */
+export function localDateKey(now = new Date()): string {
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+export function dateFromKey(key: string): Date {
+  const [year, month, day] = key.split('-').map(Number);
+  return new Date(year || 1970, (month || 1) - 1, day || 1);
+}
+
+export function shiftDateKey(key: string, deltaDays: number): string {
+  const date = dateFromKey(key);
+  date.setDate(date.getDate() + deltaDays);
+  return localDateKey(date);
+}
+
+export function isWithinRetention(dateKey: string, todayKey: string, days = PLAN_RETENTION_DAYS): boolean {
+  if (!DATE_KEY.test(dateKey) || !DATE_KEY.test(todayKey)) return false;
+  const diff = Math.round((dateFromKey(todayKey).getTime() - dateFromKey(dateKey).getTime()) / DAY_MS);
+  return diff >= 0 && diff < days;
+}
+
+export function planDayTitle(dateKey: string, todayKey: string): string {
+  if (dateKey === todayKey) return 'Today';
+  if (dateKey === shiftDateKey(todayKey, -1)) return 'Yesterday';
+  return planDayStamp(dateKey);
+}
+
+export function planDayStamp(dateKey: string): string {
+  return dateFromKey(dateKey).toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
 }
 
 export function createTechnique(): TechniqueBlock {
@@ -73,6 +127,19 @@ export function emptyPlan(): TrainingNotesPlan {
     cooldownNote: '',
     closing: '',
   };
+}
+
+export function planHasContent(plan: TrainingNotesPlan): boolean {
+  if (
+    plan.coachName.trim() ||
+    plan.intro.trim() ||
+    plan.warmupNote.trim() ||
+    plan.cooldownNote.trim() ||
+    plan.closing.trim()
+  ) {
+    return true;
+  }
+  return plan.techniques.some((tech) => tech.title.trim() || tech.notes.trim() || tech.waterBreak);
 }
 
 function sanitizeTechnique(value: unknown): { block: TechniqueBlock; repaired: boolean } {
@@ -170,18 +237,73 @@ export function sanitizePlan(input: unknown): { plan: TrainingNotesPlan; repaire
   };
 }
 
-function writePlan(plan: TrainingNotesPlan): TrainingNotesPlan | null {
+/** Fresh technique ids so a copied day does not share a later video slot with the source. */
+export function copyPlan(source: TrainingNotesPlan): TrainingNotesPlan {
+  const { plan } = sanitizePlan(source);
+  return {
+    ...plan,
+    techniques: plan.techniques.map((tech) => ({
+      ...tech,
+      id: createId('tech'),
+      slotId: createId('slot'),
+    })),
+  };
+}
+
+function pruneDays(days: Record<string, TrainingNotesPlan>, todayKey: string): Record<string, TrainingNotesPlan> {
+  const next: Record<string, TrainingNotesPlan> = {};
+  for (const [key, plan] of Object.entries(days)) {
+    if (!isWithinRetention(key, todayKey)) continue;
+    if (!planHasContent(plan)) continue;
+    next[key] = plan;
+  }
+  return next;
+}
+
+function archiveFromStored(
+  parsed: unknown,
+  todayKey: string,
+): { archive: TrainingNotesArchive; rewrite: boolean } | null {
+  const raw = asRecord(parsed);
+  if (!raw) return null;
+
+  if (raw.version === 2 && raw.days && typeof raw.days === 'object' && !Array.isArray(raw.days)) {
+    const days: Record<string, TrainingNotesPlan> = {};
+    let rewrite = false;
+    for (const [key, value] of Object.entries(raw.days as Record<string, unknown>)) {
+      if (!DATE_KEY.test(key)) {
+        rewrite = true;
+        continue;
+      }
+      const { plan, repaired } = sanitizePlan(value);
+      if (repaired) rewrite = true;
+      if (!planHasContent(plan)) {
+        rewrite = true;
+        continue;
+      }
+      days[key] = plan;
+    }
+    const pruned = pruneDays(days, todayKey);
+    if (Object.keys(pruned).length !== Object.keys(days).length) rewrite = true;
+    return { archive: { version: 2, days: pruned }, rewrite };
+  }
+
+  if (raw.version === 1 || Array.isArray(raw.techniques) || typeof raw.coachName === 'string') {
+    const { plan } = sanitizePlan(raw);
+    const days = planHasContent(plan) ? { [todayKey]: plan } : {};
+    return { archive: { version: 2, days }, rewrite: true };
+  }
+
+  return null;
+}
+
+function writeArchive(archive: TrainingNotesArchive): TrainingNotesArchive | null {
   try {
-    localStorage.setItem(TRAINING_NOTES_STORAGE_KEY, JSON.stringify(plan));
-    return plan;
+    localStorage.setItem(TRAINING_NOTES_STORAGE_KEY, JSON.stringify(archive));
+    return archive;
   } catch {
     return null;
   }
-}
-
-export function saveTrainingNotes(plan: TrainingNotesPlan): TrainingNotesPlan {
-  const { plan: next } = sanitizePlan(plan);
-  return writePlan(next) ?? next;
 }
 
 function readLegacyIntro(): string | null {
@@ -195,40 +317,87 @@ function readLegacyIntro(): string | null {
   }
 }
 
-export function loadTrainingNotes(): TrainingNotesPlan {
+function dropLegacy(): void {
+  try {
+    localStorage.removeItem(LEGACY_TRAINING_NOTES_STORAGE_KEY);
+  } catch {
+    /* keep the legacy jot if the new key could not be confirmed */
+  }
+}
+
+export function recentDateKeys(archive: TrainingNotesArchive, todayKey: string): string[] {
+  return Object.keys(archive.days)
+    .filter((key) => isWithinRetention(key, todayKey))
+    .sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
+}
+
+export function loadTrainingArchive(today = localDateKey()): TrainingNotesArchive {
+  let archive: TrainingNotesArchive = { version: 2, days: {} };
+  let rewrite = false;
+
   try {
     const raw = localStorage.getItem(TRAINING_NOTES_STORAGE_KEY);
     if (typeof raw === 'string' && raw.trim()) {
-      let parsed: unknown;
+      let parsed: unknown = null;
       try {
         parsed = JSON.parse(raw);
       } catch {
         parsed = null;
       }
-      if (parsed) {
-        const { plan, repaired } = sanitizePlan(parsed);
-        if (repaired) writePlan(plan);
-        return plan;
+      const restored = parsed ? archiveFromStored(parsed, today) : null;
+      if (restored) {
+        archive = restored.archive;
+        rewrite = restored.rewrite;
+      } else {
+        rewrite = true;
       }
     }
   } catch {
-    /* fall through */
+    /* fall through to legacy */
   }
 
-  const legacy = readLegacyIntro();
-  if (!legacy) return emptyPlan();
-
-  const plan = emptyPlan();
-  plan.intro = legacy.slice(0, INTRO_MAX);
-  const saved = writePlan(plan);
-  if (saved) {
-    try {
-      localStorage.removeItem(LEGACY_TRAINING_NOTES_STORAGE_KEY);
-    } catch {
-      /* keep the legacy jot if the new key could not be confirmed */
+  if (!Object.keys(archive.days).length) {
+    const legacy = readLegacyIntro();
+    if (legacy) {
+      const plan = emptyPlan();
+      plan.intro = legacy.slice(0, INTRO_MAX);
+      const { plan: clean } = sanitizePlan(plan);
+      archive = { version: 2, days: { [today]: clean } };
+      const written = writeArchive(archive);
+      if (written) dropLegacy();
+      return written ?? archive;
     }
   }
-  return saved ?? plan;
+
+  if (rewrite) writeArchive(archive);
+  return archive;
+}
+
+export function loadDay(dateKey: string, today = localDateKey()): TrainingNotesPlan {
+  const archive = loadTrainingArchive(today);
+  return archive.days[dateKey] ?? emptyPlan();
+}
+
+export function saveDay(
+  dateKey: string,
+  plan: TrainingNotesPlan,
+  today = localDateKey(),
+): { archive: TrainingNotesArchive; plan: TrainingNotesPlan } {
+  const loaded = loadTrainingArchive(today);
+  const { plan: clean } = sanitizePlan(plan);
+  const days = { ...loaded.days };
+  if (planHasContent(clean) && isWithinRetention(dateKey, today)) days[dateKey] = clean;
+  else delete days[dateKey];
+  const archive: TrainingNotesArchive = { version: 2, days: pruneDays(days, today) };
+  return { archive: writeArchive(archive) ?? archive, plan: clean };
+}
+
+export function loadTrainingNotes(today = localDateKey()): TrainingNotesPlan {
+  return loadDay(today, today);
+}
+
+export function saveTrainingNotes(plan: TrainingNotesPlan, today = localDateKey()): TrainingNotesPlan {
+  return saveDay(today, plan, today).plan;
 }
 
 export function addTechnique(plan: TrainingNotesPlan): TrainingNotesPlan {
