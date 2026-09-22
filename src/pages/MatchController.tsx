@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
+import { Sheet } from '../components/Sheet';
 import { OutcomeCalls, OutcomePickSheet, useOutcomeSheet } from '../components/OutcomeCalls';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { RankChip } from '../components/RankChip';
@@ -45,6 +46,7 @@ export function MatchControllerPage() {
   const [customOpen, setCustomOpen] = useState(false);
   const [customMinutes, setCustomMinutes] = useState('4');
   const [castNote, setCastNote] = useState('');
+  const [tvHelpOpen, setTvHelpOpen] = useState(false);
   const [searchParams] = useSearchParams();
   const remaining = remainingNow(match);
   const durationIsPreset = TIME_PRESETS_MIN.some((minutes) => match.durationMs === minutesToMs(minutes));
@@ -390,24 +392,55 @@ export function MatchControllerPage() {
       />
 
       <section className="controller__help">
-        <p className="cast-note">
-          Gym TV from a computer: plug the computer into the TV, open this site in a browser, tap{' '}
-          <strong>Display</strong> (or Scoreboard), and press F for fullscreen.
-        </p>
-        <p className="cast-note">
-          Keep this Controller on the table. <strong>Display</strong> opens the scoreboard in a new window on this same
-          device. <strong>Cast</strong> can send it to a Chromecast or extra display, but on many phones it just opens
-          that same window — it does not start Samsung Smart View or iPhone AirPlay. After the scoreboard is open, use
-          the phone’s screen mirroring to show it on a TV.
-        </p>
-        <p className="cast-note">
-          Windows in the same browser stay in sync. A phone and a separate computer do not share live scores yet — that
-          pairing comes later.
-        </p>
+        <button
+          type="button"
+          className="controller__suggest"
+          aria-haspopup="dialog"
+          onClick={() => setTvHelpOpen(true)}
+        >
+          Instructions / Suggestions
+        </button>
         <Link className="text-link" to={scoreboardPath(linkedId)}>
           Open scoreboard on this device
         </Link>
       </section>
+      <Sheet
+        className="sheet--help"
+        open={tvHelpOpen}
+        title="How to show the scoreboard on a gym TV"
+        onClose={() => setTvHelpOpen(false)}
+      >
+        <div className="controller-help">
+          <section>
+            <h3>On a gym TV</h3>
+            <p>
+              Plug a computer or stick into the TV (or use the TV’s browser if it has one). Open Advantage and go to{' '}
+              <strong>Display</strong> / the scoreboard screen. Press <strong>F</strong> (or use the fullscreen
+              control) so the board fills the TV.
+            </p>
+          </section>
+          <section>
+            <h3>On your phone</h3>
+            <p>
+              Open Advantage and use <strong>Controller</strong> (or Match) to run the clock and scores. Keep this
+              phone as the remote while the TV shows Display.
+            </p>
+          </section>
+          <section>
+            <h3>Casting</h3>
+            <p>
+              You can also cast from your phone to the TV with AirPlay or Chromecast when your TV supports it. If the
+              cast looks small, open Display on the TV-side browser and fullscreen there for the clearest board.
+            </p>
+          </section>
+          <section>
+            <h3>Tip</h3>
+            <p>
+              Use one phone as Controller and one screen as Display. That’s the setup that works best on the mat.
+            </p>
+          </section>
+        </div>
+      </Sheet>
     </main>
   );
 }

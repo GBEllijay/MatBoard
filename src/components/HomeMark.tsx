@@ -1,7 +1,8 @@
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 
 type Props = {
-  tagline: string;
+  tagline: ReactNode;
   /** When set, the mark navigates back (White / Pro pages). */
   to?: string;
 };

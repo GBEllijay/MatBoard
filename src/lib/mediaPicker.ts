@@ -6,9 +6,12 @@
  * one input then calling `click()` is ignored on some Android Chrome builds:
  * Google Photos / Collections opens instead of the camera.
  *
- * Video Record: `video/*,image/*` + `capture="environment"` in the markup (not
- * JS). Image is allowed so Camera still opens if video-only capture is bound
- * to the gallery — switch to video. No `multiple` on Record.
+ * Video Record: `video/*` + `capture="environment"` in the markup (not JS).
+ * Chrome Android only launches the camera when `capture` is set and every
+ * accept token is the same kind. `video/*,image/*` fails that check, so Record
+ * fell through to the photo picker (saved videos). A single `video/*` matches
+ * Take photo (`image/*` + `capture="environment"`) and opens video capture.
+ * No `multiple` on Record.
  * Photo Take: `image/*` + `capture="environment"`, no `multiple`.
  * Library: `video/*` or `image/*`, no capture, so Pick from gallery stays
  * Google Photos / the system picker.
@@ -23,10 +26,10 @@
 export const VIDEO_PICKER_ACCEPT = 'video/*';
 
 /**
- * Record input accept. Video first; image allowed so Android can open Camera
- * (not Photos) when video-only capture is bound to the gallery.
+ * Record input accept. Video only — a second type such as `image/*` makes
+ * Chrome Android ignore `capture` and open the gallery.
  */
-export const VIDEO_RECORD_ACCEPT = 'video/*,image/*';
+export const VIDEO_RECORD_ACCEPT = 'video/*';
 
 export const PHOTO_PICKER_ACCEPT = 'image/*';
 

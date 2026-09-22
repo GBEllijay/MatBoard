@@ -38,15 +38,8 @@ export function ComingSoonPage() {
                 Open Coach
               </Link>
             ) : null}
-            <Link className="btn btn--white" to="/tournament">
-              <BeltRail kind="tournament" />
-              {tournamentToolLabel(proUnlocked)}
-            </Link>
             {coachUnlocked ? (
               <>
-                <Link className="btn" to="/roster">
-                  {COMPETITOR_ROSTER_LABEL}
-                </Link>
                 <Link className="btn" to="/notes">
                   {TRAINING_NOTES_LABEL}
                 </Link>
@@ -54,6 +47,15 @@ export function ComingSoonPage() {
                   Daily Training Videos
                 </Link>
               </>
+            ) : null}
+            <Link className="btn btn--white" to="/tournament">
+              <BeltRail kind="tournament" />
+              {tournamentToolLabel(proUnlocked)}
+            </Link>
+            {coachUnlocked ? (
+              <Link className="btn" to="/roster?from=coach">
+                {COMPETITOR_ROSTER_LABEL}
+              </Link>
             ) : null}
             {proUnlocked ? (
               <>

@@ -5,17 +5,15 @@ import { ComingSoonAd, ComingSoonAdActions } from '../components/ComingSoonAd';
 import { HomeMark } from '../components/HomeMark';
 import { ProUnlockSheet } from '../components/ProUnlockSheet';
 import { Sheet } from '../components/Sheet';
+import { TierLine } from '../components/TierLine';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
-import { lockCoach } from '../lib/coachUnlock';
 import {
   COMING_SOON_ADS,
-  COMING_SOON_LABEL,
-  PRODUCT_TEASERS,
   type SoonProduct,
 } from '../lib/comingSoonAds';
-import { GYM_CONSOLE_NAME, TOURNAMENT_SOFTWARE_NAME } from '../lib/productNames';
-import { lockPro } from '../lib/proUnlock';
+import { COACH_TOOLS_TEASER } from '../lib/coachCopy';
+import { GYM_CONSOLE_NAME, PRO_LADDER_DETAIL, WHITE_LADDER_DETAIL } from '../lib/productNames';
 
 export function HomePage() {
   const proUnlocked = useProUnlocked();
@@ -37,8 +35,9 @@ export function HomePage() {
           <Link className="mode-card mode-card--white" to="/white">
             <BeltRail kind="white" />
             <strong>Advantage White</strong>
-            <span className="mode-card__sub">BJJ Scoreboard and Timer</span>
-            <span className="mode-card__teaser">Live Bout + Rounds</span>
+            <span className="mode-card__sub">
+              <TierLine tier="White" detail={WHITE_LADDER_DETAIL} />
+            </span>
           </Link>
 
           {coachUnlocked ? (
@@ -51,8 +50,9 @@ export function HomePage() {
               />
               <BeltRail kind="blue" />
               <strong>Advantage Coach</strong>
-              <span className="mode-card__sub">Coach tools</span>
-              <span className="mode-card__teaser">{PRODUCT_TEASERS.coachUnlocked}</span>
+              <span className="mode-card__sub">
+                <TierLine tier="Coach" detail={COACH_TOOLS_TEASER} />
+              </span>
               <div className="mode-card__actions">
                 <Link className="btn btn--white" to="/coach">
                   Open Coach
@@ -69,8 +69,9 @@ export function HomePage() {
             >
               <BeltRail kind="blue" />
               <strong>Advantage Coach</strong>
-              <span className="mode-card__sub">{COMING_SOON_LABEL}</span>
-              <span className="mode-card__teaser">{PRODUCT_TEASERS.coach}</span>
+              <span className="mode-card__sub">
+                <TierLine tier="Coach" detail={COACH_TOOLS_TEASER} />
+              </span>
             </button>
           )}
 
@@ -84,8 +85,9 @@ export function HomePage() {
               />
               <BeltRail kind="black" />
               <strong>Advantage Pro</strong>
-              <span className="mode-card__sub">{GYM_CONSOLE_NAME}</span>
-              <span className="mode-card__teaser">{PRODUCT_TEASERS.proUnlocked}</span>
+              <span className="mode-card__sub">
+                <TierLine tier="Pro" detail={PRO_LADDER_DETAIL} />
+              </span>
               <div className="mode-card__actions">
                 <Link className="btn btn--white" to="/pro">
                   Open Console
@@ -102,60 +104,17 @@ export function HomePage() {
             >
               <BeltRail kind="black" />
               <strong>Advantage Pro</strong>
-              <span className="mode-card__sub">{COMING_SOON_LABEL}</span>
-              <span className="mode-card__teaser">{PRODUCT_TEASERS.pro}</span>
+              <span className="mode-card__sub">
+                <TierLine tier="Pro" detail={PRO_LADDER_DETAIL} />
+              </span>
             </button>
           )}
         </nav>
 
         <div className="home__hints">
-          <p className="home__hint">Install Advantage as an app from your browser menu.</p>
           <p className="home__hint">
-            {proUnlocked
-              ? `Gym TV: open White for Display or Rounds, or Pro for ${GYM_CONSOLE_NAME}, ${TOURNAMENT_SOFTWARE_NAME}, or Class Schedule. Press F for fullscreen. Roster lives on the phone.`
-              : coachUnlocked
-                ? 'Gym TV: open White for Display or Rounds, or Coach for Mock Tournament or Daily Training Videos. Press F for fullscreen.'
-                : 'Gym TV: open White, then fullscreen Display or Rounds. Press F for fullscreen.'}
+            Install Advantage as an app from your browser menu for best results.
           </p>
-          <p className="home__hint">
-            Control from your phone. Cast the scoreboard to your TV, or open Display on a second
-            screen or computer.
-          </p>
-          {proUnlocked || coachUnlocked ? (
-            <p className="home__soon">
-              {proUnlocked ? 'Advantage Pro is on for this browser. ' : null}
-              {coachUnlocked ? 'Advantage Coach is on for this browser. ' : null}
-              {proUnlocked ? (
-                <Link className="home__text-btn" to="/pro">
-                  Open Console
-                </Link>
-              ) : null}
-              {proUnlocked && coachUnlocked ? ' · ' : null}
-              {coachUnlocked ? (
-                <Link className="home__text-btn" to="/coach">
-                  Open Coach
-                </Link>
-              ) : null}
-              {proUnlocked ? (
-                <>
-                  {' · '}
-                  <button type="button" className="home__text-btn" onClick={() => lockPro()}>
-                    Lock Pro
-                  </button>
-                </>
-              ) : null}
-              {coachUnlocked ? (
-                <>
-                  {' · '}
-                  <button type="button" className="home__text-btn" onClick={() => lockCoach()}>
-                    Lock Coach
-                  </button>
-                </>
-              ) : null}
-            </p>
-          ) : (
-            <p className="home__soon">Coming soon: Advantage Coach and Advantage Pro.</p>
-          )}
         </div>
       </div>
 

@@ -2,12 +2,14 @@ import { Link } from 'react-router-dom';
 import { HomeMark } from '../components/HomeMark';
 import { LiveBoutCard } from '../components/LiveBoutCard';
 import { RoundsCard } from '../components/RoundsCard';
+import { TierLine } from '../components/TierLine';
+import { WHITE_LADDER_DETAIL } from '../lib/productNames';
 
 export function WhitePage() {
   return (
     <main className="home home--white">
       <div className="home__inner">
-        <HomeMark to="/" tagline="White — BJJ scoreboard and timer. Live Bout and Rounds." />
+        <HomeMark to="/" tagline={<TierLine tier="White" detail={WHITE_LADDER_DETAIL} />} />
 
         <nav className="home__modes" aria-label="Advantage White">
           <LiveBoutCard />

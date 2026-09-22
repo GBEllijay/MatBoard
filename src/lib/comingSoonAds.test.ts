@@ -15,8 +15,13 @@ test('Coach ad sells the four hub tools and no price', () => {
   assert.equal(COMING_SOON_ADS.coach.kicker, COMING_SOON_LABEL);
   assert.equal(COMING_SOON_LABEL, 'Coming Soon');
   assert.equal(COMING_SOON_ADS.coach.lead, COACH_AD_LEAD);
+  assert.deepEqual(
+    COMING_SOON_ADS.coach.features.map((feature) => feature.title),
+    ['Daily Lesson Plan', 'Daily Training Videos', 'Mock Tournament', 'Competitor Roster'],
+  );
   assert.match(text, /Mock Tournament/i);
-  assert.match(text, /Competitor Management/);
+  assert.match(text, /Competitor Roster/);
+  assert.doesNotMatch(text, /Competitor Management/);
   assert.match(text, /Daily Lesson Plan/);
   assert.match(
     text,
@@ -40,10 +45,12 @@ test('Coach ad sells the four hub tools and no price', () => {
   assert.doesNotMatch(PRODUCT_TEASERS.coach, /\$\d/);
   assert.equal(PRODUCT_TEASERS.coach, COACH_HOME_TEASER);
   assert.equal(PRODUCT_TEASERS.coachUnlocked, COACH_HOME_TEASER);
-  assert.match(PRODUCT_TEASERS.coach, /Mock Tournament/);
-  assert.match(PRODUCT_TEASERS.coach, /Daily Videos/);
-  assert.match(PRODUCT_TEASERS.coach, /Roster/);
-  assert.match(PRODUCT_TEASERS.coach, /Daily Lesson Plan/);
+  const teaser = PRODUCT_TEASERS.coach;
+  const lesson = teaser.indexOf('Daily Lesson Plan');
+  const videos = teaser.indexOf('Daily Training Videos');
+  const mock = teaser.indexOf('Mock Tournament');
+  const roster = teaser.indexOf('Roster');
+  assert.ok(lesson === 0 && videos > lesson && mock > videos && roster > mock);
   assert.ok(PRODUCT_TEASERS.coach.length < 70);
 });
 

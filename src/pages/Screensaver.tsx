@@ -9,15 +9,12 @@ import { TvTip } from '../components/TvTip';
 import { Sheet } from '../components/Sheet';
 import { MediaSourceSheet } from '../components/VideoSourceSheet';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
-import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useToolboxParent } from '../hooks/useToolboxParent';
 import { GYM_CONSOLE_NAME } from '../lib/productNames';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { formatMss, secondsToMs } from '../lib/format';
 import {
-  isImageAccept,
-  isVideoAccept,
   PHOTO_PICKER_ACCEPT,
   VIDEO_CAPTURE,
   VIDEO_PICKER_ACCEPT,
@@ -83,10 +80,10 @@ export function ScreensaverPage() {
   const fs = usePlayFullscreen();
   const navigate = useNavigate();
   const parent = useToolboxParent();
-  const proUnlocked = useProUnlocked();
   const [searchParams] = useSearchParams();
   const folderParam = searchParams.get('folder');
-  const requestedFolder = isFolderId(folderParam) ? folderParam : null;
+  const requestedFolder =
+    folderParam === 'videos' ? 'gallery' : isFolderId(folderParam) ? folderParam : null;
 
   useEffect(() => {
     if (!requestedFolder) return;
@@ -194,29 +191,21 @@ export function ScreensaverPage() {
     if (!next) setUnlockSound(true);
   };
 
-  const openAdd = (folderId: FolderId) => {
+  const openAdd = (folderId: FolderId, kind: MediaSourceKind) => {
     addFolderRef.current = folderId;
-    const accept = folderById(folderId).accept;
-    if (isVideoAccept(accept)) {
-      setAddKind('video');
-      setAddOpen(true);
-      return;
-    }
-    if (isImageAccept(accept)) {
-      setAddKind('photo');
-      setAddOpen(true);
-    }
+    setAddKind(kind);
+    setAddOpen(true);
   };
 
   const onFiles = async (files: FileList | null) => {
     if (!files?.length) return;
+    const kind = addKind;
     setAddOpen(false);
-    const folder = folderById(addFolderRef.current);
     const added = await addFolderFiles([...files], addFolderRef.current);
     setPickerNote(
       added
         ? ''
-        : folder.id === 'videos'
+        : kind === 'video'
           ? 'That file cannot play here. Switch the camera to video, or pick an MP4 / WebM.'
           : 'That file is not an image this folder can keep.',
     );
@@ -230,16 +219,13 @@ export function ScreensaverPage() {
     });
   };
 
-  const hubTitle =
-    !proUnlocked && focusFolder === 'videos' ? 'Daily Techniques' : GYM_CONSOLE_NAME;
+  const hubTitle = GYM_CONSOLE_NAME;
 
   const focusEmpty = itemsInFolder(photos, focusFolder).length === 0;
   const emptyCopy =
     photos.length === 0
-      ? focusFolder === 'videos'
-        ? 'Add videos opens Record or Pick from gallery. They stay on this phone or computer — nothing is uploaded. Clips play in full on the TV, muted by default so gym music can keep playing. Press F for fullscreen on a computer plugged into the TV.'
-        : 'Add photos opens Take photo or Pick from gallery. They loop fullscreen. On a computer plugged into the TV, press F for fullscreen. Set how long each slide stays on screen.'
-      : 'Nothing is set to play. Turn on Gallery or Videos in options, then tap a left preview so at least one photo or video is On.';
+      ? 'Add photos opens Take photo or Pick from gallery. Add videos opens Record or Pick from gallery. They stay on this phone or computer — nothing is uploaded. Photos loop fullscreen; clips play through, muted by default. Press F for fullscreen on a computer plugged into the TV.'
+      : 'Nothing is set to play. Turn on Gallery in options, then tap a left preview so at least one photo or video is On.';
 
   return (
     <main
@@ -280,9 +266,16 @@ export function ScreensaverPage() {
           <h1>{hubTitle}</h1>
           <p>{emptyCopy}</p>
           {focusConfig.ready && focusEmpty ? (
-            <button type="button" className="btn" onClick={() => openAdd(focusFolder)}>
-              {focusConfig.addLabel}
-            </button>
+            <>
+              <button type="button" className="btn" onClick={() => openAdd(focusFolder, 'photo')}>
+                {focusConfig.addLabel}
+              </button>
+              {focusConfig.videoAddLabel ? (
+                <button type="button" className="btn" onClick={() => openAdd(focusFolder, 'video')}>
+                  {focusConfig.videoAddLabel}
+                </button>
+              ) : null}
+            </>
           ) : null}
           <button type="button" className="btn btn--ghost" onClick={() => setOptions(true)}>
             Options
@@ -302,8 +295,9 @@ export function ScreensaverPage() {
           Gold <strong>On</strong> means that folder plays on the TV. Tap the left preview on a
           photo or video to include or skip it — checked and bright is On, dimmed is Off. Off items
           stay in the list and keep their order. One On clip loops alone; several play in list
-          order. Enabled folders play Gallery, then Videos. Photos use the interval below; videos
-          play all the way through, then the next item. Clips stay muted unless you turn on Play
+          order. Enabled folders play Gallery, then Pro Shop and Events when those are on. Photos
+          use the interval below; videos play all the way through, then the next item. Clips stay
+          muted unless you turn on Play
           video sound, so Spotify or another tab can keep the gym music going. Shuffle randomizes
           that combined queue.
         </p>
@@ -412,7 +406,10 @@ export function ScreensaverPage() {
                 setExpanded((prev) => (prev[folder.id] === next ? prev : { ...prev, [folder.id]: next }));
               }}
               onPlayToggle={commitFolderPlay}
-              onAdd={folder.ready ? () => openAdd(folder.id) : undefined}
+              onAdd={folder.ready ? () => openAdd(folder.id, 'photo') : undefined}
+              onAddVideo={
+                folder.ready && folder.videoAddLabel ? () => openAdd(folder.id, 'video') : undefined
+              }
               onClear={
                 folder.ready
                   ? async () => {
@@ -449,7 +446,7 @@ export function ScreensaverPage() {
       <MediaSourceSheet
         open={addOpen}
         kind={addKind}
-        title={folderById(addFolderRef.current).addLabel}
+        title={addKind === 'video' ? 'Add videos' : folderById(addFolderRef.current).addLabel}
         captureInputId={addKind === 'video' ? 'saver-video-record' : 'saver-photo-capture'}
         libraryInputId={addKind === 'video' ? 'saver-video-library' : 'saver-photo-library'}
         stacked={options}

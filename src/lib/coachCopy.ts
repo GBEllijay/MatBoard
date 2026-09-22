@@ -4,13 +4,18 @@ export const COMPETITOR_ROSTER_LABEL = 'Competitor Roster';
 export const TRAINING_NOTES_LABEL = 'Daily Lesson Plan';
 
 export const COACH_TOOLS_TEASER =
-  `Mock Tournament, ${COMPETITOR_ROSTER_LABEL}, ${TRAINING_NOTES_LABEL}, Daily Training Videos.`;
+  `${TRAINING_NOTES_LABEL}, Daily Training Videos, Mock Tournament, ${COMPETITOR_ROSTER_LABEL}.`;
 
 /** Short home-card line so Coming Soon and unlocked teasers both fit. */
-export const COACH_HOME_TEASER = 'Mock Tournament, Roster, Daily Lesson Plan, Daily Videos.';
+export const COACH_HOME_TEASER =
+  'Daily Lesson Plan, Daily Training Videos, Mock Tournament, Roster.';
 
 export const COACH_AD_LEAD =
-  `Run a Mock Tournament, keep Competitor Management, write a ${TRAINING_NOTES_LABEL}, and loop Daily Training Videos on the gym TV.`;
+  `Coach tools: write a ${TRAINING_NOTES_LABEL}, loop Daily Training Videos, run a Mock Tournament, and keep a ${COMPETITOR_ROSTER_LABEL}.`;
+
+/** Hub card sentence under Advantage Coach. Same priority as the yellow-line list. */
+export const COACH_HUB_BLURB =
+  `${TRAINING_NOTES_LABEL}, Daily Training Videos, run a Mock Tournament, and keep a ${COMPETITOR_ROSTER_LABEL}.`;
 
 export const EMPTY_ROSTER_TITLE = 'No competitors yet';
 export const EMPTY_ROSTER_BODY =
@@ -33,8 +38,15 @@ export const OWNER_BRACKET_CLOUD_NOTE =
   'Saved brackets stay on this device. Cloud sync so owners can run several division brackets (more than 16 fighters) comes next.';
 
 export const ROSTER_LEAD_COACH =
-  'Competitor Management — names and belts for Match and Mock Tournament.';
+  'Competitor Roster with Names and Ranks for Single Matches and Mock Tournaments.';
 export const ROSTER_LEAD_PRO =
   'Competitor Management — names and belts for Match and Mock Tournament. CSV backup stays in this browser.';
+
+/** Coach roster CSV help. On this phone only — no cloud teaser. */
+export const ROSTER_CSV_ABOUT = 'About CSV';
+export const ROSTER_CSV_COACH_STAYS =
+  'Your competitor roster stays on this phone. Use CSV to back it up or move it to another device.';
+export const ROSTER_CSV_COACH_HOW =
+  'Download the template, fill in names and belts in a spreadsheet, then Import. Import adds people to your list — it does not wipe anyone already here. Export saves a copy of your current roster.';
 
 export const NOTES_LEAD = "Today on this phone. Yesterday and the last 14 days stay on this device.";

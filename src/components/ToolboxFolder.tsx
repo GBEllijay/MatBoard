@@ -10,6 +10,7 @@ type Props = {
   onToggle: (open: boolean) => void;
   onPlayToggle: (folderId: FolderId, enabled: boolean) => void;
   onAdd?: () => void;
+  onAddVideo?: () => void;
   onClear?: () => Promise<void>;
   onRename: (id: string, label: string) => Promise<void>;
   onRemove: (id: string) => Promise<void>;
@@ -17,7 +18,7 @@ type Props = {
   onItemPlayToggle: (id: string, enabled: boolean) => Promise<void>;
 };
 
-/** Shared Console folder chrome: folder play toggle + ordered list (Gallery first; Videos / Pro Shop / Events plug in here). */
+/** Shared Console folder chrome: folder play toggle + ordered list (Gallery, then Pro Shop / Events). */
 export function ToolboxFolder({
   folder,
   open,
@@ -27,6 +28,7 @@ export function ToolboxFolder({
   onToggle,
   onPlayToggle,
   onAdd,
+  onAddVideo,
   onClear,
   onRename,
   onRemove,
@@ -68,6 +70,11 @@ export function ToolboxFolder({
             {onAdd ? (
               <button type="button" className="btn" onClick={onAdd}>
                 {folder.addLabel}
+              </button>
+            ) : null}
+            {onAddVideo && folder.videoAddLabel ? (
+              <button type="button" className="btn" onClick={onAddVideo}>
+                {folder.videoAddLabel}
               </button>
             ) : null}
             {items.length && onClear ? (

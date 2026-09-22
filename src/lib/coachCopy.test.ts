@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   COACH_AD_LEAD,
   COACH_HOME_TEASER,
+  COACH_HUB_BLURB,
   COACH_TOOLS_TEASER,
   COMPETITOR_ROSTER_LABEL,
   TRAINING_NOTES_LABEL,
@@ -17,6 +18,9 @@ import {
   EMPTY_VIDEOS_BODY,
   EMPTY_VIDEOS_TITLE,
   NOTES_LEAD,
+  ROSTER_CSV_ABOUT,
+  ROSTER_CSV_COACH_HOW,
+  ROSTER_CSV_COACH_STAYS,
   ROSTER_LEAD_COACH,
   ROSTER_LEAD_PRO,
 } from './coachCopy.ts';
@@ -27,6 +31,7 @@ function allCopy(): string {
     TRAINING_NOTES_LABEL,
     COACH_TOOLS_TEASER,
     COACH_HOME_TEASER,
+    COACH_HUB_BLURB,
     COACH_AD_LEAD,
     EMPTY_ROSTER_TITLE,
     EMPTY_ROSTER_BODY,
@@ -39,28 +44,53 @@ function allCopy(): string {
     EMPTY_BRACKET_BODY,
     OWNER_BRACKET_CLOUD_NOTE,
     NOTES_LEAD,
+    ROSTER_CSV_ABOUT,
+    ROSTER_CSV_COACH_STAYS,
+    ROSTER_CSV_COACH_HOW,
     ROSTER_LEAD_COACH,
     ROSTER_LEAD_PRO,
   ].join('\n');
 }
 
-test('Coach teasers list the four hub tools', () => {
+function assertCoachToolOrder(text: string, rosterLabel = 'Competitor Roster') {
+  const lesson = text.indexOf('Daily Lesson Plan');
+  const videos = text.indexOf('Daily Training Videos');
+  const mock = text.indexOf('Mock Tournament');
+  const roster = text.indexOf(rosterLabel);
+  assert.ok(lesson >= 0 && videos > lesson && mock > videos && roster > mock);
+}
+
+test('Coach teasers list the four hub tools in lesson, videos, mock, roster order', () => {
   assert.equal(COMPETITOR_ROSTER_LABEL, 'Competitor Roster');
   assert.equal(TRAINING_NOTES_LABEL, 'Daily Lesson Plan');
-  assert.match(COACH_TOOLS_TEASER, /Mock Tournament/);
-  assert.match(COACH_TOOLS_TEASER, /Competitor Roster/);
-  assert.match(COACH_TOOLS_TEASER, /Daily Lesson Plan/);
-  assert.match(COACH_TOOLS_TEASER, /Daily Training Videos/);
-  assert.match(COACH_HOME_TEASER, /Mock Tournament/);
-  assert.match(COACH_HOME_TEASER, /Roster/);
-  assert.match(COACH_HOME_TEASER, /Daily Lesson Plan/);
-  assert.match(COACH_HOME_TEASER, /Daily Videos/);
+  assert.equal(
+    COACH_TOOLS_TEASER,
+    'Daily Lesson Plan, Daily Training Videos, Mock Tournament, Competitor Roster.',
+  );
+  assertCoachToolOrder(COACH_TOOLS_TEASER);
+  assertCoachToolOrder(COACH_HOME_TEASER, 'Roster');
   assert.ok(COACH_HOME_TEASER.length < 70);
-  assert.match(COACH_AD_LEAD, /Mock Tournament/);
-  assert.match(COACH_AD_LEAD, /Competitor Management/);
-  assert.match(COACH_AD_LEAD, /Daily Lesson Plan/);
-  assert.match(COACH_AD_LEAD, /Daily Training Videos/);
+  assert.match(COACH_AD_LEAD, /^Coach tools:/);
+  assertCoachToolOrder(COACH_AD_LEAD);
+  assertCoachToolOrder(COACH_HUB_BLURB);
   assert.doesNotMatch(COACH_AD_LEAD, /Daily Techniques/);
+  assert.doesNotMatch(COACH_HUB_BLURB, /Competitor Management/);
+});
+
+test('Coach roster lead and CSV help stay on this phone', () => {
+  assert.equal(
+    ROSTER_LEAD_COACH,
+    'Competitor Roster with Names and Ranks for Single Matches and Mock Tournaments.',
+  );
+  assert.equal(ROSTER_CSV_ABOUT, 'About CSV');
+  const help = `${ROSTER_CSV_COACH_STAYS}\n${ROSTER_CSV_COACH_HOW}`;
+  assert.match(help, /stays on this phone/);
+  assert.match(help, /back it up or move it to another device/);
+  assert.match(help, /Download the template/);
+  assert.match(help, /does not wipe anyone already here/);
+  assert.match(help, /Export saves a copy/);
+  assert.doesNotMatch(help, /cloud/i);
+  assert.doesNotMatch(ROSTER_LEAD_COACH, /Competitor Management/);
 });
 
 test('Coach empty states stay friendly and skip student progress', () => {

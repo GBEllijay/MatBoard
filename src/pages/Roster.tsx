@@ -1,16 +1,21 @@
 import { useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { EmptyHint } from '../components/EmptyHint';
 import { PlayExitMark } from '../components/PlayExitMark';
+import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useToolboxParent } from '../hooks/useToolboxParent';
 import { RankChip } from '../components/RankChip';
 import { Sheet } from '../components/Sheet';
 import { useRosterState } from '../hooks/useStores';
 import {
+  COMPETITOR_ROSTER_LABEL,
   EMPTY_ROSTER_BODY,
   EMPTY_ROSTER_SEARCH,
   EMPTY_ROSTER_TITLE,
+  ROSTER_CSV_ABOUT,
+  ROSTER_CSV_COACH_HOW,
+  ROSTER_CSV_COACH_STAYS,
   ROSTER_LEAD_COACH,
   ROSTER_LEAD_PRO,
 } from '../lib/coachCopy';
@@ -58,6 +63,11 @@ export function RosterPage() {
   const navigate = useNavigate();
   const parent = useToolboxParent();
   const proUnlocked = useProUnlocked();
+  const coachUnlocked = useCoachUnlocked();
+  const [searchParams] = useSearchParams();
+  const coachRoster =
+    searchParams.get('from') === 'coach' || (coachUnlocked && !proUnlocked);
+  const exitPath = coachRoster ? '/coach' : parent.path;
   const csvRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [editor, setEditor] = useState<{ id: string | null; draft: StudentDraft } | null>(null);
@@ -90,47 +100,34 @@ export function RosterPage() {
       });
   };
 
-  return (
-    <main className="roster">
-      <PlayExitMark
-        to={parent.path}
-        onExit={() => {
-          navigate(parent.path);
-        }}
-      />
-      <header className="roster__bar">
-        <div className="roster__brand">
-          <p className="roster__eyebrow">{parent.eyebrow}</p>
-          <h1>Competitor Management</h1>
-        </div>
-        <button type="button" className="btn" onClick={openAdd}>
-          Add competitor
+  const csvTools = (
+    <div className="roster__csv">
+      <div className="roster__csv-actions">
+        <button
+          type="button"
+          className="btn btn--ghost"
+          onClick={() => downloadRosterCsv('advantage-roster-template.csv', rosterCsvTemplate())}
+        >
+          Download template
         </button>
-      </header>
-
-      <p className="roster__lead">{proUnlocked ? ROSTER_LEAD_PRO : ROSTER_LEAD_COACH}</p>
-
-      {proUnlocked ? (
-      <div className="roster__csv">
-        <div className="roster__csv-actions">
-          <button
-            type="button"
-            className="btn btn--ghost"
-            onClick={() => downloadRosterCsv('advantage-roster-template.csv', rosterCsvTemplate())}
-          >
-            Download template
-          </button>
-          <button type="button" className="btn btn--ghost" onClick={() => csvRef.current?.click()}>
-            Import CSV
-          </button>
-          <button
-            type="button"
-            className="btn btn--ghost"
-            onClick={() => downloadRosterCsv('advantage-roster.csv', serializeRosterCsv(roster.students))}
-          >
-            Export CSV
-          </button>
+        <button type="button" className="btn btn--ghost" onClick={() => csvRef.current?.click()}>
+          Import CSV
+        </button>
+        <button
+          type="button"
+          className="btn btn--ghost"
+          onClick={() => downloadRosterCsv('advantage-roster.csv', serializeRosterCsv(roster.students))}
+        >
+          Export CSV
+        </button>
+      </div>
+      {coachRoster ? (
+        <div className="roster__csv-copy">
+          <p className="roster__csv-title">{ROSTER_CSV_ABOUT}</p>
+          <p className="roster__csv-hint">{ROSTER_CSV_COACH_STAYS}</p>
+          <p className="roster__csv-hint">{ROSTER_CSV_COACH_HOW}</p>
         </div>
+      ) : (
         <p className="roster__csv-hint">
           Competitor Roster stays on this device. CSV is for backup or a move — cloud sync comes
           later. Import adds competitors; it does not replace the list. Download the template, put
@@ -141,24 +138,57 @@ export function RosterPage() {
           <code>black belt</code>, and <code>BB</code>. Accents (é, ñ) stay if you save UTF-8 or a
           typical Excel CSV.
         </p>
-        {csvNote ? (
-          <p className="roster__csv-summary" role="status">
-            {csvNote}
-          </p>
-        ) : null}
-        <input
-          ref={csvRef}
-          type="file"
-          accept=".csv,text/csv,text/plain"
-          hidden
-          aria-label="Import roster CSV"
-          onChange={(event) => {
-            onImportFiles(event.target.files);
-            event.target.value = '';
-          }}
-        />
-      </div>
+      )}
+      {csvNote ? (
+        <p className="roster__csv-summary" role="status">
+          {csvNote}
+        </p>
       ) : null}
+      <input
+        ref={csvRef}
+        type="file"
+        accept=".csv,text/csv,text/plain"
+        hidden
+        aria-label="Import roster CSV"
+        onChange={(event) => {
+          onImportFiles(event.target.files);
+          event.target.value = '';
+        }}
+      />
+    </div>
+  );
+
+  return (
+    <main className={coachRoster ? 'roster roster--coach' : 'roster'}>
+      <PlayExitMark
+        to={exitPath}
+        onExit={() => {
+          navigate(exitPath);
+        }}
+      />
+      <header className="roster__bar">
+        <div className="roster__brand">
+          <p className="roster__eyebrow">{coachRoster ? 'Advantage Coach' : parent.eyebrow}</p>
+          <h1>{coachRoster ? COMPETITOR_ROSTER_LABEL : 'Competitor Management'}</h1>
+        </div>
+        {coachRoster ? null : (
+          <button type="button" className="btn" onClick={openAdd}>
+            Add competitor
+          </button>
+        )}
+      </header>
+
+      <p className="roster__lead">{coachRoster ? ROSTER_LEAD_COACH : ROSTER_LEAD_PRO}</p>
+
+      {coachRoster ? (
+        <div className="roster__add">
+          <button type="button" className="btn" onClick={openAdd}>
+            Add Competitor
+          </button>
+        </div>
+      ) : null}
+
+      {!coachRoster && proUnlocked ? csvTools : null}
 
       {roster.students.length ? (
       <label className="roster__search">
@@ -195,7 +225,7 @@ export function RosterPage() {
           title={roster.students.length ? 'No match' : EMPTY_ROSTER_TITLE}
           body={roster.students.length ? EMPTY_ROSTER_SEARCH : EMPTY_ROSTER_BODY}
           action={
-            roster.students.length ? undefined : (
+            roster.students.length || coachRoster ? undefined : (
               <button type="button" className="btn" onClick={openAdd}>
                 Add competitor
               </button>
@@ -203,6 +233,8 @@ export function RosterPage() {
           }
         />
       )}
+
+      {coachRoster ? csvTools : null}
 
       <StudentEditor
         open={Boolean(editor)}

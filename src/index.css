@@ -429,6 +429,14 @@ button.mode-card {
   font-size: 1rem;
 }
 
+.tier-line {
+  font-weight: 400;
+}
+
+.tier-line strong {
+  font-weight: 800;
+}
+
 .mode-card__sub--unlock {
   justify-self: start;
   min-height: 0;
@@ -557,6 +565,11 @@ button.mode-card {
   font-size: clamp(1.22rem, 3.6vh, 1.55rem);
 }
 
+.home--ladder .mode-card .tier-line strong {
+  font-size: inherit;
+  letter-spacing: inherit;
+}
+
 .home--ladder .mode-card__sub,
 .home--ladder .mode-card__teaser {
   font-size: clamp(0.78rem, 1.7vh, 0.9rem);
@@ -566,9 +579,10 @@ button.mode-card {
 .home--ladder .mode-card__sub {
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
   overflow: hidden;
+  font-weight: 400;
 }
 
 .home--ladder .mode-card__teaser {
@@ -1608,7 +1622,60 @@ button.mode-card {
 }
 
 .controller__help {
-  margin: 0.2rem 0.9rem 0.4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  margin: 0.35rem 0.9rem 0.4rem;
+}
+
+.controller__suggest {
+  min-height: 0;
+  margin: 0;
+  padding: 0.15rem 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  cursor: pointer;
+}
+
+.sheet--help .sheet__head {
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.sheet--help .sheet__head h2 {
+  font-size: 1.15rem;
+  line-height: 1.25;
+  text-align: left;
+}
+
+.controller-help {
+  display: grid;
+  gap: 0.95rem;
+}
+
+.controller-help h3 {
+  margin: 0 0 0.28rem;
+  font-size: 1rem;
+  letter-spacing: 0;
+}
+
+.controller-help p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.controller-help strong {
+  color: inherit;
+  font-weight: 800;
 }
 
 .pad {
@@ -2216,7 +2283,8 @@ fieldset {
   line-height: 1.15;
 }
 
-.training .sheet legend {
+.training .sheet legend,
+.training-control legend {
   font-size: clamp(1.35rem, 1.1rem + 1.4vw, 1.85rem);
   font-weight: 800;
   letter-spacing: -0.02em;
@@ -2225,21 +2293,50 @@ fieldset {
   color: var(--ink);
 }
 
-.training .sheet .stepper {
+.training .sheet .stepper,
+.training-control .stepper {
   font-size: clamp(1.22rem, 1rem + 1.1vw, 1.65rem);
   font-weight: 800;
   margin-top: 0.2rem;
 }
 
-.training .sheet .stepper input {
+.training .sheet .stepper input,
+.training-control .stepper input {
   font-size: 1.05rem;
   font-weight: 700;
 }
 
-.training .sheet .cue-preview-label {
+.training .sheet .cue-preview-label,
+.training-control .cue-preview-label {
   font-size: clamp(1.18rem, 0.95rem + 1vw, 1.5rem);
   font-weight: 800;
   color: var(--ink);
+}
+
+.training-control__phase {
+  margin: 0 0 0.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.training-control__actions {
+  display: grid;
+  margin: 0.7rem 0 0;
+}
+
+.training-control__actions .btn {
+  width: 100%;
+  min-height: 56px;
+}
+
+.training-control__options {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0 0.9rem 1rem;
+}
+
+.training-control__open {
+  margin: 0 0.9rem 0.4rem;
 }
 
 .saver {
@@ -5285,10 +5382,41 @@ fieldset {
   margin-inline: auto;
 }
 
+.roster__add {
+  width: min(42rem, calc(100% - 2rem));
+  margin: 0 auto 1rem;
+}
+
+.roster__add .btn {
+  min-height: 48px;
+}
+
 .roster__csv {
   display: grid;
   gap: 0.5rem;
   margin-bottom: 1rem;
+}
+
+.roster--coach .roster__list {
+  margin-bottom: 1rem;
+  padding-bottom: 0;
+}
+
+.roster--coach .roster__csv {
+  margin-bottom: calc(1.5rem + var(--safe-b));
+}
+
+.roster__csv-copy {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.roster__csv-title {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .roster__csv-actions {
@@ -5304,6 +5432,7 @@ fieldset {
 
 .roster__csv-hint,
 .roster__csv-summary {
+  margin: 0;
   color: var(--muted);
   font-weight: 600;
 }

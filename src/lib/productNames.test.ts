@@ -3,6 +3,8 @@ import test from 'node:test';
 import {
   GYM_CONSOLE_NAME,
   MOCK_TOURNAMENT_NAME,
+  PRO_LADDER_DETAIL,
+  WHITE_LADDER_DETAIL,
   parentToolboxPath,
   TOURNAMENT_SOFTWARE_NAME,
   toolEyebrow,
@@ -13,6 +15,13 @@ test('Console name uses the exact Instructor apostrophe', () => {
   assert.equal(GYM_CONSOLE_NAME, "Gym Owner and Instructor's Console");
   assert.doesNotMatch(GYM_CONSOLE_NAME, /Owner.?s Toolbox/i);
   assert.doesNotMatch(GYM_CONSOLE_NAME, /Owners Toolbox/i);
+});
+
+test('Home ladder details keep White meaning and a plain Pro subtitle', () => {
+  assert.equal(WHITE_LADDER_DETAIL, 'BJJ scoreboard and timer, live match and rounds');
+  assert.equal(PRO_LADDER_DETAIL, 'Gym Owner and Instructors Console');
+  assert.doesNotMatch(PRO_LADDER_DETAIL, /for this gym/i);
+  assert.doesNotMatch(PRO_LADDER_DETAIL, /'/);
 });
 
 test('Owner tournament tool is Tournament Software; Coach keeps Mock Tournament', () => {
