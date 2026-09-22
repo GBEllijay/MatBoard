@@ -131,7 +131,7 @@ export function formatPromotion(value: string): string {
 }
 
 export function clipName(value: string): string {
-  return value.trim().slice(0, NAME_MAX);
+  return value.normalize('NFC').trim().slice(0, NAME_MAX);
 }
 
 export function clipNote(value: string): string {

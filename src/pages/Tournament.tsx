@@ -21,6 +21,7 @@ import {
 import { EMPTY_BRACKET_BODY, EMPTY_BRACKET_TITLE, OWNER_BRACKET_CLOUD_NOTE } from '../lib/coachCopy';
 import { linkedBracketMatchId, openBracketBout, scoreboardPath, unlinkBracketBout } from '../lib/bracketBout';
 import { setBracketTheme } from '../lib/bracketTheme';
+import { tournamentToolLabel } from '../lib/productNames';
 import {
   SIZE_PRESETS,
   bracketHasContent,
@@ -66,7 +67,7 @@ export function TournamentPage() {
   const bracketRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const parent = useToolboxParent();
-  const ownerConsole = useProUnlocked();
+  const proUnlocked = useProUnlocked();
   const [namesOpen, setNamesOpen] = useState(false);
   const [sizeOpen, setSizeOpen] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
@@ -150,7 +151,7 @@ export function TournamentPage() {
       <header className="tournament__bar">
         <div className="tournament__brand">
           <p className="tournament__eyebrow">{parent.eyebrow}</p>
-          <h1>Mock Tournament</h1>
+          <h1>{tournamentToolLabel(proUnlocked)}</h1>
         </div>
         <div className="tournament__center">
           <p className="tournament__roundline">{bracketRoundLine(tournament)}</p>
@@ -444,7 +445,7 @@ export function TournamentPage() {
           })}
         </ul>
         <p className="tournament__cloud">
-          {ownerConsole
+          {proUnlocked
             ? OWNER_BRACKET_CLOUD_NOTE
             : 'Coach saves stay on this phone. Nothing is uploaded.'}
         </p>

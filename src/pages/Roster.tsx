@@ -18,10 +18,11 @@ import {
   ROSTER_CSV_SAVE_HINT,
   ROSTER_CSV_WORKBOOK_ERROR,
   formatRosterCsvSummary,
-  importRosterCsv,
+  importRosterCsvFile,
   isSpreadsheetWorkbook,
   rosterCsvTemplate,
   serializeRosterCsv,
+  withUtf8Bom,
 } from '../lib/rosterCsv';
 import {
   ADULT_BELTS,
@@ -41,7 +42,7 @@ import {
 } from '../lib/rosterStore';
 
 function downloadRosterCsv(filename: string, csv: string): void {
-  const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' });
+  const blob = new Blob([withUtf8Bom(csv)], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -75,19 +76,17 @@ export function RosterPage() {
       setCsvNote(ROSTER_CSV_WORKBOOK_ERROR);
       return;
     }
-    void file
-      .text()
-      .then((text) => {
-        const result = importRosterCsv(text);
+    void importRosterCsvFile(file)
+      .then((result) => {
         if (result.error) {
           setCsvNote(result.error);
           return;
         }
         addStudents(result.students);
-        setCsvNote(formatRosterCsvSummary(result.imported, result.skipped));
+        setCsvNote(formatRosterCsvSummary(result.imported, result.skipped, result.skippedDetail));
       })
       .catch(() => {
-        setCsvNote('Could not read that file.');
+        setCsvNote('Could not read that file. Save as CSV UTF-8 (comma-separated) and try again.');
       });
   };
 
@@ -134,9 +133,13 @@ export function RosterPage() {
         </div>
         <p className="roster__csv-hint">
           Competitor Roster stays on this device. CSV is for backup or a move — cloud sync comes
-          later. Import adds competitors; it does not replace the list. {ROSTER_CSV_SAVE_HINT} Every
-          row needs a name and a belt — <code>blackbelt</code>, <code>black belt</code>, and{' '}
-          <code>BB</code> count as Black.
+          later. Import adds competitors; it does not replace the list. Download the template, put
+          one name and belt on every row, then {ROSTER_CSV_SAVE_HINT} Every row needs a name and a
+          belt — <code>White</code>, <code>Blue</code>, <code>Purple</code>, <code>Brown</code>,{' '}
+          <code>Black</code>, <code>Coral</code>; kids <code>Grey</code>, <code>Yellow</code>,{' '}
+          <code>Orange</code>, <code>Green</code>. Also <code>blackbelt</code>,{' '}
+          <code>black belt</code>, and <code>BB</code>. Accents (é, ñ) stay if you save UTF-8 or a
+          typical Excel CSV.
         </p>
         {csvNote ? (
           <p className="roster__csv-summary" role="status">

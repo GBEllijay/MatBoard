@@ -7,6 +7,7 @@ import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { COMPETITOR_ROSTER_LABEL, TRAINING_NOTES_LABEL } from '../lib/coachCopy';
 import { lockCoach } from '../lib/coachUnlock';
+import { tournamentToolLabel } from '../lib/productNames';
 import { lockPro } from '../lib/proUnlock';
 
 export function ComingSoonPage() {
@@ -39,7 +40,7 @@ export function ComingSoonPage() {
             ) : null}
             <Link className="btn btn--white" to="/tournament">
               <BeltRail kind="tournament" />
-              Mock Tournament
+              {tournamentToolLabel(proUnlocked)}
             </Link>
             {coachUnlocked ? (
               <>

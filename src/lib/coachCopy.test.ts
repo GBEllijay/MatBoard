@@ -68,7 +68,7 @@ test('Coach empty states stay friendly and skip student progress', () => {
   assert.match(text, /No competitors yet/);
   assert.match(text, /No notes yet/);
   assert.match(text, /No clips yet/);
-  assert.match(text, /Film or pick/);
+  assert.match(text, /Add clips opens Record or Pick from gallery/);
   assert.match(text, /Empty bracket/);
   assert.match(text, /2:30/);
   assert.match(text, /5:00/);

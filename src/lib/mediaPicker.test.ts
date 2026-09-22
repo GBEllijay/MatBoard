@@ -1,34 +1,109 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { openDeviceMediaPicker, VIDEO_PICKER_ACCEPT } from './mediaPicker.ts';
+import {
+  isImageAccept,
+  isVideoAccept,
+  openDeviceMediaPicker,
+  PHOTO_CAPTURE_LABEL,
+  PHOTO_PICKER_ACCEPT,
+  VIDEO_CAPTURE,
+  VIDEO_LIBRARY_LABEL,
+  VIDEO_PICKER_ACCEPT,
+  VIDEO_RECORD_ACCEPT,
+  VIDEO_RECORD_LABEL,
+} from './mediaPicker.ts';
 
 describe('video device picker accept', () => {
-  it('uses video/* so phones can offer camera, not a documents-only list', () => {
+  it('uses video/* for gallery picks so the OS photo/files picker stays available', () => {
     assert.equal(VIDEO_PICKER_ACCEPT, 'video/*');
     assert.doesNotMatch(VIDEO_PICKER_ACCEPT, /\.mp4|\.mov|\.webm/);
+  });
+
+  it('Record accept prefers video and allows image so Camera can still open', () => {
+    assert.equal(VIDEO_RECORD_ACCEPT, 'video/*,image/*');
+    assert.match(VIDEO_RECORD_ACCEPT, /video\/\*/);
+    assert.match(VIDEO_RECORD_ACCEPT, /image\/\*/);
+    assert.equal(VIDEO_CAPTURE, 'environment');
+    assert.equal(VIDEO_LIBRARY_LABEL, 'Pick from gallery');
+    assert.equal(VIDEO_RECORD_LABEL, 'Record');
+  });
+
+  it('treats video accept tokens as video', () => {
+    assert.equal(isVideoAccept('video/*'), true);
+    assert.equal(isVideoAccept('video/mp4'), true);
+    assert.equal(isVideoAccept(VIDEO_RECORD_ACCEPT), true);
+    assert.equal(isVideoAccept('image/*'), false);
+  });
+});
+
+describe('photo device picker accept', () => {
+  it('Take photo and Pick from gallery share image/*; capture is only on Take photo', () => {
+    assert.equal(PHOTO_PICKER_ACCEPT, 'image/*');
+    assert.equal(PHOTO_CAPTURE_LABEL, 'Take photo');
+    assert.equal(VIDEO_LIBRARY_LABEL, 'Pick from gallery');
+    assert.equal(VIDEO_CAPTURE, 'environment');
+  });
+
+  it('treats image accept tokens as photos, not videos', () => {
+    assert.equal(isImageAccept(PHOTO_PICKER_ACCEPT), true);
+    assert.equal(isImageAccept('image/jpeg'), true);
+    assert.equal(isImageAccept(VIDEO_PICKER_ACCEPT), false);
+    assert.equal(isImageAccept(VIDEO_RECORD_ACCEPT), false);
   });
 });
 
 describe('openDeviceMediaPicker', () => {
-  it('sets accept, clears capture, and clicks so the OS can offer camera or library', () => {
+  function fakeInput() {
+    const attrs: Record<string, string> = {};
     const calls: string[] = [];
     const input = {
       accept: 'image/*',
       click() {
         calls.push('click');
       },
+      setAttribute(name: string, value: string) {
+        attrs[name] = value;
+        calls.push(`set:${name}=${value}`);
+      },
       removeAttribute(name: string) {
+        delete attrs[name];
         calls.push(`remove:${name}`);
       },
     } as unknown as HTMLInputElement;
+    return { input, calls, attrs };
+  }
 
-    openDeviceMediaPicker(input, { accept: VIDEO_PICKER_ACCEPT });
+  it('Record sets capture=environment then clicks', () => {
+    const { input, calls, attrs } = fakeInput();
+
+    openDeviceMediaPicker(input, { accept: VIDEO_PICKER_ACCEPT, mode: 'record' });
+
+    assert.equal(input.accept, 'video/*');
+    assert.equal(attrs.capture, VIDEO_CAPTURE);
+    assert.deepEqual(calls, ['set:capture=environment', 'click']);
+  });
+
+  it('library clears capture and clicks so the OS photo/files picker stays available', () => {
+    const { input, calls } = fakeInput();
+
+    openDeviceMediaPicker(input, { accept: VIDEO_PICKER_ACCEPT, mode: 'library' });
 
     assert.equal(input.accept, 'video/*');
     assert.deepEqual(calls, ['remove:capture', 'click']);
   });
 
+  it('defaults to library (no capture) when mode is omitted', () => {
+    const { input, calls } = fakeInput();
+
+    openDeviceMediaPicker(input, { accept: PHOTO_PICKER_ACCEPT });
+
+    assert.equal(input.accept, 'image/*');
+    assert.deepEqual(calls, ['remove:capture', 'click']);
+  });
+
   it('no-ops when the input is missing', () => {
-    assert.doesNotThrow(() => openDeviceMediaPicker(null, { accept: VIDEO_PICKER_ACCEPT }));
+    assert.doesNotThrow(() =>
+      openDeviceMediaPicker(null, { accept: VIDEO_PICKER_ACCEPT, mode: 'record' }),
+    );
   });
 });
