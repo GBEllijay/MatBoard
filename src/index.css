@@ -429,6 +429,14 @@ button.mode-card {
   font-size: 1rem;
 }
 
+.tier-line {
+  font-weight: 400;
+}
+
+.tier-line strong {
+  font-weight: 800;
+}
+
 .mode-card__sub--unlock {
   justify-self: start;
   min-height: 0;
@@ -557,6 +565,11 @@ button.mode-card {
   font-size: clamp(1.22rem, 3.6vh, 1.55rem);
 }
 
+.home--ladder .mode-card .tier-line strong {
+  font-size: inherit;
+  letter-spacing: inherit;
+}
+
 .home--ladder .mode-card__sub,
 .home--ladder .mode-card__teaser {
   font-size: clamp(0.78rem, 1.7vh, 0.9rem);
@@ -566,9 +579,10 @@ button.mode-card {
 .home--ladder .mode-card__sub {
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
   overflow: hidden;
+  font-weight: 400;
 }
 
 .home--ladder .mode-card__teaser {

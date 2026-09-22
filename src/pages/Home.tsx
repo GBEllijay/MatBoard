@@ -5,15 +5,15 @@ import { ComingSoonAd, ComingSoonAdActions } from '../components/ComingSoonAd';
 import { HomeMark } from '../components/HomeMark';
 import { ProUnlockSheet } from '../components/ProUnlockSheet';
 import { Sheet } from '../components/Sheet';
+import { TierLine } from '../components/TierLine';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import {
   COMING_SOON_ADS,
-  COMING_SOON_LABEL,
-  PRODUCT_TEASERS,
   type SoonProduct,
 } from '../lib/comingSoonAds';
-import { GYM_CONSOLE_NAME } from '../lib/productNames';
+import { COACH_TOOLS_TEASER } from '../lib/coachCopy';
+import { GYM_CONSOLE_NAME, PRO_LADDER_DETAIL, WHITE_LADDER_DETAIL } from '../lib/productNames';
 
 export function HomePage() {
   const proUnlocked = useProUnlocked();
@@ -35,8 +35,9 @@ export function HomePage() {
           <Link className="mode-card mode-card--white" to="/white">
             <BeltRail kind="white" />
             <strong>Advantage White</strong>
-            <span className="mode-card__sub">BJJ Scoreboard and Timer</span>
-            <span className="mode-card__teaser">Live Bout + Rounds</span>
+            <span className="mode-card__sub">
+              <TierLine tier="White" detail={WHITE_LADDER_DETAIL} />
+            </span>
           </Link>
 
           {coachUnlocked ? (
@@ -49,8 +50,9 @@ export function HomePage() {
               />
               <BeltRail kind="blue" />
               <strong>Advantage Coach</strong>
-              <span className="mode-card__sub">Coach tools</span>
-              <span className="mode-card__teaser">{PRODUCT_TEASERS.coachUnlocked}</span>
+              <span className="mode-card__sub">
+                <TierLine tier="Coach" detail={COACH_TOOLS_TEASER} />
+              </span>
               <div className="mode-card__actions">
                 <Link className="btn btn--white" to="/coach">
                   Open Coach
@@ -67,8 +69,9 @@ export function HomePage() {
             >
               <BeltRail kind="blue" />
               <strong>Advantage Coach</strong>
-              <span className="mode-card__sub">{COMING_SOON_LABEL}</span>
-              <span className="mode-card__teaser">{PRODUCT_TEASERS.coach}</span>
+              <span className="mode-card__sub">
+                <TierLine tier="Coach" detail={COACH_TOOLS_TEASER} />
+              </span>
             </button>
           )}
 
@@ -82,8 +85,9 @@ export function HomePage() {
               />
               <BeltRail kind="black" />
               <strong>Advantage Pro</strong>
-              <span className="mode-card__sub">{GYM_CONSOLE_NAME}</span>
-              <span className="mode-card__teaser">{PRODUCT_TEASERS.proUnlocked}</span>
+              <span className="mode-card__sub">
+                <TierLine tier="Pro" detail={PRO_LADDER_DETAIL} />
+              </span>
               <div className="mode-card__actions">
                 <Link className="btn btn--white" to="/pro">
                   Open Console
@@ -100,8 +104,9 @@ export function HomePage() {
             >
               <BeltRail kind="black" />
               <strong>Advantage Pro</strong>
-              <span className="mode-card__sub">{COMING_SOON_LABEL}</span>
-              <span className="mode-card__teaser">{PRODUCT_TEASERS.pro}</span>
+              <span className="mode-card__sub">
+                <TierLine tier="Pro" detail={PRO_LADDER_DETAIL} />
+              </span>
             </button>
           )}
         </nav>

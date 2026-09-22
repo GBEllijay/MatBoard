@@ -1,7 +1,8 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { HomeMark } from '../components/HomeMark';
 import { ProToolboxCard } from '../components/ProToolboxCard';
-import { GYM_CONSOLE_NAME, TOURNAMENT_SOFTWARE_NAME } from '../lib/productNames';
+import { TierLine } from '../components/TierLine';
+import { GYM_CONSOLE_NAME, PRO_LADDER_DETAIL, TOURNAMENT_SOFTWARE_NAME } from '../lib/productNames';
 import { lockPro } from '../lib/proUnlock';
 
 export function ProPage() {
@@ -10,7 +11,7 @@ export function ProPage() {
   return (
     <main className="home home--pro">
       <div className="home__inner">
-        <HomeMark to="/" tagline={`Pro — ${GYM_CONSOLE_NAME} for this gym.`} />
+        <HomeMark to="/" tagline={<TierLine tier="Pro" detail={PRO_LADDER_DETAIL} />} />
 
         <nav className="home__modes" aria-label="Advantage Pro">
           <ProToolboxCard />

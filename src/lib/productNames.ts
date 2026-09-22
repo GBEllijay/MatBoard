@@ -1,6 +1,12 @@
 /** User-facing Advantage Pro console name. Keep this exact apostrophe. */
 export const GYM_CONSOLE_NAME = "Gym Owner and Instructor's Console";
 
+/** Home ladder and White hub line after “White —”. */
+export const WHITE_LADDER_DETAIL = 'BJJ scoreboard and timer, live match and rounds';
+
+/** Home ladder and Pro hub line after “Pro —”. Not the Owner Console page title. */
+export const PRO_LADDER_DETAIL = 'Gym Owner and Instructors Console';
+
 /** Coach hub keeps practice framing; Owner Console uses real-event tooling. */
 export const MOCK_TOURNAMENT_NAME = 'Mock Tournament';
 export const TOURNAMENT_SOFTWARE_NAME = 'Tournament Software';
