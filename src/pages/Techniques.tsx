@@ -1,9 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DeviceMediaInput } from '../components/DeviceMediaInput';
-import { FolderItemList } from '../components/FolderItemList';
 import { FullscreenChip } from '../components/FullscreenChip';
-import { EmptyHint } from '../components/EmptyHint';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { TvTip } from '../components/TvTip';
 import { VideoSourceSheet } from '../components/VideoSourceSheet';
@@ -12,54 +10,51 @@ import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useToolboxParent } from '../hooks/useToolboxParent';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
-import { EMPTY_VIDEOS_BODY, EMPTY_VIDEOS_TITLE } from '../lib/coachCopy';
 import { formatMmSs, formatMss, secondsToMs } from '../lib/format';
 import { VIDEO_CAPTURE, VIDEO_PICKER_ACCEPT, VIDEO_RECORD_ACCEPT } from '../lib/mediaPicker';
+import { DEFAULT_MUTE_VIDEO, getSaverPrefs, setSaverMuteVideo } from '../lib/photoStore';
 import {
-  DEFAULT_MUTE_VIDEO,
-  getSaverPrefs,
-  setSaverMuteVideo,
-} from '../lib/photoStore';
-import {
-  clampDrillSec,
-  DEFAULT_DRILL_SEC,
+  canAssignClip,
+  clipCount,
   DRILL_PRESETS_SEC,
+  insertTechniqueSlot,
   isDrillPreset,
+  isTimedSlot,
   MAX_DRILL_SEC,
+  MAX_TECHNIQUE_CLIPS,
+  MAX_TECHNIQUE_SLOTS,
   MIN_DRILL_SEC,
+  nextTechniqueSlotId,
+  pickAddableVideos,
   remainingOnStart,
+  selectSlot,
+  setSlotDrill,
+  slotTitle,
   tickRemainingMs,
+  type VideoPlan,
+  type VideoSlot,
 } from '../lib/techniqueLogic';
 import {
-  addTechniqueFiles,
-  clearTechniqueClips,
-  clipSlotsLeft,
-  getTechniquePrefs,
-  listTechniqueClips,
-  MAX_TECHNIQUE_CLIPS,
-  removeTechniqueClip,
-  renameTechniqueClip,
-  reorderTechniqueClips,
-  resolveSelectedId,
-  setTechniqueDrillSec,
-  setTechniqueSelectedId,
-  TECHNIQUE_FOLDER,
-  withTechniqueOrder,
+  attachClipToSlot,
+  clearSlotClip,
+  loadTechniqueBoard,
+  saveTechniquePlan,
   type TechniqueClip,
 } from '../lib/techniqueStore';
 
 export function TechniquesPage() {
   const [clips, setClips] = useState<TechniqueClip[]>([]);
-  const [urlById, setUrlById] = useState<Record<string, string>>({});
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [plan, setPlan] = useState<VideoPlan | null>(null);
   const [playing, setPlaying] = useState(false);
   const [muteVideo, setMuteVideo] = useState(DEFAULT_MUTE_VIDEO);
   const [unlockSound, setUnlockSound] = useState(false);
   const [pickerNote, setPickerNote] = useState('');
   const [addOpen, setAddOpen] = useState(false);
-  const [drillSec, setDrillSec] = useState(DEFAULT_DRILL_SEC);
-  const [remainingMs, setRemainingMs] = useState(secondsToMs(DEFAULT_DRILL_SEC));
-  const [customOpen, setCustomOpen] = useState(false);
+  const [replacing, setReplacing] = useState(false);
+  const [remainingMs, setRemainingMs] = useState(secondsToMs(300));
+  const [customSlotId, setCustomSlotId] = useState<string | null>(null);
+  const pickerSlotRef = useRef<string | null>(null);
+  const planRef = useRef<VideoPlan | null>(null);
   const recordRef = useRef<HTMLInputElement>(null);
   const libraryRef = useRef<HTMLInputElement>(null);
   const fs = usePlayFullscreen();
@@ -69,26 +64,37 @@ export function TechniquesPage() {
   useVisibleViewportHeight();
   useWakeLock(playing);
 
-  const refresh = async () => {
-    const [rows, prefs] = await Promise.all([listTechniqueClips(), getTechniquePrefs()]);
-    const ids = rows.map((clip) => clip.id);
-    const nextSelected = resolveSelectedId(prefs.selectedId, ids);
-    setClips(rows);
-    setSelectedId(nextSelected);
-    setDrillSec(prefs.drillSec);
-    setRemainingMs(secondsToMs(prefs.drillSec));
-    if (prefs.selectedId !== nextSelected) void setTechniqueSelectedId(nextSelected);
+  const applyPlan = (next: VideoPlan) => {
+    planRef.current = next;
+    setPlan(next);
   };
 
   useEffect(() => {
-    void refresh();
-    void getSaverPrefs().then((prefs) => setMuteVideo(prefs.muteVideo));
+    let cancelled = false;
+    void loadTechniqueBoard()
+      .then((board) => {
+        if (cancelled) return;
+        applyPlan(board.plan);
+        setClips(board.clips);
+        const selected = board.plan.slots.find((slot) => slot.slotId === board.plan.selectedSlotId);
+        if (selected && isTimedSlot(selected)) setRemainingMs(secondsToMs(selected.drillSec));
+      })
+      .catch(() => {
+        if (!cancelled) setPickerNote('Could not open clips on this device.');
+      });
+    void getSaverPrefs().then((prefs) => {
+      if (!cancelled) setMuteVideo(prefs.muteVideo);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const clipsRef = useRef(clips);
   clipsRef.current = clips;
-  const clipIdsKey = clips.map((clip) => clip.id).join('|');
+  const clipIdsKey = clips.map((clip) => `${clip.id}:${clip.addedAt}`).join('|');
 
+  const [urlById, setUrlById] = useState<Record<string, string>>({});
   useEffect(() => {
     const next: Record<string, string> = {};
     for (const clip of clipsRef.current) {
@@ -99,18 +105,33 @@ export function TechniquesPage() {
   }, [clipIdsKey]);
 
   const selected = useMemo(
-    () => clips.find((clip) => clip.id === selectedId) ?? null,
-    [clips, selectedId],
+    () => plan?.slots.find((slot) => slot.slotId === plan.selectedSlotId) ?? null,
+    [plan],
   );
-  const selectedSrc = selected ? urlById[selected.id] : undefined;
-  const slotsLeft = clipSlotsLeft(clips.length);
-  const canStart = Boolean(selected && selectedSrc);
-  const drillDone = remainingMs === 0;
-  const customDrill = customOpen || !isDrillPreset(drillSec);
+  const selectedClip = selected?.clipId ? clips.find((clip) => clip.id === selected.clipId) : null;
+  const selectedSrc = selectedClip ? urlById[selectedClip.id] : undefined;
+  const canStart = Boolean(selected?.clipId && selectedSrc && !playing);
+  const count = plan ? clipCount(plan) : 0;
+  const techniqueCount = plan ? plan.slots.filter((slot) => slot.kind === 'technique').length : 0;
+  const atSlotMax = techniqueCount >= MAX_TECHNIQUE_SLOTS;
 
-  const selectClip = (id: string) => {
-    setSelectedId(id);
-    void setTechniqueSelectedId(id);
+  const persistPlan = async (next: VideoPlan) => {
+    applyPlan(next);
+    try {
+      await saveTechniquePlan(next);
+    } catch {
+      setPickerNote('Could not save this plan on this device.');
+    }
+  };
+
+  const selectCard = (slotId: string) => {
+    const current = planRef.current;
+    if (!current || current.selectedSlotId === slotId) return;
+    const next = selectSlot(current, slotId);
+    const slot = next.slots.find((item) => item.slotId === slotId);
+    setPlaying(false);
+    if (slot && isTimedSlot(slot)) setRemainingMs(secondsToMs(slot.drillSec));
+    void persistPlan(next);
   };
 
   const commitMute = (next: boolean) => {
@@ -119,17 +140,24 @@ export function TechniquesPage() {
     if (!next) setUnlockSound(true);
   };
 
-  const commitDrill = (next: number) => {
-    const clamped = clampDrillSec(next);
-    setDrillSec(clamped);
-    setRemainingMs(secondsToMs(clamped));
-    void setTechniqueDrillSec(clamped);
+  const commitDrill = (slotId: string, nextSec: number) => {
+    const current = planRef.current;
+    if (!current || playing) return;
+    const base = current.selectedSlotId === slotId ? current : selectSlot(current, slotId);
+    const next = setSlotDrill(base, slotId, nextSec);
+    if (next === current) return;
+    const slot = next.slots.find((item) => item.slotId === slotId);
+    if (slot && isTimedSlot(slot)) setRemainingMs(secondsToMs(slot.drillSec));
+    setPlaying(false);
+    void persistPlan(next);
   };
 
   const startDrill = () => {
-    if (!canStart) return;
+    if (!selected?.clipId || !selectedSrc || playing) return;
     if (!muteVideo) setUnlockSound(true);
-    setRemainingMs((ms) => remainingOnStart(ms, secondsToMs(drillSec)));
+    if (isTimedSlot(selected)) {
+      setRemainingMs((ms) => remainingOnStart(ms, secondsToMs(selected.drillSec)));
+    }
     setPlaying(true);
   };
 
@@ -144,47 +172,82 @@ export function TechniquesPage() {
       });
     }, []),
     100,
-    playing,
+    playing && Boolean(selected && isTimedSlot(selected)),
   );
 
-  const onFiles = async (files: FileList | null) => {
-    if (!files?.length) return;
-    setAddOpen(false);
-    const before = clips.length;
-    const result = await addTechniqueFiles([...files]);
-    if (result.added) {
-      setPickerNote(
-        result.atCap && before + result.added >= MAX_TECHNIQUE_CLIPS
-          ? `Added ${result.added}. You can keep ${MAX_TECHNIQUE_CLIPS} clips on this device.`
-          : '',
-      );
-      const rows = await listTechniqueClips();
-      setClips(rows);
-      if (!selectedId) {
-        const first = rows[0];
-        if (first) selectClip(first.id);
-      }
-    } else {
-      setPickerNote(
-        result.atCap
-          ? `You can keep ${MAX_TECHNIQUE_CLIPS} clips on this device. Remove one to add another.`
-          : 'That file cannot play here. Switch the camera to video, or pick an MP4 / WebM.',
-      );
-    }
-  };
+  useEffect(() => {
+    if (!playing || !plan) return;
+    document.getElementById(`techniques-slot-${plan.selectedSlotId}`)?.scrollIntoView({
+      block: 'nearest',
+      behavior: 'smooth',
+    });
+  }, [playing, plan]);
 
-  const openChooser = () => {
-    if (slotsLeft === 0) return;
+  const openChooser = (slot: VideoSlot) => {
+    const current = planRef.current;
+    if (!current || !canAssignClip(current, slot.slotId)) return;
+    pickerSlotRef.current = slot.slotId;
+    setReplacing(Boolean(slot.clipId));
     setAddOpen(true);
+    if (current.selectedSlotId !== slot.slotId) {
+      const next = selectSlot(current, slot.slotId);
+      setPlaying(false);
+      if (isTimedSlot(slot)) setRemainingMs(secondsToMs(slot.drillSec));
+      void persistPlan(next);
+    }
   };
 
-  const persistOrder = async (orderedIds: string[]) => {
-    setClips((rows) => withTechniqueOrder(rows, orderedIds));
-    try {
-      await reorderTechniqueClips(orderedIds);
-    } catch {
-      await refresh();
+  const onFiles = async (files: FileList | null) => {
+    const slotId = pickerSlotRef.current;
+    const current = planRef.current;
+    setAddOpen(false);
+    if (!files?.length || !slotId || !current) return;
+    const [file] = pickAddableVideos([...files], 1);
+    if (!file) {
+      setPickerNote('That file cannot play here. Switch the camera to video, or pick an MP4 / WebM.');
+      return;
     }
+    try {
+      const result = await attachClipToSlot(current, slotId, file);
+      applyPlan(result.plan);
+      setClips(result.clips);
+      setPlaying(false);
+      if (result.status === 'atCap') {
+        setPickerNote(`You can keep ${MAX_TECHNIQUE_CLIPS} clips on this device. Remove one to add another.`);
+        return;
+      }
+      if (result.status === 'invalid') {
+        setPickerNote('That file cannot play here. Switch the camera to video, or pick an MP4 / WebM.');
+        return;
+      }
+      setPickerNote('');
+      const slot = result.plan.slots.find((item) => item.slotId === slotId);
+      if (slot && isTimedSlot(slot)) setRemainingMs(secondsToMs(slot.drillSec));
+    } catch {
+      setPickerNote('Could not save that clip on this device.');
+    }
+  };
+
+  const removeClip = async (slotId: string) => {
+    const current = planRef.current;
+    if (!current) return;
+    try {
+      const result = await clearSlotClip(current, slotId);
+      applyPlan(result.plan);
+      setClips(result.clips);
+      if (planRef.current?.selectedSlotId === slotId) setPlaying(false);
+      setPickerNote('');
+    } catch {
+      setPickerNote('Could not remove that clip on this device.');
+    }
+  };
+
+  const addTechnique = () => {
+    const current = planRef.current;
+    if (!current) return;
+    const next = insertTechniqueSlot(current, nextTechniqueSlotId(current));
+    if (!next) return;
+    void persistPlan(next);
   };
 
   const exitBoard = () => {
@@ -193,6 +256,10 @@ export function TechniquesPage() {
       navigate(parent.path);
     });
   };
+
+  const warmup = plan?.slots.find((slot) => slot.kind === 'warmup') ?? null;
+  const cooldown = plan?.slots.find((slot) => slot.kind === 'cooldown') ?? null;
+  const techniques = plan?.slots.filter((slot) => slot.kind === 'technique') ?? [];
 
   return (
     <main className={`techniques${playing ? ' techniques--play' : ''}${fs.className ? ` ${fs.className}` : ''}`}>
@@ -203,20 +270,10 @@ export function TechniquesPage() {
           <h1>Daily Training Videos</h1>
         </div>
         <div className="techniques__actions">
-          <button
-            type="button"
-            className="btn"
-            disabled={!canStart || playing}
-            onClick={startDrill}
-          >
+          <button type="button" className="btn" disabled={!canStart} onClick={startDrill}>
             Start
           </button>
-          <button
-            type="button"
-            className="btn btn--ghost"
-            disabled={!playing}
-            onClick={stopDrill}
-          >
+          <button type="button" className="btn btn--ghost" disabled={!playing} onClick={stopDrill}>
             Stop
           </button>
           <FullscreenChip
@@ -226,194 +283,99 @@ export function TechniquesPage() {
             shortcut={fs.tvStation}
             onToggle={() => void fs.toggle()}
           />
+          <button
+            type="button"
+            className={`techniques__mute${muteVideo ? ' techniques__mute--on' : ''}`}
+            aria-pressed={muteVideo}
+            onClick={() => commitMute(!muteVideo)}
+          >
+            Mute clips
+          </button>
+          <p className="techniques__count">
+            {count} of {MAX_TECHNIQUE_CLIPS} clips
+          </p>
         </div>
       </header>
 
-      <p className="techniques__hint">
-        Film or pick up to 10 clips on this device. <strong>Add clips</strong> opens Record or Pick
-        from gallery. <strong>Start</strong> loops the selected clip with the drill timer (2:30 /
-        5:00 / 7:00). Mute is on so gym music can keep playing. <strong>Stop</strong> pauses both.
-      </p>
+      {pickerNote ? (
+        <p className="techniques__note" role="status">
+          {pickerNote}
+        </p>
+      ) : null}
 
-      <div className="techniques__layout">
-        <section className="techniques__stage" aria-label="Technique player">
-          <div className="techniques__player">
-            {selected && selectedSrc ? (
-              <LoopClip
-                key={selected.id}
-                src={selectedSrc}
-                label={selected.label}
-                playing={playing}
-                muted={muteVideo}
-                unlockSound={unlockSound}
-              />
-            ) : (
-              <div className="techniques__empty">
-                <EmptyHint
-                  title={EMPTY_VIDEOS_TITLE}
-                  body={EMPTY_VIDEOS_BODY}
-                  action={
-                    <button type="button" className="btn" onClick={openChooser}>
-                      Add clips
-                    </button>
-                  }
-                />
-              </div>
-            )}
-            {selected && selectedSrc ? (
-              <p
-                className={`techniques__clock${playing ? ' techniques__clock--play' : ''}${drillDone ? ' techniques__clock--done' : ''}`}
-                aria-live="polite"
-              >
-                {playing ? <span className="techniques__loop">Loop</span> : null}
-                {formatMmSs(remainingMs)}
-              </p>
-            ) : null}
-          </div>
-          {selected ? <p className="techniques__now">{selected.label}</p> : null}
-        </section>
-
-        <section className="techniques__manage" aria-label="Clip list">
-          <div className="techniques__manage-head">
-            <button
-              type="button"
-              className="btn"
-              disabled={slotsLeft === 0}
-              onClick={openChooser}
-            >
-              Add clips
-            </button>
-            {clips.length ? (
-              <button
-                type="button"
-                className="btn btn--ghost"
-                onClick={() => {
-                  void clearTechniqueClips().then(() => {
-                    setClips([]);
-                    setSelectedId(null);
-                    setPlaying(false);
-                    setPickerNote('');
-                  });
-                }}
-              >
-                Clear clips
-              </button>
-            ) : null}
-          </div>
-          <fieldset>
-            <legend>Drill length</legend>
-            <p className="saver-sound-hint">
-              Countdown on the video. Start runs the loop and the timer together.
-            </p>
-            <div className="presets presets--match-length" role="radiogroup" aria-label="Drill length">
-              {DRILL_PRESETS_SEC.map((seconds) => (
-                <button
-                  key={seconds}
-                  type="button"
-                  role="radio"
-                  aria-checked={drillSec === seconds && !customOpen}
-                  className={`preset${drillSec === seconds && !customOpen ? ' preset--on' : ''}`}
-                  disabled={playing}
-                  onClick={() => {
-                    setCustomOpen(false);
-                    commitDrill(seconds);
-                  }}
-                >
-                  {formatMss(seconds)}
-                </button>
-              ))}
-              <button
-                type="button"
-                role="radio"
-                aria-checked={customDrill}
-                className={`preset${customDrill ? ' preset--on' : ''}`}
-                disabled={playing}
-                onClick={() => setCustomOpen(true)}
-              >
-                Custom
-              </button>
-            </div>
-            {customDrill ? (
-              <div className="interval-stepper" role="group" aria-label="Custom drill length">
-                <button
-                  type="button"
-                  className="clock-nudge"
-                  disabled={playing || drillSec <= MIN_DRILL_SEC}
-                  aria-label="Subtract 15 seconds"
-                  onClick={() => commitDrill(drillSec - 15)}
-                >
-                  −
-                </button>
-                <strong aria-live="polite">{formatMss(drillSec)}</strong>
-                <button
-                  type="button"
-                  className="clock-nudge"
-                  disabled={playing || drillSec >= MAX_DRILL_SEC}
-                  aria-label="Add 15 seconds"
-                  onClick={() => commitDrill(drillSec + 15)}
-                >
-                  +
-                </button>
-              </div>
-            ) : null}
-          </fieldset>
-          <fieldset>
-            <legend>Video sound</legend>
-            <p className="saver-sound-hint">
-              Mute clips so gym-floor music keeps playing. Mute is the default.
-            </p>
-            <div className="presets presets--split" role="radiogroup" aria-label="Video sound">
-              <button
-                type="button"
-                role="radio"
-                aria-checked={muteVideo}
-                className={`preset${muteVideo ? ' preset--on' : ''}`}
-                onClick={() => commitMute(true)}
-              >
-                Mute clips
-              </button>
-              <button
-                type="button"
-                role="radio"
-                aria-checked={!muteVideo}
-                className={`preset${!muteVideo ? ' preset--on' : ''}`}
-                onClick={() => commitMute(false)}
-              >
-                Play video sound
-              </button>
-            </div>
-          </fieldset>
-          {pickerNote ? <p className="saver-folder__empty">{pickerNote}</p> : null}
-          <p className="techniques__count">
-            {clips.length} of {MAX_TECHNIQUE_CLIPS} clips
-          </p>
-          <FolderItemList
-            folder={TECHNIQUE_FOLDER}
-            items={clips}
-            thumbById={urlById}
-            selectedId={selectedId}
-            onSelect={selectClip}
-            onRename={async (id, label) => {
-              await renameTechniqueClip(id, label);
-              setClips((rows) => rows.map((row) => (row.id === id ? { ...row, label } : row)));
-            }}
-            onRemove={async (id) => {
-              await removeTechniqueClip(id);
-              const rows = clips.filter((clip) => clip.id !== id);
-              const nextSelected = resolveSelectedId(selectedId === id ? null : selectedId, rows.map((clip) => clip.id));
-              setClips(rows);
-              setSelectedId(nextSelected);
-              if (selectedId === id && !nextSelected) setPlaying(false);
-            }}
-            onReorder={persistOrder}
+      {plan ? (
+      <div className="techniques__plan">
+        {warmup ? (
+          <SlotCard
+            slot={warmup}
+            title={slotTitle(warmup, 0)}
+            selected={plan?.selectedSlotId === warmup.slotId}
+            playing={playing && plan?.selectedSlotId === warmup.slotId}
+            src={warmup.clipId ? urlById[warmup.clipId] : undefined}
+            muted={muteVideo}
+            unlockSound={unlockSound}
+            canAdd={plan ? canAssignClip(plan, warmup.slotId) : false}
+            onSelect={() => selectCard(warmup.slotId)}
+            onAdd={() => openChooser(warmup)}
+            onRemove={() => void removeClip(warmup.slotId)}
           />
-        </section>
+        ) : null}
+
+        {techniques.map((slot, index) => (
+          <SlotCard
+            key={slot.slotId}
+            slot={slot}
+            title={slotTitle(slot, index)}
+            selected={plan?.selectedSlotId === slot.slotId}
+            playing={playing && plan?.selectedSlotId === slot.slotId}
+            src={slot.clipId ? urlById[slot.clipId] : undefined}
+            muted={muteVideo}
+            unlockSound={unlockSound}
+            canAdd={plan ? canAssignClip(plan, slot.slotId) : false}
+            remainingMs={plan?.selectedSlotId === slot.slotId ? remainingMs : secondsToMs(slot.drillSec)}
+            customOpen={customSlotId === slot.slotId || !isDrillPreset(slot.drillSec)}
+            timersLocked={playing}
+            onSelect={() => selectCard(slot.slotId)}
+            onAdd={() => openChooser(slot)}
+            onRemove={() => void removeClip(slot.slotId)}
+            onDrill={(seconds) => {
+              setCustomSlotId((current) => (current === slot.slotId ? null : current));
+              commitDrill(slot.slotId, seconds);
+            }}
+            onCustom={() => {
+              setCustomSlotId(slot.slotId);
+              selectCard(slot.slotId);
+            }}
+            onNudge={(delta) => commitDrill(slot.slotId, slot.drillSec + delta)}
+          />
+        ))}
+
+        <button type="button" className="btn techniques__add" disabled={!plan || atSlotMax} onClick={addTechnique}>
+          + Add another
+        </button>
+
+        {cooldown ? (
+          <SlotCard
+            slot={cooldown}
+            title={slotTitle(cooldown, 0)}
+            selected={plan?.selectedSlotId === cooldown.slotId}
+            playing={playing && plan?.selectedSlotId === cooldown.slotId}
+            src={cooldown.clipId ? urlById[cooldown.clipId] : undefined}
+            muted={muteVideo}
+            unlockSound={unlockSound}
+            canAdd={plan ? canAssignClip(plan, cooldown.slotId) : false}
+            onSelect={() => selectCard(cooldown.slotId)}
+            onAdd={() => openChooser(cooldown)}
+            onRemove={() => void removeClip(cooldown.slotId)}
+          />
+        ) : null}
       </div>
+      ) : null}
 
       <TvTip onFullscreen={() => void fs.enter()} />
       <VideoSourceSheet
         open={addOpen}
-        title="Add clips"
+        title={replacing ? 'Replace video' : 'Add video'}
         recordInputId="techniques-video-record"
         libraryInputId="techniques-video-library"
         onClose={() => setAddOpen(false)}
@@ -435,18 +397,197 @@ export function TechniquesPage() {
   );
 }
 
+function SlotCard({
+  slot,
+  title,
+  selected,
+  playing,
+  src,
+  muted,
+  unlockSound,
+  canAdd,
+  remainingMs,
+  customOpen,
+  timersLocked,
+  onSelect,
+  onAdd,
+  onRemove,
+  onDrill,
+  onCustom,
+  onNudge,
+}: {
+  slot: VideoSlot;
+  title: string;
+  selected: boolean;
+  playing: boolean;
+  src?: string;
+  muted: boolean;
+  unlockSound: boolean;
+  canAdd: boolean;
+  remainingMs?: number;
+  customOpen?: boolean;
+  timersLocked?: boolean;
+  onSelect: () => void;
+  onAdd: () => void;
+  onRemove: () => void;
+  onDrill?: (seconds: number) => void;
+  onCustom?: () => void;
+  onNudge?: (delta: number) => void;
+}) {
+  const filled = Boolean(slot.clipId && src);
+  const timed = isTimedSlot(slot);
+  const showClock = playing && timed && remainingMs != null;
+  const cardClass = [
+    'techniques__card',
+    selected ? 'techniques__card--on' : '',
+    playing ? 'techniques__card--playing' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  return (
+    <section
+      id={`techniques-slot-${slot.slotId}`}
+      className={cardClass}
+      aria-labelledby={`techniques-heading-${slot.slotId}`}
+      aria-current={selected ? 'true' : undefined}
+      onClick={(event) => {
+        const target = event.target as HTMLElement | null;
+        if (target?.closest('button, a, input, label')) return;
+        onSelect();
+      }}
+    >
+      <h2 id={`techniques-heading-${slot.slotId}`}>{title}</h2>
+      {playing && filled && src ? (
+        <LoopClip
+          src={src}
+          label={title}
+          playing
+          muted={muted}
+          unlockSound={unlockSound}
+          overlay={
+            showClock ? (
+              <p
+                className={`techniques__clock${remainingMs === 0 ? ' techniques__clock--done' : ' techniques__clock--play'}`}
+                aria-live="polite"
+              >
+                <span className="techniques__loop">Loop</span>
+                {formatMmSs(remainingMs)}
+              </p>
+            ) : (
+              <span className="techniques__live">Loop</span>
+            )
+          }
+        />
+      ) : filled && src ? (
+        <button
+          type="button"
+          className="techniques__slot techniques__slot--filled"
+          aria-pressed={selected}
+          onClick={onSelect}
+        >
+          <video className="techniques__thumb" src={src} muted playsInline preload="metadata" aria-label={title} />
+        </button>
+      ) : (
+        <button
+          type="button"
+          className={`techniques__slot${canAdd ? '' : ' techniques__slot--cap'}`}
+          aria-pressed={selected}
+          aria-disabled={!canAdd}
+          title={canAdd ? undefined : `${MAX_TECHNIQUE_CLIPS} clips on this device`}
+          onClick={() => {
+            onSelect();
+            if (canAdd) onAdd();
+          }}
+        >
+          + Add video
+        </button>
+      )}
+      {filled ? (
+        <div className="techniques__slot-actions">
+          <button type="button" className="btn" onClick={onAdd}>
+            Replace
+          </button>
+          <button type="button" className="btn btn--ghost" onClick={onRemove}>
+            Remove
+          </button>
+        </div>
+      ) : null}
+      {timed && onDrill && onCustom && onNudge ? (
+        <div
+          className="presets presets--match-length techniques__presets"
+          role="radiogroup"
+          aria-label={`Loop timer for ${title}`}
+        >
+          {DRILL_PRESETS_SEC.map((seconds) => {
+            const on = slot.drillSec === seconds && !customOpen;
+            return (
+              <button
+                key={seconds}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                className={`preset${on ? ' preset--on' : ''}`}
+                disabled={timersLocked}
+                onClick={() => onDrill(seconds)}
+              >
+                {formatMss(seconds)}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            role="radio"
+            aria-checked={Boolean(customOpen)}
+            className={`preset${customOpen ? ' preset--on' : ''}`}
+            disabled={timersLocked}
+            onClick={onCustom}
+          >
+            Custom
+          </button>
+          {customOpen ? (
+            <div className="interval-stepper techniques__stepper" role="group" aria-label={`Custom loop timer for ${title}`}>
+              <button
+                type="button"
+                className="clock-nudge"
+                disabled={timersLocked || slot.drillSec <= MIN_DRILL_SEC}
+                aria-label="Subtract 15 seconds"
+                onClick={() => onNudge(-15)}
+              >
+                −
+              </button>
+              <strong aria-live="polite">{formatMss(slot.drillSec)}</strong>
+              <button
+                type="button"
+                className="clock-nudge"
+                disabled={timersLocked || slot.drillSec >= MAX_DRILL_SEC}
+                aria-label="Add 15 seconds"
+                onClick={() => onNudge(15)}
+              >
+                +
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function LoopClip({
   src,
   label,
   playing,
   muted,
   unlockSound,
+  overlay,
 }: {
   src: string;
   label: string;
   playing: boolean;
   muted: boolean;
   unlockSound: boolean;
+  overlay?: ReactNode;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [needsUnmute, setNeedsUnmute] = useState(false);
@@ -511,6 +652,7 @@ function LoopClip({
         disableRemotePlayback
         aria-label={label}
       />
+      {overlay}
       {!muted && needsUnmute ? (
         <button
           type="button"
