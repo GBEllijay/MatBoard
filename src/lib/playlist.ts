@@ -1,4 +1,4 @@
-/** Ordered playlist helpers shared by Gallery, Videos, Pro Shop, Events, and Daily Training Videos. */
+/** Ordered playlist helpers shared by Gallery, Pro Shop, Events, and Daily Training Videos. */
 
 export type PlaylistItem = {
   id: string;
@@ -28,7 +28,8 @@ export function itemsInFolder<T extends PlaylistItem>(items: T[], folderId: stri
  * Play queue for the TV loop.
  *
  * Default (no storyIds): enabled folders in `folderIds` order, items in each
- * folder’s `sortOrder`. That is today’s Gallery-then-Videos combined play.
+ * folder’s `sortOrder`. Gallery holds photos and videos; Pro Shop and Events
+ * follow when those folders are on.
  *
  * Later cross-folder story editor: pass `storyIds` (a single ordered id list
  * across folders). Disabled folders, items with Play Off, and unplayable

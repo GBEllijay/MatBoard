@@ -1,11 +1,11 @@
-import { PHOTO_PICKER_ACCEPT, VIDEO_PICKER_ACCEPT } from './mediaPicker';
+import { PHOTO_PICKER_ACCEPT, VIDEO_PICKER_ACCEPT } from './mediaPicker.ts';
 import {
   buildPlayQueue,
   comparePlaylistItems,
   moveItemIds,
   withFolderOrder as applyFolderOrder,
   type PlaylistItem,
-} from './playlist';
+} from './playlist.ts';
 
 const DB_NAME = 'matboard';
 const STORE = 'photos';
@@ -35,32 +35,17 @@ export const FOLDERS = [
     label: 'Gallery',
     ready: true,
     comingSoon: '',
-    itemNoun: 'photo',
-    itemNounPlural: 'photos',
+    itemNoun: 'item',
+    itemNounPlural: 'items',
     addLabel: 'Add photos',
+    videoAddLabel: 'Add videos',
     accept: PHOTO_PICKER_ACCEPT,
     mimePrefix: 'image/',
     labelPrefix: 'Photo',
     emptyCopy:
-      'No photos yet. Add photos opens Take photo or Pick from gallery — kids, promotions, or gym shots stay on this device, nothing is uploaded. Tap the left preview to include or skip a photo. Hold the grip, then drag to set the slideshow story — or tap Up / Down.',
+      'No media yet. Add photos opens Take photo or Pick from gallery. Add videos opens Record or Pick from gallery. Photos and clips stay on this device, nothing is uploaded. Tap the left preview to include or skip an item. Hold the grip, then drag — or tap Up / Down.',
     orderHint:
-      'Tap the left preview to play or skip that photo. Checked / bright = On. Top photo plays first when In order is on. Hold the grip, then drag — or tap Up / Down.',
-  },
-  {
-    id: 'videos',
-    label: 'Videos',
-    ready: true,
-    comingSoon: '',
-    itemNoun: 'video',
-    itemNounPlural: 'videos',
-    addLabel: 'Add videos',
-    accept: VIDEO_ACCEPT,
-    mimePrefix: 'video/',
-    labelPrefix: 'Video',
-    emptyCopy:
-      'No videos yet. Add videos opens Record or Pick from gallery — clips stay on this device, nothing is uploaded. Tap the left preview to include or skip a clip. MP4 and WebM play most reliably. Long videos are fine; very large files can take a moment to add.',
-    orderHint:
-      'Tap the left preview to play or skip that clip. Checked / bright = On. Top video plays first when In order is on. Hold the grip, then drag — or tap Up / Down. Videos play all the way through, then the next item. Clips are muted by default so gym music can keep playing.',
+      'Tap the left preview to play or skip that photo or video. Checked / bright = On. Top item plays first when In order is on. Hold the grip, then drag — or tap Up / Down. Videos play all the way through; photos use the slide interval. Clips are muted by default so gym music can keep playing.',
   },
   {
     id: 'shop',
@@ -70,6 +55,7 @@ export const FOLDERS = [
     itemNoun: 'card',
     itemNounPlural: 'cards',
     addLabel: 'Add cards',
+    videoAddLabel: '',
     accept: 'image/*',
     mimePrefix: 'image/',
     labelPrefix: 'Card',
@@ -85,6 +71,7 @@ export const FOLDERS = [
     itemNoun: 'flyer',
     itemNounPlural: 'flyers',
     addLabel: 'Add flyers',
+    videoAddLabel: '',
     accept: 'image/*',
     mimePrefix: 'image/',
     labelPrefix: 'Flyer',
@@ -97,6 +84,9 @@ export const FOLDERS = [
 export type FolderId = (typeof FOLDERS)[number]['id'];
 export type FolderConfig = (typeof FOLDERS)[number];
 export const FOLDER_IDS: readonly FolderId[] = FOLDERS.map((folder) => folder.id);
+
+/** Old Console Videos folder. Rows are copied into Gallery once, after existing Gallery items. */
+export const LEGACY_VIDEOS_FOLDER = 'videos';
 
 export function folderById(id: FolderId): FolderConfig {
   return FOLDERS.find((folder) => folder.id === id) ?? FOLDERS[0];
@@ -131,7 +121,7 @@ export type SaverPrefs = {
   muteVideo: boolean;
 };
 
-type PhotoRow = Omit<StoredPhoto, 'folderId' | 'sortOrder' | 'playEnabled'> & {
+export type PhotoRow = Omit<StoredPhoto, 'folderId' | 'sortOrder' | 'playEnabled'> & {
   folderId?: FolderId | string;
   sortOrder?: number;
   playEnabled?: boolean;
@@ -186,12 +176,47 @@ function photoSortOrder(row: PhotoRow): number {
 }
 
 function normalizePhoto(row: PhotoRow, index: number): StoredPhoto {
+  const legacyVideo = row.folderId === LEGACY_VIDEOS_FOLDER;
   return {
     ...row,
     label: typeof row.label === 'string' ? row.label : `Photo ${index + 1}`,
-    folderId: isFolderId(row.folderId) ? row.folderId : 'gallery',
+    folderId: isFolderId(row.folderId) && !legacyVideo ? row.folderId : 'gallery',
     sortOrder: photoSortOrder(row),
     playEnabled: row.playEnabled !== false,
+  };
+}
+
+/**
+ * Move the retired Videos folder into Gallery, appended after the current Gallery
+ * list so the old Gallery-then-Videos play order stays. Unknown folder ids also
+ * land in Gallery. Safe to run more than once.
+ */
+export function migrateLegacyVideoFolder(rows: PhotoRow[]): { rows: PhotoRow[]; changed: PhotoRow[] } {
+  const legacy = rows.filter((row) => row.folderId === LEGACY_VIDEOS_FOLDER);
+  const unknown = rows.filter(
+    (row) => row.folderId !== LEGACY_VIDEOS_FOLDER && !isFolderId(row.folderId),
+  );
+  if (!legacy.length && !unknown.length) return { rows, changed: [] };
+
+  let nextOrder = rows
+    .filter((row) => row.folderId === 'gallery')
+    .reduce((max, row) => Math.max(max, photoSortOrder(row)), -1);
+  const patch = new Map<string, PhotoRow>();
+  const orderedLegacy = [...legacy].sort((a, b) => {
+    const order = photoSortOrder(a) - photoSortOrder(b);
+    if (order !== 0) return order;
+    return String(a.id).localeCompare(String(b.id));
+  });
+  for (const row of orderedLegacy) {
+    nextOrder += 1;
+    patch.set(row.id, { ...row, folderId: 'gallery', sortOrder: nextOrder });
+  }
+  for (const row of unknown) {
+    patch.set(row.id, { ...row, folderId: 'gallery' });
+  }
+  return {
+    rows: rows.map((row) => patch.get(row.id) ?? row),
+    changed: [...patch.values()],
   };
 }
 
@@ -234,7 +259,8 @@ export function isAcceptedVideoFile(file: File): boolean {
   return (VIDEO_EXTENSIONS as readonly string[]).includes(fileExtension(file.name));
 }
 
-export function fileMatchesFolder(file: File, folder: { mimePrefix: string }): boolean {
+export function fileMatchesFolder(file: File, folder: { id: string; mimePrefix: string }): boolean {
+  if (folder.id === 'gallery' && isAcceptedVideoFile(file)) return true;
   if (file.type && file.type.startsWith(folder.mimePrefix)) return true;
   if (folder.mimePrefix === 'video/') return isAcceptedVideoFile(file);
   return false;
@@ -270,10 +296,9 @@ export function clampIntervalSec(n: number): number {
 }
 
 /**
- * Enabled folders play in FOLDERS order, list order (sortOrder) inside each.
- * Images and videos both participate. Items with Play Off stay in the folder
- * list but skip the TV queue. Pass `storyIds` later for one cross-folder
- * story order (Gallery + Videos interleaved) without changing per-folder lists.
+ * Enabled folders play in FOLDERS order (Gallery, then Pro Shop, then Events),
+ * list order (sortOrder) inside each. Gallery holds photos and videos. Items
+ * with Play Off stay in the folder list but skip the TV queue.
  */
 export function playableItems(
   items: StoredPhoto[],
@@ -298,25 +323,22 @@ export async function listPhotos(folderId?: FolderId): Promise<StoredPhoto[]> {
     req.onsuccess = () => resolve(req.result as PhotoRow[]);
     req.onerror = () => reject(req.error);
   });
-  if (raw.some((row) => !isFolderId(row.folderId))) {
-    void persistLegacyGallery();
+  const migrated = migrateLegacyVideoFolder(raw);
+  if (migrated.changed.length) {
+    await persistMediaRows(migrated.changed);
   }
-  const rows = raw.map((row, index) => normalizePhoto(row, index)).sort(comparePhotos);
+  const rows = migrated.rows.map((row, index) => normalizePhoto(row, index)).sort(comparePhotos);
   return folderId ? rows.filter((photo) => photo.folderId === folderId) : rows;
 }
 
-async function persistLegacyGallery(): Promise<void> {
+async function persistMediaRows(rows: PhotoRow[]): Promise<void> {
+  if (!rows.length) return;
   const db = await openDb();
   const tx = db.transaction(STORE, 'readwrite');
   const store = tx.objectStore(STORE);
-  const req = store.getAll();
-  req.onsuccess = () => {
-    for (const row of req.result as PhotoRow[]) {
-      if (!isFolderId(row.folderId)) {
-        store.put(normalizePhoto(row, 0));
-      }
-    }
-  };
+  for (const [index, row] of rows.entries()) {
+    store.put(normalizePhoto(row, index));
+  }
   await txDone(tx);
 }
 
@@ -326,20 +348,23 @@ export async function addFolderFiles(files: File[], folderId: FolderId): Promise
   const db = await openDb();
   const tx = db.transaction(STORE, 'readwrite');
   const store = tx.objectStore(STORE);
-  let nextIndex = existing.length;
+  let photoCount = existing.filter((photo) => !isVideoItem(photo)).length;
+  let videoCount = existing.filter((photo) => isVideoItem(photo)).length;
   let nextOrder = existing.reduce((max, photo) => Math.max(max, photo.sortOrder), -1);
   let added = 0;
   for (const file of files) {
     if (!fileMatchesFolder(file, folder)) continue;
-    nextIndex += 1;
     nextOrder += 1;
     added += 1;
+    const video = folder.id === 'gallery' && isAcceptedVideoFile(file);
+    if (video) videoCount += 1;
+    else photoCount += 1;
     const photo: StoredPhoto = {
       id: crypto.randomUUID(),
       mime: mimeFromFile(file, folder),
       addedAt: Date.now(),
       blob: file,
-      label: `${folder.labelPrefix} ${nextIndex}`,
+      label: `${video ? 'Video' : folder.labelPrefix} ${video ? videoCount : photoCount}`,
       folderId,
       sortOrder: nextOrder,
       playEnabled: true,
