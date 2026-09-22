@@ -3464,7 +3464,7 @@ fieldset {
   box-shadow: var(--shadow);
 }
 
-.bracket__champ span {
+.bracket__champ > span {
   color: var(--gold-2);
   font-size: 0.72rem;
   font-weight: 800;
@@ -3814,7 +3814,7 @@ fieldset {
   gap: 0.45rem;
 }
 
-.tournament__seeds span {
+.tournament__seeds label > span {
   color: var(--gold-2);
   font-weight: 800;
   text-align: right;
@@ -4307,7 +4307,7 @@ fieldset {
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
 }
 
-.tournament--bright .bracket__champ span {
+.tournament--bright .bracket__champ > span {
   color: #14161c;
 }
 
@@ -5164,6 +5164,11 @@ fieldset {
   background: rgba(255, 255, 255, 0.04);
   color: #fff;
   text-align: left;
+}
+
+/* Champion and seed labels color every descendant span. The name sits in one. */
+.roster-pick__row strong {
+  color: #fff;
 }
 
 .roster-pick__row span {
