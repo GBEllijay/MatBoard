@@ -2269,7 +2269,8 @@ fieldset {
   line-height: 1.15;
 }
 
-.training .sheet legend {
+.training .sheet legend,
+.training-control legend {
   font-size: clamp(1.35rem, 1.1rem + 1.4vw, 1.85rem);
   font-weight: 800;
   letter-spacing: -0.02em;
@@ -2278,21 +2279,50 @@ fieldset {
   color: var(--ink);
 }
 
-.training .sheet .stepper {
+.training .sheet .stepper,
+.training-control .stepper {
   font-size: clamp(1.22rem, 1rem + 1.1vw, 1.65rem);
   font-weight: 800;
   margin-top: 0.2rem;
 }
 
-.training .sheet .stepper input {
+.training .sheet .stepper input,
+.training-control .stepper input {
   font-size: 1.05rem;
   font-weight: 700;
 }
 
-.training .sheet .cue-preview-label {
+.training .sheet .cue-preview-label,
+.training-control .cue-preview-label {
   font-size: clamp(1.18rem, 0.95rem + 1vw, 1.5rem);
   font-weight: 800;
   color: var(--ink);
+}
+
+.training-control__phase {
+  margin: 0 0 0.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.training-control__actions {
+  display: grid;
+  margin: 0.7rem 0 0;
+}
+
+.training-control__actions .btn {
+  width: 100%;
+  min-height: 56px;
+}
+
+.training-control__options {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0 0.9rem 1rem;
+}
+
+.training-control__open {
+  margin: 0 0.9rem 0.4rem;
 }
 
 .saver {

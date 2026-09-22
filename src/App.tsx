@@ -16,6 +16,7 @@ import { SchedulePage } from './pages/Schedule';
 import { TechniquesPage } from './pages/Techniques';
 import { TournamentPage } from './pages/Tournament';
 import { TrainingNotesPage } from './pages/TrainingNotes';
+import { TrainingControllerPage } from './pages/TrainingController';
 import { TrainingPage } from './pages/Training';
 import { WhitePage } from './pages/White';
 
@@ -47,6 +48,7 @@ export default function App() {
       <Route path="/match" element={<MatchDisplayPage />} />
       <Route path="/match/control" element={<MatchControllerPage />} />
       <Route path="/training" element={<TrainingPage />} />
+      <Route path="/training/control" element={<TrainingControllerPage />} />
       <Route
         path="/coach"
         element={
