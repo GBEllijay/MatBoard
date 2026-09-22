@@ -47,7 +47,7 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
       },
       {
         title: TRAINING_NOTES_LABEL,
-        body: 'Jot class plans and cues on this phone. Warm-up, drills, who goes first.',
+        body: 'Plan the class on this phone — warm-up, techniques, cool-down, and closing. Saved on this device.',
       },
       {
         title: 'Daily Training Videos',
