@@ -93,7 +93,7 @@ Windows opened from the same browser stay in sync automatically. A phone Control
 
 Start and warning cues, and the default **Buzzer** end cue, are **original procedural tones** synthesized in-app with the Web Audio API (oscillators + a short generated noise burst). There are no sampled federation buzzers and no third-party / Pixabay files.
 
-**PAROU! ("STOP!")** plays a Portuguese-only voice saying “Parou!” (the English “STOP!” is the button translation and is not spoken). The wired file is `public/sounds/parou-tts-parou-only.mp3`. To ship a louder take, replace that file or point `PAROU_URL` in `src/lib/audio.ts` at the new clip under `public/sounds/` — keep it Portuguese-only. On the Match Controller and under Training sound options, choose **Buzzer** or **PAROU! ("STOP!")**. Preference is saved in `localStorage` (`matboard.audio.v1` and the match state).
+**PAROU! ("STOP!")** plays the approved gaming-mic take: “Parou… stop” (both words are spoken). The wired file is `public/sounds/parou-stop-gaming-mic.mp3`, fetched as `/sounds/parou-stop-gaming-mic.mp3` (`PAROU_URL` in `src/lib/audio.ts`). Cue-only playback gain is `1` because the file already peaks at full scale. With no break between rounds, the next start cue waits until this take finishes (~3.7s). On the Match Controller and under Training sound options, choose **Buzzer** or **PAROU! ("STOP!")**. Preference is saved in `localStorage` (`matboard.audio.v1` and the match state).
 
 A compressor and soft clipper sit on the master bus so end cues can be loud in a gym without harsh DAC clipping.
 
@@ -102,7 +102,7 @@ A compressor and soft clipper sit on the master bus so end cues can be loud in a
 | **Start** | Training (round / clock start); Match when **Start beep** is on | Two rising “go” notes, brighter and shorter than the warning | Sine at 784 Hz then 1175 Hz, light octave shimmer |
 | **10-second warning** | Training work phase; Match when **10-second warning** is on | Three light staccato ticks on one pitch | Quiet triangle pulses at 1047 Hz |
 | **End buzzer** | Training round/session end; Match when the clock hits 0:00 (optional, on by default) if **Buzzer** is selected | Classic electric gym buzzer: sustained, raspy, mid-forward | Detuned square pair (~392/406 Hz) + saw sub + 23 Hz rasp + a few ms of synthesized noise. Match holds it longer and a bit louder than Training. |
-| **PAROU! ("STOP!")** | Same end slots as the buzzer, when that chip is selected | Portuguese “Parou!” only | `public/sounds/parou-tts-parou-only.mp3`, decoded into the same Web Audio master bus (mute / volume apply), with a cue-only gain trim |
+| **PAROU! ("STOP!")** | Same end slots as the buzzer, when that chip is selected | Full “Parou… stop” | `public/sounds/parou-stop-gaming-mic.mp3`, decoded into the same Web Audio master bus (mute / volume apply) at cue gain `1` |
 
 Match start beep and 10-second warning default **off** (IBJJF-style matches do not use a 10s warning). Match end sound defaults **on**. All three persist in match state.
 

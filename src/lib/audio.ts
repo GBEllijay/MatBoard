@@ -15,17 +15,17 @@ export const END_CUE_OPTIONS: { id: EndCue; label: string }[] = [
 ];
 
 /**
- * Spoken cue is Portuguese “Parou!” only. The English “STOP!” is the button
- * translation and is not in the audio.
- *
- * Swap hook for a louder take: replace `public/sounds/parou-tts-parou-only.mp3`
- * (served as this URL) with the chosen file, or point PAROU_URL at a new file
- * under `public/sounds/`. Keep the clip Portuguese-only. Do not wire a quieter take.
+ * Approved gaming-mic take: full “Parou… stop”.
+ * File: `public/sounds/parou-stop-gaming-mic.mp3` (served as this URL).
+ * The chip label stays PAROU! ("STOP!"); both words are spoken.
  */
-const PAROU_URL = '/sounds/parou-tts-parou-only.mp3';
+const PAROU_URL = '/sounds/parou-stop-gaming-mic.mp3';
 
-/** Cue-only trim above the user volume slider. A hotter source file is the real fix. */
-const PAROU_CUE_GAIN = 1.35;
+/**
+ * Cue-only trim above the user volume slider.
+ * This file already peaks at 0 dBFS, so 1.0 keeps the phrase from clipping.
+ */
+const PAROU_CUE_GAIN = 1;
 
 const DEFAULT_PREFS: AudioPrefs = {
   muted: false,
@@ -498,7 +498,7 @@ function playParouCue(kind: 'match' | 'training'): void {
   });
 }
 
-/** Play the user-selected end cue (original synth buzzer or owner-recorded Parou). */
+/** Play the user-selected end cue (synth buzzer or the “Parou… stop” take). */
 export function playSelectedEndCue(kind: 'match' | 'training' = 'match', cue: EndCue = prefs.endCue): void {
   if (parseEndCue(cue) === 'parou') {
     playParouCue(kind);
@@ -512,6 +512,7 @@ export function playSelectedEndCue(kind: 'match' | 'training' = 'match', cue: En
 export const END_BUZZER_MS = 1100;
 
 export function endCueFollowMs(): number {
-  if (prefs.endCue === 'parou') return 1000;
+  // Full take is ~3.5s (speech ends ~2.4s). Wait it out before the next start cue.
+  if (prefs.endCue === 'parou') return 3700;
   return END_BUZZER_MS;
 }
