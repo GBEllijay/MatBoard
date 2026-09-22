@@ -22,7 +22,7 @@ export const EMPTY_NOTES_BODY = 'Jot a class plan — warm-up, drills, who goes 
 
 export const EMPTY_VIDEOS_TITLE = 'No clips yet';
 export const EMPTY_VIDEOS_BODY =
-  'Add clips opens Record or Pick from gallery — up to 10 videos. Start loops the selected clip with a 2:30, 5:00, or 7:00 drill timer.';
+  'Add video opens Record or Pick from gallery — one clip per card, up to 10 on this device. Technique slots loop with a 2:30, 5:00, or 7:00 timer.';
 
 export const EMPTY_BRACKET_TITLE = 'Empty bracket';
 export const EMPTY_BRACKET_BODY =

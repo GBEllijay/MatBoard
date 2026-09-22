@@ -1,18 +1,23 @@
 import {
+  assignOrphanClips,
+  canAssignClip,
   clampDrillSec,
-  clipSlotsLeft,
   DEFAULT_DRILL_SEC,
   pickAddableVideos,
-  resolveSelectedId,
+  planFromFlatClips,
+  sanitizeVideoPlan,
+  selectSlot,
+  setSlotClip,
+  slotTitle,
+  techniqueIndex,
+  type VideoPlan,
 } from './techniqueLogic';
-import {
-  comparePlaylistItems,
-  withFolderOrder as applyFolderOrder,
-  type PlaylistItem,
-} from './playlist';
+import { comparePlaylistItems, type PlaylistItem } from './playlist';
 import { mimeFromFile, VIDEO_ACCEPT } from './photoStore';
 
 export {
+  canAssignClip,
+  clipCount,
   clipSlotsLeft,
   DEFAULT_DRILL_SEC,
   MAX_TECHNIQUE_CLIPS,
@@ -24,6 +29,7 @@ const DB_NAME = 'matboard-techniques';
 const CLIPS = 'clips';
 const PREFS = 'prefs';
 const DB_VERSION = 1;
+const PLAN_KEY = 'plan';
 
 export const TECHNIQUE_FOLDER_ID = 'techniques';
 
@@ -34,12 +40,12 @@ export const TECHNIQUE_FOLDER = {
   comingSoon: '',
   itemNoun: 'clip',
   itemNounPlural: 'clips',
-  addLabel: 'Add clips',
+  addLabel: 'Add video',
   accept: VIDEO_ACCEPT,
   mimePrefix: 'video/',
   labelPrefix: 'Clip',
-  emptyCopy: 'No clips yet. Add clips opens Record or Pick from gallery — up to 10 on this device.',
-  orderHint: 'Tap Play to select a clip. Hold the grip, then drag — or tap Up / Down.',
+  emptyCopy: 'Add video opens Record or Pick from gallery — one clip per card, up to 10 on this device.',
+  orderHint: 'Tap a card to select it. Start loops that clip.',
 } as const;
 
 export type TechniqueClip = PlaylistItem & {
@@ -53,10 +59,7 @@ type ClipRow = Omit<TechniqueClip, 'folderId' | 'sortOrder'> & {
   sortOrder?: number;
 };
 
-export type TechniquePrefs = {
-  selectedId: string | null;
-  drillSec: number;
-};
+export type SlotWriteStatus = 'added' | 'replaced' | 'removed' | 'invalid' | 'atCap' | 'missing' | 'empty';
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -84,9 +87,7 @@ function txDone(tx: IDBTransaction): Promise<void> {
 }
 
 function clipSortOrder(row: ClipRow): number {
-  return typeof row.sortOrder === 'number' && Number.isFinite(row.sortOrder)
-    ? row.sortOrder
-    : row.addedAt;
+  return typeof row.sortOrder === 'number' && Number.isFinite(row.sortOrder) ? row.sortOrder : row.addedAt;
 }
 
 function normalizeClip(row: ClipRow, index: number): TechniqueClip {
@@ -96,10 +97,6 @@ function normalizeClip(row: ClipRow, index: number): TechniqueClip {
     folderId: TECHNIQUE_FOLDER_ID,
     sortOrder: clipSortOrder(row),
   };
-}
-
-export function withTechniqueOrder(clips: TechniqueClip[], orderedIds: string[]): TechniqueClip[] {
-  return applyFolderOrder(clips, TECHNIQUE_FOLDER_ID, orderedIds, [TECHNIQUE_FOLDER_ID]);
 }
 
 export async function listTechniqueClips(): Promise<TechniqueClip[]> {
@@ -113,124 +110,137 @@ export async function listTechniqueClips(): Promise<TechniqueClip[]> {
   return raw.map((row, index) => normalizeClip(row, index)).sort(comparePlaylistItems);
 }
 
-export async function addTechniqueFiles(files: File[]): Promise<{ added: number; atCap: boolean }> {
-  const existing = await listTechniqueClips();
-  const picked = pickAddableVideos(files, clipSlotsLeft(existing.length));
-  if (!picked.length) {
-    return { added: 0, atCap: clipSlotsLeft(existing.length) === 0 };
-  }
-  const db = await openDb();
-  const tx = db.transaction(CLIPS, 'readwrite');
-  const store = tx.objectStore(CLIPS);
-  let nextIndex = existing.length;
-  let nextOrder = existing.reduce((max, clip) => Math.max(max, clip.sortOrder), -1);
-  for (const file of picked) {
-    nextIndex += 1;
-    nextOrder += 1;
-    const clip: TechniqueClip = {
-      id: crypto.randomUUID(),
-      mime: mimeFromFile(file, TECHNIQUE_FOLDER),
-      addedAt: Date.now(),
-      blob: file,
-      label: `${TECHNIQUE_FOLDER.labelPrefix} ${nextIndex}`,
-      folderId: TECHNIQUE_FOLDER_ID,
-      sortOrder: nextOrder,
-    };
-    store.put(clip);
-  }
-  await txDone(tx);
-  const after = existing.length + picked.length;
-  return { added: picked.length, atCap: clipSlotsLeft(after) === 0 };
-}
-
-export async function renameTechniqueClip(id: string, label: string): Promise<void> {
-  const db = await openDb();
-  const tx = db.transaction(CLIPS, 'readwrite');
-  const store = tx.objectStore(CLIPS);
-  const current = await new Promise<ClipRow | undefined>((resolve, reject) => {
-    const req = store.get(id);
-    req.onsuccess = () => resolve(req.result as ClipRow | undefined);
-    req.onerror = () => reject(req.error);
-  });
-  if (!current) return;
-  store.put({ ...normalizeClip(current, 0), label });
-  await txDone(tx);
-}
-
-export async function removeTechniqueClip(id: string): Promise<void> {
-  const db = await openDb();
-  const tx = db.transaction(CLIPS, 'readwrite');
-  tx.objectStore(CLIPS).delete(id);
-  await txDone(tx);
-  const prefs = await getTechniquePrefs();
-  if (prefs.selectedId === id) {
-    const remaining = await listTechniqueClips();
-    await setTechniqueSelectedId(resolveSelectedId(null, remaining.map((clip) => clip.id)));
-  }
-}
-
-export async function reorderTechniqueClips(orderedIds: string[]): Promise<void> {
-  const db = await openDb();
-  const tx = db.transaction(CLIPS, 'readwrite');
-  const store = tx.objectStore(CLIPS);
-  const rows = await new Promise<ClipRow[]>((resolve, reject) => {
-    const req = store.getAll();
-    req.onsuccess = () => resolve(req.result as ClipRow[]);
-    req.onerror = () => reject(req.error);
-  });
-  const byId = new Map(rows.map((row) => [row.id, row]));
-  const used = new Set<string>();
-  let index = 0;
-  const putOrdered = (id: string) => {
-    const row = byId.get(id);
-    if (!row || used.has(id)) return;
-    used.add(id);
-    store.put({ ...normalizeClip(row, index), sortOrder: index });
-    index += 1;
-  };
-  for (const id of orderedIds) putOrdered(id);
-  for (const row of rows) putOrdered(row.id);
-  await txDone(tx);
-}
-
-export async function clearTechniqueClips(): Promise<void> {
-  const db = await openDb();
-  const tx = db.transaction([CLIPS, PREFS], 'readwrite');
-  tx.objectStore(CLIPS).clear();
-  tx.objectStore(PREFS).put(null, 'selectedId');
-  await txDone(tx);
-}
-
-export async function getTechniquePrefs(): Promise<TechniquePrefs> {
+async function readPrefs(): Promise<{ plan: unknown; selectedId: unknown; drillSec: unknown }> {
   try {
     const db = await openDb();
     return await new Promise((resolve, reject) => {
       const tx = db.transaction(PREFS, 'readonly');
-      const selectedReq = tx.objectStore(PREFS).get('selectedId');
-      const drillReq = tx.objectStore(PREFS).get('drillSec');
+      const store = tx.objectStore(PREFS);
+      const planReq = store.get(PLAN_KEY);
+      const selectedReq = store.get('selectedId');
+      const drillReq = store.get('drillSec');
       tx.oncomplete = () => {
         resolve({
-          selectedId: typeof selectedReq.result === 'string' ? selectedReq.result : null,
-          drillSec: clampDrillSec(Number(drillReq.result ?? DEFAULT_DRILL_SEC)),
+          plan: planReq.result,
+          selectedId: selectedReq.result,
+          drillSec: drillReq.result,
         });
       };
       tx.onerror = () => reject(tx.error);
     });
   } catch {
-    return { selectedId: null, drillSec: DEFAULT_DRILL_SEC };
+    return { plan: undefined, selectedId: undefined, drillSec: undefined };
   }
 }
 
-export async function setTechniqueSelectedId(selectedId: string | null): Promise<void> {
+export async function saveTechniquePlan(plan: VideoPlan): Promise<void> {
   const db = await openDb();
   const tx = db.transaction(PREFS, 'readwrite');
-  tx.objectStore(PREFS).put(selectedId, 'selectedId');
+  tx.objectStore(PREFS).put(plan, PLAN_KEY);
   await txDone(tx);
 }
 
-export async function setTechniqueDrillSec(drillSec: number): Promise<void> {
+/**
+ * Load clips plus the slot plan.
+ * A missing plan (the old flat list) is copied onto Technique / Drill cards in list order.
+ * Warm-up and Cool down start empty. The previous global drill length is copied onto each technique.
+ */
+export async function loadTechniqueBoard(): Promise<{ clips: TechniqueClip[]; plan: VideoPlan }> {
+  const clips = await listTechniqueClips();
+  const clipIds = clips.map((clip) => clip.id);
+  const prefs = await readPrefs();
+  const rawPlan = prefs.plan;
+  const version =
+    rawPlan && typeof rawPlan === 'object' && !Array.isArray(rawPlan)
+      ? (rawPlan as { version?: unknown }).version
+      : null;
+
+  let plan: VideoPlan;
+  let changed: boolean;
+  if (version === 2) {
+    const sanitized = sanitizeVideoPlan(rawPlan, clipIds);
+    const placed = assignOrphanClips(sanitized.plan, clipIds);
+    plan = placed.plan;
+    changed = sanitized.changed || placed.changed;
+  } else {
+    const migrated = planFromFlatClips({
+      clipIds,
+      selectedClipId: typeof prefs.selectedId === 'string' ? prefs.selectedId : null,
+      drillSec: clampDrillSec(Number(prefs.drillSec ?? DEFAULT_DRILL_SEC)),
+    });
+    const placed = assignOrphanClips(migrated, clipIds);
+    plan = placed.plan;
+    changed = true;
+  }
+  if (changed) await saveTechniquePlan(plan);
+  return { clips, plan };
+}
+
+function slotClipLabel(plan: VideoPlan, slotId: string): string {
+  const slot = plan.slots.find((item) => item.slotId === slotId);
+  if (!slot) return TECHNIQUE_FOLDER.labelPrefix;
+  const index = techniqueIndex(plan, slotId);
+  return slotTitle(slot, index < 0 ? 0 : index);
+}
+
+export async function attachClipToSlot(
+  plan: VideoPlan,
+  slotId: string,
+  file: File,
+): Promise<{ plan: VideoPlan; clips: TechniqueClip[]; status: SlotWriteStatus }> {
+  const slot = plan.slots.find((item) => item.slotId === slotId);
+  const clips = await listTechniqueClips();
+  if (!slot) return { plan, clips, status: 'missing' };
+  const [picked] = pickAddableVideos([file], 1);
+  if (!picked) return { plan, clips, status: 'invalid' };
+  if (!canAssignClip(plan, slotId)) return { plan, clips, status: 'atCap' };
+
+  const replacing = Boolean(slot.clipId);
+  const clipId = crypto.randomUUID();
+  const nextOrder = clips.reduce((max, clip) => Math.max(max, clip.sortOrder), -1) + 1;
+  const row: TechniqueClip = {
+    id: clipId,
+    mime: mimeFromFile(picked, TECHNIQUE_FOLDER),
+    addedAt: Date.now(),
+    blob: picked,
+    label: slotClipLabel(plan, slotId),
+    folderId: TECHNIQUE_FOLDER_ID,
+    sortOrder: nextOrder,
+  };
   const db = await openDb();
-  const tx = db.transaction(PREFS, 'readwrite');
-  tx.objectStore(PREFS).put(clampDrillSec(drillSec), 'drillSec');
+  const tx = db.transaction(CLIPS, 'readwrite');
+  const store = tx.objectStore(CLIPS);
+  if (slot.clipId) store.delete(slot.clipId);
+  store.put(row);
   await txDone(tx);
+
+  const next = selectSlot(setSlotClip(plan, slotId, clipId), slotId);
+  await saveTechniquePlan(next);
+  return {
+    plan: next,
+    clips: await listTechniqueClips(),
+    status: replacing ? 'replaced' : 'added',
+  };
+}
+
+export async function clearSlotClip(
+  plan: VideoPlan,
+  slotId: string,
+): Promise<{ plan: VideoPlan; clips: TechniqueClip[]; status: SlotWriteStatus }> {
+  const slot = plan.slots.find((item) => item.slotId === slotId);
+  if (!slot) {
+    const clips = await listTechniqueClips();
+    return { plan, clips, status: 'missing' };
+  }
+  if (!slot.clipId) {
+    const clips = await listTechniqueClips();
+    return { plan, clips, status: 'empty' };
+  }
+  const db = await openDb();
+  const tx = db.transaction(CLIPS, 'readwrite');
+  tx.objectStore(CLIPS).delete(slot.clipId);
+  await txDone(tx);
+  const next = setSlotClip(plan, slotId, null);
+  await saveTechniquePlan(next);
+  return { plan: next, clips: await listTechniqueClips(), status: 'removed' };
 }
