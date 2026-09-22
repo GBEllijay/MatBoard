@@ -19,8 +19,8 @@ export const INTERVAL_PRESETS_SEC = [5, 10, 30, 60] as const;
 
 /**
  * Phone/PC picker token. Library uses `video/*` with no capture. Record uses
- * a separate input with `capture="environment"` (and `video/*,image/*`) so
- * Android Chrome opens Camera instead of Google Photos. Gallery photos use
+ * a separate input with `accept="video/*"` and `capture="environment"` so
+ * Android Chrome opens the camera instead of Google Photos. Gallery photos use
  * `image/*` the same way: Take photo has capture, Pick from gallery does not.
  * Extra extensions (`.mp4,.mov,…`) force a documents picker on some phones.
  * Gym-TV types are still accepted after pick — see VIDEO_EXTENSIONS /

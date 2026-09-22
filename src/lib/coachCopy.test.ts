@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   COACH_AD_LEAD,
   COACH_HOME_TEASER,
+  COACH_HUB_BLURB,
   COACH_TOOLS_TEASER,
   COMPETITOR_ROSTER_LABEL,
   TRAINING_NOTES_LABEL,
@@ -27,6 +28,7 @@ function allCopy(): string {
     TRAINING_NOTES_LABEL,
     COACH_TOOLS_TEASER,
     COACH_HOME_TEASER,
+    COACH_HUB_BLURB,
     COACH_AD_LEAD,
     EMPTY_ROSTER_TITLE,
     EMPTY_ROSTER_BODY,
@@ -44,23 +46,29 @@ function allCopy(): string {
   ].join('\n');
 }
 
-test('Coach teasers list the four hub tools', () => {
+function assertCoachToolOrder(text: string, rosterLabel = 'Competitor Roster') {
+  const lesson = text.indexOf('Daily Lesson Plan');
+  const videos = text.indexOf('Daily Training Videos');
+  const mock = text.indexOf('Mock Tournament');
+  const roster = text.indexOf(rosterLabel);
+  assert.ok(lesson >= 0 && videos > lesson && mock > videos && roster > mock);
+}
+
+test('Coach teasers list the four hub tools in lesson, videos, mock, roster order', () => {
   assert.equal(COMPETITOR_ROSTER_LABEL, 'Competitor Roster');
   assert.equal(TRAINING_NOTES_LABEL, 'Daily Lesson Plan');
-  assert.match(COACH_TOOLS_TEASER, /Mock Tournament/);
-  assert.match(COACH_TOOLS_TEASER, /Competitor Roster/);
-  assert.match(COACH_TOOLS_TEASER, /Daily Lesson Plan/);
-  assert.match(COACH_TOOLS_TEASER, /Daily Training Videos/);
-  assert.match(COACH_HOME_TEASER, /Mock Tournament/);
-  assert.match(COACH_HOME_TEASER, /Roster/);
-  assert.match(COACH_HOME_TEASER, /Daily Lesson Plan/);
-  assert.match(COACH_HOME_TEASER, /Daily Videos/);
+  assert.equal(
+    COACH_TOOLS_TEASER,
+    'Daily Lesson Plan, Daily Training Videos, Mock Tournament, Competitor Roster.',
+  );
+  assertCoachToolOrder(COACH_TOOLS_TEASER);
+  assertCoachToolOrder(COACH_HOME_TEASER, 'Roster');
   assert.ok(COACH_HOME_TEASER.length < 70);
-  assert.match(COACH_AD_LEAD, /Mock Tournament/);
-  assert.match(COACH_AD_LEAD, /Competitor Management/);
-  assert.match(COACH_AD_LEAD, /Daily Lesson Plan/);
-  assert.match(COACH_AD_LEAD, /Daily Training Videos/);
+  assert.match(COACH_AD_LEAD, /^Coach tools:/);
+  assertCoachToolOrder(COACH_AD_LEAD);
+  assertCoachToolOrder(COACH_HUB_BLURB);
   assert.doesNotMatch(COACH_AD_LEAD, /Daily Techniques/);
+  assert.doesNotMatch(COACH_HUB_BLURB, /Competitor Management/);
 });
 
 test('Coach empty states stay friendly and skip student progress', () => {

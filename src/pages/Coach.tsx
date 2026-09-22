@@ -20,8 +20,8 @@ export function CoachPage() {
           <p className="home__hint">Install Advantage as an app from your browser menu.</p>
           <p className="home__hint">
             Gym TV: open this site on a computer plugged into the TV, then fullscreen Display,
-            Rounds, Mock Tournament, or Daily Training Videos. Press F for fullscreen. Competitor
-            Roster and Daily Lesson Plan live on the phone.
+            Rounds, Daily Training Videos, or Mock Tournament. Press F for fullscreen. Daily Lesson
+            Plan and Competitor Roster live on the phone.
           </p>
           <p className="home__hint">
             Control from your phone. Cast the scoreboard to your TV, or open Display on a second

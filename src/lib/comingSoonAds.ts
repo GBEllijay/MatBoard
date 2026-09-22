@@ -38,20 +38,20 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
     lead: COACH_AD_LEAD,
     features: [
       {
-        title: 'Mock Tournament',
-        body: 'Run a bracket of up to 16 competitors on the gym TV. Score each bout and track winners on the same easy to use scoreboard.',
-      },
-      {
-        title: 'Competitor Management',
-        body: `Keep a ${COMPETITOR_ROSTER_LABEL} for bouts — names and belts you pick into Live Bout and mock brackets.`,
-      },
-      {
         title: TRAINING_NOTES_LABEL,
         body: 'Plan the class on this phone — warm-up, techniques, cool-down, and closing. Saved on this device.',
       },
       {
         title: 'Daily Training Videos',
         body: 'Up to 10 on-device clips. Loop one while the class drills, with a 2:30 / 5:00 / 7:00 timer on the screen.',
+      },
+      {
+        title: 'Mock Tournament',
+        body: 'Run a bracket of up to 16 competitors on the gym TV. Score each bout and track winners on the same easy to use scoreboard.',
+      },
+      {
+        title: COMPETITOR_ROSTER_LABEL,
+        body: 'Names and belts you pick into Live Bout and mock brackets.',
       },
     ],
     dismiss: 'Got it',

@@ -19,10 +19,11 @@ describe('video device picker accept', () => {
     assert.doesNotMatch(VIDEO_PICKER_ACCEPT, /\.mp4|\.mov|\.webm/);
   });
 
-  it('Record accept prefers video and allows image so Camera can still open', () => {
-    assert.equal(VIDEO_RECORD_ACCEPT, 'video/*,image/*');
-    assert.match(VIDEO_RECORD_ACCEPT, /video\/\*/);
-    assert.match(VIDEO_RECORD_ACCEPT, /image\/\*/);
+  it('Record accept is video only so Chrome honors capture and opens the camera', () => {
+    assert.equal(VIDEO_RECORD_ACCEPT, 'video/*');
+    assert.equal(VIDEO_RECORD_ACCEPT, VIDEO_PICKER_ACCEPT);
+    assert.doesNotMatch(VIDEO_RECORD_ACCEPT, /image/);
+    assert.doesNotMatch(VIDEO_RECORD_ACCEPT, /,/);
     assert.equal(VIDEO_CAPTURE, 'environment');
     assert.equal(VIDEO_LIBRARY_LABEL, 'Pick from gallery');
     assert.equal(VIDEO_RECORD_LABEL, 'Record');
