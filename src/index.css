@@ -1608,7 +1608,60 @@ button.mode-card {
 }
 
 .controller__help {
-  margin: 0.2rem 0.9rem 0.4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  margin: 0.35rem 0.9rem 0.4rem;
+}
+
+.controller__suggest {
+  min-height: 0;
+  margin: 0;
+  padding: 0.15rem 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  cursor: pointer;
+}
+
+.sheet--help .sheet__head {
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.sheet--help .sheet__head h2 {
+  font-size: 1.15rem;
+  line-height: 1.25;
+  text-align: left;
+}
+
+.controller-help {
+  display: grid;
+  gap: 0.95rem;
+}
+
+.controller-help h3 {
+  margin: 0 0 0.28rem;
+  font-size: 1rem;
+  letter-spacing: 0;
+}
+
+.controller-help p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.controller-help strong {
+  color: inherit;
+  font-weight: 800;
 }
 
 .pad {
