@@ -20,7 +20,7 @@ export function CoachToolsCard() {
           <BeltRail kind="tournament" />
           Mock Tournament
         </Link>
-        <Link className="btn btn--white" to="/roster">
+        <Link className="btn btn--white" to="/roster?from=coach">
           {COMPETITOR_ROSTER_LABEL}
         </Link>
       </div>

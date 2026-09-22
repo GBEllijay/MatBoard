@@ -53,7 +53,7 @@ export function ComingSoonPage() {
               {tournamentToolLabel(proUnlocked)}
             </Link>
             {coachUnlocked ? (
-              <Link className="btn" to="/roster">
+              <Link className="btn" to="/roster?from=coach">
                 {COMPETITOR_ROSTER_LABEL}
               </Link>
             ) : null}

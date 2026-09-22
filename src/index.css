@@ -5338,10 +5338,41 @@ fieldset {
   margin-inline: auto;
 }
 
+.roster__add {
+  width: min(42rem, calc(100% - 2rem));
+  margin: 0 auto 1rem;
+}
+
+.roster__add .btn {
+  min-height: 48px;
+}
+
 .roster__csv {
   display: grid;
   gap: 0.5rem;
   margin-bottom: 1rem;
+}
+
+.roster--coach .roster__list {
+  margin-bottom: 1rem;
+  padding-bottom: 0;
+}
+
+.roster--coach .roster__csv {
+  margin-bottom: calc(1.5rem + var(--safe-b));
+}
+
+.roster__csv-copy {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.roster__csv-title {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .roster__csv-actions {
@@ -5357,6 +5388,7 @@ fieldset {
 
 .roster__csv-hint,
 .roster__csv-summary {
+  margin: 0;
   color: var(--muted);
   font-weight: 600;
 }

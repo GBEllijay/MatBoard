@@ -18,6 +18,9 @@ import {
   EMPTY_VIDEOS_BODY,
   EMPTY_VIDEOS_TITLE,
   NOTES_LEAD,
+  ROSTER_CSV_ABOUT,
+  ROSTER_CSV_COACH_HOW,
+  ROSTER_CSV_COACH_STAYS,
   ROSTER_LEAD_COACH,
   ROSTER_LEAD_PRO,
 } from './coachCopy.ts';
@@ -41,6 +44,9 @@ function allCopy(): string {
     EMPTY_BRACKET_BODY,
     OWNER_BRACKET_CLOUD_NOTE,
     NOTES_LEAD,
+    ROSTER_CSV_ABOUT,
+    ROSTER_CSV_COACH_STAYS,
+    ROSTER_CSV_COACH_HOW,
     ROSTER_LEAD_COACH,
     ROSTER_LEAD_PRO,
   ].join('\n');
@@ -69,6 +75,22 @@ test('Coach teasers list the four hub tools in lesson, videos, mock, roster orde
   assertCoachToolOrder(COACH_HUB_BLURB);
   assert.doesNotMatch(COACH_AD_LEAD, /Daily Techniques/);
   assert.doesNotMatch(COACH_HUB_BLURB, /Competitor Management/);
+});
+
+test('Coach roster lead and CSV help stay on this phone', () => {
+  assert.equal(
+    ROSTER_LEAD_COACH,
+    'Competitor Roster with Names and Ranks for Single Matches and Mock Tournaments.',
+  );
+  assert.equal(ROSTER_CSV_ABOUT, 'About CSV');
+  const help = `${ROSTER_CSV_COACH_STAYS}\n${ROSTER_CSV_COACH_HOW}`;
+  assert.match(help, /stays on this phone/);
+  assert.match(help, /back it up or move it to another device/);
+  assert.match(help, /Download the template/);
+  assert.match(help, /does not wipe anyone already here/);
+  assert.match(help, /Export saves a copy/);
+  assert.doesNotMatch(help, /cloud/i);
+  assert.doesNotMatch(ROSTER_LEAD_COACH, /Competitor Management/);
 });
 
 test('Coach empty states stay friendly and skip student progress', () => {

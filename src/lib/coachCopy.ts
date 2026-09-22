@@ -38,8 +38,15 @@ export const OWNER_BRACKET_CLOUD_NOTE =
   'Saved brackets stay on this device. Cloud sync so owners can run several division brackets (more than 16 fighters) comes next.';
 
 export const ROSTER_LEAD_COACH =
-  'Competitor Management — names and belts for Match and Mock Tournament.';
+  'Competitor Roster with Names and Ranks for Single Matches and Mock Tournaments.';
 export const ROSTER_LEAD_PRO =
   'Competitor Management — names and belts for Match and Mock Tournament. CSV backup stays in this browser.';
+
+/** Coach roster CSV help. On this phone only — no cloud teaser. */
+export const ROSTER_CSV_ABOUT = 'About CSV';
+export const ROSTER_CSV_COACH_STAYS =
+  'Your competitor roster stays on this phone. Use CSV to back it up or move it to another device.';
+export const ROSTER_CSV_COACH_HOW =
+  'Download the template, fill in names and belts in a spreadsheet, then Import. Import adds people to your list — it does not wipe anyone already here. Export saves a copy of your current roster.';
 
 export const NOTES_LEAD = "Today on this phone. Yesterday and the last 14 days stay on this device.";
