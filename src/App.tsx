@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useCoachUnlocked } from './hooks/useCoachUnlocked';
+import { useKeepFocusedFieldVisible } from './hooks/useKeepFocusedFieldVisible';
 import { useProUnlocked } from './hooks/useProUnlocked';
 import { consumeCoachUnlockQueryNow } from './lib/coachUnlock';
 import { consumeUnlockQueryNow } from './lib/proUnlock';
@@ -38,6 +39,7 @@ function CoachRoute({ children }: { children: ReactNode }) {
 }
 
 export default function App() {
+  useKeepFocusedFieldVisible();
   useProUnlocked();
   useCoachUnlocked();
 
