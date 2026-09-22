@@ -1,16 +1,16 @@
 /** User-facing Coach copy. Keep competitor language — never students/progress. */
 
 export const COMPETITOR_ROSTER_LABEL = 'Competitor Roster';
-export const TRAINING_NOTES_LABEL = 'Training Notes';
+export const TRAINING_NOTES_LABEL = 'Daily Lesson Plan';
 
 export const COACH_TOOLS_TEASER =
   `Mock Tournament, ${COMPETITOR_ROSTER_LABEL}, ${TRAINING_NOTES_LABEL}, Daily Training Videos.`;
 
 /** Short home-card line so Coming Soon and unlocked teasers both fit. */
-export const COACH_HOME_TEASER = 'Mock Tournament, Roster, Notes, Daily Videos.';
+export const COACH_HOME_TEASER = 'Mock Tournament, Roster, Daily Lesson Plan, Daily Videos.';
 
 export const COACH_AD_LEAD =
-  `Run a Mock Tournament, keep Competitor Management, jot ${TRAINING_NOTES_LABEL}, and loop Daily Training Videos on the gym TV.`;
+  `Run a Mock Tournament, keep Competitor Management, write a ${TRAINING_NOTES_LABEL}, and loop Daily Training Videos on the gym TV.`;
 
 export const EMPTY_ROSTER_TITLE = 'No competitors yet';
 export const EMPTY_ROSTER_BODY =
@@ -37,4 +37,4 @@ export const ROSTER_LEAD_COACH =
 export const ROSTER_LEAD_PRO =
   'Competitor Management — names and belts for Match and Mock Tournament. CSV backup stays in this browser.';
 
-export const NOTES_LEAD = 'Class plans and cues for this coach. Warm-up, drills, who goes first.';
+export const NOTES_LEAD = "Today's class plan on this phone. Saved on this device.";
