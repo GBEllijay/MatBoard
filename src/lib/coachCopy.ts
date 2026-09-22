@@ -5,7 +5,10 @@ export const TRAINING_NOTES_LABEL = 'Daily Lesson Plan';
 export const TECHNIQUE_TREE_LABEL = 'Technique Tree';
 
 export const TECHNIQUE_TREE_LEAD =
-  'One tree on this phone. Start from a base position, then add a branch or a defense.';
+  'Trees stay on this phone. Start from a base position, then add a branch or a defense.';
+
+export const TECHNIQUE_TREE_CAP_NOTE =
+  'This phone holds 20 Technique Trees. Delete one to add another.';
 
 export const COACH_TOOLS_TEASER =
   `${TRAINING_NOTES_LABEL}, Daily Training Videos, Mock Tournament, ${COMPETITOR_ROSTER_LABEL}.`;

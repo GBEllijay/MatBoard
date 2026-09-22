@@ -48,7 +48,7 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
       },
       {
         title: TECHNIQUE_TREE_LABEL,
-        body: 'Map a base position into branches and defenses. One tree stays on this phone.',
+        body: 'Map a base position into branches and defenses. Trees stay on this phone.',
       },
       {
         title: 'Mock Tournament',
