@@ -2,27 +2,31 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { useToolboxParent } from '../hooks/useToolboxParent';
-import { TECHNIQUE_TREE_LABEL, TECHNIQUE_TREE_LEAD } from '../lib/coachCopy';
+import { TECHNIQUE_TREE_CAP_NOTE, TECHNIQUE_TREE_LABEL, TECHNIQUE_TREE_LEAD } from '../lib/coachCopy';
 import {
-  DEFAULT_TREE_NAME,
   MAX_TREE_NODES,
+  MAX_TREES,
   NOTES_MAX,
   TITLE_MAX,
   TREE_NAME_MAX,
+  activeTree,
   addChild,
+  addTree,
   canAddChild,
   countNodes,
+  deleteTree,
   descendantCount,
-  emptyTree,
-  loadTechniqueTree,
+  loadTechniqueArchive,
   removeNode,
   renameTree,
-  saveTechniqueTree,
+  saveTechniqueArchive,
+  selectTree,
   setRoot,
   toggleCollapsed,
-  treeHasContent,
+  updateActive,
   updateNode,
   type TechniqueNode,
+  type TechniqueTreeArchive,
   type TechniqueTreeDoc,
   type TreeChildKind,
 } from '../lib/techniqueTreeStore';
@@ -30,10 +34,11 @@ import {
 export function TechniqueTreePage() {
   const navigate = useNavigate();
   const parent = useToolboxParent();
-  const [doc, setDoc] = useState<TechniqueTreeDoc>(() => loadTechniqueTree());
+  const [archive, setArchive] = useState<TechniqueTreeArchive>(() => loadTechniqueArchive());
+  const doc = activeTree(archive);
   const [note, setNote] = useState('');
   const [confirmId, setConfirmId] = useState<string | null>(null);
-  const [confirmNew, setConfirmNew] = useState(false);
+  const [confirmDeleteTree, setConfirmDeleteTree] = useState(false);
   const [focusId, setFocusId] = useState<string | null>(null);
   const [draftTitle, setDraftTitle] = useState('');
   const [draftNotes, setDraftNotes] = useState('');
@@ -44,12 +49,14 @@ export function TechniqueTreePage() {
     if (!nameFocused.current) setName(doc.name);
   }, [doc.name]);
 
-  const commit = (next: TechniqueTreeDoc) => {
-    const saved = saveTechniqueTree(next);
-    setDoc(saved.doc);
-    setNote(saved.saved ? '' : 'Could not save this tree on this phone.');
-    return saved.doc;
+  const commitArchive = (next: TechniqueTreeArchive) => {
+    const saved = saveTechniqueArchive(next);
+    setArchive(saved.archive);
+    setNote(saved.saved ? '' : 'Could not save these trees on this phone.');
+    return saved.archive;
   };
+
+  const commit = (next: TechniqueTreeDoc) => activeTree(commitArchive(updateActive(archive, next)));
 
   const setBase = () => {
     const title = draftTitle.trim();
@@ -66,12 +73,12 @@ export function TechniqueTreePage() {
     commit(added.doc);
     setFocusId(added.id);
     setConfirmId(null);
-    setConfirmNew(false);
+    setConfirmDeleteTree(false);
   };
 
   const onDelete = (node: TechniqueNode) => {
     if (descendantCount(node) > 0) {
-      setConfirmNew(false);
+      setConfirmDeleteTree(false);
       setConfirmId(node.id);
       return;
     }
@@ -79,18 +86,44 @@ export function TechniqueTreePage() {
     setConfirmId(null);
   };
 
-  const wipe = () => {
-    commit(emptyTree());
-    setConfirmNew(false);
+  const resetEditor = () => {
+    nameFocused.current = false;
     setConfirmId(null);
+    setConfirmDeleteTree(false);
     setFocusId(null);
     setDraftTitle('');
     setDraftNotes('');
-    setName(DEFAULT_TREE_NAME);
+  };
+
+  const openTree = (id: string) => {
+    if (id === doc.id) return;
+    resetEditor();
+    const saved = commitArchive(selectTree(archive, id));
+    setName(activeTree(saved).name);
+  };
+
+  const onAddTree = () => {
+    const result = addTree(archive);
+    if (result.status === 'full') {
+      setNote(TECHNIQUE_TREE_CAP_NOTE);
+      return;
+    }
+    if (result.status !== 'added') return;
+    resetEditor();
+    const saved = commitArchive(result.archive);
+    setName(activeTree(saved).name);
+  };
+
+  const onDeleteTree = () => {
+    resetEditor();
+    const saved = commitArchive(deleteTree(archive, doc.id));
+    setName(activeTree(saved).name);
   };
 
   const steps = countNodes(doc.root);
   const full = steps >= MAX_TREE_NODES;
+  const showLibrary = archive.trees.length > 1 || archive.trees.some((tree) => tree.root);
+  const atCap = archive.trees.length >= MAX_TREES;
 
   return (
     <main className="tree">
@@ -115,8 +148,58 @@ export function TechniqueTreePage() {
       ) : null}
 
       <div className="tree__plan">
-        {doc.root ? (
-          <div className="tree__toolbar">
+        {showLibrary ? (
+          <section className="tree__library" aria-label="Trees on this phone">
+            <ul className="tree__library-list">
+              {archive.trees.map((tree) => {
+                const base = tree.root?.title.trim() ?? '';
+                const on = tree.id === doc.id;
+                return (
+                  <li key={tree.id}>
+                    <button
+                      type="button"
+                      className={on ? 'tree__library-btn tree__library-btn--on' : 'tree__library-btn'}
+                      aria-pressed={on}
+                      onClick={() => openTree(tree.id)}
+                    >
+                      <span>{tree.name}</span>
+                      {base && base !== tree.name ? <span className="tree__library-detail">{base}</span> : null}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            {confirmDeleteTree ? (
+              <div className="tree__confirm" role="group" aria-label={`Delete ${doc.name}`}>
+                <p>Delete {doc.name} from this phone?</p>
+                <div className="tree__library-actions">
+                  <button type="button" className="btn btn--ghost" onClick={() => setConfirmDeleteTree(false)}>
+                    Cancel
+                  </button>
+                  <button type="button" className="btn" onClick={onDeleteTree}>
+                    Delete tree
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="tree__library-actions">
+                <button type="button" className="btn" disabled={!doc.root || atCap} onClick={onAddTree}>
+                  Add tree
+                </button>
+                <button
+                  type="button"
+                  className="btn btn--ghost"
+                  disabled={!doc.root && archive.trees.length < 2}
+                  onClick={() => {
+                    setConfirmId(null);
+                    setConfirmDeleteTree(true);
+                  }}
+                >
+                  Delete tree
+                </button>
+              </div>
+            )}
+            {atCap ? <p className="tree__count">{TECHNIQUE_TREE_CAP_NOTE}</p> : null}
             <label className="tree__field" htmlFor="tree-name">
               Tree name
               <input
@@ -139,56 +222,16 @@ export function TechniqueTreePage() {
                 }}
               />
             </label>
+          </section>
+        ) : null}
+
+        {doc.root ? (
+          <div className="tree__toolbar">
             <p className="tree__count">
               {steps} {steps === 1 ? 'step' : 'steps'} on this phone
               {full ? '. This tree is full.' : ''}
             </p>
-            {confirmNew ? (
-              <div className="tree__confirm" role="group" aria-label="New tree">
-                <p>Start a new Technique Tree? This one on the phone will be cleared.</p>
-                <div className="tree__confirm-actions">
-                  <button type="button" className="btn btn--ghost" onClick={() => setConfirmNew(false)}>
-                    Cancel
-                  </button>
-                  <button type="button" className="btn" onClick={wipe}>
-                    New tree
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button
-                type="button"
-                className="btn btn--ghost tree__new"
-                onClick={() => {
-                  if (!treeHasContent(doc)) return;
-                  setConfirmId(null);
-                  setConfirmNew(true);
-                }}
-              >
-                New tree
-              </button>
-            )}
           </div>
-        ) : null}
-
-        {doc.root ? (
-          <ul className="tree__list">
-            <TreeNodeView
-              node={doc.root}
-              doc={doc}
-              confirmId={confirmId}
-              focusId={focusId}
-              onToggle={(id) => commit(toggleCollapsed(doc, id))}
-              onChange={(id, patch) => commit(updateNode(doc, id, patch))}
-              onAdd={onAdd}
-              onDelete={onDelete}
-              onCancelDelete={() => setConfirmId(null)}
-              onConfirmDelete={(id) => {
-                commit(removeNode(doc, id));
-                setConfirmId(null);
-              }}
-            />
-          </ul>
         ) : (
           <section className="tree-node tree-node--root" aria-label="Base position">
             <span className="tree-chip tree-chip--base">Base</span>
@@ -220,6 +263,26 @@ export function TechniqueTreePage() {
             </button>
           </section>
         )}
+
+        {doc.root ? (
+          <ul className="tree__list">
+            <TreeNodeView
+              node={doc.root}
+              doc={doc}
+              confirmId={confirmId}
+              focusId={focusId}
+              onToggle={(id) => commit(toggleCollapsed(doc, id))}
+              onChange={(id, patch) => commit(updateNode(doc, id, patch))}
+              onAdd={onAdd}
+              onDelete={onDelete}
+              onCancelDelete={() => setConfirmId(null)}
+              onConfirmDelete={(id) => {
+                commit(removeNode(doc, id));
+                setConfirmId(null);
+              }}
+            />
+          </ul>
+        ) : null}
       </div>
     </main>
   );

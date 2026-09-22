@@ -4,20 +4,28 @@ import {
   DEFAULT_TREE_NAME,
   MAX_TREE_DEPTH,
   MAX_TREE_NODES,
+  MAX_TREES,
   NOTES_MAX,
   TECHNIQUE_TREE_STORAGE_KEY,
   TITLE_MAX,
+  activeTree,
   addChild,
+  addTree,
   canAddChild,
   countNodes,
+  deleteTree,
   descendantCount,
   emptyTree,
+  loadTechniqueArchive,
   loadTechniqueTree,
   removeNode,
   renameTree,
+  saveTechniqueArchive,
   saveTechniqueTree,
+  selectTree,
   setRoot,
   toggleCollapsed,
+  updateActive,
   updateNode,
 } from './techniqueTreeStore.ts';
 
@@ -45,10 +53,11 @@ Object.defineProperty(globalThis, 'localStorage', {
 
 test('a fresh tree is empty and does not write storage', () => {
   storage.clear();
-  const doc = loadTechniqueTree();
-  assert.equal(doc.version, 1);
-  assert.equal(doc.name, DEFAULT_TREE_NAME);
-  assert.equal(doc.root, null);
+  const archive = loadTechniqueArchive();
+  assert.equal(archive.version, 2);
+  assert.equal(archive.trees.length, 1);
+  assert.equal(activeTree(archive).name, DEFAULT_TREE_NAME);
+  assert.equal(activeTree(archive).root, null);
   assert.equal(localStorage.getItem(TECHNIQUE_TREE_STORAGE_KEY), null);
   assert.equal(TECHNIQUE_TREE_STORAGE_KEY, 'matboard.coach.techniqueTree.v1');
 });
@@ -150,7 +159,7 @@ test('corrupt storage repairs into one tree document', () => {
   storage.clear();
   localStorage.setItem(TECHNIQUE_TREE_STORAGE_KEY, '{');
   assert.equal(loadTechniqueTree().root, null);
-  assert.equal(JSON.parse(localStorage.getItem(TECHNIQUE_TREE_STORAGE_KEY) ?? '').version, 1);
+  assert.equal(JSON.parse(localStorage.getItem(TECHNIQUE_TREE_STORAGE_KEY) ?? '').version, 2);
 
   localStorage.setItem(
     TECHNIQUE_TREE_STORAGE_KEY,
@@ -190,12 +199,92 @@ test('corrupt storage repairs into one tree document', () => {
   assert.equal(again.root?.children[1].id, loaded.root?.children[1].id);
 });
 
-test('clearing the tree removes the base and saves the empty doc', () => {
+test('adding a tree keeps the first one, and only delete removes it', () => {
   storage.clear();
-  const saved = saveTechniqueTree(setRoot(emptyTree(), 'Back', ''));
-  assert.equal(saved.doc.root?.title, 'Back');
-  const cleared = saveTechniqueTree(emptyTree());
-  assert.equal(cleared.doc.root, null);
-  assert.equal(loadTechniqueTree().root, null);
-  assert.equal(loadTechniqueTree().name, DEFAULT_TREE_NAME);
+  let archive = saveTechniqueArchive({
+    version: 2,
+    activeId: 'keep',
+    trees: [
+      {
+        id: 'keep',
+        name: 'Closed guard',
+        root: setRoot(emptyTree(), 'Closed guard', 'Knees on the biceps').root,
+      },
+    ],
+  }).archive;
+  const added = addTree(archive);
+  assert.equal(added.status, 'added');
+  archive = saveTechniqueArchive(added.archive).archive;
+  assert.equal(archive.trees.length, 2);
+  assert.equal(archive.trees[0].root?.title, 'Closed guard');
+  assert.equal(archive.trees[0].root?.notes, 'Knees on the biceps');
+  assert.equal(activeTree(archive).root, null);
+  assert.notEqual(activeTree(archive).id, 'keep');
+
+  archive = saveTechniqueArchive(
+    updateActive(archive, setRoot(activeTree(archive), 'Mount', 'Heavy')),
+  ).archive;
+  archive = selectTree(archive, 'keep');
+  assert.equal(activeTree(archive).root?.title, 'Closed guard');
+  const reloaded = loadTechniqueArchive();
+  assert.equal(reloaded.trees.length, 2);
+  assert.equal(reloaded.trees.find((tree) => tree.id === 'keep')?.root?.title, 'Closed guard');
+  assert.equal(reloaded.trees.find((tree) => tree.root?.title === 'Mount')?.root?.notes, 'Heavy');
+
+  const removed = deleteTree(reloaded, 'keep');
+  assert.equal(removed.trees.some((tree) => tree.id === 'keep'), false);
+  assert.equal(removed.trees.some((tree) => tree.root?.title === 'Mount'), true);
+  assert.equal(addTree({ ...reloaded, trees: reloaded.trees }).archive.trees.some((tree) => tree.id === 'keep'), true);
+});
+
+test('a saved version 1 tree migrates and stays when another tree is added', () => {
+  storage.clear();
+  localStorage.setItem(
+    TECHNIQUE_TREE_STORAGE_KEY,
+    JSON.stringify({
+      version: 1,
+      name: 'Gi',
+      root: {
+        id: 'base',
+        slotId: 'slot-base',
+        kind: 'root',
+        title: 'Closed guard',
+        notes: '',
+        collapsed: false,
+        children: [],
+      },
+    }),
+  );
+  const migrated = loadTechniqueArchive();
+  assert.equal(migrated.version, 2);
+  assert.equal(migrated.trees.length, 1);
+  assert.equal(activeTree(migrated).name, 'Gi');
+  assert.equal(activeTree(migrated).root?.title, 'Closed guard');
+  assert.equal(activeTree(migrated).root?.slotId, 'slot-base');
+  const added = addTree(migrated);
+  assert.equal(added.status, 'added');
+  const saved = saveTechniqueArchive(added.archive).archive;
+  const again = loadTechniqueArchive();
+  assert.equal(again.trees.length, 2);
+  assert.equal(again.trees.find((tree) => tree.name === 'Gi')?.root?.slotId, 'slot-base');
+  assert.equal(saved.trees.length, 2);
+});
+
+test('the tree cap refuses another tree and leaves the saved ones alone', () => {
+  let current = setRoot(emptyTree('Tree 1'), 'Tree 1', '');
+  let archive = { version: 2 as const, activeId: current.id, trees: [current] };
+  for (let n = 2; n <= MAX_TREES; n += 1) {
+    const added = addTree(archive);
+    assert.equal(added.status, 'added');
+    archive = updateActive(added.archive, setRoot(activeTree(added.archive), `Tree ${n}`, ''));
+  }
+  assert.equal(archive.trees.length, MAX_TREES);
+  const blocked = addTree(archive);
+  assert.equal(blocked.status, 'full');
+  assert.equal(blocked.archive, archive);
+  assert.equal(blocked.archive.trees[0].root?.title, 'Tree 1');
+  assert.equal(blocked.archive.trees[MAX_TREES - 1].root?.title, `Tree ${MAX_TREES}`);
+  const open = addTree(updateActive(archive, { ...activeTree(archive), root: null }));
+  assert.equal(open.status, 'open');
+  assert.equal(open.archive.trees.length, MAX_TREES);
 });

@@ -1,40 +1,47 @@
 /**
- * Coach Technique Tree. One on-device tree — no cloud, no multi-tree archive.
+ * Coach Technique Tree. Every tree stays on this phone — no cloud.
  *
  * Storage key: `matboard.coach.techniqueTree.v1`
+ * A stored `version: 1` single tree is wrapped into this archive the first time it is read.
  *
  * ```json
  * {
- *   "version": 1,
- *   "name": "Technique Tree",
- *   "root": {
- *     "id": "node-…",
- *     "slotId": "slot-…",
- *     "kind": "root",
- *     "title": "Closed guard",
- *     "notes": "",
- *     "collapsed": false,
- *     "children": [
- *       {
+ *   "version": 2,
+ *   "activeId": "tree-…",
+ *   "trees": [
+ *     {
+ *       "id": "tree-…",
+ *       "name": "Technique Tree",
+ *       "root": {
  *         "id": "node-…",
  *         "slotId": "slot-…",
- *         "kind": "branch",
- *         "title": "Triangle",
+ *         "kind": "root",
+ *         "title": "Closed guard",
  *         "notes": "",
  *         "collapsed": false,
- *         "children": []
- *       },
- *       {
- *         "id": "node-…",
- *         "slotId": "slot-…",
- *         "kind": "defense",
- *         "title": "Posture up",
- *         "notes": "",
- *         "collapsed": false,
- *         "children": []
+ *         "children": [
+ *           {
+ *             "id": "node-…",
+ *             "slotId": "slot-…",
+ *             "kind": "branch",
+ *             "title": "Triangle",
+ *             "notes": "",
+ *             "collapsed": false,
+ *             "children": []
+ *           },
+ *           {
+ *             "id": "node-…",
+ *             "slotId": "slot-…",
+ *             "kind": "defense",
+ *             "title": "Posture up",
+ *             "notes": "",
+ *             "collapsed": false,
+ *             "children": []
+ *           }
+ *         ]
  *       }
- *     ]
- *   }
+ *     }
+ *   ]
  * }
  * ```
  *
@@ -52,6 +59,8 @@ export const NOTES_MAX = 400;
 export const MAX_TREE_NODES = 40;
 /** Root is depth 0. A node at this depth cannot grow children. */
 export const MAX_TREE_DEPTH = 8;
+/** Adding another tree stops here. Stored trees above the cap are kept. */
+export const MAX_TREES = 20;
 
 export type TreeNodeKind = 'root' | 'branch' | 'defense';
 export type TreeChildKind = 'branch' | 'defense';
@@ -71,10 +80,18 @@ export type TechniqueNode = {
 };
 
 export type TechniqueTreeDoc = {
-  version: 1;
+  id: string;
   name: string;
   root: TechniqueNode | null;
 };
+
+export type TechniqueTreeArchive = {
+  version: 2;
+  activeId: string;
+  trees: TechniqueTreeDoc[];
+};
+
+export type AddTreeStatus = 'added' | 'full' | 'open';
 
 let idSeq = 0;
 
@@ -101,8 +118,17 @@ export function clampTreeName(value: unknown): string {
   return text || DEFAULT_TREE_NAME;
 }
 
-export function emptyTree(): TechniqueTreeDoc {
-  return { version: 1, name: DEFAULT_TREE_NAME, root: null };
+export function emptyTree(name = DEFAULT_TREE_NAME): TechniqueTreeDoc {
+  return { id: createId('tree'), name: clampTreeName(name), root: null };
+}
+
+export function freshArchive(): TechniqueTreeArchive {
+  const tree = emptyTree();
+  return { version: 2, activeId: tree.id, trees: [tree] };
+}
+
+export function activeTree(archive: TechniqueTreeArchive): TechniqueTreeDoc {
+  return archive.trees.find((tree) => tree.id === archive.activeId) ?? archive.trees[0];
 }
 
 export function createNode(kind: TreeNodeKind): TechniqueNode {
@@ -328,52 +354,157 @@ function sanitizeNode(
   };
 }
 
-export function sanitizeTree(value: unknown): { doc: TechniqueTreeDoc; repaired: boolean } {
+function sanitizeTreeDoc(
+  value: unknown,
+  treeIds: Set<string>,
+  nodeIds: Set<string>,
+  slotIds: Set<string>,
+): { doc: TechniqueTreeDoc; repaired: boolean } {
   const raw = asRecord(value);
-  if (!raw) return { doc: emptyTree(), repaired: true };
+  let repaired = !raw;
+  const id = freshId('tree', raw?.id, treeIds);
+  if (id.repaired) repaired = true;
+  const name = clampTreeName(raw?.name);
+  if (!raw || raw.name !== name) repaired = true;
 
-  let repaired = raw.version !== 1;
-  const name = clampTreeName(raw.name);
-  if (raw.name !== name) repaired = true;
-
-  if (raw.root == null) {
-    return { doc: { version: 1, name, root: null }, repaired };
+  if (!raw || raw.root == null) {
+    return { doc: { id: id.id, name, root: null }, repaired };
   }
 
   const budget = { left: MAX_TREE_NODES };
-  const sanitized = sanitizeNode(raw.root, 0, 'root', new Set(), new Set(), budget);
-  if (sanitized.repaired) repaired = true;
-  return { doc: { version: 1, name, root: sanitized.node }, repaired };
+  const sanitized = sanitizeNode(raw.root, 0, 'root', nodeIds, slotIds, budget);
+  if (sanitized.repaired || !sanitized.node) repaired = true;
+  return { doc: { id: id.id, name, root: sanitized.node }, repaired };
 }
 
-function writeTree(doc: TechniqueTreeDoc): boolean {
+export function sanitizeArchive(value: unknown): { archive: TechniqueTreeArchive; repaired: boolean } {
+  const raw = asRecord(value);
+  if (!raw) return { archive: freshArchive(), repaired: true };
+
+  const treeIds = new Set<string>();
+  const nodeIds = new Set<string>();
+  const slotIds = new Set<string>();
+
+  if (raw.version === 2 || Array.isArray(raw.trees)) {
+    let repaired = raw.version !== 2 || !Array.isArray(raw.trees);
+    const trees: TechniqueTreeDoc[] = [];
+    const list = Array.isArray(raw.trees) ? raw.trees : [];
+    for (const item of list) {
+      const sanitized = sanitizeTreeDoc(item, treeIds, nodeIds, slotIds);
+      if (sanitized.repaired) repaired = true;
+      trees.push(sanitized.doc);
+    }
+    if (trees.length === 0) {
+      trees.push(emptyTree());
+      repaired = true;
+    }
+    const requested = typeof raw.activeId === 'string' ? raw.activeId : '';
+    const activeId = trees.some((tree) => tree.id === requested) ? requested : trees[0].id;
+    if (activeId !== requested) repaired = true;
+    return { archive: { version: 2, activeId, trees }, repaired };
+  }
+
+  const single = sanitizeTreeDoc(raw, treeIds, nodeIds, slotIds);
+  return {
+    archive: { version: 2, activeId: single.doc.id, trees: [single.doc] },
+    repaired: true,
+  };
+}
+
+function writeArchive(archive: TechniqueTreeArchive): boolean {
   try {
-    localStorage.setItem(TECHNIQUE_TREE_STORAGE_KEY, JSON.stringify(doc));
+    localStorage.setItem(TECHNIQUE_TREE_STORAGE_KEY, JSON.stringify(archive));
     return true;
   } catch {
     return false;
   }
 }
 
-export function loadTechniqueTree(): TechniqueTreeDoc {
+export function loadTechniqueArchive(): TechniqueTreeArchive {
   try {
     const raw = localStorage.getItem(TECHNIQUE_TREE_STORAGE_KEY);
-    if (typeof raw !== 'string' || !raw.trim()) return emptyTree();
+    if (typeof raw !== 'string' || !raw.trim()) return freshArchive();
     let parsed: unknown = null;
     try {
       parsed = JSON.parse(raw);
     } catch {
       parsed = null;
     }
-    const { doc, repaired } = sanitizeTree(parsed);
-    if (repaired) writeTree(doc);
-    return doc;
+    const { archive, repaired } = sanitizeArchive(parsed);
+    if (repaired) writeArchive(archive);
+    return archive;
   } catch {
-    return emptyTree();
+    return freshArchive();
   }
 }
 
+export function saveTechniqueArchive(
+  archive: TechniqueTreeArchive,
+): { archive: TechniqueTreeArchive; saved: boolean } {
+  const clean = sanitizeArchive(archive).archive;
+  return { archive: clean, saved: writeArchive(clean) };
+}
+
+export function loadTechniqueTree(): TechniqueTreeDoc {
+  return activeTree(loadTechniqueArchive());
+}
+
 export function saveTechniqueTree(doc: TechniqueTreeDoc): { doc: TechniqueTreeDoc; saved: boolean } {
-  const clean = sanitizeTree(doc).doc;
-  return { doc: clean, saved: writeTree(clean) };
+  const saved = saveTechniqueArchive(updateActive(loadTechniqueArchive(), doc));
+  return { doc: activeTree(saved.archive), saved: saved.saved };
+}
+
+export function updateActive(archive: TechniqueTreeArchive, doc: TechniqueTreeDoc): TechniqueTreeArchive {
+  const current = activeTree(archive);
+  const next: TechniqueTreeDoc = {
+    id: current.id,
+    name: clampTreeName(doc.name),
+    root: doc.root,
+  };
+  return {
+    ...archive,
+    trees: archive.trees.map((tree) => (tree.id === current.id ? next : tree)),
+  };
+}
+
+function nextDefaultName(trees: TechniqueTreeDoc[]): string {
+  const names = new Set(trees.map((tree) => tree.name));
+  if (!names.has(DEFAULT_TREE_NAME)) return DEFAULT_TREE_NAME;
+  for (let n = 2; n < 1000; n += 1) {
+    const candidate = `${DEFAULT_TREE_NAME} ${n}`;
+    if (!names.has(candidate)) return candidate;
+  }
+  return DEFAULT_TREE_NAME;
+}
+
+/** Keep every saved tree. A fresh empty tree opens only when the open one already has a base. */
+export function addTree(archive: TechniqueTreeArchive): { archive: TechniqueTreeArchive; status: AddTreeStatus } {
+  const active = activeTree(archive);
+  if (!active.root) return { archive, status: 'open' };
+  if (archive.trees.length >= MAX_TREES) return { archive, status: 'full' };
+  const tree = emptyTree(nextDefaultName(archive.trees));
+  return {
+    archive: { ...archive, activeId: tree.id, trees: [...archive.trees, tree] },
+    status: 'added',
+  };
+}
+
+export function selectTree(archive: TechniqueTreeArchive, id: string): TechniqueTreeArchive {
+  if (!archive.trees.some((tree) => tree.id === id) || archive.activeId === id) return archive;
+  return { ...archive, activeId: id };
+}
+
+/** Removes one tree. The caller confirms first. The last delete leaves a blank tree so the screen can start again. */
+export function deleteTree(archive: TechniqueTreeArchive, id: string): TechniqueTreeArchive {
+  const index = archive.trees.findIndex((tree) => tree.id === id);
+  if (index < 0) return archive;
+  const trees = archive.trees.filter((tree) => tree.id !== id);
+  if (trees.length === 0) return freshArchive();
+  const fallback = archive.trees[index - 1]?.id ?? trees[0].id;
+  const activeId = id === archive.activeId ? fallback : archive.activeId;
+  return {
+    version: 2,
+    activeId: trees.some((tree) => tree.id === activeId) ? activeId : trees[0].id,
+    trees,
+  };
 }
