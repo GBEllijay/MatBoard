@@ -1419,6 +1419,16 @@ button.mode-card {
   padding-left: max(0.9rem, var(--safe-l));
 }
 
+/* Landscape center bar: Round / Division share that name-row left edge.
+   Athlete row padding-left is 0.65rem; this bar is 0.75rem, so drop 0.1rem. */
+@media (orientation: landscape) {
+  .play--landscape .display__meta,
+  .play--fs .display__meta,
+  .play--tv .display__meta {
+    padding-left: max(0.8rem, calc(var(--safe-l) - 0.1rem));
+  }
+}
+
 @media (orientation: portrait) {
   .play--fs .bout__who {
     padding-left: max(1.5rem, var(--safe-l));

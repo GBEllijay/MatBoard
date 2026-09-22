@@ -137,7 +137,7 @@ export function defaultMatch(): MatchState {
   return {
     blue: defaultCompetitor('Competitor 1'),
     white: defaultCompetitor('Competitor 2'),
-    round: '1',
+    round: '',
     division: '',
     durationMs,
     remainingMs: durationMs,
