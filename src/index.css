@@ -5113,6 +5113,13 @@ fieldset {
   z-index: 50;
 }
 
+/* Roster picker is nested under bright bracket slots, the champion pill, and
+   the white match pad. Those set near-black ink for light surfaces. This sheet
+   is dark, so reset text here. Rank chips and .btn keep their own colors. */
+.sheet--roster .sheet__panel {
+  color: var(--ink);
+}
+
 .pad__name-label {
   display: flex;
   flex-wrap: wrap;
@@ -5155,6 +5162,7 @@ fieldset {
   border: 1px solid var(--line);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.04);
+  color: #fff;
   text-align: left;
 }
 
