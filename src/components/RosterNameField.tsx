@@ -96,7 +96,13 @@ export function RosterNameField({
   return (
     <div className={`roster-field${compact ? ' roster-field--compact' : ''}`}>
       <div className="roster-field__row">{input}</div>
-      <Sheet open={pickOpen} title="Pick a competitor" onClose={closePicker} stacked>
+      <Sheet
+        open={pickOpen}
+        title="Pick a competitor"
+        onClose={closePicker}
+        stacked
+        className="sheet--roster"
+      >
         <RosterPicker
           query={query}
           onQuery={setQuery}
