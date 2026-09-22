@@ -6,6 +6,8 @@ import {
   COACH_HUB_BLURB,
   COACH_TOOLS_TEASER,
   COMPETITOR_ROSTER_LABEL,
+  TECHNIQUE_TREE_LABEL,
+  TECHNIQUE_TREE_LEAD,
   TRAINING_NOTES_LABEL,
   EMPTY_BRACKET_BODY,
   EMPTY_BRACKET_TITLE,
@@ -29,6 +31,8 @@ function allCopy(): string {
   return [
     COMPETITOR_ROSTER_LABEL,
     TRAINING_NOTES_LABEL,
+    TECHNIQUE_TREE_LABEL,
+    TECHNIQUE_TREE_LEAD,
     COACH_TOOLS_TEASER,
     COACH_HOME_TEASER,
     COACH_HUB_BLURB,
@@ -63,6 +67,10 @@ function assertCoachToolOrder(text: string, rosterLabel = 'Competitor Roster') {
 test('Coach teasers list the four hub tools in lesson, videos, mock, roster order', () => {
   assert.equal(COMPETITOR_ROSTER_LABEL, 'Competitor Roster');
   assert.equal(TRAINING_NOTES_LABEL, 'Daily Lesson Plan');
+  assert.equal(TECHNIQUE_TREE_LABEL, 'Technique Tree');
+  assert.match(TECHNIQUE_TREE_LEAD, /One tree on this phone/);
+  assert.match(COACH_HUB_BLURB, /Technique Tree/);
+  assert.match(COACH_AD_LEAD, /Technique Tree/);
   assert.equal(
     COACH_TOOLS_TEASER,
     'Daily Lesson Plan, Daily Training Videos, Mock Tournament, Competitor Roster.',

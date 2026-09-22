@@ -5,7 +5,7 @@ import { HomeMark } from '../components/HomeMark';
 import { ProUnlockSheet } from '../components/ProUnlockSheet';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
-import { COMPETITOR_ROSTER_LABEL, TRAINING_NOTES_LABEL } from '../lib/coachCopy';
+import { COMPETITOR_ROSTER_LABEL, TECHNIQUE_TREE_LABEL, TRAINING_NOTES_LABEL } from '../lib/coachCopy';
 import { lockCoach } from '../lib/coachUnlock';
 import { tournamentToolLabel } from '../lib/productNames';
 import { lockPro } from '../lib/proUnlock';
@@ -45,6 +45,9 @@ export function ComingSoonPage() {
                 </Link>
                 <Link className="btn" to="/techniques">
                   Daily Training Videos
+                </Link>
+                <Link className="btn" to="/technique-tree">
+                  {TECHNIQUE_TREE_LABEL}
                 </Link>
               </>
             ) : null}

@@ -9,7 +9,7 @@ function adText(product: keyof typeof COMING_SOON_ADS): string {
   return [ad.title, ad.kicker, ad.lead, ...ad.features.flatMap((f) => [f.title, f.body])].join('\n');
 }
 
-test('Coach ad sells the four hub tools and no price', () => {
+test('Coach ad sells the hub tools and no price', () => {
   const text = adText('coach');
   assert.equal(COMING_SOON_ADS.coach.title, 'Advantage Coach');
   assert.equal(COMING_SOON_ADS.coach.kicker, COMING_SOON_LABEL);
@@ -17,7 +17,7 @@ test('Coach ad sells the four hub tools and no price', () => {
   assert.equal(COMING_SOON_ADS.coach.lead, COACH_AD_LEAD);
   assert.deepEqual(
     COMING_SOON_ADS.coach.features.map((feature) => feature.title),
-    ['Daily Lesson Plan', 'Daily Training Videos', 'Mock Tournament', 'Competitor Roster'],
+    ['Daily Lesson Plan', 'Daily Training Videos', 'Technique Tree', 'Mock Tournament', 'Competitor Roster'],
   );
   assert.match(text, /Mock Tournament/i);
   assert.match(text, /Competitor Roster/);

@@ -1,6 +1,11 @@
 import { Link } from 'react-router-dom';
 import { BeltRail } from './BeltRail';
-import { COACH_HUB_BLURB, COMPETITOR_ROSTER_LABEL, TRAINING_NOTES_LABEL } from '../lib/coachCopy';
+import {
+  COACH_HUB_BLURB,
+  COMPETITOR_ROSTER_LABEL,
+  TECHNIQUE_TREE_LABEL,
+  TRAINING_NOTES_LABEL,
+} from '../lib/coachCopy';
 
 export function CoachToolsCard() {
   return (
@@ -15,6 +20,9 @@ export function CoachToolsCard() {
         </Link>
         <Link className="btn btn--white" to="/techniques">
           Daily Training Videos
+        </Link>
+        <Link className="btn btn--white" to="/technique-tree">
+          {TECHNIQUE_TREE_LABEL}
         </Link>
         <Link className="btn btn--white" to="/tournament">
           <BeltRail kind="tournament" />
