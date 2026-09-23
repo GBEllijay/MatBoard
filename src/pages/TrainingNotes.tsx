@@ -471,7 +471,7 @@ function ExpectedTime({
 }) {
   return (
     <label className="notes__time" htmlFor={id}>
-      Expected
+      Expected Duration
       <input
         id={id}
         value={value}

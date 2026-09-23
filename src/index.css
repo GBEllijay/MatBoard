@@ -4042,20 +4042,21 @@ fieldset {
   min-width: max-content;
 }
 
+/* Inner rounds need room for Win and DQ on the name pill. 11.5rem clipped DQ. */
 .tournament--bright .bracket__side--left {
-  grid-template-columns: 17.5rem 12.5rem 11.5rem;
+  grid-template-columns: 17.5rem 13rem 13rem;
 }
 
 .tournament--bright .bracket__side--right {
-  grid-template-columns: 11.5rem 12.5rem 17.5rem;
+  grid-template-columns: 13rem 13rem 17.5rem;
 }
 
 .tournament--bright .bracket--tree-8 .bracket__side--left {
-  grid-template-columns: 17.5rem 12.5rem;
+  grid-template-columns: 17.5rem 13rem;
 }
 
 .tournament--bright .bracket--tree-8 .bracket__side--right {
-  grid-template-columns: 12.5rem 17.5rem;
+  grid-template-columns: 13rem 17.5rem;
 }
 
 .tournament--bright .bracket--tree-4 .bracket__side--left,
