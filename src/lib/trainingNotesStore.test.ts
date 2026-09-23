@@ -183,6 +183,7 @@ test('copy keeps the words and mints new technique slot ids', () => {
   source.intro = 'No-gi.';
   source.techniques[0].title = 'Armbar';
   source.techniques[0].notes = 'Elbow tight.';
+  source.techniques[0].treeId = 'tree-armbar';
   source.techniques[2].waterBreak = true;
   const extra = addTechnique(source);
   extra.techniques[3].title = 'Sweep';
@@ -193,6 +194,7 @@ test('copy keeps the words and mints new technique slot ids', () => {
   assert.equal(copied.techniques.length, 4);
   assert.equal(copied.techniques[0].title, 'Armbar');
   assert.equal(copied.techniques[0].notes, 'Elbow tight.');
+  assert.equal(copied.techniques[0].treeId, 'tree-armbar');
   assert.equal(copied.techniques[2].waterBreak, true);
   assert.equal(copied.techniques[3].title, 'Sweep');
   assert.notEqual(copied.techniques[0].id, extra.techniques[0].id);
@@ -255,6 +257,28 @@ test('broken JSON falls back to a legacy jot, then to an empty plan', () => {
   assert.equal(fresh.intro, '');
   assert.equal(fresh.techniques.length, MIN_TECHNIQUES);
   assert.equal(planHasContent(fresh), false);
+});
+
+test('an explicit tree link is saved on the drill and junk ids are dropped', () => {
+  storage.clear();
+  const plan = emptyPlan();
+  plan.techniques[1].title = 'Armbar';
+  plan.techniques[1].treeId = ' tree-keep ';
+  const saved = saveTrainingNotes(plan, TODAY);
+  assert.equal(saved.techniques[1].treeId, 'tree-keep');
+  assert.equal(loadTrainingNotes(TODAY).techniques[1].treeId, 'tree-keep');
+
+  const onlyLink = emptyPlan();
+  onlyLink.techniques[0].treeId = 'tree-only';
+  assert.equal(planHasContent(onlyLink), true);
+  assert.equal(saveTrainingNotes(onlyLink, TODAY).techniques[0].treeId, 'tree-only');
+
+  const junk = emptyPlan();
+  junk.techniques[0].title = 'Sweep';
+  (junk.techniques[0] as { treeId: unknown }).treeId = 12;
+  const cleaned = saveTrainingNotes(junk, TODAY);
+  assert.equal(cleaned.techniques[0].title, 'Sweep');
+  assert.equal(cleaned.techniques[0].treeId, undefined);
 });
 
 test('lesson plan fields ship with no placeholder hints', () => {

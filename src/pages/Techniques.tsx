@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DeviceMediaInput } from '../components/DeviceMediaInput';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { TvTip } from '../components/TvTip';
 import { VideoSourceSheet } from '../components/VideoSourceSheet';
 import { useInterval } from '../hooks/useClock';
+import { useCoachPageSwipe } from '../hooks/useCoachSwipe';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useToolboxParent } from '../hooks/useToolboxParent';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
@@ -59,7 +60,12 @@ export function TechniquesPage() {
   const libraryRef = useRef<HTMLInputElement>(null);
   const fs = usePlayFullscreen();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const parent = useToolboxParent();
+  useCoachPageSwipe();
+  const launchStarted = useRef(false);
+  const launchSlotId = searchParams.get('slot');
+  const launchPlay = searchParams.get('play') === '1';
 
   useVisibleViewportHeight();
   useWakeLock(playing);
@@ -176,12 +182,64 @@ export function TechniquesPage() {
   );
 
   useEffect(() => {
-    if (!playing || !plan) return;
-    document.getElementById(`techniques-slot-${plan.selectedSlotId}`)?.scrollIntoView({
+    if (!plan) return;
+    const id = playing ? plan.selectedSlotId : launchSlotId;
+    if (!id) return;
+    document.getElementById(`techniques-slot-${id}`)?.scrollIntoView({
       block: 'nearest',
       behavior: 'smooth',
     });
-  }, [playing, plan]);
+  }, [playing, plan, launchSlotId]);
+
+  useEffect(() => {
+    if (!plan || !launchSlotId) return;
+    const slot = plan.slots.find((item) => item.slotId === launchSlotId);
+    let cancelled = false;
+    const clearLaunch = () => {
+      window.setTimeout(() => {
+        if (cancelled) return;
+        const next = new URLSearchParams(window.location.search);
+        if (!next.has('slot') && !next.has('play')) return;
+        next.delete('slot');
+        next.delete('play');
+        setSearchParams(next, { replace: true });
+      }, 0);
+    };
+
+    if (!slot) {
+      clearLaunch();
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (plan.selectedSlotId !== slot.slotId) {
+      const next = selectSlot(plan, slot.slotId);
+      applyPlan(next);
+      if (isTimedSlot(slot)) setRemainingMs(secondsToMs(slot.drillSec));
+      void saveTechniquePlan(next).catch(() => {
+        setPickerNote('Could not save this plan on this device.');
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const src = slot.clipId ? urlById[slot.clipId] : undefined;
+    const waitingForClip = Boolean(launchPlay && slot.clipId && !src);
+    if (launchPlay && slot.clipId && src && !launchStarted.current) {
+      launchStarted.current = true;
+      if (!muteVideo) setUnlockSound(true);
+      if (isTimedSlot(slot)) {
+        setRemainingMs((ms) => remainingOnStart(ms, secondsToMs(slot.drillSec)));
+      }
+      setPlaying(true);
+    }
+    if (!waitingForClip) clearLaunch();
+    return () => {
+      cancelled = true;
+    };
+  }, [plan, urlById, launchSlotId, launchPlay, muteVideo, setSearchParams]);
 
   const openChooser = (slot: VideoSlot) => {
     const current = planRef.current;

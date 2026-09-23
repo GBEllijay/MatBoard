@@ -1,8 +1,22 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { LessonMediaRail } from '../components/LessonMediaRail';
 import { PlayExitMark } from '../components/PlayExitMark';
+import { useCoachPageSwipe } from '../hooks/useCoachSwipe';
 import { useToolboxParent } from '../hooks/useToolboxParent';
 import { NOTES_LEAD, TRAINING_NOTES_LABEL } from '../lib/coachCopy';
+import {
+  lessonSlotOffersVideo,
+  matchLessonTree,
+  parallelVideoSlot,
+  techniqueTreeLaunchPath,
+  techniquesLaunchPath,
+  type LessonSlotRef,
+  type LessonTreeCandidate,
+} from '../lib/lessonLinks';
+import { loadTechniqueBoard } from '../lib/techniqueStore';
+import type { VideoPlan } from '../lib/techniqueLogic';
+import { loadTechniqueArchive, type TechniqueTreeArchive } from '../lib/techniqueTreeStore';
 import {
   CLOSING_MAX,
   COACH_NAME_MAX,
@@ -30,9 +44,31 @@ import {
   type TrainingNotesPlan,
 } from '../lib/trainingNotesStore';
 
+type TodayVideos = {
+  plan: VideoPlan;
+  urls: Record<string, string>;
+};
+
+function videoOffer(
+  videos: TodayVideos | null,
+  ref: LessonSlotRef,
+): { show: boolean; slotId: string | null; clipUrl?: string } {
+  const count = videos ? videos.plan.slots.filter((slot) => slot.kind === 'technique').length : null;
+  const show = lessonSlotOffersVideo(ref, count);
+  if (!videos) return { show, slotId: null };
+  const slot = parallelVideoSlot(videos.plan, ref);
+  if (!slot) return { show, slotId: null };
+  return {
+    show,
+    slotId: slot.slotId,
+    clipUrl: slot.clipId ? videos.urls[slot.clipId] : undefined,
+  };
+}
+
 export function TrainingNotesPage() {
   const navigate = useNavigate();
   const parent = useToolboxParent();
+  useCoachPageSwipe();
   const [boot] = useState(() => {
     const today = localDateKey();
     const archive = loadTrainingArchive(today);
@@ -44,6 +80,8 @@ export function TrainingNotesPage() {
   const [plan, setPlan] = useState<TrainingNotesPlan>(boot.plan);
   const [recentOpen, setRecentOpen] = useState(false);
   const [confirmKey, setConfirmKey] = useState<string | null>(null);
+  const [videos, setVideos] = useState<TodayVideos | null>(null);
+  const [treeArchive, setTreeArchive] = useState<TechniqueTreeArchive>(() => loadTechniqueArchive());
 
   useEffect(() => {
     const roll = () => {
@@ -66,6 +104,65 @@ export function TrainingNotesPage() {
       window.clearInterval(id);
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    let created: string[] = [];
+    const load = () => {
+      setTreeArchive(loadTechniqueArchive());
+      void loadTechniqueBoard()
+        .then((board) => {
+          const next: Record<string, string> = {};
+          const fresh: string[] = [];
+          for (const clip of board.clips) {
+            const url = URL.createObjectURL(clip.blob);
+            fresh.push(url);
+            next[clip.id] = url;
+          }
+          if (cancelled) {
+            fresh.forEach((url) => URL.revokeObjectURL(url));
+            return;
+          }
+          created.forEach((url) => URL.revokeObjectURL(url));
+          created = fresh;
+          setVideos({ plan: board.plan, urls: next });
+        })
+        .catch(() => {
+          if (!cancelled) setVideos(null);
+        });
+    };
+    load();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') load();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVisible);
+      created.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [todayKey]);
+
+  const treeCandidates = useMemo<LessonTreeCandidate[]>(
+    () =>
+      treeArchive.trees.map((tree) => ({
+        id: tree.id,
+        name: tree.name,
+        rootTitle: tree.root?.title ?? '',
+      })),
+    [treeArchive],
+  );
+  const treeChoices = useMemo(
+    () =>
+      treeCandidates
+        .filter((tree) => tree.rootTitle.trim())
+        .map((tree) => ({
+          id: tree.id,
+          name: tree.name,
+          detail: tree.rootTitle.trim() !== tree.name ? tree.rootTitle.trim() : '',
+        })),
+    [treeCandidates],
+  );
 
   const editingToday = viewKey === todayKey;
   const yesterdayKey = shiftDateKey(todayKey, -1);
@@ -118,6 +215,35 @@ export function TrainingNotesPage() {
 
   const atMax = plan.techniques.length >= MAX_TECHNIQUES;
   const copyLabel = editingToday ? 'Copy yesterday' : 'Copy into today';
+
+  const openVideo = (ref: LessonSlotRef) => {
+    const offer = videoOffer(videos, ref);
+    if (!offer.slotId || !offer.clipUrl) return;
+    navigate(techniquesLaunchPath(offer.slotId));
+  };
+
+  const sectionMedia = (ref: LessonSlotRef, label: string, tech?: TechniqueBlock) => {
+    const offer = videoOffer(videos, ref);
+    const linked = tech ? matchLessonTree(tech.title, tech.treeId, treeCandidates) : null;
+    return (
+      <LessonMediaRail
+        showVideo={editingToday && offer.show}
+        videoLabel={label}
+        clipUrl={offer.clipUrl}
+        onPlay={() => openVideo(ref)}
+        linkedTree={linked ? { id: linked.id, name: linked.name } : null}
+        treeChoices={tech ? treeChoices : []}
+        canEditTree={Boolean(tech) && editingToday}
+        storedTreeId={tech?.treeId}
+        onOpenTree={tech ? (treeId) => navigate(techniqueTreeLaunchPath(treeId)) : undefined}
+        onPickTree={
+          tech
+            ? (treeId) => patchTechnique(tech.id, treeId ? { treeId } : { treeId: undefined })
+            : undefined
+        }
+      />
+    );
+  };
 
   return (
     <main className="notes">
@@ -250,6 +376,7 @@ export function TrainingNotesPage() {
           maxLength={WARMUP_NOTE_MAX}
           readOnly={!editingToday}
           onChange={(warmupNote) => commit({ ...plan, warmupNote })}
+          media={sectionMedia({ role: 'warmup' }, 'Warm-up')}
         />
 
         {plan.techniques.map((tech, index) => (
@@ -261,6 +388,7 @@ export function TrainingNotesPage() {
             canRemove={editingToday && index >= MIN_TECHNIQUES}
             onChange={(patch) => patchTechnique(tech.id, patch)}
             onRemove={() => commit(removeTechnique(plan, tech.id))}
+            media={sectionMedia({ role: 'technique', index }, `Technique / Drill ${index + 1}`, tech)}
           />
         ))}
 
@@ -283,6 +411,7 @@ export function TrainingNotesPage() {
           maxLength={COOLDOWN_NOTE_MAX}
           readOnly={!editingToday}
           onChange={(cooldownNote) => commit({ ...plan, cooldownNote })}
+          media={sectionMedia({ role: 'cooldown' }, 'Cool down')}
         />
 
         <section className="notes__card">
@@ -311,6 +440,7 @@ function NoteSection({
   maxLength,
   readOnly,
   onChange,
+  media,
 }: {
   id: string;
   title: string;
@@ -319,14 +449,18 @@ function NoteSection({
   maxLength: number;
   readOnly: boolean;
   onChange: (value: string) => void;
+  media?: ReactNode;
 }) {
   return (
     <section className="notes__card" aria-labelledby={`${id}-title`}>
       <div className="notes__section-head">
         <h2 id={`${id}-title`}>{title}</h2>
-        <label className="notes__kicker" htmlFor={id}>
-          {label}
-        </label>
+        <div className="notes__section-side">
+          <label className="notes__kicker" htmlFor={id}>
+            {label}
+          </label>
+          {media}
+        </div>
       </div>
       <textarea
         id={id}
@@ -348,6 +482,7 @@ function TechniqueBlockView({
   canRemove,
   onChange,
   onRemove,
+  media,
 }: {
   index: number;
   tech: TechniqueBlock;
@@ -355,6 +490,7 @@ function TechniqueBlockView({
   canRemove: boolean;
   onChange: (patch: Partial<TechniqueBlock>) => void;
   onRemove: () => void;
+  media?: ReactNode;
 }) {
   const number = index + 1;
   const titleId = `notes-tech-${tech.id}`;
@@ -364,11 +500,14 @@ function TechniqueBlockView({
       <section className="notes__card" aria-labelledby={`notes-tech-heading-${tech.id}`}>
         <div className="notes__section-head">
           <h2 id={`notes-tech-heading-${tech.id}`}>Technique / Drill {number}</h2>
-          {canRemove ? (
-            <button type="button" className="btn btn--ghost notes__remove" onClick={onRemove}>
-              Remove
-            </button>
-          ) : null}
+          <div className="notes__section-side">
+            {canRemove ? (
+              <button type="button" className="btn btn--ghost notes__remove" onClick={onRemove}>
+                Remove
+              </button>
+            ) : null}
+            {media}
+          </div>
         </div>
         <label className="notes__field" htmlFor={titleId}>
           Title

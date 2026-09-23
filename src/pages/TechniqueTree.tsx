@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PlayExitMark } from '../components/PlayExitMark';
+import { useCoachPageSwipe } from '../hooks/useCoachSwipe';
 import { useToolboxParent } from '../hooks/useToolboxParent';
 import { TECHNIQUE_TREE_CAP_NOTE, TECHNIQUE_TREE_LABEL, TECHNIQUE_TREE_LEAD } from '../lib/coachCopy';
 import {
@@ -33,7 +34,10 @@ import {
 
 export function TechniqueTreePage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const parent = useToolboxParent();
+  useCoachPageSwipe();
+  const requestedTreeId = searchParams.get('tree');
   const [archive, setArchive] = useState<TechniqueTreeArchive>(() => loadTechniqueArchive());
   const doc = activeTree(archive);
   const [note, setNote] = useState('');
@@ -48,6 +52,34 @@ export function TechniqueTreePage() {
   useEffect(() => {
     if (!nameFocused.current) setName(doc.name);
   }, [doc.name]);
+
+  useEffect(() => {
+    if (!requestedTreeId) return;
+    let cancelled = false;
+    const current = loadTechniqueArchive();
+    if (current.trees.some((tree) => tree.id === requestedTreeId) && current.activeId !== requestedTreeId) {
+      const saved = saveTechniqueArchive(selectTree(current, requestedTreeId));
+      if (!cancelled) {
+        nameFocused.current = false;
+        setArchive(saved.archive);
+        setName(activeTree(saved.archive).name);
+        setConfirmId(null);
+        setConfirmDeleteTree(false);
+        setFocusId(null);
+      }
+    }
+    const timer = window.setTimeout(() => {
+      if (cancelled) return;
+      const next = new URLSearchParams(window.location.search);
+      if (!next.has('tree')) return;
+      next.delete('tree');
+      setSearchParams(next, { replace: true });
+    }, 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [requestedTreeId, setSearchParams]);
 
   const commitArchive = (next: TechniqueTreeArchive) => {
     const saved = saveTechniqueArchive(next);
