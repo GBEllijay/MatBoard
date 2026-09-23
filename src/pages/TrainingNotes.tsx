@@ -512,19 +512,19 @@ function NoteSection({
     <section className="notes__card" aria-labelledby={`${id}-title`}>
       <div className="notes__section-head">
         <h2 id={`${id}-title`}>{title}</h2>
-        <div className="notes__section-side">
-          <label className="notes__kicker" htmlFor={id}>
-            {label}
-          </label>
-          {media}
-        </div>
+        {media ? <div className="notes__section-side">{media}</div> : null}
       </div>
-      <ExpectedTime
-        id={`${id}-time`}
-        value={expected}
-        readOnly={readOnly}
-        onChange={onExpected}
-      />
+      <div className="notes__field-bar">
+        <label className="notes__kicker" htmlFor={id}>
+          {label}
+        </label>
+        <ExpectedTime
+          id={`${id}-time`}
+          value={expected}
+          readOnly={readOnly}
+          onChange={onExpected}
+        />
+      </div>
       <textarea
         id={id}
         className="notes__area"

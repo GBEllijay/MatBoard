@@ -6320,6 +6320,10 @@ fieldset {
   text-transform: uppercase;
 }
 
+.notes__field-bar .notes__kicker {
+  flex: none;
+}
+
 .notes__field-bar .notes__time {
   flex: 1 1 14rem;
   width: auto;
