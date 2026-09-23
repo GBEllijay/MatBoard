@@ -6088,6 +6088,7 @@ fieldset {
 
 .notes__field input:read-only,
 .notes__field textarea:read-only,
+.notes__time input:read-only,
 .notes__area:read-only {
   cursor: default;
 }
@@ -6276,8 +6277,17 @@ fieldset {
   text-transform: uppercase;
 }
 
+.notes__field-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem 0.75rem;
+}
+
 .notes__field input,
 .notes__field textarea,
+.notes__time input,
 .notes__area {
   width: 100%;
   border: 1px solid var(--line);
@@ -6295,6 +6305,40 @@ fieldset {
 
 .notes__field input {
   min-height: 52px;
+}
+
+.notes__time {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  min-width: 0;
+  color: var(--gold-2);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.notes__field-bar .notes__time {
+  flex: 1 1 14rem;
+  width: auto;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.notes__field-bar .notes__time input {
+  margin-left: 0;
+}
+
+.notes__time input {
+  width: min(11.5rem, 100%);
+  min-width: 7.25rem;
+  max-width: 11.5rem;
+  min-height: 48px;
+  flex: 0 1 11.5rem;
+  margin-left: auto;
+  padding: 0.45rem 0.75rem;
 }
 
 .notes__field textarea,

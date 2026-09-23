@@ -7,10 +7,13 @@ export const LEGACY_TRAINING_NOTES_STORAGE_KEY = 'matboard.trainingNotes.v1';
 export const COACH_NAME_MAX = 80;
 export const INTRO_MAX = 8_000;
 export const WARMUP_NOTE_MAX = 1_500;
+export const SPECIFIC_NOTE_MAX = 1_500;
 export const COOLDOWN_NOTE_MAX = 1_500;
 export const CLOSING_MAX = 2_000;
 export const TECHNIQUE_TITLE_MAX = 120;
 export const TECHNIQUE_NOTES_MAX = 2_000;
+/** Free-text expected duration, such as "5 min". Not a countdown. */
+export const EXPECTED_MAX = 40;
 export const MIN_TECHNIQUES = 3;
 export const MAX_TECHNIQUES = 20;
 /** Today plus the previous 13 local dates. */
@@ -28,6 +31,8 @@ export type TechniqueBlock = {
   slotId: string;
   title: string;
   notes: string;
+  /** How long the coach expects this drill to take. A note, not a timer. */
+  expected: string;
   waterBreak: boolean;
   /**
    * Explicit Technique Tree id chosen on this drill.
@@ -40,9 +45,15 @@ export type TrainingNotesPlan = {
   version: 1;
   coachName: string;
   intro: string;
+  introExpected: string;
   warmupNote: string;
+  warmupExpected: string;
   techniques: TechniqueBlock[];
+  /** Positional sparring / rounds for this day. No Daily Training Videos slot. */
+  specificNote: string;
+  specificExpected: string;
   cooldownNote: string;
+  cooldownExpected: string;
   closing: string;
 };
 
@@ -118,6 +129,7 @@ export function createTechnique(): TechniqueBlock {
     slotId: createId('slot'),
     title: '',
     notes: '',
+    expected: '',
     waterBreak: false,
   };
 }
@@ -127,9 +139,14 @@ export function emptyPlan(): TrainingNotesPlan {
     version: 1,
     coachName: '',
     intro: '',
+    introExpected: '',
     warmupNote: '',
+    warmupExpected: '',
     techniques: [createTechnique(), createTechnique(), createTechnique()],
+    specificNote: '',
+    specificExpected: '',
     cooldownNote: '',
+    cooldownExpected: '',
     closing: '',
   };
 }
@@ -138,14 +155,24 @@ export function planHasContent(plan: TrainingNotesPlan): boolean {
   if (
     plan.coachName.trim() ||
     plan.intro.trim() ||
+    plan.introExpected.trim() ||
     plan.warmupNote.trim() ||
+    plan.warmupExpected.trim() ||
+    plan.specificNote.trim() ||
+    plan.specificExpected.trim() ||
     plan.cooldownNote.trim() ||
+    plan.cooldownExpected.trim() ||
     plan.closing.trim()
   ) {
     return true;
   }
   return plan.techniques.some(
-    (tech) => tech.title.trim() || tech.notes.trim() || tech.waterBreak || Boolean(tech.treeId),
+    (tech) =>
+      tech.title.trim() ||
+      tech.notes.trim() ||
+      tech.expected.trim() ||
+      tech.waterBreak ||
+      Boolean(tech.treeId),
   );
 }
 
@@ -164,7 +191,8 @@ function sanitizeTechnique(value: unknown): { block: TechniqueBlock; repaired: b
   if (raw && raw.waterBreak !== true && raw.waterBreak !== false) repaired = true;
   const title = clampText(raw?.title, TECHNIQUE_TITLE_MAX);
   const notes = clampText(raw?.notes, TECHNIQUE_NOTES_MAX);
-  if (raw && (raw.title !== title || raw.notes !== notes)) repaired = true;
+  const expected = clampText(raw?.expected, EXPECTED_MAX);
+  if (raw && (raw.title !== title || raw.notes !== notes || raw.expected !== expected)) repaired = true;
   let treeId: string | undefined;
   if (raw && Object.prototype.hasOwnProperty.call(raw, 'treeId')) {
     if (typeof raw.treeId === 'string') {
@@ -182,6 +210,7 @@ function sanitizeTechnique(value: unknown): { block: TechniqueBlock; repaired: b
       slotId,
       title,
       notes,
+      expected,
       waterBreak: raw?.waterBreak === true,
       ...(treeId ? { treeId } : {}),
     },
@@ -227,15 +256,25 @@ export function sanitizePlan(input: unknown): { plan: TrainingNotesPlan; repaire
 
   const coachName = clampText(raw?.coachName, COACH_NAME_MAX);
   const intro = clampText(raw?.intro, INTRO_MAX);
+  const introExpected = clampText(raw?.introExpected, EXPECTED_MAX);
   const warmupNote = clampText(raw?.warmupNote, WARMUP_NOTE_MAX);
+  const warmupExpected = clampText(raw?.warmupExpected, EXPECTED_MAX);
+  const specificNote = clampText(raw?.specificNote, SPECIFIC_NOTE_MAX);
+  const specificExpected = clampText(raw?.specificExpected, EXPECTED_MAX);
   const cooldownNote = clampText(raw?.cooldownNote, COOLDOWN_NOTE_MAX);
+  const cooldownExpected = clampText(raw?.cooldownExpected, EXPECTED_MAX);
   const closing = clampText(raw?.closing, CLOSING_MAX);
   if (
     raw &&
     (raw.coachName !== coachName ||
       raw.intro !== intro ||
+      raw.introExpected !== introExpected ||
       raw.warmupNote !== warmupNote ||
+      raw.warmupExpected !== warmupExpected ||
+      raw.specificNote !== specificNote ||
+      raw.specificExpected !== specificExpected ||
       raw.cooldownNote !== cooldownNote ||
+      raw.cooldownExpected !== cooldownExpected ||
       raw.closing !== closing)
   ) {
     repaired = true;
@@ -247,9 +286,14 @@ export function sanitizePlan(input: unknown): { plan: TrainingNotesPlan; repaire
       version: 1,
       coachName,
       intro,
+      introExpected,
       warmupNote,
+      warmupExpected,
       techniques,
+      specificNote,
+      specificExpected,
       cooldownNote,
+      cooldownExpected,
       closing,
     },
   };
