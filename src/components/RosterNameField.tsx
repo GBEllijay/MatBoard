@@ -166,6 +166,7 @@ function RosterPicker({
           Competitor name
           <input
             ref={inputRef}
+            className="roster-pick__name"
             value={query}
             onChange={(event) => onQuery(event.target.value)}
             placeholder="Type a name not on the roster"

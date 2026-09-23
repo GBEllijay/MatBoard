@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 type TreeChoice = {
   id: string;
@@ -42,8 +43,8 @@ export function LessonMediaRail({
     bottom?: number;
   } | null>(null);
   const railRef = useRef<HTMLDivElement>(null);
-  const canLink = canEditTree && treeChoices.length > 0 && Boolean(onPickTree);
-  const showTree = Boolean(linkedTree && onOpenTree) || canLink;
+  const canEdit = canEditTree && Boolean(onPickTree);
+  const showTree = Boolean(linkedTree && onOpenTree) || canEdit;
 
   useEffect(() => {
     setThumbFailed(false);
@@ -127,13 +128,14 @@ export function LessonMediaRail({
           aria-label={`Open Technique Tree ${linkedTree.name}`}
           onClick={() => onOpenTree(linkedTree.id)}
         >
+          <span className="notes__tree-kicker">Tree</span>
           <span className="notes__tree-label">{linkedTree.name}</span>
         </button>
       ) : null}
-      {canLink ? (
+      {canEdit ? (
         <button
           type="button"
-          className="notes__tree notes__tree--quiet"
+          className={linkedTree ? 'notes__tree notes__tree--change' : 'notes__tree notes__tree--link'}
           aria-expanded={open}
           aria-label={linkedTree ? `Change Technique Tree for ${videoLabel}` : `Link a Technique Tree for ${videoLabel}`}
           onClick={() => {
@@ -145,10 +147,10 @@ export function LessonMediaRail({
             setOpen(true);
           }}
         >
-          {open ? 'Close' : linkedTree ? 'Change' : 'Link'}
+          {open ? 'Close' : linkedTree ? 'Change' : 'Link tree'}
         </button>
       ) : null}
-      {open && canLink && menu ? (
+      {open && canEdit && menu ? (
         <ul
           className="notes__tree-pick"
           aria-label={`Technique Trees for ${videoLabel}`}
@@ -160,21 +162,30 @@ export function LessonMediaRail({
             maxHeight: menu.maxHeight,
           }}
         >
-          {treeChoices.map((choice) => (
-            <li key={choice.id}>
-              <button
-                type="button"
-                className={linkedTree?.id === choice.id ? 'notes__tree-choice notes__tree-choice--on' : 'notes__tree-choice'}
-                onClick={() => {
-                  onPickTree?.(choice.id);
-                  setOpen(false);
-                }}
-              >
-                <span>{choice.name}</span>
-                {choice.detail ? <small>{choice.detail}</small> : null}
-              </button>
+          {treeChoices.length ? (
+            treeChoices.map((choice) => (
+              <li key={choice.id}>
+                <button
+                  type="button"
+                  className={linkedTree?.id === choice.id ? 'notes__tree-choice notes__tree-choice--on' : 'notes__tree-choice'}
+                  onClick={() => {
+                    onPickTree?.(choice.id);
+                    setOpen(false);
+                  }}
+                >
+                  <span>{choice.name}</span>
+                  {choice.detail ? <small>{choice.detail}</small> : null}
+                </button>
+              </li>
+            ))
+          ) : (
+            <li>
+              <p className="notes__tree-none">No Technique Tree with a base yet.</p>
+              <Link className="notes__tree-choice" to="/technique-tree" onClick={() => setOpen(false)}>
+                <span>Open Technique Tree</span>
+              </Link>
             </li>
-          ))}
+          )}
           {storedTreeId ? (
             <li>
               <button
