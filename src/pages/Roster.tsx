@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { EmptyHint } from '../components/EmptyHint';
 import { PlayExitMark } from '../components/PlayExitMark';
+import { useCoachPageSwipe } from '../hooks/useCoachSwipe';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useToolboxParent } from '../hooks/useToolboxParent';
@@ -64,6 +65,7 @@ export function RosterPage() {
   const parent = useToolboxParent();
   const proUnlocked = useProUnlocked();
   const coachUnlocked = useCoachUnlocked();
+  useCoachPageSwipe();
   const [searchParams] = useSearchParams();
   const coachRoster =
     searchParams.get('from') === 'coach' || (coachUnlocked && !proUnlocked);

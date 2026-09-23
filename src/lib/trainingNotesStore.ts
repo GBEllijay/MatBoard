@@ -22,13 +22,18 @@ const DAY_MS = 86_400_000;
 export type TechniqueBlock = {
   id: string;
   /**
-   * Stable hook for a later Daily Training Videos link.
-   * Unused by this screen — no video UI.
+   * Stable id for this drill on this day.
+   * Daily Training Videos pair by parallel slot order, not by this id.
    */
   slotId: string;
   title: string;
   notes: string;
   waterBreak: boolean;
+  /**
+   * Explicit Technique Tree id chosen on this drill.
+   * Absent means a title match may still open a tree.
+   */
+  treeId?: string;
 };
 
 export type TrainingNotesPlan = {
@@ -139,7 +144,9 @@ export function planHasContent(plan: TrainingNotesPlan): boolean {
   ) {
     return true;
   }
-  return plan.techniques.some((tech) => tech.title.trim() || tech.notes.trim() || tech.waterBreak);
+  return plan.techniques.some(
+    (tech) => tech.title.trim() || tech.notes.trim() || tech.waterBreak || Boolean(tech.treeId),
+  );
 }
 
 function sanitizeTechnique(value: unknown): { block: TechniqueBlock; repaired: boolean } {
@@ -158,6 +165,16 @@ function sanitizeTechnique(value: unknown): { block: TechniqueBlock; repaired: b
   const title = clampText(raw?.title, TECHNIQUE_TITLE_MAX);
   const notes = clampText(raw?.notes, TECHNIQUE_NOTES_MAX);
   if (raw && (raw.title !== title || raw.notes !== notes)) repaired = true;
+  let treeId: string | undefined;
+  if (raw && Object.prototype.hasOwnProperty.call(raw, 'treeId')) {
+    if (typeof raw.treeId === 'string') {
+      const trimmed = raw.treeId.trim().slice(0, 80);
+      if (raw.treeId !== trimmed) repaired = true;
+      if (trimmed) treeId = trimmed;
+    } else if (raw.treeId != null) {
+      repaired = true;
+    }
+  }
   return {
     repaired,
     block: {
@@ -166,6 +183,7 @@ function sanitizeTechnique(value: unknown): { block: TechniqueBlock; repaired: b
       title,
       notes,
       waterBreak: raw?.waterBreak === true,
+      ...(treeId ? { treeId } : {}),
     },
   };
 }

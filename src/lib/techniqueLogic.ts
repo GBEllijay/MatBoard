@@ -3,7 +3,8 @@
  *
  * Clips live in on-device slots: optional Warm-up, Technique / Drill cards, optional Cool down.
  * One clip per slot. The soft cap is the total number of clips, not the number of empty cards.
- * Technique slot ids stay stable so a later pass can link them to Daily Lesson Plan slots.
+ * Technique slot ids stay stable on this device. Lesson Plan links by parallel order
+ * (Warm-up, Drill 1, …) in lessonLinks.ts, not by matching these ids to lesson text.
  */
 
 export const MAX_TECHNIQUE_CLIPS = 10;
