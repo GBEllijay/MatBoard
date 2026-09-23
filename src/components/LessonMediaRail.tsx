@@ -34,7 +34,13 @@ export function LessonMediaRail({
 }: Props) {
   const [open, setOpen] = useState(false);
   const [thumbFailed, setThumbFailed] = useState(false);
-  const [menu, setMenu] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [menu, setMenu] = useState<{
+    left: number;
+    width: number;
+    maxHeight: number;
+    top?: number;
+    bottom?: number;
+  } | null>(null);
   const railRef = useRef<HTMLDivElement>(null);
   const canLink = canEditTree && treeChoices.length > 0 && Boolean(onPickTree);
   const showTree = Boolean(linkedTree && onOpenTree) || canLink;
@@ -48,7 +54,18 @@ export function LessonMediaRail({
     if (!rect) return;
     const width = Math.min(288, window.innerWidth - 32);
     const left = Math.min(Math.max(16, rect.right - width), window.innerWidth - width - 16);
-    setMenu({ top: rect.bottom + 6, left, width });
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const openBelow = spaceBelow >= 160 || rect.top < 160;
+    if (openBelow) {
+      setMenu({ left, width, top: rect.bottom + 6, maxHeight: Math.max(96, spaceBelow - 12) });
+      return;
+    }
+    setMenu({
+      left,
+      width,
+      bottom: window.innerHeight - rect.top + 6,
+      maxHeight: Math.max(96, rect.top - 12),
+    });
   };
 
   useEffect(() => {
@@ -135,7 +152,13 @@ export function LessonMediaRail({
         <ul
           className="notes__tree-pick"
           aria-label={`Technique Trees for ${videoLabel}`}
-          style={{ top: menu.top, left: menu.left, width: menu.width }}
+          style={{
+            top: menu.top,
+            bottom: menu.bottom,
+            left: menu.left,
+            width: menu.width,
+            maxHeight: menu.maxHeight,
+          }}
         >
           {treeChoices.map((choice) => (
             <li key={choice.id}>
