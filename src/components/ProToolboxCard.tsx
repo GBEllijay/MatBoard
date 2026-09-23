@@ -1,7 +1,13 @@
 import { Link } from 'react-router-dom';
-import { BeltRail } from './BeltRail';
+import { unlinkBracketBout } from '../lib/bracketBout';
+import {
+  COMPETITOR_ROSTER_LABEL,
+  TECHNIQUE_TREE_LABEL,
+  TRAINING_NOTES_LABEL,
+} from '../lib/coachCopy';
 import { FOLDERS } from '../lib/photoStore';
-import { GYM_CONSOLE_NAME, TOURNAMENT_SOFTWARE_NAME } from '../lib/productNames';
+import { GYM_CONSOLE_NAME, TOURNAMENT_SUITE_NAME } from '../lib/productNames';
+import { BeltRail } from './BeltRail';
 
 export function ProToolboxCard() {
   return (
@@ -32,15 +38,43 @@ export function ProToolboxCard() {
         ))}
       </div>
       <div className="mode-card__actions mode-card__actions--tools" aria-label="Owner tools">
-        <Link className="btn btn--white" to="/tournament">
+        <Link className="btn btn--white btn--suite" to="/suite">
           <BeltRail kind="tournament" />
-          {TOURNAMENT_SOFTWARE_NAME}
+          {TOURNAMENT_SUITE_NAME}
         </Link>
         <Link className="btn" to="/schedule">
           Class Schedule
         </Link>
         <Link className="btn" to="/roster">
           Competitor Management System
+        </Link>
+      </div>
+      <div className="mode-card__actions mode-card__actions--tools" aria-label="White tools">
+        <Link className="btn btn--white" to="/match" onClick={() => unlinkBracketBout()}>
+          Scoreboard
+        </Link>
+        <Link className="btn btn--white" to="/match/control" onClick={() => unlinkBracketBout()}>
+          Match Controller
+        </Link>
+        <Link className="btn btn--white" to="/training">
+          Rounds
+        </Link>
+        <Link className="btn btn--white" to="/training/control">
+          Rounds Controller
+        </Link>
+      </div>
+      <div className="mode-card__actions mode-card__actions--tools" aria-label="Coach tools">
+        <Link className="btn btn--white" to="/notes">
+          {TRAINING_NOTES_LABEL}
+        </Link>
+        <Link className="btn btn--white" to="/techniques">
+          Daily Training Videos
+        </Link>
+        <Link className="btn btn--white" to="/technique-tree">
+          {TECHNIQUE_TREE_LABEL}
+        </Link>
+        <Link className="btn btn--white" to="/roster?from=coach">
+          {COMPETITOR_ROSTER_LABEL}
         </Link>
       </div>
     </article>

@@ -1,5 +1,5 @@
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { BeltRail } from '../components/BeltRail';
 import { EmptyHint } from '../components/EmptyHint';
 import { FullscreenChip } from '../components/FullscreenChip';
@@ -24,7 +24,6 @@ import { linkedBracketMatchId, openBracketBout, scoreboardPath, unlinkBracketBou
 import { setBracketTheme } from '../lib/bracketTheme';
 import { tournamentToolLabel } from '../lib/productNames';
 import {
-  SIZE_PRESETS,
   bracketHasContent,
   bracketRoundLine,
   canUndoLast,
@@ -49,6 +48,9 @@ import {
   slotName,
   switchBracket,
   treeSizeFor,
+  clampCompetitorCount,
+  maxCompetitors,
+  sizePresets,
   undoLastOutcome,
   undoMatchOutcome,
   visibleRoundPrefixes,
@@ -67,8 +69,12 @@ export function TournamentPage() {
   const boardRef = useRef<HTMLDivElement>(null);
   const bracketRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const parent = useToolboxParent();
   const proUnlocked = useProUnlocked();
+  const sizeMax = maxCompetitors(proUnlocked);
+  const fromSuite = searchParams.get('from') === 'suite';
+  const exitPath = fromSuite ? '/suite' : parent.path;
   const [namesOpen, setNamesOpen] = useState(false);
   const [sizeOpen, setSizeOpen] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
@@ -94,13 +100,13 @@ export function TournamentPage() {
 
   const exitBoard = () => {
     void fs.exit().finally(() => {
-      navigate(parent.path);
+      navigate(exitPath);
     });
   };
 
   const applySize = (size: number) => {
     unlinkBracketBout();
-    setCompetitorCount(size);
+    setCompetitorCount(size, sizeMax);
     setPendingSize(null);
     setSizeOpen(false);
   };
@@ -130,7 +136,7 @@ export function TournamentPage() {
   const startNewBracket = () => {
     unlinkBracketBout();
     if (saveName.trim()) renameActiveBracket(saveName);
-    newBracket(tournament.size);
+    newBracket(clampCompetitorCount(tournament.size, sizeMax));
     setSaveName('');
   };
 
@@ -148,7 +154,7 @@ export function TournamentPage() {
       }`}
     >
       <BeltRail kind="tournament" />
-      <PlayExitMark to={parent.path} onExit={exitBoard} />
+      <PlayExitMark to={exitPath} onExit={exitBoard} />
       <header className="tournament__bar">
         <div className="tournament__brand">
           <p className="tournament__eyebrow">{parent.eyebrow}</p>
@@ -341,10 +347,13 @@ export function TournamentPage() {
         }}
       >
         <p className="tournament__sheet-copy">
-          Any count from 2 to 16. Uneven fields use byes so nobody waits on a phantom pairing.
+          Any count from 2 to {sizeMax}. Uneven fields use byes so nobody waits on a phantom pairing.
+          {proUnlocked
+            ? ' Pro boards save up to 64 competitors on this device.'
+            : ' Mock Tournament stays at 16.'}
         </p>
         <div className="tournament__size-presets" role="group" aria-label="Size presets">
-          {SIZE_PRESETS.map((preset) => (
+          {sizePresets(proUnlocked).map((preset) => (
             <button
               key={preset}
               type="button"
@@ -356,11 +365,11 @@ export function TournamentPage() {
           ))}
         </div>
         <label className="tournament__custom-size">
-          <span>Custom 3–15</span>
+          <span>{proUnlocked ? 'Custom 2–64' : 'Custom 3–15'}</span>
           <input
             type="number"
             min={2}
-            max={16}
+            max={sizeMax}
             inputMode="numeric"
             value={customSize}
             aria-label="Custom competitor count"
@@ -372,7 +381,7 @@ export function TournamentPage() {
           className="btn"
           onClick={() => {
             const next = Number(customSize);
-            if (!Number.isFinite(next) || next < 2 || next > 16) return;
+            if (!Number.isFinite(next) || next < 2 || next > sizeMax) return;
             requestSize(next);
           }}
         >

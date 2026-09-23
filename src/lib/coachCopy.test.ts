@@ -21,11 +21,10 @@ import {
   EMPTY_VIDEOS_BODY,
   EMPTY_VIDEOS_TITLE,
   NOTES_LEAD,
-  ROSTER_CSV_ABOUT,
-  ROSTER_CSV_COACH_HOW,
-  ROSTER_CSV_COACH_STAYS,
+  ROSTER_CSV_PRO_TEASER,
   ROSTER_LEAD_COACH,
   ROSTER_LEAD_PRO,
+  rosterCsvAvailable,
 } from './coachCopy.ts';
 
 function allCopy(): string {
@@ -50,9 +49,7 @@ function allCopy(): string {
     EMPTY_BRACKET_BODY,
     OWNER_BRACKET_CLOUD_NOTE,
     NOTES_LEAD,
-    ROSTER_CSV_ABOUT,
-    ROSTER_CSV_COACH_STAYS,
-    ROSTER_CSV_COACH_HOW,
+    ROSTER_CSV_PRO_TEASER,
     ROSTER_LEAD_COACH,
     ROSTER_LEAD_PRO,
   ].join('\n');
@@ -87,20 +84,18 @@ test('Coach teasers list the four hub tools in lesson, videos, mock, roster orde
   assert.doesNotMatch(COACH_HUB_BLURB, /Competitor Management/);
 });
 
-test('Coach roster lead and CSV help stay on this phone', () => {
+test('Coach roster lead points CSV at Pro and keeps manual roster language', () => {
   assert.equal(
     ROSTER_LEAD_COACH,
     'Competitor Roster with Names and Ranks for Single Matches and Mock Tournaments.',
   );
-  assert.equal(ROSTER_CSV_ABOUT, 'About CSV');
-  const help = `${ROSTER_CSV_COACH_STAYS}\n${ROSTER_CSV_COACH_HOW}`;
-  assert.match(help, /stays on this phone/);
-  assert.match(help, /back it up or move it to another device/);
-  assert.match(help, /Download the template/);
-  assert.match(help, /does not wipe anyone already here/);
-  assert.match(help, /Export saves a copy/);
-  assert.doesNotMatch(help, /cloud/i);
+  assert.equal(ROSTER_CSV_PRO_TEASER, 'Importable CSV Template Available in Advantage Pro');
+  assert.doesNotMatch(ROSTER_CSV_PRO_TEASER, /About CSV|Download the template|Import CSV|Export CSV/i);
   assert.doesNotMatch(ROSTER_LEAD_COACH, /Competitor Management/);
+  assert.equal(rosterCsvAvailable(true, false), true);
+  assert.equal(rosterCsvAvailable(true, true), false);
+  assert.equal(rosterCsvAvailable(false, true), false);
+  assert.equal(rosterCsvAvailable(false, false), false);
 });
 
 test('Coach empty states stay friendly and skip student progress', () => {

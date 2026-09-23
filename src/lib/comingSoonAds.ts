@@ -5,7 +5,7 @@ import {
   TECHNIQUE_TREE_LABEL,
   TRAINING_NOTES_LABEL,
 } from './coachCopy.ts';
-import { GYM_CONSOLE_NAME, TOURNAMENT_SOFTWARE_NAME } from './productNames.ts';
+import { GYM_CONSOLE_NAME, PRO_HOME_DETAIL, PRO_HOME_LINES, TOURNAMENT_SOFTWARE_NAME } from './productNames.ts';
 
 export type SoonProduct = 'coach' | 'pro';
 
@@ -64,19 +64,19 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
   pro: {
     title: 'Advantage Pro',
     kicker: COMING_SOON_LABEL,
-    lead: `${GYM_CONSOLE_NAME}. Easily cast to your gym TV and display: Pro-Shop, Class Schedules, Recent Promotions, Upcoming Events and Competitions. Full In-House Tournament Management Suite with Auto-Fill Bracketing and Result Tracking. Assignable Instructor Licenses with Cross Platform Access to Updates and more.`,
+    lead: `${PRO_HOME_DETAIL}. ${PRO_HOME_LINES.join(' ')}`,
     features: [
       {
         title: 'Gym TV cast',
-        body: 'Pro-Shop, Class Schedules, Recent Promotions, and Upcoming Events and Competitions on the wall board.',
+        body: 'Class Schedules, Recent Promotions, ProShop Inventory, and Upcoming Events and Competitions.',
       },
       {
         title: TOURNAMENT_SOFTWARE_NAME,
-        body: 'Auto-fill bracketing and result tracking for gym-floor tournaments.',
+        body: 'Full in-house tournament management with auto-fill bracketing and result tracking.',
       },
       {
         title: 'Instructor licenses',
-        body: 'Assignable instructor licenses with cross-platform access to updates.',
+        body: 'Assignable instructor licenses with cross-platform access to updates, shared training videos, and more.',
       },
     ],
     dismiss: 'Got it',

@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { HomeMark } from '../components/HomeMark';
 import { ProToolboxCard } from '../components/ProToolboxCard';
+import { SiteFooter } from '../components/SiteFooter';
 import { TierLine } from '../components/TierLine';
 import { GYM_CONSOLE_NAME, PRO_LADDER_DETAIL, TOURNAMENT_SOFTWARE_NAME } from '../lib/productNames';
 import { lockPro } from '../lib/proUnlock';
@@ -46,6 +47,7 @@ export function ProPage() {
             </button>
           </p>
         </div>
+        <SiteFooter />
       </div>
     </main>
   );

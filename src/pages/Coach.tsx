@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { CoachToolsCard } from '../components/CoachToolsCard';
 import { HomeMark } from '../components/HomeMark';
+import { SiteFooter } from '../components/SiteFooter';
 import { TierLine } from '../components/TierLine';
 import { lockCoach } from '../lib/coachUnlock';
 import { COACH_TOOLS_TEASER } from '../lib/coachCopy';
@@ -46,6 +47,7 @@ export function CoachPage() {
             </button>
           </p>
         </div>
+        <SiteFooter />
       </div>
     </main>
   );

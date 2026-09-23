@@ -17,9 +17,14 @@ import {
   defaultLibrary,
   defaultTournament,
   displayBracketName,
+  COACH_MAX_COMPETITORS,
+  PRO_MAX_COMPETITORS,
+  clampCompetitorCount,
   firstRoundLabel,
   matchHasBye,
   matchIdsForSize,
+  maxCompetitors,
+  nextSlot,
   normalizeLibrary,
   seedPlaceholder,
   seedSlots,
@@ -98,6 +103,36 @@ describe('flexible bracket size', () => {
     assert.equal(board.entries['sf-0-b'], 'Casey');
     const ignored = applyMatchOutcome(board, 'qf-1', 'a', { call: 'win', method: 'submission' });
     assert.equal(ignored.results['qf-1'], undefined);
+  });
+
+  it('lets Pro save a 64-person board and keeps Coach changes at 16', () => {
+    assert.equal(maxCompetitors(true), PRO_MAX_COMPETITORS);
+    assert.equal(maxCompetitors(false), COACH_MAX_COMPETITORS);
+    assert.equal(PRO_MAX_COMPETITORS, 64);
+    assert.equal(treeSizeFor(17), 32);
+    assert.equal(treeSizeFor(33), 64);
+    assert.equal(treeSizeFor(64), 64);
+    assert.equal(treeSizeFor(80), 64);
+    assert.equal(clampCompetitorCount(80), 64);
+    assert.equal(clampCompetitorCount(80, COACH_MAX_COMPETITORS), 16);
+    assert.equal(firstRoundLabel(64), 'Round of 64');
+    assert.equal(firstRoundLabel(32), 'Round of 32');
+    assert.equal(matchIdsForSize(64).length, 63);
+    assert.equal(matchIdsForSize(64)[0], 'r64-0');
+    assert.equal(matchIdsForSize(16).includes('r64-0'), false);
+    assert.equal(seedSlots(defaultTournament(64)).length, 64);
+    assert.equal(nextSlot('r64-0'), 'r32-0-a');
+    assert.equal(nextSlot('r64-1'), 'r32-0-b');
+    assert.equal(nextSlot('r32-1'), 'r16-0-b');
+    assert.equal(nextSlot('r16-0'), 'qf-0-a');
+    assert.equal(nextSlot('final-0'), 'champion');
+    const capped = applyCompetitorCount(defaultTournament(64), 64, COACH_MAX_COMPETITORS);
+    assert.equal(capped.size, 16);
+    let board = applySlotName(defaultTournament(64), 'r64-0-a', 'Alex');
+    board = applySlotName(board, 'r64-0-b', 'Blair');
+    board = applyMatchOutcome(board, 'r64-0', 'a', { call: 'win', method: 'points' });
+    assert.equal(board.entries['r32-0-a'], 'Alex');
+    assert.equal(board.results['r64-0']?.winnerSide, 'a');
   });
 
   it('keeps early seed names when shrinking and still records a win', () => {

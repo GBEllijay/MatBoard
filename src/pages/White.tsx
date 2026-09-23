@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { HomeMark } from '../components/HomeMark';
 import { LiveBoutCard } from '../components/LiveBoutCard';
 import { RoundsCard } from '../components/RoundsCard';
+import { SiteFooter } from '../components/SiteFooter';
 import { TierLine } from '../components/TierLine';
 import { WHITE_LADDER_DETAIL } from '../lib/productNames';
 
@@ -32,6 +33,7 @@ export function WhitePage() {
             </Link>
           </p>
         </div>
+        <SiteFooter />
       </div>
     </main>
   );

@@ -1,12 +1,22 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  SITE_ALPHA_LINE,
+  SITE_FEEDBACK_EMAIL,
+  SITE_FEEDBACK_LEAD,
+  SITE_OWNER_LINE,
+} from './siteFooter.ts';
+import {
   GYM_CONSOLE_NAME,
   MOCK_TOURNAMENT_NAME,
+  PRO_HOME_DETAIL,
+  PRO_HOME_LINES,
   PRO_LADDER_DETAIL,
   WHITE_LADDER_DETAIL,
+  coachToolsOpen,
   parentToolboxPath,
   TOURNAMENT_SOFTWARE_NAME,
+  TOURNAMENT_SUITE_NAME,
   toolEyebrow,
   tournamentToolLabel,
 } from './productNames.ts';
@@ -24,11 +34,42 @@ test('Home ladder details keep White meaning and a plain Pro subtitle', () => {
   assert.doesNotMatch(PRO_LADDER_DETAIL, /'/);
 });
 
+test('Pro suite keeps the working title and Coach keeps Mock Tournament', () => {
+  assert.equal(TOURNAMENT_SUITE_NAME, 'In-House Tournament Management Suite');
+  assert.doesNotMatch(TOURNAMENT_SUITE_NAME, /MatBracket/i);
+});
+
 test('Owner tournament tool is Tournament Software; Coach keeps Mock Tournament', () => {
   assert.equal(TOURNAMENT_SOFTWARE_NAME, 'Tournament Software');
   assert.equal(MOCK_TOURNAMENT_NAME, 'Mock Tournament');
   assert.equal(tournamentToolLabel(true), TOURNAMENT_SOFTWARE_NAME);
   assert.equal(tournamentToolLabel(false), MOCK_TOURNAMENT_NAME);
+});
+
+test('Home Pro card shows the Coming Soon teaser with the Instructor apostrophe', () => {
+  assert.equal(PRO_HOME_DETAIL, `${GYM_CONSOLE_NAME} — Coming Soon`);
+  assert.match(PRO_HOME_DETAIL, /Instructor's Console — Coming Soon/);
+  assert.deepEqual(PRO_HOME_LINES, [
+    'Easily Cast to your Gym TV: Class Schedules, Recent Promotions, ProShop Inventory, Upcoming Events and Competitions.',
+    'Full In-House Tournament Management Suite with Auto-Fill Bracketing and Result Tracking.',
+    'Assignable Instructor Licenses with Cross Platform Access to Updates, Shared Training Videos and More.',
+  ]);
+});
+
+test('Pro unlock includes Coach tools and Coach-only unlock still stands alone', () => {
+  assert.equal(coachToolsOpen(true, false), true);
+  assert.equal(coachToolsOpen(true, true), true);
+  assert.equal(coachToolsOpen(false, true), true);
+  assert.equal(coachToolsOpen(false, false), false);
+});
+
+test('Footer states ownership, alpha testing, and the feedback email only', () => {
+  const footer = [SITE_OWNER_LINE, SITE_ALPHA_LINE, SITE_FEEDBACK_LEAD, SITE_FEEDBACK_EMAIL].join('\n');
+  assert.match(SITE_OWNER_LINE, /property of Advantage App, LLC/);
+  assert.match(SITE_ALPHA_LINE, /still in Alpha Testing/);
+  assert.match(SITE_FEEDBACK_LEAD, /Feedback is appreciated and encouraged/);
+  assert.equal(SITE_FEEDBACK_EMAIL, 'advantageappllc@gmail.com');
+  assert.doesNotMatch(footer, /trademark|patent|\bEIN\b|registered/i);
 });
 
 test('Shared tools prefer Pro console, then Coach', () => {

@@ -1,4 +1,4 @@
-/** Single-elim mock bracket, 2–16 competitors. On-device named saves — no tournament server. */
+/** Single-elim brackets. Coach mock stays 2–16. Pro suite saves up to 64. On-device only. */
 
 import {
   isWinCall,
@@ -11,37 +11,55 @@ import {
 
 export type { BoutOutcome, DqReason, WinMethod };
 
-/** Default and maximum competitor count. Smaller boards pad to the next power of 2 with byes. */
+/** Default board size. Coach mock and a fresh Pro board both start here. */
 export const TOURNAMENT_SIZE = 16 as const;
 export const MIN_COMPETITORS = 2;
-export const MAX_COMPETITORS = 16;
+/** Coach / Mock Tournament cap. */
+export const COACH_MAX_COMPETITORS = 16;
+/** Pro In-House Tournament Management Suite cap. */
+export const PRO_MAX_COMPETITORS = 64;
+/** Storage ceiling. Coach UI passes COACH_MAX_COMPETITORS when it changes size. */
+export const MAX_COMPETITORS = PRO_MAX_COMPETITORS;
 export const SIZE_PRESETS = [2, 4, 8, 16] as const;
+export const PRO_SIZE_PRESETS = [2, 4, 8, 16, 32, 64] as const;
 export const BRACKET_NAME_MAX = 80;
 
-export type TreeSize = 2 | 4 | 8 | 16;
-export type RoundPrefix = 'r16' | 'qf' | 'sf' | 'final';
-
-export const MATCH_IDS = [
-  'r16-0',
-  'r16-1',
-  'r16-2',
-  'r16-3',
-  'r16-4',
-  'r16-5',
-  'r16-6',
-  'r16-7',
-  'qf-0',
-  'qf-1',
-  'qf-2',
-  'qf-3',
-  'sf-0',
-  'sf-1',
-  'final-0',
-] as const;
-
-export type BracketMatchId = (typeof MATCH_IDS)[number];
+export type TreeSize = 2 | 4 | 8 | 16 | 32 | 64;
+export type RoundPrefix = 'r64' | 'r32' | 'r16' | 'qf' | 'sf' | 'final';
+export type BracketMatchId = `${RoundPrefix}-${number}`;
 export type MatchSide = 'a' | 'b';
 export type SlotId = `${BracketMatchId}-${MatchSide}` | 'champion';
+
+const ROUND_SPEC: readonly { prefix: RoundPrefix; count: number; next: RoundPrefix | null }[] = [
+  { prefix: 'r64', count: 32, next: 'r32' },
+  { prefix: 'r32', count: 16, next: 'r16' },
+  { prefix: 'r16', count: 8, next: 'qf' },
+  { prefix: 'qf', count: 4, next: 'sf' },
+  { prefix: 'sf', count: 2, next: 'final' },
+  { prefix: 'final', count: 1, next: null },
+];
+
+export const MATCH_IDS: readonly BracketMatchId[] = ROUND_SPEC.flatMap((round) =>
+  Array.from({ length: round.count }, (_, index) => `${round.prefix}-${index}` as BracketMatchId),
+);
+
+const MATCH_ID_SET = new Set<string>(MATCH_IDS);
+
+function buildNextSlot(): Record<string, SlotId> {
+  const next: Record<string, SlotId> = {};
+  for (const round of ROUND_SPEC) {
+    for (let index = 0; index < round.count; index += 1) {
+      const id = `${round.prefix}-${index}`;
+      if (!round.next) {
+        next[id] = 'champion';
+        continue;
+      }
+      const side: MatchSide = index % 2 === 0 ? 'a' : 'b';
+      next[id] = `${round.next}-${Math.floor(index / 2)}-${side}`;
+    }
+  }
+  return next;
+}
 
 export type BoutResult = {
   winnerSide: MatchSide;
@@ -49,7 +67,7 @@ export type BoutResult = {
 
 export type TournamentState = {
   version: 1;
-  /** Competitor count (2–16). Tree size is the next power of 2; extra slots are byes. */
+  /** Competitor count (2–64). Tree size is the next power of 2; extra slots are byes. */
   size: number;
   title: string;
   entries: Record<string, string>;
@@ -88,14 +106,14 @@ export const PHASE2_BOUT_LINK = {
 
 /**
  * Owner cloud sync of named brackets is intentionally out of this version.
- * Coach stays local-only. Next for Gym Owner Console: sync saved division
- * brackets so a gym can run more than 16 fighters as several ≤16 boards.
+ * Coach mock stays at 16. Pro suite boards save up to 64 on this device.
+ * Cloud sync of those named division brackets comes later.
  */
 export const OWNER_BRACKET_CLOUD = {
   status: 'planned' as const,
   coachSaves: 'local-only',
   ownerSaves: 'local-only',
-  next: 'cloud sync of named brackets for multi-division tournaments',
+  next: 'cloud sync of named brackets; Pro already saves up to 64 locally',
 };
 
 export function scoreboardSideToBracket(side: Side): MatchSide {
@@ -104,47 +122,35 @@ export function scoreboardSideToBracket(side: Side): MatchSide {
 
 export const STORAGE_KEY = 'matboard.tournament.v1';
 
-export const LEFT_R16 = ['r16-0', 'r16-1', 'r16-2', 'r16-3'] as const;
-export const RIGHT_R16 = ['r16-4', 'r16-5', 'r16-6', 'r16-7'] as const;
-export const LEFT_QF = ['qf-0', 'qf-1'] as const;
-export const RIGHT_QF = ['qf-2', 'qf-3'] as const;
-export const LEFT_SF = ['sf-0'] as const;
-export const RIGHT_SF = ['sf-1'] as const;
-
-const NEXT_SLOT: Record<BracketMatchId, SlotId> = {
-  'r16-0': 'qf-0-a',
-  'r16-1': 'qf-0-b',
-  'r16-2': 'qf-1-a',
-  'r16-3': 'qf-1-b',
-  'r16-4': 'qf-2-a',
-  'r16-5': 'qf-2-b',
-  'r16-6': 'qf-3-a',
-  'r16-7': 'qf-3-b',
-  'qf-0': 'sf-0-a',
-  'qf-1': 'sf-0-b',
-  'qf-2': 'sf-1-a',
-  'qf-3': 'sf-1-b',
-  'sf-0': 'final-0-a',
-  'sf-1': 'final-0-b',
-  'final-0': 'champion',
-};
+const NEXT_SLOT: Record<string, SlotId> = buildNextSlot();
 
 const ROUND_LABEL: Record<RoundPrefix, string> = {
+  r64: 'Round of 64',
+  r32: 'Round of 32',
   r16: 'Round of 16',
   qf: 'Quarterfinals',
   sf: 'Semifinals',
   final: 'Final',
 };
 
-const ROUND_ORDER: readonly RoundPrefix[] = ['r16', 'qf', 'sf', 'final'];
+const ROUND_ORDER: readonly RoundPrefix[] = ['r64', 'r32', 'r16', 'qf', 'sf', 'final'];
 
 const listeners = new Set<() => void>();
 let library: TournamentLibrary = loadLibrary();
 let bracketSeq = 0;
 
-export function clampCompetitorCount(value: number): number {
+export function maxCompetitors(proUnlocked: boolean): number {
+  return proUnlocked ? PRO_MAX_COMPETITORS : COACH_MAX_COMPETITORS;
+}
+
+export function sizePresets(proUnlocked: boolean): readonly number[] {
+  return proUnlocked ? PRO_SIZE_PRESETS : SIZE_PRESETS;
+}
+
+export function clampCompetitorCount(value: number, max = PRO_MAX_COMPETITORS): number {
   if (!Number.isFinite(value)) return TOURNAMENT_SIZE;
-  return Math.min(MAX_COMPETITORS, Math.max(MIN_COMPETITORS, Math.round(value)));
+  const ceiling = Math.min(PRO_MAX_COMPETITORS, Math.max(MIN_COMPETITORS, max));
+  return Math.min(ceiling, Math.max(MIN_COMPETITORS, Math.round(value)));
 }
 
 export function treeSizeFor(count: number): TreeSize {
@@ -152,7 +158,9 @@ export function treeSizeFor(count: number): TreeSize {
   if (n <= 2) return 2;
   if (n <= 4) return 4;
   if (n <= 8) return 8;
-  return 16;
+  if (n <= 16) return 16;
+  if (n <= 32) return 32;
+  return 64;
 }
 
 export function byeCountFor(count: number): number {
@@ -161,6 +169,8 @@ export function byeCountFor(count: number): number {
 }
 
 export function firstRoundPrefix(tree: TreeSize): RoundPrefix {
+  if (tree === 64) return 'r64';
+  if (tree === 32) return 'r32';
   if (tree === 16) return 'r16';
   if (tree === 8) return 'qf';
   if (tree === 4) return 'sf';
@@ -168,6 +178,8 @@ export function firstRoundPrefix(tree: TreeSize): RoundPrefix {
 }
 
 export function matchesInRound(prefix: RoundPrefix): number {
+  if (prefix === 'r64') return 32;
+  if (prefix === 'r32') return 16;
   if (prefix === 'r16') return 8;
   if (prefix === 'qf') return 4;
   if (prefix === 'sf') return 2;
@@ -197,21 +209,19 @@ export function visibleRoundPrefixes(tree: TreeSize): RoundPrefix[] {
 }
 
 export function leftRoundIds(prefix: RoundPrefix): BracketMatchId[] {
-  if (prefix === 'r16') return [...LEFT_R16];
-  if (prefix === 'qf') return [...LEFT_QF];
-  if (prefix === 'sf') return [...LEFT_SF];
-  return [];
+  if (prefix === 'final') return [];
+  const ids = roundMatchIds(prefix);
+  return ids.slice(0, ids.length / 2);
 }
 
 export function rightRoundIds(prefix: RoundPrefix): BracketMatchId[] {
-  if (prefix === 'r16') return [...RIGHT_R16];
-  if (prefix === 'qf') return [...RIGHT_QF];
-  if (prefix === 'sf') return [...RIGHT_SF];
-  return [];
+  if (prefix === 'final') return [];
+  const ids = roundMatchIds(prefix);
+  return ids.slice(ids.length / 2);
 }
 
 export function isKnownMatchId(value: unknown): value is BracketMatchId {
-  return typeof value === 'string' && (MATCH_IDS as readonly string[]).includes(value);
+  return typeof value === 'string' && MATCH_ID_SET.has(value);
 }
 
 export function isBracketMatchId(value: unknown): value is BracketMatchId {
@@ -645,9 +655,13 @@ export function applyUndoOutcome(current: TournamentState, matchId: BracketMatch
   return applyClearResult(current, matchId);
 }
 
-export function applyCompetitorCount(current: TournamentState, size: number): TournamentState {
-  const nextSize = clampCompetitorCount(size);
-  if (nextSize === clampCompetitorCount(current.size)) return current;
+export function applyCompetitorCount(
+  current: TournamentState,
+  size: number,
+  max = PRO_MAX_COMPETITORS,
+): TournamentState {
+  const nextSize = clampCompetitorCount(size, max);
+  if (nextSize === clampCompetitorCount(current.size, max) && nextSize === current.size) return current;
   const names = seedSlots(current).map((id) => slotName(current, id));
   const next = defaultTournament(nextSize);
   next.title = current.title;
@@ -752,8 +766,8 @@ export function resetTournament(): void {
   });
 }
 
-export function setCompetitorCount(size: number): void {
-  patchActive((board) => applyCompetitorCount(board, size));
+export function setCompetitorCount(size: number, max = PRO_MAX_COMPETITORS): void {
+  patchActive((board) => applyCompetitorCount(board, size, max));
 }
 
 export function renameActiveBracket(name: string): void {
