@@ -194,6 +194,24 @@ function noteKeyboard(metrics: VisualMetrics): boolean {
   return open;
 }
 
+/** Text fields that can hold the iOS keyboard, including read-only inputs. */
+export function isTextEntryElement(el: HTMLElement): boolean {
+  if (el.isContentEditable) return true;
+  if (el instanceof HTMLTextAreaElement) return !el.disabled;
+  if (!(el instanceof HTMLInputElement) || el.disabled) return false;
+  return inputTypeUsesKeyboard(el.type || 'text');
+}
+
+/** Blur the focused text field when it sits inside `root`. */
+export function releaseTextFocus(root: ParentNode | null): void {
+  if (!root) return;
+  const active = document.activeElement;
+  if (!(active instanceof HTMLElement)) return;
+  if (!root.contains(active)) return;
+  if (!isTextEntryElement(active)) return;
+  active.blur();
+}
+
 function isKeyboardField(target: EventTarget | null): target is HTMLElement {
   if (!(target instanceof HTMLElement)) return false;
   if (target.isContentEditable) return true;
@@ -488,11 +506,22 @@ export function installKeepFocusedFieldVisible(): () => void {
     run('viewport');
   };
 
+  const onOrientation = () => {
+    const active = document.activeElement;
+    if (!(active instanceof HTMLElement)) return;
+    const board = active.closest('.tournament');
+    if (!(board instanceof HTMLElement)) return;
+    releaseTextFocus(board);
+    clearKeyboardAdjustments();
+  };
+
   document.addEventListener('focusin', onFocusIn);
   document.addEventListener('focusout', onFocusOut);
   window.visualViewport?.addEventListener('resize', onViewport);
   window.visualViewport?.addEventListener('scroll', onViewport);
   window.addEventListener('resize', onViewport);
+  window.addEventListener('orientationchange', onOrientation);
+  screen.orientation?.addEventListener('change', onOrientation);
 
   return () => {
     clearTimers();
@@ -503,5 +532,7 @@ export function installKeepFocusedFieldVisible(): () => void {
     window.visualViewport?.removeEventListener('resize', onViewport);
     window.visualViewport?.removeEventListener('scroll', onViewport);
     window.removeEventListener('resize', onViewport);
+    window.removeEventListener('orientationchange', onOrientation);
+    screen.orientation?.removeEventListener('change', onOrientation);
   };
 }

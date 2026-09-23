@@ -24,7 +24,24 @@ export function pinchScale(startScale: number, startDistance: number, distance: 
   return startScale * (distance / startDistance);
 }
 
+/**
+ * Scroll position that keeps one viewport point on the same diagram coordinate
+ * after a scale change. `viewportOffset` is that point's distance from the
+ * scroller's visible left or top.
+ */
+export function focalScroll(
+  scroll: number,
+  viewportOffset: number,
+  oldScale: number,
+  newScale: number,
+): number {
+  if (!(oldScale > 0) || !Number.isFinite(newScale)) return scroll;
+  const content = (scroll + viewportOffset) / oldScale;
+  return content * newScale - viewportOffset;
+}
+
+/** Page scale stays 1. Bracket pinch transforms the diagram; it does not zoom the layout viewport. */
 export const TOURNAMENT_VIEWPORT =
-  'width=device-width, initial-scale=1, minimum-scale=0.2, maximum-scale=5, user-scalable=yes, viewport-fit=cover';
+  'width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
 
 export const DEFAULT_VIEWPORT = 'width=device-width, initial-scale=1, viewport-fit=cover';

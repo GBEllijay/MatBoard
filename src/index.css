@@ -3363,16 +3363,31 @@ fieldset {
   padding: 0.25rem calc(0.7rem + var(--safe-r)) calc(1rem + var(--safe-b)) calc(0.7rem + var(--safe-l));
 }
 
+.bracket-viewport {
+  position: relative;
+}
+
+/* The diagram is position:absolute inside the spacer. Width must be definite
+   (not 100% of the spacer) or the tree collapses and Finals paints over earlier rounds. */
+.bracket-viewport > .bracket {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+}
+
 .bracket {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(12rem, 16rem) minmax(0, 1fr);
   gap: 0.65rem;
+  width: 72rem;
   min-width: 72rem;
   min-height: 36rem;
   height: max(36rem, calc(100dvh - 9.5rem));
 }
 
 .bracket--tree-8 {
+  width: 52rem;
   min-width: 52rem;
 }
 
@@ -3381,6 +3396,7 @@ fieldset {
 }
 
 .bracket--tree-4 {
+  width: 36rem;
   min-width: 36rem;
 }
 
@@ -3389,6 +3405,7 @@ fieldset {
 }
 
 .bracket--tree-2 {
+  width: 22rem;
   min-width: 18rem;
   grid-template-columns: minmax(12rem, 22rem);
   justify-content: center;
@@ -3839,11 +3856,9 @@ fieldset {
   }
 
   .bracket {
-    /* Keep the designed 72rem/92rem floor. Fitting the tree is pinch-zoom, not
-       min-width: 0 — that crushed Bright name pills into vertical strips. */
-    width: 100%;
+    /* Do not stretch to the visual viewport. Pinch uses transform scale on this
+       fixed diagram; a 100% height/width reflowed Finals over earlier rounds. */
     min-height: 36rem;
-    height: max(36rem, 100%);
   }
 
   .t-mark {
@@ -3852,6 +3867,22 @@ fieldset {
 }
 
 @media (min-width: 1100px) and (orientation: landscape) {
+  .tournament:not(.tournament--bright) .bracket {
+    width: max(72rem, calc(100vw - 2rem));
+  }
+
+  .tournament:not(.tournament--bright) .bracket--tree-8 {
+    width: max(52rem, calc(100vw - 2rem));
+  }
+
+  .tournament:not(.tournament--bright) .bracket--tree-4 {
+    width: max(36rem, calc(100vw - 2rem));
+  }
+
+  .tournament:not(.tournament--bright) .bracket--tree-2 {
+    width: max(22rem, calc(100vw - 2rem));
+  }
+
   .tournament__bar {
     align-items: center;
     flex-wrap: nowrap;
@@ -3983,49 +4014,60 @@ fieldset {
   font-size: 0.78rem;
 }
 
+/* Fixed tracks. Flexible columns plus min-width:0 let the center Finals card
+   paint over quarterfinals when the phone viewport is narrower than the tree. */
 .tournament--bright .bracket {
-  min-width: 92rem;
-  grid-template-columns: minmax(0, 1.28fr) minmax(16rem, 18rem) minmax(0, 1.28fr);
+  width: max-content;
+  min-width: max-content;
+  grid-template-columns: max-content 20rem max-content;
+  justify-content: start;
   gap: 0.45rem;
 }
 
-.tournament--bright .bracket--tree-8 {
-  min-width: 64rem;
-}
-
-.tournament--bright .bracket--tree-4 {
-  min-width: 42rem;
+.tournament--bright .bracket--tree-8,
+.tournament--bright .bracket--tree-4,
+.tournament--bright .bracket--tree-2 {
+  width: max-content;
+  min-width: max-content;
 }
 
 .tournament--bright .bracket--tree-2 {
-  min-width: 18rem;
-  grid-template-columns: minmax(16rem, 22rem);
+  grid-template-columns: 20rem;
   justify-content: center;
 }
 
 .tournament--bright .bracket__side {
   gap: 1.05rem;
+  width: max-content;
+  min-width: max-content;
 }
 
 .tournament--bright .bracket__side--left {
-  grid-template-columns: minmax(16.5rem, 1.8fr) minmax(11rem, 1fr) minmax(10rem, 0.82fr);
+  grid-template-columns: 17.5rem 12.5rem 11.5rem;
 }
 
 .tournament--bright .bracket__side--right {
-  grid-template-columns: minmax(10rem, 0.82fr) minmax(11rem, 1fr) minmax(16.5rem, 1.8fr);
+  grid-template-columns: 11.5rem 12.5rem 17.5rem;
 }
 
 .tournament--bright .bracket--tree-8 .bracket__side--left {
-  grid-template-columns: minmax(16.5rem, 1.8fr) minmax(11rem, 1fr);
+  grid-template-columns: 17.5rem 12.5rem;
 }
 
 .tournament--bright .bracket--tree-8 .bracket__side--right {
-  grid-template-columns: minmax(11rem, 1fr) minmax(16.5rem, 1.8fr);
+  grid-template-columns: 12.5rem 17.5rem;
 }
 
 .tournament--bright .bracket--tree-4 .bracket__side--left,
 .tournament--bright .bracket--tree-4 .bracket__side--right {
-  grid-template-columns: minmax(16.5rem, 1fr);
+  grid-template-columns: 17.5rem;
+}
+
+.tournament--bright .bracket__finals {
+  width: 20rem;
+  max-width: 20rem;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .tournament--bright .bracket__matches {
@@ -4102,23 +4144,47 @@ fieldset {
   color: #fff;
 }
 
+.tournament--bright .bracket__side--left .t-slot__seed,
+.tournament--bright .t-match--final .t-slot__seed {
+  color: #14161c;
+}
+
 .tournament--bright .bracket__side--left .t-slot input,
+.tournament--bright .t-match--final .t-slot input,
 .tournament--bright .bracket__champ input {
-  color: var(--white-ink);
+  color: #14161c;
+  -webkit-text-fill-color: #14161c;
+  caret-color: #14161c;
+  color-scheme: light;
+  opacity: 1;
 }
 
 .tournament--bright .bracket__side--right .t-slot input {
   color: #fff;
+  -webkit-text-fill-color: #fff;
+  caret-color: #fff;
+  color-scheme: dark;
+  opacity: 1;
 }
 
 .tournament--bright .bracket__side--left .t-slot input::placeholder,
-.tournament--bright .bracket__champ input::placeholder,
+.tournament--bright .t-match--final .t-slot input::placeholder,
+.tournament--bright .bracket__champ input::placeholder {
+  color: #2a3140;
+  -webkit-text-fill-color: #2a3140;
+  opacity: 1;
+}
+
 .tournament--bright .tournament__title input::placeholder {
-  color: #6b7382;
+  color: rgba(245, 241, 232, 0.78);
+  -webkit-text-fill-color: rgba(245, 241, 232, 0.78);
+  opacity: 1;
 }
 
 .tournament--bright .bracket__side--right .t-slot input::placeholder {
-  color: rgba(255, 255, 255, 0.72);
+  color: rgba(255, 255, 255, 0.82);
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.82);
+  opacity: 1;
 }
 
 .tournament--bright .bracket__side--left .t-mark {
@@ -4268,6 +4334,7 @@ fieldset {
 
 .tournament--bright .t-match--final .t-slot input {
   color: #14161c;
+  -webkit-text-fill-color: #14161c;
   text-align: center;
 }
 
@@ -4311,9 +4378,15 @@ fieldset {
   color: #14161c;
 }
 
+.tournament--bright .bracket__champ-flash {
+  color: #14161c;
+  text-shadow: none;
+}
+
 .tournament--bright .bracket__champ input {
   background: transparent;
   color: #14161c;
+  -webkit-text-fill-color: #14161c;
   border: 0;
 }
 
