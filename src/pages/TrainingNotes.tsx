@@ -21,9 +21,11 @@ import {
   CLOSING_MAX,
   COACH_NAME_MAX,
   COOLDOWN_NOTE_MAX,
+  EXPECTED_MAX,
   INTRO_MAX,
   MAX_TECHNIQUES,
   MIN_TECHNIQUES,
+  SPECIFIC_NOTE_MAX,
   TECHNIQUE_NOTES_MAX,
   TECHNIQUE_TITLE_MAX,
   WARMUP_NOTE_MAX,
@@ -355,8 +357,16 @@ export function TrainingNotesPage() {
               onChange={(event) => commit({ ...plan, coachName: event.target.value })}
             />
           </label>
-          <label className="notes__field" htmlFor="notes-intro">
-            Intro
+          <div className="notes__field">
+            <div className="notes__field-bar">
+              <label htmlFor="notes-intro">Intro</label>
+              <ExpectedTime
+                id="notes-intro-time"
+                value={plan.introExpected}
+                readOnly={!editingToday}
+                onChange={(introExpected) => commit({ ...plan, introExpected })}
+              />
+            </div>
             <textarea
               id="notes-intro"
               value={plan.intro}
@@ -365,7 +375,7 @@ export function TrainingNotesPage() {
               readOnly={!editingToday}
               onChange={(event) => commit({ ...plan, intro: event.target.value })}
             />
-          </label>
+          </div>
         </section>
 
         <NoteSection
@@ -373,9 +383,11 @@ export function TrainingNotesPage() {
           title="Warm-up"
           label="Special note"
           value={plan.warmupNote}
+          expected={plan.warmupExpected}
           maxLength={WARMUP_NOTE_MAX}
           readOnly={!editingToday}
           onChange={(warmupNote) => commit({ ...plan, warmupNote })}
+          onExpected={(warmupExpected) => commit({ ...plan, warmupExpected })}
           media={sectionMedia({ role: 'warmup' }, 'Warm-up')}
         />
 
@@ -404,13 +416,27 @@ export function TrainingNotesPage() {
         ) : null}
 
         <NoteSection
+          id="notes-specific"
+          title="Specific Training / Rounds"
+          label="Special note"
+          value={plan.specificNote}
+          expected={plan.specificExpected}
+          maxLength={SPECIFIC_NOTE_MAX}
+          readOnly={!editingToday}
+          onChange={(specificNote) => commit({ ...plan, specificNote })}
+          onExpected={(specificExpected) => commit({ ...plan, specificExpected })}
+        />
+
+        <NoteSection
           id="notes-cooldown"
           title="Cool down"
           label="Special note"
           value={plan.cooldownNote}
+          expected={plan.cooldownExpected}
           maxLength={COOLDOWN_NOTE_MAX}
           readOnly={!editingToday}
           onChange={(cooldownNote) => commit({ ...plan, cooldownNote })}
+          onExpected={(cooldownExpected) => commit({ ...plan, cooldownExpected })}
           media={sectionMedia({ role: 'cooldown' }, 'Cool down')}
         />
 
@@ -432,35 +458,72 @@ export function TrainingNotesPage() {
   );
 }
 
+function ExpectedTime({
+  id,
+  value,
+  readOnly,
+  onChange,
+}: {
+  id: string;
+  value: string;
+  readOnly: boolean;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="notes__time" htmlFor={id}>
+      Expected
+      <input
+        id={id}
+        value={value}
+        maxLength={EXPECTED_MAX}
+        readOnly={readOnly}
+        autoComplete="off"
+        enterKeyHint="done"
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </label>
+  );
+}
+
 function NoteSection({
   id,
   title,
   label,
   value,
+  expected,
   maxLength,
   readOnly,
   onChange,
+  onExpected,
   media,
 }: {
   id: string;
   title: string;
   label: string;
   value: string;
+  expected: string;
   maxLength: number;
   readOnly: boolean;
   onChange: (value: string) => void;
+  onExpected: (value: string) => void;
   media?: ReactNode;
 }) {
   return (
     <section className="notes__card" aria-labelledby={`${id}-title`}>
       <div className="notes__section-head">
         <h2 id={`${id}-title`}>{title}</h2>
-        <div className="notes__section-side">
-          <label className="notes__kicker" htmlFor={id}>
-            {label}
-          </label>
-          {media}
-        </div>
+        {media ? <div className="notes__section-side">{media}</div> : null}
+      </div>
+      <div className="notes__field-bar">
+        <label className="notes__kicker" htmlFor={id}>
+          {label}
+        </label>
+        <ExpectedTime
+          id={`${id}-time`}
+          value={expected}
+          readOnly={readOnly}
+          onChange={onExpected}
+        />
       </div>
       <textarea
         id={id}
@@ -520,8 +583,16 @@ function TechniqueBlockView({
             onChange={(event) => onChange({ title: event.target.value })}
           />
         </label>
-        <label className="notes__field" htmlFor={notesId}>
-          Notes
+        <div className="notes__field">
+          <div className="notes__field-bar">
+            <label htmlFor={notesId}>Notes</label>
+            <ExpectedTime
+              id={`notes-tech-time-${tech.id}`}
+              value={tech.expected}
+              readOnly={readOnly}
+              onChange={(expected) => onChange({ expected })}
+            />
+          </div>
           <textarea
             id={notesId}
             value={tech.notes}
@@ -530,7 +601,7 @@ function TechniqueBlockView({
             readOnly={readOnly}
             onChange={(event) => onChange({ notes: event.target.value })}
           />
-        </label>
+        </div>
       </section>
       <button
         type="button"

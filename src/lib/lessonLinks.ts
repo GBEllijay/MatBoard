@@ -18,6 +18,7 @@
  *      Several trees with that base link only when the name also matches one tree name.
  *    - A plain title links when it equals exactly one tree name or base title.
  * Warm-up and Cool down do not link a tree.
+ * Specific Training / Rounds is a lesson note only. Videos has no slot for it.
  */
 
 import { MIN_TECHNIQUE_SLOTS, type VideoPlan, type VideoSlot } from './techniqueLogic.ts';
