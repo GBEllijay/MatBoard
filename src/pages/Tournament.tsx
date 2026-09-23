@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BeltRail } from '../components/BeltRail';
 import { EmptyHint } from '../components/EmptyHint';
@@ -7,7 +7,8 @@ import { PlayExitMark } from '../components/PlayExitMark';
 import { OutcomePickSheet } from '../components/OutcomeCalls';
 import { RosterNameField } from '../components/RosterNameField';
 import { Sheet } from '../components/Sheet';
-import { useAllowZoomOut, usePinchZoom } from '../hooks/usePinchZoom';
+import { useLockViewportZoom, usePinchZoom } from '../hooks/usePinchZoom';
+import { inputTypeUsesKeyboard } from '../lib/keepFieldVisible';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useToolboxParent } from '../hooks/useToolboxParent';
@@ -88,7 +89,7 @@ export function TournamentPage() {
   const named = savedLabel !== 'Untitled';
 
   useVisibleViewportHeight();
-  useAllowZoomOut();
+  useLockViewportZoom();
   usePinchZoom(boardRef, bracketRef);
 
   const exitBoard = () => {
@@ -248,13 +249,14 @@ export function TournamentPage() {
         />
       ) : null}
 
-      <div className="tournament__board" ref={boardRef}>
-        <div
-          className={`bracket bracket--tree-${tree}`}
-          ref={bracketRef}
-          role="group"
-          aria-label={`${tournament.size}-competitor single-elimination bracket`}
-        >
+      <div className="tournament__board" ref={boardRef} onPointerDown={blurTextEntry}>
+        <div className="bracket-viewport">
+          <div
+            className={`bracket bracket--tree-${tree}`}
+            ref={bracketRef}
+            role="group"
+            aria-label={`${tournament.size}-competitor single-elimination bracket`}
+          >
           {tree > 2 ? (
             <div className="bracket__side bracket__side--left">
               {rounds.map((prefix) => (
@@ -301,6 +303,7 @@ export function TournamentPage() {
               ))}
             </div>
           ) : null}
+          </div>
         </div>
       </div>
 
@@ -479,6 +482,23 @@ export function TournamentPage() {
       </Sheet>
     </main>
   );
+}
+
+function isTextEntry(el: HTMLElement): boolean {
+  if (el.isContentEditable) return true;
+  if (el instanceof HTMLTextAreaElement) return !el.disabled;
+  if (!(el instanceof HTMLInputElement) || el.disabled) return false;
+  return inputTypeUsesKeyboard(el.type || 'text');
+}
+
+/** iOS keeps the keyboard up unless the focused field blurs. Taps on the mat do that. */
+function blurTextEntry(event: ReactPointerEvent<HTMLElement>) {
+  const target = event.target;
+  if (!(target instanceof Element)) return;
+  if (target.closest('input, textarea, select, [contenteditable="true"]')) return;
+  const active = document.activeElement;
+  if (!(active instanceof HTMLElement) || !isTextEntry(active)) return;
+  active.blur();
 }
 
 function byeCountHint(size: number): string {

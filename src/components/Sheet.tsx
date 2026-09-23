@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { releaseTextFocus } from '../lib/keepFieldVisible';
 
 type Props = {
   open: boolean;
@@ -19,9 +20,24 @@ export function Sheet({
   className,
   footer,
 }: Props) {
-  if (!open) return null;
+  const rootRef = useRef<HTMLDivElement>(null);
+  // Stay mounted for one commit after close so iOS receives blur before the
+  // focused input is removed. Unmounting a focused field leaves the keyboard up.
+  const [mounted, setMounted] = useState(open);
+
+  useLayoutEffect(() => {
+    if (open) {
+      setMounted(true);
+      return;
+    }
+    releaseTextFocus(rootRef.current);
+    setMounted(false);
+  }, [open]);
+
+  if (!mounted) return null;
   return (
     <div
+      ref={rootRef}
       className={`sheet${stacked ? ' sheet--stack' : ''}${className ? ` ${className}` : ''}`}
       role="dialog"
       aria-modal="true"
