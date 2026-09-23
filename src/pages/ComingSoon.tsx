@@ -3,16 +3,19 @@ import { Link } from 'react-router-dom';
 import { BeltRail } from '../components/BeltRail';
 import { HomeMark } from '../components/HomeMark';
 import { ProUnlockSheet } from '../components/ProUnlockSheet';
+import { SiteFooter } from '../components/SiteFooter';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
+import { unlinkBracketBout } from '../lib/bracketBout';
 import { COMPETITOR_ROSTER_LABEL, TECHNIQUE_TREE_LABEL, TRAINING_NOTES_LABEL } from '../lib/coachCopy';
 import { lockCoach } from '../lib/coachUnlock';
-import { tournamentToolLabel } from '../lib/productNames';
+import { coachToolsOpen, tournamentToolLabel } from '../lib/productNames';
 import { lockPro } from '../lib/proUnlock';
 
 export function ComingSoonPage() {
   const proUnlocked = useProUnlocked();
   const coachUnlocked = useCoachUnlocked();
+  const coachTools = coachToolsOpen(proUnlocked, coachUnlocked);
   const [unlockOpen, setUnlockOpen] = useState<'coach' | 'pro' | null>(null);
 
   const tagline = proUnlocked
@@ -33,12 +36,22 @@ export function ComingSoonPage() {
                 Open Console
               </Link>
             ) : null}
-            {coachUnlocked ? (
+            {coachTools ? (
               <Link className="btn" to="/coach">
                 Open Coach
               </Link>
             ) : null}
-            {coachUnlocked ? (
+            {proUnlocked ? (
+              <>
+                <Link className="btn" to="/match" onClick={() => unlinkBracketBout()}>
+                  Scoreboard
+                </Link>
+                <Link className="btn" to="/training">
+                  Rounds
+                </Link>
+              </>
+            ) : null}
+            {coachTools ? (
               <>
                 <Link className="btn" to="/notes">
                   {TRAINING_NOTES_LABEL}
@@ -55,7 +68,7 @@ export function ComingSoonPage() {
               <BeltRail kind="tournament" />
               {tournamentToolLabel(proUnlocked)}
             </Link>
-            {coachUnlocked ? (
+            {coachTools ? (
               <Link className="btn" to="/roster?from=coach">
                 {COMPETITOR_ROSTER_LABEL}
               </Link>
@@ -65,11 +78,9 @@ export function ComingSoonPage() {
                 <Link className="btn" to="/schedule">
                   Class Schedule
                 </Link>
-                {!coachUnlocked ? (
-                  <Link className="btn" to="/roster">
-                    {COMPETITOR_ROSTER_LABEL}
-                  </Link>
-                ) : null}
+                <Link className="btn" to="/roster">
+                  Competitor Management
+                </Link>
               </>
             ) : null}
             <Link className="btn btn--ghost" to="/">
@@ -107,6 +118,7 @@ export function ComingSoonPage() {
             </button>
           </nav>
         )}
+        <SiteFooter />
       </div>
       <ProUnlockSheet
         product={unlockOpen ?? 'pro'}

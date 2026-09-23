@@ -49,11 +49,12 @@ export const ROSTER_LEAD_COACH =
 export const ROSTER_LEAD_PRO =
   'Competitor Management — names and belts for Match and Mock Tournament. CSV backup stays in this browser.';
 
-/** Coach roster CSV help. On this phone only — no cloud teaser. */
-export const ROSTER_CSV_ABOUT = 'About CSV';
-export const ROSTER_CSV_COACH_STAYS =
-  'Your competitor roster stays on this phone. Use CSV to back it up or move it to another device.';
-export const ROSTER_CSV_COACH_HOW =
-  'Download the template, fill in names and belts in a spreadsheet, then Import. Import adds people to your list — it does not wipe anyone already here. Export saves a copy of your current roster.';
+/** Coach Competitor Roster: CSV stays on the Pro roster screen. */
+export const ROSTER_CSV_PRO_TEASER = 'Importable CSV Template Available in Advantage Pro';
+
+/** True on the Pro roster surface. False on the Coach Competitor Roster screen. */
+export function rosterCsvAvailable(proUnlocked: boolean, coachRosterScreen: boolean): boolean {
+  return proUnlocked && !coachRosterScreen;
+}
 
 export const NOTES_LEAD = "Today on this phone. Yesterday and the last 14 days stay on this device.";

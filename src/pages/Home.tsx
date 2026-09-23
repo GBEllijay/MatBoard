@@ -5,6 +5,7 @@ import { ComingSoonAd, ComingSoonAdActions } from '../components/ComingSoonAd';
 import { HomeMark } from '../components/HomeMark';
 import { ProUnlockSheet } from '../components/ProUnlockSheet';
 import { Sheet } from '../components/Sheet';
+import { SiteFooter } from '../components/SiteFooter';
 import { TierLine } from '../components/TierLine';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
@@ -13,11 +14,17 @@ import {
   type SoonProduct,
 } from '../lib/comingSoonAds';
 import { COACH_TOOLS_TEASER } from '../lib/coachCopy';
-import { GYM_CONSOLE_NAME, PRO_LADDER_DETAIL, WHITE_LADDER_DETAIL } from '../lib/productNames';
+import {
+  GYM_CONSOLE_NAME,
+  PRO_HOME_DETAIL,
+  PRO_HOME_LINES,
+  WHITE_LADDER_DETAIL,
+  coachToolsOpen,
+} from '../lib/productNames';
 
 export function HomePage() {
   const proUnlocked = useProUnlocked();
-  const coachUnlocked = useCoachUnlocked();
+  const coachOpen = coachToolsOpen(proUnlocked, useCoachUnlocked());
   const [unlockOpen, setUnlockOpen] = useState<'coach' | 'pro' | null>(null);
   const [soon, setSoon] = useState<SoonProduct | null>(null);
 
@@ -40,7 +47,7 @@ export function HomePage() {
             </span>
           </Link>
 
-          {coachUnlocked ? (
+          {coachOpen ? (
             <article className="mode-card mode-card--coach">
               <Link
                 className="mode-card__hit"
@@ -83,11 +90,7 @@ export function HomePage() {
                 tabIndex={-1}
                 aria-label={`Open ${GYM_CONSOLE_NAME}`}
               />
-              <BeltRail kind="black" />
-              <strong>Advantage Pro</strong>
-              <span className="mode-card__sub">
-                <TierLine tier="Pro" detail={PRO_LADDER_DETAIL} />
-              </span>
+              <ProHomeCopy />
               <div className="mode-card__actions">
                 <Link className="btn btn--white" to="/pro">
                   Open Console
@@ -99,14 +102,9 @@ export function HomePage() {
               type="button"
               className="mode-card mode-card--pro mode-card--locked"
               aria-haspopup="dialog"
-              aria-label="Advantage Pro, coming soon"
               onClick={() => setSoon('pro')}
             >
-              <BeltRail kind="black" />
-              <strong>Advantage Pro</strong>
-              <span className="mode-card__sub">
-                <TierLine tier="Pro" detail={PRO_LADDER_DETAIL} />
-              </span>
+              <ProHomeCopy />
             </button>
           )}
         </nav>
@@ -116,6 +114,7 @@ export function HomePage() {
             Install Advantage as an app from your browser menu for best results.
           </p>
         </div>
+        <SiteFooter />
       </div>
 
       <Sheet
@@ -144,5 +143,22 @@ export function HomePage() {
         onClose={() => setUnlockOpen(null)}
       />
     </main>
+  );
+}
+
+function ProHomeCopy() {
+  return (
+    <>
+      <BeltRail kind="black" />
+      <strong>Advantage Pro</strong>
+      <span className="mode-card__sub">
+        <TierLine tier="Pro" detail={PRO_HOME_DETAIL} />
+      </span>
+      <span className="mode-card__copy">
+        {PRO_HOME_LINES.map((line) => (
+          <span key={line}>{line}</span>
+        ))}
+      </span>
+    </>
   );
 }

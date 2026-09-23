@@ -14,11 +14,10 @@ import {
   EMPTY_ROSTER_BODY,
   EMPTY_ROSTER_SEARCH,
   EMPTY_ROSTER_TITLE,
-  ROSTER_CSV_ABOUT,
-  ROSTER_CSV_COACH_HOW,
-  ROSTER_CSV_COACH_STAYS,
+  ROSTER_CSV_PRO_TEASER,
   ROSTER_LEAD_COACH,
   ROSTER_LEAD_PRO,
+  rosterCsvAvailable,
 } from '../lib/coachCopy';
 import {
   ROSTER_CSV_SAVE_HINT,
@@ -69,6 +68,7 @@ export function RosterPage() {
   const [searchParams] = useSearchParams();
   const coachRoster =
     searchParams.get('from') === 'coach' || (coachUnlocked && !proUnlocked);
+  const showCsv = rosterCsvAvailable(proUnlocked, coachRoster);
   const exitPath = coachRoster ? '/coach' : parent.path;
   const csvRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
@@ -123,24 +123,16 @@ export function RosterPage() {
           Export CSV
         </button>
       </div>
-      {coachRoster ? (
-        <div className="roster__csv-copy">
-          <p className="roster__csv-title">{ROSTER_CSV_ABOUT}</p>
-          <p className="roster__csv-hint">{ROSTER_CSV_COACH_STAYS}</p>
-          <p className="roster__csv-hint">{ROSTER_CSV_COACH_HOW}</p>
-        </div>
-      ) : (
-        <p className="roster__csv-hint">
-          Competitor Roster stays on this device. CSV is for backup or a move — cloud sync comes
-          later. Import adds competitors; it does not replace the list. Download the template, put
-          one name and belt on every row, then {ROSTER_CSV_SAVE_HINT} Every row needs a name and a
-          belt — <code>White</code>, <code>Blue</code>, <code>Purple</code>, <code>Brown</code>,{' '}
-          <code>Black</code>, <code>Coral</code>; kids <code>Grey</code>, <code>Yellow</code>,{' '}
-          <code>Orange</code>, <code>Green</code>. Also <code>blackbelt</code>,{' '}
-          <code>black belt</code>, and <code>BB</code>. Accents (é, ñ) stay if you save UTF-8 or a
-          typical Excel CSV.
-        </p>
-      )}
+      <p className="roster__csv-hint">
+        Competitor Roster stays on this device. CSV is for backup or a move — cloud sync comes
+        later. Import adds competitors; it does not replace the list. Download the template, put
+        one name and belt on every row, then {ROSTER_CSV_SAVE_HINT} Every row needs a name and a
+        belt — <code>White</code>, <code>Blue</code>, <code>Purple</code>, <code>Brown</code>,{' '}
+        <code>Black</code>, <code>Coral</code>; kids <code>Grey</code>, <code>Yellow</code>,{' '}
+        <code>Orange</code>, <code>Green</code>. Also <code>blackbelt</code>,{' '}
+        <code>black belt</code>, and <code>BB</code>. Accents (é, ñ) stay if you save UTF-8 or a
+        typical Excel CSV.
+      </p>
       {csvNote ? (
         <p className="roster__csv-summary" role="status">
           {csvNote}
@@ -190,7 +182,7 @@ export function RosterPage() {
         </div>
       ) : null}
 
-      {!coachRoster && proUnlocked ? csvTools : null}
+      {showCsv ? csvTools : null}
 
       {roster.students.length ? (
       <label className="roster__search">
@@ -236,7 +228,11 @@ export function RosterPage() {
         />
       )}
 
-      {coachRoster ? csvTools : null}
+      {coachRoster ? (
+        <div className="roster__csv">
+          <p className="roster__csv-hint">{ROSTER_CSV_PRO_TEASER}</p>
+        </div>
+      ) : null}
 
       <StudentEditor
         open={Boolean(editor)}

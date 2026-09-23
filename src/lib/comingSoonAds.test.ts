@@ -58,8 +58,9 @@ test('Pro ad sells the Console paragraph and no price', () => {
   const text = adText('pro');
   assert.equal(COMING_SOON_ADS.pro.title, 'Advantage Pro');
   assert.match(text, new RegExp(GYM_CONSOLE_NAME.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-  assert.match(text, /cast to your gym TV and display/i);
-  assert.match(text, /Pro-Shop/);
+  assert.match(text, /Coming Soon/);
+  assert.match(text, /Cast to your Gym TV/i);
+  assert.match(text, /ProShop Inventory/);
   assert.match(text, /Class Schedules/);
   assert.match(text, /Recent Promotions/);
   assert.match(text, /Upcoming Events and Competitions/);
@@ -70,6 +71,7 @@ test('Pro ad sells the Console paragraph and no price', () => {
   assert.match(text, /Result Tracking/i);
   assert.match(text, /Instructor Licenses/i);
   assert.match(text, /Cross Platform Access/i);
+  assert.match(text, /Shared Training Videos/);
   assert.doesNotMatch(text, /Owner.?s Toolbox/i);
   assert.doesNotMatch(text, /student progress/i);
   assert.doesNotMatch(text, /GB Members/i);
