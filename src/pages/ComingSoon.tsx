@@ -9,7 +9,7 @@ import { useProUnlocked } from '../hooks/useProUnlocked';
 import { unlinkBracketBout } from '../lib/bracketBout';
 import { COMPETITOR_ROSTER_LABEL, TECHNIQUE_TREE_LABEL, TRAINING_NOTES_LABEL } from '../lib/coachCopy';
 import { lockCoach } from '../lib/coachUnlock';
-import { coachToolsOpen, tournamentToolLabel } from '../lib/productNames';
+import { coachToolsOpen, MOCK_TOURNAMENT_NAME, TOURNAMENT_SUITE_NAME } from '../lib/productNames';
 import { lockPro } from '../lib/proUnlock';
 
 export function ComingSoonPage() {
@@ -64,10 +64,17 @@ export function ComingSoonPage() {
                 </Link>
               </>
             ) : null}
-            <Link className="btn btn--white" to="/tournament">
-              <BeltRail kind="tournament" />
-              {tournamentToolLabel(proUnlocked)}
-            </Link>
+            {proUnlocked ? (
+              <Link className="btn btn--white" to="/suite">
+                <BeltRail kind="tournament" />
+                {TOURNAMENT_SUITE_NAME}
+              </Link>
+            ) : (
+              <Link className="btn btn--white" to="/tournament">
+                <BeltRail kind="tournament" />
+                {MOCK_TOURNAMENT_NAME}
+              </Link>
+            )}
             {coachTools ? (
               <Link className="btn" to="/roster?from=coach">
                 {COMPETITOR_ROSTER_LABEL}

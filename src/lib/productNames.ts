@@ -24,6 +24,9 @@ export const PRO_HOME_LINES = [
 export const MOCK_TOURNAMENT_NAME = 'Mock Tournament';
 export const TOURNAMENT_SOFTWARE_NAME = 'Tournament Software';
 
+/** Working title until the owner picks a consumer name for bracketing software. */
+export const TOURNAMENT_SUITE_NAME = 'In-House Tournament Management Suite';
+
 export function parentToolboxPath(proUnlocked: boolean, coachUnlocked: boolean): string {
   if (proUnlocked) return '/pro';
   if (coachUnlocked) return '/coach';

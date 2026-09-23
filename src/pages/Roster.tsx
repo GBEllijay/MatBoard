@@ -69,7 +69,8 @@ export function RosterPage() {
   const coachRoster =
     searchParams.get('from') === 'coach' || (coachUnlocked && !proUnlocked);
   const showCsv = rosterCsvAvailable(proUnlocked, coachRoster);
-  const exitPath = coachRoster ? '/coach' : parent.path;
+  const fromSuite = searchParams.get('from') === 'suite';
+  const exitPath = coachRoster ? '/coach' : fromSuite ? '/suite' : parent.path;
   const csvRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [editor, setEditor] = useState<{ id: string | null; draft: StudentDraft } | null>(null);

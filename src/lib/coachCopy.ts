@@ -42,7 +42,7 @@ export const EMPTY_BRACKET_BODY =
 
 /** Gym Owner Console — local saves ship now; cloud is the next owner step. */
 export const OWNER_BRACKET_CLOUD_NOTE =
-  'Saved brackets stay on this device. Cloud sync so owners can run several division brackets (more than 16 fighters) comes next.';
+  'Saved brackets stay on this device. Pro boards hold up to 64 competitors. Cloud sync comes later.';
 
 export const ROSTER_LEAD_COACH =
   'Competitor Roster with Names and Ranks for Single Matches and Mock Tournaments.';

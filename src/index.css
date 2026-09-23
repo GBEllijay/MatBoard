@@ -681,6 +681,85 @@ button.mode-card {
   text-underline-offset: 0.16em;
 }
 
+.suite {
+  grid-column: 1 / -1;
+  width: min(40rem, 100%);
+  margin: 0.4rem auto 0;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.suite h2 {
+  margin: 0;
+  font-size: clamp(1.45rem, 4.5vw, 2rem);
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+}
+
+.suite > p {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.suite__nav {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.suite__link {
+  display: grid;
+  gap: 0.28rem;
+  padding: 0.95rem 1rem;
+  border-radius: 18px;
+  background: rgba(8, 12, 20, 0.55);
+  border: 1px solid rgba(212, 160, 23, 0.35);
+  text-align: left;
+}
+
+.suite__link strong {
+  font-size: 1.15rem;
+  letter-spacing: -0.03em;
+}
+
+.suite__link span {
+  color: var(--muted);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.rankings__rows {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.rankings__rows span {
+  color: var(--muted);
+}
+
+.rankings__editor-rows {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.rankings__row {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+
+.rankings__row legend {
+  padding: 0 0.3rem;
+  color: var(--gold-2);
+  font-weight: 800;
+}
+
 .home--ladder .home__hint,
 .home--ladder .home__soon {
   font-size: clamp(0.75rem, 1.55vh, 0.88rem);
@@ -737,7 +816,8 @@ button.mode-card {
   margin-top: 0.5rem;
 }
 
-.mode-card__actions--tools .btn:last-child:nth-child(odd) {
+.mode-card__actions--tools .btn:last-child:nth-child(odd),
+.mode-card__actions--tools .btn--suite {
   grid-column: 1 / -1;
 }
 
@@ -3449,6 +3529,28 @@ fieldset {
   height: max(36rem, calc(100dvh - 9.5rem));
 }
 
+.bracket--tree-64 {
+  width: 120rem;
+  min-width: 120rem;
+  min-height: 128rem;
+  height: max(128rem, calc(100dvh - 9.5rem));
+}
+
+.bracket--tree-64 .bracket__side {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.bracket--tree-32 {
+  width: 96rem;
+  min-width: 96rem;
+  min-height: 72rem;
+  height: max(72rem, calc(100dvh - 9.5rem));
+}
+
+.bracket--tree-32 .bracket__side {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .bracket--tree-8 {
   width: 52rem;
   min-width: 52rem;
@@ -4112,6 +4214,22 @@ fieldset {
 
 .tournament--bright .bracket__side--right {
   grid-template-columns: 13rem 13rem 17.5rem;
+}
+
+.tournament--bright .bracket--tree-32 .bracket__side--left {
+  grid-template-columns: 17.5rem 13rem 13rem 13rem;
+}
+
+.tournament--bright .bracket--tree-32 .bracket__side--right {
+  grid-template-columns: 13rem 13rem 13rem 17.5rem;
+}
+
+.tournament--bright .bracket--tree-64 .bracket__side--left {
+  grid-template-columns: 17.5rem 13rem 13rem 13rem 13rem;
+}
+
+.tournament--bright .bracket--tree-64 .bracket__side--right {
+  grid-template-columns: 13rem 13rem 13rem 13rem 17.5rem;
 }
 
 .tournament--bright .bracket--tree-8 .bracket__side--left {

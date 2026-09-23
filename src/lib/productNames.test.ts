@@ -16,6 +16,7 @@ import {
   coachToolsOpen,
   parentToolboxPath,
   TOURNAMENT_SOFTWARE_NAME,
+  TOURNAMENT_SUITE_NAME,
   toolEyebrow,
   tournamentToolLabel,
 } from './productNames.ts';
@@ -31,6 +32,11 @@ test('Home ladder details keep White meaning and a plain Pro subtitle', () => {
   assert.equal(PRO_LADDER_DETAIL, 'Gym Owner and Instructors Console');
   assert.doesNotMatch(PRO_LADDER_DETAIL, /for this gym/i);
   assert.doesNotMatch(PRO_LADDER_DETAIL, /'/);
+});
+
+test('Pro suite keeps the working title and Coach keeps Mock Tournament', () => {
+  assert.equal(TOURNAMENT_SUITE_NAME, 'In-House Tournament Management Suite');
+  assert.doesNotMatch(TOURNAMENT_SUITE_NAME, /MatBracket/i);
 });
 
 test('Owner tournament tool is Tournament Software; Coach keeps Mock Tournament', () => {

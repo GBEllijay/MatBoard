@@ -6,7 +6,7 @@ import {
   TRAINING_NOTES_LABEL,
 } from '../lib/coachCopy';
 import { FOLDERS } from '../lib/photoStore';
-import { GYM_CONSOLE_NAME, TOURNAMENT_SOFTWARE_NAME } from '../lib/productNames';
+import { GYM_CONSOLE_NAME, TOURNAMENT_SUITE_NAME } from '../lib/productNames';
 import { BeltRail } from './BeltRail';
 
 export function ProToolboxCard() {
@@ -38,9 +38,9 @@ export function ProToolboxCard() {
         ))}
       </div>
       <div className="mode-card__actions mode-card__actions--tools" aria-label="Owner tools">
-        <Link className="btn btn--white" to="/tournament">
+        <Link className="btn btn--white btn--suite" to="/suite">
           <BeltRail kind="tournament" />
-          {TOURNAMENT_SOFTWARE_NAME}
+          {TOURNAMENT_SUITE_NAME}
         </Link>
         <Link className="btn" to="/schedule">
           Class Schedule

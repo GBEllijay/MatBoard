@@ -16,7 +16,9 @@ import { ScreensaverPage } from './pages/Screensaver';
 import { SchedulePage } from './pages/Schedule';
 import { TechniqueTreePage } from './pages/TechniqueTree';
 import { TechniquesPage } from './pages/Techniques';
+import { RankingsPage } from './pages/Rankings';
 import { TournamentPage } from './pages/Tournament';
+import { TournamentSuitePage } from './pages/TournamentSuite';
 import { TrainingNotesPage } from './pages/TrainingNotes';
 import { TrainingControllerPage } from './pages/TrainingController';
 import { TrainingPage } from './pages/Training';
@@ -74,6 +76,22 @@ export default function App() {
           <CoachRoute>
             <TournamentPage />
           </CoachRoute>
+        }
+      />
+      <Route
+        path="/suite"
+        element={
+          <ProRoute>
+            <TournamentSuitePage />
+          </ProRoute>
+        }
+      />
+      <Route
+        path="/rankings"
+        element={
+          <ProRoute>
+            <RankingsPage />
+          </ProRoute>
         }
       />
       <Route
