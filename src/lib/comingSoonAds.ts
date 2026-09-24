@@ -6,11 +6,13 @@ import {
   TRAINING_NOTES_LABEL,
 } from './coachCopy.ts';
 import {
+  COMPETITOR_SYSTEM_NAME,
   GYM_CONSOLE_NAME,
+  INSTRUCTOR_COLLAB_NAME,
   MEDIA_CONSOLE_NAME,
   PRO_COMING_SOON_LINES,
   PRO_HOME_DETAIL,
-  TOURNAMENT_SOFTWARE_NAME,
+  TOURNAMENT_SUITE_NAME,
 } from './productNames.ts';
 
 export type SoonProduct = 'coach' | 'pro';
@@ -80,15 +82,19 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
     features: [
       {
         title: MEDIA_CONSOLE_NAME,
-        body: 'Class Schedules, Recent Promotions, ProShop Inventory, and Upcoming Events and Competitions.',
+        body: 'Gallery, Class Schedule, Pro Shop, and Events on the gym TV.',
       },
       {
-        title: TOURNAMENT_SOFTWARE_NAME,
-        body: 'Full in-house tournament management with auto-fill bracketing and result tracking.',
+        title: TOURNAMENT_SUITE_NAME,
+        body: 'Live event ops: brackets, scoreboard, match controller, rounds, and round controller.',
       },
       {
-        title: 'Instructor licenses',
-        body: 'Assignable instructor licenses with cross-platform access to updates, shared training videos, and more.',
+        title: COMPETITOR_SYSTEM_NAME,
+        body: 'Competitor roster and on-device rankings. Seeding from rankings comes later.',
+      },
+      {
+        title: INSTRUCTOR_COLLAB_NAME,
+        body: 'Coming soon. An Instructor console, shared training, and roster approval with the owner.',
       },
     ],
     dismiss: 'Got it',

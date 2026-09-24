@@ -564,6 +564,21 @@ button.mode-card {
   font-size: clamp(0.82rem, 1.8vh, 0.95rem);
 }
 
+.home__motto {
+  margin: 0.22rem 0 0;
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.25;
+}
+
+.home--ladder .home__mark p.home__motto {
+  margin-top: 0.12rem;
+  margin-bottom: 0.08rem;
+  font-size: clamp(0.84rem, 1.85vh, 1rem);
+  font-weight: 600;
+}
+
 .home--ladder .home__modes {
   flex: 0 0 auto;
   min-height: auto;
@@ -742,6 +757,77 @@ button.mode-card {
   line-height: 1.4;
 }
 
+.suite__note {
+  margin: 0;
+  color: var(--gold-2);
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.plan-card {
+  display: grid;
+  gap: 0.28rem;
+  padding: 0.95rem 1rem;
+  border-radius: 18px;
+  background: rgba(8, 12, 20, 0.55);
+  border: 1px solid rgba(212, 160, 23, 0.35);
+  text-align: left;
+}
+
+.plan-card__kicker {
+  margin: 0;
+  color: var(--gold-2);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.plan-card strong {
+  font-size: 1.15rem;
+  letter-spacing: -0.03em;
+}
+
+.plan-card span {
+  color: var(--muted);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.plan-card .btn {
+  width: 100%;
+  margin-top: 0.45rem;
+}
+
+.pro-hubs {
+  display: grid;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.pro-hub {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 5.25rem;
+  padding: 1rem 1.15rem 1rem 1.5rem;
+  border-radius: 18px;
+  background: var(--white);
+  color: var(--white-ink);
+  font-weight: 800;
+  font-size: clamp(1.05rem, 2.7vw, 1.28rem);
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  text-align: left;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+}
+
+.pro-hub .belt-rail {
+  --belt-rail-width: 8px;
+  --belt-block: 0.55rem;
+}
+
 .rankings__rows {
   margin: 0;
   padding-left: 1.2rem;
@@ -883,6 +969,14 @@ button.mode-card {
 .home__soon-actions {
   display: grid;
   gap: 0.7rem;
+}
+
+.home__soon-actions .btn {
+  width: 100%;
+  height: auto;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.25;
 }
 
 .home__unlock-copy {
@@ -1195,7 +1289,7 @@ button.mode-card {
   .home--ladder .home__mark {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
-    grid-template-rows: auto auto;
+    grid-template-rows: auto auto auto;
     column-gap: 0.65rem;
     align-items: center;
     text-align: left;
@@ -1203,9 +1297,15 @@ button.mode-card {
   }
 
   .home--ladder .home__logo {
-    grid-row: 1 / span 2;
+    grid-row: 1 / span 3;
     width: clamp(3.1rem, 16vh, 4.2rem);
     margin: 0;
+  }
+
+  .home--ladder .home__mark h1,
+  .home--ladder .home__motto,
+  .home--ladder .home__mark > p {
+    grid-column: 2;
   }
 
   .home--ladder h1::after {
@@ -2999,6 +3099,18 @@ fieldset {
   min-height: 44px;
 }
 
+.gym-logo__name {
+  margin-top: 0.2rem;
+}
+
+.gym-logo__hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
 .saver-settings {
   display: grid;
   gap: 0.9rem;
@@ -3081,6 +3193,23 @@ fieldset {
   font-size: 0.75rem;
   font-weight: 700;
   color: var(--muted);
+}
+
+a.saver-folder--link {
+  display: block;
+  padding-bottom: 0.15rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.saver-folder--link .saver-folder__summary {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.saver-folder__go {
+  color: var(--gold-2);
+  font-size: 0.95rem;
+  font-weight: 800;
 }
 
 .saver-folder__play {
@@ -3939,9 +4068,36 @@ fieldset {
   font-variant-numeric: tabular-nums;
 }
 
+.t-slot__name {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+}
+
 .t-slot__who .roster-field {
   flex: 1;
   min-width: 0;
+}
+
+.t-slot__gym {
+  margin: 0;
+  padding: 0 0.15rem 0.05rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tournament--bright .t-slot__gym {
+  color: rgba(20, 22, 28, 0.78);
+  font-size: 0.66rem;
+}
+
+.tournament--bright .bracket__side--right .t-slot__gym {
+  color: rgba(255, 255, 255, 0.88);
 }
 
 .t-match__finals-label {

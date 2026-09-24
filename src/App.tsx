@@ -7,7 +7,9 @@ import { consumeCoachUnlockQueryNow } from './lib/coachUnlock';
 import { consumeUnlockQueryNow } from './lib/proUnlock';
 import { CoachPage } from './pages/Coach';
 import { ComingSoonPage } from './pages/ComingSoon';
+import { CompetitorManagementPage } from './pages/CompetitorManagement';
 import { HomePage } from './pages/Home';
+import { InstructorCollaborationPage } from './pages/InstructorCollaboration';
 import { MatchControllerPage } from './pages/MatchController';
 import { MatchDisplayPage } from './pages/MatchDisplay';
 import { ProPage } from './pages/Pro';
@@ -83,6 +85,22 @@ export default function App() {
         element={
           <ProRoute>
             <TournamentSuitePage />
+          </ProRoute>
+        }
+      />
+      <Route
+        path="/competitors"
+        element={
+          <ProRoute>
+            <CompetitorManagementPage />
+          </ProRoute>
+        }
+      />
+      <Route
+        path="/instructors"
+        element={
+          <ProRoute>
+            <InstructorCollaborationPage />
           </ProRoute>
         }
       />

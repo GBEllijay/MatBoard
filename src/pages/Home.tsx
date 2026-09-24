@@ -16,6 +16,7 @@ import {
 import { COACH_TOOLS_TEASER } from '../lib/coachCopy';
 import {
   GYM_CONSOLE_NAME,
+  HOME_MOTTO,
   PRO_HOME_DETAIL,
   PRO_HOME_LINES,
   WHITE_LADDER_DETAIL,
@@ -36,7 +37,7 @@ export function HomePage() {
   return (
     <main className="home home--ladder">
       <div className="home__inner">
-        <HomeMark tagline="BJJ scoreboard, round timer, and gym tools." />
+        <HomeMark motto={HOME_MOTTO} tagline="BJJ scoreboard, round timer, and gym tools." />
 
         <nav className="home__modes" aria-label="Products">
           <Link className="mode-card mode-card--white" to="/white">

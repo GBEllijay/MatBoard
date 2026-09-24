@@ -3,6 +3,7 @@
 export const STORAGE_KEY = 'matboard.roster.v1';
 export const NOTE_MAX = 160;
 export const NAME_MAX = 80;
+export const GYM_MAX = 80;
 export const BELT_MAX = 40;
 
 export const ADULT_BELTS = ['White', 'Blue', 'Purple', 'Brown', 'Black'] as const;
@@ -13,6 +14,8 @@ export type Student = {
   id: string;
   name: string;
   belt: string;
+  /** School or academy. Optional. Shown on the scoreboard and brackets. */
+  gym: string;
   lastPromotion: string;
   note: string;
 };
@@ -22,15 +25,17 @@ export type RosterState = {
   students: Student[];
 };
 
-/** Name + belt only. Notes and promotion dates stay on the roster card. */
+/** Name, belt, and optional gym. Notes and promotion dates stay on the roster card. */
 export type RosterPrefill = {
   name: string;
   belt: string;
+  gym: string;
 };
 
 export type StudentDraft = {
   name: string;
   belt: string;
+  gym: string;
   lastPromotion: string;
   note: string;
 };
@@ -51,13 +56,14 @@ export function defaultRoster(): RosterState {
 }
 
 export function emptyDraft(): StudentDraft {
-  return { name: '', belt: '', lastPromotion: '', note: '' };
+  return { name: '', belt: '', gym: '', lastPromotion: '', note: '' };
 }
 
 export function draftFromStudent(student: Student): StudentDraft {
   return {
     name: student.name,
     belt: student.belt,
+    gym: student.gym,
     lastPromotion: student.lastPromotion,
     note: student.note,
   };
@@ -134,6 +140,10 @@ export function clipName(value: string): string {
   return value.normalize('NFC').trim().slice(0, NAME_MAX);
 }
 
+export function clipGym(value: string): string {
+  return value.normalize('NFC').trim().slice(0, GYM_MAX);
+}
+
 export function clipNote(value: string): string {
   return value.trim().slice(0, NOTE_MAX);
 }
@@ -146,6 +156,7 @@ export function studentFromInput(input: Partial<StudentDraft> & { id?: string })
     id: input.id && input.id.trim() ? input.id.trim() : createStudentId(),
     name,
     belt,
+    gym: clipGym(input.gym ?? ''),
     lastPromotion: normalizeDate(input.lastPromotion ?? ''),
     note: clipNote(input.note ?? ''),
   };
@@ -155,11 +166,18 @@ export function canPrefill(student: Pick<Student, 'name' | 'belt'>): boolean {
   return Boolean(student.name.trim() && student.belt.trim());
 }
 
-export function prefillFields(student: Pick<Student, 'name' | 'belt' | 'note' | 'lastPromotion'>): RosterPrefill | null {
+export function prefillFields(
+  student: Pick<Student, 'name' | 'belt' | 'gym' | 'note' | 'lastPromotion'>,
+): RosterPrefill | null {
   const name = clipName(student.name);
   const belt = canonicalBelt(student.belt);
   if (!name || !belt) return null;
-  return { name, belt };
+  return { name, belt, gym: clipGym(student.gym) };
+}
+
+/** Gym or academy saved on the roster card for this exact name. Empty when none. */
+export function rosterGymForName(name: string, students: Student[] = getRoster().students): string {
+  return findStudentByName(students, name)?.gym ?? '';
 }
 
 export function sortStudents(students: Student[]): Student[] {
@@ -203,17 +221,17 @@ export function confirmManualCompetitor(
 
   const existing = findStudentByName(state.students, clipped);
   if (existing) {
-    return prefillFields(existing) ?? { name: existing.name, belt: existing.belt };
+    return prefillFields(existing) ?? { name: existing.name, belt: existing.belt, gym: existing.gym };
   }
 
   const belt = canonicalBelt(options.belt ?? '');
   if (options.addToRoster) {
     if (!belt) return null;
-    const added = addStudent({ name: clipped, belt, lastPromotion: '', note: '' });
-    return added ? { name: added.name, belt: added.belt } : null;
+    const added = addStudent({ name: clipped, belt, gym: '', lastPromotion: '', note: '' });
+    return added ? { name: added.name, belt: added.belt, gym: added.gym } : null;
   }
 
-  return { name: clipped, belt };
+  return { name: clipped, belt, gym: '' };
 }
 
 export function normalizeStudent(raw: unknown): Student | null {
@@ -223,6 +241,7 @@ export function normalizeStudent(raw: unknown): Student | null {
     id: typeof row.id === 'string' ? row.id : undefined,
     name: typeof row.name === 'string' ? row.name : '',
     belt: typeof row.belt === 'string' ? row.belt : '',
+    gym: typeof row.gym === 'string' ? row.gym : '',
     lastPromotion: typeof row.lastPromotion === 'string' ? row.lastPromotion : '',
     note: typeof row.note === 'string' ? row.note : '',
   });
@@ -306,6 +325,7 @@ export function updateStudent(id: string, draft: Partial<StudentDraft>): Student
     id: current.id,
     name: draft.name ?? current.name,
     belt: draft.belt ?? current.belt,
+    gym: draft.gym ?? current.gym,
     lastPromotion: draft.lastPromotion ?? current.lastPromotion,
     note: draft.note ?? current.note,
   });

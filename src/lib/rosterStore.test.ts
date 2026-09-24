@@ -24,6 +24,7 @@ import {
 function student(partial: Partial<Student> & Pick<Student, 'id' | 'name'>): Student {
   return {
     belt: 'Blue',
+    gym: '',
     lastPromotion: '2026-03-12',
     note: 'Keep this off the scoreboard',
     ...partial,
@@ -39,10 +40,12 @@ describe('studentFromInput', () => {
       belt: 'purple',
       lastPromotion: '2026-03-12',
       note: '  Left knee  ',
+      gym: '  Alliance  ',
     });
     assert.ok(next);
     assert.equal(next.name, 'Alex Rivera');
     assert.equal(next.belt, 'Purple');
+    assert.equal(next.gym, 'Alliance');
     assert.equal(next.lastPromotion, '2026-03-12');
     assert.equal(next.note, 'Left knee');
   });
@@ -64,7 +67,12 @@ describe('studentFromInput', () => {
 describe('prefillFields', () => {
   it('returns name and belt only', () => {
     const row = student({ id: '1', name: 'Alex Rivera', belt: 'Purple' });
-    assert.deepEqual(prefillFields(row), { name: 'Alex Rivera', belt: 'Purple' });
+    assert.deepEqual(prefillFields(row), { name: 'Alex Rivera', belt: 'Purple', gym: '' });
+    assert.deepEqual(prefillFields({ ...row, gym: 'Checkmat' }), {
+      name: 'Alex Rivera',
+      belt: 'Purple',
+      gym: 'Checkmat',
+    });
     assert.equal('note' in (prefillFields(row) ?? {}), false);
     assert.equal('lastPromotion' in (prefillFields(row) ?? {}), false);
     assert.equal(canPrefill({ name: 'Alex', belt: '' }), false);
@@ -129,7 +137,7 @@ describe('confirmManualCompetitor', () => {
   it('uses a typed name on the bracket without writing a roster card', () => {
     resetRoster();
     const next = confirmManualCompetitor('  Jordan Lee  ', { addToRoster: false });
-    assert.deepEqual(next, { name: 'Jordan Lee', belt: '' });
+    assert.deepEqual(next, { name: 'Jordan Lee', belt: '', gym: '' });
     assert.equal(getRoster().students.length, 0);
     resetRoster();
   });
@@ -137,11 +145,11 @@ describe('confirmManualCompetitor', () => {
   it('adds a new local card when asked, and reuses an exact name instead of duplicating', () => {
     resetRoster();
     const added = confirmManualCompetitor('Pat Mora', { addToRoster: true, belt: 'blue' });
-    assert.deepEqual(added, { name: 'Pat Mora', belt: 'Blue' });
+    assert.deepEqual(added, { name: 'Pat Mora', belt: 'Blue', gym: '' });
     assert.equal(getRoster().students.length, 1);
 
     const again = confirmManualCompetitor('pat mora', { addToRoster: true, belt: 'Purple' });
-    assert.deepEqual(again, { name: 'Pat Mora', belt: 'Blue' });
+    assert.deepEqual(again, { name: 'Pat Mora', belt: 'Blue', gym: '' });
     assert.equal(getRoster().students.length, 1);
     resetRoster();
   });
@@ -155,7 +163,7 @@ describe('confirmManualCompetitor', () => {
 
   it('finds an existing card by name ignoring case', () => {
     resetRoster();
-    addStudent({ name: 'Alex Rivera', belt: 'Purple', lastPromotion: '', note: '' });
+    addStudent({ name: 'Alex Rivera', belt: 'Purple', gym: 'Alliance', lastPromotion: '', note: '' });
     const found = findStudentByName(getRoster().students, '  alex rivera ');
     assert.equal(found?.belt, 'Purple');
     resetRoster();

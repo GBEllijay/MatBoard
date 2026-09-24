@@ -16,12 +16,14 @@ import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import {
   useBracketTheme,
   useMatchState,
+  useRosterState,
   useTournamentLibrary,
   useTournamentState,
 } from '../hooks/useStores';
 import { EMPTY_BRACKET_BODY, EMPTY_BRACKET_TITLE, OWNER_BRACKET_CLOUD_NOTE } from '../lib/coachCopy';
 import { linkedBracketMatchId, openBracketBout, scoreboardPath, unlinkBracketBout } from '../lib/bracketBout';
 import { setBracketTheme } from '../lib/bracketTheme';
+import { rosterGymForName } from '../lib/rosterStore';
 import { tournamentToolLabel } from '../lib/productNames';
 import {
   bracketHasContent,
@@ -606,7 +608,9 @@ function SlotRow({ matchId, side }: { matchId: BracketMatchId; side: MatchSide }
   const tournament = useTournamentState();
   const id = slotId(matchId, side);
   const bye = isByeSlot(tournament, id);
+  const roster = useRosterState();
   const name = slotName(tournament, id);
+  const gym = rosterGymForName(name, roster.students);
   const mark = slotMark(tournament.results[matchId], side);
   const seeds = seedSlots(tournament);
   const seedIndex = seeds.indexOf(id);
@@ -634,14 +638,17 @@ function SlotRow({ matchId, side }: { matchId: BracketMatchId; side: MatchSide }
     >
       <div className="t-slot__who">
         {seedIndex >= 0 ? <span className="t-slot__seed">{seedIndex + 1}.</span> : null}
-        <RosterNameField
-          value={name}
-          onChange={(value) => setSlotName(id, value)}
-          onPrefill={(prefill) => setSlotName(id, prefill.name)}
-          placeholder={placeholder}
-          ariaLabel={`${roundLabel(matchId)}, ${side === 'a' ? 'top' : 'bottom'} competitor`}
-          compact
-        />
+        <div className="t-slot__name">
+          <RosterNameField
+            value={name}
+            onChange={(value) => setSlotName(id, value)}
+            onPrefill={(prefill) => setSlotName(id, prefill.name)}
+            placeholder={placeholder}
+            ariaLabel={`${roundLabel(matchId)}, ${side === 'a' ? 'top' : 'bottom'} competitor`}
+            compact
+          />
+          {gym ? <span className="t-slot__gym">{gym}</span> : null}
+        </div>
       </div>
       {hideMarks ? null : (
         <div className="t-slot__marks" role="group" aria-label="Bout result">

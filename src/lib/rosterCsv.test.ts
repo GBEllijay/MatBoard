@@ -229,6 +229,19 @@ describe('importRosterCsv', () => {
   });
 });
 
+describe('gym column', () => {
+  it('keeps an optional gym and still imports older files that have no gym column', () => {
+    const withGym = importRosterCsv('Name,School,Belt\nAlex Rivera,Checkmat,Purple\n');
+    assert.equal(withGym.students[0]?.gym, 'Checkmat');
+    const academy = importRosterCsv('Name,Belt,Academy\nSam,Blue,Atos\n');
+    assert.equal(academy.students[0]?.gym, 'Atos');
+    const older = importRosterCsv('Name,Belt,Last promotion,Notes\nPat,Brown,2026-01-02,Quiet\n');
+    assert.equal(older.imported, 1);
+    assert.equal(older.students[0]?.gym, '');
+    assert.equal(older.students[0]?.note, 'Quiet');
+  });
+});
+
 describe('serializeRosterCsv', () => {
   it('writes an Excel-friendly UTF-8 template with a single-cell belt guide', () => {
     const csv = rosterCsvTemplate();
@@ -236,8 +249,8 @@ describe('serializeRosterCsv', () => {
     assert.match(csv, /Save as CSV UTF-8/);
     assert.match(csv, /blackbelt/i);
     assert.match(csv, /black belt/i);
-    assert.equal(csv.includes('Name,Belt,Last promotion,Notes\r\n'), true);
-    assert.equal(csv.includes('Alex Rivera,Purple,2026-03-12,'), true);
+    assert.equal(csv.includes('Name,Belt,Gym name,Last promotion,Notes\r\n'), true);
+    assert.equal(csv.includes('Alex Rivera,Purple,Alliance,2026-03-12,'), true);
     const guideRow = parseCsv(csv, detectCsvDelimiter(csv)).find((row) => row[0]?.trim().startsWith('#'));
     assert.equal(guideRow?.length, 1);
     assert.equal(withUtf8Bom(csv).startsWith('\uFEFF'), true);
@@ -245,6 +258,7 @@ describe('serializeRosterCsv', () => {
     assert.equal(roundTrip.imported, 1);
     assert.equal(roundTrip.students[0]?.name, 'Alex Rivera');
     assert.equal(roundTrip.students[0]?.belt, 'Purple');
+    assert.equal(roundTrip.students[0]?.gym, 'Alliance');
   });
 
   it('imports every filled template row with mixed belts and an accented name', () => {
@@ -259,8 +273,9 @@ describe('serializeRosterCsv', () => {
 
   it('quotes notes so a round-trip keeps commas', () => {
     const csv = serializeRosterCsv([
-      { name: 'Sam', belt: 'Blue', lastPromotion: '2026-01-02', note: 'Rest, ice' },
+      { name: 'Sam', belt: 'Blue', gym: 'Atos', lastPromotion: '2026-01-02', note: 'Rest, ice' },
     ]);
+    assert.match(csv, /Sam,Blue,Atos,2026-01-02,"Rest, ice"/);
     const next = importRosterCsv(csv);
     assert.deepEqual(
       next.students.map((row) => `${row.name}:${row.note}`),

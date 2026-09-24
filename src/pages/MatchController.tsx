@@ -496,6 +496,7 @@ function CompetitorPad({
             onPrefill={(prefill) => {
               dispatchMatch({ type: 'setCompetitor', side, field: 'name', value: prefill.name });
               dispatchMatch({ type: 'setCompetitor', side, field: 'rank', value: prefill.belt });
+              dispatchMatch({ type: 'setCompetitor', side, field: 'gym', value: prefill.gym });
             }}
           />
         </label>

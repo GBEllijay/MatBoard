@@ -9,6 +9,7 @@ import { useToolboxParent } from '../hooks/useToolboxParent';
 import { RankChip } from '../components/RankChip';
 import { Sheet } from '../components/Sheet';
 import { useRosterState } from '../hooks/useStores';
+import { COMPETITOR_SYSTEM_NAME } from '../lib/productNames';
 import {
   COMPETITOR_ROSTER_LABEL,
   EMPTY_ROSTER_BODY,
@@ -29,6 +30,7 @@ import {
   serializeRosterCsv,
   withUtf8Bom,
 } from '../lib/rosterCsv';
+import { readGymName } from '../lib/gymName';
 import {
   ADULT_BELTS,
   KIDS_BELTS,
@@ -70,7 +72,14 @@ export function RosterPage() {
     searchParams.get('from') === 'coach' || (coachUnlocked && !proUnlocked);
   const showCsv = rosterCsvAvailable(proUnlocked, coachRoster);
   const fromSuite = searchParams.get('from') === 'suite';
-  const exitPath = coachRoster ? '/coach' : fromSuite ? '/suite' : parent.path;
+  const fromCompetitors = searchParams.get('from') === 'competitors';
+  const exitPath = coachRoster
+    ? '/coach'
+    : fromCompetitors
+      ? '/competitors'
+      : fromSuite
+        ? '/suite'
+        : parent.path;
   const csvRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [editor, setEditor] = useState<{ id: string | null; draft: StudentDraft } | null>(null);
@@ -80,7 +89,7 @@ export function RosterPage() {
     () => (query.trim() ? searchStudents(roster.students, query) : roster.students),
     [query, roster.students],
   );
-  const openAdd = () => setEditor({ id: null, draft: emptyDraft() });
+  const openAdd = () => setEditor({ id: null, draft: { ...emptyDraft(), gym: readGymName() } });
 
   const onImportFiles = (files: FileList | null) => {
     const file = files?.[0];
@@ -163,8 +172,10 @@ export function RosterPage() {
       />
       <header className="roster__bar">
         <div className="roster__brand">
-          <p className="roster__eyebrow">{coachRoster ? 'Advantage Coach' : parent.eyebrow}</p>
-          <h1>{coachRoster ? COMPETITOR_ROSTER_LABEL : 'Competitor Management'}</h1>
+          <p className="roster__eyebrow">
+            {coachRoster ? 'Advantage Coach' : fromCompetitors ? COMPETITOR_SYSTEM_NAME : parent.eyebrow}
+          </p>
+          <h1>{COMPETITOR_ROSTER_LABEL}</h1>
         </div>
         {coachRoster ? null : (
           <button type="button" className="btn" onClick={openAdd}>
@@ -275,6 +286,7 @@ function StudentCard({
           <h2>{student.name}</h2>
           <RankChip belt={student.belt} />
         </header>
+        {student.gym ? <p className="roster-card__meta">{student.gym}</p> : null}
         {promoted ? <p className="roster-card__meta">Last promotion {promoted}</p> : null}
         {student.note ? <p className="roster-card__note">{student.note}</p> : null}
         {pending ? (
@@ -323,8 +335,9 @@ function StudentEditor({
   return (
     <Sheet open={open} title={title} onClose={onClose}>
       <p className="roster-edit__copy">
-        Fat-thumb card for this gym. Name and belt are enough to prefill a match. Notes stay off the
-        scoreboard.
+        Name and belt are enough to prefill a match. Gym name is optional and shows on the
+        scoreboard and brackets. A new competitor starts with the Media Console gym name when one
+        is saved. Notes stay on this card.
       </p>
       <label>
         Name
@@ -377,6 +390,16 @@ function StudentEditor({
           />
         </label>
       </fieldset>
+      <label>
+        Gym name
+        <input
+          value={draft.gym}
+          onChange={(event) => patch({ gym: event.target.value })}
+          placeholder="School or academy — optional"
+          aria-label="Gym name"
+          autoComplete="off"
+        />
+      </label>
       <label>
         Last promotion
         <input
