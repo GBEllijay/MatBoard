@@ -6,7 +6,7 @@ import {
   TRAINING_NOTES_LABEL,
 } from '../lib/coachCopy';
 import { FOLDERS } from '../lib/photoStore';
-import { GYM_CONSOLE_NAME, TOURNAMENT_SUITE_NAME } from '../lib/productNames';
+import { GYM_CONSOLE_NAME, MEDIA_CONSOLE_NAME, TOURNAMENT_SUITE_NAME } from '../lib/productNames';
 import { BeltRail } from './BeltRail';
 
 export function ProToolboxCard() {
@@ -16,7 +16,7 @@ export function ProToolboxCard() {
         className="mode-card__hit"
         to="/slideshow?folder=gallery"
         tabIndex={-1}
-        aria-label="Open Gallery"
+        aria-label={`Open ${MEDIA_CONSOLE_NAME}`}
       />
       <strong>{GYM_CONSOLE_NAME}</strong>
       <span className="mode-card__sub">Pro</span>
@@ -33,7 +33,7 @@ export function ProToolboxCard() {
             className={`btn${folder.ready ? '' : ' btn--ghost'}`}
             to={`/slideshow?folder=${folder.id}`}
           >
-            {folder.label}
+            {folder.id === 'gallery' ? MEDIA_CONSOLE_NAME : folder.label}
           </Link>
         ))}
       </div>

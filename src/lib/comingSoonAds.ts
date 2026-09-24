@@ -5,7 +5,13 @@ import {
   TECHNIQUE_TREE_LABEL,
   TRAINING_NOTES_LABEL,
 } from './coachCopy.ts';
-import { GYM_CONSOLE_NAME, PRO_COMING_SOON_LINES, PRO_HOME_DETAIL, TOURNAMENT_SOFTWARE_NAME } from './productNames.ts';
+import {
+  GYM_CONSOLE_NAME,
+  MEDIA_CONSOLE_NAME,
+  PRO_COMING_SOON_LINES,
+  PRO_HOME_DETAIL,
+  TOURNAMENT_SOFTWARE_NAME,
+} from './productNames.ts';
 
 export type SoonProduct = 'coach' | 'pro';
 
@@ -73,7 +79,7 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
     lead: `${PRO_HOME_DETAIL}. ${PRO_COMING_SOON_LINES.join(' ')}`,
     features: [
       {
-        title: 'Gym TV cast',
+        title: MEDIA_CONSOLE_NAME,
         body: 'Class Schedules, Recent Promotions, ProShop Inventory, and Upcoming Events and Competitions.',
       },
       {

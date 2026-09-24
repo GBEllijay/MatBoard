@@ -45,7 +45,7 @@ function ProConsolePreview() {
     <figure className="soon-ad__preview">
       <img
         src="/pro-console-preview.svg"
-        alt="Grey placeholder wireframe of the Pro home and sub-menus"
+        alt="Grey placeholder of Pro menus, with Media Console listed first"
         width={640}
         height={300}
       />
