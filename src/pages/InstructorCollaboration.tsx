@@ -6,6 +6,8 @@ const PLANS = [
   {
     title: 'Generate instructor invite / license',
     body: 'Paying Pro gyms can create invite links for instructors, with no hard seat limit. Each instructor creates their own login. They appear under this gym on the cloud later.',
+    detail:
+      'Default invites grant Advantage Instructor: the full Coach toolkit — Daily Lesson Plan, Daily Training Videos, Technique Tree, Mock Tournament, and Competitor Roster. Not Media Console or Gallery. Owners can later elevate a login, such as a program director, to full Pro and Media Console access.',
     action: 'Coming Soon',
   },
   {
@@ -43,6 +45,7 @@ export function InstructorCollaborationPage() {
                 <p className="plan-card__kicker">Coming Soon · Alpha</p>
                 <strong>{plan.title}</strong>
                 <span>{plan.body}</span>
+                {'detail' in plan ? <span>{plan.detail}</span> : null}
                 {'action' in plan ? (
                   <button type="button" className="btn" disabled>
                     {plan.action}

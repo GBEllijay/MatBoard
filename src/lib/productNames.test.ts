@@ -10,6 +10,7 @@ import {
   GYM_CONSOLE_NAME,
   MOCK_TOURNAMENT_NAME,
   PRO_COMING_SOON_LINES,
+  HOME_MOTTO,
   PRO_HOME_DETAIL,
   PRO_HOME_LINES,
   PRO_LADDER_DETAIL,
@@ -33,6 +34,10 @@ test('Console name uses the exact Instructor apostrophe', () => {
   assert.equal(GYM_CONSOLE_NAME, "Gym Owner and Instructor's Console");
   assert.doesNotMatch(GYM_CONSOLE_NAME, /Owner.?s Toolbox/i);
   assert.doesNotMatch(GYM_CONSOLE_NAME, /Owners Toolbox/i);
+});
+
+test('Home motto stays a quiet line under the Advantage title', () => {
+  assert.equal(HOME_MOTTO, 'Win by Advantage');
 });
 
 test('Home ladder details keep White meaning and a plain Pro subtitle', () => {

@@ -7,6 +7,9 @@ export const WHITE_LADDER_DETAIL = 'BJJ scoreboard and timer, live match and rou
 /** Home ladder and Pro hub line after “Pro —”. Not the Owner Console page title. */
 export const PRO_LADDER_DETAIL = 'Gym Owner and Instructors Console';
 
+/** Quiet line under the Advantage title on the public home page. */
+export const HOME_MOTTO = 'Win by Advantage';
+
 /**
  * Home Pro card line after “Pro —”.
  * Shown to everyone, including while Pro is still Coming Soon.

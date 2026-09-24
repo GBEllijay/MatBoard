@@ -564,6 +564,21 @@ button.mode-card {
   font-size: clamp(0.82rem, 1.8vh, 0.95rem);
 }
 
+.home__motto {
+  margin: 0.22rem 0 0;
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.25;
+}
+
+.home--ladder .home__mark p.home__motto {
+  margin-top: 0.12rem;
+  margin-bottom: 0.08rem;
+  font-size: clamp(0.84rem, 1.85vh, 1rem);
+  font-weight: 600;
+}
+
 .home--ladder .home__modes {
   flex: 0 0 auto;
   min-height: auto;
@@ -1274,7 +1289,7 @@ button.mode-card {
   .home--ladder .home__mark {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
-    grid-template-rows: auto auto;
+    grid-template-rows: auto auto auto;
     column-gap: 0.65rem;
     align-items: center;
     text-align: left;
@@ -1282,9 +1297,15 @@ button.mode-card {
   }
 
   .home--ladder .home__logo {
-    grid-row: 1 / span 2;
+    grid-row: 1 / span 3;
     width: clamp(3.1rem, 16vh, 4.2rem);
     margin: 0;
+  }
+
+  .home--ladder .home__mark h1,
+  .home--ladder .home__motto,
+  .home--ladder .home__mark > p {
+    grid-column: 2;
   }
 
   .home--ladder h1::after {
