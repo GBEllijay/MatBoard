@@ -1102,9 +1102,10 @@ button.mode-card {
   display: block;
   width: min(100%, 22rem);
   height: auto;
-  border-radius: 12px;
-  border: 1px dashed rgba(168, 188, 214, 0.6);
-  background: #3a414d;
+  border-radius: 18px;
+  border: 1px solid rgba(239, 235, 227, 0.22);
+  background: var(--mat-fill);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.32);
 }
 
 .soon-ad__preview figcaption {
