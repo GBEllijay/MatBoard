@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { PlayExitMark } from '../components/PlayExitMark';
+import { ScheduleMonthBoard } from '../components/ScheduleMonthBoard';
 import { ScheduleWeekBoard } from '../components/ScheduleWeekBoard';
 import { MEDIA_CONSOLE_NAME } from '../lib/productNames';
 import { Sheet } from '../components/Sheet';
@@ -24,10 +25,8 @@ import {
   WEEKDAYS,
   WEEKDAY_LABELS,
   WEEKDAY_SHORT,
-  classesAt,
-  weekTimeRows,
-  SCHEDULE_TEMPLATES,
   SCHEDULE_TEMPLATE_HINTS,
+  displayTemplate,
   SCHEDULE_TEMPLATE_LABELS,
   DEFAULT_MATS,
   addClass,
@@ -38,8 +37,6 @@ import {
   classesOnDay,
   formatBoardStamp,
   formatClassTime,
-  formatSpecialDate,
-  formatTimeGroupLine,
   getSchedule,
   groupClassesByTime,
   loadSampleWeek,
@@ -61,16 +58,17 @@ import {
   updateSpecial,
   type ClassTimeGroup,
   type ScheduleTemplate,
-  type SpecialDate,
   type Weekday,
   type WeeklyClassSlot,
 } from '../lib/scheduleStore';
 
-const TEMPLATE_CHROME: Record<ScheduleTemplate, string> = {
+const BAR_MODES = ['week', 'monthly', 'weekly-list'] as const satisfies readonly ScheduleTemplate[];
+const TV_MODES = ['week', 'monthly'] as const satisfies readonly ScheduleTemplate[];
+
+const TEMPLATE_CHROME: Record<(typeof BAR_MODES)[number], string> = {
   week: 'Week',
-  'weekly-list': 'List',
-  'week-grid': 'Grid',
   monthly: 'Month',
+  'weekly-list': 'List',
 };
 
 function downloadScheduleCsv(filename: string, csv: string): void {
@@ -160,8 +158,12 @@ export function SchedulePage() {
   const emptyBoard =
     schedule.classes.length === 0 && notices.length === 0 && !logoUrl && !qrSrc;
   const tv = fs.active || fs.landscape;
-  const shown: ScheduleTemplate = tv ? (castPick ?? 'week') : schedule.template;
-  const showWeek = shown === 'week';
+  const shown = tv
+    ? displayTemplate(castPick ?? schedule.template) === 'monthly'
+      ? 'monthly'
+      : 'week'
+    : displayTemplate(schedule.template);
+  const showHero = shown === 'week' || shown === 'monthly';
 
   const exitBoard = () => {
     void fs.exit().finally(() => {
@@ -179,14 +181,14 @@ export function SchedulePage() {
         </div>
         <div className="schedule__actions">
           <div className="presets schedule__views" role="radiogroup" aria-label="Display template">
-            {SCHEDULE_TEMPLATES.map((id) => (
+            {BAR_MODES.map((id) => (
               <button
                 key={id}
                 type="button"
                 role="radio"
                 aria-checked={shown === id}
                 aria-label={SCHEDULE_TEMPLATE_LABELS[id]}
-                className={`preset${shown === id ? ' preset--on' : ''}`}
+                className={`preset${shown === id ? ' preset--on' : ''}${id === 'weekly-list' ? ' schedule__list-mode' : ''}`}
                 onClick={() => {
                   setScheduleTemplate(id);
                   if (tv) setCastPick(id);
@@ -213,6 +215,23 @@ export function SchedulePage() {
           <button type="button" className="btn schedule__cast-edit" onClick={() => setEditOpen(true)}>
             Edit
           </button>
+          <div className="schedule__cast-modes" role="radiogroup" aria-label="Display template">
+            {TV_MODES.map((id) => (
+              <button
+                key={id}
+                type="button"
+                role="radio"
+                aria-checked={shown === id}
+                className={`preset${shown === id ? ' preset--on' : ''}`}
+                onClick={() => {
+                  setScheduleTemplate(id);
+                  setCastPick(id);
+                }}
+              >
+                {TEMPLATE_CHROME[id]}
+              </button>
+            ))}
+          </div>
           <div className="schedule__cast-tools">
             <FullscreenChip
               supported={fs.supported}
@@ -226,10 +245,12 @@ export function SchedulePage() {
       ) : null}
 
       <section
-        className={`schedule__stage schedule__stage--${shown}${emptyBoard && !showWeek ? ' schedule__stage--hint' : ''}`}
+        className={`schedule__stage schedule__stage--${shown}${emptyBoard && !showHero ? ' schedule__stage--hint' : ''}`}
         aria-label="Gym class schedule"
       >
-        {showWeek ? (
+        {shown === 'monthly' ? (
+          <ScheduleMonthBoard variant="stage" />
+        ) : shown === 'week' ? (
           <ScheduleWeekBoard variant="stage" />
         ) : (
           <>
@@ -249,18 +270,7 @@ export function SchedulePage() {
           </p>
         ) : null}
 
-        {shown === 'weekly-list' ? (
-          <WeeklyListBoard classes={schedule.classes} today={today} />
-        ) : shown === 'week-grid' ? (
-          <WeekGridBoard classes={schedule.classes} today={today} />
-        ) : (
-          <MonthlyBoard
-            stamp={stamp}
-            classes={schedule.classes}
-            specials={schedule.specials}
-            today={today}
-          />
-        )}
+        <WeeklyListBoard classes={schedule.classes} today={today} />
 
         <aside className={`schedule__notes${notices.length ? ' is-filled' : ''}`} aria-label="Notices">
           <p className="schedule__notes-label">Notices</p>
@@ -403,128 +413,6 @@ function WeeklyListBoard({
           </section>
         );
       })}
-    </div>
-  );
-}
-
-function WeekGridBoard({
-  classes,
-  today,
-}: {
-  classes: readonly WeeklyClassSlot[];
-  today: Weekday;
-}) {
-  const times = weekTimeRows(classes);
-  if (!times.length) {
-    return <p className="schedule__grid-empty">No classes yet.</p>;
-  }
-  return (
-    <div className="schedule__grid-scroll">
-      <div
-        className="schedule__gridboard"
-        role="table"
-        aria-label="Week grid"
-        style={{ ['--grid-times' as string]: String(times.length) }}
-      >
-        <div className="schedule__grid-corner" role="columnheader" />
-        {times.map((time) => (
-          <div key={time} className="schedule__grid-time" role="columnheader">
-            {formatClassTime(time)}
-          </div>
-        ))}
-        {WEEKDAYS.map((day) => (
-          <div key={day} className="schedule__grid-row" role="row">
-            <div
-              className={`schedule__grid-day${day === today ? ' is-today' : ''}`}
-              role="rowheader"
-              aria-current={day === today ? 'date' : undefined}
-            >
-              {WEEKDAY_LABELS[day]}
-            </div>
-            {times.map((time) => {
-              const items = classesAt(classes, day, time);
-              return (
-                <div
-                  key={`${day}-${time}`}
-                  className={`schedule__grid-cell${day === today ? ' is-today' : ''}`}
-                  role="cell"
-                >
-                  {items.map((item) => {
-                    const mat = item.location.trim();
-                    const detail = item.subtitle.trim();
-                    return (
-                      <p key={item.id} className="schedule__grid-class">
-                        {mat ? <span className="schedule__grid-mat">{mat}</span> : null}
-                        <strong>{item.title.trim() || 'Class'}</strong>
-                        {detail ? <em>{detail}</em> : null}
-                      </p>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function MonthlyBoard({
-  stamp,
-  classes,
-  specials,
-  today,
-}: {
-  stamp: string;
-  classes: readonly WeeklyClassSlot[];
-  specials: readonly SpecialDate[];
-  today: Weekday;
-}) {
-  const days = boardWeekdays(classes);
-  return (
-    <div className="schedule__month">
-      <p className="schedule__month-lead">
-        <strong>{stamp}</strong> — special dates first. Regular classes stay on List and Grid.
-      </p>
-      {specials.length ? (
-        <ul className="schedule__month-specials">
-          {specials.map((item) => (
-            <li key={item.id}>
-              <strong>{formatSpecialDate(item.date) || 'Anytime'}</strong>
-              <span>
-                {item.title.trim() || item.body.trim() || 'Special date'}
-                {item.body.trim() && item.title.trim() ? ` — ${item.body.trim()}` : ''}
-              </span>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="schedule__month-empty">No special dates yet. Add one in Edit.</p>
-      )}
-      {classes.length ? (
-        <div className="schedule__month-week">
-          <h3>Regular week</h3>
-          <ol>
-            {days.map((day) => {
-              const rows = classesOnDay(classes, day);
-              if (!rows.length) return null;
-              return (
-                <li key={day} className={day === today ? 'is-today' : undefined}>
-                  <strong>{WEEKDAY_SHORT[day]}</strong>
-                  <span>
-                    {groupClassesByTime(rows).map((group) => (
-                      <span key={`${day}-${group.time}`} className="schedule__month-line">
-                        {formatTimeGroupLine(group)}
-                      </span>
-                    ))}
-                  </span>
-                </li>
-              );
-            })}
-          </ol>
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -705,11 +593,11 @@ function ScheduleEditor({
       <fieldset>
         <legend>Display template</legend>
         <p className="schedule-edit__hint">
-          Saved on this device for phone preview. Landscape, fullscreen, and the gym-TV cast use the
-          week board.
+          Week and Month fill the gym TV. List is a phone view for editing. The cast uses whichever
+          of Week or Month is selected.
         </p>
         <div className="presets schedule-edit__templates" role="radiogroup" aria-label="Display template">
-          {SCHEDULE_TEMPLATES.map((id) => (
+          {BAR_MODES.map((id) => (
             <button
               key={id}
               type="button"

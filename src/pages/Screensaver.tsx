@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
 import { GymLogoControl } from '../components/GymLogoControl';
 import { DeviceMediaInput } from '../components/DeviceMediaInput';
+import { ScheduleMonthBoard } from '../components/ScheduleMonthBoard';
 import { ScheduleWeekBoard } from '../components/ScheduleWeekBoard';
 import { ShopCastSlide } from '../components/ShopCastSlide';
 import { ToolboxFolder } from '../components/ToolboxFolder';
@@ -288,7 +289,7 @@ export function ScreensaverPage() {
       className={`saver${currentSlide ? ' saver--play' : ''}${fs.className ? ` ${fs.className}` : ''}`}
       onClick={(event) => {
         const target = event.target as HTMLElement;
-        if (target.closest('.sheet, .chrome, .saver__empty, .btn, input, label, .play-fs, .play-exit, .tv-tip, .saver__unmute, .week-cast.is-drift, .week-cast.is-paused')) return;
+        if (target.closest('.sheet, .chrome, .saver__empty, .btn, input, label, .play-fs, .play-exit, .tv-tip, .saver__unmute, .week-cast.is-drift, .week-cast.is-paused, .month-cast.is-drift, .month-cast.is-paused')) return;
         if (!muteVideo) setUnlockSound(true);
         if (slides.length) setOptions(true);
       }}
@@ -306,7 +307,11 @@ export function ScreensaverPage() {
       </div>
       <TvTip onFullscreen={() => void fs.enter()} />
       {currentSlide?.kind === 'schedule' ? (
-        <ScheduleWeekBoard variant="cast" onOpenOptions={() => setOptions(true)} />
+        schedule.template === 'monthly' ? (
+          <ScheduleMonthBoard variant="cast" onOpenOptions={() => setOptions(true)} />
+        ) : (
+          <ScheduleWeekBoard variant="cast" onOpenOptions={() => setOptions(true)} />
+        )
       ) : currentSlide?.kind === 'shop' ? (
         <ShopCastSlide
           key={currentSlide.items.map((item) => `${item.id}:${item.buyUrl}`).join('|')}
@@ -649,7 +654,7 @@ function ClassScheduleEntry() {
       </div>
       <p className="saver-schedule__hint">
         {ready
-          ? 'On adds the week board after Gallery and before Pro Shop. Off keeps photos and Pro Shop only.'
+          ? 'On adds the full week or month after Gallery and before Pro Shop. Off keeps photos and Pro Shop only.'
           : 'Add classes on the schedule page, then turn this on to play the week board in the cast.'}
       </p>
     </section>

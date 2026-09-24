@@ -30,6 +30,8 @@ export {
   SCHEDULE_TEMPLATE_HINTS,
   SCHEDULE_TEMPLATE_LABELS,
   DEFAULT_SCHEDULE_TEMPLATE,
+  displayTemplate,
+  monthWeeks,
   boardWeekdays,
   classesOnDay,
   compareClasses,
@@ -57,6 +59,7 @@ export {
   weekdayFromJsDay,
   type ClassTimeGroup,
   type GymCalendarState,
+  type MonthDay,
   type ScheduleTemplate,
   type SpecialDate,
   type Weekday,
@@ -128,7 +131,7 @@ function patch(partial: Partial<Omit<ScheduleState, 'version'>>): void {
 
 export function setScheduleTemplate(template: ScheduleTemplate): void {
   if (!isScheduleTemplate(template)) return;
-  patch({ template });
+  patch({ template: template === 'week-grid' ? 'week' : template });
 }
 
 export function setScheduleCastEnabled(enabled: boolean): void {
@@ -153,7 +156,7 @@ export function applyScheduleImport(payload: ScheduleImportPayload): void {
     title: payload.title == null ? state.title : payload.title,
     qrUrl: payload.qrUrl == null ? state.qrUrl : payload.qrUrl,
     notes: payload.notes == null ? state.notes : payload.notes,
-    template: payload.template == null ? state.template : payload.template,
+    template: payload.template == null ? state.template : payload.template === 'week-grid' ? 'week' : payload.template,
     castEnabled: payload.castEnabled == null ? state.castEnabled : payload.castEnabled,
   });
 }

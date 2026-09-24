@@ -62,6 +62,8 @@ export function ScheduleWeekBoard({ variant = 'stage', onOpenOptions }: Props) {
     }
     return count;
   }, [rows, schedule.classes]);
+  const occupied = useMemo(() => new Set(schedule.classes.map((row) => row.day)), [schedule.classes]);
+  const hideNotes = layout.scroll || rows.length >= 8 || busiest >= 3;
   const signature = `${rows.join('|')}:${schedule.classes.length}:${busiest}:${notices.length}:${variant}`;
 
   useEffect(() => {
@@ -206,7 +208,7 @@ export function ScheduleWeekBoard({ variant = 'stage', onOpenOptions }: Props) {
         </div>
         <div className="week-cast__title">
           <h2>{gymTitle}</h2>
-          <p>Class schedule · {formatBoardStamp()}</p>
+          <p>{formatBoardStamp()} · Class schedule</p>
         </div>
         {qrSrc ? (
           <div className="week-cast__qr">
@@ -235,7 +237,7 @@ export function ScheduleWeekBoard({ variant = 'stage', onOpenOptions }: Props) {
             {WEEKDAYS.map((day) => (
               <div
                 key={day}
-                className={`week-cast__dow${day === today ? ' is-today' : ''}`}
+                className={`week-cast__dow${day === today ? ' is-today' : ''}${occupied.has(day) ? '' : ' is-empty'}`}
                 role="columnheader"
               >
                 <span className="week-cast__day-full">{WEEKDAY_LABELS[day]}</span>
@@ -243,13 +245,13 @@ export function ScheduleWeekBoard({ variant = 'stage', onOpenOptions }: Props) {
               </div>
             ))}
             {rows.map((time) => (
-              <WeekRow key={time} time={time} today={today} />
+              <WeekRow key={time} time={time} today={today} occupied={occupied} />
             ))}
           </div>
         )}
       </div>
 
-      {notices.length ? (
+      {notices.length && !hideNotes ? (
         <footer className="week-cast__notes" aria-label="Notices">
           {notices.map((line) => (
             <p key={line}>{line}</p>
@@ -273,7 +275,15 @@ export function ScheduleWeekBoard({ variant = 'stage', onOpenOptions }: Props) {
   );
 }
 
-function WeekRow({ time, today }: { time: string; today: Weekday }) {
+function WeekRow({
+  time,
+  today,
+  occupied,
+}: {
+  time: string;
+  today: Weekday;
+  occupied: ReadonlySet<Weekday>;
+}) {
   const schedule = useScheduleState();
   return (
     <div className="week-cast__row" role="row">
@@ -285,7 +295,7 @@ function WeekRow({ time, today }: { time: string; today: Weekday }) {
         return (
           <div
             key={`${day}-${time}`}
-            className={`week-cast__cell${day === today ? ' is-today' : ''}${items.length > 1 ? ' is-parallel' : ''}`}
+            className={`week-cast__cell${day === today ? ' is-today' : ''}${occupied.has(day) ? '' : ' is-empty'}${items.length > 1 ? ' is-parallel' : ''}`}
             role="cell"
           >
             {items.map((item) => {

@@ -89,7 +89,7 @@ export const MEDIA_CONSOLE_INSTRUCTIONS = [
   'Off items stay in the list and keep their order.',
   'One On clip loops alone. Several play in list order.',
   'Enabled folders play Gallery, then Pro Shop, then Events.',
-  'Class Schedule’s week board can join this cast after Gallery, before Pro Shop.',
+  'Class Schedule casts the full week or month after Gallery, before Pro Shop.',
   'Turn Class Schedule off on that row to keep photos and Pro Shop only.',
   'Open Class Schedule to edit classes. Export a CSV backup before clearing site data.',
   'Photos use the Photo interval. Videos play all the way through, then the next item.',

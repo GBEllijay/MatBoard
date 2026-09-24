@@ -5710,7 +5710,7 @@ a.saver-folder--link {
 
 .schedule__views {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   min-width: min(100%, 18.5rem);
 }
 
@@ -5755,7 +5755,29 @@ a.saver-folder--link {
   pointer-events: auto;
 }
 
-.schedule__stage--week {
+.schedule__cast-modes {
+  position: absolute;
+  top: calc(8.15rem + var(--safe-t));
+  left: calc(0.28rem + var(--safe-l));
+  z-index: 8;
+  display: grid;
+  gap: 0.28rem;
+}
+
+.schedule__cast-modes .preset {
+  min-height: 36px;
+  min-width: 4.5rem;
+  padding: 0.15rem 0.35rem;
+  font-size: 0.72rem;
+}
+
+.schedule.play--tv.play--idle .schedule__cast-modes {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.schedule__stage--week,
+.schedule__stage--monthly {
   display: flex;
   flex-direction: column;
   background: #07080b;
@@ -5807,7 +5829,7 @@ a.saver-folder--link {
 
 @media (min-width: 720px) {
   .schedule-edit__templates {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .schedule-edit__backup-actions {
@@ -8136,6 +8158,16 @@ input.roster-pick__name:focus,
   background: rgba(212, 160, 23, 0.14);
 }
 
+.week-cast__dow.is-empty,
+.week-cast__cell.is-empty {
+  opacity: 0.42;
+}
+
+.week-cast__dow.is-today.is-empty,
+.week-cast__cell.is-today.is-empty {
+  opacity: 1;
+}
+
 .week-cast__day-full {
   display: none;
 }
@@ -8261,6 +8293,76 @@ input.roster-pick__name:focus,
   .week-cast__day-full {
     display: inline;
   }
+}
+
+.month-cast__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-rows: auto repeat(var(--month-weeks), minmax(0, 1fr));
+  height: 100%;
+  min-height: 100%;
+}
+
+.month-cast__dow {
+  padding: 0.28rem 0.15rem;
+  color: var(--gold-2);
+  font-size: clamp(0.62rem, 1.15vw, 0.92rem);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: center;
+  background: #10131a;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.month-cast__cell {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.06rem;
+  padding: 0.12rem 0.28rem 0.2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.month-cast__cell.is-out {
+  opacity: 0.38;
+}
+
+.month-cast__cell.is-today {
+  background: rgba(212, 160, 23, 0.16);
+}
+
+.month-cast__num {
+  color: var(--gold-2);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.month-cast__chip,
+.month-cast__more {
+  margin: 0;
+  min-width: 0;
+  font-size: clamp(0.62rem, 1.15vh, 0.8rem);
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.month-cast__chip b {
+  color: var(--gold-2);
+  font-weight: 800;
+  margin-right: 0.2rem;
+}
+
+.month-cast__more {
+  color: var(--gold-2);
+  font-weight: 800;
 }
 
 @media (prefers-reduced-motion: reduce) {
