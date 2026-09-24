@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" role="img" aria-labelledby="previewTitle previewDesc">
+  <title id="previewTitle">Pro console preview placeholder</title>
+  <desc id="previewDesc">Grey wireframe of the Pro home and a sub-menu. Not final art.</desc>
+  <rect width="640" height="300" rx="16" fill="#3a414d"/>
+  <text x="24" y="34" fill="#e6ebf2" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="700" letter-spacing="1.6">PLACEHOLDER</text>
+  <rect x="20" y="52" width="380" height="228" rx="12" fill="#4a5260" stroke="#a7b0be" stroke-dasharray="5 4" stroke-width="1.5"/>
+  <text x="36" y="80" fill="#e6ebf2" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" font-weight="700">Pro home</text>
+  <g fill="#6d7584" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="600">
+    <rect x="36" y="96" width="108" height="40" rx="8"/>
+    <rect x="156" y="96" width="108" height="40" rx="8"/>
+    <rect x="276" y="96" width="108" height="40" rx="8"/>
+    <rect x="36" y="148" width="108" height="40" rx="8"/>
+    <rect x="156" y="148" width="108" height="40" rx="8"/>
+    <rect x="276" y="148" width="108" height="40" rx="8"/>
+  </g>
+  <g fill="#d5dbe3" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="600" text-anchor="middle">
+    <text x="90" y="121">Gallery</text>
+    <text x="210" y="121">Pro Shop</text>
+    <text x="330" y="121">Events</text>
+    <text x="90" y="173">Suite</text>
+    <text x="210" y="173">Schedule</text>
+    <text x="330" y="173">Roster</text>
+  </g>
+  <rect x="36" y="204" width="348" height="52" rx="8" fill="#5c6574"/>
+  <rect x="416" y="52" width="204" height="228" rx="12" fill="#4a5260" stroke="#a7b0be" stroke-dasharray="5 4" stroke-width="1.5"/>
+  <text x="432" y="80" fill="#e6ebf2" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" font-weight="700">Sub-menu</text>
+  <g fill="#6d7584">
+    <rect x="432" y="98" width="172" height="28" rx="6"/>
+    <rect x="432" y="136" width="172" height="28" rx="6"/>
+    <rect x="432" y="174" width="172" height="28" rx="6"/>
+    <rect x="432" y="212" width="172" height="28" rx="6"/>
+  </g>
+</svg>

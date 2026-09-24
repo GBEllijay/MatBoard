@@ -13,8 +13,18 @@ export const PRO_LADDER_DETAIL = 'Gym Owner and Instructors Console';
  */
 export const PRO_HOME_DETAIL = `${GYM_CONSOLE_NAME} — Coming Soon`;
 
-/** Home Pro card body. Distinct short lines under the tier title. */
+/** Home Pro card body. Three short lines, similar height to White and Coach. */
 export const PRO_HOME_LINES = [
+  'Easily Cast Class Schedules, Events, Recent Promotions, Pro Shop Inventory, and More to your Gym TV.',
+  'Full In-House Tournament Management Suite.',
+  'Assignable Instructor Licenses and Much More!',
+] as const;
+
+/**
+ * Longer appetite copy on the Coming Soon ad only.
+ * Do not put these lines back on the home card.
+ */
+export const PRO_COMING_SOON_LINES = [
   'Easily Cast to your Gym TV: Class Schedules, Recent Promotions, ProShop Inventory, Upcoming Events and Competitions.',
   'Full In-House Tournament Management Suite with Auto-Fill Bracketing and Result Tracking.',
   'Assignable Instructor Licenses with Cross Platform Access to Updates, Shared Training Videos and More.',

@@ -1,8 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { COMING_SOON_ADS, COMING_SOON_LABEL, PRODUCT_TEASERS } from './comingSoonAds.ts';
+import {
+  COMING_SOON_ADS,
+  COMING_SOON_LABEL,
+  PRODUCT_TEASERS,
+  PRO_CONSOLE_PREVIEW_LABEL,
+  PRO_CONSOLE_PREVIEW_NOTE,
+} from './comingSoonAds.ts';
 import { COACH_AD_LEAD, COACH_HOME_TEASER } from './coachCopy.ts';
-import { GYM_CONSOLE_NAME } from './productNames.ts';
+import { GYM_CONSOLE_NAME, PRO_COMING_SOON_LINES, PRO_HOME_DETAIL } from './productNames.ts';
 
 function adText(product: keyof typeof COMING_SOON_ADS): string {
   const ad = COMING_SOON_ADS[product];
@@ -57,6 +63,9 @@ test('Coach ad sells the hub tools and no price', () => {
 test('Pro ad sells the Console paragraph and no price', () => {
   const text = adText('pro');
   assert.equal(COMING_SOON_ADS.pro.title, 'Advantage Pro');
+  assert.equal(COMING_SOON_ADS.pro.lead, `${PRO_HOME_DETAIL}. ${PRO_COMING_SOON_LINES.join(' ')}`);
+  assert.equal(PRO_CONSOLE_PREVIEW_LABEL, 'Pro console preview — coming soon');
+  assert.equal(PRO_CONSOLE_PREVIEW_NOTE, 'Placeholder — real art is coming.');
   assert.match(text, new RegExp(GYM_CONSOLE_NAME.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.match(text, /Coming Soon/);
   assert.match(text, /Cast to your Gym TV/i);
@@ -72,6 +81,8 @@ test('Pro ad sells the Console paragraph and no price', () => {
   assert.match(text, /Instructor Licenses/i);
   assert.match(text, /Cross Platform Access/i);
   assert.match(text, /Shared Training Videos/);
+  assert.doesNotMatch(text, /Much More!/);
+  assert.doesNotMatch(text, /Pro Shop Inventory/);
   assert.doesNotMatch(text, /Owner.?s Toolbox/i);
   assert.doesNotMatch(text, /student progress/i);
   assert.doesNotMatch(text, /GB Members/i);

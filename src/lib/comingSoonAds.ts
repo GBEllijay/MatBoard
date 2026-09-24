@@ -5,7 +5,7 @@ import {
   TECHNIQUE_TREE_LABEL,
   TRAINING_NOTES_LABEL,
 } from './coachCopy.ts';
-import { GYM_CONSOLE_NAME, PRO_HOME_DETAIL, PRO_HOME_LINES, TOURNAMENT_SOFTWARE_NAME } from './productNames.ts';
+import { GYM_CONSOLE_NAME, PRO_COMING_SOON_LINES, PRO_HOME_DETAIL, TOURNAMENT_SOFTWARE_NAME } from './productNames.ts';
 
 export type SoonProduct = 'coach' | 'pro';
 
@@ -24,6 +24,12 @@ export type ComingSoonAdCopy = {
 
 /** Locked-card gold label. Same wording on Coach and Pro / Console. */
 export const COMING_SOON_LABEL = 'Coming Soon';
+
+/** Visible label on the Pro Coming Soon placeholder. Not final console art. */
+export const PRO_CONSOLE_PREVIEW_LABEL = 'Pro console preview — coming soon';
+
+/** Tells alpha testers the splash is a stand-in, not designed marketing art. */
+export const PRO_CONSOLE_PREVIEW_NOTE = 'Placeholder — real art is coming.';
 
 export const PRODUCT_TEASERS = {
   coach: COACH_HOME_TEASER,
@@ -64,7 +70,7 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
   pro: {
     title: 'Advantage Pro',
     kicker: COMING_SOON_LABEL,
-    lead: `${PRO_HOME_DETAIL}. ${PRO_HOME_LINES.join(' ')}`,
+    lead: `${PRO_HOME_DETAIL}. ${PRO_COMING_SOON_LINES.join(' ')}`,
     features: [
       {
         title: 'Gym TV cast',

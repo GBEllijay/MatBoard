@@ -980,6 +980,39 @@ button.mode-card {
   background: linear-gradient(145deg, rgba(42, 53, 70, 0.55), rgba(12, 17, 24, 0.42));
 }
 
+.soon-ad__preview {
+  margin: 0;
+  display: grid;
+  justify-items: start;
+  gap: 0.4rem;
+}
+
+.soon-ad__preview img {
+  display: block;
+  width: min(100%, 22rem);
+  height: auto;
+  border-radius: 12px;
+  border: 1px dashed rgba(168, 188, 214, 0.6);
+  background: #3a414d;
+}
+
+.soon-ad__preview figcaption {
+  display: grid;
+  gap: 0.12rem;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.soon-ad__preview figcaption strong {
+  color: var(--gold-2);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
 .soon-ad__actions {
   display: grid;
   gap: 0.55rem;

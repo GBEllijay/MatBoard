@@ -1,4 +1,9 @@
-import { COMING_SOON_ADS, type SoonProduct } from '../lib/comingSoonAds';
+import {
+  COMING_SOON_ADS,
+  PRO_CONSOLE_PREVIEW_LABEL,
+  PRO_CONSOLE_PREVIEW_NOTE,
+  type SoonProduct,
+} from '../lib/comingSoonAds';
 
 type ExtraAction = {
   label: string;
@@ -21,6 +26,7 @@ export function ComingSoonAd({ product }: Props) {
   return (
     <div className={`soon-ad soon-ad--${product}`}>
       <p className="soon-ad__kicker">{ad.kicker}</p>
+      {product === 'pro' ? <ProConsolePreview /> : null}
       <p className="soon-ad__lead">{ad.lead}</p>
       <ul className="soon-ad__features">
         {ad.features.map((feature) => (
@@ -31,6 +37,23 @@ export function ComingSoonAd({ product }: Props) {
         ))}
       </ul>
     </div>
+  );
+}
+
+function ProConsolePreview() {
+  return (
+    <figure className="soon-ad__preview">
+      <img
+        src="/pro-console-preview.svg"
+        alt="Grey placeholder wireframe of the Pro home and sub-menus"
+        width={640}
+        height={300}
+      />
+      <figcaption>
+        <strong>{PRO_CONSOLE_PREVIEW_LABEL}</strong>
+        <span>{PRO_CONSOLE_PREVIEW_NOTE}</span>
+      </figcaption>
+    </figure>
   );
 }
 
