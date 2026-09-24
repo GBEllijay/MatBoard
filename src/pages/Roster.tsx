@@ -285,6 +285,7 @@ function StudentCard({
           <h2>{student.name}</h2>
           <RankChip belt={student.belt} />
         </header>
+        {student.gym ? <p className="roster-card__meta">{student.gym}</p> : null}
         {promoted ? <p className="roster-card__meta">Last promotion {promoted}</p> : null}
         {student.note ? <p className="roster-card__note">{student.note}</p> : null}
         {pending ? (
@@ -333,8 +334,8 @@ function StudentEditor({
   return (
     <Sheet open={open} title={title} onClose={onClose}>
       <p className="roster-edit__copy">
-        Fat-thumb card for this gym. Name and belt are enough to prefill a match. Notes stay off the
-        scoreboard.
+        Name and belt are enough to prefill a match. Gym name is optional and shows on the
+        scoreboard and brackets. Notes stay on this card.
       </p>
       <label>
         Name
@@ -387,6 +388,16 @@ function StudentEditor({
           />
         </label>
       </fieldset>
+      <label>
+        Gym name
+        <input
+          value={draft.gym}
+          onChange={(event) => patch({ gym: event.target.value })}
+          placeholder="School or academy — optional"
+          aria-label="Gym name"
+          autoComplete="off"
+        />
+      </label>
       <label>
         Last promotion
         <input

@@ -89,6 +89,8 @@ export type MatchAction =
       matchId: string;
       blueName: string;
       whiteName: string;
+      blueGym: string;
+      whiteGym: string;
       round: string;
       division: string;
     }
@@ -371,7 +373,10 @@ function applyAction(current: MatchState, action: MatchAction): MatchState {
       return bumpRevision({ ...current, [action.field]: action.value });
     case 'setCompetitor': {
       const competitor = { ...current[action.side], [action.field]: action.value };
-      if (action.field === 'name' && !action.value.trim()) competitor.rank = '';
+      if (action.field === 'name' && !action.value.trim()) {
+        competitor.rank = '';
+        competitor.gym = '';
+      }
       return bumpRevision({
         ...current,
         [action.side]: competitor,
@@ -402,8 +407,8 @@ function applyAction(current: MatchState, action: MatchAction): MatchState {
       return bumpRevision(
         withoutOutcome({
           ...current,
-          blue: { name: action.blueName, gym: '', rank: '', points: 0, advantages: 0, disadvantages: 0 },
-          white: { name: action.whiteName, gym: '', rank: '', points: 0, advantages: 0, disadvantages: 0 },
+          blue: { name: action.blueName, gym: action.blueGym, rank: '', points: 0, advantages: 0, disadvantages: 0 },
+          white: { name: action.whiteName, gym: action.whiteGym, rank: '', points: 0, advantages: 0, disadvantages: 0 },
           round: action.round,
           division: action.division,
           remainingMs: current.durationMs,

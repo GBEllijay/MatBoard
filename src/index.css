@@ -4056,9 +4056,32 @@ a.saver-folder--link {
   font-variant-numeric: tabular-nums;
 }
 
+.t-slot__name {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+}
+
 .t-slot__who .roster-field {
   flex: 1;
   min-width: 0;
+}
+
+.t-slot__gym {
+  margin: 0;
+  padding: 0 0.15rem 0.05rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tournament--bright .t-slot__gym {
+  color: rgba(20, 22, 28, 0.68);
+  font-size: 0.66rem;
 }
 
 .t-match__finals-label {
