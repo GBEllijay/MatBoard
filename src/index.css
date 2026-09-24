@@ -7992,7 +7992,7 @@ input.roster-pick__name:focus,
   }
 }
 
-/* Class Schedule week board — Outlook columns, times down the side, gym-TV cast. */
+/* Class Schedule week board — stacked day columns, no hour ruler, gym-TV cast. */
 .week-cast {
   --week-font: 16px;
   --week-row: minmax(min-content, 1fr);
@@ -8099,6 +8099,7 @@ input.roster-pick__name:focus,
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
+  scrollbar-gutter: stable;
 }
 
 .week-cast.is-drift .week-cast__frame {
@@ -8115,95 +8116,118 @@ input.roster-pick__name:focus,
 
 .week-cast__board {
   display: grid;
-  grid-template-columns: auto repeat(7, minmax(0, 1fr));
-  grid-template-rows: auto repeat(var(--week-rows), var(--week-row));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr);
   min-height: 100%;
   height: 100%;
 }
 
 .week-cast.is-drift .week-cast__board {
   height: auto;
+  min-height: 100%;
+}
+
+.week-cast__column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
   min-height: 0;
+  height: 100%;
+  border-right: 1px solid rgba(255, 255, 255, 0.07);
+  background: #0c0e13;
 }
 
-.week-cast__row {
-  display: contents;
+.week-cast__column.is-today {
+  background: rgba(212, 160, 23, 0.1);
 }
 
-.week-cast__corner,
-.week-cast__dow,
-.week-cast__time {
-  background: #10131a;
+.week-cast__column.is-empty {
+  opacity: 0.48;
 }
 
-.week-cast__dow,
-.week-cast__time,
-.week-cast__cell {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
+.week-cast__column.is-today.is-empty {
+  opacity: 1;
 }
 
 .week-cast__dow {
-  padding: 0.28rem 0.15rem;
+  flex: 0 0 auto;
+  padding: 0.32rem 0.2rem;
   color: var(--gold-2);
   font-size: clamp(0.62rem, 1.15vw, 0.92rem);
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   text-align: center;
+  background: #10131a;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.week-cast__dow.is-today,
-.week-cast__cell.is-today {
-  background: rgba(212, 160, 23, 0.14);
-}
-
-.week-cast__dow.is-empty,
-.week-cast__cell.is-empty {
-  opacity: 0.42;
-}
-
-.week-cast__dow.is-today.is-empty,
-.week-cast__cell.is-today.is-empty {
-  opacity: 1;
+.week-cast__column.is-today .week-cast__dow {
+  background: rgba(212, 160, 23, 0.22);
+  color: #ffe7a3;
 }
 
 .week-cast__day-full {
   display: none;
 }
 
-.week-cast__time {
-  padding: 0.12rem 0.4rem;
-  color: var(--gold-2);
-  font-size: calc(var(--week-font) * 0.86);
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  align-self: stretch;
-  display: flex;
-  align-items: flex-start;
-}
-
-.week-cast__cell {
-  min-width: 0;
-  min-height: min-content;
-  padding: 0.06rem 0.18rem;
-  overflow: hidden;
-  align-content: start;
+.week-cast__stack {
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.08rem;
+  gap: clamp(0.18rem, 0.55vh, 0.42rem);
+  padding: 0.28rem 0.28rem 0.38rem;
+  overflow: hidden;
+}
+
+.week-cast.is-drift .week-cast__stack {
+  overflow: visible;
+}
+
+.week-cast__bundle {
+  flex: var(--cards, 1) 1 0;
+  min-height: min-content;
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+}
+
+.week-cast.is-drift .week-cast__bundle {
+  flex: 0 0 auto;
+}
+
+.week-cast__bundle.is-parallel {
+  position: relative;
+  padding-left: 0.42rem;
+}
+
+.week-cast__bundle.is-parallel::before {
+  content: '';
+  position: absolute;
+  left: 0.05rem;
+  top: 0.28rem;
+  bottom: 0.28rem;
+  width: 3px;
+  border-radius: 999px;
+  background: rgba(240, 194, 75, 0.78);
 }
 
 .week-cast__class {
-  display: grid;
-  gap: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.1rem;
   margin: 0;
   min-width: 0;
-  padding: 0.04rem 0.18rem 0.06rem 0.28rem;
-  border-left: 3px solid var(--program, var(--gold));
-  background: color-mix(in srgb, var(--program, var(--gold)) 18%, transparent);
-  border-radius: 4px;
+  min-height: min-content;
+  padding: 0.32rem 0.42rem 0.36rem 0.5rem;
+  border-left: 4px solid var(--program, var(--gold));
+  background: color-mix(in srgb, var(--program, var(--gold)) 30%, #12151c);
+  border-radius: 8px;
+  color: #f6f1e6;
+  font-size: calc(var(--week-font) * var(--day-scale, 1));
 }
 
 .week-cast__class[data-program='kids'],
@@ -8241,35 +8265,39 @@ input.roster-pick__name:focus,
   --program: #9a958c;
 }
 
-.week-cast__class + .week-cast__class {
-  margin-top: 0.12rem;
-  padding-top: 0.1rem;
-  border-top: 1px solid rgba(240, 194, 75, 0.22);
+.week-cast__when {
+  color: #f0c24b;
+  font-size: 0.78em;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.15;
 }
 
 .week-cast__mat {
-  color: var(--gold);
-  font-size: 0.72em;
+  color: #f4ead4;
+  font-size: 0.74em;
   font-weight: 800;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
+  line-height: 1.15;
 }
 
 .week-cast__class strong {
-  font-size: var(--week-font);
-  font-weight: 750;
+  font-size: 1em;
+  font-weight: 780;
   letter-spacing: -0.02em;
   line-height: 1.15;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .week-cast__class em {
-  color: #b7b1a4;
-  font-size: 0.78em;
+  color: #ddd6c8;
+  font-size: 0.8em;
   font-style: normal;
   font-weight: 650;
-  line-height: 1.15;
-  overflow-wrap: anywhere;
+  line-height: 1.2;
+  overflow-wrap: break-word;
 }
 
 .week-cast__notes {
@@ -8314,17 +8342,10 @@ input.roster-pick__name:focus,
   pointer-events: none;
 }
 
-.week-cast.is-drift .week-cast__dow,
-.week-cast.is-drift .week-cast__corner {
+.week-cast.is-drift .week-cast__dow {
   position: sticky;
   top: 0;
   z-index: 2;
-}
-
-.week-cast.is-drift .week-cast__time {
-  position: sticky;
-  left: 0;
-  z-index: 1;
 }
 
 @media (min-width: 1100px) {
