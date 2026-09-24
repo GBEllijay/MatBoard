@@ -45,9 +45,9 @@ function ProConsolePreview() {
     <figure className="soon-ad__preview">
       <img
         src="/pro-console-preview.png"
-        alt="Advantage Pro console home with Media Console, In-House Tournament Management Suite, Competitor Management System, and Instructor Collaboration and Cloud Access"
+        alt="Advantage Pro console home with Media Console, Competitor Management System, Instructor Collaboration and Cloud Access, and In-House Tournament Management Suite"
         width={816}
-        height={1400}
+        height={1384}
       />
       <figcaption>
         <strong>{PRO_CONSOLE_PREVIEW_LABEL}</strong>

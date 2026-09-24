@@ -38,7 +38,7 @@ export const PRO_CONSOLE_PREVIEW_LABEL = "Gym Owner and Instructor's Console";
 
 /** One line under that shot. The picture is the live four-hub console, not a wireframe. */
 export const PRO_CONSOLE_PREVIEW_NOTE =
-  'Media Console, the tournament suite, competitors, and instructor access.';
+  'Media Console, competitors, instructor access, and the tournament suite.';
 
 export const PRODUCT_TEASERS = {
   coach: COACH_HOME_TEASER,
@@ -86,16 +86,16 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
         body: 'Gallery, Class Schedule, Pro Shop, and Events on the gym TV.',
       },
       {
-        title: TOURNAMENT_SUITE_NAME,
-        body: 'Live event ops: brackets, scoreboard, match controller, rounds, and round controller.',
-      },
-      {
         title: COMPETITOR_SYSTEM_NAME,
         body: 'Competitor roster and on-device rankings. Seeding from rankings comes later.',
       },
       {
         title: INSTRUCTOR_COLLAB_NAME,
         body: 'Coming soon. An Instructor console, shared training, and roster approval with the owner.',
+      },
+      {
+        title: TOURNAMENT_SUITE_NAME,
+        body: 'Live event ops: brackets, scoreboard, match controller, rounds, and round controller.',
       },
     ],
     dismiss: 'Got it',

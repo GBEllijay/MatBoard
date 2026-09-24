@@ -1,4 +1,4 @@
-type BeltRailKind = 'white' | 'blue' | 'black' | 'tournament';
+type BeltRailKind = 'white' | 'blue' | 'purple' | 'brown' | 'black' | 'tournament';
 
 type Props = {
   kind: BeltRailKind;

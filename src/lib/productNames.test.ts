@@ -14,6 +14,8 @@ import {
   PRO_HOME_DETAIL,
   PRO_HOME_LINES,
   PRO_LADDER_DETAIL,
+  COACH_HOME_LINES,
+  WHITE_HOME_LINES,
   WHITE_LADDER_DETAIL,
   coachToolsOpen,
   parentToolboxPath,
@@ -42,6 +44,17 @@ test('Home motto stays Win by Advantage', () => {
 
 test('Home ladder details keep White meaning and a plain Pro subtitle', () => {
   assert.equal(WHITE_LADDER_DETAIL, 'BJJ scoreboard and timer, live match and rounds');
+  assert.equal(WHITE_HOME_LINES.length, 3);
+  assert.match(WHITE_HOME_LINES.join(' '), /Live Bout/);
+  assert.match(WHITE_HOME_LINES.join(' '), /Rounds timer/);
+  assert.equal(COACH_HOME_LINES.length, 3);
+  assert.match(COACH_HOME_LINES.join(' '), /Daily Lesson Plan/);
+  assert.match(COACH_HOME_LINES.join(' '), /Daily Training Videos/);
+  assert.match(COACH_HOME_LINES.join(' '), /Technique Tree/);
+  assert.match(COACH_HOME_LINES.join(' '), /Mock Tournament/);
+  assert.match(COACH_HOME_LINES.join(' '), /Competitor Roster/);
+  assert.doesNotMatch(WHITE_HOME_LINES.join(' '), /student/i);
+  assert.doesNotMatch(COACH_HOME_LINES.join(' '), /student/i);
   assert.equal(PRO_LADDER_DETAIL, 'Gym Owner and Instructors Console');
   assert.doesNotMatch(PRO_LADDER_DETAIL, /for this gym/i);
   assert.doesNotMatch(PRO_LADDER_DETAIL, /'/);
@@ -69,11 +82,15 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   assert.equal(INSTRUCTOR_COLLAB_NAME, 'Instructor Collaboration and Cloud Access');
   assert.deepEqual(
     PRO_HUBS.map((hub) => hub.title),
-    [MEDIA_CONSOLE_NAME, TOURNAMENT_SUITE_NAME, COMPETITOR_SYSTEM_NAME, INSTRUCTOR_COLLAB_NAME],
+    [MEDIA_CONSOLE_NAME, COMPETITOR_SYSTEM_NAME, INSTRUCTOR_COLLAB_NAME, TOURNAMENT_SUITE_NAME],
   );
   assert.deepEqual(
     PRO_HUBS.map((hub) => hub.to),
-    ['/slideshow?folder=gallery', '/suite', '/competitors', '/instructors'],
+    ['/slideshow?folder=gallery', '/competitors', '/instructors', '/suite'],
+  );
+  assert.deepEqual(
+    PRO_HUBS.map((hub) => hub.belt),
+    ['purple', 'brown', 'black', 'tournament'],
   );
   assert.equal(MATCH_CONTROLLER_PATH, '/match/control');
   assert.equal(ROUND_CONTROLLER_PATH, '/training/control');
