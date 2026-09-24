@@ -104,7 +104,7 @@ export function usePlayFullscreen() {
     let cancelled = false;
     const onGesture = (event: PointerEvent) => {
       const target = event.target as HTMLElement | null;
-      if (target?.closest('a, .sheet, input, textarea, select, .play-exit, .tv-tip')) return;
+      if (target?.closest('a, button, .sheet, input, textarea, select, .play-exit, .tv-tip, .week-cast__options')) return;
       void requestPageFullscreen().then((ok) => {
         if (cancelled) {
           void exitPageFullscreen();
