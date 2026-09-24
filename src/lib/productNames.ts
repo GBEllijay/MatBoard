@@ -13,9 +13,19 @@ export const PRO_LADDER_DETAIL = 'Gym Owner and Instructors Console';
  */
 export const PRO_HOME_DETAIL = `${GYM_CONSOLE_NAME} — Coming Soon`;
 
-/** Home Pro card body. Distinct short lines under the tier title. */
+/** Home Pro card body. Three short lines, similar height to White and Coach. */
 export const PRO_HOME_LINES = [
-  'Easily Cast to your Gym TV: Class Schedules, Recent Promotions, ProShop Inventory, Upcoming Events and Competitions.',
+  'Easily Cast Class Schedules, Events, Recent Promotions, Pro Shop Inventory, and More to your Gym TV.',
+  'Full In-House Tournament Management Suite.',
+  'Assignable Instructor Licenses and Much More!',
+] as const;
+
+/**
+ * Longer appetite copy on the Coming Soon ad only.
+ * Do not put these lines back on the home card.
+ */
+export const PRO_COMING_SOON_LINES = [
+  'Easily Cast to your Gym TV with Media Console: Class Schedules, Recent Promotions, ProShop Inventory, Upcoming Events and Competitions.',
   'Full In-House Tournament Management Suite with Auto-Fill Bracketing and Result Tracking.',
   'Assignable Instructor Licenses with Cross Platform Access to Updates, Shared Training Videos and More.',
 ] as const;
@@ -26,6 +36,21 @@ export const TOURNAMENT_SOFTWARE_NAME = 'Tournament Software';
 
 /** Working title until the owner picks a consumer name for bracketing software. */
 export const TOURNAMENT_SUITE_NAME = 'In-House Tournament Management Suite';
+
+/** Pro gym-TV cast hub. Same screen Gallery opens. Not a rename of the Owner Console. */
+export const MEDIA_CONSOLE_NAME = 'Media Console';
+
+/** Bottom-of-page guidance on the Media Console manage screen. */
+export const MEDIA_CONSOLE_INSTRUCTIONS = [
+  'Gold On means that folder plays on the TV.',
+  'Tap the left preview on a photo or video to include or skip it. Checked and bright is On. Dimmed is Off.',
+  'Off items stay in the list and keep their order.',
+  'One On clip loops alone. Several play in list order.',
+  'Enabled folders play Gallery, then Pro Shop, then Events.',
+  'Photos use the Photo interval. Videos play all the way through, then the next item.',
+  'Clips stay muted unless Play video sound is on, so gym music in another tab can keep going.',
+  'Shuffle randomizes that combined queue.',
+] as const;
 
 export function parentToolboxPath(proUnlocked: boolean, coachUnlocked: boolean): string {
   if (proUnlocked) return '/pro';

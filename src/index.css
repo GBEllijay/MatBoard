@@ -569,8 +569,11 @@ button.mode-card {
   min-height: auto;
   display: grid;
   grid-template-rows: auto;
-  gap: clamp(0.38rem, 1.2vh, 0.7rem);
+  gap: 0.55rem;
 }
+
+/* Belt ladder: same side inset and gap. Vertical size follows the copy,
+   with a small type step so Coach sits between compact White and tall Pro. */
 
 .home--ladder .mode-card,
 .home--ladder .mode-card--white,
@@ -578,16 +581,21 @@ button.mode-card {
 .home--ladder .mode-card--pro {
   min-height: auto;
   align-content: start;
-  padding: clamp(0.48rem, 1.35vh, 0.78rem) 0.95rem clamp(0.5rem, 1.4vh, 0.82rem) 1.05rem;
-  gap: 0.1rem;
-}
-
-.home--ladder .mode-card--pro {
-  gap: 0.28rem;
+  padding: 0.72rem 1rem 0.78rem 1.12rem;
+  gap: 0.22rem;
 }
 
 .home--ladder .mode-card strong {
-  font-size: clamp(1.22rem, 3.6vh, 1.55rem);
+  font-size: 1.34rem;
+  line-height: 1.12;
+}
+
+.home--ladder .mode-card--coach strong {
+  font-size: 1.48rem;
+}
+
+.home--ladder .mode-card--pro strong {
+  font-size: 1.62rem;
 }
 
 .home--ladder .mode-card .tier-line strong {
@@ -597,29 +605,34 @@ button.mode-card {
 
 .home--ladder .mode-card__sub,
 .home--ladder .mode-card__teaser {
-  font-size: clamp(0.78rem, 1.7vh, 0.9rem);
-  line-height: 1.28;
+  font-size: 0.88rem;
+  line-height: 1.35;
 }
 
 .home--ladder .mode-card__sub {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  overflow: hidden;
+  display: block;
+  overflow: visible;
   font-weight: 400;
 }
 
+.home--ladder .mode-card--coach .mode-card__sub {
+  font-size: 1.02rem;
+  line-height: 1.45;
+}
+
 .home--ladder .mode-card--pro .mode-card__sub {
-  display: block;
-  overflow: visible;
-  -webkit-line-clamp: unset;
-  line-clamp: unset;
+  font-size: 0.98rem;
+  line-height: 1.4;
+}
+
+.home--ladder .mode-card__copy {
+  gap: 0.34rem;
+  margin-top: 0.12rem;
 }
 
 .home--ladder .mode-card__copy > span {
-  font-size: 0.86rem;
-  line-height: 1.38;
+  font-size: 0.92rem;
+  line-height: 1.42;
 }
 
 .home--ladder .mode-card__teaser {
@@ -978,6 +991,39 @@ button.mode-card {
 .soon-ad--pro .soon-ad__feature {
   border-color: rgba(168, 188, 214, 0.22);
   background: linear-gradient(145deg, rgba(42, 53, 70, 0.55), rgba(12, 17, 24, 0.42));
+}
+
+.soon-ad__preview {
+  margin: 0;
+  display: grid;
+  justify-items: start;
+  gap: 0.4rem;
+}
+
+.soon-ad__preview img {
+  display: block;
+  width: min(100%, 22rem);
+  height: auto;
+  border-radius: 12px;
+  border: 1px dashed rgba(168, 188, 214, 0.6);
+  background: #3a414d;
+}
+
+.soon-ad__preview figcaption {
+  display: grid;
+  gap: 0.12rem;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.soon-ad__preview figcaption strong {
+  color: var(--gold-2);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .soon-ad__actions {
@@ -2899,6 +2945,100 @@ fieldset {
 .folder-row__preview--on .folder-row__preview-state {
   color: #1a1404;
   background: rgba(212, 160, 23, 0.92);
+}
+
+.saver .sheet__head h2 {
+  font-size: clamp(1.55rem, 5vw, 1.9rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.gym-logo {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+}
+
+.gym-logo__title {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.gym-logo > .btn {
+  width: 100%;
+  min-height: 48px;
+}
+
+.gym-logo__row {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.gym-logo__thumb {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.gym-logo__actions {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.gym-logo__actions .btn {
+  width: 100%;
+  min-height: 44px;
+}
+
+.saver-settings {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.saver-settings__title {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1.28rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.saver-instructions {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0.2rem 0 0;
+}
+
+.saver-instructions__label {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.saver-instructions ul {
+  margin: 0;
+  padding-left: 1.15rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.saver-instructions li {
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .saver-folders {

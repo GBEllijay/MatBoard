@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
+import { GymLogoControl } from '../components/GymLogoControl';
 import { DeviceMediaInput } from '../components/DeviceMediaInput';
 import { ToolboxFolder } from '../components/ToolboxFolder';
 import { FullscreenChip } from '../components/FullscreenChip';
@@ -10,7 +11,7 @@ import { Sheet } from '../components/Sheet';
 import { MediaSourceSheet } from '../components/VideoSourceSheet';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useToolboxParent } from '../hooks/useToolboxParent';
-import { GYM_CONSOLE_NAME } from '../lib/productNames';
+import { MEDIA_CONSOLE_INSTRUCTIONS, MEDIA_CONSOLE_NAME } from '../lib/productNames';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { formatMss, secondsToMs } from '../lib/format';
@@ -219,7 +220,7 @@ export function ScreensaverPage() {
     });
   };
 
-  const hubTitle = GYM_CONSOLE_NAME;
+  const hubTitle = MEDIA_CONSOLE_NAME;
 
   const focusEmpty = itemsInFolder(photos, focusFolder).length === 0;
   const emptyCopy =
@@ -291,17 +292,10 @@ export function ScreensaverPage() {
           setOptions(false);
         }}
       >
-        <p>
-          Gold <strong>On</strong> means that folder plays on the TV. Tap the left preview on a
-          photo or video to include or skip it — checked and bright is On, dimmed is Off. Off items
-          stay in the list and keep their order. One On clip loops alone; several play in list
-          order. Enabled folders play Gallery, then Pro Shop and Events when those are on. Photos
-          use the interval below; videos play all the way through, then the next item. Clips stay
-          muted unless you turn on Play
-          video sound, so Spotify or another tab can keep the gym music going. Shuffle randomizes
-          that combined queue.
-        </p>
-        {pickerNote ? <p className="saver-folder__empty">{pickerNote}</p> : null}
+        <GymLogoControl />
+        <section className="saver-settings">
+          <h3 className="saver-settings__title">Settings</h3>
+          {pickerNote ? <p className="saver-folder__empty">{pickerNote}</p> : null}
         <fieldset>
           <legend>Photo interval</legend>
           <div className="interval-stepper" role="group" aria-label="Photo interval">
@@ -392,6 +386,7 @@ export function ScreensaverPage() {
           <input type="checkbox" checked={playing} onChange={(e) => setPlaying(e.target.checked)} />
           Playing
         </label>
+        </section>
 
         <div className="saver-folders">
           {FOLDERS.map((folder) => (
@@ -441,6 +436,14 @@ export function ScreensaverPage() {
             />
           ))}
         </div>
+        <section className="saver-instructions">
+          <p className="saver-instructions__label">Instructions:</p>
+          <ul>
+            {MEDIA_CONSOLE_INSTRUCTIONS.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </section>
       </Sheet>
 
       <MediaSourceSheet
