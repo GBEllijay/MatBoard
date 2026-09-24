@@ -8,7 +8,15 @@ import {
   PRO_CONSOLE_PREVIEW_NOTE,
 } from './comingSoonAds.ts';
 import { COACH_AD_LEAD, COACH_HOME_TEASER } from './coachCopy.ts';
-import { GYM_CONSOLE_NAME, MEDIA_CONSOLE_NAME, PRO_COMING_SOON_LINES, PRO_HOME_DETAIL } from './productNames.ts';
+import {
+  COMPETITOR_SYSTEM_NAME,
+  GYM_CONSOLE_NAME,
+  INSTRUCTOR_COLLAB_NAME,
+  MEDIA_CONSOLE_NAME,
+  PRO_COMING_SOON_LINES,
+  PRO_HOME_DETAIL,
+  TOURNAMENT_SUITE_NAME,
+} from './productNames.ts';
 
 function adText(product: keyof typeof COMING_SOON_ADS): string {
   const ad = COMING_SOON_ADS[product];
@@ -70,13 +78,18 @@ test('Pro ad sells the Console paragraph and no price', () => {
   assert.match(text, /Coming Soon/);
   assert.match(text, /Cast to your Gym TV/i);
   assert.match(text, /Media Console/);
-  assert.equal(COMING_SOON_ADS.pro.features[0]?.title, MEDIA_CONSOLE_NAME);
+  assert.deepEqual(
+    COMING_SOON_ADS.pro.features.map((feature) => feature.title),
+    [MEDIA_CONSOLE_NAME, TOURNAMENT_SUITE_NAME, COMPETITOR_SYSTEM_NAME, INSTRUCTOR_COLLAB_NAME],
+  );
   assert.match(text, /ProShop Inventory/);
   assert.match(text, /Class Schedules/);
   assert.match(text, /Recent Promotions/);
   assert.match(text, /Upcoming Events and Competitions/);
   assert.match(text, /In-House Tournament Management Suite/i);
-  assert.match(text, /Tournament Software/);
+  assert.match(text, /Class Schedule/);
+  assert.match(text, /Competitor Management System/);
+  assert.match(text, /Instructor Collaboration and Cloud Access/);
   assert.doesNotMatch(text, /Mock Tournament/);
   assert.match(text, /Auto-Fill Bracketing/i);
   assert.match(text, /Result Tracking/i);

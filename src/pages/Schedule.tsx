@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { PlayExitMark } from '../components/PlayExitMark';
-import { GYM_CONSOLE_NAME } from '../lib/productNames';
+import { MEDIA_CONSOLE_NAME } from '../lib/productNames';
 import { Sheet } from '../components/Sheet';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useScheduleAssets, useScheduleState } from '../hooks/useStores';
@@ -122,16 +122,16 @@ export function SchedulePage() {
 
   const exitBoard = () => {
     void fs.exit().finally(() => {
-      navigate('/pro');
+      navigate('/slideshow?folder=gallery');
     });
   };
 
   return (
     <main className={`schedule${fs.className ? ` ${fs.className}` : ''}`}>
-      <PlayExitMark to="/pro" onExit={exitBoard} />
+      <PlayExitMark to="/slideshow?folder=gallery" onExit={exitBoard} />
       <header className="schedule__bar">
         <div className="schedule__brand">
-          <p className="schedule__eyebrow">{GYM_CONSOLE_NAME}</p>
+          <p className="schedule__eyebrow">{MEDIA_CONSOLE_NAME}</p>
           <h1>Class Schedule</h1>
         </div>
         <div className="schedule__actions">

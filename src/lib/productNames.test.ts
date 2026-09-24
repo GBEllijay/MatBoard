@@ -16,8 +16,13 @@ import {
   WHITE_LADDER_DETAIL,
   coachToolsOpen,
   parentToolboxPath,
+  COMPETITOR_SYSTEM_NAME,
+  INSTRUCTOR_COLLAB_NAME,
+  MATCH_CONTROLLER_PATH,
   MEDIA_CONSOLE_INSTRUCTIONS,
   MEDIA_CONSOLE_NAME,
+  PRO_HUBS,
+  ROUND_CONTROLLER_PATH,
   TOURNAMENT_SOFTWARE_NAME,
   TOURNAMENT_SUITE_NAME,
   toolEyebrow,
@@ -42,6 +47,7 @@ test('Media Console is the Pro cast hub, with phone-readable instructions', () =
   assert.ok(MEDIA_CONSOLE_INSTRUCTIONS.length >= 4);
   assert.match(MEDIA_CONSOLE_INSTRUCTIONS[0], /Gold On/);
   assert.match(MEDIA_CONSOLE_INSTRUCTIONS[0], /plays on the TV/);
+  assert.match(MEDIA_CONSOLE_INSTRUCTIONS.join('\n'), /Class Schedule opens the gym-TV board/);
   assert.doesNotMatch(MEDIA_CONSOLE_INSTRUCTIONS.join('\n'), /interval below/i);
   for (const line of MEDIA_CONSOLE_INSTRUCTIONS) {
     assert.ok(line.length < 140);
@@ -51,6 +57,21 @@ test('Media Console is the Pro cast hub, with phone-readable instructions', () =
 test('Pro suite keeps the working title and Coach keeps Mock Tournament', () => {
   assert.equal(TOURNAMENT_SUITE_NAME, 'In-House Tournament Management Suite');
   assert.doesNotMatch(TOURNAMENT_SUITE_NAME, /MatBracket/i);
+});
+
+test('Pro console hubs stay four siblings, Media Console first', () => {
+  assert.equal(COMPETITOR_SYSTEM_NAME, 'Competitor Management System');
+  assert.equal(INSTRUCTOR_COLLAB_NAME, 'Instructor Collaboration and Cloud Access');
+  assert.deepEqual(
+    PRO_HUBS.map((hub) => hub.title),
+    [MEDIA_CONSOLE_NAME, TOURNAMENT_SUITE_NAME, COMPETITOR_SYSTEM_NAME, INSTRUCTOR_COLLAB_NAME],
+  );
+  assert.deepEqual(
+    PRO_HUBS.map((hub) => hub.to),
+    ['/slideshow?folder=gallery', '/suite', '/competitors', '/instructors'],
+  );
+  assert.equal(MATCH_CONTROLLER_PATH, '/match/control');
+  assert.equal(ROUND_CONTROLLER_PATH, '/training/control');
 });
 
 test('Owner tournament tool is Tournament Software; Coach keeps Mock Tournament', () => {

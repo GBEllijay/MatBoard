@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
 import { GymLogoControl } from '../components/GymLogoControl';
 import { DeviceMediaInput } from '../components/DeviceMediaInput';
@@ -390,8 +390,8 @@ export function ScreensaverPage() {
 
         <div className="saver-folders">
           {FOLDERS.map((folder) => (
+            <Fragment key={folder.id}>
             <ToolboxFolder
-              key={folder.id}
               folder={folder}
               open={expanded[folder.id]}
               playEnabled={folderPlay[folder.id]}
@@ -434,6 +434,8 @@ export function ScreensaverPage() {
               }}
               onReorder={async (orderedIds) => persistFolderOrder(folder.id, orderedIds)}
             />
+            {folder.id === 'gallery' ? <ClassScheduleEntry /> : null}
+            </Fragment>
           ))}
         </div>
         <section className="saver-instructions">
@@ -484,6 +486,20 @@ export function ScreensaverPage() {
         onFiles={onFiles}
       />
     </main>
+  );
+}
+
+function ClassScheduleEntry() {
+  return (
+    <Link className="saver-folder saver-folder--link" to="/schedule">
+      <span className="saver-folder__summary">
+        <span className="saver-folder__title">
+          Class Schedule
+          <small>Gym TV board</small>
+        </span>
+        <span className="saver-folder__go">Open</span>
+      </span>
+    </Link>
   );
 }
 

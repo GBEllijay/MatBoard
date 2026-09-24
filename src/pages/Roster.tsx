@@ -9,6 +9,7 @@ import { useToolboxParent } from '../hooks/useToolboxParent';
 import { RankChip } from '../components/RankChip';
 import { Sheet } from '../components/Sheet';
 import { useRosterState } from '../hooks/useStores';
+import { COMPETITOR_SYSTEM_NAME } from '../lib/productNames';
 import {
   COMPETITOR_ROSTER_LABEL,
   EMPTY_ROSTER_BODY,
@@ -70,7 +71,14 @@ export function RosterPage() {
     searchParams.get('from') === 'coach' || (coachUnlocked && !proUnlocked);
   const showCsv = rosterCsvAvailable(proUnlocked, coachRoster);
   const fromSuite = searchParams.get('from') === 'suite';
-  const exitPath = coachRoster ? '/coach' : fromSuite ? '/suite' : parent.path;
+  const fromCompetitors = searchParams.get('from') === 'competitors';
+  const exitPath = coachRoster
+    ? '/coach'
+    : fromCompetitors
+      ? '/competitors'
+      : fromSuite
+        ? '/suite'
+        : parent.path;
   const csvRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [editor, setEditor] = useState<{ id: string | null; draft: StudentDraft } | null>(null);
@@ -163,8 +171,10 @@ export function RosterPage() {
       />
       <header className="roster__bar">
         <div className="roster__brand">
-          <p className="roster__eyebrow">{coachRoster ? 'Advantage Coach' : parent.eyebrow}</p>
-          <h1>{coachRoster ? COMPETITOR_ROSTER_LABEL : 'Competitor Management'}</h1>
+          <p className="roster__eyebrow">
+            {coachRoster ? 'Advantage Coach' : fromCompetitors ? COMPETITOR_SYSTEM_NAME : parent.eyebrow}
+          </p>
+          <h1>{COMPETITOR_ROSTER_LABEL}</h1>
         </div>
         {coachRoster ? null : (
           <button type="button" className="btn" onClick={openAdd}>

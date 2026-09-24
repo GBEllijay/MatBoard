@@ -3,7 +3,7 @@ import { useSyncExternalStore } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { Sheet } from '../components/Sheet';
-import { TOURNAMENT_SUITE_NAME } from '../lib/productNames';
+import { COMPETITOR_SYSTEM_NAME } from '../lib/productNames';
 import {
   draftFromFile,
   emptyRankingDraft,
@@ -37,14 +37,14 @@ export function RankingsPage() {
   return (
     <main className="roster rankings">
       <PlayExitMark
-        to="/suite"
+        to="/competitors"
         onExit={() => {
-          navigate('/suite');
+          navigate('/competitors');
         }}
       />
       <header className="roster__bar">
         <div className="roster__brand">
-          <p className="roster__eyebrow">{TOURNAMENT_SUITE_NAME}</p>
+          <p className="roster__eyebrow">{COMPETITOR_SYSTEM_NAME}</p>
           <h1>Rankings / Results</h1>
         </div>
         <button type="button" className="btn" onClick={() => setEditor({ id: null, draft: emptyRankingDraft() })}>
@@ -52,8 +52,8 @@ export function RankingsPage() {
         </button>
       </header>
       <p className="roster__lead">
-        Tournament result files for this suite. Record a name, date, division, placements, or win
-        records. They stay on this device. Cloud sync comes later.
+        Tournament result files for Competitor Management. Record a name, date, division,
+        placements, or win records. They stay on this device. Cloud sync comes later.
       </p>
       {library.files.length ? (
         <ul className="roster__list">

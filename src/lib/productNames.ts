@@ -37,8 +37,31 @@ export const TOURNAMENT_SOFTWARE_NAME = 'Tournament Software';
 /** Working title until the owner picks a consumer name for bracketing software. */
 export const TOURNAMENT_SUITE_NAME = 'In-House Tournament Management Suite';
 
+/** Pro hub for bout competitors, roster CSV, and on-device rankings. Not GB Members. */
+export const COMPETITOR_SYSTEM_NAME = 'Competitor Management System';
+
+/** Plan-only Pro hub. No cloud sync in this build. */
+export const INSTRUCTOR_COLLAB_NAME = 'Instructor Collaboration and Cloud Access';
+
 /** Pro gym-TV cast hub. Same screen Gallery opens. Not a rename of the Owner Console. */
 export const MEDIA_CONSOLE_NAME = 'Media Console';
+
+/**
+ * Unlocked Pro console, top to bottom.
+ * Competitor Management and the tournament suite stay siblings of Media Console.
+ */
+export const PRO_HUBS = [
+  { title: MEDIA_CONSOLE_NAME, to: '/slideshow?folder=gallery' },
+  { title: TOURNAMENT_SUITE_NAME, to: '/suite' },
+  { title: COMPETITOR_SYSTEM_NAME, to: '/competitors' },
+  { title: INSTRUCTOR_COLLAB_NAME, to: '/instructors' },
+] as const;
+
+/** Existing White Live Bout controller. The suite deep-links here as Match Controller. */
+export const MATCH_CONTROLLER_PATH = '/match/control';
+
+/** Existing White Rounds controller. The suite deep-links here as Round Controller. */
+export const ROUND_CONTROLLER_PATH = '/training/control';
 
 /** Bottom-of-page guidance on the Media Console manage screen. */
 export const MEDIA_CONSOLE_INSTRUCTIONS = [
@@ -47,6 +70,7 @@ export const MEDIA_CONSOLE_INSTRUCTIONS = [
   'Off items stay in the list and keep their order.',
   'One On clip loops alone. Several play in list order.',
   'Enabled folders play Gallery, then Pro Shop, then Events.',
+  'Class Schedule opens the gym-TV board. It does not join the photo queue.',
   'Photos use the Photo interval. Videos play all the way through, then the next item.',
   'Clips stay muted unless Play video sound is on, so gym music in another tab can keep going.',
   'Shuffle randomizes that combined queue.',

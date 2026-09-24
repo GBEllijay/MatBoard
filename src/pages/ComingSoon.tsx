@@ -6,10 +6,9 @@ import { ProUnlockSheet } from '../components/ProUnlockSheet';
 import { SiteFooter } from '../components/SiteFooter';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
-import { unlinkBracketBout } from '../lib/bracketBout';
 import { COMPETITOR_ROSTER_LABEL, TECHNIQUE_TREE_LABEL, TRAINING_NOTES_LABEL } from '../lib/coachCopy';
 import { lockCoach } from '../lib/coachUnlock';
-import { coachToolsOpen, MOCK_TOURNAMENT_NAME, TOURNAMENT_SUITE_NAME } from '../lib/productNames';
+import { coachToolsOpen, MOCK_TOURNAMENT_NAME, PRO_HUBS } from '../lib/productNames';
 import { lockPro } from '../lib/proUnlock';
 
 export function ComingSoonPage() {
@@ -31,27 +30,19 @@ export function ComingSoonPage() {
 
         {proUnlocked || coachUnlocked ? (
           <nav className="home__soon-actions" aria-label={proUnlocked ? 'Pro' : 'Coach'}>
-            {proUnlocked ? (
-              <Link className="btn" to="/pro">
-                Open Console
-              </Link>
-            ) : null}
+            {proUnlocked
+              ? PRO_HUBS.map((hub) => (
+                  <Link key={hub.to} className="btn btn--white" to={hub.to}>
+                    {hub.title}
+                  </Link>
+                ))
+              : null}
             {coachTools ? (
               <Link className="btn" to="/coach">
                 Open Coach
               </Link>
             ) : null}
-            {proUnlocked ? (
-              <>
-                <Link className="btn" to="/match" onClick={() => unlinkBracketBout()}>
-                  Scoreboard
-                </Link>
-                <Link className="btn" to="/training">
-                  Rounds
-                </Link>
-              </>
-            ) : null}
-            {coachTools ? (
+            {coachTools && !proUnlocked ? (
               <>
                 <Link className="btn" to="/notes">
                   {TRAINING_NOTES_LABEL}
@@ -62,31 +53,12 @@ export function ComingSoonPage() {
                 <Link className="btn" to="/technique-tree">
                   {TECHNIQUE_TREE_LABEL}
                 </Link>
-              </>
-            ) : null}
-            {proUnlocked ? (
-              <Link className="btn btn--white" to="/suite">
-                <BeltRail kind="tournament" />
-                {TOURNAMENT_SUITE_NAME}
-              </Link>
-            ) : (
-              <Link className="btn btn--white" to="/tournament">
-                <BeltRail kind="tournament" />
-                {MOCK_TOURNAMENT_NAME}
-              </Link>
-            )}
-            {coachTools ? (
-              <Link className="btn" to="/roster?from=coach">
-                {COMPETITOR_ROSTER_LABEL}
-              </Link>
-            ) : null}
-            {proUnlocked ? (
-              <>
-                <Link className="btn" to="/schedule">
-                  Class Schedule
+                <Link className="btn btn--white" to="/tournament">
+                  <BeltRail kind="tournament" />
+                  {MOCK_TOURNAMENT_NAME}
                 </Link>
-                <Link className="btn" to="/roster">
-                  Competitor Management
+                <Link className="btn" to="/roster?from=coach">
+                  {COMPETITOR_ROSTER_LABEL}
                 </Link>
               </>
             ) : null}
