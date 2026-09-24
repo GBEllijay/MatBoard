@@ -1,13 +1,23 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { PlayExitMark } from '../components/PlayExitMark';
+import { ScheduleWeekBoard } from '../components/ScheduleWeekBoard';
 import { MEDIA_CONSOLE_NAME } from '../lib/productNames';
 import { Sheet } from '../components/Sheet';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useScheduleAssets, useScheduleState } from '../hooks/useStores';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { qrDataUrl } from '../lib/qr';
+import {
+  formatScheduleCsvSummary,
+  importScheduleCsvFile,
+  scheduleCsvFileName,
+  scheduleCsvTemplate,
+  serializeScheduleCsv,
+  type ScheduleCsvImport,
+} from '../lib/scheduleCsv';
+import { isSpreadsheetWorkbook, ROSTER_CSV_WORKBOOK_ERROR, withUtf8Bom } from '../lib/rosterCsv';
 import {
   WEEKDAYS,
   WEEKDAY_LABELS,
@@ -19,12 +29,14 @@ import {
   addClass,
   addParallelClass,
   addSpecial,
+  applyScheduleImport,
   boardWeekdays,
   classesOnDay,
   formatBoardStamp,
   formatClassTime,
   formatSpecialDate,
   formatTimeGroupLine,
+  getSchedule,
   groupClassesByTime,
   loadSampleWeek,
   noticeLines,
@@ -36,6 +48,7 @@ import {
   setLogoBlob,
   setQrImageBlob,
   setQrUrl,
+  setScheduleCastEnabled,
   setScheduleNotes,
   setScheduleTemplate,
   suggestNextMat,
@@ -50,10 +63,23 @@ import {
 } from '../lib/scheduleStore';
 
 const TEMPLATE_CHROME: Record<ScheduleTemplate, string> = {
+  week: 'Week',
   'weekly-list': 'List',
   'week-grid': 'Grid',
   monthly: 'Month',
 };
+
+function downloadScheduleCsv(filename: string, csv: string): void {
+  const blob = new Blob([withUtf8Bom(csv)], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
 
 export function SchedulePage() {
   const schedule = useScheduleState();
@@ -61,6 +87,8 @@ export function SchedulePage() {
   const fs = usePlayFullscreen();
   const navigate = useNavigate();
   const [editOpen, setEditOpen] = useState(false);
+  const [castPick, setCastPick] = useState<ScheduleTemplate | null>(null);
+  const [searchParams] = useSearchParams();
   const [logoUrl, setLogoUrl] = useState('');
   const [qrImageUrl, setQrImageUrl] = useState('');
   const [qrBuilt, setQrBuilt] = useState('');
@@ -70,6 +98,13 @@ export function SchedulePage() {
   const gymName = schedule.title.trim();
 
   useWakeLock(true);
+
+  useEffect(() => {
+    if (searchParams.get('sample') !== '1') return;
+    if (getSchedule().classes.length > 0) return;
+    loadSampleWeek();
+    setScheduleTemplate('week');
+  }, [searchParams]);
 
   useEffect(() => {
     const next = assets.logo ? URL.createObjectURL(assets.logo) : '';
@@ -118,7 +153,9 @@ export function SchedulePage() {
   const notices = noticeLines(schedule.notes, schedule.specials);
   const emptyBoard =
     schedule.classes.length === 0 && notices.length === 0 && !logoUrl && !qrSrc;
-  const template = schedule.template;
+  const tv = fs.active || fs.landscape;
+  const shown: ScheduleTemplate = tv ? (castPick ?? 'week') : schedule.template;
+  const showWeek = shown === 'week';
 
   const exitBoard = () => {
     void fs.exit().finally(() => {
@@ -135,16 +172,19 @@ export function SchedulePage() {
           <h1>Class Schedule</h1>
         </div>
         <div className="schedule__actions">
-          <div className="presets presets--three schedule__views" role="radiogroup" aria-label="Display template">
+          <div className="presets schedule__views" role="radiogroup" aria-label="Display template">
             {SCHEDULE_TEMPLATES.map((id) => (
               <button
                 key={id}
                 type="button"
                 role="radio"
-                aria-checked={template === id}
+                aria-checked={shown === id}
                 aria-label={SCHEDULE_TEMPLATE_LABELS[id]}
-                className={`preset${template === id ? ' preset--on' : ''}`}
-                onClick={() => setScheduleTemplate(id)}
+                className={`preset${shown === id ? ' preset--on' : ''}`}
+                onClick={() => {
+                  setScheduleTemplate(id);
+                  if (tv) setCastPick(id);
+                }}
               >
                 {TEMPLATE_CHROME[id]}
               </button>
@@ -162,11 +202,29 @@ export function SchedulePage() {
           />
         </div>
       </header>
+      {tv ? (
+        <div className="schedule__cast-tools">
+          <button type="button" className="btn schedule__cast-edit" onClick={() => setEditOpen(true)}>
+            Edit
+          </button>
+          <FullscreenChip
+            supported={fs.supported}
+            active={fs.active}
+            nudge={fs.showFallback}
+            shortcut={fs.tvStation}
+            onToggle={() => void fs.toggle()}
+          />
+        </div>
+      ) : null}
 
       <section
-        className={`schedule__stage schedule__stage--${template}${emptyBoard ? ' schedule__stage--hint' : ''}`}
+        className={`schedule__stage schedule__stage--${shown}${emptyBoard && !showWeek ? ' schedule__stage--hint' : ''}`}
         aria-label="Gym class schedule"
       >
+        {showWeek ? (
+          <ScheduleWeekBoard variant="stage" />
+        ) : (
+          <>
         <BoardHeader
           logoUrl={logoUrl}
           qrSrc={qrSrc}
@@ -177,13 +235,14 @@ export function SchedulePage() {
 
         {emptyBoard ? (
           <p className="schedule__lead">
-            Tap Edit to add a logo, a QR code, and Monday–Sunday classes. Saved on this device.
+            Tap Edit to add Monday–Sunday classes. Export a CSV backup from Edit before you clear
+            site data.
           </p>
         ) : null}
 
-        {template === 'weekly-list' ? (
+        {shown === 'weekly-list' ? (
           <WeeklyListBoard classes={schedule.classes} today={today} />
-        ) : template === 'week-grid' ? (
+        ) : shown === 'week-grid' ? (
           <WeekGridBoard classes={schedule.classes} today={today} />
         ) : (
           <MonthlyBoard
@@ -202,6 +261,8 @@ export function SchedulePage() {
             <p>Holiday closings, schedule changes, and special events go here.</p>
           )}
         </aside>
+          </>
+        )}
       </section>
 
       <ScheduleEditor
@@ -422,6 +483,72 @@ function MonthlyBoard({
   );
 }
 
+function ScheduleBackup({
+  csvNote,
+  pending,
+  onTemplate,
+  onExport,
+  onPick,
+  onConfirm,
+  onCancel,
+}: {
+  csvNote: string;
+  pending: ScheduleCsvImport | null;
+  onTemplate: () => void;
+  onExport: () => void;
+  onPick: () => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <fieldset className="schedule-edit__backup">
+      <legend>Backup</legend>
+      <p className="schedule-edit__hint">
+        Download a CSV before you clear site data or reset this phone. Import replaces the schedule
+        on this device after you confirm. It does not merge. A class-only file replaces classes and
+        leaves the gym name, QR, and notices in place.
+      </p>
+      <div className="schedule-edit__backup-actions">
+        <button type="button" className="btn btn--ghost" onClick={onTemplate}>
+          Download template
+        </button>
+        <button type="button" className="btn btn--ghost" onClick={onPick}>
+          Import CSV
+        </button>
+        <button type="button" className="btn btn--ghost" onClick={onExport}>
+          Export CSV
+        </button>
+      </div>
+      {pending ? (
+        <div className="schedule-edit__confirm">
+          <p>
+            {pending.mode === 'replace-board'
+              ? `Replace the schedule on this device with ${pending.classCount} ${
+                  pending.classCount === 1 ? 'class' : 'classes'
+                } and ${pending.specialCount} special ${
+                  pending.specialCount === 1 ? 'date' : 'dates'
+                } from this file?`
+              : `Replace the weekly classes on this device with ${pending.classCount} ${
+                  pending.classCount === 1 ? 'class' : 'classes'
+                }? Gym name, QR link, and notices stay as they are.`}
+          </p>
+          <button type="button" className="btn" onClick={onConfirm}>
+            Replace schedule
+          </button>
+          <button type="button" className="btn btn--ghost" onClick={onCancel}>
+            Cancel
+          </button>
+        </div>
+      ) : null}
+      {csvNote ? (
+        <p className="schedule-edit__hint schedule-edit__summary" role="status">
+          {csvNote}
+        </p>
+      ) : null}
+    </fieldset>
+  );
+}
+
 function ScheduleEditor({
   open,
   onClose,
@@ -447,6 +574,9 @@ function ScheduleEditor({
   const [subtitle, setSubtitle] = useState('');
   const [pickerNote, setPickerNote] = useState('');
   const titleRef = useRef<HTMLInputElement>(null);
+  const csvRef = useRef<HTMLInputElement>(null);
+  const [csvNote, setCsvNote] = useState('');
+  const [pendingImport, setPendingImport] = useState<ScheduleCsvImport | null>(null);
 
   const usedMatsAtTime = classesOnDay(schedule.classes, day)
     .filter((row) => row.time === time)
@@ -506,14 +636,33 @@ function ScheduleEditor({
     <Sheet open={open} title="Edit class schedule" onClose={onClose}>
       <p className="schedule-edit__copy">
         Fat-thumb fields for the gym TV board. Logo, QR, classes, and notices stay on this phone or
-        computer — nothing is uploaded.
+        computer — nothing is uploaded. Save a CSV backup before you clear site data or reset the
+        app.
       </p>
       {pickerNote ? <p className="schedule-edit__error">{pickerNote}</p> : null}
 
+      <ScheduleBackup
+        csvNote={csvNote}
+        pending={pendingImport}
+        onTemplate={() => downloadScheduleCsv(scheduleCsvFileName('template'), scheduleCsvTemplate())}
+        onExport={() => downloadScheduleCsv(scheduleCsvFileName('backup'), serializeScheduleCsv(schedule))}
+        onPick={() => csvRef.current?.click()}
+        onConfirm={() => {
+          if (!pendingImport?.payload) return;
+          applyScheduleImport(pendingImport.payload);
+          setCsvNote(formatScheduleCsvSummary(pendingImport));
+          setPendingImport(null);
+        }}
+        onCancel={() => setPendingImport(null)}
+      />
+
       <fieldset>
         <legend>Display template</legend>
-        <p className="schedule-edit__hint">Saved on this device. List is the default gym-TV flyer.</p>
-        <div className="presets presets--three schedule-edit__templates" role="radiogroup" aria-label="Display template">
+        <p className="schedule-edit__hint">
+          Saved on this device for phone preview. Landscape, fullscreen, and the gym-TV cast use the
+          week board.
+        </p>
+        <div className="presets schedule-edit__templates" role="radiogroup" aria-label="Display template">
           {SCHEDULE_TEMPLATES.map((id) => (
             <button
               key={id}
@@ -542,7 +691,10 @@ function ScheduleEditor({
 
       <fieldset>
         <legend>Logo</legend>
-        <p className="schedule-edit__hint">Left side of the board. Pick a picture from this device.</p>
+        <p className="schedule-edit__hint">
+          The board uses the Media Console custom gym logo when one is saved. Otherwise it uses the
+          picture you pick here, then the Advantage mark.
+        </p>
         <div className="schedule-edit__preview-row">
           <div className={`schedule-edit__thumb${logoUrl ? ' is-filled' : ''}`}>
             {logoUrl ? <img src={logoUrl} alt="" /> : <span>No logo</span>}
@@ -787,10 +939,68 @@ function ScheduleEditor({
 
       <SpecialDatesEditor />
 
+      <fieldset>
+        <legend>Gym TV cast</legend>
+        <p className="schedule-edit__hint">
+          On plays this week board in Media Console after Gallery, when at least one class is saved.
+        </p>
+        <div className="presets presets--split" role="radiogroup" aria-label="Class Schedule on the TV">
+          <button
+            type="button"
+            role="radio"
+            aria-checked={schedule.castEnabled}
+            className={`preset${schedule.castEnabled ? ' preset--on' : ''}`}
+            onClick={() => setScheduleCastEnabled(true)}
+          >
+            On the TV
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={!schedule.castEnabled}
+            className={`preset${!schedule.castEnabled ? ' preset--on' : ''}`}
+            onClick={() => setScheduleCastEnabled(false)}
+          >
+            Off the TV
+          </button>
+        </div>
+      </fieldset>
+
       <button type="button" className="btn" onClick={onClose}>
         Done
       </button>
 
+      <input
+        ref={csvRef}
+        type="file"
+        accept=".csv,text/csv,text/plain"
+        hidden
+        aria-label="Import class schedule CSV"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = '';
+          if (!file) return;
+          if (isSpreadsheetWorkbook(file)) {
+            setPendingImport(null);
+            setCsvNote(ROSTER_CSV_WORKBOOK_ERROR);
+            return;
+          }
+          void importScheduleCsvFile(file)
+            .then((result) => {
+              if (result.error || !result.payload) {
+                setPendingImport(null);
+                setCsvNote(result.error ?? 'Could not read that file. Save as CSV UTF-8 and try again.');
+                return;
+              }
+              setCsvNote('');
+              setPendingImport(result);
+            })
+            .catch(() => {
+              setPendingImport(null);
+              setCsvNote('Could not read that file. Save as CSV UTF-8 (comma-separated) and try again.');
+            });
+        }}
+      />
       <input
         ref={logoRef}
         type="file"

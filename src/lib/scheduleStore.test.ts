@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  WEEKDAYS,
   boardWeekdays,
+  classesAt,
   classesOnDay,
   compareClasses,
   compareMatLocation,
@@ -20,6 +22,7 @@ import {
   sortClasses,
   specialsThisWeek,
   suggestNextMat,
+  weekTimeRows,
   weekdayFromJsDay,
   type SpecialDate,
   type WeeklyClassSlot,
@@ -130,6 +133,9 @@ describe('normalizeGymCalendar', () => {
     assert.equal(defaultGymCalendar().template, DEFAULT_SCHEDULE_TEMPLATE);
     assert.equal(normalizeGymCalendar({ template: 'gb-red' }).template, 'weekly-list');
     assert.equal(normalizeGymCalendar({ template: 'monthly' }).template, 'monthly');
+    assert.equal(normalizeGymCalendar({ template: 'week' }).template, 'week');
+    assert.equal(normalizeGymCalendar({}).castEnabled, true);
+    assert.equal(normalizeGymCalendar({ castEnabled: false }).castEnabled, false);
   });
 });
 
@@ -198,6 +204,23 @@ describe('weekly list helpers', () => {
       SAMPLE_WEEK_SLOTS.some((slot) => slot.subtitle.includes('Blue belt')),
       true,
     );
+    for (const day of WEEKDAYS) {
+      assert.equal(
+        SAMPLE_WEEK_SLOTS.some((slot) => slot.day === day),
+        true,
+        day,
+      );
+    }
+    const times = weekTimeRows(
+      SAMPLE_WEEK_SLOTS.map((slot, index) => ({ ...slot, id: `s${index}`, kind: 'class' })),
+    );
+    assert.equal(times[0], '06:00');
+    assert.equal(times.includes('17:00'), true);
+    assert.equal(classesAt(
+      SAMPLE_WEEK_SLOTS.map((slot, index) => ({ ...slot, id: `s${index}`, kind: 'class' })),
+      'mon',
+      '17:00',
+    ).length, 2);
   });
 });
 

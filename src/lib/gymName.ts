@@ -6,6 +6,7 @@
 
 export const GYM_NAME_STORAGE_KEY = 'matboard.gymName.v1';
 export const GYM_NAME_MAX = 80;
+const GYM_NAME_EVENT = 'matboard-gym-name';
 
 type GymNameRecord = {
   version: 1;
@@ -29,9 +30,27 @@ function readRecord(): GymNameRecord | null {
   }
 }
 
+function emitGymName(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new Event(GYM_NAME_EVENT));
+}
+
 /** Saved school or academy, or '' when none is set. */
 export function readGymName(): string {
   return readRecord()?.name.trim() ?? '';
+}
+
+export function subscribeGymName(fn: () => void): () => void {
+  if (typeof window === 'undefined') return () => {};
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === GYM_NAME_STORAGE_KEY) fn();
+  };
+  window.addEventListener('storage', onStorage);
+  window.addEventListener(GYM_NAME_EVENT, fn);
+  return () => {
+    window.removeEventListener('storage', onStorage);
+    window.removeEventListener(GYM_NAME_EVENT, fn);
+  };
 }
 
 /** Save the device gym name. A blank name clears the key. */
@@ -40,11 +59,12 @@ export function writeGymName(value: string): void {
   try {
     if (!name) {
       localStorage.removeItem(GYM_NAME_STORAGE_KEY);
-      return;
+    } else {
+      const record: GymNameRecord = { version: 1, name };
+      localStorage.setItem(GYM_NAME_STORAGE_KEY, JSON.stringify(record));
     }
-    const record: GymNameRecord = { version: 1, name };
-    localStorage.setItem(GYM_NAME_STORAGE_KEY, JSON.stringify(record));
   } catch {
     /* quota / private mode */
   }
+  emitGymName();
 }

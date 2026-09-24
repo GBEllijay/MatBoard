@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  ADVANTAGE_MARK_SRC,
   GYM_LOGO_STORAGE_KEY,
   clearGymLogo,
   readGymLogo,
+  resolveScheduleLogo,
   saveGymLogoFile,
   writeGymLogo,
 } from './gymLogo.ts';
@@ -61,6 +63,13 @@ test('junk in the gym logo key is ignored', () => {
   assert.equal(readGymLogo(), null);
   localStorage.setItem(GYM_LOGO_STORAGE_KEY, JSON.stringify({ version: 1, dataUrl: 'https://example.com/logo.png' }));
   assert.equal(readGymLogo(), null);
+});
+
+test('the schedule board prefers the Media Console logo, then a board picture, then Advantage', () => {
+  assert.equal(resolveScheduleLogo('data:image/png;base64,GYM', 'blob:board'), 'data:image/png;base64,GYM');
+  assert.equal(resolveScheduleLogo('', 'blob:board'), 'blob:board');
+  assert.equal(resolveScheduleLogo(null, ''), ADVANTAGE_MARK_SRC);
+  assert.equal(ADVANTAGE_MARK_SRC, '/advantage-icon.png');
 });
 
 test('a non-image is not stored as the gym logo', async () => {

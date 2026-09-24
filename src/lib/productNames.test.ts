@@ -65,7 +65,9 @@ test('Media Console is the Pro cast hub, with phone-readable instructions', () =
   assert.ok(MEDIA_CONSOLE_INSTRUCTIONS.length >= 4);
   assert.match(MEDIA_CONSOLE_INSTRUCTIONS[0], /Gold On/);
   assert.match(MEDIA_CONSOLE_INSTRUCTIONS[0], /plays on the TV/);
-  assert.match(MEDIA_CONSOLE_INSTRUCTIONS.join('\n'), /Class Schedule opens the gym-TV board/);
+  assert.match(MEDIA_CONSOLE_INSTRUCTIONS.join('\n'), /after Gallery, before Pro Shop/);
+  assert.match(MEDIA_CONSOLE_INSTRUCTIONS.join('\n'), /CSV backup/);
+  assert.doesNotMatch(MEDIA_CONSOLE_INSTRUCTIONS.join('\n'), /does not join the photo queue/);
   assert.doesNotMatch(MEDIA_CONSOLE_INSTRUCTIONS.join('\n'), /interval below/i);
   for (const line of MEDIA_CONSOLE_INSTRUCTIONS) {
     assert.ok(line.length < 140);

@@ -17,7 +17,9 @@ function isTypingTarget(target: EventTarget | null): boolean {
 export function usePlayFullscreen() {
   const [supported, setSupported] = useState(false);
   const [active, setActive] = useState(false);
-  const [landscape, setLandscape] = useState(false);
+  const [landscape, setLandscape] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(orientation: landscape)').matches,
+  );
   const [blocked, setBlocked] = useState(false);
   const [tvStation, setTvStation] = useState(false);
   const [idle, setIdle] = useState(false);

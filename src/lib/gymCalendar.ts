@@ -23,20 +23,22 @@ export const WEEKDAY_SHORT: Record<Weekday, string> = {
   sun: 'Sun',
 };
 
-/** Owner-picked gym-TV layout. Weekly list is the default flyer-style board. */
-export const SCHEDULE_TEMPLATES = ['weekly-list', 'week-grid', 'monthly'] as const;
+/** Owner-picked phone preview. Landscape, fullscreen, and the cast use the week board. */
+export const SCHEDULE_TEMPLATES = ['week', 'weekly-list', 'week-grid', 'monthly'] as const;
 export type ScheduleTemplate = (typeof SCHEDULE_TEMPLATES)[number];
 export const DEFAULT_SCHEDULE_TEMPLATE: ScheduleTemplate = 'weekly-list';
 
 export const SCHEDULE_TEMPLATE_LABELS: Record<ScheduleTemplate, string> = {
+  week: 'Week',
   'weekly-list': 'Weekly list',
   'week-grid': 'Week grid',
   monthly: 'Monthly',
 };
 
 export const SCHEDULE_TEMPLATE_HINTS: Record<ScheduleTemplate, string> = {
-  'weekly-list': 'Day banners with time, mat, and class rows — the gym-TV flyer.',
-  'week-grid': 'Compact Monday–Sunday columns. Best on a landscape TV.',
+  week: 'Monday–Sunday columns with times down the side. This is the gym-TV board.',
+  'weekly-list': 'Day banners with time, mat, and class rows — handy while editing on a phone.',
+  'week-grid': 'Stacked Monday–Sunday columns for a quick phone preview.',
   monthly: 'Special dates first, with a compact recap of the regular week.',
 };
 
@@ -108,8 +110,10 @@ export type GymCalendarState = {
   qrUrl: string;
   /** Free-text strip. Still the fastest way to post a gym-TV notice. */
   notes: string;
-  /** Display template for the Class Schedule TV board. */
+  /** Display template for the phone preview. The cast week board ignores this. */
   template: ScheduleTemplate;
+  /** When true, Media Console plays the week board after Gallery. */
+  castEnabled: boolean;
   classes: WeeklyClassSlot[];
   specials: SpecialDate[];
 };
@@ -231,6 +235,25 @@ export function boardWeekdays(classes: readonly WeeklyClassSlot[]): Weekday[] {
   return days.length ? days : [...WEEKDAYS];
 }
 
+/** Clock times that appear anywhere in the week, earliest first. The TV grid’s rows. */
+export function weekTimeRows(classes: readonly WeeklyClassSlot[]): string[] {
+  const times = new Set<string>();
+  for (const row of classes) {
+    const time = row.time.trim();
+    if (time) times.add(time);
+  }
+  return [...times].sort((a, b) => parseTimeMinutes(a) - parseTimeMinutes(b) || a.localeCompare(b));
+}
+
+/** Classes that share one day and clock time (MAT 1 beside MAT 2). */
+export function classesAt(
+  classes: readonly WeeklyClassSlot[],
+  day: Weekday,
+  time: string,
+): WeeklyClassSlot[] {
+  return classesOnDay(classes, day).filter((row) => row.time === time);
+}
+
 /** Group a day's classes under shared clock times (5:00 PM → MAT 1 / MAT 2). */
 export function groupClassesByTime(classes: readonly WeeklyClassSlot[]): ClassTimeGroup[] {
   const groups: ClassTimeGroup[] = [];
@@ -298,21 +321,26 @@ export function defaultGymCalendar(): GymCalendarState {
     qrUrl: '',
     notes: '',
     template: DEFAULT_SCHEDULE_TEMPLATE,
+    castEnabled: true,
     classes: [],
     specials: [],
   };
 }
 
-export const SAMPLE_WEEK_TITLE = 'Ellijay BJJ';
-export const SAMPLE_WEEK_NOTES = 'Open mat Saturday. No classes Friday.';
+export const SAMPLE_WEEK_TITLE = 'Sample Academy';
+export const SAMPLE_WEEK_QR = 'https://example.com/class-schedule';
+export const SAMPLE_WEEK_NOTES =
+  'Sample week — not your gym. Export a CSV backup before you reset this device.';
 
 /** Flyer-shaped week for preview — generic class names, not a branded theme. */
 export const SAMPLE_WEEK_SLOTS: ReadonlyArray<Omit<WeeklyClassSlot, 'id' | 'kind'>> = [
   { day: 'mon', time: '12:00', title: 'Advanced', location: 'MAT 2', subtitle: 'Blue belt & up' },
+  { day: 'mon', time: '16:30', title: 'Kids BJJ', location: 'MAT 1', subtitle: '' },
   { day: 'mon', time: '17:00', title: 'Tiny Champions', location: 'MAT 1', subtitle: '' },
   { day: 'mon', time: '17:00', title: 'Advanced Kids', location: 'MAT 2', subtitle: 'Grey & White+' },
   { day: 'mon', time: '18:00', title: 'Little Champions', location: 'MAT 1', subtitle: '' },
   { day: 'mon', time: '18:00', title: 'Fundamentals', location: 'MAT 2', subtitle: '' },
+  { day: 'tue', time: '06:00', title: 'Morning Gi', location: 'MAT 1', subtitle: '' },
   { day: 'tue', time: '17:00', title: 'Little Champions', location: 'MAT 1', subtitle: '' },
   { day: 'tue', time: '17:00', title: 'Fundamentals', location: 'MAT 2', subtitle: 'All Levels' },
   { day: 'tue', time: '18:00', title: 'Youth Competition', location: 'MAT 1', subtitle: '' },
@@ -322,10 +350,21 @@ export const SAMPLE_WEEK_SLOTS: ReadonlyArray<Omit<WeeklyClassSlot, 'id' | 'kind
   { day: 'wed', time: '17:00', title: 'Tiny Champions', location: 'MAT 1', subtitle: '' },
   { day: 'wed', time: '18:00', title: 'Little Champions', location: 'MAT 1', subtitle: '' },
   { day: 'wed', time: '18:00', title: 'Fundamentals', location: 'MAT 2', subtitle: 'All Levels' },
+  { day: 'wed', time: '19:00', title: 'Competition Class', location: 'MAT 1', subtitle: '' },
+  { day: 'thu', time: '06:00', title: 'Morning Gi', location: 'MAT 1', subtitle: '' },
   { day: 'thu', time: '17:00', title: 'Fundamentals — Week Review', location: 'MAT 1', subtitle: '' },
   { day: 'thu', time: '17:00', title: 'No-Gi', location: 'MAT 2', subtitle: 'All Levels' },
   { day: 'thu', time: '18:00', title: 'Competition Class', location: 'MAT 1', subtitle: '' },
+  { day: 'thu', time: '19:00', title: 'Open Rolling', location: 'MAT 1', subtitle: 'All Levels' },
+  { day: 'fri', time: '12:00', title: 'Noon Gi', location: 'MAT 2', subtitle: '' },
+  { day: 'fri', time: '17:00', title: 'Kids BJJ', location: 'MAT 1', subtitle: '' },
+  { day: 'fri', time: '18:00', title: 'Fundamentals', location: 'MAT 2', subtitle: 'All Levels' },
+  { day: 'fri', time: '19:00', title: 'Advanced', location: 'MAT 2', subtitle: 'Blue belt & up' },
+  { day: 'sat', time: '10:00', title: 'Kids BJJ', location: 'MAT 1', subtitle: '' },
   { day: 'sat', time: '11:00', title: 'Open Mat', location: 'MAT 1', subtitle: '' },
+  { day: 'sat', time: '12:00', title: 'Fundamentals', location: 'MAT 2', subtitle: '' },
+  { day: 'sun', time: '10:00', title: 'Open Mat', location: 'MAT 1', subtitle: 'All Levels' },
+  { day: 'sun', time: '11:00', title: 'Competition Drills', location: 'MAT 1', subtitle: '' },
 ];
 
 export function sampleWeekClasses(): WeeklyClassSlot[] {
@@ -416,6 +455,7 @@ export function normalizeGymCalendar(raw: unknown): GymCalendarState {
     qrUrl: typeof parsed.qrUrl === 'string' ? parsed.qrUrl : '',
     notes: typeof parsed.notes === 'string' ? parsed.notes : '',
     template: isScheduleTemplate(parsed.template) ? parsed.template : DEFAULT_SCHEDULE_TEMPLATE,
+    castEnabled: parsed.castEnabled === false ? false : true,
     classes: sortClasses(classes),
     specials: sortSpecials(specials),
   };

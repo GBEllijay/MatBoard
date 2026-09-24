@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
 import { GymLogoControl } from '../components/GymLogoControl';
 import { DeviceMediaInput } from '../components/DeviceMediaInput';
+import { ScheduleWeekBoard } from '../components/ScheduleWeekBoard';
 import { ShopCastSlide } from '../components/ShopCastSlide';
 import { ToolboxFolder } from '../components/ToolboxFolder';
 import { FullscreenChip } from '../components/FullscreenChip';
@@ -11,6 +12,7 @@ import { TvTip } from '../components/TvTip';
 import { Sheet } from '../components/Sheet';
 import { MediaSourceSheet } from '../components/VideoSourceSheet';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
+import { useScheduleState } from '../hooks/useStores';
 import { useToolboxParent } from '../hooks/useToolboxParent';
 import { readGymLogo } from '../lib/gymLogo';
 import { MEDIA_CONSOLE_INSTRUCTIONS, MEDIA_CONSOLE_NAME } from '../lib/productNames';
@@ -60,6 +62,8 @@ import {
   type StoredPhoto,
 } from '../lib/photoStore';
 import { itemsInFolder } from '../lib/playlist';
+import { insertScheduleCastSlide, scheduleCastDwellMs } from '../lib/scheduleCast';
+import { setScheduleCastEnabled } from '../lib/scheduleStore';
 import {
   buildCastSlides,
   DEFAULT_SHOP_CAST_MODE,
@@ -110,9 +114,17 @@ export function ScreensaverPage() {
 
   const focusFolder = requestedFolder ?? 'gallery';
   const focusConfig = folderById(focusFolder);
+  const schedule = useScheduleState();
   const queue = useMemo(() => playableItems(photos, folderPlay), [photos, folderPlay]);
   const shopList = useMemo(() => itemsInFolder(photos, 'shop'), [photos]);
-  const slides = useMemo(() => buildCastSlides(queue, shopList), [queue, shopList]);
+  const slides = useMemo(
+    () =>
+      insertScheduleCastSlide(
+        buildCastSlides(queue, shopList),
+        schedule.castEnabled && schedule.classes.length > 0,
+      ),
+    [queue, shopList, schedule.castEnabled, schedule.classes.length],
+  );
 
   useVisibleViewportHeight();
   useWakeLock(playing && slides.length > 0);
@@ -180,7 +192,8 @@ export function ScreensaverPage() {
   useEffect(() => {
     if (!playing || !currentSlide || currentIsVideo) return;
     if (order.length <= 1) return;
-    const id = window.setTimeout(advance, intervalMs);
+    const dwell = currentSlide.kind === 'schedule' ? scheduleCastDwellMs(intervalMs) : intervalMs;
+    const id = window.setTimeout(advance, dwell);
     return () => window.clearTimeout(id);
   }, [playing, currentSlide, currentIsVideo, order.length, intervalMs, advance, index]);
 
@@ -275,7 +288,7 @@ export function ScreensaverPage() {
       className={`saver${currentSlide ? ' saver--play' : ''}${fs.className ? ` ${fs.className}` : ''}`}
       onClick={(event) => {
         const target = event.target as HTMLElement;
-        if (target.closest('.sheet, .chrome, .saver__empty, .btn, input, label, .play-fs, .play-exit, .tv-tip, .saver__unmute')) return;
+        if (target.closest('.sheet, .chrome, .saver__empty, .btn, input, label, .play-fs, .play-exit, .tv-tip, .saver__unmute, .week-cast.is-drift, .week-cast.is-paused')) return;
         if (!muteVideo) setUnlockSound(true);
         if (slides.length) setOptions(true);
       }}
@@ -292,7 +305,9 @@ export function ScreensaverPage() {
         />
       </div>
       <TvTip onFullscreen={() => void fs.enter()} />
-      {currentSlide?.kind === 'shop' ? (
+      {currentSlide?.kind === 'schedule' ? (
+        <ScheduleWeekBoard variant="cast" onOpenOptions={() => setOptions(true)} />
+      ) : currentSlide?.kind === 'shop' ? (
         <ShopCastSlide
           key={currentSlide.items.map((item) => `${item.id}:${item.buyUrl}`).join('|')}
           items={currentSlide.items}
@@ -598,16 +613,46 @@ export function ScreensaverPage() {
 }
 
 function ClassScheduleEntry() {
+  const schedule = useScheduleState();
+  const ready = schedule.classes.length > 0;
+  const onTv = schedule.castEnabled && ready;
   return (
-    <Link className="saver-folder saver-folder--link" to="/schedule">
-      <span className="saver-folder__summary">
+    <section className="saver-folder saver-schedule" aria-label="Class Schedule">
+      <div className="saver-schedule__top">
         <span className="saver-folder__title">
           Class Schedule
-          <small>Gym TV board</small>
+          <small>{onTv ? 'In this cast' : 'Gym TV week board'}</small>
         </span>
-        <span className="saver-folder__go">Open</span>
-      </span>
-    </Link>
+        <Link className="saver-folder__go" to="/schedule">
+          Open
+        </Link>
+      </div>
+      <div className="presets presets--split" role="radiogroup" aria-label="Class Schedule on the TV">
+        <button
+          type="button"
+          role="radio"
+          aria-checked={schedule.castEnabled}
+          className={`preset${schedule.castEnabled ? ' preset--on' : ''}`}
+          onClick={() => setScheduleCastEnabled(true)}
+        >
+          On the TV
+        </button>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={!schedule.castEnabled}
+          className={`preset${!schedule.castEnabled ? ' preset--on' : ''}`}
+          onClick={() => setScheduleCastEnabled(false)}
+        >
+          Off the TV
+        </button>
+      </div>
+      <p className="saver-schedule__hint">
+        {ready
+          ? 'On adds the week board after Gallery and before Pro Shop. Off keeps photos and Pro Shop only.'
+          : 'Add classes on the schedule page, then turn this on to play the week board in the cast.'}
+      </p>
+    </section>
   );
 }
 
