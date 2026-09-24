@@ -4,6 +4,11 @@ import { INSTRUCTOR_COLLAB_NAME } from '../lib/productNames';
 
 const PLANS = [
   {
+    title: 'Generate instructor invite / license',
+    body: 'Paying Pro gyms can create invite links for instructors, with no hard seat limit. Each instructor creates their own login. They appear under this gym on the cloud later.',
+    action: 'Coming Soon',
+  },
+  {
     title: 'Advantage Instructor console',
     body: 'Like Coach, labeled Instructor. Instructors collaborate with owners. No separate sign-in in this build.',
   },
@@ -38,6 +43,11 @@ export function InstructorCollaborationPage() {
                 <p className="plan-card__kicker">Coming Soon · Alpha</p>
                 <strong>{plan.title}</strong>
                 <span>{plan.body}</span>
+                {'action' in plan ? (
+                  <button type="button" className="btn" disabled>
+                    {plan.action}
+                  </button>
+                ) : null}
               </article>
             ))}
           </div>
