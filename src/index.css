@@ -5284,6 +5284,127 @@ a.saver-folder--link {
   font-size: 1.2rem;
 }
 
+/* Phone/tablet Grid: one cell per day and time. Text wraps inside the cell. */
+.schedule__grid-scroll {
+  min-height: 0;
+  overflow: auto;
+}
+
+.schedule__grid-empty {
+  margin: 0;
+  padding: 0.9rem 1rem;
+  color: #7a7468;
+}
+
+.schedule__gridboard {
+  display: grid;
+  grid-template-columns: 5.6rem repeat(var(--grid-times), minmax(7.6rem, 1fr));
+  width: max-content;
+  min-width: 100%;
+  align-items: stretch;
+}
+
+.schedule__grid-row {
+  display: contents;
+}
+
+.schedule__grid-corner,
+.schedule__grid-time,
+.schedule__grid-day {
+  background: var(--board-paper);
+}
+
+.schedule__grid-corner,
+.schedule__grid-time {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.schedule__grid-corner,
+.schedule__grid-day {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+}
+
+.schedule__grid-time {
+  z-index: 2;
+  padding: 0.4rem 0.45rem;
+  color: #8a6a12;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-align: center;
+  text-transform: uppercase;
+  border-bottom: 2px solid rgba(212, 160, 23, 0.55);
+}
+
+.schedule__grid-day {
+  padding: 0.45rem 0.4rem;
+  color: #8a6a12;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(22, 20, 15, 0.1);
+}
+
+.schedule__grid-cell {
+  min-width: 0;
+  padding: 0.35rem 0.45rem 0.45rem;
+  border-bottom: 1px solid rgba(22, 20, 15, 0.1);
+  border-left: 1px solid rgba(22, 20, 15, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0.32rem;
+  align-content: start;
+}
+
+.schedule__grid-day.is-today {
+  background: #f3e2a4;
+}
+
+.schedule__grid-cell.is-today {
+  background: rgba(240, 194, 75, 0.22);
+}
+
+.schedule__grid-class {
+  margin: 0;
+  display: grid;
+  gap: 0.02rem;
+  min-width: 0;
+}
+
+.schedule__grid-class + .schedule__grid-class {
+  padding-top: 0.28rem;
+  border-top: 1px solid rgba(138, 106, 18, 0.35);
+}
+
+.schedule__grid-mat {
+  color: #8a6a12;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.schedule__grid-class strong {
+  font-size: 0.88rem;
+  font-weight: 750;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.schedule__grid-class em {
+  color: #5c574c;
+  font-size: 0.75rem;
+  font-style: normal;
+  font-weight: 650;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
 .schedule__month {
   min-height: 0;
   overflow: auto;
@@ -5336,6 +5457,10 @@ a.saver-folder--link {
 
 .schedule__month-week li.is-today {
   border-color: rgba(212, 160, 23, 0.7);
+}
+
+.schedule__month-line {
+  display: block;
 }
 
 .schedule__month-empty {

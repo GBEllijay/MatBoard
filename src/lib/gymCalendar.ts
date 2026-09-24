@@ -38,7 +38,7 @@ export const SCHEDULE_TEMPLATE_LABELS: Record<ScheduleTemplate, string> = {
 export const SCHEDULE_TEMPLATE_HINTS: Record<ScheduleTemplate, string> = {
   week: 'Monday–Sunday columns with times down the side. This is the gym-TV board.',
   'weekly-list': 'Day banners with time, mat, and class rows — handy while editing on a phone.',
-  'week-grid': 'Stacked Monday–Sunday columns for a quick phone preview.',
+  'week-grid': 'Days down the side and times across. Each class stays in its own cell.',
   monthly: 'Special dates first, with a compact recap of the regular week.',
 };
 

@@ -5,8 +5,10 @@ import { PlayExitMark } from '../components/PlayExitMark';
 import { ScheduleWeekBoard } from '../components/ScheduleWeekBoard';
 import { MEDIA_CONSOLE_NAME } from '../lib/productNames';
 import { Sheet } from '../components/Sheet';
+import { useGymLogo } from '../hooks/useGymBrand';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useScheduleAssets, useScheduleState } from '../hooks/useStores';
+import { ADVANTAGE_MARK_SRC, resolveScheduleLogo } from '../lib/gymLogo';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { qrDataUrl } from '../lib/qr';
 import {
@@ -22,6 +24,8 @@ import {
   WEEKDAYS,
   WEEKDAY_LABELS,
   WEEKDAY_SHORT,
+  classesAt,
+  weekTimeRows,
   SCHEDULE_TEMPLATES,
   SCHEDULE_TEMPLATE_HINTS,
   SCHEDULE_TEMPLATE_LABELS,
@@ -95,7 +99,9 @@ export function SchedulePage() {
   const [qrNote, setQrNote] = useState('');
   const today = todayWeekday();
   const stamp = formatBoardStamp();
+  const gymLogo = useGymLogo();
   const gymName = schedule.title.trim();
+  const headerLogo = resolveScheduleLogo(gymLogo, logoUrl);
 
   useWakeLock(true);
 
@@ -228,7 +234,8 @@ export function SchedulePage() {
         ) : (
           <>
         <BoardHeader
-          logoUrl={logoUrl}
+          logoUrl={headerLogo}
+          logoIsMark={headerLogo === ADVANTAGE_MARK_SRC}
           qrSrc={qrSrc}
           qrHref={qrHref}
           gymName={gymName}
@@ -281,12 +288,14 @@ export function SchedulePage() {
 
 function BoardHeader({
   logoUrl,
+  logoIsMark,
   qrSrc,
   qrHref,
   gymName,
   stamp,
 }: {
   logoUrl: string;
+  logoIsMark: boolean;
   qrSrc: string;
   qrHref: string;
   gymName: string;
@@ -294,8 +303,8 @@ function BoardHeader({
 }) {
   return (
     <div className="schedule__pins">
-      <div className={`schedule__logo${logoUrl ? ' is-filled' : ''}`}>
-        {logoUrl ? <img src={logoUrl} alt="" /> : <span>Gym logo</span>}
+      <div className={`schedule__logo is-filled${logoIsMark ? ' is-mark' : ''}`}>
+        <img src={logoUrl} alt={logoIsMark ? 'Advantage' : 'Gym logo'} />
       </div>
       <div className="schedule__heading">
         <h2>{gymName || 'Class Schedule'}</h2>
@@ -405,25 +414,58 @@ function WeekGridBoard({
   classes: readonly WeeklyClassSlot[];
   today: Weekday;
 }) {
+  const times = weekTimeRows(classes);
+  if (!times.length) {
+    return <p className="schedule__grid-empty">No classes yet.</p>;
+  }
   return (
-    <div className="schedule__week" role="list">
-      {WEEKDAYS.map((day) => {
-        const rows = classesOnDay(classes, day);
-        return (
-          <article
-            key={day}
-            className={`schedule__day${day === today ? ' is-today' : ''}`}
-            role="listitem"
-            aria-current={day === today ? 'date' : undefined}
-          >
-            <h3>
-              <span className="schedule__day-full">{WEEKDAY_LABELS[day]}</span>
-              <span className="schedule__day-short">{WEEKDAY_SHORT[day]}</span>
-            </h3>
-            <TimeBlocks classes={rows} emptyLabel="—" />
-          </article>
-        );
-      })}
+    <div className="schedule__grid-scroll">
+      <div
+        className="schedule__gridboard"
+        role="table"
+        aria-label="Week grid"
+        style={{ ['--grid-times' as string]: String(times.length) }}
+      >
+        <div className="schedule__grid-corner" role="columnheader" />
+        {times.map((time) => (
+          <div key={time} className="schedule__grid-time" role="columnheader">
+            {formatClassTime(time)}
+          </div>
+        ))}
+        {WEEKDAYS.map((day) => (
+          <div key={day} className="schedule__grid-row" role="row">
+            <div
+              className={`schedule__grid-day${day === today ? ' is-today' : ''}`}
+              role="rowheader"
+              aria-current={day === today ? 'date' : undefined}
+            >
+              {WEEKDAY_LABELS[day]}
+            </div>
+            {times.map((time) => {
+              const items = classesAt(classes, day, time);
+              return (
+                <div
+                  key={`${day}-${time}`}
+                  className={`schedule__grid-cell${day === today ? ' is-today' : ''}`}
+                  role="cell"
+                >
+                  {items.map((item) => {
+                    const mat = item.location.trim();
+                    const detail = item.subtitle.trim();
+                    return (
+                      <p key={item.id} className="schedule__grid-class">
+                        {mat ? <span className="schedule__grid-mat">{mat}</span> : null}
+                        <strong>{item.title.trim() || 'Class'}</strong>
+                        {detail ? <em>{detail}</em> : null}
+                      </p>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -471,9 +513,11 @@ function MonthlyBoard({
                 <li key={day} className={day === today ? 'is-today' : undefined}>
                   <strong>{WEEKDAY_SHORT[day]}</strong>
                   <span>
-                    {groupClassesByTime(rows)
-                      .map((group) => formatTimeGroupLine(group))
-                      .join(' · ')}
+                    {groupClassesByTime(rows).map((group) => (
+                      <span key={`${day}-${group.time}`} className="schedule__month-line">
+                        {formatTimeGroupLine(group)}
+                      </span>
+                    ))}
                   </span>
                 </li>
               );
