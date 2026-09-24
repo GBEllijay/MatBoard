@@ -16,6 +16,10 @@ type Props = {
   onRemove: (id: string) => Promise<void>;
   onReorder: (orderedIds: string[]) => Promise<void>;
   onItemPlayToggle: (id: string, enabled: boolean) => Promise<void>;
+  onBuyUrl?: (id: string, buyUrl: string) => Promise<void>;
+  onStartsSlide?: (id: string, startsSlide: boolean) => Promise<void>;
+  notice?: string;
+  addDisabled?: boolean;
 };
 
 /** Shared Console folder chrome: folder play toggle + ordered list (Gallery, then Pro Shop / Events). */
@@ -34,6 +38,10 @@ export function ToolboxFolder({
   onRemove,
   onReorder,
   onItemPlayToggle,
+  onBuyUrl,
+  onStartsSlide,
+  notice,
+  addDisabled,
 }: Props) {
   return (
     <details
@@ -67,8 +75,9 @@ export function ToolboxFolder({
       <div className="saver-folder__panel">
         {folder.ready ? (
           <>
+            {notice ? <p className="saver-folder__empty">{notice}</p> : null}
             {onAdd ? (
-              <button type="button" className="btn" onClick={onAdd}>
+              <button type="button" className="btn" onClick={onAdd} disabled={addDisabled}>
                 {folder.addLabel}
               </button>
             ) : null}
@@ -90,6 +99,8 @@ export function ToolboxFolder({
               onRemove={onRemove}
               onReorder={onReorder}
               onPlayToggle={onItemPlayToggle}
+              onBuyUrl={onBuyUrl}
+              onStartsSlide={onStartsSlide}
             />
           </>
         ) : (
@@ -104,6 +115,8 @@ export function ToolboxFolder({
                 onRemove={onRemove}
                 onReorder={onReorder}
                 onPlayToggle={onItemPlayToggle}
+                onBuyUrl={onBuyUrl}
+                onStartsSlide={onStartsSlide}
               />
             ) : null}
           </>

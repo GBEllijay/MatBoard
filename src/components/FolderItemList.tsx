@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { isItemPlayEnabled, moveItemIds } from '../lib/playlist';
+import { buyLinkForQr, slideMarksForList } from '../lib/shopSlides';
 
 export type FolderListConfig = {
   label: string;
@@ -19,6 +20,8 @@ export type FolderListItem = {
   label: string;
   mime?: string;
   playEnabled?: boolean;
+  buyUrl?: string;
+  startsSlide?: boolean;
 };
 
 function isVideoMime(mime?: string): boolean {
@@ -35,6 +38,8 @@ type Props = {
   onRemove: (id: string) => Promise<void>;
   onReorder: (orderedIds: string[]) => Promise<void>;
   onPlayToggle?: (id: string, enabled: boolean) => Promise<void>;
+  onBuyUrl?: (id: string, buyUrl: string) => Promise<void>;
+  onStartsSlide?: (id: string, startsSlide: boolean) => Promise<void>;
 };
 
 type DragSession = {
@@ -68,6 +73,8 @@ export function FolderItemList({
   onRemove,
   onReorder,
   onPlayToggle,
+  onBuyUrl,
+  onStartsSlide,
 }: Props) {
   const [draftIds, setDraftIds] = useState<string[] | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -79,6 +86,9 @@ export function FolderItemList({
 
   const visibleIds = draftIds ?? idsOf(items);
   const byId = new Map(items.map((item) => [item.id, item]));
+  const slideMarks = onBuyUrl
+    ? slideMarksForList(visibleIds.map((id) => byId.get(id)).filter((item): item is FolderListItem => Boolean(item)))
+    : null;
 
   useEffect(() => {
     if (!dragRef.current?.dragging) setDraftIds(null);
@@ -170,7 +180,7 @@ export function FolderItemList({
     const target = event.target as HTMLElement;
     if (
       target.closest(
-        'input, .folder-row__move, .folder-row__remove, .folder-row__play, .folder-row__preview',
+        'input, .folder-row__move, .folder-row__remove, .folder-row__play, .folder-row__preview, .folder-row__url, .folder-row__slide',
       )
     )
       return;
@@ -266,6 +276,7 @@ export function FolderItemList({
         {visibleIds.map((id, index) => {
           const item = byId.get(id);
           if (!item) return null;
+          const mark = slideMarks?.get(item.id);
           return (
             <FolderItemRow
               key={item.id}
@@ -277,6 +288,7 @@ export function FolderItemList({
               isLast={index === visibleIds.length - 1}
               dragging={draggingId === item.id}
               selected={selectedId === item.id}
+              slideMark={mark}
               onSelect={onSelect ? () => onSelect(item.id) : undefined}
               rowRef={(node) => {
                 rowRefs.current[item.id] = node;
@@ -289,6 +301,10 @@ export function FolderItemList({
               onRename={async (label) => onRename(item.id, label)}
               onRemove={async () => onRemove(item.id)}
               onPlayToggle={onPlayToggle ? async (enabled) => onPlayToggle(item.id, enabled) : undefined}
+              onBuyUrl={onBuyUrl ? async (buyUrl) => onBuyUrl(item.id, buyUrl) : undefined}
+              onStartsSlide={
+                onStartsSlide ? async (startsSlide) => onStartsSlide(item.id, startsSlide) : undefined
+              }
               onMoveUp={() => moveBy(index, index - 1)}
               onMoveDown={() => moveBy(index, index + 1)}
             />
@@ -308,6 +324,7 @@ function FolderItemRow({
   isLast,
   dragging,
   selected,
+  slideMark,
   onSelect,
   rowRef,
   onPointerDown,
@@ -318,6 +335,8 @@ function FolderItemRow({
   onRename,
   onRemove,
   onPlayToggle,
+  onBuyUrl,
+  onStartsSlide,
   onMoveUp,
   onMoveDown,
 }: {
@@ -329,6 +348,7 @@ function FolderItemRow({
   isLast: boolean;
   dragging: boolean;
   selected: boolean;
+  slideMark?: { slide: number; joined: boolean };
   onSelect?: () => void;
   rowRef: (node: HTMLLIElement | null) => void;
   onPointerDown: (event: ReactPointerEvent<HTMLLIElement>) => void;
@@ -339,14 +359,20 @@ function FolderItemRow({
   onRename: (label: string) => Promise<void>;
   onRemove: () => Promise<void>;
   onPlayToggle?: (enabled: boolean) => Promise<void>;
+  onBuyUrl?: (buyUrl: string) => Promise<void>;
+  onStartsSlide?: (startsSlide: boolean) => Promise<void>;
   onMoveUp: () => void;
   onMoveDown: () => void;
 }) {
   const [label, setLabel] = useState(item.label);
+  const [buyUrl, setBuyUrl] = useState(item.buyUrl ?? '');
   const [thumbFailed, setThumbFailed] = useState(false);
   useEffect(() => {
     setLabel(item.label);
   }, [item.label]);
+  useEffect(() => {
+    setBuyUrl(item.buyUrl ?? '');
+  }, [item.buyUrl]);
   useEffect(() => {
     setThumbFailed(false);
   }, [src]);
@@ -378,9 +404,9 @@ function FolderItemRow({
   return (
     <li
       ref={rowRef}
-      className={`folder-row saver__row${dragging ? ' folder-row--dragging saver__row--dragging' : ''}${
-        selected ? ' folder-row--selected' : ''
-      }${playEnabled || !onPlayToggle ? '' : ' folder-row--off'}`}
+      className={`folder-row saver__row${onBuyUrl ? ' folder-row--shop' : ''}${
+        dragging ? ' folder-row--dragging saver__row--dragging' : ''
+      }${selected ? ' folder-row--selected' : ''}${playEnabled || !onPlayToggle ? '' : ' folder-row--off'}`}
       style={{ touchAction: dragging ? 'none' : 'pan-y' }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -434,6 +460,7 @@ function FolderItemRow({
         </span>
       )}
       <input
+        className="folder-row__name"
         value={label}
         placeholder={fallback}
         aria-label={`Label for ${fallback}`}
@@ -445,6 +472,57 @@ function FolderItemRow({
           if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
         }}
       />
+      {onBuyUrl ? (
+        <label className="folder-row__url">
+          Buy link
+          <input
+            value={buyUrl}
+            inputMode="url"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
+            placeholder="gym.example/product"
+            aria-label={`Buy link for ${name}`}
+            onChange={(event) => setBuyUrl(event.target.value)}
+            onBlur={() => {
+              const next = buyLinkForQr(buyUrl);
+              setBuyUrl(next);
+              if (next !== (item.buyUrl ?? '')) void onBuyUrl(next);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') (event.target as HTMLInputElement).blur();
+            }}
+          />
+        </label>
+      ) : null}
+      {onStartsSlide && slideMark ? (
+        <div className="folder-row__slide">
+          <span className="folder-row__slide-label">Slide {slideMark.slide}</span>
+          <div className="folder-row__slide-choices" role="group" aria-label={`Cast page for ${name}`}>
+            <button
+              type="button"
+              aria-pressed={!slideMark.joined}
+              onClick={() => {
+                if (!slideMark.joined) return;
+                void onStartsSlide(true);
+              }}
+            >
+              New slide
+            </button>
+            <button
+              type="button"
+              aria-pressed={slideMark.joined}
+              disabled={isFirst}
+              onClick={() => {
+                if (slideMark.joined || isFirst) return;
+                void onStartsSlide(false);
+              }}
+            >
+              Same slide
+            </button>
+          </div>
+        </div>
+      ) : null}
       <div className={`folder-row__actions saver__row-actions${onSelect ? ' folder-row__actions--select' : ''}`}>
         {onSelect ? (
           <button

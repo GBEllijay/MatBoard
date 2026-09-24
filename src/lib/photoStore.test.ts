@@ -26,6 +26,9 @@ test('Console folders are Gallery, Pro Shop, and Events', () => {
   );
   assert.equal(FOLDERS[0].videoAddLabel, 'Add videos');
   assert.equal(FOLDERS[0].addLabel, 'Add photos');
+  assert.equal(FOLDERS[1].label, 'Pro Shop');
+  assert.equal(FOLDERS[1].ready, true);
+  assert.equal(FOLDERS[2].ready, false);
 });
 
 test('Gallery accepts photos and videos; other folders stay images', () => {

@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
 import { GymLogoControl } from '../components/GymLogoControl';
 import { DeviceMediaInput } from '../components/DeviceMediaInput';
+import { ShopCastSlide } from '../components/ShopCastSlide';
 import { ToolboxFolder } from '../components/ToolboxFolder';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { PlayExitMark } from '../components/PlayExitMark';
@@ -11,6 +12,7 @@ import { Sheet } from '../components/Sheet';
 import { MediaSourceSheet } from '../components/VideoSourceSheet';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useToolboxParent } from '../hooks/useToolboxParent';
+import { readGymLogo } from '../lib/gymLogo';
 import { MEDIA_CONSOLE_INSTRUCTIONS, MEDIA_CONSOLE_NAME } from '../lib/productNames';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
@@ -31,6 +33,7 @@ import {
   DEFAULT_MUTE_VIDEO,
   DEFAULT_SHUFFLE,
   FOLDERS,
+  fileMatchesFolder,
   folderById,
   folderExpandedState,
   getSaverPrefs,
@@ -45,15 +48,25 @@ import {
   renamePhoto,
   reorderFolderItems,
   setFolderPlay,
+  setItemBuyUrl,
   setItemPlay,
+  setItemStartsSlide,
   setSaverIntervalSec,
   setSaverMuteVideo,
   setSaverShuffle,
+  setShopCastMode,
   withFolderOrder,
   type FolderId,
   type StoredPhoto,
 } from '../lib/photoStore';
 import { itemsInFolder } from '../lib/playlist';
+import {
+  buildCastSlides,
+  DEFAULT_SHOP_CAST_MODE,
+  SHOP_CAST_MODE_OPTIONS,
+  SHOP_ITEM_CAP,
+  type ShopCastMode,
+} from '../lib/shopSlides';
 
 export function ScreensaverPage() {
   const [photos, setPhotos] = useState<StoredPhoto[]>([]);
@@ -69,6 +82,8 @@ export function ScreensaverPage() {
   const [addKind, setAddKind] = useState<MediaSourceKind>('photo');
   const [unlockSound, setUnlockSound] = useState(false);
   const [folderPlay, setFolderPlayState] = useState(DEFAULT_FOLDER_PLAY);
+  const [shopCastMode, setShopCastModeState] = useState<ShopCastMode>(DEFAULT_SHOP_CAST_MODE);
+  const [gymLogoUrl, setGymLogoUrl] = useState<string | null>(() => readGymLogo());
   const [expanded, setExpanded] = useState<Record<FolderId, boolean>>(() =>
     folderExpandedState('gallery'),
   );
@@ -96,9 +111,11 @@ export function ScreensaverPage() {
   const focusFolder = requestedFolder ?? 'gallery';
   const focusConfig = folderById(focusFolder);
   const queue = useMemo(() => playableItems(photos, folderPlay), [photos, folderPlay]);
+  const shopList = useMemo(() => itemsInFolder(photos, 'shop'), [photos]);
+  const slides = useMemo(() => buildCastSlides(queue, shopList), [queue, shopList]);
 
   useVisibleViewportHeight();
-  useWakeLock(playing && queue.length > 0);
+  useWakeLock(playing && slides.length > 0);
 
   const refresh = async () => {
     const rows = await listPhotos();
@@ -112,8 +129,13 @@ export function ScreensaverPage() {
       setFolderPlayState(prefs.folderPlay);
       setShuffle(prefs.shuffle);
       setMuteVideo(prefs.muteVideo);
+      setShopCastModeState(prefs.shopCastMode);
     });
   }, []);
+
+  useEffect(() => {
+    if (!options) setGymLogoUrl(readGymLogo());
+  }, [options]);
 
   const photosRef = useRef(photos);
   photosRef.current = photos;
@@ -133,20 +155,21 @@ export function ScreensaverPage() {
   }, [folderPlay, shuffle]);
 
   const order = useMemo(() => {
-    const ids = queue.map((_, i) => i);
+    const ids = slides.map((_, i) => i);
     if (!shuffle) return ids;
     for (let i = ids.length - 1; i > 0; i -= 1) {
       const j = Math.floor(Math.random() * (i + 1));
       [ids[i], ids[j]] = [ids[j], ids[i]];
     }
     return ids;
-  }, [queue, shuffle]);
+  }, [slides, shuffle]);
 
   useEffect(() => {
     setIndex((n) => (order.length === 0 ? 0 : n % order.length));
   }, [order.length]);
 
-  const currentPhoto = queue[order[index] ?? 0];
+  const currentSlide = slides[order[index] ?? 0];
+  const currentPhoto = currentSlide?.kind === 'media' ? currentSlide.item : undefined;
   const current = currentPhoto ? urlById[currentPhoto.id] : undefined;
   const currentIsVideo = Boolean(currentPhoto && isVideoItem(currentPhoto));
 
@@ -155,11 +178,11 @@ export function ScreensaverPage() {
   }, [order.length]);
 
   useEffect(() => {
-    if (!playing || !currentPhoto || currentIsVideo) return;
+    if (!playing || !currentSlide || currentIsVideo) return;
     if (order.length <= 1) return;
     const id = window.setTimeout(advance, intervalMs);
     return () => window.clearTimeout(id);
-  }, [playing, currentPhoto, currentIsVideo, order.length, intervalMs, advance, index]);
+  }, [playing, currentSlide, currentIsVideo, order.length, intervalMs, advance, index]);
 
   const commitInterval = (next: number) => {
     const clamped = clampIntervalSec(next);
@@ -192,6 +215,11 @@ export function ScreensaverPage() {
     if (!next) setUnlockSound(true);
   };
 
+  const commitShopCastMode = (next: ShopCastMode) => {
+    setShopCastModeState(next);
+    void setShopCastMode(next);
+  };
+
   const openAdd = (folderId: FolderId, kind: MediaSourceKind) => {
     addFolderRef.current = folderId;
     setAddKind(kind);
@@ -201,15 +229,25 @@ export function ScreensaverPage() {
   const onFiles = async (files: FileList | null) => {
     if (!files?.length) return;
     const kind = addKind;
+    const folderId = addFolderRef.current;
+    const folder = folderById(folderId);
+    const picked = [...files];
     setAddOpen(false);
-    const added = await addFolderFiles([...files], addFolderRef.current);
-    setPickerNote(
-      added
-        ? ''
-        : kind === 'video'
-          ? 'That file cannot play here. Switch the camera to video, or pick an MP4 / WebM.'
-          : 'That file is not an image this folder can keep.',
-    );
+    const added = await addFolderFiles(picked, folderId);
+    const accepted = picked.filter((file) => fileMatchesFolder(file, folder)).length;
+    if (!added) {
+      setPickerNote(
+        folderId === 'shop' && accepted > 0
+          ? `Pro Shop keeps ${SHOP_ITEM_CAP} cards on this device. Remove one to add another.`
+          : kind === 'video'
+            ? 'That file cannot play here. Switch the camera to video, or pick an MP4 / WebM.'
+            : 'That file is not an image this folder can keep.',
+      );
+    } else if (folderId === 'shop' && added < accepted) {
+      setPickerNote(`Added ${added}. Pro Shop keeps ${SHOP_ITEM_CAP} cards on this device.`);
+    } else {
+      setPickerNote('');
+    }
     await refresh();
     if (added) setPlaying(true);
   };
@@ -225,17 +263,21 @@ export function ScreensaverPage() {
   const focusEmpty = itemsInFolder(photos, focusFolder).length === 0;
   const emptyCopy =
     photos.length === 0
-      ? 'Add photos opens Take photo or Pick from gallery. Add videos opens Record or Pick from gallery. They stay on this phone or computer — nothing is uploaded. Photos loop fullscreen; clips play through, muted by default. Press F for fullscreen on a computer plugged into the TV.'
-      : 'Nothing is set to play. Turn on Gallery in options, then tap a left preview so at least one photo or video is On.';
+      ? focusFolder === 'shop'
+        ? `${focusConfig.emptyCopy} Press F for fullscreen on a computer plugged into the TV.`
+        : 'Add photos opens Take photo or Pick from gallery. Add videos opens Record or Pick from gallery. They stay on this phone or computer — nothing is uploaded. Photos loop fullscreen; clips play through, muted by default. Press F for fullscreen on a computer plugged into the TV.'
+      : focusFolder === 'shop'
+        ? 'Nothing is set to play. Turn on Pro Shop in options, then tap a left preview so at least one card is On.'
+        : 'Nothing is set to play. Turn on Gallery in options, then tap a left preview so at least one photo or video is On.';
 
   return (
     <main
-      className={`saver${current ? ' saver--play' : ''}${fs.className ? ` ${fs.className}` : ''}`}
+      className={`saver${currentSlide ? ' saver--play' : ''}${fs.className ? ` ${fs.className}` : ''}`}
       onClick={(event) => {
         const target = event.target as HTMLElement;
         if (target.closest('.sheet, .chrome, .saver__empty, .btn, input, label, .play-fs, .play-exit, .tv-tip, .saver__unmute')) return;
         if (!muteVideo) setUnlockSound(true);
-        if (queue.length) setOptions(true);
+        if (slides.length) setOptions(true);
       }}
     >
       <Chrome ghost />
@@ -250,7 +292,15 @@ export function ScreensaverPage() {
         />
       </div>
       <TvTip onFullscreen={() => void fs.enter()} />
-      {current && currentPhoto ? (
+      {currentSlide?.kind === 'shop' ? (
+        <ShopCastSlide
+          key={currentSlide.items.map((item) => `${item.id}:${item.buyUrl}`).join('|')}
+          items={currentSlide.items}
+          srcById={urlById}
+          mode={shopCastMode}
+          logoUrl={gymLogoUrl}
+        />
+      ) : current && currentPhoto ? (
         <SaverSlide
           key={currentPhoto.id}
           item={currentPhoto}
@@ -356,6 +406,28 @@ export function ScreensaverPage() {
           </div>
         </fieldset>
         <fieldset>
+          <legend>Pro Shop on the TV</legend>
+          <div className="presets presets--shop" role="radiogroup" aria-label="Pro Shop on the TV">
+            {SHOP_CAST_MODE_OPTIONS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                role="radio"
+                aria-checked={shopCastMode === option.id}
+                className={`preset${shopCastMode === option.id ? ' preset--on' : ''}`}
+                onClick={() => commitShopCastMode(option.id)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <p className="saver-sound-hint">
+            Each card on a slide gets its own QR from its buy link. Logo uses the custom gym logo
+            above. Landscape puts the QR beside the photo. With the logo on, the mark sits on top
+            and each QR sits under its photo.
+          </p>
+        </fieldset>
+        <fieldset>
           <legend>Video sound</legend>
           <p className="saver-sound-hint">
             Mute clips so gym-floor music keeps playing. Match and Training buzzers still cut
@@ -433,6 +505,42 @@ export function ScreensaverPage() {
                 }
               }}
               onReorder={async (orderedIds) => persistFolderOrder(folder.id, orderedIds)}
+              onBuyUrl={
+                folder.id === 'shop'
+                  ? async (id, buyUrl) => {
+                      setPhotos((rows) =>
+                        rows.map((row) => (row.id === id ? { ...row, buyUrl } : row)),
+                      );
+                      try {
+                        await setItemBuyUrl(id, buyUrl);
+                      } catch {
+                        await refresh();
+                      }
+                    }
+                  : undefined
+              }
+              onStartsSlide={
+                folder.id === 'shop'
+                  ? async (id, startsSlide) => {
+                      setPhotos((rows) =>
+                        rows.map((row) => (row.id === id ? { ...row, startsSlide } : row)),
+                      );
+                      try {
+                        await setItemStartsSlide(id, startsSlide);
+                      } catch {
+                        await refresh();
+                      }
+                    }
+                  : undefined
+              }
+              notice={
+                folder.id === 'shop' && itemsInFolder(photos, 'shop').length >= SHOP_ITEM_CAP
+                  ? `Pro Shop keeps ${SHOP_ITEM_CAP} cards on this device. Remove one to add another.`
+                  : undefined
+              }
+              addDisabled={
+                folder.id === 'shop' && itemsInFolder(photos, 'shop').length >= SHOP_ITEM_CAP
+              }
             />
             {folder.id === 'gallery' ? <ClassScheduleEntry /> : null}
             </Fragment>

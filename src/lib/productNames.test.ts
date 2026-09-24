@@ -36,7 +36,7 @@ test('Console name uses the exact Instructor apostrophe', () => {
   assert.doesNotMatch(GYM_CONSOLE_NAME, /Owners Toolbox/i);
 });
 
-test('Home motto stays a quiet line under the Advantage title', () => {
+test('Home motto stays Win by Advantage', () => {
   assert.equal(HOME_MOTTO, 'Win by Advantage');
 });
 

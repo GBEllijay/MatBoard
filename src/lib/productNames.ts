@@ -1,3 +1,5 @@
+import { SHOP_ITEM_CAP } from './shopSlides.ts';
+
 /** User-facing Advantage Pro console name. Keep this exact apostrophe. */
 export const GYM_CONSOLE_NAME = "Gym Owner and Instructor's Console";
 
@@ -7,7 +9,7 @@ export const WHITE_LADDER_DETAIL = 'BJJ scoreboard and timer, live match and rou
 /** Home ladder and Pro hub line after “Pro —”. Not the Owner Console page title. */
 export const PRO_LADDER_DETAIL = 'Gym Owner and Instructors Console';
 
-/** Quiet line under the Advantage title on the public home page. */
+/** Brand line under the Advantage title on the public home page. */
 export const HOME_MOTTO = 'Win by Advantage';
 
 /**
@@ -77,6 +79,10 @@ export const MEDIA_CONSOLE_INSTRUCTIONS = [
   'Photos use the Photo interval. Videos play all the way through, then the next item.',
   'Clips stay muted unless Play video sound is on, so gym music in another tab can keep going.',
   'Shuffle randomizes that combined queue.',
+  'Pro Shop: add a photo, a name, and a buy link. The TV builds a QR from that link.',
+  'Same slide groups cards on one page. Each card on that page keeps its own QR.',
+  'Pro Shop display: Images only, Images + QR, or Images + QR + gym logo.',
+  `Pro Shop keeps ${SHOP_ITEM_CAP} cards on this device. Nothing is uploaded.`,
 ] as const;
 
 export function parentToolboxPath(proUnlocked: boolean, coachUnlocked: boolean): string {
