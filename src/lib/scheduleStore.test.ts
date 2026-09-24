@@ -13,8 +13,10 @@ import {
   formatClassTime,
   formatSpecialDate,
   formatTimeGroupLine,
+  classProgram,
   groupClassesByTime,
   monthWeeks,
+  weekHourLanes,
   normalizeGymCalendar,
   normalizeQrUrl,
   noticeLines,
@@ -235,6 +237,18 @@ describe('weekly list helpers', () => {
       SAMPLE_WEEK_SLOTS.map((slot, index) => ({ ...slot, id: `s${index}`, kind: 'class' })),
     );
     assert.equal(times[0], '06:00');
+    const lanes = weekHourLanes(
+      SAMPLE_WEEK_SLOTS.map((slot, index) => ({ ...slot, id: `h${index}`, kind: 'class' as const })),
+    );
+    assert.equal(lanes[0], '06:00');
+    assert.equal(lanes.at(-1), '19:00');
+    assert.equal(lanes.includes('07:00'), true);
+    assert.equal(lanes.includes('13:00'), true);
+    assert.equal(classProgram('Tiny Champions').id, 'kids');
+    assert.equal(classProgram('Little Champions').id, classProgram('Kids BJJ').id);
+    assert.equal(classProgram('Fundamentals').id, 'fundamentals');
+    assert.equal(classProgram('GB3').id, 'advanced');
+    assert.equal(classProgram('No-Gi').id, 'nogi');
     assert.equal(times.includes('17:00'), true);
     assert.equal(classesAt(
       SAMPLE_WEEK_SLOTS.map((slot, index) => ({ ...slot, id: `s${index}`, kind: 'class' })),

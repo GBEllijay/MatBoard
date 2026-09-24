@@ -36,10 +36,10 @@ export const SCHEDULE_TEMPLATE_LABELS: Record<ScheduleTemplate, string> = {
 };
 
 export const SCHEDULE_TEMPLATE_HINTS: Record<ScheduleTemplate, string> = {
-  week: 'Monday–Sunday columns, times down the side, fitted to the screen. This is the gym-TV week.',
+  week: 'Hourly lanes, Monday–Sunday. Full class name, time, and mat. Fitted to the gym TV.',
   'weekly-list': 'Day banners for editing on a phone. The TV still casts Week or Month.',
   'week-grid': 'The old grid is retired. This board uses the full week.',
-  monthly: 'This month, Monday start. Each day shows time and class. Extra classes read +N more.',
+  monthly: 'This month at a glance. Color chips by program and a class count. Not full class titles.',
 };
 
 /** What the screen should draw. The overlapping grid never comes back. */
@@ -285,7 +285,7 @@ export function boardWeekdays(classes: readonly WeeklyClassSlot[]): Weekday[] {
   return days.length ? days : [...WEEKDAYS];
 }
 
-/** Clock times that appear anywhere in the week, earliest first. The TV grid’s rows. */
+/** Clock times that appear anywhere in the week, earliest first. */
 export function weekTimeRows(classes: readonly WeeklyClassSlot[]): string[] {
   const times = new Set<string>();
   for (const row of classes) {
@@ -293,6 +293,64 @@ export function weekTimeRows(classes: readonly WeeklyClassSlot[]): string[] {
     if (time) times.add(time);
   }
   return [...times].sort((a, b) => parseTimeMinutes(a) - parseTimeMinutes(b) || a.localeCompare(b));
+}
+
+/**
+ * One lane per hour from the earliest class to the latest.
+ * 6:00 AM and 7:00 PM become 6:00 through 19:00, including empty hours.
+ */
+export function weekHourLanes(classes: readonly WeeklyClassSlot[]): string[] {
+  let earliest = Number.POSITIVE_INFINITY;
+  let latest = Number.NEGATIVE_INFINITY;
+  for (const row of classes) {
+    const minutes = parseTimeMinutes(row.time);
+    if (!Number.isFinite(minutes)) continue;
+    earliest = Math.min(earliest, minutes);
+    latest = Math.max(latest, minutes);
+  }
+  if (!Number.isFinite(earliest) || !Number.isFinite(latest)) return [];
+  const start = Math.floor(earliest / 60);
+  const end = Math.floor(latest / 60);
+  const lanes: string[] = [];
+  for (let hour = start; hour <= end; hour += 1) {
+    lanes.push(`${String(hour).padStart(2, '0')}:00`);
+  }
+  return lanes;
+}
+
+/** Classes on this day whose clock falls in the hour that starts at `lane` (`HH:00`). */
+export function classesInHour(
+  classes: readonly WeeklyClassSlot[],
+  day: Weekday,
+  lane: string,
+): WeeklyClassSlot[] {
+  const start = parseTimeMinutes(lane);
+  if (!Number.isFinite(start)) return [];
+  const end = start + 60;
+  return classesOnDay(classes, day).filter((row) => {
+    const minutes = parseTimeMinutes(row.time);
+    return minutes >= start && minutes < end;
+  });
+}
+
+export type ClassProgramId = 'kids' | 'fundamentals' | 'advanced' | 'nogi' | 'open' | 'gi' | 'other';
+
+export type ClassProgram = {
+  id: ClassProgramId;
+  label: string;
+};
+
+/** Stable program color. Same kind of class stays the same color all week. */
+export function classProgram(title: string): ClassProgram {
+  const name = title.trim().toLowerCase();
+  if (/tiny|little|kids|youth|homeschool|champion/.test(name)) return { id: 'kids', label: 'Kids' };
+  if (/no-?gi/.test(name)) return { id: 'nogi', label: 'No-Gi' };
+  if (/open mat|open rolling|\brolling\b/.test(name)) return { id: 'open', label: 'Open' };
+  if (/advanced|blue belt|competition|\bgb3\b/.test(name)) return { id: 'advanced', label: 'Advanced' };
+  if (/fundamental|\bgb1\b|\bgb2\b|beginner/.test(name)) return { id: 'fundamentals', label: 'Fundamentals' };
+  if (/\bgi\b|morning/.test(name)) return { id: 'gi', label: 'Gi' };
+  const word = title.trim().split(/\s+/)[0] ?? 'Class';
+  return { id: 'other', label: word.slice(0, 10) };
 }
 
 /** Classes that share one day and clock time (MAT 1 beside MAT 2). */

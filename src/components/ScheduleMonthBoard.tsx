@@ -7,18 +7,24 @@ import {
   WEEKDAYS,
   WEEKDAY_LABELS,
   WEEKDAY_SHORT,
+  classProgram,
   classesOnDay,
   formatBoardStamp,
-  formatClassTime,
   monthWeeks,
   normalizeQrUrl,
   noticeLines,
+  type ClassProgram,
   type MonthDay,
   type SpecialDate,
   type WeeklyClassSlot,
 } from '../lib/scheduleStore';
 
-type Chip = { key: string; time: string; label: string };
+type DayGlance = {
+  count: number;
+  programs: ClassProgram[];
+  extraPrograms: number;
+  special: string | null;
+};
 
 type Props = {
   variant?: 'cast' | 'stage';
@@ -31,26 +37,28 @@ function localIso(now = new Date()): string {
   return `${now.getFullYear()}-${month}-${day}`;
 }
 
-function chipsForDay(
+function glanceForDay(
   day: MonthDay,
   classes: readonly WeeklyClassSlot[],
   specials: readonly SpecialDate[],
-): Chip[] {
-  if (!day.inMonth) return [];
-  const chips: Chip[] = [];
-  for (const special of specials) {
-    if (special.date !== day.iso) continue;
-    const label = special.title.trim() || special.body.trim() || 'Special';
-    chips.push({ key: special.id, time: '', label });
-  }
+): DayGlance {
+  if (!day.inMonth) return { count: 0, programs: [], extraPrograms: 0, special: null };
+  const seen = new Set<string>();
+  const programs: ClassProgram[] = [];
   for (const item of classesOnDay(classes, day.weekday)) {
-    chips.push({
-      key: item.id,
-      time: formatClassTime(item.time),
-      label: item.title.trim() || 'Class',
-    });
+    const program = classProgram(item.title);
+    if (seen.has(program.id)) continue;
+    seen.add(program.id);
+    programs.push(program);
   }
-  return chips;
+  const special = specials.find((item) => item.date === day.iso);
+  const specialLabel = special ? (special.title.trim() || special.body.trim() || 'Special').slice(0, 14) : null;
+  return {
+    count: classesOnDay(classes, day.weekday).length,
+    programs: programs.slice(0, 3),
+    extraPrograms: Math.max(0, programs.length - 3),
+    special: specialLabel,
+  };
 }
 
 export function ScheduleMonthBoard({ variant = 'stage', onOpenOptions }: Props) {
@@ -61,7 +69,6 @@ export function ScheduleMonthBoard({ variant = 'stage', onOpenOptions }: Props) 
   const [boardLogoUrl, setBoardLogoUrl] = useState('');
   const [qrBuilt, setQrBuilt] = useState('');
   const [qrImageUrl, setQrImageUrl] = useState('');
-  const [budget, setBudget] = useState(3);
   const [scroll, setScroll] = useState(false);
   const [paused, setPaused] = useState(false);
   const frameRef = useRef<HTMLDivElement>(null);
@@ -113,12 +120,7 @@ export function ScheduleMonthBoard({ variant = 'stage', onOpenOptions }: Props) 
   useLayoutEffect(() => {
     const frame = frameRef.current;
     if (!frame || frame.clientHeight < 48) return;
-    const head = frame.querySelector('.month-cast__dow');
-    const headH = head instanceof HTMLElement ? head.getBoundingClientRect().height : 22;
-    const rowH = (frame.clientHeight - headH) / Math.max(1, weeks.length);
-    const nextBudget = Math.max(1, Math.floor((rowH - 22) / 18));
-    const nextScroll = frame.scrollHeight > frame.clientHeight + 6 && nextBudget <= 1;
-    setBudget((current) => (current === nextBudget ? current : nextBudget));
+    const nextScroll = frame.scrollHeight > frame.clientHeight + 6;
     setScroll((current) => (current === nextScroll ? current : nextScroll));
   }, [weeks.length, schedule.classes.length, schedule.specials.length, measureTick]);
 
@@ -205,9 +207,7 @@ export function ScheduleMonthBoard({ variant = 'stage', onOpenOptions }: Props) 
           ))}
           {weeks.map((week) =>
             week.map((day) => {
-              const chips = chipsForDay(day, schedule.classes, schedule.specials);
-              const visible = chips.slice(0, budget);
-              const extra = chips.length - visible.length;
+              const glance = glanceForDay(day, schedule.classes, schedule.specials);
               return (
                 <div
                   key={day.iso}
@@ -215,13 +215,24 @@ export function ScheduleMonthBoard({ variant = 'stage', onOpenOptions }: Props) 
                   role="cell"
                 >
                   <span className="month-cast__num">{day.dayNumber}</span>
-                  {visible.map((chip) => (
-                    <p key={chip.key} className="month-cast__chip">
-                      {chip.time ? <b>{chip.time}</b> : null}
-                      {chip.label}
+                  {glance.count > 0 ? (
+                    <p className="month-cast__count">
+                      {glance.count} {glance.count === 1 ? 'class' : 'classes'}
                     </p>
-                  ))}
-                  {extra > 0 ? <p className="month-cast__more">+{extra} more</p> : null}
+                  ) : null}
+                  {glance.programs.length ? (
+                    <div className="month-cast__chips">
+                      {glance.programs.map((program) => (
+                        <span key={program.id} className="month-cast__chip" data-program={program.id}>
+                          {program.label}
+                        </span>
+                      ))}
+                      {glance.extraPrograms > 0 ? (
+                        <span className="month-cast__more">+{glance.extraPrograms}</span>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  {glance.special ? <p className="month-cast__special">{glance.special}</p> : null}
                 </div>
               );
             }),

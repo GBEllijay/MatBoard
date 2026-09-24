@@ -7,13 +7,14 @@ import {
   WEEKDAYS,
   WEEKDAY_LABELS,
   WEEKDAY_SHORT,
-  classesAt,
+  classProgram,
+  classesInHour,
   formatBoardStamp,
   formatClassTime,
   normalizeQrUrl,
   noticeLines,
   todayWeekday,
-  weekTimeRows,
+  weekHourLanes,
   type Weekday,
 } from '../lib/scheduleStore';
 
@@ -46,7 +47,7 @@ export function ScheduleWeekBoard({ variant = 'stage', onOpenOptions }: Props) {
   const decisionKey = useRef('');
   const [measureTick, setMeasureTick] = useState(0);
   const today = todayWeekday();
-  const rows = useMemo(() => weekTimeRows(schedule.classes), [schedule.classes]);
+  const rows = useMemo(() => weekHourLanes(schedule.classes), [schedule.classes]);
   const notices = noticeLines(schedule.notes, schedule.specials);
   const gymTitle = schedule.title.trim() || gymName.trim() || 'Class Schedule';
   const logoSrc = resolveScheduleLogo(gymLogo, boardLogoUrl);
@@ -57,7 +58,7 @@ export function ScheduleWeekBoard({ variant = 'stage', onOpenOptions }: Props) {
     let count = 1;
     for (const time of rows) {
       for (const day of WEEKDAYS) {
-        count = Math.max(count, classesAt(schedule.classes, day, time).length);
+        count = Math.max(count, classesInHour(schedule.classes, day, time).length);
       }
     }
     return count;
@@ -110,7 +111,14 @@ export function ScheduleWeekBoard({ variant = 'stage', onOpenOptions }: Props) {
     const height = frame.clientHeight;
     if (height < 48) return;
     const sizeKey = `${signature}:${Math.round(frame.clientWidth / 32)}:${Math.round(height / 32)}`;
-    const fonts = busiest > 1 ? [15, 14, 13, 12, 11] : [18, 16, 15, 14, 13, 12];
+    const crowded = rows.length > 10;
+    const fonts = crowded
+      ? busiest > 1
+        ? [12, 11, 10, 9]
+        : [14, 13, 12, 11]
+      : busiest > 1
+        ? [15, 14, 13, 12, 11]
+        : [18, 16, 15, 14, 13, 12];
     const fontNow = Number.parseFloat(layout.font) || fonts[0];
     const overflows = () => board.scrollHeight > frame.clientHeight + 4;
     const cellsClip = () =>
@@ -291,7 +299,7 @@ function WeekRow({
         {formatClassTime(time)}
       </div>
       {WEEKDAYS.map((day) => {
-        const items = classesAt(schedule.classes, day, time);
+        const items = classesInHour(schedule.classes, day, time);
         return (
           <div
             key={`${day}-${time}`}
@@ -302,11 +310,13 @@ function WeekRow({
               const title = item.title.trim() || 'Class';
               const detail = item.subtitle.trim();
               const mat = item.location.trim();
+              const program = classProgram(title);
+              const meta = [formatClassTime(item.time), mat].filter(Boolean).join(' · ');
               return (
-                <p key={item.id} className="week-cast__class">
-                  {mat ? <span className="week-cast__mat">{mat}</span> : null}
+                <p key={item.id} className="week-cast__class" data-program={program.id}>
+                  {meta ? <span className="week-cast__mat">{meta}</span> : null}
                   <strong>{title}</strong>
-                  {detail ? <em>{detail}</em> : null}
+                  {items.length === 1 && detail ? <em>{detail}</em> : null}
                 </p>
               );
             })}

@@ -8187,9 +8187,12 @@ input.roster-pick__name:focus,
 .week-cast__cell {
   min-width: 0;
   min-height: min-content;
-  padding: 0.12rem 0.28rem;
+  padding: 0.06rem 0.18rem;
   overflow: hidden;
   align-content: start;
+  display: flex;
+  flex-direction: column;
+  gap: 0.08rem;
 }
 
 .week-cast__class {
@@ -8197,6 +8200,45 @@ input.roster-pick__name:focus,
   gap: 0;
   margin: 0;
   min-width: 0;
+  padding: 0.04rem 0.18rem 0.06rem 0.28rem;
+  border-left: 3px solid var(--program, var(--gold));
+  background: color-mix(in srgb, var(--program, var(--gold)) 18%, transparent);
+  border-radius: 4px;
+}
+
+.week-cast__class[data-program='kids'],
+.month-cast__chip[data-program='kids'] {
+  --program: #3aa0e8;
+}
+
+.week-cast__class[data-program='fundamentals'],
+.month-cast__chip[data-program='fundamentals'] {
+  --program: #e0b33a;
+}
+
+.week-cast__class[data-program='advanced'],
+.month-cast__chip[data-program='advanced'] {
+  --program: #e15b52;
+}
+
+.week-cast__class[data-program='nogi'],
+.month-cast__chip[data-program='nogi'] {
+  --program: #8d74d6;
+}
+
+.week-cast__class[data-program='open'],
+.month-cast__chip[data-program='open'] {
+  --program: #3caf7c;
+}
+
+.week-cast__class[data-program='gi'],
+.month-cast__chip[data-program='gi'] {
+  --program: #d7c4a3;
+}
+
+.week-cast__class[data-program='other'],
+.month-cast__chip[data-program='other'] {
+  --program: #9a958c;
 }
 
 .week-cast__class + .week-cast__class {
@@ -8343,26 +8385,45 @@ input.roster-pick__name:focus,
   line-height: 1.1;
 }
 
-.month-cast__chip,
-.month-cast__more {
+.month-cast__count,
+.month-cast__special {
   margin: 0;
-  min-width: 0;
-  font-size: clamp(0.62rem, 1.15vh, 0.8rem);
+  color: #c8c2b4;
+  font-size: clamp(0.62rem, 1.05vh, 0.78rem);
+  font-weight: 700;
   line-height: 1.15;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.month-cast__chip b {
-  color: var(--gold-2);
+.month-cast__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.month-cast__chip,
+.month-cast__more {
+  margin: 0;
+  max-width: 100%;
+  padding: 0.02rem 0.32rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--program, var(--gold)) 28%, transparent);
+  color: #f4efe4;
+  font-size: clamp(0.58rem, 1vh, 0.72rem);
   font-weight: 800;
-  margin-right: 0.2rem;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .month-cast__more {
   color: var(--gold-2);
-  font-weight: 800;
+  background: transparent;
+  padding-left: 0.1rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
