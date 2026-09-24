@@ -30,6 +30,7 @@ import {
   serializeRosterCsv,
   withUtf8Bom,
 } from '../lib/rosterCsv';
+import { readGymName } from '../lib/gymName';
 import {
   ADULT_BELTS,
   KIDS_BELTS,
@@ -88,7 +89,7 @@ export function RosterPage() {
     () => (query.trim() ? searchStudents(roster.students, query) : roster.students),
     [query, roster.students],
   );
-  const openAdd = () => setEditor({ id: null, draft: emptyDraft() });
+  const openAdd = () => setEditor({ id: null, draft: { ...emptyDraft(), gym: readGymName() } });
 
   const onImportFiles = (files: FileList | null) => {
     const file = files?.[0];
@@ -335,7 +336,8 @@ function StudentEditor({
     <Sheet open={open} title={title} onClose={onClose}>
       <p className="roster-edit__copy">
         Name and belt are enough to prefill a match. Gym name is optional and shows on the
-        scoreboard and brackets. Notes stay on this card.
+        scoreboard and brackets. A new competitor starts with the Media Console gym name when one
+        is saved. Notes stay on this card.
       </p>
       <label>
         Name

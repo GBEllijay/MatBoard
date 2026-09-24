@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { DeviceMediaInput } from './DeviceMediaInput';
 import { MediaSourceSheet } from './VideoSourceSheet';
 import { clearGymLogo, readGymLogo, saveGymLogoFile } from '../lib/gymLogo';
+import { GYM_NAME_MAX, readGymName, writeGymName } from '../lib/gymName';
 import { PHOTO_PICKER_ACCEPT, VIDEO_CAPTURE } from '../lib/mediaPicker';
 
 const CAPTURE_ID = 'gym-logo-capture';
@@ -12,6 +13,7 @@ export function GymLogoControl() {
   const captureRef = useRef<HTMLInputElement>(null);
   const libraryRef = useRef<HTMLInputElement>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(() => readGymLogo());
+  const [gymName, setGymName] = useState(() => readGymName());
   const [chooserOpen, setChooserOpen] = useState(false);
   const [note, setNote] = useState('');
 
@@ -35,7 +37,7 @@ export function GymLogoControl() {
   };
 
   return (
-    <section className="gym-logo" aria-label="Custom gym logo">
+    <section className="gym-logo" aria-label="Gym identity">
       <h3 className="gym-logo__title">Custom gym logo</h3>
       {logoUrl ? (
         <div className="gym-logo__row">
@@ -55,6 +57,24 @@ export function GymLogoControl() {
         </button>
       )}
       {note ? <p className="saver-folder__empty">{note}</p> : null}
+      <label className="gym-logo__name">
+        Gym name
+        <input
+          value={gymName}
+          onChange={(event) => {
+            const next = event.target.value.slice(0, GYM_NAME_MAX);
+            setGymName(next);
+            writeGymName(next);
+          }}
+          placeholder="School or academy"
+          aria-label="Gym name"
+          autoComplete="organization"
+          maxLength={GYM_NAME_MAX}
+        />
+      </label>
+      <p className="gym-logo__hint">
+        Saved on this device. A new competitor starts with this name when their gym is empty.
+      </p>
       <MediaSourceSheet
         open={chooserOpen}
         kind="photo"
