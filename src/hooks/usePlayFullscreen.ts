@@ -17,7 +17,9 @@ function isTypingTarget(target: EventTarget | null): boolean {
 export function usePlayFullscreen() {
   const [supported, setSupported] = useState(false);
   const [active, setActive] = useState(false);
-  const [landscape, setLandscape] = useState(false);
+  const [landscape, setLandscape] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(orientation: landscape)').matches,
+  );
   const [blocked, setBlocked] = useState(false);
   const [tvStation, setTvStation] = useState(false);
   const [idle, setIdle] = useState(false);
@@ -102,7 +104,7 @@ export function usePlayFullscreen() {
     let cancelled = false;
     const onGesture = (event: PointerEvent) => {
       const target = event.target as HTMLElement | null;
-      if (target?.closest('a, .sheet, input, textarea, select, .play-exit, .tv-tip')) return;
+      if (target?.closest('a, button, .sheet, input, textarea, select, .play-exit, .tv-tip, .week-cast__options')) return;
       void requestPageFullscreen().then((ok) => {
         if (cancelled) {
           void exitPageFullscreen();

@@ -5,6 +5,9 @@
  */
 
 export const GYM_LOGO_STORAGE_KEY = 'matboard.gymLogo.v1';
+/** Advantage mark when the gym has not saved a custom logo. */
+export const ADVANTAGE_MARK_SRC = '/advantage-icon.png';
+const GYM_LOGO_EVENT = 'matboard-gym-logo';
 
 const MAX_EDGE = 512;
 const MAX_DATA_URL_CHARS = 350_000;
@@ -33,9 +36,43 @@ function readRecord(): GymLogoRecord | null {
   }
 }
 
+function emitGymLogo(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new Event(GYM_LOGO_EVENT));
+}
+
 /** Data URL of the gym’s default logo, or null when none is saved. */
 export function readGymLogo(): string | null {
   return readRecord()?.dataUrl ?? null;
+}
+
+/**
+ * Class Schedule header logo.
+ * Media Console custom logo wins. A picture picked on the schedule is next.
+ * Otherwise the Advantage mark.
+ */
+export function resolveScheduleLogo(
+  gymLogo: string | null | undefined,
+  boardLogo: string | null | undefined,
+): string {
+  const gym = gymLogo?.trim() ?? '';
+  if (gym) return gym;
+  const board = boardLogo?.trim() ?? '';
+  if (board) return board;
+  return ADVANTAGE_MARK_SRC;
+}
+
+export function subscribeGymLogo(fn: () => void): () => void {
+  if (typeof window === 'undefined') return () => {};
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === GYM_LOGO_STORAGE_KEY) fn();
+  };
+  window.addEventListener('storage', onStorage);
+  window.addEventListener(GYM_LOGO_EVENT, fn);
+  return () => {
+    window.removeEventListener('storage', onStorage);
+    window.removeEventListener(GYM_LOGO_EVENT, fn);
+  };
 }
 
 export function writeGymLogo(dataUrl: string): void {
@@ -43,6 +80,7 @@ export function writeGymLogo(dataUrl: string): void {
   if (dataUrl.length > MAX_DATA_URL_CHARS) throw new Error('too-large');
   const record: GymLogoRecord = { version: 1, dataUrl };
   localStorage.setItem(GYM_LOGO_STORAGE_KEY, JSON.stringify(record));
+  emitGymLogo();
 }
 
 export function clearGymLogo(): void {
@@ -51,6 +89,7 @@ export function clearGymLogo(): void {
   } catch {
     /* private mode */
   }
+  emitGymLogo();
 }
 
 async function blobToDataUrl(blob: Blob): Promise<string> {

@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  WEEKDAYS,
   boardWeekdays,
+  classesAt,
   classesOnDay,
   compareClasses,
   compareMatLocation,
@@ -11,7 +13,10 @@ import {
   formatClassTime,
   formatSpecialDate,
   formatTimeGroupLine,
+  classProgram,
   groupClassesByTime,
+  monthWeeks,
+  weekHourLanes,
   normalizeGymCalendar,
   normalizeQrUrl,
   noticeLines,
@@ -20,6 +25,7 @@ import {
   sortClasses,
   specialsThisWeek,
   suggestNextMat,
+  weekTimeRows,
   weekdayFromJsDay,
   type SpecialDate,
   type WeeklyClassSlot,
@@ -105,7 +111,7 @@ describe('normalizeGymCalendar', () => {
     });
     assert.equal(next.title, 'Ellijay BJJ');
     assert.equal(next.notes, 'Closed Monday');
-    assert.equal(next.template, 'week-grid');
+    assert.equal(next.template, 'week');
     assert.deepEqual(
       next.classes.map((item) => item.id),
       ['b', 'a'],
@@ -126,10 +132,15 @@ describe('normalizeGymCalendar', () => {
     ]);
   });
 
-  it('defaults the TV template to weekly list and ignores junk values', () => {
-    assert.equal(defaultGymCalendar().template, DEFAULT_SCHEDULE_TEMPLATE);
-    assert.equal(normalizeGymCalendar({ template: 'gb-red' }).template, 'weekly-list');
+  it('defaults the TV template to the full week and retires the old grid', () => {
+    assert.equal(defaultGymCalendar().template, 'week');
+    assert.equal(DEFAULT_SCHEDULE_TEMPLATE, 'week');
+    assert.equal(normalizeGymCalendar({ template: 'gb-red' }).template, 'week');
+    assert.equal(normalizeGymCalendar({ template: 'week-grid' }).template, 'week');
     assert.equal(normalizeGymCalendar({ template: 'monthly' }).template, 'monthly');
+    assert.equal(normalizeGymCalendar({ template: 'week' }).template, 'week');
+    assert.equal(normalizeGymCalendar({}).castEnabled, true);
+    assert.equal(normalizeGymCalendar({ castEnabled: false }).castEnabled, false);
   });
 });
 
@@ -188,6 +199,18 @@ describe('weekly list helpers', () => {
     assert.equal(formatBoardStamp(new Date(2026, 8, 20)), 'SEPTEMBER 2026');
   });
 
+  it('builds a Monday-start month and keeps days outside the month', () => {
+    const weeks = monthWeeks(new Date(2026, 8, 24));
+    assert.equal(weeks.length, 5);
+    assert.equal(weeks[0]?.[0]?.iso, '2026-08-31');
+    assert.equal(weeks[0]?.[0]?.inMonth, false);
+    assert.equal(weeks[0]?.[0]?.weekday, 'mon');
+    assert.equal(weeks[0]?.[1]?.iso, '2026-09-01');
+    assert.equal(weeks[0]?.[1]?.inMonth, true);
+    assert.equal(weeks[4]?.[2]?.iso, '2026-09-30');
+    assert.equal(weeks[4]?.[3]?.inMonth, false);
+  });
+
   it('ships a sample week with mats and optional details', () => {
     assert.equal(SAMPLE_WEEK_SLOTS.length > 10, true);
     assert.equal(
@@ -195,9 +218,43 @@ describe('weekly list helpers', () => {
       true,
     );
     assert.equal(
-      SAMPLE_WEEK_SLOTS.some((slot) => slot.subtitle.includes('Blue belt')),
+      SAMPLE_WEEK_SLOTS.some((slot) => slot.title.includes('Blue Belt')),
       true,
     );
+    for (const day of WEEKDAYS) {
+      if (day === 'sun') continue;
+      assert.equal(
+        SAMPLE_WEEK_SLOTS.some((slot) => slot.day === day),
+        true,
+        day,
+      );
+    }
+    assert.equal(
+      SAMPLE_WEEK_SLOTS.some((slot) => slot.day === 'sun'),
+      false,
+    );
+    const times = weekTimeRows(
+      SAMPLE_WEEK_SLOTS.map((slot, index) => ({ ...slot, id: `s${index}`, kind: 'class' })),
+    );
+    assert.equal(times[0], '06:00');
+    const lanes = weekHourLanes(
+      SAMPLE_WEEK_SLOTS.map((slot, index) => ({ ...slot, id: `h${index}`, kind: 'class' as const })),
+    );
+    assert.equal(lanes[0], '06:00');
+    assert.equal(lanes.at(-1), '19:00');
+    assert.equal(lanes.includes('07:00'), true);
+    assert.equal(lanes.includes('13:00'), true);
+    assert.equal(classProgram('Tiny Champions').id, 'kids');
+    assert.equal(classProgram('Little Champions').id, classProgram('Kids BJJ').id);
+    assert.equal(classProgram('Fundamentals').id, 'fundamentals');
+    assert.equal(classProgram('GB3').id, 'advanced');
+    assert.equal(classProgram('No-Gi').id, 'nogi');
+    assert.equal(times.includes('17:00'), true);
+    assert.equal(classesAt(
+      SAMPLE_WEEK_SLOTS.map((slot, index) => ({ ...slot, id: `s${index}`, kind: 'class' })),
+      'mon',
+      '17:00',
+    ).length, 2);
   });
 });
 

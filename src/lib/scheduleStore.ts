@@ -8,6 +8,7 @@ import {
   isWeekday,
   normalizeGymCalendar,
   SAMPLE_WEEK_NOTES,
+  SAMPLE_WEEK_QR,
   SAMPLE_WEEK_TITLE,
   sampleWeekClasses,
   sampleWeekSpecials,
@@ -19,7 +20,7 @@ import {
   type SpecialDate,
   type Weekday,
   type WeeklyClassSlot,
-} from './gymCalendar';
+} from './gymCalendar.ts';
 
 export {
   WEEKDAYS,
@@ -29,6 +30,8 @@ export {
   SCHEDULE_TEMPLATE_HINTS,
   SCHEDULE_TEMPLATE_LABELS,
   DEFAULT_SCHEDULE_TEMPLATE,
+  displayTemplate,
+  monthWeeks,
   boardWeekdays,
   classesOnDay,
   compareClasses,
@@ -37,6 +40,9 @@ export {
   formatClassTime,
   formatSpecialDate,
   formatTimeGroupLine,
+  classesAt,
+  classesInHour,
+  classProgram,
   groupClassesByTime,
   isScheduleTemplate,
   isWeekday,
@@ -44,20 +50,25 @@ export {
   noticeLines,
   parseTimeMinutes,
   SAMPLE_WEEK_NOTES,
+  SAMPLE_WEEK_QR,
   SAMPLE_WEEK_SLOTS,
   SAMPLE_WEEK_TITLE,
   sortClasses,
   specialsThisWeek,
   suggestNextMat,
   todayWeekday,
+  weekHourLanes,
+  weekTimeRows,
   weekdayFromJsDay,
+  type ClassProgram,
   type ClassTimeGroup,
   type GymCalendarState,
+  type MonthDay,
   type ScheduleTemplate,
   type SpecialDate,
   type Weekday,
   type WeeklyClassSlot,
-} from './gymCalendar';
+} from './gymCalendar.ts';
 
 export const STORAGE_KEY = 'matboard.schedule.v1';
 const ASSET_DB = 'matboard-schedule';
@@ -124,7 +135,34 @@ function patch(partial: Partial<Omit<ScheduleState, 'version'>>): void {
 
 export function setScheduleTemplate(template: ScheduleTemplate): void {
   if (!isScheduleTemplate(template)) return;
-  patch({ template });
+  patch({ template: template === 'week-grid' ? 'week' : template });
+}
+
+export function setScheduleCastEnabled(enabled: boolean): void {
+  patch({ castEnabled: enabled });
+}
+
+/** Fields left `null` stay as they are. An empty specials array clears specials. */
+export type ScheduleImportPayload = {
+  classes: WeeklyClassSlot[];
+  specials: SpecialDate[] | null;
+  title: string | null;
+  qrUrl: string | null;
+  notes: string | null;
+  template: ScheduleTemplate | null;
+  castEnabled: boolean | null;
+};
+
+export function applyScheduleImport(payload: ScheduleImportPayload): void {
+  patch({
+    classes: sortClasses(payload.classes),
+    specials: payload.specials == null ? state.specials : sortSpecials(payload.specials),
+    title: payload.title == null ? state.title : payload.title,
+    qrUrl: payload.qrUrl == null ? state.qrUrl : payload.qrUrl,
+    notes: payload.notes == null ? state.notes : payload.notes,
+    template: payload.template == null ? state.template : payload.template === 'week-grid' ? 'week' : payload.template,
+    castEnabled: payload.castEnabled == null ? state.castEnabled : payload.castEnabled,
+  });
 }
 
 export function getSchedule(): ScheduleState {
@@ -224,6 +262,7 @@ export function loadSampleWeek(): void {
   patch({
     title: state.title.trim() || SAMPLE_WEEK_TITLE,
     notes: state.notes.trim() || SAMPLE_WEEK_NOTES,
+    qrUrl: state.qrUrl.trim() || SAMPLE_WEEK_QR,
     classes: sortClasses(sampleWeekClasses()),
     specials: state.specials.length ? state.specials : sampleWeekSpecials(),
   });
