@@ -5611,12 +5611,23 @@ a.saver-folder--link {
 }
 
 .schedule__cast-edit {
-  min-height: 42px;
+  position: absolute;
+  top: calc(4.7rem + var(--safe-t));
+  left: calc(0.35rem + var(--safe-l));
+  z-index: 8;
+  min-height: 44px;
+  min-width: 4.6rem;
+  padding: 0.35rem 0.75rem;
 }
 
 .schedule.play--tv.play--idle .schedule__cast-tools {
   opacity: 0;
   pointer-events: none;
+}
+
+.schedule.play--tv.play--idle .schedule__cast-edit {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .schedule__stage--week {
@@ -7861,7 +7872,7 @@ input.roster-pick__name:focus,
 
 .schedule.play--landscape .week-cast--stage,
 .schedule.play--fs .week-cast--stage {
-  padding-left: calc(4.2rem + var(--safe-l));
+  padding-left: calc(5.6rem + var(--safe-l));
   padding-right: calc(8.5rem + var(--safe-r));
 }
 

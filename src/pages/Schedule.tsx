@@ -203,18 +203,20 @@ export function SchedulePage() {
         </div>
       </header>
       {tv ? (
-        <div className="schedule__cast-tools">
+        <>
           <button type="button" className="btn schedule__cast-edit" onClick={() => setEditOpen(true)}>
             Edit
           </button>
-          <FullscreenChip
-            supported={fs.supported}
-            active={fs.active}
-            nudge={fs.showFallback}
-            shortcut={fs.tvStation}
-            onToggle={() => void fs.toggle()}
-          />
-        </div>
+          <div className="schedule__cast-tools">
+            <FullscreenChip
+              supported={fs.supported}
+              active={fs.active}
+              nudge={fs.showFallback}
+              shortcut={fs.tvStation}
+              onToggle={() => void fs.toggle()}
+            />
+          </div>
+        </>
       ) : null}
 
       <section
