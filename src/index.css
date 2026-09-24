@@ -6654,6 +6654,8 @@ input.roster-pick__name:focus,
   background: #000;
   overflow: hidden;
   border: 1px solid rgba(252, 192, 0, 0.35);
+  touch-action: manipulation;
+  cursor: pointer;
 }
 
 .techniques--play .techniques__card--playing .techniques__frame {
@@ -6662,36 +6664,67 @@ input.roster-pick__name:focus,
 
 .techniques__clock {
   position: absolute;
-  left: 50%;
-  bottom: 0.8rem;
-  transform: translateX(-50%);
+  top: calc(0.45rem + var(--safe-t));
+  right: calc(0.45rem + var(--safe-r));
   z-index: 2;
   display: grid;
-  justify-items: center;
-  gap: 0.02em;
+  justify-items: end;
+  gap: 0.08rem;
   margin: 0;
-  padding: 0.12em 0.48em 0.18em;
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(6, 8, 12, 0.55);
-  backdrop-filter: blur(10px);
-  font-size: clamp(2.6rem, 9vw, 5.2rem);
+  padding: 0.28rem 0.5rem 0.32rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(6, 8, 12, 0.62);
+  backdrop-filter: blur(8px);
+  font-size: clamp(1.35rem, 3.4vmin, 2.35rem);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.05em;
-  line-height: 0.95;
+  letter-spacing: -0.03em;
+  line-height: 1;
   color: #fff;
-  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.82);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
   pointer-events: none;
 }
 
 .techniques__loop {
-  font-size: 0.26em;
-  letter-spacing: 0.18em;
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   font-weight: 800;
   color: var(--gold-2);
   text-shadow: none;
+  line-height: 1.15;
+}
+
+.techniques__chrome {
+  position: absolute;
+  left: 50%;
+  bottom: calc(0.7rem + var(--safe-b));
+  transform: translateX(-50%);
+  z-index: 4;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.45rem;
+  max-width: calc(100% - 1.4rem);
+}
+
+.techniques__chrome-btn {
+  min-height: 48px;
+  padding: 0.4rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(8, 12, 20, 0.84);
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+
+.techniques__chrome-btn--go,
+.techniques__chrome-btn--on {
+  background: var(--logo-yellow);
+  color: #14161c;
+  border-color: transparent;
 }
 
 .techniques__clock--play {
@@ -6746,13 +6779,23 @@ input.roster-pick__name:focus,
   font-size: 1.05rem;
 }
 
-.play--fs.techniques--play .techniques__card--playing .techniques__frame {
+.play--fs.techniques--play .techniques__card--playing .techniques__frame,
+.techniques--fill.techniques--play .techniques__card--playing .techniques__frame,
+.techniques__frame--fill {
   position: fixed;
-  z-index: 12;
-  inset: calc(5.4rem + var(--safe-t)) calc(0.75rem + var(--safe-r)) calc(0.75rem + var(--safe-b))
-    calc(0.75rem + var(--safe-l));
+  z-index: 30;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   min-height: 0;
-  border-radius: 18px;
+  border: 0;
+  border-radius: 0;
+  background: #000;
+}
+
+.play--fs.techniques--play > .play-exit,
+.techniques--fill.techniques--play > .play-exit {
+  z-index: 40;
 }
 
 .play--tv.play--idle .techniques__bar {
@@ -6763,10 +6806,6 @@ input.roster-pick__name:focus,
   .techniques__actions {
     margin-left: 0;
     width: 100%;
-  }
-
-  .play--fs.techniques--play .techniques__card--playing .techniques__frame {
-    top: calc(9.6rem + var(--safe-t));
   }
 }
 

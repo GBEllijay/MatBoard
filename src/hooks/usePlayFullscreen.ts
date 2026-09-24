@@ -14,7 +14,17 @@ function isTypingTarget(target: EventTarget | null): boolean {
   return Boolean(el.closest('input, textarea, select, [contenteditable="true"]'));
 }
 
-export function usePlayFullscreen() {
+type PlayFullscreenOptions = {
+  /**
+   * Landscape pages try to enter fullscreen on their own, and again after it closes.
+   * Editors such as Daily Training Videos pass false so playback can enter and leave
+   * fullscreen on purpose.
+   */
+  auto?: boolean;
+};
+
+export function usePlayFullscreen(options?: PlayFullscreenOptions) {
+  const auto = options?.auto !== false;
   const [supported, setSupported] = useState(false);
   const [active, setActive] = useState(false);
   const [landscape, setLandscape] = useState(
@@ -80,7 +90,7 @@ export function usePlayFullscreen() {
   }, []);
 
   useEffect(() => {
-    if (!supported || !landscape || active) return;
+    if (!auto || !supported || !landscape || active) return;
     let cancelled = false;
     void requestPageFullscreen().then((ok) => {
       if (cancelled) {
@@ -97,10 +107,10 @@ export function usePlayFullscreen() {
     return () => {
       cancelled = true;
     };
-  }, [supported, landscape, active]);
+  }, [auto, supported, landscape, active]);
 
   useEffect(() => {
-    if (!supported || !landscape || active) return;
+    if (!auto || !supported || !landscape || active) return;
     let cancelled = false;
     const onGesture = (event: PointerEvent) => {
       const target = event.target as HTMLElement | null;
@@ -123,7 +133,7 @@ export function usePlayFullscreen() {
       cancelled = true;
       window.removeEventListener('pointerdown', onGesture, true);
     };
-  }, [supported, landscape, active]);
+  }, [auto, supported, landscape, active]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
