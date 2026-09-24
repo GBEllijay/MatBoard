@@ -33,6 +33,7 @@ export function ComingSoonPage() {
             {proUnlocked
               ? PRO_HUBS.map((hub) => (
                   <Link key={hub.to} className="btn btn--white" to={hub.to}>
+                    <BeltRail kind={hub.belt} />
                     {hub.title}
                   </Link>
                 ))

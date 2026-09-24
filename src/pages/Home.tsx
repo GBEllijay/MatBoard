@@ -15,10 +15,12 @@ import {
 } from '../lib/comingSoonAds';
 import { COACH_TOOLS_TEASER } from '../lib/coachCopy';
 import {
+  COACH_HOME_LINES,
   GYM_CONSOLE_NAME,
   HOME_MOTTO,
   PRO_HOME_DETAIL,
   PRO_HOME_LINES,
+  WHITE_HOME_LINES,
   WHITE_LADDER_DETAIL,
   coachToolsOpen,
 } from '../lib/productNames';
@@ -46,6 +48,10 @@ export function HomePage() {
             <span className="mode-card__sub">
               <TierLine tier="White" detail={WHITE_LADDER_DETAIL} />
             </span>
+            <HomeLines lines={WHITE_HOME_LINES} />
+            <span className="mode-card__actions">
+              <span className="btn btn--white">Open White</span>
+            </span>
           </Link>
 
           {coachOpen ? (
@@ -61,6 +67,7 @@ export function HomePage() {
               <span className="mode-card__sub">
                 <TierLine tier="Coach" detail={COACH_TOOLS_TEASER} />
               </span>
+              <HomeLines lines={COACH_HOME_LINES} />
               <div className="mode-card__actions">
                 <Link className="btn btn--white" to="/coach">
                   Open Coach
@@ -80,6 +87,7 @@ export function HomePage() {
               <span className="mode-card__sub">
                 <TierLine tier="Coach" detail={COACH_TOOLS_TEASER} />
               </span>
+              <HomeLines lines={COACH_HOME_LINES} />
             </button>
           )}
 
@@ -147,6 +155,16 @@ export function HomePage() {
   );
 }
 
+function HomeLines({ lines }: { lines: readonly string[] }) {
+  return (
+    <span className="mode-card__copy">
+      {lines.map((line) => (
+        <span key={line}>{line}</span>
+      ))}
+    </span>
+  );
+}
+
 function ProHomeCopy() {
   return (
     <>
@@ -155,11 +173,7 @@ function ProHomeCopy() {
       <span className="mode-card__sub">
         <TierLine tier="Pro" detail={PRO_HOME_DETAIL} />
       </span>
-      <span className="mode-card__copy">
-        {PRO_HOME_LINES.map((line) => (
-          <span key={line}>{line}</span>
-        ))}
-      </span>
+      <HomeLines lines={PRO_HOME_LINES} />
     </>
   );
 }

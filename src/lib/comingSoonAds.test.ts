@@ -72,15 +72,19 @@ test('Pro ad sells the Console paragraph and no price', () => {
   const text = adText('pro');
   assert.equal(COMING_SOON_ADS.pro.title, 'Advantage Pro');
   assert.equal(COMING_SOON_ADS.pro.lead, `${PRO_HOME_DETAIL}. ${PRO_COMING_SOON_LINES.join(' ')}`);
-  assert.equal(PRO_CONSOLE_PREVIEW_LABEL, 'Pro console preview — coming soon');
-  assert.equal(PRO_CONSOLE_PREVIEW_NOTE, 'Placeholder — real art is coming.');
+  assert.equal(PRO_CONSOLE_PREVIEW_LABEL, "Gym Owner and Instructor's Console");
+  assert.equal(
+    PRO_CONSOLE_PREVIEW_NOTE,
+    'Media Console, competitors, instructor access, and the tournament suite.',
+  );
+  assert.doesNotMatch(PRO_CONSOLE_PREVIEW_NOTE, /placeholder|wireframe|coming/i);
   assert.match(text, new RegExp(GYM_CONSOLE_NAME.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.match(text, /Coming Soon/);
   assert.match(text, /Cast to your Gym TV/i);
   assert.match(text, /Media Console/);
   assert.deepEqual(
     COMING_SOON_ADS.pro.features.map((feature) => feature.title),
-    [MEDIA_CONSOLE_NAME, TOURNAMENT_SUITE_NAME, COMPETITOR_SYSTEM_NAME, INSTRUCTOR_COLLAB_NAME],
+    [MEDIA_CONSOLE_NAME, COMPETITOR_SYSTEM_NAME, INSTRUCTOR_COLLAB_NAME, TOURNAMENT_SUITE_NAME],
   );
   assert.match(text, /ProShop Inventory/);
   assert.match(text, /Class Schedules/);

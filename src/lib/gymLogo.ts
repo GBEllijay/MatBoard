@@ -1,7 +1,7 @@
 /**
  * Default gym logo for Advantage Pro. Saved on this device only.
- * Later Pro Shop and back-button branding should read `GYM_LOGO_STORAGE_KEY`
- * through `readGymLogo()` — do not copy the bytes into another key.
+ * Pro Shop cast reads `GYM_LOGO_STORAGE_KEY` through `readGymLogo()`.
+ * Do not copy the bytes into another key.
  */
 
 export const GYM_LOGO_STORAGE_KEY = 'matboard.gymLogo.v1';

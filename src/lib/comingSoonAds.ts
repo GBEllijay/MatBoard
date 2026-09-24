@@ -33,11 +33,12 @@ export type ComingSoonAdCopy = {
 /** Locked-card gold label. Same wording on Coach and Pro / Console. */
 export const COMING_SOON_LABEL = 'Coming Soon';
 
-/** Visible label on the Pro Coming Soon placeholder. Not final console art. */
-export const PRO_CONSOLE_PREVIEW_LABEL = 'Pro console preview — coming soon';
+/** Caption on the Pro Coming Soon shot of the unlocked console home. */
+export const PRO_CONSOLE_PREVIEW_LABEL = "Gym Owner and Instructor's Console";
 
-/** Tells alpha testers the splash is a stand-in, not designed marketing art. */
-export const PRO_CONSOLE_PREVIEW_NOTE = 'Placeholder — real art is coming.';
+/** One line under that shot. The picture is the live four-hub console, not a wireframe. */
+export const PRO_CONSOLE_PREVIEW_NOTE =
+  'Media Console, competitors, instructor access, and the tournament suite.';
 
 export const PRODUCT_TEASERS = {
   coach: COACH_HOME_TEASER,
@@ -85,16 +86,16 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
         body: 'Gallery, Class Schedule, Pro Shop, and Events on the gym TV.',
       },
       {
-        title: TOURNAMENT_SUITE_NAME,
-        body: 'Live event ops: brackets, scoreboard, match controller, rounds, and round controller.',
-      },
-      {
         title: COMPETITOR_SYSTEM_NAME,
         body: 'Competitor roster and on-device rankings. Seeding from rankings comes later.',
       },
       {
         title: INSTRUCTOR_COLLAB_NAME,
         body: 'Coming soon. An Instructor console, shared training, and roster approval with the owner.',
+      },
+      {
+        title: TOURNAMENT_SUITE_NAME,
+        body: 'Live event ops: brackets, scoreboard, match controller, rounds, and round controller.',
       },
     ],
     dismiss: 'Got it',
