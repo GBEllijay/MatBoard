@@ -58,7 +58,9 @@ export function TechniquesPage() {
   const planRef = useRef<VideoPlan | null>(null);
   const recordRef = useRef<HTMLInputElement>(null);
   const libraryRef = useRef<HTMLInputElement>(null);
-  const fs = usePlayFullscreen();
+  const fs = usePlayFullscreen({ auto: false });
+  const [stage, setStage] = useState(false);
+  const fsActiveRef = useRef(false);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const parent = useToolboxParent();
@@ -69,6 +71,42 @@ export function TechniquesPage() {
 
   useVisibleViewportHeight();
   useWakeLock(playing);
+
+  const immersive = fs.active || stage;
+
+  useEffect(() => {
+    if (fsActiveRef.current && !fs.active) setStage(false);
+    fsActiveRef.current = fs.active;
+  }, [fs.active]);
+
+  useEffect(() => {
+    if (!playing) setStage(false);
+  }, [playing]);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setStage(false);
+      void fs.exit();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [fs.exit]);
+
+  const requestPlaybackFullscreen = async () => {
+    if (fs.active || stage) return;
+    if (playing) setStage(true);
+    await fs.enter();
+  };
+
+  const togglePlaybackFullscreen = async () => {
+    if (fs.active || stage) {
+      setStage(false);
+      await fs.exit();
+      return;
+    }
+    await requestPlaybackFullscreen();
+  };
 
   const applyPlan = (next: VideoPlan) => {
     planRef.current = next;
@@ -320,7 +358,9 @@ export function TechniquesPage() {
   const techniques = plan?.slots.filter((slot) => slot.kind === 'technique') ?? [];
 
   return (
-    <main className={`techniques${playing ? ' techniques--play' : ''}${fs.className ? ` ${fs.className}` : ''}`}>
+    <main
+      className={`techniques${playing ? ' techniques--play' : ''}${fs.className ? ` ${fs.className}` : ''}${stage ? ' techniques--fill' : ''}`}
+    >
       <PlayExitMark to={parent.path} onExit={exitBoard} />
       <header className="techniques__bar">
         <div className="techniques__brand">
@@ -335,11 +375,11 @@ export function TechniquesPage() {
             Stop
           </button>
           <FullscreenChip
-            supported={fs.supported}
-            active={fs.active}
-            nudge={fs.showFallback}
+            supported={fs.supported || stage}
+            active={immersive}
+            nudge={fs.showFallback && !stage}
             shortcut={fs.tvStation}
-            onToggle={() => void fs.toggle()}
+            onToggle={() => void togglePlaybackFullscreen()}
           />
           <button
             type="button"
@@ -376,6 +416,10 @@ export function TechniquesPage() {
             onSelect={() => selectCard(warmup.slotId)}
             onAdd={() => openChooser(warmup)}
             onRemove={() => void removeClip(warmup.slotId)}
+            fullscreen={immersive}
+            onToggleFullscreen={() => void togglePlaybackFullscreen()}
+            onStop={stopDrill}
+            onToggleMute={() => commitMute(!muteVideo)}
           />
         ) : null}
 
@@ -405,6 +449,10 @@ export function TechniquesPage() {
               selectCard(slot.slotId);
             }}
             onNudge={(delta) => commitDrill(slot.slotId, slot.drillSec + delta)}
+            fullscreen={immersive}
+            onToggleFullscreen={() => void togglePlaybackFullscreen()}
+            onStop={stopDrill}
+            onToggleMute={() => void commitMute(!muteVideo)}
           />
         ))}
 
@@ -425,12 +473,16 @@ export function TechniquesPage() {
             onSelect={() => selectCard(cooldown.slotId)}
             onAdd={() => openChooser(cooldown)}
             onRemove={() => void removeClip(cooldown.slotId)}
+            fullscreen={immersive}
+            onToggleFullscreen={() => void togglePlaybackFullscreen()}
+            onStop={stopDrill}
+            onToggleMute={() => commitMute(!muteVideo)}
           />
         ) : null}
       </div>
       ) : null}
 
-      <TvTip onFullscreen={() => void fs.enter()} />
+      <TvTip onFullscreen={() => void requestPlaybackFullscreen()} />
       <VideoSourceSheet
         open={addOpen}
         title={replacing ? 'Replace video' : 'Add video'}
@@ -473,6 +525,10 @@ function SlotCard({
   onDrill,
   onCustom,
   onNudge,
+  fullscreen,
+  onToggleFullscreen,
+  onStop,
+  onToggleMute,
 }: {
   slot: VideoSlot;
   title: string;
@@ -491,6 +547,10 @@ function SlotCard({
   onDrill?: (seconds: number) => void;
   onCustom?: () => void;
   onNudge?: (delta: number) => void;
+  fullscreen?: boolean;
+  onToggleFullscreen?: () => void;
+  onStop?: () => void;
+  onToggleMute?: () => void;
 }) {
   const filled = Boolean(slot.clipId && src);
   const timed = isTimedSlot(slot);
@@ -523,6 +583,10 @@ function SlotCard({
           playing
           muted={muted}
           unlockSound={unlockSound}
+          fullscreen={Boolean(fullscreen)}
+          onToggleFullscreen={onToggleFullscreen}
+          onStop={onStop}
+          onToggleMute={onToggleMute}
           overlay={
             showClock ? (
               <p
@@ -638,6 +702,10 @@ function LoopClip({
   playing,
   muted,
   unlockSound,
+  fullscreen,
+  onToggleFullscreen,
+  onStop,
+  onToggleMute,
   overlay,
 }: {
   src: string;
@@ -645,10 +713,33 @@ function LoopClip({
   playing: boolean;
   muted: boolean;
   unlockSound: boolean;
+  fullscreen: boolean;
+  onToggleFullscreen?: () => void;
+  onStop?: () => void;
+  onToggleMute?: () => void;
   overlay?: ReactNode;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const hideChromeTimer = useRef(0);
   const [needsUnmute, setNeedsUnmute] = useState(false);
+  const [chrome, setChrome] = useState(false);
+
+  const revealChrome = useCallback(() => {
+    setChrome(true);
+    window.clearTimeout(hideChromeTimer.current);
+    hideChromeTimer.current = window.setTimeout(() => setChrome(false), 3800);
+  }, []);
+
+  const hideChrome = useCallback(() => {
+    window.clearTimeout(hideChromeTimer.current);
+    setChrome(false);
+  }, []);
+
+  useEffect(() => {
+    if (!fullscreen) return;
+    revealChrome();
+    return () => window.clearTimeout(hideChromeTimer.current);
+  }, [revealChrome, fullscreen]);
 
   useEffect(() => {
     const el = videoRef.current;
@@ -699,7 +790,15 @@ function LoopClip({
   }, [playing, src, muted, unlockSound]);
 
   return (
-    <div className="techniques__frame">
+    <div
+      className={`techniques__frame${fullscreen ? ' techniques__frame--fill' : ''}`}
+      onClick={(event) => {
+        const target = event.target as HTMLElement | null;
+        if (target?.closest('button, a, label')) return;
+        if (chrome) hideChrome();
+        else revealChrome();
+      }}
+    >
       <video
         ref={videoRef}
         className="techniques__video"
@@ -711,6 +810,46 @@ function LoopClip({
         aria-label={label}
       />
       {overlay}
+      {chrome && onToggleFullscreen ? (
+        <div className="techniques__chrome" role="toolbar" aria-label="Playback controls">
+          {fullscreen && onStop ? (
+            <button
+              type="button"
+              className="techniques__chrome-btn"
+              onClick={(event) => {
+                event.stopPropagation();
+                onStop();
+              }}
+            >
+              Stop
+            </button>
+          ) : null}
+          {fullscreen && onToggleMute ? (
+            <button
+              type="button"
+              className={`techniques__chrome-btn${muted ? ' techniques__chrome-btn--on' : ''}`}
+              aria-pressed={muted}
+              onClick={(event) => {
+                event.stopPropagation();
+                onToggleMute();
+              }}
+            >
+              Mute clips
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="techniques__chrome-btn techniques__chrome-btn--go"
+            aria-pressed={fullscreen}
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleFullscreen();
+            }}
+          >
+            {fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+          </button>
+        </div>
+      ) : null}
       {!muted && needsUnmute ? (
         <button
           type="button"
