@@ -8099,6 +8099,7 @@ input.roster-pick__name:focus,
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
+  scrollbar-gutter: stable;
 }
 
 .week-cast.is-drift .week-cast__frame {
@@ -8217,15 +8218,16 @@ input.roster-pick__name:focus,
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 0.08rem;
+  gap: 0.1rem;
   margin: 0;
   min-width: 0;
   min-height: min-content;
-  padding: 0.28rem 0.38rem 0.32rem 0.46rem;
+  padding: 0.32rem 0.42rem 0.36rem 0.5rem;
   border-left: 4px solid var(--program, var(--gold));
-  background: color-mix(in srgb, var(--program, var(--gold)) 28%, #12151c);
-  border-radius: 7px;
+  background: color-mix(in srgb, var(--program, var(--gold)) 30%, #12151c);
+  border-radius: 8px;
   color: #f6f1e6;
+  font-size: calc(var(--week-font) * var(--day-scale, 1));
 }
 
 .week-cast__class[data-program='kids'],
@@ -8282,10 +8284,10 @@ input.roster-pick__name:focus,
 }
 
 .week-cast__class strong {
-  font-size: var(--week-font);
+  font-size: 1em;
   font-weight: 780;
   letter-spacing: -0.02em;
-  line-height: 1.18;
+  line-height: 1.15;
   overflow-wrap: break-word;
 }
 

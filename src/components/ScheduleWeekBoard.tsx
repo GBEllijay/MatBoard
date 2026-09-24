@@ -34,11 +34,18 @@ const FIT_LAYOUT: Layout = { scroll: false, font: '20px' };
 
 /** Title sizes to try, largest first. The busiest day decides how tight the type starts. */
 function fontLadder(busiest: number): number[] {
-  if (busiest <= 3) return [26, 24, 22, 20, 18, 16];
-  if (busiest <= 5) return [22, 20, 18, 17, 16, 15, 14];
-  if (busiest <= 7) return [20, 18, 17, 16, 15, 14, 13];
-  if (busiest <= 9) return [17, 16, 15, 14, 13, 12, 11];
-  return [15, 14, 13, 12, 11, 10, 9];
+  if (busiest <= 3) return [34, 32, 30, 28, 26, 24];
+  if (busiest <= 5) return [30, 28, 26, 24, 22, 20, 18];
+  if (busiest <= 7) return [28, 26, 24, 22, 20, 18, 16];
+  if (busiest <= 9) return [22, 20, 18, 17, 16, 15, 14];
+  return [18, 16, 15, 14, 13, 12, 11];
+}
+
+/** Lighter days grow their type. The busiest day stays at 1. */
+function dayScale(count: number, busiest: number): string {
+  if (count <= 0) return '1';
+  const scaled = Math.min(1.45, Math.sqrt(busiest / count));
+  return Math.max(1, scaled).toFixed(2);
 }
 
 export function ScheduleWeekBoard({ variant = 'stage', onOpenOptions }: Props) {
@@ -53,7 +60,8 @@ export function ScheduleWeekBoard({ variant = 'stage', onOpenOptions }: Props) {
   const [paused, setPaused] = useState(false);
   const frameRef = useRef<HTMLDivElement>(null);
   const boardRef = useRef<HTMLDivElement>(null);
-  const decisionKey = useRef('');
+  const decisionRef = useRef({ key: '', step: 0, mode: 'measure' as 'measure' | 'fit' | 'drift' });
+  const sizeSeen = useRef('');
   const [measureTick, setMeasureTick] = useState(0);
   const today = todayWeekday();
   const columns = useMemo(
@@ -80,7 +88,7 @@ export function ScheduleWeekBoard({ variant = 'stage', onOpenOptions }: Props) {
     return count;
   }, [columns]);
   const occupied = useMemo(() => new Set(schedule.classes.map((row) => row.day)), [schedule.classes]);
-  const hideNotes = layout.scroll || busiest >= 9;
+  const hideNotes = busiest >= 8;
   const signature = `${columns
     .map((column) =>
       column.groups
@@ -127,14 +135,16 @@ export function ScheduleWeekBoard({ variant = 'stage', onOpenOptions }: Props) {
     const frame = frameRef.current;
     const board = boardRef.current;
     if (!frame || !board || busiest === 0) {
-      setLayout(FIT_LAYOUT);
+      if (layout !== FIT_LAYOUT) setLayout(FIT_LAYOUT);
       return;
     }
     const height = frame.clientHeight;
     if (height < 48) return;
     const fonts = fontLadder(busiest);
-    const sizeKey = `${signature}:${Math.round(frame.clientWidth / 32)}:${Math.round(height / 32)}`;
-    const fontNow = Number.parseFloat(layout.font) || fonts[0];
+    const sizeKey = `${signature}:${Math.round(frame.clientWidth / 64)}:${Math.round(height / 64)}`;
+    const decision = decisionRef.current;
+    if (decision.key === sizeKey && (decision.mode === 'fit' || decision.mode === 'drift')) return;
+
     const overflows = () => {
       if (board.scrollHeight > frame.clientHeight + 4) return true;
       return Array.from(board.querySelectorAll('.week-cast__stack')).some(
@@ -146,39 +156,42 @@ export function ScheduleWeekBoard({ variant = 'stage', onOpenOptions }: Props) {
         (card) => card instanceof HTMLElement && card.scrollHeight > card.clientHeight + 3,
       );
 
-    if (decisionKey.current === `${sizeKey}:drift`) return;
-    if (decisionKey.current === `${sizeKey}:fit` && !layout.scroll && !overflows() && !cardsClip()) return;
-
-    const measuring = decisionKey.current === sizeKey && !layout.scroll;
-    if (!measuring) {
-      decisionKey.current = sizeKey;
-      setLayout({ scroll: false, font: `${fonts[0]}px` });
-      return;
+    const step = decision.key === sizeKey ? decision.step : 0;
+    const font = fonts[Math.min(step, fonts.length - 1)] ?? fonts[0];
+    const painted = decision.key === sizeKey && !layout.scroll && Number.parseFloat(layout.font) === font;
+    if (!painted) {
+      decisionRef.current = { key: sizeKey, step, mode: 'measure' };
+      const next = { scroll: false, font: `${font}px` };
+      if (layout.scroll !== next.scroll || layout.font !== next.font) {
+        setLayout(next);
+        return;
+      }
     }
 
     if (!overflows() && !cardsClip()) {
-      decisionKey.current = `${sizeKey}:fit`;
+      decisionRef.current = { key: sizeKey, step, mode: 'fit' };
+      return;
+    }
+    if (step < fonts.length - 1) {
+      const nextFont = fonts[step + 1] ?? font;
+      decisionRef.current = { key: sizeKey, step: step + 1, mode: 'measure' };
+      setLayout({ scroll: false, font: `${nextFont}px` });
       return;
     }
 
-    const smaller = fonts.find((size) => size < fontNow - 0.2);
-    if (smaller) {
-      decisionKey.current = sizeKey;
-      setLayout({ scroll: false, font: `${smaller}px` });
-      return;
-    }
-
-    decisionKey.current = `${sizeKey}:drift`;
-    setLayout({ scroll: true, font: `${fonts[fonts.length - 1]}px` });
+    decisionRef.current = { key: sizeKey, step, mode: 'drift' };
+    const drifted = { scroll: true, font: `${font}px` };
+    if (layout.scroll !== drifted.scroll || layout.font !== drifted.font) setLayout(drifted);
   }, [layout, signature, busiest, measureTick]);
 
   useEffect(() => {
     const frame = frameRef.current;
     if (!frame || typeof ResizeObserver === 'undefined') return;
     const ro = new ResizeObserver(() => {
-      const next = `${Math.round(frame.clientWidth / 32)}:${Math.round(frame.clientHeight / 32)}`;
-      if (decisionKey.current.endsWith(next)) return;
-      decisionKey.current = '';
+      const next = `${Math.round(frame.clientWidth / 64)}:${Math.round(frame.clientHeight / 64)}`;
+      if (sizeSeen.current === next) return;
+      sizeSeen.current = next;
+      decisionRef.current = { key: '', step: 0, mode: 'measure' };
       setMeasureTick((tick) => tick + 1);
     });
     ro.observe(frame);
@@ -263,6 +276,10 @@ export function ScheduleWeekBoard({ variant = 'stage', onOpenOptions }: Props) {
                 groups={groups}
                 today={today}
                 occupied={occupied.has(day)}
+                scale={dayScale(
+                  groups.reduce((count, group) => count + group.items.length, 0),
+                  busiest,
+                )}
               />
             ))}
           </div>
@@ -298,17 +315,20 @@ function WeekColumn({
   groups,
   today,
   occupied,
+  scale,
 }: {
   day: Weekday;
   groups: ReturnType<typeof groupClassesByTime>;
   today: Weekday;
   occupied: boolean;
+  scale: string;
 }) {
   return (
     <section
       className={`week-cast__column${day === today ? ' is-today' : ''}${occupied ? '' : ' is-empty'}`}
       aria-label={WEEKDAY_LABELS[day]}
       aria-current={day === today ? 'date' : undefined}
+      style={{ ['--day-scale' as string]: scale }}
     >
       <header className="week-cast__dow">
         <span className="week-cast__day-full">{WEEKDAY_LABELS[day]}</span>
