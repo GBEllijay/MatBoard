@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
+import { GymLogoControl } from '../components/GymLogoControl';
 import { DeviceMediaInput } from '../components/DeviceMediaInput';
 import { ToolboxFolder } from '../components/ToolboxFolder';
 import { FullscreenChip } from '../components/FullscreenChip';
@@ -291,6 +292,7 @@ export function ScreensaverPage() {
           setOptions(false);
         }}
       >
+        <GymLogoControl />
         <section className="saver-settings">
           <h3 className="saver-settings__title">Settings</h3>
           {pickerNote ? <p className="saver-folder__empty">{pickerNote}</p> : null}
