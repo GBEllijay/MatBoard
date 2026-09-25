@@ -1,4 +1,23 @@
-/** Gym competitor roster. On-device only — name + belt prefill Match and Mock Tournament. */
+/**
+ * Gym competitor roster. On-device only — name + belt prefill Match and Mock Tournament.
+ * Game plans and Competition Ready checklists live on this same save, keyed by competitor id.
+ */
+
+import {
+  emptyGamePlan,
+  normalizeGamePlan,
+  normalizeGamePlanMap,
+  withGameAudit,
+  withGameLink,
+  withGameLinkFlag,
+  withGameNotes,
+  withoutGameLink,
+  type CompetitorGamePlan,
+  type GameAudit,
+  type GameLayerSection,
+  type GameLinkFlag,
+  type GameSection,
+} from './gamePlan.ts';
 
 export const STORAGE_KEY = 'matboard.roster.v1';
 export const NOTE_MAX = 160;
@@ -65,7 +84,14 @@ export type RosterState = {
   students: Student[];
   /** Keyed by competitor id. A missing id means every checklist item is off. */
   ready: Record<string, CompetitorReady>;
+  /**
+   * Keyed by competitor id. A missing id means no game plan yet.
+   * Unknown maps on this save stay in place beside these two.
+   */
+  gamePlans: Record<string, CompetitorGamePlan>;
 };
+
+const ROSTER_OWNED_KEYS = new Set(['version', 'students', 'gamePlans', 'ready']);
 
 /** Name, belt, optional gym, and optional division. Notes and promotion dates stay on the roster card. */
 export type RosterPrefill = {
@@ -87,6 +113,9 @@ export type StudentDraft = {
 
 const listeners = new Set<() => void>();
 
+/** Keys this module does not own, kept across a game-plan write. */
+let siblings: Record<string, unknown> = {};
+
 let state: RosterState = loadState();
 
 let studentSeq = 0;
@@ -97,7 +126,7 @@ export function createStudentId(): string {
 }
 
 export function defaultRoster(): RosterState {
-  return { version: 1, students: [], ready: {} };
+  return { version: 1, students: [], ready: {}, gamePlans: {} };
 }
 
 export function emptyReadyFlags(): Record<ReadyItemId, boolean> {
@@ -151,6 +180,31 @@ export function readyStatusLabel(ready: CompetitorReady): string {
   if (progress.total === 0) return 'No items';
   if (progress.complete) return 'Ready';
   return `${progress.on} of ${progress.total} on`;
+}
+
+/** Sibling maps on the roster JSON that this module does not own. */
+export function rosterSiblings(raw: unknown): Record<string, unknown> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const siblings: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (ROSTER_OWNED_KEYS.has(key)) continue;
+    siblings[key] = value;
+  }
+  return siblings;
+}
+
+export function rosterSavePayload(roster: RosterState, extra: Record<string, unknown>): Record<string, unknown> {
+  return { ...extra, ...roster };
+}
+
+/** Drop one competitor from a sibling checklist map when the roster card is removed. */
+export function dropSiblingCompetitor(extra: Record<string, unknown>, id: string): Record<string, unknown> {
+  const ready = extra.ready;
+  if (!ready || typeof ready !== 'object' || Array.isArray(ready)) return extra;
+  if (!(id in (ready as Record<string, unknown>))) return extra;
+  const next = { ...(ready as Record<string, unknown>) };
+  delete next[id];
+  return { ...extra, ready: next };
 }
 
 export function emptyDraft(): StudentDraft {
@@ -460,10 +514,12 @@ export function normalizeRoster(raw: unknown): RosterState {
     students.push(next);
   }
   const sorted = sortStudents(students);
+  const ids = new Set(sorted.map((row) => row.id));
   return {
     version: 1,
     students: sorted,
-    ready: normalizeReadyMap(parsed.ready, new Set(sorted.map((row) => row.id))),
+    ready: normalizeReadyMap(parsed.ready, ids),
+    gamePlans: normalizeGamePlanMap(parsed.gamePlans, ids),
   };
 }
 
@@ -479,9 +535,15 @@ function readStorage(): string | null {
 function loadState(): RosterState {
   try {
     const raw = readStorage();
-    if (!raw) return defaultRoster();
-    return normalizeRoster(JSON.parse(raw));
+    if (!raw) {
+      siblings = {};
+      return defaultRoster();
+    }
+    const parsed: unknown = JSON.parse(raw);
+    siblings = rosterSiblings(parsed);
+    return normalizeRoster(parsed);
   } catch {
+    siblings = {};
     return defaultRoster();
   }
 }
@@ -490,12 +552,29 @@ function persist(next: RosterState): void {
   state = next;
   try {
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(rosterSavePayload(state, siblings)));
     }
   } catch {
     /* quota / private mode */
   }
   listeners.forEach((fn) => fn());
+}
+
+function commit(
+  students: Student[],
+  gamePlans: Record<string, CompetitorGamePlan> = state.gamePlans,
+  ready: Record<string, CompetitorReady> = state.ready,
+): void {
+  persist({ version: 1, students, gamePlans, ready });
+}
+
+function writeGamePlan(studentId: string, plan: CompetitorGamePlan): void {
+  if (!state.students.some((row) => row.id === studentId)) return;
+  const clean = normalizeGamePlan(plan);
+  const gamePlans = { ...state.gamePlans };
+  if (clean) gamePlans[studentId] = clean;
+  else delete gamePlans[studentId];
+  commit(state.students, gamePlans);
 }
 
 export function getRoster(): RosterState {
@@ -507,10 +586,6 @@ export function subscribeRoster(fn: () => void): () => void {
   return () => {
     listeners.delete(fn);
   };
-}
-
-function commit(students: Student[], ready: Record<string, CompetitorReady> = state.ready): void {
-  persist({ version: 1, students, ready });
 }
 
 export function addStudent(draft: StudentDraft): Student | null {
@@ -559,7 +634,7 @@ function writeReady(studentId: string, next: CompetitorReady): void {
   const ready = { ...state.ready };
   if (readyIsBlank(next)) delete ready[studentId];
   else ready[studentId] = next;
-  commit(state.students, ready);
+  commit(state.students, state.gamePlans, ready);
 }
 
 export function setReadyFlag(studentId: string, itemId: ReadyItemId, on: boolean): void {
@@ -626,16 +701,65 @@ export function restoreReadyItem(studentId: string, itemId: ReadyItemId): void {
 }
 
 export function removeStudent(id: string): void {
+  siblings = dropSiblingCompetitor(siblings, id);
+  const gamePlans = { ...state.gamePlans };
+  delete gamePlans[id];
   const ready = { ...state.ready };
   delete ready[id];
   commit(
     state.students.filter((row) => row.id !== id),
+    gamePlans,
     ready,
   );
 }
 
 export function resetRoster(): void {
+  siblings = {};
   persist(defaultRoster());
+}
+
+export function competitorGamePlan(studentId: string, roster: RosterState = getRoster()): CompetitorGamePlan {
+  return roster.gamePlans[studentId] ?? emptyGamePlan();
+}
+
+export function setGameNotes(studentId: string, section: GameSection, notes: string): void {
+  writeGamePlan(studentId, withGameNotes(competitorGamePlan(studentId), section, notes));
+}
+
+export function setGameAudit(studentId: string, section: GameLayerSection, audit: GameAudit | ''): void {
+  writeGamePlan(studentId, withGameAudit(competitorGamePlan(studentId), section, audit));
+}
+
+/** Attaches a tree step. Notes are left as they are. A missing id is ignored. */
+export function addGameLink(
+  studentId: string,
+  section: GameSection,
+  link: { treeId: string; nodeId: string },
+): void {
+  const current = competitorGamePlan(studentId);
+  const next = withGameLink(current, section, link);
+  if (next === current) return;
+  writeGamePlan(studentId, next);
+}
+
+export function setGameLinkFlag(
+  studentId: string,
+  section: GameSection,
+  treeId: string,
+  nodeId: string,
+  flag: GameLinkFlag | '',
+): void {
+  const current = competitorGamePlan(studentId);
+  const next = withGameLinkFlag(current, section, treeId, nodeId, flag);
+  if (next === current) return;
+  writeGamePlan(studentId, next);
+}
+
+export function removeGameLink(studentId: string, section: GameSection, treeId: string, nodeId: string): void {
+  const current = competitorGamePlan(studentId);
+  const next = withoutGameLink(current, section, treeId, nodeId);
+  if (next === current) return;
+  writeGamePlan(studentId, next);
 }
 
 export function initRosterSync(): void {

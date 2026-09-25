@@ -9,6 +9,7 @@ import { CoachPage } from './pages/Coach';
 import { ComingSoonPage } from './pages/ComingSoon';
 import { CompetitionReadyPage } from './pages/CompetitionReady';
 import { CompetitorManagementPage } from './pages/CompetitorManagement';
+import { GamePlanPage } from './pages/GamePlan';
 import { HomePage } from './pages/Home';
 import { InstructorCollaborationPage } from './pages/InstructorCollaboration';
 import { MatchControllerPage } from './pages/MatchController';
@@ -118,6 +119,14 @@ export default function App() {
         element={
           <ProRoute>
             <CompetitionReadyPage />
+          </ProRoute>
+        }
+      />
+      <Route
+        path="/game-plan"
+        element={
+          <ProRoute>
+            <GamePlanPage />
           </ProRoute>
         }
       />

@@ -7,6 +7,8 @@ import {
   COMPETITOR_ROSTER_CARD,
   COMPETITOR_ROSTER_DESCRIPTION,
   COMPETITOR_ROSTER_LABEL,
+  GAME_PLAN_CARD,
+  GAME_PLAN_LABEL,
   RANKINGS_RESULTS_CARD,
 } from '../lib/coachCopy';
 import { COMPETITOR_SYSTEM_NAME } from '../lib/productNames';
@@ -21,6 +23,11 @@ const LINKS = [
     to: '/competition-ready',
     title: COMPETITION_READY_LABEL,
     body: COMPETITION_READY_CARD,
+  },
+  {
+    to: '/game-plan',
+    title: GAME_PLAN_LABEL,
+    body: GAME_PLAN_CARD,
   },
   {
     to: '/rankings',

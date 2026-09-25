@@ -67,6 +67,25 @@ export const COMPETITION_READY_CARD =
 export const COMPETITION_READY_LEAD =
   'Gold On is done. Off still needs attention. Each list stays on this device with that competitor.';
 
+/** Hub button under Competitor Management. One A/B/C plan per roster competitor. */
+export const GAME_PLAN_LABEL = 'Competitor Game Plan';
+
+/** Subtitle on the Competitor Game Plan button. */
+export const GAME_PLAN_CARD =
+  'A Game, B Game, and C Game for each bout competitor, plus what to work on at home. A Technique Tree link is optional.';
+
+/** Lead on the game plan screen. A note can stand alone. */
+export const GAME_PLAN_LEAD =
+  'Notes stay on this device with that competitor. A Technique Tree link is optional, and a custom note can stand alone.';
+
+export const GAME_PLAN_A = 'A Game';
+export const GAME_PLAN_B = 'B Game';
+export const GAME_PLAN_C = 'C Game';
+export const GAME_PLAN_HOME = 'Home focus. What to work on between sessions.';
+export const GAME_PLAN_OPTIONAL = 'Optional. A note does not need a Technique Tree step.';
+export const GAME_PLAN_EMPTY =
+  'Add a name and belt on Competitor Roster, then write their game plan here.';
+
 export const ROSTER_LEAD_COACH =
   'Competitor Roster with Names and Ranks for Single Matches and Mock Tournaments.';
 export const ROSTER_LEAD_PRO =

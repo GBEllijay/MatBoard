@@ -26,6 +26,14 @@ import {
   COMPETITION_READY_LEAD,
   COMPETITOR_ROSTER_CARD,
   COMPETITOR_ROSTER_DESCRIPTION,
+  GAME_PLAN_A,
+  GAME_PLAN_B,
+  GAME_PLAN_C,
+  GAME_PLAN_CARD,
+  GAME_PLAN_EMPTY,
+  GAME_PLAN_LABEL,
+  GAME_PLAN_LEAD,
+  GAME_PLAN_OPTIONAL,
   RANKINGS_RESULTS_CARD,
   ROSTER_CSV_DEVICE_NOTE,
   ROSTER_CSV_INSTRUCTIONS,
@@ -68,6 +76,14 @@ function allCopy(): string {
     COMPETITION_READY_LABEL,
     COMPETITION_READY_CARD,
     COMPETITION_READY_LEAD,
+    GAME_PLAN_LABEL,
+    GAME_PLAN_CARD,
+    GAME_PLAN_LEAD,
+    GAME_PLAN_OPTIONAL,
+    GAME_PLAN_EMPTY,
+    GAME_PLAN_A,
+    GAME_PLAN_B,
+    GAME_PLAN_C,
   ].join('\n');
 }
 
@@ -130,6 +146,22 @@ test('Competitor Roster copy names bout competitors and skips franchise disclaim
   assert.doesNotMatch(
     `${COMPETITION_READY_LABEL}\n${COMPETITION_READY_CARD}\n${COMPETITION_READY_LEAD}`,
     /GB Members|Gracie\s*Barra|student management|\bstudents?\b/i,
+  );
+});
+
+test('Game Plan copy keeps a note optional and stays on bout competitors', () => {
+  assert.equal(GAME_PLAN_LABEL, 'Competitor Game Plan');
+  assert.equal(GAME_PLAN_A, 'A Game');
+  assert.equal(GAME_PLAN_B, 'B Game');
+  assert.equal(GAME_PLAN_C, 'C Game');
+  assert.match(GAME_PLAN_CARD, /A Game, B Game, and C Game/);
+  assert.match(GAME_PLAN_CARD, /optional/i);
+  assert.match(GAME_PLAN_LEAD, /optional/i);
+  assert.match(GAME_PLAN_LEAD, /stand alone/);
+  assert.match(GAME_PLAN_OPTIONAL, /does not need/);
+  assert.doesNotMatch(
+    [GAME_PLAN_LABEL, GAME_PLAN_CARD, GAME_PLAN_LEAD, GAME_PLAN_OPTIONAL, GAME_PLAN_EMPTY, GAME_PLAN_A, GAME_PLAN_B, GAME_PLAN_C].join('\n'),
+    /required|GB Members|student|everything works|fallback|desperation|surprise/i,
   );
 });
 
