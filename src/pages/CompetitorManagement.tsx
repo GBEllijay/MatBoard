@@ -5,6 +5,7 @@ import {
   COMPETITOR_ROSTER_CARD,
   COMPETITOR_ROSTER_DESCRIPTION,
   COMPETITOR_ROSTER_LABEL,
+  RANKINGS_RESULTS_CARD,
 } from '../lib/coachCopy';
 import { COMPETITOR_SYSTEM_NAME } from '../lib/productNames';
 
@@ -17,7 +18,7 @@ const LINKS = [
   {
     to: '/rankings',
     title: 'Rankings / Results',
-    body: 'On-device tournament result files: name, date, division, placements, and win records.',
+    body: RANKINGS_RESULTS_CARD,
   },
 ] as const;
 

@@ -52,6 +52,10 @@ export const COMPETITOR_ROSTER_DESCRIPTION =
 export const COMPETITOR_ROSTER_CARD =
   'Easily create and maintain a list of competitor names, rankings and results for easy loading into tournament brackets and matches.';
 
+/** Subtitle on the Rankings / Results button. Copy only — no auto-bracket or seeding yet. */
+export const RANKINGS_RESULTS_CARD =
+  'Save and catalogue your tournament results. Keeps names, dates, divisions, placements, and win records for ranking calculations. Full auto-bracketing and seeding coming soon.';
+
 export const ROSTER_LEAD_COACH =
   'Competitor Roster with Names and Ranks for Single Matches and Mock Tournaments.';
 export const ROSTER_LEAD_PRO =

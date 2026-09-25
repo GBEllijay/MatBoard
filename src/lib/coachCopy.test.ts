@@ -23,6 +23,7 @@ import {
   NOTES_LEAD,
   COMPETITOR_ROSTER_CARD,
   COMPETITOR_ROSTER_DESCRIPTION,
+  RANKINGS_RESULTS_CARD,
   ROSTER_CSV_DEVICE_NOTE,
   ROSTER_CSV_INSTRUCTIONS,
   ROSTER_CSV_PRO_TEASER,
@@ -60,6 +61,7 @@ function allCopy(): string {
     ROSTER_LEAD_PRO,
     COMPETITOR_ROSTER_DESCRIPTION,
     COMPETITOR_ROSTER_CARD,
+    RANKINGS_RESULTS_CARD,
   ].join('\n');
 }
 
@@ -100,6 +102,10 @@ test('Competitor Roster copy names bout competitors and skips franchise disclaim
   assert.equal(
     COMPETITOR_ROSTER_CARD,
     'Easily create and maintain a list of competitor names, rankings and results for easy loading into tournament brackets and matches.',
+  );
+  assert.equal(
+    RANKINGS_RESULTS_CARD,
+    'Save and catalogue your tournament results. Keeps names, dates, divisions, placements, and win records for ranking calculations. Full auto-bracketing and seeding coming soon.',
   );
   assert.equal(
     ROSTER_LEAD_PRO,
