@@ -34,7 +34,12 @@ import {
   VIDEO_RECORD_ACCEPT,
   type MediaSourceKind,
 } from '../lib/mediaPicker';
-import { LARGE_MEDIA_BYTES, LARGE_MEDIA_NOTE, quotaAddNote } from '../lib/storageQuota';
+import {
+  SMALLER_BATCH_TIP,
+  folderPickFeedback,
+  folderSaveProgressLabel,
+} from '../lib/folderBatch';
+import { LARGE_MEDIA_BYTES, LARGE_MEDIA_NOTE } from '../lib/storageQuota';
 import {
   addFolderFiles,
   clearFolder,
@@ -44,6 +49,7 @@ import {
   DEFAULT_MUTE_VIDEO,
   DEFAULT_SHUFFLE,
   FOLDERS,
+  fileMatchesFolder,
   folderById,
   folderExpandedState,
   getSaverPrefs,
@@ -91,6 +97,7 @@ export function ScreensaverPage() {
   const [shuffle, setShuffle] = useState(DEFAULT_SHUFFLE);
   const [muteVideo, setMuteVideo] = useState(DEFAULT_MUTE_VIDEO);
   const [pickerNote, setPickerNote] = useState('');
+  const [batchStatus, setBatchStatus] = useState<BatchNotice | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [addKind, setAddKind] = useState<MediaSourceKind>('photo');
   const [unlockSound, setUnlockSound] = useState(false);
@@ -106,6 +113,7 @@ export function ScreensaverPage() {
   const videoRecordRef = useRef<HTMLInputElement>(null);
   const videoLibraryRef = useRef<HTMLInputElement>(null);
   const addFolderRef = useRef<FolderId>('gallery');
+  const savingRef = useRef(false);
   const intervalMs = secondsToMs(intervalSec);
   const fs = usePlayFullscreen();
   const navigate = useNavigate();
@@ -266,37 +274,99 @@ export function ScreensaverPage() {
     node.scrollIntoView({ block: 'nearest' });
   }, [pickerNote]);
 
-  const onFiles = async (files: FileList | null) => {
-    if (!files?.length) return;
+  const showBatchError = (folderId: FolderId, text: string) => {
+    setPickerNote('');
+    setBatchStatus({ tone: 'error', text });
+    setExpanded((prev) => ({ ...prev, [folderId]: true }));
+    setOptions(true);
+  };
+
+  const onFiles = async (files: readonly File[]) => {
+    if (savingRef.current) return;
     const kind = addKind;
     const folderId = addFolderRef.current;
+    const folder = folderById(folderId);
     const picked = [...files];
+    const readable = picked.filter((file) => file.size > 0);
+    const matched = readable.filter((file) => fileMatchesFolder(file, folder));
     setAddOpen(false);
+
+    if (!readable.length) {
+      showBatchError(folderId, folderPickFeedback({
+        picked: picked.length,
+        readable: 0,
+        matched: 0,
+        added: 0,
+        kind,
+        error: null,
+      }) ?? `Nothing was saved. ${SMALLER_BATCH_TIP}`);
+      return;
+    }
+
+    if (!matched.length) {
+      showBatchError(
+        folderId,
+        folderPickFeedback({
+          picked: picked.length,
+          readable: readable.length,
+          matched: 0,
+          added: 0,
+          kind,
+          error: null,
+        }) ?? `Nothing was saved. ${SMALLER_BATCH_TIP}`,
+      );
+      return;
+    }
+
+    savingRef.current = true;
+    setPickerNote('');
+    setBatchStatus({
+      tone: 'progress',
+      text: folderSaveProgressLabel({ done: 0, total: matched.length, phase: 'shrink' }),
+    });
     try {
-      const added = await addFolderFiles(picked, folderId);
+      const added = await addFolderFiles(readable, folderId, {
+        onProgress: (progress) => {
+          setBatchStatus({ tone: 'progress', text: folderSaveProgressLabel(progress) });
+        },
+      });
+      const feedback = folderPickFeedback({
+        picked: picked.length,
+        readable: readable.length,
+        matched: matched.length,
+        added,
+        kind,
+        error: null,
+      });
       const large = picked.some((file) => file.size >= LARGE_MEDIA_BYTES);
-      if (!added) {
-        setPickerNote(
-          kind === 'video'
-            ? 'That file cannot play here. Switch the camera to video, or pick an MP4 / WebM.'
-            : 'That file is not an image this folder can keep.',
-        );
-      } else if (large) {
-        setPickerNote(LARGE_MEDIA_NOTE);
+      if (feedback) {
+        showBatchError(folderId, feedback);
       } else {
-        setPickerNote('');
+        setBatchStatus(null);
+        setPickerNote(large ? LARGE_MEDIA_NOTE : '');
       }
       await refresh();
       if (added) setPlaying(true);
     } catch (error) {
-      setPickerNote(quotaAddNote(error) ?? 'Could not save that file on this device. Try again.');
-      setExpanded((prev) => ({ ...prev, [folderId]: true }));
-      setOptions(true);
+      const added = savedCount(error);
+      showBatchError(
+        folderId,
+        folderPickFeedback({
+          picked: picked.length,
+          readable: readable.length,
+          matched: matched.length,
+          added,
+          kind,
+          error,
+        }) ?? `Could not save these files. Nothing was saved. ${SMALLER_BATCH_TIP}`,
+      );
       try {
         await refresh();
       } catch {
         /* The note is the signal. A second storage failure should not hide it. */
       }
+    } finally {
+      savingRef.current = false;
     }
   };
 
@@ -325,12 +395,15 @@ export function ScreensaverPage() {
       className={`saver${currentSlide ? ' saver--play' : ''}${fs.className ? ` ${fs.className}` : ''}`}
       onClick={(event) => {
         const target = event.target as HTMLElement;
-        if (target.closest('.sheet, .chrome, .saver__empty, .btn, input, label, .play-fs, .play-exit, .tv-tip, .saver__unmute, .week-cast.is-drift, .week-cast.is-paused, .month-cast.is-drift, .month-cast.is-paused')) return;
+        if (target.closest('.sheet, .chrome, .saver__empty, .btn, input, label, .play-fs, .play-exit, .tv-tip, .saver__unmute, .saver-batch, .week-cast.is-drift, .week-cast.is-paused, .month-cast.is-drift, .month-cast.is-paused')) return;
         if (!muteVideo) setUnlockSound(true);
         if (slides.length) setOptions(true);
       }}
     >
       <Chrome ghost />
+      {!options && batchStatus ? (
+        <BatchStatus status={batchStatus} onDismiss={() => setBatchStatus(null)} />
+      ) : null}
       <PlayExitMark to={parent.path} onExit={exitSlideshow} />
       <div className="play-fs-slot">
         <FullscreenChip
@@ -416,6 +489,9 @@ export function ScreensaverPage() {
           </InstructionsButton>
         }
       >
+        {options && batchStatus ? (
+          <BatchStatus panel status={batchStatus} onDismiss={() => setBatchStatus(null)} />
+        ) : null}
         <label className="toggle saver-playing">
           <input type="checkbox" checked={playing} onChange={(e) => setPlaying(e.target.checked)} />
           Playing
@@ -693,6 +769,41 @@ export function ScreensaverPage() {
         onFiles={onFiles}
       />
     </main>
+  );
+}
+
+type BatchNotice = { tone: 'progress' | 'error'; text: string };
+
+function savedCount(error: unknown): number {
+  if (error && typeof error === 'object' && 'saved' in error && typeof error.saved === 'number') {
+    return error.saved;
+  }
+  return 0;
+}
+
+function BatchStatus({
+  status,
+  panel = false,
+  onDismiss,
+}: {
+  status: BatchNotice;
+  panel?: boolean;
+  onDismiss: () => void;
+}) {
+  return (
+    <div
+      className={`saver-batch${panel ? ' saver-batch--panel' : ''}${status.tone === 'error' ? ' saver-batch--error' : ''}`}
+      role={status.tone === 'error' ? 'alert' : 'status'}
+      aria-live={status.tone === 'error' ? 'assertive' : 'polite'}
+      aria-atomic="true"
+    >
+      <p>{status.text}</p>
+      {status.tone === 'error' ? (
+        <button type="button" className="saver-batch__dismiss" onClick={onDismiss}>
+          Dismiss
+        </button>
+      ) : null}
+    </div>
   );
 }
 

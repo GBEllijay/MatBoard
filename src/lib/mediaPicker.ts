@@ -43,6 +43,23 @@ export const PHOTO_CAPTURE_LABEL = 'Take photo';
 export type MediaPickerMode = 'record' | 'library';
 export type MediaSourceKind = 'video' | 'photo';
 
+/**
+ * Some phones fire `cancel` just before or just after an empty `change` when
+ * the person dismisses the picker. A shared-album bug fires `change` with no
+ * files and no `cancel`. This window lets a real dismiss stay quiet.
+ */
+export const PICKER_CANCEL_GRACE_MS = 120;
+
+export function emptyChangeWasCancel(
+  cancelledAt: number,
+  changeAt: number,
+  now: number,
+  graceMs = PICKER_CANCEL_GRACE_MS,
+): boolean {
+  if (!cancelledAt) return false;
+  return cancelledAt >= changeAt - graceMs && cancelledAt <= now;
+}
+
 export function isVideoAccept(accept: string): boolean {
   return (
     accept === VIDEO_PICKER_ACCEPT ||

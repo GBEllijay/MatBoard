@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  emptyChangeWasCancel,
   isImageAccept,
   isVideoAccept,
   openDeviceMediaPicker,
@@ -106,5 +107,15 @@ describe('openDeviceMediaPicker', () => {
     assert.doesNotThrow(() =>
       openDeviceMediaPicker(null, { accept: VIDEO_PICKER_ACCEPT, mode: 'record' }),
     );
+  });
+});
+
+describe('empty picker versus cancel', () => {
+  it('treats a cancel just before or just after an empty change as a dismiss', () => {
+    const changeAt = 1_000;
+    assert.equal(emptyChangeWasCancel(0, changeAt, changeAt + 80), false);
+    assert.equal(emptyChangeWasCancel(changeAt - 40, changeAt, changeAt + 80), true);
+    assert.equal(emptyChangeWasCancel(changeAt + 30, changeAt, changeAt + 80), true);
+    assert.equal(emptyChangeWasCancel(changeAt - 500, changeAt, changeAt + 80), false);
   });
 });
