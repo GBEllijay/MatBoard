@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { BeltRail } from '../components/BeltRail';
 import { Chrome } from '../components/Chrome';
 import { Sheet } from '../components/Sheet';
 import { OutcomeCalls, OutcomePickSheet, useOutcomeSheet } from '../components/OutcomeCalls';
@@ -8,6 +9,7 @@ import { RankChip } from '../components/RankChip';
 import { RosterNameField } from '../components/RosterNameField';
 import { useBoutQuerySync, useBracketOutcomeReturn } from '../hooks/useBracketBoutReturn';
 import { useInterval } from '../hooks/useClock';
+import { useSuiteOrigin } from '../hooks/useSuiteOrigin';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useMatchState } from '../hooks/useStores';
 import {
@@ -48,6 +50,7 @@ export function MatchControllerPage() {
   const [castNote, setCastNote] = useState('');
   const [tvHelpOpen, setTvHelpOpen] = useState(false);
   const [searchParams] = useSearchParams();
+  const suite = useSuiteOrigin();
   const remaining = remainingNow(match);
   const durationIsPreset = TIME_PRESETS_MIN.some((minutes) => match.durationMs === minutesToMs(minutes));
   const focusParam = searchParams.get('focus');
@@ -111,7 +114,7 @@ export function MatchControllerPage() {
   const onCast = async () => {
     void unlockAudio();
     try {
-      const mode = await openOrCastDisplay();
+      const mode = await openOrCastDisplay({ fromSuite: suite.fromSuite });
       setCastNote(
         mode === 'cast'
           ? 'Display sent to the chosen screen.'
@@ -123,8 +126,9 @@ export function MatchControllerPage() {
   };
 
   return (
-    <main className="controller">
-      <PlayExitMark to="/white" />
+    <main className={`controller${suite.fromSuite ? ' origin-suite' : ''}`}>
+      {suite.fromSuite ? <BeltRail kind="tournament" /> : null}
+      <PlayExitMark to={suite.homePath} />
       <Chrome
         right={
           <>
@@ -133,7 +137,7 @@ export function MatchControllerPage() {
                 Back to bracket
               </Link>
             ) : null}
-            <button type="button" className="chip" onClick={openDisplayWindow}>
+            <button type="button" className="chip" onClick={() => openDisplayWindow({ fromSuite: suite.fromSuite })}>
               Display
             </button>
             <button type="button" className="chip chip--gold" onClick={() => void onCast()}>
@@ -401,7 +405,7 @@ export function MatchControllerPage() {
         >
           Instructions / Suggestions
         </button>
-        <Link className="text-link" to={scoreboardPath(linkedId)}>
+        <Link className="text-link" to={suite.withFrom(scoreboardPath(linkedId))}>
           Open scoreboard on this device
         </Link>
       </section>

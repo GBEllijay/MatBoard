@@ -1,5 +1,6 @@
 import { useCallback, useState, type MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { BeltRail } from '../components/BeltRail';
 import { Chrome } from '../components/Chrome';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { PlayExitMark } from '../components/PlayExitMark';
@@ -7,6 +8,7 @@ import { Sheet } from '../components/Sheet';
 import { TrainingOptions } from '../components/TrainingOptions';
 import { useInterval } from '../hooks/useClock';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
+import { useSuiteOrigin } from '../hooks/useSuiteOrigin';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useTrainingSkin, useTrainingState } from '../hooks/useStores';
 import { unlockAudio } from '../lib/audio';
@@ -21,6 +23,7 @@ export function TrainingPage() {
   const remaining = remainingTraining(training);
   const fs = usePlayFullscreen();
   const navigate = useNavigate();
+  const suite = useSuiteOrigin();
 
   useWakeLock(training.running);
   useInterval(
@@ -47,23 +50,24 @@ export function TrainingPage() {
 
   const exitTraining = () => {
     void fs.exit().finally(() => {
-      navigate('/white');
+      navigate(suite.homePath);
     });
   };
 
   return (
     <main
-      className={`training training--${training.phase}${skin === 'themed' ? ' training--themed' : ''}${
-        fs.className ? ` ${fs.className}` : ''
-      }`}
+      className={`training training--${training.phase}${
+        skin === 'themed' || suite.fromSuite ? ' training--themed' : ''
+      }${suite.fromSuite ? ' origin-suite' : ''}${fs.className ? ` ${fs.className}` : ''}`}
       onClick={(event) => {
         const target = event.target as HTMLElement;
         if (target.closest('.sheet, .training__clock, .chrome, .btn, input, fieldset, label, .play-fs, .play-exit')) return;
         setOptions(true);
       }}
     >
+      {suite.fromSuite ? <BeltRail kind="tournament" /> : null}
       <Chrome ghost title="" />
-      <PlayExitMark to="/white" onExit={exitTraining} />
+      <PlayExitMark to={suite.homePath} onExit={exitTraining} />
       <div className="play-fs-slot">
         <FullscreenChip
           supported={fs.supported}

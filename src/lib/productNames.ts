@@ -80,6 +80,22 @@ export const MATCH_CONTROLLER_PATH = '/match/control';
 /** Existing White Rounds controller. The suite deep-links here as Round Controller. */
 export const ROUND_CONTROLLER_PATH = '/training/control';
 
+/** Query flag so Suite destinations keep the Suite page theme and return path. */
+export const SUITE_FROM = 'suite';
+
+/** Keep `from=suite` on links opened from the Suite hub. Other callers stay unchanged. */
+export function withSuiteFrom(path: string, fromSuite: boolean): string {
+  if (!fromSuite) return path;
+  const hashAt = path.indexOf('#');
+  const hash = hashAt >= 0 ? path.slice(hashAt) : '';
+  const base = hashAt >= 0 ? path.slice(0, hashAt) : path;
+  const queryAt = base.indexOf('?');
+  const pathname = queryAt >= 0 ? base.slice(0, queryAt) : base;
+  const params = new URLSearchParams(queryAt >= 0 ? base.slice(queryAt + 1) : '');
+  params.set('from', SUITE_FROM);
+  return `${pathname}?${params.toString()}${hash}`;
+}
+
 /** Bottom-of-page guidance on the Media Console manage screen. */
 export const MEDIA_CONSOLE_INSTRUCTIONS = [
   'Gold On means that folder plays on the TV.',

@@ -30,6 +30,7 @@ import {
   TOURNAMENT_SUITE_NAME,
   toolEyebrow,
   tournamentToolLabel,
+  withSuiteFrom,
 } from './productNames.ts';
 
 test('Console name uses the exact Instructor apostrophe', () => {
@@ -99,6 +100,15 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   );
   assert.equal(MATCH_CONTROLLER_PATH, '/match/control');
   assert.equal(ROUND_CONTROLLER_PATH, '/training/control');
+});
+
+test('Suite origin stays on Suite links and leaves other paths alone', () => {
+  assert.equal(withSuiteFrom('/match', false), '/match');
+  assert.equal(withSuiteFrom('/training/control', false), '/training/control');
+  assert.equal(withSuiteFrom('/match', true), '/match?from=suite');
+  assert.equal(withSuiteFrom('/match/control?focus=round', true), '/match/control?focus=round&from=suite');
+  assert.equal(withSuiteFrom('/match?bout=final-0', true), '/match?bout=final-0&from=suite');
+  assert.equal(withSuiteFrom('/training?from=suite', true), '/training?from=suite');
 });
 
 test('Owner tournament tool is Tournament Software; Coach keeps Mock Tournament', () => {

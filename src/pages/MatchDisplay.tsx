@@ -1,5 +1,6 @@
 import { useCallback, useState, type MouseEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { BeltRail } from '../components/BeltRail';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { OutcomeSplash } from '../components/OutcomeSplash';
 import { TvTip } from '../components/TvTip';
@@ -8,6 +9,7 @@ import { ScoreBox } from '../components/ScoreBox';
 import { useBoutQuerySync, useBracketOutcomeReturn } from '../hooks/useBracketBoutReturn';
 import { useInterval } from '../hooks/useClock';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
+import { useSuiteOrigin } from '../hooks/useSuiteOrigin';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useMatchState } from '../hooks/useStores';
@@ -25,6 +27,7 @@ export function MatchDisplayPage() {
   const remaining = remainingNow(match);
   const fs = usePlayFullscreen();
   const navigate = useNavigate();
+  const suite = useSuiteOrigin();
   const linkedId = linkedBracketMatchId(match.bracketMatchId);
   const refNeeded = needsRefDecision({ ...match, remainingMs: remaining });
   const endedWithoutWinner = remaining <= 0 && !match.running && !match.outcome;
@@ -53,7 +56,7 @@ export function MatchDisplayPage() {
   };
 
   const openController = (focus?: DisplayFocus) => {
-    const path = controllerPath(linkedId, focus);
+    const path = suite.withFrom(controllerPath(linkedId, focus));
     void fs.exit().finally(() => navigate(path));
   };
 
@@ -71,12 +74,15 @@ export function MatchDisplayPage() {
 
   return (
     <main
-      className={`display${linkedId ? ' display--linked' : ''}${splash ? ' display--splash' : ''}${fs.className ? ` ${fs.className}` : ''}`}
+      className={`display${linkedId ? ' display--linked' : ''}${splash ? ' display--splash' : ''}${
+        suite.fromSuite ? ' origin-suite' : ''
+      }${fs.className ? ` ${fs.className}` : ''}`}
       onPointerDown={() => {
         void unlockAudio();
       }}
       onClick={onBoardClick}
     >
+      {suite.fromSuite ? <BeltRail kind="tournament" /> : null}
       <div className="display__chrome">
         <div className="display__chrome-start">
           {linkedId ? (
@@ -84,7 +90,7 @@ export function MatchDisplayPage() {
               Back to bracket
             </Link>
           ) : (
-            <Link to="/white" className="chip">
+            <Link to={suite.homePath} className="chip">
               Home
             </Link>
           )}
@@ -97,7 +103,10 @@ export function MatchDisplayPage() {
             shortcut={fs.tvStation}
             onToggle={() => void fs.toggle()}
           />
-          <Link to={controllerPath(linkedId, endedWithoutWinner ? 'outcome' : undefined)} className="chip chip--gold">
+          <Link
+            to={suite.withFrom(controllerPath(linkedId, endedWithoutWinner ? 'outcome' : undefined))}
+            className="chip chip--gold"
+          >
             Controller
           </Link>
         </div>
@@ -233,9 +242,10 @@ function ControllerFocusLink({
   children: ReactNode;
 }) {
   const linkedId = linkedBracketMatchId(useMatchState().bracketMatchId);
+  const suite = useSuiteOrigin();
   return (
     <Link
-      to={controllerPath(linkedId, focus)}
+      to={suite.withFrom(controllerPath(linkedId, focus))}
       aria-label={label}
       onClick={(event) => {
         if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
