@@ -710,6 +710,20 @@ function ClassScheduleEntry() {
     >
       <summary className="saver-folder__summary">
         <span className="saver-folder__title">Class Schedule</span>
+        <button
+          type="button"
+          className={`preset saver-folder__play${schedule.castEnabled ? ' preset--on' : ''}`}
+          aria-pressed={schedule.castEnabled}
+          aria-label="Play Class Schedule"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setScheduleCastEnabled(!schedule.castEnabled);
+          }}
+        >
+          {schedule.castEnabled ? 'On' : 'Off'}
+        </button>
       </summary>
       <div className="saver-folder__panel">
         <Link className="btn" to="/schedule">

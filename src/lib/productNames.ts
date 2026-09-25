@@ -105,7 +105,7 @@ export const MEDIA_CONSOLE_INSTRUCTIONS = [
   'One On clip loops alone. Several play in list order.',
   'Enabled folders play Gallery, then Pro Shop, then Events.',
   'Class Schedule casts the full week or month after Gallery, before Pro Shop.',
-  'Expand Class Schedule and choose Off the TV to keep Gallery, Pro Shop, and Events.',
+  'Turn Class Schedule Off to keep Gallery, Pro Shop, and Events.',
   'Add class schedule opens the editor. Export a CSV backup before clearing site data.',
   'Photos use the Photo interval. Videos play all the way through, then the next item.',
   'Clips stay muted unless Play video sound is on, so gym music in another tab can keep going.',
