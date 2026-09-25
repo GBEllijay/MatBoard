@@ -629,24 +629,6 @@ button.mode-card {
   line-height: 1.12;
 }
 
-/* Four Pro lines. A shared card height clips the last one. */
-.home--ladder .mode-card.mode-card--pro {
-  height: auto;
-  min-height: 10rem;
-  overflow: visible;
-}
-
-.home--ladder .mode-card--pro .mode-card__copy > span {
-  color: var(--ink);
-  font-size: 1rem;
-  font-weight: 650;
-  line-height: 1.45;
-}
-
-.mode-card--pro.mode-card--locked {
-  opacity: 1;
-}
-
 .home--ladder .mode-card .tier-line strong {
   font-size: inherit;
   letter-spacing: inherit;
