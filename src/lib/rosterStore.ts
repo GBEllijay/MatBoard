@@ -2,6 +2,7 @@
 
 export const STORAGE_KEY = 'matboard.roster.v1';
 export const NOTE_MAX = 160;
+export const INJURY_MAX = 160;
 export const NAME_MAX = 80;
 export const GYM_MAX = 80;
 export const DIVISION_MAX = 80;
@@ -21,6 +22,8 @@ export type Student = {
   gym: string;
   lastPromotion: string;
   note: string;
+  /** Optional injury note. Stays on this competitor, not on one weekend checklist. */
+  knownInjuries: string;
   /** Present today for the in-house tournament. Off until someone checks them in. */
   checkedIn: boolean;
 };
@@ -79,6 +82,7 @@ export type StudentDraft = {
   gym: string;
   lastPromotion: string;
   note: string;
+  knownInjuries: string;
 };
 
 const listeners = new Set<() => void>();
@@ -150,7 +154,7 @@ export function readyStatusLabel(ready: CompetitorReady): string {
 }
 
 export function emptyDraft(): StudentDraft {
-  return { name: '', belt: '', division: '', gym: '', lastPromotion: '', note: '' };
+  return { name: '', belt: '', division: '', gym: '', lastPromotion: '', note: '', knownInjuries: '' };
 }
 
 export function draftFromStudent(student: Student): StudentDraft {
@@ -161,6 +165,7 @@ export function draftFromStudent(student: Student): StudentDraft {
     gym: student.gym,
     lastPromotion: student.lastPromotion,
     note: student.note,
+    knownInjuries: student.knownInjuries,
   };
 }
 
@@ -247,6 +252,10 @@ export function clipNote(value: string): string {
   return value.trim().slice(0, NOTE_MAX);
 }
 
+export function clipKnownInjuries(value: string): string {
+  return value.trim().slice(0, INJURY_MAX);
+}
+
 /** Yes, true, or 1 count as checked in. Anything else, including a blank, stays off. */
 export function parseCheckedIn(value: unknown): boolean {
   if (value === true) return true;
@@ -274,6 +283,7 @@ export function studentFromInput(
     gym: clipGym(input.gym ?? ''),
     lastPromotion: normalizeDate(input.lastPromotion ?? ''),
     note: clipNote(input.note ?? ''),
+    knownInjuries: clipKnownInjuries(input.knownInjuries ?? ''),
     checkedIn: parseCheckedIn(input.checkedIn),
   };
 }
@@ -350,7 +360,15 @@ export function confirmManualCompetitor(
   const belt = canonicalBelt(options.belt ?? '');
   if (options.addToRoster) {
     if (!belt) return null;
-    const added = addStudent({ name: clipped, belt, division: '', gym: '', lastPromotion: '', note: '' });
+    const added = addStudent({
+      name: clipped,
+      belt,
+      division: '',
+      gym: '',
+      lastPromotion: '',
+      note: '',
+      knownInjuries: '',
+    });
     return added
       ? { name: added.name, belt: added.belt, gym: added.gym, division: added.division }
       : null;
@@ -370,6 +388,7 @@ export function normalizeStudent(raw: unknown): Student | null {
     gym: typeof row.gym === 'string' ? row.gym : '',
     lastPromotion: typeof row.lastPromotion === 'string' ? row.lastPromotion : '',
     note: typeof row.note === 'string' ? row.note : '',
+    knownInjuries: typeof row.knownInjuries === 'string' ? row.knownInjuries : '',
     checkedIn: row.checkedIn,
   });
 }
@@ -519,6 +538,7 @@ export function updateStudent(id: string, draft: Partial<StudentDraft>): Student
     gym: draft.gym ?? current.gym,
     lastPromotion: draft.lastPromotion ?? current.lastPromotion,
     note: draft.note ?? current.note,
+    knownInjuries: draft.knownInjuries ?? current.knownInjuries,
     checkedIn: current.checkedIn,
   });
   if (!next) return null;

@@ -253,10 +253,11 @@ describe('division column', () => {
         gym: 'Atos',
         lastPromotion: '2026-01-02',
         note: 'Quiet',
+        knownInjuries: '',
         checkedIn: false,
       },
     ]);
-    assert.match(csv, /Sam,Blue,"Adult Blue, Gi",Atos,2026-01-02,Quiet,No/);
+    assert.match(csv, /Sam,Blue,"Adult Blue, Gi",Atos,2026-01-02,Quiet,,No/);
     const next = importRosterCsv(csv);
     assert.equal(next.imported, 1);
     assert.equal(next.students[0]?.division, 'Adult Blue, Gi');
@@ -267,6 +268,7 @@ describe('division column', () => {
     assert.equal(older.imported, 1);
     assert.equal(older.students[0]?.division, '');
     assert.equal(older.students[0]?.gym, 'Alliance');
+    assert.equal(older.students[0]?.knownInjuries, '');
     assert.equal(older.students[0]?.checkedIn, false);
 
     const aliased = importRosterCsv('Name,Belt,Weight class\nAlex,Purple,Masters 1\n');
@@ -292,7 +294,10 @@ describe('serializeRosterCsv', () => {
     assert.match(csv, /Save as CSV UTF-8/);
     assert.match(csv, /blackbelt/i);
     assert.match(csv, /black belt/i);
-    assert.equal(csv.includes('Name,Belt,Division,Gym name,Last promotion,Notes,Check In\r\n'), true);
+    assert.equal(
+      csv.includes('Name,Belt,Division,Gym name,Last promotion,Notes,Known injuries,Check In\r\n'),
+      true,
+    );
     assert.equal(csv.includes('Alex Rivera,Purple,Adult Purple,Alliance,2026-03-12,'), true);
     const guideRow = parseCsv(csv, detectCsvDelimiter(csv)).find((row) => row[0]?.trim().startsWith('#'));
     assert.equal(guideRow?.length, 1);
@@ -325,12 +330,14 @@ describe('serializeRosterCsv', () => {
         gym: 'Atos',
         lastPromotion: '2026-01-02',
         note: 'Rest, ice',
+        knownInjuries: 'Left knee',
         checkedIn: true,
       },
     ]);
-    assert.match(csv, /Sam,Blue,Kids Gi,Atos,2026-01-02,"Rest, ice",Yes/);
+    assert.match(csv, /Sam,Blue,Kids Gi,Atos,2026-01-02,"Rest, ice",Left knee,Yes/);
     const next = importRosterCsv(csv);
     assert.equal(next.students[0]?.checkedIn, true);
+    assert.equal(next.students[0]?.knownInjuries, 'Left knee');
     assert.deepEqual(
       next.students.map((row) => `${row.name}:${row.note}`),
       ['Sam:Rest, ice'],

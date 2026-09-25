@@ -151,7 +151,7 @@ test('Coach roster lead points CSV at Pro and keeps manual roster language', () 
   );
   assert.equal(
     ROSTER_CSV_INSTRUCTIONS,
-    'Each row needs a competitor name and a belt. A row missing either one is left out. Division is optional. Check In is optional.',
+    'Each row needs a competitor name and a belt. A row missing either one is left out. Division, known injuries, and Check In are optional.',
   );
   assert.doesNotMatch(`${ROSTER_CSV_DEVICE_NOTE}\n${ROSTER_CSV_INSTRUCTIONS}`, /UTF-8|accent/i);
 });

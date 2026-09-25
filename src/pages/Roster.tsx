@@ -34,6 +34,7 @@ import { readGymName } from '../lib/gymName';
 import {
   ADULT_BELTS,
   KIDS_BELTS,
+  INJURY_MAX,
   NOTE_MAX,
   addStudent,
   addStudents,
@@ -347,6 +348,9 @@ function StudentCard({
         {student.gym ? <p className="roster-card__meta">{student.gym}</p> : null}
         {promoted ? <p className="roster-card__meta">Last promotion {promoted}</p> : null}
         {student.note ? <p className="roster-card__note">{student.note}</p> : null}
+        {student.knownInjuries ? (
+          <p className="roster-card__note">Known injuries: {student.knownInjuries}</p>
+        ) : null}
         {pending ? (
           <div className="roster-card__actions">
             <span className="roster-card__confirm">Remove {student.name}?</span>
@@ -395,7 +399,7 @@ function StudentEditor({
       <p className="roster-edit__copy">
         Name and belt are enough to prefill a match. Division is optional and stays on this card.
         Gym name is optional and shows on the scoreboard and brackets. A new competitor starts with
-        the Media Console gym name when one is saved. Notes stay on this card.
+        the Media Console gym name when one is saved. Notes and known injuries stay on this card.
       </p>
       <label>
         Name
@@ -489,6 +493,20 @@ function StudentEditor({
         />
         <span className="roster-edit__count">
           {draft.note.trim().length}/{NOTE_MAX}
+        </span>
+      </label>
+      <label>
+        Known injuries
+        <textarea
+          value={draft.knownInjuries}
+          onChange={(event) => patch({ knownInjuries: event.target.value })}
+          placeholder="Optional — stays with this competitor"
+          rows={3}
+          maxLength={INJURY_MAX}
+          aria-label="Known injuries"
+        />
+        <span className="roster-edit__count">
+          {draft.knownInjuries.trim().length}/{INJURY_MAX}
         </span>
       </label>
       {!ready ? <p className="roster-edit__error">Add a name and a belt to save.</p> : null}

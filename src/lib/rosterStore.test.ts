@@ -31,6 +31,7 @@ import {
   setReadyFlag,
   setReadyNote,
   sortStudents,
+  INJURY_MAX,
   studentFromInput,
   updateStudent,
   visibleReadyItems,
@@ -45,6 +46,7 @@ function student(partial: Partial<Student> & Pick<Student, 'id' | 'name'>): Stud
     checkedIn: false,
     lastPromotion: '2026-03-12',
     note: 'Keep this off the scoreboard',
+    knownInjuries: '',
     ...partial,
   };
 }
@@ -215,6 +217,7 @@ describe('confirmManualCompetitor', () => {
       division: 'Adult Purple',
       lastPromotion: '',
       note: '',
+      knownInjuries: '',
     });
     const found = findStudentByName(getRoster().students, '  alex rivera ');
     assert.equal(found?.belt, 'Purple');
@@ -228,7 +231,15 @@ describe('confirmManualCompetitor', () => {
 describe('setCheckedIn', () => {
   it('stays off for an older card and survives an edit', () => {
     resetRoster();
-    const added = addStudent({ name: 'Sam', belt: 'Blue', division: '', gym: '', lastPromotion: '', note: '' });
+    const added = addStudent({
+      name: 'Sam',
+      belt: 'Blue',
+      division: '',
+      gym: '',
+      lastPromotion: '',
+      note: '',
+      knownInjuries: '',
+    });
     assert.ok(added);
     assert.equal(added.checkedIn, false);
     const loaded = normalizeRoster({
@@ -305,6 +316,7 @@ describe('competition ready', () => {
       gym: 'Alliance',
       lastPromotion: '',
       note: 'Knee',
+      knownInjuries: '',
     });
     assert.ok(added);
     assert.equal(added.checkedIn, false);
@@ -357,6 +369,7 @@ describe('competition ready', () => {
       gym: '',
       lastPromotion: '',
       note: '',
+      knownInjuries: '',
     });
     assert.ok(added);
     setReadyFlag(added.id, 'waiver', true);
@@ -431,6 +444,7 @@ describe('competition ready', () => {
       gym: '',
       lastPromotion: '',
       note: '',
+      knownInjuries: 'Left knee',
     });
     const sam = addStudent({
       name: 'Sam',
@@ -439,6 +453,7 @@ describe('competition ready', () => {
       gym: '',
       lastPromotion: '',
       note: '',
+      knownInjuries: '',
     });
     assert.ok(alex);
     assert.ok(sam);
@@ -466,6 +481,7 @@ describe('competition ready', () => {
     assert.equal(readyStatusLabel(alexReady), '1 of 4 on');
     assert.equal(getRoster().students.find((row) => row.id === alex.id)?.division, 'Adult Blue');
     assert.equal(getRoster().students.find((row) => row.id === alex.id)?.checkedIn, true);
+    assert.equal(getRoster().students.find((row) => row.id === alex.id)?.knownInjuries, 'Left knee');
 
     const samReady = competitorReady(sam.id);
     assert.equal(visibleReadyItems(samReady).length, READY_ITEMS.length);
@@ -481,6 +497,7 @@ describe('competition ready', () => {
     assert.equal(visibleReadyItems(competitorReady(sam.id, reloaded)).length, 6);
     assert.equal(reloaded.students.find((row) => row.id === alex.id)?.checkedIn, true);
     assert.equal(reloaded.students.find((row) => row.id === alex.id)?.division, 'Adult Blue');
+    assert.equal(reloaded.students.find((row) => row.id === alex.id)?.knownInjuries, 'Left knee');
 
     restoreReadyItem(alex.id, 'gi');
     const restored = competitorReady(alex.id);
@@ -507,6 +524,56 @@ describe('competition ready', () => {
     assert.equal(junk.ready.a?.flags.medical, true);
     assert.equal(junk.students[0]?.division, 'Adult Blue');
     assert.equal(junk.students[0]?.checkedIn, true);
+    resetRoster();
+  });
+});
+
+describe('known injuries', () => {
+  it('saves on the competitor, reloads, and leaves division and check in alone', () => {
+    resetRoster();
+    const added = addStudent({
+      name: 'Alex Rivera',
+      belt: 'Purple',
+      division: 'Adult Purple',
+      gym: '',
+      lastPromotion: '',
+      note: 'Knee tape',
+      knownInjuries: '  Left knee, right shoulder  ',
+    });
+    assert.ok(added);
+    assert.equal(added.knownInjuries, 'Left knee, right shoulder');
+    assert.equal(added.checkedIn, false);
+
+    const reloaded = normalizeRoster(JSON.parse(JSON.stringify(getRoster())));
+    const saved = reloaded.students.find((row) => row.id === added.id);
+    assert.equal(saved?.knownInjuries, 'Left knee, right shoulder');
+    assert.equal(saved?.division, 'Adult Purple');
+    assert.equal(saved?.note, 'Knee tape');
+    assert.equal(saved?.checkedIn, false);
+
+    const older = normalizeRoster({
+      students: [{ id: 'old', name: 'Pat', belt: 'Blue', division: 'Kids Gi', checkedIn: true }],
+    });
+    assert.equal(older.students[0]?.knownInjuries, '');
+    assert.equal(older.students[0]?.division, 'Kids Gi');
+    assert.equal(older.students[0]?.checkedIn, true);
+
+    const edited = updateStudent(added.id, { note: 'Shoulder' });
+    assert.equal(edited?.knownInjuries, 'Left knee, right shoulder');
+    assert.equal(edited?.division, 'Adult Purple');
+    assert.equal(setCheckedIn(added.id, true)?.knownInjuries, 'Left knee, right shoulder');
+    const changed = updateStudent(added.id, { knownInjuries: 'Right shoulder only' });
+    assert.equal(changed?.knownInjuries, 'Right shoulder only');
+    assert.equal(changed?.checkedIn, true);
+    assert.equal(changed?.division, 'Adult Purple');
+    assert.equal(changed?.note, 'Shoulder');
+
+    const long = studentFromInput({
+      name: 'Sam',
+      belt: 'White',
+      knownInjuries: 'I'.repeat(INJURY_MAX + 40),
+    });
+    assert.equal(long?.knownInjuries.length, INJURY_MAX);
     resetRoster();
   });
 });

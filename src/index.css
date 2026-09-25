@@ -9580,6 +9580,7 @@ a.ready-pick {
 }
 
 .ready-division,
+.ready-injuries,
 .ready-list,
 .ready-empty,
 .ready-restore,
@@ -9599,6 +9600,14 @@ a.ready-pick {
 
 .ready-division--on {
   color: var(--gold-2);
+}
+
+.ready-injuries {
+  margin-top: 0;
+  margin-bottom: 0.85rem;
+  color: var(--ink);
+  font-weight: 700;
+  line-height: 1.4;
 }
 
 .ready-list {
