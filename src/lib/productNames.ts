@@ -10,7 +10,7 @@ export const WHITE_HOME_DESCRIPTION =
 
 /** Home Coach card body. The only line under the Advantage Coach title. */
 export const COACH_HOME_DESCRIPTION =
-  'daily lesson plan, daily training videos, mock tournament, and competitor roster.';
+  'Daily lesson plan, daily training videos, mock tournament, and competitor roster.';
 
 /** Home ladder and Pro hub line after “Pro —”. Not the Owner Console page title. */
 export const PRO_LADDER_DETAIL = 'Gym Owner and Instructors Console';
