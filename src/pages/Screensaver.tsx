@@ -399,12 +399,22 @@ export function ScreensaverPage() {
       )}
 
       <Sheet
+        className="sheet--dock-footer"
         open={options}
         title={hubTitle}
         onClose={() => {
           if (!muteVideo) setUnlockSound(true);
           setOptions(false);
         }}
+        footer={
+          <InstructionsButton controlsId="media-console-instructions" align="stretch">
+            <ul>
+              {MEDIA_CONSOLE_INSTRUCTIONS.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </InstructionsButton>
+        }
       >
         <label className="toggle saver-playing">
           <input type="checkbox" checked={playing} onChange={(e) => setPlaying(e.target.checked)} />
@@ -643,13 +653,6 @@ export function ScreensaverPage() {
         </fieldset>
         </section>
         <GymLogoControl />
-        <InstructionsButton controlsId="media-console-instructions" align="stretch">
-          <ul>
-            {MEDIA_CONSOLE_INSTRUCTIONS.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
-        </InstructionsButton>
       </Sheet>
 
       <MediaSourceSheet

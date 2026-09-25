@@ -2571,6 +2571,34 @@ label {
   min-height: 52px;
 }
 
+/* Media Console: keep Instructions on the bottom edge while the list scrolls. */
+.sheet.sheet--dock-footer .sheet__panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sheet.sheet--dock-footer .sheet__head,
+.sheet.sheet--dock-footer .sheet__footer {
+  flex: 0 0 auto;
+}
+
+.sheet.sheet--dock-footer .sheet__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.sheet.sheet--dock-footer .sheet__footer {
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  position: relative;
+  z-index: 5;
+  overflow: visible;
+  text-align: center;
+}
+
 .cast-note,
 .text-link {
   font-size: 0.92rem;
