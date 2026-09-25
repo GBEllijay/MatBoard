@@ -16,8 +16,8 @@ type Props = {
 };
 
 /**
- * One Events TV page. The photo fills the slide. QR codes for that photo’s
- * links sit beside it (under it when the gym logo is on), matching Pro Shop.
+ * One Events TV page. A vertical photo stays in the center. QR codes sit to
+ * its right. With the gym logo on, the mark sits to the left of the photo.
  */
 export function EventCastSlide({ item, src, mode, logoUrl }: Props) {
   const links = normalizeQrLinks(item.qrLinks);
@@ -55,23 +55,25 @@ export function EventCastSlide({ item, src, mode, logoUrl }: Props) {
   return (
     <div
       className={`shop-cast shop-cast--${mode} event-cast${codes.length >= 3 ? ' event-cast--many' : ''}${
-        showLogo ? ' shop-cast--has-logo' : ''
-      }`}
+        showLogo ? ' event-cast--logo' : ''
+      }${codes.length ? ' event-cast--qr' : ''}`}
       data-qr-count={codes.length}
       aria-label={`Events, ${name}`}
     >
-      {showLogo && logoUrl ? <img className="shop-cast__logo" src={logoUrl} alt="Gym logo" /> : null}
       <div className="shop-cast__grid">
         <article className="shop-cast__card">
-          <div className="shop-cast__layout">
+          <div className="event-cast__stage">
+            {showLogo && logoUrl ? (
+              <img className="event-cast__mark" src={logoUrl} alt="Gym logo" />
+            ) : null}
             {src ? (
               <img className="shop-cast__photo event-cast__photo" src={src} alt="" />
             ) : (
               <div className="shop-cast__photo shop-cast__photo--empty" />
             )}
-            <div className="shop-cast__meta">
-              <p className="shop-cast__name">{name}</p>
-              {codes.length ? (
+            {codes.length ? (
+              <div className="event-cast__side">
+                <p className="shop-cast__name">{name}</p>
                 <div className="event-cast__codes">
                   {codes.map((href) => {
                     const caption = qrLinkCaption(href);
@@ -83,8 +85,10 @@ export function EventCastSlide({ item, src, mode, logoUrl }: Props) {
                     );
                   })}
                 </div>
-              ) : null}
-            </div>
+              </div>
+            ) : (
+              <p className="shop-cast__name event-cast__caption-name">{name}</p>
+            )}
           </div>
         </article>
       </div>
