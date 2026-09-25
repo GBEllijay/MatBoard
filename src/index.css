@@ -1460,6 +1460,9 @@ button.mode-card {
   cursor: pointer;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* Console manage sheet covers the page; keep Home above the dimmed top gap. */
@@ -7373,6 +7376,24 @@ input.roster-pick__name:focus,
 .saver:not(.saver--play) > .play-exit,
 .tournament > .play-exit {
   opacity: 0.96;
+}
+
+/* Hold recognized: same gold ring as keyboard focus, fully visible on dim play screens. */
+.play-exit.is-armed,
+.play--tv.play--idle .play-exit.is-armed,
+.tournament--bright > .play-exit.is-armed,
+.controller > .play-exit.is-armed,
+.roster > .play-exit.is-armed,
+.notes > .play-exit.is-armed,
+.tree > .play-exit.is-armed,
+.techniques > .play-exit.is-armed,
+.schedule > .play-exit.is-armed,
+.saver > .play-exit.is-armed,
+.saver:not(.saver--play) > .play-exit.is-armed,
+.tournament > .play-exit.is-armed {
+  opacity: 1;
+  outline: 2px solid rgba(240, 194, 75, 0.85);
+  outline-offset: 2px;
 }
 
 .empty-hint {
