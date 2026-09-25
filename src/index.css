@@ -1437,6 +1437,25 @@ button.mode-card {
   min-height: 0;
 }
 
+/* Suite opens the same boards, painted with the hub mat and yellow/green belt. */
+.display.origin-suite {
+  background-color: var(--mat-fill);
+  background-image: var(--mat-image);
+  background-size: var(--mat-tile) calc(var(--mat-tile) * 4 / 3);
+  background-position: center;
+  background-repeat: repeat;
+}
+
+.display.origin-suite .display__mid {
+  background-color: var(--mat-fill);
+  background-image:
+    linear-gradient(180deg, rgba(7, 8, 11, 0.62), rgba(7, 8, 11, 0.78)),
+    var(--mat-image);
+  background-size: auto, var(--mat-tile) calc(var(--mat-tile) * 4 / 3);
+  background-position: center;
+  background-repeat: no-repeat, repeat;
+}
+
 .display__chrome {
   position: absolute;
   top: calc(0.55rem + var(--safe-t));
