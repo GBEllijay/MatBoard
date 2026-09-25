@@ -88,7 +88,7 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   assert.equal(INSTRUCTOR_COLLAB_NAME, 'Instructor Collaboration and Cloud Access');
   assert.equal(
     INSTRUCTOR_COACH_ENTRY,
-    'Instructor Collaboration, Advanced Coach Unlimited, and Cloud Access',
+    'Advantage Coach Unlimited',
   );
   assert.deepEqual(
     PRO_HUBS.map((hub) => hub.title),
