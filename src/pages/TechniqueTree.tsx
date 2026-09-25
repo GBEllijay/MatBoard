@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { useCoachPageSwipe } from '../hooks/useCoachSwipe';
+import { useRosterState } from '../hooks/useStores';
 import { useToolboxParent } from '../hooks/useToolboxParent';
+import { gamePlanMentionIndex, mentionText, mentionsForNode, type GamePlanMention } from '../lib/gamePlan';
 import { TECHNIQUE_TREE_CAP_NOTE, TECHNIQUE_TREE_LABEL, TECHNIQUE_TREE_LEAD } from '../lib/coachCopy';
 import { DEVICE_STORAGE_FULL_NOTE } from '../lib/storageQuota';
 import {
@@ -18,8 +20,10 @@ import {
   countNodes,
   deleteTree,
   descendantCount,
+  findNode,
   loadTechniqueArchive,
   removeNode,
+  revealNode,
   renameTree,
   saveTechniqueArchive,
   selectTree,
@@ -39,6 +43,12 @@ export function TechniqueTreePage() {
   const parent = useToolboxParent();
   useCoachPageSwipe();
   const requestedTreeId = searchParams.get('tree');
+  const requestedNodeId = searchParams.get('node');
+  const roster = useRosterState();
+  const mentionIndex = useMemo(
+    () => gamePlanMentionIndex(roster.students, roster.gamePlans),
+    [roster],
+  );
   const [archive, setArchive] = useState<TechniqueTreeArchive>(() => loadTechniqueArchive());
   const doc = activeTree(archive);
   const [note, setNote] = useState('');
@@ -90,6 +100,22 @@ export function TechniqueTreePage() {
   };
 
   const commit = (next: TechniqueTreeDoc) => activeTree(commitArchive(updateActive(archive, next)));
+
+  useEffect(() => {
+    if (!requestedNodeId) return;
+    const current = activeTree(archive);
+    if (!current.root || !findNode(current.root, requestedNodeId)) return;
+    const revealed = revealNode(current, requestedNodeId);
+    if (revealed !== current) {
+      commit(revealed);
+      return;
+    }
+    const selector =
+      typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+        ? `[data-node-id="${CSS.escape(requestedNodeId)}"]`
+        : `[data-node-id="${requestedNodeId}"]`;
+    document.querySelector(selector)?.scrollIntoView({ block: 'center' });
+  }, [requestedNodeId, archive]);
 
   const setBase = () => {
     const title = draftTitle.trim();
@@ -304,6 +330,8 @@ export function TechniqueTreePage() {
               doc={doc}
               confirmId={confirmId}
               focusId={focusId}
+              pinnedId={requestedNodeId}
+              mentionsFor={(nodeId) => mentionsForNode(mentionIndex, doc.id, nodeId)}
               onToggle={(id) => commit(toggleCollapsed(doc, id))}
               onChange={(id, patch) => commit(updateNode(doc, id, patch))}
               onAdd={onAdd}
@@ -326,6 +354,8 @@ function TreeNodeView({
   doc,
   confirmId,
   focusId,
+  pinnedId,
+  mentionsFor,
   onToggle,
   onChange,
   onAdd,
@@ -337,6 +367,8 @@ function TreeNodeView({
   doc: TechniqueTreeDoc;
   confirmId: string | null;
   focusId: string | null;
+  pinnedId: string | null;
+  mentionsFor: (nodeId: string) => GamePlanMention[];
   onToggle: (id: string) => void;
   onChange: (id: string, patch: { title?: string; notes?: string }) => void;
   onAdd: (parentId: string, kind: TreeChildKind) => void;
@@ -358,10 +390,16 @@ function TreeNodeView({
   const canAdd = canAddChild(doc, node.id);
   const tooDeep = !canAdd && countNodes(doc.root) < MAX_TREE_NODES;
   const confirming = confirmId === node.id;
+  const mentions = mentionsFor(node.id);
+  const pinned = pinnedId === node.id;
 
   return (
     <li className="tree__item">
-      <article className={`tree-node tree-node--${node.kind}`} aria-label={label}>
+      <article
+        className={`tree-node tree-node--${node.kind}${pinned ? ' tree-node--pin' : ''}`}
+        aria-label={label}
+        data-node-id={node.id}
+      >
         <div className="tree-node__head">
           {node.children.length > 0 ? (
             <button
@@ -404,6 +442,8 @@ function TreeNodeView({
             onChange={(event) => onChange(node.id, { notes: event.target.value })}
           />
         </label>
+
+        {mentions.length ? <GamePlanMentions mentions={mentions} /> : null}
 
         {node.collapsed && hidden > 0 ? (
           <p className="tree-node__folded">
@@ -450,6 +490,8 @@ function TreeNodeView({
               doc={doc}
               confirmId={confirmId}
               focusId={focusId}
+              pinnedId={pinnedId}
+              mentionsFor={mentionsFor}
               onToggle={onToggle}
               onChange={onChange}
               onAdd={onAdd}
@@ -461,6 +503,27 @@ function TreeNodeView({
         </ul>
       ) : null}
     </li>
+  );
+}
+
+function GamePlanMentions({ mentions }: { mentions: GamePlanMention[] }) {
+  return (
+    <div className="tree-node__plans">
+      <p>Game plans</p>
+      <ul>
+        {mentions.map((mention) => (
+          <li key={`${mention.competitorId}-${mention.section}`}>
+            <Link
+              className={`tree-plan-chip tree-plan-chip--${mention.flag || 'open'}`}
+              to={`/game-plan?id=${encodeURIComponent(mention.competitorId)}`}
+            >
+              {mention.name}
+              <span>{mentionText(mention)}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

@@ -1,4 +1,23 @@
-/** Gym competitor roster. On-device only — name + belt prefill Match and Mock Tournament. */
+/**
+ * Gym competitor roster. On-device only — name + belt prefill Match and Mock Tournament.
+ * Game plans live on this same save, keyed by competitor id.
+ */
+
+import {
+  emptyGamePlan,
+  normalizeGamePlan,
+  normalizeGamePlanMap,
+  withGameAudit,
+  withGameLink,
+  withGameLinkFlag,
+  withGameNotes,
+  withoutGameLink,
+  type CompetitorGamePlan,
+  type GameAudit,
+  type GameLayerSection,
+  type GameLinkFlag,
+  type GameSection,
+} from './gamePlan.ts';
 
 export const STORAGE_KEY = 'matboard.roster.v1';
 export const NOTE_MAX = 160;
@@ -28,7 +47,14 @@ export type Student = {
 export type RosterState = {
   version: 1;
   students: Student[];
+  /**
+   * Keyed by competitor id. A missing id means no game plan yet.
+   * Other maps on this save (such as a weekend checklist) are left in place.
+   */
+  gamePlans: Record<string, CompetitorGamePlan>;
 };
+
+const ROSTER_OWNED_KEYS = new Set(['version', 'students', 'gamePlans']);
 
 /** Name, belt, optional gym, and optional division. Notes and promotion dates stay on the roster card. */
 export type RosterPrefill = {
@@ -49,6 +75,9 @@ export type StudentDraft = {
 
 const listeners = new Set<() => void>();
 
+/** Keys this module does not own, kept across a game-plan write. */
+let siblings: Record<string, unknown> = {};
+
 let state: RosterState = loadState();
 
 let studentSeq = 0;
@@ -59,7 +88,32 @@ export function createStudentId(): string {
 }
 
 export function defaultRoster(): RosterState {
-  return { version: 1, students: [] };
+  return { version: 1, students: [], gamePlans: {} };
+}
+
+/** Sibling maps on the roster JSON, such as a checklist stored beside game plans. */
+export function rosterSiblings(raw: unknown): Record<string, unknown> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const siblings: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (ROSTER_OWNED_KEYS.has(key)) continue;
+    siblings[key] = value;
+  }
+  return siblings;
+}
+
+export function rosterSavePayload(roster: RosterState, extra: Record<string, unknown>): Record<string, unknown> {
+  return { ...extra, ...roster };
+}
+
+/** Drop one competitor from a sibling checklist map when the roster card is removed. */
+export function dropSiblingCompetitor(extra: Record<string, unknown>, id: string): Record<string, unknown> {
+  const ready = extra.ready;
+  if (!ready || typeof ready !== 'object' || Array.isArray(ready)) return extra;
+  if (!(id in (ready as Record<string, unknown>))) return extra;
+  const next = { ...(ready as Record<string, unknown>) };
+  delete next[id];
+  return { ...extra, ready: next };
 }
 
 export function emptyDraft(): StudentDraft {
@@ -299,7 +353,12 @@ export function normalizeRoster(raw: unknown): RosterState {
     seen.add(next.id);
     students.push(next);
   }
-  return { version: 1, students: sortStudents(students) };
+  const sorted = sortStudents(students);
+  return {
+    version: 1,
+    students: sorted,
+    gamePlans: normalizeGamePlanMap(parsed.gamePlans, new Set(sorted.map((row) => row.id))),
+  };
 }
 
 function readStorage(): string | null {
@@ -314,9 +373,15 @@ function readStorage(): string | null {
 function loadState(): RosterState {
   try {
     const raw = readStorage();
-    if (!raw) return defaultRoster();
-    return normalizeRoster(JSON.parse(raw));
+    if (!raw) {
+      siblings = {};
+      return defaultRoster();
+    }
+    const parsed: unknown = JSON.parse(raw);
+    siblings = rosterSiblings(parsed);
+    return normalizeRoster(parsed);
   } catch {
+    siblings = {};
     return defaultRoster();
   }
 }
@@ -325,12 +390,25 @@ function persist(next: RosterState): void {
   state = next;
   try {
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(rosterSavePayload(state, siblings)));
     }
   } catch {
     /* quota / private mode */
   }
   listeners.forEach((fn) => fn());
+}
+
+function commit(students: Student[], gamePlans: Record<string, CompetitorGamePlan> = state.gamePlans): void {
+  persist({ version: 1, students, gamePlans });
+}
+
+function writeGamePlan(studentId: string, plan: CompetitorGamePlan): void {
+  if (!state.students.some((row) => row.id === studentId)) return;
+  const clean = normalizeGamePlan(plan);
+  const gamePlans = { ...state.gamePlans };
+  if (clean) gamePlans[studentId] = clean;
+  else delete gamePlans[studentId];
+  commit(state.students, gamePlans);
 }
 
 export function getRoster(): RosterState {
@@ -347,14 +425,14 @@ export function subscribeRoster(fn: () => void): () => void {
 export function addStudent(draft: StudentDraft): Student | null {
   const next = studentFromInput(draft);
   if (!next) return null;
-  persist({ version: 1, students: sortStudents([...state.students, next]) });
+  commit(sortStudents([...state.students, next]));
   return next;
 }
 
 /** Append already-validated cards in one write. Used by CSV import. */
 export function addStudents(students: Student[]): Student[] {
   if (!students.length) return [];
-  persist({ version: 1, students: sortStudents([...state.students, ...students]) });
+  commit(sortStudents([...state.students, ...students]));
   return students;
 }
 
@@ -372,10 +450,7 @@ export function updateStudent(id: string, draft: Partial<StudentDraft>): Student
     checkedIn: current.checkedIn,
   });
   if (!next) return null;
-  persist({
-    version: 1,
-    students: sortStudents(state.students.map((row) => (row.id === id ? next : row))),
-  });
+  commit(sortStudents(state.students.map((row) => (row.id === id ? next : row))));
   return next;
 }
 
@@ -383,19 +458,67 @@ export function setCheckedIn(id: string, checkedIn: boolean): Student | null {
   const current = state.students.find((row) => row.id === id);
   if (!current) return null;
   const next = { ...current, checkedIn };
-  persist({
-    version: 1,
-    students: state.students.map((row) => (row.id === id ? next : row)),
-  });
+  commit(state.students.map((row) => (row.id === id ? next : row)));
   return next;
 }
 
 export function removeStudent(id: string): void {
-  persist({ version: 1, students: state.students.filter((row) => row.id !== id) });
+  siblings = dropSiblingCompetitor(siblings, id);
+  const gamePlans = { ...state.gamePlans };
+  delete gamePlans[id];
+  commit(
+    state.students.filter((row) => row.id !== id),
+    gamePlans,
+  );
 }
 
 export function resetRoster(): void {
+  siblings = {};
   persist(defaultRoster());
+}
+
+export function competitorGamePlan(studentId: string, roster: RosterState = getRoster()): CompetitorGamePlan {
+  return roster.gamePlans[studentId] ?? emptyGamePlan();
+}
+
+export function setGameNotes(studentId: string, section: GameSection, notes: string): void {
+  writeGamePlan(studentId, withGameNotes(competitorGamePlan(studentId), section, notes));
+}
+
+export function setGameAudit(studentId: string, section: GameLayerSection, audit: GameAudit | ''): void {
+  writeGamePlan(studentId, withGameAudit(competitorGamePlan(studentId), section, audit));
+}
+
+/** Attaches a tree step. Notes are left as they are. A missing id is ignored. */
+export function addGameLink(
+  studentId: string,
+  section: GameSection,
+  link: { treeId: string; nodeId: string },
+): void {
+  const current = competitorGamePlan(studentId);
+  const next = withGameLink(current, section, link);
+  if (next === current) return;
+  writeGamePlan(studentId, next);
+}
+
+export function setGameLinkFlag(
+  studentId: string,
+  section: GameSection,
+  treeId: string,
+  nodeId: string,
+  flag: GameLinkFlag | '',
+): void {
+  const current = competitorGamePlan(studentId);
+  const next = withGameLinkFlag(current, section, treeId, nodeId, flag);
+  if (next === current) return;
+  writeGamePlan(studentId, next);
+}
+
+export function removeGameLink(studentId: string, section: GameSection, treeId: string, nodeId: string): void {
+  const current = competitorGamePlan(studentId);
+  const next = withoutGameLink(current, section, treeId, nodeId);
+  if (next === current) return;
+  writeGamePlan(studentId, next);
 }
 
 export function initRosterSync(): void {

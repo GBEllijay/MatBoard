@@ -9559,3 +9559,246 @@ input.roster-pick__name:focus,
   }
 }
 
+a.plan-pick {
+  color: inherit;
+  text-decoration: none;
+}
+
+.plan-pick--on {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 1px rgba(212, 160, 23, 0.35);
+}
+
+.plan-pick__status {
+  margin: 0.15rem 0 0;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.plan-pick__status--on {
+  color: var(--gold-2);
+}
+
+.plan-editor,
+.plan-division,
+.plan-layer,
+.plan-back {
+  width: min(42rem, calc(100% - 2rem));
+  margin-inline: auto;
+}
+
+.plan-division {
+  margin: 0 0 0.85rem;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.plan-layer {
+  display: grid;
+  gap: 0.7rem;
+  margin-bottom: 0.85rem;
+  padding: 1rem 1.05rem 1.05rem;
+  border-radius: 20px;
+  border: 1px solid rgba(252, 192, 0, 0.18);
+  background: rgba(8, 16, 32, 0.72);
+  box-shadow: var(--shadow);
+}
+
+.plan-layer h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  letter-spacing: -0.03em;
+  line-height: 1.3;
+}
+
+.plan-layer label,
+.plan-links,
+.plan-suggest {
+  display: grid;
+  gap: 0.4rem;
+  font-weight: 700;
+}
+
+.plan-layer textarea {
+  min-height: 5.5rem;
+  resize: vertical;
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.28);
+  color: var(--ink);
+  border-radius: 14px;
+  padding: 0.85rem 0.95rem;
+  font: inherit;
+}
+
+.plan-audit,
+.plan-flags {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.plan-audit .preset,
+.plan-flags .preset {
+  width: 100%;
+  min-height: 52px;
+  white-space: normal;
+  line-height: 1.15;
+  padding: 0.45rem 0.55rem;
+}
+
+.plan-flags {
+  grid-template-columns: 1fr 1fr;
+}
+
+.plan-links p,
+.plan-links__empty,
+.plan-link small,
+.plan-catalog small {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.plan-links a {
+  color: var(--gold-2);
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 0.14em;
+}
+
+.plan-links ul,
+.plan-catalog {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.plan-link {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.75rem;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.plan-link__name {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.plan-link__name a {
+  font-size: 1.05rem;
+}
+
+.plan-suggest__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.plan-chip {
+  min-height: 48px;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(252, 192, 0, 0.35);
+  background: rgba(8, 10, 16, 0.55);
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.plan-chip:disabled,
+.plan-catalog .btn:disabled {
+  opacity: 0.45;
+}
+
+.plan-catalog li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.plan-catalog li span {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.plan-catalog strong {
+  font-size: 1rem;
+}
+
+.plan-back {
+  margin-bottom: calc(1.5rem + var(--safe-b));
+}
+
+.plan-pick:focus-visible,
+.plan-chip:focus-visible,
+.plan-link a:focus-visible {
+  outline: 2px solid var(--gold-2);
+  outline-offset: 3px;
+}
+
+@media (min-width: 720px) {
+  .plan-audit {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.tree-node--pin {
+  outline: 3px solid var(--logo-yellow);
+  outline-offset: 2px;
+}
+
+.tree-node__plans {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.tree-node__plans p {
+  margin: 0;
+  color: var(--gold-2);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tree-node__plans ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tree-plan-chip {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 44px;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(252, 192, 0, 0.35);
+  background: rgba(8, 10, 16, 0.55);
+  font-weight: 800;
+}
+
+.tree-plan-chip span {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.tree-plan-chip--strong {
+  border-color: var(--gold);
+}
+
+.tree-plan-chip--needs-work {
+  border-color: rgba(120, 176, 255, 0.7);
+}
+
