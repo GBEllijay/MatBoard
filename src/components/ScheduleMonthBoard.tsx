@@ -143,6 +143,7 @@ export function ScheduleMonthBoard({ variant = 'stage', onOpenOptions }: Props) 
     const tick = (now: number) => {
       const max = frame.scrollHeight - frame.clientHeight;
       const next = stepScheduleScroll(motion, max, now, last);
+      // Own the offset here. Reading scrollTop back sticks on a rounded bottom pixel.
       if (next.pos !== motion.pos) frame.scrollTop = next.pos;
       motion = next;
       last = now;

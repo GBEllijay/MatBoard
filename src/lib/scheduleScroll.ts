@@ -29,9 +29,14 @@ export function createScheduleScroll(now: number, pos = 0): ScheduleScroll {
 /**
  * Advance one frame of the cast auto-scroll.
  *
- * Reverse only while still traveling into an edge. Checking "within 1px of
- * the bottom" re-armed the pause on every frame: the upward step is a fraction
- * of a pixel, so the board reached the bottom and sat there.
+ * The board bounces: down, pause, up, pause, and repeat. Reverse only while
+ * still traveling into an edge. A "within 1px of the bottom" check re-armed
+ * the pause forever, because the upward step is a fraction of a pixel, so the
+ * calendar reached the bottom and sat there.
+ *
+ * The first frame away from an edge clears that 1px band outright. A TV that
+ * stores scroll offsets as whole pixels otherwise keeps the same bottom pixel
+ * and looks stopped.
  */
 export function stepScheduleScroll(
   scroll: ScheduleScroll,
@@ -41,13 +46,15 @@ export function stepScheduleScroll(
 ): ScheduleScroll {
   if (!(max > 4) || now < scroll.holdUntil) return scroll;
   const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
-  const moved = scroll.pos + scroll.dir * SCHEDULE_SCROLL_SPEED_PX * dt;
+  let moved = scroll.pos + scroll.dir * SCHEDULE_SCROLL_SPEED_PX * dt;
   if (scroll.dir > 0 && moved >= max) {
     return { pos: max, dir: -1, holdUntil: now + SCHEDULE_SCROLL_EDGE_PAUSE_MS };
   }
   if (scroll.dir < 0 && moved <= 0) {
     return { pos: 0, dir: 1, holdUntil: now + SCHEDULE_SCROLL_EDGE_PAUSE_MS };
   }
+  if (scroll.dir < 0 && scroll.pos > max - 1 && moved > max - 1) moved = max - 1;
+  else if (scroll.dir > 0 && scroll.pos < 1 && moved < 1) moved = Math.min(max, 1);
   const pos = Math.min(max, Math.max(0, moved));
   if (pos === scroll.pos) return scroll;
   return { pos, dir: scroll.dir, holdUntil: scroll.holdUntil };
