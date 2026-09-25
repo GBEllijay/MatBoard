@@ -489,9 +489,9 @@ export function ScreensaverPage() {
             ))}
           </div>
           <p className="saver-sound-hint">
-            Each card on a slide gets its own QR from its buy link. Logo uses the custom gym logo
-            above. Landscape puts the QR beside the photo. With the logo on, the mark sits on top
-            and each QR sits under its photo.
+            Each card on a slide gets its own QR from its buy link. The QR stays to the right of
+            its photo. With the logo on, the gym mark stays on the left and the codes stay on the
+            right.
           </p>
         </fieldset>
         <fieldset>
