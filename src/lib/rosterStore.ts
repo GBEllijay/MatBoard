@@ -53,6 +53,8 @@ export type CompetitorReady = {
   flags: Record<ReadyItemId, boolean>;
   note: string;
   extras: ReadyExtra[];
+  /** Starter rows hidden on this competitor only. Other competitors keep the full template. */
+  hidden: ReadyItemId[];
 };
 
 export type RosterState = {
@@ -106,7 +108,7 @@ export function emptyReadyFlags(): Record<ReadyItemId, boolean> {
 }
 
 export function emptyReady(): CompetitorReady {
-  return { flags: emptyReadyFlags(), note: '', extras: [] };
+  return { flags: emptyReadyFlags(), note: '', extras: [], hidden: [] };
 }
 
 /** Saved checklist, or all off when this competitor has never been opened. */
@@ -114,10 +116,27 @@ export function competitorReady(studentId: string, roster: RosterState = getRost
   return roster.ready[studentId] ?? emptyReady();
 }
 
+function hiddenSet(ready: CompetitorReady): Set<ReadyItemId> {
+  return new Set(ready.hidden ?? []);
+}
+
+/** Starter rows still on this competitor's list. */
+export function visibleReadyItems(ready: CompetitorReady): readonly (typeof READY_ITEMS)[number][] {
+  const hidden = hiddenSet(ready);
+  return READY_ITEMS.filter((item) => !hidden.has(item.id));
+}
+
+/** Starter rows this competitor removed. The shared template is unchanged. */
+export function removedReadyItems(ready: CompetitorReady): readonly (typeof READY_ITEMS)[number][] {
+  const hidden = hiddenSet(ready);
+  return READY_ITEMS.filter((item) => hidden.has(item.id));
+}
+
 export function readyProgress(ready: CompetitorReady): { on: number; total: number; complete: boolean } {
-  const flagOn = READY_ITEMS.filter((item) => ready.flags[item.id]).length;
+  const visible = visibleReadyItems(ready);
+  const flagOn = visible.filter((item) => ready.flags[item.id]).length;
   const extraOn = ready.extras.filter((item) => item.on).length;
-  const total = READY_ITEMS.length + ready.extras.length;
+  const total = visible.length + ready.extras.length;
   const on = flagOn + extraOn;
   return { on, total, complete: total > 0 && on === total };
 }
@@ -125,6 +144,7 @@ export function readyProgress(ready: CompetitorReady): { on: number; total: numb
 /** Scan label for the competitor list. Complete lists read Ready. */
 export function readyStatusLabel(ready: CompetitorReady): string {
   const progress = readyProgress(ready);
+  if (progress.total === 0) return 'No items';
   if (progress.complete) return 'Ready';
   return `${progress.on} of ${progress.total} on`;
 }
@@ -356,12 +376,21 @@ export function normalizeStudent(raw: unknown): Student | null {
 
 function readyIsBlank(ready: CompetitorReady): boolean {
   const flagsOff = READY_ITEMS.every((item) => !ready.flags[item.id]);
-  return flagsOff && !ready.note && ready.extras.length === 0;
+  return flagsOff && !ready.note && ready.extras.length === 0 && ready.hidden.length === 0;
+}
+
+function normalizeHidden(raw: unknown): ReadyItemId[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  for (const item of raw) {
+    if (typeof item === 'string' && item.trim()) seen.add(item.trim());
+  }
+  return READY_ITEMS.filter((item) => seen.has(item.id)).map((item) => item.id);
 }
 
 function normalizeReadyEntry(raw: unknown): CompetitorReady | null {
   if (!raw || typeof raw !== 'object') return null;
-  const row = raw as { flags?: unknown; note?: unknown; extras?: unknown };
+  const row = raw as { flags?: unknown; note?: unknown; extras?: unknown; hidden?: unknown };
   const flags = emptyReadyFlags();
   if (row.flags && typeof row.flags === 'object') {
     const bag = row.flags as Record<string, unknown>;
@@ -383,7 +412,7 @@ function normalizeReadyEntry(raw: unknown): CompetitorReady | null {
       if (extras.length >= READY_EXTRA_MAX) break;
     }
   }
-  const next = { flags, note, extras };
+  const next = { flags, note, extras, hidden: normalizeHidden(row.hidden) };
   return readyIsBlank(next) ? null : next;
 }
 
@@ -550,6 +579,29 @@ export function removeReadyExtra(studentId: string, extraId: string): void {
   writeReady(studentId, {
     ...current,
     extras: current.extras.filter((item) => item.id !== extraId),
+  });
+}
+
+/** Hide one starter row on this competitor. The template for everyone else stays intact. */
+export function removeReadyItem(studentId: string, itemId: ReadyItemId): void {
+  if (!READY_ITEMS.some((item) => item.id === itemId)) return;
+  const current = competitorReady(studentId);
+  if (current.hidden.includes(itemId)) return;
+  writeReady(studentId, {
+    ...current,
+    hidden: READY_ITEMS.filter((item) => item.id === itemId || current.hidden.includes(item.id)).map(
+      (item) => item.id,
+    ),
+  });
+}
+
+/** Put a removed starter row back on this competitor. Its previous On or Off state stays. */
+export function restoreReadyItem(studentId: string, itemId: ReadyItemId): void {
+  const current = competitorReady(studentId);
+  if (!current.hidden.includes(itemId)) return;
+  writeReady(studentId, {
+    ...current,
+    hidden: current.hidden.filter((id) => id !== itemId),
   });
 }
 

@@ -20,7 +20,10 @@ import {
   competitorReady,
   readyStatusLabel,
   removeReadyExtra,
+  removeReadyItem,
+  removedReadyItems,
   removeStudent,
+  restoreReadyItem,
   resetRoster,
   searchStudents,
   setCheckedIn,
@@ -30,6 +33,7 @@ import {
   sortStudents,
   studentFromInput,
   updateStudent,
+  visibleReadyItems,
   type Student,
 } from './rosterStore.ts';
 
@@ -412,8 +416,97 @@ describe('competition ready', () => {
     assert.equal(cleaned.ready.a?.note, 'pad');
     assert.equal(cleaned.ready.a?.extras.length, 1);
     assert.equal(cleaned.ready.a?.extras[0]?.label, 'Rashguard');
+    assert.deepEqual(cleaned.ready.a?.hidden, []);
     assert.equal(cleaned.students[0]?.division, 'Adult Blue');
     assert.equal(cleaned.students[0]?.checkedIn, true);
+    resetRoster();
+  });
+
+  it('removes a starter row or a custom row for one competitor only', () => {
+    resetRoster();
+    const alex = addStudent({
+      name: 'Alex Rivera',
+      belt: 'Blue',
+      division: 'Adult Blue',
+      gym: '',
+      lastPromotion: '',
+      note: '',
+    });
+    const sam = addStudent({
+      name: 'Sam',
+      belt: 'White',
+      division: 'Kids Gi',
+      gym: '',
+      lastPromotion: '',
+      note: '',
+    });
+    assert.ok(alex);
+    assert.ok(sam);
+    setCheckedIn(alex.id, true);
+    setReadyFlag(alex.id, 'medical', true);
+    const extra = addReadyExtra(alex.id, 'Mouthguard');
+    assert.ok(extra);
+    setReadyExtra(alex.id, extra.id, true);
+
+    removeReadyItem(alex.id, 'gi');
+    removeReadyItem(alex.id, 'travel');
+    removeReadyExtra(alex.id, extra.id);
+
+    const alexReady = competitorReady(alex.id);
+    assert.deepEqual(
+      visibleReadyItems(alexReady).map((item) => item.id),
+      ['medical', 'division', 'waiver', 'weighIn'],
+    );
+    assert.deepEqual(
+      removedReadyItems(alexReady).map((item) => item.id),
+      ['gi', 'travel'],
+    );
+    assert.equal(alexReady.extras.length, 0);
+    assert.equal(alexReady.flags.medical, true);
+    assert.equal(readyStatusLabel(alexReady), '1 of 4 on');
+    assert.equal(getRoster().students.find((row) => row.id === alex.id)?.division, 'Adult Blue');
+    assert.equal(getRoster().students.find((row) => row.id === alex.id)?.checkedIn, true);
+
+    const samReady = competitorReady(sam.id);
+    assert.equal(visibleReadyItems(samReady).length, READY_ITEMS.length);
+    assert.equal(removedReadyItems(samReady).length, 0);
+    assert.equal(readyStatusLabel(samReady), `0 of ${READY_ITEMS.length} on`);
+    assert.equal(READY_ITEMS.length, 6);
+
+    const reloaded = normalizeRoster(JSON.parse(JSON.stringify(getRoster())));
+    assert.deepEqual(reloaded.ready[alex.id]?.hidden, ['gi', 'travel']);
+    assert.equal(reloaded.ready[alex.id]?.flags.medical, true);
+    assert.equal(reloaded.ready[alex.id]?.extras.length, 0);
+    assert.equal(reloaded.ready[sam.id], undefined);
+    assert.equal(visibleReadyItems(competitorReady(sam.id, reloaded)).length, 6);
+    assert.equal(reloaded.students.find((row) => row.id === alex.id)?.checkedIn, true);
+    assert.equal(reloaded.students.find((row) => row.id === alex.id)?.division, 'Adult Blue');
+
+    restoreReadyItem(alex.id, 'gi');
+    const restored = competitorReady(alex.id);
+    assert.equal(restored.hidden.includes('gi'), false);
+    assert.equal(restored.flags.gi, false);
+    assert.equal(visibleReadyItems(restored).some((item) => item.id === 'gi'), true);
+    assert.equal(competitorReady(sam.id).hidden.length, 0);
+
+    for (const item of READY_ITEMS) removeReadyItem(alex.id, item.id);
+    assert.equal(visibleReadyItems(competitorReady(alex.id)).length, 0);
+    assert.equal(readyStatusLabel(competitorReady(alex.id)), 'No items');
+    assert.equal(getRoster().ready[alex.id]?.hidden.length, READY_ITEMS.length);
+    assert.equal(competitorReady(alex.id).flags.medical, true);
+    restoreReadyItem(alex.id, 'medical');
+    assert.equal(competitorReady(alex.id).flags.medical, true);
+    assert.equal(visibleReadyItems(competitorReady(alex.id)).some((item) => item.id === 'medical'), true);
+    assert.equal(visibleReadyItems(competitorReady(sam.id)).length, READY_ITEMS.length);
+
+    const junk = normalizeRoster({
+      students: [{ id: 'a', name: 'Alex', belt: 'Blue', division: 'Adult Blue', checkedIn: true }],
+      ready: { a: { flags: { medical: true }, hidden: ['gi', 'nope', 'gi', 'weighIn'] } },
+    });
+    assert.deepEqual(junk.ready.a?.hidden, ['gi', 'weighIn']);
+    assert.equal(junk.ready.a?.flags.medical, true);
+    assert.equal(junk.students[0]?.division, 'Adult Blue');
+    assert.equal(junk.students[0]?.checkedIn, true);
     resetRoster();
   });
 });

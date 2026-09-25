@@ -14,16 +14,19 @@ import { COMPETITOR_SYSTEM_NAME } from '../lib/productNames';
 import {
   READY_EXTRA_LABEL_MAX,
   READY_EXTRA_MAX,
-  READY_ITEMS,
   READY_NOTE_MAX,
   addReadyExtra,
   competitorReady,
   readyStatusLabel,
   removeReadyExtra,
+  removeReadyItem,
+  removedReadyItems,
+  restoreReadyItem,
   searchStudents,
   setReadyExtra,
   setReadyFlag,
   setReadyNote,
+  visibleReadyItems,
   type CompetitorReady,
   type Student,
 } from '../lib/rosterStore';
@@ -129,6 +132,8 @@ function Checklist({ student }: { student: Student }) {
   const [note, setNote] = useState(ready.note);
   const [extraLabel, setExtraLabel] = useState('');
   const atExtraMax = ready.extras.length >= READY_EXTRA_MAX;
+  const visible = visibleReadyItems(ready);
+  const removed = removedReadyItems(ready);
 
   return (
     <>
@@ -139,25 +144,45 @@ function Checklist({ student }: { student: Student }) {
         {readyStatusLabel(ready)}
         {student.division ? ` · Roster division: ${student.division}` : ' · No division on the roster card yet'}
       </p>
-      <ul className="ready-list">
-        {READY_ITEMS.map((item) => (
-          <ReadyRow
-            key={item.id}
-            label={item.label}
-            on={ready.flags[item.id]}
-            onToggle={() => setReadyFlag(student.id, item.id, !ready.flags[item.id])}
-          />
-        ))}
-        {ready.extras.map((extra) => (
-          <ReadyRow
-            key={extra.id}
-            label={extra.label}
-            on={extra.on}
-            onToggle={() => setReadyExtra(student.id, extra.id, !extra.on)}
-            onRemove={() => removeReadyExtra(student.id, extra.id)}
-          />
-        ))}
-      </ul>
+      {visible.length || ready.extras.length ? (
+        <ul className="ready-list">
+          {visible.map((item) => (
+            <ReadyRow
+              key={item.id}
+              label={item.label}
+              on={ready.flags[item.id]}
+              onToggle={() => setReadyFlag(student.id, item.id, !ready.flags[item.id])}
+              onRemove={() => removeReadyItem(student.id, item.id)}
+            />
+          ))}
+          {ready.extras.map((extra) => (
+            <ReadyRow
+              key={extra.id}
+              label={extra.label}
+              on={extra.on}
+              onToggle={() => setReadyExtra(student.id, extra.id, !extra.on)}
+              onRemove={() => removeReadyExtra(student.id, extra.id)}
+            />
+          ))}
+        </ul>
+      ) : (
+        <p className="ready-empty">Nothing left on this list.</p>
+      )}
+      {removed.length ? (
+        <div className="ready-restore">
+          <p>Removed from this list</p>
+          {removed.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => restoreReadyItem(student.id, item.id)}
+            >
+              Put back {item.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
       <form
         className="ready-add"
         onSubmit={(event) => {
@@ -231,7 +256,12 @@ function ReadyRow({
         {on ? 'On' : 'Off'}
       </button>
       {onRemove ? (
-        <button type="button" className="btn btn--ghost ready-row__remove" onClick={onRemove}>
+        <button
+          type="button"
+          className="btn btn--ghost ready-row__remove"
+          aria-label={`Remove ${label}`}
+          onClick={onRemove}
+        >
           Remove
         </button>
       ) : null}

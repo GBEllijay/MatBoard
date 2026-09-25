@@ -9581,6 +9581,8 @@ a.ready-pick {
 
 .ready-division,
 .ready-list,
+.ready-empty,
+.ready-restore,
 .ready-add,
 .ready-note,
 .ready-back {
@@ -9641,6 +9643,30 @@ a.ready-pick {
   grid-column: 1 / -1;
   justify-self: start;
   min-height: 48px;
+}
+
+.ready-empty {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.ready-restore {
+  display: grid;
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+}
+
+.ready-restore p {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.ready-restore .btn {
+  width: 100%;
+  min-height: 52px;
 }
 
 .ready-add {
