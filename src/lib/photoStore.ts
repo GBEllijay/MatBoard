@@ -1,3 +1,4 @@
+import { shrinkPhotoForStore } from './imageShrink.ts';
 import { PHOTO_PICKER_ACCEPT, VIDEO_PICKER_ACCEPT } from './mediaPicker.ts';
 import {
   buildPlayQueue,
@@ -360,41 +361,104 @@ async function persistMediaRows(rows: PhotoRow[]): Promise<void> {
   await txDone(tx);
 }
 
+/**
+ * Safari shows a system "not enough memory" dialog when this site's storage
+ * quota rejects a write. That dialog is origin storage, not device RAM.
+ */
+export const DEVICE_STORAGE_FULL_NOTE =
+  'Storage for Advantage on this device is full. Remove a Gallery photo or Pro Shop card, or clear unused media, then try again.';
+
+export class StorageQuotaError extends Error {
+  saved: number;
+  constructor(saved: number) {
+    super(DEVICE_STORAGE_FULL_NOTE);
+    this.name = 'QuotaExceededError';
+    this.saved = saved;
+  }
+}
+
+export function isStorageQuotaError(error: unknown): boolean {
+  if (!error || (typeof error !== 'object' && typeof error !== 'string')) return false;
+  if (typeof error === 'string') return quotaText(error);
+  const record = error as { name?: unknown; code?: unknown; message?: unknown };
+  const name = typeof record.name === 'string' ? record.name : '';
+  if (name === 'QuotaExceededError' || name === 'NS_ERROR_DOM_QUOTA_REACHED') return true;
+  if (record.code === 22 || record.code === 1014) return true;
+  const message = typeof record.message === 'string' ? record.message : '';
+  return quotaText(message);
+}
+
+function quotaText(message: string): boolean {
+  return /quota|not enough space|insufficient memory|not enough memory|out of memory|storage full/i.test(
+    message,
+  );
+}
+
+/** In-app note for a failed Gallery or Pro Shop save. Null when the error is something else. */
+export function quotaAddNote(error: unknown): string | null {
+  if (error instanceof StorageQuotaError) {
+    if (error.saved > 0) return `Saved ${error.saved}. ${DEVICE_STORAGE_FULL_NOTE}`;
+    return DEVICE_STORAGE_FULL_NOTE;
+  }
+  if (!isStorageQuotaError(error)) return null;
+  return DEVICE_STORAGE_FULL_NOTE;
+}
+
+async function blobForFolderFile(
+  file: File,
+  folder: FolderConfig,
+): Promise<{ blob: Blob; mime: string }> {
+  const video = folder.id === 'gallery' && isAcceptedVideoFile(file);
+  if (video) return { blob: file, mime: mimeFromFile(file, folder) };
+  const blob = await shrinkPhotoForStore(file);
+  const mime = blob.type.startsWith('image/') ? blob.type : 'image/jpeg';
+  return { blob, mime };
+}
+
 export async function addFolderFiles(files: File[], folderId: FolderId): Promise<number> {
   const folder = folderById(folderId);
   const existing = await listPhotos(folderId);
-  const db = await openDb();
-  const tx = db.transaction(STORE, 'readwrite');
-  const store = tx.objectStore(STORE);
   let photoCount = existing.filter((photo) => !isVideoItem(photo)).length;
   let videoCount = existing.filter((photo) => isVideoItem(photo)).length;
   let nextOrder = existing.reduce((max, photo) => Math.max(max, photo.sortOrder), -1);
-  let added = 0;
   let room = folderId === 'shop' ? shopSlotsLeft(existing.length) : Number.POSITIVE_INFINITY;
+  const pending: StoredPhoto[] = [];
   for (const file of files) {
     if (!fileMatchesFolder(file, folder)) continue;
     if (room <= 0) break;
     room -= 1;
     nextOrder += 1;
-    added += 1;
     const video = folder.id === 'gallery' && isAcceptedVideoFile(file);
     if (video) videoCount += 1;
     else photoCount += 1;
-    const photo: StoredPhoto = {
+    const stored = await blobForFolderFile(file, folder);
+    pending.push({
       id: crypto.randomUUID(),
-      mime: mimeFromFile(file, folder),
+      mime: stored.mime,
       addedAt: Date.now(),
-      blob: file,
+      blob: stored.blob,
       label: `${video ? 'Video' : folder.labelPrefix} ${video ? videoCount : photoCount}`,
       folderId,
       sortOrder: nextOrder,
       playEnabled: true,
       buyUrl: '',
       startsSlide: true,
-    };
-    store.put(photo);
+    });
   }
-  await txDone(tx);
+  if (!pending.length) return 0;
+  const db = await openDb();
+  let added = 0;
+  for (const photo of pending) {
+    try {
+      const tx = db.transaction(STORE, 'readwrite');
+      tx.objectStore(STORE).put(photo);
+      await txDone(tx);
+      added += 1;
+    } catch (error) {
+      if (isStorageQuotaError(error)) throw new StorageQuotaError(added);
+      throw error;
+    }
+  }
   return added;
 }
 

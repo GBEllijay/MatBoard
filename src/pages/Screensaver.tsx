@@ -30,6 +30,7 @@ import {
 import {
   addFolderFiles,
   clearFolder,
+  quotaAddNote,
   clampIntervalSec,
   DEFAULT_FOLDER_PLAY,
   DEFAULT_INTERVAL_SEC,
@@ -240,6 +241,11 @@ export function ScreensaverPage() {
     setAddOpen(true);
   };
 
+  const scrollPickerNote = useCallback((node: HTMLParagraphElement | null) => {
+    if (!node || !pickerNote) return;
+    node.scrollIntoView({ block: 'nearest' });
+  }, [pickerNote]);
+
   const onFiles = async (files: FileList | null) => {
     if (!files?.length) return;
     const kind = addKind;
@@ -247,23 +253,34 @@ export function ScreensaverPage() {
     const folder = folderById(folderId);
     const picked = [...files];
     setAddOpen(false);
-    const added = await addFolderFiles(picked, folderId);
-    const accepted = picked.filter((file) => fileMatchesFolder(file, folder)).length;
-    if (!added) {
-      setPickerNote(
-        folderId === 'shop' && accepted > 0
-          ? `Pro Shop keeps ${SHOP_ITEM_CAP} cards on this device. Remove one to add another.`
-          : kind === 'video'
-            ? 'That file cannot play here. Switch the camera to video, or pick an MP4 / WebM.'
-            : 'That file is not an image this folder can keep.',
-      );
-    } else if (folderId === 'shop' && added < accepted) {
-      setPickerNote(`Added ${added}. Pro Shop keeps ${SHOP_ITEM_CAP} cards on this device.`);
-    } else {
-      setPickerNote('');
+    try {
+      const added = await addFolderFiles(picked, folderId);
+      const accepted = picked.filter((file) => fileMatchesFolder(file, folder)).length;
+      if (!added) {
+        setPickerNote(
+          folderId === 'shop' && accepted > 0
+            ? `Pro Shop keeps ${SHOP_ITEM_CAP} cards on this device. Remove one to add another.`
+            : kind === 'video'
+              ? 'That file cannot play here. Switch the camera to video, or pick an MP4 / WebM.'
+              : 'That file is not an image this folder can keep.',
+        );
+      } else if (folderId === 'shop' && added < accepted) {
+        setPickerNote(`Added ${added}. Pro Shop keeps ${SHOP_ITEM_CAP} cards on this device.`);
+      } else {
+        setPickerNote('');
+      }
+      await refresh();
+      if (added) setPlaying(true);
+    } catch (error) {
+      setPickerNote(quotaAddNote(error) ?? 'Could not save that file on this device. Try again.');
+      setExpanded((prev) => ({ ...prev, [folderId]: true }));
+      setOptions(true);
+      try {
+        await refresh();
+      } catch {
+        /* The note is the signal. A second storage failure should not hide it. */
+      }
     }
-    await refresh();
-    if (added) setPlaying(true);
   };
 
   const exitSlideshow = () => {
@@ -365,7 +382,11 @@ export function ScreensaverPage() {
         <GymLogoControl />
         <section className="saver-settings">
           <h3 className="saver-settings__title">Settings</h3>
-          {pickerNote ? <p className="saver-folder__empty">{pickerNote}</p> : null}
+          {pickerNote ? (
+            <p className="saver-folder__empty" role="status" ref={scrollPickerNote}>
+              {pickerNote}
+            </p>
+          ) : null}
         <fieldset>
           <legend>Photo interval</legend>
           <div className="interval-stepper" role="group" aria-label="Photo interval">
