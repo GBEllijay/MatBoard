@@ -7,13 +7,17 @@ import {
   TRAINING_NOTES_LABEL,
 } from '../lib/coachCopy';
 
-/** Same buttons, same order, as the Advantage Coach card. */
+/**
+ * Same buttons, same order, as the Advantage Coach card.
+ * Daily tools use the flat blue coach belt. Mock Tournament and Competitor Roster
+ * share the yellow/green suite belt.
+ */
 export const COACH_TOOL_LINKS = [
   { title: TRAINING_NOTES_LABEL, to: '/notes' },
   { title: 'Daily Training Videos', to: '/techniques' },
   { title: TECHNIQUE_TREE_LABEL, to: '/technique-tree' },
   { title: 'Mock Tournament', to: '/tournament', belt: 'tournament' },
-  { title: COMPETITOR_ROSTER_LABEL, to: '/roster?from=coach' },
+  { title: COMPETITOR_ROSTER_LABEL, to: '/roster?from=coach', belt: 'tournament' },
 ] as const;
 
 export function CoachToolsCard() {
