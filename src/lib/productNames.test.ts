@@ -20,8 +20,8 @@ import {
   coachToolsOpen,
   parentToolboxPath,
   COMPETITOR_SYSTEM_NAME,
-  INSTRUCTOR_CLOUD_NOTE,
   INSTRUCTOR_COLLAB_NAME,
+  INSTRUCTOR_COACH_ENTRY,
   MATCH_CONTROLLER_PATH,
   MEDIA_CONSOLE_INSTRUCTIONS,
   MEDIA_CONSOLE_NAME,
@@ -31,6 +31,7 @@ import {
   TOURNAMENT_SUITE_NAME,
   toolEyebrow,
   tournamentToolLabel,
+  withSuiteFrom,
 } from './productNames.ts';
 
 test('Console name uses the exact Instructor apostrophe', () => {
@@ -83,15 +84,13 @@ test('Pro suite keeps the working title and Coach keeps Mock Tournament', () => 
   assert.doesNotMatch(TOURNAMENT_SUITE_NAME, /MatBracket/i);
 });
 
-test('Instructor hub keeps a quiet reminder that cloud is not live', () => {
-  assert.equal(INSTRUCTOR_CLOUD_NOTE, 'Not connected to a cloud yet');
-  assert.match(INSTRUCTOR_CLOUD_NOTE, /not connected to a cloud yet/i);
-  assert.doesNotMatch(INSTRUCTOR_CLOUD_NOTE, /error|warning|failed|unavailable/i);
-});
-
 test('Pro console hubs stay four siblings, Media Console first', () => {
   assert.equal(COMPETITOR_SYSTEM_NAME, 'Competitor Management System');
   assert.equal(INSTRUCTOR_COLLAB_NAME, 'Instructor Collaboration and Cloud Access');
+  assert.equal(
+    INSTRUCTOR_COACH_ENTRY,
+    'Advantage Coach Unlimited',
+  );
   assert.deepEqual(
     PRO_HUBS.map((hub) => hub.title),
     [MEDIA_CONSOLE_NAME, COMPETITOR_SYSTEM_NAME, INSTRUCTOR_COLLAB_NAME, TOURNAMENT_SUITE_NAME],
@@ -106,6 +105,15 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   );
   assert.equal(MATCH_CONTROLLER_PATH, '/match/control');
   assert.equal(ROUND_CONTROLLER_PATH, '/training/control');
+});
+
+test('Suite origin stays on Suite links and leaves other paths alone', () => {
+  assert.equal(withSuiteFrom('/match', false), '/match');
+  assert.equal(withSuiteFrom('/training/control', false), '/training/control');
+  assert.equal(withSuiteFrom('/match', true), '/match?from=suite');
+  assert.equal(withSuiteFrom('/match/control?focus=round', true), '/match/control?focus=round&from=suite');
+  assert.equal(withSuiteFrom('/match?bout=final-0', true), '/match?bout=final-0&from=suite');
+  assert.equal(withSuiteFrom('/training?from=suite', true), '/training?from=suite');
 });
 
 test('Owner tournament tool is Tournament Software; Coach keeps Mock Tournament', () => {

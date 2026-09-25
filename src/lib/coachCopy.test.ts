@@ -21,6 +21,11 @@ import {
   EMPTY_VIDEOS_BODY,
   EMPTY_VIDEOS_TITLE,
   NOTES_LEAD,
+  COMPETITOR_ROSTER_CARD,
+  COMPETITOR_ROSTER_DESCRIPTION,
+  RANKINGS_RESULTS_CARD,
+  ROSTER_CSV_DEVICE_NOTE,
+  ROSTER_CSV_INSTRUCTIONS,
   ROSTER_CSV_PRO_TEASER,
   ROSTER_LEAD_COACH,
   ROSTER_LEAD_PRO,
@@ -50,8 +55,13 @@ function allCopy(): string {
     OWNER_BRACKET_CLOUD_NOTE,
     NOTES_LEAD,
     ROSTER_CSV_PRO_TEASER,
+    ROSTER_CSV_DEVICE_NOTE,
+    ROSTER_CSV_INSTRUCTIONS,
     ROSTER_LEAD_COACH,
     ROSTER_LEAD_PRO,
+    COMPETITOR_ROSTER_DESCRIPTION,
+    COMPETITOR_ROSTER_CARD,
+    RANKINGS_RESULTS_CARD,
   ].join('\n');
 }
 
@@ -84,6 +94,29 @@ test('Coach teasers list the four hub tools in lesson, videos, mock, roster orde
   assert.doesNotMatch(COACH_HUB_BLURB, /Competitor Management/);
 });
 
+test('Competitor Roster copy names bout competitors and skips franchise disclaimers', () => {
+  assert.equal(
+    COMPETITOR_ROSTER_DESCRIPTION,
+    'Competitor Roster is the list of bout competitors for matches and brackets.',
+  );
+  assert.equal(
+    COMPETITOR_ROSTER_CARD,
+    'Easily create and maintain a list of competitor names, rankings and results for easy loading into tournament brackets and matches.',
+  );
+  assert.equal(
+    RANKINGS_RESULTS_CARD,
+    'Save and catalogue your tournament results. Keeps names, dates, divisions, placements, and win records for ranking calculations. Full auto-bracketing and seeding coming soon.',
+  );
+  assert.equal(
+    ROSTER_LEAD_PRO,
+    'Save competitor names, belts, and notes for matches and in-house tournaments. CSV backup available.',
+  );
+  assert.doesNotMatch(ROSTER_LEAD_PRO, /this browser|Data stays|UTF-8|accent/i);
+  assert.doesNotMatch(ROSTER_LEAD_PRO, /Bout competitors on this device/i);
+  const rosterCopy = [COMPETITOR_ROSTER_DESCRIPTION, COMPETITOR_ROSTER_CARD, ROSTER_LEAD_PRO].join('\n');
+  assert.doesNotMatch(rosterCopy, /GB Members|Gracie\s*Barra|student management/i);
+});
+
 test('Coach roster lead points CSV at Pro and keeps manual roster language', () => {
   assert.equal(
     ROSTER_LEAD_COACH,
@@ -96,6 +129,15 @@ test('Coach roster lead points CSV at Pro and keeps manual roster language', () 
   assert.equal(rosterCsvAvailable(true, true), false);
   assert.equal(rosterCsvAvailable(false, true), false);
   assert.equal(rosterCsvAvailable(false, false), false);
+  assert.equal(
+    ROSTER_CSV_DEVICE_NOTE,
+    'The roster stays on this device. CSV is for backup or a move.',
+  );
+  assert.equal(
+    ROSTER_CSV_INSTRUCTIONS,
+    'Each row needs a competitor name and a belt. A row missing either one is left out.',
+  );
+  assert.doesNotMatch(`${ROSTER_CSV_DEVICE_NOTE}\n${ROSTER_CSV_INSTRUCTIONS}`, /UTF-8|accent/i);
 });
 
 test('Coach empty states stay friendly and skip student progress', () => {

@@ -7,6 +7,15 @@ import {
   TRAINING_NOTES_LABEL,
 } from '../lib/coachCopy';
 
+/** Same buttons, same order, as the Advantage Coach card. */
+export const COACH_TOOL_LINKS = [
+  { title: TRAINING_NOTES_LABEL, to: '/notes' },
+  { title: 'Daily Training Videos', to: '/techniques' },
+  { title: TECHNIQUE_TREE_LABEL, to: '/technique-tree' },
+  { title: 'Mock Tournament', to: '/tournament', belt: 'tournament' },
+  { title: COMPETITOR_ROSTER_LABEL, to: '/roster?from=coach' },
+] as const;
+
 export function CoachToolsCard() {
   return (
     <article className="mode-card mode-card--coach">
@@ -15,22 +24,12 @@ export function CoachToolsCard() {
       <span className="mode-card__sub">Coach</span>
       <span>{COACH_HUB_BLURB}</span>
       <div className="mode-card__actions mode-card__actions--tools" aria-label="Coach tools">
-        <Link className="btn btn--white" to="/notes">
-          {TRAINING_NOTES_LABEL}
-        </Link>
-        <Link className="btn btn--white" to="/techniques">
-          Daily Training Videos
-        </Link>
-        <Link className="btn btn--white" to="/technique-tree">
-          {TECHNIQUE_TREE_LABEL}
-        </Link>
-        <Link className="btn btn--white" to="/tournament">
-          <BeltRail kind="tournament" />
-          Mock Tournament
-        </Link>
-        <Link className="btn btn--white" to="/roster?from=coach">
-          {COMPETITOR_ROSTER_LABEL}
-        </Link>
+        {COACH_TOOL_LINKS.map((tool) => (
+          <Link key={tool.to} className="btn btn--white" to={tool.to}>
+            {'belt' in tool ? <BeltRail kind={tool.belt} /> : null}
+            {tool.title}
+          </Link>
+        ))}
       </div>
     </article>
   );

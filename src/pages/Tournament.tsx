@@ -151,9 +151,7 @@ export function TournamentPage() {
 
   return (
     <main
-      className={`tournament${theme === 'bright' ? ' tournament--bright' : ''}${
-        fs.className ? ` ${fs.className}` : ''
-      }`}
+      className={`tournament tournament--${theme}${fs.className ? ` ${fs.className}` : ''}`}
     >
       <BeltRail kind="tournament" />
       <PlayExitMark to={exitPath} onExit={exitBoard} />

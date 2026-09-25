@@ -44,10 +44,30 @@ export const EMPTY_BRACKET_BODY =
 export const OWNER_BRACKET_CLOUD_NOTE =
   'Saved brackets stay on this device. Pro boards hold up to 64 competitors. Cloud sync comes later.';
 
+/** User-facing roster meaning on Competitor Management and the Pro roster. */
+export const COMPETITOR_ROSTER_DESCRIPTION =
+  'Competitor Roster is the list of bout competitors for matches and brackets.';
+
+/** Subtitle on the Competitor Roster button in Competitor Management. */
+export const COMPETITOR_ROSTER_CARD =
+  'Easily create and maintain a list of competitor names, rankings and results for easy loading into tournament brackets and matches.';
+
+/** Subtitle on the Rankings / Results button. Copy only — no auto-bracket or seeding yet. */
+export const RANKINGS_RESULTS_CARD =
+  'Save and catalogue your tournament results. Keeps names, dates, divisions, placements, and win records for ranking calculations. Full auto-bracketing and seeding coming soon.';
+
 export const ROSTER_LEAD_COACH =
   'Competitor Roster with Names and Ranks for Single Matches and Mock Tournaments.';
 export const ROSTER_LEAD_PRO =
-  'Competitor Management — names and belts for Match and Mock Tournament. CSV backup stays in this browser.';
+  'Save competitor names, belts, and notes for matches and in-house tournaments. CSV backup available.';
+
+/** Short line under the Pro CSV buttons. Same voice as the roster lead. */
+export const ROSTER_CSV_DEVICE_NOTE =
+  'The roster stays on this device. CSV is for backup or a move.';
+
+/** Shown only from the Instructions control. Import skips a row without both. */
+export const ROSTER_CSV_INSTRUCTIONS =
+  'Each row needs a competitor name and a belt. A row missing either one is left out.';
 
 /** Coach Competitor Roster: CSV stays on the Pro roster screen. */
 export const ROSTER_CSV_PRO_TEASER = 'Importable CSV Template Available in Advantage Pro';

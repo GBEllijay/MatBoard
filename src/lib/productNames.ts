@@ -54,14 +54,14 @@ export const TOURNAMENT_SOFTWARE_NAME = 'Tournament Software';
 /** Working title until the owner picks a consumer name for bracketing software. */
 export const TOURNAMENT_SUITE_NAME = 'In-House Tournament Management Suite';
 
-/** Pro hub for bout competitors, roster CSV, and on-device rankings. Not GB Members. */
+/** Pro hub for bout competitors, roster CSV, and on-device rankings. */
 export const COMPETITOR_SYSTEM_NAME = 'Competitor Management System';
 
 /** Plan-only Pro hub. No cloud sync in this build. */
 export const INSTRUCTOR_COLLAB_NAME = 'Instructor Collaboration and Cloud Access';
 
-/** Quiet badge under the instructor hub title. Cloud sync is not live on this page. */
-export const INSTRUCTOR_CLOUD_NOTE = 'Not connected to a cloud yet';
+/** Jump from the instructor hub into Advantage Coach. Keep Unlimited in the label. */
+export const INSTRUCTOR_COACH_ENTRY = 'Advantage Coach Unlimited';
 
 /** Pro gym-TV cast hub. Same screen Gallery opens. Not a rename of the Owner Console. */
 export const MEDIA_CONSOLE_NAME = 'Media Console';
@@ -82,6 +82,22 @@ export const MATCH_CONTROLLER_PATH = '/match/control';
 
 /** Existing White Rounds controller. The suite deep-links here as Round Controller. */
 export const ROUND_CONTROLLER_PATH = '/training/control';
+
+/** Query flag so Suite destinations keep the Suite page theme and return path. */
+export const SUITE_FROM = 'suite';
+
+/** Keep `from=suite` on links opened from the Suite hub. Other callers stay unchanged. */
+export function withSuiteFrom(path: string, fromSuite: boolean): string {
+  if (!fromSuite) return path;
+  const hashAt = path.indexOf('#');
+  const hash = hashAt >= 0 ? path.slice(hashAt) : '';
+  const base = hashAt >= 0 ? path.slice(0, hashAt) : path;
+  const queryAt = base.indexOf('?');
+  const pathname = queryAt >= 0 ? base.slice(0, queryAt) : base;
+  const params = new URLSearchParams(queryAt >= 0 ? base.slice(queryAt + 1) : '');
+  params.set('from', SUITE_FROM);
+  return `${pathname}?${params.toString()}${hash}`;
+}
 
 /** Bottom-of-page guidance on the Media Console manage screen. */
 export const MEDIA_CONSOLE_INSTRUCTIONS = [

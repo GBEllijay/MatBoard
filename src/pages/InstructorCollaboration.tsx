@@ -1,60 +1,47 @@
+import { Link } from 'react-router-dom';
+import { BeltRail } from '../components/BeltRail';
+import { COACH_TOOL_LINKS } from '../components/CoachToolsCard';
 import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
-import { INSTRUCTOR_CLOUD_NOTE, INSTRUCTOR_COLLAB_NAME } from '../lib/productNames';
-
-const PLANS = [
-  {
-    title: 'Generate instructor invite / license',
-    body: 'Paying Pro gyms can create invite links for instructors, with no hard seat limit. Each instructor creates their own login. They appear under this gym on the cloud later.',
-    detail:
-      'Default invites grant Advantage Instructor: the full Coach toolkit — Daily Lesson Plan, Daily Training Videos, Technique Tree, Mock Tournament, and Competitor Roster. Not Media Console or Gallery. Owners can later elevate a login, such as a program director, to full Pro and Media Console access.',
-    action: 'Coming Soon',
-  },
-  {
-    title: 'Advantage Instructor console',
-    body: 'Like Coach, labeled Instructor. Instructors collaborate with owners. No separate sign-in in this build.',
-  },
-  {
-    title: 'Class photos and short videos',
-    body: 'Instructors upload class photos or short videos for owner review. Approved media goes to next-day Gallery.',
-  },
-  {
-    title: 'Share training to the instructor cloud',
-    body: 'Share Lesson Plan, Daily Training Videos, Technique Trees, and Mock Tournament to the instructor cloud.',
-  },
-  {
-    title: 'Instructor Competitor Roster',
-    body: 'Instructor Competitor Roster CSV, then cloud sync with owner approval onto the gym roster.',
-  },
-] as const;
+import { INSTRUCTOR_COACH_ENTRY, INSTRUCTOR_COLLAB_NAME } from '../lib/productNames';
 
 export function InstructorCollaborationPage() {
   return (
     <main className="home home--pro home--suite">
       <div className="home__inner">
-        <HomeMark to="/pro" tagline="Plan only. Nothing is uploaded or synced." />
+        <HomeMark to="/pro" />
         <section className="suite">
           <h2>{INSTRUCTOR_COLLAB_NAME}</h2>
-          <p className="suite__cloud-note">{INSTRUCTOR_CLOUD_NOTE}</p>
+          <p className="suite__cloud-note">Not connected to the cloud yet.</p>
           <p>
-            Coming soon. These Alpha cards describe the instructor plan. This page does not connect
-            to a cloud.
+            Instructors share class plans, technique trees, and training videos with you. Each day
+            they can send class photos and short clips for you to look over. Their screen works
+            like Coach. You approve what plays on the gym TV and what joins the gym roster.
           </p>
-          <div className="suite__nav" aria-label={INSTRUCTOR_COLLAB_NAME}>
-            {PLANS.map((plan) => (
-              <article key={plan.title} className="plan-card">
-                <p className="plan-card__kicker">Coming Soon · Alpha</p>
-                <strong>{plan.title}</strong>
-                <span>{plan.body}</span>
-                {'detail' in plan ? <span>{plan.detail}</span> : null}
-                {'action' in plan ? (
-                  <button type="button" className="btn" disabled>
-                    {plan.action}
-                  </button>
-                ) : null}
-              </article>
-            ))}
-          </div>
+          <nav className="instructor-jumps" aria-label="Advantage Coach">
+            <Link className="btn btn--white instructor-jumps__entry" to="/coach">
+              {INSTRUCTOR_COACH_ENTRY}
+            </Link>
+            <div className="instructor-jumps__tools">
+              {COACH_TOOL_LINKS.map((tool) => (
+                <Link key={tool.to} className="btn btn--white" to={tool.to}>
+                  {'belt' in tool ? <BeltRail kind={tool.belt} /> : null}
+                  {tool.title}
+                </Link>
+              ))}
+            </div>
+          </nav>
+          <article className="plan-card">
+            <p className="plan-card__kicker">Coming Soon · Alpha</p>
+            <strong>Generate instructor invite / license</strong>
+            <span>
+              Invite instructors into your gym. Each person sets up their own login. You can later
+              give someone, such as a program director, the full owner tools.
+            </span>
+            <button type="button" className="btn" disabled>
+              Coming Soon
+            </button>
+          </article>
         </section>
         <SiteFooter />
       </div>

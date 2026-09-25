@@ -44,7 +44,7 @@ describe('schedule CSV round trip', () => {
           kind: 'class',
           day: 'mon',
           time: '17:00',
-          title: 'Tiny Champions',
+          title: 'Kids BJJ',
           location: 'MAT 1',
           subtitle: '',
         },
@@ -83,7 +83,7 @@ describe('schedule CSV round trip', () => {
     assert.deepEqual(
       next.payload?.classes.map((row) => [row.id, row.day, row.time, row.title, row.location, row.subtitle]),
       [
-        ['class-mon', 'mon', '17:00', 'Tiny Champions', 'MAT 1', ''],
+        ['class-mon', 'mon', '17:00', 'Kids BJJ', 'MAT 1', ''],
         ['class-tue', 'tue', '18:00', 'No-Gi, All Levels', 'MAT 2', 'Blue belt & up'],
       ],
     );

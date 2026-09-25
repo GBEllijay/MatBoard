@@ -1,22 +1,26 @@
 import { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { BeltRail } from '../components/BeltRail';
 import { Chrome } from '../components/Chrome';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { TrainingOptions } from '../components/TrainingOptions';
 import { useInterval } from '../hooks/useClock';
+import { useSuiteOrigin } from '../hooks/useSuiteOrigin';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useTrainingState } from '../hooks/useStores';
 import { unlockAudio } from '../lib/audio';
 import { formatMmSs } from '../lib/format';
 import { remainingTraining, tickTraining, toggleTrainingClock } from '../lib/trainingStore';
 
-function openRoundsWindow(): void {
-  window.open('/training', 'matboard-rounds', 'popup,noopener,noreferrer,width=1280,height=720');
+function openRoundsWindow(fromSuite: boolean): void {
+  const path = fromSuite ? '/training?from=suite' : '/training';
+  window.open(path, 'matboard-rounds', 'popup,noopener,noreferrer,width=1280,height=720');
 }
 
 /** Fat-thumb remote for the rounds timer. The gym TV stays on /training. */
 export function TrainingControllerPage() {
   const training = useTrainingState();
+  const suite = useSuiteOrigin();
   const [, setTick] = useState(0);
   const remaining = remainingTraining(training);
 
@@ -43,12 +47,13 @@ export function TrainingControllerPage() {
   };
 
   return (
-    <main className="controller training-control">
-      <PlayExitMark to="/white" />
+    <main className={`controller training-control${suite.fromSuite ? ' origin-suite' : ''}`}>
+      {suite.fromSuite ? <BeltRail kind="tournament" /> : null}
+      <PlayExitMark to={suite.homePath} />
       <Chrome
         title="Rounds"
         right={
-          <button type="button" className="chip chip--gold" onClick={openRoundsWindow}>
+          <button type="button" className="chip chip--gold" onClick={() => openRoundsWindow(suite.fromSuite)}>
             Rounds
           </button>
         }
@@ -73,7 +78,7 @@ export function TrainingControllerPage() {
       </div>
 
       <p className="training-control__open">
-        <Link className="text-link" to="/training">
+        <Link className="text-link" to={suite.withFrom('/training')}>
           Open rounds on this device
         </Link>
       </p>
