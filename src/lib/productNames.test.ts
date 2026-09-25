@@ -53,7 +53,7 @@ test('Home ladder details keep White meaning and a plain Pro subtitle', () => {
   );
   assert.equal(
     COACH_HOME_DESCRIPTION,
-    'daily lesson plan, daily training videos, mock tournament, and competitor roster.',
+    'Daily lesson plan, daily training videos, mock tournament, and competitor roster.',
   );
   assert.doesNotMatch(WHITE_HOME_DESCRIPTION, /White —/);
   assert.doesNotMatch(COACH_HOME_DESCRIPTION, /Technique Tree/);
