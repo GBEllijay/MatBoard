@@ -23,6 +23,14 @@ import {
   NOTES_LEAD,
   COMPETITOR_ROSTER_CARD,
   COMPETITOR_ROSTER_DESCRIPTION,
+  GAME_PLAN_A,
+  GAME_PLAN_B,
+  GAME_PLAN_C,
+  GAME_PLAN_CARD,
+  GAME_PLAN_EMPTY,
+  GAME_PLAN_LABEL,
+  GAME_PLAN_LEAD,
+  GAME_PLAN_OPTIONAL,
   RANKINGS_RESULTS_CARD,
   ROSTER_CSV_DEVICE_NOTE,
   ROSTER_CSV_INSTRUCTIONS,
@@ -62,6 +70,14 @@ function allCopy(): string {
     COMPETITOR_ROSTER_DESCRIPTION,
     COMPETITOR_ROSTER_CARD,
     RANKINGS_RESULTS_CARD,
+    GAME_PLAN_LABEL,
+    GAME_PLAN_CARD,
+    GAME_PLAN_LEAD,
+    GAME_PLAN_OPTIONAL,
+    GAME_PLAN_EMPTY,
+    GAME_PLAN_A,
+    GAME_PLAN_B,
+    GAME_PLAN_C,
   ].join('\n');
 }
 
@@ -115,6 +131,22 @@ test('Competitor Roster copy names bout competitors and skips franchise disclaim
   assert.doesNotMatch(ROSTER_LEAD_PRO, /Bout competitors on this device/i);
   const rosterCopy = [COMPETITOR_ROSTER_DESCRIPTION, COMPETITOR_ROSTER_CARD, ROSTER_LEAD_PRO].join('\n');
   assert.doesNotMatch(rosterCopy, /GB Members|Gracie\s*Barra|student management/i);
+});
+
+test('Game Plan copy keeps a note optional and stays on bout competitors', () => {
+  assert.equal(GAME_PLAN_LABEL, 'Competitor Game Plan');
+  assert.equal(GAME_PLAN_A, 'A Game');
+  assert.equal(GAME_PLAN_B, 'B Game');
+  assert.equal(GAME_PLAN_C, 'C Game');
+  assert.match(GAME_PLAN_CARD, /A Game, B Game, and C Game/);
+  assert.match(GAME_PLAN_CARD, /optional/i);
+  assert.match(GAME_PLAN_LEAD, /optional/i);
+  assert.match(GAME_PLAN_LEAD, /stand alone/);
+  assert.match(GAME_PLAN_OPTIONAL, /does not need/);
+  assert.doesNotMatch(
+    [GAME_PLAN_LABEL, GAME_PLAN_CARD, GAME_PLAN_LEAD, GAME_PLAN_OPTIONAL, GAME_PLAN_EMPTY, GAME_PLAN_A, GAME_PLAN_B, GAME_PLAN_C].join('\n'),
+    /required|GB Members|student|everything works|fallback|desperation|surprise/i,
+  );
 });
 
 test('Coach roster lead points CSV at Pro and keeps manual roster language', () => {
