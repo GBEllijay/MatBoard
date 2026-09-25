@@ -17,8 +17,8 @@ type Props = {
 
 /**
  * One Pro Shop TV page. Every card on the page can show its own QR.
- * Landscape default places the QR beside the photo. Logo mode pins the gym
- * mark on top and the QR under that card's photo.
+ * The QR stays to the right of that card's photo on phone and TV.
+ * Logo mode pins the gym mark on the left of the same row.
  */
 export function ShopCastSlide({ items, srcById, mode, logoUrl }: Props) {
   const showQr = mode !== 'images';
