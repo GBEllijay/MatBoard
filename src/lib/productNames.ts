@@ -54,11 +54,14 @@ export const TOURNAMENT_SOFTWARE_NAME = 'Tournament Software';
 /** Working title until the owner picks a consumer name for bracketing software. */
 export const TOURNAMENT_SUITE_NAME = 'In-House Tournament Management Suite';
 
-/** Pro hub for bout competitors, roster CSV, and on-device rankings. Not GB Members. */
+/** Pro hub for bout competitors, roster CSV, and on-device rankings. */
 export const COMPETITOR_SYSTEM_NAME = 'Competitor Management System';
 
 /** Plan-only Pro hub. No cloud sync in this build. */
 export const INSTRUCTOR_COLLAB_NAME = 'Instructor Collaboration and Cloud Access';
+
+/** Jump from the instructor hub into Advantage Coach. Keep Unlimited in the label. */
+export const INSTRUCTOR_COACH_ENTRY = 'Advantage Coach Unlimited';
 
 /** Pro gym-TV cast hub. Same screen Gallery opens. Not a rename of the Owner Console. */
 export const MEDIA_CONSOLE_NAME = 'Media Console';

@@ -340,7 +340,11 @@ export type ClassProgram = {
   label: string;
 };
 
-/** Stable program color. Same kind of class stays the same color all week. */
+/**
+ * Stable program color. Same kind of class stays the same color all week.
+ * GB1 / GB2 / GB3 are only recognized when that text is already the class title
+ * someone typed. They are not labels this app shows on its own.
+ */
 export function classProgram(title: string): ClassProgram {
   const name = title.trim().toLowerCase();
   if (/tiny|little|kids|youth|homeschool|champion/.test(name)) return { id: 'kids', label: 'Kids' };
@@ -376,7 +380,7 @@ export function groupClassesByTime(classes: readonly WeeklyClassSlot[]): ClassTi
   return groups;
 }
 
-/** Gym-TV / monthly recap: "5:00 PM MAT 1 Tiny Champions / MAT 2 Advanced Kids". */
+/** Gym-TV / monthly recap: "5:00 PM MAT 1 Kids BJJ / MAT 2 Advanced Kids". */
 export function formatTimeGroupLine(group: ClassTimeGroup): string {
   const when = formatClassTime(group.time);
   const classes = group.items
@@ -440,32 +444,32 @@ export const SAMPLE_WEEK_QR = 'https://example.com/class-schedule';
 export const SAMPLE_WEEK_NOTES =
   'Sample week — not your gym. Export a CSV backup before you reset this device.';
 
-/** Sample week in a GB-style class mix. Not a real gym’s schedule. Sunday is empty on purpose. */
+/** Sample week of a typical class mix. Not a real gym’s schedule. Sunday is empty on purpose. */
 export const SAMPLE_WEEK_SLOTS: ReadonlyArray<Omit<WeeklyClassSlot, 'id' | 'kind'>> = [
   { day: 'mon', time: '06:00', title: 'Morning Gi', location: 'MAT 1', subtitle: '' },
-  { day: 'mon', time: '12:00', title: 'GB3', location: 'MAT 2', subtitle: '' },
-  { day: 'mon', time: '17:00', title: 'Tiny Champions', location: 'MAT 1', subtitle: '3-5 Years Old' },
+  { day: 'mon', time: '12:00', title: 'Advanced', location: 'MAT 2', subtitle: '' },
+  { day: 'mon', time: '17:00', title: 'Kids 3-5', location: 'MAT 1', subtitle: '3-5 Years Old' },
   { day: 'mon', time: '17:00', title: 'Blue Belt and Up', location: 'MAT 2', subtitle: '' },
-  { day: 'mon', time: '18:00', title: 'Little Champions', location: 'MAT 1', subtitle: '5-10 Years Old' },
+  { day: 'mon', time: '18:00', title: 'Youth Class', location: 'MAT 1', subtitle: '5-10 Years Old' },
   { day: 'mon', time: '18:00', title: 'Fundamentals', location: 'MAT 2', subtitle: 'All Levels' },
   { day: 'tue', time: '06:00', title: 'Morning Gi', location: 'MAT 1', subtitle: '' },
-  { day: 'tue', time: '17:00', title: 'GB2', location: 'MAT 1', subtitle: '' },
+  { day: 'tue', time: '17:00', title: 'Beginner', location: 'MAT 1', subtitle: '' },
   { day: 'tue', time: '17:00', title: 'Fundamentals', location: 'MAT 2', subtitle: 'All Levels' },
-  { day: 'tue', time: '18:00', title: 'Little Champions', location: 'MAT 1', subtitle: '5-10 Years Old' },
+  { day: 'tue', time: '18:00', title: 'Youth Class', location: 'MAT 1', subtitle: '5-10 Years Old' },
   { day: 'tue', time: '18:00', title: 'Advanced Kids', location: 'MAT 2', subtitle: 'Grey & White+' },
   { day: 'wed', time: '10:00', title: 'Homeschool Gi', location: 'MAT 1', subtitle: '' },
-  { day: 'wed', time: '12:00', title: 'GB3', location: 'MAT 2', subtitle: '' },
-  { day: 'wed', time: '17:00', title: 'Tiny Champions', location: 'MAT 1', subtitle: '3-5 Years Old' },
-  { day: 'wed', time: '18:00', title: 'Little Champions', location: 'MAT 1', subtitle: '5-10 Years Old' },
+  { day: 'wed', time: '12:00', title: 'Advanced', location: 'MAT 2', subtitle: '' },
+  { day: 'wed', time: '17:00', title: 'Kids 3-5', location: 'MAT 1', subtitle: '3-5 Years Old' },
+  { day: 'wed', time: '18:00', title: 'Youth Class', location: 'MAT 1', subtitle: '5-10 Years Old' },
   { day: 'wed', time: '18:00', title: 'No-Gi', location: 'MAT 2', subtitle: 'All Levels' },
   { day: 'thu', time: '06:00', title: 'Morning Gi', location: 'MAT 1', subtitle: '' },
   { day: 'thu', time: '17:00', title: 'Fundamentals', location: 'MAT 1', subtitle: 'All Levels' },
   { day: 'thu', time: '17:00', title: 'Blue Belt and Up', location: 'MAT 2', subtitle: '' },
   { day: 'thu', time: '18:00', title: 'Competition Class', location: 'MAT 1', subtitle: '' },
   { day: 'thu', time: '19:00', title: 'Open Rolling', location: 'MAT 1', subtitle: 'All Levels' },
-  { day: 'fri', time: '12:00', title: 'GB3', location: 'MAT 2', subtitle: '' },
+  { day: 'fri', time: '12:00', title: 'Advanced', location: 'MAT 2', subtitle: '' },
   { day: 'fri', time: '17:00', title: 'Kids BJJ', location: 'MAT 1', subtitle: '' },
-  { day: 'fri', time: '18:00', title: 'Little Champions', location: 'MAT 1', subtitle: '5-10 Years Old' },
+  { day: 'fri', time: '18:00', title: 'Youth Class', location: 'MAT 1', subtitle: '5-10 Years Old' },
   { day: 'fri', time: '18:00', title: 'Fundamentals', location: 'MAT 2', subtitle: 'All Levels' },
   { day: 'sat', time: '10:00', title: 'Kids BJJ', location: 'MAT 1', subtitle: '' },
   { day: 'sat', time: '11:00', title: 'Open Mat', location: 'MAT 1', subtitle: 'All Levels' },

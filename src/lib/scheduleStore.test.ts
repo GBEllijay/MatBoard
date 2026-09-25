@@ -94,7 +94,7 @@ describe('normalizeGymCalendar', () => {
 
   it('keeps titled classes, specials, and a reserved flyer id', () => {
     const next = normalizeGymCalendar({
-      title: 'Ellijay BJJ',
+      title: 'Sample Academy',
       qrUrl: 'https://gym.example',
       notes: 'Closed Monday',
       template: 'week-grid',
@@ -109,7 +109,7 @@ describe('normalizeGymCalendar', () => {
         { id: 's2', date: 'not-a-date', title: '', body: '' },
       ],
     });
-    assert.equal(next.title, 'Ellijay BJJ');
+    assert.equal(next.title, 'Sample Academy');
     assert.equal(next.notes, 'Closed Monday');
     assert.equal(next.template, 'week');
     assert.deepEqual(
@@ -135,7 +135,7 @@ describe('normalizeGymCalendar', () => {
   it('defaults the TV template to the full week and retires the old grid', () => {
     assert.equal(defaultGymCalendar().template, 'week');
     assert.equal(DEFAULT_SCHEDULE_TEMPLATE, 'week');
-    assert.equal(normalizeGymCalendar({ template: 'gb-red' }).template, 'week');
+    assert.equal(normalizeGymCalendar({ template: 'retired-template' }).template, 'week');
     assert.equal(normalizeGymCalendar({ template: 'week-grid' }).template, 'week');
     assert.equal(normalizeGymCalendar({ template: 'monthly' }).template, 'monthly');
     assert.equal(normalizeGymCalendar({ template: 'week' }).template, 'week');
@@ -168,7 +168,7 @@ describe('sortClasses', () => {
 describe('weekly list helpers', () => {
   it('groups same-time classes and hides empty weekdays', () => {
     const rows = [
-      row({ id: 'a', day: 'mon', time: '17:00', title: 'Tiny Champions', location: 'MAT 1' }),
+      row({ id: 'a', day: 'mon', time: '17:00', title: 'Kids BJJ', location: 'MAT 1' }),
       row({ id: 'b', day: 'mon', time: '17:00', title: 'Advanced Kids', location: 'MAT 2', subtitle: 'Grey & White+' }),
       row({ id: 'c', day: 'sat', time: '11:00', title: 'Open Mat', location: 'MAT 1' }),
     ];
@@ -183,7 +183,7 @@ describe('weekly list helpers', () => {
     assert.deepEqual(boardWeekdays([]), ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']);
     assert.equal(
       formatTimeGroupLine(groups[0]!),
-      '5:00 PM MAT 1 Tiny Champions / MAT 2 Advanced Kids (Grey & White+)',
+      '5:00 PM MAT 1 Kids BJJ / MAT 2 Advanced Kids (Grey & White+)',
     );
   });
 
@@ -248,6 +248,11 @@ describe('weekly list helpers', () => {
     assert.equal(classProgram('Little Champions').id, classProgram('Kids BJJ').id);
     assert.equal(classProgram('Fundamentals').id, 'fundamentals');
     assert.equal(classProgram('GB3').id, 'advanced');
+    const sampleTitles = SAMPLE_WEEK_SLOTS.map((slot) => `${slot.title} ${slot.subtitle}`).join('\n');
+    assert.doesNotMatch(sampleTitles, /gracie|barra|tiny champions|little champions|\bGB\d?\b/i);
+    assert.match(sampleTitles, /Kids 3-5/);
+    assert.match(sampleTitles, /Youth Class/);
+    assert.match(sampleTitles, /Beginner/);
     assert.equal(classProgram('No-Gi').id, 'nogi');
     assert.equal(times.includes('17:00'), true);
     assert.equal(classesAt(

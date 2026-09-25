@@ -755,7 +755,7 @@ function ScheduleEditor({
               ref={titleRef}
               value={title}
               onChange={(event) => setTitle(event.target.value)}
-              placeholder="Tiny Champions, Fundamentals…"
+              placeholder="Kids BJJ, Fundamentals…"
               aria-label="Class name"
               onKeyDown={(event) => {
                 if (event.key === 'Enter') {

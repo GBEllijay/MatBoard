@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { EmptyHint } from '../components/EmptyHint';
 import { PlayExitMark } from '../components/PlayExitMark';
@@ -15,14 +15,14 @@ import {
   EMPTY_ROSTER_BODY,
   EMPTY_ROSTER_SEARCH,
   EMPTY_ROSTER_TITLE,
+  ROSTER_CSV_DEVICE_NOTE,
+  ROSTER_CSV_INSTRUCTIONS,
   ROSTER_CSV_PRO_TEASER,
   ROSTER_LEAD_COACH,
   ROSTER_LEAD_PRO,
   rosterCsvAvailable,
 } from '../lib/coachCopy';
 import {
-  ROSTER_CSV_SAVE_HINT,
-  ROSTER_CSV_WORKBOOK_ERROR,
   formatRosterCsvSummary,
   importRosterCsvFile,
   isSpreadsheetWorkbook,
@@ -95,7 +95,7 @@ export function RosterPage() {
     const file = files?.[0];
     if (!file) return;
     if (isSpreadsheetWorkbook(file)) {
-      setCsvNote(ROSTER_CSV_WORKBOOK_ERROR);
+      setCsvNote('That looks like an Excel workbook. Save it as a CSV, then import.');
       return;
     }
     void importRosterCsvFile(file)
@@ -108,41 +108,35 @@ export function RosterPage() {
         setCsvNote(formatRosterCsvSummary(result.imported, result.skipped, result.skippedDetail));
       })
       .catch(() => {
-        setCsvNote('Could not read that file. Save as CSV UTF-8 (comma-separated) and try again.');
+        setCsvNote('Could not read that file. Save it as a CSV and try again.');
       });
   };
 
   const csvTools = (
     <div className="roster__csv">
-      <div className="roster__csv-actions">
-        <button
-          type="button"
-          className="btn btn--ghost"
-          onClick={() => downloadRosterCsv('advantage-roster-template.csv', rosterCsvTemplate())}
-        >
-          Download template
-        </button>
-        <button type="button" className="btn btn--ghost" onClick={() => csvRef.current?.click()}>
-          Import CSV
-        </button>
-        <button
-          type="button"
-          className="btn btn--ghost"
-          onClick={() => downloadRosterCsv('advantage-roster.csv', serializeRosterCsv(roster.students))}
-        >
-          Export CSV
-        </button>
+      <div className="roster__csv-bar">
+        <div className="roster__csv-actions">
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={() => downloadRosterCsv('advantage-roster-template.csv', rosterCsvTemplate())}
+          >
+            Download template
+          </button>
+          <button type="button" className="btn btn--ghost" onClick={() => csvRef.current?.click()}>
+            Import CSV
+          </button>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={() => downloadRosterCsv('advantage-roster.csv', serializeRosterCsv(roster.students))}
+          >
+            Export CSV
+          </button>
+        </div>
+        <CsvInstructions />
       </div>
-      <p className="roster__csv-hint">
-        Competitor Roster stays on this device. CSV is for backup or a move — cloud sync comes
-        later. Import adds competitors; it does not replace the list. Download the template, put
-        one name and belt on every row, then {ROSTER_CSV_SAVE_HINT} Every row needs a name and a
-        belt — <code>White</code>, <code>Blue</code>, <code>Purple</code>, <code>Brown</code>,{' '}
-        <code>Black</code>, <code>Coral</code>; kids <code>Grey</code>, <code>Yellow</code>,{' '}
-        <code>Orange</code>, <code>Green</code>. Also <code>blackbelt</code>,{' '}
-        <code>black belt</code>, and <code>BB</code>. Accents (é, ñ) stay if you save UTF-8 or a
-        typical Excel CSV.
-      </p>
+      <p className="roster__csv-hint">{ROSTER_CSV_DEVICE_NOTE}</p>
       {csvNote ? (
         <p className="roster__csv-summary" role="status">
           {csvNote}
@@ -259,6 +253,53 @@ export function RosterPage() {
         }}
       />
     </main>
+  );
+}
+
+function CsvInstructions() {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [pinned, setPinned] = useState(false);
+  const [hover, setHover] = useState(false);
+  const open = pinned || hover;
+
+  useEffect(() => {
+    if (!pinned) return;
+    const onPointer = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setPinned(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setPinned(false);
+    };
+    document.addEventListener('pointerdown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [pinned]);
+
+  return (
+    <div
+      className="roster__instructions"
+      ref={rootRef}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      <button
+        type="button"
+        className="roster__instructions-btn"
+        aria-expanded={open}
+        aria-controls="roster-csv-instructions"
+        onClick={() => setPinned((value) => !value)}
+      >
+        Instructions
+      </button>
+      {open ? (
+        <p id="roster-csv-instructions" className="roster__instructions-pop" role="tooltip">
+          {ROSTER_CSV_INSTRUCTIONS}
+        </p>
+      ) : null}
+    </div>
   );
 }
 

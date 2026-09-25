@@ -809,6 +809,47 @@ button.mode-card {
   margin-top: 0.45rem;
 }
 
+.suite__cloud-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.instructor-jumps {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.instructor-jumps__entry {
+  width: 100%;
+  min-height: 52px;
+  height: auto;
+  white-space: normal;
+  line-height: 1.25;
+  text-align: center;
+  padding: 0.75rem 1rem;
+}
+
+.instructor-jumps__tools {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+}
+
+.instructor-jumps__tools .btn:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+.instructor-jumps__tools .btn {
+  width: 100%;
+  min-height: 48px;
+  white-space: normal;
+  line-height: 1.2;
+  text-align: center;
+}
+
 .pro-hubs {
   display: grid;
   gap: 0.75rem;
@@ -6938,11 +6979,61 @@ input.roster-pick__name:focus,
   flex: 1 1 9.5rem;
 }
 
+.roster__csv-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.85rem;
+}
+
+.roster__csv-bar .roster__csv-actions {
+  flex: 1 1 16rem;
+}
+
+.roster__instructions {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.roster__instructions-btn {
+  min-height: 48px;
+  padding: 0 0.15rem;
+  border: 0;
+  background: none;
+  color: var(--gold-2);
+  font: inherit;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+  cursor: pointer;
+}
+
+.roster__instructions-pop {
+  position: absolute;
+  z-index: 6;
+  right: 0;
+  top: calc(100% + 0.35rem);
+  width: min(18.5rem, 72vw);
+  margin: 0;
+  padding: 0.75rem 0.85rem;
+  border-radius: 14px;
+  border: 1px solid rgba(252, 192, 0, 0.35);
+  background: rgba(8, 16, 32, 0.96);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  font-size: 1rem;
+  line-height: 1.4;
+  box-shadow: var(--shadow);
+}
+
 .roster__csv-hint,
 .roster__csv-summary {
   margin: 0;
   color: var(--muted);
   font-weight: 600;
+  line-height: 1.45;
 }
 
 .roster__csv-summary {
@@ -6951,6 +7042,7 @@ input.roster-pick__name:focus,
 
 .roster__lead,
 .roster__empty,
+.roster__csv-hint,
 .notes__lead {
   text-shadow: 0 1px 10px rgba(0, 0, 0, 0.55);
 }

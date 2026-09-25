@@ -2,7 +2,8 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 
 type Props = {
-  tagline: ReactNode;
+  /** Quiet line under Advantage. Omit when the page title below is enough. */
+  tagline?: ReactNode;
   /** Quiet line under the title. Home only. */
   motto?: string;
   /** When set, the mark navigates back (White / Pro pages). */
@@ -27,7 +28,7 @@ export function HomeMark({ tagline, motto, to }: Props) {
       ) : (
         brand
       )}
-      <p>{tagline}</p>
+      {tagline ? <p>{tagline}</p> : null}
     </div>
   );
 }
