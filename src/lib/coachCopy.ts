@@ -48,8 +48,9 @@ export const OWNER_BRACKET_CLOUD_NOTE =
 export const COMPETITOR_ROSTER_DESCRIPTION =
   'Competitor Roster is the list of bout competitors for matches and brackets.';
 
+/** Subtitle on the Competitor Roster button in Competitor Management. */
 export const COMPETITOR_ROSTER_CARD =
-  'The list of bout competitors for matches and brackets. Names, belts, and the Pro CSV template, import, and export stay on this device.';
+  'Store names, belts, and templates for import and export.';
 
 export const ROSTER_LEAD_COACH =
   'Competitor Roster with Names and Ranks for Single Matches and Mock Tournaments.';

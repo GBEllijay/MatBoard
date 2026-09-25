@@ -97,7 +97,10 @@ test('Competitor Roster copy names bout competitors and skips franchise disclaim
     COMPETITOR_ROSTER_DESCRIPTION,
     'Competitor Roster is the list of bout competitors for matches and brackets.',
   );
-  assert.match(COMPETITOR_ROSTER_CARD, /list of bout competitors for matches and brackets/);
+  assert.equal(
+    COMPETITOR_ROSTER_CARD,
+    'Store names, belts, and templates for import and export.',
+  );
   assert.equal(
     ROSTER_LEAD_PRO,
     'Save competitor names, belts, and notes for matches and in-house tournaments. CSV backup available.',
