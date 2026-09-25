@@ -1,6 +1,6 @@
 import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
-import { INSTRUCTOR_COLLAB_NAME } from '../lib/productNames';
+import { INSTRUCTOR_CLOUD_NOTE, INSTRUCTOR_COLLAB_NAME } from '../lib/productNames';
 
 const PLANS = [
   {
@@ -35,6 +35,7 @@ export function InstructorCollaborationPage() {
         <HomeMark to="/pro" tagline="Plan only. Nothing is uploaded or synced." />
         <section className="suite">
           <h2>{INSTRUCTOR_COLLAB_NAME}</h2>
+          <p className="suite__cloud-note">{INSTRUCTOR_CLOUD_NOTE}</p>
           <p>
             Coming soon. These Alpha cards describe the instructor plan. This page does not connect
             to a cloud.

@@ -741,6 +741,20 @@ button.mode-card {
   line-height: 1.45;
 }
 
+.suite > .suite__cloud-note {
+  justify-self: start;
+  margin: -0.2rem 0 0.05rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.35;
+}
+
 .suite__nav {
   display: grid;
   gap: 0.7rem;

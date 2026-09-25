@@ -60,6 +60,9 @@ export const COMPETITOR_SYSTEM_NAME = 'Competitor Management System';
 /** Plan-only Pro hub. No cloud sync in this build. */
 export const INSTRUCTOR_COLLAB_NAME = 'Instructor Collaboration and Cloud Access';
 
+/** Quiet badge under the instructor hub title. Cloud sync is not live on this page. */
+export const INSTRUCTOR_CLOUD_NOTE = 'Not connected to a cloud yet';
+
 /** Pro gym-TV cast hub. Same screen Gallery opens. Not a rename of the Owner Console. */
 export const MEDIA_CONSOLE_NAME = 'Media Console';
 

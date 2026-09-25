@@ -20,6 +20,7 @@ import {
   coachToolsOpen,
   parentToolboxPath,
   COMPETITOR_SYSTEM_NAME,
+  INSTRUCTOR_CLOUD_NOTE,
   INSTRUCTOR_COLLAB_NAME,
   MATCH_CONTROLLER_PATH,
   MEDIA_CONSOLE_INSTRUCTIONS,
@@ -80,6 +81,12 @@ test('Media Console is the Pro cast hub, with phone-readable instructions', () =
 test('Pro suite keeps the working title and Coach keeps Mock Tournament', () => {
   assert.equal(TOURNAMENT_SUITE_NAME, 'In-House Tournament Management Suite');
   assert.doesNotMatch(TOURNAMENT_SUITE_NAME, /MatBracket/i);
+});
+
+test('Instructor hub keeps a quiet reminder that cloud is not live', () => {
+  assert.equal(INSTRUCTOR_CLOUD_NOTE, 'Not connected to a cloud yet');
+  assert.match(INSTRUCTOR_CLOUD_NOTE, /not connected to a cloud yet/i);
+  assert.doesNotMatch(INSTRUCTOR_CLOUD_NOTE, /error|warning|failed|unavailable/i);
 });
 
 test('Pro console hubs stay four siblings, Media Console first', () => {
