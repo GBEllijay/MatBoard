@@ -44,10 +44,17 @@ export const EMPTY_BRACKET_BODY =
 export const OWNER_BRACKET_CLOUD_NOTE =
   'Saved brackets stay on this device. Pro boards hold up to 64 competitors. Cloud sync comes later.';
 
+/** User-facing roster meaning on Competitor Management and the Pro roster. */
+export const COMPETITOR_ROSTER_DESCRIPTION =
+  'Competitor Roster is the list of bout competitors for matches and brackets.';
+
+export const COMPETITOR_ROSTER_CARD =
+  'The list of bout competitors for matches and brackets. Names, belts, and the Pro CSV template, import, and export stay on this device.';
+
 export const ROSTER_LEAD_COACH =
   'Competitor Roster with Names and Ranks for Single Matches and Mock Tournaments.';
 export const ROSTER_LEAD_PRO =
-  'Competitor Management — names and belts for Match and Mock Tournament. CSV backup stays in this browser.';
+  `${COMPETITOR_ROSTER_DESCRIPTION} Names, belts, and CSV backup stay in this browser.`;
 
 /** Coach Competitor Roster: CSV stays on the Pro roster screen. */
 export const ROSTER_CSV_PRO_TEASER = 'Importable CSV Template Available in Advantage Pro';

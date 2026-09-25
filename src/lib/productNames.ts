@@ -54,7 +54,7 @@ export const TOURNAMENT_SOFTWARE_NAME = 'Tournament Software';
 /** Working title until the owner picks a consumer name for bracketing software. */
 export const TOURNAMENT_SUITE_NAME = 'In-House Tournament Management Suite';
 
-/** Pro hub for bout competitors, roster CSV, and on-device rankings. Not GB Members. */
+/** Pro hub for bout competitors, roster CSV, and on-device rankings. */
 export const COMPETITOR_SYSTEM_NAME = 'Competitor Management System';
 
 /** Plan-only Pro hub. No cloud sync in this build. */

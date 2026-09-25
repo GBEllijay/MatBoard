@@ -21,6 +21,8 @@ import {
   EMPTY_VIDEOS_BODY,
   EMPTY_VIDEOS_TITLE,
   NOTES_LEAD,
+  COMPETITOR_ROSTER_CARD,
+  COMPETITOR_ROSTER_DESCRIPTION,
   ROSTER_CSV_PRO_TEASER,
   ROSTER_LEAD_COACH,
   ROSTER_LEAD_PRO,
@@ -52,6 +54,8 @@ function allCopy(): string {
     ROSTER_CSV_PRO_TEASER,
     ROSTER_LEAD_COACH,
     ROSTER_LEAD_PRO,
+    COMPETITOR_ROSTER_DESCRIPTION,
+    COMPETITOR_ROSTER_CARD,
   ].join('\n');
 }
 
@@ -82,6 +86,18 @@ test('Coach teasers list the four hub tools in lesson, videos, mock, roster orde
   assertCoachToolOrder(COACH_HUB_BLURB);
   assert.doesNotMatch(COACH_AD_LEAD, /Daily Techniques/);
   assert.doesNotMatch(COACH_HUB_BLURB, /Competitor Management/);
+});
+
+test('Competitor Roster copy names bout competitors and skips franchise disclaimers', () => {
+  assert.equal(
+    COMPETITOR_ROSTER_DESCRIPTION,
+    'Competitor Roster is the list of bout competitors for matches and brackets.',
+  );
+  assert.match(COMPETITOR_ROSTER_CARD, /list of bout competitors for matches and brackets/);
+  assert.match(ROSTER_LEAD_PRO, /list of bout competitors for matches and brackets/);
+  assert.doesNotMatch(ROSTER_LEAD_PRO, /Bout competitors on this device/i);
+  const rosterCopy = [COMPETITOR_ROSTER_DESCRIPTION, COMPETITOR_ROSTER_CARD, ROSTER_LEAD_PRO].join('\n');
+  assert.doesNotMatch(rosterCopy, /GB Members|Gracie\s*Barra|student management/i);
 });
 
 test('Coach roster lead points CSV at Pro and keeps manual roster language', () => {
