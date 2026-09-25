@@ -122,22 +122,11 @@ export function ScreensaverPage() {
   const fs = usePlayFullscreen();
   const navigate = useNavigate();
   const parent = useToolboxParent();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const folderParam = searchParams.get('folder');
   const requestedFolder =
     folderParam === 'videos' ? 'gallery' : isFolderId(folderParam) ? folderParam : null;
-
-  useEffect(() => {
-    const pending = readCaptureFolder();
-    const folder = pending && isFolderId(pending) ? pending : requestedFolder;
-    if (!folder) return;
-    setExpanded(folderExpandedState(folder));
-    setOptions(true);
-    addFolderRef.current = folder;
-    if (!pending) return;
-    const id = window.setTimeout(() => forgetCaptureFolder(), 2000);
-    return () => window.clearTimeout(id);
-  }, [requestedFolder]);
+  const savingCapture = useRef(false);
 
   const focusFolder = requestedFolder ?? 'gallery';
   const focusConfig = folderById(focusFolder);
@@ -293,6 +282,26 @@ export function ScreensaverPage() {
     if (delta) scroller.scrollTop += delta;
   };
 
+  useEffect(() => {
+    const pending = readCaptureFolder();
+    const fromCamera = pending && isFolderId(pending) ? pending : null;
+    const folder = fromCamera ?? requestedFolder;
+    if (!folder) return;
+    setExpanded(folderExpandedState(folder));
+    setOptions(true);
+    addFolderRef.current = folder;
+    if (!fromCamera) return;
+    forgetCaptureFolder();
+    if (searchParams.get('folder') !== fromCamera) {
+      const next = new URLSearchParams(searchParams);
+      next.set('folder', fromCamera);
+      setSearchParams(next, { replace: true });
+    }
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => revealFolder(fromCamera));
+    });
+  }, [requestedFolder, setSearchParams]);
+
   const showFolder = (folderId: FolderId) => {
     pinFolder.current = folderId;
     setOptions(true);
@@ -338,7 +347,7 @@ export function ScreensaverPage() {
     const onShow = () => {
       const folderId = holdFolder.current;
       if (!folderId) return;
-      dismissUntil.current = Date.now() + 700;
+      if (!savingCapture.current) dismissUntil.current = Date.now() + 700;
       setOptions(true);
       setExpanded((prev) => ({ ...prev, [folderId]: true }));
       restoreScroll();
@@ -357,18 +366,25 @@ export function ScreensaverPage() {
 
   const openAdd = (folderId: FolderId, kind: MediaSourceKind) => {
     addFolderRef.current = folderId;
+    rememberCaptureFolder(folderId);
     setAddKind(kind);
     setAddOpen(true);
     setOptions(true);
     setExpanded((prev) => ({ ...prev, [folderId]: true }));
+    if (searchParams.get('folder') !== folderId) {
+      const next = new URLSearchParams(searchParams);
+      next.set('folder', folderId);
+      setSearchParams(next, { replace: true });
+    }
   };
 
   const onFolderFiles = async (files: File[]) => {
     if (!files.length) return;
     const kind = addKind;
     const folderId = addFolderRef.current;
-    clearRestoreTimers();
-    scrollSnap.current = [];
+    savingCapture.current = true;
+    holdFolder.current = folderId;
+    dismissUntil.current = Date.now() + 120_000;
     setAddOpen(false);
     showFolder(folderId);
     try {
@@ -401,11 +417,19 @@ export function ScreensaverPage() {
         /* The note is the signal. A second storage failure should not hide it. */
       }
     } finally {
+      savingCapture.current = false;
       holdFolder.current = null;
-      scrollSnap.current = [];
       pinFolder.current = folderId;
-      dismissUntil.current = Date.now() + 700;
+      dismissUntil.current = Date.now() + 1200;
       forgetCaptureFolder();
+      clearRestoreTimers();
+      restoreScroll();
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          revealFolder(folderId);
+          scrollSnap.current = [];
+        });
+      });
     }
   };
 

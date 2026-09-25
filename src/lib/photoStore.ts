@@ -415,24 +415,28 @@ async function blobForFolderFile(
 
 export async function addFolderFiles(files: File[], folderId: FolderId): Promise<number> {
   const folder = folderById(folderId);
+  const prepared: Array<{ video: boolean; stored: { blob: Blob; mime: string } }> = [];
+  for (const file of files) {
+    if (!fileMatchesFolder(file, folder)) continue;
+    const video = folder.id === 'gallery' && isAcceptedVideoFile(file);
+    prepared.push({ video, stored: await blobForFolderFile(file, folder) });
+  }
+  if (!prepared.length) return 0;
   const existing = await listPhotos(folderId);
   let photoCount = existing.filter((photo) => !isVideoItem(photo)).length;
   let videoCount = existing.filter((photo) => isVideoItem(photo)).length;
   let nextOrder = existing.reduce((max, photo) => Math.max(max, photo.sortOrder), -1);
   const pending: StoredPhoto[] = [];
-  for (const file of files) {
-    if (!fileMatchesFolder(file, folder)) continue;
+  for (const item of prepared) {
     nextOrder += 1;
-    const video = folder.id === 'gallery' && isAcceptedVideoFile(file);
-    if (video) videoCount += 1;
+    if (item.video) videoCount += 1;
     else photoCount += 1;
-    const stored = await blobForFolderFile(file, folder);
     pending.push({
       id: crypto.randomUUID(),
-      mime: stored.mime,
+      mime: item.stored.mime,
       addedAt: Date.now(),
-      blob: stored.blob,
-      label: `${video ? 'Video' : folder.labelPrefix} ${video ? videoCount : photoCount}`,
+      blob: item.stored.blob,
+      label: `${item.video ? 'Video' : folder.labelPrefix} ${item.video ? videoCount : photoCount}`,
       folderId,
       sortOrder: nextOrder,
       playEnabled: true,
@@ -441,7 +445,6 @@ export async function addFolderFiles(files: File[], folderId: FolderId): Promise
       qrLinks: [],
     });
   }
-  if (!pending.length) return 0;
   const db = await openDb();
   let added = 0;
   for (const photo of pending) {

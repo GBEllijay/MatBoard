@@ -1,5 +1,5 @@
 import { useRef, type ChangeEvent, type FormEvent, type RefObject } from 'react';
-import { takeInputFiles } from '../lib/mediaCapture';
+import { releaseInputFiles, takeInputFiles } from '../lib/mediaCapture';
 
 type CaptureFacing = 'user' | 'environment';
 
@@ -22,7 +22,8 @@ type Props = {
  * focusing it does not scroll Media Console back to the top.
  * Record / Take photo pass `capture` here so it is in the HTML from first paint.
  * The form swallows submit: a camera return can submit the input and reload
- * the page, which drops the new card.
+ * the page, which drops the new card. The input stays filled until the save
+ * finishes so the camera file can be compressed before it is released.
  */
 export function DeviceMediaInput({
   inputRef,
@@ -35,16 +36,24 @@ export function DeviceMediaInput({
 }: Props) {
   const pending = useRef(false);
 
-  const deliver = (files: File[]) => {
-    if (!files.length || pending.current) return;
+  const deliver = (input: HTMLInputElement, files: File[]) => {
+    if (!files.length) {
+      releaseInputFiles(input);
+      return;
+    }
+    if (pending.current) return;
     pending.current = true;
-    void Promise.resolve(onFiles(files)).finally(() => {
-      pending.current = false;
-    });
+    void Promise.resolve()
+      .then(() => onFiles(files))
+      .finally(() => {
+        pending.current = false;
+        releaseInputFiles(input);
+      });
   };
 
   const onChange = (event: ChangeEvent<HTMLInputElement>) => {
-    void takeInputFiles(event.currentTarget, Boolean(capture)).then(deliver);
+    const input = event.currentTarget;
+    deliver(input, takeInputFiles(input));
   };
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -52,7 +61,7 @@ export function DeviceMediaInput({
     event.stopPropagation();
     const input = inputRef.current;
     if (!input) return;
-    void takeInputFiles(input, Boolean(capture)).then(deliver);
+    deliver(input, takeInputFiles(input));
   };
 
   return (

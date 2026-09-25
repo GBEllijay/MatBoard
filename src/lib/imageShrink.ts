@@ -5,6 +5,8 @@
  * Videos are not re-encoded here.
  */
 
+import { StorageQuotaError } from './storageQuota.ts';
+
 export const STORED_PHOTO_MAX_EDGE = 1920;
 /** JPEG / WebP encode quality. Enough for a product photo on a gym TV. */
 export const STORED_PHOTO_QUALITY = 0.82;
@@ -29,6 +31,11 @@ export type ShrinkImageOptions = {
   /** Phone photos are often sideways. Off for the gym-logo path, which already decoded this way. */
   orient?: boolean;
   smooth?: boolean;
+  /**
+   * Large camera shots skip a full-sensor decode. An unresized 12–48MP bitmap
+   * can reload the tab, which looks like a jump back to the top of Media Console.
+   */
+  avoidFullDecode?: boolean;
 };
 
 export function fitWithinEdge(
@@ -164,15 +171,29 @@ function downscaleOptions(bounds: ImageBounds | null, orient: boolean, maxEdge: 
 /**
  * Decode a still. A camera JPEG is scaled on the long edge during decode so a
  * 12–48MP shot does not expand into a full-size bitmap (that reload drops the
- * new Pro Shop card and lands on the top of Media Console).
+ * new Pro Shop card and lands on the top of Media Console). A large file with
+ * no readable header — typical camera HEIC — is decoded with `resizeWidth`
+ * only. Falling back to a full-sensor decode can kill the tab.
  */
-async function decodeImage(file: File, orient: boolean, maxEdge: number): Promise<ImageBitmap> {
-  const resize = downscaleOptions(await readImageBounds(file), orient, maxEdge);
+async function decodeImage(
+  file: File,
+  orient: boolean,
+  maxEdge: number,
+  avoidFullDecode: boolean,
+): Promise<ImageBitmap> {
+  const bounds = await readImageBounds(file);
+  const resize = downscaleOptions(bounds, orient, maxEdge);
   const attempts: Array<ImageBitmapOptions | undefined> = [];
+  let allowFull = true;
   if (orient && resize) attempts.push({ imageOrientation: 'from-image', ...resize });
   else if (resize) attempts.push(resize);
-  else if (orient) attempts.push({ imageOrientation: 'from-image' });
-  attempts.push(undefined);
+  else if (avoidFullDecode && !bounds) {
+    const forced: ImageBitmapOptions = { resizeWidth: maxEdge, resizeQuality: 'high' };
+    attempts.push(orient ? { imageOrientation: 'from-image', ...forced } : forced);
+    allowFull = false;
+  } else if (orient) attempts.push({ imageOrientation: 'from-image' });
+  if (avoidFullDecode && resize) allowFull = false;
+  if (allowFull) attempts.push(undefined);
   let lastError: unknown;
   for (const attempt of attempts) {
     try {
@@ -195,7 +216,7 @@ export async function shrinkImageFile(file: File, options: ShrinkImageOptions): 
   if (typeof document === 'undefined') return file;
   let bitmap: ImageBitmap | null = null;
   try {
-    bitmap = await decodeImage(file, options.orient === true, options.maxEdge);
+    bitmap = await decodeImage(file, options.orient === true, options.maxEdge, options.avoidFullDecode === true);
     const fitted = fitWithinEdge(bitmap.width, bitmap.height, options.maxEdge);
     if (fitted.scale === 1 && file.size < options.passthroughBytes) return file;
     const canvas = document.createElement('canvas');
@@ -212,6 +233,8 @@ export async function shrinkImageFile(file: File, options: ShrinkImageOptions): 
       ctx.imageSmoothingQuality = 'high';
     }
     ctx.drawImage(bitmap, 0, 0, fitted.width, fitted.height);
+    bitmap.close?.();
+    bitmap = null;
     const mimes = [options.mimeFor(file), ...(options.fallbackMimes ?? [])];
     for (const mime of mimes) {
       const blob = await new Promise<Blob | null>((resolve) => {
@@ -227,25 +250,37 @@ export async function shrinkImageFile(file: File, options: ShrinkImageOptions): 
   }
 }
 
+const PHOTO_SHRINK_EDGES = [STORED_PHOTO_MAX_EDGE, 1280, 960] as const;
+
 /**
  * Gallery, Pro Shop, and Events stills. Keeps a small already-sized JPEG/PNG/WebP.
- * A typical phone photo — including a full-size camera JPEG — is scaled to
- * {@link STORED_PHOTO_MAX_EDGE} during decode and encoded as JPEG (WebP if JPEG
- * encode is missing). GIFs and videos are unchanged.
+ * A typical phone photo — including a full-size camera JPEG or HEIC — is scaled
+ * during decode and encoded as JPEG (WebP if JPEG encode is missing) before it
+ * is stored. A large camera file that cannot be compressed is refused so the
+ * original multi-megabyte shot is not written into IndexedDB. GIFs and videos
+ * are unchanged.
  */
 export async function shrinkPhotoForStore(file: File): Promise<Blob> {
   if (file.type.startsWith('video/') || file.type === 'image/gif') return file;
-  const shrunk = await shrinkImageFile(file, {
-    maxEdge: STORED_PHOTO_MAX_EDGE,
-    quality: STORED_PHOTO_QUALITY,
-    passthroughBytes: DISPLAY_SAFE.has(file.type) ? STORED_PHOTO_PASSTHROUGH_BYTES : 0,
-    mimeFor: () => 'image/jpeg',
-    fallbackMimes: ['image/webp'],
-    opaqueBackground: '#ffffff',
-    orient: true,
-    smooth: true,
-  });
-  if (shrunk === file) return file;
-  if (DISPLAY_SAFE.has(file.type) && shrunk.size >= file.size) return file;
-  return shrunk;
+  const large = file.size > STORED_PHOTO_PASSTHROUGH_BYTES;
+  const edges = large ? PHOTO_SHRINK_EDGES : [STORED_PHOTO_MAX_EDGE];
+  for (const maxEdge of edges) {
+    const shrunk = await shrinkImageFile(file, {
+      maxEdge,
+      quality: STORED_PHOTO_QUALITY,
+      passthroughBytes: DISPLAY_SAFE.has(file.type) ? STORED_PHOTO_PASSTHROUGH_BYTES : 0,
+      mimeFor: () => 'image/jpeg',
+      fallbackMimes: ['image/webp'],
+      opaqueBackground: '#ffffff',
+      orient: true,
+      smooth: true,
+      avoidFullDecode: large,
+    });
+    if (shrunk !== file && shrunk.size > 0) {
+      if (DISPLAY_SAFE.has(file.type) && shrunk.size >= file.size) return file;
+      return shrunk;
+    }
+  }
+  if (large && !DISPLAY_SAFE.has(file.type)) throw new StorageQuotaError(0);
+  return file;
 }

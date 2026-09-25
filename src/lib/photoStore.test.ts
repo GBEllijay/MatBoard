@@ -330,6 +330,24 @@ test('two large Pro Shop photos are stored shrunk, and a full quota says so', as
   }
 });
 
+test('an Events camera HEIC is stored as a smaller JPEG', async () => {
+  const previous = rememberGlobals();
+  try {
+    installPhotoFixtures();
+    const camera = phonePhoto('IMG_2201.HEIC', 3_200_000, 'image/heic');
+    const added = await addFolderFiles([camera], 'events');
+    assert.equal(added, 1);
+    const photos = await listPhotos('events');
+    assert.equal(photos.length, 1);
+    assert.equal(photos[0]?.folderId, 'events');
+    assert.equal(photos[0]?.label, 'Event 1');
+    assert.equal(photos[0]?.mime, 'image/jpeg');
+    assert.ok(photos[0]!.blob.size < camera.size);
+  } finally {
+    restoreGlobals(previous);
+  }
+});
+
 test('a camera JPEG with no MIME type is stored as a Pro Shop card', async () => {
   const previous = rememberGlobals();
   try {

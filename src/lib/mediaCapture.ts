@@ -1,11 +1,12 @@
 /**
  * Camera vs gallery file-input handoff.
  *
- * Take photo uses a separate input with `capture`. On Android and iOS the
- * camera result is often a content URI: clearing `input.value` before the
- * bytes are copied drops the photo, and a submit of the input's form reloads
- * the page (Media Console jumps back to the top). Gallery picks are real
- * in-memory files, so they keep working if we only special-case capture.
+ * Take photo uses a separate input with `capture`. A submit of that input's
+ * form reloads the page (Media Console jumps back to the top). Clearing
+ * `input.value` before the photo is compressed drops the camera file, and
+ * copying the whole shot into a second buffer throws WebKit's
+ * "Unable to complete previous operation due to low memory". Snapshot the
+ * File and keep the input filled until the save finishes.
  */
 
 export type FileInputLike = {
@@ -13,44 +14,21 @@ export type FileInputLike = {
   value: string;
 };
 
-/** Independent bytes. The camera URI can die once the input is cleared. */
-export async function copyDeviceFiles(files: readonly File[]): Promise<File[]> {
-  const copied: File[] = [];
-  for (const file of files) {
-    try {
-      const bytes = await file.arrayBuffer();
-      copied.push(
-        new File([bytes], file.name || 'capture', {
-          type: file.type,
-          lastModified: file.lastModified,
-        }),
-      );
-    } catch {
-      copied.push(file);
-    }
-  }
-  return copied;
-}
-
 export function filesFromList(list: FileList | null): File[] {
   return list ? Array.from(list) : [];
 }
 
 /**
- * Read the chosen files, then clear the input so the same shot can be taken
- * again. Capture waits for a byte copy first. Library keeps the original
- * File objects — those already survive a value reset.
+ * The files currently on the input. Does not read their bytes and does not
+ * clear the control — call {@link releaseInputFiles} after the save settles.
  */
-export async function takeInputFiles(input: FileInputLike, capture: boolean): Promise<File[]> {
-  const listed = filesFromList(input.files);
-  if (!listed.length) return [];
-  if (!capture) {
-    input.value = '';
-    return listed;
-  }
-  const files = await copyDeviceFiles(listed);
+export function takeInputFiles(input: FileInputLike): File[] {
+  return filesFromList(input.files);
+}
+
+/** Clear the input so the same shot or library pick can be chosen again. */
+export function releaseInputFiles(input: FileInputLike): void {
   input.value = '';
-  return files;
 }
 
 const CAPTURE_FOLDER_KEY = 'matboard.captureFolder';

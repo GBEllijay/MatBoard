@@ -10,6 +10,7 @@ import {
   shrinkImageFile,
   shrinkPhotoForStore,
 } from './imageShrink.ts';
+import { StorageQuotaError, isStorageQuotaError } from './storageQuota.ts';
 
 type Draw = { w: number; h: number; fill: string };
 
@@ -189,6 +190,39 @@ test('videos and gifs are not re-encoded; a broken decode keeps the original', a
     assert.equal(decoded, 0);
     assert.equal(await shrinkPhotoForStore(heic), heic);
     assert.ok(decoded >= 1);
+  } finally {
+    globalThis.createImageBitmap = previousBitmap;
+    if (previousDocument === undefined) delete (globalThis as { document?: Document }).document;
+    else globalThis.document = previousDocument;
+  }
+});
+
+test('a large camera HEIC that cannot be decoded is not stored whole', async () => {
+  const previousBitmap = globalThis.createImageBitmap;
+  const previousDocument = globalThis.document;
+  const options: ImageBitmapOptions[] = [];
+  globalThis.createImageBitmap = (async (_source: Blob, opts?: ImageBitmapOptions) => {
+    if (opts) options.push(opts);
+    throw new Error('Unable to complete previous operation due to low memory');
+  }) as typeof createImageBitmap;
+  globalThis.document = {
+    createElement() {
+      throw new Error('no canvas');
+    },
+  } as unknown as Document;
+  try {
+    const heic = new File([new Uint8Array(2_400_000)], 'IMG.HEIC', { type: 'image/heic' });
+    await assert.rejects(shrinkPhotoForStore(heic), (error: unknown) => {
+      assert.ok(error instanceof StorageQuotaError);
+      assert.equal(error.saved, 0);
+      assert.equal(isStorageQuotaError(error), true);
+      return true;
+    });
+    assert.deepEqual(
+      options.map((option) => option.resizeWidth),
+      [STORED_PHOTO_MAX_EDGE, 1280, 960],
+    );
+    assert.ok(options.every((option) => option.imageOrientation === 'from-image' && option.resizeQuality === 'high'));
   } finally {
     globalThis.createImageBitmap = previousBitmap;
     if (previousDocument === undefined) delete (globalThis as { document?: Document }).document;

@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
-  copyDeviceFiles,
   deltaToShowChild,
   forgetCaptureFolder,
   readCaptureFolder,
+  releaseInputFiles,
   rememberCaptureFolder,
   takeInputFiles,
   type FileInputLike,
@@ -21,32 +21,47 @@ function fileList(...files: File[]): FileList {
 }
 
 describe('camera file handoff', () => {
-  it('copies capture bytes before the input is cleared', async () => {
+  it('keeps the camera file itself until the save releases the input', async () => {
     const original = new File([Uint8Array.from([4, 5, 6])], 'IMG.jpg', { type: '' });
-    const input: FileInputLike = { files: fileList(original), value: 'IMG.jpg' };
-    const files = await takeInputFiles(input, true);
+    let reads = 0;
+    const camera = new Proxy(original, {
+      get(target, prop, receiver) {
+        if (prop === 'arrayBuffer') {
+          return async () => {
+            reads += 1;
+            return target.arrayBuffer();
+          };
+        }
+        const value = Reflect.get(target, prop, receiver);
+        return typeof value === 'function' ? value.bind(target) : value;
+      },
+    }) as File;
+    const input: FileInputLike = { files: fileList(camera), value: 'IMG.jpg' };
+    const files = takeInputFiles(input);
 
+    assert.equal(files[0], camera);
+    assert.equal(input.value, 'IMG.jpg');
+    assert.equal(reads, 0);
+    releaseInputFiles(input);
     assert.equal(input.value, '');
-    assert.notEqual(files[0], original);
-    assert.equal(files[0]?.name, 'IMG.jpg');
-    assert.equal(files[0]?.type, '');
     assert.deepEqual(new Uint8Array(await files[0]!.arrayBuffer()), Uint8Array.from([4, 5, 6]));
-    const copied = await copyDeviceFiles([original]);
-    assert.deepEqual(new Uint8Array(await copied[0]!.arrayBuffer()), Uint8Array.from([4, 5, 6]));
+    assert.equal(reads, 1);
   });
 
-  it('keeps gallery picks as the same files and still clears the input', async () => {
+  it('keeps gallery picks as the same files until the save releases the input', () => {
     const original = new File([Uint8Array.from([1])], 'kid.jpg', { type: 'image/jpeg' });
     const input: FileInputLike = { files: fileList(original), value: 'kid.jpg' };
-    const files = await takeInputFiles(input, false);
+    const files = takeInputFiles(input);
 
     assert.equal(files[0], original);
+    assert.equal(input.value, 'kid.jpg');
+    releaseInputFiles(input);
     assert.equal(input.value, '');
   });
 
-  it('returns nothing when the picker was cancelled', async () => {
+  it('returns nothing when the picker was cancelled', () => {
     const input: FileInputLike = { files: fileList(), value: '' };
-    assert.deepEqual(await takeInputFiles(input, true), []);
+    assert.deepEqual(takeInputFiles(input), []);
     assert.equal(input.value, '');
   });
 });

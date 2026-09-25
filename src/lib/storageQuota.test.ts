@@ -19,6 +19,14 @@ test('quota errors are the Safari memory dialog, not a random failure', () => {
   assert.equal(isStorageQuotaError({ code: 22 }), true);
   assert.equal(isStorageQuotaError({ code: 1014 }), true);
   assert.equal(isStorageQuotaError({ message: 'not enough memory on phone' }), true);
+  assert.equal(
+    isStorageQuotaError(new Error('Unable to complete previous operation due to low memory')),
+    true,
+  );
+  assert.equal(
+    quotaAddNote(new Error('Unable to complete previous operation due to low memory')),
+    DEVICE_STORAGE_FULL_NOTE,
+  );
   assert.equal(quotaAddNote(new Error('nope')), null);
   assert.equal(quotaAddNote(new StorageQuotaError(0)), DEVICE_STORAGE_FULL_NOTE);
   assert.equal(quotaAddNote(new StorageQuotaError(1)), `Saved 1. ${DEVICE_STORAGE_FULL_NOTE}`);
