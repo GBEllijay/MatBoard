@@ -6596,26 +6596,6 @@ a.saver-folder--link {
   color: var(--gold-2);
 }
 
-.saver-schedule .saver-folder__summary {
-  grid-template-columns: minmax(0, 1fr) auto;
-}
-
-.saver-schedule .saver-folder__go {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 48px;
-  padding: 0 0.15rem 0 0.75rem;
-}
-
-.saver-schedule__hint {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.92rem;
-  font-weight: 600;
-  line-height: 1.35;
-}
-
 @media (min-width: 720px) {
   .schedule-edit__templates {
     grid-template-columns: repeat(3, minmax(0, 1fr));

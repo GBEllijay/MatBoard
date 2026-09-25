@@ -699,20 +699,22 @@ export function ScreensaverPage() {
 function ClassScheduleEntry() {
   const schedule = useScheduleState();
   const ready = schedule.classes.length > 0;
+  const [open, setOpen] = useState(false);
   return (
-    <details className="saver-folder saver-schedule">
+    <details
+      className="saver-folder"
+      open={open}
+      onToggle={(event) => {
+        setOpen(event.currentTarget.open);
+      }}
+    >
       <summary className="saver-folder__summary">
         <span className="saver-folder__title">Class Schedule</span>
-        <Link
-          className="saver-folder__go"
-          to="/schedule"
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={(event) => event.stopPropagation()}
-        >
-          Open
-        </Link>
       </summary>
       <div className="saver-folder__panel">
+        <Link className="btn" to="/schedule">
+          Add class schedule
+        </Link>
         <div className="presets presets--split" role="radiogroup" aria-label="Class Schedule on the TV">
           <button
             type="button"
@@ -733,7 +735,7 @@ function ClassScheduleEntry() {
             Off the TV
           </button>
         </div>
-        <p className="saver-schedule__hint">
+        <p className="saver-folder__empty">
           {ready
             ? 'On adds the full week or month after Gallery and before Pro Shop. Off keeps Gallery, Pro Shop, and Events.'
             : 'Add classes on the schedule page, then turn this on to play the week board in the cast.'}
