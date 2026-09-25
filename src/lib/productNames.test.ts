@@ -14,8 +14,8 @@ import {
   PRO_HOME_DETAIL,
   PRO_HOME_LINES,
   PRO_LADDER_DETAIL,
-  COACH_HOME_LINES,
-  WHITE_HOME_LINES,
+  COACH_HOME_DESCRIPTION,
+  WHITE_HOME_DESCRIPTION,
   WHITE_LADDER_DETAIL,
   coachToolsOpen,
   parentToolboxPath,
@@ -46,17 +46,18 @@ test('Home motto stays Win by Advantage', () => {
 
 test('Home ladder details keep White meaning and a plain Pro subtitle', () => {
   assert.equal(WHITE_LADDER_DETAIL, 'BJJ scoreboard and timer, live match and rounds');
-  assert.equal(WHITE_HOME_LINES.length, 3);
-  assert.match(WHITE_HOME_LINES.join(' '), /Live Bout/);
-  assert.match(WHITE_HOME_LINES.join(' '), /Rounds timer/);
-  assert.equal(COACH_HOME_LINES.length, 3);
-  assert.match(COACH_HOME_LINES.join(' '), /Daily Lesson Plan/);
-  assert.match(COACH_HOME_LINES.join(' '), /Daily Training Videos/);
-  assert.match(COACH_HOME_LINES.join(' '), /Technique Tree/);
-  assert.match(COACH_HOME_LINES.join(' '), /Mock Tournament/);
-  assert.match(COACH_HOME_LINES.join(' '), /Competitor Roster/);
-  assert.doesNotMatch(WHITE_HOME_LINES.join(' '), /student/i);
-  assert.doesNotMatch(COACH_HOME_LINES.join(' '), /student/i);
+  assert.equal(
+    WHITE_HOME_DESCRIPTION,
+    'BJJ scoreboard and round timer for live matches and rounds. Display stays on the TV, the controller stays in your hand.',
+  );
+  assert.equal(
+    COACH_HOME_DESCRIPTION,
+    'daily lesson plan, daily training videos, mock tournament, and competitor roster.',
+  );
+  assert.doesNotMatch(WHITE_HOME_DESCRIPTION, /White —/);
+  assert.doesNotMatch(COACH_HOME_DESCRIPTION, /Technique Tree/);
+  assert.doesNotMatch(WHITE_HOME_DESCRIPTION, /student/i);
+  assert.doesNotMatch(COACH_HOME_DESCRIPTION, /student/i);
   assert.equal(PRO_LADDER_DETAIL, 'Gym Owner and Instructors Console');
   assert.doesNotMatch(PRO_LADDER_DETAIL, /for this gym/i);
   assert.doesNotMatch(PRO_LADDER_DETAIL, /'/);

@@ -13,15 +13,13 @@ import {
   COMING_SOON_ADS,
   type SoonProduct,
 } from '../lib/comingSoonAds';
-import { COACH_TOOLS_TEASER } from '../lib/coachCopy';
 import {
-  COACH_HOME_LINES,
+  COACH_HOME_DESCRIPTION,
   GYM_CONSOLE_NAME,
   HOME_MOTTO,
   PRO_HOME_DETAIL,
   PRO_HOME_LINES,
-  WHITE_HOME_LINES,
-  WHITE_LADDER_DETAIL,
+  WHITE_HOME_DESCRIPTION,
   coachToolsOpen,
 } from '../lib/productNames';
 
@@ -45,10 +43,7 @@ export function HomePage() {
           <Link className="mode-card mode-card--white" to="/white">
             <BeltRail kind="white" />
             <strong>Advantage White</strong>
-            <span className="mode-card__sub">
-              <TierLine tier="White" detail={WHITE_LADDER_DETAIL} />
-            </span>
-            <HomeLines lines={WHITE_HOME_LINES} />
+            <HomeDescription text={WHITE_HOME_DESCRIPTION} />
             <span className="mode-card__actions">
               <span className="btn btn--white">Open White</span>
             </span>
@@ -64,10 +59,7 @@ export function HomePage() {
               />
               <BeltRail kind="blue" />
               <strong>Advantage Coach</strong>
-              <span className="mode-card__sub">
-                <TierLine tier="Coach" detail={COACH_TOOLS_TEASER} />
-              </span>
-              <HomeLines lines={COACH_HOME_LINES} />
+              <HomeDescription text={COACH_HOME_DESCRIPTION} />
               <div className="mode-card__actions">
                 <Link className="btn btn--white" to="/coach">
                   Open Coach
@@ -84,10 +76,7 @@ export function HomePage() {
             >
               <BeltRail kind="blue" />
               <strong>Advantage Coach</strong>
-              <span className="mode-card__sub">
-                <TierLine tier="Coach" detail={COACH_TOOLS_TEASER} />
-              </span>
-              <HomeLines lines={COACH_HOME_LINES} />
+              <HomeDescription text={COACH_HOME_DESCRIPTION} />
             </button>
           )}
 
@@ -152,6 +141,14 @@ export function HomePage() {
         onClose={() => setUnlockOpen(null)}
       />
     </main>
+  );
+}
+
+function HomeDescription({ text }: { text: string }) {
+  return (
+    <span className="mode-card__copy">
+      <span>{text}</span>
+    </span>
   );
 }
 

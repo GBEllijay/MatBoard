@@ -4,19 +4,13 @@ export const GYM_CONSOLE_NAME = "Gym Owner and Instructor's Console";
 /** Home ladder and White hub line after “White —”. */
 export const WHITE_LADDER_DETAIL = 'BJJ scoreboard and timer, live match and rounds';
 
-/** Home White card body. Real Live Bout and Rounds tools, same weight as Pro. */
-export const WHITE_HOME_LINES = [
-  'Live Bout scoreboard and match clock. Open Scoreboard on the gym TV, or control it from your phone and cast.',
-  'Rounds timer for class: set the round length, the rest, and how many rounds.',
-  'Display stays on the TV. The controller stays in your hand.',
-] as const;
+/** Home White card body. The only line under the Advantage White title. */
+export const WHITE_HOME_DESCRIPTION =
+  'BJJ scoreboard and round timer for live matches and rounds. Display stays on the TV, the controller stays in your hand.';
 
-/** Home Coach card body. The tools already on the Coach hub. */
-export const COACH_HOME_LINES = [
-  'Daily Lesson Plan on this phone: warm-up, techniques, and cool-down.',
-  'Daily Training Videos: clips stay on this device, with a drill timer on the screen.',
-  'Technique Tree, Mock Tournament brackets, and a Competitor Roster of names and belts.',
-] as const;
+/** Home Coach card body. The only line under the Advantage Coach title. */
+export const COACH_HOME_DESCRIPTION =
+  'daily lesson plan, daily training videos, mock tournament, and competitor roster.';
 
 /** Home ladder and Pro hub line after “Pro —”. Not the Owner Console page title. */
 export const PRO_LADDER_DETAIL = 'Gym Owner and Instructors Console';
