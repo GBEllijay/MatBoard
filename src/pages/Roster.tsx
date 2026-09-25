@@ -43,6 +43,7 @@ import {
   formatPromotion,
   removeStudent,
   searchStudents,
+  setCheckedIn,
   updateStudent,
   type Student,
   type StudentDraft,
@@ -196,7 +197,7 @@ export function RosterPage() {
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Name or belt"
+          placeholder="Name, belt, or division"
           aria-label="Find competitor"
           autoComplete="off"
         />
@@ -217,6 +218,7 @@ export function RosterPage() {
                 removeStudent(competitor.id);
                 setPendingRemove(null);
               }}
+              onToggleCheckIn={() => setCheckedIn(competitor.id, !competitor.checkedIn)}
             />
           ))}
         </ul>
@@ -310,6 +312,7 @@ function StudentCard({
   onAskRemove,
   onCancelRemove,
   onConfirmRemove,
+  onToggleCheckIn,
 }: {
   student: Student;
   pending: boolean;
@@ -317,6 +320,7 @@ function StudentCard({
   onAskRemove: () => void;
   onCancelRemove: () => void;
   onConfirmRemove: () => void;
+  onToggleCheckIn: () => void;
 }) {
   const promoted = formatPromotion(student.lastPromotion);
 
@@ -324,9 +328,22 @@ function StudentCard({
     <li>
       <article className="roster-card">
         <header className="roster-card__head">
-          <h2>{student.name}</h2>
+          <div className="roster-card__who">
+            <h2>{student.name}</h2>
+            <button
+              type="button"
+              className={`btn roster-card__checkin${student.checkedIn ? '' : ' btn--ghost'}`}
+              aria-pressed={student.checkedIn}
+              aria-label={`Check In ${student.name}`}
+              title="Here for today's tournament"
+              onClick={onToggleCheckIn}
+            >
+              Check In
+            </button>
+          </div>
           <RankChip belt={student.belt} />
         </header>
+        {student.division ? <p className="roster-card__meta">{student.division}</p> : null}
         {student.gym ? <p className="roster-card__meta">{student.gym}</p> : null}
         {promoted ? <p className="roster-card__meta">Last promotion {promoted}</p> : null}
         {student.note ? <p className="roster-card__note">{student.note}</p> : null}
@@ -376,9 +393,9 @@ function StudentEditor({
   return (
     <Sheet open={open} title={title} onClose={onClose}>
       <p className="roster-edit__copy">
-        Name and belt are enough to prefill a match. Gym name is optional and shows on the
-        scoreboard and brackets. A new competitor starts with the Media Console gym name when one
-        is saved. Notes stay on this card.
+        Name and belt are enough to prefill a match. Division is optional and stays on this card.
+        Gym name is optional and shows on the scoreboard and brackets. A new competitor starts with
+        the Media Console gym name when one is saved. Notes stay on this card.
       </p>
       <label>
         Name
@@ -431,6 +448,16 @@ function StudentEditor({
           />
         </label>
       </fieldset>
+      <label>
+        Division
+        <input
+          value={draft.division}
+          onChange={(event) => patch({ division: event.target.value })}
+          placeholder="Adult Blue, Kids Gi — optional"
+          aria-label="Division"
+          autoComplete="off"
+        />
+      </label>
       <label>
         Gym name
         <input

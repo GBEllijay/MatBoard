@@ -1,8 +1,8 @@
 /** Roster CSV. Browser file in/out — UTF-8 (BOM), Excel CRLF, Windows-1252 fallback. */
 
-import { studentFromInput, type Student } from './rosterStore.ts';
+import { formatCheckedIn, studentFromInput, type Student } from './rosterStore.ts';
 
-export const ROSTER_CSV_HEADERS = ['Name', 'Belt', 'Gym name', 'Last promotion', 'Notes'] as const;
+export const ROSTER_CSV_HEADERS = ['Name', 'Belt', 'Division', 'Gym name', 'Last promotion', 'Notes', 'Check In'] as const;
 export const ROSTER_CSV_SEP_LINE = 'sep=,';
 export const ROSTER_CSV_SAVE_HINT =
   'Save as CSV UTF-8 (comma-separated), not an Excel workbook (.xlsx).';
@@ -13,12 +13,13 @@ export const ROSTER_CSV_BELT_GUIDE =
 export const ROSTER_CSV_EXAMPLE = {
   name: 'Alex Rivera',
   belt: 'Purple',
+  division: 'Adult Purple',
   gym: 'Alliance',
   lastPromotion: '2026-03-12',
   note: 'Example - delete this row. Save as CSV UTF-8.',
 } as const;
 
-export type RosterCsvRow = Pick<Student, 'name' | 'belt' | 'gym' | 'lastPromotion' | 'note'>;
+export type RosterCsvRow = Pick<Student, 'name' | 'belt' | 'division' | 'gym' | 'lastPromotion' | 'note' | 'checkedIn'>;
 
 export type RosterCsvImport = {
   students: Student[];
@@ -28,7 +29,7 @@ export type RosterCsvImport = {
   skippedDetail?: string;
 };
 
-type HeaderField = 'name' | 'firstName' | 'lastName' | 'belt' | 'gym' | 'lastPromotion' | 'note';
+type HeaderField = 'name' | 'firstName' | 'lastName' | 'belt' | 'division' | 'gym' | 'lastPromotion' | 'note' | 'checkedIn';
 
 const HEADER_ALIASES: Record<string, HeaderField> = {
   name: 'name',
@@ -50,6 +51,9 @@ const HEADER_ALIASES: Record<string, HeaderField> = {
   rank: 'belt',
   'belt rank': 'belt',
   'belt color': 'belt',
+  division: 'division',
+  'division name': 'division',
+  'weight class': 'division',
   gym: 'gym',
   'gym name': 'gym',
   school: 'gym',
@@ -68,6 +72,11 @@ const HEADER_ALIASES: Record<string, HeaderField> = {
   'short note': 'note',
   comments: 'note',
   comment: 'note',
+  'check in': 'checkedIn',
+  checkin: 'checkedIn',
+  'checked in': 'checkedIn',
+  checkedin: 'checkedIn',
+  present: 'checkedIn',
 };
 
 const DELIMITERS = [',', ';', '\t'] as const;
@@ -313,7 +322,9 @@ export function serializeRosterCsv(rows: RosterCsvRow[]): string {
   const lines = [
     ROSTER_CSV_HEADERS.join(','),
     ...rows.map((row) =>
-      [row.name, row.belt, row.gym, row.lastPromotion, row.note].map(csvField).join(','),
+      [row.name, row.belt, row.division, row.gym, row.lastPromotion, row.note, formatCheckedIn(row.checkedIn)]
+        .map(csvField)
+        .join(','),
     ),
   ];
   return `${lines.join('\r\n')}\r\n`;
@@ -324,9 +335,11 @@ export function rosterCsvTemplate(): string {
     {
       name: ROSTER_CSV_EXAMPLE.name,
       belt: ROSTER_CSV_EXAMPLE.belt,
+      division: ROSTER_CSV_EXAMPLE.division,
       gym: ROSTER_CSV_EXAMPLE.gym,
       lastPromotion: ROSTER_CSV_EXAMPLE.lastPromotion,
       note: ROSTER_CSV_EXAMPLE.note,
+      checkedIn: false,
     },
   ])}`;
 }
@@ -425,20 +438,30 @@ function expandEmbeddedSingleColumn(rows: string[][]): string[][] {
   });
 }
 
-function gymForIndex(gymCell: string, names: string[], index: number): string {
-  const gyms = splitLines(gymCell);
-  if (gyms.length === names.length) return gyms[index] ?? '';
-  if (gyms.length === 1) return gyms[0];
-  return index === 0 ? gymCell.trim() : '';
+function alignedField(cellValue: string, names: string[], index: number): string {
+  const parts = splitLines(cellValue);
+  if (parts.length === names.length) return parts[index] ?? '';
+  if (parts.length === 1) return parts[0];
+  return index === 0 ? cellValue.trim() : '';
 }
 
 function peopleFromCells(
   nameCell: string,
   beltCell: string,
+  divisionCell: string,
   gymCell: string,
   lastPromotion: string,
   note: string,
-): Array<{ name: string; belt: string; gym: string; lastPromotion: string; note: string }> {
+  checkedInCell: string,
+): Array<{
+  name: string;
+  belt: string;
+  division: string;
+  gym: string;
+  lastPromotion: string;
+  note: string;
+  checkedIn: string;
+}> {
   const names = splitLines(nameCell);
   const belts = splitLines(beltCell);
   if (!names.length) return [];
@@ -447,9 +470,11 @@ function peopleFromCells(
   return names.map((name, index) => ({
     name,
     belt: beltFor(index),
-    gym: gymForIndex(gymCell, names, index),
+    division: alignedField(divisionCell, names, index),
+    gym: alignedField(gymCell, names, index),
     lastPromotion,
     note,
+    checkedIn: alignedField(checkedInCell, names, index),
   }));
 }
 
@@ -514,9 +539,11 @@ function importParsedRows(rows: string[][], options: ImportOptions): RosterCsvIm
   const pushStudent = (input: {
     name: string;
     belt: string;
+    division: string;
     gym: string;
     lastPromotion: string;
     note: string;
+    checkedIn: string;
   }) => {
     const next = studentFromInput(input);
     if (next) {
@@ -542,7 +569,9 @@ function importParsedRows(rows: string[][], options: ImportOptions): RosterCsvIm
 
     const nameCell = combineName(row, columns);
     const beltCell = cell(row, columns.belt);
+    const divisionCell = cell(row, columns.division);
     const gymCell = cell(row, columns.gym);
+    const checkedInCell = cell(row, columns.checkedIn);
     const lastPromotion = parseImportDate(cell(row, columns.lastPromotion));
     let note = cell(row, columns.note);
 
@@ -570,7 +599,15 @@ function importParsedRows(rows: string[][], options: ImportOptions): RosterCsvIm
       }
     }
 
-    const people = peopleFromCells(nameCell, beltCell, gymCell, lastPromotion, note);
+    const people = peopleFromCells(
+      nameCell,
+      beltCell,
+      divisionCell,
+      gymCell,
+      lastPromotion,
+      note,
+      checkedInCell,
+    );
     if (!people.length) {
       skipped += 1;
       skippedReasons.push('missing name');

@@ -109,7 +109,7 @@ test('Competitor Roster copy names bout competitors and skips franchise disclaim
   );
   assert.equal(
     ROSTER_LEAD_PRO,
-    'Save competitor names, belts, and notes for matches and in-house tournaments. CSV backup available.',
+    'Save competitor names, belts, divisions, and notes for matches and in-house tournaments. CSV backup available.',
   );
   assert.doesNotMatch(ROSTER_LEAD_PRO, /this browser|Data stays|UTF-8|accent/i);
   assert.doesNotMatch(ROSTER_LEAD_PRO, /Bout competitors on this device/i);
@@ -135,7 +135,7 @@ test('Coach roster lead points CSV at Pro and keeps manual roster language', () 
   );
   assert.equal(
     ROSTER_CSV_INSTRUCTIONS,
-    'Each row needs a competitor name and a belt. A row missing either one is left out.',
+    'Each row needs a competitor name and a belt. A row missing either one is left out. Division is optional. Check In is optional.',
   );
   assert.doesNotMatch(`${ROSTER_CSV_DEVICE_NOTE}\n${ROSTER_CSV_INSTRUCTIONS}`, /UTF-8|accent/i);
 });

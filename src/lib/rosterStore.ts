@@ -4,6 +4,7 @@ export const STORAGE_KEY = 'matboard.roster.v1';
 export const NOTE_MAX = 160;
 export const NAME_MAX = 80;
 export const GYM_MAX = 80;
+export const DIVISION_MAX = 80;
 export const BELT_MAX = 40;
 
 export const ADULT_BELTS = ['White', 'Blue', 'Purple', 'Brown', 'Black'] as const;
@@ -14,10 +15,14 @@ export type Student = {
   id: string;
   name: string;
   belt: string;
+  /** Bout division, such as Adult Blue or Kids Gi. Optional. Stays on the roster card. */
+  division: string;
   /** School or academy. Optional. Shown on the scoreboard and brackets. */
   gym: string;
   lastPromotion: string;
   note: string;
+  /** Present today for the in-house tournament. Off until someone checks them in. */
+  checkedIn: boolean;
 };
 
 export type RosterState = {
@@ -25,16 +30,18 @@ export type RosterState = {
   students: Student[];
 };
 
-/** Name, belt, and optional gym. Notes and promotion dates stay on the roster card. */
+/** Name, belt, optional gym, and optional division. Notes and promotion dates stay on the roster card. */
 export type RosterPrefill = {
   name: string;
   belt: string;
   gym: string;
+  division: string;
 };
 
 export type StudentDraft = {
   name: string;
   belt: string;
+  division: string;
   gym: string;
   lastPromotion: string;
   note: string;
@@ -56,13 +63,14 @@ export function defaultRoster(): RosterState {
 }
 
 export function emptyDraft(): StudentDraft {
-  return { name: '', belt: '', gym: '', lastPromotion: '', note: '' };
+  return { name: '', belt: '', division: '', gym: '', lastPromotion: '', note: '' };
 }
 
 export function draftFromStudent(student: Student): StudentDraft {
   return {
     name: student.name,
     belt: student.belt,
+    division: student.division,
     gym: student.gym,
     lastPromotion: student.lastPromotion,
     note: student.note,
@@ -144,11 +152,30 @@ export function clipGym(value: string): string {
   return value.normalize('NFC').trim().slice(0, GYM_MAX);
 }
 
+export function clipDivision(value: string): string {
+  return value.normalize('NFC').trim().slice(0, DIVISION_MAX);
+}
+
 export function clipNote(value: string): string {
   return value.trim().slice(0, NOTE_MAX);
 }
 
-export function studentFromInput(input: Partial<StudentDraft> & { id?: string }): Student | null {
+/** Yes, true, or 1 count as checked in. Anything else, including a blank, stays off. */
+export function parseCheckedIn(value: unknown): boolean {
+  if (value === true) return true;
+  if (typeof value === 'number') return value === 1;
+  if (typeof value !== 'string') return false;
+  const key = value.trim().toLowerCase();
+  return key === 'yes' || key === 'y' || key === 'true' || key === '1' || key === 'checked' || key === 'checked in';
+}
+
+export function formatCheckedIn(checkedIn: boolean): string {
+  return checkedIn ? 'Yes' : 'No';
+}
+
+export function studentFromInput(
+  input: Partial<StudentDraft> & { id?: string; checkedIn?: unknown },
+): Student | null {
   const name = clipName(input.name ?? '');
   const belt = canonicalBelt(input.belt ?? '');
   if (!name || !belt) return null;
@@ -156,9 +183,11 @@ export function studentFromInput(input: Partial<StudentDraft> & { id?: string })
     id: input.id && input.id.trim() ? input.id.trim() : createStudentId(),
     name,
     belt,
+    division: clipDivision(input.division ?? ''),
     gym: clipGym(input.gym ?? ''),
     lastPromotion: normalizeDate(input.lastPromotion ?? ''),
     note: clipNote(input.note ?? ''),
+    checkedIn: parseCheckedIn(input.checkedIn),
   };
 }
 
@@ -167,12 +196,12 @@ export function canPrefill(student: Pick<Student, 'name' | 'belt'>): boolean {
 }
 
 export function prefillFields(
-  student: Pick<Student, 'name' | 'belt' | 'gym' | 'note' | 'lastPromotion'>,
+  student: Pick<Student, 'name' | 'belt' | 'gym' | 'division' | 'note' | 'lastPromotion'>,
 ): RosterPrefill | null {
   const name = clipName(student.name);
   const belt = canonicalBelt(student.belt);
   if (!name || !belt) return null;
-  return { name, belt, gym: clipGym(student.gym) };
+  return { name, belt, gym: clipGym(student.gym), division: clipDivision(student.division) };
 }
 
 /** Gym or academy saved on the roster card for this exact name. Empty when none. */
@@ -192,11 +221,13 @@ export function searchStudents(students: Student[], query: string): Student[] {
     .map((student) => {
       const name = student.name.toLowerCase();
       const belt = student.belt.toLowerCase();
+      const division = student.division.toLowerCase();
       let score = 0;
       if (name === q) score = 4;
       else if (name.startsWith(q)) score = 3;
       else if (name.includes(q)) score = 2;
       else if (belt.startsWith(q) || belt.includes(q)) score = 1;
+      else if (division.startsWith(q) || division.includes(q)) score = 1;
       else return null;
       return { student, score };
     })
@@ -221,17 +252,24 @@ export function confirmManualCompetitor(
 
   const existing = findStudentByName(state.students, clipped);
   if (existing) {
-    return prefillFields(existing) ?? { name: existing.name, belt: existing.belt, gym: existing.gym };
+    return prefillFields(existing) ?? {
+      name: existing.name,
+      belt: existing.belt,
+      gym: existing.gym,
+      division: existing.division,
+    };
   }
 
   const belt = canonicalBelt(options.belt ?? '');
   if (options.addToRoster) {
     if (!belt) return null;
-    const added = addStudent({ name: clipped, belt, gym: '', lastPromotion: '', note: '' });
-    return added ? { name: added.name, belt: added.belt, gym: added.gym } : null;
+    const added = addStudent({ name: clipped, belt, division: '', gym: '', lastPromotion: '', note: '' });
+    return added
+      ? { name: added.name, belt: added.belt, gym: added.gym, division: added.division }
+      : null;
   }
 
-  return { name: clipped, belt, gym: '' };
+  return { name: clipped, belt, gym: '', division: '' };
 }
 
 export function normalizeStudent(raw: unknown): Student | null {
@@ -241,9 +279,11 @@ export function normalizeStudent(raw: unknown): Student | null {
     id: typeof row.id === 'string' ? row.id : undefined,
     name: typeof row.name === 'string' ? row.name : '',
     belt: typeof row.belt === 'string' ? row.belt : '',
+    division: typeof row.division === 'string' ? row.division : '',
     gym: typeof row.gym === 'string' ? row.gym : '',
     lastPromotion: typeof row.lastPromotion === 'string' ? row.lastPromotion : '',
     note: typeof row.note === 'string' ? row.note : '',
+    checkedIn: row.checkedIn,
   });
 }
 
@@ -325,14 +365,27 @@ export function updateStudent(id: string, draft: Partial<StudentDraft>): Student
     id: current.id,
     name: draft.name ?? current.name,
     belt: draft.belt ?? current.belt,
+    division: draft.division ?? current.division,
     gym: draft.gym ?? current.gym,
     lastPromotion: draft.lastPromotion ?? current.lastPromotion,
     note: draft.note ?? current.note,
+    checkedIn: current.checkedIn,
   });
   if (!next) return null;
   persist({
     version: 1,
     students: sortStudents(state.students.map((row) => (row.id === id ? next : row))),
+  });
+  return next;
+}
+
+export function setCheckedIn(id: string, checkedIn: boolean): Student | null {
+  const current = state.students.find((row) => row.id === id);
+  if (!current) return null;
+  const next = { ...current, checkedIn };
+  persist({
+    version: 1,
+    students: state.students.map((row) => (row.id === id ? next : row)),
   });
   return next;
 }

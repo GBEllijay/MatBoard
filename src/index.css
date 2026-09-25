@@ -6666,6 +6666,13 @@ a.saver-folder--link {
   gap: 0.45rem;
 }
 
+.roster-pick__division {
+  color: var(--muted);
+  font-style: normal;
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
 .roster-pick__copy,
 .roster-pick__empty,
 .roster-edit__copy,
@@ -7107,9 +7114,22 @@ input.roster-pick__name:focus,
   gap: 0.45rem;
 }
 
+.roster-card__who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
 .roster-card__head h2 {
   font-size: 1.35rem;
   letter-spacing: -0.03em;
+}
+
+.roster-card__checkin {
+  min-height: 48px;
+  flex: 0 0 auto;
 }
 
 .roster-card__meta,
