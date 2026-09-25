@@ -60,6 +60,10 @@ export const COMPETITOR_SYSTEM_NAME = 'Competitor Management System';
 /** Plan-only Pro hub. No cloud sync in this build. */
 export const INSTRUCTOR_COLLAB_NAME = 'Instructor Collaboration and Cloud Access';
 
+/** Jump from the instructor hub into Advantage Coach. Keep Unlimited in the label. */
+export const INSTRUCTOR_COACH_ENTRY =
+  'Instructor Collaboration, Advanced Coach Unlimited, and Cloud Access';
+
 /** Pro gym-TV cast hub. Same screen Gallery opens. Not a rename of the Owner Console. */
 export const MEDIA_CONSOLE_NAME = 'Media Console';
 

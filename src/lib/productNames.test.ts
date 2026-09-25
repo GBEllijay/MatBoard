@@ -21,6 +21,7 @@ import {
   parentToolboxPath,
   COMPETITOR_SYSTEM_NAME,
   INSTRUCTOR_COLLAB_NAME,
+  INSTRUCTOR_COACH_ENTRY,
   MATCH_CONTROLLER_PATH,
   MEDIA_CONSOLE_INSTRUCTIONS,
   MEDIA_CONSOLE_NAME,
@@ -85,6 +86,10 @@ test('Pro suite keeps the working title and Coach keeps Mock Tournament', () => 
 test('Pro console hubs stay four siblings, Media Console first', () => {
   assert.equal(COMPETITOR_SYSTEM_NAME, 'Competitor Management System');
   assert.equal(INSTRUCTOR_COLLAB_NAME, 'Instructor Collaboration and Cloud Access');
+  assert.equal(
+    INSTRUCTOR_COACH_ENTRY,
+    'Instructor Collaboration, Advanced Coach Unlimited, and Cloud Access',
+  );
   assert.deepEqual(
     PRO_HUBS.map((hub) => hub.title),
     [MEDIA_CONSOLE_NAME, COMPETITOR_SYSTEM_NAME, INSTRUCTOR_COLLAB_NAME, TOURNAMENT_SUITE_NAME],

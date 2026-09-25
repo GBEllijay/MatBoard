@@ -809,6 +809,47 @@ button.mode-card {
   margin-top: 0.45rem;
 }
 
+.suite__cloud-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.instructor-jumps {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.instructor-jumps__entry {
+  width: 100%;
+  min-height: 52px;
+  height: auto;
+  white-space: normal;
+  line-height: 1.25;
+  text-align: center;
+  padding: 0.75rem 1rem;
+}
+
+.instructor-jumps__tools {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+}
+
+.instructor-jumps__tools .btn:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+.instructor-jumps__tools .btn {
+  width: 100%;
+  min-height: 48px;
+  white-space: normal;
+  line-height: 1.2;
+  text-align: center;
+}
+
 .pro-hubs {
   display: grid;
   gap: 0.75rem;
