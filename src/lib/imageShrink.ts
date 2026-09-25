@@ -1,7 +1,7 @@
 /**
  * Shrink stills before they land in on-device storage.
- * Gym logos use a small edge for localStorage. Gallery and Pro Shop use a
- * TV-sized edge so a phone photo does not fill this site's storage quota.
+ * Gym logos use a small edge for localStorage. Gallery, Pro Shop, and Events
+ * use a TV-sized edge so a phone photo does not fill this site's storage quota.
  * Videos are not re-encoded here.
  */
 
@@ -98,7 +98,7 @@ export async function shrinkImageFile(file: File, options: ShrinkImageOptions): 
 }
 
 /**
- * Gallery and Pro Shop stills. Keeps a small already-sized JPEG/PNG/WebP.
+ * Gallery, Pro Shop, and Events stills. Keeps a small already-sized JPEG/PNG/WebP.
  * A typical phone photo is scaled to {@link STORED_PHOTO_MAX_EDGE} and encoded
  * as JPEG (WebP if JPEG encode is missing). GIFs and videos are unchanged.
  */

@@ -5,6 +5,7 @@ import { GymLogoControl } from '../components/GymLogoControl';
 import { DeviceMediaInput } from '../components/DeviceMediaInput';
 import { ScheduleMonthBoard } from '../components/ScheduleMonthBoard';
 import { ScheduleWeekBoard } from '../components/ScheduleWeekBoard';
+import { EventCastSlide } from '../components/EventCastSlide';
 import { ShopCastSlide } from '../components/ShopCastSlide';
 import { ToolboxFolder } from '../components/ToolboxFolder';
 import { FullscreenChip } from '../components/FullscreenChip';
@@ -15,6 +16,11 @@ import { MediaSourceSheet } from '../components/VideoSourceSheet';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useScheduleState } from '../hooks/useStores';
 import { useToolboxParent } from '../hooks/useToolboxParent';
+import {
+  DEFAULT_EVENTS_CAST_MODE,
+  EVENTS_CAST_MODE_OPTIONS,
+  type EventsCastMode,
+} from '../lib/eventSlides';
 import { readGymLogo } from '../lib/gymLogo';
 import { MEDIA_CONSOLE_INSTRUCTIONS, MEDIA_CONSOLE_NAME } from '../lib/productNames';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
@@ -51,8 +57,10 @@ import {
   renamePhoto,
   reorderFolderItems,
   setFolderPlay,
+  setEventsCastMode,
   setItemBuyUrl,
   setItemPlay,
+  setItemQrLinks,
   setItemStartsSlide,
   setSaverIntervalSec,
   setSaverMuteVideo,
@@ -87,6 +95,7 @@ export function ScreensaverPage() {
   const [unlockSound, setUnlockSound] = useState(false);
   const [folderPlay, setFolderPlayState] = useState(DEFAULT_FOLDER_PLAY);
   const [shopCastMode, setShopCastModeState] = useState<ShopCastMode>(DEFAULT_SHOP_CAST_MODE);
+  const [eventsCastMode, setEventsCastModeState] = useState<EventsCastMode>(DEFAULT_EVENTS_CAST_MODE);
   const [gymLogoUrl, setGymLogoUrl] = useState<string | null>(() => readGymLogo());
   const [expanded, setExpanded] = useState<Record<FolderId, boolean>>(() =>
     folderExpandedState('gallery'),
@@ -142,6 +151,7 @@ export function ScreensaverPage() {
       setShuffle(prefs.shuffle);
       setMuteVideo(prefs.muteVideo);
       setShopCastModeState(prefs.shopCastMode);
+      setEventsCastModeState(prefs.eventsCastMode);
     });
   }, []);
 
@@ -182,6 +192,12 @@ export function ScreensaverPage() {
 
   const currentSlide = slides[order[index] ?? 0];
   const currentPhoto = currentSlide?.kind === 'media' ? currentSlide.item : undefined;
+  const showEventCast = Boolean(
+    currentPhoto &&
+      currentPhoto.folderId === 'events' &&
+      eventsCastMode !== 'images' &&
+      (eventsCastMode === 'images-qr-logo' || currentPhoto.qrLinks.length > 0),
+  );
   const current = currentPhoto ? urlById[currentPhoto.id] : undefined;
   const currentIsVideo = Boolean(currentPhoto && isVideoItem(currentPhoto));
 
@@ -231,6 +247,11 @@ export function ScreensaverPage() {
   const commitShopCastMode = (next: ShopCastMode) => {
     setShopCastModeState(next);
     void setShopCastMode(next);
+  };
+
+  const commitEventsCastMode = (next: EventsCastMode) => {
+    setEventsCastModeState(next);
+    void setEventsCastMode(next);
   };
 
   const openAdd = (folderId: FolderId, kind: MediaSourceKind) => {
@@ -289,12 +310,14 @@ export function ScreensaverPage() {
   const focusEmpty = itemsInFolder(photos, focusFolder).length === 0;
   const emptyCopy =
     photos.length === 0
-      ? focusFolder === 'shop'
-        ? `${focusConfig.emptyCopy} Press F for fullscreen on a computer plugged into the TV.`
-        : 'Add photos opens Take photo or Pick from gallery. Add videos opens Record or Pick from gallery. They stay on this phone or computer — nothing is uploaded. Photos loop fullscreen; clips play through, muted by default. Press F for fullscreen on a computer plugged into the TV.'
+      ? focusFolder === 'gallery'
+        ? 'Add photos opens Take photo or Pick from gallery. Add videos opens Record or Pick from gallery. They stay on this phone or computer — nothing is uploaded. Photos loop fullscreen; clips play through, muted by default. Press F for fullscreen on a computer plugged into the TV.'
+        : `${focusConfig.emptyCopy} Press F for fullscreen on a computer plugged into the TV.`
       : focusFolder === 'shop'
         ? 'Nothing is set to play. Turn on Pro Shop in options, then tap a left preview so at least one card is On.'
-        : 'Nothing is set to play. Turn on Gallery in options, then tap a left preview so at least one photo or video is On.';
+        : focusFolder === 'events'
+          ? 'Nothing is set to play. Turn on Events in options, then tap a left preview so at least one photo is On.'
+          : 'Nothing is set to play. Turn on Gallery in options, then tap a left preview so at least one photo or video is On.';
 
   return (
     <main
@@ -330,6 +353,14 @@ export function ScreensaverPage() {
           items={currentSlide.items}
           srcById={urlById}
           mode={shopCastMode}
+          logoUrl={gymLogoUrl}
+        />
+      ) : showEventCast && current && currentPhoto ? (
+        <EventCastSlide
+          key={`${currentPhoto.id}:${currentPhoto.qrLinks.join('|')}:${eventsCastMode}`}
+          item={currentPhoto}
+          src={current}
+          mode={eventsCastMode}
           logoUrl={gymLogoUrl}
         />
       ) : current && currentPhoto ? (
@@ -464,6 +495,28 @@ export function ScreensaverPage() {
           </p>
         </fieldset>
         <fieldset>
+          <legend>Events on the TV</legend>
+          <div className="presets presets--shop" role="radiogroup" aria-label="Events on the TV">
+            {EVENTS_CAST_MODE_OPTIONS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                role="radio"
+                aria-checked={eventsCastMode === option.id}
+                className={`preset${eventsCastMode === option.id ? ' preset--on' : ''}`}
+                onClick={() => commitEventsCastMode(option.id)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <p className="saver-sound-hint">
+            Each event photo can show several QR codes from its links. Logo uses the custom gym
+            logo above. Landscape puts the codes beside the photo. With the logo on, the mark sits
+            on top and the codes sit under the photo.
+          </p>
+        </fieldset>
+        <fieldset>
           <legend>Video sound</legend>
           <p className="saver-sound-hint">
             Mute clips so gym-floor music keeps playing. Match and Training buzzers still cut
@@ -569,6 +622,20 @@ export function ScreensaverPage() {
                     }
                   : undefined
               }
+              onQrLinks={
+                folder.id === 'events'
+                  ? async (id, qrLinks) => {
+                      setPhotos((rows) =>
+                        rows.map((row) => (row.id === id ? { ...row, qrLinks } : row)),
+                      );
+                      try {
+                        await setItemQrLinks(id, qrLinks);
+                      } catch {
+                        await refresh();
+                      }
+                    }
+                  : undefined
+              }
             />
             {folder.id === 'gallery' ? <ClassScheduleEntry /> : null}
             </Fragment>
@@ -662,7 +729,7 @@ function ClassScheduleEntry() {
       </div>
       <p className="saver-schedule__hint">
         {ready
-          ? 'On adds the full week or month after Gallery and before Pro Shop. Off keeps photos and Pro Shop only.'
+          ? 'On adds the full week or month after Gallery and before Pro Shop. Off keeps Gallery, Pro Shop, and Events.'
           : 'Add classes on the schedule page, then turn this on to play the week board in the cast.'}
       </p>
     </section>

@@ -18,6 +18,7 @@ type Props = {
   onItemPlayToggle: (id: string, enabled: boolean) => Promise<void>;
   onBuyUrl?: (id: string, buyUrl: string) => Promise<void>;
   onStartsSlide?: (id: string, startsSlide: boolean) => Promise<void>;
+  onQrLinks?: (id: string, qrLinks: string[]) => Promise<void>;
   notice?: string;
   addDisabled?: boolean;
 };
@@ -40,6 +41,7 @@ export function ToolboxFolder({
   onItemPlayToggle,
   onBuyUrl,
   onStartsSlide,
+  onQrLinks,
   notice,
   addDisabled,
 }: Props) {
@@ -101,6 +103,7 @@ export function ToolboxFolder({
               onPlayToggle={onItemPlayToggle}
               onBuyUrl={onBuyUrl}
               onStartsSlide={onStartsSlide}
+              onQrLinks={onQrLinks}
             />
           </>
         ) : (
@@ -117,6 +120,7 @@ export function ToolboxFolder({
                 onPlayToggle={onItemPlayToggle}
                 onBuyUrl={onBuyUrl}
                 onStartsSlide={onStartsSlide}
+                onQrLinks={onQrLinks}
               />
             ) : null}
           </>

@@ -7898,6 +7898,40 @@ input.roster-pick__name:focus,
   cursor: default;
 }
 
+.folder-row--events,
+.saver__row.folder-row--events {
+  grid-template-areas:
+    'drag thumb name'
+    'drag qrs qrs'
+    'drag actions actions';
+}
+
+.folder-row__qrs {
+  grid-area: qrs;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.folder-row__qr-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.35rem;
+  align-items: end;
+}
+
+.folder-row__qr-row .folder-row__url {
+  grid-area: auto;
+}
+
+.folder-row__qr-add,
+.folder-row__qr-remove {
+  min-height: 44px;
+}
+
+.folder-row__qr-add {
+  justify-self: start;
+}
+
 @media (min-width: 720px) {
   .folder-row--shop,
   .saver__row.folder-row--shop {
@@ -7906,6 +7940,14 @@ input.roster-pick__name:focus,
       'drag thumb name actions'
       'drag url url url'
       'drag slide slide slide';
+  }
+
+  .folder-row--events,
+  .saver__row.folder-row--events {
+    grid-template-columns: 56px 72px minmax(0, 1fr) auto;
+    grid-template-areas:
+      'drag thumb name actions'
+      'drag qrs qrs qrs';
   }
 }
 
@@ -8020,10 +8062,59 @@ input.roster-pick__name:focus,
   }
 }
 
+.event-cast__codes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 0.35rem 0.55rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.shop-cast--images-qr .event-cast__codes {
+  flex-direction: column;
+  flex-wrap: nowrap;
+}
+
+.event-cast__code {
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+  margin: 0;
+}
+
+.event-cast__caption {
+  margin: 0;
+  max-width: 9rem;
+  color: var(--ink);
+  font-size: clamp(0.72rem, 1.5vh, 0.95rem);
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.event-cast .shop-cast__qr {
+  width: clamp(72px, 14vh, 180px);
+}
+
+.event-cast[data-qr-count='1'] .shop-cast__qr {
+  width: clamp(92px, 22vh, 240px);
+}
+
+.event-cast--many .shop-cast__qr {
+  width: clamp(64px, 11vh, 128px);
+}
+
 @media (orientation: portrait) {
   .shop-cast--images-qr .shop-cast__layout {
     grid-template-columns: 1fr;
     grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .shop-cast--images-qr .event-cast__codes {
+    flex-direction: row;
+    flex-wrap: wrap;
   }
 
   .shop-cast__qr {

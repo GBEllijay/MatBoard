@@ -5,7 +5,7 @@
  */
 
 export const DEVICE_STORAGE_FULL_NOTE =
-  'Storage for Advantage on this device is full. Remove a Gallery item, Pro Shop card, or training clip, or clear unused media, then try again.';
+  'Storage for Advantage on this device is full. Remove a Gallery item, Pro Shop card, Events photo, or training clip, or clear unused media, then try again.';
 
 /** A clip this large is worth a note even when the write succeeds. */
 export const LARGE_MEDIA_BYTES = 40 * 1024 * 1024;

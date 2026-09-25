@@ -88,7 +88,7 @@ export const MEDIA_CONSOLE_INSTRUCTIONS = [
   'One On clip loops alone. Several play in list order.',
   'Enabled folders play Gallery, then Pro Shop, then Events.',
   'Class Schedule casts the full week or month after Gallery, before Pro Shop.',
-  'Turn Class Schedule off on that row to keep photos and Pro Shop only.',
+  'Turn Class Schedule off on that row to keep Gallery, Pro Shop, and Events.',
   'Open Class Schedule to edit classes. Export a CSV backup before clearing site data.',
   'Photos use the Photo interval. Videos play all the way through, then the next item.',
   'Clips stay muted unless Play video sound is on, so gym music in another tab can keep going.',
@@ -97,6 +97,10 @@ export const MEDIA_CONSOLE_INSTRUCTIONS = [
   'Same slide groups cards on one page. Each card on that page keeps its own QR.',
   'Pro Shop display: Images only, Images + QR, or Images + QR + gym logo.',
   'Pro Shop photos and buy links stay on this device. Nothing is uploaded.',
+  'Events: add a photo, a name, and optional QR links. Codes sit beside that photo.',
+  'One event photo can hold several links: registration, brackets, or tickets.',
+  'Events display: Images only, Images + QR, or Images + QR + gym logo.',
+  'Events photos and QR links stay on this device. Nothing is uploaded.',
 ] as const;
 
 export function parentToolboxPath(proUnlocked: boolean, coachUnlocked: boolean): string {
