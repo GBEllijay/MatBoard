@@ -54,7 +54,15 @@ export const COMPETITOR_ROSTER_CARD =
 export const ROSTER_LEAD_COACH =
   'Competitor Roster with Names and Ranks for Single Matches and Mock Tournaments.';
 export const ROSTER_LEAD_PRO =
-  `${COMPETITOR_ROSTER_DESCRIPTION} Names, belts, and CSV backup stay in this browser.`;
+  'Save competitor names, belts, and notes for matches and in-house tournaments. CSV backup available.';
+
+/** Short line under the Pro CSV buttons. Same voice as the roster lead. */
+export const ROSTER_CSV_DEVICE_NOTE =
+  'The roster stays on this device. CSV is for backup or a move.';
+
+/** Shown only from the Instructions control. Import skips a row without both. */
+export const ROSTER_CSV_INSTRUCTIONS =
+  'Each row needs a competitor name and a belt. A row missing either one is left out.';
 
 /** Coach Competitor Roster: CSV stays on the Pro roster screen. */
 export const ROSTER_CSV_PRO_TEASER = 'Importable CSV Template Available in Advantage Pro';
