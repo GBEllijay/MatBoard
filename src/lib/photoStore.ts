@@ -47,6 +47,9 @@ export const INTERVAL_PRESETS_SEC = [5, 10, 30, 60] as const;
  */
 export const VIDEO_ACCEPT = VIDEO_PICKER_ACCEPT;
 const VIDEO_EXTENSIONS = ['.mp4', '.m4v', '.webm', '.mov', '.ogg', '.ogv'] as const;
+const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.jpe', '.png', '.webp', '.gif', '.heic', '.heif', '.bmp', '.avif'] as const;
+/** Camera apps often hand back a JPEG with a blank or generic type. */
+const GENERIC_FILE_TYPES = new Set(['', 'application/octet-stream', 'binary/octet-stream']);
 
 export const FOLDERS = [
   {
@@ -297,10 +300,29 @@ export function isAcceptedVideoFile(file: File): boolean {
   return (VIDEO_EXTENSIONS as readonly string[]).includes(fileExtension(file.name));
 }
 
+export function isAcceptedImageFile(file: { name: string; type: string }): boolean {
+  if (file.type.startsWith('video/')) return false;
+  if (file.type.startsWith('image/')) return true;
+  if (file.type && !GENERIC_FILE_TYPES.has(file.type)) return false;
+  return (IMAGE_EXTENSIONS as readonly string[]).includes(fileExtension(file.name));
+}
+
+/**
+ * Take photo can return a file with no extension and an empty type (the capture
+ * input only accepts images). Gallery picks are left alone so a random file
+ * still has to look like an image.
+ */
+export function coerceCapturedPhoto(file: File): File {
+  if (isAcceptedImageFile(file) || isAcceptedVideoFile(file)) return file;
+  const stem = file.name?.trim() || 'photo';
+  const name = /\.[a-z0-9]+$/i.test(stem) ? stem.replace(/\.[^.]+$/, '.jpg') : `${stem}.jpg`;
+  return new File([file], name, { type: 'image/jpeg', lastModified: file.lastModified });
+}
+
 export function fileMatchesFolder(file: File, folder: { id: string; mimePrefix: string }): boolean {
   if (folder.id === 'gallery' && isAcceptedVideoFile(file)) return true;
-  if (file.type && file.type.startsWith(folder.mimePrefix)) return true;
   if (folder.mimePrefix === 'video/') return isAcceptedVideoFile(file);
+  if (folder.mimePrefix === 'image/' && isAcceptedImageFile(file)) return true;
   return false;
 }
 
@@ -393,24 +415,28 @@ async function blobForFolderFile(
 
 export async function addFolderFiles(files: File[], folderId: FolderId): Promise<number> {
   const folder = folderById(folderId);
+  const prepared: Array<{ video: boolean; stored: { blob: Blob; mime: string } }> = [];
+  for (const file of files) {
+    if (!fileMatchesFolder(file, folder)) continue;
+    const video = folder.id === 'gallery' && isAcceptedVideoFile(file);
+    prepared.push({ video, stored: await blobForFolderFile(file, folder) });
+  }
+  if (!prepared.length) return 0;
   const existing = await listPhotos(folderId);
   let photoCount = existing.filter((photo) => !isVideoItem(photo)).length;
   let videoCount = existing.filter((photo) => isVideoItem(photo)).length;
   let nextOrder = existing.reduce((max, photo) => Math.max(max, photo.sortOrder), -1);
   const pending: StoredPhoto[] = [];
-  for (const file of files) {
-    if (!fileMatchesFolder(file, folder)) continue;
+  for (const item of prepared) {
     nextOrder += 1;
-    const video = folder.id === 'gallery' && isAcceptedVideoFile(file);
-    if (video) videoCount += 1;
+    if (item.video) videoCount += 1;
     else photoCount += 1;
-    const stored = await blobForFolderFile(file, folder);
     pending.push({
       id: crypto.randomUUID(),
-      mime: stored.mime,
+      mime: item.stored.mime,
       addedAt: Date.now(),
-      blob: stored.blob,
-      label: `${video ? 'Video' : folder.labelPrefix} ${video ? videoCount : photoCount}`,
+      blob: item.stored.blob,
+      label: `${item.video ? 'Video' : folder.labelPrefix} ${item.video ? videoCount : photoCount}`,
       folderId,
       sortOrder: nextOrder,
       playEnabled: true,
@@ -419,7 +445,6 @@ export async function addFolderFiles(files: File[], folderId: FolderId): Promise
       qrLinks: [],
     });
   }
-  if (!pending.length) return 0;
   const db = await openDb();
   let added = 0;
   for (const photo of pending) {

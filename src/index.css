@@ -3349,6 +3349,36 @@ a.saver-folder--link {
   border: 0;
 }
 
+/* Camera / gallery file inputs. A fixed 1px box that is already on screen, so
+   focusing it does not scroll the Media Console sheet to the top. Clip instead
+   of display:none — display:none skips the camera on iOS/Android. */
+.device-media-form {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+}
+
+.device-media-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .saver__thumb img,
 .saver__thumb video {
   width: 100%;

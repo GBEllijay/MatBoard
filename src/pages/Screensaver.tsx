@@ -27,6 +27,12 @@ import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { formatMss, secondsToMs } from '../lib/format';
 import {
+  deltaToShowChild,
+  forgetCaptureFolder,
+  readCaptureFolder,
+  rememberCaptureFolder,
+} from '../lib/mediaCapture';
+import {
   PHOTO_PICKER_ACCEPT,
   VIDEO_CAPTURE,
   VIDEO_PICKER_ACCEPT,
@@ -38,6 +44,7 @@ import {
   addFolderFiles,
   clearFolder,
   clampIntervalSec,
+  coerceCapturedPhoto,
   DEFAULT_FOLDER_PLAY,
   DEFAULT_INTERVAL_SEC,
   DEFAULT_MUTE_VIDEO,
@@ -105,21 +112,21 @@ export function ScreensaverPage() {
   const videoRecordRef = useRef<HTMLInputElement>(null);
   const videoLibraryRef = useRef<HTMLInputElement>(null);
   const addFolderRef = useRef<FolderId>('gallery');
+  const holdFolder = useRef<FolderId | null>(null);
+  const pinFolder = useRef<FolderId | null>(null);
+  const dismissUntil = useRef(0);
+  const scrollSnap = useRef<{ element: HTMLElement; top: number }[]>([]);
+  const restoreTimers = useRef<number[]>([]);
+  const [noteFolder, setNoteFolder] = useState<FolderId | null>(null);
   const intervalMs = secondsToMs(intervalSec);
   const fs = usePlayFullscreen();
   const navigate = useNavigate();
   const parent = useToolboxParent();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const folderParam = searchParams.get('folder');
   const requestedFolder =
     folderParam === 'videos' ? 'gallery' : isFolderId(folderParam) ? folderParam : null;
-
-  useEffect(() => {
-    if (!requestedFolder) return;
-    setExpanded(folderExpandedState(requestedFolder));
-    setOptions(true);
-    addFolderRef.current = requestedFolder;
-  }, [requestedFolder]);
+  const savingCapture = useRef(false);
 
   const focusFolder = requestedFolder ?? 'gallery';
   const focusConfig = folderById(focusFolder);
@@ -254,48 +261,175 @@ export function ScreensaverPage() {
     void setEventsCastMode(next);
   };
 
-  const openAdd = (folderId: FolderId, kind: MediaSourceKind) => {
-    addFolderRef.current = folderId;
-    setAddKind(kind);
-    setAddOpen(true);
+  const clearRestoreTimers = () => {
+    for (const id of restoreTimers.current) window.clearTimeout(id);
+    restoreTimers.current = [];
   };
 
-  const scrollPickerNote = useCallback((node: HTMLParagraphElement | null) => {
-    if (!node || !pickerNote) return;
-    node.scrollIntoView({ block: 'nearest' });
-  }, [pickerNote]);
+  const restoreScroll = () => {
+    for (const snap of scrollSnap.current) {
+      if (snap.element.isConnected && snap.element.scrollTop !== snap.top) snap.element.scrollTop = snap.top;
+    }
+  };
 
-  const onFiles = async (files: FileList | null) => {
-    if (!files?.length) return;
+  const revealFolder = (folderId: FolderId) => {
+    const folder = document.getElementById(`saver-folder-${folderId}`);
+    const scroller = folder?.closest('.sheet__panel');
+    if (!(folder instanceof HTMLElement) || !(scroller instanceof HTMLElement)) return;
+    const folderBox = folder.getBoundingClientRect();
+    const view = scroller.getBoundingClientRect();
+    const delta = deltaToShowChild(folderBox.top, folderBox.bottom, view.top, view.bottom);
+    if (delta) scroller.scrollTop += delta;
+  };
+
+  useEffect(() => {
+    const pending = readCaptureFolder();
+    const fromCamera = pending && isFolderId(pending) ? pending : null;
+    const folder = fromCamera ?? requestedFolder;
+    if (!folder) return;
+    setExpanded(folderExpandedState(folder));
+    setOptions(true);
+    addFolderRef.current = folder;
+    if (!fromCamera) return;
+    forgetCaptureFolder();
+    if (searchParams.get('folder') !== fromCamera) {
+      const next = new URLSearchParams(searchParams);
+      next.set('folder', fromCamera);
+      setSearchParams(next, { replace: true });
+    }
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => revealFolder(fromCamera));
+    });
+  }, [requestedFolder, setSearchParams]);
+
+  const showFolder = (folderId: FolderId) => {
+    pinFolder.current = folderId;
+    setOptions(true);
+    setExpanded((prev) => ({ ...prev, [folderId]: true }));
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => revealFolder(folderId));
+    });
+  };
+
+  const folderPinned = (folderId: FolderId) =>
+    Date.now() < dismissUntil.current &&
+    (holdFolder.current === folderId || pinFolder.current === folderId);
+
+  /**
+   * Take photo focuses a file input and then leaves for the camera app.
+   * That focus, and the return, scroll the options sheet back to Gallery.
+   * Remember Pro Shop's scroll and ignore the dismiss tap that lands when
+   * the camera closes.
+   */
+  const armCaptureReturn = () => {
+    dismissUntil.current = Date.now() + 700;
+    holdFolder.current = addFolderRef.current;
+    rememberCaptureFolder(addFolderRef.current);
+    if (!scrollSnap.current.length) {
+      scrollSnap.current = [...document.querySelectorAll('.sheet__panel')].flatMap((node) =>
+        node instanceof HTMLElement ? [{ element: node, top: node.scrollTop }] : [],
+      );
+    }
+    clearRestoreTimers();
+    restoreScroll();
+    for (const delay of [50, 300, 800]) {
+      restoreTimers.current.push(window.setTimeout(restoreScroll, delay));
+    }
+  };
+
+  const dismissLocked = () => Date.now() < dismissUntil.current;
+
+  useEffect(() => {
+    const onHide = () => {
+      if (!holdFolder.current) return;
+      dismissUntil.current = Date.now() + 120_000;
+    };
+    const onShow = () => {
+      const folderId = holdFolder.current;
+      if (!folderId) return;
+      if (!savingCapture.current) dismissUntil.current = Date.now() + 700;
+      setOptions(true);
+      setExpanded((prev) => ({ ...prev, [folderId]: true }));
+      restoreScroll();
+    };
+    const onVis = () => {
+      if (document.visibilityState === 'hidden') onHide();
+      else onShow();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('pageshow', onShow);
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('pageshow', onShow);
+    };
+  }, []);
+
+  const openAdd = (folderId: FolderId, kind: MediaSourceKind) => {
+    addFolderRef.current = folderId;
+    rememberCaptureFolder(folderId);
+    setAddKind(kind);
+    setAddOpen(true);
+    setOptions(true);
+    setExpanded((prev) => ({ ...prev, [folderId]: true }));
+    if (searchParams.get('folder') !== folderId) {
+      const next = new URLSearchParams(searchParams);
+      next.set('folder', folderId);
+      setSearchParams(next, { replace: true });
+    }
+  };
+
+  const onFolderFiles = async (files: File[]) => {
+    if (!files.length) return;
     const kind = addKind;
     const folderId = addFolderRef.current;
-    const picked = [...files];
+    savingCapture.current = true;
+    holdFolder.current = folderId;
+    dismissUntil.current = Date.now() + 120_000;
     setAddOpen(false);
+    showFolder(folderId);
     try {
-      const added = await addFolderFiles(picked, folderId);
-      const large = picked.some((file) => file.size >= LARGE_MEDIA_BYTES);
+      const added = await addFolderFiles(files, folderId);
+      const large = files.some((file) => file.size >= LARGE_MEDIA_BYTES);
       if (!added) {
+        setNoteFolder(folderId);
         setPickerNote(
           kind === 'video'
             ? 'That file cannot play here. Switch the camera to video, or pick an MP4 / WebM.'
             : 'That file is not an image this folder can keep.',
         );
       } else if (large) {
+        setNoteFolder(folderId);
         setPickerNote(LARGE_MEDIA_NOTE);
       } else {
+        setNoteFolder(null);
         setPickerNote('');
       }
       await refresh();
+      showFolder(folderId);
       if (added) setPlaying(true);
     } catch (error) {
+      setNoteFolder(folderId);
       setPickerNote(quotaAddNote(error) ?? 'Could not save that file on this device. Try again.');
-      setExpanded((prev) => ({ ...prev, [folderId]: true }));
-      setOptions(true);
+      showFolder(folderId);
       try {
         await refresh();
       } catch {
         /* The note is the signal. A second storage failure should not hide it. */
       }
+    } finally {
+      savingCapture.current = false;
+      holdFolder.current = null;
+      pinFolder.current = folderId;
+      dismissUntil.current = Date.now() + 1200;
+      forgetCaptureFolder();
+      clearRestoreTimers();
+      restoreScroll();
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          revealFolder(folderId);
+          scrollSnap.current = [];
+        });
+      });
     }
   };
 
@@ -401,6 +535,7 @@ export function ScreensaverPage() {
         open={options}
         title={hubTitle}
         onClose={() => {
+          if (dismissLocked()) return;
           if (!muteVideo) setUnlockSound(true);
           setOptions(false);
         }}
@@ -408,11 +543,6 @@ export function ScreensaverPage() {
         <GymLogoControl />
         <section className="saver-settings">
           <h3 className="saver-settings__title">Settings</h3>
-          {pickerNote ? (
-            <p className="saver-folder__empty" role="status" ref={scrollPickerNote}>
-              {pickerNote}
-            </p>
-          ) : null}
         <fieldset>
           <legend>Photo interval</legend>
           <div className="interval-stepper" role="group" aria-label="Photo interval">
@@ -559,8 +689,13 @@ export function ScreensaverPage() {
               items={itemsInFolder(photos, folder.id)}
               thumbById={urlById}
               onToggle={(next) => {
+                if (!next && folderPinned(folder.id)) {
+                  setExpanded((prev) => ({ ...prev, [folder.id]: true }));
+                  return;
+                }
                 setExpanded((prev) => (prev[folder.id] === next ? prev : { ...prev, [folder.id]: next }));
               }}
+              notice={noteFolder === folder.id && pickerNote ? pickerNote : undefined}
               onPlayToggle={commitFolderPlay}
               onAdd={folder.ready ? () => openAdd(folder.id, 'photo') : undefined}
               onAddVideo={
@@ -658,35 +793,45 @@ export function ScreensaverPage() {
         captureInputId={addKind === 'video' ? 'saver-video-record' : 'saver-photo-capture'}
         libraryInputId={addKind === 'video' ? 'saver-video-library' : 'saver-photo-library'}
         stacked={options}
-        onClose={() => setAddOpen(false)}
+        onClose={() => {
+          if (dismissLocked()) return;
+          holdFolder.current = null;
+          pinFolder.current = null;
+          forgetCaptureFolder();
+          setAddOpen(false);
+        }}
       />
       <DeviceMediaInput
         id="saver-photo-capture"
         inputRef={photoCaptureRef}
         accept={PHOTO_PICKER_ACCEPT}
         capture={VIDEO_CAPTURE}
-        onFiles={onFiles}
+        onActivate={armCaptureReturn}
+        onFiles={(files) => onFolderFiles(files.map(coerceCapturedPhoto))}
       />
       <DeviceMediaInput
         id="saver-photo-library"
         inputRef={photoLibraryRef}
         accept={PHOTO_PICKER_ACCEPT}
         multiple
-        onFiles={onFiles}
+        onActivate={armCaptureReturn}
+        onFiles={onFolderFiles}
       />
       <DeviceMediaInput
         id="saver-video-record"
         inputRef={videoRecordRef}
         accept={VIDEO_RECORD_ACCEPT}
         capture={VIDEO_CAPTURE}
-        onFiles={onFiles}
+        onActivate={armCaptureReturn}
+        onFiles={onFolderFiles}
       />
       <DeviceMediaInput
         id="saver-video-library"
         inputRef={videoLibraryRef}
         accept={VIDEO_PICKER_ACCEPT}
         multiple
-        onFiles={onFiles}
+        onActivate={armCaptureReturn}
+        onFiles={onFolderFiles}
       />
     </main>
   );

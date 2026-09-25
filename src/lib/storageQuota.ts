@@ -34,7 +34,7 @@ export function isStorageQuotaError(error: unknown): boolean {
 }
 
 function quotaText(message: string): boolean {
-  return /quota|not enough space|insufficient memory|not enough memory|out of memory|storage full/i.test(
+  return /quota|not enough space|insufficient memory|not enough memory|out of memory|low memory|storage full/i.test(
     message,
   );
 }

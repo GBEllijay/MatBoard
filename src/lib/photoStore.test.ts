@@ -5,6 +5,7 @@ import {
   FOLDERS,
   StorageQuotaError,
   addFolderFiles,
+  coerceCapturedPhoto,
   fileMatchesFolder,
   isStorageQuotaError,
   listPhotos,
@@ -55,6 +56,25 @@ test('Gallery accepts photos and videos; other folders stay images', () => {
   assert.equal(fileMatchesFolder(clip, shop), false);
   assert.equal(fileMatchesFolder(photo, events), true);
   assert.equal(fileMatchesFolder(clip, events), false);
+
+  const camera = new File(['x'], 'IMG_2043.jpg', { type: '' });
+  const generic = new File(['x'], 'SHOT.JPEG', { type: 'application/octet-stream' });
+  const nameless = new File(['x'], 'capture', { type: '' });
+  const pdf = new File(['x'], 'notes.pdf', { type: 'application/pdf' });
+  assert.equal(fileMatchesFolder(camera, shop), true);
+  assert.equal(fileMatchesFolder(camera, events), true);
+  assert.equal(fileMatchesFolder(camera, gallery), true);
+  assert.equal(fileMatchesFolder(generic, shop), true);
+  assert.equal(fileMatchesFolder(nameless, shop), false);
+  assert.equal(fileMatchesFolder(pdf, shop), false);
+  assert.equal(fileMatchesFolder(clip, shop), false);
+
+  const coerced = coerceCapturedPhoto(nameless);
+  assert.equal(coerced.name, 'capture.jpg');
+  assert.equal(coerced.type, 'image/jpeg');
+  assert.equal(fileMatchesFolder(coerced, shop), true);
+  assert.equal(coerceCapturedPhoto(camera), camera);
+  assert.equal(coerceCapturedPhoto(bare), bare);
 });
 
 test('old Videos folder items append after Gallery once', () => {
@@ -305,6 +325,42 @@ test('two large Pro Shop photos are stored shrunk, and a full quota says so', as
       return true;
     });
     assert.equal((await listPhotos('shop')).length, 0);
+  } finally {
+    restoreGlobals(previous);
+  }
+});
+
+test('an Events camera HEIC is stored as a smaller JPEG', async () => {
+  const previous = rememberGlobals();
+  try {
+    installPhotoFixtures();
+    const camera = phonePhoto('IMG_2201.HEIC', 3_200_000, 'image/heic');
+    const added = await addFolderFiles([camera], 'events');
+    assert.equal(added, 1);
+    const photos = await listPhotos('events');
+    assert.equal(photos.length, 1);
+    assert.equal(photos[0]?.folderId, 'events');
+    assert.equal(photos[0]?.label, 'Event 1');
+    assert.equal(photos[0]?.mime, 'image/jpeg');
+    assert.ok(photos[0]!.blob.size < camera.size);
+  } finally {
+    restoreGlobals(previous);
+  }
+});
+
+test('a camera JPEG with no MIME type is stored as a Pro Shop card', async () => {
+  const previous = rememberGlobals();
+  try {
+    installPhotoFixtures();
+    const camera = new File([Uint8Array.from([1, 2, 3, 4])], 'IMG_2043.jpg', { type: '' });
+    const added = await addFolderFiles([coerceCapturedPhoto(camera)], 'shop');
+    assert.equal(added, 1);
+    const cards = await listPhotos('shop');
+    assert.equal(cards.length, 1);
+    assert.equal(cards[0]?.folderId, 'shop');
+    assert.equal(cards[0]?.label, 'Card 1');
+    assert.equal(cards[0]?.mime, 'image/jpeg');
+    assert.equal(cards[0]?.playEnabled, true);
   } finally {
     restoreGlobals(previous);
   }
