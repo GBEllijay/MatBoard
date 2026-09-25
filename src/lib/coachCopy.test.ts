@@ -99,7 +99,7 @@ test('Competitor Roster copy names bout competitors and skips franchise disclaim
   );
   assert.equal(
     COMPETITOR_ROSTER_CARD,
-    'Easily create and maintain a list of competitor names ranks and more for easy loading into tournament brackets and matches.',
+    'Easily create and maintain a list of competitor names, rankings and results for easy loading into tournament brackets and matches.',
   );
   assert.equal(
     ROSTER_LEAD_PRO,
