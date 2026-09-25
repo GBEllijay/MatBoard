@@ -1,5 +1,4 @@
 import {
-  COACH_AD_LEAD,
   COACH_HOME_TEASER,
   COMPETITOR_ROSTER_LABEL,
   TECHNIQUE_TREE_LABEL,
@@ -31,6 +30,13 @@ export type ComingSoonAdCopy = {
 /** Locked-card gold label. Same wording on Coach and Pro / Console. */
 export const COMING_SOON_LABEL = 'Coming Soon';
 
+/** Caption on the Coach Coming Soon shot of the unlocked Coach home. */
+export const COACH_PREVIEW_LABEL = 'Advantage Coach';
+
+/** One line under that shot. The picture is the live Coach button list. */
+export const COACH_PREVIEW_NOTE =
+  'Daily Lesson Plan, training videos, Technique Tree, mock brackets, and a roster.';
+
 /** Caption on the Pro Coming Soon shot of the unlocked console home. */
 export const PRO_CONSOLE_PREVIEW_LABEL = "Gym Owner and Instructor's Console";
 
@@ -49,7 +55,7 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
   coach: {
     title: 'Advantage Coach',
     kicker: COMING_SOON_LABEL,
-    lead: COACH_AD_LEAD,
+    lead: '',
     features: [
       {
         title: TRAINING_NOTES_LABEL,

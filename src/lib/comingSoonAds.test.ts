@@ -1,13 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  COACH_PREVIEW_LABEL,
+  COACH_PREVIEW_NOTE,
   COMING_SOON_ADS,
   COMING_SOON_LABEL,
   PRODUCT_TEASERS,
   PRO_CONSOLE_PREVIEW_LABEL,
   PRO_CONSOLE_PREVIEW_NOTE,
 } from './comingSoonAds.ts';
-import { COACH_AD_LEAD, COACH_HOME_TEASER } from './coachCopy.ts';
+import { COACH_HOME_TEASER } from './coachCopy.ts';
 import {
   COMPETITOR_SYSTEM_NAME,
   GYM_CONSOLE_NAME,
@@ -26,7 +28,13 @@ test('Coach ad sells the hub tools and no price', () => {
   assert.equal(COMING_SOON_ADS.coach.title, 'Advantage Coach');
   assert.equal(COMING_SOON_ADS.coach.kicker, COMING_SOON_LABEL);
   assert.equal(COMING_SOON_LABEL, 'Coming Soon');
-  assert.equal(COMING_SOON_ADS.coach.lead, COACH_AD_LEAD);
+  assert.equal(COMING_SOON_ADS.coach.lead, '');
+  assert.equal(COACH_PREVIEW_LABEL, 'Advantage Coach');
+  assert.equal(
+    COACH_PREVIEW_NOTE,
+    'Daily Lesson Plan, training videos, Technique Tree, mock brackets, and a roster.',
+  );
+  assert.doesNotMatch(text, /^Coach tools:/m);
   assert.deepEqual(
     COMING_SOON_ADS.coach.features.map((feature) => feature.title),
     ['Daily Lesson Plan', 'Daily Training Videos', 'Technique Tree', 'Mock Tournament', 'Competitor Roster'],
