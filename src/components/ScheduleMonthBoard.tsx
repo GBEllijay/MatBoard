@@ -3,6 +3,7 @@ import { useGymLogo, useGymName } from '../hooks/useGymBrand';
 import { useScheduleAssets, useScheduleState } from '../hooks/useStores';
 import { ADVANTAGE_MARK_SRC, resolveScheduleLogo } from '../lib/gymLogo';
 import { qrDataUrl } from '../lib/qr';
+import { createScheduleScroll, stepScheduleScroll } from '../lib/scheduleScroll';
 import {
   WEEKDAYS,
   WEEKDAY_LABELS,
@@ -137,24 +138,14 @@ export function ScheduleMonthBoard({ variant = 'stage', onOpenOptions }: Props) 
     if (!frame || !scroll || paused) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     let raf = 0;
-    let dir = 1;
-    let holdUntil = performance.now() + 1600;
+    let motion = createScheduleScroll(performance.now(), frame.scrollTop);
     let last = performance.now();
     const tick = (now: number) => {
       const max = frame.scrollHeight - frame.clientHeight;
-      if (max > 4 && now >= holdUntil) {
-        const dt = Math.min(0.05, (now - last) / 1000);
-        frame.scrollTop += dir * 18 * dt;
-        if (frame.scrollTop <= 0) {
-          frame.scrollTop = 0;
-          dir = 1;
-          holdUntil = now + 2400;
-        } else if (frame.scrollTop >= max - 1) {
-          frame.scrollTop = max;
-          dir = -1;
-          holdUntil = now + 2400;
-        }
-      }
+      const next = stepScheduleScroll(motion, max, now, last);
+      // Own the offset here. Reading scrollTop back sticks on a rounded bottom pixel.
+      if (next.pos !== motion.pos) frame.scrollTop = next.pos;
+      motion = next;
       last = now;
       raf = requestAnimationFrame(tick);
     };
