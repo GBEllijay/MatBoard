@@ -197,7 +197,14 @@ export function ScheduleWeekBoard({ variant = 'stage', onOpenOptions }: Props) {
         {busiest === 0 ? (
           <p className="week-cast__empty">No classes yet. Tap Edit to add the week. Saved on this device.</p>
         ) : (
-          <div className="week-cast__board">
+          <div
+            className="week-cast__board"
+            style={{
+              ['--week-tracks' as string]: columns
+                .map(({ day }) => (occupied.has(day) ? 'minmax(0, 1fr)' : 'max-content'))
+                .join(' '),
+            }}
+          >
             {columns.map(({ day, groups }) => (
               <WeekColumn key={day} day={day} groups={groups} today={today} occupied={occupied.has(day)} />
             ))}

@@ -511,9 +511,9 @@ export function ScreensaverPage() {
             ))}
           </div>
           <p className="saver-sound-hint">
-            Each event photo can show several QR codes from its links. Logo uses the custom gym
-            logo above. Landscape puts the codes beside the photo. With the logo on, the mark sits
-            on top and the codes sit under the photo.
+            Each event photo can show several QR codes from its links. Codes sit to the right of
+            the photo. With the logo on, the gym mark sits on the left and the codes stay on the
+            right.
           </p>
         </fieldset>
         <fieldset>

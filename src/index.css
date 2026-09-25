@@ -8553,16 +8553,23 @@ input.roster-pick__name:focus,
     'drag url url'
     'drag slide slide'
     'drag actions actions';
-  align-items: center;
+  align-items: start;
+}
+
+.folder-row--shop .folder-row__drag,
+.saver__row.folder-row--shop .folder-row__drag {
+  align-self: stretch;
 }
 
 .folder-row__url {
   grid-area: url;
-  gap: 0.25rem;
+  gap: 0.28rem;
+  min-width: 0;
   color: #14161c;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 800;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .folder-row__url input {
@@ -8573,15 +8580,19 @@ input.roster-pick__name:focus,
   background: #f4f6fa;
   color: #14161c;
   border-color: rgba(20, 22, 28, 0.14);
+  font-size: 0.95rem;
   font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .folder-row__slide {
   grid-area: slide;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 0.45rem;
-  align-items: center;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.28rem;
+  align-items: stretch;
+  min-width: 0;
 }
 
 .folder-row__slide-label {
@@ -8658,8 +8669,14 @@ input.roster-pick__name:focus,
     grid-template-columns: 56px 72px minmax(0, 1fr) auto;
     grid-template-areas:
       'drag thumb name actions'
-      'drag url url url'
-      'drag slide slide slide';
+      'drag url url .'
+      'drag slide slide .';
+    align-items: center;
+  }
+
+  .folder-row--shop .folder-row__preview,
+  .saver__row.folder-row--shop .folder-row__preview {
+    align-self: center;
   }
 
   .folder-row--events,
@@ -8690,8 +8707,8 @@ input.roster-pick__name:focus,
 .shop-cast__logo {
   flex: 0 0 auto;
   align-self: center;
-  max-height: 13vh;
-  max-width: min(46vw, 280px);
+  max-height: 11vh;
+  max-width: min(42vw, 240px);
   object-fit: contain;
 }
 
@@ -8725,8 +8742,10 @@ input.roster-pick__name:focus,
   width: 100%;
   height: 100%;
   min-height: 0;
+  min-width: 0;
   object-fit: contain;
   object-position: center;
+  border-radius: 12px;
 }
 
 .shop-cast__photo--empty {
@@ -8744,16 +8763,18 @@ input.roster-pick__name:focus,
 
 .shop-cast__name {
   margin: 0;
-  max-width: 12rem;
+  max-width: min(12rem, 100%);
   color: var(--ink);
   font-weight: 800;
   text-align: center;
   line-height: 1.15;
   font-size: clamp(0.95rem, 2.1vh, 1.45rem);
+  overflow-wrap: anywhere;
 }
 
 .shop-cast__qr {
   width: clamp(92px, 18vh, 220px);
+  max-width: 100%;
   height: auto;
   background: #fff;
   border-radius: 10px;
@@ -8782,19 +8803,84 @@ input.roster-pick__name:focus,
   }
 }
 
+.event-cast__stage {
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(0.45rem, 1.4vw, 1rem);
+}
+
+.event-cast:not(.event-cast--qr) .event-cast__stage {
+  flex-direction: column;
+}
+
+.event-cast .shop-cast__photo.event-cast__photo {
+  width: auto;
+  height: auto;
+  max-height: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 0;
+  flex: 0 1 auto;
+  object-fit: contain;
+}
+
+.event-cast--qr .shop-cast__photo.event-cast__photo {
+  max-width: calc(100% - 8rem);
+}
+
+.event-cast--logo.event-cast--qr .shop-cast__photo.event-cast__photo {
+  max-width: calc(100% - 16rem);
+}
+
+.event-cast__mark {
+  width: clamp(56px, 16vmin, 150px);
+  max-width: 18vw;
+  max-height: min(48vh, 280px);
+  object-fit: contain;
+  justify-self: center;
+  align-self: center;
+}
+
+.event-cast__photo {
+  align-self: center;
+}
+
+.event-cast__side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-width: 0;
+  min-height: 0;
+  max-height: 100%;
+  align-self: stretch;
+  overflow: auto;
+}
+
+.event-cast__caption-name {
+  justify-self: center;
+}
+
 .event-cast__codes {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  flex-wrap: nowrap;
   justify-content: center;
-  align-items: flex-start;
-  gap: 0.35rem 0.55rem;
+  align-items: center;
+  gap: 0.45rem;
   min-width: 0;
   max-width: 100%;
 }
 
-.shop-cast--images-qr .event-cast__codes {
-  flex-direction: column;
-  flex-wrap: nowrap;
+.event-cast .shop-cast__qr {
+  width: clamp(64px, 16vmin, 200px);
+  max-width: min(22vw, 200px);
 }
 
 .event-cast__code {
@@ -8814,32 +8900,48 @@ input.roster-pick__name:focus,
   text-align: center;
 }
 
-.event-cast .shop-cast__qr {
-  width: clamp(72px, 14vh, 180px);
-}
-
 .event-cast[data-qr-count='1'] .shop-cast__qr {
-  width: clamp(92px, 22vh, 240px);
+  width: clamp(76px, 20vmin, 220px);
+  max-width: min(24vw, 220px);
 }
 
 .event-cast--many .shop-cast__qr {
-  width: clamp(64px, 11vh, 128px);
+  width: clamp(52px, 11vmin, 128px);
+  max-width: min(16vw, 128px);
 }
 
 @media (orientation: portrait) {
-  .shop-cast--images-qr .shop-cast__layout {
-    grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 1fr) auto;
+  .shop-cast--images-qr:not(.event-cast) .shop-cast__layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-content: center;
+    justify-items: center;
   }
 
-  .shop-cast--images-qr .event-cast__codes {
-    flex-direction: row;
-    flex-wrap: wrap;
+  .shop-cast--images-qr:not(.event-cast) .shop-cast__photo,
+  .shop-cast--images-qr-logo:not(.event-cast) .shop-cast__photo {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 62vh;
   }
 
-  .shop-cast__qr {
+  .shop-cast:not(.event-cast) .shop-cast__qr {
     width: clamp(88px, 28vw, 168px);
   }
+}
+
+.shop-cast--images-qr-logo:not(.event-cast) .shop-cast__layout {
+  grid-template-rows: auto auto;
+  align-content: center;
+  justify-items: center;
+}
+
+.shop-cast--images-qr-logo:not(.event-cast) .shop-cast__photo {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 62vh;
 }
 
 /* Class Schedule week board — stacked day columns, no hour ruler, gym-TV cast. */
@@ -9046,6 +9148,7 @@ input.roster-pick__name:focus,
   letter-spacing: 0.055em;
   text-transform: uppercase;
   text-align: center;
+  white-space: nowrap;
   background: #10131a;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -9062,6 +9165,7 @@ input.roster-pick__name:focus,
 .week-cast__stack {
   container-type: inline-size;
   flex: 1 1 auto;
+  min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -9073,6 +9177,7 @@ input.roster-pick__name:focus,
 
 .week-cast__bundle {
   flex: 0 0 auto;
+  min-width: 0;
   min-height: min-content;
   display: flex;
   flex-direction: column;
@@ -9242,18 +9347,90 @@ input.roster-pick__name:focus,
   pointer-events: none;
 }
 
-@media (max-width: 980px) {
-  .week-cast--stacked .week-cast__board {
-    grid-template-columns: repeat(7, minmax(min(19rem, 84vw), 1fr));
+/* Phone and other narrow widths: all seven days on one screen.
+   TV / large landscape keeps the equal 15rem columns above.
+   Empty days use --week-tracks (max-content). One type size for every card. */
+@media (max-width: 1099px) {
+  .week-cast__board {
+    grid-template-columns: var(--week-tracks, repeat(7, minmax(0, 1fr)));
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
   }
 
-  .week-cast--stacked .week-cast__frame {
-    scroll-snap-type: x mandatory;
-    scroll-padding-inline: 0.25rem;
+  .week-cast__frame {
+    overflow-x: hidden;
+    overflow-y: auto;
+    scroll-snap-type: none;
   }
 
-  .week-cast--stacked .week-cast__column {
-    scroll-snap-align: start;
+  .week-cast__column {
+    scroll-snap-align: none;
+    min-width: 0;
+  }
+
+  .week-cast__column.is-empty {
+    max-width: 2.6rem;
+  }
+
+  .week-cast__class {
+    /* One size for every occupied day, from the column width.
+       The floor stays under the longest class name so a phone does not
+       split Fundamentals / Champions in the middle of the word. */
+    font-size: clamp(7px, 11.4cqi, 15px);
+    padding: 0.12rem 0.02rem 0.14rem 0.1rem;
+    gap: 0.02rem;
+    line-height: 1.15;
+    border-left-width: 2px;
+  }
+
+  .week-cast__stack {
+    gap: 0.16rem;
+    padding: 0.12rem 0.02rem 0.18rem;
+  }
+
+  .week-cast__bundle {
+    gap: 0.14rem;
+  }
+
+  .week-cast__bundle.is-parallel {
+    padding-left: 0.14rem;
+  }
+
+  .week-cast__dow {
+    font-size: clamp(0.58rem, 2.2vw, 0.78rem);
+    letter-spacing: 0.01em;
+    padding: 0.2rem 0.04rem;
+  }
+
+  .schedule.play--landscape .week-cast--stage,
+  .schedule.play--fs .week-cast--stage {
+    padding-left: calc(4.65rem + var(--safe-l));
+    padding-right: calc(0.28rem + var(--safe-r));
+  }
+
+  .schedule.play--landscape .week-cast--stage .week-cast__head,
+  .schedule.play--fs .week-cast--stage .week-cast__head {
+    padding-left: 0.2rem;
+    padding-right: calc(3.2rem + var(--safe-r));
+  }
+}
+
+@media (max-width: 520px) {
+  .schedule__stage {
+    margin-left: calc(0.35rem + var(--safe-l));
+    margin-right: calc(0.35rem + var(--safe-r));
+  }
+
+  .week-cast__title h2 {
+    font-size: clamp(0.78rem, 4.2vw, 1.2rem);
+    letter-spacing: 0.02em;
+  }
+
+  .week-cast__logo,
+  .week-cast__qr {
+    width: clamp(1.7rem, 8vw, 2.4rem);
+    height: clamp(1.7rem, 8vw, 2.4rem);
   }
 }
 
