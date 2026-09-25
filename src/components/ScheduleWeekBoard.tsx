@@ -137,21 +137,23 @@ export function ScheduleWeekBoard({ variant = 'stage', onOpenOptions }: Props) {
     let dir = 1;
     let holdUntil = performance.now() + 1600;
     let last = performance.now();
+    let pos = frame.scrollTop;
     const speed = 18;
     const tick = (now: number) => {
       const max = frame.scrollHeight - frame.clientHeight;
       if (max > 4 && now >= holdUntil) {
         const dt = Math.min(0.05, (now - last) / 1000);
-        frame.scrollTop += dir * speed * dt;
-        if (frame.scrollTop <= 0) {
-          frame.scrollTop = 0;
+        pos += dir * speed * dt;
+        if (pos <= 0) {
+          pos = 0;
           dir = 1;
           holdUntil = now + 2400;
-        } else if (frame.scrollTop >= max - 1) {
-          frame.scrollTop = max;
+        } else if (pos >= max - 1) {
+          pos = max;
           dir = -1;
           holdUntil = now + 2400;
         }
+        frame.scrollTop = pos;
       }
       last = now;
       raf = requestAnimationFrame(tick);
