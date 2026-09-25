@@ -1,4 +1,5 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
 import { GymLogoControl } from '../components/GymLogoControl';
@@ -324,7 +325,7 @@ export function ScreensaverPage() {
       className={`saver${currentSlide ? ' saver--play' : ''}${fs.className ? ` ${fs.className}` : ''}`}
       onClick={(event) => {
         const target = event.target as HTMLElement;
-        if (target.closest('.sheet, .chrome, .saver__empty, .btn, input, label, .play-fs, .play-exit, .tv-tip, .saver__unmute, .week-cast.is-drift, .week-cast.is-paused, .month-cast.is-drift, .month-cast.is-paused')) return;
+        if (target.closest('.sheet, .chrome, .saver__empty, .btn, input, label, .play-fs, .play-exit, .tv-tip, .saver__unmute, .saver-instructions__pop, .week-cast.is-drift, .week-cast.is-paused, .month-cast.is-drift, .month-cast.is-paused')) return;
         if (!muteVideo) setUnlockSound(true);
         if (slides.length) setOptions(true);
       }}
@@ -406,148 +407,10 @@ export function ScreensaverPage() {
         }}
       >
         <GymLogoControl />
-        <section className="saver-settings">
-          <h3 className="saver-settings__title">Settings</h3>
-          {pickerNote ? (
-            <p className="saver-folder__empty" role="status" ref={scrollPickerNote}>
-              {pickerNote}
-            </p>
-          ) : null}
-        <fieldset>
-          <legend>Photo interval</legend>
-          <div className="interval-stepper" role="group" aria-label="Photo interval">
-            <button
-              type="button"
-              className="clock-nudge"
-              disabled={intervalSec <= MIN_INTERVAL_SEC}
-              aria-label="Subtract one second"
-              onClick={() => commitInterval(intervalSec - 1)}
-            >
-              −
-            </button>
-            <strong aria-live="polite">{formatMss(intervalSec)}</strong>
-            <button
-              type="button"
-              className="clock-nudge"
-              disabled={intervalSec >= MAX_INTERVAL_SEC}
-              aria-label="Add one second"
-              onClick={() => commitInterval(intervalSec + 1)}
-            >
-              +
-            </button>
-          </div>
-          <div className="presets" role="group" aria-label="Photo interval presets">
-            {INTERVAL_PRESETS_SEC.map((seconds) => (
-              <button
-                key={seconds}
-                type="button"
-                className={`preset${intervalSec === seconds ? ' preset--on' : ''}`}
-                onClick={() => commitInterval(seconds)}
-              >
-                {seconds === 60 ? '1:00' : `${seconds}s`}
-              </button>
-            ))}
-          </div>
-        </fieldset>
-        <fieldset>
-          <legend>Play order</legend>
-          <div className="presets presets--split" role="radiogroup" aria-label="Play order">
-            <button
-              type="button"
-              role="radio"
-              aria-checked={!shuffle}
-              className={`preset${!shuffle ? ' preset--on' : ''}`}
-              onClick={() => commitShuffle(false)}
-            >
-              In order
-            </button>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={shuffle}
-              className={`preset${shuffle ? ' preset--on' : ''}`}
-              onClick={() => commitShuffle(true)}
-            >
-              Shuffle
-            </button>
-          </div>
-        </fieldset>
-        <fieldset>
-          <legend>Pro Shop on the TV</legend>
-          <div className="presets presets--shop" role="radiogroup" aria-label="Pro Shop on the TV">
-            {SHOP_CAST_MODE_OPTIONS.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                role="radio"
-                aria-checked={shopCastMode === option.id}
-                className={`preset${shopCastMode === option.id ? ' preset--on' : ''}`}
-                onClick={() => commitShopCastMode(option.id)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-          <p className="saver-sound-hint">
-            Each card on a slide gets its own QR from its buy link. Logo uses the custom gym logo
-            above. Landscape puts the QR beside the photo. With the logo on, the mark sits on top
-            and each QR sits under its photo.
-          </p>
-        </fieldset>
-        <fieldset>
-          <legend>Events on the TV</legend>
-          <div className="presets presets--shop" role="radiogroup" aria-label="Events on the TV">
-            {EVENTS_CAST_MODE_OPTIONS.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                role="radio"
-                aria-checked={eventsCastMode === option.id}
-                className={`preset${eventsCastMode === option.id ? ' preset--on' : ''}`}
-                onClick={() => commitEventsCastMode(option.id)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-          <p className="saver-sound-hint">
-            Each event photo can show several QR codes from its links. Codes sit to the right of
-            the photo. With the logo on, the gym mark sits on the left and the codes stay on the
-            right.
-          </p>
-        </fieldset>
-        <fieldset>
-          <legend>Video sound</legend>
-          <p className="saver-sound-hint">
-            Mute clips so gym-floor music keeps playing. Match and Training buzzers still cut
-            through — they are separate from clip audio.
-          </p>
-          <div className="presets presets--split" role="radiogroup" aria-label="Video sound">
-            <button
-              type="button"
-              role="radio"
-              aria-checked={muteVideo}
-              className={`preset${muteVideo ? ' preset--on' : ''}`}
-              onClick={() => commitMuteVideo(true)}
-            >
-              Mute clips
-            </button>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={!muteVideo}
-              className={`preset${!muteVideo ? ' preset--on' : ''}`}
-              onClick={() => commitMuteVideo(false)}
-            >
-              Play video sound
-            </button>
-          </div>
-        </fieldset>
         <label className="toggle">
           <input type="checkbox" checked={playing} onChange={(e) => setPlaying(e.target.checked)} />
           Playing
         </label>
-        </section>
 
         <div className="saver-folders">
           {FOLDERS.map((folder) => (
@@ -641,14 +504,145 @@ export function ScreensaverPage() {
             </Fragment>
           ))}
         </div>
-        <section className="saver-instructions">
-          <p className="saver-instructions__label">Instructions:</p>
-          <ul>
-            {MEDIA_CONSOLE_INSTRUCTIONS.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
+        <section className="saver-settings">
+          <h3 className="saver-settings__title">Settings</h3>
+          {pickerNote ? (
+            <p className="saver-folder__empty" role="status" ref={scrollPickerNote}>
+              {pickerNote}
+            </p>
+          ) : null}
+          <fieldset>
+            <legend>Photo interval</legend>
+            <div className="interval-stepper" role="group" aria-label="Photo interval">
+              <button
+                type="button"
+                className="clock-nudge"
+                disabled={intervalSec <= MIN_INTERVAL_SEC}
+                aria-label="Subtract one second"
+                onClick={() => commitInterval(intervalSec - 1)}
+              >
+                −
+              </button>
+              <strong aria-live="polite">{formatMss(intervalSec)}</strong>
+              <button
+                type="button"
+                className="clock-nudge"
+                disabled={intervalSec >= MAX_INTERVAL_SEC}
+                aria-label="Add one second"
+                onClick={() => commitInterval(intervalSec + 1)}
+              >
+                +
+              </button>
+            </div>
+            <div className="presets" role="group" aria-label="Photo interval presets">
+              {INTERVAL_PRESETS_SEC.map((seconds) => (
+                <button
+                  key={seconds}
+                  type="button"
+                  className={`preset${intervalSec === seconds ? ' preset--on' : ''}`}
+                  onClick={() => commitInterval(seconds)}
+                >
+                  {seconds === 60 ? '1:00' : `${seconds}s`}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>Play order</legend>
+            <div className="presets presets--split" role="radiogroup" aria-label="Play order">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={!shuffle}
+                className={`preset${!shuffle ? ' preset--on' : ''}`}
+                onClick={() => commitShuffle(false)}
+              >
+                In order
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={shuffle}
+                className={`preset${shuffle ? ' preset--on' : ''}`}
+                onClick={() => commitShuffle(true)}
+              >
+                Shuffle
+              </button>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>Pro Shop on the TV</legend>
+            <div className="presets presets--shop" role="radiogroup" aria-label="Pro Shop on the TV">
+              {SHOP_CAST_MODE_OPTIONS.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={shopCastMode === option.id}
+                  className={`preset${shopCastMode === option.id ? ' preset--on' : ''}`}
+                  onClick={() => commitShopCastMode(option.id)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <p className="saver-sound-hint">
+              Each card on a slide gets its own QR from its buy link. Logo uses the custom gym logo
+              above. Landscape puts the QR beside the photo. With the logo on, the mark sits on top
+              and each QR sits under its photo.
+            </p>
+          </fieldset>
+          <fieldset>
+            <legend>Events on the TV</legend>
+            <div className="presets presets--shop" role="radiogroup" aria-label="Events on the TV">
+              {EVENTS_CAST_MODE_OPTIONS.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={eventsCastMode === option.id}
+                  className={`preset${eventsCastMode === option.id ? ' preset--on' : ''}`}
+                  onClick={() => commitEventsCastMode(option.id)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <p className="saver-sound-hint">
+              Each event photo can show several QR codes from its links. Codes sit to the right of
+              the photo. With the logo on, the gym mark sits on the left and the codes stay on the
+              right.
+            </p>
+          </fieldset>
+          <fieldset>
+            <legend>Video sound</legend>
+            <p className="saver-sound-hint">
+              Mute clips so gym-floor music keeps playing. Match and Training buzzers still cut
+              through — they are separate from clip audio.
+            </p>
+            <div className="presets presets--split" role="radiogroup" aria-label="Video sound">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={muteVideo}
+                className={`preset${muteVideo ? ' preset--on' : ''}`}
+                onClick={() => commitMuteVideo(true)}
+              >
+                Mute clips
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={!muteVideo}
+                className={`preset${!muteVideo ? ' preset--on' : ''}`}
+                onClick={() => commitMuteVideo(false)}
+              >
+                Play video sound
+              </button>
+            </div>
+          </fieldset>
         </section>
+        <MediaConsoleInstructions />
       </Sheet>
 
       <MediaSourceSheet
@@ -689,6 +683,135 @@ export function ScreensaverPage() {
         onFiles={onFiles}
       />
     </main>
+  );
+}
+
+type InstructionPopPlace = {
+  left: number;
+  width: number;
+  maxHeight: number;
+  top?: number;
+  bottom?: number;
+};
+
+function placeInstructionPop(anchor: DOMRect): InstructionPopPlace {
+  const rootFont = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+  const margin = 12;
+  const gap = 8;
+  const width = Math.min(anchor.width, 34 * rootFont, window.innerWidth - margin * 2);
+  let left = anchor.left;
+  if (left + width > window.innerWidth - margin) {
+    left = Math.max(margin, window.innerWidth - margin - width);
+  }
+  const spaceAbove = anchor.top - margin;
+  const spaceBelow = window.innerHeight - anchor.bottom - margin;
+  const preferUp = spaceAbove >= 160 || spaceAbove >= spaceBelow;
+  const maxHeight = Math.max(140, Math.min(28 * rootFont, (preferUp ? spaceAbove : spaceBelow) - gap));
+  if (preferUp) {
+    return { left, width, maxHeight, bottom: window.innerHeight - anchor.top + gap };
+  }
+  return { left, width, maxHeight, top: anchor.bottom + gap };
+}
+
+function MediaConsoleInstructions() {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
+  const [pinned, setPinned] = useState(false);
+  const [place, setPlace] = useState<InstructionPopPlace | null>(null);
+
+  useLayoutEffect(() => {
+    if (!pinned) {
+      setPlace(null);
+      return;
+    }
+    const update = () => {
+      const node = rootRef.current;
+      if (!node) return;
+      const next = placeInstructionPop(node.getBoundingClientRect());
+      setPlace((prev) => {
+        if (
+          prev &&
+          prev.left === next.left &&
+          prev.width === next.width &&
+          prev.maxHeight === next.maxHeight &&
+          prev.top === next.top &&
+          prev.bottom === next.bottom
+        ) {
+          return prev;
+        }
+        return next;
+      });
+    };
+    update();
+    const scroller = rootRef.current?.closest('.sheet__panel');
+    const body = rootRef.current?.closest('.sheet__body');
+    scroller?.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    const observer = new ResizeObserver(update);
+    if (body) observer.observe(body);
+    return () => {
+      scroller?.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+      observer.disconnect();
+    };
+  }, [pinned]);
+
+  useEffect(() => {
+    if (!pinned) return;
+    const onPointer = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (rootRef.current?.contains(target) || popRef.current?.contains(target)) return;
+      setPinned(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setPinned(false);
+    };
+    document.addEventListener('pointerdown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [pinned]);
+
+  return (
+    <div className="saver-instructions" ref={rootRef}>
+      <button
+        type="button"
+        className="btn btn--ghost saver-instructions__btn"
+        aria-expanded={pinned}
+        aria-controls="media-console-instructions"
+        onClick={() => setPinned((value) => !value)}
+      >
+        Instructions
+      </button>
+      {pinned && place
+        ? createPortal(
+            <div
+              ref={popRef}
+              id="media-console-instructions"
+              className="saver-instructions__pop"
+              role="dialog"
+              aria-label="Instructions"
+              style={{
+                left: place.left,
+                width: place.width,
+                maxHeight: place.maxHeight,
+                top: place.top,
+                bottom: place.bottom,
+              }}
+            >
+              <p className="saver-instructions__label">Instructions:</p>
+              <ul>
+                {MEDIA_CONSOLE_INSTRUCTIONS.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            </div>,
+            document.body,
+          )
+        : null}
+    </div>
   );
 }
 
