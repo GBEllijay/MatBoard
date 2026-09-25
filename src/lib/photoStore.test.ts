@@ -34,12 +34,17 @@ test('Console folders are Gallery, Pro Shop, and Events', () => {
   assert.equal(FOLDERS[0].addLabel, 'Add photos');
   assert.equal(FOLDERS[1].label, 'Pro Shop');
   assert.equal(FOLDERS[1].ready, true);
-  assert.equal(FOLDERS[2].ready, false);
+  assert.equal(FOLDERS[2].label, 'Events');
+  assert.equal(FOLDERS[2].ready, true);
+  assert.equal(FOLDERS[2].comingSoon, '');
+  assert.equal(FOLDERS[2].addLabel, 'Add photos');
+  assert.equal(FOLDERS[2].videoAddLabel, '');
 });
 
 test('Gallery accepts photos and videos; other folders stay images', () => {
   const gallery = { id: 'gallery', mimePrefix: 'image/' };
   const shop = { id: 'shop', mimePrefix: 'image/' };
+  const events = { id: 'events', mimePrefix: 'image/' };
   const photo = new File(['x'], 'kid.jpg', { type: 'image/jpeg' });
   const clip = new File(['x'], 'drill.mp4', { type: 'video/mp4' });
   const bare = new File(['x'], 'drill.MOV', { type: '' });
@@ -48,6 +53,8 @@ test('Gallery accepts photos and videos; other folders stay images', () => {
   assert.equal(fileMatchesFolder(bare, gallery), true);
   assert.equal(fileMatchesFolder(photo, shop), true);
   assert.equal(fileMatchesFolder(clip, shop), false);
+  assert.equal(fileMatchesFolder(photo, events), true);
+  assert.equal(fileMatchesFolder(clip, events), false);
 });
 
 test('old Videos folder items append after Gallery once', () => {

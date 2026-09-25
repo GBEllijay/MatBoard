@@ -17,6 +17,7 @@ import {
   withFolderOrder as applyFolderOrder,
   type PlaylistItem,
 } from './playlist.ts';
+import { normalizeEventsCastMode, normalizeQrLinks, type EventsCastMode } from './eventSlides.ts';
 import {
   buyLinkForQr,
   normalizeBuyUrl,
@@ -85,18 +86,19 @@ export const FOLDERS = [
   {
     id: 'events',
     label: 'Events',
-    ready: false,
-    comingSoon: 'Coming soon. Event flyers will use this same list: name, thumbnail, Up / Down, and drag.',
-    itemNoun: 'flyer',
-    itemNounPlural: 'flyers',
-    addLabel: 'Add flyers',
+    ready: true,
+    comingSoon: '',
+    itemNoun: 'photo',
+    itemNounPlural: 'photos',
+    addLabel: 'Add photos',
     videoAddLabel: '',
     accept: 'image/*',
     mimePrefix: 'image/',
-    labelPrefix: 'Flyer',
+    labelPrefix: 'Event',
     emptyCopy:
-      'No event flyers yet. Tournament flyers will reorder with the same Up / Down and drag controls as Gallery.',
-    orderHint: 'Top flyer shows first when In order is on. Hold the grip, then drag — or tap Up / Down.',
+      'No event photos yet. Add photos opens Take photo or Pick from gallery. Name the photo, then paste a registration, brackets, or ticket link. The TV puts a QR beside the photo. Photos stay on this device.',
+    orderHint:
+      'Tap the left preview to play or skip that photo. Checked / bright = On. Top photo plays first when In order is on. Hold the grip, then drag — or tap Up / Down. Add a QR link under the name. Add QR for another code beside the same photo.',
   },
 ] as const;
 
@@ -131,6 +133,8 @@ export type StoredPhoto = PlaylistItem & {
   buyUrl: string;
   /** False puts this Pro Shop card on the previous card’s TV page. */
   startsSlide: boolean;
+  /** Events QR targets. Empty on Gallery and Pro Shop. */
+  qrLinks: string[];
 };
 
 export const DEFAULT_SHUFFLE = false;
@@ -143,14 +147,19 @@ export type SaverPrefs = {
   shuffle: boolean;
   muteVideo: boolean;
   shopCastMode: ShopCastMode;
+  eventsCastMode: EventsCastMode;
 };
 
-export type PhotoRow = Omit<StoredPhoto, 'folderId' | 'sortOrder' | 'playEnabled' | 'buyUrl' | 'startsSlide'> & {
+export type PhotoRow = Omit<
+  StoredPhoto,
+  'folderId' | 'sortOrder' | 'playEnabled' | 'buyUrl' | 'startsSlide' | 'qrLinks'
+> & {
   folderId?: FolderId | string;
   sortOrder?: number;
   playEnabled?: boolean;
   buyUrl?: string;
   startsSlide?: boolean;
+  qrLinks?: unknown;
 };
 
 export function isFolderId(value: unknown): value is FolderId {
@@ -211,6 +220,7 @@ function normalizePhoto(row: PhotoRow, index: number): StoredPhoto {
     playEnabled: row.playEnabled !== false,
     buyUrl: normalizeBuyUrl(row.buyUrl),
     startsSlide: normalizeStartsSlide(row.startsSlide),
+    qrLinks: normalizeQrLinks(row.qrLinks),
   };
 }
 
@@ -406,6 +416,7 @@ export async function addFolderFiles(files: File[], folderId: FolderId): Promise
       playEnabled: true,
       buyUrl: '',
       startsSlide: true,
+      qrLinks: [],
     });
   }
   if (!pending.length) return 0;
@@ -456,6 +467,20 @@ export async function setItemBuyUrl(id: string, buyUrl: string): Promise<void> {
   });
   if (!current) return;
   store.put({ ...normalizePhoto(current, 0), buyUrl: buyLinkForQr(buyUrl) });
+  await txDone(tx);
+}
+
+export async function setItemQrLinks(id: string, qrLinks: readonly string[]): Promise<void> {
+  const db = await openDb();
+  const tx = db.transaction(STORE, 'readwrite');
+  const store = tx.objectStore(STORE);
+  const current = await new Promise<PhotoRow | undefined>((resolve, reject) => {
+    const req = store.get(id);
+    req.onsuccess = () => resolve(req.result as PhotoRow | undefined);
+    req.onerror = () => reject(req.error);
+  });
+  if (!current) return;
+  store.put({ ...normalizePhoto(current, 0), qrLinks: normalizeQrLinks(qrLinks) });
   await txDone(tx);
 }
 
@@ -547,6 +572,7 @@ export async function getSaverPrefs(): Promise<SaverPrefs> {
       const shuffleReq = store.get('shuffle');
       const muteVideoReq = store.get('muteVideo');
       const shopCastReq = store.get('shopCastMode');
+      const eventsCastReq = store.get('eventsCastMode');
       tx.oncomplete = () => {
         resolve({
           intervalSec: clampIntervalSec(Number(intervalReq.result ?? DEFAULT_INTERVAL_SEC)),
@@ -554,6 +580,7 @@ export async function getSaverPrefs(): Promise<SaverPrefs> {
           shuffle: normalizeShuffle(shuffleReq.result),
           muteVideo: normalizeMuteVideo(muteVideoReq.result),
           shopCastMode: normalizeShopCastMode(shopCastReq.result),
+          eventsCastMode: normalizeEventsCastMode(eventsCastReq.result),
         });
       };
       tx.onerror = () => reject(tx.error);
@@ -565,6 +592,7 @@ export async function getSaverPrefs(): Promise<SaverPrefs> {
       shuffle: DEFAULT_SHUFFLE,
       muteVideo: DEFAULT_MUTE_VIDEO,
       shopCastMode: normalizeShopCastMode(undefined),
+      eventsCastMode: normalizeEventsCastMode(undefined),
     };
   }
 }
@@ -602,5 +630,12 @@ export async function setShopCastMode(mode: ShopCastMode): Promise<void> {
   const db = await openDb();
   const tx = db.transaction(PREFS, 'readwrite');
   tx.objectStore(PREFS).put(normalizeShopCastMode(mode), 'shopCastMode');
+  await txDone(tx);
+}
+
+export async function setEventsCastMode(mode: EventsCastMode): Promise<void> {
+  const db = await openDb();
+  const tx = db.transaction(PREFS, 'readwrite');
+  tx.objectStore(PREFS).put(normalizeEventsCastMode(mode), 'eventsCastMode');
   await txDone(tx);
 }

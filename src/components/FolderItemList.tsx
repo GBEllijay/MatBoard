@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useState, useRef, type PointerEvent as ReactPointerEvent } from 'react';
+import { EVENT_QR_CAP, normalizeQrLinks } from '../lib/eventSlides';
 import { isItemPlayEnabled, moveItemIds } from '../lib/playlist';
 import { buyLinkForQr, slideMarksForList } from '../lib/shopSlides';
 
@@ -22,6 +23,7 @@ export type FolderListItem = {
   playEnabled?: boolean;
   buyUrl?: string;
   startsSlide?: boolean;
+  qrLinks?: readonly string[];
 };
 
 function isVideoMime(mime?: string): boolean {
@@ -40,6 +42,7 @@ type Props = {
   onPlayToggle?: (id: string, enabled: boolean) => Promise<void>;
   onBuyUrl?: (id: string, buyUrl: string) => Promise<void>;
   onStartsSlide?: (id: string, startsSlide: boolean) => Promise<void>;
+  onQrLinks?: (id: string, qrLinks: string[]) => Promise<void>;
 };
 
 type DragSession = {
@@ -75,6 +78,7 @@ export function FolderItemList({
   onPlayToggle,
   onBuyUrl,
   onStartsSlide,
+  onQrLinks,
 }: Props) {
   const [draftIds, setDraftIds] = useState<string[] | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -180,7 +184,7 @@ export function FolderItemList({
     const target = event.target as HTMLElement;
     if (
       target.closest(
-        'input, .folder-row__move, .folder-row__remove, .folder-row__play, .folder-row__preview, .folder-row__url, .folder-row__slide',
+        'input, .folder-row__move, .folder-row__remove, .folder-row__play, .folder-row__preview, .folder-row__url, .folder-row__slide, .folder-row__qrs',
       )
     )
       return;
@@ -305,6 +309,7 @@ export function FolderItemList({
               onStartsSlide={
                 onStartsSlide ? async (startsSlide) => onStartsSlide(item.id, startsSlide) : undefined
               }
+              onQrLinks={onQrLinks ? async (qrLinks) => onQrLinks(item.id, qrLinks) : undefined}
               onMoveUp={() => moveBy(index, index - 1)}
               onMoveDown={() => moveBy(index, index + 1)}
             />
@@ -337,6 +342,7 @@ function FolderItemRow({
   onPlayToggle,
   onBuyUrl,
   onStartsSlide,
+  onQrLinks,
   onMoveUp,
   onMoveDown,
 }: {
@@ -361,6 +367,7 @@ function FolderItemRow({
   onPlayToggle?: (enabled: boolean) => Promise<void>;
   onBuyUrl?: (buyUrl: string) => Promise<void>;
   onStartsSlide?: (startsSlide: boolean) => Promise<void>;
+  onQrLinks?: (qrLinks: string[]) => Promise<void>;
   onMoveUp: () => void;
   onMoveDown: () => void;
 }) {
@@ -405,6 +412,8 @@ function FolderItemRow({
     <li
       ref={rowRef}
       className={`folder-row saver__row${onBuyUrl ? ' folder-row--shop' : ''}${
+        onQrLinks ? ' folder-row--events' : ''
+      }${
         dragging ? ' folder-row--dragging saver__row--dragging' : ''
       }${selected ? ' folder-row--selected' : ''}${playEnabled || !onPlayToggle ? '' : ' folder-row--off'}`}
       style={{ touchAction: dragging ? 'none' : 'pan-y' }}
@@ -495,6 +504,13 @@ function FolderItemRow({
           />
         </label>
       ) : null}
+      {onQrLinks ? (
+        <EventQrFields
+          links={item.qrLinks ?? []}
+          name={name}
+          onCommit={onQrLinks}
+        />
+      ) : null}
       {onStartsSlide && slideMark ? (
         <div className="folder-row__slide">
           <span className="folder-row__slide-label">Slide {slideMark.slide}</span>
@@ -567,5 +583,97 @@ function FolderItemRow({
         Position {index + 1}
       </span>
     </li>
+  );
+}
+
+function EventQrFields({
+  links,
+  name,
+  onCommit,
+}: {
+  links: readonly string[];
+  name: string;
+  onCommit: (qrLinks: string[]) => Promise<void>;
+}) {
+  const savedKey = links.join('\n');
+  const [rows, setRows] = useState<string[]>(() => (links.length ? [...links] : ['']));
+
+  useEffect(() => {
+    setRows((current) => {
+      if (normalizeQrLinks(current).join('\n') === savedKey) return current;
+      return links.length ? [...links] : [''];
+    });
+  }, [savedKey, links]);
+
+  const commitRows = (next: string[]) => {
+    setRows(next);
+    const normalized = normalizeQrLinks(next);
+    if (normalized.join('\n') !== savedKey) void onCommit(normalized);
+  };
+
+  const blurRow = (index: number) => {
+    const next = rows.map((value, rowIndex) => (rowIndex === index ? buyLinkForQr(value) : value));
+    const filled = normalizeQrLinks(next);
+    const blanks = next.filter((value) => !buyLinkForQr(value)).length;
+    const display =
+      filled.length === 0
+        ? ['']
+        : blanks > 0 && filled.length < EVENT_QR_CAP
+          ? [...filled, '']
+          : filled;
+    commitRows(display);
+  };
+
+  return (
+    <div className="folder-row__qrs">
+      {rows.map((value, index) => (
+        <div className="folder-row__qr-row" key={`${index}-${rows.length}`}>
+          <label className="folder-row__url">
+            QR link
+            <input
+              value={value}
+              inputMode="url"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              placeholder="gym.example/register"
+              aria-label={`QR link ${index + 1} for ${name}`}
+              onChange={(event) => {
+                const next = rows.slice();
+                next[index] = event.target.value;
+                setRows(next);
+              }}
+              onBlur={() => blurRow(index)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') (event.target as HTMLInputElement).blur();
+              }}
+            />
+          </label>
+          {rows.length > 1 ? (
+            <button
+              type="button"
+              className="btn btn--ghost folder-row__qr-remove"
+              aria-label={`Remove QR link ${index + 1} for ${name}`}
+              onClick={() => {
+                const next = rows.filter((_, rowIndex) => rowIndex !== index);
+                const filled = normalizeQrLinks(next);
+                commitRows(filled.length ? filled : ['']);
+              }}
+            >
+              Remove
+            </button>
+          ) : null}
+        </div>
+      ))}
+      {rows.length < EVENT_QR_CAP ? (
+        <button
+          type="button"
+          className="btn btn--ghost folder-row__qr-add"
+          onClick={() => setRows((current) => (current.length >= EVENT_QR_CAP ? current : [...current, '']))}
+        >
+          Add QR
+        </button>
+      ) : null}
+    </div>
   );
 }
