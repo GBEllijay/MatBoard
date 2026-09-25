@@ -11,8 +11,8 @@ import {
   MOCK_TOURNAMENT_NAME,
   PRO_COMING_SOON_LINES,
   HOME_MOTTO,
-  PRO_HOME_DESCRIPTION,
   PRO_HOME_DETAIL,
+  PRO_HOME_LINES,
   PRO_LADDER_DETAIL,
   COACH_HOME_DESCRIPTION,
   WHITE_HOME_DESCRIPTION,
@@ -120,15 +120,17 @@ test('Owner tournament tool is Tournament Software; Coach keeps Mock Tournament'
 });
 
 test('Home Pro card describes the console without a Coming Soon line', () => {
-  assert.equal(
-    PRO_HOME_DESCRIPTION,
-    "Gym Owner and Instructor's Console. Easily cast class schedules, events, recent promotion, pro shop inventory, and more to your gym TV. Full in-house tournament management suite and much more.",
-  );
-  assert.match(PRO_HOME_DESCRIPTION, /Instructor's Console/);
-  assert.doesNotMatch(PRO_HOME_DESCRIPTION, /Coming Soon/);
-  assert.doesNotMatch(PRO_HOME_DESCRIPTION, /^Pro\b/);
+  assert.deepEqual(PRO_HOME_LINES, [
+    "Gym Owner and Instructor's Console",
+    'Easily cast class schedules, pro shop inventory, events, recent promotions, and more to your gym TV.',
+    'Coordinate and create In-House Tournaments in moments and track the results for review and ranking.',
+    'Provide your instructors with access to our collaborative coaching tools and give your gym the ultimate Advantage!',
+  ]);
+  const home = PRO_HOME_LINES.join('\n');
+  assert.match(home, /Instructor's Console/);
+  assert.doesNotMatch(home, /Coming Soon/);
+  assert.doesNotMatch(PRO_HOME_LINES[0], /^Pro\b/);
   assert.equal(PRO_HOME_DETAIL, `${GYM_CONSOLE_NAME} — Coming Soon`);
-  assert.ok(PRO_HOME_DESCRIPTION.length < PRO_COMING_SOON_LINES.join(' ').length);
 });
 
 test('Coming Soon keeps the longer Pro appetite copy off the home card', () => {
@@ -137,10 +139,11 @@ test('Coming Soon keeps the longer Pro appetite copy off the home card', () => {
     'Full In-House Tournament Management Suite with Auto-Fill Bracketing and Result Tracking.',
     'Assignable Instructor Licenses with Cross Platform Access to Updates, Shared Training Videos and More.',
   ]);
-  assert.doesNotMatch(PRO_HOME_DESCRIPTION, /Auto-Fill Bracketing/);
-  assert.doesNotMatch(PRO_HOME_DESCRIPTION, /Shared Training Videos/);
-  assert.doesNotMatch(PRO_HOME_DESCRIPTION, /ProShop Inventory/);
-  assert.doesNotMatch(PRO_HOME_DESCRIPTION, /Coming Soon/);
+  const home = PRO_HOME_LINES.join('\n');
+  assert.doesNotMatch(home, /Auto-Fill Bracketing/);
+  assert.doesNotMatch(home, /Shared Training Videos/);
+  assert.doesNotMatch(home, /ProShop Inventory/);
+  assert.doesNotMatch(home, /Coming Soon/);
 });
 
 test('Pro unlock includes Coach tools and Coach-only unlock still stands alone', () => {
