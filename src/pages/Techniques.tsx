@@ -14,6 +14,7 @@ import { useWakeLock } from '../hooks/useWakeLock';
 import { formatMmSs, formatMss, secondsToMs } from '../lib/format';
 import { VIDEO_CAPTURE, VIDEO_PICKER_ACCEPT, VIDEO_RECORD_ACCEPT } from '../lib/mediaPicker';
 import { DEFAULT_MUTE_VIDEO, getSaverPrefs, setSaverMuteVideo } from '../lib/photoStore';
+import { LARGE_MEDIA_BYTES, LARGE_MEDIA_NOTE, quotaAddNote } from '../lib/storageQuota';
 import {
   canAssignClip,
   clipCount,
@@ -22,7 +23,6 @@ import {
   isDrillPreset,
   isTimedSlot,
   MAX_DRILL_SEC,
-  MAX_TECHNIQUE_CLIPS,
   MAX_TECHNIQUE_SLOTS,
   MIN_DRILL_SEC,
   nextTechniqueSlotId,
@@ -308,19 +308,15 @@ export function TechniquesPage() {
       applyPlan(result.plan);
       setClips(result.clips);
       setPlaying(false);
-      if (result.status === 'atCap') {
-        setPickerNote(`You can keep ${MAX_TECHNIQUE_CLIPS} clips on this device. Remove one to add another.`);
-        return;
-      }
       if (result.status === 'invalid') {
         setPickerNote('That file cannot play here. Switch the camera to video, or pick an MP4 / WebM.');
         return;
       }
-      setPickerNote('');
+      setPickerNote(file.size >= LARGE_MEDIA_BYTES ? LARGE_MEDIA_NOTE : '');
       const slot = result.plan.slots.find((item) => item.slotId === slotId);
       if (slot && isTimedSlot(slot)) setRemainingMs(secondsToMs(slot.drillSec));
-    } catch {
-      setPickerNote('Could not save that clip on this device.');
+    } catch (error) {
+      setPickerNote(quotaAddNote(error) ?? 'Could not save that clip on this device. Try again.');
     }
   };
 
@@ -390,7 +386,7 @@ export function TechniquesPage() {
             Mute clips
           </button>
           <p className="techniques__count">
-            {count} of {MAX_TECHNIQUE_CLIPS} clips
+            {count} {count === 1 ? 'clip' : 'clips'}
           </p>
         </div>
       </header>
@@ -616,7 +612,7 @@ function SlotCard({
           className={`techniques__slot${canAdd ? '' : ' techniques__slot--cap'}`}
           aria-pressed={selected}
           aria-disabled={!canAdd}
-          title={canAdd ? undefined : `${MAX_TECHNIQUE_CLIPS} clips on this device`}
+          title={canAdd ? undefined : 'Pick another card to add a clip'}
           onClick={() => {
             onSelect();
             if (canAdd) onAdd();

@@ -1,3 +1,6 @@
+import { shrinkImageFile } from './imageShrink.ts';
+import { isStorageQuotaError, StorageQuotaError } from './storageQuota.ts';
+
 /**
  * Default gym logo for Advantage Pro. Saved on this device only.
  * Pro Shop cast reads `GYM_LOGO_STORAGE_KEY` through `readGymLogo()`.
@@ -79,7 +82,12 @@ export function writeGymLogo(dataUrl: string): void {
   if (!dataUrl.startsWith('data:image/')) throw new Error('not-image');
   if (dataUrl.length > MAX_DATA_URL_CHARS) throw new Error('too-large');
   const record: GymLogoRecord = { version: 1, dataUrl };
-  localStorage.setItem(GYM_LOGO_STORAGE_KEY, JSON.stringify(record));
+  try {
+    localStorage.setItem(GYM_LOGO_STORAGE_KEY, JSON.stringify(record));
+  } catch (error) {
+    if (isStorageQuotaError(error)) throw new StorageQuotaError(0);
+    throw error;
+  }
   emitGymLogo();
 }
 
@@ -105,32 +113,13 @@ async function blobToDataUrl(blob: Blob): Promise<string> {
 
 /** Keep a logo small enough for localStorage. Falls back to the original file. */
 async function shrinkLogo(file: File): Promise<Blob> {
-  if (typeof createImageBitmap !== 'function') return file;
-  try {
-    const bitmap = await createImageBitmap(file);
-    const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
-    if (scale === 1 && file.size < 180_000) {
-      bitmap.close?.();
-      return file;
-    }
-    const width = Math.max(1, Math.round(bitmap.width * scale));
-    const height = Math.max(1, Math.round(bitmap.height * scale));
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      bitmap.close?.();
-      return file;
-    }
-    ctx.drawImage(bitmap, 0, 0, width, height);
-    bitmap.close?.();
-    const mime = file.type === 'image/png' || file.type === 'image/webp' ? file.type : 'image/jpeg';
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, mime, 0.86));
-    return blob ?? file;
-  } catch {
-    return file;
-  }
+  return shrinkImageFile(file, {
+    maxEdge: MAX_EDGE,
+    quality: 0.86,
+    passthroughBytes: 180_000,
+    mimeFor: (source) =>
+      source.type === 'image/png' || source.type === 'image/webp' ? source.type : 'image/jpeg',
+  });
 }
 
 /** Save a picked photo as the default gym logo. Returns the stored data URL. */

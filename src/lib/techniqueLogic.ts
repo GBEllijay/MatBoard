@@ -2,12 +2,11 @@
  * Pure Daily Training Videos helpers — no IndexedDB. Shared by the store and tests.
  *
  * Clips live in on-device slots: optional Warm-up, Technique / Drill cards, optional Cool down.
- * One clip per slot. The soft cap is the total number of clips, not the number of empty cards.
+ * One clip per slot. Storage quota is the only limit on how many clips this device keeps.
  * Technique slot ids stay stable on this device. Lesson Plan links by parallel order
  * (Warm-up, Drill 1, …) in lessonLinks.ts, not by matching these ids to lesson text.
  */
 
-export const MAX_TECHNIQUE_CLIPS = 10;
 export const WARMUP_SLOT_ID = 'warmup';
 export const COOLDOWN_SLOT_ID = 'cooldown';
 export const MIN_TECHNIQUE_SLOTS = 3;
@@ -23,10 +22,6 @@ function fileExtension(name: string): string {
 export function isTechniqueVideoFile(file: File): boolean {
   if (file.type && file.type.startsWith('video/')) return true;
   return (VIDEO_EXTENSIONS as readonly string[]).includes(fileExtension(file.name));
-}
-
-export function clipSlotsLeft(count: number, max = MAX_TECHNIQUE_CLIPS): number {
-  return Math.max(0, max - Math.max(0, count));
 }
 
 export function pickAddableVideos(files: readonly File[], slotsLeft: number): File[] {
@@ -130,12 +125,9 @@ export function clipCount(plan: VideoPlan): number {
   return ids.size;
 }
 
-/** Replace is allowed at the cap. A new clip is not. */
+/** Any card can take a clip. Origin storage quota is the hard stop, not a count. */
 export function canAssignClip(plan: VideoPlan, slotId: string): boolean {
-  const slot = plan.slots.find((item) => item.slotId === slotId);
-  if (!slot) return false;
-  if (slot.clipId) return true;
-  return clipCount(plan) < MAX_TECHNIQUE_CLIPS;
+  return plan.slots.some((item) => item.slotId === slotId);
 }
 
 export function nextTechniqueSlotId(plan: VideoPlan): string {
@@ -159,7 +151,7 @@ export function planFromFlatClips(input: {
   drillSec?: number;
 }): VideoPlan {
   const drillSec = clampDrillSec(input.drillSec ?? DEFAULT_DRILL_SEC);
-  const clips = [...new Set(input.clipIds.filter((id) => id.trim()))].slice(0, MAX_TECHNIQUE_CLIPS);
+  const clips = [...new Set(input.clipIds.filter((id) => id.trim()))];
   const count = Math.min(MAX_TECHNIQUE_SLOTS, Math.max(MIN_TECHNIQUE_SLOTS, clips.length));
   const used: string[] = [];
   const techniques: VideoSlot[] = [];
@@ -356,7 +348,7 @@ export function sanitizeVideoPlan(
 
 /**
  * Clips saved before slots existed, or left behind by a repair, fill empty technique cards first.
- * Stops at the 10-clip cap. Does not delete leftovers.
+ * Does not delete leftovers that have no empty card.
  */
 export function assignOrphanClips(
   plan: VideoPlan,
@@ -369,7 +361,6 @@ export function assignOrphanClips(
   let next = plan;
   let changed = false;
   for (const clipId of orphans) {
-    if (clipCount(next) >= MAX_TECHNIQUE_CLIPS) break;
     let slot = next.slots.find((item) => item.kind === 'technique' && !item.clipId);
     if (!slot && next.slots.filter((item) => item.kind === 'technique').length < MAX_TECHNIQUE_SLOTS) {
       const inserted = insertTechniqueSlot(next, nextTechniqueSlotId(next));

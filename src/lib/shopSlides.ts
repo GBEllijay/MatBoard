@@ -8,9 +8,6 @@ import { normalizeQrUrl } from './gymCalendar.ts';
 
 export const SHOP_FOLDER_ID = 'shop';
 
-/** On-device inventory ceiling. Gallery has no cap; shop images plus QR text stay bounded. */
-export const SHOP_ITEM_CAP = 40;
-
 export const SHOP_BUY_URL_MAX = 500;
 
 export const SHOP_CAST_MODES = ['images', 'images-qr', 'images-qr-logo'] as const;
@@ -40,11 +37,6 @@ export function normalizeShopCastMode(raw: unknown): ShopCastMode {
   return SHOP_CAST_MODES.includes(raw as ShopCastMode)
     ? (raw as ShopCastMode)
     : DEFAULT_SHOP_CAST_MODE;
-}
-
-export function shopSlotsLeft(existingCount: number, cap = SHOP_ITEM_CAP): number {
-  if (!Number.isFinite(existingCount) || existingCount <= 0) return cap;
-  return Math.max(0, cap - Math.floor(existingCount));
 }
 
 export function normalizeBuyUrl(raw: unknown): string {

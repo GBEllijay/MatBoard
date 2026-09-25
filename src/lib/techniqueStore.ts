@@ -14,13 +14,12 @@ import {
 } from './techniqueLogic';
 import { comparePlaylistItems, type PlaylistItem } from './playlist';
 import { mimeFromFile, VIDEO_ACCEPT } from './photoStore';
+import { assertOriginRoom, isStorageQuotaError, StorageQuotaError } from './storageQuota.ts';
 
 export {
   canAssignClip,
   clipCount,
-  clipSlotsLeft,
   DEFAULT_DRILL_SEC,
-  MAX_TECHNIQUE_CLIPS,
   pickAddableVideos,
   resolveSelectedId,
 } from './techniqueLogic';
@@ -44,7 +43,7 @@ export const TECHNIQUE_FOLDER = {
   accept: VIDEO_ACCEPT,
   mimePrefix: 'video/',
   labelPrefix: 'Clip',
-  emptyCopy: 'Add video opens Record or Pick from gallery — one clip per card, up to 10 on this device.',
+  emptyCopy: 'Add video opens Record or Pick from gallery — one clip per card. Clips stay on this device.',
   orderHint: 'Tap a card to select it. Start loops that clip.',
 } as const;
 
@@ -59,7 +58,7 @@ type ClipRow = Omit<TechniqueClip, 'folderId' | 'sortOrder'> & {
   sortOrder?: number;
 };
 
-export type SlotWriteStatus = 'added' | 'replaced' | 'removed' | 'invalid' | 'atCap' | 'missing' | 'empty';
+export type SlotWriteStatus = 'added' | 'replaced' | 'removed' | 'invalid' | 'missing' | 'empty';
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -193,7 +192,7 @@ export async function attachClipToSlot(
   if (!slot) return { plan, clips, status: 'missing' };
   const [picked] = pickAddableVideos([file], 1);
   if (!picked) return { plan, clips, status: 'invalid' };
-  if (!canAssignClip(plan, slotId)) return { plan, clips, status: 'atCap' };
+  if (!canAssignClip(plan, slotId)) return { plan, clips, status: 'missing' };
 
   const replacing = Boolean(slot.clipId);
   const clipId = crypto.randomUUID();
@@ -207,12 +206,19 @@ export async function attachClipToSlot(
     folderId: TECHNIQUE_FOLDER_ID,
     sortOrder: nextOrder,
   };
-  const db = await openDb();
-  const tx = db.transaction(CLIPS, 'readwrite');
-  const store = tx.objectStore(CLIPS);
-  if (slot.clipId) store.delete(slot.clipId);
-  store.put(row);
-  await txDone(tx);
+  await assertOriginRoom(picked.size);
+  try {
+    const db = await openDb();
+    const tx = db.transaction(CLIPS, 'readwrite');
+    const store = tx.objectStore(CLIPS);
+    if (slot.clipId) store.delete(slot.clipId);
+    store.put(row);
+    await txDone(tx);
+  } catch (error) {
+    if (error instanceof StorageQuotaError) throw error;
+    if (isStorageQuotaError(error)) throw new StorageQuotaError(0);
+    throw error;
+  }
 
   const next = selectSlot(setSlotClip(plan, slotId, clipId), slotId);
   await saveTechniquePlan(next);

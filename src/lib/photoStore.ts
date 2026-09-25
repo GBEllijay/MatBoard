@@ -1,4 +1,15 @@
+import { shrinkPhotoForStore } from './imageShrink.ts';
 import { PHOTO_PICKER_ACCEPT, VIDEO_PICKER_ACCEPT } from './mediaPicker.ts';
+import { assertOriginRoom, isStorageQuotaError, StorageQuotaError } from './storageQuota.ts';
+
+export {
+  DEVICE_STORAGE_FULL_NOTE,
+  LARGE_MEDIA_BYTES,
+  LARGE_MEDIA_NOTE,
+  StorageQuotaError,
+  isStorageQuotaError,
+  quotaAddNote,
+} from './storageQuota.ts';
 import {
   buildPlayQueue,
   comparePlaylistItems,
@@ -11,7 +22,6 @@ import {
   normalizeBuyUrl,
   normalizeShopCastMode,
   normalizeStartsSlide,
-  shopSlotsLeft,
   type ShopCastMode,
 } from './shopSlides.ts';
 
@@ -68,9 +78,9 @@ export const FOLDERS = [
     mimePrefix: 'image/',
     labelPrefix: 'Card',
     emptyCopy:
-      'No Pro Shop cards yet. Add a product photo, name it, and paste a buy link. The TV makes a QR for each card on a slide. This device keeps 40 cards.',
+      'No Pro Shop cards yet. Add a product photo, name it, and paste a buy link. The TV makes a QR for each card on a slide. Photos stay on this device.',
     orderHint:
-      'Top card shows first when In order is on. Hold the grip, then drag — or tap Up / Down. Same slide puts the next card on that TV page. Each card still gets its own QR. This device keeps 40 cards.',
+      'Top card shows first when In order is on. Hold the grip, then drag — or tap Up / Down. Same slide puts the next card on that TV page. Each card still gets its own QR. Photos stay on this device.',
   },
   {
     id: 'events',
@@ -360,41 +370,60 @@ async function persistMediaRows(rows: PhotoRow[]): Promise<void> {
   await txDone(tx);
 }
 
+async function blobForFolderFile(
+  file: File,
+  folder: FolderConfig,
+): Promise<{ blob: Blob; mime: string }> {
+  const video = folder.id === 'gallery' && isAcceptedVideoFile(file);
+  if (video) return { blob: file, mime: mimeFromFile(file, folder) };
+  const blob = await shrinkPhotoForStore(file);
+  const mime = blob.type.startsWith('image/') ? blob.type : 'image/jpeg';
+  return { blob, mime };
+}
+
 export async function addFolderFiles(files: File[], folderId: FolderId): Promise<number> {
   const folder = folderById(folderId);
   const existing = await listPhotos(folderId);
-  const db = await openDb();
-  const tx = db.transaction(STORE, 'readwrite');
-  const store = tx.objectStore(STORE);
   let photoCount = existing.filter((photo) => !isVideoItem(photo)).length;
   let videoCount = existing.filter((photo) => isVideoItem(photo)).length;
   let nextOrder = existing.reduce((max, photo) => Math.max(max, photo.sortOrder), -1);
-  let added = 0;
-  let room = folderId === 'shop' ? shopSlotsLeft(existing.length) : Number.POSITIVE_INFINITY;
+  const pending: StoredPhoto[] = [];
   for (const file of files) {
     if (!fileMatchesFolder(file, folder)) continue;
-    if (room <= 0) break;
-    room -= 1;
     nextOrder += 1;
-    added += 1;
     const video = folder.id === 'gallery' && isAcceptedVideoFile(file);
     if (video) videoCount += 1;
     else photoCount += 1;
-    const photo: StoredPhoto = {
+    const stored = await blobForFolderFile(file, folder);
+    pending.push({
       id: crypto.randomUUID(),
-      mime: mimeFromFile(file, folder),
+      mime: stored.mime,
       addedAt: Date.now(),
-      blob: file,
+      blob: stored.blob,
       label: `${video ? 'Video' : folder.labelPrefix} ${video ? videoCount : photoCount}`,
       folderId,
       sortOrder: nextOrder,
       playEnabled: true,
       buyUrl: '',
       startsSlide: true,
-    };
-    store.put(photo);
+    });
   }
-  await txDone(tx);
+  if (!pending.length) return 0;
+  const db = await openDb();
+  let added = 0;
+  for (const photo of pending) {
+    await assertOriginRoom(photo.blob.size, added);
+    try {
+      const tx = db.transaction(STORE, 'readwrite');
+      tx.objectStore(STORE).put(photo);
+      await txDone(tx);
+      added += 1;
+    } catch (error) {
+      if (error instanceof StorageQuotaError) throw error;
+      if (isStorageQuotaError(error)) throw new StorageQuotaError(added);
+      throw error;
+    }
+  }
   return added;
 }
 

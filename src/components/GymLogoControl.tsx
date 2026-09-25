@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { DeviceMediaInput } from './DeviceMediaInput';
 import { MediaSourceSheet } from './VideoSourceSheet';
 import { clearGymLogo, readGymLogo, saveGymLogoFile } from '../lib/gymLogo';
+import { quotaAddNote } from '../lib/storageQuota';
 import { GYM_NAME_MAX, readGymName, writeGymName } from '../lib/gymName';
 import { PHOTO_PICKER_ACCEPT, VIDEO_CAPTURE } from '../lib/mediaPicker';
 
@@ -25,8 +26,8 @@ export function GymLogoControl() {
       const saved = await saveGymLogoFile(file);
       setLogoUrl(saved);
       setNote('');
-    } catch {
-      setNote('That file is not a photo this logo can keep.');
+    } catch (error) {
+      setNote(quotaAddNote(error) ?? 'That file is not a photo this logo can keep.');
     }
   };
 

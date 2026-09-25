@@ -3,13 +3,11 @@ import test from 'node:test';
 import {
   DEFAULT_SHOP_CAST_MODE,
   SHOP_CAST_MODE_OPTIONS,
-  SHOP_ITEM_CAP,
   buildCastSlides,
   buyLinkForQr,
   normalizeBuyUrl,
   normalizeShopCastMode,
   shopSlideNumbers,
-  shopSlotsLeft,
   slideMarksForList,
   type ShopSlideItem,
 } from './shopSlides.ts';
@@ -43,14 +41,6 @@ test('buy links trim, cap length, and add https the way Class Schedule does', ()
   assert.equal(buyLinkForQr('   '), '');
   assert.equal(normalizeBuyUrl(12), '');
   assert.equal(normalizeBuyUrl(` ${'a'.repeat(800)} `).length, 500);
-});
-
-test('soft cap counts remaining Pro Shop cards', () => {
-  assert.equal(SHOP_ITEM_CAP, 40);
-  assert.equal(shopSlotsLeft(0), 40);
-  assert.equal(shopSlotsLeft(39), 1);
-  assert.equal(shopSlotsLeft(40), 0);
-  assert.equal(shopSlotsLeft(80), 0);
 });
 
 test('a multi-card slide keeps every product instead of collapsing to one QR', () => {

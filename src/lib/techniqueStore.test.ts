@@ -6,7 +6,6 @@ import {
   canAssignClip,
   clampDrillSec,
   clipCount,
-  clipSlotsLeft,
   COOLDOWN_SLOT_ID,
   DEFAULT_DRILL_SEC,
   DRILL_PRESETS_SEC,
@@ -14,7 +13,6 @@ import {
   insertTechniqueSlot,
   isDrillPreset,
   MAX_DRILL_SEC,
-  MAX_TECHNIQUE_CLIPS,
   MAX_TECHNIQUE_SLOTS,
   MIN_DRILL_SEC,
   nextTechniqueSlotId,
@@ -33,15 +31,6 @@ const TECHNIQUE_FOLDER_ID = 'techniques';
 function video(name: string, type = 'video/mp4'): File {
   return new File(['clip'], name, { type });
 }
-
-describe('clipSlotsLeft', () => {
-  it('caps the list at 10 clips', () => {
-    assert.equal(clipSlotsLeft(0), 10);
-    assert.equal(clipSlotsLeft(7), 3);
-    assert.equal(clipSlotsLeft(MAX_TECHNIQUE_CLIPS), 0);
-    assert.equal(clipSlotsLeft(99), 0);
-  });
-});
 
 describe('pickAddableVideos', () => {
   it('keeps videos and drops other files', () => {
@@ -185,17 +174,18 @@ describe('video slot plan', () => {
     assert.equal(insertTechniqueSlot(full, 'tech-extra'), null);
   });
 
-  it('keeps one clip in one slot and allows replace at the cap', () => {
+  it('still allows a warm-up clip when every technique card already has one', () => {
     const plan = planFromFlatClips({
-      clipIds: Array.from({ length: MAX_TECHNIQUE_CLIPS }, (_, index) => `c${index}`),
+      clipIds: Array.from({ length: MAX_TECHNIQUE_SLOTS }, (_, index) => `c${index}`),
     });
     const warmupId = plan.slots[0]?.slotId ?? WARMUP_SLOT_ID;
-    assert.equal(canAssignClip(plan, warmupId), false);
+    assert.equal(clipCount(plan), MAX_TECHNIQUE_SLOTS);
+    assert.equal(canAssignClip(plan, warmupId), true);
     assert.equal(canAssignClip(plan, 'tech-1'), true);
     const moved = setSlotClip(plan, warmupId, 'c0');
     assert.equal(moved.slots[0]?.clipId, 'c0');
     assert.equal(moved.slots.find((slot) => slot.slotId === 'tech-1')?.clipId, null);
-    assert.equal(clipCount(moved), MAX_TECHNIQUE_CLIPS);
+    assert.equal(clipCount(moved), MAX_TECHNIQUE_SLOTS);
   });
 
   it('places orphan clips on empty technique cards before warm-up', () => {
