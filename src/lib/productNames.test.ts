@@ -20,6 +20,7 @@ import {
   coachToolsOpen,
   parentToolboxPath,
   COMPETITOR_SYSTEM_NAME,
+  INSTRUCTOR_COLLAB_HUB_LABEL,
   INSTRUCTOR_COLLAB_NAME,
   INSTRUCTOR_COACH_ENTRY,
   MATCH_CONTROLLER_PATH,
@@ -87,12 +88,16 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   assert.equal(COMPETITOR_SYSTEM_NAME, 'Competitor Management System');
   assert.equal(INSTRUCTOR_COLLAB_NAME, 'Instructor Collaboration and Cloud Access');
   assert.equal(
+    INSTRUCTOR_COLLAB_HUB_LABEL,
+    'Instructor Collaboration & Advantage Coach Unlimited',
+  );
+  assert.equal(
     INSTRUCTOR_COACH_ENTRY,
     'Advantage Coach Unlimited',
   );
   assert.deepEqual(
     PRO_HUBS.map((hub) => hub.title),
-    [MEDIA_CONSOLE_NAME, COMPETITOR_SYSTEM_NAME, INSTRUCTOR_COLLAB_NAME, TOURNAMENT_SUITE_NAME],
+    [MEDIA_CONSOLE_NAME, COMPETITOR_SYSTEM_NAME, INSTRUCTOR_COLLAB_HUB_LABEL, TOURNAMENT_SUITE_NAME],
   );
   assert.deepEqual(
     PRO_HUBS.map((hub) => hub.to),

@@ -57,8 +57,11 @@ export const TOURNAMENT_SUITE_NAME = 'In-House Tournament Management Suite';
 /** Pro hub for bout competitors, roster CSV, and on-device rankings. */
 export const COMPETITOR_SYSTEM_NAME = 'Competitor Management System';
 
-/** Plan-only Pro hub. No cloud sync in this build. */
+/** Plan-only Pro hub page title. No cloud sync in this build. */
 export const INSTRUCTOR_COLLAB_NAME = 'Instructor Collaboration and Cloud Access';
+
+/** Pro homepage hub button. The instructor page title stays INSTRUCTOR_COLLAB_NAME. */
+export const INSTRUCTOR_COLLAB_HUB_LABEL = 'Instructor Collaboration & Advantage Coach Unlimited';
 
 /** Jump from the instructor hub into Advantage Coach. Keep Unlimited in the label. */
 export const INSTRUCTOR_COACH_ENTRY = 'Advantage Coach Unlimited';
@@ -73,7 +76,7 @@ export const MEDIA_CONSOLE_NAME = 'Media Console';
 export const PRO_HUBS = [
   { title: MEDIA_CONSOLE_NAME, to: '/slideshow?folder=gallery', belt: 'purple' },
   { title: COMPETITOR_SYSTEM_NAME, to: '/competitors', belt: 'brown' },
-  { title: INSTRUCTOR_COLLAB_NAME, to: '/instructors', belt: 'black' },
+  { title: INSTRUCTOR_COLLAB_HUB_LABEL, to: '/instructors', belt: 'black' },
   { title: TOURNAMENT_SUITE_NAME, to: '/suite', belt: 'tournament' },
 ] as const;
 
