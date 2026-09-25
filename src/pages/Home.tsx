@@ -1,44 +1,179 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { BeltRail } from '../components/BeltRail';
+import { ComingSoonAd, ComingSoonAdActions } from '../components/ComingSoonAd';
+import { HomeMark } from '../components/HomeMark';
+import { ProUnlockSheet } from '../components/ProUnlockSheet';
+import { Sheet } from '../components/Sheet';
+import { SiteFooter } from '../components/SiteFooter';
+import { TierLine } from '../components/TierLine';
+import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
+import { useProUnlocked } from '../hooks/useProUnlocked';
+import {
+  COMING_SOON_ADS,
+  type SoonProduct,
+} from '../lib/comingSoonAds';
+import { COACH_TOOLS_TEASER } from '../lib/coachCopy';
+import {
+  COACH_HOME_LINES,
+  GYM_CONSOLE_NAME,
+  HOME_MOTTO,
+  PRO_HOME_DETAIL,
+  PRO_HOME_LINES,
+  WHITE_HOME_LINES,
+  WHITE_LADDER_DETAIL,
+  coachToolsOpen,
+} from '../lib/productNames';
 
 export function HomePage() {
+  const proUnlocked = useProUnlocked();
+  const coachOpen = coachToolsOpen(proUnlocked, useCoachUnlocked());
+  const [unlockOpen, setUnlockOpen] = useState<'coach' | 'pro' | null>(null);
+  const [soon, setSoon] = useState<SoonProduct | null>(null);
+
+  const openUnlock = (product: 'coach' | 'pro') => {
+    setSoon(null);
+    setUnlockOpen(product);
+  };
+
   return (
-    <main className="home">
-      <div className="home__mark">
-        <img className="home__logo" src="/advantage-icon.png" alt="" width={713} height={713} />
-        <h1>Advantage</h1>
-        <p>Gym scoreboard, round timer and photo slideshow.</p>
+    <main className="home home--ladder">
+      <div className="home__inner">
+        <HomeMark motto={HOME_MOTTO} tagline="BJJ scoreboard, round timer, and gym tools." />
+
+        <nav className="home__modes" aria-label="Products">
+          <Link className="mode-card mode-card--white" to="/white">
+            <BeltRail kind="white" />
+            <strong>Advantage White</strong>
+            <span className="mode-card__sub">
+              <TierLine tier="White" detail={WHITE_LADDER_DETAIL} />
+            </span>
+            <HomeLines lines={WHITE_HOME_LINES} />
+            <span className="mode-card__actions">
+              <span className="btn btn--white">Open White</span>
+            </span>
+          </Link>
+
+          {coachOpen ? (
+            <article className="mode-card mode-card--coach">
+              <Link
+                className="mode-card__hit"
+                to="/coach"
+                tabIndex={-1}
+                aria-label="Open Advantage Coach"
+              />
+              <BeltRail kind="blue" />
+              <strong>Advantage Coach</strong>
+              <span className="mode-card__sub">
+                <TierLine tier="Coach" detail={COACH_TOOLS_TEASER} />
+              </span>
+              <HomeLines lines={COACH_HOME_LINES} />
+              <div className="mode-card__actions">
+                <Link className="btn btn--white" to="/coach">
+                  Open Coach
+                </Link>
+              </div>
+            </article>
+          ) : (
+            <button
+              type="button"
+              className="mode-card mode-card--coach mode-card--locked"
+              aria-haspopup="dialog"
+              aria-label="Advantage Coach, coming soon"
+              onClick={() => setSoon('coach')}
+            >
+              <BeltRail kind="blue" />
+              <strong>Advantage Coach</strong>
+              <span className="mode-card__sub">
+                <TierLine tier="Coach" detail={COACH_TOOLS_TEASER} />
+              </span>
+              <HomeLines lines={COACH_HOME_LINES} />
+            </button>
+          )}
+
+          {proUnlocked ? (
+            <article className="mode-card mode-card--pro">
+              <Link
+                className="mode-card__hit"
+                to="/pro"
+                tabIndex={-1}
+                aria-label={`Open ${GYM_CONSOLE_NAME}`}
+              />
+              <ProHomeCopy />
+              <div className="mode-card__actions">
+                <Link className="btn btn--white" to="/pro">
+                  Open Console
+                </Link>
+              </div>
+            </article>
+          ) : (
+            <button
+              type="button"
+              className="mode-card mode-card--pro mode-card--locked"
+              aria-haspopup="dialog"
+              onClick={() => setSoon('pro')}
+            >
+              <ProHomeCopy />
+            </button>
+          )}
+        </nav>
+
+        <div className="home__hints">
+          <p className="home__hint">
+            Install Advantage as an app from your browser menu for best results.
+          </p>
+        </div>
+        <SiteFooter />
       </div>
 
-      <nav className="home__modes" aria-label="Modes">
-        <article className="mode-card mode-card--match">
-          <strong>Live Bout</strong>
-          <span className="mode-card__sub">Match Timer &amp; Scoreboard</span>
-          <span>
-            Run a tournament-style match. Control the clock and scores from your phone while casting to your TV.
-          </span>
-          <div className="mode-card__actions">
-            <Link className="btn" to="/match">
-              Scoreboard
-            </Link>
-            <Link className="btn btn--ghost" to="/match/control">
-              Controller
-            </Link>
-          </div>
-        </article>
-        <Link className="mode-card mode-card--training" to="/training">
-          <strong>Rounds</strong>
-          <span className="mode-card__sub">Training Timer</span>
-          <span>Round timer that can be cast to your TV. Set round length, rest time, and how many rounds.</span>
-        </Link>
-        <Link className="mode-card mode-card--saver" to="/screensaver">
-          <strong>Slideshow</strong>
-          <span className="mode-card__sub">Gallery</span>
-          <span>Easily display photos, logos and gym information on your TV.</span>
-        </Link>
-      </nav>
-
-      <p className="home__hint">Install Advantage as an app from your browser menu.</p>
-      <p className="home__hint">Control from your phone. Cast the scoreboard to your TV, or open Display on a second screen.</p>
+      <Sheet
+        className="sheet--ad"
+        open={soon !== null}
+        title={soon ? COMING_SOON_ADS[soon].title : 'Coming soon'}
+        onClose={() => setSoon(null)}
+        footer={
+          soon ? (
+            <ComingSoonAdActions
+              product={soon}
+              onDismiss={() => setSoon(null)}
+              extraAction={{
+                label: 'Owner unlock',
+                onClick: () => openUnlock(soon),
+              }}
+            />
+          ) : null
+        }
+      >
+        {soon ? <ComingSoonAd product={soon} /> : null}
+      </Sheet>
+      <ProUnlockSheet
+        product={unlockOpen ?? 'pro'}
+        open={unlockOpen !== null}
+        onClose={() => setUnlockOpen(null)}
+      />
     </main>
+  );
+}
+
+function HomeLines({ lines }: { lines: readonly string[] }) {
+  return (
+    <span className="mode-card__copy">
+      {lines.map((line) => (
+        <span key={line}>{line}</span>
+      ))}
+    </span>
+  );
+}
+
+function ProHomeCopy() {
+  return (
+    <>
+      <BeltRail kind="black" />
+      <strong>Advantage Pro</strong>
+      <span className="mode-card__sub">
+        <TierLine tier="Pro" detail={PRO_HOME_DETAIL} />
+      </span>
+      <HomeLines lines={PRO_HOME_LINES} />
+    </>
   );
 }

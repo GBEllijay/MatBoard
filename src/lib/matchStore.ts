@@ -1,12 +1,35 @@
 import { clamp, minutesToMs, secondsToMs } from './format';
-import { getAudioPrefs, parseEndCue, playSelectedEndCue, type EndCue } from './audio';
+import {
+  getAudioPrefs,
+  parseEndCue,
+  playSelectedEndCue,
+  playStartCue,
+  playWarningCue,
+  type EndCue,
+} from './audio';
+import {
+  autoPointsOutcome,
+  decideClockEnd,
+  parseMatchOutcome,
+  type MatchOutcome,
+  type Side,
+} from './outcomes';
+import { isBracketMatchId, scoreboardSideToBracket, setMatchOutcome } from './tournamentStore';
 
-export type Side = 'blue' | 'white';
+export type { MatchOutcome, Side };
 export type ScoreKind = 'points' | 'advantages' | 'disadvantages';
+
+export type OutcomeFlash = {
+  kind: 'win' | 'dq';
+  side: Side;
+  at: number;
+};
 
 export type Competitor = {
   name: string;
   gym: string;
+  /** Belt / rank chip from Roster pick. Empty when typed by hand. */
+  rank: string;
   points: number;
   advantages: number;
   disadvantages: number;
@@ -21,8 +44,25 @@ export type MatchState = {
   remainingMs: number;
   running: boolean;
   startedAt: number | null;
+  startBeep: boolean;
+  warningBeep: boolean;
+  warned: boolean;
   endBuzzer: boolean;
   endCue: EndCue;
+  /**
+   * When set, this live bout reports Win/DQ into that mock-bracket match.
+   * One of `MATCH_IDS` from tournamentStore.
+   */
+  bracketMatchId: string | null;
+  /**
+   * When the clock hits 0:00, flash Winner if points / advantages / penalties decide it.
+   * Gym default on; persist with the match.
+   */
+  autoAnnounce: boolean;
+  /** Last Win (Submission / Points / Decision) or DQ (Technical / Medical). Survives reload; flash does not. */
+  outcome: MatchOutcome | null;
+  /** Brief center splash; not restored after reload. */
+  outcomeFlash: OutcomeFlash | null;
   revision: number;
 };
 
@@ -35,15 +75,34 @@ export type MatchAction =
   | { type: 'resetScores' }
   | { type: 'setDuration'; durationMs: number }
   | { type: 'setField'; field: 'round' | 'division'; value: string }
-  | { type: 'setCompetitor'; side: Side; field: 'name' | 'gym'; value: string }
+  | { type: 'setCompetitor'; side: Side; field: 'name' | 'gym' | 'rank'; value: string }
+  | { type: 'setStartBeep'; value: boolean }
+  | { type: 'setWarningBeep'; value: boolean }
+  | { type: 'markWarned' }
   | { type: 'setEndBuzzer'; value: boolean }
   | { type: 'setEndCue'; value: EndCue }
+  | { type: 'setBracketMatchId'; value: string | null }
+  | { type: 'setAutoAnnounce'; value: boolean }
+  | { type: 'setOutcomeFlash'; value: OutcomeFlash | null }
+  | {
+      type: 'loadBracketBout';
+      matchId: string;
+      blueName: string;
+      whiteName: string;
+      blueGym: string;
+      whiteGym: string;
+      round: string;
+      division: string;
+    }
+  | { type: 'beginOutcome'; flash: OutcomeFlash; outcome: MatchOutcome }
   | { type: 'expireClock' };
 
 const STORAGE_KEY = 'matboard.match.v1';
 const CHANNEL_NAME = 'matboard-match-v1';
-export const TIME_PRESETS_MIN = [5, 6, 7, 8, 10, 20, 30] as const;
+export const TIME_PRESETS_MIN = [3, 5, 10] as const;
 export const CLOCK_NUDGES_SEC = [-5, -1, 1, 5] as const;
+/** Optional Match 10-second warning; off by default (IBJJF does not use one). */
+export const MATCH_WARNING_MS = 10_000;
 /** Existing custom duration ceiling (180 minutes). */
 export const MAX_REMAINING_MS = minutesToMs(180);
 /** Display-friendly nudge cap (99:59) unless the match duration is longer. */
@@ -62,6 +121,8 @@ let channel: BroadcastChannel | null = null;
 let applyingRemote = false;
 let state: MatchState = loadState();
 let buzzedRevision = -1;
+let startedRevision = -1;
+let warnedRevision = -1;
 
 type PresentationLike = {
   send: (data: string) => void;
@@ -70,7 +131,7 @@ type PresentationLike = {
 };
 
 function defaultCompetitor(name: string): Competitor {
-  return { name, gym: '', points: 0, advantages: 0, disadvantages: 0 };
+  return { name, gym: '', rank: '', points: 0, advantages: 0, disadvantages: 0 };
 }
 
 export function defaultMatch(): MatchState {
@@ -78,14 +139,21 @@ export function defaultMatch(): MatchState {
   return {
     blue: defaultCompetitor('Competitor 1'),
     white: defaultCompetitor('Competitor 2'),
-    round: '1',
+    round: '',
     division: '',
     durationMs,
     remainingMs: durationMs,
     running: false,
     startedAt: null,
+    startBeep: false,
+    warningBeep: false,
+    warned: false,
     endBuzzer: true,
     endCue: getAudioPrefs().endCue,
+    bracketMatchId: null,
+    autoAnnounce: true,
+    outcome: null,
+    outcomeFlash: null,
     revision: 1,
   };
 }
@@ -99,10 +167,25 @@ function loadState(): MatchState {
     return {
       ...base,
       ...parsed,
-      blue: { ...base.blue, ...parsed.blue },
-      white: { ...base.white, ...parsed.white },
+      blue: {
+        ...base.blue,
+        ...parsed.blue,
+        rank: typeof parsed.blue?.rank === 'string' ? parsed.blue.rank : '',
+      },
+      white: {
+        ...base.white,
+        ...parsed.white,
+        rank: typeof parsed.white?.rank === 'string' ? parsed.white.rank : '',
+      },
+      startBeep: parsed.startBeep === true,
+      warningBeep: parsed.warningBeep === true,
+      warned: Boolean(parsed.warned),
       endBuzzer: typeof parsed.endBuzzer === 'boolean' ? parsed.endBuzzer : true,
       endCue: parsed.endCue != null ? parseEndCue(parsed.endCue) : getAudioPrefs().endCue,
+      bracketMatchId: typeof parsed.bracketMatchId === 'string' ? parsed.bracketMatchId : null,
+      autoAnnounce: parsed.autoAnnounce !== false,
+      outcome: parseMatchOutcome(parsed.outcome),
+      outcomeFlash: null,
       revision: Number(parsed.revision ?? 1),
     };
   } catch {
@@ -166,12 +249,45 @@ function persist(next: MatchState): void {
       }
     }
   }
-  maybeBuzz(prev, next);
+  maybeMatchCues(prev, next);
+  maybeWriteAutoBracket(prev, next);
   listeners.forEach((fn) => fn());
 }
 
 function bumpRevision(s: MatchState): MatchState {
   return { ...s, revision: s.revision + 1 };
+}
+
+function withoutOutcome(current: MatchState): MatchState {
+  return { ...current, outcome: null, outcomeFlash: null };
+}
+
+function maybeAutoAnnounce(current: MatchState): MatchState {
+  if (!current.autoAnnounce || current.outcome || current.outcomeFlash) return current;
+  const verdict = decideClockEnd(current.blue, current.white);
+  if (verdict.kind !== 'winner') return current;
+  const at = Date.now();
+  return {
+    ...current,
+    outcome: autoPointsOutcome(verdict.side, verdict.reason, at),
+    outcomeFlash: { kind: 'win', side: verdict.side, at },
+  };
+}
+
+function maybeWriteAutoBracket(prev: MatchState, next: MatchState): void {
+  if (applyingRemote || isPresentationReceiver()) return;
+  const outcome = next.outcome;
+  if (!outcome || outcome.source !== 'auto' || outcome.call !== 'win') return;
+  if (prev.outcome?.at === outcome.at && prev.outcome.side === outcome.side && prev.outcome.call === outcome.call) {
+    return;
+  }
+  if (!isBracketMatchId(next.bracketMatchId)) return;
+  setMatchOutcome(
+    next.bracketMatchId,
+    scoreboardSideToBracket(outcome.side),
+    { call: 'win', method: outcome.method, scoreReason: outcome.scoreReason },
+    { toggle: false },
+  );
 }
 
 function applyAction(current: MatchState, action: MatchAction): MatchState {
@@ -195,67 +311,134 @@ function applyAction(current: MatchState, action: MatchAction): MatchState {
       }
       const remaining = remainingNow(current);
       if (remaining <= 0) {
-        return bumpRevision({
-          ...current,
-          running: true,
-          remainingMs: current.durationMs,
-          startedAt: Date.now(),
-        });
+        return bumpRevision(
+          withoutOutcome({
+            ...current,
+            running: true,
+            remainingMs: current.durationMs,
+            startedAt: Date.now(),
+            warned: false,
+          }),
+        );
       }
       return bumpRevision({
         ...current,
         running: true,
         remainingMs: remaining,
         startedAt: Date.now(),
+        warned: remaining > MATCH_WARNING_MS ? false : current.warned,
       });
     }
     case 'resetClock':
-      return bumpRevision({
-        ...current,
-        running: false,
-        remainingMs: current.durationMs,
-        startedAt: null,
-      });
+      return bumpRevision(
+        withoutOutcome({
+          ...current,
+          running: false,
+          remainingMs: current.durationMs,
+          startedAt: null,
+          warned: false,
+        }),
+      );
     case 'adjustClock': {
       const now = Date.now();
-      return bumpRevision({
+      const next = applyAdjustClock(current, action.deltaMs, now);
+      const stoppedAtZero = next.remainingMs <= 0;
+      const adjusted = {
         ...current,
-        ...applyAdjustClock(current, action.deltaMs, now),
-      });
+        ...next,
+        warned: next.remainingMs > MATCH_WARNING_MS ? false : current.warned,
+      };
+      return bumpRevision(stoppedAtZero ? maybeAutoAnnounce(adjusted) : adjusted);
     }
     case 'resetScores':
-      return bumpRevision({
-        ...current,
-        blue: { ...current.blue, points: 0, advantages: 0, disadvantages: 0 },
-        white: { ...current.white, points: 0, advantages: 0, disadvantages: 0 },
-      });
+      return bumpRevision(
+        withoutOutcome({
+          ...current,
+          blue: { ...current.blue, points: 0, advantages: 0, disadvantages: 0 },
+          white: { ...current.white, points: 0, advantages: 0, disadvantages: 0 },
+        }),
+      );
     case 'setDuration':
-      return bumpRevision({
-        ...current,
-        durationMs: action.durationMs,
-        remainingMs: action.durationMs,
-        running: false,
-        startedAt: null,
-      });
+      return bumpRevision(
+        withoutOutcome({
+          ...current,
+          durationMs: action.durationMs,
+          remainingMs: action.durationMs,
+          running: false,
+          startedAt: null,
+          warned: false,
+        }),
+      );
     case 'setField':
       return bumpRevision({ ...current, [action.field]: action.value });
-    case 'setCompetitor':
+    case 'setCompetitor': {
+      const competitor = { ...current[action.side], [action.field]: action.value };
+      if (action.field === 'name' && !action.value.trim()) {
+        competitor.rank = '';
+        competitor.gym = '';
+      }
       return bumpRevision({
         ...current,
-        [action.side]: { ...current[action.side], [action.field]: action.value },
+        [action.side]: competitor,
       });
+    }
+    case 'setStartBeep':
+      return bumpRevision({ ...current, startBeep: action.value });
+    case 'setWarningBeep':
+      return bumpRevision({ ...current, warningBeep: action.value, warned: action.value ? current.warned : false });
+    case 'markWarned':
+      if (current.warned) return current;
+      return bumpRevision({ ...current, warned: true });
     case 'setEndBuzzer':
       return bumpRevision({ ...current, endBuzzer: action.value });
     case 'setEndCue':
       return bumpRevision({ ...current, endCue: parseEndCue(action.value) });
-    case 'expireClock': {
-      if (!current.running || remainingNow(current) > 0) return current;
+    case 'setBracketMatchId':
+      return bumpRevision(
+        action.value == null
+          ? withoutOutcome({ ...current, bracketMatchId: null })
+          : { ...current, bracketMatchId: action.value },
+      );
+    case 'setAutoAnnounce':
+      return bumpRevision({ ...current, autoAnnounce: action.value });
+    case 'setOutcomeFlash':
+      return bumpRevision({ ...current, outcomeFlash: action.value });
+    case 'loadBracketBout':
+      return bumpRevision(
+        withoutOutcome({
+          ...current,
+          blue: { name: action.blueName, gym: action.blueGym, rank: '', points: 0, advantages: 0, disadvantages: 0 },
+          white: { name: action.whiteName, gym: action.whiteGym, rank: '', points: 0, advantages: 0, disadvantages: 0 },
+          round: action.round,
+          division: action.division,
+          remainingMs: current.durationMs,
+          running: false,
+          startedAt: null,
+          warned: false,
+          bracketMatchId: action.matchId,
+        }),
+      );
+    case 'beginOutcome': {
+      const paused = current.running
+        ? { running: false, remainingMs: remainingNow(current), startedAt: null }
+        : {};
       return bumpRevision({
         ...current,
-        running: false,
-        remainingMs: 0,
-        startedAt: null,
+        ...paused,
+        outcome: action.outcome,
+        outcomeFlash: action.flash,
       });
+    }
+    case 'expireClock': {
+      if (!current.running || remainingNow(current) > 0) return current;
+      return bumpRevision(
+        maybeAutoAnnounce({
+          ...current,
+          running: false,
+          remainingMs: 0,
+          startedAt: null,
+        }),
+      );
     }
     default:
       return current;
@@ -271,7 +454,15 @@ export function subscribeMatch(fn: () => void): () => void {
   return () => listeners.delete(fn);
 }
 
-function maybeBuzz(prev: MatchState, next: MatchState): void {
+function maybeMatchCues(prev: MatchState, next: MatchState): void {
+  if (!prev.running && next.running && next.startBeep && startedRevision !== next.revision) {
+    startedRevision = next.revision;
+    playStartCue();
+  }
+  if (!prev.warned && next.warned && next.warningBeep && warnedRevision !== next.revision) {
+    warnedRevision = next.revision;
+    playWarningCue();
+  }
   if (!(prev.running && !next.running && next.remainingMs === 0 && next.endBuzzer)) return;
   if (buzzedRevision === next.revision) return;
   buzzedRevision = next.revision;
@@ -288,6 +479,12 @@ export function dispatchMatch(action: MatchAction): void {
 }
 
 export function expireMatchClock(): boolean {
+  if (state.running && state.warningBeep && !state.warned) {
+    const left = remainingNow(state);
+    if (left <= MATCH_WARNING_MS && left > 0) {
+      dispatchMatch({ type: 'markWarned' });
+    }
+  }
   if (!state.running) return false;
   if (remainingNow(state) > 0) return false;
   dispatchMatch({ type: 'expireClock' });

@@ -1,12 +1,35 @@
-import { useCallback, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useCallback, useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { BeltRail } from '../components/BeltRail';
 import { Chrome } from '../components/Chrome';
+import { Sheet } from '../components/Sheet';
+import { OutcomeCalls, OutcomePickSheet, useOutcomeSheet } from '../components/OutcomeCalls';
+import { PlayExitMark } from '../components/PlayExitMark';
+import { RankChip } from '../components/RankChip';
+import { RosterNameField } from '../components/RosterNameField';
+import { useBoutQuerySync, useBracketOutcomeReturn } from '../hooks/useBracketBoutReturn';
 import { useInterval } from '../hooks/useClock';
+import { useSuiteOrigin } from '../hooks/useSuiteOrigin';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useMatchState } from '../hooks/useStores';
-import { END_CUE_OPTIONS, patchAudioPrefs, playSelectedEndCue, unlockAudio, type EndCue } from '../lib/audio';
+import {
+  END_CUE_OPTIONS,
+  patchAudioPrefs,
+  playSelectedEndCue,
+  playStartCue,
+  playWarningCue,
+  unlockAudio,
+  type EndCue,
+} from '../lib/audio';
+import {
+  declareMatchOutcome,
+  linkedBracketMatchId,
+  scoreboardPath,
+  visibleOutcomeBanner,
+} from '../lib/bracketBout';
 import { openDisplayWindow, openOrCastDisplay } from '../lib/cast';
 import { minutesToMs, formatMmSs, secondsToMs } from '../lib/format';
+import { competitorFocus, displayFocusId, parseDisplayFocus } from '../lib/matchFocus';
 import {
   CLOCK_NUDGES_SEC,
   dispatchMatch,
@@ -17,6 +40,7 @@ import {
   type ScoreKind,
   type Side,
 } from '../lib/matchStore';
+import { needsRefDecision, outcomeSubtitle } from '../lib/outcomes';
 
 export function MatchControllerPage() {
   const match = useMatchState();
@@ -24,7 +48,39 @@ export function MatchControllerPage() {
   const [customOpen, setCustomOpen] = useState(false);
   const [customMinutes, setCustomMinutes] = useState('4');
   const [castNote, setCastNote] = useState('');
+  const [tvHelpOpen, setTvHelpOpen] = useState(false);
+  const [searchParams] = useSearchParams();
+  const suite = useSuiteOrigin();
   const remaining = remainingNow(match);
+  const durationIsPreset = TIME_PRESETS_MIN.some((minutes) => match.durationMs === minutesToMs(minutes));
+  const focusParam = searchParams.get('focus');
+  const linkedId = linkedBracketMatchId(match.bracketMatchId);
+  const flashing = Boolean(match.outcomeFlash);
+  const banner = visibleOutcomeBanner(match);
+  const refNeeded = needsRefDecision({ ...match, remainingMs: remaining });
+  const outcomeSheet = useOutcomeSheet();
+
+  useBoutQuerySync();
+  useBracketOutcomeReturn();
+
+  useEffect(() => {
+    const focus = parseDisplayFocus(focusParam);
+    if (!focus) return;
+    const id = displayFocusId(focus);
+    const run = () => {
+      const el = document.getElementById(id);
+      if (!(el instanceof HTMLElement)) return;
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      if (el instanceof HTMLInputElement) {
+        el.focus({ preventScroll: true });
+        el.select();
+      } else {
+        el.focus({ preventScroll: true });
+      }
+    };
+    const raf = window.requestAnimationFrame(run);
+    return () => window.cancelAnimationFrame(raf);
+  }, [focusParam]);
 
   useWakeLock(match.running);
   useInterval(
@@ -58,20 +114,30 @@ export function MatchControllerPage() {
   const onCast = async () => {
     void unlockAudio();
     try {
-      const mode = await openOrCastDisplay();
-      setCastNote(mode === 'cast' ? 'Display sent to the chosen screen.' : 'Scoreboard opened in a new window.');
+      const mode = await openOrCastDisplay({ fromSuite: suite.fromSuite });
+      setCastNote(
+        mode === 'cast'
+          ? 'Display sent to the chosen screen.'
+          : 'Scoreboard opened in a new window on this computer. Press F there for fullscreen.',
+      );
     } catch {
       setCastNote('Cast canceled. Use Open Display if you want a window instead.');
     }
   };
 
   return (
-    <main className="controller">
+    <main className={`controller${suite.fromSuite ? ' origin-suite' : ''}`}>
+      {suite.fromSuite ? <BeltRail kind="tournament" /> : null}
+      <PlayExitMark to={suite.homePath} />
       <Chrome
-        title="Controller"
         right={
           <>
-            <button type="button" className="chip" onClick={openDisplayWindow}>
+            {linkedId ? (
+              <Link to="/tournament" className="chip">
+                Back to bracket
+              </Link>
+            ) : null}
+            <button type="button" className="chip" onClick={() => openDisplayWindow({ fromSuite: suite.fromSuite })}>
               Display
             </button>
             <button type="button" className="chip chip--gold" onClick={() => void onCast()}>
@@ -123,18 +189,24 @@ export function MatchControllerPage() {
             Reset scores
           </button>
         </div>
-        <div className="presets" role="group" aria-label="Match length presets">
+        <div className="presets presets--match-length" role="group" aria-label="Match length presets">
           {TIME_PRESETS_MIN.map((minutes) => (
             <button
               key={minutes}
               type="button"
               className={`preset${match.durationMs === minutesToMs(minutes) ? ' preset--on' : ''}`}
+              aria-label={`${minutes} minutes`}
               onClick={() => setPreset(minutes)}
             >
               {minutes}
             </button>
           ))}
-          <button type="button" className="preset" onClick={() => setCustomOpen((v) => !v)}>
+          <button
+            type="button"
+            className={`preset${!durationIsPreset ? ' preset--on' : ''}`}
+            aria-expanded={customOpen}
+            onClick={() => setCustomOpen((v) => !v)}
+          >
             Custom
           </button>
         </div>
@@ -158,13 +230,16 @@ export function MatchControllerPage() {
           <label>
             Round
             <input
+              id={displayFocusId('round')}
               value={match.round}
+              placeholder="Optional"
               onChange={(e) => dispatchMatch({ type: 'setField', field: 'round', value: e.target.value })}
             />
           </label>
           <label>
             Division
             <input
+              id={displayFocusId('division')}
               value={match.division}
               onChange={(e) => dispatchMatch({ type: 'setField', field: 'division', value: e.target.value })}
               placeholder="Optional"
@@ -172,52 +247,116 @@ export function MatchControllerPage() {
           </label>
         </div>
 
+        <fieldset>
+          <legend>Match sounds</legend>
+          <label className="toggle">
+            <input
+              type="checkbox"
+              checked={match.startBeep}
+              onChange={(e) => dispatchMatch({ type: 'setStartBeep', value: e.target.checked })}
+            />
+            Start beep
+          </label>
+          <label className="toggle">
+            <input
+              type="checkbox"
+              checked={match.warningBeep}
+              onChange={(e) => dispatchMatch({ type: 'setWarningBeep', value: e.target.checked })}
+            />
+            10-second warning
+          </label>
+          <label className="toggle">
+            <input
+              type="checkbox"
+              checked={match.endBuzzer}
+              onChange={(e) => dispatchMatch({ type: 'setEndBuzzer', value: e.target.checked })}
+            />
+            Match end sound
+          </label>
+          <div className="cue-preview">
+            <p className="cue-preview-label">Match end cue</p>
+            <div className="presets presets--end-cue" role="radiogroup" aria-label="Match end cue">
+              {END_CUE_OPTIONS.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={match.endCue === option.id}
+                  className={`preset${match.endCue === option.id ? ' preset--on' : ''}`}
+                  onClick={() => chooseMatchEndCue(option.id)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="cue-preview">
+            <p className="cue-preview-label">Preview cues</p>
+            <div className="presets presets--three" role="group" aria-label="Preview match cues">
+              <button
+                type="button"
+                className="preset"
+                onClick={() => {
+                  void unlockAudio().then(() => playStartCue());
+                }}
+              >
+                Start
+              </button>
+              <button
+                type="button"
+                className="preset"
+                onClick={() => {
+                  void unlockAudio().then(() => playWarningCue());
+                }}
+              >
+                10s
+              </button>
+              <button
+                type="button"
+                className="preset"
+                disabled={!match.endBuzzer}
+                onClick={() => {
+                  void unlockAudio().then(() => playSelectedEndCue('match', match.endCue));
+                }}
+              >
+                End
+              </button>
+            </div>
+          </div>
+        </fieldset>
         <label className="toggle">
           <input
             type="checkbox"
-            checked={match.endBuzzer}
-            onChange={(e) => dispatchMatch({ type: 'setEndBuzzer', value: e.target.checked })}
+            checked={match.autoAnnounce}
+            onChange={(e) => dispatchMatch({ type: 'setAutoAnnounce', value: e.target.checked })}
           />
-          Match end sound
+          Auto-announce winner
         </label>
-        <div className="cue-preview">
-          <p className="cue-preview-label">End cue</p>
-          <div className="presets" role="radiogroup" aria-label="Match end sound">
-            {END_CUE_OPTIONS.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                role="radio"
-                aria-checked={match.endCue === option.id}
-                className={`preset${match.endCue === option.id ? ' preset--on' : ''}`}
-                onClick={() => chooseMatchEndCue(option.id)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <button
-          type="button"
-          className="btn btn--ghost"
-          disabled={!match.endBuzzer}
-          onClick={() => {
-            void unlockAudio().then(() => playSelectedEndCue('match', match.endCue));
-          }}
-        >
-          Test end sound
-        </button>
         {castNote ? <p className="cast-note">{castNote}</p> : null}
       </section>
+
+      {refNeeded ? (
+        <p className="cast-note controller__ref-note" role="status">
+          Clock ended in a tie. Pick Win or DQ next to a name.
+        </p>
+      ) : null}
 
       <CompetitorPad
         side="blue"
         title="Blue"
         name={match.blue.name}
         gym={match.blue.gym}
+        rank={match.blue.rank}
         points={match.blue.points}
         advantages={match.blue.advantages}
         disadvantages={match.blue.disadvantages}
+        flashing={flashing}
+        highlightCalls={refNeeded}
+        focusCalls
+        banner={banner?.side === 'blue' ? banner : null}
+        reason={banner?.side === 'blue' ? outcomeSubtitle(match.outcome) : null}
+        onWin={() => outcomeSheet.openWin('blue', 'Blue')}
+        onDq={() => outcomeSheet.openDq('blue', 'Blue')}
       />
 
       <CompetitorPad
@@ -225,21 +364,88 @@ export function MatchControllerPage() {
         title="White"
         name={match.white.name}
         gym={match.white.gym}
+        rank={match.white.rank}
         points={match.white.points}
         advantages={match.white.advantages}
         disadvantages={match.white.disadvantages}
+        flashing={flashing}
+        highlightCalls={refNeeded}
+        banner={banner?.side === 'white' ? banner : null}
+        reason={banner?.side === 'white' ? outcomeSubtitle(match.outcome) : null}
+        onWin={() => outcomeSheet.openWin('white', 'White')}
+        onDq={() => outcomeSheet.openDq('white', 'White')}
+      />
+
+      <OutcomePickSheet
+        open={outcomeSheet.sheet?.call ?? null}
+        title={
+          outcomeSheet.sheet?.call === 'dq'
+            ? `${outcomeSheet.sheet.label} DQ`
+            : `${outcomeSheet.sheet?.label ?? ''} win`
+        }
+        onClose={outcomeSheet.close}
+        onPickWin={(method) => {
+          if (!outcomeSheet.sheet) return;
+          declareMatchOutcome(outcomeSheet.sheet.side, { call: 'win', method });
+          outcomeSheet.close();
+        }}
+        onPickDq={(reason) => {
+          if (!outcomeSheet.sheet) return;
+          declareMatchOutcome(outcomeSheet.sheet.side, { call: 'dq', reason });
+          outcomeSheet.close();
+        }}
       />
 
       <section className="controller__help">
-        <p className="cast-note">
-          Cast notes: keep this Controller on the table. Tap <strong>Cast</strong> to send the landscape scoreboard to a
-          Chromecast / extra display, or <strong>Display</strong> to pop a window you can fullscreen or HDMI to a TV.
-          Same-browser windows stay in sync automatically.
-        </p>
-        <Link className="text-link" to="/match">
+        <button
+          type="button"
+          className="controller__suggest"
+          aria-haspopup="dialog"
+          onClick={() => setTvHelpOpen(true)}
+        >
+          Instructions / Suggestions
+        </button>
+        <Link className="text-link" to={suite.withFrom(scoreboardPath(linkedId))}>
           Open scoreboard on this device
         </Link>
       </section>
+      <Sheet
+        className="sheet--help"
+        open={tvHelpOpen}
+        title="How to show the scoreboard on a gym TV"
+        onClose={() => setTvHelpOpen(false)}
+      >
+        <div className="controller-help">
+          <section>
+            <h3>On a gym TV</h3>
+            <p>
+              Plug a computer or stick into the TV (or use the TV’s browser if it has one). Open Advantage and go to{' '}
+              <strong>Display</strong> / the scoreboard screen. Press <strong>F</strong> (or use the fullscreen
+              control) so the board fills the TV.
+            </p>
+          </section>
+          <section>
+            <h3>On your phone</h3>
+            <p>
+              Open Advantage and use <strong>Controller</strong> (or Match) to run the clock and scores. Keep this
+              phone as the remote while the TV shows Display.
+            </p>
+          </section>
+          <section>
+            <h3>Casting</h3>
+            <p>
+              You can also cast from your phone to the TV with AirPlay or Chromecast when your TV supports it. If the
+              cast looks small, open Display on the TV-side browser and fullscreen there for the clearest board.
+            </p>
+          </section>
+          <section>
+            <h3>Tip</h3>
+            <p>
+              Use one phone as Controller and one screen as Display. That’s the setup that works best on the mat.
+            </p>
+          </section>
+        </div>
+      </Sheet>
     </main>
   );
 }
@@ -249,43 +455,86 @@ function CompetitorPad({
   title,
   name,
   gym,
+  rank,
   points,
   advantages,
   disadvantages,
+  flashing,
+  highlightCalls,
+  focusCalls = false,
+  banner,
+  reason,
+  onWin,
+  onDq,
 }: {
   side: Side;
   title: string;
   name: string;
   gym: string;
+  rank: string;
   points: number;
   advantages: number;
   disadvantages: number;
+  flashing: boolean;
+  highlightCalls: boolean;
+  focusCalls?: boolean;
+  banner: { kind: 'win' | 'dq'; text: string } | null;
+  reason: string | null;
+  onWin: () => void;
+  onDq: () => void;
 }) {
   return (
     <section className={`pad pad--${side}`}>
       <h2>{title}</h2>
       <div className="pad__fields">
         <label>
-          Name
-          <input
+          <span className="pad__name-label">
+            Name
+            {rank ? <RankChip belt={rank} compact /> : null}
+          </span>
+          <RosterNameField
+            id={displayFocusId(competitorFocus(side, 'name'))}
             value={name}
-            onChange={(e) => dispatchMatch({ type: 'setCompetitor', side, field: 'name', value: e.target.value })}
+            ariaLabel={`${title} name`}
+            onChange={(value) => dispatchMatch({ type: 'setCompetitor', side, field: 'name', value })}
+            onPrefill={(prefill) => {
+              dispatchMatch({ type: 'setCompetitor', side, field: 'name', value: prefill.name });
+              dispatchMatch({ type: 'setCompetitor', side, field: 'rank', value: prefill.belt });
+              dispatchMatch({ type: 'setCompetitor', side, field: 'gym', value: prefill.gym });
+            }}
           />
         </label>
         <label>
           Gym
           <input
+            id={displayFocusId(competitorFocus(side, 'gym'))}
             value={gym}
             placeholder="Optional"
             onChange={(e) => dispatchMatch({ type: 'setCompetitor', side, field: 'gym', value: e.target.value })}
           />
         </label>
       </div>
+      <OutcomeCalls
+        sideLabel={title}
+        disabled={flashing}
+        highlight={highlightCalls}
+        focusId={focusCalls}
+        focusDomId={focusCalls ? displayFocusId('outcome') : undefined}
+        variant="pad"
+        onWin={onWin}
+        onDq={onDq}
+      />
       <div className="pad__scores">
         <FatScore side={side} kind="points" label="Points" value={points} />
         <FatScore side={side} kind="advantages" label="Adv" value={advantages} />
         <FatScore side={side} kind="disadvantages" label="Pen" value={disadvantages} />
       </div>
+      {banner ? (
+        <p className="pad__banner" aria-live="polite">
+          {banner.text}
+          {reason ? <span className="pad__banner-reason">{reason}</span> : null}
+        </p>
+      ) : null}
     </section>
   );
 }

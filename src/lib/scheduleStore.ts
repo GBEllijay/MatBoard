@@ -1,0 +1,426 @@
+/** Class Schedule persistence. Calendar item shapes live in gymCalendar for Events later. */
+
+import {
+  createClassId,
+  createSpecialId,
+  defaultGymCalendar,
+  isScheduleTemplate,
+  isWeekday,
+  normalizeGymCalendar,
+  SAMPLE_WEEK_NOTES,
+  SAMPLE_WEEK_QR,
+  SAMPLE_WEEK_TITLE,
+  sampleWeekClasses,
+  sampleWeekSpecials,
+  sortClasses,
+  sortSpecials,
+  suggestNextMat,
+  type GymCalendarState,
+  type ScheduleTemplate,
+  type SpecialDate,
+  type Weekday,
+  type WeeklyClassSlot,
+} from './gymCalendar.ts';
+import { shrinkImageFile } from './imageShrink.ts';
+import { assertOriginRoom, isStorageQuotaError, StorageQuotaError } from './storageQuota.ts';
+
+export {
+  WEEKDAYS,
+  WEEKDAY_LABELS,
+  WEEKDAY_SHORT,
+  SCHEDULE_TEMPLATES,
+  SCHEDULE_TEMPLATE_HINTS,
+  SCHEDULE_TEMPLATE_LABELS,
+  DEFAULT_SCHEDULE_TEMPLATE,
+  displayTemplate,
+  monthWeeks,
+  boardWeekdays,
+  classesOnDay,
+  compareClasses,
+  DEFAULT_MATS,
+  formatBoardStamp,
+  formatClassTime,
+  formatSpecialDate,
+  formatTimeGroupLine,
+  classesAt,
+  classesInHour,
+  classProgram,
+  groupClassesByTime,
+  isScheduleTemplate,
+  isWeekday,
+  normalizeQrUrl,
+  noticeLines,
+  parseTimeMinutes,
+  SAMPLE_WEEK_NOTES,
+  SAMPLE_WEEK_QR,
+  SAMPLE_WEEK_SLOTS,
+  SAMPLE_WEEK_TITLE,
+  sortClasses,
+  specialsThisWeek,
+  suggestNextMat,
+  todayWeekday,
+  weekHourLanes,
+  weekTimeRows,
+  weekdayFromJsDay,
+  type ClassProgram,
+  type ClassTimeGroup,
+  type GymCalendarState,
+  type MonthDay,
+  type ScheduleTemplate,
+  type SpecialDate,
+  type Weekday,
+  type WeeklyClassSlot,
+} from './gymCalendar.ts';
+
+export const STORAGE_KEY = 'matboard.schedule.v1';
+const ASSET_DB = 'matboard-schedule';
+const ASSET_STORE = 'assets';
+const ASSET_DB_VERSION = 1;
+
+export type ScheduleState = GymCalendarState;
+export type ScheduleClass = WeeklyClassSlot;
+
+export type ScheduleAssets = {
+  logo: Blob | null;
+  qrImage: Blob | null;
+  revision: number;
+};
+
+const listeners = new Set<() => void>();
+const assetListeners = new Set<() => void>();
+
+let state: ScheduleState = loadState();
+let assets: ScheduleAssets = { logo: null, qrImage: null, revision: 0 };
+
+export function defaultSchedule(): ScheduleState {
+  return defaultGymCalendar();
+}
+
+export function normalizeSchedule(raw: unknown): ScheduleState {
+  return normalizeGymCalendar(raw);
+}
+
+function readStorage(): string | null {
+  try {
+    if (typeof localStorage === 'undefined') return null;
+    return localStorage.getItem(STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function loadState(): ScheduleState {
+  try {
+    const raw = readStorage();
+    if (!raw) return defaultSchedule();
+    return normalizeSchedule(JSON.parse(raw));
+  } catch {
+    return defaultSchedule();
+  }
+}
+
+function persist(next: ScheduleState): void {
+  state = next;
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+  } catch {
+    /* quota / private mode */
+  }
+  listeners.forEach((fn) => fn());
+}
+
+function patch(partial: Partial<Omit<ScheduleState, 'version'>>): void {
+  persist({ ...state, ...partial, version: 1 });
+}
+
+export function setScheduleTemplate(template: ScheduleTemplate): void {
+  if (!isScheduleTemplate(template)) return;
+  patch({ template: template === 'week-grid' ? 'week' : template });
+}
+
+export function setScheduleCastEnabled(enabled: boolean): void {
+  patch({ castEnabled: enabled });
+}
+
+/** Fields left `null` stay as they are. An empty specials array clears specials. */
+export type ScheduleImportPayload = {
+  classes: WeeklyClassSlot[];
+  specials: SpecialDate[] | null;
+  title: string | null;
+  qrUrl: string | null;
+  notes: string | null;
+  template: ScheduleTemplate | null;
+  castEnabled: boolean | null;
+};
+
+export function applyScheduleImport(payload: ScheduleImportPayload): void {
+  patch({
+    classes: sortClasses(payload.classes),
+    specials: payload.specials == null ? state.specials : sortSpecials(payload.specials),
+    title: payload.title == null ? state.title : payload.title,
+    qrUrl: payload.qrUrl == null ? state.qrUrl : payload.qrUrl,
+    notes: payload.notes == null ? state.notes : payload.notes,
+    template: payload.template == null ? state.template : payload.template === 'week-grid' ? 'week' : payload.template,
+    castEnabled: payload.castEnabled == null ? state.castEnabled : payload.castEnabled,
+  });
+}
+
+export function getSchedule(): ScheduleState {
+  return state;
+}
+
+export function subscribeSchedule(fn: () => void): () => void {
+  listeners.add(fn);
+  return () => {
+    listeners.delete(fn);
+  };
+}
+
+export function getScheduleAssets(): ScheduleAssets {
+  return assets;
+}
+
+export function subscribeScheduleAssets(fn: () => void): () => void {
+  assetListeners.add(fn);
+  return () => {
+    assetListeners.delete(fn);
+  };
+}
+
+function setAssets(next: Omit<ScheduleAssets, 'revision'>): void {
+  assets = { ...next, revision: assets.revision + 1 };
+  assetListeners.forEach((fn) => fn());
+}
+
+export function setBoardTitle(title: string): void {
+  patch({ title });
+}
+
+export function setScheduleNotes(notes: string): void {
+  patch({ notes });
+}
+
+export function setQrUrl(qrUrl: string): void {
+  patch({ qrUrl });
+}
+
+export function addClass(
+  day: Weekday,
+  time: string,
+  title: string,
+  location = '',
+  subtitle = '',
+): WeeklyClassSlot | null {
+  const next: WeeklyClassSlot = {
+    id: createClassId(),
+    kind: 'class',
+    day,
+    time: time.trim(),
+    title: title.trim(),
+    location: location.trim(),
+    subtitle: subtitle.trim(),
+  };
+  if (!next.time && !next.title) return null;
+  patch({ classes: sortClasses([...state.classes, next]) });
+  return next;
+}
+
+/** Same day + time on the next free mat (MAT 1 → MAT 2). Title is filled in Edit. */
+export function addParallelClass(id: string): WeeklyClassSlot | null {
+  const source = state.classes.find((row) => row.id === id);
+  if (!source || !source.time) return null;
+  const used = state.classes
+    .filter((row) => row.day === source.day && row.time === source.time)
+    .map((row) => row.location);
+  return addClass(source.day, source.time, '', suggestNextMat(used));
+}
+
+export function updateClass(
+  id: string,
+  partial: Partial<Pick<WeeklyClassSlot, 'day' | 'time' | 'title' | 'location' | 'subtitle'>>,
+): void {
+  patch({
+    classes: sortClasses(
+      state.classes.map((row) => {
+        if (row.id !== id) return row;
+        return {
+          ...row,
+          kind: 'class',
+          day: partial.day && isWeekday(partial.day) ? partial.day : row.day,
+          time: typeof partial.time === 'string' ? partial.time : row.time,
+          title: typeof partial.title === 'string' ? partial.title : row.title,
+          location: typeof partial.location === 'string' ? partial.location : row.location,
+          subtitle: typeof partial.subtitle === 'string' ? partial.subtitle : row.subtitle,
+        };
+      }),
+    ),
+  });
+}
+
+/** Replaces weekly classes with a flyer-shaped sample week for TV preview. */
+export function loadSampleWeek(): void {
+  patch({
+    title: state.title.trim() || SAMPLE_WEEK_TITLE,
+    notes: state.notes.trim() || SAMPLE_WEEK_NOTES,
+    qrUrl: state.qrUrl.trim() || SAMPLE_WEEK_QR,
+    classes: sortClasses(sampleWeekClasses()),
+    specials: state.specials.length ? state.specials : sampleWeekSpecials(),
+  });
+}
+
+export function removeClass(id: string): void {
+  patch({ classes: state.classes.filter((row) => row.id !== id) });
+}
+
+export function addSpecial(date: string, title: string, body = ''): SpecialDate | null {
+  const next: SpecialDate = {
+    id: createSpecialId(),
+    kind: 'special',
+    date: date.trim(),
+    title: title.trim(),
+    body: body.trim(),
+    flyerId: null,
+  };
+  if (!next.date && !next.title && !next.body) return null;
+  patch({ specials: sortSpecials([...state.specials, next]) });
+  return next;
+}
+
+export function updateSpecial(
+  id: string,
+  partial: Partial<Pick<SpecialDate, 'date' | 'title' | 'body' | 'flyerId'>>,
+): void {
+  patch({
+    specials: sortSpecials(
+      state.specials.map((row) => {
+        if (row.id !== id) return row;
+        return {
+          ...row,
+          kind: 'special',
+          date: typeof partial.date === 'string' ? partial.date : row.date,
+          title: typeof partial.title === 'string' ? partial.title : row.title,
+          body: typeof partial.body === 'string' ? partial.body : row.body,
+          flyerId: partial.flyerId === undefined ? row.flyerId : partial.flyerId,
+        };
+      }),
+    ),
+  });
+}
+
+export function removeSpecial(id: string): void {
+  patch({ specials: state.specials.filter((row) => row.id !== id) });
+}
+
+export function clearClasses(): void {
+  patch({ classes: [] });
+}
+
+export function resetSchedule(): void {
+  persist(defaultSchedule());
+  void clearScheduleAssets();
+}
+
+function openAssetDb(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(ASSET_DB, ASSET_DB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(ASSET_STORE)) {
+        db.createObjectStore(ASSET_STORE);
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function txDone(tx: IDBTransaction): Promise<void> {
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
+}
+
+async function putAsset(key: 'logo' | 'qrImage', blob: Blob | null): Promise<void> {
+  if (blob) await assertOriginRoom(blob.size);
+  try {
+    const db = await openAssetDb();
+    const tx = db.transaction(ASSET_STORE, 'readwrite');
+    const store = tx.objectStore(ASSET_STORE);
+    if (blob) store.put(blob, key);
+    else store.delete(key);
+    await txDone(tx);
+  } catch (error) {
+    if (error instanceof StorageQuotaError) throw error;
+    if (isStorageQuotaError(error)) throw new StorageQuotaError(0);
+    throw error;
+  }
+}
+
+async function loadAssetsFromDb(): Promise<Pick<ScheduleAssets, 'logo' | 'qrImage'>> {
+  try {
+    const db = await openAssetDb();
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(ASSET_STORE, 'readonly');
+      const store = tx.objectStore(ASSET_STORE);
+      const logoReq = store.get('logo');
+      const qrReq = store.get('qrImage');
+      tx.oncomplete = () => {
+        resolve({
+          logo: logoReq.result instanceof Blob ? logoReq.result : null,
+          qrImage: qrReq.result instanceof Blob ? qrReq.result : null,
+        });
+      };
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch {
+    return { logo: null, qrImage: null };
+  }
+}
+
+export async function setLogoBlob(blob: Blob | null): Promise<void> {
+  await putAsset('logo', blob);
+  setAssets({ logo: blob, qrImage: assets.qrImage });
+}
+
+export async function setQrImageBlob(blob: Blob | null): Promise<void> {
+  await putAsset('qrImage', blob);
+  setAssets({ logo: assets.logo, qrImage: blob });
+}
+
+export async function clearScheduleAssets(): Promise<void> {
+  await Promise.all([putAsset('logo', null), putAsset('qrImage', null)]);
+  setAssets({ logo: null, qrImage: null });
+}
+
+function isImageFile(file: File): boolean {
+  if (file.type.startsWith('image/')) return true;
+  return /\.(png|jpe?g|gif|webp|svg)$/i.test(file.name);
+}
+
+/** Shrink a schedule logo or QR photo before IndexedDB. Same helper as Gallery and Pro Shop. */
+export async function readPickedImage(file: File, maxEdge = 1280): Promise<Blob> {
+  if (!isImageFile(file)) {
+    throw new Error('not-image');
+  }
+  return shrinkImageFile(file, {
+    maxEdge,
+    quality: 0.86,
+    passthroughBytes: 900_000,
+    mimeFor: (source) =>
+      source.type === 'image/png' || source.type === 'image/webp' ? source.type : 'image/jpeg',
+  });
+}
+
+export async function initScheduleSync(): Promise<void> {
+  const loaded = await loadAssetsFromDb();
+  setAssets(loaded);
+  window.addEventListener('storage', (event) => {
+    if (event.key !== STORAGE_KEY) return;
+    state = loadState();
+    listeners.forEach((fn) => fn());
+  });
+}
