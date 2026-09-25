@@ -26,7 +26,7 @@ export const PRO_HOME_DETAIL = `${GYM_CONSOLE_NAME} — Coming Soon`;
 
 /** Home Pro card body. The only line under the Advantage Pro title. */
 export const PRO_HOME_DESCRIPTION =
-  "Gym Owner and Instructor's Console. Easily cast class schedules, events, recent promotion, pro shop inventory, and more to your gym TV. Full in-house tournament management suite.";
+  "Gym Owner and Instructor's Console. Easily cast class schedules, events, recent promotion, pro shop inventory, and more to your gym TV. Full in-house tournament management suite and much more.";
 
 /**
  * Longer appetite copy on the Coming Soon ad only.

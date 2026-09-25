@@ -122,7 +122,7 @@ test('Owner tournament tool is Tournament Software; Coach keeps Mock Tournament'
 test('Home Pro card describes the console without a Coming Soon line', () => {
   assert.equal(
     PRO_HOME_DESCRIPTION,
-    "Gym Owner and Instructor's Console. Easily cast class schedules, events, recent promotion, pro shop inventory, and more to your gym TV. Full in-house tournament management suite.",
+    "Gym Owner and Instructor's Console. Easily cast class schedules, events, recent promotion, pro shop inventory, and more to your gym TV. Full in-house tournament management suite and much more.",
   );
   assert.match(PRO_HOME_DESCRIPTION, /Instructor's Console/);
   assert.doesNotMatch(PRO_HOME_DESCRIPTION, /Coming Soon/);
