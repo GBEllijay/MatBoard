@@ -133,16 +133,6 @@ export function RosterPage() {
           Export CSV
         </button>
       </div>
-      <p className="roster__csv-hint">
-        Competitor Roster stays on this device. CSV is for backup or a move — cloud sync comes
-        later. Import adds competitors; it does not replace the list. Download the template, put
-        one name and belt on every row, then {ROSTER_CSV_SAVE_HINT} Every row needs a name and a
-        belt — <code>White</code>, <code>Blue</code>, <code>Purple</code>, <code>Brown</code>,{' '}
-        <code>Black</code>, <code>Coral</code>; kids <code>Grey</code>, <code>Yellow</code>,{' '}
-        <code>Orange</code>, <code>Green</code>. Also <code>blackbelt</code>,{' '}
-        <code>black belt</code>, and <code>BB</code>. Accents (é, ñ) stay if you save UTF-8 or a
-        typical Excel CSV.
-      </p>
       {csvNote ? (
         <p className="roster__csv-summary" role="status">
           {csvNote}
@@ -239,6 +229,19 @@ export function RosterPage() {
           }
         />
       )}
+
+      {showCsv ? (
+        <p className="roster__csv-guide">
+          Competitor Roster stays on this device. CSV is for backup or a move — cloud sync comes
+          later. Import adds competitors; it does not replace the list. Download the template, put
+          one name and belt on every row, then {ROSTER_CSV_SAVE_HINT} Every row needs a name and a
+          belt — <code>White</code>, <code>Blue</code>, <code>Purple</code>, <code>Brown</code>,{' '}
+          <code>Black</code>, <code>Coral</code>; kids <code>Grey</code>, <code>Yellow</code>,{' '}
+          <code>Orange</code>, <code>Green</code>. Also <code>blackbelt</code>,{' '}
+          <code>black belt</code>, and <code>BB</code>. Accents (é, ñ) stay if you save UTF-8 or a
+          typical Excel CSV.
+        </p>
+      ) : null}
 
       {coachRoster ? (
         <div className="roster__csv">
