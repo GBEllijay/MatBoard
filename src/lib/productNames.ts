@@ -97,7 +97,7 @@ export function withSuiteFrom(path: string, fromSuite: boolean): string {
   return `${pathname}?${params.toString()}${hash}`;
 }
 
-/** Bottom-of-page guidance on the Media Console manage screen. */
+/** Help copy opened from the Instructions button on the Media Console manage screen. */
 export const MEDIA_CONSOLE_INSTRUCTIONS = [
   'Gold On means that folder plays on the TV.',
   'Tap the left preview on a photo or video to include or skip it. Checked and bright is On. Dimmed is Off.',
