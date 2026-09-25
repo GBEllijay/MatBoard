@@ -407,6 +407,37 @@ label.btn {
   --belt-block: 0.42rem;
 }
 
+/* Coach hub bars: flat blue belt and black tip. No cream degree stripe. */
+.belt-rail.belt-rail--coach {
+  --belt-fill: #2a62b2;
+  --belt-tip: #121214;
+  --belt-tip-2: #2a62b2;
+  --belt-tip-2-size: 0px;
+  --belt-edge: rgba(8, 10, 16, 0.45);
+}
+
+/* Live Bout: black tip on the bottom of the accent, including the lower curve.
+   No cream degree stripe and no light tip under the black. */
+.belt-rail.belt-rail--flush {
+  --belt-tip: #121214;
+  --belt-tip-2-size: 0px;
+  background:
+    linear-gradient(
+      to right,
+      transparent 0,
+      transparent calc(var(--belt-rail-width) - 1px),
+      var(--belt-edge) calc(var(--belt-rail-width) - 1px),
+      var(--belt-edge) var(--belt-rail-width),
+      transparent var(--belt-rail-width)
+    ),
+    linear-gradient(
+      to top,
+      var(--belt-tip) 0,
+      var(--belt-tip) calc(var(--belt-corner) + var(--belt-tip-size)),
+      var(--belt-fill) calc(var(--belt-corner) + var(--belt-tip-size))
+    );
+}
+
 button.mode-card {
   appearance: none;
   width: 100%;
@@ -958,16 +989,6 @@ button.mode-card {
 
 .mode-card__actions--folders .btn {
   min-height: 52px;
-}
-
-.mode-card__actions--tools {
-  grid-template-columns: 1fr 1fr;
-  margin-top: 0.5rem;
-}
-
-.mode-card__actions--tools .btn:last-child:nth-child(odd),
-.mode-card__actions--tools .btn--suite {
-  grid-column: 1 / -1;
 }
 
 .home__hints {

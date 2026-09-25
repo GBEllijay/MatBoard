@@ -19,15 +19,15 @@ export const COACH_TOOL_LINKS = [
 export function CoachToolsCard() {
   return (
     <article className="mode-card mode-card--coach">
-      <BeltRail kind="blue" />
+      <BeltRail kind="coach" />
       <strong>Advantage Coach</strong>
       <span className="mode-card__sub">Coach</span>
       <span>{COACH_HUB_BLURB}</span>
-      <div className="mode-card__actions mode-card__actions--tools" aria-label="Coach tools">
+      <div className="pro-hubs">
         {COACH_TOOL_LINKS.map((tool) => (
-          <Link key={tool.to} className="btn btn--white" to={tool.to}>
-            {'belt' in tool ? <BeltRail kind={tool.belt} /> : null}
-            {tool.title}
+          <Link key={tool.to} className="pro-hub" to={tool.to}>
+            <BeltRail kind={'belt' in tool ? tool.belt : 'coach'} />
+            <span>{tool.title}</span>
           </Link>
         ))}
       </div>
