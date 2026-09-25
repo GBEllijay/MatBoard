@@ -16,8 +16,7 @@ import {
   COACH_HOME_DESCRIPTION,
   GYM_CONSOLE_NAME,
   HOME_MOTTO,
-  PRO_HOME_DETAIL,
-  PRO_HOME_LINES,
+  PRO_HOME_DESCRIPTION,
   WHITE_HOME_DESCRIPTION,
   coachToolsOpen,
 } from '../lib/productNames';
@@ -151,23 +150,12 @@ function HomeDescription({ text }: { text: string }) {
   );
 }
 
-function HomeLines({ lines }: { lines: readonly string[] }) {
-  return (
-    <span className="mode-card__copy">
-      {lines.map((line) => (
-        <span key={line}>{line}</span>
-      ))}
-    </span>
-  );
-}
-
 function ProHomeCopy() {
   return (
     <>
       <BeltRail kind="black" />
       <strong>Advantage Pro</strong>
-      <span className="mode-card__sub">{PRO_HOME_DETAIL}</span>
-      <HomeLines lines={PRO_HOME_LINES} />
+      <HomeDescription text={PRO_HOME_DESCRIPTION} />
     </>
   );
 }

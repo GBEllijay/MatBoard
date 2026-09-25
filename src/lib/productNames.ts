@@ -19,17 +19,14 @@ export const PRO_LADDER_DETAIL = 'Gym Owner and Instructors Console';
 export const HOME_MOTTO = 'Win by Advantage';
 
 /**
- * Home Pro card subtitle under “Advantage Pro”. No “Pro —” prefix.
- * Shown to everyone, including while Pro is still Coming Soon.
+ * Coming Soon ad lead for Pro. Not the homepage card.
+ * The homepage button uses PRO_HOME_DESCRIPTION and does not say Coming Soon.
  */
 export const PRO_HOME_DETAIL = `${GYM_CONSOLE_NAME} — Coming Soon`;
 
-/** Home Pro card body. Three short lines, similar height to White and Coach. */
-export const PRO_HOME_LINES = [
-  'Easily Cast Class Schedules, Events, Recent Promotions, Pro Shop Inventory, and More to your Gym TV.',
-  'Full In-House Tournament Management Suite.',
-  'Assignable Instructor Licenses and Much More!',
-] as const;
+/** Home Pro card body. The only line under the Advantage Pro title. */
+export const PRO_HOME_DESCRIPTION =
+  "Gym Owner and Instructor's Console. Easily cast class schedules, events, recent promotion, pro shop inventory, and more to your gym TV. Full in-house tournament management suite.";
 
 /**
  * Longer appetite copy on the Coming Soon ad only.
