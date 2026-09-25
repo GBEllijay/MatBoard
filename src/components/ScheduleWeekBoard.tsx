@@ -3,6 +3,7 @@ import { useGymLogo, useGymName } from '../hooks/useGymBrand';
 import { useScheduleAssets, useScheduleState } from '../hooks/useStores';
 import { ADVANTAGE_MARK_SRC, resolveScheduleLogo } from '../lib/gymLogo';
 import { qrDataUrl } from '../lib/qr';
+import { createScheduleScroll, stepScheduleScroll } from '../lib/scheduleScroll';
 import {
   WEEKDAYS,
   WEEKDAY_LABELS,
@@ -134,27 +135,13 @@ export function ScheduleWeekBoard({ variant = 'stage', onOpenOptions }: Props) {
     if (!frame || !scrolls || paused) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     let raf = 0;
-    let dir = 1;
-    let holdUntil = performance.now() + 1600;
+    let motion = createScheduleScroll(performance.now(), frame.scrollTop);
     let last = performance.now();
-    let pos = frame.scrollTop;
-    const speed = 18;
     const tick = (now: number) => {
       const max = frame.scrollHeight - frame.clientHeight;
-      if (max > 4 && now >= holdUntil) {
-        const dt = Math.min(0.05, (now - last) / 1000);
-        pos += dir * speed * dt;
-        if (pos <= 0) {
-          pos = 0;
-          dir = 1;
-          holdUntil = now + 2400;
-        } else if (pos >= max - 1) {
-          pos = max;
-          dir = -1;
-          holdUntil = now + 2400;
-        }
-        frame.scrollTop = pos;
-      }
+      const next = stepScheduleScroll(motion, max, now, last);
+      if (next.pos !== motion.pos) frame.scrollTop = next.pos;
+      motion = next;
       last = now;
       raf = requestAnimationFrame(tick);
     };
