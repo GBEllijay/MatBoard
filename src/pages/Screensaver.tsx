@@ -2,6 +2,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
 import { GymLogoControl } from '../components/GymLogoControl';
+import { InstructionsButton } from '../components/InstructionsButton';
 import { DeviceMediaInput } from '../components/DeviceMediaInput';
 import { ScheduleMonthBoard } from '../components/ScheduleMonthBoard';
 import { ScheduleWeekBoard } from '../components/ScheduleWeekBoard';
@@ -398,156 +399,32 @@ export function ScreensaverPage() {
       )}
 
       <Sheet
+        className="sheet--dock-footer"
         open={options}
         title={hubTitle}
         onClose={() => {
           if (!muteVideo) setUnlockSound(true);
           setOptions(false);
         }}
+        footer={
+          <InstructionsButton controlsId="media-console-instructions" align="stretch">
+            <ul>
+              {MEDIA_CONSOLE_INSTRUCTIONS.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </InstructionsButton>
+        }
       >
-        <GymLogoControl />
-        <section className="saver-settings">
-          <h3 className="saver-settings__title">Settings</h3>
-          {pickerNote ? (
-            <p className="saver-folder__empty" role="status" ref={scrollPickerNote}>
-              {pickerNote}
-            </p>
-          ) : null}
-        <fieldset>
-          <legend>Photo interval</legend>
-          <div className="interval-stepper" role="group" aria-label="Photo interval">
-            <button
-              type="button"
-              className="clock-nudge"
-              disabled={intervalSec <= MIN_INTERVAL_SEC}
-              aria-label="Subtract one second"
-              onClick={() => commitInterval(intervalSec - 1)}
-            >
-              −
-            </button>
-            <strong aria-live="polite">{formatMss(intervalSec)}</strong>
-            <button
-              type="button"
-              className="clock-nudge"
-              disabled={intervalSec >= MAX_INTERVAL_SEC}
-              aria-label="Add one second"
-              onClick={() => commitInterval(intervalSec + 1)}
-            >
-              +
-            </button>
-          </div>
-          <div className="presets" role="group" aria-label="Photo interval presets">
-            {INTERVAL_PRESETS_SEC.map((seconds) => (
-              <button
-                key={seconds}
-                type="button"
-                className={`preset${intervalSec === seconds ? ' preset--on' : ''}`}
-                onClick={() => commitInterval(seconds)}
-              >
-                {seconds === 60 ? '1:00' : `${seconds}s`}
-              </button>
-            ))}
-          </div>
-        </fieldset>
-        <fieldset>
-          <legend>Play order</legend>
-          <div className="presets presets--split" role="radiogroup" aria-label="Play order">
-            <button
-              type="button"
-              role="radio"
-              aria-checked={!shuffle}
-              className={`preset${!shuffle ? ' preset--on' : ''}`}
-              onClick={() => commitShuffle(false)}
-            >
-              In order
-            </button>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={shuffle}
-              className={`preset${shuffle ? ' preset--on' : ''}`}
-              onClick={() => commitShuffle(true)}
-            >
-              Shuffle
-            </button>
-          </div>
-        </fieldset>
-        <fieldset>
-          <legend>Pro Shop on the TV</legend>
-          <div className="presets presets--shop" role="radiogroup" aria-label="Pro Shop on the TV">
-            {SHOP_CAST_MODE_OPTIONS.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                role="radio"
-                aria-checked={shopCastMode === option.id}
-                className={`preset${shopCastMode === option.id ? ' preset--on' : ''}`}
-                onClick={() => commitShopCastMode(option.id)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-          <p className="saver-sound-hint">
-            Each card on a slide gets its own QR from its buy link. Logo uses the custom gym logo
-            above. Landscape puts the QR beside the photo. With the logo on, the mark sits on top
-            and each QR sits under its photo.
-          </p>
-        </fieldset>
-        <fieldset>
-          <legend>Events on the TV</legend>
-          <div className="presets presets--shop" role="radiogroup" aria-label="Events on the TV">
-            {EVENTS_CAST_MODE_OPTIONS.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                role="radio"
-                aria-checked={eventsCastMode === option.id}
-                className={`preset${eventsCastMode === option.id ? ' preset--on' : ''}`}
-                onClick={() => commitEventsCastMode(option.id)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-          <p className="saver-sound-hint">
-            Each event photo can show several QR codes from its links. Codes sit to the right of
-            the photo. With the logo on, the gym mark sits on the left and the codes stay on the
-            right.
-          </p>
-        </fieldset>
-        <fieldset>
-          <legend>Video sound</legend>
-          <p className="saver-sound-hint">
-            Mute clips so gym-floor music keeps playing. Match and Training buzzers still cut
-            through — they are separate from clip audio.
-          </p>
-          <div className="presets presets--split" role="radiogroup" aria-label="Video sound">
-            <button
-              type="button"
-              role="radio"
-              aria-checked={muteVideo}
-              className={`preset${muteVideo ? ' preset--on' : ''}`}
-              onClick={() => commitMuteVideo(true)}
-            >
-              Mute clips
-            </button>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={!muteVideo}
-              className={`preset${!muteVideo ? ' preset--on' : ''}`}
-              onClick={() => commitMuteVideo(false)}
-            >
-              Play video sound
-            </button>
-          </div>
-        </fieldset>
-        <label className="toggle">
+        <label className="toggle saver-playing">
           <input type="checkbox" checked={playing} onChange={(e) => setPlaying(e.target.checked)} />
           Playing
         </label>
-        </section>
+        {pickerNote ? (
+          <p className="saver-folder__empty" role="status" ref={scrollPickerNote}>
+            {pickerNote}
+          </p>
+        ) : null}
 
         <div className="saver-folders">
           {FOLDERS.map((folder) => (
@@ -641,14 +518,141 @@ export function ScreensaverPage() {
             </Fragment>
           ))}
         </div>
-        <section className="saver-instructions">
-          <p className="saver-instructions__label">Instructions:</p>
-          <ul>
-            {MEDIA_CONSOLE_INSTRUCTIONS.map((line) => (
-              <li key={line}>{line}</li>
+
+        <section className="saver-settings">
+          <h3 className="saver-settings__title">Settings</h3>
+        <fieldset>
+          <legend>Photo interval</legend>
+          <div className="interval-stepper" role="group" aria-label="Photo interval">
+            <button
+              type="button"
+              className="clock-nudge"
+              disabled={intervalSec <= MIN_INTERVAL_SEC}
+              aria-label="Subtract one second"
+              onClick={() => commitInterval(intervalSec - 1)}
+            >
+              −
+            </button>
+            <strong aria-live="polite">{formatMss(intervalSec)}</strong>
+            <button
+              type="button"
+              className="clock-nudge"
+              disabled={intervalSec >= MAX_INTERVAL_SEC}
+              aria-label="Add one second"
+              onClick={() => commitInterval(intervalSec + 1)}
+            >
+              +
+            </button>
+          </div>
+          <div className="presets" role="group" aria-label="Photo interval presets">
+            {INTERVAL_PRESETS_SEC.map((seconds) => (
+              <button
+                key={seconds}
+                type="button"
+                className={`preset${intervalSec === seconds ? ' preset--on' : ''}`}
+                onClick={() => commitInterval(seconds)}
+              >
+                {seconds === 60 ? '1:00' : `${seconds}s`}
+              </button>
             ))}
-          </ul>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Play order</legend>
+          <div className="presets presets--split" role="radiogroup" aria-label="Play order">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={!shuffle}
+              className={`preset${!shuffle ? ' preset--on' : ''}`}
+              onClick={() => commitShuffle(false)}
+            >
+              In order
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={shuffle}
+              className={`preset${shuffle ? ' preset--on' : ''}`}
+              onClick={() => commitShuffle(true)}
+            >
+              Shuffle
+            </button>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Pro Shop on the TV</legend>
+          <div className="presets presets--shop" role="radiogroup" aria-label="Pro Shop on the TV">
+            {SHOP_CAST_MODE_OPTIONS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                role="radio"
+                aria-checked={shopCastMode === option.id}
+                className={`preset${shopCastMode === option.id ? ' preset--on' : ''}`}
+                onClick={() => commitShopCastMode(option.id)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <p className="saver-sound-hint">
+            Each card on a slide gets its own QR from its buy link. Logo uses the custom gym logo
+            saved on this screen. Landscape puts the QR beside the photo. With the logo on, the mark
+            sits on top and each QR sits under its photo.
+          </p>
+        </fieldset>
+        <fieldset>
+          <legend>Events on the TV</legend>
+          <div className="presets presets--shop" role="radiogroup" aria-label="Events on the TV">
+            {EVENTS_CAST_MODE_OPTIONS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                role="radio"
+                aria-checked={eventsCastMode === option.id}
+                className={`preset${eventsCastMode === option.id ? ' preset--on' : ''}`}
+                onClick={() => commitEventsCastMode(option.id)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <p className="saver-sound-hint">
+            Each event photo can show several QR codes from its links. Codes sit to the right of
+            the photo. With the logo on, the gym mark sits on the left and the codes stay on the
+            right.
+          </p>
+        </fieldset>
+        <fieldset>
+          <legend>Video sound</legend>
+          <p className="saver-sound-hint">
+            Mute clips so gym-floor music keeps playing. Match and Training buzzers still cut
+            through — they are separate from clip audio.
+          </p>
+          <div className="presets presets--split" role="radiogroup" aria-label="Video sound">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={muteVideo}
+              className={`preset${muteVideo ? ' preset--on' : ''}`}
+              onClick={() => commitMuteVideo(true)}
+            >
+              Mute clips
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={!muteVideo}
+              className={`preset${!muteVideo ? ' preset--on' : ''}`}
+              onClick={() => commitMuteVideo(false)}
+            >
+              Play video sound
+            </button>
+          </div>
+        </fieldset>
         </section>
+        <GymLogoControl />
       </Sheet>
 
       <MediaSourceSheet

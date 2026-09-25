@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { CoachToolsCard } from '../components/CoachToolsCard';
 import { HomeMark } from '../components/HomeMark';
+import { InstructionsButton } from '../components/InstructionsButton';
 import { SiteFooter } from '../components/SiteFooter';
 import { TierLine } from '../components/TierLine';
 import { lockCoach } from '../lib/coachUnlock';
@@ -19,16 +20,18 @@ export function CoachPage() {
         </nav>
 
         <div className="home__hints">
-          <p className="home__hint">Install Advantage as an app from your browser menu.</p>
-          <p className="home__hint">
-            Gym TV: open this site on a computer plugged into the TV, then fullscreen Display,
-            Rounds, Daily Training Videos, or Mock Tournament. Press F for fullscreen. Daily Lesson
-            Plan, Technique Tree, and Competitor Roster live on the phone.
-          </p>
-          <p className="home__hint">
-            Control from your phone. Cast the scoreboard to your TV, or open Display on a second
-            screen or computer.
-          </p>
+          <InstructionsButton controlsId="coach-instructions">
+            <p className="home__hint">Install Advantage as an app from your browser menu.</p>
+            <p className="home__hint">
+              Gym TV: open this site on a computer plugged into the TV, then fullscreen Display,
+              Rounds, Daily Training Videos, or Mock Tournament. Press F for fullscreen. Daily Lesson
+              Plan, Technique Tree, and Competitor Roster live on the phone.
+            </p>
+            <p className="home__hint">
+              Control from your phone. Cast the scoreboard to your TV, or open Display on a second
+              screen or computer.
+            </p>
+          </InstructionsButton>
           <p className="home__soon">
             Advantage Coach is on for this browser.{' '}
             <Link className="home__text-btn" to="/">
