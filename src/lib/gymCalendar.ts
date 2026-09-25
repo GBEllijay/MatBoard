@@ -36,7 +36,7 @@ export const SCHEDULE_TEMPLATE_LABELS: Record<ScheduleTemplate, string> = {
 };
 
 export const SCHEDULE_TEMPLATE_HINTS: Record<ScheduleTemplate, string> = {
-  week: 'Stacked days, Monday–Sunday. Full class name, time, mat, and age or subtitle. Fitted to the gym TV.',
+  week: 'Stacked days, Monday–Sunday. One readable type size, with time, mat, class name, and a short detail. Scrolls when a day runs long.',
   'weekly-list': 'Day banners for editing on a phone. The TV still casts Week or Month.',
   'week-grid': 'The old grid is retired. This board uses the full week.',
   monthly: 'This month at a glance. Color chips by program and a class count. Not full class titles.',
