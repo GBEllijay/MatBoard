@@ -43,6 +43,7 @@ import {
   formatPromotion,
   removeStudent,
   searchStudents,
+  setCheckedIn,
   updateStudent,
   type Student,
   type StudentDraft,
@@ -217,6 +218,7 @@ export function RosterPage() {
                 removeStudent(competitor.id);
                 setPendingRemove(null);
               }}
+              onToggleCheckIn={() => setCheckedIn(competitor.id, !competitor.checkedIn)}
             />
           ))}
         </ul>
@@ -310,6 +312,7 @@ function StudentCard({
   onAskRemove,
   onCancelRemove,
   onConfirmRemove,
+  onToggleCheckIn,
 }: {
   student: Student;
   pending: boolean;
@@ -317,6 +320,7 @@ function StudentCard({
   onAskRemove: () => void;
   onCancelRemove: () => void;
   onConfirmRemove: () => void;
+  onToggleCheckIn: () => void;
 }) {
   const promoted = formatPromotion(student.lastPromotion);
 
@@ -324,7 +328,19 @@ function StudentCard({
     <li>
       <article className="roster-card">
         <header className="roster-card__head">
-          <h2>{student.name}</h2>
+          <div className="roster-card__who">
+            <h2>{student.name}</h2>
+            <button
+              type="button"
+              className={`btn roster-card__checkin${student.checkedIn ? '' : ' btn--ghost'}`}
+              aria-pressed={student.checkedIn}
+              aria-label={`Check In ${student.name}`}
+              title="Here for today's tournament"
+              onClick={onToggleCheckIn}
+            >
+              Check In
+            </button>
+          </div>
           <RankChip belt={student.belt} />
         </header>
         {student.division ? <p className="roster-card__meta">{student.division}</p> : null}

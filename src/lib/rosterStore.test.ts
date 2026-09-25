@@ -16,8 +16,10 @@ import {
   prefillFields,
   resetRoster,
   searchStudents,
+  setCheckedIn,
   sortStudents,
   studentFromInput,
+  updateStudent,
   type Student,
 } from './rosterStore.ts';
 
@@ -26,6 +28,7 @@ function student(partial: Partial<Student> & Pick<Student, 'id' | 'name'>): Stud
     belt: 'Blue',
     gym: '',
     division: '',
+    checkedIn: false,
     lastPromotion: '2026-03-12',
     note: 'Keep this off the scoreboard',
     ...partial,
@@ -48,6 +51,7 @@ describe('studentFromInput', () => {
     assert.equal(next.belt, 'Purple');
     assert.equal(next.gym, 'Alliance');
     assert.equal(next.division, '');
+    assert.equal(next.checkedIn, false);
     assert.equal(next.lastPromotion, '2026-03-12');
     assert.equal(next.note, 'Left knee');
   });
@@ -122,6 +126,8 @@ describe('normalizeRoster', () => {
     assert.equal(next.students.find((row) => row.name === 'Sam')?.note, 'Quiet');
     assert.equal(next.students.find((row) => row.name === 'Sam')?.division, 'Adult Blue');
     assert.equal(next.students.find((row) => row.name === 'Alex')?.division, '');
+    assert.equal(next.students.find((row) => row.name === 'Sam')?.checkedIn, false);
+    assert.equal(next.students.find((row) => row.name === 'Alex')?.checkedIn, false);
     assert.equal(next.students.some((row) => row.name === 'Duplicate id'), false);
   });
 });
@@ -201,6 +207,30 @@ describe('confirmManualCompetitor', () => {
     assert.equal(found?.division, 'Adult Purple');
     const picked = confirmManualCompetitor('alex rivera', { addToRoster: false });
     assert.equal(picked?.division, 'Adult Purple');
+    resetRoster();
+  });
+});
+
+describe('setCheckedIn', () => {
+  it('stays off for an older card and survives an edit', () => {
+    resetRoster();
+    const added = addStudent({ name: 'Sam', belt: 'Blue', division: '', gym: '', lastPromotion: '', note: '' });
+    assert.ok(added);
+    assert.equal(added.checkedIn, false);
+    const loaded = normalizeRoster({
+      students: [
+        { id: added.id, name: 'Sam', belt: 'Blue' },
+        { id: 'on', name: 'Pat', belt: 'Purple', checkedIn: true },
+      ],
+    });
+    assert.equal(loaded.students.find((row) => row.name === 'Sam')?.checkedIn, false);
+    assert.equal(loaded.students.find((row) => row.name === 'Pat')?.checkedIn, true);
+
+    assert.equal(setCheckedIn(added.id, true)?.checkedIn, true);
+    const edited = updateStudent(added.id, { note: 'Ready' });
+    assert.equal(edited?.checkedIn, true);
+    assert.equal(edited?.note, 'Ready');
+    assert.equal(getRoster().students.find((row) => row.id === added.id)?.checkedIn, true);
     resetRoster();
   });
 });

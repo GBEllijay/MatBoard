@@ -21,6 +21,8 @@ export type Student = {
   gym: string;
   lastPromotion: string;
   note: string;
+  /** Present today for the in-house tournament. Off until someone checks them in. */
+  checkedIn: boolean;
 };
 
 export type RosterState = {
@@ -158,7 +160,22 @@ export function clipNote(value: string): string {
   return value.trim().slice(0, NOTE_MAX);
 }
 
-export function studentFromInput(input: Partial<StudentDraft> & { id?: string }): Student | null {
+/** Yes, true, or 1 count as checked in. Anything else, including a blank, stays off. */
+export function parseCheckedIn(value: unknown): boolean {
+  if (value === true) return true;
+  if (typeof value === 'number') return value === 1;
+  if (typeof value !== 'string') return false;
+  const key = value.trim().toLowerCase();
+  return key === 'yes' || key === 'y' || key === 'true' || key === '1' || key === 'checked' || key === 'checked in';
+}
+
+export function formatCheckedIn(checkedIn: boolean): string {
+  return checkedIn ? 'Yes' : 'No';
+}
+
+export function studentFromInput(
+  input: Partial<StudentDraft> & { id?: string; checkedIn?: unknown },
+): Student | null {
   const name = clipName(input.name ?? '');
   const belt = canonicalBelt(input.belt ?? '');
   if (!name || !belt) return null;
@@ -170,6 +187,7 @@ export function studentFromInput(input: Partial<StudentDraft> & { id?: string })
     gym: clipGym(input.gym ?? ''),
     lastPromotion: normalizeDate(input.lastPromotion ?? ''),
     note: clipNote(input.note ?? ''),
+    checkedIn: parseCheckedIn(input.checkedIn),
   };
 }
 
@@ -265,6 +283,7 @@ export function normalizeStudent(raw: unknown): Student | null {
     gym: typeof row.gym === 'string' ? row.gym : '',
     lastPromotion: typeof row.lastPromotion === 'string' ? row.lastPromotion : '',
     note: typeof row.note === 'string' ? row.note : '',
+    checkedIn: row.checkedIn,
   });
 }
 
@@ -350,11 +369,23 @@ export function updateStudent(id: string, draft: Partial<StudentDraft>): Student
     gym: draft.gym ?? current.gym,
     lastPromotion: draft.lastPromotion ?? current.lastPromotion,
     note: draft.note ?? current.note,
+    checkedIn: current.checkedIn,
   });
   if (!next) return null;
   persist({
     version: 1,
     students: sortStudents(state.students.map((row) => (row.id === id ? next : row))),
+  });
+  return next;
+}
+
+export function setCheckedIn(id: string, checkedIn: boolean): Student | null {
+  const current = state.students.find((row) => row.id === id);
+  if (!current) return null;
+  const next = { ...current, checkedIn };
+  persist({
+    version: 1,
+    students: state.students.map((row) => (row.id === id ? next : row)),
   });
   return next;
 }

@@ -67,7 +67,7 @@ export const ROSTER_CSV_DEVICE_NOTE =
 
 /** Shown only from the Instructions control. Import skips a row without both. */
 export const ROSTER_CSV_INSTRUCTIONS =
-  'Each row needs a competitor name and a belt. A row missing either one is left out. Division is optional.';
+  'Each row needs a competitor name and a belt. A row missing either one is left out. Division is optional. Check In is optional.';
 
 /** Coach Competitor Roster: CSV stays on the Pro roster screen. */
 export const ROSTER_CSV_PRO_TEASER = 'Importable CSV Template Available in Advantage Pro';

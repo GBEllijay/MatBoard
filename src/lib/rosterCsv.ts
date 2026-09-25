@@ -1,8 +1,8 @@
 /** Roster CSV. Browser file in/out — UTF-8 (BOM), Excel CRLF, Windows-1252 fallback. */
 
-import { studentFromInput, type Student } from './rosterStore.ts';
+import { formatCheckedIn, studentFromInput, type Student } from './rosterStore.ts';
 
-export const ROSTER_CSV_HEADERS = ['Name', 'Belt', 'Division', 'Gym name', 'Last promotion', 'Notes'] as const;
+export const ROSTER_CSV_HEADERS = ['Name', 'Belt', 'Division', 'Gym name', 'Last promotion', 'Notes', 'Check In'] as const;
 export const ROSTER_CSV_SEP_LINE = 'sep=,';
 export const ROSTER_CSV_SAVE_HINT =
   'Save as CSV UTF-8 (comma-separated), not an Excel workbook (.xlsx).';
@@ -19,7 +19,7 @@ export const ROSTER_CSV_EXAMPLE = {
   note: 'Example - delete this row. Save as CSV UTF-8.',
 } as const;
 
-export type RosterCsvRow = Pick<Student, 'name' | 'belt' | 'division' | 'gym' | 'lastPromotion' | 'note'>;
+export type RosterCsvRow = Pick<Student, 'name' | 'belt' | 'division' | 'gym' | 'lastPromotion' | 'note' | 'checkedIn'>;
 
 export type RosterCsvImport = {
   students: Student[];
@@ -29,7 +29,7 @@ export type RosterCsvImport = {
   skippedDetail?: string;
 };
 
-type HeaderField = 'name' | 'firstName' | 'lastName' | 'belt' | 'division' | 'gym' | 'lastPromotion' | 'note';
+type HeaderField = 'name' | 'firstName' | 'lastName' | 'belt' | 'division' | 'gym' | 'lastPromotion' | 'note' | 'checkedIn';
 
 const HEADER_ALIASES: Record<string, HeaderField> = {
   name: 'name',
@@ -72,6 +72,11 @@ const HEADER_ALIASES: Record<string, HeaderField> = {
   'short note': 'note',
   comments: 'note',
   comment: 'note',
+  'check in': 'checkedIn',
+  checkin: 'checkedIn',
+  'checked in': 'checkedIn',
+  checkedin: 'checkedIn',
+  present: 'checkedIn',
 };
 
 const DELIMITERS = [',', ';', '\t'] as const;
@@ -317,7 +322,9 @@ export function serializeRosterCsv(rows: RosterCsvRow[]): string {
   const lines = [
     ROSTER_CSV_HEADERS.join(','),
     ...rows.map((row) =>
-      [row.name, row.belt, row.division, row.gym, row.lastPromotion, row.note].map(csvField).join(','),
+      [row.name, row.belt, row.division, row.gym, row.lastPromotion, row.note, formatCheckedIn(row.checkedIn)]
+        .map(csvField)
+        .join(','),
     ),
   ];
   return `${lines.join('\r\n')}\r\n`;
@@ -332,6 +339,7 @@ export function rosterCsvTemplate(): string {
       gym: ROSTER_CSV_EXAMPLE.gym,
       lastPromotion: ROSTER_CSV_EXAMPLE.lastPromotion,
       note: ROSTER_CSV_EXAMPLE.note,
+      checkedIn: false,
     },
   ])}`;
 }
@@ -444,7 +452,16 @@ function peopleFromCells(
   gymCell: string,
   lastPromotion: string,
   note: string,
-): Array<{ name: string; belt: string; division: string; gym: string; lastPromotion: string; note: string }> {
+  checkedInCell: string,
+): Array<{
+  name: string;
+  belt: string;
+  division: string;
+  gym: string;
+  lastPromotion: string;
+  note: string;
+  checkedIn: string;
+}> {
   const names = splitLines(nameCell);
   const belts = splitLines(beltCell);
   if (!names.length) return [];
@@ -457,6 +474,7 @@ function peopleFromCells(
     gym: alignedField(gymCell, names, index),
     lastPromotion,
     note,
+    checkedIn: alignedField(checkedInCell, names, index),
   }));
 }
 
@@ -525,6 +543,7 @@ function importParsedRows(rows: string[][], options: ImportOptions): RosterCsvIm
     gym: string;
     lastPromotion: string;
     note: string;
+    checkedIn: string;
   }) => {
     const next = studentFromInput(input);
     if (next) {
@@ -552,6 +571,7 @@ function importParsedRows(rows: string[][], options: ImportOptions): RosterCsvIm
     const beltCell = cell(row, columns.belt);
     const divisionCell = cell(row, columns.division);
     const gymCell = cell(row, columns.gym);
+    const checkedInCell = cell(row, columns.checkedIn);
     const lastPromotion = parseImportDate(cell(row, columns.lastPromotion));
     let note = cell(row, columns.note);
 
@@ -579,7 +599,15 @@ function importParsedRows(rows: string[][], options: ImportOptions): RosterCsvIm
       }
     }
 
-    const people = peopleFromCells(nameCell, beltCell, divisionCell, gymCell, lastPromotion, note);
+    const people = peopleFromCells(
+      nameCell,
+      beltCell,
+      divisionCell,
+      gymCell,
+      lastPromotion,
+      note,
+      checkedInCell,
+    );
     if (!people.length) {
       skipped += 1;
       skippedReasons.push('missing name');
