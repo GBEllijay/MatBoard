@@ -1,5 +1,3 @@
-import { SHOP_ITEM_CAP } from './shopSlides.ts';
-
 /** User-facing Advantage Pro console name. Keep this exact apostrophe. */
 export const GYM_CONSOLE_NAME = "Gym Owner and Instructor's Console";
 
@@ -16,7 +14,7 @@ export const WHITE_HOME_LINES = [
 /** Home Coach card body. The tools already on the Coach hub. */
 export const COACH_HOME_LINES = [
   'Daily Lesson Plan on this phone: warm-up, techniques, and cool-down.',
-  'Daily Training Videos: up to 10 clips on this device, with a drill timer on the screen.',
+  'Daily Training Videos: clips stay on this device, with a drill timer on the screen.',
   'Technique Tree, Mock Tournament brackets, and a Competitor Roster of names and belts.',
 ] as const;
 
@@ -98,7 +96,7 @@ export const MEDIA_CONSOLE_INSTRUCTIONS = [
   'Pro Shop: add a photo, a name, and a buy link. The TV builds a QR from that link.',
   'Same slide groups cards on one page. Each card on that page keeps its own QR.',
   'Pro Shop display: Images only, Images + QR, or Images + QR + gym logo.',
-  `Pro Shop keeps ${SHOP_ITEM_CAP} cards on this device. Nothing is uploaded.`,
+  'Pro Shop photos and buy links stay on this device. Nothing is uploaded.',
 ] as const;
 
 export function parentToolboxPath(proUnlocked: boolean, coachUnlocked: boolean): string {

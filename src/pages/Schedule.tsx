@@ -61,6 +61,7 @@ import {
   type Weekday,
   type WeeklyClassSlot,
 } from '../lib/scheduleStore';
+import { quotaAddNote } from '../lib/storageQuota';
 
 const BAR_MODES = ['week', 'monthly', 'weekly-list'] as const satisfies readonly ScheduleTemplate[];
 const TV_MODES = ['week', 'monthly'] as const satisfies readonly ScheduleTemplate[];
@@ -549,8 +550,8 @@ function ScheduleEditor({
       const blob = await readPickedImage(file);
       await setLogoBlob(blob);
       setPickerNote('');
-    } catch {
-      setPickerNote('That file is not a picture this board can keep.');
+    } catch (error) {
+      setPickerNote(quotaAddNote(error) ?? 'That file is not a picture this board can keep.');
     }
   };
 
@@ -561,8 +562,8 @@ function ScheduleEditor({
       const blob = await readPickedImage(file, 900);
       await setQrImageBlob(blob);
       setPickerNote('');
-    } catch {
-      setPickerNote('That file is not a picture this board can keep.');
+    } catch (error) {
+      setPickerNote(quotaAddNote(error) ?? 'That file is not a picture this board can keep.');
     }
   };
 

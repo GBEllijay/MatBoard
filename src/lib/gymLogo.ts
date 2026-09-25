@@ -1,4 +1,5 @@
 import { shrinkImageFile } from './imageShrink.ts';
+import { isStorageQuotaError, StorageQuotaError } from './storageQuota.ts';
 
 /**
  * Default gym logo for Advantage Pro. Saved on this device only.
@@ -81,7 +82,12 @@ export function writeGymLogo(dataUrl: string): void {
   if (!dataUrl.startsWith('data:image/')) throw new Error('not-image');
   if (dataUrl.length > MAX_DATA_URL_CHARS) throw new Error('too-large');
   const record: GymLogoRecord = { version: 1, dataUrl };
-  localStorage.setItem(GYM_LOGO_STORAGE_KEY, JSON.stringify(record));
+  try {
+    localStorage.setItem(GYM_LOGO_STORAGE_KEY, JSON.stringify(record));
+  } catch (error) {
+    if (isStorageQuotaError(error)) throw new StorageQuotaError(0);
+    throw error;
+  }
   emitGymLogo();
 }
 

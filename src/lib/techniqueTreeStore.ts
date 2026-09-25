@@ -50,6 +50,8 @@
  * later Daily Lesson Plan or Daily Training Videos link. This screen does not use it.
  */
 
+import { isStorageQuotaError } from './storageQuota.ts';
+
 export const TECHNIQUE_TREE_STORAGE_KEY = 'matboard.coach.techniqueTree.v1';
 export const DEFAULT_TREE_NAME = 'Technique Tree';
 export const TREE_NAME_MAX = 80;
@@ -411,12 +413,12 @@ export function sanitizeArchive(value: unknown): { archive: TechniqueTreeArchive
   };
 }
 
-function writeArchive(archive: TechniqueTreeArchive): boolean {
+function writeArchive(archive: TechniqueTreeArchive): { saved: boolean; quota: boolean } {
   try {
     localStorage.setItem(TECHNIQUE_TREE_STORAGE_KEY, JSON.stringify(archive));
-    return true;
-  } catch {
-    return false;
+    return { saved: true, quota: false };
+  } catch (error) {
+    return { saved: false, quota: isStorageQuotaError(error) };
   }
 }
 
@@ -440,9 +442,10 @@ export function loadTechniqueArchive(): TechniqueTreeArchive {
 
 export function saveTechniqueArchive(
   archive: TechniqueTreeArchive,
-): { archive: TechniqueTreeArchive; saved: boolean } {
+): { archive: TechniqueTreeArchive; saved: boolean; quota: boolean } {
   const clean = sanitizeArchive(archive).archive;
-  return { archive: clean, saved: writeArchive(clean) };
+  const write = writeArchive(clean);
+  return { archive: clean, saved: write.saved, quota: write.quota };
 }
 
 export function loadTechniqueTree(): TechniqueTreeDoc {

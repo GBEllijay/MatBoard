@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { SHOP_ITEM_CAP } from './shopSlides.ts';
 import {
   DEVICE_STORAGE_FULL_NOTE,
   FOLDERS,
@@ -91,7 +90,7 @@ test('storage quota is the Safari memory dialog, not a random failure', () => {
   assert.equal(quotaAddNote(new Error('nope')), null);
   assert.equal(quotaAddNote(new StorageQuotaError(0)), DEVICE_STORAGE_FULL_NOTE);
   assert.equal(quotaAddNote(new StorageQuotaError(1)), `Saved 1. ${DEVICE_STORAGE_FULL_NOTE}`);
-  assert.equal(DEVICE_STORAGE_FULL_NOTE.includes(String(SHOP_ITEM_CAP)), false);
+  assert.equal(DEVICE_STORAGE_FULL_NOTE.includes('memory'), false);
 });
 
 type DbGlobals = {
@@ -284,7 +283,6 @@ test('two large Pro Shop photos are stored shrunk, and a full quota says so', as
         const note = quotaAddNote(error);
         assert.equal(note, `Saved 1. ${DEVICE_STORAGE_FULL_NOTE}`);
         assert.equal(note?.includes('memory'), false);
-        assert.equal(note?.includes(String(SHOP_ITEM_CAP)), false);
         return true;
       },
     );

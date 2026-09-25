@@ -1,5 +1,15 @@
 import { shrinkPhotoForStore } from './imageShrink.ts';
 import { PHOTO_PICKER_ACCEPT, VIDEO_PICKER_ACCEPT } from './mediaPicker.ts';
+import { assertOriginRoom, isStorageQuotaError, StorageQuotaError } from './storageQuota.ts';
+
+export {
+  DEVICE_STORAGE_FULL_NOTE,
+  LARGE_MEDIA_BYTES,
+  LARGE_MEDIA_NOTE,
+  StorageQuotaError,
+  isStorageQuotaError,
+  quotaAddNote,
+} from './storageQuota.ts';
 import {
   buildPlayQueue,
   comparePlaylistItems,
@@ -12,7 +22,6 @@ import {
   normalizeBuyUrl,
   normalizeShopCastMode,
   normalizeStartsSlide,
-  shopSlotsLeft,
   type ShopCastMode,
 } from './shopSlides.ts';
 
@@ -69,9 +78,9 @@ export const FOLDERS = [
     mimePrefix: 'image/',
     labelPrefix: 'Card',
     emptyCopy:
-      'No Pro Shop cards yet. Add a product photo, name it, and paste a buy link. The TV makes a QR for each card on a slide. This device keeps 40 cards.',
+      'No Pro Shop cards yet. Add a product photo, name it, and paste a buy link. The TV makes a QR for each card on a slide. Photos stay on this device.',
     orderHint:
-      'Top card shows first when In order is on. Hold the grip, then drag — or tap Up / Down. Same slide puts the next card on that TV page. Each card still gets its own QR. This device keeps 40 cards.',
+      'Top card shows first when In order is on. Hold the grip, then drag — or tap Up / Down. Same slide puts the next card on that TV page. Each card still gets its own QR. Photos stay on this device.',
   },
   {
     id: 'events',
@@ -361,49 +370,6 @@ async function persistMediaRows(rows: PhotoRow[]): Promise<void> {
   await txDone(tx);
 }
 
-/**
- * Safari shows a system "not enough memory" dialog when this site's storage
- * quota rejects a write. That dialog is origin storage, not device RAM.
- */
-export const DEVICE_STORAGE_FULL_NOTE =
-  'Storage for Advantage on this device is full. Remove a Gallery photo or Pro Shop card, or clear unused media, then try again.';
-
-export class StorageQuotaError extends Error {
-  saved: number;
-  constructor(saved: number) {
-    super(DEVICE_STORAGE_FULL_NOTE);
-    this.name = 'QuotaExceededError';
-    this.saved = saved;
-  }
-}
-
-export function isStorageQuotaError(error: unknown): boolean {
-  if (!error || (typeof error !== 'object' && typeof error !== 'string')) return false;
-  if (typeof error === 'string') return quotaText(error);
-  const record = error as { name?: unknown; code?: unknown; message?: unknown };
-  const name = typeof record.name === 'string' ? record.name : '';
-  if (name === 'QuotaExceededError' || name === 'NS_ERROR_DOM_QUOTA_REACHED') return true;
-  if (record.code === 22 || record.code === 1014) return true;
-  const message = typeof record.message === 'string' ? record.message : '';
-  return quotaText(message);
-}
-
-function quotaText(message: string): boolean {
-  return /quota|not enough space|insufficient memory|not enough memory|out of memory|storage full/i.test(
-    message,
-  );
-}
-
-/** In-app note for a failed Gallery or Pro Shop save. Null when the error is something else. */
-export function quotaAddNote(error: unknown): string | null {
-  if (error instanceof StorageQuotaError) {
-    if (error.saved > 0) return `Saved ${error.saved}. ${DEVICE_STORAGE_FULL_NOTE}`;
-    return DEVICE_STORAGE_FULL_NOTE;
-  }
-  if (!isStorageQuotaError(error)) return null;
-  return DEVICE_STORAGE_FULL_NOTE;
-}
-
 async function blobForFolderFile(
   file: File,
   folder: FolderConfig,
@@ -421,12 +387,9 @@ export async function addFolderFiles(files: File[], folderId: FolderId): Promise
   let photoCount = existing.filter((photo) => !isVideoItem(photo)).length;
   let videoCount = existing.filter((photo) => isVideoItem(photo)).length;
   let nextOrder = existing.reduce((max, photo) => Math.max(max, photo.sortOrder), -1);
-  let room = folderId === 'shop' ? shopSlotsLeft(existing.length) : Number.POSITIVE_INFINITY;
   const pending: StoredPhoto[] = [];
   for (const file of files) {
     if (!fileMatchesFolder(file, folder)) continue;
-    if (room <= 0) break;
-    room -= 1;
     nextOrder += 1;
     const video = folder.id === 'gallery' && isAcceptedVideoFile(file);
     if (video) videoCount += 1;
@@ -449,12 +412,14 @@ export async function addFolderFiles(files: File[], folderId: FolderId): Promise
   const db = await openDb();
   let added = 0;
   for (const photo of pending) {
+    await assertOriginRoom(photo.blob.size, added);
     try {
       const tx = db.transaction(STORE, 'readwrite');
       tx.objectStore(STORE).put(photo);
       await txDone(tx);
       added += 1;
     } catch (error) {
+      if (error instanceof StorageQuotaError) throw error;
       if (isStorageQuotaError(error)) throw new StorageQuotaError(added);
       throw error;
     }

@@ -21,6 +21,8 @@ import {
   type Weekday,
   type WeeklyClassSlot,
 } from './gymCalendar.ts';
+import { shrinkImageFile } from './imageShrink.ts';
+import { assertOriginRoom, isStorageQuotaError, StorageQuotaError } from './storageQuota.ts';
 
 export {
   WEEKDAYS,
@@ -343,12 +345,19 @@ function txDone(tx: IDBTransaction): Promise<void> {
 }
 
 async function putAsset(key: 'logo' | 'qrImage', blob: Blob | null): Promise<void> {
-  const db = await openAssetDb();
-  const tx = db.transaction(ASSET_STORE, 'readwrite');
-  const store = tx.objectStore(ASSET_STORE);
-  if (blob) store.put(blob, key);
-  else store.delete(key);
-  await txDone(tx);
+  if (blob) await assertOriginRoom(blob.size);
+  try {
+    const db = await openAssetDb();
+    const tx = db.transaction(ASSET_STORE, 'readwrite');
+    const store = tx.objectStore(ASSET_STORE);
+    if (blob) store.put(blob, key);
+    else store.delete(key);
+    await txDone(tx);
+  } catch (error) {
+    if (error instanceof StorageQuotaError) throw error;
+    if (isStorageQuotaError(error)) throw new StorageQuotaError(0);
+    throw error;
+  }
 }
 
 async function loadAssetsFromDb(): Promise<Pick<ScheduleAssets, 'logo' | 'qrImage'>> {
@@ -392,33 +401,18 @@ function isImageFile(file: File): boolean {
   return /\.(png|jpe?g|gif|webp|svg)$/i.test(file.name);
 }
 
-/** Shrink gym photos so a logo stays on-device without filling the disk. */
+/** Shrink a schedule logo or QR photo before IndexedDB. Same helper as Gallery and Pro Shop. */
 export async function readPickedImage(file: File, maxEdge = 1280): Promise<Blob> {
   if (!isImageFile(file)) {
     throw new Error('not-image');
   }
-  if (typeof createImageBitmap !== 'function') return file;
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
-  if (scale === 1 && file.size < 900_000) {
-    bitmap.close();
-    return file;
-  }
-  const width = Math.max(1, Math.round(bitmap.width * scale));
-  const height = Math.max(1, Math.round(bitmap.height * scale));
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) {
-    bitmap.close();
-    return file;
-  }
-  ctx.drawImage(bitmap, 0, 0, width, height);
-  bitmap.close();
-  const mime = file.type === 'image/png' || file.type === 'image/webp' ? file.type : 'image/jpeg';
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, mime, 0.86));
-  return blob ?? file;
+  return shrinkImageFile(file, {
+    maxEdge,
+    quality: 0.86,
+    passthroughBytes: 900_000,
+    mimeFor: (source) =>
+      source.type === 'image/png' || source.type === 'image/webp' ? source.type : 'image/jpeg',
+  });
 }
 
 export async function initScheduleSync(): Promise<void> {

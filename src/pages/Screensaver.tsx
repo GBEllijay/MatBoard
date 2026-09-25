@@ -27,17 +27,16 @@ import {
   VIDEO_RECORD_ACCEPT,
   type MediaSourceKind,
 } from '../lib/mediaPicker';
+import { LARGE_MEDIA_BYTES, LARGE_MEDIA_NOTE, quotaAddNote } from '../lib/storageQuota';
 import {
   addFolderFiles,
   clearFolder,
-  quotaAddNote,
   clampIntervalSec,
   DEFAULT_FOLDER_PLAY,
   DEFAULT_INTERVAL_SEC,
   DEFAULT_MUTE_VIDEO,
   DEFAULT_SHUFFLE,
   FOLDERS,
-  fileMatchesFolder,
   folderById,
   folderExpandedState,
   getSaverPrefs,
@@ -70,7 +69,6 @@ import {
   buildCastSlides,
   DEFAULT_SHOP_CAST_MODE,
   SHOP_CAST_MODE_OPTIONS,
-  SHOP_ITEM_CAP,
   type ShopCastMode,
 } from '../lib/shopSlides';
 
@@ -250,22 +248,19 @@ export function ScreensaverPage() {
     if (!files?.length) return;
     const kind = addKind;
     const folderId = addFolderRef.current;
-    const folder = folderById(folderId);
     const picked = [...files];
     setAddOpen(false);
     try {
       const added = await addFolderFiles(picked, folderId);
-      const accepted = picked.filter((file) => fileMatchesFolder(file, folder)).length;
+      const large = picked.some((file) => file.size >= LARGE_MEDIA_BYTES);
       if (!added) {
         setPickerNote(
-          folderId === 'shop' && accepted > 0
-            ? `Pro Shop keeps ${SHOP_ITEM_CAP} cards on this device. Remove one to add another.`
-            : kind === 'video'
-              ? 'That file cannot play here. Switch the camera to video, or pick an MP4 / WebM.'
-              : 'That file is not an image this folder can keep.',
+          kind === 'video'
+            ? 'That file cannot play here. Switch the camera to video, or pick an MP4 / WebM.'
+            : 'That file is not an image this folder can keep.',
         );
-      } else if (folderId === 'shop' && added < accepted) {
-        setPickerNote(`Added ${added}. Pro Shop keeps ${SHOP_ITEM_CAP} cards on this device.`);
+      } else if (large) {
+        setPickerNote(LARGE_MEDIA_NOTE);
       } else {
         setPickerNote('');
       }
@@ -573,14 +568,6 @@ export function ScreensaverPage() {
                       }
                     }
                   : undefined
-              }
-              notice={
-                folder.id === 'shop' && itemsInFolder(photos, 'shop').length >= SHOP_ITEM_CAP
-                  ? `Pro Shop keeps ${SHOP_ITEM_CAP} cards on this device. Remove one to add another.`
-                  : undefined
-              }
-              addDisabled={
-                folder.id === 'shop' && itemsInFolder(photos, 'shop').length >= SHOP_ITEM_CAP
               }
             />
             {folder.id === 'gallery' ? <ClassScheduleEntry /> : null}

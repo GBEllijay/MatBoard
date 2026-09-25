@@ -4,6 +4,7 @@ import { PlayExitMark } from '../components/PlayExitMark';
 import { useCoachPageSwipe } from '../hooks/useCoachSwipe';
 import { useToolboxParent } from '../hooks/useToolboxParent';
 import { TECHNIQUE_TREE_CAP_NOTE, TECHNIQUE_TREE_LABEL, TECHNIQUE_TREE_LEAD } from '../lib/coachCopy';
+import { DEVICE_STORAGE_FULL_NOTE } from '../lib/storageQuota';
 import {
   MAX_TREE_NODES,
   MAX_TREES,
@@ -84,7 +85,7 @@ export function TechniqueTreePage() {
   const commitArchive = (next: TechniqueTreeArchive) => {
     const saved = saveTechniqueArchive(next);
     setArchive(saved.archive);
-    setNote(saved.saved ? '' : 'Could not save these trees on this phone.');
+    setNote(saved.saved ? '' : saved.quota ? DEVICE_STORAGE_FULL_NOTE : 'Could not save these trees on this phone.');
     return saved.archive;
   };
 
