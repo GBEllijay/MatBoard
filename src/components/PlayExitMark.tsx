@@ -29,12 +29,21 @@ type Props = {
 export function PlayExitMark({ onExit, to = PLAY_EXIT_HOME }: Props) {
   const navigate = useNavigate();
   const held = useRef(false);
-  const skipClick = useRef(false);
+  const pendingHome = useRef(false);
+  const homeCommitted = useRef(false);
+  const homeTimer = useRef<number | null>(null);
   const origin = useRef({ x: 0, y: 0, id: -1 });
   const node = useRef<HTMLAnchorElement | null>(null);
   const [armed, setArmed] = useState(false);
 
   const goHome = () => {
+    if (homeCommitted.current) return;
+    homeCommitted.current = true;
+    pendingHome.current = false;
+    if (homeTimer.current != null) {
+      window.clearTimeout(homeTimer.current);
+      homeTimer.current = null;
+    }
     void exitPageFullscreen().finally(() => {
       navigate(playExitDestination(to, true));
     });
@@ -71,7 +80,12 @@ export function PlayExitMark({ onExit, to = PLAY_EXIT_HOME }: Props) {
         event.stopPropagation();
         if (event.button !== 0 && event.pointerType === 'mouse') return;
         held.current = false;
-        skipClick.current = false;
+        pendingHome.current = false;
+        homeCommitted.current = false;
+        if (homeTimer.current != null) {
+          window.clearTimeout(homeTimer.current);
+          homeTimer.current = null;
+        }
         setArmed(false);
         origin.current = { x: event.clientX, y: event.clientY, id: event.pointerId };
         handlers.onPointerDown(event);
@@ -93,9 +107,15 @@ export function PlayExitMark({ onExit, to = PLAY_EXIT_HOME }: Props) {
         if (!wasHeld || playExitKeepsParentExit(to, true)) return;
         held.current = false;
         setArmed(false);
-        skipClick.current = true;
+        pendingHome.current = true;
         event.stopPropagation();
-        goHome();
+        // Navigate from the click so the release cannot hit the next page.
+        // Some phones omit click after a long press; leave anyway if it never arrives.
+        homeTimer.current = window.setTimeout(() => {
+          homeTimer.current = null;
+          if (!pendingHome.current) return;
+          goHome();
+        }, 500);
       }}
       onPointerCancel={() => {
         held.current = false;
@@ -107,9 +127,9 @@ export function PlayExitMark({ onExit, to = PLAY_EXIT_HOME }: Props) {
       onDragStart={(event) => event.preventDefault()}
       onClick={(event) => {
         event.stopPropagation();
-        if (skipClick.current) {
-          skipClick.current = false;
+        if (pendingHome.current || homeCommitted.current) {
           event.preventDefault();
+          goHome();
           return;
         }
         if (!onExit) return;

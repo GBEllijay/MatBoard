@@ -1465,10 +1465,10 @@ button.mode-card {
   -webkit-touch-callout: none;
 }
 
-/* Console manage sheet covers the page; keep Home above the dimmed top gap. */
+/* Console manage sheet covers the page; keep the corner mark above that dimmed top gap. Nested choosers (.sheet--stack) still cover it. */
 .saver > .play-exit,
 .controller > .play-exit {
-  z-index: 21;
+  z-index: 45;
 }
 
 .play-exit img {
