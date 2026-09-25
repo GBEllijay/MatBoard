@@ -67,17 +67,13 @@ export const GAME_PLAN_CARD =
 export const GAME_PLAN_LEAD =
   'Notes stay on this device with that competitor. A Technique Tree link is optional, and a custom note can stand alone.';
 
-export const GAME_PLAN_A = 'A game. What they run when everything works.';
-export const GAME_PLAN_B = 'B game. Fallback when A gets shut down.';
-export const GAME_PLAN_C = 'C game. Desperation or a surprise.';
+export const GAME_PLAN_A = 'A GAME';
+export const GAME_PLAN_B = 'B GAME';
+export const GAME_PLAN_C = 'C GAME';
 export const GAME_PLAN_HOME = 'Home focus. What to work on between sessions.';
 export const GAME_PLAN_OPTIONAL = 'Optional. A note does not need a Technique Tree step.';
 export const GAME_PLAN_EMPTY =
   'Add a name and belt on Competitor Roster, then write their game plan here.';
-export const GAME_PLAN_A_PLACEHOLDER = 'Bread and butter. The pass and the finish they trust.';
-export const GAME_PLAN_B_PLACEHOLDER = 'What they do when A gets shut down.';
-export const GAME_PLAN_C_PLACEHOLDER = 'A surprise they rarely show.';
-export const GAME_PLAN_HOME_PLACEHOLDER = 'Film study, drill berimbolo 3 times a week, fight-week sodium.';
 
 export const ROSTER_LEAD_COACH =
   'Competitor Roster with Names and Ranks for Single Matches and Mock Tournaments.';

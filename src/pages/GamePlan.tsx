@@ -6,14 +6,10 @@ import { RankChip } from '../components/RankChip';
 import { useRosterState } from '../hooks/useStores';
 import {
   GAME_PLAN_A,
-  GAME_PLAN_A_PLACEHOLDER,
   GAME_PLAN_B,
-  GAME_PLAN_B_PLACEHOLDER,
   GAME_PLAN_C,
-  GAME_PLAN_C_PLACEHOLDER,
   GAME_PLAN_EMPTY,
   GAME_PLAN_HOME,
-  GAME_PLAN_HOME_PLACEHOLDER,
   GAME_PLAN_LABEL,
   GAME_PLAN_LEAD,
   GAME_PLAN_OPTIONAL,
@@ -51,10 +47,10 @@ import {
 } from '../lib/rosterStore';
 import { loadTechniqueArchive, type TechniqueTreeArchive } from '../lib/techniqueTreeStore';
 
-const LAYERS: { section: GameLayerSection; title: string; placeholder: string }[] = [
-  { section: 'a', title: GAME_PLAN_A, placeholder: GAME_PLAN_A_PLACEHOLDER },
-  { section: 'b', title: GAME_PLAN_B, placeholder: GAME_PLAN_B_PLACEHOLDER },
-  { section: 'c', title: GAME_PLAN_C, placeholder: GAME_PLAN_C_PLACEHOLDER },
+const LAYERS: { section: GameLayerSection; title: string }[] = [
+  { section: 'a', title: GAME_PLAN_A },
+  { section: 'b', title: GAME_PLAN_B },
+  { section: 'c', title: GAME_PLAN_C },
 ];
 
 export function GamePlanPage() {
@@ -166,7 +162,6 @@ function PlanEditor({ student, archive }: { student: Student; archive: Technique
           studentId={student.id}
           section={layer.section}
           title={layer.title}
-          placeholder={layer.placeholder}
           layer={plan[layer.section]}
           archive={archive}
           showAudit
@@ -176,7 +171,6 @@ function PlanEditor({ student, archive }: { student: Student; archive: Technique
         studentId={student.id}
         section="home"
         title={GAME_PLAN_HOME}
-        placeholder={GAME_PLAN_HOME_PLACEHOLDER}
         layer={plan.home}
         archive={archive}
         showAudit={false}
@@ -194,7 +188,6 @@ function LayerCard({
   studentId,
   section,
   title,
-  placeholder,
   layer,
   archive,
   showAudit,
@@ -202,7 +195,6 @@ function LayerCard({
   studentId: string;
   section: GameSection;
   title: string;
-  placeholder: string;
   layer: GameLayer;
   archive: TechniqueTreeArchive;
   showAudit: boolean;
@@ -216,21 +208,17 @@ function LayerCard({
   return (
     <section className="plan-layer" aria-label={sectionLabel(section)}>
       <h2>{title}</h2>
-      <label>
-        Notes
-        <textarea
-          value={notes}
-          rows={3}
-          maxLength={GAME_NOTE_MAX}
-          placeholder={placeholder}
-          aria-label={`${sectionLabel(section)} notes`}
-          onChange={(event) => {
-            const next = event.target.value.slice(0, GAME_NOTE_MAX);
-            setNotes(next);
-            setGameNotes(studentId, section, next);
-          }}
-        />
-      </label>
+      <textarea
+        value={notes}
+        rows={3}
+        maxLength={GAME_NOTE_MAX}
+        aria-label={title}
+        onChange={(event) => {
+          const next = event.target.value.slice(0, GAME_NOTE_MAX);
+          setNotes(next);
+          setGameNotes(studentId, section, next);
+        }}
+      />
       {showAudit && section !== 'home' ? (
         <div className="plan-audit" role="group" aria-label={`${sectionLabel(section)} development`}>
           {GAME_AUDITS.map((audit) => (
