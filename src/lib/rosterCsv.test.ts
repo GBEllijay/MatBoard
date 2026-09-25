@@ -239,6 +239,35 @@ describe('gym column', () => {
     assert.equal(older.imported, 1);
     assert.equal(older.students[0]?.gym, '');
     assert.equal(older.students[0]?.note, 'Quiet');
+    assert.equal(older.students[0]?.division, '');
+  });
+});
+
+describe('division column', () => {
+  it('round-trips a division and still imports older files that omit it', () => {
+    const csv = serializeRosterCsv([
+      {
+        name: 'Sam',
+        belt: 'Blue',
+        division: 'Adult Blue, Gi',
+        gym: 'Atos',
+        lastPromotion: '2026-01-02',
+        note: 'Quiet',
+      },
+    ]);
+    assert.match(csv, /Sam,Blue,"Adult Blue, Gi",Atos,2026-01-02,Quiet/);
+    const next = importRosterCsv(csv);
+    assert.equal(next.imported, 1);
+    assert.equal(next.students[0]?.division, 'Adult Blue, Gi');
+    assert.equal(next.students[0]?.gym, 'Atos');
+
+    const older = importRosterCsv('Name,Belt,Gym name,Last promotion,Notes\nPat,Brown,Alliance,2026-01-02,Quiet\n');
+    assert.equal(older.imported, 1);
+    assert.equal(older.students[0]?.division, '');
+    assert.equal(older.students[0]?.gym, 'Alliance');
+
+    const aliased = importRosterCsv('Name,Belt,Weight class\nAlex,Purple,Masters 1\n');
+    assert.equal(aliased.students[0]?.division, 'Masters 1');
   });
 });
 
@@ -249,8 +278,8 @@ describe('serializeRosterCsv', () => {
     assert.match(csv, /Save as CSV UTF-8/);
     assert.match(csv, /blackbelt/i);
     assert.match(csv, /black belt/i);
-    assert.equal(csv.includes('Name,Belt,Gym name,Last promotion,Notes\r\n'), true);
-    assert.equal(csv.includes('Alex Rivera,Purple,Alliance,2026-03-12,'), true);
+    assert.equal(csv.includes('Name,Belt,Division,Gym name,Last promotion,Notes\r\n'), true);
+    assert.equal(csv.includes('Alex Rivera,Purple,Adult Purple,Alliance,2026-03-12,'), true);
     const guideRow = parseCsv(csv, detectCsvDelimiter(csv)).find((row) => row[0]?.trim().startsWith('#'));
     assert.equal(guideRow?.length, 1);
     assert.equal(withUtf8Bom(csv).startsWith('\uFEFF'), true);
@@ -259,6 +288,7 @@ describe('serializeRosterCsv', () => {
     assert.equal(roundTrip.students[0]?.name, 'Alex Rivera');
     assert.equal(roundTrip.students[0]?.belt, 'Purple');
     assert.equal(roundTrip.students[0]?.gym, 'Alliance');
+    assert.equal(roundTrip.students[0]?.division, 'Adult Purple');
   });
 
   it('imports every filled template row with mixed belts and an accented name', () => {
@@ -273,9 +303,16 @@ describe('serializeRosterCsv', () => {
 
   it('quotes notes so a round-trip keeps commas', () => {
     const csv = serializeRosterCsv([
-      { name: 'Sam', belt: 'Blue', gym: 'Atos', lastPromotion: '2026-01-02', note: 'Rest, ice' },
+      {
+        name: 'Sam',
+        belt: 'Blue',
+        division: 'Kids Gi',
+        gym: 'Atos',
+        lastPromotion: '2026-01-02',
+        note: 'Rest, ice',
+      },
     ]);
-    assert.match(csv, /Sam,Blue,Atos,2026-01-02,"Rest, ice"/);
+    assert.match(csv, /Sam,Blue,Kids Gi,Atos,2026-01-02,"Rest, ice"/);
     const next = importRosterCsv(csv);
     assert.deepEqual(
       next.students.map((row) => `${row.name}:${row.note}`),

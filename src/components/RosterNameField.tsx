@@ -158,8 +158,8 @@ function RosterPicker({
   return (
     <>
       <p className="roster-pick__copy">
-        Type a name or pick one already on this device. Notes and last promotion stay on the roster
-        card.
+        Type a name or pick one already on this device. Division, notes, and last promotion stay on
+        the roster card.
       </p>
       <div className="roster-pick__manual">
         <label>
@@ -246,6 +246,7 @@ function RosterPicker({
                   <span>
                     <strong>{student.name}</strong>
                     <RankChip belt={student.belt} />
+                    {student.division ? <em className="roster-pick__division">{student.division}</em> : null}
                   </span>
                 </button>
               </li>

@@ -6666,6 +6666,13 @@ a.saver-folder--link {
   gap: 0.45rem;
 }
 
+.roster-pick__division {
+  color: var(--muted);
+  font-style: normal;
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
 .roster-pick__copy,
 .roster-pick__empty,
 .roster-edit__copy,
