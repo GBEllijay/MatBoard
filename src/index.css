@@ -4356,22 +4356,6 @@ a.saver-folder--link {
 }
 
 @media (min-width: 1100px) and (orientation: landscape) {
-  .tournament:not(.tournament--bright) .bracket {
-    width: max(72rem, calc(100vw - 2rem));
-  }
-
-  .tournament:not(.tournament--bright) .bracket--tree-8 {
-    width: max(52rem, calc(100vw - 2rem));
-  }
-
-  .tournament:not(.tournament--bright) .bracket--tree-4 {
-    width: max(36rem, calc(100vw - 2rem));
-  }
-
-  .tournament:not(.tournament--bright) .bracket--tree-2 {
-    width: max(22rem, calc(100vw - 2rem));
-  }
-
   .tournament__bar {
     align-items: center;
     flex-wrap: nowrap;
@@ -4935,6 +4919,610 @@ a.saver-folder--link {
   .tournament--bright .t-match__finals-label strong {
     font-size: clamp(1.05rem, 3.2vh, 1.7rem);
   }
+}
+
+/* Dark uses the locked Bright frame: same widths, pills, Finals card, and
+   toolbar button sizes. The board stays the dark gradient (not the tatami). */
+.tournament--dark > .belt-rail {
+  display: none;
+}
+
+.tournament--dark > .play-exit {
+  opacity: 0.96;
+  width: 52px;
+  height: 52px;
+  top: calc(0.28rem + var(--safe-t));
+  left: calc(0.28rem + var(--safe-l));
+  background: none;
+}
+
+.tournament--dark > .play-exit img {
+  width: 46px;
+  height: 46px;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.45));
+}
+
+.tournament--dark .tournament__bar {
+  align-items: center;
+  justify-content: flex-end;
+  position: relative;
+  min-height: 3.6rem;
+  padding-top: calc(0.45rem + var(--safe-t));
+}
+
+.tournament--dark .tournament__brand h1,
+.tournament--dark .tournament__eyebrow {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.tournament--dark .tournament__center {
+  display: none;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  align-items: center;
+  gap: 0.4rem;
+  max-width: min(28rem, calc(100% - 16rem));
+  color: rgba(245, 241, 232, 0.9);
+  font-size: 0.98rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.55);
+}
+
+.tournament--dark .tournament__roundline {
+  display: block;
+  position: static;
+  transform: none;
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.tournament--dark .tournament__roundline::after {
+  content: '|';
+  margin-left: 0.4rem;
+  opacity: 0.7;
+}
+
+.tournament--dark .tournament__title {
+  display: flex;
+  flex: 1 1 8rem;
+  min-width: 7rem;
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: none;
+}
+
+.tournament--dark .tournament__title span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.tournament--dark .tournament__title input {
+  min-height: 0;
+  padding: 0.15rem 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+}
+
+.tournament--dark .tournament__hint {
+  display: none;
+}
+
+.tournament--dark .tournament__actions .btn,
+.tournament--dark .tournament__theme .chip {
+  min-height: 34px;
+  padding: 0.22rem 0.7rem;
+  font-size: 0.78rem;
+}
+
+/* Fixed tracks. Flexible columns plus min-width:0 let the center Finals card
+   paint over quarterfinals when the phone viewport is narrower than the tree. */
+.tournament--dark .bracket {
+  width: max-content;
+  min-width: max-content;
+  grid-template-columns: max-content 20rem max-content;
+  justify-content: start;
+  gap: 0.45rem;
+}
+
+.tournament--dark .bracket--tree-8,
+.tournament--dark .bracket--tree-4,
+.tournament--dark .bracket--tree-2 {
+  width: max-content;
+  min-width: max-content;
+}
+
+.tournament--dark .bracket--tree-2 {
+  grid-template-columns: 20rem;
+  justify-content: center;
+}
+
+.tournament--dark .bracket__side {
+  gap: 1.05rem;
+  width: max-content;
+  min-width: max-content;
+}
+
+/* Inner rounds need room for Win and DQ on the name pill. 11.5rem clipped DQ. */
+.tournament--dark .bracket__side--left {
+  grid-template-columns: 17.5rem 13rem 13rem;
+}
+
+.tournament--dark .bracket__side--right {
+  grid-template-columns: 13rem 13rem 17.5rem;
+}
+
+.tournament--dark .bracket--tree-32 .bracket__side--left {
+  grid-template-columns: 17.5rem 13rem 13rem 13rem;
+}
+
+.tournament--dark .bracket--tree-32 .bracket__side--right {
+  grid-template-columns: 13rem 13rem 13rem 17.5rem;
+}
+
+.tournament--dark .bracket--tree-64 .bracket__side--left {
+  grid-template-columns: 17.5rem 13rem 13rem 13rem 13rem;
+}
+
+.tournament--dark .bracket--tree-64 .bracket__side--right {
+  grid-template-columns: 13rem 13rem 13rem 13rem 17.5rem;
+}
+
+.tournament--dark .bracket--tree-8 .bracket__side--left {
+  grid-template-columns: 17.5rem 13rem;
+}
+
+.tournament--dark .bracket--tree-8 .bracket__side--right {
+  grid-template-columns: 13rem 17.5rem;
+}
+
+.tournament--dark .bracket--tree-4 .bracket__side--left,
+.tournament--dark .bracket--tree-4 .bracket__side--right {
+  grid-template-columns: 17.5rem;
+}
+
+.tournament--dark .bracket__finals {
+  width: 20rem;
+  max-width: 20rem;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.tournament--dark .bracket__matches {
+  gap: 0.55rem;
+}
+
+.tournament--dark .bracket__round h2 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.tournament--dark .bracket__finals > .t-match::before {
+  content: none;
+}
+
+.tournament--dark .t-slot {
+  display: grid;
+  grid-template-columns: minmax(5.75rem, 1fr) auto;
+  align-items: center;
+  gap: 0.16rem 0.28rem;
+  padding: 0.12rem 0.2rem 0.12rem 0.62rem;
+  border-radius: 999px;
+  border: 0;
+  min-width: 9.5rem;
+  min-height: 2.4rem;
+  overflow: hidden;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+}
+
+.tournament--dark .t-slot__seed {
+  color: inherit;
+  font-size: 0.9rem;
+}
+
+.tournament--dark .t-slot__who {
+  min-width: 5.75rem;
+}
+
+.tournament--dark .t-slot input {
+  min-height: 0;
+  min-width: 0;
+  padding: 0.16rem 0.08rem;
+  border: 0;
+  background: transparent;
+  border-radius: 0;
+  font-size: 0.84rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tournament--dark .t-slot__marks {
+  grid-template-columns: auto auto;
+}
+
+.tournament--dark .t-mark {
+  min-height: 24px;
+  min-width: 2.05rem;
+  padding: 0.08rem 0.32rem;
+  font-size: 0.58rem;
+}
+
+.tournament--dark .bracket__side--left .t-slot {
+  background: #fff;
+  color: var(--white-ink);
+}
+
+.tournament--dark .bracket__side--right .t-slot {
+  background: var(--logo-blue);
+  color: #fff;
+}
+
+.tournament--dark .bracket__side--left .t-slot__seed,
+.tournament--dark .t-match--final .t-slot__seed {
+  color: #14161c;
+}
+
+.tournament--dark .bracket__side--left .t-slot input,
+.tournament--dark .t-match--final .t-slot input,
+.tournament--dark .bracket__champ input {
+  color: #14161c;
+  -webkit-text-fill-color: #14161c;
+  caret-color: #14161c;
+  color-scheme: light;
+  opacity: 1;
+}
+
+.tournament--dark .bracket__side--right .t-slot input {
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  caret-color: #fff;
+  color-scheme: dark;
+  opacity: 1;
+}
+
+.tournament--dark .bracket__side--left .t-slot input::placeholder,
+.tournament--dark .t-match--final .t-slot input::placeholder,
+.tournament--dark .bracket__champ input::placeholder {
+  color: #2a3140;
+  -webkit-text-fill-color: #2a3140;
+  opacity: 1;
+}
+
+.tournament--dark .tournament__title input::placeholder {
+  color: rgba(245, 241, 232, 0.78);
+  -webkit-text-fill-color: rgba(245, 241, 232, 0.78);
+  opacity: 1;
+}
+
+.tournament--dark .bracket__side--right .t-slot input::placeholder {
+  color: rgba(255, 255, 255, 0.82);
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.82);
+  opacity: 1;
+}
+
+.tournament--dark .bracket__side--left .t-mark {
+  background: #eef1f6;
+  color: #1d2430;
+  border-color: transparent;
+}
+
+.tournament--dark .bracket__side--right .t-mark {
+  background: rgba(0, 18, 56, 0.28);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.tournament--dark .t-mark--win.is-on {
+  background: #fff;
+  color: var(--logo-blue);
+}
+
+.tournament--dark .bracket__side--left .t-mark--win.is-on {
+  background: var(--logo-blue);
+  color: #fff;
+}
+
+.tournament--dark .t-mark--dq.is-on {
+  background: var(--neg);
+  color: #fff;
+}
+
+.tournament--dark .t-slot--lost {
+  opacity: 0.62;
+}
+
+.tournament--dark .t-slot--bye {
+  justify-items: center;
+  background: rgba(255, 255, 255, 0.42);
+  color: #3b4252;
+}
+
+.tournament--dark .t-slot__bye {
+  color: inherit;
+  letter-spacing: 0.14em;
+}
+
+.tournament--dark .bracket__side--right .t-slot--bye {
+  background: rgba(0, 78, 186, 0.62);
+  color: #fff;
+}
+
+.tournament--dark .t-bye-note {
+  color: #14161c;
+  padding: 0 0.4rem;
+  letter-spacing: 0.08em;
+  font-size: 0.68rem;
+}
+
+.tournament--dark .t-match__play {
+  justify-items: start;
+}
+
+.tournament--dark .t-score,
+.tournament--dark .t-undo {
+  min-height: 26px;
+  font-size: 0.62rem;
+  padding: 0.12rem 0.55rem;
+  background: transparent;
+  color: rgba(245, 241, 232, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.tournament--dark .bracket__side--left .t-match,
+.tournament--dark .bracket__side--right .t-match {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.tournament--dark .bracket__side--left .t-match {
+  padding-right: 1.25rem;
+  padding-left: 0.35rem;
+}
+
+.tournament--dark .bracket__side--right .t-match {
+  padding-left: 1.25rem;
+}
+
+.tournament--dark .bracket__side--left .t-match__bouts::after,
+.tournament--dark .bracket__side--right .t-match__bouts::after {
+  width: 1.25rem;
+  height: 2px;
+  background: #8ec3ef;
+}
+
+.tournament--dark .bracket__side--left .t-match__bouts::after {
+  right: -1.25rem;
+}
+
+.tournament--dark .bracket__side--right .t-match__bouts::after {
+  left: -1.25rem;
+}
+
+.tournament--dark .t-match--live .t-match__bouts {
+  outline-color: #8ec3ef;
+}
+
+.tournament--dark .t-match--final {
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
+  padding: 1.05rem 1.1rem 0.9rem;
+  border-radius: 22px;
+  background: var(--logo-yellow);
+  color: #14161c;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.32);
+}
+
+.tournament--dark .t-match__finals-label {
+  display: grid;
+  justify-items: center;
+  gap: 0.12rem;
+  margin: 0;
+}
+
+.tournament--dark .t-match__finals-label span {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.tournament--dark .t-match__finals-label strong {
+  font-size: clamp(1.7rem, 3.6vw, 2.45rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  line-height: 0.95;
+}
+
+.tournament--dark .t-match--final .t-match__bouts {
+  width: 100%;
+}
+
+.tournament--dark .t-match--final .t-slot {
+  background: rgba(255, 255, 255, 0.9);
+  color: #14161c;
+  box-shadow: none;
+}
+
+.tournament--dark .t-match--final .t-slot input {
+  color: #14161c;
+  -webkit-text-fill-color: #14161c;
+  text-align: center;
+}
+
+.tournament--dark .t-match--final .t-mark {
+  background: rgba(20, 22, 28, 0.08);
+  color: #14161c;
+}
+
+.tournament--dark .t-match--final .t-mark--win.is-on,
+.tournament--dark .t-match--final .t-score {
+  background: var(--logo-blue);
+  color: #fff;
+  border-color: transparent;
+}
+
+.tournament--dark .t-match--final .t-score {
+  min-height: 40px;
+  min-width: 7.5rem;
+  padding: 0.35rem 1.1rem;
+  font-size: 0.92rem;
+}
+
+.tournament--dark .t-match--final .t-match__play {
+  width: 100%;
+  justify-items: center;
+}
+
+.tournament--dark .bracket__champ .belt-rail {
+  display: none;
+}
+
+.tournament--dark .bracket__champ {
+  background: rgba(255, 255, 255, 0.92);
+  color: #14161c;
+  border: 0;
+  border-radius: 18px;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
+}
+
+.tournament--dark .bracket__champ > span {
+  color: #14161c;
+}
+
+.tournament--dark .bracket__champ-flash {
+  color: #14161c;
+  text-shadow: none;
+}
+
+.tournament--dark .bracket__champ input {
+  background: transparent;
+  color: #14161c;
+  -webkit-text-fill-color: #14161c;
+  border: 0;
+}
+
+/* iPhone / iPad landscape: fill the rotated viewport. Keep Bright/Dark column
+   mins so name pills stay horizontal; pinch-out still shrinks the whole tree. */
+@media (orientation: landscape) {
+  .tournament__bar {
+    padding-top: calc(0.28rem + var(--safe-t));
+    padding-left: calc(4.2rem + var(--safe-l));
+    padding-right: calc(0.7rem + var(--safe-r));
+  }
+}
+
+@media (min-width: 1100px) {
+  .tournament--dark .tournament__center {
+    display: flex;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .tournament--dark .empty-hint,
+  .tournament--dark .tournament__center {
+    display: none;
+  }
+
+  .tournament__board {
+    padding-top: 0;
+    padding-bottom: 0.3rem;
+  }
+
+  .tournament--dark .tournament__bar {
+    min-height: 2.7rem;
+  }
+
+  .tournament--dark .t-match--final {
+    padding: 0.45rem 0.55rem 0.4rem;
+  }
+
+  .tournament--dark .t-match__finals-label strong {
+    font-size: clamp(1.05rem, 3.2vh, 1.7rem);
+  }
+}
+
+
+/* Ink that Bright puts on the tatami is near-black. On the dark board it
+   needs to be light. Finals Score stays the same blue pill. */
+.tournament--dark .t-bye-note {
+  color: #f5f1e8;
+}
+
+.tournament--dark .bracket__side--left .t-score,
+.tournament--dark .bracket__side--right .t-score,
+.tournament--dark .bracket__side--left .t-undo,
+.tournament--dark .bracket__side--right .t-undo {
+  color: #f5f1e8;
+  border-color: rgba(255, 255, 255, 0.42);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tournament--dark .t-match--final .t-score {
+  background: var(--logo-blue);
+  color: #fff;
+  border-color: transparent;
+}
+
+.tournament--dark .tournament__actions .btn--ghost,
+.tournament--dark .tournament__theme .chip:not(.chip--gold) {
+  background: rgba(16, 42, 96, 0.82);
+  color: #f5f1e8;
+  border-color: rgba(252, 192, 0, 0.42);
+}
+
+.tournament--dark .t-slot__gym {
+  color: rgba(20, 22, 28, 0.78);
+  font-size: 0.66rem;
+}
+
+.tournament--dark .bracket__side--right .t-slot__gym {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.tournament--dark .empty-hint {
+  width: min(32rem, calc(100% - 8rem));
+  margin: 0 auto 0.45rem;
+  padding: 0.55rem 0.8rem 0.65rem;
+  background: rgba(8, 16, 28, 0.78);
+}
+
+.tournament--dark .empty-hint__title {
+  font-size: 0.95rem;
+}
+
+.tournament--dark .empty-hint__body {
+  font-size: 0.82rem;
+}
+
+.tournament--dark .empty-hint__action .btn {
+  min-height: 36px;
+  padding: 0.28rem 0.8rem;
+  font-size: 0.78rem;
 }
 
 /* Class Schedule — gym TV board. Default is a weekly flyer list. */
