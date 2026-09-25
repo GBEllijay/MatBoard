@@ -1,6 +1,6 @@
 /**
  * Gym competitor roster. On-device only — name + belt prefill Match and Mock Tournament.
- * Game plans live on this same save, keyed by competitor id.
+ * Game plans and Competition Ready checklists live on this same save, keyed by competitor id.
  */
 
 import {
@@ -21,6 +21,7 @@ import {
 
 export const STORAGE_KEY = 'matboard.roster.v1';
 export const NOTE_MAX = 160;
+export const INJURY_MAX = 160;
 export const NAME_MAX = 80;
 export const GYM_MAX = 80;
 export const DIVISION_MAX = 80;
@@ -40,21 +41,57 @@ export type Student = {
   gym: string;
   lastPromotion: string;
   note: string;
+  /** Optional injury note. Stays on this competitor, not on one weekend checklist. */
+  knownInjuries: string;
   /** Present today for the in-house tournament. Off until someone checks them in. */
   checkedIn: boolean;
+};
+
+/** Weekend checklist items. Missing or false means Off. */
+export const READY_ITEMS = [
+  { id: 'medical', label: 'Medical forms on file' },
+  { id: 'gi', label: 'Gi inspection passed' },
+  { id: 'division', label: 'Division confirmed' },
+  { id: 'travel', label: 'Travel / lodging booked' },
+  { id: 'waiver', label: 'Waiver signed' },
+  { id: 'weighIn', label: 'Weigh-in ready' },
+] as const;
+
+export type ReadyItemId = (typeof READY_ITEMS)[number]['id'];
+
+export const READY_NOTE_MAX = NOTE_MAX;
+export const READY_EXTRA_LABEL_MAX = 48;
+export const READY_EXTRA_MAX = 3;
+
+export type ReadyExtra = {
+  id: string;
+  label: string;
+  /** Off until a coach turns it on. */
+  on: boolean;
+};
+
+/** One competitor's tournament-weekend checklist. Not the roster Division or Check In fields. */
+export type CompetitorReady = {
+  flags: Record<ReadyItemId, boolean>;
+  note: string;
+  extras: ReadyExtra[];
+  /** Starter rows hidden on this competitor only. Other competitors keep the full template. */
+  hidden: ReadyItemId[];
 };
 
 export type RosterState = {
   version: 1;
   students: Student[];
+  /** Keyed by competitor id. A missing id means every checklist item is off. */
+  ready: Record<string, CompetitorReady>;
   /**
    * Keyed by competitor id. A missing id means no game plan yet.
-   * Other maps on this save (such as a weekend checklist) are left in place.
+   * Unknown maps on this save stay in place beside these two.
    */
   gamePlans: Record<string, CompetitorGamePlan>;
 };
 
-const ROSTER_OWNED_KEYS = new Set(['version', 'students', 'gamePlans']);
+const ROSTER_OWNED_KEYS = new Set(['version', 'students', 'gamePlans', 'ready']);
 
 /** Name, belt, optional gym, and optional division. Notes and promotion dates stay on the roster card. */
 export type RosterPrefill = {
@@ -71,6 +108,7 @@ export type StudentDraft = {
   gym: string;
   lastPromotion: string;
   note: string;
+  knownInjuries: string;
 };
 
 const listeners = new Set<() => void>();
@@ -88,10 +126,63 @@ export function createStudentId(): string {
 }
 
 export function defaultRoster(): RosterState {
-  return { version: 1, students: [], gamePlans: {} };
+  return { version: 1, students: [], ready: {}, gamePlans: {} };
 }
 
-/** Sibling maps on the roster JSON, such as a checklist stored beside game plans. */
+export function emptyReadyFlags(): Record<ReadyItemId, boolean> {
+  return {
+    medical: false,
+    gi: false,
+    division: false,
+    travel: false,
+    waiver: false,
+    weighIn: false,
+  };
+}
+
+export function emptyReady(): CompetitorReady {
+  return { flags: emptyReadyFlags(), note: '', extras: [], hidden: [] };
+}
+
+/** Saved checklist, or all off when this competitor has never been opened. */
+export function competitorReady(studentId: string, roster: RosterState = getRoster()): CompetitorReady {
+  return roster.ready[studentId] ?? emptyReady();
+}
+
+function hiddenSet(ready: CompetitorReady): Set<ReadyItemId> {
+  return new Set(ready.hidden ?? []);
+}
+
+/** Starter rows still on this competitor's list. */
+export function visibleReadyItems(ready: CompetitorReady): readonly (typeof READY_ITEMS)[number][] {
+  const hidden = hiddenSet(ready);
+  return READY_ITEMS.filter((item) => !hidden.has(item.id));
+}
+
+/** Starter rows this competitor removed. The shared template is unchanged. */
+export function removedReadyItems(ready: CompetitorReady): readonly (typeof READY_ITEMS)[number][] {
+  const hidden = hiddenSet(ready);
+  return READY_ITEMS.filter((item) => hidden.has(item.id));
+}
+
+export function readyProgress(ready: CompetitorReady): { on: number; total: number; complete: boolean } {
+  const visible = visibleReadyItems(ready);
+  const flagOn = visible.filter((item) => ready.flags[item.id]).length;
+  const extraOn = ready.extras.filter((item) => item.on).length;
+  const total = visible.length + ready.extras.length;
+  const on = flagOn + extraOn;
+  return { on, total, complete: total > 0 && on === total };
+}
+
+/** Scan label for the competitor list. Complete lists read Ready. */
+export function readyStatusLabel(ready: CompetitorReady): string {
+  const progress = readyProgress(ready);
+  if (progress.total === 0) return 'No items';
+  if (progress.complete) return 'Ready';
+  return `${progress.on} of ${progress.total} on`;
+}
+
+/** Sibling maps on the roster JSON that this module does not own. */
 export function rosterSiblings(raw: unknown): Record<string, unknown> {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
   const siblings: Record<string, unknown> = {};
@@ -117,7 +208,7 @@ export function dropSiblingCompetitor(extra: Record<string, unknown>, id: string
 }
 
 export function emptyDraft(): StudentDraft {
-  return { name: '', belt: '', division: '', gym: '', lastPromotion: '', note: '' };
+  return { name: '', belt: '', division: '', gym: '', lastPromotion: '', note: '', knownInjuries: '' };
 }
 
 export function draftFromStudent(student: Student): StudentDraft {
@@ -128,6 +219,7 @@ export function draftFromStudent(student: Student): StudentDraft {
     gym: student.gym,
     lastPromotion: student.lastPromotion,
     note: student.note,
+    knownInjuries: student.knownInjuries,
   };
 }
 
@@ -214,6 +306,10 @@ export function clipNote(value: string): string {
   return value.trim().slice(0, NOTE_MAX);
 }
 
+export function clipKnownInjuries(value: string): string {
+  return value.trim().slice(0, INJURY_MAX);
+}
+
 /** Yes, true, or 1 count as checked in. Anything else, including a blank, stays off. */
 export function parseCheckedIn(value: unknown): boolean {
   if (value === true) return true;
@@ -241,6 +337,7 @@ export function studentFromInput(
     gym: clipGym(input.gym ?? ''),
     lastPromotion: normalizeDate(input.lastPromotion ?? ''),
     note: clipNote(input.note ?? ''),
+    knownInjuries: clipKnownInjuries(input.knownInjuries ?? ''),
     checkedIn: parseCheckedIn(input.checkedIn),
   };
 }
@@ -317,7 +414,15 @@ export function confirmManualCompetitor(
   const belt = canonicalBelt(options.belt ?? '');
   if (options.addToRoster) {
     if (!belt) return null;
-    const added = addStudent({ name: clipped, belt, division: '', gym: '', lastPromotion: '', note: '' });
+    const added = addStudent({
+      name: clipped,
+      belt,
+      division: '',
+      gym: '',
+      lastPromotion: '',
+      note: '',
+      knownInjuries: '',
+    });
     return added
       ? { name: added.name, belt: added.belt, gym: added.gym, division: added.division }
       : null;
@@ -337,13 +442,68 @@ export function normalizeStudent(raw: unknown): Student | null {
     gym: typeof row.gym === 'string' ? row.gym : '',
     lastPromotion: typeof row.lastPromotion === 'string' ? row.lastPromotion : '',
     note: typeof row.note === 'string' ? row.note : '',
+    knownInjuries: typeof row.knownInjuries === 'string' ? row.knownInjuries : '',
     checkedIn: row.checkedIn,
   });
 }
 
+function readyIsBlank(ready: CompetitorReady): boolean {
+  const flagsOff = READY_ITEMS.every((item) => !ready.flags[item.id]);
+  return flagsOff && !ready.note && ready.extras.length === 0 && ready.hidden.length === 0;
+}
+
+function normalizeHidden(raw: unknown): ReadyItemId[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  for (const item of raw) {
+    if (typeof item === 'string' && item.trim()) seen.add(item.trim());
+  }
+  return READY_ITEMS.filter((item) => seen.has(item.id)).map((item) => item.id);
+}
+
+function normalizeReadyEntry(raw: unknown): CompetitorReady | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const row = raw as { flags?: unknown; note?: unknown; extras?: unknown; hidden?: unknown };
+  const flags = emptyReadyFlags();
+  if (row.flags && typeof row.flags === 'object') {
+    const bag = row.flags as Record<string, unknown>;
+    for (const item of READY_ITEMS) flags[item.id] = bag[item.id] === true;
+  }
+  const note = typeof row.note === 'string' ? row.note.trim().slice(0, READY_NOTE_MAX) : '';
+  const extras: ReadyExtra[] = [];
+  if (Array.isArray(row.extras)) {
+    const seen = new Set<string>();
+    for (const item of row.extras) {
+      if (!item || typeof item !== 'object') continue;
+      const extra = item as Partial<ReadyExtra>;
+      const id = typeof extra.id === 'string' ? extra.id.trim() : '';
+      const label =
+        typeof extra.label === 'string' ? extra.label.trim().slice(0, READY_EXTRA_LABEL_MAX) : '';
+      if (!id || !label || seen.has(id)) continue;
+      seen.add(id);
+      extras.push({ id, label, on: extra.on === true });
+      if (extras.length >= READY_EXTRA_MAX) break;
+    }
+  }
+  const next = { flags, note, extras, hidden: normalizeHidden(row.hidden) };
+  return readyIsBlank(next) ? null : next;
+}
+
+function normalizeReadyMap(raw: unknown, studentIds: Set<string>): Record<string, CompetitorReady> {
+  if (!raw || typeof raw !== 'object') return {};
+  const ready: Record<string, CompetitorReady> = {};
+  for (const [id, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!studentIds.has(id)) continue;
+    const next = normalizeReadyEntry(value);
+    if (!next) continue;
+    ready[id] = next;
+  }
+  return ready;
+}
+
 export function normalizeRoster(raw: unknown): RosterState {
   if (!raw || typeof raw !== 'object') return defaultRoster();
-  const parsed = raw as Partial<RosterState>;
+  const parsed = raw as Partial<RosterState> & { ready?: unknown };
   if (!Array.isArray(parsed.students)) return defaultRoster();
   const seen = new Set<string>();
   const students: Student[] = [];
@@ -354,10 +514,12 @@ export function normalizeRoster(raw: unknown): RosterState {
     students.push(next);
   }
   const sorted = sortStudents(students);
+  const ids = new Set(sorted.map((row) => row.id));
   return {
     version: 1,
     students: sorted,
-    gamePlans: normalizeGamePlanMap(parsed.gamePlans, new Set(sorted.map((row) => row.id))),
+    ready: normalizeReadyMap(parsed.ready, ids),
+    gamePlans: normalizeGamePlanMap(parsed.gamePlans, ids),
   };
 }
 
@@ -398,8 +560,12 @@ function persist(next: RosterState): void {
   listeners.forEach((fn) => fn());
 }
 
-function commit(students: Student[], gamePlans: Record<string, CompetitorGamePlan> = state.gamePlans): void {
-  persist({ version: 1, students, gamePlans });
+function commit(
+  students: Student[],
+  gamePlans: Record<string, CompetitorGamePlan> = state.gamePlans,
+  ready: Record<string, CompetitorReady> = state.ready,
+): void {
+  persist({ version: 1, students, gamePlans, ready });
 }
 
 function writeGamePlan(studentId: string, plan: CompetitorGamePlan): void {
@@ -447,6 +613,7 @@ export function updateStudent(id: string, draft: Partial<StudentDraft>): Student
     gym: draft.gym ?? current.gym,
     lastPromotion: draft.lastPromotion ?? current.lastPromotion,
     note: draft.note ?? current.note,
+    knownInjuries: draft.knownInjuries ?? current.knownInjuries,
     checkedIn: current.checkedIn,
   });
   if (!next) return null;
@@ -462,13 +629,87 @@ export function setCheckedIn(id: string, checkedIn: boolean): Student | null {
   return next;
 }
 
+function writeReady(studentId: string, next: CompetitorReady): void {
+  if (!state.students.some((row) => row.id === studentId)) return;
+  const ready = { ...state.ready };
+  if (readyIsBlank(next)) delete ready[studentId];
+  else ready[studentId] = next;
+  commit(state.students, state.gamePlans, ready);
+}
+
+export function setReadyFlag(studentId: string, itemId: ReadyItemId, on: boolean): void {
+  if (!READY_ITEMS.some((item) => item.id === itemId)) return;
+  const current = competitorReady(studentId);
+  writeReady(studentId, { ...current, flags: { ...current.flags, [itemId]: on } });
+}
+
+export function setReadyNote(studentId: string, note: string): void {
+  const current = competitorReady(studentId);
+  writeReady(studentId, { ...current, note: note.trim().slice(0, READY_NOTE_MAX) });
+}
+
+/** Custom row starts Off. Blank labels and a full list of extras are ignored. */
+export function addReadyExtra(studentId: string, label: string): ReadyExtra | null {
+  const clipped = label.trim().slice(0, READY_EXTRA_LABEL_MAX);
+  if (!clipped || !state.students.some((row) => row.id === studentId)) return null;
+  const current = competitorReady(studentId);
+  if (current.extras.length >= READY_EXTRA_MAX) return null;
+  const extra: ReadyExtra = { id: createStudentId(), label: clipped, on: false };
+  writeReady(studentId, { ...current, extras: [...current.extras, extra] });
+  return extra;
+}
+
+export function setReadyExtra(studentId: string, extraId: string, on: boolean): void {
+  const current = competitorReady(studentId);
+  if (!current.extras.some((item) => item.id === extraId)) return;
+  writeReady(studentId, {
+    ...current,
+    extras: current.extras.map((item) => (item.id === extraId ? { ...item, on } : item)),
+  });
+}
+
+export function removeReadyExtra(studentId: string, extraId: string): void {
+  const current = competitorReady(studentId);
+  if (!current.extras.some((item) => item.id === extraId)) return;
+  writeReady(studentId, {
+    ...current,
+    extras: current.extras.filter((item) => item.id !== extraId),
+  });
+}
+
+/** Hide one starter row on this competitor. The template for everyone else stays intact. */
+export function removeReadyItem(studentId: string, itemId: ReadyItemId): void {
+  if (!READY_ITEMS.some((item) => item.id === itemId)) return;
+  const current = competitorReady(studentId);
+  if (current.hidden.includes(itemId)) return;
+  writeReady(studentId, {
+    ...current,
+    hidden: READY_ITEMS.filter((item) => item.id === itemId || current.hidden.includes(item.id)).map(
+      (item) => item.id,
+    ),
+  });
+}
+
+/** Put a removed starter row back on this competitor. Its previous On or Off state stays. */
+export function restoreReadyItem(studentId: string, itemId: ReadyItemId): void {
+  const current = competitorReady(studentId);
+  if (!current.hidden.includes(itemId)) return;
+  writeReady(studentId, {
+    ...current,
+    hidden: current.hidden.filter((id) => id !== itemId),
+  });
+}
+
 export function removeStudent(id: string): void {
   siblings = dropSiblingCompetitor(siblings, id);
   const gamePlans = { ...state.gamePlans };
   delete gamePlans[id];
+  const ready = { ...state.ready };
+  delete ready[id];
   commit(
     state.students.filter((row) => row.id !== id),
     gamePlans,
+    ready,
   );
 }
 

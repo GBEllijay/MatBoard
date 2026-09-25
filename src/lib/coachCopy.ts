@@ -56,6 +56,17 @@ export const COMPETITOR_ROSTER_CARD =
 export const RANKINGS_RESULTS_CARD =
   'Save and catalogue your tournament results. Keeps names, dates, divisions, placements, and win records for ranking calculations. Full auto-bracketing and seeding coming soon.';
 
+/** Hub button under Competitor Management. One checklist per roster competitor. */
+export const COMPETITION_READY_LABEL = 'Competition Ready';
+
+/** Subtitle on the Competition Ready button. */
+export const COMPETITION_READY_CARD =
+  'A weekend checklist for each competitor. Medical forms, gi, division, travel, waiver, and weigh-in stay on this device.';
+
+/** Lead on the Competition Ready list. Same On / Off language as Media Console. */
+export const COMPETITION_READY_LEAD =
+  'Gold On is done. Off still needs attention. Each list stays on this device with that competitor.';
+
 /** Hub button under Competitor Management. One A/B/C plan per roster competitor. */
 export const GAME_PLAN_LABEL = 'Competitor Game Plan';
 
@@ -86,7 +97,7 @@ export const ROSTER_CSV_DEVICE_NOTE =
 
 /** Shown only from the Instructions control. Import skips a row without both. */
 export const ROSTER_CSV_INSTRUCTIONS =
-  'Each row needs a competitor name and a belt. A row missing either one is left out. Division is optional. Check In is optional.';
+  'Each row needs a competitor name and a belt. A row missing either one is left out. Division, known injuries, and Check In are optional.';
 
 /** Coach Competitor Roster: CSV stays on the Pro roster screen. */
 export const ROSTER_CSV_PRO_TEASER = 'Importable CSV Template Available in Advantage Pro';

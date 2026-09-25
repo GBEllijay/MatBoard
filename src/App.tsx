@@ -7,6 +7,7 @@ import { consumeCoachUnlockQueryNow } from './lib/coachUnlock';
 import { consumeUnlockQueryNow } from './lib/proUnlock';
 import { CoachPage } from './pages/Coach';
 import { ComingSoonPage } from './pages/ComingSoon';
+import { CompetitionReadyPage } from './pages/CompetitionReady';
 import { CompetitorManagementPage } from './pages/CompetitorManagement';
 import { GamePlanPage } from './pages/GamePlan';
 import { HomePage } from './pages/Home';
@@ -110,6 +111,14 @@ export default function App() {
         element={
           <ProRoute>
             <RankingsPage />
+          </ProRoute>
+        }
+      />
+      <Route
+        path="/competition-ready"
+        element={
+          <ProRoute>
+            <CompetitionReadyPage />
           </ProRoute>
         }
       />

@@ -120,6 +120,7 @@ describe('normalizeGamePlan', () => {
     });
     assert.equal(next.gamePlans.sam.c.notes, 'Surprise armbar');
     assert.equal(next.gamePlans.gone, undefined);
+    assert.equal(next.ready.sam?.note, 'forms');
     assert.equal(gamePlanStatusLabel(next.gamePlans.sam), 'C Game · Overdeveloped');
     assert.equal(gamePlanStatusLabel(emptyGamePlan()), 'No game plan yet');
     const siblings = rosterSiblings({
@@ -127,11 +128,14 @@ describe('normalizeGamePlan', () => {
       students: [],
       gamePlans: {},
       ready: { sam: { note: 'forms' } },
+      extraMap: { keep: true },
     });
     const payload = rosterSavePayload(next, siblings);
+    assert.equal(next.ready.sam?.note, 'forms');
     assert.equal((payload.ready as { sam: { note: string } }).sam.note, 'forms');
+    assert.equal((payload.extraMap as { keep: boolean }).keep, true);
     assert.equal(next.gamePlans.sam.c.notes, 'Surprise armbar');
-    assert.deepEqual(dropSiblingCompetitor(siblings, 'sam').ready, {});
+    assert.deepEqual(dropSiblingCompetitor({ ready: { sam: { note: 'forms' } } }, 'sam').ready, {});
   });
 });
 

@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom';
 import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
 import {
+  COMPETITION_READY_CARD,
+  COMPETITION_READY_LABEL,
   COMPETITOR_ROSTER_CARD,
   COMPETITOR_ROSTER_DESCRIPTION,
   COMPETITOR_ROSTER_LABEL,
@@ -16,6 +18,11 @@ const LINKS = [
     to: '/roster?from=competitors',
     title: COMPETITOR_ROSTER_LABEL,
     body: COMPETITOR_ROSTER_CARD,
+  },
+  {
+    to: '/competition-ready',
+    title: COMPETITION_READY_LABEL,
+    body: COMPETITION_READY_CARD,
   },
   {
     to: '/game-plan',

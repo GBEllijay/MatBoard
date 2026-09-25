@@ -21,6 +21,9 @@ import {
   EMPTY_VIDEOS_BODY,
   EMPTY_VIDEOS_TITLE,
   NOTES_LEAD,
+  COMPETITION_READY_CARD,
+  COMPETITION_READY_LABEL,
+  COMPETITION_READY_LEAD,
   COMPETITOR_ROSTER_CARD,
   COMPETITOR_ROSTER_DESCRIPTION,
   GAME_PLAN_A,
@@ -70,6 +73,9 @@ function allCopy(): string {
     COMPETITOR_ROSTER_DESCRIPTION,
     COMPETITOR_ROSTER_CARD,
     RANKINGS_RESULTS_CARD,
+    COMPETITION_READY_LABEL,
+    COMPETITION_READY_CARD,
+    COMPETITION_READY_LEAD,
     GAME_PLAN_LABEL,
     GAME_PLAN_CARD,
     GAME_PLAN_LEAD,
@@ -131,6 +137,16 @@ test('Competitor Roster copy names bout competitors and skips franchise disclaim
   assert.doesNotMatch(ROSTER_LEAD_PRO, /Bout competitors on this device/i);
   const rosterCopy = [COMPETITOR_ROSTER_DESCRIPTION, COMPETITOR_ROSTER_CARD, ROSTER_LEAD_PRO].join('\n');
   assert.doesNotMatch(rosterCopy, /GB Members|Gracie\s*Barra|student management/i);
+  assert.equal(COMPETITION_READY_LABEL, 'Competition Ready');
+  assert.equal(
+    COMPETITION_READY_CARD,
+    'A weekend checklist for each competitor. Medical forms, gi, division, travel, waiver, and weigh-in stay on this device.',
+  );
+  assert.match(COMPETITION_READY_LEAD, /Gold On is done/);
+  assert.doesNotMatch(
+    `${COMPETITION_READY_LABEL}\n${COMPETITION_READY_CARD}\n${COMPETITION_READY_LEAD}`,
+    /GB Members|Gracie\s*Barra|student management|\bstudents?\b/i,
+  );
 });
 
 test('Game Plan copy keeps a note optional and stays on bout competitors', () => {
@@ -167,7 +183,7 @@ test('Coach roster lead points CSV at Pro and keeps manual roster language', () 
   );
   assert.equal(
     ROSTER_CSV_INSTRUCTIONS,
-    'Each row needs a competitor name and a belt. A row missing either one is left out. Division is optional. Check In is optional.',
+    'Each row needs a competitor name and a belt. A row missing either one is left out. Division, known injuries, and Check In are optional.',
   );
   assert.doesNotMatch(`${ROSTER_CSV_DEVICE_NOTE}\n${ROSTER_CSV_INSTRUCTIONS}`, /UTF-8|accent/i);
 });
