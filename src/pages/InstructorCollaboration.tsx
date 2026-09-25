@@ -12,7 +12,6 @@ export function InstructorCollaborationPage() {
         <HomeMark to="/pro" />
         <section className="suite">
           <h2>{INSTRUCTOR_COLLAB_NAME}</h2>
-          <p className="suite__cloud-note">Not connected to the cloud yet.</p>
           <p>
             Instructors share class plans, technique trees, and training videos with you. Each day
             they can send class photos and short clips for you to look over. Their screen works
@@ -35,8 +34,9 @@ export function InstructorCollaborationPage() {
             <p className="plan-card__kicker">Coming Soon · Alpha</p>
             <strong>Generate instructor invite / license</strong>
             <span>
-              Invite instructors into your gym. Each person sets up their own login. You can later
-              give someone, such as a program director, the full owner tools.
+              Send invites from your Advantage Pro to instructors to collaborate. Each person sets
+              up their own login. You can later give someone, such as a program director, the full
+              owner tools.
             </span>
             <button type="button" className="btn" disabled>
               Coming Soon
