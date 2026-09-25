@@ -19,7 +19,7 @@ export const PRO_LADDER_DETAIL = 'Gym Owner and Instructors Console';
 export const HOME_MOTTO = 'Win by Advantage';
 
 /**
- * Home Pro card line after “Pro —”.
+ * Home Pro card subtitle under “Advantage Pro”. No “Pro —” prefix.
  * Shown to everyone, including while Pro is still Coming Soon.
  */
 export const PRO_HOME_DETAIL = `${GYM_CONSOLE_NAME} — Coming Soon`;

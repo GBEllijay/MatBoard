@@ -6,7 +6,6 @@ import { HomeMark } from '../components/HomeMark';
 import { ProUnlockSheet } from '../components/ProUnlockSheet';
 import { Sheet } from '../components/Sheet';
 import { SiteFooter } from '../components/SiteFooter';
-import { TierLine } from '../components/TierLine';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import {
@@ -167,9 +166,7 @@ function ProHomeCopy() {
     <>
       <BeltRail kind="black" />
       <strong>Advantage Pro</strong>
-      <span className="mode-card__sub">
-        <TierLine tier="Pro" detail={PRO_HOME_DETAIL} />
-      </span>
+      <span className="mode-card__sub">{PRO_HOME_DETAIL}</span>
       <HomeLines lines={PRO_HOME_LINES} />
     </>
   );
