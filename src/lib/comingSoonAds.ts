@@ -91,7 +91,7 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
       },
       {
         title: COMPETITOR_SYSTEM_NAME,
-        body: 'Competitor roster and on-device rankings. Seeding from rankings comes later.',
+        body: 'Competitor roster, competition-ready checklists, and on-device rankings. Seeding from rankings comes later.',
       },
       {
         title: INSTRUCTOR_COLLAB_NAME,

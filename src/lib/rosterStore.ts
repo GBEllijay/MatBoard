@@ -25,9 +25,41 @@ export type Student = {
   checkedIn: boolean;
 };
 
+/** Weekend checklist items. Missing or false means Off. */
+export const READY_ITEMS = [
+  { id: 'medical', label: 'Medical forms on file' },
+  { id: 'gi', label: 'Gi inspection passed' },
+  { id: 'division', label: 'Division confirmed' },
+  { id: 'travel', label: 'Travel / lodging booked' },
+  { id: 'waiver', label: 'Waiver signed' },
+  { id: 'weighIn', label: 'Weigh-in ready' },
+] as const;
+
+export type ReadyItemId = (typeof READY_ITEMS)[number]['id'];
+
+export const READY_NOTE_MAX = NOTE_MAX;
+export const READY_EXTRA_LABEL_MAX = 48;
+export const READY_EXTRA_MAX = 3;
+
+export type ReadyExtra = {
+  id: string;
+  label: string;
+  /** Off until a coach turns it on. */
+  on: boolean;
+};
+
+/** One competitor's tournament-weekend checklist. Not the roster Division or Check In fields. */
+export type CompetitorReady = {
+  flags: Record<ReadyItemId, boolean>;
+  note: string;
+  extras: ReadyExtra[];
+};
+
 export type RosterState = {
   version: 1;
   students: Student[];
+  /** Keyed by competitor id. A missing id means every checklist item is off. */
+  ready: Record<string, CompetitorReady>;
 };
 
 /** Name, belt, optional gym, and optional division. Notes and promotion dates stay on the roster card. */
@@ -59,7 +91,42 @@ export function createStudentId(): string {
 }
 
 export function defaultRoster(): RosterState {
-  return { version: 1, students: [] };
+  return { version: 1, students: [], ready: {} };
+}
+
+export function emptyReadyFlags(): Record<ReadyItemId, boolean> {
+  return {
+    medical: false,
+    gi: false,
+    division: false,
+    travel: false,
+    waiver: false,
+    weighIn: false,
+  };
+}
+
+export function emptyReady(): CompetitorReady {
+  return { flags: emptyReadyFlags(), note: '', extras: [] };
+}
+
+/** Saved checklist, or all off when this competitor has never been opened. */
+export function competitorReady(studentId: string, roster: RosterState = getRoster()): CompetitorReady {
+  return roster.ready[studentId] ?? emptyReady();
+}
+
+export function readyProgress(ready: CompetitorReady): { on: number; total: number; complete: boolean } {
+  const flagOn = READY_ITEMS.filter((item) => ready.flags[item.id]).length;
+  const extraOn = ready.extras.filter((item) => item.on).length;
+  const total = READY_ITEMS.length + ready.extras.length;
+  const on = flagOn + extraOn;
+  return { on, total, complete: total > 0 && on === total };
+}
+
+/** Scan label for the competitor list. Complete lists read Ready. */
+export function readyStatusLabel(ready: CompetitorReady): string {
+  const progress = readyProgress(ready);
+  if (progress.complete) return 'Ready';
+  return `${progress.on} of ${progress.total} on`;
 }
 
 export function emptyDraft(): StudentDraft {
@@ -287,9 +354,54 @@ export function normalizeStudent(raw: unknown): Student | null {
   });
 }
 
+function readyIsBlank(ready: CompetitorReady): boolean {
+  const flagsOff = READY_ITEMS.every((item) => !ready.flags[item.id]);
+  return flagsOff && !ready.note && ready.extras.length === 0;
+}
+
+function normalizeReadyEntry(raw: unknown): CompetitorReady | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const row = raw as { flags?: unknown; note?: unknown; extras?: unknown };
+  const flags = emptyReadyFlags();
+  if (row.flags && typeof row.flags === 'object') {
+    const bag = row.flags as Record<string, unknown>;
+    for (const item of READY_ITEMS) flags[item.id] = bag[item.id] === true;
+  }
+  const note = typeof row.note === 'string' ? row.note.trim().slice(0, READY_NOTE_MAX) : '';
+  const extras: ReadyExtra[] = [];
+  if (Array.isArray(row.extras)) {
+    const seen = new Set<string>();
+    for (const item of row.extras) {
+      if (!item || typeof item !== 'object') continue;
+      const extra = item as Partial<ReadyExtra>;
+      const id = typeof extra.id === 'string' ? extra.id.trim() : '';
+      const label =
+        typeof extra.label === 'string' ? extra.label.trim().slice(0, READY_EXTRA_LABEL_MAX) : '';
+      if (!id || !label || seen.has(id)) continue;
+      seen.add(id);
+      extras.push({ id, label, on: extra.on === true });
+      if (extras.length >= READY_EXTRA_MAX) break;
+    }
+  }
+  const next = { flags, note, extras };
+  return readyIsBlank(next) ? null : next;
+}
+
+function normalizeReadyMap(raw: unknown, studentIds: Set<string>): Record<string, CompetitorReady> {
+  if (!raw || typeof raw !== 'object') return {};
+  const ready: Record<string, CompetitorReady> = {};
+  for (const [id, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!studentIds.has(id)) continue;
+    const next = normalizeReadyEntry(value);
+    if (!next) continue;
+    ready[id] = next;
+  }
+  return ready;
+}
+
 export function normalizeRoster(raw: unknown): RosterState {
   if (!raw || typeof raw !== 'object') return defaultRoster();
-  const parsed = raw as Partial<RosterState>;
+  const parsed = raw as Partial<RosterState> & { ready?: unknown };
   if (!Array.isArray(parsed.students)) return defaultRoster();
   const seen = new Set<string>();
   const students: Student[] = [];
@@ -299,7 +411,12 @@ export function normalizeRoster(raw: unknown): RosterState {
     seen.add(next.id);
     students.push(next);
   }
-  return { version: 1, students: sortStudents(students) };
+  const sorted = sortStudents(students);
+  return {
+    version: 1,
+    students: sorted,
+    ready: normalizeReadyMap(parsed.ready, new Set(sorted.map((row) => row.id))),
+  };
 }
 
 function readStorage(): string | null {
@@ -344,17 +461,21 @@ export function subscribeRoster(fn: () => void): () => void {
   };
 }
 
+function commit(students: Student[], ready: Record<string, CompetitorReady> = state.ready): void {
+  persist({ version: 1, students, ready });
+}
+
 export function addStudent(draft: StudentDraft): Student | null {
   const next = studentFromInput(draft);
   if (!next) return null;
-  persist({ version: 1, students: sortStudents([...state.students, next]) });
+  commit(sortStudents([...state.students, next]));
   return next;
 }
 
 /** Append already-validated cards in one write. Used by CSV import. */
 export function addStudents(students: Student[]): Student[] {
   if (!students.length) return [];
-  persist({ version: 1, students: sortStudents([...state.students, ...students]) });
+  commit(sortStudents([...state.students, ...students]));
   return students;
 }
 
@@ -372,10 +493,7 @@ export function updateStudent(id: string, draft: Partial<StudentDraft>): Student
     checkedIn: current.checkedIn,
   });
   if (!next) return null;
-  persist({
-    version: 1,
-    students: sortStudents(state.students.map((row) => (row.id === id ? next : row))),
-  });
+  commit(sortStudents(state.students.map((row) => (row.id === id ? next : row))));
   return next;
 }
 
@@ -383,15 +501,65 @@ export function setCheckedIn(id: string, checkedIn: boolean): Student | null {
   const current = state.students.find((row) => row.id === id);
   if (!current) return null;
   const next = { ...current, checkedIn };
-  persist({
-    version: 1,
-    students: state.students.map((row) => (row.id === id ? next : row)),
-  });
+  commit(state.students.map((row) => (row.id === id ? next : row)));
   return next;
 }
 
+function writeReady(studentId: string, next: CompetitorReady): void {
+  if (!state.students.some((row) => row.id === studentId)) return;
+  const ready = { ...state.ready };
+  if (readyIsBlank(next)) delete ready[studentId];
+  else ready[studentId] = next;
+  commit(state.students, ready);
+}
+
+export function setReadyFlag(studentId: string, itemId: ReadyItemId, on: boolean): void {
+  if (!READY_ITEMS.some((item) => item.id === itemId)) return;
+  const current = competitorReady(studentId);
+  writeReady(studentId, { ...current, flags: { ...current.flags, [itemId]: on } });
+}
+
+export function setReadyNote(studentId: string, note: string): void {
+  const current = competitorReady(studentId);
+  writeReady(studentId, { ...current, note: note.trim().slice(0, READY_NOTE_MAX) });
+}
+
+/** Custom row starts Off. Blank labels and a full list of extras are ignored. */
+export function addReadyExtra(studentId: string, label: string): ReadyExtra | null {
+  const clipped = label.trim().slice(0, READY_EXTRA_LABEL_MAX);
+  if (!clipped || !state.students.some((row) => row.id === studentId)) return null;
+  const current = competitorReady(studentId);
+  if (current.extras.length >= READY_EXTRA_MAX) return null;
+  const extra: ReadyExtra = { id: createStudentId(), label: clipped, on: false };
+  writeReady(studentId, { ...current, extras: [...current.extras, extra] });
+  return extra;
+}
+
+export function setReadyExtra(studentId: string, extraId: string, on: boolean): void {
+  const current = competitorReady(studentId);
+  if (!current.extras.some((item) => item.id === extraId)) return;
+  writeReady(studentId, {
+    ...current,
+    extras: current.extras.map((item) => (item.id === extraId ? { ...item, on } : item)),
+  });
+}
+
+export function removeReadyExtra(studentId: string, extraId: string): void {
+  const current = competitorReady(studentId);
+  if (!current.extras.some((item) => item.id === extraId)) return;
+  writeReady(studentId, {
+    ...current,
+    extras: current.extras.filter((item) => item.id !== extraId),
+  });
+}
+
 export function removeStudent(id: string): void {
-  persist({ version: 1, students: state.students.filter((row) => row.id !== id) });
+  const ready = { ...state.ready };
+  delete ready[id];
+  commit(
+    state.students.filter((row) => row.id !== id),
+    ready,
+  );
 }
 
 export function resetRoster(): void {

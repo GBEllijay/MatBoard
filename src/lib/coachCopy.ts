@@ -56,6 +56,17 @@ export const COMPETITOR_ROSTER_CARD =
 export const RANKINGS_RESULTS_CARD =
   'Save and catalogue your tournament results. Keeps names, dates, divisions, placements, and win records for ranking calculations. Full auto-bracketing and seeding coming soon.';
 
+/** Hub button under Competitor Management. One checklist per roster competitor. */
+export const COMPETITION_READY_LABEL = 'Competition Ready';
+
+/** Subtitle on the Competition Ready button. */
+export const COMPETITION_READY_CARD =
+  'A weekend checklist for each competitor. Medical forms, gi, division, travel, waiver, and weigh-in stay on this device.';
+
+/** Lead on the Competition Ready list. Same On / Off language as Media Console. */
+export const COMPETITION_READY_LEAD =
+  'Gold On is done. Off still needs attention. Each list stays on this device with that competitor.';
+
 export const ROSTER_LEAD_COACH =
   'Competitor Roster with Names and Ranks for Single Matches and Mock Tournaments.';
 export const ROSTER_LEAD_PRO =
