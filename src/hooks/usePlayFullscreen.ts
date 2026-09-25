@@ -5,12 +5,34 @@ import {
   fullscreenSupported,
   requestPageFullscreen,
 } from '../lib/fullscreen';
+import { tvStationQuery } from '../lib/tvTip';
 
-export function usePlayFullscreen() {
+function isTypingTarget(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
+  if (!el) return false;
+  if (el.isContentEditable) return true;
+  return Boolean(el.closest('input, textarea, select, [contenteditable="true"]'));
+}
+
+type PlayFullscreenOptions = {
+  /**
+   * Landscape pages try to enter fullscreen on their own, and again after it closes.
+   * Editors such as Daily Training Videos pass false so playback can enter and leave
+   * fullscreen on purpose.
+   */
+  auto?: boolean;
+};
+
+export function usePlayFullscreen(options?: PlayFullscreenOptions) {
+  const auto = options?.auto !== false;
   const [supported, setSupported] = useState(false);
   const [active, setActive] = useState(false);
-  const [landscape, setLandscape] = useState(false);
+  const [landscape, setLandscape] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(orientation: landscape)').matches,
+  );
   const [blocked, setBlocked] = useState(false);
+  const [tvStation, setTvStation] = useState(false);
+  const [idle, setIdle] = useState(false);
 
   useEffect(() => {
     const syncFs = () => {
@@ -21,17 +43,23 @@ export function usePlayFullscreen() {
     const mq = window.matchMedia('(orientation: landscape)');
     const syncOrient = () => setLandscape(mq.matches);
 
+    const tv = window.matchMedia(tvStationQuery());
+    const syncTv = () => setTvStation(tv.matches);
+
     setSupported(fullscreenSupported());
     syncFs();
     syncOrient();
+    syncTv();
 
     document.addEventListener('fullscreenchange', syncFs);
     document.addEventListener('webkitfullscreenchange', syncFs);
     mq.addEventListener('change', syncOrient);
+    tv.addEventListener('change', syncTv);
     return () => {
       document.removeEventListener('fullscreenchange', syncFs);
       document.removeEventListener('webkitfullscreenchange', syncFs);
       mq.removeEventListener('change', syncOrient);
+      tv.removeEventListener('change', syncTv);
       void exitPageFullscreen();
     };
   }, []);
@@ -62,7 +90,7 @@ export function usePlayFullscreen() {
   }, []);
 
   useEffect(() => {
-    if (!supported || !landscape || active) return;
+    if (!auto || !supported || !landscape || active) return;
     let cancelled = false;
     void requestPageFullscreen().then((ok) => {
       if (cancelled) {
@@ -79,14 +107,14 @@ export function usePlayFullscreen() {
     return () => {
       cancelled = true;
     };
-  }, [supported, landscape, active]);
+  }, [auto, supported, landscape, active]);
 
   useEffect(() => {
-    if (!supported || !landscape || active) return;
+    if (!auto || !supported || !landscape || active) return;
     let cancelled = false;
     const onGesture = (event: PointerEvent) => {
       const target = event.target as HTMLElement | null;
-      if (target?.closest('a, .sheet, input, textarea, select, .play-exit')) return;
+      if (target?.closest('a, button, .sheet, input, textarea, select, .play-exit, .tv-tip, .week-cast__options')) return;
       void requestPageFullscreen().then((ok) => {
         if (cancelled) {
           void exitPageFullscreen();
@@ -105,16 +133,59 @@ export function usePlayFullscreen() {
       cancelled = true;
       window.removeEventListener('pointerdown', onGesture, true);
     };
-  }, [supported, landscape, active]);
+  }, [auto, supported, landscape, active]);
 
-  const className = [landscape ? 'play--landscape' : '', active ? 'play--fs' : ''].filter(Boolean).join(' ');
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.repeat || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (isTypingTarget(event.target)) return;
+      const key = event.key;
+      if (key !== 'f' && key !== 'F' && key !== 'F11') return;
+      event.preventDefault();
+      void toggle();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [toggle]);
+
+  useEffect(() => {
+    if (!tvStation) {
+      setIdle(false);
+      return;
+    }
+    let timer = 0;
+    const bump = () => {
+      setIdle(false);
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => setIdle(true), 2800);
+    };
+    bump();
+    window.addEventListener('pointermove', bump);
+    window.addEventListener('keydown', bump);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('pointermove', bump);
+      window.removeEventListener('keydown', bump);
+    };
+  }, [tvStation]);
+
+  const className = [
+    landscape ? 'play--landscape' : '',
+    active ? 'play--fs' : '',
+    tvStation ? 'play--tv' : '',
+    idle ? 'play--idle' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return {
     supported,
     active,
     landscape,
-    /** Landscape (or a failed auto-request) and the browser still shows chrome. */
-    showFallback: supported && !active && (blocked || landscape),
+    tvStation,
+    idle,
+    /** Landscape, desktop TV station, or a failed auto-request — browser chrome still visible. */
+    showFallback: supported && !active && (blocked || landscape || tvStation),
     enter,
     exit,
     toggle,

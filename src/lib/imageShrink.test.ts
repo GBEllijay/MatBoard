@@ -1,0 +1,228 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {
+  STORED_PHOTO_MAX_EDGE,
+  STORED_PHOTO_PASSTHROUGH_BYTES,
+  STORED_PHOTO_QUALITY,
+  fitWithinEdge,
+  shrinkImageFile,
+  shrinkPhotoForStore,
+} from './imageShrink.ts';
+
+type Draw = { w: number; h: number; fill: string };
+
+function installEncoder(bitmap: { width: number; height: number }, encode: (mime: string) => Blob | null) {
+  const previousBitmap = globalThis.createImageBitmap;
+  const previousDocument = globalThis.document;
+  const draws: Draw[] = [];
+  const mimes: string[] = [];
+  const qualities: number[] = [];
+  let closed = false;
+  globalThis.createImageBitmap = (async () => ({
+    width: bitmap.width,
+    height: bitmap.height,
+    close() {
+      closed = true;
+    },
+  })) as typeof createImageBitmap;
+  const canvas = {
+    width: 0,
+    height: 0,
+    getContext() {
+      const ctx = {
+        fillStyle: '',
+        imageSmoothingEnabled: false,
+        imageSmoothingQuality: 'low' as ImageSmoothingQuality,
+        fillRect() {},
+        drawImage(_image: unknown, _x: number, _y: number, w: number, h: number) {
+          draws.push({ w, h, fill: ctx.fillStyle });
+        },
+      };
+      return ctx;
+    },
+    toBlob(callback: (blob: Blob | null) => void, mime: string, quality: number) {
+      mimes.push(mime);
+      qualities.push(quality);
+      callback(encode(mime));
+    },
+  };
+  globalThis.document = {
+    createElement: () => canvas,
+  } as unknown as Document;
+  return {
+    draws,
+    mimes,
+    qualities,
+    canvas,
+    wasClosed: () => closed,
+    restore() {
+      globalThis.createImageBitmap = previousBitmap;
+      if (previousDocument === undefined) {
+        delete (globalThis as { document?: Document }).document;
+      } else {
+        globalThis.document = previousDocument;
+      }
+    },
+  };
+}
+
+test('a phone photo fits a 1080p gym TV on the long edge', () => {
+  assert.equal(STORED_PHOTO_MAX_EDGE, 1920);
+  assert.equal(STORED_PHOTO_QUALITY, 0.82);
+  assert.deepEqual(fitWithinEdge(4032, 3024, STORED_PHOTO_MAX_EDGE), {
+    scale: 1920 / 4032,
+    width: 1920,
+    height: 1440,
+  });
+  assert.deepEqual(fitWithinEdge(3024, 4032, STORED_PHOTO_MAX_EDGE), {
+    scale: 1920 / 4032,
+    width: 1440,
+    height: 1920,
+  });
+  const already = fitWithinEdge(1280, 720, STORED_PHOTO_MAX_EDGE);
+  assert.equal(already.scale, 1);
+  assert.equal(already.width, 1280);
+  assert.equal(already.height, 720);
+});
+
+test('a Pro Shop photo is scaled and stored as a small JPEG', async () => {
+  const encoder = installEncoder({ width: 4032, height: 3024 }, (mime) => {
+    assert.equal(mime, 'image/jpeg');
+    return new Blob([new Uint8Array(24_000)], { type: mime });
+  });
+  try {
+    const phone = new File([new Uint8Array(4_200_000)], 'gi-front.jpg', { type: 'image/jpeg' });
+    const stored = await shrinkPhotoForStore(phone);
+    assert.equal(encoder.canvas.width, 1920);
+    assert.equal(encoder.canvas.height, 1440);
+    assert.deepEqual(encoder.mimes, ['image/jpeg']);
+    assert.deepEqual(encoder.qualities, [STORED_PHOTO_QUALITY]);
+    assert.equal(encoder.draws[0]?.fill, '#ffffff');
+    assert.equal(encoder.draws[0]?.w, 1920);
+    assert.equal(encoder.draws[0]?.h, 1440);
+    assert.equal(stored.type, 'image/jpeg');
+    assert.equal(stored.size, 24_000);
+    assert.ok(stored.size < phone.size);
+    assert.equal(encoder.wasClosed(), true);
+  } finally {
+    encoder.restore();
+  }
+});
+
+test('JPEG encode falls back to WebP, then to the original file', async () => {
+  const webp = installEncoder({ width: 4000, height: 3000 }, (mime) =>
+    mime === 'image/webp' ? new Blob([new Uint8Array(800)], { type: 'image/webp' }) : null,
+  );
+  try {
+    const phone = new File([new Uint8Array(2_000_000)], 'rashguard.jpg', { type: 'image/jpeg' });
+    const stored = await shrinkPhotoForStore(phone);
+    assert.deepEqual(webp.mimes, ['image/jpeg', 'image/webp']);
+    assert.equal(stored.type, 'image/webp');
+    assert.equal(stored.size, 800);
+  } finally {
+    webp.restore();
+  }
+
+  const neither = installEncoder({ width: 4000, height: 3000 }, () => null);
+  try {
+    const phone = new File([new Uint8Array(2_000_000)], 'rashguard.jpg', { type: 'image/jpeg' });
+    const stored = await shrinkPhotoForStore(phone);
+    assert.equal(stored, phone);
+  } finally {
+    neither.restore();
+  }
+});
+
+test('a small in-bounds JPEG is kept and a larger re-encode is discarded', async () => {
+  let encoded = 0;
+  const small = installEncoder({ width: 1200, height: 900 }, () => {
+    encoded += 1;
+    return new Blob([new Uint8Array(10)], { type: 'image/jpeg' });
+  });
+  try {
+    const file = new File([new Uint8Array(80_000)], 'patch.jpg', { type: 'image/jpeg' });
+    assert.ok(file.size < STORED_PHOTO_PASSTHROUGH_BYTES);
+    const stored = await shrinkPhotoForStore(file);
+    assert.equal(stored, file);
+    assert.equal(encoded, 0);
+    assert.equal(small.wasClosed(), true);
+  } finally {
+    small.restore();
+  }
+
+  const grown = installEncoder({ width: 800, height: 600 }, () => new Blob([new Uint8Array(900_000)], { type: 'image/jpeg' }));
+  try {
+    const file = new File([new Uint8Array(800_000)], 'already-big.jpg', { type: 'image/jpeg' });
+    const stored = await shrinkPhotoForStore(file);
+    assert.equal(stored, file);
+  } finally {
+    grown.restore();
+  }
+});
+
+test('videos and gifs are not re-encoded; a broken decode keeps the original', async () => {
+  let decoded = 0;
+  const previousBitmap = globalThis.createImageBitmap;
+  const previousDocument = globalThis.document;
+  globalThis.createImageBitmap = (async () => {
+    decoded += 1;
+    throw new Error('decode failed');
+  }) as typeof createImageBitmap;
+  globalThis.document = {
+    createElement() {
+      throw new Error('no canvas');
+    },
+  } as unknown as Document;
+  try {
+    const clip = new File([new Uint8Array(50_000)], 'drill.mp4', { type: 'video/mp4' });
+    const gif = new File([new Uint8Array(50_000)], 'loop.gif', { type: 'image/gif' });
+    const heic = new File([new Uint8Array(50_000)], 'gi.heic', { type: 'image/heic' });
+    assert.equal(await shrinkPhotoForStore(clip), clip);
+    assert.equal(await shrinkPhotoForStore(gif), gif);
+    assert.equal(decoded, 0);
+    assert.equal(await shrinkPhotoForStore(heic), heic);
+    assert.ok(decoded >= 1);
+  } finally {
+    globalThis.createImageBitmap = previousBitmap;
+    if (previousDocument === undefined) delete (globalThis as { document?: Document }).document;
+    else globalThis.document = previousDocument;
+  }
+});
+
+test('the gym-logo shrink still keeps a small PNG and encodes a wide one', async () => {
+  const encoder = installEncoder({ width: 64, height: 64 }, () => {
+    throw new Error('should passthrough');
+  });
+  try {
+    const crest = new File([new Uint8Array(2_000)], 'crest.png', { type: 'image/png' });
+    const stored = await shrinkImageFile(crest, {
+      maxEdge: 512,
+      quality: 0.86,
+      passthroughBytes: 180_000,
+      mimeFor: (source) => source.type,
+    });
+    assert.equal(stored, crest);
+  } finally {
+    encoder.restore();
+  }
+
+  const wide = installEncoder({ width: 2000, height: 800 }, (mime) => new Blob([new Uint8Array(400)], { type: mime }));
+  try {
+    const crest = new File([new Uint8Array(900_000)], 'crest.png', { type: 'image/png' });
+    const stored = await shrinkImageFile(crest, {
+      maxEdge: 512,
+      quality: 0.86,
+      passthroughBytes: 180_000,
+      mimeFor: (source) =>
+        source.type === 'image/png' || source.type === 'image/webp' ? source.type : 'image/jpeg',
+    });
+    assert.equal(wide.canvas.width, 512);
+    assert.equal(wide.canvas.height, 205);
+    assert.deepEqual(wide.mimes, ['image/png']);
+    assert.deepEqual(wide.qualities, [0.86]);
+    assert.equal(stored.type, 'image/png');
+    assert.equal(stored.size, 400);
+  } finally {
+    wide.restore();
+  }
+});

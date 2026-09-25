@@ -8,11 +8,11 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: false,
-      includeAssets: ['favicon.png', 'favicon.svg', 'advantage-icon.png', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'home-mat-tatami.png', 'sounds/parou.mp3'],
+      includeAssets: ['favicon.png', 'favicon.svg', 'advantage-icon.png', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'home-mat-tatami.png', 'sounds/parou-stop-gaming-mic.mp3', 'sounds/parou-stop.mp3', 'sounds/parou.mp3'],
       manifest: {
         name: 'Advantage',
         short_name: 'Advantage',
-        description: 'Gym match scoreboard, round timer, and photo slideshow.',
+        description: "Gym match scoreboard, round timer, and Gym Owner and Instructor's Console.",
         theme_color: '#0b0d10',
         background_color: '#0b0d10',
         display: 'standalone',

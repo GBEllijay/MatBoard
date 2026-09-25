@@ -11,10 +11,21 @@ export type AudioPrefs = {
 
 export const END_CUE_OPTIONS: { id: EndCue; label: string }[] = [
   { id: 'buzzer', label: 'Buzzer' },
-  { id: 'parou', label: 'Parou ("stop")' },
+  { id: 'parou', label: 'PAROU! ("STOP!")' },
 ];
 
-const PAROU_URL = '/sounds/parou.mp3';
+/**
+ * Approved gaming-mic take: full “Parou… stop”.
+ * File: `public/sounds/parou-stop-gaming-mic.mp3` (served as this URL).
+ * The chip label stays PAROU! ("STOP!"); both words are spoken.
+ */
+const PAROU_URL = '/sounds/parou-stop-gaming-mic.mp3';
+
+/**
+ * Cue-only trim above the user volume slider.
+ * This file already peaks at 0 dBFS, so 1.0 keeps the phrase from clipping.
+ */
+const PAROU_CUE_GAIN = 1;
 
 const DEFAULT_PREFS: AudioPrefs = {
   muted: false,
@@ -95,6 +106,8 @@ function getContext(): AudioContext {
     if (!Ctor) {
       throw new Error('Web Audio is not available');
     }
+    // Synth + decoded Parou stay on this context (not <audio>/<video>) so short
+    // gym cues mix over floor music instead of taking the media session.
     ctx = new Ctor();
     master = buildMaster(ctx);
   }
@@ -466,7 +479,7 @@ function startParou(buffer: AudioBuffer): void {
   const src = audio.createBufferSource();
   const amp = audio.createGain();
   src.buffer = buffer;
-  amp.gain.value = volume * 1.15;
+  amp.gain.value = volume * PAROU_CUE_GAIN;
   src.connect(amp);
   amp.connect(getMaster());
   src.start();
@@ -485,7 +498,7 @@ function playParouCue(kind: 'match' | 'training'): void {
   });
 }
 
-/** Play the user-selected end cue (original synth buzzer or owner-recorded Parou). */
+/** Play the user-selected end cue (synth buzzer or the “Parou… stop” take). */
 export function playSelectedEndCue(kind: 'match' | 'training' = 'match', cue: EndCue = prefs.endCue): void {
   if (parseEndCue(cue) === 'parou') {
     playParouCue(kind);
@@ -499,6 +512,7 @@ export function playSelectedEndCue(kind: 'match' | 'training' = 'match', cue: En
 export const END_BUZZER_MS = 1100;
 
 export function endCueFollowMs(): number {
-  if (prefs.endCue === 'parou') return 1000;
+  // Full take is ~3.5s (speech ends ~2.4s). Wait it out before the next start cue.
+  if (prefs.endCue === 'parou') return 3700;
   return END_BUZZER_MS;
 }
