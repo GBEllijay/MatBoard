@@ -50,7 +50,7 @@ export const COMPETITOR_ROSTER_DESCRIPTION =
 
 /** Subtitle on the Competitor Roster button in Competitor Management. */
 export const COMPETITOR_ROSTER_CARD =
-  'Store names, belts, and templates for import and export.';
+  'Easily create and maintain a list of competitor names ranks and more for easy loading into tournament brackets and matches.';
 
 export const ROSTER_LEAD_COACH =
   'Competitor Roster with Names and Ranks for Single Matches and Mock Tournaments.';
