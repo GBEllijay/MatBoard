@@ -1,3 +1,4 @@
+import { FolderBatchError, type FolderSaveProgress } from './folderBatch.ts';
 import { shrinkPhotoForStore } from './imageShrink.ts';
 import { PHOTO_PICKER_ACCEPT, VIDEO_PICKER_ACCEPT } from './mediaPicker.ts';
 import { assertOriginRoom, isStorageQuotaError, StorageQuotaError } from './storageQuota.ts';
@@ -391,21 +392,65 @@ async function blobForFolderFile(
   return { blob, mime };
 }
 
-export async function addFolderFiles(files: File[], folderId: FolderId): Promise<number> {
+/** Let the screen paint, and give the last decoded photo a chance to be collected. */
+function yieldToMain(): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, 0);
+  });
+}
+
+function stopFolderSave(error: unknown, saved: number, total: number): Error {
+  if (error instanceof StorageQuotaError) return new StorageQuotaError(saved, total);
+  if (error instanceof FolderBatchError) return error;
+  if (isStorageQuotaError(error)) return new StorageQuotaError(saved, total);
+  return new FolderBatchError(saved, total, error);
+}
+
+export type AddFolderFilesOptions = {
+  /** Called before each shrink and after each successful write. */
+  onProgress?: (progress: FolderSaveProgress) => void;
+};
+
+/**
+ * Save folder media one file at a time. There is no count or megabyte cap —
+ * origin quota is the only hard stop. Shrinking and writing as we go keeps a
+ * large phone pick from holding every decoded photo in memory at once, and
+ * lets the screen show how many are already stored.
+ */
+export async function addFolderFiles(
+  files: File[],
+  folderId: FolderId,
+  options?: AddFolderFilesOptions,
+): Promise<number> {
   const folder = folderById(folderId);
+  const accepted = files.filter((file) => fileMatchesFolder(file, folder));
+  if (!accepted.length) return 0;
+
   const existing = await listPhotos(folderId);
   let photoCount = existing.filter((photo) => !isVideoItem(photo)).length;
   let videoCount = existing.filter((photo) => isVideoItem(photo)).length;
   let nextOrder = existing.reduce((max, photo) => Math.max(max, photo.sortOrder), -1);
-  const pending: StoredPhoto[] = [];
-  for (const file of files) {
-    if (!fileMatchesFolder(file, folder)) continue;
+  const db = await openDb();
+  let added = 0;
+  const total = accepted.length;
+  const report = (phase: FolderSaveProgress['phase']) => {
+    options?.onProgress?.({ done: added, total, phase });
+  };
+
+  for (const file of accepted) {
+    report('shrink');
+    await yieldToMain();
     nextOrder += 1;
     const video = folder.id === 'gallery' && isAcceptedVideoFile(file);
     if (video) videoCount += 1;
     else photoCount += 1;
-    const stored = await blobForFolderFile(file, folder);
-    pending.push({
+    let stored: { blob: Blob; mime: string };
+    try {
+      stored = await blobForFolderFile(file, folder);
+    } catch (error) {
+      throw new FolderBatchError(added, total, error);
+    }
+    const photo: StoredPhoto = {
       id: crypto.randomUUID(),
       mime: stored.mime,
       addedAt: Date.now(),
@@ -417,22 +462,17 @@ export async function addFolderFiles(files: File[], folderId: FolderId): Promise
       buyUrl: '',
       startsSlide: true,
       qrLinks: [],
-    });
-  }
-  if (!pending.length) return 0;
-  const db = await openDb();
-  let added = 0;
-  for (const photo of pending) {
-    await assertOriginRoom(photo.blob.size, added);
+    };
     try {
+      await assertOriginRoom(photo.blob.size, added);
       const tx = db.transaction(STORE, 'readwrite');
       tx.objectStore(STORE).put(photo);
       await txDone(tx);
       added += 1;
+      report('save');
+      await yieldToMain();
     } catch (error) {
-      if (error instanceof StorageQuotaError) throw error;
-      if (isStorageQuotaError(error)) throw new StorageQuotaError(added);
-      throw error;
+      throw stopFolderSave(error, added, total);
     }
   }
   return added;

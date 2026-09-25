@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { FolderBatchError, type FolderSaveProgress } from './folderBatch.ts';
 import {
   DEVICE_STORAGE_FULL_NOTE,
   FOLDERS,
@@ -122,7 +123,7 @@ function restoreGlobals(previous: DbGlobals) {
   }
 }
 
-function installPhotoFixtures(failPutsAfter?: number) {
+function installPhotoFixtures(failPutsAfter?: number, putFailure: 'quota' | 'generic' = 'quota') {
   const tables = new Map<string, Map<string, unknown>>();
   let version = 0;
   let puts = 0;
@@ -179,7 +180,10 @@ function installPhotoFixtures(failPutsAfter?: number) {
           put: (value: { id: string }) => {
             puts += 1;
             if (failPutsAfter != null && puts > failPutsAfter) {
-              tx.error = new DOMException('The quota has been exceeded.', 'QuotaExceededError');
+              tx.error =
+                putFailure === 'generic'
+                  ? new DOMException('The operation failed.', 'UnknownError')
+                  : new DOMException('The quota has been exceeded.', 'QuotaExceededError');
               return;
             }
             table(storeName).set(value.id, value);
@@ -287,6 +291,7 @@ test('two large Pro Shop photos are stored shrunk, and a full quota says so', as
       (error: unknown) => {
         assert.ok(error instanceof StorageQuotaError);
         assert.equal(error.saved, 1);
+        assert.equal(error.attempted, 2);
         const note = quotaAddNote(error);
         assert.equal(note, `Saved 1. ${DEVICE_STORAGE_FULL_NOTE}`);
         assert.equal(note?.includes('memory'), false);
@@ -301,10 +306,73 @@ test('two large Pro Shop photos are stored shrunk, and a full quota says so', as
     await assert.rejects(addFolderFiles([phonePhoto('shorts.jpg')], 'shop'), (error: unknown) => {
       assert.ok(error instanceof StorageQuotaError);
       assert.equal(error.saved, 0);
+      assert.equal(error.attempted, 1);
       assert.equal(quotaAddNote(error), DEVICE_STORAGE_FULL_NOTE);
       return true;
     });
     assert.equal((await listPhotos('shop')).length, 0);
+  } finally {
+    restoreGlobals(previous);
+  }
+});
+
+test('a multi-photo batch reports progress as each file is stored and does not cap the count', async () => {
+  const previous = rememberGlobals();
+  try {
+    const fixtures = installPhotoFixtures();
+    const progress: FolderSaveProgress[] = [];
+    let decodedWhenFirstSaved = -1;
+    const photos = Array.from({ length: 6 }, (_, index) => phonePhoto(`mat-${index}.jpg`));
+    const added = await addFolderFiles(photos, 'events', {
+      onProgress: (update) => {
+        progress.push({ ...update });
+        if (update.phase === 'save' && update.done === 1 && decodedWhenFirstSaved < 0) {
+          decodedWhenFirstSaved = fixtures.decoded();
+        }
+      },
+    });
+    assert.equal(added, 6);
+    assert.equal((await listPhotos('events')).length, 6);
+    assert.equal(decodedWhenFirstSaved, 1);
+    assert.deepEqual(
+      progress.map((update) => [update.phase, update.done, update.total]),
+      [
+        ['shrink', 0, 6],
+        ['save', 1, 6],
+        ['shrink', 1, 6],
+        ['save', 2, 6],
+        ['shrink', 2, 6],
+        ['save', 3, 6],
+        ['shrink', 3, 6],
+        ['save', 4, 6],
+        ['shrink', 4, 6],
+        ['save', 5, 6],
+        ['shrink', 5, 6],
+        ['save', 6, 6],
+      ],
+    );
+  } finally {
+    restoreGlobals(previous);
+  }
+});
+
+test('a non-quota stop keeps the photos already stored', async () => {
+  const previous = rememberGlobals();
+  try {
+    installPhotoFixtures(1, 'generic');
+    await assert.rejects(
+      addFolderFiles([phonePhoto('one.jpg'), phonePhoto('two.jpg'), phonePhoto('three.jpg')], 'gallery'),
+      (error: unknown) => {
+        assert.ok(error instanceof FolderBatchError);
+        assert.equal(error.saved, 1);
+        assert.equal(error.failed, 2);
+        assert.equal(error.total, 3);
+        return true;
+      },
+    );
+    const kept = await listPhotos('gallery');
+    assert.equal(kept.length, 1);
+    assert.equal(kept[0]?.label, 'Photo 1');
   } finally {
     restoreGlobals(previous);
   }

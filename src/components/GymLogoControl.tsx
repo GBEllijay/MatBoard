@@ -18,8 +18,8 @@ export function GymLogoControl() {
   const [chooserOpen, setChooserOpen] = useState(false);
   const [note, setNote] = useState('');
 
-  const onFiles = async (files: FileList | null) => {
-    const file = files?.[0];
+  const onFiles = async (files: readonly File[]) => {
+    const file = files[0];
     if (!file) return;
     setChooserOpen(false);
     try {

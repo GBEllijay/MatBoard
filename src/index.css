@@ -3467,6 +3467,58 @@ a.saver-folder--link {
   font-weight: 600;
 }
 
+.saver-batch {
+  position: fixed;
+  z-index: 70;
+  top: calc(0.45rem + var(--safe-t));
+  left: calc(4.75rem + var(--safe-l));
+  right: calc(4.75rem + var(--safe-r));
+  display: grid;
+  gap: 0.45rem;
+  justify-items: center;
+  max-width: 28rem;
+  margin: 0 auto;
+  padding: 0.75rem 0.9rem;
+  border-radius: 16px;
+  background: rgba(12, 18, 28, 0.96);
+  color: var(--ink);
+  border: 2px solid var(--logo-yellow);
+  box-shadow: var(--shadow);
+  text-align: center;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.saver-batch p {
+  margin: 0;
+}
+
+.saver-batch--error {
+  border-color: var(--neg);
+  background: rgba(42, 14, 14, 0.96);
+}
+
+.saver-batch--panel {
+  position: sticky;
+  top: 0;
+  left: auto;
+  right: auto;
+  z-index: 2;
+  max-width: none;
+  margin: 0;
+}
+
+.saver-batch__dismiss {
+  width: auto;
+  min-height: 44px;
+  padding: 0.35rem 0.95rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: transparent;
+  color: var(--ink);
+  font-weight: 800;
+}
+
 .saver-sound-hint {
   font-size: 0.92rem;
   margin-bottom: 0.55rem;
