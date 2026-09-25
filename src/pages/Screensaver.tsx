@@ -699,44 +699,47 @@ export function ScreensaverPage() {
 function ClassScheduleEntry() {
   const schedule = useScheduleState();
   const ready = schedule.classes.length > 0;
-  const onTv = schedule.castEnabled && ready;
   return (
-    <section className="saver-folder saver-schedule" aria-label="Class Schedule">
-      <div className="saver-schedule__top">
-        <span className="saver-folder__title">
-          Class Schedule
-          <small>{onTv ? 'In this cast' : 'Gym TV week board'}</small>
-        </span>
-        <Link className="saver-folder__go" to="/schedule">
+    <details className="saver-folder saver-schedule">
+      <summary className="saver-folder__summary">
+        <span className="saver-folder__title">Class Schedule</span>
+        <Link
+          className="saver-folder__go"
+          to="/schedule"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
+        >
           Open
         </Link>
+      </summary>
+      <div className="saver-folder__panel">
+        <div className="presets presets--split" role="radiogroup" aria-label="Class Schedule on the TV">
+          <button
+            type="button"
+            role="radio"
+            aria-checked={schedule.castEnabled}
+            className={`preset${schedule.castEnabled ? ' preset--on' : ''}`}
+            onClick={() => setScheduleCastEnabled(true)}
+          >
+            On the TV
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={!schedule.castEnabled}
+            className={`preset${!schedule.castEnabled ? ' preset--on' : ''}`}
+            onClick={() => setScheduleCastEnabled(false)}
+          >
+            Off the TV
+          </button>
+        </div>
+        <p className="saver-schedule__hint">
+          {ready
+            ? 'On adds the full week or month after Gallery and before Pro Shop. Off keeps Gallery, Pro Shop, and Events.'
+            : 'Add classes on the schedule page, then turn this on to play the week board in the cast.'}
+        </p>
       </div>
-      <div className="presets presets--split" role="radiogroup" aria-label="Class Schedule on the TV">
-        <button
-          type="button"
-          role="radio"
-          aria-checked={schedule.castEnabled}
-          className={`preset${schedule.castEnabled ? ' preset--on' : ''}`}
-          onClick={() => setScheduleCastEnabled(true)}
-        >
-          On the TV
-        </button>
-        <button
-          type="button"
-          role="radio"
-          aria-checked={!schedule.castEnabled}
-          className={`preset${!schedule.castEnabled ? ' preset--on' : ''}`}
-          onClick={() => setScheduleCastEnabled(false)}
-        >
-          Off the TV
-        </button>
-      </div>
-      <p className="saver-schedule__hint">
-        {ready
-          ? 'On adds the full week or month after Gallery and before Pro Shop. Off keeps Gallery, Pro Shop, and Events.'
-          : 'Add classes on the schedule page, then turn this on to play the week board in the cast.'}
-      </p>
-    </section>
+    </details>
   );
 }
 
