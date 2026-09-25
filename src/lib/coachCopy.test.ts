@@ -135,9 +135,10 @@ test('Competitor Roster copy names bout competitors and skips franchise disclaim
 
 test('Game Plan copy keeps a note optional and stays on bout competitors', () => {
   assert.equal(GAME_PLAN_LABEL, 'Competitor Game Plan');
-  assert.equal(GAME_PLAN_A, 'A GAME');
-  assert.equal(GAME_PLAN_B, 'B GAME');
-  assert.equal(GAME_PLAN_C, 'C GAME');
+  assert.equal(GAME_PLAN_A, 'A Game');
+  assert.equal(GAME_PLAN_B, 'B Game');
+  assert.equal(GAME_PLAN_C, 'C Game');
+  assert.match(GAME_PLAN_CARD, /A Game, B Game, and C Game/);
   assert.match(GAME_PLAN_CARD, /optional/i);
   assert.match(GAME_PLAN_LEAD, /optional/i);
   assert.match(GAME_PLAN_LEAD, /stand alone/);

@@ -74,7 +74,7 @@ export function emptyGamePlan(): CompetitorGamePlan {
 
 export function sectionLabel(section: GameSection): string {
   if (section === 'home') return 'Home focus';
-  return `${section.toUpperCase()} game`;
+  return `${section.toUpperCase()} Game`;
 }
 
 export function auditLabel(audit: GameAudit): string {
@@ -106,7 +106,7 @@ export function gamePlanStatusLabel(plan: CompetitorGamePlan): string {
   for (const section of GAME_LAYER_SECTIONS) {
     const layer = plan[section];
     if (!layerHasContent(layer)) continue;
-    bits.push(layer.audit ? `${section.toUpperCase()} · ${auditLabel(layer.audit)}` : `${section.toUpperCase()} game`);
+    bits.push(layer.audit ? `${sectionLabel(section)} · ${auditLabel(layer.audit)}` : sectionLabel(section));
   }
   if (layerHasContent(plan.home)) bits.push('Home focus');
   return bits.length ? bits.join(' · ') : 'No game plan yet';

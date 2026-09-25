@@ -120,7 +120,7 @@ describe('normalizeGamePlan', () => {
     });
     assert.equal(next.gamePlans.sam.c.notes, 'Surprise armbar');
     assert.equal(next.gamePlans.gone, undefined);
-    assert.equal(gamePlanStatusLabel(next.gamePlans.sam), 'C · Overdeveloped');
+    assert.equal(gamePlanStatusLabel(next.gamePlans.sam), 'C Game · Overdeveloped');
     assert.equal(gamePlanStatusLabel(emptyGamePlan()), 'No game plan yet');
     const siblings = rosterSiblings({
       version: 1,

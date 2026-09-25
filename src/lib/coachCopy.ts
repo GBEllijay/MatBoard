@@ -61,15 +61,15 @@ export const GAME_PLAN_LABEL = 'Competitor Game Plan';
 
 /** Subtitle on the Competitor Game Plan button. */
 export const GAME_PLAN_CARD =
-  'A, B, and C games for each bout competitor, plus what to work on at home. A Technique Tree link is optional.';
+  'A Game, B Game, and C Game for each bout competitor, plus what to work on at home. A Technique Tree link is optional.';
 
 /** Lead on the game plan screen. A note can stand alone. */
 export const GAME_PLAN_LEAD =
   'Notes stay on this device with that competitor. A Technique Tree link is optional, and a custom note can stand alone.';
 
-export const GAME_PLAN_A = 'A GAME';
-export const GAME_PLAN_B = 'B GAME';
-export const GAME_PLAN_C = 'C GAME';
+export const GAME_PLAN_A = 'A Game';
+export const GAME_PLAN_B = 'B Game';
+export const GAME_PLAN_C = 'C Game';
 export const GAME_PLAN_HOME = 'Home focus. What to work on between sessions.';
 export const GAME_PLAN_OPTIONAL = 'Optional. A note does not need a Technique Tree step.';
 export const GAME_PLAN_EMPTY =
