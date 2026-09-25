@@ -14,12 +14,13 @@ import {
   PRO_HOME_DETAIL,
   PRO_HOME_LINES,
   PRO_LADDER_DETAIL,
-  COACH_HOME_LINES,
-  WHITE_HOME_LINES,
+  COACH_HOME_DESCRIPTION,
+  WHITE_HOME_DESCRIPTION,
   WHITE_LADDER_DETAIL,
   coachToolsOpen,
   parentToolboxPath,
   COMPETITOR_SYSTEM_NAME,
+  INSTRUCTOR_COLLAB_HUB_LABEL,
   INSTRUCTOR_COLLAB_NAME,
   INSTRUCTOR_COACH_ENTRY,
   MATCH_CONTROLLER_PATH,
@@ -46,17 +47,18 @@ test('Home motto stays Win by Advantage', () => {
 
 test('Home ladder details keep White meaning and a plain Pro subtitle', () => {
   assert.equal(WHITE_LADDER_DETAIL, 'BJJ scoreboard and timer, live match and rounds');
-  assert.equal(WHITE_HOME_LINES.length, 3);
-  assert.match(WHITE_HOME_LINES.join(' '), /Live Bout/);
-  assert.match(WHITE_HOME_LINES.join(' '), /Rounds timer/);
-  assert.equal(COACH_HOME_LINES.length, 3);
-  assert.match(COACH_HOME_LINES.join(' '), /Daily Lesson Plan/);
-  assert.match(COACH_HOME_LINES.join(' '), /Daily Training Videos/);
-  assert.match(COACH_HOME_LINES.join(' '), /Technique Tree/);
-  assert.match(COACH_HOME_LINES.join(' '), /Mock Tournament/);
-  assert.match(COACH_HOME_LINES.join(' '), /Competitor Roster/);
-  assert.doesNotMatch(WHITE_HOME_LINES.join(' '), /student/i);
-  assert.doesNotMatch(COACH_HOME_LINES.join(' '), /student/i);
+  assert.equal(
+    WHITE_HOME_DESCRIPTION,
+    'BJJ scoreboard and round timer for live matches and rounds. Display stays on the TV, the controller stays in your hand.',
+  );
+  assert.equal(
+    COACH_HOME_DESCRIPTION,
+    'daily lesson plan, daily training videos, mock tournament, and competitor roster.',
+  );
+  assert.doesNotMatch(WHITE_HOME_DESCRIPTION, /White —/);
+  assert.doesNotMatch(COACH_HOME_DESCRIPTION, /Technique Tree/);
+  assert.doesNotMatch(WHITE_HOME_DESCRIPTION, /student/i);
+  assert.doesNotMatch(COACH_HOME_DESCRIPTION, /student/i);
   assert.equal(PRO_LADDER_DETAIL, 'Gym Owner and Instructors Console');
   assert.doesNotMatch(PRO_LADDER_DETAIL, /for this gym/i);
   assert.doesNotMatch(PRO_LADDER_DETAIL, /'/);
@@ -88,12 +90,16 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   assert.equal(COMPETITOR_SYSTEM_NAME, 'Competitor Management System');
   assert.equal(INSTRUCTOR_COLLAB_NAME, 'Instructor Collaboration and Cloud Access');
   assert.equal(
+    INSTRUCTOR_COLLAB_HUB_LABEL,
+    'Instructor Collaboration & Advantage Coach Unlimited',
+  );
+  assert.equal(
     INSTRUCTOR_COACH_ENTRY,
     'Advantage Coach Unlimited',
   );
   assert.deepEqual(
     PRO_HUBS.map((hub) => hub.title),
-    [MEDIA_CONSOLE_NAME, COMPETITOR_SYSTEM_NAME, INSTRUCTOR_COLLAB_NAME, TOURNAMENT_SUITE_NAME],
+    [MEDIA_CONSOLE_NAME, COMPETITOR_SYSTEM_NAME, INSTRUCTOR_COLLAB_HUB_LABEL, TOURNAMENT_SUITE_NAME],
   );
   assert.deepEqual(
     PRO_HUBS.map((hub) => hub.to),
@@ -123,16 +129,18 @@ test('Owner tournament tool is Tournament Software; Coach keeps Mock Tournament'
   assert.equal(tournamentToolLabel(false), MOCK_TOURNAMENT_NAME);
 });
 
-test('Home Pro card shows the Coming Soon teaser with the Instructor apostrophe', () => {
-  assert.equal(PRO_HOME_DETAIL, `${GYM_CONSOLE_NAME} — Coming Soon`);
-  assert.match(PRO_HOME_DETAIL, /Instructor's Console — Coming Soon/);
+test('Home Pro card describes the console without a Coming Soon line', () => {
   assert.deepEqual(PRO_HOME_LINES, [
-    'Easily Cast Class Schedules, Events, Recent Promotions, Pro Shop Inventory, and More to your Gym TV.',
-    'Full In-House Tournament Management Suite.',
-    'Assignable Instructor Licenses and Much More!',
+    "Gym Owner and Instructor's Console",
+    'Easily cast class schedules, pro shop inventory, events, recent promotions, and more to your gym TV.',
+    'Coordinate and create In-House Tournaments in moments and track the results for review and ranking.',
+    'Provide your instructors with access to our collaborative coaching tools and give your gym the ultimate Advantage!',
   ]);
-  assert.equal(PRO_HOME_LINES.length, 3);
-  assert.ok(PRO_HOME_LINES.join(' ').length < PRO_COMING_SOON_LINES.join(' ').length);
+  const home = PRO_HOME_LINES.join('\n');
+  assert.match(home, /Instructor's Console/);
+  assert.doesNotMatch(home, /Coming Soon/);
+  assert.doesNotMatch(PRO_HOME_LINES[0], /^Pro\b/);
+  assert.equal(PRO_HOME_DETAIL, `${GYM_CONSOLE_NAME} — Coming Soon`);
 });
 
 test('Coming Soon keeps the longer Pro appetite copy off the home card', () => {
@@ -145,6 +153,7 @@ test('Coming Soon keeps the longer Pro appetite copy off the home card', () => {
   assert.doesNotMatch(home, /Auto-Fill Bracketing/);
   assert.doesNotMatch(home, /Shared Training Videos/);
   assert.doesNotMatch(home, /ProShop Inventory/);
+  assert.doesNotMatch(home, /Coming Soon/);
 });
 
 test('Pro unlock includes Coach tools and Coach-only unlock still stands alone', () => {

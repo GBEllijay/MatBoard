@@ -4,19 +4,13 @@ export const GYM_CONSOLE_NAME = "Gym Owner and Instructor's Console";
 /** Home ladder and White hub line after “White —”. */
 export const WHITE_LADDER_DETAIL = 'BJJ scoreboard and timer, live match and rounds';
 
-/** Home White card body. Real Live Bout and Rounds tools, same weight as Pro. */
-export const WHITE_HOME_LINES = [
-  'Live Bout scoreboard and match clock. Open Scoreboard on the gym TV, or control it from your phone and cast.',
-  'Rounds timer for class: set the round length, the rest, and how many rounds.',
-  'Display stays on the TV. The controller stays in your hand.',
-] as const;
+/** Home White card body. The only line under the Advantage White title. */
+export const WHITE_HOME_DESCRIPTION =
+  'BJJ scoreboard and round timer for live matches and rounds. Display stays on the TV, the controller stays in your hand.';
 
-/** Home Coach card body. The tools already on the Coach hub. */
-export const COACH_HOME_LINES = [
-  'Daily Lesson Plan on this phone: warm-up, techniques, and cool-down.',
-  'Daily Training Videos: clips stay on this device, with a drill timer on the screen.',
-  'Technique Tree, Mock Tournament brackets, and a Competitor Roster of names and belts.',
-] as const;
+/** Home Coach card body. The only line under the Advantage Coach title. */
+export const COACH_HOME_DESCRIPTION =
+  'daily lesson plan, daily training videos, mock tournament, and competitor roster.';
 
 /** Home ladder and Pro hub line after “Pro —”. Not the Owner Console page title. */
 export const PRO_LADDER_DETAIL = 'Gym Owner and Instructors Console';
@@ -25,21 +19,22 @@ export const PRO_LADDER_DETAIL = 'Gym Owner and Instructors Console';
 export const HOME_MOTTO = 'Win by Advantage';
 
 /**
- * Home Pro card line after “Pro —”.
- * Shown to everyone, including while Pro is still Coming Soon.
+ * Coming Soon ad lead for Pro. Not the homepage card.
+ * The homepage button uses PRO_HOME_LINES and does not say Coming Soon.
  */
 export const PRO_HOME_DETAIL = `${GYM_CONSOLE_NAME} — Coming Soon`;
 
-/** Home Pro card body. Three short lines, similar height to White and Coach. */
+/** Home Pro card body, one paragraph per line under Advantage Pro. */
 export const PRO_HOME_LINES = [
-  'Easily Cast Class Schedules, Events, Recent Promotions, Pro Shop Inventory, and More to your Gym TV.',
-  'Full In-House Tournament Management Suite.',
-  'Assignable Instructor Licenses and Much More!',
+  "Gym Owner and Instructor's Console",
+  'Easily cast class schedules, pro shop inventory, events, recent promotions, and more to your gym TV.',
+  'Coordinate and create In-House Tournaments in moments and track the results for review and ranking.',
+  'Provide your instructors with access to our collaborative coaching tools and give your gym the ultimate Advantage!',
 ] as const;
 
 /**
- * Longer appetite copy on the Coming Soon ad only.
- * Do not put these lines back on the home card.
+ * Longer Pro appetite copy. Not on the home card and not in the Pro splash.
+ * The splash keeps the image and the descriptor boxes.
  */
 export const PRO_COMING_SOON_LINES = [
   'Easily Cast to your Gym TV with Media Console: Class Schedules, Recent Promotions, ProShop Inventory, Upcoming Events and Competitions.',
@@ -57,8 +52,11 @@ export const TOURNAMENT_SUITE_NAME = 'In-House Tournament Management Suite';
 /** Pro hub for bout competitors, roster CSV, and on-device rankings. */
 export const COMPETITOR_SYSTEM_NAME = 'Competitor Management System';
 
-/** Plan-only Pro hub. No cloud sync in this build. */
+/** Plan-only Pro hub page title. No cloud sync in this build. */
 export const INSTRUCTOR_COLLAB_NAME = 'Instructor Collaboration and Cloud Access';
+
+/** Pro homepage hub button. The instructor page title stays INSTRUCTOR_COLLAB_NAME. */
+export const INSTRUCTOR_COLLAB_HUB_LABEL = 'Instructor Collaboration & Advantage Coach Unlimited';
 
 /** Jump from the instructor hub into Advantage Coach. Keep Unlimited in the label. */
 export const INSTRUCTOR_COACH_ENTRY = 'Advantage Coach Unlimited';
@@ -73,7 +71,7 @@ export const MEDIA_CONSOLE_NAME = 'Media Console';
 export const PRO_HUBS = [
   { title: MEDIA_CONSOLE_NAME, to: '/slideshow?folder=gallery', belt: 'purple' },
   { title: COMPETITOR_SYSTEM_NAME, to: '/competitors', belt: 'brown' },
-  { title: INSTRUCTOR_COLLAB_NAME, to: '/instructors', belt: 'black' },
+  { title: INSTRUCTOR_COLLAB_HUB_LABEL, to: '/instructors', belt: 'black' },
   { title: TOURNAMENT_SUITE_NAME, to: '/suite', belt: 'tournament' },
 ] as const;
 
