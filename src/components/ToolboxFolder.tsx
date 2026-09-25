@@ -47,6 +47,7 @@ export function ToolboxFolder({
 }: Props) {
   return (
     <details
+      id={`saver-folder-${folder.id}`}
       className="saver-folder"
       open={open}
       onToggle={(event) => {
@@ -77,7 +78,11 @@ export function ToolboxFolder({
       <div className="saver-folder__panel">
         {folder.ready ? (
           <>
-            {notice ? <p className="saver-folder__empty">{notice}</p> : null}
+            {notice ? (
+              <p className="saver-folder__empty" role="status">
+                {notice}
+              </p>
+            ) : null}
             {onAdd ? (
               <button type="button" className="btn" onClick={onAdd} disabled={addDisabled}>
                 {folder.addLabel}

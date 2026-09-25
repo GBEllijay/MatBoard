@@ -293,12 +293,12 @@ export function TechniquesPage() {
     }
   };
 
-  const onFiles = async (files: FileList | null) => {
+  const onFiles = async (files: File[]) => {
     const slotId = pickerSlotRef.current;
     const current = planRef.current;
     setAddOpen(false);
-    if (!files?.length || !slotId || !current) return;
-    const [file] = pickAddableVideos([...files], 1);
+    if (!files.length || !slotId || !current) return;
+    const [file] = pickAddableVideos(files, 1);
     if (!file) {
       setPickerNote('That file cannot play here. Switch the camera to video, or pick an MP4 / WebM.');
       return;

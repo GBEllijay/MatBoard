@@ -4,7 +4,9 @@ import {
   STORED_PHOTO_MAX_EDGE,
   STORED_PHOTO_PASSTHROUGH_BYTES,
   STORED_PHOTO_QUALITY,
+  boundsForDecode,
   fitWithinEdge,
+  imageBoundsFromBytes,
   shrinkImageFile,
   shrinkPhotoForStore,
 } from './imageShrink.ts';
@@ -18,13 +20,17 @@ function installEncoder(bitmap: { width: number; height: number }, encode: (mime
   const mimes: string[] = [];
   const qualities: number[] = [];
   let closed = false;
-  globalThis.createImageBitmap = (async () => ({
-    width: bitmap.width,
-    height: bitmap.height,
-    close() {
-      closed = true;
-    },
-  })) as typeof createImageBitmap;
+  const bitmapOptions: ImageBitmapOptions[] = [];
+  globalThis.createImageBitmap = (async (_source: Blob, opts?: ImageBitmapOptions) => {
+    if (opts && Object.keys(opts).length) bitmapOptions.push(opts);
+    return {
+      width: bitmap.width,
+      height: bitmap.height,
+      close() {
+        closed = true;
+      },
+    };
+  }) as typeof createImageBitmap;
   const canvas = {
     width: 0,
     height: 0,
@@ -53,6 +59,7 @@ function installEncoder(bitmap: { width: number; height: number }, encode: (mime
     draws,
     mimes,
     qualities,
+    bitmapOptions,
     canvas,
     wasClosed: () => closed,
     restore() {
@@ -224,5 +231,76 @@ test('the gym-logo shrink still keeps a small PNG and encodes a wide one', async
     assert.equal(stored.size, 400);
   } finally {
     wide.restore();
+  }
+});
+
+function jpegBytes(width: number, height: number, orientation?: number): Uint8Array {
+  const parts: number[] = [0xff, 0xd8];
+  if (orientation) {
+    const tiff = [
+      0x49, 0x49, 0x2a, 0x00, 0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x12, 0x01, 0x03, 0x00, 0x01, 0x00, 0x00,
+      0x00, orientation & 0xff, (orientation >> 8) & 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    ];
+    const payload = [0x45, 0x78, 0x69, 0x66, 0x00, 0x00, ...tiff];
+    const length = payload.length + 2;
+    parts.push(0xff, 0xe1, (length >> 8) & 0xff, length & 0xff, ...payload);
+  }
+  parts.push(
+    0xff,
+    0xc0,
+    0x00,
+    0x0b,
+    0x08,
+    (height >> 8) & 0xff,
+    height & 0xff,
+    (width >> 8) & 0xff,
+    width & 0xff,
+    0x01,
+    0x01,
+    0x11,
+    0x00,
+    0xff,
+    0xd9,
+  );
+  return Uint8Array.from(parts);
+}
+
+test('camera JPEG headers report sensor size and EXIF portrait orientation', () => {
+  const landscape = imageBoundsFromBytes(jpegBytes(4032, 3024, 1));
+  assert.deepEqual(landscape, { width: 4032, height: 3024, orientation: 1 });
+  assert.deepEqual(boundsForDecode(landscape!, true), { width: 4032, height: 3024 });
+
+  const portrait = imageBoundsFromBytes(jpegBytes(4032, 3024, 6));
+  assert.equal(portrait?.orientation, 6);
+  assert.deepEqual(boundsForDecode(portrait!, true), { width: 3024, height: 4032 });
+  assert.equal(imageBoundsFromBytes(Uint8Array.from([0, 1, 2, 3])), null);
+});
+
+test('a camera JPEG is decoded on its long edge instead of the full sensor bitmap', async () => {
+  const landscape = installEncoder({ width: 1920, height: 1440 }, (mime) => new Blob([new Uint8Array(24_000)], { type: mime }));
+  try {
+    const phone = new File([jpegBytes(4032, 3024, 1)], 'IMG_0001.jpg', { type: '' });
+    const stored = await shrinkPhotoForStore(phone);
+    assert.deepEqual(landscape.bitmapOptions[0], {
+      imageOrientation: 'from-image',
+      resizeWidth: 1920,
+      resizeQuality: 'high',
+    });
+    assert.equal(stored.type, 'image/jpeg');
+  } finally {
+    landscape.restore();
+  }
+
+  const portrait = installEncoder({ width: 1440, height: 1920 }, (mime) => new Blob([new Uint8Array(24_000)], { type: mime }));
+  try {
+    const phone = new File([jpegBytes(4032, 3024, 6)], 'IMG_0002.jpg', { type: 'image/jpeg' });
+    await shrinkPhotoForStore(phone);
+    assert.deepEqual(portrait.bitmapOptions[0], {
+      imageOrientation: 'from-image',
+      resizeHeight: 1920,
+      resizeQuality: 'high',
+    });
+  } finally {
+    portrait.restore();
   }
 });

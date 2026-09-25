@@ -47,6 +47,9 @@ export const INTERVAL_PRESETS_SEC = [5, 10, 30, 60] as const;
  */
 export const VIDEO_ACCEPT = VIDEO_PICKER_ACCEPT;
 const VIDEO_EXTENSIONS = ['.mp4', '.m4v', '.webm', '.mov', '.ogg', '.ogv'] as const;
+const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.jpe', '.png', '.webp', '.gif', '.heic', '.heif', '.bmp', '.avif'] as const;
+/** Camera apps often hand back a JPEG with a blank or generic type. */
+const GENERIC_FILE_TYPES = new Set(['', 'application/octet-stream', 'binary/octet-stream']);
 
 export const FOLDERS = [
   {
@@ -297,10 +300,29 @@ export function isAcceptedVideoFile(file: File): boolean {
   return (VIDEO_EXTENSIONS as readonly string[]).includes(fileExtension(file.name));
 }
 
+export function isAcceptedImageFile(file: { name: string; type: string }): boolean {
+  if (file.type.startsWith('video/')) return false;
+  if (file.type.startsWith('image/')) return true;
+  if (file.type && !GENERIC_FILE_TYPES.has(file.type)) return false;
+  return (IMAGE_EXTENSIONS as readonly string[]).includes(fileExtension(file.name));
+}
+
+/**
+ * Take photo can return a file with no extension and an empty type (the capture
+ * input only accepts images). Gallery picks are left alone so a random file
+ * still has to look like an image.
+ */
+export function coerceCapturedPhoto(file: File): File {
+  if (isAcceptedImageFile(file) || isAcceptedVideoFile(file)) return file;
+  const stem = file.name?.trim() || 'photo';
+  const name = /\.[a-z0-9]+$/i.test(stem) ? stem.replace(/\.[^.]+$/, '.jpg') : `${stem}.jpg`;
+  return new File([file], name, { type: 'image/jpeg', lastModified: file.lastModified });
+}
+
 export function fileMatchesFolder(file: File, folder: { id: string; mimePrefix: string }): boolean {
   if (folder.id === 'gallery' && isAcceptedVideoFile(file)) return true;
-  if (file.type && file.type.startsWith(folder.mimePrefix)) return true;
   if (folder.mimePrefix === 'video/') return isAcceptedVideoFile(file);
+  if (folder.mimePrefix === 'image/' && isAcceptedImageFile(file)) return true;
   return false;
 }
 
