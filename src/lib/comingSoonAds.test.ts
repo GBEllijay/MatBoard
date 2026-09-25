@@ -13,8 +13,6 @@ import {
   GYM_CONSOLE_NAME,
   INSTRUCTOR_COLLAB_NAME,
   MEDIA_CONSOLE_NAME,
-  PRO_COMING_SOON_LINES,
-  PRO_HOME_DETAIL,
   TOURNAMENT_SUITE_NAME,
 } from './productNames.ts';
 
@@ -68,40 +66,31 @@ test('Coach ad sells the hub tools and no price', () => {
   assert.ok(PRODUCT_TEASERS.coach.length < 70);
 });
 
-test('Pro ad sells the Console paragraph and no price', () => {
+test('Pro ad keeps the splash and descriptor boxes without the middle paragraph', () => {
   const text = adText('pro');
   assert.equal(COMING_SOON_ADS.pro.title, 'Advantage Pro');
-  assert.equal(COMING_SOON_ADS.pro.lead, `${PRO_HOME_DETAIL}. ${PRO_COMING_SOON_LINES.join(' ')}`);
+  assert.equal(COMING_SOON_ADS.pro.lead, '');
   assert.equal(PRO_CONSOLE_PREVIEW_LABEL, "Gym Owner and Instructor's Console");
   assert.equal(
     PRO_CONSOLE_PREVIEW_NOTE,
     'Media Console, competitors, instructor access, and the tournament suite.',
   );
   assert.doesNotMatch(PRO_CONSOLE_PREVIEW_NOTE, /placeholder|wireframe|coming/i);
-  assert.match(text, new RegExp(GYM_CONSOLE_NAME.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.match(text, /Coming Soon/);
-  assert.match(text, /Cast to your Gym TV/i);
   assert.match(text, /Media Console/);
   assert.deepEqual(
     COMING_SOON_ADS.pro.features.map((feature) => feature.title),
     [MEDIA_CONSOLE_NAME, COMPETITOR_SYSTEM_NAME, INSTRUCTOR_COLLAB_NAME, TOURNAMENT_SUITE_NAME],
   );
-  assert.match(text, /ProShop Inventory/);
-  assert.match(text, /Class Schedules/);
-  assert.match(text, /Recent Promotions/);
-  assert.match(text, /Upcoming Events and Competitions/);
+  assert.doesNotMatch(text, /Cast to your Gym TV/i);
+  assert.doesNotMatch(text, /ProShop Inventory/);
+  assert.doesNotMatch(text, /Auto-Fill Bracketing/i);
+  assert.doesNotMatch(text, /Shared Training Videos/);
   assert.match(text, /In-House Tournament Management Suite/i);
   assert.match(text, /Class Schedule/);
   assert.match(text, /Competitor Management System/);
   assert.match(text, /Instructor Collaboration and Cloud Access/);
   assert.doesNotMatch(text, /Mock Tournament/);
-  assert.match(text, /Auto-Fill Bracketing/i);
-  assert.match(text, /Result Tracking/i);
-  assert.match(text, /Instructor Licenses/i);
-  assert.match(text, /Cross Platform Access/i);
-  assert.match(text, /Shared Training Videos/);
-  assert.doesNotMatch(text, /Much More!/);
-  assert.doesNotMatch(text, /Pro Shop Inventory/);
   assert.doesNotMatch(text, /Owner.?s Toolbox/i);
   assert.doesNotMatch(text, /student progress/i);
   assert.doesNotMatch(text, /GB Members/i);

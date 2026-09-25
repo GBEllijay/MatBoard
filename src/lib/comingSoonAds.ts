@@ -10,8 +10,6 @@ import {
   GYM_CONSOLE_NAME,
   INSTRUCTOR_COLLAB_NAME,
   MEDIA_CONSOLE_NAME,
-  PRO_COMING_SOON_LINES,
-  PRO_HOME_DETAIL,
   TOURNAMENT_SUITE_NAME,
 } from './productNames.ts';
 
@@ -79,7 +77,7 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
   pro: {
     title: 'Advantage Pro',
     kicker: COMING_SOON_LABEL,
-    lead: `${PRO_HOME_DETAIL}. ${PRO_COMING_SOON_LINES.join(' ')}`,
+    lead: '',
     features: [
       {
         title: MEDIA_CONSOLE_NAME,

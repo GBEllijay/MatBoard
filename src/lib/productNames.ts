@@ -33,8 +33,8 @@ export const PRO_HOME_LINES = [
 ] as const;
 
 /**
- * Longer appetite copy on the Coming Soon ad only.
- * Do not put these lines back on the home card.
+ * Longer Pro appetite copy. Not on the home card and not in the Pro splash.
+ * The splash keeps the image and the descriptor boxes.
  */
 export const PRO_COMING_SOON_LINES = [
   'Easily Cast to your Gym TV with Media Console: Class Schedules, Recent Promotions, ProShop Inventory, Upcoming Events and Competitions.',

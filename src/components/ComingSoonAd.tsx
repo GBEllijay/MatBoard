@@ -27,7 +27,7 @@ export function ComingSoonAd({ product }: Props) {
     <div className={`soon-ad soon-ad--${product}`}>
       <p className="soon-ad__kicker">{ad.kicker}</p>
       {product === 'pro' ? <ProConsolePreview /> : null}
-      <p className="soon-ad__lead">{ad.lead}</p>
+      {ad.lead ? <p className="soon-ad__lead">{ad.lead}</p> : null}
       <ul className="soon-ad__features">
         {ad.features.map((feature) => (
           <li key={feature.title} className="soon-ad__feature">
