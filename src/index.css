@@ -606,7 +606,7 @@ button.mode-card {
   gap: 0.55rem;
 }
 
-/* Equal tier cards. Titles share one size. Body copy fills the card. */
+/* Titles share one size. The description grows so every line stays visible. */
 
 .home--ladder .mode-card,
 .home--ladder .mode-card--white,
@@ -615,10 +615,10 @@ button.mode-card {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  align-self: start;
-  min-height: 0;
-  height: 10rem;
-  overflow: hidden;
+  align-self: stretch;
+  min-height: 10rem;
+  height: auto;
+  overflow: visible;
   padding: 0.72rem 0.85rem 0.78rem 1.05rem;
   gap: 0.26rem;
 }
@@ -655,10 +655,10 @@ button.mode-card {
 
 .home--ladder .mode-card__copy {
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: min-content;
   gap: 0.22rem;
   margin-top: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .home--ladder .mode-card__copy > span {
@@ -1255,7 +1255,7 @@ button.mode-card {
   .home--ladder .home__modes {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     grid-template-rows: auto;
-    align-items: start;
+    align-items: stretch;
     align-content: center;
     align-self: center;
     height: auto;
@@ -1265,9 +1265,9 @@ button.mode-card {
   .home--ladder .mode-card--white,
   .home--ladder .mode-card--coach,
   .home--ladder .mode-card--pro {
-    min-height: 0;
-    height: 11.5rem;
-    overflow: hidden;
+    min-height: 11.5rem;
+    height: auto;
+    overflow: visible;
     padding: 0.78rem 0.9rem 0.84rem 1.05rem;
     gap: 0.28rem;
   }
