@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 import { BeltRail } from './BeltRail';
 import {
-  COACH_HUB_BLURB,
   COMPETITOR_ROSTER_LABEL,
   TECHNIQUE_TREE_LABEL,
   TRAINING_NOTES_LABEL,
@@ -26,7 +25,6 @@ export function CoachToolsCard() {
       <BeltRail kind="coach" />
       <strong>Advantage Coach</strong>
       <span className="mode-card__sub">Coach</span>
-      <span>{COACH_HUB_BLURB}</span>
       <div className="pro-hubs">
         {COACH_TOOL_LINKS.map((tool) => (
           <Link key={tool.to} className="pro-hub" to={tool.to}>

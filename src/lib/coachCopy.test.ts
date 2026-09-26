@@ -104,9 +104,9 @@ test('Coach teasers list the four hub tools in lesson, videos, mock, roster orde
   assert.match(COACH_AD_LEAD, /Technique Tree/);
   assert.equal(
     COACH_TOOLS_TEASER,
-    'Daily Lesson Plan, Daily Training Videos, Mock Tournament, Competitor Roster.',
+    'Tools and Templates for Coaches and Professors.',
   );
-  assertCoachToolOrder(COACH_TOOLS_TEASER);
+  assert.doesNotMatch(COACH_TOOLS_TEASER, /^Coach\b/);
   assertCoachToolOrder(COACH_HOME_TEASER, 'Roster');
   assert.ok(COACH_HOME_TEASER.length < 70);
   assert.match(COACH_AD_LEAD, /^Coach tools:/);

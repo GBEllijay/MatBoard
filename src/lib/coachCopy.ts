@@ -11,7 +11,7 @@ export const TECHNIQUE_TREE_CAP_NOTE =
   'This phone holds 20 Technique Trees. Delete one to add another.';
 
 export const COACH_TOOLS_TEASER =
-  `${TRAINING_NOTES_LABEL}, Daily Training Videos, Mock Tournament, ${COMPETITOR_ROSTER_LABEL}.`;
+  'Tools and Templates for Coaches and Professors.';
 
 /** Short home-card line so Coming Soon and unlocked teasers both fit. */
 export const COACH_HOME_TEASER =
@@ -20,7 +20,7 @@ export const COACH_HOME_TEASER =
 export const COACH_AD_LEAD =
   `Coach tools: write a ${TRAINING_NOTES_LABEL}, loop Daily Training Videos, build a ${TECHNIQUE_TREE_LABEL}, run a Mock Tournament, and keep a ${COMPETITOR_ROSTER_LABEL}.`;
 
-/** Hub card sentence under Advantage Coach. Same priority as the yellow-line list. */
+/** Feature list kept for copy checks. Not shown on the Coach hub card. */
 export const COACH_HUB_BLURB =
   `${TRAINING_NOTES_LABEL}, Daily Training Videos, ${TECHNIQUE_TREE_LABEL}, run a Mock Tournament, and keep a ${COMPETITOR_ROSTER_LABEL}.`;
 
