@@ -124,6 +124,13 @@ test('sign-in failure stays plain for owners and names the dev hint only when as
   }
 });
 
+test('Vite can inline the owned client id', () => {
+  const source = readFileSync(new URL('./googleDrive.ts', import.meta.url), 'utf8');
+  assert.match(source, /import\.meta\.env\.VITE_GOOGLE_CLIENT_ID/);
+  assert.doesNotMatch(source, /import\.meta\.env\?\.VITE_GOOGLE_CLIENT_ID/);
+  assert.match(source, /import\.meta\.env\.DEV/);
+});
+
 test('connect card does not ask a gym owner for a client id', () => {
   const card = readFileSync(new URL('../components/DriveConnectCard.tsx', import.meta.url), 'utf8');
   const open = readFileSync(new URL('../components/OpenMyDrive.tsx', import.meta.url), 'utf8');

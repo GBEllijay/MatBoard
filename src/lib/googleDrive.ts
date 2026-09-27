@@ -259,8 +259,21 @@ export function writeDevGoogleClientId(
 }
 
 function envGoogleClientId(): string | undefined {
-  const fromEnv = import.meta.env?.VITE_GOOGLE_CLIENT_ID;
-  return typeof fromEnv === 'string' ? fromEnv : undefined;
+  // Direct member access so Vite inlines the build value. Node tests have no env object.
+  try {
+    const fromEnv = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    return typeof fromEnv === 'string' ? fromEnv : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function isDevBuild(): boolean {
+  try {
+    return Boolean(import.meta.env.DEV);
+  } catch {
+    return false;
+  }
 }
 
 function browserClientIdStorage(): GoogleClientIdStore | null {
@@ -280,14 +293,14 @@ export function ownedGoogleClientId(): string {
 export function googleClientId(): string {
   return applyOwnedGoogleClientId(browserClientIdStorage(), {
     envValue: envGoogleClientId(),
-    dev: Boolean(import.meta.env?.DEV),
+    dev: isDevBuild(),
   });
 }
 
 export function saveGoogleClientId(value: string): void {
   writeDevGoogleClientId(browserClientIdStorage(), {
     envValue: envGoogleClientId(),
-    dev: Boolean(import.meta.env?.DEV),
+    dev: isDevBuild(),
     value,
   });
 }
@@ -314,7 +327,7 @@ export function driveSignInFailureCopy(input: {
   dev?: boolean;
 }): string {
   if (input.code === 'missing-client') return DRIVE_SETUP_NEEDED;
-  const dev = input.dev ?? Boolean(import.meta.env?.DEV);
+  const dev = input.dev ?? isDevBuild();
   if (!dev) return DRIVE_SIGN_IN_FAILED;
   if (input.code === 'invalid-client') {
     return `${DRIVE_SIGN_IN_FAILED} Dev: Google did not recognize this build, or this Google account is not a test user.`;
@@ -333,7 +346,7 @@ export function driveOwnerFacingError(reason: unknown): string {
   if (code === 'invalid-client') return driveSignInFailureCopy({ code, detail });
   const trimmed = detail.trim();
   if (!trimmed) return 'Google Drive could not be opened.';
-  if (import.meta.env?.DEV) return trimmed.slice(0, 180);
+  if (isDevBuild()) return trimmed.slice(0, 180);
   if (
     trimmed.length <= 180 &&
     !/[{}]/.test(trimmed) &&
