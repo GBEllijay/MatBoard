@@ -1,13 +1,12 @@
-# Connect your Google Drive folder
+# Connect your gym folder
 
-Advantage does not host your photos or videos. They stay in a folder on your gym’s Google Drive.
+Advantage does not host your photos or videos. They stay in a folder the gym already owns.
 
-You do not need a Google Cloud account, a project, or any setup codes.
-
-1. Tap **Connect Google Drive**.
-2. Sign in with the Google account that owns the gym folder.
-3. Allow Advantage.
-4. Choose the gallery folder (for example, GBEllijay gallery).
-5. Use **Open my Drive** anytime to open that folder.
+1. Tap **Connect with**.
+2. Tap **Google Drive**. OneDrive, Dropbox, and iCloud are in that same list and are coming soon.
+3. Sign in with the Google account that owns the gym folder.
+4. Allow Advantage.
+5. Choose the gallery folder (for example, GBEllijay gallery).
+6. Use **Open my Drive** anytime to open that folder.
 
 Lesson plans save in that folder. Photos and videos stay there too.

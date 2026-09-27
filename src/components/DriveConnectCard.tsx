@@ -1,11 +1,19 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { cloudStorage, type CloudBinding, type CloudFolderRef } from '../lib/cloudStorage';
+import {
+  cloudStorage,
+  cloudStorageChoices,
+  CONNECT_CHOOSE_FOLDER,
+  CONNECT_COMING_SOON,
+  CONNECT_WITH_BODY,
+  CONNECT_WITH_KICKER,
+  CONNECT_WITH_TITLE,
+  type CloudBinding,
+  type CloudFolderRef,
+  type CloudStorageConnector,
+} from '../lib/cloudStorage';
 import {
   CLASS_HISTORY_TITLE,
-  DRIVE_CONNECT_BODY,
-  DRIVE_CONNECT_LABEL,
-  DRIVE_CONNECT_TITLE,
   DRIVE_DEV_CLIENT_HINT,
   DRIVE_FOLDER_EMPTY,
   driveOwnerFacingError,
@@ -14,91 +22,100 @@ import {
   saveGoogleClientId,
 } from '../lib/googleDrive';
 
+function connectedBinding(): CloudBinding | null {
+  for (const provider of cloudStorageChoices()) {
+    const binding = provider.binding();
+    if (binding) return binding;
+  }
+  return null;
+}
+
 /**
- * Connect this browser to the caller's Google Drive and pick a real folder.
- * The list is whatever Drive returns. An empty response stays empty.
- * The sign-in app id comes from the build. Owners are not asked for one.
+ * Connect with list: Google Drive signs in and picks a folder.
+ * OneDrive, Dropbox, and iCloud stay in that list as coming soon.
+ * The build supplies sign-in. Owners do not type a setup code.
  */
 export function DriveConnectCard() {
-  const drive = cloudStorage();
   const owned = ownedGoogleClientId();
   const [devAppId, setDevAppId] = useState(() => (import.meta.env.DEV && !owned ? googleClientId() : ''));
-  const [binding, setBinding] = useState<CloudBinding | null>(() => drive.binding());
+  const [binding, setBinding] = useState<CloudBinding | null>(() => connectedBinding());
+  const [pending, setPending] = useState<CloudStorageConnector | null>(null);
   const [folders, setFolders] = useState<CloudFolderRef[] | null>(null);
   const [session, setSession] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
     googleClientId();
   }, []);
 
-  const available = drive.isAvailable();
+  const choices = cloudStorageChoices();
+  const connected = binding ? cloudStorage(binding.providerId) : null;
 
-  const connect = async () => {
-    if (!drive.isAvailable()) {
-      setError(drive.unavailableMessage());
-      return;
-    }
-    setBusy(true);
+  const connect = async (provider: CloudStorageConnector) => {
+    if (provider.phase !== 'live' || !provider.isAvailable()) return;
+    setBusyId(provider.id);
     setError('');
     try {
-      const result = await drive.connect();
+      const result = await provider.connect();
       if (!result.ok) {
         setError(result.message);
         return;
       }
+      setPending(provider);
       setSession(result.session);
       setFolders(result.folders);
     } catch (reason) {
       setError(driveOwnerFacingError(reason));
     } finally {
-      setBusy(false);
+      setBusyId(null);
     }
   };
 
   const choose = async (folder: CloudFolderRef) => {
-    if (!session) return;
-    setBusy(true);
+    if (!session || !pending) return;
+    setBusyId(pending.id);
     setError('');
     try {
-      const next = await drive.pickFolder(session, folder);
+      const next = await pending.pickFolder(session, folder);
       setBinding(next);
       setFolders(null);
+      setPending(null);
     } catch (reason) {
       setError(driveOwnerFacingError(reason));
     } finally {
-      setBusy(false);
+      setBusyId(null);
     }
   };
 
   const createFolder = async () => {
-    if (!session || !drive.createFolder) return;
-    setBusy(true);
+    if (!session || !pending?.createFolder) return;
+    setBusyId(pending.id);
     setError('');
     try {
-      const created = await drive.createFolder(session);
-      const next = await drive.pickFolder(session, created);
+      const created = await pending.createFolder(session);
+      const next = await pending.pickFolder(session, created);
       setBinding(next);
       setFolders(null);
+      setPending(null);
     } catch (reason) {
       setError(driveOwnerFacingError(reason));
     } finally {
-      setBusy(false);
+      setBusyId(null);
     }
   };
 
   return (
     <article className="plan-card">
-      <p className="plan-card__kicker">{drive.displayName}</p>
-      <strong>{binding ? binding.folderName : DRIVE_CONNECT_TITLE}</strong>
+      <p className="plan-card__kicker">{connected ? connected.displayName : CONNECT_WITH_KICKER}</p>
+      <strong>{binding ? binding.folderName : CONNECT_WITH_TITLE}</strong>
       {binding ? (
         <span>
           {binding.accountLabel ? `${binding.accountLabel}. ` : ''}
-          Lesson plans save in this folder. Photos and videos stay in your Google Drive. Advantage only keeps the lesson text and links to those files.
+          Lesson plans save in this folder. Photos and videos stay in this folder. Advantage only keeps the lesson text and links to those files.
         </span>
       ) : (
-        <span>{DRIVE_CONNECT_BODY}</span>
+        <span>{CONNECT_WITH_BODY}</span>
       )}
       {import.meta.env.DEV && !owned ? (
         <div className="drive-connect__dev">
@@ -127,8 +144,9 @@ export function DriveConnectCard() {
             type="button"
             className="btn btn--ghost"
             onClick={() => {
-              drive.disconnect();
+              connected?.disconnect();
               setBinding(null);
+              setPending(null);
               setSession(null);
               setFolders(null);
             }}
@@ -136,24 +154,45 @@ export function DriveConnectCard() {
             Disconnect
           </button>
         </div>
-      ) : available || import.meta.env.DEV ? (
-        <button type="button" className="btn" disabled={busy || !available} onClick={() => void connect()}>
-          {busy ? 'Opening Google…' : DRIVE_CONNECT_LABEL}
-        </button>
-      ) : null}
-      {!available ? (
-        <p className="drive-connect__note" role="status">
-          {drive.unavailableMessage()}
-        </p>
-      ) : null}
-      {folders ? (
+      ) : folders ? null : (
+        <ul className="drive-connect__providers" aria-label={CONNECT_WITH_TITLE}>
+          {choices.map((provider) => {
+            const comingSoon = provider.phase === 'coming-soon';
+            const canConnect = provider.phase === 'live' && provider.isAvailable();
+            const opening = busyId === provider.id;
+            return (
+              <li key={provider.id}>
+                <button
+                  type="button"
+                  className={canConnect ? 'btn' : 'btn btn--ghost'}
+                  disabled={!canConnect || busyId !== null}
+                  onClick={() => void connect(provider)}
+                >
+                  {opening ? `Opening ${provider.displayName}…` : provider.displayName}
+                  {comingSoon ? <span className="drive-connect__soon">{CONNECT_COMING_SOON}</span> : null}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {!binding && !folders
+        ? choices
+            .filter((provider) => provider.phase === 'live' && !provider.isAvailable())
+            .map((provider) => (
+              <p key={provider.id} className="drive-connect__note" role="status">
+                {provider.unavailableMessage()}
+              </p>
+            ))
+        : null}
+      {folders && pending ? (
         <div className="drive-connect__folders">
-          <p>Choose a folder in your Google Drive.</p>
+          <p>{CONNECT_CHOOSE_FOLDER}</p>
           {folders.length ? (
             <ul>
               {folders.map((folder) => (
                 <li key={folder.id}>
-                  <button type="button" className="btn btn--ghost" disabled={busy} onClick={() => void choose(folder)}>
+                  <button type="button" className="btn btn--ghost" disabled={busyId !== null} onClick={() => void choose(folder)}>
                     {folder.name}
                   </button>
                 </li>
@@ -162,9 +201,9 @@ export function DriveConnectCard() {
           ) : (
             <p>{DRIVE_FOLDER_EMPTY}</p>
           )}
-          {drive.createFolder && drive.createFolderLabel ? (
-            <button type="button" className="btn" disabled={busy || !session} onClick={() => void createFolder()}>
-              {drive.createFolderLabel}
+          {pending.createFolder && pending.createFolderLabel ? (
+            <button type="button" className="btn" disabled={busyId !== null || !session} onClick={() => void createFolder()}>
+              {pending.createFolderLabel}
             </button>
           ) : null}
         </div>

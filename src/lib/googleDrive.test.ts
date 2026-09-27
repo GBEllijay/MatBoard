@@ -1,11 +1,9 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { CONNECT_COMING_SOON, CONNECT_WITH_BODY, CONNECT_WITH_TITLE } from './cloudStorage.ts';
 import {
   CLASS_HISTORY_EMPTY,
-  DRIVE_CONNECT_BODY,
-  DRIVE_CONNECT_LABEL,
-  DRIVE_CONNECT_TITLE,
   DRIVE_DEV_CLIENT_HINT,
   DRIVE_SETUP_NEEDED,
   DRIVE_SIGN_IN_FAILED,
@@ -45,12 +43,13 @@ test('lesson file names and Drive queries stay literal', () => {
   assert.equal(lessonDriveFileName('2026-09-27', 'Alex Rivera'), 'advantage-lesson-2026-09-27-alex-rivera.json');
   assert.equal(lessonDriveFileName('2026-09-27', '***'), 'advantage-lesson-2026-09-27-coach.json');
   assert.equal(driveQueryLiteral("O'Brien\\folder"), "O\\'Brien\\\\folder");
-  assert.equal(DRIVE_CONNECT_TITLE, 'Connect your Google Drive folder');
-  assert.equal(DRIVE_CONNECT_LABEL, 'Connect Google Drive');
-  assert.match(DRIVE_CONNECT_BODY, /does not host photos or videos/);
+  assert.equal(CONNECT_WITH_TITLE, 'Connect with');
+  assert.equal(CONNECT_COMING_SOON, 'Coming soon');
+  assert.match(CONNECT_WITH_BODY, /does not host photos or videos/);
+  assert.match(CONNECT_WITH_BODY, /folder the gym already owns/);
   assert.match(DRIVE_SETUP_NEEDED, /not available on this build yet — contact Advantage/);
   assert.doesNotMatch(
-    `${DRIVE_CONNECT_TITLE} ${DRIVE_CONNECT_BODY} ${DRIVE_CONNECT_LABEL} ${DRIVE_SETUP_NEEDED} ${DRIVE_SIGN_IN_FAILED} ${DRIVE_DEV_CLIENT_HINT}`,
+    `${CONNECT_WITH_TITLE} ${CONNECT_WITH_BODY} ${CONNECT_COMING_SOON} ${DRIVE_SETUP_NEEDED} ${DRIVE_SIGN_IN_FAILED} ${DRIVE_DEV_CLIENT_HINT}`,
     /client id|oauth|cloud console|client secret/i,
   );
   assert.match(CLASS_HISTORY_EMPTY, /Nothing in this Google Drive folder yet/);
@@ -136,8 +135,10 @@ test('connect card does not ask a gym owner for a client id', () => {
   const open = readFileSync(new URL('../components/OpenMyDrive.tsx', import.meta.url), 'utf8');
   assert.doesNotMatch(card, /Google OAuth|Cloud Console|client secret|<summary>Advanced<\/summary>|client id/i);
   assert.match(card, /import\.meta\.env\.DEV/);
-  assert.match(card, /cloudStorage\(/);
-  assert.match(card, /DRIVE_SETUP_NEEDED|unavailableMessage/);
+  assert.match(card, /cloudStorageChoices\(/);
+  assert.match(card, /CONNECT_COMING_SOON/);
+  assert.match(card, /unavailableMessage/);
+  assert.doesNotMatch(card, /Connect your Google Drive folder|Connect Google Drive/);
   assert.match(open, /cloudStorage\(/);
   assert.doesNotMatch(open, /client id|oauth|cloud console|client secret/i);
 });

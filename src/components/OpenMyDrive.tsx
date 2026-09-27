@@ -1,7 +1,7 @@
 import { useState, useSyncExternalStore } from 'react';
 import { DriveConnectCard } from './DriveConnectCard';
 import { Sheet } from './Sheet';
-import { cloudStorage } from '../lib/cloudStorage';
+import { cloudStorage, CONNECT_WITH_TITLE } from '../lib/cloudStorage';
 import { OPEN_MY_DRIVE_CONNECT, OPEN_MY_DRIVE_LABEL } from '../lib/openMyDrive';
 
 /**
@@ -25,7 +25,7 @@ export function OpenMyDrive() {
           {OPEN_MY_DRIVE_LABEL}
         </button>
       )}
-      <Sheet open={connectOpen && !href} title="Connect your Google Drive folder" onClose={() => setConnectOpen(false)} stacked>
+      <Sheet open={connectOpen && !href} title={CONNECT_WITH_TITLE} onClose={() => setConnectOpen(false)} stacked>
         <p className="saver-sound-hint">{OPEN_MY_DRIVE_CONNECT}</p>
         <DriveConnectCard />
       </Sheet>

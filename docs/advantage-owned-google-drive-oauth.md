@@ -51,4 +51,6 @@ The gym owner still sees the plain sign-in sentence (`DRIVE_SIGN_IN_FAILED`): Go
 
 ## Connectors
 
-`src/lib/cloudStorage.ts` is the owner storage interface: id, display name, `connect`, `isConnected`, binding snapshot, `pickFolder`, `openFolderUrl`, and `disconnect`. Google Drive (`googleDrive`) is the implementation and the default. `oneDrive`, `dropbox`, and `iCloud` are unavailable slots with the same shape so a later provider can use the same Connect → sign-in → pick folder screen. They are not implemented.
+The owner screen is a **Connect with** list, not a Google-only button. `src/lib/cloudStorage.ts` is the interface: id, display name, `phase` (`live` or `coming-soon`), `connect`, `isConnected`, binding snapshot, `pickFolder`, `openFolderUrl`, and `disconnect`. `cloudStorageChoices()` is that list.
+
+Google Drive (`googleDrive`) is `live` and is the first choice. `oneDrive`, `dropbox`, and `iCloud` are `coming-soon`: same interface, disabled in the list, not implemented.

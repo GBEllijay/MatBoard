@@ -4,7 +4,8 @@ import { OPEN_MY_DRIVE_CONNECT, OPEN_MY_DRIVE_LABEL, driveFolderWebUrl } from '.
 
 test('Open my Drive uses the connected folder and never Google Photos', () => {
   assert.equal(OPEN_MY_DRIVE_LABEL, 'Open my Drive');
-  assert.match(OPEN_MY_DRIVE_CONNECT, /Connect your Google Drive folder/);
+  assert.match(OPEN_MY_DRIVE_CONNECT, /pick the gym folder/);
+  assert.match(OPEN_MY_DRIVE_CONNECT, /does not host/);
   assert.doesNotMatch(OPEN_MY_DRIVE_CONNECT, /photos\.google|client id/i);
 
   const url = driveFolderWebUrl('1AbC-_folderId');

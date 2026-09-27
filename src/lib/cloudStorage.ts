@@ -10,6 +10,16 @@ import { createGoogleDriveConnector } from './googleDriveConnector.ts';
 
 export type CloudStorageProviderId = 'googleDrive' | 'oneDrive' | 'dropbox' | 'iCloud';
 
+/** `live` is a real connect choice. `coming-soon` stays in the same list, disabled. */
+export type CloudStoragePhase = 'live' | 'coming-soon';
+
+export const CONNECT_WITH_KICKER = 'Your folder';
+export const CONNECT_WITH_TITLE = 'Connect with';
+export const CONNECT_WITH_BODY =
+  'Choose a folder the gym already owns. Lesson plans, photos, and videos stay there. Advantage does not host photos or videos.';
+export const CONNECT_COMING_SOON = 'Coming soon';
+export const CONNECT_CHOOSE_FOLDER = 'Choose a folder.';
+
 export type CloudFolderRef = {
   id: string;
   name: string;
@@ -29,6 +39,8 @@ export type CloudConnectResult =
 export interface CloudStorageConnector {
   readonly id: CloudStorageProviderId;
   readonly displayName: string;
+  /** Where this provider sits in the owner “Connect with” list. */
+  readonly phase: CloudStoragePhase;
   /** False when this build has no sign-in for the provider. */
   isAvailable(): boolean;
   /** Plain sentence for the gym owner when sign-in is not on this build. */
@@ -49,14 +61,15 @@ export interface CloudStorageConnector {
 }
 
 /**
- * Later provider. Connect and folder pick stay unimplemented until that
- * company sign-in exists. The owner still sees a plain unavailable note.
+ * Later provider. Shown in the Connect with list as coming soon.
+ * Connect and folder pick stay unimplemented until that sign-in exists.
  */
 function futureConnector(id: Exclude<CloudStorageProviderId, 'googleDrive'>, displayName: string): CloudStorageConnector {
-  const message = `${displayName} is not available on this build yet — contact Advantage.`;
+  const message = `${displayName} is coming soon.`;
   return {
     id,
     displayName,
+    phase: 'coming-soon',
     isAvailable: () => false,
     unavailableMessage: () => message,
     isConnected: () => false,
@@ -87,4 +100,9 @@ export const CLOUD_STORAGE_PROVIDER_IDS: readonly CloudStorageProviderId[] = [
 /** Google Drive is the default. Pass another id when that provider is wired. */
 export function cloudStorage(id: CloudStorageProviderId = 'googleDrive'): CloudStorageConnector {
   return registry[id];
+}
+
+/** Owner list order: live Google Drive, then the coming-soon choices. */
+export function cloudStorageChoices(): readonly CloudStorageConnector[] {
+  return CLOUD_STORAGE_PROVIDER_IDS.map((id) => registry[id]);
 }

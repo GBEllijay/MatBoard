@@ -229,7 +229,7 @@ function setDriveNotice(next: DriveSaveNotice): void {
 }
 
 export function savedPhoneNotice(): string {
-  return 'Saved on this phone. Connect Google Drive in Instructor Collaboration to keep a copy in the gym folder.';
+  return 'Saved on this phone. Connect with Google Drive in Instructor Collaboration to keep a copy in the gym folder.';
 }
 
 export function savedDriveNotice(revisions: number): string {

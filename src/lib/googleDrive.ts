@@ -37,10 +37,6 @@ export const DRIVE_SCOPES = [
 export const DRIVE_FOLDER_MIME = 'application/vnd.google-apps.folder';
 export const LESSON_ROOT_NAME = 'Advantage Lesson Plans';
 
-export const DRIVE_CONNECT_TITLE = 'Connect your Google Drive folder';
-export const DRIVE_CONNECT_BODY =
-  'Lesson plans save in your gym’s Google Drive. Photos and videos stay there too. Advantage only keeps the lesson text and links to those files. It does not host photos or videos.';
-export const DRIVE_CONNECT_LABEL = 'Connect Google Drive';
 export const DRIVE_SETUP_NEEDED =
   'Google Drive is not available on this build yet — contact Advantage.';
 /** Shown only in a local dev build, and only when the build has no client id. */

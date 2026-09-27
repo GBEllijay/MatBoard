@@ -47,6 +47,7 @@ export function createGoogleDriveConnector(): CloudStorageConnector {
   return {
     id: 'googleDrive',
     displayName: 'Google Drive',
+    phase: 'live',
     isAvailable: () => Boolean(googleClientId()),
     unavailableMessage: () => DRIVE_SETUP_NEEDED,
     isConnected: () => readDriveBinding() !== null,

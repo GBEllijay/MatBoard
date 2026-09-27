@@ -1,9 +1,20 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { CLOUD_STORAGE_PROVIDER_IDS, cloudStorage } from './cloudStorage.ts';
+import { CLOUD_STORAGE_PROVIDER_IDS, CONNECT_WITH_TITLE, cloudStorage, cloudStorageChoices } from './cloudStorage.ts';
 
 test('Google Drive is the default connector and later providers stay unavailable', async () => {
   assert.deepEqual(CLOUD_STORAGE_PROVIDER_IDS, ['googleDrive', 'oneDrive', 'dropbox', 'iCloud']);
+  assert.equal(CONNECT_WITH_TITLE, 'Connect with');
+  const choices = cloudStorageChoices();
+  assert.deepEqual(
+    choices.map((provider) => provider.displayName),
+    ['Google Drive', 'OneDrive', 'Dropbox', 'iCloud'],
+  );
+  assert.equal(choices[0]?.phase, 'live');
+  assert.deepEqual(
+    choices.slice(1).map((provider) => provider.phase),
+    ['coming-soon', 'coming-soon', 'coming-soon'],
+  );
   const drive = cloudStorage();
   assert.equal(drive.id, 'googleDrive');
   assert.equal(drive.displayName, 'Google Drive');
@@ -34,8 +45,8 @@ test('Google Drive is the default connector and later providers stay unavailable
     assert.equal(provider.binding(), null);
     assert.equal(provider.getBindingSnapshot(), null);
     assert.equal(provider.openFolderUrl('folder'), null);
-    assert.match(provider.unavailableMessage(), /not available on this build yet — contact Advantage/);
-    assert.doesNotMatch(provider.unavailableMessage(), /client id|oauth|cloud console|client secret/i);
+    assert.match(provider.unavailableMessage(), /coming soon/i);
+    assert.doesNotMatch(provider.unavailableMessage(), /client id|oauth|cloud console|client secret|contact Advantage/i);
     const result = await provider.connect();
     assert.equal(result.ok, false);
     if (!result.ok) assert.equal(result.reason, 'unavailable');
