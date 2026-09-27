@@ -150,25 +150,25 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   assert.equal(COMPETITION_MANAGEMENT_PRO_LABEL, 'Competition Management Pro');
   assert.deepEqual(
     COMPETITION_PRO_MENU.map((item) => item.title),
-    ['Competitor Roster', 'Mock Tournament', 'Brackets', 'Scoreboard', 'Round Timer'],
+    ['Competitor Roster', 'Brackets', 'Scoreboard', 'Round Timer'],
   );
   assert.deepEqual(
     COMPETITION_PRO_MENU.map((item) => item.to),
     [
       withSuiteFrom('/roster', true),
       withSuiteFrom('/tournament', true),
-      withSuiteFrom('/tournament', true),
       withSuiteFrom(MATCH_CONTROLLER_PATH, true),
       withSuiteFrom(ROUND_CONTROLLER_PATH, true),
     ],
   );
+  assert.equal(COMPETITION_PRO_MENU[1].to, withSuiteFrom('/tournament', true));
   assert.deepEqual(
     COMPETITION_PRO_MENU.map((item) => item.belt),
-    ['tournament', 'tournament', 'tournament', 'tournament', 'tournament'],
+    ['tournament', 'tournament', 'tournament', 'tournament'],
   );
   assert.deepEqual(
     COMPETITION_PRO_MENU.map((item) => item.clearBout),
-    [false, false, false, true, false],
+    [false, false, true, false],
   );
 });
 

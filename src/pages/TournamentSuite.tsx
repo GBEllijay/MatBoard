@@ -13,8 +13,8 @@ export function TournamentSuitePage() {
         <section className="suite">
           <h2>{COMPETITION_MANAGEMENT_PRO_LABEL}</h2>
           <p>
-            Competitor Roster, Mock Tournament, Brackets, Scoreboard, and Round Timer. Rankings stay
-            in Competitor Management.
+            Competitor Roster, Brackets, Scoreboard, and Round Timer. Rankings stay in Competitor
+            Management.
           </p>
           <nav className="suite__nav" aria-label={COMPETITION_MANAGEMENT_PRO_LABEL}>
             {COMPETITION_PRO_MENU.map((link) => (

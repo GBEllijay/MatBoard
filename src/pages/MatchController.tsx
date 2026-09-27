@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { BeltRail } from '../components/BeltRail';
 import { Chrome } from '../components/Chrome';
 import { Sheet } from '../components/Sheet';
 import { OutcomeCalls, OutcomePickSheet, useOutcomeSheet } from '../components/OutcomeCalls';
@@ -128,7 +127,6 @@ export function MatchControllerPage() {
 
   return (
     <main className={`controller ${scoreboardSkinClass(DEFAULT_SCOREBOARD_SKIN)}${suite.fromSuite ? ' origin-suite' : ''}`}>
-      {suite.fromSuite ? <BeltRail kind="tournament" /> : null}
       <PlayExitMark to={suite.homePath} />
       <Chrome
         right={
