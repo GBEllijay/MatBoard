@@ -1,4 +1,9 @@
-/** Coach Daily Lesson Plan. On-device days only — no cloud, no Pro archive. */
+/**
+ * Coach Daily Lesson Plan text, saved on this device as the coach types.
+ * Instructor Collaboration may mirror that text plus Drive file ids into the
+ * gym's Google Drive folder (`lessonDrive.ts`). Photo and video bytes are not
+ * part of this save.
+ */
 
 export const TRAINING_NOTES_STORAGE_KEY = 'matboard.coach.trainingNotes.v1';
 /** Previous free-text jot. Read once into today's Intro, then removed. */

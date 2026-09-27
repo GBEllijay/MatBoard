@@ -12,6 +12,8 @@
  * The play control does not start the clip. It opens Daily Training Videos on that section
  * (`focus=1`, `section`, `date`, optional `slot` and technique `index`) so the coach can
  * add, replace, or remove the video. `play=1` is not part of that link.
+ * The link stores a local clip id and, when the gym Drive folder is connected, a
+ * Drive file id plus name and mime. It does not store the video bytes.
  *
  * Technique Tree pairing, first hit wins:
  * 1. Explicit `treeId` saved on that drill from the picker, when the tree still exists.

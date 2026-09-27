@@ -1,7 +1,9 @@
 /**
  * Today's shared-gallery videos for Daily Lesson Plan.
  * Gallery is the on-device Media Console library (`matboard` IndexedDB, folder `gallery`).
- * Owner uploads stay on this phone — nothing is fetched from a host. A video counts for
+ * Owner uploads stay on this phone — nothing is fetched from Advantage. A later
+ * Drive client may point at the same day's file ids; this download does not
+ * upload those bytes. A video counts for
  * today when its `addedAt` falls on the device's local calendar day.
  */
 

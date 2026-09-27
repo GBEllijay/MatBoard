@@ -865,6 +865,19 @@ button.mode-card {
   line-height: 1.4;
 }
 
+.plan-card__revisions {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.plan-card__revisions li {
+  color: var(--ink);
+  font-weight: 700;
+}
+
 .plan-card .btn {
   width: 100%;
   margin-top: 0.45rem;
@@ -7995,6 +8008,31 @@ input.roster-pick__name:focus,
   border: 1px solid var(--line);
   background: rgba(8, 10, 16, 0.55);
   font-weight: 800;
+}
+
+.notes__distribute {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.85rem 0.95rem 1rem;
+  border-radius: 16px;
+  border: 1px dashed rgba(252, 192, 0, 0.4);
+  background: rgba(8, 16, 32, 0.45);
+}
+
+.notes__distribute p {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.notes__distribute-btn {
+  width: 100%;
+  min-height: 52px;
+}
+
+.notes__distribute-note {
+  color: var(--ink);
 }
 
 .notes__confirm {

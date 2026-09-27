@@ -220,7 +220,16 @@ export async function attachClipToSlot(
     throw error;
   }
 
-  const next = selectSlot(setSlotClip(plan, slotId, clipId), slotId);
+  // The blob stays in this device's clip store. The plan keeps the id, name, and mime.
+  // A Drive file id is filled later by the gym's Drive client — never by uploading to Advantage.
+  const next = selectSlot(
+    setSlotClip(plan, slotId, clipId, {
+      driveFileId: null,
+      mediaName: picked.name || row.label,
+      mediaMime: row.mime,
+    }),
+    slotId,
+  );
   await saveTechniquePlan(next);
   return {
     plan: next,

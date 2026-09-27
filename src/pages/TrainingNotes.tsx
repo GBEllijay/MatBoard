@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { LessonMediaRail } from '../components/LessonMediaRail';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { useCoachPageSwipe } from '../hooks/useCoachSwipe';
+import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useToolboxParent } from '../hooks/useToolboxParent';
 import { NOTES_LEAD, TRAINING_NOTES_LABEL } from '../lib/coachCopy';
 import {
@@ -23,6 +24,15 @@ import {
   type LessonSlotRef,
   type LessonTreeCandidate,
 } from '../lib/lessonLinks';
+import {
+  DISTRIBUTE_BUTTON,
+  DISTRIBUTE_DONE,
+  DISTRIBUTE_LEAD,
+  flushLessonDriveDraft,
+  markLessonDistribution,
+  mediaRefsFromVideoPlan,
+  scheduleLessonDriveDraft,
+} from '../lib/lessonDrive';
 import { listPhotos } from '../lib/photoStore';
 import { loadTechniqueBoard } from '../lib/techniqueStore';
 import type { VideoPlan } from '../lib/techniqueLogic';
@@ -93,6 +103,7 @@ function videoOffer(
 export function TrainingNotesPage() {
   const navigate = useNavigate();
   const parent = useToolboxParent();
+  const proSuite = useProUnlocked();
   useCoachPageSwipe();
   const [boot] = useState(() => {
     const today = localDateKey();
@@ -107,6 +118,7 @@ export function TrainingNotesPage() {
   const [confirmKey, setConfirmKey] = useState<string | null>(null);
   const [videos, setVideos] = useState<TodayVideos | null>(null);
   const [galleryToday, setGalleryToday] = useState<GalleryTodayState>({ status: 'loading', videos: [] });
+  const [distributeNote, setDistributeNote] = useState('');
   const [treeArchive, setTreeArchive] = useState<TechniqueTreeArchive>(() => loadTechniqueArchive());
 
   useEffect(() => {
@@ -192,6 +204,20 @@ export function TrainingNotesPage() {
     };
   }, [todayKey]);
 
+  useEffect(() => {
+    const flush = () => flushLessonDriveDraft();
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') flush();
+    };
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', onHide);
+    return () => {
+      flush();
+      window.removeEventListener('pagehide', flush);
+      document.removeEventListener('visibilitychange', onHide);
+    };
+  }, []);
+
   const treeCandidates = useMemo<LessonTreeCandidate[]>(
     () =>
       treeArchive.trees.map((tree) => ({
@@ -220,11 +246,25 @@ export function TrainingNotesPage() {
   const sourcePlan = archive.days[sourceKey];
   const canCopy = Boolean(sourcePlan && planHasContent(sourcePlan) && sourceKey !== todayKey);
 
-  const commit = (next: TrainingNotesPlan) => {
-    if (!editingToday) return;
+  const persistToday = (next: TrainingNotesPlan) => {
     const saved = saveDay(todayKey, next, todayKey);
     setArchive(saved.archive);
     setPlan(saved.plan);
+    // Local text is already stored. Pro queues a Drive draft (text + file ids).
+    // Regular Coach skips the queue. Either way, leaving the page does not drop the plan.
+    scheduleLessonDriveDraft({
+      proSuite,
+      dateKey: todayKey,
+      coachName: saved.plan.coachName,
+      plan: saved.plan,
+      media: videos ? mediaRefsFromVideoPlan(videos.plan) : [],
+    });
+    return saved;
+  };
+
+  const commit = (next: TrainingNotesPlan) => {
+    if (!editingToday) return;
+    persistToday(next);
   };
 
   const openDay = (key: string) => {
@@ -237,9 +277,7 @@ export function TrainingNotesPage() {
   const applyCopy = (key: string) => {
     const source = archive.days[key];
     if (!source || !planHasContent(source)) return;
-    const saved = saveDay(todayKey, copyPlan(source), todayKey);
-    setArchive(saved.archive);
-    setPlan(saved.plan);
+    persistToday(copyPlan(source));
     setViewKey(todayKey);
     setConfirmKey(null);
     setRecentOpen(false);
@@ -549,6 +587,33 @@ export function TrainingNotesPage() {
             />
           </label>
         </section>
+
+        {proSuite && editingToday ? (
+          <aside className="notes__distribute" aria-label="Instructor distribution">
+            <p>{DISTRIBUTE_LEAD}</p>
+            <button
+              type="button"
+              className="btn btn--ghost notes__distribute-btn"
+              onClick={() => {
+                const revision = markLessonDistribution({
+                  proSuite: true,
+                  dateKey: todayKey,
+                  coachName: plan.coachName,
+                  plan,
+                  media: videos ? mediaRefsFromVideoPlan(videos.plan) : [],
+                });
+                setDistributeNote(revision ? DISTRIBUTE_DONE : DISTRIBUTE_LEAD);
+              }}
+            >
+              {DISTRIBUTE_BUTTON}
+            </button>
+            {distributeNote ? (
+              <p className="notes__distribute-note" role="status">
+                {distributeNote}
+              </p>
+            ) : null}
+          </aside>
+        ) : null}
       </div>
     </main>
   );
