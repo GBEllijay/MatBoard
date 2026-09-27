@@ -18,9 +18,11 @@ type Props = {
   kind: ScoreKind;
   value: number;
   compact?: boolean;
+  /** False hides the on-pad words. The button name still includes the score. */
+  headers?: boolean;
 };
 
-export function ScoreBox({ side, kind, value, compact }: Props) {
+export function ScoreBox({ side, kind, value, compact, headers = true }: Props) {
   const handlers = useHoldPress(
     () => dispatchMatch({ type: 'bump', side, kind, delta: 1 }),
     () => dispatchMatch({ type: 'bump', side, kind, delta: -1 }),
@@ -33,10 +35,10 @@ export function ScoreBox({ side, kind, value, compact }: Props) {
       aria-label={`${SHORT_LABELS[kind]} ${value}. Tap to add, hold to subtract.`}
       {...handlers}
     >
-      <span className="score__label score__label--short" aria-hidden="true">
+      <span className="score__label score__label--short" aria-hidden={headers ? undefined : true}>
         {SHORT_LABELS[kind]}
       </span>
-      <span className="score__label score__label--wide" aria-hidden="true">
+      <span className="score__label score__label--wide" aria-hidden={headers ? undefined : true}>
         {WIDE_LABELS[kind]}
       </span>
       <span className="score__value">{value}</span>

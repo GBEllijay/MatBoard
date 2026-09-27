@@ -59,6 +59,8 @@ export type MatchState = {
    * Gym default on; persist with the match.
    */
   autoAnnounce: boolean;
+  /** Points / Advantages / Penalties (or Adv / Pen when the board is small). Gym default on. */
+  padHeaders: boolean;
   /** Last Win (Submission / Points / Decision) or DQ (Technical / Medical). Survives reload; flash does not. */
   outcome: MatchOutcome | null;
   /** Brief center splash; not restored after reload. */
@@ -83,6 +85,7 @@ export type MatchAction =
   | { type: 'setEndCue'; value: EndCue }
   | { type: 'setBracketMatchId'; value: string | null }
   | { type: 'setAutoAnnounce'; value: boolean }
+  | { type: 'setPadHeaders'; value: boolean }
   | { type: 'setOutcomeFlash'; value: OutcomeFlash | null }
   | {
       type: 'loadBracketBout';
@@ -152,6 +155,7 @@ export function defaultMatch(): MatchState {
     endCue: getAudioPrefs().endCue,
     bracketMatchId: null,
     autoAnnounce: true,
+    padHeaders: true,
     outcome: null,
     outcomeFlash: null,
     revision: 1,
@@ -184,6 +188,7 @@ function loadState(): MatchState {
       endCue: parsed.endCue != null ? parseEndCue(parsed.endCue) : getAudioPrefs().endCue,
       bracketMatchId: typeof parsed.bracketMatchId === 'string' ? parsed.bracketMatchId : null,
       autoAnnounce: parsed.autoAnnounce !== false,
+      padHeaders: parsed.padHeaders !== false,
       outcome: parseMatchOutcome(parsed.outcome),
       outcomeFlash: null,
       revision: Number(parsed.revision ?? 1),
@@ -198,6 +203,7 @@ function clone(s: MatchState): MatchState {
     ...s,
     blue: { ...s.blue },
     white: { ...s.white },
+    padHeaders: s.padHeaders !== false,
   };
 }
 
@@ -401,6 +407,8 @@ function applyAction(current: MatchState, action: MatchAction): MatchState {
       );
     case 'setAutoAnnounce':
       return bumpRevision({ ...current, autoAnnounce: action.value });
+    case 'setPadHeaders':
+      return bumpRevision({ ...current, padHeaders: action.value });
     case 'setOutcomeFlash':
       return bumpRevision({ ...current, outcomeFlash: action.value });
     case 'loadBracketBout':

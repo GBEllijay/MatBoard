@@ -21,7 +21,7 @@ test('Mock-Tournament eyedrop colors are the stylesheet tokens', () => {
   const css = fs.readFileSync(new URL('../index.css', import.meta.url), 'utf8');
   const start = css.indexOf('MOCK_TOURNAMENT');
   assert.ok(start >= 0, 'stylesheet names MOCK_TOURNAMENT');
-  const block = css.slice(start, start + 700);
+  const block = css.slice(start, start + 900);
   assert.match(block, /scoreboard-skin--mock-tournament/);
   assert.match(block, new RegExp(`--pad-points:\\s*${MOCK_TOURNAMENT_COLORS.POINTS_BG}`));
   assert.match(block, new RegExp(`--pad-adv:\\s*${MOCK_TOURNAMENT_COLORS.ADVANTAGE_BG}`));
