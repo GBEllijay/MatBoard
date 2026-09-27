@@ -8111,19 +8111,14 @@ input.roster-pick__name:focus,
   line-height: 1.35;
 }
 
-.drive-connect__advanced {
+.drive-connect__dev {
+  display: grid;
+  gap: 0.35rem;
   margin-top: 0.35rem;
 }
 
-.drive-connect__advanced summary {
-  cursor: pointer;
-  color: var(--muted);
-  font-size: 0.92rem;
-  font-weight: 800;
-}
-
-.drive-connect__advanced p {
-  margin: 0.4rem 0 0;
+.drive-connect__dev p {
+  margin: 0;
   color: var(--muted);
   font-weight: 600;
   line-height: 1.35;
@@ -8155,7 +8150,8 @@ input.roster-pick__name:focus,
 }
 
 .drive-connect__folders p,
-.drive-connect__error {
+.drive-connect__error,
+.drive-connect__note {
   margin: 0.2rem 0 0;
   color: var(--muted);
   font-weight: 700;

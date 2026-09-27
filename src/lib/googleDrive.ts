@@ -6,9 +6,13 @@
  * talks to Google from the browser only. There is no sample class list —
  * the calendar renders files Drive returns, or an empty state.
  *
- * Set `VITE_GOOGLE_CLIENT_ID`, or save a web client id on this browser.
+ * The public browser client id comes from `VITE_GOOGLE_CLIENT_ID` at build
+ * time. Advantage hosts that one Web client. Gym owners never paste an id,
+ * and this app never uses a client secret. A pasted id from an older build
+ * is ignored on the live website so it cannot override the company client.
  * Scopes: `drive.file` (create and update lesson JSON) and `drive.readonly`
  * (list the chosen folder, thumbnails, and download a video the owner stored).
+ * Google Photos is not a source.
  */
 
 import {
@@ -20,6 +24,7 @@ import {
 import { localDateKey } from './trainingNotesStore.ts';
 import type { TrainingNotesPlan } from './trainingNotesStore.ts';
 
+/** Legacy key from when an owner could paste an id. Production does not read it. */
 export const GOOGLE_CLIENT_ID_KEY = 'matboard.pro.googleClientId';
 export const DRIVE_BINDING_KEY = 'matboard.pro.googleDriveFolder.v1';
 const DRIVE_TOKEN_KEY = 'matboard.pro.googleDriveToken';
@@ -37,7 +42,10 @@ export const DRIVE_CONNECT_BODY =
   'Lesson plans save in your gym’s Google Drive. Photos and videos stay there too. Advantage only keeps the lesson text and links to those files. It does not host photos or videos.';
 export const DRIVE_CONNECT_LABEL = 'Connect Google Drive';
 export const DRIVE_SETUP_NEEDED =
-  'Google Drive is not ready on this website yet. Open Advanced if you are the person setting it up.';
+  'Google Drive is not available on this build yet — contact Advantage.';
+/** Shown only in a local dev build, and only when the build has no client id. */
+export const DRIVE_DEV_CLIENT_HINT =
+  'Dev only. This is not part of the gym owner screen. It is ignored on the live website.';
 export const DRIVE_SIGN_IN_FAILED =
   'Google did not finish sign-in. Try again, or ask whoever set up Advantage to allow this website.';
 export const DRIVE_FOLDER_EMPTY = 'This Google Drive account does not have any folders yet.';
@@ -177,24 +185,163 @@ declare global {
   }
 }
 
-export function googleClientId(): string {
-  const fromEnv = import.meta.env?.VITE_GOOGLE_CLIENT_ID;
-  if (typeof fromEnv === 'string' && fromEnv.trim()) return fromEnv.trim();
-  try {
-    return localStorage.getItem(GOOGLE_CLIENT_ID_KEY)?.trim() ?? '';
-  } catch {
-    return '';
+export type GoogleClientIdStore = {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+  removeItem(key: string): void;
+};
+
+/**
+ * Build config wins. A stored paste is kept only for a dev build that has no
+ * baked id, and it never overrides `VITE_GOOGLE_CLIENT_ID`.
+ */
+export function resolveOwnedGoogleClientId(input: {
+  envValue: string | undefined;
+  storedValue: string | null;
+  dev: boolean;
+}): { clientId: string; discardStored: boolean } {
+  const fromEnv = input.envValue?.trim() ?? '';
+  if (fromEnv) return { clientId: fromEnv, discardStored: true };
+  if (input.dev) {
+    const stored = input.storedValue?.trim() ?? '';
+    return { clientId: stored, discardStored: false };
   }
+  return { clientId: '', discardStored: true };
 }
 
-export function saveGoogleClientId(value: string): void {
-  const trimmed = value.trim();
+export function applyOwnedGoogleClientId(
+  storage: GoogleClientIdStore | null,
+  input: { envValue: string | undefined; dev: boolean },
+): string {
+  let stored: string | null = null;
   try {
-    if (trimmed) localStorage.setItem(GOOGLE_CLIENT_ID_KEY, trimmed);
-    else localStorage.removeItem(GOOGLE_CLIENT_ID_KEY);
+    stored = storage?.getItem(GOOGLE_CLIENT_ID_KEY) ?? null;
+  } catch {
+    stored = null;
+  }
+  const resolved = resolveOwnedGoogleClientId({
+    envValue: input.envValue,
+    storedValue: stored,
+    dev: input.dev,
+  });
+  if (resolved.discardStored) {
+    try {
+      storage?.removeItem(GOOGLE_CLIENT_ID_KEY);
+    } catch {
+      /* a stale pasted id must not override the build */
+    }
+  }
+  return resolved.clientId;
+}
+
+/** Dev-only paste. A production call deletes the legacy key instead. */
+export function writeDevGoogleClientId(
+  storage: GoogleClientIdStore | null,
+  input: { envValue: string | undefined; dev: boolean; value: string },
+): void {
+  const owned = input.envValue?.trim() ?? '';
+  if (!input.dev || owned) {
+    try {
+      storage?.removeItem(GOOGLE_CLIENT_ID_KEY);
+    } catch {
+      /* ignore */
+    }
+    return;
+  }
+  const trimmed = input.value.trim();
+  try {
+    if (!storage) return;
+    if (trimmed) storage.setItem(GOOGLE_CLIENT_ID_KEY, trimmed);
+    else storage.removeItem(GOOGLE_CLIENT_ID_KEY);
   } catch {
     /* the field still shows what they typed */
   }
+}
+
+function envGoogleClientId(): string | undefined {
+  const fromEnv = import.meta.env?.VITE_GOOGLE_CLIENT_ID;
+  return typeof fromEnv === 'string' ? fromEnv : undefined;
+}
+
+function browserClientIdStorage(): GoogleClientIdStore | null {
+  try {
+    if (typeof localStorage === 'undefined') return null;
+    return localStorage;
+  } catch {
+    return null;
+  }
+}
+
+/** Client id baked into this build. Empty when Advantage has not set it yet. */
+export function ownedGoogleClientId(): string {
+  return envGoogleClientId()?.trim() ?? '';
+}
+
+export function googleClientId(): string {
+  return applyOwnedGoogleClientId(browserClientIdStorage(), {
+    envValue: envGoogleClientId(),
+    dev: Boolean(import.meta.env?.DEV),
+  });
+}
+
+export function saveGoogleClientId(value: string): void {
+  writeDevGoogleClientId(browserClientIdStorage(), {
+    envValue: envGoogleClientId(),
+    dev: Boolean(import.meta.env?.DEV),
+    value,
+  });
+}
+
+export type DriveAuthCode = 'missing-client' | 'invalid-client' | 'cancelled' | 'failed';
+
+export type DriveTokenOutcome =
+  | { ok: true; token: string }
+  | { ok: false; code: DriveAuthCode; detail: string | null };
+
+export function classifyDriveAuthDetail(detail: string | null | undefined): 'invalid-client' | 'cancelled' | 'failed' {
+  const text = detail ?? '';
+  if (/invalid_client|deleted_client|unauthorized_client|client was not found|client not found/i.test(text)) {
+    return 'invalid-client';
+  }
+  if (/popup_closed|access_denied|user_cancel/i.test(text)) return 'cancelled';
+  return 'failed';
+}
+
+/** Owner copy stays plain. A local dev build can add a short hint. */
+export function driveSignInFailureCopy(input: {
+  code: DriveAuthCode;
+  detail?: string | null;
+  dev?: boolean;
+}): string {
+  if (input.code === 'missing-client') return DRIVE_SETUP_NEEDED;
+  const dev = input.dev ?? Boolean(import.meta.env?.DEV);
+  if (!dev) return DRIVE_SIGN_IN_FAILED;
+  if (input.code === 'invalid-client') {
+    return `${DRIVE_SIGN_IN_FAILED} Dev: Google did not recognize this build, or this Google account is not a test user.`;
+  }
+  if (input.code === 'cancelled') {
+    return `${DRIVE_SIGN_IN_FAILED} Dev: the Google window closed before sign-in finished.`;
+  }
+  const detail = input.detail?.trim() ?? '';
+  if (detail) return `${DRIVE_SIGN_IN_FAILED} Dev: ${detail.slice(0, 140)}`;
+  return DRIVE_SIGN_IN_FAILED;
+}
+
+export function driveOwnerFacingError(reason: unknown): string {
+  const detail = reason instanceof Error ? reason.message : typeof reason === 'string' ? reason : '';
+  const code = classifyDriveAuthDetail(detail);
+  if (code === 'invalid-client') return driveSignInFailureCopy({ code, detail });
+  const trimmed = detail.trim();
+  if (!trimmed) return 'Google Drive could not be opened.';
+  if (import.meta.env?.DEV) return trimmed.slice(0, 180);
+  if (
+    trimmed.length <= 180 &&
+    !/[{}]/.test(trimmed) &&
+    !/client id|oauth|cloud console|client secret/i.test(trimmed)
+  ) {
+    return trimmed;
+  }
+  return 'Google Drive could not be opened.';
 }
 
 export function lessonDriveFileName(dateKey: string, coachName: string): string {
@@ -425,12 +572,11 @@ function loadGis(): Promise<void> {
   });
 }
 
-/** Popup when `consent`, otherwise reuse a grant. Does not invent a session. */
-export function requestDriveToken(mode: 'silent' | 'consent'): Promise<string | null> {
+function requestDriveTokenOutcome(mode: 'silent' | 'consent'): Promise<DriveTokenOutcome> {
   const cached = readStoredToken();
-  if (cached && mode === 'silent') return Promise.resolve(cached);
+  if (cached && mode === 'silent') return Promise.resolve({ ok: true, token: cached });
   const clientId = googleClientId();
-  if (!clientId) return Promise.resolve(null);
+  if (!clientId) return Promise.resolve({ ok: false, code: 'missing-client', detail: null });
   return loadGis().then(
     () =>
       new Promise((resolve) => {
@@ -439,21 +585,39 @@ export function requestDriveToken(mode: 'silent' | 'consent'): Promise<string | 
           scope: DRIVE_SCOPES,
           callback: (response) => {
             if (!response.access_token || response.error) {
-              resolve(null);
+              const detail = response.error ?? null;
+              resolve({ ok: false, code: classifyDriveAuthDetail(detail), detail });
               return;
             }
             writeStoredToken(response.access_token, response.expires_in ?? 3600);
-            resolve(response.access_token);
+            resolve({ ok: true, token: response.access_token });
           },
-          error_callback: () => resolve(null),
+          error_callback: (error) => {
+            const detail = error?.type ?? null;
+            resolve({ ok: false, code: classifyDriveAuthDetail(detail), detail });
+          },
         });
         if (!client) {
-          resolve(null);
+          resolve({ ok: false, code: 'failed', detail: null });
           return;
         }
         client.requestAccessToken(mode === 'consent' ? { prompt: 'consent' } : { prompt: '' });
       }),
+    (reason: unknown) => {
+      const detail = reason instanceof Error ? reason.message : null;
+      return { ok: false as const, code: 'failed' as const, detail };
+    },
   );
+}
+
+/** Popup when `consent`, otherwise reuse a grant. Does not invent a session. */
+export function requestDriveToken(mode: 'silent' | 'consent'): Promise<string | null> {
+  return requestDriveTokenOutcome(mode).then((result) => (result.ok ? result.token : null));
+}
+
+/** Connect-button sign-in. Includes a reason so the card can stay in plain language. */
+export function requestDriveConsent(): Promise<DriveTokenOutcome> {
+  return requestDriveTokenOutcome('consent');
 }
 
 type DriveFetch = typeof fetch;

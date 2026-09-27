@@ -64,6 +64,10 @@ This repo is a static Vite app.
 - Output directory: `dist`
 - SPA fallback: `public/_redirects` contains `/*    /index.html   200` and is copied into `dist` on build.
 
+## Google Drive sign-in
+
+Gym owners connect a folder in their own Google Drive. Advantage does not host photos or videos, and Google Photos is not a sync source. The public browser client id is `VITE_GOOGLE_CLIENT_ID`, set by Advantage at build time (see `.env.example`). Gym owners do not create a Google Cloud project or paste an id. Do not put a Google client secret in this app. Owner steps: `docs/owner-connect-google-drive.md`. Company setup and verification: `docs/advantage-owned-google-drive-oauth.md`.
+
 ## Cast notes
 
 Match is split into two views that stay in sync in the same browser profile (`BroadcastChannel` + `localStorage`):

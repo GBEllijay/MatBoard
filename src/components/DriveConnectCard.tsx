@@ -1,126 +1,123 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { cloudStorage, type CloudBinding, type CloudFolderRef } from '../lib/cloudStorage';
 import {
+  CLASS_HISTORY_TITLE,
   DRIVE_CONNECT_BODY,
   DRIVE_CONNECT_LABEL,
   DRIVE_CONNECT_TITLE,
+  DRIVE_DEV_CLIENT_HINT,
   DRIVE_FOLDER_EMPTY,
-  DRIVE_SETUP_NEEDED,
-  DRIVE_SIGN_IN_FAILED,
-  LESSON_ROOT_NAME,
-  CLASS_HISTORY_TITLE,
-  clearDriveSession,
-  createLessonRoot,
-  driveAccountEmail,
+  driveOwnerFacingError,
   googleClientId,
-  listDriveFolders,
-  readDriveBinding,
-  requestDriveToken,
+  ownedGoogleClientId,
   saveGoogleClientId,
-  writeDriveBinding,
-  type DriveBinding,
-  type DriveFolderChoice,
 } from '../lib/googleDrive';
 
 /**
  * Connect this browser to the caller's Google Drive and pick a real folder.
  * The list is whatever Drive returns. An empty response stays empty.
+ * The sign-in app id comes from the build. Owners are not asked for one.
  */
 export function DriveConnectCard() {
-  const envClient = import.meta.env?.VITE_GOOGLE_CLIENT_ID?.trim() ?? '';
-  const [clientId, setClientId] = useState(() => googleClientId());
-  const [binding, setBinding] = useState<DriveBinding | null>(() => readDriveBinding());
-  const [folders, setFolders] = useState<DriveFolderChoice[] | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  const drive = cloudStorage();
+  const owned = ownedGoogleClientId();
+  const [devAppId, setDevAppId] = useState(() => (import.meta.env.DEV && !owned ? googleClientId() : ''));
+  const [binding, setBinding] = useState<CloudBinding | null>(() => drive.binding());
+  const [folders, setFolders] = useState<CloudFolderRef[] | null>(null);
+  const [session, setSession] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [advancedOpen, setAdvancedOpen] = useState(false);
+
+  useEffect(() => {
+    googleClientId();
+  }, []);
+
+  const available = drive.isAvailable();
 
   const connect = async () => {
-    saveGoogleClientId(clientId);
-    if (!googleClientId()) {
-      setAdvancedOpen(true);
-      setError(DRIVE_SETUP_NEEDED);
+    if (!drive.isAvailable()) {
+      setError(drive.unavailableMessage());
       return;
     }
     setBusy(true);
     setError('');
     try {
-      const next = await requestDriveToken('consent');
-      if (!next) {
-        setError(DRIVE_SIGN_IN_FAILED);
+      const result = await drive.connect();
+      if (!result.ok) {
+        setError(result.message);
         return;
       }
-      setToken(next);
-      setFolders(await listDriveFolders(next));
+      setSession(result.session);
+      setFolders(result.folders);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Google Drive could not be opened.');
+      setError(driveOwnerFacingError(reason));
     } finally {
       setBusy(false);
     }
   };
 
-  const choose = async (folder: DriveFolderChoice) => {
-    if (!token) return;
+  const choose = async (folder: CloudFolderRef) => {
+    if (!session) return;
     setBusy(true);
     setError('');
     try {
-      const email = await driveAccountEmail(token).catch(() => null);
-      const next = { folderId: folder.id, folderName: folder.name, email };
-      writeDriveBinding(next);
+      const next = await drive.pickFolder(session, folder);
       setBinding(next);
       setFolders(null);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'That folder could not be saved.');
+      setError(driveOwnerFacingError(reason));
     } finally {
       setBusy(false);
     }
   };
 
   const createFolder = async () => {
-    if (!token) return;
+    if (!session || !drive.createFolder) return;
     setBusy(true);
     setError('');
     try {
-      const created = await createLessonRoot(token);
-      await choose(created);
+      const created = await drive.createFolder(session);
+      const next = await drive.pickFolder(session, created);
+      setBinding(next);
+      setFolders(null);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Google Drive could not create the folder.');
+      setError(driveOwnerFacingError(reason));
+    } finally {
       setBusy(false);
     }
   };
 
   return (
     <article className="plan-card">
-      <p className="plan-card__kicker">Google Drive</p>
+      <p className="plan-card__kicker">{drive.displayName}</p>
       <strong>{binding ? binding.folderName : DRIVE_CONNECT_TITLE}</strong>
       {binding ? (
         <span>
-          {binding.email ? `${binding.email}. ` : ''}
+          {binding.accountLabel ? `${binding.accountLabel}. ` : ''}
           Lesson plans save in this folder. Photos and videos stay in your Google Drive. Advantage only keeps the lesson text and links to those files.
         </span>
       ) : (
         <span>{DRIVE_CONNECT_BODY}</span>
       )}
-      {envClient ? null : (
-        <details
-          className="drive-connect__advanced"
-          open={advancedOpen}
-          onToggle={(event) => setAdvancedOpen(event.currentTarget.open)}
-        >
-          <summary>Advanced</summary>
-          <p>For the person setting up this website. Gym owners can leave this closed.</p>
+      {import.meta.env.DEV && !owned ? (
+        <div className="drive-connect__dev">
+          <p>{DRIVE_DEV_CLIENT_HINT}</p>
           <label className="drive-connect__field">
-            Google OAuth client id
+            App id
             <input
-              value={clientId}
+              value={devAppId}
               autoComplete="off"
               spellCheck={false}
-              onChange={(event) => setClientId(event.target.value)}
+              onChange={(event) => {
+                const next = event.target.value;
+                setDevAppId(next);
+                saveGoogleClientId(next);
+              }}
             />
           </label>
-        </details>
-      )}
+        </div>
+      ) : null}
       {binding ? (
         <div className="drive-connect__actions">
           <Link className="btn" to="/class-history">
@@ -130,20 +127,25 @@ export function DriveConnectCard() {
             type="button"
             className="btn btn--ghost"
             onClick={() => {
-              clearDriveSession();
+              drive.disconnect();
               setBinding(null);
-              setToken(null);
+              setSession(null);
               setFolders(null);
             }}
           >
             Disconnect
           </button>
         </div>
-      ) : (
-        <button type="button" className="btn" disabled={busy} onClick={() => void connect()}>
+      ) : available || import.meta.env.DEV ? (
+        <button type="button" className="btn" disabled={busy || !available} onClick={() => void connect()}>
           {busy ? 'Opening Google…' : DRIVE_CONNECT_LABEL}
         </button>
-      )}
+      ) : null}
+      {!available ? (
+        <p className="drive-connect__note" role="status">
+          {drive.unavailableMessage()}
+        </p>
+      ) : null}
       {folders ? (
         <div className="drive-connect__folders">
           <p>Choose a folder in your Google Drive.</p>
@@ -160,9 +162,11 @@ export function DriveConnectCard() {
           ) : (
             <p>{DRIVE_FOLDER_EMPTY}</p>
           )}
-          <button type="button" className="btn" disabled={busy || !token} onClick={() => void createFolder()}>
-            Create {LESSON_ROOT_NAME}
-          </button>
+          {drive.createFolder && drive.createFolderLabel ? (
+            <button type="button" className="btn" disabled={busy || !session} onClick={() => void createFolder()}>
+              {drive.createFolderLabel}
+            </button>
+          ) : null}
         </div>
       ) : null}
       {error ? (
