@@ -41,6 +41,7 @@ import {
   type Side,
 } from '../lib/matchStore';
 import { needsRefDecision, outcomeSubtitle } from '../lib/outcomes';
+import { DEFAULT_SCOREBOARD_SKIN, scoreboardSkinClass } from '../lib/scoreboardSkin';
 
 export function MatchControllerPage() {
   const match = useMatchState();
@@ -126,7 +127,7 @@ export function MatchControllerPage() {
   };
 
   return (
-    <main className={`controller${suite.fromSuite ? ' origin-suite' : ''}`}>
+    <main className={`controller ${scoreboardSkinClass(DEFAULT_SCOREBOARD_SKIN)}${suite.fromSuite ? ' origin-suite' : ''}`}>
       {suite.fromSuite ? <BeltRail kind="tournament" /> : null}
       <PlayExitMark to={suite.homePath} />
       <Chrome
