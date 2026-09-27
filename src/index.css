@@ -7568,12 +7568,23 @@ input.roster-pick__name:focus,
   border-color: transparent;
 }
 
-.techniques__note {
+.techniques__note,
+.techniques__focus {
   width: min(40rem, 100%);
   margin: 0.7rem auto 0;
   padding: 0 calc(1rem + var(--safe-r)) 0 calc(1rem + var(--safe-l));
   color: var(--gold-2);
   font-weight: 700;
+}
+
+.techniques__focus {
+  padding: 0.75rem 0.95rem;
+  border-radius: 16px;
+  border: 1px solid rgba(252, 192, 0, 0.7);
+  background: rgba(8, 16, 32, 0.92);
+  color: var(--ink);
+  font-weight: 800;
+  line-height: 1.35;
 }
 
 .techniques__plan {
@@ -7598,6 +7609,11 @@ input.roster-pick__name:focus,
 .techniques__card--on {
   border-color: rgba(252, 192, 0, 0.88);
   box-shadow: 0 0 0 1px rgba(252, 192, 0, 0.4), var(--shadow);
+}
+
+.techniques__card--lesson {
+  border-color: var(--logo-yellow);
+  box-shadow: 0 0 0 3px rgba(252, 192, 0, 0.55), var(--shadow);
 }
 
 .techniques__card h2 {
@@ -7934,9 +7950,51 @@ input.roster-pick__name:focus,
   text-align: left;
 }
 
-.notes__copy {
+.notes__copy,
+.notes__download {
   width: 100%;
   min-height: 52px;
+}
+
+.notes__downloads {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.notes__download:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.notes__gallery-status {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.notes__gallery-status--empty {
+  color: var(--ink);
+  padding: 0.65rem 0.75rem;
+  border-radius: 12px;
+  border: 1px dashed rgba(252, 192, 0, 0.55);
+  background: rgba(8, 16, 32, 0.72);
+}
+
+.notes__gallery {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.notes__gallery li {
+  padding: 0.55rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(8, 10, 16, 0.55);
+  font-weight: 800;
 }
 
 .notes__confirm {
@@ -8034,9 +8092,23 @@ input.roster-pick__name:focus,
   background: #000;
 }
 
-.notes__video:disabled {
-  opacity: 0.45;
-  cursor: default;
+.notes__video--go {
+  border-color: var(--gold);
+  color: var(--logo-yellow);
+  cursor: pointer;
+}
+
+.notes__video-mark {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 6px 0 6px 10px;
+  border-color: transparent transparent transparent #fff;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.85));
+  pointer-events: none;
 }
 
 .notes__video-thumb {

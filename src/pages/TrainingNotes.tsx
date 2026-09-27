@@ -6,14 +6,24 @@ import { useCoachPageSwipe } from '../hooks/useCoachSwipe';
 import { useToolboxParent } from '../hooks/useToolboxParent';
 import { NOTES_LEAD, TRAINING_NOTES_LABEL } from '../lib/coachCopy';
 import {
+  DOWNLOAD_TODAY_LABEL,
+  GALLERY_TODAY_CHECKING,
+  GALLERY_TODAY_EMPTY,
+  GALLERY_TODAY_UNAVAILABLE,
+  downloadGalleryVideos,
+  galleryTodayReadyCopy,
+  galleryVideosForDay,
+} from '../lib/galleryDay';
+import {
   lessonSlotOffersVideo,
   matchLessonTree,
   parallelVideoSlot,
   techniqueTreeLaunchPath,
-  techniquesLaunchPath,
+  techniquesFocusPath,
   type LessonSlotRef,
   type LessonTreeCandidate,
 } from '../lib/lessonLinks';
+import { listPhotos } from '../lib/photoStore';
 import { loadTechniqueBoard } from '../lib/techniqueStore';
 import type { VideoPlan } from '../lib/techniqueLogic';
 import { loadTechniqueArchive, type TechniqueTreeArchive } from '../lib/techniqueTreeStore';
@@ -51,6 +61,19 @@ type TodayVideos = {
   urls: Record<string, string>;
 };
 
+type GalleryVideo = {
+  id: string;
+  label: string;
+  mime: string;
+  addedAt: number;
+  blob: Blob;
+};
+
+type GalleryTodayState = {
+  status: 'loading' | 'ready' | 'error';
+  videos: GalleryVideo[];
+};
+
 function videoOffer(
   videos: TodayVideos | null,
   ref: LessonSlotRef,
@@ -83,6 +106,7 @@ export function TrainingNotesPage() {
   const [recentOpen, setRecentOpen] = useState(false);
   const [confirmKey, setConfirmKey] = useState<string | null>(null);
   const [videos, setVideos] = useState<TodayVideos | null>(null);
+  const [galleryToday, setGalleryToday] = useState<GalleryTodayState>({ status: 'loading', videos: [] });
   const [treeArchive, setTreeArchive] = useState<TechniqueTreeArchive>(() => loadTechniqueArchive());
 
   useEffect(() => {
@@ -142,6 +166,29 @@ export function TrainingNotesPage() {
       cancelled = true;
       document.removeEventListener('visibilitychange', onVisible);
       created.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [todayKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => {
+      void listPhotos('gallery')
+        .then((rows) => {
+          if (cancelled) return;
+          setGalleryToday({ status: 'ready', videos: galleryVideosForDay(rows, todayKey) });
+        })
+        .catch(() => {
+          if (!cancelled) setGalleryToday({ status: 'error', videos: [] });
+        });
+    };
+    load();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') load();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, [todayKey]);
 
@@ -220,9 +267,26 @@ export function TrainingNotesPage() {
 
   const openVideo = (ref: LessonSlotRef) => {
     const offer = videoOffer(videos, ref);
-    if (!offer.slotId || !offer.clipUrl) return;
-    navigate(techniquesLaunchPath(offer.slotId));
+    if (!offer.show) return;
+    navigate(
+      techniquesFocusPath({
+        section: ref.role,
+        date: todayKey,
+        slotId: offer.slotId,
+        index: ref.role === 'technique' ? ref.index : undefined,
+      }),
+    );
   };
+
+  const galleryCopy =
+    galleryToday.status === 'loading'
+      ? GALLERY_TODAY_CHECKING
+      : galleryToday.status === 'error'
+        ? GALLERY_TODAY_UNAVAILABLE
+        : galleryToday.videos.length
+          ? galleryTodayReadyCopy(galleryToday.videos.length)
+          : GALLERY_TODAY_EMPTY;
+  const canDownloadGallery = galleryToday.status === 'ready' && galleryToday.videos.length > 0;
 
   const sectionMedia = (ref: LessonSlotRef, label: string, tech?: TechniqueBlock) => {
     const offer = videoOffer(videos, ref);
@@ -298,6 +362,38 @@ export function TrainingNotesPage() {
             {planDayTitle(viewKey, todayKey)} · {planDayStamp(viewKey)}
             {editingToday ? '' : ' · View only'}
           </p>
+          <div className="notes__downloads">
+            <button
+              type="button"
+              className="btn notes__download"
+              disabled={!canDownloadGallery}
+              aria-describedby="notes-gallery-status"
+              onClick={() => {
+                if (!canDownloadGallery) return;
+                void downloadGalleryVideos(galleryToday.videos);
+              }}
+            >
+              {DOWNLOAD_TODAY_LABEL}
+            </button>
+            <p
+              id="notes-gallery-status"
+              className={
+                canDownloadGallery || galleryToday.status === 'loading'
+                  ? 'notes__gallery-status'
+                  : 'notes__gallery-status notes__gallery-status--empty'
+              }
+              role="status"
+            >
+              {galleryCopy}
+            </p>
+            {canDownloadGallery ? (
+              <ul className="notes__gallery" aria-label="Videos in the shared gallery for today">
+                {galleryToday.videos.map((video) => (
+                  <li key={video.id}>{video.label}</li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
           {recentOpen ? (
             recent.length ? (
               <ul className="notes__recent">
