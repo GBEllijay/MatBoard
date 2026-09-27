@@ -1,19 +1,47 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LessonMediaRail } from '../components/LessonMediaRail';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { useCoachPageSwipe } from '../hooks/useCoachSwipe';
+import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useToolboxParent } from '../hooks/useToolboxParent';
 import { NOTES_LEAD, TRAINING_NOTES_LABEL } from '../lib/coachCopy';
+import {
+  DOWNLOAD_TODAY_LABEL,
+  downloadGalleryVideos,
+  galleryVideoDownloadName,
+  galleryVideosForDay,
+  saveBlobDownload,
+} from '../lib/galleryDay';
+import {
+  downloadDriveFile,
+  loadTodayDriveVideos,
+  requestDriveToken,
+  todayDownloadCopy,
+  type DriveDayVideo,
+  type TodayDriveStatus,
+} from '../lib/googleDrive';
 import {
   lessonSlotOffersVideo,
   matchLessonTree,
   parallelVideoSlot,
   techniqueTreeLaunchPath,
-  techniquesLaunchPath,
+  techniquesFocusPath,
   type LessonSlotRef,
   type LessonTreeCandidate,
 } from '../lib/lessonLinks';
+import {
+  DISTRIBUTE_BUTTON,
+  DISTRIBUTE_DONE,
+  DISTRIBUTE_LEAD,
+  flushLessonDriveDraft,
+  getDriveNotice,
+  markLessonDistribution,
+  mediaRefsFromVideoPlan,
+  scheduleLessonDriveDraft,
+  subscribeDriveNotice,
+} from '../lib/lessonDrive';
+import { listPhotos } from '../lib/photoStore';
 import { loadTechniqueBoard } from '../lib/techniqueStore';
 import type { VideoPlan } from '../lib/techniqueLogic';
 import { loadTechniqueArchive, type TechniqueTreeArchive } from '../lib/techniqueTreeStore';
@@ -51,6 +79,26 @@ type TodayVideos = {
   urls: Record<string, string>;
 };
 
+type GalleryVideo = {
+  id: string;
+  label: string;
+  mime: string;
+  addedAt: number;
+  blob: Blob;
+};
+
+type GalleryTodayState = {
+  status: 'loading' | 'ready' | 'error';
+  videos: GalleryVideo[];
+};
+
+type DriveTodayState = {
+  status: TodayDriveStatus;
+  videos: DriveDayVideo[];
+};
+
+const idleDriveNotice = { phase: 'idle' as const, text: '' };
+
 function videoOffer(
   videos: TodayVideos | null,
   ref: LessonSlotRef,
@@ -70,6 +118,7 @@ function videoOffer(
 export function TrainingNotesPage() {
   const navigate = useNavigate();
   const parent = useToolboxParent();
+  const proSuite = useProUnlocked();
   useCoachPageSwipe();
   const [boot] = useState(() => {
     const today = localDateKey();
@@ -83,6 +132,14 @@ export function TrainingNotesPage() {
   const [recentOpen, setRecentOpen] = useState(false);
   const [confirmKey, setConfirmKey] = useState<string | null>(null);
   const [videos, setVideos] = useState<TodayVideos | null>(null);
+  const [galleryToday, setGalleryToday] = useState<GalleryTodayState>({ status: 'loading', videos: [] });
+  const [driveToday, setDriveToday] = useState<DriveTodayState>({
+    status: proSuite ? 'loading' : 'skipped',
+    videos: [],
+  });
+  const [downloadNote, setDownloadNote] = useState('');
+  const [distributeNote, setDistributeNote] = useState('');
+  const driveNotice = useSyncExternalStore(subscribeDriveNotice, getDriveNotice, () => idleDriveNotice);
   const [treeArchive, setTreeArchive] = useState<TechniqueTreeArchive>(() => loadTechniqueArchive());
 
   useEffect(() => {
@@ -145,6 +202,70 @@ export function TrainingNotesPage() {
     };
   }, [todayKey]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => {
+      void listPhotos('gallery')
+        .then((rows) => {
+          if (cancelled) return;
+          setGalleryToday({ status: 'ready', videos: galleryVideosForDay(rows, todayKey) });
+        })
+        .catch(() => {
+          if (!cancelled) setGalleryToday({ status: 'error', videos: [] });
+        });
+    };
+    load();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') load();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [todayKey]);
+
+  useEffect(() => {
+    if (!proSuite) {
+      setDriveToday({ status: 'skipped', videos: [] });
+      return;
+    }
+    let cancelled = false;
+    setDriveToday({ status: 'loading', videos: [] });
+    const load = () => {
+      void loadTodayDriveVideos(todayKey)
+        .then((result) => {
+          if (!cancelled) setDriveToday(result);
+        })
+        .catch(() => {
+          if (!cancelled) setDriveToday({ status: 'error', videos: [] });
+        });
+    };
+    load();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') load();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [todayKey, proSuite]);
+
+  useEffect(() => {
+    const flush = () => flushLessonDriveDraft();
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') flush();
+    };
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', onHide);
+    return () => {
+      flush();
+      window.removeEventListener('pagehide', flush);
+      document.removeEventListener('visibilitychange', onHide);
+    };
+  }, []);
+
   const treeCandidates = useMemo<LessonTreeCandidate[]>(
     () =>
       treeArchive.trees.map((tree) => ({
@@ -173,11 +294,25 @@ export function TrainingNotesPage() {
   const sourcePlan = archive.days[sourceKey];
   const canCopy = Boolean(sourcePlan && planHasContent(sourcePlan) && sourceKey !== todayKey);
 
-  const commit = (next: TrainingNotesPlan) => {
-    if (!editingToday) return;
+  const persistToday = (next: TrainingNotesPlan) => {
     const saved = saveDay(todayKey, next, todayKey);
     setArchive(saved.archive);
     setPlan(saved.plan);
+    // Local text is already stored. Pro queues a Drive draft (text + file ids).
+    // Regular Coach skips the queue. Either way, leaving the page does not drop the plan.
+    scheduleLessonDriveDraft({
+      proSuite,
+      dateKey: todayKey,
+      coachName: saved.plan.coachName,
+      plan: saved.plan,
+      media: videos ? mediaRefsFromVideoPlan(videos.plan) : [],
+    });
+    return saved;
+  };
+
+  const commit = (next: TrainingNotesPlan) => {
+    if (!editingToday) return;
+    persistToday(next);
   };
 
   const openDay = (key: string) => {
@@ -190,9 +325,7 @@ export function TrainingNotesPage() {
   const applyCopy = (key: string) => {
     const source = archive.days[key];
     if (!source || !planHasContent(source)) return;
-    const saved = saveDay(todayKey, copyPlan(source), todayKey);
-    setArchive(saved.archive);
-    setPlan(saved.plan);
+    persistToday(copyPlan(source));
     setViewKey(todayKey);
     setConfirmKey(null);
     setRecentOpen(false);
@@ -220,8 +353,55 @@ export function TrainingNotesPage() {
 
   const openVideo = (ref: LessonSlotRef) => {
     const offer = videoOffer(videos, ref);
-    if (!offer.slotId || !offer.clipUrl) return;
-    navigate(techniquesLaunchPath(offer.slotId));
+    if (!offer.show) return;
+    navigate(
+      techniquesFocusPath({
+        section: ref.role,
+        date: todayKey,
+        slotId: offer.slotId,
+        index: ref.role === 'technique' ? ref.index : undefined,
+      }),
+    );
+  };
+
+  const galleryCount = galleryToday.status === 'ready' ? galleryToday.videos.length : 0;
+  const driveCount = driveToday.status === 'ready' ? driveToday.videos.length : 0;
+  const galleryCopy = todayDownloadCopy({
+    galleryStatus: galleryToday.status,
+    galleryCount,
+    driveStatus: driveToday.status,
+    driveCount,
+  });
+  const canDownloadToday = galleryCount + driveCount > 0;
+  const downloadBusy = galleryToday.status === 'loading' || driveToday.status === 'loading';
+
+  const downloadToday = async () => {
+    if (!canDownloadToday) return;
+    setDownloadNote('');
+    let index = 0;
+    if (galleryCount) {
+      await downloadGalleryVideos(galleryToday.videos);
+      index = galleryToday.videos.length;
+    }
+    if (!driveCount) return;
+    try {
+      const token = await requestDriveToken('silent');
+      if (!token) {
+        setDownloadNote('Sign in to Google Drive again to download those videos. The gallery copies already saved.');
+        return;
+      }
+      for (const video of driveToday.videos) {
+        const blob = await downloadDriveFile(token, video.id);
+        saveBlobDownload(galleryVideoDownloadName(video.label, video.mime, index), blob);
+        index += 1;
+      }
+    } catch (reason) {
+      setDownloadNote(
+        reason instanceof Error
+          ? reason.message
+          : 'A Google Drive video could not be downloaded. Gallery copies already saved stay on this phone.',
+      );
+    }
   };
 
   const sectionMedia = (ref: LessonSlotRef, label: string, tech?: TechniqueBlock) => {
@@ -262,6 +442,11 @@ export function TrainingNotesPage() {
         </div>
       </header>
       <p className="notes__lead">{NOTES_LEAD}</p>
+      {proSuite && driveNotice.text ? (
+        <p className="notes__save" role="status">
+          {driveNotice.text}
+        </p>
+      ) : null}
 
       <div className="notes__plan">
         <section className="notes__archive" aria-label="Saved days">
@@ -298,6 +483,45 @@ export function TrainingNotesPage() {
             {planDayTitle(viewKey, todayKey)} · {planDayStamp(viewKey)}
             {editingToday ? '' : ' · View only'}
           </p>
+          <div className="notes__downloads">
+            <button
+              type="button"
+              className="btn notes__download"
+              disabled={!canDownloadToday}
+              aria-describedby="notes-gallery-status"
+              onClick={() => {
+                void downloadToday();
+              }}
+            >
+              {DOWNLOAD_TODAY_LABEL}
+            </button>
+            <p
+              id="notes-gallery-status"
+              className={
+                canDownloadToday || downloadBusy
+                  ? 'notes__gallery-status'
+                  : 'notes__gallery-status notes__gallery-status--empty'
+              }
+              role="status"
+            >
+              {galleryCopy}
+            </p>
+            {downloadNote ? (
+              <p className="notes__gallery-status notes__gallery-status--empty" role="status">
+                {downloadNote}
+              </p>
+            ) : null}
+            {canDownloadToday ? (
+              <ul className="notes__gallery" aria-label="Videos available for today">
+                {galleryToday.videos.map((video) => (
+                  <li key={`gallery-${video.id}`}>{video.label}</li>
+                ))}
+                {driveToday.videos.map((video) => (
+                  <li key={`drive-${video.id}`}>{video.label}</li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
           {recentOpen ? (
             recent.length ? (
               <ul className="notes__recent">
@@ -453,6 +677,33 @@ export function TrainingNotesPage() {
             />
           </label>
         </section>
+
+        {proSuite && editingToday ? (
+          <aside className="notes__distribute" aria-label="Instructor distribution">
+            <p>{DISTRIBUTE_LEAD}</p>
+            <button
+              type="button"
+              className="btn btn--ghost notes__distribute-btn"
+              onClick={() => {
+                const revision = markLessonDistribution({
+                  proSuite: true,
+                  dateKey: todayKey,
+                  coachName: plan.coachName,
+                  plan,
+                  media: videos ? mediaRefsFromVideoPlan(videos.plan) : [],
+                });
+                setDistributeNote(revision ? DISTRIBUTE_DONE : DISTRIBUTE_LEAD);
+              }}
+            >
+              {DISTRIBUTE_BUTTON}
+            </button>
+            {distributeNote ? (
+              <p className="notes__distribute-note" role="status">
+                {distributeNote}
+              </p>
+            ) : null}
+          </aside>
+        ) : null}
       </div>
     </main>
   );

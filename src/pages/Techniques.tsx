@@ -12,6 +12,11 @@ import { useToolboxParent } from '../hooks/useToolboxParent';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { formatMmSs, formatMss, secondsToMs } from '../lib/format';
+import {
+  lessonFocusStatus,
+  parseLessonVideoFocus,
+  resolveFocusedSlot,
+} from '../lib/lessonLinks';
 import { VIDEO_CAPTURE, VIDEO_PICKER_ACCEPT, VIDEO_RECORD_ACCEPT } from '../lib/mediaPicker';
 import { DEFAULT_MUTE_VIDEO, getSaverPrefs, setSaverMuteVideo } from '../lib/photoStore';
 import { LARGE_MEDIA_BYTES, LARGE_MEDIA_NOTE, quotaAddNote } from '../lib/storageQuota';
@@ -66,8 +71,8 @@ export function TechniquesPage() {
   const parent = useToolboxParent();
   useCoachPageSwipe();
   const launchStarted = useRef(false);
-  const launchSlotId = searchParams.get('slot');
-  const launchPlay = searchParams.get('play') === '1';
+  const launchKey = searchParams.toString();
+  const [lessonFocus, setLessonFocus] = useState<{ slotId: string; text: string } | null>(null);
 
   useVisibleViewportHeight();
   useWakeLock(playing);
@@ -171,6 +176,7 @@ export function TechniquesPage() {
   const selectCard = (slotId: string) => {
     const current = planRef.current;
     if (!current || current.selectedSlotId === slotId) return;
+    setLessonFocus((currentFocus) => (currentFocus?.slotId === slotId ? currentFocus : null));
     const next = selectSlot(current, slotId);
     const slot = next.slots.find((item) => item.slotId === slotId);
     setPlaying(false);
@@ -221,39 +227,45 @@ export function TechniquesPage() {
 
   useEffect(() => {
     if (!plan) return;
-    const id = playing ? plan.selectedSlotId : launchSlotId;
+    const id = playing ? plan.selectedSlotId : lessonFocus?.slotId;
     if (!id) return;
     document.getElementById(`techniques-slot-${id}`)?.scrollIntoView({
       block: 'nearest',
       behavior: 'smooth',
     });
-  }, [playing, plan, launchSlotId]);
+  }, [playing, plan, lessonFocus]);
 
   useEffect(() => {
-    if (!plan || !launchSlotId) return;
-    const slot = plan.slots.find((item) => item.slotId === launchSlotId);
+    if (!plan) return;
+    const focus = parseLessonVideoFocus(new URLSearchParams(launchKey));
+    if (!focus.active) return;
+    const slot = resolveFocusedSlot(plan, focus);
     let cancelled = false;
     const clearLaunch = () => {
       window.setTimeout(() => {
         if (cancelled) return;
         const next = new URLSearchParams(window.location.search);
-        if (!next.has('slot') && !next.has('play')) return;
-        next.delete('slot');
-        next.delete('play');
+        const keys = ['slot', 'play', 'focus', 'section', 'index', 'date'] as const;
+        if (!keys.some((key) => next.has(key))) return;
+        for (const key of keys) next.delete(key);
         setSearchParams(next, { replace: true });
       }, 0);
     };
 
     if (!slot) {
+      if (focus.focus) setPickerNote('That lesson section is not on Daily Training Videos yet.');
       clearLaunch();
       return () => {
         cancelled = true;
       };
     }
 
+    setLessonFocus({ slotId: slot.slotId, text: lessonFocusStatus(plan, focus, slot) });
+
     if (plan.selectedSlotId !== slot.slotId) {
       const next = selectSlot(plan, slot.slotId);
       applyPlan(next);
+      setPlaying(false);
       if (isTimedSlot(slot)) setRemainingMs(secondsToMs(slot.drillSec));
       void saveTechniquePlan(next).catch(() => {
         setPickerNote('Could not save this plan on this device.');
@@ -264,20 +276,22 @@ export function TechniquesPage() {
     }
 
     const src = slot.clipId ? urlById[slot.clipId] : undefined;
-    const waitingForClip = Boolean(launchPlay && slot.clipId && !src);
-    if (launchPlay && slot.clipId && src && !launchStarted.current) {
+    const waitingForClip = Boolean(focus.play && slot.clipId && !src);
+    if (focus.play && slot.clipId && src && !launchStarted.current) {
       launchStarted.current = true;
       if (!muteVideo) setUnlockSound(true);
       if (isTimedSlot(slot)) {
         setRemainingMs((ms) => remainingOnStart(ms, secondsToMs(slot.drillSec)));
       }
       setPlaying(true);
+    } else if (!focus.play) {
+      setPlaying(false);
     }
     if (!waitingForClip) clearLaunch();
     return () => {
       cancelled = true;
     };
-  }, [plan, urlById, launchSlotId, launchPlay, muteVideo, setSearchParams]);
+  }, [plan, urlById, launchKey, muteVideo, setSearchParams]);
 
   const openChooser = (slot: VideoSlot) => {
     const current = planRef.current;
@@ -391,6 +405,12 @@ export function TechniquesPage() {
         </div>
       </header>
 
+      {lessonFocus ? (
+        <p className="techniques__focus" role="status">
+          {lessonFocus.text}
+        </p>
+      ) : null}
+
       {pickerNote ? (
         <p className="techniques__note" role="status">
           {pickerNote}
@@ -403,6 +423,7 @@ export function TechniquesPage() {
           <SlotCard
             slot={warmup}
             title={slotTitle(warmup, 0)}
+            fromLesson={lessonFocus?.slotId === warmup.slotId}
             selected={plan?.selectedSlotId === warmup.slotId}
             playing={playing && plan?.selectedSlotId === warmup.slotId}
             src={warmup.clipId ? urlById[warmup.clipId] : undefined}
@@ -424,6 +445,7 @@ export function TechniquesPage() {
             key={slot.slotId}
             slot={slot}
             title={slotTitle(slot, index)}
+            fromLesson={lessonFocus?.slotId === slot.slotId}
             selected={plan?.selectedSlotId === slot.slotId}
             playing={playing && plan?.selectedSlotId === slot.slotId}
             src={slot.clipId ? urlById[slot.clipId] : undefined}
@@ -460,6 +482,7 @@ export function TechniquesPage() {
           <SlotCard
             slot={cooldown}
             title={slotTitle(cooldown, 0)}
+            fromLesson={lessonFocus?.slotId === cooldown.slotId}
             selected={plan?.selectedSlotId === cooldown.slotId}
             playing={playing && plan?.selectedSlotId === cooldown.slotId}
             src={cooldown.clipId ? urlById[cooldown.clipId] : undefined}
@@ -506,6 +529,7 @@ export function TechniquesPage() {
 function SlotCard({
   slot,
   title,
+  fromLesson = false,
   selected,
   playing,
   src,
@@ -528,6 +552,7 @@ function SlotCard({
 }: {
   slot: VideoSlot;
   title: string;
+  fromLesson?: boolean;
   selected: boolean;
   playing: boolean;
   src?: string;
@@ -554,6 +579,7 @@ function SlotCard({
   const cardClass = [
     'techniques__card',
     selected ? 'techniques__card--on' : '',
+    fromLesson ? 'techniques__card--lesson' : '',
     playing ? 'techniques__card--playing' : '',
   ]
     .filter(Boolean)
