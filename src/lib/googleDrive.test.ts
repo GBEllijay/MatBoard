@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   CLASS_HISTORY_EMPTY,
-  DRIVE_CLIENT_MISSING,
+  DRIVE_CONNECT_BODY,
+  DRIVE_CONNECT_TITLE,
+  DRIVE_SETUP_NEEDED,
   DRIVE_TODAY_EMPTY,
   buildClassHistory,
   buildLessonDocument,
@@ -19,7 +21,9 @@ test('lesson file names and Drive queries stay literal', () => {
   assert.equal(lessonDriveFileName('2026-09-27', 'Alex Rivera'), 'advantage-lesson-2026-09-27-alex-rivera.json');
   assert.equal(lessonDriveFileName('2026-09-27', '***'), 'advantage-lesson-2026-09-27-coach.json');
   assert.equal(driveQueryLiteral("O'Brien\\folder"), "O\\'Brien\\\\folder");
-  assert.match(DRIVE_CLIENT_MISSING, /No sample classes/);
+  assert.equal(DRIVE_CONNECT_TITLE, 'Connect your Google Drive folder');
+  assert.match(DRIVE_CONNECT_BODY, /does not host photos or videos/);
+  assert.doesNotMatch(`${DRIVE_CONNECT_TITLE} ${DRIVE_CONNECT_BODY} ${DRIVE_SETUP_NEEDED}`, /client id|oauth/i);
   assert.match(CLASS_HISTORY_EMPTY, /Nothing in this Google Drive folder yet/);
   assert.match(DRIVE_TODAY_EMPTY, /shared gallery or Google Drive/);
 });

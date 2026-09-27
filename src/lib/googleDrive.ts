@@ -32,16 +32,21 @@ export const DRIVE_SCOPES = [
 export const DRIVE_FOLDER_MIME = 'application/vnd.google-apps.folder';
 export const LESSON_ROOT_NAME = 'Advantage Lesson Plans';
 
-export const DRIVE_CLIENT_MISSING =
-  'Add the gym Google OAuth client id, then connect Drive. No sample classes are shown in its place.';
+export const DRIVE_CONNECT_TITLE = 'Connect your Google Drive folder';
+export const DRIVE_CONNECT_BODY =
+  'Lesson plans save in your gym’s Google Drive. Photos and videos stay there too. Advantage only keeps the lesson text and links to those files. It does not host photos or videos.';
 export const DRIVE_CONNECT_LABEL = 'Connect Google Drive';
-export const DRIVE_FOLDER_EMPTY = 'Google Drive did not return any folders for this account.';
+export const DRIVE_SETUP_NEEDED =
+  'Google Drive is not ready on this website yet. Open Advanced if you are the person setting it up.';
+export const DRIVE_SIGN_IN_FAILED =
+  'Google did not finish sign-in. Try again, or ask whoever set up Advantage to allow this website.';
+export const DRIVE_FOLDER_EMPTY = 'This Google Drive account does not have any folders yet.';
 export const CLASS_HISTORY_TITLE = 'Class history';
 export const CLASS_HISTORY_LEAD =
   'Techniques, photos, and videos from the gym Google Drive folder, by date. They stay in Drive for as long as the gym keeps that folder.';
 export const CLASS_HISTORY_EMPTY = 'Nothing in this Google Drive folder yet.';
 export const CLASS_HISTORY_CONNECT =
-  'Connect Google Drive to load this list. Advantage does not keep a copy of the photos or videos.';
+  'Connect your Google Drive folder to see this list. Advantage does not host the photos or videos.';
 export const CLASS_HISTORY_CHECKING = 'Checking Google Drive…';
 export const DRIVE_TODAY_EMPTY = 'Nothing in the shared gallery or Google Drive for today.';
 export const DRIVE_CHECK_FAILED =

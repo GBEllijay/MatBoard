@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  DRIVE_CLIENT_MISSING,
+  DRIVE_CONNECT_BODY,
   DRIVE_CONNECT_LABEL,
+  DRIVE_CONNECT_TITLE,
   DRIVE_FOLDER_EMPTY,
+  DRIVE_SETUP_NEEDED,
+  DRIVE_SIGN_IN_FAILED,
   LESSON_ROOT_NAME,
   CLASS_HISTORY_TITLE,
   clearDriveSession,
@@ -31,11 +34,13 @@ export function DriveConnectCard() {
   const [token, setToken] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const connect = async () => {
     saveGoogleClientId(clientId);
     if (!googleClientId()) {
-      setError(DRIVE_CLIENT_MISSING);
+      setAdvancedOpen(true);
+      setError(DRIVE_SETUP_NEEDED);
       return;
     }
     setBusy(true);
@@ -43,7 +48,7 @@ export function DriveConnectCard() {
     try {
       const next = await requestDriveToken('consent');
       if (!next) {
-        setError('Google did not finish sign-in. Check that this site is an authorized origin on that client id.');
+        setError(DRIVE_SIGN_IN_FAILED);
         return;
       }
       setToken(next);
@@ -88,29 +93,33 @@ export function DriveConnectCard() {
   return (
     <article className="plan-card">
       <p className="plan-card__kicker">Google Drive</p>
-      <strong>{binding ? binding.folderName : 'Connect the gym folder'}</strong>
+      <strong>{binding ? binding.folderName : DRIVE_CONNECT_TITLE}</strong>
       {binding ? (
         <span>
           {binding.email ? `${binding.email}. ` : ''}
-          Lesson text saves into this folder. Photos and videos stay in Drive.
+          Lesson plans save in this folder. Photos and videos stay in your Google Drive. Advantage only keeps the lesson text and links to those files.
         </span>
       ) : (
-        <span>
-          {googleClientId()
-            ? 'Sign in and choose the gym folder. Photos and videos stay in Drive. No sample classes are shown.'
-            : DRIVE_CLIENT_MISSING}
-        </span>
+        <span>{DRIVE_CONNECT_BODY}</span>
       )}
       {envClient ? null : (
-        <label className="drive-connect__field">
-          Google OAuth client id
-          <input
-            value={clientId}
-            autoComplete="off"
-            spellCheck={false}
-            onChange={(event) => setClientId(event.target.value)}
-          />
-        </label>
+        <details
+          className="drive-connect__advanced"
+          open={advancedOpen}
+          onToggle={(event) => setAdvancedOpen(event.currentTarget.open)}
+        >
+          <summary>Advanced</summary>
+          <p>For the person setting up this website. Gym owners can leave this closed.</p>
+          <label className="drive-connect__field">
+            Google OAuth client id
+            <input
+              value={clientId}
+              autoComplete="off"
+              spellCheck={false}
+              onChange={(event) => setClientId(event.target.value)}
+            />
+          </label>
+        </details>
       )}
       {binding ? (
         <div className="drive-connect__actions">
@@ -137,7 +146,7 @@ export function DriveConnectCard() {
       )}
       {folders ? (
         <div className="drive-connect__folders">
-          <p>Choose a folder Google Drive returned.</p>
+          <p>Choose a folder in your Google Drive.</p>
           {folders.length ? (
             <ul>
               {folders.map((folder) => (
