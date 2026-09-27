@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LessonMediaRail } from '../components/LessonMediaRail';
+import { OpenMyDrive } from '../components/OpenMyDrive';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { useCoachPageSwipe } from '../hooks/useCoachSwipe';
 import { useProUnlocked } from '../hooks/useProUnlocked';
@@ -495,6 +496,7 @@ export function TrainingNotesPage() {
             >
               {DOWNLOAD_TODAY_LABEL}
             </button>
+            <OpenMyDrive />
             <p
               id="notes-gallery-status"
               className={

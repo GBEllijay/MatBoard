@@ -1,5 +1,6 @@
 import type { FolderConfig, FolderId, StoredPhoto } from '../lib/photoStore';
 import { FolderItemList } from './FolderItemList';
+import { OpenMyDrive } from './OpenMyDrive';
 
 type Props = {
   folder: FolderConfig;
@@ -88,6 +89,7 @@ export function ToolboxFolder({
                 {folder.videoAddLabel}
               </button>
             ) : null}
+            {folder.ready ? <OpenMyDrive /> : null}
             {items.length && onClear ? (
               <button type="button" className="btn btn--ghost" onClick={() => void onClear()}>
                 Clear {folder.label}

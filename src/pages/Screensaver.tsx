@@ -13,6 +13,7 @@ import { FullscreenChip } from '../components/FullscreenChip';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { TvTip } from '../components/TvTip';
 import { Sheet } from '../components/Sheet';
+import { OpenMyDrive } from '../components/OpenMyDrive';
 import { MediaSourceSheet } from '../components/VideoSourceSheet';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useScheduleState } from '../hooks/useStores';
@@ -463,6 +464,7 @@ export function ScreensaverPage() {
                   {focusConfig.videoAddLabel}
                 </button>
               ) : null}
+              <OpenMyDrive />
             </>
           ) : null}
           <button type="button" className="btn btn--ghost" onClick={() => setOptions(true)}>
