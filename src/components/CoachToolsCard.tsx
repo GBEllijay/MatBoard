@@ -1,23 +1,13 @@
 import { Link } from 'react-router-dom';
 import { BeltRail } from './BeltRail';
-import {
-  COMPETITOR_ROSTER_LABEL,
-  TECHNIQUE_TREE_LABEL,
-  TRAINING_NOTES_LABEL,
-} from '../lib/coachCopy';
+import { COACH_HUBS } from '../lib/productNames';
 
 /**
  * Same buttons, same order, as the Advantage Coach card.
- * Daily tools use the flat blue coach belt. Mock Tournament and Competitor Roster
- * share the yellow/green suite belt.
+ * Daily tools use the flat blue coach belt. Competition Management keeps the
+ * yellow/green tournament belt on the fourth slot.
  */
-export const COACH_TOOL_LINKS = [
-  { title: TRAINING_NOTES_LABEL, to: '/notes' },
-  { title: 'Daily Training Videos', to: '/techniques' },
-  { title: TECHNIQUE_TREE_LABEL, to: '/technique-tree' },
-  { title: 'Mock Tournament', to: '/tournament', belt: 'tournament' },
-  { title: COMPETITOR_ROSTER_LABEL, to: '/roster?from=coach', belt: 'tournament' },
-] as const;
+export const COACH_TOOL_LINKS = COACH_HUBS;
 
 export function CoachToolsCard() {
   return (

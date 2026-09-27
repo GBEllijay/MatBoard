@@ -25,7 +25,8 @@ export function CoachPage() {
             <p className="home__hint">
               Gym TV: open this site on a computer plugged into the TV, then fullscreen Display,
               Rounds, Daily Training Videos, or Mock Tournament. Press F for fullscreen. Daily Lesson
-              Plan, Technique Tree, and Competitor Roster live on the phone.
+              Plan, Technique Tree, and Competition Management live on the phone. Competitor Roster
+              and Mock Tournament are inside Competition Management.
             </p>
             <p className="home__hint">
               Control from your phone. Cast the scoreboard to your TV, or open Display on a second

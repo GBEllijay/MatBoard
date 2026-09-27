@@ -1,3 +1,9 @@
+import {
+  COMPETITOR_ROSTER_LABEL,
+  TECHNIQUE_TREE_LABEL,
+  TRAINING_NOTES_LABEL,
+} from './coachCopy.ts';
+
 /** User-facing Advantage Pro console name. Keep this exact apostrophe. */
 export const GYM_CONSOLE_NAME = "Gym Owner and Instructor's Console";
 
@@ -44,6 +50,39 @@ export const PRO_COMING_SOON_LINES = [
 
 /** Coach hub keeps practice framing; Owner Console uses real-event tooling. */
 export const MOCK_TOURNAMENT_NAME = 'Mock Tournament';
+
+/** Fourth Advantage Coach hub button. Replaces separate Mock Tournament and Competitor Roster buttons. */
+export const COMPETITION_MANAGEMENT_LABEL = 'Competition Management';
+
+/**
+ * Advantage Coach hub, top to bottom.
+ * Daily tools use the flat blue coach belt. Competition Management keeps the
+ * yellow/green tournament belt that already marked this fourth slot.
+ */
+export const COACH_HUBS = [
+  { title: TRAINING_NOTES_LABEL, to: '/notes' },
+  { title: 'Daily Training Videos', to: '/techniques' },
+  { title: TECHNIQUE_TREE_LABEL, to: '/technique-tree' },
+  { title: COMPETITION_MANAGEMENT_LABEL, to: '/competition', belt: 'tournament' as const },
+] as const;
+
+/** Competition Management submenu. Bout and bracket competitors, not member progress. */
+export const COMPETITION_MENU = [
+  { title: COMPETITOR_ROSTER_LABEL, to: '/roster?from=coach', belt: 'tournament' as const },
+  { title: MOCK_TOURNAMENT_NAME, to: '/tournament', belt: 'tournament' as const },
+] as const;
+
+/**
+ * Reserved for later Advantage Pro competition tools (ready checklists, game plans,
+ * rankings, seeding). Empty on purpose — do not render placeholder buttons.
+ * Bout and bracket competitors only, not member progress tracking.
+ */
+export const COMPETITION_MENU_PRO: readonly {
+  title: string;
+  to: string;
+  belt: 'tournament';
+}[] = [];
+
 export const TOURNAMENT_SOFTWARE_NAME = 'Tournament Software';
 
 /** Working title until the owner picks a consumer name for bracketing software. */
