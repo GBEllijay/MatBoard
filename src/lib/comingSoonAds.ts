@@ -9,7 +9,7 @@ import {
   GYM_CONSOLE_NAME,
   INSTRUCTOR_COLLAB_NAME,
   MEDIA_CONSOLE_NAME,
-  TOURNAMENT_SUITE_NAME,
+  COMPETITION_MANAGEMENT_PRO_LABEL,
 } from './productNames.ts';
 
 export type SoonProduct = 'coach' | 'pro';
@@ -98,8 +98,8 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
         body: 'Coming soon. An Instructor console, shared training, and roster approval with the owner.',
       },
       {
-        title: TOURNAMENT_SUITE_NAME,
-        body: 'Live event ops: brackets, scoreboard, match controller, rounds, and round controller.',
+        title: COMPETITION_MANAGEMENT_PRO_LABEL,
+        body: 'Roster, brackets, the scoreboard controller, and the round timer for an in-house event.',
       },
     ],
     dismiss: 'Got it',

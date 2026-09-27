@@ -15,7 +15,7 @@ import {
   GYM_CONSOLE_NAME,
   INSTRUCTOR_COLLAB_NAME,
   MEDIA_CONSOLE_NAME,
-  TOURNAMENT_SUITE_NAME,
+  COMPETITION_MANAGEMENT_PRO_LABEL,
 } from './productNames.ts';
 
 function adText(product: keyof typeof COMING_SOON_ADS): string {
@@ -88,13 +88,15 @@ test('Pro ad keeps the splash and descriptor boxes without the middle paragraph'
   assert.match(text, /Media Console/);
   assert.deepEqual(
     COMING_SOON_ADS.pro.features.map((feature) => feature.title),
-    [MEDIA_CONSOLE_NAME, COMPETITOR_SYSTEM_NAME, INSTRUCTOR_COLLAB_NAME, TOURNAMENT_SUITE_NAME],
+    [MEDIA_CONSOLE_NAME, COMPETITOR_SYSTEM_NAME, INSTRUCTOR_COLLAB_NAME, COMPETITION_MANAGEMENT_PRO_LABEL],
   );
   assert.doesNotMatch(text, /Cast to your Gym TV/i);
   assert.doesNotMatch(text, /ProShop Inventory/);
   assert.doesNotMatch(text, /Auto-Fill Bracketing/i);
   assert.doesNotMatch(text, /Shared Training Videos/);
-  assert.match(text, /In-House Tournament Management Suite/i);
+  assert.match(text, /Competition Management Pro/);
+  assert.doesNotMatch(text, /Match Controller/);
+  assert.doesNotMatch(text, /Round Controller/);
   assert.match(text, /Class Schedule/);
   assert.match(text, /Competitor Management System/);
   assert.match(text, /Instructor Collaboration and Cloud Access/);

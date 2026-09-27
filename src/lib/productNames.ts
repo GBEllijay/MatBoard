@@ -85,8 +85,11 @@ export const COMPETITION_MENU_PRO: readonly {
 
 export const TOURNAMENT_SOFTWARE_NAME = 'Tournament Software';
 
-/** Working title until the owner picks a consumer name for bracketing software. */
+/** Working title kept for longer appetite copy. The Pro hub button uses COMPETITION_MANAGEMENT_PRO_LABEL. */
 export const TOURNAMENT_SUITE_NAME = 'In-House Tournament Management Suite';
+
+/** Fourth Advantage Pro hub button. Same slot as the tournament suite. */
+export const COMPETITION_MANAGEMENT_PRO_LABEL = 'Competition Management Pro';
 
 /** Pro hub for bout competitors, roster CSV, and on-device rankings. */
 export const COMPETITOR_SYSTEM_NAME = 'Competitor Management System';
@@ -111,13 +114,13 @@ export const PRO_HUBS = [
   { title: MEDIA_CONSOLE_NAME, to: '/slideshow?folder=gallery', belt: 'purple' },
   { title: COMPETITOR_SYSTEM_NAME, to: '/competitors', belt: 'brown' },
   { title: INSTRUCTOR_COLLAB_HUB_LABEL, to: '/instructors', belt: 'black' },
-  { title: TOURNAMENT_SUITE_NAME, to: '/suite', belt: 'tournament' },
+  { title: COMPETITION_MANAGEMENT_PRO_LABEL, to: '/suite', belt: 'tournament' },
 ] as const;
 
-/** Existing White Live Bout controller. The suite deep-links here as Match Controller. */
+/** Existing scoreboard controller. Competition Management Pro opens this; Display stays on that screen. */
 export const MATCH_CONTROLLER_PATH = '/match/control';
 
-/** Existing White Rounds controller. The suite deep-links here as Round Controller. */
+/** Existing round-timer controller. Competition Management Pro opens this; Rounds stays on that screen. */
 export const ROUND_CONTROLLER_PATH = '/training/control';
 
 /** Query flag so Suite destinations keep the Suite page theme and return path. */
@@ -135,6 +138,29 @@ export function withSuiteFrom(path: string, fromSuite: boolean): string {
   params.set('from', SUITE_FROM);
   return `${pathname}?${params.toString()}${hash}`;
 }
+
+/**
+ * Competition Management Pro folder, top to bottom.
+ * Every button uses the yellow/green tournament belt. Scoreboard opens the
+ * existing match controller. Round Timer opens the existing rounds controller.
+ */
+export const COMPETITION_PRO_MENU = [
+  { title: COMPETITOR_ROSTER_LABEL, to: withSuiteFrom('/roster', true), belt: 'tournament' as const, clearBout: false },
+  { title: MOCK_TOURNAMENT_NAME, to: withSuiteFrom('/tournament', true), belt: 'tournament' as const, clearBout: false },
+  { title: 'Brackets', to: withSuiteFrom('/tournament', true), belt: 'tournament' as const, clearBout: false },
+  {
+    title: 'Scoreboard',
+    to: withSuiteFrom(MATCH_CONTROLLER_PATH, true),
+    belt: 'tournament' as const,
+    clearBout: true,
+  },
+  {
+    title: 'Round Timer',
+    to: withSuiteFrom(ROUND_CONTROLLER_PATH, true),
+    belt: 'tournament' as const,
+    clearBout: false,
+  },
+] as const;
 
 /** Bottom-of-page guidance on the Media Console manage screen. */
 export const MEDIA_CONSOLE_INSTRUCTIONS = [
