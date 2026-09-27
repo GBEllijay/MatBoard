@@ -6,9 +6,8 @@ import { ProUnlockSheet } from '../components/ProUnlockSheet';
 import { SiteFooter } from '../components/SiteFooter';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
-import { COMPETITOR_ROSTER_LABEL, TECHNIQUE_TREE_LABEL, TRAINING_NOTES_LABEL } from '../lib/coachCopy';
 import { lockCoach } from '../lib/coachUnlock';
-import { coachToolsOpen, MOCK_TOURNAMENT_NAME, PRO_HUBS } from '../lib/productNames';
+import { COACH_HUBS, coachToolsOpen, PRO_HUBS } from '../lib/productNames';
 import { lockPro } from '../lib/proUnlock';
 
 export function ComingSoonPage() {
@@ -43,26 +42,18 @@ export function ComingSoonPage() {
                 Open Coach
               </Link>
             ) : null}
-            {coachTools && !proUnlocked ? (
-              <>
-                <Link className="btn" to="/notes">
-                  {TRAINING_NOTES_LABEL}
-                </Link>
-                <Link className="btn" to="/techniques">
-                  Daily Training Videos
-                </Link>
-                <Link className="btn" to="/technique-tree">
-                  {TECHNIQUE_TREE_LABEL}
-                </Link>
-                <Link className="btn btn--white" to="/tournament">
-                  <BeltRail kind="tournament" />
-                  {MOCK_TOURNAMENT_NAME}
-                </Link>
-                <Link className="btn" to="/roster?from=coach">
-                  {COMPETITOR_ROSTER_LABEL}
-                </Link>
-              </>
-            ) : null}
+            {coachTools && !proUnlocked
+              ? COACH_HUBS.map((tool) => (
+                  <Link
+                    key={tool.to}
+                    className={'belt' in tool ? 'btn btn--white' : 'btn'}
+                    to={tool.to}
+                  >
+                    {'belt' in tool ? <BeltRail kind={tool.belt} /> : null}
+                    {tool.title}
+                  </Link>
+                ))
+              : null}
             <Link className="btn btn--ghost" to="/">
               Home
             </Link>

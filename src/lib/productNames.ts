@@ -1,3 +1,9 @@
+import {
+  COMPETITOR_ROSTER_LABEL,
+  TECHNIQUE_TREE_LABEL,
+  TRAINING_NOTES_LABEL,
+} from './coachCopy.ts';
+
 /** User-facing Advantage Pro console name. Keep this exact apostrophe. */
 export const GYM_CONSOLE_NAME = "Gym Owner and Instructor's Console";
 
@@ -44,10 +50,46 @@ export const PRO_COMING_SOON_LINES = [
 
 /** Coach hub keeps practice framing; Owner Console uses real-event tooling. */
 export const MOCK_TOURNAMENT_NAME = 'Mock Tournament';
+
+/** Fourth Advantage Coach hub button. Replaces separate Mock Tournament and Competitor Roster buttons. */
+export const COMPETITION_MANAGEMENT_LABEL = 'Competition Management';
+
+/**
+ * Advantage Coach hub, top to bottom.
+ * Daily tools use the flat blue coach belt. Competition Management keeps the
+ * yellow/green tournament belt that already marked this fourth slot.
+ */
+export const COACH_HUBS = [
+  { title: TRAINING_NOTES_LABEL, to: '/notes' },
+  { title: 'Daily Training Videos', to: '/techniques' },
+  { title: TECHNIQUE_TREE_LABEL, to: '/technique-tree' },
+  { title: COMPETITION_MANAGEMENT_LABEL, to: '/competition', belt: 'tournament' as const },
+] as const;
+
+/** Competition Management submenu. Bout and bracket competitors, not member progress. */
+export const COMPETITION_MENU = [
+  { title: COMPETITOR_ROSTER_LABEL, to: '/roster?from=coach', belt: 'tournament' as const },
+  { title: MOCK_TOURNAMENT_NAME, to: '/tournament', belt: 'tournament' as const },
+] as const;
+
+/**
+ * Reserved for later Advantage Pro competition tools (ready checklists, game plans,
+ * rankings, seeding). Empty on purpose — do not render placeholder buttons.
+ * Bout and bracket competitors only, not member progress tracking.
+ */
+export const COMPETITION_MENU_PRO: readonly {
+  title: string;
+  to: string;
+  belt: 'tournament';
+}[] = [];
+
 export const TOURNAMENT_SOFTWARE_NAME = 'Tournament Software';
 
-/** Working title until the owner picks a consumer name for bracketing software. */
+/** Working title kept for longer appetite copy. The Pro hub button uses COMPETITION_MANAGEMENT_PRO_LABEL. */
 export const TOURNAMENT_SUITE_NAME = 'In-House Tournament Management Suite';
+
+/** Fourth Advantage Pro hub button. Same slot as the tournament suite. */
+export const COMPETITION_MANAGEMENT_PRO_LABEL = 'Competition Management Pro';
 
 /** Pro hub for bout competitors, roster CSV, and on-device rankings. */
 export const COMPETITOR_SYSTEM_NAME = 'Competitor Management System';
@@ -72,13 +114,13 @@ export const PRO_HUBS = [
   { title: MEDIA_CONSOLE_NAME, to: '/slideshow?folder=gallery', belt: 'purple' },
   { title: COMPETITOR_SYSTEM_NAME, to: '/competitors', belt: 'brown' },
   { title: INSTRUCTOR_COLLAB_HUB_LABEL, to: '/instructors', belt: 'black' },
-  { title: TOURNAMENT_SUITE_NAME, to: '/suite', belt: 'tournament' },
+  { title: COMPETITION_MANAGEMENT_PRO_LABEL, to: '/suite', belt: 'tournament' },
 ] as const;
 
-/** Existing White Live Bout controller. The suite deep-links here as Match Controller. */
+/** Existing scoreboard controller. Competition Management Pro opens this; Display stays on that screen. */
 export const MATCH_CONTROLLER_PATH = '/match/control';
 
-/** Existing White Rounds controller. The suite deep-links here as Round Controller. */
+/** Existing round-timer controller. Competition Management Pro opens this; Rounds stays on that screen. */
 export const ROUND_CONTROLLER_PATH = '/training/control';
 
 /** Query flag so Suite destinations keep the Suite page theme and return path. */
@@ -96,6 +138,29 @@ export function withSuiteFrom(path: string, fromSuite: boolean): string {
   params.set('from', SUITE_FROM);
   return `${pathname}?${params.toString()}${hash}`;
 }
+
+/**
+ * Competition Management Pro folder, top to bottom.
+ * Every button uses the yellow/green tournament belt. Brackets opens the same
+ * mock-tournament board. Scoreboard opens the existing match controller.
+ * Round Timer opens the existing rounds controller.
+ */
+export const COMPETITION_PRO_MENU = [
+  { title: COMPETITOR_ROSTER_LABEL, to: withSuiteFrom('/roster', true), belt: 'tournament' as const, clearBout: false },
+  { title: 'Brackets', to: withSuiteFrom('/tournament', true), belt: 'tournament' as const, clearBout: false },
+  {
+    title: 'Scoreboard',
+    to: withSuiteFrom(MATCH_CONTROLLER_PATH, true),
+    belt: 'tournament' as const,
+    clearBout: true,
+  },
+  {
+    title: 'Round Timer',
+    to: withSuiteFrom(ROUND_CONTROLLER_PATH, true),
+    belt: 'tournament' as const,
+    clearBout: false,
+  },
+] as const;
 
 /** Bottom-of-page guidance on the Media Console manage screen. */
 export const MEDIA_CONSOLE_INSTRUCTIONS = [

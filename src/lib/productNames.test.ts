@@ -26,6 +26,12 @@ import {
   MATCH_CONTROLLER_PATH,
   MEDIA_CONSOLE_INSTRUCTIONS,
   MEDIA_CONSOLE_NAME,
+  COACH_HUBS,
+  COMPETITION_MANAGEMENT_LABEL,
+  COMPETITION_MANAGEMENT_PRO_LABEL,
+  COMPETITION_MENU,
+  COMPETITION_MENU_PRO,
+  COMPETITION_PRO_MENU,
   PRO_HUBS,
   ROUND_CONTROLLER_PATH,
   TOURNAMENT_SOFTWARE_NAME,
@@ -86,6 +92,36 @@ test('Pro suite keeps the working title and Coach keeps Mock Tournament', () => 
   assert.doesNotMatch(TOURNAMENT_SUITE_NAME, /MatBracket/i);
 });
 
+test('Coach hub is four tools and Competition Management keeps the tournament belt', () => {
+  assert.equal(COMPETITION_MANAGEMENT_LABEL, 'Competition Management');
+  assert.deepEqual(
+    COACH_HUBS.map((hub) => hub.title),
+    ['Daily Lesson Plan', 'Daily Training Videos', 'Technique Tree', 'Competition Management'],
+  );
+  assert.deepEqual(
+    COACH_HUBS.map((hub) => hub.to),
+    ['/notes', '/techniques', '/technique-tree', '/competition'],
+  );
+  assert.equal(COACH_HUBS[3].belt, 'tournament');
+  assert.equal('belt' in COACH_HUBS[0], false);
+  assert.equal('belt' in COACH_HUBS[1], false);
+  assert.equal('belt' in COACH_HUBS[2], false);
+  assert.deepEqual(
+    COMPETITION_MENU.map((item) => item.title),
+    ['Competitor Roster', 'Mock Tournament'],
+  );
+  assert.deepEqual(
+    COMPETITION_MENU.map((item) => item.to),
+    ['/roster?from=coach', '/tournament'],
+  );
+  assert.deepEqual(
+    COMPETITION_MENU.map((item) => item.belt),
+    ['tournament', 'tournament'],
+  );
+  assert.equal(COMPETITION_MENU_PRO.length, 0);
+  assert.doesNotMatch(COMPETITION_MANAGEMENT_LABEL, /student|GB Members|Coming Soon/i);
+});
+
 test('Pro console hubs stay four siblings, Media Console first', () => {
   assert.equal(COMPETITOR_SYSTEM_NAME, 'Competitor Management System');
   assert.equal(INSTRUCTOR_COLLAB_NAME, 'Instructor Collaboration and Cloud Access');
@@ -99,7 +135,7 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   );
   assert.deepEqual(
     PRO_HUBS.map((hub) => hub.title),
-    [MEDIA_CONSOLE_NAME, COMPETITOR_SYSTEM_NAME, INSTRUCTOR_COLLAB_HUB_LABEL, TOURNAMENT_SUITE_NAME],
+    [MEDIA_CONSOLE_NAME, COMPETITOR_SYSTEM_NAME, INSTRUCTOR_COLLAB_HUB_LABEL, COMPETITION_MANAGEMENT_PRO_LABEL],
   );
   assert.deepEqual(
     PRO_HUBS.map((hub) => hub.to),
@@ -111,6 +147,29 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   );
   assert.equal(MATCH_CONTROLLER_PATH, '/match/control');
   assert.equal(ROUND_CONTROLLER_PATH, '/training/control');
+  assert.equal(COMPETITION_MANAGEMENT_PRO_LABEL, 'Competition Management Pro');
+  assert.deepEqual(
+    COMPETITION_PRO_MENU.map((item) => item.title),
+    ['Competitor Roster', 'Brackets', 'Scoreboard', 'Round Timer'],
+  );
+  assert.deepEqual(
+    COMPETITION_PRO_MENU.map((item) => item.to),
+    [
+      withSuiteFrom('/roster', true),
+      withSuiteFrom('/tournament', true),
+      withSuiteFrom(MATCH_CONTROLLER_PATH, true),
+      withSuiteFrom(ROUND_CONTROLLER_PATH, true),
+    ],
+  );
+  assert.equal(COMPETITION_PRO_MENU[1].to, withSuiteFrom('/tournament', true));
+  assert.deepEqual(
+    COMPETITION_PRO_MENU.map((item) => item.belt),
+    ['tournament', 'tournament', 'tournament', 'tournament'],
+  );
+  assert.deepEqual(
+    COMPETITION_PRO_MENU.map((item) => item.clearBout),
+    [false, false, true, false],
+  );
 });
 
 test('Suite origin stays on Suite links and leaves other paths alone', () => {
