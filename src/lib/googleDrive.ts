@@ -333,6 +333,35 @@ export function readDriveBinding(): DriveBinding | null {
   }
 }
 
+const bindingListeners = new Set<() => void>();
+let bindingCacheRaw: string | null = null;
+let bindingCache: DriveBinding | null = null;
+let bindingCacheReady = false;
+
+export function subscribeDriveBinding(listener: () => void): () => void {
+  bindingListeners.add(listener);
+  return () => bindingListeners.delete(listener);
+}
+
+function notifyDriveBinding(): void {
+  bindingListeners.forEach((listener) => listener());
+}
+
+/** Stable snapshot for React. A new object is returned only when storage changes. */
+export function getDriveBindingSnapshot(): DriveBinding | null {
+  let raw: string | null = null;
+  try {
+    raw = localStorage.getItem(DRIVE_BINDING_KEY);
+  } catch {
+    raw = null;
+  }
+  if (bindingCacheReady && raw === bindingCacheRaw) return bindingCache;
+  bindingCacheReady = true;
+  bindingCacheRaw = raw;
+  bindingCache = readDriveBinding();
+  return bindingCache;
+}
+
 export function writeDriveBinding(binding: DriveBinding | null): void {
   try {
     if (!binding) localStorage.removeItem(DRIVE_BINDING_KEY);
@@ -340,6 +369,7 @@ export function writeDriveBinding(binding: DriveBinding | null): void {
   } catch {
     /* the in-memory choice still works until reload */
   }
+  notifyDriveBinding();
 }
 
 type StoredToken = { accessToken: string; expiresAt: number };

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DeviceMediaInput } from '../components/DeviceMediaInput';
+import { OpenMyDrive } from '../components/OpenMyDrive';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { TvTip } from '../components/TvTip';
@@ -403,6 +404,7 @@ export function TechniquesPage() {
             {count} {count === 1 ? 'clip' : 'clips'}
           </p>
         </div>
+        <OpenMyDrive />
       </header>
 
       {lessonFocus ? (

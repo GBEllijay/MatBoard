@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DriveConnectCard } from '../components/DriveConnectCard';
+import { OpenMyDrive } from '../components/OpenMyDrive';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { useToolboxParent } from '../hooks/useToolboxParent';
 import {
@@ -82,6 +83,7 @@ export function ClassHistoryPage() {
       </header>
       <p className="notes__lead">{CLASS_HISTORY_LEAD}</p>
       <div className="notes__plan">
+        <OpenMyDrive />
         {binding ? <p className="notes__when">{binding.folderName}</p> : null}
         {state.phase === 'need-connect' || state.phase === 'error' ? <DriveConnectCard /> : null}
         {state.phase === 'checking' ? (

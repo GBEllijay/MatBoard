@@ -1,5 +1,6 @@
 import { VIDEO_LIBRARY_LABEL, VIDEO_RECORD_LABEL, PHOTO_CAPTURE_LABEL } from '../lib/mediaPicker';
 import type { MediaSourceKind } from '../lib/mediaPicker';
+import { OpenMyDrive } from './OpenMyDrive';
 import { Sheet } from './Sheet';
 
 type Props = {
@@ -59,6 +60,7 @@ export function MediaSourceSheet({
           <span>{copy.libraryHint}</span>
         </label>
       </div>
+      <OpenMyDrive />
     </Sheet>
   );
 }

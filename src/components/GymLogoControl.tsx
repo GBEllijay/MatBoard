@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { DeviceMediaInput } from './DeviceMediaInput';
+import { OpenMyDrive } from './OpenMyDrive';
 import { MediaSourceSheet } from './VideoSourceSheet';
 import { clearGymLogo, readGymLogo, saveGymLogoFile } from '../lib/gymLogo';
 import { quotaAddNote } from '../lib/storageQuota';
@@ -57,6 +58,7 @@ export function GymLogoControl() {
           Add custom gym logo
         </button>
       )}
+      <OpenMyDrive />
       {note ? <p className="saver-folder__empty">{note}</p> : null}
       <label className="gym-logo__name">
         Gym name

@@ -3554,6 +3554,20 @@ a.saver-folder--link {
   min-height: 56px;
 }
 
+.open-drive {
+  width: 100%;
+  min-height: 52px;
+  text-decoration: none;
+}
+
+.techniques__bar > .open-drive {
+  flex: 1 1 100%;
+}
+
+.notes__plan > .open-drive {
+  margin-bottom: 0.35rem;
+}
+
 .saver-folder__empty,
 .saver-sound-hint {
   margin: 0;
