@@ -17,11 +17,12 @@ export const DEFAULT_SCOREBOARD_SKIN: ScoreboardSkinId = SCOREBOARD_SKIN.MOCK_TO
 /** Internal label only. Do not show this string in the product UI. */
 export const MOCK_TOURNAMENT_SKIN_NAME = 'Mock-Tournament Skin';
 
-/** Eyedrop hexes for Mock-Tournament Skin. CSS tokens mirror these. */
+/** Mock-Tournament colors. CSS tokens mirror these. Penalty is Material Red 700 so gym TVs keep a primary red. */
 export const MOCK_TOURNAMENT_COLORS = {
   POINTS_BG: '#4AAF45',
   ADVANTAGE_BG: '#FC9C36',
-  PENALTY_BG: '#F85745',
+  /** Material Red 700. Low green so the pad stays red on a gym TV. */
+  PENALTY_BG: '#D32F2F',
   ATHLETE_BLUE_BAR: '#223BCA',
   SCREEN_BG: '#2728B5',
   ATHLETE_LIGHT_BAR: '#F8F9FC',

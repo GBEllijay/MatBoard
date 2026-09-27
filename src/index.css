@@ -30,12 +30,13 @@
 
 /* Mock-Tournament Skin (MOCK_TOURNAMENT) — default Match scoreboard.
    Eyedrop from the approved tournament photo, tuned for TV.
+   Penalty is Material Red 700 so it stays a primary red on gym TVs.
    LIGHT and KIDS are reserved ids in scoreboardSkin.ts. No picker yet. */
 :root,
 .scoreboard-skin--mock-tournament {
   --pad-points: #4AAF45;
   --pad-adv: #FC9C36;
-  --pad-pen: #F85745;
+  --pad-pen: #D32F2F; /* Material Red 700 — stays a primary red on gym TVs */
   --board-field: #2728B5;
   --board-blue: #223BCA;
   --board-white: #F8F9FC;
