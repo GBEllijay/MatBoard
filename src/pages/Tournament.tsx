@@ -28,10 +28,12 @@ import { tournamentToolLabel } from '../lib/productNames';
 import {
   bracketHasContent,
   bracketRoundLine,
+  byeCountFor,
   canUndoLast,
   deleteBracket,
   displayBracketName,
   isByeSlot,
+  isThreePersonBracket,
   leftRoundIds,
   matchHasBye,
   newBracket,
@@ -49,6 +51,7 @@ import {
   slotMark,
   slotName,
   switchBracket,
+  THREE_PERSON_LOSER_SLOT,
   treeSizeFor,
   clampCompetitorCount,
   maxCompetitors,
@@ -91,6 +94,7 @@ export function TournamentPage() {
   const emptyBracket = !bracketHasContent(tournament);
   const canReset = bracketHasContent(tournament);
   const tree = treeSizeFor(tournament.size);
+  const threePerson = isThreePersonBracket(tournament.size);
   const rounds = visibleRoundPrefixes(tree).filter((prefix) => prefix !== 'final');
   const activeRow = library.saved.find((row) => row.id === library.activeId) ?? library.saved[0];
   const savedLabel = activeRow ? displayBracketName(activeRow) : 'Untitled';
@@ -258,10 +262,14 @@ export function TournamentPage() {
       <div className="tournament__board" ref={boardRef} onPointerDown={blurTextEntry}>
         <div className="bracket-viewport">
           <div
-            className={`bracket bracket--tree-${tree}`}
+            className={`bracket bracket--tree-${tree}${threePerson ? ' bracket--three' : ''}`}
             ref={bracketRef}
             role="group"
-            aria-label={`${tournament.size}-competitor single-elimination bracket`}
+            aria-label={
+              threePerson
+                ? '3-competitor bracket, 2nd seed versus 3rd seed, loser faces 1st seed, winners meet in the final'
+                : `${tournament.size}-competitor single-elimination bracket`
+            }
           >
           {tree > 2 ? (
             <div className="bracket__side bracket__side--left">
@@ -269,7 +277,8 @@ export function TournamentPage() {
                 <RoundColumn
                   key={`left-${prefix}`}
                   ids={leftRoundIds(prefix)}
-                  label={roundLabel(`${prefix}-0` as BracketMatchId)}
+                  label={sideRoundLabel(tournament.size, prefix, 'left')}
+                  detail={sideRoundDetail(tournament.size, prefix, 'left')}
                   liveMatchId={liveMatchId}
                 />
               ))}
@@ -303,7 +312,8 @@ export function TournamentPage() {
                 <RoundColumn
                   key={`right-${prefix}`}
                   ids={rightRoundIds(prefix)}
-                  label={roundLabel(`${prefix}-0` as BracketMatchId)}
+                  label={sideRoundLabel(tournament.size, prefix, 'right')}
+                  detail={sideRoundDetail(tournament.size, prefix, 'right')}
                   liveMatchId={liveMatchId}
                 />
               ))}
@@ -317,6 +327,9 @@ export function TournamentPage() {
         <p className="tournament__sheet-copy">
           {tournament.size} competitor{tournament.size === 1 ? '' : 's'}, one bracket
           {byeCountHint(tournament.size)}.
+          {threePerson
+            ? ' Semifinal is 2nd seed vs 3rd seed. The loser faces the 1st seed. Winners of those two matches meet in the final.'
+            : ''}
         </p>
         <ol className="tournament__seeds">
           {seeds.map((id, index) => (
@@ -347,7 +360,9 @@ export function TournamentPage() {
         }}
       >
         <p className="tournament__sheet-copy">
-          Any count from 2 to {sizeMax}. Uneven fields use byes so nobody waits on a phantom pairing.
+          Any count from 2 to {sizeMax}. Choose 3 for a 3-person bracket: 2nd seed meets 3rd seed,
+          the loser faces the 1st seed, and those winners meet in the final. Other uneven fields use
+          byes so nobody waits on a phantom pairing.
           {proUnlocked
             ? ' Pro boards save up to 64 competitors on this device.'
             : ' Mock Tournament stays at 16.'}
@@ -390,7 +405,9 @@ export function TournamentPage() {
         {pendingSize != null ? (
           <div className="tournament__confirm">
             <span>
-              Changing to {pendingSize} clears results and rebuilds byes. Keep names when they fit.
+              Changing to {pendingSize} clears results and{' '}
+              {pendingSize === 3 ? 'builds the 3-person bracket' : 'rebuilds byes'}. Keep names when
+              they fit.
             </span>
             <button type="button" className="btn" onClick={() => applySize(pendingSize)}>
               Change size
@@ -511,25 +528,45 @@ function blurTextEntry(event: ReactPointerEvent<HTMLElement>) {
 }
 
 function byeCountHint(size: number): string {
-  const tree = treeSizeFor(size);
-  const byes = tree - size;
+  const byes = byeCountFor(size);
   if (!byes) return '';
   return `, plus ${byes} ${byes === 1 ? 'bye' : 'byes'}`;
+}
+
+function sideRoundLabel(size: number, prefix: RoundPrefix, side: 'left' | 'right'): string {
+  if (isThreePersonBracket(size) && prefix === 'sf') {
+    return side === 'left' ? 'Semifinal' : 'Consolation';
+  }
+  return roundLabel(`${prefix}-0` as BracketMatchId);
+}
+
+function sideRoundDetail(size: number, prefix: RoundPrefix, side: 'left' | 'right'): string {
+  if (!isThreePersonBracket(size) || prefix !== 'sf') return '';
+  return side === 'left' ? '2nd seed vs 3rd seed' : 'Loser vs 1st seed';
+}
+
+function matchAriaLabel(size: number, matchId: BracketMatchId): string {
+  if (isThreePersonBracket(size) && matchId === 'sf-0') return 'Semifinal, 2nd seed vs 3rd seed';
+  if (isThreePersonBracket(size) && matchId === 'sf-1') return 'Consolation, loser vs 1st seed';
+  return roundLabel(matchId);
 }
 
 function RoundColumn({
   ids,
   label,
+  detail,
   liveMatchId,
 }: {
   ids: readonly BracketMatchId[];
   label: string;
+  detail?: string;
   liveMatchId: BracketMatchId | null;
 }) {
   if (!ids.length) return null;
   return (
     <div className={`bracket__round bracket__round--${ids.length}`}>
       <h2>{label}</h2>
+      {detail ? <p className="bracket__path">{detail}</p> : null}
       <div className="bracket__matches">
         {ids.map((id) => (
           <MatchCard key={id} matchId={id} liveMatchId={liveMatchId} />
@@ -562,7 +599,7 @@ function MatchCard({
       className={`t-match${matchId === 'final-0' ? ' t-match--final' : ''}${live ? ' t-match--live' : ''}${
         hasResult ? ' t-match--done' : ''
       }${bye ? ' t-match--bye' : ''}`}
-      aria-label={roundLabel(matchId)}
+      aria-label={matchAriaLabel(tournament.size, matchId)}
     >
       {matchId === 'final-0' ? (
         <p className="t-match__finals-label">
@@ -612,7 +649,12 @@ function SlotRow({ matchId, side }: { matchId: BracketMatchId; side: MatchSide }
   const mark = slotMark(tournament.results[matchId], side);
   const seeds = seedSlots(tournament);
   const seedIndex = seeds.indexOf(id);
-  const placeholder = seedIndex >= 0 ? seedPlaceholder(seedIndex) : 'Winner';
+  const placeholder =
+    isThreePersonBracket(tournament.size) && id === THREE_PERSON_LOSER_SLOT
+      ? 'Loser'
+      : seedIndex >= 0
+        ? seedPlaceholder(seedIndex)
+        : 'Winner';
   const result = tournament.results[matchId];
   const winOn = result?.call === 'win' && result.winnerSide === side;
   const dqOn = result?.call === 'dq' && result.winnerSide !== side;

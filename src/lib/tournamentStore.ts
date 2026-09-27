@@ -20,8 +20,8 @@ export const COACH_MAX_COMPETITORS = 16;
 export const PRO_MAX_COMPETITORS = 64;
 /** Storage ceiling. Coach UI passes COACH_MAX_COMPETITORS when it changes size. */
 export const MAX_COMPETITORS = PRO_MAX_COMPETITORS;
-export const SIZE_PRESETS = [2, 4, 8, 16] as const;
-export const PRO_SIZE_PRESETS = [2, 4, 8, 16, 32, 64] as const;
+export const SIZE_PRESETS = [2, 3, 4, 8, 16] as const;
+export const PRO_SIZE_PRESETS = [2, 3, 4, 8, 16, 32, 64] as const;
 export const BRACKET_NAME_MAX = 80;
 
 export type TreeSize = 2 | 4 | 8 | 16 | 32 | 64;
@@ -163,8 +163,32 @@ export function treeSizeFor(count: number): TreeSize {
   return 64;
 }
 
+/**
+ * A field of exactly 3 is not a 4-draw with one bye.
+ * Semifinal `sf-0`: 2nd seed vs 3rd seed.
+ * Consolation `sf-1`: loser of that semifinal vs 1st seed (`sf-1-a`).
+ * Final: winner of the semifinal vs winner of the consolation.
+ *
+ * Some IBJJF writeups give 3rd to the semifinal loser with no bout against
+ * the 1st seed. This board follows the requested placement and still plays
+ * that consolation match.
+ *
+ * Seed names are the existing bracket slots, filled from the competitor roster.
+ * Bout wins use the same outcome store the scoreboard writes.
+ */
+export function isThreePersonBracket(count: number): boolean {
+  return clampCompetitorCount(count) === 3;
+}
+
+/** Editor order is seed order: 1st, then 2nd, then 3rd. */
+export const THREE_PERSON_SEED_SLOTS = ['sf-1-a', 'sf-0-a', 'sf-0-b'] as const satisfies readonly SlotId[];
+
+/** Filled when the semifinal has a result. Not a hand-seeded slot. */
+export const THREE_PERSON_LOSER_SLOT = 'sf-1-b' as const satisfies SlotId;
+
 export function byeCountFor(count: number): number {
   const n = clampCompetitorCount(count);
+  if (isThreePersonBracket(n)) return 0;
   return treeSizeFor(n) - n;
 }
 
@@ -263,9 +287,10 @@ export function firstRoundLabel(count: number): string {
 
 export function bracketRoundLine(current: TournamentState): string {
   const n = clampCompetitorCount(current.size);
+  const people = `${n} competitor${n === 1 ? '' : 's'}`;
+  if (isThreePersonBracket(n)) return `3-person · ${people}`;
   const round = firstRoundLabel(n);
   const byes = byeCountFor(n);
-  const people = `${n} competitor${n === 1 ? '' : 's'}`;
   if (!byes) return `${round} · ${people}`;
   return `${round} · ${people} · ${byes} ${byes === 1 ? 'bye' : 'byes'}`;
 }
@@ -291,7 +316,13 @@ export function matchHasBye(current: TournamentState, matchId: BracketMatchId): 
 }
 
 export function seedSlots(current: TournamentState = getTournament()): SlotId[] {
+  if (isThreePersonBracket(current.size)) return [...THREE_PERSON_SEED_SLOTS];
   return firstRoundSlots(treeSizeFor(current.size)).filter((id) => !isByeSlot(current, id));
+}
+
+function threePersonLoserSlot(size: number, matchId: BracketMatchId): SlotId | null {
+  if (!isThreePersonBracket(size) || matchId !== 'sf-0') return null;
+  return THREE_PERSON_LOSER_SLOT;
 }
 
 export function slotName(current: TournamentState, id: SlotId | string): string {
@@ -537,29 +568,40 @@ export function advanceByes(current: TournamentState): TournamentState {
   return next;
 }
 
+function clearChildIfFedFrom(next: TournamentState, dest: SlotId, seen: Set<BracketMatchId>): void {
+  if (dest === 'champion') return;
+  const child = matchIdFromSlot(dest);
+  const side = sideFromSlot(dest);
+  if (child && side && next.results[child]?.winnerSide === side) {
+    delete next.results[child];
+    cascadeWinner(next, child, seen);
+  }
+}
+
+function cascadeChildResult(next: TournamentState, dest: SlotId, seen: Set<BracketMatchId>): void {
+  if (dest === 'champion') return;
+  const child = matchIdFromSlot(dest);
+  if (child && next.results[child]) cascadeWinner(next, child, seen);
+}
+
 /** Re-apply a stored result so the next-round name stays in sync. */
 function cascadeWinner(next: TournamentState, matchId: BracketMatchId, seen: Set<BracketMatchId>): void {
   if (seen.has(matchId)) return;
   seen.add(matchId);
   const result = next.results[matchId];
   const dest = NEXT_SLOT[matchId];
+  const loserDest = threePersonLoserSlot(next.size, matchId);
   if (!result) {
     writeSlot(next, dest, '');
-    if (dest !== 'champion') {
-      const child = matchIdFromSlot(dest);
-      const side = sideFromSlot(dest);
-      if (child && side && next.results[child]?.winnerSide === side) {
-        delete next.results[child];
-        cascadeWinner(next, child, seen);
-      }
-    }
+    if (loserDest) writeSlot(next, loserDest, '');
+    clearChildIfFedFrom(next, dest, seen);
+    if (loserDest) clearChildIfFedFrom(next, loserDest, seen);
     return;
   }
   writeSlot(next, dest, slotName(next, slotId(matchId, result.winnerSide)));
-  if (dest !== 'champion') {
-    const child = matchIdFromSlot(dest);
-    if (child && next.results[child]) cascadeWinner(next, child, seen);
-  }
+  if (loserDest) writeSlot(next, loserDest, slotName(next, slotId(matchId, otherSide(result.winnerSide))));
+  cascadeChildResult(next, dest, seen);
+  if (loserDest) cascadeChildResult(next, loserDest, seen);
 }
 
 export function applySlotName(current: TournamentState, id: SlotId, name: string): TournamentState {
@@ -567,8 +609,7 @@ export function applySlotName(current: TournamentState, id: SlotId, name: string
   writeSlot(next, id, name);
   if (id === 'champion') return next;
   const matchId = matchIdFromSlot(id);
-  const side = sideFromSlot(id);
-  if (matchId && side && next.results[matchId]?.winnerSide === side) {
+  if (matchId && next.results[matchId]) {
     cascadeWinner(next, matchId, new Set());
   }
   return advanceByes(next);
@@ -627,28 +668,32 @@ export function applyClearResult(current: TournamentState, matchId: BracketMatch
  * the name is removed (same as Phase 1 cascade). If a later bout already has its own result,
  * or the next name was overwritten, those later slots stay put — this bout is unmarked only.
  */
+function childMatchHasResult(current: TournamentState, dest: SlotId): boolean {
+  if (dest === 'champion') return false;
+  const child = matchIdFromSlot(dest);
+  return Boolean(child && current.results[child]);
+}
+
 export function applyUndoOutcome(current: TournamentState, matchId: BracketMatchId): TournamentState {
   const result = current.results[matchId];
   if (!result) return current;
   const dest = NEXT_SLOT[matchId];
+  const loserDest = threePersonLoserSlot(current.size, matchId);
   const winnerName = slotName(current, slotId(matchId, result.winnerSide));
+  const loserName = slotName(current, slotId(matchId, otherSide(result.winnerSide)));
   const destName = slotName(current, dest);
   const destWasAutoFilled = !destName || destName === winnerName;
+  const loserWasAutoFilled =
+    !loserDest || !slotName(current, loserDest) || slotName(current, loserDest) === loserName;
+  const winnerLocked = childMatchHasResult(current, dest);
+  const loserLocked = Boolean(loserDest && childMatchHasResult(current, loserDest));
 
-  if (dest !== 'champion') {
-    const child = matchIdFromSlot(dest);
-    if (child && current.results[child]) {
-      const next = clone(current);
-      delete next.results[matchId];
-      if (next.lastOutcomeMatchId === matchId) next.lastOutcomeMatchId = null;
-      return advanceByes(next);
-    }
-  }
-
-  if (!destWasAutoFilled) {
+  if (winnerLocked || loserLocked || !destWasAutoFilled || !loserWasAutoFilled) {
     const next = clone(current);
     delete next.results[matchId];
     if (next.lastOutcomeMatchId === matchId) next.lastOutcomeMatchId = null;
+    if (!winnerLocked && destWasAutoFilled) writeSlot(next, dest, '');
+    if (loserDest && !loserLocked && loserWasAutoFilled) writeSlot(next, loserDest, '');
     return advanceByes(next);
   }
 

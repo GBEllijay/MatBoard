@@ -2,9 +2,11 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   OWNER_BRACKET_CLOUD,
+  applyClearResult,
   applyCompetitorCount,
   applyDeleteBracket,
   applyMatchOutcome,
+  applyUndoOutcome,
   applyNewBracket,
   applyRenameBracket,
   applySlotName,
@@ -28,6 +30,9 @@ import {
   normalizeLibrary,
   seedPlaceholder,
   seedSlots,
+  SIZE_PRESETS,
+  PRO_SIZE_PRESETS,
+  isThreePersonBracket,
   treeSizeFor,
 } from './tournamentStore.ts';
 
@@ -146,6 +151,90 @@ describe('flexible bracket size', () => {
     board = applyMatchOutcome(board, 'sf-0', 'a', { call: 'win', method: 'points' });
     assert.equal(board.entries['final-0-a'], 'Alex');
     assert.equal(board.results['sf-0']?.winnerSide, 'a');
+  });
+});
+
+describe('3-person bracket', () => {
+  it('is a size preset beside 2, 4, and 8, with no bye', () => {
+    assert.deepEqual(SIZE_PRESETS, [2, 3, 4, 8, 16]);
+    assert.deepEqual(PRO_SIZE_PRESETS, [2, 3, 4, 8, 16, 32, 64]);
+    assert.equal(isThreePersonBracket(3), true);
+    assert.equal(treeSizeFor(3), 4);
+    assert.equal(byeCountFor(3), 0);
+    assert.deepEqual(byeSlotIds(3), []);
+    assert.equal(bracketRoundLine(defaultTournament(3)), '3-person · 3 competitors');
+    assert.equal(matchHasBye(defaultTournament(3), 'sf-0'), false);
+    assert.equal(matchHasBye(defaultTournament(3), 'sf-1'), false);
+  });
+
+  it('places 2nd vs 3rd in the semifinal and parks 1st on the consolation card', () => {
+    const board = defaultTournament(3);
+    assert.deepEqual(seedSlots(board), ['sf-1-a', 'sf-0-a', 'sf-0-b']);
+    assert.deepEqual(matchIdsForSize(3), ['sf-0', 'sf-1', 'final-0']);
+    assert.equal(nextSlot('sf-0'), 'final-0-a');
+    assert.equal(nextSlot('sf-1'), 'final-0-b');
+  });
+
+  it('sends the semifinal loser to face the 1st seed, then both winners to the final', () => {
+    let board = applySlotName(defaultTournament(3), 'sf-1-a', 'Alex');
+    board = applySlotName(board, 'sf-0-a', 'Blair');
+    board = applySlotName(board, 'sf-0-b', 'Casey');
+    board = applyMatchOutcome(board, 'sf-0', 'a', { call: 'win', method: 'points' }, { toggle: false });
+    assert.equal(board.entries['final-0-a'], 'Blair');
+    assert.equal(board.entries['sf-1-b'], 'Casey');
+    assert.equal(board.entries['sf-1-a'], 'Alex');
+    board = applyMatchOutcome(board, 'sf-1', 'a', { call: 'win', method: 'submission' }, { toggle: false });
+    assert.equal(board.entries['final-0-b'], 'Alex');
+    board = applyMatchOutcome(board, 'final-0', 'b', { call: 'win', method: 'decision' }, { toggle: false });
+    assert.equal(board.entries.champion, 'Alex');
+    assert.equal(board.results['final-0']?.winnerSide, 'b');
+  });
+
+  it('follows the other semifinal winner and a DQ loser into the same graph', () => {
+    let board = applySlotName(defaultTournament(3), 'sf-1-a', 'Alex');
+    board = applySlotName(board, 'sf-0-a', 'Blair');
+    board = applySlotName(board, 'sf-0-b', 'Casey');
+    board = applyMatchOutcome(board, 'sf-0', 'a', { call: 'dq', reason: 'technical' });
+    assert.equal(board.results['sf-0']?.winnerSide, 'b');
+    assert.equal(board.entries['final-0-a'], 'Casey');
+    assert.equal(board.entries['sf-1-b'], 'Blair');
+    board = applyMatchOutcome(board, 'sf-1', 'b', { call: 'win', method: 'points' }, { toggle: false });
+    assert.equal(board.entries['final-0-b'], 'Blair');
+  });
+
+  it('clears both feeds when the semifinal result is removed', () => {
+    let board = applySlotName(defaultTournament(3), 'sf-0-a', 'Blair');
+    board = applySlotName(board, 'sf-0-b', 'Casey');
+    board = applyMatchOutcome(board, 'sf-0', 'a', { call: 'win', method: 'points' }, { toggle: false });
+    board = applyClearResult(board, 'sf-0');
+    assert.equal(board.entries['final-0-a'], undefined);
+    assert.equal(board.entries['sf-1-b'], undefined);
+    board = applyMatchOutcome(board, 'sf-0', 'a', { call: 'win', method: 'points' }, { toggle: false });
+    board = applyUndoOutcome(board, 'sf-0');
+    assert.equal(board.results['sf-0'], undefined);
+    assert.equal(board.entries['final-0-a'], undefined);
+    assert.equal(board.entries['sf-1-b'], undefined);
+  });
+
+  it('updates the consolation name when a losing seed is renamed', () => {
+    let board = applySlotName(defaultTournament(3), 'sf-0-a', 'Blair');
+    board = applySlotName(board, 'sf-0-b', 'Casey');
+    board = applyMatchOutcome(board, 'sf-0', 'a', { call: 'win', method: 'points' }, { toggle: false });
+    board = applySlotName(board, 'sf-0-b', 'Casey Ruiz');
+    assert.equal(board.entries['sf-1-b'], 'Casey Ruiz');
+    assert.equal(board.entries['final-0-a'], 'Blair');
+  });
+
+  it('keeps the first three seed names when a larger board shrinks to 3', () => {
+    let board = applySlotName(defaultTournament(8), 'qf-0-a', 'Alex');
+    board = applySlotName(board, 'qf-0-b', 'Blair');
+    board = applySlotName(board, 'qf-1-a', 'Casey');
+    board = applyCompetitorCount(board, 3);
+    assert.equal(board.size, 3);
+    assert.equal(board.entries['sf-1-a'], 'Alex');
+    assert.equal(board.entries['sf-0-a'], 'Blair');
+    assert.equal(board.entries['sf-0-b'], 'Casey');
+    assert.equal(byeCountFor(5), 3);
   });
 });
 
