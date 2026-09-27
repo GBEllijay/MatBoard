@@ -33,8 +33,12 @@ export function ScoreBox({ side, kind, value, compact }: Props) {
       aria-label={`${SHORT_LABELS[kind]} ${value}. Tap to add, hold to subtract.`}
       {...handlers}
     >
-      <span className="score__label score__label--short">{SHORT_LABELS[kind]}</span>
-      <span className="score__label score__label--wide">{WIDE_LABELS[kind]}</span>
+      <span className="score__label score__label--short" aria-hidden="true">
+        {SHORT_LABELS[kind]}
+      </span>
+      <span className="score__label score__label--wide" aria-hidden="true">
+        {WIDE_LABELS[kind]}
+      </span>
       <span className="score__value">{value}</span>
     </button>
   );
