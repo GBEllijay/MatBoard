@@ -28,11 +28,14 @@ import { tournamentToolLabel } from '../lib/productNames';
 import {
   bracketHasContent,
   bracketRoundLine,
+  byeCountFor,
   canUndoLast,
   deleteBracket,
   displayBracketName,
   isByeSlot,
+  isThreePersonBracket,
   leftRoundIds,
+  placementOf,
   matchHasBye,
   newBracket,
   renameActiveBracket,
@@ -43,12 +46,14 @@ import {
   seedSlots,
   setCompetitorCount,
   setMatchOutcome,
+  setPlacement,
   setSlotName,
   setTournamentTitle,
   slotId,
   slotMark,
   slotName,
   switchBracket,
+  THREE_PERSON_LOSER_SLOT,
   treeSizeFor,
   clampCompetitorCount,
   maxCompetitors,
@@ -58,6 +63,7 @@ import {
   visibleRoundPrefixes,
   type BracketMatchId,
   type MatchSide,
+  type PlacementStyle,
   type RoundPrefix,
 } from '../lib/tournamentStore';
 import { type OutcomeCall } from '../lib/outcomes';
@@ -82,6 +88,7 @@ export function TournamentPage() {
   const [savedOpen, setSavedOpen] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [pendingSize, setPendingSize] = useState<number | null>(null);
+  const [pendingPlacement, setPendingPlacement] = useState<PlacementStyle | null>(null);
   const [saveName, setSaveName] = useState('');
   const [customSize, setCustomSize] = useState(String(tournament.size));
   const seeds = seedSlots(tournament);
@@ -91,6 +98,8 @@ export function TournamentPage() {
   const emptyBracket = !bracketHasContent(tournament);
   const canReset = bracketHasContent(tournament);
   const tree = treeSizeFor(tournament.size);
+  const placement = placementOf(tournament);
+  const threePerson = isThreePersonBracket(tournament);
   const rounds = visibleRoundPrefixes(tree).filter((prefix) => prefix !== 'final');
   const activeRow = library.saved.find((row) => row.id === library.activeId) ?? library.saved[0];
   const savedLabel = activeRow ? displayBracketName(activeRow) : 'Untitled';
@@ -118,11 +127,31 @@ export function TournamentPage() {
       setSizeOpen(false);
       return;
     }
+    setPendingPlacement(null);
     if (Object.keys(tournament.results).length) {
       setPendingSize(size);
       return;
     }
     applySize(size);
+  };
+
+  const applyPlacementNow = (style: PlacementStyle) => {
+    unlinkBracketBout();
+    setPlacement(style);
+    setPendingPlacement(null);
+  };
+
+  const requestPlacement = (style: PlacementStyle) => {
+    if (style === placement) {
+      setPendingPlacement(null);
+      return;
+    }
+    setPendingSize(null);
+    if (Object.keys(tournament.results).length) {
+      setPendingPlacement(style);
+      return;
+    }
+    applyPlacementNow(style);
   };
 
   const openSaved = () => {
@@ -199,10 +228,11 @@ export function TournamentPage() {
             onClick={() => {
               setCustomSize(String(tournament.size));
               setPendingSize(null);
+              setPendingPlacement(null);
               setSizeOpen(true);
             }}
           >
-            Size {tournament.size}
+            {placement === 'ibjjf' ? 'IBJJF' : 'Lineup'} {tournament.size}
           </button>
           <button type="button" className="btn btn--ghost tournament__save-btn" onClick={openSaved}>
             {named ? savedLabel : 'Save'}
@@ -258,10 +288,14 @@ export function TournamentPage() {
       <div className="tournament__board" ref={boardRef} onPointerDown={blurTextEntry}>
         <div className="bracket-viewport">
           <div
-            className={`bracket bracket--tree-${tree}`}
+            className={`bracket bracket--tree-${tree}${threePerson ? ' bracket--three' : ''}`}
             ref={bracketRef}
             role="group"
-            aria-label={`${tournament.size}-competitor single-elimination bracket`}
+            aria-label={
+              threePerson
+                ? '3-competitor bracket, 2nd seed versus 3rd seed, loser faces 1st seed, winners meet in the final'
+                : `${tournament.size}-competitor single-elimination bracket`
+            }
           >
           {tree > 2 ? (
             <div className="bracket__side bracket__side--left">
@@ -269,7 +303,8 @@ export function TournamentPage() {
                 <RoundColumn
                   key={`left-${prefix}`}
                   ids={leftRoundIds(prefix)}
-                  label={roundLabel(`${prefix}-0` as BracketMatchId)}
+                  label={sideRoundLabel(threePerson, prefix, 'left')}
+                  detail={sideRoundDetail(threePerson, prefix, 'left')}
                   liveMatchId={liveMatchId}
                 />
               ))}
@@ -303,7 +338,8 @@ export function TournamentPage() {
                 <RoundColumn
                   key={`right-${prefix}`}
                   ids={rightRoundIds(prefix)}
-                  label={roundLabel(`${prefix}-0` as BracketMatchId)}
+                  label={sideRoundLabel(threePerson, prefix, 'right')}
+                  detail={sideRoundDetail(threePerson, prefix, 'right')}
                   liveMatchId={liveMatchId}
                 />
               ))}
@@ -316,7 +352,10 @@ export function TournamentPage() {
       <Sheet open={namesOpen} title="Competitor names" onClose={() => setNamesOpen(false)}>
         <p className="tournament__sheet-copy">
           {tournament.size} competitor{tournament.size === 1 ? '' : 's'}, one bracket
-          {byeCountHint(tournament.size)}.
+          {byeCountHint(tournament)}.
+          {threePerson
+            ? ' Semifinal is 2nd seed vs 3rd seed. The loser faces the 1st seed. Winners of those two matches meet in the final.'
+            : ''}
         </p>
         <ol className="tournament__seeds">
           {seeds.map((id, index) => (
@@ -344,13 +383,43 @@ export function TournamentPage() {
         onClose={() => {
           setSizeOpen(false);
           setPendingSize(null);
+          setPendingPlacement(null);
         }}
       >
         <p className="tournament__sheet-copy">
-          Any count from 2 to {sizeMax}. Uneven fields use byes so nobody waits on a phantom pairing.
+          Any count from 2 to {sizeMax}. IBJJF is the default. A field of 3 plays 2nd vs 3rd, the
+          loser faces the 1st seed, and those winners meet in the final. A field of 5 opens with 4th
+          vs 5th, and 1st, 2nd, and 3rd receive byes. A field of 7 gives the bye to the 1st seed.
+          Eight and up, and every other custom count, fill to the next power of two with those same
+          seeded byes.
           {proUnlocked
             ? ' Pro boards save up to 64 competitors on this device.'
             : ' Mock Tournament stays at 16.'}
+        </p>
+        <p className="tournament__sheet-copy">Placement</p>
+        <div className="tournament__size-presets" role="radiogroup" aria-label="Placement rules">
+          <button
+            type="button"
+            role="radio"
+            aria-checked={placement === 'ibjjf'}
+            className={`chip${placement === 'ibjjf' ? ' chip--gold' : ''}`}
+            onClick={() => requestPlacement('ibjjf')}
+          >
+            IBJJF
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={placement === 'lineup'}
+            className={`chip${placement === 'lineup' ? ' chip--gold' : ''}`}
+            onClick={() => requestPlacement('lineup')}
+          >
+            Lineup
+          </button>
+        </div>
+        <p className="tournament__sheet-copy">
+          Lineup is the override. Names fill the bracket from the top, and byes sit on the last
+          first-round cards.
         </p>
         <div className="tournament__size-presets" role="group" aria-label="Size presets">
           {sizePresets(proUnlocked).map((preset) => (
@@ -390,13 +459,28 @@ export function TournamentPage() {
         {pendingSize != null ? (
           <div className="tournament__confirm">
             <span>
-              Changing to {pendingSize} clears results and rebuilds byes. Keep names when they fit.
+              Changing to {pendingSize} clears results and rebuilds the draw. Keep names when they
+              fit.
             </span>
             <button type="button" className="btn" onClick={() => applySize(pendingSize)}>
               Change size
             </button>
             <button type="button" className="btn btn--ghost" onClick={() => setPendingSize(null)}>
               Keep size
+            </button>
+          </div>
+        ) : null}
+        {pendingPlacement != null ? (
+          <div className="tournament__confirm">
+            <span>
+              Switching to {pendingPlacement === 'ibjjf' ? 'IBJJF' : 'Lineup'} clears results and
+              rebuilds the draw. Names stay in seed order.
+            </span>
+            <button type="button" className="btn" onClick={() => applyPlacementNow(pendingPlacement)}>
+              Change placement
+            </button>
+            <button type="button" className="btn btn--ghost" onClick={() => setPendingPlacement(null)}>
+              Keep placement
             </button>
           </div>
         ) : null}
@@ -510,26 +594,46 @@ function blurTextEntry(event: ReactPointerEvent<HTMLElement>) {
   active.blur();
 }
 
-function byeCountHint(size: number): string {
-  const tree = treeSizeFor(size);
-  const byes = tree - size;
+function byeCountHint(current: { size: number; placement?: string }): string {
+  const byes = byeCountFor(current.size, placementOf(current));
   if (!byes) return '';
   return `, plus ${byes} ${byes === 1 ? 'bye' : 'byes'}`;
+}
+
+function sideRoundLabel(threePerson: boolean, prefix: RoundPrefix, side: 'left' | 'right'): string {
+  if (threePerson && prefix === 'sf') {
+    return side === 'left' ? 'Semifinal' : 'Consolation';
+  }
+  return roundLabel(`${prefix}-0` as BracketMatchId);
+}
+
+function sideRoundDetail(threePerson: boolean, prefix: RoundPrefix, side: 'left' | 'right'): string {
+  if (!threePerson || prefix !== 'sf') return '';
+  return side === 'left' ? '2nd seed vs 3rd seed' : 'Loser vs 1st seed';
+}
+
+function matchAriaLabel(threePerson: boolean, matchId: BracketMatchId): string {
+  if (threePerson && matchId === 'sf-0') return 'Semifinal, 2nd seed vs 3rd seed';
+  if (threePerson && matchId === 'sf-1') return 'Consolation, loser vs 1st seed';
+  return roundLabel(matchId);
 }
 
 function RoundColumn({
   ids,
   label,
+  detail,
   liveMatchId,
 }: {
   ids: readonly BracketMatchId[];
   label: string;
+  detail?: string;
   liveMatchId: BracketMatchId | null;
 }) {
   if (!ids.length) return null;
   return (
     <div className={`bracket__round bracket__round--${ids.length}`}>
       <h2>{label}</h2>
+      {detail ? <p className="bracket__path">{detail}</p> : null}
       <div className="bracket__matches">
         {ids.map((id) => (
           <MatchCard key={id} matchId={id} liveMatchId={liveMatchId} />
@@ -562,7 +666,7 @@ function MatchCard({
       className={`t-match${matchId === 'final-0' ? ' t-match--final' : ''}${live ? ' t-match--live' : ''}${
         hasResult ? ' t-match--done' : ''
       }${bye ? ' t-match--bye' : ''}`}
-      aria-label={roundLabel(matchId)}
+      aria-label={matchAriaLabel(isThreePersonBracket(tournament), matchId)}
     >
       {matchId === 'final-0' ? (
         <p className="t-match__finals-label">
@@ -612,7 +716,12 @@ function SlotRow({ matchId, side }: { matchId: BracketMatchId; side: MatchSide }
   const mark = slotMark(tournament.results[matchId], side);
   const seeds = seedSlots(tournament);
   const seedIndex = seeds.indexOf(id);
-  const placeholder = seedIndex >= 0 ? seedPlaceholder(seedIndex) : 'Winner';
+  const placeholder =
+    isThreePersonBracket(tournament) && id === THREE_PERSON_LOSER_SLOT
+      ? 'Loser'
+      : seedIndex >= 0
+        ? seedPlaceholder(seedIndex)
+        : 'Winner';
   const result = tournament.results[matchId];
   const winOn = result?.call === 'win' && result.winnerSide === side;
   const dqOn = result?.call === 'dq' && result.winnerSide !== side;

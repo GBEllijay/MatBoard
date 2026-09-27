@@ -4281,6 +4281,41 @@ a.saver-folder--link {
   justify-content: center;
 }
 
+.bracket--three {
+  width: 52rem;
+  min-width: 52rem;
+}
+
+.bracket--three .bracket__round {
+  align-items: center;
+}
+
+.bracket--three .bracket__round h2 {
+  display: inline-block;
+  margin: 0 auto 0.15rem;
+  padding: 0.18rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(12, 10, 6, 0.82);
+  text-align: center;
+}
+
+.bracket--three .bracket__path {
+  margin: 0 0 0.45rem;
+  padding: 0.08rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(12, 10, 6, 0.72);
+  color: #f6edd4;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-align: center;
+}
+
+.bracket--three .bracket__matches {
+  align-self: stretch;
+  width: 100%;
+}
+
 .bracket__side {
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 1fr);
@@ -4907,7 +4942,8 @@ a.saver-folder--link {
 
 .tournament--bright .bracket--tree-8,
 .tournament--bright .bracket--tree-4,
-.tournament--bright .bracket--tree-2 {
+.tournament--bright .bracket--tree-2,
+.tournament--bright .bracket--three {
   width: max-content;
   min-width: max-content;
 }
@@ -4978,6 +5014,15 @@ a.saver-folder--link {
   height: 1px;
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
+}
+
+.tournament--bright .bracket--three .bracket__round h2 {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip: auto;
+  color: var(--gold-2);
 }
 
 .tournament--bright .bracket__finals > .t-match::before {
@@ -5453,7 +5498,8 @@ a.saver-folder--link {
 
 .tournament--dark .bracket--tree-8,
 .tournament--dark .bracket--tree-4,
-.tournament--dark .bracket--tree-2 {
+.tournament--dark .bracket--tree-2,
+.tournament--dark .bracket--three {
   width: max-content;
   min-width: max-content;
 }
@@ -5524,6 +5570,15 @@ a.saver-folder--link {
   height: 1px;
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
+}
+
+.tournament--dark .bracket--three .bracket__round h2 {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip: auto;
+  color: var(--gold-2);
 }
 
 .tournament--dark .bracket__finals > .t-match::before {
