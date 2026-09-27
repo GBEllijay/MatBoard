@@ -6,7 +6,7 @@
 
 export const OPEN_MY_DRIVE_LABEL = 'Open my Drive';
 export const OPEN_MY_DRIVE_CONNECT =
-  'Connect your Google Drive folder first. Lesson plans and media stay in that folder. Advantage does not host photos or videos.';
+  'Sign in, then pick the gym folder. Photos and videos stay there. Advantage does not host them.';
 
 /** Web URL for a Drive folder id. Rejects anything that is not a folder id. */
 export function driveFolderWebUrl(folderId: string | null | undefined): string | null {

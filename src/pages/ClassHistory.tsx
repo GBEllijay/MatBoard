@@ -4,6 +4,7 @@ import { DriveConnectCard } from '../components/DriveConnectCard';
 import { OpenMyDrive } from '../components/OpenMyDrive';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { useToolboxParent } from '../hooks/useToolboxParent';
+import { cloudStorage } from '../lib/cloudStorage';
 import {
   CLASS_HISTORY_CHECKING,
   CLASS_HISTORY_CONNECT,
@@ -48,6 +49,11 @@ export function ClassHistoryPage() {
     setBinding(current);
     if (!current) {
       setState({ phase: 'need-connect' });
+      return;
+    }
+    const drive = cloudStorage();
+    if (!drive.isAvailable()) {
+      setState({ phase: 'error', message: drive.unavailableMessage() });
       return;
     }
     let cancelled = false;
