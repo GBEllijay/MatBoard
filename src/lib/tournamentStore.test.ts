@@ -32,7 +32,10 @@ import {
   seedSlots,
   SIZE_PRESETS,
   PRO_SIZE_PRESETS,
+  applyPlacement,
+  ibjjfSeedOrder,
   isThreePersonBracket,
+  placementOf,
   treeSizeFor,
 } from './tournamentStore.ts';
 
@@ -68,46 +71,82 @@ describe('bracket empty helpers', () => {
 });
 
 describe('flexible bracket size', () => {
-  it('pads non-powers of two to the next tree with byes', () => {
+  it('pads non-powers of two to the next tree with IBJJF byes', () => {
     assert.equal(treeSizeFor(2), 2);
     assert.equal(treeSizeFor(3), 4);
     assert.equal(treeSizeFor(5), 8);
+    assert.equal(treeSizeFor(7), 8);
     assert.equal(treeSizeFor(9), 16);
     assert.equal(treeSizeFor(16), 16);
     assert.equal(byeCountFor(5), 3);
+    assert.equal(byeCountFor(7), 1);
     assert.equal(byeCountFor(8), 0);
-    assert.deepEqual(byeSlotIds(5), ['qf-1-b', 'qf-2-b', 'qf-3-b']);
+    assert.equal(byeCountFor(9), 7);
+    assert.deepEqual(ibjjfSeedOrder(8), [1, 8, 4, 5, 2, 7, 3, 6]);
+    assert.deepEqual(byeSlotIds(5), ['qf-0-b', 'qf-2-b', 'qf-3-b']);
+    assert.deepEqual(byeSlotIds(7), ['qf-0-b']);
+    assert.deepEqual(byeSlotIds(5, 'lineup'), ['qf-1-b', 'qf-2-b', 'qf-3-b']);
     assert.equal(firstRoundLabel(5), 'Quarterfinals');
-    assert.match(bracketRoundLine(defaultTournament(5)), /5 competitors · 3 byes/);
+    assert.match(bracketRoundLine(defaultTournament(5)), /IBJJF · Quarterfinals · 5 competitors · 3 byes/);
+    assert.equal(placementOf(defaultTournament()), 'ibjjf');
   });
 
-  it('starts an 8-person board at quarterfinals', () => {
+  it('seeds an 8-person board so 1 meets 8 and 4 meets 5', () => {
     const board = defaultTournament(8);
     assert.deepEqual(seedSlots(board), [
       'qf-0-a',
-      'qf-0-b',
+      'qf-2-a',
+      'qf-3-a',
       'qf-1-a',
       'qf-1-b',
-      'qf-2-a',
-      'qf-2-b',
-      'qf-3-a',
       'qf-3-b',
+      'qf-2-b',
+      'qf-0-b',
     ]);
     assert.ok(matchIdsForSize(8).includes('qf-0'));
     assert.equal(matchIdsForSize(8).includes('r16-0'), false);
   });
 
-  it('auto-advances the living competitor past a bye', () => {
+  it('gives a 5-person field byes to seeds 1, 2, and 3, and opens with 4 vs 5', () => {
     let board = defaultTournament(5);
     const seeds = seedSlots(board);
-    assert.equal(seeds.length, 5);
+    assert.deepEqual(seeds, ['qf-0-a', 'qf-2-a', 'qf-3-a', 'qf-1-a', 'qf-1-b']);
+    board = applySlotName(board, seeds[0], 'Alex');
+    board = applySlotName(board, seeds[1], 'Blair');
     board = applySlotName(board, seeds[2], 'Casey');
-    // 5-person: qf-0 is the only real pairing; qf-1-a is the third seed and has a bye.
-    assert.equal(seeds[2], 'qf-1-a');
-    assert.equal(matchHasBye(board, 'qf-1'), true);
-    assert.equal(board.entries['sf-0-b'], 'Casey');
-    const ignored = applyMatchOutcome(board, 'qf-1', 'a', { call: 'win', method: 'submission' });
-    assert.equal(ignored.results['qf-1'], undefined);
+    board = applySlotName(board, seeds[3], 'Drew');
+    board = applySlotName(board, seeds[4], 'Evan');
+    assert.equal(matchHasBye(board, 'qf-0'), true);
+    assert.equal(matchHasBye(board, 'qf-1'), false);
+    assert.equal(board.entries['sf-0-a'], 'Alex');
+    assert.equal(board.entries['sf-1-a'], 'Blair');
+    assert.equal(board.entries['sf-1-b'], 'Casey');
+    board = applyMatchOutcome(board, 'qf-1', 'a', { call: 'win', method: 'points' }, { toggle: false });
+    assert.equal(board.entries['sf-0-b'], 'Drew');
+    const ignored = applyMatchOutcome(board, 'qf-0', 'a', { call: 'win', method: 'submission' });
+    assert.equal(ignored.results['qf-0'], undefined);
+    board = applyMatchOutcome(board, 'sf-0', 'a', { call: 'win', method: 'decision' }, { toggle: false });
+    board = applyMatchOutcome(board, 'sf-1', 'b', { call: 'win', method: 'submission' }, { toggle: false });
+    assert.equal(board.entries['final-0-a'], 'Alex');
+    assert.equal(board.entries['final-0-b'], 'Casey');
+  });
+
+  it('gives a 7-person field a single bye to the 1st seed', () => {
+    let board = defaultTournament(7);
+    const seeds = seedSlots(board);
+    assert.equal(seeds.length, 7);
+    assert.equal(seeds[0], 'qf-0-a');
+    assert.equal(seeds[1], 'qf-2-a');
+    assert.equal(seeds[3], 'qf-1-a');
+    assert.equal(seeds[6], 'qf-2-b');
+    assert.deepEqual(byeSlotIds(7), ['qf-0-b']);
+    board = applySlotName(board, seeds[0], 'Alex');
+    board = applySlotName(board, seeds[1], 'Blair');
+    board = applySlotName(board, seeds[6], 'Glen');
+    assert.equal(board.entries['sf-0-a'], 'Alex');
+    assert.equal(matchHasBye(board, 'qf-2'), false);
+    board = applyMatchOutcome(board, 'qf-2', 'b', { call: 'win', method: 'points' }, { toggle: false });
+    assert.equal(board.entries['sf-1-a'], 'Glen');
   });
 
   it('lets Pro save a 64-person board and keeps Coach changes at 16', () => {
@@ -141,13 +180,17 @@ describe('flexible bracket size', () => {
   });
 
   it('keeps early seed names when shrinking and still records a win', () => {
-    let board = applySlotName(defaultTournament(16), 'r16-0-a', 'Alex');
-    board = applySlotName(board, 'r16-0-b', 'Blair');
+    let board = defaultTournament(16);
+    const seeds = seedSlots(board);
+    board = applySlotName(board, seeds[0], 'Alex');
+    board = applySlotName(board, seeds[1], 'Blair');
     board = applyCompetitorCount(board, 4);
     assert.equal(board.size, 4);
+    assert.equal(board.placement, 'ibjjf');
     assert.equal(seedSlots(board)[0], 'sf-0-a');
+    assert.equal(seedSlots(board)[1], 'sf-1-a');
     assert.equal(board.entries['sf-0-a'], 'Alex');
-    assert.equal(board.entries['sf-0-b'], 'Blair');
+    assert.equal(board.entries['sf-1-a'], 'Blair');
     board = applyMatchOutcome(board, 'sf-0', 'a', { call: 'win', method: 'points' });
     assert.equal(board.entries['final-0-a'], 'Alex');
     assert.equal(board.results['sf-0']?.winnerSide, 'a');
@@ -156,13 +199,13 @@ describe('flexible bracket size', () => {
 
 describe('3-person bracket', () => {
   it('is a size preset beside 2, 4, and 8, with no bye', () => {
-    assert.deepEqual(SIZE_PRESETS, [2, 3, 4, 8, 16]);
-    assert.deepEqual(PRO_SIZE_PRESETS, [2, 3, 4, 8, 16, 32, 64]);
-    assert.equal(isThreePersonBracket(3), true);
+    assert.deepEqual(SIZE_PRESETS, [2, 3, 4, 5, 7, 8, 16]);
+    assert.deepEqual(PRO_SIZE_PRESETS, [2, 3, 4, 5, 7, 8, 16, 32, 64]);
+    assert.equal(isThreePersonBracket(defaultTournament(3)), true);
     assert.equal(treeSizeFor(3), 4);
     assert.equal(byeCountFor(3), 0);
     assert.deepEqual(byeSlotIds(3), []);
-    assert.equal(bracketRoundLine(defaultTournament(3)), '3-person · 3 competitors');
+    assert.equal(bracketRoundLine(defaultTournament(3)), 'IBJJF · 3-person · 3 competitors');
     assert.equal(matchHasBye(defaultTournament(3), 'sf-0'), false);
     assert.equal(matchHasBye(defaultTournament(3), 'sf-1'), false);
   });
@@ -226,15 +269,39 @@ describe('3-person bracket', () => {
   });
 
   it('keeps the first three seed names when a larger board shrinks to 3', () => {
-    let board = applySlotName(defaultTournament(8), 'qf-0-a', 'Alex');
-    board = applySlotName(board, 'qf-0-b', 'Blair');
-    board = applySlotName(board, 'qf-1-a', 'Casey');
+    let board = defaultTournament(8);
+    const seeds = seedSlots(board);
+    board = applySlotName(board, seeds[0], 'Alex');
+    board = applySlotName(board, seeds[1], 'Blair');
+    board = applySlotName(board, seeds[2], 'Casey');
     board = applyCompetitorCount(board, 3);
     assert.equal(board.size, 3);
     assert.equal(board.entries['sf-1-a'], 'Alex');
     assert.equal(board.entries['sf-0-a'], 'Blair');
     assert.equal(board.entries['sf-0-b'], 'Casey');
     assert.equal(byeCountFor(5), 3);
+  });
+
+  it('lets an organizer switch to lineup order without inventing a second seed list', () => {
+    let board = defaultTournament(5);
+    const seeds = seedSlots(board);
+    board = applySlotName(board, seeds[0], 'Alex');
+    board = applySlotName(board, seeds[3], 'Drew');
+    board = applyPlacement(board, 'lineup');
+    assert.equal(board.placement, 'lineup');
+    assert.equal(isThreePersonBracket(board), false);
+    assert.deepEqual(byeSlotIds(board.size, 'lineup'), ['qf-1-b', 'qf-2-b', 'qf-3-b']);
+    assert.equal(board.entries['qf-0-a'], 'Alex');
+    assert.equal(seedSlots(board)[3], 'qf-2-a');
+    assert.equal(board.entries['qf-2-a'], 'Drew');
+    assert.match(bracketRoundLine(board), /Lineup · Quarterfinals · 5 competitors · 3 byes/);
+    const three = applyPlacement(defaultTournament(3), 'lineup');
+    assert.equal(isThreePersonBracket(three), false);
+    assert.equal(byeCountFor(3, 'lineup'), 1);
+    assert.deepEqual(byeSlotIds(3, 'lineup'), ['sf-1-b']);
+    const back = applyPlacement(three, 'ibjjf');
+    assert.equal(isThreePersonBracket(back), true);
+    assert.equal(back.placement, 'ibjjf');
   });
 });
 
