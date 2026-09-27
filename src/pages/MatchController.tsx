@@ -333,6 +333,14 @@ export function MatchControllerPage() {
           />
           Auto-announce winner
         </label>
+        <label className="toggle">
+          <input
+            type="checkbox"
+            checked={match.padHeaders !== false}
+            onChange={(e) => dispatchMatch({ type: 'setPadHeaders', value: e.target.checked })}
+          />
+          Pad headers
+        </label>
         {castNote ? <p className="cast-note">{castNote}</p> : null}
       </section>
 

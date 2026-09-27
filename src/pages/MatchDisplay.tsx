@@ -75,7 +75,7 @@ export function MatchDisplayPage() {
 
   return (
     <main
-      className={`display ${scoreboardSkinClass(DEFAULT_SCOREBOARD_SKIN)}${linkedId ? ' display--linked' : ''}${splash ? ' display--splash' : ''}${
+      className={`display ${scoreboardSkinClass(DEFAULT_SCOREBOARD_SKIN)}${match.padHeaders !== false ? ' display--pad-headers' : ''}${linkedId ? ' display--linked' : ''}${splash ? ' display--splash' : ''}${
         suite.fromSuite ? ' origin-suite' : ''
       }${fs.className ? ` ${fs.className}` : ''}`}
       onPointerDown={() => {
@@ -124,6 +124,7 @@ export function MatchDisplayPage() {
         disadvantages={match.blue.disadvantages}
         fallbackName="Competitor 1"
         linked={Boolean(linkedId)}
+        headers={match.padHeaders !== false}
         onOpenController={openController}
       />
 
@@ -166,6 +167,7 @@ export function MatchDisplayPage() {
         disadvantages={match.white.disadvantages}
         fallbackName="Competitor 2"
         linked={Boolean(linkedId)}
+        headers={match.padHeaders !== false}
         onOpenController={openController}
       />
 
@@ -184,6 +186,7 @@ function CompetitorBand({
   disadvantages,
   fallbackName,
   linked,
+  headers,
   onOpenController,
 }: {
   side: Side;
@@ -195,6 +198,7 @@ function CompetitorBand({
   disadvantages: number;
   fallbackName: string;
   linked: boolean;
+  headers: boolean;
   onOpenController: (focus?: DisplayFocus) => void;
 }) {
   const label = side === 'blue' ? 'Blue' : 'White';
@@ -223,9 +227,9 @@ function CompetitorBand({
         </p>
       </div>
       <div className="bout__scores">
-        <ScoreBox side={side} kind="points" value={points} />
-        <ScoreBox side={side} kind="advantages" value={advantages} />
-        <ScoreBox side={side} kind="disadvantages" value={disadvantages} />
+        <ScoreBox side={side} kind="points" value={points} headers={headers} />
+        <ScoreBox side={side} kind="advantages" value={advantages} headers={headers} />
+        <ScoreBox side={side} kind="disadvantages" value={disadvantages} headers={headers} />
       </div>
     </section>
   );

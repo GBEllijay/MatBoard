@@ -30,12 +30,13 @@
 
 /* Mock-Tournament Skin (MOCK_TOURNAMENT) — default Match scoreboard.
    Eyedrop from the approved tournament photo, tuned for TV.
+   Penalty is Pantone 200 so it stays a primary red on gym TVs.
    LIGHT and KIDS are reserved ids in scoreboardSkin.ts. No picker yet. */
 :root,
 .scoreboard-skin--mock-tournament {
   --pad-points: #4AAF45;
   --pad-adv: #FC9C36;
-  --pad-pen: #F85745;
+  --pad-pen: #C8102E; /* Pantone 200 — stays a primary red on gym TVs */
   --board-field: #2728B5;
   --board-blue: #223BCA;
   --board-white: #F8F9FC;
@@ -2054,8 +2055,19 @@ button.mode-card {
   opacity: 0.8;
 }
 
-/* Match Display: the pad color is the legend (green / amber / red). Keep the words for the button name only. */
-.display .score__label {
+/* Match Display pad headers: white words on the colored pad.
+   Short copy (Points / Adv / Pen) until landscape, then Points / Advantages / Penalties. */
+.display--pad-headers .score {
+  justify-content: space-between;
+  align-items: stretch;
+}
+
+.display--pad-headers .score__label {
+  color: var(--board-digit);
+  opacity: 1;
+}
+
+.display:not(.display--pad-headers) .score__label {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -3793,6 +3805,12 @@ a.saver-folder--link {
     align-self: stretch;
   }
 
+  .display--pad-headers .score {
+    justify-content: space-between;
+    align-items: stretch;
+    padding: 0.28rem 0.32rem 0.14rem;
+  }
+
   .display .score__label {
     font-size: clamp(0.82rem, 1.15vw + 0.45vh, 1.15rem);
   }
@@ -3969,6 +3987,12 @@ a.saver-folder--link {
     padding: 0.35rem;
   }
 
+  .display--pad-headers .score {
+    justify-content: space-between;
+    align-items: stretch;
+    padding: 0.55rem 0.7rem 0.4rem;
+  }
+
   .display .score__label,
   .display .score__label--wide {
     font-size: clamp(1.15rem, 1.55vw, 1.65rem);
@@ -3979,6 +4003,12 @@ a.saver-folder--link {
   .play--tv .bout--blue {
     padding-top: calc(1.15rem + var(--safe-t));
   }
+}
+
+.display--pad-headers .score__label,
+.display--pad-headers .score__label--wide {
+  color: var(--board-digit);
+  opacity: 1;
 }
 
 .play--tv .display__chrome,
