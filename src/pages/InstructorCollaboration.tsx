@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BeltRail } from '../components/BeltRail';
+import { DriveConnectCard } from '../components/DriveConnectCard';
 import { COACH_TOOL_LINKS } from '../components/CoachToolsCard';
 import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
@@ -47,6 +48,7 @@ export function InstructorCollaborationPage() {
               </>
             ) : null}
           </article>
+          <DriveConnectCard />
           <nav className="instructor-jumps" aria-label="Advantage Coach">
             <Link className="btn btn--white instructor-jumps__entry" to="/coach">
               {INSTRUCTOR_COACH_ENTRY}

@@ -10,17 +10,14 @@
  * keeps the best of each coach's contributions for Sunday. This file is the
  * hook those writes should use.
  *
- * There is no Google Drive client in this build. `scheduleLessonDriveDraft`
- * and `markLessonDistribution` record text and file ids only, and only when
- * Advantage Pro (Instructor Collaboration) is on. They do not upload photo or
- * video bytes. Regular Coach does not call a successful queue: play links and
- * the gallery download stay local.
- *
- * When a Drive client lands, replace `commitRevision` with a write into the
- * connected folder and store the returned file id on the revision. Keep the
- * same payload shape. Do not add Advantage-hosted media storage.
+ * When this browser has connected a Google Drive folder, a debounced write
+ * sends the text plan and media file ids to that folder (`googleDrive.ts`).
+ * Photo and video bytes are not part of the write. Regular Coach does not
+ * queue a Drive revision. If Drive is not connected, or the write fails, the
+ * plan stays on this phone and the next edit tries again.
  */
 
+import { publishLessonToDrive, readDriveBinding, type DriveLessonDocument } from './googleDrive.ts';
 import {
   clampDriveFileId,
   clampMediaLabel,
@@ -44,7 +41,7 @@ export const OWNER_DRIVE_TITLE = 'Class plans in your Google Drive';
 export const OWNER_DRIVE_BODY =
   'When the gym Google Drive folder is connected, a lesson plan saves there as the coach types. Leaving the page or skipping upload still keeps the draft. Version history in that folder shows each coach’s week so you can choose what to keep. Advantage keeps the plan text and Drive file ids only. Photos and videos stay in your Drive.';
 export const OWNER_DRIVE_QUEUE =
-  'These rows are waiting for that Drive folder. No video files are stored here.';
+  'These rows are lesson text and file ids on this phone. When Google Drive is connected, the same text is in that folder. No video files are stored here.';
 
 export type LessonMediaRef = {
   section: 'warmup' | 'technique' | 'cooldown';
@@ -67,8 +64,8 @@ export type LessonRevision = {
   kind: 'draft' | 'distribution';
   /** Drive file id for the text plan. Null until the client writes the folder. */
   driveFileId: string | null;
-  /** This build cannot reach Drive yet. The client should replace this status. */
-  status: 'waiting-for-drive';
+  /** `waiting-for-drive` until a folder write returns a file id. */
+  status: 'waiting-for-drive' | 'saved-to-drive';
   plan: TrainingNotesPlan;
   media: LessonMediaRef[];
 };
@@ -198,6 +195,48 @@ export function latestLessonRevisions(queue: readonly LessonRevision[], limit = 
     .slice(0, limit);
 }
 
+export function markRevisionSaved(
+  queue: readonly LessonRevision[],
+  revisionId: string,
+  driveFileId: string,
+): LessonRevision[] {
+  return queue.map((row) =>
+    row.revisionId === revisionId ? { ...row, driveFileId, status: 'saved-to-drive' } : row,
+  );
+}
+
+export type DriveSaveNotice = {
+  phase: 'idle' | 'saving' | 'saved-drive' | 'saved-phone' | 'error';
+  text: string;
+};
+
+const idleNotice: DriveSaveNotice = { phase: 'idle', text: '' };
+let driveNotice: DriveSaveNotice = idleNotice;
+const noticeListeners = new Set<() => void>();
+
+export function subscribeDriveNotice(listener: () => void): () => void {
+  noticeListeners.add(listener);
+  return () => noticeListeners.delete(listener);
+}
+
+export function getDriveNotice(): DriveSaveNotice {
+  return driveNotice;
+}
+
+function setDriveNotice(next: DriveSaveNotice): void {
+  driveNotice = next;
+  noticeListeners.forEach((listener) => listener());
+}
+
+export function savedPhoneNotice(): string {
+  return 'Saved on this phone. Connect Google Drive in Instructor Collaboration to keep a copy in the gym folder.';
+}
+
+export function savedDriveNotice(revisions: number): string {
+  if (revisions > 1) return `Saved to Google Drive. This day has ${revisions} versions.`;
+  return 'Saved to Google Drive.';
+}
+
 export function lessonRevisionLabel(revision: LessonRevision): string {
   const who = revision.coachName.trim() || 'Coach';
   const what = revision.kind === 'distribution' ? 'Shared for distribution' : 'Draft';
@@ -287,14 +326,55 @@ function commitRevision(
   input: LessonDriveDraftInput,
   kind: LessonRevision['kind'],
 ): LessonRevision {
+  const savedAt = Date.now();
   const next = recordLessonRevision(readQueue(), {
     dateKey: input.dateKey,
     coachName: input.coachName,
-    savedAt: Date.now(),
+    savedAt,
     kind,
     plan: input.plan,
     media: input.media,
   });
   writeQueue(next);
-  return next[next.length - 1];
+  const revision = next[next.length - 1];
+  void publishRevision(revision, kind, input.dateKey);
+  return revision;
+}
+
+async function publishRevision(
+  revision: LessonRevision,
+  kind: LessonRevision['kind'],
+  dateKey: string,
+): Promise<void> {
+  if (typeof window === 'undefined') return;
+  if (!readDriveBinding()) {
+    setDriveNotice({ phase: 'saved-phone', text: savedPhoneNotice() });
+    return;
+  }
+  const document: DriveLessonDocument = {
+    advantage: 'lesson-plan',
+    version: 1,
+    date: dateKey,
+    coachName: revision.coachName,
+    savedAt: revision.savedAt,
+    kind,
+    distributedAt: kind === 'distribution' ? revision.savedAt : null,
+    plan: revision.plan,
+    media: revision.media,
+  };
+  setDriveNotice({ phase: 'saving', text: 'Saving to Google Drive…' });
+  try {
+    const saved = await publishLessonToDrive(document);
+    if (!saved) {
+      setDriveNotice({ phase: 'saved-phone', text: savedPhoneNotice() });
+      return;
+    }
+    writeQueue(markRevisionSaved(readQueue(), revision.revisionId, saved.fileId));
+    setDriveNotice({ phase: 'saved-drive', text: savedDriveNotice(saved.revisions) });
+  } catch {
+    setDriveNotice({
+      phase: 'error',
+      text: 'Saved on this phone. Google Drive could not be updated, and the next edit will try again.',
+    });
+  }
 }

@@ -11,6 +11,7 @@ import {
   lessonPlanForDrive,
   lessonRevisionLabel,
   markLessonDistribution,
+  markRevisionSaved,
   mediaRefsFromVideoPlan,
   recordLessonRevision,
   scheduleLessonDriveDraft,
@@ -102,6 +103,9 @@ test('Drive history keeps one draft per coach per day and drops file bytes', () 
   assert.equal(queue.find((row) => row.coachName === 'Alex' && row.kind === 'draft')?.plan.intro, 'Updated grip fight');
   assert.equal(queue.find((row) => row.kind === 'distribution')?.driveFileId, null);
   assert.equal(queue.find((row) => row.kind === 'distribution')?.status, 'waiting-for-drive');
+  const saved = markRevisionSaved(queue, 'distribution:2026-09-27:alex', 'drive-plan-1');
+  assert.equal(saved.find((row) => row.kind === 'distribution')?.status, 'saved-to-drive');
+  assert.equal(saved.find((row) => row.kind === 'distribution')?.driveFileId, 'drive-plan-1');
   assert.equal(JSON.stringify(queue).includes('blob'), false);
   assert.match(lessonRevisionLabel(queue[0]), /Alex · 2026-09-27 · Draft/);
   assert.match(OWNER_DRIVE_BODY, /Photos and videos stay in your Drive/);

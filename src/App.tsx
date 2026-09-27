@@ -5,6 +5,7 @@ import { useKeepFocusedFieldVisible } from './hooks/useKeepFocusedFieldVisible';
 import { useProUnlocked } from './hooks/useProUnlocked';
 import { consumeCoachUnlockQueryNow } from './lib/coachUnlock';
 import { consumeUnlockQueryNow } from './lib/proUnlock';
+import { ClassHistoryPage } from './pages/ClassHistory';
 import { CoachPage } from './pages/Coach';
 import { ComingSoonPage } from './pages/ComingSoon';
 import { CompetitionManagementPage } from './pages/CompetitionManagement';
@@ -112,6 +113,14 @@ export default function App() {
         element={
           <ProRoute>
             <InstructorCollaborationPage />
+          </ProRoute>
+        }
+      />
+      <Route
+        path="/class-history"
+        element={
+          <ProRoute>
+            <ClassHistoryPage />
           </ProRoute>
         }
       />
