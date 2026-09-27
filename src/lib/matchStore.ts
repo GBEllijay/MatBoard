@@ -2,13 +2,16 @@ import { DEFAULT_CARLOS_PREFS, parseCarlosPrefs, type CarlosCelebrationPrefs } f
 import { clamp, minutesToMs, secondsToMs } from './format';
 import { DEFAULT_SCOREBOARD_SKIN, parseScoreboardSkin, type ScoreboardSkinId } from './scoreboardSkin';
 import {
+  ensureAudioRunning,
   getAudioPrefs,
+  isAudioRunning,
   parseEndCue,
   playSelectedEndCue,
   playStartCue,
   playWarningCue,
   type EndCue,
 } from './audio';
+import { endCueClaimId, playOnceAcrossTabs } from './matchCueOnce';
 import {
   autoPointsOutcome,
   decideClockEnd,
@@ -504,7 +507,12 @@ function maybeMatchCues(prev: MatchState, next: MatchState): void {
   if (!(prev.running && !next.running && next.remainingMs === 0 && next.endBuzzer)) return;
   if (buzzedRevision === next.revision) return;
   buzzedRevision = next.revision;
-  playSelectedEndCue('match', next.endCue);
+  const cue = next.endCue;
+  // Winner splash and the end cue share this transition. Both Match windows
+  // observe it; claim once so the popup sound is a single copy, not two stacked.
+  void playOnceAcrossTabs(endCueClaimId(next.revision), isAudioRunning, ensureAudioRunning, () => {
+    playSelectedEndCue('match', cue);
+  });
 }
 
 export function dispatchMatch(action: MatchAction): void {
