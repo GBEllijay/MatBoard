@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import test from 'node:test';
+import { beforeEach, describe, test } from 'node:test';
 import { CONNECT_COMING_SOON, CONNECT_WITH_BODY, CONNECT_WITH_TITLE } from './cloudStorage.ts';
 import {
   CLASS_HISTORY_EMPTY,
+  DATE_BUCKET_NAMES,
   DRIVE_DEV_CLIENT_HINT,
+  DRIVE_FOLDER_MIME,
+  DRIVE_SCOPES,
   DRIVE_SETUP_NEEDED,
   DRIVE_SIGN_IN_FAILED,
   DRIVE_TODAY_EMPTY,
@@ -13,18 +16,24 @@ import {
   buildClassHistory,
   buildLessonDocument,
   classifyDriveAuthDetail,
+  clearDateFolderCache,
   driveOwnerFacingError,
   driveQueryLiteral,
   driveSignInFailureCopy,
+  ensureDateFolderTree,
+  findOrCreateChildFolder,
   lessonDriveFileName,
+  loadClassHistory,
   parseLessonDocument,
   requestDriveConsent,
   requestDriveToken,
   resolveOwnedGoogleClientId,
   todayDownloadCopy,
+  upsertLessonFile,
   videosOnDay,
   writeDevGoogleClientId,
   type DriveFileMeta,
+  type DriveLessonDocument,
   type GoogleClientIdStore,
 } from './googleDrive.ts';
 import { emptyPlan } from './trainingNotesStore.ts';
@@ -199,6 +208,520 @@ test('class history groups Drive files and does not invent an empty day', () => 
   assert.deepEqual(videosOnDay(days, '2026-09-26').map((video) => video.label), ['Drill.mp4']);
   assert.deepEqual(videosOnDay(days, '2026-09-01'), []);
   assert.equal(buildClassHistory({ files: [], lessons: [] }).length, 0);
+});
+
+test('Drive scopes stay file and readonly', () => {
+  assert.equal(
+    DRIVE_SCOPES,
+    ['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/drive.readonly'].join(' '),
+  );
+});
+
+type StoredDriveFile = {
+  id: string;
+  name: string;
+  mimeType: string;
+  parents: string[];
+  appProperties?: Record<string, string>;
+  content?: string;
+};
+
+function unescapeDriveLiteral(value: string): string {
+  return value.replace(/\\\\/g, '\\').replace(/\\'/g, "'");
+}
+
+function fileMatchesQuery(file: StoredDriveFile, query: string): boolean {
+  const nameMatch = query.match(/name='((?:\\'|[^'])*)'/);
+  if (nameMatch && file.name !== unescapeDriveLiteral(nameMatch[1])) return false;
+  const mimeMatch = query.match(/mimeType='([^']*)'/);
+  if (mimeMatch && file.mimeType !== mimeMatch[1]) return false;
+  const parents = [...query.matchAll(/'((?:\\'|[^'])*)' in parents/g)].map((match) => unescapeDriveLiteral(match[1]));
+  if (parents.length > 0 && !parents.some((id) => file.parents.includes(id))) return false;
+  return true;
+}
+
+function readMultipart(body: string): string[] {
+  const boundary = body.split('\r\n', 1)[0]?.replace(/^--/, '') ?? '';
+  if (!boundary) return [];
+  return body
+    .split(`--${boundary}`)
+    .slice(1, -1)
+    .map((segment) => {
+      const text = segment.replace(/^\r\n/, '').replace(/\r\n$/, '');
+      const splitAt = text.indexOf('\r\n\r\n');
+      if (splitAt < 0) return '';
+      return text.slice(splitAt + 4).replace(/\r\n$/, '');
+    });
+}
+
+function createFakeDrive(prefix: string) {
+  let seq = 1;
+  const files: StoredDriveFile[] = [];
+  const calls: { method: string; url: string; body: string }[] = [];
+  const fetcher: typeof fetch = async (input, init) => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+    const method = (init?.method ?? 'GET').toUpperCase();
+    const body = typeof init?.body === 'string' ? init.body : '';
+    calls.push({ method, url, body });
+    if (url.includes('/upload/drive/v3/files')) {
+      const parts = readMultipart(body);
+      const metadata = JSON.parse(parts[0] || '{}') as {
+        name?: string;
+        mimeType?: string;
+        parents?: string[];
+        appProperties?: Record<string, string>;
+      };
+      if (method === 'PATCH') {
+        const id = decodeURIComponent(url.match(/\/files\/([^/?]+)/)?.[1] ?? '');
+        const file = files.find((item) => item.id === id);
+        if (!file) return new Response('missing', { status: 404 });
+        if (metadata.name) file.name = metadata.name;
+        if (metadata.mimeType) file.mimeType = metadata.mimeType;
+        if (metadata.appProperties) file.appProperties = metadata.appProperties;
+        file.content = parts[1] ?? '';
+        const params = new URL(url).searchParams;
+        const addParents = params.get('addParents');
+        const removeParents = params.get('removeParents');
+        if (addParents) {
+          for (const parentId of addParents.split(',')) {
+            if (parentId && !file.parents.includes(parentId)) file.parents.push(parentId);
+          }
+        }
+        if (removeParents) {
+          const remove = new Set(removeParents.split(','));
+          file.parents = file.parents.filter((parentId) => !remove.has(parentId));
+        }
+        return Response.json({ id: file.id });
+      }
+      const created: StoredDriveFile = {
+        id: `${prefix}-${seq}`,
+        name: metadata.name ?? 'untitled',
+        mimeType: metadata.mimeType ?? 'application/json',
+        parents: metadata.parents ?? [],
+        appProperties: metadata.appProperties,
+        content: parts[1] ?? '',
+      };
+      seq += 1;
+      files.push(created);
+      return Response.json({ id: created.id });
+    }
+    if (url.includes('/revisions')) return Response.json({ revisions: [{ id: 'rev-1' }] });
+    if (url.includes('alt=media')) {
+      const id = decodeURIComponent(url.match(/\/files\/([^/?]+)/)?.[1] ?? '');
+      const file = files.find((item) => item.id === id);
+      if (!file?.content) return new Response('missing', { status: 404 });
+      return new Response(file.content, { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (method === 'POST' && url.includes('/drive/v3/files')) {
+      const metadata = JSON.parse(body) as {
+        name?: string;
+        mimeType?: string;
+        parents?: string[];
+        appProperties?: Record<string, string>;
+      };
+      const created: StoredDriveFile = {
+        id: `${prefix}-${seq}`,
+        name: metadata.name ?? 'untitled',
+        mimeType: metadata.mimeType ?? DRIVE_FOLDER_MIME,
+        parents: metadata.parents ?? [],
+        appProperties: metadata.appProperties,
+      };
+      seq += 1;
+      files.push(created);
+      return Response.json({ id: created.id, name: created.name });
+    }
+    if (method === 'GET' && url.includes('/drive/v3/files')) {
+      const params = new URL(url).searchParams;
+      const query = params.get('q') ?? '';
+      const pageSize = Number(params.get('pageSize') ?? '100');
+      const matched = files.filter((file) => fileMatchesQuery(file, query)).slice(0, pageSize);
+      return Response.json({
+        files: matched.map((file) => ({
+          id: file.id,
+          name: file.name,
+          mimeType: file.mimeType,
+          appProperties: file.appProperties,
+        })),
+      });
+    }
+    return new Response(`unhandled ${method} ${url}`, { status: 500 });
+  };
+  return {
+    files,
+    calls,
+    fetcher,
+    seed(file: StoredDriveFile) {
+      files.push(file);
+    },
+  };
+}
+
+function lessonDoc(kind: DriveLessonDocument['kind'], savedAt: number, title: string): DriveLessonDocument {
+  const plan = emptyPlan();
+  plan.techniques[0].title = title;
+  return buildLessonDocument({
+    date: '2026-09-28',
+    coachName: 'Alex Rivera',
+    savedAt,
+    kind,
+    distributedAt: kind === 'distribution' ? savedAt : null,
+    plan,
+    media: [],
+  });
+}
+
+describe('date folder tree', { concurrency: false }, () => {
+  beforeEach(() => {
+    clearDateFolderCache();
+  });
+
+  test('date buckets stay the locked six names', () => {
+    assert.deepEqual(
+      [...DATE_BUCKET_NAMES],
+      ['lesson-plans', 'training-videos', 'technique-trees', 'class-photos', 'roster', 'tournament-results'],
+    );
+  });
+
+  test('findOrCreateChildFolder reuses an existing folder and remembers it', async () => {
+    const drive = createFakeDrive('find');
+    drive.seed({
+      id: 'find-existing',
+      name: 'lesson-plans',
+      mimeType: DRIVE_FOLDER_MIME,
+      parents: ['parent-find'],
+    });
+    const first = await findOrCreateChildFolder('token', 'parent-find', 'lesson-plans', drive.fetcher);
+    assert.equal(first.id, 'find-existing');
+    assert.equal(
+      drive.calls.filter((call) => call.method === 'POST').length,
+      0,
+    );
+    const afterLookup = drive.calls.length;
+    const second = await findOrCreateChildFolder('token', 'parent-find', 'lesson-plans', drive.fetcher);
+    assert.equal(second.id, 'find-existing');
+    assert.equal(drive.calls.length, afterLookup);
+  });
+
+  test('findOrCreateChildFolder creates one folder when parallel callers miss', async () => {
+    const drive = createFakeDrive('create');
+    const [first, second] = await Promise.all([
+      findOrCreateChildFolder('token', 'parent-create', 'roster', drive.fetcher),
+      findOrCreateChildFolder('token', 'parent-create', 'roster', drive.fetcher),
+    ]);
+    assert.equal(first.id, second.id);
+    const posts = drive.calls.filter((call) => call.method === 'POST');
+    assert.equal(posts.length, 1);
+    const body = JSON.parse(posts[0]?.body ?? '{}') as { name?: string; mimeType?: string; parents?: string[] };
+    assert.equal(body.name, 'roster');
+    assert.equal(body.mimeType, DRIVE_FOLDER_MIME);
+    assert.deepEqual(body.parents, ['parent-create']);
+  });
+
+  test('ensureDateFolderTree creates the date folder and six buckets once', async () => {
+    const drive = createFakeDrive('tree');
+    const tree = await ensureDateFolderTree({
+      token: 'token',
+      rootFolderId: 'root-tree',
+      dateKey: '2026-09-28',
+      fetcher: drive.fetcher,
+    });
+    const dateFolder = drive.files.find((file) => file.id === tree.dateFolderId);
+    assert.equal(dateFolder?.name, '2026-09-28');
+    assert.equal(dateFolder?.mimeType, DRIVE_FOLDER_MIME);
+    assert.deepEqual(dateFolder?.parents, ['root-tree']);
+    for (const name of DATE_BUCKET_NAMES) {
+      const child = drive.files.find((file) => file.id === tree.folders[name]);
+      assert.equal(child?.name, name);
+      assert.equal(child?.mimeType, DRIVE_FOLDER_MIME);
+      assert.deepEqual(child?.parents, [tree.dateFolderId]);
+    }
+    assert.equal(
+      drive.calls.filter((call) => call.method === 'POST').length,
+      7,
+    );
+    const again = await ensureDateFolderTree({
+      token: 'token',
+      rootFolderId: 'root-tree',
+      dateKey: '2026-09-28',
+      fetcher: drive.fetcher,
+    });
+    assert.equal(again.dateFolderId, tree.dateFolderId);
+    assert.deepEqual(again.folders, tree.folders);
+    assert.equal(
+      drive.calls.filter((call) => call.method === 'POST').length,
+      7,
+    );
+  });
+
+  test('ensureDateFolderTree fills only the buckets that are missing', async () => {
+    const drive = createFakeDrive('partial');
+    drive.seed({
+      id: 'partial-date',
+      name: '2026-09-28',
+      mimeType: DRIVE_FOLDER_MIME,
+      parents: ['root-partial'],
+    });
+    drive.seed({
+      id: 'partial-plans',
+      name: 'lesson-plans',
+      mimeType: DRIVE_FOLDER_MIME,
+      parents: ['partial-date'],
+    });
+    const tree = await ensureDateFolderTree({
+      token: 'token',
+      rootFolderId: 'root-partial',
+      dateKey: '2026-09-28',
+      fetcher: drive.fetcher,
+    });
+    assert.equal(tree.dateFolderId, 'partial-date');
+    assert.equal(tree.folders['lesson-plans'], 'partial-plans');
+    const created = drive.calls
+      .filter((call) => call.method === 'POST')
+      .map((call) => (JSON.parse(call.body) as { name?: string }).name)
+      .sort();
+    assert.deepEqual(
+      created,
+      DATE_BUCKET_NAMES.filter((name) => name !== 'lesson-plans').sort(),
+    );
+  });
+
+  test('ensureDateFolderTree rejects a date that is not a local date key', async () => {
+    const drive = createFakeDrive('baddate');
+    await assert.rejects(
+      () =>
+        ensureDateFolderTree({
+          token: 'token',
+          rootFolderId: 'root-bad',
+          dateKey: '09-28-2026',
+          fetcher: drive.fetcher,
+        }),
+      /YYYY-MM-DD/,
+    );
+    assert.equal(drive.calls.length, 0);
+  });
+
+  test('upsertLessonFile writes the lesson into lesson-plans and tags coach and time', async () => {
+    const drive = createFakeDrive('upsert');
+    const saved = await upsertLessonFile({
+      token: 'token',
+      folderId: 'root-upsert',
+      document: lessonDoc('draft', 1_700_000_000_000, 'Armbar'),
+      fetcher: drive.fetcher,
+    });
+    const lessons = drive.files.filter((file) => file.name.startsWith('advantage-lesson-'));
+    assert.equal(lessons.length, 1);
+    const lesson = lessons[0];
+    assert.ok(lesson);
+    assert.equal(lesson.id, saved.fileId);
+    assert.equal(lesson.name, 'advantage-lesson-2026-09-28-alex-rivera.json');
+    const plansId = drive.files.find((file) => file.name === 'lesson-plans')?.id;
+    assert.ok(plansId);
+    assert.deepEqual(lesson.parents, [plansId]);
+    assert.equal(lesson.parents.includes('root-upsert'), false);
+    assert.deepEqual(lesson.appProperties, {
+      advantage: 'lesson',
+      date: '2026-09-28',
+      coach: 'Alex Rivera',
+      coachName: 'Alex Rivera',
+      savedAt: '1700000000000',
+      kind: 'draft',
+    });
+    const parsed = JSON.parse(lesson.content ?? '{}') as DriveLessonDocument;
+    assert.equal(parsed.coachName, 'Alex Rivera');
+    assert.equal(parsed.savedAt, 1_700_000_000_000);
+    assert.equal(parsed.kind, 'draft');
+    assert.equal(
+      drive.calls.some((call) => {
+        if (call.method !== 'GET') return false;
+        const query = new URL(call.url).searchParams.get('q') ?? '';
+        return query.includes(lesson.name) && query.includes(`'${plansId}' in parents`);
+      }),
+      true,
+    );
+    const created = drive.calls.find((call) => call.method === 'POST' && call.url.includes('/upload/'));
+    assert.match(created?.body ?? '', new RegExp(`"parents":\\["${plansId}"\\]`));
+
+    const again = await upsertLessonFile({
+      token: 'token',
+      folderId: 'root-upsert',
+      document: lessonDoc('distribution', 1_700_000_000_100, 'Armbar'),
+      fetcher: drive.fetcher,
+    });
+    assert.equal(again.fileId, saved.fileId);
+    assert.equal(drive.files.filter((file) => file.name.startsWith('advantage-lesson-')).length, 1);
+    assert.equal(lesson.appProperties?.kind, 'distribution');
+    assert.equal(lesson.appProperties?.savedAt, '1700000000100');
+    assert.equal(JSON.parse(lesson.content ?? '{}').kind, 'distribution');
+    const patches = drive.calls.filter((call) => call.method === 'PATCH');
+    assert.equal(patches.length, 1);
+    assert.equal(patches[0]?.url.includes('addParents'), false);
+  });
+
+  test('upsertLessonFile moves a flat root lesson into lesson-plans', async () => {
+    const drive = createFakeDrive('move');
+    const name = 'advantage-lesson-2026-09-28-alex-rivera.json';
+    drive.seed({
+      id: 'move-legacy',
+      name,
+      mimeType: 'application/json',
+      parents: ['root-move'],
+      appProperties: { advantage: 'lesson', date: '2026-09-28', coach: 'Alex Rivera' },
+      content: '{}',
+    });
+    const saved = await upsertLessonFile({
+      token: 'token',
+      folderId: 'root-move',
+      document: lessonDoc('distribution', 50, 'Sweep'),
+      fetcher: drive.fetcher,
+    });
+    assert.equal(saved.fileId, 'move-legacy');
+    const plansId = drive.files.find((file) => file.name === 'lesson-plans')?.id;
+    assert.ok(plansId);
+    const lesson = drive.files.find((file) => file.id === 'move-legacy');
+    assert.deepEqual(lesson?.parents, [plansId]);
+    assert.equal(lesson?.appProperties?.kind, 'distribution');
+    assert.equal(lesson?.appProperties?.coachName, 'Alex Rivera');
+    assert.equal(lesson?.appProperties?.savedAt, '50');
+    const patch = drive.calls.find((call) => call.method === 'PATCH');
+    assert.ok(patch);
+    const params = new URL(patch.url).searchParams;
+    assert.equal(params.get('addParents'), plansId);
+    assert.equal(params.get('removeParents'), 'root-move');
+    assert.equal(drive.files.filter((file) => file.name === name).length, 1);
+  });
+
+  test('overlapping draft and distribution saves share one lesson file', async () => {
+    const drive = createFakeDrive('race');
+    const [draft, shared] = await Promise.all([
+      upsertLessonFile({
+        token: 'token',
+        folderId: 'root-race',
+        document: lessonDoc('draft', 10, 'Armbar'),
+        fetcher: drive.fetcher,
+      }),
+      upsertLessonFile({
+        token: 'token',
+        folderId: 'root-race',
+        document: lessonDoc('distribution', 11, 'Armbar'),
+        fetcher: drive.fetcher,
+      }),
+    ]);
+    assert.equal(draft.fileId, shared.fileId);
+    const lessons = drive.files.filter((file) => file.mimeType === 'application/json');
+    assert.equal(lessons.length, 1);
+    assert.equal(lessons[0]?.appProperties?.kind, 'distribution');
+    assert.equal(lessons[0]?.appProperties?.savedAt, '11');
+    assert.equal(drive.files.filter((file) => file.name === '2026-09-28').length, 1);
+    for (const bucket of DATE_BUCKET_NAMES) {
+      const folders = drive.files.filter((file) => file.name === bucket);
+      assert.equal(folders.length, 1);
+      assert.equal(folders[0]?.parents[0], drive.files.find((file) => file.name === '2026-09-28')?.id);
+    }
+  });
+
+  test('class history keeps flat root files and reads lesson-plans children', async () => {
+    const drive = createFakeDrive('history');
+    const rootLesson = lessonDoc('draft', 1, 'Root sweep');
+    const nestedLesson = lessonDoc('draft', 2, 'Nested armbar');
+    drive.seed({
+      id: 'hist-date',
+      name: '2026-09-28',
+      mimeType: DRIVE_FOLDER_MIME,
+      parents: ['root-history'],
+    });
+    drive.seed({
+      id: 'hist-plans',
+      name: 'lesson-plans',
+      mimeType: DRIVE_FOLDER_MIME,
+      parents: ['hist-date'],
+    });
+    drive.seed({
+      id: 'hist-root-lesson',
+      name: 'advantage-lesson-2026-09-28-legacy.json',
+      mimeType: 'application/json',
+      parents: ['root-history'],
+      appProperties: { advantage: 'lesson', date: '2026-09-28' },
+      content: JSON.stringify(rootLesson),
+    });
+    drive.seed({
+      id: 'hist-nested-lesson',
+      name: 'advantage-lesson-2026-09-28-alex-rivera.json',
+      mimeType: 'application/json',
+      parents: ['hist-plans'],
+      appProperties: { advantage: 'lesson', date: '2026-09-28' },
+      content: JSON.stringify(nestedLesson),
+    });
+    drive.seed({
+      id: 'hist-root-video',
+      name: 'Root.mp4',
+      mimeType: 'video/mp4',
+      parents: ['root-history'],
+      appProperties: { date: '2026-09-28' },
+    });
+    drive.seed({
+      id: 'hist-nested-video',
+      name: 'Nested.mp4',
+      mimeType: 'video/mp4',
+      parents: ['hist-plans'],
+      appProperties: { date: '2026-09-28' },
+    });
+    const days = await loadClassHistory('token', 'root-history', drive.fetcher);
+    const today = days.find((day) => day.date === '2026-09-28');
+    assert.deepEqual(today?.techniques, ['Root sweep', 'Nested armbar']);
+    assert.deepEqual(
+      videosOnDay(days, '2026-09-28').map((video) => video.label),
+      ['Root.mp4', 'Nested.mp4'],
+    );
+  });
+
+  test('class history still lists a flat root video when the date walk fails', async () => {
+    const drive = createFakeDrive('fallback');
+    drive.seed({
+      id: 'fallback-date',
+      name: '2026-09-28',
+      mimeType: DRIVE_FOLDER_MIME,
+      parents: ['root-fallback'],
+    });
+    drive.seed({
+      id: 'fallback-video',
+      name: 'Root.mp4',
+      mimeType: 'video/mp4',
+      parents: ['root-fallback'],
+      appProperties: { date: '2026-09-28' },
+    });
+    let lists = 0;
+    const fetcher: typeof fetch = async (input, init) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+      const method = (init?.method ?? 'GET').toUpperCase();
+      if (method === 'GET' && url.includes('q=')) {
+        lists += 1;
+        if (lists > 1) return new Response('nope', { status: 500 });
+      }
+      return drive.fetcher(input, init);
+    };
+    const days = await loadClassHistory('token', 'root-fallback', fetcher);
+    assert.deepEqual(
+      videosOnDay(days, '2026-09-28').map((video) => video.id),
+      ['fallback-video'],
+    );
+  });
+
+  test('class history does not walk children when the root has no date folder', async () => {
+    const drive = createFakeDrive('flat');
+    drive.seed({
+      id: 'flat-video',
+      name: 'Flat.mp4',
+      mimeType: 'video/mp4',
+      parents: ['root-flat'],
+      appProperties: { date: '2026-09-28' },
+    });
+    const days = await loadClassHistory('token', 'root-flat', drive.fetcher);
+    assert.deepEqual(
+      videosOnDay(days, '2026-09-28').map((video) => video.label),
+      ['Flat.mp4'],
+    );
+    assert.equal(drive.calls.filter((call) => call.url.includes('q=')).length, 1);
+  });
 });
 
 test('today download copy stays honest when Drive was not checked', () => {

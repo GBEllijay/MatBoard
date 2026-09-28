@@ -1,10 +1,17 @@
 /**
  * Google Drive for Advantage Coach Unlimited / Instructor Collaboration.
  *
- * Lesson text and file ids are written to a folder in the gym's own Drive.
+ * Lesson text and file ids are written into the gym's own Drive. The connected
+ * root (the folder the gym picked, for example `advantage-pro-gblj-instructors`)
+ * holds one `YYYY-MM-DD` folder per lesson date. Each date folder holds
+ * `lesson-plans`, `training-videos`, `technique-trees`, `class-photos`,
+ * `roster`, and `tournament-results`. Lesson JSON goes in `lesson-plans`.
  * Photo and video bytes are never sent to an Advantage server. This module
  * talks to Google from the browser only. There is no sample class list —
  * the calendar renders files Drive returns, or an empty state.
+ *
+ * Approval mode and trust mode are not implemented here. This client does not
+ * create a pending queue or a shared pool, and it does not move files between them.
  *
  * The public browser client id comes from `VITE_GOOGLE_CLIENT_ID` at build
  * time. Advantage hosts that one Web client. Gym owners never paste an id,
@@ -36,6 +43,25 @@ export const DRIVE_SCOPES = [
 
 export const DRIVE_FOLDER_MIME = 'application/vnd.google-apps.folder';
 export const LESSON_ROOT_NAME = 'Advantage Lesson Plans';
+
+/**
+ * Locked children of each `YYYY-MM-DD` folder under the connected Drive root.
+ * Names stay exact. Pending and shared-pool folders are not part of this slice.
+ */
+export const DATE_BUCKET_NAMES = [
+  'lesson-plans',
+  'training-videos',
+  'technique-trees',
+  'class-photos',
+  'roster',
+  'tournament-results',
+] as const;
+
+export type DateBucketName = (typeof DATE_BUCKET_NAMES)[number];
+
+export const LESSON_PLANS_FOLDER: DateBucketName = 'lesson-plans';
+
+const DATE_FOLDER_NAME = /^\d{4}-\d{2}-\d{2}$/;
 
 export const DRIVE_SETUP_NEEDED =
   'Google Drive is not available on this build yet — contact Advantage.';
@@ -565,6 +591,7 @@ export function clearDriveSession(): void {
   } catch {
     /* ignore */
   }
+  clearDateFolderCache();
   writeDriveBinding(null);
 }
 
@@ -680,6 +707,157 @@ export async function createLessonRoot(token: string, fetcher: DriveFetch = fetc
   return { id: created.id, name: created.name || LESSON_ROOT_NAME };
 }
 
+export type DateFolderTree = {
+  dateFolderId: string;
+  folders: Record<DateBucketName, string>;
+};
+
+const dateFolderIds = new Map<string, string>();
+const dateFolderCreates = new Map<string, Promise<DriveFolderChoice>>();
+const dateTreeBuilds = new Map<string, Promise<DateFolderTree>>();
+
+function dateFolderKey(parentId: string, name: string): string {
+  return `${parentId}\0${name}`;
+}
+
+/** Drop remembered folder ids so the next save looks them up again. */
+export function clearDateFolderCache(): void {
+  dateFolderIds.clear();
+}
+
+async function findChildFolderByName(
+  token: string,
+  parentId: string,
+  name: string,
+  fetcher: DriveFetch,
+): Promise<DriveFolderChoice | null> {
+  const key = dateFolderKey(parentId, name);
+  const cached = dateFolderIds.get(key);
+  if (cached) return { id: cached, name };
+  const query = [
+    `name='${driveQueryLiteral(name)}'`,
+    `'${driveQueryLiteral(parentId)}' in parents`,
+    `mimeType='${DRIVE_FOLDER_MIME}'`,
+    'trashed=false',
+  ].join(' and ');
+  const url =
+    'https://www.googleapis.com/drive/v3/files?pageSize=10&fields=files(id,name)&q=' + encodeURIComponent(query);
+  const data = await driveJson<{ files?: { id?: string; name?: string }[] }>(token, url, {}, fetcher);
+  const match = (data.files ?? []).find((file) => file.id && file.name === name);
+  if (!match?.id) return null;
+  dateFolderIds.set(key, match.id);
+  return { id: match.id, name: match.name || name };
+}
+
+async function createChildFolder(
+  token: string,
+  parentId: string,
+  name: string,
+  fetcher: DriveFetch,
+  appProperties: Record<string, string> | undefined,
+): Promise<DriveFolderChoice> {
+  const created = await driveJson<{ id?: string; name?: string }>(
+    token,
+    'https://www.googleapis.com/drive/v3/files?fields=id,name',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        name,
+        parents: [parentId],
+        mimeType: DRIVE_FOLDER_MIME,
+        appProperties: appProperties ?? { advantageRole: 'folder' },
+      }),
+    },
+    fetcher,
+  );
+  if (!created.id) throw new Error('Google Drive did not return the new folder.');
+  dateFolderIds.set(dateFolderKey(parentId, name), created.id);
+  return { id: created.id, name: created.name || name };
+}
+
+/**
+ * Find a direct child folder by name, or create it.
+ * Parallel calls for the same parent and name share one create.
+ * Ids are remembered for this page session.
+ */
+export async function findOrCreateChildFolder(
+  token: string,
+  parentId: string,
+  name: string,
+  fetcher: DriveFetch = fetch,
+  appProperties?: Record<string, string>,
+): Promise<DriveFolderChoice> {
+  const key = dateFolderKey(parentId, name);
+  const cached = dateFolderIds.get(key);
+  if (cached) return { id: cached, name };
+  const pending = dateFolderCreates.get(key);
+  if (pending) return pending;
+  const promise = (async () => {
+    const existing = await findChildFolderByName(token, parentId, name, fetcher);
+    if (existing) return existing;
+    return createChildFolder(token, parentId, name, fetcher, appProperties);
+  })().finally(() => {
+    dateFolderCreates.delete(key);
+  });
+  dateFolderCreates.set(key, promise);
+  return promise;
+}
+
+async function buildDateFolderTree(input: {
+  token: string;
+  rootFolderId: string;
+  dateKey: string;
+  fetcher: DriveFetch;
+}): Promise<DateFolderTree> {
+  const dateFolder = await findOrCreateChildFolder(input.token, input.rootFolderId, input.dateKey, input.fetcher, {
+    advantageRole: 'date',
+    date: input.dateKey,
+  });
+  const entries = await Promise.all(
+    DATE_BUCKET_NAMES.map(async (bucket) => {
+      const folder = await findOrCreateChildFolder(input.token, dateFolder.id, bucket, input.fetcher, {
+        advantageRole: bucket,
+        date: input.dateKey,
+      });
+      return [bucket, folder.id] as const;
+    }),
+  );
+  return {
+    dateFolderId: dateFolder.id,
+    folders: Object.fromEntries(entries) as Record<DateBucketName, string>,
+  };
+}
+
+/**
+ * Ensure `{root}/{YYYY-MM-DD}/` and the six locked buckets exist.
+ * Returns the date folder id and each bucket id. `lesson-plans` is where the
+ * lesson JSON is written.
+ */
+export async function ensureDateFolderTree(input: {
+  token: string;
+  rootFolderId: string;
+  dateKey: string;
+  fetcher?: DriveFetch;
+}): Promise<DateFolderTree> {
+  if (!DATE_FOLDER_NAME.test(input.dateKey)) {
+    throw new Error('Lesson date must be YYYY-MM-DD.');
+  }
+  const fetcher = input.fetcher ?? fetch;
+  const key = `${input.rootFolderId}\0${input.dateKey}`;
+  const pending = dateTreeBuilds.get(key);
+  if (pending) return pending;
+  const promise = buildDateFolderTree({
+    token: input.token,
+    rootFolderId: input.rootFolderId,
+    dateKey: input.dateKey,
+    fetcher,
+  }).finally(() => {
+    dateTreeBuilds.delete(key);
+  });
+  dateTreeBuilds.set(key, promise);
+  return promise;
+}
+
 export async function driveAccountEmail(token: string, fetcher: DriveFetch = fetch): Promise<string | null> {
   const about = await driveJson<{ user?: { emailAddress?: string } }>(
     token,
@@ -690,15 +868,10 @@ export async function driveAccountEmail(token: string, fetcher: DriveFetch = fet
   return about.user?.emailAddress ?? null;
 }
 
-export async function listFolderFiles(
-  token: string,
-  folderId: string,
-  fetcher: DriveFetch = fetch,
-): Promise<DriveFileMeta[]> {
+async function listFilesByQuery(token: string, query: string, fetcher: DriveFetch): Promise<DriveFileMeta[]> {
   const files: DriveFileMeta[] = [];
   let pageToken = '';
   for (let page = 0; page < 3; page += 1) {
-    const query = `'${driveQueryLiteral(folderId)}' in parents and trashed=false`;
     const url =
       'https://www.googleapis.com/drive/v3/files?pageSize=100&fields=' +
       encodeURIComponent('nextPageToken,files(id,name,mimeType,modifiedTime,thumbnailLink,appProperties)') +
@@ -709,6 +882,63 @@ export async function listFolderFiles(
     files.push(...(data.files ?? []));
     if (!data.nextPageToken) break;
     pageToken = data.nextPageToken;
+  }
+  return files;
+}
+
+export async function listFolderFiles(
+  token: string,
+  folderId: string,
+  fetcher: DriveFetch = fetch,
+): Promise<DriveFileMeta[]> {
+  const query = `'${driveQueryLiteral(folderId)}' in parents and trashed=false`;
+  return listFilesByQuery(token, query, fetcher);
+}
+
+const DATE_FOLDER_QUERY_CHUNK = 20;
+
+async function listFilesInParents(
+  token: string,
+  parentIds: readonly string[],
+  fetcher: DriveFetch,
+): Promise<DriveFileMeta[]> {
+  const unique = [...new Set(parentIds.filter((id) => id.length > 0))];
+  const files: DriveFileMeta[] = [];
+  for (let index = 0; index < unique.length; index += DATE_FOLDER_QUERY_CHUNK) {
+    const chunk = unique.slice(index, index + DATE_FOLDER_QUERY_CHUNK);
+    const parents = chunk.map((id) => `'${driveQueryLiteral(id)}' in parents`).join(' or ');
+    files.push(...(await listFilesByQuery(token, `(${parents}) and trashed=false`, fetcher)));
+  }
+  return files;
+}
+
+/** Files inside `YYYY-MM-DD/lesson-plans/` children of the connected root. */
+async function listDateLessonPlanFiles(
+  token: string,
+  rootFiles: readonly DriveFileMeta[],
+  fetcher: DriveFetch,
+): Promise<DriveFileMeta[]> {
+  const dateFolderIdsInRoot = rootFiles
+    .filter((file) => file.mimeType === DRIVE_FOLDER_MIME && DATE_FOLDER_NAME.test(file.name))
+    .map((file) => file.id);
+  if (dateFolderIdsInRoot.length === 0) return [];
+  const dateChildren = await listFilesInParents(token, dateFolderIdsInRoot, fetcher);
+  const lessonPlanIds = dateChildren
+    .filter((file) => file.mimeType === DRIVE_FOLDER_MIME && file.name === LESSON_PLANS_FOLDER)
+    .map((file) => file.id);
+  if (lessonPlanIds.length === 0) return [];
+  return listFilesInParents(token, lessonPlanIds, fetcher);
+}
+
+function mergeDriveFiles(groups: readonly (readonly DriveFileMeta[])[]): DriveFileMeta[] {
+  const seen = new Set<string>();
+  const files: DriveFileMeta[] = [];
+  for (const group of groups) {
+    for (const file of group) {
+      if (!file.id || seen.has(file.id)) continue;
+      seen.add(file.id);
+      files.push(file);
+    }
   }
   return files;
 }
@@ -730,15 +960,38 @@ async function downloadJson(
   }
 }
 
+/**
+ * Class history reads the connected root, including flat files saved before
+ * the date tree, and also each `YYYY-MM-DD/lesson-plans/` child so a lesson
+ * written into the tree still shows up. A video that lives in `lesson-plans`
+ * is included the same way.
+ * TODO: when training videos and class photos move under the date folder,
+ * also list `training-videos/` and `class-photos/`. Roster, technique trees,
+ * and tournament results are not class-history rows in this slice.
+ */
 export async function loadClassHistory(
   token: string,
   folderId: string,
   fetcher: DriveFetch = fetch,
 ): Promise<ClassDay[]> {
-  const files = await listFolderFiles(token, folderId, fetcher);
+  const rootFiles = await listFolderFiles(token, folderId, fetcher);
+  let nestedLessonFiles: DriveFileMeta[] = [];
+  try {
+    nestedLessonFiles = await listDateLessonPlanFiles(token, rootFiles, fetcher);
+  } catch {
+    // A date-folder walk must not hide flat files already stored in the root.
+    nestedLessonFiles = [];
+  }
+  const files = mergeDriveFiles([rootFiles, nestedLessonFiles]);
   const lessons: { fileId: string; doc: DriveLessonDocument }[] = [];
-  const lessonFiles = files.filter(isLessonFile).slice(0, 40);
+  const lessonFiles = [
+    ...rootFiles.filter(isLessonFile).slice(0, 40),
+    ...nestedLessonFiles.filter(isLessonFile).slice(0, 40),
+  ];
+  const seenLessons = new Set<string>();
   for (const file of lessonFiles) {
+    if (seenLessons.has(file.id)) continue;
+    seenLessons.add(file.id);
     const raw = await downloadJson(token, file.id, fetcher);
     const doc = parseLessonDocument(raw);
     if (doc) lessons.push({ fileId: file.id, doc });
@@ -763,45 +1016,79 @@ function multipartRelated(metadata: unknown, json: string): { body: string; cont
   return { body, contentType: `multipart/related; boundary=${boundary}` };
 }
 
-export async function upsertLessonFile(input: {
-  token: string;
-  folderId: string;
-  document: DriveLessonDocument;
-  fetcher?: DriveFetch;
-}): Promise<{ fileId: string; revisions: number }> {
-  const fetcher = input.fetcher ?? fetch;
-  const name = lessonDriveFileName(input.document.date, input.document.coachName);
-  const query = `name='${driveQueryLiteral(name)}' and '${driveQueryLiteral(input.folderId)}' in parents and trashed=false`;
+function lessonAppProperties(document: DriveLessonDocument): Record<string, string> {
+  return {
+    advantage: 'lesson',
+    date: document.date,
+    coach: document.coachName.slice(0, 60),
+    coachName: document.coachName.slice(0, 80),
+    savedAt: String(document.savedAt),
+    kind: document.kind,
+  };
+}
+
+async function findFileIdInParent(
+  token: string,
+  parentId: string,
+  name: string,
+  fetcher: DriveFetch,
+): Promise<string | null> {
+  const query = `name='${driveQueryLiteral(name)}' and '${driveQueryLiteral(parentId)}' in parents and trashed=false`;
   const found = await driveJson<{ files?: { id: string }[] }>(
-    input.token,
+    token,
     'https://www.googleapis.com/drive/v3/files?pageSize=1&fields=files(id)&q=' + encodeURIComponent(query),
     {},
     fetcher,
   );
-  const existingId = found.files?.[0]?.id ?? null;
+  return found.files?.[0]?.id ?? null;
+}
+
+const lessonWriteTail = new Map<string, Promise<void>>();
+
+async function writeLessonFile(
+  input: {
+    token: string;
+    folderId: string;
+    document: DriveLessonDocument;
+    fetcher?: DriveFetch;
+  },
+  name: string,
+): Promise<{ fileId: string; revisions: number }> {
+  const fetcher = input.fetcher ?? fetch;
+  const tree = await ensureDateFolderTree({
+    token: input.token,
+    rootFolderId: input.folderId,
+    dateKey: input.document.date,
+    fetcher,
+  });
+  const parentId = tree.folders[LESSON_PLANS_FOLDER];
+  let existingId = await findFileIdInParent(input.token, parentId, name, fetcher);
+  let relocateFromRoot = false;
+  if (!existingId && parentId !== input.folderId) {
+    existingId = await findFileIdInParent(input.token, input.folderId, name, fetcher);
+    relocateFromRoot = Boolean(existingId);
+  }
+  const appProperties = lessonAppProperties(input.document);
   const metadata = existingId
     ? {
         name,
         mimeType: 'application/json',
-        appProperties: {
-          advantage: 'lesson',
-          date: input.document.date,
-          coach: input.document.coachName.slice(0, 60),
-        },
+        appProperties,
       }
     : {
         name,
-        parents: [input.folderId],
+        parents: [parentId],
         mimeType: 'application/json',
-        appProperties: {
-          advantage: 'lesson',
-          date: input.document.date,
-          coach: input.document.coachName.slice(0, 60),
-        },
+        appProperties,
       };
   const payload = multipartRelated(metadata, JSON.stringify(input.document));
+  const uploadQuery = new URLSearchParams({ uploadType: 'multipart', fields: 'id' });
+  if (relocateFromRoot) {
+    uploadQuery.set('addParents', parentId);
+    uploadQuery.set('removeParents', input.folderId);
+  }
   const endpoint = existingId
-    ? `https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(existingId)}?uploadType=multipart&fields=id`
+    ? `https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(existingId)}?${uploadQuery.toString()}`
     : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id';
   const saved = await driveJson<{ id: string }>(
     input.token,
@@ -830,6 +1117,36 @@ export async function upsertLessonFile(input: {
   return { fileId, revisions };
 }
 
+/**
+ * Write lesson JSON into `{root}/{YYYY-MM-DD}/lesson-plans/`, creating the
+ * date folder and the six buckets when they are missing.
+ * `folderId` is the connected root. A same-named lesson that still sits in
+ * that root is updated and moved into `lesson-plans`.
+ * Writes for one file name run one after another so a draft save and the
+ * distribution nudge cannot create two copies.
+ */
+export async function upsertLessonFile(input: {
+  token: string;
+  folderId: string;
+  document: DriveLessonDocument;
+  fetcher?: DriveFetch;
+}): Promise<{ fileId: string; revisions: number }> {
+  const name = lessonDriveFileName(input.document.date, input.document.coachName);
+  const key = `${input.folderId}\0${name}`;
+  const previous = lessonWriteTail.get(key) ?? Promise.resolve();
+  const run = previous.catch(() => undefined).then(() => writeLessonFile(input, name));
+  const tail = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  lessonWriteTail.set(key, tail);
+  try {
+    return await run;
+  } finally {
+    if (lessonWriteTail.get(key) === tail) lessonWriteTail.delete(key);
+  }
+}
+
 export async function downloadDriveFile(token: string, fileId: string, fetcher: DriveFetch = fetch): Promise<Blob> {
   const response = await fetcher(
     `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`,
@@ -852,7 +1169,7 @@ export async function loadTodayDriveVideos(dateKey: string): Promise<{
 }
 
 /**
- * Write one lesson JSON into the connected folder.
+ * Write one lesson JSON into `{connected root}/{date}/lesson-plans/`.
  * Returns null when this browser has not connected Drive — the phone copy remains.
  */
 export async function publishLessonToDrive(document: DriveLessonDocument): Promise<{

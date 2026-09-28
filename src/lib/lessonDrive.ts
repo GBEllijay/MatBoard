@@ -11,7 +11,8 @@
  * hook those writes should use.
  *
  * When this browser has connected a Google Drive folder, a debounced write
- * sends the text plan and media file ids to that folder (`googleDrive.ts`).
+ * sends the text plan and media file ids to
+ * `{folder}/{YYYY-MM-DD}/lesson-plans/` (`googleDrive.ts`).
  * Photo and video bytes are not part of the write. Regular Coach does not
  * queue a Drive revision. If Drive is not connected, or the write fails, the
  * plan stays on this phone and the next edit tries again.
