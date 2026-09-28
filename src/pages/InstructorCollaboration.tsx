@@ -29,7 +29,6 @@ export function InstructorCollaborationPage() {
         <HomeMark to="/pro" />
         <section className="suite instructor-hub">
           <h2 className="instructor-hub__title">
-            <BeltRail kind="black" />
             <span>{INSTRUCTOR_COLLAB_NAME}</span>
           </h2>
           <p>

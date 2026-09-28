@@ -61,7 +61,7 @@ export type InstructorPreset = {
   permissions: InstructorPermissions;
 };
 
-/** Named starting wristbands. The stored booleans stay overridable after a pick. */
+/** Named starting binders. The stored booleans stay overridable after a pick. */
 export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
   {
     id: 'assistant-coach',
@@ -192,12 +192,12 @@ export function permissionsMatchPreset(
   return INSTRUCTOR_PERMISSION_FIELDS.every((field) => preset[field.key] === permissions[field.key]);
 }
 
-/** Wristband face label. The preset name stays even when toggles were changed after. */
-export function instructorSeatBandLabel(
+/** Binder label. The preset name stays even when toggles were changed after. */
+export function instructorSeatBinderLabel(
   presetId: InstructorPresetId | null,
   permissions: InstructorPermissions,
 ): string {
-  if (!presetId) return 'Custom wristband';
+  if (!presetId) return 'Custom binder';
   const name = instructorPreset(presetId).label;
   return permissionsMatchPreset(presetId, permissions) ? name : `${name} · adjusted`;
 }

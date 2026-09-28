@@ -918,7 +918,7 @@ button.mode-card {
 
 .suite h2.instructor-hub__title {
   position: relative;
-  padding: 1rem 1.1rem 1rem 1.45rem;
+  padding: 1rem 1.1rem;
   border-radius: 18px;
   background: var(--white);
   color: var(--white-ink);
@@ -928,7 +928,7 @@ button.mode-card {
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
 }
 
-.suite h2.instructor-hub__title > span:not(.belt-rail) {
+.suite h2.instructor-hub__title > span {
   position: relative;
   z-index: 1;
 }
@@ -938,236 +938,197 @@ button.mode-card {
   gap: 0.85rem;
 }
 
-/* Tournament wristband: a clearance band, not a ticket or stub. */
-.wristband {
-  --band: #1457c2;
-  --band-deep: #082a62;
-  --band-ink: #f7f4ee;
-  --band-muted: #eef4ff;
+/* Three-ring binder. Color alone marks the invite tier. */
+.binder {
+  --binder: #2a3344;
+  --binder-spine: #1a2130;
+  --binder-ink: #f7f4ee;
+  --binder-muted: #d5deea;
   display: grid;
-  grid-template-columns: 2rem minmax(0, 1fr) 1.35rem;
+  grid-template-columns: 2.4rem minmax(0, 1fr);
   align-items: stretch;
   margin: 0;
   border: 0;
-  border-radius: 1.5rem;
+  border-radius: 0.7rem 1.05rem 1.05rem 0.7rem;
   overflow: hidden;
-  color: var(--band-ink);
+  color: var(--binder-ink);
   text-align: left;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.28), transparent 22%),
-    linear-gradient(90deg, var(--band-deep), var(--band) 12%, var(--band) 88%, var(--band-deep));
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14), transparent 16%),
+    var(--binder);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.4),
-    inset 0 -3px 0 rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
     0 10px 22px rgba(0, 0, 0, 0.28);
 }
 
-.wristband--unset {
-  --band: #243044;
-  --band-deep: #121820;
-  --band-muted: #d5deea;
+.binder--assistant-coach,
+.binder-pick--assistant-coach {
+  --binder: #1d4ed8;
+  --binder-spine: #0c3270;
+  --binder-ink: #f7f4ee;
+  --binder-muted: #dbe7ff;
 }
 
-.wristband--assistant-coach,
-.preset-band--assistant-coach {
-  --band: #efebe3;
-  --band-deep: #c8c2b6;
-  --band-ink: #14161c;
-  --band-muted: #3a4150;
+.binder--coach,
+.binder-pick--coach {
+  --binder: #6b2d91;
+  --binder-spine: #3e1456;
+  --binder-ink: #f7f4ee;
+  --binder-muted: #f3e4ff;
 }
 
-.wristband--coach,
-.preset-band--coach {
-  --band: #1457c2;
-  --band-deep: #082a62;
-  --band-ink: #f7f4ee;
-  --band-muted: #eef4ff;
+.binder--program-director,
+.binder-pick--program-director {
+  --binder: #6b3a1f;
+  --binder-spine: #3f2212;
+  --binder-ink: #f7f4ee;
+  --binder-muted: #f3e0d2;
 }
 
-.wristband--program-director,
-.preset-band--program-director {
-  --band: #6b2d91;
-  --band-deep: #3d1458;
-  --band-ink: #f7f4ee;
-  --band-muted: #f6ebff;
+.binder--instructors,
+.binder-pick--instructors {
+  --binder: #16181d;
+  --binder-spine: #0a0b0e;
+  --binder-ink: #f7f4ee;
+  --binder-muted: #d8dbe3;
 }
 
-.wristband--instructors,
-.preset-band--instructors {
-  --band: #f0c24b;
-  --band-deep: #a87408;
-  --band-ink: #14161c;
-  --band-muted: #3d3208;
+.binder--revoked {
+  filter: grayscale(0.85);
+  opacity: 0.72;
 }
 
-.wristband--revoked {
-  filter: grayscale(0.9);
-  opacity: 0.7;
+.binder__rings {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.7rem 0;
+  background: var(--binder-spine);
+  box-shadow: inset -8px 0 10px rgba(0, 0, 0, 0.22);
 }
 
-.wristband__clasp,
-.wristband__tail {
-  position: relative;
-  background: var(--band-deep);
-}
-
-.wristband__clasp::before {
-  content: '';
-  position: absolute;
-  top: calc(50% - 0.95rem);
-  left: 50%;
-  width: 0.42rem;
-  height: 0.42rem;
-  transform: translateX(-50%);
+.binder__rings > span {
+  display: block;
+  width: 0.95rem;
+  height: 0.95rem;
+  border: 3px solid #e4e7ee;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.5);
-  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.45);
+  background:
+    radial-gradient(circle at 32% 28%, #ffffff, #d5dae3 46%, #9aa1ad 78%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 0 0 2px rgba(18, 20, 26, 0.35);
 }
 
-.wristband--assistant-coach .wristband__clasp::after,
-.wristband--coach .wristband__clasp::after,
-.wristband--program-director .wristband__clasp::after,
-.wristband--instructors .wristband__clasp::after,
-.wristband--unset .wristband__clasp::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(50% + 0.15rem);
-  height: 0.48rem;
-}
-
-.wristband--assistant-coach .wristband__clasp::after,
-.wristband--coach .wristband__clasp::after,
-.wristband--instructors .wristband__clasp::after {
-  background: #14161c;
-}
-
-.wristband--program-director .wristband__clasp::after {
-  background: #f0c24b;
-}
-
-.wristband--unset .wristband__clasp::after {
-  background: rgba(255, 255, 255, 0.4);
-}
-
-.wristband--assistant-coach .invite-switch,
-.wristband--instructors .invite-switch,
-.wristband--assistant-coach .btn--ghost,
-.wristband--instructors .btn--ghost {
-  background: rgba(20, 22, 28, 0.08);
-  color: var(--band-ink);
-  border-color: rgba(20, 22, 28, 0.28);
-}
-
-.wristband--assistant-coach .invite-switch--on,
-.wristband--instructors .invite-switch--on {
-  background: rgba(252, 192, 0, 0.72);
-  color: #14161c;
-  border-color: rgba(20, 22, 28, 0.35);
-}
-
-.preset-bands {
+.binder-picks {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.5rem;
 }
 
-.preset-band {
+.binder-pick {
   display: grid;
-  grid-template-columns: 0.7rem minmax(0, 1fr);
+  grid-template-columns: 1.7rem minmax(0, 1fr);
   align-items: stretch;
-  min-height: 4.25rem;
+  min-height: 4.6rem;
   padding: 0;
   border: 2px solid transparent;
-  border-radius: 999px;
+  border-radius: 0.65rem;
   overflow: hidden;
   text-align: left;
-  color: var(--band-ink);
+  color: var(--binder-ink);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.28), transparent 42%),
-    linear-gradient(90deg, var(--band-deep), var(--band) 18%, var(--band));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 36%),
+    var(--binder);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
-.preset-band--on {
+.binder-pick .binder__rings {
+  padding: 0.35rem 0;
+  gap: 0.2rem;
+}
+
+.binder-pick .binder__rings > span {
+  width: 0.62rem;
+  height: 0.62rem;
+  border-width: 2px;
+}
+
+.binder-pick--on {
   border-color: var(--logo-yellow);
 }
 
-.preset-band__clasp {
-  background: var(--band-deep);
-}
-
-.preset-band__copy {
+.binder-pick__copy {
   display: grid;
   align-content: center;
   gap: 0.12rem;
   min-width: 0;
-  padding: 0.4rem 0.7rem 0.4rem 0.45rem;
+  padding: 0.45rem 0.65rem;
 }
 
-.preset-band__name,
-.preset-band__detail {
-  color: var(--band-ink);
+.binder-pick__name,
+.binder-pick__detail {
+  color: var(--binder-ink);
   line-height: 1.15;
 }
 
-.preset-band__name {
+.binder-pick__name {
   font-weight: 800;
   letter-spacing: -0.02em;
 }
 
-.preset-band__detail {
+.binder-pick__detail {
   font-size: 0.75rem;
   font-weight: 650;
-  color: var(--band-muted);
+  color: var(--binder-muted);
 }
 
-.wristband__face {
+.binder__cover {
   display: grid;
   gap: 0.55rem;
   min-width: 0;
-  padding: 1rem 0.85rem 1.05rem 0.7rem;
+  padding: 1rem 0.95rem 1.05rem 0.85rem;
 }
 
-.wristband__face > strong,
-.wristband-list > h3 {
+.binder__cover > strong,
+.binder-list > h3 {
   font-size: 1.15rem;
   letter-spacing: -0.03em;
 }
 
-.wristband__face > span,
-.wristband__face .invite-gym,
-.wristband__meta {
-  color: var(--band-muted);
+.binder__cover > span,
+.binder__cover .invite-gym {
+  color: var(--binder-muted);
   font-weight: 600;
   line-height: 1.4;
 }
 
-.wristband__kicker,
-.invite-gym {
+.binder__kicker,
+.binder .invite-gym {
   margin: 0;
-  color: var(--band-muted);
+  color: var(--binder-muted);
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.wristband__face > strong {
+.binder__cover > strong {
   overflow-wrap: anywhere;
 }
 
-.wristband-list {
+.binder-list {
   display: grid;
   gap: 0.65rem;
 }
 
-.wristband-list > h3 {
+.binder-list > h3 {
   margin: 0;
 }
 
-.wristband-list__empty {
+.binder-list__empty {
   margin: 0;
   color: var(--muted);
   font-weight: 600;
@@ -1187,7 +1148,7 @@ button.mode-card {
   border-radius: 1.1rem;
   border: 1px solid rgba(255, 255, 255, 0.22);
   background: rgba(0, 0, 0, 0.28);
-  color: var(--band-ink);
+  color: var(--binder-ink);
 }
 
 .invite-link p,
@@ -1213,7 +1174,7 @@ button.mode-card {
 .invite-permissions legend {
   margin-bottom: 0.15rem;
   padding: 0;
-  color: var(--band-muted, var(--gold-2));
+  color: var(--binder-muted, var(--gold-2));
   font-size: 0.78rem;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -1230,7 +1191,7 @@ button.mode-card {
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.22);
   background: rgba(0, 0, 0, 0.28);
-  color: var(--band-ink, var(--ink));
+  color: var(--binder-ink, var(--ink));
   text-align: left;
 }
 
@@ -1284,15 +1245,15 @@ button.mode-card {
   text-transform: uppercase;
 }
 
-.wristband .btn {
+.binder .btn {
   width: 100%;
   white-space: normal;
   line-height: 1.2;
 }
 
-.wristband .btn--ghost {
+.binder .btn--ghost {
   background: rgba(255, 255, 255, 0.12);
-  color: var(--band-ink);
+  color: var(--binder-ink);
   border-color: rgba(255, 255, 255, 0.35);
 }
 

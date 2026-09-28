@@ -9,7 +9,7 @@ import {
   defaultInstructorPermissions,
   instructorInviteLink,
   instructorPresetPermissions,
-  instructorSeatBandLabel,
+  instructorSeatBinderLabel,
   issueInstructorInvite,
   permissionsMatchPreset,
   listInstructorSeats,
@@ -275,7 +275,7 @@ test('a stored seat with a missing permission fills that default on read', () =>
   assert.equal(seat.presetId, null);
 });
 
-test('four wristband presets fill the toggles and stay overridable', () => {
+test('four binder presets fill the toggles and stay overridable', () => {
   const assistant = instructorPresetPermissions('assistant-coach');
   assert.deepEqual(assistant, {
     galleryUpload: false,
@@ -299,9 +299,9 @@ test('four wristband presets fill the toggles and stay overridable', () => {
   assert.equal(permissionsMatchPreset('instructors', instructors), true);
   const adjusted = { ...instructors, galleryUpload: false };
   assert.equal(permissionsMatchPreset('instructors', adjusted), false);
-  assert.equal(instructorSeatBandLabel('instructors', adjusted), 'Instructors · adjusted');
-  assert.equal(instructorSeatBandLabel(null, adjusted), 'Custom wristband');
-  assert.equal(instructorSeatBandLabel('assistant-coach', assistant), 'Assistant coach');
+  assert.equal(instructorSeatBinderLabel('instructors', adjusted), 'Instructors · adjusted');
+  assert.equal(instructorSeatBinderLabel(null, adjusted), 'Custom binder');
+  assert.equal(instructorSeatBinderLabel('assistant-coach', assistant), 'Assistant coach');
 
   reset();
   const issued = issueInstructorInvite({

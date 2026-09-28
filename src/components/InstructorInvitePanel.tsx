@@ -6,7 +6,7 @@ import {
   defaultInstructorPermissions,
   instructorInviteLink,
   instructorPresetPermissions,
-  instructorSeatBandLabel,
+  instructorSeatBinderLabel,
   issueInstructorInvite,
   listInstructorSeats,
   revokeInstructorSeat,
@@ -129,19 +129,19 @@ export function InstructorInvitePanel() {
 
   return (
     <div className="invite-panel">
-      <form className={`wristband wristband--${formKind}`} onSubmit={submitInvite}>
-        <span className="wristband__clasp" aria-hidden="true" />
-        <div className="wristband__face">
-          <p className="wristband__kicker">Owner only · Soft beta</p>
+      <form className={`binder binder--${formKind}`} onSubmit={submitInvite}>
+        <BinderRings />
+        <div className="binder__cover">
+          <p className="binder__kicker">Owner only · Soft beta</p>
           <strong>Generate instructor invite</strong>
           <span>
-            Pick a wristband, then change any switch for this person. The link stays on this
+            Pick a binder, then change any switch for this person. The link stays on this
             device. Nothing is emailed, billed, or capped.
           </span>
           {gymName ? <span className="invite-gym">Gym · {gymName}</span> : null}
           {issued ? (
             <div className="invite-link" role="status" ref={issuedRef}>
-              <p>Wristband on {issued.email}. Status is invited.</p>
+              <p>Binder for {issued.email}. Status is invited.</p>
               <label htmlFor={`${formId}-issued-link`}>
                 Invite link
                 <input
@@ -163,7 +163,7 @@ export function InstructorInvitePanel() {
               ) : null}
             </div>
           ) : null}
-          <PresetBands
+          <PresetBinders
             selected={presetId}
             onSelect={(id) => {
               setPresetId(id);
@@ -200,11 +200,10 @@ export function InstructorInvitePanel() {
             Issue invite
           </button>
         </div>
-        <span className="wristband__tail" aria-hidden="true" />
       </form>
 
-      <section className="wristband-list" aria-labelledby={`${formId}-seats`}>
-        <h3 id={`${formId}-seats`}>Wristbands</h3>
+      <section className="binder-list" aria-labelledby={`${formId}-seats`}>
+        <h3 id={`${formId}-seats`}>Binders</h3>
         {openSeats.length ? (
           <ul className="invite-seats">
             {openSeats.map((seat) => (
@@ -260,22 +259,22 @@ export function InstructorInvitePanel() {
             ))}
           </ul>
         ) : (
-          <p className="wristband-list__empty">
-            No wristbands on the mat yet. Issue an invite to put one on a coach.
+          <p className="binder-list__empty">
+            No binders yet. Issue an invite to hand a coach the class details.
           </p>
         )}
         {revokedSeats.length ? (
           <>
-            <h3 className="invite-revoked-title">Taken off</h3>
+            <h3 className="invite-revoked-title">Revoked</h3>
             <ul className="invite-seats">
               {revokedSeats.map((seat) => (
-                <WristbandShell key={seat.id} presetId={seat.presetId} revoked>
+                <BinderShell key={seat.id} presetId={seat.presetId} revoked>
                   <strong>{seat.email}</strong>
                   <span>
-                    {instructorSeatBandLabel(seat.presetId, seat.permissions)} · {statusLabel(seat.status)} ·{' '}
+                    {instructorSeatBinderLabel(seat.presetId, seat.permissions)} · {statusLabel(seat.status)} ·{' '}
                     {issuedLabel(seat.issuedAt)}
                   </span>
-                </WristbandShell>
+                </BinderShell>
               ))}
             </ul>
           </>
@@ -285,7 +284,17 @@ export function InstructorInvitePanel() {
   );
 }
 
-function WristbandShell({
+function BinderRings() {
+  return (
+    <span className="binder__rings" aria-hidden="true">
+      <span />
+      <span />
+      <span />
+    </span>
+  );
+}
+
+function BinderShell({
   presetId,
   revoked = false,
   children,
@@ -296,15 +305,14 @@ function WristbandShell({
 }) {
   const kind = presetId ?? 'unset';
   return (
-    <li className={`wristband wristband--${kind}${revoked ? ' wristband--revoked' : ''}`}>
-      <span className="wristband__clasp" aria-hidden="true" />
-      <div className="wristband__face">{children}</div>
-      <span className="wristband__tail" aria-hidden="true" />
+    <li className={`binder binder--${kind}${revoked ? ' binder--revoked' : ''}`}>
+      <BinderRings />
+      <div className="binder__cover">{children}</div>
     </li>
   );
 }
 
-function PresetBands({
+function PresetBinders({
   selected,
   onSelect,
 }: {
@@ -312,7 +320,7 @@ function PresetBands({
   onSelect: (id: InstructorPresetId) => void;
 }) {
   return (
-    <div className="preset-bands" role="radiogroup" aria-label="Wristband preset">
+    <div className="binder-picks" role="radiogroup" aria-label="Binder preset">
       {INSTRUCTOR_PRESETS.map((preset) => {
         const on = selected === preset.id;
         return (
@@ -321,13 +329,13 @@ function PresetBands({
             type="button"
             role="radio"
             aria-checked={on}
-            className={`preset-band preset-band--${preset.id}${on ? ' preset-band--on' : ''}`}
+            className={`binder-pick binder-pick--${preset.id}${on ? ' binder-pick--on' : ''}`}
             onClick={() => onSelect(preset.id)}
           >
-            <span className="preset-band__clasp" aria-hidden="true" />
-            <span className="preset-band__copy">
-              <span className="preset-band__name">{preset.label}</span>
-              <span className="preset-band__detail">{preset.detail}</span>
+            <BinderRings />
+            <span className="binder-pick__copy">
+              <span className="binder-pick__name">{preset.label}</span>
+              <span className="binder-pick__detail">{preset.detail}</span>
             </span>
           </button>
         );
@@ -411,10 +419,10 @@ function SeatRow({
   const shownPreset = editing ? draftPresetId : seat.presetId;
   const kind = shownPreset ?? 'unset';
   return (
-    <li className={`wristband wristband--${kind}`}>
-      <span className="wristband__clasp" aria-hidden="true" />
-      <div className="wristband__face">
-      <p className="wristband__kicker">{instructorSeatBandLabel(shownPreset, shown)}</p>
+    <li className={`binder binder--${kind}`}>
+      <BinderRings />
+      <div className="binder__cover">
+      <p className="binder__kicker">{instructorSeatBinderLabel(shownPreset, shown)}</p>
       <strong>{seat.email}</strong>
       <span>
         {statusLabel(seat.status)} · {issuedLabel(seat.issuedAt)}
@@ -422,7 +430,7 @@ function SeatRow({
       <span>{permissionSummary(shown)}</span>
       {editing && draft ? (
         <>
-          <PresetBands selected={draftPresetId} onSelect={onPreset} />
+          <PresetBinders selected={draftPresetId} onSelect={onPreset} />
           <PermissionSwitches
             legendId={`edit-${seat.id}`}
             permissions={draft}
@@ -439,13 +447,13 @@ function SeatRow({
         </>
       ) : confirming ? (
         <div className="invite-confirm" role="group" aria-label={`Revoke ${seat.email}`}>
-          <span>Take this wristband off {seat.email}?</span>
+          <span>Revoke the binder for {seat.email}?</span>
           <div className="invite-actions">
             <button type="button" className="btn" onClick={onRevoke}>
               Revoke
             </button>
             <button type="button" className="btn btn--ghost" onClick={onCancelRevoke}>
-              Keep wristband
+              Keep binder
             </button>
           </div>
         </div>
@@ -469,7 +477,6 @@ function SeatRow({
         </label>
       ) : null}
       </div>
-      <span className="wristband__tail" aria-hidden="true" />
     </li>
   );
 }
