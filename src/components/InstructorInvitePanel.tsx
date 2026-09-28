@@ -345,14 +345,14 @@ const BINDER_ART: Record<InstructorPresetId, { src: string; width: number; heigh
   instructors: { src: '/instructor-binders/instructor-black.png', width: 249, height: 254 },
 };
 
-function BinderIcon({ presetId }: { presetId: InstructorPresetId | null }) {
+function BinderIcon({ presetId, alt = '' }: { presetId: InstructorPresetId | null; alt?: string }) {
   if (!presetId) {
     return <span className="role-binder role-binder--unset" aria-hidden="true" />;
   }
   const art = BINDER_ART[presetId];
   return (
     <span className={`role-binder role-binder--${presetId}`}>
-      <img src={art.src} alt="" draggable={false} width={art.width} height={art.height} />
+      <img src={`${art.src}?v=labeled`} alt={alt} draggable={false} width={art.width} height={art.height} />
     </span>
   );
 }
@@ -381,9 +381,8 @@ function PresetBinders({
               className={`role-pick role-pick--${preset.id}${on ? ' role-pick--on' : ''}`}
               onClick={() => onSelect(preset.id)}
             >
-              <BinderIcon presetId={preset.id} />
+              <BinderIcon presetId={preset.id} alt={preset.label} />
               <PlanBadge presetId={preset.id} />
-              <span className="role-pick__name">{preset.label}</span>
               <span className="role-pick__detail">{preset.detail}</span>
             </button>
           );

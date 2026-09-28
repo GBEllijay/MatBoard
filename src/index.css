@@ -1102,15 +1102,6 @@ span.role-plan__mark {
   line-height: 1;
 }
 
-.role-pick__name {
-  color: #f4f6fb;
-  font-size: 0.98rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.15;
-  text-align: center;
-}
-
 .role-pick__detail {
   color: #9aa3b5;
   font-size: 0.78rem;
