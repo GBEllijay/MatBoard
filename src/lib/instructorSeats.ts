@@ -120,7 +120,7 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
     id: 'instructors',
     label: 'Instructor',
     plan: 'Coach Unlimited + Pro',
-    detail: 'TBD',
+    detail: 'Adds the slideshow for events, Pro Shop, and gallery',
     permissions: {
       galleryUpload: true,
       dailyLessonPlanAccess: true,
