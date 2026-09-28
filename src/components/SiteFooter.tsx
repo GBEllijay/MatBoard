@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import {
   SITE_ALPHA_LINE,
   SITE_FEEDBACK_EMAIL,
@@ -14,6 +15,10 @@ export function SiteFooter() {
         {SITE_FEEDBACK_LEAD}{' '}
         <a href={`mailto:${SITE_FEEDBACK_EMAIL}`}>{SITE_FEEDBACK_EMAIL}</a>
       </p>
+      <nav className="site-footer__legal" aria-label="Legal">
+        <Link to="/privacy">Privacy Policy</Link>
+        <Link to="/terms">Terms of Service</Link>
+      </nav>
     </footer>
   );
 }
