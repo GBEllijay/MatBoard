@@ -8,6 +8,7 @@ import { ScheduleMonthBoard } from '../components/ScheduleMonthBoard';
 import { ScheduleWeekBoard } from '../components/ScheduleWeekBoard';
 import { EventCastSlide } from '../components/EventCastSlide';
 import { ShopCastSlide } from '../components/ShopCastSlide';
+import { useCurrentSeat } from '../components/SeatSessionBar';
 import { ToolboxFolder } from '../components/ToolboxFolder';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { PlayExitMark } from '../components/PlayExitMark';
@@ -24,6 +25,7 @@ import {
   type EventsCastMode,
 } from '../lib/eventSlides';
 import { readGymLogo } from '../lib/gymLogo';
+import { seatPermissionAllows } from '../lib/instructorSeats';
 import { MEDIA_CONSOLE_INSTRUCTIONS, MEDIA_CONSOLE_NAME } from '../lib/productNames';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
@@ -89,6 +91,7 @@ import {
 } from '../lib/shopSlides';
 
 export function ScreensaverPage() {
+  const seat = useCurrentSeat();
   const [photos, setPhotos] = useState<StoredPhoto[]>([]);
   const [urlById, setUrlById] = useState<Record<string, string>>({});
   const [index, setIndex] = useState(0);
@@ -505,7 +508,15 @@ export function ScreensaverPage() {
         ) : null}
 
         <div className="saver-folders">
-          {FOLDERS.map((folder) => (
+          {FOLDERS.filter((folder) => {
+            if (!seat) return true;
+            if (folder.id === 'shop') return seatPermissionAllows(seat.permissions, 'proShopAccess');
+            if (folder.id === 'events') return seatPermissionAllows(seat.permissions, 'eventsAccess');
+            return true;
+          }).map((folder) => {
+            const galleryUpload =
+              folder.id !== 'gallery' || !seat || seatPermissionAllows(seat.permissions, 'galleryUpload');
+            return (
             <Fragment key={folder.id}>
             <ToolboxFolder
               folder={folder}
@@ -517,9 +528,11 @@ export function ScreensaverPage() {
                 setExpanded((prev) => (prev[folder.id] === next ? prev : { ...prev, [folder.id]: next }));
               }}
               onPlayToggle={commitFolderPlay}
-              onAdd={folder.ready ? () => openAdd(folder.id, 'photo') : undefined}
+              onAdd={folder.ready && galleryUpload ? () => openAdd(folder.id, 'photo') : undefined}
               onAddVideo={
-                folder.ready && folder.videoAddLabel ? () => openAdd(folder.id, 'video') : undefined
+                folder.ready && galleryUpload && folder.videoAddLabel
+                  ? () => openAdd(folder.id, 'video')
+                  : undefined
               }
               onClear={
                 folder.ready
@@ -594,7 +607,8 @@ export function ScreensaverPage() {
             />
             {folder.id === 'gallery' ? <ClassScheduleEntry /> : null}
             </Fragment>
-          ))}
+            );
+          })}
         </div>
 
         <section className="saver-settings">
@@ -658,6 +672,7 @@ export function ScreensaverPage() {
             </button>
           </div>
         </fieldset>
+        {!seat || seatPermissionAllows(seat.permissions, 'proShopAccess') ? (
         <fieldset>
           <legend>Pro Shop on the TV</legend>
           <div className="presets presets--shop" role="radiogroup" aria-label="Pro Shop on the TV">
@@ -680,6 +695,8 @@ export function ScreensaverPage() {
             sits on top and each QR sits under its photo.
           </p>
         </fieldset>
+        ) : null}
+        {!seat || seatPermissionAllows(seat.permissions, 'eventsAccess') ? (
         <fieldset>
           <legend>Events on the TV</legend>
           <div className="presets presets--shop" role="radiogroup" aria-label="Events on the TV">
@@ -702,6 +719,7 @@ export function ScreensaverPage() {
             right.
           </p>
         </fieldset>
+        ) : null}
         <fieldset>
           <legend>Video sound</legend>
           <p className="saver-sound-hint">

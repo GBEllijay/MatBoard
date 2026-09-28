@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { CollaborationGate, SeatSessionBar, useCurrentSeat } from '../components/SeatSessionBar';
 import { LessonMediaRail } from '../components/LessonMediaRail';
 import { OpenMyDrive } from '../components/OpenMyDrive';
 import { PlayExitMark } from '../components/PlayExitMark';
@@ -42,6 +43,7 @@ import {
   scheduleLessonDriveDraft,
   subscribeDriveNotice,
 } from '../lib/lessonDrive';
+import { seatPermissionAllows, visibleCoachControl } from '../lib/instructorSeats';
 import { listPhotos } from '../lib/photoStore';
 import { loadTechniqueBoard } from '../lib/techniqueStore';
 import type { VideoPlan } from '../lib/techniqueLogic';
@@ -120,6 +122,10 @@ export function TrainingNotesPage() {
   const navigate = useNavigate();
   const parent = useToolboxParent();
   const proSuite = useProUnlocked();
+  const seat = useCurrentSeat();
+  const showDownload = visibleCoachControl('downloadTodaysVideos', { owner: true, seat });
+  const showDistribute = visibleCoachControl('uploadForDistribution', { owner: proSuite, seat });
+  const lessonBlocked = seat !== null && !seatPermissionAllows(seat.permissions, 'dailyLessonPlanAccess');
   useCoachPageSwipe();
   const [boot] = useState(() => {
     const today = localDateKey();
@@ -442,13 +448,18 @@ export function TrainingNotesPage() {
           <h1>{TRAINING_NOTES_LABEL}</h1>
         </div>
       </header>
+      <SeatSessionBar />
       <p className="notes__lead">{NOTES_LEAD}</p>
+      {lessonBlocked ? (
+        <p className="notes__lead">This seat does not include the daily lesson plan.</p>
+      ) : null}
       {proSuite && driveNotice.text ? (
         <p className="notes__save" role="status">
           {driveNotice.text}
         </p>
       ) : null}
 
+      {lessonBlocked ? null : (
       <div className="notes__plan">
         <section className="notes__archive" aria-label="Saved days">
           <div className="notes__days">
@@ -484,8 +495,8 @@ export function TrainingNotesPage() {
             {planDayTitle(viewKey, todayKey)} · {planDayStamp(viewKey)}
             {editingToday ? '' : ' · View only'}
           </p>
+          <CollaborationGate show={showDownload}>
           <div className="notes__downloads">
-            {/* TODO(seat-permissions): hide when seatPermissionAllows(currentSeat, 'downloadTodaysVideos') is false. */}
             <button
               type="button"
               className="btn notes__download"
@@ -525,6 +536,7 @@ export function TrainingNotesPage() {
               </ul>
             ) : null}
           </div>
+          </CollaborationGate>
           {recentOpen ? (
             recent.length ? (
               <ul className="notes__recent">
@@ -681,8 +693,7 @@ export function TrainingNotesPage() {
           </label>
         </section>
 
-        {/* TODO(seat-permissions): hide unless seatPermissionAllows(currentSeat, 'uploadForDistribution'). Owners stay unchanged until a seat session exists. */}
-        {proSuite && editingToday ? (
+        {showDistribute && editingToday ? (
           <aside className="notes__distribute" aria-label="Instructor distribution">
             <p>{DISTRIBUTE_LEAD}</p>
             <button
@@ -709,6 +720,7 @@ export function TrainingNotesPage() {
           </aside>
         ) : null}
       </div>
+      )}
     </main>
   );
 }

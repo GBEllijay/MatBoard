@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { CollaborationGate } from '../components/CollaborationGate.ts';
 import { GYM_NAME_STORAGE_KEY, writeGymName } from './gymName.ts';
 import {
   DEFAULT_INSTRUCTOR_PERMISSIONS,
@@ -11,13 +14,17 @@ import {
   instructorPresetPermissions,
   instructorPresetPlan,
   instructorSeatBinderLabel,
+  acceptInstructorInvite,
   issueInstructorInvite,
   permissionsMatchPreset,
   listInstructorSeats,
   normalizeInstructorPermissions,
+  readCurrentSeat,
   revokeInstructorSeat,
   seatPermissionAllows,
+  signOutInstructorSeat,
   updateInstructorSeatPermissions,
+  visibleCoachControl,
   type InstructorPermissions,
   type InstructorSeat,
 } from './instructorSeats.ts';
@@ -339,6 +346,113 @@ test('four binder presets fill the toggles and stay overridable', () => {
   const edited = updateInstructorSeatPermissions(issued.seat.id, assistant, 'assistant-coach');
   assert.equal(edited.ok && edited.seat.presetId, 'assistant-coach');
   assert.equal(edited.ok && edited.seat.permissions.rosterSubmit, false);
+});
+
+test('accepting an assistant coach invite starts a seat session and gates controls', () => {
+  reset();
+  const assistant = instructorPresetPermissions('assistant-coach');
+  assert.deepEqual(assistant, {
+    galleryUpload: false,
+    dailyLessonPlanAccess: true,
+    rosterSubmit: false,
+    rosterPull: false,
+    downloadTodaysVideos: true,
+    uploadForDistribution: false,
+    eventsAccess: false,
+    proShopAccess: false,
+  });
+  const issued = issueInstructorInvite({
+    email: 'assistant@gym.com',
+    permissions: assistant,
+    presetId: 'assistant-coach',
+    origin: 'https://advantage.test',
+    token: 'assist-token',
+  });
+  assert.equal(issued.ok, true);
+  if (!issued.ok) return;
+  assert.equal(issued.seat.status, 'invited');
+
+  const accepted = acceptInstructorInvite('assist-token');
+  assert.equal(accepted.ok, true);
+  if (!accepted.ok) return;
+  assert.equal(accepted.seat.status, 'active');
+  assert.equal(accepted.seat.email, 'assistant@gym.com');
+  assert.equal(readCurrentSeat()?.id, accepted.seat.id);
+  assert.equal(listInstructorSeats()[0].status, 'active');
+
+  const seated = { owner: true, seat: accepted.seat };
+  assert.equal(visibleCoachControl('dailyLessonPlanAccess', seated), true);
+  assert.equal(visibleCoachControl('downloadTodaysVideos', seated), true);
+  assert.equal(visibleCoachControl('galleryUpload', seated), false);
+  assert.equal(visibleCoachControl('rosterSubmit', seated), false);
+  assert.equal(visibleCoachControl('rosterPull', seated), false);
+  assert.equal(visibleCoachControl('uploadForDistribution', seated), false);
+  assert.equal(visibleCoachControl('eventsAccess', seated), false);
+  assert.equal(visibleCoachControl('proShopAccess', seated), false);
+  assert.equal(visibleCoachControl('uploadForDistribution', { owner: true, seat: null }), true);
+  assert.equal(visibleCoachControl('downloadTodaysVideos', { owner: false, seat: null }), false);
+  assert.equal(visibleCoachControl('uploadForDistribution', { owner: true, seat: readCurrentSeat() }), false);
+
+  signOutInstructorSeat();
+  assert.equal(readCurrentSeat(), null);
+  assert.equal(visibleCoachControl('uploadForDistribution', { owner: true, seat: readCurrentSeat() }), true);
+
+  const resumed = acceptInstructorInvite('assist-token');
+  assert.equal(resumed.ok, true);
+  if (!resumed.ok) return;
+  assert.equal(resumed.seat.status, 'active');
+  assert.equal(readCurrentSeat()?.email, 'assistant@gym.com');
+
+  const missing = acceptInstructorInvite('missing-token');
+  assert.equal(missing.ok, false);
+  if (missing.ok) return;
+  assert.equal(missing.reason, 'missing');
+  assert.equal(readCurrentSeat()?.email, 'assistant@gym.com');
+
+  revokeInstructorSeat(accepted.seat.id);
+  const revoked = acceptInstructorInvite('assist-token');
+  assert.equal(revoked.ok, false);
+  if (revoked.ok) return;
+  assert.equal(revoked.reason, 'revoked');
+  assert.equal(readCurrentSeat(), null);
+
+  signOutInstructorSeat();
+  assert.equal(readCurrentSeat(), null);
+});
+
+test('the distribution control stays out of the tree when an assistant coach is signed in', () => {
+  reset();
+  const assistant = instructorPresetPermissions('assistant-coach');
+  const issued = issueInstructorInvite({
+    email: 'assistant@gym.com',
+    permissions: assistant,
+    presetId: 'assistant-coach',
+    origin: 'https://advantage.test',
+    token: 'assist-ui',
+  });
+  assert.equal(issued.ok, true);
+  if (!issued.ok) return;
+  const accepted = acceptInstructorInvite('assist-ui');
+  assert.equal(accepted.ok, true);
+  if (!accepted.ok) return;
+  const access = { owner: true, seat: accepted.seat };
+  const distribute = renderToStaticMarkup(
+    createElement(
+      CollaborationGate,
+      { show: visibleCoachControl('uploadForDistribution', access) },
+      createElement('button', null, 'Upload for instructor distribution'),
+    ),
+  );
+  assert.equal(distribute, '');
+  const download = renderToStaticMarkup(
+    createElement(
+      CollaborationGate,
+      { show: visibleCoachControl('downloadTodaysVideos', access) },
+      createElement('button', null, "Download today's videos"),
+    ),
+  );
+  assert.match(download, /Download today/);
+  assert.equal(distribute.includes('Upload'), false);
 });
 
 test('device guests have no seat, so collaboration controls stay hidden', () => {

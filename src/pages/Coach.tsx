@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { CoachToolsCard } from '../components/CoachToolsCard';
+import { InviteAccept, SeatSessionBar } from '../components/SeatSessionBar';
 import { HomeMark } from '../components/HomeMark';
 import { InstructionsButton } from '../components/InstructionsButton';
 import { SiteFooter } from '../components/SiteFooter';
@@ -15,6 +16,8 @@ export function CoachPage() {
       <div className="home__inner">
         <HomeMark to="/" tagline={<TierLine tier="Coach" detail={COACH_TOOLS_TEASER} />} />
 
+        <InviteAccept />
+        <SeatSessionBar />
         <nav className="home__modes" aria-label="Advantage Coach">
           <CoachToolsCard />
         </nav>
