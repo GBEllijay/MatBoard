@@ -338,20 +338,21 @@ function PlanBadge({ presetId }: { presetId: InstructorPresetId | null }) {
   );
 }
 
-const BINDER_ART: Record<InstructorPresetId, string> = {
-  'assistant-coach': '/instructor-binders/assistant-coach.png',
-  coach: '/instructor-binders/coach.png',
-  'program-director': '/instructor-binders/program-director.png',
-  instructors: '/instructor-binders/instructors.png',
+const BINDER_ART: Record<InstructorPresetId, { src: string; width: number; height: number }> = {
+  'assistant-coach': { src: '/instructor-binders/assistant-coach-blue.png', width: 245, height: 251 },
+  coach: { src: '/instructor-binders/coach-purple.png', width: 253, height: 251 },
+  'program-director': { src: '/instructor-binders/program-director-brown.png', width: 249, height: 254 },
+  instructors: { src: '/instructor-binders/instructor-black.png', width: 249, height: 254 },
 };
 
 function BinderIcon({ presetId }: { presetId: InstructorPresetId | null }) {
   if (!presetId) {
     return <span className="role-binder role-binder--unset" aria-hidden="true" />;
   }
+  const art = BINDER_ART[presetId];
   return (
     <span className={`role-binder role-binder--${presetId}`}>
-      <img src={BINDER_ART[presetId]} alt="" draggable={false} width={236} height={250} />
+      <img src={art.src} alt="" draggable={false} width={art.width} height={art.height} />
     </span>
   );
 }
