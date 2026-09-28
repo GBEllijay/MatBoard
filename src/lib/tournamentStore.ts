@@ -937,6 +937,50 @@ export function seedPlaceholder(index: number): string {
   return `Competitor ${index + 1}`;
 }
 
+/** Name on the card, or the same placeholder the bracket and scoreboard show. */
+export function displayBoutName(board: TournamentState, matchId: BracketMatchId, side: MatchSide): string {
+  const named = slotName(board, slotId(matchId, side)).trim();
+  if (named) return named;
+  const index = seedSlots(board).indexOf(slotId(matchId, side));
+  if (index >= 0) return seedPlaceholder(index);
+  return side === 'a' ? 'Competitor 1' : 'Competitor 2';
+}
+
+/**
+ * Keep a name typed on the scoreboard when that bracket slot is still empty.
+ * Generated placeholders ("Competitor 1") are not written back as real entries.
+ */
+export function applyEmptyBoutNames(
+  board: TournamentState,
+  matchId: BracketMatchId,
+  names: { a: string; b: string },
+): TournamentState {
+  let next = board;
+  for (const side of ['a', 'b'] as const) {
+    const typed = names[side].trim();
+    if (!typed) continue;
+    const id = slotId(matchId, side);
+    if (slotName(next, id).trim()) continue;
+    if (typed === displayBoutName(next, matchId, side)) continue;
+    next = applySlotName(next, id, typed);
+  }
+  return next;
+}
+
+export function rememberEmptyBoutNames(
+  matchId: BracketMatchId,
+  names: { a: string; b: string },
+): void {
+  const current = getTournament();
+  const next = applyEmptyBoutNames(current, matchId, names);
+  if (next === current) return;
+  for (const side of ['a', 'b'] as const) {
+    const id = slotId(matchId, side);
+    const after = slotName(next, id);
+    if (after !== slotName(current, id)) setSlotName(id, after);
+  }
+}
+
 export function bracketHasCompetitors(current: TournamentState): boolean {
   return seedSlots(current).some((id) => slotName(current, id).trim());
 }

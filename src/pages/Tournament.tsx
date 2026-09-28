@@ -26,7 +26,7 @@ import {
 import { EMPTY_BRACKET_BODY, EMPTY_BRACKET_TITLE, OWNER_BRACKET_CLOUD_NOTE } from '../lib/coachCopy';
 import { linkedBracketMatchId, openBracketBout, scoreboardPath, unlinkBracketBout } from '../lib/bracketBout';
 import { setBracketTheme } from '../lib/bracketTheme';
-import { kidsLiveLine, kidsPointsLine, kidsShowWin } from '../lib/kidsScoreboard';
+import { kidsLiveLine, kidsWinState } from '../lib/kidsScoreboard';
 import { rosterGymForName } from '../lib/rosterStore';
 import { tournamentToolLabel } from '../lib/productNames';
 import {
@@ -99,8 +99,11 @@ export function TournamentPage() {
   const seeds = seedSlots(tournament);
   const champion = slotName(tournament, 'champion');
   const liveMatchId = linkedBracketMatchId(match.bracketMatchId);
-  const kidsWin = kidsShowWin(kids.enabled, champion);
-  const kidsScore = kidsPointsLine(tournament.results['final-0']?.points);
+  const kidsCelebration = kidsWinState(kids.enabled, tournament);
+  const kidsWin = kidsCelebration.show;
+  const kidsChampion = kidsCelebration.name;
+  const kidsScore = kidsCelebration.scoreLine;
+  const champLabel = kidsWin ? kidsChampion : champion;
   const kidsLive =
     kids.enabled && liveMatchId && !kidsWin && !tournament.results[liveMatchId]
       ? kidsLiveLine({
@@ -320,7 +323,7 @@ export function TournamentPage() {
           <KidsBracketChrome
             skin={kids.skin}
             win={kidsWin}
-            champion={champion}
+            champion={kidsChampion}
             scoreLine={kidsScore}
             liveLine={kidsLive}
             liveMatch={kidsLive ? match : null}
@@ -353,16 +356,16 @@ export function TournamentPage() {
 
           <div className="bracket__finals">
             <MatchCard matchId="final-0" liveMatchId={liveMatchId} />
-            <div className={`bracket__champ${champion ? ' is-filled' : ''}${kidsWin ? ' is-kids-win' : ''}`}>
+            <div className={`bracket__champ${champLabel ? ' is-filled' : ''}${kidsWin ? ' is-kids-win' : ''}`}>
               <BeltRail kind="tournament" />
               <span>{kidsWin ? 'Winner' : 'Champion'}</span>
-              {champion ? (
+              {champLabel ? (
                 <p
                   className="bracket__champ-flash"
                   role="status"
-                  aria-label={kidsWin && kidsScore ? `${champion}, ${kidsScore}` : champion}
+                  aria-label={kidsWin && kidsScore ? `${kidsChampion}, ${kidsScore}` : champLabel}
                 >
-                  {champion}
+                  {champLabel}
                   {kidsWin && kidsScore ? <strong className="kids-champ-score">{kidsScore}</strong> : null}
                 </p>
               ) : null}
