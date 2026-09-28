@@ -1028,11 +1028,30 @@ button.mode-card {
   gap: 0.5rem;
 }
 
+.binder-plan {
+  display: inline-flex;
+  align-self: start;
+  justify-self: start;
+  width: max-content;
+  max-width: 100%;
+  margin: 0;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(247, 244, 238, 0.45);
+  background: rgba(0, 0, 0, 0.28);
+  color: var(--binder-ink, #f7f4ee);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  line-height: 1.25;
+  text-transform: none;
+}
+
 .binder-pick {
   display: grid;
   grid-template-columns: 1.7rem minmax(0, 1fr);
   align-items: stretch;
-  min-height: 4.6rem;
+  min-height: 5.35rem;
   padding: 0;
   border: 2px solid transparent;
   border-radius: 0.65rem;
@@ -1098,7 +1117,7 @@ button.mode-card {
   letter-spacing: -0.03em;
 }
 
-.binder__cover > span,
+.binder__cover > span:not(.binder-plan),
 .binder__cover .invite-gym {
   color: var(--binder-muted);
   font-weight: 600;

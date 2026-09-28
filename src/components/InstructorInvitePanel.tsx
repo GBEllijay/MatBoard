@@ -6,6 +6,7 @@ import {
   defaultInstructorPermissions,
   instructorInviteLink,
   instructorPresetPermissions,
+  instructorPresetPlan,
   instructorSeatBinderLabel,
   issueInstructorInvite,
   listInstructorSeats,
@@ -21,6 +22,7 @@ import {
 type IssuedLink = {
   email: string;
   link: string;
+  plan: ReturnType<typeof instructorPresetPlan>;
 };
 
 function statusLabel(status: SeatStatus): string {
@@ -120,7 +122,11 @@ export function InstructorInvitePanel() {
     setEmail('');
     setPresetId(null);
     setPermissions(defaultInstructorPermissions());
-    setIssued({ email: result.seat.email, link: result.inviteLink });
+    setIssued({
+      email: result.seat.email,
+      link: result.inviteLink,
+      plan: instructorPresetPlan(presetId),
+    });
     setCopiedId(null);
     setCopyFailedId(null);
   };
@@ -134,6 +140,7 @@ export function InstructorInvitePanel() {
         <div className="binder__cover">
           <p className="binder__kicker">Owner only · Soft beta</p>
           <strong>Generate instructor invite</strong>
+          <PlanBadge presetId={presetId} />
           <span>
             Pick a binder, then change any switch for this person. The link stays on this
             device. Nothing is emailed, billed, or capped.
@@ -142,6 +149,7 @@ export function InstructorInvitePanel() {
           {issued ? (
             <div className="invite-link" role="status" ref={issuedRef}>
               <p>Binder for {issued.email}. Status is invited.</p>
+              {issued.plan ? <span className="binder-plan">{issued.plan}</span> : null}
               <label htmlFor={`${formId}-issued-link`}>
                 Invite link
                 <input
@@ -270,6 +278,7 @@ export function InstructorInvitePanel() {
               {revokedSeats.map((seat) => (
                 <BinderShell key={seat.id} presetId={seat.presetId} revoked>
                   <strong>{seat.email}</strong>
+                  <PlanBadge presetId={seat.presetId} />
                   <span>
                     {instructorSeatBinderLabel(seat.presetId, seat.permissions)} · {statusLabel(seat.status)} ·{' '}
                     {issuedLabel(seat.issuedAt)}
@@ -282,6 +291,12 @@ export function InstructorInvitePanel() {
       </section>
     </div>
   );
+}
+
+function PlanBadge({ presetId }: { presetId: InstructorPresetId | null }) {
+  const plan = instructorPresetPlan(presetId);
+  if (!plan) return null;
+  return <span className="binder-plan">{plan}</span>;
 }
 
 function BinderRings() {
@@ -335,6 +350,7 @@ function PresetBinders({
             <BinderRings />
             <span className="binder-pick__copy">
               <span className="binder-pick__name">{preset.label}</span>
+              <PlanBadge presetId={preset.id} />
               <span className="binder-pick__detail">{preset.detail}</span>
             </span>
           </button>
@@ -423,6 +439,7 @@ function SeatRow({
       <BinderRings />
       <div className="binder__cover">
       <p className="binder__kicker">{instructorSeatBinderLabel(shownPreset, shown)}</p>
+      <PlanBadge presetId={shownPreset} />
       <strong>{seat.email}</strong>
       <span>
         {statusLabel(seat.status)} · {issuedLabel(seat.issuedAt)}

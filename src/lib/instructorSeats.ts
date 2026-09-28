@@ -54,9 +54,14 @@ export const INSTRUCTOR_PERMISSION_FIELDS: readonly {
 
 export type InstructorPresetId = 'assistant-coach' | 'coach' | 'program-director' | 'instructors';
 
+/** Product plan behind a named invite tier. Not stored separately from the preset. */
+export type InstructorPlanName = 'Coach Unlimited' | 'Coach Unlimited + Pro';
+
 export type InstructorPreset = {
   id: InstructorPresetId;
   label: string;
+  /** Which product plan this tier sits on. */
+  plan: InstructorPlanName;
   detail: string;
   permissions: InstructorPermissions;
 };
@@ -66,6 +71,7 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
   {
     id: 'assistant-coach',
     label: 'Assistant coach',
+    plan: 'Coach Unlimited',
     detail: 'Downloads only',
     permissions: {
       galleryUpload: false,
@@ -81,6 +87,7 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
   {
     id: 'coach',
     label: 'Coach',
+    plan: 'Coach Unlimited',
     detail: 'Lesson plan and daily videos',
     permissions: {
       galleryUpload: false,
@@ -96,6 +103,7 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
   {
     id: 'program-director',
     label: 'Program director',
+    plan: 'Coach Unlimited + Pro',
     detail: 'Events, Pro Shop, and gallery',
     permissions: {
       galleryUpload: true,
@@ -111,6 +119,7 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
   {
     id: 'instructors',
     label: 'Instructors',
+    plan: 'Coach Unlimited + Pro',
     detail: 'Everything on',
     permissions: {
       galleryUpload: true,
@@ -177,6 +186,12 @@ export function instructorPreset(id: InstructorPresetId): InstructorPreset {
 
 export function instructorPresetPermissions(id: InstructorPresetId): InstructorPermissions {
   return { ...instructorPreset(id).permissions };
+}
+
+/** Plan behind a named tier. A custom binder (no preset) has none. */
+export function instructorPresetPlan(presetId: InstructorPresetId | null): InstructorPlanName | null {
+  if (!presetId) return null;
+  return instructorPreset(presetId).plan;
 }
 
 export function normalizeInstructorPresetId(value: unknown): InstructorPresetId | null {

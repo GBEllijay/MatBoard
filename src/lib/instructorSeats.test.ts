@@ -9,6 +9,7 @@ import {
   defaultInstructorPermissions,
   instructorInviteLink,
   instructorPresetPermissions,
+  instructorPresetPlan,
   instructorSeatBinderLabel,
   issueInstructorInvite,
   permissionsMatchPreset,
@@ -302,6 +303,20 @@ test('four binder presets fill the toggles and stay overridable', () => {
   assert.equal(instructorSeatBinderLabel('instructors', adjusted), 'Instructors · adjusted');
   assert.equal(instructorSeatBinderLabel(null, adjusted), 'Custom binder');
   assert.equal(instructorSeatBinderLabel('assistant-coach', assistant), 'Assistant coach');
+  assert.deepEqual(
+    INSTRUCTOR_PRESETS.map((preset) => [preset.id, preset.plan]),
+    [
+      ['assistant-coach', 'Coach Unlimited'],
+      ['coach', 'Coach Unlimited'],
+      ['program-director', 'Coach Unlimited + Pro'],
+      ['instructors', 'Coach Unlimited + Pro'],
+    ],
+  );
+  assert.equal(instructorPresetPlan('assistant-coach'), 'Coach Unlimited');
+  assert.equal(instructorPresetPlan('coach'), 'Coach Unlimited');
+  assert.equal(instructorPresetPlan('program-director'), 'Coach Unlimited + Pro');
+  assert.equal(instructorPresetPlan('instructors'), 'Coach Unlimited + Pro');
+  assert.equal(instructorPresetPlan(null), null);
 
   reset();
   const issued = issueInstructorInvite({
