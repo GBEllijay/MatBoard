@@ -5,11 +5,13 @@ import {
   DEFAULT_INSTRUCTOR_PERMISSIONS,
   INSTRUCTOR_PERMISSION_FIELDS,
   INSTRUCTOR_SEATS_STORAGE_KEY,
+  INSTRUCTOR_PRESETS,
   defaultInstructorPermissions,
   instructorInviteLink,
-  instructorWristbandKind,
-  instructorWristbandLabel,
+  instructorPresetPermissions,
+  instructorSeatBandLabel,
   issueInstructorInvite,
+  permissionsMatchPreset,
   listInstructorSeats,
   normalizeInstructorPermissions,
   revokeInstructorSeat,
@@ -57,6 +59,8 @@ test('permission defaults and labels stay the soft-beta bundle', () => {
     rosterPull: true,
     downloadTodaysVideos: true,
     uploadForDistribution: true,
+    eventsAccess: false,
+    proShopAccess: false,
   });
   assert.deepEqual(
     INSTRUCTOR_PERMISSION_FIELDS.map((field) => field.label),
@@ -67,6 +71,8 @@ test('permission defaults and labels stay the soft-beta bundle', () => {
       'Roster pull',
       "Download today's videos",
       'Upload for instructor distribution',
+      'Events access',
+      'Pro Shop access',
     ],
   );
   assert.deepEqual(Object.keys(DEFAULT_INSTRUCTOR_PERMISSIONS), [
@@ -76,6 +82,8 @@ test('permission defaults and labels stay the soft-beta bundle', () => {
     'rosterPull',
     'downloadTodaysVideos',
     'uploadForDistribution',
+    'eventsAccess',
+    'proShopAccess',
   ]);
   const filled = normalizeInstructorPermissions({ rosterPull: false });
   assert.equal(filled.rosterPull, false);
@@ -93,6 +101,8 @@ test('issuing an invite stores an invited seat and a copyable link', () => {
     rosterPull: false,
     downloadTodaysVideos: true,
     uploadForDistribution: false,
+    eventsAccess: false,
+    proShopAccess: true,
   };
   const issued = issueInstructorInvite({
     email: '  Coach@Alliance.gym ',
@@ -260,15 +270,56 @@ test('a stored seat with a missing permission fills that default on read', () =>
   assert.equal(seat.permissions.dailyLessonPlanAccess, false);
   assert.equal(seat.permissions.downloadTodaysVideos, false);
   assert.equal(seat.permissions.uploadForDistribution, true);
+  assert.equal(seat.permissions.eventsAccess, false);
+  assert.equal(seat.permissions.proShopAccess, false);
+  assert.equal(seat.presetId, null);
 });
 
-test('gallery upload fastens the black belt wristband', () => {
-  const coach = defaultInstructorPermissions();
-  assert.equal(instructorWristbandKind(coach), 'coach');
-  assert.equal(instructorWristbandLabel('coach'), 'Coach wristband');
-  assert.equal(instructorWristbandKind({ ...coach, galleryUpload: true }), 'black');
-  assert.equal(instructorWristbandLabel('black'), 'Black belt wristband');
-  assert.equal(instructorWristbandKind({ ...coach, rosterPull: false }), 'coach');
+test('four wristband presets fill the toggles and stay overridable', () => {
+  const assistant = instructorPresetPermissions('assistant-coach');
+  assert.deepEqual(assistant, {
+    galleryUpload: false,
+    dailyLessonPlanAccess: true,
+    rosterSubmit: false,
+    rosterPull: false,
+    downloadTodaysVideos: true,
+    uploadForDistribution: false,
+    eventsAccess: false,
+    proShopAccess: false,
+  });
+  assert.deepEqual(instructorPresetPermissions('coach'), defaultInstructorPermissions());
+  const director = instructorPresetPermissions('program-director');
+  assert.equal(director.galleryUpload, true);
+  assert.equal(director.eventsAccess, true);
+  assert.equal(director.proShopAccess, true);
+  assert.equal(director.uploadForDistribution, true);
+  const instructors = instructorPresetPermissions('instructors');
+  assert.equal(INSTRUCTOR_PRESETS.length, 4);
+  assert.ok(INSTRUCTOR_PERMISSION_FIELDS.every((field) => instructors[field.key]));
+  assert.equal(permissionsMatchPreset('instructors', instructors), true);
+  const adjusted = { ...instructors, galleryUpload: false };
+  assert.equal(permissionsMatchPreset('instructors', adjusted), false);
+  assert.equal(instructorSeatBandLabel('instructors', adjusted), 'Instructors · adjusted');
+  assert.equal(instructorSeatBandLabel(null, adjusted), 'Custom wristband');
+  assert.equal(instructorSeatBandLabel('assistant-coach', assistant), 'Assistant coach');
+
+  reset();
+  const issued = issueInstructorInvite({
+    email: 'director@gym.com',
+    permissions: adjusted,
+    presetId: 'instructors',
+    origin: 'https://advantage.test',
+    now: 9,
+    token: 'tok-preset',
+  });
+  assert.equal(issued.ok, true);
+  if (!issued.ok) return;
+  assert.equal(issued.seat.presetId, 'instructors');
+  assert.equal(issued.seat.permissions.galleryUpload, false);
+  assert.equal(issued.seat.permissions.eventsAccess, true);
+  const edited = updateInstructorSeatPermissions(issued.seat.id, assistant, 'assistant-coach');
+  assert.equal(edited.ok && edited.seat.presetId, 'assistant-coach');
+  assert.equal(edited.ok && edited.seat.permissions.rosterSubmit, false);
 });
 
 test('device guests have no seat, so collaboration controls stay hidden', () => {

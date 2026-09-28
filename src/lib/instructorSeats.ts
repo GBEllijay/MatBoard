@@ -22,8 +22,11 @@ export type InstructorPermissions = {
   rosterPull: boolean;
   downloadTodaysVideos: boolean;
   uploadForDistribution: boolean;
+  eventsAccess: boolean;
+  proShopAccess: boolean;
 };
 
+/** Used when the owner has not picked a preset yet. Events and Pro Shop stay off. */
 export const DEFAULT_INSTRUCTOR_PERMISSIONS: InstructorPermissions = {
   galleryUpload: false,
   dailyLessonPlanAccess: true,
@@ -31,6 +34,8 @@ export const DEFAULT_INSTRUCTOR_PERMISSIONS: InstructorPermissions = {
   rosterPull: true,
   downloadTodaysVideos: true,
   uploadForDistribution: true,
+  eventsAccess: false,
+  proShopAccess: false,
 };
 
 export const INSTRUCTOR_PERMISSION_FIELDS: readonly {
@@ -43,6 +48,81 @@ export const INSTRUCTOR_PERMISSION_FIELDS: readonly {
   { key: 'rosterPull', label: 'Roster pull' },
   { key: 'downloadTodaysVideos', label: "Download today's videos" },
   { key: 'uploadForDistribution', label: 'Upload for instructor distribution' },
+  { key: 'eventsAccess', label: 'Events access' },
+  { key: 'proShopAccess', label: 'Pro Shop access' },
+];
+
+export type InstructorPresetId = 'assistant-coach' | 'coach' | 'program-director' | 'instructors';
+
+export type InstructorPreset = {
+  id: InstructorPresetId;
+  label: string;
+  detail: string;
+  permissions: InstructorPermissions;
+};
+
+/** Named starting wristbands. The stored booleans stay overridable after a pick. */
+export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
+  {
+    id: 'assistant-coach',
+    label: 'Assistant coach',
+    detail: 'Downloads only',
+    permissions: {
+      galleryUpload: false,
+      dailyLessonPlanAccess: true,
+      rosterSubmit: false,
+      rosterPull: false,
+      downloadTodaysVideos: true,
+      uploadForDistribution: false,
+      eventsAccess: false,
+      proShopAccess: false,
+    },
+  },
+  {
+    id: 'coach',
+    label: 'Coach',
+    detail: 'Lesson plan and daily videos',
+    permissions: {
+      galleryUpload: false,
+      dailyLessonPlanAccess: true,
+      rosterSubmit: true,
+      rosterPull: true,
+      downloadTodaysVideos: true,
+      uploadForDistribution: true,
+      eventsAccess: false,
+      proShopAccess: false,
+    },
+  },
+  {
+    id: 'program-director',
+    label: 'Program director',
+    detail: 'Events, Pro Shop, and gallery',
+    permissions: {
+      galleryUpload: true,
+      dailyLessonPlanAccess: true,
+      rosterSubmit: true,
+      rosterPull: true,
+      downloadTodaysVideos: true,
+      uploadForDistribution: true,
+      eventsAccess: true,
+      proShopAccess: true,
+    },
+  },
+  {
+    id: 'instructors',
+    label: 'Instructors',
+    detail: 'Everything on',
+    permissions: {
+      galleryUpload: true,
+      dailyLessonPlanAccess: true,
+      rosterSubmit: true,
+      rosterPull: true,
+      downloadTodaysVideos: true,
+      uploadForDistribution: true,
+      eventsAccess: true,
+      proShopAccess: true,
+    },
+  },
 ];
 
 export type InstructorSeat = {
@@ -51,6 +131,8 @@ export type InstructorSeat = {
   email: string;
   status: SeatStatus;
   issuedAt: number;
+  /** Preset the owner started from. Null when they issued without picking one. */
+  presetId: InstructorPresetId | null;
   permissions: InstructorPermissions;
   inviteToken: string;
 };
@@ -80,18 +162,44 @@ export function defaultInstructorPermissions(): InstructorPermissions {
   return { ...DEFAULT_INSTRUCTOR_PERMISSIONS };
 }
 
-export type InstructorWristbandKind = 'coach' | 'black';
+const PRESET_IDS: readonly InstructorPresetId[] = [
+  'assistant-coach',
+  'coach',
+  'program-director',
+  'instructors',
+];
 
-/**
- * Visual clearance band only. Gallery upload fastens the black belt wristband.
- * Every other bundle stays the coach band. Permissions remain the source of truth.
- */
-export function instructorWristbandKind(permissions: InstructorPermissions): InstructorWristbandKind {
-  return permissions.galleryUpload ? 'black' : 'coach';
+export function instructorPreset(id: InstructorPresetId): InstructorPreset {
+  const preset = INSTRUCTOR_PRESETS.find((item) => item.id === id);
+  if (!preset) return INSTRUCTOR_PRESETS[1];
+  return preset;
 }
 
-export function instructorWristbandLabel(kind: InstructorWristbandKind): string {
-  return kind === 'black' ? 'Black belt wristband' : 'Coach wristband';
+export function instructorPresetPermissions(id: InstructorPresetId): InstructorPermissions {
+  return { ...instructorPreset(id).permissions };
+}
+
+export function normalizeInstructorPresetId(value: unknown): InstructorPresetId | null {
+  return PRESET_IDS.find((id) => id === value) ?? null;
+}
+
+export function permissionsMatchPreset(
+  presetId: InstructorPresetId | null,
+  permissions: InstructorPermissions,
+): boolean {
+  if (!presetId) return false;
+  const preset = instructorPresetPermissions(presetId);
+  return INSTRUCTOR_PERMISSION_FIELDS.every((field) => preset[field.key] === permissions[field.key]);
+}
+
+/** Wristband face label. The preset name stays even when toggles were changed after. */
+export function instructorSeatBandLabel(
+  presetId: InstructorPresetId | null,
+  permissions: InstructorPermissions,
+): string {
+  if (!presetId) return 'Custom wristband';
+  const name = instructorPreset(presetId).label;
+  return permissionsMatchPreset(presetId, permissions) ? name : `${name} · adjusted`;
 }
 
 /** Missing keys use the soft-beta defaults. Only real booleans are kept. */
@@ -127,10 +235,11 @@ export function instructorInviteLink(token: string, origin: string): string {
  * Whether a Coach control should show for the current seat.
  *
  * TODO: Daily Lesson Plan, gallery upload, roster submit, roster pull,
- * today's video download, and "Upload for instructor distribution" do not
- * call this yet. A follow-up should hide each control when the signed-in
- * seat lacks that permission. Device guests have no seat (`permissions` is
- * null) and should hide all collaboration chrome. The owner hub is not a seat.
+ * today's video download, "Upload for instructor distribution", Events, and
+ * Pro Shop do not call this yet. A follow-up should hide each control when
+ * the signed-in seat lacks that permission. Device guests have no seat
+ * (`permissions` is null) and should hide all collaboration chrome. The
+ * owner hub is not a seat.
  */
 export function seatPermissionAllows(
   permissions: InstructorPermissions | null,
@@ -164,6 +273,7 @@ function readSeat(value: unknown): InstructorSeat | null {
     email: normalizeInviteEmail(row.email),
     status: row.status,
     issuedAt: row.issuedAt,
+    presetId: normalizeInstructorPresetId(row.presetId),
     permissions: normalizeInstructorPermissions(row.permissions),
     inviteToken: row.inviteToken,
   };
@@ -243,6 +353,7 @@ function openEmailTaken(seats: readonly InstructorSeat[], email: string): boolea
 export function issueInstructorInvite(input: {
   email: string;
   permissions?: Partial<InstructorPermissions>;
+  presetId?: InstructorPresetId | null;
   origin: string;
   now?: number;
   token?: string;
@@ -258,6 +369,7 @@ export function issueInstructorInvite(input: {
     email,
     status: 'invited',
     issuedAt: input.now ?? Date.now(),
+    presetId: normalizeInstructorPresetId(input.presetId),
     permissions: normalizeInstructorPermissions(input.permissions),
     inviteToken: token,
   };
@@ -274,12 +386,14 @@ export function issueInstructorInvite(input: {
 export function updateInstructorSeatPermissions(
   id: string,
   permissions: InstructorPermissions,
+  presetId?: InstructorPresetId | null,
 ): SeatWriteResult {
   const archive = readArchive();
   const seat = archive.seats.find((row) => row.id === id);
   if (!seat) return { ok: false, reason: 'missing' };
   if (seat.status === 'revoked') return { ok: false, reason: 'revoked' };
   seat.permissions = normalizeInstructorPermissions(permissions);
+  if (presetId !== undefined) seat.presetId = normalizeInstructorPresetId(presetId);
   if (!writeArchive(archive)) return { ok: false, reason: 'storage' };
   emitSeats();
   return { ok: true, seat: cloneSeat(seat) };

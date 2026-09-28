@@ -962,10 +962,42 @@ button.mode-card {
     0 10px 22px rgba(0, 0, 0, 0.28);
 }
 
-.wristband--black {
-  --band: #1a1c22;
-  --band-deep: #07080c;
-  --band-muted: #efeae2;
+.wristband--unset {
+  --band: #243044;
+  --band-deep: #121820;
+  --band-muted: #d5deea;
+}
+
+.wristband--assistant-coach,
+.preset-band--assistant-coach {
+  --band: #efebe3;
+  --band-deep: #c8c2b6;
+  --band-ink: #14161c;
+  --band-muted: #3a4150;
+}
+
+.wristband--coach,
+.preset-band--coach {
+  --band: #1457c2;
+  --band-deep: #082a62;
+  --band-ink: #f7f4ee;
+  --band-muted: #eef4ff;
+}
+
+.wristband--program-director,
+.preset-band--program-director {
+  --band: #6b2d91;
+  --band-deep: #3d1458;
+  --band-ink: #f7f4ee;
+  --band-muted: #f6ebff;
+}
+
+.wristband--instructors,
+.preset-band--instructors {
+  --band: #f0c24b;
+  --band-deep: #a87408;
+  --band-ink: #14161c;
+  --band-muted: #3d3208;
 }
 
 .wristband--revoked {
@@ -992,8 +1024,11 @@ button.mode-card {
   box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.45);
 }
 
+.wristband--assistant-coach .wristband__clasp::after,
 .wristband--coach .wristband__clasp::after,
-.wristband--black .wristband__clasp::after {
+.wristband--program-director .wristband__clasp::after,
+.wristband--instructors .wristband__clasp::after,
+.wristband--unset .wristband__clasp::after {
   content: '';
   position: absolute;
   left: 0;
@@ -1002,12 +1037,90 @@ button.mode-card {
   height: 0.48rem;
 }
 
-.wristband--coach .wristband__clasp::after {
+.wristband--assistant-coach .wristband__clasp::after,
+.wristband--coach .wristband__clasp::after,
+.wristband--instructors .wristband__clasp::after {
   background: #14161c;
 }
 
-.wristband--black .wristband__clasp::after {
-  background: #ef4444;
+.wristband--program-director .wristband__clasp::after {
+  background: #f0c24b;
+}
+
+.wristband--unset .wristband__clasp::after {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.wristband--assistant-coach .invite-switch,
+.wristband--instructors .invite-switch,
+.wristband--assistant-coach .btn--ghost,
+.wristband--instructors .btn--ghost {
+  background: rgba(20, 22, 28, 0.08);
+  color: var(--band-ink);
+  border-color: rgba(20, 22, 28, 0.28);
+}
+
+.wristband--assistant-coach .invite-switch--on,
+.wristband--instructors .invite-switch--on {
+  background: rgba(252, 192, 0, 0.72);
+  color: #14161c;
+  border-color: rgba(20, 22, 28, 0.35);
+}
+
+.preset-bands {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.preset-band {
+  display: grid;
+  grid-template-columns: 0.7rem minmax(0, 1fr);
+  align-items: stretch;
+  min-height: 4.25rem;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  overflow: hidden;
+  text-align: left;
+  color: var(--band-ink);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.28), transparent 42%),
+    linear-gradient(90deg, var(--band-deep), var(--band) 18%, var(--band));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.preset-band--on {
+  border-color: var(--logo-yellow);
+}
+
+.preset-band__clasp {
+  background: var(--band-deep);
+}
+
+.preset-band__copy {
+  display: grid;
+  align-content: center;
+  gap: 0.12rem;
+  min-width: 0;
+  padding: 0.4rem 0.7rem 0.4rem 0.45rem;
+}
+
+.preset-band__name,
+.preset-band__detail {
+  color: var(--band-ink);
+  line-height: 1.15;
+}
+
+.preset-band__name {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.preset-band__detail {
+  font-size: 0.75rem;
+  font-weight: 650;
+  color: var(--band-muted);
 }
 
 .wristband__face {

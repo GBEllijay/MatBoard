@@ -2,16 +2,18 @@ import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } fr
 import { useGymName } from '../hooks/useGymBrand';
 import {
   INSTRUCTOR_PERMISSION_FIELDS,
+  INSTRUCTOR_PRESETS,
   defaultInstructorPermissions,
   instructorInviteLink,
-  instructorWristbandKind,
-  instructorWristbandLabel,
+  instructorPresetPermissions,
+  instructorSeatBandLabel,
   issueInstructorInvite,
   listInstructorSeats,
   revokeInstructorSeat,
   subscribeInstructorSeats,
   updateInstructorSeatPermissions,
   type InstructorPermissions,
+  type InstructorPresetId,
   type InstructorSeat,
   type SeatStatus,
 } from '../lib/instructorSeats';
@@ -63,10 +65,12 @@ export function InstructorInvitePanel() {
   const seats = useInstructorSeats();
   const [email, setEmail] = useState('');
   const [permissions, setPermissions] = useState<InstructorPermissions>(() => defaultInstructorPermissions());
+  const [presetId, setPresetId] = useState<InstructorPresetId | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [issued, setIssued] = useState<IssuedLink | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<InstructorPermissions | null>(null);
+  const [draftPresetId, setDraftPresetId] = useState<InstructorPresetId | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copyFailedId, setCopyFailedId] = useState<string | null>(null);
@@ -104,6 +108,7 @@ export function InstructorInvitePanel() {
     const result = issueInstructorInvite({
       email,
       permissions,
+      presetId,
       origin,
     });
     if (!result.ok) {
@@ -113,13 +118,14 @@ export function InstructorInvitePanel() {
     }
     setError(null);
     setEmail('');
+    setPresetId(null);
     setPermissions(defaultInstructorPermissions());
     setIssued({ email: result.seat.email, link: result.inviteLink });
     setCopiedId(null);
     setCopyFailedId(null);
   };
 
-  const formKind = instructorWristbandKind(permissions);
+  const formKind = presetId ?? 'unset';
 
   return (
     <div className="invite-panel">
@@ -129,9 +135,8 @@ export function InstructorInvitePanel() {
           <p className="wristband__kicker">Owner only · Soft beta</p>
           <strong>Generate instructor invite</strong>
           <span>
-            Put a wristband on a coach. Gallery upload fastens the black belt band. Leave it off
-            for the coach band. The link stays on this device. Nothing is emailed, billed, or
-            capped.
+            Pick a wristband, then change any switch for this person. The link stays on this
+            device. Nothing is emailed, billed, or capped.
           </span>
           {gymName ? <span className="invite-gym">Gym · {gymName}</span> : null}
           {issued ? (
@@ -158,6 +163,13 @@ export function InstructorInvitePanel() {
               ) : null}
             </div>
           ) : null}
+          <PresetBands
+            selected={presetId}
+            onSelect={(id) => {
+              setPresetId(id);
+              setPermissions(instructorPresetPermissions(id));
+            }}
+          />
           <label className="invite-field" htmlFor={`${formId}-email`}>
             Instructor email
             <input
@@ -202,6 +214,7 @@ export function InstructorInvitePanel() {
                 origin={origin}
                 editing={editingId === seat.id}
                 draft={editingId === seat.id ? draft : null}
+                draftPresetId={editingId === seat.id ? draftPresetId : null}
                 confirming={confirmId === seat.id}
                 copied={copiedId === seat.id}
                 copyFailed={copyFailedId === seat.id}
@@ -210,26 +223,34 @@ export function InstructorInvitePanel() {
                   setConfirmId(null);
                   setEditingId(seat.id);
                   setDraft({ ...seat.permissions });
+                  setDraftPresetId(seat.presetId);
                 }}
                 onDraft={(key) =>
                   setDraft((current) => (current ? { ...current, [key]: !current[key] } : current))
                 }
-                onCancelEdit={() => {
-                  setEditingId(null);
-                  setDraft(null);
-                }}
-                onSave={() => {
-                  if (!draft) return;
-                  const saved = updateInstructorSeatPermissions(seat.id, draft);
-                  if (!saved.ok) return;
-                  setEditingId(null);
-                  setDraft(null);
-                }}
-                onAskRevoke={() => {
-                  setEditingId(null);
-                  setDraft(null);
-                  setConfirmId(seat.id);
-                }}
+                  onCancelEdit={() => {
+                    setEditingId(null);
+                    setDraft(null);
+                    setDraftPresetId(null);
+                  }}
+                  onSave={() => {
+                    if (!draft) return;
+                    const saved = updateInstructorSeatPermissions(seat.id, draft, draftPresetId);
+                    if (!saved.ok) return;
+                    setEditingId(null);
+                    setDraft(null);
+                    setDraftPresetId(null);
+                  }}
+                  onPreset={(id) => {
+                    setDraftPresetId(id);
+                    setDraft(instructorPresetPermissions(id));
+                  }}
+                  onAskRevoke={() => {
+                    setEditingId(null);
+                    setDraft(null);
+                    setDraftPresetId(null);
+                    setConfirmId(seat.id);
+                  }}
                 onCancelRevoke={() => setConfirmId(null)}
                 onRevoke={() => {
                   revokeInstructorSeat(seat.id);
@@ -248,11 +269,11 @@ export function InstructorInvitePanel() {
             <h3 className="invite-revoked-title">Taken off</h3>
             <ul className="invite-seats">
               {revokedSeats.map((seat) => (
-                <WristbandShell key={seat.id} permissions={seat.permissions} revoked>
+                <WristbandShell key={seat.id} presetId={seat.presetId} revoked>
                   <strong>{seat.email}</strong>
                   <span>
-                    {instructorWristbandLabel(instructorWristbandKind(seat.permissions))} ·{' '}
-                    {statusLabel(seat.status)} · {issuedLabel(seat.issuedAt)}
+                    {instructorSeatBandLabel(seat.presetId, seat.permissions)} · {statusLabel(seat.status)} ·{' '}
+                    {issuedLabel(seat.issuedAt)}
                   </span>
                 </WristbandShell>
               ))}
@@ -265,21 +286,53 @@ export function InstructorInvitePanel() {
 }
 
 function WristbandShell({
-  permissions,
+  presetId,
   revoked = false,
   children,
 }: {
-  permissions: InstructorPermissions;
+  presetId: InstructorPresetId | null;
   revoked?: boolean;
   children: ReactNode;
 }) {
-  const kind = instructorWristbandKind(permissions);
+  const kind = presetId ?? 'unset';
   return (
     <li className={`wristband wristband--${kind}${revoked ? ' wristband--revoked' : ''}`}>
       <span className="wristband__clasp" aria-hidden="true" />
       <div className="wristband__face">{children}</div>
       <span className="wristband__tail" aria-hidden="true" />
     </li>
+  );
+}
+
+function PresetBands({
+  selected,
+  onSelect,
+}: {
+  selected: InstructorPresetId | null;
+  onSelect: (id: InstructorPresetId) => void;
+}) {
+  return (
+    <div className="preset-bands" role="radiogroup" aria-label="Wristband preset">
+      {INSTRUCTOR_PRESETS.map((preset) => {
+        const on = selected === preset.id;
+        return (
+          <button
+            key={preset.id}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            className={`preset-band preset-band--${preset.id}${on ? ' preset-band--on' : ''}`}
+            onClick={() => onSelect(preset.id)}
+          >
+            <span className="preset-band__clasp" aria-hidden="true" />
+            <span className="preset-band__copy">
+              <span className="preset-band__name">{preset.label}</span>
+              <span className="preset-band__detail">{preset.detail}</span>
+            </span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -321,12 +374,14 @@ function SeatRow({
   origin,
   editing,
   draft,
+  draftPresetId,
   confirming,
   copied,
   copyFailed,
   onCopy,
   onEdit,
   onDraft,
+  onPreset,
   onCancelEdit,
   onSave,
   onAskRevoke,
@@ -337,12 +392,14 @@ function SeatRow({
   origin: string;
   editing: boolean;
   draft: InstructorPermissions | null;
+  draftPresetId: InstructorPresetId | null;
   confirming: boolean;
   copied: boolean;
   copyFailed: boolean;
   onCopy: (link: string) => void;
   onEdit: () => void;
   onDraft: (key: keyof InstructorPermissions) => void;
+  onPreset: (id: InstructorPresetId) => void;
   onCancelEdit: () => void;
   onSave: () => void;
   onAskRevoke: () => void;
@@ -351,12 +408,13 @@ function SeatRow({
 }) {
   const link = instructorInviteLink(seat.inviteToken, origin);
   const shown = editing && draft ? draft : seat.permissions;
-  const kind = instructorWristbandKind(shown);
+  const shownPreset = editing ? draftPresetId : seat.presetId;
+  const kind = shownPreset ?? 'unset';
   return (
     <li className={`wristband wristband--${kind}`}>
       <span className="wristband__clasp" aria-hidden="true" />
       <div className="wristband__face">
-      <p className="wristband__kicker">{instructorWristbandLabel(kind)}</p>
+      <p className="wristband__kicker">{instructorSeatBandLabel(shownPreset, shown)}</p>
       <strong>{seat.email}</strong>
       <span>
         {statusLabel(seat.status)} · {issuedLabel(seat.issuedAt)}
@@ -364,6 +422,7 @@ function SeatRow({
       <span>{permissionSummary(shown)}</span>
       {editing && draft ? (
         <>
+          <PresetBands selected={draftPresetId} onSelect={onPreset} />
           <PermissionSwitches
             legendId={`edit-${seat.id}`}
             permissions={draft}
