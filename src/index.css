@@ -938,7 +938,7 @@ button.mode-card {
   gap: 0.85rem;
 }
 
-/* Standalone three-ring binder icon. The cover is the tier color. The spine is white, except Instructors, which is red. */
+/* Standalone three-ring binder icon. The cover is the tier color. The spine is white, except Instructor, which is red. */
 .invite-form {
   --binder-ink: #f7f4ee;
   --binder-muted: #b7becc;
@@ -1273,10 +1273,9 @@ span.role-plan__mark {
 .seat-card__role {
   margin: 0;
   color: var(--binder-muted);
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: -0.02em;
 }
 
 .seat-card__body > strong {

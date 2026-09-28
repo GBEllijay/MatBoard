@@ -102,7 +102,7 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
   },
   {
     id: 'program-director',
-    label: 'Program director',
+    label: 'Program Director',
     plan: 'Coach Unlimited + Pro',
     detail: 'Events, Pro Shop, and gallery',
     permissions: {
@@ -118,7 +118,7 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
   },
   {
     id: 'instructors',
-    label: 'Instructors',
+    label: 'Instructor',
     plan: 'Coach Unlimited + Pro',
     detail: 'Everything on',
     permissions: {
