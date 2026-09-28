@@ -1124,12 +1124,17 @@ button.mode-card {
 }
 
 .role-binder--coach .role-binder__title,
-.role-binder--program-director .role-binder__title,
-.role-binder--instructors .role-binder__title {
+.role-binder--program-director .role-binder__title {
   padding: 0.22rem 0.32rem;
   border-radius: 0.22rem;
   background: #f4f1ea;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.role-binder--instructors .role-binder__title {
+  color: #f7f4ee;
+  background: transparent;
+  box-shadow: none;
 }
 
 .role-pick .role-binder__title {
