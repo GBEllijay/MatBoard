@@ -315,6 +315,15 @@ test('four binder presets fill the toggles and stay overridable', () => {
     ['Assistant Coach', 'Coach', 'Program Director', 'Instructor'],
   );
   assert.deepEqual(
+    INSTRUCTOR_PRESETS.map((preset) => preset.detail),
+    [
+      ['Lesson plans and daily videos', 'Downloads only'],
+      ['Lesson plans and daily videos with uploads'],
+      ['Events, Pro Shop, and gallery'],
+      ['Adds the slideshow for events, Pro Shop, and gallery'],
+    ],
+  );
+  assert.deepEqual(
     INSTRUCTOR_PRESETS.map((preset) => [preset.id, preset.plan]),
     [
       ['assistant-coach', 'Coach Unlimited'],

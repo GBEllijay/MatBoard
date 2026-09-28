@@ -336,6 +336,13 @@ function PlanBadge({ presetId }: { presetId: InstructorPresetId | null }) {
   );
 }
 
+const BINDER_ART: Record<InstructorPresetId, string> = {
+  'assistant-coach': '/instructor-binders/assistant-coach-blue.png',
+  coach: '/instructor-binders/coach-purple.png',
+  'program-director': '/instructor-binders/program-director-brown.png',
+  instructors: '/instructor-binders/instructor-black.png',
+};
+
 function RoleOptions({
   selected,
   onSelect,
@@ -357,11 +364,18 @@ function RoleOptions({
               type="button"
               role="radio"
               aria-checked={on}
-              className={`btn btn--white role-option${on ? ' role-option--on' : ''}`}
+              className={`role-option${on ? ' role-option--on' : ''}`}
               onClick={() => onSelect(preset.id)}
             >
-              <span className="role-option__name">{preset.label}</span>
-              <span className="role-option__detail">{preset.detail}</span>
+              <img src={`${BINDER_ART[preset.id]}?v=approved`} alt={preset.label} draggable={false} />
+              <PlanBadge presetId={preset.id} />
+              <span className="role-option__details">
+                {preset.detail.map((line) => (
+                  <span key={line} className="role-option__detail">
+                    {line}
+                  </span>
+                ))}
+              </span>
             </button>
           );
         })}
