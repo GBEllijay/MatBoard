@@ -938,7 +938,11 @@ button.mode-card {
   gap: 0.85rem;
 }
 
-/* Binder icons are cropped artwork from the owner reference. Custom seats use a plain charcoal mark. */
+.invite-stack {
+  display: grid;
+  gap: 0.85rem;
+}
+
 .invite-form {
   --binder-ink: #f7f4ee;
   --binder-muted: #b7becc;
@@ -972,85 +976,57 @@ button.mode-card {
   line-height: 1.4;
 }
 
-.role-chooser {
+.role-options {
   display: grid;
-  gap: 0.85rem;
-  margin: 0.15rem 0;
-  padding: 0.85rem 0.35rem 0.45rem;
-  border-radius: 1rem;
-  background: #05060a;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  background: transparent;
 }
 
-.role-chooser__title {
+.role-options__title {
   margin: 0;
   text-align: center;
-  color: #9aa0ae;
+  color: var(--muted);
   font-size: 0.74rem;
   font-weight: 800;
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
-.role-chooser__row {
+.role-options__row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1.15rem 0.75rem;
-  align-items: start;
+  gap: 0.55rem;
 }
 
-.role-pick {
-  display: grid;
-  justify-items: center;
-  align-content: start;
-  gap: 0.45rem;
-  width: 100%;
-  margin: 0;
-  padding: 0.2rem 0.1rem 0.15rem;
-  border: 0;
-  border-radius: 0.8rem;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-
-.role-pick:focus-visible {
-  outline: 2px solid var(--logo-yellow);
-  outline-offset: 3px;
-}
-
-.role-pick .role-binder {
-  width: 7.6rem;
-}
-
-.role-pick .role-plan {
-  font-size: 0.72rem;
-  padding: 0.2rem 0.65rem;
-}
-
-.role-pick--on .role-binder {
-  filter:
-    drop-shadow(0 0 0.45rem rgba(252, 192, 0, 0.9))
-    drop-shadow(0 14px 16px rgba(0, 0, 0, 0.55));
-}
-
-.role-binder {
-  display: block;
-  width: 5.6rem;
-  line-height: 0;
-  filter: drop-shadow(0 14px 16px rgba(0, 0, 0, 0.5));
-}
-
-.role-binder img {
-  display: block;
+.role-option.btn {
   width: 100%;
   height: auto;
+  flex-direction: column;
+  gap: 0.12rem;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.25;
+  padding: 0.75rem 1rem;
 }
 
-.role-binder--unset {
-  height: 6.45rem;
-  border-radius: 0.35rem 0.7rem 0.7rem 0.35rem;
-  background: #2a3344;
+.role-option__name,
+.role-option__detail {
+  color: var(--white-ink);
+}
+
+.role-option__name {
+  font-weight: 800;
+}
+
+.role-option__detail {
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.role-option--on {
+  box-shadow: 0 0 0 3px var(--logo-yellow);
 }
 
 .role-plan {
@@ -1102,19 +1078,10 @@ span.role-plan__mark {
   line-height: 1;
 }
 
-.role-pick__detail {
-  color: #9aa3b5;
-  font-size: 0.78rem;
-  font-weight: 650;
-  line-height: 1.25;
-  text-align: center;
-}
-
 .seat-card {
   --binder-ink: #f7f4ee;
   --binder-muted: #b7becc;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
   gap: 0.75rem;
   align-items: start;
   margin: 0;
@@ -1123,15 +1090,6 @@ span.role-plan__mark {
   background: #101218;
   color: var(--binder-ink);
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.28);
-}
-
-.seat-card .role-binder {
-  width: 3.55rem;
-  margin-top: 0.15rem;
-}
-
-.seat-card .role-binder--unset {
-  height: 4.05rem;
 }
 
 .seat-card .role-plan {
@@ -1201,15 +1159,6 @@ span.role-plan__mark {
   border: 1px solid rgba(255, 255, 255, 0.22);
   background: rgba(0, 0, 0, 0.28);
   color: var(--binder-ink);
-}
-
-.invite-link--icon {
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: start;
-}
-
-.invite-link .role-binder {
-  width: 3.15rem;
 }
 
 .invite-link .role-plan {

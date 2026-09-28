@@ -135,23 +135,19 @@ export function InstructorInvitePanel() {
 
   return (
     <div className="invite-panel">
-      <form className="invite-form" onSubmit={submitInvite}>
+      <form className="invite-stack" onSubmit={submitInvite}>
+        <div className="invite-form">
           <p className="invite-form__kicker">Owner only · Soft beta</p>
           <strong>Generate instructor invite</strong>
           <span className="invite-form__note">
-            Pick a binder, then change any switch for this person. The link stays on this
+            Pick a role, then change any switch for this person. The link stays on this
             device. Nothing is emailed, billed, or capped.
           </span>
           {gymName ? <span className="invite-gym">Gym · {gymName}</span> : null}
           {issued ? (
-            <div
-              className={`invite-link${issued.presetId ? ' invite-link--icon' : ''}`}
-              role="status"
-              ref={issuedRef}
-            >
-              {issued.presetId ? <BinderIcon presetId={issued.presetId} /> : null}
+            <div className="invite-link" role="status" ref={issuedRef}>
               <div className="invite-link__copy">
-              <p>Binder for {issued.email}. Status is invited.</p>
+              <p>Invite for {issued.email}. Status is invited.</p>
               <PlanBadge presetId={issued.presetId} />
               <label htmlFor={`${formId}-issued-link`}>
                 Invite link
@@ -175,13 +171,6 @@ export function InstructorInvitePanel() {
               </div>
             </div>
           ) : null}
-          <PresetBinders
-            selected={presetId}
-            onSelect={(id) => {
-              setPresetId(id);
-              setPermissions(instructorPresetPermissions(id));
-            }}
-          />
           <label className="invite-field" htmlFor={`${formId}-email`}>
             Instructor email
             <input
@@ -198,6 +187,15 @@ export function InstructorInvitePanel() {
               }}
             />
           </label>
+          </div>
+          <RoleOptions
+            selected={presetId}
+            onSelect={(id) => {
+              setPresetId(id);
+              setPermissions(instructorPresetPermissions(id));
+            }}
+          />
+          <div className="invite-form">
           <PermissionSwitches
             legendId={`${formId}-permissions`}
             permissions={permissions}
@@ -211,6 +209,7 @@ export function InstructorInvitePanel() {
           <button type="submit" className="btn">
             Issue invite
           </button>
+          </div>
       </form>
 
       <section className="binder-list" aria-labelledby={`${formId}-seats`}>
@@ -280,7 +279,6 @@ export function InstructorInvitePanel() {
             <ul className="invite-seats">
               {revokedSeats.map((seat) => (
                 <li key={seat.id} className="seat-card seat-card--revoked">
-                  <BinderIcon presetId={seat.presetId} />
                   <div className="seat-card__body">
                     <strong>{seat.email}</strong>
                     <PlanBadge presetId={seat.presetId} />
@@ -338,26 +336,14 @@ function PlanBadge({ presetId }: { presetId: InstructorPresetId | null }) {
   );
 }
 
-const BINDER_ART: Record<InstructorPresetId, { src: string; width: number; height: number }> = {
-  'assistant-coach': { src: '/instructor-binders/assistant-coach-blue.png', width: 245, height: 251 },
-  coach: { src: '/instructor-binders/coach-purple.png', width: 253, height: 251 },
-  'program-director': { src: '/instructor-binders/program-director-brown.png', width: 249, height: 254 },
-  instructors: { src: '/instructor-binders/instructor-black.png', width: 249, height: 254 },
+const ROLE_OPTION_LINES: Record<InstructorPresetId, readonly string[]> = {
+  'assistant-coach': ['Lesson plans and daily videos', 'Downloads only'],
+  coach: ['Lesson plans and daily videos with uploads'],
+  'program-director': ['Events, Pro Shop, and gallery'],
+  instructors: ['Adds the slideshow for events, Pro Shop, and gallery'],
 };
 
-function BinderIcon({ presetId, alt = '' }: { presetId: InstructorPresetId | null; alt?: string }) {
-  if (!presetId) {
-    return <span className="role-binder role-binder--unset" aria-hidden="true" />;
-  }
-  const art = BINDER_ART[presetId];
-  return (
-    <span className={`role-binder role-binder--${presetId}`}>
-      <img src={`${art.src}?v=approved`} alt={alt} draggable={false} width={art.width} height={art.height} />
-    </span>
-  );
-}
-
-function PresetBinders({
+function RoleOptions({
   selected,
   onSelect,
   heading = 'Choose role to invite',
@@ -367,9 +353,9 @@ function PresetBinders({
   heading?: string;
 }) {
   return (
-    <div className="role-chooser">
-      <p className="role-chooser__title">{heading}</p>
-      <div className="role-chooser__row" role="radiogroup" aria-label="Binder preset">
+    <div className="role-options">
+      <p className="role-options__title">{heading}</p>
+      <div className="role-options__row" role="radiogroup" aria-label="Instructor role">
         {INSTRUCTOR_PRESETS.map((preset) => {
           const on = selected === preset.id;
           return (
@@ -378,12 +364,15 @@ function PresetBinders({
               type="button"
               role="radio"
               aria-checked={on}
-              className={`role-pick role-pick--${preset.id}${on ? ' role-pick--on' : ''}`}
+              className={`btn btn--white role-option${on ? ' role-option--on' : ''}`}
               onClick={() => onSelect(preset.id)}
             >
-              <BinderIcon presetId={preset.id} alt={preset.label} />
-              <PlanBadge presetId={preset.id} />
-              <span className="role-pick__detail">{preset.detail}</span>
+              <span className="role-option__name">{preset.label}</span>
+              {ROLE_OPTION_LINES[preset.id].map((line) => (
+                <span key={line} className="role-option__detail">
+                  {line}
+                </span>
+              ))}
             </button>
           );
         })}
@@ -467,7 +456,6 @@ function SeatRow({
   const shownPreset = editing ? draftPresetId : seat.presetId;
   return (
     <li className="seat-card">
-      <BinderIcon presetId={shownPreset} />
       <div className="seat-card__body">
       <p className="seat-card__role">{instructorSeatBinderLabel(shownPreset, shown)}</p>
       <PlanBadge presetId={shownPreset} />
@@ -478,7 +466,7 @@ function SeatRow({
       <span>{permissionSummary(shown)}</span>
       {editing && draft ? (
         <>
-          <PresetBinders heading="Change role" selected={draftPresetId} onSelect={onPreset} />
+          <RoleOptions heading="Change role" selected={draftPresetId} onSelect={onPreset} />
           <PermissionSwitches
             legendId={`edit-${seat.id}`}
             permissions={draft}
