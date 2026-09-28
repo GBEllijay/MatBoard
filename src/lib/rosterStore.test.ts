@@ -37,12 +37,14 @@ import {
   visibleReadyItems,
   type Student,
 } from './rosterStore.ts';
+import { StorageQuotaError } from './storageQuota.ts';
 
 function student(partial: Partial<Student> & Pick<Student, 'id' | 'name'>): Student {
   return {
     belt: 'Blue',
     gym: '',
     division: '',
+    photo: '',
     checkedIn: false,
     lastPromotion: '2026-03-12',
     note: 'Keep this off the scoreboard',
@@ -66,6 +68,7 @@ describe('studentFromInput', () => {
     assert.equal(next.belt, 'Purple');
     assert.equal(next.gym, 'Alliance');
     assert.equal(next.division, '');
+    assert.equal(next.photo, '');
     assert.equal(next.checkedIn, false);
     assert.equal(next.lastPromotion, '2026-03-12');
     assert.equal(next.note, 'Left knee');
@@ -143,6 +146,7 @@ describe('normalizeRoster', () => {
     assert.equal(next.students.find((row) => row.name === 'Alex')?.division, '');
     assert.equal(next.students.find((row) => row.name === 'Sam')?.checkedIn, false);
     assert.equal(next.students.find((row) => row.name === 'Alex')?.checkedIn, false);
+    assert.equal(next.students.find((row) => row.name === 'Sam')?.photo, '');
     assert.equal(next.students.some((row) => row.name === 'Duplicate id'), false);
   });
 });
@@ -606,5 +610,87 @@ describe('belt and date helpers', () => {
     assert.equal(normalizeDate('2026-03-12'), '2026-03-12');
     assert.equal(normalizeDate('03/12/2026'), '');
     assert.equal(formatPromotion('2026-03-12').includes('2026'), true);
+  });
+});
+
+describe('competitor face photo', () => {
+  const photo = 'data:image/jpeg;base64,aaaa';
+
+  it('stores a compact data url on the competitor and keeps it across other edits', () => {
+    resetRoster();
+    const added = addStudent({
+      name: 'Sam',
+      belt: 'Blue',
+      division: '',
+      gym: 'Moose',
+      lastPromotion: '',
+      note: '',
+      photo,
+    });
+    assert.ok(added);
+    assert.equal(added.photo, photo);
+    assert.equal(updateStudent(added.id, { note: 'Ready' })?.photo, photo);
+    assert.equal(updateStudent(added.id, { photo: '' })?.photo, '');
+    const junk = studentFromInput({
+      name: 'Sam',
+      belt: 'Blue',
+      photo: 'https://example.com/face.jpg',
+    });
+    assert.equal(junk?.photo, '');
+    const svg = studentFromInput({
+      name: 'Sam',
+      belt: 'Blue',
+      photo: 'data:image/svg+xml;base64,aaaa',
+    });
+    assert.equal(svg?.photo, '');
+    const loaded = normalizeRoster({
+      students: [{ id: 'p', name: 'Pat', belt: 'Purple', photo }],
+    });
+    assert.equal(loaded.students[0]?.photo, photo);
+    const dropped = normalizeRoster({
+      students: [{ id: 'p', name: 'Pat', belt: 'Purple', photo: `data:image/jpeg;base64,${'a'.repeat(40_000)}` }],
+    });
+    assert.equal(dropped.students[0]?.photo, '');
+    resetRoster();
+  });
+
+  it('leaves the saved competitor in place when storage rejects a larger photo', () => {
+    resetRoster();
+    const added = addStudent({
+      name: 'Sam',
+      belt: 'Blue',
+      division: '',
+      gym: '',
+      lastPromotion: '',
+      note: '',
+      photo,
+    });
+    assert.ok(added);
+    const prior = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: () => null,
+        setItem: () => {
+          const error = new Error('quota');
+          error.name = 'QuotaExceededError';
+          throw error;
+        },
+        removeItem: () => {},
+      },
+    });
+    try {
+      assert.throws(
+        () => updateStudent(added.id, { photo: 'data:image/jpeg;base64,bbbbbbbb' }),
+        (error: unknown) => error instanceof StorageQuotaError,
+      );
+      assert.equal(getRoster().students.find((row) => row.id === added.id)?.photo, photo);
+      assert.equal(updateStudent(added.id, { note: 'Ready' })?.note, 'Ready');
+      assert.equal(getRoster().students.find((row) => row.id === added.id)?.photo, photo);
+    } finally {
+      if (prior) Object.defineProperty(globalThis, 'localStorage', prior);
+      else Reflect.deleteProperty(globalThis, 'localStorage');
+      resetRoster();
+    }
   });
 });

@@ -3,6 +3,7 @@
  * Game plans and Competition Ready checklists live on this same save, keyed by competitor id.
  */
 
+import { clipCompetitorPhoto } from './competitorPhoto.ts';
 import {
   emptyGamePlan,
   normalizeGamePlan,
@@ -18,6 +19,7 @@ import {
   type GameLinkFlag,
   type GameSection,
 } from './gamePlan.ts';
+import { isStorageQuotaError, StorageQuotaError } from './storageQuota.ts';
 
 export const STORAGE_KEY = 'matboard.roster.v1';
 /** Competitor Notes on the roster card. */
@@ -37,8 +39,13 @@ export type Student = {
   belt: string;
   /** Bout division, such as Adult Blue or Kids Gi. Optional. Stays on the roster card. */
   division: string;
-  /** School or academy. Optional. Shown on the scoreboard and brackets. */
+  /** School, academy, or nickname. Optional. Shown on the scoreboard and brackets. */
   gym: string;
+  /**
+   * Compact face photo data URL. Empty when none. Stays on this device with the
+   * competitor. Not included in CSV.
+   */
+  photo: string;
   lastPromotion: string;
   /** Competitor Notes. Stays on this card. Older saves may also have knownInjuries; that field is dropped on read. */
   note: string;
@@ -108,6 +115,8 @@ export type StudentDraft = {
   gym: string;
   lastPromotion: string;
   note: string;
+  /** Compact face photo data URL. Omit or blank for no photo. */
+  photo?: string;
 };
 
 const listeners = new Set<() => void>();
@@ -207,7 +216,7 @@ export function dropSiblingCompetitor(extra: Record<string, unknown>, id: string
 }
 
 export function emptyDraft(): StudentDraft {
-  return { name: '', belt: '', division: '', gym: '', lastPromotion: '', note: '' };
+  return { name: '', belt: '', division: '', gym: '', lastPromotion: '', note: '', photo: '' };
 }
 
 export function draftFromStudent(student: Student): StudentDraft {
@@ -218,6 +227,7 @@ export function draftFromStudent(student: Student): StudentDraft {
     gym: student.gym,
     lastPromotion: student.lastPromotion,
     note: student.note,
+    photo: student.photo,
   };
 }
 
@@ -329,6 +339,7 @@ export function studentFromInput(
     belt,
     division: clipDivision(input.division ?? ''),
     gym: clipGym(input.gym ?? ''),
+    photo: clipCompetitorPhoto(input.photo),
     lastPromotion: normalizeDate(input.lastPromotion ?? ''),
     note: clipNote(input.note ?? ''),
     checkedIn: parseCheckedIn(input.checkedIn),
@@ -432,6 +443,7 @@ export function normalizeStudent(raw: unknown): Student | null {
     belt: typeof row.belt === 'string' ? row.belt : '',
     division: typeof row.division === 'string' ? row.division : '',
     gym: typeof row.gym === 'string' ? row.gym : '',
+    photo: typeof row.photo === 'string' ? row.photo : '',
     lastPromotion: typeof row.lastPromotion === 'string' ? row.lastPromotion : '',
     note: typeof row.note === 'string' ? row.note : '',
     checkedIn: row.checkedIn,
@@ -539,15 +551,24 @@ function loadState(): RosterState {
   }
 }
 
+function photoPayloadSize(roster: RosterState): number {
+  return roster.students.reduce((sum, row) => sum + row.photo.length, 0);
+}
+
 function persist(next: RosterState): void {
-  state = next;
+  const payload = JSON.stringify(rosterSavePayload(next, siblings));
+  const growingPhotos = photoPayloadSize(next) > photoPayloadSize(state);
   try {
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(rosterSavePayload(state, siblings)));
+      localStorage.setItem(STORAGE_KEY, payload);
     }
-  } catch {
-    /* quota / private mode */
+  } catch (error) {
+    if (isStorageQuotaError(error) && growingPhotos) {
+      throw new StorageQuotaError(0);
+    }
+    /* private mode, or a full save that is not adding photo bytes */
   }
+  state = next;
   listeners.forEach((fn) => fn());
 }
 
@@ -602,6 +623,7 @@ export function updateStudent(id: string, draft: Partial<StudentDraft>): Student
     belt: draft.belt ?? current.belt,
     division: draft.division ?? current.division,
     gym: draft.gym ?? current.gym,
+    photo: draft.photo !== undefined ? draft.photo : current.photo,
     lastPromotion: draft.lastPromotion ?? current.lastPromotion,
     note: draft.note ?? current.note,
     checkedIn: current.checkedIn,

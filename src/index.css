@@ -7897,6 +7897,60 @@ input.roster-pick__name:focus,
   gap: 0.45rem;
 }
 
+.roster-card__identity {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.roster-card__photo,
+.roster-edit__photo-img,
+.roster-edit__photo-empty {
+  flex: 0 0 auto;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center 18%;
+  border: 2px solid rgba(252, 192, 0, 0.55);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.roster-edit__photo {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.roster-edit__photo-img,
+.roster-edit__photo-empty {
+  width: 96px;
+  height: 96px;
+}
+
+.roster-edit__photo-empty {
+  display: grid;
+  place-items: center;
+  padding: 0.35rem;
+  border-style: dashed;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.roster-edit__photo-actions {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.roster-edit__photo-actions .btn {
+  min-height: 48px;
+}
+
 .roster-card__who {
   display: flex;
   flex-wrap: wrap;
