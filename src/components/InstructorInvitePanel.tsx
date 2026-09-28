@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { useGymName } from '../hooks/useGymBrand';
 import {
   INSTRUCTOR_PERMISSION_FIELDS,
@@ -133,31 +133,26 @@ export function InstructorInvitePanel() {
     setCopyFailedId(null);
   };
 
-  const formKind = presetId ?? 'unset';
-
   return (
     <div className="invite-panel">
-      <form className={`binder binder--${formKind}`} onSubmit={submitInvite}>
-        <BinderRings />
-        <div className="binder__cover">
-          <p className="binder__kicker">Owner only · Soft beta</p>
+      <form className="invite-form" onSubmit={submitInvite}>
+          <p className="invite-form__kicker">Owner only · Soft beta</p>
           <strong>Generate instructor invite</strong>
-          <PlanBadge presetId={presetId} />
-          <span>
+          <span className="invite-form__note">
             Pick a binder, then change any switch for this person. The link stays on this
             device. Nothing is emailed, billed, or capped.
           </span>
           {gymName ? <span className="invite-gym">Gym · {gymName}</span> : null}
           {issued ? (
             <div
-              className={`invite-link${issued.presetId ? ` invite-link--tier binder--${issued.presetId}` : ''}`}
+              className={`invite-link${issued.presetId ? ' invite-link--icon' : ''}`}
               role="status"
               ref={issuedRef}
             >
-              {issued.presetId ? <BinderRings /> : null}
+              {issued.presetId ? <BinderIcon presetId={issued.presetId} /> : null}
               <div className="invite-link__copy">
               <p>Binder for {issued.email}. Status is invited.</p>
-              {issued.plan ? <span className="binder-plan">{issued.plan}</span> : null}
+              <PlanBadge presetId={issued.presetId} />
               <label htmlFor={`${formId}-issued-link`}>
                 Invite link
                 <input
@@ -216,7 +211,6 @@ export function InstructorInvitePanel() {
           <button type="submit" className="btn">
             Issue invite
           </button>
-        </div>
       </form>
 
       <section className="binder-list" aria-labelledby={`${formId}-seats`}>
@@ -285,14 +279,17 @@ export function InstructorInvitePanel() {
             <h3 className="invite-revoked-title">Revoked</h3>
             <ul className="invite-seats">
               {revokedSeats.map((seat) => (
-                <BinderShell key={seat.id} presetId={seat.presetId} revoked>
-                  <strong>{seat.email}</strong>
-                  <PlanBadge presetId={seat.presetId} />
-                  <span>
-                    {instructorSeatBinderLabel(seat.presetId, seat.permissions)} · {statusLabel(seat.status)} ·{' '}
-                    {issuedLabel(seat.issuedAt)}
-                  </span>
-                </BinderShell>
+                <li key={seat.id} className="seat-card seat-card--revoked">
+                  <BinderIcon presetId={seat.presetId} />
+                  <div className="seat-card__body">
+                    <strong>{seat.email}</strong>
+                    <PlanBadge presetId={seat.presetId} />
+                    <span>
+                      {instructorSeatBinderLabel(seat.presetId, seat.permissions)} · {statusLabel(seat.status)} ·{' '}
+                      {issuedLabel(seat.issuedAt)}
+                    </span>
+                  </div>
+                </li>
               ))}
             </ul>
           </>
@@ -302,69 +299,93 @@ export function InstructorInvitePanel() {
   );
 }
 
-function PlanBadge({ presetId }: { presetId: InstructorPresetId | null }) {
-  const plan = instructorPresetPlan(presetId);
-  if (!plan) return null;
-  return <span className="binder-plan">{plan}</span>;
-}
-
-function BinderRings() {
+function PlanMark({ presetId }: { presetId: InstructorPresetId }) {
+  if (presetId === 'program-director') {
+    return (
+      <svg className="role-plan__mark" viewBox="0 0 16 16" aria-hidden="true">
+        <path
+          fill="currentColor"
+          d="M8 1.3 9.9 5.7l4.8.4-3.7 3.1 1.2 4.7L8 11.5 3.8 13.9l1.2-4.7L1.3 6.1l4.8-.4L8 1.3z"
+        />
+      </svg>
+    );
+  }
+  if (presetId === 'instructors') {
+    return (
+      <svg className="role-plan__mark" viewBox="0 0 16 16" aria-hidden="true">
+        <path
+          fill="currentColor"
+          d="M1.4 12.1h13.2V14H1.4v-1.9zM2.1 11.2 3.4 5.2l2.7 2.3L8 2.4l1.9 5.1 2.7-2.3 1.3 6H2.1z"
+        />
+      </svg>
+    );
+  }
   return (
-    <span className="binder__rings" aria-hidden="true">
-      <span />
-      <span />
-      <span />
+    <span className="role-plan__mark" aria-hidden="true">
+      ∞
     </span>
   );
 }
 
-function BinderShell({
-  presetId,
-  revoked = false,
-  children,
-}: {
-  presetId: InstructorPresetId | null;
-  revoked?: boolean;
-  children: ReactNode;
-}) {
+function PlanBadge({ presetId }: { presetId: InstructorPresetId | null }) {
+  const plan = instructorPresetPlan(presetId);
+  if (!plan || !presetId) return null;
+  return (
+    <span className={`role-plan role-plan--${presetId}`}>
+      <PlanMark presetId={presetId} />
+      {plan}
+    </span>
+  );
+}
+
+function BinderIcon({ presetId }: { presetId: InstructorPresetId | null }) {
   const kind = presetId ?? 'unset';
   return (
-    <li className={`binder binder--${kind}${revoked ? ' binder--revoked' : ''}`}>
-      <BinderRings />
-      <div className="binder__cover">{children}</div>
-    </li>
+    <span className={`role-binder role-binder--${kind}`} aria-hidden="true">
+      <span className="role-binder__rings">
+        <span />
+        <span />
+        <span />
+      </span>
+      <span className="role-binder__board">
+        <span className="role-binder__spine" />
+        <span className="role-binder__cover" />
+      </span>
+    </span>
   );
 }
 
 function PresetBinders({
   selected,
   onSelect,
+  heading = 'Choose role to invite',
 }: {
   selected: InstructorPresetId | null;
   onSelect: (id: InstructorPresetId) => void;
+  heading?: string;
 }) {
   return (
-    <div className="binder-picks" role="radiogroup" aria-label="Binder preset">
-      {INSTRUCTOR_PRESETS.map((preset) => {
-        const on = selected === preset.id;
-        return (
-          <button
-            key={preset.id}
-            type="button"
-            role="radio"
-            aria-checked={on}
-            className={`binder-pick binder-pick--${preset.id}${on ? ' binder-pick--on' : ''}`}
-            onClick={() => onSelect(preset.id)}
-          >
-            <BinderRings />
-            <span className="binder-pick__copy">
-              <span className="binder-pick__name">{preset.label}</span>
+    <div className="role-chooser">
+      <p className="role-chooser__title">{heading}</p>
+      <div className="role-chooser__row" role="radiogroup" aria-label="Binder preset">
+        {INSTRUCTOR_PRESETS.map((preset) => {
+          const on = selected === preset.id;
+          return (
+            <button
+              key={preset.id}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              className={`role-pick role-pick--${preset.id}${on ? ' role-pick--on' : ''}`}
+              onClick={() => onSelect(preset.id)}
+            >
+              <BinderIcon presetId={preset.id} />
               <PlanBadge presetId={preset.id} />
-              <span className="binder-pick__detail">{preset.detail}</span>
-            </span>
-          </button>
-        );
-      })}
+              <span className="role-pick__name">{preset.label}</span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -442,12 +463,11 @@ function SeatRow({
   const link = instructorInviteLink(seat.inviteToken, origin);
   const shown = editing && draft ? draft : seat.permissions;
   const shownPreset = editing ? draftPresetId : seat.presetId;
-  const kind = shownPreset ?? 'unset';
   return (
-    <li className={`binder binder--${kind}`}>
-      <BinderRings />
-      <div className="binder__cover">
-      <p className="binder__kicker">{instructorSeatBinderLabel(shownPreset, shown)}</p>
+    <li className="seat-card">
+      <BinderIcon presetId={shownPreset} />
+      <div className="seat-card__body">
+      <p className="seat-card__role">{instructorSeatBinderLabel(shownPreset, shown)}</p>
       <PlanBadge presetId={shownPreset} />
       <strong>{seat.email}</strong>
       <span>
@@ -456,7 +476,7 @@ function SeatRow({
       <span>{permissionSummary(shown)}</span>
       {editing && draft ? (
         <>
-          <PresetBinders selected={draftPresetId} onSelect={onPreset} />
+          <PresetBinders heading="Change role" selected={draftPresetId} onSelect={onPreset} />
           <PermissionSwitches
             legendId={`edit-${seat.id}`}
             permissions={draft}
