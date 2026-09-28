@@ -352,7 +352,7 @@ function BinderIcon({ presetId, alt = '' }: { presetId: InstructorPresetId | nul
   const art = BINDER_ART[presetId];
   return (
     <span className={`role-binder role-binder--${presetId}`}>
-      <img src={`${art.src}?v=white`} alt={alt} draggable={false} width={art.width} height={art.height} />
+      <img src={`${art.src}?v=white2`} alt={alt} draggable={false} width={art.width} height={art.height} />
     </span>
   );
 }
