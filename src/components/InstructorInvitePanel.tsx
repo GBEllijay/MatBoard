@@ -454,7 +454,8 @@ function SeatRow({
   const shown = editing && draft ? draft : seat.permissions;
   const shownPreset = editing ? draftPresetId : seat.presetId;
   return (
-    <li className="seat-card">
+    <li className="seat-stack">
+      <div className="seat-card">
       <div className="seat-card__body">
       <p className="seat-card__role">{instructorSeatBinderLabel(shownPreset, shown)}</p>
       <PlanBadge presetId={shownPreset} />
@@ -463,24 +464,7 @@ function SeatRow({
         {statusLabel(seat.status)} · {issuedLabel(seat.issuedAt)}
       </span>
       <span>{permissionSummary(shown)}</span>
-      {editing && draft ? (
-        <>
-          <RoleOptions heading="Change role" selected={draftPresetId} onSelect={onPreset} />
-          <PermissionSwitches
-            legendId={`edit-${seat.id}`}
-            permissions={draft}
-            onToggle={onDraft}
-          />
-          <div className="invite-actions">
-            <button type="button" className="btn" onClick={onSave}>
-              Save permissions
-            </button>
-            <button type="button" className="btn btn--ghost" onClick={onCancelEdit}>
-              Cancel
-            </button>
-          </div>
-        </>
-      ) : confirming ? (
+      {editing && draft ? null : confirming ? (
         <div className="invite-confirm" role="group" aria-label={`Revoke ${seat.email}`}>
           <span>Revoke the binder for {seat.email}?</span>
           <div className="invite-actions">
@@ -512,6 +496,27 @@ function SeatRow({
         </label>
       ) : null}
       </div>
+      </div>
+      {editing && draft ? (
+        <>
+          <RoleOptions heading="Change role" selected={draftPresetId} onSelect={onPreset} />
+          <div className="invite-form">
+            <PermissionSwitches
+              legendId={`edit-${seat.id}`}
+              permissions={draft}
+              onToggle={onDraft}
+            />
+            <div className="invite-actions">
+              <button type="button" className="btn" onClick={onSave}>
+                Save permissions
+              </button>
+              <button type="button" className="btn btn--ghost" onClick={onCancelEdit}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </>
+      ) : null}
     </li>
   );
 }
