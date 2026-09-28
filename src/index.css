@@ -928,7 +928,7 @@ button.mode-card {
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
 }
 
-.suite h2.instructor-hub__title > span {
+.suite h2.instructor-hub__title > span:not(.belt-rail) {
   position: relative;
   z-index: 1;
 }
