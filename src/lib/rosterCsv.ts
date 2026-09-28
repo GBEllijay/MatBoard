@@ -8,8 +8,7 @@ export const ROSTER_CSV_HEADERS = [
   'Division',
   'Gym name',
   'Last promotion',
-  'Notes',
-  'Known injuries',
+  'Competitor Notes',
   'Check In',
 ] as const;
 export const ROSTER_CSV_SEP_LINE = 'sep=,';
@@ -30,7 +29,7 @@ export const ROSTER_CSV_EXAMPLE = {
 
 export type RosterCsvRow = Pick<
   Student,
-  'name' | 'belt' | 'division' | 'gym' | 'lastPromotion' | 'note' | 'knownInjuries' | 'checkedIn'
+  'name' | 'belt' | 'division' | 'gym' | 'lastPromotion' | 'note' | 'checkedIn'
 >;
 
 export type RosterCsvImport = {
@@ -50,7 +49,6 @@ type HeaderField =
   | 'gym'
   | 'lastPromotion'
   | 'note'
-  | 'knownInjuries'
   | 'checkedIn';
 
 const HEADER_ALIASES: Record<string, HeaderField> = {
@@ -92,12 +90,9 @@ const HEADER_ALIASES: Record<string, HeaderField> = {
   notes: 'note',
   note: 'note',
   'short note': 'note',
+  'competitor notes': 'note',
   comments: 'note',
   comment: 'note',
-  'known injuries': 'knownInjuries',
-  'known injury': 'knownInjuries',
-  injuries: 'knownInjuries',
-  injury: 'knownInjuries',
   'check in': 'checkedIn',
   checkin: 'checkedIn',
   'checked in': 'checkedIn',
@@ -355,7 +350,6 @@ export function serializeRosterCsv(rows: RosterCsvRow[]): string {
         row.gym,
         row.lastPromotion,
         row.note,
-        row.knownInjuries,
         formatCheckedIn(row.checkedIn),
       ]
         .map(csvField)
@@ -374,7 +368,6 @@ export function rosterCsvTemplate(): string {
       gym: ROSTER_CSV_EXAMPLE.gym,
       lastPromotion: ROSTER_CSV_EXAMPLE.lastPromotion,
       note: ROSTER_CSV_EXAMPLE.note,
-      knownInjuries: '',
       checkedIn: false,
     },
   ])}`;
@@ -488,7 +481,6 @@ function peopleFromCells(
   gymCell: string,
   lastPromotion: string,
   note: string,
-  knownInjuriesCell: string,
   checkedInCell: string,
 ): Array<{
   name: string;
@@ -497,7 +489,6 @@ function peopleFromCells(
   gym: string;
   lastPromotion: string;
   note: string;
-  knownInjuries: string;
   checkedIn: string;
 }> {
   const names = splitLines(nameCell);
@@ -512,7 +503,6 @@ function peopleFromCells(
     gym: alignedField(gymCell, names, index),
     lastPromotion,
     note,
-    knownInjuries: alignedField(knownInjuriesCell, names, index),
     checkedIn: alignedField(checkedInCell, names, index),
   }));
 }
@@ -582,7 +572,6 @@ function importParsedRows(rows: string[][], options: ImportOptions): RosterCsvIm
     gym: string;
     lastPromotion: string;
     note: string;
-    knownInjuries: string;
     checkedIn: string;
   }) => {
     const next = studentFromInput(input);
@@ -614,7 +603,6 @@ function importParsedRows(rows: string[][], options: ImportOptions): RosterCsvIm
     const checkedInCell = cell(row, columns.checkedIn);
     const lastPromotion = parseImportDate(cell(row, columns.lastPromotion));
     let note = cell(row, columns.note);
-    const knownInjuriesCell = cell(row, columns.knownInjuries);
 
     if (options.salvage && !studentFromInput({ name: splitLines(nameCell)[0] ?? '', belt: splitLines(beltCell)[0] ?? '' })) {
       const fat = [nameCell, beltCell, note].find((value) => splitLines(value).length > 1 && /[,;\t]/.test(value));
@@ -647,7 +635,6 @@ function importParsedRows(rows: string[][], options: ImportOptions): RosterCsvIm
       gymCell,
       lastPromotion,
       note,
-      knownInjuriesCell,
       checkedInCell,
     );
     if (!people.length) {

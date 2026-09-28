@@ -7518,6 +7518,11 @@ input.roster-pick__name:focus,
   font-weight: 600;
 }
 
+.roster-card__note {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .roster-card__actions {
   display: flex;
   flex-wrap: wrap;
@@ -10176,7 +10181,6 @@ a.plan-pick {
 }
 
 .ready-division,
-.ready-injuries,
 .ready-list,
 .ready-empty,
 .ready-restore,
@@ -10200,14 +10204,6 @@ a.plan-pick {
 
 .ready-division--on {
   color: var(--gold-2);
-}
-
-.ready-injuries {
-  margin-top: 0;
-  margin-bottom: 0.85rem;
-  color: var(--ink);
-  font-weight: 700;
-  line-height: 1.4;
 }
 
 .ready-list {

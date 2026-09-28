@@ -144,9 +144,6 @@ function Checklist({ student }: { student: Student }) {
         {readyStatusLabel(ready)}
         {student.division ? ` · Roster division: ${student.division}` : ' · No division on the roster card yet'}
       </p>
-      {student.knownInjuries ? (
-        <p className="ready-injuries">Known injuries: {student.knownInjuries}</p>
-      ) : null}
       {visible.length || ready.extras.length ? (
         <ul className="ready-list">
           {visible.map((item) => (
