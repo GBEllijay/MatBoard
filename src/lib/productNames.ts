@@ -94,8 +94,8 @@ export const COMPETITION_MANAGEMENT_PRO_LABEL = 'Competition Management Pro';
 /** Pro hub for bout competitors, roster CSV, and on-device rankings. */
 export const COMPETITOR_SYSTEM_NAME = 'Competitor Management System';
 
-/** Plan-only Pro hub page title. No cloud sync in this build. */
-export const INSTRUCTOR_COLLAB_NAME = 'Instructor Collaboration and Cloud Access';
+/** Owner hub page title. Soft-beta invites stay on this device. */
+export const INSTRUCTOR_COLLAB_NAME = 'Instructor Collaboration and Advantage Coach Unlimited';
 
 /** Pro homepage hub button. The instructor page title stays INSTRUCTOR_COLLAB_NAME. */
 export const INSTRUCTOR_COLLAB_HUB_LABEL = 'Instructor Collaboration & Advantage Coach Unlimited';

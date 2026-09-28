@@ -99,7 +99,8 @@ test('Pro ad keeps the splash and descriptor boxes without the middle paragraph'
   assert.doesNotMatch(text, /Round Controller/);
   assert.match(text, /Class Schedule/);
   assert.match(text, /Competitor Management System/);
-  assert.match(text, /Instructor Collaboration and Cloud Access/);
+  assert.match(text, /Instructor Collaboration and Advantage Coach Unlimited/);
+  assert.doesNotMatch(text, /Cloud Access/);
   assert.doesNotMatch(text, /Mock Tournament/);
   assert.doesNotMatch(text, /Owner.?s Toolbox/i);
   assert.doesNotMatch(text, /student progress/i);

@@ -4,6 +4,7 @@ import { BeltRail } from '../components/BeltRail';
 import { DriveConnectCard } from '../components/DriveConnectCard';
 import { COACH_TOOL_LINKS } from '../components/CoachToolsCard';
 import { HomeMark } from '../components/HomeMark';
+import { InstructorInvitePanel } from '../components/InstructorInvitePanel';
 import { SiteFooter } from '../components/SiteFooter';
 import {
   OWNER_DRIVE_BODY,
@@ -26,13 +27,16 @@ export function InstructorCollaborationPage() {
     <main className="home home--pro home--suite">
       <div className="home__inner">
         <HomeMark to="/pro" />
-        <section className="suite">
-          <h2>{INSTRUCTOR_COLLAB_NAME}</h2>
+        <section className="suite instructor-hub">
+          <h2 className="instructor-hub__title">
+            <span>{INSTRUCTOR_COLLAB_NAME}</span>
+          </h2>
           <p>
             Instructors share class plans, technique trees, and training videos with you. Each day
             they can send class photos and short clips for you to look over. Their screen works
             like Coach. You approve what plays on the gym TV and what joins the gym roster.
           </p>
+          <InstructorInvitePanel />
           <article className="plan-card">
             <p className="plan-card__kicker">{OWNER_DRIVE_KICKER}</p>
             <strong>{OWNER_DRIVE_TITLE}</strong>
@@ -62,18 +66,6 @@ export function InstructorCollaborationPage() {
               ))}
             </div>
           </nav>
-          <article className="plan-card">
-            <p className="plan-card__kicker">Coming Soon · Alpha</p>
-            <strong>Generate instructor invite / license</strong>
-            <span>
-              Send invites from your Advantage Pro to instructors to collaborate. Each person sets
-              up their own login. You can later give someone, such as a program director, the full
-              owner tools.
-            </span>
-            <button type="button" className="btn" disabled>
-              Coming Soon
-            </button>
-          </article>
         </section>
         <SiteFooter />
       </div>
