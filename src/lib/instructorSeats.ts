@@ -72,7 +72,7 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
     id: 'assistant-coach',
     label: 'Assistant Coach',
     plan: 'Coach Unlimited',
-    detail: 'Lesson plans and daily videos',
+    detail: 'Downloads only',
     permissions: {
       galleryUpload: false,
       dailyLessonPlanAccess: true,
@@ -88,7 +88,7 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
     id: 'coach',
     label: 'Coach',
     plan: 'Coach Unlimited',
-    detail: 'Lesson plans and daily videos with uploads',
+    detail: 'Lesson plan and daily videos with uploads',
     permissions: {
       galleryUpload: false,
       dailyLessonPlanAccess: true,
@@ -120,7 +120,7 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
     id: 'instructors',
     label: 'Instructor',
     plan: 'Coach Unlimited + Pro',
-    detail: 'Adds the slideshow for events, Pro Shop, and gallery',
+    detail: 'TBD',
     permissions: {
       galleryUpload: true,
       dailyLessonPlanAccess: true,
