@@ -7689,41 +7689,40 @@ input.roster-pick__name:focus,
   background: var(--gold-2);
 }
 
-/* Roster list: belt tip instead of the color oval. About 40px tall. */
+/* Roster belt tip. Rank bar sits on the left, inset in the cloth, like a belt end. */
 .belt-mark {
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.45rem;
-  min-width: 0;
-  max-width: 100%;
+  gap: 0.28rem;
+  flex: 0 0 auto;
+  max-width: 6.5rem;
 }
 
 .belt-tip {
   position: relative;
-  flex: 0 0 auto;
-  width: 4.75rem;
-  height: 2.5rem;
-  border-radius: 6px;
+  width: 5.6rem;
+  height: 2.65rem;
+  border-radius: 8px;
   overflow: hidden;
   background-color: var(--belt-cloth, #6a6f7a);
   background-image:
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.16) 0 1px, transparent 1px 3px),
-    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.07) 0 1px, transparent 1px 4px);
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.2) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.14) 0 1px, transparent 1px 3px);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.28),
-    0 0 0 1px rgba(0, 0, 0, 0.4);
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.22),
+    0 0 0 1px rgba(0, 0, 0, 0.45);
 }
 
 .belt-tip__bar {
   position: absolute;
-  top: 0.28rem;
-  bottom: 0.28rem;
-  right: 0.55rem;
-  width: 0.34rem;
-  border-radius: 1px;
+  top: 0.32rem;
+  bottom: 0.32rem;
+  left: 0.32rem;
+  width: 0.92rem;
+  border-radius: 2px;
   background: #141414;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
 }
 
 .belt-tip__bar--red {
@@ -7731,31 +7730,39 @@ input.roster-pick__name:focus,
 }
 
 .belt-tip--white {
-  --belt-cloth: #f4f1ea;
+  --belt-cloth: #f7f7f5;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.07) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.05) 0 1px, transparent 1px 3px);
 }
 
 .belt-tip--blue {
-  --belt-cloth: #1c4fd4;
+  --belt-cloth: #1d4ed8;
 }
 
 .belt-tip--purple {
-  --belt-cloth: #6b3fa0;
+  --belt-cloth: #7a3ec8;
 }
 
 .belt-tip--brown {
-  --belt-cloth: #6b3a1f;
+  --belt-cloth: #a56b45;
 }
 
 .belt-tip--black {
-  --belt-cloth: #14161c;
+  --belt-cloth: #161616;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.09) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 3px);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.16),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(255, 255, 255, 0.28);
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 0 0 1px rgba(255, 255, 255, 0.22);
 }
 
 .belt-tip--grey {
   --belt-cloth: #c5c8d0;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.08) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.2) 0 1px, transparent 1px 3px);
 }
 
 .belt-tip--yellow {
@@ -7775,12 +7782,11 @@ input.roster-pick__name:focus,
 }
 
 .belt-mark__name {
-  color: var(--ink);
-  font-size: 0.74rem;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  line-height: 1.1;
-  text-transform: uppercase;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
   overflow-wrap: anywhere;
 }
 

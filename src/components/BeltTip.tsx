@@ -1,6 +1,6 @@
 import { beltChipKey, beltTipRankBar, canonicalBelt } from '../lib/rosterStore';
 
-/** Roster belt mark: a short rounded belt with the rank bar near the tip. */
+/** Roster belt mark. Rounded cloth with the rank bar on the left tip. */
 export function BeltTip({ belt }: { belt: string }) {
   const label = belt.trim();
   if (!label) return null;
