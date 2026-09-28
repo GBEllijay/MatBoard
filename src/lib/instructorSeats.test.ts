@@ -7,6 +7,7 @@ import { GYM_NAME_STORAGE_KEY, writeGymName } from './gymName.ts';
 import {
   DEFAULT_INSTRUCTOR_PERMISSIONS,
   INSTRUCTOR_PERMISSION_FIELDS,
+  INSTRUCTOR_SEAT_SESSION_KEY,
   INSTRUCTOR_SEATS_STORAGE_KEY,
   INSTRUCTOR_PRESETS,
   defaultInstructorPermissions,
@@ -355,6 +356,50 @@ test('four binder presets fill the toggles and stay overridable', () => {
   const edited = updateInstructorSeatPermissions(issued.seat.id, assistant, 'assistant-coach');
   assert.equal(edited.ok && edited.seat.presetId, 'assistant-coach');
   assert.equal(edited.ok && edited.seat.permissions.rosterSubmit, false);
+});
+
+test('the first assistant coach invite for hapkidoka311@yahoo.com accepts and gates Coach tools', () => {
+  reset();
+  const assistant = instructorPresetPermissions('assistant-coach');
+  const issued = issueInstructorInvite({
+    email: 'hapkidoka311@yahoo.com',
+    permissions: assistant,
+    presetId: 'assistant-coach',
+    origin: 'https://advantage.test',
+    token: 'hapkido-invite',
+  });
+  assert.equal(issued.ok, true);
+  if (!issued.ok) return;
+  assert.equal(issued.seat.email, 'hapkidoka311@yahoo.com');
+  assert.equal(issued.seat.status, 'invited');
+  assert.deepEqual(
+    issueInstructorInvite({
+      email: 'Hapkidoka311@yahoo.com',
+      origin: 'https://advantage.test',
+    }),
+    { ok: false, reason: 'duplicate' },
+  );
+
+  const accepted = acceptInstructorInvite('hapkido-invite');
+  assert.equal(accepted.ok, true);
+  if (!accepted.ok) return;
+  assert.equal(accepted.seat.status, 'active');
+  assert.equal(readCurrentSeat()?.email, 'hapkidoka311@yahoo.com');
+  const session = JSON.parse(localStorage.getItem(INSTRUCTOR_SEAT_SESSION_KEY) ?? '{}') as {
+    seatId?: string;
+  };
+  assert.equal(session.seatId, accepted.seat.id);
+  assert.equal(listInstructorSeats()[0].status, 'active');
+
+  const seated = { owner: true, seat: accepted.seat };
+  assert.equal(visibleCoachControl('dailyLessonPlanAccess', seated), true);
+  assert.equal(visibleCoachControl('downloadTodaysVideos', seated), true);
+  assert.equal(visibleCoachControl('galleryUpload', seated), false);
+  assert.equal(visibleCoachControl('rosterSubmit', seated), false);
+  assert.equal(visibleCoachControl('rosterPull', seated), false);
+  assert.equal(visibleCoachControl('uploadForDistribution', seated), false);
+  assert.equal(visibleCoachControl('eventsAccess', seated), false);
+  assert.equal(visibleCoachControl('proShopAccess', seated), false);
 });
 
 test('accepting an assistant coach invite starts a seat session and gates controls', () => {
