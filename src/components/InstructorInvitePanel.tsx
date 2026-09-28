@@ -381,7 +381,10 @@ function PresetBinders({
             >
               <BinderIcon presetId={preset.id} />
               <PlanBadge presetId={preset.id} />
-              <span className="role-pick__name">{preset.label}</span>
+              <span className="role-pick__label">
+                <span className="role-pick__name">{preset.label}</span>
+                <span className="role-pick__detail">{preset.detail}</span>
+              </span>
             </button>
           );
         })}
