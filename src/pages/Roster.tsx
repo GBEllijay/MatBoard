@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useCurrentSeat } from '../components/SeatSessionBar';
 import { EmptyHint } from '../components/EmptyHint';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { useCoachPageSwipe } from '../hooks/useCoachSwipe';
@@ -36,6 +37,7 @@ import {
   serializeRosterCsv,
   withUtf8Bom,
 } from '../lib/rosterCsv';
+import { seatPermissionAllows } from '../lib/instructorSeats';
 import { readGymName } from '../lib/gymName';
 import {
   ADULT_BELTS,
@@ -68,6 +70,9 @@ function downloadRosterCsv(filename: string, csv: string): void {
 }
 
 export function RosterPage() {
+  const seat = useCurrentSeat();
+  const showRosterSubmit = !seat || seatPermissionAllows(seat.permissions, 'rosterSubmit');
+  const showRosterPull = !seat || seatPermissionAllows(seat.permissions, 'rosterPull');
   const roster = useRosterState();
   const navigate = useNavigate();
   const parent = useToolboxParent();
@@ -136,16 +141,20 @@ export function RosterPage() {
           >
             Download template
           </button>
-          <button type="button" className="btn btn--ghost" onClick={() => csvRef.current?.click()}>
-            Import CSV
-          </button>
-          <button
-            type="button"
-            className="btn btn--ghost"
-            onClick={() => downloadRosterCsv('advantage-roster.csv', serializeRosterCsv(roster.students))}
-          >
-            Export CSV
-          </button>
+          {showRosterPull ? (
+            <button type="button" className="btn btn--ghost" onClick={() => csvRef.current?.click()}>
+              Import CSV
+            </button>
+          ) : null}
+          {showRosterSubmit ? (
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => downloadRosterCsv('advantage-roster.csv', serializeRosterCsv(roster.students))}
+            >
+              Export CSV
+            </button>
+          ) : null}
         </div>
         <CsvInstructions />
       </div>

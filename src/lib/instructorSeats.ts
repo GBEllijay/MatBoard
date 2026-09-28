@@ -10,7 +10,9 @@
 import { readGymName } from './gymName.ts';
 
 export const INSTRUCTOR_SEATS_STORAGE_KEY = 'matboard.pro.instructorSeats.v1';
+export const INSTRUCTOR_SEAT_SESSION_KEY = 'matboard.pro.instructorSeatSession.v1';
 const SEATS_EVENT = 'matboard-instructor-seats';
+const SESSION_EVENT = 'matboard-instructor-seat-session';
 const EMAIL_MAX = 254;
 
 export type SeatStatus = 'invited' | 'active' | 'revoked';
@@ -62,7 +64,8 @@ export type InstructorPreset = {
   label: string;
   /** Which product plan this tier sits on. */
   plan: InstructorPlanName;
-  detail: string;
+  /** Lines under the role button. Assistant coach uses two. */
+  detail: readonly string[];
   permissions: InstructorPermissions;
 };
 
@@ -70,9 +73,9 @@ export type InstructorPreset = {
 export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
   {
     id: 'assistant-coach',
-    label: 'Assistant Coach',
+    label: 'Assistant coach',
     plan: 'Coach Unlimited',
-    detail: 'Downloads only',
+    detail: ['Lesson plans and daily videos', 'Downloads only'],
     permissions: {
       galleryUpload: false,
       dailyLessonPlanAccess: true,
@@ -88,7 +91,7 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
     id: 'coach',
     label: 'Coach',
     plan: 'Coach Unlimited',
-    detail: 'Lesson plan and daily videos with uploads',
+    detail: ['Lesson plans and daily videos with uploads'],
     permissions: {
       galleryUpload: false,
       dailyLessonPlanAccess: true,
@@ -102,9 +105,9 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
   },
   {
     id: 'program-director',
-    label: 'Program Director',
+    label: 'Program director',
     plan: 'Coach Unlimited + Pro',
-    detail: 'Events, Pro Shop, and gallery',
+    detail: ['Events, Pro Shop, and gallery'],
     permissions: {
       galleryUpload: true,
       dailyLessonPlanAccess: true,
@@ -118,9 +121,9 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
   },
   {
     id: 'instructors',
-    label: 'Instructor',
+    label: 'Instructors',
     plan: 'Coach Unlimited + Pro',
-    detail: 'TBD',
+    detail: ['Adds the slideshow for events, Pro Shop, and gallery'],
     permissions: {
       galleryUpload: true,
       dailyLessonPlanAccess: true,
@@ -248,13 +251,7 @@ export function instructorInviteLink(token: string, origin: string): string {
 
 /**
  * Whether a Coach control should show for the current seat.
- *
- * TODO: Daily Lesson Plan, gallery upload, roster submit, roster pull,
- * today's video download, "Upload for instructor distribution", Events, and
- * Pro Shop do not call this yet. A follow-up should hide each control when
- * the signed-in seat lacks that permission. Device guests have no seat
- * (`permissions` is null) and should hide all collaboration chrome. The
- * owner hub is not a seat.
+ * Null permissions are a device guest: every collaboration control stays hidden.
  */
 export function seatPermissionAllows(
   permissions: InstructorPermissions | null,
@@ -262,6 +259,20 @@ export function seatPermissionAllows(
 ): boolean {
   if (!permissions) return false;
   return permissions[key];
+}
+
+/**
+ * Owner with no seat session keeps every control. A signed-in seat uses that
+ * seat's booleans. A device guest (no owner unlock, no seat) sees none.
+ */
+export function visibleCoachControl(
+  key: keyof InstructorPermissions,
+  access: { owner: boolean; seat: Pick<InstructorSeat, 'status' | 'permissions'> | null },
+): boolean {
+  if (access.seat && access.seat.status !== 'revoked') {
+    return seatPermissionAllows(access.seat.permissions, key);
+  }
+  return access.owner;
 }
 
 function emptyArchive(): SeatArchive {
@@ -326,7 +337,13 @@ function writeArchive(archive: SeatArchive): boolean {
   }
 }
 
+function invalidateSeatSnapshot(): void {
+  // Empty string is also the signed-out cache key. A sentinel forces the next read.
+  seatSnapshotKey = '\0';
+}
+
 function emitSeats(): void {
+  invalidateSeatSnapshot();
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new Event(SEATS_EVENT));
 }
@@ -411,6 +428,97 @@ export function updateInstructorSeatPermissions(
   if (presetId !== undefined) seat.presetId = normalizeInstructorPresetId(presetId);
   if (!writeArchive(archive)) return { ok: false, reason: 'storage' };
   emitSeats();
+  return { ok: true, seat: cloneSeat(seat) };
+}
+
+type SeatSessionRecord = { version: 1; seatId: string };
+
+let seatSnapshot: InstructorSeat | null = null;
+let seatSnapshotKey = '';
+
+function readSessionSeatId(): string | null {
+  try {
+    if (typeof localStorage === 'undefined') return null;
+    const raw = localStorage.getItem(INSTRUCTOR_SEAT_SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<SeatSessionRecord>;
+    if (parsed.version !== 1 || typeof parsed.seatId !== 'string' || !parsed.seatId) return null;
+    return parsed.seatId;
+  } catch {
+    return null;
+  }
+}
+
+function writeSession(seatId: string): boolean {
+  try {
+    const record: SeatSessionRecord = { version: 1, seatId };
+    localStorage.setItem(INSTRUCTOR_SEAT_SESSION_KEY, JSON.stringify(record));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function emitSession(): void {
+  invalidateSeatSnapshot();
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new Event(SESSION_EVENT));
+}
+
+/** Active seat on this device, or null when signed out, missing, or revoked. */
+export function readCurrentSeat(): InstructorSeat | null {
+  const id = readSessionSeatId();
+  const seat = id ? readArchive().seats.find((row) => row.id === id) : undefined;
+  const live = seat && seat.status !== 'revoked' ? cloneSeat(seat) : null;
+  const key = live ? `${live.id}:${live.status}:${live.email}:${JSON.stringify(live.permissions)}` : '';
+  if (key === seatSnapshotKey) return seatSnapshot;
+  seatSnapshotKey = key;
+  seatSnapshot = live;
+  return seatSnapshot;
+}
+
+export function subscribeSeatSession(fn: () => void): () => void {
+  if (typeof window === 'undefined') return () => {};
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === INSTRUCTOR_SEAT_SESSION_KEY || event.key === INSTRUCTOR_SEATS_STORAGE_KEY) fn();
+  };
+  window.addEventListener('storage', onStorage);
+  window.addEventListener(SESSION_EVENT, fn);
+  window.addEventListener(SEATS_EVENT, fn);
+  return () => {
+    window.removeEventListener('storage', onStorage);
+    window.removeEventListener(SESSION_EVENT, fn);
+    window.removeEventListener(SEATS_EVENT, fn);
+  };
+}
+
+export function signOutInstructorSeat(): void {
+  try {
+    localStorage.removeItem(INSTRUCTOR_SEAT_SESSION_KEY);
+  } catch {
+    /* keep going */
+  }
+  emitSession();
+}
+
+/**
+ * Open an invite link on this device. Invited seats become active.
+ * Revoked or unknown tokens do not start a session.
+ */
+export function acceptInstructorInvite(
+  token: string,
+): { ok: true; seat: InstructorSeat } | { ok: false; reason: 'missing' | 'revoked' | 'storage' } {
+  const trimmed = token.trim();
+  if (!trimmed) return { ok: false, reason: 'missing' };
+  const archive = readArchive();
+  const seat = archive.seats.find((row) => row.inviteToken === trimmed);
+  if (!seat) return { ok: false, reason: 'missing' };
+  if (seat.status === 'revoked') return { ok: false, reason: 'revoked' };
+  if (seat.status === 'invited') seat.status = 'active';
+  if (!writeArchive(archive)) return { ok: false, reason: 'storage' };
+  if (!writeSession(seat.id)) return { ok: false, reason: 'storage' };
+  emitSeats();
+  emitSession();
   return { ok: true, seat: cloneSeat(seat) };
 }
 

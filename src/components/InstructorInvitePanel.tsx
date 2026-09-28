@@ -171,7 +171,8 @@ export function InstructorInvitePanel() {
               </div>
             </div>
           ) : null}
-          <label className="invite-field" htmlFor={`${formId}-email`}>
+          </div>
+          <label className="invite-field invite-field--lead" htmlFor={`${formId}-email`}>
             Instructor email
             <input
               id={`${formId}-email`}
@@ -186,8 +187,10 @@ export function InstructorInvitePanel() {
                 setError(null);
               }}
             />
+            <span className="invite-field__hint">
+              Advantage does not send email. Copy the invite link after you issue it.
+            </span>
           </label>
-          </div>
           <RoleOptions
             selected={presetId}
             onSelect={(id) => {
@@ -336,13 +339,6 @@ function PlanBadge({ presetId }: { presetId: InstructorPresetId | null }) {
   );
 }
 
-const BINDER_ART: Record<InstructorPresetId, string> = {
-  'assistant-coach': '/instructor-binders/assistant-coach-blue.png',
-  coach: '/instructor-binders/coach-purple.png',
-  'program-director': '/instructor-binders/program-director-brown.png',
-  instructors: '/instructor-binders/instructor-black.png',
-};
-
 function RoleOptions({
   selected,
   onSelect,
@@ -364,12 +360,18 @@ function RoleOptions({
               type="button"
               role="radio"
               aria-checked={on}
-              className={`role-option${on ? ' role-option--on' : ''}`}
+              className={`btn btn--white role-option${on ? ' role-option--on' : ''}`}
               onClick={() => onSelect(preset.id)}
             >
-              <img src={`${BINDER_ART[preset.id]}?v=approved`} alt={preset.label} draggable={false} />
-              <PlanBadge presetId={preset.id} />
-              <span className="role-option__detail">{preset.detail}</span>
+              <span className="role-option__name">{preset.label}</span>
+              <span className="role-option__details">
+                {preset.detail.map((line) => (
+                  <span key={line} className="role-option__detail">
+                    {line}
+                  </span>
+                ))}
+              </span>
+              <span className="role-option__plan">{preset.plan}</span>
             </button>
           );
         })}
@@ -452,7 +454,8 @@ function SeatRow({
   const shown = editing && draft ? draft : seat.permissions;
   const shownPreset = editing ? draftPresetId : seat.presetId;
   return (
-    <li className="seat-card">
+    <li className="seat-stack">
+      <div className="seat-card">
       <div className="seat-card__body">
       <p className="seat-card__role">{instructorSeatBinderLabel(shownPreset, shown)}</p>
       <PlanBadge presetId={shownPreset} />
@@ -461,24 +464,7 @@ function SeatRow({
         {statusLabel(seat.status)} · {issuedLabel(seat.issuedAt)}
       </span>
       <span>{permissionSummary(shown)}</span>
-      {editing && draft ? (
-        <>
-          <RoleOptions heading="Change role" selected={draftPresetId} onSelect={onPreset} />
-          <PermissionSwitches
-            legendId={`edit-${seat.id}`}
-            permissions={draft}
-            onToggle={onDraft}
-          />
-          <div className="invite-actions">
-            <button type="button" className="btn" onClick={onSave}>
-              Save permissions
-            </button>
-            <button type="button" className="btn btn--ghost" onClick={onCancelEdit}>
-              Cancel
-            </button>
-          </div>
-        </>
-      ) : confirming ? (
+      {editing && draft ? null : confirming ? (
         <div className="invite-confirm" role="group" aria-label={`Revoke ${seat.email}`}>
           <span>Revoke the binder for {seat.email}?</span>
           <div className="invite-actions">
@@ -510,6 +496,27 @@ function SeatRow({
         </label>
       ) : null}
       </div>
+      </div>
+      {editing && draft ? (
+        <>
+          <RoleOptions heading="Change role" selected={draftPresetId} onSelect={onPreset} />
+          <div className="invite-form">
+            <PermissionSwitches
+              legendId={`edit-${seat.id}`}
+              permissions={draft}
+              onToggle={onDraft}
+            />
+            <div className="invite-actions">
+              <button type="button" className="btn" onClick={onSave}>
+                Save permissions
+              </button>
+              <button type="button" className="btn btn--ghost" onClick={onCancelEdit}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </>
+      ) : null}
     </li>
   );
 }
