@@ -171,7 +171,8 @@ export function InstructorInvitePanel() {
               </div>
             </div>
           ) : null}
-          <label className="invite-field" htmlFor={`${formId}-email`}>
+          </div>
+          <label className="invite-field invite-field--lead" htmlFor={`${formId}-email`}>
             Instructor email
             <input
               id={`${formId}-email`}
@@ -186,8 +187,10 @@ export function InstructorInvitePanel() {
                 setError(null);
               }}
             />
+            <span className="invite-field__hint">
+              Advantage does not send email. Copy the invite link after you issue it.
+            </span>
           </label>
-          </div>
           <RoleOptions
             selected={presetId}
             onSelect={(id) => {
