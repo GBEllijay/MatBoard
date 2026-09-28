@@ -20,8 +20,8 @@ import {
 } from './gamePlan.ts';
 
 export const STORAGE_KEY = 'matboard.roster.v1';
-export const NOTE_MAX = 160;
-export const INJURY_MAX = 160;
+/** Competitor Notes on the roster card. */
+export const NOTE_MAX = 500;
 export const NAME_MAX = 80;
 export const GYM_MAX = 80;
 export const DIVISION_MAX = 80;
@@ -40,9 +40,8 @@ export type Student = {
   /** School or academy. Optional. Shown on the scoreboard and brackets. */
   gym: string;
   lastPromotion: string;
+  /** Competitor Notes. Stays on this card. Older saves may also have knownInjuries; that field is dropped on read. */
   note: string;
-  /** Optional injury note. Stays on this competitor, not on one weekend checklist. */
-  knownInjuries: string;
   /** Present today for the in-house tournament. Off until someone checks them in. */
   checkedIn: boolean;
 };
@@ -59,7 +58,8 @@ export const READY_ITEMS = [
 
 export type ReadyItemId = (typeof READY_ITEMS)[number]['id'];
 
-export const READY_NOTE_MAX = NOTE_MAX;
+/** Weekend checklist note. Separate from Competitor Notes on the roster card. */
+export const READY_NOTE_MAX = 160;
 export const READY_EXTRA_LABEL_MAX = 48;
 export const READY_EXTRA_MAX = 3;
 
@@ -108,7 +108,6 @@ export type StudentDraft = {
   gym: string;
   lastPromotion: string;
   note: string;
-  knownInjuries: string;
 };
 
 const listeners = new Set<() => void>();
@@ -208,7 +207,7 @@ export function dropSiblingCompetitor(extra: Record<string, unknown>, id: string
 }
 
 export function emptyDraft(): StudentDraft {
-  return { name: '', belt: '', division: '', gym: '', lastPromotion: '', note: '', knownInjuries: '' };
+  return { name: '', belt: '', division: '', gym: '', lastPromotion: '', note: '' };
 }
 
 export function draftFromStudent(student: Student): StudentDraft {
@@ -219,7 +218,6 @@ export function draftFromStudent(student: Student): StudentDraft {
     gym: student.gym,
     lastPromotion: student.lastPromotion,
     note: student.note,
-    knownInjuries: student.knownInjuries,
   };
 }
 
@@ -306,10 +304,6 @@ export function clipNote(value: string): string {
   return value.trim().slice(0, NOTE_MAX);
 }
 
-export function clipKnownInjuries(value: string): string {
-  return value.trim().slice(0, INJURY_MAX);
-}
-
 /** Yes, true, or 1 count as checked in. Anything else, including a blank, stays off. */
 export function parseCheckedIn(value: unknown): boolean {
   if (value === true) return true;
@@ -337,7 +331,6 @@ export function studentFromInput(
     gym: clipGym(input.gym ?? ''),
     lastPromotion: normalizeDate(input.lastPromotion ?? ''),
     note: clipNote(input.note ?? ''),
-    knownInjuries: clipKnownInjuries(input.knownInjuries ?? ''),
     checkedIn: parseCheckedIn(input.checkedIn),
   };
 }
@@ -421,7 +414,6 @@ export function confirmManualCompetitor(
       gym: '',
       lastPromotion: '',
       note: '',
-      knownInjuries: '',
     });
     return added
       ? { name: added.name, belt: added.belt, gym: added.gym, division: added.division }
@@ -442,7 +434,6 @@ export function normalizeStudent(raw: unknown): Student | null {
     gym: typeof row.gym === 'string' ? row.gym : '',
     lastPromotion: typeof row.lastPromotion === 'string' ? row.lastPromotion : '',
     note: typeof row.note === 'string' ? row.note : '',
-    knownInjuries: typeof row.knownInjuries === 'string' ? row.knownInjuries : '',
     checkedIn: row.checkedIn,
   });
 }
@@ -613,7 +604,6 @@ export function updateStudent(id: string, draft: Partial<StudentDraft>): Student
     gym: draft.gym ?? current.gym,
     lastPromotion: draft.lastPromotion ?? current.lastPromotion,
     note: draft.note ?? current.note,
-    knownInjuries: draft.knownInjuries ?? current.knownInjuries,
     checkedIn: current.checkedIn,
   });
   if (!next) return null;
