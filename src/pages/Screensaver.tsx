@@ -383,6 +383,13 @@ export function ScreensaverPage() {
   const hubTitle = MEDIA_CONSOLE_NAME;
 
   const focusEmpty = itemsInFolder(photos, focusFolder).length === 0;
+  const focusCanUpload =
+    !seat ||
+    (focusFolder === 'shop'
+      ? seatPermissionAllows(seat.permissions, 'proShopAccess')
+      : focusFolder === 'events'
+        ? seatPermissionAllows(seat.permissions, 'eventsAccess')
+        : seatPermissionAllows(seat.permissions, 'galleryUpload'));
   const emptyCopy =
     photos.length === 0
       ? focusFolder === 'gallery'
@@ -457,7 +464,7 @@ export function ScreensaverPage() {
         <div className="saver__empty" onClick={(e) => e.stopPropagation()}>
           <h1>{hubTitle}</h1>
           <p>{emptyCopy}</p>
-          {focusConfig.ready && focusEmpty ? (
+          {focusConfig.ready && focusEmpty && focusCanUpload ? (
             <>
               <button type="button" className="btn" onClick={() => openAdd(focusFolder, 'photo')}>
                 {focusConfig.addLabel}

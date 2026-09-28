@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   acceptInstructorInvite,
@@ -10,9 +10,7 @@ import {
 } from '../lib/instructorSeats';
 
 export function useCurrentSeat(): InstructorSeat | null {
-  const [seat, setSeat] = useState<InstructorSeat | null>(() => readCurrentSeat());
-  useEffect(() => subscribeSeatSession(() => setSeat(readCurrentSeat())), []);
-  return seat;
+  return useSyncExternalStore(subscribeSeatSession, readCurrentSeat, () => null);
 }
 
 export function SeatSessionBar() {
