@@ -6,7 +6,7 @@ import { useCoachPageSwipe } from '../hooks/useCoachSwipe';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useToolboxParent } from '../hooks/useToolboxParent';
-import { RankChip } from '../components/RankChip';
+import { BeltTip } from '../components/BeltTip';
 import { Sheet } from '../components/Sheet';
 import { useRosterState } from '../hooks/useStores';
 import { COMPETITOR_SYSTEM_NAME } from '../lib/productNames';
@@ -369,7 +369,7 @@ function StudentCard({
               </button>
             </div>
           </div>
-          <RankChip belt={student.belt} />
+          <BeltTip belt={student.belt} />
         </header>
         {student.division ? <p className="roster-card__meta">{student.division}</p> : null}
         {student.gym ? <p className="roster-card__meta">{student.gym}</p> : null}
@@ -511,6 +511,7 @@ function StudentEditor({
       <fieldset className="roster-edit__belts">
         <legend>Belt rank</legend>
         <p className="roster-edit__hint">Required to pick this competitor into Match or a bracket.</p>
+        {draft.belt.trim() ? <BeltTip belt={draft.belt} /> : null}
         <div className="presets roster-edit__belt-row" role="radiogroup" aria-label="Adult belts">
           {ADULT_BELTS.map((belt) => (
             <button

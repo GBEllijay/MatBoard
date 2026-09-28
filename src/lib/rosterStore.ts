@@ -285,6 +285,14 @@ export function beltChipKey(value: string): string {
   return isKnownBelt(canonical) ? canonical.toLowerCase() : 'custom';
 }
 
+/**
+ * Rank bar on the roster belt-tip icon.
+ * Black belts use a red bar. Every other rank, including kids belts, uses black.
+ */
+export function beltTipRankBar(value: string): 'black' | 'red' {
+  return beltChipKey(value) === 'black' ? 'red' : 'black';
+}
+
 export function normalizeDate(value: string): string {
   const trimmed = value.trim();
   return /^\d{4}-\d{2}-\d{2}$/.test(trimmed) ? trimmed : '';

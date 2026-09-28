@@ -4,6 +4,7 @@ import {
   addStudents,
   addStudent,
   beltChipKey,
+  beltTipRankBar,
   canPrefill,
   canonicalBelt,
   confirmManualCompetitor,
@@ -607,6 +608,19 @@ describe('belt and date helpers', () => {
     assert.equal(beltChipKey('gray'), 'grey');
     assert.equal(beltChipKey('BB'), 'black');
     assert.equal(beltChipKey('Coral'), 'custom');
+    assert.equal(beltTipRankBar('Black'), 'red');
+    assert.equal(beltTipRankBar('blackbelt'), 'red');
+    assert.equal(beltTipRankBar('BB'), 'red');
+    assert.equal(beltTipRankBar('White'), 'black');
+    assert.equal(beltTipRankBar('Blue'), 'black');
+    assert.equal(beltTipRankBar('Purple'), 'black');
+    assert.equal(beltTipRankBar('Brown'), 'black');
+    assert.equal(beltTipRankBar('Grey'), 'black');
+    assert.equal(beltTipRankBar('gray'), 'black');
+    assert.equal(beltTipRankBar('Yellow'), 'black');
+    assert.equal(beltTipRankBar('Orange'), 'black');
+    assert.equal(beltTipRankBar('Green'), 'black');
+    assert.equal(beltTipRankBar('Coral'), 'black');
     assert.equal(normalizeDate('2026-03-12'), '2026-03-12');
     assert.equal(normalizeDate('03/12/2026'), '');
     assert.equal(formatPromotion('2026-03-12').includes('2026'), true);
