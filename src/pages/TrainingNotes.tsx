@@ -485,6 +485,7 @@ export function TrainingNotesPage() {
             {editingToday ? '' : ' · View only'}
           </p>
           <div className="notes__downloads">
+            {/* TODO(seat-permissions): hide when seatPermissionAllows(currentSeat, 'downloadTodaysVideos') is false. */}
             <button
               type="button"
               className="btn notes__download"
@@ -680,6 +681,7 @@ export function TrainingNotesPage() {
           </label>
         </section>
 
+        {/* TODO(seat-permissions): hide unless seatPermissionAllows(currentSeat, 'uploadForDistribution'). Owners stay unchanged until a seat session exists. */}
         {proSuite && editingToday ? (
           <aside className="notes__distribute" aria-label="Instructor distribution">
             <p>{DISTRIBUTE_LEAD}</p>

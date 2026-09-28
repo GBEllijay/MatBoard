@@ -916,6 +916,235 @@ button.mode-card {
   text-align: center;
 }
 
+.suite h2.instructor-hub__title {
+  position: relative;
+  padding: 1rem 1.1rem 1rem 1.45rem;
+  border-radius: 18px;
+  background: var(--white);
+  color: var(--white-ink);
+  font-size: clamp(1.25rem, 3.6vw, 1.7rem);
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+}
+
+.suite h2.instructor-hub__title > span {
+  position: relative;
+  z-index: 1;
+}
+
+.invite-panel {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.invite-card {
+  position: relative;
+  border-radius: 18px;
+  background: rgba(8, 12, 20, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  text-align: left;
+}
+
+.invite-card__body {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.95rem 1rem 1rem 1.4rem;
+}
+
+.invite-card__body > strong,
+.invite-card__body > h3 {
+  font-size: 1.15rem;
+  letter-spacing: -0.03em;
+}
+
+.invite-card__body > span,
+.invite-seat > span,
+.invite-gym {
+  color: var(--muted);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.invite-gym {
+  color: var(--gold-2);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.invite-field,
+.invite-link,
+.invite-link label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 700;
+}
+
+.invite-link {
+  padding: 0.75rem;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.invite-link p,
+.invite-error {
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.invite-error {
+  color: #f0a8a8;
+}
+
+.invite-permissions {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+  min-inline-size: 0;
+}
+
+.invite-permissions legend {
+  margin-bottom: 0.15rem;
+  padding: 0;
+  color: var(--gold-2);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.invite-switch {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 64px;
+  padding: 0.55rem 0.85rem;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: rgba(8, 10, 16, 0.55);
+  color: var(--ink);
+  text-align: left;
+}
+
+.invite-switch--on {
+  border-color: rgba(252, 192, 0, 0.7);
+  background: rgba(252, 192, 0, 0.16);
+}
+
+.invite-switch__track {
+  position: relative;
+  flex: none;
+  width: 3.1rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.invite-switch__track::after {
+  content: '';
+  position: absolute;
+  top: 0.16rem;
+  left: 0.16rem;
+  width: 1.42rem;
+  height: 1.42rem;
+  border-radius: 50%;
+  background: var(--white);
+}
+
+.invite-switch--on .invite-switch__track {
+  background: var(--logo-yellow);
+}
+
+.invite-switch--on .invite-switch__track::after {
+  left: 1.5rem;
+}
+
+.invite-switch__label {
+  flex: 1;
+  min-width: 0;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.invite-switch__state {
+  flex: none;
+  min-width: 2.4rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.invite-card .btn {
+  width: 100%;
+  white-space: normal;
+  line-height: 1.2;
+}
+
+.invite-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.45rem;
+}
+
+.invite-seats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.invite-seat {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+}
+
+.invite-seat > strong {
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.invite-seat--revoked {
+  opacity: 0.72;
+}
+
+.invite-revoked-title {
+  margin: 0.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.invite-confirm {
+  display: grid;
+  gap: 0.45rem;
+}
+
+@media (min-width: 520px) {
+  .invite-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .invite-actions .btn:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+
 .pro-hubs {
   display: grid;
   gap: 0.75rem;

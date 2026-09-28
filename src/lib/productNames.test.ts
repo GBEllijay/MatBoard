@@ -124,7 +124,7 @@ test('Coach hub is four tools and Competition Management keeps the tournament be
 
 test('Pro console hubs stay four siblings, Media Console first', () => {
   assert.equal(COMPETITOR_SYSTEM_NAME, 'Competitor Management System');
-  assert.equal(INSTRUCTOR_COLLAB_NAME, 'Instructor Collaboration and Cloud Access');
+  assert.equal(INSTRUCTOR_COLLAB_NAME, 'Instructor Collaboration and Advantage Coach Unlimited');
   assert.equal(
     INSTRUCTOR_COLLAB_HUB_LABEL,
     'Instructor Collaboration & Advantage Coach Unlimited',
