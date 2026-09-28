@@ -272,6 +272,11 @@ describe('division column', () => {
 
     const aliased = importRosterCsv('Name,Belt,Weight class\nAlex,Purple,Masters 1\n');
     assert.equal(aliased.students[0]?.division, 'Masters 1');
+
+    const nickname = importRosterCsv('Name,Belt,Gym name / nickname\nSam,Blue,Moose\n');
+    assert.equal(nickname.imported, 1);
+    assert.equal(nickname.students[0]?.gym, 'Moose');
+    assert.equal(nickname.students[0]?.photo, '');
   });
 });
 
@@ -294,7 +299,7 @@ describe('serializeRosterCsv', () => {
     assert.match(csv, /blackbelt/i);
     assert.match(csv, /black belt/i);
     assert.equal(
-      csv.includes('Name,Belt,Division,Gym name,Last promotion,Competitor Notes,Check In\r\n'),
+      csv.includes('Name,Belt,Division,Gym name / nickname,Last promotion,Competitor Notes,Check In\r\n'),
       true,
     );
     assert.equal(csv.includes('Alex Rivera,Purple,Adult Purple,Alliance,2026-03-12,'), true);
@@ -308,6 +313,8 @@ describe('serializeRosterCsv', () => {
     assert.equal(roundTrip.students[0]?.gym, 'Alliance');
     assert.equal(roundTrip.students[0]?.division, 'Adult Purple');
     assert.equal(roundTrip.students[0]?.checkedIn, false);
+    assert.equal(roundTrip.students[0]?.photo, '');
+    assert.equal(csv.includes('data:image'), false);
   });
 
   it('imports every filled template row with mixed belts and an accented name', () => {

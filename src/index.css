@@ -7689,6 +7689,107 @@ input.roster-pick__name:focus,
   background: var(--gold-2);
 }
 
+/* Roster belt tip. Rank bar sits on the left, inset in the cloth, like a belt end. */
+.belt-mark {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.28rem;
+  flex: 0 0 auto;
+  max-width: 6.5rem;
+}
+
+.belt-tip {
+  position: relative;
+  width: 5.6rem;
+  height: 2.65rem;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: var(--belt-cloth, #6a6f7a);
+  background-image:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.2) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.14) 0 1px, transparent 1px 3px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.22),
+    0 0 0 1px rgba(0, 0, 0, 0.45);
+}
+
+.belt-tip__bar {
+  position: absolute;
+  top: 0.32rem;
+  bottom: 0.32rem;
+  left: 0.32rem;
+  width: 0.92rem;
+  border-radius: 2px;
+  background: #141414;
+}
+
+.belt-tip__bar--red {
+  background: #e10600;
+}
+
+.belt-tip--white {
+  --belt-cloth: #f7f7f5;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.07) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.05) 0 1px, transparent 1px 3px);
+}
+
+.belt-tip--blue {
+  --belt-cloth: #1d4ed8;
+}
+
+.belt-tip--purple {
+  --belt-cloth: #7a3ec8;
+}
+
+.belt-tip--brown {
+  --belt-cloth: #a56b45;
+}
+
+.belt-tip--black {
+  --belt-cloth: #161616;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.09) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 3px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 0 0 1px rgba(255, 255, 255, 0.22);
+}
+
+.belt-tip--grey {
+  --belt-cloth: #c5c8d0;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.08) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.2) 0 1px, transparent 1px 3px);
+}
+
+.belt-tip--yellow {
+  --belt-cloth: #e0bc12;
+}
+
+.belt-tip--orange {
+  --belt-cloth: #e06a00;
+}
+
+.belt-tip--green {
+  --belt-cloth: #2d7a3a;
+}
+
+.belt-tip--custom {
+  --belt-cloth: #c9a227;
+}
+
+.belt-mark__name {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
 .bout--white .rank-chip--white,
 .pad--white .rank-chip--white {
   box-shadow: 0 0 0 1px rgba(20, 22, 28, 0.45);
@@ -7895,6 +7996,60 @@ input.roster-pick__name:focus,
   align-items: center;
   justify-content: space-between;
   gap: 0.45rem;
+}
+
+.roster-card__identity {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.roster-card__photo,
+.roster-edit__photo-img,
+.roster-edit__photo-empty {
+  flex: 0 0 auto;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center 18%;
+  border: 2px solid rgba(252, 192, 0, 0.55);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.roster-edit__photo {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.roster-edit__photo-img,
+.roster-edit__photo-empty {
+  width: 96px;
+  height: 96px;
+}
+
+.roster-edit__photo-empty {
+  display: grid;
+  place-items: center;
+  padding: 0.35rem;
+  border-style: dashed;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.roster-edit__photo-actions {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.roster-edit__photo-actions .btn {
+  min-height: 48px;
 }
 
 .roster-card__who {

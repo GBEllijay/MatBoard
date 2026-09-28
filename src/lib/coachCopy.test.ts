@@ -35,6 +35,7 @@ import {
   GAME_PLAN_LEAD,
   GAME_PLAN_OPTIONAL,
   RANKINGS_RESULTS_CARD,
+  COMPETITOR_GYM_LABEL,
   ROSTER_CSV_DEVICE_NOTE,
   ROSTER_CSV_INSTRUCTIONS,
   ROSTER_CSV_PRO_TEASER,
@@ -65,6 +66,7 @@ function allCopy(): string {
     EMPTY_BRACKET_BODY,
     OWNER_BRACKET_CLOUD_NOTE,
     NOTES_LEAD,
+    COMPETITOR_GYM_LABEL,
     ROSTER_CSV_PRO_TEASER,
     ROSTER_CSV_DEVICE_NOTE,
     ROSTER_CSV_INSTRUCTIONS,
@@ -177,13 +179,15 @@ test('Coach roster lead points CSV at Pro and keeps manual roster language', () 
   assert.equal(rosterCsvAvailable(true, true), false);
   assert.equal(rosterCsvAvailable(false, true), false);
   assert.equal(rosterCsvAvailable(false, false), false);
+  assert.equal(COMPETITOR_GYM_LABEL, 'Gym name / nickname');
+  assert.match(COMPETITOR_GYM_LABEL, /nickname/);
   assert.equal(
     ROSTER_CSV_DEVICE_NOTE,
-    'The roster stays on this device. CSV is for backup or a move.',
+    'The roster stays on this device. CSV is for backup or a move. Face photos stay on this device and are not in the CSV.',
   );
   assert.equal(
     ROSTER_CSV_INSTRUCTIONS,
-    'Each row needs a competitor name and a belt. A row missing either one is left out. Division and Check In can be blank. Competitor Notes are included when the row has them.',
+    'Each row needs a competitor name and a belt. A row missing either one is left out. Division, Gym name / nickname, and Check In can be blank. Competitor Notes are included when the row has them. Face photos stay on this device and are not in the CSV.',
   );
   assert.doesNotMatch(`${ROSTER_CSV_DEVICE_NOTE}\n${ROSTER_CSV_INSTRUCTIONS}`, /UTF-8|accent/i);
 });

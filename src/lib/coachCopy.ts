@@ -86,6 +86,9 @@ export const GAME_PLAN_OPTIONAL = 'Optional. A note does not need a Technique Tr
 export const GAME_PLAN_EMPTY =
   'Add a name and belt on Competitor Roster, then write their game plan here.';
 
+/** Gym slot on Competitor Roster. Owners already put nicknames in this field. */
+export const COMPETITOR_GYM_LABEL = 'Gym name / nickname';
+
 export const ROSTER_LEAD_COACH =
   'Competitor Roster with Names and Ranks for Single Matches and Mock Tournaments.';
 export const ROSTER_LEAD_PRO =
@@ -93,11 +96,11 @@ export const ROSTER_LEAD_PRO =
 
 /** Short line under the Pro CSV buttons. Same voice as the roster lead. */
 export const ROSTER_CSV_DEVICE_NOTE =
-  'The roster stays on this device. CSV is for backup or a move.';
+  'The roster stays on this device. CSV is for backup or a move. Face photos stay on this device and are not in the CSV.';
 
 /** Shown only from the Instructions control. Import skips a row without both. */
 export const ROSTER_CSV_INSTRUCTIONS =
-  'Each row needs a competitor name and a belt. A row missing either one is left out. Division and Check In can be blank. Competitor Notes are included when the row has them.';
+  'Each row needs a competitor name and a belt. A row missing either one is left out. Division, Gym name / nickname, and Check In can be blank. Competitor Notes are included when the row has them. Face photos stay on this device and are not in the CSV.';
 
 /** Coach Competitor Roster: CSV stays on the Pro roster screen. */
 export const ROSTER_CSV_PRO_TEASER = 'Importable CSV Template Available in Advantage Pro';

@@ -1,12 +1,14 @@
 /** Roster CSV. Browser file in/out — UTF-8 (BOM), Excel CRLF, Windows-1252 fallback. */
 
+import { COMPETITOR_GYM_LABEL } from './coachCopy.ts';
 import { formatCheckedIn, studentFromInput, type Student } from './rosterStore.ts';
 
+/** Face photos stay on the device. They are not a CSV column. */
 export const ROSTER_CSV_HEADERS = [
   'Name',
   'Belt',
   'Division',
-  'Gym name',
+  COMPETITOR_GYM_LABEL,
   'Last promotion',
   'Competitor Notes',
   'Check In',
@@ -76,6 +78,7 @@ const HEADER_ALIASES: Record<string, HeaderField> = {
   'weight class': 'division',
   gym: 'gym',
   'gym name': 'gym',
+  'gym name nickname': 'gym',
   school: 'gym',
   academy: 'gym',
   'school name': 'gym',
