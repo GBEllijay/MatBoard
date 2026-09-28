@@ -23,6 +23,7 @@ type IssuedLink = {
   email: string;
   link: string;
   plan: ReturnType<typeof instructorPresetPlan>;
+  presetId: InstructorPresetId | null;
 };
 
 function statusLabel(status: SeatStatus): string {
@@ -126,6 +127,7 @@ export function InstructorInvitePanel() {
       email: result.seat.email,
       link: result.inviteLink,
       plan: instructorPresetPlan(presetId),
+      presetId,
     });
     setCopiedId(null);
     setCopyFailedId(null);
@@ -147,7 +149,13 @@ export function InstructorInvitePanel() {
           </span>
           {gymName ? <span className="invite-gym">Gym · {gymName}</span> : null}
           {issued ? (
-            <div className="invite-link" role="status" ref={issuedRef}>
+            <div
+              className={`invite-link${issued.presetId ? ` invite-link--tier binder--${issued.presetId}` : ''}`}
+              role="status"
+              ref={issuedRef}
+            >
+              {issued.presetId ? <BinderRings /> : null}
+              <div className="invite-link__copy">
               <p>Binder for {issued.email}. Status is invited.</p>
               {issued.plan ? <span className="binder-plan">{issued.plan}</span> : null}
               <label htmlFor={`${formId}-issued-link`}>
@@ -169,6 +177,7 @@ export function InstructorInvitePanel() {
               {copyFailedId === 'issued' ? (
                 <span>Select the link and copy it from there.</span>
               ) : null}
+              </div>
             </div>
           ) : null}
           <PresetBinders

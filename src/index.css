@@ -938,12 +938,16 @@ button.mode-card {
   gap: 0.85rem;
 }
 
-/* Three-ring binder. Color alone marks the invite tier. */
+/* Three-ring binder. Cover color marks the tier. The spine is white, except Instructors, which is red. */
 .binder {
   --binder: #2a3344;
   --binder-spine: #1a2130;
   --binder-ink: #f7f4ee;
   --binder-muted: #d5deea;
+  --binder-ring: #e4e7ee;
+  --binder-ring-hi: #ffffff;
+  --binder-ring-mid: #d5dae3;
+  --binder-ring-lo: #9aa1ad;
   display: grid;
   grid-template-columns: 2.4rem minmax(0, 1fr);
   align-items: stretch;
@@ -964,7 +968,7 @@ button.mode-card {
 .binder--assistant-coach,
 .binder-pick--assistant-coach {
   --binder: #1d4ed8;
-  --binder-spine: #0c3270;
+  --binder-spine: #ffffff;
   --binder-ink: #f7f4ee;
   --binder-muted: #dbe7ff;
 }
@@ -972,7 +976,7 @@ button.mode-card {
 .binder--coach,
 .binder-pick--coach {
   --binder: #6b2d91;
-  --binder-spine: #3e1456;
+  --binder-spine: #ffffff;
   --binder-ink: #f7f4ee;
   --binder-muted: #f3e4ff;
 }
@@ -980,7 +984,7 @@ button.mode-card {
 .binder--program-director,
 .binder-pick--program-director {
   --binder: #6b3a1f;
-  --binder-spine: #3f2212;
+  --binder-spine: #ffffff;
   --binder-ink: #f7f4ee;
   --binder-muted: #f3e0d2;
 }
@@ -988,9 +992,25 @@ button.mode-card {
 .binder--instructors,
 .binder-pick--instructors {
   --binder: #16181d;
-  --binder-spine: #0a0b0e;
+  --binder-spine: #e10600;
   --binder-ink: #f7f4ee;
   --binder-muted: #d8dbe3;
+  --binder-ring: #e4e7ee;
+  --binder-ring-hi: #ffffff;
+  --binder-ring-mid: #d5dae3;
+  --binder-ring-lo: #9aa1ad;
+}
+
+.binder--assistant-coach,
+.binder-pick--assistant-coach,
+.binder--coach,
+.binder-pick--coach,
+.binder--program-director,
+.binder-pick--program-director {
+  --binder-ring: #2c313b;
+  --binder-ring-hi: #eef0f4;
+  --binder-ring-mid: #8b919e;
+  --binder-ring-lo: #2c313b;
 }
 
 .binder--revoked {
@@ -1006,17 +1026,26 @@ button.mode-card {
   gap: 0.35rem;
   padding: 0.7rem 0;
   background: var(--binder-spine);
-  box-shadow: inset -8px 0 10px rgba(0, 0, 0, 0.22);
+  box-shadow: inset -6px 0 8px rgba(0, 0, 0, 0.16);
+}
+
+.binder--assistant-coach > .binder__rings,
+.binder-pick--assistant-coach > .binder__rings,
+.binder--coach > .binder__rings,
+.binder-pick--coach > .binder__rings,
+.binder--program-director > .binder__rings,
+.binder-pick--program-director > .binder__rings {
+  box-shadow: inset -3px 0 0 rgba(20, 22, 28, 0.08);
 }
 
 .binder__rings > span {
   display: block;
   width: 0.95rem;
   height: 0.95rem;
-  border: 3px solid #e4e7ee;
+  border: 3px solid var(--binder-ring);
   border-radius: 50%;
   background:
-    radial-gradient(circle at 32% 28%, #ffffff, #d5dae3 46%, #9aa1ad 78%);
+    radial-gradient(circle at 32% 28%, var(--binder-ring-hi), var(--binder-ring-mid) 46%, var(--binder-ring-lo) 78%);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.45),
     inset 0 0 0 2px rgba(18, 20, 26, 0.35);
@@ -1168,6 +1197,31 @@ button.mode-card {
   border: 1px solid rgba(255, 255, 255, 0.22);
   background: rgba(0, 0, 0, 0.28);
   color: var(--binder-ink);
+}
+
+.invite-link--tier {
+  grid-template-columns: 1.7rem minmax(0, 1fr);
+  align-items: stretch;
+  padding: 0;
+  overflow: hidden;
+}
+
+.invite-link--tier .binder__rings {
+  padding: 0.45rem 0;
+  gap: 0.2rem;
+}
+
+.invite-link--tier .binder__rings > span {
+  width: 0.62rem;
+  height: 0.62rem;
+  border-width: 2px;
+}
+
+.invite-link__copy {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 0.75rem;
 }
 
 .invite-link p,
