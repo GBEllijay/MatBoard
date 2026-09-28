@@ -1,4 +1,7 @@
-/** Match scoreboard skins. Mock-Tournament is the default. No picker in the UI yet. */
+/**
+ * Match scoreboard skins. Mock-Tournament is the default. No picker in the UI yet.
+ * Kids' Scoreboards is a bracket-TV mode (kidsScoreboard.ts), not this match skin.
+ */
 
 export const SCOREBOARD_SKIN = {
   /** Approved tournament-photo eyedrop, tuned for TV. */
@@ -31,7 +34,7 @@ export const MOCK_TOURNAMENT_COLORS = {
 
 const SKIN_CLASS: Record<ScoreboardSkinId, string> = {
   [SCOREBOARD_SKIN.MOCK_TOURNAMENT]: 'scoreboard-skin--mock-tournament',
-  /* Light and Kids have no stylesheet yet, so they keep the default skin. */
+  /* Light and Kids match skins keep the default board. Kids brackets use kidsScoreboard.ts. */
   [SCOREBOARD_SKIN.LIGHT]: 'scoreboard-skin--mock-tournament',
   [SCOREBOARD_SKIN.KIDS]: 'scoreboard-skin--mock-tournament',
 };

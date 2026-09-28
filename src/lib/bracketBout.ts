@@ -12,6 +12,7 @@ import {
 import {
   getTournament,
   isBracketMatchId,
+  sanitizeBoutPoints,
   scoreboardSideToBracket,
   seedPlaceholder,
   seedSlots,
@@ -133,7 +134,17 @@ export function declareMatchOutcome(
       outcome.call === 'win'
         ? { call: 'win', method: outcome.method, scoreReason: outcome.scoreReason }
         : { call: 'dq', reason: outcome.reason };
-    setMatchOutcome(linked, scoreboardSideToBracket(side), stored, { toggle: false });
+    const winnerIsCalledSide = outcome.call === 'win';
+    const winnerPoints = (winnerIsCalledSide ? side === 'blue' : side !== 'blue')
+      ? match.blue.points
+      : match.white.points;
+    const loserPoints = (winnerIsCalledSide ? side === 'blue' : side !== 'blue')
+      ? match.white.points
+      : match.blue.points;
+    setMatchOutcome(linked, scoreboardSideToBracket(side), stored, {
+      toggle: false,
+      points: sanitizeBoutPoints(winnerPoints, loserPoints),
+    });
   }
   return true;
 }

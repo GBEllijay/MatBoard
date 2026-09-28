@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { BeltRail } from '../components/BeltRail';
 import { EmptyHint } from '../components/EmptyHint';
 import { FullscreenChip } from '../components/FullscreenChip';
+import { KidsBracketChrome } from '../components/KidsBracketChrome';
+import { KidsScoreboardSwitcher } from '../components/KidsScoreboardSwitcher';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { OutcomePickSheet } from '../components/OutcomeCalls';
 import { RosterNameField } from '../components/RosterNameField';
@@ -15,6 +17,7 @@ import { useToolboxParent } from '../hooks/useToolboxParent';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import {
   useBracketTheme,
+  useKidsScoreboard,
   useMatchState,
   useRosterState,
   useTournamentLibrary,
@@ -23,6 +26,7 @@ import {
 import { EMPTY_BRACKET_BODY, EMPTY_BRACKET_TITLE, OWNER_BRACKET_CLOUD_NOTE } from '../lib/coachCopy';
 import { linkedBracketMatchId, openBracketBout, scoreboardPath, unlinkBracketBout } from '../lib/bracketBout';
 import { setBracketTheme } from '../lib/bracketTheme';
+import { kidsLiveLine, kidsPointsLine, kidsShowWin } from '../lib/kidsScoreboard';
 import { rosterGymForName } from '../lib/rosterStore';
 import { tournamentToolLabel } from '../lib/productNames';
 import {
@@ -73,6 +77,7 @@ export function TournamentPage() {
   const library = useTournamentLibrary();
   const match = useMatchState();
   const theme = useBracketTheme();
+  const kids = useKidsScoreboard();
   const fs = usePlayFullscreen();
   const boardRef = useRef<HTMLDivElement>(null);
   const bracketRef = useRef<HTMLDivElement>(null);
@@ -94,6 +99,18 @@ export function TournamentPage() {
   const seeds = seedSlots(tournament);
   const champion = slotName(tournament, 'champion');
   const liveMatchId = linkedBracketMatchId(match.bracketMatchId);
+  const kidsWin = kidsShowWin(kids.enabled, champion);
+  const kidsScore = kidsPointsLine(tournament.results['final-0']?.points);
+  const kidsLive =
+    kids.enabled && liveMatchId && !kidsWin && !tournament.results[liveMatchId]
+      ? kidsLiveLine({
+          title: tournament.title.trim() || match.division,
+          blueName: match.blue.name,
+          whiteName: match.white.name,
+          bluePoints: match.blue.points,
+          whitePoints: match.white.points,
+        })
+      : null;
   const undoReady = canUndoLast(tournament);
   const emptyBracket = !bracketHasContent(tournament);
   const canReset = bracketHasContent(tournament);
@@ -180,7 +197,7 @@ export function TournamentPage() {
 
   return (
     <main
-      className={`tournament tournament--${theme}${fs.className ? ` ${fs.className}` : ''}`}
+      className={`tournament tournament--${theme}${kids.enabled ? ` tournament--kids tournament--kids-${kids.skin}` : ''}${fs.className ? ` ${fs.className}` : ''}`}
     >
       <BeltRail kind="tournament" />
       <PlayExitMark to={exitPath} onExit={exitBoard} />
@@ -266,11 +283,24 @@ export function TournamentPage() {
         </div>
       </header>
 
+      <div className="kids-switch-row">
+        <KidsScoreboardSwitcher prefs={kids} />
+      </div>
+
       <p className="tournament__hint">
-        Tap <strong>Score</strong> to open the match board. <strong>Win</strong> or <strong>DQ</strong>{' '}
-        flash the winner. <strong>Undo last result</strong> backs out a mistaken tap. Save a named
-        bracket on this device, then switch without losing progress. Reset asks first so a demo
-        cannot wipe the bracket by accident.
+        {kids.enabled ? (
+          <>
+            Kids' Scoreboards paints this bracket. Pick a background, then fullscreen for the gym TV.
+            Grand Master Carlos comes in from the left only after a champion, with "Bom trabalho!"
+          </>
+        ) : (
+          <>
+            Tap <strong>Score</strong> to open the match board. <strong>Win</strong> or <strong>DQ</strong>{' '}
+            flash the winner. <strong>Undo last result</strong> backs out a mistaken tap. Save a named
+            bracket on this device, then switch without losing progress. Reset asks first so a demo
+            cannot wipe the bracket by accident.
+          </>
+        )}
       </p>
 
       {emptyBracket ? (
@@ -286,6 +316,16 @@ export function TournamentPage() {
       ) : null}
 
       <div className="tournament__board" ref={boardRef} onPointerDown={blurTextEntry}>
+        {kids.enabled ? (
+          <KidsBracketChrome
+            skin={kids.skin}
+            win={kidsWin}
+            champion={champion}
+            scoreLine={kidsScore}
+            liveLine={kidsLive}
+            liveMatch={kidsLive ? match : null}
+          />
+        ) : null}
         <div className="bracket-viewport">
           <div
             className={`bracket bracket--tree-${tree}${threePerson ? ' bracket--three' : ''}`}
@@ -313,12 +353,17 @@ export function TournamentPage() {
 
           <div className="bracket__finals">
             <MatchCard matchId="final-0" liveMatchId={liveMatchId} />
-            <div className={`bracket__champ${champion ? ' is-filled' : ''}`}>
+            <div className={`bracket__champ${champion ? ' is-filled' : ''}${kidsWin ? ' is-kids-win' : ''}`}>
               <BeltRail kind="tournament" />
-              <span>Champion</span>
+              <span>{kidsWin ? 'Winner' : 'Champion'}</span>
               {champion ? (
-                <p className="bracket__champ-flash" role="status">
+                <p
+                  className="bracket__champ-flash"
+                  role="status"
+                  aria-label={kidsWin && kidsScore ? `${champion}, ${kidsScore}` : champion}
+                >
                   {champion}
+                  {kidsWin && kidsScore ? <strong className="kids-champ-score">{kidsScore}</strong> : null}
                 </p>
               ) : null}
               <RosterNameField

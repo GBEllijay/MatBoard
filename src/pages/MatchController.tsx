@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
+import { KidsScoreboardSwitcher } from '../components/KidsScoreboardSwitcher';
 import { Sheet } from '../components/Sheet';
 import { OutcomeCalls, OutcomePickSheet, useOutcomeSheet } from '../components/OutcomeCalls';
 import { PlayExitMark } from '../components/PlayExitMark';
@@ -10,7 +11,8 @@ import { useBoutQuerySync, useBracketOutcomeReturn } from '../hooks/useBracketBo
 import { useInterval } from '../hooks/useClock';
 import { useSuiteOrigin } from '../hooks/useSuiteOrigin';
 import { useWakeLock } from '../hooks/useWakeLock';
-import { useMatchState } from '../hooks/useStores';
+import { useKidsScoreboard, useMatchState } from '../hooks/useStores';
+import { KIDS_SCOREBOARDS_NAME } from '../lib/kidsScoreboard';
 import {
   END_CUE_OPTIONS,
   patchAudioPrefs,
@@ -48,6 +50,7 @@ export function MatchControllerPage() {
   const [customOpen, setCustomOpen] = useState(false);
   const [customMinutes, setCustomMinutes] = useState('4');
   const [castNote, setCastNote] = useState('');
+  const kids = useKidsScoreboard();
   const [tvHelpOpen, setTvHelpOpen] = useState(false);
   const [searchParams] = useSearchParams();
   const suite = useSuiteOrigin();
@@ -145,6 +148,14 @@ export function MatchControllerPage() {
           </>
         }
       />
+
+      <section className="kids-switch-panel" aria-label={KIDS_SCOREBOARDS_NAME}>
+        <KidsScoreboardSwitcher prefs={kids} />
+        <p className="cast-note">
+          Backgrounds apply to the bracket on this device. Fullscreen the bracket for the gym TV. Carlos
+          stays off until that bracket has a champion.
+        </p>
+      </section>
 
       <section className="controller__clock">
         <button

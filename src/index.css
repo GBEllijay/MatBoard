@@ -31,7 +31,7 @@
 /* Mock-Tournament Skin (MOCK_TOURNAMENT) — default Match scoreboard.
    Eyedrop from the approved tournament photo, tuned for TV.
    Penalty is Pantone 200 so it stays a primary red on gym TVs.
-   LIGHT and KIDS are reserved ids in scoreboardSkin.ts. No picker yet. */
+   LIGHT and KIDS are reserved match-scoreboard ids. Kids' Scoreboards paints the bracket, not this skin. */
 :root,
 .scoreboard-skin--mock-tournament {
   --pad-points: #4AAF45;
@@ -11260,3 +11260,395 @@ a.plan-pick {
 .legal__actions .btn {
   min-height: 44px;
 }
+
+/* Kids' Scoreboards — wallpaper + frosted bubbles on the existing bracket.
+   Bright and Dark stay in the DOM. This paint only applies while Kids mode is on. */
+.kids-switch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.kids-switch__skins {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.kids-switch-panel {
+  margin: 0.35rem 0.9rem 0.2rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.kids-switch-row {
+  position: relative;
+  z-index: 23;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0 calc(1rem + var(--safe-r)) 0.45rem calc(1rem + var(--safe-l));
+  padding: 0.35rem 0.5rem;
+  border-radius: 16px;
+  background: rgba(8, 12, 18, 0.55);
+}
+
+.tournament--kids .kids-switch-row {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(12px);
+}
+
+.tournament--kids.tournament--bright,
+.tournament--kids.tournament--dark {
+  background-color: #123044;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.tournament--kids-dinos {
+  background-image: url('/assets/kids/dinos.webp');
+}
+
+.tournament--kids-unicorns {
+  background-image: url('/assets/kids/unicorns.webp');
+}
+
+.tournament--kids-robots {
+  background-image: url('/assets/kids/robots.webp');
+}
+
+.tournament--kids-space {
+  background-image: url('/assets/kids/space.webp');
+}
+
+.tournament--kids-ocean {
+  background-image: url('/assets/kids/ocean.webp');
+}
+
+.tournament--kids-superheroes {
+  background-image: url('/assets/kids/superheroes.webp');
+}
+
+.tournament--kids .tournament__bar,
+.tournament--kids .tournament__hint {
+  position: relative;
+  z-index: 22;
+}
+
+.tournament--kids .tournament__hint {
+  color: #1b2433;
+  background: rgba(255, 255, 255, 0.78);
+  border-radius: 14px;
+  padding: 0.45rem 0.75rem;
+  backdrop-filter: blur(10px);
+}
+
+.kids-banner {
+  display: grid;
+  justify-items: center;
+  gap: 0.45rem;
+  margin: 0.15rem auto 0.55rem;
+  max-width: 56rem;
+}
+
+.kids-banner__title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0.45rem 1.1rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #1b2433;
+  font-size: clamp(1.05rem, 2.2vw, 1.55rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  box-shadow: 0 10px 28px rgba(16, 24, 40, 0.16);
+  backdrop-filter: blur(12px);
+}
+
+.kids-banner__mark {
+  width: 1.35rem;
+  height: 1.35rem;
+  color: #5b3cc4;
+  flex: 0 0 auto;
+}
+
+.kids-live {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem 0.75rem;
+  margin: 0;
+  padding: 0.35rem 0.85rem 0.35rem 0.4rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #1b2433;
+  font-weight: 800;
+  box-shadow: 0 8px 22px rgba(16, 24, 40, 0.14);
+}
+
+.kids-live__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+  background: #6d4aff;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.kids-live__badge::before {
+  content: '';
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.35);
+}
+
+.kids-live__clock {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
+.kids-live__clock::before {
+  content: '';
+  width: 0.95rem;
+  height: 0.95rem;
+  border: 2px solid #6d4aff;
+  border-radius: 50%;
+}
+
+.tournament--kids .bracket__round h2,
+.tournament--kids .bracket__path {
+  color: #fff;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
+}
+
+.tournament--kids .t-match__bouts,
+.tournament--kids.tournament--bright .t-match__bouts,
+.tournament--kids.tournament--dark .t-match__bouts {
+  padding: 0.35rem 0.45rem;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 12px 28px rgba(16, 24, 40, 0.16);
+  backdrop-filter: blur(14px);
+}
+
+.tournament--kids .t-slot,
+.tournament--kids.tournament--bright .bracket__side--left .t-slot,
+.tournament--kids.tournament--bright .bracket__side--right .t-slot,
+.tournament--kids.tournament--bright .t-match--final .t-slot,
+.tournament--kids.tournament--dark .t-slot,
+.tournament--kids.tournament--dark .bracket__side--left .t-slot,
+.tournament--kids.tournament--dark .bracket__side--right .t-slot {
+  background: transparent;
+  color: #1b2433;
+  border: 0;
+  box-shadow: none;
+}
+
+.tournament--kids .t-slot__who::before {
+  content: '';
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: #6d4aff;
+  flex: 0 0 auto;
+}
+
+.tournament--kids .t-slot input,
+.tournament--kids.tournament--bright .bracket__side--left .t-slot input,
+.tournament--kids.tournament--bright .bracket__side--right .t-slot input,
+.tournament--kids.tournament--bright .t-match--final .t-slot input,
+.tournament--kids.tournament--dark .bracket__side--left .t-slot input,
+.tournament--kids.tournament--dark .bracket__side--right .t-slot input {
+  color: #1b2433;
+  -webkit-text-fill-color: #1b2433;
+  caret-color: #1b2433;
+  color-scheme: light;
+}
+
+.tournament--kids .t-slot input::placeholder,
+.tournament--kids.tournament--bright .bracket__side--left .t-slot input::placeholder,
+.tournament--kids.tournament--bright .bracket__side--right .t-slot input::placeholder,
+.tournament--kids.tournament--bright .t-match--final .t-slot input::placeholder,
+.tournament--kids.tournament--dark .bracket__side--left .t-slot input::placeholder,
+.tournament--kids.tournament--dark .bracket__side--right .t-slot input::placeholder {
+  color: rgba(27, 36, 51, 0.55);
+  -webkit-text-fill-color: rgba(27, 36, 51, 0.55);
+}
+
+.tournament--kids .t-slot__seed,
+.tournament--kids .t-slot__gym,
+.tournament--kids.tournament--bright .t-slot__gym,
+.tournament--kids.tournament--dark .t-slot__gym,
+.tournament--kids.tournament--bright .bracket__side--right .t-slot__gym,
+.tournament--kids.tournament--dark .bracket__side--right .t-slot__gym {
+  color: rgba(27, 36, 51, 0.72);
+}
+
+.tournament--kids .bracket__side--left .t-match__bouts::after,
+.tournament--kids .bracket__side--right .t-match__bouts::after,
+.tournament--kids.tournament--dark .bracket__side--left .t-match__bouts::after,
+.tournament--kids.tournament--dark .bracket__side--right .t-match__bouts::after {
+  background: #7b5cff;
+  height: 3px;
+}
+
+.tournament--kids .t-match--live .t-match__bouts {
+  outline: 3px solid #6d4aff;
+  outline-offset: 3px;
+}
+
+.tournament--kids .bracket__champ,
+.tournament--kids.tournament--bright .bracket__champ,
+.tournament--kids.tournament--dark .bracket__champ {
+  background: rgba(255, 255, 255, 0.88);
+  color: #1b2433;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 12px 28px rgba(16, 24, 40, 0.16);
+  backdrop-filter: blur(14px);
+}
+
+.tournament--kids .bracket__champ > span,
+.tournament--kids .bracket__champ-flash,
+.tournament--kids.tournament--bright .bracket__champ > span,
+.tournament--kids.tournament--bright .bracket__champ-flash {
+  color: #1b2433;
+  text-shadow: none;
+}
+
+.tournament--kids .bracket__champ input,
+.tournament--kids.tournament--bright .bracket__champ input,
+.tournament--kids.tournament--dark .bracket__champ input {
+  color: #1b2433;
+  -webkit-text-fill-color: #1b2433;
+  caret-color: #1b2433;
+  color-scheme: light;
+}
+
+.tournament--kids .bracket__champ > .belt-rail {
+  display: none;
+}
+
+.tournament--kids .bracket__champ.is-kids-win {
+  border-color: rgba(255, 214, 90, 0.95);
+  box-shadow:
+    0 0 0 3px rgba(255, 214, 90, 0.55),
+    0 16px 40px rgba(255, 196, 40, 0.35);
+}
+
+.kids-champ-score {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  letter-spacing: -0.04em;
+  color: #24185a;
+}
+
+.kids-carlos {
+  position: fixed;
+  inset: 0;
+  z-index: 18;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.kids-carlos__figure {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: min(34vw, 420px);
+  margin: 0;
+  animation: kids-carlos-in 0.72s cubic-bezier(0.16, 0.84, 0.32, 1) both;
+}
+
+.kids-carlos__figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 16px 22px rgba(0, 0, 0, 0.28));
+}
+
+.kids-carlos__bubble {
+  position: absolute;
+  top: 4%;
+  left: 58%;
+  margin: 0;
+  padding: 0.55rem 0.9rem;
+  border-radius: 18px;
+  background: #fff;
+  color: #1b2433;
+  font-size: clamp(1rem, 1.6vw, 1.35rem);
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 10px 24px rgba(16, 24, 40, 0.18);
+}
+
+.kids-carlos__bubble::after {
+  content: '';
+  position: absolute;
+  left: 1.1rem;
+  bottom: -0.45rem;
+  border: 0.5rem solid transparent;
+  border-top-color: #fff;
+  border-bottom: 0;
+}
+
+.kids-confetti {
+  position: absolute;
+  inset: 0;
+}
+
+.kids-confetti span {
+  position: absolute;
+  top: -8%;
+  width: 0.7rem;
+  height: 1.05rem;
+  border-radius: 2px;
+  animation-name: kids-confetti-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes kids-carlos-in {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes kids-confetti-fall {
+  0% {
+    transform: translateY(-10vh) rotate(var(--kids-spin, 0deg));
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(105vh) rotate(calc(var(--kids-spin, 0deg) + 160deg));
+    opacity: 0.15;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kids-carlos__figure {
+    animation: none;
+  }
+
+  .kids-confetti {
+    display: none;
+  }

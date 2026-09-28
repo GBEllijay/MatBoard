@@ -61,9 +61,21 @@ function buildNextSlot(): Record<string, SlotId> {
   return next;
 }
 
+/** Points snapshot from the scoreboard when a bout is called. Winner’s points, then the other side. */
+export type BoutPoints = { winner: number; loser: number };
+
 export type BoutResult = {
   winnerSide: MatchSide;
+  points?: BoutPoints;
 } & BoutOutcome;
+
+export function sanitizeBoutPoints(winner: number, loser: number): BoutPoints | undefined {
+  if (!Number.isFinite(winner) || !Number.isFinite(loser)) return undefined;
+  const nextWinner = Math.round(winner);
+  const nextLoser = Math.round(loser);
+  if (nextWinner < 0 || nextLoser < 0 || nextWinner > 99 || nextLoser > 99) return undefined;
+  return { winner: nextWinner, loser: nextLoser };
+}
 
 /**
  * IBJJF is the default draw. Lineup is the organizer override: names fill the
@@ -412,13 +424,21 @@ export function defaultLibrary(): TournamentLibrary {
   return { version: 2, activeId: first.id, saved: [first] };
 }
 
+function readBoutPoints(raw: unknown): BoutPoints | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const row = raw as { winner?: unknown; loser?: unknown };
+  if (typeof row.winner !== 'number' || typeof row.loser !== 'number') return undefined;
+  return sanitizeBoutPoints(row.winner, row.loser);
+}
+
 function normalizeResult(raw: unknown): BoutResult | null {
   if (!raw || typeof raw !== 'object') return null;
   const row = raw as Record<string, unknown>;
   if (row.winnerSide !== 'a' && row.winnerSide !== 'b') return null;
   const pick = parseBoutOutcome(row);
   if (!pick) return null;
-  return { winnerSide: row.winnerSide, ...pick };
+  const points = readBoutPoints(row.points);
+  return { winnerSide: row.winnerSide, ...pick, ...(points ? { points } : {}) };
 }
 
 function validSlotKeys(size: number): Set<string> {
@@ -671,7 +691,7 @@ export function applyMatchOutcome(
   matchId: BracketMatchId,
   side: MatchSide,
   pick: BoutOutcome,
-  options?: { toggle?: boolean },
+  options?: { toggle?: boolean; points?: BoutPoints },
 ): TournamentState {
   if (!matchIdsForSize(current.size).includes(matchId) || matchHasBye(current, matchId)) {
     return current;
@@ -689,15 +709,23 @@ export function applyMatchOutcome(
     delete next.results[matchId];
     if (next.lastOutcomeMatchId === matchId) next.lastOutcomeMatchId = null;
   } else if (pick.call === 'win') {
+    const points = options?.points ? sanitizeBoutPoints(options.points.winner, options.points.loser) : undefined;
     next.results[matchId] = {
       winnerSide: side,
       call: 'win',
       method: pick.method,
       ...(pick.scoreReason ? { scoreReason: pick.scoreReason } : {}),
+      ...(points ? { points } : {}),
     };
     next.lastOutcomeMatchId = matchId;
   } else {
-    next.results[matchId] = { winnerSide: otherSide(side), call: 'dq', reason: pick.reason };
+    const points = options?.points ? sanitizeBoutPoints(options.points.winner, options.points.loser) : undefined;
+    next.results[matchId] = {
+      winnerSide: otherSide(side),
+      call: 'dq',
+      reason: pick.reason,
+      ...(points ? { points } : {}),
+    };
     next.lastOutcomeMatchId = matchId;
   }
   cascadeWinner(next, matchId, new Set());
@@ -845,7 +873,7 @@ export function setMatchOutcome(
   matchId: BracketMatchId,
   side: MatchSide,
   pick: BoutOutcome,
-  options?: { toggle?: boolean },
+  options?: { toggle?: boolean; points?: BoutPoints },
 ): void {
   patchActive((board) => applyMatchOutcome(board, matchId, side, pick, options));
 }
