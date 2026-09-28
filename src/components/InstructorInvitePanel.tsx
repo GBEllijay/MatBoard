@@ -338,18 +338,26 @@ function PlanBadge({ presetId }: { presetId: InstructorPresetId | null }) {
   );
 }
 
-function BinderIcon({ presetId }: { presetId: InstructorPresetId | null }) {
+function BinderIcon({
+  presetId,
+  label,
+}: {
+  presetId: InstructorPresetId | null;
+  label?: string;
+}) {
   const kind = presetId ?? 'unset';
   return (
-    <span className={`role-binder role-binder--${kind}`} aria-hidden="true">
-      <span className="role-binder__rings">
+    <span className={`role-binder role-binder--${kind}`} aria-hidden={label ? undefined : true}>
+      <span className="role-binder__rings" aria-hidden="true">
         <span />
         <span />
         <span />
       </span>
       <span className="role-binder__board">
-        <span className="role-binder__spine" />
-        <span className="role-binder__cover" />
+        <span className="role-binder__spine" aria-hidden="true" />
+        <span className="role-binder__cover">
+          {label ? <span className="role-binder__title">{label}</span> : null}
+        </span>
       </span>
     </span>
   );
@@ -379,12 +387,9 @@ function PresetBinders({
               className={`role-pick role-pick--${preset.id}${on ? ' role-pick--on' : ''}`}
               onClick={() => onSelect(preset.id)}
             >
-              <BinderIcon presetId={preset.id} />
+              <BinderIcon presetId={preset.id} label={preset.label} />
               <PlanBadge presetId={preset.id} />
-              <span className="role-pick__label">
-                <span className="role-pick__name">{preset.label}</span>
-                <span className="role-pick__detail">{preset.detail}</span>
-              </span>
+              <span className="role-pick__detail">{preset.detail}</span>
             </button>
           );
         })}

@@ -1042,10 +1042,6 @@ button.mode-card {
   padding: 0.2rem 0.65rem;
 }
 
-.role-pick .role-pick__name {
-  font-size: 1rem;
-}
-
 .role-pick--on .role-binder {
   filter:
     drop-shadow(0 0 0.45rem rgba(252, 192, 0, 0.9))
@@ -1107,10 +1103,37 @@ button.mode-card {
 }
 
 .role-binder__cover {
+  display: grid;
+  place-items: center;
+  padding: 0.35rem 0.28rem;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.28), transparent 24%),
     linear-gradient(90deg, rgba(0, 0, 0, 0.2), transparent 16%),
     var(--cover);
+}
+
+.role-binder__title {
+  display: block;
+  max-width: 100%;
+  color: #14161c;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.12;
+  text-align: center;
+}
+
+.role-binder--coach .role-binder__title,
+.role-binder--program-director .role-binder__title,
+.role-binder--instructors .role-binder__title {
+  padding: 0.22rem 0.32rem;
+  border-radius: 0.22rem;
+  background: #f4f1ea;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.role-pick .role-binder__title {
+  font-size: 0.86rem;
 }
 
 .role-binder__rings {
@@ -1184,22 +1207,6 @@ span.role-plan__mark {
   font-size: 0.95rem;
   font-weight: 700;
   line-height: 1;
-}
-
-.role-pick__label {
-  display: grid;
-  gap: 0.18rem;
-  width: 100%;
-  justify-items: center;
-}
-
-.role-pick__name {
-  color: #f4f6fb;
-  font-size: 0.92rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-  text-align: center;
 }
 
 .role-pick__detail {

@@ -70,7 +70,7 @@ export type InstructorPreset = {
 export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
   {
     id: 'assistant-coach',
-    label: 'Assistant coach',
+    label: 'Assistant Coach',
     plan: 'Coach Unlimited',
     detail: 'Downloads only',
     permissions: {

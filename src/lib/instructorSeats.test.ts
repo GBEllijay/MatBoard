@@ -302,7 +302,7 @@ test('four binder presets fill the toggles and stay overridable', () => {
   assert.equal(permissionsMatchPreset('instructors', adjusted), false);
   assert.equal(instructorSeatBinderLabel('instructors', adjusted), 'Instructors · adjusted');
   assert.equal(instructorSeatBinderLabel(null, adjusted), 'Custom binder');
-  assert.equal(instructorSeatBinderLabel('assistant-coach', assistant), 'Assistant coach');
+  assert.equal(instructorSeatBinderLabel('assistant-coach', assistant), 'Assistant Coach');
   assert.deepEqual(
     INSTRUCTOR_PRESETS.map((preset) => [preset.id, preset.plan]),
     [
