@@ -64,7 +64,7 @@ export type InstructorPreset = {
   label: string;
   /** Which product plan this tier sits on. */
   plan: InstructorPlanName;
-  /** Lines under the binder. Assistant Coach uses two. */
+  /** Lines under the role button. Assistant coach uses two. */
   detail: readonly string[];
   permissions: InstructorPermissions;
 };
@@ -73,7 +73,7 @@ export type InstructorPreset = {
 export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
   {
     id: 'assistant-coach',
-    label: 'Assistant Coach',
+    label: 'Assistant coach',
     plan: 'Coach Unlimited',
     detail: ['Lesson plans and daily videos', 'Downloads only'],
     permissions: {
@@ -105,7 +105,7 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
   },
   {
     id: 'program-director',
-    label: 'Program Director',
+    label: 'Program director',
     plan: 'Coach Unlimited + Pro',
     detail: ['Events, Pro Shop, and gallery'],
     permissions: {
@@ -121,7 +121,7 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
   },
   {
     id: 'instructors',
-    label: 'Instructor',
+    label: 'Instructors',
     plan: 'Coach Unlimited + Pro',
     detail: ['Adds the slideshow for events, Pro Shop, and gallery'],
     permissions: {
