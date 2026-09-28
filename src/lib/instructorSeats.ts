@@ -80,6 +80,20 @@ export function defaultInstructorPermissions(): InstructorPermissions {
   return { ...DEFAULT_INSTRUCTOR_PERMISSIONS };
 }
 
+export type InstructorWristbandKind = 'coach' | 'black';
+
+/**
+ * Visual clearance band only. Gallery upload fastens the black belt wristband.
+ * Every other bundle stays the coach band. Permissions remain the source of truth.
+ */
+export function instructorWristbandKind(permissions: InstructorPermissions): InstructorWristbandKind {
+  return permissions.galleryUpload ? 'black' : 'coach';
+}
+
+export function instructorWristbandLabel(kind: InstructorWristbandKind): string {
+  return kind === 'black' ? 'Black belt wristband' : 'Coach wristband';
+}
+
 /** Missing keys use the soft-beta defaults. Only real booleans are kept. */
 export function normalizeInstructorPermissions(
   value: Partial<InstructorPermissions> | null | undefined,

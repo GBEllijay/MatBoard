@@ -1,10 +1,11 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
-import { BeltRail } from './BeltRail';
+import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useGymName } from '../hooks/useGymBrand';
 import {
   INSTRUCTOR_PERMISSION_FIELDS,
   defaultInstructorPermissions,
   instructorInviteLink,
+  instructorWristbandKind,
+  instructorWristbandLabel,
   issueInstructorInvite,
   listInstructorSeats,
   revokeInstructorSeat,
@@ -118,21 +119,24 @@ export function InstructorInvitePanel() {
     setCopyFailedId(null);
   };
 
+  const formKind = instructorWristbandKind(permissions);
+
   return (
     <div className="invite-panel">
-      <article className="invite-card">
-        <BeltRail kind="black" />
-        <form className="invite-card__body" onSubmit={submitInvite}>
-          <p className="plan-card__kicker">Owner only · Soft beta</p>
+      <form className={`wristband wristband--${formKind}`} onSubmit={submitInvite}>
+        <span className="wristband__clasp" aria-hidden="true" />
+        <div className="wristband__face">
+          <p className="wristband__kicker">Owner only · Soft beta</p>
           <strong>Generate instructor invite</strong>
           <span>
-            Enter an email, set the six permissions, then issue the invite. The link stays on this
-            device. Nothing is emailed, billed, or capped.
+            Put a wristband on a coach. Gallery upload fastens the black belt band. Leave it off
+            for the coach band. The link stays on this device. Nothing is emailed, billed, or
+            capped.
           </span>
           {gymName ? <span className="invite-gym">Gym · {gymName}</span> : null}
           {issued ? (
             <div className="invite-link" role="status" ref={issuedRef}>
-              <p>Invite ready for {issued.email}. Status is invited.</p>
+              <p>Wristband on {issued.email}. Status is invited.</p>
               <label htmlFor={`${formId}-issued-link`}>
                 Invite link
                 <input
@@ -183,79 +187,99 @@ export function InstructorInvitePanel() {
           <button type="submit" className="btn">
             Issue invite
           </button>
-        </form>
-      </article>
+        </div>
+        <span className="wristband__tail" aria-hidden="true" />
+      </form>
 
-      <section className="invite-card" aria-labelledby={`${formId}-seats`}>
-        <BeltRail kind="black" />
-        <div className="invite-card__body">
-          <h3 id={`${formId}-seats`}>Instructor seats</h3>
-          {openSeats.length ? (
+      <section className="wristband-list" aria-labelledby={`${formId}-seats`}>
+        <h3 id={`${formId}-seats`}>Wristbands</h3>
+        {openSeats.length ? (
+          <ul className="invite-seats">
+            {openSeats.map((seat) => (
+              <SeatRow
+                key={seat.id}
+                seat={seat}
+                origin={origin}
+                editing={editingId === seat.id}
+                draft={editingId === seat.id ? draft : null}
+                confirming={confirmId === seat.id}
+                copied={copiedId === seat.id}
+                copyFailed={copyFailedId === seat.id}
+                onCopy={(link) => void copyLink(seat.id, link)}
+                onEdit={() => {
+                  setConfirmId(null);
+                  setEditingId(seat.id);
+                  setDraft({ ...seat.permissions });
+                }}
+                onDraft={(key) =>
+                  setDraft((current) => (current ? { ...current, [key]: !current[key] } : current))
+                }
+                onCancelEdit={() => {
+                  setEditingId(null);
+                  setDraft(null);
+                }}
+                onSave={() => {
+                  if (!draft) return;
+                  const saved = updateInstructorSeatPermissions(seat.id, draft);
+                  if (!saved.ok) return;
+                  setEditingId(null);
+                  setDraft(null);
+                }}
+                onAskRevoke={() => {
+                  setEditingId(null);
+                  setDraft(null);
+                  setConfirmId(seat.id);
+                }}
+                onCancelRevoke={() => setConfirmId(null)}
+                onRevoke={() => {
+                  revokeInstructorSeat(seat.id);
+                  setConfirmId(null);
+                }}
+              />
+            ))}
+          </ul>
+        ) : (
+          <p className="wristband-list__empty">
+            No wristbands on the mat yet. Issue an invite to put one on a coach.
+          </p>
+        )}
+        {revokedSeats.length ? (
+          <>
+            <h3 className="invite-revoked-title">Taken off</h3>
             <ul className="invite-seats">
-              {openSeats.map((seat) => (
-                <SeatRow
-                  key={seat.id}
-                  seat={seat}
-                  origin={origin}
-                  editing={editingId === seat.id}
-                  draft={editingId === seat.id ? draft : null}
-                  confirming={confirmId === seat.id}
-                  copied={copiedId === seat.id}
-                  copyFailed={copyFailedId === seat.id}
-                  onCopy={(link) => void copyLink(seat.id, link)}
-                  onEdit={() => {
-                    setConfirmId(null);
-                    setEditingId(seat.id);
-                    setDraft({ ...seat.permissions });
-                  }}
-                  onDraft={(key) =>
-                    setDraft((current) => (current ? { ...current, [key]: !current[key] } : current))
-                  }
-                  onCancelEdit={() => {
-                    setEditingId(null);
-                    setDraft(null);
-                  }}
-                  onSave={() => {
-                    if (!draft) return;
-                    const saved = updateInstructorSeatPermissions(seat.id, draft);
-                    if (!saved.ok) return;
-                    setEditingId(null);
-                    setDraft(null);
-                  }}
-                  onAskRevoke={() => {
-                    setEditingId(null);
-                    setDraft(null);
-                    setConfirmId(seat.id);
-                  }}
-                  onCancelRevoke={() => setConfirmId(null)}
-                  onRevoke={() => {
-                    revokeInstructorSeat(seat.id);
-                    setConfirmId(null);
-                  }}
-                />
+              {revokedSeats.map((seat) => (
+                <WristbandShell key={seat.id} permissions={seat.permissions} revoked>
+                  <strong>{seat.email}</strong>
+                  <span>
+                    {instructorWristbandLabel(instructorWristbandKind(seat.permissions))} ·{' '}
+                    {statusLabel(seat.status)} · {issuedLabel(seat.issuedAt)}
+                  </span>
+                </WristbandShell>
               ))}
             </ul>
-          ) : (
-            <span>No open seats yet. Issue an invite to add one.</span>
-          )}
-          {revokedSeats.length ? (
-            <>
-              <h3 className="invite-revoked-title">Revoked</h3>
-              <ul className="invite-seats">
-                {revokedSeats.map((seat) => (
-                  <li key={seat.id} className="invite-seat invite-seat--revoked">
-                    <strong>{seat.email}</strong>
-                    <span>
-                      {statusLabel(seat.status)} · {issuedLabel(seat.issuedAt)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </>
-          ) : null}
-        </div>
+          </>
+        ) : null}
       </section>
     </div>
+  );
+}
+
+function WristbandShell({
+  permissions,
+  revoked = false,
+  children,
+}: {
+  permissions: InstructorPermissions;
+  revoked?: boolean;
+  children: ReactNode;
+}) {
+  const kind = instructorWristbandKind(permissions);
+  return (
+    <li className={`wristband wristband--${kind}${revoked ? ' wristband--revoked' : ''}`}>
+      <span className="wristband__clasp" aria-hidden="true" />
+      <div className="wristband__face">{children}</div>
+      <span className="wristband__tail" aria-hidden="true" />
+    </li>
   );
 }
 
@@ -326,13 +350,18 @@ function SeatRow({
   onRevoke: () => void;
 }) {
   const link = instructorInviteLink(seat.inviteToken, origin);
+  const shown = editing && draft ? draft : seat.permissions;
+  const kind = instructorWristbandKind(shown);
   return (
-    <li className="invite-seat">
+    <li className={`wristband wristband--${kind}`}>
+      <span className="wristband__clasp" aria-hidden="true" />
+      <div className="wristband__face">
+      <p className="wristband__kicker">{instructorWristbandLabel(kind)}</p>
       <strong>{seat.email}</strong>
       <span>
         {statusLabel(seat.status)} · {issuedLabel(seat.issuedAt)}
       </span>
-      <span>{permissionSummary(seat.permissions)}</span>
+      <span>{permissionSummary(shown)}</span>
       {editing && draft ? (
         <>
           <PermissionSwitches
@@ -351,13 +380,13 @@ function SeatRow({
         </>
       ) : confirming ? (
         <div className="invite-confirm" role="group" aria-label={`Revoke ${seat.email}`}>
-          <span>Revoke {seat.email}?</span>
+          <span>Take this wristband off {seat.email}?</span>
           <div className="invite-actions">
             <button type="button" className="btn" onClick={onRevoke}>
-              Revoke seat
+              Revoke
             </button>
             <button type="button" className="btn btn--ghost" onClick={onCancelRevoke}>
-              Keep seat
+              Keep wristband
             </button>
           </div>
         </div>
@@ -380,6 +409,8 @@ function SeatRow({
           <input readOnly value={link} onFocus={(event) => event.currentTarget.select()} />
         </label>
       ) : null}
+      </div>
+      <span className="wristband__tail" aria-hidden="true" />
     </li>
   );
 }

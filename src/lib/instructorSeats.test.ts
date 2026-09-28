@@ -7,6 +7,8 @@ import {
   INSTRUCTOR_SEATS_STORAGE_KEY,
   defaultInstructorPermissions,
   instructorInviteLink,
+  instructorWristbandKind,
+  instructorWristbandLabel,
   issueInstructorInvite,
   listInstructorSeats,
   normalizeInstructorPermissions,
@@ -258,6 +260,15 @@ test('a stored seat with a missing permission fills that default on read', () =>
   assert.equal(seat.permissions.dailyLessonPlanAccess, false);
   assert.equal(seat.permissions.downloadTodaysVideos, false);
   assert.equal(seat.permissions.uploadForDistribution, true);
+});
+
+test('gallery upload fastens the black belt wristband', () => {
+  const coach = defaultInstructorPermissions();
+  assert.equal(instructorWristbandKind(coach), 'coach');
+  assert.equal(instructorWristbandLabel('coach'), 'Coach wristband');
+  assert.equal(instructorWristbandKind({ ...coach, galleryUpload: true }), 'black');
+  assert.equal(instructorWristbandLabel('black'), 'Black belt wristband');
+  assert.equal(instructorWristbandKind({ ...coach, rosterPull: false }), 'coach');
 });
 
 test('device guests have no seat, so collaboration controls stay hidden', () => {
