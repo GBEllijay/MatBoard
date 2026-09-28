@@ -938,7 +938,7 @@ button.mode-card {
   gap: 0.85rem;
 }
 
-/* Standalone three-ring binder icon. The cover is the tier color. The spine is white, except Instructor, which is red. */
+/* Binder icons are cropped artwork from the owner reference. Custom seats use a plain charcoal mark. */
 .invite-form {
   --binder-ink: #f7f4ee;
   --binder-muted: #b7becc;
@@ -1020,21 +1020,7 @@ button.mode-card {
 }
 
 .role-pick .role-binder {
-  width: 7.4rem;
-  height: 8.5rem;
-}
-
-.role-pick .role-binder__board {
-  left: 0.85rem;
-  grid-template-columns: 0.95rem minmax(0, 1fr);
-}
-
-.role-pick .role-binder__rings {
-  width: 1.45rem;
-}
-
-.role-pick .role-binder__rings > span {
-  height: 0.62rem;
+  width: 7.6rem;
 }
 
 .role-pick .role-plan {
@@ -1049,120 +1035,22 @@ button.mode-card {
 }
 
 .role-binder {
-  --cover: #2a3344;
-  --spine: #d5d8e0;
-  position: relative;
   display: block;
   width: 5.6rem;
-  height: 6.45rem;
+  line-height: 0;
   filter: drop-shadow(0 14px 16px rgba(0, 0, 0, 0.5));
 }
 
-.role-binder--assistant-coach {
-  --cover: #1c78f2;
-  --spine: #f7f8fb;
-}
-
-.role-binder--coach {
-  --cover: #7a27b8;
-  --spine: #f7f8fb;
-}
-
-.role-binder--program-director {
-  --cover: #6a3d26;
-  --spine: #f7f8fb;
-}
-
-.role-binder--instructors {
-  --cover: #16181d;
-  --spine: #e30613;
-}
-
-.role-binder__board {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0.72rem;
-  display: grid;
-  grid-template-columns: 0.78rem minmax(0, 1fr);
-  border-radius: 0.28rem 0.72rem 0.72rem 0.28rem;
-  overflow: hidden;
-  background: var(--cover);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.35),
-    inset 0 -7px 0 rgba(0, 0, 0, 0.16);
-}
-
-.role-binder__spine {
-  background: linear-gradient(90deg, #ffffff, var(--spine) 55%, #e4e7ee);
-}
-
-.role-binder--instructors .role-binder__spine {
-  background: linear-gradient(90deg, #ff4a4a, var(--spine) 48%, #9d0c14);
-}
-
-.role-binder__cover {
-  display: grid;
-  place-items: center;
-  padding: 0.35rem 0.28rem;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.28), transparent 24%),
-    linear-gradient(90deg, rgba(0, 0, 0, 0.2), transparent 16%),
-    var(--cover);
-}
-
-.role-binder__title {
+.role-binder img {
   display: block;
-  max-width: 100%;
-  color: #14161c;
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.12;
-  text-align: center;
+  width: 100%;
+  height: auto;
 }
 
-.role-binder--coach .role-binder__title,
-.role-binder--program-director .role-binder__title {
-  padding: 0.22rem 0.32rem;
-  border-radius: 0.22rem;
-  background: #f4f1ea;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
-}
-
-.role-binder--instructors .role-binder__title {
-  color: #f7f4ee;
-  background: transparent;
-  box-shadow: none;
-}
-
-.role-pick .role-binder__title {
-  font-size: 0.86rem;
-}
-
-.role-binder__rings {
-  position: absolute;
-  z-index: 2;
-  left: 0;
-  top: 14%;
-  bottom: 14%;
-  width: 1.2rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  pointer-events: none;
-}
-
-.role-binder__rings > span {
-  display: block;
-  height: 0.52rem;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #ffffff 0%, #d9dde6 46%, #8d94a3 100%);
-  box-shadow:
-    0 1px 1px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.35);
+.role-binder--unset {
+  height: 6.45rem;
+  border-radius: 0.35rem 0.7rem 0.7rem 0.35rem;
+  background: #2a3344;
 }
 
 .role-plan {
@@ -1214,6 +1102,15 @@ span.role-plan__mark {
   line-height: 1;
 }
 
+.role-pick__name {
+  color: #f4f6fb;
+  font-size: 0.98rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  text-align: center;
+}
+
 .role-pick__detail {
   color: #9aa3b5;
   font-size: 0.78rem;
@@ -1239,25 +1136,11 @@ span.role-plan__mark {
 
 .seat-card .role-binder {
   width: 3.55rem;
-  height: 4.1rem;
   margin-top: 0.15rem;
 }
 
-.seat-card .role-binder__board,
-.invite-link .role-binder__board {
-  left: 0.4rem;
-  grid-template-columns: 0.42rem minmax(0, 1fr);
-  border-radius: 0.18rem 0.42rem 0.42rem 0.18rem;
-}
-
-.seat-card .role-binder__rings,
-.invite-link .role-binder__rings {
-  width: 0.68rem;
-}
-
-.seat-card .role-binder__rings > span,
-.invite-link .role-binder__rings > span {
-  height: 0.3rem;
+.seat-card .role-binder--unset {
+  height: 4.05rem;
 }
 
 .seat-card .role-plan {
@@ -1336,7 +1219,6 @@ span.role-plan__mark {
 
 .invite-link .role-binder {
   width: 3.15rem;
-  height: 3.65rem;
 }
 
 .invite-link .role-plan {
