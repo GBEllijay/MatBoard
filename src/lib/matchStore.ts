@@ -14,7 +14,7 @@ import {
   type MatchOutcome,
   type Side,
 } from './outcomes';
-import { isBracketMatchId, scoreboardSideToBracket, setMatchOutcome } from './tournamentStore';
+import { isBracketMatchId, sanitizeBoutPoints, scoreboardSideToBracket, setMatchOutcome } from './tournamentStore';
 
 export type { MatchOutcome, Side };
 export type ScoreKind = 'points' | 'advantages' | 'disadvantages';
@@ -288,11 +288,13 @@ function maybeWriteAutoBracket(prev: MatchState, next: MatchState): void {
     return;
   }
   if (!isBracketMatchId(next.bracketMatchId)) return;
+  const winnerPoints = outcome.side === 'blue' ? next.blue.points : next.white.points;
+  const loserPoints = outcome.side === 'blue' ? next.white.points : next.blue.points;
   setMatchOutcome(
     next.bracketMatchId,
     scoreboardSideToBracket(outcome.side),
     { call: 'win', method: outcome.method, scoreReason: outcome.scoreReason },
-    { toggle: false },
+    { toggle: false, points: sanitizeBoutPoints(winnerPoints, loserPoints) },
   );
 }
 
