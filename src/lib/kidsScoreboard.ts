@@ -4,7 +4,7 @@
  * Grand Master Carlos is a win overlay, never a live-match graphic.
  */
 
-import type { BoutPoints } from './tournamentStore.ts';
+import { displayBoutName, slotName, type BoutPoints, type TournamentState } from './tournamentStore.ts';
 
 export const KIDS_SCOREBOARDS_NAME = "Kids' Scoreboards";
 export const KIDS_WIN_CHEER = 'Bom trabalho!';
@@ -104,9 +104,43 @@ export function kidsWallpaperPath(skin: KidsSkinId): string {
   return `/assets/kids/${skin}.webp`;
 }
 
-/** Carlos only after the bracket has a champion. A live bout keeps him off the tree. */
+/**
+ * Carlos only after the championship bout has a winner. A stored champion name
+ * wins; otherwise the finalist's slot name or the same placeholder the card
+ * already shows. A live bout (no final result, no champion) keeps him off.
+ */
+export function kidsResolvedChampion(board: TournamentState): string {
+  const stored = slotName(board, 'champion').trim();
+  if (stored) return stored;
+  const result = board.results['final-0'];
+  if (!result) return '';
+  return displayBoutName(board, 'final-0', result.winnerSide);
+}
+
+/** Carlos only after a champion is decided. A live bout keeps him off the tree. */
 export function kidsShowWin(enabled: boolean, championName: string): boolean {
   return enabled && championName.trim().length > 0;
+}
+
+export function kidsWinState(
+  enabled: boolean,
+  board: TournamentState,
+): { show: boolean; name: string; scoreLine: string | null } {
+  const name = kidsResolvedChampion(board);
+  return {
+    show: kidsShowWin(enabled, name),
+    name,
+    scoreLine: name ? kidsPointsLine(board.results['final-0']?.points) : null,
+  };
+}
+
+/** Visible speech: "Bom trabalho!" plus the winner and the scoreboard points. */
+export function kidsWinLines(name: string, scoreLine: string | null): readonly string[] {
+  const lines = [KIDS_WIN_CHEER];
+  const who = name.trim();
+  if (who) lines.push(who);
+  if (scoreLine) lines.push(scoreLine);
+  return lines;
 }
 
 /** "12-0" when the scoreboard stored the final. Missing points stay blank. */

@@ -14,7 +14,13 @@ import {
   type MatchOutcome,
   type Side,
 } from './outcomes';
-import { isBracketMatchId, sanitizeBoutPoints, scoreboardSideToBracket, setMatchOutcome } from './tournamentStore';
+import {
+  isBracketMatchId,
+  rememberEmptyBoutNames,
+  sanitizeBoutPoints,
+  scoreboardSideToBracket,
+  setMatchOutcome,
+} from './tournamentStore';
 
 export type { MatchOutcome, Side };
 export type ScoreKind = 'points' | 'advantages' | 'disadvantages';
@@ -288,6 +294,7 @@ function maybeWriteAutoBracket(prev: MatchState, next: MatchState): void {
     return;
   }
   if (!isBracketMatchId(next.bracketMatchId)) return;
+  rememberEmptyBoutNames(next.bracketMatchId, { a: next.blue.name, b: next.white.name });
   const winnerPoints = outcome.side === 'blue' ? next.blue.points : next.white.points;
   const loserPoints = outcome.side === 'blue' ? next.white.points : next.blue.points;
   setMatchOutcome(

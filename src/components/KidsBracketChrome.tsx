@@ -4,8 +4,8 @@ import { formatMss } from '../lib/format';
 import {
   CARLOS_ASSET,
   KIDS_SCOREBOARDS_NAME,
-  KIDS_WIN_CHEER,
   kidsSkinLabel,
+  kidsWinLines,
   type KidsSkinId,
 } from '../lib/kidsScoreboard';
 import { remainingNow, type MatchState } from '../lib/matchStore';
@@ -65,6 +65,7 @@ export function KidsBracketChrome({
   liveMatch: Pick<MatchState, 'running' | 'startedAt' | 'remainingMs'> | null;
 }) {
   const label = kidsSkinLabel(skin);
+  const winLines = kidsWinLines(champion, scoreLine);
   return (
     <>
       <div className="kids-banner">
@@ -101,12 +102,23 @@ export function KidsBracketChrome({
             ))}
           </div>
           <figure className="kids-carlos__figure">
-            <p className="kids-carlos__bubble">{KIDS_WIN_CHEER}</p>
+            <p className="kids-carlos__bubble">
+              {winLines.map((line, index) => (
+                <span
+                  key={`${index}-${line}`}
+                  className={
+                    index === 0
+                      ? 'kids-carlos__cheer'
+                      : scoreLine && index === winLines.length - 1
+                        ? 'kids-carlos__score'
+                        : 'kids-carlos__name'
+                  }
+                >
+                  {line}
+                </span>
+              ))}
+            </p>
             <img src={CARLOS_ASSET} alt="" width={845} height={1200} />
-            <figcaption className="sr-only">
-              {KIDS_WIN_CHEER} {champion}
-              {scoreLine ? `, ${scoreLine}` : ''}
-            </figcaption>
           </figure>
         </div>
       ) : null}

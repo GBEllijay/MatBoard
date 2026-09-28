@@ -11562,7 +11562,8 @@ a.plan-pick {
 .kids-carlos {
   position: fixed;
   inset: 0;
-  z-index: 18;
+  /* Above the bracket toolbar (22/23) so the slide-in stays in front on a short TV. */
+  z-index: 24;
   pointer-events: none;
   overflow: hidden;
 }
@@ -11585,8 +11586,13 @@ a.plan-pick {
 
 .kids-carlos__bubble {
   position: absolute;
+  z-index: 2;
   top: 4%;
   left: 58%;
+  display: grid;
+  justify-items: start;
+  gap: 0.08rem;
+  max-width: min(16rem, 46vw);
   margin: 0;
   padding: 0.55rem 0.9rem;
   border-radius: 18px;
@@ -11594,8 +11600,14 @@ a.plan-pick {
   color: #1b2433;
   font-size: clamp(1rem, 1.6vw, 1.35rem);
   font-weight: 800;
-  white-space: nowrap;
+  line-height: 1.15;
+  white-space: normal;
   box-shadow: 0 10px 24px rgba(16, 24, 40, 0.18);
+}
+
+.kids-carlos__score {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
 }
 
 .kids-carlos__bubble::after {
