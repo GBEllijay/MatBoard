@@ -29,6 +29,7 @@ import {
   COACH_HUBS,
   COMPETITION_MANAGEMENT_LABEL,
   COMPETITION_MANAGEMENT_PRO_LABEL,
+  TOURNAMENT_MANAGEMENT_PRO_LABEL,
   COMPETITION_MENU,
   COMPETITION_MENU_PRO,
   COMPETITION_PRO_MENU,
@@ -135,7 +136,7 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   );
   assert.deepEqual(
     PRO_HUBS.map((hub) => hub.title),
-    [MEDIA_CONSOLE_NAME, COMPETITOR_SYSTEM_NAME, INSTRUCTOR_COLLAB_HUB_LABEL, COMPETITION_MANAGEMENT_PRO_LABEL],
+    [MEDIA_CONSOLE_NAME, COMPETITOR_SYSTEM_NAME, INSTRUCTOR_COLLAB_HUB_LABEL, TOURNAMENT_MANAGEMENT_PRO_LABEL],
   );
   assert.deepEqual(
     PRO_HUBS.map((hub) => hub.to),
@@ -147,6 +148,8 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   );
   assert.equal(MATCH_CONTROLLER_PATH, '/match/control');
   assert.equal(ROUND_CONTROLLER_PATH, '/training/control');
+  assert.equal(TOURNAMENT_MANAGEMENT_PRO_LABEL, 'Tournament Management Pro');
+  assert.equal(PRO_HUBS[3].title, 'Tournament Management Pro');
   assert.equal(COMPETITION_MANAGEMENT_PRO_LABEL, 'Competition Management Pro');
   assert.deepEqual(
     COMPETITION_PRO_MENU.map((item) => item.title),

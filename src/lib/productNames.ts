@@ -85,10 +85,16 @@ export const COMPETITION_MENU_PRO: readonly {
 
 export const TOURNAMENT_SOFTWARE_NAME = 'Tournament Software';
 
-/** Working title kept for longer appetite copy. The Pro hub button uses COMPETITION_MANAGEMENT_PRO_LABEL. */
+/** Working title kept for longer appetite copy. Not the Pro hub button or Suite heading. */
 export const TOURNAMENT_SUITE_NAME = 'In-House Tournament Management Suite';
 
-/** Fourth Advantage Pro hub button. Same slot as the tournament suite. */
+/**
+ * Fourth Advantage Pro hub button and the heading on the page it opens.
+ * The Coming Soon ad keeps COMPETITION_MANAGEMENT_PRO_LABEL.
+ */
+export const TOURNAMENT_MANAGEMENT_PRO_LABEL = 'Tournament Management Pro';
+
+/** Coming Soon ad feature title. Not the Pro hub button or the Suite page heading. */
 export const COMPETITION_MANAGEMENT_PRO_LABEL = 'Competition Management Pro';
 
 /** Pro hub for bout competitors, roster CSV, and on-device rankings. */
@@ -114,7 +120,7 @@ export const PRO_HUBS = [
   { title: MEDIA_CONSOLE_NAME, to: '/slideshow?folder=gallery', belt: 'purple' },
   { title: COMPETITOR_SYSTEM_NAME, to: '/competitors', belt: 'brown' },
   { title: INSTRUCTOR_COLLAB_HUB_LABEL, to: '/instructors', belt: 'black' },
-  { title: COMPETITION_MANAGEMENT_PRO_LABEL, to: '/suite', belt: 'tournament' },
+  { title: TOURNAMENT_MANAGEMENT_PRO_LABEL, to: '/suite', belt: 'tournament' },
 ] as const;
 
 /** Existing scoreboard controller. Competition Management Pro opens this; Display stays on that screen. */
