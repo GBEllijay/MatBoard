@@ -11385,6 +11385,12 @@ a.plan-pick {
   z-index: 22;
 }
 
+/* The kids toolbar and skin row sit above the corner mark and swallow the back tap.
+   Keep the Advantage logo above them. Carlos ignores pointers, so the mark still goes back. */
+.tournament--kids > .play-exit {
+  z-index: 25;
+}
+
 .tournament--kids .tournament__hint {
   color: #1b2433;
   background: rgba(255, 255, 255, 0.78);
@@ -11487,12 +11493,25 @@ a.plan-pick {
 .tournament--kids .t-match__bouts,
 .tournament--kids.tournament--bright .t-match__bouts,
 .tournament--kids.tournament--dark .t-match__bouts {
+  isolation: isolate;
   padding: 0.35rem 0.45rem;
   border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.78);
-  background: rgba(255, 255, 255, 0.82);
+  background: transparent;
   box-shadow: 0 12px 28px rgba(16, 24, 40, 0.16);
+}
+
+/* Blur lives on a pseudo so it does not become the containing block for the
+   roster sheet. A filter on the card itself traps that fixed picker in the pill. */
+.tournament--kids .t-match__bouts::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(14px);
+  pointer-events: none;
 }
 
 .tournament--kids .t-slot,
@@ -11501,9 +11520,10 @@ a.plan-pick {
 .tournament--kids.tournament--bright .t-match--final .t-slot,
 .tournament--kids.tournament--dark .t-slot,
 .tournament--kids.tournament--dark .bracket__side--left .t-slot,
-.tournament--kids.tournament--dark .bracket__side--right .t-slot {
+.tournament--kids.tournament--dark .bracket__side--right .t-slot,
+.tournament--kids.tournament--dark .t-match--final .t-slot {
   background: transparent;
-  color: #1b2433;
+  color: #000;
   border: 0;
   box-shadow: none;
 }
@@ -11522,10 +11542,11 @@ a.plan-pick {
 .tournament--kids.tournament--bright .bracket__side--right .t-slot input,
 .tournament--kids.tournament--bright .t-match--final .t-slot input,
 .tournament--kids.tournament--dark .bracket__side--left .t-slot input,
-.tournament--kids.tournament--dark .bracket__side--right .t-slot input {
-  color: #1b2433;
-  -webkit-text-fill-color: #1b2433;
-  caret-color: #1b2433;
+.tournament--kids.tournament--dark .bracket__side--right .t-slot input,
+.tournament--kids.tournament--dark .t-match--final .t-slot input {
+  color: #000;
+  -webkit-text-fill-color: #000;
+  caret-color: #000;
   color-scheme: light;
 }
 
@@ -11534,9 +11555,13 @@ a.plan-pick {
 .tournament--kids.tournament--bright .bracket__side--right .t-slot input::placeholder,
 .tournament--kids.tournament--bright .t-match--final .t-slot input::placeholder,
 .tournament--kids.tournament--dark .bracket__side--left .t-slot input::placeholder,
-.tournament--kids.tournament--dark .bracket__side--right .t-slot input::placeholder {
-  color: rgba(27, 36, 51, 0.55);
-  -webkit-text-fill-color: rgba(27, 36, 51, 0.55);
+.tournament--kids.tournament--dark .bracket__side--right .t-slot input::placeholder,
+.tournament--kids.tournament--dark .t-match--final .t-slot input::placeholder,
+.tournament--kids .bracket__champ input::placeholder,
+.tournament--kids.tournament--bright .bracket__champ input::placeholder,
+.tournament--kids.tournament--dark .bracket__champ input::placeholder {
+  color: #000;
+  -webkit-text-fill-color: #000;
 }
 
 .tournament--kids .t-slot__seed,
@@ -11564,11 +11589,29 @@ a.plan-pick {
 .tournament--kids .bracket__champ,
 .tournament--kids.tournament--bright .bracket__champ,
 .tournament--kids.tournament--dark .bracket__champ {
-  background: rgba(255, 255, 255, 0.88);
+  isolation: isolate;
+  background: transparent;
   color: #1b2433;
   border: 1px solid rgba(255, 255, 255, 0.85);
   box-shadow: 0 12px 28px rgba(16, 24, 40, 0.16);
+}
+
+.tournament--kids .bracket__champ::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(14px);
+  pointer-events: none;
+}
+
+/* Kids wallpaper must not paint the tatami through the picker. The sheet stays
+   the same full, scrollable roster as Bright/Dark, with a clear panel. */
+.tournament--kids .sheet--roster .sheet__panel {
+  background: transparent;
+  background-image: none;
 }
 
 .tournament--kids .bracket__champ > span,
@@ -11582,9 +11625,9 @@ a.plan-pick {
 .tournament--kids .bracket__champ input,
 .tournament--kids.tournament--bright .bracket__champ input,
 .tournament--kids.tournament--dark .bracket__champ input {
-  color: #1b2433;
-  -webkit-text-fill-color: #1b2433;
-  caret-color: #1b2433;
+  color: #000;
+  -webkit-text-fill-color: #000;
+  caret-color: #000;
   color-scheme: light;
 }
 
@@ -11632,11 +11675,12 @@ a.plan-pick {
   filter: drop-shadow(0 16px 22px rgba(0, 0, 0, 0.28));
 }
 
+/* Shared by every Carlos speech bubble. 58% sat on his left eye. */
 .kids-carlos__bubble {
   position: absolute;
   z-index: 2;
   top: 4%;
-  left: 58%;
+  left: 74%;
   display: grid;
   justify-items: start;
   gap: 0.08rem;
