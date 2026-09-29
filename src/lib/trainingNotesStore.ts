@@ -398,6 +398,73 @@ function pruneDays(days: Record<string, TrainingNotesDay>, todayKey: string): Re
   return next;
 }
 
+/** Plans with a blank class designation share this folder. */
+export const UNLABELED_CLASS_LABEL = 'No class name';
+
+export type ClassFolderDate = {
+  dateKey: string;
+  plans: TrainingNotesPlan[];
+};
+
+export type ClassFolder = {
+  /** Trimmed lowercase designation. Empty string is the unlabeled folder. */
+  key: string;
+  label: string;
+  dates: ClassFolderDate[];
+};
+
+export function classFolderKey(designation: string): string {
+  return designation.trim().toLowerCase();
+}
+
+/**
+ * Saved plans grouped as class folders, then dates newest first.
+ * "GB2" and "gb2" share a folder. The newest saved spelling is the folder name.
+ */
+export function classBrowseFolders(archive: TrainingNotesArchive, todayKey: string): ClassFolder[] {
+  const groups = new Map<string, { label: string; dates: Map<string, TrainingNotesPlan[]> }>();
+  const dateKeys = Object.keys(archive.days)
+    .filter((key) => isWithinRetention(key, todayKey))
+    .sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
+
+  for (const dateKey of dateKeys) {
+    for (const plan of archive.days[dateKey]?.plans ?? []) {
+      if (!planHasContent(plan)) continue;
+      const raw = plan.classDesignation.trim();
+      const key = classFolderKey(raw);
+      let group = groups.get(key);
+      if (!group) {
+        group = { label: raw || UNLABELED_CLASS_LABEL, dates: new Map() };
+        groups.set(key, group);
+      }
+      const plans = group.dates.get(dateKey) ?? [];
+      plans.push(plan);
+      group.dates.set(dateKey, plans);
+    }
+  }
+
+  const folders: ClassFolder[] = [];
+  for (const [key, group] of groups) {
+    const dates: ClassFolderDate[] = [];
+    for (const [dateKey, plans] of group.dates) dates.push({ dateKey, plans });
+    folders.push({ key, label: group.label, dates });
+  }
+  folders.sort((a, b) => {
+    if (!a.key && b.key) return 1;
+    if (a.key && !b.key) return -1;
+    return a.label.localeCompare(b.label, 'en', { sensitivity: 'base' });
+  });
+  return folders;
+}
+
+/** Coach / time row inside a class folder. Designation stays in the label when it is set. */
+export function classPlanRowLabel(plan: TrainingNotesPlan): string {
+  const coach = plan.coachName.trim() || 'Coach';
+  const designation = plan.classDesignation.trim();
+  const time = plan.classTime.trim() || 'Time';
+  return designation ? `${coach} / ${designation} / ${time}` : `${coach} · ${time}`;
+}
+
 /** Coach / GB1 / 5:00 PM, so a day with several classes is easy to scan. */
 export function planListLabel(plan: TrainingNotesPlan): string {
   const coach = plan.coachName.trim();

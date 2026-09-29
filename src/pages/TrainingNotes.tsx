@@ -63,6 +63,8 @@ import {
   TECHNIQUE_TITLE_MAX,
   WARMUP_NOTE_MAX,
   addTechnique,
+  classBrowseFolders,
+  classPlanRowLabel,
   copyPlan,
   emptyPlan,
   findPlanById,
@@ -73,7 +75,6 @@ import {
   planHasContent,
   planListLabel,
   plansOnDay,
-  recentDateKeys,
   removeDayPlan,
   removeTechnique,
   saveDay,
@@ -142,7 +143,8 @@ export function TrainingNotesPage() {
   const [archive, setArchive] = useState<TrainingNotesArchive>(boot.archive);
   const [viewKey, setViewKey] = useState(boot.today);
   const [plan, setPlan] = useState<TrainingNotesPlan>(boot.plan);
-  const [recentOpen, setRecentOpen] = useState(false);
+  const [classesOpen, setClassesOpen] = useState(false);
+  const [folderKey, setFolderKey] = useState<string | null>(null);
   const [confirmPlanId, setConfirmPlanId] = useState<string | null>(null);
   const [removeArmed, setRemoveArmed] = useState(false);
   const [videos, setVideos] = useState<TodayVideos | null>(null);
@@ -167,7 +169,8 @@ export function TrainingNotesPage() {
         setPlan(plansOnDay(loaded, next)[0] ?? emptyPlan());
         setConfirmPlanId(null);
         setRemoveArmed(false);
-        setRecentOpen(false);
+        setClassesOpen(false);
+        setFolderKey(null);
         return next;
       });
     };
@@ -304,7 +307,9 @@ export function TrainingNotesPage() {
 
   const editingToday = viewKey === todayKey;
   const yesterdayKey = shiftDateKey(todayKey, -1);
-  const recent = recentDateKeys(archive, todayKey);
+  const classFolders = useMemo(() => classBrowseFolders(archive, todayKey), [archive, todayKey]);
+  const openFolder =
+    folderKey !== null ? (classFolders.find((folder) => folder.key === folderKey) ?? null) : null;
   const savedPlans = plansOnDay(archive, viewKey);
   const currentSaved = savedPlans.some((item) => item.id === plan.id);
   const classPlans =
@@ -340,8 +345,18 @@ export function TrainingNotesPage() {
     setViewKey(key);
     setConfirmPlanId(null);
     setRemoveArmed(false);
-    setRecentOpen(false);
+    setClassesOpen(false);
+    setFolderKey(null);
     setPlan(plansOnDay(archive, key)[0] ?? emptyPlan());
+  };
+
+  const openSavedPlan = (dateKey: string, next: TrainingNotesPlan) => {
+    setViewKey(dateKey);
+    setPlan(next);
+    setConfirmPlanId(null);
+    setRemoveArmed(false);
+    setClassesOpen(false);
+    setFolderKey(null);
   };
 
   const applyCopy = (source: TrainingNotesPlan) => {
@@ -350,7 +365,8 @@ export function TrainingNotesPage() {
     setViewKey(todayKey);
     setConfirmPlanId(null);
     setRemoveArmed(false);
-    setRecentOpen(false);
+    setClassesOpen(false);
+    setFolderKey(null);
   };
 
   const requestCopy = (source: TrainingNotesPlan) => {
@@ -514,15 +530,18 @@ export function TrainingNotesPage() {
             </button>
             <button
               type="button"
-              className={recentOpen ? 'notes__day notes__day--on' : 'notes__day'}
-              aria-expanded={recentOpen}
+              className={classesOpen ? 'notes__day notes__day--on' : 'notes__day'}
+              aria-expanded={classesOpen}
               onClick={() => {
                 setConfirmPlanId(null);
                 setRemoveArmed(false);
-                setRecentOpen((open) => !open);
+                setClassesOpen((open) => {
+                  setFolderKey(null);
+                  return !open;
+                });
               }}
             >
-              Recent
+              Classes
             </button>
           </div>
           <p className="notes__when">
@@ -571,28 +590,69 @@ export function TrainingNotesPage() {
             ) : null}
           </div>
           </CollaborationGate>
-          {recentOpen ? (
-            recent.length ? (
-              <ul className="notes__recent">
-                {recent.map((key) => {
-                  const title = planDayTitle(key, todayKey);
-                  const stamp = planDayStamp(key);
+          {classesOpen ? (
+            openFolder ? (
+              <div className="notes__folders" aria-label={`${openFolder.label} dates`}>
+                <button
+                  type="button"
+                  className="btn btn--ghost notes__folder-back"
+                  onClick={() => setFolderKey(null)}
+                >
+                  All classes
+                </button>
+                <p className="notes__folder-title">{openFolder.label}</p>
+                <ul className="notes__recent">
+                  {openFolder.dates.map((day) => {
+                    const title = planDayTitle(day.dateKey, todayKey);
+                    const stamp = planDayStamp(day.dateKey);
+                    return (
+                      <li key={day.dateKey} className="notes__folder-day">
+                        <p className="notes__folder-date">
+                          {title}
+                          {title === stamp ? '' : ` · ${stamp}`}
+                        </p>
+                        <ul className="notes__recent">
+                          {day.plans.map((item) => (
+                            <li key={item.id}>
+                              <button
+                                type="button"
+                                className={
+                                  viewKey === day.dateKey && plan.id === item.id
+                                    ? 'notes__recent-btn notes__recent-btn--on'
+                                    : 'notes__recent-btn'
+                                }
+                                onClick={() => openSavedPlan(day.dateKey, item)}
+                              >
+                                {classPlanRowLabel(item)}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ) : classFolders.length ? (
+              <ul className="notes__recent" aria-label="Class folders">
+                {classFolders.map((folder) => {
+                  const days = folder.dates.length;
                   return (
-                    <li key={key}>
+                    <li key={folder.key || 'unlabeled'}>
                       <button
                         type="button"
-                        className={key === viewKey ? 'notes__recent-btn notes__recent-btn--on' : 'notes__recent-btn'}
-                        onClick={() => openDay(key)}
+                        className="notes__recent-btn"
+                        onClick={() => setFolderKey(folder.key)}
                       >
-                        <span>{title}</span>
-                        {title === stamp ? null : <span>{stamp}</span>}
+                        <span>{folder.label}</span>
+                        <span>{days === 1 ? '1 day' : `${days} days`}</span>
                       </button>
                     </li>
                   );
                 })}
               </ul>
             ) : (
-              <p className="notes__recent-empty">No saved days yet.</p>
+              <p className="notes__recent-empty">No saved classes yet.</p>
             )
           ) : null}
           {confirmPlan ? (

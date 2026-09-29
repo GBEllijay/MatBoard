@@ -13,7 +13,10 @@ import {
   PLAN_RETENTION_DAYS,
   SPECIFIC_NOTE_MAX,
   TRAINING_NOTES_STORAGE_KEY,
+  UNLABELED_CLASS_LABEL,
   addTechnique,
+  classBrowseFolders,
+  classPlanRowLabel,
   copyPlan,
   emptyPlan,
   isWithinRetention,
@@ -483,4 +486,60 @@ test('one day keeps several class plans and a v2 day migrates without losing the
   const clampedClass = saveTrainingNotes(wide, TODAY);
   assert.equal(clampedClass.classDesignation.length, CLASS_DESIGNATION_MAX);
   assert.equal(clampedClass.classTime.length, CLASS_TIME_MAX);
+});
+
+test('class folders group designation first, then dates newest first', () => {
+  storage.clear();
+  const yesterday = shiftDateKey(TODAY, -1);
+  const older = shiftDateKey(TODAY, -3);
+  const gb1 = emptyPlan();
+  gb1.coachName = 'Justin';
+  gb1.classDesignation = 'GB1';
+  gb1.classTime = '5:00 PM';
+  gb1.intro = 'Guard.';
+  const gb2Today = emptyPlan();
+  gb2Today.coachName = 'Justin';
+  gb2Today.classDesignation = 'GB2';
+  gb2Today.classTime = '6:00 PM';
+  gb2Today.intro = 'Mount.';
+  const gb2Older = emptyPlan();
+  gb2Older.coachName = 'Alex';
+  gb2Older.classDesignation = 'gb2';
+  gb2Older.classTime = '5:00 PM';
+  gb2Older.intro = 'Older mount.';
+  const unlabeled = emptyPlan();
+  unlabeled.coachName = 'Justin';
+  unlabeled.classTime = '7:00 PM';
+  unlabeled.intro = 'Open mat.';
+  saveDay(TODAY, gb1, TODAY);
+  saveDay(TODAY, gb2Today, TODAY);
+  saveDay(older, gb2Older, TODAY);
+  saveDay(yesterday, unlabeled, TODAY);
+
+  const folders = classBrowseFolders(loadTrainingArchive(TODAY), TODAY);
+  assert.deepEqual(
+    folders.map((folder) => folder.label),
+    ['GB1', 'GB2', UNLABELED_CLASS_LABEL],
+  );
+  const gb2 = folders.find((folder) => folder.key === 'gb2');
+  assert.ok(gb2);
+  assert.equal(gb2.label, 'GB2');
+  assert.deepEqual(
+    gb2.dates.map((day) => day.dateKey),
+    [TODAY, older],
+  );
+  assert.equal(gb2.dates[0]?.plans.length, 1);
+  assert.equal(gb2.dates[0]?.plans[0]?.classTime, '6:00 PM');
+  assert.equal(classPlanRowLabel(gb2.dates[0].plans[0]), 'Justin / GB2 / 6:00 PM');
+  assert.equal(folders[0]?.dates[0]?.dateKey, TODAY);
+  assert.equal(folders[0]?.dates[0]?.plans[0]?.classDesignation, 'GB1');
+  const blank = folders.find((folder) => folder.key === '');
+  assert.equal(blank?.dates[0]?.dateKey, yesterday);
+  assert.equal(classPlanRowLabel(blank?.dates[0]?.plans[0] ?? emptyPlan()), 'Justin · 7:00 PM');
+
+  const source = readFileSync(new URL('../pages/TrainingNotes.tsx', import.meta.url), 'utf8');
+  assert.match(source, /classBrowseFolders/);
+  assert.match(source, /All classes/);
+  assert.match(source, />\s*Classes\s*</);
+  assert.equal(UNLABELED_CLASS_LABEL, 'No class name');
 });
