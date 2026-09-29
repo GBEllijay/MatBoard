@@ -297,11 +297,16 @@ test('four binder presets fill the toggles and stay overridable', () => {
     proShopAccess: false,
   });
   assert.deepEqual(instructorPresetPermissions('coach'), defaultInstructorPermissions());
-  const director = instructorPresetPermissions('program-director');
-  assert.equal(director.galleryUpload, true);
-  assert.equal(director.eventsAccess, true);
-  assert.equal(director.proShopAccess, true);
-  assert.equal(director.uploadForDistribution, true);
+  assert.deepEqual(instructorPresetPermissions('program-director'), {
+    galleryUpload: true,
+    dailyLessonPlanAccess: false,
+    rosterSubmit: false,
+    rosterPull: false,
+    downloadTodaysVideos: false,
+    uploadForDistribution: false,
+    eventsAccess: true,
+    proShopAccess: true,
+  });
   const instructors = instructorPresetPermissions('instructors');
   assert.equal(INSTRUCTOR_PRESETS.length, 4);
   assert.ok(INSTRUCTOR_PERMISSION_FIELDS.every((field) => instructors[field.key]));
@@ -329,13 +334,13 @@ test('four binder presets fill the toggles and stay overridable', () => {
     [
       ['assistant-coach', 'Coach Unlimited'],
       ['coach', 'Coach Unlimited'],
-      ['program-director', 'Coach Unlimited + Pro'],
+      ['program-director', 'Pro · Gallery'],
       ['instructors', 'Coach Unlimited + Pro'],
     ],
   );
   assert.equal(instructorPresetPlan('assistant-coach'), 'Coach Unlimited');
   assert.equal(instructorPresetPlan('coach'), 'Coach Unlimited');
-  assert.equal(instructorPresetPlan('program-director'), 'Coach Unlimited + Pro');
+  assert.equal(instructorPresetPlan('program-director'), 'Pro · Gallery');
   assert.equal(instructorPresetPlan('instructors'), 'Coach Unlimited + Pro');
   assert.equal(instructorPresetPlan(null), null);
 
