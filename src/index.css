@@ -11493,12 +11493,25 @@ a.plan-pick {
 .tournament--kids .t-match__bouts,
 .tournament--kids.tournament--bright .t-match__bouts,
 .tournament--kids.tournament--dark .t-match__bouts {
+  isolation: isolate;
   padding: 0.35rem 0.45rem;
   border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.78);
-  background: rgba(255, 255, 255, 0.82);
+  background: transparent;
   box-shadow: 0 12px 28px rgba(16, 24, 40, 0.16);
+}
+
+/* Blur lives on a pseudo so it does not become the containing block for the
+   roster sheet. A filter on the card itself traps that fixed picker in the pill. */
+.tournament--kids .t-match__bouts::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(14px);
+  pointer-events: none;
 }
 
 .tournament--kids .t-slot,
@@ -11576,11 +11589,29 @@ a.plan-pick {
 .tournament--kids .bracket__champ,
 .tournament--kids.tournament--bright .bracket__champ,
 .tournament--kids.tournament--dark .bracket__champ {
-  background: rgba(255, 255, 255, 0.88);
+  isolation: isolate;
+  background: transparent;
   color: #1b2433;
   border: 1px solid rgba(255, 255, 255, 0.85);
   box-shadow: 0 12px 28px rgba(16, 24, 40, 0.16);
+}
+
+.tournament--kids .bracket__champ::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(14px);
+  pointer-events: none;
+}
+
+/* Kids wallpaper must not paint the tatami through the picker. The sheet stays
+   the same full, scrollable roster as Bright/Dark, with a clear panel. */
+.tournament--kids .sheet--roster .sheet__panel {
+  background: transparent;
+  background-image: none;
 }
 
 .tournament--kids .bracket__champ > span,
