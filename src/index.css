@@ -12037,11 +12037,11 @@ a.plan-pick {
 }
 
 .scoreboard-skin--old-school .flap__card--out {
-  animation: flap-away 70ms linear both;
+  animation: flap-away 100ms linear both;
 }
 
 .scoreboard-skin--old-school .flap__card--flip {
-  animation: flap-snap 120ms cubic-bezier(0.2, 0.85, 0.25, 1) both;
+  animation: flap-snap 160ms cubic-bezier(0.16, 0.72, 0.22, 1) both;
 }
 
 .scoreboard-skin--old-school .bout--blue .flap__card {
@@ -12162,26 +12162,30 @@ a.plan-pick {
 
 @keyframes flap-away {
   0% {
-    transform: perspective(480px) rotateX(0deg);
+    transform: perspective(700px) rotateX(0deg);
     filter: brightness(1);
   }
   100% {
-    transform: perspective(480px) rotateX(-90deg);
-    filter: brightness(0.35);
+    transform: perspective(700px) rotateX(-75deg);
+    filter: brightness(0.55);
   }
 }
 
 @keyframes flap-snap {
   0% {
-    transform: perspective(480px) rotateX(-86deg);
-    filter: brightness(0.4);
+    transform: perspective(700px) rotateX(-75deg);
+    filter: brightness(0.55);
   }
-  58% {
-    transform: perspective(480px) rotateX(5deg);
+  42% {
+    transform: perspective(700px) rotateX(-22deg);
+    filter: brightness(0.9);
+  }
+  74% {
+    transform: perspective(700px) rotateX(5deg);
     filter: brightness(1);
   }
   100% {
-    transform: perspective(480px) rotateX(0deg);
+    transform: perspective(700px) rotateX(0deg);
   }
 }
 

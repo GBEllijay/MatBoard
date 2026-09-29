@@ -60,7 +60,7 @@ export function ScoreBox({ side, kind, value, compact, flap = false }: Props) {
 }
 
 /** How long the old digit stays up on the ring before the new one drops. */
-const FLIP_OUT_MS = 70;
+const FLIP_OUT_MS = 100;
 
 function FlapDigit({ digit }: { digit: string }) {
   const [face, setFace] = useState(digit);
