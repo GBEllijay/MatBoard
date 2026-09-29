@@ -12305,12 +12305,15 @@ a.plan-pick {
   filter: drop-shadow(0 16px 22px rgba(0, 0, 0, 0.28));
 }
 
-/* Shared by every Carlos speech bubble. 58% sat on his left eye. */
+/* Shared by every Carlos speech bubble, bracket and match board.
+   The same nudge keeps the card off his left eye. */
 .kids-carlos__bubble {
+  --carlos-bubble-shift: 1.6rem;
   position: absolute;
   z-index: 2;
   top: 4%;
   left: 74%;
+  transform: translateX(var(--carlos-bubble-shift));
   display: grid;
   justify-items: start;
   gap: 0.08rem;
