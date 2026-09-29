@@ -39,6 +39,7 @@ import {
   isByeSlot,
   isThreePersonBracket,
   leftRoundIds,
+  placementLabel,
   placementOf,
   matchHasBye,
   newBracket,
@@ -252,7 +253,7 @@ export function TournamentPage() {
               setSizeOpen(true);
             }}
           >
-            {placement === 'ibjjf' ? 'IBJJF' : 'Lineup'} {tournament.size}
+            {placement === 'lineup' ? `Lineup ${tournament.size}` : tournament.size}
           </button>
           <button type="button" className="btn btn--ghost tournament__save-btn" onClick={openSaved}>
             {named ? savedLabel : 'Save'}
@@ -435,7 +436,7 @@ export function TournamentPage() {
         }}
       >
         <p className="tournament__sheet-copy">
-          Any count from 2 to {sizeMax}. IBJJF is the default. A field of 3 plays 2nd vs 3rd, the
+          Any count from 2 to {sizeMax}. Seeded is the default. A field of 3 plays 2nd vs 3rd, the
           loser faces the 1st seed, and those winners meet in the final. A field of 5 opens with 4th
           vs 5th, and 1st, 2nd, and 3rd receive byes. A field of 7 gives the bye to the 1st seed.
           Eight and up, and every other custom count, fill to the next power of two with those same
@@ -453,7 +454,7 @@ export function TournamentPage() {
             className={`chip${placement === 'ibjjf' ? ' chip--gold' : ''}`}
             onClick={() => requestPlacement('ibjjf')}
           >
-            IBJJF
+            {placementLabel('ibjjf')}
           </button>
           <button
             type="button"
@@ -521,7 +522,7 @@ export function TournamentPage() {
         {pendingPlacement != null ? (
           <div className="tournament__confirm">
             <span>
-              Switching to {pendingPlacement === 'ibjjf' ? 'IBJJF' : 'Lineup'} clears results and
+              Switching to {placementLabel(pendingPlacement)} clears results and
               rebuilds the draw. Names stay in seed order.
             </span>
             <button type="button" className="btn" onClick={() => applyPlacementNow(pendingPlacement)}>

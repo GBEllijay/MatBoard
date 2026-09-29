@@ -78,16 +78,21 @@ export function sanitizeBoutPoints(winner: number, loser: number): BoutPoints | 
 }
 
 /**
- * IBJJF is the default draw. Lineup is the organizer override: names fill the
+ * The seeded draw is the default. Lineup is the organizer override: names fill the
  * bracket from the top and byes sit on the last first-round cards.
  */
 export type PlacementStyle = 'ibjjf' | 'lineup';
+
+/** User-facing name for a placement style. */
+export function placementLabel(style: PlacementStyle): string {
+  return style === 'lineup' ? 'Lineup' : 'Seeded';
+}
 
 export type TournamentState = {
   version: 1;
   /** Competitor count (2–64). Tree size is the next power of 2; extra slots are byes. */
   size: number;
-  /** Draw rules. Missing values load as IBJJF. */
+  /** Draw rules. Missing values load as the seeded draw. */
   placement: PlacementStyle;
   title: string;
   entries: Record<string, string>;
@@ -184,7 +189,7 @@ export function treeSizeFor(count: number): TreeSize {
 }
 
 /**
- * IBJJF Article 2 is single elimination, with one exception (Article 2.3):
+ * The default draw is single elimination, with one exception:
  * a bracket of exactly three. The winner of the first match goes to the final,
  * the loser faces the athlete who sat out, and the winner of that match meets
  * the first winner in the final.
@@ -331,10 +336,11 @@ export function bracketRoundLine(current: TournamentState): string {
   const n = clampCompetitorCount(current.size);
   const people = `${n} competitor${n === 1 ? '' : 's'}`;
   const style = placementOf(current);
-  if (isThreePersonBracket(current)) return `IBJJF · 3-person · ${people}`;
+  const label = placementLabel(style);
+  if (isThreePersonBracket(current)) return `${label} · 3-person · ${people}`;
   const round = firstRoundLabel(n);
   const byes = byeCountFor(n, style);
-  const prefix = style === 'ibjjf' ? 'IBJJF · ' : 'Lineup · ';
+  const prefix = `${label} · `;
   if (!byes) return `${prefix}${round} · ${people}`;
   return `${prefix}${round} · ${people} · ${byes} ${byes === 1 ? 'bye' : 'byes'}`;
 }
