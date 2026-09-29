@@ -51,4 +51,9 @@ test('Mock-Tournament eyedrop colors are the stylesheet tokens', () => {
   assert.match(css, /--os-blue:\s*#1d6fe0/);
   assert.match(css, /--os-red:\s*#ef3d2c/);
   assert.match(css, /\.flap__ring/);
+  assert.match(css, /display__mid--stack/);
+  const stack = css.slice(css.indexOf('display__mid--stack'));
+  assert.match(stack, /flex-direction:\s*column/);
+  assert.match(stack, /grid-template-rows:\s*minmax\(0,\s*1fr\)\s+auto\s+minmax\(0,\s*1fr\)/);
+  assert.match(css, /@keyframes flap-turn/);
 });
