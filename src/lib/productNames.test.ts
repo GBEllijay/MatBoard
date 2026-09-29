@@ -164,7 +164,7 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   assert.equal(COMPETITION_PRO_MENU[1].to, withSuiteFrom('/tournament', true));
   assert.deepEqual(
     COMPETITION_PRO_MENU.map((item) => item.belt),
-    ['tournament', 'tournament', 'tournament', 'tournament'],
+    ['tournament', 'tournament', 'tournament', null],
   );
   assert.deepEqual(
     COMPETITION_PRO_MENU.map((item) => item.clearBout),

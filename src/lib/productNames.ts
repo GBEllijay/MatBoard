@@ -141,9 +141,9 @@ export function withSuiteFrom(path: string, fromSuite: boolean): string {
 
 /**
  * Competition Management Pro folder, top to bottom.
- * Every button uses the yellow/green tournament belt. Brackets opens the same
- * mock-tournament board. Scoreboard opens the existing match controller.
- * Round Timer opens the existing rounds controller.
+ * Roster, Brackets, and Scoreboard keep the yellow/green tournament belt.
+ * Round Timer has no left bar. Brackets opens the same mock-tournament board.
+ * Scoreboard opens the existing match controller. Round Timer opens the existing rounds controller.
  */
 export const COMPETITION_PRO_MENU = [
   { title: COMPETITOR_ROSTER_LABEL, to: withSuiteFrom('/roster', true), belt: 'tournament' as const, clearBout: false },
@@ -157,7 +157,7 @@ export const COMPETITION_PRO_MENU = [
   {
     title: 'Round Timer',
     to: withSuiteFrom(ROUND_CONTROLLER_PATH, true),
-    belt: 'tournament' as const,
+    belt: null,
     clearBout: false,
   },
 ] as const;

@@ -24,7 +24,7 @@ export function TournamentSuitePage() {
                 to={link.to}
                 onClick={link.clearBout ? () => unlinkBracketBout() : undefined}
               >
-                <BeltRail kind={link.belt} />
+                {link.belt ? <BeltRail kind={link.belt} /> : null}
                 <span>{link.title}</span>
               </Link>
             ))}
