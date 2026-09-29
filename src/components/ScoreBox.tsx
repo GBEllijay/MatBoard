@@ -25,7 +25,7 @@ type Props = {
   kind: ScoreKind;
   value: number;
   compact?: boolean;
-  /** Old School split-flap cards. The button name still includes the score. */
+  /** Old School flip cards. The button name still includes the score. */
   flap?: boolean;
 };
 
@@ -49,7 +49,9 @@ export function ScoreBox({ side, kind, value, compact, flap = false }: Props) {
         <span className="flap" aria-hidden="true">
           {digits.map((digit, index) => (
             <span key={`${index}-${digit}`} className="flap__card">
+              <span className="flap__ring" />
               <span className="flap__face">{digit}</span>
+              <span className="flap__seam" />
             </span>
           ))}
         </span>
