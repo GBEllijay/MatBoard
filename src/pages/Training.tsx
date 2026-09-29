@@ -1,6 +1,5 @@
 import { useCallback, useState, type MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BeltRail } from '../components/BeltRail';
 import { Chrome } from '../components/Chrome';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { PlayExitMark } from '../components/PlayExitMark';
@@ -65,7 +64,6 @@ export function TrainingPage() {
         setOptions(true);
       }}
     >
-      {suite.fromSuite ? <BeltRail kind="tournament" /> : null}
       <Chrome ghost title="" />
       <PlayExitMark to={suite.homePath} onExit={exitTraining} />
       <div className="play-fs-slot">
