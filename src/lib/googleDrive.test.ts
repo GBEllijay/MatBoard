@@ -22,6 +22,7 @@ import {
   driveSignInFailureCopy,
   ensureDateFolderTree,
   findOrCreateChildFolder,
+  lessonClassFileToken,
   lessonDriveFileName,
   loadClassHistory,
   parseLessonDocument,
@@ -51,6 +52,14 @@ function memoryStore(initial?: Record<string, string>): GoogleClientIdStore & { 
 test('lesson file names and Drive queries stay literal', () => {
   assert.equal(lessonDriveFileName('2026-09-27', 'Alex Rivera'), 'advantage-lesson-2026-09-27-alex-rivera.json');
   assert.equal(lessonDriveFileName('2026-09-27', '***'), 'advantage-lesson-2026-09-27-coach.json');
+  const labeled = emptyPlan();
+  labeled.classDesignation = 'GB1';
+  labeled.classTime = '5:00 PM';
+  assert.equal(
+    lessonDriveFileName('2026-09-27', 'Justin', lessonClassFileToken(labeled)),
+    `advantage-lesson-2026-09-27-justin-${labeled.id}.json`,
+  );
+  assert.equal(lessonClassFileToken(emptyPlan()), '');
   assert.equal(driveQueryLiteral("O'Brien\\folder"), "O\\'Brien\\\\folder");
   assert.equal(CONNECT_WITH_TITLE, 'Connect with');
   assert.equal(CONNECT_COMING_SOON, 'Coming soon');
@@ -617,6 +626,64 @@ describe('date folder tree', { concurrency: false }, () => {
       assert.equal(folders.length, 1);
       assert.equal(folders[0]?.parents[0], drive.files.find((file) => file.name === '2026-09-28')?.id);
     }
+  });
+
+  test('a labeled class plan keeps its own lesson file and the new fields', async () => {
+    const drive = createFakeDrive('class');
+    const first = emptyPlan();
+    first.coachName = 'Justin';
+    first.classDesignation = 'GB1';
+    first.classTime = '5:00 PM';
+    first.intro = 'Guard';
+    const second = emptyPlan();
+    second.coachName = 'Justin';
+    second.classDesignation = 'GB2';
+    second.classTime = '6:00 PM';
+    second.intro = 'Mount';
+    const gb1 = buildLessonDocument({
+      date: '2026-09-28',
+      coachName: 'Justin',
+      savedAt: 10,
+      kind: 'draft',
+      distributedAt: null,
+      plan: first,
+      media: [],
+    });
+    const gb2 = buildLessonDocument({
+      date: '2026-09-28',
+      coachName: 'Justin',
+      savedAt: 11,
+      kind: 'draft',
+      distributedAt: null,
+      plan: second,
+      media: [],
+    });
+    await upsertLessonFile({
+      token: 'token',
+      folderId: 'root-class',
+      document: gb1,
+      fetcher: drive.fetcher,
+    });
+    await upsertLessonFile({
+      token: 'token',
+      folderId: 'root-class',
+      document: gb2,
+      fetcher: drive.fetcher,
+    });
+    const lessons = drive.files.filter((file) => file.name.startsWith('advantage-lesson-'));
+    assert.equal(lessons.length, 2);
+    const names = lessons.map((file) => file.name).sort();
+    assert.deepEqual(names, [
+      `advantage-lesson-2026-09-28-justin-${first.id}.json`,
+      `advantage-lesson-2026-09-28-justin-${second.id}.json`,
+    ].sort());
+    const parsed = lessons.map((file) => JSON.parse(file.content ?? '{}') as DriveLessonDocument);
+    assert.equal(parsed.find((doc) => doc.plan.id === first.id)?.plan.classDesignation, 'GB1');
+    assert.equal(parsed.find((doc) => doc.plan.id === first.id)?.plan.classTime, '5:00 PM');
+    assert.equal(parsed.find((doc) => doc.plan.id === second.id)?.plan.classTime, '6:00 PM');
+    const plansId = drive.files.find((file) => file.name === 'lesson-plans')?.id;
+    assert.ok(plansId);
+    assert.ok(lessons.every((file) => file.parents[0] === plansId));
   });
 
   test('class history keeps flat root files and reads lesson-plans children', async () => {
