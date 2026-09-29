@@ -11675,11 +11675,12 @@ a.plan-pick {
   filter: drop-shadow(0 16px 22px rgba(0, 0, 0, 0.28));
 }
 
+/* Shared by every Carlos speech bubble. 58% sat on his left eye. */
 .kids-carlos__bubble {
   position: absolute;
   z-index: 2;
   top: 4%;
-  left: 58%;
+  left: 74%;
   display: grid;
   justify-items: start;
   gap: 0.08rem;
