@@ -927,6 +927,163 @@ button.mode-card {
   text-align: center;
 }
 
+/* Instructor hub uses the Owner Console card language: cream, ink, 18px, same shadow. */
+.instructor-hub {
+  gap: 0.75rem;
+}
+
+.instructor-hub .instructor-coach-open {
+  background: var(--white);
+  border: 0;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+  color: var(--white-ink);
+}
+
+.instructor-hub a.instructor-coach-open:hover {
+  border-color: transparent;
+}
+
+.instructor-hub .instructor-coach-open strong {
+  color: var(--white-ink);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.instructor-hub .instructor-coach-open .mode-card__copy > span {
+  color: #5c6574;
+}
+
+.instructor-hub .invite-panel,
+.instructor-hub .invite-stack {
+  gap: 0.75rem;
+}
+
+.instructor-hub .invite-form,
+.instructor-hub .plan-card,
+.instructor-hub .seat-card {
+  --binder-ink: var(--white-ink);
+  --binder-muted: #5c6574;
+  background: var(--white);
+  color: var(--white-ink);
+  border: 0;
+  border-radius: 18px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+}
+
+.instructor-hub .invite-form {
+  padding: 1rem 1.15rem 1.05rem;
+}
+
+.instructor-hub .invite-form__kicker,
+.instructor-hub .invite-form .invite-gym,
+.instructor-hub .invite-form__note,
+.instructor-hub .plan-card__kicker,
+.instructor-hub .plan-card span,
+.instructor-hub .plan-card__revisions li,
+.instructor-hub .seat-card__role,
+.instructor-hub .seat-card__body > span,
+.instructor-hub .seat-card p,
+.instructor-hub .drive-connect__dev p,
+.instructor-hub .drive-connect__folders p,
+.instructor-hub .drive-connect__note,
+.instructor-hub .drive-connect__soon {
+  color: #5c6574;
+}
+
+.instructor-hub .plan-card strong,
+.instructor-hub .invite-form > strong,
+.instructor-hub .seat-card__body > strong,
+.instructor-hub .drive-connect__field {
+  color: var(--white-ink);
+}
+
+.instructor-hub .invite-field--lead {
+  color: var(--ink);
+}
+
+.instructor-hub .invite-field--lead input,
+.instructor-hub .drive-connect__field input,
+.instructor-hub .seat-card input,
+.instructor-hub .invite-link input {
+  border-radius: 18px;
+  border: 1px solid rgba(20, 22, 28, 0.14);
+  background: #f7f4ee;
+  color: var(--white-ink);
+  box-shadow: none;
+}
+
+.instructor-hub .invite-link {
+  border: 1px solid rgba(20, 22, 28, 0.12);
+  background: rgba(20, 22, 28, 0.04);
+  color: var(--white-ink);
+}
+
+.instructor-hub .invite-link p,
+.instructor-hub .invite-confirm span {
+  color: var(--white-ink);
+}
+
+.instructor-hub .invite-error {
+  color: #9f1d1d;
+}
+
+.instructor-hub .invite-permissions legend {
+  color: #5c6574;
+}
+
+.instructor-hub .invite-switch {
+  border-radius: 18px;
+  border: 1px solid rgba(20, 22, 28, 0.14);
+  background: rgba(20, 22, 28, 0.05);
+  color: var(--white-ink);
+}
+
+.instructor-hub .invite-switch--on {
+  border-color: rgba(20, 22, 28, 0.55);
+  background: rgba(20, 22, 28, 0.08);
+  color: var(--white-ink);
+}
+
+.instructor-hub .invite-switch__track {
+  background: rgba(20, 22, 28, 0.18);
+}
+
+.instructor-hub .invite-switch__track::after {
+  background: var(--white);
+}
+
+.instructor-hub .invite-switch--on .invite-switch__track {
+  background: var(--white-ink);
+}
+
+.instructor-hub .invite-switch--on .invite-switch__track::after {
+  background: var(--white);
+}
+
+.instructor-hub .btn {
+  border-radius: 18px;
+  background: var(--white-ink);
+  color: var(--white);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.22);
+}
+
+.instructor-hub .btn--ghost,
+.instructor-hub .invite-form .btn--ghost,
+.instructor-hub .seat-card .btn--ghost,
+.instructor-hub .plan-card .btn--ghost {
+  background: transparent;
+  color: var(--white-ink);
+  border: 1.5px solid rgba(20, 22, 28, 0.28);
+  box-shadow: none;
+}
+
+.instructor-hub .invite-form .role-plan,
+.instructor-hub .seat-card .role-plan {
+  background: rgba(20, 22, 28, 0.06);
+}
+
 .suite h2.instructor-hub__title > span {
   position: relative;
   z-index: 1;
@@ -1086,8 +1243,19 @@ button.mode-card {
     display: flex;
     overflow-x: auto;
     scroll-snap-type: x mandatory;
-    gap: 0.85rem;
+    gap: 0.55rem;
     padding-bottom: 0.45rem;
+    /* Full-bleed scroller: the next cover crosses the right edge, then fades out. */
+    margin-inline: -1.25rem;
+    padding-inline: 0 2.5rem;
+    scroll-padding-inline: 0 2.5rem;
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 1.4rem), transparent 100%);
+    mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 1.4rem), transparent 100%);
+  }
+
+  .role-options__row::-webkit-scrollbar {
+    display: none;
   }
 
   .binder-pick {
