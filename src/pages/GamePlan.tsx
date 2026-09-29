@@ -68,7 +68,7 @@ export function GamePlanPage() {
   );
 
   return (
-    <main className="roster plan">
+    <main className="roster plan cms">
       <PlayExitMark
         to={exitPath}
         onExit={() => {

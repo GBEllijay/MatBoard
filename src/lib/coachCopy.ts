@@ -65,7 +65,7 @@ export const COMPETITION_READY_CARD =
 
 /** Lead on the Competition Ready list. Same On / Off language as Media Console. */
 export const COMPETITION_READY_LEAD =
-  'Gold On is done. Off still needs attention. Each list stays on this device with that competitor.';
+  'On is done. Off still needs attention. Each list stays on this device with that competitor.';
 
 /** Hub button under Competitor Management. One A/B/C plan per roster competitor. */
 export const GAME_PLAN_LABEL = 'Competitor Game Plan';

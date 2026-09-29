@@ -179,7 +179,7 @@ export function RosterPage() {
   );
 
   return (
-    <main className={coachRoster ? 'roster roster--coach' : 'roster'}>
+    <main className={coachRoster ? 'roster roster--coach' : fromCompetitors ? 'roster cms' : 'roster'}>
       <PlayExitMark
         to={exitPath}
         onExit={() => {

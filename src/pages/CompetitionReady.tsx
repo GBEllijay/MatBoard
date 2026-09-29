@@ -45,7 +45,7 @@ export function CompetitionReadyPage() {
   );
 
   return (
-    <main className="roster ready">
+    <main className="roster ready cms">
       <PlayExitMark
         to={exitPath}
         onExit={() => {

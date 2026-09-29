@@ -144,7 +144,7 @@ test('Competitor Roster copy names bout competitors and skips franchise disclaim
     COMPETITION_READY_CARD,
     'A weekend checklist for each competitor. Medical forms, gi, division, travel, waiver, and weigh-in stay on this device.',
   );
-  assert.match(COMPETITION_READY_LEAD, /Gold On is done/);
+  assert.match(COMPETITION_READY_LEAD, /On is done/);
   assert.doesNotMatch(
     `${COMPETITION_READY_LABEL}\n${COMPETITION_READY_CARD}\n${COMPETITION_READY_LEAD}`,
     /GB Members|Gracie\s*Barra|student management|\bstudents?\b/i,

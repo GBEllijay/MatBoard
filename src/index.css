@@ -836,6 +836,72 @@ button.mode-card {
   line-height: 1.45;
 }
 
+/* Competitor Management hub — same cream title and hub cards as the instructor console. */
+.suite h2.competitor-hub__title {
+  position: relative;
+  padding: 1rem 1.1rem;
+  border-radius: 18px;
+  background: var(--white);
+  color: var(--white-ink);
+  font-size: clamp(1.25rem, 3.6vw, 1.7rem);
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+}
+
+.suite h2.competitor-hub__title > span {
+  position: relative;
+  z-index: 1;
+}
+
+.competitor-hub__nav {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.competitor-hub__link {
+  position: relative;
+  display: grid;
+  gap: 0.28rem;
+  min-height: 5.25rem;
+  padding: 1rem 1.15rem 1.05rem 1.55rem;
+  border-radius: 18px;
+  background: var(--white);
+  color: var(--white-ink);
+  text-align: left;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+}
+
+.competitor-hub__link strong {
+  font-size: clamp(1.05rem, 2.7vw, 1.28rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.competitor-hub__link span {
+  color: #3e4654;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.competitor-hub__link .belt-rail {
+  --belt-rail-width: 8px;
+  --belt-block: 0.55rem;
+}
+
+.competitor-hub__link:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+
+.competitor-hub__note {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 700;
+  line-height: 1.45;
+}
+
 .plan-card {
   display: grid;
   gap: 0.28rem;
@@ -12030,4 +12096,130 @@ a.plan-pick {
   .scoreboard-skin--old-school .flap__card {
     animation: none;
   }
+}
+
+/*
+  Competitor Management working screens.
+  Cream title, white actions, and blue On states — same console paint as the
+  instructor hub. Coach roster stays on the older treatment.
+*/
+.cms .roster__bar {
+  align-items: center;
+}
+
+.cms .roster__brand {
+  flex: 1 1 16rem;
+  padding: 0.9rem 1rem 0.95rem;
+  border-radius: 18px;
+  background: var(--white);
+  color: var(--white-ink);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+}
+
+.cms .roster__eyebrow {
+  color: var(--logo-blue);
+}
+
+.cms .roster__brand h1 {
+  color: var(--white-ink);
+}
+
+.cms .btn:not(.btn--ghost):not(.btn--blue) {
+  background: var(--white);
+  color: var(--white-ink);
+}
+
+.cms .btn--ghost {
+  background: rgba(0, 78, 186, 0.42);
+  border-color: rgba(255, 255, 255, 0.32);
+  color: var(--ink);
+}
+
+.cms .roster-card .btn.roster-card__checkin:not(.btn--ghost),
+.cms .ready-row--on .btn.ready-row__toggle:not(.btn--ghost) {
+  background: var(--logo-blue);
+  color: #fff;
+}
+
+.cms .roster-card,
+.cms .plan-layer,
+.cms .ready-row {
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.cms .roster-card__photo,
+.cms .roster-edit__photo-img,
+.cms .roster-edit__photo-empty {
+  border-color: rgba(255, 255, 255, 0.72);
+}
+
+.cms .ready-pick--on,
+.cms .plan-pick--on {
+  border-color: rgba(142, 182, 255, 0.85);
+  box-shadow: 0 0 0 1px rgba(0, 78, 186, 0.45);
+}
+
+.cms .ready-row--on {
+  border-color: rgba(142, 182, 255, 0.85);
+  background: rgba(0, 78, 186, 0.32);
+  box-shadow: none;
+}
+
+.cms .ready-pick__status--on,
+.cms .plan-pick__status--on,
+.cms .ready-division--on,
+.cms .rankings__row legend,
+.cms .plan-links a {
+  color: #d7e6ff;
+}
+
+.cms .roster__instructions-btn,
+.cms .roster__csv-summary {
+  color: var(--ink);
+}
+
+.cms .roster__instructions-pop {
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.cms .plan-chip {
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.cms .preset--on {
+  background: var(--logo-blue);
+  color: #fff;
+  border-color: transparent;
+}
+
+.cms .roster__search input,
+.cms .ready-add input,
+.cms .ready-note textarea,
+.cms .plan-layer textarea,
+.cms .sheet input,
+.cms .sheet textarea,
+.cms .roster textarea {
+  background: var(--white);
+  color: var(--white-ink);
+  color-scheme: light;
+  border: 0;
+}
+
+.cms .roster__search input::placeholder,
+.cms .ready-add input::placeholder,
+.cms .ready-note textarea::placeholder,
+.cms .plan-layer textarea::placeholder,
+.cms .sheet input::placeholder,
+.cms .sheet textarea::placeholder,
+.cms .roster textarea::placeholder {
+  color: #5c6370;
+}
+
+.cms .ready-pick:focus-visible,
+.cms .ready-row__toggle:focus-visible,
+.cms .ready-row__remove:focus-visible,
+.cms .plan-pick:focus-visible,
+.cms .plan-chip:focus-visible,
+.cms .plan-link a:focus-visible {
+  outline-color: #fff;
 }
