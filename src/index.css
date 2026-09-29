@@ -11799,21 +11799,20 @@ a.plan-pick {
   font-weight: 800;
 }
 
-/* Old School — tabletop flip-card board.
-   Blue competitor: white digits on blue cards.
-   White competitor: white digits on red cards.
-   Large cards are points. Smaller cards are advantages and penalties.
-   Matte black frame, binder rings, a slight flip seam. */
+/* Old School — locked to the silver-ring flip board (photo 2).
+   One matte black wedge. Red cards on the left (white competitor).
+   Blue cards on the right. Large points, smaller advantages and penalties.
+   Silver metal rings. No white center cards and no black plastic hooks. */
 .scoreboard-skin--old-school.display {
   --os-blue: #1d6fe0;
   --os-blue-deep: #155ec4;
   --os-red: #ef3d2c;
   --os-red-deep: #d43224;
-  --os-frame: #0c0c0c;
-  --os-ring: #d5dee6;
-  --board-field: #070707;
-  --board-blue: #101010;
-  --board-white: #101010;
+  --os-frame: #141414;
+  --os-ring: #e7eef3;
+  --board-field: #141414;
+  --board-blue: transparent;
+  --board-white: transparent;
   --board-ink: #f4f4f4;
   --board-digit: #ffffff;
   --board-gym-on-blue: #d0d0d0;
@@ -11821,45 +11820,125 @@ a.plan-pick {
   --pad-points: transparent;
   --pad-adv: transparent;
   --pad-pen: transparent;
+  grid-template-columns: minmax(0, 1fr) minmax(7.5rem, 16vw) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  align-items: stretch;
   background-color: var(--os-frame);
-  background-image: linear-gradient(180deg, #141414 0%, #070707 38%, #050505 100%);
-  box-shadow: inset 0 0 0 14px #050505, inset 0 0 0 16px #2a2a2a;
-}
-
-.scoreboard-skin--old-school.display > .bout {
-  border-radius: 6px;
+  background-image: none;
   box-shadow: none;
 }
 
-.scoreboard-skin--old-school.display .bout--blue {
-  background: #101010;
-  box-shadow: inset 8px 0 0 var(--os-blue);
-  color: #f4f4f4;
+.scoreboard-skin--old-school.display::before {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  left: 2%;
+  right: 2%;
+  top: 18%;
+  bottom: 3.5%;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 8% 97%, #f2f2f2 0 3px, #6a6a6a 3.4px 4.2px, transparent 6.5px),
+    radial-gradient(circle at 50% 97%, #f2f2f2 0 3px, #6a6a6a 3.4px 4.2px, transparent 6.5px),
+    radial-gradient(circle at 92% 97%, #f2f2f2 0 3px, #6a6a6a 3.4px 4.2px, transparent 6.5px),
+    linear-gradient(180deg, #2a2a2a 0%, #161616 18%, #0c0c0c 100%);
+  clip-path: polygon(6% 0, 94% 0, 100% 100%, 0 100%);
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.28));
 }
 
+.scoreboard-skin--old-school.display > .bout,
+.scoreboard-skin--old-school.display > .display__mid {
+  position: relative;
+  z-index: 1;
+}
+
+.scoreboard-skin--old-school.display > .bout--white {
+  order: 1;
+}
+
+.scoreboard-skin--old-school.display > .display__mid {
+  order: 2;
+  align-self: end;
+  margin-bottom: 24%;
+}
+
+.scoreboard-skin--old-school.display > .bout--blue {
+  order: 3;
+}
+
+.scoreboard-skin--old-school.display > .bout {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  min-width: 0;
+  min-height: 0;
+  overflow: visible;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0.4rem 0.55rem 11%;
+}
+
+.scoreboard-skin--old-school.display .bout--blue,
 .scoreboard-skin--old-school.display .bout--white {
-  background: #101010;
-  box-shadow: inset 8px 0 0 var(--os-red);
+  background: transparent;
   color: #f4f4f4;
 }
 
 .scoreboard-skin--old-school.display .bout__scores {
-  grid-template-columns: 1.85fr 0.95fr 0.58fr;
+  position: relative;
+  grid-template-columns: minmax(0, 1.85fr) minmax(0, 0.95fr) minmax(0, 0.52fr);
   align-items: end;
   gap: 0.45rem;
-  height: 100%;
-  padding: 0.55rem 0.7rem 0.85rem;
-  border-radius: 2px 2px 14px 14px;
-  background:
-    radial-gradient(circle at 14px 16px, #6a6a6a 0 2px, #1a1a1a 2.5px, transparent 4px),
-    radial-gradient(circle at calc(100% - 14px) 16px, #6a6a6a 0 2px, #1a1a1a 2.5px, transparent 4px),
-    radial-gradient(circle at 14px calc(100% - 14px), #8a8a8a 0 3px, #222 3.5px, #111 5px, transparent 6px),
-    radial-gradient(circle at calc(100% - 14px) calc(100% - 14px), #8a8a8a 0 3px, #222 3.5px, #111 5px, transparent 6px),
-    linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 70%, #050505 100%);
-  box-shadow:
-    inset 0 0 0 2px #000,
-    0 8px 0 #050505,
-    0 10px 18px rgba(0, 0, 0, 0.45);
+  height: min(46vh, 78%);
+  padding: 0.85rem 0.35rem 0.2rem;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Large points sit on the outer edge, matching the silver-ring board. */
+.scoreboard-skin--old-school.display .bout--blue .bout__scores {
+  grid-template-columns: minmax(0, 0.52fr) minmax(0, 0.95fr) minmax(0, 1.85fr);
+}
+
+.scoreboard-skin--old-school.display .bout--blue .score--disadvantages {
+  order: 1;
+}
+
+.scoreboard-skin--old-school.display .bout--blue .score--advantages {
+  order: 2;
+}
+
+.scoreboard-skin--old-school.display .bout--blue .score--points {
+  order: 3;
+}
+
+.scoreboard-skin--old-school.display .score--points .flap {
+  position: relative;
+}
+
+.scoreboard-skin--old-school.display .bout--white .score--points .flap::before,
+.scoreboard-skin--old-school.display .bout--blue .score--points .flap::after {
+  content: '';
+  position: absolute;
+  top: 0.02rem;
+  z-index: 4;
+  width: 1.35rem;
+  height: 0.55rem;
+  border-radius: 1px;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.65);
+}
+
+.scoreboard-skin--old-school.display .bout--white .score--points .flap::before {
+  left: 0.15rem;
+  background: linear-gradient(180deg, #ff7a64, var(--os-red));
+}
+
+.scoreboard-skin--old-school.display .bout--blue .score--points .flap::after {
+  right: 0.15rem;
+  background: linear-gradient(180deg, #7eb6ff, var(--os-blue));
 }
 
 .scoreboard-skin--old-school.display .score,
@@ -11868,7 +11947,9 @@ a.plan-pick {
 .scoreboard-skin--old-school.display .score--disadvantages {
   height: auto;
   aspect-ratio: auto;
+  align-self: end;
   justify-content: flex-end;
+  min-width: 0;
   align-items: stretch;
   gap: 0.2rem;
   padding: 0;
@@ -11893,12 +11974,26 @@ a.plan-pick {
 
 .scoreboard-skin--old-school.display .score__label,
 .scoreboard-skin--old-school.display .score__label--wide {
+  order: 2;
   flex: 0 0 auto;
   color: #f2f2f2;
   opacity: 1;
   text-align: center;
   text-shadow: none;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
+  font-size: clamp(0.68rem, 1vw, 0.9rem);
+}
+
+.scoreboard-skin--old-school.display .score__label--short {
+  display: block;
+}
+
+.scoreboard-skin--old-school.display .score__label--wide {
+  display: none;
+}
+
+.scoreboard-skin--old-school.display .flap {
+  order: 1;
 }
 
 .scoreboard-skin--old-school .flap {
@@ -11952,27 +12047,24 @@ a.plan-pick {
 .scoreboard-skin--old-school .flap__ring {
   position: absolute;
   z-index: 3;
-  top: -0.62rem;
+  top: -0.72rem;
   left: 50%;
-  width: 1.15rem;
-  height: 1.15rem;
-  margin-left: -0.58rem;
+  width: 1.45rem;
+  height: 1.45rem;
+  margin-left: -0.72rem;
   border-radius: 50%;
-  background:
-    radial-gradient(circle at 50% 50%, transparent 38%, #1a1a1a 39% 46%, var(--os-ring) 48%, #f7fbff 62%, #7d868e 82%, #2c3136 100%);
-  box-shadow: 0 2px 0 #000, inset 0 0 0 1px rgba(255, 255, 255, 0.35);
-}
-
-.scoreboard-skin--old-school .flap__ring::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: -0.28rem;
-  width: 0.42rem;
-  height: 0.42rem;
-  margin-left: -0.21rem;
-  border-radius: 2px;
-  background: #111;
+  background: radial-gradient(
+    circle at 50% 45%,
+    transparent 0 32%,
+    #9aa4ad 34%,
+    var(--os-ring) 48%,
+    #ffffff 60%,
+    #aeb8c0 74%,
+    #5c666e 100%
+  );
+  box-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.45),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.65);
 }
 
 .scoreboard-skin--old-school .flap__seam {
@@ -11992,9 +12084,10 @@ a.plan-pick {
 }
 
 .scoreboard-skin--old-school .score--disadvantages .flap__card {
-  flex: 0 0 auto;
-  width: auto;
-  aspect-ratio: 0.7;
+  flex: 0 1 auto;
+  width: min(100%, 4.2rem);
+  aspect-ratio: auto;
+  height: 100%;
   max-width: 100%;
 }
 
@@ -12008,11 +12101,52 @@ a.plan-pick {
   text-shadow: 0 2px 0 rgba(0, 0, 0, 0.18);
 }
 
+.scoreboard-skin--old-school.display .display__mid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.scoreboard-skin--old-school.display .display__meta,
+.scoreboard-skin--old-school.display .display__clock-hint {
+  text-align: center;
+  color: #f4f4f4;
+}
+
 .scoreboard-skin--old-school.display .clock-btn,
 .scoreboard-skin--old-school.display .display__meta,
 .scoreboard-skin--old-school.display .display__clock-hint {
   color: #f4f4f4;
   text-shadow: none;
+}
+
+.scoreboard-skin--old-school.display .clock-btn {
+  font-size: clamp(1.7rem, 5vh, 3.1rem);
+  line-height: 1;
+}
+
+.scoreboard-skin--old-school.display .bout__who {
+  text-align: center;
+}
+
+.scoreboard-skin--old-school.display .bout__who h1,
+.scoreboard-skin--old-school.display .bout__who p,
+.scoreboard-skin--old-school.display .bout__who a {
+  text-align: center;
+  color: #f4f4f4;
+}
+
+.scoreboard-skin--old-school.display .bout__who h1 {
+  font-size: clamp(1.15rem, 2.6vw, 2.15rem);
+}
+
+.scoreboard-skin--old-school.display .bout__who p {
+  font-size: clamp(0.78rem, 1.5vw, 1.1rem);
 }
 
 @keyframes flap-turn {
