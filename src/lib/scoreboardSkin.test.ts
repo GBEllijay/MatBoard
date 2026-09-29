@@ -48,6 +48,8 @@ test('Mock-Tournament eyedrop colors are the stylesheet tokens', () => {
   assert.match(block, new RegExp(`--board-digit:\\s*${MOCK_TOURNAMENT_COLORS.DIGIT}`));
   assert.match(css, /scoreboard-skin--old-school/);
   assert.match(css, /\.flap__card/);
+  assert.match(css, /@keyframes flap-away/);
+  assert.match(css, /@keyframes flap-snap/);
   assert.match(css, /--os-blue:\s*#1d6fe0/);
   assert.match(css, /--os-red:\s*#ef3d2c/);
   assert.match(css, /\.flap__ring/);

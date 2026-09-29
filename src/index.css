@@ -12012,24 +12012,36 @@ a.plan-pick {
   line-height: 0.8;
 }
 
-.scoreboard-skin--old-school .flap__card {
+.scoreboard-skin--old-school .flap__slot {
   container-type: size;
   position: relative;
-  display: grid;
   flex: 1 1 0;
-  place-items: center;
   min-width: 0;
   max-width: 100%;
   height: 100%;
-  overflow: visible;
+}
+
+.scoreboard-skin--old-school .flap__card {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
   border-radius: 0.12rem;
   color: #fff;
   transform-origin: top center;
-  animation: flap-turn 0.32s cubic-bezier(0.2, 0.75, 0.2, 1) both;
+  backface-visibility: hidden;
   box-shadow:
     0 4px 0 #141414,
     0 7px 0 #070707,
     0 9px 10px rgba(0, 0, 0, 0.45);
+}
+
+.scoreboard-skin--old-school .flap__card--out {
+  animation: flap-away 70ms linear both;
+}
+
+.scoreboard-skin--old-school .flap__card--flip {
+  animation: flap-snap 120ms cubic-bezier(0.2, 0.85, 0.25, 1) both;
 }
 
 .scoreboard-skin--old-school .bout--blue .flap__card {
@@ -12083,10 +12095,9 @@ a.plan-pick {
   justify-content: center;
 }
 
-.scoreboard-skin--old-school .score--disadvantages .flap__card {
+.scoreboard-skin--old-school .score--disadvantages .flap__slot {
   flex: 0 1 auto;
   width: min(100%, 4.2rem);
-  aspect-ratio: auto;
   height: 100%;
   max-width: 100%;
 }
@@ -12149,19 +12160,34 @@ a.plan-pick {
   font-size: clamp(0.78rem, 1.5vw, 1.1rem);
 }
 
-@keyframes flap-turn {
+@keyframes flap-away {
   0% {
-    transform: perspective(600px) rotateX(-72deg);
-    filter: brightness(0.75);
+    transform: perspective(480px) rotateX(0deg);
+    filter: brightness(1);
   }
   100% {
-    transform: perspective(600px) rotateX(0);
-    filter: none;
+    transform: perspective(480px) rotateX(-90deg);
+    filter: brightness(0.35);
+  }
+}
+
+@keyframes flap-snap {
+  0% {
+    transform: perspective(480px) rotateX(-86deg);
+    filter: brightness(0.4);
+  }
+  58% {
+    transform: perspective(480px) rotateX(5deg);
+    filter: brightness(1);
+  }
+  100% {
+    transform: perspective(480px) rotateX(0deg);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .scoreboard-skin--old-school .flap__card {
+  .scoreboard-skin--old-school .flap__card--out,
+  .scoreboard-skin--old-school .flap__card--flip {
     animation: none;
   }
 }

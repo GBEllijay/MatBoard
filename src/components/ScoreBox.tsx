@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useHoldPress } from '../hooks/useHoldPress';
 import { dispatchMatch, type ScoreKind, type Side } from '../lib/matchStore';
 import { flapDigits } from '../lib/scoreboardSkin';
@@ -48,16 +49,47 @@ export function ScoreBox({ side, kind, value, compact, flap = false }: Props) {
       {flap ? (
         <span className="flap" aria-hidden="true">
           {digits.map((digit, index) => (
-            <span key={`${index}-${digit}`} className="flap__card">
-              <span className="flap__ring" />
-              <span className="flap__face">{digit}</span>
-              <span className="flap__seam" />
-            </span>
+            <FlapDigit key={index} digit={digit} />
           ))}
         </span>
       ) : (
         <span className="score__value">{value}</span>
       )}
     </button>
+  );
+}
+
+/** How long the old digit stays up on the ring before the new one drops. */
+const FLIP_OUT_MS = 70;
+
+function FlapDigit({ digit }: { digit: string }) {
+  const [face, setFace] = useState(digit);
+  const [motion, setMotion] = useState<'rest' | 'out' | 'in'>('rest');
+
+  useEffect(() => {
+    if (digit === face) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setFace(digit);
+      setMotion('rest');
+      return;
+    }
+    setMotion('out');
+    const toIn = window.setTimeout(() => {
+      setFace(digit);
+      setMotion('in');
+    }, FLIP_OUT_MS);
+    return () => window.clearTimeout(toIn);
+  }, [digit, face]);
+
+  const motionClass = motion === 'out' ? ' flap__card--out' : motion === 'in' ? ' flap__card--flip' : '';
+
+  return (
+    <span className="flap__slot">
+      <span className="flap__ring" />
+      <span className={`flap__card${motionClass}`}>
+        <span className="flap__face">{face}</span>
+        <span className="flap__seam" />
+      </span>
+    </span>
   );
 }
