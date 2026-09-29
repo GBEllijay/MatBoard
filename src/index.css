@@ -11594,10 +11594,46 @@ a.plan-pick {
   overflow: hidden;
 }
 
-/* Match scoreboard: stay on the board, above the win splash, and let score taps through. */
+/* Match scoreboard: stay on the board, above the win splash, and let score taps through.
+   Rest on the right so the athlete names on the left stay readable. */
 .kids-carlos--board {
   position: absolute;
   z-index: 20;
+}
+
+.kids-carlos--board .kids-carlos__figure {
+  left: auto;
+  right: 0;
+  width: min(24vw, 280px);
+  animation-name: kids-carlos-in-right;
+}
+
+.kids-carlos--board .kids-carlos__bubble {
+  top: auto;
+  right: 64%;
+  bottom: 82%;
+  left: auto;
+  max-width: min(14rem, 36vw);
+}
+
+.kids-carlos--board .kids-carlos__bubble::after {
+  left: auto;
+  right: 1.1rem;
+}
+
+@keyframes kids-carlos-in-right {
+  from {
+    transform: translateX(110%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kids-carlos--board .kids-carlos__figure {
+    animation: none;
+  }
 }
 
 .kids-carlos__figure {
