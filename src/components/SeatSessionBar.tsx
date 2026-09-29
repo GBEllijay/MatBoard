@@ -13,18 +13,35 @@ export function useCurrentSeat(): InstructorSeat | null {
   return useSyncExternalStore(subscribeSeatSession, readCurrentSeat, () => null);
 }
 
+function signedInLine(seat: InstructorSeat): string {
+  const role = instructorSeatBinderLabel(seat.presetId, seat.permissions);
+  return `Signed in as ${seat.email} · ${role}`;
+}
+
+/** Plain signed-in line. Same words and weight as the session bar. */
+export function SeatIdentityLine() {
+  const seat = useCurrentSeat();
+  if (!seat) return null;
+  return <p className="seat-session">{signedInLine(seat)}</p>;
+}
+
+export function SeatSignOut() {
+  const seat = useCurrentSeat();
+  if (!seat) return null;
+  return (
+    <button type="button" className="home__text-btn" onClick={() => signOutInstructorSeat()}>
+      Sign out of seat
+    </button>
+  );
+}
+
 export function SeatSessionBar() {
   const seat = useCurrentSeat();
   if (!seat) return null;
-  const role = instructorSeatBinderLabel(seat.presetId, seat.permissions);
   return (
     <p className="seat-session">
-      <span>
-        Signed in as {seat.email} · {role}
-      </span>
-      <button type="button" className="home__text-btn" onClick={() => signOutInstructorSeat()}>
-        Sign out of seat
-      </button>
+      <span>{signedInLine(seat)}</span>
+      <SeatSignOut />
     </p>
   );
 }

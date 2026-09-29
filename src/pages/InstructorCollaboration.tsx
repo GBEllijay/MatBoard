@@ -4,7 +4,7 @@ import { BeltRail } from '../components/BeltRail';
 import { DriveConnectCard } from '../components/DriveConnectCard';
 import { HomeMark } from '../components/HomeMark';
 import { InstructorInvitePanel } from '../components/InstructorInvitePanel';
-import { InviteAccept, SeatSessionBar, useCurrentSeat } from '../components/SeatSessionBar';
+import { InviteAccept, SeatIdentityLine, SeatSignOut, useCurrentSeat } from '../components/SeatSessionBar';
 import { SiteFooter } from '../components/SiteFooter';
 import {
   OWNER_DRIVE_BODY,
@@ -33,12 +33,19 @@ export function InstructorCollaborationPage() {
       <div className="home__inner">
         <HomeMark to="/pro" />
         <section className="suite instructor-hub">
+          <InviteAccept />
           <h2 className="instructor-hub__title">
             <BeltRail kind="black" />
             <span>{INSTRUCTOR_COLLAB_NAME}</span>
           </h2>
-          <InviteAccept />
-          <SeatSessionBar />
+          <Link className="mode-card mode-card--coach instructor-coach-open" to="/coach">
+            <BeltRail kind="blue" />
+            <strong>{seat ? 'Open Coach' : INSTRUCTOR_COACH_ENTRY}</strong>
+            <span className="mode-card__copy">
+              <span>{COACH_HOME_DESCRIPTION}</span>
+            </span>
+          </Link>
+          <SeatIdentityLine />
           {seat ? (
             <p>This device is using that seat. Coach tools follow its permissions.</p>
           ) : (
@@ -67,15 +74,13 @@ export function InstructorCollaborationPage() {
           </article>
           )}
           {seat ? null : <DriveConnectCard />}
-          <Link className="mode-card mode-card--coach instructor-coach-open" to="/coach">
-            <BeltRail kind="blue" />
-            <strong>{seat ? 'Open Coach' : INSTRUCTOR_COACH_ENTRY}</strong>
-            <span className="mode-card__copy">
-              <span>{COACH_HOME_DESCRIPTION}</span>
-            </span>
-          </Link>
         </section>
         <SiteFooter />
+        {seat ? (
+          <p className="instructor-signout">
+            <SeatSignOut />
+          </p>
+        ) : null}
       </div>
     </main>
   );

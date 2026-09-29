@@ -921,6 +921,12 @@ button.mode-card {
   outline-offset: 3px;
 }
 
+.instructor-signout {
+  grid-column: 1 / -1;
+  margin: 1.4rem 0 0;
+  text-align: center;
+}
+
 .suite h2.instructor-hub__title > span {
   position: relative;
   z-index: 1;
