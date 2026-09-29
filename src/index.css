@@ -31,7 +31,8 @@
 /* Mock-Tournament Skin (MOCK_TOURNAMENT) — default Match scoreboard.
    Eyedrop from the approved tournament photo, tuned for TV.
    Penalty is Pantone 200 so it stays a primary red on gym TVs.
-   LIGHT and KIDS are reserved match-scoreboard ids. Kids' Scoreboards paints the bracket, not this skin. */
+   LIGHT and KIDS are reserved match-scoreboard ids. Kids' Scoreboards paints the bracket, not this skin.
+   Old School (scoreboard-skin--old-school) is the mechanical flip-card board. */
 :root,
 .scoreboard-skin--mock-tournament {
   --pad-points: #4AAF45;
@@ -2581,28 +2582,18 @@ span.role-plan__mark {
   opacity: 0.8;
 }
 
-/* Match Display pad headers: white words on the colored pad.
-   Short copy (Points / Adv / Pen) until landscape, then Points / Advantages / Penalties. */
-.display--pad-headers .score {
+/* Match Display always shows pad headers with the larger points layout.
+   Short copy (Points / Adv / Pen) until landscape, then Points / Advantages / Penalties.
+   There is no control to hide the labels. */
+.display .score {
   justify-content: space-between;
   align-items: stretch;
 }
 
-.display--pad-headers .score__label {
+.display .score__label,
+.display .score__label--wide {
   color: var(--board-digit);
   opacity: 1;
-}
-
-.display:not(.display--pad-headers) .score__label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
 }
 
 .score__label--wide {
@@ -4340,15 +4331,11 @@ a.saver-folder--link {
     height: 100%;
     max-height: none;
     aspect-ratio: auto;
-    padding: 0.15rem;
+    padding: 0.28rem 0.32rem 0.14rem;
     border-radius: 14px;
     align-self: stretch;
-  }
-
-  .display--pad-headers .score {
     justify-content: space-between;
     align-items: stretch;
-    padding: 0.28rem 0.32rem 0.14rem;
   }
 
   .display .score__label {
@@ -4524,10 +4511,6 @@ a.saver-folder--link {
   }
 
   .display .score {
-    padding: 0.35rem;
-  }
-
-  .display--pad-headers .score {
     justify-content: space-between;
     align-items: stretch;
     padding: 0.55rem 0.7rem 0.4rem;
@@ -4537,18 +4520,13 @@ a.saver-folder--link {
   .display .score__label--wide {
     font-size: clamp(1.15rem, 1.55vw, 1.65rem);
     letter-spacing: 0.1em;
-    opacity: 0.9;
+    color: var(--board-digit);
+    opacity: 1;
   }
 
   .play--tv .bout--blue {
     padding-top: calc(1.15rem + var(--safe-t));
   }
-}
-
-.display--pad-headers .score__label,
-.display--pad-headers .score__label--wide {
-  color: var(--board-digit);
-  opacity: 1;
 }
 
 .play--tv .display__chrome,
@@ -11616,6 +11594,12 @@ a.plan-pick {
   overflow: hidden;
 }
 
+/* Match scoreboard: stay on the board, above the win splash, and let score taps through. */
+.kids-carlos--board {
+  position: absolute;
+  z-index: 20;
+}
+
 .kids-carlos__figure {
   position: absolute;
   left: 0;
@@ -11711,5 +11695,204 @@ a.plan-pick {
 
   .kids-confetti {
     display: none;
+  }
+}
+
+/* Master Carlos controls on the match controller. */
+.carlos-controls .cast-note {
+  margin: 0.15rem 0 0.45rem;
+}
+
+.carlos-threshold {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0.2rem 0 0.15rem;
+  font-weight: 800;
+}
+
+.carlos-threshold input {
+  width: 4.75rem;
+  min-height: 48px;
+  text-align: center;
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+/* Old School — first-pass mechanical flip board.
+   Split-flap cards for Points / Advantages / Penalties, matte metal frames.
+   Retune proportions and card stock when the reference photo arrives. */
+.scoreboard-skin--old-school.display {
+  --board-field: #16130f;
+  --board-blue: #1c2633;
+  --board-white: #efe4d2;
+  --board-ink: #1c140e;
+  --board-digit: #f4efe6;
+  --board-gym-on-blue: #d5deea;
+  --board-gym-on-white: #6a5340;
+  --pad-points: #3a342c;
+  --pad-adv: #3a342c;
+  --pad-pen: #3a342c;
+  background-color: #100e0c;
+  background-image:
+    radial-gradient(120% 70% at 50% -10%, rgba(255, 236, 200, 0.08), transparent 42%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 6px),
+    linear-gradient(180deg, #2c261f 0%, #100e0c 46%);
+  box-shadow:
+    inset 0 0 0 8px #14110e,
+    inset 0 0 0 10px #6a5e50;
+}
+
+.scoreboard-skin--old-school.display > .bout {
+  border: 1px solid rgba(255, 244, 220, 0.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 12px 28px rgba(0, 0, 0, 0.35);
+}
+
+.scoreboard-skin--old-school.display .bout--blue {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 32%),
+    linear-gradient(90deg, #2d4f86 0 10px, #1b2430 10px);
+}
+
+.scoreboard-skin--old-school.display .bout--white {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.45), transparent 30%),
+    linear-gradient(90deg, #f7f1e6, #e4d7c2);
+  color: #1c140e;
+}
+
+.scoreboard-skin--old-school.display .bout__scores {
+  padding: 0.35rem;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #3f382f, #16130f);
+  box-shadow:
+    inset 0 0 0 2px #0e0c0a,
+    0 0 0 2px #7a6e60;
+}
+
+.scoreboard-skin--old-school.display .score,
+.scoreboard-skin--old-school.display .score--points,
+.scoreboard-skin--old-school.display .score--advantages,
+.scoreboard-skin--old-school.display .score--disadvantages {
+  justify-content: space-between;
+  align-items: stretch;
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 30%),
+    linear-gradient(180deg, #534b41 0%, #2b261f 58%, #171410 100%);
+  border: 1px solid #8d8070;
+  box-shadow:
+    inset 0 0 0 3px #14110e,
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 5px 0 #0b0a08;
+  color: #f4efe6;
+}
+
+.scoreboard-skin--old-school.display .score__label,
+.scoreboard-skin--old-school.display .score__label--wide {
+  color: #f4efe6;
+  opacity: 1;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.7);
+}
+
+.scoreboard-skin--old-school .flap {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0.08em;
+  min-height: 0;
+  width: 100%;
+  perspective: 700px;
+  font-family: 'Arial Narrow', 'Franklin Gothic Medium', Impact, sans-serif;
+  font-size: clamp(2.4rem, 8.4vw, 5.8rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 0.9;
+}
+
+.scoreboard-skin--old-school .flap__card {
+  position: relative;
+  display: grid;
+  flex: 1 1 0;
+  place-items: center;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 0.06em;
+  background:
+    linear-gradient(#fbf6ea, #f3ecdc) top / 100% calc(50% - 1px) no-repeat,
+    linear-gradient(#e4d9c6, #d9cdb8) bottom / 100% calc(50% - 1px) no-repeat,
+    #2a241c;
+  color: #16130f;
+  box-shadow:
+    0 0.07em 0 #5e564c,
+    0 0.12em 0.16em rgba(0, 0, 0, 0.45),
+    inset 0 0.04em 0 rgba(255, 255, 255, 0.85);
+  transform-origin: center center;
+  animation: flap-turn 0.34s cubic-bezier(0.2, 0.75, 0.2, 1) both;
+}
+
+.scoreboard-skin--old-school .score--disadvantages .flap__card {
+  max-width: 1.35em;
+}
+
+.scoreboard-skin--old-school .flap__card::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% - 1px);
+  z-index: 1;
+  height: 2px;
+  background: #1a1612;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+}
+
+.scoreboard-skin--old-school .flap__face {
+  position: relative;
+  z-index: 0;
+  transform: translateY(-0.02em);
+}
+
+.scoreboard-skin--old-school.display .clock-btn,
+.scoreboard-skin--old-school.display .display__meta,
+.scoreboard-skin--old-school.display .display__clock-hint {
+  color: #f4efe6;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.55);
+}
+
+@keyframes flap-turn {
+  0% {
+    transform: perspective(500px) rotateX(-78deg);
+    filter: brightness(0.72);
+  }
+  60% {
+    transform: perspective(500px) rotateX(7deg);
+    filter: brightness(1.05);
+  }
+  100% {
+    transform: perspective(500px) rotateX(0);
+    filter: none;
+  }
+}
+
+@media (orientation: landscape) {
+  .scoreboard-skin--old-school .flap {
+    font-size: clamp(1.45rem, 12vh, 3.6rem);
+  }
+}
+
+@media (min-width: 1100px) and (min-height: 700px) {
+  .scoreboard-skin--old-school .flap {
+    font-size: clamp(3.2rem, 7.6vw, 6.6rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scoreboard-skin--old-school .flap__card {
+    animation: none;
   }
 }

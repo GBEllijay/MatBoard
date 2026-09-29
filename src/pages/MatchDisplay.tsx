@@ -4,6 +4,7 @@ import { FullscreenChip } from '../components/FullscreenChip';
 import { OutcomeSplash } from '../components/OutcomeSplash';
 import { TvTip } from '../components/TvTip';
 import { RankChip } from '../components/RankChip';
+import { CarlosCheer } from '../components/CarlosCheer';
 import { ScoreBox } from '../components/ScoreBox';
 import { useBoutQuerySync, useBracketOutcomeReturn } from '../hooks/useBracketBoutReturn';
 import { useInterval } from '../hooks/useClock';
@@ -19,7 +20,8 @@ import { competitorFocus, type DisplayFocus } from '../lib/matchFocus';
 import { dispatchMatch, expireMatchClock, remainingNow, type Side } from '../lib/matchStore';
 import { needsRefDecision } from '../lib/outcomes';
 import { formatMmSs } from '../lib/format';
-import { DEFAULT_SCOREBOARD_SKIN, scoreboardSkinClass } from '../lib/scoreboardSkin';
+import { matchCarlosView } from '../lib/carlosCelebration';
+import { SCOREBOARD_SKIN, scoreboardSkinClass } from '../lib/scoreboardSkin';
 
 export function MatchDisplayPage() {
   const match = useMatchState();
@@ -71,10 +73,19 @@ export function MatchDisplayPage() {
   const roundLine = roundDisplay(match.round, Boolean(linkedId));
   const clockStatus = match.running ? 'Running' : remaining <= 0 ? 'Ended' : 'Paused';
   const clockStatusAction = match.running ? 'Pause match clock' : remaining <= 0 ? 'Restart match clock' : 'Start match clock';
+  const flap = match.skin === SCOREBOARD_SKIN.OLD_SCHOOL;
+  const carlos = matchCarlosView({
+    prefs: match.carlos,
+    outcome: match.outcome,
+    blueName: match.blue.name,
+    whiteName: match.white.name,
+    bluePoints: match.blue.points,
+    whitePoints: match.white.points,
+  });
 
   return (
     <main
-      className={`display ${scoreboardSkinClass(DEFAULT_SCOREBOARD_SKIN)}${match.padHeaders !== false ? ' display--pad-headers' : ''}${linkedId ? ' display--linked' : ''}${splash ? ' display--splash' : ''}${
+      className={`display ${scoreboardSkinClass(match.skin)}${linkedId ? ' display--linked' : ''}${splash ? ' display--splash' : ''}${
         suite.fromSuite ? ' origin-suite' : ''
       }${fs.className ? ` ${fs.className}` : ''}`}
       onPointerDown={() => {
@@ -122,7 +133,7 @@ export function MatchDisplayPage() {
         disadvantages={match.blue.disadvantages}
         fallbackName="Competitor 1"
         linked={Boolean(linkedId)}
-        headers={match.padHeaders !== false}
+        flap={flap}
         onOpenController={openController}
       />
 
@@ -165,11 +176,12 @@ export function MatchDisplayPage() {
         disadvantages={match.white.disadvantages}
         fallbackName="Competitor 2"
         linked={Boolean(linkedId)}
-        headers={match.padHeaders !== false}
+        flap={flap}
         onOpenController={openController}
       />
 
       {splash ? <OutcomeSplash outcome={splash} name={splashName} /> : null}
+      {carlos.show ? <CarlosCheer lines={carlos.lines} board /> : null}
     </main>
   );
 }
@@ -184,7 +196,7 @@ function CompetitorBand({
   disadvantages,
   fallbackName,
   linked,
-  headers,
+  flap,
   onOpenController,
 }: {
   side: Side;
@@ -196,7 +208,7 @@ function CompetitorBand({
   disadvantages: number;
   fallbackName: string;
   linked: boolean;
-  headers: boolean;
+  flap: boolean;
   onOpenController: (focus?: DisplayFocus) => void;
 }) {
   const label = side === 'blue' ? 'Blue' : 'White';
@@ -225,9 +237,9 @@ function CompetitorBand({
         </p>
       </div>
       <div className="bout__scores">
-        <ScoreBox side={side} kind="points" value={points} headers={headers} />
-        <ScoreBox side={side} kind="advantages" value={advantages} headers={headers} />
-        <ScoreBox side={side} kind="disadvantages" value={disadvantages} headers={headers} />
+        <ScoreBox side={side} kind="points" value={points} flap={flap} />
+        <ScoreBox side={side} kind="advantages" value={advantages} flap={flap} />
+        <ScoreBox side={side} kind="disadvantages" value={disadvantages} flap={flap} />
       </div>
     </section>
   );

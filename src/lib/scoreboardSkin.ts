@@ -1,6 +1,10 @@
 /**
- * Match scoreboard skins. Mock-Tournament is the default. No picker in the UI yet.
- * Kids' Scoreboards is a bracket-TV mode (kidsScoreboard.ts), not this match skin.
+ * Match scoreboard skins. Mock-Tournament is the default.
+ * The controller skin switcher offers Mock-Tournament and Old School.
+ * LIGHT and KIDS stay reserved. Kids' Scoreboards paints the bracket, not this skin.
+ *
+ * Old School is a first-pass mechanical flip-card board (split-flap digits,
+ * matte frames). Retune the cards to the owner's reference photo when it arrives.
  */
 
 export const SCOREBOARD_SKIN = {
@@ -10,15 +14,25 @@ export const SCOREBOARD_SKIN = {
   LIGHT: 'LIGHT',
   /** Reserved. Not built. */
   KIDS: 'KIDS',
+  /** Mechanical flip-card points, advantages, and penalties. */
+  OLD_SCHOOL: 'OLD_SCHOOL',
 } as const;
 
 export type ScoreboardSkinId = (typeof SCOREBOARD_SKIN)[keyof typeof SCOREBOARD_SKIN];
 
-/** What Match display and the Match controller render until a picker exists. */
+/** Match display and the controller start on Mock-Tournament until the coach picks another skin. */
 export const DEFAULT_SCOREBOARD_SKIN: ScoreboardSkinId = SCOREBOARD_SKIN.MOCK_TOURNAMENT;
 
-/** Internal label only. Do not show this string in the product UI. */
+/** Internal label only. The switcher shows the shorter "Mock-Tournament". */
 export const MOCK_TOURNAMENT_SKIN_NAME = 'Mock-Tournament Skin';
+
+export const OLD_SCHOOL_SKIN_NAME = 'Old School';
+
+/** Skins the controller can select. Reserved ids stay out of the switcher. */
+export const SELECTABLE_SCOREBOARD_SKINS = [
+  { id: SCOREBOARD_SKIN.MOCK_TOURNAMENT, label: 'Mock-Tournament' },
+  { id: SCOREBOARD_SKIN.OLD_SCHOOL, label: OLD_SCHOOL_SKIN_NAME },
+] as const;
 
 /** Mock-Tournament colors. CSS tokens mirror these. Penalty is Pantone 200 so gym TVs keep a primary red. */
 export const MOCK_TOURNAMENT_COLORS = {
@@ -37,9 +51,26 @@ const SKIN_CLASS: Record<ScoreboardSkinId, string> = {
   /* Light and Kids match skins keep the default board. Kids brackets use kidsScoreboard.ts. */
   [SCOREBOARD_SKIN.LIGHT]: 'scoreboard-skin--mock-tournament',
   [SCOREBOARD_SKIN.KIDS]: 'scoreboard-skin--mock-tournament',
+  [SCOREBOARD_SKIN.OLD_SCHOOL]: 'scoreboard-skin--old-school',
 };
 
-/** Class hook for the active skin. Pass a future id here when a picker exists. */
+export function isSelectableScoreboardSkin(value: unknown): value is ScoreboardSkinId {
+  return SELECTABLE_SCOREBOARD_SKINS.some((skin) => skin.id === value);
+}
+
+/** Unknown or reserved ids fall back to Mock-Tournament. */
+export function parseScoreboardSkin(value: unknown): ScoreboardSkinId {
+  return isSelectableScoreboardSkin(value) ? value : DEFAULT_SCOREBOARD_SKIN;
+}
+
+/** Class hook for the active skin. */
 export function scoreboardSkinClass(skin: ScoreboardSkinId = DEFAULT_SCOREBOARD_SKIN): string {
-  return SKIN_CLASS[skin];
+  return SKIN_CLASS[skin] ?? SKIN_CLASS[DEFAULT_SCOREBOARD_SKIN];
+}
+
+/** Split-flap faces. Points and advantages use two cards; penalties use one. */
+export function flapDigits(value: number, count: number): string[] {
+  const width = count === 1 ? 1 : 2;
+  const safe = Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0;
+  return String(safe).padStart(width, '0').slice(-width).split('');
 }
