@@ -35,7 +35,9 @@ import {
   applyPlacement,
   ibjjfSeedOrder,
   isThreePersonBracket,
+  placementLabel,
   placementOf,
+  TOURNAMENT_SIZE,
   treeSizeFor,
 } from './tournamentStore.ts';
 
@@ -71,7 +73,7 @@ describe('bracket empty helpers', () => {
 });
 
 describe('flexible bracket size', () => {
-  it('pads non-powers of two to the next tree with IBJJF byes', () => {
+  it('pads non-powers of two to the next tree with seeded byes', () => {
     assert.equal(treeSizeFor(2), 2);
     assert.equal(treeSizeFor(3), 4);
     assert.equal(treeSizeFor(5), 8);
@@ -87,8 +89,12 @@ describe('flexible bracket size', () => {
     assert.deepEqual(byeSlotIds(7), ['qf-0-b']);
     assert.deepEqual(byeSlotIds(5, 'lineup'), ['qf-1-b', 'qf-2-b', 'qf-3-b']);
     assert.equal(firstRoundLabel(5), 'Quarterfinals');
-    assert.match(bracketRoundLine(defaultTournament(5)), /IBJJF · Quarterfinals · 5 competitors · 3 byes/);
+    assert.match(bracketRoundLine(defaultTournament(5)), /Seeded · Quarterfinals · 5 competitors · 3 byes/);
+    assert.equal(TOURNAMENT_SIZE, 16);
+    assert.equal(defaultTournament().size, 16);
     assert.equal(placementOf(defaultTournament()), 'ibjjf');
+    assert.equal(placementLabel('ibjjf'), 'Seeded');
+    assert.equal(placementLabel('lineup'), 'Lineup');
   });
 
   it('seeds an 8-person board so 1 meets 8 and 4 meets 5', () => {
@@ -205,7 +211,7 @@ describe('3-person bracket', () => {
     assert.equal(treeSizeFor(3), 4);
     assert.equal(byeCountFor(3), 0);
     assert.deepEqual(byeSlotIds(3), []);
-    assert.equal(bracketRoundLine(defaultTournament(3)), 'IBJJF · 3-person · 3 competitors');
+    assert.equal(bracketRoundLine(defaultTournament(3)), 'Seeded · 3-person · 3 competitors');
     assert.equal(matchHasBye(defaultTournament(3), 'sf-0'), false);
     assert.equal(matchHasBye(defaultTournament(3), 'sf-1'), false);
   });

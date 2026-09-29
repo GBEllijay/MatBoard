@@ -110,7 +110,7 @@ const STORAGE_KEY = 'matboard.match.v1';
 const CHANNEL_NAME = 'matboard-match-v1';
 export const TIME_PRESETS_MIN = [3, 5, 10] as const;
 export const CLOCK_NUDGES_SEC = [-5, -1, 1, 5] as const;
-/** Optional Match 10-second warning; off by default (IBJJF does not use one). */
+/** Optional Match 10-second warning; off by default (match rules do not use one). */
 export const MATCH_WARNING_MS = 10_000;
 /** Existing custom duration ceiling (180 minutes). */
 export const MAX_REMAINING_MS = minutesToMs(180);

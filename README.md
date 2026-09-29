@@ -109,7 +109,7 @@ A compressor and soft clipper sit on the master bus so end cues can be loud in a
 | **End buzzer** | Training round/session end; Match when the clock hits 0:00 (optional, on by default) if **Buzzer** is selected | Classic electric gym buzzer: sustained, raspy, mid-forward | Detuned square pair (~392/406 Hz) + saw sub + 23 Hz rasp + a few ms of synthesized noise. Match holds it longer and a bit louder than Training. |
 | **PAROU! ("STOP!")** | Same end slots as the buzzer, when that chip is selected | Full “Parou… stop” | `public/sounds/parou-stop-gaming-mic.mp3`, decoded into the same Web Audio master bus (mute / volume apply) at cue gain `1` |
 
-Match start beep and 10-second warning default **off** (IBJJF-style matches do not use a 10s warning). Match end sound defaults **on**. All three persist in match state.
+Match start beep and 10-second warning default **off** (match rules do not use a 10-second warning). Match end sound defaults **on**. All three persist in match state.
 
 Preview start / 10s / end from Training options or the Match Controller (End honors the matching end-sound toggle). On the Match Controller, tap **Buzzer** or **PAROU! ("STOP!")** to pick the Match end cue (honors mute / volume and the Match end sound toggle).
 
