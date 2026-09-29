@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BeltRail } from '../components/BeltRail';
 import { DriveConnectCard } from '../components/DriveConnectCard';
-import { COACH_TOOL_LINKS } from '../components/CoachToolsCard';
 import { HomeMark } from '../components/HomeMark';
 import { InstructorInvitePanel } from '../components/InstructorInvitePanel';
 import { InviteAccept, SeatSessionBar, useCurrentSeat } from '../components/SeatSessionBar';
@@ -16,8 +15,11 @@ import {
   listLessonRevisions,
   type LessonRevision,
 } from '../lib/lessonDrive';
-import { seatPermissionAllows } from '../lib/instructorSeats';
-import { INSTRUCTOR_COACH_ENTRY, INSTRUCTOR_COLLAB_NAME } from '../lib/productNames';
+import {
+  COACH_HOME_DESCRIPTION,
+  INSTRUCTOR_COACH_ENTRY,
+  INSTRUCTOR_COLLAB_NAME,
+} from '../lib/productNames';
 
 export function InstructorCollaborationPage() {
   const seat = useCurrentSeat();
@@ -32,6 +34,7 @@ export function InstructorCollaborationPage() {
         <HomeMark to="/pro" />
         <section className="suite instructor-hub">
           <h2 className="instructor-hub__title">
+            <BeltRail kind="black" />
             <span>{INSTRUCTOR_COLLAB_NAME}</span>
           </h2>
           <InviteAccept />
@@ -45,13 +48,7 @@ export function InstructorCollaborationPage() {
               like Coach. You approve what plays on the gym TV and what joins the gym roster.
             </p>
           )}
-          {seat ? (
-            <Link className="btn btn--white" to="/coach">
-              Open Coach
-            </Link>
-          ) : (
-            <InstructorInvitePanel />
-          )}
+          {seat ? null : <InstructorInvitePanel />}
           {seat ? null : (
           <article className="plan-card">
             <p className="plan-card__kicker">{OWNER_DRIVE_KICKER}</p>
@@ -70,26 +67,13 @@ export function InstructorCollaborationPage() {
           </article>
           )}
           {seat ? null : <DriveConnectCard />}
-          <nav className="instructor-jumps" aria-label="Advantage Coach">
-            {seat ? null : (
-              <Link className="btn btn--white instructor-jumps__entry" to="/coach">
-                {INSTRUCTOR_COACH_ENTRY}
-              </Link>
-            )}
-            <div className="instructor-jumps__tools">
-              {COACH_TOOL_LINKS.filter((tool) => {
-                if (!seat) return true;
-                if (tool.to === '/notes') return seatPermissionAllows(seat.permissions, 'dailyLessonPlanAccess');
-                if (tool.to === '/techniques') return seatPermissionAllows(seat.permissions, 'downloadTodaysVideos');
-                return true;
-              }).map((tool) => (
-                <Link key={tool.to} className="btn btn--white" to={tool.to}>
-                  {'belt' in tool ? <BeltRail kind={tool.belt} /> : null}
-                  {tool.title}
-                </Link>
-              ))}
-            </div>
-          </nav>
+          <Link className="mode-card mode-card--coach instructor-coach-open" to="/coach">
+            <BeltRail kind="blue" />
+            <strong>{seat ? 'Open Coach' : INSTRUCTOR_COACH_ENTRY}</strong>
+            <span className="mode-card__copy">
+              <span>{COACH_HOME_DESCRIPTION}</span>
+            </span>
+          </Link>
         </section>
         <SiteFooter />
       </div>
