@@ -12135,8 +12135,8 @@ a.plan-pick {
   color: var(--ink);
 }
 
-.cms .roster-card__checkin:not(.btn--ghost),
-.cms .ready-row__toggle:not(.btn--ghost) {
+.cms .roster-card .btn.roster-card__checkin:not(.btn--ghost),
+.cms .ready-row--on .btn.ready-row__toggle:not(.btn--ghost) {
   background: var(--logo-blue);
   color: #fff;
 }
