@@ -11363,6 +11363,12 @@ a.plan-pick {
   z-index: 22;
 }
 
+/* The kids toolbar and skin row sit above the corner mark and swallow the back tap.
+   Keep the Advantage logo above them. Carlos ignores pointers, so the mark still goes back. */
+.tournament--kids > .play-exit {
+  z-index: 25;
+}
+
 .tournament--kids .tournament__hint {
   color: #1b2433;
   background: rgba(255, 255, 255, 0.78);
@@ -11465,12 +11471,25 @@ a.plan-pick {
 .tournament--kids .t-match__bouts,
 .tournament--kids.tournament--bright .t-match__bouts,
 .tournament--kids.tournament--dark .t-match__bouts {
+  isolation: isolate;
   padding: 0.35rem 0.45rem;
   border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.78);
-  background: rgba(255, 255, 255, 0.82);
+  background: transparent;
   box-shadow: 0 12px 28px rgba(16, 24, 40, 0.16);
+}
+
+/* Blur lives on a pseudo so it does not become the containing block for the
+   roster sheet. A filter on the card itself traps that fixed picker in the pill. */
+.tournament--kids .t-match__bouts::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(14px);
+  pointer-events: none;
 }
 
 .tournament--kids .t-slot,
@@ -11479,9 +11498,10 @@ a.plan-pick {
 .tournament--kids.tournament--bright .t-match--final .t-slot,
 .tournament--kids.tournament--dark .t-slot,
 .tournament--kids.tournament--dark .bracket__side--left .t-slot,
-.tournament--kids.tournament--dark .bracket__side--right .t-slot {
+.tournament--kids.tournament--dark .bracket__side--right .t-slot,
+.tournament--kids.tournament--dark .t-match--final .t-slot {
   background: transparent;
-  color: #1b2433;
+  color: #000;
   border: 0;
   box-shadow: none;
 }
@@ -11500,10 +11520,11 @@ a.plan-pick {
 .tournament--kids.tournament--bright .bracket__side--right .t-slot input,
 .tournament--kids.tournament--bright .t-match--final .t-slot input,
 .tournament--kids.tournament--dark .bracket__side--left .t-slot input,
-.tournament--kids.tournament--dark .bracket__side--right .t-slot input {
-  color: #1b2433;
-  -webkit-text-fill-color: #1b2433;
-  caret-color: #1b2433;
+.tournament--kids.tournament--dark .bracket__side--right .t-slot input,
+.tournament--kids.tournament--dark .t-match--final .t-slot input {
+  color: #000;
+  -webkit-text-fill-color: #000;
+  caret-color: #000;
   color-scheme: light;
 }
 
@@ -11512,9 +11533,13 @@ a.plan-pick {
 .tournament--kids.tournament--bright .bracket__side--right .t-slot input::placeholder,
 .tournament--kids.tournament--bright .t-match--final .t-slot input::placeholder,
 .tournament--kids.tournament--dark .bracket__side--left .t-slot input::placeholder,
-.tournament--kids.tournament--dark .bracket__side--right .t-slot input::placeholder {
-  color: rgba(27, 36, 51, 0.55);
-  -webkit-text-fill-color: rgba(27, 36, 51, 0.55);
+.tournament--kids.tournament--dark .bracket__side--right .t-slot input::placeholder,
+.tournament--kids.tournament--dark .t-match--final .t-slot input::placeholder,
+.tournament--kids .bracket__champ input::placeholder,
+.tournament--kids.tournament--bright .bracket__champ input::placeholder,
+.tournament--kids.tournament--dark .bracket__champ input::placeholder {
+  color: #000;
+  -webkit-text-fill-color: #000;
 }
 
 .tournament--kids .t-slot__seed,
@@ -11542,11 +11567,29 @@ a.plan-pick {
 .tournament--kids .bracket__champ,
 .tournament--kids.tournament--bright .bracket__champ,
 .tournament--kids.tournament--dark .bracket__champ {
-  background: rgba(255, 255, 255, 0.88);
+  isolation: isolate;
+  background: transparent;
   color: #1b2433;
   border: 1px solid rgba(255, 255, 255, 0.85);
   box-shadow: 0 12px 28px rgba(16, 24, 40, 0.16);
+}
+
+.tournament--kids .bracket__champ::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(14px);
+  pointer-events: none;
+}
+
+/* Kids wallpaper must not paint the tatami through the picker. The sheet stays
+   the same full, scrollable roster as Bright/Dark, with a clear panel. */
+.tournament--kids .sheet--roster .sheet__panel {
+  background: transparent;
+  background-image: none;
 }
 
 .tournament--kids .bracket__champ > span,
@@ -11560,9 +11603,9 @@ a.plan-pick {
 .tournament--kids .bracket__champ input,
 .tournament--kids.tournament--bright .bracket__champ input,
 .tournament--kids.tournament--dark .bracket__champ input {
-  color: #1b2433;
-  -webkit-text-fill-color: #1b2433;
-  caret-color: #1b2433;
+  color: #000;
+  -webkit-text-fill-color: #000;
+  caret-color: #000;
   color-scheme: light;
 }
 
@@ -11594,10 +11637,46 @@ a.plan-pick {
   overflow: hidden;
 }
 
-/* Match scoreboard: stay on the board, above the win splash, and let score taps through. */
+/* Match scoreboard: stay on the board, above the win splash, and let score taps through.
+   Rest on the right so the athlete names on the left stay readable. */
 .kids-carlos--board {
   position: absolute;
   z-index: 20;
+}
+
+.kids-carlos--board .kids-carlos__figure {
+  left: auto;
+  right: 0;
+  width: min(24vw, 280px);
+  animation-name: kids-carlos-in-right;
+}
+
+.kids-carlos--board .kids-carlos__bubble {
+  top: auto;
+  right: 64%;
+  bottom: 82%;
+  left: auto;
+  max-width: min(14rem, 36vw);
+}
+
+.kids-carlos--board .kids-carlos__bubble::after {
+  left: auto;
+  right: 1.1rem;
+}
+
+@keyframes kids-carlos-in-right {
+  from {
+    transform: translateX(110%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kids-carlos--board .kids-carlos__figure {
+    animation: none;
+  }
 }
 
 .kids-carlos__figure {
@@ -11616,11 +11695,12 @@ a.plan-pick {
   filter: drop-shadow(0 16px 22px rgba(0, 0, 0, 0.28));
 }
 
+/* Shared by every Carlos speech bubble. 58% sat on his left eye. */
 .kids-carlos__bubble {
   position: absolute;
   z-index: 2;
   top: 4%;
-  left: 58%;
+  left: 74%;
   display: grid;
   justify-items: start;
   gap: 0.08rem;
@@ -11719,82 +11799,106 @@ a.plan-pick {
   font-weight: 800;
 }
 
-/* Old School — first-pass mechanical flip board.
-   Split-flap cards for Points / Advantages / Penalties, matte metal frames.
-   Retune proportions and card stock when the reference photo arrives. */
+/* Old School — tabletop flip-card board.
+   Blue competitor: white digits on blue cards.
+   White competitor: white digits on red cards.
+   Large cards are points. Smaller cards are advantages and penalties.
+   Matte black frame, binder rings, a slight flip seam. */
 .scoreboard-skin--old-school.display {
-  --board-field: #16130f;
-  --board-blue: #1c2633;
-  --board-white: #efe4d2;
-  --board-ink: #1c140e;
-  --board-digit: #f4efe6;
-  --board-gym-on-blue: #d5deea;
-  --board-gym-on-white: #6a5340;
-  --pad-points: #3a342c;
-  --pad-adv: #3a342c;
-  --pad-pen: #3a342c;
-  background-color: #100e0c;
-  background-image:
-    radial-gradient(120% 70% at 50% -10%, rgba(255, 236, 200, 0.08), transparent 42%),
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 6px),
-    linear-gradient(180deg, #2c261f 0%, #100e0c 46%);
-  box-shadow:
-    inset 0 0 0 8px #14110e,
-    inset 0 0 0 10px #6a5e50;
+  --os-blue: #1d6fe0;
+  --os-blue-deep: #155ec4;
+  --os-red: #ef3d2c;
+  --os-red-deep: #d43224;
+  --os-frame: #0c0c0c;
+  --os-ring: #d5dee6;
+  --board-field: #070707;
+  --board-blue: #101010;
+  --board-white: #101010;
+  --board-ink: #f4f4f4;
+  --board-digit: #ffffff;
+  --board-gym-on-blue: #d0d0d0;
+  --board-gym-on-white: #d0d0d0;
+  --pad-points: transparent;
+  --pad-adv: transparent;
+  --pad-pen: transparent;
+  background-color: var(--os-frame);
+  background-image: linear-gradient(180deg, #141414 0%, #070707 38%, #050505 100%);
+  box-shadow: inset 0 0 0 14px #050505, inset 0 0 0 16px #2a2a2a;
 }
 
 .scoreboard-skin--old-school.display > .bout {
-  border: 1px solid rgba(255, 244, 220, 0.08);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 12px 28px rgba(0, 0, 0, 0.35);
+  border-radius: 6px;
+  box-shadow: none;
 }
 
 .scoreboard-skin--old-school.display .bout--blue {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 32%),
-    linear-gradient(90deg, #2d4f86 0 10px, #1b2430 10px);
+  background: #101010;
+  box-shadow: inset 8px 0 0 var(--os-blue);
+  color: #f4f4f4;
 }
 
 .scoreboard-skin--old-school.display .bout--white {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.45), transparent 30%),
-    linear-gradient(90deg, #f7f1e6, #e4d7c2);
-  color: #1c140e;
+  background: #101010;
+  box-shadow: inset 8px 0 0 var(--os-red);
+  color: #f4f4f4;
 }
 
 .scoreboard-skin--old-school.display .bout__scores {
-  padding: 0.35rem;
-  border-radius: 14px;
-  background: linear-gradient(180deg, #3f382f, #16130f);
+  grid-template-columns: 1.85fr 0.95fr 0.58fr;
+  align-items: end;
+  gap: 0.45rem;
+  height: 100%;
+  padding: 0.55rem 0.7rem 0.85rem;
+  border-radius: 2px 2px 14px 14px;
+  background:
+    radial-gradient(circle at 14px 16px, #6a6a6a 0 2px, #1a1a1a 2.5px, transparent 4px),
+    radial-gradient(circle at calc(100% - 14px) 16px, #6a6a6a 0 2px, #1a1a1a 2.5px, transparent 4px),
+    radial-gradient(circle at 14px calc(100% - 14px), #8a8a8a 0 3px, #222 3.5px, #111 5px, transparent 6px),
+    radial-gradient(circle at calc(100% - 14px) calc(100% - 14px), #8a8a8a 0 3px, #222 3.5px, #111 5px, transparent 6px),
+    linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 70%, #050505 100%);
   box-shadow:
-    inset 0 0 0 2px #0e0c0a,
-    0 0 0 2px #7a6e60;
+    inset 0 0 0 2px #000,
+    0 8px 0 #050505,
+    0 10px 18px rgba(0, 0, 0, 0.45);
 }
 
 .scoreboard-skin--old-school.display .score,
 .scoreboard-skin--old-school.display .score--points,
 .scoreboard-skin--old-school.display .score--advantages,
 .scoreboard-skin--old-school.display .score--disadvantages {
-  justify-content: space-between;
+  height: auto;
+  aspect-ratio: auto;
+  justify-content: flex-end;
   align-items: stretch;
-  border-radius: 8px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 30%),
-    linear-gradient(180deg, #534b41 0%, #2b261f 58%, #171410 100%);
-  border: 1px solid #8d8070;
-  box-shadow:
-    inset 0 0 0 3px #14110e,
-    inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    0 5px 0 #0b0a08;
-  color: #f4efe6;
+  gap: 0.2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #fff;
+}
+
+.scoreboard-skin--old-school.display .score--points {
+  height: 100%;
+}
+
+.scoreboard-skin--old-school.display .score--advantages {
+  height: 74%;
+}
+
+.scoreboard-skin--old-school.display .score--disadvantages {
+  height: 62%;
 }
 
 .scoreboard-skin--old-school.display .score__label,
 .scoreboard-skin--old-school.display .score__label--wide {
-  color: #f4efe6;
+  flex: 0 0 auto;
+  color: #f2f2f2;
   opacity: 1;
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.7);
+  text-align: center;
+  text-shadow: none;
+  letter-spacing: 0.12em;
 }
 
 .scoreboard-skin--old-school .flap {
@@ -11802,92 +11906,123 @@ a.plan-pick {
   flex: 1 1 auto;
   align-items: stretch;
   justify-content: center;
-  gap: 0.08em;
+  gap: 0.28rem;
   min-height: 0;
   width: 100%;
-  perspective: 700px;
-  font-family: 'Arial Narrow', 'Franklin Gothic Medium', Impact, sans-serif;
-  font-size: clamp(2.4rem, 8.4vw, 5.8rem);
-  font-weight: 800;
+  padding-top: 0.7rem;
+  perspective: 800px;
+  font-family: 'Noto Sans Display', 'Liberation Sans', Arial, sans-serif;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
-  line-height: 0.9;
+  line-height: 0.8;
 }
 
 .scoreboard-skin--old-school .flap__card {
+  container-type: size;
   position: relative;
   display: grid;
   flex: 1 1 0;
   place-items: center;
   min-width: 0;
-  overflow: hidden;
-  border-radius: 0.06em;
-  background:
-    linear-gradient(#fbf6ea, #f3ecdc) top / 100% calc(50% - 1px) no-repeat,
-    linear-gradient(#e4d9c6, #d9cdb8) bottom / 100% calc(50% - 1px) no-repeat,
-    #2a241c;
-  color: #16130f;
+  max-width: 100%;
+  height: 100%;
+  overflow: visible;
+  border-radius: 0.12rem;
+  color: #fff;
+  transform-origin: top center;
+  animation: flap-turn 0.32s cubic-bezier(0.2, 0.75, 0.2, 1) both;
   box-shadow:
-    0 0.07em 0 #5e564c,
-    0 0.12em 0.16em rgba(0, 0, 0, 0.45),
-    inset 0 0.04em 0 rgba(255, 255, 255, 0.85);
-  transform-origin: center center;
-  animation: flap-turn 0.34s cubic-bezier(0.2, 0.75, 0.2, 1) both;
+    0 4px 0 #141414,
+    0 7px 0 #070707,
+    0 9px 10px rgba(0, 0, 0, 0.45);
 }
 
-.scoreboard-skin--old-school .score--disadvantages .flap__card {
-  max-width: 1.35em;
+.scoreboard-skin--old-school .bout--blue .flap__card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.28), transparent 22%),
+    linear-gradient(180deg, #3c92f2 0%, var(--os-blue) 44%, var(--os-blue-deep) 50%, #1a68d4 100%);
 }
 
-.scoreboard-skin--old-school .flap__card::after {
+.scoreboard-skin--old-school .bout--white .flap__card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.24), transparent 22%),
+    linear-gradient(180deg, #ff5c48 0%, var(--os-red) 44%, var(--os-red-deep) 50%, #e44534 100%);
+}
+
+.scoreboard-skin--old-school .flap__ring {
+  position: absolute;
+  z-index: 3;
+  top: -0.62rem;
+  left: 50%;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-left: -0.58rem;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, transparent 38%, #1a1a1a 39% 46%, var(--os-ring) 48%, #f7fbff 62%, #7d868e 82%, #2c3136 100%);
+  box-shadow: 0 2px 0 #000, inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
+.scoreboard-skin--old-school .flap__ring::before {
   content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -0.28rem;
+  width: 0.42rem;
+  height: 0.42rem;
+  margin-left: -0.21rem;
+  border-radius: 2px;
+  background: #111;
+}
+
+.scoreboard-skin--old-school .flap__seam {
   position: absolute;
   left: 0;
   right: 0;
-  top: calc(50% - 1px);
-  z-index: 1;
-  height: 2px;
-  background: #1a1612;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+  top: 48%;
+  z-index: 0;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.22);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.14);
   pointer-events: none;
+}
+
+.scoreboard-skin--old-school .score--disadvantages .flap {
+  justify-content: center;
+}
+
+.scoreboard-skin--old-school .score--disadvantages .flap__card {
+  flex: 0 0 auto;
+  width: auto;
+  aspect-ratio: 0.7;
+  max-width: 100%;
 }
 
 .scoreboard-skin--old-school .flap__face {
   position: relative;
-  z-index: 0;
-  transform: translateY(-0.02em);
+  z-index: 1;
+  color: #fff;
+  font-size: 72cqh;
+  line-height: 0.8;
+  letter-spacing: -0.04em;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.18);
 }
 
 .scoreboard-skin--old-school.display .clock-btn,
 .scoreboard-skin--old-school.display .display__meta,
 .scoreboard-skin--old-school.display .display__clock-hint {
-  color: #f4efe6;
-  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.55);
+  color: #f4f4f4;
+  text-shadow: none;
 }
 
 @keyframes flap-turn {
   0% {
-    transform: perspective(500px) rotateX(-78deg);
-    filter: brightness(0.72);
-  }
-  60% {
-    transform: perspective(500px) rotateX(7deg);
-    filter: brightness(1.05);
+    transform: perspective(600px) rotateX(-72deg);
+    filter: brightness(0.75);
   }
   100% {
-    transform: perspective(500px) rotateX(0);
+    transform: perspective(600px) rotateX(0);
     filter: none;
-  }
-}
-
-@media (orientation: landscape) {
-  .scoreboard-skin--old-school .flap {
-    font-size: clamp(1.45rem, 12vh, 3.6rem);
-  }
-}
-
-@media (min-width: 1100px) and (min-height: 700px) {
-  .scoreboard-skin--old-school .flap {
-    font-size: clamp(3.2rem, 7.6vw, 6.6rem);
   }
 }
 

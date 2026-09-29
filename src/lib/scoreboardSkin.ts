@@ -3,8 +3,8 @@
  * The controller skin switcher offers Mock-Tournament and Old School.
  * LIGHT and KIDS stay reserved. Kids' Scoreboards paints the bracket, not this skin.
  *
- * Old School is a first-pass mechanical flip-card board (split-flap digits,
- * matte frames). Retune the cards to the owner's reference photo when it arrives.
+ * Old School matches the owner's tabletop flip boards: large points cards,
+ * smaller advantage and penalty cards, red against blue, matte black frame.
  */
 
 export const SCOREBOARD_SKIN = {
@@ -68,7 +68,7 @@ export function scoreboardSkinClass(skin: ScoreboardSkinId = DEFAULT_SCOREBOARD_
   return SKIN_CLASS[skin] ?? SKIN_CLASS[DEFAULT_SCOREBOARD_SKIN];
 }
 
-/** Split-flap faces. Points and advantages use two cards; penalties use one. */
+/** Flip-card faces. Points and advantages use two cards; penalties use one. */
 export function flapDigits(value: number, count: number): string[] {
   const width = count === 1 ? 1 : 2;
   const safe = Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0;
