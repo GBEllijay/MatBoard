@@ -134,6 +134,7 @@ export function MatchDisplayPage() {
         advantages={match.blue.advantages}
         disadvantages={match.blue.disadvantages}
         fallbackName="Competitor 1"
+        division={match.division}
         linked={Boolean(linkedId)}
         flap={flap}
         onOpenController={openController}
@@ -146,9 +147,11 @@ export function MatchDisplayPage() {
               {roundLine}
             </ControllerFocusLink>
           ) : null}
-          <ControllerFocusLink focus="division" label="Edit division on Controller" onOpen={openController}>
-            {match.division || 'Open'}
-          </ControllerFocusLink>
+          <span className="display__division">
+            <ControllerFocusLink focus="division" label="Edit division on Controller" onOpen={openController}>
+              {match.division || 'Open'}
+            </ControllerFocusLink>
+          </span>
         </div>
         <button type="button" className="clock-btn" onClick={toggleClock} aria-label="Start or pause match clock">
           {formatMmSs(remaining)}
@@ -177,6 +180,7 @@ export function MatchDisplayPage() {
         advantages={match.white.advantages}
         disadvantages={match.white.disadvantages}
         fallbackName="Competitor 2"
+        division={match.division}
         linked={Boolean(linkedId)}
         flap={flap}
         onOpenController={openController}
@@ -197,6 +201,7 @@ function CompetitorBand({
   advantages,
   disadvantages,
   fallbackName,
+  division,
   linked,
   flap,
   onOpenController,
@@ -209,11 +214,13 @@ function CompetitorBand({
   advantages: number;
   disadvantages: number;
   fallbackName: string;
+  division: string;
   linked: boolean;
   flap: boolean;
   onOpenController: (focus?: DisplayFocus) => void;
 }) {
   const label = side === 'blue' ? 'Blue' : 'White';
+  const divisionLabel = division.trim() || 'Open';
 
   return (
     <section className={`bout bout--${side}${linked ? ' bout--linked' : ''}`} aria-label={`${label} competitor`}>
@@ -226,17 +233,29 @@ function CompetitorBand({
           >
             {name || fallbackName}
           </ControllerFocusLink>
-          {rank ? <RankChip belt={rank} /> : null}
+          {!flap && rank ? <RankChip belt={rank} /> : null}
         </h1>
-        <p>
-          <ControllerFocusLink
-            focus={competitorFocus(side, 'gym')}
-            label={`Edit ${label} gym on Controller`}
-            onOpen={onOpenController}
-          >
-            {gym || '\u00a0'}
-          </ControllerFocusLink>
-        </p>
+        {!flap || gym.trim() ? (
+          <p className="bout__gym">
+            <ControllerFocusLink
+              focus={competitorFocus(side, 'gym')}
+              label={`Edit ${label} gym on Controller`}
+              onOpen={onOpenController}
+            >
+              {gym || '\u00a0'}
+            </ControllerFocusLink>
+          </p>
+        ) : null}
+        {flap ? (
+          <>
+            {rank ? <RankChip belt={rank} /> : null}
+            <p className="os-side__division">
+              <ControllerFocusLink focus="division" label="Edit division on Controller" onOpen={onOpenController}>
+                {divisionLabel}
+              </ControllerFocusLink>
+            </p>
+          </>
+        ) : null}
       </div>
       <div className="bout__scores">
         <ScoreBox side={side} kind="points" value={points} flap={flap} />
