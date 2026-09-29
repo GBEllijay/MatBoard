@@ -1,7 +1,10 @@
 /**
  * Optional Master Carlos on the match scoreboard.
- * Off by default. Kids' Scoreboards still celebrates a bracket champion on its own.
- * These triggers are for every training match, including before a final.
+ * Off by default. He appears only after the bout is over: a recorded win
+ * (including a referee-decision win, once that call is wired), or a point
+ * total that was crossed during the match. A live score never brings him out.
+ * Kids' Scoreboards finals still celebrate a bracket champion on their own
+ * and do not use this gate.
  */
 
 import { KIDS_WIN_CHEER, kidsPointsLine, kidsWinLines } from './kidsScoreboard.ts';
@@ -14,11 +17,11 @@ export const CARLOS_THRESHOLD_MAX = 98;
 export type CarlosCelebrationPrefs = {
   /** Master switch. Off means no Carlos from a match win or a point threshold. */
   enabled: boolean;
-  /** Slide in when this match has a winner (not a DQ). */
+  /** Slide in at match end when this match has a winner (not a DQ). */
   onWin: boolean;
-  /** Slide in when a competitor's points go over `pointsThreshold`. */
+  /** Slide in at match end when a competitor's points went over `pointsThreshold`. */
   onPoints: boolean;
-  /** Carlos appears when points are greater than this number. */
+  /** At match end, Carlos appears when points are greater than this number. */
   pointsThreshold: number;
 };
 
@@ -76,8 +79,58 @@ function pointsSide(bluePoints: number, whitePoints: number, threshold: number):
 }
 
 /**
+ * Match-end signal for this scoreboard celebration.
+ * True when the clock has stopped at 0:00, or a win/DQ is already recorded
+ * (a submission can end the bout before the timer). A running or paused
+ * clock with time left is still mid-match.
+ * Kids' Scoreboards finals do not use this. They wait for a champion.
+ */
+export function carlosMatchComplete(input: {
+  running: boolean;
+  remainingMs: number;
+  outcome: MatchOutcome | null;
+}): boolean {
+  if (input.outcome) return true;
+  return !input.running && input.remainingMs <= 0;
+}
+
+/**
+ * Outcome shape for a referee-decision win.
+ * Display already asks for a referee when the clock ends tied (`needsRefDecision`).
+ * Awarding that win is not built yet — do not add that UI here. When it exists,
+ * pass the winning side as `refDecisionSide` into `matchCarlosView` with the bout
+ * complete, or record this outcome. Carlos then uses the same match-end win cheer.
+ * Ignored while the bout is still running. Finals do not use this hook.
+ */
+export function refereeDecisionWin(side: Side, at = 0): MatchOutcome {
+  return {
+    call: 'win',
+    method: 'decision',
+    side,
+    source: 'manual',
+    at,
+  };
+}
+
+function carlosOutcome(input: {
+  outcome: MatchOutcome | null;
+  matchComplete: boolean;
+  refDecisionSide?: Side | null;
+}): MatchOutcome | null {
+  if (input.outcome) return input.outcome;
+  if (!input.matchComplete) return null;
+  if (input.refDecisionSide === 'blue' || input.refDecisionSide === 'white') {
+    return refereeDecisionWin(input.refDecisionSide);
+  }
+  return null;
+}
+
+/**
  * What the scoreboard should say. A win wins over a points cheer.
- * Hidden whenever the master switch is off, including after a championship-style win.
+ * Hidden whenever the master switch is off.
+ * Points require the bout to be over (`matchComplete`, or a result already recorded).
+ * Crossing the threshold mid-match stays quiet.
+ * `refDecisionSide` uses the win cheer, and only after the bout is over.
  */
 export function matchCarlosView(input: {
   prefs: CarlosCelebrationPrefs;
@@ -86,12 +139,21 @@ export function matchCarlosView(input: {
   whiteName: string;
   bluePoints: number;
   whitePoints: number;
+  /** Clock at 0:00, or a result already recorded. See `carlosMatchComplete`. */
+  matchComplete: boolean;
+  /**
+   * Reserved for a referee-decision win that is not already in `outcome`.
+   * Honored only when `matchComplete` is true. See `refereeDecisionWin`.
+   */
+  refDecisionSide?: Side | null;
 }): CarlosMatchView {
   const hidden: CarlosMatchView = { show: false, lines: [] };
   if (!input.prefs.enabled) return hidden;
 
-  if (input.prefs.onWin && input.outcome?.call === 'win') {
-    const side = input.outcome.side;
+  const outcome = carlosOutcome(input);
+
+  if (input.prefs.onWin && outcome?.call === 'win') {
+    const side = outcome.side;
     const winnerPoints = side === 'blue' ? input.bluePoints : input.whitePoints;
     const loserPoints = side === 'blue' ? input.whitePoints : input.bluePoints;
     return {
@@ -103,7 +165,8 @@ export function matchCarlosView(input: {
     };
   }
 
-  if (!input.prefs.onPoints) return hidden;
+  const ended = input.matchComplete || input.outcome != null;
+  if (!ended || !input.prefs.onPoints) return hidden;
   const over = pointsSide(input.bluePoints, input.whitePoints, input.prefs.pointsThreshold);
   if (!over) return hidden;
 

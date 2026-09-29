@@ -3,9 +3,11 @@ import test from 'node:test';
 import {
   DEFAULT_CARLOS_POINTS_THRESHOLD,
   DEFAULT_CARLOS_PREFS,
+  carlosMatchComplete,
   matchCarlosView,
   parseCarlosPrefs,
   parseCarlosThreshold,
+  refereeDecisionWin,
   type CarlosCelebrationPrefs,
 } from './carlosCelebration.ts';
 import type { MatchOutcome } from './outcomes.ts';
@@ -17,6 +19,7 @@ const base = {
   whiteName: 'Leo Park',
   bluePoints: 0,
   whitePoints: 0,
+  matchComplete: false,
 };
 
 function win(side: 'blue' | 'white'): MatchOutcome {
@@ -48,13 +51,21 @@ test('DQ is not a win trigger, and the win trigger can be turned off alone', () 
   assert.equal(matchCarlosView({ ...base, prefs, outcome: win('white'), whitePoints: 4 }).show, false);
 });
 
-test('Points over the threshold bring Carlos out, and the threshold itself does not', () => {
-  assert.equal(matchCarlosView({ ...base, bluePoints: 10 }).show, false);
-  const over = matchCarlosView({ ...base, bluePoints: 11, whitePoints: 2 });
+test('Points over the threshold stay hidden until the match ends, and the threshold itself does not', () => {
+  assert.equal(matchCarlosView({ ...base, bluePoints: 11, whitePoints: 2 }).show, false);
+  assert.equal(matchCarlosView({ ...base, matchComplete: true, bluePoints: 10 }).show, false);
+  const over = matchCarlosView({ ...base, matchComplete: true, bluePoints: 11, whitePoints: 2 });
   assert.equal(over.show, true);
   assert.deepEqual(over.lines, ['Bom trabalho!', 'Mia Santos', '11']);
   const prefs: CarlosCelebrationPrefs = { ...base.prefs, onPoints: false };
-  assert.equal(matchCarlosView({ ...base, prefs, bluePoints: 14 }).show, false);
+  assert.equal(matchCarlosView({ ...base, prefs, matchComplete: true, bluePoints: 14 }).show, false);
+});
+
+test('A live or paused clock is not match end; 0:00 or a recorded result is', () => {
+  assert.equal(carlosMatchComplete({ running: true, remainingMs: 60_000, outcome: null }), false);
+  assert.equal(carlosMatchComplete({ running: false, remainingMs: 60_000, outcome: null }), false);
+  assert.equal(carlosMatchComplete({ running: false, remainingMs: 0, outcome: null }), true);
+  assert.equal(carlosMatchComplete({ running: true, remainingMs: 30_000, outcome: win('blue') }), true);
 });
 
 test('A win is the cheer when both triggers are on, and a custom threshold is kept', () => {
@@ -79,8 +90,31 @@ test('A win is the cheer when both triggers are on, and a custom threshold is ke
 });
 
 test('The higher score is named when both competitors are over, and a tie names both', () => {
-  const leader = matchCarlosView({ ...base, bluePoints: 12, whitePoints: 15 });
+  assert.equal(matchCarlosView({ ...base, bluePoints: 12, whitePoints: 15 }).show, false);
+  const leader = matchCarlosView({ ...base, matchComplete: true, bluePoints: 12, whitePoints: 15 });
   assert.deepEqual(leader.lines, ['Bom trabalho!', 'Leo Park', '15']);
-  const tied = matchCarlosView({ ...base, bluePoints: 12, whitePoints: 12 });
+  const tied = matchCarlosView({ ...base, matchComplete: true, bluePoints: 12, whitePoints: 12 });
   assert.deepEqual(tied.lines, ['Bom trabalho!', 'Mia Santos & Leo Park', '12']);
+});
+
+test('A referee-decision win brings Carlos out only after the bout is over', () => {
+  assert.equal(matchCarlosView({ ...base, refDecisionSide: 'white', bluePoints: 2, whitePoints: 2 }).show, false);
+  const pending = matchCarlosView({
+    ...base,
+    matchComplete: true,
+    refDecisionSide: 'white',
+    bluePoints: 2,
+    whitePoints: 2,
+  });
+  assert.equal(pending.show, true);
+  assert.deepEqual(pending.lines, ['Bom trabalho!', 'Leo Park', '2-2']);
+  const recorded = matchCarlosView({
+    ...base,
+    outcome: refereeDecisionWin('blue'),
+    bluePoints: 4,
+    whitePoints: 4,
+  });
+  assert.equal(recorded.show, true);
+  assert.deepEqual(recorded.lines, ['Bom trabalho!', 'Mia Santos', '4-4']);
+  assert.equal(refereeDecisionWin('blue').method, 'decision');
 });

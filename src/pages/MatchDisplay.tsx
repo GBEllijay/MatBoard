@@ -20,7 +20,7 @@ import { competitorFocus, type DisplayFocus } from '../lib/matchFocus';
 import { dispatchMatch, expireMatchClock, remainingNow, type Side } from '../lib/matchStore';
 import { needsRefDecision } from '../lib/outcomes';
 import { formatMmSs } from '../lib/format';
-import { matchCarlosView } from '../lib/carlosCelebration';
+import { carlosMatchComplete, matchCarlosView } from '../lib/carlosCelebration';
 import { SCOREBOARD_SKIN, scoreboardSkinClass } from '../lib/scoreboardSkin';
 
 export function MatchDisplayPage() {
@@ -81,6 +81,11 @@ export function MatchDisplayPage() {
     whiteName: match.white.name,
     bluePoints: match.blue.points,
     whitePoints: match.white.points,
+    matchComplete: carlosMatchComplete({
+      running: match.running,
+      remainingMs: remaining,
+      outcome: match.outcome,
+    }),
   });
 
   return (

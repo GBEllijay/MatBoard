@@ -487,8 +487,8 @@ function CarlosControls({ prefs }: { prefs: CarlosCelebrationPrefs }) {
         Show on the scoreboard
       </label>
       <p className="cast-note">
-        Optional for every kids’ training match. He slides in on this scoreboard for a win, or when points go
-        over the total. Off means no Carlos from these triggers.
+        Optional for every kids’ training match. He slides in on this scoreboard only when the match ends —
+        for a win, or if points went over the total during the bout. Off means no Carlos from these triggers.
       </p>
       {prefs.enabled ? (
         <>
@@ -506,7 +506,7 @@ function CarlosControls({ prefs }: { prefs: CarlosCelebrationPrefs }) {
               checked={prefs.onPoints}
               onChange={(e) => dispatchMatch({ type: 'setCarlos', value: { onPoints: e.target.checked } })}
             />
-            When points go over a total
+            At match end, if points went over a total
           </label>
           <label className="carlos-threshold">
             Over
