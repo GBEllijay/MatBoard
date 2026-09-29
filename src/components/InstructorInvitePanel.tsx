@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { useGymName } from '../hooks/useGymBrand';
 import {
   INSTRUCTOR_PERMISSION_FIELDS,
@@ -339,6 +339,21 @@ function PlanBadge({ presetId }: { presetId: InstructorPresetId | null }) {
   );
 }
 
+/** Cover titles. Seat lists keep the stored preset labels. */
+const BINDER_COVER_NAME: Record<InstructorPresetId, string> = {
+  'assistant-coach': 'Assistant Coach',
+  coach: 'Coach',
+  'program-director': 'Program Director',
+  instructors: 'Instructor',
+};
+
+const BINDER_ART: Record<InstructorPresetId, string> = {
+  'assistant-coach': '/instructor-binders/assistant-coach.png',
+  coach: '/instructor-binders/coach.png',
+  'program-director': '/instructor-binders/program-director.png',
+  instructors: '/instructor-binders/instructor.png',
+};
+
 function RoleOptions({
   selected,
   onSelect,
@@ -348,30 +363,56 @@ function RoleOptions({
   onSelect: (id: InstructorPresetId) => void;
   heading?: string;
 }) {
+  const buttons = useRef<Array<HTMLButtonElement | null>>([]);
+
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const key = event.key;
+    if (
+      key !== 'ArrowRight' &&
+      key !== 'ArrowLeft' &&
+      key !== 'ArrowDown' &&
+      key !== 'ArrowUp' &&
+      key !== 'Home' &&
+      key !== 'End'
+    ) {
+      return;
+    }
+    event.preventDefault();
+    const ids = INSTRUCTOR_PRESETS.map((preset) => preset.id);
+    const current = selected ? ids.indexOf(selected) : -1;
+    let next = current;
+    if (key === 'Home') next = 0;
+    else if (key === 'End') next = ids.length - 1;
+    else if (key === 'ArrowRight' || key === 'ArrowDown') next = current < 0 ? 0 : (current + 1) % ids.length;
+    else next = current < 0 ? ids.length - 1 : (current - 1 + ids.length) % ids.length;
+    onSelect(ids[next]);
+    buttons.current[next]?.focus();
+  };
+
   return (
     <div className="role-options">
       <p className="role-options__title">{heading}</p>
-      <div className="role-options__row" role="radiogroup" aria-label="Instructor role">
-        {INSTRUCTOR_PRESETS.map((preset) => {
+      <div className="role-options__row" role="radiogroup" aria-label="Instructor role" onKeyDown={onKeyDown}>
+        {INSTRUCTOR_PRESETS.map((preset, index) => {
           const on = selected === preset.id;
+          const coverName = BINDER_COVER_NAME[preset.id];
           return (
             <button
               key={preset.id}
+              ref={(node) => {
+                buttons.current[index] = node;
+              }}
               type="button"
               role="radio"
               aria-checked={on}
-              className={`btn btn--white role-option${on ? ' role-option--on' : ''}`}
+              aria-label={`${coverName}, ${preset.plan}`}
+              className={`binder-pick binder-pick--${preset.id}${on ? ' binder-pick--on' : ''}`}
               onClick={() => onSelect(preset.id)}
             >
-              <span className="role-option__name">{preset.label}</span>
-              <span className="role-option__details">
-                {preset.detail.map((line) => (
-                  <span key={line} className="role-option__detail">
-                    {line}
-                  </span>
-                ))}
+              <span className="binder-pick__cover">
+                <img className="binder-pick__art" src={BINDER_ART[preset.id]} alt="" draggable={false} />
               </span>
-              <span className="role-option__plan">{preset.plan}</span>
+              <PlanBadge presetId={preset.id} />
             </button>
           );
         })}
