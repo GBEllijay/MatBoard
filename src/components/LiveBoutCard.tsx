@@ -5,7 +5,7 @@ import { BeltRail } from './BeltRail';
 export function LiveBoutCard() {
   return (
     <article className="mode-card mode-card--match">
-      <BeltRail kind="white" flush />
+      <BeltRail kind="white" />
       <Link
         className="mode-card__hit"
         to="/match"
