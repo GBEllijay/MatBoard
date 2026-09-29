@@ -1,4 +1,6 @@
+import { DEFAULT_CARLOS_PREFS, parseCarlosPrefs, type CarlosCelebrationPrefs } from './carlosCelebration';
 import { clamp, minutesToMs, secondsToMs } from './format';
+import { DEFAULT_SCOREBOARD_SKIN, parseScoreboardSkin, type ScoreboardSkinId } from './scoreboardSkin';
 import {
   getAudioPrefs,
   parseEndCue,
@@ -65,8 +67,10 @@ export type MatchState = {
    * Gym default on; persist with the match.
    */
   autoAnnounce: boolean;
-  /** Points / Advantages / Penalties (or Adv / Pen when the board is small). Gym default on. */
-  padHeaders: boolean;
+  /** Mock-Tournament or Old School. Travels with the match so Display follows the controller. */
+  skin: ScoreboardSkinId;
+  /** Optional Master Carlos on the scoreboard. Off until the controller turns it on. */
+  carlos: CarlosCelebrationPrefs;
   /** Last Win (Submission / Points / Decision) or DQ (Technical / Medical). Survives reload; flash does not. */
   outcome: MatchOutcome | null;
   /** Brief center splash; not restored after reload. */
@@ -91,7 +95,8 @@ export type MatchAction =
   | { type: 'setEndCue'; value: EndCue }
   | { type: 'setBracketMatchId'; value: string | null }
   | { type: 'setAutoAnnounce'; value: boolean }
-  | { type: 'setPadHeaders'; value: boolean }
+  | { type: 'setSkin'; value: ScoreboardSkinId }
+  | { type: 'setCarlos'; value: Partial<CarlosCelebrationPrefs> }
   | { type: 'setOutcomeFlash'; value: OutcomeFlash | null }
   | {
       type: 'loadBracketBout';
@@ -161,7 +166,8 @@ export function defaultMatch(): MatchState {
     endCue: getAudioPrefs().endCue,
     bracketMatchId: null,
     autoAnnounce: true,
-    padHeaders: true,
+    skin: DEFAULT_SCOREBOARD_SKIN,
+    carlos: { ...DEFAULT_CARLOS_PREFS },
     outcome: null,
     outcomeFlash: null,
     revision: 1,
@@ -172,7 +178,9 @@ function loadState(): MatchState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultMatch();
-    const parsed = JSON.parse(raw) as Partial<MatchState>;
+    const stored = JSON.parse(raw) as Partial<MatchState> & { padHeaders?: unknown };
+    const parsed: Partial<MatchState> = { ...stored };
+    delete (parsed as { padHeaders?: unknown }).padHeaders;
     const base = defaultMatch();
     return {
       ...base,
@@ -194,7 +202,8 @@ function loadState(): MatchState {
       endCue: parsed.endCue != null ? parseEndCue(parsed.endCue) : getAudioPrefs().endCue,
       bracketMatchId: typeof parsed.bracketMatchId === 'string' ? parsed.bracketMatchId : null,
       autoAnnounce: parsed.autoAnnounce !== false,
-      padHeaders: parsed.padHeaders !== false,
+      skin: parseScoreboardSkin(parsed.skin),
+      carlos: parseCarlosPrefs(parsed.carlos),
       outcome: parseMatchOutcome(parsed.outcome),
       outcomeFlash: null,
       revision: Number(parsed.revision ?? 1),
@@ -205,12 +214,16 @@ function loadState(): MatchState {
 }
 
 function clone(s: MatchState): MatchState {
-  return {
+  const incoming = s as MatchState & { padHeaders?: unknown; skin?: unknown; carlos?: unknown };
+  const next: MatchState = {
     ...s,
     blue: { ...s.blue },
     white: { ...s.white },
-    padHeaders: s.padHeaders !== false,
+    skin: incoming.skin == null ? state.skin : parseScoreboardSkin(incoming.skin),
+    carlos: incoming.carlos == null ? { ...state.carlos } : parseCarlosPrefs(incoming.carlos),
   };
+  delete (next as { padHeaders?: unknown }).padHeaders;
+  return next;
 }
 
 export function remainingNow(
@@ -416,8 +429,16 @@ function applyAction(current: MatchState, action: MatchAction): MatchState {
       );
     case 'setAutoAnnounce':
       return bumpRevision({ ...current, autoAnnounce: action.value });
-    case 'setPadHeaders':
-      return bumpRevision({ ...current, padHeaders: action.value });
+    case 'setSkin': {
+      const skin = parseScoreboardSkin(action.value);
+      if (skin === current.skin) return current;
+      return bumpRevision({ ...current, skin });
+    }
+    case 'setCarlos':
+      return bumpRevision({
+        ...current,
+        carlos: parseCarlosPrefs({ ...current.carlos, ...action.value }),
+      });
     case 'setOutcomeFlash':
       return bumpRevision({ ...current, outcomeFlash: action.value });
     case 'loadBracketBout':
