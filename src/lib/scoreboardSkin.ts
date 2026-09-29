@@ -3,8 +3,9 @@
  * The controller skin switcher offers Mock-Tournament and Old School.
  * LIGHT and KIDS stay reserved. Kids' Scoreboards paints the bracket, not this skin.
  *
- * Old School matches the owner's tabletop flip boards: large points cards,
- * smaller advantage and penalty cards, red against blue, matte black frame.
+ * Old School is locked to the silver-ring flip board: red cards on the left,
+ * blue cards on the right, large points, smaller advantages and penalties,
+ * matte black wedge. No white center cards and no black plastic hooks.
  */
 
 export const SCOREBOARD_SKIN = {
