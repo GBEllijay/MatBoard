@@ -1,6 +1,5 @@
 import { useCallback, useState, type MouseEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { BeltRail } from '../components/BeltRail';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { OutcomeSplash } from '../components/OutcomeSplash';
 import { TvTip } from '../components/TvTip';
@@ -83,7 +82,6 @@ export function MatchDisplayPage() {
       }}
       onClick={onBoardClick}
     >
-      {suite.fromSuite ? <BeltRail kind="tournament" /> : null}
       <div className="display__chrome">
         <div className="display__chrome-start">
           {linkedId ? (
