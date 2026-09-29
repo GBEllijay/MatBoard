@@ -379,14 +379,33 @@ export function driveOwnerFacingError(reason: unknown): string {
   return 'Google Drive could not be opened.';
 }
 
-export function lessonDriveFileName(dateKey: string, coachName: string): string {
-  const who = coachName
+function driveSlug(value: string, max = 40): string {
+  return value
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
-    .slice(0, 40) || 'coach';
-  return `advantage-lesson-${dateKey}-${who}.json`;
+    .slice(0, max);
+}
+
+/**
+ * `{date}-{coach}.json` when the plan has no class label, so an existing
+ * single-class file keeps updating in place.
+ * A class designation or time adds the plan id so GB1 and GB2 on the same
+ * day do not replace each other. The folder is still `{date}/lesson-plans/`.
+ */
+export function lessonDriveFileName(dateKey: string, coachName: string, classPlanId = ''): string {
+  const who = driveSlug(coachName) || 'coach';
+  const plan = driveSlug(classPlanId, 48);
+  return plan ? `advantage-lesson-${dateKey}-${who}-${plan}.json` : `advantage-lesson-${dateKey}-${who}.json`;
+}
+
+/** Plan id suffix for the Drive file, or empty when the class label is blank. */
+export function lessonClassFileToken(plan: Pick<TrainingNotesPlan, 'id' | 'classDesignation' | 'classTime'>): string {
+  const designation = plan.classDesignation?.trim() ?? '';
+  const time = plan.classTime?.trim() ?? '';
+  if (!designation && !time) return '';
+  return (plan.id ?? '').trim();
 }
 
 export function driveQueryLiteral(value: string): string {
@@ -1131,7 +1150,11 @@ export async function upsertLessonFile(input: {
   document: DriveLessonDocument;
   fetcher?: DriveFetch;
 }): Promise<{ fileId: string; revisions: number }> {
-  const name = lessonDriveFileName(input.document.date, input.document.coachName);
+  const name = lessonDriveFileName(
+    input.document.date,
+    input.document.coachName,
+    lessonClassFileToken(input.document.plan),
+  );
   const key = `${input.folderId}\0${name}`;
   const previous = lessonWriteTail.get(key) ?? Promise.resolve();
   const run = previous.catch(() => undefined).then(() => writeLessonFile(input, name));

@@ -8744,6 +8744,82 @@ input.roster-pick__name:focus,
   text-align: left;
 }
 
+.notes__folders {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.notes__folder-back {
+  width: 100%;
+  min-height: 52px;
+}
+
+.notes__folder-title,
+.notes__folder-date {
+  margin: 0;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.notes__folder-title {
+  color: var(--ink);
+  font-size: 1.05rem;
+}
+
+.notes__folder-date {
+  color: var(--muted);
+}
+
+.notes__folder-day {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.notes__classes {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.notes__class-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.notes__class-btn {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 52px;
+  padding: 0.7rem 0.9rem;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(8, 10, 16, 0.55);
+  color: var(--ink);
+  font-weight: 800;
+  text-align: left;
+  line-height: 1.3;
+  white-space: normal;
+}
+
+.notes__class-btn--on {
+  background: var(--logo-yellow);
+  color: #14161c;
+  border-color: transparent;
+}
+
+.notes__class-actions {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.notes__field input::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
 .notes__copy,
 .notes__download {
   width: 100%;

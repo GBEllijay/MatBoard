@@ -103,7 +103,9 @@ test('Drive history keeps one draft per coach per day and drops file bytes', () 
   assert.equal(queue.find((row) => row.coachName === 'Alex' && row.kind === 'draft')?.plan.intro, 'Updated grip fight');
   assert.equal(queue.find((row) => row.kind === 'distribution')?.driveFileId, null);
   assert.equal(queue.find((row) => row.kind === 'distribution')?.status, 'waiting-for-drive');
-  const saved = markRevisionSaved(queue, 'distribution:2026-09-27:alex', 'drive-plan-1');
+  const distributionId = queue.find((row) => row.kind === 'distribution')?.revisionId ?? '';
+  assert.match(distributionId, /^distribution:2026-09-27:alex:/);
+  const saved = markRevisionSaved(queue, distributionId, 'drive-plan-1');
   assert.equal(saved.find((row) => row.kind === 'distribution')?.status, 'saved-to-drive');
   assert.equal(saved.find((row) => row.kind === 'distribution')?.driveFileId, 'drive-plan-1');
   assert.equal(JSON.stringify(queue).includes('blob'), false);
@@ -173,6 +175,8 @@ test('regular Coach does not queue Drive, and Pro flush keeps text only', () => 
   assert.equal(draft?.kind, 'draft');
   assert.equal(draft?.status, 'waiting-for-drive');
   assert.equal(draft?.plan.intro, 'Grip fight');
+  assert.equal(draft?.plan.classDesignation, '');
+  assert.equal(draft?.plan.classTime, '');
   const shared = markLessonDistribution({
     proSuite: true,
     dateKey: '2026-09-27',
@@ -184,4 +188,67 @@ test('regular Coach does not queue Drive, and Pro flush keeps text only', () => 
   const raw = localStorage.getItem(LESSON_DRIVE_QUEUE_KEY) ?? '';
   assert.equal(raw.includes('blob'), false);
   assert.match(raw, /Grip fight/);
+});
+
+test('two classes on one day stay separate drafts and keep designation and time', () => {
+  storage.clear();
+  const first = emptyPlan();
+  first.coachName = 'Justin';
+  first.classDesignation = 'GB1';
+  first.classTime = '5:00 PM';
+  first.intro = 'Guard';
+  const second = emptyPlan();
+  second.coachName = 'Justin';
+  second.classDesignation = 'GB2';
+  second.classTime = '6:00 PM';
+  second.intro = 'Mount';
+  const driven = lessonPlanForDrive({ ...first, blob: new Blob(['nope']) } as TrainingNotesPlan);
+  assert.equal(driven.classDesignation, 'GB1');
+  assert.equal(driven.classTime, '5:00 PM');
+  assert.equal(driven.id, first.id);
+  assert.equal('blob' in driven, false);
+
+  let queue = recordLessonRevision([], {
+    dateKey: '2026-09-27',
+    coachName: 'Justin',
+    savedAt: 1,
+    kind: 'draft',
+    plan: first,
+    media: [],
+  });
+  queue = recordLessonRevision(queue, {
+    dateKey: '2026-09-27',
+    coachName: 'Justin',
+    savedAt: 2,
+    kind: 'draft',
+    plan: second,
+    media: [],
+  });
+  queue = recordLessonRevision(queue, {
+    dateKey: '2026-09-27',
+    coachName: 'Justin',
+    savedAt: 3,
+    kind: 'draft',
+    plan: { ...first, intro: 'Guard updated' },
+    media: [],
+  });
+  assert.equal(queue.length, 2);
+  assert.equal(queue.find((row) => row.plan.id === first.id)?.plan.intro, 'Guard updated');
+  assert.equal(queue.find((row) => row.plan.id === first.id)?.plan.classTime, '5:00 PM');
+  assert.equal(queue.find((row) => row.plan.id === second.id)?.plan.classDesignation, 'GB2');
+  const gb1 = queue.find((row) => row.plan.id === first.id);
+  assert.ok(gb1);
+  assert.match(lessonRevisionLabel(gb1), /Justin · GB1 5:00 PM · 2026-09-27 · Draft/);
+
+  scheduleLessonDriveDraft({
+    proSuite: true,
+    dateKey: '2026-09-27',
+    coachName: 'Justin',
+    plan: second,
+    media: [],
+  });
+  const flushed = flushLessonDriveDraft();
+  assert.equal(flushed?.plan.classDesignation, 'GB2');
+  assert.equal(flushed?.plan.classTime, '6:00 PM');
+  assert.equal(flushed?.plan.intro, 'Mount');
 });

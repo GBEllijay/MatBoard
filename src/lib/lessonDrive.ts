@@ -84,7 +84,10 @@ export type LessonDriveDraftInput = {
 export function lessonPlanForDrive(plan: TrainingNotesPlan): TrainingNotesPlan {
   return {
     version: 1,
+    id: typeof plan.id === 'string' ? plan.id : '',
     coachName: plan.coachName,
+    classDesignation: plan.classDesignation ?? '',
+    classTime: plan.classTime ?? '',
     intro: plan.intro,
     introExpected: plan.introExpected,
     warmupNote: plan.warmupNote,
@@ -146,13 +149,21 @@ export function assignDriveFileId(plan: VideoPlan, slotId: string, driveFileId: 
   return changed ? { ...plan, slots } : plan;
 }
 
-function revisionKey(kind: LessonRevision['kind'], dateKey: string, coachName: string): string {
-  return `${kind}:${dateKey}:${coachName.trim().toLowerCase()}`;
+function revisionKey(
+  kind: LessonRevision['kind'],
+  dateKey: string,
+  coachName: string,
+  planId: string,
+): string {
+  const who = coachName.trim().toLowerCase();
+  const id = planId.trim();
+  return id ? `${kind}:${dateKey}:${who}:${id}` : `${kind}:${dateKey}:${who}`;
 }
 
 /**
- * One open draft per coach per day, and one distribution marker per coach per day.
- * Later edits replace that row so Sunday review is not a pile of keystrokes.
+ * One open draft per class plan, and one distribution marker per class plan.
+ * The same coach and day can hold GB1 at 5:00 PM and GB2 at 6:00 PM as separate rows.
+ * Later edits to that plan replace its row so Sunday review is not a pile of keystrokes.
  */
 export function recordLessonRevision(
   queue: readonly LessonRevision[],
@@ -167,7 +178,8 @@ export function recordLessonRevision(
   },
 ): LessonRevision[] {
   const coachName = input.coachName.trim().slice(0, 80);
-  const revisionId = revisionKey(input.kind, input.dateKey, coachName);
+  const plan = lessonPlanForDrive(input.plan);
+  const revisionId = revisionKey(input.kind, input.dateKey, coachName, plan.id);
   const revision: LessonRevision = {
     revisionId,
     dateKey: input.dateKey,
@@ -176,7 +188,7 @@ export function recordLessonRevision(
     kind: input.kind,
     driveFileId: clampDriveFileId(input.driveFileId),
     status: 'waiting-for-drive',
-    plan: lessonPlanForDrive(input.plan),
+    plan,
     media: input.media.map((item) => ({
       section: item.section,
       index: item.section === 'technique' ? item.index : null,
@@ -240,8 +252,13 @@ export function savedDriveNotice(revisions: number): string {
 
 export function lessonRevisionLabel(revision: LessonRevision): string {
   const who = revision.coachName.trim() || 'Coach';
+  const designation = revision.plan.classDesignation?.trim() ?? '';
+  const time = revision.plan.classTime?.trim() ?? '';
+  const klass = [designation, time].filter(Boolean).join(' ');
   const what = revision.kind === 'distribution' ? 'Shared for distribution' : 'Draft';
-  return `${who} · ${revision.dateKey} · ${what}`;
+  return klass
+    ? `${who} · ${klass} · ${revision.dateKey} · ${what}`
+    : `${who} · ${revision.dateKey} · ${what}`;
 }
 
 type QueueStore = { version: 1; revisions: LessonRevision[] };
