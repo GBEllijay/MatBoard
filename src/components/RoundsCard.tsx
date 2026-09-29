@@ -6,6 +6,9 @@ export function RoundsCard() {
     <article className="mode-card mode-card--training">
       <BeltRail kind="white" />
       <Link className="mode-card__hit" to="/training" tabIndex={-1} aria-label="Open Rounds" />
+      <div className="white-timer" aria-hidden="true">
+        <div className="white-timer__time">5:00</div>
+      </div>
       <strong>Rounds</strong>
       <span className="mode-card__sub">Training Timer</span>
       <span>
