@@ -1309,7 +1309,12 @@ button.mode-card {
 }
 
 .role-plan--program-director {
-  color: #e0b34a;
+  color: #3dba6b;
+}
+
+.instructor-hub .invite-form .role-plan--program-director,
+.instructor-hub .seat-card .role-plan--program-director {
+  color: #1c6b30;
 }
 
 .role-plan--instructors {
