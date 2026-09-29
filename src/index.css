@@ -9340,10 +9340,188 @@ input.roster-pick__name:focus,
   }
 }
 
-.home--white .mode-card__actions .btn--ghost {
-  background: rgba(0, 78, 186, 0.42);
-  border-color: rgba(252, 192, 0, 0.35);
+/* Advantage White home only. Pro hub buttons stay cream and are not restyled here. */
+.home--white .mode-card--match {
+  background: linear-gradient(180deg, #2728b5 0%, #1d2088 58%, #14182e 100%);
+  border-color: rgba(216, 224, 255, 0.34);
+}
+
+.home--white .mode-card--match > span:not(.mode-card__sub) {
+  color: #d7e1f6;
+}
+
+.home--white .mode-card--training {
+  background: linear-gradient(180deg, #1a1c22 0%, #0a0a0c 100%);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.home--white .mode-card__sub {
+  color: #e7eef8;
+}
+
+.home--white .mode-card--training > strong,
+.home--white .mode-card--training > .mode-card__sub {
+  max-width: calc(100% - 4.1rem);
+}
+
+.home--white .white-board {
+  display: grid;
+  gap: 0.28rem;
+  margin: 0 0 0.15rem;
+  pointer-events: none;
+  user-select: none;
+}
+
+.home--white .white-board__lane {
+  display: grid;
+  grid-template-columns: 3.15rem minmax(0, 1fr);
+  gap: 0.4rem;
+  align-items: center;
+  min-height: 2.7rem;
+  padding: 0.32rem 0.32rem 0.32rem 0.5rem;
+  border-radius: 12px;
+}
+
+.home--white .white-board__lane--blue {
+  background: var(--board-blue);
   color: #fff;
+}
+
+.home--white .white-board__lane--white {
+  background: var(--board-white);
+  color: var(--board-ink);
+}
+
+.home--white .white-board__side {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.home--white .white-board__pads {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.32rem;
+}
+
+.home--white .white-board__pad {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.15rem;
+  border-radius: 8px;
+  color: var(--board-digit);
+  line-height: 1;
+}
+
+.home--white .white-board__pad b {
+  font-size: 1.05rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.home--white .white-board__pad small {
+  margin-top: 0.12rem;
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.home--white .white-board__pad--points {
+  background: var(--pad-points);
+}
+
+.home--white .white-board__pad--adv {
+  background: var(--pad-adv);
+}
+
+.home--white .white-board__pad--pen {
+  background: var(--pad-pen);
+}
+
+.home--white .white-board__clock {
+  justify-self: center;
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.home--white .white-timer {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.58rem;
+  z-index: 2;
+  width: 3.65rem;
+  height: 3.65rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  color: #f7f4ee;
+  background:
+    radial-gradient(circle at 50% 50%, #16181e 0 66%, transparent 67%),
+    repeating-conic-gradient(
+      from -90deg,
+      rgba(255, 255, 255, 0.7) 0deg 1.15deg,
+      transparent 1.15deg 30deg
+    );
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.24);
+}
+
+.home--white .white-timer__time {
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.home--white .mode-card__actions .btn:not(.btn--ghost) {
+  background: var(--board-white);
+  color: var(--board-ink);
+}
+
+.home--white .mode-card__actions .btn--ghost {
+  background: rgba(8, 12, 22, 0.42);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #f4f7fb;
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .home--white .white-board__lane {
+    min-height: 2rem;
+    padding-block: 0.2rem;
+  }
+
+  .home--white .white-board__pad {
+    min-height: 1.6rem;
+  }
+
+  .home--white .white-board__pad b {
+    font-size: 0.85rem;
+  }
+
+  .home--white .white-timer {
+    width: 2.7rem;
+    height: 2.7rem;
+  }
+
+  .home--white .white-timer__time {
+    font-size: 0.64rem;
+  }
+
+  .home--white .mode-card--training > strong,
+  .home--white .mode-card--training > .mode-card__sub {
+    max-width: calc(100% - 3rem);
+  }
 }
 
 .controller > .play-exit,
