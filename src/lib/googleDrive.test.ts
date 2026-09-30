@@ -27,8 +27,12 @@ import {
   lessonDriveFileName,
   upsertCoachPlanFile,
   loadClassHistory,
+  CLASS_PHOTO_PROMOTIONS_ROLE,
+  CLASS_PHOTOS_FOLDER,
   TRAINING_VIDEOS_FOLDER,
+  classPhotoPromotionFileName,
   trainingVideoFileName,
+  uploadClassPhotoPromotions,
   uploadTrainingVideos,
   parseLessonDocument,
   requestDriveConsent,
@@ -1063,6 +1067,82 @@ describe('date folder tree', { concurrency: false }, () => {
     const plansId = drive.files.find((file) => file.name === 'lesson-plans')?.id;
     assert.ok(plansId);
     assert.deepEqual(record.parents, [plansId]);
+  });
+
+  test('class photo promotions land in class-photos as photo or video', async () => {
+    const drive = createFakeDrive('class-media');
+    const photoName = classPhotoPromotionFileName('2026-09-30', 'photo-1', 'image/jpeg', 'Promotion.jpg', 'photo');
+    const videoName = classPhotoPromotionFileName('2026-09-30', 'clip-1', 'video/mp4', 'Kid move.mp4', 'video');
+    assert.match(photoName, /^advantage-class-photo-promotions-2026-09-30-.*\.jpg$/);
+    assert.match(videoName, /^advantage-class-photo-promotions-2026-09-30-.*\.mp4$/);
+    const [photo, video] = await uploadClassPhotoPromotions({
+      token: 'token',
+      rootFolderId: 'root-class-media',
+      dateKey: '2026-09-30',
+      items: [
+        {
+          localId: 'photo-1',
+          name: 'Promotion.jpg',
+          mime: 'image/jpeg',
+          bytes: new Blob(['photo-bytes']),
+          kind: 'photo',
+        },
+        {
+          localId: 'clip-1',
+          name: 'Kid move.mp4',
+          mime: 'video/mp4',
+          bytes: new Blob(['video-bytes']),
+          kind: 'video',
+        },
+      ],
+      fetcher: drive.fetcher,
+    });
+    assert.equal(photo?.failed, false);
+    assert.equal(video?.failed, false);
+    const folder = drive.files.find((file) => file.name === CLASS_PHOTOS_FOLDER);
+    assert.ok(folder);
+    const storedPhoto = drive.files.find((file) => file.id === photo?.driveFileId);
+    const storedVideo = drive.files.find((file) => file.id === video?.driveFileId);
+    assert.equal(storedPhoto?.parents[0], folder?.id);
+    assert.equal(storedVideo?.parents[0], folder?.id);
+    assert.equal(storedPhoto?.mimeType, 'image/jpeg');
+    assert.equal(storedVideo?.mimeType, 'video/mp4');
+    assert.equal(storedPhoto?.content, 'photo-bytes');
+    assert.equal(storedVideo?.content, 'video-bytes');
+    assert.equal(storedPhoto?.appProperties?.advantage, CLASS_PHOTO_PROMOTIONS_ROLE);
+    assert.equal(storedPhoto?.appProperties?.kind, 'photo');
+    assert.equal(storedVideo?.appProperties?.kind, 'video');
+    assert.equal(storedPhoto?.name, photoName);
+    assert.equal(
+      drive.files.some((file) => file.name === TRAINING_VIDEOS_FOLDER && file.content),
+      false,
+    );
+    assert.equal(
+      drive.calls.some((call) => /advantage|matboard/i.test(new URL(call.url).host)),
+      false,
+    );
+
+    const [again] = await uploadClassPhotoPromotions({
+      token: 'token',
+      rootFolderId: 'root-class-media',
+      dateKey: '2026-09-30',
+      items: [
+        {
+          localId: 'photo-1',
+          name: 'Promotion.jpg',
+          mime: 'image/jpeg',
+          bytes: new Blob(['photo-bytes-2']),
+          kind: 'photo',
+        },
+      ],
+      fetcher: drive.fetcher,
+    });
+    assert.equal(again?.driveFileId, photo?.driveFileId);
+    assert.equal(storedPhoto?.content, 'photo-bytes-2');
+    assert.equal(
+      drive.files.filter((file) => file.appProperties?.advantage === CLASS_PHOTO_PROMOTIONS_ROLE).length,
+      2,
+    );
   });
 });
 

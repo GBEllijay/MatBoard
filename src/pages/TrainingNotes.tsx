@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ClassPhotoPromotions } from '../components/ClassPhotoPromotions';
 import { CoachPlanExport } from '../components/CoachPlanExport';
 import { CollaborationGate, SeatSessionBar, useCurrentSeat } from '../components/SeatSessionBar';
 import { LessonMediaRail } from '../components/LessonMediaRail';
@@ -915,30 +916,33 @@ export function TrainingNotesPage() {
 
         {!proSuite && editingToday ? <CoachPlanExport dateKey={todayKey} plan={plan} /> : null}
         {showDistribute && editingToday ? (
-          <aside className="notes__distribute" aria-label="Instructor distribution">
-            <p>{DISTRIBUTE_LEAD}</p>
-            <button
-              type="button"
-              className="btn btn--ghost notes__distribute-btn"
-              onClick={() => {
-                const revision = markLessonDistribution({
-                  proSuite: true,
-                  dateKey: todayKey,
-                  coachName: plan.coachName,
-                  plan,
-                  media: videos ? mediaRefsFromVideoPlan(videos.plan) : [],
-                });
-                setDistributeNote(revision ? DISTRIBUTE_DONE : DISTRIBUTE_LEAD);
-              }}
-            >
-              {DISTRIBUTE_BUTTON}
-            </button>
-            {distributeNote ? (
-              <p className="notes__distribute-note" role="status">
-                {distributeNote}
-              </p>
-            ) : null}
-          </aside>
+          <>
+            <aside className="notes__distribute" aria-label="Instructor distribution">
+              <p>{DISTRIBUTE_LEAD}</p>
+              <button
+                type="button"
+                className="btn btn--ghost notes__distribute-btn"
+                onClick={() => {
+                  const revision = markLessonDistribution({
+                    proSuite: true,
+                    dateKey: todayKey,
+                    coachName: plan.coachName,
+                    plan,
+                    media: videos ? mediaRefsFromVideoPlan(videos.plan) : [],
+                  });
+                  setDistributeNote(revision ? DISTRIBUTE_DONE : DISTRIBUTE_LEAD);
+                }}
+              >
+                {DISTRIBUTE_BUTTON}
+              </button>
+              {distributeNote ? (
+                <p className="notes__distribute-note" role="status">
+                  {distributeNote}
+                </p>
+              ) : null}
+            </aside>
+            <ClassPhotoPromotions dateKey={todayKey} />
+          </>
         ) : null}
       </div>
       )}
