@@ -4760,7 +4760,7 @@ a.saver-folder--link {
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x pan-y;
-  padding: 0.25rem calc(0.7rem + var(--safe-r)) calc(1rem + var(--safe-b)) calc(0.7rem + var(--safe-l));
+  padding: 0.25rem calc(0.7rem + var(--safe-r)) 0.35rem calc(0.7rem + var(--safe-l));
 }
 
 .bracket-viewport {
@@ -5362,7 +5362,8 @@ a.saver-folder--link {
 }
 
 .play--tv.play--idle .tournament__bar,
-.play--tv.play--idle .tournament__hint {
+.play--tv.play--idle .tournament__hint,
+.play--tv.play--idle .kids-switch-row {
   opacity: 0.18;
 }
 
@@ -11617,7 +11618,8 @@ a.plan-pick {
 }
 
 /* Kids' Scoreboards — wallpaper + frosted bubbles on the existing bracket.
-   Bright and Dark stay in the DOM. This paint only applies while Kids mode is on. */
+   Bright and Dark stay in the DOM. This paint only applies while Kids mode is on.
+   The skin selector is a footer under the tree so the brackets keep the top. */
 .kids-switch {
   display: flex;
   flex-wrap: wrap;
@@ -11640,13 +11642,40 @@ a.plan-pick {
 .kids-switch-row {
   position: relative;
   z-index: 23;
+  flex: 0 0 auto;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: 0.35rem;
-  margin: 0 calc(1rem + var(--safe-r)) 0.45rem calc(1rem + var(--safe-l));
-  padding: 0.35rem 0.5rem;
+  margin: 0.3rem calc(0.7rem + var(--safe-r)) calc(0.4rem + var(--safe-b)) calc(0.7rem + var(--safe-l));
+  padding: 0.3rem 0.45rem;
   border-radius: 16px;
   background: rgba(8, 12, 18, 0.55);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+}
+
+.kids-switch-row .kids-switch,
+.kids-switch-row .kids-switch__skins {
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+}
+
+/* Phone portrait has room under the tree. Wrap the skins so each one is tappable
+   without a sideways scroll. Short landscape stays one row so the tree stays tall. */
+@media (max-width: 640px) and (orientation: portrait) {
+  .kids-switch-row,
+  .kids-switch-row .kids-switch,
+  .kids-switch-row .kids-switch__skins {
+    flex-wrap: wrap;
+  }
+
+  .kids-switch-row {
+    overflow-x: visible;
+    touch-action: auto;
+  }
 }
 
 .tournament--kids .kids-switch-row {
@@ -11692,8 +11721,8 @@ a.plan-pick {
   z-index: 22;
 }
 
-/* The kids toolbar and skin row sit above the corner mark and swallow the back tap.
-   Keep the Advantage logo above them. Carlos ignores pointers, so the mark still goes back. */
+/* The kids toolbar can overlap the corner mark. Keep the Advantage logo above it.
+   Carlos ignores pointers, so the mark still goes back. */
 .tournament--kids > .play-exit {
   z-index: 25;
 }

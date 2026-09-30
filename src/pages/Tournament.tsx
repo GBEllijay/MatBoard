@@ -287,10 +287,6 @@ export function TournamentPage() {
         </div>
       </header>
 
-      <div className="kids-switch-row">
-        <KidsScoreboardSwitcher prefs={kids} />
-      </div>
-
       <p className="tournament__hint">
         {kids.enabled ? (
           <>
@@ -396,6 +392,10 @@ export function TournamentPage() {
           ) : null}
           </div>
         </div>
+      </div>
+
+      <div className="kids-switch-row">
+        <KidsScoreboardSwitcher prefs={kids} />
       </div>
 
       <Sheet open={namesOpen} title="Competitor names" onClose={() => setNamesOpen(false)}>
