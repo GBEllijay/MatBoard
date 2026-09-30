@@ -43,7 +43,8 @@ export const TECHNIQUE_FOLDER = {
   accept: VIDEO_ACCEPT,
   mimePrefix: 'video/',
   labelPrefix: 'Clip',
-  emptyCopy: 'Add video opens Record or Pick from gallery — one clip per card. Clips stay on this device.',
+  emptyCopy:
+    'Add video opens Record or Pick from gallery — one clip per card. Clips stay on this device until Google Drive is connected.',
   orderHint: 'Tap a card to select it. Start loops that clip.',
 } as const;
 
@@ -220,8 +221,9 @@ export async function attachClipToSlot(
     throw error;
   }
 
-  // The blob stays in this device's clip store. The plan keeps the id, name, and mime.
-  // A Drive file id is filled later by the gym's Drive client — never by uploading to Advantage.
+  // The blob stays in this device's clip store as the offline cache.
+  // A Pro save copies the bytes into the gym Drive folder and then fills driveFileId.
+  // Nothing is uploaded to an Advantage server. The blob is not deleted after upload.
   const next = selectSlot(
     setSlotClip(plan, slotId, clipId, {
       driveFileId: null,

@@ -10,6 +10,8 @@ type Props = {
   captureInputId: string;
   libraryInputId: string;
   stacked?: boolean;
+  /** Overrides the default “stays on this device” line. Gallery keeps the default. */
+  stay?: string;
   onClose: () => void;
 };
 
@@ -44,12 +46,13 @@ export function MediaSourceSheet({
   captureInputId,
   libraryInputId,
   stacked = false,
+  stay,
   onClose,
 }: Props) {
   const copy = COPY[kind];
   return (
     <Sheet open={open} title={title} onClose={onClose} stacked={stacked}>
-      <p className="saver-sound-hint">{copy.stay}</p>
+      <p className="saver-sound-hint">{stay ?? copy.stay}</p>
       <div className="outcome-picks" role="list">
         <label htmlFor={captureInputId} className="btn outcome-pick outcome-pick--submission">
           <strong>{copy.capture}</strong>

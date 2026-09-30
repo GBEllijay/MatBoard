@@ -112,7 +112,7 @@ export function DriveConnectCard() {
       {binding ? (
         <span>
           {binding.accountLabel ? `${binding.accountLabel}. ` : ''}
-          Lesson plans save in this folder. Photos and videos stay in this folder. Advantage only keeps the lesson text and links to those files.
+          Lesson plans and attached training videos save in this folder. This phone keeps a copy of each video for offline play. Advantage does not host the video files.
         </span>
       ) : (
         <span>{CONNECT_WITH_BODY}</span>

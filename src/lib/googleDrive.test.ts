@@ -25,6 +25,9 @@ import {
   lessonClassFileToken,
   lessonDriveFileName,
   loadClassHistory,
+  TRAINING_VIDEOS_FOLDER,
+  trainingVideoFileName,
+  uploadTrainingVideos,
   parseLessonDocument,
   requestDriveConsent,
   requestDriveToken,
@@ -246,6 +249,11 @@ function fileMatchesQuery(file: StoredDriveFile, query: string): boolean {
   if (mimeMatch && file.mimeType !== mimeMatch[1]) return false;
   const parents = [...query.matchAll(/'((?:\\'|[^'])*)' in parents/g)].map((match) => unescapeDriveLiteral(match[1]));
   if (parents.length > 0 && !parents.some((id) => file.parents.includes(id))) return false;
+  if (query.includes('appProperties has')) {
+    const prop = query.match(/appProperties has \{ key='([^']+)' and value='((?:\\'|[^'])*)' \}/);
+    if (!prop) return false;
+    if (file.appProperties?.[prop[1]] !== unescapeDriveLiteral(prop[2])) return false;
+  }
   return true;
 }
 
@@ -266,12 +274,72 @@ function readMultipart(body: string): string[] {
 function createFakeDrive(prefix: string) {
   let seq = 1;
   const files: StoredDriveFile[] = [];
-  const calls: { method: string; url: string; body: string }[] = [];
+  const calls: { method: string; url: string; body: string; uploadLength: string | null }[] = [];
+  const sessions = new Map<string, { metadata: Record<string, unknown>; existingId: string; fail: boolean }>();
   const fetcher: typeof fetch = async (input, init) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
     const method = (init?.method ?? 'GET').toUpperCase();
-    const body = typeof init?.body === 'string' ? init.body : '';
-    calls.push({ method, url, body });
+    const rawBody = init?.body;
+    const body = typeof rawBody === 'string' ? rawBody : rawBody instanceof Blob ? await rawBody.text() : '';
+    const headers = new Headers(init?.headers);
+    calls.push({
+      method,
+      url,
+      body,
+      uploadLength: headers.get('X-Upload-Content-Length'),
+    });
+    if (method === 'PUT' && url.includes('/sessions/')) {
+      const sessionId = decodeURIComponent(url.split('/sessions/')[1]?.split('?')[0] ?? '');
+      const session = sessions.get(sessionId);
+      if (!session) return new Response('missing session', { status: 404 });
+      if (session.fail) return new Response('upload failed', { status: 500 });
+      const metadata = session.metadata as {
+        name?: string;
+        mimeType?: string;
+        parents?: string[];
+        appProperties?: Record<string, string>;
+      };
+      if (session.existingId) {
+        const file = files.find((item) => item.id === session.existingId);
+        if (!file) return new Response('missing', { status: 404 });
+        if (metadata.name) file.name = metadata.name;
+        if (metadata.mimeType) file.mimeType = metadata.mimeType;
+        if (metadata.appProperties) file.appProperties = metadata.appProperties;
+        file.content = body;
+        return Response.json({ id: file.id });
+      }
+      const created: StoredDriveFile = {
+        id: `${prefix}-${seq}`,
+        name: metadata.name ?? 'untitled',
+        mimeType: metadata.mimeType ?? 'application/octet-stream',
+        parents: metadata.parents ?? [],
+        appProperties: metadata.appProperties,
+        content: body,
+      };
+      seq += 1;
+      files.push(created);
+      return Response.json({ id: created.id });
+    }
+    if (url.includes('uploadType=resumable')) {
+      const metadata = JSON.parse(body || '{}') as {
+        name?: string;
+        mimeType?: string;
+        parents?: string[];
+        appProperties?: Record<string, string>;
+      };
+      const existingId = method === 'PATCH' ? decodeURIComponent(url.match(/\/files\/([^/?]+)/)?.[1] ?? '') : '';
+      const sessionId = `${prefix}-session-${seq}`;
+      seq += 1;
+      sessions.set(sessionId, {
+        metadata,
+        existingId,
+        fail: (metadata.name ?? '').toLowerCase().includes('failvideo'),
+      });
+      return new Response('{}', {
+        status: 200,
+        headers: { Location: `https://www.googleapis.com/upload/drive/v3/files/sessions/${sessionId}` },
+      });
+    }
     if (url.includes('/upload/drive/v3/files')) {
       const parts = readMultipart(body);
       const metadata = JSON.parse(parts[0] || '{}') as {
@@ -788,6 +856,161 @@ describe('date folder tree', { concurrency: false }, () => {
       ['Flat.mp4'],
     );
     assert.equal(drive.calls.filter((call) => call.url.includes('q=')).length, 1);
+  });
+
+  test('class history lists a video stored in the date training-videos folder', async () => {
+    const drive = createFakeDrive('train');
+    drive.seed({
+      id: 'train-date',
+      name: '2026-09-28',
+      mimeType: DRIVE_FOLDER_MIME,
+      parents: ['root-train'],
+    });
+    drive.seed({
+      id: 'train-videos',
+      name: 'training-videos',
+      mimeType: DRIVE_FOLDER_MIME,
+      parents: ['train-date'],
+    });
+    drive.seed({
+      id: 'train-clip',
+      name: 'Armbar.mp4',
+      mimeType: 'video/mp4',
+      parents: ['train-videos'],
+      appProperties: { advantage: 'training-video', date: '2026-09-28', localClipId: 'clip-1' },
+    });
+    const days = await loadClassHistory('token', 'root-train', drive.fetcher);
+    assert.deepEqual(
+      videosOnDay(days, '2026-09-28').map((video) => video.label),
+      ['Armbar.mp4'],
+    );
+  });
+
+  test('uploadTrainingVideos writes bytes into training-videos and retries the same file', async () => {
+    const drive = createFakeDrive('upload');
+    const marker = 'VIDEO-BYTES-MARKER';
+    const progress: number[] = [];
+    const video = {
+      localClipId: 'clip-armbar',
+      name: 'Armbar.mp4',
+      mime: 'video/mp4',
+      bytes: new Blob([marker]),
+      section: 'technique' as const,
+      index: 0,
+    };
+    const [first] = await uploadTrainingVideos({
+      token: 'token',
+      rootFolderId: 'root-upload',
+      dateKey: '2026-09-28',
+      videos: [video],
+      fetcher: drive.fetcher,
+      onProgress: (done) => progress.push(done),
+    });
+    assert.equal(first?.failed, false);
+    assert.ok(first?.driveFileId);
+    const videosFolder = drive.files.find((file) => file.name === TRAINING_VIDEOS_FOLDER);
+    assert.ok(videosFolder);
+    const stored = drive.files.find((file) => file.id === first?.driveFileId);
+    assert.equal(stored?.parents[0], videosFolder?.id);
+    assert.equal(stored?.mimeType, 'video/mp4');
+    assert.equal(stored?.content, marker);
+    assert.equal(stored?.appProperties?.advantage, 'training-video');
+    assert.equal(stored?.appProperties?.localClipId, 'clip-armbar');
+    assert.equal(stored?.appProperties?.date, '2026-09-28');
+    assert.equal(
+      stored?.name,
+      trainingVideoFileName('2026-09-28', 'clip-armbar', 'video/mp4', 'Armbar.mp4'),
+    );
+    assert.deepEqual(progress, [0, 1]);
+    const init = drive.calls.find((call) => call.url.includes('uploadType=resumable'));
+    assert.ok(init);
+    assert.match(init.url, /^https:\/\/www\.googleapis\.com\/upload\/drive\//);
+    assert.equal(init.uploadLength, String(video.bytes.size));
+    assert.equal(
+      drive.calls.some((call) => /advantage|matboard/i.test(new URL(call.url).host)),
+      false,
+    );
+
+    const lesson = await upsertLessonFile({
+      token: 'token',
+      folderId: 'root-upload',
+      document: buildLessonDocument({
+        date: '2026-09-28',
+        coachName: 'Alex Rivera',
+        savedAt: 5,
+        kind: 'draft',
+        distributedAt: null,
+        plan: emptyPlan(),
+        media: [
+          {
+            section: 'technique',
+            index: 0,
+            localClipId: 'clip-armbar',
+            driveFileId: first?.driveFileId ?? null,
+            name: 'Armbar.mp4',
+            mime: 'video/mp4',
+          },
+        ],
+      }),
+      fetcher: drive.fetcher,
+    });
+    const lessonFile = drive.files.find((file) => file.id === lesson.fileId);
+    assert.equal(lessonFile?.content?.includes(marker), false);
+    assert.match(lessonFile?.content ?? '', /clip-armbar/);
+
+    const renamed = { ...video, name: 'Armbar updated.mp4', bytes: new Blob([`${marker}-2`]) };
+    const [again] = await uploadTrainingVideos({
+      token: 'token',
+      rootFolderId: 'root-upload',
+      dateKey: '2026-09-28',
+      videos: [renamed],
+      fetcher: drive.fetcher,
+    });
+    assert.equal(again?.driveFileId, first?.driveFileId);
+    assert.equal(
+      drive.files.filter((file) => file.appProperties?.advantage === 'training-video').length,
+      1,
+    );
+    assert.equal(stored?.content, `${marker}-2`);
+    const patch = drive.calls.find((call) => call.method === 'PATCH' && call.url.includes('uploadType=resumable'));
+    assert.ok(patch);
+  });
+
+  test('one video failure still uploads the rest', async () => {
+    const drive = createFakeDrive('partial-video');
+    const results = await uploadTrainingVideos({
+      token: 'token',
+      rootFolderId: 'root-partial-video',
+      dateKey: '2026-09-28',
+      videos: [
+        {
+          localClipId: 'clip-ok',
+          name: 'Sweep.mp4',
+          mime: 'video/mp4',
+          bytes: new Blob(['ok-bytes']),
+          section: 'warmup',
+          index: null,
+        },
+        {
+          localClipId: 'clip-bad',
+          name: 'FAILVIDEO.mp4',
+          mime: 'video/mp4',
+          bytes: new Blob(['bad-bytes']),
+          section: 'technique',
+          index: 0,
+        },
+      ],
+      fetcher: drive.fetcher,
+    });
+    assert.equal(results[0]?.failed, false);
+    assert.ok(results[0]?.driveFileId);
+    assert.equal(results[1]?.failed, true);
+    assert.equal(results[1]?.driveFileId, null);
+    assert.equal(drive.files.find((file) => file.id === results[0]?.driveFileId)?.content, 'ok-bytes');
+    assert.equal(
+      drive.files.some((file) => file.content === 'bad-bytes'),
+      false,
+    );
   });
 });
 

@@ -1,8 +1,9 @@
 /**
  * Coach Daily Lesson Plan text, saved on this device as the coach types.
- * Instructor Collaboration may mirror that text plus Drive file ids into the
- * gym's Google Drive folder (`lessonDrive.ts`). Photo and video bytes are not
- * part of this save.
+ * Instructor Collaboration may mirror that text into the gym's Google Drive
+ * folder, and copy attached technique videos into that day's training-videos
+ * folder (`lessonDrive.ts`). Video bytes go to the customer's Drive only.
+ * This store still keeps the lesson text on the phone.
  */
 
 export const TRAINING_NOTES_STORAGE_KEY = 'matboard.coach.trainingNotes.v1';
