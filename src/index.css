@@ -11634,6 +11634,22 @@ a.plan-pick {
   gap: 0.35rem;
 }
 
+/* Under the match pads. Black labels stay readable on the tatami and on kids wallpaper. */
+.kids-switch-panel--below {
+  margin-top: 0.15rem;
+}
+
+.kids-switch--boards .chip,
+.kids-switch--boards .chip--gold {
+  color: #000;
+  -webkit-text-fill-color: #000;
+}
+
+.kids-switch--boards .chip:not(.chip--gold) {
+  background: #fff;
+  border-color: rgba(0, 0, 0, 0.28);
+}
+
 .kids-switch-row {
   position: relative;
   z-index: 23;
@@ -11750,7 +11766,8 @@ a.plan-pick {
   padding: 0.45rem 1.1rem;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.88);
-  color: #1b2433;
+  color: #000;
+  -webkit-text-fill-color: #000;
   font-size: clamp(1.05rem, 2.2vw, 1.55rem);
   font-weight: 800;
   letter-spacing: -0.03em;

@@ -151,14 +151,6 @@ export function MatchControllerPage() {
         }
       />
 
-      <section className="kids-switch-panel" aria-label={KIDS_SCOREBOARDS_NAME}>
-        <KidsScoreboardSwitcher prefs={kids} />
-        <p className="cast-note">
-          Backgrounds apply to the bracket on this device. Fullscreen the bracket for the gym TV. Carlos
-          stays off until that bracket has a champion.
-        </p>
-      </section>
-
       <section className="kids-switch-panel" aria-label="Scoreboard skin">
         <p className="cue-preview-label">Scoreboard skin</p>
         <ScoreboardSkinSwitcher skin={match.skin} />
@@ -393,6 +385,14 @@ export function MatchControllerPage() {
         onWin={() => outcomeSheet.openWin('white', 'White')}
         onDq={() => outcomeSheet.openDq('white', 'White')}
       />
+
+      <section className="kids-switch-panel kids-switch-panel--below" aria-label={KIDS_SCOREBOARDS_NAME}>
+        <KidsScoreboardSwitcher prefs={kids} />
+        <p className="cast-note">
+          Backgrounds apply to the bracket on this device. Fullscreen the bracket for the gym TV. Carlos
+          stays off until that bracket has a champion.
+        </p>
+      </section>
 
       <OutcomePickSheet
         open={outcomeSheet.sheet?.call ?? null}
