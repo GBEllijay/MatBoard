@@ -118,22 +118,25 @@ export function DriveConnectCard() {
         <span>{CONNECT_WITH_BODY}</span>
       )}
       {import.meta.env.DEV && !owned ? (
-        <div className="drive-connect__dev">
-          <p>{DRIVE_DEV_CLIENT_HINT}</p>
-          <label className="drive-connect__field">
-            App id
-            <input
-              value={devAppId}
-              autoComplete="off"
-              spellCheck={false}
-              onChange={(event) => {
-                const next = event.target.value;
-                setDevAppId(next);
-                saveGoogleClientId(next);
-              }}
-            />
-          </label>
-        </div>
+        <details className="drive-connect__advanced">
+          <summary>Advanced</summary>
+          <div className="drive-connect__dev">
+            <p>{DRIVE_DEV_CLIENT_HINT}</p>
+            <label className="drive-connect__field">
+              App id
+              <input
+                value={devAppId}
+                autoComplete="off"
+                spellCheck={false}
+                onChange={(event) => {
+                  const next = event.target.value;
+                  setDevAppId(next);
+                  saveGoogleClientId(next);
+                }}
+              />
+            </label>
+          </div>
+        </details>
       ) : null}
       {binding ? (
         <div className="drive-connect__actions">

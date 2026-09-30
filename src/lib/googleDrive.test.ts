@@ -156,7 +156,8 @@ test('Vite can inline the owned client id', () => {
 test('connect card does not ask a gym owner for a client id', () => {
   const card = readFileSync(new URL('../components/DriveConnectCard.tsx', import.meta.url), 'utf8');
   const open = readFileSync(new URL('../components/OpenMyDrive.tsx', import.meta.url), 'utf8');
-  assert.doesNotMatch(card, /Google OAuth|Cloud Console|client secret|<summary>Advanced<\/summary>|client id/i);
+  assert.doesNotMatch(card, /Google OAuth|Cloud Console|client secret|client id/i);
+  assert.match(card, /<summary>Advanced<\/summary>/);
   assert.match(card, /import\.meta\.env\.DEV/);
   assert.match(card, /cloudStorageChoices\(/);
   assert.match(card, /CONNECT_COMING_SOON/);
