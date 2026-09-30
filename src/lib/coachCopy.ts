@@ -110,4 +110,33 @@ export function rosterCsvAvailable(proUnlocked: boolean, coachRosterScreen: bool
   return proUnlocked && !coachRosterScreen;
 }
 
-export const NOTES_LEAD = "Today on this phone. Yesterday and the last 14 days stay on this device.";
+/** Eyebrow on the paid Coach Daily Lesson Plan. Not the gym-owner console. */
+export const COACH_LESSON_EYEBROW = 'Advantage Coach';
+
+/**
+ * Date-row line on Daily Lesson Plan.
+ * Recent days stay on the device. Do not name a day count here.
+ */
+export const NOTES_LEAD =
+  "Today's and yesterday's plans, and recent days, stay on this device.";
+
+/** Under Closing on paid Coach. Drive export is the coach's own copy. */
+export const COACH_PLAN_SAVE_LEAD =
+  'This plan saves as you type on this device. Export to your Drive for longevity.';
+
+/** Bottom action on paid Coach. Opens the coach's Drive and writes today's plan text. */
+export const COACH_PLAN_UPLOAD_BUTTON = "Open my Drive and upload today's plan";
+
+export const COACH_PLAN_UPLOAD_DONE =
+  "Today's plan is in your Drive. Videos stay on this device.";
+
+export const COACH_PLAN_UPLOAD_FAILED =
+  "Saved on this device. Your Drive could not take today's plan.";
+
+/**
+ * Shared-gallery download belongs on Pro / Instructor Collaboration.
+ * Paid Coach keeps technique clips on this device.
+ */
+export function coachLessonGalleryDownload(proSuite: boolean): boolean {
+  return proSuite;
+}

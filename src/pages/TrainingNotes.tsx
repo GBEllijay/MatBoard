@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { CoachPlanExport } from '../components/CoachPlanExport';
 import { CollaborationGate, SeatSessionBar, useCurrentSeat } from '../components/SeatSessionBar';
 import { LessonMediaRail } from '../components/LessonMediaRail';
 import { OpenMyDrive } from '../components/OpenMyDrive';
@@ -7,7 +8,12 @@ import { PlayExitMark } from '../components/PlayExitMark';
 import { useCoachPageSwipe } from '../hooks/useCoachSwipe';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useToolboxParent } from '../hooks/useToolboxParent';
-import { NOTES_LEAD, TRAINING_NOTES_LABEL } from '../lib/coachCopy';
+import {
+  COACH_LESSON_EYEBROW,
+  NOTES_LEAD,
+  TRAINING_NOTES_LABEL,
+  coachLessonGalleryDownload,
+} from '../lib/coachCopy';
 import {
   DOWNLOAD_TODAY_LABEL,
   downloadGalleryVideos,
@@ -221,6 +227,10 @@ export function TrainingNotesPage() {
   }, [todayKey]);
 
   useEffect(() => {
+    if (!proSuite) {
+      setGalleryToday({ status: 'ready', videos: [] });
+      return;
+    }
     let cancelled = false;
     const load = () => {
       void listPhotos('gallery')
@@ -241,7 +251,7 @@ export function TrainingNotesPage() {
       cancelled = true;
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [todayKey]);
+  }, [todayKey, proSuite]);
 
   useEffect(() => {
     if (!proSuite) {
@@ -493,12 +503,12 @@ export function TrainingNotesPage() {
       />
       <header className="notes__bar">
         <div className="notes__brand">
-          <p className="notes__eyebrow">{parent.eyebrow}</p>
+          <p className="notes__eyebrow">{proSuite ? parent.eyebrow : COACH_LESSON_EYEBROW}</p>
           <h1>{TRAINING_NOTES_LABEL}</h1>
         </div>
       </header>
       <SeatSessionBar />
-      <p className="notes__lead">{NOTES_LEAD}</p>
+      {proSuite ? <p className="notes__lead">{NOTES_LEAD}</p> : null}
       {lessonBlocked ? (
         <p className="notes__lead">This seat does not include the daily lesson plan.</p>
       ) : null}
@@ -510,6 +520,7 @@ export function TrainingNotesPage() {
 
       {lessonBlocked ? null : (
       <div className="notes__plan">
+        {proSuite ? null : <OpenMyDrive />}
         <section className="notes__archive" aria-label="Saved days">
           <div className="notes__days">
             <button
@@ -519,6 +530,7 @@ export function TrainingNotesPage() {
               onClick={() => openDay(todayKey)}
             >
               Today
+              {proSuite ? null : <span className="notes__day-date">{planDayStamp(todayKey)}</span>}
             </button>
             <button
               type="button"
@@ -548,6 +560,23 @@ export function TrainingNotesPage() {
             {planDayTitle(viewKey, todayKey)} · {planDayStamp(viewKey)}
             {editingToday ? '' : ' · View only'}
           </p>
+          {proSuite ? null : <p className="notes__when">{NOTES_LEAD}</p>}
+          {proSuite ? null : (
+            <section className="notes__card">
+              <label className="notes__field" htmlFor="notes-coach">
+                Coach name
+                <input
+                  id="notes-coach"
+                  value={plan.coachName}
+                  maxLength={COACH_NAME_MAX}
+                  autoComplete="off"
+                  readOnly={!editingToday}
+                  onChange={(event) => commit({ ...plan, coachName: event.target.value })}
+                />
+              </label>
+            </section>
+          )}
+          {coachLessonGalleryDownload(proSuite) ? (
           <CollaborationGate show={showDownload}>
           <div className="notes__downloads">
             <button
@@ -590,6 +619,7 @@ export function TrainingNotesPage() {
             ) : null}
           </div>
           </CollaborationGate>
+          ) : null}
           {classesOpen ? (
             openFolder ? (
               <div className="notes__folders" aria-label={`${openFolder.label} dates`}>
@@ -749,17 +779,19 @@ export function TrainingNotesPage() {
         ) : null}
 
         <section className="notes__card">
-          <label className="notes__field" htmlFor="notes-coach">
-            Coach name
-            <input
-              id="notes-coach"
-              value={plan.coachName}
-              maxLength={COACH_NAME_MAX}
-              autoComplete="off"
-              readOnly={!editingToday}
-              onChange={(event) => commit({ ...plan, coachName: event.target.value })}
-            />
-          </label>
+          {proSuite ? (
+            <label className="notes__field" htmlFor="notes-coach">
+              Coach name
+              <input
+                id="notes-coach"
+                value={plan.coachName}
+                maxLength={COACH_NAME_MAX}
+                autoComplete="off"
+                readOnly={!editingToday}
+                onChange={(event) => commit({ ...plan, coachName: event.target.value })}
+              />
+            </label>
+          ) : null}
           <label className="notes__field" htmlFor="notes-class">
             Class designation
             <input
@@ -881,6 +913,7 @@ export function TrainingNotesPage() {
           </label>
         </section>
 
+        {!proSuite && editingToday ? <CoachPlanExport dateKey={todayKey} plan={plan} /> : null}
         {showDistribute && editingToday ? (
           <aside className="notes__distribute" aria-label="Instructor distribution">
             <p>{DISTRIBUTE_LEAD}</p>

@@ -8710,6 +8710,15 @@ input.roster-pick__name:focus,
   font-weight: 800;
 }
 
+.notes__day-date {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.15;
+}
+
 .notes__day--on,
 .notes__recent-btn--on {
   background: var(--logo-yellow);
