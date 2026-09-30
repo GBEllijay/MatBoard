@@ -3312,7 +3312,7 @@ label {
 }
 
 .training--themed .training__clock {
-  color: var(--logo-yellow);
+  color: #fff;
   text-shadow: 0 4px 24px rgba(0, 0, 0, 0.7);
 }
 
