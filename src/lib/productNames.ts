@@ -94,6 +94,13 @@ export const TOURNAMENT_SUITE_NAME = 'In-House Tournament Management Suite';
  */
 export const TOURNAMENT_MANAGEMENT_PRO_LABEL = 'Tournament Management Pro';
 
+/**
+ * Lead under that heading. Bout competitors stay on Competitor Management,
+ * so this line does not name the roster.
+ */
+export const TOURNAMENT_MANAGEMENT_PRO_LEAD =
+  'Brackets, Scoreboard, and Round Timer. Rankings stay in Competitor Management.';
+
 /** Coming Soon ad feature title. Not the Pro hub button or the Suite page heading. */
 export const COMPETITION_MANAGEMENT_PRO_LABEL = 'Competition Management Pro';
 
@@ -146,13 +153,13 @@ export function withSuiteFrom(path: string, fromSuite: boolean): string {
 }
 
 /**
- * Competition Management Pro folder, top to bottom.
- * Roster, Brackets, and Scoreboard keep the yellow/green tournament belt.
+ * Tournament Management Pro folder, top to bottom.
+ * Brackets and Scoreboard keep the yellow/green tournament belt.
  * Round Timer has no left bar. Brackets opens the same mock-tournament board.
  * Scoreboard opens the existing match controller. Round Timer opens the existing rounds controller.
+ * Competitor Roster stays on Competitor Management, not on this menu.
  */
 export const COMPETITION_PRO_MENU = [
-  { title: COMPETITOR_ROSTER_LABEL, to: withSuiteFrom('/roster', true), belt: 'tournament' as const, clearBout: false },
   { title: 'Brackets', to: withSuiteFrom('/tournament', true), belt: 'tournament' as const, clearBout: false },
   {
     title: 'Scoreboard',

@@ -3,7 +3,11 @@ import { BeltRail } from '../components/BeltRail';
 import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
 import { unlinkBracketBout } from '../lib/bracketBout';
-import { COMPETITION_PRO_MENU, TOURNAMENT_MANAGEMENT_PRO_LABEL } from '../lib/productNames';
+import {
+  COMPETITION_PRO_MENU,
+  TOURNAMENT_MANAGEMENT_PRO_LABEL,
+  TOURNAMENT_MANAGEMENT_PRO_LEAD,
+} from '../lib/productNames';
 
 export function TournamentSuitePage() {
   return (
@@ -12,10 +16,7 @@ export function TournamentSuitePage() {
         <HomeMark to="/pro" tagline="Live event ops on this device." />
         <section className="suite">
           <h2>{TOURNAMENT_MANAGEMENT_PRO_LABEL}</h2>
-          <p>
-            Competitor Roster, Brackets, Scoreboard, and Round Timer. Rankings stay in Competitor
-            Management.
-          </p>
+          <p>{TOURNAMENT_MANAGEMENT_PRO_LEAD}</p>
           <nav className="suite__nav" aria-label={TOURNAMENT_MANAGEMENT_PRO_LABEL}>
             {COMPETITION_PRO_MENU.map((link) => (
               <Link

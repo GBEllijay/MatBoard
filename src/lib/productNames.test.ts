@@ -30,6 +30,7 @@ import {
   COMPETITION_MANAGEMENT_LABEL,
   COMPETITION_MANAGEMENT_PRO_LABEL,
   TOURNAMENT_MANAGEMENT_PRO_LABEL,
+  TOURNAMENT_MANAGEMENT_PRO_LEAD,
   COMPETITION_MENU,
   COMPETITION_MENU_PRO,
   COMPETITION_PRO_MENU,
@@ -151,27 +152,32 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   assert.equal(TOURNAMENT_MANAGEMENT_PRO_LABEL, 'Tournament Management Pro');
   assert.equal(PRO_HUBS[3].title, 'Tournament Management Pro');
   assert.equal(COMPETITION_MANAGEMENT_PRO_LABEL, 'Competition Management Pro');
+  assert.equal(
+    TOURNAMENT_MANAGEMENT_PRO_LEAD,
+    'Brackets, Scoreboard, and Round Timer. Rankings stay in Competitor Management.',
+  );
+  assert.doesNotMatch(TOURNAMENT_MANAGEMENT_PRO_LEAD, /roster/i);
   assert.deepEqual(
     COMPETITION_PRO_MENU.map((item) => item.title),
-    ['Competitor Roster', 'Brackets', 'Scoreboard', 'Round Timer'],
+    ['Brackets', 'Scoreboard', 'Round Timer'],
   );
+  assert.ok(!COMPETITION_PRO_MENU.some((item) => /roster/i.test(item.title)));
   assert.deepEqual(
     COMPETITION_PRO_MENU.map((item) => item.to),
     [
-      withSuiteFrom('/roster', true),
       withSuiteFrom('/tournament', true),
       withSuiteFrom(MATCH_CONTROLLER_PATH, true),
       withSuiteFrom(ROUND_CONTROLLER_PATH, true),
     ],
   );
-  assert.equal(COMPETITION_PRO_MENU[1].to, withSuiteFrom('/tournament', true));
+  assert.equal(COMPETITION_PRO_MENU[0].to, withSuiteFrom('/tournament', true));
   assert.deepEqual(
     COMPETITION_PRO_MENU.map((item) => item.belt),
-    ['tournament', 'tournament', 'tournament', null],
+    ['tournament', 'tournament', null],
   );
   assert.deepEqual(
     COMPETITION_PRO_MENU.map((item) => item.clearBout),
-    [false, false, true, false],
+    [false, true, false],
   );
 });
 
