@@ -17,78 +17,67 @@ const WIDE_LABELS: Record<ScoreKind, string> = {
 
 const FLAP_PLACES: Record<ScoreKind, number> = OLD_SCHOOL_FLAP_PLACES;
 
-/**
- * Front half of one binder ring: a true semicircle whose ends disappear
- * into the top rail. The back of the ring is not drawn.
- */
+/** Front semicircle. Ends sit under the rail; the bottom enters the card hole. */
 function frontArc(cx: number, cy: number, r: number): string {
-  return `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`;
+  return `M ${cx - r} ${cy} A ${r} ${r} 0 0 0 ${cx + r} ${cy}`;
 }
 
-/**
- * A short darker stub above the rail, offset back from the front arc.
- * It does not meet the front wire, so the ring does not close into an oval.
- */
+/** Short crown behind the rail. It does not meet the front arc, so the ring stays open. */
 function backStub(cx: number, railY: number): string {
-  return `M ${cx - 2.1} ${railY} C ${cx - 1.2} ${railY - 2.4}, ${cx + 1.2} ${railY - 2.4}, ${cx + 2.1} ${railY}`;
+  return `M ${cx - 3.4} ${railY} C ${cx - 1.6} ${railY - 3.6}, ${cx + 1.6} ${railY - 3.6}, ${cx + 3.4} ${railY}`;
 }
 
-/** Glint along the near side of the front arc. */
+/** Glint on the near wire, stopping before the hole so the punch stays dark. */
 function arcGlint(cx: number, cy: number, r: number): string {
-  return `M ${cx - r * 0.72} ${cy + r * 0.28} A ${r} ${r} 0 0 1 ${cx - r * 0.12} ${cy + r * 0.9}`;
+  return `M ${cx - r * 0.62} ${cy + r * 0.22} A ${r} ${r} 0 0 1 ${cx - r * 0.08} ${cy + r * 0.78}`;
 }
 
 /**
  * Two binder rings for one flip card.
- * From the front you see a half-ring: the near arc, through the card hole.
- * The rest of the wire goes over the rail and behind the stand, so it is not a closed oval.
+ * Each visible wire is only the front half-arc: it leaves the rail, bows forward,
+ * and sinks into the punched hole. The rest of the ring is behind the stand.
  */
 function FlipRings() {
   const uid = useId().replace(/:/g, '');
   const metal = `${uid}-metal`;
-  const shade = `${uid}-shade`;
-  const rings = [30, 70] as const;
-  const r = 6.4;
-  const cy = 9.2;
+  const rings = [34, 86] as const;
+  const r = 13.5;
+  const cy = 18;
+  const holeY = cy + r + 0.4;
 
   return (
-    <svg className="flap__rings" viewBox="0 0 100 22" aria-hidden="true">
+    <svg className="flap__rings" viewBox="0 6 120 40" aria-hidden="true" shapeRendering="geometricPrecision">
       <defs>
-        <linearGradient id={metal} x1="0" y1="1" x2="1" y2="0">
-          <stop offset="0%" stopColor="#2c333a" />
-          <stop offset="28%" stopColor="#9aa6b0" />
-          <stop offset="52%" stopColor="#ffffff" />
-          <stop offset="74%" stopColor="#7d8790" />
-          <stop offset="100%" stopColor="#d5dee6" />
-        </linearGradient>
-        <linearGradient id={shade} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#aeb8c0" />
-          <stop offset="100%" stopColor="#4a545e" />
+        <linearGradient id={metal} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#f8fbfe" />
+          <stop offset="38%" stopColor="#c5d0d8" />
+          <stop offset="62%" stopColor="#f4f7fa" />
+          <stop offset="100%" stopColor="#6a747e" />
         </linearGradient>
       </defs>
-      <g fill="none" stroke={`url(#${shade})`} strokeWidth="1.7" strokeLinecap="round">
+      <g fill="none" stroke="#8b969f" strokeWidth="2.4" strokeLinecap="round">
         {rings.map((cx) => (
-          <path key={`back-${cx}`} d={backStub(cx, 6.2)} />
+          <path key={`back-${cx}`} d={backStub(cx, 14.2)} />
         ))}
       </g>
-      <rect x="-12" y="6.15" width="124" height="3.7" rx="0.7" fill="#1a1a1a" />
-      <rect x="-12" y="6.15" width="124" height="0.85" fill="rgba(255,255,255,0.42)" />
       {rings.map((cx) => (
-        <g key={`hole-${cx}`}>
-          <circle cx={cx} cy="15.7" r="2.55" fill="#050505" />
-          <circle cx={cx} cy="15.35" r="1.35" fill="#000" />
-        </g>
+        <circle key={`hole-${cx}`} cx={cx} cy={holeY} r="5.6" fill="#050505" />
       ))}
-      <g fill="none" stroke={`url(#${metal})`} strokeWidth="2.7" strokeLinecap="round">
+      <g fill="none" stroke={`url(#${metal})`} strokeWidth="4.2" strokeLinecap="round">
         {rings.map((cx) => (
           <path key={`front-${cx}`} d={frontArc(cx, cy, r)} />
         ))}
       </g>
-      <g fill="none" stroke="#fff" strokeWidth="0.85" strokeLinecap="round" opacity="0.88">
+      <g fill="none" stroke="#ffffff" strokeWidth="1.35" strokeLinecap="round">
         {rings.map((cx) => (
           <path key={`glint-${cx}`} d={arcGlint(cx, cy, r)} />
         ))}
       </g>
+      {rings.map((cx) => (
+        <circle key={`sink-${cx}`} cx={cx} cy={holeY + 0.6} r="2.7" fill="#000" />
+      ))}
+      <rect x="-8" y="13.4" width="136" height="6.4" rx="0.8" fill="#141414" />
+      <rect x="-8" y="13.4" width="136" height="1.15" fill="rgba(255,255,255,0.5)" />
     </svg>
   );
 }

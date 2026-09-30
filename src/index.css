@@ -12242,10 +12242,9 @@ a.plan-pick {
   gap: 0.42rem;
   min-height: 0;
   width: 100%;
-  /* Room for the front half-ring under the label. The back of the wire is hidden. */
-  padding-top: clamp(0.72rem, 12%, 1.15rem);
+  /* Room for the half-arc between the label and the card. */
+  padding-top: clamp(1.05rem, 14%, 1.65rem);
   overflow: visible;
-  perspective: 800px;
   font-family: 'Noto Sans Display', 'Liberation Sans', Arial, sans-serif;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -12294,19 +12293,27 @@ a.plan-pick {
     linear-gradient(180deg, #ff5c48 0%, var(--os-red) 44%, var(--os-red-deep) 50%, #e44534 100%);
 }
 
-/* Rings stay put while the card flips around the top edge.
-   Short half-arcs: wide enough for two rings, not a tall closed loop. */
+/* Rings stay in a flat layer so the strokes stay vector-sharp.
+   The card flip carries its own perspective; a perspective on this row
+   was rasterizing the arcs. */
 .scoreboard-skin--old-school .flap__rings {
   position: absolute;
   z-index: 4;
   left: 50%;
   top: 0;
-  width: min(86%, 8.25rem);
+  width: min(82%, 13rem);
   height: auto;
-  aspect-ratio: 100 / 22;
-  transform: translate(-50%, -58%);
+  aspect-ratio: 120 / 40;
+  margin-left: calc(min(82%, 13rem) * -0.5);
+  margin-top: calc(min(82%, 13rem) * 40 / 120 * -0.5);
+  transform: none;
   overflow: visible;
   pointer-events: none;
+  shape-rendering: geometricPrecision;
+}
+
+.scoreboard-skin--old-school .flap__rings path {
+  shape-rendering: geometricPrecision;
 }
 
 .scoreboard-skin--old-school .flap__seam {
