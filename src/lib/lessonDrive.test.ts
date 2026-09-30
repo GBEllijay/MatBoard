@@ -7,14 +7,22 @@ import {
   LESSON_DRIVE_QUEUE_KEY,
   OWNER_DRIVE_BODY,
   assignDriveFileId,
+  commitDayPackage,
+  drivePackageNotice,
+  driveVideoProgressLabel,
   flushLessonDriveDraft,
   lessonPlanForDrive,
   lessonRevisionLabel,
   markLessonDistribution,
   markRevisionSaved,
   mediaRefsFromVideoPlan,
+  mediaWithPlanDriveIds,
+  pendingTrainingVideos,
   recordLessonRevision,
   scheduleLessonDriveDraft,
+  stampDriveIds,
+  syncTodayTrainingVideos,
+  trainingClipStayCopy,
 } from './lessonDrive.ts';
 import { emptyVideoPlan, setSlotClip } from './techniqueLogic.ts';
 import { emptyPlan, type TrainingNotesPlan } from './trainingNotesStore.ts';
@@ -110,7 +118,9 @@ test('Drive history keeps one draft per coach per day and drops file bytes', () 
   assert.equal(saved.find((row) => row.kind === 'distribution')?.driveFileId, 'drive-plan-1');
   assert.equal(JSON.stringify(queue).includes('blob'), false);
   assert.match(lessonRevisionLabel(queue[0]), /Alex · 2026-09-27 · Draft/);
-  assert.match(OWNER_DRIVE_BODY, /Photos and videos stay in your Drive/);
+  assert.match(OWNER_DRIVE_BODY, /training-videos folder/);
+  assert.match(OWNER_DRIVE_BODY, /offline play/);
+  assert.match(OWNER_DRIVE_BODY, /does not host the photos or videos/);
   assert.doesNotMatch(OWNER_DRIVE_BODY, /Advantage servers host|uploaded to Advantage/i);
   assert.match(DISTRIBUTE_LEAD, /optional/i);
   assert.equal(DISTRIBUTE_BUTTON, 'Upload for instructor distribution');
@@ -251,4 +261,132 @@ test('two classes on one day stay separate drafts and keep designation and time'
   assert.equal(flushed?.plan.classDesignation, 'GB2');
   assert.equal(flushed?.plan.classTime, '6:00 PM');
   assert.equal(flushed?.plan.intro, 'Mount');
+});
+
+test('Daily Training copy stays on the phone until Drive is connected', () => {
+  assert.equal(
+    trainingClipStayCopy({ proSuite: false, driveConnected: false }),
+    'Clips stay on this device. Nothing is uploaded.',
+  );
+  assert.match(trainingClipStayCopy({ proSuite: true, driveConnected: false }), /until Google Drive is connected/);
+  assert.match(trainingClipStayCopy({ proSuite: true, driveConnected: true }), /offline play/);
+  assert.match(trainingClipStayCopy({ proSuite: true, driveConnected: true }), /gym Google Drive folder/);
+  assert.equal(driveVideoProgressLabel(0, 3), 'Uploading 1 of 3 videos to Google Drive…');
+  assert.equal(driveVideoProgressLabel(2, 3), 'Uploading 2 of 3 videos to Google Drive…');
+  assert.match(
+    drivePackageNotice({ lessonSaved: true, revisions: 1, uploaded: 0, failed: 1, unreachable: false }),
+    /Lesson text saved to Google Drive\. 1 video stays on this phone/,
+  );
+  assert.match(
+    drivePackageNotice({ lessonSaved: true, revisions: 2, uploaded: 1, failed: 0, unreachable: false }),
+    /1 video is in the gym folder/,
+  );
+  assert.match(
+    drivePackageNotice({ lessonSaved: false, revisions: 1, uploaded: 0, failed: 1, unreachable: true }),
+    /Until then, videos stay on this device/,
+  );
+});
+
+test('a known Drive id is not uploaded again, and an empty blob is skipped', () => {
+  const plan = setSlotClip(emptyVideoPlan(), 'tech-1', 'clip-1', {
+    driveFileId: 'drive-abc',
+    mediaName: 'Armbar.mp4',
+    mediaMime: 'video/mp4',
+  });
+  const media = mediaRefsFromVideoPlan(plan).map((item) => ({ ...item, driveFileId: null }));
+  const known = mediaWithPlanDriveIds(media, plan);
+  assert.equal(known[0]?.driveFileId, 'drive-abc');
+  const bytes = new Blob(['already-there']);
+  assert.deepEqual(
+    pendingTrainingVideos(known, [{ id: 'clip-1', blob: bytes, mime: 'video/mp4', label: 'Armbar' }]),
+    [],
+  );
+  const fresh = mediaWithPlanDriveIds(mediaRefsFromVideoPlan(setSlotClip(emptyVideoPlan(), 'tech-1', 'clip-2', {
+    driveFileId: null,
+    mediaName: 'Empty.mp4',
+    mediaMime: 'video/mp4',
+  })), null);
+  assert.deepEqual(
+    pendingTrainingVideos(fresh, [{ id: 'clip-2', blob: new Blob([]), mime: 'video/mp4', label: 'Empty' }]),
+    [],
+  );
+  syncTodayTrainingVideos(plan, false);
+});
+
+test('day package uploads video bytes to Drive and still saves lesson text when a video fails', async () => {
+  const plan = samplePlan();
+  const videoPlan = setSlotClip(emptyVideoPlan(), 'tech-1', 'clip-1', {
+    driveFileId: null,
+    mediaName: 'Armbar.mp4',
+    mediaMime: 'video/mp4',
+  });
+  const media = mediaRefsFromVideoPlan(videoPlan);
+  const marker = 'VIDEO-BYTES-MARKER';
+  const bytes = new Blob([marker]);
+  const clips = [{ id: 'clip-1', blob: bytes, mime: 'video/mp4', label: 'Armbar' }];
+  const docs: { intro: string; driveFileId: string | null }[] = [];
+
+  const saved = await commitDayPackage({
+    dateKey: '2026-09-28',
+    kind: 'draft',
+    coachName: 'Alex',
+    savedAt: 10,
+    plan,
+    media,
+    videoPlan,
+    clips,
+    onProgress: () => undefined,
+    uploadVideos: async (videos) => {
+      assert.equal(videos.length, 1);
+      assert.equal(videos[0]?.bytes, bytes);
+      return [{ localClipId: 'clip-1', driveFileId: 'drive-video-1', failed: false }];
+    },
+    publishLesson: async (document) => {
+      docs.push({
+        intro: document.plan.intro,
+        driveFileId: document.media[0]?.driveFileId ?? null,
+      });
+      assert.equal(JSON.stringify(document).includes(marker), false);
+      return { fileId: 'lesson-1', revisions: docs.length };
+    },
+  });
+
+  assert.deepEqual(docs, [
+    { intro: 'Grip fight', driveFileId: null },
+    { intro: 'Grip fight', driveFileId: 'drive-video-1' },
+  ]);
+  assert.equal(saved.lessonSaved, true);
+  assert.equal(saved.videoPlan?.slots.find((slot) => slot.slotId === 'tech-1')?.driveFileId, 'drive-video-1');
+  assert.equal(saved.videoPlan?.slots.find((slot) => slot.slotId === 'tech-1')?.clipId, 'clip-1');
+  assert.equal(bytes, clips[0]?.blob);
+  assert.equal(saved.notice.phase, 'saved-drive');
+
+  const failedDocs: string[] = [];
+  const failed = await commitDayPackage({
+    dateKey: '2026-09-28',
+    kind: 'draft',
+    coachName: 'Alex',
+    savedAt: 11,
+    plan,
+    media,
+    videoPlan,
+    clips,
+    uploadVideos: async () => [{ localClipId: 'clip-1', driveFileId: null, failed: true }],
+    publishLesson: async (document) => {
+      failedDocs.push(document.plan.intro);
+      return { fileId: 'lesson-1', revisions: 1 };
+    },
+  });
+  assert.deepEqual(failedDocs, ['Grip fight']);
+  assert.equal(failed.failed, 1);
+  assert.equal(failed.lessonSaved, true);
+  assert.equal(failed.videoPlan?.slots.find((slot) => slot.slotId === 'tech-1')?.driveFileId, null);
+  assert.equal(failed.videoPlan?.slots.find((slot) => slot.slotId === 'tech-1')?.clipId, 'clip-1');
+  assert.match(failed.notice.text, /Lesson text saved to Google Drive/);
+  assert.equal(failed.notice.phase, 'error');
+
+  const stamped = stampDriveIds(videoPlan, [{ localClipId: 'clip-1', driveFileId: 'drive-video-1' }]);
+  assert.equal(stamped.slots.find((slot) => slot.slotId === 'tech-1')?.clipId, 'clip-1');
+  const pending = pendingTrainingVideos(mediaWithPlanDriveIds(media, stamped), clips);
+  assert.deepEqual(pending, []);
 });

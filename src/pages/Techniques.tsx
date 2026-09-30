@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DeviceMediaInput } from '../components/DeviceMediaInput';
 import { OpenMyDrive } from '../components/OpenMyDrive';
@@ -7,12 +7,20 @@ import { PlayExitMark } from '../components/PlayExitMark';
 import { TvTip } from '../components/TvTip';
 import { VideoSourceSheet } from '../components/VideoSourceSheet';
 import { useInterval } from '../hooks/useClock';
+import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useCoachPageSwipe } from '../hooks/useCoachSwipe';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useToolboxParent } from '../hooks/useToolboxParent';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { formatMmSs, formatMss, secondsToMs } from '../lib/format';
+import { getDriveBindingSnapshot, subscribeDriveBinding } from '../lib/googleDrive';
+import {
+  getDriveNotice,
+  subscribeDriveNotice,
+  syncTodayTrainingVideos,
+  trainingClipStayCopy,
+} from '../lib/lessonDrive';
 import {
   lessonFocusStatus,
   parseLessonVideoFocus,
@@ -49,7 +57,13 @@ import {
   type TechniqueClip,
 } from '../lib/techniqueStore';
 
+const idleDriveNotice = { phase: 'idle' as const, text: '' };
+
 export function TechniquesPage() {
+  const proSuite = useProUnlocked();
+  const driveBinding = useSyncExternalStore(subscribeDriveBinding, getDriveBindingSnapshot, () => null);
+  const driveNotice = useSyncExternalStore(subscribeDriveNotice, getDriveNotice, () => idleDriveNotice);
+  const stayCopy = trainingClipStayCopy({ proSuite, driveConnected: Boolean(driveBinding) });
   const [clips, setClips] = useState<TechniqueClip[]>([]);
   const [plan, setPlan] = useState<VideoPlan | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -328,6 +342,9 @@ export function TechniquesPage() {
         return;
       }
       setPickerNote(file.size >= LARGE_MEDIA_BYTES ? LARGE_MEDIA_NOTE : '');
+      if (result.status === 'added' || result.status === 'replaced') {
+        syncTodayTrainingVideos(result.plan, proSuite);
+      }
       const slot = result.plan.slots.find((item) => item.slotId === slotId);
       if (slot && isTimedSlot(slot)) setRemainingMs(secondsToMs(slot.drillSec));
     } catch (error) {
@@ -344,6 +361,7 @@ export function TechniquesPage() {
       setClips(result.clips);
       if (planRef.current?.selectedSlotId === slotId) setPlaying(false);
       setPickerNote('');
+      if (result.status === 'removed') syncTodayTrainingVideos(result.plan, proSuite);
     } catch {
       setPickerNote('Could not remove that clip on this device.');
     }
@@ -406,6 +424,17 @@ export function TechniquesPage() {
         </div>
         <OpenMyDrive />
       </header>
+
+      {playing ? null : (
+        <>
+          <p className="techniques__note">{stayCopy}</p>
+          {proSuite && driveNotice.text ? (
+            <p className="techniques__note" role="status">
+              {driveNotice.text}
+            </p>
+          ) : null}
+        </>
+      )}
 
       {lessonFocus ? (
         <p className="techniques__focus" role="status">
@@ -509,6 +538,7 @@ export function TechniquesPage() {
         title={replacing ? 'Replace video' : 'Add video'}
         recordInputId="techniques-video-record"
         libraryInputId="techniques-video-library"
+        stay={stayCopy}
         onClose={() => setAddOpen(false)}
       />
       <DeviceMediaInput
