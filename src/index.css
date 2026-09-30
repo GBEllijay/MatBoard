@@ -12132,8 +12132,8 @@ a.plan-pick {
    Blue competitor: white digits on blue cards.
    White competitor: white digits on red cards.
    Large cards are points (two digits). Advantages and penalties are one card each.
-   Matte black frame. Two metal rings per card loop over the top spine
-   and down through holes in the card, the way a tabletop flipper rolls. */
+   Matte black frame. Two half-rings per card: the front arc through the hole,
+   the rest of the wire over the rail and behind the stand. */
 .scoreboard-skin--old-school.display {
   --os-blue: #1d6fe0;
   --os-blue-deep: #155ec4;
@@ -12242,8 +12242,8 @@ a.plan-pick {
   gap: 0.42rem;
   min-height: 0;
   width: 100%;
-  /* Room for the ring crown to arch over the card, under the label. */
-  padding-top: clamp(1.15rem, 20%, 2.15rem);
+  /* Room for the front half-ring under the label. The back of the wire is hidden. */
+  padding-top: clamp(0.72rem, 12%, 1.15rem);
   overflow: visible;
   perspective: 800px;
   font-family: 'Noto Sans Display', 'Liberation Sans', Arial, sans-serif;
@@ -12295,16 +12295,16 @@ a.plan-pick {
 }
 
 /* Rings stay put while the card flips around the top edge.
-   Cap the width so a wide points card does not grow a giant arch. */
+   Short half-arcs: wide enough for two rings, not a tall closed loop. */
 .scoreboard-skin--old-school .flap__rings {
   position: absolute;
   z-index: 4;
   left: 50%;
   top: 0;
-  width: min(92%, 9.75rem);
+  width: min(86%, 8.25rem);
   height: auto;
-  aspect-ratio: 100 / 34;
-  transform: translate(-50%, -56%);
+  aspect-ratio: 100 / 22;
+  transform: translate(-50%, -58%);
   overflow: visible;
   pointer-events: none;
 }
