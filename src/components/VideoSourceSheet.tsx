@@ -1,13 +1,18 @@
 import { VIDEO_LIBRARY_LABEL, VIDEO_RECORD_LABEL, PHOTO_CAPTURE_LABEL } from '../lib/mediaPicker';
-import type { MediaSourceKind } from '../lib/mediaPicker';
+import type { MediaSheetKind } from '../lib/mediaPicker';
 import { OpenMyDrive } from './OpenMyDrive';
 import { Sheet } from './Sheet';
 
 type Props = {
   open: boolean;
   title: string;
-  kind: MediaSourceKind;
+  kind: MediaSheetKind;
   captureInputId: string;
+  /**
+   * Record input. Used when `kind` is `photo-or-video` so Take photo and
+   * Record stay on separate capture inputs.
+   */
+  recordInputId?: string;
   libraryInputId: string;
   stacked?: boolean;
   /** Overrides the default “stays on this device” line. Gallery keeps the default. */
@@ -16,7 +21,7 @@ type Props = {
 };
 
 const COPY: Record<
-  MediaSourceKind,
+  MediaSheetKind,
   { capture: string; captureHint: string; libraryHint: string; stay: string }
 > = {
   video: {
@@ -31,6 +36,12 @@ const COPY: Record<
     libraryHint: 'Choose an existing photo on this phone',
     stay: 'Photos stay on this device. Nothing is uploaded.',
   },
+  'photo-or-video': {
+    capture: PHOTO_CAPTURE_LABEL,
+    captureHint: 'Open the camera in photo mode',
+    libraryHint: 'Choose an existing photo or video on this phone',
+    stay: "Photos and clips stay on this phone. When the gym Google Drive folder is connected, a copy goes in today's class-photos folder.",
+  },
 };
 
 /**
@@ -44,20 +55,28 @@ export function MediaSourceSheet({
   title,
   kind,
   captureInputId,
+  recordInputId,
   libraryInputId,
   stacked = false,
   stay,
   onClose,
 }: Props) {
   const copy = COPY[kind];
+  const photoAndVideo = kind === 'photo-or-video';
   return (
     <Sheet open={open} title={title} onClose={onClose} stacked={stacked}>
       <p className="saver-sound-hint">{stay ?? copy.stay}</p>
       <div className="outcome-picks" role="list">
         <label htmlFor={captureInputId} className="btn outcome-pick outcome-pick--submission">
-          <strong>{copy.capture}</strong>
-          <span>{copy.captureHint}</span>
+          <strong>{photoAndVideo ? PHOTO_CAPTURE_LABEL : copy.capture}</strong>
+          <span>{photoAndVideo ? COPY.photo.captureHint : copy.captureHint}</span>
         </label>
+        {photoAndVideo && recordInputId ? (
+          <label htmlFor={recordInputId} className="btn outcome-pick outcome-pick--submission">
+            <strong>{VIDEO_RECORD_LABEL}</strong>
+            <span>{COPY.video.captureHint}</span>
+          </label>
+        ) : null}
         <label htmlFor={libraryInputId} className="btn outcome-pick outcome-pick--library">
           <strong>{VIDEO_LIBRARY_LABEL}</strong>
           <span>{copy.libraryHint}</span>

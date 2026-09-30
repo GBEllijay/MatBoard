@@ -7,6 +7,8 @@
  * `lesson-plans`, `training-videos`, `technique-trees`, `class-photos`,
  * `roster`, and `tournament-results`. Lesson JSON goes in `lesson-plans`.
  * Attached technique clips go in `training-videos` as real video files.
+ * Today's class photo / promotions (a photo or a video) goes in `class-photos`
+ * under names that start with `advantage-class-photo-promotions-`.
  * Photo and video bytes are never sent to an Advantage server. This module
  * talks to Google from the browser only. There is no sample class list —
  * the calendar renders files Drive returns, or an empty state.
@@ -62,12 +64,19 @@ export type DateBucketName = (typeof DATE_BUCKET_NAMES)[number];
 
 export const LESSON_PLANS_FOLDER: DateBucketName = 'lesson-plans';
 export const TRAINING_VIDEOS_FOLDER: DateBucketName = 'training-videos';
+/**
+ * Date bucket for Today's class photo / promotions.
+ * Photos and videos from that section land here. The name stays `class-photos`.
+ */
+export const CLASS_PHOTOS_FOLDER: DateBucketName = 'class-photos';
+/** `appProperties.advantage` on those Drive files. */
+export const CLASS_PHOTO_PROMOTIONS_ROLE = 'class-photo-promotions';
 
 /** Class history reads these date buckets. Roster and trees stay out of that list. */
 const CLASS_HISTORY_BUCKETS: readonly DateBucketName[] = [
   LESSON_PLANS_FOLDER,
   TRAINING_VIDEOS_FOLDER,
-  'class-photos',
+  CLASS_PHOTOS_FOLDER,
 ];
 
 const DATE_FOLDER_NAME = /^\d{4}-\d{2}-\d{2}$/;
@@ -449,6 +458,36 @@ export function trainingVideoFileName(
   return `advantage-video-${dateKey}-${label}.${ext}`;
 }
 
+function classPhotoExtension(mime: string, originalName: string): string {
+  const fromName = originalName.toLowerCase().match(/\.([a-z0-9]{2,5})$/)?.[1] ?? '';
+  if (fromName && /^(jpe?g|png|webp|gif|heic|heif)$/.test(fromName)) {
+    return fromName === 'jpeg' ? 'jpg' : fromName;
+  }
+  if (mime === 'image/png') return 'png';
+  if (mime === 'image/webp') return 'webp';
+  if (mime === 'image/gif') return 'gif';
+  if (mime === 'image/heic' || mime === 'image/heif') return 'heic';
+  return 'jpg';
+}
+
+/**
+ * Stable Drive name for one class photo or promotion clip.
+ * The local id keeps a retry on the same file inside `{date}/class-photos/`.
+ */
+export function classPhotoPromotionFileName(
+  dateKey: string,
+  localId: string,
+  mime: string,
+  originalName: string,
+  kind: 'photo' | 'video',
+): string {
+  const id = driveSlug(localId, 48) || 'media';
+  const title = driveSlug(originalName.replace(/\.[a-z0-9]{2,5}$/i, ''), 32);
+  const ext = kind === 'video' ? trainingVideoExtension(mime, originalName) : classPhotoExtension(mime, originalName);
+  const label = title ? `${title}-${id}` : id;
+  return `advantage-class-photo-promotions-${dateKey}-${label}.${ext}`;
+}
+
 /** Coach's own plan file. Distinct from instructor lesson drafts. */
 export function coachPlanDriveFileName(dateKey: string, coachName: string, classPlanId = ''): string {
   return lessonDriveFileName(dateKey, coachName, classPlanId).replace(
@@ -800,6 +839,8 @@ const dateFolderCreates = new Map<string, Promise<DriveFolderChoice>>();
 const dateTreeBuilds = new Map<string, Promise<DateFolderTree>>();
 /** In-flight training-video uploads, keyed by folder + clip, so a second save joins the first. */
 const trainingVideoUploads = new Map<string, Promise<string>>();
+/** In-flight class photo / promotion uploads, keyed by folder + local id. */
+const classPhotoPromotionUploads = new Map<string, Promise<string>>();
 
 function dateFolderKey(parentId: string, name: string): string {
   return `${parentId}\0${name}`;
@@ -809,6 +850,7 @@ function dateFolderKey(parentId: string, name: string): string {
 export function clearDateFolderCache(): void {
   dateFolderIds.clear();
   trainingVideoUploads.clear();
+  classPhotoPromotionUploads.clear();
 }
 
 async function findChildFolderByName(
@@ -1287,6 +1329,27 @@ function trainingVideoMime(mime: string): string {
   return trimmed.startsWith('video/') ? trimmed : 'video/mp4';
 }
 
+async function findFileByAppProperty(
+  token: string,
+  parentId: string,
+  key: string,
+  value: string,
+  fetcher: DriveFetch,
+): Promise<string | null> {
+  const query = [
+    `'${driveQueryLiteral(parentId)}' in parents`,
+    'trashed=false',
+    `appProperties has { key='${driveQueryLiteral(key)}' and value='${driveQueryLiteral(value)}' }`,
+  ].join(' and ');
+  const found = await driveJson<{ files?: { id: string }[] }>(
+    token,
+    'https://www.googleapis.com/drive/v3/files?pageSize=1&fields=files(id)&q=' + encodeURIComponent(query),
+    {},
+    fetcher,
+  );
+  return found.files?.[0]?.id ?? null;
+}
+
 async function findTrainingVideoId(
   token: string,
   parentId: string,
@@ -1294,18 +1357,14 @@ async function findTrainingVideoId(
   name: string,
   fetcher: DriveFetch,
 ): Promise<string | null> {
-  const byClip = [
-    `'${driveQueryLiteral(parentId)}' in parents`,
-    'trashed=false',
-    `appProperties has { key='localClipId' and value='${driveQueryLiteral(clipAppProperty(localClipId))}' }`,
-  ].join(' and ');
-  const found = await driveJson<{ files?: { id: string }[] }>(
+  const byClip = await findFileByAppProperty(
     token,
-    'https://www.googleapis.com/drive/v3/files?pageSize=1&fields=files(id)&q=' + encodeURIComponent(byClip),
-    {},
+    parentId,
+    'localClipId',
+    clipAppProperty(localClipId),
     fetcher,
   );
-  if (found.files?.[0]?.id) return found.files[0].id;
+  if (byClip) return byClip;
   return findFileIdInParent(token, parentId, name, fetcher);
 }
 
@@ -1334,7 +1393,7 @@ async function beginResumableUpload(input: {
   }
   const location = response.headers.get('Location');
   if (!location || !location.startsWith('https://')) {
-    throw new Error('Google Drive did not start the video upload.');
+    throw new Error('Google Drive did not start the upload.');
   }
   return location;
 }
@@ -1359,7 +1418,7 @@ async function finishResumableUpload(input: {
     throw new Error(detail.slice(0, 180) || `Google Drive returned ${response.status}.`);
   }
   const saved = (await response.json()) as { id?: string };
-  if (!saved.id) throw new Error('Google Drive did not return a video file id.');
+  if (!saved.id) throw new Error('Google Drive did not return a file id.');
   return saved.id;
 }
 
@@ -1385,26 +1444,53 @@ async function uploadTrainingVideoFile(input: {
     name,
     input.fetcher,
   );
-  const metadata = existingId
-    ? { name, mimeType: mime, appProperties }
-    : { name, mimeType: mime, parents: [input.parentId], appProperties };
-  const endpoint = existingId
-    ? `https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(existingId)}?uploadType=resumable`
+  return putResumableMediaFile({
+    token: input.token,
+    parentId: input.parentId,
+    name,
+    mime,
+    bytes: input.video.bytes,
+    appProperties,
+    existingId,
+    fetcher: input.fetcher,
+  });
+}
+
+async function putResumableMediaFile(input: {
+  token: string;
+  parentId: string;
+  name: string;
+  mime: string;
+  bytes: Blob;
+  appProperties: Record<string, string>;
+  existingId: string | null;
+  fetcher: DriveFetch;
+}): Promise<string> {
+  const metadata = input.existingId
+    ? { name: input.name, mimeType: input.mime, appProperties: input.appProperties }
+    : {
+        name: input.name,
+        mimeType: input.mime,
+        parents: [input.parentId],
+        appProperties: input.appProperties,
+      };
+  const endpoint = input.existingId
+    ? `https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(input.existingId)}?uploadType=resumable`
     : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable';
   const location = await beginResumableUpload({
     token: input.token,
-    method: existingId ? 'PATCH' : 'POST',
+    method: input.existingId ? 'PATCH' : 'POST',
     endpoint,
     metadata,
-    mime,
-    size: input.video.bytes.size,
+    mime: input.mime,
+    size: input.bytes.size,
     fetcher: input.fetcher,
   });
   return finishResumableUpload({
     token: input.token,
     location,
-    mime,
-    bytes: input.video.bytes,
+    mime: input.mime,
+    bytes: input.bytes,
     fetcher: input.fetcher,
   });
 }
@@ -1499,6 +1585,139 @@ export async function publishTrainingVideos(input: {
     dateKey: input.dateKey,
     videos: input.videos,
     onProgress: input.onProgress,
+  });
+}
+
+export type ClassPhotoPromotionUpload = {
+  localId: string;
+  name: string;
+  mime: string;
+  bytes: Blob;
+  kind: 'photo' | 'video';
+};
+
+export type ClassPhotoPromotionUploadResult = {
+  localId: string;
+  driveFileId: string | null;
+  failed: boolean;
+};
+
+function classPhotoMime(mime: string, kind: 'photo' | 'video'): string {
+  const trimmed = mime.trim().toLowerCase();
+  if (kind === 'video') return trimmed.startsWith('video/') ? trimmed : 'video/mp4';
+  return trimmed.startsWith('image/') ? trimmed : 'image/jpeg';
+}
+
+async function uploadClassPhotoPromotionFile(input: {
+  token: string;
+  parentId: string;
+  dateKey: string;
+  item: ClassPhotoPromotionUpload;
+  fetcher: DriveFetch;
+}): Promise<string> {
+  const mime = classPhotoMime(input.item.mime, input.item.kind);
+  const localId = clipAppProperty(input.item.localId);
+  const name = classPhotoPromotionFileName(input.dateKey, localId, mime, input.item.name, input.item.kind);
+  const appProperties = {
+    advantage: CLASS_PHOTO_PROMOTIONS_ROLE,
+    date: input.dateKey,
+    localId,
+    kind: input.item.kind,
+  };
+  const byId = await findFileByAppProperty(input.token, input.parentId, 'localId', localId, input.fetcher);
+  const existingId = byId ?? (await findFileIdInParent(input.token, input.parentId, name, input.fetcher));
+  return putResumableMediaFile({
+    token: input.token,
+    parentId: input.parentId,
+    name,
+    mime,
+    bytes: input.item.bytes,
+    appProperties,
+    existingId,
+    fetcher: input.fetcher,
+  });
+}
+
+function uploadClassPhotoPromotionDeduped(input: {
+  token: string;
+  parentId: string;
+  dateKey: string;
+  item: ClassPhotoPromotionUpload;
+  fetcher: DriveFetch;
+}): Promise<string> {
+  const key = `${input.parentId}\0${clipAppProperty(input.item.localId)}`;
+  const existing = classPhotoPromotionUploads.get(key);
+  if (existing) return existing;
+  const run = uploadClassPhotoPromotionFile(input).finally(() => {
+    if (classPhotoPromotionUploads.get(key) === run) classPhotoPromotionUploads.delete(key);
+  });
+  classPhotoPromotionUploads.set(key, run);
+  return run;
+}
+
+/**
+ * Copy Today's class photo / promotions into `{root}/{YYYY-MM-DD}/class-photos/`.
+ * Photo and video bytes use the same resumable upload as training videos.
+ * One failure does not throw. Bytes go only to Google.
+ */
+export async function uploadClassPhotoPromotions(input: {
+  token: string;
+  rootFolderId: string;
+  dateKey: string;
+  items: readonly ClassPhotoPromotionUpload[];
+  fetcher?: DriveFetch;
+}): Promise<ClassPhotoPromotionUploadResult[]> {
+  const fetcher = input.fetcher ?? fetch;
+  const failedAll = (): ClassPhotoPromotionUploadResult[] =>
+    input.items.map((item) => ({ localId: item.localId, driveFileId: null, failed: true }));
+  let parentId: string;
+  try {
+    const tree = await ensureDateFolderTree({
+      token: input.token,
+      rootFolderId: input.rootFolderId,
+      dateKey: input.dateKey,
+      fetcher,
+    });
+    parentId = tree.folders[CLASS_PHOTOS_FOLDER];
+  } catch {
+    return failedAll();
+  }
+  const results: ClassPhotoPromotionUploadResult[] = [];
+  for (const item of input.items) {
+    try {
+      const driveFileId = await uploadClassPhotoPromotionDeduped({
+        token: input.token,
+        parentId,
+        dateKey: input.dateKey,
+        item,
+        fetcher,
+      });
+      results.push({ localId: item.localId, driveFileId, failed: false });
+    } catch {
+      results.push({ localId: item.localId, driveFileId: null, failed: true });
+    }
+  }
+  return results;
+}
+
+/**
+ * Upload class photos and promotion clips when a gym Drive folder is connected.
+ * Returns null when Drive is not connected or sign-in needs a tap.
+ */
+export async function publishClassPhotoPromotions(input: {
+  dateKey: string;
+  items: readonly ClassPhotoPromotionUpload[];
+}): Promise<ClassPhotoPromotionUploadResult[] | null> {
+  if (typeof window === 'undefined') return null;
+  const binding = readDriveBinding();
+  if (!binding) return null;
+  const token = await requestDriveToken('silent');
+  if (!token) return null;
+  return uploadClassPhotoPromotions({
+    token,
+    rootFolderId: binding.folderId,
+    dateKey: input.dateKey,
+    items: input.items,
   });
 }
 

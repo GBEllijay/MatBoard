@@ -5,6 +5,7 @@ import {
   isImageAccept,
   isVideoAccept,
   openDeviceMediaPicker,
+  MEDIA_LIBRARY_ACCEPT,
   PHOTO_CAPTURE_LABEL,
   PHOTO_PICKER_ACCEPT,
   VIDEO_CAPTURE,
@@ -51,6 +52,16 @@ describe('photo device picker accept', () => {
     assert.equal(isImageAccept('image/jpeg'), true);
     assert.equal(isImageAccept(VIDEO_PICKER_ACCEPT), false);
     assert.equal(isImageAccept(VIDEO_RECORD_ACCEPT), false);
+    assert.equal(isImageAccept(MEDIA_LIBRARY_ACCEPT), false);
+  });
+
+  it('library photo-or-video accept is not a capture accept', () => {
+    assert.equal(MEDIA_LIBRARY_ACCEPT, 'image/*,video/*');
+    assert.notEqual(MEDIA_LIBRARY_ACCEPT, PHOTO_PICKER_ACCEPT);
+    assert.notEqual(MEDIA_LIBRARY_ACCEPT, VIDEO_RECORD_ACCEPT);
+    assert.doesNotMatch(VIDEO_RECORD_ACCEPT, /image/);
+    assert.doesNotMatch(PHOTO_PICKER_ACCEPT, /video/);
+    assert.equal(isVideoAccept(MEDIA_LIBRARY_ACCEPT), false);
   });
 });
 
