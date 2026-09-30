@@ -95,6 +95,18 @@ test('Pro ad keeps the splash and descriptor boxes without the middle paragraph'
   assert.doesNotMatch(text, /Auto-Fill Bracketing/i);
   assert.doesNotMatch(text, /Shared Training Videos/);
   assert.match(text, /Competition Management Pro/);
+  const tournamentFeature = COMING_SOON_ADS.pro.features.find(
+    (feature) => feature.title === COMPETITION_MANAGEMENT_PRO_LABEL,
+  );
+  assert.equal(
+    tournamentFeature?.body,
+    'Brackets, the scoreboard controller, and the round timer for an in-house event.',
+  );
+  assert.doesNotMatch(tournamentFeature?.body ?? '', /roster/i);
+  const competitorFeature = COMING_SOON_ADS.pro.features.find(
+    (feature) => feature.title === COMPETITOR_SYSTEM_NAME,
+  );
+  assert.match(competitorFeature?.body ?? '', /Competitor roster/);
   assert.doesNotMatch(text, /Match Controller/);
   assert.doesNotMatch(text, /Round Controller/);
   assert.match(text, /Class Schedule/);

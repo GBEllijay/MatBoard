@@ -99,7 +99,7 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
       },
       {
         title: COMPETITION_MANAGEMENT_PRO_LABEL,
-        body: 'Roster, brackets, the scoreboard controller, and the round timer for an in-house event.',
+        body: 'Brackets, the scoreboard controller, and the round timer for an in-house event.',
       },
     ],
     dismiss: 'Got it',
