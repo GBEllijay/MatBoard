@@ -88,6 +88,25 @@ export function MatchDisplayPage() {
     }),
   });
 
+  const clockControl = (
+    <button type="button" className="clock-btn" onClick={toggleClock} aria-label="Start or pause match clock">
+      {formatMmSs(remaining)}
+    </button>
+  );
+  const statusControl = refNeeded ? (
+    <button
+      type="button"
+      className="display__clock-hint display__clock-hint--ref"
+      onClick={() => openController('outcome')}
+    >
+      Referee decision
+    </button>
+  ) : (
+    <button type="button" className="display__clock-hint" onClick={toggleClock} aria-label={clockStatusAction}>
+      {clockStatus}
+    </button>
+  );
+
   return (
     <main
       className={`display ${scoreboardSkinClass(match.skin)}${linkedId ? ' display--linked' : ''}${splash ? ' display--splash' : ''}${
@@ -142,7 +161,8 @@ export function MatchDisplayPage() {
         onOpenController={openController}
       />
 
-      <section className="display__mid">
+      <section className={`display__mid${flap ? ' display__mid--stack' : ''}`}>
+        {flap ? clockControl : null}
         <div className="display__meta">
           {roundLine ? (
             <ControllerFocusLink focus="round" label="Edit round on Controller" onOpen={openController}>
@@ -153,22 +173,8 @@ export function MatchDisplayPage() {
             {match.division || 'Open'}
           </ControllerFocusLink>
         </div>
-        <button type="button" className="clock-btn" onClick={toggleClock} aria-label="Start or pause match clock">
-          {formatMmSs(remaining)}
-        </button>
-        {refNeeded ? (
-          <button
-            type="button"
-            className="display__clock-hint display__clock-hint--ref"
-            onClick={() => openController('outcome')}
-          >
-            Referee decision
-          </button>
-        ) : (
-          <button type="button" className="display__clock-hint" onClick={toggleClock} aria-label={clockStatusAction}>
-            {clockStatus}
-          </button>
-        )}
+        {flap ? null : clockControl}
+        {statusControl}
       </section>
 
       <CompetitorBand
