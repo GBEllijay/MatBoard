@@ -4629,10 +4629,12 @@ a.saver-folder--link {
 /* Mock Tournament — landscape-first single-elim tree (2–16 competitors). */
 .tournament {
   position: relative;
-  min-height: 100dvh;
-  min-height: var(--visible-vh, 100dvh);
+  height: var(--visible-vh, 100dvh);
+  max-height: var(--visible-vh, 100dvh);
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   background:
     radial-gradient(90% 70% at 50% 0%, rgba(212, 160, 23, 0.12), transparent 52%),
     linear-gradient(180deg, #121820 0%, #07080b 42%, #05060a 100%);
@@ -5322,13 +5324,6 @@ a.saver-folder--link {
 }
 
 @media (orientation: landscape) {
-  .tournament {
-    height: var(--visible-vh, 100dvh);
-    max-height: var(--visible-vh, 100dvh);
-    min-height: 0;
-    overflow: hidden;
-  }
-
   .tournament__hint {
     display: none;
   }
@@ -11666,15 +11661,18 @@ a.plan-pick {
 /* Phone portrait has room under the tree. Wrap the skins so each one is tappable
    without a sideways scroll. Short landscape stays one row so the tree stays tall. */
 @media (max-width: 640px) and (orientation: portrait) {
-  .kids-switch-row,
-  .kids-switch-row .kids-switch,
-  .kids-switch-row .kids-switch__skins {
-    flex-wrap: wrap;
-  }
-
   .kids-switch-row {
+    flex-wrap: wrap;
     overflow-x: visible;
     touch-action: auto;
+  }
+
+  .kids-switch-row .kids-switch,
+  .kids-switch-row .kids-switch__skins {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    min-width: 0;
+    max-width: 100%;
   }
 }
 
