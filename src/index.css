@@ -7532,8 +7532,17 @@ a.saver-folder--link {
   z-index: 50;
 }
 
-/* Roster picker is nested under bright bracket slots, the champion pill, and
-   the white match pad. Those set near-black ink for light surfaces. This sheet
+/* The roster picker is portaled to document.body. Pinch-zoom scale() on the
+   bracket, plus overflow:hidden on the name pills, traps a fixed sheet inside
+   the card so later bubbles and the kids bar paint over it. Sit above bracket
+   chrome (kids bar 23, corner mark 25), the names sheet (40), the console
+   corner mark (45), and the screensaver batch toast (70). */
+.sheet--roster {
+  z-index: 80;
+}
+
+/* Roster picker opens from bright bracket slots, the champion pill, and the
+   white match pad. Those set near-black ink for light surfaces. This sheet
    is dark, so reset text here. Rank chips and .btn keep their own colors. */
 .sheet--roster .sheet__panel {
   color: var(--ink);
@@ -11915,8 +11924,10 @@ a.plan-pick {
 }
 
 /* Kids wallpaper must not paint the tatami through the picker. The sheet stays
-   the same full, scrollable roster as Bright/Dark, with a clear panel. */
-.tournament--kids .sheet--roster .sheet__panel {
+   the same full, scrollable roster as Bright/Dark, with a clear panel.
+   sheet--on-kids covers the portaled copy, which is no longer under .tournament--kids. */
+.tournament--kids .sheet--roster .sheet__panel,
+.sheet--roster.sheet--on-kids .sheet__panel {
   background: transparent;
   background-image: none;
 }

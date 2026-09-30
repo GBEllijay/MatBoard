@@ -41,9 +41,12 @@ export function RosterNameField({
   const [query, setQuery] = useState('');
   const [addToRoster, setAddToRoster] = useState(false);
   const [belt, setBelt] = useState('');
+  const [onKidsBoard, setOnKidsBoard] = useState(false);
   const skipFocusRef = useRef(false);
+  const fieldRef = useRef<HTMLDivElement>(null);
 
   const openPicker = () => {
+    setOnKidsBoard(Boolean(fieldRef.current?.closest('.tournament--kids')));
     setQuery(value);
     setAddToRoster(false);
     setBelt('');
@@ -94,14 +97,15 @@ export function RosterNameField({
   if (!unlocked) return input;
 
   return (
-    <div className={`roster-field${compact ? ' roster-field--compact' : ''}`}>
+    <div ref={fieldRef} className={`roster-field${compact ? ' roster-field--compact' : ''}`}>
       <div className="roster-field__row">{input}</div>
       <Sheet
         open={pickOpen}
         title="Pick a competitor"
         onClose={closePicker}
         stacked
-        className="sheet--roster"
+        portal
+        className={`sheet--roster${onKidsBoard ? ' sheet--on-kids' : ''}`}
       >
         <RosterPicker
           query={query}
