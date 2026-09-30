@@ -137,6 +137,20 @@ export type DriveLessonMedia = {
   mime: string;
 };
 
+/**
+ * Paid Coach self-export. Plan text for the coach's own Drive.
+ * Not an instructor-distribution draft, and not technique video bytes.
+ */
+export type CoachPlanRecordDocument = {
+  advantage: 'coach-plan';
+  version: 1;
+  date: string;
+  coachName: string;
+  savedAt: number;
+  purpose: 'self';
+  plan: TrainingNotesPlan;
+};
+
 /** Text lesson plus media ids. Never includes file bytes. */
 export type DriveLessonDocument = {
   advantage: 'lesson-plan';
@@ -435,6 +449,14 @@ export function trainingVideoFileName(
   return `advantage-video-${dateKey}-${label}.${ext}`;
 }
 
+/** Coach's own plan file. Distinct from instructor lesson drafts. */
+export function coachPlanDriveFileName(dateKey: string, coachName: string, classPlanId = ''): string {
+  return lessonDriveFileName(dateKey, coachName, classPlanId).replace(
+    /^advantage-lesson-/,
+    'advantage-coach-plan-',
+  );
+}
+
 /** Plan id suffix for the Drive file, or empty when the class label is blank. */
 export function lessonClassFileToken(plan: Pick<TrainingNotesPlan, 'id' | 'classDesignation' | 'classTime'>): string {
   const designation = plan.classDesignation?.trim() ?? '';
@@ -500,6 +522,9 @@ export function fileClassDay(file: DriveFileMeta, lessonDate?: string | null): s
 }
 
 function isLessonFile(file: DriveFileMeta): boolean {
+  if (file.appProperties?.advantage === 'coach-plan' || file.name.startsWith('advantage-coach-plan-')) {
+    return false;
+  }
   return file.appProperties?.advantage === 'lesson' || file.name.startsWith('advantage-lesson-');
 }
 
@@ -523,6 +548,10 @@ export function buildClassHistory(input: {
 
   for (const file of input.files) {
     if (file.mimeType === DRIVE_FOLDER_MIME) continue;
+    // Coach self-export is the coach's own record. It is not class-history media.
+    if (file.appProperties?.advantage === 'coach-plan' || file.name.startsWith('advantage-coach-plan-')) {
+      continue;
+    }
     const lesson = lessonsByFile.get(file.id) ?? null;
     const date = fileClassDay(file, lesson?.date ?? null);
     if (!date) continue;
@@ -1108,43 +1137,43 @@ async function findFileIdInParent(
 
 const lessonWriteTail = new Map<string, Promise<void>>();
 
-async function writeLessonFile(
-  input: {
-    token: string;
-    folderId: string;
-    document: DriveLessonDocument;
-    fetcher?: DriveFetch;
-  },
-  name: string,
-): Promise<{ fileId: string; revisions: number }> {
+/** JSON into `{root}/{date}/lesson-plans/`. Callers choose the file name and tags. */
+async function writeJsonInLessonPlans(input: {
+  token: string;
+  folderId: string;
+  dateKey: string;
+  name: string;
+  documentJson: string;
+  appProperties: Record<string, string>;
+  fetcher?: DriveFetch;
+}): Promise<{ fileId: string; revisions: number }> {
   const fetcher = input.fetcher ?? fetch;
   const tree = await ensureDateFolderTree({
     token: input.token,
     rootFolderId: input.folderId,
-    dateKey: input.document.date,
+    dateKey: input.dateKey,
     fetcher,
   });
   const parentId = tree.folders[LESSON_PLANS_FOLDER];
-  let existingId = await findFileIdInParent(input.token, parentId, name, fetcher);
+  let existingId = await findFileIdInParent(input.token, parentId, input.name, fetcher);
   let relocateFromRoot = false;
   if (!existingId && parentId !== input.folderId) {
-    existingId = await findFileIdInParent(input.token, input.folderId, name, fetcher);
+    existingId = await findFileIdInParent(input.token, input.folderId, input.name, fetcher);
     relocateFromRoot = Boolean(existingId);
   }
-  const appProperties = lessonAppProperties(input.document);
   const metadata = existingId
     ? {
-        name,
+        name: input.name,
         mimeType: 'application/json',
-        appProperties,
+        appProperties: input.appProperties,
       }
     : {
-        name,
+        name: input.name,
         parents: [parentId],
         mimeType: 'application/json',
-        appProperties,
+        appProperties: input.appProperties,
       };
-  const payload = multipartRelated(metadata, JSON.stringify(input.document));
+  const payload = multipartRelated(metadata, input.documentJson);
   const uploadQuery = new URLSearchParams({ uploadType: 'multipart', fields: 'id' });
   if (relocateFromRoot) {
     uploadQuery.set('addParents', parentId);
@@ -1178,6 +1207,26 @@ async function writeLessonFile(
     revisions = 1;
   }
   return { fileId, revisions };
+}
+
+async function writeLessonFile(
+  input: {
+    token: string;
+    folderId: string;
+    document: DriveLessonDocument;
+    fetcher?: DriveFetch;
+  },
+  name: string,
+): Promise<{ fileId: string; revisions: number }> {
+  return writeJsonInLessonPlans({
+    token: input.token,
+    folderId: input.folderId,
+    dateKey: input.document.date,
+    name,
+    documentJson: JSON.stringify(input.document),
+    appProperties: lessonAppProperties(input.document),
+    fetcher: input.fetcher,
+  });
 }
 
 /**
@@ -1451,6 +1500,53 @@ export async function publishTrainingVideos(input: {
     videos: input.videos,
     onProgress: input.onProgress,
   });
+}
+
+/**
+ * Write the coach's own plan JSON into `{root}/{date}/lesson-plans/`.
+ * Text only. This is not instructor distribution and does not upload video bytes.
+ */
+export async function upsertCoachPlanFile(input: {
+  token: string;
+  folderId: string;
+  document: CoachPlanRecordDocument;
+  fetcher?: DriveFetch;
+}): Promise<{ fileId: string; revisions: number }> {
+  const name = coachPlanDriveFileName(
+    input.document.date,
+    input.document.coachName,
+    lessonClassFileToken(input.document.plan),
+  );
+  const key = `${input.folderId}\0${name}`;
+  const previous = lessonWriteTail.get(key) ?? Promise.resolve();
+  const run = previous.catch(() => undefined).then(() =>
+    writeJsonInLessonPlans({
+      token: input.token,
+      folderId: input.folderId,
+      dateKey: input.document.date,
+      name,
+      documentJson: JSON.stringify(input.document),
+      appProperties: {
+        advantage: 'coach-plan',
+        date: input.document.date,
+        coach: input.document.coachName.slice(0, 60),
+        coachName: input.document.coachName.slice(0, 80),
+        savedAt: String(input.document.savedAt),
+        purpose: 'self',
+      },
+      fetcher: input.fetcher,
+    }),
+  );
+  const tail = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  lessonWriteTail.set(key, tail);
+  try {
+    return await run;
+  } finally {
+    if (lessonWriteTail.get(key) === tail) lessonWriteTail.delete(key);
+  }
 }
 
 export async function downloadDriveFile(token: string, fileId: string, fetcher: DriveFetch = fetch): Promise<Blob> {

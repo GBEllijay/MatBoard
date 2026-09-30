@@ -21,6 +21,12 @@ import {
   EMPTY_VIDEOS_BODY,
   EMPTY_VIDEOS_TITLE,
   NOTES_LEAD,
+  COACH_LESSON_EYEBROW,
+  COACH_PLAN_SAVE_LEAD,
+  COACH_PLAN_UPLOAD_BUTTON,
+  COACH_PLAN_UPLOAD_DONE,
+  COACH_PLAN_UPLOAD_FAILED,
+  coachLessonGalleryDownload,
   COMPETITION_READY_CARD,
   COMPETITION_READY_LABEL,
   COMPETITION_READY_LEAD,
@@ -66,6 +72,11 @@ function allCopy(): string {
     EMPTY_BRACKET_BODY,
     OWNER_BRACKET_CLOUD_NOTE,
     NOTES_LEAD,
+    COACH_LESSON_EYEBROW,
+    COACH_PLAN_SAVE_LEAD,
+    COACH_PLAN_UPLOAD_BUTTON,
+    COACH_PLAN_UPLOAD_DONE,
+    COACH_PLAN_UPLOAD_FAILED,
     COMPETITOR_GYM_LABEL,
     ROSTER_CSV_PRO_TEASER,
     ROSTER_CSV_DEVICE_NOTE,
@@ -190,6 +201,40 @@ test('Coach roster lead points CSV at Pro and keeps manual roster language', () 
     'Each row needs a competitor name and a belt. A row missing either one is left out. Division, Gym name / nickname, and Check In can be blank. Competitor Notes are included when the row has them. Face photos stay on this device and are not in the CSV.',
   );
   assert.doesNotMatch(`${ROSTER_CSV_DEVICE_NOTE}\n${ROSTER_CSV_INSTRUCTIONS}`, /UTF-8|accent/i);
+});
+
+test('Coach Daily Lesson Plan copy stays on this device and does not name a day count', () => {
+  assert.equal(COACH_LESSON_EYEBROW, 'Advantage Coach');
+  assert.equal(
+    NOTES_LEAD,
+    "Today's and yesterday's plans, and recent days, stay on this device.",
+  );
+  assert.doesNotMatch(NOTES_LEAD, /\d+/);
+  assert.equal(
+    COACH_PLAN_SAVE_LEAD,
+    'This plan saves as you type on this device. Export to your Drive for longevity.',
+  );
+  assert.equal(COACH_PLAN_UPLOAD_BUTTON, "Open my Drive and upload today's plan");
+  assert.equal(
+    COACH_PLAN_UPLOAD_DONE,
+    "Today's plan is in your Drive. Videos stay on this device.",
+  );
+  assert.equal(
+    COACH_PLAN_UPLOAD_FAILED,
+    "Saved on this device. Your Drive could not take today's plan.",
+  );
+  const lesson = [
+    COACH_LESSON_EYEBROW,
+    NOTES_LEAD,
+    COACH_PLAN_SAVE_LEAD,
+    COACH_PLAN_UPLOAD_BUTTON,
+    COACH_PLAN_UPLOAD_DONE,
+    COACH_PLAN_UPLOAD_FAILED,
+  ].join('\n');
+  assert.doesNotMatch(lesson, /instructor distribution|shared gallery|Download today's videos/i);
+  assert.doesNotMatch(lesson, /Gym Owner/i);
+  assert.equal(coachLessonGalleryDownload(false), false);
+  assert.equal(coachLessonGalleryDownload(true), true);
 });
 
 test('Coach empty states stay friendly and skip student progress', () => {

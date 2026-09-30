@@ -22,8 +22,10 @@ import {
   driveSignInFailureCopy,
   ensureDateFolderTree,
   findOrCreateChildFolder,
+  coachPlanDriveFileName,
   lessonClassFileToken,
   lessonDriveFileName,
+  upsertCoachPlanFile,
   loadClassHistory,
   TRAINING_VIDEOS_FOLDER,
   trainingVideoFileName,
@@ -203,6 +205,12 @@ test('class history groups Drive files and does not invent an empty day', () => 
       mimeType: 'video/mp4',
       appProperties: { date: '2026-09-26' },
     },
+    {
+      id: 'coach-plan-1',
+      name: 'advantage-coach-plan-2026-09-01-alex.json',
+      mimeType: 'application/json',
+      appProperties: { advantage: 'coach-plan', date: '2026-09-01', purpose: 'self' },
+    },
   ];
   const days = buildClassHistory({
     files,
@@ -219,6 +227,7 @@ test('class history groups Drive files and does not invent an empty day', () => 
   assert.equal(days[1].videos[0]?.id, 'video-1');
   assert.deepEqual(videosOnDay(days, '2026-09-26').map((video) => video.label), ['Drill.mp4']);
   assert.deepEqual(videosOnDay(days, '2026-09-01'), []);
+  assert.equal(days.some((day) => day.date === '2026-09-01'), false);
   assert.equal(buildClassHistory({ files: [], lessons: [] }).length, 0);
 });
 
@@ -1011,6 +1020,48 @@ describe('date folder tree', { concurrency: false }, () => {
       drive.files.some((file) => file.content === 'bad-bytes'),
       false,
     );
+  });
+
+  test('upsertCoachPlanFile writes plan text and not an instructor lesson or a video', async () => {
+    const drive = createFakeDrive('coachplan');
+    const plan = emptyPlan();
+    plan.coachName = 'Alex Rivera';
+    plan.intro = 'Grip fight';
+    plan.techniques[0].title = 'Armbar';
+    const saved = await upsertCoachPlanFile({
+      token: 'token',
+      folderId: 'root-coach',
+      document: {
+        advantage: 'coach-plan',
+        version: 1,
+        date: '2026-09-30',
+        coachName: 'Alex Rivera',
+        savedAt: 20,
+        purpose: 'self',
+        plan,
+      },
+      fetcher: drive.fetcher,
+    });
+    const records = drive.files.filter((file) => file.name.startsWith('advantage-coach-plan-'));
+    assert.equal(records.length, 1);
+    const record = records[0];
+    assert.ok(record);
+    assert.equal(record.id, saved.fileId);
+    assert.equal(record.name, coachPlanDriveFileName('2026-09-30', 'Alex Rivera'));
+    assert.equal(record.appProperties?.advantage, 'coach-plan');
+    assert.equal(record.appProperties?.purpose, 'self');
+    assert.equal(record.appProperties?.kind, undefined);
+    const body = JSON.parse(record.content ?? '{}') as { purpose?: string; plan?: { intro?: string }; media?: unknown };
+    assert.equal(body.purpose, 'self');
+    assert.equal(body.plan?.intro, 'Grip fight');
+    assert.equal(body.media, undefined);
+    assert.equal(JSON.stringify(body).includes('blob'), false);
+    assert.equal(JSON.stringify(body).includes('distribution'), false);
+    assert.equal(drive.files.some((file) => file.name.startsWith('advantage-lesson-')), false);
+    assert.equal(drive.files.some((file) => file.mimeType.startsWith('video/')), false);
+    const plansId = drive.files.find((file) => file.name === 'lesson-plans')?.id;
+    assert.ok(plansId);
+    assert.deepEqual(record.parents, [plansId]);
   });
 });
 
