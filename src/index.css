@@ -12132,8 +12132,8 @@ a.plan-pick {
    Blue competitor: white digits on blue cards.
    White competitor: white digits on red cards.
    Large cards are points (two digits). Advantages and penalties are one card each.
-   Matte black frame. Two half-rings per card: the front arc through the hole,
-   the rest of the wire over the rail and behind the stand. */
+   Matte black frame. Two thin chrome rings per card: closed wire over the rail
+   and through a grommet so the card can flip over the top. */
 .scoreboard-skin--old-school.display {
   --os-blue: #1d6fe0;
   --os-blue-deep: #155ec4;
@@ -12242,8 +12242,8 @@ a.plan-pick {
   gap: 0.42rem;
   min-height: 0;
   width: 100%;
-  /* Room for the half-arc between the label and the card. */
-  padding-top: clamp(1.05rem, 14%, 1.65rem);
+  /* Room for the ring crown and rail above the card, under the label. */
+  padding-top: clamp(1.7rem, 22%, 2.55rem);
   overflow: visible;
   font-family: 'Noto Sans Display', 'Liberation Sans', Arial, sans-serif;
   font-weight: 700;
@@ -12293,19 +12293,22 @@ a.plan-pick {
     linear-gradient(180deg, #ff5c48 0%, var(--os-red) 44%, var(--os-red-deep) 50%, #e44534 100%);
 }
 
-/* Rings stay in a flat layer so the strokes stay vector-sharp.
+/* Rings stay in a flat layer so the wire stays vector-sharp.
    The card flip carries its own perspective; a perspective on this row
-   was rasterizing the arcs. */
+   was rasterizing the strokes. */
 .scoreboard-skin--old-school .flap__rings {
   position: absolute;
   z-index: 4;
   left: 50%;
   top: 0;
-  width: min(82%, 13rem);
+  /* 100cqh keeps the grommet in the top of a short card. */
+  --flap-ring-w: min(96%, 15.5rem, 100cqh);
+  width: var(--flap-ring-w);
   height: auto;
-  aspect-ratio: 120 / 40;
-  margin-left: calc(min(82%, 13rem) * -0.5);
-  margin-top: calc(min(82%, 13rem) * 40 / 120 * -0.5);
+  aspect-ratio: 100 / 34;
+  margin-left: calc(var(--flap-ring-w) * -0.5);
+  /* Card top lines up with viewBox y = 13.2 (13.2 / 34). */
+  margin-top: calc(var(--flap-ring-w) * 34 / 100 * -0.3882);
   transform: none;
   overflow: visible;
   pointer-events: none;
