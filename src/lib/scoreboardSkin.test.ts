@@ -8,6 +8,7 @@ import {
   OLD_SCHOOL_SKIN_NAME,
   SCOREBOARD_SKIN,
   SELECTABLE_SCOREBOARD_SKINS,
+  OLD_SCHOOL_FLAP_PLACES,
   flapDigits,
   parseScoreboardSkin,
   scoreboardSkinClass,
@@ -31,6 +32,13 @@ test('Mock-Tournament Skin is the default Match scoreboard', () => {
   assert.deepEqual(flapDigits(4, 2), ['0', '4']);
   assert.deepEqual(flapDigits(12, 2), ['1', '2']);
   assert.deepEqual(flapDigits(3, 1), ['3']);
+  assert.equal(OLD_SCHOOL_FLAP_PLACES.points, 2);
+  assert.equal(OLD_SCHOOL_FLAP_PLACES.advantages, 1);
+  assert.equal(OLD_SCHOOL_FLAP_PLACES.disadvantages, 1);
+  assert.deepEqual(flapDigits(9, OLD_SCHOOL_FLAP_PLACES.advantages), ['9']);
+  assert.deepEqual(flapDigits(10, OLD_SCHOOL_FLAP_PLACES.advantages), ['0']);
+  assert.deepEqual(flapDigits(12, OLD_SCHOOL_FLAP_PLACES.advantages), ['2']);
+  assert.deepEqual(flapDigits(15, OLD_SCHOOL_FLAP_PLACES.points), ['1', '5']);
 });
 
 test('Mock-Tournament eyedrop colors are the stylesheet tokens', () => {
@@ -50,7 +58,8 @@ test('Mock-Tournament eyedrop colors are the stylesheet tokens', () => {
   assert.match(css, /\.flap__card/);
   assert.match(css, /--os-blue:\s*#1d6fe0/);
   assert.match(css, /--os-red:\s*#ef3d2c/);
-  assert.match(css, /\.flap__ring/);
+  assert.match(css, /\.flap__rings/);
+  assert.match(css, /\.flap__slot/);
   assert.match(css, /display__mid--stack/);
   const stack = css.slice(css.indexOf('display__mid--stack'));
   assert.match(stack, /flex-direction:\s*column/);
