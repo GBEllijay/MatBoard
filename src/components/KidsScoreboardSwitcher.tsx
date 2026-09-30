@@ -9,7 +9,7 @@ import {
 /** On/off plus the six locked backgrounds. The bracket page and the match controller share this device preference. */
 export function KidsScoreboardSwitcher({ prefs }: { prefs: KidsScoreboardPrefs }) {
   return (
-    <div className="kids-switch">
+    <div className="kids-switch kids-switch--boards">
       <button
         type="button"
         className={`chip${prefs.enabled ? ' chip--gold' : ''}`}
