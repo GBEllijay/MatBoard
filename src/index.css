@@ -12305,10 +12305,10 @@ a.plan-pick {
   --flap-ring-w: min(96%, 15.5rem, 100cqh);
   width: var(--flap-ring-w);
   height: auto;
-  aspect-ratio: 100 / 34;
+  aspect-ratio: 100 / 32;
   margin-left: calc(var(--flap-ring-w) * -0.5);
-  /* Card top lines up with viewBox y = 13.2 (13.2 / 34). */
-  margin-top: calc(var(--flap-ring-w) * 34 / 100 * -0.3882);
+  /* Card top lines up with viewBox y = 13.8 (13.8 / 32). */
+  margin-top: calc(var(--flap-ring-w) * 32 / 100 * -0.43125);
   transform: none;
   overflow: visible;
   pointer-events: none;
