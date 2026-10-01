@@ -10,8 +10,10 @@ import {
   SELECTABLE_SCOREBOARD_SKINS,
   OLD_SCHOOL_FLAP_PLACES,
   flapDigits,
+  isPlainWhiteScoreboard,
   parseScoreboardSkin,
   scoreboardSkinClass,
+  visibleScoreboardSkin,
 } from './scoreboardSkin.ts';
 
 test('Mock-Tournament Skin is the default Match scoreboard', () => {
@@ -39,6 +41,16 @@ test('Mock-Tournament Skin is the default Match scoreboard', () => {
   assert.deepEqual(flapDigits(10, OLD_SCHOOL_FLAP_PLACES.advantages), ['0']);
   assert.deepEqual(flapDigits(12, OLD_SCHOOL_FLAP_PLACES.advantages), ['2']);
   assert.deepEqual(flapDigits(15, OLD_SCHOOL_FLAP_PLACES.points), ['1', '5']);
+});
+
+test('White Live Bout stays on Mock-Tournament; suite and linked bouts keep the choice', () => {
+  assert.equal(isPlainWhiteScoreboard(false, false), true);
+  assert.equal(visibleScoreboardSkin(SCOREBOARD_SKIN.OLD_SCHOOL, false, false), SCOREBOARD_SKIN.MOCK_TOURNAMENT);
+  assert.equal(visibleScoreboardSkin(SCOREBOARD_SKIN.MOCK_TOURNAMENT, false, false), SCOREBOARD_SKIN.MOCK_TOURNAMENT);
+  assert.equal(isPlainWhiteScoreboard(true, false), false);
+  assert.equal(visibleScoreboardSkin(SCOREBOARD_SKIN.OLD_SCHOOL, true, false), SCOREBOARD_SKIN.OLD_SCHOOL);
+  assert.equal(isPlainWhiteScoreboard(false, true), false);
+  assert.equal(visibleScoreboardSkin(SCOREBOARD_SKIN.OLD_SCHOOL, false, true), SCOREBOARD_SKIN.OLD_SCHOOL);
 });
 
 test('Mock-Tournament eyedrop colors are the stylesheet tokens', () => {

@@ -42,7 +42,7 @@ import {
   type Side,
 } from '../lib/matchStore';
 import { needsRefDecision, outcomeSubtitle } from '../lib/outcomes';
-import { scoreboardSkinClass } from '../lib/scoreboardSkin';
+import { isPlainWhiteScoreboard, scoreboardSkinClass, visibleScoreboardSkin } from '../lib/scoreboardSkin';
 
 export function MatchControllerPage() {
   const match = useMatchState();
@@ -57,6 +57,8 @@ export function MatchControllerPage() {
   const durationIsPreset = TIME_PRESETS_MIN.some((minutes) => match.durationMs === minutesToMs(minutes));
   const focusParam = searchParams.get('focus');
   const linkedId = linkedBracketMatchId(match.bracketMatchId);
+  const plainWhite = isPlainWhiteScoreboard(suite.fromSuite, Boolean(linkedId));
+  const skin = visibleScoreboardSkin(match.skin, suite.fromSuite, Boolean(linkedId));
   const flashing = Boolean(match.outcomeFlash);
   const banner = visibleOutcomeBanner(match);
   const refNeeded = needsRefDecision({ ...match, remainingMs: remaining });
@@ -128,7 +130,7 @@ export function MatchControllerPage() {
   };
 
   return (
-    <main className={`controller ${scoreboardSkinClass(match.skin)}${suite.fromSuite ? ' origin-suite' : ''}`}>
+    <main className={`controller ${scoreboardSkinClass(skin)}${suite.fromSuite ? ' origin-suite' : ''}`}>
       <PlayExitMark to={suite.homePath} />
       <Chrome
         right={
@@ -148,10 +150,12 @@ export function MatchControllerPage() {
         }
       />
 
-      <section className="kids-switch-panel" aria-label="Scoreboard skin">
-        <p className="cue-preview-label">Scoreboard skin</p>
-        <ScoreboardSkinSwitcher skin={match.skin} />
-      </section>
+      {plainWhite ? null : (
+        <section className="kids-switch-panel" aria-label="Scoreboard skin">
+          <p className="cue-preview-label">Scoreboard skin</p>
+          <ScoreboardSkinSwitcher skin={match.skin} />
+        </section>
+      )}
 
       <section className="controller__clock">
         <button
@@ -338,7 +342,7 @@ export function MatchControllerPage() {
           />
           Auto-announce winner
         </label>
-        <CarlosControls prefs={match.carlos} />
+        {plainWhite ? null : <CarlosControls prefs={match.carlos} />}
         {castNote ? <p className="cast-note">{castNote}</p> : null}
       </section>
 

@@ -21,7 +21,12 @@ import { dispatchMatch, expireMatchClock, remainingNow, type Side } from '../lib
 import { needsRefDecision } from '../lib/outcomes';
 import { formatMmSs } from '../lib/format';
 import { carlosMatchComplete, matchCarlosView } from '../lib/carlosCelebration';
-import { SCOREBOARD_SKIN, scoreboardSkinClass } from '../lib/scoreboardSkin';
+import {
+  SCOREBOARD_SKIN,
+  isPlainWhiteScoreboard,
+  scoreboardSkinClass,
+  visibleScoreboardSkin,
+} from '../lib/scoreboardSkin';
 
 export function MatchDisplayPage() {
   const match = useMatchState();
@@ -73,20 +78,24 @@ export function MatchDisplayPage() {
   const roundLine = roundDisplay(match.round, Boolean(linkedId));
   const clockStatus = match.running ? 'Running' : remaining <= 0 ? 'Ended' : 'Paused';
   const clockStatusAction = match.running ? 'Pause match clock' : remaining <= 0 ? 'Restart match clock' : 'Start match clock';
-  const flap = match.skin === SCOREBOARD_SKIN.OLD_SCHOOL;
-  const carlos = matchCarlosView({
-    prefs: match.carlos,
-    outcome: match.outcome,
-    blueName: match.blue.name,
-    whiteName: match.white.name,
-    bluePoints: match.blue.points,
-    whitePoints: match.white.points,
-    matchComplete: carlosMatchComplete({
-      running: match.running,
-      remainingMs: remaining,
-      outcome: match.outcome,
-    }),
-  });
+  const plainWhite = isPlainWhiteScoreboard(suite.fromSuite, Boolean(linkedId));
+  const skin = visibleScoreboardSkin(match.skin, suite.fromSuite, Boolean(linkedId));
+  const flap = skin === SCOREBOARD_SKIN.OLD_SCHOOL;
+  const carlos = plainWhite
+    ? { show: false, lines: [] as string[] }
+    : matchCarlosView({
+        prefs: match.carlos,
+        outcome: match.outcome,
+        blueName: match.blue.name,
+        whiteName: match.white.name,
+        bluePoints: match.blue.points,
+        whitePoints: match.white.points,
+        matchComplete: carlosMatchComplete({
+          running: match.running,
+          remainingMs: remaining,
+          outcome: match.outcome,
+        }),
+      });
 
   const clockControl = (
     <button type="button" className="clock-btn" onClick={toggleClock} aria-label="Start or pause match clock">
@@ -109,7 +118,7 @@ export function MatchDisplayPage() {
 
   return (
     <main
-      className={`display ${scoreboardSkinClass(match.skin)}${linkedId ? ' display--linked' : ''}${splash ? ' display--splash' : ''}${
+      className={`display ${scoreboardSkinClass(skin)}${linkedId ? ' display--linked' : ''}${splash ? ' display--splash' : ''}${
         suite.fromSuite ? ' origin-suite' : ''
       }${fs.className ? ` ${fs.className}` : ''}`}
       onPointerDown={() => {

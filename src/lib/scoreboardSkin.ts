@@ -1,7 +1,9 @@
 /**
  * Match scoreboard skins. Mock-Tournament is the default.
- * The controller skin switcher offers Mock-Tournament and Old School.
- * LIGHT and KIDS stay reserved. Kids' Scoreboards paints the bracket, not this skin.
+ * Advantage White Live Bout is Mock-Tournament only — no Mock / Old School picker.
+ * The Pro tournament suite (`from=suite`) and a linked bracket bout still offer
+ * Mock-Tournament and Old School. LIGHT and KIDS stay reserved.
+ * Kids' Scoreboards paints the bracket, not this skin.
  *
  * Old School matches the owner's tabletop flip boards: large points cards,
  * smaller advantage and penalty cards, red against blue, matte black frame.
@@ -66,6 +68,23 @@ export function parseScoreboardSkin(value: unknown): ScoreboardSkinId {
 /** Class hook for the active skin. */
 export function scoreboardSkinClass(skin: ScoreboardSkinId = DEFAULT_SCOREBOARD_SKIN): string {
   return SKIN_CLASS[skin] ?? SKIN_CLASS[DEFAULT_SCOREBOARD_SKIN];
+}
+
+/**
+ * Plain Advantage White Live Bout: no suite flag and no linked bracket bout.
+ * That board is Mock-Tournament only. Suite and a linked bout keep the stored choice.
+ */
+export function isPlainWhiteScoreboard(fromSuite: boolean, linkedBout: boolean): boolean {
+  return !fromSuite && !linkedBout;
+}
+
+/** Skin the White or suite board should paint. White never follows a stored Old School pick. */
+export function visibleScoreboardSkin(
+  skin: ScoreboardSkinId,
+  fromSuite: boolean,
+  linkedBout: boolean,
+): ScoreboardSkinId {
+  return isPlainWhiteScoreboard(fromSuite, linkedBout) ? DEFAULT_SCOREBOARD_SKIN : skin;
 }
 
 /**
