@@ -7,6 +7,7 @@ import { consumeCoachUnlockQueryNow } from './lib/coachUnlock';
 import { consumeUnlockQueryNow } from './lib/proUnlock';
 import { ClassHistoryPage } from './pages/ClassHistory';
 import { CoachPage } from './pages/Coach';
+import { CoachUnlimitedPage } from './pages/CoachUnlimited';
 import { ComingSoonPage } from './pages/ComingSoon';
 import { CompetitionManagementPage } from './pages/CompetitionManagement';
 import { CompetitionReadyPage } from './pages/CompetitionReady';
@@ -103,11 +104,19 @@ export default function App() {
         }
       />
       <Route
-        path="/competitors"
+        path="/coach-unlimited"
         element={
           <ProRoute>
-            <CompetitorManagementPage />
+            <CoachUnlimitedPage />
           </ProRoute>
+        }
+      />
+      <Route
+        path="/competitors"
+        element={
+          <CoachRoute>
+            <CompetitorManagementPage />
+          </CoachRoute>
         }
       />
       <Route
@@ -129,25 +138,25 @@ export default function App() {
       <Route
         path="/rankings"
         element={
-          <ProRoute>
+          <CoachRoute>
             <RankingsPage />
-          </ProRoute>
+          </CoachRoute>
         }
       />
       <Route
         path="/competition-ready"
         element={
-          <ProRoute>
+          <CoachRoute>
             <CompetitionReadyPage />
-          </ProRoute>
+          </CoachRoute>
         }
       />
       <Route
         path="/game-plan"
         element={
-          <ProRoute>
+          <CoachRoute>
             <GamePlanPage />
-          </ProRoute>
+          </CoachRoute>
         }
       />
       <Route

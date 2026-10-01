@@ -1,8 +1,4 @@
-import {
-  COMPETITOR_ROSTER_LABEL,
-  TECHNIQUE_TREE_LABEL,
-  TRAINING_NOTES_LABEL,
-} from './coachCopy.ts';
+import { TECHNIQUE_TREE_LABEL, TRAINING_NOTES_LABEL } from './coachCopy.ts';
 
 /** User-facing Advantage Pro console name. Keep this exact apostrophe. */
 export const GYM_CONSOLE_NAME = "Gym Owner and Instructor's Console";
@@ -51,12 +47,15 @@ export const PRO_COMING_SOON_LINES = [
 /** Coach hub keeps practice framing; Owner Console uses real-event tooling. */
 export const MOCK_TOURNAMENT_NAME = 'Mock Tournament';
 
-/** Fourth Advantage Coach hub button. Replaces separate Mock Tournament and Competitor Roster buttons. */
-export const COMPETITION_MANAGEMENT_LABEL = 'Competition Management';
+/** Fourth Advantage Coach hub button. Holds the competitor system and Mock Tournament. */
+export const COMPETITION_MANAGEMENT_LABEL = 'Competition Team Management';
+
+/** Coach competition folder for bout competitors, roster CSV, and on-device rankings. */
+export const COMPETITOR_SYSTEM_NAME = 'Competitor Management System';
 
 /**
  * Advantage Coach hub, top to bottom.
- * Daily tools use the flat blue coach belt. Competition Management keeps the
+ * Daily tools use the flat blue coach belt. Competition Team Management keeps the
  * yellow/green tournament belt that already marked this fourth slot.
  */
 export const COACH_HUBS = [
@@ -66,9 +65,26 @@ export const COACH_HUBS = [
   { title: COMPETITION_MANAGEMENT_LABEL, to: '/competition', belt: 'tournament' as const },
 ] as const;
 
-/** Competition Management submenu. Bout and bracket competitors, not member progress. */
+/**
+ * Limited Coach opens `/notes` with no plan flag.
+ * Advantage Coach Unlimited opens the same page with this flag so upload and
+ * teammate video download stay off the limited lesson plan.
+ */
+export const UNLIMITED_LESSON_VALUE = 'unlimited';
+export const UNLIMITED_LESSON_PATH = `/notes?plan=${UNLIMITED_LESSON_VALUE}`;
+export const COACH_UNLIMITED_PATH = '/coach-unlimited';
+
+/**
+ * Tools that used to sit at the bottom of Instructor Collaboration.
+ * Daily Lesson Plan opens the Unlimited plan. The other three stay put.
+ */
+export const COACH_UNLIMITED_TOOLS = COACH_HUBS.map((tool) =>
+  tool.to === '/notes' ? { ...tool, to: UNLIMITED_LESSON_PATH } : tool,
+);
+
+/** Competition Team Management submenu. CMS first, then Mock Tournament. */
 export const COMPETITION_MENU = [
-  { title: COMPETITOR_ROSTER_LABEL, to: '/roster?from=coach', belt: 'tournament' as const },
+  { title: COMPETITOR_SYSTEM_NAME, to: '/competitors', belt: 'tournament' as const },
   { title: MOCK_TOURNAMENT_NAME, to: '/tournament', belt: 'tournament' as const },
 ] as const;
 
@@ -104,16 +120,13 @@ export const TOURNAMENT_MANAGEMENT_PRO_LEAD =
 /** Coming Soon ad feature title. Not the Pro hub button or the Suite page heading. */
 export const COMPETITION_MANAGEMENT_PRO_LABEL = 'Competition Management Pro';
 
-/** Pro hub for bout competitors, roster CSV, and on-device rankings. */
-export const COMPETITOR_SYSTEM_NAME = 'Competitor Management System';
+/** Owner invite page. Access only — Unlimited tools live on Advantage Coach Unlimited. */
+export const INSTRUCTOR_COLLAB_NAME = 'Instructor Invitation and Access Management';
 
-/** Owner hub page title. Soft-beta invites stay on this device. */
-export const INSTRUCTOR_COLLAB_NAME = 'Instructor Collaboration and Advantage Coach Unlimited';
+/** Pro homepage hub button. Same name as the invite page title. */
+export const INSTRUCTOR_COLLAB_HUB_LABEL = 'Instructor Invitation and Access Management';
 
-/** Pro homepage hub button. The instructor page title stays INSTRUCTOR_COLLAB_NAME. */
-export const INSTRUCTOR_COLLAB_HUB_LABEL = 'Instructor Collaboration & Advantage Coach Unlimited';
-
-/** Jump from the instructor hub into Advantage Coach. Keep Unlimited in the label. */
+/** Pro hub that replaced Competitor Management System. Opens Unlimited tools. */
 export const INSTRUCTOR_COACH_ENTRY = 'Advantage Coach Unlimited';
 
 /** Pro gym-TV cast hub. Same screen Gallery opens. Not a rename of the Owner Console. */
@@ -125,7 +138,7 @@ export const MEDIA_CONSOLE_NAME = 'Media Console';
  */
 export const PRO_HUBS = [
   { title: MEDIA_CONSOLE_NAME, to: '/slideshow?folder=gallery', belt: 'purple' },
-  { title: COMPETITOR_SYSTEM_NAME, to: '/competitors', belt: 'brown' },
+  { title: INSTRUCTOR_COACH_ENTRY, to: COACH_UNLIMITED_PATH, belt: 'brown' },
   { title: INSTRUCTOR_COLLAB_HUB_LABEL, to: '/instructors', belt: 'black' },
   { title: TOURNAMENT_MANAGEMENT_PRO_LABEL, to: '/suite', belt: 'tournament' },
 ] as const;
@@ -157,7 +170,7 @@ export function withSuiteFrom(path: string, fromSuite: boolean): string {
  * Brackets and Scoreboard keep the yellow/green tournament belt.
  * Round Timer has no left bar. Brackets opens the same mock-tournament board.
  * Scoreboard opens the existing match controller. Round Timer opens the existing rounds controller.
- * Competitor Roster stays on Competitor Management, not on this menu.
+ * Competitor Management System stays on Coach Competition Team Management, not on this menu.
  */
 export const COMPETITION_PRO_MENU = [
   { title: 'Brackets', to: withSuiteFrom('/tournament', true), belt: 'tournament' as const, clearBout: false },

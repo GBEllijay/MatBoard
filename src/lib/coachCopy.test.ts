@@ -23,6 +23,8 @@ import {
   NOTES_LEAD,
   COACH_LESSON_EYEBROW,
   COACH_PLAN_SAVE_LEAD,
+  COACH_PLAN_SAVE_LINK,
+  UNLIMITED_SHARE_LEAD,
   COACH_PLAN_UPLOAD_BUTTON,
   COACH_PLAN_UPLOAD_DONE,
   COACH_PLAN_UPLOAD_FAILED,
@@ -44,7 +46,6 @@ import {
   COMPETITOR_GYM_LABEL,
   ROSTER_CSV_DEVICE_NOTE,
   ROSTER_CSV_INSTRUCTIONS,
-  ROSTER_CSV_PRO_TEASER,
   ROSTER_LEAD_COACH,
   ROSTER_LEAD_PRO,
   rosterCsvAvailable,
@@ -74,11 +75,12 @@ function allCopy(): string {
     NOTES_LEAD,
     COACH_LESSON_EYEBROW,
     COACH_PLAN_SAVE_LEAD,
+    COACH_PLAN_SAVE_LINK,
+    UNLIMITED_SHARE_LEAD,
     COACH_PLAN_UPLOAD_BUTTON,
     COACH_PLAN_UPLOAD_DONE,
     COACH_PLAN_UPLOAD_FAILED,
     COMPETITOR_GYM_LABEL,
-    ROSTER_CSV_PRO_TEASER,
     ROSTER_CSV_DEVICE_NOTE,
     ROSTER_CSV_INSTRUCTIONS,
     ROSTER_LEAD_COACH,
@@ -178,17 +180,15 @@ test('Game Plan copy keeps a note optional and stays on bout competitors', () =>
   );
 });
 
-test('Coach roster lead points CSV at Pro and keeps manual roster language', () => {
+test('Coach CMS roster shows CSV and keeps manual roster language', () => {
   assert.equal(
     ROSTER_LEAD_COACH,
     'Competitor Roster with Names and Ranks for Single Matches and Mock Tournaments.',
   );
-  assert.equal(ROSTER_CSV_PRO_TEASER, 'Importable CSV Template Available in Advantage Pro');
-  assert.doesNotMatch(ROSTER_CSV_PRO_TEASER, /About CSV|Download the template|Import CSV|Export CSV/i);
   assert.doesNotMatch(ROSTER_LEAD_COACH, /Competitor Management/);
   assert.equal(rosterCsvAvailable(true, false), true);
-  assert.equal(rosterCsvAvailable(true, true), false);
-  assert.equal(rosterCsvAvailable(false, true), false);
+  assert.equal(rosterCsvAvailable(true, true), true);
+  assert.equal(rosterCsvAvailable(false, true), true);
   assert.equal(rosterCsvAvailable(false, false), false);
   assert.equal(COMPETITOR_GYM_LABEL, 'Gym name / nickname');
   assert.match(COMPETITOR_GYM_LABEL, /nickname/);
@@ -212,7 +212,12 @@ test('Coach Daily Lesson Plan copy stays on this device and does not name a day 
   assert.doesNotMatch(NOTES_LEAD, /\d+/);
   assert.equal(
     COACH_PLAN_SAVE_LEAD,
-    'This plan saves as you type on this device. Export to your Drive for longevity.',
+    'This plan saves to your phone as you type. Click here to save a copy on your connected Drive.',
+  );
+  assert.equal(COACH_PLAN_SAVE_LINK, 'Click here');
+  assert.equal(
+    UNLIMITED_SHARE_LEAD,
+    'Instructors share class plans, technique trees, and training videos with you. Each day they can send class photos and short clips for you to look over. Their screen works like Coach. You approve what plays on the gym TV and what joins the gym roster.',
   );
   assert.equal(COACH_PLAN_UPLOAD_BUTTON, "Open my Drive and upload today's plan");
   assert.equal(

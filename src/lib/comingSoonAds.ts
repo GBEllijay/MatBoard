@@ -5,9 +5,9 @@ import {
   TRAINING_NOTES_LABEL,
 } from './coachCopy.ts';
 import {
-  COMPETITOR_SYSTEM_NAME,
   GYM_CONSOLE_NAME,
   INSTRUCTOR_COLLAB_NAME,
+  INSTRUCTOR_COACH_ENTRY,
   MEDIA_CONSOLE_NAME,
   COMPETITION_MANAGEMENT_PRO_LABEL,
 } from './productNames.ts';
@@ -90,8 +90,8 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
         body: 'Gallery, Class Schedule, Pro Shop, and Events on the gym TV.',
       },
       {
-        title: COMPETITOR_SYSTEM_NAME,
-        body: 'Competitor roster, competition-ready checklists, game plans, and on-device rankings. Seeding from rankings comes later.',
+        title: INSTRUCTOR_COACH_ENTRY,
+        body: 'Instructors share class plans, technique trees, and training videos with you.',
       },
       {
         title: INSTRUCTOR_COLLAB_NAME,

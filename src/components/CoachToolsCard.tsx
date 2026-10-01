@@ -6,7 +6,7 @@ import { COACH_HUBS } from '../lib/productNames';
 
 /**
  * Same buttons, same order, as the Advantage Coach card.
- * Daily tools use the flat blue coach belt. Competition Management keeps the
+ * Daily tools use the flat blue coach belt. Competition Team Management keeps the
  * yellow/green tournament belt on the fourth slot.
  */
 export const COACH_TOOL_LINKS = COACH_HUBS;

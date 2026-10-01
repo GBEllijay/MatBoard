@@ -16,6 +16,9 @@
  * (`googleDrive.ts`). Video bytes go only to the gym's Google Drive.
  * Regular Coach does not queue a Drive revision.
  *
+ * TODO: Reopen and repopulate an older Daily Lesson Plan from the connected
+ * Drive folder is not implemented. Plans already on this phone stay as saved.
+ *
  * Local cache: after a clip uploads, the phone keeps the blob so offline
  * play still works. `driveFileId` marks Drive as the source of truth. A later
  * pass can drop cached blobs under storage pressure. A failed video upload
@@ -255,7 +258,7 @@ function setDriveNotice(next: DriveSaveNotice): void {
 }
 
 export function savedPhoneNotice(): string {
-  return 'Saved on this phone. Connect with Google Drive in Instructor Collaboration to keep the lesson and videos in the gym folder. Until then, videos stay on this device.';
+  return 'Saved on this phone. Connect with Google Drive in Advantage Coach Unlimited to keep the lesson and videos in the gym folder. Until then, videos stay on this device.';
 }
 
 /** Shown on Daily Training Videos. Regular Coach stays on this phone. */
