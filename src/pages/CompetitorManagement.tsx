@@ -45,7 +45,7 @@ export function CompetitorManagementPage() {
   return (
     <main className="home home--pro home--suite">
       <div className="home__inner">
-        <HomeMark to="/pro" />
+        <HomeMark to="/competition" />
         <section className="suite competitor-hub">
           <h2 className="competitor-hub__title">
             <span>{COMPETITOR_SYSTEM_NAME}</span>

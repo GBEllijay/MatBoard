@@ -19,10 +19,13 @@ import {
   WHITE_LADDER_DETAIL,
   coachToolsOpen,
   parentToolboxPath,
+  COACH_UNLIMITED_PATH,
+  COACH_UNLIMITED_TOOLS,
   COMPETITOR_SYSTEM_NAME,
   INSTRUCTOR_COLLAB_HUB_LABEL,
   INSTRUCTOR_COLLAB_NAME,
   INSTRUCTOR_COACH_ENTRY,
+  UNLIMITED_LESSON_PATH,
   MATCH_CONTROLLER_PATH,
   MEDIA_CONSOLE_INSTRUCTIONS,
   MEDIA_CONSOLE_NAME,
@@ -94,11 +97,11 @@ test('Pro suite keeps the working title and Coach keeps Mock Tournament', () => 
   assert.doesNotMatch(TOURNAMENT_SUITE_NAME, /MatBracket/i);
 });
 
-test('Coach hub is four tools and Competition Management keeps the tournament belt', () => {
-  assert.equal(COMPETITION_MANAGEMENT_LABEL, 'Competition Management');
+test('Coach hub is four tools and Competition Team Management keeps the tournament belt', () => {
+  assert.equal(COMPETITION_MANAGEMENT_LABEL, 'Competition Team Management');
   assert.deepEqual(
     COACH_HUBS.map((hub) => hub.title),
-    ['Daily Lesson Plan', 'Daily Training Videos', 'Technique Tree', 'Competition Management'],
+    ['Daily Lesson Plan', 'Daily Training Videos', 'Technique Tree', 'Competition Team Management'],
   );
   assert.deepEqual(
     COACH_HUBS.map((hub) => hub.to),
@@ -110,12 +113,14 @@ test('Coach hub is four tools and Competition Management keeps the tournament be
   assert.equal('belt' in COACH_HUBS[2], false);
   assert.deepEqual(
     COMPETITION_MENU.map((item) => item.title),
-    ['Competitor Roster', 'Mock Tournament'],
+    ['Competitor Management System', 'Mock Tournament'],
   );
   assert.deepEqual(
     COMPETITION_MENU.map((item) => item.to),
-    ['/roster?from=coach', '/tournament'],
+    ['/competitors', '/tournament'],
   );
+  assert.ok(COMPETITION_MENU.findIndex((item) => item.title === 'Competitor Management System') <
+    COMPETITION_MENU.findIndex((item) => item.title === 'Mock Tournament'));
   assert.deepEqual(
     COMPETITION_MENU.map((item) => item.belt),
     ['tournament', 'tournament'],
@@ -126,23 +131,31 @@ test('Coach hub is four tools and Competition Management keeps the tournament be
 
 test('Pro console hubs stay four siblings, Media Console first', () => {
   assert.equal(COMPETITOR_SYSTEM_NAME, 'Competitor Management System');
-  assert.equal(INSTRUCTOR_COLLAB_NAME, 'Instructor Collaboration and Advantage Coach Unlimited');
+  assert.equal(INSTRUCTOR_COLLAB_NAME, 'Instructor Invitation and Access Management');
   assert.equal(
     INSTRUCTOR_COLLAB_HUB_LABEL,
-    'Instructor Collaboration & Advantage Coach Unlimited',
+    'Instructor Invitation and Access Management',
   );
   assert.equal(
     INSTRUCTOR_COACH_ENTRY,
     'Advantage Coach Unlimited',
   );
+  assert.equal(COACH_UNLIMITED_PATH, '/coach-unlimited');
+  assert.equal(UNLIMITED_LESSON_PATH, '/notes?plan=unlimited');
+  assert.equal(COACH_UNLIMITED_TOOLS[0].to, UNLIMITED_LESSON_PATH);
+  assert.deepEqual(
+    COACH_UNLIMITED_TOOLS.slice(1).map((tool) => tool.to),
+    ['/techniques', '/technique-tree', '/competition'],
+  );
   assert.deepEqual(
     PRO_HUBS.map((hub) => hub.title),
-    [MEDIA_CONSOLE_NAME, COMPETITOR_SYSTEM_NAME, INSTRUCTOR_COLLAB_HUB_LABEL, TOURNAMENT_MANAGEMENT_PRO_LABEL],
+    [MEDIA_CONSOLE_NAME, INSTRUCTOR_COACH_ENTRY, INSTRUCTOR_COLLAB_HUB_LABEL, TOURNAMENT_MANAGEMENT_PRO_LABEL],
   );
   assert.deepEqual(
     PRO_HUBS.map((hub) => hub.to),
-    ['/slideshow?folder=gallery', '/competitors', '/instructors', '/suite'],
+    ['/slideshow?folder=gallery', '/coach-unlimited', '/instructors', '/suite'],
   );
+  assert.ok(!PRO_HUBS.some((hub) => hub.title === COMPETITOR_SYSTEM_NAME));
   assert.deepEqual(
     PRO_HUBS.map((hub) => hub.belt),
     ['purple', 'brown', 'black', 'tournament'],

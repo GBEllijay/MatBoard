@@ -102,12 +102,12 @@ export const ROSTER_CSV_DEVICE_NOTE =
 export const ROSTER_CSV_INSTRUCTIONS =
   'Each row needs a competitor name and a belt. A row missing either one is left out. Division, Gym name / nickname, and Check In can be blank. Competitor Notes are included when the row has them. Face photos stay on this device and are not in the CSV.';
 
-/** Coach Competitor Roster: CSV stays on the Pro roster screen. */
-export const ROSTER_CSV_PRO_TEASER = 'Importable CSV Template Available in Advantage Pro';
-
-/** True on the Pro roster surface. False on the Coach Competitor Roster screen. */
-export function rosterCsvAvailable(proUnlocked: boolean, coachRosterScreen: boolean): boolean {
-  return proUnlocked && !coachRosterScreen;
+/**
+ * CSV import, export, and the downloadable template.
+ * Shown on the Competitor Management roster for Coach and for Pro.
+ */
+export function rosterCsvAvailable(proUnlocked: boolean, coachUnlocked: boolean): boolean {
+  return proUnlocked || coachUnlocked;
 }
 
 /** Eyebrow on the paid Coach Daily Lesson Plan. Not the gym-owner console. */
@@ -120,9 +120,20 @@ export const COACH_LESSON_EYEBROW = 'Advantage Coach';
 export const NOTES_LEAD =
   "Today's and yesterday's plans, and recent days, stay on this device.";
 
-/** Under Closing on paid Coach. Drive export is the coach's own copy. */
+/**
+ * Under Closing on limited Coach. Copy only — Drive save is wired later.
+ * "Click here" is the inert control. Saving on the phone still happens as the coach types.
+ */
 export const COACH_PLAN_SAVE_LEAD =
-  'This plan saves as you type on this device. Export to your Drive for longevity.';
+  'This plan saves to your phone as you type. Click here to save a copy on your connected Drive.';
+export const COACH_PLAN_SAVE_LINK = 'Click here';
+
+/**
+ * Intro that used to sit on Instructor Collaboration.
+ * Header line under Advantage Coach Unlimited on the Unlimited lesson plan.
+ */
+export const UNLIMITED_SHARE_LEAD =
+  'Instructors share class plans, technique trees, and training videos with you. Each day they can send class photos and short clips for you to look over. Their screen works like Coach. You approve what plays on the gym TV and what joins the gym roster.';
 
 /** Bottom action on paid Coach. Opens the coach's Drive and writes today's plan text. */
 export const COACH_PLAN_UPLOAD_BUTTON = "Open my Drive and upload today's plan";
@@ -134,9 +145,9 @@ export const COACH_PLAN_UPLOAD_FAILED =
   "Saved on this device. Your Drive could not take today's plan.";
 
 /**
- * Shared-gallery download belongs on Pro / Instructor Collaboration.
- * Paid Coach keeps technique clips on this device.
+ * Teammate-uploaded video download belongs on Advantage Coach Unlimited.
+ * Limited Coach Daily Lesson Plan stays false.
  */
-export function coachLessonGalleryDownload(proSuite: boolean): boolean {
-  return proSuite;
+export function coachLessonGalleryDownload(unlimitedPlan: boolean): boolean {
+  return unlimitedPlan;
 }

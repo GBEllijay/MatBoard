@@ -11,9 +11,9 @@ import {
 } from './comingSoonAds.ts';
 import { COACH_HOME_TEASER } from './coachCopy.ts';
 import {
-  COMPETITOR_SYSTEM_NAME,
   GYM_CONSOLE_NAME,
   INSTRUCTOR_COLLAB_NAME,
+  INSTRUCTOR_COACH_ENTRY,
   MEDIA_CONSOLE_NAME,
   COMPETITION_MANAGEMENT_PRO_LABEL,
 } from './productNames.ts';
@@ -88,7 +88,7 @@ test('Pro ad keeps the splash and descriptor boxes without the middle paragraph'
   assert.match(text, /Media Console/);
   assert.deepEqual(
     COMING_SOON_ADS.pro.features.map((feature) => feature.title),
-    [MEDIA_CONSOLE_NAME, COMPETITOR_SYSTEM_NAME, INSTRUCTOR_COLLAB_NAME, COMPETITION_MANAGEMENT_PRO_LABEL],
+    [MEDIA_CONSOLE_NAME, INSTRUCTOR_COACH_ENTRY, INSTRUCTOR_COLLAB_NAME, COMPETITION_MANAGEMENT_PRO_LABEL],
   );
   assert.doesNotMatch(text, /Cast to your Gym TV/i);
   assert.doesNotMatch(text, /ProShop Inventory/);
@@ -103,15 +103,16 @@ test('Pro ad keeps the splash and descriptor boxes without the middle paragraph'
     'Brackets, the scoreboard controller, and the round timer for an in-house event.',
   );
   assert.doesNotMatch(tournamentFeature?.body ?? '', /roster/i);
-  const competitorFeature = COMING_SOON_ADS.pro.features.find(
-    (feature) => feature.title === COMPETITOR_SYSTEM_NAME,
+  const unlimitedFeature = COMING_SOON_ADS.pro.features.find(
+    (feature) => feature.title === INSTRUCTOR_COACH_ENTRY,
   );
-  assert.match(competitorFeature?.body ?? '', /Competitor roster/);
+  assert.match(unlimitedFeature?.body ?? '', /Instructors share class plans/);
   assert.doesNotMatch(text, /Match Controller/);
   assert.doesNotMatch(text, /Round Controller/);
   assert.match(text, /Class Schedule/);
-  assert.match(text, /Competitor Management System/);
-  assert.match(text, /Instructor Collaboration and Advantage Coach Unlimited/);
+  assert.match(text, /Advantage Coach Unlimited/);
+  assert.match(text, /Instructor Invitation and Access Management/);
+  assert.doesNotMatch(text, /Competitor Management System/);
   assert.doesNotMatch(text, /Cloud Access/);
   assert.doesNotMatch(text, /Mock Tournament/);
   assert.doesNotMatch(text, /Owner.?s Toolbox/i);

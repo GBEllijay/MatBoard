@@ -264,7 +264,7 @@ function RosterPicker({
             : `No competitors yet. Type a name above, or add them on ${COMPETITOR_ROSTER_LABEL}.`}
         </p>
       )}
-      <Link className="text-link" to="/roster">
+      <Link className="text-link" to="/roster?from=competitors">
         Open {COMPETITOR_ROSTER_LABEL}
       </Link>
     </>

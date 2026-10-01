@@ -37,14 +37,21 @@ test('coach plan export asks to connect when Drive is not connected', async () =
 
 test('Coach Daily Lesson Plan page keeps gallery download on Pro only', () => {
   const source = readFileSync(new URL('../pages/TrainingNotes.tsx', import.meta.url), 'utf8');
-  assert.match(source, /coachLessonGalleryDownload\(proSuite\)/);
+  assert.match(source, /coachLessonGalleryDownload\(unlimitedPlan\)/);
   assert.match(source, /COACH_LESSON_EYEBROW/);
+  assert.match(source, /INSTRUCTOR_COACH_ENTRY/);
+  assert.match(source, /UNLIMITED_SHARE_LEAD/);
   assert.match(source, /<CoachPlanExport/);
   assert.match(source, /OpenMyDrive/);
   assert.doesNotMatch(source, /14 days/);
   assert.doesNotMatch(source, /Nothing in the shared gallery/);
   assert.doesNotMatch(source, /Gym Owner and Instructors Console/);
+  assert.doesNotMatch(source, /parent\.eyebrow/);
   const downloadAt = source.indexOf('{DOWNLOAD_TODAY_LABEL}');
-  const gateAt = source.indexOf('coachLessonGalleryDownload(proSuite)');
+  const gateAt = source.indexOf('coachLessonGalleryDownload(unlimitedPlan)');
   assert.ok(gateAt >= 0 && downloadAt > gateAt);
+  const exportSource = readFileSync(new URL('../components/CoachPlanExport.tsx', import.meta.url), 'utf8');
+  assert.match(exportSource, /COACH_PLAN_SAVE_LINK/);
+  assert.match(exportSource, /TODO: Save `plan` for `dateKey`/);
+  assert.doesNotMatch(exportSource, /exportCoachPlanToOwnDrive/);
 });

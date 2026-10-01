@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ClassPhotoPromotions } from '../components/ClassPhotoPromotions';
 import { CoachPlanExport } from '../components/CoachPlanExport';
 import { CollaborationGate, SeatSessionBar, useCurrentSeat } from '../components/SeatSessionBar';
@@ -13,6 +13,7 @@ import {
   COACH_LESSON_EYEBROW,
   NOTES_LEAD,
   TRAINING_NOTES_LABEL,
+  UNLIMITED_SHARE_LEAD,
   coachLessonGalleryDownload,
 } from '../lib/coachCopy';
 import {
@@ -51,6 +52,7 @@ import {
   subscribeDriveNotice,
 } from '../lib/lessonDrive';
 import { seatPermissionAllows, visibleCoachControl } from '../lib/instructorSeats';
+import { COACH_UNLIMITED_PATH, INSTRUCTOR_COACH_ENTRY, UNLIMITED_LESSON_VALUE } from '../lib/productNames';
 import { listPhotos } from '../lib/photoStore';
 import { loadTechniqueBoard } from '../lib/techniqueStore';
 import type { VideoPlan } from '../lib/techniqueLogic';
@@ -135,10 +137,17 @@ function videoOffer(
 export function TrainingNotesPage() {
   const navigate = useNavigate();
   const parent = useToolboxParent();
-  const proSuite = useProUnlocked();
+  const proUnlocked = useProUnlocked();
+  const [searchParams] = useSearchParams();
+  /**
+   * Limited Coach is `/notes`. Unlimited is the same page with `plan=unlimited`
+   * and Pro on. A Coach-only browser cannot turn Unlimited on with the query.
+   */
+  const unlimitedPlan = proUnlocked && searchParams.get('plan') === UNLIMITED_LESSON_VALUE;
   const seat = useCurrentSeat();
   const showDownload = visibleCoachControl('downloadTodaysVideos', { owner: true, seat });
-  const showDistribute = visibleCoachControl('uploadForDistribution', { owner: proSuite, seat });
+  const showDistribute =
+    unlimitedPlan && visibleCoachControl('uploadForDistribution', { owner: true, seat });
   const lessonBlocked = seat !== null && !seatPermissionAllows(seat.permissions, 'dailyLessonPlanAccess');
   useCoachPageSwipe();
   const [boot] = useState(() => {
@@ -157,7 +166,7 @@ export function TrainingNotesPage() {
   const [videos, setVideos] = useState<TodayVideos | null>(null);
   const [galleryToday, setGalleryToday] = useState<GalleryTodayState>({ status: 'loading', videos: [] });
   const [driveToday, setDriveToday] = useState<DriveTodayState>({
-    status: proSuite ? 'loading' : 'skipped',
+    status: unlimitedPlan ? 'loading' : 'skipped',
     videos: [],
   });
   const [downloadNote, setDownloadNote] = useState('');
@@ -228,7 +237,7 @@ export function TrainingNotesPage() {
   }, [todayKey]);
 
   useEffect(() => {
-    if (!proSuite) {
+    if (!unlimitedPlan) {
       setGalleryToday({ status: 'ready', videos: [] });
       return;
     }
@@ -252,10 +261,10 @@ export function TrainingNotesPage() {
       cancelled = true;
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [todayKey, proSuite]);
+  }, [todayKey, unlimitedPlan]);
 
   useEffect(() => {
-    if (!proSuite) {
+    if (!unlimitedPlan) {
       setDriveToday({ status: 'skipped', videos: [] });
       return;
     }
@@ -279,7 +288,7 @@ export function TrainingNotesPage() {
       cancelled = true;
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [todayKey, proSuite]);
+  }, [todayKey, unlimitedPlan]);
 
   useEffect(() => {
     const flush = () => flushLessonDriveDraft();
@@ -335,10 +344,11 @@ export function TrainingNotesPage() {
     const saved = saveDay(todayKey, next, todayKey);
     setArchive(saved.archive);
     setPlan(saved.plan);
-    // Local text is already stored. Pro queues a Drive draft (text + file ids).
-    // Regular Coach skips the queue. Either way, leaving the page does not drop the plan.
+    // Local text is already stored. Unlimited queues a Drive draft (text + file ids).
+    // Limited Coach skips the queue. Either way, leaving the page does not drop the plan.
+    // TODO: Reopen / repopulate an older lesson plan from Drive is not implemented.
     scheduleLessonDriveDraft({
-      proSuite,
+      proSuite: unlimitedPlan,
       dateKey: todayKey,
       coachName: saved.plan.coachName,
       plan: saved.plan,
@@ -497,23 +507,24 @@ export function TrainingNotesPage() {
   return (
     <main className="notes">
       <PlayExitMark
-        to={parent.path}
+        to={unlimitedPlan ? COACH_UNLIMITED_PATH : parent.path}
         onExit={() => {
-          navigate(parent.path);
+          navigate(unlimitedPlan ? COACH_UNLIMITED_PATH : parent.path);
         }}
       />
       <header className="notes__bar">
         <div className="notes__brand">
-          <p className="notes__eyebrow">{proSuite ? parent.eyebrow : COACH_LESSON_EYEBROW}</p>
+          <p className="notes__eyebrow">{unlimitedPlan ? INSTRUCTOR_COACH_ENTRY : COACH_LESSON_EYEBROW}</p>
           <h1>{TRAINING_NOTES_LABEL}</h1>
         </div>
       </header>
       <SeatSessionBar />
-      {proSuite ? <p className="notes__lead">{NOTES_LEAD}</p> : null}
+      {unlimitedPlan ? <p className="notes__lead">{UNLIMITED_SHARE_LEAD}</p> : null}
+      {unlimitedPlan ? <p className="notes__lead">{NOTES_LEAD}</p> : null}
       {lessonBlocked ? (
         <p className="notes__lead">This seat does not include the daily lesson plan.</p>
       ) : null}
-      {proSuite && driveNotice.text ? (
+      {unlimitedPlan && driveNotice.text ? (
         <p className="notes__save" role="status">
           {driveNotice.text}
         </p>
@@ -521,7 +532,7 @@ export function TrainingNotesPage() {
 
       {lessonBlocked ? null : (
       <div className="notes__plan">
-        {proSuite ? null : <OpenMyDrive />}
+        {unlimitedPlan ? null : <OpenMyDrive />}
         <section className="notes__archive" aria-label="Saved days">
           <div className="notes__days">
             <button
@@ -531,7 +542,7 @@ export function TrainingNotesPage() {
               onClick={() => openDay(todayKey)}
             >
               Today
-              {proSuite ? null : <span className="notes__day-date">{planDayStamp(todayKey)}</span>}
+              {unlimitedPlan ? null : <span className="notes__day-date">{planDayStamp(todayKey)}</span>}
             </button>
             <button
               type="button"
@@ -561,8 +572,8 @@ export function TrainingNotesPage() {
             {planDayTitle(viewKey, todayKey)} · {planDayStamp(viewKey)}
             {editingToday ? '' : ' · View only'}
           </p>
-          {proSuite ? null : <p className="notes__when">{NOTES_LEAD}</p>}
-          {proSuite ? null : (
+          {unlimitedPlan ? null : <p className="notes__when">{NOTES_LEAD}</p>}
+          {unlimitedPlan ? null : (
             <section className="notes__card">
               <label className="notes__field" htmlFor="notes-coach">
                 Coach name
@@ -577,7 +588,7 @@ export function TrainingNotesPage() {
               </label>
             </section>
           )}
-          {coachLessonGalleryDownload(proSuite) ? (
+          {coachLessonGalleryDownload(unlimitedPlan) ? (
           <CollaborationGate show={showDownload}>
           <div className="notes__downloads">
             <button
@@ -780,7 +791,7 @@ export function TrainingNotesPage() {
         ) : null}
 
         <section className="notes__card">
-          {proSuite ? (
+          {unlimitedPlan ? (
             <label className="notes__field" htmlFor="notes-coach">
               Coach name
               <input
@@ -914,7 +925,7 @@ export function TrainingNotesPage() {
           </label>
         </section>
 
-        {!proSuite && editingToday ? <CoachPlanExport dateKey={todayKey} plan={plan} /> : null}
+        {!unlimitedPlan && editingToday ? <CoachPlanExport dateKey={todayKey} plan={plan} /> : null}
         {showDistribute && editingToday ? (
           <>
             <aside className="notes__distribute" aria-label="Instructor distribution">

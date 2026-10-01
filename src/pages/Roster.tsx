@@ -24,7 +24,6 @@ import {
   EMPTY_ROSTER_TITLE,
   ROSTER_CSV_DEVICE_NOTE,
   ROSTER_CSV_INSTRUCTIONS,
-  ROSTER_CSV_PRO_TEASER,
   ROSTER_LEAD_COACH,
   ROSTER_LEAD_PRO,
   rosterCsvAvailable,
@@ -80,11 +79,12 @@ export function RosterPage() {
   const coachUnlocked = useCoachUnlocked();
   useCoachPageSwipe();
   const [searchParams] = useSearchParams();
-  const coachRoster =
-    searchParams.get('from') === 'coach' || (coachUnlocked && !proUnlocked);
-  const showCsv = rosterCsvAvailable(proUnlocked, coachRoster);
-  const fromSuite = searchParams.get('from') === 'suite';
   const fromCompetitors = searchParams.get('from') === 'competitors';
+  const coachRoster =
+    !fromCompetitors &&
+    (searchParams.get('from') === 'coach' || (coachUnlocked && !proUnlocked));
+  const showCsv = rosterCsvAvailable(proUnlocked, coachUnlocked);
+  const fromSuite = searchParams.get('from') === 'suite';
   const exitPath = coachRoster
     ? '/coach'
     : fromCompetitors
@@ -256,12 +256,6 @@ export function RosterPage() {
           }
         />
       )}
-
-      {coachRoster ? (
-        <div className="roster__csv">
-          <p className="roster__csv-hint">{ROSTER_CSV_PRO_TEASER}</p>
-        </div>
-      ) : null}
 
       <StudentEditor
         open={Boolean(editor)}
