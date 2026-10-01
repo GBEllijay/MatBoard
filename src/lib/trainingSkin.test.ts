@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import test from 'node:test';
 import {
   DEFAULT_TRAINING_SKIN,
@@ -40,4 +41,11 @@ test('Round timer skin persists Classic and Advantage', () => {
 test('Unknown stored timer skin falls back to Classic', () => {
   localStorage.setItem(TRAINING_SKIN_KEY, 'neon');
   assert.equal(getTrainingSkin(), 'classic');
+});
+
+test('Round timer still offers the Advantage skin beside Classic', () => {
+  const source = fs.readFileSync(new URL('../components/TrainingOptions.tsx', import.meta.url), 'utf8');
+  assert.match(source, /setTrainingSkin\('classic'\)/);
+  assert.match(source, /setTrainingSkin\('themed'\)/);
+  assert.match(source, />\s*Advantage\s*</);
 });
