@@ -12,6 +12,7 @@ import {
 } from './tournamentStore.ts';
 import {
   CARLOS_ASSET,
+  KIDS_BRACKETS_SKINS_LABEL,
   KIDS_MODE_KEY,
   KIDS_SCOREBOARDS_NAME,
   KIDS_SKINS,
@@ -50,6 +51,7 @@ Object.defineProperty(globalThis, 'localStorage', { value: storage, configurable
 test("Kids' Scoreboards is off until this device turns it on", () => {
   storage.removeItem(KIDS_MODE_KEY);
   assert.equal(KIDS_SCOREBOARDS_NAME, "Kids' Scoreboards");
+  assert.equal(KIDS_BRACKETS_SKINS_LABEL, 'Kids Brackets Skins');
   assert.equal(KIDS_WIN_CHEER, 'Bom trabalho!');
   assert.equal(CARLOS_ASSET, '/assets/kids/carlos.webp');
   assert.deepEqual(getKidsScoreboard(), { enabled: false, skin: 'dinos' });

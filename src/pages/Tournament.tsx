@@ -26,7 +26,7 @@ import {
 import { EMPTY_BRACKET_BODY, EMPTY_BRACKET_TITLE, OWNER_BRACKET_CLOUD_NOTE } from '../lib/coachCopy';
 import { linkedBracketMatchId, openBracketBout, scoreboardPath, unlinkBracketBout } from '../lib/bracketBout';
 import { setBracketTheme } from '../lib/bracketTheme';
-import { kidsLiveLine, kidsWinState } from '../lib/kidsScoreboard';
+import { KIDS_BRACKETS_SKINS_LABEL, kidsLiveLine, kidsWinState } from '../lib/kidsScoreboard';
 import { rosterGymForName } from '../lib/rosterStore';
 import { tournamentToolLabel } from '../lib/productNames';
 import {
@@ -290,7 +290,7 @@ export function TournamentPage() {
       <p className="tournament__hint">
         {kids.enabled ? (
           <>
-            Kids' Scoreboards paints this bracket. Pick a background, then fullscreen for the gym TV.
+            {KIDS_BRACKETS_SKINS_LABEL} paints this bracket. Pick a background, then fullscreen for the gym TV.
             Grand Master Carlos comes in from the left only after a champion, with "Bom trabalho!"
           </>
         ) : (

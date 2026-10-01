@@ -7,6 +7,8 @@
 import { displayBoutName, slotName, type BoutPoints, type TournamentState } from './tournamentStore.ts';
 
 export const KIDS_SCOREBOARDS_NAME = "Kids' Scoreboards";
+/** Footer control on Brackets. Same on/off and wallpaper chips as Kids' Scoreboards. */
+export const KIDS_BRACKETS_SKINS_LABEL = 'Kids Brackets Skins';
 export const KIDS_WIN_CHEER = 'Bom trabalho!';
 export const KIDS_MODE_KEY = 'matboard.kidsScoreboard.v1';
 export const CARLOS_ASSET = '/assets/kids/carlos.webp';

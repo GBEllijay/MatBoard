@@ -11692,11 +11692,7 @@ a.plan-pick {
   gap: 0.35rem;
 }
 
-/* Under the match pads. Black labels stay readable on the tatami and on kids wallpaper. */
-.kids-switch-panel--below {
-  margin-top: 0.15rem;
-}
-
+/* Brackets footer. Black labels stay readable on the kids wallpaper. */
 .kids-switch--boards .chip,
 .kids-switch--boards .chip--gold {
   color: #000;
