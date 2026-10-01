@@ -1,12 +1,12 @@
 import {
-  KIDS_SCOREBOARDS_NAME,
+  KIDS_BRACKETS_SKINS_LABEL,
   KIDS_SKINS,
   setKidsEnabled,
   setKidsSkin,
   type KidsScoreboardPrefs,
 } from '../lib/kidsScoreboard';
 
-/** On/off plus the six locked backgrounds. The bracket page and the match controller share this device preference. */
+/** On/off plus the six locked backgrounds. Lives at the bottom of Brackets. */
 export function KidsScoreboardSwitcher({ prefs }: { prefs: KidsScoreboardPrefs }) {
   return (
     <div className="kids-switch kids-switch--boards">
@@ -16,10 +16,10 @@ export function KidsScoreboardSwitcher({ prefs }: { prefs: KidsScoreboardPrefs }
         aria-pressed={prefs.enabled}
         onClick={() => setKidsEnabled(!prefs.enabled)}
       >
-        {KIDS_SCOREBOARDS_NAME}
+        {KIDS_BRACKETS_SKINS_LABEL}
       </button>
       {prefs.enabled ? (
-        <div className="kids-switch__skins" role="radiogroup" aria-label={`${KIDS_SCOREBOARDS_NAME} background`}>
+        <div className="kids-switch__skins" role="radiogroup" aria-label={`${KIDS_BRACKETS_SKINS_LABEL} background`}>
           {KIDS_SKINS.map((skin) => (
             <button
               key={skin.id}
