@@ -12,7 +12,7 @@ Browsers cannot permanently hide the address bar in a normal tab. For gym TV / c
 
 ## Products
 
-- **Advantage White** (`/white`, `/lite` redirects here) — BJJ scoreboard and timer. Home card opens this page. **Live Bout** and **Rounds** live here (same Scoreboard / Controller / Training destinations as before).
+- **Advantage White** (`/white`, `/lite` redirects here; buy at `/buy`) — BJJ scoreboard and timer. Home card opens this page. **Live Bout** and **Rounds** live here (same Scoreboard / Controller / Training destinations as before).
 - **Advantage Coach** — Coming soon on public home. When unlocked (`?coach=gbellijay`), **Open Coach** goes to `/coach` with five tools: **Mock Tournament**, **Competitor Roster** (manual add / edit / remove on this phone; CSV template, import, and export stay on Advantage Pro), **Daily Lesson Plan** (today's class on this phone: coach name, intro, warm-up note, technique blocks with optional water breaks, cool-down, and closing; about 14 local days stay on this device, with Yesterday, Recent, and copy into today), and **Daily Training Videos** (Warm-up, Technique / Drill cards, and Cool down; **+ Add another** inserts a technique above Cool down; one clip per card, 10 clips on this phone; each technique has its own 2:30 / 5:00 / 7:00 / Custom loop timer; **Add video** opens **Record** or **Pick from gallery**; **Start** loops the selected card only; mute defaults on; media stays on this phone). **Technique Tree** (`/technique-tree`) keeps every tree on this phone: a base position, child branches, and defense/counter steps with a Defense chip, expand/collapse, edit, and delete. **Add tree** keeps the open tree and starts another. **Delete tree** removes one tree after confirm. They auto-save in `localStorage` (`matboard.coach.techniqueTree.v1`, archive `version: 2`; a saved `version: 1` tree is kept on first open). Each node keeps a `slotId` for a later lesson or video link. Up to 20 trees; extras already stored are not dropped. Coach does not open Gallery or Gym Owner Console folders (Pro Shop, Events, Class Schedule, slideshow). Public deep links stay gated.
 - **Advantage Pro** — Coming soon on public home. On a phone, the three home cards share side padding and step up on purpose: White is the short card, Coach sits between, and Pro is the tall card because of its three-line blurb. The home card shows **Pro — Gym Owner and Instructor's Console — Coming Soon**, then three short lines: cast class schedules, events, recent promotions, and Pro Shop inventory to the gym TV; the in-house tournament suite; and assignable instructor licenses. Tap still opens the Coming soon ad, which keeps the longer gym-TV list, Auto-Fill Bracketing and Result Tracking, and shared training videos (no prices), plus a labeled placeholder of four hubs with **Media Console** first, with **Owner unlock**. When Pro is unlocked on this browser, the Pro card is active and **Open Console** goes to `/pro`. That console is four large hubs, top to bottom: **Media Console** (`/slideshow?folder=gallery`), **In-House Tournament Management Suite** (`/suite`), **Competitor Management System** (`/competitors`), and **Instructor Collaboration and Advantage Coach Unlimited** (`/instructors`). The suite is live event ops: Brackets (saveable divisions, up to 64 on this device; Coach Mock Tournament stays at 16), Scoreboard, Match Controller (`/match/control`), Rounds, and Round Controller (`/training/control`). Competitor Roster (Pro CSV) and Rankings / Results moved to Competitor Management. **Competition Ready** (`/competition-ready`) sits with them: one weekend checklist per roster competitor in the same `matboard.roster.v1` save (medical forms, gi inspection, division confirmed, travel / lodging, waiver signed, weigh-in ready, plus an optional note and up to three custom items). **Remove** hides that row on this competitor only; other competitors still open with the six starter items, and **Put back** restores a removed starter row. **On** is done; **Off** still needs attention. Existing competitors start all off. Roster Division and Check In stay on the competitor card. **Competitor Notes** stay on that card in `matboard.roster.v1`. **Competitor Game Plan** (`/game-plan`) sits with them too: A Game, B Game, and C Game plus a home-focus note on each roster competitor, saved in the same `matboard.roster.v1` file under `gamePlans`. A Technique Tree link is optional. A custom note can stand alone. Strong and Needs work marks show back on that tree step. Instructor Collaboration does not sync to a cloud. The owner hub generates an instructor invite on this device and saves seats in `matboard.pro.instructorSeats.v1` (email, status invited / active / revoked, invite token, and six permission switches). Gallery upload starts off; daily training lesson plan access, roster submit, roster pull, download today's videos, and upload for instructor distribution start on. The owner picks a role first — Assistant Coach, Coach, Program Director, or Instructor — then can flip any switch. Events access and Pro Shop access stay off until Program Director or Instructor. Soft beta does not send email, bill, or cap invites. The public home title has a quiet line, Win by Advantage. Pro does not apply a Coach-only roster cap — the shared roster has no size limit. Public deep links to those routes stay gated. Unlocked Pro can open Coach tools without `?coach=`; Coach-only unlock is unchanged.
 
@@ -64,6 +64,58 @@ This repo is a static Vite app.
 - Build command: `npm run build`
 - Output directory: `dist`
 - SPA fallback: `public/_redirects` contains `/*    /index.html   200` and is copied into `dist` on build.
+- Purchase API: `functions/` is a Cloudflare Pages Functions directory. `public/_routes.json` limits those functions to `/api/*` so the rest of the site stays static. White routes stay open in this build; the purchase record is what a later check can read.
+
+## Advantage White purchase (Stripe test mode)
+
+Advantage White is a **one-time $9.99 USD** purchase. Checkout is a Stripe Checkout Session (`mode=payment`). Card fields stay on Stripe. This repo never contains a live secret key.
+
+| Piece | Where |
+| --- | --- |
+| Buy page | `/buy` (also linked from `/white`) |
+| Create Checkout | `POST /api/checkout` with optional JSON `{ "promotionCode": "WHITE499" }` |
+| Webhook | `POST /api/stripe/webhook` on `checkout.session.completed` |
+| Entitlement check | `GET /api/entitlement?session_id=cs_...` or `?email=` |
+| Local store | `.data/white-entitlements.json` while `npm run dev` or `npm run preview` (gitignored) |
+| Cloudflare store | KV binding **`WHITE_ENTITLEMENTS`** (one JSON index). Without that binding the webhook returns 500 so Stripe retries. |
+
+The stored record is the buyer email Stripe sends, the Checkout session id, the amount, the currency, and the time. Card numbers are not stored. The same session id is recorded once. Email lookup returns the latest White purchase. `GET /api/entitlement` is a stub: anyone who knows the email or session id can see that a purchase exists. Gate it before production.
+
+### Dashboard setup (test mode)
+
+Use the Stripe test-mode toggle. Then:
+
+1. **Product catalog → Add product.** Name: `Advantage White`. Price: one time, **USD 9.99**. Copy the Price id (`price_...`) into `STRIPE_PRICE_WHITE`.
+2. **Coupons** (placeholders — the app does not create them):
+
+   | Coupon id | Amount off | Duration | Promotion code | Customer pays |
+   | --- | --- | --- | --- | --- |
+   | `advantage_white_499` | $5.00 USD | Once | `WHITE499` | $4.99 |
+   | `advantage_white_099` | $9.00 USD | Once | `WHITE099` | $0.99 |
+
+   Restrict each coupon to the Advantage White product if you want it to stay off later prices. Promotion codes are customer-facing; coupon ids are the Dashboard ids.
+3. **Developers → Webhooks → Add endpoint.** URL: `https://<your-host>/api/stripe/webhook` (local: forward to `http://localhost:5173/api/stripe/webhook`). Event: `checkout.session.completed`. Copy the signing secret into `STRIPE_WEBHOOK_SECRET`.
+4. **Developers → API keys.** Secret key → `STRIPE_SECRET_KEY` (`sk_test_...`).
+5. Optional `STRIPE_SUCCESS_URL` and `STRIPE_CANCEL_URL`. If empty, the API uses the request origin:
+   - success: `{origin}/buy?checkout=success&session_id={CHECKOUT_SESSION_ID}`
+   - cancel: `{origin}/buy?checkout=cancel`
+   The success URL must include the `{CHECKOUT_SESSION_ID}` placeholder.
+6. **Cloudflare Pages → Settings → Variables** (Production and Preview): the five `STRIPE_*` names above. Do not mark them as build-time `VITE_` variables.
+7. **Cloudflare Pages → Settings → Bindings → KV namespace.** Variable name exactly `WHITE_ENTITLEMENTS`.
+
+Copy `.env.example` to `.env` for local dev. `.env` is gitignored.
+
+### Test-mode click path
+
+1. Fill `.env` with test keys and `npm run dev`.
+2. Open `http://localhost:5173/buy` (or White → **Buy Advantage White — $9.99**).
+3. Optional: enter `WHITE499` or `WHITE099`. Leave it blank to type the code on Stripe instead. A code entered here is applied as the Checkout discount; Stripe’s own promo box is used only when this field is empty.
+4. **Continue to checkout.** Pay with `4242 4242 4242 4242`, any future expiry, any CVC, any ZIP.
+5. Stripe returns to `/buy?checkout=success&session_id=cs_test_...`. Cancel returns to `/buy?checkout=cancel` and does not charge.
+6. Deliver the webhook (`stripe listen --forward-to localhost:5173/api/stripe/webhook`, or the Dashboard endpoint). The buy page looks up the session a few times.
+7. `GET /api/entitlement?session_id=cs_test_...` returns `{ "entitled": true, "email": "...", "sessionId": "cs_test_..." }`. Locally that row is in `.data/white-entitlements.json`.
+
+Coach and Pro are named on the buy page as later products. They are not in this Checkout session.
 
 ## Google Drive sign-in
 

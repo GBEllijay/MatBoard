@@ -12905,3 +12905,96 @@ a.plan-pick {
 .cms .plan-link a:focus-visible {
   outline-color: #fff;
 }
+
+.buy {
+  display: grid;
+  gap: 0.9rem;
+  text-align: left;
+}
+
+.buy__card {
+  display: grid;
+  gap: 0.65rem;
+  padding: 1.05rem 1.1rem 1.15rem;
+  border-radius: var(--radius);
+  background: rgba(16, 19, 26, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: var(--shadow);
+}
+
+.buy h2,
+.buy h3 {
+  margin: 0;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.buy h2 {
+  font-size: clamp(1.6rem, 5vw, 2.1rem);
+}
+
+.buy h3 {
+  font-size: 1rem;
+}
+
+.buy__price {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(2rem, 7vw, 2.7rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.buy__price span {
+  color: var(--muted);
+  font-size: 1rem;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.home .buy p,
+.home .buy li {
+  margin: 0;
+  color: var(--ink);
+  line-height: 1.45;
+}
+
+.buy ul {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding-left: 1.15rem;
+}
+
+.buy__label {
+  font-weight: 750;
+}
+
+.buy a {
+  color: var(--gold-2);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+}
+
+.buy .btn {
+  width: 100%;
+}
+
+.buy__status {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border-radius: 16px;
+  background: rgba(212, 160, 23, 0.16);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.buy__status--ok {
+  background: rgba(34, 197, 94, 0.16);
+}
+
+.buy__status--bad {
+  background: rgba(239, 68, 68, 0.16);
+}

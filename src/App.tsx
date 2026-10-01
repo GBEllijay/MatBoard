@@ -31,6 +31,7 @@ import { TournamentSuitePage } from './pages/TournamentSuite';
 import { TrainingNotesPage } from './pages/TrainingNotes';
 import { TrainingControllerPage } from './pages/TrainingController';
 import { TrainingPage } from './pages/Training';
+import { BuyWhitePage } from './pages/BuyWhite';
 import { WhitePage } from './pages/White';
 
 consumeUnlockQueryNow();
@@ -58,6 +59,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/white" element={<WhitePage />} />
+      <Route path="/buy" element={<BuyWhitePage />} />
       <Route path="/lite" element={<Navigate to="/white" replace />} />
       <Route path="/match" element={<MatchDisplayPage />} />
       <Route path="/match/control" element={<MatchControllerPage />} />
