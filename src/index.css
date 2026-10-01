@@ -12235,15 +12235,15 @@ a.plan-pick {
 /* Old School — tabletop flip-card board.
    Blue competitor: white digits on blue cards.
    White competitor: white digits on red cards.
-   Large cards are points. Smaller cards are advantages and penalties.
-   Matte black frame, binder rings, a slight flip seam. */
+   Large cards are points (two digits). Advantages and penalties are one card each.
+   Matte black frame. Two thin chrome rings per card: closed wire over the rail
+   and through a grommet so the card can flip over the top. */
 .scoreboard-skin--old-school.display {
   --os-blue: #1d6fe0;
   --os-blue-deep: #155ec4;
   --os-red: #ef3d2c;
   --os-red-deep: #d43224;
   --os-frame: #0c0c0c;
-  --os-ring: #d5dee6;
   --board-field: #070707;
   --board-blue: #101010;
   --board-white: #101010;
@@ -12277,9 +12277,10 @@ a.plan-pick {
 }
 
 .scoreboard-skin--old-school.display .bout__scores {
-  grid-template-columns: 1.85fr 0.95fr 0.58fr;
+  /* Points keep two cards and take the width the second advantage card used to spend. */
+  grid-template-columns: minmax(0, 2.55fr) minmax(0, 0.78fr) minmax(0, 0.6fr);
   align-items: end;
-  gap: 0.45rem;
+  gap: 0.7rem;
   height: 100%;
   padding: 0.55rem 0.7rem 0.85rem;
   border-radius: 2px 2px 14px 14px;
@@ -12326,12 +12327,15 @@ a.plan-pick {
 
 .scoreboard-skin--old-school.display .score__label,
 .scoreboard-skin--old-school.display .score__label--wide {
+  position: relative;
+  z-index: 5;
   flex: 0 0 auto;
   color: #f2f2f2;
   opacity: 1;
   text-align: center;
   text-shadow: none;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
 }
 
 .scoreboard-skin--old-school .flap {
@@ -12339,25 +12343,36 @@ a.plan-pick {
   flex: 1 1 auto;
   align-items: stretch;
   justify-content: center;
-  gap: 0.28rem;
+  gap: 0.42rem;
   min-height: 0;
   width: 100%;
-  padding-top: 0.7rem;
-  perspective: 800px;
+  /* Room for the ring crown and rail above the card, under the label. */
+  padding-top: clamp(1.7rem, 22%, 2.55rem);
+  overflow: visible;
   font-family: 'Noto Sans Display', 'Liberation Sans', Arial, sans-serif;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 0.8;
 }
 
-.scoreboard-skin--old-school .flap__card {
+.scoreboard-skin--old-school .flap__slot {
   container-type: size;
   position: relative;
   display: grid;
   flex: 1 1 0;
-  place-items: center;
   min-width: 0;
   max-width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.scoreboard-skin--old-school .flap__card {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  width: 100%;
   height: 100%;
   overflow: visible;
   border-radius: 0.12rem;
@@ -12382,30 +12397,30 @@ a.plan-pick {
     linear-gradient(180deg, #ff5c48 0%, var(--os-red) 44%, var(--os-red-deep) 50%, #e44534 100%);
 }
 
-.scoreboard-skin--old-school .flap__ring {
+/* Rings stay in a flat layer so the wire stays vector-sharp.
+   The card flip carries its own perspective; a perspective on this row
+   was rasterizing the strokes. */
+.scoreboard-skin--old-school .flap__rings {
   position: absolute;
-  z-index: 3;
-  top: -0.62rem;
+  z-index: 4;
   left: 50%;
-  width: 1.15rem;
-  height: 1.15rem;
-  margin-left: -0.58rem;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 50% 50%, transparent 38%, #1a1a1a 39% 46%, var(--os-ring) 48%, #f7fbff 62%, #7d868e 82%, #2c3136 100%);
-  box-shadow: 0 2px 0 #000, inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+  top: 0;
+  /* 100cqh keeps the grommet in the top of a short card. */
+  --flap-ring-w: min(96%, 15.5rem, 100cqh);
+  width: var(--flap-ring-w);
+  height: auto;
+  aspect-ratio: 100 / 32;
+  margin-left: calc(var(--flap-ring-w) * -0.5);
+  /* Card top lines up with viewBox y = 13.8 (13.8 / 32). */
+  margin-top: calc(var(--flap-ring-w) * 32 / 100 * -0.43125);
+  transform: none;
+  overflow: visible;
+  pointer-events: none;
+  shape-rendering: geometricPrecision;
 }
 
-.scoreboard-skin--old-school .flap__ring::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: -0.28rem;
-  width: 0.42rem;
-  height: 0.42rem;
-  margin-left: -0.21rem;
-  border-radius: 2px;
-  background: #111;
+.scoreboard-skin--old-school .flap__rings path {
+  shape-rendering: geometricPrecision;
 }
 
 .scoreboard-skin--old-school .flap__seam {
@@ -12420,22 +12435,32 @@ a.plan-pick {
   pointer-events: none;
 }
 
-.scoreboard-skin--old-school .score--disadvantages .flap {
+.scoreboard-skin--old-school .score--disadvantages .flap,
+.scoreboard-skin--old-school .score--advantages .flap {
   justify-content: center;
 }
 
-.scoreboard-skin--old-school .score--disadvantages .flap__card {
-  flex: 0 0 auto;
+.scoreboard-skin--old-school .score--disadvantages .flap__slot,
+.scoreboard-skin--old-school .score--advantages .flap__slot {
+  flex: 0 1 auto;
   width: auto;
-  aspect-ratio: 0.7;
+  height: 100%;
   max-width: 100%;
+}
+
+.scoreboard-skin--old-school .score--advantages .flap__slot {
+  aspect-ratio: 0.78;
+}
+
+.scoreboard-skin--old-school .score--disadvantages .flap__slot {
+  aspect-ratio: 0.7;
 }
 
 .scoreboard-skin--old-school .flap__face {
   position: relative;
   z-index: 1;
   color: #fff;
-  font-size: 72cqh;
+  font-size: 70cqh;
   line-height: 0.8;
   letter-spacing: -0.04em;
   text-shadow: 0 2px 0 rgba(0, 0, 0, 0.18);

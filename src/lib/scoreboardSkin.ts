@@ -68,7 +68,23 @@ export function scoreboardSkinClass(skin: ScoreboardSkinId = DEFAULT_SCOREBOARD_
   return SKIN_CLASS[skin] ?? SKIN_CLASS[DEFAULT_SCOREBOARD_SKIN];
 }
 
-/** Flip-card faces. Points and advantages use two cards; penalties use one. */
+/**
+ * Old School flip faces.
+ * Points stay two cards. Advantages and penalties are one card each —
+ * advantages never need a tens place on this board.
+ */
+export const OLD_SCHOOL_FLAP_PLACES = {
+  points: 2,
+  advantages: 1,
+  disadvantages: 1,
+} as const;
+
+/**
+ * Flip-card faces.
+ * One card shows the ones digit, the way a single mechanical wheel rolls:
+ * 9 stays 9, 10 reads as 0, 12 as 2. Two cards show the last two digits.
+ * Scoring itself is unchanged; this is only the painted face.
+ */
 export function flapDigits(value: number, count: number): string[] {
   const width = count === 1 ? 1 : 2;
   const safe = Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0;
