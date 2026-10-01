@@ -15,6 +15,16 @@ export const WHITE_PRODUCT_ID = 'advantage-white';
 export const WHITE_PRICE_LABEL = '$9.99';
 
 /**
+ * In-app unlock on /buy. Grants Advantage White at $0 with no Stripe call.
+ * Must match API_FREE_CODE.
+ */
+export const WHITE_FREE_CODE = 'WHITEFREE';
+
+export function isWhiteFreeCode(raw: string): boolean {
+  return raw.trim().toUpperCase() === WHITE_FREE_CODE;
+}
+
+/**
  * Launch promo placeholders. Create these in the Stripe Dashboard (test mode).
  * The app does not create coupons. Checkout accepts the code on this page or on Stripe.
  * $9.99 minus the amount off is the charge.

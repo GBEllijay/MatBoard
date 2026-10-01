@@ -107,7 +107,7 @@ function attach(middlewares: Connect.Server, env: StripeRuntimeEnv, store: Entit
       const request = await toWebRequest(req as NodeRequest);
       const response =
         path === API_CHECKOUT_PATH
-          ? await handleCheckout(request, env)
+          ? await handleCheckout(request, env, fetch, store)
           : path === API_WEBHOOK_PATH
             ? await handleWebhook(request, env, store)
             : await handleEntitlement(request, store);

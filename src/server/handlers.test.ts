@@ -54,6 +54,46 @@ test('checkout creates a session and can attach a promotion code', async () => {
   assert.equal(calls.length, 2);
 });
 
+test('WHITEFREE records a $0 entitlement without Stripe', async () => {
+  const store = memoryEntitlementStore();
+  let calledStripe = false;
+  const fetchImpl: typeof fetch = async () => {
+    calledStripe = true;
+    return new Response('stripe should not be called', { status: 500 });
+  };
+  const response = await handleCheckout(
+    jsonRequest('http://localhost/api/checkout', { promotionCode: 'whitefree' }),
+    {},
+    fetchImpl,
+    store,
+  );
+  assert.equal(response.status, 200);
+  assert.equal(calledStripe, false);
+  const body = (await response.json()) as { entitled: boolean; amountTotal: number; sessionId: string; email: string };
+  assert.equal(body.entitled, true);
+  assert.equal(body.amountTotal, 0);
+  assert.equal(body.email, '');
+  assert.match(body.sessionId, /^free_[a-z0-9]+$/);
+  const saved = await store.findBySessionId(body.sessionId);
+  assert.equal(saved?.amountTotal, 0);
+  assert.equal(saved?.product, 'advantage-white');
+  const lookup = await handleEntitlement(
+    new Request(`http://localhost/api/entitlement?session_id=${body.sessionId}`),
+    store,
+  );
+  assert.equal(lookup.status, 200);
+  const status = (await lookup.json()) as { entitled: boolean; sessionId: string };
+  assert.equal(status.entitled, true);
+  assert.equal(status.sessionId, body.sessionId);
+});
+
+test('WHITEFREE without a store does not call Stripe', async () => {
+  const response = await handleCheckout(jsonRequest('http://localhost/api/checkout', { promotionCode: 'WHITEFREE' }), {});
+  assert.equal(response.status, 503);
+  const body = (await response.json()) as { error: string };
+  assert.match(body.error, /Entitlement store/);
+});
+
 test('an unknown promo code does not open Checkout', async () => {
   const fetchImpl: typeof fetch = async () => new Response(JSON.stringify({ data: [] }), { status: 200 });
   const response = await handleCheckout(

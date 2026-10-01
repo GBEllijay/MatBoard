@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { API_CHECKOUT_PATH, API_ENTITLEMENT_PATH, API_PRODUCT_ID } from '../server/routes.ts';
+import { API_CHECKOUT_PATH, API_ENTITLEMENT_PATH, API_FREE_CODE, API_PRODUCT_ID } from '../server/routes.ts';
 import {
   WHITE_CHECKOUT_API,
   WHITE_ENTITLEMENT_API,
+  WHITE_FREE_CODE,
   WHITE_INCLUDED,
   WHITE_LAUNCH_PROMOS,
   WHITE_LIST_PRICE_CENTS,
@@ -12,6 +13,7 @@ import {
   WHITE_PRODUCT_ID,
   WHITE_UPGRADE_NOTE,
   formatUsdFromCents,
+  isWhiteFreeCode,
   priceAfterAmountOff,
 } from './whitePurchase.ts';
 
@@ -42,6 +44,14 @@ test('buy page copy names White inclusions and leaves Coach and Pro out', () => 
   assert.match(WHITE_UPGRADE_NOTE, /White only/);
   assert.match(WHITE_UPGRADE_NOTE, /Coach/);
   assert.match(WHITE_UPGRADE_NOTE, /Pro/);
+});
+
+test('WHITEFREE is the in-app $0 unlock and matches the server', () => {
+  assert.equal(WHITE_FREE_CODE, 'WHITEFREE');
+  assert.equal(WHITE_FREE_CODE, API_FREE_CODE);
+  assert.equal(isWhiteFreeCode(' whitefree '), true);
+  assert.equal(isWhiteFreeCode('WHITE499'), false);
+  assert.equal(isWhiteFreeCode(''), false);
 });
 
 test('client and server agree on product id and API paths', () => {

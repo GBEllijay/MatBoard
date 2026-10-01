@@ -88,6 +88,28 @@ test('checkout.session.completed records the paid White email and session', () =
   assert.equal(parsed.purchase.amountTotal, 499);
 });
 
+test('a 100 percent off Checkout session still records White at $0', () => {
+  const parsed = purchaseFromStripeEvent({
+    type: 'checkout.session.completed',
+    data: {
+      object: {
+        id: 'cs_test_free',
+        object: 'checkout.session',
+        mode: 'payment',
+        payment_status: 'no_payment_required',
+        amount_total: 0,
+        currency: 'usd',
+        customer_details: { email: 'friend@gym.test' },
+        metadata: { product: 'advantage-white' },
+      },
+    },
+  });
+  assert.equal(parsed.action, 'record');
+  if (parsed.action !== 'record') return;
+  assert.equal(parsed.purchase.amountTotal, 0);
+  assert.equal(parsed.purchase.email, 'friend@gym.test');
+});
+
 test('other events and unpaid sessions are ignored', () => {
   assert.equal(purchaseFromStripeEvent({ type: 'payment_intent.succeeded', data: { object: {} } }).action, 'ignore');
   assert.equal(

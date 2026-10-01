@@ -3,7 +3,7 @@ import {
   type EntitlementStore,
   type WhiteEntitlement,
 } from './entitlements.ts';
-import { API_PRODUCT_ID } from './routes.ts';
+import { API_FREE_CODE, API_PRODUCT_ID } from './routes.ts';
 import {
   checkoutFormFields,
   checkoutReturnUrls,
@@ -39,10 +39,15 @@ function stripeFailure(error: unknown): Response {
   return json(http, { error: message || 'Stripe request failed.' });
 }
 
+function freeSessionId(): string {
+  return `free_${crypto.randomUUID().replace(/-/g, '')}`;
+}
+
 export async function handleCheckout(
   request: Request,
   env: StripeRuntimeEnv,
   fetchImpl: typeof fetch = fetch,
+  store: EntitlementStore | null = null,
 ): Promise<Response> {
   if (request.method !== 'POST') return methodNotAllowed('POST');
   const raw = await request.text();
@@ -64,6 +69,7 @@ export async function handleCheckout(
   if (typeof promoField === 'string' && promoField.trim() && !promo) {
     return json(400, { error: 'Enter a promo code using letters, numbers, underscores, or hyphens.' });
   }
+  if (promo && promo.toUpperCase() === API_FREE_CODE) return grantFreeUnlock(store);
 
   const config = readStripeConfig(env);
   if ('error' in config) return json(503, { error: config.error });
@@ -131,7 +137,34 @@ export async function handleWebhook(
   return json(200, { received: true, sessionId: stored.sessionId });
 }
 
-const SESSION_ID = /^cs_[A-Za-z0-9_]+$/;
+const SESSION_ID = /^(?:cs|free)_[A-Za-z0-9_]+$/;
+
+async function grantFreeUnlock(store: EntitlementStore | null, now: () => Date = () => new Date()): Promise<Response> {
+  if (!store) {
+    return json(503, {
+      error: 'Entitlement store is not configured. Bind WHITE_ENTITLEMENTS or use local dev.',
+    });
+  }
+  const record: WhiteEntitlement = {
+    email: '',
+    sessionId: freeSessionId(),
+    product: API_PRODUCT_ID,
+    amountTotal: 0,
+    currency: 'usd',
+    createdAt: now().toISOString(),
+  };
+  const stored = await store.save(record);
+  return json(200, {
+    entitled: true,
+    free: true,
+    amountTotal: 0,
+    currency: 'usd',
+    product: stored.product,
+    email: stored.email,
+    sessionId: stored.sessionId,
+    createdAt: stored.createdAt,
+  });
+}
 
 export async function handleEntitlement(request: Request, store: EntitlementStore | null): Promise<Response> {
   if (request.method !== 'GET') return methodNotAllowed('GET');
@@ -142,7 +175,7 @@ export async function handleEntitlement(request: Request, store: EntitlementStor
   const sessionId = url.searchParams.get('session_id')?.trim() ?? '';
   const email = url.searchParams.get('email')?.trim() ?? '';
   if (!sessionId && !email) return json(400, { error: 'Pass email or session_id.' });
-  if (sessionId && !SESSION_ID.test(sessionId)) return json(400, { error: 'session_id is not a Checkout session id.' });
+  if (sessionId && !SESSION_ID.test(sessionId)) return json(400, { error: 'session_id is not a purchase id.' });
   if (email && (email.length > 320 || !email.includes('@') || /\s/.test(email))) {
     return json(400, { error: 'email is not valid.' });
   }
