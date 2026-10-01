@@ -159,7 +159,7 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   assert.doesNotMatch(TOURNAMENT_MANAGEMENT_PRO_LEAD, /roster/i);
   assert.deepEqual(
     COMPETITION_PRO_MENU.map((item) => item.title),
-    ['Brackets', 'Scoreboard', 'Round Timer'],
+    ['Brackets-Tournament Software', 'Scoreboard', 'Round Timer'],
   );
   assert.ok(!COMPETITION_PRO_MENU.some((item) => /roster/i.test(item.title)));
   assert.deepEqual(
@@ -173,7 +173,7 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   assert.equal(COMPETITION_PRO_MENU[0].to, withSuiteFrom('/tournament', true));
   assert.deepEqual(
     COMPETITION_PRO_MENU.map((item) => item.belt),
-    ['tournament', 'tournament', null],
+    ['tournament', null, null],
   );
   assert.deepEqual(
     COMPETITION_PRO_MENU.map((item) => item.clearBout),
