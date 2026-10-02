@@ -1,24 +1,19 @@
 import { Link } from 'react-router-dom';
 import { BeltRail } from './BeltRail';
 import { useCurrentSeat } from './SeatSessionBar';
-import { seatPermissionAllows } from '../lib/instructorSeats';
+import { coachToolVisible } from '../lib/instructorSeats';
 import { COACH_HUBS } from '../lib/productNames';
 
 /**
  * Same buttons, same order, as the Advantage Coach card.
- * Daily tools use the flat blue coach belt. Competition Team Management keeps the
- * yellow/green tournament belt on the fourth slot.
+ * Coaching Tools uses the flat blue coach belt. Competition Team Management keeps
+ * the yellow/green tournament belt.
  */
 export const COACH_TOOL_LINKS = COACH_HUBS;
 
 export function CoachToolsCard() {
   const seat = useCurrentSeat();
-  const tools = COACH_TOOL_LINKS.filter((tool) => {
-    if (!seat) return true;
-    if (tool.to === '/notes') return seatPermissionAllows(seat.permissions, 'dailyLessonPlanAccess');
-    if (tool.to === '/techniques') return seatPermissionAllows(seat.permissions, 'downloadTodaysVideos');
-    return true;
-  });
+  const tools = COACH_TOOL_LINKS.filter((tool) => coachToolVisible(tool.to, seat));
   return (
     <article className="mode-card mode-card--coach">
       <BeltRail kind="coach" />

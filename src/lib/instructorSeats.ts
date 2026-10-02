@@ -262,6 +262,22 @@ export function seatPermissionAllows(
 }
 
 /**
+ * Coach hub links. No seat shows every tool. A signed-in seat hides Daily
+ * Lesson Plan or Daily Training Videos when that switch is off. Technique Tree
+ * and the folder hubs stay.
+ */
+export function coachToolVisible(
+  to: string,
+  seat: Pick<InstructorSeat, 'permissions'> | null,
+): boolean {
+  if (!seat) return true;
+  const path = to.split('?')[0];
+  if (path === '/notes') return seatPermissionAllows(seat.permissions, 'dailyLessonPlanAccess');
+  if (path === '/techniques') return seatPermissionAllows(seat.permissions, 'downloadTodaysVideos');
+  return true;
+}
+
+/**
  * Owner with no seat session keeps every control. A signed-in seat uses that
  * seat's booleans. A device guest (no owner unlock, no seat) sees none.
  */
