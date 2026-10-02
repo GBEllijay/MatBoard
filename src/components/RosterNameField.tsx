@@ -14,6 +14,9 @@ import {
 import { COMPETITOR_ROSTER_LABEL } from '../lib/coachCopy';
 import { RankChip } from './RankChip';
 import { Sheet } from './Sheet';
+import { WhiteNamePicker } from './WhiteNamePicker';
+
+type NameList = 'competitor' | 'white';
 
 type Props = {
   id?: string;
@@ -23,6 +26,12 @@ type Props = {
   placeholder?: string;
   ariaLabel?: string;
   compact?: boolean;
+  /**
+   * `white` is the Advantage White match-name list on this phone.
+   * Coach and Pro scoreboards leave this as `competitor` and keep the Competitor Roster.
+   * Coach may later unlock or share the White list. That is not wired here.
+   */
+  names?: NameList;
 };
 
 export function RosterNameField({
@@ -33,10 +42,12 @@ export function RosterNameField({
   placeholder,
   ariaLabel,
   compact = false,
+  names = 'competitor',
 }: Props) {
   const proUnlocked = useProUnlocked();
   const coachUnlocked = useCoachUnlocked();
-  const unlocked = proUnlocked || coachUnlocked;
+  const whiteNames = names === 'white';
+  const unlocked = whiteNames || proUnlocked || coachUnlocked;
   const [pickOpen, setPickOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [addToRoster, setAddToRoster] = useState(false);
@@ -107,15 +118,27 @@ export function RosterNameField({
         portal
         className={`sheet--roster${onKidsBoard ? ' sheet--on-kids' : ''}`}
       >
-        <RosterPicker
-          query={query}
-          onQuery={setQuery}
-          addToRoster={addToRoster}
-          onAddToRoster={setAddToRoster}
-          belt={belt}
-          onBelt={setBelt}
-          onPick={pick}
-        />
+        {whiteNames ? (
+          <WhiteNamePicker
+            query={query}
+            onQuery={setQuery}
+            saveOnPhone={addToRoster}
+            onSaveOnPhone={setAddToRoster}
+            belt={belt}
+            onBelt={setBelt}
+            onPick={pick}
+          />
+        ) : (
+          <RosterPicker
+            query={query}
+            onQuery={setQuery}
+            addToRoster={addToRoster}
+            onAddToRoster={setAddToRoster}
+            belt={belt}
+            onBelt={setBelt}
+            onPick={pick}
+          />
+        )}
       </Sheet>
     </div>
   );

@@ -25,6 +25,7 @@ import {
   type ScheduleState,
 } from '../lib/scheduleStore';
 import { getRoster, subscribeRoster, type RosterState } from '../lib/rosterStore';
+import { getWhiteRoster, subscribeWhiteRoster, type WhiteRosterState } from '../lib/whiteRosterStore';
 import {
   getTournament,
   getLibrary,
@@ -76,4 +77,8 @@ export function useScheduleAssets(): ScheduleAssets {
 
 export function useRosterState(): RosterState {
   return useSyncExternalStore(subscribeRoster, getRoster, getRoster);
+}
+
+export function useWhiteRosterState(): WhiteRosterState {
+  return useSyncExternalStore(subscribeWhiteRoster, getWhiteRoster, getWhiteRoster);
 }
