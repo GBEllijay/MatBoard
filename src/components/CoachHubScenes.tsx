@@ -142,11 +142,11 @@ function Phone() {
 
 /**
  * Horseshoe mouthguard in a shallow 3/4 view. Matte black shell, glossy red
- * channel, no brand mark. Sits above the index box.
+ * channel, no brand mark. Sits at the top right.
  */
 function Mouthguard() {
   return (
-    <g transform="translate(138 0) scale(0.9)">
+    <g transform="translate(140 1) scale(0.88)">
       <defs>
         <linearGradient id="ctm-shell" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#4e535c" />
@@ -241,7 +241,7 @@ function Pencil() {
 /** Open matte index box. Ribbed lid, thumb notch, plain ruled white cards. */
 function IndexBox() {
   return (
-    <g transform="translate(98 36)">
+    <g transform="translate(96 64)">
       <path d="M12 13L18 1h52l6 12z" fill="#12141a" />
       <line x1="20" y1="3.2" x2="70" y2="3.2" stroke="#3d424a" strokeWidth="0.65" />
       <line x1="18" y1="5.8" x2="72" y2="5.8" stroke="#3d424a" strokeWidth="0.65" />
@@ -269,12 +269,12 @@ function IndexBox() {
 function Scale() {
   return (
     <g>
-      <rect x="96" y="82" width="58" height="22" rx="3" fill="#2a2d33" />
-      <rect x="100" y="86" width="36" height="14" rx="1" fill="#1a241c" />
-      <text x="118" y="96" textAnchor="middle" fill="#cfe6cc" fontSize="8" fontFamily="ui-monospace, monospace" fontWeight="700">
+      <rect x="80" y="6" width="58" height="22" rx="3" fill="#2a2d33" />
+      <rect x="84" y="10" width="36" height="14" rx="1" fill="#1a241c" />
+      <text x="102" y="20" textAnchor="middle" fill="#cfe6cc" fontSize="8" fontFamily="ui-monospace, monospace" fontWeight="700">
         82.5
       </text>
-      <text x="142" y="96" fill="#9aa3b5" fontSize="6" fontWeight="700">
+      <text x="126" y="20" fill="#9aa3b5" fontSize="6" fontWeight="700">
         kg
       </text>
     </g>
