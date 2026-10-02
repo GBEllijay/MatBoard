@@ -12922,6 +12922,40 @@ a.plan-pick {
   box-shadow: var(--shadow);
 }
 
+/* $9.99 header only. Same white-belt cloth as the roster tip, scaled to the card. */
+.buy__card--belt {
+  position: relative;
+  overflow: hidden;
+  padding-left: 2.15rem;
+  border: 0;
+  background: transparent;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+}
+
+.buy__card--belt .buy__belt {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  border-radius: inherit;
+  z-index: 0;
+}
+
+.buy__card--belt > :not(.buy__belt) {
+  position: relative;
+  z-index: 1;
+}
+
+.home .buy .buy__card--belt h2,
+.home .buy .buy__card--belt p,
+.home .buy .buy__card--belt .buy__price {
+  color: #14161c;
+}
+
+.home .buy .buy__card--belt .buy__price span {
+  color: #3d414c;
+}
+
 .buy h2,
 .buy h3 {
   margin: 0;

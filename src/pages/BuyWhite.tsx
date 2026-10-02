@@ -145,7 +145,10 @@ export function BuyWhitePage() {
       <div className="home__inner">
         <HomeMark to="/" />
         <article className="buy">
-          <header className="buy__card">
+          <header className="buy__card buy__card--belt">
+            <span className="belt-tip belt-tip--white buy__belt" aria-hidden="true">
+              <span className="belt-tip__bar" />
+            </span>
             <h2>Advantage White</h2>
             <p className="buy__price">
               {WHITE_PRICE_LABEL} <span>{WHITE_PRICE_DETAIL}</span>
