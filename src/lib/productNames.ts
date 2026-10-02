@@ -47,21 +47,46 @@ export const PRO_COMING_SOON_LINES = [
 /** Coach hub keeps practice framing; Owner Console uses real-event tooling. */
 export const MOCK_TOURNAMENT_NAME = 'Mock Tournament';
 
-/** Fourth Advantage Coach hub button. Holds the competitor system and Mock Tournament. */
+/** Advantage Coach hub. Opens Competitor Management System and Mock Tournament. */
 export const COMPETITION_MANAGEMENT_LABEL = 'Competition Team Management';
 
 /** Coach competition folder for bout competitors, roster CSV, and on-device rankings. */
 export const COMPETITOR_SYSTEM_NAME = 'Competitor Management System';
 
+/** Advantage Coach folder for the three daily practice tools. */
+export const COACHING_TOOLS_LABEL = 'Coaching Tools';
+
+/** Coaching Tools folder. Same navigation style as Competition Team Management. */
+export const COACHING_TOOLS_PATH = '/coaching-tools';
+
+/**
+ * Short line on the Coaching Tools folder.
+ * Names what is inside, the way Live Bout names Match Timer & Scoreboard.
+ */
+export const COACHING_TOOLS_DETAIL =
+  'Daily Lesson Plan, Daily Training Videos, and Technique Tree.';
+
+/** One line under that, in the same voice as the Live Bout card body. */
+export const COACHING_TOOLS_LEAD =
+  "Write today's class, loop training clips, and build a technique tree.";
+
+/**
+ * Coaching Tools submenu, top to bottom.
+ * Flat blue coach belt, same as these tools used on the Coach card.
+ */
+export const COACHING_TOOLS_MENU = [
+  { title: TRAINING_NOTES_LABEL, to: '/notes', belt: 'coach' as const },
+  { title: 'Daily Training Videos', to: '/techniques', belt: 'coach' as const },
+  { title: TECHNIQUE_TREE_LABEL, to: '/technique-tree', belt: 'coach' as const },
+] as const;
+
 /**
  * Advantage Coach hub, top to bottom.
- * Daily tools use the flat blue coach belt. Competition Team Management keeps the
- * yellow/green tournament belt that already marked this fourth slot.
+ * Coaching Tools opens the daily practice folder. Competition Team Management
+ * keeps the yellow/green tournament belt and its own submenu.
  */
 export const COACH_HUBS = [
-  { title: TRAINING_NOTES_LABEL, to: '/notes' },
-  { title: 'Daily Training Videos', to: '/techniques' },
-  { title: TECHNIQUE_TREE_LABEL, to: '/technique-tree' },
+  { title: COACHING_TOOLS_LABEL, to: COACHING_TOOLS_PATH },
   { title: COMPETITION_MANAGEMENT_LABEL, to: '/competition', belt: 'tournament' as const },
 ] as const;
 
@@ -74,18 +99,37 @@ export const UNLIMITED_LESSON_VALUE = 'unlimited';
 export const UNLIMITED_LESSON_PATH = `/notes?plan=${UNLIMITED_LESSON_VALUE}`;
 export const COACH_UNLIMITED_PATH = '/coach-unlimited';
 
+/** Unlimited keeps the same three tools and opens Daily Lesson Plan on the Unlimited plan. */
+export function coachingToolsMenu(unlimited: boolean) {
+  if (!unlimited) return COACHING_TOOLS_MENU;
+  return COACHING_TOOLS_MENU.map((tool) =>
+    tool.to === '/notes' ? { ...tool, to: UNLIMITED_LESSON_PATH } : tool,
+  );
+}
+
 /**
- * Tools that used to sit at the bottom of Instructor Collaboration.
- * Daily Lesson Plan opens the Unlimited plan. The other three stay put.
+ * Same two Coach hubs. Coaching Tools carries plan=unlimited so the lesson
+ * link inside that folder stays on the Unlimited plan.
  */
 export const COACH_UNLIMITED_TOOLS = COACH_HUBS.map((tool) =>
-  tool.to === '/notes' ? { ...tool, to: UNLIMITED_LESSON_PATH } : tool,
+  tool.to === COACHING_TOOLS_PATH
+    ? { ...tool, to: `${COACHING_TOOLS_PATH}?plan=${UNLIMITED_LESSON_VALUE}` }
+    : tool,
 );
 
-/** Competition Team Management submenu. CMS first, then Mock Tournament. */
+/**
+ * Competition Team Management submenu.
+ * CMS, then Mock Tournament, then two shortcuts into screens that already exist.
+ * Scoreboard opens the match controller (`/match/control`). With Coach unlocked,
+ * that controller's name fields use the full Competitor Roster. It is not the
+ * plain White display at `/match`. Round Timer opens the same White rounds
+ * timer at `/training`.
+ */
 export const COMPETITION_MENU = [
   { title: COMPETITOR_SYSTEM_NAME, to: '/competitors', belt: 'tournament' as const },
   { title: MOCK_TOURNAMENT_NAME, to: '/tournament', belt: 'tournament' as const },
+  { title: 'Scoreboard', to: '/match/control', belt: 'tournament' as const, clearBout: true as const },
+  { title: 'Round Timer', to: '/training', belt: 'tournament' as const },
 ] as const;
 
 /**

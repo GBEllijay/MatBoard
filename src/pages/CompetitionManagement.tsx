@@ -3,6 +3,7 @@ import { BeltRail } from '../components/BeltRail';
 import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
 import { TierLine } from '../components/TierLine';
+import { unlinkBracketBout } from '../lib/bracketBout';
 import { COACH_TOOLS_TEASER } from '../lib/coachCopy';
 import {
   COMPETITION_MANAGEMENT_LABEL,
@@ -22,7 +23,12 @@ export function CompetitionManagementPage() {
             <strong>{COMPETITION_MANAGEMENT_LABEL}</strong>
             <div className="pro-hubs">
               {COMPETITION_MENU.map((tool) => (
-                <Link key={tool.to} className="pro-hub" to={tool.to}>
+                <Link
+                  key={tool.to}
+                  className="pro-hub"
+                  to={tool.to}
+                  onClick={'clearBout' in tool && tool.clearBout ? () => unlinkBracketBout() : undefined}
+                >
                   <BeltRail kind={tool.belt} />
                   <span>{tool.title}</span>
                 </Link>

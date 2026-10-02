@@ -7,6 +7,7 @@ import { SiteFooter } from '../components/SiteFooter';
 import { TierLine } from '../components/TierLine';
 import { lockCoach } from '../lib/coachUnlock';
 import { COACH_TOOLS_TEASER } from '../lib/coachCopy';
+import { COACHING_TOOLS_LABEL, COMPETITION_MANAGEMENT_LABEL } from '../lib/productNames';
 
 export function CoachPage() {
   const navigate = useNavigate();
@@ -27,9 +28,10 @@ export function CoachPage() {
             <p className="home__hint">Install Advantage as an app from your browser menu.</p>
             <p className="home__hint">
               Gym TV: open this site on a computer plugged into the TV, then fullscreen Display,
-              Rounds, Daily Training Videos, or Mock Tournament. Press F for fullscreen. Daily Lesson
-              Plan, Technique Tree, and Competition Team Management live on the phone. Competitor
-              Management System and Mock Tournament are inside Competition Team Management.
+              Rounds, Daily Training Videos, or Mock Tournament. Press F for fullscreen.{' '}
+              {COACHING_TOOLS_LABEL} holds Daily Lesson Plan, Daily Training Videos, and Technique
+              Tree. {COMPETITION_MANAGEMENT_LABEL} holds Competitor Management System and Mock
+              Tournament, then Scoreboard and Round Timer. Both folders live on the phone.
             </p>
             <p className="home__hint">
               Control from your phone. Cast the scoreboard to your TV, or open Display on a second

@@ -8,6 +8,7 @@ import { consumeUnlockQueryNow } from './lib/proUnlock';
 import { ClassHistoryPage } from './pages/ClassHistory';
 import { CoachPage } from './pages/Coach';
 import { CoachUnlimitedPage } from './pages/CoachUnlimited';
+import { CoachingToolsPage } from './pages/CoachingTools';
 import { ComingSoonPage } from './pages/ComingSoon';
 import { CompetitionManagementPage } from './pages/CompetitionManagement';
 import { CompetitionReadyPage } from './pages/CompetitionReady';
@@ -79,6 +80,14 @@ export default function App() {
           <ProRoute>
             <ProPage />
           </ProRoute>
+        }
+      />
+      <Route
+        path="/coaching-tools"
+        element={
+          <CoachRoute>
+            <CoachingToolsPage />
+          </CoachRoute>
         }
       />
       <Route

@@ -5,7 +5,7 @@ import { DriveConnectCard } from '../components/DriveConnectCard';
 import { HomeMark } from '../components/HomeMark';
 import { useCurrentSeat } from '../components/SeatSessionBar';
 import { SiteFooter } from '../components/SiteFooter';
-import { seatPermissionAllows } from '../lib/instructorSeats';
+import { coachToolVisible } from '../lib/instructorSeats';
 import {
   lessonRevisionLabel,
   listLessonRevisions,
@@ -29,12 +29,7 @@ export function CoachUnlimitedPage() {
     setRevisions(listLessonRevisions());
   }, []);
 
-  const tools = COACH_UNLIMITED_TOOLS.filter((tool) => {
-    if (!seat) return true;
-    if (tool.to.startsWith('/notes')) return seatPermissionAllows(seat.permissions, 'dailyLessonPlanAccess');
-    if (tool.to === '/techniques') return seatPermissionAllows(seat.permissions, 'downloadTodaysVideos');
-    return true;
-  });
+  const tools = COACH_UNLIMITED_TOOLS.filter((tool) => coachToolVisible(tool.to, seat));
 
   return (
     <main className="home home--pro home--suite">

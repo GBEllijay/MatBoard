@@ -22,6 +22,7 @@ import {
   normalizeInstructorPermissions,
   readCurrentSeat,
   revokeInstructorSeat,
+  coachToolVisible,
   seatPermissionAllows,
   signOutInstructorSeat,
   updateInstructorSeatPermissions,
@@ -512,6 +513,33 @@ test('the distribution control stays out of the tree when an assistant coach is 
   );
   assert.match(download, /Download today/);
   assert.equal(distribute.includes('Upload'), false);
+});
+
+test('Coach tool seats hide lesson plan and videos and leave the other hubs', () => {
+  const open = {
+    permissions: {
+      ...defaultInstructorPermissions(),
+      dailyLessonPlanAccess: false,
+      downloadTodaysVideos: false,
+    },
+  };
+  assert.equal(coachToolVisible('/notes', null), true);
+  assert.equal(coachToolVisible('/techniques', null), true);
+  assert.equal(coachToolVisible('/notes', open), false);
+  assert.equal(coachToolVisible('/notes?plan=unlimited', open), false);
+  assert.equal(coachToolVisible('/techniques', open), false);
+  assert.equal(coachToolVisible('/technique-tree', open), true);
+  assert.equal(coachToolVisible('/coaching-tools', open), true);
+  assert.equal(coachToolVisible('/competition', open), true);
+  const videosOnly = {
+    permissions: {
+      ...defaultInstructorPermissions(),
+      dailyLessonPlanAccess: false,
+      downloadTodaysVideos: true,
+    },
+  };
+  assert.equal(coachToolVisible('/notes', videosOnly), false);
+  assert.equal(coachToolVisible('/techniques', videosOnly), true);
 });
 
 test('device guests have no seat, so collaboration controls stay hidden', () => {
