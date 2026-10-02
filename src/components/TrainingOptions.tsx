@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAudioPrefs, useTrainingSkin, useTrainingState } from '../hooks/useStores';
 import {
   END_CUE_OPTIONS,
@@ -9,7 +9,7 @@ import {
   unlockAudio,
   type EndCue,
 } from '../lib/audio';
-import { formatMmSs, formatMss } from '../lib/format';
+import { formatMinuteInput, formatMmSs, formatMss, parseTypedDurationMs } from '../lib/format';
 import { dispatchMatch } from '../lib/matchStore';
 import { setTrainingSkin } from '../lib/trainingSkin';
 import {
@@ -46,12 +46,11 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
     void unlockAudio().then(play);
   };
 
+  // Selection only. Switching cues mid-round must not play a stop sound.
+  // Preview cues below are what play the sound.
   const chooseEndCue = (cue: EndCue) => {
     patchAudioPrefs({ endCue: cue });
     dispatchMatch({ type: 'setEndCue', value: cue });
-    if (training.endSound) {
-      previewCue(() => playSelectedEndCue('training', cue));
-    }
   };
 
   return (
@@ -286,9 +285,57 @@ function TimeNudges({
   label: string;
   onChange: (ms: number) => void;
 }) {
+  const [draft, setDraft] = useState(() => formatMinuteInput(valueMs));
+  const editing = useRef(false);
+  const dirty = useRef(false);
+
+  useEffect(() => {
+    if (!editing.current) setDraft(formatMinuteInput(valueMs));
+  }, [valueMs]);
+
+  const commit = (raw: string) => {
+    dirty.current = false;
+    const next = parseTypedDurationMs(raw, minMs, maxMs);
+    if (next == null) {
+      setDraft(formatMinuteInput(valueMs));
+      return;
+    }
+    if (next !== valueMs) onChange(next);
+    setDraft(formatMinuteInput(next));
+  };
+
   return (
     <div className="custom-round">
       <strong aria-live="polite">{formatMmSs(valueMs)}</strong>
+      <div className="custom-time">
+        <label>
+          Minutes
+          <input
+            inputMode="decimal"
+            enterKeyHint="done"
+            autoComplete="off"
+            aria-label={`${label} in minutes`}
+            value={draft}
+            onFocus={() => {
+              editing.current = true;
+            }}
+            onBlur={() => {
+              editing.current = false;
+              if (dirty.current) commit(draft);
+            }}
+            onChange={(e) => {
+              dirty.current = true;
+              setDraft(e.target.value);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.currentTarget.blur();
+            }}
+          />
+        </label>
+        <button type="button" className="btn" onClick={() => commit(draft)}>
+          Set
+        </button>
+      </div>
       <div className="clock-nudges" role="group" aria-label={label}>
         <button
           type="button"

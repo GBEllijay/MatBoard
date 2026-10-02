@@ -4249,6 +4249,12 @@ a.saver-folder--link {
   letter-spacing: 0.04em;
 }
 
+.custom-round .custom-time {
+  align-items: end;
+  margin-top: 0.45rem;
+  margin-bottom: 0.35rem;
+}
+
 .custom-round .clock-nudges {
   margin: 0.35rem 0 0;
 }
