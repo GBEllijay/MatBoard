@@ -117,10 +117,19 @@ export const COACH_UNLIMITED_TOOLS = COACH_HUBS.map((tool) =>
     : tool,
 );
 
-/** Competition Team Management submenu. CMS first, then Mock Tournament. */
+/**
+ * Competition Team Management submenu.
+ * CMS, then Mock Tournament, then two shortcuts into screens that already exist.
+ * Scoreboard opens the match controller (`/match/control`). With Coach unlocked,
+ * that controller's name fields use the full Competitor Roster. It is not the
+ * plain White display at `/match`. Round Timer opens the same White rounds
+ * timer at `/training`.
+ */
 export const COMPETITION_MENU = [
   { title: COMPETITOR_SYSTEM_NAME, to: '/competitors', belt: 'tournament' as const },
   { title: MOCK_TOURNAMENT_NAME, to: '/tournament', belt: 'tournament' as const },
+  { title: 'Scoreboard', to: '/match/control', belt: 'tournament' as const, clearBout: true as const },
+  { title: 'Round Timer', to: '/training', belt: 'tournament' as const },
 ] as const;
 
 /**

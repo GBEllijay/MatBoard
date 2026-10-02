@@ -151,17 +151,24 @@ test('Coach hub is Coaching Tools then Competition Team Management', () => {
   );
   assert.deepEqual(
     COMPETITION_MENU.map((item) => item.title),
-    ['Competitor Management System', 'Mock Tournament'],
+    ['Competitor Management System', 'Mock Tournament', 'Scoreboard', 'Round Timer'],
   );
   assert.deepEqual(
     COMPETITION_MENU.map((item) => item.to),
-    ['/competitors', '/tournament'],
+    ['/competitors', '/tournament', '/match/control', '/training'],
   );
-  assert.ok(COMPETITION_MENU.findIndex((item) => item.title === 'Competitor Management System') <
-    COMPETITION_MENU.findIndex((item) => item.title === 'Mock Tournament'));
+  assert.equal(COMPETITION_MENU[2].to, MATCH_CONTROLLER_PATH);
+  assert.equal('clearBout' in COMPETITION_MENU[2] && COMPETITION_MENU[2].clearBout, true);
+  assert.equal(COMPETITION_MENU[3].to, '/training');
+  assert.ok(!COMPETITION_MENU.some((item) => item.to === '/match'));
+  assert.ok(!COMPETITION_MENU.some((item) => item.to.startsWith('/training/control')));
+  const menuOrder = COMPETITION_MENU.map((item) => item.title);
+  assert.ok(menuOrder.indexOf('Competitor Management System') < menuOrder.indexOf('Mock Tournament'));
+  assert.ok(menuOrder.indexOf('Mock Tournament') < menuOrder.indexOf('Scoreboard'));
+  assert.ok(menuOrder.indexOf('Scoreboard') < menuOrder.indexOf('Round Timer'));
   assert.deepEqual(
     COMPETITION_MENU.map((item) => item.belt),
-    ['tournament', 'tournament'],
+    ['tournament', 'tournament', 'tournament', 'tournament'],
   );
   assert.equal(COMPETITION_MENU_PRO.length, 0);
   assert.doesNotMatch(COMPETITION_MANAGEMENT_LABEL, /student|GB Members|Coming Soon/i);

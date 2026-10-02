@@ -1520,6 +1520,69 @@ span.role-plan__mark {
   --belt-block: 0.55rem;
 }
 
+/* Coach hub tiles: title left, still life right, Open at the corner. */
+.pro-hub--tile {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(8.6rem, 1.08fr);
+  align-items: center;
+  gap: 0.15rem;
+  min-height: 8.4rem;
+  padding: 0.7rem 0.55rem 0.45rem 1.2rem;
+  overflow: hidden;
+}
+
+.pro-hub--tile .belt-rail--coach {
+  --belt-rail-width: 11px;
+  --belt-corner: 0.2rem;
+  --belt-tip-size: 1.45rem;
+}
+
+.pro-hub--tile .belt-rail--tournament {
+  --belt-rail-width: 11px;
+  --belt-block: 0.78rem;
+}
+
+.mode-card .pro-hub--tile > .pro-hub__title {
+  align-self: center;
+  color: var(--white-ink);
+  font-weight: 800;
+  font-size: clamp(1.05rem, 4.4vw, 1.38rem);
+  letter-spacing: -0.04em;
+  line-height: 1.08;
+}
+
+.pro-hub__scene {
+  position: relative;
+  display: grid;
+  align-content: end;
+  min-width: 0;
+  color: var(--white-ink);
+}
+
+.pro-hub__scene > svg {
+  display: block;
+  width: 100%;
+  height: 6.4rem;
+}
+
+.pro-hub--tile .pro-hub__open {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.12rem;
+  margin-top: -0.15rem;
+  color: var(--white-ink);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.pro-hub__open svg {
+  width: 0.55rem;
+  height: 0.55rem;
+}
+
 /* Cream hub labels inside a mode card were inheriting the gray body span color. */
 .mode-card .pro-hub > span {
   color: var(--white-ink);
