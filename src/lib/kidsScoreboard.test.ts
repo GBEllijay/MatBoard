@@ -18,6 +18,7 @@ import {
   KIDS_SKINS,
   KIDS_WIN_CHEER,
   getKidsScoreboard,
+  kidsBracketChromeOn,
   kidsLiveLine,
   kidsPointsLine,
   kidsShowWin,
@@ -59,6 +60,13 @@ test("Kids' Scoreboards is off until this device turns it on", () => {
     KIDS_SKINS.map((skin) => skin.label),
     ['Dinos', 'Stars & unicorns', 'Robots', 'Space', 'Ocean', 'Superheroes'],
   );
+});
+
+test('Kids bracket skins stay on the Pro suite board', () => {
+  assert.equal(kidsBracketChromeOn(true, true), true);
+  assert.equal(kidsBracketChromeOn(true, false), false);
+  assert.equal(kidsBracketChromeOn(false, true), false);
+  assert.equal(kidsBracketChromeOn(false, false), false);
 });
 
 test('Kids mode and skin persist on this device', () => {

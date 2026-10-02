@@ -1,14 +1,20 @@
 /**
  * Optional Master Carlos on the match scoreboard.
+ * Pro suite only (`from=suite`). Coach and Coach Unlimited never show him.
  * Off by default. He appears only after the bout is over: a recorded win
  * (including a referee-decision win, once that call is wired), or a point
  * total that was crossed during the match. A live score never brings him out.
  * Kids' Scoreboards finals still celebrate a bracket champion on their own
- * and do not use this gate.
+ * and do not use this gate. That overlay is Pro suite only as well.
  */
 
 import { KIDS_WIN_CHEER, kidsPointsLine, kidsWinLines } from './kidsScoreboard.ts';
 import type { MatchOutcome, Side } from './outcomes.ts';
+
+/** Master Carlos on the match scoreboard and its controller. Pro suite only. */
+export function masterCarlosOnScoreboard(fromSuite: boolean): boolean {
+  return fromSuite;
+}
 
 export const DEFAULT_CARLOS_POINTS_THRESHOLD = 10;
 export const CARLOS_THRESHOLD_MIN = 1;

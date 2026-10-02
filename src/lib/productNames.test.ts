@@ -18,6 +18,7 @@ import {
   WHITE_HOME_DESCRIPTION,
   WHITE_LADDER_DETAIL,
   coachToolsOpen,
+  isBasicCoach,
   parentToolboxPath,
   COACH_UNLIMITED_PATH,
   COACH_UNLIMITED_TOOLS,
@@ -289,6 +290,10 @@ test('Pro unlock includes Coach tools and Coach-only unlock still stands alone',
   assert.equal(coachToolsOpen(true, true), true);
   assert.equal(coachToolsOpen(false, true), true);
   assert.equal(coachToolsOpen(false, false), false);
+  assert.equal(isBasicCoach(false, true), true);
+  assert.equal(isBasicCoach(true, true), false);
+  assert.equal(isBasicCoach(true, false), false);
+  assert.equal(isBasicCoach(false, false), false);
 });
 
 test('Footer states ownership, alpha testing, and the feedback email only', () => {

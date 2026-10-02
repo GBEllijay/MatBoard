@@ -1,10 +1,17 @@
 /**
  * Match scoreboard skins. Mock-Tournament is the default.
  * Advantage White Live Bout is Mock-Tournament only — no Mock / Old School picker.
- * The Pro tournament suite (`from=suite`) and a linked bracket bout still offer
- * Mock-Tournament and Old School. LIGHT and KIDS stay reserved.
- * Kids' Scoreboards paints the bracket, not this skin.
- *
+ * Basic Coach bracket bouts (Score from Mock Tournament) use that same White board.
+ * The Pro tournament suite (`from=suite`) keeps Mock-Tournament and Old School.
+ * A linked bout that is not basic Coach — Coach Unlimited, which is Pro-unlocked —
+ * also keeps the stored skin. Master Carlos is not a skin; the Pro suite owns him.
+ * LIGHT and KIDS stay reserved.
+ * Kids' Scoreboards paints the Pro bracket, not this skin.
+ */
+
+import { withSuiteFrom } from './productNames.ts';
+
+/**
  * Old School matches the owner's tabletop flip boards: large points cards,
  * smaller advantage and penalty cards, red against blue, matte black frame.
  */
@@ -70,21 +77,74 @@ export function scoreboardSkinClass(skin: ScoreboardSkinId = DEFAULT_SCOREBOARD_
   return SKIN_CLASS[skin] ?? SKIN_CLASS[DEFAULT_SCOREBOARD_SKIN];
 }
 
-/**
- * Plain Advantage White Live Bout: no suite flag and no linked bracket bout.
- * That board is Mock-Tournament only. Suite and a linked bout keep the stored choice.
- */
-export function isPlainWhiteScoreboard(fromSuite: boolean, linkedBout: boolean): boolean {
-  return !fromSuite && !linkedBout;
+/** Query flag on a basic Coach bracket bout so a cast display paints the White board. */
+export const COACH_WHITE_BOARD_PARAM = 'board';
+export const COACH_WHITE_BOARD_VALUE = 'white';
+
+export function isCoachWhiteBoardSearch(search: URLSearchParams): boolean {
+  return search.get(COACH_WHITE_BOARD_PARAM) === COACH_WHITE_BOARD_VALUE;
 }
 
-/** Skin the White or suite board should paint. White never follows a stored Old School pick. */
+/**
+ * Basic Coach Score from the bracket uses the Advantage White board.
+ * `board=white` is that same choice on the URL, so a display that does not
+ * share this device's unlock still paints White. Coach Unlimited (Pro unlock,
+ * no flag) keeps its linked-bout skin. Pro suite never uses this board.
+ */
+export function coachLinkedWhiteBoard(
+  fromSuite: boolean,
+  linkedBout: boolean,
+  basicCoach: boolean,
+  whiteBoardSearch: boolean,
+): boolean {
+  if (fromSuite || !linkedBout) return false;
+  return basicCoach || whiteBoardSearch;
+}
+
+/** Keep `board=white` on links opened from a basic Coach bracket bout. */
+export function withCoachWhiteBoard(path: string, whiteBoard: boolean): string {
+  if (!whiteBoard) return path;
+  const hashAt = path.indexOf('#');
+  const hash = hashAt >= 0 ? path.slice(hashAt) : '';
+  const base = hashAt >= 0 ? path.slice(0, hashAt) : path;
+  const queryAt = base.indexOf('?');
+  const pathname = queryAt >= 0 ? base.slice(0, queryAt) : base;
+  const params = new URLSearchParams(queryAt >= 0 ? base.slice(queryAt + 1) : '');
+  params.set(COACH_WHITE_BOARD_PARAM, COACH_WHITE_BOARD_VALUE);
+  return `${pathname}?${params.toString()}${hash}`;
+}
+
+/** Suite origin and the basic-Coach White board, on scoreboard and controller links. */
+export function withMatchOrigin(
+  path: string,
+  origin: { fromSuite: boolean; whiteBoard: boolean },
+): string {
+  return withCoachWhiteBoard(withSuiteFrom(path, origin.fromSuite), origin.whiteBoard && !origin.fromSuite);
+}
+
+/**
+ * Plain Advantage White Live Bout: no suite flag and no linked bracket bout.
+ * A basic Coach linked bout uses that same plain board.
+ * Pro suite and a Coach Unlimited linked bout keep the stored skin.
+ */
+export function isPlainWhiteScoreboard(
+  fromSuite: boolean,
+  linkedBout: boolean,
+  coachWhiteBoard = false,
+): boolean {
+  if (fromSuite) return false;
+  if (!linkedBout) return true;
+  return coachWhiteBoard;
+}
+
+/** Skin the White, Coach, or suite board should paint. White never follows a stored Old School pick. */
 export function visibleScoreboardSkin(
   skin: ScoreboardSkinId,
   fromSuite: boolean,
   linkedBout: boolean,
+  coachWhiteBoard = false,
 ): ScoreboardSkinId {
-  return isPlainWhiteScoreboard(fromSuite, linkedBout) ? DEFAULT_SCOREBOARD_SKIN : skin;
+  return isPlainWhiteScoreboard(fromSuite, linkedBout, coachWhiteBoard) ? DEFAULT_SCOREBOARD_SKIN : skin;
 }
 
 /**

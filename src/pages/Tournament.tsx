@@ -11,6 +11,7 @@ import { RosterNameField } from '../components/RosterNameField';
 import { Sheet } from '../components/Sheet';
 import { useLockViewportZoom, usePinchZoom } from '../hooks/usePinchZoom';
 import { inputTypeUsesKeyboard } from '../lib/keepFieldVisible';
+import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useToolboxParent } from '../hooks/useToolboxParent';
@@ -26,9 +27,15 @@ import {
 import { EMPTY_BRACKET_BODY, EMPTY_BRACKET_TITLE, OWNER_BRACKET_CLOUD_NOTE } from '../lib/coachCopy';
 import { linkedBracketMatchId, openBracketBout, scoreboardPath, unlinkBracketBout } from '../lib/bracketBout';
 import { setBracketTheme } from '../lib/bracketTheme';
-import { KIDS_BRACKETS_SKINS_LABEL, kidsLiveLine, kidsWinState } from '../lib/kidsScoreboard';
+import {
+  KIDS_BRACKETS_SKINS_LABEL,
+  kidsBracketChromeOn,
+  kidsLiveLine,
+  kidsWinState,
+} from '../lib/kidsScoreboard';
 import { rosterGymForName } from '../lib/rosterStore';
-import { tournamentToolLabel } from '../lib/productNames';
+import { isBasicCoach, SUITE_FROM, tournamentToolLabel } from '../lib/productNames';
+import { coachLinkedWhiteBoard, withMatchOrigin } from '../lib/scoreboardSkin';
 import {
   bracketHasContent,
   bracketRoundLine,
@@ -87,8 +94,9 @@ export function TournamentPage() {
   const parent = useToolboxParent();
   const proUnlocked = useProUnlocked();
   const sizeMax = maxCompetitors(proUnlocked);
-  const fromSuite = searchParams.get('from') === 'suite';
+  const fromSuite = searchParams.get('from') === SUITE_FROM;
   const exitPath = fromSuite ? '/suite' : parent.path;
+  const kidsOn = kidsBracketChromeOn(fromSuite, kids.enabled);
   const [namesOpen, setNamesOpen] = useState(false);
   const [sizeOpen, setSizeOpen] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
@@ -100,13 +108,13 @@ export function TournamentPage() {
   const seeds = seedSlots(tournament);
   const champion = slotName(tournament, 'champion');
   const liveMatchId = linkedBracketMatchId(match.bracketMatchId);
-  const kidsCelebration = kidsWinState(kids.enabled, tournament);
+  const kidsCelebration = kidsWinState(kidsOn, tournament);
   const kidsWin = kidsCelebration.show;
   const kidsChampion = kidsCelebration.name;
   const kidsScore = kidsCelebration.scoreLine;
   const champLabel = kidsWin ? kidsChampion : champion;
   const kidsLive =
-    kids.enabled && liveMatchId && !kidsWin && !tournament.results[liveMatchId]
+    kidsOn && liveMatchId && !kidsWin && !tournament.results[liveMatchId]
       ? kidsLiveLine({
           title: tournament.title.trim() || match.division,
           blueName: match.blue.name,
@@ -201,7 +209,7 @@ export function TournamentPage() {
 
   return (
     <main
-      className={`tournament tournament--${theme}${kids.enabled ? ` tournament--kids tournament--kids-${kids.skin}` : ''}${fs.className ? ` ${fs.className}` : ''}`}
+      className={`tournament tournament--${theme}${kidsOn ? ` tournament--kids tournament--kids-${kids.skin}` : ''}${fs.className ? ` ${fs.className}` : ''}`}
     >
       <BeltRail kind="tournament" />
       <PlayExitMark to={exitPath} onExit={exitBoard} />
@@ -288,7 +296,7 @@ export function TournamentPage() {
       </header>
 
       <p className="tournament__hint">
-        {kids.enabled ? (
+        {kidsOn ? (
           <>
             {KIDS_BRACKETS_SKINS_LABEL} paints this bracket. Pick a background, then fullscreen for the gym TV.
             Grand Master Carlos comes in from the left only after a champion, with "Bom trabalho!"
@@ -316,7 +324,7 @@ export function TournamentPage() {
       ) : null}
 
       <div className="tournament__board" ref={boardRef} onPointerDown={blurTextEntry}>
-        {kids.enabled ? (
+        {kidsOn ? (
           <KidsBracketChrome
             skin={kids.skin}
             win={kidsWin}
@@ -394,9 +402,11 @@ export function TournamentPage() {
         </div>
       </div>
 
-      <div className="kids-switch-row">
-        <KidsScoreboardSwitcher prefs={kids} />
-      </div>
+      {fromSuite ? (
+        <div className="kids-switch-row">
+          <KidsScoreboardSwitcher prefs={kids} />
+        </div>
+      ) : null}
 
       <Sheet open={namesOpen} title="Competitor names" onClose={() => setNamesOpen(false)}>
         <p className="tournament__sheet-copy">
@@ -701,13 +711,21 @@ function MatchCard({
 }) {
   const tournament = useTournamentState();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const fromSuite = searchParams.get('from') === SUITE_FROM;
+  const basicCoach = isBasicCoach(useProUnlocked(), useCoachUnlocked());
   const hasResult = Boolean(tournament.results[matchId]);
   const live = liveMatchId === matchId;
   const bye = matchHasBye(tournament, matchId);
 
   const openScore = () => {
     openBracketBout(matchId);
-    navigate(scoreboardPath(matchId));
+    navigate(
+      withMatchOrigin(scoreboardPath(matchId), {
+        fromSuite,
+        whiteBoard: coachLinkedWhiteBoard(fromSuite, true, basicCoach, false),
+      }),
+    );
   };
 
   return (

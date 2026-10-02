@@ -8,25 +8,21 @@ import { CarlosCheer } from '../components/CarlosCheer';
 import { ScoreBox } from '../components/ScoreBox';
 import { useBoutQuerySync, useBracketOutcomeReturn } from '../hooks/useBracketBoutReturn';
 import { useInterval } from '../hooks/useClock';
+import { useMatchBoard } from '../hooks/useMatchBoard';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
-import { useSuiteOrigin } from '../hooks/useSuiteOrigin';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useMatchState } from '../hooks/useStores';
 import { unlockAudio } from '../lib/audio';
-import { controllerPath, linkedBracketMatchId } from '../lib/bracketBout';
+import { controllerPath } from '../lib/bracketBout';
 import { roundDisplay } from '../lib/roundDisplay';
 import { competitorFocus, type DisplayFocus } from '../lib/matchFocus';
 import { dispatchMatch, expireMatchClock, remainingNow, type Side } from '../lib/matchStore';
 import { needsRefDecision } from '../lib/outcomes';
 import { formatMmSs } from '../lib/format';
 import { carlosMatchComplete, matchCarlosView } from '../lib/carlosCelebration';
-import {
-  SCOREBOARD_SKIN,
-  isPlainWhiteScoreboard,
-  scoreboardSkinClass,
-  visibleScoreboardSkin,
-} from '../lib/scoreboardSkin';
+import { withSuiteFrom } from '../lib/productNames';
+import { SCOREBOARD_SKIN, scoreboardSkinClass } from '../lib/scoreboardSkin';
 
 export function MatchDisplayPage() {
   const match = useMatchState();
@@ -34,8 +30,9 @@ export function MatchDisplayPage() {
   const remaining = remainingNow(match);
   const fs = usePlayFullscreen();
   const navigate = useNavigate();
-  const suite = useSuiteOrigin();
-  const linkedId = linkedBracketMatchId(match.bracketMatchId);
+  const board = useMatchBoard();
+  const suite = board.suite;
+  const linkedId = board.linkedId;
   const refNeeded = needsRefDecision({ ...match, remainingMs: remaining });
   const endedWithoutWinner = remaining <= 0 && !match.running && !match.outcome;
   const splash = match.outcomeFlash && match.outcome ? match.outcome : null;
@@ -63,7 +60,7 @@ export function MatchDisplayPage() {
   };
 
   const openController = (focus?: DisplayFocus) => {
-    const path = suite.withFrom(controllerPath(linkedId, focus));
+    const path = board.originPath(controllerPath(linkedId, focus));
     void fs.exit().finally(() => navigate(path));
   };
 
@@ -78,12 +75,10 @@ export function MatchDisplayPage() {
   const roundLine = roundDisplay(match.round, Boolean(linkedId));
   const clockStatus = match.running ? 'Running' : remaining <= 0 ? 'Ended' : 'Paused';
   const clockStatusAction = match.running ? 'Pause match clock' : remaining <= 0 ? 'Restart match clock' : 'Start match clock';
-  const plainWhite = isPlainWhiteScoreboard(suite.fromSuite, Boolean(linkedId));
-  const skin = visibleScoreboardSkin(match.skin, suite.fromSuite, Boolean(linkedId));
+  const skin = board.skinFor(match.skin);
   const flap = skin === SCOREBOARD_SKIN.OLD_SCHOOL;
-  const carlos = plainWhite
-    ? { show: false, lines: [] as string[] }
-    : matchCarlosView({
+  const carlos = board.showCarlos
+    ? matchCarlosView({
         prefs: match.carlos,
         outcome: match.outcome,
         blueName: match.blue.name,
@@ -95,7 +90,8 @@ export function MatchDisplayPage() {
           remainingMs: remaining,
           outcome: match.outcome,
         }),
-      });
+      })
+    : { show: false, lines: [] as string[] };
 
   const clockControl = (
     <button type="button" className="clock-btn" onClick={toggleClock} aria-label="Start or pause match clock">
@@ -129,7 +125,7 @@ export function MatchDisplayPage() {
       <div className="display__chrome">
         <div className="display__chrome-start">
           {linkedId ? (
-            <Link to="/tournament" className="chip chip--keep">
+            <Link to={withSuiteFrom('/tournament', suite.fromSuite)} className="chip chip--keep">
               Back to bracket
             </Link>
           ) : (
@@ -147,7 +143,7 @@ export function MatchDisplayPage() {
             onToggle={() => void fs.toggle()}
           />
           <Link
-            to={suite.withFrom(controllerPath(linkedId, endedWithoutWinner ? 'outcome' : undefined))}
+            to={board.originPath(controllerPath(linkedId, endedWithoutWinner ? 'outcome' : undefined))}
             className="chip chip--gold"
           >
             Controller
@@ -276,11 +272,10 @@ function ControllerFocusLink({
   onOpen: (focus: DisplayFocus) => void;
   children: ReactNode;
 }) {
-  const linkedId = linkedBracketMatchId(useMatchState().bracketMatchId);
-  const suite = useSuiteOrigin();
+  const board = useMatchBoard();
   return (
     <Link
-      to={suite.withFrom(controllerPath(linkedId, focus))}
+      to={board.originPath(controllerPath(board.linkedId, focus))}
       aria-label={label}
       onClick={(event) => {
         if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;

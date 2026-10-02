@@ -283,3 +283,11 @@ export function tournamentToolLabel(proUnlocked: boolean): string {
 export function coachToolsOpen(proUnlocked: boolean, coachUnlocked: boolean): boolean {
   return proUnlocked || coachUnlocked;
 }
+
+/**
+ * Advantage Coach without Pro.
+ * Coach Unlimited is a Pro route, so a Pro unlock is not basic Coach.
+ */
+export function isBasicCoach(proUnlocked: boolean, coachUnlocked: boolean): boolean {
+  return coachUnlocked && !proUnlocked;
+}

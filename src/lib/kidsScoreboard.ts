@@ -1,5 +1,6 @@
 /**
- * Kids' Scoreboards — device-local bracket TV mode.
+ * Kids' Scoreboards — device-local bracket TV mode on the Pro suite board.
+ * Coach and Coach Unlimited mock tournaments stay on the plain Bright/Dark tree.
  * The existing tree stays. A skin is only a wallpaper behind frosted name bubbles.
  * Grand Master Carlos is a win overlay, never a live-match graphic.
  */
@@ -96,6 +97,11 @@ export function setKidsEnabled(enabled: boolean): void {
 
 export function setKidsSkin(skin: KidsSkinId): void {
   writePrefs({ ...readPrefs(), skin });
+}
+
+/** Kids wallpaper and bracket Carlos belong on the Pro suite board only. */
+export function kidsBracketChromeOn(fromSuite: boolean, enabled: boolean): boolean {
+  return fromSuite && enabled;
 }
 
 export function kidsSkinLabel(skin: KidsSkinId): string {

@@ -4,6 +4,7 @@ import {
   DEFAULT_CARLOS_POINTS_THRESHOLD,
   DEFAULT_CARLOS_PREFS,
   carlosMatchComplete,
+  masterCarlosOnScoreboard,
   matchCarlosView,
   parseCarlosPrefs,
   parseCarlosThreshold,
@@ -25,6 +26,11 @@ const base = {
 function win(side: 'blue' | 'white'): MatchOutcome {
   return { call: 'win', method: 'points', side, source: 'manual', at: 1 };
 }
+
+test('Master Carlos on the match board is Pro suite only', () => {
+  assert.equal(masterCarlosOnScoreboard(true), true);
+  assert.equal(masterCarlosOnScoreboard(false), false);
+});
 
 test('Master Carlos stays off until the controller turns him on', () => {
   assert.equal(DEFAULT_CARLOS_PREFS.enabled, false);
