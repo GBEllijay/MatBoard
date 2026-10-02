@@ -19,6 +19,12 @@ export const CONNECT_WITH_BODY =
   'Choose a folder the gym already owns. Lesson plans, photos, and videos stay there. Advantage does not host photos or videos.';
 export const CONNECT_COMING_SOON = 'Coming soon';
 export const CONNECT_CHOOSE_FOLDER = 'Choose a folder.';
+/**
+ * Temporary owner heads-up while Advantage’s Google app is in Testing
+ * and verification is still pending. Shown above the Google Drive button.
+ */
+export const CONNECT_GOOGLE_UNVERIFIED_NOTE =
+  'Google may show a notice that this connection isn’t verified yet. Tap Continue, or Advanced then Continue, to proceed. This is temporary.';
 
 export type CloudFolderRef = {
   id: string;
