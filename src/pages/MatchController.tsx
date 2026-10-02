@@ -107,12 +107,11 @@ export function MatchControllerPage() {
     setCustomOpen(false);
   };
 
+  // Selection only. Switching cues mid-match must not play a stop sound.
+  // Preview cues below are what play the sound.
   const chooseMatchEndCue = (cue: EndCue) => {
     patchAudioPrefs({ endCue: cue });
     dispatchMatch({ type: 'setEndCue', value: cue });
-    void unlockAudio().then(() => {
-      if (match.endBuzzer) playSelectedEndCue('match', cue);
-    });
   };
 
   const onCast = async () => {
