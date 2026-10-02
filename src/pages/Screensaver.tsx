@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
 import { GymLogoControl } from '../components/GymLogoControl';
@@ -14,6 +14,8 @@ import { FullscreenChip } from '../components/FullscreenChip';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { TvTip } from '../components/TvTip';
 import { Sheet } from '../components/Sheet';
+import { DriveConnectCard } from '../components/DriveConnectCard';
+import { DriveMediaPicker } from '../components/DriveMediaPicker';
 import { OpenMyDrive } from '../components/OpenMyDrive';
 import { MediaSourceSheet } from '../components/VideoSourceSheet';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
@@ -29,7 +31,14 @@ import { seatPermissionAllows } from '../lib/instructorSeats';
 import { MEDIA_CONSOLE_INSTRUCTIONS, MEDIA_CONSOLE_NAME } from '../lib/productNames';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
+import {
+  PICK_FROM_DRIVE_LABEL,
+  driveImportProgressLabel,
+  type DriveBrowseMedia,
+  type DrivePickKind,
+} from '../lib/driveMediaPicker';
 import { formatMss, secondsToMs } from '../lib/format';
+import { downloadDriveFile, getDriveBindingSnapshot, requestDriveToken, subscribeDriveBinding } from '../lib/googleDrive';
 import {
   PHOTO_PICKER_ACCEPT,
   VIDEO_CAPTURE,
@@ -44,6 +53,7 @@ import {
 } from '../lib/folderBatch';
 import { LARGE_MEDIA_BYTES, LARGE_MEDIA_NOTE } from '../lib/storageQuota';
 import {
+  addDriveMediaFiles,
   addFolderFiles,
   clearFolder,
   clampIntervalSec,
@@ -104,6 +114,10 @@ export function ScreensaverPage() {
   const [batchStatus, setBatchStatus] = useState<BatchNotice | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [addKind, setAddKind] = useState<MediaSourceKind>('photo');
+  const [drivePickOpen, setDrivePickOpen] = useState(false);
+  const [drivePickKind, setDrivePickKind] = useState<DrivePickKind>('photo');
+  const [driveConnectOpen, setDriveConnectOpen] = useState(false);
+  const driveBinding = useSyncExternalStore(subscribeDriveBinding, getDriveBindingSnapshot, () => null);
   const [unlockSound, setUnlockSound] = useState(false);
   const [folderPlay, setFolderPlayState] = useState(DEFAULT_FOLDER_PLAY);
   const [shopCastMode, setShopCastModeState] = useState<ShopCastMode>(DEFAULT_SHOP_CAST_MODE);
@@ -271,6 +285,86 @@ export function ScreensaverPage() {
     addFolderRef.current = folderId;
     setAddKind(kind);
     setAddOpen(true);
+  };
+
+  const openDrivePick = (folderId: FolderId, kind: DrivePickKind) => {
+    addFolderRef.current = folderId;
+    setDrivePickKind(kind);
+    setAddKind(kind === 'video' ? 'video' : 'photo');
+    setAddOpen(false);
+    if (!driveBinding) {
+      setDriveConnectOpen(true);
+      return;
+    }
+    setDrivePickOpen(true);
+  };
+
+  const importFromDrive = async (chosen: readonly DriveBrowseMedia[]) => {
+    if (savingRef.current) return;
+    const folderId = addFolderRef.current;
+    const picked = [...chosen];
+    setDrivePickOpen(false);
+    if (!picked.length) return;
+    savingRef.current = true;
+    setPickerNote('');
+    setBatchStatus({ tone: 'progress', text: driveImportProgressLabel(0, picked.length) });
+    try {
+      const token = (await requestDriveToken('silent')) ?? (await requestDriveToken('consent'));
+      if (!token) {
+        showBatchError(folderId, 'Sign in to Google Drive again to pick those files.');
+        return;
+      }
+      const files: { file: File; driveFileId: string }[] = [];
+      for (let index = 0; index < picked.length; index += 1) {
+        const item = picked[index];
+        setBatchStatus({ tone: 'progress', text: driveImportProgressLabel(index, picked.length) });
+        try {
+          const blob = await downloadDriveFile(token, item.id);
+          const type = item.mime || blob.type || 'application/octet-stream';
+          files.push({
+            file: new File([blob], item.name || 'Drive file', { type }),
+            driveFileId: item.id,
+          });
+        } catch {
+          /* One file can fail. The rest still import. */
+        }
+      }
+      if (!files.length) {
+        showBatchError(folderId, 'Those Google Drive files could not be opened. Nothing was saved.');
+        return;
+      }
+      setBatchStatus({
+        tone: 'progress',
+        text: folderSaveProgressLabel({ done: 0, total: files.length, phase: 'shrink' }),
+      });
+      const added = await addDriveMediaFiles(files, folderId, {
+        onProgress: (progress) => {
+          setBatchStatus({ tone: 'progress', text: folderSaveProgressLabel(progress) });
+        },
+      });
+      if (!added) {
+        showBatchError(folderId, 'Those files are already in this folder, or this folder does not use that kind.');
+        return;
+      }
+      setBatchStatus(null);
+      setPickerNote('');
+      await refresh();
+      setPlaying(true);
+      setExpanded((prev) => ({ ...prev, [folderId]: true }));
+      setOptions(true);
+    } catch (error) {
+      showBatchError(
+        folderId,
+        error instanceof Error ? error.message : 'Those Google Drive files could not be saved.',
+      );
+      try {
+        await refresh();
+      } catch {
+        /* The note is the signal. */
+      }
+    } finally {
+      savingRef.current = false;
+    }
   };
 
   const scrollPickerNote = useCallback((node: HTMLParagraphElement | null) => {
@@ -474,6 +568,13 @@ export function ScreensaverPage() {
                   {focusConfig.videoAddLabel}
                 </button>
               ) : null}
+              <button
+                type="button"
+                className="btn"
+                onClick={() => openDrivePick(focusFolder, focusFolder === 'gallery' ? 'any' : 'photo')}
+              >
+                {PICK_FROM_DRIVE_LABEL}
+              </button>
               <OpenMyDrive />
             </>
           ) : null}
@@ -539,6 +640,11 @@ export function ScreensaverPage() {
               onAddVideo={
                 folder.ready && galleryUpload && folder.videoAddLabel
                   ? () => openAdd(folder.id, 'video')
+                  : undefined
+              }
+              onPickDrive={
+                folder.ready && galleryUpload
+                  ? () => openDrivePick(folder.id, folder.id === 'gallery' ? 'any' : 'photo')
                   : undefined
               }
               onClear={
@@ -766,8 +872,26 @@ export function ScreensaverPage() {
         captureInputId={addKind === 'video' ? 'saver-video-record' : 'saver-photo-capture'}
         libraryInputId={addKind === 'video' ? 'saver-video-library' : 'saver-photo-library'}
         stacked={options}
+        onPickDrive={() => openDrivePick(addFolderRef.current, addKind === 'video' ? 'video' : 'photo')}
         onClose={() => setAddOpen(false)}
       />
+      <DriveMediaPicker
+        open={drivePickOpen}
+        kind={drivePickKind}
+        stacked={options}
+        onClose={() => setDrivePickOpen(false)}
+        onDone={(files) => {
+          void importFromDrive(files);
+        }}
+      />
+      <Sheet
+        open={driveConnectOpen && !driveBinding}
+        title="Connect with"
+        onClose={() => setDriveConnectOpen(false)}
+        stacked
+      >
+        <DriveConnectCard />
+      </Sheet>
       <DeviceMediaInput
         id="saver-photo-capture"
         inputRef={photoCaptureRef}

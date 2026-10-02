@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { ClassPhotoPromotions } from '../components/ClassPhotoPromotions';
 import { CoachPlanExport } from '../components/CoachPlanExport';
 import { CollaborationGate, SeatSessionBar, useCurrentSeat } from '../components/SeatSessionBar';
@@ -40,6 +40,11 @@ import {
   type LessonSlotRef,
   type LessonTreeCandidate,
 } from '../lib/lessonLinks';
+import {
+  OPEN_DRIVE_CLASS_LABEL,
+  restoreNoticeFromState,
+  restoredDayKey,
+} from '../lib/lessonRestore';
 import {
   DISTRIBUTE_BUTTON,
   DISTRIBUTE_DONE,
@@ -144,6 +149,7 @@ export function TrainingNotesPage() {
    * and Pro on. A Coach-only browser cannot turn Unlimited on with the query.
    */
   const unlimitedPlan = proUnlocked && searchParams.get('plan') === UNLIMITED_LESSON_VALUE;
+  const driveRestoreNotice = restoreNoticeFromState(useLocation().state);
   const seat = useCurrentSeat();
   const showDownload = visibleCoachControl('downloadTodaysVideos', { owner: true, seat });
   const showDistribute =
@@ -153,11 +159,12 @@ export function TrainingNotesPage() {
   const [boot] = useState(() => {
     const today = localDateKey();
     const archive = loadTrainingArchive(today);
-    return { today, archive, plan: plansOnDay(archive, today)[0] ?? emptyPlan() };
+    const viewKey = restoredDayKey(searchParams.get('date'), today, (dateKey) => plansOnDay(archive, dateKey).length > 0);
+    return { today, archive, viewKey, plan: plansOnDay(archive, viewKey)[0] ?? emptyPlan() };
   });
   const [todayKey, setTodayKey] = useState(boot.today);
   const [archive, setArchive] = useState<TrainingNotesArchive>(boot.archive);
-  const [viewKey, setViewKey] = useState(boot.today);
+  const [viewKey, setViewKey] = useState(boot.viewKey);
   const [plan, setPlan] = useState<TrainingNotesPlan>(boot.plan);
   const [classesOpen, setClassesOpen] = useState(false);
   const [folderKey, setFolderKey] = useState<string | null>(null);
@@ -346,7 +353,7 @@ export function TrainingNotesPage() {
     setPlan(saved.plan);
     // Local text is already stored. Unlimited queues a Drive draft (text + file ids).
     // Limited Coach skips the queue. Either way, leaving the page does not drop the plan.
-    // TODO: Reopen / repopulate an older lesson plan from Drive is not implemented.
+    // A previous day is opened from Class History, which reads the gym Drive folder.
     scheduleLessonDriveDraft({
       proSuite: unlimitedPlan,
       dateKey: todayKey,
@@ -529,10 +536,20 @@ export function TrainingNotesPage() {
           {driveNotice.text}
         </p>
       ) : null}
+      {unlimitedPlan && driveRestoreNotice ? (
+        <p className="notes__save" role="status">
+          {driveRestoreNotice}
+        </p>
+      ) : null}
 
       {lessonBlocked ? null : (
       <div className="notes__plan">
         {unlimitedPlan ? null : <OpenMyDrive />}
+        {unlimitedPlan ? (
+          <Link className="btn btn--ghost notes__copy" to="/class-history">
+            {OPEN_DRIVE_CLASS_LABEL}
+          </Link>
+        ) : null}
         <section className="notes__archive" aria-label="Saved days">
           <div className="notes__days">
             <button

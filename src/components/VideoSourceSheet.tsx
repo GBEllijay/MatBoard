@@ -1,3 +1,4 @@
+import { PICK_FROM_DRIVE_LABEL, drivePickHint, type DrivePickKind } from '../lib/driveMediaPicker';
 import { VIDEO_LIBRARY_LABEL, VIDEO_RECORD_LABEL, PHOTO_CAPTURE_LABEL } from '../lib/mediaPicker';
 import type { MediaSheetKind } from '../lib/mediaPicker';
 import { OpenMyDrive } from './OpenMyDrive';
@@ -17,6 +18,11 @@ type Props = {
   stacked?: boolean;
   /** Overrides the default “stays on this device” line. Gallery keeps the default. */
   stay?: string;
+  /**
+   * Media Console only. Opens the gym Drive folder picker.
+   * Phone Take photo / Pick from gallery stay on the other buttons.
+   */
+  onPickDrive?: () => void;
   onClose: () => void;
 };
 
@@ -59,10 +65,12 @@ export function MediaSourceSheet({
   libraryInputId,
   stacked = false,
   stay,
+  onPickDrive,
   onClose,
 }: Props) {
   const copy = COPY[kind];
   const photoAndVideo = kind === 'photo-or-video';
+  const driveKind: DrivePickKind = kind === 'video' ? 'video' : 'photo';
   return (
     <Sheet open={open} title={title} onClose={onClose} stacked={stacked}>
       <p className="saver-sound-hint">{stay ?? copy.stay}</p>
@@ -81,6 +89,12 @@ export function MediaSourceSheet({
           <strong>{VIDEO_LIBRARY_LABEL}</strong>
           <span>{copy.libraryHint}</span>
         </label>
+        {onPickDrive ? (
+          <button type="button" className="btn outcome-pick outcome-pick--library" onClick={onPickDrive}>
+            <strong>{PICK_FROM_DRIVE_LABEL}</strong>
+            <span>{drivePickHint(driveKind)}</span>
+          </button>
+        ) : null}
       </div>
       <OpenMyDrive />
     </Sheet>
