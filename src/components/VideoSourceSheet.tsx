@@ -1,3 +1,9 @@
+import {
+  DRIVE_PICK_BESIDE_PHOTOS,
+  PICK_FROM_DRIVE_LABEL,
+  drivePickHint,
+  type DrivePickKind,
+} from '../lib/driveMediaPicker';
 import { VIDEO_LIBRARY_LABEL, VIDEO_RECORD_LABEL, PHOTO_CAPTURE_LABEL } from '../lib/mediaPicker';
 import type { MediaSheetKind } from '../lib/mediaPicker';
 import { OpenMyDrive } from './OpenMyDrive';
@@ -17,6 +23,11 @@ type Props = {
   stacked?: boolean;
   /** Overrides the default “stays on this device” line. Gallery keeps the default. */
   stay?: string;
+  /**
+   * Media Console only. Opens the gym Drive folder picker.
+   * Phone Take photo / Pick from gallery stay on the other buttons.
+   */
+  onPickDrive?: () => void;
   onClose: () => void;
 };
 
@@ -27,19 +38,19 @@ const COPY: Record<
   video: {
     capture: VIDEO_RECORD_LABEL,
     captureHint: 'Open the camera in video mode',
-    libraryHint: 'Choose an existing clip on this phone',
+    libraryHint: 'Choose an existing clip in Google Photos or on this phone',
     stay: 'Clips stay on this device. Nothing is uploaded.',
   },
   photo: {
     capture: PHOTO_CAPTURE_LABEL,
     captureHint: 'Open the camera in photo mode',
-    libraryHint: 'Choose an existing photo on this phone',
+    libraryHint: 'Choose a photo in Google Photos or on this phone',
     stay: 'Photos stay on this device. Nothing is uploaded.',
   },
   'photo-or-video': {
     capture: PHOTO_CAPTURE_LABEL,
     captureHint: 'Open the camera in photo mode',
-    libraryHint: 'Choose an existing photo or video on this phone',
+    libraryHint: 'Choose a photo or video in Google Photos or on this phone',
     stay: "Photos and clips stay on this phone. When the gym Google Drive folder is connected, a copy goes in today's class-photos folder.",
   },
 };
@@ -59,13 +70,16 @@ export function MediaSourceSheet({
   libraryInputId,
   stacked = false,
   stay,
+  onPickDrive,
   onClose,
 }: Props) {
   const copy = COPY[kind];
   const photoAndVideo = kind === 'photo-or-video';
+  const driveKind: DrivePickKind = kind === 'video' ? 'video' : 'photo';
+  const stayLine = stay ?? (onPickDrive ? DRIVE_PICK_BESIDE_PHOTOS : copy.stay);
   return (
     <Sheet open={open} title={title} onClose={onClose} stacked={stacked}>
-      <p className="saver-sound-hint">{stay ?? copy.stay}</p>
+      <p className="saver-sound-hint">{stayLine}</p>
       <div className="outcome-picks" role="list">
         <label htmlFor={captureInputId} className="btn outcome-pick outcome-pick--submission">
           <strong>{photoAndVideo ? PHOTO_CAPTURE_LABEL : copy.capture}</strong>
@@ -81,6 +95,12 @@ export function MediaSourceSheet({
           <strong>{VIDEO_LIBRARY_LABEL}</strong>
           <span>{copy.libraryHint}</span>
         </label>
+        {onPickDrive ? (
+          <button type="button" className="btn outcome-pick outcome-pick--library" onClick={onPickDrive}>
+            <strong>{PICK_FROM_DRIVE_LABEL}</strong>
+            <span>{drivePickHint(driveKind)}</span>
+          </button>
+        ) : null}
       </div>
       <OpenMyDrive />
     </Sheet>

@@ -22,7 +22,8 @@
  * is ignored on the live website so it cannot override the company client.
  * Scopes: `drive.file` (create and update lesson JSON and training videos)
  * and `drive.readonly` (list the chosen folder, thumbnails, and download a
- * video the owner stored). Google Photos is not a source.
+ * video the owner stored). Adding photos still uses Google Photos.
+ * Drive is an additional folder.
  */
 
 import {
@@ -91,7 +92,7 @@ export const DRIVE_SIGN_IN_FAILED =
 export const DRIVE_FOLDER_EMPTY = 'This Google Drive account does not have any folders yet.';
 export const CLASS_HISTORY_TITLE = 'Class history';
 export const CLASS_HISTORY_LEAD =
-  'Techniques, photos, and videos from the gym Google Drive folder, by date. They stay in Drive for as long as the gym keeps that folder.';
+  'Techniques, photos, and videos from the gym Google Drive folder, by date. Open this class puts that day’s lesson plan and training videos back on this phone. They stay in Drive for as long as the gym keeps that folder.';
 export const CLASS_HISTORY_EMPTY = 'Nothing in this Google Drive folder yet.';
 export const CLASS_HISTORY_CONNECT =
   'Connect your Google Drive folder to see this list. Advantage does not host the photos or videos.';
@@ -1131,6 +1132,73 @@ export async function loadClassHistory(
     if (doc) lessons.push({ fileId: file.id, doc });
   }
   return buildClassHistory({ files, lessons });
+}
+
+export type DriveDayPackage = {
+  dateKey: string;
+  lessons: DriveLessonDocument[];
+  videos: DriveFileMeta[];
+};
+
+function isDriveVideo(file: DriveFileMeta): boolean {
+  return file.mimeType.toLowerCase().startsWith('video/') && Boolean(file.id);
+}
+
+/**
+ * One class day from the connected folder: lesson JSON in `{date}/lesson-plans/`
+ * and video files in `{date}/training-videos/`. A lesson JSON that still sits
+ * in the root is included when its date matches. Class photos, roster, and
+ * other dates stay out.
+ */
+export async function loadDriveDayPackage(
+  token: string,
+  rootFolderId: string,
+  dateKey: string,
+  fetcher: DriveFetch = fetch,
+): Promise<DriveDayPackage> {
+  if (!DATE_FOLDER_NAME.test(dateKey)) return { dateKey, lessons: [], videos: [] };
+  const rootFiles = await listFolderFiles(token, rootFolderId, fetcher);
+  const dateFolder = rootFiles.find(
+    (file) => file.mimeType === DRIVE_FOLDER_MIME && file.name === dateKey,
+  );
+  const lessonFiles = rootFiles.filter(isLessonFile).slice(0, 40);
+  const videoFiles: DriveFileMeta[] = [];
+  if (dateFolder) {
+    const children = await listFolderFiles(token, dateFolder.id, fetcher);
+    const plansId = children.find(
+      (file) => file.mimeType === DRIVE_FOLDER_MIME && file.name === LESSON_PLANS_FOLDER,
+    )?.id;
+    const videosId = children.find(
+      (file) => file.mimeType === DRIVE_FOLDER_MIME && file.name === TRAINING_VIDEOS_FOLDER,
+    )?.id;
+    if (plansId) {
+      const nested = await listFolderFiles(token, plansId, fetcher);
+      lessonFiles.push(...nested.filter(isLessonFile));
+      videoFiles.push(...nested.filter(isDriveVideo));
+    }
+    if (videosId) {
+      const nested = await listFolderFiles(token, videosId, fetcher);
+      videoFiles.push(...nested.filter(isDriveVideo));
+    }
+  }
+  const lessons: DriveLessonDocument[] = [];
+  const seenLessons = new Set<string>();
+  for (const file of lessonFiles) {
+    if (seenLessons.has(file.id)) continue;
+    seenLessons.add(file.id);
+    const raw = await downloadJson(token, file.id, fetcher);
+    const doc = parseLessonDocument(raw);
+    if (!doc || doc.date !== dateKey) continue;
+    lessons.push(doc);
+  }
+  lessons.sort((a, b) => a.savedAt - b.savedAt || a.plan.id.localeCompare(b.plan.id));
+  const seenVideos = new Set<string>();
+  const videos = videoFiles.filter((file) => {
+    if (seenVideos.has(file.id)) return false;
+    seenVideos.add(file.id);
+    return true;
+  });
+  return { dateKey, lessons, videos };
 }
 
 function multipartRelated(metadata: unknown, json: string): { body: string; contentType: string } {

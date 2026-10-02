@@ -2,7 +2,7 @@
 
 Internal setup for Advantage App, LLC. Gym owners never do these steps. Owner steps are in `docs/owner-connect-google-drive.md`.
 
-Advantage does not host photos or videos. File bytes stay in the customer’s Google Drive. Google Photos is not a sync source. The app stores lesson text plus Drive file ids.
+Advantage does not host photos or videos. File bytes stay in the customer’s Google Drive. Adding a photo still uses Google Photos or the phone gallery. Google Drive is an additional folder. The app stores lesson text plus Drive file ids.
 
 The browser uses Google Identity Services with one **Web application** OAuth client. The client id is public in the PWA. **Do not ship a client secret** in the app, in Vite env, or in the owner UI.
 

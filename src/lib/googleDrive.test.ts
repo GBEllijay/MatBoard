@@ -32,6 +32,7 @@ import {
   lessonDriveFileName,
   upsertCoachPlanFile,
   loadClassHistory,
+  loadDriveDayPackage,
   CLASS_PHOTO_PROMOTIONS_ROLE,
   CLASS_PHOTOS_FOLDER,
   TRAINING_VIDEOS_FOLDER,
@@ -83,6 +84,8 @@ test('lesson file names and Drive queries stay literal', () => {
   );
   assert.match(CONNECT_WITH_BODY, /does not host photos or videos/);
   assert.match(CONNECT_WITH_BODY, /folder the gym already owns/);
+  assert.match(CONNECT_WITH_BODY, /Google Photos and the phone gallery/);
+  assert.match(CONNECT_WITH_BODY, /Google Drive is an additional folder/);
   assert.match(DRIVE_SETUP_NEEDED, /not available on this build yet — contact Advantage/);
   assert.doesNotMatch(
     `${CONNECT_WITH_TITLE} ${CONNECT_WITH_BODY} ${CONNECT_COMING_SOON} ${CONNECT_GOOGLE_UNVERIFIED_NOTE} ${DRIVE_SETUP_NEEDED} ${DRIVE_SIGN_IN_FAILED} ${DRIVE_DEV_CLIENT_HINT}`,
@@ -881,6 +884,85 @@ describe('date folder tree', { concurrency: false }, () => {
       ['Flat.mp4'],
     );
     assert.equal(drive.calls.filter((call) => call.url.includes('q=')).length, 1);
+  });
+
+  test('a day package reads lesson-plans and training-videos for that date only', async () => {
+    const drive = createFakeDrive('daypack');
+    const lesson = lessonDoc('draft', 4, 'Armbar');
+    lesson.date = '2026-09-28';
+    lesson.media = [
+      {
+        section: 'technique',
+        index: 0,
+        localClipId: 'clip-1',
+        driveFileId: 'daypack-clip',
+        name: 'Armbar.mp4',
+        mime: 'video/mp4',
+      },
+    ];
+    const other = lessonDoc('draft', 1, 'Other day');
+    other.date = '2026-09-27';
+    drive.seed({
+      id: 'daypack-date',
+      name: '2026-09-28',
+      mimeType: DRIVE_FOLDER_MIME,
+      parents: ['root-daypack'],
+    });
+    drive.seed({
+      id: 'daypack-plans',
+      name: 'lesson-plans',
+      mimeType: DRIVE_FOLDER_MIME,
+      parents: ['daypack-date'],
+    });
+    drive.seed({
+      id: 'daypack-videos',
+      name: 'training-videos',
+      mimeType: DRIVE_FOLDER_MIME,
+      parents: ['daypack-date'],
+    });
+    drive.seed({
+      id: 'daypack-photos',
+      name: 'class-photos',
+      mimeType: DRIVE_FOLDER_MIME,
+      parents: ['daypack-date'],
+    });
+    drive.seed({
+      id: 'daypack-lesson',
+      name: 'advantage-lesson-2026-09-28-alex-rivera.json',
+      mimeType: 'application/json',
+      parents: ['daypack-plans'],
+      appProperties: { advantage: 'lesson', date: '2026-09-28' },
+      content: JSON.stringify(lesson),
+    });
+    drive.seed({
+      id: 'daypack-other',
+      name: 'advantage-lesson-2026-09-27-alex-rivera.json',
+      mimeType: 'application/json',
+      parents: ['root-daypack'],
+      appProperties: { advantage: 'lesson', date: '2026-09-27' },
+      content: JSON.stringify(other),
+    });
+    drive.seed({
+      id: 'daypack-clip',
+      name: 'Armbar.mp4',
+      mimeType: 'video/mp4',
+      parents: ['daypack-videos'],
+      appProperties: { advantage: 'training-video', date: '2026-09-28', localClipId: 'clip-1' },
+    });
+    drive.seed({
+      id: 'daypack-photo',
+      name: 'Class.jpg',
+      mimeType: 'image/jpeg',
+      parents: ['daypack-photos'],
+    });
+    const pack = await loadDriveDayPackage('token', 'root-daypack', '2026-09-28', drive.fetcher);
+    assert.equal(pack.lessons.length, 1);
+    assert.equal(pack.lessons[0]?.plan.techniques[0].title, 'Armbar');
+    assert.equal(pack.lessons[0]?.media[0]?.driveFileId, 'daypack-clip');
+    assert.deepEqual(
+      pack.videos.map((file) => file.name),
+      ['Armbar.mp4'],
+    );
   });
 
   test('class history lists a video stored in the date training-videos folder', async () => {

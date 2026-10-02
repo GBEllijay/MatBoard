@@ -2,6 +2,7 @@ import {
   assignOrphanClips,
   canAssignClip,
   clampDrillSec,
+  clampDriveFileId,
   DEFAULT_DRILL_SEC,
   pickAddableVideos,
   planFromFlatClips,
@@ -260,4 +261,49 @@ export async function clearSlotClip(
   const next = setSlotClip(plan, slotId, null);
   await saveTechniquePlan(next);
   return { plan: next, clips: await listTechniqueClips(), status: 'removed' };
+}
+
+/**
+ * Keep a Drive training video on this phone. An existing clip with the same
+ * Drive file id is reused, so opening the day again does not download twice.
+ * Pass a null blob to ask for that reuse only.
+ */
+export async function storeRestoredDriveClip(input: {
+  driveFileId: string;
+  blob: Blob | null;
+  mime: string;
+  label: string;
+}): Promise<string | null> {
+  const driveFileId = clampDriveFileId(input.driveFileId);
+  if (!driveFileId) return null;
+  const board = await loadTechniqueBoard();
+  const kept = board.plan.slots.find(
+    (slot) => slot.driveFileId === driveFileId && slot.clipId && board.clips.some((clip) => clip.id === slot.clipId),
+  );
+  if (kept?.clipId) return kept.clipId;
+  if (!input.blob || input.blob.size <= 0) return null;
+  const clipId = crypto.randomUUID();
+  const nextOrder = board.clips.reduce((max, clip) => Math.max(max, clip.sortOrder), -1) + 1;
+  const mime = input.mime.toLowerCase().startsWith('video/') ? input.mime.toLowerCase() : 'video/mp4';
+  const row: TechniqueClip = {
+    id: clipId,
+    mime,
+    addedAt: Date.now(),
+    blob: input.blob,
+    label: input.label.trim().slice(0, 180) || TECHNIQUE_FOLDER.labelPrefix,
+    folderId: TECHNIQUE_FOLDER_ID,
+    sortOrder: nextOrder,
+  };
+  await assertOriginRoom(input.blob.size);
+  try {
+    const db = await openDb();
+    const tx = db.transaction(CLIPS, 'readwrite');
+    tx.objectStore(CLIPS).put(row);
+    await txDone(tx);
+  } catch (error) {
+    if (error instanceof StorageQuotaError) throw error;
+    if (isStorageQuotaError(error)) throw new StorageQuotaError(0);
+    throw error;
+  }
+  return clipId;
 }

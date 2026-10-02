@@ -11,12 +11,21 @@ import {
   CLASS_HISTORY_EMPTY,
   CLASS_HISTORY_LEAD,
   CLASS_HISTORY_TITLE,
+  downloadDriveFile,
   loadClassHistory,
+  loadDriveDayPackage,
   readDriveBinding,
   requestDriveToken,
   type ClassDay,
   type DriveBinding,
 } from '../lib/googleDrive';
+import {
+  OPEN_THIS_CLASS_LABEL,
+  RESTORE_OPENING,
+  restoreDriveDay,
+} from '../lib/lessonRestore';
+import { saveTechniquePlan, storeRestoredDriveClip } from '../lib/techniqueStore';
+import { localDateKey, saveDay } from '../lib/trainingNotesStore';
 
 function planDayLabel(dateKey: string): string {
   const [year, month, day] = dateKey.split('-').map(Number);
@@ -43,6 +52,8 @@ export function ClassHistoryPage() {
   const parent = useToolboxParent();
   const [binding, setBinding] = useState<DriveBinding | null>(() => readDriveBinding());
   const [state, setState] = useState<HistoryState>({ phase: 'checking' });
+  const [opening, setOpening] = useState<string | null>(null);
+  const [notice, setNotice] = useState('');
 
   useEffect(() => {
     const current = readDriveBinding();
@@ -78,6 +89,40 @@ export function ClassHistoryPage() {
     };
   }, []);
 
+  const openClass = (date: string) => {
+    if (!binding || opening) return;
+    setOpening(date);
+    setNotice('');
+    void requestDriveToken('silent')
+      .then(async (silent) => {
+        const token = silent ?? (await requestDriveToken('consent'));
+        if (!token) throw new Error(CLASS_HISTORY_CONNECT);
+        const pack = await loadDriveDayPackage(token, binding.folderId, date);
+        return restoreDriveDay({
+          todayKey: localDateKey(),
+          pack,
+          downloadVideo: (fileId) => downloadDriveFile(token, fileId),
+          savePlan: (dateKey, plan, todayKey) => {
+            saveDay(dateKey, plan, todayKey);
+          },
+          storeClip: storeRestoredDriveClip,
+          saveVideoPlan: saveTechniquePlan,
+        });
+      })
+      .then((result) => {
+        if (!result.ok || !result.path) {
+          setNotice(result.notice);
+          setOpening(null);
+          return;
+        }
+        navigate(result.path, { state: { driveRestoreNotice: result.notice } });
+      })
+      .catch((reason) => {
+        setNotice(reason instanceof Error ? reason.message : 'This class could not be opened.');
+        setOpening(null);
+      });
+  };
+
   return (
     <main className="notes">
       <PlayExitMark to="/instructors" onExit={() => navigate('/instructors')} />
@@ -100,6 +145,11 @@ export function ClassHistoryPage() {
         {state.phase === 'error' ? (
           <p className="notes__gallery-status notes__gallery-status--empty" role="status">
             {state.message}
+          </p>
+        ) : null}
+        {notice ? (
+          <p className="notes__gallery-status notes__gallery-status--empty" role="status">
+            {notice}
           </p>
         ) : null}
         {state.phase === 'ready' && state.days.length === 0 ? (
@@ -134,6 +184,14 @@ export function ClassHistoryPage() {
                     ))}
                   </ul>
                 ) : null}
+                <button
+                  type="button"
+                  className="btn history__open"
+                  disabled={opening !== null}
+                  onClick={() => openClass(day.date)}
+                >
+                  {opening === day.date ? RESTORE_OPENING : OPEN_THIS_CLASS_LABEL}
+                </button>
               </section>
             ))
           : null}

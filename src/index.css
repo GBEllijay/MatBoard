@@ -4133,6 +4133,60 @@ a.saver-folder--link {
   margin-bottom: 0.35rem;
 }
 
+.drive-pick__path {
+  margin: 0;
+  font-weight: 800;
+}
+
+.drive-pick__folders {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.drive-pick__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.drive-pick__cell {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0.35rem;
+  border-radius: 12px;
+  border: 2px solid var(--line);
+  background: rgba(8, 10, 16, 0.45);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.drive-pick__cell.is-selected {
+  border-color: rgb(252, 192, 0);
+}
+
+.drive-pick__cell img,
+.drive-pick__thumb {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 8px;
+  background: rgba(8, 10, 16, 0.55);
+}
+
+.drive-pick__name {
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .saver-folder__empty,
 .saver-sound-hint {
   margin: 0;
@@ -9065,6 +9119,11 @@ input.roster-pick__name:focus,
   align-items: center;
   gap: 0.65rem;
   font-weight: 800;
+}
+
+.history__open {
+  width: 100%;
+  min-height: 52px;
 }
 
 .history__media img,

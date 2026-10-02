@@ -16,8 +16,9 @@
  * (`googleDrive.ts`). Video bytes go only to the gym's Google Drive.
  * Regular Coach does not queue a Drive revision.
  *
- * TODO: Reopen and repopulate an older Daily Lesson Plan from the connected
- * Drive folder is not implemented. Plans already on this phone stay as saved.
+ * Opening a previous day is Class History → Open this class (`lessonRestore.ts`).
+ * That reads `{date}/lesson-plans/` and `{date}/training-videos/`, writes the
+ * lesson text back onto this phone, and keeps a local copy of each video.
  *
  * Local cache: after a clip uploads, the phone keeps the blob so offline
  * play still works. `driveFileId` marks Drive as the source of truth. A later
