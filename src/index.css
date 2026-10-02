@@ -12926,7 +12926,7 @@ a.plan-pick {
 .buy__card--belt {
   position: relative;
   overflow: hidden;
-  padding-left: 2.15rem;
+  padding-left: 2.7rem;
   border: 0;
   background: transparent;
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
@@ -12944,6 +12944,15 @@ a.plan-pick {
 .buy__card--belt > :not(.buy__belt) {
   position: relative;
   z-index: 1;
+}
+
+/* Rank bar meets the card's left curve instead of sitting inside it as a straight strip. */
+.buy__card--belt .belt-tip__bar {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 1.75rem;
+  border-radius: var(--radius) 0 0 var(--radius);
 }
 
 .home .buy .buy__card--belt h2,

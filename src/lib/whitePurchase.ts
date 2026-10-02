@@ -57,7 +57,7 @@ export const WHITE_INCLUDED = [
 ] as const;
 
 export const WHITE_FEATURES = [
-  'Installs on Phone or Desktop from your browser — Add to Home Screen or Install, not the App Store.',
+  'Installs on Phone or Desktop from your browser — Add to Home Screen / Install.',
   'Easily cast the scoreboard or timer to a TV or monitor.',
   'Keep a music app playing while you train.',
 ] as const;

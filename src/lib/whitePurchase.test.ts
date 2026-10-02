@@ -38,9 +38,10 @@ test('buy page lists included tools, browser install, and the Coach and Pro foot
     'Tournament Style BJJ Scoreboard',
     'Fully Customizable Round Timer',
   ]);
-  assert.match(WHITE_FEATURES[0], /Installs on Phone or Desktop/);
-  assert.match(WHITE_FEATURES[0], /Add to Home Screen/);
-  assert.match(WHITE_FEATURES[0], /not the App Store/);
+  assert.equal(
+    WHITE_FEATURES[0],
+    'Installs on Phone or Desktop from your browser — Add to Home Screen / Install.',
+  );
   assert.match(WHITE_FEATURES[1], /TV or monitor/);
   assert.match(WHITE_FEATURES[2], /music app/);
   assert.equal(
