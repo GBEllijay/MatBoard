@@ -63,7 +63,7 @@ export const FOLDERS = [
     mimePrefix: 'image/',
     labelPrefix: 'Photo',
     emptyCopy:
-      'No media yet. Add photos opens Take photo or Pick from gallery. Add videos opens Record or Pick from gallery. Photos and clips stay on this device, nothing is uploaded. Tap the left preview to include or skip an item. Hold the grip, then drag — or tap Up / Down.',
+      'No media yet. Add photos opens Take photo or Pick from gallery, including Google Photos. Pick from Google Drive is an extra source. Photos and clips stay on this device. Tap the left preview to include or skip an item. Hold the grip, then drag — or tap Up / Down.',
     orderHint:
       'Tap the left preview to play or skip that photo or video. Checked / bright = On. Top item plays first when In order is on. Hold the grip, then drag — or tap Up / Down. Videos play all the way through; photos use the slide interval. Clips are muted by default so gym music can keep playing.',
   },
@@ -97,7 +97,7 @@ export const FOLDERS = [
     mimePrefix: 'image/',
     labelPrefix: 'Event',
     emptyCopy:
-      'No event photos yet. Add photos opens Take photo or Pick from gallery. Name the photo, then paste a registration, brackets, or ticket link. The TV puts a QR beside the photo. Photos stay on this device.',
+      'No event photos yet. Add photos opens Take photo or Pick from gallery, including Google Photos. Pick from Google Drive is an extra source. Name the photo, then paste a registration, brackets, or ticket link. The TV puts a QR beside the photo. Photos stay on this device.',
     orderHint:
       'Tap the left preview to play or skip that photo. Checked / bright = On. Top photo plays first when In order is on. Hold the grip, then drag — or tap Up / Down. Add a QR link under the name. Add QR for another code beside the same photo.',
   },

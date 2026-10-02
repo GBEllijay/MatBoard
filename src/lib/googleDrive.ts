@@ -22,7 +22,8 @@
  * is ignored on the live website so it cannot override the company client.
  * Scopes: `drive.file` (create and update lesson JSON and training videos)
  * and `drive.readonly` (list the chosen folder, thumbnails, and download a
- * video the owner stored). Google Photos is not a source.
+ * video the owner stored). Adding photos still uses Google Photos.
+ * Drive is an additional folder.
  */
 
 import {

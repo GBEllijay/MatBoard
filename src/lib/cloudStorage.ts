@@ -1,6 +1,7 @@
 /**
  * Owner cloud storage. Advantage does not host photos or videos.
- * Bytes stay in the gym's own account. Google Photos is not a provider.
+ * Bytes stay in the gym's own account. Adding a photo still uses Google
+ * Photos and the phone gallery. Google Drive is an additional folder.
  *
  * Google Drive is the first connector. OneDrive, Dropbox, and iCloud are
  * slots for the same Connect → sign-in → pick folder flow later.
@@ -16,7 +17,7 @@ export type CloudStoragePhase = 'live' | 'coming-soon';
 export const CONNECT_WITH_KICKER = 'Your folder';
 export const CONNECT_WITH_TITLE = 'Connect with';
 export const CONNECT_WITH_BODY =
-  'Choose a folder the gym already owns. Lesson plans, photos, and videos stay there. Advantage does not host photos or videos.';
+  'Choose a folder the gym already owns. Lesson plans, photos, and videos stay there. Advantage does not host photos or videos. Adding a photo still includes Google Photos and the phone gallery. Google Drive is an additional folder.';
 export const CONNECT_COMING_SOON = 'Coming soon';
 export const CONNECT_CHOOSE_FOLDER = 'Choose a folder.';
 /**

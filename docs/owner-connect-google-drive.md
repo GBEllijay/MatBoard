@@ -1,6 +1,6 @@
 # Connect your gym folder
 
-Advantage does not host your photos or videos. They stay in a folder the gym already owns.
+Advantage does not host your photos or videos. They stay in a folder the gym already owns. Adding a photo still uses Google Photos or the phone gallery. Google Drive is an extra folder.
 
 1. Tap **Connect with**.
 2. Tap **Google Drive**. OneDrive, Dropbox, and iCloud are in that same list and are coming soon.

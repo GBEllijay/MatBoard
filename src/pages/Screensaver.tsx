@@ -487,7 +487,7 @@ export function ScreensaverPage() {
   const emptyCopy =
     photos.length === 0
       ? focusFolder === 'gallery'
-        ? 'Add photos opens Take photo or Pick from gallery. Add videos opens Record or Pick from gallery. They stay on this phone or computer — nothing is uploaded. Photos loop fullscreen; clips play through, muted by default. Press F for fullscreen on a computer plugged into the TV.'
+        ? 'Add photos opens Take photo or Pick from gallery, including Google Photos. Pick from Google Drive is an extra source. Photos and clips stay on this phone or computer. Photos loop fullscreen; clips play through, muted by default. Press F for fullscreen on a computer plugged into the TV.'
         : `${focusConfig.emptyCopy} Press F for fullscreen on a computer plugged into the TV.`
       : focusFolder === 'shop'
         ? 'Nothing is set to play. Turn on Pro Shop in options, then tap a left preview so at least one card is On.'

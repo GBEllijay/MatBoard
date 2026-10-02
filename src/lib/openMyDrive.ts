@@ -1,7 +1,7 @@
 /**
  * One-tap link to the gym's connected Google Drive folder.
- * Media bytes stay in Drive. This does not upload anything and does not
- * open Google Photos.
+ * Adding photos still includes Google Photos via Pick from gallery.
+ * This link opens the gym Drive folder. It does not upload anything.
  */
 
 export const OPEN_MY_DRIVE_LABEL = 'Open my Drive';

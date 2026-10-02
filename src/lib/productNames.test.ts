@@ -84,6 +84,8 @@ test('Media Console is the Pro cast hub, with phone-readable instructions', () =
   assert.match(MEDIA_CONSOLE_INSTRUCTIONS.join('\n'), /CSV backup/);
   assert.match(MEDIA_CONSOLE_INSTRUCTIONS.join('\n'), /Events: add a photo/);
   assert.match(MEDIA_CONSOLE_INSTRUCTIONS.join('\n'), /Events display/);
+  assert.match(MEDIA_CONSOLE_INSTRUCTIONS.join('\n'), /Google Photos or this phone/);
+  assert.match(MEDIA_CONSOLE_INSTRUCTIONS.join('\n'), /Google Drive is an extra source/);
   assert.doesNotMatch(MEDIA_CONSOLE_INSTRUCTIONS.join('\n'), /coming soon/i);
   assert.doesNotMatch(MEDIA_CONSOLE_INSTRUCTIONS.join('\n'), /does not join the photo queue/);
   assert.doesNotMatch(MEDIA_CONSOLE_INSTRUCTIONS.join('\n'), /interval below/i);

@@ -1,6 +1,7 @@
 /**
  * In-app picker for the gym's connected Google Drive folder.
- * Google Photos is not a source. Selected files keep their Drive file id.
+ * Google Photos and the phone gallery stay available via Pick from gallery.
+ * Drive is an additional source. Selected files keep their Drive file id.
  * A copy on this phone is only so the TV can play them. Advantage does not host the bytes.
  */
 
@@ -9,8 +10,10 @@ export const DRIVE_PICK_TITLE = 'Pick from Google Drive';
 export const DRIVE_PICK_DONE = 'Done';
 export const DRIVE_PICK_BACK = 'Back';
 export const DRIVE_PICK_LOADING = 'Opening the gym folder…';
+export const DRIVE_PICK_BESIDE_PHOTOS =
+  'Pick from gallery includes Google Photos and this phone. Google Drive is an additional source. Advantage does not host those files.';
 export const DRIVE_PICK_STAY =
-  'Files stay in the gym Google Drive folder. This phone keeps a copy so the TV can play them. Advantage does not host them.';
+  'These files come from the gym Google Drive folder, in addition to Google Photos or this phone. This phone keeps a copy so the TV can play them. Advantage does not host them.';
 export const DRIVE_PICK_NEED_CONNECT =
   'Connect the gym Google Drive folder to pick photos and videos. Advantage does not host them.';
 
@@ -35,9 +38,9 @@ export type DriveBrowseFile = {
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
 
 export function drivePickHint(kind: DrivePickKind): string {
-  if (kind === 'video') return 'Choose videos in the gym Google Drive folder';
-  if (kind === 'any') return 'Choose photos and videos in the gym Google Drive folder';
-  return 'Choose photos in the gym Google Drive folder';
+  if (kind === 'video') return 'Additional source: videos in the gym Google Drive folder';
+  if (kind === 'any') return 'Additional source: photos and videos in the gym Google Drive folder';
+  return 'Additional source: photos in the gym Google Drive folder';
 }
 
 export function driveMediaKind(mime: string): DrivePickKind | null {

@@ -5,7 +5,8 @@
  * `{date}/lesson-plans/` and `{date}/training-videos/`, writes the lesson
  * text back onto this phone, and keeps a local copy of each video so Daily
  * Training Videos can play offline. Drive file ids stay the reference.
- * Advantage does not host the bytes. Google Photos is not a source.
+ * Advantage does not host the bytes. Google Photos stays the phone gallery
+ * source. Drive is an extra place to reopen a saved class day.
  */
 
 import { parallelVideoSlot } from './lessonLinks.ts';

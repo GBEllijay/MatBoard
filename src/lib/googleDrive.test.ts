@@ -84,6 +84,8 @@ test('lesson file names and Drive queries stay literal', () => {
   );
   assert.match(CONNECT_WITH_BODY, /does not host photos or videos/);
   assert.match(CONNECT_WITH_BODY, /folder the gym already owns/);
+  assert.match(CONNECT_WITH_BODY, /Google Photos and the phone gallery/);
+  assert.match(CONNECT_WITH_BODY, /Google Drive is an additional folder/);
   assert.match(DRIVE_SETUP_NEEDED, /not available on this build yet — contact Advantage/);
   assert.doesNotMatch(
     `${CONNECT_WITH_TITLE} ${CONNECT_WITH_BODY} ${CONNECT_COMING_SOON} ${CONNECT_GOOGLE_UNVERIFIED_NOTE} ${DRIVE_SETUP_NEEDED} ${DRIVE_SIGN_IN_FAILED} ${DRIVE_DEV_CLIENT_HINT}`,

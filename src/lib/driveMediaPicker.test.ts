@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  DRIVE_PICK_BESIDE_PHOTOS,
   DRIVE_PICK_DONE,
   DRIVE_PICK_STAY,
   PICK_FROM_DRIVE_LABEL,
@@ -16,11 +17,16 @@ const FOLDER = 'application/vnd.google-apps.folder';
 
 test('Drive picker lists folders and the matching photos or videos', () => {
   assert.equal(PICK_FROM_DRIVE_LABEL, 'Pick from Google Drive');
+  assert.match(DRIVE_PICK_BESIDE_PHOTOS, /Pick from gallery includes Google Photos/);
+  assert.match(DRIVE_PICK_BESIDE_PHOTOS, /additional source/);
   assert.match(DRIVE_PICK_STAY, /gym Google Drive folder/);
+  assert.match(DRIVE_PICK_STAY, /Google Photos/);
+  assert.match(DRIVE_PICK_STAY, /in addition/);
   assert.match(DRIVE_PICK_STAY, /does not host/);
-  assert.doesNotMatch(DRIVE_PICK_STAY, /photos\.google|iCloud/i);
-  assert.equal(drivePickHint('photo'), 'Choose photos in the gym Google Drive folder');
-  assert.equal(drivePickHint('video'), 'Choose videos in the gym Google Drive folder');
+  assert.doesNotMatch(DRIVE_PICK_STAY, /photos\.google|iCloud|not a source|unavailable/i);
+  assert.equal(drivePickHint('photo'), 'Additional source: photos in the gym Google Drive folder');
+  assert.equal(drivePickHint('video'), 'Additional source: videos in the gym Google Drive folder');
+  assert.equal(drivePickHint('any'), 'Additional source: photos and videos in the gym Google Drive folder');
 
   const split = splitDriveBrowse(
     [

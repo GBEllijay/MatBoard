@@ -18,8 +18,8 @@
  *
  * Activate capture / library with a `<label htmlFor>` — not `input.click()`
  * from a dialog that then unmounts. Keep extra gym-TV extensions out of
- * `accept`. Not getUserMedia — media stays on this phone. No Pro cloud /
- * Google Photos upload here.
+ * `accept`. Not getUserMedia — media stays on this phone. Pick from gallery
+ * still opens Google Photos. This module does not upload files to Google Photos.
  */
 
 /** HTML `accept` for library / gallery video picks. */
