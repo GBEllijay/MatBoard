@@ -14,6 +14,13 @@ export const WHITE_PRODUCT_ID = 'advantage-white';
 
 export const WHITE_PRICE_LABEL = '$9.99';
 
+/** Sits beside the price on the buy header. */
+export const WHITE_PRICE_DETAIL = 'USD — One Time Purchase';
+
+/** Header line. Card numbers stay on Stripe. */
+export const WHITE_STRIPE_NOTE =
+  'Payments processed through Stripe. Card details are entered on Stripe, not on this page.';
+
 /**
  * In-app unlock on /buy. Grants Advantage White at $0 with no Stripe call.
  * Must match API_FREE_CODE.
@@ -45,9 +52,14 @@ export const WHITE_LAUNCH_PROMOS = [
 ] as const;
 
 export const WHITE_INCLUDED = [
-  'Round Timer with Advantage branding',
-  'Basic Match Scoreboard',
-  'Cast / TV',
+  'Tournament Style BJJ Scoreboard',
+  'Fully Customizable Round Timer',
+] as const;
+
+export const WHITE_FEATURES = [
+  'Installs on Phone or Desktop from your browser — Add to Home Screen or Install, not the App Store.',
+  'Easily cast the scoreboard or timer to a TV or monitor.',
+  'Keep a music app playing while you train.',
 ] as const;
 
 /** Footer line on /buy. Coach and Pro are not part of this checkout. */

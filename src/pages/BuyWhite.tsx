@@ -2,12 +2,14 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
-import { TierLine } from '../components/TierLine';
 import { lookupWhiteEntitlement, type WhiteEntitlementStatus } from '../lib/whiteEntitlementClient';
 import {
   WHITE_CHECKOUT_API,
+  WHITE_FEATURES,
   WHITE_INCLUDED,
+  WHITE_PRICE_DETAIL,
   WHITE_PRICE_LABEL,
+  WHITE_STRIPE_NOTE,
   WHITE_UPGRADE_NOTE,
   isWhiteFreeCode,
 } from '../lib/whitePurchase';
@@ -141,39 +143,48 @@ export function BuyWhitePage() {
   return (
     <main className="home home--white home--buy">
       <div className="home__inner">
-        <HomeMark to="/" tagline={<TierLine tier="White" detail="One-time purchase" />} />
+        <HomeMark to="/" />
         <article className="buy">
           <header className="buy__card">
             <h2>Advantage White</h2>
             <p className="buy__price">
-              {WHITE_PRICE_LABEL} <span>USD, one time</span>
+              {WHITE_PRICE_LABEL} <span>{WHITE_PRICE_DETAIL}</span>
             </p>
-            <p>Pay once. Card details are entered on Stripe, not on this page.</p>
+            <p>{WHITE_STRIPE_NOTE}</p>
           </header>
 
-          {checkout === 'success' ? (
-            <p className="buy__status buy__status--ok" role="status">
-              {record?.entitled
-                ? `Advantage White is recorded${record.email ? ` for ${record.email}` : ''}.`
-                : 'Payment submitted. Advantage records it when Stripe sends checkout.session.completed.'}
-            </p>
-          ) : null}
-          {checkout === 'cancel' ? (
-            <p className="buy__status" role="status">
-              Checkout canceled. No charge was made.
-            </p>
-          ) : null}
-
           <section className="buy__card">
-            <h3>Included</h3>
-            <ul>
-              {WHITE_INCLUDED.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
+            <div className="buy__block">
+              <h3>Included</h3>
+              <ul>
+                {WHITE_INCLUDED.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="buy__block">
+              <h3>Features</h3>
+              <ul>
+                {WHITE_FEATURES.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
           </section>
 
           <form className="buy__card" onSubmit={(event) => void onSubmit(event)}>
+            {checkout === 'success' ? (
+              <p className="buy__status buy__status--ok" role="status">
+                {record?.entitled
+                  ? `Advantage White is recorded${record.email ? ` for ${record.email}` : ''}.`
+                  : 'Payment submitted. Advantage records it when Stripe sends checkout.session.completed.'}
+              </p>
+            ) : null}
+            {checkout === 'cancel' ? (
+              <p className="buy__status" role="status">
+                Checkout canceled. No charge was made.
+              </p>
+            ) : null}
             {freeUnlock ? (
               <p className="buy__status buy__status--ok" role="status">
                 Advantage White is unlocked at $0. No card was charged.

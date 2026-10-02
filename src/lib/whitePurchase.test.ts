@@ -4,6 +4,7 @@ import { API_CHECKOUT_PATH, API_ENTITLEMENT_PATH, API_FREE_CODE, API_PRODUCT_ID 
 import {
   WHITE_CHECKOUT_API,
   WHITE_ENTITLEMENT_API,
+  WHITE_FEATURES,
   WHITE_FREE_CODE,
   WHITE_INCLUDED,
   WHITE_LAUNCH_PROMOS,
@@ -32,10 +33,16 @@ test('launch promos land on $4.99 and $0.99', () => {
   assert.equal(byCode.WHITE099.couponId, 'advantage_white_099');
 });
 
-test('buy page keeps the included list and the Coach and Pro footer line', () => {
-  assert.ok(WHITE_INCLUDED.includes('Round Timer with Advantage branding'));
-  assert.ok(WHITE_INCLUDED.includes('Basic Match Scoreboard'));
-  assert.ok(WHITE_INCLUDED.includes('Cast / TV'));
+test('buy page lists included tools, browser install, and the Coach and Pro footer', () => {
+  assert.deepEqual(WHITE_INCLUDED, [
+    'Tournament Style BJJ Scoreboard',
+    'Fully Customizable Round Timer',
+  ]);
+  assert.match(WHITE_FEATURES[0], /Installs on Phone or Desktop/);
+  assert.match(WHITE_FEATURES[0], /Add to Home Screen/);
+  assert.match(WHITE_FEATURES[0], /not the App Store/);
+  assert.match(WHITE_FEATURES[1], /TV or monitor/);
+  assert.match(WHITE_FEATURES[2], /music app/);
   assert.equal(
     WHITE_UPGRADE_NOTE,
     "Advantage Coach and Advantage Pro are separate products. This purchase is White only; you can add Coach or Pro later when they're for sale.",
