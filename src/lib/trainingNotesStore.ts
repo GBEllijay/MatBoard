@@ -1,10 +1,20 @@
-/** Coach Daily Lesson Plan. On-device days only — no cloud, no Pro archive. */
+/**
+ * Coach Daily Lesson Plan text, saved on this device as the coach types.
+ * Instructor Collaboration may mirror that text into the gym's Google Drive
+ * folder, and copy attached technique videos into that day's training-videos
+ * folder (`lessonDrive.ts`). Video bytes go to the customer's Drive only.
+ * This store still keeps the lesson text on the phone.
+ */
 
 export const TRAINING_NOTES_STORAGE_KEY = 'matboard.coach.trainingNotes.v1';
 /** Previous free-text jot. Read once into today's Intro, then removed. */
 export const LEGACY_TRAINING_NOTES_STORAGE_KEY = 'matboard.trainingNotes.v1';
 
 export const COACH_NAME_MAX = 80;
+/** Free-text class label, such as "GB1". Not a fixed list. */
+export const CLASS_DESIGNATION_MAX = 40;
+/** Free-text class time, such as "5:00 PM". Not a clock widget. */
+export const CLASS_TIME_MAX = 40;
 export const INTRO_MAX = 8_000;
 export const WARMUP_NOTE_MAX = 1_500;
 export const SPECIFIC_NOTE_MAX = 1_500;
@@ -43,7 +53,13 @@ export type TechniqueBlock = {
 
 export type TrainingNotesPlan = {
   version: 1;
+  /** Stable id so one day can hold more than one class plan. */
+  id: string;
   coachName: string;
+  /** Free-text class label under the coach name, such as "GB1". */
+  classDesignation: string;
+  /** Free-text class time under the coach name, such as "5:00 PM". */
+  classTime: string;
   intro: string;
   introExpected: string;
   warmupNote: string;
@@ -57,14 +73,20 @@ export type TrainingNotesPlan = {
   closing: string;
 };
 
+/** One calendar day. Several class plans can share the date. */
+export type TrainingNotesDay = {
+  plans: TrainingNotesPlan[];
+};
+
 /**
  * Same storage key as the single-plan card.
- * `version: 2` holds one plan per local calendar date (`YYYY-MM-DD`).
+ * `version: 3` holds one or more plans per local calendar date (`YYYY-MM-DD`).
+ * `version: 2` stored one plan per date and is wrapped into `plans` on read.
  * A stored `version: 1` plan is moved onto today the first time it is read.
  */
 export type TrainingNotesArchive = {
-  version: 2;
-  days: Record<string, TrainingNotesPlan>;
+  version: 3;
+  days: Record<string, TrainingNotesDay>;
 };
 
 let idSeq = 0;
@@ -137,7 +159,10 @@ export function createTechnique(): TechniqueBlock {
 export function emptyPlan(): TrainingNotesPlan {
   return {
     version: 1,
+    id: createId('plan'),
     coachName: '',
+    classDesignation: '',
+    classTime: '',
     intro: '',
     introExpected: '',
     warmupNote: '',
@@ -154,6 +179,8 @@ export function emptyPlan(): TrainingNotesPlan {
 export function planHasContent(plan: TrainingNotesPlan): boolean {
   if (
     plan.coachName.trim() ||
+    plan.classDesignation.trim() ||
+    plan.classTime.trim() ||
     plan.intro.trim() ||
     plan.introExpected.trim() ||
     plan.warmupNote.trim() ||
@@ -254,7 +281,12 @@ export function sanitizePlan(input: unknown): { plan: TrainingNotesPlan; repaire
   }
   if (uniquify(techniques)) repaired = true;
 
+  const idRaw = raw && typeof raw.id === 'string' ? raw.id.trim() : '';
+  const id = idRaw ? idRaw.slice(0, 80) : createId('plan');
+  if (!idRaw || (raw && raw.id !== id)) repaired = true;
   const coachName = clampText(raw?.coachName, COACH_NAME_MAX);
+  const classDesignation = clampText(raw?.classDesignation, CLASS_DESIGNATION_MAX);
+  const classTime = clampText(raw?.classTime, CLASS_TIME_MAX);
   const intro = clampText(raw?.intro, INTRO_MAX);
   const introExpected = clampText(raw?.introExpected, EXPECTED_MAX);
   const warmupNote = clampText(raw?.warmupNote, WARMUP_NOTE_MAX);
@@ -267,6 +299,8 @@ export function sanitizePlan(input: unknown): { plan: TrainingNotesPlan; repaire
   if (
     raw &&
     (raw.coachName !== coachName ||
+      raw.classDesignation !== classDesignation ||
+      raw.classTime !== classTime ||
       raw.intro !== intro ||
       raw.introExpected !== introExpected ||
       raw.warmupNote !== warmupNote ||
@@ -284,7 +318,10 @@ export function sanitizePlan(input: unknown): { plan: TrainingNotesPlan; repaire
     repaired,
     plan: {
       version: 1,
+      id,
       coachName,
+      classDesignation,
+      classTime,
       intro,
       introExpected,
       warmupNote,
@@ -304,6 +341,7 @@ export function copyPlan(source: TrainingNotesPlan): TrainingNotesPlan {
   const { plan } = sanitizePlan(source);
   return {
     ...plan,
+    id: createId('plan'),
     techniques: plan.techniques.map((tech) => ({
       ...tech,
       id: createId('tech'),
@@ -312,14 +350,141 @@ export function copyPlan(source: TrainingNotesPlan): TrainingNotesPlan {
   };
 }
 
-function pruneDays(days: Record<string, TrainingNotesPlan>, todayKey: string): Record<string, TrainingNotesPlan> {
-  const next: Record<string, TrainingNotesPlan> = {};
-  for (const [key, plan] of Object.entries(days)) {
+function uniquifyPlanIds(plans: TrainingNotesPlan[]): boolean {
+  const ids = new Set<string>();
+  let changed = false;
+  for (const plan of plans) {
+    if (!plan.id || ids.has(plan.id)) {
+      plan.id = createId('plan');
+      changed = true;
+    }
+    ids.add(plan.id);
+  }
+  return changed;
+}
+
+function readDayPlans(value: unknown): { plans: TrainingNotesPlan[]; repaired: boolean } | null {
+  const raw = asRecord(value);
+  if (!raw) return null;
+  if (Array.isArray(raw.plans)) {
+    let repaired = false;
+    const plans: TrainingNotesPlan[] = [];
+    for (const item of raw.plans) {
+      const next = sanitizePlan(item);
+      if (next.repaired) repaired = true;
+      if (!planHasContent(next.plan)) {
+        repaired = true;
+        continue;
+      }
+      plans.push(next.plan);
+    }
+    if (uniquifyPlanIds(plans)) repaired = true;
+    return { plans, repaired };
+  }
+  if (raw.version === 1 || Array.isArray(raw.techniques) || typeof raw.coachName === 'string') {
+    const { plan } = sanitizePlan(raw);
+    return { plans: planHasContent(plan) ? [plan] : [], repaired: true };
+  }
+  return null;
+}
+
+function pruneDays(days: Record<string, TrainingNotesDay>, todayKey: string): Record<string, TrainingNotesDay> {
+  const next: Record<string, TrainingNotesDay> = {};
+  for (const [key, day] of Object.entries(days)) {
     if (!isWithinRetention(key, todayKey)) continue;
-    if (!planHasContent(plan)) continue;
-    next[key] = plan;
+    const plans = day.plans.filter(planHasContent);
+    if (!plans.length) continue;
+    next[key] = plans.length === day.plans.length ? day : { plans };
   }
   return next;
+}
+
+/** Plans with a blank class designation share this folder. */
+export const UNLABELED_CLASS_LABEL = 'No class name';
+
+export type ClassFolderDate = {
+  dateKey: string;
+  plans: TrainingNotesPlan[];
+};
+
+export type ClassFolder = {
+  /** Trimmed lowercase designation. Empty string is the unlabeled folder. */
+  key: string;
+  label: string;
+  dates: ClassFolderDate[];
+};
+
+export function classFolderKey(designation: string): string {
+  return designation.trim().toLowerCase();
+}
+
+/**
+ * Saved plans grouped as class folders, then dates newest first.
+ * "GB2" and "gb2" share a folder. The newest saved spelling is the folder name.
+ */
+export function classBrowseFolders(archive: TrainingNotesArchive, todayKey: string): ClassFolder[] {
+  const groups = new Map<string, { label: string; dates: Map<string, TrainingNotesPlan[]> }>();
+  const dateKeys = Object.keys(archive.days)
+    .filter((key) => isWithinRetention(key, todayKey))
+    .sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
+
+  for (const dateKey of dateKeys) {
+    for (const plan of archive.days[dateKey]?.plans ?? []) {
+      if (!planHasContent(plan)) continue;
+      const raw = plan.classDesignation.trim();
+      const key = classFolderKey(raw);
+      let group = groups.get(key);
+      if (!group) {
+        group = { label: raw || UNLABELED_CLASS_LABEL, dates: new Map() };
+        groups.set(key, group);
+      }
+      const plans = group.dates.get(dateKey) ?? [];
+      plans.push(plan);
+      group.dates.set(dateKey, plans);
+    }
+  }
+
+  const folders: ClassFolder[] = [];
+  for (const [key, group] of groups) {
+    const dates: ClassFolderDate[] = [];
+    for (const [dateKey, plans] of group.dates) dates.push({ dateKey, plans });
+    folders.push({ key, label: group.label, dates });
+  }
+  folders.sort((a, b) => {
+    if (!a.key && b.key) return 1;
+    if (a.key && !b.key) return -1;
+    return a.label.localeCompare(b.label, 'en', { sensitivity: 'base' });
+  });
+  return folders;
+}
+
+/** Coach / time row inside a class folder. Designation stays in the label when it is set. */
+export function classPlanRowLabel(plan: TrainingNotesPlan): string {
+  const coach = plan.coachName.trim() || 'Coach';
+  const designation = plan.classDesignation.trim();
+  const time = plan.classTime.trim() || 'Time';
+  return designation ? `${coach} / ${designation} / ${time}` : `${coach} · ${time}`;
+}
+
+/** Coach / GB1 / 5:00 PM, so a day with several classes is easy to scan. */
+export function planListLabel(plan: TrainingNotesPlan): string {
+  const coach = plan.coachName.trim();
+  const designation = plan.classDesignation.trim();
+  const time = plan.classTime.trim();
+  if (!coach && !designation && !time) return 'New class plan';
+  return [coach || 'Coach', designation || 'Class', time || 'Time'].join(' / ');
+}
+
+export function plansOnDay(archive: TrainingNotesArchive, dateKey: string): TrainingNotesPlan[] {
+  return archive.days[dateKey]?.plans ?? [];
+}
+
+export function findPlanById(archive: TrainingNotesArchive, planId: string): TrainingNotesPlan | null {
+  for (const day of Object.values(archive.days)) {
+    const found = day.plans.find((plan) => plan.id === planId);
+    if (found) return found;
+  }
+  return null;
 }
 
 function archiveFromStored(
@@ -329,31 +494,40 @@ function archiveFromStored(
   const raw = asRecord(parsed);
   if (!raw) return null;
 
-  if (raw.version === 2 && raw.days && typeof raw.days === 'object' && !Array.isArray(raw.days)) {
-    const days: Record<string, TrainingNotesPlan> = {};
-    let rewrite = false;
+  if (
+    (raw.version === 2 || raw.version === 3) &&
+    raw.days &&
+    typeof raw.days === 'object' &&
+    !Array.isArray(raw.days)
+  ) {
+    const days: Record<string, TrainingNotesDay> = {};
+    let rewrite = raw.version !== 3;
     for (const [key, value] of Object.entries(raw.days as Record<string, unknown>)) {
       if (!DATE_KEY.test(key)) {
         rewrite = true;
         continue;
       }
-      const { plan, repaired } = sanitizePlan(value);
-      if (repaired) rewrite = true;
-      if (!planHasContent(plan)) {
+      const read = readDayPlans(value);
+      if (!read) {
         rewrite = true;
         continue;
       }
-      days[key] = plan;
+      if (read.repaired) rewrite = true;
+      if (!read.plans.length) {
+        rewrite = true;
+        continue;
+      }
+      days[key] = { plans: read.plans };
     }
     const pruned = pruneDays(days, todayKey);
     if (Object.keys(pruned).length !== Object.keys(days).length) rewrite = true;
-    return { archive: { version: 2, days: pruned }, rewrite };
+    return { archive: { version: 3, days: pruned }, rewrite };
   }
 
   if (raw.version === 1 || Array.isArray(raw.techniques) || typeof raw.coachName === 'string') {
     const { plan } = sanitizePlan(raw);
-    const days = planHasContent(plan) ? { [todayKey]: plan } : {};
-    return { archive: { version: 2, days }, rewrite: true };
+    const days = planHasContent(plan) ? { [todayKey]: { plans: [plan] } } : {};
+    return { archive: { version: 3, days }, rewrite: true };
   }
 
   return null;
@@ -394,7 +568,7 @@ export function recentDateKeys(archive: TrainingNotesArchive, todayKey: string):
 }
 
 export function loadTrainingArchive(today = localDateKey()): TrainingNotesArchive {
-  let archive: TrainingNotesArchive = { version: 2, days: {} };
+  let archive: TrainingNotesArchive = { version: 3, days: {} };
   let rewrite = false;
 
   try {
@@ -424,7 +598,7 @@ export function loadTrainingArchive(today = localDateKey()): TrainingNotesArchiv
       const plan = emptyPlan();
       plan.intro = legacy.slice(0, INTRO_MAX);
       const { plan: clean } = sanitizePlan(plan);
-      archive = { version: 2, days: { [today]: clean } };
+      archive = { version: 3, days: { [today]: { plans: [clean] } } };
       const written = writeArchive(archive);
       if (written) dropLegacy();
       return written ?? archive;
@@ -437,9 +611,13 @@ export function loadTrainingArchive(today = localDateKey()): TrainingNotesArchiv
 
 export function loadDay(dateKey: string, today = localDateKey()): TrainingNotesPlan {
   const archive = loadTrainingArchive(today);
-  return archive.days[dateKey] ?? emptyPlan();
+  return plansOnDay(archive, dateKey)[0] ?? emptyPlan();
 }
 
+/**
+ * Insert or replace one class plan on a date. Sibling plans on that date stay.
+ * An empty plan removes only that id. The day key drops when nothing remains.
+ */
 export function saveDay(
   dateKey: string,
   plan: TrainingNotesPlan,
@@ -448,10 +626,33 @@ export function saveDay(
   const loaded = loadTrainingArchive(today);
   const { plan: clean } = sanitizePlan(plan);
   const days = { ...loaded.days };
-  if (planHasContent(clean) && isWithinRetention(dateKey, today)) days[dateKey] = clean;
-  else delete days[dateKey];
-  const archive: TrainingNotesArchive = { version: 2, days: pruneDays(days, today) };
+  const existing = days[dateKey]?.plans ?? [];
+  if (planHasContent(clean) && isWithinRetention(dateKey, today)) {
+    const index = existing.findIndex((item) => item.id === clean.id);
+    const plans = index >= 0 ? existing.map((item, i) => (i === index ? clean : item)) : [...existing, clean];
+    days[dateKey] = { plans };
+  } else {
+    const plans = existing.filter((item) => item.id !== clean.id);
+    if (plans.length) days[dateKey] = { plans };
+    else delete days[dateKey];
+  }
+  const archive: TrainingNotesArchive = { version: 3, days: pruneDays(days, today) };
   return { archive: writeArchive(archive) ?? archive, plan: clean };
+}
+
+/** Drop one class plan. Other plans on that date stay. */
+export function removeDayPlan(
+  dateKey: string,
+  planId: string,
+  today = localDateKey(),
+): TrainingNotesArchive {
+  const loaded = loadTrainingArchive(today);
+  const days = { ...loaded.days };
+  const plans = (days[dateKey]?.plans ?? []).filter((item) => item.id !== planId);
+  if (plans.length) days[dateKey] = { plans };
+  else delete days[dateKey];
+  const archive: TrainingNotesArchive = { version: 3, days: pruneDays(days, today) };
+  return writeArchive(archive) ?? archive;
 }
 
 export function loadTrainingNotes(today = localDateKey()): TrainingNotesPlan {

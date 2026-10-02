@@ -1,17 +1,22 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
 import { GymLogoControl } from '../components/GymLogoControl';
+import { InstructionsButton } from '../components/InstructionsButton';
 import { DeviceMediaInput } from '../components/DeviceMediaInput';
 import { ScheduleMonthBoard } from '../components/ScheduleMonthBoard';
 import { ScheduleWeekBoard } from '../components/ScheduleWeekBoard';
 import { EventCastSlide } from '../components/EventCastSlide';
 import { ShopCastSlide } from '../components/ShopCastSlide';
+import { useCurrentSeat } from '../components/SeatSessionBar';
 import { ToolboxFolder } from '../components/ToolboxFolder';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { TvTip } from '../components/TvTip';
 import { Sheet } from '../components/Sheet';
+import { DriveConnectCard } from '../components/DriveConnectCard';
+import { DriveMediaPicker } from '../components/DriveMediaPicker';
+import { OpenMyDrive } from '../components/OpenMyDrive';
 import { MediaSourceSheet } from '../components/VideoSourceSheet';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useScheduleState } from '../hooks/useStores';
@@ -22,10 +27,18 @@ import {
   type EventsCastMode,
 } from '../lib/eventSlides';
 import { readGymLogo } from '../lib/gymLogo';
+import { seatPermissionAllows } from '../lib/instructorSeats';
 import { MEDIA_CONSOLE_INSTRUCTIONS, MEDIA_CONSOLE_NAME } from '../lib/productNames';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
+import {
+  PICK_FROM_DRIVE_LABEL,
+  driveImportProgressLabel,
+  type DriveBrowseMedia,
+  type DrivePickKind,
+} from '../lib/driveMediaPicker';
 import { formatMss, secondsToMs } from '../lib/format';
+import { downloadDriveFile, getDriveBindingSnapshot, requestDriveToken, subscribeDriveBinding } from '../lib/googleDrive';
 import {
   PHOTO_PICKER_ACCEPT,
   VIDEO_CAPTURE,
@@ -33,8 +46,14 @@ import {
   VIDEO_RECORD_ACCEPT,
   type MediaSourceKind,
 } from '../lib/mediaPicker';
-import { LARGE_MEDIA_BYTES, LARGE_MEDIA_NOTE, quotaAddNote } from '../lib/storageQuota';
 import {
+  SMALLER_BATCH_TIP,
+  folderPickFeedback,
+  folderSaveProgressLabel,
+} from '../lib/folderBatch';
+import { LARGE_MEDIA_BYTES, LARGE_MEDIA_NOTE } from '../lib/storageQuota';
+import {
+  addDriveMediaFiles,
   addFolderFiles,
   clearFolder,
   clampIntervalSec,
@@ -43,6 +62,7 @@ import {
   DEFAULT_MUTE_VIDEO,
   DEFAULT_SHUFFLE,
   FOLDERS,
+  fileMatchesFolder,
   folderById,
   folderExpandedState,
   getSaverPrefs,
@@ -81,6 +101,7 @@ import {
 } from '../lib/shopSlides';
 
 export function ScreensaverPage() {
+  const seat = useCurrentSeat();
   const [photos, setPhotos] = useState<StoredPhoto[]>([]);
   const [urlById, setUrlById] = useState<Record<string, string>>({});
   const [index, setIndex] = useState(0);
@@ -90,8 +111,13 @@ export function ScreensaverPage() {
   const [shuffle, setShuffle] = useState(DEFAULT_SHUFFLE);
   const [muteVideo, setMuteVideo] = useState(DEFAULT_MUTE_VIDEO);
   const [pickerNote, setPickerNote] = useState('');
+  const [batchStatus, setBatchStatus] = useState<BatchNotice | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [addKind, setAddKind] = useState<MediaSourceKind>('photo');
+  const [drivePickOpen, setDrivePickOpen] = useState(false);
+  const [drivePickKind, setDrivePickKind] = useState<DrivePickKind>('photo');
+  const [driveConnectOpen, setDriveConnectOpen] = useState(false);
+  const driveBinding = useSyncExternalStore(subscribeDriveBinding, getDriveBindingSnapshot, () => null);
   const [unlockSound, setUnlockSound] = useState(false);
   const [folderPlay, setFolderPlayState] = useState(DEFAULT_FOLDER_PLAY);
   const [shopCastMode, setShopCastModeState] = useState<ShopCastMode>(DEFAULT_SHOP_CAST_MODE);
@@ -105,6 +131,7 @@ export function ScreensaverPage() {
   const videoRecordRef = useRef<HTMLInputElement>(null);
   const videoLibraryRef = useRef<HTMLInputElement>(null);
   const addFolderRef = useRef<FolderId>('gallery');
+  const savingRef = useRef(false);
   const intervalMs = secondsToMs(intervalSec);
   const fs = usePlayFullscreen();
   const navigate = useNavigate();
@@ -260,42 +287,184 @@ export function ScreensaverPage() {
     setAddOpen(true);
   };
 
+  const openDrivePick = (folderId: FolderId, kind: DrivePickKind) => {
+    addFolderRef.current = folderId;
+    setDrivePickKind(kind);
+    setAddKind(kind === 'video' ? 'video' : 'photo');
+    setAddOpen(false);
+    if (!driveBinding) {
+      setDriveConnectOpen(true);
+      return;
+    }
+    setDrivePickOpen(true);
+  };
+
+  const importFromDrive = async (chosen: readonly DriveBrowseMedia[]) => {
+    if (savingRef.current) return;
+    const folderId = addFolderRef.current;
+    const picked = [...chosen];
+    setDrivePickOpen(false);
+    if (!picked.length) return;
+    savingRef.current = true;
+    setPickerNote('');
+    setBatchStatus({ tone: 'progress', text: driveImportProgressLabel(0, picked.length) });
+    try {
+      const token = (await requestDriveToken('silent')) ?? (await requestDriveToken('consent'));
+      if (!token) {
+        showBatchError(folderId, 'Sign in to Google Drive again to pick those files.');
+        return;
+      }
+      const files: { file: File; driveFileId: string }[] = [];
+      for (let index = 0; index < picked.length; index += 1) {
+        const item = picked[index];
+        setBatchStatus({ tone: 'progress', text: driveImportProgressLabel(index, picked.length) });
+        try {
+          const blob = await downloadDriveFile(token, item.id);
+          const type = item.mime || blob.type || 'application/octet-stream';
+          files.push({
+            file: new File([blob], item.name || 'Drive file', { type }),
+            driveFileId: item.id,
+          });
+        } catch {
+          /* One file can fail. The rest still import. */
+        }
+      }
+      if (!files.length) {
+        showBatchError(folderId, 'Those Google Drive files could not be opened. Nothing was saved.');
+        return;
+      }
+      setBatchStatus({
+        tone: 'progress',
+        text: folderSaveProgressLabel({ done: 0, total: files.length, phase: 'shrink' }),
+      });
+      const added = await addDriveMediaFiles(files, folderId, {
+        onProgress: (progress) => {
+          setBatchStatus({ tone: 'progress', text: folderSaveProgressLabel(progress) });
+        },
+      });
+      if (!added) {
+        showBatchError(folderId, 'Those files are already in this folder, or this folder does not use that kind.');
+        return;
+      }
+      setBatchStatus(null);
+      setPickerNote('');
+      await refresh();
+      setPlaying(true);
+      setExpanded((prev) => ({ ...prev, [folderId]: true }));
+      setOptions(true);
+    } catch (error) {
+      showBatchError(
+        folderId,
+        error instanceof Error ? error.message : 'Those Google Drive files could not be saved.',
+      );
+      try {
+        await refresh();
+      } catch {
+        /* The note is the signal. */
+      }
+    } finally {
+      savingRef.current = false;
+    }
+  };
+
   const scrollPickerNote = useCallback((node: HTMLParagraphElement | null) => {
     if (!node || !pickerNote) return;
     node.scrollIntoView({ block: 'nearest' });
   }, [pickerNote]);
 
-  const onFiles = async (files: FileList | null) => {
-    if (!files?.length) return;
+  const showBatchError = (folderId: FolderId, text: string) => {
+    setPickerNote('');
+    setBatchStatus({ tone: 'error', text });
+    setExpanded((prev) => ({ ...prev, [folderId]: true }));
+    setOptions(true);
+  };
+
+  const onFiles = async (files: readonly File[]) => {
+    if (savingRef.current) return;
     const kind = addKind;
     const folderId = addFolderRef.current;
+    const folder = folderById(folderId);
     const picked = [...files];
+    const readable = picked.filter((file) => file.size > 0);
+    const matched = readable.filter((file) => fileMatchesFolder(file, folder));
     setAddOpen(false);
+
+    if (!readable.length) {
+      showBatchError(folderId, folderPickFeedback({
+        picked: picked.length,
+        readable: 0,
+        matched: 0,
+        added: 0,
+        kind,
+        error: null,
+      }) ?? `Nothing was saved. ${SMALLER_BATCH_TIP}`);
+      return;
+    }
+
+    if (!matched.length) {
+      showBatchError(
+        folderId,
+        folderPickFeedback({
+          picked: picked.length,
+          readable: readable.length,
+          matched: 0,
+          added: 0,
+          kind,
+          error: null,
+        }) ?? `Nothing was saved. ${SMALLER_BATCH_TIP}`,
+      );
+      return;
+    }
+
+    savingRef.current = true;
+    setPickerNote('');
+    setBatchStatus({
+      tone: 'progress',
+      text: folderSaveProgressLabel({ done: 0, total: matched.length, phase: 'shrink' }),
+    });
     try {
-      const added = await addFolderFiles(picked, folderId);
+      const added = await addFolderFiles(readable, folderId, {
+        onProgress: (progress) => {
+          setBatchStatus({ tone: 'progress', text: folderSaveProgressLabel(progress) });
+        },
+      });
+      const feedback = folderPickFeedback({
+        picked: picked.length,
+        readable: readable.length,
+        matched: matched.length,
+        added,
+        kind,
+        error: null,
+      });
       const large = picked.some((file) => file.size >= LARGE_MEDIA_BYTES);
-      if (!added) {
-        setPickerNote(
-          kind === 'video'
-            ? 'That file cannot play here. Switch the camera to video, or pick an MP4 / WebM.'
-            : 'That file is not an image this folder can keep.',
-        );
-      } else if (large) {
-        setPickerNote(LARGE_MEDIA_NOTE);
+      if (feedback) {
+        showBatchError(folderId, feedback);
       } else {
-        setPickerNote('');
+        setBatchStatus(null);
+        setPickerNote(large ? LARGE_MEDIA_NOTE : '');
       }
       await refresh();
       if (added) setPlaying(true);
     } catch (error) {
-      setPickerNote(quotaAddNote(error) ?? 'Could not save that file on this device. Try again.');
-      setExpanded((prev) => ({ ...prev, [folderId]: true }));
-      setOptions(true);
+      const added = savedCount(error);
+      showBatchError(
+        folderId,
+        folderPickFeedback({
+          picked: picked.length,
+          readable: readable.length,
+          matched: matched.length,
+          added,
+          kind,
+          error,
+        }) ?? `Could not save these files. Nothing was saved. ${SMALLER_BATCH_TIP}`,
+      );
       try {
         await refresh();
       } catch {
         /* The note is the signal. A second storage failure should not hide it. */
       }
+    } finally {
+      savingRef.current = false;
     }
   };
 
@@ -308,10 +477,17 @@ export function ScreensaverPage() {
   const hubTitle = MEDIA_CONSOLE_NAME;
 
   const focusEmpty = itemsInFolder(photos, focusFolder).length === 0;
+  const focusCanUpload =
+    !seat ||
+    (focusFolder === 'shop'
+      ? seatPermissionAllows(seat.permissions, 'proShopAccess')
+      : focusFolder === 'events'
+        ? seatPermissionAllows(seat.permissions, 'eventsAccess')
+        : seatPermissionAllows(seat.permissions, 'galleryUpload'));
   const emptyCopy =
     photos.length === 0
       ? focusFolder === 'gallery'
-        ? 'Add photos opens Take photo or Pick from gallery. Add videos opens Record or Pick from gallery. They stay on this phone or computer — nothing is uploaded. Photos loop fullscreen; clips play through, muted by default. Press F for fullscreen on a computer plugged into the TV.'
+        ? 'Add photos opens Take photo or Pick from gallery, including Google Photos. Pick from Google Drive is an extra source. Photos and clips stay on this phone or computer. Photos loop fullscreen; clips play through, muted by default. Press F for fullscreen on a computer plugged into the TV.'
         : `${focusConfig.emptyCopy} Press F for fullscreen on a computer plugged into the TV.`
       : focusFolder === 'shop'
         ? 'Nothing is set to play. Turn on Pro Shop in options, then tap a left preview so at least one card is On.'
@@ -324,12 +500,15 @@ export function ScreensaverPage() {
       className={`saver${currentSlide ? ' saver--play' : ''}${fs.className ? ` ${fs.className}` : ''}`}
       onClick={(event) => {
         const target = event.target as HTMLElement;
-        if (target.closest('.sheet, .chrome, .saver__empty, .btn, input, label, .play-fs, .play-exit, .tv-tip, .saver__unmute, .week-cast.is-drift, .week-cast.is-paused, .month-cast.is-drift, .month-cast.is-paused')) return;
+        if (target.closest('.sheet, .chrome, .saver__empty, .btn, input, label, .play-fs, .play-exit, .tv-tip, .saver__unmute, .saver-batch, .week-cast.is-drift, .week-cast.is-paused, .month-cast.is-drift, .month-cast.is-paused')) return;
         if (!muteVideo) setUnlockSound(true);
         if (slides.length) setOptions(true);
       }}
     >
       <Chrome ghost />
+      {!options && batchStatus ? (
+        <BatchStatus status={batchStatus} onDismiss={() => setBatchStatus(null)} />
+      ) : null}
       <PlayExitMark to={parent.path} onExit={exitSlideshow} />
       <div className="play-fs-slot">
         <FullscreenChip
@@ -379,7 +558,7 @@ export function ScreensaverPage() {
         <div className="saver__empty" onClick={(e) => e.stopPropagation()}>
           <h1>{hubTitle}</h1>
           <p>{emptyCopy}</p>
-          {focusConfig.ready && focusEmpty ? (
+          {focusConfig.ready && focusEmpty && focusCanUpload ? (
             <>
               <button type="button" className="btn" onClick={() => openAdd(focusFolder, 'photo')}>
                 {focusConfig.addLabel}
@@ -389,6 +568,14 @@ export function ScreensaverPage() {
                   {focusConfig.videoAddLabel}
                 </button>
               ) : null}
+              <button
+                type="button"
+                className="btn"
+                onClick={() => openDrivePick(focusFolder, focusFolder === 'gallery' ? 'any' : 'photo')}
+              >
+                {PICK_FROM_DRIVE_LABEL}
+              </button>
+              <OpenMyDrive />
             </>
           ) : null}
           <button type="button" className="btn btn--ghost" onClick={() => setOptions(true)}>
@@ -398,159 +585,46 @@ export function ScreensaverPage() {
       )}
 
       <Sheet
+        className="sheet--dock-footer"
         open={options}
         title={hubTitle}
         onClose={() => {
           if (!muteVideo) setUnlockSound(true);
           setOptions(false);
         }}
+        footer={
+          <InstructionsButton controlsId="media-console-instructions" align="stretch">
+            <ul>
+              {MEDIA_CONSOLE_INSTRUCTIONS.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </InstructionsButton>
+        }
       >
-        <GymLogoControl />
-        <section className="saver-settings">
-          <h3 className="saver-settings__title">Settings</h3>
-          {pickerNote ? (
-            <p className="saver-folder__empty" role="status" ref={scrollPickerNote}>
-              {pickerNote}
-            </p>
-          ) : null}
-        <fieldset>
-          <legend>Photo interval</legend>
-          <div className="interval-stepper" role="group" aria-label="Photo interval">
-            <button
-              type="button"
-              className="clock-nudge"
-              disabled={intervalSec <= MIN_INTERVAL_SEC}
-              aria-label="Subtract one second"
-              onClick={() => commitInterval(intervalSec - 1)}
-            >
-              −
-            </button>
-            <strong aria-live="polite">{formatMss(intervalSec)}</strong>
-            <button
-              type="button"
-              className="clock-nudge"
-              disabled={intervalSec >= MAX_INTERVAL_SEC}
-              aria-label="Add one second"
-              onClick={() => commitInterval(intervalSec + 1)}
-            >
-              +
-            </button>
-          </div>
-          <div className="presets" role="group" aria-label="Photo interval presets">
-            {INTERVAL_PRESETS_SEC.map((seconds) => (
-              <button
-                key={seconds}
-                type="button"
-                className={`preset${intervalSec === seconds ? ' preset--on' : ''}`}
-                onClick={() => commitInterval(seconds)}
-              >
-                {seconds === 60 ? '1:00' : `${seconds}s`}
-              </button>
-            ))}
-          </div>
-        </fieldset>
-        <fieldset>
-          <legend>Play order</legend>
-          <div className="presets presets--split" role="radiogroup" aria-label="Play order">
-            <button
-              type="button"
-              role="radio"
-              aria-checked={!shuffle}
-              className={`preset${!shuffle ? ' preset--on' : ''}`}
-              onClick={() => commitShuffle(false)}
-            >
-              In order
-            </button>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={shuffle}
-              className={`preset${shuffle ? ' preset--on' : ''}`}
-              onClick={() => commitShuffle(true)}
-            >
-              Shuffle
-            </button>
-          </div>
-        </fieldset>
-        <fieldset>
-          <legend>Pro Shop on the TV</legend>
-          <div className="presets presets--shop" role="radiogroup" aria-label="Pro Shop on the TV">
-            {SHOP_CAST_MODE_OPTIONS.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                role="radio"
-                aria-checked={shopCastMode === option.id}
-                className={`preset${shopCastMode === option.id ? ' preset--on' : ''}`}
-                onClick={() => commitShopCastMode(option.id)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-          <p className="saver-sound-hint">
-            Each card on a slide gets its own QR from its buy link. Logo uses the custom gym logo
-            above. Landscape puts the QR beside the photo. With the logo on, the mark sits on top
-            and each QR sits under its photo.
-          </p>
-        </fieldset>
-        <fieldset>
-          <legend>Events on the TV</legend>
-          <div className="presets presets--shop" role="radiogroup" aria-label="Events on the TV">
-            {EVENTS_CAST_MODE_OPTIONS.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                role="radio"
-                aria-checked={eventsCastMode === option.id}
-                className={`preset${eventsCastMode === option.id ? ' preset--on' : ''}`}
-                onClick={() => commitEventsCastMode(option.id)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-          <p className="saver-sound-hint">
-            Each event photo can show several QR codes from its links. Codes sit to the right of
-            the photo. With the logo on, the gym mark sits on the left and the codes stay on the
-            right.
-          </p>
-        </fieldset>
-        <fieldset>
-          <legend>Video sound</legend>
-          <p className="saver-sound-hint">
-            Mute clips so gym-floor music keeps playing. Match and Training buzzers still cut
-            through — they are separate from clip audio.
-          </p>
-          <div className="presets presets--split" role="radiogroup" aria-label="Video sound">
-            <button
-              type="button"
-              role="radio"
-              aria-checked={muteVideo}
-              className={`preset${muteVideo ? ' preset--on' : ''}`}
-              onClick={() => commitMuteVideo(true)}
-            >
-              Mute clips
-            </button>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={!muteVideo}
-              className={`preset${!muteVideo ? ' preset--on' : ''}`}
-              onClick={() => commitMuteVideo(false)}
-            >
-              Play video sound
-            </button>
-          </div>
-        </fieldset>
-        <label className="toggle">
+        {options && batchStatus ? (
+          <BatchStatus panel status={batchStatus} onDismiss={() => setBatchStatus(null)} />
+        ) : null}
+        <label className="toggle saver-playing">
           <input type="checkbox" checked={playing} onChange={(e) => setPlaying(e.target.checked)} />
           Playing
         </label>
-        </section>
+        {pickerNote ? (
+          <p className="saver-folder__empty" role="status" ref={scrollPickerNote}>
+            {pickerNote}
+          </p>
+        ) : null}
 
         <div className="saver-folders">
-          {FOLDERS.map((folder) => (
+          {FOLDERS.filter((folder) => {
+            if (!seat) return true;
+            if (folder.id === 'shop') return seatPermissionAllows(seat.permissions, 'proShopAccess');
+            if (folder.id === 'events') return seatPermissionAllows(seat.permissions, 'eventsAccess');
+            return true;
+          }).map((folder) => {
+            const galleryUpload =
+              folder.id !== 'gallery' || !seat || seatPermissionAllows(seat.permissions, 'galleryUpload');
+            return (
             <Fragment key={folder.id}>
             <ToolboxFolder
               folder={folder}
@@ -562,9 +636,16 @@ export function ScreensaverPage() {
                 setExpanded((prev) => (prev[folder.id] === next ? prev : { ...prev, [folder.id]: next }));
               }}
               onPlayToggle={commitFolderPlay}
-              onAdd={folder.ready ? () => openAdd(folder.id, 'photo') : undefined}
+              onAdd={folder.ready && galleryUpload ? () => openAdd(folder.id, 'photo') : undefined}
               onAddVideo={
-                folder.ready && folder.videoAddLabel ? () => openAdd(folder.id, 'video') : undefined
+                folder.ready && galleryUpload && folder.videoAddLabel
+                  ? () => openAdd(folder.id, 'video')
+                  : undefined
+              }
+              onPickDrive={
+                folder.ready && galleryUpload
+                  ? () => openDrivePick(folder.id, folder.id === 'gallery' ? 'any' : 'photo')
+                  : undefined
               }
               onClear={
                 folder.ready
@@ -639,16 +720,149 @@ export function ScreensaverPage() {
             />
             {folder.id === 'gallery' ? <ClassScheduleEntry /> : null}
             </Fragment>
-          ))}
+            );
+          })}
         </div>
-        <section className="saver-instructions">
-          <p className="saver-instructions__label">Instructions:</p>
-          <ul>
-            {MEDIA_CONSOLE_INSTRUCTIONS.map((line) => (
-              <li key={line}>{line}</li>
+
+        <section className="saver-settings">
+          <h3 className="saver-settings__title">Settings</h3>
+        <fieldset>
+          <legend>Photo interval</legend>
+          <div className="interval-stepper" role="group" aria-label="Photo interval">
+            <button
+              type="button"
+              className="clock-nudge"
+              disabled={intervalSec <= MIN_INTERVAL_SEC}
+              aria-label="Subtract one second"
+              onClick={() => commitInterval(intervalSec - 1)}
+            >
+              −
+            </button>
+            <strong aria-live="polite">{formatMss(intervalSec)}</strong>
+            <button
+              type="button"
+              className="clock-nudge"
+              disabled={intervalSec >= MAX_INTERVAL_SEC}
+              aria-label="Add one second"
+              onClick={() => commitInterval(intervalSec + 1)}
+            >
+              +
+            </button>
+          </div>
+          <div className="presets" role="group" aria-label="Photo interval presets">
+            {INTERVAL_PRESETS_SEC.map((seconds) => (
+              <button
+                key={seconds}
+                type="button"
+                className={`preset${intervalSec === seconds ? ' preset--on' : ''}`}
+                onClick={() => commitInterval(seconds)}
+              >
+                {seconds === 60 ? '1:00' : `${seconds}s`}
+              </button>
             ))}
-          </ul>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Play order</legend>
+          <div className="presets presets--split" role="radiogroup" aria-label="Play order">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={!shuffle}
+              className={`preset${!shuffle ? ' preset--on' : ''}`}
+              onClick={() => commitShuffle(false)}
+            >
+              In order
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={shuffle}
+              className={`preset${shuffle ? ' preset--on' : ''}`}
+              onClick={() => commitShuffle(true)}
+            >
+              Shuffle
+            </button>
+          </div>
+        </fieldset>
+        {!seat || seatPermissionAllows(seat.permissions, 'proShopAccess') ? (
+        <fieldset>
+          <legend>Pro Shop on the TV</legend>
+          <div className="presets presets--shop" role="radiogroup" aria-label="Pro Shop on the TV">
+            {SHOP_CAST_MODE_OPTIONS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                role="radio"
+                aria-checked={shopCastMode === option.id}
+                className={`preset${shopCastMode === option.id ? ' preset--on' : ''}`}
+                onClick={() => commitShopCastMode(option.id)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <p className="saver-sound-hint">
+            Each card on a slide gets its own QR from its buy link. Logo uses the custom gym logo
+            saved on this screen. The QR stays to the right of its photo. With the logo on, the gym
+            mark stays on the left and the codes stay on the right. On a wide TV they share the
+            black band above the photos.
+          </p>
+        </fieldset>
+        ) : null}
+        {!seat || seatPermissionAllows(seat.permissions, 'eventsAccess') ? (
+        <fieldset>
+          <legend>Events on the TV</legend>
+          <div className="presets presets--shop" role="radiogroup" aria-label="Events on the TV">
+            {EVENTS_CAST_MODE_OPTIONS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                role="radio"
+                aria-checked={eventsCastMode === option.id}
+                className={`preset${eventsCastMode === option.id ? ' preset--on' : ''}`}
+                onClick={() => commitEventsCastMode(option.id)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <p className="saver-sound-hint">
+            Each event photo can show several QR codes from its links. Codes stay to the right of
+            the gym logo. On a phone they sit beside the photo. On a wide TV they share the black
+            band above the photo.
+          </p>
+        </fieldset>
+        ) : null}
+        <fieldset>
+          <legend>Video sound</legend>
+          <p className="saver-sound-hint">
+            Mute clips so gym-floor music keeps playing. Match and Training buzzers still cut
+            through — they are separate from clip audio.
+          </p>
+          <div className="presets presets--split" role="radiogroup" aria-label="Video sound">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={muteVideo}
+              className={`preset${muteVideo ? ' preset--on' : ''}`}
+              onClick={() => commitMuteVideo(true)}
+            >
+              Mute clips
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={!muteVideo}
+              className={`preset${!muteVideo ? ' preset--on' : ''}`}
+              onClick={() => commitMuteVideo(false)}
+            >
+              Play video sound
+            </button>
+          </div>
+        </fieldset>
         </section>
+        <GymLogoControl />
       </Sheet>
 
       <MediaSourceSheet
@@ -658,8 +872,26 @@ export function ScreensaverPage() {
         captureInputId={addKind === 'video' ? 'saver-video-record' : 'saver-photo-capture'}
         libraryInputId={addKind === 'video' ? 'saver-video-library' : 'saver-photo-library'}
         stacked={options}
+        onPickDrive={() => openDrivePick(addFolderRef.current, addKind === 'video' ? 'video' : 'photo')}
         onClose={() => setAddOpen(false)}
       />
+      <DriveMediaPicker
+        open={drivePickOpen}
+        kind={drivePickKind}
+        stacked={options}
+        onClose={() => setDrivePickOpen(false)}
+        onDone={(files) => {
+          void importFromDrive(files);
+        }}
+      />
+      <Sheet
+        open={driveConnectOpen && !driveBinding}
+        title="Connect with"
+        onClose={() => setDriveConnectOpen(false)}
+        stacked
+      >
+        <DriveConnectCard />
+      </Sheet>
       <DeviceMediaInput
         id="saver-photo-capture"
         inputRef={photoCaptureRef}
@@ -692,47 +924,101 @@ export function ScreensaverPage() {
   );
 }
 
+type BatchNotice = { tone: 'progress' | 'error'; text: string };
+
+function savedCount(error: unknown): number {
+  if (error && typeof error === 'object' && 'saved' in error && typeof error.saved === 'number') {
+    return error.saved;
+  }
+  return 0;
+}
+
+function BatchStatus({
+  status,
+  panel = false,
+  onDismiss,
+}: {
+  status: BatchNotice;
+  panel?: boolean;
+  onDismiss: () => void;
+}) {
+  return (
+    <div
+      className={`saver-batch${panel ? ' saver-batch--panel' : ''}${status.tone === 'error' ? ' saver-batch--error' : ''}`}
+      role={status.tone === 'error' ? 'alert' : 'status'}
+      aria-live={status.tone === 'error' ? 'assertive' : 'polite'}
+      aria-atomic="true"
+    >
+      <p>{status.text}</p>
+      {status.tone === 'error' ? (
+        <button type="button" className="saver-batch__dismiss" onClick={onDismiss}>
+          Dismiss
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 function ClassScheduleEntry() {
   const schedule = useScheduleState();
   const ready = schedule.classes.length > 0;
-  const onTv = schedule.castEnabled && ready;
+  const [open, setOpen] = useState(false);
   return (
-    <section className="saver-folder saver-schedule" aria-label="Class Schedule">
-      <div className="saver-schedule__top">
-        <span className="saver-folder__title">
-          Class Schedule
-          <small>{onTv ? 'In this cast' : 'Gym TV week board'}</small>
-        </span>
-        <Link className="saver-folder__go" to="/schedule">
-          Open
+    <details
+      className="saver-folder"
+      open={open}
+      onToggle={(event) => {
+        setOpen(event.currentTarget.open);
+      }}
+    >
+      <summary className="saver-folder__summary">
+        <span className="saver-folder__title">Class Schedule</span>
+        <button
+          type="button"
+          className={`preset saver-folder__play${schedule.castEnabled ? ' preset--on' : ''}`}
+          aria-pressed={schedule.castEnabled}
+          aria-label="Play Class Schedule"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setScheduleCastEnabled(!schedule.castEnabled);
+          }}
+        >
+          {schedule.castEnabled ? 'On' : 'Off'}
+        </button>
+      </summary>
+      <div className="saver-folder__panel">
+        <Link className="btn" to="/schedule">
+          Add class schedule
         </Link>
+        <div className="presets presets--split" role="radiogroup" aria-label="Class Schedule on the TV">
+          <button
+            type="button"
+            role="radio"
+            aria-checked={schedule.castEnabled}
+            className={`preset${schedule.castEnabled ? ' preset--on' : ''}`}
+            onClick={() => setScheduleCastEnabled(true)}
+          >
+            On the TV
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={!schedule.castEnabled}
+            className={`preset${!schedule.castEnabled ? ' preset--on' : ''}`}
+            onClick={() => setScheduleCastEnabled(false)}
+          >
+            Off the TV
+          </button>
+        </div>
+        <p className="saver-folder__empty">
+          {ready
+            ? 'On adds the full week or month after Gallery and before Pro Shop. Off keeps Gallery, Pro Shop, and Events.'
+            : 'Add classes on the schedule page, then turn this on to play the week board in the cast.'}
+        </p>
       </div>
-      <div className="presets presets--split" role="radiogroup" aria-label="Class Schedule on the TV">
-        <button
-          type="button"
-          role="radio"
-          aria-checked={schedule.castEnabled}
-          className={`preset${schedule.castEnabled ? ' preset--on' : ''}`}
-          onClick={() => setScheduleCastEnabled(true)}
-        >
-          On the TV
-        </button>
-        <button
-          type="button"
-          role="radio"
-          aria-checked={!schedule.castEnabled}
-          className={`preset${!schedule.castEnabled ? ' preset--on' : ''}`}
-          onClick={() => setScheduleCastEnabled(false)}
-        >
-          Off the TV
-        </button>
-      </div>
-      <p className="saver-schedule__hint">
-        {ready
-          ? 'On adds the full week or month after Gallery and before Pro Shop. Off keeps Gallery, Pro Shop, and Events.'
-          : 'Add classes on the schedule page, then turn this on to play the week board in the cast.'}
-      </p>
-    </section>
+    </details>
   );
 }
 

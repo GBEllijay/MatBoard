@@ -170,6 +170,28 @@ export function findNode(node: TechniqueNode | null, id: string, depth = 0): Fou
   return null;
 }
 
+function revealAt(node: TechniqueNode, id: string): TechniqueNode | null {
+  if (node.id === id) return node;
+  let found = false;
+  const children = node.children.map((child) => {
+    const next = revealAt(child, id);
+    if (!next) return child;
+    found = true;
+    return next;
+  });
+  if (!found) return null;
+  if (!node.collapsed && children.every((child, index) => child === node.children[index])) return node;
+  return { ...node, collapsed: false, children };
+}
+
+/** Opens collapsed ancestors so a linked step can be seen. Same doc when nothing changes. */
+export function revealNode(doc: TechniqueTreeDoc, id: string): TechniqueTreeDoc {
+  if (!doc.root) return doc;
+  const root = revealAt(doc.root, id);
+  if (!root || root === doc.root) return doc;
+  return { ...doc, root };
+}
+
 export function canAddChild(doc: TechniqueTreeDoc, parentId: string): boolean {
   if (!doc.root) return false;
   if (countNodes(doc.root) >= MAX_TREE_NODES) return false;

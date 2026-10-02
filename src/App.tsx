@@ -5,10 +5,16 @@ import { useKeepFocusedFieldVisible } from './hooks/useKeepFocusedFieldVisible';
 import { useProUnlocked } from './hooks/useProUnlocked';
 import { consumeCoachUnlockQueryNow } from './lib/coachUnlock';
 import { consumeUnlockQueryNow } from './lib/proUnlock';
+import { ClassHistoryPage } from './pages/ClassHistory';
 import { CoachPage } from './pages/Coach';
+import { CoachUnlimitedPage } from './pages/CoachUnlimited';
 import { ComingSoonPage } from './pages/ComingSoon';
+import { CompetitionManagementPage } from './pages/CompetitionManagement';
+import { CompetitionReadyPage } from './pages/CompetitionReady';
 import { CompetitorManagementPage } from './pages/CompetitorManagement';
+import { GamePlanPage } from './pages/GamePlan';
 import { HomePage } from './pages/Home';
+import { PrivacyPage } from './pages/Privacy';
 import { InstructorCollaborationPage } from './pages/InstructorCollaboration';
 import { MatchControllerPage } from './pages/MatchController';
 import { MatchDisplayPage } from './pages/MatchDisplay';
@@ -18,12 +24,14 @@ import { ScreensaverPage } from './pages/Screensaver';
 import { SchedulePage } from './pages/Schedule';
 import { TechniqueTreePage } from './pages/TechniqueTree';
 import { TechniquesPage } from './pages/Techniques';
+import { TermsPage } from './pages/Terms';
 import { RankingsPage } from './pages/Rankings';
 import { TournamentPage } from './pages/Tournament';
 import { TournamentSuitePage } from './pages/TournamentSuite';
 import { TrainingNotesPage } from './pages/TrainingNotes';
 import { TrainingControllerPage } from './pages/TrainingController';
 import { TrainingPage } from './pages/Training';
+import { BuyWhitePage } from './pages/BuyWhite';
 import { WhitePage } from './pages/White';
 
 consumeUnlockQueryNow();
@@ -51,6 +59,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/white" element={<WhitePage />} />
+      <Route path="/buy" element={<BuyWhitePage />} />
       <Route path="/lite" element={<Navigate to="/white" replace />} />
       <Route path="/match" element={<MatchDisplayPage />} />
       <Route path="/match/control" element={<MatchControllerPage />} />
@@ -73,6 +82,14 @@ export default function App() {
         }
       />
       <Route
+        path="/competition"
+        element={
+          <CoachRoute>
+            <CompetitionManagementPage />
+          </CoachRoute>
+        }
+      />
+      <Route
         path="/tournament"
         element={
           <CoachRoute>
@@ -89,11 +106,19 @@ export default function App() {
         }
       />
       <Route
-        path="/competitors"
+        path="/coach-unlimited"
         element={
           <ProRoute>
-            <CompetitorManagementPage />
+            <CoachUnlimitedPage />
           </ProRoute>
+        }
+      />
+      <Route
+        path="/competitors"
+        element={
+          <CoachRoute>
+            <CompetitorManagementPage />
+          </CoachRoute>
         }
       />
       <Route
@@ -105,11 +130,35 @@ export default function App() {
         }
       />
       <Route
-        path="/rankings"
+        path="/class-history"
         element={
           <ProRoute>
-            <RankingsPage />
+            <ClassHistoryPage />
           </ProRoute>
+        }
+      />
+      <Route
+        path="/rankings"
+        element={
+          <CoachRoute>
+            <RankingsPage />
+          </CoachRoute>
+        }
+      />
+      <Route
+        path="/competition-ready"
+        element={
+          <CoachRoute>
+            <CompetitionReadyPage />
+          </CoachRoute>
+        }
+      />
+      <Route
+        path="/game-plan"
+        element={
+          <CoachRoute>
+            <GamePlanPage />
+          </CoachRoute>
         }
       />
       <Route
@@ -169,6 +218,8 @@ export default function App() {
         }
       />
       <Route path="/coming-soon" element={<ComingSoonPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/terms" element={<TermsPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

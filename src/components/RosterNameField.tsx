@@ -41,9 +41,12 @@ export function RosterNameField({
   const [query, setQuery] = useState('');
   const [addToRoster, setAddToRoster] = useState(false);
   const [belt, setBelt] = useState('');
+  const [onKidsBoard, setOnKidsBoard] = useState(false);
   const skipFocusRef = useRef(false);
+  const fieldRef = useRef<HTMLDivElement>(null);
 
   const openPicker = () => {
+    setOnKidsBoard(Boolean(fieldRef.current?.closest('.tournament--kids')));
     setQuery(value);
     setAddToRoster(false);
     setBelt('');
@@ -94,14 +97,15 @@ export function RosterNameField({
   if (!unlocked) return input;
 
   return (
-    <div className={`roster-field${compact ? ' roster-field--compact' : ''}`}>
+    <div ref={fieldRef} className={`roster-field${compact ? ' roster-field--compact' : ''}`}>
       <div className="roster-field__row">{input}</div>
       <Sheet
         open={pickOpen}
         title="Pick a competitor"
         onClose={closePicker}
         stacked
-        className="sheet--roster"
+        portal
+        className={`sheet--roster${onKidsBoard ? ' sheet--on-kids' : ''}`}
       >
         <RosterPicker
           query={query}
@@ -158,8 +162,8 @@ function RosterPicker({
   return (
     <>
       <p className="roster-pick__copy">
-        Type a name or pick one already on this device. Notes and last promotion stay on the roster
-        card.
+        Type a name or pick one already on this device. Division, notes, and last promotion stay on
+        the roster card.
       </p>
       <div className="roster-pick__manual">
         <label>
@@ -246,6 +250,7 @@ function RosterPicker({
                   <span>
                     <strong>{student.name}</strong>
                     <RankChip belt={student.belt} />
+                    {student.division ? <em className="roster-pick__division">{student.division}</em> : null}
                   </span>
                 </button>
               </li>
@@ -259,7 +264,7 @@ function RosterPicker({
             : `No competitors yet. Type a name above, or add them on ${COMPETITOR_ROSTER_LABEL}.`}
         </p>
       )}
-      <Link className="text-link" to="/roster">
+      <Link className="text-link" to="/roster?from=competitors">
         Open {COMPETITOR_ROSTER_LABEL}
       </Link>
     </>

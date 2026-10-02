@@ -100,9 +100,9 @@ export function LessonMediaRail({
       {showVideo ? (
         <button
           type="button"
-          className={clipUrl ? 'notes__video notes__video--on' : 'notes__video'}
-          disabled={!clipUrl}
-          aria-label={clipUrl ? `Play ${videoLabel}` : `No ${videoLabel} video today`}
+          className={clipUrl && !thumbFailed ? 'notes__video notes__video--on' : 'notes__video notes__video--go'}
+          aria-label={`Open Daily Training Videos for ${videoLabel}`}
+          title={`Open Daily Training Videos for ${videoLabel}`}
           onClick={onPlay}
         >
           {clipUrl && !thumbFailed ? (
@@ -119,6 +119,7 @@ export function LessonMediaRail({
           ) : (
             <span className="notes__video-empty" aria-hidden="true" />
           )}
+          {clipUrl && !thumbFailed ? <span className="notes__video-mark" aria-hidden="true" /> : null}
         </button>
       ) : null}
       {linkedTree && onOpenTree ? (

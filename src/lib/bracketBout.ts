@@ -10,11 +10,12 @@ import {
   type MatchOutcome,
 } from './outcomes';
 import {
+  displayBoutName,
   getTournament,
   isBracketMatchId,
+  rememberEmptyBoutNames,
+  sanitizeBoutPoints,
   scoreboardSideToBracket,
-  seedPlaceholder,
-  seedSlots,
   setMatchOutcome,
   slotId,
   slotName,
@@ -43,12 +44,7 @@ export function linkedBracketMatchId(value: string | null | undefined): BracketM
 }
 
 export function boutCompetitorName(matchId: BracketMatchId, side: MatchSide): string {
-  const tournament = getTournament();
-  const name = slotName(tournament, slotId(matchId, side)).trim();
-  if (name) return name;
-  const index = seedSlots().indexOf(slotId(matchId, side));
-  if (index >= 0) return seedPlaceholder(index);
-  return side === 'a' ? 'Competitor 1' : 'Competitor 2';
+  return displayBoutName(getTournament(), matchId, side);
 }
 
 export function unlinkBracketBout(): void {
@@ -129,11 +125,22 @@ export function declareMatchOutcome(
   });
 
   if (linked) {
+    rememberEmptyBoutNames(linked, { a: match.blue.name, b: match.white.name });
     const stored: BoutOutcome =
       outcome.call === 'win'
         ? { call: 'win', method: outcome.method, scoreReason: outcome.scoreReason }
         : { call: 'dq', reason: outcome.reason };
-    setMatchOutcome(linked, scoreboardSideToBracket(side), stored, { toggle: false });
+    const winnerIsCalledSide = outcome.call === 'win';
+    const winnerPoints = (winnerIsCalledSide ? side === 'blue' : side !== 'blue')
+      ? match.blue.points
+      : match.white.points;
+    const loserPoints = (winnerIsCalledSide ? side === 'blue' : side !== 'blue')
+      ? match.white.points
+      : match.blue.points;
+    setMatchOutcome(linked, scoreboardSideToBracket(side), stored, {
+      toggle: false,
+      points: sanitizeBoutPoints(winnerPoints, loserPoints),
+    });
   }
   return true;
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { BeltRail } from '../components/BeltRail';
 import { Chrome } from '../components/Chrome';
+import { ScoreboardSkinSwitcher } from '../components/ScoreboardSkinSwitcher';
 import { Sheet } from '../components/Sheet';
 import { OutcomeCalls, OutcomePickSheet, useOutcomeSheet } from '../components/OutcomeCalls';
 import { PlayExitMark } from '../components/PlayExitMark';
@@ -12,6 +12,7 @@ import { useInterval } from '../hooks/useClock';
 import { useSuiteOrigin } from '../hooks/useSuiteOrigin';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useMatchState } from '../hooks/useStores';
+import { CARLOS_THRESHOLD_MAX, CARLOS_THRESHOLD_MIN, type CarlosCelebrationPrefs } from '../lib/carlosCelebration';
 import {
   END_CUE_OPTIONS,
   patchAudioPrefs,
@@ -41,6 +42,7 @@ import {
   type Side,
 } from '../lib/matchStore';
 import { needsRefDecision, outcomeSubtitle } from '../lib/outcomes';
+import { isPlainWhiteScoreboard, scoreboardSkinClass, visibleScoreboardSkin } from '../lib/scoreboardSkin';
 
 export function MatchControllerPage() {
   const match = useMatchState();
@@ -55,6 +57,8 @@ export function MatchControllerPage() {
   const durationIsPreset = TIME_PRESETS_MIN.some((minutes) => match.durationMs === minutesToMs(minutes));
   const focusParam = searchParams.get('focus');
   const linkedId = linkedBracketMatchId(match.bracketMatchId);
+  const plainWhite = isPlainWhiteScoreboard(suite.fromSuite, Boolean(linkedId));
+  const skin = visibleScoreboardSkin(match.skin, suite.fromSuite, Boolean(linkedId));
   const flashing = Boolean(match.outcomeFlash);
   const banner = visibleOutcomeBanner(match);
   const refNeeded = needsRefDecision({ ...match, remainingMs: remaining });
@@ -103,12 +107,11 @@ export function MatchControllerPage() {
     setCustomOpen(false);
   };
 
+  // Selection only. Switching cues mid-match must not play a stop sound.
+  // Preview cues below are what play the sound.
   const chooseMatchEndCue = (cue: EndCue) => {
     patchAudioPrefs({ endCue: cue });
     dispatchMatch({ type: 'setEndCue', value: cue });
-    void unlockAudio().then(() => {
-      if (match.endBuzzer) playSelectedEndCue('match', cue);
-    });
   };
 
   const onCast = async () => {
@@ -126,8 +129,7 @@ export function MatchControllerPage() {
   };
 
   return (
-    <main className={`controller${suite.fromSuite ? ' origin-suite' : ''}`}>
-      {suite.fromSuite ? <BeltRail kind="tournament" /> : null}
+    <main className={`controller ${scoreboardSkinClass(skin)}${suite.fromSuite ? ' origin-suite' : ''}`}>
       <PlayExitMark to={suite.homePath} />
       <Chrome
         right={
@@ -146,6 +148,13 @@ export function MatchControllerPage() {
           </>
         }
       />
+
+      {plainWhite ? null : (
+        <section className="kids-switch-panel" aria-label="Scoreboard skin">
+          <p className="cue-preview-label">Scoreboard skin</p>
+          <ScoreboardSkinSwitcher skin={match.skin} />
+        </section>
+      )}
 
       <section className="controller__clock">
         <button
@@ -215,7 +224,7 @@ export function MatchControllerPage() {
             <label>
               Minutes
               <input
-                inputMode="numeric"
+                inputMode="decimal"
                 value={customMinutes}
                 onChange={(e) => setCustomMinutes(e.target.value)}
               />
@@ -332,6 +341,7 @@ export function MatchControllerPage() {
           />
           Auto-announce winner
         </label>
+        {plainWhite ? null : <CarlosControls prefs={match.carlos} />}
         {castNote ? <p className="cast-note">{castNote}</p> : null}
       </section>
 
@@ -447,6 +457,75 @@ export function MatchControllerPage() {
         </div>
       </Sheet>
     </main>
+  );
+}
+
+function CarlosControls({ prefs }: { prefs: CarlosCelebrationPrefs }) {
+  const [draft, setDraft] = useState(String(prefs.pointsThreshold));
+
+  useEffect(() => {
+    setDraft(String(prefs.pointsThreshold));
+  }, [prefs.pointsThreshold]);
+
+  return (
+    <fieldset className="carlos-controls">
+      <legend>Master Carlos</legend>
+      <label className="toggle">
+        <input
+          type="checkbox"
+          checked={prefs.enabled}
+          onChange={(e) => dispatchMatch({ type: 'setCarlos', value: { enabled: e.target.checked } })}
+        />
+        Show on the scoreboard
+      </label>
+      <p className="cast-note">
+        Optional for every kids’ training match. He slides in on this scoreboard only when the match ends —
+        for a win, or if points went over the total during the bout. Off means no Carlos from these triggers.
+      </p>
+      {prefs.enabled ? (
+        <>
+          <label className="toggle">
+            <input
+              type="checkbox"
+              checked={prefs.onWin}
+              onChange={(e) => dispatchMatch({ type: 'setCarlos', value: { onWin: e.target.checked } })}
+            />
+            On a match win
+          </label>
+          <label className="toggle">
+            <input
+              type="checkbox"
+              checked={prefs.onPoints}
+              onChange={(e) => dispatchMatch({ type: 'setCarlos', value: { onPoints: e.target.checked } })}
+            />
+            At match end, if points went over a total
+          </label>
+          <label className="carlos-threshold">
+            Over
+            <input
+              inputMode="numeric"
+              aria-label="Point threshold"
+              value={draft}
+              onChange={(e) => {
+                const next = e.target.value.replace(/\D/g, '').slice(0, 2);
+                setDraft(next);
+                const n = Number(next);
+                if (Number.isInteger(n) && n >= CARLOS_THRESHOLD_MIN && n <= CARLOS_THRESHOLD_MAX) {
+                  dispatchMatch({ type: 'setCarlos', value: { pointsThreshold: n } });
+                }
+              }}
+              onBlur={() => {
+                const n = Number(draft);
+                if (!Number.isInteger(n) || n < CARLOS_THRESHOLD_MIN || n > CARLOS_THRESHOLD_MAX) {
+                  setDraft(String(prefs.pointsThreshold));
+                }
+              }}
+            />
+            points
+          </label>
+        </>
+      ) : null}
+    </fieldset>
   );
 }
 

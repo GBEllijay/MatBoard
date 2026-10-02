@@ -19,6 +19,7 @@ import {
   loadTechniqueArchive,
   loadTechniqueTree,
   removeNode,
+  revealNode,
   renameTree,
   saveTechniqueArchive,
   saveTechniqueTree,
@@ -268,6 +269,21 @@ test('a saved version 1 tree migrates and stays when another tree is added', () 
   assert.equal(again.trees.length, 2);
   assert.equal(again.trees.find((tree) => tree.name === 'Gi')?.root?.slotId, 'slot-base');
   assert.equal(saved.trees.length, 2);
+});
+
+test('revealNode opens collapsed ancestors and leaves an open path alone', () => {
+  let doc = setRoot(emptyTree(), 'Half guard', '');
+  const entry = addChild(doc, doc.root!.id, 'branch');
+  doc = updateNode(entry.doc, entry.id!, { title: 'Berimbolo entry' });
+  const retention = addChild(doc, entry.id!, 'defense');
+  doc = updateNode(retention.doc, retention.id!, { title: 'Half-guard retention', collapsed: false });
+  doc = updateNode(doc, entry.id!, { collapsed: true });
+  assert.equal(doc.root?.children[0]?.collapsed, true);
+  const revealed = revealNode(doc, retention.id!);
+  assert.equal(revealed.root?.children[0]?.collapsed, false);
+  assert.equal(revealed.root?.children[0]?.children[0]?.title, 'Half-guard retention');
+  assert.equal(revealNode(revealed, retention.id!), revealed);
+  assert.equal(revealNode(doc, 'missing'), doc);
 });
 
 test('the tree cap refuses another tree and leaves the saved ones alone', () => {

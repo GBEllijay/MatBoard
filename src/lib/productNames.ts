@@ -1,22 +1,18 @@
+import { TECHNIQUE_TREE_LABEL, TRAINING_NOTES_LABEL } from './coachCopy.ts';
+
 /** User-facing Advantage Pro console name. Keep this exact apostrophe. */
 export const GYM_CONSOLE_NAME = "Gym Owner and Instructor's Console";
 
 /** Home ladder and White hub line after “White —”. */
 export const WHITE_LADDER_DETAIL = 'BJJ scoreboard and timer, live match and rounds';
 
-/** Home White card body. Real Live Bout and Rounds tools, same weight as Pro. */
-export const WHITE_HOME_LINES = [
-  'Live Bout scoreboard and match clock. Open Scoreboard on the gym TV, or control it from your phone and cast.',
-  'Rounds timer for class: set the round length, the rest, and how many rounds.',
-  'Display stays on the TV. The controller stays in your hand.',
-] as const;
+/** Home White card body. The only line under the Advantage White title. */
+export const WHITE_HOME_DESCRIPTION =
+  'BJJ scoreboard and round timer for live matches and rounds. Display stays on the TV, the controller stays in your hand.';
 
-/** Home Coach card body. The tools already on the Coach hub. */
-export const COACH_HOME_LINES = [
-  'Daily Lesson Plan on this phone: warm-up, techniques, and cool-down.',
-  'Daily Training Videos: clips stay on this device, with a drill timer on the screen.',
-  'Technique Tree, Mock Tournament brackets, and a Competitor Roster of names and belts.',
-] as const;
+/** Home Coach card body. The only line under the Advantage Coach title. */
+export const COACH_HOME_DESCRIPTION =
+  'Daily Lesson Planner with Expandable Technique Trees and Video Looper. Bracketing and Mock Tournament Tool with Competitor Roster.';
 
 /** Home ladder and Pro hub line after “Pro —”. Not the Owner Console page title. */
 export const PRO_LADDER_DETAIL = 'Gym Owner and Instructors Console';
@@ -25,21 +21,22 @@ export const PRO_LADDER_DETAIL = 'Gym Owner and Instructors Console';
 export const HOME_MOTTO = 'Win by Advantage';
 
 /**
- * Home Pro card line after “Pro —”.
- * Shown to everyone, including while Pro is still Coming Soon.
+ * Coming Soon ad lead for Pro. Not the homepage card.
+ * The homepage button uses PRO_HOME_LINES and does not say Coming Soon.
  */
 export const PRO_HOME_DETAIL = `${GYM_CONSOLE_NAME} — Coming Soon`;
 
-/** Home Pro card body. Three short lines, similar height to White and Coach. */
+/** Home Pro card body, one paragraph per line under Advantage Pro. */
 export const PRO_HOME_LINES = [
-  'Easily Cast Class Schedules, Events, Recent Promotions, Pro Shop Inventory, and More to your Gym TV.',
-  'Full In-House Tournament Management Suite.',
-  'Assignable Instructor Licenses and Much More!',
+  "Gym Owner and Instructor's Console",
+  'Easily cast class schedules, pro shop inventory, events, recent promotions, and more to your gym TV.',
+  'Coordinate and create In-House Tournaments in moments and track the results for review and ranking.',
+  'Provide your instructors with access to our collaborative coaching tools and give your gym the ultimate Advantage!',
 ] as const;
 
 /**
- * Longer appetite copy on the Coming Soon ad only.
- * Do not put these lines back on the home card.
+ * Longer Pro appetite copy. Not on the home card and not in the Pro splash.
+ * The splash keeps the image and the descriptor boxes.
  */
 export const PRO_COMING_SOON_LINES = [
   'Easily Cast to your Gym TV with Media Console: Class Schedules, Recent Promotions, ProShop Inventory, Upcoming Events and Competitions.',
@@ -49,18 +46,87 @@ export const PRO_COMING_SOON_LINES = [
 
 /** Coach hub keeps practice framing; Owner Console uses real-event tooling. */
 export const MOCK_TOURNAMENT_NAME = 'Mock Tournament';
-export const TOURNAMENT_SOFTWARE_NAME = 'Tournament Software';
 
-/** Working title until the owner picks a consumer name for bracketing software. */
-export const TOURNAMENT_SUITE_NAME = 'In-House Tournament Management Suite';
+/** Fourth Advantage Coach hub button. Holds the competitor system and Mock Tournament. */
+export const COMPETITION_MANAGEMENT_LABEL = 'Competition Team Management';
 
-/** Pro hub for bout competitors, roster CSV, and on-device rankings. */
+/** Coach competition folder for bout competitors, roster CSV, and on-device rankings. */
 export const COMPETITOR_SYSTEM_NAME = 'Competitor Management System';
 
-/** Plan-only Pro hub. No cloud sync in this build. */
-export const INSTRUCTOR_COLLAB_NAME = 'Instructor Collaboration and Cloud Access';
+/**
+ * Advantage Coach hub, top to bottom.
+ * Daily tools use the flat blue coach belt. Competition Team Management keeps the
+ * yellow/green tournament belt that already marked this fourth slot.
+ */
+export const COACH_HUBS = [
+  { title: TRAINING_NOTES_LABEL, to: '/notes' },
+  { title: 'Daily Training Videos', to: '/techniques' },
+  { title: TECHNIQUE_TREE_LABEL, to: '/technique-tree' },
+  { title: COMPETITION_MANAGEMENT_LABEL, to: '/competition', belt: 'tournament' as const },
+] as const;
 
-/** Jump from the instructor hub into Advantage Coach. Keep Unlimited in the label. */
+/**
+ * Limited Coach opens `/notes` with no plan flag.
+ * Advantage Coach Unlimited opens the same page with this flag so upload and
+ * teammate video download stay off the limited lesson plan.
+ */
+export const UNLIMITED_LESSON_VALUE = 'unlimited';
+export const UNLIMITED_LESSON_PATH = `/notes?plan=${UNLIMITED_LESSON_VALUE}`;
+export const COACH_UNLIMITED_PATH = '/coach-unlimited';
+
+/**
+ * Tools that used to sit at the bottom of Instructor Collaboration.
+ * Daily Lesson Plan opens the Unlimited plan. The other three stay put.
+ */
+export const COACH_UNLIMITED_TOOLS = COACH_HUBS.map((tool) =>
+  tool.to === '/notes' ? { ...tool, to: UNLIMITED_LESSON_PATH } : tool,
+);
+
+/** Competition Team Management submenu. CMS first, then Mock Tournament. */
+export const COMPETITION_MENU = [
+  { title: COMPETITOR_SYSTEM_NAME, to: '/competitors', belt: 'tournament' as const },
+  { title: MOCK_TOURNAMENT_NAME, to: '/tournament', belt: 'tournament' as const },
+] as const;
+
+/**
+ * Reserved for later Advantage Pro competition tools (ready checklists, game plans,
+ * rankings, seeding). Empty on purpose — do not render placeholder buttons.
+ * Bout and bracket competitors only, not member progress tracking.
+ */
+export const COMPETITION_MENU_PRO: readonly {
+  title: string;
+  to: string;
+  belt: 'tournament';
+}[] = [];
+
+export const TOURNAMENT_SOFTWARE_NAME = 'Tournament Software';
+
+/** Working title kept for longer appetite copy. Not the Pro hub button or Suite heading. */
+export const TOURNAMENT_SUITE_NAME = 'In-House Tournament Management Suite';
+
+/**
+ * Fourth Advantage Pro hub button and the heading on the page it opens.
+ * The Coming Soon ad keeps COMPETITION_MANAGEMENT_PRO_LABEL.
+ */
+export const TOURNAMENT_MANAGEMENT_PRO_LABEL = 'Tournament Management Pro';
+
+/**
+ * Lead under that heading. Bout competitors stay on Competitor Management,
+ * so this line does not name the roster.
+ */
+export const TOURNAMENT_MANAGEMENT_PRO_LEAD =
+  'Brackets, Scoreboard, and Round Timer. Rankings stay in Competitor Management.';
+
+/** Coming Soon ad feature title. Not the Pro hub button or the Suite page heading. */
+export const COMPETITION_MANAGEMENT_PRO_LABEL = 'Competition Management Pro';
+
+/** Owner invite page. Access only — Unlimited tools live on Advantage Coach Unlimited. */
+export const INSTRUCTOR_COLLAB_NAME = 'Instructor Invitation and Access Management';
+
+/** Pro homepage hub button. Same name as the invite page title. */
+export const INSTRUCTOR_COLLAB_HUB_LABEL = 'Instructor Invitation and Access Management';
+
+/** Pro hub that replaced Competitor Management System. Opens Unlimited tools. */
 export const INSTRUCTOR_COACH_ENTRY = 'Advantage Coach Unlimited';
 
 /** Pro gym-TV cast hub. Same screen Gallery opens. Not a rename of the Owner Console. */
@@ -72,15 +138,15 @@ export const MEDIA_CONSOLE_NAME = 'Media Console';
  */
 export const PRO_HUBS = [
   { title: MEDIA_CONSOLE_NAME, to: '/slideshow?folder=gallery', belt: 'purple' },
-  { title: COMPETITOR_SYSTEM_NAME, to: '/competitors', belt: 'brown' },
-  { title: INSTRUCTOR_COLLAB_NAME, to: '/instructors', belt: 'black' },
-  { title: TOURNAMENT_SUITE_NAME, to: '/suite', belt: 'tournament' },
+  { title: INSTRUCTOR_COACH_ENTRY, to: COACH_UNLIMITED_PATH, belt: 'brown' },
+  { title: INSTRUCTOR_COLLAB_HUB_LABEL, to: '/instructors', belt: 'black' },
+  { title: TOURNAMENT_MANAGEMENT_PRO_LABEL, to: '/suite', belt: 'tournament' },
 ] as const;
 
-/** Existing White Live Bout controller. The suite deep-links here as Match Controller. */
+/** Existing scoreboard controller. Competition Management Pro opens this; Display stays on that screen. */
 export const MATCH_CONTROLLER_PATH = '/match/control';
 
-/** Existing White Rounds controller. The suite deep-links here as Round Controller. */
+/** Existing round-timer controller. Competition Management Pro opens this; Rounds stays on that screen. */
 export const ROUND_CONTROLLER_PATH = '/training/control';
 
 /** Query flag so Suite destinations keep the Suite page theme and return path. */
@@ -99,16 +165,46 @@ export function withSuiteFrom(path: string, fromSuite: boolean): string {
   return `${pathname}?${params.toString()}${hash}`;
 }
 
+/**
+ * Tournament Management Pro folder, top to bottom.
+ * Only Brackets keeps the yellow/green tournament belt.
+ * Scoreboard and Round Timer have no left bar.
+ * Brackets opens the same mock-tournament board.
+ * Scoreboard opens the existing match controller. Round Timer opens the existing rounds controller.
+ * Competitor Management System stays on Coach Competition Team Management, not on this menu.
+ */
+export const COMPETITION_PRO_MENU = [
+  {
+    title: 'Brackets-Tournament Software',
+    to: withSuiteFrom('/tournament', true),
+    belt: 'tournament' as const,
+    clearBout: false,
+  },
+  {
+    title: 'Scoreboard',
+    to: withSuiteFrom(MATCH_CONTROLLER_PATH, true),
+    belt: null,
+    clearBout: true,
+  },
+  {
+    title: 'Round Timer',
+    to: withSuiteFrom(ROUND_CONTROLLER_PATH, true),
+    belt: null,
+    clearBout: false,
+  },
+] as const;
+
 /** Bottom-of-page guidance on the Media Console manage screen. */
 export const MEDIA_CONSOLE_INSTRUCTIONS = [
   'Gold On means that folder plays on the TV.',
+  'Add photos still uses Google Photos or this phone. Google Drive is an extra source.',
   'Tap the left preview on a photo or video to include or skip it. Checked and bright is On. Dimmed is Off.',
   'Off items stay in the list and keep their order.',
   'One On clip loops alone. Several play in list order.',
   'Enabled folders play Gallery, then Pro Shop, then Events.',
   'Class Schedule casts the full week or month after Gallery, before Pro Shop.',
-  'Turn Class Schedule off on that row to keep Gallery, Pro Shop, and Events.',
-  'Open Class Schedule to edit classes. Export a CSV backup before clearing site data.',
+  'Turn Class Schedule Off to keep Gallery, Pro Shop, and Events.',
+  'Add class schedule opens the editor. Export a CSV backup before clearing site data.',
   'Photos use the Photo interval. Videos play all the way through, then the next item.',
   'Clips stay muted unless Play video sound is on, so gym music in another tab can keep going.',
   'Shuffle randomizes that combined queue.',
@@ -116,7 +212,7 @@ export const MEDIA_CONSOLE_INSTRUCTIONS = [
   'Same slide groups cards on one page. Each card on that page keeps its own QR.',
   'Pro Shop display: Images only, Images + QR, or Images + QR + gym logo.',
   'Pro Shop photos and buy links stay on this device. Nothing is uploaded.',
-  'Events: add a photo, a name, and optional QR links. Codes sit beside that photo.',
+  'Events: add a photo, a name, and optional QR links. The gym logo stays left of those codes.',
   'One event photo can hold several links: registration, brackets, or tickets.',
   'Events display: Images only, Images + QR, or Images + QR + gym logo.',
   'Events photos and QR links stay on this device. Nothing is uploaded.',

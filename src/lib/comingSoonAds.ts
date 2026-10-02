@@ -1,18 +1,15 @@
 import {
-  COACH_AD_LEAD,
   COACH_HOME_TEASER,
   COMPETITOR_ROSTER_LABEL,
   TECHNIQUE_TREE_LABEL,
   TRAINING_NOTES_LABEL,
 } from './coachCopy.ts';
 import {
-  COMPETITOR_SYSTEM_NAME,
   GYM_CONSOLE_NAME,
   INSTRUCTOR_COLLAB_NAME,
+  INSTRUCTOR_COACH_ENTRY,
   MEDIA_CONSOLE_NAME,
-  PRO_COMING_SOON_LINES,
-  PRO_HOME_DETAIL,
-  TOURNAMENT_SUITE_NAME,
+  COMPETITION_MANAGEMENT_PRO_LABEL,
 } from './productNames.ts';
 
 export type SoonProduct = 'coach' | 'pro';
@@ -33,6 +30,13 @@ export type ComingSoonAdCopy = {
 /** Locked-card gold label. Same wording on Coach and Pro / Console. */
 export const COMING_SOON_LABEL = 'Coming Soon';
 
+/** Caption on the Coach Coming Soon shot of the unlocked Coach home. */
+export const COACH_PREVIEW_LABEL = 'Advantage Coach';
+
+/** One line under that shot. The picture is the live Coach button list. */
+export const COACH_PREVIEW_NOTE =
+  'Daily Lesson Plan, training videos, Technique Tree, mock brackets, and a roster.';
+
 /** Caption on the Pro Coming Soon shot of the unlocked console home. */
 export const PRO_CONSOLE_PREVIEW_LABEL = "Gym Owner and Instructor's Console";
 
@@ -51,7 +55,7 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
   coach: {
     title: 'Advantage Coach',
     kicker: COMING_SOON_LABEL,
-    lead: COACH_AD_LEAD,
+    lead: '',
     features: [
       {
         title: TRAINING_NOTES_LABEL,
@@ -79,23 +83,23 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
   pro: {
     title: 'Advantage Pro',
     kicker: COMING_SOON_LABEL,
-    lead: `${PRO_HOME_DETAIL}. ${PRO_COMING_SOON_LINES.join(' ')}`,
+    lead: '',
     features: [
       {
         title: MEDIA_CONSOLE_NAME,
         body: 'Gallery, Class Schedule, Pro Shop, and Events on the gym TV.',
       },
       {
-        title: COMPETITOR_SYSTEM_NAME,
-        body: 'Competitor roster and on-device rankings. Seeding from rankings comes later.',
+        title: INSTRUCTOR_COACH_ENTRY,
+        body: 'Instructors share class plans, technique trees, and training videos with you.',
       },
       {
         title: INSTRUCTOR_COLLAB_NAME,
         body: 'Coming soon. An Instructor console, shared training, and roster approval with the owner.',
       },
       {
-        title: TOURNAMENT_SUITE_NAME,
-        body: 'Live event ops: brackets, scoreboard, match controller, rounds, and round controller.',
+        title: COMPETITION_MANAGEMENT_PRO_LABEL,
+        body: 'Brackets, the scoreboard controller, and the round timer for an in-house event.',
       },
     ],
     dismiss: 'Got it',

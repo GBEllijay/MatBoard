@@ -1,12 +1,17 @@
+import { DEFAULT_CARLOS_PREFS, parseCarlosPrefs, type CarlosCelebrationPrefs } from './carlosCelebration';
 import { clamp, minutesToMs, secondsToMs } from './format';
+import { DEFAULT_SCOREBOARD_SKIN, parseScoreboardSkin, type ScoreboardSkinId } from './scoreboardSkin';
 import {
+  ensureAudioRunning,
   getAudioPrefs,
+  isAudioRunning,
   parseEndCue,
   playSelectedEndCue,
   playStartCue,
   playWarningCue,
   type EndCue,
 } from './audio';
+import { endCueClaimId, playOnceAcrossTabs } from './matchCueOnce';
 import {
   autoPointsOutcome,
   decideClockEnd,
@@ -14,7 +19,13 @@ import {
   type MatchOutcome,
   type Side,
 } from './outcomes';
-import { isBracketMatchId, scoreboardSideToBracket, setMatchOutcome } from './tournamentStore';
+import {
+  isBracketMatchId,
+  rememberEmptyBoutNames,
+  sanitizeBoutPoints,
+  scoreboardSideToBracket,
+  setMatchOutcome,
+} from './tournamentStore';
 
 export type { MatchOutcome, Side };
 export type ScoreKind = 'points' | 'advantages' | 'disadvantages';
@@ -59,6 +70,10 @@ export type MatchState = {
    * Gym default on; persist with the match.
    */
   autoAnnounce: boolean;
+  /** Mock-Tournament or Old School. Travels with the match so Display follows the controller. */
+  skin: ScoreboardSkinId;
+  /** Optional Master Carlos on the scoreboard. Off until the controller turns it on. */
+  carlos: CarlosCelebrationPrefs;
   /** Last Win (Submission / Points / Decision) or DQ (Technical / Medical). Survives reload; flash does not. */
   outcome: MatchOutcome | null;
   /** Brief center splash; not restored after reload. */
@@ -83,6 +98,8 @@ export type MatchAction =
   | { type: 'setEndCue'; value: EndCue }
   | { type: 'setBracketMatchId'; value: string | null }
   | { type: 'setAutoAnnounce'; value: boolean }
+  | { type: 'setSkin'; value: ScoreboardSkinId }
+  | { type: 'setCarlos'; value: Partial<CarlosCelebrationPrefs> }
   | { type: 'setOutcomeFlash'; value: OutcomeFlash | null }
   | {
       type: 'loadBracketBout';
@@ -101,7 +118,7 @@ const STORAGE_KEY = 'matboard.match.v1';
 const CHANNEL_NAME = 'matboard-match-v1';
 export const TIME_PRESETS_MIN = [3, 5, 10] as const;
 export const CLOCK_NUDGES_SEC = [-5, -1, 1, 5] as const;
-/** Optional Match 10-second warning; off by default (IBJJF does not use one). */
+/** Optional Match 10-second warning; off by default (match rules do not use one). */
 export const MATCH_WARNING_MS = 10_000;
 /** Existing custom duration ceiling (180 minutes). */
 export const MAX_REMAINING_MS = minutesToMs(180);
@@ -152,6 +169,8 @@ export function defaultMatch(): MatchState {
     endCue: getAudioPrefs().endCue,
     bracketMatchId: null,
     autoAnnounce: true,
+    skin: DEFAULT_SCOREBOARD_SKIN,
+    carlos: { ...DEFAULT_CARLOS_PREFS },
     outcome: null,
     outcomeFlash: null,
     revision: 1,
@@ -162,7 +181,9 @@ function loadState(): MatchState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultMatch();
-    const parsed = JSON.parse(raw) as Partial<MatchState>;
+    const stored = JSON.parse(raw) as Partial<MatchState> & { padHeaders?: unknown };
+    const parsed: Partial<MatchState> = { ...stored };
+    delete (parsed as { padHeaders?: unknown }).padHeaders;
     const base = defaultMatch();
     return {
       ...base,
@@ -184,6 +205,8 @@ function loadState(): MatchState {
       endCue: parsed.endCue != null ? parseEndCue(parsed.endCue) : getAudioPrefs().endCue,
       bracketMatchId: typeof parsed.bracketMatchId === 'string' ? parsed.bracketMatchId : null,
       autoAnnounce: parsed.autoAnnounce !== false,
+      skin: parseScoreboardSkin(parsed.skin),
+      carlos: parseCarlosPrefs(parsed.carlos),
       outcome: parseMatchOutcome(parsed.outcome),
       outcomeFlash: null,
       revision: Number(parsed.revision ?? 1),
@@ -194,11 +217,16 @@ function loadState(): MatchState {
 }
 
 function clone(s: MatchState): MatchState {
-  return {
+  const incoming = s as MatchState & { padHeaders?: unknown; skin?: unknown; carlos?: unknown };
+  const next: MatchState = {
     ...s,
     blue: { ...s.blue },
     white: { ...s.white },
+    skin: incoming.skin == null ? state.skin : parseScoreboardSkin(incoming.skin),
+    carlos: incoming.carlos == null ? { ...state.carlos } : parseCarlosPrefs(incoming.carlos),
   };
+  delete (next as { padHeaders?: unknown }).padHeaders;
+  return next;
 }
 
 export function remainingNow(
@@ -282,11 +310,14 @@ function maybeWriteAutoBracket(prev: MatchState, next: MatchState): void {
     return;
   }
   if (!isBracketMatchId(next.bracketMatchId)) return;
+  rememberEmptyBoutNames(next.bracketMatchId, { a: next.blue.name, b: next.white.name });
+  const winnerPoints = outcome.side === 'blue' ? next.blue.points : next.white.points;
+  const loserPoints = outcome.side === 'blue' ? next.white.points : next.blue.points;
   setMatchOutcome(
     next.bracketMatchId,
     scoreboardSideToBracket(outcome.side),
     { call: 'win', method: outcome.method, scoreReason: outcome.scoreReason },
-    { toggle: false },
+    { toggle: false, points: sanitizeBoutPoints(winnerPoints, loserPoints) },
   );
 }
 
@@ -401,6 +432,16 @@ function applyAction(current: MatchState, action: MatchAction): MatchState {
       );
     case 'setAutoAnnounce':
       return bumpRevision({ ...current, autoAnnounce: action.value });
+    case 'setSkin': {
+      const skin = parseScoreboardSkin(action.value);
+      if (skin === current.skin) return current;
+      return bumpRevision({ ...current, skin });
+    }
+    case 'setCarlos':
+      return bumpRevision({
+        ...current,
+        carlos: parseCarlosPrefs({ ...current.carlos, ...action.value }),
+      });
     case 'setOutcomeFlash':
       return bumpRevision({ ...current, outcomeFlash: action.value });
     case 'loadBracketBout':
@@ -466,7 +507,12 @@ function maybeMatchCues(prev: MatchState, next: MatchState): void {
   if (!(prev.running && !next.running && next.remainingMs === 0 && next.endBuzzer)) return;
   if (buzzedRevision === next.revision) return;
   buzzedRevision = next.revision;
-  playSelectedEndCue('match', next.endCue);
+  const cue = next.endCue;
+  // Winner splash and the end cue share this transition. Both Match windows
+  // observe it; claim once so the popup sound is a single copy, not two stacked.
+  void playOnceAcrossTabs(endCueClaimId(next.revision), isAudioRunning, ensureAudioRunning, () => {
+    playSelectedEndCue('match', cue);
+  });
 }
 
 export function dispatchMatch(action: MatchAction): void {

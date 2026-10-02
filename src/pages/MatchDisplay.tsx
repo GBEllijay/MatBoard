@@ -1,10 +1,10 @@
 import { useCallback, useState, type MouseEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { BeltRail } from '../components/BeltRail';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { OutcomeSplash } from '../components/OutcomeSplash';
 import { TvTip } from '../components/TvTip';
 import { RankChip } from '../components/RankChip';
+import { CarlosCheer } from '../components/CarlosCheer';
 import { ScoreBox } from '../components/ScoreBox';
 import { useBoutQuerySync, useBracketOutcomeReturn } from '../hooks/useBracketBoutReturn';
 import { useInterval } from '../hooks/useClock';
@@ -20,6 +20,13 @@ import { competitorFocus, type DisplayFocus } from '../lib/matchFocus';
 import { dispatchMatch, expireMatchClock, remainingNow, type Side } from '../lib/matchStore';
 import { needsRefDecision } from '../lib/outcomes';
 import { formatMmSs } from '../lib/format';
+import { carlosMatchComplete, matchCarlosView } from '../lib/carlosCelebration';
+import {
+  SCOREBOARD_SKIN,
+  isPlainWhiteScoreboard,
+  scoreboardSkinClass,
+  visibleScoreboardSkin,
+} from '../lib/scoreboardSkin';
 
 export function MatchDisplayPage() {
   const match = useMatchState();
@@ -71,10 +78,47 @@ export function MatchDisplayPage() {
   const roundLine = roundDisplay(match.round, Boolean(linkedId));
   const clockStatus = match.running ? 'Running' : remaining <= 0 ? 'Ended' : 'Paused';
   const clockStatusAction = match.running ? 'Pause match clock' : remaining <= 0 ? 'Restart match clock' : 'Start match clock';
+  const plainWhite = isPlainWhiteScoreboard(suite.fromSuite, Boolean(linkedId));
+  const skin = visibleScoreboardSkin(match.skin, suite.fromSuite, Boolean(linkedId));
+  const flap = skin === SCOREBOARD_SKIN.OLD_SCHOOL;
+  const carlos = plainWhite
+    ? { show: false, lines: [] as string[] }
+    : matchCarlosView({
+        prefs: match.carlos,
+        outcome: match.outcome,
+        blueName: match.blue.name,
+        whiteName: match.white.name,
+        bluePoints: match.blue.points,
+        whitePoints: match.white.points,
+        matchComplete: carlosMatchComplete({
+          running: match.running,
+          remainingMs: remaining,
+          outcome: match.outcome,
+        }),
+      });
+
+  const clockControl = (
+    <button type="button" className="clock-btn" onClick={toggleClock} aria-label="Start or pause match clock">
+      {formatMmSs(remaining)}
+    </button>
+  );
+  const statusControl = refNeeded ? (
+    <button
+      type="button"
+      className="display__clock-hint display__clock-hint--ref"
+      onClick={() => openController('outcome')}
+    >
+      Referee decision
+    </button>
+  ) : (
+    <button type="button" className="display__clock-hint" onClick={toggleClock} aria-label={clockStatusAction}>
+      {clockStatus}
+    </button>
+  );
 
   return (
     <main
-      className={`display${linkedId ? ' display--linked' : ''}${splash ? ' display--splash' : ''}${
+      className={`display ${scoreboardSkinClass(skin)}${linkedId ? ' display--linked' : ''}${splash ? ' display--splash' : ''}${
         suite.fromSuite ? ' origin-suite' : ''
       }${fs.className ? ` ${fs.className}` : ''}`}
       onPointerDown={() => {
@@ -82,7 +126,6 @@ export function MatchDisplayPage() {
       }}
       onClick={onBoardClick}
     >
-      {suite.fromSuite ? <BeltRail kind="tournament" /> : null}
       <div className="display__chrome">
         <div className="display__chrome-start">
           {linkedId ? (
@@ -123,10 +166,12 @@ export function MatchDisplayPage() {
         disadvantages={match.blue.disadvantages}
         fallbackName="Competitor 1"
         linked={Boolean(linkedId)}
+        flap={flap}
         onOpenController={openController}
       />
 
-      <section className="display__mid">
+      <section className={`display__mid${flap ? ' display__mid--stack' : ''}`}>
+        {flap ? clockControl : null}
         <div className="display__meta">
           {roundLine ? (
             <ControllerFocusLink focus="round" label="Edit round on Controller" onOpen={openController}>
@@ -137,22 +182,8 @@ export function MatchDisplayPage() {
             {match.division || 'Open'}
           </ControllerFocusLink>
         </div>
-        <button type="button" className="clock-btn" onClick={toggleClock} aria-label="Start or pause match clock">
-          {formatMmSs(remaining)}
-        </button>
-        {refNeeded ? (
-          <button
-            type="button"
-            className="display__clock-hint display__clock-hint--ref"
-            onClick={() => openController('outcome')}
-          >
-            Referee decision
-          </button>
-        ) : (
-          <button type="button" className="display__clock-hint" onClick={toggleClock} aria-label={clockStatusAction}>
-            {clockStatus}
-          </button>
-        )}
+        {flap ? null : clockControl}
+        {statusControl}
       </section>
 
       <CompetitorBand
@@ -165,10 +196,12 @@ export function MatchDisplayPage() {
         disadvantages={match.white.disadvantages}
         fallbackName="Competitor 2"
         linked={Boolean(linkedId)}
+        flap={flap}
         onOpenController={openController}
       />
 
       {splash ? <OutcomeSplash outcome={splash} name={splashName} /> : null}
+      {carlos.show ? <CarlosCheer lines={carlos.lines} board /> : null}
     </main>
   );
 }
@@ -183,6 +216,7 @@ function CompetitorBand({
   disadvantages,
   fallbackName,
   linked,
+  flap,
   onOpenController,
 }: {
   side: Side;
@@ -194,6 +228,7 @@ function CompetitorBand({
   disadvantages: number;
   fallbackName: string;
   linked: boolean;
+  flap: boolean;
   onOpenController: (focus?: DisplayFocus) => void;
 }) {
   const label = side === 'blue' ? 'Blue' : 'White';
@@ -222,9 +257,9 @@ function CompetitorBand({
         </p>
       </div>
       <div className="bout__scores">
-        <ScoreBox side={side} kind="points" value={points} />
-        <ScoreBox side={side} kind="advantages" value={advantages} />
-        <ScoreBox side={side} kind="disadvantages" value={disadvantages} />
+        <ScoreBox side={side} kind="points" value={points} flap={flap} />
+        <ScoreBox side={side} kind="advantages" value={advantages} flap={flap} />
+        <ScoreBox side={side} kind="disadvantages" value={disadvantages} flap={flap} />
       </div>
     </section>
   );

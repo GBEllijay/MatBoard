@@ -1,23 +1,70 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { ClassPhotoPromotions } from '../components/ClassPhotoPromotions';
+import { CoachPlanExport } from '../components/CoachPlanExport';
+import { CollaborationGate, SeatSessionBar, useCurrentSeat } from '../components/SeatSessionBar';
 import { LessonMediaRail } from '../components/LessonMediaRail';
+import { OpenMyDrive } from '../components/OpenMyDrive';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { useCoachPageSwipe } from '../hooks/useCoachSwipe';
+import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useToolboxParent } from '../hooks/useToolboxParent';
-import { NOTES_LEAD, TRAINING_NOTES_LABEL } from '../lib/coachCopy';
+import {
+  COACH_LESSON_EYEBROW,
+  NOTES_LEAD,
+  TRAINING_NOTES_LABEL,
+  UNLIMITED_SHARE_LEAD,
+  coachLessonGalleryDownload,
+} from '../lib/coachCopy';
+import {
+  DOWNLOAD_TODAY_LABEL,
+  downloadGalleryVideos,
+  galleryVideoDownloadName,
+  galleryVideosForDay,
+  saveBlobDownload,
+} from '../lib/galleryDay';
+import {
+  downloadDriveFile,
+  loadTodayDriveVideos,
+  requestDriveToken,
+  todayDownloadCopy,
+  type DriveDayVideo,
+  type TodayDriveStatus,
+} from '../lib/googleDrive';
 import {
   lessonSlotOffersVideo,
   matchLessonTree,
   parallelVideoSlot,
   techniqueTreeLaunchPath,
-  techniquesLaunchPath,
+  techniquesFocusPath,
   type LessonSlotRef,
   type LessonTreeCandidate,
 } from '../lib/lessonLinks';
+import {
+  OPEN_DRIVE_CLASS_LABEL,
+  restoreNoticeFromState,
+  restoredDayKey,
+} from '../lib/lessonRestore';
+import {
+  DISTRIBUTE_BUTTON,
+  DISTRIBUTE_DONE,
+  DISTRIBUTE_LEAD,
+  flushLessonDriveDraft,
+  getDriveNotice,
+  markLessonDistribution,
+  mediaRefsFromVideoPlan,
+  scheduleLessonDriveDraft,
+  subscribeDriveNotice,
+} from '../lib/lessonDrive';
+import { seatPermissionAllows, visibleCoachControl } from '../lib/instructorSeats';
+import { COACH_UNLIMITED_PATH, INSTRUCTOR_COACH_ENTRY, UNLIMITED_LESSON_VALUE } from '../lib/productNames';
+import { listPhotos } from '../lib/photoStore';
 import { loadTechniqueBoard } from '../lib/techniqueStore';
 import type { VideoPlan } from '../lib/techniqueLogic';
 import { loadTechniqueArchive, type TechniqueTreeArchive } from '../lib/techniqueTreeStore';
 import {
+  CLASS_DESIGNATION_MAX,
+  CLASS_TIME_MAX,
   CLOSING_MAX,
   COACH_NAME_MAX,
   COOLDOWN_NOTE_MAX,
@@ -30,14 +77,19 @@ import {
   TECHNIQUE_TITLE_MAX,
   WARMUP_NOTE_MAX,
   addTechnique,
+  classBrowseFolders,
+  classPlanRowLabel,
   copyPlan,
   emptyPlan,
+  findPlanById,
   loadTrainingArchive,
   localDateKey,
   planDayStamp,
   planDayTitle,
   planHasContent,
-  recentDateKeys,
+  planListLabel,
+  plansOnDay,
+  removeDayPlan,
   removeTechnique,
   saveDay,
   shiftDateKey,
@@ -50,6 +102,26 @@ type TodayVideos = {
   plan: VideoPlan;
   urls: Record<string, string>;
 };
+
+type GalleryVideo = {
+  id: string;
+  label: string;
+  mime: string;
+  addedAt: number;
+  blob: Blob;
+};
+
+type GalleryTodayState = {
+  status: 'loading' | 'ready' | 'error';
+  videos: GalleryVideo[];
+};
+
+type DriveTodayState = {
+  status: TodayDriveStatus;
+  videos: DriveDayVideo[];
+};
+
+const idleDriveNotice = { phase: 'idle' as const, text: '' };
 
 function videoOffer(
   videos: TodayVideos | null,
@@ -70,19 +142,43 @@ function videoOffer(
 export function TrainingNotesPage() {
   const navigate = useNavigate();
   const parent = useToolboxParent();
+  const proUnlocked = useProUnlocked();
+  const [searchParams] = useSearchParams();
+  /**
+   * Limited Coach is `/notes`. Unlimited is the same page with `plan=unlimited`
+   * and Pro on. A Coach-only browser cannot turn Unlimited on with the query.
+   */
+  const unlimitedPlan = proUnlocked && searchParams.get('plan') === UNLIMITED_LESSON_VALUE;
+  const driveRestoreNotice = restoreNoticeFromState(useLocation().state);
+  const seat = useCurrentSeat();
+  const showDownload = visibleCoachControl('downloadTodaysVideos', { owner: true, seat });
+  const showDistribute =
+    unlimitedPlan && visibleCoachControl('uploadForDistribution', { owner: true, seat });
+  const lessonBlocked = seat !== null && !seatPermissionAllows(seat.permissions, 'dailyLessonPlanAccess');
   useCoachPageSwipe();
   const [boot] = useState(() => {
     const today = localDateKey();
     const archive = loadTrainingArchive(today);
-    return { today, archive, plan: archive.days[today] ?? emptyPlan() };
+    const viewKey = restoredDayKey(searchParams.get('date'), today, (dateKey) => plansOnDay(archive, dateKey).length > 0);
+    return { today, archive, viewKey, plan: plansOnDay(archive, viewKey)[0] ?? emptyPlan() };
   });
   const [todayKey, setTodayKey] = useState(boot.today);
   const [archive, setArchive] = useState<TrainingNotesArchive>(boot.archive);
-  const [viewKey, setViewKey] = useState(boot.today);
+  const [viewKey, setViewKey] = useState(boot.viewKey);
   const [plan, setPlan] = useState<TrainingNotesPlan>(boot.plan);
-  const [recentOpen, setRecentOpen] = useState(false);
-  const [confirmKey, setConfirmKey] = useState<string | null>(null);
+  const [classesOpen, setClassesOpen] = useState(false);
+  const [folderKey, setFolderKey] = useState<string | null>(null);
+  const [confirmPlanId, setConfirmPlanId] = useState<string | null>(null);
+  const [removeArmed, setRemoveArmed] = useState(false);
   const [videos, setVideos] = useState<TodayVideos | null>(null);
+  const [galleryToday, setGalleryToday] = useState<GalleryTodayState>({ status: 'loading', videos: [] });
+  const [driveToday, setDriveToday] = useState<DriveTodayState>({
+    status: unlimitedPlan ? 'loading' : 'skipped',
+    videos: [],
+  });
+  const [downloadNote, setDownloadNote] = useState('');
+  const [distributeNote, setDistributeNote] = useState('');
+  const driveNotice = useSyncExternalStore(subscribeDriveNotice, getDriveNotice, () => idleDriveNotice);
   const [treeArchive, setTreeArchive] = useState<TechniqueTreeArchive>(() => loadTechniqueArchive());
 
   useEffect(() => {
@@ -93,9 +189,11 @@ export function TrainingNotesPage() {
         const loaded = loadTrainingArchive(next);
         setArchive(loaded);
         setViewKey(next);
-        setPlan(loaded.days[next] ?? emptyPlan());
-        setConfirmKey(null);
-        setRecentOpen(false);
+        setPlan(plansOnDay(loaded, next)[0] ?? emptyPlan());
+        setConfirmPlanId(null);
+        setRemoveArmed(false);
+        setClassesOpen(false);
+        setFolderKey(null);
         return next;
       });
     };
@@ -145,6 +243,74 @@ export function TrainingNotesPage() {
     };
   }, [todayKey]);
 
+  useEffect(() => {
+    if (!unlimitedPlan) {
+      setGalleryToday({ status: 'ready', videos: [] });
+      return;
+    }
+    let cancelled = false;
+    const load = () => {
+      void listPhotos('gallery')
+        .then((rows) => {
+          if (cancelled) return;
+          setGalleryToday({ status: 'ready', videos: galleryVideosForDay(rows, todayKey) });
+        })
+        .catch(() => {
+          if (!cancelled) setGalleryToday({ status: 'error', videos: [] });
+        });
+    };
+    load();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') load();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [todayKey, unlimitedPlan]);
+
+  useEffect(() => {
+    if (!unlimitedPlan) {
+      setDriveToday({ status: 'skipped', videos: [] });
+      return;
+    }
+    let cancelled = false;
+    setDriveToday({ status: 'loading', videos: [] });
+    const load = () => {
+      void loadTodayDriveVideos(todayKey)
+        .then((result) => {
+          if (!cancelled) setDriveToday(result);
+        })
+        .catch(() => {
+          if (!cancelled) setDriveToday({ status: 'error', videos: [] });
+        });
+    };
+    load();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') load();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [todayKey, unlimitedPlan]);
+
+  useEffect(() => {
+    const flush = () => flushLessonDriveDraft();
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') flush();
+    };
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', onHide);
+    return () => {
+      flush();
+      window.removeEventListener('pagehide', flush);
+      document.removeEventListener('visibilitychange', onHide);
+    };
+  }, []);
+
   const treeCandidates = useMemo<LessonTreeCandidate[]>(
     () =>
       treeArchive.trees.map((tree) => ({
@@ -168,44 +334,95 @@ export function TrainingNotesPage() {
 
   const editingToday = viewKey === todayKey;
   const yesterdayKey = shiftDateKey(todayKey, -1);
-  const recent = recentDateKeys(archive, todayKey);
-  const sourceKey = editingToday ? yesterdayKey : viewKey;
-  const sourcePlan = archive.days[sourceKey];
-  const canCopy = Boolean(sourcePlan && planHasContent(sourcePlan) && sourceKey !== todayKey);
+  const classFolders = useMemo(() => classBrowseFolders(archive, todayKey), [archive, todayKey]);
+  const openFolder =
+    folderKey !== null ? (classFolders.find((folder) => folder.key === folderKey) ?? null) : null;
+  const savedPlans = plansOnDay(archive, viewKey);
+  const currentSaved = savedPlans.some((item) => item.id === plan.id);
+  const classPlans =
+    currentSaved || !editingToday ? savedPlans : savedPlans.length === 0 ? [plan] : [...savedPlans, plan];
+  const yesterdayPlans = plansOnDay(archive, yesterdayKey).filter(planHasContent);
+  const copyTargets = editingToday ? yesterdayPlans : planHasContent(plan) ? [plan] : [];
+  const todayHasContent =
+    plansOnDay(archive, todayKey).some(planHasContent) || (editingToday && planHasContent(plan));
+  const confirmPlan = confirmPlanId ? findPlanById(archive, confirmPlanId) : null;
 
-  const commit = (next: TrainingNotesPlan) => {
-    if (!editingToday) return;
+  const persistToday = (next: TrainingNotesPlan) => {
     const saved = saveDay(todayKey, next, todayKey);
     setArchive(saved.archive);
     setPlan(saved.plan);
+    // Local text is already stored. Unlimited queues a Drive draft (text + file ids).
+    // Limited Coach skips the queue. Either way, leaving the page does not drop the plan.
+    // A previous day is opened from Class History, which reads the gym Drive folder.
+    scheduleLessonDriveDraft({
+      proSuite: unlimitedPlan,
+      dateKey: todayKey,
+      coachName: saved.plan.coachName,
+      plan: saved.plan,
+      media: videos ? mediaRefsFromVideoPlan(videos.plan) : [],
+    });
+    return saved;
+  };
+
+  const commit = (next: TrainingNotesPlan) => {
+    if (!editingToday) return;
+    persistToday(next);
   };
 
   const openDay = (key: string) => {
     setViewKey(key);
-    setConfirmKey(null);
-    setRecentOpen(false);
-    setPlan(archive.days[key] ?? emptyPlan());
+    setConfirmPlanId(null);
+    setRemoveArmed(false);
+    setClassesOpen(false);
+    setFolderKey(null);
+    setPlan(plansOnDay(archive, key)[0] ?? emptyPlan());
   };
 
-  const applyCopy = (key: string) => {
-    const source = archive.days[key];
-    if (!source || !planHasContent(source)) return;
-    const saved = saveDay(todayKey, copyPlan(source), todayKey);
-    setArchive(saved.archive);
-    setPlan(saved.plan);
+  const openSavedPlan = (dateKey: string, next: TrainingNotesPlan) => {
+    setViewKey(dateKey);
+    setPlan(next);
+    setConfirmPlanId(null);
+    setRemoveArmed(false);
+    setClassesOpen(false);
+    setFolderKey(null);
+  };
+
+  const applyCopy = (source: TrainingNotesPlan) => {
+    if (!planHasContent(source)) return;
+    persistToday(copyPlan(source));
     setViewKey(todayKey);
-    setConfirmKey(null);
-    setRecentOpen(false);
+    setConfirmPlanId(null);
+    setRemoveArmed(false);
+    setClassesOpen(false);
+    setFolderKey(null);
   };
 
-  const requestCopy = () => {
-    if (!canCopy) return;
-    const todayPlan = editingToday ? plan : (archive.days[todayKey] ?? emptyPlan());
-    if (planHasContent(todayPlan)) {
-      setConfirmKey(sourceKey);
+  const requestCopy = (source: TrainingNotesPlan) => {
+    if (!planHasContent(source)) return;
+    if (todayHasContent) {
+      setConfirmPlanId(source.id);
+      setRemoveArmed(false);
       return;
     }
-    applyCopy(sourceKey);
+    applyCopy(source);
+  };
+
+  const addClassPlan = () => {
+    if (!editingToday || !planHasContent(plan)) return;
+    setPlan(emptyPlan());
+    setConfirmPlanId(null);
+    setRemoveArmed(false);
+    setViewKey(todayKey);
+  };
+
+  const removeClassPlan = () => {
+    if (!editingToday) return;
+    const nextArchive = removeDayPlan(todayKey, plan.id, todayKey);
+    setArchive(nextArchive);
+    const remaining = plansOnDay(nextArchive, todayKey);
+    setPlan(remaining[0] ?? emptyPlan());
+    setRemoveArmed(false);
+    setConfirmPlanId(null);
   };
 
   const patchTechnique = (id: string, patch: Partial<TechniqueBlock>) => {
@@ -216,12 +433,59 @@ export function TrainingNotesPage() {
   };
 
   const atMax = plan.techniques.length >= MAX_TECHNIQUES;
-  const copyLabel = editingToday ? 'Copy yesterday' : 'Copy into today';
+  const canRemoveClass = editingToday && (planHasContent(plan) || classPlans.length > 1);
 
   const openVideo = (ref: LessonSlotRef) => {
     const offer = videoOffer(videos, ref);
-    if (!offer.slotId || !offer.clipUrl) return;
-    navigate(techniquesLaunchPath(offer.slotId));
+    if (!offer.show) return;
+    navigate(
+      techniquesFocusPath({
+        section: ref.role,
+        date: todayKey,
+        slotId: offer.slotId,
+        index: ref.role === 'technique' ? ref.index : undefined,
+      }),
+    );
+  };
+
+  const galleryCount = galleryToday.status === 'ready' ? galleryToday.videos.length : 0;
+  const driveCount = driveToday.status === 'ready' ? driveToday.videos.length : 0;
+  const galleryCopy = todayDownloadCopy({
+    galleryStatus: galleryToday.status,
+    galleryCount,
+    driveStatus: driveToday.status,
+    driveCount,
+  });
+  const canDownloadToday = galleryCount + driveCount > 0;
+  const downloadBusy = galleryToday.status === 'loading' || driveToday.status === 'loading';
+
+  const downloadToday = async () => {
+    if (!canDownloadToday) return;
+    setDownloadNote('');
+    let index = 0;
+    if (galleryCount) {
+      await downloadGalleryVideos(galleryToday.videos);
+      index = galleryToday.videos.length;
+    }
+    if (!driveCount) return;
+    try {
+      const token = await requestDriveToken('silent');
+      if (!token) {
+        setDownloadNote('Sign in to Google Drive again to download those videos. The gallery copies already saved.');
+        return;
+      }
+      for (const video of driveToday.videos) {
+        const blob = await downloadDriveFile(token, video.id);
+        saveBlobDownload(galleryVideoDownloadName(video.label, video.mime, index), blob);
+        index += 1;
+      }
+    } catch (reason) {
+      setDownloadNote(
+        reason instanceof Error
+          ? reason.message
+          : 'A Google Drive video could not be downloaded. Gallery copies already saved stay on this phone.',
+      );
+    }
   };
 
   const sectionMedia = (ref: LessonSlotRef, label: string, tech?: TechniqueBlock) => {
@@ -250,20 +514,42 @@ export function TrainingNotesPage() {
   return (
     <main className="notes">
       <PlayExitMark
-        to={parent.path}
+        to={unlimitedPlan ? COACH_UNLIMITED_PATH : parent.path}
         onExit={() => {
-          navigate(parent.path);
+          navigate(unlimitedPlan ? COACH_UNLIMITED_PATH : parent.path);
         }}
       />
       <header className="notes__bar">
         <div className="notes__brand">
-          <p className="notes__eyebrow">{parent.eyebrow}</p>
+          <p className="notes__eyebrow">{unlimitedPlan ? INSTRUCTOR_COACH_ENTRY : COACH_LESSON_EYEBROW}</p>
           <h1>{TRAINING_NOTES_LABEL}</h1>
         </div>
       </header>
-      <p className="notes__lead">{NOTES_LEAD}</p>
+      <SeatSessionBar />
+      {unlimitedPlan ? <p className="notes__lead">{UNLIMITED_SHARE_LEAD}</p> : null}
+      {unlimitedPlan ? <p className="notes__lead">{NOTES_LEAD}</p> : null}
+      {lessonBlocked ? (
+        <p className="notes__lead">This seat does not include the daily lesson plan.</p>
+      ) : null}
+      {unlimitedPlan && driveNotice.text ? (
+        <p className="notes__save" role="status">
+          {driveNotice.text}
+        </p>
+      ) : null}
+      {unlimitedPlan && driveRestoreNotice ? (
+        <p className="notes__save" role="status">
+          {driveRestoreNotice}
+        </p>
+      ) : null}
 
+      {lessonBlocked ? null : (
       <div className="notes__plan">
+        {unlimitedPlan ? null : <OpenMyDrive />}
+        {unlimitedPlan ? (
+          <Link className="btn btn--ghost notes__copy" to="/class-history">
+            {OPEN_DRIVE_CLASS_LABEL}
+          </Link>
+        ) : null}
         <section className="notes__archive" aria-label="Saved days">
           <div className="notes__days">
             <button
@@ -273,6 +559,7 @@ export function TrainingNotesPage() {
               onClick={() => openDay(todayKey)}
             >
               Today
+              {unlimitedPlan ? null : <span className="notes__day-date">{planDayStamp(todayKey)}</span>}
             </button>
             <button
               type="button"
@@ -284,77 +571,278 @@ export function TrainingNotesPage() {
             </button>
             <button
               type="button"
-              className={recentOpen ? 'notes__day notes__day--on' : 'notes__day'}
-              aria-expanded={recentOpen}
+              className={classesOpen ? 'notes__day notes__day--on' : 'notes__day'}
+              aria-expanded={classesOpen}
               onClick={() => {
-                setConfirmKey(null);
-                setRecentOpen((open) => !open);
+                setConfirmPlanId(null);
+                setRemoveArmed(false);
+                setClassesOpen((open) => {
+                  setFolderKey(null);
+                  return !open;
+                });
               }}
             >
-              Recent
+              Classes
             </button>
           </div>
           <p className="notes__when">
             {planDayTitle(viewKey, todayKey)} · {planDayStamp(viewKey)}
             {editingToday ? '' : ' · View only'}
           </p>
-          {recentOpen ? (
-            recent.length ? (
-              <ul className="notes__recent">
-                {recent.map((key) => {
-                  const title = planDayTitle(key, todayKey);
-                  const stamp = planDayStamp(key);
+          {unlimitedPlan ? null : <p className="notes__when">{NOTES_LEAD}</p>}
+          {unlimitedPlan ? null : (
+            <section className="notes__card">
+              <label className="notes__field" htmlFor="notes-coach">
+                Coach name
+                <input
+                  id="notes-coach"
+                  value={plan.coachName}
+                  maxLength={COACH_NAME_MAX}
+                  autoComplete="off"
+                  readOnly={!editingToday}
+                  onChange={(event) => commit({ ...plan, coachName: event.target.value })}
+                />
+              </label>
+            </section>
+          )}
+          {coachLessonGalleryDownload(unlimitedPlan) ? (
+          <CollaborationGate show={showDownload}>
+          <div className="notes__downloads">
+            <button
+              type="button"
+              className="btn notes__download"
+              disabled={!canDownloadToday}
+              aria-describedby="notes-gallery-status"
+              onClick={() => {
+                void downloadToday();
+              }}
+            >
+              {DOWNLOAD_TODAY_LABEL}
+            </button>
+            <OpenMyDrive />
+            <p
+              id="notes-gallery-status"
+              className={
+                canDownloadToday || downloadBusy
+                  ? 'notes__gallery-status'
+                  : 'notes__gallery-status notes__gallery-status--empty'
+              }
+              role="status"
+            >
+              {galleryCopy}
+            </p>
+            {downloadNote ? (
+              <p className="notes__gallery-status notes__gallery-status--empty" role="status">
+                {downloadNote}
+              </p>
+            ) : null}
+            {canDownloadToday ? (
+              <ul className="notes__gallery" aria-label="Videos available for today">
+                {galleryToday.videos.map((video) => (
+                  <li key={`gallery-${video.id}`}>{video.label}</li>
+                ))}
+                {driveToday.videos.map((video) => (
+                  <li key={`drive-${video.id}`}>{video.label}</li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+          </CollaborationGate>
+          ) : null}
+          {classesOpen ? (
+            openFolder ? (
+              <div className="notes__folders" aria-label={`${openFolder.label} dates`}>
+                <button
+                  type="button"
+                  className="btn btn--ghost notes__folder-back"
+                  onClick={() => setFolderKey(null)}
+                >
+                  All classes
+                </button>
+                <p className="notes__folder-title">{openFolder.label}</p>
+                <ul className="notes__recent">
+                  {openFolder.dates.map((day) => {
+                    const title = planDayTitle(day.dateKey, todayKey);
+                    const stamp = planDayStamp(day.dateKey);
+                    return (
+                      <li key={day.dateKey} className="notes__folder-day">
+                        <p className="notes__folder-date">
+                          {title}
+                          {title === stamp ? '' : ` · ${stamp}`}
+                        </p>
+                        <ul className="notes__recent">
+                          {day.plans.map((item) => (
+                            <li key={item.id}>
+                              <button
+                                type="button"
+                                className={
+                                  viewKey === day.dateKey && plan.id === item.id
+                                    ? 'notes__recent-btn notes__recent-btn--on'
+                                    : 'notes__recent-btn'
+                                }
+                                onClick={() => openSavedPlan(day.dateKey, item)}
+                              >
+                                {classPlanRowLabel(item)}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ) : classFolders.length ? (
+              <ul className="notes__recent" aria-label="Class folders">
+                {classFolders.map((folder) => {
+                  const days = folder.dates.length;
                   return (
-                    <li key={key}>
+                    <li key={folder.key || 'unlabeled'}>
                       <button
                         type="button"
-                        className={key === viewKey ? 'notes__recent-btn notes__recent-btn--on' : 'notes__recent-btn'}
-                        onClick={() => openDay(key)}
+                        className="notes__recent-btn"
+                        onClick={() => setFolderKey(folder.key)}
                       >
-                        <span>{title}</span>
-                        {title === stamp ? null : <span>{stamp}</span>}
+                        <span>{folder.label}</span>
+                        <span>{days === 1 ? '1 day' : `${days} days`}</span>
                       </button>
                     </li>
                   );
                 })}
               </ul>
             ) : (
-              <p className="notes__recent-empty">No saved days yet.</p>
+              <p className="notes__recent-empty">No saved classes yet.</p>
             )
           ) : null}
-          {canCopy && confirmKey ? (
-            <div className="notes__confirm" role="group" aria-label="Replace today's plan">
-              <p>Replace today's plan with {planDayTitle(confirmKey, todayKey)}?</p>
+          {confirmPlan ? (
+            <div className="notes__confirm" role="group" aria-label="Add class plan to today">
+              <p>Add {planListLabel(confirmPlan)} to today? Today's other class plans stay.</p>
               <div className="notes__confirm-actions">
-                <button type="button" className="btn btn--ghost" onClick={() => setConfirmKey(null)}>
+                <button type="button" className="btn btn--ghost" onClick={() => setConfirmPlanId(null)}>
                   Cancel
                 </button>
-                <button type="button" className="btn" onClick={() => applyCopy(confirmKey)}>
-                  Copy into today
+                <button type="button" className="btn" onClick={() => applyCopy(confirmPlan)}>
+                  Add to today
                 </button>
               </div>
             </div>
           ) : null}
-          {canCopy && !confirmKey ? (
-            <button type="button" className="btn notes__copy" onClick={requestCopy}>
-              {copyLabel}
-            </button>
-          ) : null}
+          {copyTargets.length && !confirmPlanId
+            ? copyTargets.map((source) => (
+                <button
+                  key={source.id}
+                  type="button"
+                  className="btn notes__copy"
+                  onClick={() => requestCopy(source)}
+                >
+                  {copyTargets.length === 1
+                    ? editingToday
+                      ? 'Copy yesterday'
+                      : 'Copy into today'
+                    : `Copy ${planListLabel(source)}`}
+                </button>
+              ))
+            : null}
           {!editingToday && !planHasContent(plan) ? (
             <p className="notes__recent-empty">No plan saved for this day.</p>
           ) : null}
         </section>
 
+        {classPlans.length > 1 || (editingToday && planHasContent(plan)) ? (
+          <section className="notes__classes" aria-label="Class plans">
+            {classPlans.length > 1 ? (
+              <ul className="notes__class-list">
+                {classPlans.map((item) => (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      className={item.id === plan.id ? 'notes__class-btn notes__class-btn--on' : 'notes__class-btn'}
+                      aria-pressed={item.id === plan.id}
+                      onClick={() => {
+                        setPlan(item);
+                        setConfirmPlanId(null);
+                        setRemoveArmed(false);
+                      }}
+                    >
+                      {planListLabel(item)}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {editingToday ? (
+              <div className="notes__class-actions">
+                <button
+                  type="button"
+                  className="btn notes__add"
+                  disabled={!planHasContent(plan)}
+                  onClick={addClassPlan}
+                >
+                  Add class plan
+                </button>
+                {canRemoveClass && removeArmed ? (
+                  <div className="notes__confirm" role="group" aria-label="Remove this class plan">
+                    <p>
+                      {classPlans.length > 1
+                        ? `Remove ${planListLabel(plan)}? Other class plans on this day stay.`
+                        : `Remove ${planListLabel(plan)}?`}
+                    </p>
+                    <div className="notes__confirm-actions">
+                      <button type="button" className="btn btn--ghost" onClick={() => setRemoveArmed(false)}>
+                        Cancel
+                      </button>
+                      <button type="button" className="btn" onClick={removeClassPlan}>
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+                {canRemoveClass && !removeArmed ? (
+                  <button type="button" className="btn btn--ghost notes__copy" onClick={() => setRemoveArmed(true)}>
+                    Remove this class plan
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </section>
+        ) : null}
+
         <section className="notes__card">
-          <label className="notes__field" htmlFor="notes-coach">
-            Coach name
+          {unlimitedPlan ? (
+            <label className="notes__field" htmlFor="notes-coach">
+              Coach name
+              <input
+                id="notes-coach"
+                value={plan.coachName}
+                maxLength={COACH_NAME_MAX}
+                autoComplete="off"
+                readOnly={!editingToday}
+                onChange={(event) => commit({ ...plan, coachName: event.target.value })}
+              />
+            </label>
+          ) : null}
+          <label className="notes__field" htmlFor="notes-class">
+            Class designation
             <input
-              id="notes-coach"
-              value={plan.coachName}
-              maxLength={COACH_NAME_MAX}
+              id="notes-class"
+              value={plan.classDesignation}
+              maxLength={CLASS_DESIGNATION_MAX}
+              placeholder="GB1"
               autoComplete="off"
               readOnly={!editingToday}
-              onChange={(event) => commit({ ...plan, coachName: event.target.value })}
+              onChange={(event) => commit({ ...plan, classDesignation: event.target.value })}
+            />
+          </label>
+          <label className="notes__field" htmlFor="notes-class-time">
+            Class time
+            <input
+              id="notes-class-time"
+              value={plan.classTime}
+              maxLength={CLASS_TIME_MAX}
+              placeholder="5:00 PM"
+              autoComplete="off"
+              readOnly={!editingToday}
+              onChange={(event) => commit({ ...plan, classTime: event.target.value })}
             />
           </label>
           <div className="notes__field">
@@ -453,7 +941,39 @@ export function TrainingNotesPage() {
             />
           </label>
         </section>
+
+        {!unlimitedPlan && editingToday ? <CoachPlanExport dateKey={todayKey} plan={plan} /> : null}
+        {showDistribute && editingToday ? (
+          <>
+            <aside className="notes__distribute" aria-label="Instructor distribution">
+              <p>{DISTRIBUTE_LEAD}</p>
+              <button
+                type="button"
+                className="btn btn--ghost notes__distribute-btn"
+                onClick={() => {
+                  const revision = markLessonDistribution({
+                    proSuite: true,
+                    dateKey: todayKey,
+                    coachName: plan.coachName,
+                    plan,
+                    media: videos ? mediaRefsFromVideoPlan(videos.plan) : [],
+                  });
+                  setDistributeNote(revision ? DISTRIBUTE_DONE : DISTRIBUTE_LEAD);
+                }}
+              >
+                {DISTRIBUTE_BUTTON}
+              </button>
+              {distributeNote ? (
+                <p className="notes__distribute-note" role="status">
+                  {distributeNote}
+                </p>
+              ) : null}
+            </aside>
+            <ClassPhotoPromotions dateKey={todayKey} />
+          </>
+        ) : null}
       </div>
+      )}
     </main>
   );
 }

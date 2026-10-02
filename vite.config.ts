@@ -1,9 +1,11 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { whitePurchaseApiPlugin } from './src/server/devApiPlugin.ts';
 
 export default defineConfig({
   plugins: [
+    whitePurchaseApiPlugin(),
     react(),
     VitePWA({
       registerType: 'autoUpdate',
@@ -43,6 +45,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,jpg,svg,woff2,webp,mp3}'],
         globIgnores: ['**/branding/**'],
         navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/api\//],
       },
     }),
   ],

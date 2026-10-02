@@ -18,8 +18,8 @@
  *
  * Activate capture / library with a `<label htmlFor>` — not `input.click()`
  * from a dialog that then unmounts. Keep extra gym-TV extensions out of
- * `accept`. Not getUserMedia — media stays on this phone. No Pro cloud /
- * Google Photos upload here.
+ * `accept`. Not getUserMedia — media stays on this phone. Pick from gallery
+ * still opens Google Photos. This module does not upload files to Google Photos.
  */
 
 /** HTML `accept` for library / gallery video picks. */
@@ -33,6 +33,13 @@ export const VIDEO_RECORD_ACCEPT = 'video/*';
 
 export const PHOTO_PICKER_ACCEPT = 'image/*';
 
+/**
+ * Library pick for a section that accepts a photo or a video.
+ * No `capture` on this input. A combined accept on a capture input makes
+ * Chrome Android skip the camera, so Take photo and Record stay separate.
+ */
+export const MEDIA_LIBRARY_ACCEPT = 'image/*,video/*';
+
 /** Rear camera when the platform honors `capture` (iOS Safari, Android Chrome). */
 export const VIDEO_CAPTURE = 'environment';
 
@@ -42,6 +49,25 @@ export const PHOTO_CAPTURE_LABEL = 'Take photo';
 
 export type MediaPickerMode = 'record' | 'library';
 export type MediaSourceKind = 'video' | 'photo';
+/** Gallery stays photo or video. Class photo / promotions offers both in one sheet. */
+export type MediaSheetKind = MediaSourceKind | 'photo-or-video';
+
+/**
+ * Some phones fire `cancel` just before or just after an empty `change` when
+ * the person dismisses the picker. A shared-album bug fires `change` with no
+ * files and no `cancel`. This window lets a real dismiss stay quiet.
+ */
+export const PICKER_CANCEL_GRACE_MS = 120;
+
+export function emptyChangeWasCancel(
+  cancelledAt: number,
+  changeAt: number,
+  now: number,
+  graceMs = PICKER_CANCEL_GRACE_MS,
+): boolean {
+  if (!cancelledAt) return false;
+  return cancelledAt >= changeAt - graceMs && cancelledAt <= now;
+}
 
 export function isVideoAccept(accept: string): boolean {
   return (
@@ -52,6 +78,7 @@ export function isVideoAccept(accept: string): boolean {
 }
 
 export function isImageAccept(accept: string): boolean {
+  if (accept.includes(',')) return false;
   return accept === PHOTO_PICKER_ACCEPT || accept.startsWith('image/');
 }
 

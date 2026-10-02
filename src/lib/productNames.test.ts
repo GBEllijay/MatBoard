@@ -14,17 +14,29 @@ import {
   PRO_HOME_DETAIL,
   PRO_HOME_LINES,
   PRO_LADDER_DETAIL,
-  COACH_HOME_LINES,
-  WHITE_HOME_LINES,
+  COACH_HOME_DESCRIPTION,
+  WHITE_HOME_DESCRIPTION,
   WHITE_LADDER_DETAIL,
   coachToolsOpen,
   parentToolboxPath,
+  COACH_UNLIMITED_PATH,
+  COACH_UNLIMITED_TOOLS,
   COMPETITOR_SYSTEM_NAME,
+  INSTRUCTOR_COLLAB_HUB_LABEL,
   INSTRUCTOR_COLLAB_NAME,
   INSTRUCTOR_COACH_ENTRY,
+  UNLIMITED_LESSON_PATH,
   MATCH_CONTROLLER_PATH,
   MEDIA_CONSOLE_INSTRUCTIONS,
   MEDIA_CONSOLE_NAME,
+  COACH_HUBS,
+  COMPETITION_MANAGEMENT_LABEL,
+  COMPETITION_MANAGEMENT_PRO_LABEL,
+  TOURNAMENT_MANAGEMENT_PRO_LABEL,
+  TOURNAMENT_MANAGEMENT_PRO_LEAD,
+  COMPETITION_MENU,
+  COMPETITION_MENU_PRO,
+  COMPETITION_PRO_MENU,
   PRO_HUBS,
   ROUND_CONTROLLER_PATH,
   TOURNAMENT_SOFTWARE_NAME,
@@ -46,17 +58,18 @@ test('Home motto stays Win by Advantage', () => {
 
 test('Home ladder details keep White meaning and a plain Pro subtitle', () => {
   assert.equal(WHITE_LADDER_DETAIL, 'BJJ scoreboard and timer, live match and rounds');
-  assert.equal(WHITE_HOME_LINES.length, 3);
-  assert.match(WHITE_HOME_LINES.join(' '), /Live Bout/);
-  assert.match(WHITE_HOME_LINES.join(' '), /Rounds timer/);
-  assert.equal(COACH_HOME_LINES.length, 3);
-  assert.match(COACH_HOME_LINES.join(' '), /Daily Lesson Plan/);
-  assert.match(COACH_HOME_LINES.join(' '), /Daily Training Videos/);
-  assert.match(COACH_HOME_LINES.join(' '), /Technique Tree/);
-  assert.match(COACH_HOME_LINES.join(' '), /Mock Tournament/);
-  assert.match(COACH_HOME_LINES.join(' '), /Competitor Roster/);
-  assert.doesNotMatch(WHITE_HOME_LINES.join(' '), /student/i);
-  assert.doesNotMatch(COACH_HOME_LINES.join(' '), /student/i);
+  assert.equal(
+    WHITE_HOME_DESCRIPTION,
+    'BJJ scoreboard and round timer for live matches and rounds. Display stays on the TV, the controller stays in your hand.',
+  );
+  assert.equal(
+    COACH_HOME_DESCRIPTION,
+    'Daily Lesson Planner with Expandable Technique Trees and Video Looper. Bracketing and Mock Tournament Tool with Competitor Roster.',
+  );
+  assert.doesNotMatch(WHITE_HOME_DESCRIPTION, /White —/);
+  assert.match(COACH_HOME_DESCRIPTION, /Technique Trees/);
+  assert.doesNotMatch(WHITE_HOME_DESCRIPTION, /student/i);
+  assert.doesNotMatch(COACH_HOME_DESCRIPTION, /student/i);
   assert.equal(PRO_LADDER_DETAIL, 'Gym Owner and Instructors Console');
   assert.doesNotMatch(PRO_LADDER_DETAIL, /for this gym/i);
   assert.doesNotMatch(PRO_LADDER_DETAIL, /'/);
@@ -71,6 +84,8 @@ test('Media Console is the Pro cast hub, with phone-readable instructions', () =
   assert.match(MEDIA_CONSOLE_INSTRUCTIONS.join('\n'), /CSV backup/);
   assert.match(MEDIA_CONSOLE_INSTRUCTIONS.join('\n'), /Events: add a photo/);
   assert.match(MEDIA_CONSOLE_INSTRUCTIONS.join('\n'), /Events display/);
+  assert.match(MEDIA_CONSOLE_INSTRUCTIONS.join('\n'), /Google Photos or this phone/);
+  assert.match(MEDIA_CONSOLE_INSTRUCTIONS.join('\n'), /Google Drive is an extra source/);
   assert.doesNotMatch(MEDIA_CONSOLE_INSTRUCTIONS.join('\n'), /coming soon/i);
   assert.doesNotMatch(MEDIA_CONSOLE_INSTRUCTIONS.join('\n'), /does not join the photo queue/);
   assert.doesNotMatch(MEDIA_CONSOLE_INSTRUCTIONS.join('\n'), /interval below/i);
@@ -84,27 +99,101 @@ test('Pro suite keeps the working title and Coach keeps Mock Tournament', () => 
   assert.doesNotMatch(TOURNAMENT_SUITE_NAME, /MatBracket/i);
 });
 
+test('Coach hub is four tools and Competition Team Management keeps the tournament belt', () => {
+  assert.equal(COMPETITION_MANAGEMENT_LABEL, 'Competition Team Management');
+  assert.deepEqual(
+    COACH_HUBS.map((hub) => hub.title),
+    ['Daily Lesson Plan', 'Daily Training Videos', 'Technique Tree', 'Competition Team Management'],
+  );
+  assert.deepEqual(
+    COACH_HUBS.map((hub) => hub.to),
+    ['/notes', '/techniques', '/technique-tree', '/competition'],
+  );
+  assert.equal(COACH_HUBS[3].belt, 'tournament');
+  assert.equal('belt' in COACH_HUBS[0], false);
+  assert.equal('belt' in COACH_HUBS[1], false);
+  assert.equal('belt' in COACH_HUBS[2], false);
+  assert.deepEqual(
+    COMPETITION_MENU.map((item) => item.title),
+    ['Competitor Management System', 'Mock Tournament'],
+  );
+  assert.deepEqual(
+    COMPETITION_MENU.map((item) => item.to),
+    ['/competitors', '/tournament'],
+  );
+  assert.ok(COMPETITION_MENU.findIndex((item) => item.title === 'Competitor Management System') <
+    COMPETITION_MENU.findIndex((item) => item.title === 'Mock Tournament'));
+  assert.deepEqual(
+    COMPETITION_MENU.map((item) => item.belt),
+    ['tournament', 'tournament'],
+  );
+  assert.equal(COMPETITION_MENU_PRO.length, 0);
+  assert.doesNotMatch(COMPETITION_MANAGEMENT_LABEL, /student|GB Members|Coming Soon/i);
+});
+
 test('Pro console hubs stay four siblings, Media Console first', () => {
   assert.equal(COMPETITOR_SYSTEM_NAME, 'Competitor Management System');
-  assert.equal(INSTRUCTOR_COLLAB_NAME, 'Instructor Collaboration and Cloud Access');
+  assert.equal(INSTRUCTOR_COLLAB_NAME, 'Instructor Invitation and Access Management');
+  assert.equal(
+    INSTRUCTOR_COLLAB_HUB_LABEL,
+    'Instructor Invitation and Access Management',
+  );
   assert.equal(
     INSTRUCTOR_COACH_ENTRY,
     'Advantage Coach Unlimited',
   );
+  assert.equal(COACH_UNLIMITED_PATH, '/coach-unlimited');
+  assert.equal(UNLIMITED_LESSON_PATH, '/notes?plan=unlimited');
+  assert.equal(COACH_UNLIMITED_TOOLS[0].to, UNLIMITED_LESSON_PATH);
+  assert.deepEqual(
+    COACH_UNLIMITED_TOOLS.slice(1).map((tool) => tool.to),
+    ['/techniques', '/technique-tree', '/competition'],
+  );
   assert.deepEqual(
     PRO_HUBS.map((hub) => hub.title),
-    [MEDIA_CONSOLE_NAME, COMPETITOR_SYSTEM_NAME, INSTRUCTOR_COLLAB_NAME, TOURNAMENT_SUITE_NAME],
+    [MEDIA_CONSOLE_NAME, INSTRUCTOR_COACH_ENTRY, INSTRUCTOR_COLLAB_HUB_LABEL, TOURNAMENT_MANAGEMENT_PRO_LABEL],
   );
   assert.deepEqual(
     PRO_HUBS.map((hub) => hub.to),
-    ['/slideshow?folder=gallery', '/competitors', '/instructors', '/suite'],
+    ['/slideshow?folder=gallery', '/coach-unlimited', '/instructors', '/suite'],
   );
+  assert.ok(!PRO_HUBS.some((hub) => hub.title === COMPETITOR_SYSTEM_NAME));
   assert.deepEqual(
     PRO_HUBS.map((hub) => hub.belt),
     ['purple', 'brown', 'black', 'tournament'],
   );
   assert.equal(MATCH_CONTROLLER_PATH, '/match/control');
   assert.equal(ROUND_CONTROLLER_PATH, '/training/control');
+  assert.equal(TOURNAMENT_MANAGEMENT_PRO_LABEL, 'Tournament Management Pro');
+  assert.equal(PRO_HUBS[3].title, 'Tournament Management Pro');
+  assert.equal(COMPETITION_MANAGEMENT_PRO_LABEL, 'Competition Management Pro');
+  assert.equal(
+    TOURNAMENT_MANAGEMENT_PRO_LEAD,
+    'Brackets, Scoreboard, and Round Timer. Rankings stay in Competitor Management.',
+  );
+  assert.doesNotMatch(TOURNAMENT_MANAGEMENT_PRO_LEAD, /roster/i);
+  assert.deepEqual(
+    COMPETITION_PRO_MENU.map((item) => item.title),
+    ['Brackets-Tournament Software', 'Scoreboard', 'Round Timer'],
+  );
+  assert.ok(!COMPETITION_PRO_MENU.some((item) => /roster/i.test(item.title)));
+  assert.deepEqual(
+    COMPETITION_PRO_MENU.map((item) => item.to),
+    [
+      withSuiteFrom('/tournament', true),
+      withSuiteFrom(MATCH_CONTROLLER_PATH, true),
+      withSuiteFrom(ROUND_CONTROLLER_PATH, true),
+    ],
+  );
+  assert.equal(COMPETITION_PRO_MENU[0].to, withSuiteFrom('/tournament', true));
+  assert.deepEqual(
+    COMPETITION_PRO_MENU.map((item) => item.belt),
+    ['tournament', null, null],
+  );
+  assert.deepEqual(
+    COMPETITION_PRO_MENU.map((item) => item.clearBout),
+    [false, true, false],
+  );
 });
 
 test('Suite origin stays on Suite links and leaves other paths alone', () => {
@@ -123,16 +212,18 @@ test('Owner tournament tool is Tournament Software; Coach keeps Mock Tournament'
   assert.equal(tournamentToolLabel(false), MOCK_TOURNAMENT_NAME);
 });
 
-test('Home Pro card shows the Coming Soon teaser with the Instructor apostrophe', () => {
-  assert.equal(PRO_HOME_DETAIL, `${GYM_CONSOLE_NAME} — Coming Soon`);
-  assert.match(PRO_HOME_DETAIL, /Instructor's Console — Coming Soon/);
+test('Home Pro card describes the console without a Coming Soon line', () => {
   assert.deepEqual(PRO_HOME_LINES, [
-    'Easily Cast Class Schedules, Events, Recent Promotions, Pro Shop Inventory, and More to your Gym TV.',
-    'Full In-House Tournament Management Suite.',
-    'Assignable Instructor Licenses and Much More!',
+    "Gym Owner and Instructor's Console",
+    'Easily cast class schedules, pro shop inventory, events, recent promotions, and more to your gym TV.',
+    'Coordinate and create In-House Tournaments in moments and track the results for review and ranking.',
+    'Provide your instructors with access to our collaborative coaching tools and give your gym the ultimate Advantage!',
   ]);
-  assert.equal(PRO_HOME_LINES.length, 3);
-  assert.ok(PRO_HOME_LINES.join(' ').length < PRO_COMING_SOON_LINES.join(' ').length);
+  const home = PRO_HOME_LINES.join('\n');
+  assert.match(home, /Instructor's Console/);
+  assert.doesNotMatch(home, /Coming Soon/);
+  assert.doesNotMatch(PRO_HOME_LINES[0], /^Pro\b/);
+  assert.equal(PRO_HOME_DETAIL, `${GYM_CONSOLE_NAME} — Coming Soon`);
 });
 
 test('Coming Soon keeps the longer Pro appetite copy off the home card', () => {
@@ -145,6 +236,7 @@ test('Coming Soon keeps the longer Pro appetite copy off the home card', () => {
   assert.doesNotMatch(home, /Auto-Fill Bracketing/);
   assert.doesNotMatch(home, /Shared Training Videos/);
   assert.doesNotMatch(home, /ProShop Inventory/);
+  assert.doesNotMatch(home, /Coming Soon/);
 });
 
 test('Pro unlock includes Coach tools and Coach-only unlock still stands alone', () => {

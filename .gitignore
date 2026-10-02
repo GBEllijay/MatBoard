@@ -1,6 +1,10 @@
 node_modules
 dist
 dev-dist
+.data
+.env
+.env.*
+!.env.example
 .DS_Store
 *.local
 .vscode

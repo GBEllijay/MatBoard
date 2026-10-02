@@ -1,6 +1,5 @@
 import { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BeltRail } from '../components/BeltRail';
 import { Chrome } from '../components/Chrome';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { TrainingOptions } from '../components/TrainingOptions';
@@ -48,7 +47,6 @@ export function TrainingControllerPage() {
 
   return (
     <main className={`controller training-control${suite.fromSuite ? ' origin-suite' : ''}`}>
-      {suite.fromSuite ? <BeltRail kind="tournament" /> : null}
       <PlayExitMark to={suite.homePath} />
       <Chrome
         title="Rounds"

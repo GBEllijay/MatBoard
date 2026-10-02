@@ -210,4 +210,22 @@ describe('video slot plan', () => {
     assert.equal(repaired.plan.slots.find((slot) => slot.slotId === 'tech-1')?.clipId, null);
     assert.equal(repaired.plan.slots.at(-1)?.kind, 'cooldown');
   });
+
+  it('keeps a Drive file id when the local clip is gone and clears it when the coach removes the clip', () => {
+    const linked = setSlotClip(emptyVideoPlan(), 'tech-1', 'clip-1', {
+      driveFileId: 'drive-file-1',
+      mediaName: 'Drill.mp4',
+      mediaMime: 'video/mp4',
+    });
+    const repaired = sanitizeVideoPlan(linked, []);
+    const slot = repaired.plan.slots.find((item) => item.slotId === 'tech-1');
+    assert.equal(slot?.clipId, null);
+    assert.equal(slot?.driveFileId, 'drive-file-1');
+    assert.equal(slot?.mediaName, 'Drill.mp4');
+    const cleared = setSlotClip(linked, 'tech-1', null);
+    const gone = cleared.slots.find((item) => item.slotId === 'tech-1');
+    assert.equal(gone?.driveFileId, null);
+    assert.equal(gone?.mediaName, '');
+    assert.equal(JSON.stringify(linked).includes('blob'), false);
+  });
 });

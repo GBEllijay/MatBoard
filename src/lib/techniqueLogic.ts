@@ -5,6 +5,10 @@
  * One clip per slot. Storage quota is the only limit on how many clips this device keeps.
  * Technique slot ids stay stable on this device. Lesson Plan links by parallel order
  * (Warm-up, Drill 1, …) in lessonLinks.ts, not by matching these ids to lesson text.
+ *
+ * A slot may also remember a customer Google Drive file id plus a name and mime.
+ * Those are metadata. The clip bytes stay in on-device IndexedDB (or in the
+ * customer's Drive). This plan never holds the file body.
  */
 
 export const WARMUP_SLOT_ID = 'warmup';
@@ -68,9 +72,33 @@ export type VideoSlot = {
   /** Warm-up and Cool down use fixed ids. Technique ids are stable on this device. */
   slotId: string;
   kind: SlotKind;
+  /** On-device clip id. The bytes live in the technique clip store, not here. */
   clipId: string | null;
   drillSec: number;
+  /**
+   * Customer Google Drive file id for this clip. Null while the file is only
+   * on this phone. Never a download URL and never the file bytes.
+   */
+  driveFileId: string | null;
+  /** Display name for the clip. Empty when the slot has no media. */
+  mediaName: string;
+  /** Mime such as video/mp4. Empty when the slot has no media. */
+  mediaMime: string;
 };
+
+/** Drive file ids are opaque tokens. Reject blank values and full URLs. */
+export function clampDriveFileId(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > 200) return null;
+  if (/\s/.test(trimmed) || trimmed.includes('://')) return null;
+  return trimmed;
+}
+
+export function clampMediaLabel(value: unknown, max = 180): string {
+  if (typeof value !== 'string') return '';
+  return value.trim().slice(0, max);
+}
 
 export type VideoPlan = {
   version: 2;
@@ -84,12 +112,16 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>;
 }
 
+function blankSlotMedia(): Pick<VideoSlot, 'driveFileId' | 'mediaName' | 'mediaMime'> {
+  return { driveFileId: null, mediaName: '', mediaMime: '' };
+}
+
 function techniqueSlot(slotId: string, drillSec = DEFAULT_DRILL_SEC, clipId: string | null = null): VideoSlot {
-  return { slotId, kind: 'technique', clipId, drillSec: clampDrillSec(drillSec) };
+  return { slotId, kind: 'technique', clipId, drillSec: clampDrillSec(drillSec), ...blankSlotMedia() };
 }
 
 function endSlot(slotId: typeof WARMUP_SLOT_ID | typeof COOLDOWN_SLOT_ID, kind: 'warmup' | 'cooldown'): VideoSlot {
-  return { slotId, kind, clipId: null, drillSec: DEFAULT_DRILL_SEC };
+  return { slotId, kind, clipId: null, drillSec: DEFAULT_DRILL_SEC, ...blankSlotMedia() };
 }
 
 function defaultTechniqueId(used: readonly string[], index: number): string {
@@ -185,18 +217,63 @@ export function setSlotDrill(plan: VideoPlan, slotId: string, drillSec: number):
   };
 }
 
-/** One clip lives in one slot. Assigning it here clears it from any other slot. */
-export function setSlotClip(plan: VideoPlan, slotId: string, clipId: string | null): VideoPlan {
+export type SlotClipMedia = {
+  driveFileId?: string | null;
+  mediaName?: string;
+  mediaMime?: string;
+};
+
+function mediaFields(
+  media: SlotClipMedia | undefined,
+  keep: VideoSlot,
+  sameClip: boolean,
+): Pick<VideoSlot, 'driveFileId' | 'mediaName' | 'mediaMime'> {
+  if (!media) return sameClip ? blankSlotMediaFrom(keep) : blankSlotMedia();
+  return {
+    driveFileId: clampDriveFileId(media.driveFileId),
+    mediaName: clampMediaLabel(media.mediaName),
+    mediaMime: clampMediaLabel(media.mediaMime, 120),
+  };
+}
+
+function blankSlotMediaFrom(slot: VideoSlot): Pick<VideoSlot, 'driveFileId' | 'mediaName' | 'mediaMime'> {
+  return {
+    driveFileId: slot.driveFileId,
+    mediaName: slot.mediaName,
+    mediaMime: slot.mediaMime,
+  };
+}
+
+function sameMedia(
+  slot: VideoSlot,
+  media: Pick<VideoSlot, 'driveFileId' | 'mediaName' | 'mediaMime'>,
+): boolean {
+  return slot.driveFileId === media.driveFileId && slot.mediaName === media.mediaName && slot.mediaMime === media.mediaMime;
+}
+
+/**
+ * One clip lives in one slot. Assigning it here clears it from any other slot.
+ * Pass `media` to store a Drive file id, name, and mime. Omit it when only the
+ * local clip id changes — a new id drops the previous Drive id. Clearing the
+ * clip clears the metadata too. This never copies file bytes into the plan.
+ */
+export function setSlotClip(
+  plan: VideoPlan,
+  slotId: string,
+  clipId: string | null,
+  media?: SlotClipMedia,
+): VideoPlan {
   if (!plan.slots.some((slot) => slot.slotId === slotId)) return plan;
   let changed = false;
   const slots = plan.slots.map((slot) => {
     if (slot.slotId === slotId) {
-      if (slot.clipId !== clipId) changed = true;
-      return { ...slot, clipId };
+      const nextMedia = clipId ? mediaFields(media, slot, slot.clipId === clipId) : blankSlotMedia();
+      if (slot.clipId !== clipId || !sameMedia(slot, nextMedia)) changed = true;
+      return { ...slot, clipId, ...nextMedia };
     }
     if (clipId && slot.clipId === clipId) {
       changed = true;
-      return { ...slot, clipId: null };
+      return { ...slot, clipId: null, ...blankSlotMedia() };
     }
     return slot;
   });
@@ -232,8 +309,21 @@ function parseSlot(value: unknown, known: ReadonlySet<string>): { slot: VideoSlo
   const clipId = clipKnown ? clipRaw : null;
   const hadDrill = typeof raw.drillSec === 'number' && Number.isFinite(raw.drillSec);
   const drillSec = clampDrillSec(hadDrill ? (raw.drillSec as number) : DEFAULT_DRILL_SEC);
-  const changed = Boolean(clipRaw && !clipKnown) || (kind === 'technique' && hadDrill && drillSec !== raw.drillSec);
-  return { slot: { slotId, kind, clipId, drillSec }, changed };
+  const driveFileId = clampDriveFileId(raw.driveFileId);
+  const mediaName = clampMediaLabel(raw.mediaName);
+  const mediaMime = clampMediaLabel(raw.mediaMime, 120);
+  const hadMedia =
+    Object.prototype.hasOwnProperty.call(raw, 'driveFileId') &&
+    Object.prototype.hasOwnProperty.call(raw, 'mediaName') &&
+    Object.prototype.hasOwnProperty.call(raw, 'mediaMime');
+  const changed =
+    Boolean(clipRaw && !clipKnown) ||
+    (kind === 'technique' && hadDrill && drillSec !== raw.drillSec) ||
+    !hadMedia ||
+    raw.driveFileId !== driveFileId ||
+    raw.mediaName !== mediaName ||
+    raw.mediaMime !== mediaMime;
+  return { slot: { slotId, kind, clipId, drillSec, driveFileId, mediaName, mediaMime }, changed };
 }
 
 function planSignature(plan: VideoPlan): string {
@@ -245,6 +335,9 @@ function planSignature(plan: VideoPlan): string {
       kind: slot.kind,
       clipId: slot.clipId,
       drillSec: slot.drillSec,
+      driveFileId: slot.driveFileId,
+      mediaName: slot.mediaName,
+      mediaMime: slot.mediaMime,
     })),
   });
 }
@@ -300,6 +393,9 @@ export function sanitizeVideoPlan(
     kind: 'warmup',
     clipId: takeClip(warmupSource?.clipId ?? null),
     drillSec: warmupSource?.drillSec ?? DEFAULT_DRILL_SEC,
+    driveFileId: warmupSource?.driveFileId ?? null,
+    mediaName: warmupSource?.mediaName ?? '',
+    mediaMime: warmupSource?.mediaMime ?? '',
   };
 
   const techniques: VideoSlot[] = [];
@@ -330,6 +426,9 @@ export function sanitizeVideoPlan(
     kind: 'cooldown',
     clipId: takeClip(cooldownSource?.clipId ?? null),
     drillSec: cooldownSource?.drillSec ?? DEFAULT_DRILL_SEC,
+    driveFileId: cooldownSource?.driveFileId ?? null,
+    mediaName: cooldownSource?.mediaName ?? '',
+    mediaMime: cooldownSource?.mediaMime ?? '',
   };
 
   const slots = [warmup, ...techniques, cooldown];

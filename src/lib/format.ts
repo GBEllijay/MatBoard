@@ -35,3 +35,31 @@ export function parseMmSs(value: string): number | null {
   if (seconds > 59) return null;
   return (minutes * 60 + seconds) * 1000;
 }
+
+/** Decimal minutes for a custom length field. Whole minutes stay whole; others round-trip to the second. */
+export function formatMinuteInput(ms: number): string {
+  const seconds = Math.max(0, Math.round(ms / 1000));
+  const minutes = seconds / 60;
+  if (Number.isInteger(minutes)) return String(minutes);
+  return minutes.toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
+}
+
+/**
+ * Typed custom length. Decimal minutes (`4.5`) and `m:ss` (`4:30`) both count.
+ * Empty or non-numeric text returns null so a half-typed value is not applied.
+ */
+export function parseTypedDurationMs(value: string, minMs: number, maxMs: number): number | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const clock = parseMmSs(trimmed);
+  const ms = clock ?? parseDecimalMinutes(trimmed);
+  if (ms == null) return null;
+  return clamp(Math.round(ms / 1000) * 1000, minMs, maxMs);
+}
+
+function parseDecimalMinutes(value: string): number | null {
+  if (!/^(?:\d+\.?\d*|\.\d+)$/.test(value)) return null;
+  const minutes = Number(value);
+  if (!Number.isFinite(minutes)) return null;
+  return minutesToMs(minutes);
+}

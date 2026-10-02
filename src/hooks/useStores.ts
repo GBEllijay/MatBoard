@@ -5,6 +5,11 @@ import {
   subscribeBracketTheme,
   type BracketTheme,
 } from '../lib/bracketTheme';
+import {
+  getKidsScoreboard,
+  subscribeKidsScoreboard,
+  type KidsScoreboardPrefs,
+} from '../lib/kidsScoreboard';
 import { getMatch, subscribeMatch, type MatchState } from '../lib/matchStore';
 import {
   getTrainingSkin,
@@ -51,6 +56,10 @@ export function useTournamentLibrary(): TournamentLibrary {
 
 export function useBracketTheme(): BracketTheme {
   return useSyncExternalStore(subscribeBracketTheme, getBracketTheme, getBracketTheme);
+}
+
+export function useKidsScoreboard(): KidsScoreboardPrefs {
+  return useSyncExternalStore(subscribeKidsScoreboard, getKidsScoreboard, getKidsScoreboard);
 }
 
 export function useTrainingSkin(): TrainingSkin {

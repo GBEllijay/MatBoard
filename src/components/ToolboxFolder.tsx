@@ -1,5 +1,7 @@
+import { PICK_FROM_DRIVE_LABEL } from '../lib/driveMediaPicker';
 import type { FolderConfig, FolderId, StoredPhoto } from '../lib/photoStore';
 import { FolderItemList } from './FolderItemList';
+import { OpenMyDrive } from './OpenMyDrive';
 
 type Props = {
   folder: FolderConfig;
@@ -11,6 +13,7 @@ type Props = {
   onPlayToggle: (folderId: FolderId, enabled: boolean) => void;
   onAdd?: () => void;
   onAddVideo?: () => void;
+  onPickDrive?: () => void;
   onClear?: () => Promise<void>;
   onRename: (id: string, label: string) => Promise<void>;
   onRemove: (id: string) => Promise<void>;
@@ -34,6 +37,7 @@ export function ToolboxFolder({
   onPlayToggle,
   onAdd,
   onAddVideo,
+  onPickDrive,
   onClear,
   onRename,
   onRemove,
@@ -88,6 +92,12 @@ export function ToolboxFolder({
                 {folder.videoAddLabel}
               </button>
             ) : null}
+            {onPickDrive ? (
+              <button type="button" className="btn" onClick={onPickDrive}>
+                {PICK_FROM_DRIVE_LABEL}
+              </button>
+            ) : null}
+            {folder.ready ? <OpenMyDrive /> : null}
             {items.length && onClear ? (
               <button type="button" className="btn btn--ghost" onClick={() => void onClear()}>
                 Clear {folder.label}

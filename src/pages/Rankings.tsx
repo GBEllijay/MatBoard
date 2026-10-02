@@ -35,7 +35,7 @@ export function RankingsPage() {
   const [pendingRemove, setPendingRemove] = useState<string | null>(null);
 
   return (
-    <main className="roster rankings">
+    <main className="roster rankings cms">
       <PlayExitMark
         to="/competitors"
         onExit={() => {

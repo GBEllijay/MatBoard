@@ -21,12 +21,31 @@ import {
   EMPTY_VIDEOS_BODY,
   EMPTY_VIDEOS_TITLE,
   NOTES_LEAD,
+  COACH_LESSON_EYEBROW,
+  COACH_PLAN_SAVE_LEAD,
+  COACH_PLAN_SAVE_LINK,
+  UNLIMITED_SHARE_LEAD,
+  COACH_PLAN_UPLOAD_BUTTON,
+  COACH_PLAN_UPLOAD_DONE,
+  COACH_PLAN_UPLOAD_FAILED,
+  coachLessonGalleryDownload,
+  COMPETITION_READY_CARD,
+  COMPETITION_READY_LABEL,
+  COMPETITION_READY_LEAD,
   COMPETITOR_ROSTER_CARD,
   COMPETITOR_ROSTER_DESCRIPTION,
+  GAME_PLAN_A,
+  GAME_PLAN_B,
+  GAME_PLAN_C,
+  GAME_PLAN_CARD,
+  GAME_PLAN_EMPTY,
+  GAME_PLAN_LABEL,
+  GAME_PLAN_LEAD,
+  GAME_PLAN_OPTIONAL,
   RANKINGS_RESULTS_CARD,
+  COMPETITOR_GYM_LABEL,
   ROSTER_CSV_DEVICE_NOTE,
   ROSTER_CSV_INSTRUCTIONS,
-  ROSTER_CSV_PRO_TEASER,
   ROSTER_LEAD_COACH,
   ROSTER_LEAD_PRO,
   rosterCsvAvailable,
@@ -54,7 +73,14 @@ function allCopy(): string {
     EMPTY_BRACKET_BODY,
     OWNER_BRACKET_CLOUD_NOTE,
     NOTES_LEAD,
-    ROSTER_CSV_PRO_TEASER,
+    COACH_LESSON_EYEBROW,
+    COACH_PLAN_SAVE_LEAD,
+    COACH_PLAN_SAVE_LINK,
+    UNLIMITED_SHARE_LEAD,
+    COACH_PLAN_UPLOAD_BUTTON,
+    COACH_PLAN_UPLOAD_DONE,
+    COACH_PLAN_UPLOAD_FAILED,
+    COMPETITOR_GYM_LABEL,
     ROSTER_CSV_DEVICE_NOTE,
     ROSTER_CSV_INSTRUCTIONS,
     ROSTER_LEAD_COACH,
@@ -62,6 +88,17 @@ function allCopy(): string {
     COMPETITOR_ROSTER_DESCRIPTION,
     COMPETITOR_ROSTER_CARD,
     RANKINGS_RESULTS_CARD,
+    COMPETITION_READY_LABEL,
+    COMPETITION_READY_CARD,
+    COMPETITION_READY_LEAD,
+    GAME_PLAN_LABEL,
+    GAME_PLAN_CARD,
+    GAME_PLAN_LEAD,
+    GAME_PLAN_OPTIONAL,
+    GAME_PLAN_EMPTY,
+    GAME_PLAN_A,
+    GAME_PLAN_B,
+    GAME_PLAN_C,
   ].join('\n');
 }
 
@@ -82,9 +119,9 @@ test('Coach teasers list the four hub tools in lesson, videos, mock, roster orde
   assert.match(COACH_AD_LEAD, /Technique Tree/);
   assert.equal(
     COACH_TOOLS_TEASER,
-    'Daily Lesson Plan, Daily Training Videos, Mock Tournament, Competitor Roster.',
+    'Tools and Templates for Coaches and Professors.',
   );
-  assertCoachToolOrder(COACH_TOOLS_TEASER);
+  assert.doesNotMatch(COACH_TOOLS_TEASER, /^Coach\b/);
   assertCoachToolOrder(COACH_HOME_TEASER, 'Roster');
   assert.ok(COACH_HOME_TEASER.length < 70);
   assert.match(COACH_AD_LEAD, /^Coach tools:/);
@@ -109,35 +146,100 @@ test('Competitor Roster copy names bout competitors and skips franchise disclaim
   );
   assert.equal(
     ROSTER_LEAD_PRO,
-    'Save competitor names, belts, and notes for matches and in-house tournaments. CSV backup available.',
+    'Save competitor names, belts, divisions, and notes for matches and in-house tournaments. CSV backup available.',
   );
   assert.doesNotMatch(ROSTER_LEAD_PRO, /this browser|Data stays|UTF-8|accent/i);
   assert.doesNotMatch(ROSTER_LEAD_PRO, /Bout competitors on this device/i);
   const rosterCopy = [COMPETITOR_ROSTER_DESCRIPTION, COMPETITOR_ROSTER_CARD, ROSTER_LEAD_PRO].join('\n');
   assert.doesNotMatch(rosterCopy, /GB Members|Gracie\s*Barra|student management/i);
+  assert.equal(COMPETITION_READY_LABEL, 'Competition Ready');
+  assert.equal(
+    COMPETITION_READY_CARD,
+    'A weekend checklist for each competitor. Medical forms, gi, division, travel, waiver, and weigh-in stay on this device.',
+  );
+  assert.match(COMPETITION_READY_LEAD, /On is done/);
+  assert.doesNotMatch(
+    `${COMPETITION_READY_LABEL}\n${COMPETITION_READY_CARD}\n${COMPETITION_READY_LEAD}`,
+    /GB Members|Gracie\s*Barra|student management|\bstudents?\b/i,
+  );
 });
 
-test('Coach roster lead points CSV at Pro and keeps manual roster language', () => {
+test('Game Plan copy keeps a note optional and stays on bout competitors', () => {
+  assert.equal(GAME_PLAN_LABEL, 'Competitor Game Plan');
+  assert.equal(GAME_PLAN_A, 'A Game');
+  assert.equal(GAME_PLAN_B, 'B Game');
+  assert.equal(GAME_PLAN_C, 'C Game');
+  assert.match(GAME_PLAN_CARD, /A Game, B Game, and C Game/);
+  assert.match(GAME_PLAN_CARD, /optional/i);
+  assert.match(GAME_PLAN_LEAD, /optional/i);
+  assert.match(GAME_PLAN_LEAD, /stand alone/);
+  assert.match(GAME_PLAN_OPTIONAL, /does not need/);
+  assert.doesNotMatch(
+    [GAME_PLAN_LABEL, GAME_PLAN_CARD, GAME_PLAN_LEAD, GAME_PLAN_OPTIONAL, GAME_PLAN_EMPTY, GAME_PLAN_A, GAME_PLAN_B, GAME_PLAN_C].join('\n'),
+    /required|GB Members|student|everything works|fallback|desperation|surprise/i,
+  );
+});
+
+test('Coach CMS roster shows CSV and keeps manual roster language', () => {
   assert.equal(
     ROSTER_LEAD_COACH,
     'Competitor Roster with Names and Ranks for Single Matches and Mock Tournaments.',
   );
-  assert.equal(ROSTER_CSV_PRO_TEASER, 'Importable CSV Template Available in Advantage Pro');
-  assert.doesNotMatch(ROSTER_CSV_PRO_TEASER, /About CSV|Download the template|Import CSV|Export CSV/i);
   assert.doesNotMatch(ROSTER_LEAD_COACH, /Competitor Management/);
   assert.equal(rosterCsvAvailable(true, false), true);
-  assert.equal(rosterCsvAvailable(true, true), false);
-  assert.equal(rosterCsvAvailable(false, true), false);
+  assert.equal(rosterCsvAvailable(true, true), true);
+  assert.equal(rosterCsvAvailable(false, true), true);
   assert.equal(rosterCsvAvailable(false, false), false);
+  assert.equal(COMPETITOR_GYM_LABEL, 'Gym name / nickname');
+  assert.match(COMPETITOR_GYM_LABEL, /nickname/);
   assert.equal(
     ROSTER_CSV_DEVICE_NOTE,
-    'The roster stays on this device. CSV is for backup or a move.',
+    'The roster stays on this device. CSV is for backup or a move. Face photos stay on this device and are not in the CSV.',
   );
   assert.equal(
     ROSTER_CSV_INSTRUCTIONS,
-    'Each row needs a competitor name and a belt. A row missing either one is left out.',
+    'Each row needs a competitor name and a belt. A row missing either one is left out. Division, Gym name / nickname, and Check In can be blank. Competitor Notes are included when the row has them. Face photos stay on this device and are not in the CSV.',
   );
   assert.doesNotMatch(`${ROSTER_CSV_DEVICE_NOTE}\n${ROSTER_CSV_INSTRUCTIONS}`, /UTF-8|accent/i);
+});
+
+test('Coach Daily Lesson Plan copy stays on this device and does not name a day count', () => {
+  assert.equal(COACH_LESSON_EYEBROW, 'Advantage Coach');
+  assert.equal(
+    NOTES_LEAD,
+    "Today's and yesterday's plans, and recent days, stay on this device.",
+  );
+  assert.doesNotMatch(NOTES_LEAD, /\d+/);
+  assert.equal(
+    COACH_PLAN_SAVE_LEAD,
+    'This plan saves to your phone as you type. Click here to save a copy on your connected Drive.',
+  );
+  assert.equal(COACH_PLAN_SAVE_LINK, 'Click here');
+  assert.equal(
+    UNLIMITED_SHARE_LEAD,
+    'Instructors share class plans, technique trees, and training videos with you. Each day they can send class photos and short clips for you to look over. Their screen works like Coach. You approve what plays on the gym TV and what joins the gym roster.',
+  );
+  assert.equal(COACH_PLAN_UPLOAD_BUTTON, "Open my Drive and upload today's plan");
+  assert.equal(
+    COACH_PLAN_UPLOAD_DONE,
+    "Today's plan is in your Drive. Videos stay on this device.",
+  );
+  assert.equal(
+    COACH_PLAN_UPLOAD_FAILED,
+    "Saved on this device. Your Drive could not take today's plan.",
+  );
+  const lesson = [
+    COACH_LESSON_EYEBROW,
+    NOTES_LEAD,
+    COACH_PLAN_SAVE_LEAD,
+    COACH_PLAN_UPLOAD_BUTTON,
+    COACH_PLAN_UPLOAD_DONE,
+    COACH_PLAN_UPLOAD_FAILED,
+  ].join('\n');
+  assert.doesNotMatch(lesson, /instructor distribution|shared gallery|Download today's videos/i);
+  assert.doesNotMatch(lesson, /Gym Owner/i);
+  assert.equal(coachLessonGalleryDownload(false), false);
+  assert.equal(coachLessonGalleryDownload(true), true);
 });
 
 test('Coach empty states stay friendly and skip student progress', () => {

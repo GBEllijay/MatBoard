@@ -1,21 +1,21 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  COACH_PREVIEW_LABEL,
+  COACH_PREVIEW_NOTE,
   COMING_SOON_ADS,
   COMING_SOON_LABEL,
   PRODUCT_TEASERS,
   PRO_CONSOLE_PREVIEW_LABEL,
   PRO_CONSOLE_PREVIEW_NOTE,
 } from './comingSoonAds.ts';
-import { COACH_AD_LEAD, COACH_HOME_TEASER } from './coachCopy.ts';
+import { COACH_HOME_TEASER } from './coachCopy.ts';
 import {
-  COMPETITOR_SYSTEM_NAME,
   GYM_CONSOLE_NAME,
   INSTRUCTOR_COLLAB_NAME,
+  INSTRUCTOR_COACH_ENTRY,
   MEDIA_CONSOLE_NAME,
-  PRO_COMING_SOON_LINES,
-  PRO_HOME_DETAIL,
-  TOURNAMENT_SUITE_NAME,
+  COMPETITION_MANAGEMENT_PRO_LABEL,
 } from './productNames.ts';
 
 function adText(product: keyof typeof COMING_SOON_ADS): string {
@@ -28,7 +28,13 @@ test('Coach ad sells the hub tools and no price', () => {
   assert.equal(COMING_SOON_ADS.coach.title, 'Advantage Coach');
   assert.equal(COMING_SOON_ADS.coach.kicker, COMING_SOON_LABEL);
   assert.equal(COMING_SOON_LABEL, 'Coming Soon');
-  assert.equal(COMING_SOON_ADS.coach.lead, COACH_AD_LEAD);
+  assert.equal(COMING_SOON_ADS.coach.lead, '');
+  assert.equal(COACH_PREVIEW_LABEL, 'Advantage Coach');
+  assert.equal(
+    COACH_PREVIEW_NOTE,
+    'Daily Lesson Plan, training videos, Technique Tree, mock brackets, and a roster.',
+  );
+  assert.doesNotMatch(text, /^Coach tools:/m);
   assert.deepEqual(
     COMING_SOON_ADS.coach.features.map((feature) => feature.title),
     ['Daily Lesson Plan', 'Daily Training Videos', 'Technique Tree', 'Mock Tournament', 'Competitor Roster'],
@@ -68,40 +74,47 @@ test('Coach ad sells the hub tools and no price', () => {
   assert.ok(PRODUCT_TEASERS.coach.length < 70);
 });
 
-test('Pro ad sells the Console paragraph and no price', () => {
+test('Pro ad keeps the splash and descriptor boxes without the middle paragraph', () => {
   const text = adText('pro');
   assert.equal(COMING_SOON_ADS.pro.title, 'Advantage Pro');
-  assert.equal(COMING_SOON_ADS.pro.lead, `${PRO_HOME_DETAIL}. ${PRO_COMING_SOON_LINES.join(' ')}`);
+  assert.equal(COMING_SOON_ADS.pro.lead, '');
   assert.equal(PRO_CONSOLE_PREVIEW_LABEL, "Gym Owner and Instructor's Console");
   assert.equal(
     PRO_CONSOLE_PREVIEW_NOTE,
     'Media Console, competitors, instructor access, and the tournament suite.',
   );
   assert.doesNotMatch(PRO_CONSOLE_PREVIEW_NOTE, /placeholder|wireframe|coming/i);
-  assert.match(text, new RegExp(GYM_CONSOLE_NAME.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.match(text, /Coming Soon/);
-  assert.match(text, /Cast to your Gym TV/i);
   assert.match(text, /Media Console/);
   assert.deepEqual(
     COMING_SOON_ADS.pro.features.map((feature) => feature.title),
-    [MEDIA_CONSOLE_NAME, COMPETITOR_SYSTEM_NAME, INSTRUCTOR_COLLAB_NAME, TOURNAMENT_SUITE_NAME],
+    [MEDIA_CONSOLE_NAME, INSTRUCTOR_COACH_ENTRY, INSTRUCTOR_COLLAB_NAME, COMPETITION_MANAGEMENT_PRO_LABEL],
   );
-  assert.match(text, /ProShop Inventory/);
-  assert.match(text, /Class Schedules/);
-  assert.match(text, /Recent Promotions/);
-  assert.match(text, /Upcoming Events and Competitions/);
-  assert.match(text, /In-House Tournament Management Suite/i);
+  assert.doesNotMatch(text, /Cast to your Gym TV/i);
+  assert.doesNotMatch(text, /ProShop Inventory/);
+  assert.doesNotMatch(text, /Auto-Fill Bracketing/i);
+  assert.doesNotMatch(text, /Shared Training Videos/);
+  assert.match(text, /Competition Management Pro/);
+  const tournamentFeature = COMING_SOON_ADS.pro.features.find(
+    (feature) => feature.title === COMPETITION_MANAGEMENT_PRO_LABEL,
+  );
+  assert.equal(
+    tournamentFeature?.body,
+    'Brackets, the scoreboard controller, and the round timer for an in-house event.',
+  );
+  assert.doesNotMatch(tournamentFeature?.body ?? '', /roster/i);
+  const unlimitedFeature = COMING_SOON_ADS.pro.features.find(
+    (feature) => feature.title === INSTRUCTOR_COACH_ENTRY,
+  );
+  assert.match(unlimitedFeature?.body ?? '', /Instructors share class plans/);
+  assert.doesNotMatch(text, /Match Controller/);
+  assert.doesNotMatch(text, /Round Controller/);
   assert.match(text, /Class Schedule/);
-  assert.match(text, /Competitor Management System/);
-  assert.match(text, /Instructor Collaboration and Cloud Access/);
+  assert.match(text, /Advantage Coach Unlimited/);
+  assert.match(text, /Instructor Invitation and Access Management/);
+  assert.doesNotMatch(text, /Competitor Management System/);
+  assert.doesNotMatch(text, /Cloud Access/);
   assert.doesNotMatch(text, /Mock Tournament/);
-  assert.match(text, /Auto-Fill Bracketing/i);
-  assert.match(text, /Result Tracking/i);
-  assert.match(text, /Instructor Licenses/i);
-  assert.match(text, /Cross Platform Access/i);
-  assert.match(text, /Shared Training Videos/);
-  assert.doesNotMatch(text, /Much More!/);
-  assert.doesNotMatch(text, /Pro Shop Inventory/);
   assert.doesNotMatch(text, /Owner.?s Toolbox/i);
   assert.doesNotMatch(text, /student progress/i);
   assert.doesNotMatch(text, /GB Members/i);

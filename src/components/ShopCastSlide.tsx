@@ -17,8 +17,8 @@ type Props = {
 
 /**
  * One Pro Shop TV page. Every card on the page can show its own QR.
- * Landscape default places the QR beside the photo. Logo mode pins the gym
- * mark on top and the QR under that card's photo.
+ * Logo stays left of the codes. On a phone the QR sits to the right of its
+ * photo. On a wide landscape TV the logo and codes share the band above the photos.
  */
 export function ShopCastSlide({ items, srcById, mode, logoUrl }: Props) {
   const showQr = mode !== 'images';
@@ -62,7 +62,24 @@ export function ShopCastSlide({ items, srcById, mode, logoUrl }: Props) {
       aria-label={`Pro Shop, ${items.length} ${items.length === 1 ? 'card' : 'cards'}`}
     >
       {showLogo && logoUrl ? (
-        <img className="shop-cast__logo" src={logoUrl} alt="Gym logo" />
+        <div className="shop-cast__brand">
+          <img className="shop-cast__logo" src={logoUrl} alt="Gym logo" />
+          <div className="shop-cast__brand-codes">
+            {items.map((item) => {
+              const qr = qrById[item.id];
+              if (!showQr || !qr) return null;
+              const name = item.label.trim() || 'Pro Shop';
+              return (
+                <img
+                  key={item.id}
+                  className="shop-cast__qr shop-cast__brand-qr"
+                  src={qr}
+                  alt={`QR code for ${name}`}
+                />
+              );
+            })}
+          </div>
+        </div>
       ) : null}
       <div className="shop-cast__grid">
         {items.map((item) => {
