@@ -141,30 +141,44 @@ function Phone() {
 }
 
 /**
- * Horseshoe mouthguard, top view. Matte black shell, glossy red tooth channel.
- * No brand mark. Sits in the open corner above the index box.
+ * Horseshoe mouthguard in a shallow 3/4 view. Matte black shell, glossy red
+ * channel, no brand mark. Sits above the index box.
  */
 function Mouthguard() {
   return (
-    <g transform="translate(140 1)">
+    <g transform="translate(138 0) scale(0.9)">
+      <defs>
+        <linearGradient id="ctm-shell" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#4e535c" />
+          <stop offset="0.4" stopColor="#22262c" />
+          <stop offset="1" stopColor="#0c0e12" />
+        </linearGradient>
+        <linearGradient id="ctm-channel" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#7a0c14" />
+          <stop offset="0.45" stopColor="#e10e18" />
+          <stop offset="1" stopColor="#ff5a40" />
+        </linearGradient>
+      </defs>
+      <ellipse cx="26" cy="37" rx="16" ry="2" fill="#000" opacity="0.16" />
       <path
-        fill="#16181c"
-        d="M1 12C1 6 5 2.5 10 3.2H12C13.6 3.2 14 6.2 14 8.6V15.5C14 21 17 24.5 21.5 24.5C26 24.5 29 21 29 15.5V8.6C29 6.2 29.4 3.2 31 3.2H33C38 2.5 42 6 42 12V19C42 28 34 32.5 21.5 32.5C9 32.5 1 28 1 19Z"
+        fill="url(#ctm-shell)"
+        d="M3 13C2 20 7 29 16 34C22 37 32 37 38 34C47 29 51 20 49 13L40 14C38 22 33 27 26 28C19 29 13 24 11 17L8 13Z"
+      />
+      <path fill="#3c414a" d="M5 13C4 17 7 22 12 25C10 20 9 16 8 13C12 10 18 12 22 16C20 12 16 9 10 10C8 10 6 11 5 13Z" />
+      <path fill="#3c414a" d="M47 13C48 17 45 22 40 25C42 20 43 16 44 13C40 10 34 12 30 16C32 12 36 9 42 10C44 10 46 11 47 13Z" />
+      <path
+        fill="url(#ctm-channel)"
+        d="M11 14C10 19 13 25 19 28C23 30 30 30 34 28C40 25 43 19 42 14L36 15C35 20 31 23 26 24C21 25 17 22 16 17Z"
       />
       <path
-        d="M7.2 9.2V16.2C7.2 23 12.6 27.2 21.5 27.2C30.4 27.2 35.8 23 35.8 16.2V9.2"
+        d="M17 18C21 22 30 23 36 19"
         fill="none"
-        stroke="#d10e16"
-        strokeWidth="5.2"
+        stroke="#ffe4dc"
+        strokeWidth="1.5"
         strokeLinecap="round"
+        opacity="0.85"
       />
-      <path
-        d="M7.2 10V16.2C7.2 21.6 12.6 25.2 21.5 25.2C30.4 25.2 35.8 21.6 35.8 16.2V10"
-        fill="none"
-        stroke="#ff6a48"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
+      <path d="M16 32C21 35 32 35 38 32" fill="none" stroke="#050608" strokeWidth="1.6" strokeLinecap="round" />
     </g>
   );
 }
@@ -213,75 +227,41 @@ function PlanRow({ y, label }: { y: number; label: string }) {
   );
 }
 
+/** Rests on the game-plan sheet, not across the index box. */
 function Pencil() {
   return (
-    <g transform="rotate(38 86 70)">
-      <rect x="70" y="66" width="36" height="5" rx="0.4" fill="#c4a06a" />
-      <polygon points="106,66 112,68.5 106,71" fill="#2c2c2c" />
-      <rect x="70" y="66" width="4" height="5" fill="#d98b8b" />
+    <g transform="rotate(-34 58 86)">
+      <rect x="34" y="84" width="40" height="4" rx="0.4" fill="#c4a06a" />
+      <polygon points="74,84 80,86 74,88" fill="#2c2c2c" />
+      <rect x="34" y="84" width="3.5" height="4" fill="#d98b8b" />
     </g>
   );
 }
 
-/** Open matte index box. Ribbed lid, hinge, and A–E tabbed dividers. */
+/** Open matte index box. Ribbed lid, thumb notch, plain ruled white cards. */
 function IndexBox() {
-  const tabs = [
-    { letter: 'B', x: 22, fill: '#f5a000' },
-    { letter: 'C', x: 34, fill: '#ef4b3a' },
-    { letter: 'D', x: 46, fill: '#b6dc45' },
-    { letter: 'E', x: 58, fill: '#3ec6e6' },
-  ];
   return (
-    <g transform="translate(102 36)">
-      <path d="M8 11L14 0.6h52l6 10.4z" fill="#14161a" />
-      {Array.from({ length: 9 }, (_, index) => {
-        const t = (index + 1) / 10;
-        return (
-          <line
-            key={index}
-            x1={16 + t * 48}
-            y1="1.6"
-            x2={12 + t * 56}
-            y2="10.4"
-            stroke="#3a3f48"
-            strokeWidth="0.75"
-          />
-        );
-      })}
-      <rect x="33" y="0" width="14" height="1.8" rx="0.5" fill="#2c3036" />
-      <rect x="12" y="10.3" width="56" height="2" rx="0.6" fill="#4a4f58" />
-      <rect width="80" height="26" x="0" y="13" rx="3" fill="#1a1c20" />
-      <rect x="3" y="16" width="74" height="16" rx="1" fill="#0e1014" />
-      <rect x="5" y="22.2" width="68" height="12.4" rx="1" fill="#f6d000" />
-      <rect x="6" y="15.4" width="12" height="8" rx="1.4" fill="#f6d000" />
-      <text
-        x="12"
-        y="21.2"
-        textAnchor="middle"
-        fill="#14161c"
-        fontSize="5.4"
-        fontWeight="800"
-        fontFamily="sans-serif"
-      >
-        A
-      </text>
-      {tabs.map((tab) => (
-        <g key={tab.letter}>
-          <rect x={tab.x} y="15.6" width="11" height="7.4" rx="1.3" fill={tab.fill} />
-          <text
-            x={tab.x + 5.5}
-            y="21"
-            textAnchor="middle"
-            fill="#14161c"
-            fontSize="5.2"
-            fontWeight="800"
-            fontFamily="sans-serif"
-          >
-            {tab.letter}
-          </text>
-        </g>
-      ))}
-      <rect width="80" height="4.2" x="0" y="34.8" rx="1.4" fill="#121418" />
+    <g transform="translate(98 36)">
+      <path d="M12 13L18 1h52l6 12z" fill="#12141a" />
+      <line x1="20" y1="3.2" x2="70" y2="3.2" stroke="#3d424a" strokeWidth="0.65" />
+      <line x1="18" y1="5.8" x2="72" y2="5.8" stroke="#3d424a" strokeWidth="0.65" />
+      <line x1="17" y1="8.4" x2="73" y2="8.4" stroke="#3d424a" strokeWidth="0.65" />
+      <line x1="16" y1="11" x2="74" y2="11" stroke="#3d424a" strokeWidth="0.65" />
+      <rect x="20" y="12.2" width="48" height="2" rx="0.5" fill="#4a4f58" />
+      <rect x="0" y="16" width="88" height="26" rx="3.5" fill="#1a1c20" />
+      <path d="M0 20c6-6 10-4 12 2v16H0z" fill="#22262c" />
+      <path d="M88 20c-6-6-10-4-12 2v16H88z" fill="#14161a" />
+      <rect x="10" y="15.2" width="68" height="2" fill="#e7e2da" />
+      <rect x="10" y="17" width="68" height="1.8" fill="#f3efe8" />
+      <rect x="9" y="18.6" width="70" height="14" fill="#fbfaf7" />
+      <line x1="13" y1="21.4" x2="75" y2="21.4" stroke="#e0d9ce" strokeWidth="0.4" />
+      <line x1="13" y1="24.2" x2="75" y2="24.2" stroke="#e0d9ce" strokeWidth="0.4" />
+      <line x1="13" y1="27" x2="75" y2="27" stroke="#e0d9ce" strokeWidth="0.4" />
+      <line x1="13" y1="29.8" x2="75" y2="29.8" stroke="#e0d9ce" strokeWidth="0.4" />
+      <path
+        fill="#181a1e"
+        d="M0 26h20c1.5 0 2.4 1 5.2 5.2 2.4 3.6 6.2 5.6 12.8 5.6s10.4-2 12.8-5.6C53.6 27 54.5 26 56 26H88V42H0z"
+      />
     </g>
   );
 }
