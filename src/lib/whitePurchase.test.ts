@@ -40,7 +40,7 @@ test('buy page lists included tools, browser install, and the Coach and Pro foot
   ]);
   assert.equal(
     WHITE_FEATURES[0],
-    'Installs on Phone or Desktop from your browser — Add to Home Screen / Install.',
+    'Installs on Phone or Desktop from your browser — Add to Home Screen or Install.',
   );
   assert.match(WHITE_FEATURES[1], /TV or monitor/);
   assert.match(WHITE_FEATURES[2], /music app/);
