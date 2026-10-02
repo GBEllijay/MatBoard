@@ -31,6 +31,10 @@ export function WhitePage() {
             </p>
           </InstructionsButton>
           <p className="home__soon">
+            <Link className="home__text-btn" to="/buy">
+              Buy Advantage White — $9.99
+            </Link>
+            {' · '}
             <Link className="home__text-btn" to="/">
               All products
             </Link>
