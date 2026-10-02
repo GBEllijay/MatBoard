@@ -3,6 +3,7 @@ import { HomeMark } from '../components/HomeMark';
 import { InstructionsButton } from '../components/InstructionsButton';
 import { LiveBoutCard } from '../components/LiveBoutCard';
 import { RoundsCard } from '../components/RoundsCard';
+import { WhiteRosterCard } from '../components/WhiteRosterCard';
 import { SiteFooter } from '../components/SiteFooter';
 import { TierLine } from '../components/TierLine';
 import { WHITE_LADDER_DETAIL } from '../lib/productNames';
@@ -16,6 +17,7 @@ export function WhitePage() {
         <nav className="home__modes" aria-label="Advantage White">
           <LiveBoutCard />
           <RoundsCard />
+          <WhiteRosterCard />
         </nav>
 
         <div className="home__hints">
@@ -28,6 +30,9 @@ export function WhitePage() {
             <p className="home__hint">
               Control from your phone. Cast the scoreboard to your TV, or open Display on a second
               screen or computer.
+            </p>
+            <p className="home__hint">
+              Match names stay on this phone. Pick a saved name and belt from the scoreboard.
             </p>
           </InstructionsButton>
           <p className="home__soon">

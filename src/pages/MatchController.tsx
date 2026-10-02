@@ -362,6 +362,7 @@ export function MatchControllerPage() {
         focusCalls
         banner={banner?.side === 'blue' ? banner : null}
         reason={banner?.side === 'blue' ? outcomeSubtitle(match.outcome) : null}
+        names={plainWhite ? 'white' : 'competitor'}
         onWin={() => outcomeSheet.openWin('blue', 'Blue')}
         onDq={() => outcomeSheet.openDq('blue', 'Blue')}
       />
@@ -379,6 +380,7 @@ export function MatchControllerPage() {
         highlightCalls={refNeeded}
         banner={banner?.side === 'white' ? banner : null}
         reason={banner?.side === 'white' ? outcomeSubtitle(match.outcome) : null}
+        names={plainWhite ? 'white' : 'competitor'}
         onWin={() => outcomeSheet.openWin('white', 'White')}
         onDq={() => outcomeSheet.openDq('white', 'White')}
       />
@@ -540,6 +542,7 @@ function CompetitorPad({
   focusCalls = false,
   banner,
   reason,
+  names,
   onWin,
   onDq,
 }: {
@@ -556,6 +559,8 @@ function CompetitorPad({
   focusCalls?: boolean;
   banner: { kind: 'win' | 'dq'; text: string } | null;
   reason: string | null;
+  /** White Live Bout uses the on-phone match-name list. Suite and linked bouts keep the Competitor Roster. */
+  names: 'white' | 'competitor';
   onWin: () => void;
   onDq: () => void;
 }) {
@@ -572,6 +577,7 @@ function CompetitorPad({
             id={displayFocusId(competitorFocus(side, 'name'))}
             value={name}
             ariaLabel={`${title} name`}
+            names={names}
             onChange={(value) => dispatchMatch({ type: 'setCompetitor', side, field: 'name', value })}
             onPrefill={(prefill) => {
               dispatchMatch({ type: 'setCompetitor', side, field: 'name', value: prefill.name });

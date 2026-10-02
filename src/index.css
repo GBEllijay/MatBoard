@@ -2013,6 +2013,10 @@ span.role-plan__mark {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .home--white .mode-card--names {
+    grid-column: 1 / -1;
+  }
+
   .home--coach .home__modes,
   .home--pro .home__modes {
     grid-template-columns: minmax(0, 1fr);
@@ -2326,7 +2330,8 @@ span.role-plan__mark {
 .notes > .play-exit,
 .tree > .play-exit,
 .techniques > .play-exit,
-.tournament > .play-exit {
+.tournament > .play-exit,
+.white-roster > .play-exit {
   z-index: 21;
   opacity: 0.78;
 }
@@ -9662,7 +9667,8 @@ input.roster-pick__name:focus,
   color: #d7e1f6;
 }
 
-.home--white .mode-card--training {
+.home--white .mode-card--training,
+.home--white .mode-card--names {
   background: linear-gradient(180deg, #1a1c22 0%, #0a0a0c 100%);
   border-color: rgba(255, 255, 255, 0.14);
 }
@@ -13173,4 +13179,93 @@ a.plan-pick {
 
 .buy__status--bad {
   background: rgba(239, 68, 68, 0.16);
+}
+
+/* Advantage White match names. This phone only — not the Competitor Roster. */
+.white-roster {
+  position: relative;
+  min-height: 100dvh;
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  width: min(42rem, 100%);
+  margin-inline: auto;
+  padding: calc(0.85rem + var(--safe-t)) calc(1rem + var(--safe-r)) calc(2rem + var(--safe-b))
+    calc(1rem + var(--safe-l));
+}
+
+.white-roster__head {
+  padding-left: 3.6rem;
+}
+
+.white-roster__eyebrow {
+  margin: 0 0 0.15rem;
+  color: var(--gold-2);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.white-roster h1 {
+  font-size: clamp(1.7rem, 5vw, 2.3rem);
+  letter-spacing: -0.04em;
+}
+
+.white-roster__lead,
+.white-roster__empty {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.white-roster__add,
+.white-roster__edit {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.white-roster__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.white-roster__item,
+.white-roster__edit {
+  padding: 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.white-roster__row,
+.white-roster__who,
+.white-roster__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.white-roster__row {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.white-roster__who {
+  min-width: 0;
+}
+
+.white-roster__who strong {
+  overflow-wrap: anywhere;
+}
+
+.white-roster__actions {
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+}
+
+.white-roster__actions .btn {
+  min-height: 44px;
 }
