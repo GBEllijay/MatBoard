@@ -13037,6 +13037,157 @@ a.plan-pick {
   outline-color: #fff;
 }
 
+/*
+  Competitor Roster inside Competitor Management.
+  An open matte index-card box: ribbed lid, hinge, and landscape
+  dividers whose A–Z tabs stay visible. Coach and Pro rosters stay plain.
+*/
+.cms .roster__list {
+  position: relative;
+  gap: 1.05rem;
+  margin-top: 0.35rem;
+  padding: 4.75rem 0.8rem 1.2rem;
+  border: 0.7rem solid #1a1c20;
+  border-bottom-width: 1.15rem;
+  border-radius: 1.35rem;
+  background: #101114;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -0.45rem 0 #0a0b0d,
+    0 18px 32px rgba(0, 0, 0, 0.38);
+  overflow: visible;
+}
+
+.cms .roster__list::before {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  left: 0.4rem;
+  right: 0.4rem;
+  top: 0.4rem;
+  height: 3.05rem;
+  border-radius: 0.75rem 0.75rem 0.15rem 0.15rem;
+  background:
+    linear-gradient(#3a3d44, #2a2d33) center 0.28rem / 2.35rem 0.42rem no-repeat,
+    repeating-linear-gradient(
+      90deg,
+      #14161a 0 9px,
+      #2c3038 9px 10px,
+      #101114 10px 16px
+    );
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 -10px 12px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+.cms .roster__list::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  left: 9%;
+  right: 9%;
+  top: 3.32rem;
+  height: 0.42rem;
+  border-radius: 3px;
+  background: linear-gradient(#5a5e66, #0c0d10 58%, #32363e);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.16);
+  pointer-events: none;
+}
+
+.cms .roster__list > li {
+  position: relative;
+  z-index: 2;
+  min-width: 0;
+}
+
+.cms .roster-card {
+  --card: #f6d000;
+  --card-ink: #1a1404;
+  --tab-place: 0;
+  position: relative;
+  border: 0;
+  border-radius: 0 0 8px 8px;
+  background: var(--card);
+  color: var(--card-ink);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 7px 0 rgba(0, 0, 0, 0.16);
+}
+
+.cms .roster-card[data-tone='0'] {
+  --card: #f6d000;
+  --card-ink: #1a1404;
+}
+
+.cms .roster-card[data-tone='1'] {
+  --card: #f5a000;
+  --card-ink: #2a1404;
+}
+
+.cms .roster-card[data-tone='2'] {
+  --card: #ef4b3a;
+  --card-ink: #2a0906;
+}
+
+.cms .roster-card[data-tone='3'] {
+  --card: #b6dc45;
+  --card-ink: #172006;
+}
+
+.cms .roster-card[data-tone='4'] {
+  --card: #3ec6e6;
+  --card-ink: #062028;
+}
+
+.cms .roster-card__tab {
+  position: absolute;
+  z-index: 1;
+  top: -0.92rem;
+  left: calc(0.3rem + var(--tab-place) * (100% - 2.15rem));
+  display: grid;
+  place-items: center;
+  width: 1.65rem;
+  height: 1.02rem;
+  border-radius: 7px 7px 0 0;
+  background: var(--card);
+  color: var(--card-ink);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.cms .roster-card__head h2,
+.cms .roster-card__meta,
+.cms .roster-card__note,
+.cms .roster-card__confirm,
+.cms .roster-card .belt-mark__name {
+  color: var(--card-ink);
+}
+
+.cms .roster-card__meta,
+.cms .roster-card__note,
+.cms .roster-card .belt-mark__name {
+  opacity: 0.84;
+}
+
+.cms .roster-card__photo {
+  border-color: rgba(20, 22, 28, 0.4);
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.cms .roster-card .btn--ghost {
+  background: rgba(20, 22, 28, 0.12);
+  border-color: rgba(20, 22, 28, 0.28);
+  color: var(--card-ink);
+}
+
+.cms .roster-card .btn:not(.btn--ghost) {
+  box-shadow: 0 0 0 1px rgba(20, 22, 28, 0.16);
+}
+
 .buy {
   display: grid;
   gap: 0.9rem;

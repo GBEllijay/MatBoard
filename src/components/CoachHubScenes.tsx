@@ -140,16 +140,23 @@ function Phone() {
   );
 }
 
+/**
+ * Sports mouthguard, top view. A red horseshoe with a cream tooth channel.
+ * Sits in the open corner beside the index cards so the U stays whole.
+ */
 function Mouthguard() {
   return (
-    <g transform="translate(128 2)" opacity="0.95">
+    <g transform="translate(140 2)">
       <path
-        d="M8 18c0-10 10-16 26-16s26 6 26 16v10c0 8-6 14-14 16-4 1-8 6-12 6s-8-5-12-6C14 42 8 36 8 28z"
         fill="#c8102e"
+        d="M2 16C2 8 6 4 12 4H14C16.5 4 18 7 18 11V26C18 32 20.5 36 24 36C27.5 36 30 32 30 26V11C30 7 31.5 4 34 4H36C42 4 46 8 46 16V28C46 42 36 50 24 50C12 50 2 42 2 28Z"
       />
       <path
-        d="M16 20c0-6 7-10 18-10s18 4 18 10v6c0 5-4 9-10 10-3 1-6 4-8 4s-5-3-8-4c-6-1-10-5-10-10z"
-        fill="#f7f4ee"
+        d="M10 14V28C10 36 16 41 24 41C32 41 38 36 38 28V14"
+        fill="none"
+        stroke="#f7f4ee"
+        strokeWidth="8"
+        strokeLinecap="round"
       />
     </g>
   );

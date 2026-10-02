@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCurrentSeat } from '../components/SeatSessionBar';
 import { EmptyHint } from '../components/EmptyHint';
@@ -103,6 +103,15 @@ export function RosterPage() {
     [query, roster.students],
   );
   const openAdd = () => setEditor({ id: null, draft: { ...emptyDraft(), gym: readGymName() } });
+  const dividers = useMemo(() => {
+    if (!fromCompetitors) return null;
+    const seen = new Map<string, number>();
+    const tabs = new Map<string, { letter: string; tone: number; place: number }>();
+    for (const competitor of competitors) {
+      tabs.set(competitor.id, nextDividerTab(competitor.name, seen));
+    }
+    return tabs;
+  }, [competitors, fromCompetitors]);
 
   const onImportFiles = (files: FileList | null) => {
     const file = files?.[0];
@@ -227,21 +236,25 @@ export function RosterPage() {
 
       {competitors.length ? (
         <ul className="roster__list">
-          {competitors.map((competitor) => (
-            <StudentCard
-              key={competitor.id}
-              student={competitor}
-              pending={pendingRemove === competitor.id}
-              onEdit={() => setEditor({ id: competitor.id, draft: draftFromStudent(competitor) })}
-              onAskRemove={() => setPendingRemove(competitor.id)}
-              onCancelRemove={() => setPendingRemove(null)}
-              onConfirmRemove={() => {
-                removeStudent(competitor.id);
-                setPendingRemove(null);
-              }}
-              onToggleCheckIn={() => setCheckedIn(competitor.id, !competitor.checkedIn)}
-            />
-          ))}
+          {competitors.map((competitor) => {
+            const divider = dividers?.get(competitor.id) ?? null;
+            return (
+              <StudentCard
+                key={competitor.id}
+                student={competitor}
+                divider={divider}
+                pending={pendingRemove === competitor.id}
+                onEdit={() => setEditor({ id: competitor.id, draft: draftFromStudent(competitor) })}
+                onAskRemove={() => setPendingRemove(competitor.id)}
+                onCancelRemove={() => setPendingRemove(null)}
+                onConfirmRemove={() => {
+                  removeStudent(competitor.id);
+                  setPendingRemove(null);
+                }}
+                onToggleCheckIn={() => setCheckedIn(competitor.id, !competitor.checkedIn)}
+              />
+            );
+          })}
         </ul>
       ) : (
         <EmptyHint
@@ -331,8 +344,31 @@ function CsvInstructions() {
   );
 }
 
+/** First A–Z letter on a competitor name. "#" when the name has no letter. */
+function dividerLetter(name: string): string {
+  const match = name.trim().match(/[A-Za-z]/);
+  return match ? match[0].toUpperCase() : '#';
+}
+
+/**
+ * Alphabetical tab for the open index-card box.
+ * Duplicate letters step a little to the right so both tabs stay visible.
+ */
+function nextDividerTab(
+  name: string,
+  seen: Map<string, number>,
+): { letter: string; tone: number; place: number } {
+  const letter = dividerLetter(name);
+  const duplicateIndex = seen.get(letter) ?? 0;
+  seen.set(letter, duplicateIndex + 1);
+  const slot = letter < 'A' || letter > 'Z' ? 0 : letter.charCodeAt(0) - 65;
+  const place = Math.min(1, (slot + Math.min(duplicateIndex, 3) * 0.55) / 25);
+  return { letter, tone: slot % 5, place };
+}
+
 function StudentCard({
   student,
+  divider,
   pending,
   onEdit,
   onAskRemove,
@@ -341,6 +377,7 @@ function StudentCard({
   onToggleCheckIn,
 }: {
   student: Student;
+  divider: { letter: string; tone: number; place: number } | null;
   pending: boolean;
   onEdit: () => void;
   onAskRemove: () => void;
@@ -349,10 +386,22 @@ function StudentCard({
   onToggleCheckIn: () => void;
 }) {
   const promoted = formatPromotion(student.lastPromotion);
+  const tabStyle = divider
+    ? ({ '--tab-place': divider.place } as CSSProperties)
+    : undefined;
 
   return (
     <li>
-      <article className="roster-card">
+      <article
+        className="roster-card"
+        data-tone={divider ? divider.tone : undefined}
+        style={tabStyle}
+      >
+        {divider ? (
+          <span className="roster-card__tab" aria-hidden="true">
+            {divider.letter}
+          </span>
+        ) : null}
         <header className="roster-card__head">
           <div className="roster-card__identity">
             {student.photo ? (
