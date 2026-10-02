@@ -698,8 +698,9 @@ export function ScreensaverPage() {
           </div>
           <p className="saver-sound-hint">
             Each card on a slide gets its own QR from its buy link. Logo uses the custom gym logo
-            saved on this screen. Landscape puts the QR beside the photo. With the logo on, the mark
-            sits on top and each QR sits under its photo.
+            saved on this screen. The QR stays to the right of its photo. With the logo on, the gym
+            mark stays on the left and the codes stay on the right. On a wide TV they share the
+            black band above the photos.
           </p>
         </fieldset>
         ) : null}
@@ -721,9 +722,9 @@ export function ScreensaverPage() {
             ))}
           </div>
           <p className="saver-sound-hint">
-            Each event photo can show several QR codes from its links. Codes sit to the right of
-            the photo. With the logo on, the gym mark sits on the left and the codes stay on the
-            right.
+            Each event photo can show several QR codes from its links. Codes stay to the right of
+            the gym logo. On a phone they sit beside the photo. On a wide TV they share the black
+            band above the photo.
           </p>
         </fieldset>
         ) : null}
