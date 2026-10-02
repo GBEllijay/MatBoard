@@ -18,12 +18,12 @@ export function CoachingToolsScene() {
 export function CompetitionScene() {
   return (
     <svg viewBox="0 0 188 108" aria-hidden="true">
-      <Mouthguard />
       <Timer />
       <GamePlan />
       <Pencil />
       <IndexBox />
       <Scale />
+      <Mouthguard />
     </svg>
   );
 }
@@ -141,21 +141,28 @@ function Phone() {
 }
 
 /**
- * Sports mouthguard, top view. A red horseshoe with a cream tooth channel.
- * Sits in the open corner beside the index cards so the U stays whole.
+ * Horseshoe mouthguard, top view. Matte black shell, glossy red tooth channel.
+ * No brand mark. Sits in the open corner above the index box.
  */
 function Mouthguard() {
   return (
-    <g transform="translate(140 2)">
+    <g transform="translate(140 1)">
       <path
-        fill="#c8102e"
-        d="M2 16C2 8 6 4 12 4H14C16.5 4 18 7 18 11V26C18 32 20.5 36 24 36C27.5 36 30 32 30 26V11C30 7 31.5 4 34 4H36C42 4 46 8 46 16V28C46 42 36 50 24 50C12 50 2 42 2 28Z"
+        fill="#16181c"
+        d="M1 12C1 6 5 2.5 10 3.2H12C13.6 3.2 14 6.2 14 8.6V15.5C14 21 17 24.5 21.5 24.5C26 24.5 29 21 29 15.5V8.6C29 6.2 29.4 3.2 31 3.2H33C38 2.5 42 6 42 12V19C42 28 34 32.5 21.5 32.5C9 32.5 1 28 1 19Z"
       />
       <path
-        d="M10 14V28C10 36 16 41 24 41C32 41 38 36 38 28V14"
+        d="M7.2 9.2V16.2C7.2 23 12.6 27.2 21.5 27.2C30.4 27.2 35.8 23 35.8 16.2V9.2"
         fill="none"
-        stroke="#f7f4ee"
-        strokeWidth="8"
+        stroke="#d10e16"
+        strokeWidth="5.2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M7.2 10V16.2C7.2 21.6 12.6 25.2 21.5 25.2C30.4 25.2 35.8 21.6 35.8 16.2V10"
+        fill="none"
+        stroke="#ff6a48"
+        strokeWidth="1.6"
         strokeLinecap="round"
       />
     </g>
@@ -216,20 +223,65 @@ function Pencil() {
   );
 }
 
+/** Open matte index box. Ribbed lid, hinge, and A–E tabbed dividers. */
 function IndexBox() {
-  const names = ['David', 'Sarah', 'Mike'];
+  const tabs = [
+    { letter: 'B', x: 22, fill: '#f5a000' },
+    { letter: 'C', x: 34, fill: '#ef4b3a' },
+    { letter: 'D', x: 46, fill: '#b6dc45' },
+    { letter: 'E', x: 58, fill: '#3ec6e6' },
+  ];
   return (
-    <g>
-      {names.map((name, index) => (
-        <g key={name} transform={`translate(${86 + index * 16} ${28 - index * 2})`}>
-          <rect width="28" height="40" rx="1" fill={index === 1 ? '#fff' : '#f4f1ea'} stroke="#e4ddd0" strokeWidth="0.5" />
-          <text x="3" y="12" fill="#14161c" fontSize="6.5" fontWeight="700">
-            {name}
+    <g transform="translate(102 36)">
+      <path d="M8 11L14 0.6h52l6 10.4z" fill="#14161a" />
+      {Array.from({ length: 9 }, (_, index) => {
+        const t = (index + 1) / 10;
+        return (
+          <line
+            key={index}
+            x1={16 + t * 48}
+            y1="1.6"
+            x2={12 + t * 56}
+            y2="10.4"
+            stroke="#3a3f48"
+            strokeWidth="0.75"
+          />
+        );
+      })}
+      <rect x="33" y="0" width="14" height="1.8" rx="0.5" fill="#2c3036" />
+      <rect x="12" y="10.3" width="56" height="2" rx="0.6" fill="#4a4f58" />
+      <rect width="80" height="26" x="0" y="13" rx="3" fill="#1a1c20" />
+      <rect x="3" y="16" width="74" height="16" rx="1" fill="#0e1014" />
+      <rect x="5" y="22.2" width="68" height="12.4" rx="1" fill="#f6d000" />
+      <rect x="6" y="15.4" width="12" height="8" rx="1.4" fill="#f6d000" />
+      <text
+        x="12"
+        y="21.2"
+        textAnchor="middle"
+        fill="#14161c"
+        fontSize="5.4"
+        fontWeight="800"
+        fontFamily="sans-serif"
+      >
+        A
+      </text>
+      {tabs.map((tab) => (
+        <g key={tab.letter}>
+          <rect x={tab.x} y="15.6" width="11" height="7.4" rx="1.3" fill={tab.fill} />
+          <text
+            x={tab.x + 5.5}
+            y="21"
+            textAnchor="middle"
+            fill="#14161c"
+            fontSize="5.2"
+            fontWeight="800"
+            fontFamily="sans-serif"
+          >
+            {tab.letter}
           </text>
         </g>
       ))}
-      <path d="M82 62h78l-6 16H88z" fill="#2c3038" />
-      <path d="M88 62h66v4H88z" fill="#1a1c22" />
+      <rect width="80" height="4.2" x="0" y="34.8" rx="1.4" fill="#121418" />
     </g>
   );
 }
