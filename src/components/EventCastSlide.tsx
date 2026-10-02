@@ -16,8 +16,9 @@ type Props = {
 };
 
 /**
- * One Events TV page. A vertical photo stays in the center. QR codes sit to
- * its right. With the gym logo on, the mark sits to the left of the photo.
+ * One Events TV page. The gym logo stays left of the QR codes. On a phone the
+ * codes sit to the right of the photo. On a wide landscape TV the logo and
+ * codes share the band above the photo.
  */
 export function EventCastSlide({ item, src, mode, logoUrl }: Props) {
   const links = normalizeQrLinks(item.qrLinks);

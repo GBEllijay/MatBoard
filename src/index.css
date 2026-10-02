@@ -10651,6 +10651,102 @@ input.roster-pick__name:focus,
   }
 }
 
+/* Wide landscape: logo and QR share the empty black band above the photos. */
+.shop-cast__brand {
+  display: contents;
+}
+
+.shop-cast__brand-codes {
+  display: none;
+}
+
+@media (orientation: landscape) and (min-width: 700px) {
+  .shop-cast--has-logo:not(.event-cast) {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    justify-content: flex-start;
+  }
+
+  .shop-cast--has-logo:not(.event-cast) .shop-cast__brand {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: clamp(0.4rem, 1.2vw, 1rem);
+    width: 100%;
+    min-width: 0;
+  }
+
+  .shop-cast--has-logo:not(.event-cast) .shop-cast__logo {
+    align-self: center;
+  }
+
+  .shop-cast--has-logo:not(.event-cast) .shop-cast__brand-codes {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.35rem;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .shop-cast--has-logo:not(.event-cast) .shop-cast__brand-qr {
+    width: clamp(44px, 16vh, 140px);
+    max-width: min(16vw, 140px);
+    max-height: min(18vh, 140px);
+    height: auto;
+    flex: 0 1 auto;
+  }
+
+  .shop-cast--has-logo:not(.event-cast) .shop-cast__meta .shop-cast__qr {
+    display: none;
+  }
+
+  .shop-cast--has-logo:not(.event-cast) .shop-cast__layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .event-cast--logo.event-cast--qr .event-cast__stage {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr);
+    align-items: center;
+    justify-content: stretch;
+    width: 100%;
+    height: 100%;
+  }
+
+  .event-cast--logo.event-cast--qr .event-cast__mark {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+    align-self: center;
+  }
+
+  .event-cast--logo.event-cast--qr .event-cast__side {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
+    align-self: center;
+    min-width: 0;
+    max-width: min(70%, 46rem);
+    width: auto;
+  }
+
+  .event-cast--logo.event-cast--qr .event-cast__photo-wrap {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+    min-height: 0;
+    max-height: 100%;
+  }
+}
+
 /* Class Schedule week board — stacked day columns, no hour ruler, gym-TV cast. */
 .week-cast {
   --week-font: 16px;

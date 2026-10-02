@@ -211,7 +211,7 @@ export const MEDIA_CONSOLE_INSTRUCTIONS = [
   'Same slide groups cards on one page. Each card on that page keeps its own QR.',
   'Pro Shop display: Images only, Images + QR, or Images + QR + gym logo.',
   'Pro Shop photos and buy links stay on this device. Nothing is uploaded.',
-  'Events: add a photo, a name, and optional QR links. Codes sit beside that photo.',
+  'Events: add a photo, a name, and optional QR links. The gym logo stays left of those codes.',
   'One event photo can hold several links: registration, brackets, or tickets.',
   'Events display: Images only, Images + QR, or Images + QR + gym logo.',
   'Events photos and QR links stay on this device. Nothing is uploaded.',
