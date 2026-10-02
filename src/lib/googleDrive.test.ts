@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { beforeEach, describe, test } from 'node:test';
-import { CONNECT_COMING_SOON, CONNECT_WITH_BODY, CONNECT_WITH_TITLE } from './cloudStorage.ts';
+import {
+  CONNECT_COMING_SOON,
+  CONNECT_GOOGLE_UNVERIFIED_NOTE,
+  CONNECT_WITH_BODY,
+  CONNECT_WITH_TITLE,
+} from './cloudStorage.ts';
 import {
   CLASS_HISTORY_EMPTY,
   DATE_BUCKET_NAMES,
@@ -73,12 +78,16 @@ test('lesson file names and Drive queries stay literal', () => {
   assert.equal(driveQueryLiteral("O'Brien\\folder"), "O\\'Brien\\\\folder");
   assert.equal(CONNECT_WITH_TITLE, 'Connect with');
   assert.equal(CONNECT_COMING_SOON, 'Coming soon');
+  assert.equal(
+    CONNECT_GOOGLE_UNVERIFIED_NOTE,
+    'Google may show a notice that this connection isn’t verified yet. Tap Continue, or Advanced then Continue, to proceed. This is temporary.',
+  );
   assert.match(CONNECT_WITH_BODY, /does not host photos or videos/);
   assert.match(CONNECT_WITH_BODY, /folder the gym already owns/);
   assert.match(DRIVE_SETUP_NEEDED, /not available on this build yet — contact Advantage/);
   assert.doesNotMatch(
-    `${CONNECT_WITH_TITLE} ${CONNECT_WITH_BODY} ${CONNECT_COMING_SOON} ${DRIVE_SETUP_NEEDED} ${DRIVE_SIGN_IN_FAILED} ${DRIVE_DEV_CLIENT_HINT}`,
-    /client id|oauth|cloud console|client secret/i,
+    `${CONNECT_WITH_TITLE} ${CONNECT_WITH_BODY} ${CONNECT_COMING_SOON} ${CONNECT_GOOGLE_UNVERIFIED_NOTE} ${DRIVE_SETUP_NEEDED} ${DRIVE_SIGN_IN_FAILED} ${DRIVE_DEV_CLIENT_HINT}`,
+    /client id|oauth|cloud console|client secret|unsafe|blocked/i,
   );
   assert.match(CLASS_HISTORY_EMPTY, /Nothing in this Google Drive folder yet/);
   assert.match(DRIVE_TODAY_EMPTY, /shared gallery or Google Drive/);
@@ -166,6 +175,8 @@ test('connect card does not ask a gym owner for a client id', () => {
   assert.match(card, /import\.meta\.env\.DEV/);
   assert.match(card, /cloudStorageChoices\(/);
   assert.match(card, /CONNECT_COMING_SOON/);
+  assert.match(card, /CONNECT_GOOGLE_UNVERIFIED_NOTE/);
+  assert.match(card, /provider\.id === 'googleDrive' && provider\.isAvailable\(\)/);
   assert.match(card, /unavailableMessage/);
   assert.doesNotMatch(card, /Connect your Google Drive folder|Connect Google Drive/);
   assert.match(open, /cloudStorage\(/);

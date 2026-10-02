@@ -5,7 +5,7 @@ export function TermsPage() {
   return (
     <LegalPage
       title="Terms of Service — Advantage"
-      updated="September 27, 2026"
+      updated="October 1, 2026"
       related={{ to: '/privacy', label: 'Privacy Policy' }}
     >
       <section>
@@ -99,8 +99,10 @@ export function TermsPage() {
         <h3>6. Fees and trials</h3>
         <p>
           Paid plans, trials, and billing terms (if any) will be presented at purchase or in an
-          order form. Unless stated otherwise, fees are non-refundable except where required by
-          law. We may change prices with notice for future periods.
+          order form. Advantage White, when offered, is a one-time purchase. Checkout is provided
+          by Stripe, and the price and any promo code are shown before you pay. Card details are
+          entered on Stripe. Unless stated otherwise, fees are non-refundable except where required
+          by law. We may change prices with notice for future periods.
         </p>
       </section>
 

@@ -4303,6 +4303,12 @@ a.saver-folder--link {
   letter-spacing: 0.04em;
 }
 
+.custom-round .custom-time {
+  align-items: end;
+  margin-top: 0.45rem;
+  margin-bottom: 0.35rem;
+}
+
 .custom-round .clock-nudges {
   margin: 0.35rem 0 0;
 }
@@ -12358,12 +12364,15 @@ a.plan-pick {
   filter: drop-shadow(0 16px 22px rgba(0, 0, 0, 0.28));
 }
 
-/* Shared by every Carlos speech bubble. 58% sat on his left eye. */
+/* Shared by every Carlos speech bubble, bracket and match board.
+   The same nudge keeps the card off his left eye. */
 .kids-carlos__bubble {
+  --carlos-bubble-shift: 1.6rem;
   position: absolute;
   z-index: 2;
   top: 4%;
   left: 74%;
+  transform: translateX(var(--carlos-bubble-shift));
   display: grid;
   justify-items: start;
   gap: 0.08rem;
@@ -12957,4 +12966,148 @@ a.plan-pick {
 .cms .plan-chip:focus-visible,
 .cms .plan-link a:focus-visible {
   outline-color: #fff;
+}
+
+.buy {
+  display: grid;
+  gap: 0.9rem;
+  text-align: left;
+}
+
+.buy__card {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1.05rem 1.1rem 1.15rem;
+  border-radius: var(--radius);
+  background: rgba(16, 19, 26, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: var(--shadow);
+}
+
+/* $9.99 header only. Same white-belt cloth as the roster tip, scaled to the card. */
+.buy__card--belt {
+  position: relative;
+  overflow: hidden;
+  padding-left: 2.7rem;
+  border: 0;
+  background: transparent;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+}
+
+.buy__card--belt .buy__belt {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  border-radius: inherit;
+  z-index: 0;
+}
+
+.buy__card--belt > :not(.buy__belt) {
+  position: relative;
+  z-index: 1;
+}
+
+/* Rank bar meets the card's left curve instead of sitting inside it as a straight strip. */
+.buy__card--belt .belt-tip__bar {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 1.75rem;
+  border-radius: var(--radius) 0 0 var(--radius);
+}
+
+.home .buy .buy__card--belt h2,
+.home .buy .buy__card--belt p,
+.home .buy .buy__card--belt .buy__price {
+  color: #14161c;
+}
+
+.home .buy .buy__card--belt .buy__price span {
+  color: #3d414c;
+}
+
+.buy h2,
+.buy h3 {
+  margin: 0;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.buy h2 {
+  font-size: clamp(1.6rem, 5vw, 2.1rem);
+}
+
+.buy h3 {
+  font-size: 1rem;
+}
+
+.buy__price {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(2rem, 7vw, 2.7rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.buy__price span {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--muted);
+  font-size: 1.05rem;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.home .buy p,
+.home .buy li {
+  margin: 0;
+  color: var(--ink);
+  line-height: 1.45;
+}
+
+.buy__block {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.buy ul {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding-left: 1.15rem;
+}
+
+.home .buy p.buy__later {
+  color: var(--muted);
+  text-align: center;
+}
+
+.buy a {
+  color: var(--gold-2);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+}
+
+.buy .btn {
+  width: 100%;
+}
+
+.buy__status {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border-radius: 16px;
+  background: rgba(212, 160, 23, 0.16);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.buy__status--ok {
+  background: rgba(34, 197, 94, 0.16);
+}
+
+.buy__status--bad {
+  background: rgba(239, 68, 68, 0.16);
 }

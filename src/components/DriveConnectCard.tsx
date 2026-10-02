@@ -5,6 +5,7 @@ import {
   cloudStorageChoices,
   CONNECT_CHOOSE_FOLDER,
   CONNECT_COMING_SOON,
+  CONNECT_GOOGLE_UNVERIFIED_NOTE,
   CONNECT_WITH_BODY,
   CONNECT_WITH_KICKER,
   CONNECT_WITH_TITLE,
@@ -158,26 +159,31 @@ export function DriveConnectCard() {
           </button>
         </div>
       ) : folders ? null : (
-        <ul className="drive-connect__providers" aria-label={CONNECT_WITH_TITLE}>
-          {choices.map((provider) => {
-            const comingSoon = provider.phase === 'coming-soon';
-            const canConnect = provider.phase === 'live' && provider.isAvailable();
-            const opening = busyId === provider.id;
-            return (
-              <li key={provider.id}>
-                <button
-                  type="button"
-                  className={canConnect ? 'btn' : 'btn btn--ghost'}
-                  disabled={!canConnect || busyId !== null}
-                  onClick={() => void connect(provider)}
-                >
-                  {opening ? `Opening ${provider.displayName}…` : provider.displayName}
-                  {comingSoon ? <span className="drive-connect__soon">{CONNECT_COMING_SOON}</span> : null}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+        <>
+          {choices.some((provider) => provider.id === 'googleDrive' && provider.isAvailable()) ? (
+            <p className="drive-connect__note">{CONNECT_GOOGLE_UNVERIFIED_NOTE}</p>
+          ) : null}
+          <ul className="drive-connect__providers" aria-label={CONNECT_WITH_TITLE}>
+            {choices.map((provider) => {
+              const comingSoon = provider.phase === 'coming-soon';
+              const canConnect = provider.phase === 'live' && provider.isAvailable();
+              const opening = busyId === provider.id;
+              return (
+                <li key={provider.id}>
+                  <button
+                    type="button"
+                    className={canConnect ? 'btn' : 'btn btn--ghost'}
+                    disabled={!canConnect || busyId !== null}
+                    onClick={() => void connect(provider)}
+                  >
+                    {opening ? `Opening ${provider.displayName}…` : provider.displayName}
+                    {comingSoon ? <span className="drive-connect__soon">{CONNECT_COMING_SOON}</span> : null}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </>
       )}
       {!binding && !folders
         ? choices

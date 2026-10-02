@@ -4,7 +4,7 @@ export function PrivacyPage() {
   return (
     <LegalPage
       title="Privacy Policy — Advantage"
-      updated="September 27, 2026"
+      updated="October 1, 2026"
       related={{ to: '/terms', label: 'Terms of Service' }}
     >
       <section>
@@ -67,6 +67,11 @@ export function PrivacyPage() {
           data such as IP address, device/browser type, timestamps, and request URLs needed to
           deliver and protect the Service.
         </p>
+        <p>
+          (e) Purchase records. If you buy Advantage White, Stripe processes the payment. Advantage
+          stores the email address Stripe provides and the Checkout session id so the Service can
+          recognize that purchase. Advantage does not receive or store your card number.
+        </p>
       </section>
 
       <section>
@@ -92,7 +97,8 @@ export function PrivacyPage() {
           infrastructure), solely to operate Advantage;
         </p>
         <p>
-          (b) Third parties you connect (such as Google), under their terms and privacy policies;
+          (b) Third parties you connect or pay through (such as Google, or Stripe for Advantage White
+          checkout), under their terms and privacy policies;
         </p>
         <p>
           (c) Professional advisors, or authorities, when required by law or to protect rights,
