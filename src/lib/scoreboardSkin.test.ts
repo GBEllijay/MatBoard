@@ -9,11 +9,15 @@ import {
   SCOREBOARD_SKIN,
   SELECTABLE_SCOREBOARD_SKINS,
   OLD_SCHOOL_FLAP_PLACES,
+  coachLinkedWhiteBoard,
   flapDigits,
+  isCoachWhiteBoardSearch,
   isPlainWhiteScoreboard,
   parseScoreboardSkin,
   scoreboardSkinClass,
   visibleScoreboardSkin,
+  withCoachWhiteBoard,
+  withMatchOrigin,
 } from './scoreboardSkin.ts';
 
 test('Mock-Tournament Skin is the default Match scoreboard', () => {
@@ -43,7 +47,7 @@ test('Mock-Tournament Skin is the default Match scoreboard', () => {
   assert.deepEqual(flapDigits(15, OLD_SCHOOL_FLAP_PLACES.points), ['1', '5']);
 });
 
-test('White Live Bout stays on Mock-Tournament; suite and linked bouts keep the choice', () => {
+test('White Live Bout stays on Mock-Tournament; suite and Unlimited linked bouts keep the choice', () => {
   assert.equal(isPlainWhiteScoreboard(false, false), true);
   assert.equal(visibleScoreboardSkin(SCOREBOARD_SKIN.OLD_SCHOOL, false, false), SCOREBOARD_SKIN.MOCK_TOURNAMENT);
   assert.equal(visibleScoreboardSkin(SCOREBOARD_SKIN.MOCK_TOURNAMENT, false, false), SCOREBOARD_SKIN.MOCK_TOURNAMENT);
@@ -51,6 +55,34 @@ test('White Live Bout stays on Mock-Tournament; suite and linked bouts keep the 
   assert.equal(visibleScoreboardSkin(SCOREBOARD_SKIN.OLD_SCHOOL, true, false), SCOREBOARD_SKIN.OLD_SCHOOL);
   assert.equal(isPlainWhiteScoreboard(false, true), false);
   assert.equal(visibleScoreboardSkin(SCOREBOARD_SKIN.OLD_SCHOOL, false, true), SCOREBOARD_SKIN.OLD_SCHOOL);
+  assert.equal(isPlainWhiteScoreboard(true, true, true), false);
+  assert.equal(visibleScoreboardSkin(SCOREBOARD_SKIN.OLD_SCHOOL, true, true, true), SCOREBOARD_SKIN.OLD_SCHOOL);
+});
+
+test('Basic Coach bracket bouts use the White board; Coach Unlimited keeps the skin', () => {
+  assert.equal(coachLinkedWhiteBoard(false, true, true, false), true);
+  assert.equal(coachLinkedWhiteBoard(false, true, false, false), false);
+  assert.equal(coachLinkedWhiteBoard(true, true, true, true), false);
+  assert.equal(coachLinkedWhiteBoard(false, false, true, true), false);
+  assert.equal(coachLinkedWhiteBoard(false, true, false, true), true);
+  assert.equal(isPlainWhiteScoreboard(false, true, true), true);
+  assert.equal(visibleScoreboardSkin(SCOREBOARD_SKIN.OLD_SCHOOL, false, true, true), SCOREBOARD_SKIN.MOCK_TOURNAMENT);
+  assert.equal(isCoachWhiteBoardSearch(new URLSearchParams('board=white')), true);
+  assert.equal(isCoachWhiteBoardSearch(new URLSearchParams('from=suite')), false);
+  assert.equal(withCoachWhiteBoard('/match?bout=final-0', true), '/match?bout=final-0&board=white');
+  assert.equal(withCoachWhiteBoard('/match?bout=final-0', false), '/match?bout=final-0');
+  assert.equal(
+    withMatchOrigin('/match?bout=sf-0', { fromSuite: false, whiteBoard: true }),
+    '/match?bout=sf-0&board=white',
+  );
+  assert.equal(
+    withMatchOrigin('/match?bout=sf-0', { fromSuite: true, whiteBoard: true }),
+    '/match?bout=sf-0&from=suite',
+  );
+  assert.equal(
+    withMatchOrigin('/match/control?focus=round', { fromSuite: false, whiteBoard: true }),
+    '/match/control?focus=round&board=white',
+  );
 });
 
 test('Mock-Tournament eyedrop colors are the stylesheet tokens', () => {

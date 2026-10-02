@@ -9,7 +9,7 @@ import { RankChip } from '../components/RankChip';
 import { RosterNameField } from '../components/RosterNameField';
 import { useBoutQuerySync, useBracketOutcomeReturn } from '../hooks/useBracketBoutReturn';
 import { useInterval } from '../hooks/useClock';
-import { useSuiteOrigin } from '../hooks/useSuiteOrigin';
+import { useMatchBoard } from '../hooks/useMatchBoard';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useMatchState } from '../hooks/useStores';
 import { CARLOS_THRESHOLD_MAX, CARLOS_THRESHOLD_MIN, type CarlosCelebrationPrefs } from '../lib/carlosCelebration';
@@ -22,12 +22,7 @@ import {
   unlockAudio,
   type EndCue,
 } from '../lib/audio';
-import {
-  declareMatchOutcome,
-  linkedBracketMatchId,
-  scoreboardPath,
-  visibleOutcomeBanner,
-} from '../lib/bracketBout';
+import { declareMatchOutcome, scoreboardPath, visibleOutcomeBanner } from '../lib/bracketBout';
 import { openDisplayWindow, openOrCastDisplay } from '../lib/cast';
 import { minutesToMs, formatMmSs, secondsToMs } from '../lib/format';
 import { competitorFocus, displayFocusId, parseDisplayFocus } from '../lib/matchFocus';
@@ -42,7 +37,8 @@ import {
   type Side,
 } from '../lib/matchStore';
 import { needsRefDecision, outcomeSubtitle } from '../lib/outcomes';
-import { isPlainWhiteScoreboard, scoreboardSkinClass, visibleScoreboardSkin } from '../lib/scoreboardSkin';
+import { withSuiteFrom } from '../lib/productNames';
+import { scoreboardSkinClass } from '../lib/scoreboardSkin';
 
 export function MatchControllerPage() {
   const match = useMatchState();
@@ -52,13 +48,14 @@ export function MatchControllerPage() {
   const [castNote, setCastNote] = useState('');
   const [tvHelpOpen, setTvHelpOpen] = useState(false);
   const [searchParams] = useSearchParams();
-  const suite = useSuiteOrigin();
+  const board = useMatchBoard();
+  const suite = board.suite;
   const remaining = remainingNow(match);
   const durationIsPreset = TIME_PRESETS_MIN.some((minutes) => match.durationMs === minutesToMs(minutes));
   const focusParam = searchParams.get('focus');
-  const linkedId = linkedBracketMatchId(match.bracketMatchId);
-  const plainWhite = isPlainWhiteScoreboard(suite.fromSuite, Boolean(linkedId));
-  const skin = visibleScoreboardSkin(match.skin, suite.fromSuite, Boolean(linkedId));
+  const linkedId = board.linkedId;
+  const plainWhite = board.plainWhite;
+  const skin = board.skinFor(match.skin);
   const flashing = Boolean(match.outcomeFlash);
   const banner = visibleOutcomeBanner(match);
   const refNeeded = needsRefDecision({ ...match, remainingMs: remaining });
@@ -117,7 +114,7 @@ export function MatchControllerPage() {
   const onCast = async () => {
     void unlockAudio();
     try {
-      const mode = await openOrCastDisplay({ fromSuite: suite.fromSuite });
+      const mode = await openOrCastDisplay({ fromSuite: suite.fromSuite, whiteBoard: board.whiteBoard });
       setCastNote(
         mode === 'cast'
           ? 'Display sent to the chosen screen.'
@@ -135,11 +132,11 @@ export function MatchControllerPage() {
         right={
           <>
             {linkedId ? (
-              <Link to="/tournament" className="chip">
+              <Link to={withSuiteFrom('/tournament', suite.fromSuite)} className="chip">
                 Back to bracket
               </Link>
             ) : null}
-            <button type="button" className="chip" onClick={() => openDisplayWindow({ fromSuite: suite.fromSuite })}>
+            <button type="button" className="chip" onClick={() => openDisplayWindow({ fromSuite: suite.fromSuite, whiteBoard: board.whiteBoard })}>
               Display
             </button>
             <button type="button" className="chip chip--gold" onClick={() => void onCast()}>
@@ -341,7 +338,7 @@ export function MatchControllerPage() {
           />
           Auto-announce winner
         </label>
-        {plainWhite ? null : <CarlosControls prefs={match.carlos} />}
+        {board.showCarlos ? <CarlosControls prefs={match.carlos} /> : null}
         {castNote ? <p className="cast-note">{castNote}</p> : null}
       </section>
 
@@ -415,7 +412,7 @@ export function MatchControllerPage() {
         >
           Instructions / Suggestions
         </button>
-        <Link className="text-link" to={suite.withFrom(scoreboardPath(linkedId))}>
+        <Link className="text-link" to={board.originPath(scoreboardPath(linkedId))}>
           Open scoreboard on this device
         </Link>
       </section>
