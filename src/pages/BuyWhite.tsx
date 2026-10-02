@@ -6,24 +6,47 @@ import { TierLine } from '../components/TierLine';
 import { lookupWhiteEntitlement, type WhiteEntitlementStatus } from '../lib/whiteEntitlementClient';
 import {
   WHITE_CHECKOUT_API,
-  WHITE_FREE_CODE,
   WHITE_INCLUDED,
-  WHITE_NOT_INCLUDED,
   WHITE_PRICE_LABEL,
   WHITE_UPGRADE_NOTE,
   isWhiteFreeCode,
 } from '../lib/whitePurchase';
 
+type FreeLinkResult = { ok: true } | { ok: false; error: string };
+
+let freeLinkPromise: Promise<FreeLinkResult> | null = null;
+
+function unlockFromPrivateLink(code: string): Promise<FreeLinkResult> {
+  if (!freeLinkPromise) {
+    freeLinkPromise = (async () => {
+      try {
+        const response = await fetch(WHITE_CHECKOUT_API, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ promotionCode: code }),
+        });
+        const body = (await response.json()) as { url?: string; error?: string; entitled?: boolean };
+        if (response.ok && body.entitled && !body.url) return { ok: true };
+        freeLinkPromise = null;
+        return { ok: false, error: body.error || 'Unlock could not be recorded.' };
+      } catch {
+        freeLinkPromise = null;
+        return { ok: false, error: 'Unlock could not be recorded. Check your connection and try again.' };
+      }
+    })();
+  }
+  return freeLinkPromise;
+}
+
 export function BuyWhitePage() {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const checkout = params.get('checkout');
   const sessionId = params.get('session_id');
-  const [code, setCode] = useState('');
+  const code = params.get('code') ?? '';
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [record, setRecord] = useState<WhiteEntitlementStatus | null>(null);
   const [freeUnlock, setFreeUnlock] = useState(false);
-  const freeCode = isWhiteFreeCode(code);
 
   useEffect(() => {
     const previous = document.title;
@@ -55,6 +78,42 @@ export function BuyWhitePage() {
     };
   }, [checkout, sessionId]);
 
+  useEffect(() => {
+    if (!code || isWhiteFreeCode(code)) return;
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('code');
+        return next;
+      },
+      { replace: true },
+    );
+  }, [code, setParams]);
+
+  useEffect(() => {
+    if (!isWhiteFreeCode(code)) return;
+    let active = true;
+    void unlockFromPrivateLink(code.trim()).then((result) => {
+      if (!active) return;
+      if (result.ok) {
+        setFreeUnlock(true);
+        setParams(
+          (prev) => {
+            const next = new URLSearchParams(prev);
+            next.delete('code');
+            return next;
+          },
+          { replace: true },
+        );
+        return;
+      }
+      setError(result.error);
+    });
+    return () => {
+      active = false;
+    };
+  }, [code, setParams]);
+
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending) return;
@@ -64,14 +123,9 @@ export function BuyWhitePage() {
       const response = await fetch(WHITE_CHECKOUT_API, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ promotionCode: code.trim() }),
+        body: JSON.stringify({}),
       });
-      const body = (await response.json()) as { url?: string; error?: string; entitled?: boolean };
-      if (response.ok && body.entitled && !body.url) {
-        setFreeUnlock(true);
-        setPending(false);
-        return;
-      }
+      const body = (await response.json()) as { url?: string; error?: string };
       if (!response.ok || !body.url) {
         setError(body.error || 'Checkout could not start.');
         setPending(false);
@@ -119,35 +173,7 @@ export function BuyWhitePage() {
             </ul>
           </section>
 
-          <section className="buy__card">
-            <h3>Not included</h3>
-            <ul>
-              {WHITE_NOT_INCLUDED.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-            <p>{WHITE_UPGRADE_NOTE}</p>
-          </section>
-
           <form className="buy__card" onSubmit={(event) => void onSubmit(event)}>
-            <label className="buy__label" htmlFor="white-promo">
-              Promo or unlock code
-            </label>
-            <input
-              id="white-promo"
-              name="promotionCode"
-              value={code}
-              autoComplete="off"
-              autoCapitalize="characters"
-              spellCheck={false}
-              maxLength={40}
-              placeholder={WHITE_FREE_CODE}
-              onChange={(event) => setCode(event.target.value)}
-            />
-            <p>
-              Enter {WHITE_FREE_CODE} to unlock White at $0 on this page, with no card. Other codes
-              continue to Stripe.
-            </p>
             {freeUnlock ? (
               <p className="buy__status buy__status--ok" role="status">
                 Advantage White is unlocked at $0. No card was charged.
@@ -159,13 +185,7 @@ export function BuyWhitePage() {
               </p>
             ) : null}
             <button className="btn btn--white" type="submit" disabled={pending}>
-              {pending
-                ? freeCode
-                  ? 'Unlocking…'
-                  : 'Opening checkout…'
-                : freeCode
-                  ? 'Unlock White'
-                  : `Continue to checkout — ${WHITE_PRICE_LABEL}`}
+              {pending ? 'Opening checkout…' : `Continue to checkout — ${WHITE_PRICE_LABEL}`}
             </button>
             <p>
               <Link to="/terms">Terms of Service</Link>
@@ -175,6 +195,7 @@ export function BuyWhitePage() {
               <Link to="/white">Open White</Link>
             </p>
           </form>
+          <p className="buy__later">{WHITE_UPGRADE_NOTE}</p>
         </article>
         <SiteFooter />
       </div>

@@ -8,7 +8,6 @@ import {
   WHITE_INCLUDED,
   WHITE_LAUNCH_PROMOS,
   WHITE_LIST_PRICE_CENTS,
-  WHITE_NOT_INCLUDED,
   WHITE_PRICE_LABEL,
   WHITE_PRODUCT_ID,
   WHITE_UPGRADE_NOTE,
@@ -33,17 +32,14 @@ test('launch promos land on $4.99 and $0.99', () => {
   assert.equal(byCode.WHITE099.couponId, 'advantage_white_099');
 });
 
-test('buy page copy names White inclusions and leaves Coach and Pro out', () => {
+test('buy page keeps the included list and the Coach and Pro footer line', () => {
   assert.ok(WHITE_INCLUDED.includes('Round Timer with Advantage branding'));
   assert.ok(WHITE_INCLUDED.includes('Basic Match Scoreboard'));
   assert.ok(WHITE_INCLUDED.includes('Cast / TV'));
-  assert.ok(WHITE_NOT_INCLUDED.some((line) => line.includes('Old School')));
-  assert.ok(WHITE_NOT_INCLUDED.includes('Master Carlos'));
-  assert.ok(WHITE_NOT_INCLUDED.includes('Advantage Coach'));
-  assert.ok(WHITE_NOT_INCLUDED.includes('Advantage Pro'));
-  assert.match(WHITE_UPGRADE_NOTE, /White only/);
-  assert.match(WHITE_UPGRADE_NOTE, /Coach/);
-  assert.match(WHITE_UPGRADE_NOTE, /Pro/);
+  assert.equal(
+    WHITE_UPGRADE_NOTE,
+    "Advantage Coach and Advantage Pro are separate products. This purchase is White only; you can add Coach or Pro later when they're for sale.",
+  );
 });
 
 test('WHITEFREE is the in-app $0 unlock and matches the server', () => {

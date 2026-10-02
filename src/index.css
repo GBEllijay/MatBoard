@@ -12967,8 +12967,9 @@ a.plan-pick {
   padding-left: 1.15rem;
 }
 
-.buy__label {
-  font-weight: 750;
+.home .buy p.buy__later {
+  color: var(--muted);
+  text-align: center;
 }
 
 .buy a {

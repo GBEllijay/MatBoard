@@ -76,13 +76,13 @@ Advantage White is a **one-time $9.99 USD** purchase. Checkout is a Stripe Check
 | Create Checkout | `POST /api/checkout` with optional JSON `{ "promotionCode": "WHITE499" }` |
 | Webhook | `POST /api/stripe/webhook` on `checkout.session.completed` |
 | Entitlement check | `GET /api/entitlement?session_id=cs_...` or `?session_id=free_...` or `?email=` |
-| Free unlock | Enter `WHITEFREE` on `/buy`. Records White at $0. Does not call Stripe and does not need Stripe keys. |
+| Free unlock | Private link `/buy?code=WHITEFREE` only. The public `/buy` page does not show a code field or any promo names. Records White at $0 with no Stripe call and no Stripe keys. |
 | Local store | `.data/white-entitlements.json` while `npm run dev` or `npm run preview` (gitignored) |
 | Cloudflare store | KV binding **`WHITE_ENTITLEMENTS`** (one JSON index). Without that binding the webhook returns 500 so Stripe retries. |
 
 The stored record is the buyer email (empty for the in-app free unlock), the session id, the amount, the currency, and the time. Card numbers are not stored. A Stripe session id is recorded once. A `WHITEFREE` unlock writes a new `free_...` id with amount `0`. Email lookup returns the latest White purchase that has an email. `GET /api/entitlement` is a stub: anyone who knows the email or session id can see that a purchase exists. Gate it before production.
 
-**Free unlock code: `WHITEFREE`.** On `/buy`, that code grants Advantage White at $0 and writes the same entitlement store a paid webhook uses. It works when `STRIPE_SECRET_KEY` and `STRIPE_PRICE_WHITE` are unset. There is no account. The success line on the buy page is the confirmation.
+**Free unlock (not shown on the public buy page): `WHITEFREE`.** Open `/buy?code=WHITEFREE`. That link grants Advantage White at $0 and writes the same entitlement store a paid webhook uses. It works when `STRIPE_SECRET_KEY` and `STRIPE_PRICE_WHITE` are unset. There is no account and no code field on `/buy`. After it records, the address bar returns to `/buy`.
 
 ### Dashboard setup (test mode)
 
@@ -97,7 +97,7 @@ Use the Stripe test-mode toggle. Then:
    | `advantage_white_099` | $9.00 USD | Once | `WHITE099` | $0.99 |
    | `advantage_white_free` | 100% (`percent_off` 100) | Once | `WHITEFREE` | $0 |
 
-   Restrict each coupon to the Advantage White product if you want it to stay off later prices. Promotion codes are customer-facing; coupon ids are the Dashboard ids. `WHITEFREE` on the buy page never calls Stripe. The 100% coupon is only for a Checkout test: leave the buy-page field blank, continue to Stripe, and enter `WHITEFREE` there. That session completes with `payment_status` `no_payment_required` and amount `0`; the webhook records it.
+   Restrict each coupon to the Advantage White product if you want it to stay off later prices. Promotion codes are customer-facing; coupon ids are the Dashboard ids. The public buy page does not list them. Paid codes are typed in Stripe Checkout’s own promo box. `/buy?code=WHITEFREE` never calls Stripe. The 100% coupon is only for a Checkout test: continue to Stripe and enter `WHITEFREE` there. That session completes with `payment_status` `no_payment_required` and amount `0`; the webhook records it.
 3. **Developers → Webhooks → Add endpoint.** URL: `https://<your-host>/api/stripe/webhook` (local: forward to `http://localhost:5173/api/stripe/webhook`). Event: `checkout.session.completed`. Copy the signing secret into `STRIPE_WEBHOOK_SECRET`.
 4. **Developers → API keys.** Secret key → `STRIPE_SECRET_KEY` (`sk_test_...`).
 5. Optional `STRIPE_SUCCESS_URL` and `STRIPE_CANCEL_URL`. If empty, the API uses the request origin:
@@ -111,13 +111,12 @@ Copy `.env.example` to `.env` for local dev. `.env` is gitignored.
 
 ### Test-mode click path
 
-1. Free unlock, no Stripe keys required: `npm run dev`, open `http://localhost:5173/buy`, enter `WHITEFREE`, and choose **Unlock White**. The page stays on `/buy` and says White is unlocked at $0. The local file stores `amountTotal: 0` and a `free_...` session id. `GET /api/entitlement?session_id=free_...` returns `{ "entitled": true, "sessionId": "free_..." }`.
-2. Paid path: fill `.env` with test keys and restart `npm run dev`. Open `/buy` (or White → **Buy Advantage White — $9.99**).
-3. Optional: enter `WHITE499` or `WHITE099`. Leave the field blank to type a code on Stripe instead. A paid code entered here is applied as the Checkout discount; Stripe’s own promo box is used only when this field is empty.
-4. **Continue to checkout.** Pay with `4242 4242 4242 4242`, any future expiry, any CVC, any ZIP.
-5. Stripe returns to `/buy?checkout=success&session_id=cs_test_...`. Cancel returns to `/buy?checkout=cancel` and does not charge.
-6. Deliver the webhook (`stripe listen --forward-to localhost:5173/api/stripe/webhook`, or the Dashboard endpoint). The buy page looks up the session a few times.
-7. `GET /api/entitlement?session_id=cs_test_...` returns `{ "entitled": true, "email": "...", "sessionId": "cs_test_..." }`. Locally that row is in `.data/white-entitlements.json`.
+1. Free unlock, no Stripe keys required: `npm run dev`, open `http://localhost:5173/buy?code=WHITEFREE`. The page does not show the code. It says White is unlocked at $0, then the address bar is `/buy`. The local file stores `amountTotal: 0` and a `free_...` session id. `GET /api/entitlement?session_id=free_...` returns `{ "entitled": true, "sessionId": "free_..." }`.
+2. Paid path: fill `.env` with test keys and restart `npm run dev`. Open `/buy` (or White → **Buy Advantage White — $9.99**). The page has no promo field.
+3. **Continue to checkout.** Pay with `4242 4242 4242 4242`, any future expiry, any CVC, any ZIP. On Stripe’s page, optional promo codes are `WHITE499` and `WHITE099`.
+4. Stripe returns to `/buy?checkout=success&session_id=cs_test_...`. Cancel returns to `/buy?checkout=cancel` and does not charge.
+5. Deliver the webhook (`stripe listen --forward-to localhost:5173/api/stripe/webhook`, or the Dashboard endpoint). The buy page looks up the session a few times.
+6. `GET /api/entitlement?session_id=cs_test_...` returns `{ "entitled": true, "email": "...", "sessionId": "cs_test_..." }`. Locally that row is in `.data/white-entitlements.json`.
 
 Coach and Pro are named on the buy page as later products. They are not in this Checkout session.
 

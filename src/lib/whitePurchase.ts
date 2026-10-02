@@ -26,7 +26,7 @@ export function isWhiteFreeCode(raw: string): boolean {
 
 /**
  * Launch promo placeholders. Create these in the Stripe Dashboard (test mode).
- * The app does not create coupons. Checkout accepts the code on this page or on Stripe.
+ * The public buy page does not show these codes. Paid codes are entered on Stripe Checkout.
  * $9.99 minus the amount off is the charge.
  */
 export const WHITE_LAUNCH_PROMOS = [
@@ -50,16 +50,9 @@ export const WHITE_INCLUDED = [
   'Cast / TV',
 ] as const;
 
-export const WHITE_NOT_INCLUDED = [
-  'Old School / Mock skin picker extras beyond the default scoreboard',
-  'Master Carlos',
-  'Advantage Coach',
-  'Advantage Pro',
-] as const;
-
-/** Text only. Coach and Pro are not part of this checkout. */
+/** Footer line on /buy. Coach and Pro are not part of this checkout. */
 export const WHITE_UPGRADE_NOTE =
-  'Advantage Coach and Advantage Pro are separate products. This purchase is White only. You can add Coach or Pro later when they are for sale.';
+  "Advantage Coach and Advantage Pro are separate products. This purchase is White only; you can add Coach or Pro later when they're for sale.";
 
 export function priceAfterAmountOff(listCents: number, amountOffCents: number): number {
   return Math.max(0, listCents - amountOffCents);
