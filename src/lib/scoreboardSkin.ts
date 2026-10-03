@@ -1,10 +1,11 @@
 /**
  * Match scoreboard skins. Mock-Tournament is the default.
- * Advantage White Live Bout is Mock-Tournament only — no Mock / Old School picker.
+ * Advantage White Live Bout is Mock-Tournament only — no skin picker.
  * Basic Coach bracket bouts (Score from Mock Tournament) use that same White board.
- * The Pro tournament suite (`from=suite`) keeps Mock-Tournament and Old School.
+ * The Pro tournament suite (`from=suite`) keeps Mock-Tournament, Quick Result, and Old School.
  * A linked bout that is not basic Coach — Coach Unlimited, which is Pro-unlocked —
  * also keeps the stored skin. Master Carlos is not a skin; the Pro suite owns him.
+ * Quick Result is that same tournament board with Win and DQ under each gym name.
  * LIGHT and KIDS stay reserved.
  * Kids' Scoreboards paints the Pro bracket, not this skin.
  */
@@ -25,6 +26,8 @@ export const SCOREBOARD_SKIN = {
   KIDS: 'KIDS',
   /** Mechanical flip-card points, advantages, and penalties. */
   OLD_SCHOOL: 'OLD_SCHOOL',
+  /** Tournament board with Win and DQ under each gym name. Pro skin picker only. */
+  QUICK_RESULT: 'QUICK_RESULT',
 } as const;
 
 export type ScoreboardSkinId = (typeof SCOREBOARD_SKIN)[keyof typeof SCOREBOARD_SKIN];
@@ -37,10 +40,14 @@ export const MOCK_TOURNAMENT_SKIN_NAME = 'Mock-Tournament Skin';
 
 export const OLD_SCHOOL_SKIN_NAME = 'Old School';
 
-/** Skins the controller can select. Reserved ids stay out of the switcher. */
+/** Switcher label. Keep this exact. */
+export const QUICK_RESULT_SKIN_NAME = 'Quick Result';
+
+/** Skins the controller can select. Reserved ids stay out of the switcher. White never shows this list. */
 export const SELECTABLE_SCOREBOARD_SKINS = [
   { id: SCOREBOARD_SKIN.MOCK_TOURNAMENT, label: 'Mock-Tournament' },
   { id: SCOREBOARD_SKIN.OLD_SCHOOL, label: OLD_SCHOOL_SKIN_NAME },
+  { id: SCOREBOARD_SKIN.QUICK_RESULT, label: QUICK_RESULT_SKIN_NAME },
 ] as const;
 
 /** Mock-Tournament colors. CSS tokens mirror these. Penalty is Pantone 200 so gym TVs keep a primary red. */
@@ -61,6 +68,8 @@ const SKIN_CLASS: Record<ScoreboardSkinId, string> = {
   [SCOREBOARD_SKIN.LIGHT]: 'scoreboard-skin--mock-tournament',
   [SCOREBOARD_SKIN.KIDS]: 'scoreboard-skin--mock-tournament',
   [SCOREBOARD_SKIN.OLD_SCHOOL]: 'scoreboard-skin--old-school',
+  /* Same painted board as Mock-Tournament. Win and DQ are the only addition. */
+  [SCOREBOARD_SKIN.QUICK_RESULT]: 'scoreboard-skin--mock-tournament',
 };
 
 export function isSelectableScoreboardSkin(value: unknown): value is ScoreboardSkinId {
@@ -137,7 +146,7 @@ export function isPlainWhiteScoreboard(
   return coachWhiteBoard;
 }
 
-/** Skin the White, Coach, or suite board should paint. White never follows a stored Old School pick. */
+/** Skin the White, Coach, or suite board should paint. White never follows a stored skin pick. */
 export function visibleScoreboardSkin(
   skin: ScoreboardSkinId,
   fromSuite: boolean,

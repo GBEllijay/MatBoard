@@ -80,7 +80,7 @@ export function MatchDisplayPage() {
   const clockStatusAction = match.running ? 'Pause match clock' : remaining <= 0 ? 'Restart match clock' : 'Start match clock';
   const skin = board.skinFor(match.skin);
   const flap = skin === SCOREBOARD_SKIN.OLD_SCHOOL;
-  const boardCalls = !flap;
+  const boardCalls = skin === SCOREBOARD_SKIN.QUICK_RESULT;
   const carlos = board.showCarlos
     ? matchCarlosView({
         prefs: match.carlos,

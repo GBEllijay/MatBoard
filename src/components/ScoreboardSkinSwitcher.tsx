@@ -4,7 +4,7 @@ import {
   type ScoreboardSkinId,
 } from '../lib/scoreboardSkin';
 
-/** Mock-Tournament and Old School. The choice is stored with the match so Display follows. */
+/** Mock-Tournament, Old School, and Quick Result. The choice is stored with the match so Display follows. */
 export function ScoreboardSkinSwitcher({ skin }: { skin: ScoreboardSkinId }) {
   return (
     <div className="kids-switch" role="radiogroup" aria-label="Scoreboard skin">
