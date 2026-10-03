@@ -1565,6 +1565,16 @@ span.role-plan__mark {
   height: 6.4rem;
 }
 
+/* Whole owner still life. Contain keeps every object inside the tile. */
+.pro-hub__scene > .ctm-still {
+  display: block;
+  width: 100%;
+  height: 6.4rem;
+  object-fit: contain;
+  object-position: center;
+  background: #efebe3;
+}
+
 .pro-hub--tile .pro-hub__open {
   justify-self: end;
   display: inline-flex;
