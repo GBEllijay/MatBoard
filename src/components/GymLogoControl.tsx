@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { DeviceMediaInput } from './DeviceMediaInput';
 import { OpenMyDrive } from './OpenMyDrive';
 import { MediaSourceSheet } from './VideoSourceSheet';
@@ -10,7 +11,14 @@ import { PHOTO_PICKER_ACCEPT, VIDEO_CAPTURE } from '../lib/mediaPicker';
 const CAPTURE_ID = 'gym-logo-capture';
 const LIBRARY_ID = 'gym-logo-library';
 
-/** On-device default gym logo. Does not replace Advantage back-button marks. */
+/**
+ * On-device default gym logo. Does not replace Advantage back-button marks.
+ *
+ * The file inputs are portaled to `document.body`. They used to render inside
+ * the Media Console sheet. After Take photo or Pick from gallery the input
+ * stayed focused, and the browser scrolled that fixed sheet until the panel
+ * was an empty frame. Gallery's capture inputs already live outside the sheet.
+ */
 export function GymLogoControl() {
   const captureRef = useRef<HTMLInputElement>(null);
   const libraryRef = useRef<HTMLInputElement>(null);
@@ -87,19 +95,28 @@ export function GymLogoControl() {
         stacked
         onClose={() => setChooserOpen(false)}
       />
-      <DeviceMediaInput
-        id={CAPTURE_ID}
-        inputRef={captureRef}
-        accept={PHOTO_PICKER_ACCEPT}
-        capture={VIDEO_CAPTURE}
-        onFiles={onFiles}
-      />
-      <DeviceMediaInput
-        id={LIBRARY_ID}
-        inputRef={libraryRef}
-        accept={PHOTO_PICKER_ACCEPT}
-        onFiles={onFiles}
-      />
+      {typeof document === 'undefined'
+        ? null
+        : createPortal(
+            <>
+              <DeviceMediaInput
+                id={CAPTURE_ID}
+                className="gym-logo-file"
+                inputRef={captureRef}
+                accept={PHOTO_PICKER_ACCEPT}
+                capture={VIDEO_CAPTURE}
+                onFiles={onFiles}
+              />
+              <DeviceMediaInput
+                id={LIBRARY_ID}
+                className="gym-logo-file"
+                inputRef={libraryRef}
+                accept={PHOTO_PICKER_ACCEPT}
+                onFiles={onFiles}
+              />
+            </>,
+            document.body,
+          )}
     </section>
   );
 }
