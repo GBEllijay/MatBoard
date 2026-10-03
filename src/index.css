@@ -4345,6 +4345,15 @@ a.saver-folder--link {
   border: 0;
 }
 
+/* Portaled gym-logo file inputs. Fixed on the viewport so focus cannot scroll
+   the Media Console sheet into a blank frame. */
+.sr-only.gym-logo-file {
+  position: fixed;
+  top: 0;
+  left: 0;
+  margin: 0;
+}
+
 .saver__thumb img,
 .saver__thumb video {
   width: 100%;
