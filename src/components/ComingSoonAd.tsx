@@ -48,8 +48,8 @@ function CoachPreview() {
       <img
         src="/coach-preview.png"
         alt="Advantage Coach home with Daily Lesson Plan, Daily Training Videos, Technique Tree, Mock Tournament, and Competitor Roster"
-        width={816}
-        height={1560}
+        width={1080}
+        height={2340}
       />
       <figcaption>
         <strong>{COACH_PREVIEW_LABEL}</strong>
