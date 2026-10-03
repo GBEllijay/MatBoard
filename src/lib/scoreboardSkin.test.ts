@@ -6,6 +6,7 @@ import {
   MOCK_TOURNAMENT_COLORS,
   MOCK_TOURNAMENT_SKIN_NAME,
   OLD_SCHOOL_SKIN_NAME,
+  QUICK_RESULT_SKIN_NAME,
   SCOREBOARD_SKIN,
   SELECTABLE_SCOREBOARD_SKINS,
   OLD_SCHOOL_FLAP_PLACES,
@@ -25,14 +26,23 @@ test('Mock-Tournament Skin is the default Match scoreboard', () => {
   assert.equal(DEFAULT_SCOREBOARD_SKIN, SCOREBOARD_SKIN.MOCK_TOURNAMENT);
   assert.equal(scoreboardSkinClass(), 'scoreboard-skin--mock-tournament');
   assert.equal(scoreboardSkinClass(SCOREBOARD_SKIN.MOCK_TOURNAMENT), 'scoreboard-skin--mock-tournament');
-  assert.deepEqual(Object.keys(SCOREBOARD_SKIN).sort(), ['KIDS', 'LIGHT', 'MOCK_TOURNAMENT', 'OLD_SCHOOL']);
+  assert.deepEqual(Object.keys(SCOREBOARD_SKIN).sort(), [
+    'KIDS',
+    'LIGHT',
+    'MOCK_TOURNAMENT',
+    'OLD_SCHOOL',
+    'QUICK_RESULT',
+  ]);
   assert.equal(OLD_SCHOOL_SKIN_NAME, 'Old School');
+  assert.equal(QUICK_RESULT_SKIN_NAME, 'Quick Result');
   assert.deepEqual(
     SELECTABLE_SCOREBOARD_SKINS.map((skin) => skin.label),
-    ['Mock-Tournament', 'Old School'],
+    ['Mock-Tournament', 'Old School', 'Quick Result'],
   );
   assert.equal(scoreboardSkinClass(SCOREBOARD_SKIN.OLD_SCHOOL), 'scoreboard-skin--old-school');
+  assert.equal(scoreboardSkinClass(SCOREBOARD_SKIN.QUICK_RESULT), 'scoreboard-skin--mock-tournament');
   assert.equal(parseScoreboardSkin('OLD_SCHOOL'), SCOREBOARD_SKIN.OLD_SCHOOL);
+  assert.equal(parseScoreboardSkin('QUICK_RESULT'), SCOREBOARD_SKIN.QUICK_RESULT);
   assert.equal(parseScoreboardSkin('LIGHT'), SCOREBOARD_SKIN.MOCK_TOURNAMENT);
   assert.equal(parseScoreboardSkin(undefined), SCOREBOARD_SKIN.MOCK_TOURNAMENT);
   assert.deepEqual(flapDigits(4, 2), ['0', '4']);
@@ -50,11 +60,14 @@ test('Mock-Tournament Skin is the default Match scoreboard', () => {
 test('White Live Bout stays on Mock-Tournament; suite and Unlimited linked bouts keep the choice', () => {
   assert.equal(isPlainWhiteScoreboard(false, false), true);
   assert.equal(visibleScoreboardSkin(SCOREBOARD_SKIN.OLD_SCHOOL, false, false), SCOREBOARD_SKIN.MOCK_TOURNAMENT);
+  assert.equal(visibleScoreboardSkin(SCOREBOARD_SKIN.QUICK_RESULT, false, false), SCOREBOARD_SKIN.MOCK_TOURNAMENT);
   assert.equal(visibleScoreboardSkin(SCOREBOARD_SKIN.MOCK_TOURNAMENT, false, false), SCOREBOARD_SKIN.MOCK_TOURNAMENT);
   assert.equal(isPlainWhiteScoreboard(true, false), false);
   assert.equal(visibleScoreboardSkin(SCOREBOARD_SKIN.OLD_SCHOOL, true, false), SCOREBOARD_SKIN.OLD_SCHOOL);
+  assert.equal(visibleScoreboardSkin(SCOREBOARD_SKIN.QUICK_RESULT, true, false), SCOREBOARD_SKIN.QUICK_RESULT);
   assert.equal(isPlainWhiteScoreboard(false, true), false);
   assert.equal(visibleScoreboardSkin(SCOREBOARD_SKIN.OLD_SCHOOL, false, true), SCOREBOARD_SKIN.OLD_SCHOOL);
+  assert.equal(visibleScoreboardSkin(SCOREBOARD_SKIN.QUICK_RESULT, false, true), SCOREBOARD_SKIN.QUICK_RESULT);
   assert.equal(isPlainWhiteScoreboard(true, true, true), false);
   assert.equal(visibleScoreboardSkin(SCOREBOARD_SKIN.OLD_SCHOOL, true, true, true), SCOREBOARD_SKIN.OLD_SCHOOL);
 });
@@ -67,6 +80,7 @@ test('Basic Coach bracket bouts use the White board; Coach Unlimited keeps the s
   assert.equal(coachLinkedWhiteBoard(false, true, false, true), true);
   assert.equal(isPlainWhiteScoreboard(false, true, true), true);
   assert.equal(visibleScoreboardSkin(SCOREBOARD_SKIN.OLD_SCHOOL, false, true, true), SCOREBOARD_SKIN.MOCK_TOURNAMENT);
+  assert.equal(visibleScoreboardSkin(SCOREBOARD_SKIN.QUICK_RESULT, false, true, true), SCOREBOARD_SKIN.MOCK_TOURNAMENT);
   assert.equal(isCoachWhiteBoardSearch(new URLSearchParams('board=white')), true);
   assert.equal(isCoachWhiteBoardSearch(new URLSearchParams('from=suite')), false);
   assert.equal(withCoachWhiteBoard('/match?bout=final-0', true), '/match?bout=final-0&board=white');

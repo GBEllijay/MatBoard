@@ -70,7 +70,7 @@ export type MatchState = {
    * Gym default on; persist with the match.
    */
   autoAnnounce: boolean;
-  /** Mock-Tournament or Old School. Travels with the match so Display follows the controller. */
+  /** Mock-Tournament, Quick Result, or Old School. Travels with the match so Display follows the controller. */
   skin: ScoreboardSkinId;
   /** Optional Master Carlos on the scoreboard. Off until the controller turns it on. */
   carlos: CarlosCelebrationPrefs;

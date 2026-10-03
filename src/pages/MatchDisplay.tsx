@@ -1,6 +1,7 @@
 import { useCallback, useState, type MouseEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FullscreenChip } from '../components/FullscreenChip';
+import { OutcomeCalls, OutcomePickSheet, useOutcomeSheet } from '../components/OutcomeCalls';
 import { OutcomeSplash } from '../components/OutcomeSplash';
 import { TvTip } from '../components/TvTip';
 import { RankChip } from '../components/RankChip';
@@ -14,7 +15,7 @@ import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useMatchState } from '../hooks/useStores';
 import { unlockAudio } from '../lib/audio';
-import { controllerPath } from '../lib/bracketBout';
+import { controllerPath, declareMatchOutcome } from '../lib/bracketBout';
 import { roundDisplay } from '../lib/roundDisplay';
 import { competitorFocus, type DisplayFocus } from '../lib/matchFocus';
 import { dispatchMatch, expireMatchClock, remainingNow, type Side } from '../lib/matchStore';
@@ -36,6 +37,8 @@ export function MatchDisplayPage() {
   const refNeeded = needsRefDecision({ ...match, remainingMs: remaining });
   const endedWithoutWinner = remaining <= 0 && !match.running && !match.outcome;
   const splash = match.outcomeFlash && match.outcome ? match.outcome : null;
+  const flashing = Boolean(match.outcomeFlash);
+  const outcomeSheet = useOutcomeSheet();
   const splashName = splash
     ? (splash.side === 'blue' ? match.blue.name : match.white.name).trim() ||
       (splash.side === 'blue' ? 'Competitor 1' : 'Competitor 2')
@@ -77,6 +80,7 @@ export function MatchDisplayPage() {
   const clockStatusAction = match.running ? 'Pause match clock' : remaining <= 0 ? 'Restart match clock' : 'Start match clock';
   const skin = board.skinFor(match.skin);
   const flap = skin === SCOREBOARD_SKIN.OLD_SCHOOL;
+  const boardCalls = skin === SCOREBOARD_SKIN.QUICK_RESULT;
   const carlos = board.showCarlos
     ? matchCarlosView({
         prefs: match.carlos,
@@ -164,6 +168,16 @@ export function MatchDisplayPage() {
         linked={Boolean(linkedId)}
         flap={flap}
         onOpenController={openController}
+        calls={
+          boardCalls
+            ? {
+                disabled: flashing,
+                highlight: refNeeded,
+                onWin: () => outcomeSheet.openWin('blue', 'Blue'),
+                onDq: () => outcomeSheet.openDq('blue', 'Blue'),
+              }
+            : undefined
+        }
       />
 
       <section className={`display__mid${flap ? ' display__mid--stack' : ''}`}>
@@ -194,7 +208,39 @@ export function MatchDisplayPage() {
         linked={Boolean(linkedId)}
         flap={flap}
         onOpenController={openController}
+        calls={
+          boardCalls
+            ? {
+                disabled: flashing,
+                highlight: refNeeded,
+                onWin: () => outcomeSheet.openWin('white', 'White'),
+                onDq: () => outcomeSheet.openDq('white', 'White'),
+              }
+            : undefined
+        }
       />
+
+      {boardCalls ? (
+        <OutcomePickSheet
+          open={outcomeSheet.sheet?.call ?? null}
+          title={
+            outcomeSheet.sheet?.call === 'dq'
+              ? `${outcomeSheet.sheet.label} DQ`
+              : `${outcomeSheet.sheet?.label ?? ''} win`
+          }
+          onClose={outcomeSheet.close}
+          onPickWin={(method) => {
+            if (!outcomeSheet.sheet) return;
+            declareMatchOutcome(outcomeSheet.sheet.side, { call: 'win', method });
+            outcomeSheet.close();
+          }}
+          onPickDq={(reason) => {
+            if (!outcomeSheet.sheet) return;
+            declareMatchOutcome(outcomeSheet.sheet.side, { call: 'dq', reason });
+            outcomeSheet.close();
+          }}
+        />
+      ) : null}
 
       {splash ? <OutcomeSplash outcome={splash} name={splashName} /> : null}
       {carlos.show ? <CarlosCheer lines={carlos.lines} board /> : null}
@@ -214,6 +260,7 @@ function CompetitorBand({
   linked,
   flap,
   onOpenController,
+  calls,
 }: {
   side: Side;
   name: string;
@@ -226,6 +273,12 @@ function CompetitorBand({
   linked: boolean;
   flap: boolean;
   onOpenController: (focus?: DisplayFocus) => void;
+  calls?: {
+    disabled: boolean;
+    highlight: boolean;
+    onWin: () => void;
+    onDq: () => void;
+  };
 }) {
   const label = side === 'blue' ? 'Blue' : 'White';
 
@@ -251,6 +304,16 @@ function CompetitorBand({
             {gym || '\u00a0'}
           </ControllerFocusLink>
         </p>
+        {calls ? (
+          <OutcomeCalls
+            sideLabel={label}
+            disabled={calls.disabled}
+            highlight={calls.highlight}
+            variant="bout"
+            onWin={calls.onWin}
+            onDq={calls.onDq}
+          />
+        ) : null}
       </div>
       <div className="bout__scores">
         <ScoreBox side={side} kind="points" value={points} flap={flap} />
