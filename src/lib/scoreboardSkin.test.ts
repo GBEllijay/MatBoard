@@ -109,4 +109,9 @@ test('Mock-Tournament eyedrop colors are the stylesheet tokens', () => {
   assert.match(stack, /flex-direction:\s*column/);
   assert.match(stack, /grid-template-rows:\s*minmax\(0,\s*1fr\)\s+auto\s+minmax\(0,\s*1fr\)/);
   assert.match(css, /@keyframes flap-turn/);
+  const tv = css.slice(css.lastIndexOf('(min-width: 900px) and (min-height: 560px)'));
+  assert.match(tv, /scoreboard-skin--old-school\.display > \.bout/);
+  assert.match(tv, /grid-template-columns:\s*minmax\(8\.5rem,\s*15\.5rem\)\s+minmax\(0,\s*1fr\)/);
+  assert.match(tv, /aspect-ratio:\s*auto/);
+  assert.match(tv, /--flap-ring-w:\s*min\(94%,\s*100cqh\)/);
 });
