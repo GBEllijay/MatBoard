@@ -2437,10 +2437,11 @@ span.role-plan__mark {
 
 .bout__calls {
   display: grid;
-  grid-template-columns: 1.25fr 1fr;
-  gap: 0.4rem;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
   margin-top: 0.55rem;
-  max-width: 18rem;
+  max-width: 26rem;
+  flex: 0 0 auto;
 }
 
 .bout__calls--needed,
@@ -2457,19 +2458,18 @@ span.role-plan__mark {
   border: 0;
   border-radius: 14px;
   font-weight: 800;
-  font-size: 1rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
   touch-action: manipulation;
 }
 
 .bout-call--win {
-  background: var(--gold);
+  background: #eeb63a;
   color: #1a1404;
 }
 
 .bout-call--dq {
-  background: var(--neg);
+  background: #f5544f;
   color: #fff;
 }
 
@@ -13356,4 +13356,20 @@ a.plan-pick {
 
 .white-roster__actions .btn {
   min-height: 44px;
+}
+
+/* Tall scoreboards keep the approved Win / DQ size. Short phone landscape stays compact. */
+@media (min-height: 560px) {
+  .bout__calls {
+    max-width: 26rem;
+    margin-top: 0.55rem;
+    gap: 0.55rem;
+  }
+
+  .bout-call {
+    min-height: 56px;
+    padding: 0.35rem 0.7rem;
+    font-size: 1.05rem;
+    border-radius: 14px;
+  }
 }
