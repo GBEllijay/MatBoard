@@ -12913,6 +12913,75 @@ a.plan-pick {
   }
 }
 
+/* Gym TV / fullscreen desktop. Phone portrait and short landscape stay compact.
+   The name column stops at a readable width so the flip cards use the row.
+   Advantages and penalties fill their cells (still shorter than points) instead
+   of sitting inside a fixed aspect box with empty frame around them.
+   Ring drawing is unchanged; only the TV size cap is lifted so the wire
+   scales with the card and 100cqh still keeps the grommet on the card. */
+@media (min-width: 900px) and (min-height: 560px) {
+  .scoreboard-skin--old-school.display > .bout {
+    grid-template-columns: minmax(8.5rem, 15.5rem) minmax(0, 1fr);
+    align-items: stretch;
+    gap: 0.45rem 0.7rem;
+    padding: 0.28rem 0.45rem 0.22rem;
+  }
+
+  .scoreboard-skin--old-school.display .bout__who h1 {
+    font-size: clamp(1.45rem, 2.5vw, 2.65rem);
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  .scoreboard-skin--old-school.display .bout__who p {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  .scoreboard-skin--old-school.display .bout__scores {
+    grid-template-columns: minmax(0, 2.15fr) minmax(0, 0.96fr) minmax(0, 0.82fr);
+    align-items: end;
+    height: 100%;
+    min-height: 0;
+    gap: 0.55rem 0.7rem;
+    padding: 0.15rem 0.2rem 0.28rem;
+  }
+
+  .scoreboard-skin--old-school.display .score--points {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .scoreboard-skin--old-school.display .score--advantages {
+    height: 88%;
+    min-height: 0;
+  }
+
+  .scoreboard-skin--old-school.display .score--disadvantages {
+    height: 76%;
+    min-height: 0;
+  }
+
+  .scoreboard-skin--old-school.display .score--advantages .flap__slot,
+  .scoreboard-skin--old-school.display .score--disadvantages .flap__slot {
+    flex: 1 1 auto;
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    aspect-ratio: auto;
+  }
+
+  .scoreboard-skin--old-school.display .flap {
+    padding-top: clamp(2.1rem, 14%, 4.25rem);
+  }
+
+  .scoreboard-skin--old-school.display .flap__rings {
+    --flap-ring-w: min(94%, 100cqh);
+  }
+}
+
 @keyframes flap-turn {
   0% {
     transform: perspective(600px) rotateX(-72deg);
