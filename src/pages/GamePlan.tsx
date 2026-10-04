@@ -225,6 +225,7 @@ function LayerCard({
             type="button"
             className="btn"
             onClick={() => {
+              setCopyState('copied');
               void copyFieldText(notes).then((ok) => setCopyState(ok ? 'copied' : 'failed'));
             }}
           >
@@ -305,13 +306,21 @@ function LayerCard({
 
 /** Copies the current field text so it can be pasted outside Advantage. */
 async function copyFieldText(text: string): Promise<boolean> {
-  try {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-      return true;
+  if (navigator.clipboard?.writeText) {
+    try {
+      const copied = await Promise.race([
+        navigator.clipboard.writeText(text).then(
+          () => true,
+          () => false,
+        ),
+        new Promise<boolean>((resolve) => {
+          window.setTimeout(() => resolve(false), 700);
+        }),
+      ]);
+      if (copied) return true;
+    } catch {
+      /* Older phones fall through to the selection copy below. */
     }
-  } catch {
-    /* Older phones fall through to the selection copy below. */
   }
   try {
     const area = document.createElement('textarea');
