@@ -1,5 +1,5 @@
 import { useCallback, useState, type MouseEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { PlayExitMark } from '../components/PlayExitMark';
@@ -12,6 +12,7 @@ import { useWakeLock } from '../hooks/useWakeLock';
 import { useTrainingSkin, useTrainingState } from '../hooks/useStores';
 import { unlockAudio } from '../lib/audio';
 import { formatMmSs } from '../lib/format';
+import { safeTimerReturn } from '../lib/timerReturn';
 import { remainingTraining, tickTraining, toggleTrainingClock } from '../lib/trainingStore';
 
 export function TrainingPage() {
@@ -23,6 +24,9 @@ export function TrainingPage() {
   const fs = usePlayFullscreen();
   const navigate = useNavigate();
   const suite = useSuiteOrigin();
+  const [searchParams] = useSearchParams();
+  const back = safeTimerReturn(searchParams.get('back'));
+  const exitTo = back ?? suite.homePath;
 
   useWakeLock(training.running);
   useInterval(
@@ -49,7 +53,7 @@ export function TrainingPage() {
 
   const exitTraining = () => {
     void fs.exit().finally(() => {
-      navigate(suite.homePath);
+      navigate(exitTo);
     });
   };
 
@@ -65,7 +69,12 @@ export function TrainingPage() {
       }}
     >
       <Chrome ghost title="" />
-      <PlayExitMark to={suite.homePath} onExit={exitTraining} />
+      <PlayExitMark to={exitTo} onExit={exitTraining} />
+      {back ? (
+        <Link className="btn training__back" to={back}>
+          Back to curriculum
+        </Link>
+      ) : null}
       <div className="play-fs-slot">
         <FullscreenChip
           supported={fs.supported}

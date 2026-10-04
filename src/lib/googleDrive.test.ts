@@ -28,6 +28,8 @@ import {
   ensureDateFolderTree,
   findOrCreateChildFolder,
   coachPlanDriveFileName,
+  curriculumDriveFileName,
+  upsertCurriculumFile,
   lessonClassFileToken,
   lessonDriveFileName,
   upsertCoachPlanFile,
@@ -230,6 +232,12 @@ test('class history groups Drive files and does not invent an empty day', () => 
       mimeType: 'application/json',
       appProperties: { advantage: 'coach-plan', date: '2026-09-01', purpose: 'self' },
     },
+    {
+      id: 'curriculum-1',
+      name: 'advantage-curriculum-2026-09-15-alex.json',
+      mimeType: 'application/json',
+      appProperties: { advantage: 'competition-curriculum', date: '2026-09-15', purpose: 'self' },
+    },
   ];
   const days = buildClassHistory({
     files,
@@ -247,6 +255,7 @@ test('class history groups Drive files and does not invent an empty day', () => 
   assert.deepEqual(videosOnDay(days, '2026-09-26').map((video) => video.label), ['Drill.mp4']);
   assert.deepEqual(videosOnDay(days, '2026-09-01'), []);
   assert.equal(days.some((day) => day.date === '2026-09-01'), false);
+  assert.equal(days.some((day) => day.date === '2026-09-15'), false);
   assert.equal(buildClassHistory({ files: [], lessons: [] }).length, 0);
 });
 
@@ -1156,6 +1165,41 @@ describe('date folder tree', { concurrency: false }, () => {
     assert.equal(JSON.stringify(body).includes('blob'), false);
     assert.equal(JSON.stringify(body).includes('distribution'), false);
     assert.equal(drive.files.some((file) => file.name.startsWith('advantage-lesson-')), false);
+    assert.equal(drive.files.some((file) => file.mimeType.startsWith('video/')), false);
+    const plansId = drive.files.find((file) => file.name === 'lesson-plans')?.id;
+    assert.ok(plansId);
+    assert.deepEqual(record.parents, [plansId]);
+  });
+
+  test('upsertCurriculumFile writes curriculum text into lesson-plans and not a video', async () => {
+    const drive = createFakeDrive('curriculum');
+    const saved = await upsertCurriculumFile({
+      token: 'token',
+      folderId: 'root-curriculum',
+      dateKey: '2026-09-30',
+      coachName: 'Alex Rivera',
+      planId: 'curriculum-gi',
+      documentJson: JSON.stringify({
+        advantage: 'competition-curriculum',
+        version: 1,
+        date: '2026-09-30',
+        coachName: 'Alex Rivera',
+        purpose: 'self',
+        curriculum: { classDesignation: 'Gi', closing: 'Shake hands' },
+      }),
+      fetcher: drive.fetcher,
+    });
+    const records = drive.files.filter((file) => file.name.startsWith('advantage-curriculum-'));
+    assert.equal(records.length, 1);
+    const record = records[0];
+    assert.ok(record);
+    assert.equal(record.id, saved.fileId);
+    assert.equal(record.name, curriculumDriveFileName('2026-09-30', 'Alex Rivera', 'curriculum-gi'));
+    assert.equal(record.appProperties?.advantage, 'competition-curriculum');
+    assert.equal(record.appProperties?.purpose, 'self');
+    const body = JSON.parse(record.content ?? '{}') as { curriculum?: { closing?: string } };
+    assert.equal(body.curriculum?.closing, 'Shake hands');
+    assert.equal(JSON.stringify(body).includes('blob'), false);
     assert.equal(drive.files.some((file) => file.mimeType.startsWith('video/')), false);
     const plansId = drive.files.find((file) => file.name === 'lesson-plans')?.id;
     assert.ok(plansId);

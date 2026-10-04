@@ -12,6 +12,7 @@ import { ClassHistoryPage } from './pages/ClassHistory';
 import { CoachPage } from './pages/Coach';
 import { CoachUnlimitedPage } from './pages/CoachUnlimited';
 import { CoachingToolsPage } from './pages/CoachingTools';
+import { CompetitionCurriculumPage } from './pages/CompetitionCurriculum';
 import { ComingSoonPage } from './pages/ComingSoon';
 import { CompetitionManagementPage } from './pages/CompetitionManagement';
 import { CompetitionReadyPage } from './pages/CompetitionReady';
@@ -249,6 +250,14 @@ export default function App() {
         element={
           <CoachRoute>
             <TrainingNotesPage />
+          </CoachRoute>
+        }
+      />
+      <Route
+        path="/competition-curriculum"
+        element={
+          <CoachRoute>
+            <CompetitionCurriculumPage />
           </CoachRoute>
         }
       />

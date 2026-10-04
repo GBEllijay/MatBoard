@@ -1,3 +1,4 @@
+import { CURRICULUM_LABEL, CURRICULUM_PATH } from './competitionCurriculum.ts';
 import { TECHNIQUE_TREE_LABEL, TRAINING_NOTES_LABEL } from './coachCopy.ts';
 
 /** User-facing Advantage Pro console name. Keep this exact apostrophe. */
@@ -53,7 +54,7 @@ export const COMPETITION_MANAGEMENT_LABEL = 'Competition Team Management';
 /** Coach competition folder for bout competitors, roster CSV, and on-device rankings. */
 export const COMPETITOR_SYSTEM_NAME = 'Competitor Management System';
 
-/** Advantage Coach folder for the three daily practice tools. */
+/** Advantage Coach folder for the daily practice tools. */
 export const COACHING_TOOLS_LABEL = 'Coaching Tools';
 
 /** Coaching Tools folder. Same navigation style as Competition Team Management. */
@@ -64,7 +65,7 @@ export const COACHING_TOOLS_PATH = '/coaching-tools';
  * Names what is inside, the way Live Bout names Match Timer & Scoreboard.
  */
 export const COACHING_TOOLS_DETAIL =
-  'Daily Lesson Plan, Daily Training Videos, and Technique Tree.';
+  'Daily Lesson Plan, Competition Class Curriculum, Daily Training Videos, and Technique Tree.';
 
 /** One line under that, in the same voice as the Live Bout card body. */
 export const COACHING_TOOLS_LEAD =
@@ -76,6 +77,7 @@ export const COACHING_TOOLS_LEAD =
  */
 export const COACHING_TOOLS_MENU = [
   { title: TRAINING_NOTES_LABEL, to: '/notes', belt: 'coach' as const },
+  { title: CURRICULUM_LABEL, to: CURRICULUM_PATH, belt: 'coach' as const },
   { title: 'Daily Training Videos', to: '/techniques', belt: 'coach' as const },
   { title: TECHNIQUE_TREE_LABEL, to: '/technique-tree', belt: 'coach' as const },
 ] as const;
@@ -99,12 +101,16 @@ export const UNLIMITED_LESSON_VALUE = 'unlimited';
 export const UNLIMITED_LESSON_PATH = `/notes?plan=${UNLIMITED_LESSON_VALUE}`;
 export const COACH_UNLIMITED_PATH = '/coach-unlimited';
 
-/** Unlimited keeps the same three tools and opens Daily Lesson Plan on the Unlimited plan. */
+/** Unlimited keeps the same tools and opens Daily Lesson Plan on the Unlimited plan. */
 export function coachingToolsMenu(unlimited: boolean) {
   if (!unlimited) return COACHING_TOOLS_MENU;
-  return COACHING_TOOLS_MENU.map((tool) =>
-    tool.to === '/notes' ? { ...tool, to: UNLIMITED_LESSON_PATH } : tool,
-  );
+  return COACHING_TOOLS_MENU.map((tool) => {
+    if (tool.to === '/notes') return { ...tool, to: UNLIMITED_LESSON_PATH };
+    if (tool.to === CURRICULUM_PATH) {
+      return { ...tool, to: `${CURRICULUM_PATH}?plan=${UNLIMITED_LESSON_VALUE}` };
+    }
+    return tool;
+  });
 }
 
 /**
