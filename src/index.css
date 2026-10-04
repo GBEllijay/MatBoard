@@ -836,22 +836,57 @@ button.mode-card {
   line-height: 1.45;
 }
 
-/* Competitor Management hub — same cream title and hub cards as the instructor console. */
-.suite h2.competitor-hub__title {
-  position: relative;
-  padding: 1rem 1.1rem;
-  border-radius: 18px;
-  background: var(--white);
-  color: var(--white-ink);
-  font-size: clamp(1.25rem, 3.6vw, 1.7rem);
-  letter-spacing: -0.03em;
-  line-height: 1.2;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+/* Competitor Management header. A gold band and medal, not a hub card. */
+.competitor-hub__header {
+  margin-inline: -1.25rem;
+  background: #fff7e4;
+  color: #323230;
+  box-shadow: none;
 }
 
-.suite h2.competitor-hub__title > span {
-  position: relative;
-  z-index: 1;
+.competitor-hub__band {
+  height: 6.5rem;
+  background: #d9a430;
+}
+
+.competitor-hub__heading {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.85rem, 3vw, 1.6rem);
+  padding: 0.15rem 1.35rem 1.5rem;
+}
+
+.competitor-hub__medal {
+  width: clamp(5.5rem, 18vw, 10.5rem);
+  height: auto;
+  flex: none;
+  margin-top: -4.6rem;
+  pointer-events: none;
+  filter: drop-shadow(0 10px 12px rgba(90, 58, 8, 0.16));
+}
+
+.competitor-hub__copy {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+  padding-top: 1.7rem;
+}
+
+.competitor-hub__copy h2 {
+  margin: 0;
+  color: #2a2a28;
+  font-size: clamp(1.7rem, 5.6vw, 3.4rem);
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 0.95;
+}
+
+.competitor-hub__copy p {
+  margin: 0;
+  color: #3a3834;
+  font-size: clamp(0.95rem, 2.5vw, 1.2rem);
+  font-weight: 650;
+  line-height: 1.35;
 }
 
 .competitor-hub__nav {
@@ -11700,23 +11735,29 @@ a.plan-pick {
 }
 
 .plan-layer textarea {
-  min-height: 5.5rem;
+  min-height: 9.5rem;
   resize: vertical;
   border: 1px solid var(--line);
   background: rgba(0, 0, 0, 0.28);
   color: var(--ink);
   border-radius: 14px;
-  padding: 0.85rem 0.95rem;
-  font: inherit;
+  padding: 0.95rem 1rem;
+  font-family: inherit;
+  font-size: 1.125rem;
+  line-height: 1.45;
 }
 
-.plan-audit,
+.plan-copy .btn {
+  width: 100%;
+  min-height: 52px;
+  font-size: 1.05rem;
+}
+
 .plan-flags {
   display: grid;
   gap: 0.45rem;
 }
 
-.plan-audit .preset,
 .plan-flags .preset {
   width: 100%;
   min-height: 52px;
@@ -11817,15 +11858,10 @@ a.plan-pick {
 
 .plan-pick:focus-visible,
 .plan-chip:focus-visible,
-.plan-link a:focus-visible {
+.plan-link a:focus-visible,
+.plan-copy .btn:focus-visible {
   outline: 2px solid var(--gold-2);
   outline-offset: 3px;
-}
-
-@media (min-width: 720px) {
-  .plan-audit {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 }
 
 .tree-node--pin {

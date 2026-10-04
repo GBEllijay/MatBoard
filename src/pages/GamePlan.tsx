@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { EmptyHint } from '../components/EmptyHint';
 import { PlayExitMark } from '../components/PlayExitMark';
@@ -17,10 +17,8 @@ import {
   EMPTY_ROSTER_TITLE,
 } from '../lib/coachCopy';
 import {
-  GAME_AUDITS,
   GAME_LINK_MAX,
   GAME_NOTE_MAX,
-  auditLabel,
   findTechniqueTarget,
   gamePlanStatusLabel,
   listTechniqueTargets,
@@ -40,7 +38,6 @@ import {
   competitorGamePlan,
   removeGameLink,
   searchStudents,
-  setGameAudit,
   setGameLinkFlag,
   setGameNotes,
   type Student,
@@ -164,7 +161,6 @@ function PlanEditor({ student, archive }: { student: Student; archive: Technique
           title={layer.title}
           layer={plan[layer.section]}
           archive={archive}
-          showAudit
         />
       ))}
       <LayerCard
@@ -173,7 +169,6 @@ function PlanEditor({ student, archive }: { student: Student; archive: Technique
         title={GAME_PLAN_HOME}
         layer={plan.home}
         archive={archive}
-        showAudit={false}
       />
       <div className="plan-back">
         <Link className="btn btn--ghost" to="/game-plan">
@@ -190,27 +185,32 @@ function LayerCard({
   title,
   layer,
   archive,
-  showAudit,
 }: {
   studentId: string;
   section: GameSection;
   title: string;
   layer: GameLayer;
   archive: TechniqueTreeArchive;
-  showAudit: boolean;
 }) {
   const [notes, setNotes] = useState(layer.notes);
   const [showAll, setShowAll] = useState(false);
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
   const suggestions = suggestTechniqueTargets(archive, notes, layer.links);
   const allSteps = listTechniqueTargets(archive);
   const atCap = layer.links.length >= GAME_LINK_MAX;
+
+  useEffect(() => {
+    if (copyState === 'idle') return;
+    const timer = window.setTimeout(() => setCopyState('idle'), 2000);
+    return () => window.clearTimeout(timer);
+  }, [copyState]);
 
   return (
     <section className="plan-layer" aria-label={sectionLabel(section)}>
       <h2>{title}</h2>
       <textarea
         value={notes}
-        rows={3}
+        rows={6}
         maxLength={GAME_NOTE_MAX}
         aria-label={title}
         onChange={(event) => {
@@ -219,19 +219,18 @@ function LayerCard({
           setGameNotes(studentId, section, next);
         }}
       />
-      {showAudit && section !== 'home' ? (
-        <div className="plan-audit" role="group" aria-label={`${sectionLabel(section)} development`}>
-          {GAME_AUDITS.map((audit) => (
-            <button
-              key={audit}
-              type="button"
-              className={layer.audit === audit ? 'preset preset--on' : 'preset'}
-              aria-pressed={layer.audit === audit}
-              onClick={() => setGameAudit(studentId, section, audit)}
-            >
-              {auditLabel(audit)}
-            </button>
-          ))}
+      {section === 'home' ? (
+        <div className="plan-copy">
+          <button
+            type="button"
+            className="btn"
+            onClick={() => {
+              setCopyState('copied');
+              void copyFieldText(notes).then((ok) => setCopyState(ok ? 'copied' : 'failed'));
+            }}
+          >
+            {copyState === 'copied' ? 'Copied' : copyState === 'failed' ? 'Could not copy' : 'Copy'}
+          </button>
         </div>
       ) : null}
       <div className="plan-links">
@@ -303,6 +302,43 @@ function LayerCard({
       </div>
     </section>
   );
+}
+
+/** Copies the current field text so it can be pasted outside Advantage. */
+async function copyFieldText(text: string): Promise<boolean> {
+  if (navigator.clipboard?.writeText) {
+    try {
+      const copied = await Promise.race([
+        navigator.clipboard.writeText(text).then(
+          () => true,
+          () => false,
+        ),
+        new Promise<boolean>((resolve) => {
+          window.setTimeout(() => resolve(false), 700);
+        }),
+      ]);
+      if (copied) return true;
+    } catch {
+      /* Older phones fall through to the selection copy below. */
+    }
+  }
+  try {
+    const area = document.createElement('textarea');
+    area.value = text;
+    area.setAttribute('readonly', '');
+    area.style.position = 'fixed';
+    area.style.top = '0';
+    area.style.left = '0';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    area.focus();
+    area.select();
+    const ok = document.execCommand('copy');
+    area.remove();
+    return ok;
+  } catch {
+    return false;
+  }
 }
 
 function SuggestChip({
