@@ -11700,23 +11700,29 @@ a.plan-pick {
 }
 
 .plan-layer textarea {
-  min-height: 5.5rem;
+  min-height: 9.5rem;
   resize: vertical;
   border: 1px solid var(--line);
   background: rgba(0, 0, 0, 0.28);
   color: var(--ink);
   border-radius: 14px;
-  padding: 0.85rem 0.95rem;
-  font: inherit;
+  padding: 0.95rem 1rem;
+  font-family: inherit;
+  font-size: 1.125rem;
+  line-height: 1.45;
 }
 
-.plan-audit,
+.plan-copy .btn {
+  width: 100%;
+  min-height: 52px;
+  font-size: 1.05rem;
+}
+
 .plan-flags {
   display: grid;
   gap: 0.45rem;
 }
 
-.plan-audit .preset,
 .plan-flags .preset {
   width: 100%;
   min-height: 52px;
@@ -11817,15 +11823,10 @@ a.plan-pick {
 
 .plan-pick:focus-visible,
 .plan-chip:focus-visible,
-.plan-link a:focus-visible {
+.plan-link a:focus-visible,
+.plan-copy .btn:focus-visible {
   outline: 2px solid var(--gold-2);
   outline-offset: 3px;
-}
-
-@media (min-width: 720px) {
-  .plan-audit {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 }
 
 .tree-node--pin {

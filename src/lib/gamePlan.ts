@@ -35,7 +35,11 @@ export type TechniqueLink = {
 
 export type GameLayer = {
   notes: string;
-  /** Blank until a coach picks one. Home focus always stays blank. */
+  /**
+   * Older saves may still store overdeveloped, underdeveloped, or balanced.
+   * The game plan screen no longer shows or edits that choice. Notes stay.
+   * Home focus always stays blank.
+   */
   audit: GameAudit | '';
   links: TechniqueLink[];
 };
@@ -77,12 +81,6 @@ export function sectionLabel(section: GameSection): string {
   return `${section.toUpperCase()} Game`;
 }
 
-export function auditLabel(audit: GameAudit): string {
-  if (audit === 'overdeveloped') return 'Overdeveloped';
-  if (audit === 'underdeveloped') return 'Underdeveloped';
-  return 'Balanced';
-}
-
 export function flagLabel(flag: GameLinkFlag): string {
   return flag === 'strong' ? 'Strong' : 'Needs work';
 }
@@ -104,9 +102,8 @@ export function gamePlanHasContent(plan: CompetitorGamePlan): boolean {
 export function gamePlanStatusLabel(plan: CompetitorGamePlan): string {
   const bits: string[] = [];
   for (const section of GAME_LAYER_SECTIONS) {
-    const layer = plan[section];
-    if (!layerHasContent(layer)) continue;
-    bits.push(layer.audit ? `${sectionLabel(section)} · ${auditLabel(layer.audit)}` : sectionLabel(section));
+    if (!layerHasContent(plan[section])) continue;
+    bits.push(sectionLabel(section));
   }
   if (layerHasContent(plan.home)) bits.push('Home focus');
   return bits.length ? bits.join(' · ') : 'No game plan yet';
