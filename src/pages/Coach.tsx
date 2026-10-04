@@ -32,8 +32,8 @@ export function CoachPage() {
             <p className="home__hint">
               Gym TV: open this site on a computer plugged into the TV, then fullscreen Display,
               Rounds, Daily Training Videos, or Mock Tournament. Press F for fullscreen.{' '}
-              {COACHING_TOOLS_LABEL} holds Daily Lesson Plan, Daily Training Videos, and Technique
-              Tree. {COMPETITION_MANAGEMENT_LABEL} holds Competitor Management System and Mock
+              {COACHING_TOOLS_LABEL} holds Daily Lesson Plan, Competition Class Curriculum, Daily
+              Training Videos, and Technique Tree. {COMPETITION_MANAGEMENT_LABEL} holds Competitor Management System and Mock
               Tournament, then Scoreboard and Round Timer. Both folders live on the phone.
             </p>
             <p className="home__hint">

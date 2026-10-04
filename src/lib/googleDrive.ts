@@ -497,6 +497,18 @@ export function coachPlanDriveFileName(dateKey: string, coachName: string, class
   );
 }
 
+/** Competition Class Curriculum text. Distinct from a Daily Lesson Plan file. */
+export function curriculumDriveFileName(dateKey: string, coachName: string, planId: string): string {
+  return lessonDriveFileName(dateKey, coachName, planId).replace(/^advantage-lesson-/, 'advantage-curriculum-');
+}
+
+/** Coach self-export and curriculum text stay out of class history. */
+export function isCoachSelfDriveFile(file: Pick<DriveFileMeta, 'name' | 'appProperties'>): boolean {
+  const role = file.appProperties?.advantage;
+  if (role === 'coach-plan' || role === 'competition-curriculum') return true;
+  return file.name.startsWith('advantage-coach-plan-') || file.name.startsWith('advantage-curriculum-');
+}
+
 /** Plan id suffix for the Drive file, or empty when the class label is blank. */
 export function lessonClassFileToken(plan: Pick<TrainingNotesPlan, 'id' | 'classDesignation' | 'classTime'>): string {
   const designation = plan.classDesignation?.trim() ?? '';
@@ -562,9 +574,7 @@ export function fileClassDay(file: DriveFileMeta, lessonDate?: string | null): s
 }
 
 function isLessonFile(file: DriveFileMeta): boolean {
-  if (file.appProperties?.advantage === 'coach-plan' || file.name.startsWith('advantage-coach-plan-')) {
-    return false;
-  }
+  if (isCoachSelfDriveFile(file)) return false;
   return file.appProperties?.advantage === 'lesson' || file.name.startsWith('advantage-lesson-');
 }
 
@@ -588,10 +598,8 @@ export function buildClassHistory(input: {
 
   for (const file of input.files) {
     if (file.mimeType === DRIVE_FOLDER_MIME) continue;
-    // Coach self-export is the coach's own record. It is not class-history media.
-    if (file.appProperties?.advantage === 'coach-plan' || file.name.startsWith('advantage-coach-plan-')) {
-      continue;
-    }
+    // Coach self-export and competition curriculum text are not class-history media.
+    if (isCoachSelfDriveFile(file)) continue;
     const lesson = lessonsByFile.get(file.id) ?? null;
     const date = fileClassDay(file, lesson?.date ?? null);
     if (!date) continue;
@@ -1819,6 +1827,51 @@ export async function upsertCoachPlanFile(input: {
         coach: input.document.coachName.slice(0, 60),
         coachName: input.document.coachName.slice(0, 80),
         savedAt: String(input.document.savedAt),
+        purpose: 'self',
+      },
+      fetcher: input.fetcher,
+    }),
+  );
+  const tail = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  lessonWriteTail.set(key, tail);
+  try {
+    return await run;
+  } finally {
+    if (lessonWriteTail.get(key) === tail) lessonWriteTail.delete(key);
+  }
+}
+
+/**
+ * Write competition-curriculum JSON into `{root}/{date}/lesson-plans/`.
+ * Text only. Video bytes stay on the phone.
+ */
+export async function upsertCurriculumFile(input: {
+  token: string;
+  folderId: string;
+  dateKey: string;
+  coachName: string;
+  planId: string;
+  documentJson: string;
+  fetcher?: DriveFetch;
+}): Promise<{ fileId: string; revisions: number }> {
+  const name = curriculumDriveFileName(input.dateKey, input.coachName, input.planId);
+  const key = `${input.folderId}\0${name}`;
+  const previous = lessonWriteTail.get(key) ?? Promise.resolve();
+  const run = previous.catch(() => undefined).then(() =>
+    writeJsonInLessonPlans({
+      token: input.token,
+      folderId: input.folderId,
+      dateKey: input.dateKey,
+      name,
+      documentJson: input.documentJson,
+      appProperties: {
+        advantage: 'competition-curriculum',
+        date: input.dateKey,
+        coach: input.coachName.slice(0, 60),
+        coachName: input.coachName.slice(0, 80),
         purpose: 'self',
       },
       fetcher: input.fetcher,

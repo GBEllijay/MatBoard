@@ -114,7 +114,7 @@ test('Coach hub is Coaching Tools then Competition Team Management', () => {
   assert.equal(COMPETITION_MANAGEMENT_LABEL, 'Competition Team Management');
   assert.equal(
     COACHING_TOOLS_DETAIL,
-    'Daily Lesson Plan, Daily Training Videos, and Technique Tree.',
+    'Daily Lesson Plan, Competition Class Curriculum, Daily Training Videos, and Technique Tree.',
   );
   assert.equal(
     COACHING_TOOLS_LEAD,
@@ -133,23 +133,24 @@ test('Coach hub is Coaching Tools then Competition Team Management', () => {
   assert.equal(COACH_HUBS[1].belt, 'tournament');
   assert.deepEqual(
     COACHING_TOOLS_MENU.map((item) => item.title),
-    ['Daily Lesson Plan', 'Daily Training Videos', 'Technique Tree'],
+    ['Daily Lesson Plan', 'Competition Class Curriculum', 'Daily Training Videos', 'Technique Tree'],
   );
   assert.deepEqual(
     COACHING_TOOLS_MENU.map((item) => item.to),
-    ['/notes', '/techniques', '/technique-tree'],
+    ['/notes', '/competition-curriculum', '/techniques', '/technique-tree'],
   );
   assert.deepEqual(
     COACHING_TOOLS_MENU.map((item) => item.belt),
-    ['coach', 'coach', 'coach'],
+    ['coach', 'coach', 'coach', 'coach'],
   );
   assert.deepEqual(
     coachingToolsMenu(false).map((item) => item.to),
-    ['/notes', '/techniques', '/technique-tree'],
+    ['/notes', '/competition-curriculum', '/techniques', '/technique-tree'],
   );
   assert.equal(coachingToolsMenu(true)[0].to, UNLIMITED_LESSON_PATH);
+  assert.equal(coachingToolsMenu(true)[1].to, '/competition-curriculum?plan=unlimited');
   assert.deepEqual(
-    coachingToolsMenu(true).slice(1).map((item) => item.to),
+    coachingToolsMenu(true).slice(2).map((item) => item.to),
     ['/techniques', '/technique-tree'],
   );
   assert.deepEqual(

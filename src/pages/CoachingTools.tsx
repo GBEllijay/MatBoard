@@ -17,7 +17,7 @@ import {
 
 /**
  * Coaching Tools folder. Same card and hub buttons as Competition Team Management.
- * The subtitle names the three tools inside, the way Live Bout names its contents.
+ * The subtitle names the tools inside, the way Live Bout names its contents.
  * `plan=unlimited` (Pro only) keeps Daily Lesson Plan on the Unlimited path.
  */
 export function CoachingToolsPage() {
