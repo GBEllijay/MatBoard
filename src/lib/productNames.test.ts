@@ -17,8 +17,10 @@ import {
   COACH_HOME_DESCRIPTION,
   WHITE_HOME_DESCRIPTION,
   WHITE_LADDER_DETAIL,
+  coachDoorOpen,
   coachToolsOpen,
   isBasicCoach,
+  proDoorOpen,
   parentToolboxPath,
   COACH_UNLIMITED_PATH,
   COACH_UNLIMITED_TOOLS,
@@ -312,4 +314,18 @@ test('Shared tools prefer Pro console, then Coach', () => {
   assert.equal(parentToolboxPath(false, false), '/');
   assert.equal(toolEyebrow(true, false), GYM_CONSOLE_NAME);
   assert.equal(toolEyebrow(false, true), 'Advantage Coach');
+});
+
+test('a live seat opens Coach and leaves the Pro purchase lock closed', () => {
+  assert.equal(coachDoorOpen(false, false, true), true);
+  assert.equal(coachDoorOpen(false, false, false), false);
+  assert.equal(coachDoorOpen(false, true, false), true);
+  assert.equal(coachDoorOpen(true, false, false), true);
+  assert.equal(proDoorOpen(false), false);
+  assert.equal(proDoorOpen(true), true);
+  assert.equal(parentToolboxPath(false, false, true), '/coach');
+  assert.equal(parentToolboxPath(true, false, true), '/pro');
+  assert.equal(toolEyebrow(false, false, true), 'Advantage Coach');
+  assert.equal(toolEyebrow(true, false, true), GYM_CONSOLE_NAME);
+  assert.equal(coachToolsOpen(false, false), false);
 });

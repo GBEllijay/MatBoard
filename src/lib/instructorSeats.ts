@@ -518,8 +518,23 @@ export function signOutInstructorSeat(): void {
 }
 
 /**
+ * Read an invite token without starting a session.
+ * `open` is a live invited or active seat. Revoked and unknown tokens stay shut.
+ * Soft-beta invites have no clock expiry; revoke is what closes them.
+ */
+export function peekInstructorInvite(token: string): 'open' | 'missing' | 'revoked' {
+  const trimmed = token.trim();
+  if (!trimmed) return 'missing';
+  const seat = readArchive().seats.find((row) => row.inviteToken === trimmed);
+  if (!seat) return 'missing';
+  if (seat.status === 'revoked') return 'revoked';
+  return 'open';
+}
+
+/**
  * Open an invite link on this device. Invited seats become active.
  * Revoked or unknown tokens do not start a session.
+ * The token is the door. This does not write the owner purchase unlock.
  */
 export function acceptInstructorInvite(
   token: string,

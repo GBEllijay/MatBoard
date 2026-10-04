@@ -262,15 +262,19 @@ export const MEDIA_CONSOLE_INSTRUCTIONS = [
   'Events photos and QR links stay on this device. Nothing is uploaded.',
 ] as const;
 
-export function parentToolboxPath(proUnlocked: boolean, coachUnlocked: boolean): string {
+export function parentToolboxPath(
+  proUnlocked: boolean,
+  coachUnlocked: boolean,
+  seated = false,
+): string {
   if (proUnlocked) return '/pro';
-  if (coachUnlocked) return '/coach';
+  if (coachUnlocked || seated) return '/coach';
   return '/';
 }
 
-export function toolEyebrow(proUnlocked: boolean, coachUnlocked: boolean): string {
+export function toolEyebrow(proUnlocked: boolean, coachUnlocked: boolean, seated = false): string {
   if (proUnlocked) return GYM_CONSOLE_NAME;
-  if (coachUnlocked) return 'Advantage Coach';
+  if (coachUnlocked || seated) return 'Advantage Coach';
   return GYM_CONSOLE_NAME;
 }
 
@@ -282,6 +286,26 @@ export function tournamentToolLabel(proUnlocked: boolean): string {
 /** Pro includes Coach tools. Coach-only unlock still opens them on its own. */
 export function coachToolsOpen(proUnlocked: boolean, coachUnlocked: boolean): boolean {
   return proUnlocked || coachUnlocked;
+}
+
+/**
+ * Owner purchase lock for the Pro console.
+ * A live instructor seat does not open it.
+ */
+export function proDoorOpen(proUnlocked: boolean): boolean {
+  return proUnlocked;
+}
+
+/**
+ * Coach tools. The owner purchase lock opens them, and so does a live invite seat.
+ * The seat still does not open Pro.
+ */
+export function coachDoorOpen(
+  proUnlocked: boolean,
+  coachUnlocked: boolean,
+  seated: boolean,
+): boolean {
+  return coachToolsOpen(proUnlocked, coachUnlocked) || seated;
 }
 
 /**

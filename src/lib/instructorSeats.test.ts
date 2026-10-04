@@ -17,6 +17,7 @@ import {
   instructorSeatBinderLabel,
   acceptInstructorInvite,
   issueInstructorInvite,
+  peekInstructorInvite,
   permissionsMatchPreset,
   listInstructorSeats,
   normalizeInstructorPermissions,
@@ -406,6 +407,43 @@ test('the first assistant coach invite for hapkidoka311@yahoo.com accepts and ga
   assert.equal(visibleCoachControl('uploadForDistribution', seated), false);
   assert.equal(visibleCoachControl('eventsAccess', seated), false);
   assert.equal(visibleCoachControl('proShopAccess', seated), false);
+});
+
+test('a valid invite is the door and does not write the owner purchase unlock', () => {
+  reset();
+  const issued = issueInstructorInvite({
+    email: 'assistant@gym.com',
+    permissions: instructorPresetPermissions('assistant-coach'),
+    presetId: 'assistant-coach',
+    origin: 'https://advantage.test',
+    token: 'door-token',
+  });
+  assert.equal(issued.ok, true);
+  if (!issued.ok) return;
+  const link = new URL(issued.inviteLink);
+  assert.equal(link.pathname, '/instructors');
+  assert.deepEqual([...link.searchParams.keys()], ['invite']);
+  assert.equal(link.searchParams.get('invite'), 'door-token');
+  assert.equal(peekInstructorInvite('door-token'), 'open');
+  assert.equal(peekInstructorInvite('missing-token'), 'missing');
+
+  const accepted = acceptInstructorInvite('door-token');
+  assert.equal(accepted.ok, true);
+  if (!accepted.ok) return;
+  assert.equal(accepted.seat.status, 'active');
+  assert.equal(peekInstructorInvite('door-token'), 'open');
+  assert.equal(localStorage.getItem('advantage.proUnlocked'), null);
+  assert.equal(localStorage.getItem('advantage.coachUnlocked'), null);
+
+  revokeInstructorSeat(accepted.seat.id);
+  assert.equal(peekInstructorInvite('door-token'), 'revoked');
+  const again = acceptInstructorInvite('door-token');
+  assert.equal(again.ok, false);
+  if (again.ok) return;
+  assert.equal(again.reason, 'revoked');
+  assert.equal(localStorage.getItem('advantage.proUnlocked'), null);
+  assert.equal(localStorage.getItem('advantage.coachUnlocked'), null);
+  assert.equal(readCurrentSeat(), null);
 });
 
 test('accepting an assistant coach invite starts a seat session and gates controls', () => {

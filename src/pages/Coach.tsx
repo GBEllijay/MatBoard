@@ -5,12 +5,15 @@ import { HomeMark } from '../components/HomeMark';
 import { InstructionsButton } from '../components/InstructionsButton';
 import { SiteFooter } from '../components/SiteFooter';
 import { TierLine } from '../components/TierLine';
+import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
+import { useProUnlocked } from '../hooks/useProUnlocked';
 import { lockCoach } from '../lib/coachUnlock';
 import { COACH_TOOLS_TEASER } from '../lib/coachCopy';
 import { COACHING_TOOLS_LABEL, COMPETITION_MANAGEMENT_LABEL } from '../lib/productNames';
 
 export function CoachPage() {
   const navigate = useNavigate();
+  const ownerOpen = useCoachUnlocked() || useProUnlocked();
 
   return (
     <main className="home home--coach">
@@ -38,23 +41,25 @@ export function CoachPage() {
               screen or computer.
             </p>
           </InstructionsButton>
-          <p className="home__soon">
-            Advantage Coach is on for this browser.{' '}
-            <Link className="home__text-btn" to="/">
-              All products
-            </Link>
-            {' · '}
-            <button
-              type="button"
-              className="home__text-btn"
-              onClick={() => {
-                lockCoach();
-                navigate('/');
-              }}
-            >
-              Lock Coach
-            </button>
-          </p>
+          {ownerOpen ? (
+            <p className="home__soon">
+              Advantage Coach is on for this browser.{' '}
+              <Link className="home__text-btn" to="/">
+                All products
+              </Link>
+              {' · '}
+              <button
+                type="button"
+                className="home__text-btn"
+                onClick={() => {
+                  lockCoach();
+                  navigate('/');
+                }}
+              >
+                Lock Coach
+              </button>
+            </p>
+          ) : null}
         </div>
         <SiteFooter />
       </div>

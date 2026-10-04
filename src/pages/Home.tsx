@@ -4,6 +4,7 @@ import { BeltRail } from '../components/BeltRail';
 import { ComingSoonAd, ComingSoonAdActions } from '../components/ComingSoonAd';
 import { HomeMark } from '../components/HomeMark';
 import { ProUnlockSheet } from '../components/ProUnlockSheet';
+import { SeatSessionBar, useCurrentSeat } from '../components/SeatSessionBar';
 import { Sheet } from '../components/Sheet';
 import { SiteFooter } from '../components/SiteFooter';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
@@ -18,12 +19,12 @@ import {
   HOME_MOTTO,
   PRO_HOME_LINES,
   WHITE_HOME_DESCRIPTION,
-  coachToolsOpen,
+  coachDoorOpen,
 } from '../lib/productNames';
 
 export function HomePage() {
   const proUnlocked = useProUnlocked();
-  const coachOpen = coachToolsOpen(proUnlocked, useCoachUnlocked());
+  const coachOpen = coachDoorOpen(proUnlocked, useCoachUnlocked(), useCurrentSeat() !== null);
   const [unlockOpen, setUnlockOpen] = useState<'coach' | 'pro' | null>(null);
   const [soon, setSoon] = useState<SoonProduct | null>(null);
 
@@ -37,6 +38,7 @@ export function HomePage() {
       <div className="home__inner">
         <HomeMark motto={HOME_MOTTO} tagline="BJJ scoreboard, round timer, and gym tools." />
 
+        <SeatSessionBar />
         <nav className="home__modes" aria-label="Products">
           <Link className="mode-card mode-card--white" to="/white">
             <BeltRail kind="white" />
