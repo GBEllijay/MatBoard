@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DriveConnectCard } from '../components/DriveConnectCard';
-import { DeviceMediaInput } from '../components/DeviceMediaInput';
 import { LessonMediaRail } from '../components/LessonMediaRail';
 import { OpenMyDrive } from '../components/OpenMyDrive';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { SeatSessionBar } from '../components/SeatSessionBar';
 import { Sheet } from '../components/Sheet';
-import { MediaSourceSheet } from '../components/VideoSourceSheet';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { COACH_LESSON_EYEBROW } from '../lib/coachCopy';
 import {
@@ -51,28 +49,16 @@ import {
   type CurriculumBlock,
   type CurriculumPlan,
 } from '../lib/competitionCurriculum';
-import {
-  CURRICULUM_VIDEO_ACCEPT,
-  deleteCurriculumClip,
-  readCurriculumClip,
-  saveCurriculumClip,
-} from '../lib/curriculumClips';
 import { exportCurriculumToDrive } from '../lib/curriculumDrive';
-import { formatMmSs } from '../lib/format';
+import { techniquesPathForCurriculum } from '../lib/curriculumVideos';
+import { deleteUnusedTrainingClip, readTrainingClipBlob } from '../lib/techniqueStore';
 import { CONNECT_WITH_TITLE } from '../lib/cloudStorage';
 import { CLASS_DESIGNATION_MAX, CLASS_TIME_MAX, CLOSING_MAX, COACH_NAME_MAX, EXPECTED_MAX, TECHNIQUE_NOTES_MAX, TECHNIQUE_TITLE_MAX, localDateKey, planDayStamp, planDayTitle, shiftDateKey } from '../lib/trainingNotesStore';
 import { techniqueTreeLaunchPath } from '../lib/lessonLinks';
 import { COACHING_TOOLS_PATH, UNLIMITED_LESSON_VALUE } from '../lib/productNames';
-import { LOOP_RESTART_MIN_MS, nextLoopStep } from '../lib/videoLoop';
 import { loadTechniqueArchive, type TechniqueTreeArchive } from '../lib/techniqueTreeStore';
 import { resetTrainingSession, setRounds, setWorkMs } from '../lib/trainingStore';
 import { trainingPathWithReturn } from '../lib/timerReturn';
-
-type LoopState = {
-  title: string;
-  src: string;
-  remainingMs: number;
-};
 
 export function CompetitionCurriculumPage() {
   const navigate = useNavigate();
@@ -98,15 +84,8 @@ export function CompetitionCurriculumPage() {
   const [removeArmed, setRemoveArmed] = useState(false);
   const [treeArchive, setTreeArchive] = useState<TechniqueTreeArchive>(() => loadTechniqueArchive());
   const [clipUrls, setClipUrls] = useState<Record<string, string>>({});
-  const [pickerBlockId, setPickerBlockId] = useState<string | null>(null);
-  const [addOpen, setAddOpen] = useState(false);
-  const [replacing, setReplacing] = useState(false);
-  const [mediaNote, setMediaNote] = useState('');
   const [driveNote, setDriveNote] = useState('');
   const [connectOpen, setConnectOpen] = useState(false);
-  const [loop, setLoop] = useState<LoopState | null>(null);
-  const recordRef = useRef<HTMLInputElement>(null);
-  const libraryRef = useRef<HTMLInputElement>(null);
   const planRef = useRef(plan);
   const viewKeyRef = useRef(viewKey);
   const todayKeyRef = useRef(todayKey);
@@ -152,9 +131,9 @@ export function CompetitionCurriculumPage() {
     const ids = clipKey.split('|').filter(Boolean);
     void Promise.all(
       ids.map(async (id) => {
-        const clip = await readCurriculumClip(id);
-        if (!clip?.blob) return null;
-        const url = URL.createObjectURL(clip.blob);
+        const blob = await readTrainingClipBlob(id);
+        if (!blob) return null;
+        const url = URL.createObjectURL(blob);
         created.push(url);
         return [id, url] as const;
       }),
@@ -294,32 +273,6 @@ export function CompetitionCurriculumPage() {
     else setWorkMs(expectedToWorkMs(block.expected));
     resetTrainingSession();
     navigate(trainingPathWithReturn(returnPath));
-  };
-
-  const onVideoFiles = async (files: readonly File[]) => {
-    const file = files[0];
-    const blockId = pickerBlockId;
-    setAddOpen(false);
-    if (!file || !blockId || viewKeyRef.current !== todayKeyRef.current) return;
-    try {
-      const saved = await saveCurriculumClip(file);
-      if (!saved) {
-        setMediaNote('Choose a video. It stays on this phone.');
-        return;
-      }
-      const current = planRef.current;
-      const previous = current.blocks.find((block) => block.id === blockId)?.clipId;
-      if (previous && previous !== saved.id) void deleteCurriculumClip(previous);
-      commit({
-        ...current,
-        blocks: current.blocks.map((block) =>
-          block.id === blockId ? { ...block, clipId: saved.id, mediaName: saved.name, timing: 'video' } : block,
-        ),
-      });
-      setMediaNote('');
-    } catch (error) {
-      setMediaNote(error instanceof Error ? error.message : 'That video could not be saved on this phone.');
-    }
   };
 
   const saveDriveCopy = async () => {
@@ -597,30 +550,13 @@ export function CompetitionCurriculumPage() {
             }
             onChange={(patch) => patchBlock(block.id, patch)}
             onRemove={() => {
-              if (block.clipId) void deleteCurriculumClip(block.clipId);
+              if (block.clipId) void deleteUnusedTrainingClip(block.clipId);
               commit(removeBlock(planRef.current, block.id));
             }}
             onMove={(direction) => commit(moveBlock(planRef.current, block.id, direction))}
             onAdd={() => commit(insertBlockAfter(planRef.current, block.id))}
             onOpenTimer={() => openTimer(block)}
-            onAddVideo={() => {
-              setPickerBlockId(block.id);
-              setReplacing(Boolean(block.clipId));
-              setAddOpen(true);
-            }}
-            onClearVideo={() => {
-              if (block.clipId) void deleteCurriculumClip(block.clipId);
-              patchBlock(block.id, { clipId: null, mediaName: '' });
-            }}
-            onStartLoop={() => {
-              const src = block.clipId ? clipUrls[block.clipId] : undefined;
-              if (!src) return;
-              setLoop({
-                title: blockHeading(block),
-                src,
-                remainingMs: expectedToWorkMs(block.expected),
-              });
-            }}
+            onOpenVideo={() => navigate(techniquesPathForCurriculum(block.id, returnPath))}
           />
         ))}
 
@@ -634,12 +570,6 @@ export function CompetitionCurriculumPage() {
             <span>{CURRICULUM_ADD_LABEL}</span>
             <small>{CURRICULUM_ADD_EXAMPLES}</small>
           </button>
-        ) : null}
-
-        {mediaNote ? (
-          <p className="notes__save" role="status">
-            {mediaNote}
-          </p>
         ) : null}
 
         <section className="notes__card">
@@ -686,41 +616,12 @@ export function CompetitionCurriculumPage() {
         ) : null}
       </div>
 
-      <MediaSourceSheet
-        open={addOpen}
-        title={replacing ? 'Replace video' : 'Add video'}
-        kind="video"
-        captureInputId="curriculum-record"
-        libraryInputId="curriculum-library"
-        onClose={() => setAddOpen(false)}
-      />
-      <DeviceMediaInput
-        inputRef={recordRef}
-        id="curriculum-record"
-        accept={CURRICULUM_VIDEO_ACCEPT}
-        capture="environment"
-        onFiles={(files) => void onVideoFiles(files)}
-      />
-      <DeviceMediaInput
-        inputRef={libraryRef}
-        id="curriculum-library"
-        accept={CURRICULUM_VIDEO_ACCEPT}
-        onFiles={(files) => void onVideoFiles(files)}
-      />
       <Sheet open={connectOpen} title={CONNECT_WITH_TITLE} onClose={() => setConnectOpen(false)} stacked>
         <p className="saver-sound-hint">
           Sign in, then pick the gym folder. This curriculum text can be saved there. Videos stay on this phone.
         </p>
         <DriveConnectCard />
       </Sheet>
-      {loop ? (
-        <LoopOverlay
-          title={loop.title}
-          src={loop.src}
-          durationMs={loop.remainingMs}
-          onClose={() => setLoop(null)}
-        />
-      ) : null}
     </main>
   );
 }
@@ -769,9 +670,7 @@ function CurriculumCard({
   onMove,
   onAdd,
   onOpenTimer,
-  onAddVideo,
-  onClearVideo,
-  onStartLoop,
+  onOpenVideo,
 }: {
   block: CurriculumBlock;
   index: number;
@@ -786,9 +685,7 @@ function CurriculumCard({
   onMove: (direction: -1 | 1) => void;
   onAdd: () => void;
   onOpenTimer: () => void;
-  onAddVideo: () => void;
-  onClearVideo: () => void;
-  onStartLoop: () => void;
+  onOpenVideo: () => void;
 }) {
   const heading = blockHeading(block);
   const showWater = showStructure || block.waterBreak;
@@ -838,26 +735,15 @@ function CurriculumCard({
           </div>
         ) : null}
         {blockOffersClock(block.kind) && block.timing === 'video' ? (
-          <div className="curriculum__video">
-            {clipUrl ? (
-              <video className="notes__video-thumb curriculum__thumb" src={clipUrl} muted playsInline preload="metadata" />
-            ) : (
-              <p className="notes__recent-empty">No video yet. The clip stays on this phone.</p>
-            )}
-            <div className="curriculum__tools">
-              <button type="button" className="btn" disabled={readOnly} onClick={onAddVideo}>
-                {block.clipId ? 'Replace' : 'Add video'}
-              </button>
-              <button type="button" className="btn" disabled={!clipUrl} onClick={onStartLoop}>
-                Start loop
-              </button>
-              {block.clipId && !readOnly ? (
-                <button type="button" className="btn btn--ghost" onClick={onClearVideo}>
-                  Remove video
-                </button>
-              ) : null}
-            </div>
-          </div>
+          <LessonMediaRail
+            showVideo
+            videoLabel={heading}
+            clipUrl={clipUrl}
+            onPlay={() => {
+              if (!clipUrl && readOnly) return;
+              onOpenVideo();
+            }}
+          />
         ) : null}
         {blockOffersExpected(block.kind) ? (
           <ExpectedTime
@@ -956,102 +842,6 @@ function CurriculumCard({
           <small>{CURRICULUM_ADD_EXAMPLES}</small>
         </button>
       ) : null}
-    </div>
-  );
-}
-
-function restartClip(el: HTMLVideoElement): void {
-  const resume = () => {
-    void el.play().catch(() => undefined);
-  };
-  try {
-    el.currentTime = 0;
-  } catch {
-    el.load();
-    el.addEventListener('loadeddata', resume, { once: true });
-    return;
-  }
-  resume();
-}
-
-function LoopOverlay({
-  title,
-  src,
-  durationMs,
-  onClose,
-}: {
-  title: string;
-  src: string;
-  durationMs: number;
-  onClose: () => void;
-}) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [remainingMs, setRemainingMs] = useState(durationMs);
-
-  useEffect(() => {
-    const el = videoRef.current;
-    if (!el) return;
-    const startedAt = performance.now();
-    let lastRestartAt = startedAt;
-    let stopped = false;
-    let restarting = false;
-    let timer = 0;
-
-    const finish = () => {
-      if (stopped) return;
-      stopped = true;
-      window.clearInterval(timer);
-      el.pause();
-      setRemainingMs(0);
-    };
-
-    const apply = (clipEnded: boolean) => {
-      if (stopped || restarting) return;
-      const now = performance.now();
-      const step = nextLoopStep(now - startedAt, durationMs, clipEnded, now - lastRestartAt);
-      if (step === 'stop') {
-        finish();
-        return;
-      }
-      if (step === 'restart') {
-        lastRestartAt = now;
-        restarting = true;
-        restartClip(el);
-        window.setTimeout(() => {
-          restarting = false;
-        }, LOOP_RESTART_MIN_MS);
-      }
-      setRemainingMs(Math.max(0, durationMs - (performance.now() - startedAt)));
-    };
-
-    const onEnded = () => apply(true);
-    el.loop = false;
-    el.muted = true;
-    el.addEventListener('ended', onEnded);
-    timer = window.setInterval(() => {
-      if (restarting) return;
-      apply(el.ended);
-    }, 100);
-    apply(false);
-    void el.play().catch(() => undefined);
-
-    return () => {
-      stopped = true;
-      window.clearInterval(timer);
-      el.removeEventListener('ended', onEnded);
-      el.pause();
-    };
-  }, [durationMs, src]);
-
-  return (
-    <div className="curriculum__loop" role="dialog" aria-label={`${title} looping video`}>
-      <video ref={videoRef} className="curriculum__loop-video" src={src} muted playsInline />
-      <p className="curriculum__loop-clock" aria-live="polite">
-        {formatMmSs(remainingMs)}
-      </p>
-      <button type="button" className="btn curriculum__loop-back" onClick={onClose}>
-        Back to curriculum
-      </button>
     </div>
   );
 }

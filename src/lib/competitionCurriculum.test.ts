@@ -178,6 +178,11 @@ test('the curriculum page keeps the requested copy and does not edit Daily Lesso
   assert.match(page, /Open round timer/);
   assert.match(page, /Timer only/);
   assert.match(page, /Looping video/);
+  assert.match(page, /techniquesPathForCurriculum/);
+  assert.doesNotMatch(page, /function LoopOverlay/);
+  const videos = readFileSync(new URL('../pages/Techniques.tsx', import.meta.url), 'utf8');
+  assert.match(videos, /curriculumVideoCardsOnDay/);
+  assert.doesNotMatch(videos, /Timer only/);
   assert.match(page, /data-lock-curriculum/);
   assert.match(page, /data-add-another/);
   assert.match(page, /data-water-break/);

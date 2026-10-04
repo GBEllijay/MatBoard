@@ -13,6 +13,13 @@ import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useToolboxParent } from '../hooks/useToolboxParent';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
+import {
+  CURRICULUM_VIDEO_PARAM,
+  curriculumVideoCardById,
+  curriculumVideoCardsOnDay,
+  type CurriculumVideoCard,
+} from '../lib/curriculumVideos';
+import { loadCurriculumArchive, writeCurriculumBlockClip } from '../lib/competitionCurriculum';
 import { formatMmSs, formatMss, secondsToMs } from '../lib/format';
 import { getDriveBindingSnapshot, subscribeDriveBinding } from '../lib/googleDrive';
 import {
@@ -28,6 +35,9 @@ import {
 } from '../lib/lessonLinks';
 import { VIDEO_CAPTURE, VIDEO_PICKER_ACCEPT, VIDEO_RECORD_ACCEPT } from '../lib/mediaPicker';
 import { DEFAULT_MUTE_VIDEO, getSaverPrefs, setSaverMuteVideo } from '../lib/photoStore';
+import { safeTimerReturn } from '../lib/timerReturn';
+import { localDateKey } from '../lib/trainingNotesStore';
+import { LOOP_RESTART_MIN_MS, nextLoopStep } from '../lib/videoLoop';
 import { LARGE_MEDIA_BYTES, LARGE_MEDIA_NOTE, quotaAddNote } from '../lib/storageQuota';
 import {
   canAssignClip,
@@ -52,10 +62,37 @@ import {
 import {
   attachClipToSlot,
   clearSlotClip,
+  deleteUnusedTrainingClip,
   loadTechniqueBoard,
+  readTrainingClip,
+  readTrainingClipBlob,
   saveTechniquePlan,
+  saveTrainingClip,
   type TechniqueClip,
 } from '../lib/techniqueStore';
+
+async function loadSharedCurriculumCards(clips: readonly TechniqueClip[]): Promise<{
+  cards: CurriculumVideoCard[];
+  clips: TechniqueClip[];
+}> {
+  const today = localDateKey();
+  const archive = loadCurriculumArchive(today);
+  const cards = curriculumVideoCardsOnDay(archive, today);
+  const requested = new URLSearchParams(window.location.search).get(CURRICULUM_VIDEO_PARAM);
+  if (requested && !cards.some((card) => card.blockId === requested)) {
+    const extra = curriculumVideoCardById(archive, requested);
+    if (extra) cards.push(extra);
+  }
+  const byId = new Map(clips.map((clip) => [clip.id, clip]));
+  for (const card of cards) {
+    if (!card.clipId || byId.has(card.clipId)) continue;
+    const blob = await readTrainingClipBlob(card.clipId);
+    if (!blob) continue;
+    const row = await readTrainingClip(card.clipId);
+    if (row) byId.set(row.id, row);
+  }
+  return { cards, clips: [...byId.values()] };
+}
 
 const idleDriveNotice = { phase: 'idle' as const, text: '' };
 
@@ -88,9 +125,16 @@ export function TechniquesPage() {
   const launchStarted = useRef(false);
   const launchKey = searchParams.toString();
   const [lessonFocus, setLessonFocus] = useState<{ slotId: string; text: string } | null>(null);
+  const [curriculumCards, setCurriculumCards] = useState<CurriculumVideoCard[]>([]);
+  const [curriculumPick, setCurriculumPick] = useState<string | null>(null);
+  const [playingCurriculum, setPlayingCurriculum] = useState(false);
+  const [curriculumRemaining, setCurriculumRemaining] = useState(0);
+  const curriculumPickerRef = useRef<string | null>(null);
+  const [backPath, setBackPath] = useState<string | null>(null);
+  const playback = playing || playingCurriculum;
 
   useVisibleViewportHeight();
-  useWakeLock(playing);
+  useWakeLock(playback);
 
   const immersive = fs.active || stage;
 
@@ -100,8 +144,8 @@ export function TechniquesPage() {
   }, [fs.active]);
 
   useEffect(() => {
-    if (!playing) setStage(false);
-  }, [playing]);
+    if (!playback) setStage(false);
+  }, [playback]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -115,7 +159,7 @@ export function TechniquesPage() {
 
   const requestPlaybackFullscreen = async () => {
     if (fs.active || stage) return;
-    if (playing) setStage(true);
+    if (playback) setStage(true);
     await fs.enter();
   };
 
@@ -136,10 +180,13 @@ export function TechniquesPage() {
   useEffect(() => {
     let cancelled = false;
     void loadTechniqueBoard()
-      .then((board) => {
+      .then(async (board) => {
         if (cancelled) return;
         applyPlan(board.plan);
-        setClips(board.clips);
+        const shared = await loadSharedCurriculumCards(board.clips);
+        if (cancelled) return;
+        setCurriculumCards(shared.cards);
+        setClips(shared.clips);
         const selected = board.plan.slots.find((slot) => slot.slotId === board.plan.selectedSlotId);
         if (selected && isTimedSlot(selected)) setRemainingMs(secondsToMs(selected.drillSec));
       })
@@ -174,8 +221,14 @@ export function TechniquesPage() {
   );
   const selectedClip = selected?.clipId ? clips.find((clip) => clip.id === selected.clipId) : null;
   const selectedSrc = selectedClip ? urlById[selectedClip.id] : undefined;
-  const canStart = Boolean(selected?.clipId && selectedSrc && !playing);
-  const count = plan ? clipCount(plan) : 0;
+  const pickedCard = curriculumCards.find((card) => card.blockId === curriculumPick) ?? null;
+  const pickedSrc = pickedCard?.clipId ? urlById[pickedCard.clipId] : undefined;
+  const canStart = pickedCard
+    ? Boolean(pickedCard.clipId && pickedSrc && !playingCurriculum)
+    : Boolean(selected?.clipId && selectedSrc && !playing);
+  const count =
+    (plan ? clipCount(plan) : 0) +
+    curriculumCards.filter((card) => card.clipId && urlById[card.clipId]).length;
   const techniqueCount = plan ? plan.slots.filter((slot) => slot.kind === 'technique').length : 0;
   const atSlotMax = techniqueCount >= MAX_TECHNIQUE_SLOTS;
 
@@ -189,6 +242,8 @@ export function TechniquesPage() {
   };
 
   const selectCard = (slotId: string) => {
+    setCurriculumPick(null);
+    setPlayingCurriculum(false);
     const current = planRef.current;
     if (!current || current.selectedSlotId === slotId) return;
     setLessonFocus((currentFocus) => (currentFocus?.slotId === slotId ? currentFocus : null));
@@ -218,6 +273,14 @@ export function TechniquesPage() {
   };
 
   const startDrill = () => {
+    if (pickedCard) {
+      if (!pickedCard.clipId || !pickedSrc || playingCurriculum) return;
+      if (!muteVideo) setUnlockSound(true);
+      setPlaying(false);
+      setCurriculumRemaining(pickedCard.durationMs);
+      setPlayingCurriculum(true);
+      return;
+    }
     if (!selected?.clipId || !selectedSrc || playing) return;
     if (!muteVideo) setUnlockSound(true);
     if (isTimedSlot(selected)) {
@@ -226,7 +289,10 @@ export function TechniquesPage() {
     setPlaying(true);
   };
 
-  const stopDrill = () => setPlaying(false);
+  const stopDrill = () => {
+    setPlaying(false);
+    setPlayingCurriculum(false);
+  };
 
   useInterval(
     useCallback(() => {
@@ -251,7 +317,43 @@ export function TechniquesPage() {
   }, [playing, plan, lessonFocus]);
 
   useEffect(() => {
+    const params = new URLSearchParams(launchKey);
+    const back = safeTimerReturn(params.get('back'));
+    if (back) setBackPath(back);
+    const blockId = params.get(CURRICULUM_VIDEO_PARAM);
+    if (!blockId) return;
+    const card = curriculumCards.find((item) => item.blockId === blockId);
+    if (!card) return;
+    setCurriculumPick(blockId);
+    const src = card.clipId ? urlById[card.clipId] : undefined;
+    const ready = Boolean(card.clipId && src) || !card.clipId;
+    if (card.clipId && src && !launchStarted.current) {
+      launchStarted.current = true;
+      if (!muteVideo) setUnlockSound(true);
+      setPlaying(false);
+      setCurriculumRemaining(card.durationMs);
+      setPlayingCurriculum(true);
+    } else if (!card.clipId && !card.locked && !launchStarted.current) {
+      launchStarted.current = true;
+      openCurriculumChooser(card);
+    }
+    if (!ready) return;
+    window.setTimeout(() => {
+      const next = new URLSearchParams(window.location.search);
+      if (!next.has(CURRICULUM_VIDEO_PARAM) && !next.has('back')) return;
+      next.delete(CURRICULUM_VIDEO_PARAM);
+      next.delete('back');
+      setSearchParams(next, { replace: true });
+    }, 0);
+    document.getElementById(`techniques-slot-curriculum-${blockId}`)?.scrollIntoView({
+      block: 'nearest',
+      behavior: 'smooth',
+    });
+  }, [curriculumCards, launchKey, muteVideo, setSearchParams, urlById]);
+
+  useEffect(() => {
     if (!plan) return;
+    if (new URLSearchParams(launchKey).has(CURRICULUM_VIDEO_PARAM)) return;
     const focus = parseLessonVideoFocus(new URLSearchParams(launchKey));
     if (!focus.active) return;
     const slot = resolveFocusedSlot(plan, focus);
@@ -311,6 +413,7 @@ export function TechniquesPage() {
   const openChooser = (slot: VideoSlot) => {
     const current = planRef.current;
     if (!current || !canAssignClip(current, slot.slotId)) return;
+    curriculumPickerRef.current = null;
     pickerSlotRef.current = slot.slotId;
     setReplacing(Boolean(slot.clipId));
     setAddOpen(true);
@@ -323,6 +426,44 @@ export function TechniquesPage() {
   };
 
   const onFiles = async (files: readonly File[]) => {
+    const curriculumId = curriculumPickerRef.current;
+    if (curriculumId) {
+      curriculumPickerRef.current = null;
+      setAddOpen(false);
+      const card = curriculumCards.find((item) => item.blockId === curriculumId);
+      const [file] = pickAddableVideos([...files], 1);
+      if (!card || card.locked || !file) {
+        if (file && card?.locked) setPickerNote('Unlock today\'s curriculum to change this video.');
+        else if (files.length) setPickerNote('That file cannot play here. Switch the camera to video, or pick an MP4 / WebM.');
+        return;
+      }
+      try {
+        const saved = await saveTrainingClip(file, card.title);
+        if (!saved) {
+          setPickerNote('That file cannot play here. Switch the camera to video, or pick an MP4 / WebM.');
+          return;
+        }
+        const previous = card.clipId;
+        const savedPlan = writeCurriculumBlockClip(card.blockId, saved.id, file.name || saved.label);
+        if (!savedPlan) {
+          void deleteUnusedTrainingClip(saved.id);
+          setPickerNote('That curriculum card is not on this phone anymore.');
+          return;
+        }
+        if (previous && previous !== saved.id) void deleteUnusedTrainingClip(previous);
+        setCurriculumCards((current) =>
+          current.map((item) =>
+            item.blockId === card.blockId ? { ...item, clipId: saved.id, mediaName: file.name || saved.label } : item,
+          ),
+        );
+        setClips((current) => [...current.filter((clip) => clip.id !== previous && clip.id !== saved.id), saved]);
+        setPlayingCurriculum(false);
+        setPickerNote(file.size >= LARGE_MEDIA_BYTES ? LARGE_MEDIA_NOTE : '');
+      } catch (error) {
+        setPickerNote(quotaAddNote(error) ?? 'Could not save that clip on this device. Try again.');
+      }
+      return;
+    }
     const slotId = pickerSlotRef.current;
     const current = planRef.current;
     setAddOpen(false);
@@ -375,10 +516,36 @@ export function TechniquesPage() {
     void persistPlan(next);
   };
 
+  const openCurriculumChooser = (card: CurriculumVideoCard) => {
+    if (card.locked) return;
+    setCurriculumPick(card.blockId);
+    setPlayingCurriculum(false);
+    setPlaying(false);
+    curriculumPickerRef.current = card.blockId;
+    pickerSlotRef.current = null;
+    setReplacing(Boolean(card.clipId));
+    setAddOpen(true);
+  };
+
+  const removeCurriculumClip = async (card: CurriculumVideoCard) => {
+    if (card.locked || !card.clipId) return;
+    const clipId = card.clipId;
+    writeCurriculumBlockClip(card.blockId, null, '');
+    await deleteUnusedTrainingClip(clipId);
+    setCurriculumCards((current) =>
+      current.map((item) => (item.blockId === card.blockId ? { ...item, clipId: null, mediaName: '' } : item)),
+    );
+    setClips((current) => current.filter((clip) => clip.id !== clipId));
+    setPlayingCurriculum(false);
+    setPickerNote('');
+  };
+
   const exitBoard = () => {
     setPlaying(false);
+    setPlayingCurriculum(false);
+    const destination = backPath ?? parent.path;
     void fs.exit().finally(() => {
-      navigate(parent.path);
+      navigate(destination);
     });
   };
 
@@ -388,7 +555,7 @@ export function TechniquesPage() {
 
   return (
     <main
-      className={`techniques${playing ? ' techniques--play' : ''}${fs.className ? ` ${fs.className}` : ''}${stage ? ' techniques--fill' : ''}`}
+      className={`techniques${playback ? ' techniques--play' : ''}${fs.className ? ` ${fs.className}` : ''}${stage ? ' techniques--fill' : ''}`}
     >
       <PlayExitMark to={parent.path} onExit={exitBoard} />
       <header className="techniques__bar">
@@ -400,7 +567,7 @@ export function TechniquesPage() {
           <button type="button" className="btn" disabled={!canStart} onClick={startDrill}>
             Start
           </button>
-          <button type="button" className="btn btn--ghost" disabled={!playing} onClick={stopDrill}>
+          <button type="button" className="btn btn--ghost" disabled={!playback} onClick={stopDrill}>
             Stop
           </button>
           <FullscreenChip
@@ -425,7 +592,7 @@ export function TechniquesPage() {
         <OpenMyDrive />
       </header>
 
-      {playing ? null : (
+      {playback ? null : (
         <>
           <p className="techniques__note">{stayCopy}</p>
           {proSuite && driveNotice.text ? (
@@ -529,6 +696,36 @@ export function TechniquesPage() {
             onToggleMute={() => commitMute(!muteVideo)}
           />
         ) : null}
+
+        {curriculumCards.map((card) => (
+          <CurriculumClipCard
+            key={card.blockId}
+            card={card}
+            selected={curriculumPick === card.blockId}
+            playing={playingCurriculum && curriculumPick === card.blockId}
+            src={card.clipId ? urlById[card.clipId] : undefined}
+            remainingMs={curriculumRemaining}
+            muted={muteVideo}
+            unlockSound={unlockSound}
+            fullscreen={immersive}
+            onSelect={() => {
+              setCurriculumPick(card.blockId);
+              setPlaying(false);
+              setPlayingCurriculum(false);
+              setCurriculumRemaining(card.durationMs);
+            }}
+            onAdd={() => openCurriculumChooser(card)}
+            onRemove={() => void removeCurriculumClip(card)}
+            onDurationEnd={() => {
+              setPlayingCurriculum(false);
+              setCurriculumRemaining(0);
+            }}
+            onRemaining={setCurriculumRemaining}
+            onToggleFullscreen={() => void togglePlaybackFullscreen()}
+            onStop={stopDrill}
+            onToggleMute={() => commitMute(!muteVideo)}
+          />
+        ))}
       </div>
       ) : null}
 
@@ -555,6 +752,118 @@ export function TechniquesPage() {
         onFiles={onFiles}
       />
     </main>
+  );
+}
+
+function CurriculumClipCard({
+  card,
+  selected,
+  playing,
+  src,
+  remainingMs,
+  muted,
+  unlockSound,
+  fullscreen,
+  onSelect,
+  onAdd,
+  onRemove,
+  onDurationEnd,
+  onRemaining,
+  onToggleFullscreen,
+  onStop,
+  onToggleMute,
+}: {
+  card: CurriculumVideoCard;
+  selected: boolean;
+  playing: boolean;
+  src?: string;
+  remainingMs: number;
+  muted: boolean;
+  unlockSound: boolean;
+  fullscreen: boolean;
+  onSelect: () => void;
+  onAdd: () => void;
+  onRemove: () => void;
+  onDurationEnd: () => void;
+  onRemaining: (remainingMs: number) => void;
+  onToggleFullscreen?: () => void;
+  onStop?: () => void;
+  onToggleMute?: () => void;
+}) {
+  const filled = Boolean(card.clipId && src);
+  const cardClass = [
+    'techniques__card',
+    selected ? 'techniques__card--on' : '',
+    playing ? 'techniques__card--playing' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+  return (
+    <section
+      id={`techniques-slot-curriculum-${card.blockId}`}
+      className={cardClass}
+      aria-labelledby={`techniques-heading-curriculum-${card.blockId}`}
+      aria-current={selected ? 'true' : undefined}
+      onClick={(event) => {
+        const target = event.target as HTMLElement | null;
+        if (target?.closest('button, a, input, label')) return;
+        onSelect();
+      }}
+    >
+      <h2 id={`techniques-heading-curriculum-${card.blockId}`}>{card.title}</h2>
+      {playing && filled && src ? (
+        <LoopClip
+          src={src}
+          label={card.title}
+          playing
+          muted={muted}
+          unlockSound={unlockSound}
+          fullscreen={fullscreen}
+          durationMs={card.durationMs}
+          onDurationEnd={onDurationEnd}
+          onRemaining={onRemaining}
+          onToggleFullscreen={onToggleFullscreen}
+          onStop={onStop}
+          onToggleMute={onToggleMute}
+          overlay={
+            <p
+              className={`techniques__clock${remainingMs === 0 ? ' techniques__clock--done' : ' techniques__clock--play'}`}
+              aria-live="polite"
+            >
+              <span className="techniques__loop">Loop</span>
+              {formatMmSs(remainingMs)}
+            </p>
+          }
+        />
+      ) : filled && src ? (
+        <button type="button" className="techniques__slot techniques__slot--filled" aria-pressed={selected} onClick={onSelect}>
+          <video className="techniques__thumb" src={src} muted playsInline preload="metadata" aria-label={card.title} />
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="techniques__slot"
+          aria-pressed={selected}
+          onClick={() => {
+            onSelect();
+            if (!card.locked) onAdd();
+          }}
+        >
+          + Add video
+        </button>
+      )}
+      {filled && !card.locked ? (
+        <div className="techniques__slot-actions">
+          <button type="button" className="btn" onClick={onAdd}>
+            Replace
+          </button>
+          <button type="button" className="btn btn--ghost" onClick={onRemove}>
+            Remove
+          </button>
+        </div>
+      ) : null}
+      <p className="techniques__note">Loops for {formatMmSs(card.durationMs)}</p>
+    </section>
   );
 }
 
@@ -761,6 +1070,9 @@ function LoopClip({
   onStop,
   onToggleMute,
   overlay,
+  durationMs,
+  onDurationEnd,
+  onRemaining,
 }: {
   src: string;
   label: string;
@@ -772,11 +1084,20 @@ function LoopClip({
   onStop?: () => void;
   onToggleMute?: () => void;
   overlay?: ReactNode;
+  /** When set, the clip restarts until this many milliseconds have passed, then stops. */
+  durationMs?: number;
+  onDurationEnd?: () => void;
+  onRemaining?: (remainingMs: number) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hideChromeTimer = useRef(0);
   const [needsUnmute, setNeedsUnmute] = useState(false);
   const [chrome, setChrome] = useState(false);
+  const durationEndRef = useRef(onDurationEnd);
+  const remainingRef = useRef(onRemaining);
+  durationEndRef.current = onDurationEnd;
+  remainingRef.current = onRemaining;
+  const timedLoop = durationMs != null;
 
   const revealChrome = useCallback(() => {
     setChrome(true);
@@ -796,6 +1117,7 @@ function LoopClip({
   }, [revealChrome, fullscreen]);
 
   useEffect(() => {
+    if (timedLoop) return;
     const el = videoRef.current;
     if (!el) return;
     el.loop = true;
@@ -841,7 +1163,83 @@ function LoopClip({
       cancelled = true;
       el.pause();
     };
-  }, [playing, src, muted, unlockSound]);
+  }, [playing, src, muted, unlockSound, timedLoop]);
+
+  useEffect(() => {
+    if (!timedLoop || durationMs == null) return;
+    const el = videoRef.current;
+    if (!el) return;
+    if (!playing) {
+      el.pause();
+      return;
+    }
+    const startedAt = performance.now();
+    let lastRestartAt = startedAt;
+    let stopped = false;
+    let restarting = false;
+    let timer = 0;
+
+    const finish = () => {
+      if (stopped) return;
+      stopped = true;
+      window.clearInterval(timer);
+      el.pause();
+      remainingRef.current?.(0);
+      durationEndRef.current?.();
+    };
+
+    const apply = (clipEnded: boolean) => {
+      if (stopped || restarting) return;
+      const now = performance.now();
+      const step = nextLoopStep(now - startedAt, durationMs, clipEnded, now - lastRestartAt);
+      if (step === 'stop') {
+        finish();
+        return;
+      }
+      if (step === 'restart') {
+        lastRestartAt = now;
+        restarting = true;
+        try {
+          el.currentTime = 0;
+        } catch {
+          el.load();
+        }
+        void el.play().catch(() => undefined);
+        window.setTimeout(() => {
+          restarting = false;
+        }, LOOP_RESTART_MIN_MS);
+      }
+      remainingRef.current?.(Math.max(0, durationMs - (performance.now() - startedAt)));
+    };
+
+    const onEnded = () => apply(true);
+    el.loop = false;
+    el.muted = muted;
+    el.addEventListener('ended', onEnded);
+    timer = window.setInterval(() => {
+      if (restarting) return;
+      apply(el.ended);
+    }, 100);
+    apply(false);
+    void el.play().catch(() => {
+      el.muted = true;
+      if (!muted) setNeedsUnmute(true);
+      void el.play().catch(() => undefined);
+    });
+
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+      el.removeEventListener('ended', onEnded);
+      el.pause();
+    };
+  }, [durationMs, playing, src, timedLoop]);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el || !timedLoop) return;
+    el.muted = muted;
+  }, [muted, timedLoop]);
 
   return (
     <div
@@ -859,7 +1257,7 @@ function LoopClip({
         src={src}
         muted={muted}
         playsInline
-        loop
+        loop={!timedLoop}
         disableRemotePlayback
         aria-label={label}
       />

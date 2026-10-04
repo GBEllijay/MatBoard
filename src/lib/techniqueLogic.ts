@@ -452,9 +452,13 @@ export function sanitizeVideoPlan(
 export function assignOrphanClips(
   plan: VideoPlan,
   orderedClipIds: readonly string[],
+  reservedClipIds?: ReadonlySet<string>,
 ): { plan: VideoPlan; changed: boolean } {
   const assigned = new Set(plan.slots.flatMap((slot) => (slot.clipId ? [slot.clipId] : [])));
-  const orphans = orderedClipIds.filter((id, index, all) => id && all.indexOf(id) === index && !assigned.has(id));
+  const orphans = orderedClipIds.filter(
+    (id, index, all) =>
+      id && all.indexOf(id) === index && !assigned.has(id) && !reservedClipIds?.has(id),
+  );
   if (!orphans.length) return { plan, changed: false };
 
   let next = plan;

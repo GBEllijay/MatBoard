@@ -1,8 +1,8 @@
 /**
  * Competition Class Curriculum text, saved on this phone as the coach types.
  * A separate record from the Daily Lesson Plan (`trainingNotesStore`).
- * Video bytes stay in on-device IndexedDB (`curriculumClips`). A Drive copy
- * is text only, in the gym's connected folder. Advantage does not host videos.
+ * Video bytes stay in the Daily Training Videos library on this phone.
+ * A Drive copy is text only, in the gym's connected folder. Advantage does not host videos.
  */
 
 import { parseMmSs } from './format.ts';
@@ -449,6 +449,44 @@ export function curriculumListLabel(plan: CurriculumPlan): string {
 
 export function plansOnCurriculumDay(archive: CurriculumArchive, dateKey: string): CurriculumPlan[] {
   return archive.days[dateKey]?.plans ?? [];
+}
+
+/** Clip ids saved on any curriculum day. Daily Training must not treat these as spare lesson clips. */
+export function curriculumReferencedClipIds(archive: CurriculumArchive): string[] {
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  for (const day of Object.values(archive.days)) {
+    for (const plan of day.plans) {
+      for (const block of plan.blocks) {
+        if (!block.clipId || seen.has(block.clipId)) continue;
+        seen.add(block.clipId);
+        ids.push(block.clipId);
+      }
+    }
+  }
+  return ids;
+}
+
+/** Point one curriculum card at a Daily Training clip, or clear it. */
+export function writeCurriculumBlockClip(
+  blockId: string,
+  clipId: string | null,
+  mediaName: string,
+  today = localDateKey(),
+): CurriculumPlan | null {
+  const archive = loadCurriculumArchive(today);
+  for (const [dateKey, day] of Object.entries(archive.days)) {
+    const plan = day.plans.find((item) => item.blocks.some((block) => block.id === blockId));
+    if (!plan) continue;
+    const next: CurriculumPlan = {
+      ...plan,
+      blocks: plan.blocks.map((block) =>
+        block.id === blockId ? { ...block, clipId, mediaName: clipId ? mediaName : '' } : block,
+      ),
+    };
+    return saveCurriculum(dateKey, next, today).plan;
+  }
+  return null;
 }
 
 export function findCurriculumById(archive: CurriculumArchive, planId: string): CurriculumPlan | null {
