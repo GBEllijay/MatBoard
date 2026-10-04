@@ -3,31 +3,35 @@ import { Link } from 'react-router-dom';
 import { BeltRail } from '../components/BeltRail';
 import { HomeMark } from '../components/HomeMark';
 import { ProUnlockSheet } from '../components/ProUnlockSheet';
+import { useCurrentSeat } from '../components/SeatSessionBar';
 import { SiteFooter } from '../components/SiteFooter';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { lockCoach } from '../lib/coachUnlock';
-import { COACH_HUBS, coachToolsOpen, PRO_HUBS } from '../lib/productNames';
+import { COACH_HUBS, coachDoorOpen, PRO_HUBS } from '../lib/productNames';
 import { lockPro } from '../lib/proUnlock';
 
 export function ComingSoonPage() {
   const proUnlocked = useProUnlocked();
   const coachUnlocked = useCoachUnlocked();
-  const coachTools = coachToolsOpen(proUnlocked, coachUnlocked);
+  const seated = useCurrentSeat() !== null;
+  const coachTools = coachDoorOpen(proUnlocked, coachUnlocked, seated);
   const [unlockOpen, setUnlockOpen] = useState<'coach' | 'pro' | null>(null);
 
   const tagline = proUnlocked
     ? 'Advantage Pro is on for this browser.'
     : coachUnlocked
       ? 'Advantage Coach is on for this browser.'
-      : 'Coming soon — Advantage Coach and Advantage Pro.';
+      : seated
+        ? 'This browser is signed in with an instructor seat.'
+        : 'Coming soon — Advantage Coach and Advantage Pro.';
 
   return (
     <main className="home home--soon">
       <div className="home__inner home__inner--soon">
         <HomeMark to="/" tagline={tagline} />
 
-        {proUnlocked || coachUnlocked ? (
+        {coachTools ? (
           <nav className="home__soon-actions" aria-label={proUnlocked ? 'Pro' : 'Coach'}>
             {proUnlocked
               ? PRO_HUBS.map((hub) => (

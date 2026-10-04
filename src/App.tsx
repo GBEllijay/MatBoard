@@ -1,9 +1,12 @@
-import type { ReactNode } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { useEffect, type ReactNode } from 'react';
+import { Navigate, Route, Routes, useNavigate, useSearchParams } from 'react-router-dom';
+import { useCurrentSeat } from './components/SeatSessionBar';
 import { useCoachUnlocked } from './hooks/useCoachUnlocked';
 import { useKeepFocusedFieldVisible } from './hooks/useKeepFocusedFieldVisible';
 import { useProUnlocked } from './hooks/useProUnlocked';
 import { consumeCoachUnlockQueryNow } from './lib/coachUnlock';
+import { acceptInstructorInvite, peekInstructorInvite } from './lib/instructorSeats';
+import { coachDoorOpen, proDoorOpen } from './lib/productNames';
 import { consumeUnlockQueryNow } from './lib/proUnlock';
 import { ClassHistoryPage } from './pages/ClassHistory';
 import { CoachPage } from './pages/Coach';
@@ -39,8 +42,27 @@ import { WhiteRosterPage } from './pages/WhiteRoster';
 consumeUnlockQueryNow();
 consumeCoachUnlockQueryNow();
 
+/**
+ * Full page loads read the invite before the router paints a locked route.
+ * A live token accepts the seat and replaces the address with home.
+ * The owner code is never added to that address.
+ */
+function consumeInviteDoorNow(): void {
+  if (typeof window === 'undefined') return;
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('invite');
+  if (!token || peekInstructorInvite(token) !== 'open') return;
+  if (!acceptInstructorInvite(token).ok) return;
+  const url = new URL(window.location.href);
+  url.pathname = '/';
+  url.search = '';
+  window.history.replaceState(window.history.state, '', `${url.pathname}${url.hash}`);
+}
+
+consumeInviteDoorNow();
+
 function ProRoute({ children }: { children: ReactNode }) {
-  const unlocked = useProUnlocked();
+  const unlocked = proDoorOpen(useProUnlocked());
   if (!unlocked) return <Navigate to="/coming-soon" replace />;
   return children;
 }
@@ -48,7 +70,40 @@ function ProRoute({ children }: { children: ReactNode }) {
 function CoachRoute({ children }: { children: ReactNode }) {
   const coach = useCoachUnlocked();
   const pro = useProUnlocked();
-  if (!coach && !pro) return <Navigate to="/coming-soon" replace />;
+  const seated = useCurrentSeat() !== null;
+  if (!coachDoorOpen(pro, coach, seated)) return <Navigate to="/coming-soon" replace />;
+  return children;
+}
+
+/**
+ * A live invite is its own door. Accept it before a Pro route can bounce the
+ * link to the owner purchase lock, then land on home. The owner code stays out
+ * of the link. A bad token does not open the door.
+ */
+function InviteDoor({ children }: { children: ReactNode }) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const token = searchParams.get('invite');
+  const open = token !== null && peekInstructorInvite(token) === 'open';
+
+  useEffect(() => {
+    if (!token || !open) return;
+    const result = acceptInstructorInvite(token);
+    if (result.ok) {
+      navigate('/', { replace: true });
+      return;
+    }
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        next.delete('invite');
+        return next;
+      },
+      { replace: true },
+    );
+  }, [token, open, navigate, setSearchParams]);
+
+  if (open) return null;
   return children;
 }
 
@@ -58,6 +113,7 @@ export default function App() {
   useCoachUnlocked();
 
   return (
+    <InviteDoor>
     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/white" element={<WhitePage />} />
@@ -233,5 +289,6 @@ export default function App() {
       <Route path="/terms" element={<TermsPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </InviteDoor>
   );
 }
