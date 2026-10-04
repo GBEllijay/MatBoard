@@ -48,6 +48,10 @@ export function CompetitorManagementPage() {
         <HomeMark to="/competition" />
         <section className="suite competitor-hub">
           <h2 className="competitor-hub__title">
+            <span className="competitor-hub__medal" aria-hidden="true">
+              <span className="competitor-hub__medal-disc" />
+              <span className="competitor-hub__medal-ribbon" />
+            </span>
             <span>{COMPETITOR_SYSTEM_NAME}</span>
           </h2>
           <p>{COMPETITOR_ROSTER_DESCRIPTION}</p>
