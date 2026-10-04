@@ -1568,9 +1568,14 @@ span.role-plan__mark {
 .belt-header__belt {
   --cloth: #141414;
   --belt-ink: #f7f4ee;
-  --weave:
-    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.2) 0 1px, transparent 1px 4px),
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.1) 0 1px, transparent 1px 4px);
+  /* Tight cotton webbing: a light ridge and a dark groove, repeating
+     along the belt. No cross threads, no patches. */
+  --weave: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.2) 0,
+    rgba(255, 255, 255, 0.16) 1px,
+    rgba(0, 0, 0, 0.2) 3px
+  );
   display: flex;
   align-items: stretch;
   width: 100%;
@@ -1594,13 +1599,17 @@ span.role-plan__mark {
 .belt-header--white .belt-header__belt {
   --cloth: #f4f1ea;
   --belt-ink: #14161c;
-  --weave:
-    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.1) 0 1px, transparent 1px 4px),
-    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.07) 0 1px, transparent 1px 4px);
+  --weave: repeating-linear-gradient(
+    to bottom,
+    rgba(48, 40, 30, 0.18) 0,
+    rgba(255, 255, 255, 0.55) 1px,
+    rgba(48, 40, 30, 0.18) 3px
+  );
 }
 
 .belt-header--blue .belt-header__belt {
-  --cloth: #2a5cf0;
+  /* Same darker blue as the Coaching Tools and Advantage Coach rails. */
+  --cloth: #2a62b2;
 }
 
 .belt-header--purple .belt-header__belt {
@@ -1615,8 +1624,12 @@ span.role-plan__mark {
   --belt-ink: #14161c;
   background-color: #1c6b30;
   background-image:
-    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.28) 0 1px, transparent 1px 4px),
-    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.14) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.2) 0,
+      rgba(255, 255, 255, 0.2) 1px,
+      rgba(0, 0, 0, 0.2) 3px
+    ),
     linear-gradient(90deg, #ffe24a 0 6%, #1c6b30 6% 47%, #ffe24a 47% 86%, #1c6b30 86% 100%);
 }
 
@@ -1691,6 +1704,15 @@ span.role-plan__mark {
   top: calc(4.35rem + var(--safe-t));
   left: 0.85rem;
   right: 0.85rem;
+  pointer-events: none;
+}
+
+/* The photo-control sheet stays put. Page copy starts one line or two
+   under the purple belt, so the belt reads as the top of the page. */
+.saver--belt .saver__empty {
+  align-content: start;
+  justify-content: center;
+  padding-top: calc(10.6rem + var(--safe-t));
 }
 
 .saver--belt .sheet.sheet--dock-footer {
