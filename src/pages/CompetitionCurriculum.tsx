@@ -8,7 +8,6 @@ import { PlayExitMark } from '../components/PlayExitMark';
 import { SeatSessionBar } from '../components/SeatSessionBar';
 import { Sheet } from '../components/Sheet';
 import { MediaSourceSheet } from '../components/VideoSourceSheet';
-import { useInterval } from '../hooks/useClock';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { COACH_LESSON_EYEBROW } from '../lib/coachCopy';
 import {
@@ -64,7 +63,7 @@ import { CONNECT_WITH_TITLE } from '../lib/cloudStorage';
 import { CLASS_DESIGNATION_MAX, CLASS_TIME_MAX, CLOSING_MAX, COACH_NAME_MAX, EXPECTED_MAX, TECHNIQUE_NOTES_MAX, TECHNIQUE_TITLE_MAX, localDateKey, planDayStamp, planDayTitle, shiftDateKey } from '../lib/trainingNotesStore';
 import { techniqueTreeLaunchPath } from '../lib/lessonLinks';
 import { COACHING_TOOLS_PATH, UNLIMITED_LESSON_VALUE } from '../lib/productNames';
-import { tickRemainingMs } from '../lib/techniqueLogic';
+import { LOOP_RESTART_MIN_MS, nextLoopStep } from '../lib/videoLoop';
 import { loadTechniqueArchive, type TechniqueTreeArchive } from '../lib/techniqueTreeStore';
 import { resetTrainingSession, setRounds, setWorkMs } from '../lib/trainingStore';
 import { trainingPathWithReturn } from '../lib/timerReturn';
@@ -961,6 +960,20 @@ function CurriculumCard({
   );
 }
 
+function restartClip(el: HTMLVideoElement): void {
+  const resume = () => {
+    void el.play().catch(() => undefined);
+  };
+  try {
+    el.currentTime = 0;
+  } catch {
+    el.load();
+    el.addEventListener('loadeddata', resume, { once: true });
+    return;
+  }
+  resume();
+}
+
 function LoopOverlay({
   title,
   src,
@@ -974,35 +987,65 @@ function LoopOverlay({
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [remainingMs, setRemainingMs] = useState(durationMs);
-  const [playing, setPlaying] = useState(true);
-
-  useInterval(
-    () => {
-      setRemainingMs((ms) => {
-        const next = tickRemainingMs(ms, 100);
-        if (next === 0) setPlaying(false);
-        return next;
-      });
-    },
-    100,
-    playing,
-  );
 
   useEffect(() => {
     const el = videoRef.current;
     if (!el) return;
-    el.loop = true;
-    el.muted = true;
-    if (!playing) {
+    const startedAt = performance.now();
+    let lastRestartAt = startedAt;
+    let stopped = false;
+    let restarting = false;
+    let timer = 0;
+
+    const finish = () => {
+      if (stopped) return;
+      stopped = true;
+      window.clearInterval(timer);
       el.pause();
-      return;
-    }
+      setRemainingMs(0);
+    };
+
+    const apply = (clipEnded: boolean) => {
+      if (stopped || restarting) return;
+      const now = performance.now();
+      const step = nextLoopStep(now - startedAt, durationMs, clipEnded, now - lastRestartAt);
+      if (step === 'stop') {
+        finish();
+        return;
+      }
+      if (step === 'restart') {
+        lastRestartAt = now;
+        restarting = true;
+        restartClip(el);
+        window.setTimeout(() => {
+          restarting = false;
+        }, LOOP_RESTART_MIN_MS);
+      }
+      setRemainingMs(Math.max(0, durationMs - (performance.now() - startedAt)));
+    };
+
+    const onEnded = () => apply(true);
+    el.loop = false;
+    el.muted = true;
+    el.addEventListener('ended', onEnded);
+    timer = window.setInterval(() => {
+      if (restarting) return;
+      apply(el.ended);
+    }, 100);
+    apply(false);
     void el.play().catch(() => undefined);
-  }, [playing, src]);
+
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+      el.removeEventListener('ended', onEnded);
+      el.pause();
+    };
+  }, [durationMs, src]);
 
   return (
     <div className="curriculum__loop" role="dialog" aria-label={`${title} looping video`}>
-      <video ref={videoRef} className="curriculum__loop-video" src={src} muted playsInline loop />
+      <video ref={videoRef} className="curriculum__loop-video" src={src} muted playsInline />
       <p className="curriculum__loop-clock" aria-live="polite">
         {formatMmSs(remainingMs)}
       </p>
