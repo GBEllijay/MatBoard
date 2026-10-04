@@ -1,4 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
+import { BeltHeader } from '../components/BeltHeader';
 import { CoachToolsCard } from '../components/CoachToolsCard';
 import { InviteAccept, SeatSessionBar } from '../components/SeatSessionBar';
 import { HomeMark } from '../components/HomeMark';
@@ -23,6 +24,11 @@ export function CoachPage() {
         <InviteAccept />
         <SeatSessionBar />
         <nav className="home__modes" aria-label="Advantage Coach">
+          <BeltHeader
+            kind="blue"
+            title="Advantage - Coach"
+            blurb="Tools and Templates for Coaches and Competition Teams."
+          />
           <CoachToolsCard />
         </nav>
 
