@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { BeltHeader } from '../components/BeltHeader';
 import { Chrome } from '../components/Chrome';
 import { GymLogoControl } from '../components/GymLogoControl';
 import { InstructionsButton } from '../components/InstructionsButton';
@@ -475,6 +476,7 @@ export function ScreensaverPage() {
   };
 
   const hubTitle = MEDIA_CONSOLE_NAME;
+  const showBelt = options || !currentSlide;
 
   const focusEmpty = itemsInFolder(photos, focusFolder).length === 0;
   const focusCanUpload =
@@ -497,7 +499,7 @@ export function ScreensaverPage() {
 
   return (
     <main
-      className={`saver${currentSlide ? ' saver--play' : ''}${fs.className ? ` ${fs.className}` : ''}`}
+      className={`saver${currentSlide ? ' saver--play' : ''}${showBelt ? ' saver--belt' : ''}${fs.className ? ` ${fs.className}` : ''}`}
       onClick={(event) => {
         const target = event.target as HTMLElement;
         if (target.closest('.sheet, .chrome, .saver__empty, .btn, input, label, .play-fs, .play-exit, .tv-tip, .saver__unmute, .saver-batch, .week-cast.is-drift, .week-cast.is-paused, .month-cast.is-drift, .month-cast.is-paused')) return;
@@ -510,6 +512,11 @@ export function ScreensaverPage() {
         <BatchStatus status={batchStatus} onDismiss={() => setBatchStatus(null)} />
       ) : null}
       <PlayExitMark to={parent.path} onExit={exitSlideshow} />
+      {showBelt ? (
+        <div className="saver-belt">
+          <BeltHeader kind="purple" title="Advantage - Media Console" />
+        </div>
+      ) : null}
       <div className="play-fs-slot">
         <FullscreenChip
           supported={fs.supported}

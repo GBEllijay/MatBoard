@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { BeltHeader } from '../components/BeltHeader';
 import { BeltRail } from '../components/BeltRail';
 import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
@@ -15,8 +16,11 @@ export function TournamentSuitePage() {
       <div className="home__inner">
         <HomeMark to="/pro" tagline="Live event ops on this device." />
         <section className="suite">
-          <h2>{TOURNAMENT_MANAGEMENT_PRO_LABEL}</h2>
-          <p>{TOURNAMENT_MANAGEMENT_PRO_LEAD}</p>
+          <BeltHeader
+            kind="tournament"
+            title={TOURNAMENT_MANAGEMENT_PRO_LABEL}
+            blurb={TOURNAMENT_MANAGEMENT_PRO_LEAD}
+          />
           <nav className="suite__nav" aria-label={TOURNAMENT_MANAGEMENT_PRO_LABEL}>
             {COMPETITION_PRO_MENU.map((link) => (
               <Link

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { BeltHeader } from '../components/BeltHeader';
 import { HomeMark } from '../components/HomeMark';
 import { InstructionsButton } from '../components/InstructionsButton';
 import { LiveBoutCard } from '../components/LiveBoutCard';
@@ -15,6 +16,11 @@ export function WhitePage() {
         <HomeMark to="/" tagline={<TierLine tier="White" detail={WHITE_LADDER_DETAIL} />} />
 
         <nav className="home__modes" aria-label="Advantage White">
+          <BeltHeader
+            kind="white"
+            title="Advantage - White"
+            blurb="BJJ Scoreboard and Round Timer. Customizable Live Matches and Rounds"
+          />
           <LiveBoutCard />
           <RoundsCard />
           <WhiteRosterCard />

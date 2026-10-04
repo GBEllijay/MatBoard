@@ -1,4 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
+import { BeltHeader } from '../components/BeltHeader';
 import { HomeMark } from '../components/HomeMark';
 import { InstructionsButton } from '../components/InstructionsButton';
 import { ProToolboxCard } from '../components/ProToolboxCard';
@@ -16,6 +17,7 @@ export function ProPage() {
         <HomeMark to="/" tagline={<TierLine tier="Pro" detail={PRO_LADDER_DETAIL} />} />
 
         <nav className="home__modes" aria-label="Advantage Pro">
+          <BeltHeader kind="black" title="Advantage - PRO" />
           <ProToolboxCard />
         </nav>
 
