@@ -32,6 +32,8 @@ import {
   COMPETITION_READY_CARD,
   COMPETITION_READY_LABEL,
   COMPETITION_READY_LEAD,
+  COMPETITOR_HUB_LEAD,
+  COMPETITOR_HUB_TITLE,
   COMPETITOR_ROSTER_CARD,
   COMPETITOR_ROSTER_DESCRIPTION,
   GAME_PLAN_A,
@@ -132,6 +134,8 @@ test('Coach teasers list the four hub tools in lesson, videos, mock, roster orde
 });
 
 test('Competitor Roster copy names bout competitors and skips franchise disclaimers', () => {
+  assert.equal(COMPETITOR_HUB_TITLE, 'Competitors');
+  assert.equal(COMPETITOR_HUB_LEAD, 'A, B, C — what to drill so they step on the mat ready.');
   assert.equal(
     COMPETITOR_ROSTER_DESCRIPTION,
     'Competitor Roster is the list of bout competitors for matches and brackets.',

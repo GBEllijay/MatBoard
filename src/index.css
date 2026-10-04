@@ -836,53 +836,57 @@ button.mode-card {
   line-height: 1.45;
 }
 
-/* Competitor Management title. A heading, not a hub card. The medal uses the
-   same yellow and green as the tournament belt. */
-.suite h2.competitor-hub__title {
-  display: grid;
-  justify-items: center;
-  gap: 0.45rem;
-  margin: 0;
-  padding: 0.1rem 0 0.15rem;
-  border: 0;
-  border-radius: 0;
-  background: none;
-  color: var(--ink);
-  font-size: clamp(1.55rem, 4.6vw, 2.05rem);
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  line-height: 1.15;
-  text-align: center;
+/* Competitor Management header. A gold band and medal, not a hub card. */
+.competitor-hub__header {
+  margin-inline: -1.25rem;
+  background: #fff7e4;
+  color: #323230;
   box-shadow: none;
 }
 
+.competitor-hub__band {
+  height: 6.5rem;
+  background: #d9a430;
+}
+
+.competitor-hub__heading {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.85rem, 3vw, 1.6rem);
+  padding: 0.15rem 1.35rem 1.5rem;
+}
+
 .competitor-hub__medal {
-  display: grid;
-  justify-items: center;
-  width: 2.35rem;
+  width: clamp(5.5rem, 18vw, 10.5rem);
+  height: auto;
+  flex: none;
+  margin-top: -4.6rem;
   pointer-events: none;
+  filter: drop-shadow(0 10px 12px rgba(90, 58, 8, 0.16));
 }
 
-.competitor-hub__medal-disc {
-  width: 2.05rem;
-  height: 2.05rem;
-  border-radius: 50%;
-  background: radial-gradient(circle at 36% 30%, #fff6b8 0 14%, #ffe24a 52%, #c99616 100%);
-  box-shadow: inset 0 0 0 3px #1c6b30;
+.competitor-hub__copy {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+  padding-top: 1.7rem;
 }
 
-.competitor-hub__medal-ribbon {
-  width: 1.15rem;
-  height: 0.72rem;
-  margin-top: -0.22rem;
-  background: repeating-linear-gradient(
-    to bottom,
-    #1c6b30 0,
-    #1c6b30 0.24rem,
-    #ffe24a 0.24rem,
-    #ffe24a 0.48rem
-  );
-  clip-path: polygon(0 0, 100% 0, 80% 100%, 50% 62%, 20% 100%);
+.competitor-hub__copy h2 {
+  margin: 0;
+  color: #2a2a28;
+  font-size: clamp(1.7rem, 5.6vw, 3.4rem);
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 0.95;
+}
+
+.competitor-hub__copy p {
+  margin: 0;
+  color: #3a3834;
+  font-size: clamp(0.95rem, 2.5vw, 1.2rem);
+  font-weight: 650;
+  line-height: 1.35;
 }
 
 .competitor-hub__nav {
