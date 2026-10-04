@@ -16,6 +16,8 @@ import {
 import { comparePlaylistItems, type PlaylistItem } from './playlist';
 import { mimeFromFile, VIDEO_ACCEPT } from './photoStore';
 import { assertOriginRoom, isStorageQuotaError, StorageQuotaError } from './storageQuota.ts';
+import { readCurriculumClip } from './curriculumClips.ts';
+import { curriculumReferencedClipIds, loadCurriculumArchive } from './competitionCurriculum.ts';
 
 export {
   canAssignClip,
@@ -158,9 +160,10 @@ export async function loadTechniqueBoard(): Promise<{ clips: TechniqueClip[]; pl
 
   let plan: VideoPlan;
   let changed: boolean;
+  const reserved = reservedCurriculumClipIds();
   if (version === 2) {
     const sanitized = sanitizeVideoPlan(rawPlan, clipIds);
-    const placed = assignOrphanClips(sanitized.plan, clipIds);
+    const placed = assignOrphanClips(sanitized.plan, clipIds, reserved);
     plan = placed.plan;
     changed = sanitized.changed || placed.changed;
   } else {
@@ -169,12 +172,112 @@ export async function loadTechniqueBoard(): Promise<{ clips: TechniqueClip[]; pl
       selectedClipId: typeof prefs.selectedId === 'string' ? prefs.selectedId : null,
       drillSec: clampDrillSec(Number(prefs.drillSec ?? DEFAULT_DRILL_SEC)),
     });
-    const placed = assignOrphanClips(migrated, clipIds);
+    const placed = assignOrphanClips(migrated, clipIds, reserved);
     plan = placed.plan;
     changed = true;
   }
   if (changed) await saveTechniquePlan(plan);
   return { clips, plan };
+}
+
+function reservedCurriculumClipIds(): Set<string> {
+  try {
+    return new Set(curriculumReferencedClipIds(loadCurriculumArchive()));
+  } catch {
+    return new Set();
+  }
+}
+
+function rawPlanClipIds(plan: unknown): Set<string> {
+  const slots =
+    plan && typeof plan === 'object' && !Array.isArray(plan) ? (plan as { slots?: unknown }).slots : null;
+  const ids = new Set<string>();
+  if (!Array.isArray(slots)) return ids;
+  for (const slot of slots) {
+    if (!slot || typeof slot !== 'object') continue;
+    const clipId = (slot as { clipId?: unknown }).clipId;
+    if (typeof clipId === 'string' && clipId) ids.add(clipId);
+  }
+  return ids;
+}
+
+async function putClip(row: TechniqueClip): Promise<void> {
+  const db = await openDb();
+  const tx = db.transaction(CLIPS, 'readwrite');
+  tx.objectStore(CLIPS).put(row);
+  await txDone(tx);
+}
+
+export async function readTrainingClip(id: string): Promise<TechniqueClip | null> {
+  if (!id) return null;
+  const db = await openDb();
+  const row = await new Promise<ClipRow | undefined>((resolve, reject) => {
+    const tx = db.transaction(CLIPS, 'readonly');
+    const req = tx.objectStore(CLIPS).get(id);
+    req.onsuccess = () => resolve(req.result as ClipRow | undefined);
+    req.onerror = () => reject(req.error);
+  });
+  return row ? normalizeClip(row, 0) : null;
+}
+
+/** Save a clip in the Daily Training library without placing it on a lesson card. */
+export async function saveTrainingClip(file: File, label: string): Promise<TechniqueClip | null> {
+  const [picked] = pickAddableVideos([file], 1);
+  if (!picked) return null;
+  const clips = await listTechniqueClips();
+  const nextOrder = clips.reduce((max, clip) => Math.max(max, clip.sortOrder), -1) + 1;
+  const row: TechniqueClip = {
+    id: crypto.randomUUID(),
+    mime: mimeFromFile(picked, TECHNIQUE_FOLDER),
+    addedAt: Date.now(),
+    blob: picked,
+    label: label.trim().slice(0, 180) || TECHNIQUE_FOLDER.labelPrefix,
+    folderId: TECHNIQUE_FOLDER_ID,
+    sortOrder: nextOrder,
+  };
+  await assertOriginRoom(picked.size);
+  try {
+    await putClip(row);
+  } catch (error) {
+    if (error instanceof StorageQuotaError) throw error;
+    if (isStorageQuotaError(error)) throw new StorageQuotaError(0);
+    throw error;
+  }
+  return row;
+}
+
+/**
+ * Find a clip in the Daily Training library. An older curriculum-only copy is
+ * moved into that library so the shared window can play it.
+ */
+export async function readTrainingClipBlob(id: string): Promise<Blob | null> {
+  const current = await readTrainingClip(id);
+  if (current?.blob) return current.blob;
+  const legacy = await readCurriculumClip(id);
+  if (!legacy?.blob) return null;
+  const clips = await listTechniqueClips();
+  const nextOrder = clips.reduce((max, clip) => Math.max(max, clip.sortOrder), -1) + 1;
+  await putClip({
+    id: legacy.id,
+    mime: legacy.mime,
+    addedAt: legacy.addedAt,
+    blob: legacy.blob,
+    label: legacy.name,
+    folderId: TECHNIQUE_FOLDER_ID,
+    sortOrder: nextOrder,
+  });
+  return legacy.blob;
+}
+
+/** Remove a clip that is not sitting on a Daily Training card. */
+export async function deleteUnusedTrainingClip(id: string): Promise<void> {
+  if (!id) return;
+  const prefs = await readPrefs();
+  if (rawPlanClipIds(prefs.plan).has(id)) return;
+  const db = await openDb();
+  const tx = db.transaction(CLIPS, 'readwrite');
+  tx.objectStore(CLIPS).delete(id);
+  await txDone(tx);
 }
 
 function slotClipLabel(plan: VideoPlan, slotId: string): string {

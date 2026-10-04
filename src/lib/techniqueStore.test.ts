@@ -198,6 +198,13 @@ describe('video slot plan', () => {
     assert.equal(placed.plan.slots.at(-1)?.clipId, null);
   });
 
+  it('leaves a reserved clip off the daily training cards', () => {
+    const plan = emptyVideoPlan();
+    const placed = assignOrphanClips(plan, ['class-clip', 'old-a'], new Set(['class-clip']));
+    assert.equal(placed.plan.slots.some((slot) => slot.clipId === 'class-clip'), false);
+    assert.equal(placed.plan.slots.find((slot) => slot.slotId === 'tech-1')?.clipId, 'old-a');
+  });
+
   it('leaves a valid plan unchanged and drops unknown clip ids', () => {
     const plan = emptyVideoPlan();
     const same = sanitizeVideoPlan(plan, []);

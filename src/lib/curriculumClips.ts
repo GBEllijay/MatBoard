@@ -1,8 +1,7 @@
 /**
- * On-device clips for Competition Class Curriculum.
- * Separate from Daily Training Videos so a curriculum clip is not pulled
- * onto a lesson-plan slot. Bytes stay in this browser. Advantage does not
- * host them, and this store does not upload them.
+ * Older Competition Class clips saved before those videos moved into the
+ * Daily Training Videos library. New clips are not written here. A read can
+ * still find a clip that was saved in this browser so it can be copied over.
  */
 
 import { VIDEO_ACCEPT, mimeFromFile } from './photoStore.ts';
