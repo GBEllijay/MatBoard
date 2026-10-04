@@ -1,11 +1,10 @@
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { BeltRail } from '../components/BeltRail';
 import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
 import {
   COMPETITION_READY_CARD,
   COMPETITION_READY_LABEL,
-  COMPETITOR_HUB_LEAD,
   COMPETITOR_HUB_TITLE,
   COMPETITOR_ROSTER_CARD,
   COMPETITOR_ROSTER_LABEL,
@@ -13,6 +12,18 @@ import {
   GAME_PLAN_LABEL,
   RANKINGS_RESULTS_CARD,
 } from '../lib/coachCopy';
+
+/**
+ * Light paint options for this header, so the preview can be compared.
+ * Default (no query) is the belt card. `?look=seal` and `?look=edge` are the others.
+ */
+const HEADER_LOOKS = ['belt', 'seal', 'edge'] as const;
+type HeaderLook = (typeof HEADER_LOOKS)[number];
+
+function headerLook(value: string | null): HeaderLook {
+  if (value === 'seal' || value === 'edge') return value;
+  return 'belt';
+}
 
 const LINKS = [
   {
@@ -42,20 +53,19 @@ const LINKS = [
 ] as const;
 
 export function CompetitorManagementPage() {
+  const [searchParams] = useSearchParams();
+  const look = headerLook(searchParams.get('look'));
+
   return (
     <main className="home home--pro home--suite">
       <div className="home__inner">
         <HomeMark to="/competition" />
         <section className="suite competitor-hub">
-          <header className="competitor-hub__header">
-            <div className="competitor-hub__band" aria-hidden="true" />
-            <div className="competitor-hub__heading">
-              <GoldMedal />
-              <div className="competitor-hub__copy">
-                <h2>{COMPETITOR_HUB_TITLE}</h2>
-                <p>{COMPETITOR_HUB_LEAD}</p>
-              </div>
-            </div>
+          <header className={`competitor-hub__header competitor-hub__header--${look}`} data-header-look={look}>
+            {look === 'belt' ? <BeltRail kind="tournament" /> : null}
+            {look === 'seal' ? <GoldMedal /> : null}
+            <h2>{COMPETITOR_HUB_TITLE}</h2>
+            {look === 'seal' ? null : <GoldMedal />}
           </header>
           <nav className="competitor-hub__nav" aria-label={COMPETITOR_HUB_TITLE}>
             {LINKS.map((link) => (
@@ -74,45 +84,95 @@ export function CompetitorManagementPage() {
   );
 }
 
-/** Decorative medal. Yellow and olive-green ribbon, one star, laurel on the rim. */
+/** Small gold medal. Olive and yellow ribbon, a thin laurel, one star. */
 function GoldMedal() {
   return (
-    <svg className="competitor-hub__medal" viewBox="0 0 220 292" aria-hidden="true">
+    <svg className="competitor-hub__medal" viewBox="0 0 96 124" aria-hidden="true">
       <defs>
-        <radialGradient id="competitor-medal-face" cx="36%" cy="32%" r="70%">
-          <stop offset="0%" stopColor="#fff6c8" />
-          <stop offset="46%" stopColor="#f6d56a" />
-          <stop offset="100%" stopColor="#d7a428" />
+        <linearGradient id="cms-ribbon-olive" x1="0" x2="1">
+          <stop offset="0" stopColor="#3e4c16" />
+          <stop offset="0.42" stopColor="#7c8b36" />
+          <stop offset="1" stopColor="#2c3810" />
+        </linearGradient>
+        <linearGradient id="cms-ribbon-gold" x1="0" x2="1">
+          <stop offset="0" stopColor="#8a6412" />
+          <stop offset="0.45" stopColor="#f0d56a" />
+          <stop offset="1" stopColor="#a67c14" />
+        </linearGradient>
+        <linearGradient id="cms-rim" x1="0.15" y1="0" x2="0.85" y2="1">
+          <stop offset="0" stopColor="#f6e6b4" />
+          <stop offset="0.42" stopColor="#e0b44a" />
+          <stop offset="1" stopColor="#7a5410" />
+        </linearGradient>
+        <radialGradient id="cms-face" cx="36%" cy="30%" r="72%">
+          <stop offset="0%" stopColor="#fbf0c6" />
+          <stop offset="52%" stopColor="#e2be58" />
+          <stop offset="100%" stopColor="#b18218" />
         </radialGradient>
       </defs>
-      <path d="M86 0h28v104H86z" fill="#a3b02e" />
-      <path d="M114 0h28v104H114z" fill="#f6cc2c" />
-      <rect x="96" y="90" width="32" height="16" rx="3" fill="#e2b44a" stroke="#a87412" strokeWidth="1.5" />
-      <g transform="translate(110 186)">
-        <circle r="86" fill="#c99216" />
-        <circle r="80" fill="url(#competitor-medal-face)" />
-        <circle r="72" fill="none" stroke="#f4e2a0" strokeWidth="4" />
-        <circle r="63" fill="none" stroke="#a87412" strokeWidth="2.5" />
-        <g fill="#f3d98a" stroke="#a87412" strokeWidth="1.15">
-          <ellipse cx="-46" cy="20" rx="15" ry="6" transform="rotate(52 -46 20)" />
-          <ellipse cx="-54" cy="4" rx="15" ry="6" transform="rotate(32 -54 4)" />
-          <ellipse cx="-52" cy="-14" rx="14" ry="5.5" transform="rotate(12 -52 -14)" />
-          <ellipse cx="-42" cy="-30" rx="13" ry="5.5" transform="rotate(-12 -42 -30)" />
-          <ellipse cx="-26" cy="-42" rx="12" ry="5" transform="rotate(-38 -26 -42)" />
-          <ellipse cx="46" cy="20" rx="15" ry="6" transform="rotate(-52 46 20)" />
-          <ellipse cx="54" cy="4" rx="15" ry="6" transform="rotate(-32 54 4)" />
-          <ellipse cx="52" cy="-14" rx="14" ry="5.5" transform="rotate(-12 52 -14)" />
-          <ellipse cx="42" cy="-30" rx="13" ry="5.5" transform="rotate(12 42 -30)" />
-          <ellipse cx="26" cy="-42" rx="12" ry="5" transform="rotate(38 26 -42)" />
-        </g>
-        <polygon
-          points="0,-28 7.1,-9.7 26.6,-8.7 11.4,3.7 16.5,22.7 0,12 -16.5,22.7 -11.4,3.7 -26.6,-8.7 -7.1,-9.7"
-          fill="#fff6d2"
-          stroke="#b8860b"
-          strokeWidth="1.6"
-          strokeLinejoin="round"
-        />
-      </g>
+      <path d="M32 0h14L44 41H30.5Z" fill="url(#cms-ribbon-olive)" />
+      <path d="M50 0h14l2.5 41H48Z" fill="url(#cms-ribbon-gold)" />
+      <path d="M47.4 0.5 48.6 40" stroke="#6a5420" strokeWidth="0.7" opacity="0.4" />
+      <rect x="35.5" y="37" width="25" height="6" rx="1.1" fill="#c9a24a" stroke="#7a5410" strokeWidth="0.55" />
+      <circle cx="48" cy="80" r="37.5" fill="url(#cms-rim)" />
+      <circle cx="48" cy="80" r="33.4" fill="none" stroke="#5e420c" strokeWidth="1.35" />
+      <circle cx="48" cy="80" r="31.6" fill="url(#cms-face)" />
+      <circle cx="48" cy="80" r="31.6" fill="none" stroke="#f6e6b4" strokeWidth="0.65" />
+      <path
+        d="M29 64c5-9 16-14 27-8"
+        fill="none"
+        stroke="rgba(255,248,220,0.45)"
+        strokeWidth="1.1"
+        strokeLinecap="round"
+      />
+      <MedalWreath />
+      <circle cx="48" cy="80" r="11.5" fill="#f3d78a" stroke="#7a5410" strokeWidth="0.55" />
+      <polygon
+        points={starPoints(48, 80, 5.1, 2.15)}
+        fill="#fff4cc"
+        stroke="#7a5410"
+        strokeWidth="0.4"
+        strokeLinejoin="round"
+      />
     </svg>
   );
+}
+
+function MedalWreath() {
+  const degrees = [118, 146, 174, 202, 230];
+  return (
+    <g fill="#f8e7b4" stroke="#6a4a0e" strokeWidth="0.45">
+      {degrees.map((deg) => (
+        <MedalLeaf key={`L${deg}`} deg={deg} />
+      ))}
+      {degrees.map((deg) => (
+        <MedalLeaf key={`R${deg}`} deg={180 - deg} />
+      ))}
+    </g>
+  );
+}
+
+function MedalLeaf({ deg }: { deg: number }) {
+  const rad = (deg * Math.PI) / 180;
+  const cx = (48 + Math.cos(rad) * 22).toFixed(2);
+  const cy = (80 + Math.sin(rad) * 22).toFixed(2);
+  return (
+    <ellipse
+      cx={cx}
+      cy={cy}
+      rx="6.2"
+      ry="1.85"
+      transform={`rotate(${(deg + 90).toFixed(1)} ${cx} ${cy})`}
+    />
+  );
+}
+
+function starPoints(cx: number, cy: number, outer: number, inner: number) {
+  const pts: string[] = [];
+  for (let i = 0; i < 10; i += 1) {
+    const radius = i % 2 === 0 ? outer : inner;
+    const angle = -Math.PI / 2 + (i * Math.PI) / 5;
+    pts.push(`${(cx + Math.cos(angle) * radius).toFixed(2)},${(cy + Math.sin(angle) * radius).toFixed(2)}`);
+  }
+  return pts.join(' ');
 }
