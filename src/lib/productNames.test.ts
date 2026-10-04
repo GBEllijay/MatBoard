@@ -141,8 +141,10 @@ test('Coach hub is Coaching Tools then Competition Team Management', () => {
   );
   assert.deepEqual(
     COACHING_TOOLS_MENU.map((item) => item.belt),
-    ['coach', 'coach', 'coach', 'coach'],
+    ['coach', 'tournament', 'coach', 'coach'],
   );
+  assert.equal(coachingToolsMenu(false)[1].belt, 'tournament');
+  assert.equal(coachingToolsMenu(true)[1].belt, 'coach');
   assert.deepEqual(
     coachingToolsMenu(false).map((item) => item.to),
     ['/notes', '/competition-curriculum', '/techniques', '/technique-tree'],
@@ -218,30 +220,32 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   assert.equal(COMPETITION_MANAGEMENT_PRO_LABEL, 'Competition Management Pro');
   assert.equal(
     TOURNAMENT_MANAGEMENT_PRO_LEAD,
-    'Brackets, Scoreboard, and Round Timer. Rankings stay in Competitor Management.',
+    'Pro Version of Tournament Brackets, Scoreboard and Round Timer - Additional Skins and Animations Included. Rankings stay in Competitor Management System.',
   );
   assert.doesNotMatch(TOURNAMENT_MANAGEMENT_PRO_LEAD, /roster/i);
   assert.deepEqual(
     COMPETITION_PRO_MENU.map((item) => item.title),
-    ['Brackets-Tournament Software', 'Scoreboard', 'Round Timer'],
+    ['Brackets-Tournament Software', 'Competitor Management System', 'Scoreboard', 'Round Timer'],
   );
   assert.ok(!COMPETITION_PRO_MENU.some((item) => /roster/i.test(item.title)));
   assert.deepEqual(
     COMPETITION_PRO_MENU.map((item) => item.to),
     [
       withSuiteFrom('/tournament', true),
+      '/competitors',
       withSuiteFrom(MATCH_CONTROLLER_PATH, true),
       withSuiteFrom(ROUND_CONTROLLER_PATH, true),
     ],
   );
   assert.equal(COMPETITION_PRO_MENU[0].to, withSuiteFrom('/tournament', true));
+  assert.equal(COMPETITION_PRO_MENU[1].to, '/competitors');
   assert.deepEqual(
     COMPETITION_PRO_MENU.map((item) => item.belt),
-    ['tournament', null, null],
+    ['tournament', null, null, null],
   );
   assert.deepEqual(
     COMPETITION_PRO_MENU.map((item) => item.clearBout),
-    [false, true, false],
+    [false, false, true, false],
   );
 });
 

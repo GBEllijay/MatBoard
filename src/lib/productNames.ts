@@ -73,11 +73,12 @@ export const COACHING_TOOLS_LEAD =
 
 /**
  * Coaching Tools submenu, top to bottom.
- * Flat blue coach belt, same as these tools used on the Coach card.
+ * Daily Lesson Plan and Daily Training Videos stay on the flat blue coach belt.
+ * Competition Class Curriculum uses the yellow/green competition belt.
  */
 export const COACHING_TOOLS_MENU = [
   { title: TRAINING_NOTES_LABEL, to: '/notes', belt: 'coach' as const },
-  { title: CURRICULUM_LABEL, to: CURRICULUM_PATH, belt: 'coach' as const },
+  { title: CURRICULUM_LABEL, to: CURRICULUM_PATH, belt: 'tournament' as const },
   { title: 'Daily Training Videos', to: '/techniques', belt: 'coach' as const },
   { title: TECHNIQUE_TREE_LABEL, to: '/technique-tree', belt: 'coach' as const },
 ] as const;
@@ -107,7 +108,11 @@ export function coachingToolsMenu(unlimited: boolean) {
   return COACHING_TOOLS_MENU.map((tool) => {
     if (tool.to === '/notes') return { ...tool, to: UNLIMITED_LESSON_PATH };
     if (tool.to === CURRICULUM_PATH) {
-      return { ...tool, to: `${CURRICULUM_PATH}?plan=${UNLIMITED_LESSON_VALUE}` };
+      return {
+        ...tool,
+        to: `${CURRICULUM_PATH}?plan=${UNLIMITED_LESSON_VALUE}`,
+        belt: 'coach' as const,
+      };
     }
     return tool;
   });
@@ -161,11 +166,10 @@ export const TOURNAMENT_SUITE_NAME = 'In-House Tournament Management Suite';
 export const TOURNAMENT_MANAGEMENT_PRO_LABEL = 'Tournament Management Pro';
 
 /**
- * Lead under that heading. Bout competitors stay on Competitor Management,
- * so this line does not name the roster.
+ * Lead under that heading. Rankings stay on Competitor Management System.
  */
 export const TOURNAMENT_MANAGEMENT_PRO_LEAD =
-  'Brackets, Scoreboard, and Round Timer. Rankings stay in Competitor Management.';
+  'Pro Version of Tournament Brackets, Scoreboard and Round Timer - Additional Skins and Animations Included. Rankings stay in Competitor Management System.';
 
 /** Coming Soon ad feature title. Not the Pro hub button or the Suite page heading. */
 export const COMPETITION_MANAGEMENT_PRO_LABEL = 'Competition Management Pro';
@@ -221,13 +225,19 @@ export function withSuiteFrom(path: string, fromSuite: boolean): string {
  * Scoreboard and Round Timer have no left bar.
  * Brackets opens the same mock-tournament board.
  * Scoreboard opens the existing match controller. Round Timer opens the existing rounds controller.
- * Competitor Management System stays on Coach Competition Team Management, not on this menu.
+ * Competitor Management System opens the existing gold-medal menu.
  */
 export const COMPETITION_PRO_MENU = [
   {
     title: 'Brackets-Tournament Software',
     to: withSuiteFrom('/tournament', true),
     belt: 'tournament' as const,
+    clearBout: false,
+  },
+  {
+    title: COMPETITOR_SYSTEM_NAME,
+    to: '/competitors',
+    belt: null,
     clearBout: false,
   },
   {

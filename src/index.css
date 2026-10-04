@@ -315,12 +315,20 @@ label.btn {
   --belt-tip-2: #f4f1ea;
   --belt-edge: rgba(8, 10, 16, 0.55);
   --belt-block: 0.7rem;
+  /* Same cotton ribs as the belt headers, light enough that the accent color stays. */
+  --belt-weave: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.2) 0,
+    rgba(255, 255, 255, 0.16) 1px,
+    rgba(0, 0, 0, 0.2) 3px
+  );
   position: absolute;
   inset: 0;
   z-index: 3;
   pointer-events: none;
   border-radius: inherit;
   background:
+    var(--belt-weave),
     linear-gradient(
       to right,
       transparent 0,
@@ -358,6 +366,12 @@ label.btn {
   --belt-tip: #14161c;
   --belt-tip-2: #f4f1ea;
   --belt-edge: rgba(20, 22, 28, 0.45);
+  --belt-weave: repeating-linear-gradient(
+    to bottom,
+    rgba(48, 40, 30, 0.18) 0,
+    rgba(255, 255, 255, 0.55) 1px,
+    rgba(48, 40, 30, 0.18) 3px
+  );
 }
 
 .belt-rail--blue {
@@ -397,6 +411,7 @@ label.btn {
   --belt-tip-2-size: 0px;
   --belt-edge: rgba(8, 10, 16, 0.42);
   background:
+    var(--belt-weave),
     linear-gradient(
       to right,
       transparent 0,
@@ -441,6 +456,7 @@ label.btn {
   --belt-tip: #121214;
   --belt-tip-2-size: 0px;
   background:
+    var(--belt-weave),
     linear-gradient(
       to right,
       transparent 0,
@@ -2233,6 +2249,23 @@ span.role-plan__mark {
   .home--coach .home__modes,
   .home--pro .home__modes {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Suite belts share the Pro column: logo at the left, belt at the top. */
+  .home__inner:has(> .suite > .belt-header) {
+    align-items: start;
+  }
+
+  .home__inner:has(> .suite > .belt-header) > .home__mark,
+  .home__inner:has(> .suite > .belt-header) > .suite {
+    align-self: start;
+  }
+
+  .home__inner:has(> .suite > .belt-header) > .suite {
+    grid-area: modes;
+    grid-column: auto;
+    width: 100%;
+    margin: 0;
   }
 
   .mode-card {
