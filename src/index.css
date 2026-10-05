@@ -13699,6 +13699,113 @@ a.plan-pick {
   background: rgba(239, 68, 68, 0.16);
 }
 
+.home--buy .home__inner {
+  display: flex;
+  flex-direction: column;
+  width: min(42rem, 100%);
+  max-width: 42rem;
+  margin-inline: auto;
+}
+
+.buy__kicker {
+  display: block;
+  margin: 0;
+  color: var(--gold-2);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.home .buy .buy__card--belt p.buy__kicker {
+  color: #3d414c;
+}
+
+.buy__code {
+  display: grid;
+  gap: 0.4rem;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.buy__code input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0.75rem 0.9rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1rem;
+}
+
+.buy__code input:focus-visible {
+  outline: 2px solid var(--gold-2);
+  outline-offset: 2px;
+}
+
+.home .buy p.buy__hint,
+.home .buy p.soon-ad__includes,
+.home .buy p.soon-ad__aside,
+.home .buy p.soon-ad__trial,
+.home .buy p.soon-ad__price,
+.soon-ad__includes,
+.soon-ad__aside,
+.soon-ad__trial {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.soon-ad__trial a {
+  color: var(--gold-2);
+  font-weight: 700;
+}
+
+.buy__soon summary {
+  display: grid;
+  gap: 0.55rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.buy__soon summary::-webkit-details-marker {
+  display: none;
+}
+
+.buy__soon summary::marker {
+  content: '';
+}
+
+.buy__soon-head {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.buy__soon-head h2 {
+  margin: 0.12rem 0 0;
+}
+
+.buy__more {
+  color: var(--gold-2);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+}
+
+.buy__soon .soon-ad {
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.buy__soon .soon-ad__preview img {
+  width: min(100%, 22rem);
+}
+
 /* Advantage White match names. This phone only — not the Competitor Roster. */
 .white-roster {
   position: relative;

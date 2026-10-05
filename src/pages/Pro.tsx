@@ -19,7 +19,7 @@ export function ProPage() {
         <HomeMark to="/" />
 
         <nav className="home__modes" aria-label="Advantage Pro">
-          <BeltHeader kind="black" title="Advantage - PRO" blurb={PRO_LADDER_DETAIL} />
+          <BeltHeader kind="black" title="Advantage Pro" blurb={PRO_LADDER_DETAIL} />
           <ProToolboxCard />
         </nav>
 

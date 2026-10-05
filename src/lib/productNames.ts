@@ -13,9 +13,9 @@ export const WHITE_HOME_DESCRIPTION =
 
 /** Home Coach card body. The only line under the Advantage Coach title. */
 export const COACH_HOME_DESCRIPTION =
-  'Daily Lesson Planner with Expandable Technique Trees and Video Looper. Bracketing and Mock Tournament Tool with Competitor Roster.';
+  'Daily Lesson Planner with Expandable Technique Trees and Video Looper. Bracketing and Mock Tournament Tool with Student Roster.';
 
-/** Line under the black Advantage - PRO belt. Not the Owner Console page title. */
+/** Line under the black Advantage Pro belt. Not the Owner Console page title. */
 export const PRO_LADDER_DETAIL = 'Gym Owner and Instructors Console';
 
 /** Brand line under the Advantage title on the public home page. */
