@@ -1,10 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { AlphaAccessNote } from '../components/AlphaAccessNote';
+import { ComingSoonAd } from '../components/ComingSoonAd';
 import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import { lookupWhiteEntitlement, type WhiteEntitlementStatus } from '../lib/whiteEntitlementClient';
+import { COACH_LIST_PRICE_CENTS, PRO_LIST_PRICE_CENTS, PRO_MONTHLY_PRICE_CENTS } from '../lib/productPrices';
 import {
   WHITE_CHECKOUT_API,
   WHITE_FEATURES,
@@ -12,6 +13,7 @@ import {
   WHITE_PRICE_DETAIL,
   WHITE_PRICE_LABEL,
   WHITE_STRIPE_NOTE,
+  formatUsdFromCents,
   isWhiteFreeCode,
 } from '../lib/whitePurchase';
 import { rememberWhitePurchase, restoreWhiteByEmail } from '../lib/whiteUnlock';
@@ -51,6 +53,7 @@ export function BuyWhitePage() {
   const [error, setError] = useState<string | null>(null);
   const [record, setRecord] = useState<WhiteEntitlementStatus | null>(null);
   const [freeUnlock, setFreeUnlock] = useState(false);
+  const [promoInput, setPromoInput] = useState('');
   const [restoreEmail, setRestoreEmail] = useState('');
   const [restorePending, setRestorePending] = useState(false);
   const [restoreError, setRestoreError] = useState<string | null>(null);
@@ -58,7 +61,7 @@ export function BuyWhitePage() {
 
   useEffect(() => {
     const previous = document.title;
-    document.title = 'Buy Advantage White';
+    document.title = 'Buy Advantage';
     return () => {
       document.title = previous;
     };
@@ -138,12 +141,26 @@ export function BuyWhitePage() {
     event.preventDefault();
     if (pending) return;
     setError(null);
+    const typed = promoInput.trim();
+    if (isWhiteFreeCode(typed)) {
+      setPending(true);
+      const result = await unlockFromPrivateLink(typed);
+      setPending(false);
+      if (result.ok) {
+        rememberWhitePurchase({ entitled: true });
+        setFreeUnlock(true);
+        setPromoInput('');
+        return;
+      }
+      setError(result.error);
+      return;
+    }
     setPending(true);
     try {
       const response = await fetch(WHITE_CHECKOUT_API, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({}),
+        body: JSON.stringify(typed ? { promotionCode: typed } : {}),
       });
       const body = (await response.json()) as { url?: string; error?: string };
       if (!response.ok || !body.url) {
@@ -167,6 +184,7 @@ export function BuyWhitePage() {
             <span className="belt-tip belt-tip--white buy__belt" aria-hidden="true">
               <span className="belt-tip__bar" />
             </span>
+            <p className="buy__kicker">Available now</p>
             <h2>Advantage White</h2>
             <p className="buy__price">
               {WHITE_PRICE_LABEL} <span>{WHITE_PRICE_DETAIL}</span>
@@ -226,9 +244,24 @@ export function BuyWhitePage() {
                 Open White
               </Link>
             ) : (
-              <button className="btn btn--white" type="submit" disabled={pending}>
-                {pending ? 'Opening checkout…' : `Continue to checkout — ${WHITE_PRICE_LABEL}`}
-              </button>
+              <>
+                <label className="buy__code">
+                  Enter a code
+                  <input
+                    name="promotionCode"
+                    value={promoInput}
+                    onChange={(event) => setPromoInput(event.target.value)}
+                    autoComplete="off"
+                    autoCapitalize="characters"
+                    spellCheck={false}
+                    enterKeyHint="done"
+                  />
+                </label>
+                <p className="buy__hint">Optional. A code can unlock Advantage White or apply at checkout.</p>
+                <button className="btn btn--white" type="submit" disabled={pending}>
+                  {pending ? 'Opening checkout…' : `Continue to checkout — ${WHITE_PRICE_LABEL}`}
+                </button>
+              </>
             )}
             <p>
               <Link to="/terms">Terms of Service</Link>
@@ -264,7 +297,48 @@ export function BuyWhitePage() {
               </button>
             </form>
           )}
-          <AlphaAccessNote />
+
+          <details className="buy__card buy__soon">
+            <summary>
+              <span className="buy__soon-head">
+                <span className="belt-tip belt-tip--blue" aria-hidden="true">
+                  <span className="belt-tip__bar" />
+                </span>
+                <span>
+                  <span className="buy__kicker">Coming soon</span>
+                  <h2>Advantage Coach</h2>
+                </span>
+              </span>
+              <p className="buy__price">
+                {formatUsdFromCents(COACH_LIST_PRICE_CENTS)}{' '}
+                <span>USD — one-time, when it launches</span>
+              </p>
+              <span className="buy__more">See what’s included</span>
+            </summary>
+            <ComingSoonAd product="coach" />
+          </details>
+
+          <details className="buy__card buy__soon">
+            <summary>
+              <span className="buy__soon-head">
+                <span className="belt-tip belt-tip--black" aria-hidden="true">
+                  <span className="belt-tip__bar" />
+                </span>
+                <span>
+                  <span className="buy__kicker">Coming soon</span>
+                  <h2>Advantage Pro</h2>
+                </span>
+              </span>
+              <p className="buy__price">
+                {formatUsdFromCents(PRO_LIST_PRICE_CENTS)}{' '}
+                <span>
+                  {`USD — one-time, plus ${formatUsdFromCents(PRO_MONTHLY_PRICE_CENTS)}/month, when it launches`}
+                </span>
+              </p>
+              <span className="buy__more">See what’s included</span>
+            </summary>
+            <ComingSoonAd product="pro" />
+          </details>
         </article>
         <SiteFooter />
       </div>

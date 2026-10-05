@@ -74,12 +74,13 @@ test('Home ladder details keep White meaning and a plain Pro subtitle', () => {
   );
   assert.equal(
     COACH_HOME_DESCRIPTION,
-    'Daily Lesson Planner with Expandable Technique Trees and Video Looper. Bracketing and Mock Tournament Tool with Competitor Roster.',
+    'Daily Lesson Planner with Expandable Technique Trees and Video Looper. Bracketing and Mock Tournament Tool with Student Roster.',
   );
   assert.doesNotMatch(WHITE_HOME_DESCRIPTION, /White —/);
   assert.match(COACH_HOME_DESCRIPTION, /Technique Trees/);
+  assert.match(COACH_HOME_DESCRIPTION, /Student Roster/);
   assert.doesNotMatch(WHITE_HOME_DESCRIPTION, /student/i);
-  assert.doesNotMatch(COACH_HOME_DESCRIPTION, /student/i);
+  assert.doesNotMatch(COACH_HOME_DESCRIPTION, /competitor roster/i);
   assert.equal(PRO_LADDER_DETAIL, 'Gym Owner and Instructors Console');
   assert.doesNotMatch(PRO_LADDER_DETAIL, /for this gym/i);
   assert.doesNotMatch(PRO_LADDER_DETAIL, /'/);

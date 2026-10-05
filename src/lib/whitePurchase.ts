@@ -33,7 +33,8 @@ export function isWhiteFreeCode(raw: string): boolean {
 
 /**
  * Launch promo placeholders. Create these in the Stripe Dashboard (test mode).
- * The public buy page does not show these codes. Paid codes are entered on Stripe Checkout.
+ * The public buy page has an enter-a-code field and does not print these names.
+ * WHITEFREE unlocks in the app. Any other code is sent with Checkout.
  * $9.99 minus the amount off is the charge.
  */
 export const WHITE_LAUNCH_PROMOS = [

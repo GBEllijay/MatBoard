@@ -52,7 +52,7 @@ export function HomePage() {
             <HomeDescription text={WHITE_HOME_DESCRIPTION} />
             <span className="mode-card__actions">
               <span className="btn btn--white">
-                {whiteUnlocked ? 'Open White' : `Buy White — ${WHITE_PRICE_LABEL}`}
+                {whiteUnlocked ? 'Open White' : `Buy — ${WHITE_PRICE_LABEL}`}
               </span>
             </span>
           </Link>
