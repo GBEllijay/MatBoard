@@ -1,12 +1,12 @@
 import { SITE_FEEDBACK_EMAIL } from './siteFooter.ts';
 
-/** One-time Advantage Coach list price. Not sold during alpha. */
+/** One-time Advantage Coach list price. Checkout exists; the public home does not sell it. */
 export const COACH_LIST_PRICE_CENTS = 2999;
 
 /** One-time Advantage Pro list price. The previous list price was not stored in this repo. */
 export const PRO_LIST_PRICE_CENTS = 9999;
 
-/** Monthly Advantage Pro subscription, charged with the one-time purchase when Pro goes on sale. */
+/** Monthly Advantage Pro price. The Pro Checkout session includes this with the one-time price. */
 export const PRO_MONTHLY_PRICE_CENTS = 299;
 
 export const COACH_PRICE_LINE = '$29.99 one-time';
