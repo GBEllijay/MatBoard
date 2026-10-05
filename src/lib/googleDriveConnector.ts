@@ -3,8 +3,16 @@
  * Sign-in uses the Advantage-owned browser client id from the build.
  */
 
-import type { CloudBinding, CloudConnectResult, CloudFolderRef, CloudStorageConnector } from './cloudStorage.ts';
+import type {
+  CloudBinding,
+  CloudConnectResult,
+  CloudFolderRef,
+  CloudItemRef,
+  CloudStorageConnector,
+  CloudTextSave,
+} from './cloudStorage.ts';
 import {
+  DRIVE_FOLDER_EMPTY,
   DRIVE_SETUP_NEEDED,
   LESSON_ROOT_NAME,
   clearDriveSession,
@@ -15,8 +23,10 @@ import {
   getDriveBindingSnapshot,
   googleClientId,
   listDriveFolders,
+  listFolderFiles,
   readDriveBinding,
   requestDriveConsent,
+  saveDriveTextFile,
   subscribeDriveBinding,
   writeDriveBinding,
   type DriveBinding,
@@ -50,6 +60,7 @@ export function createGoogleDriveConnector(): CloudStorageConnector {
     phase: 'live',
     isAvailable: () => Boolean(googleClientId()),
     unavailableMessage: () => DRIVE_SETUP_NEEDED,
+    emptyFolderMessage: DRIVE_FOLDER_EMPTY,
     isConnected: () => readDriveBinding() !== null,
     binding: () => {
       const stored = readDriveBinding();
@@ -90,6 +101,16 @@ export function createGoogleDriveConnector(): CloudStorageConnector {
       return createLessonRoot(session);
     },
     createFolderLabel: `Create ${LESSON_ROOT_NAME}`,
+    async save(session: string, file: CloudTextSave, folderId?: string): Promise<CloudItemRef> {
+      if (!googleClientId()) throw new Error(DRIVE_SETUP_NEEDED);
+      return saveDriveTextFile(session, { name: file.name, text: file.text, parentId: folderId });
+    },
+    async open(session: string, folderId?: string): Promise<CloudItemRef[]> {
+      if (!googleClientId()) throw new Error(DRIVE_SETUP_NEEDED);
+      if (!folderId) return listDriveFolders(session);
+      const files = await listFolderFiles(session, folderId);
+      return files.filter((file) => file.id && file.name).map((file) => ({ id: file.id, name: file.name }));
+    },
     openFolderUrl: (folderId) => driveFolderWebUrl(folderId),
     disconnect: () => {
       clearDriveSession();

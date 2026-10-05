@@ -9457,9 +9457,11 @@ input.roster-pick__name:focus,
 }
 
 .plan-card .drive-connect__soon {
+  margin-left: 0.65rem;
   color: var(--gold-2);
   font-size: 0.82rem;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .drive-connect__folders p,
@@ -13722,14 +13724,16 @@ a.plan-pick {
   color: #3d414c;
 }
 
-.buy__code {
+.buy__code,
+.buy__field {
   display: grid;
   gap: 0.4rem;
   color: var(--ink);
   font-weight: 700;
 }
 
-.buy__code input {
+.buy__code input,
+.buy__field input {
   width: 100%;
   min-height: 48px;
   padding: 0.75rem 0.9rem;
@@ -13741,7 +13745,8 @@ a.plan-pick {
   font-size: 1rem;
 }
 
-.buy__code input:focus-visible {
+.buy__code input:focus-visible,
+.buy__field input:focus-visible {
   outline: 2px solid var(--gold-2);
   outline-offset: 2px;
 }

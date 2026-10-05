@@ -1209,7 +1209,11 @@ export async function loadDriveDayPackage(
   return { dateKey, lessons, videos };
 }
 
-function multipartRelated(metadata: unknown, json: string): { body: string; contentType: string } {
+function multipartRelated(
+  metadata: unknown,
+  content: string,
+  contentMime = 'application/json',
+): { body: string; contentType: string } {
   const boundary = `advantage_${Math.random().toString(36).slice(2)}`;
   const body = [
     `--${boundary}`,
@@ -1217,13 +1221,44 @@ function multipartRelated(metadata: unknown, json: string): { body: string; cont
     '',
     JSON.stringify(metadata),
     `--${boundary}`,
-    'Content-Type: application/json; charset=UTF-8',
+    `Content-Type: ${contentMime}; charset=UTF-8`,
     '',
-    json,
+    content,
     `--${boundary}--`,
     '',
   ].join('\r\n');
   return { body, contentType: `multipart/related; boundary=${boundary}` };
+}
+
+/**
+ * Shared-pipe text write. Day packages still use `upsertLessonFile`.
+ * Callers pass the gym's own folder id when they have one.
+ */
+export async function saveDriveTextFile(
+  token: string,
+  file: { name: string; text: string; parentId?: string },
+  fetcher: DriveFetch = fetch,
+): Promise<{ id: string; name: string }> {
+  const name = file.name.trim();
+  if (!name) throw new Error('Google Drive needs a file name.');
+  const metadata: Record<string, unknown> = {
+    name,
+    mimeType: 'text/plain',
+  };
+  if (file.parentId) metadata.parents = [file.parentId];
+  const payload = multipartRelated(metadata, file.text, 'text/plain');
+  const saved = await driveJson<{ id?: string; name?: string }>(
+    token,
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': payload.contentType },
+      body: payload.body,
+    },
+    fetcher,
+  );
+  if (!saved.id) throw new Error('Google Drive did not return a file id.');
+  return { id: saved.id, name: saved.name || name };
 }
 
 function lessonAppProperties(document: DriveLessonDocument): Record<string, string> {
