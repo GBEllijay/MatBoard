@@ -10072,10 +10072,52 @@ input.roster-pick__name:focus,
   color: #d7e1f6;
 }
 
-.home--white .mode-card--training,
-.home--white .mode-card--names {
+.home--white .mode-card--training {
   background: linear-gradient(180deg, #1a1c22 0%, #0a0a0c 100%);
   border-color: rgba(255, 255, 255, 0.14);
+}
+
+/* Match names only. Yellow legal-pad paper replaces the white belt rail. */
+.home--white .mode-card--names {
+  --pad-ink: #2c2618;
+  padding-left: 2.15rem;
+  color: var(--pad-ink);
+  border-color: rgba(138, 108, 42, 0.42);
+  background:
+    linear-gradient(
+      to right,
+      transparent 1.38rem,
+      #d24b45 1.38rem,
+      #d24b45 calc(1.38rem + 2px),
+      transparent calc(1.38rem + 2px)
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 27px,
+      rgba(70, 140, 220, 0.5) 27px,
+      rgba(70, 140, 220, 0.5) 28px
+    ),
+    linear-gradient(180deg, #f8efc8 0%, #f4e6ad 58%, #f0df9c 100%);
+  box-shadow:
+    0 16px 36px rgba(40, 28, 8, 0.28),
+    inset 0 1px 0 rgba(255, 252, 240, 0.7);
+}
+
+.home--white .mode-card--names > strong {
+  color: var(--pad-ink);
+}
+
+.home--white .mode-card--names > .mode-card__sub {
+  color: #3d5278;
+}
+
+.home--white .mode-card--names > span:not(.mode-card__sub) {
+  color: #4a4030;
+}
+
+.home--white .mode-card--names > .belt-rail {
+  display: none;
 }
 
 .home--white .mode-card__sub {
