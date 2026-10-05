@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { AlphaAccessNote } from '../components/AlphaAccessNote';
 import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
 import { lookupWhiteEntitlement, type WhiteEntitlementStatus } from '../lib/whiteEntitlementClient';
@@ -10,7 +11,6 @@ import {
   WHITE_PRICE_DETAIL,
   WHITE_PRICE_LABEL,
   WHITE_STRIPE_NOTE,
-  WHITE_UPGRADE_NOTE,
   isWhiteFreeCode,
 } from '../lib/whitePurchase';
 
@@ -209,7 +209,7 @@ export function BuyWhitePage() {
               <Link to="/white">Open White</Link>
             </p>
           </form>
-          <p className="buy__later">{WHITE_UPGRADE_NOTE}</p>
+          <AlphaAccessNote />
         </article>
         <SiteFooter />
       </div>
