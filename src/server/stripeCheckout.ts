@@ -1,10 +1,16 @@
+import { CHECKOUT_BUY_PATH, isCheckoutProduct, type CheckoutProduct } from '../lib/checkoutProducts.ts';
 import { normalizeEmail } from './entitlements.ts';
-import { API_PRODUCT_ID } from './routes.ts';
+import { API_PRODUCT_COACH, API_PRODUCT_ID, API_PRODUCT_PRO } from './routes.ts';
+
+export type { CheckoutProduct };
 
 export type StripeRuntimeEnv = {
   STRIPE_SECRET_KEY?: string;
   STRIPE_WEBHOOK_SECRET?: string;
   STRIPE_PRICE_WHITE?: string;
+  STRIPE_PRICE_COACH?: string;
+  STRIPE_PRICE_PRO?: string;
+  STRIPE_PRICE_PRO_MONTHLY?: string;
   STRIPE_SUCCESS_URL?: string;
   STRIPE_CANCEL_URL?: string;
 };
@@ -26,20 +32,66 @@ export function normalizePromoCode(raw: unknown): string | null {
   return code;
 }
 
+const PRODUCT_META: Record<CheckoutProduct, string> = {
+  white: API_PRODUCT_ID,
+  coach: API_PRODUCT_COACH,
+  pro: API_PRODUCT_PRO,
+};
+
+const CHECKOUT_MODE: Record<CheckoutProduct, 'payment' | 'subscription'> = {
+  white: 'payment',
+  coach: 'payment',
+  pro: 'subscription',
+};
+
+/**
+ * Env names for each product, in line-item order.
+ * Pro is a mixed cart: one-time price, then the monthly price. Stripe requires
+ * mode=subscription when a session has both. payment_intent_data is not valid then.
+ */
+const PRICE_ENV_KEYS: Record<CheckoutProduct, (keyof StripeRuntimeEnv)[]> = {
+  white: ['STRIPE_PRICE_WHITE'],
+  coach: ['STRIPE_PRICE_COACH'],
+  pro: ['STRIPE_PRICE_PRO', 'STRIPE_PRICE_PRO_MONTHLY'],
+};
+
+const CONFIG_HINT: Record<CheckoutProduct, string> = {
+  white: 'STRIPE_SECRET_KEY and STRIPE_PRICE_WHITE',
+  coach: 'STRIPE_SECRET_KEY and STRIPE_PRICE_COACH',
+  pro: 'STRIPE_SECRET_KEY, STRIPE_PRICE_PRO, and STRIPE_PRICE_PRO_MONTHLY',
+};
+
+export function readCheckoutProduct(raw: unknown): CheckoutProduct | { error: string } {
+  if (raw === undefined || raw === null) return 'white';
+  if (typeof raw !== 'string') return { error: 'Product must be white, coach, or pro.' };
+  const product = raw.trim().toLowerCase();
+  if (!product) return 'white';
+  if (isCheckoutProduct(product)) return product;
+  return { error: 'Product must be white, coach, or pro.' };
+}
+
 export function checkoutFormFields(input: {
-  priceId: string;
+  priceIds: readonly string[];
+  mode: 'payment' | 'subscription';
+  productId: string;
   successUrl: string;
   cancelUrl: string;
   promotionCodeId?: string;
 }): URLSearchParams {
   const params = new URLSearchParams();
-  params.set('mode', 'payment');
-  params.set('line_items[0][price]', input.priceId);
-  params.set('line_items[0][quantity]', '1');
+  params.set('mode', input.mode);
+  input.priceIds.forEach((priceId, index) => {
+    params.set(`line_items[${index}][price]`, priceId);
+    params.set(`line_items[${index}][quantity]`, '1');
+  });
   params.set('success_url', input.successUrl);
   params.set('cancel_url', input.cancelUrl);
-  params.set('metadata[product]', API_PRODUCT_ID);
-  params.set('payment_intent_data[metadata][product]', API_PRODUCT_ID);
+  params.set('metadata[product]', input.productId);
+  if (input.mode === 'subscription') {
+    params.set('subscription_data[metadata][product]', input.productId);
+  } else {
+    params.set('payment_intent_data[metadata][product]', input.productId);
+  }
   if (input.promotionCodeId) params.set('discounts[0][promotion_code]', input.promotionCodeId);
   else params.set('allow_promotion_codes', 'true');
   return params;
@@ -57,6 +109,7 @@ export function isStripeCheckoutUrl(url: string): boolean {
 export function checkoutReturnUrls(
   requestUrl: string,
   env: StripeRuntimeEnv,
+  product: CheckoutProduct = 'white',
 ): { successUrl: string; cancelUrl: string } | { error: string } {
   let origin: string;
   try {
@@ -64,8 +117,12 @@ export function checkoutReturnUrls(
   } catch {
     return { error: 'Could not determine the site origin for Checkout return URLs.' };
   }
-  const successUrl = env.STRIPE_SUCCESS_URL?.trim() || `${origin}/buy?checkout=success&session_id=${CHECKOUT_PLACEHOLDER}`;
-  const cancelUrl = env.STRIPE_CANCEL_URL?.trim() || `${origin}/buy?checkout=cancel`;
+  const path = CHECKOUT_BUY_PATH[product];
+  // Optional overrides stay White-only so a White URL does not send Coach or Pro back to /buy.
+  const successOverride = product === 'white' ? env.STRIPE_SUCCESS_URL?.trim() : '';
+  const cancelOverride = product === 'white' ? env.STRIPE_CANCEL_URL?.trim() : '';
+  const successUrl = successOverride || `${origin}${path}?checkout=success&session_id=${CHECKOUT_PLACEHOLDER}`;
+  const cancelUrl = cancelOverride || `${origin}${path}?checkout=cancel`;
   if (!successUrl.includes(CHECKOUT_PLACEHOLDER)) {
     return { error: 'STRIPE_SUCCESS_URL must include {CHECKOUT_SESSION_ID}.' };
   }
@@ -80,19 +137,30 @@ export function checkoutReturnUrls(
   return { successUrl, cancelUrl };
 }
 
-export function readStripeConfig(env: StripeRuntimeEnv): { secret: string; price: string } | { error: string } {
+export function readStripeConfig(
+  env: StripeRuntimeEnv,
+  product: CheckoutProduct = 'white',
+): { secret: string; priceIds: string[]; mode: 'payment' | 'subscription'; productId: string } | { error: string } {
   const secret = env.STRIPE_SECRET_KEY?.trim() ?? '';
-  const price = env.STRIPE_PRICE_WHITE?.trim() ?? '';
-  if (!secret || !price) {
-    return { error: 'Stripe is not configured. Set STRIPE_SECRET_KEY and STRIPE_PRICE_WHITE.' };
+  const keys = PRICE_ENV_KEYS[product];
+  const priceIds = keys.map((key) => (env[key] ?? '').trim());
+  if (!secret || priceIds.some((price) => !price)) {
+    return { error: `Stripe is not configured. Set ${CONFIG_HINT[product]}.` };
   }
   if (!secret.startsWith('sk_')) {
     return { error: 'STRIPE_SECRET_KEY must be a Stripe secret key. Use an sk_test_ key in test mode.' };
   }
-  if (!price.startsWith('price_')) {
-    return { error: 'STRIPE_PRICE_WHITE must be a Stripe Price id (price_...).' };
+  for (let index = 0; index < priceIds.length; index += 1) {
+    if (!priceIds[index].startsWith('price_')) {
+      return { error: `${keys[index]} must be a Stripe Price id (price_...).` };
+    }
   }
-  return { secret, price };
+  return {
+    secret,
+    priceIds,
+    mode: CHECKOUT_MODE[product],
+    productId: PRODUCT_META[product],
+  };
 }
 
 export function stripeErrorMessage(status: number, body: string): string {

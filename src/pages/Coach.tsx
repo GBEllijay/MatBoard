@@ -10,7 +10,10 @@ import { useProUnlocked } from '../hooks/useProUnlocked';
 import { BASIC_COACH_BELT_LINES } from '../lib/coachCopy';
 import { lockCoach } from '../lib/coachUnlock';
 import { coachToolVisible } from '../lib/instructorSeats';
+import { CHECKOUT_BUY_PATH } from '../lib/checkoutProducts';
+import { COACH_LIST_PRICE_CENTS } from '../lib/productPrices';
 import { COACH_HUBS } from '../lib/productNames';
+import { formatUsdFromCents } from '../lib/whitePurchase';
 
 export function CoachPage() {
   const navigate = useNavigate();
@@ -53,6 +56,11 @@ export function CoachPage() {
               screen or computer.
             </p>
           </InstructionsButton>
+          <p className="home__soon">
+            <Link className="home__text-btn" to={CHECKOUT_BUY_PATH.coach}>
+              {`Buy Advantage Coach — ${formatUsdFromCents(COACH_LIST_PRICE_CENTS)}`}
+            </Link>
+          </p>
           {ownerOpen ? (
             <p className="home__soon">
               Advantage Coach is on for this browser.{' '}
