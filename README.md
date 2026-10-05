@@ -156,7 +156,11 @@ The White buy page does not start a Coach or Pro session. Coach and Pro each hav
 
 ## Google Drive sign-in
 
-Gym owners tap **Connect with** and pick a folder they already own. Google Drive is the live choice. OneDrive, Dropbox, and iCloud are in that list as coming soon. Advantage does not host photos or videos. Adding a photo still uses Google Photos or the phone gallery. Google Drive is an additional folder. The public browser client id is `VITE_GOOGLE_CLIENT_ID`, set by Advantage at build time (see `.env.example`). Gym owners do not create a Google Cloud project or paste an id. Do not put a Google client secret in this app. Owner steps: `docs/owner-connect-google-drive.md`. Company setup and verification: `docs/advantage-owned-google-drive-oauth.md`.
+Gym owners tap **Connect with** and pick a folder they already own. Advantage does not host photos or videos, and Advantage does not manage the gym’s cloud account. Adding a photo from the phone still uses the gallery. Google Drive is an additional folder.
+
+Coach Unlimited and Advantage Pro stay in alpha until Google Drive, OneDrive, Google Photos, and iCloud all work. Google Drive is live. OneDrive connects when the build has `VITE_MICROSOFT_CLIENT_ID`. Google Photos and iCloud show as **Coming for launch** and are not connected yet. Dropbox is not on that launch list.
+
+The public browser client ids are `VITE_GOOGLE_CLIENT_ID` and `VITE_MICROSOFT_CLIENT_ID`, set by Advantage at build time (see `.env.example`). Gym owners do not create a Google Cloud or Azure project or paste an id. Do not put a Google or Microsoft client secret in this app. Owner steps: `docs/owner-connect-google-drive.md`. Google setup: `docs/advantage-owned-google-drive-oauth.md`. OneDrive setup: `docs/advantage-owned-onedrive-oauth.md`.
 
 ## Cast notes
 
