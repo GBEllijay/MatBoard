@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  BASIC_COACH_BELT_LINES,
   COACH_AD_LEAD,
   COACH_HOME_TEASER,
   COACH_HUB_BLURB,
@@ -122,6 +123,10 @@ test('Coach teasers list the four hub tools in lesson, videos, mock, roster orde
     COACH_TOOLS_TEASER,
     'Tools and Templates for Coaches and Professors.',
   );
+  assert.deepEqual(BASIC_COACH_BELT_LINES, [
+    'Tools and Templates for Coaches.',
+    "Plan today's class, and loop training clips on the TV, run a mock tournament and maintain a student roster.",
+  ]);
   assert.doesNotMatch(COACH_TOOLS_TEASER, /^Coach\b/);
   assertCoachToolOrder(COACH_HOME_TEASER, 'Roster');
   assert.ok(COACH_HOME_TEASER.length < 70);

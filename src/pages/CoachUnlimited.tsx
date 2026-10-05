@@ -16,7 +16,7 @@ import {
   OWNER_DRIVE_TITLE,
   type LessonRevision,
 } from '../lib/lessonDrive';
-import { COACHING_TOOLS_PATH, COACH_UNLIMITED_TOOLS, INSTRUCTOR_COACH_ENTRY } from '../lib/productNames';
+import { COACH_UNLIMITED_TOOLS, INSTRUCTOR_COACH_ENTRY } from '../lib/productNames';
 
 /**
  * Advantage Pro hub that replaced Competitor Management System.
@@ -40,16 +40,12 @@ export function CoachUnlimitedPage() {
           <BeltHeader kind="brown" title="Advantage - Coach Unlimited" />
           <nav className="instructor-jumps" aria-label={INSTRUCTOR_COACH_ENTRY}>
             <div className="pro-hubs">
-              {tools.map((tool) => {
-                const coaching =
-                  tool.to === COACHING_TOOLS_PATH || tool.to.startsWith(`${COACHING_TOOLS_PATH}?`);
-                return (
-                  <Link key={tool.to} className="pro-hub" to={tool.to}>
-                    <BeltRail kind={coaching ? 'brown' : 'tournament'} />
-                    <span>{tool.title}</span>
-                  </Link>
-                );
-              })}
+              {tools.map((tool) => (
+                <Link key={tool.to} className="pro-hub" to={tool.to}>
+                  <BeltRail kind={tool.belt} />
+                  <span>{tool.title}</span>
+                </Link>
+              ))}
             </div>
           </nav>
           {seat ? null : (

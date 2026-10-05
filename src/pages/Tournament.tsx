@@ -26,7 +26,7 @@ import {
 } from '../hooks/useStores';
 import { EMPTY_BRACKET_BODY, EMPTY_BRACKET_TITLE, OWNER_BRACKET_CLOUD_NOTE } from '../lib/coachCopy';
 import { linkedBracketMatchId, openBracketBout, scoreboardPath, unlinkBracketBout } from '../lib/bracketBout';
-import { setBracketTheme } from '../lib/bracketTheme';
+import { DEFAULT_BRACKET_THEME, setBracketTheme } from '../lib/bracketTheme';
 import {
   KIDS_BRACKETS_SKINS_LABEL,
   kidsBracketChromeOn,
@@ -93,8 +93,10 @@ export function TournamentPage() {
   const [searchParams] = useSearchParams();
   const parent = useToolboxParent();
   const proUnlocked = useProUnlocked();
+  const basicCoach = isBasicCoach(proUnlocked, useCoachUnlocked());
   const sizeMax = maxCompetitors(proUnlocked);
   const fromSuite = searchParams.get('from') === SUITE_FROM;
+  const shownTheme = basicCoach ? DEFAULT_BRACKET_THEME : theme;
   const exitPath = fromSuite ? '/suite' : parent.path;
   const kidsOn = kidsBracketChromeOn(fromSuite, kids.enabled);
   const [namesOpen, setNamesOpen] = useState(false);
@@ -209,7 +211,7 @@ export function TournamentPage() {
 
   return (
     <main
-      className={`tournament tournament--${theme}${kidsOn ? ` tournament--kids tournament--kids-${kids.skin}` : ''}${fs.className ? ` ${fs.className}` : ''}`}
+      className={`tournament tournament--${shownTheme}${kidsOn ? ` tournament--kids tournament--kids-${kids.skin}` : ''}${fs.className ? ` ${fs.className}` : ''}`}
     >
       <BeltRail kind="tournament" />
       <PlayExitMark to={exitPath} onExit={exitBoard} />
@@ -231,26 +233,28 @@ export function TournamentPage() {
           </label>
         </div>
         <div className="tournament__actions">
-          <div className="tournament__theme" role="radiogroup" aria-label="Bracket theme">
-            <button
-              type="button"
-              role="radio"
-              aria-checked={theme === 'bright'}
-              className={`chip${theme === 'bright' ? ' chip--gold' : ''}`}
-              onClick={() => setBracketTheme('bright')}
-            >
-              Bright
-            </button>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={theme === 'dark'}
-              className={`chip${theme === 'dark' ? ' chip--gold' : ''}`}
-              onClick={() => setBracketTheme('dark')}
-            >
-              Dark
-            </button>
-          </div>
+          {basicCoach ? null : (
+            <div className="tournament__theme" role="radiogroup" aria-label="Bracket theme">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={theme === 'bright'}
+                className={`chip${theme === 'bright' ? ' chip--gold' : ''}`}
+                onClick={() => setBracketTheme('bright')}
+              >
+                Bright
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={theme === 'dark'}
+                className={`chip${theme === 'dark' ? ' chip--gold' : ''}`}
+                onClick={() => setBracketTheme('dark')}
+              >
+                Dark
+              </button>
+            </div>
+          )}
           <button
             type="button"
             className="btn btn--ghost"

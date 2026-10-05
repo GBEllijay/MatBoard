@@ -33,7 +33,13 @@ export function BeltHeader({ kind, title, blurb }: Props) {
           </span>
         )}
       </div>
-      {blurb ? <p className="belt-header__blurb">{blurb}</p> : null}
+      {blurb
+        ? blurb.split('\n').map((line, index) => (
+            <p className="belt-header__blurb" key={`${index}-${line}`}>
+              {line}
+            </p>
+          ))
+        : null}
     </header>
   );
 }

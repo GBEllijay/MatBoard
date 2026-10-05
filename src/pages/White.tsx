@@ -6,14 +6,12 @@ import { LiveBoutCard } from '../components/LiveBoutCard';
 import { RoundsCard } from '../components/RoundsCard';
 import { WhiteRosterCard } from '../components/WhiteRosterCard';
 import { SiteFooter } from '../components/SiteFooter';
-import { TierLine } from '../components/TierLine';
-import { WHITE_LADDER_DETAIL } from '../lib/productNames';
 
 export function WhitePage() {
   return (
     <main className="home home--white">
       <div className="home__inner">
-        <HomeMark to="/" tagline={<TierLine tier="White" detail={WHITE_LADDER_DETAIL} />} />
+        <HomeMark to="/" />
 
         <nav className="home__modes" aria-label="Advantage White">
           <BeltHeader
