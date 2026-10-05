@@ -1,8 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  COACH_PREVIEW_LABEL,
-  COACH_PREVIEW_NOTE,
   COMING_SOON_ADS,
   COMING_SOON_LABEL,
   PRODUCT_TEASERS,
@@ -26,19 +24,18 @@ function adText(product: keyof typeof COMING_SOON_ADS): string {
 test('Coach ad sells the hub tools and no price', () => {
   const text = adText('coach');
   assert.equal(COMING_SOON_ADS.coach.title, 'Advantage Coach');
-  assert.equal(COMING_SOON_ADS.coach.kicker, COMING_SOON_LABEL);
+  assert.equal(COMING_SOON_ADS.coach.kicker, '');
   assert.equal(COMING_SOON_LABEL, 'Coming Soon');
+  assert.doesNotMatch(text, /Coming Soon/i);
   assert.equal(COMING_SOON_ADS.coach.lead, '');
-  assert.equal(COACH_PREVIEW_LABEL, 'Advantage Coach');
-  assert.equal(
-    COACH_PREVIEW_NOTE,
-    'Daily Lesson Plan, training videos, Technique Tree, mock brackets, and a roster.',
-  );
+  assert.doesNotMatch(text, /training videos, Technique Tree, mock brackets, and a roster/i);
   assert.doesNotMatch(text, /^Coach tools:/m);
   assert.deepEqual(
     COMING_SOON_ADS.coach.features.map((feature) => feature.title),
     ['Daily Lesson Plan', 'Daily Training Videos', 'Technique Tree', 'Mock Tournament', 'Competitor Roster'],
   );
+  assert.equal(COMING_SOON_ADS.coach.features[0]?.title, 'Daily Lesson Plan');
+  assert.match(COMING_SOON_ADS.coach.features[0]?.body ?? '', /everything you need/i);
   assert.match(text, /Mock Tournament/i);
   assert.match(text, /Competitor Roster/);
   assert.doesNotMatch(text, /Competitor Management/);

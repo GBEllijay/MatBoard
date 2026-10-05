@@ -1,8 +1,6 @@
 import { AlphaAccessNote } from './AlphaAccessNote';
 import { COACH_PRICE_LINE, PRO_PRICE_LINE } from '../lib/productPrices';
 import {
-  COACH_PREVIEW_LABEL,
-  COACH_PREVIEW_NOTE,
   COMING_SOON_ADS,
   PRO_CONSOLE_PREVIEW_LABEL,
   PRO_CONSOLE_PREVIEW_NOTE,
@@ -29,7 +27,7 @@ export function ComingSoonAd({ product }: Props) {
 
   return (
     <div className={`soon-ad soon-ad--${product}`}>
-      <p className="soon-ad__kicker">{ad.kicker}</p>
+      {ad.kicker ? <p className="soon-ad__kicker">{ad.kicker}</p> : null}
       {product === 'coach' ? <CoachPreview /> : <ProConsolePreview />}
       {ad.lead ? <p className="soon-ad__lead">{ad.lead}</p> : null}
       <ul className="soon-ad__features">
@@ -51,14 +49,10 @@ function CoachPreview() {
     <figure className="soon-ad__preview">
       <img
         src="/coach-preview.png"
-        alt="Advantage Coach home with Daily Lesson Plan, Daily Training Videos, Technique Tree, Mock Tournament, and Competitor Roster"
+        alt="Advantage Coach home"
         width={816}
         height={1560}
       />
-      <figcaption>
-        <strong>{COACH_PREVIEW_LABEL}</strong>
-        <span>{COACH_PREVIEW_NOTE}</span>
-      </figcaption>
     </figure>
   );
 }
