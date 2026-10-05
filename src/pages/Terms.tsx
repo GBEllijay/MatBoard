@@ -63,6 +63,10 @@ export function TermsPage() {
           </li>
         </ul>
         <p>
+          Advantage Coach includes everything in Advantage White. Advantage Pro includes everything
+          in Advantage Coach and Advantage White.
+        </p>
+        <p>
           Payments are processed by Stripe. Advantage App, LLC does not receive or store your full
           card number. Prices may change in the future, but a change does not affect a purchase
           you’ve already completed.
