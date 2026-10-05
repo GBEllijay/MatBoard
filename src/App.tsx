@@ -4,10 +4,13 @@ import { useCurrentSeat } from './components/SeatSessionBar';
 import { useCoachUnlocked } from './hooks/useCoachUnlocked';
 import { useKeepFocusedFieldVisible } from './hooks/useKeepFocusedFieldVisible';
 import { useProUnlocked } from './hooks/useProUnlocked';
+import { useWhiteUnlocked } from './hooks/useWhiteUnlocked';
 import { consumeCoachUnlockQueryNow } from './lib/coachUnlock';
 import { acceptInstructorInvite, peekInstructorInvite } from './lib/instructorSeats';
 import { coachDoorOpen, proDoorOpen } from './lib/productNames';
 import { consumeUnlockQueryNow } from './lib/proUnlock';
+import { WHITE_BUY_PATH } from './lib/whitePurchase';
+import { whiteHubAllowed, whiteLiveToolsAllowed } from './lib/whiteUnlock';
 import { ClassHistoryPage } from './pages/ClassHistory';
 import { CoachPage } from './pages/Coach';
 import { CoachUnlimitedPage } from './pages/CoachUnlimited';
@@ -69,6 +72,29 @@ function ProRoute({ children }: { children: ReactNode }) {
   return children;
 }
 
+/** Advantage White hub and roster. Purchase, WHITEFREE, or email restore opens them. */
+function WhiteHubRoute({ children }: { children: ReactNode }) {
+  const unlocked = useWhiteUnlocked();
+  if (!whiteHubAllowed(unlocked)) return <Navigate to={WHITE_BUY_PATH} replace />;
+  return children;
+}
+
+/**
+ * Scoreboard and round timer. White buyers use them from /white.
+ * Coach and Pro keep the same screens through their existing doors.
+ */
+function WhiteLiveRoute({ children }: { children: ReactNode }) {
+  const whiteUnlocked = useWhiteUnlocked();
+  const pro = useProUnlocked();
+  const coach = useCoachUnlocked();
+  const seated = useCurrentSeat() !== null;
+  const coachDoor = coachDoorOpen(pro, coach, seated);
+  if (!whiteLiveToolsAllowed({ whiteUnlocked, coachDoor, proDoor: proDoorOpen(pro) })) {
+    return <Navigate to={WHITE_BUY_PATH} replace />;
+  }
+  return children;
+}
+
 function CoachRoute({ children }: { children: ReactNode }) {
   const coach = useCoachUnlocked();
   const pro = useProUnlocked();
@@ -118,7 +144,14 @@ export default function App() {
     <InviteDoor>
     <Routes>
       <Route path="/" element={<HomePage />} />
-      <Route path="/white" element={<WhitePage />} />
+      <Route
+        path="/white"
+        element={
+          <WhiteHubRoute>
+            <WhitePage />
+          </WhiteHubRoute>
+        }
+      />
       <Route path="/buy" element={<BuyWhitePage />} />
       <Route
         path="/buy/coach"
@@ -136,12 +169,47 @@ export default function App() {
           </ProRoute>
         }
       />
-      <Route path="/white/roster" element={<WhiteRosterPage />} />
+      <Route
+        path="/white/roster"
+        element={
+          <WhiteHubRoute>
+            <WhiteRosterPage />
+          </WhiteHubRoute>
+        }
+      />
       <Route path="/lite" element={<Navigate to="/white" replace />} />
-      <Route path="/match" element={<MatchDisplayPage />} />
-      <Route path="/match/control" element={<MatchControllerPage />} />
-      <Route path="/training" element={<TrainingPage />} />
-      <Route path="/training/control" element={<TrainingControllerPage />} />
+      <Route
+        path="/match"
+        element={
+          <WhiteLiveRoute>
+            <MatchDisplayPage />
+          </WhiteLiveRoute>
+        }
+      />
+      <Route
+        path="/match/control"
+        element={
+          <WhiteLiveRoute>
+            <MatchControllerPage />
+          </WhiteLiveRoute>
+        }
+      />
+      <Route
+        path="/training"
+        element={
+          <WhiteLiveRoute>
+            <TrainingPage />
+          </WhiteLiveRoute>
+        }
+      />
+      <Route
+        path="/training/control"
+        element={
+          <WhiteLiveRoute>
+            <TrainingControllerPage />
+          </WhiteLiveRoute>
+        }
+      />
       <Route
         path="/coach"
         element={

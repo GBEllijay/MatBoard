@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { AlphaAccessNote } from '../components/AlphaAccessNote';
 import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
+import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import { lookupWhiteEntitlement, type WhiteEntitlementStatus } from '../lib/whiteEntitlementClient';
 import {
   WHITE_CHECKOUT_API,
@@ -13,6 +14,7 @@ import {
   WHITE_STRIPE_NOTE,
   isWhiteFreeCode,
 } from '../lib/whitePurchase';
+import { rememberWhitePurchase, restoreWhiteByEmail } from '../lib/whiteUnlock';
 
 type FreeLinkResult = { ok: true } | { ok: false; error: string };
 
@@ -49,6 +51,10 @@ export function BuyWhitePage() {
   const [error, setError] = useState<string | null>(null);
   const [record, setRecord] = useState<WhiteEntitlementStatus | null>(null);
   const [freeUnlock, setFreeUnlock] = useState(false);
+  const [restoreEmail, setRestoreEmail] = useState('');
+  const [restorePending, setRestorePending] = useState(false);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+  const unlocked = useWhiteUnlocked();
 
   useEffect(() => {
     const previous = document.title;
@@ -65,6 +71,7 @@ export function BuyWhitePage() {
     let timer = 0;
     const tick = async () => {
       const status = await lookupWhiteEntitlement({ sessionId });
+      if (status.entitled) rememberWhitePurchase(status);
       if (cancelled) return;
       attempts += 1;
       if (status.entitled || attempts >= 4) {
@@ -96,6 +103,7 @@ export function BuyWhitePage() {
     if (!isWhiteFreeCode(code)) return;
     let active = true;
     void unlockFromPrivateLink(code.trim()).then((result) => {
+      if (result.ok) rememberWhitePurchase({ entitled: true });
       if (!active) return;
       if (result.ok) {
         setFreeUnlock(true);
@@ -115,6 +123,16 @@ export function BuyWhitePage() {
       active = false;
     };
   }, [code, setParams]);
+
+  async function onRestore(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (restorePending) return;
+    setRestoreError(null);
+    setRestorePending(true);
+    const result = await restoreWhiteByEmail(restoreEmail);
+    if (!result.ok) setRestoreError(result.error);
+    setRestorePending(false);
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -193,22 +211,59 @@ export function BuyWhitePage() {
                 Advantage White is unlocked at $0. No card was charged.
               </p>
             ) : null}
+            {unlocked && !freeUnlock && checkout !== 'success' ? (
+              <p className="buy__status buy__status--ok" role="status">
+                Advantage White is unlocked on this device.
+              </p>
+            ) : null}
             {error ? (
               <p className="buy__status buy__status--bad" role="alert">
                 {error}
               </p>
             ) : null}
-            <button className="btn btn--white" type="submit" disabled={pending}>
-              {pending ? 'Opening checkout…' : `Continue to checkout — ${WHITE_PRICE_LABEL}`}
-            </button>
+            {unlocked ? (
+              <Link className="btn btn--white" to="/white">
+                Open White
+              </Link>
+            ) : (
+              <button className="btn btn--white" type="submit" disabled={pending}>
+                {pending ? 'Opening checkout…' : `Continue to checkout — ${WHITE_PRICE_LABEL}`}
+              </button>
+            )}
             <p>
               <Link to="/terms">Terms of Service</Link>
               {' · '}
               <Link to="/privacy">Privacy Policy</Link>
-              {' · '}
-              <Link to="/white">Open White</Link>
             </p>
           </form>
+          {unlocked ? null : (
+            <form className="buy__card" onSubmit={(event) => void onRestore(event)}>
+              <h3>Already purchased?</h3>
+              <p>Enter the email from your Stripe receipt to unlock White on this device. No second charge.</p>
+              <label className="buy__field">
+                <span>Purchase email</span>
+                <input
+                  type="email"
+                  name="email"
+                  autoComplete="email"
+                  inputMode="email"
+                  value={restoreEmail}
+                  onChange={(event) => {
+                    setRestoreEmail(event.target.value);
+                    if (restoreError) setRestoreError(null);
+                  }}
+                />
+              </label>
+              {restoreError ? (
+                <p className="buy__status buy__status--bad" role="alert">
+                  {restoreError}
+                </p>
+              ) : null}
+              <button className="btn btn--ghost" type="submit" disabled={restorePending}>
+                {restorePending ? 'Checking…' : 'Restore White'}
+              </button>
+            </form>
+          )}
           <AlphaAccessNote />
         </article>
         <SiteFooter />

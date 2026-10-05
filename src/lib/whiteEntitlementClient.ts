@@ -7,7 +7,7 @@ export type WhiteEntitlementStatus = {
   createdAt?: string;
 };
 
-/** Later screens can call this to see if Advantage White was purchased. */
+/** Ask /api/entitlement whether this Checkout session or purchase email owns Advantage White. */
 export async function lookupWhiteEntitlement(query: {
   sessionId?: string;
   email?: string;
