@@ -1,10 +1,11 @@
 import { LegalContact, LegalPage } from '../components/LegalPage';
+import { SITE_FEEDBACK_EMAIL } from '../lib/siteFooter';
 
 export function PrivacyPage() {
   return (
     <LegalPage
       title="Privacy Policy — Advantage"
-      updated="October 1, 2026"
+      updated="October 5, 2026"
       related={{ to: '/terms', label: 'Terms of Service' }}
     >
       <section>
@@ -31,14 +32,21 @@ export function PrivacyPage() {
       </section>
 
       <section>
-        <h3>2. What Advantage does with media</h3>
+        <h3>2. Cloud Storage and Your Files</h3>
         <p>
-          Advantage does not operate a general photo or video hosting service for your gym library.
-          Photos, videos, and similar media files you choose to use with certain features remain in
-          storage you control (for example, Google Drive, and later options such as OneDrive,
-          Dropbox, or iCloud when offered). Advantage may store lesson text, settings, and
-          references such as file or folder identifiers so the Service can display, organize, or
-          link to content you already keep in your own cloud storage.
+          When you connect a supported storage provider (Google Drive, OneDrive, iCloud, or Google
+          Photos), Advantage asks for permission through that provider’s own sign-in screen. It
+          requests only the limited access it needs to save and open the files you create or choose
+          in the app. Your photos, videos, and lesson files are stored in your own account, and
+          Advantage App, LLC does not keep copies on its servers. The connection is kept on your
+          device and used only to read and write your files when you ask the app to. We do not sell
+          this data or use it for advertising. For Google Drive and Google Photos, our use of
+          information from Google APIs follows the{' '}
+          <a href="https://developers.google.com/terms/api-services-user-data-policy">
+            Google API Services User Data Policy
+          </a>
+          , including its Limited Use requirements. You can disconnect at any time, either in the
+          app or in your provider account’s security settings.
         </p>
       </section>
 
@@ -51,11 +59,9 @@ export function PrivacyPage() {
           needed to maintain the connection you authorized.
         </p>
         <p>
-          (b) Cloud storage data you authorize. If you connect Google Drive or another supported
-          provider, we may access folders and files only as permitted by the scopes you approve and
-          only as needed for features you use (for example, listing folders, selecting a gallery
-          folder, reading metadata, writing lesson-plan files the Service creates, or downloading a
-          file you choose to open).
+          (b) Cloud storage data you authorize. If you connect Google Drive, OneDrive, iCloud, or
+          Google Photos, we access folders and files only as permitted by the access you approve,
+          and only as needed to save and open the files you create or choose in the app.
         </p>
         <p>
           (c) Device-local data. Much of Advantage runs in your browser. Preferences, drafts,
@@ -68,37 +74,47 @@ export function PrivacyPage() {
           deliver and protect the Service.
         </p>
         <p>
-          (e) Purchase records. If you buy Advantage White, Stripe processes the payment. Advantage
-          stores the email address Stripe provides and the Checkout session id so the Service can
-          recognize that purchase. Advantage does not receive or store your card number.
+          (e) Purchase and alpha-request information, as described in section 4. Advantage does not
+          receive or store your card number.
         </p>
       </section>
 
       <section>
-        <h3>4. How we use information</h3>
+        <h3>4. Payments and Alpha Requests</h3>
+        <p>
+          Stripe collects your payment details when you buy. We receive limited purchase information
+          from Stripe, such as your email address, what you bought, and the amount, so we can unlock
+          your purchase and provide support. If you email us for an alpha code, we keep your email
+          address and message to reply and manage your access. That address is{' '}
+          <a href={`mailto:${SITE_FEEDBACK_EMAIL}`}>{SITE_FEEDBACK_EMAIL}</a>.
+        </p>
+      </section>
+
+      <section>
+        <h3>5. How we use information</h3>
         <p>
           We use information to provide, operate, secure, maintain, and improve the Service; to
-          authenticate you and maintain cloud connections you request; to enable Pro and related
-          features that depend on your cloud storage; to communicate with you about the Service
-          when you contact us; and to comply with law.
+          authenticate you and maintain cloud connections you request; to enable Coach Unlimited,
+          Pro, and related features that depend on your cloud storage; to unlock a purchase and
+          provide support; to reply to alpha-access requests; to communicate with you about the
+          Service when you contact us; and to comply with law.
         </p>
         <p>
           We do not sell your personal information. We do not sell your photos, videos, or
-          cloud-stored media. We do not use your Google Drive (or other connected cloud) content
-          for third-party advertising.
+          cloud-stored media. We do not use your connected-storage content for advertising.
         </p>
       </section>
 
       <section>
-        <h3>5. Sharing</h3>
+        <h3>6. Sharing</h3>
         <p>We may share information with:</p>
         <p>
           (a) Service providers that host or secure the Service (for example, Cloudflare or similar
           infrastructure), solely to operate Advantage;
         </p>
         <p>
-          (b) Third parties you connect or pay through (such as Google, or Stripe for Advantage White
-          checkout), under their terms and privacy policies;
+          (b) Third parties you connect or pay through (such as Google, or Stripe when you buy),
+          under their terms and privacy policies;
         </p>
         <p>
           (c) Professional advisors, or authorities, when required by law or to protect rights,
@@ -112,26 +128,28 @@ export function PrivacyPage() {
       </section>
 
       <section>
-        <h3>6. Retention</h3>
+        <h3>7. Retention</h3>
         <p>
           Device-local data remains until you clear it, disconnect features, or remove it in the
           app. Cloud files remain under your cloud account until you delete or change them there.
           Connection credentials and tokens are kept only as needed to provide the connection you
           requested. Server logs are retained as reasonably necessary for security and operations.
+          Purchase information we receive from Stripe, and email you send us to request an alpha
+          code, is kept as needed to unlock the purchase, provide support, and manage that access.
         </p>
       </section>
 
       <section>
-        <h3>7. Your choices</h3>
+        <h3>8. Your choices</h3>
         <p>
-          You may disconnect cloud storage in the Service, revoke access in your Google (or other
-          provider) account settings, clear browser site data, and delete or relocate files in your
-          own cloud storage.
+          You may disconnect cloud storage in the app or in your provider account’s security
+          settings, clear browser site data, and delete or relocate files in your own cloud
+          storage.
         </p>
       </section>
 
       <section>
-        <h3>8. Security</h3>
+        <h3>9. Security</h3>
         <p>
           We use reasonable administrative, technical, and organizational measures appropriate to
           the nature of the Service. No method of transmission or storage is completely secure. You
@@ -140,7 +158,7 @@ export function PrivacyPage() {
       </section>
 
       <section>
-        <h3>9. International processing</h3>
+        <h3>10. International processing</h3>
         <p>
           The Service may be hosted in the United States. If you access it from another country,
           information may be processed in the United States or other locations where our providers
@@ -149,7 +167,7 @@ export function PrivacyPage() {
       </section>
 
       <section>
-        <h3>10. Changes</h3>
+        <h3>11. Changes</h3>
         <p>
           We may update this Policy from time to time. We will revise the “Last updated” date when
           we do. Continued use of the Service after an update constitutes acceptance of the revised
@@ -158,7 +176,7 @@ export function PrivacyPage() {
       </section>
 
       <section>
-        <h3>11. Contact</h3>
+        <h3>12. Contact</h3>
         <LegalContact />
       </section>
     </LegalPage>
