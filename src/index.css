@@ -13701,6 +13701,13 @@ a.plan-pick {
   background: rgba(239, 68, 68, 0.16);
 }
 
+.buy__field {
+  display: grid;
+  gap: 0.4rem;
+  color: var(--ink);
+  font-weight: 700;
+}
+
 /* Advantage White match names. This phone only — not the Competitor Roster. */
 .white-roster {
   position: relative;

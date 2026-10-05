@@ -10,6 +10,7 @@ import { Sheet } from '../components/Sheet';
 import { SiteFooter } from '../components/SiteFooter';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
+import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import {
   COMING_SOON_ADS,
   type SoonProduct,
@@ -23,9 +24,12 @@ import {
   coachDoorOpen,
 } from '../lib/productNames';
 import { COACH_PRICE_LINE, PRO_PRICE_LINE } from '../lib/productPrices';
+import { WHITE_PRICE_LABEL } from '../lib/whitePurchase';
+import { whiteEntryPath } from '../lib/whiteUnlock';
 
 export function HomePage() {
   const proUnlocked = useProUnlocked();
+  const whiteUnlocked = useWhiteUnlocked();
   const coachOpen = coachDoorOpen(proUnlocked, useCoachUnlocked(), useCurrentSeat() !== null);
   const [unlockOpen, setUnlockOpen] = useState<'coach' | 'pro' | null>(null);
   const [soon, setSoon] = useState<SoonProduct | null>(null);
@@ -42,12 +46,14 @@ export function HomePage() {
 
         <SeatSessionBar />
         <nav className="home__modes" aria-label="Products">
-          <Link className="mode-card mode-card--white" to="/white">
+          <Link className="mode-card mode-card--white" to={whiteEntryPath(whiteUnlocked)}>
             <BeltRail kind="white" />
             <strong>Advantage White</strong>
             <HomeDescription text={WHITE_HOME_DESCRIPTION} />
             <span className="mode-card__actions">
-              <span className="btn btn--white">Open White</span>
+              <span className="btn btn--white">
+                {whiteUnlocked ? 'Open White' : `Buy White — ${WHITE_PRICE_LABEL}`}
+              </span>
             </span>
           </Link>
 

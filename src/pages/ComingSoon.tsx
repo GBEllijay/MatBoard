@@ -8,12 +8,15 @@ import { useCurrentSeat } from '../components/SeatSessionBar';
 import { SiteFooter } from '../components/SiteFooter';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
+import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import { lockCoach } from '../lib/coachUnlock';
 import { COACH_HUBS, coachDoorOpen, PRO_HUBS } from '../lib/productNames';
 import { lockPro } from '../lib/proUnlock';
+import { whiteEntryPath } from '../lib/whiteUnlock';
 
 export function ComingSoonPage() {
   const proUnlocked = useProUnlocked();
+  const whiteUnlocked = useWhiteUnlocked();
   const coachUnlocked = useCoachUnlocked();
   const seated = useCurrentSeat() !== null;
   const coachTools = coachDoorOpen(proUnlocked, coachUnlocked, seated);
@@ -76,13 +79,15 @@ export function ComingSoonPage() {
         ) : (
           <nav className="home__soon-actions" aria-label="Coming soon">
             <p className="home__soon-lead">
-              Advantage White is ready now — Live Bout and Rounds. Advantage Coach and Advantage
-              Pro stay Coming soon on home. Gym-owner tools stay off until Coach or Pro is unlocked
-              on this browser.
+              {whiteUnlocked
+                ? 'Advantage White is ready on this browser — Live Bout and Rounds. '
+                : 'Advantage White is $9.99 — Live Bout and Rounds unlock after purchase. '}
+              Advantage Coach and Advantage Pro stay Coming soon on home. Gym-owner tools stay off
+              until Coach or Pro is unlocked on this browser.
             </p>
             <AlphaAccessNote />
-            <Link className="btn" to="/white">
-              Advantage White
+            <Link className="btn" to={whiteEntryPath(whiteUnlocked)}>
+              {whiteUnlocked ? 'Advantage White' : 'Buy Advantage White'}
             </Link>
             <Link className="btn btn--ghost" to="/">
               Back to home
