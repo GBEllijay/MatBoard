@@ -1,18 +1,22 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { BeltHeader } from '../components/BeltHeader';
-import { CoachToolsCard } from '../components/CoachToolsCard';
-import { InviteAccept, SeatSessionBar } from '../components/SeatSessionBar';
+import { BeltRail } from '../components/BeltRail';
+import { InviteAccept, SeatSessionBar, useCurrentSeat } from '../components/SeatSessionBar';
 import { HomeMark } from '../components/HomeMark';
 import { InstructionsButton } from '../components/InstructionsButton';
 import { SiteFooter } from '../components/SiteFooter';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
+import { BASIC_COACH_BELT_LINES } from '../lib/coachCopy';
 import { lockCoach } from '../lib/coachUnlock';
-import { COACHING_TOOLS_LABEL, COMPETITION_MANAGEMENT_LABEL } from '../lib/productNames';
+import { coachToolVisible } from '../lib/instructorSeats';
+import { COACH_HUBS } from '../lib/productNames';
 
 export function CoachPage() {
   const navigate = useNavigate();
+  const seat = useCurrentSeat();
   const ownerOpen = useCoachUnlocked() || useProUnlocked();
+  const tools = COACH_HUBS.filter((tool) => coachToolVisible(tool.to, seat));
 
   return (
     <main className="home home--coach">
@@ -25,9 +29,14 @@ export function CoachPage() {
           <BeltHeader
             kind="blue"
             title="Advantage - Coach"
-            blurb="Tools and Templates for Coaches and Competition Teams."
+            blurb={BASIC_COACH_BELT_LINES.join('\n')}
           />
-          <CoachToolsCard />
+          {tools.map((tool) => (
+            <Link key={tool.to} className="pro-hub" to={tool.to}>
+              <BeltRail kind={tool.belt} />
+              <span>{tool.title}</span>
+            </Link>
+          ))}
         </nav>
 
         <div className="home__hints">
@@ -35,10 +44,9 @@ export function CoachPage() {
             <p className="home__hint">Install Advantage as an app from your browser menu.</p>
             <p className="home__hint">
               Gym TV: open this site on a computer plugged into the TV, then fullscreen Display,
-              Rounds, Daily Training Videos, or Mock Tournament. Press F for fullscreen.{' '}
-              {COACHING_TOOLS_LABEL} holds Daily Lesson Plan, Competition Class Curriculum, Daily
-              Training Videos, and Technique Tree. {COMPETITION_MANAGEMENT_LABEL} holds Competitor Management System and Mock
-              Tournament, then Scoreboard and Round Timer. Both folders live on the phone.
+              Rounds, Daily Training Videos, or Mock Tournament. Press F for fullscreen. Daily
+              Lesson Plan, Daily Training Videos, Technique Tree, Student Roster, and Mock
+              Tournament stay on this phone.
             </p>
             <p className="home__hint">
               Control from your phone. Cast the scoreboard to your TV, or open Display on a second

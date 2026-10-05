@@ -65,32 +65,35 @@ export const COACHING_TOOLS_PATH = '/coaching-tools';
  * Names what is inside, the way Live Bout names Match Timer & Scoreboard.
  */
 export const COACHING_TOOLS_DETAIL =
-  'Daily Lesson Plan, Competition Class Curriculum, Daily Training Videos, and Technique Tree.';
+  'Daily Lesson Plan, Daily Training Videos, and Technique Tree.';
 
 /** One line under that, in the same voice as the Live Bout card body. */
 export const COACHING_TOOLS_LEAD =
   "Write today's class, loop training clips, and build a technique tree.";
 
 /**
- * Coaching Tools submenu, top to bottom.
- * Daily Lesson Plan and Daily Training Videos stay on the flat blue coach belt.
- * Competition Class Curriculum uses the yellow/green competition belt.
+ * Basic Coaching Tools, top to bottom.
+ * Competition Class Curriculum is not on basic Coach.
  */
 export const COACHING_TOOLS_MENU = [
   { title: TRAINING_NOTES_LABEL, to: '/notes', belt: 'coach' as const },
-  { title: CURRICULUM_LABEL, to: CURRICULUM_PATH, belt: 'tournament' as const },
   { title: 'Daily Training Videos', to: '/techniques', belt: 'coach' as const },
   { title: TECHNIQUE_TREE_LABEL, to: '/technique-tree', belt: 'coach' as const },
 ] as const;
 
+/** Basic Coach student list. Same on-phone roster store, student wording, no photo. */
+export const STUDENT_ROSTER_PATH = '/roster?from=students';
+
 /**
- * Advantage Coach hub, top to bottom.
- * Coaching Tools opens the daily practice folder. Competition Team Management
- * keeps the yellow/green tournament belt and its own submenu.
+ * Basic Advantage Coach page, top to bottom.
+ * No Coaching Tools folder and no Competition Team Management.
  */
 export const COACH_HUBS = [
-  { title: COACHING_TOOLS_LABEL, to: COACHING_TOOLS_PATH },
-  { title: COMPETITION_MANAGEMENT_LABEL, to: '/competition', belt: 'tournament' as const },
+  { title: TRAINING_NOTES_LABEL, to: '/notes', belt: 'coach' as const },
+  { title: 'Daily Training Videos', to: '/techniques', belt: 'coach' as const },
+  { title: TECHNIQUE_TREE_LABEL, to: '/technique-tree', belt: 'coach' as const },
+  { title: 'Student Roster', to: STUDENT_ROSTER_PATH, belt: 'blue' as const },
+  { title: MOCK_TOURNAMENT_NAME, to: '/tournament', belt: 'tournament' as const },
 ] as const;
 
 /**
@@ -102,31 +105,29 @@ export const UNLIMITED_LESSON_VALUE = 'unlimited';
 export const UNLIMITED_LESSON_PATH = `/notes?plan=${UNLIMITED_LESSON_VALUE}`;
 export const COACH_UNLIMITED_PATH = '/coach-unlimited';
 
-/** Unlimited keeps the same tools and opens Daily Lesson Plan on the Unlimited plan. */
+/** Unlimited opens Daily Lesson Plan on the Unlimited plan. Basic keeps `/notes`. */
 export function coachingToolsMenu(unlimited: boolean) {
   if (!unlimited) return COACHING_TOOLS_MENU;
-  return COACHING_TOOLS_MENU.map((tool) => {
-    if (tool.to === '/notes') return { ...tool, to: UNLIMITED_LESSON_PATH };
-    if (tool.to === CURRICULUM_PATH) {
-      return {
-        ...tool,
-        to: `${CURRICULUM_PATH}?plan=${UNLIMITED_LESSON_VALUE}`,
-        belt: 'coach' as const,
-      };
-    }
-    return tool;
-  });
+  return COACHING_TOOLS_MENU.map((tool) =>
+    tool.to === '/notes' ? { ...tool, to: UNLIMITED_LESSON_PATH } : tool,
+  );
 }
 
 /**
- * Same two Coach hubs. Coaching Tools carries plan=unlimited so the lesson
- * link inside that folder stays on the Unlimited plan.
+ * Advantage Coach Unlimited menu, top to bottom.
+ * Daily Lesson Plan is the Unlimited plan that can be uploaded for review.
+ * Sunday review and Drive cards stay on the page, under this menu.
  */
-export const COACH_UNLIMITED_TOOLS = COACH_HUBS.map((tool) =>
-  tool.to === COACHING_TOOLS_PATH
-    ? { ...tool, to: `${COACHING_TOOLS_PATH}?plan=${UNLIMITED_LESSON_VALUE}` }
-    : tool,
-);
+export const COACH_UNLIMITED_TOOLS = [
+  { title: TRAINING_NOTES_LABEL, to: UNLIMITED_LESSON_PATH, belt: 'brown' as const },
+  { title: 'Daily Training Videos', to: '/techniques', belt: 'brown' as const },
+  { title: TECHNIQUE_TREE_LABEL, to: '/technique-tree', belt: 'brown' as const },
+  {
+    title: CURRICULUM_LABEL,
+    to: `${CURRICULUM_PATH}?plan=${UNLIMITED_LESSON_VALUE}`,
+    belt: 'tournament' as const,
+  },
+] as const;
 
 /**
  * Competition Team Management submenu.

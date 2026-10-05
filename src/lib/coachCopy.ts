@@ -13,6 +13,18 @@ export const TECHNIQUE_TREE_CAP_NOTE =
 export const COACH_TOOLS_TEASER =
   'Tools and Templates for Coaches and Professors.';
 
+/** Two lines under the blue belt on basic Advantage Coach. */
+export const BASIC_COACH_BELT_LINES = [
+  'Tools and Templates for Coaches.',
+  "Plan today's class, and loop training clips on the TV, run a mock tournament and maintain a student roster.",
+] as const;
+
+export const STUDENT_ROSTER_LABEL = 'Student Roster';
+export const STUDENT_NOTES_LABEL = 'Student Notes';
+export const EMPTY_STUDENT_ROSTER_TITLE = 'No students yet';
+export const EMPTY_STUDENT_ROSTER_BODY = 'Add a name and belt. The list stays on this phone.';
+export const EMPTY_STUDENT_ROSTER_SEARCH = 'No students match that name, belt, or division.';
+
 /** Short home-card line so Coming Soon and unlocked teasers both fit. */
 export const COACH_HOME_TEASER =
   'Daily Lesson Plan, Daily Training Videos, Mock Tournament, Roster.';

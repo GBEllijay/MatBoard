@@ -3,7 +3,7 @@ import { BeltRail } from './BeltRail';
 import { CoachingToolsScene, CompetitionScene } from './CoachHubScenes';
 import { useCurrentSeat } from './SeatSessionBar';
 import { coachToolVisible } from '../lib/instructorSeats';
-import { COACH_HUBS, COACHING_TOOLS_PATH } from '../lib/productNames';
+import { COACH_HUBS } from '../lib/productNames';
 
 /**
  * Same buttons, same order, as the Advantage Coach card.
@@ -23,10 +23,10 @@ export function CoachToolsCard() {
       <span className="mode-card__sub">Coach</span>
       <div className="pro-hubs">
         {tools.map((tool) => {
-          const coaching = tool.to === COACHING_TOOLS_PATH || tool.to.startsWith(`${COACHING_TOOLS_PATH}?`);
+          const coaching = tool.belt === 'coach' || tool.belt === 'blue';
           return (
             <Link key={tool.to} className="pro-hub pro-hub--tile" to={tool.to}>
-              <BeltRail kind={coaching ? 'coach' : 'tournament'} flush={coaching} />
+              <BeltRail kind={tool.belt} flush={coaching} />
               <span className="pro-hub__title">{tool.title}</span>
               <span className="pro-hub__scene">
                 {coaching ? <CoachingToolsScene /> : <CompetitionScene />}
