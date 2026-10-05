@@ -48,6 +48,7 @@ import {
   COMPETITOR_GYM_LABEL,
   ROSTER_CSV_DEVICE_NOTE,
   ROSTER_CSV_INSTRUCTIONS,
+  ROSTER_CSV_TEMPLATE_NOTE,
   ROSTER_LEAD_COACH,
   ROSTER_LEAD_PRO,
   rosterCsvAvailable,
@@ -206,6 +207,10 @@ test('Coach CMS roster shows CSV and keeps manual roster language', () => {
   assert.equal(
     ROSTER_CSV_INSTRUCTIONS,
     'Each row needs a competitor name and a belt. A row missing either one is left out. Division, Gym name / nickname, and Check In can be blank. Competitor Notes are included when the row has them. Face photos stay on this device and are not in the CSV.',
+  );
+  assert.equal(
+    ROSTER_CSV_TEMPLATE_NOTE,
+    "Fill in one person per row and save as CSV UTF-8, not .xlsx. Belt is required: White, Blue, Purple, Brown, Black, or Coral; kids Grey, Yellow, Orange, or Green. Spellings like 'black belt' or 'BB' work too.",
   );
   assert.doesNotMatch(`${ROSTER_CSV_DEVICE_NOTE}\n${ROSTER_CSV_INSTRUCTIONS}`, /UTF-8|accent/i);
 });

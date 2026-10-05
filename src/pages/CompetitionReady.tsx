@@ -22,6 +22,7 @@ import {
   removeReadyItem,
   removedReadyItems,
   restoreReadyItem,
+  competitorCards,
   searchStudents,
   setReadyExtra,
   setReadyFlag,
@@ -37,11 +38,12 @@ export function CompetitionReadyPage() {
   const [searchParams] = useSearchParams();
   const [query, setQuery] = useState('');
   const selectedId = searchParams.get('id') ?? '';
-  const selected = roster.students.find((row) => row.id === selectedId) ?? null;
+  const cards = useMemo(() => competitorCards(roster.students), [roster.students]);
+  const selected = cards.find((row) => row.id === selectedId) ?? null;
   const exitPath = selected ? '/competition-ready' : '/competitors';
   const competitors = useMemo(
-    () => (query.trim() ? searchStudents(roster.students, query) : roster.students),
-    [query, roster.students],
+    () => (query.trim() ? searchStudents(cards, query) : cards),
+    [query, cards],
   );
 
   return (
@@ -65,7 +67,7 @@ export function CompetitionReadyPage() {
       ) : (
         <>
           <p className="roster__lead">{COMPETITION_READY_LEAD}</p>
-          {roster.students.length ? (
+          {cards.length ? (
             <label className="roster__search">
               Find
               <input
@@ -87,14 +89,14 @@ export function CompetitionReadyPage() {
             </ul>
           ) : (
             <EmptyHint
-              title={roster.students.length ? 'No match' : EMPTY_ROSTER_TITLE}
+              title={cards.length ? 'No match' : EMPTY_ROSTER_TITLE}
               body={
-                roster.students.length
+                cards.length
                   ? EMPTY_ROSTER_SEARCH
                   : 'Add a name and belt on Competitor Roster, then open their checklist here.'
               }
               action={
-                roster.students.length ? undefined : (
+                cards.length ? undefined : (
                   <Link className="btn" to="/roster?from=competitors">
                     Competitor Roster
                   </Link>

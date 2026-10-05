@@ -33,8 +33,14 @@ import {
   kidsLiveLine,
   kidsWinState,
 } from '../lib/kidsScoreboard';
-import { rosterGymForName } from '../lib/rosterStore';
-import { isBasicCoach, SUITE_FROM, tournamentToolLabel } from '../lib/productNames';
+import { competitorCards, rosterGymForName, studentRosterCards } from '../lib/rosterStore';
+import {
+  isBasicCoach,
+  isPlainCoachTournament,
+  MOCK_TOURNAMENT_NAME,
+  SUITE_FROM,
+  tournamentToolLabel,
+} from '../lib/productNames';
 import { coachLinkedWhiteBoard, withMatchOrigin } from '../lib/scoreboardSkin';
 import {
   bracketHasContent,
@@ -93,11 +99,14 @@ export function TournamentPage() {
   const [searchParams] = useSearchParams();
   const parent = useToolboxParent();
   const proUnlocked = useProUnlocked();
-  const basicCoach = isBasicCoach(proUnlocked, useCoachUnlocked());
+  const plainCoach = isPlainCoachTournament(
+    searchParams.get('from'),
+    isBasicCoach(proUnlocked, useCoachUnlocked()),
+  );
   const sizeMax = maxCompetitors(proUnlocked);
   const fromSuite = searchParams.get('from') === SUITE_FROM;
-  const shownTheme = basicCoach ? DEFAULT_BRACKET_THEME : theme;
-  const exitPath = fromSuite ? '/suite' : parent.path;
+  const shownTheme = plainCoach ? DEFAULT_BRACKET_THEME : theme;
+  const exitPath = fromSuite ? '/suite' : plainCoach ? '/coach' : parent.path;
   const kidsOn = kidsBracketChromeOn(fromSuite, kids.enabled);
   const [namesOpen, setNamesOpen] = useState(false);
   const [sizeOpen, setSizeOpen] = useState(false);
@@ -217,8 +226,8 @@ export function TournamentPage() {
       <PlayExitMark to={exitPath} onExit={exitBoard} />
       <header className="tournament__bar">
         <div className="tournament__brand">
-          <p className="tournament__eyebrow">{parent.eyebrow}</p>
-          <h1>{tournamentToolLabel(proUnlocked)}</h1>
+          <p className="tournament__eyebrow">{plainCoach ? 'Advantage Coach' : parent.eyebrow}</p>
+          <h1>{plainCoach ? MOCK_TOURNAMENT_NAME : tournamentToolLabel(proUnlocked)}</h1>
         </div>
         <div className="tournament__center">
           <p className="tournament__roundline">{bracketRoundLine(tournament)}</p>
@@ -233,7 +242,7 @@ export function TournamentPage() {
           </label>
         </div>
         <div className="tournament__actions">
-          {basicCoach ? null : (
+          {plainCoach ? null : (
             <div className="tournament__theme" role="radiogroup" aria-label="Bracket theme">
               <button
                 type="button"
@@ -384,6 +393,7 @@ export function TournamentPage() {
                 onPrefill={(prefill) => setSlotName('champion', prefill.name)}
                 placeholder="Winner"
                 ariaLabel="Champion"
+                names={plainCoach ? 'student' : 'competitor'}
                 compact
               />
             </div>
@@ -412,9 +422,14 @@ export function TournamentPage() {
         </div>
       ) : null}
 
-      <Sheet open={namesOpen} title="Competitor names" onClose={() => setNamesOpen(false)}>
+      <Sheet
+        open={namesOpen}
+        title={plainCoach ? 'Student names' : 'Competitor names'}
+        onClose={() => setNamesOpen(false)}
+      >
         <p className="tournament__sheet-copy">
-          {tournament.size} competitor{tournament.size === 1 ? '' : 's'}, one bracket
+          {tournament.size} {plainCoach ? 'student' : 'competitor'}
+          {tournament.size === 1 ? '' : 's'}, one bracket
           {byeCountHint(tournament)}.
           {threePerson
             ? ' Semifinal is 2nd seed vs 3rd seed. The loser faces the 1st seed. Winners of those two matches meet in the final.'
@@ -429,8 +444,9 @@ export function TournamentPage() {
                   value={slotName(tournament, id)}
                   onChange={(value) => setSlotName(id, value)}
                   onPrefill={(prefill) => setSlotName(id, prefill.name)}
-                  placeholder={seedPlaceholder(index)}
-                  ariaLabel={`Competitor ${index + 1}`}
+                  placeholder={plainCoach ? 'Student name' : seedPlaceholder(index)}
+                  ariaLabel={plainCoach ? `Student name ${index + 1}` : `Competitor ${index + 1}`}
+                  names={plainCoach ? 'student' : 'competitor'}
                 />
               </label>
             </li>
@@ -455,7 +471,7 @@ export function TournamentPage() {
           vs 5th, and 1st, 2nd, and 3rd receive byes. A field of 7 gives the bye to the 1st seed.
           Eight and up, and every other custom count, fill to the next power of two with those same
           seeded byes.
-          {proUnlocked
+          {proUnlocked && !plainCoach
             ? ' Pro boards save up to 64 competitors on this device.'
             : ' Mock Tournament stays at 16.'}
         </p>
@@ -717,7 +733,7 @@ function MatchCard({
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const fromSuite = searchParams.get('from') === SUITE_FROM;
-  const basicCoach = isBasicCoach(useProUnlocked(), useCoachUnlocked());
+  const plainCoach = usePlainCoachBoard();
   const hasResult = Boolean(tournament.results[matchId]);
   const live = liveMatchId === matchId;
   const bye = matchHasBye(tournament, matchId);
@@ -727,7 +743,7 @@ function MatchCard({
     navigate(
       withMatchOrigin(scoreboardPath(matchId), {
         fromSuite,
-        whiteBoard: coachLinkedWhiteBoard(fromSuite, true, basicCoach, false),
+        whiteBoard: coachLinkedWhiteBoard(fromSuite, true, plainCoach, false),
       }),
     );
   };
@@ -777,13 +793,22 @@ function MatchCard({
   );
 }
 
+function usePlainCoachBoard(): boolean {
+  const [searchParams] = useSearchParams();
+  return isPlainCoachTournament(searchParams.get('from'), isBasicCoach(useProUnlocked(), useCoachUnlocked()));
+}
+
 function SlotRow({ matchId, side }: { matchId: BracketMatchId; side: MatchSide }) {
   const tournament = useTournamentState();
+  const plainCoach = usePlainCoachBoard();
   const id = slotId(matchId, side);
   const bye = isByeSlot(tournament, id);
   const roster = useRosterState();
   const name = slotName(tournament, id);
-  const gym = rosterGymForName(name, roster.students);
+  const gym = rosterGymForName(
+    name,
+    plainCoach ? studentRosterCards(roster.students) : competitorCards(roster.students),
+  );
   const mark = slotMark(tournament.results[matchId], side);
   const seeds = seedSlots(tournament);
   const seedIndex = seeds.indexOf(id);
@@ -791,7 +816,9 @@ function SlotRow({ matchId, side }: { matchId: BracketMatchId; side: MatchSide }
     isThreePersonBracket(tournament) && id === THREE_PERSON_LOSER_SLOT
       ? 'Loser'
       : seedIndex >= 0
-        ? seedPlaceholder(seedIndex)
+        ? plainCoach
+          ? 'Student name'
+          : seedPlaceholder(seedIndex)
         : 'Winner';
   const result = tournament.results[matchId];
   const winOn = result?.call === 'win' && result.winnerSide === side;
@@ -822,7 +849,14 @@ function SlotRow({ matchId, side }: { matchId: BracketMatchId; side: MatchSide }
             onChange={(value) => setSlotName(id, value)}
             onPrefill={(prefill) => setSlotName(id, prefill.name)}
             placeholder={placeholder}
-            ariaLabel={`${roundLabel(matchId)}, ${side === 'a' ? 'top' : 'bottom'} competitor`}
+            ariaLabel={
+              plainCoach
+                ? `${roundLabel(matchId)}, ${side === 'a' ? 'top' : 'bottom'} student${
+                    seedIndex >= 0 ? ` ${seedIndex + 1}` : ''
+                  }`
+                : `${roundLabel(matchId)}, ${side === 'a' ? 'top' : 'bottom'} competitor`
+            }
+            names={plainCoach ? 'student' : 'competitor'}
             compact
           />
           {gym ? <span className="t-slot__gym">{gym}</span> : null}
