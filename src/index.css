@@ -1704,13 +1704,16 @@ span.role-plan__mark {
   background-image: var(--weave);
 }
 
+/* Same quiet line as the HomeMark tagline under the gold mark: regular weight, muted, centered in a short column. */
 .belt-header .belt-header__blurb {
-  margin: 0.55rem 0 0;
-  color: var(--ink);
-  font-weight: 650;
+  max-width: 22rem;
+  margin: 0.55rem auto 0;
+  color: var(--muted);
+  font-weight: 400;
   font-size: 1rem;
-  line-height: 1.4;
-  text-align: left;
+  line-height: 1.45;
+  letter-spacing: normal;
+  text-align: center;
 }
 
 .saver-belt {

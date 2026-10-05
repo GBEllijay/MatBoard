@@ -5,11 +5,9 @@ import { InviteAccept, SeatSessionBar } from '../components/SeatSessionBar';
 import { HomeMark } from '../components/HomeMark';
 import { InstructionsButton } from '../components/InstructionsButton';
 import { SiteFooter } from '../components/SiteFooter';
-import { TierLine } from '../components/TierLine';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { lockCoach } from '../lib/coachUnlock';
-import { COACH_TOOLS_TEASER } from '../lib/coachCopy';
 import { COACHING_TOOLS_LABEL, COMPETITION_MANAGEMENT_LABEL } from '../lib/productNames';
 
 export function CoachPage() {
@@ -19,7 +17,7 @@ export function CoachPage() {
   return (
     <main className="home home--coach">
       <div className="home__inner">
-        <HomeMark to="/" tagline={<TierLine tier="Coach" detail={COACH_TOOLS_TEASER} />} />
+        <HomeMark to="/" />
 
         <InviteAccept />
         <SeatSessionBar />

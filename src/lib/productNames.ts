@@ -221,8 +221,8 @@ export function withSuiteFrom(path: string, fromSuite: boolean): string {
 
 /**
  * Tournament Management Pro folder, top to bottom.
- * Only Brackets keeps the yellow/green tournament belt.
- * Scoreboard and Round Timer have no left bar.
+ * Brackets and Competitor Management System use the yellow/green competition belt.
+ * Scoreboard and Round Timer use the black belt. Both stay title-only.
  * Brackets opens the same mock-tournament board.
  * Scoreboard opens the existing match controller. Round Timer opens the existing rounds controller.
  * Competitor Management System opens the existing gold-medal menu.
@@ -237,19 +237,19 @@ export const COMPETITION_PRO_MENU = [
   {
     title: COMPETITOR_SYSTEM_NAME,
     to: '/competitors',
-    belt: null,
+    belt: 'tournament' as const,
     clearBout: false,
   },
   {
     title: 'Scoreboard',
     to: withSuiteFrom(MATCH_CONTROLLER_PATH, true),
-    belt: null,
+    belt: 'black' as const,
     clearBout: true,
   },
   {
     title: 'Round Timer',
     to: withSuiteFrom(ROUND_CONTROLLER_PATH, true),
-    belt: null,
+    belt: 'black' as const,
     clearBout: false,
   },
 ] as const;
