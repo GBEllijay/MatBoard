@@ -292,38 +292,54 @@ describe('check in column', () => {
 });
 
 describe('serializeRosterCsv', () => {
-  it('writes an Excel-friendly UTF-8 template with a single-cell belt guide', () => {
+  it('writes a header-first template with blank rows and no sample person', () => {
     const csv = rosterCsvTemplate();
-    assert.match(csv, /^sep=,/);
-    assert.match(csv, /Save as CSV UTF-8/);
-    assert.match(csv, /blackbelt/i);
-    assert.match(csv, /black belt/i);
+    assert.equal(csv.startsWith('sep='), false);
+    assert.equal(csv.includes('#'), false);
+    assert.equal(csv.includes('Alex Rivera'), false);
     assert.equal(
-      csv.includes('Name,Belt,Division,Gym name / nickname,Last promotion,Competitor Notes,Check In\r\n'),
+      csv.startsWith('Name,Belt,Division,Gym name / nickname,Last promotion,Notes,Check In\r\n'),
       true,
     );
-    assert.equal(csv.includes('Alex Rivera,Purple,Adult Purple,Alliance,2026-03-12,'), true);
-    const guideRow = parseCsv(csv, detectCsvDelimiter(csv)).find((row) => row[0]?.trim().startsWith('#'));
-    assert.equal(guideRow?.length, 1);
+    const lines = csv.split('\r\n').filter((line) => line.length);
+    assert.equal(lines.length, 4);
+    assert.equal(lines.slice(1).every((line) => line === ',,,,,,'), true);
+    const rows = parseCsv(csv, detectCsvDelimiter(csv));
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0]?.[0], 'Name');
     assert.equal(withUtf8Bom(csv).startsWith('\uFEFF'), true);
-    const roundTrip = importRosterCsv(csv);
-    assert.equal(roundTrip.imported, 1);
-    assert.equal(roundTrip.students[0]?.name, 'Alex Rivera');
-    assert.equal(roundTrip.students[0]?.belt, 'Purple');
-    assert.equal(roundTrip.students[0]?.gym, 'Alliance');
-    assert.equal(roundTrip.students[0]?.division, 'Adult Purple');
-    assert.equal(roundTrip.students[0]?.checkedIn, false);
-    assert.equal(roundTrip.students[0]?.photo, '');
-    assert.equal(csv.includes('data:image'), false);
+    const roundTrip = importRosterCsv(withUtf8Bom(csv));
+    assert.equal(roundTrip.imported, 0);
+    assert.equal(roundTrip.skipped, 0);
+    assert.equal(roundTrip.error, undefined);
+  });
+
+  it('still imports an older template with sep=, a # guide, and Competitor Notes', () => {
+    const older = [
+      'sep=,',
+      '"# Save as CSV UTF-8 (comma-separated), not an Excel workbook (.xlsx). One competitor per row."',
+      'Name,Belt,Division,Gym name / nickname,Last promotion,Competitor Notes,Check In',
+      'Alex Rivera,Purple,Adult Purple,Alliance,2026-03-12,Example - delete this row. Save as CSV UTF-8.,No',
+    ].join('\r\n');
+    const next = importRosterCsv(older);
+    assert.equal(next.imported, 1);
+    assert.equal(next.students[0]?.name, 'Alex Rivera');
+    assert.equal(next.students[0]?.belt, 'Purple');
+    assert.equal(next.students[0]?.gym, 'Alliance');
+    assert.equal(next.students[0]?.division, 'Adult Purple');
+    assert.equal(next.students[0]?.note, 'Example - delete this row. Save as CSV UTF-8.');
+    assert.equal(next.students[0]?.checkedIn, false);
+    assert.equal(next.students[0]?.photo, '');
   });
 
   it('imports every filled template row with mixed belts and an accented name', () => {
     const csv = `${rosterCsvTemplate().trimEnd()}\r\n${THREE_ROW_PEOPLE.map((row) => `${csvField(row.name)},${row.belt},,`).join('\r\n')}\r\n`;
     const next = importRosterCsv(csv);
-    assert.equal(next.imported, 4);
+    assert.equal(next.imported, 3);
+    assert.equal(next.skipped, 0);
     assert.deepEqual(
       next.students.map((row) => `${row.name}:${row.belt}`),
-      ['Alex Rivera:Purple', ...THREE_ROW_PEOPLE.map((row) => `${row.name}:${row.belt}`)],
+      THREE_ROW_PEOPLE.map((row) => `${row.name}:${row.belt}`),
     );
   });
 

@@ -8523,6 +8523,15 @@ input.roster-pick__name:focus,
   box-shadow: var(--shadow);
 }
 
+.roster__csv-template {
+  margin: 0;
+  max-width: 36rem;
+  color: var(--muted);
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.45;
+}
+
 .roster__csv-hint,
 .roster__csv-summary {
   margin: 0;
@@ -8538,6 +8547,7 @@ input.roster-pick__name:focus,
 .roster__lead,
 .roster__empty,
 .roster__csv-hint,
+.roster__csv-template,
 .notes__lead {
   text-shadow: 0 1px 10px rgba(0, 0, 0, 0.55);
 }

@@ -14,20 +14,19 @@ export const ROSTER_CSV_HEADERS = [
   'Check In',
 ] as const;
 export const ROSTER_CSV_SEP_LINE = 'sep=,';
-export const ROSTER_CSV_SAVE_HINT =
-  'Save as CSV UTF-8 (comma-separated), not an Excel workbook (.xlsx).';
 export const ROSTER_CSV_WORKBOOK_ERROR =
   'That looks like an Excel workbook. Save as CSV UTF-8 (comma-separated), then import.';
-export const ROSTER_CSV_BELT_GUIDE =
-  `# ${ROSTER_CSV_SAVE_HINT} One competitor per row. Belts (required on every row): White, Blue, Purple, Brown, Black, Coral; kids Grey, Yellow, Orange, Green. Also accepted: black, Black, blackbelt, black belt, Black Belt, BB, white belt, bluebelt, and the same color + belt spellings for each rank.`;
-export const ROSTER_CSV_EXAMPLE = {
-  name: 'Alex Rivera',
-  belt: 'Purple',
-  division: 'Adult Purple',
-  gym: 'Alliance',
-  lastPromotion: '2026-03-12',
-  note: 'Example - delete this row. Save as CSV UTF-8.',
-} as const;
+/** Downloadable template uses Notes. Export still writes Competitor Notes; import accepts both. */
+export const ROSTER_CSV_TEMPLATE_HEADERS = [
+  'Name',
+  'Belt',
+  'Division',
+  COMPETITOR_GYM_LABEL,
+  'Last promotion',
+  'Notes',
+  'Check In',
+] as const;
+const ROSTER_CSV_TEMPLATE_BLANK_ROWS = 3;
 
 export type RosterCsvRow = Pick<
   Student,
@@ -362,18 +361,14 @@ export function serializeRosterCsv(rows: RosterCsvRow[]): string {
   return `${lines.join('\r\n')}\r\n`;
 }
 
+/** Header row, then blank rows. No example person, so a filled file cannot import a sample name. */
 export function rosterCsvTemplate(): string {
-  return `${ROSTER_CSV_SEP_LINE}\r\n${csvField(ROSTER_CSV_BELT_GUIDE)}\r\n${serializeRosterCsv([
-    {
-      name: ROSTER_CSV_EXAMPLE.name,
-      belt: ROSTER_CSV_EXAMPLE.belt,
-      division: ROSTER_CSV_EXAMPLE.division,
-      gym: ROSTER_CSV_EXAMPLE.gym,
-      lastPromotion: ROSTER_CSV_EXAMPLE.lastPromotion,
-      note: ROSTER_CSV_EXAMPLE.note,
-      checkedIn: false,
-    },
-  ])}`;
+  const blank = ROSTER_CSV_TEMPLATE_HEADERS.map(() => '').join(',');
+  const lines = [
+    ROSTER_CSV_TEMPLATE_HEADERS.join(','),
+    ...Array.from({ length: ROSTER_CSV_TEMPLATE_BLANK_ROWS }, () => blank),
+  ];
+  return `${lines.join('\r\n')}\r\n`;
 }
 
 export function parseImportDate(value: string): string {
@@ -412,6 +407,10 @@ function mapHeaders(headerRow: string[]): Partial<Record<HeaderField, number>> {
 function isSkippableRow(row: string[]): boolean {
   const first = row[0]?.trim() ?? '';
   return first.startsWith('#') || /^sep=/i.test(first);
+}
+
+function isBlankRow(row: string[]): boolean {
+  return row.every((cell) => !cell.trim());
 }
 
 function hasRequiredColumns(columns: Partial<Record<HeaderField, number>>): boolean {
@@ -597,7 +596,7 @@ function importParsedRows(rows: string[][], options: ImportOptions): RosterCsvIm
   };
 
   for (const row of expanded.slice(start)) {
-    if (isSkippableRow(row)) continue;
+    if (isSkippableRow(row) || isBlankRow(row)) continue;
 
     const nameCell = combineName(row, columns);
     const beltCell = cell(row, columns.belt);

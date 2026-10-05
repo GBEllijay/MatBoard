@@ -51,6 +51,11 @@ export type Student = {
   note: string;
   /** Present today for the in-house tournament. Off until someone checks them in. */
   checkedIn: boolean;
+  /**
+   * Coach Student Roster. Omitted on Competitor Roster cards, including older saves,
+   * so an existing competitor list stays a competitor list.
+   */
+  rosterList?: 'student';
 };
 
 /** Weekend checklist items. Missing or false means Off. */
@@ -354,6 +359,19 @@ export function studentFromInput(
   };
 }
 
+/** Coach Student Roster card. Missing means Competitor Roster, including older saves. */
+export function isStudentRosterCard(student: Pick<Student, 'rosterList'>): boolean {
+  return student.rosterList === 'student';
+}
+
+export function studentRosterCards(students: Student[]): Student[] {
+  return students.filter(isStudentRosterCard);
+}
+
+export function competitorCards(students: Student[]): Student[] {
+  return students.filter((student) => !isStudentRosterCard(student));
+}
+
 export function canPrefill(student: Pick<Student, 'name' | 'belt'>): boolean {
   return Boolean(student.name.trim() && student.belt.trim());
 }
@@ -408,12 +426,14 @@ export function findStudentByName(students: Student[], name: string): Student | 
 /** Typed name for a bracket/match. Optionally append a new local roster card. */
 export function confirmManualCompetitor(
   name: string,
-  options: { addToRoster: boolean; belt?: string },
+  options: { addToRoster: boolean; belt?: string; rosterList?: 'student' },
 ): RosterPrefill | null {
   const clipped = clipName(name);
   if (!clipped) return null;
 
-  const existing = findStudentByName(state.students, clipped);
+  const pool =
+    options.rosterList === 'student' ? studentRosterCards(state.students) : competitorCards(state.students);
+  const existing = findStudentByName(pool, clipped);
   if (existing) {
     return prefillFields(existing) ?? {
       name: existing.name,
@@ -426,14 +446,17 @@ export function confirmManualCompetitor(
   const belt = canonicalBelt(options.belt ?? '');
   if (options.addToRoster) {
     if (!belt) return null;
-    const added = addStudent({
-      name: clipped,
-      belt,
-      division: '',
-      gym: '',
-      lastPromotion: '',
-      note: '',
-    });
+    const added = addStudent(
+      {
+        name: clipped,
+        belt,
+        division: '',
+        gym: '',
+        lastPromotion: '',
+        note: '',
+      },
+      options.rosterList === 'student' ? { rosterList: 'student' } : undefined,
+    );
     return added
       ? { name: added.name, belt: added.belt, gym: added.gym, division: added.division }
       : null;
@@ -445,7 +468,7 @@ export function confirmManualCompetitor(
 export function normalizeStudent(raw: unknown): Student | null {
   if (!raw || typeof raw !== 'object') return null;
   const row = raw as Partial<Student>;
-  return studentFromInput({
+  const student = studentFromInput({
     id: typeof row.id === 'string' ? row.id : undefined,
     name: typeof row.name === 'string' ? row.name : '',
     belt: typeof row.belt === 'string' ? row.belt : '',
@@ -456,6 +479,8 @@ export function normalizeStudent(raw: unknown): Student | null {
     note: typeof row.note === 'string' ? row.note : '',
     checkedIn: row.checkedIn,
   });
+  if (!student) return null;
+  return row.rosterList === 'student' ? { ...student, rosterList: 'student' } : student;
 }
 
 function readyIsBlank(ready: CompetitorReady): boolean {
@@ -608,11 +633,12 @@ export function subscribeRoster(fn: () => void): () => void {
   };
 }
 
-export function addStudent(draft: StudentDraft): Student | null {
+export function addStudent(draft: StudentDraft, options?: { rosterList?: 'student' }): Student | null {
   const next = studentFromInput(draft);
   if (!next) return null;
-  commit(sortStudents([...state.students, next]));
-  return next;
+  const card = options?.rosterList === 'student' ? { ...next, rosterList: 'student' as const } : next;
+  commit(sortStudents([...state.students, card]));
+  return card;
 }
 
 /** Append already-validated cards in one write. Used by CSV import. */
@@ -637,8 +663,9 @@ export function updateStudent(id: string, draft: Partial<StudentDraft>): Student
     checkedIn: current.checkedIn,
   });
   if (!next) return null;
-  commit(sortStudents(state.students.map((row) => (row.id === id ? next : row))));
-  return next;
+  const card = current.rosterList === 'student' ? { ...next, rosterList: 'student' as const } : next;
+  commit(sortStudents(state.students.map((row) => (row.id === id ? card : row))));
+  return card;
 }
 
 export function setCheckedIn(id: string, checkedIn: boolean): Student | null {

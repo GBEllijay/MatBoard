@@ -20,6 +20,7 @@ import {
   coachDoorOpen,
   coachToolsOpen,
   isBasicCoach,
+  isPlainCoachTournament,
   proDoorOpen,
   parentToolboxPath,
   COACH_UNLIMITED_PATH,
@@ -127,11 +128,11 @@ test('Coach hub is Coaching Tools then Competition Team Management', () => {
   );
   assert.deepEqual(
     COACH_HUBS.map((hub) => hub.to),
-    ['/notes', '/techniques', '/technique-tree', '/roster?from=students', '/tournament'],
+    ['/notes', '/techniques', '/technique-tree', '/roster?from=students', '/tournament?from=coach'],
   );
   assert.deepEqual(
     COACH_HUBS.map((hub) => hub.belt),
-    ['coach', 'coach', 'coach', 'blue', 'tournament'],
+    ['coach', 'coach', 'coach', 'coach', 'tournament'],
   );
   assert.ok(!COACH_HUBS.some((hub) => hub.title === 'Coaching Tools' || hub.title === COMPETITION_MANAGEMENT_LABEL));
   assert.ok(!COACH_HUBS.some((hub) => /curriculum/i.test(hub.title)));
@@ -308,6 +309,12 @@ test('Pro unlock includes Coach tools and Coach-only unlock still stands alone',
   assert.equal(isBasicCoach(true, true), false);
   assert.equal(isBasicCoach(true, false), false);
   assert.equal(isBasicCoach(false, false), false);
+  assert.equal(isPlainCoachTournament('coach', false), true);
+  assert.equal(isPlainCoachTournament('coach', true), true);
+  assert.equal(isPlainCoachTournament(null, true), true);
+  assert.equal(isPlainCoachTournament('suite', true), false);
+  assert.equal(isPlainCoachTournament('suite', false), false);
+  assert.equal(isPlainCoachTournament(null, false), false);
 });
 
 test('Footer states ownership, alpha testing, and the feedback email only', () => {

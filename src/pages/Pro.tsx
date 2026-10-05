@@ -4,7 +4,6 @@ import { HomeMark } from '../components/HomeMark';
 import { InstructionsButton } from '../components/InstructionsButton';
 import { ProToolboxCard } from '../components/ProToolboxCard';
 import { SiteFooter } from '../components/SiteFooter';
-import { TierLine } from '../components/TierLine';
 import { MEDIA_CONSOLE_NAME, PRO_LADDER_DETAIL } from '../lib/productNames';
 import { lockPro } from '../lib/proUnlock';
 
@@ -14,10 +13,10 @@ export function ProPage() {
   return (
     <main className="home home--pro">
       <div className="home__inner">
-        <HomeMark to="/" tagline={<TierLine tier="Pro" detail={PRO_LADDER_DETAIL} />} />
+        <HomeMark to="/" />
 
         <nav className="home__modes" aria-label="Advantage Pro">
-          <BeltHeader kind="black" title="Advantage - PRO" />
+          <BeltHeader kind="black" title="Advantage - PRO" blurb={PRO_LADDER_DETAIL} />
           <ProToolboxCard />
         </nav>
 

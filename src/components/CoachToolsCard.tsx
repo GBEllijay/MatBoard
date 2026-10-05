@@ -23,7 +23,7 @@ export function CoachToolsCard() {
       <span className="mode-card__sub">Coach</span>
       <div className="pro-hubs">
         {tools.map((tool) => {
-          const coaching = tool.belt === 'coach' || tool.belt === 'blue';
+          const coaching = tool.belt === 'coach';
           return (
             <Link key={tool.to} className="pro-hub pro-hub--tile" to={tool.to}>
               <BeltRail kind={tool.belt} flush={coaching} />

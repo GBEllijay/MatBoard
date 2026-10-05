@@ -117,6 +117,10 @@ export const ROSTER_CSV_DEVICE_NOTE =
 export const ROSTER_CSV_INSTRUCTIONS =
   'Each row needs a competitor name and a belt. A row missing either one is left out. Division, Gym name / nickname, and Check In can be blank. Competitor Notes are included when the row has them. Face photos stay on this device and are not in the CSV.';
 
+/** Plain text beside the Competitor Roster template download. */
+export const ROSTER_CSV_TEMPLATE_NOTE =
+  "Fill in one person per row and save as CSV UTF-8, not .xlsx. Belt is required: White, Blue, Purple, Brown, Black, or Coral; kids Grey, Yellow, Orange, or Green. Spellings like 'black belt' or 'BB' work too.";
+
 /**
  * CSV import, export, and the downloadable template.
  * Shown on the Competitor Management roster for Coach and for Pro.

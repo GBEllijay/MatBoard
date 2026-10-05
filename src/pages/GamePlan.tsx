@@ -35,6 +35,7 @@ import {
 import { COMPETITOR_SYSTEM_NAME } from '../lib/productNames';
 import {
   addGameLink,
+  competitorCards,
   competitorGamePlan,
   removeGameLink,
   searchStudents,
@@ -57,11 +58,12 @@ export function GamePlanPage() {
   const [query, setQuery] = useState('');
   const [archive] = useState<TechniqueTreeArchive>(() => loadTechniqueArchive());
   const selectedId = searchParams.get('id') ?? '';
-  const selected = roster.students.find((row) => row.id === selectedId) ?? null;
+  const cards = useMemo(() => competitorCards(roster.students), [roster.students]);
+  const selected = cards.find((row) => row.id === selectedId) ?? null;
   const exitPath = selected ? '/game-plan' : '/competitors';
   const competitors = useMemo(
-    () => (query.trim() ? searchStudents(roster.students, query) : roster.students),
-    [query, roster.students],
+    () => (query.trim() ? searchStudents(cards, query) : cards),
+    [query, cards],
   );
 
   return (
@@ -85,7 +87,7 @@ export function GamePlanPage() {
       ) : (
         <>
           <p className="roster__lead">{GAME_PLAN_LEAD}</p>
-          {roster.students.length ? (
+          {cards.length ? (
             <label className="roster__search">
               Find
               <input
@@ -110,10 +112,10 @@ export function GamePlanPage() {
             </ul>
           ) : (
             <EmptyHint
-              title={roster.students.length ? 'No match' : EMPTY_ROSTER_TITLE}
-              body={roster.students.length ? EMPTY_ROSTER_SEARCH : GAME_PLAN_EMPTY}
+              title={cards.length ? 'No match' : EMPTY_ROSTER_TITLE}
+              body={cards.length ? EMPTY_ROSTER_SEARCH : GAME_PLAN_EMPTY}
               action={
-                roster.students.length ? undefined : (
+                cards.length ? undefined : (
                   <Link className="btn" to="/roster?from=competitors">
                     Competitor Roster
                   </Link>
