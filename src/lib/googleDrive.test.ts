@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { beforeEach, describe, test } from 'node:test';
 import {
   CONNECT_COMING_SOON,
+  CONNECT_LAUNCH_BADGE,
   CONNECT_GOOGLE_UNVERIFIED_NOTE,
   CONNECT_WITH_BODY,
   CONNECT_WITH_TITLE,
@@ -47,6 +48,7 @@ import {
   requestDriveToken,
   resolveOwnedGoogleClientId,
   todayDownloadCopy,
+  saveDriveTextFile,
   upsertLessonFile,
   videosOnDay,
   writeDevGoogleClientId,
@@ -79,7 +81,8 @@ test('lesson file names and Drive queries stay literal', () => {
   assert.equal(lessonClassFileToken(emptyPlan()), '');
   assert.equal(driveQueryLiteral("O'Brien\\folder"), "O\\'Brien\\\\folder");
   assert.equal(CONNECT_WITH_TITLE, 'Connect with');
-  assert.equal(CONNECT_COMING_SOON, 'Coming soon');
+  assert.equal(CONNECT_LAUNCH_BADGE, 'Coming for launch');
+  assert.equal(CONNECT_COMING_SOON, CONNECT_LAUNCH_BADGE);
   assert.equal(
     CONNECT_GOOGLE_UNVERIFIED_NOTE,
     'Google may show a notice that this connection isn’t verified yet. Tap Continue, or Advanced then Continue, to proceed. This is temporary.',
@@ -178,7 +181,9 @@ test('connect card does not ask a gym owner for a client id', () => {
   assert.match(card, /<summary>Advanced<\/summary>/);
   assert.match(card, /import\.meta\.env\.DEV/);
   assert.match(card, /cloudStorageChoices\(/);
-  assert.match(card, /CONNECT_COMING_SOON/);
+  assert.match(card, /CONNECT_LAUNCH_BADGE/);
+  assert.match(card, /CONNECT_ACCOUNT_NOTE/);
+  assert.doesNotMatch(card, /coming soon/i);
   assert.match(card, /CONNECT_GOOGLE_UNVERIFIED_NOTE/);
   assert.match(card, /provider\.id === 'googleDrive' && provider\.isAvailable\(\)/);
   assert.match(card, /unavailableMessage/);
@@ -494,6 +499,20 @@ describe('date folder tree', { concurrency: false }, () => {
       [...DATE_BUCKET_NAMES],
       ['lesson-plans', 'training-videos', 'technique-trees', 'class-photos', 'roster', 'tournament-results'],
     );
+  });
+
+  test('saveDriveTextFile writes plain text into the gym folder', async () => {
+    const drive = createFakeDrive('text');
+    const saved = await saveDriveTextFile(
+      'token',
+      { name: 'note.txt', text: 'hello from advantage', parentId: 'root-1' },
+      drive.fetcher,
+    );
+    assert.equal(saved.name, 'note.txt');
+    const file = drive.files.find((item) => item.id === saved.id);
+    assert.equal(file?.content, 'hello from advantage');
+    assert.equal(file?.mimeType, 'text/plain');
+    assert.deepEqual(file?.parents, ['root-1']);
   });
 
   test('findOrCreateChildFolder reuses an existing folder and remembers it', async () => {

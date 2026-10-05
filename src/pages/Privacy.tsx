@@ -35,8 +35,9 @@ export function PrivacyPage() {
         <p>
           Advantage does not operate a general photo or video hosting service for your gym library.
           Photos, videos, and similar media files you choose to use with certain features remain in
-          storage you control (for example, Google Drive, and later options such as OneDrive,
-          Dropbox, or iCloud when offered). Advantage may store lesson text, settings, and
+          storage you control. Coach Unlimited and Advantage Pro require your own Google Drive,
+          OneDrive, Google Photos, and iCloud accounts before they leave alpha. Advantage does not
+          manage those accounts. Advantage may store lesson text, settings, and
           references such as file or folder identifiers so the Service can display, organize, or
           link to content you already keep in your own cloud storage.
         </p>

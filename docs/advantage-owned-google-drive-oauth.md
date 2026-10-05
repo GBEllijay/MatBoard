@@ -51,6 +51,8 @@ The gym owner still sees the plain sign-in sentence (`DRIVE_SIGN_IN_FAILED`): Go
 
 ## Connectors
 
-The owner screen is a **Connect with** list, not a Google-only button. `src/lib/cloudStorage.ts` is the interface: id, display name, `phase` (`live` or `coming-soon`), `connect`, `isConnected`, binding snapshot, `pickFolder`, `openFolderUrl`, and `disconnect`. `cloudStorageChoices()` is that list.
+The owner screen is a **Connect with** list, not a Google-only button. `src/lib/cloudStorage.ts` is the interface: id, display name, `phase` (`live`, `coming-for-launch`, or `reserved`), `connect`, `save`, `open`, `isConnected`, binding snapshot, `pickFolder`, `openFolderUrl`, and `disconnect`. `cloudStorageChoices()` is that list. Coach Unlimited and Advantage Pro call that interface. They do not call Drive or Graph themselves.
 
-Google Drive (`googleDrive`) is `live` and is the first choice. `oneDrive`, `dropbox`, and `iCloud` are `coming-soon`: same interface, disabled in the list, not implemented.
+Coach Unlimited and Advantage Pro stay in alpha until Google Drive, OneDrive, Google Photos, and iCloud all work.
+
+Google Drive (`googleDrive`) is `live`. OneDrive (`oneDrive`) is `live` in code and connects when `VITE_MICROSOFT_CLIENT_ID` is set (see `docs/advantage-owned-onedrive-oauth.md`). `googlePhotos` and `iCloud` are `coming-for-launch`: same interface, disabled, not implemented. Dropbox is a reserved slot from an earlier note. It is not half-built and it is not on the launch list.

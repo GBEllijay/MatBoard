@@ -9404,9 +9404,11 @@ input.roster-pick__name:focus,
 }
 
 .plan-card .drive-connect__soon {
+  margin-left: 0.65rem;
   color: var(--gold-2);
   font-size: 0.82rem;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .drive-connect__folders p,

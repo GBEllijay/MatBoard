@@ -56,8 +56,9 @@ export function TermsPage() {
           Certain Pro (and related) features — including without limitation gallery casting,
           cloud-backed lesson plans, class history tied to a cloud folder, and other features that
           read from or write to your media library — require you to connect and maintain authorized
-          access to a supported third-party cloud storage provider (including Google Drive today,
-          and OneDrive, Dropbox, iCloud, or similar providers if and when offered).
+          access to your own cloud account. Coach Unlimited and Advantage Pro require Google Drive,
+          OneDrive, Google Photos, and iCloud before they leave alpha. Advantage does not host those
+          files and does not manage that account.
         </p>
         <p>
           By enabling those features, you acknowledge and agree that: (a) such features will not
