@@ -4,8 +4,10 @@ import { HomeMark } from '../components/HomeMark';
 import { InstructionsButton } from '../components/InstructionsButton';
 import { ProToolboxCard } from '../components/ProToolboxCard';
 import { SiteFooter } from '../components/SiteFooter';
-import { TierLine } from '../components/TierLine';
+import { CHECKOUT_BUY_PATH } from '../lib/checkoutProducts';
+import { PRO_LIST_PRICE_CENTS, PRO_MONTHLY_PRICE_CENTS } from '../lib/productPrices';
 import { MEDIA_CONSOLE_NAME, PRO_LADDER_DETAIL } from '../lib/productNames';
+import { formatUsdFromCents } from '../lib/whitePurchase';
 import { lockPro } from '../lib/proUnlock';
 
 export function ProPage() {
@@ -14,10 +16,10 @@ export function ProPage() {
   return (
     <main className="home home--pro">
       <div className="home__inner">
-        <HomeMark to="/" tagline={<TierLine tier="Pro" detail={PRO_LADDER_DETAIL} />} />
+        <HomeMark to="/" />
 
         <nav className="home__modes" aria-label="Advantage Pro">
-          <BeltHeader kind="black" title="Advantage - PRO" />
+          <BeltHeader kind="black" title="Advantage - PRO" blurb={PRO_LADDER_DETAIL} />
           <ProToolboxCard />
         </nav>
 
@@ -34,6 +36,11 @@ export function ProPage() {
               screen or computer.
             </p>
           </InstructionsButton>
+          <p className="home__soon">
+            <Link className="home__text-btn" to={CHECKOUT_BUY_PATH.pro}>
+              {`Buy Advantage Pro — ${formatUsdFromCents(PRO_LIST_PRICE_CENTS)} + ${formatUsdFromCents(PRO_MONTHLY_PRICE_CENTS)}/month`}
+            </Link>
+          </p>
           <p className="home__soon">
             Advantage Pro is on for this browser.{' '}
             <Link className="home__text-btn" to="/">

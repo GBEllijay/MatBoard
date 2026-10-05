@@ -1,11 +1,16 @@
 import { Link } from 'react-router-dom';
 import { LegalContact, LegalPage } from '../components/LegalPage';
+import { SITE_FEEDBACK_EMAIL } from '../lib/siteFooter';
+
+function SupportEmail() {
+  return <a href={`mailto:${SITE_FEEDBACK_EMAIL}`}>{SITE_FEEDBACK_EMAIL}</a>;
+}
 
 export function TermsPage() {
   return (
     <LegalPage
       title="Terms of Service — Advantage"
-      updated="October 1, 2026"
+      updated="October 5, 2026"
       related={{ to: '/privacy', label: 'Privacy Policy' }}
     >
       <section>
@@ -37,48 +42,133 @@ export function TermsPage() {
         <p>
           Advantage provides tools that may include, without limitation, scoreboard and round-timer
           features, coaching and planning tools, competitor and event utilities, and media-related
-          features for gym use. Features may vary by product tier (for example, Lite, Coach, or
+          features for gym use. Features may vary by product tier (for example, White, Coach, or
           Pro) and may change over time.
         </p>
       </section>
 
       <section>
-        <h3>3. Customer-owned media and cloud storage</h3>
-        <h4>3.1 No Advantage media hosting for your library.</h4>
+        <h3>3. Purchases and Pricing</h3>
+        <p>Advantage is sold in tiers. All prices are in U.S. dollars:</p>
+        <ul>
+          <li>Advantage White costs $9.99 as a one-time purchase.</li>
+          <li>
+            Advantage Coach costs $29.99 as a one-time purchase, once it’s offered for sale.
+          </li>
+          <li>
+            Advantage Pro costs $99.99 as a one-time purchase, plus a subscription of $2.99 per
+            month, once it’s offered for sale. The subscription renews monthly until you cancel.
+            Canceling stops future charges, and subscription features stay available through the end
+            of the period you’ve already paid for.
+          </li>
+        </ul>
         <p>
-          Advantage does not undertake to host, store, or back up your photo or video library as a
-          general storage provider. Except for limited operational data described in our{' '}
-          <Link to="/privacy">Privacy Policy</Link> (such as lesson text and file or folder
-          references), media files remain in storage you control.
-        </p>
-        <h4>3.2 Cloud access required for certain Pro features.</h4>
-        <p>
-          Certain Pro (and related) features — including without limitation gallery casting,
-          cloud-backed lesson plans, class history tied to a cloud folder, and other features that
-          read from or write to your media library — require you to connect and maintain authorized
-          access to your own cloud account. Coach Unlimited and Advantage Pro require Google Drive,
-          OneDrive, Google Photos, and iCloud before they leave alpha. Advantage does not host those
-          files and does not manage that account.
+          Advantage Coach includes everything in Advantage White. Advantage Pro includes everything
+          in Advantage Coach and Advantage White.
         </p>
         <p>
-          By enabling those features, you acknowledge and agree that: (a) such features will not
-          function, or will function only in a limited way, without a valid cloud connection and
-          the permissions you grant; (b) Advantage’s ability to display, organize, or sync related
-          content depends on the availability, APIs, policies, and uptime of that third-party
-          provider; and (c) you are solely responsible for your cloud account, folder permissions,
-          retention, sharing settings, and compliance with that provider’s terms.
+          Payments are processed by Stripe. Advantage App, LLC does not receive or store your full
+          card number. Prices may change in the future, but a change does not affect a purchase
+          you’ve already completed.
         </p>
-        <h4>3.3 Your content.</h4>
+        <p>
+          We may offer promotional or discount codes at our discretion, to some or all customers.
+          Codes have no cash value, may expire, cannot be combined unless stated, and may be
+          revoked if misused.
+        </p>
+      </section>
+
+      <section>
+        <h3>4. Alpha Access</h3>
+        <p>
+          Advantage Coach and Advantage Pro are currently in alpha testing and are not offered for
+          sale. We may provide free alpha access codes on request. To request one, email{' '}
+          <SupportEmail />. Alpha features are provided “as is.” They may change, be incomplete,
+          contain errors, or lose data, and we may end alpha access at any time. Alpha access does
+          not guarantee future free access or any particular price.
+        </p>
+      </section>
+
+      <section>
+        <h3>5. Your Cloud Storage Account</h3>
+        <p>
+          Advantage Coach Unlimited and Advantage Pro save lesson plans, photos, videos, and related
+          files to a cloud storage account that you own and control. Before Coach and Pro leave
+          alpha and go on sale, Advantage supports connecting your own account with each of these
+          providers: Google Drive, OneDrive, iCloud, and Google Photos. Google Drive is available
+          now. OneDrive, iCloud, and Google Photos are shipping as part of that same launch set and
+          will be working before those tiers are sold to the public.
+        </p>
+        <ul>
+          <li>
+            Advantage App, LLC does not host, provide, manage, or back up your cloud storage.
+          </li>
+          <li>
+            The account you connect must be your own or your gym’s. It must not be an account
+            managed or provided by Advantage App, LLC.
+          </li>
+          <li>
+            Your storage account is governed by your provider’s terms. You are responsible for its
+            fees, capacity, access, and backups.
+          </li>
+          <li>
+            Without a connected storage account, some Coach Unlimited and Pro features will not work
+            or will be limited.
+          </li>
+          <li>
+            Advantage App, LLC is not responsible for files lost, deleted, or made unavailable
+            because of your storage provider, your account settings, or changes the provider makes
+            to its service.
+          </li>
+        </ul>
         <p>
           You retain ownership of content you store in your cloud accounts. You grant Advantage a
           limited, non-exclusive license to access and process that content solely as needed to
           provide the features you use, in accordance with the permissions you grant and our{' '}
           <Link to="/privacy">Privacy Policy</Link>.
         </p>
+        <h4>5.1 Purchase acknowledgment</h4>
+        <p>
+          Buyers of Advantage Coach Unlimited and Advantage Pro must accept the statement below.
+          The buy flow does not collect that acceptance yet. It will be required at checkout when
+          those tiers go on sale:
+        </p>
+        <p>
+          “I understand that Advantage Coach Unlimited and Advantage Pro require my own Google
+          Drive, OneDrive, iCloud, or Google Photos account to work fully. Advantage App, LLC does
+          not provide, manage, or back up that storage, and the account I connect is my own, not
+          one managed by Advantage App, LLC.”
+        </p>
       </section>
 
       <section>
-        <h3>4. Acceptable use</h3>
+        <h3>6. Refunds</h3>
+        <p>
+          If Advantage does not work as intended, we will refund your purchase. We would rather fix
+          the problem or return your money than keep a fee for a product that is broken.
+        </p>
+        <p>
+          That promise covers the app itself: unlocks that fail, paid features that do not load, or
+          clear defects that stop normal use. Contact us at <SupportEmail /> with what went wrong,
+          and we will work with you promptly.
+        </p>
+        <p>
+          Coach Unlimited and Advantage Pro need your own cloud storage account to save and open
+          lesson plans, photos, and videos. Google Drive is available now. OneDrive, iCloud, and
+          Google Photos are part of the same launch set and will be working before Coach and Pro
+          are sold to the public. Setting up and connecting that account is your responsibility.
+          Advantage App, LLC does not provide, manage, or back up your storage.
+        </p>
+        <p>
+          A refund is not available when the app itself is working and the only issue is that your
+          Google Drive, OneDrive, iCloud, or Google Photos account was not connected, not created,
+          not signed in, out of space, or otherwise misconfigured. In those cases we will help you
+          get connected if we can, but the purchase stands.
+        </p>
+      </section>
+
+      <section>
+        <h3>7. Acceptable use</h3>
         <p>
           You agree not to misuse the Service, including by attempting unauthorized access;
           interfering with the Service; reverse engineering except where permitted by law; using
@@ -88,7 +178,7 @@ export function TermsPage() {
       </section>
 
       <section>
-        <h3>5. Third-party services</h3>
+        <h3>8. Third-party services</h3>
         <p>
           The Service may interoperate with Google and other third parties. Your use of those
           services is subject to their terms and privacy policies. Advantage is not responsible for
@@ -97,18 +187,7 @@ export function TermsPage() {
       </section>
 
       <section>
-        <h3>6. Fees and trials</h3>
-        <p>
-          Paid plans, trials, and billing terms (if any) will be presented at purchase or in an
-          order form. Advantage White, when offered, is a one-time purchase. Checkout is provided
-          by Stripe, and the price and any promo code are shown before you pay. Card details are
-          entered on Stripe. Unless stated otherwise, fees are non-refundable except where required
-          by law. We may change prices with notice for future periods.
-        </p>
-      </section>
-
-      <section>
-        <h3>7. Intellectual property</h3>
+        <h3>9. Intellectual property</h3>
         <p>
           Advantage and its licensors own the Service, software, branding, and documentation. These
           Terms do not transfer ownership of Advantage IP to you. Feedback you provide may be used
@@ -117,7 +196,7 @@ export function TermsPage() {
       </section>
 
       <section>
-        <h3>8. Disclaimer of warranties</h3>
+        <h3>10. Disclaimer of warranties</h3>
         <p className="legal__caps">
           THE SERVICE IS PROVIDED “AS IS” AND “AS AVAILABLE.” TO THE MAXIMUM EXTENT PERMITTED BY
           LAW, ADVANTAGE DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING MERCHANTABILITY,
@@ -128,7 +207,7 @@ export function TermsPage() {
       </section>
 
       <section>
-        <h3>9. Limitation of liability</h3>
+        <h3>11. Limitation of liability</h3>
         <p className="legal__caps">
           TO THE MAXIMUM EXTENT PERMITTED BY LAW, ADVANTAGE WILL NOT BE LIABLE FOR INDIRECT,
           INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES, OR FOR LOST PROFITS,
@@ -141,7 +220,7 @@ export function TermsPage() {
       </section>
 
       <section>
-        <h3>10. Indemnity</h3>
+        <h3>12. Indemnity</h3>
         <p>
           You will defend and indemnify Advantage and its officers, directors, and agents against
           claims arising from your content, your cloud accounts, your misuse of the Service, or
@@ -150,7 +229,7 @@ export function TermsPage() {
       </section>
 
       <section>
-        <h3>11. Suspension and termination</h3>
+        <h3>13. Suspension and termination</h3>
         <p>
           We may suspend or terminate access if you breach these Terms, if required by law, or if
           needed to protect the Service or others. You may stop using the Service at any time.
@@ -160,7 +239,7 @@ export function TermsPage() {
       </section>
 
       <section>
-        <h3>12. Changes</h3>
+        <h3>14. Changes</h3>
         <p>
           We may modify the Service and these Terms. We will update the “Last updated” date when
           Terms change. Material changes may be communicated via the site or email if we have an
@@ -170,7 +249,7 @@ export function TermsPage() {
       </section>
 
       <section>
-        <h3>13. Governing law</h3>
+        <h3>15. Governing law</h3>
         <p>
           These Terms are governed by the laws of the State of Georgia, USA, excluding
           conflict-of-law rules, unless mandatory local law provides otherwise. Courts located in
@@ -179,7 +258,7 @@ export function TermsPage() {
       </section>
 
       <section>
-        <h3>14. Miscellaneous</h3>
+        <h3>16. Miscellaneous</h3>
         <p>
           These Terms and the <Link to="/privacy">Privacy Policy</Link> are the entire agreement
           regarding the Service. If any provision is unenforceable, the remainder stays in effect.
@@ -189,7 +268,7 @@ export function TermsPage() {
       </section>
 
       <section>
-        <h3>15. Contact</h3>
+        <h3>17. Contact</h3>
         <LegalContact />
       </section>
     </LegalPage>

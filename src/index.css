@@ -491,6 +491,16 @@ button.mode-card {
   border-radius: inherit;
 }
 
+button.mode-card__hit {
+  appearance: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
 @media (hover: hover) {
   .mode-card:has(> .mode-card__hit:hover),
   a.mode-card:hover,
@@ -542,8 +552,41 @@ button.mode-card {
 }
 
 /* Keep copy grayed without washing out the left-rail belt wink. */
-.mode-card--locked > :not(.belt-rail) {
+.mode-card--locked > :not(.belt-rail):not(.alpha-access):not(.mode-card__price) {
   filter: saturate(0.45);
+}
+
+.mode-card__price {
+  margin: 0;
+  color: var(--muted);
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+.alpha-access {
+  position: relative;
+  z-index: 2;
+  margin: 0;
+  color: var(--muted);
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+.alpha-access a {
+  color: var(--gold-2);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+}
+
+.soon-ad__price {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.45;
 }
 
 /* Pro Coming Soon teaser stays readable on the locked home card. */
@@ -8480,6 +8523,15 @@ input.roster-pick__name:focus,
   box-shadow: var(--shadow);
 }
 
+.roster__csv-template {
+  margin: 0;
+  max-width: 36rem;
+  color: var(--muted);
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.45;
+}
+
 .roster__csv-hint,
 .roster__csv-summary {
   margin: 0;
@@ -8495,6 +8547,7 @@ input.roster-pick__name:focus,
 .roster__lead,
 .roster__empty,
 .roster__csv-hint,
+.roster__csv-template,
 .notes__lead {
   text-shadow: 0 1px 10px rgba(0, 0, 0, 0.55);
 }
@@ -10021,10 +10074,52 @@ input.roster-pick__name:focus,
   color: #d7e1f6;
 }
 
-.home--white .mode-card--training,
-.home--white .mode-card--names {
+.home--white .mode-card--training {
   background: linear-gradient(180deg, #1a1c22 0%, #0a0a0c 100%);
   border-color: rgba(255, 255, 255, 0.14);
+}
+
+/* Match names only. Yellow legal-pad paper replaces the white belt rail. */
+.home--white .mode-card--names {
+  --pad-ink: #2c2618;
+  padding-left: 2.15rem;
+  color: var(--pad-ink);
+  border-color: rgba(138, 108, 42, 0.42);
+  background:
+    linear-gradient(
+      to right,
+      transparent 1.38rem,
+      #d24b45 1.38rem,
+      #d24b45 calc(1.38rem + 2px),
+      transparent calc(1.38rem + 2px)
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 27px,
+      rgba(70, 140, 220, 0.5) 27px,
+      rgba(70, 140, 220, 0.5) 28px
+    ),
+    linear-gradient(180deg, #f8efc8 0%, #f4e6ad 58%, #f0df9c 100%);
+  box-shadow:
+    0 16px 36px rgba(40, 28, 8, 0.28),
+    inset 0 1px 0 rgba(255, 252, 240, 0.7);
+}
+
+.home--white .mode-card--names > strong {
+  color: var(--pad-ink);
+}
+
+.home--white .mode-card--names > .mode-card__sub {
+  color: #3d5278;
+}
+
+.home--white .mode-card--names > span:not(.mode-card__sub) {
+  color: #4a4030;
+}
+
+.home--white .mode-card--names > .belt-rail {
+  display: none;
 }
 
 .home--white .mode-card__sub {
@@ -13572,7 +13667,8 @@ a.plan-pick {
   padding-left: 1.15rem;
 }
 
-.home .buy p.buy__later {
+.home .buy p.buy__later,
+.home .buy .alpha-access {
   color: var(--muted);
   text-align: center;
 }

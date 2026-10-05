@@ -27,6 +27,7 @@ import {
   EMPTY_STUDENT_ROSTER_TITLE,
   ROSTER_CSV_DEVICE_NOTE,
   ROSTER_CSV_INSTRUCTIONS,
+  ROSTER_CSV_TEMPLATE_NOTE,
   ROSTER_LEAD_COACH,
   ROSTER_LEAD_PRO,
   STUDENT_NOTES_LABEL,
@@ -49,6 +50,7 @@ import {
   NOTE_MAX,
   addStudent,
   addStudents,
+  competitorCards,
   isKnownBelt,
   draftFromStudent,
   emptyDraft,
@@ -56,6 +58,7 @@ import {
   removeStudent,
   searchStudents,
   setCheckedIn,
+  studentRosterCards,
   updateStudent,
   type Student,
   type StudentDraft,
@@ -105,9 +108,13 @@ export function RosterPage() {
   const [pendingRemove, setPendingRemove] = useState<string | null>(null);
   const [csvNote, setCsvNote] = useState('');
   const [saveError, setSaveError] = useState('');
+  const listed = useMemo(
+    () => (studentRoster ? studentRosterCards(roster.students) : competitorCards(roster.students)),
+    [roster.students, studentRoster],
+  );
   const competitors = useMemo(
-    () => (query.trim() ? searchStudents(roster.students, query) : roster.students),
-    [query, roster.students],
+    () => (query.trim() ? searchStudents(listed, query) : listed),
+    [query, listed],
   );
   const openAdd = () => setEditor({ id: null, draft: { ...emptyDraft(), gym: readGymName() } });
 
@@ -157,7 +164,7 @@ export function RosterPage() {
             <button
               type="button"
               className="btn btn--ghost"
-              onClick={() => downloadRosterCsv('advantage-roster.csv', serializeRosterCsv(roster.students))}
+              onClick={() => downloadRosterCsv('advantage-roster.csv', serializeRosterCsv(listed))}
             >
               Export CSV
             </button>
@@ -165,6 +172,7 @@ export function RosterPage() {
         </div>
         <CsvInstructions />
       </div>
+      <p className="roster__csv-template">{ROSTER_CSV_TEMPLATE_NOTE}</p>
       <p className="roster__csv-hint">{ROSTER_CSV_DEVICE_NOTE}</p>
       {csvNote ? (
         <p className="roster__csv-summary" role="status">
@@ -225,7 +233,7 @@ export function RosterPage() {
 
       {showCsv ? csvTools : null}
 
-      {roster.students.length ? (
+      {listed.length ? (
       <label className="roster__search">
         Find
         <input
@@ -260,14 +268,14 @@ export function RosterPage() {
       ) : (
         <EmptyHint
           title={
-            roster.students.length
+            listed.length
               ? 'No match'
               : studentRoster
                 ? EMPTY_STUDENT_ROSTER_TITLE
                 : EMPTY_ROSTER_TITLE
           }
           body={
-            roster.students.length
+            listed.length
               ? studentRoster
                 ? EMPTY_STUDENT_ROSTER_SEARCH
                 : EMPTY_ROSTER_SEARCH
@@ -276,7 +284,7 @@ export function RosterPage() {
                 : EMPTY_ROSTER_BODY
           }
           action={
-            roster.students.length || coachRoster || studentRoster ? undefined : (
+            listed.length || coachRoster || studentRoster ? undefined : (
               <button type="button" className="btn" onClick={openAdd}>
                 Add competitor
               </button>
@@ -307,7 +315,9 @@ export function RosterPage() {
         onSave={() => {
           if (!editor) return;
           try {
-            const saved = editor.id ? updateStudent(editor.id, editor.draft) : addStudent(editor.draft);
+            const saved = editor.id
+              ? updateStudent(editor.id, editor.draft)
+              : addStudent(editor.draft, studentRoster ? { rosterList: 'student' } : undefined);
             if (saved) {
               setSaveError('');
               setEditor(null);

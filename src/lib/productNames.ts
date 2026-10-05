@@ -15,7 +15,7 @@ export const WHITE_HOME_DESCRIPTION =
 export const COACH_HOME_DESCRIPTION =
   'Daily Lesson Planner with Expandable Technique Trees and Video Looper. Bracketing and Mock Tournament Tool with Competitor Roster.';
 
-/** Home ladder and Pro hub line after “Pro —”. Not the Owner Console page title. */
+/** Line under the black Advantage - PRO belt. Not the Owner Console page title. */
 export const PRO_LADDER_DETAIL = 'Gym Owner and Instructors Console';
 
 /** Brand line under the Advantage title on the public home page. */
@@ -92,8 +92,8 @@ export const COACH_HUBS = [
   { title: TRAINING_NOTES_LABEL, to: '/notes', belt: 'coach' as const },
   { title: 'Daily Training Videos', to: '/techniques', belt: 'coach' as const },
   { title: TECHNIQUE_TREE_LABEL, to: '/technique-tree', belt: 'coach' as const },
-  { title: 'Student Roster', to: STUDENT_ROSTER_PATH, belt: 'blue' as const },
-  { title: MOCK_TOURNAMENT_NAME, to: '/tournament', belt: 'tournament' as const },
+  { title: 'Student Roster', to: STUDENT_ROSTER_PATH, belt: 'coach' as const },
+  { title: MOCK_TOURNAMENT_NAME, to: '/tournament?from=coach', belt: 'tournament' as const },
 ] as const;
 
 /**
@@ -206,6 +206,18 @@ export const ROUND_CONTROLLER_PATH = '/training/control';
 
 /** Query flag so Suite destinations keep the Suite page theme and return path. */
 export const SUITE_FROM = 'suite';
+
+/** Plain Mock Tournament opened from the Advantage Coach page. */
+export const COACH_BOARD_FROM = 'coach';
+
+/**
+ * Basic Coach Mock Tournament, including when Pro is also unlocked and the
+ * board was opened from the Coach page. Suite brackets stay the Pro board.
+ */
+export function isPlainCoachTournament(from: string | null, basicCoach: boolean): boolean {
+  if (from === SUITE_FROM) return false;
+  return from === COACH_BOARD_FROM || basicCoach;
+}
 
 /** Keep `from=suite` on links opened from the Suite hub. Other callers stay unchanged. */
 export function withSuiteFrom(path: string, fromSuite: boolean): string {

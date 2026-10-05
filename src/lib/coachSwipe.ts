@@ -38,7 +38,7 @@ export function swipeGestureBlocked(target: EventTarget | null): boolean {
 }
 
 export function coachSwipeTarget(pathname: string, direction: 'left' | 'right'): string | null {
-  if (pathname === '/roster') return direction === 'right' ? '/tournament' : null;
+  if (pathname === '/roster') return direction === 'right' ? '/tournament?from=coach' : null;
   const index = CHAIN.indexOf(pathname as (typeof CHAIN)[number]);
   if (index < 0) return null;
   const next = direction === 'left' ? index + 1 : index - 1;

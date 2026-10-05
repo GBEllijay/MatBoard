@@ -63,8 +63,7 @@ export const WHITE_FEATURES = [
 ] as const;
 
 /** Footer line on /buy. Coach and Pro are not part of this checkout. */
-export const WHITE_UPGRADE_NOTE =
-  "Advantage Coach and Advantage Pro are separate products. This purchase is White only; you can add Coach or Pro later when they're for sale.";
+export { ALPHA_ACCESS_NOTE as WHITE_UPGRADE_NOTE } from './productPrices.ts';
 
 export function priceAfterAmountOff(listCents: number, amountOffCents: number): number {
   return Math.max(0, listCents - amountOffCents);

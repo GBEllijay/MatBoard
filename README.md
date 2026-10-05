@@ -73,7 +73,7 @@ Advantage White is a **one-time $9.99 USD** purchase. Checkout is a Stripe Check
 | Piece | Where |
 | --- | --- |
 | Buy page | `/buy` (also linked from `/white`) |
-| Create Checkout | `POST /api/checkout` with optional JSON `{ "promotionCode": "WHITE499" }` |
+| Create Checkout | `POST /api/checkout`. Body may include `{ "promotionCode": "WHITE499" }`. Optional `"product"` is `white` (default), `coach`, or `pro`. |
 | Webhook | `POST /api/stripe/webhook` on `checkout.session.completed` |
 | Entitlement check | `GET /api/entitlement?session_id=cs_...` or `?session_id=free_...` or `?email=` |
 | Free unlock | Private link `/buy?code=WHITEFREE` only. The public `/buy` page does not show a code field or any promo names. Records White at $0 with no Stripe call and no Stripe keys. |
@@ -100,12 +100,24 @@ Use the Stripe test-mode toggle. Then:
    Restrict each coupon to the Advantage White product if you want it to stay off later prices. Promotion codes are customer-facing; coupon ids are the Dashboard ids. The public buy page does not list them. Paid codes are typed in Stripe Checkout’s own promo box. `/buy?code=WHITEFREE` never calls Stripe. The 100% coupon is only for a Checkout test: continue to Stripe and enter `WHITEFREE` there. That session completes with `payment_status` `no_payment_required` and amount `0`; the webhook records it.
 3. **Developers → Webhooks → Add endpoint.** URL: `https://<your-host>/api/stripe/webhook` (local: forward to `http://localhost:5173/api/stripe/webhook`). Event: `checkout.session.completed`. Copy the signing secret into `STRIPE_WEBHOOK_SECRET`.
 4. **Developers → API keys.** Secret key → `STRIPE_SECRET_KEY` (`sk_test_...`).
-5. Optional `STRIPE_SUCCESS_URL` and `STRIPE_CANCEL_URL`. If empty, the API uses the request origin:
+5. Optional `STRIPE_SUCCESS_URL` and `STRIPE_CANCEL_URL`. These override **White only**. If empty, White uses the request origin:
    - success: `{origin}/buy?checkout=success&session_id={CHECKOUT_SESSION_ID}`
    - cancel: `{origin}/buy?checkout=cancel`
-   The success URL must include the `{CHECKOUT_SESSION_ID}` placeholder.
-6. **Cloudflare Pages → Settings → Variables** (Production and Preview): the five `STRIPE_*` names above. Do not mark them as build-time `VITE_` variables.
-7. **Cloudflare Pages → Settings → Bindings → KV namespace.** Variable name exactly `WHITE_ENTITLEMENTS`.
+   The success URL must include the `{CHECKOUT_SESSION_ID}` placeholder. Coach and Pro always use the request origin (`/buy/coach` and `/buy/pro` with the same query). On production that origin is `https://advantagebjjtimer.com`.
+6. **Cloudflare Pages → Settings → Variables** (Production and Preview). Do not mark them as build-time `VITE_` variables. None of these are public browser variables.
+
+   | Name | Cloudflare | Used for |
+   | --- | --- | --- |
+   | `STRIPE_SECRET_KEY` | **Secret** (encrypt) | All paid Checkout |
+   | `STRIPE_WEBHOOK_SECRET` | **Secret** (encrypt) | White webhook signature |
+   | `STRIPE_PRICE_WHITE` | Server variable (not public) | White one-time price |
+   | `STRIPE_PRICE_COACH` | Server variable (not public) | Coach one-time price |
+   | `STRIPE_PRICE_PRO` | Server variable (not public) | Pro one-time price |
+   | `STRIPE_PRICE_PRO_MONTHLY` | Server variable (not public) | Pro $2.99/month price |
+   | `STRIPE_SUCCESS_URL` | Optional server variable | White success URL override |
+   | `STRIPE_CANCEL_URL` | Optional server variable | White cancel URL override |
+
+7. **Cloudflare Pages → Settings → Bindings → KV namespace.** Variable name exactly `WHITE_ENTITLEMENTS`. The webhook still records Advantage White only.
 
 Copy `.env.example` to `.env` for local dev. `.env` is gitignored.
 
@@ -118,7 +130,29 @@ Copy `.env.example` to `.env` for local dev. `.env` is gitignored.
 5. Deliver the webhook (`stripe listen --forward-to localhost:5173/api/stripe/webhook`, or the Dashboard endpoint). The buy page looks up the session a few times.
 6. `GET /api/entitlement?session_id=cs_test_...` returns `{ "entitled": true, "email": "...", "sessionId": "cs_test_..." }`. Locally that row is in `.data/white-entitlements.json`.
 
-Coach and Pro are named on the buy page as later products. They are not in this Checkout session.
+Coach is a **one-time $29.99 USD** product (`mode=payment`, `STRIPE_PRICE_COACH`). Pro is **one Checkout session** with two line items: one-time **$99.99 USD** (`STRIPE_PRICE_PRO`) plus **$2.99 USD per month** (`STRIPE_PRICE_PRO_MONTHLY`). Stripe mixed carts use `mode=subscription`. Do not reuse an older Pro price.
+
+Public home cards do not sell Coach or Pro. They still say to email advantageappllc@gmail.com for a free alpha code. `/buy/coach` and `/buy/pro` use the same door as `/coach` and `/pro` (owner unlock or, for Coach, an instructor seat). Until that door is open, those URLs go to Coming soon. The unlocked Coach and Pro pages link to checkout. White at `/buy` stays public.
+
+`POST /api/checkout` with `{ "product": "coach" }` or `{ "product": "pro" }` creates the hosted session. Omitting `product` stays White. White still sends `allow_promotion_codes=true` unless the server attaches a code. Coach and Pro use that same promo-box behavior. `WHITEFREE` still grants White only and does not call Stripe.
+
+Success and cancel return to the request origin: `/buy/coach` or `/buy/pro`, with `checkout=success&session_id={CHECKOUT_SESSION_ID}` or `checkout=cancel`. The White entitlement webhook ignores Coach and Pro sessions. There is no separate Coach or Pro license store.
+
+### Price ids for Coach and Pro
+
+1. **Advantage Pro → one-time price, USD 99.99.** Copy the Price id to `STRIPE_PRICE_PRO`.
+2. **Same product → recurring price, USD 2.99, billed monthly.** Copy that Price id to `STRIPE_PRICE_PRO_MONTHLY`. Both ids go on the same Checkout session.
+3. **Advantage Coach → one-time price, USD 29.99.** Copy the Price id to `STRIPE_PRICE_COACH`.
+4. **White promotion codes** (the public buy page does not show the code text). White Checkout still sends `allow_promotion_codes=true` unless a code was attached by the server. Create these coupons, restricted to Advantage White, if they are not already in the Dashboard:
+
+   | Customer pays | Amount off the $9.99 price | Duration |
+   | --- | --- | --- |
+   | $4.99 | $5.00 USD | Once |
+   | $0.99 | $9.00 USD | Once |
+
+   The code strings stay in the owner notes above (`WHITE499`, `WHITE099`). Do not print them on the buy page.
+
+The White buy page does not start a Coach or Pro session. Coach and Pro each have their own gated Checkout session.
 
 ## Google Drive sign-in
 

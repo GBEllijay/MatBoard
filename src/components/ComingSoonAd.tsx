@@ -1,3 +1,5 @@
+import { AlphaAccessNote } from './AlphaAccessNote';
+import { COACH_PRICE_LINE, PRO_PRICE_LINE } from '../lib/productPrices';
 import {
   COACH_PREVIEW_LABEL,
   COACH_PREVIEW_NOTE,
@@ -38,6 +40,8 @@ export function ComingSoonAd({ product }: Props) {
           </li>
         ))}
       </ul>
+      <p className="soon-ad__price">{product === 'coach' ? COACH_PRICE_LINE : PRO_PRICE_LINE}</p>
+      <AlphaAccessNote />
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
   findPromotionCodeId,
   normalizePromoCode,
   purchaseFromStripeEvent,
+  readCheckoutProduct,
   readStripeConfig,
   verifyStripeSignature,
   type StripeRuntimeEnv,
@@ -69,11 +70,16 @@ export async function handleCheckout(
   if (typeof promoField === 'string' && promoField.trim() && !promo) {
     return json(400, { error: 'Enter a promo code using letters, numbers, underscores, or hyphens.' });
   }
-  if (promo && promo.toUpperCase() === API_FREE_CODE) return grantFreeUnlock(store);
+  const product = readCheckoutProduct((body as { product?: unknown }).product);
+  if (typeof product !== 'string') return json(400, { error: product.error });
+  if (promo && promo.toUpperCase() === API_FREE_CODE) {
+    if (product !== 'white') return json(400, { error: 'That promo code is not active.' });
+    return grantFreeUnlock(store);
+  }
 
-  const config = readStripeConfig(env);
+  const config = readStripeConfig(env, product);
   if ('error' in config) return json(503, { error: config.error });
-  const urls = checkoutReturnUrls(request.url, env);
+  const urls = checkoutReturnUrls(request.url, env, product);
   if ('error' in urls) return json(503, { error: urls.error });
 
   try {
@@ -84,7 +90,9 @@ export async function handleCheckout(
       promotionCodeId = found;
     }
     const fields = checkoutFormFields({
-      priceId: config.price,
+      priceIds: config.priceIds,
+      mode: config.mode,
+      productId: config.productId,
       successUrl: urls.successUrl,
       cancelUrl: urls.cancelUrl,
       promotionCodeId,

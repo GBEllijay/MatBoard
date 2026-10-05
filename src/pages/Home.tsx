@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { AlphaAccessNote } from '../components/AlphaAccessNote';
 import { BeltRail } from '../components/BeltRail';
 import { ComingSoonAd, ComingSoonAdActions } from '../components/ComingSoonAd';
 import { HomeMark } from '../components/HomeMark';
@@ -21,6 +22,7 @@ import {
   WHITE_HOME_DESCRIPTION,
   coachDoorOpen,
 } from '../lib/productNames';
+import { COACH_PRICE_LINE, PRO_PRICE_LINE } from '../lib/productPrices';
 
 export function HomePage() {
   const proUnlocked = useProUnlocked();
@@ -67,17 +69,20 @@ export function HomePage() {
               </div>
             </article>
           ) : (
-            <button
-              type="button"
-              className="mode-card mode-card--coach mode-card--locked"
-              aria-haspopup="dialog"
-              aria-label="Advantage Coach, coming soon"
-              onClick={() => setSoon('coach')}
-            >
+            <article className="mode-card mode-card--coach mode-card--locked">
+              <button
+                type="button"
+                className="mode-card__hit"
+                aria-haspopup="dialog"
+                aria-label="Advantage Coach, coming soon"
+                onClick={() => setSoon('coach')}
+              />
               <BeltRail kind="blue" />
               <strong>Advantage Coach</strong>
               <HomeDescription text={COACH_HOME_DESCRIPTION} />
-            </button>
+              <p className="mode-card__price">{COACH_PRICE_LINE}</p>
+              <AlphaAccessNote />
+            </article>
           )}
 
           {proUnlocked ? (
@@ -96,14 +101,18 @@ export function HomePage() {
               </div>
             </article>
           ) : (
-            <button
-              type="button"
-              className="mode-card mode-card--pro mode-card--locked"
-              aria-haspopup="dialog"
-              onClick={() => setSoon('pro')}
-            >
+            <article className="mode-card mode-card--pro mode-card--locked">
+              <button
+                type="button"
+                className="mode-card__hit"
+                aria-haspopup="dialog"
+                aria-label="Advantage Pro, coming soon"
+                onClick={() => setSoon('pro')}
+              />
               <ProHomeCopy />
-            </button>
+              <p className="mode-card__price">{PRO_PRICE_LINE}</p>
+              <AlphaAccessNote />
+            </article>
           )}
         </nav>
 

@@ -18,6 +18,6 @@
     "noUncheckedSideEffectImports": true,
     "composite": true
   },
-  "include": ["vite.config.ts", "src/server/**/*.ts", "functions/**/*.ts"],
+  "include": ["vite.config.ts", "src/server/**/*.ts", "functions/**/*.ts", "src/lib/checkoutProducts.ts"],
   "exclude": ["src/server/**/*.test.ts"]
 }

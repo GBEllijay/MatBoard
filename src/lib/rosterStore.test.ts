@@ -7,6 +7,7 @@ import {
   beltTipRankBar,
   canPrefill,
   canonicalBelt,
+  competitorCards,
   confirmManualCompetitor,
   defaultRoster,
   findStudentByName,
@@ -32,6 +33,7 @@ import {
   setReadyFlag,
   setReadyNote,
   sortStudents,
+  studentRosterCards,
   NOTE_MAX,
   studentFromInput,
   updateStudent,
@@ -227,6 +229,54 @@ describe('confirmManualCompetitor', () => {
     assert.equal(found?.division, 'Adult Purple');
     const picked = confirmManualCompetitor('alex rivera', { addToRoster: false });
     assert.equal(picked?.division, 'Adult Purple');
+    resetRoster();
+  });
+
+  it('keeps a Coach student add off the Competitor Roster', () => {
+    resetRoster();
+    addStudent({
+      name: 'Alex Rivera',
+      belt: 'Purple',
+      gym: 'Alliance',
+      division: 'Adult Purple',
+      lastPromotion: '',
+      note: '',
+    });
+    const added = confirmManualCompetitor('Sam Cole', {
+      addToRoster: true,
+      belt: 'Blue',
+      rosterList: 'student',
+    });
+    assert.equal(added?.name, 'Sam Cole');
+    assert.equal(added?.belt, 'Blue');
+    const roster = getRoster().students;
+    assert.deepEqual(competitorCards(roster).map((row) => row.name), ['Alex Rivera']);
+    assert.deepEqual(studentRosterCards(roster).map((row) => row.name), ['Sam Cole']);
+    assert.equal(studentRosterCards(roster)[0]?.rosterList, 'student');
+    assert.equal(competitorCards(roster)[0]?.rosterList, undefined);
+
+    const sameName = confirmManualCompetitor('Alex Rivera', {
+      addToRoster: true,
+      belt: 'White',
+      rosterList: 'student',
+    });
+    assert.equal(sameName?.belt, 'White');
+    assert.equal(competitorCards(getRoster().students).length, 1);
+    assert.equal(studentRosterCards(getRoster().students).length, 2);
+
+    const edited = studentRosterCards(getRoster().students).find((row) => row.name === 'Sam Cole');
+    assert.ok(edited);
+    const updated = updateStudent(edited.id, { note: 'Guard first' });
+    assert.equal(updated?.rosterList, 'student');
+    assert.equal(updated?.note, 'Guard first');
+    assert.equal(studentRosterCards(getRoster().students).some((row) => row.name === 'Sam Cole'), true);
+
+    const reloaded = normalizeRoster(JSON.parse(JSON.stringify(getRoster())));
+    assert.deepEqual(
+      studentRosterCards(reloaded.students).map((row) => row.name).sort(),
+      ['Alex Rivera', 'Sam Cole'],
+    );
+    assert.deepEqual(competitorCards(reloaded.students).map((row) => row.name), ['Alex Rivera']);
     resetRoster();
   });
 });
