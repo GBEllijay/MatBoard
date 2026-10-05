@@ -118,6 +118,24 @@ Copy `.env.example` to `.env` for local dev. `.env` is gitignored.
 5. Deliver the webhook (`stripe listen --forward-to localhost:5173/api/stripe/webhook`, or the Dashboard endpoint). The buy page looks up the session a few times.
 6. `GET /api/entitlement?session_id=cs_test_...` returns `{ "entitled": true, "email": "...", "sessionId": "cs_test_..." }`. Locally that row is in `.data/white-entitlements.json`.
 
+Coach is a **one-time $29.99 USD** product. Pro is a **one-time $99.99 USD** purchase plus a **$2.99 USD per month** subscription. Neither is for sale in this app during alpha. Checkout does not read a Coach or Pro Price id. The names to fill later, still unset, are `STRIPE_PRICE_COACH`, `STRIPE_PRICE_PRO`, and `STRIPE_PRICE_PRO_MONTHLY` (see `.env.example`). Create those Stripe prices in the Dashboard. Do not reuse an older Pro price.
+
+Locked Coach and Pro cards say to email advantageappllc@gmail.com for a free alpha code. Owner unlock stays on those cards.
+
+### Dashboard setup still to do for the new prices
+
+1. **Product catalog → Advantage Pro → Add price.** One time, **USD 99.99**. Leave the Price id in Stripe until Pro goes on sale, then copy it to `STRIPE_PRICE_PRO`.
+2. **Same product → Add another price.** Recurring, **USD 2.99**, billed monthly. That id is `STRIPE_PRICE_PRO_MONTHLY` when Pro goes on sale.
+3. **Advantage Coach**, if it is not already a one-time **USD 29.99** price. That id is `STRIPE_PRICE_COACH` when Coach goes on sale.
+4. **White promotion codes** (the public buy page does not show the code text). Checkout already sends `allow_promotion_codes=true` unless a code was attached by the server. Create these coupons, restricted to Advantage White, if they are not already in the Dashboard:
+
+   | Customer pays | Amount off the $9.99 price | Duration |
+   | --- | --- | --- |
+   | $4.99 | $5.00 USD | Once |
+   | $0.99 | $9.00 USD | Once |
+
+   The code strings stay in the owner notes above (`WHITE499`, `WHITE099`). Do not print them on the buy page.
+
 Coach and Pro are named on the buy page as later products. They are not in this Checkout session.
 
 ## Google Drive sign-in

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { AlphaAccessNote } from '../components/AlphaAccessNote';
 import { BeltRail } from '../components/BeltRail';
 import { HomeMark } from '../components/HomeMark';
 import { ProUnlockSheet } from '../components/ProUnlockSheet';
@@ -79,6 +80,7 @@ export function ComingSoonPage() {
               Pro stay Coming soon on home. Gym-owner tools stay off until Coach or Pro is unlocked
               on this browser.
             </p>
+            <AlphaAccessNote />
             <Link className="btn" to="/white">
               Advantage White
             </Link>
