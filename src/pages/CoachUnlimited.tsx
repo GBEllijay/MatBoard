@@ -6,7 +6,7 @@ import { DriveConnectCard } from '../components/DriveConnectCard';
 import { HomeMark } from '../components/HomeMark';
 import { useCurrentSeat } from '../components/SeatSessionBar';
 import { SiteFooter } from '../components/SiteFooter';
-import { coachToolVisible } from '../lib/instructorSeats';
+import { coachToolVisible, isLiveSeat, seatGrantsCoachMenus } from '../lib/instructorSeats';
 import {
   lessonRevisionLabel,
   listLessonRevisions,
@@ -65,7 +65,7 @@ export function CoachUnlimitedPage() {
               ) : null}
             </article>
           )}
-          {seat ? null : <DriveConnectCard />}
+          {!seat || (isLiveSeat(seat) && seatGrantsCoachMenus(seat)) ? <DriveConnectCard /> : null}
         </section>
         <SiteFooter />
       </div>

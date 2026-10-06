@@ -75,14 +75,14 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
     id: 'assistant-coach',
     label: 'Assistant coach',
     plan: 'Coach Unlimited',
-    detail: ['Lesson plans and daily videos', 'Downloads only'],
+    detail: ['Lesson plans and daily videos', 'Cloud and sharing in those menus'],
     permissions: {
       galleryUpload: false,
       dailyLessonPlanAccess: true,
       rosterSubmit: false,
       rosterPull: false,
       downloadTodaysVideos: true,
-      uploadForDistribution: false,
+      uploadForDistribution: true,
       eventsAccess: false,
       proShopAccess: false,
     },
@@ -259,6 +259,61 @@ export function seatPermissionAllows(
 ): boolean {
   if (!permissions) return false;
   return permissions[key];
+}
+
+/** Signed-in invite that has not been revoked. */
+export function isLiveSeat<T extends { status: SeatStatus }>(seat: T | null | undefined): seat is T {
+  return !!seat && seat.status !== 'revoked';
+}
+
+/** Program director preset. Adjusted toggles keep this role id. */
+export function isProgramDirectorSeat(seat: Pick<InstructorSeat, 'status' | 'presetId'> | null): boolean {
+  return isLiveSeat(seat) && seat.presetId === 'program-director';
+}
+
+/**
+ * Gallery, Events, or Pro Shop on the invite.
+ * That is the Media Console menu. Coach and Assistant Coach presets leave it off.
+ */
+export function seatGrantsMediaConsole(seat: Pick<InstructorSeat, 'status' | 'permissions'> | null): boolean {
+  if (!isLiveSeat(seat)) return false;
+  return (
+    seat.permissions.galleryUpload || seat.permissions.eventsAccess || seat.permissions.proShopAccess
+  );
+}
+
+/** Lesson plan or Daily Training Videos. Those are the coach menus on a Pro invite. */
+export function seatGrantsCoachMenus(seat: Pick<InstructorSeat, 'status' | 'permissions'> | null): boolean {
+  if (!isLiveSeat(seat)) return false;
+  return seat.permissions.dailyLessonPlanAccess || seat.permissions.downloadTodaysVideos;
+}
+
+/**
+ * No seat: the menu is not limited by an invite.
+ * A live seat: only the picker flag for that menu.
+ */
+export function seatMenuAllowed(
+  seat: Pick<InstructorSeat, 'status' | 'permissions'> | null,
+  key: keyof InstructorPermissions,
+): boolean {
+  if (!isLiveSeat(seat)) return true;
+  return seat.permissions[key];
+}
+
+/**
+ * Cloud and sharing inside a menu the invite opened.
+ * A live Pro invite matches owner Pro in that menu, including when the
+ * browser Pro unlock is off and when an older binder stored uploads as off.
+ * No seat: cloud stays on the browser Pro unlock. A closed menu stays closed.
+ */
+export function menuCloudSharing(
+  proUnlocked: boolean,
+  seat: Pick<InstructorSeat, 'status'> | null,
+  menuAllowed: boolean,
+): boolean {
+  if (!menuAllowed) return false;
+  if (isLiveSeat(seat)) return true;
+  return proUnlocked;
 }
 
 /**
