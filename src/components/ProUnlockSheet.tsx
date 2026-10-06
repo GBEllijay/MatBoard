@@ -1,7 +1,6 @@
 import { type FormEvent, useState } from 'react';
-import { tryCoachUnlock } from '../lib/coachUnlock';
 import { GYM_CONSOLE_NAME } from '../lib/productNames';
-import { tryUnlock } from '../lib/proUnlock';
+import { tryProductOwnerUnlock } from '../lib/proUnlock';
 import { Sheet } from './Sheet';
 
 type Product = 'coach' | 'pro';
@@ -39,7 +38,7 @@ export function ProUnlockSheet({ open, onClose, product = 'pro' }: Props) {
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    const ok = product === 'coach' ? tryCoachUnlock(code) : tryUnlock(code);
+    const ok = tryProductOwnerUnlock(product, code);
     if (ok) {
       setCode('');
       setError('');
