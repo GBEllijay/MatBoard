@@ -1136,6 +1136,47 @@ button.mode-card__hit {
   line-height: 1.4;
 }
 
+.invite-seat-cap {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.invite-seat-cap__count {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.invite-cap-note {
+  margin: 0;
+  color: var(--binder-muted);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.invite-cap-note a {
+  color: var(--logo-yellow);
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+.invite-owner-only {
+  margin: 0;
+  padding: 1rem 0.95rem;
+  border-radius: 1.15rem;
+  background: #07080c;
+  color: #f7f4ee;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+}
+
+.invite-owner-only p {
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
 .role-options {
   container-type: inline-size;
   display: grid;

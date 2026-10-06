@@ -25,13 +25,12 @@ export function InstructorCollaborationPage() {
               inside those menus match the owner.
             </p>
           ) : null}
+          <InstructorInvitePanel />
           {seat ? (
             <Link className="btn btn--white" to="/coach">
               Open Coach
             </Link>
-          ) : (
-            <InstructorInvitePanel />
-          )}
+          ) : null}
         </section>
         <SiteFooter />
       </div>
