@@ -1,14 +1,13 @@
-import { useCurrentSeat } from '../components/SeatSessionBar.tsx';
-import { parentToolboxPath, toolEyebrow } from '../lib/productNames.ts';
+import { parentToolboxPath, toolEyebrow, visibleProHubs } from '../lib/productNames.ts';
 import { useCoachUnlocked } from './useCoachUnlocked.ts';
-import { useProUnlocked } from './useProUnlocked.ts';
+import { useSeatDoor } from './useSeatDoor.ts';
 
 export function useToolboxParent(): { path: string; eyebrow: string } {
-  const pro = useProUnlocked();
   const coach = useCoachUnlocked();
-  const seated = useCurrentSeat() !== null;
+  const door = useSeatDoor();
+  const proConsole = visibleProHubs(door).length > 0;
   return {
-    path: parentToolboxPath(pro, coach, seated),
-    eyebrow: toolEyebrow(pro, coach, seated),
+    path: parentToolboxPath(door.proUnlocked, coach, door.seated, proConsole),
+    eyebrow: toolEyebrow(door.proUnlocked, coach, door.seated),
   };
 }

@@ -627,6 +627,7 @@ export function ScreensaverPage() {
             if (!seat) return true;
             if (folder.id === 'shop') return seatPermissionAllows(seat.permissions, 'proShopAccess');
             if (folder.id === 'events') return seatPermissionAllows(seat.permissions, 'eventsAccess');
+            if (folder.id === 'gallery') return seatPermissionAllows(seat.permissions, 'galleryUpload');
             return true;
           }).map((folder) => {
             const galleryUpload =

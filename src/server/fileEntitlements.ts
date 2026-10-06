@@ -2,11 +2,16 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import {
   applyEntitlement,
+  applyProEntitlement,
   emptyEntitlementIndex,
   entitlementByEmail,
   entitlementBySession,
   parseEntitlementIndex,
+  proEntitlementByEmail,
+  proEntitlementBySession,
+  proEntitlementBySubscription,
   type EntitlementStore,
+  type ProEntitlement,
   type WhiteEntitlement,
 } from './entitlements.ts';
 
@@ -50,6 +55,23 @@ export function fileEntitlementStore(filePath: string): EntitlementStore {
     },
     findBySessionId(sessionId) {
       return run(() => entitlementBySession(read(), sessionId));
+    },
+    savePro(record: ProEntitlement) {
+      return run(() => {
+        const index = read();
+        const stored = applyProEntitlement(index, record);
+        write(index);
+        return stored;
+      });
+    },
+    findProByEmail(email) {
+      return run(() => proEntitlementByEmail(read(), email));
+    },
+    findProBySessionId(sessionId) {
+      return run(() => proEntitlementBySession(read(), sessionId));
+    },
+    findProBySubscriptionId(subscriptionId) {
+      return run(() => proEntitlementBySubscription(read(), subscriptionId));
     },
   };
 }

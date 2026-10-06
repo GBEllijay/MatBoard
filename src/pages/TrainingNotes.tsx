@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } fr
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { ClassPhotoPromotions } from '../components/ClassPhotoPromotions';
 import { CoachPlanExport } from '../components/CoachPlanExport';
-import { CollaborationGate, SeatSessionBar, useCurrentSeat } from '../components/SeatSessionBar';
+import { CollaborationGate, useCurrentSeat } from '../components/SeatSessionBar';
 import { LessonMediaRail } from '../components/LessonMediaRail';
 import { OpenMyDrive } from '../components/OpenMyDrive';
 import { PlayExitMark } from '../components/PlayExitMark';
@@ -56,7 +56,12 @@ import {
   scheduleLessonDriveDraft,
   subscribeDriveNotice,
 } from '../lib/lessonDrive';
-import { seatPermissionAllows, visibleCoachControl } from '../lib/instructorSeats';
+import {
+  isLiveSeat,
+  menuCloudSharing,
+  seatMenuAllowed,
+  visibleCoachControl,
+} from '../lib/instructorSeats';
 import { COACH_UNLIMITED_PATH, INSTRUCTOR_COACH_ENTRY, UNLIMITED_LESSON_VALUE } from '../lib/productNames';
 import { listPhotos } from '../lib/photoStore';
 import { loadTechniqueBoard } from '../lib/techniqueStore';
@@ -144,17 +149,20 @@ export function TrainingNotesPage() {
   const parent = useToolboxParent();
   const proUnlocked = useProUnlocked();
   const [searchParams] = useSearchParams();
-  /**
-   * Limited Coach is `/notes`. Unlimited is the same page with `plan=unlimited`
-   * and Pro on. A Coach-only browser cannot turn Unlimited on with the query.
-   */
-  const unlimitedPlan = proUnlocked && searchParams.get('plan') === UNLIMITED_LESSON_VALUE;
-  const driveRestoreNotice = restoreNoticeFromState(useLocation().state);
   const seat = useCurrentSeat();
+  const lessonMenu = seatMenuAllowed(seat, 'dailyLessonPlanAccess');
+  const lessonCloud = menuCloudSharing(proUnlocked, seat, lessonMenu);
+  /**
+   * Limited Coach is `/notes`. Owner Unlimited is the same page with `plan=unlimited`
+   * and Pro on. A Pro invite inside the lesson menu gets that same cloud and sharing
+   * even when this browser's Pro unlock is off.
+   */
+  const unlimitedPlan =
+    lessonCloud && (isLiveSeat(seat) || searchParams.get('plan') === UNLIMITED_LESSON_VALUE);
+  const driveRestoreNotice = restoreNoticeFromState(useLocation().state);
   const showDownload = visibleCoachControl('downloadTodaysVideos', { owner: true, seat });
-  const showDistribute =
-    unlimitedPlan && visibleCoachControl('uploadForDistribution', { owner: true, seat });
-  const lessonBlocked = seat !== null && !seatPermissionAllows(seat.permissions, 'dailyLessonPlanAccess');
+  const showDistribute = unlimitedPlan;
+  const lessonBlocked = isLiveSeat(seat) && !lessonMenu;
   useCoachPageSwipe();
   const [boot] = useState(() => {
     const today = localDateKey();
@@ -525,7 +533,6 @@ export function TrainingNotesPage() {
           <h1>{TRAINING_NOTES_LABEL}</h1>
         </div>
       </header>
-      <SeatSessionBar />
       {unlimitedPlan ? <p className="notes__lead">{UNLIMITED_SHARE_LEAD}</p> : null}
       {unlimitedPlan ? <p className="notes__lead">{NOTES_LEAD}</p> : null}
       {lessonBlocked ? (
@@ -545,6 +552,7 @@ export function TrainingNotesPage() {
       {lessonBlocked ? null : (
       <div className="notes__plan">
         {unlimitedPlan ? null : <OpenMyDrive />}
+        {unlimitedPlan && !showDownload ? <OpenMyDrive /> : null}
         {unlimitedPlan ? (
           <Link className="btn btn--ghost notes__copy" to="/class-history">
             {OPEN_DRIVE_CLASS_LABEL}

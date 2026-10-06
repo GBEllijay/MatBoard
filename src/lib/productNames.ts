@@ -1,5 +1,5 @@
 import { CURRICULUM_LABEL, CURRICULUM_PATH } from './competitionCurriculum.ts';
-import { TECHNIQUE_TREE_LABEL, TRAINING_NOTES_LABEL } from './coachCopy.ts';
+import { COMPETITOR_ROSTER_LABEL, TECHNIQUE_TREE_LABEL, TRAINING_NOTES_LABEL } from './coachCopy.ts';
 
 /** User-facing Advantage Pro console name. Keep this exact apostrophe. */
 export const GYM_CONSOLE_NAME = "Gym Owner and Instructor's Console";
@@ -85,6 +85,12 @@ export const COACHING_TOOLS_MENU = [
 export const STUDENT_ROSTER_PATH = '/roster?from=students';
 
 /**
+ * Competitor Roster. The list Tournament Management Pro opens from
+ * Competitor Management System. Coach Unlimited uses the same path.
+ */
+export const COMPETITOR_ROSTER_PATH = '/roster?from=competitors';
+
+/**
  * Basic Advantage Coach page, top to bottom.
  * No Coaching Tools folder and no Competition Team Management.
  */
@@ -116,12 +122,14 @@ export function coachingToolsMenu(unlimited: boolean) {
 /**
  * Advantage Coach Unlimited menu, top to bottom.
  * Daily Lesson Plan is the Unlimited plan that can be uploaded for review.
+ * Competitor Roster sits under Technique Tree and opens the same list as Competitor Management System.
  * Sunday review and Drive cards stay on the page, under this menu.
  */
 export const COACH_UNLIMITED_TOOLS = [
   { title: TRAINING_NOTES_LABEL, to: UNLIMITED_LESSON_PATH, belt: 'brown' as const },
   { title: 'Daily Training Videos', to: '/techniques', belt: 'brown' as const },
   { title: TECHNIQUE_TREE_LABEL, to: '/technique-tree', belt: 'brown' as const },
+  { title: COMPETITOR_ROSTER_LABEL, to: COMPETITOR_ROSTER_PATH, belt: 'brown' as const },
   {
     title: CURRICULUM_LABEL,
     to: `${CURRICULUM_PATH}?plan=${UNLIMITED_LESSON_VALUE}`,
@@ -295,8 +303,9 @@ export function parentToolboxPath(
   proUnlocked: boolean,
   coachUnlocked: boolean,
   seated = false,
+  proConsole = false,
 ): string {
-  if (proUnlocked) return '/pro';
+  if (proUnlocked || proConsole) return '/pro';
   if (coachUnlocked || seated) return '/coach';
   return '/';
 }
@@ -342,16 +351,72 @@ export function coachToolsOpen(proUnlocked: boolean, coachUnlocked: boolean): bo
 }
 
 /**
- * Owner purchase lock for the Pro console.
- * A live instructor seat does not open it.
+ * Owner purchase lock for the full Pro console.
+ * Tournament Management Pro and invite admin stay on this door.
+ * A live seat does not open those owner hubs.
  */
 export function proDoorOpen(proUnlocked: boolean): boolean {
   return proUnlocked;
 }
 
+/** Owner hubs that the invite picker does not grant: suite and invite admin. */
+export function ownerProHubOpen(proUnlocked: boolean, seated: boolean): boolean {
+  return proDoorOpen(proUnlocked) && !seated;
+}
+
+export type ProSurfaceInput = {
+  proUnlocked: boolean;
+  seated: boolean;
+  /** Invite granted gallery, events, or Pro Shop. */
+  seatGrantsMedia: boolean;
+  programDirectorSeat: boolean;
+  /** Invite granted Daily Lesson Plan or Daily Training Videos. */
+  coachMenus: boolean;
+};
+
+/**
+ * Media Console menu.
+ * No seat: the browser Pro unlock opens it.
+ * A seat is the ceiling: the invite must grant gallery, events, or Pro Shop.
+ * Pro unlock opens that granted menu. A Program Director seat opens it
+ * while Pro is locked. Coach and Assistant Coach presets do not.
+ */
+export function mediaConsoleDoorOpen(input: ProSurfaceInput): boolean {
+  if (!input.seated) return input.proUnlocked;
+  if (!input.seatGrantsMedia) return false;
+  if (input.proUnlocked) return true;
+  return input.programDirectorSeat;
+}
+
+/**
+ * Advantage Coach Unlimited hub.
+ * No seat: browser Pro unlock.
+ * A seat: Pro unlock plus a lesson or videos menu on the invite.
+ * Media Console is not this hub.
+ */
+export function coachUnlimitedDoorOpen(input: ProSurfaceInput): boolean {
+  if (!input.seated) return input.proUnlocked;
+  return input.proUnlocked && input.coachMenus;
+}
+
+/** Hubs this browser may show. A seat never receives owner-only hubs. */
+export function visibleProHubs(input: ProSurfaceInput): readonly (typeof PRO_HUBS)[number][] {
+  if (!input.seated) return input.proUnlocked ? PRO_HUBS : [];
+  const hubs: (typeof PRO_HUBS)[number][] = [];
+  if (mediaConsoleDoorOpen(input)) {
+    const media = PRO_HUBS.find((hub) => hub.to.startsWith('/slideshow'));
+    if (media) hubs.push(media);
+  }
+  if (coachUnlimitedDoorOpen(input)) {
+    const coach = PRO_HUBS.find((hub) => hub.to === COACH_UNLIMITED_PATH);
+    if (coach) hubs.push(coach);
+  }
+  return hubs;
+}
+
 /**
  * Coach tools. The owner purchase lock opens them, and so does a live invite seat.
- * The seat still does not open Pro.
+ * The seat still does not open owner-only Pro hubs.
  */
 export function coachDoorOpen(
   proUnlocked: boolean,

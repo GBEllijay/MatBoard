@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { DeviceMediaInput } from '../components/DeviceMediaInput';
 import { OpenMyDrive } from '../components/OpenMyDrive';
 import { FullscreenChip } from '../components/FullscreenChip';
@@ -10,6 +10,7 @@ import { VideoSourceSheet } from '../components/VideoSourceSheet';
 import { useInterval } from '../hooks/useClock';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
+import { instructorSeatBinderLabel, isLiveSeat, menuCloudSharing, seatMenuAllowed } from '../lib/instructorSeats';
 import { useCoachPageSwipe } from '../hooks/useCoachSwipe';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
@@ -23,7 +24,6 @@ import {
 import { loadCurriculumArchive, writeCurriculumBlockClip } from '../lib/competitionCurriculum';
 import { formatMmSs, formatMss, secondsToMs } from '../lib/format';
 import { getDriveBindingSnapshot, subscribeDriveBinding } from '../lib/googleDrive';
-import { instructorSeatBinderLabel } from '../lib/instructorSeats';
 import {
   TRAINING_DRIVE_CONNECT_LABEL,
   TRAINING_DRIVE_CONNECT_TITLE,
@@ -105,10 +105,12 @@ async function loadSharedCurriculumCards(clips: readonly TechniqueClip[]): Promi
 const idleDriveNotice = { phase: 'idle' as const, text: '' };
 
 export function TechniquesPage() {
-  const proSuite = useProUnlocked();
-  const coachUnlocked = useCoachUnlocked();
   const seat = useCurrentSeat();
-  const seatedAuthorized = Boolean(seat?.permissions.downloadTodaysVideos);
+  const videosMenu = seatMenuAllowed(seat, 'downloadTodaysVideos');
+  const proUnlocked = useProUnlocked();
+  const coachUnlocked = useCoachUnlocked();
+  const proSuite = menuCloudSharing(proUnlocked, seat, videosMenu);
+  const seatedAuthorized = isLiveSeat(seat) && videosMenu;
   const driveBinding = useSyncExternalStore(subscribeDriveBinding, getDriveBindingSnapshot, () => null);
   const driveNotice = useSyncExternalStore(subscribeDriveNotice, getDriveNotice, () => idleDriveNotice);
   const handoff = trainingClipHandoff({
@@ -122,8 +124,8 @@ export function TechniquesPage() {
     seatedAuthorized,
   });
   const shareDay = handoff.share;
-  const eyebrow = techniquesPageEyebrow(proSuite, coachUnlocked, seat !== null);
-  const exitPath = techniquesParentPath(proSuite, coachUnlocked, seat !== null);
+  const eyebrow = techniquesPageEyebrow(proUnlocked, coachUnlocked, isLiveSeat(seat));
+  const exitPath = techniquesParentPath(proUnlocked, coachUnlocked, isLiveSeat(seat));
   const seatRole = seat ? instructorSeatBinderLabel(seat.presetId, seat.permissions) : '';
   const [clips, setClips] = useState<TechniqueClip[]>([]);
   const [plan, setPlan] = useState<VideoPlan | null>(null);
@@ -571,6 +573,8 @@ export function TechniquesPage() {
       navigate(destination);
     });
   };
+
+  if (isLiveSeat(seat) && !videosMenu) return <Navigate to="/coach" replace />;
 
   const warmup = plan?.slots.find((slot) => slot.kind === 'warmup') ?? null;
   const cooldown = plan?.slots.find((slot) => slot.kind === 'cooldown') ?? null;

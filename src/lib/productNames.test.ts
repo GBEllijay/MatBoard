@@ -19,12 +19,17 @@ import {
   WHITE_LADDER_DETAIL,
   coachDoorOpen,
   coachToolsOpen,
+  coachUnlimitedDoorOpen,
   isBasicCoach,
   isPlainCoachTournament,
+  mediaConsoleDoorOpen,
+  ownerProHubOpen,
   proDoorOpen,
+  visibleProHubs,
   parentToolboxPath,
   COACH_UNLIMITED_PATH,
   COACH_UNLIMITED_TOOLS,
+  COMPETITOR_ROSTER_PATH,
   coachingToolsMenu,
   COMPETITOR_SYSTEM_NAME,
   INSTRUCTOR_COLLAB_HUB_LABEL,
@@ -200,16 +205,25 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   );
   assert.equal(COACH_UNLIMITED_PATH, '/coach-unlimited');
   assert.equal(UNLIMITED_LESSON_PATH, '/notes?plan=unlimited');
+  assert.equal(COMPETITOR_ROSTER_PATH, '/roster?from=competitors');
   assert.deepEqual(
     COACH_UNLIMITED_TOOLS.map((tool) => tool.title),
-    ['Daily Lesson Plan', 'Daily Training Videos', 'Technique Tree', 'Competition Class Curriculum'],
+    [
+      'Daily Lesson Plan',
+      'Daily Training Videos',
+      'Technique Tree',
+      'Competitor Roster',
+      'Competition Class Curriculum',
+    ],
   );
   assert.equal(COACH_UNLIMITED_TOOLS[0].to, UNLIMITED_LESSON_PATH);
   assert.deepEqual(
     COACH_UNLIMITED_TOOLS.map((tool) => tool.belt),
-    ['brown', 'brown', 'brown', 'tournament'],
+    ['brown', 'brown', 'brown', 'brown', 'tournament'],
   );
-  assert.equal(COACH_UNLIMITED_TOOLS[3].to, '/competition-curriculum?plan=unlimited');
+  assert.equal(COACH_UNLIMITED_TOOLS[3].to, COMPETITOR_ROSTER_PATH);
+  assert.equal(COACH_UNLIMITED_TOOLS[3].belt, 'brown');
+  assert.equal(COACH_UNLIMITED_TOOLS[4].to, '/competition-curriculum?plan=unlimited');
   assert.ok(!COACH_UNLIMITED_TOOLS.some((tool) => tool.to.startsWith('/coaching-tools')));
   assert.deepEqual(
     PRO_HUBS.map((hub) => hub.title),
@@ -338,15 +352,19 @@ test('Shared tools prefer Pro console, then Coach', () => {
   assert.equal(toolEyebrow(false, true), 'Advantage Coach');
 });
 
-test('a live seat opens Coach and leaves the Pro purchase lock closed', () => {
+test('a live seat opens Coach and leaves the owner Pro hubs closed', () => {
   assert.equal(coachDoorOpen(false, false, true), true);
   assert.equal(coachDoorOpen(false, false, false), false);
   assert.equal(coachDoorOpen(false, true, false), true);
   assert.equal(coachDoorOpen(true, false, false), true);
   assert.equal(proDoorOpen(false), false);
   assert.equal(proDoorOpen(true), true);
+  assert.equal(ownerProHubOpen(true, false), true);
+  assert.equal(ownerProHubOpen(true, true), false);
+  assert.equal(ownerProHubOpen(false, false), false);
   assert.equal(parentToolboxPath(false, false, true), '/coach');
   assert.equal(parentToolboxPath(true, false, true), '/pro');
+  assert.equal(parentToolboxPath(false, false, true, true), '/pro');
   assert.equal(toolEyebrow(false, false, true), 'Advantage Coach');
   assert.equal(toolEyebrow(true, false, true), GYM_CONSOLE_NAME);
   assert.equal(coachToolsOpen(false, false), false);
@@ -361,4 +379,71 @@ test('Daily Training Videos names a seated coach instead of the gym owner consol
   assert.equal(techniquesParentPath(true, false, false), '/pro');
   assert.equal(techniquesParentPath(false, true, false), '/coach');
   assert.doesNotMatch(techniquesPageEyebrow(true, false, true), /Gym Owner/);
+});
+
+test('Program Director opens Media Console with Pro locked; other seats do not', () => {
+  const lockedDirector = {
+    proUnlocked: false,
+    seated: true,
+    seatGrantsMedia: true,
+    programDirectorSeat: true,
+    coachMenus: false,
+  };
+  assert.equal(mediaConsoleDoorOpen(lockedDirector), true);
+  assert.deepEqual(
+    visibleProHubs(lockedDirector).map((hub) => hub.title),
+    [MEDIA_CONSOLE_NAME],
+  );
+  assert.equal(coachUnlimitedDoorOpen(lockedDirector), false);
+
+  const lockedAssistant = {
+    proUnlocked: false,
+    seated: true,
+    seatGrantsMedia: false,
+    programDirectorSeat: false,
+    coachMenus: true,
+  };
+  assert.equal(mediaConsoleDoorOpen(lockedAssistant), false);
+  assert.deepEqual(visibleProHubs(lockedAssistant), []);
+
+  const lockedCoachWithGallery = {
+    proUnlocked: false,
+    seated: true,
+    seatGrantsMedia: true,
+    programDirectorSeat: false,
+    coachMenus: true,
+  };
+  assert.equal(mediaConsoleDoorOpen(lockedCoachWithGallery), false);
+
+  const proAssistant = { ...lockedAssistant, proUnlocked: true };
+  assert.equal(mediaConsoleDoorOpen(proAssistant), false);
+  assert.equal(coachUnlimitedDoorOpen(proAssistant), true);
+  assert.deepEqual(
+    visibleProHubs(proAssistant).map((hub) => hub.to),
+    [COACH_UNLIMITED_PATH],
+  );
+
+  const proDirector = { ...lockedDirector, proUnlocked: true };
+  assert.equal(mediaConsoleDoorOpen(proDirector), true);
+  assert.deepEqual(
+    visibleProHubs(proDirector).map((hub) => hub.title),
+    [MEDIA_CONSOLE_NAME],
+  );
+
+  const strippedDirector = { ...lockedDirector, seatGrantsMedia: false };
+  assert.equal(mediaConsoleDoorOpen(strippedDirector), false);
+
+  const owner = {
+    proUnlocked: true,
+    seated: false,
+    seatGrantsMedia: false,
+    programDirectorSeat: false,
+    coachMenus: false,
+  };
+  assert.equal(mediaConsoleDoorOpen(owner), true);
+  assert.deepEqual(
+    visibleProHubs(owner).map((hub) => hub.title),
+    PRO_HUBS.map((hub) => hub.title),
+  );
+  assert.equal(mediaConsoleDoorOpen({ ...owner, proUnlocked: false }), false);
 });

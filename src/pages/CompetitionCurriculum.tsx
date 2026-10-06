@@ -4,7 +4,6 @@ import { DriveConnectCard } from '../components/DriveConnectCard';
 import { LessonMediaRail } from '../components/LessonMediaRail';
 import { OpenMyDrive } from '../components/OpenMyDrive';
 import { PlayExitMark } from '../components/PlayExitMark';
-import { SeatSessionBar } from '../components/SeatSessionBar';
 import { Sheet } from '../components/Sheet';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { COACH_LESSON_EYEBROW } from '../lib/coachCopy';
@@ -314,7 +313,6 @@ export function CompetitionCurriculumPage() {
           <h1>{CURRICULUM_LABEL}</h1>
         </div>
       </header>
-      <SeatSessionBar />
       <div className="notes__plan">
         <OpenMyDrive />
         <section className="notes__archive" aria-label="Saved days">

@@ -1,6 +1,12 @@
 /**
  * Owner-issued instructor seats for Instructor Collaboration and Advantage Coach Unlimited.
- * Soft beta: records stay on this device. No email send, billing, or invite cap.
+ * Soft beta: records stay on this device. Advantage does not email the link.
+ *
+ * Pro's default seat budget is 10 open seats (invited or active). Revoked seats
+ * free a slot. Every role uses that budget, including assistant coach. A
+ * signed-in seat cannot issue invites. Program directors do not get a path to
+ * invite assistants. Owners who need more seats ask by email; this build does
+ * not sell extra seats.
  *
  * This app has no separate gym id. The Media Console gym name
  * (`matboard.gymName.v1`) is the gym identity when one is saved. A blank name
@@ -8,11 +14,23 @@
  */
 
 import { readGymName } from './gymName.ts';
+import { SITE_FEEDBACK_EMAIL } from './siteFooter.ts';
+
+/** Default Pro budget for open coach, program director, and instructor seats. */
+export const PRO_INSTRUCTOR_SEAT_CAP = 10;
+
+/** Shown next to the seat count. Not a checkout. */
+export const PRO_SEAT_CAP_REQUEST_NOTE = `Additional seats may be available for authorization upon owner request. Email ${SITE_FEEDBACK_EMAIL}.`;
 
 export const INSTRUCTOR_SEATS_STORAGE_KEY = 'matboard.pro.instructorSeats.v1';
 export const INSTRUCTOR_SEAT_SESSION_KEY = 'matboard.pro.instructorSeatSession.v1';
+/** Invite token that must not be restored by a hard refresh of the signed-out page. */
+export const INSTRUCTOR_SEAT_SIGNED_OUT_KEY = 'matboard.pro.instructorSeatSignedOut.v1';
+const SIGNED_OUT_TOAST_KEY = 'matboard.pro.instructorSeatSignedOutToast.v1';
 const SEATS_EVENT = 'matboard-instructor-seats';
 const SESSION_EVENT = 'matboard-instructor-seat-session';
+const TOAST_EVENT = 'matboard-instructor-seat-signed-out';
+const SESSION_CHANNEL = 'matboard-instructor-seat-session';
 const EMAIL_MAX = 254;
 
 export type SeatStatus = 'invited' | 'active' | 'revoked';
@@ -64,7 +82,11 @@ export type InstructorPreset = {
   label: string;
   /** Which product plan this tier sits on. */
   plan: InstructorPlanName;
-  /** Lines under the role button. Assistant coach uses two. */
+  /**
+   * Lines under the role button.
+   * The first line is which menus this invite opens.
+   * Cloud and sharing stay full inside those menus for every role.
+   */
   detail: readonly string[];
   permissions: InstructorPermissions;
 };
@@ -75,14 +97,14 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
     id: 'assistant-coach',
     label: 'Assistant coach',
     plan: 'Coach Unlimited',
-    detail: ['Lesson plans and daily videos', 'Downloads only'],
+    detail: ['Lesson plans and daily videos', 'Full cloud and sharing in these menus'],
     permissions: {
       galleryUpload: false,
       dailyLessonPlanAccess: true,
       rosterSubmit: false,
       rosterPull: false,
       downloadTodaysVideos: true,
-      uploadForDistribution: false,
+      uploadForDistribution: true,
       eventsAccess: false,
       proShopAccess: false,
     },
@@ -91,7 +113,7 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
     id: 'coach',
     label: 'Coach',
     plan: 'Coach Unlimited',
-    detail: ['Lesson plans and daily videos with uploads'],
+    detail: ['Lesson plans, daily videos, and uploads', 'Full cloud and sharing in these menus'],
     permissions: {
       galleryUpload: false,
       dailyLessonPlanAccess: true,
@@ -107,7 +129,7 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
     id: 'program-director',
     label: 'Program director',
     plan: 'Pro · Gallery',
-    detail: ['Events, Pro Shop, and gallery'],
+    detail: ['Events, Pro Shop, and gallery', 'Full cloud and sharing in these menus'],
     permissions: {
       galleryUpload: true,
       dailyLessonPlanAccess: false,
@@ -123,7 +145,10 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
     id: 'instructors',
     label: 'Instructors',
     plan: 'Coach Unlimited + Pro',
-    detail: ['Adds the slideshow for events, Pro Shop, and gallery'],
+    detail: [
+      'Lessons, uploads, events, Pro Shop, and gallery',
+      'Full cloud and sharing in these menus',
+    ],
     permissions: {
       galleryUpload: true,
       dailyLessonPlanAccess: true,
@@ -155,9 +180,11 @@ type SeatArchive = {
   seats: InstructorSeat[];
 };
 
+export type IssueInviteFailure = 'email' | 'duplicate' | 'storage' | 'cap' | 'owner';
+
 export type IssueInviteResult =
   | { ok: true; seat: InstructorSeat; inviteLink: string }
-  | { ok: false; reason: 'email' | 'duplicate' | 'storage' };
+  | { ok: false; reason: IssueInviteFailure };
 
 export type SeatWriteResult =
   | { ok: true; seat: InstructorSeat }
@@ -261,6 +288,61 @@ export function seatPermissionAllows(
   return permissions[key];
 }
 
+/** Signed-in invite that has not been revoked. */
+export function isLiveSeat<T extends { status: SeatStatus }>(seat: T | null | undefined): seat is T {
+  return !!seat && seat.status !== 'revoked';
+}
+
+/** Program director preset. Adjusted toggles keep this role id. */
+export function isProgramDirectorSeat(seat: Pick<InstructorSeat, 'status' | 'presetId'> | null): boolean {
+  return isLiveSeat(seat) && seat.presetId === 'program-director';
+}
+
+/**
+ * Gallery, Events, or Pro Shop on the invite.
+ * That is the Media Console menu. Coach and Assistant Coach presets leave it off.
+ */
+export function seatGrantsMediaConsole(seat: Pick<InstructorSeat, 'status' | 'permissions'> | null): boolean {
+  if (!isLiveSeat(seat)) return false;
+  return (
+    seat.permissions.galleryUpload || seat.permissions.eventsAccess || seat.permissions.proShopAccess
+  );
+}
+
+/** Lesson plan or Daily Training Videos. Those are the coach menus on a Pro invite. */
+export function seatGrantsCoachMenus(seat: Pick<InstructorSeat, 'status' | 'permissions'> | null): boolean {
+  if (!isLiveSeat(seat)) return false;
+  return seat.permissions.dailyLessonPlanAccess || seat.permissions.downloadTodaysVideos;
+}
+
+/**
+ * No seat: the menu is not limited by an invite.
+ * A live seat: only the picker flag for that menu.
+ */
+export function seatMenuAllowed(
+  seat: Pick<InstructorSeat, 'status' | 'permissions'> | null,
+  key: keyof InstructorPermissions,
+): boolean {
+  if (!isLiveSeat(seat)) return true;
+  return seat.permissions[key];
+}
+
+/**
+ * Cloud and sharing inside a menu the invite opened.
+ * A live Pro invite matches owner Pro in that menu, including when the
+ * browser Pro unlock is off and when an older binder stored uploads as off.
+ * No seat: cloud stays on the browser Pro unlock. A closed menu stays closed.
+ */
+export function menuCloudSharing(
+  proUnlocked: boolean,
+  seat: Pick<InstructorSeat, 'status'> | null,
+  menuAllowed: boolean,
+): boolean {
+  if (!menuAllowed) return false;
+  if (isLiveSeat(seat)) return true;
+  return proUnlocked;
+}
+
 /**
  * Coach hub links. No seat shows every tool. A signed-in seat hides Daily
  * Lesson Plan or Daily Training Videos when that switch is off. Technique Tree
@@ -353,9 +435,13 @@ function writeArchive(archive: SeatArchive): boolean {
   }
 }
 
+let seatSnapshot: InstructorSeat | null = null;
+let seatSnapshotKey = '';
+
 function invalidateSeatSnapshot(): void {
   // Empty string is also the signed-out cache key. A sentinel forces the next read.
   seatSnapshotKey = '\0';
+  seatSnapshot = null;
 }
 
 function emitSeats(): void {
@@ -398,6 +484,23 @@ function openEmailTaken(seats: readonly InstructorSeat[], email: string): boolea
   );
 }
 
+/** Invited and active seats hold a slot. Revoked seats do not. */
+export function instructorSeatOccupiesCap(status: SeatStatus): boolean {
+  return status === 'invited' || status === 'active';
+}
+
+export function countOpenInstructorSeats(seats: readonly Pick<InstructorSeat, 'status'>[]): number {
+  return seats.filter((seat) => instructorSeatOccupiesCap(seat.status)).length;
+}
+
+export function proSeatUsageLabel(used: number): string {
+  return `${used} of ${PRO_INSTRUCTOR_SEAT_CAP} seats used`;
+}
+
+export function proSeatCapBlockedCopy(): string {
+  return `All ${PRO_INSTRUCTOR_SEAT_CAP} seats are in use. Revoke a seat to issue another invite. ${PRO_SEAT_CAP_REQUEST_NOTE}`;
+}
+
 export function issueInstructorInvite(input: {
   email: string;
   permissions?: Partial<InstructorPermissions>;
@@ -408,8 +511,12 @@ export function issueInstructorInvite(input: {
 }): IssueInviteResult {
   const email = normalizeInviteEmail(input.email);
   if (!isInviteEmail(email)) return { ok: false, reason: 'email' };
+  if (readCurrentSeat()) return { ok: false, reason: 'owner' };
   const archive = readArchive();
   if (openEmailTaken(archive.seats, email)) return { ok: false, reason: 'duplicate' };
+  if (countOpenInstructorSeats(archive.seats) >= PRO_INSTRUCTOR_SEAT_CAP) {
+    return { ok: false, reason: 'cap' };
+  }
   const token = input.token?.trim() || newId();
   const seat: InstructorSeat = {
     id: newId(),
@@ -449,9 +556,6 @@ export function updateInstructorSeatPermissions(
 
 type SeatSessionRecord = { version: 1; seatId: string };
 
-let seatSnapshot: InstructorSeat | null = null;
-let seatSnapshotKey = '';
-
 function readSessionSeatId(): string | null {
   try {
     if (typeof localStorage === 'undefined') return null;
@@ -481,6 +585,191 @@ function emitSession(): void {
   window.dispatchEvent(new Event(SESSION_EVENT));
 }
 
+type SignedOutBlock = { version: 1; token: string; seatId: string };
+
+let signedOutToast = false;
+let sessionChannel: BroadcastChannel | null = null;
+
+function readSignedOutBlock(): SignedOutBlock | null {
+  try {
+    if (typeof localStorage === 'undefined') return null;
+    const raw = localStorage.getItem(INSTRUCTOR_SEAT_SIGNED_OUT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<SignedOutBlock>;
+    if (parsed.version !== 1 || typeof parsed.token !== 'string' || !parsed.token) return null;
+    if (typeof parsed.seatId !== 'string' || !parsed.seatId) return null;
+    return { version: 1, token: parsed.token, seatId: parsed.seatId };
+  } catch {
+    return null;
+  }
+}
+
+function writeSignedOutBlock(block: SignedOutBlock): void {
+  try {
+    localStorage.setItem(INSTRUCTOR_SEAT_SIGNED_OUT_KEY, JSON.stringify(block));
+  } catch {
+    /* the session key removal still signs this tab out */
+  }
+}
+
+function clearSignedOutBlock(): void {
+  try {
+    localStorage.removeItem(INSTRUCTOR_SEAT_SIGNED_OUT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** `performance` navigation type, or null when this runtime does not report one. */
+export function currentNavigationType(): string | null {
+  try {
+    if (typeof performance === 'undefined' || typeof performance.getEntriesByType !== 'function') return null;
+    const entry = performance.getEntriesByType('navigation')[0] as { type?: string } | undefined;
+    return typeof entry?.type === 'string' ? entry.type : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A hard refresh of the invite address must not sign the seat back in.
+ * A fresh visit (`navigate`) still opens the invite.
+ */
+export function inviteReloadBlocked(
+  token: string,
+  navigationType: string | null,
+  inviteInAddress: string | null,
+): boolean {
+  if (navigationType !== 'reload') return false;
+  const block = readSignedOutBlock();
+  if (!block) return false;
+  const trimmed = token.trim();
+  if (!trimmed || block.token !== trimmed) return false;
+  return (inviteInAddress ?? '').trim() === trimmed;
+}
+
+/** Drop `?invite=` so the next load cannot treat this page as a fresh invite open. */
+export function stripInviteFromAddress(): void {
+  if (typeof window === 'undefined') return;
+  const url = new URL(window.location.href);
+  if (!url.searchParams.has('invite')) return;
+  url.searchParams.delete('invite');
+  const next = `${url.pathname}${url.search}${url.hash}`;
+  window.history.replaceState(window.history.state, '', next);
+}
+
+function armSignedOutToast(): void {
+  signedOutToast = true;
+  try {
+    if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(SIGNED_OUT_TOAST_KEY, '1');
+  } catch {
+    /* the in-memory toast still shows in this tab */
+  }
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new Event(TOAST_EVENT));
+}
+
+function restoreSignedOutToast(): void {
+  try {
+    if (typeof sessionStorage === 'undefined') return;
+    if (sessionStorage.getItem(SIGNED_OUT_TOAST_KEY) === '1') signedOutToast = true;
+  } catch {
+    /* ignore */
+  }
+}
+
+restoreSignedOutToast();
+
+export function readSignedOutToast(): boolean {
+  return signedOutToast;
+}
+
+export function consumeSignedOutToast(): void {
+  if (!signedOutToast) {
+    try {
+      if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(SIGNED_OUT_TOAST_KEY);
+    } catch {
+      /* ignore */
+    }
+    return;
+  }
+  signedOutToast = false;
+  try {
+    if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(SIGNED_OUT_TOAST_KEY);
+  } catch {
+    /* ignore */
+  }
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new Event(TOAST_EVENT));
+}
+
+export function subscribeSignedOutToast(fn: () => void): () => void {
+  if (typeof window === 'undefined') return () => {};
+  window.addEventListener(TOAST_EVENT, fn);
+  return () => window.removeEventListener(TOAST_EVENT, fn);
+}
+
+function postSeatSignOut(): void {
+  if (typeof BroadcastChannel === 'undefined') return;
+  try {
+    const channel = sessionChannel ?? new BroadcastChannel(SESSION_CHANNEL);
+    channel.postMessage({ type: 'sign-out' });
+    if (!sessionChannel) channel.close();
+  } catch {
+    /* other tabs still hear localStorage */
+  }
+}
+
+function onRemoteSeatSignOut(): void {
+  invalidateSeatSnapshot();
+  armSignedOutToast();
+  stripInviteFromAddress();
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new Event(SESSION_EVENT));
+}
+
+function installSessionChannel(): void {
+  if (typeof window === 'undefined' || typeof BroadcastChannel === 'undefined') return;
+  if (sessionChannel) return;
+  try {
+    sessionChannel = new BroadcastChannel(SESSION_CHANNEL);
+    sessionChannel.onmessage = (event: MessageEvent) => {
+      const data = event.data as { type?: string } | null;
+      if (!data || data.type !== 'sign-out') return;
+      onRemoteSeatSignOut();
+    };
+  } catch {
+    sessionChannel = null;
+  }
+}
+
+installSessionChannel();
+
+function clearDurableSeatSession(): void {
+  try {
+    localStorage.removeItem(INSTRUCTOR_SEAT_SESSION_KEY);
+  } catch {
+    /* keep going */
+  }
+  try {
+    if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(INSTRUCTOR_SEAT_SESSION_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Gym TV casts stay clear of the seat bar and the signed-out toast. */
+const SEAT_CHROME_HIDDEN = new Set(['/match', '/training', '/slideshow', '/screensaver']);
+
+export function seatChromeHidden(pathname: string): boolean {
+  return SEAT_CHROME_HIDDEN.has(pathname);
+}
+
+/** A live instructor seat already has access. Do not push Coach or Pro purchase. */
+export function purchasePromptsHidden(seat: { status: SeatStatus } | null): boolean {
+  return Boolean(seat && seat.status !== 'revoked');
+}
+
 /** Active seat on this device, or null when signed out, missing, or revoked. */
 export function readCurrentSeat(): InstructorSeat | null {
   const id = readSessionSeatId();
@@ -508,13 +797,20 @@ export function subscribeSeatSession(fn: () => void): () => void {
   };
 }
 
+/**
+ * End the seat on this device immediately.
+ * Other tabs hear it through storage and a broadcast. A hard refresh of the
+ * invite address does not sign that seat back in.
+ */
 export function signOutInstructorSeat(): void {
-  try {
-    localStorage.removeItem(INSTRUCTOR_SEAT_SESSION_KEY);
-  } catch {
-    /* keep going */
-  }
+  const id = readSessionSeatId();
+  const seat = id ? readArchive().seats.find((row) => row.id === id) : undefined;
+  if (seat) writeSignedOutBlock({ version: 1, token: seat.inviteToken, seatId: seat.id });
+  clearDurableSeatSession();
+  armSignedOutToast();
+  stripInviteFromAddress();
   emitSession();
+  postSeatSignOut();
 }
 
 /**
@@ -538,9 +834,15 @@ export function peekInstructorInvite(token: string): 'open' | 'missing' | 'revok
  */
 export function acceptInstructorInvite(
   token: string,
-): { ok: true; seat: InstructorSeat } | { ok: false; reason: 'missing' | 'revoked' | 'storage' } {
+): { ok: true; seat: InstructorSeat } | { ok: false; reason: 'missing' | 'revoked' | 'storage' | 'signed-out' } {
   const trimmed = token.trim();
   if (!trimmed) return { ok: false, reason: 'missing' };
+  if (typeof window !== 'undefined') {
+    const inviteInAddress = new URLSearchParams(window.location.search).get('invite');
+    if (inviteReloadBlocked(trimmed, currentNavigationType(), inviteInAddress)) {
+      return { ok: false, reason: 'signed-out' };
+    }
+  }
   const archive = readArchive();
   const seat = archive.seats.find((row) => row.inviteToken === trimmed);
   if (!seat) return { ok: false, reason: 'missing' };
@@ -548,6 +850,8 @@ export function acceptInstructorInvite(
   if (seat.status === 'invited') seat.status = 'active';
   if (!writeArchive(archive)) return { ok: false, reason: 'storage' };
   if (!writeSession(seat.id)) return { ok: false, reason: 'storage' };
+  clearSignedOutBlock();
+  consumeSignedOutToast();
   emitSeats();
   emitSession();
   return { ok: true, seat: cloneSeat(seat) };
