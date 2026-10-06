@@ -47,7 +47,7 @@ export const TECHNIQUE_FOLDER = {
   mimePrefix: 'video/',
   labelPrefix: 'Clip',
   emptyCopy:
-    'Add video opens Record or Pick from gallery — one clip per card. Clips stay on this device until Google Drive is connected.',
+    'Add video opens Record or Pick from gallery — one clip per card. Connect Google Drive, then save this day, to copy clips into the gym Drive folder for the gym owner and instructors. Until then, they stay on this device and are not shared yet.',
   orderHint: 'Tap a card to select it. Start loops that clip.',
 } as const;
 

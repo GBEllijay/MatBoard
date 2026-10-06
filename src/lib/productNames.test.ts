@@ -56,6 +56,8 @@ import {
   ROUND_CONTROLLER_PATH,
   TOURNAMENT_SOFTWARE_NAME,
   TOURNAMENT_SUITE_NAME,
+  techniquesPageEyebrow,
+  techniquesParentPath,
   toolEyebrow,
   tournamentToolLabel,
   withSuiteFrom,
@@ -366,6 +368,17 @@ test('a live seat opens Coach and leaves the owner Pro hubs closed', () => {
   assert.equal(toolEyebrow(false, false, true), 'Advantage Coach');
   assert.equal(toolEyebrow(true, false, true), GYM_CONSOLE_NAME);
   assert.equal(coachToolsOpen(false, false), false);
+});
+
+test('Daily Training Videos names a seated coach instead of the gym owner console', () => {
+  assert.equal(techniquesPageEyebrow(true, false, true), 'Advantage Coach');
+  assert.equal(techniquesPageEyebrow(true, false, false), GYM_CONSOLE_NAME);
+  assert.equal(techniquesPageEyebrow(false, true, false), 'Advantage Coach');
+  assert.equal(techniquesPageEyebrow(false, false, true), 'Advantage Coach');
+  assert.equal(techniquesParentPath(true, false, true), '/coach');
+  assert.equal(techniquesParentPath(true, false, false), '/pro');
+  assert.equal(techniquesParentPath(false, true, false), '/coach');
+  assert.doesNotMatch(techniquesPageEyebrow(true, false, true), /Gym Owner/);
 });
 
 test('Program Director opens Media Console with Pro locked; other seats do not', () => {

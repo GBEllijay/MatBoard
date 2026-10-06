@@ -316,6 +316,30 @@ export function toolEyebrow(proUnlocked: boolean, coachUnlocked: boolean, seated
   return GYM_CONSOLE_NAME;
 }
 
+/**
+ * Daily Training Videos header.
+ * A seated coach is not labeled as the gym owner console, even on a Pro browser.
+ * Other tools keep toolEyebrow.
+ */
+export function techniquesPageEyebrow(
+  proUnlocked: boolean,
+  coachUnlocked: boolean,
+  seated = false,
+): string {
+  if (seated) return 'Advantage Coach';
+  return toolEyebrow(proUnlocked, coachUnlocked, false);
+}
+
+/** Back target for Daily Training Videos. A live seat returns to Coach, not the Pro console. */
+export function techniquesParentPath(
+  proUnlocked: boolean,
+  coachUnlocked: boolean,
+  seated = false,
+): string {
+  if (seated) return '/coach';
+  return parentToolboxPath(proUnlocked, coachUnlocked, false);
+}
+
 /** Owner Console label; Coach keeps Mock Tournament when Pro is off. */
 export function tournamentToolLabel(proUnlocked: boolean): string {
   return proUnlocked ? TOURNAMENT_SOFTWARE_NAME : MOCK_TOURNAMENT_NAME;

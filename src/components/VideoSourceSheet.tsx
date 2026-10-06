@@ -23,6 +23,11 @@ type Props = {
   stacked?: boolean;
   /** Overrides the default “stays on this device” line. Gallery keeps the default. */
   stay?: string;
+  /** Daily Training Videos frames Open my Drive as the day-save handoff. */
+  driveOpenLabel?: string;
+  driveConnectLabel?: string;
+  driveConnectTitle?: string;
+  driveConnectHint?: string;
   /**
    * Media Console only. Opens the gym Drive folder picker.
    * Phone Take photo / Pick from gallery stay on the other buttons.
@@ -70,6 +75,10 @@ export function MediaSourceSheet({
   libraryInputId,
   stacked = false,
   stay,
+  driveOpenLabel,
+  driveConnectLabel,
+  driveConnectTitle,
+  driveConnectHint,
   onPickDrive,
   onClose,
 }: Props) {
@@ -102,7 +111,12 @@ export function MediaSourceSheet({
           </button>
         ) : null}
       </div>
-      <OpenMyDrive />
+      <OpenMyDrive
+        openLabel={driveOpenLabel}
+        connectLabel={driveConnectLabel}
+        connectTitle={driveConnectTitle}
+        connectHint={driveConnectHint}
+      />
     </Sheet>
   );
 }

@@ -8897,6 +8897,50 @@ input.roster-pick__name:focus,
   border-color: transparent;
 }
 
+.techniques__handoff {
+  width: min(40rem, 100%);
+  margin: 0.7rem auto 0;
+  padding: 0.85rem 0.95rem;
+  border-radius: 16px;
+  border: 1px solid rgba(252, 192, 0, 0.7);
+  background: rgba(8, 16, 32, 0.92);
+  color: var(--ink);
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.techniques__handoff h2 {
+  margin: 0 0 0.35rem;
+  color: var(--gold-2);
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.techniques__handoff p + p {
+  margin-top: 0.45rem;
+}
+
+.techniques__context {
+  color: var(--gold-2);
+}
+
+.techniques__handoff-warn {
+  color: var(--ink);
+}
+
+.techniques__bar > .seat-session {
+  flex: 1 1 100%;
+  font-size: 0.92rem;
+}
+
+.techniques .open-drive {
+  white-space: normal;
+  text-align: center;
+  line-height: 1.25;
+  height: auto;
+}
+
 .techniques__note,
 .techniques__focus {
   width: min(40rem, 100%);
