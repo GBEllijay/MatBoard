@@ -1,6 +1,12 @@
 /**
  * Owner-issued instructor seats for Instructor Collaboration and Advantage Coach Unlimited.
- * Soft beta: records stay on this device. No email send, billing, or invite cap.
+ * Soft beta: records stay on this device. Advantage does not email the link.
+ *
+ * Pro's default seat budget is 10 open seats (invited or active). Revoked seats
+ * free a slot. Every role uses that budget, including assistant coach. A
+ * signed-in seat cannot issue invites. Program directors do not get a path to
+ * invite assistants. Owners who need more seats ask by email; this build does
+ * not sell extra seats.
  *
  * This app has no separate gym id. The Media Console gym name
  * (`matboard.gymName.v1`) is the gym identity when one is saved. A blank name
@@ -8,6 +14,13 @@
  */
 
 import { readGymName } from './gymName.ts';
+import { SITE_FEEDBACK_EMAIL } from './siteFooter.ts';
+
+/** Default Pro budget for open coach, program director, and instructor seats. */
+export const PRO_INSTRUCTOR_SEAT_CAP = 10;
+
+/** Shown next to the seat count. Not a checkout. */
+export const PRO_SEAT_CAP_REQUEST_NOTE = `Additional seats may be available for authorization upon owner request. Email ${SITE_FEEDBACK_EMAIL}.`;
 
 export const INSTRUCTOR_SEATS_STORAGE_KEY = 'matboard.pro.instructorSeats.v1';
 export const INSTRUCTOR_SEAT_SESSION_KEY = 'matboard.pro.instructorSeatSession.v1';
@@ -155,9 +168,11 @@ type SeatArchive = {
   seats: InstructorSeat[];
 };
 
+export type IssueInviteFailure = 'email' | 'duplicate' | 'storage' | 'cap' | 'owner';
+
 export type IssueInviteResult =
   | { ok: true; seat: InstructorSeat; inviteLink: string }
-  | { ok: false; reason: 'email' | 'duplicate' | 'storage' };
+  | { ok: false; reason: IssueInviteFailure };
 
 export type SeatWriteResult =
   | { ok: true; seat: InstructorSeat }
@@ -398,6 +413,23 @@ function openEmailTaken(seats: readonly InstructorSeat[], email: string): boolea
   );
 }
 
+/** Invited and active seats hold a slot. Revoked seats do not. */
+export function instructorSeatOccupiesCap(status: SeatStatus): boolean {
+  return status === 'invited' || status === 'active';
+}
+
+export function countOpenInstructorSeats(seats: readonly Pick<InstructorSeat, 'status'>[]): number {
+  return seats.filter((seat) => instructorSeatOccupiesCap(seat.status)).length;
+}
+
+export function proSeatUsageLabel(used: number): string {
+  return `${used} of ${PRO_INSTRUCTOR_SEAT_CAP} seats used`;
+}
+
+export function proSeatCapBlockedCopy(): string {
+  return `All ${PRO_INSTRUCTOR_SEAT_CAP} seats are in use. Revoke a seat to issue another invite. ${PRO_SEAT_CAP_REQUEST_NOTE}`;
+}
+
 export function issueInstructorInvite(input: {
   email: string;
   permissions?: Partial<InstructorPermissions>;
@@ -408,8 +440,12 @@ export function issueInstructorInvite(input: {
 }): IssueInviteResult {
   const email = normalizeInviteEmail(input.email);
   if (!isInviteEmail(email)) return { ok: false, reason: 'email' };
+  if (readCurrentSeat()) return { ok: false, reason: 'owner' };
   const archive = readArchive();
   if (openEmailTaken(archive.seats, email)) return { ok: false, reason: 'duplicate' };
+  if (countOpenInstructorSeats(archive.seats) >= PRO_INSTRUCTOR_SEAT_CAP) {
+    return { ok: false, reason: 'cap' };
+  }
   const token = input.token?.trim() || newId();
   const seat: InstructorSeat = {
     id: newId(),

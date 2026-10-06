@@ -4,12 +4,16 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { CollaborationGate } from '../components/CollaborationGate.ts';
 import { GYM_NAME_STORAGE_KEY, writeGymName } from './gymName.ts';
+import { SITE_FEEDBACK_EMAIL } from './siteFooter.ts';
 import {
   DEFAULT_INSTRUCTOR_PERMISSIONS,
   INSTRUCTOR_PERMISSION_FIELDS,
   INSTRUCTOR_SEAT_SESSION_KEY,
   INSTRUCTOR_SEATS_STORAGE_KEY,
   INSTRUCTOR_PRESETS,
+  PRO_INSTRUCTOR_SEAT_CAP,
+  PRO_SEAT_CAP_REQUEST_NOTE,
+  countOpenInstructorSeats,
   defaultInstructorPermissions,
   instructorInviteLink,
   instructorPresetPermissions,
@@ -21,6 +25,8 @@ import {
   permissionsMatchPreset,
   listInstructorSeats,
   normalizeInstructorPermissions,
+  proSeatCapBlockedCopy,
+  proSeatUsageLabel,
   readCurrentSeat,
   revokeInstructorSeat,
   coachToolVisible,
@@ -29,6 +35,7 @@ import {
   updateInstructorSeatPermissions,
   visibleCoachControl,
   type InstructorPermissions,
+  type InstructorPresetId,
   type InstructorSeat,
 } from './instructorSeats.ts';
 
@@ -219,20 +226,8 @@ test('open seats can be edited and revoked, and a revoked email can be invited a
   assert.equal(listInstructorSeats()[0].inviteToken, 'new-token');
 });
 
-test('there is no invite cap, and junk storage is ignored', () => {
+test('junk storage is ignored', () => {
   reset();
-  for (let index = 0; index < 12; index += 1) {
-    const issued = issueInstructorInvite({
-      email: `coach${index}@gym.com`,
-      origin: 'https://advantage.test',
-      now: index,
-      token: `tok-${index}`,
-    });
-    assert.equal(issued.ok, true);
-  }
-  assert.equal(listInstructorSeats().length, 12);
-  assert.equal(listInstructorSeats()[0].email, 'coach11@gym.com');
-
   localStorage.setItem(INSTRUCTOR_SEATS_STORAGE_KEY, '{');
   assert.deepEqual(listInstructorSeats(), []);
   localStorage.setItem(
@@ -247,6 +242,91 @@ test('there is no invite cap, and junk storage is ignored', () => {
     ok: false,
     reason: 'missing',
   });
+});
+
+test('Pro stops at 10 open seats and a revoke frees one', () => {
+  reset();
+  assert.equal(PRO_INSTRUCTOR_SEAT_CAP, 10);
+  assert.equal(proSeatUsageLabel(4), '4 of 10 seats used');
+  assert.equal(
+    PRO_SEAT_CAP_REQUEST_NOTE,
+    `Additional seats may be available for authorization upon owner request. Email ${SITE_FEEDBACK_EMAIL}.`,
+  );
+  assert.match(PRO_SEAT_CAP_REQUEST_NOTE, /advantageappllc@gmail.com/);
+  assert.equal(
+    proSeatCapBlockedCopy(),
+    `All 10 seats are in use. Revoke a seat to issue another invite. ${PRO_SEAT_CAP_REQUEST_NOTE}`,
+  );
+
+  const presets: InstructorPresetId[] = ['coach', 'program-director', 'instructors', 'assistant-coach'];
+  for (let index = 0; index < PRO_INSTRUCTOR_SEAT_CAP; index += 1) {
+    const presetId = presets[index % presets.length];
+    const issued = issueInstructorInvite({
+      email: `seat${index}@gym.com`,
+      presetId,
+      permissions: instructorPresetPermissions(presetId),
+      origin: 'https://advantage.test',
+      now: index,
+      token: `tok-${index}`,
+    });
+    assert.equal(issued.ok, true);
+  }
+  assert.equal(countOpenInstructorSeats(listInstructorSeats()), 10);
+  assert.equal(listInstructorSeats()[0].email, 'seat9@gym.com');
+
+  const blocked = issueInstructorInvite({
+    email: 'extra@gym.com',
+    presetId: 'assistant-coach',
+    permissions: instructorPresetPermissions('assistant-coach'),
+    origin: 'https://advantage.test',
+  });
+  assert.deepEqual(blocked, { ok: false, reason: 'cap' });
+  assert.equal(listInstructorSeats().length, 10);
+
+  const held = listInstructorSeats().find((seat) => seat.email === 'seat0@gym.com');
+  assert.ok(held);
+  assert.equal(revokeInstructorSeat(held.id).ok, true);
+  assert.equal(countOpenInstructorSeats(listInstructorSeats()), 9);
+  const again = issueInstructorInvite({
+    email: 'extra@gym.com',
+    presetId: 'coach',
+    origin: 'https://advantage.test',
+    token: 'tok-extra',
+  });
+  assert.equal(again.ok, true);
+  if (!again.ok) return;
+  assert.equal(countOpenInstructorSeats(listInstructorSeats()), 10);
+});
+
+test('a signed-in coach, program director, or instructor cannot issue invites', () => {
+  for (const presetId of ['coach', 'program-director', 'instructors'] as const) {
+    reset();
+    const issued = issueInstructorInvite({
+      email: `${presetId}@gym.com`,
+      presetId,
+      permissions: instructorPresetPermissions(presetId),
+      origin: 'https://advantage.test',
+      token: `tok-${presetId}`,
+    });
+    assert.equal(issued.ok, true);
+    assert.equal(acceptInstructorInvite(`tok-${presetId}`).ok, true);
+    const blocked = issueInstructorInvite({
+      email: 'assistant@gym.com',
+      presetId: 'assistant-coach',
+      permissions: instructorPresetPermissions('assistant-coach'),
+      origin: 'https://advantage.test',
+    });
+    assert.deepEqual(blocked, { ok: false, reason: 'owner' });
+    assert.equal(listInstructorSeats().filter((seat) => seat.status !== 'revoked').length, 1);
+    signOutInstructorSeat();
+    const owner = issueInstructorInvite({
+      email: 'assistant@gym.com',
+      presetId: 'assistant-coach',
+      origin: 'https://advantage.test',
+      token: `owner-${presetId}`,
+    });
+    assert.equal(owner.ok, true);
+  }
 });
 
 test('a stored seat with a missing permission fills that default on read', () => {

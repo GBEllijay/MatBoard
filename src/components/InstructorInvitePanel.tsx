@@ -1,8 +1,13 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { useGymName } from '../hooks/useGymBrand';
+import { SITE_FEEDBACK_EMAIL } from '../lib/siteFooter';
+import { useCurrentSeat } from './SeatSessionBar';
 import {
   INSTRUCTOR_PERMISSION_FIELDS,
   INSTRUCTOR_PRESETS,
+  PRO_INSTRUCTOR_SEAT_CAP,
+  PRO_SEAT_CAP_REQUEST_NOTE,
+  countOpenInstructorSeats,
   defaultInstructorPermissions,
   instructorInviteLink,
   instructorPresetPermissions,
@@ -10,12 +15,15 @@ import {
   instructorSeatBinderLabel,
   issueInstructorInvite,
   listInstructorSeats,
+  proSeatCapBlockedCopy,
+  proSeatUsageLabel,
   revokeInstructorSeat,
   subscribeInstructorSeats,
   updateInstructorSeatPermissions,
   type InstructorPermissions,
   type InstructorPresetId,
   type InstructorSeat,
+  type IssueInviteFailure,
   type SeatStatus,
 } from '../lib/instructorSeats';
 
@@ -50,10 +58,24 @@ function permissionSummary(permissions: InstructorPermissions): string {
   return on.join(' · ');
 }
 
-function issueError(reason: 'email' | 'duplicate' | 'storage'): string {
+function issueError(reason: IssueInviteFailure): string {
   if (reason === 'duplicate') return 'That email already has an open seat.';
   if (reason === 'storage') return 'This device could not save the seat.';
+  if (reason === 'cap') return proSeatCapBlockedCopy();
+  if (reason === 'owner') return 'Only the gym owner can issue invites.';
   return "Enter the instructor's email.";
+}
+
+function SeatCapRequestNote() {
+  const emailAt = PRO_SEAT_CAP_REQUEST_NOTE.indexOf(SITE_FEEDBACK_EMAIL);
+  if (emailAt < 0) return <p className="invite-cap-note">{PRO_SEAT_CAP_REQUEST_NOTE}</p>;
+  return (
+    <p className="invite-cap-note">
+      {PRO_SEAT_CAP_REQUEST_NOTE.slice(0, emailAt)}
+      <a href={`mailto:${SITE_FEEDBACK_EMAIL}`}>{SITE_FEEDBACK_EMAIL}</a>
+      {PRO_SEAT_CAP_REQUEST_NOTE.slice(emailAt + SITE_FEEDBACK_EMAIL.length)}
+    </p>
+  );
 }
 
 function useInstructorSeats(): InstructorSeat[] {
@@ -65,6 +87,7 @@ function useInstructorSeats(): InstructorSeat[] {
 export function InstructorInvitePanel() {
   const formId = useId();
   const gymName = useGymName();
+  const currentSeat = useCurrentSeat();
   const seats = useInstructorSeats();
   const [email, setEmail] = useState('');
   const [permissions, setPermissions] = useState<InstructorPermissions>(() => defaultInstructorPermissions());
@@ -90,8 +113,18 @@ export function InstructorInvitePanel() {
     issuedRef.current?.scrollIntoView({ block: 'nearest' });
   }, [issued]);
 
+  if (currentSeat) {
+    return (
+      <section className="invite-owner-only" aria-label="Instructor invites">
+        <p>Only the gym owner can issue invites. This seat cannot create or send them.</p>
+      </section>
+    );
+  }
+
   const openSeats = seats.filter((seat) => seat.status === 'invited' || seat.status === 'active');
   const revokedSeats = seats.filter((seat) => seat.status === 'revoked');
+  const seatsUsed = countOpenInstructorSeats(seats);
+  const atCap = seatsUsed >= PRO_INSTRUCTOR_SEAT_CAP;
   const origin = typeof window === 'undefined' ? '' : window.location.origin;
 
   const copyLink = async (id: string, link: string) => {
@@ -115,8 +148,8 @@ export function InstructorInvitePanel() {
       origin,
     });
     if (!result.ok) {
-      setError(issueError(result.reason));
       setIssued(null);
+      setError(result.reason === 'cap' ? null : issueError(result.reason));
       return;
     }
     setError(null);
@@ -137,13 +170,17 @@ export function InstructorInvitePanel() {
     <div className="invite-panel">
       <form className="invite-stack" onSubmit={submitInvite}>
         <div className="invite-form">
-          <p className="invite-form__kicker">Owner only · Soft beta</p>
+          <p className="invite-form__kicker">Owner only</p>
           <strong>Generate instructor invite</strong>
           <span className="invite-form__note">
             Pick a role, then change any switch for this person. The link stays on this
-            device. Nothing is emailed, billed, or capped.
+            device. Advantage does not email it.
           </span>
           {gymName ? <span className="invite-gym">Gym · {gymName}</span> : null}
+          <div className="invite-seat-cap" role="status">
+            <p className="invite-seat-cap__count">{proSeatUsageLabel(seatsUsed)}</p>
+            <SeatCapRequestNote />
+          </div>
           {issued ? (
             <div className="invite-link" role="status" ref={issuedRef}>
               <div className="invite-link__copy">
@@ -204,12 +241,22 @@ export function InstructorInvitePanel() {
             permissions={permissions}
             onToggle={(key) => setPermissions((current) => ({ ...current, [key]: !current[key] }))}
           />
+          {atCap ? (
+            <p className="invite-error" id={`${formId}-cap`} role="alert">
+              {proSeatCapBlockedCopy()}
+            </p>
+          ) : null}
           {error ? (
             <p className="invite-error" role="alert">
               {error}
             </p>
           ) : null}
-          <button type="submit" className="btn">
+          <button
+            type="submit"
+            className="btn"
+            disabled={atCap}
+            aria-describedby={atCap ? `${formId}-cap` : undefined}
+          >
             Issue invite
           </button>
           </div>

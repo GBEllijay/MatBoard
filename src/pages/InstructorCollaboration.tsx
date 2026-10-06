@@ -23,13 +23,12 @@ export function InstructorCollaborationPage() {
           {seat ? (
             <p>This device is using that seat. Coach tools follow its permissions.</p>
           ) : null}
+          <InstructorInvitePanel />
           {seat ? (
             <Link className="btn btn--white" to="/coach">
               Open Coach
             </Link>
-          ) : (
-            <InstructorInvitePanel />
-          )}
+          ) : null}
         </section>
         <SiteFooter />
       </div>
