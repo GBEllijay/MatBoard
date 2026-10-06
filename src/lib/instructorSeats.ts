@@ -11,8 +11,13 @@ import { readGymName } from './gymName.ts';
 
 export const INSTRUCTOR_SEATS_STORAGE_KEY = 'matboard.pro.instructorSeats.v1';
 export const INSTRUCTOR_SEAT_SESSION_KEY = 'matboard.pro.instructorSeatSession.v1';
+/** Invite token that must not be restored by a hard refresh of the signed-out page. */
+export const INSTRUCTOR_SEAT_SIGNED_OUT_KEY = 'matboard.pro.instructorSeatSignedOut.v1';
+const SIGNED_OUT_TOAST_KEY = 'matboard.pro.instructorSeatSignedOutToast.v1';
 const SEATS_EVENT = 'matboard-instructor-seats';
 const SESSION_EVENT = 'matboard-instructor-seat-session';
+const TOAST_EVENT = 'matboard-instructor-seat-signed-out';
+const SESSION_CHANNEL = 'matboard-instructor-seat-session';
 const EMAIL_MAX = 254;
 
 export type SeatStatus = 'invited' | 'active' | 'revoked';
@@ -64,7 +69,11 @@ export type InstructorPreset = {
   label: string;
   /** Which product plan this tier sits on. */
   plan: InstructorPlanName;
-  /** Lines under the role button. Assistant coach uses two. */
+  /**
+   * Lines under the role button.
+   * The first line is which menus this invite opens.
+   * Cloud and sharing stay full inside those menus for every role.
+   */
   detail: readonly string[];
   permissions: InstructorPermissions;
 };
@@ -75,7 +84,7 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
     id: 'assistant-coach',
     label: 'Assistant coach',
     plan: 'Coach Unlimited',
-    detail: ['Lesson plans and daily videos', 'Downloads only'],
+    detail: ['Lesson plans and daily videos', 'Full cloud and sharing in these menus'],
     permissions: {
       galleryUpload: false,
       dailyLessonPlanAccess: true,
@@ -91,7 +100,7 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
     id: 'coach',
     label: 'Coach',
     plan: 'Coach Unlimited',
-    detail: ['Lesson plans and daily videos with uploads'],
+    detail: ['Lesson plans, daily videos, and uploads', 'Full cloud and sharing in these menus'],
     permissions: {
       galleryUpload: false,
       dailyLessonPlanAccess: true,
@@ -107,7 +116,7 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
     id: 'program-director',
     label: 'Program director',
     plan: 'Pro · Gallery',
-    detail: ['Events, Pro Shop, and gallery'],
+    detail: ['Events, Pro Shop, and gallery', 'Full cloud and sharing in these menus'],
     permissions: {
       galleryUpload: true,
       dailyLessonPlanAccess: false,
@@ -123,7 +132,10 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
     id: 'instructors',
     label: 'Instructors',
     plan: 'Coach Unlimited + Pro',
-    detail: ['Adds the slideshow for events, Pro Shop, and gallery'],
+    detail: [
+      'Lessons, uploads, events, Pro Shop, and gallery',
+      'Full cloud and sharing in these menus',
+    ],
     permissions: {
       galleryUpload: true,
       dailyLessonPlanAccess: true,
@@ -353,9 +365,13 @@ function writeArchive(archive: SeatArchive): boolean {
   }
 }
 
+let seatSnapshot: InstructorSeat | null = null;
+let seatSnapshotKey = '';
+
 function invalidateSeatSnapshot(): void {
   // Empty string is also the signed-out cache key. A sentinel forces the next read.
   seatSnapshotKey = '\0';
+  seatSnapshot = null;
 }
 
 function emitSeats(): void {
@@ -449,9 +465,6 @@ export function updateInstructorSeatPermissions(
 
 type SeatSessionRecord = { version: 1; seatId: string };
 
-let seatSnapshot: InstructorSeat | null = null;
-let seatSnapshotKey = '';
-
 function readSessionSeatId(): string | null {
   try {
     if (typeof localStorage === 'undefined') return null;
@@ -481,6 +494,191 @@ function emitSession(): void {
   window.dispatchEvent(new Event(SESSION_EVENT));
 }
 
+type SignedOutBlock = { version: 1; token: string; seatId: string };
+
+let signedOutToast = false;
+let sessionChannel: BroadcastChannel | null = null;
+
+function readSignedOutBlock(): SignedOutBlock | null {
+  try {
+    if (typeof localStorage === 'undefined') return null;
+    const raw = localStorage.getItem(INSTRUCTOR_SEAT_SIGNED_OUT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<SignedOutBlock>;
+    if (parsed.version !== 1 || typeof parsed.token !== 'string' || !parsed.token) return null;
+    if (typeof parsed.seatId !== 'string' || !parsed.seatId) return null;
+    return { version: 1, token: parsed.token, seatId: parsed.seatId };
+  } catch {
+    return null;
+  }
+}
+
+function writeSignedOutBlock(block: SignedOutBlock): void {
+  try {
+    localStorage.setItem(INSTRUCTOR_SEAT_SIGNED_OUT_KEY, JSON.stringify(block));
+  } catch {
+    /* the session key removal still signs this tab out */
+  }
+}
+
+function clearSignedOutBlock(): void {
+  try {
+    localStorage.removeItem(INSTRUCTOR_SEAT_SIGNED_OUT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** `performance` navigation type, or null when this runtime does not report one. */
+export function currentNavigationType(): string | null {
+  try {
+    if (typeof performance === 'undefined' || typeof performance.getEntriesByType !== 'function') return null;
+    const entry = performance.getEntriesByType('navigation')[0] as { type?: string } | undefined;
+    return typeof entry?.type === 'string' ? entry.type : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A hard refresh of the invite address must not sign the seat back in.
+ * A fresh visit (`navigate`) still opens the invite.
+ */
+export function inviteReloadBlocked(
+  token: string,
+  navigationType: string | null,
+  inviteInAddress: string | null,
+): boolean {
+  if (navigationType !== 'reload') return false;
+  const block = readSignedOutBlock();
+  if (!block) return false;
+  const trimmed = token.trim();
+  if (!trimmed || block.token !== trimmed) return false;
+  return (inviteInAddress ?? '').trim() === trimmed;
+}
+
+/** Drop `?invite=` so the next load cannot treat this page as a fresh invite open. */
+export function stripInviteFromAddress(): void {
+  if (typeof window === 'undefined') return;
+  const url = new URL(window.location.href);
+  if (!url.searchParams.has('invite')) return;
+  url.searchParams.delete('invite');
+  const next = `${url.pathname}${url.search}${url.hash}`;
+  window.history.replaceState(window.history.state, '', next);
+}
+
+function armSignedOutToast(): void {
+  signedOutToast = true;
+  try {
+    if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(SIGNED_OUT_TOAST_KEY, '1');
+  } catch {
+    /* the in-memory toast still shows in this tab */
+  }
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new Event(TOAST_EVENT));
+}
+
+function restoreSignedOutToast(): void {
+  try {
+    if (typeof sessionStorage === 'undefined') return;
+    if (sessionStorage.getItem(SIGNED_OUT_TOAST_KEY) === '1') signedOutToast = true;
+  } catch {
+    /* ignore */
+  }
+}
+
+restoreSignedOutToast();
+
+export function readSignedOutToast(): boolean {
+  return signedOutToast;
+}
+
+export function consumeSignedOutToast(): void {
+  if (!signedOutToast) {
+    try {
+      if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(SIGNED_OUT_TOAST_KEY);
+    } catch {
+      /* ignore */
+    }
+    return;
+  }
+  signedOutToast = false;
+  try {
+    if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(SIGNED_OUT_TOAST_KEY);
+  } catch {
+    /* ignore */
+  }
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new Event(TOAST_EVENT));
+}
+
+export function subscribeSignedOutToast(fn: () => void): () => void {
+  if (typeof window === 'undefined') return () => {};
+  window.addEventListener(TOAST_EVENT, fn);
+  return () => window.removeEventListener(TOAST_EVENT, fn);
+}
+
+function postSeatSignOut(): void {
+  if (typeof BroadcastChannel === 'undefined') return;
+  try {
+    const channel = sessionChannel ?? new BroadcastChannel(SESSION_CHANNEL);
+    channel.postMessage({ type: 'sign-out' });
+    if (!sessionChannel) channel.close();
+  } catch {
+    /* other tabs still hear localStorage */
+  }
+}
+
+function onRemoteSeatSignOut(): void {
+  invalidateSeatSnapshot();
+  armSignedOutToast();
+  stripInviteFromAddress();
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new Event(SESSION_EVENT));
+}
+
+function installSessionChannel(): void {
+  if (typeof window === 'undefined' || typeof BroadcastChannel === 'undefined') return;
+  if (sessionChannel) return;
+  try {
+    sessionChannel = new BroadcastChannel(SESSION_CHANNEL);
+    sessionChannel.onmessage = (event: MessageEvent) => {
+      const data = event.data as { type?: string } | null;
+      if (!data || data.type !== 'sign-out') return;
+      onRemoteSeatSignOut();
+    };
+  } catch {
+    sessionChannel = null;
+  }
+}
+
+installSessionChannel();
+
+function clearDurableSeatSession(): void {
+  try {
+    localStorage.removeItem(INSTRUCTOR_SEAT_SESSION_KEY);
+  } catch {
+    /* keep going */
+  }
+  try {
+    if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(INSTRUCTOR_SEAT_SESSION_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Gym TV casts stay clear of the seat bar and the signed-out toast. */
+const SEAT_CHROME_HIDDEN = new Set(['/match', '/training', '/slideshow', '/screensaver']);
+
+export function seatChromeHidden(pathname: string): boolean {
+  return SEAT_CHROME_HIDDEN.has(pathname);
+}
+
+/** A live instructor seat already has access. Do not push Coach or Pro purchase. */
+export function purchasePromptsHidden(seat: { status: SeatStatus } | null): boolean {
+  return Boolean(seat && seat.status !== 'revoked');
+}
+
 /** Active seat on this device, or null when signed out, missing, or revoked. */
 export function readCurrentSeat(): InstructorSeat | null {
   const id = readSessionSeatId();
@@ -508,13 +706,20 @@ export function subscribeSeatSession(fn: () => void): () => void {
   };
 }
 
+/**
+ * End the seat on this device immediately.
+ * Other tabs hear it through storage and a broadcast. A hard refresh of the
+ * invite address does not sign that seat back in.
+ */
 export function signOutInstructorSeat(): void {
-  try {
-    localStorage.removeItem(INSTRUCTOR_SEAT_SESSION_KEY);
-  } catch {
-    /* keep going */
-  }
+  const id = readSessionSeatId();
+  const seat = id ? readArchive().seats.find((row) => row.id === id) : undefined;
+  if (seat) writeSignedOutBlock({ version: 1, token: seat.inviteToken, seatId: seat.id });
+  clearDurableSeatSession();
+  armSignedOutToast();
+  stripInviteFromAddress();
   emitSession();
+  postSeatSignOut();
 }
 
 /**
@@ -538,9 +743,15 @@ export function peekInstructorInvite(token: string): 'open' | 'missing' | 'revok
  */
 export function acceptInstructorInvite(
   token: string,
-): { ok: true; seat: InstructorSeat } | { ok: false; reason: 'missing' | 'revoked' | 'storage' } {
+): { ok: true; seat: InstructorSeat } | { ok: false; reason: 'missing' | 'revoked' | 'storage' | 'signed-out' } {
   const trimmed = token.trim();
   if (!trimmed) return { ok: false, reason: 'missing' };
+  if (typeof window !== 'undefined') {
+    const inviteInAddress = new URLSearchParams(window.location.search).get('invite');
+    if (inviteReloadBlocked(trimmed, currentNavigationType(), inviteInAddress)) {
+      return { ok: false, reason: 'signed-out' };
+    }
+  }
   const archive = readArchive();
   const seat = archive.seats.find((row) => row.inviteToken === trimmed);
   if (!seat) return { ok: false, reason: 'missing' };
@@ -548,6 +759,8 @@ export function acceptInstructorInvite(
   if (seat.status === 'invited') seat.status = 'active';
   if (!writeArchive(archive)) return { ok: false, reason: 'storage' };
   if (!writeSession(seat.id)) return { ok: false, reason: 'storage' };
+  clearSignedOutBlock();
+  consumeSignedOutToast();
   emitSeats();
   emitSession();
   return { ok: true, seat: cloneSeat(seat) };

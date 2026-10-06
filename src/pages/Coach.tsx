@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { BeltHeader } from '../components/BeltHeader';
 import { BeltRail } from '../components/BeltRail';
-import { InviteAccept, SeatSessionBar, useCurrentSeat } from '../components/SeatSessionBar';
+import { InviteAccept, useCurrentSeat } from '../components/SeatSessionBar';
 import { HomeMark } from '../components/HomeMark';
 import { InstructionsButton } from '../components/InstructionsButton';
 import { SiteFooter } from '../components/SiteFooter';
@@ -9,7 +9,7 @@ import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { BASIC_COACH_BELT_LINES } from '../lib/coachCopy';
 import { lockCoach } from '../lib/coachUnlock';
-import { coachToolVisible } from '../lib/instructorSeats';
+import { coachToolVisible, purchasePromptsHidden } from '../lib/instructorSeats';
 import { CHECKOUT_BUY_PATH } from '../lib/checkoutProducts';
 import { COACH_LIST_PRICE_CENTS } from '../lib/productPrices';
 import { COACH_HUBS } from '../lib/productNames';
@@ -27,7 +27,6 @@ export function CoachPage() {
         <HomeMark to="/" />
 
         <InviteAccept />
-        <SeatSessionBar />
         <nav className="home__modes" aria-label="Advantage Coach">
           <BeltHeader
             kind="blue"
@@ -56,11 +55,13 @@ export function CoachPage() {
               screen or computer.
             </p>
           </InstructionsButton>
-          <p className="home__soon">
-            <Link className="home__text-btn" to={CHECKOUT_BUY_PATH.coach}>
-              {`Buy Advantage Coach — ${formatUsdFromCents(COACH_LIST_PRICE_CENTS)}`}
-            </Link>
-          </p>
+          {purchasePromptsHidden(seat) ? null : (
+            <p className="home__soon">
+              <Link className="home__text-btn" to={CHECKOUT_BUY_PATH.coach}>
+                {`Buy Advantage Coach — ${formatUsdFromCents(COACH_LIST_PRICE_CENTS)}`}
+              </Link>
+            </p>
+          )}
           {ownerOpen ? (
             <p className="home__soon">
               Advantage Coach is on for this browser.{' '}

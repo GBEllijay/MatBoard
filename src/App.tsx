@@ -1,13 +1,19 @@
 import { useEffect, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useNavigate, useSearchParams } from 'react-router-dom';
 import { OneDriveConnectResume } from './components/OneDriveConnectResume';
-import { useCurrentSeat } from './components/SeatSessionBar';
+import { SeatSessionChrome, useCurrentSeat } from './components/SeatSessionBar';
 import { useCoachUnlocked } from './hooks/useCoachUnlocked';
 import { useKeepFocusedFieldVisible } from './hooks/useKeepFocusedFieldVisible';
 import { useProUnlocked } from './hooks/useProUnlocked';
 import { useWhiteUnlocked } from './hooks/useWhiteUnlocked';
 import { consumeCoachUnlockQueryNow } from './lib/coachUnlock';
-import { acceptInstructorInvite, peekInstructorInvite } from './lib/instructorSeats';
+import {
+  acceptInstructorInvite,
+  currentNavigationType,
+  inviteReloadBlocked,
+  peekInstructorInvite,
+  stripInviteFromAddress,
+} from './lib/instructorSeats';
 import { coachDoorOpen, proDoorOpen } from './lib/productNames';
 import { proPurchaseReturn } from './lib/proEntitlement';
 import { consumeUnlockQueryNow } from './lib/proUnlock';
@@ -59,6 +65,10 @@ function consumeInviteDoorNow(): void {
   const params = new URLSearchParams(window.location.search);
   const token = params.get('invite');
   if (!token || peekInstructorInvite(token) !== 'open') return;
+  if (inviteReloadBlocked(token, currentNavigationType(), token)) {
+    stripInviteFromAddress();
+    return;
+  }
   if (!acceptInstructorInvite(token).ok) return;
   const url = new URL(window.location.href);
   url.pathname = '/';
@@ -144,6 +154,8 @@ export default function App() {
   useCoachUnlocked();
 
   return (
+    <>
+    <SeatSessionChrome />
     <InviteDoor>
     <Routes>
       <Route path="/" element={<HomePage />} />
@@ -388,5 +400,6 @@ export default function App() {
     </Routes>
     <OneDriveConnectResume />
     </InviteDoor>
+    </>
   );
 }

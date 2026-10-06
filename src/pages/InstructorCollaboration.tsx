@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { BeltHeader } from '../components/BeltHeader';
 import { HomeMark } from '../components/HomeMark';
 import { InstructorInvitePanel } from '../components/InstructorInvitePanel';
-import { InviteAccept, SeatSessionBar, useCurrentSeat } from '../components/SeatSessionBar';
+import { InviteAccept, useCurrentSeat } from '../components/SeatSessionBar';
 import { SiteFooter } from '../components/SiteFooter';
 
 /**
@@ -19,9 +19,11 @@ export function InstructorCollaborationPage() {
         <section className="suite instructor-hub">
           <BeltHeader kind="black" title="Instructor Invitations and Access Management" />
           <InviteAccept />
-          <SeatSessionBar />
           {seat ? (
-            <p>This device is using that seat. Coach tools follow its permissions.</p>
+            <p>
+              This device is using that seat. The invite chooses which menus open. Cloud and sharing
+              inside those menus match the owner.
+            </p>
           ) : null}
           {seat ? (
             <Link className="btn btn--white" to="/coach">
