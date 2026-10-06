@@ -18,6 +18,6 @@
     "noUncheckedSideEffectImports": true,
     "composite": true
   },
-  "include": ["vite.config.ts", "src/server/**/*.ts", "functions/**/*.ts", "src/lib/checkoutProducts.ts", "src/lib/microsoftClientPublic.ts"],
+  "include": ["vite.config.ts", "src/server/**/*.ts", "functions/**/*.ts", "src/lib/checkoutProducts.ts", "src/lib/microsoftClientPublic.ts", "src/lib/appleCloudKitPublic.ts"],
   "exclude": ["src/server/**/*.test.ts"]
 }

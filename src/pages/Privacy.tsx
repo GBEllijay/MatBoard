@@ -5,7 +5,7 @@ export function PrivacyPage() {
   return (
     <LegalPage
       title="Privacy Policy — Advantage"
-      updated="October 5, 2026"
+      updated="October 6, 2026"
       related={{ to: '/terms', label: 'Terms of Service' }}
     >
       <section>
@@ -40,7 +40,10 @@ export function PrivacyPage() {
           in the app. Your photos, videos, and lesson files are stored in your own account, and
           Advantage App, LLC does not keep copies on its servers. The connection is kept on your
           device and used only to read and write your files when you ask the app to. We do not sell
-          this data or use it for advertising. For Google Drive and Google Photos, our use of
+          this data or use it for advertising. For iCloud, sign-in happens on Apple’s page. We do
+          not receive your Apple ID password, and we do not read your iCloud Drive or iCloud Photos
+          library. Notes you save with the iCloud connection stay in your iCloud account. For Google
+          Drive and Google Photos, our use of
           information from Google APIs follows the{' '}
           <a href="https://developers.google.com/terms/api-services-user-data-policy">
             Google API Services User Data Policy
@@ -113,7 +116,7 @@ export function PrivacyPage() {
           infrastructure), solely to operate Advantage;
         </p>
         <p>
-          (b) Third parties you connect or pay through (such as Google, or Stripe when you buy),
+          (b) Third parties you connect or pay through (such as Google, Microsoft, Apple, or Stripe when you buy),
           under their terms and privacy policies;
         </p>
         <p>

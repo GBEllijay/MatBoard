@@ -1,7 +1,9 @@
 import { loadEnv, type Connect, type Plugin } from 'vite';
 import { fileEntitlementStore } from './fileEntitlements.ts';
 import { handleCheckout, handleEntitlement, handleWebhook } from './handlers.ts';
+import { ICLOUD_CALLBACK_PATH, ICLOUD_CONFIG_API, publicAppleCloudKitConfigFromEnv } from '../lib/appleCloudKitPublic.ts';
 import { MICROSOFT_CLIENT_API, publicMicrosoftClientIdFromEnv } from '../lib/microsoftClientPublic.ts';
+import { icloudCallbackResponse } from './icloudCallback.ts';
 import { API_CHECKOUT_PATH, API_ENTITLEMENT_PATH, API_WEBHOOK_PATH } from './routes.ts';
 import type { EntitlementStore } from './entitlements.ts';
 import type { StripeRuntimeEnv } from './stripeCheckout.ts';
@@ -111,7 +113,16 @@ async function writeResponse(res: NodeResponse, response: Response): Promise<voi
 function attach(
   middlewares: Connect.Server,
   env: StripeRuntimeEnv,
-  microsoftEnv: { VITE_MICROSOFT_CLIENT_ID?: string; MICROSOFT_CLIENT_ID?: string },
+  microsoftEnv: {
+    VITE_MICROSOFT_CLIENT_ID?: string;
+    MICROSOFT_CLIENT_ID?: string;
+    VITE_APPLE_CLOUDKIT_CONTAINER?: string;
+    APPLE_CLOUDKIT_CONTAINER?: string;
+    VITE_APPLE_CLOUDKIT_API_TOKEN?: string;
+    APPLE_CLOUDKIT_API_TOKEN?: string;
+    VITE_APPLE_CLOUDKIT_ENVIRONMENT?: string;
+    APPLE_CLOUDKIT_ENVIRONMENT?: string;
+  },
   store: EntitlementStore,
 ) {
   middlewares.use(async (req, res, next) => {
@@ -121,6 +132,24 @@ function attach(
       res.setHeader('cache-control', 'no-store');
       res.setHeader('content-type', 'application/json; charset=utf-8');
       res.end(JSON.stringify({ clientId: publicMicrosoftClientIdFromEnv(microsoftEnv) }));
+      return;
+    }
+    if (path === ICLOUD_CONFIG_API && (req.method ?? 'GET').toUpperCase() === 'GET') {
+      res.statusCode = 200;
+      res.setHeader('cache-control', 'no-store');
+      res.setHeader('content-type', 'application/json; charset=utf-8');
+      res.end(JSON.stringify(publicAppleCloudKitConfigFromEnv(microsoftEnv)));
+      return;
+    }
+    if (path === ICLOUD_CALLBACK_PATH && (req.method ?? 'GET').toUpperCase() === 'GET') {
+      try {
+        const request = await toWebRequest(req as NodeRequest);
+        await writeResponse(res as NodeResponse, icloudCallbackResponse(request));
+      } catch {
+        res.statusCode = 500;
+        res.setHeader('content-type', 'text/plain; charset=utf-8');
+        res.end('iCloud sign-in could not be finished.');
+      }
       return;
     }
     if (path !== API_CHECKOUT_PATH && path !== API_ENTITLEMENT_PATH && path !== API_WEBHOOK_PATH) {

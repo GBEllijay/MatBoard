@@ -10,7 +10,7 @@ export function TermsPage() {
   return (
     <LegalPage
       title="Terms of Service — Advantage"
-      updated="October 5, 2026"
+      updated="October 6, 2026"
       related={{ to: '/privacy', label: 'Privacy Policy' }}
     >
       <section>
@@ -96,8 +96,10 @@ export function TermsPage() {
           files to a cloud storage account that you own and control. Before Coach and Pro leave
           alpha and go on sale, Advantage supports connecting your own account with each of these
           providers: Google Drive, OneDrive, iCloud, and Google Photos. Google Drive is available
-          now. OneDrive, iCloud, and Google Photos are shipping as part of that same launch set and
-          will be working before those tiers are sold to the public.
+          now. OneDrive and iCloud can connect when this site is configured for them. The iCloud
+          connection keeps notes in your iCloud account. It does not open your iCloud Drive folders
+          or your iCloud Photos library. Google Photos is shipping as part of that same launch set
+          and will be working before those tiers are sold to the public.
         </p>
         <ul>
           <li>

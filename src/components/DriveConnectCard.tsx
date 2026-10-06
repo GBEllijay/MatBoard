@@ -24,6 +24,18 @@ import {
   saveGoogleClientId,
 } from '../lib/googleDrive';
 import {
+  clearICloudResumeFlag,
+  devICloudConfigDraft,
+  ICLOUD_DEV_CLIENT_HINT,
+  iCloudConfig,
+  iCloudOwnerFacingError,
+  loadICloudConfig,
+  ownedICloudConfig,
+  saveDevICloudConfig,
+  subscribeICloudConfig,
+  takeICloudResumeError,
+} from '../lib/iCloud';
+import {
   clearOneDriveResumeFlag,
   loadMicrosoftClientId,
   microsoftClientId,
@@ -45,6 +57,7 @@ function connectedBinding(): CloudBinding | null {
 
 function ownerError(provider: CloudStorageConnector | null, reason: unknown): string {
   if (provider?.id === 'oneDrive') return oneDriveOwnerFacingError(reason);
+  if (provider?.id === 'iCloud') return iCloudOwnerFacingError(reason);
   return driveOwnerFacingError(reason);
 }
 
@@ -53,28 +66,47 @@ function connectedDetail(binding: CloudBinding): string {
   if (binding.providerId === 'oneDrive') {
     return `${who}This OneDrive folder is connected. A small connect file was saved there. Lesson packages on OneDrive are not in this build yet. Advantage does not host the files.`;
   }
+  if (binding.providerId === 'iCloud') {
+    return `${who}This iCloud place is connected. A small note was saved in the gym’s iCloud. It does not appear as an iCloud Drive folder. Lesson packages and Media Console files on iCloud are not in this build yet. Advantage does not host the files.`;
+  }
   return `${who}Lesson plans and attached training videos save in this folder. This phone keeps a copy of each video for offline play. Advantage does not host the video files.`;
 }
 
 /**
  * Connect with list for Coach Unlimited and Advantage Pro.
  * Google Drive signs in and picks a folder. OneDrive does the same when this
- * build has Microsoft sign-in: the tap leaves for Microsoft, then comes back
- * to this list. Google Photos and iCloud stay disabled until they work.
- * The build supplies sign-in. Owners do not type a setup code.
+ * build has Microsoft sign-in. iCloud does the same when this build has
+ * Apple CloudKit sign-in: the tap leaves for Apple, then comes back to this
+ * list. Google Photos stays disabled until it works. The build supplies
+ * sign-in. Owners do not type a setup code.
  */
 let oneDriveResumeStarted = false;
+let iCloudResumeStarted = false;
 
-export function DriveConnectCard({ resumeMode = null }: { resumeMode?: 'token' | 'error' | null }) {
+export function DriveConnectCard({
+  resumeMode = null,
+  resumeProvider = 'oneDrive',
+}: {
+  resumeMode?: 'token' | 'error' | null;
+  resumeProvider?: 'oneDrive' | 'iCloud';
+}) {
   const owned = ownedGoogleClientId();
   const ownedMicrosoft = ownedMicrosoftClientId();
+  const ownedICloud = ownedICloudConfig();
   const [devAppId, setDevAppId] = useState(() => (import.meta.env.DEV && !owned ? googleClientId() : ''));
   const [devMicrosoftId, setDevMicrosoftId] = useState(() =>
     import.meta.env.DEV && !ownedMicrosoft ? microsoftClientId() : '',
   );
+  const [devICloud, setDevICloud] = useState(() => {
+    if (!import.meta.env.DEV || ownedICloud) return { container: '', apiToken: '', environment: '' };
+    const draft = devICloudConfigDraft();
+    return { ...draft, environment: draft.environment || 'development' };
+  });
   const [microsoftChecked, setMicrosoftChecked] = useState(
     () => Boolean(ownedMicrosoftClientId()) || import.meta.env.DEV,
   );
+  const [icloudChecked, setIcloudChecked] = useState(() => Boolean(iCloudConfig()) || import.meta.env.DEV);
+  const [icloudEpoch, setIcloudEpoch] = useState(0);
   const [binding, setBinding] = useState<CloudBinding | null>(() => connectedBinding());
   const [pending, setPending] = useState<CloudStorageConnector | null>(null);
   const [folders, setFolders] = useState<CloudFolderRef[] | null>(null);
@@ -92,9 +124,21 @@ export function DriveConnectCard({ resumeMode = null }: { resumeMode?: 'token' |
     void loadMicrosoftClientId().finally(() => {
       if (alive) setMicrosoftChecked(true);
     });
+    const stopICloud = subscribeICloudConfig(() => {
+      if (!alive) return;
+      setIcloudChecked(true);
+      setIcloudEpoch((value) => value + 1);
+    });
+    if (import.meta.env.DEV && !ownedICloud) saveDevICloudConfig(devICloud);
+    void loadICloudConfig().finally(() => {
+      if (!alive) return;
+      setIcloudChecked(true);
+      setIcloudEpoch((value) => value + 1);
+    });
     return () => {
       alive = false;
       stop();
+      stopICloud();
     };
   }, []);
 
@@ -128,7 +172,22 @@ export function DriveConnectCard({ resumeMode = null }: { resumeMode?: 'token' |
   connectRef.current = connect;
 
   useEffect(() => {
-    if (!resumeMode || oneDriveResumeStarted) return;
+    if (!resumeMode) return;
+    if (resumeProvider === 'iCloud') {
+      if (!icloudChecked || iCloudResumeStarted) return;
+      if (resumeMode === 'error') {
+        iCloudResumeStarted = true;
+        setError(takeICloudResumeError());
+        return;
+      }
+      const provider = cloudStorage('iCloud');
+      if (!provider.isAvailable()) return;
+      iCloudResumeStarted = true;
+      clearICloudResumeFlag();
+      void connectRef.current(provider);
+      return;
+    }
+    if (oneDriveResumeStarted) return;
     if (resumeMode === 'error') {
       oneDriveResumeStarted = true;
       setError(takeOneDriveResumeError());
@@ -139,7 +198,7 @@ export function DriveConnectCard({ resumeMode = null }: { resumeMode?: 'token' |
     oneDriveResumeStarted = true;
     clearOneDriveResumeFlag();
     void connectRef.current(provider);
-  }, [resumeMode, microsoftChecked]);
+  }, [resumeMode, resumeProvider, microsoftChecked, icloudChecked]);
 
   const choose = async (folder: CloudFolderRef) => {
     if (!session || !pending) return;
@@ -180,7 +239,7 @@ export function DriveConnectCard({ resumeMode = null }: { resumeMode?: 'token' |
       <strong>{binding ? binding.folderName : CONNECT_WITH_TITLE}</strong>
       {binding ? <span>{connectedDetail(binding)}</span> : <span>{CONNECT_WITH_BODY}</span>}
       <p className="drive-connect__note">{CONNECT_ACCOUNT_NOTE}</p>
-      {import.meta.env.DEV && (!owned || !ownedMicrosoft) ? (
+      {import.meta.env.DEV && (!owned || !ownedMicrosoft || !ownedICloud) ? (
         <details className="drive-connect__advanced">
           <summary>Advanced</summary>
           <div className="drive-connect__dev">
@@ -220,6 +279,59 @@ export function DriveConnectCard({ resumeMode = null }: { resumeMode?: 'token' |
                 </label>
               </>
             ) : null}
+            {!ownedICloud ? (
+              <>
+                <p>{ICLOUD_DEV_CLIENT_HINT}</p>
+                <label className="drive-connect__field">
+                  iCloud container
+                  <input
+                    value={devICloud.container}
+                    autoComplete="off"
+                    spellCheck={false}
+                    onChange={(event) => {
+                      const container = event.target.value;
+                      setDevICloud((current) => {
+                        const next = { ...current, container };
+                        saveDevICloudConfig(next);
+                        return next;
+                      });
+                    }}
+                  />
+                </label>
+                <label className="drive-connect__field">
+                  iCloud web token
+                  <input
+                    value={devICloud.apiToken}
+                    autoComplete="off"
+                    spellCheck={false}
+                    onChange={(event) => {
+                      const apiToken = event.target.value;
+                      setDevICloud((current) => {
+                        const next = { ...current, apiToken };
+                        saveDevICloudConfig(next);
+                        return next;
+                      });
+                    }}
+                  />
+                </label>
+                <label className="drive-connect__field">
+                  iCloud environment
+                  <input
+                    value={devICloud.environment}
+                    autoComplete="off"
+                    spellCheck={false}
+                    onChange={(event) => {
+                      const environment = event.target.value;
+                      setDevICloud((current) => {
+                        const next = { ...current, environment };
+                        saveDevICloudConfig(next);
+                        return next;
+                      });
+                    }}
+                  />
+                </label>
+              </>
+            ) : null}
           </div>
         </details>
       ) : null}
@@ -249,10 +361,11 @@ export function DriveConnectCard({ resumeMode = null }: { resumeMode?: 'token' |
           {choices.some((provider) => provider.id === 'googleDrive' && provider.isAvailable()) ? (
             <p className="drive-connect__note">{CONNECT_GOOGLE_UNVERIFIED_NOTE}</p>
           ) : null}
-          <ul className="drive-connect__providers" aria-label={CONNECT_WITH_TITLE}>
+          <ul className="drive-connect__providers" aria-label={CONNECT_WITH_TITLE} data-icloud-epoch={icloudEpoch}>
             {choices.map((provider) => {
               const comingForLaunch = provider.phase === 'coming-for-launch';
               const waitingForMicrosoft = provider.id === 'oneDrive' && !microsoftChecked;
+              const waitingForICloud = provider.id === 'iCloud' && !icloudChecked;
               const canConnect = provider.phase === 'live' && provider.isAvailable();
               const opening = busyId === provider.id;
               return (
@@ -260,7 +373,7 @@ export function DriveConnectCard({ resumeMode = null }: { resumeMode?: 'token' |
                   <button
                     type="button"
                     className={canConnect ? 'btn' : comingForLaunch ? 'btn btn--ghost' : 'btn btn--ghost btn--unavailable'}
-                    disabled={!canConnect || busyId !== null || waitingForMicrosoft}
+                    disabled={!canConnect || busyId !== null || waitingForMicrosoft || waitingForICloud}
                     onClick={() => void connect(provider)}
                   >
                     {opening ? `Opening ${provider.displayName}…` : provider.displayName}
@@ -276,6 +389,7 @@ export function DriveConnectCard({ resumeMode = null }: { resumeMode?: 'token' |
         ? choices
             .filter((provider) => {
               if (provider.id === 'oneDrive' && !microsoftChecked) return false;
+              if (provider.id === 'iCloud' && !icloudChecked) return false;
               return provider.phase === 'live' && !provider.isAvailable();
             })
             .map((provider) => (
