@@ -5,7 +5,7 @@ import { BeltRail } from '../components/BeltRail';
 import { ComingSoonAd, ComingSoonAdActions } from '../components/ComingSoonAd';
 import { HomeMark } from '../components/HomeMark';
 import { ProUnlockSheet } from '../components/ProUnlockSheet';
-import { SeatSessionBar, useCurrentSeat } from '../components/SeatSessionBar';
+import { useCurrentSeat } from '../components/SeatSessionBar';
 import { Sheet } from '../components/Sheet';
 import { SiteFooter } from '../components/SiteFooter';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
@@ -24,6 +24,7 @@ import {
   coachDoorOpen,
   visibleProHubs,
 } from '../lib/productNames';
+import { purchasePromptsHidden } from '../lib/instructorSeats';
 import { COACH_PRICE_LINE, PRO_PRICE_LINE } from '../lib/productPrices';
 import { WHITE_PRICE_LABEL } from '../lib/whitePurchase';
 import { whiteEntryPath } from '../lib/whiteUnlock';
@@ -33,7 +34,9 @@ export function HomePage() {
   const proUnlocked = door.proUnlocked;
   const proHubs = visibleProHubs(door);
   const whiteUnlocked = useWhiteUnlocked();
-  const coachOpen = coachDoorOpen(proUnlocked, useCoachUnlocked(), useCurrentSeat() !== null);
+  const seat = useCurrentSeat();
+  const seated = purchasePromptsHidden(seat);
+  const coachOpen = coachDoorOpen(proUnlocked, useCoachUnlocked(), seated);
   const [unlockOpen, setUnlockOpen] = useState<'coach' | 'pro' | null>(null);
   const [soon, setSoon] = useState<SoonProduct | null>(null);
 
@@ -47,7 +50,6 @@ export function HomePage() {
       <div className="home__inner">
         <HomeMark motto={HOME_MOTTO} tagline="BJJ scoreboard, round timer, and gym tools." />
 
-        <SeatSessionBar />
         <nav className="home__modes" aria-label="Products">
           <Link className="mode-card mode-card--white" to={whiteEntryPath(whiteUnlocked)}>
             <BeltRail kind="white" />
@@ -119,7 +121,7 @@ export function HomePage() {
                 onClick={() => setSoon('pro')}
               />
               <ProHomeCopy />
-              <p className="mode-card__price">{PRO_PRICE_LINE}</p>
+              {seated ? null : <p className="mode-card__price">{PRO_PRICE_LINE}</p>}
               <AlphaAccessNote />
             </article>
           )}

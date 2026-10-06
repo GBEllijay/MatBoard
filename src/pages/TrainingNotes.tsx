@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } fr
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { ClassPhotoPromotions } from '../components/ClassPhotoPromotions';
 import { CoachPlanExport } from '../components/CoachPlanExport';
-import { CollaborationGate, SeatSessionBar, useCurrentSeat } from '../components/SeatSessionBar';
+import { CollaborationGate, useCurrentSeat } from '../components/SeatSessionBar';
 import { LessonMediaRail } from '../components/LessonMediaRail';
 import { OpenMyDrive } from '../components/OpenMyDrive';
 import { PlayExitMark } from '../components/PlayExitMark';
@@ -533,7 +533,6 @@ export function TrainingNotesPage() {
           <h1>{TRAINING_NOTES_LABEL}</h1>
         </div>
       </header>
-      <SeatSessionBar />
       {unlimitedPlan ? <p className="notes__lead">{UNLIMITED_SHARE_LEAD}</p> : null}
       {unlimitedPlan ? <p className="notes__lead">{NOTES_LEAD}</p> : null}
       {lessonBlocked ? (

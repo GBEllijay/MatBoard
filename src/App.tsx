@@ -1,7 +1,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useNavigate, useSearchParams } from 'react-router-dom';
 import { OneDriveConnectResume } from './components/OneDriveConnectResume';
-import { useCurrentSeat } from './components/SeatSessionBar';
+import { SeatSessionChrome, useCurrentSeat } from './components/SeatSessionBar';
 import { useCoachUnlocked } from './hooks/useCoachUnlocked';
 import { useKeepFocusedFieldVisible } from './hooks/useKeepFocusedFieldVisible';
 import { useProUnlocked } from './hooks/useProUnlocked';
@@ -10,9 +10,12 @@ import { useWhiteUnlocked } from './hooks/useWhiteUnlocked';
 import { consumeCoachUnlockQueryNow } from './lib/coachUnlock';
 import {
   acceptInstructorInvite,
+  currentNavigationType,
+  inviteReloadBlocked,
   menuCloudSharing,
   peekInstructorInvite,
   seatMenuAllowed,
+  stripInviteFromAddress,
 } from './lib/instructorSeats';
 import {
   coachDoorOpen,
@@ -22,6 +25,7 @@ import {
   proDoorOpen,
   visibleProHubs,
 } from './lib/productNames';
+import { proPurchaseReturn } from './lib/proEntitlement';
 import { consumeUnlockQueryNow } from './lib/proUnlock';
 import { WHITE_BUY_PATH } from './lib/whitePurchase';
 import { whiteHubAllowed, whiteLiveToolsAllowed } from './lib/whiteUnlock';
@@ -71,6 +75,10 @@ function consumeInviteDoorNow(): void {
   const params = new URLSearchParams(window.location.search);
   const token = params.get('invite');
   if (!token || peekInstructorInvite(token) !== 'open') return;
+  if (inviteReloadBlocked(token, currentNavigationType(), token)) {
+    stripInviteFromAddress();
+    return;
+  }
   if (!acceptInstructorInvite(token).ok) return;
   const url = new URL(window.location.href);
   url.pathname = '/';
@@ -124,10 +132,16 @@ function LessonCloudRoute({ children }: { children: ReactNode }) {
   return children;
 }
 
-/** Buy Pro stays available to an owner unlock and to a Program Director seat. */
+/**
+ * Buy Pro stays on the owner unlock and a Program Director seat.
+ * Stripe's success return still renders so the webhook can unlock this device.
+ */
 function BuyProRoute({ children }: { children: ReactNode }) {
   const door = useSeatDoor();
-  if (!door.proUnlocked && !door.programDirectorSeat) return <Navigate to="/coming-soon" replace />;
+  const [params] = useSearchParams();
+  if (!door.proUnlocked && !door.programDirectorSeat && !proPurchaseReturn(params)) {
+    return <Navigate to="/coming-soon" replace />;
+  }
   return children;
 }
 
@@ -200,6 +214,8 @@ export default function App() {
   useCoachUnlocked();
 
   return (
+    <>
+    <SeatSessionChrome />
     <InviteDoor>
     <Routes>
       <Route path="/" element={<HomePage />} />
@@ -444,5 +460,6 @@ export default function App() {
     </Routes>
     <OneDriveConnectResume />
     </InviteDoor>
+    </>
   );
 }

@@ -5,11 +5,13 @@ import {
   cloudStorageChoices,
   CONNECT_ACCOUNT_NOTE,
   CONNECT_CHOOSE_FOLDER,
+  CONNECT_COMING_SOON_BADGE,
   CONNECT_GOOGLE_UNVERIFIED_NOTE,
-  CONNECT_LAUNCH_BADGE,
+  CONNECT_PHOTOS_GALLERY,
   CONNECT_WITH_BODY,
   CONNECT_WITH_KICKER,
   CONNECT_WITH_TITLE,
+  connectListBadge,
   type CloudBinding,
   type CloudFolderRef,
   type CloudStorageConnector,
@@ -60,7 +62,9 @@ function connectedDetail(binding: CloudBinding): string {
  * Connect with list for Coach Unlimited and Advantage Pro.
  * Google Drive signs in and picks a folder. OneDrive does the same when this
  * build has Microsoft sign-in: the tap leaves for Microsoft, then comes back
- * to this list. Google Photos and iCloud stay disabled until they work.
+ * to this list. Google Photos is already included in Pick from gallery, so that
+ * row is not Coming soon and is not a connect button. iCloud stays visible
+ * and disabled with Coming soon until that connect is live.
  * The build supplies sign-in. Owners do not type a setup code.
  */
 let oneDriveResumeStarted = false;
@@ -251,20 +255,31 @@ export function DriveConnectCard({ resumeMode = null }: { resumeMode?: 'token' |
           ) : null}
           <ul className="drive-connect__providers" aria-label={CONNECT_WITH_TITLE}>
             {choices.map((provider) => {
-              const comingForLaunch = provider.phase === 'coming-for-launch';
+              const comingSoon = connectListBadge(provider) === CONNECT_COMING_SOON_BADGE;
+              const viaGallery = provider.phase === 'gallery';
               const waitingForMicrosoft = provider.id === 'oneDrive' && !microsoftChecked;
               const canConnect = provider.phase === 'live' && provider.isAvailable();
               const opening = busyId === provider.id;
+              if (viaGallery) {
+                return (
+                  <li key={provider.id}>
+                    <div className="btn btn--ghost drive-connect__gallery">
+                      <span className="drive-connect__gallery-name">{provider.displayName}</span>
+                      <span className="drive-connect__gallery-note">{CONNECT_PHOTOS_GALLERY}</span>
+                    </div>
+                  </li>
+                );
+              }
               return (
                 <li key={provider.id}>
                   <button
                     type="button"
-                    className={canConnect ? 'btn' : comingForLaunch ? 'btn btn--ghost' : 'btn btn--ghost btn--unavailable'}
+                    className={canConnect ? 'btn' : comingSoon ? 'btn btn--ghost' : 'btn btn--ghost btn--unavailable'}
                     disabled={!canConnect || busyId !== null || waitingForMicrosoft}
                     onClick={() => void connect(provider)}
                   >
                     {opening ? `Opening ${provider.displayName}…` : provider.displayName}
-                    {comingForLaunch ? <span className="drive-connect__soon">{CONNECT_LAUNCH_BADGE}</span> : null}
+                    {comingSoon ? <span className="drive-connect__soon">{CONNECT_COMING_SOON_BADGE}</span> : null}
                   </button>
                 </li>
               );

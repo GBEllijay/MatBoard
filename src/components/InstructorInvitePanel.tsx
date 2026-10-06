@@ -140,7 +140,8 @@ export function InstructorInvitePanel() {
           <p className="invite-form__kicker">Owner only · Soft beta</p>
           <strong>Generate instructor invite</strong>
           <span className="invite-form__note">
-            Pick a role, then change any switch for this person. The link stays on this
+            Pick a role, then change any switch for this person. The role chooses which menus
+            open. Inside those menus, cloud and sharing match the owner. The link stays on this
             device. Nothing is emailed, billed, or capped.
           </span>
           {gymName ? <span className="invite-gym">Gym · {gymName}</span> : null}
@@ -405,7 +406,7 @@ function RoleOptions({
               type="button"
               role="radio"
               aria-checked={on}
-              aria-label={`${coverName}, ${preset.plan}`}
+              aria-label={`${coverName}, ${preset.plan}. ${preset.detail.join('. ')}`}
               className={`binder-pick binder-pick--${preset.id}${on ? ' binder-pick--on' : ''}`}
               onClick={() => onSelect(preset.id)}
             >
@@ -413,6 +414,11 @@ function RoleOptions({
                 <img className="binder-pick__art" src={BINDER_ART[preset.id]} alt="" draggable={false} />
               </span>
               <PlanBadge presetId={preset.id} />
+              <span className="binder-pick__detail">
+                {preset.detail.map((line) => (
+                  <span key={line}>{line}</span>
+                ))}
+              </span>
             </button>
           );
         })}

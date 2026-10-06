@@ -12,6 +12,7 @@ import {
   GAME_PLAN_LABEL,
   RANKINGS_RESULTS_CARD,
 } from '../lib/coachCopy';
+import { COMPETITOR_ROSTER_PATH } from '../lib/productNames';
 
 /**
  * Light paint options for this header, so the preview can be compared.
@@ -27,22 +28,22 @@ function headerLook(value: string | null): HeaderLook {
 
 const LINKS = [
   {
-    to: '/roster?from=competitors',
+    to: COMPETITOR_ROSTER_PATH,
     title: COMPETITOR_ROSTER_LABEL,
     body: COMPETITOR_ROSTER_CARD,
-    belt: 'brown',
+    belt: 'blue',
   },
   {
     to: '/competition-ready',
     title: COMPETITION_READY_LABEL,
     body: COMPETITION_READY_CARD,
-    belt: 'blue',
+    belt: 'purple',
   },
   {
     to: '/game-plan',
     title: GAME_PLAN_LABEL,
     body: GAME_PLAN_CARD,
-    belt: 'purple',
+    belt: 'brown',
   },
   {
     to: '/rankings',

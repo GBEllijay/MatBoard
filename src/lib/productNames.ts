@@ -1,5 +1,5 @@
 import { CURRICULUM_LABEL, CURRICULUM_PATH } from './competitionCurriculum.ts';
-import { TECHNIQUE_TREE_LABEL, TRAINING_NOTES_LABEL } from './coachCopy.ts';
+import { COMPETITOR_ROSTER_LABEL, TECHNIQUE_TREE_LABEL, TRAINING_NOTES_LABEL } from './coachCopy.ts';
 
 /** User-facing Advantage Pro console name. Keep this exact apostrophe. */
 export const GYM_CONSOLE_NAME = "Gym Owner and Instructor's Console";
@@ -85,6 +85,12 @@ export const COACHING_TOOLS_MENU = [
 export const STUDENT_ROSTER_PATH = '/roster?from=students';
 
 /**
+ * Competitor Roster. The list Tournament Management Pro opens from
+ * Competitor Management System. Coach Unlimited uses the same path.
+ */
+export const COMPETITOR_ROSTER_PATH = '/roster?from=competitors';
+
+/**
  * Basic Advantage Coach page, top to bottom.
  * No Coaching Tools folder and no Competition Team Management.
  */
@@ -116,12 +122,14 @@ export function coachingToolsMenu(unlimited: boolean) {
 /**
  * Advantage Coach Unlimited menu, top to bottom.
  * Daily Lesson Plan is the Unlimited plan that can be uploaded for review.
+ * Competitor Roster sits under Technique Tree and opens the same list as Competitor Management System.
  * Sunday review and Drive cards stay on the page, under this menu.
  */
 export const COACH_UNLIMITED_TOOLS = [
   { title: TRAINING_NOTES_LABEL, to: UNLIMITED_LESSON_PATH, belt: 'brown' as const },
   { title: 'Daily Training Videos', to: '/techniques', belt: 'brown' as const },
   { title: TECHNIQUE_TREE_LABEL, to: '/technique-tree', belt: 'brown' as const },
+  { title: COMPETITOR_ROSTER_LABEL, to: COMPETITOR_ROSTER_PATH, belt: 'brown' as const },
   {
     title: CURRICULUM_LABEL,
     to: `${CURRICULUM_PATH}?plan=${UNLIMITED_LESSON_VALUE}`,

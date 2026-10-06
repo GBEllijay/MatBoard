@@ -6,7 +6,7 @@ import { DriveConnectCard } from '../components/DriveConnectCard';
 import { HomeMark } from '../components/HomeMark';
 import { useCurrentSeat } from '../components/SeatSessionBar';
 import { SiteFooter } from '../components/SiteFooter';
-import { coachToolVisible, isLiveSeat, seatGrantsCoachMenus } from '../lib/instructorSeats';
+import { coachToolVisible } from '../lib/instructorSeats';
 import {
   lessonRevisionLabel,
   listLessonRevisions,
@@ -48,24 +48,22 @@ export function CoachUnlimitedPage() {
               ))}
             </div>
           </nav>
-          {seat ? null : (
-            <article className="plan-card">
-              <p className="plan-card__kicker">{OWNER_DRIVE_KICKER}</p>
-              <strong>{OWNER_DRIVE_TITLE}</strong>
-              <span>{OWNER_DRIVE_BODY}</span>
-              {revisions.length ? (
-                <>
-                  <ul className="plan-card__revisions" aria-label="Lesson drafts waiting for Google Drive">
-                    {revisions.map((revision) => (
-                      <li key={revision.revisionId}>{lessonRevisionLabel(revision)}</li>
-                    ))}
-                  </ul>
-                  <span>{OWNER_DRIVE_QUEUE}</span>
-                </>
-              ) : null}
-            </article>
-          )}
-          {!seat || (isLiveSeat(seat) && seatGrantsCoachMenus(seat)) ? <DriveConnectCard /> : null}
+          <article className="plan-card">
+            <p className="plan-card__kicker">{OWNER_DRIVE_KICKER}</p>
+            <strong>{OWNER_DRIVE_TITLE}</strong>
+            <span>{OWNER_DRIVE_BODY}</span>
+            {revisions.length ? (
+              <>
+                <ul className="plan-card__revisions" aria-label="Lesson drafts waiting for Google Drive">
+                  {revisions.map((revision) => (
+                    <li key={revision.revisionId}>{lessonRevisionLabel(revision)}</li>
+                  ))}
+                </ul>
+                <span>{OWNER_DRIVE_QUEUE}</span>
+              </>
+            ) : null}
+          </article>
+          <DriveConnectCard />
         </section>
         <SiteFooter />
       </div>

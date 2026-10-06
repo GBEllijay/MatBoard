@@ -12,6 +12,7 @@ import {
   WHITE_INCLUDED,
   WHITE_PRICE_DETAIL,
   WHITE_PRICE_LABEL,
+  WHITE_PRODUCT_ID,
   WHITE_STRIPE_NOTE,
   formatUsdFromCents,
   isWhiteFreeCode,
@@ -74,7 +75,7 @@ export function BuyWhitePage() {
     let timer = 0;
     const tick = async () => {
       const status = await lookupWhiteEntitlement({ sessionId });
-      if (status.entitled) rememberWhitePurchase(status);
+      if (status.entitled && (!status.product || status.product === WHITE_PRODUCT_ID)) rememberWhitePurchase(status);
       if (cancelled) return;
       attempts += 1;
       if (status.entitled || attempts >= 4) {
