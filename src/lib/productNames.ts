@@ -270,7 +270,7 @@ export const COMPETITION_PRO_MENU = [
 /** Bottom-of-page guidance on the Media Console manage screen. */
 export const MEDIA_CONSOLE_INSTRUCTIONS = [
   'Gold On means that folder plays on the TV.',
-  'Add photos still uses Google Photos or this phone. Google Drive is an extra source.',
+  'Add photos still uses Google Photos or this phone. Google Drive is an extra source. Connect Google Photos to pick albums.',
   'Tap the left preview on a photo or video to include or skip it. Checked and bright is On. Dimmed is Off.',
   'Off items stay in the list and keep their order.',
   'One On clip loops alone. Several play in list order.',

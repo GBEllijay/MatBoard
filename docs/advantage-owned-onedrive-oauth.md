@@ -4,7 +4,7 @@ Internal setup for Advantage App, LLC. Gym owners never do these steps. Owner st
 
 Advantage does not host photos or videos. File bytes stay in the customer’s own OneDrive. Advantage does not manage that Microsoft account. Coach Unlimited and Advantage Pro stay in alpha until Google Drive, OneDrive, Google Photos, and iCloud all work.
 
-This build signs in with Microsoft, lists folders, and writes one small text file (`advantage-onedrive-connect.txt`) into the folder the gym picks. Lesson day packages still save to Google Drive. Google Photos and iCloud are not connected yet.
+This build signs in with Microsoft, lists folders, and writes one small text file (`advantage-onedrive-connect.txt`) into the folder the gym picks. Lesson day packages still save to Google Drive. Google Photos connects separately for Media Console. iCloud is not connected yet.
 
 The browser uses [MSAL browser](https://github.com/AzureAD/microsoft-authentication-library-for-js) (auth code + PKCE) and Microsoft Graph. Tapping **OneDrive** sends this window to Microsoft sign-in, then Microsoft sends it back to this site to pick a folder. A popup is not used: the installed app and phone browsers block it, so the tap looked like it did nothing. The application id is public in the PWA. **Do not ship a client secret** in the app, in Vite env, or in the owner UI.
 

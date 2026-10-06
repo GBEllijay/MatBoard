@@ -17,6 +17,7 @@ import { TvTip } from '../components/TvTip';
 import { Sheet } from '../components/Sheet';
 import { DriveConnectCard } from '../components/DriveConnectCard';
 import { DriveMediaPicker } from '../components/DriveMediaPicker';
+import { GooglePhotosPicker } from '../components/GooglePhotosPicker';
 import { OpenMyDrive } from '../components/OpenMyDrive';
 import { MediaSourceSheet } from '../components/VideoSourceSheet';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
@@ -40,6 +41,16 @@ import {
 } from '../lib/driveMediaPicker';
 import { formatMss, secondsToMs } from '../lib/format';
 import { downloadDriveFile, getDriveBindingSnapshot, requestDriveToken, subscribeDriveBinding } from '../lib/googleDrive';
+import {
+  PHOTOS_PICK_LABEL,
+  PHOTOS_SIGN_IN_AGAIN,
+  downloadPhotosFile,
+  getPhotosBindingSnapshot,
+  photosImportProgressLabel,
+  requestPhotosToken,
+  subscribePhotosBinding,
+  type PhotosPickedItem,
+} from '../lib/googlePhotos';
 import {
   PHOTO_PICKER_ACCEPT,
   VIDEO_CAPTURE,
@@ -118,7 +129,15 @@ export function ScreensaverPage() {
   const [drivePickOpen, setDrivePickOpen] = useState(false);
   const [drivePickKind, setDrivePickKind] = useState<DrivePickKind>('photo');
   const [driveConnectOpen, setDriveConnectOpen] = useState(false);
+  const [photosConnectOpen, setPhotosConnectOpen] = useState(false);
+  const [photosPickOpen, setPhotosPickOpen] = useState(false);
+  const [photosPickKind, setPhotosPickKind] = useState<DrivePickKind>('photo');
   const driveBinding = useSyncExternalStore(subscribeDriveBinding, getDriveBindingSnapshot, () => null);
+  const photosBinding = useSyncExternalStore(subscribePhotosBinding, getPhotosBindingSnapshot, () => null);
+  useEffect(() => {
+    if (photosBinding) setPhotosConnectOpen(false);
+  }, [photosBinding]);
+  const photosPopupRef = useRef<Window | null>(null);
   const [unlockSound, setUnlockSound] = useState(false);
   const [folderPlay, setFolderPlayState] = useState(DEFAULT_FOLDER_PLAY);
   const [shopCastMode, setShopCastModeState] = useState<ShopCastMode>(DEFAULT_SHOP_CAST_MODE);
@@ -298,6 +317,95 @@ export function ScreensaverPage() {
       return;
     }
     setDrivePickOpen(true);
+  };
+
+  const closePhotosPick = () => {
+    photosPopupRef.current?.close();
+    photosPopupRef.current = null;
+    setPhotosPickOpen(false);
+  };
+
+  const openPhotosPick = (folderId: FolderId, kind: DrivePickKind) => {
+    addFolderRef.current = folderId;
+    setPhotosPickKind(kind);
+    setAddKind(kind === 'video' ? 'video' : 'photo');
+    setAddOpen(false);
+    if (!photosBinding) {
+      setPhotosConnectOpen(true);
+      return;
+    }
+    photosPopupRef.current?.close();
+    photosPopupRef.current = window.open('about:blank', 'advantage-google-photos', 'popup,width=480,height=800');
+    setPhotosPickOpen(true);
+  };
+
+  const importFromPhotos = async (chosen: readonly PhotosPickedItem[]) => {
+    if (savingRef.current) return;
+    const folderId = addFolderRef.current;
+    const picked = [...chosen];
+    closePhotosPick();
+    if (!picked.length) return;
+    savingRef.current = true;
+    setPickerNote('');
+    setBatchStatus({ tone: 'progress', text: photosImportProgressLabel(0, picked.length) });
+    try {
+      const token = (await requestPhotosToken('silent')) ?? (await requestPhotosToken('consent'));
+      if (!token) {
+        showBatchError(folderId, PHOTOS_SIGN_IN_AGAIN);
+        return;
+      }
+      const files: { file: File; driveFileId: string }[] = [];
+      for (let index = 0; index < picked.length; index += 1) {
+        const item = picked[index];
+        if (!item || !item.videoReady) continue;
+        setBatchStatus({ tone: 'progress', text: photosImportProgressLabel(index, picked.length) });
+        try {
+          const blob = await downloadPhotosFile(token, item);
+          const type = item.mime || blob.type || 'application/octet-stream';
+          files.push({
+            file: new File([blob], item.name || 'Google Photos file', { type }),
+            driveFileId: item.id,
+          });
+        } catch {
+          /* One file can fail. The rest still import. */
+        }
+      }
+      if (!files.length) {
+        showBatchError(folderId, 'Those Google Photos files could not be opened. Nothing was saved.');
+        return;
+      }
+      setBatchStatus({
+        tone: 'progress',
+        text: folderSaveProgressLabel({ done: 0, total: files.length, phase: 'shrink' }),
+      });
+      const added = await addDriveMediaFiles(files, folderId, {
+        onProgress: (progress) => {
+          setBatchStatus({ tone: 'progress', text: folderSaveProgressLabel(progress) });
+        },
+      });
+      if (!added) {
+        showBatchError(folderId, 'Those files are already in this folder, or this folder does not use that kind.');
+        return;
+      }
+      setBatchStatus(null);
+      setPickerNote('');
+      await refresh();
+      setPlaying(true);
+      setExpanded((prev) => ({ ...prev, [folderId]: true }));
+      setOptions(true);
+    } catch (error) {
+      showBatchError(
+        folderId,
+        error instanceof Error ? error.message : 'Those Google Photos files could not be saved.',
+      );
+      try {
+        await refresh();
+      } catch {
+        /* The note is the signal. */
+      }
+    } finally {
+      savingRef.current = false;
+    }
   };
 
   const importFromDrive = async (chosen: readonly DriveBrowseMedia[]) => {
@@ -489,7 +597,7 @@ export function ScreensaverPage() {
   const emptyCopy =
     photos.length === 0
       ? focusFolder === 'gallery'
-        ? 'Add photos opens Take photo or Pick from gallery, including Google Photos. Pick from Google Drive is an extra source. Photos and clips stay on this phone or computer. Photos loop fullscreen; clips play through, muted by default. Press F for fullscreen on a computer plugged into the TV.'
+        ? 'Add photos opens Take photo or Pick from gallery on this phone. Pick from Google Photos uses the connected library, including albums. Pick from Google Drive is an extra source. Photos and clips stay on this phone or computer. Photos loop fullscreen; clips play through, muted by default. Press F for fullscreen on a computer plugged into the TV.'
         : `${focusConfig.emptyCopy} Press F for fullscreen on a computer plugged into the TV.`
       : focusFolder === 'shop'
         ? 'Nothing is set to play. Turn on Pro Shop in options, then tap a left preview so at least one card is On.'
@@ -578,6 +686,13 @@ export function ScreensaverPage() {
               <button
                 type="button"
                 className="btn"
+                onClick={() => openPhotosPick(focusFolder, focusFolder === 'gallery' ? 'any' : 'photo')}
+              >
+                {PHOTOS_PICK_LABEL}
+              </button>
+              <button
+                type="button"
+                className="btn"
                 onClick={() => openDrivePick(focusFolder, focusFolder === 'gallery' ? 'any' : 'photo')}
               >
                 {PICK_FROM_DRIVE_LABEL}
@@ -647,6 +762,11 @@ export function ScreensaverPage() {
               onAddVideo={
                 folder.ready && galleryUpload && folder.videoAddLabel
                   ? () => openAdd(folder.id, 'video')
+                  : undefined
+              }
+              onPickPhotos={
+                folder.ready && galleryUpload
+                  ? () => openPhotosPick(folder.id, folder.id === 'gallery' ? 'any' : 'photo')
                   : undefined
               }
               onPickDrive={
@@ -879,8 +999,19 @@ export function ScreensaverPage() {
         captureInputId={addKind === 'video' ? 'saver-video-record' : 'saver-photo-capture'}
         libraryInputId={addKind === 'video' ? 'saver-video-library' : 'saver-photo-library'}
         stacked={options}
+        onPickPhotos={() => openPhotosPick(addFolderRef.current, addKind === 'video' ? 'video' : 'photo')}
         onPickDrive={() => openDrivePick(addFolderRef.current, addKind === 'video' ? 'video' : 'photo')}
         onClose={() => setAddOpen(false)}
+      />
+      <GooglePhotosPicker
+        open={photosPickOpen}
+        kind={photosPickKind}
+        stacked={options}
+        getPopup={() => photosPopupRef.current}
+        onClose={closePhotosPick}
+        onDone={(files) => {
+          void importFromPhotos(files);
+        }}
       />
       <DriveMediaPicker
         open={drivePickOpen}
@@ -895,6 +1026,14 @@ export function ScreensaverPage() {
         open={driveConnectOpen && !driveBinding}
         title="Connect with"
         onClose={() => setDriveConnectOpen(false)}
+        stacked
+      >
+        <DriveConnectCard />
+      </Sheet>
+      <Sheet
+        open={photosConnectOpen && !photosBinding}
+        title="Connect with"
+        onClose={() => setPhotosConnectOpen(false)}
         stacked
       >
         <DriveConnectCard />

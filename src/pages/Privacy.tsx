@@ -45,7 +45,9 @@ export function PrivacyPage() {
           <a href="https://developers.google.com/terms/api-services-user-data-policy">
             Google API Services User Data Policy
           </a>
-          , including its Limited Use requirements. You can disconnect at any time, either in the
+          , including its Limited Use requirements. For Google Photos, Advantage receives only the
+          photos and videos you select in Google’s picker, not the rest of the library. A copy may
+          stay on this device so the TV can play it. You can disconnect at any time, either in the
           app or in your provider account’s security settings.
         </p>
       </section>

@@ -4,6 +4,7 @@ import {
   drivePickHint,
   type DrivePickKind,
 } from '../lib/driveMediaPicker';
+import { PHOTOS_PICK_LABEL, PHOTOS_WITH_DRIVE_STAY } from '../lib/googlePhotos';
 import { VIDEO_LIBRARY_LABEL, VIDEO_RECORD_LABEL, PHOTO_CAPTURE_LABEL } from '../lib/mediaPicker';
 import type { MediaSheetKind } from '../lib/mediaPicker';
 import { OpenMyDrive } from './OpenMyDrive';
@@ -28,6 +29,8 @@ type Props = {
    * Phone Take photo / Pick from gallery stay on the other buttons.
    */
   onPickDrive?: () => void;
+  /** Media Console. Opens the connected Google Photos library. */
+  onPickPhotos?: () => void;
   onClose: () => void;
 };
 
@@ -71,12 +74,13 @@ export function MediaSourceSheet({
   stacked = false,
   stay,
   onPickDrive,
+  onPickPhotos,
   onClose,
 }: Props) {
   const copy = COPY[kind];
   const photoAndVideo = kind === 'photo-or-video';
   const driveKind: DrivePickKind = kind === 'video' ? 'video' : 'photo';
-  const stayLine = stay ?? (onPickDrive ? DRIVE_PICK_BESIDE_PHOTOS : copy.stay);
+  const stayLine = stay ?? (onPickPhotos ? PHOTOS_WITH_DRIVE_STAY : onPickDrive ? DRIVE_PICK_BESIDE_PHOTOS : copy.stay);
   return (
     <Sheet open={open} title={title} onClose={onClose} stacked={stacked}>
       <p className="saver-sound-hint">{stayLine}</p>
@@ -95,6 +99,12 @@ export function MediaSourceSheet({
           <strong>{VIDEO_LIBRARY_LABEL}</strong>
           <span>{copy.libraryHint}</span>
         </label>
+        {onPickPhotos ? (
+          <button type="button" className="btn outcome-pick outcome-pick--library" onClick={onPickPhotos}>
+            <strong>{PHOTOS_PICK_LABEL}</strong>
+            <span>Search an album or collection in the gym Google Photos library</span>
+          </button>
+        ) : null}
         {onPickDrive ? (
           <button type="button" className="btn outcome-pick outcome-pick--library" onClick={onPickDrive}>
             <strong>{PICK_FROM_DRIVE_LABEL}</strong>

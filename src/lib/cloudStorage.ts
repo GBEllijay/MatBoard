@@ -5,7 +5,8 @@
  * Coach Unlimited and Advantage Pro stay in alpha until Google Drive,
  * OneDrive, Google Photos, and iCloud all work. Google Drive is live.
  * OneDrive can connect on a build that has the Microsoft client id.
- * Google Photos and iCloud are required for launch and are not connected yet.
+ * Google Photos can connect on a build that has the Google client id.
+ * iCloud is required for launch and is not connected yet.
  *
  * Dropbox is a reserved slot from an earlier note. It is not on the launch
  * list and it is not half-built. The owner order is OneDrive, then Google
@@ -13,6 +14,7 @@
  */
 
 import { createGoogleDriveConnector } from './googleDriveConnector.ts';
+import { createGooglePhotosConnector } from './googlePhotosConnector.ts';
 import { createOneDriveConnector } from './oneDriveConnector.ts';
 
 export type CloudStorageProviderId = 'googleDrive' | 'oneDrive' | 'googlePhotos' | 'iCloud' | 'dropbox';
@@ -95,6 +97,8 @@ export interface CloudStorageConnector {
   createFolderLabel?: string;
   /** Shown when connect returns no folders. */
   emptyFolderMessage?: string;
+  /** Replaces “Choose a folder.” when this provider is not a Drive-style folder. */
+  choosePrompt?: string;
   /** Write a text file into a folder the gym owns. Omit folderId for the account root. */
   save(session: string, file: CloudTextSave, folderId?: string): Promise<CloudItemRef>;
   /** List names in a folder the gym owns. Omit folderId to list the account root. */
@@ -106,11 +110,7 @@ export interface CloudStorageConnector {
 /**
  * Required before Coach and Pro leave alpha. Shown disabled until that sign-in exists.
  */
-function launchConnector(
-  id: 'googlePhotos' | 'iCloud',
-  displayName: string,
-  message: string,
-): CloudStorageConnector {
+function launchConnector(id: 'iCloud', displayName: string, message: string): CloudStorageConnector {
   return {
     id,
     displayName,
@@ -155,11 +155,7 @@ function reservedConnector(id: 'dropbox', displayName: string): CloudStorageConn
 const registry: Record<CloudStorageProviderId, CloudStorageConnector> = {
   googleDrive: createGoogleDriveConnector(),
   oneDrive: createOneDriveConnector(),
-  googlePhotos: launchConnector(
-    'googlePhotos',
-    'Google Photos',
-    'Google Photos is coming for launch. It is not connected in this build. Picking a photo from this phone still works. Advantage does not host photos or videos.',
-  ),
+  googlePhotos: createGooglePhotosConnector(),
   iCloud: launchConnector(
     'iCloud',
     'iCloud',
@@ -168,7 +164,7 @@ const registry: Record<CloudStorageProviderId, CloudStorageConnector> = {
   dropbox: reservedConnector('dropbox', 'Dropbox'),
 };
 
-/** Owner list: live Drive and OneDrive, then the launch providers that are not connected yet. */
+/** Owner list: live Drive, OneDrive, and Google Photos, then iCloud. */
 export const CLOUD_STORAGE_PROVIDER_IDS: readonly CloudStorageProviderId[] = [
   'googleDrive',
   'oneDrive',
