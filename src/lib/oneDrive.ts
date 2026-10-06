@@ -8,6 +8,7 @@
  */
 
 import type { CloudItemRef } from './cloudStorage.ts';
+import { MICROSOFT_CLIENT_API, publicMicrosoftClientId } from './microsoftClientPublic.ts';
 
 /** Legacy key. Production does not read a pasted id. */
 export const MICROSOFT_CLIENT_ID_KEY = 'matboard.pro.microsoftClientId';
@@ -41,7 +42,40 @@ export type OneDriveBinding = {
   email: string | null;
 };
 
-export type OneDriveAuthCode = 'missing-client' | 'invalid-client' | 'cancelled' | 'failed';
+export type OneDriveAuthCode = 'missing-client' | 'invalid-client' | 'cancelled' | 'failed' | 'redirecting';
+
+/** MSAL session flag while a redirect to Microsoft is unfinished. */
+export const MSAL_INTERACTION_STATUS_KEY = 'msal.interaction.status';
+
+const ONEDRIVE_SESSION_KEY = 'matboard.pro.oneDriveSession';
+const ONEDRIVE_RESUME_KEY = 'matboard.pro.oneDriveResume';
+const ONEDRIVE_RESUME_ERROR_KEY = 'matboard.pro.oneDriveResumeError';
+
+export type OneDriveSession = {
+  token: string;
+  expiresAt: number;
+  accountLabel: string | null;
+};
+
+/**
+ * What a OneDrive tap should do. A saved session lists folders.
+ * Otherwise the browser goes to Microsoft and comes back.
+ */
+export function oneDriveSignInAction(input: {
+  clientId: string;
+  hasSession: boolean;
+}): 'unavailable' | 'session' | 'redirect' {
+  if (!input.clientId.trim()) return 'unavailable';
+  if (input.hasSession) return 'session';
+  return 'redirect';
+}
+
+/** SPA redirect URI. Origin only, no path and no trailing slash. */
+export function oneDriveRedirectUri(origin: string): string {
+  const trimmed = origin.trim().replace(/\/$/, '');
+  if (!/^https?:\/\/[^/]+$/i.test(trimmed)) return '';
+  return trimmed;
+}
 
 export type MicrosoftClientIdStore = {
   getItem(key: string): string | null;
@@ -153,14 +187,163 @@ function browserClientIdStorage(): MicrosoftClientIdStore | null {
 
 /** Client id baked into this build. Empty when Advantage has not set it yet. */
 export function ownedMicrosoftClientId(): string {
-  return envMicrosoftClientId()?.trim() ?? '';
+  return publicMicrosoftClientId(envMicrosoftClientId());
+}
+
+let runtimeClientId: string | null = null;
+let runtimeLoad: Promise<string> | null = null;
+const clientIdListeners = new Set<() => void>();
+
+export function subscribeMicrosoftClientId(listener: () => void): () => void {
+  clientIdListeners.add(listener);
+  return () => clientIdListeners.delete(listener);
+}
+
+function notifyMicrosoftClientId(): void {
+  clientIdListeners.forEach((listener) => listener());
 }
 
 export function microsoftClientId(): string {
-  return applyOwnedMicrosoftClientId(browserClientIdStorage(), {
+  const baked = applyOwnedMicrosoftClientId(browserClientIdStorage(), {
     envValue: envMicrosoftClientId(),
     dev: isDevBuild(),
   });
+  const fromBuild = publicMicrosoftClientId(baked);
+  if (fromBuild) return fromBuild;
+  return publicMicrosoftClientId(runtimeClientId);
+}
+
+/**
+ * Build-time id when Vite inlined it. Otherwise the Pages Function, which
+ * reads the Cloudflare env on the request. Dev builds keep the local field.
+ */
+export function loadMicrosoftClientId(): Promise<string> {
+  const current = microsoftClientId();
+  if (current) return Promise.resolve(current);
+  if (typeof window === 'undefined') return Promise.resolve('');
+  if (runtimeClientId !== null) return Promise.resolve(publicMicrosoftClientId(runtimeClientId));
+  if (!runtimeLoad) {
+    runtimeLoad = fetch(MICROSOFT_CLIENT_API, { cache: 'no-store', credentials: 'same-origin' })
+      .then(async (response) => {
+        if (!response.ok) return '';
+        const body = (await response.json()) as { clientId?: unknown };
+        return publicMicrosoftClientId(typeof body.clientId === 'string' ? body.clientId : '');
+      })
+      .catch(() => '')
+      .then((id) => {
+        runtimeClientId = id;
+        notifyMicrosoftClientId();
+        return id;
+      });
+  }
+  return runtimeLoad;
+}
+
+function sessionStore(): Storage | null {
+  try {
+    if (typeof sessionStorage === 'undefined') return null;
+    return sessionStorage;
+  } catch {
+    return null;
+  }
+}
+
+export function readOneDriveSession(): OneDriveSession | null {
+  try {
+    const raw = sessionStore()?.getItem(ONEDRIVE_SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<OneDriveSession>;
+    if (!parsed.token || typeof parsed.expiresAt !== 'number') return null;
+    if (parsed.expiresAt < Date.now() + 60_000) return null;
+    return {
+      token: parsed.token,
+      expiresAt: parsed.expiresAt,
+      accountLabel: parsed.accountLabel ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function writeOneDriveSession(session: OneDriveSession | null): void {
+  try {
+    const store = sessionStore();
+    if (!store) return;
+    if (!session) store.removeItem(ONEDRIVE_SESSION_KEY);
+    else store.setItem(ONEDRIVE_SESSION_KEY, JSON.stringify(session));
+  } catch {
+    /* the in-memory sign-in still covers this page */
+  }
+}
+
+export function markOneDriveResume(): void {
+  try {
+    sessionStore()?.setItem(ONEDRIVE_RESUME_KEY, '1');
+    sessionStore()?.removeItem(ONEDRIVE_RESUME_ERROR_KEY);
+  } catch {
+    /* the redirect can still finish if the token comes back */
+  }
+}
+
+export function clearOneDriveResumeFlag(): void {
+  try {
+    sessionStore()?.removeItem(ONEDRIVE_RESUME_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function writeOneDriveResumeError(message: string): void {
+  try {
+    sessionStore()?.setItem(ONEDRIVE_RESUME_ERROR_KEY, message);
+    sessionStore()?.removeItem(ONEDRIVE_RESUME_KEY);
+  } catch {
+    /* the sheet can still say sign-in failed */
+  }
+}
+
+/** `token` means Microsoft already returned an access token. `error` is owner copy. */
+export function oneDriveResumeSnapshot(): 'token' | 'error' | null {
+  try {
+    const store = sessionStore();
+    if (!store) return null;
+    if (store.getItem(ONEDRIVE_RESUME_ERROR_KEY)) return 'error';
+    if (store.getItem(ONEDRIVE_RESUME_KEY) === '1' && readOneDriveSession()) return 'token';
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+export function takeOneDriveResumeError(): string {
+  try {
+    const message = sessionStore()?.getItem(ONEDRIVE_RESUME_ERROR_KEY)?.trim() ?? '';
+    sessionStore()?.removeItem(ONEDRIVE_RESUME_ERROR_KEY);
+    return message || ONEDRIVE_SIGN_IN_FAILED;
+  } catch {
+    return ONEDRIVE_SIGN_IN_FAILED;
+  }
+}
+
+/** Close the return sheet. Keeps a valid Microsoft session for the next tap. */
+export function dismissOneDriveResume(): void {
+  clearOneDriveResumeFlag();
+  try {
+    sessionStore()?.removeItem(ONEDRIVE_RESUME_ERROR_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function oneDriveRedirectPending(): boolean {
+  try {
+    const store = sessionStore();
+    if (store?.getItem(MSAL_INTERACTION_STATUS_KEY)) return true;
+  } catch {
+    /* fall through to the hash */
+  }
+  if (typeof window === 'undefined') return false;
+  return /(?:^#|&)(code|error|client_info)=/.test(window.location.hash);
 }
 
 export function saveMicrosoftClientId(value: string): void {

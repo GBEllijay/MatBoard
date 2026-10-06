@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   cloudStorage,
@@ -24,11 +24,15 @@ import {
   saveGoogleClientId,
 } from '../lib/googleDrive';
 import {
+  clearOneDriveResumeFlag,
+  loadMicrosoftClientId,
   microsoftClientId,
   ONEDRIVE_DEV_CLIENT_HINT,
   oneDriveOwnerFacingError,
   ownedMicrosoftClientId,
   saveMicrosoftClientId,
+  subscribeMicrosoftClientId,
+  takeOneDriveResumeError,
 } from '../lib/oneDrive';
 
 function connectedBinding(): CloudBinding | null {
@@ -55,15 +59,21 @@ function connectedDetail(binding: CloudBinding): string {
 /**
  * Connect with list for Coach Unlimited and Advantage Pro.
  * Google Drive signs in and picks a folder. OneDrive does the same when this
- * build has Microsoft sign-in. Google Photos and iCloud stay disabled until
- * they work. The build supplies sign-in. Owners do not type a setup code.
+ * build has Microsoft sign-in: the tap leaves for Microsoft, then comes back
+ * to this list. Google Photos and iCloud stay disabled until they work.
+ * The build supplies sign-in. Owners do not type a setup code.
  */
-export function DriveConnectCard() {
+let oneDriveResumeStarted = false;
+
+export function DriveConnectCard({ resumeMode = null }: { resumeMode?: 'token' | 'error' | null }) {
   const owned = ownedGoogleClientId();
   const ownedMicrosoft = ownedMicrosoftClientId();
   const [devAppId, setDevAppId] = useState(() => (import.meta.env.DEV && !owned ? googleClientId() : ''));
   const [devMicrosoftId, setDevMicrosoftId] = useState(() =>
     import.meta.env.DEV && !ownedMicrosoft ? microsoftClientId() : '',
+  );
+  const [microsoftChecked, setMicrosoftChecked] = useState(
+    () => Boolean(ownedMicrosoftClientId()) || import.meta.env.DEV,
   );
   const [binding, setBinding] = useState<CloudBinding | null>(() => connectedBinding());
   const [pending, setPending] = useState<CloudStorageConnector | null>(null);
@@ -71,10 +81,21 @@ export function DriveConnectCard() {
   const [session, setSession] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const connectRef = useRef<(provider: CloudStorageConnector) => Promise<void>>(async () => {});
 
   useEffect(() => {
     googleClientId();
-    microsoftClientId();
+    let alive = true;
+    const stop = subscribeMicrosoftClientId(() => {
+      if (alive) setMicrosoftChecked(true);
+    });
+    void loadMicrosoftClientId().finally(() => {
+      if (alive) setMicrosoftChecked(true);
+    });
+    return () => {
+      alive = false;
+      stop();
+    };
   }, []);
 
   const choices = cloudStorageChoices();
@@ -84,9 +105,14 @@ export function DriveConnectCard() {
     if (provider.phase !== 'live' || !provider.isAvailable()) return;
     setBusyId(provider.id);
     setError('');
+    let leaving = false;
     try {
       const result = await provider.connect();
       if (!result.ok) {
+        if (result.reason === 'redirecting') {
+          leaving = true;
+          return;
+        }
         setError(result.message);
         return;
       }
@@ -96,9 +122,24 @@ export function DriveConnectCard() {
     } catch (reason) {
       setError(ownerError(provider, reason));
     } finally {
-      setBusyId(null);
+      if (!leaving) setBusyId(null);
     }
   };
+  connectRef.current = connect;
+
+  useEffect(() => {
+    if (!resumeMode || oneDriveResumeStarted) return;
+    if (resumeMode === 'error') {
+      oneDriveResumeStarted = true;
+      setError(takeOneDriveResumeError());
+      return;
+    }
+    const provider = cloudStorage('oneDrive');
+    if (!provider.isAvailable()) return;
+    oneDriveResumeStarted = true;
+    clearOneDriveResumeFlag();
+    void connectRef.current(provider);
+  }, [resumeMode, microsoftChecked]);
 
   const choose = async (folder: CloudFolderRef) => {
     if (!session || !pending) return;
@@ -211,14 +252,15 @@ export function DriveConnectCard() {
           <ul className="drive-connect__providers" aria-label={CONNECT_WITH_TITLE}>
             {choices.map((provider) => {
               const comingForLaunch = provider.phase === 'coming-for-launch';
+              const waitingForMicrosoft = provider.id === 'oneDrive' && !microsoftChecked;
               const canConnect = provider.phase === 'live' && provider.isAvailable();
               const opening = busyId === provider.id;
               return (
                 <li key={provider.id}>
                   <button
                     type="button"
-                    className={canConnect ? 'btn' : 'btn btn--ghost'}
-                    disabled={!canConnect || busyId !== null}
+                    className={canConnect ? 'btn' : comingForLaunch ? 'btn btn--ghost' : 'btn btn--ghost btn--unavailable'}
+                    disabled={!canConnect || busyId !== null || waitingForMicrosoft}
                     onClick={() => void connect(provider)}
                   >
                     {opening ? `Opening ${provider.displayName}…` : provider.displayName}
@@ -232,7 +274,10 @@ export function DriveConnectCard() {
       )}
       {!binding && !folders
         ? choices
-            .filter((provider) => provider.phase === 'live' && !provider.isAvailable())
+            .filter((provider) => {
+              if (provider.id === 'oneDrive' && !microsoftChecked) return false;
+              return provider.phase === 'live' && !provider.isAvailable();
+            })
             .map((provider) => (
               <p key={provider.id} className="drive-connect__note" role="status">
                 {provider.unavailableMessage()}
