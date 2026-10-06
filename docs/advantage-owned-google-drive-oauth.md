@@ -55,4 +55,4 @@ The owner screen is a **Connect with** list, not a Google-only button. `src/lib/
 
 Coach Unlimited and Advantage Pro stay in alpha until Google Drive, OneDrive, Google Photos, and iCloud all work.
 
-Google Drive (`googleDrive`) is `live`. OneDrive (`oneDrive`) is `live` in code and connects when `VITE_MICROSOFT_CLIENT_ID` is set (see `docs/advantage-owned-onedrive-oauth.md`). `googlePhotos` and `iCloud` are `coming-for-launch`: same interface, disabled, not implemented. Dropbox is a reserved slot from an earlier note. It is not half-built and it is not on the launch list.
+Google Drive (`googleDrive`) is `live`. OneDrive (`oneDrive`) is `live` in code and connects when `VITE_MICROSOFT_CLIENT_ID` is set (see `docs/advantage-owned-onedrive-oauth.md`). Google Photos (`googlePhotos`) is `live` in code and connects with this same client id when the Photos Picker API is enabled (see `docs/advantage-owned-google-photos-oauth.md`). `iCloud` is `coming-for-launch`: same interface, disabled, not implemented. Dropbox is a reserved slot from an earlier note. It is not half-built and it is not on the launch list.

@@ -1,4 +1,5 @@
 import { PICK_FROM_DRIVE_LABEL } from '../lib/driveMediaPicker';
+import { PHOTOS_PICK_LABEL } from '../lib/googlePhotos';
 import type { FolderConfig, FolderId, StoredPhoto } from '../lib/photoStore';
 import { FolderItemList } from './FolderItemList';
 import { OpenMyDrive } from './OpenMyDrive';
@@ -14,6 +15,7 @@ type Props = {
   onAdd?: () => void;
   onAddVideo?: () => void;
   onPickDrive?: () => void;
+  onPickPhotos?: () => void;
   onClear?: () => Promise<void>;
   onRename: (id: string, label: string) => Promise<void>;
   onRemove: (id: string) => Promise<void>;
@@ -38,6 +40,7 @@ export function ToolboxFolder({
   onAdd,
   onAddVideo,
   onPickDrive,
+  onPickPhotos,
   onClear,
   onRename,
   onRemove,
@@ -90,6 +93,11 @@ export function ToolboxFolder({
             {onAddVideo && folder.videoAddLabel ? (
               <button type="button" className="btn" onClick={onAddVideo}>
                 {folder.videoAddLabel}
+              </button>
+            ) : null}
+            {onPickPhotos ? (
+              <button type="button" className="btn" onClick={onPickPhotos}>
+                {PHOTOS_PICK_LABEL}
               </button>
             ) : null}
             {onPickDrive ? (

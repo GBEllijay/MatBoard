@@ -96,8 +96,9 @@ export function TermsPage() {
           files to a cloud storage account that you own and control. Before Coach and Pro leave
           alpha and go on sale, Advantage supports connecting your own account with each of these
           providers: Google Drive, OneDrive, iCloud, and Google Photos. Google Drive is available
-          now. OneDrive, iCloud, and Google Photos are shipping as part of that same launch set and
-          will be working before those tiers are sold to the public.
+          now. Google Photos can be connected so Media Console can pick albums and photos from the
+          gym’s library. OneDrive connects when this build includes it. iCloud is still part of that
+          launch set and is not connected yet.
         </p>
         <ul>
           <li>
@@ -154,9 +155,10 @@ export function TermsPage() {
         </p>
         <p>
           Coach Unlimited and Advantage Pro need your own cloud storage account to save and open
-          lesson plans, photos, and videos. Google Drive is available now. OneDrive, iCloud, and
-          Google Photos are part of the same launch set and will be working before Coach and Pro
-          are sold to the public. Setting up and connecting that account is your responsibility.
+          lesson plans, photos, and videos. Google Drive is available now. Google Photos can be
+          connected for Media Console. OneDrive connects when this build includes it. iCloud is
+          still part of that launch set and is not connected yet. Setting up and connecting that
+          account is your responsibility.
           Advantage App, LLC does not provide, manage, or back up your storage.
         </p>
         <p>

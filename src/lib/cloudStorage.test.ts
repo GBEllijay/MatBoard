@@ -13,9 +13,11 @@ test('Google Drive stays the default and launch providers are listed in owner or
   assert.equal(choices[0]?.phase, 'live');
   assert.equal(choices[1]?.id, 'oneDrive');
   assert.equal(choices[1]?.phase, 'live');
+  assert.equal(choices[2]?.id, 'googlePhotos');
+  assert.equal(choices[2]?.phase, 'live');
   assert.deepEqual(
-    choices.slice(2).map((provider) => provider.phase),
-    ['coming-for-launch', 'coming-for-launch'],
+    choices.slice(3).map((provider) => provider.phase),
+    ['coming-for-launch'],
   );
   assert.equal(
     choices.some((provider) => provider.id === 'dropbox'),
@@ -65,24 +67,41 @@ test('Google Drive stays the default and launch providers are listed in owner or
   await assert.rejects(() => oneDrive.open('token'), /contact Advantage/);
   oneDrive.disconnect();
 
-  for (const id of ['googlePhotos', 'iCloud'] as const) {
-    const provider = cloudStorage(id);
-    assert.equal(provider.id, id);
-    assert.equal(provider.phase, 'coming-for-launch');
-    assert.equal(provider.isAvailable(), false);
-    assert.equal(provider.isConnected(), false);
-    assert.equal(provider.binding(), null);
-    assert.equal(provider.getBindingSnapshot(), null);
-    assert.equal(provider.openFolderUrl('folder'), null);
-    assert.match(provider.unavailableMessage(), /coming for launch/i);
-    assert.doesNotMatch(provider.unavailableMessage(), /coming soon|client id|oauth|cloud console|client secret/i);
-    const result = await provider.connect();
-    assert.equal(result.ok, false);
-    if (!result.ok) assert.equal(result.reason, 'unavailable');
-    await assert.rejects(() => provider.save('token', { name: 'a.txt', text: 'b' }), /coming for launch/i);
-    await assert.rejects(() => provider.open('token'), /coming for launch/i);
-    provider.disconnect();
+  const photos = cloudStorage('googlePhotos');
+  assert.equal(photos.phase, 'live');
+  assert.equal(photos.isAvailable(), false);
+  assert.equal(photos.isConnected(), false);
+  assert.equal(photos.binding(), null);
+  assert.match(photos.unavailableMessage(), /Google Photos is not available on this build yet — contact Advantage/);
+  assert.doesNotMatch(photos.unavailableMessage(), /coming soon|coming for launch|client id|oauth|client secret/i);
+  assert.equal(photos.openFolderUrl('library'), 'https://photos.google.com/');
+  assert.equal(photos.openFolderUrl('folder'), null);
+  const photosConnect = await photos.connect();
+  assert.equal(photosConnect.ok, false);
+  if (!photosConnect.ok) {
+    assert.equal(photosConnect.reason, 'unavailable');
+    assert.match(photosConnect.message, /contact Advantage/);
   }
+  await assert.rejects(() => photos.save('token', { name: 'a.txt', text: 'b' }), /contact Advantage/);
+  await assert.rejects(() => photos.open('token'), /contact Advantage/);
+  photos.disconnect();
+
+  const icloud = cloudStorage('iCloud');
+  assert.equal(icloud.id, 'iCloud');
+  assert.equal(icloud.phase, 'coming-for-launch');
+  assert.equal(icloud.isAvailable(), false);
+  assert.equal(icloud.isConnected(), false);
+  assert.equal(icloud.binding(), null);
+  assert.equal(icloud.getBindingSnapshot(), null);
+  assert.equal(icloud.openFolderUrl('folder'), null);
+  assert.match(icloud.unavailableMessage(), /coming for launch/i);
+  assert.doesNotMatch(icloud.unavailableMessage(), /coming soon|client id|oauth|cloud console|client secret/i);
+  const icloudConnect = await icloud.connect();
+  assert.equal(icloudConnect.ok, false);
+  if (!icloudConnect.ok) assert.equal(icloudConnect.reason, 'unavailable');
+  await assert.rejects(() => icloud.save('token', { name: 'a.txt', text: 'b' }), /coming for launch/i);
+  await assert.rejects(() => icloud.open('token'), /coming for launch/i);
+  icloud.disconnect();
 
   const dropbox = cloudStorage('dropbox');
   assert.equal(dropbox.phase, 'reserved');
