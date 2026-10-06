@@ -2,10 +2,10 @@
  * Owner cloud storage. Advantage does not host photos or videos.
  * Bytes stay in the gym's own account. Advantage does not manage that account.
  *
- * Coach Unlimited and Advantage Pro stay in alpha until Google Drive,
- * OneDrive, Google Photos, and iCloud all work. Google Drive is live.
- * OneDrive can connect on a build that has the Microsoft client id.
- * Google Photos and iCloud are required for launch and are not connected yet.
+ * Google Drive is live. OneDrive can connect on a build that has the Microsoft
+ * client id. Google Photos is already reachable from Pick from gallery:
+ * collections come from Google Photos when it is set up on the phone. iCloud
+ * stays on the Connect with list as Coming soon until CloudKit connect is live.
  *
  * Dropbox is a reserved slot from an earlier note. It is not on the launch
  * list and it is not half-built. The owner order is OneDrive, then Google
@@ -17,18 +17,26 @@ import { createOneDriveConnector } from './oneDriveConnector.ts';
 
 export type CloudStorageProviderId = 'googleDrive' | 'oneDrive' | 'googlePhotos' | 'iCloud' | 'dropbox';
 
-/** `live` can connect. `coming-for-launch` is required before public sale and stays disabled. */
-export type CloudStoragePhase = 'live' | 'coming-for-launch' | 'reserved';
+/** `live` can connect. `coming-soon` stays visible and disabled. `gallery` is already in Pick from gallery. */
+export type CloudStoragePhase = 'live' | 'coming-soon' | 'gallery' | 'reserved';
 
 export const CONNECT_WITH_KICKER = 'Your folder';
 export const CONNECT_WITH_TITLE = 'Connect with';
 export const CONNECT_WITH_BODY =
-  'Choose a folder the gym already owns. Lesson plans, photos, and videos stay there. Advantage does not host photos or videos, and Advantage does not manage the gym cloud account. Adding a photo still includes Google Photos and the phone gallery. Google Drive is an additional folder. OneDrive, Google Photos, and iCloud are required before Coach Unlimited and Advantage Pro leave alpha.';
+  'Choose a folder the gym already owns. Lesson plans, photos, and videos stay there. Advantage does not host photos or videos, and Advantage does not manage the gym cloud account. Adding a photo still includes Google Photos and the phone gallery. Google Drive is an additional folder. iCloud is coming soon.';
 export const CONNECT_ACCOUNT_NOTE =
   'Advantage does not host photos or videos. The gym uses its own cloud account. Advantage does not manage that account.';
-export const CONNECT_LAUNCH_BADGE = 'Coming for launch';
-/** @deprecated Display string is `CONNECT_LAUNCH_BADGE`. Kept so older imports still compile. */
-export const CONNECT_COMING_SOON = CONNECT_LAUNCH_BADGE;
+/** Gold label on the iCloud row only. Google Photos does not use this. */
+export const CONNECT_COMING_SOON_BADGE = 'Coming soon';
+/**
+ * Short status on the Google Photos row. Not a connect action, and not a
+ * coming-soon badge: Pick from gallery already includes Google Photos.
+ */
+export const CONNECT_PHOTOS_GALLERY = 'Already in gallery';
+/** @deprecated Display string is `CONNECT_COMING_SOON_BADGE`. Only iCloud shows it. */
+export const CONNECT_LAUNCH_BADGE = CONNECT_COMING_SOON_BADGE;
+/** @deprecated Display string is `CONNECT_COMING_SOON_BADGE`. */
+export const CONNECT_COMING_SOON = CONNECT_COMING_SOON_BADGE;
 export const CONNECT_CHOOSE_FOLDER = 'Choose a folder.';
 /**
  * Temporary owner heads-up while Advantage’s Google app is in Testing
@@ -104,17 +112,20 @@ export interface CloudStorageConnector {
 }
 
 /**
- * Required before Coach and Pro leave alpha. Shown disabled until that sign-in exists.
+ * On the Connect with list, but not a live sign-in.
+ * `gallery` is Google Photos (already in Pick from gallery).
+ * `coming-soon` is iCloud until CloudKit connect is live.
  */
-function launchConnector(
+function listedConnector(
   id: 'googlePhotos' | 'iCloud',
   displayName: string,
+  phase: 'gallery' | 'coming-soon',
   message: string,
 ): CloudStorageConnector {
   return {
     id,
     displayName,
-    phase: 'coming-for-launch',
+    phase,
     isAvailable: () => false,
     unavailableMessage: () => message,
     isConnected: () => false,
@@ -155,26 +166,33 @@ function reservedConnector(id: 'dropbox', displayName: string): CloudStorageConn
 const registry: Record<CloudStorageProviderId, CloudStorageConnector> = {
   googleDrive: createGoogleDriveConnector(),
   oneDrive: createOneDriveConnector(),
-  googlePhotos: launchConnector(
+  googlePhotos: listedConnector(
     'googlePhotos',
     'Google Photos',
-    'Google Photos is coming for launch. It is not connected in this build. Picking a photo from this phone still works. Advantage does not host photos or videos.',
+    'gallery',
+    'Google Photos is already included when you pick from gallery. If Google Photos is set up on this phone, collections come from there. Advantage does not host photos or videos.',
   ),
-  iCloud: launchConnector(
+  iCloud: listedConnector(
     'iCloud',
     'iCloud',
-    'iCloud is coming for launch. It is not connected in this build. Advantage does not host photos or videos.',
+    'coming-soon',
+    'iCloud is coming soon. It is not a live connect in this build. Advantage does not host photos or videos.',
   ),
   dropbox: reservedConnector('dropbox', 'Dropbox'),
 };
 
-/** Owner list: live Drive and OneDrive, then the launch providers that are not connected yet. */
+/** Owner list: Drive, OneDrive, Google Photos (gallery), then iCloud (coming soon). */
 export const CLOUD_STORAGE_PROVIDER_IDS: readonly CloudStorageProviderId[] = [
   'googleDrive',
   'oneDrive',
   'googlePhotos',
   'iCloud',
 ];
+
+/** Gold Coming soon label for iCloud. Every other provider, including Google Photos, gets none. */
+export function connectListBadge(provider: CloudStorageConnector): string | null {
+  return provider.phase === 'coming-soon' ? CONNECT_COMING_SOON_BADGE : null;
+}
 
 /** Google Drive is the default. Pass another id when that provider is wired. */
 export function cloudStorage(id: CloudStorageProviderId = 'googleDrive'): CloudStorageConnector {

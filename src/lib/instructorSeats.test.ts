@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -9,6 +10,7 @@ import {
   DEFAULT_INSTRUCTOR_PERMISSIONS,
   INSTRUCTOR_PERMISSION_FIELDS,
   INSTRUCTOR_SEAT_SESSION_KEY,
+  INSTRUCTOR_SEAT_SIGNED_OUT_KEY,
   INSTRUCTOR_SEATS_STORAGE_KEY,
   INSTRUCTOR_PRESETS,
   PRO_INSTRUCTOR_SEAT_CAP,
@@ -25,9 +27,13 @@ import {
   permissionsMatchPreset,
   listInstructorSeats,
   normalizeInstructorPermissions,
+  inviteReloadBlocked,
   proSeatCapBlockedCopy,
   proSeatUsageLabel,
+  purchasePromptsHidden,
   readCurrentSeat,
+  readSignedOutToast,
+  seatChromeHidden,
   revokeInstructorSeat,
   coachToolVisible,
   seatPermissionAllows,
@@ -405,10 +411,10 @@ test('four binder presets fill the toggles and stay overridable', () => {
   assert.deepEqual(
     INSTRUCTOR_PRESETS.map((preset) => preset.detail),
     [
-      ['Lesson plans and daily videos', 'Downloads only'],
-      ['Lesson plans and daily videos with uploads'],
-      ['Events, Pro Shop, and gallery'],
-      ['Adds the slideshow for events, Pro Shop, and gallery'],
+      ['Lesson plans and daily videos', 'Full cloud and sharing in these menus'],
+      ['Lesson plans, daily videos, and uploads', 'Full cloud and sharing in these menus'],
+      ['Events, Pro Shop, and gallery', 'Full cloud and sharing in these menus'],
+      ['Lessons, uploads, events, Pro Shop, and gallery', 'Full cloud and sharing in these menus'],
     ],
   );
   assert.deepEqual(
@@ -666,4 +672,88 @@ test('device guests have no seat, so collaboration controls stay hidden', () => 
   assert.equal(seatPermissionAllows(defaultInstructorPermissions(), 'galleryUpload'), false);
   assert.equal(seatPermissionAllows(defaultInstructorPermissions(), 'downloadTodaysVideos'), true);
   assert.equal(seatPermissionAllows(defaultInstructorPermissions(), 'uploadForDistribution'), true);
+});
+
+test('sign out clears Coach Two immediately and does not fall back to the program director seat', () => {
+  reset();
+  const coach = issueInstructorInvite({
+    email: 'coach.two@gym.com',
+    presetId: 'coach',
+    origin: 'https://advantage.test',
+    token: 'coach-two',
+  });
+  const director = issueInstructorInvite({
+    email: 'pd@gym.com',
+    presetId: 'program-director',
+    origin: 'https://advantage.test',
+    token: 'pd-seat',
+  });
+  assert.equal(coach.ok, true);
+  assert.equal(director.ok, true);
+  if (!coach.ok || !director.ok) return;
+  assert.equal(acceptInstructorInvite('coach-two').ok, true);
+  assert.equal(readCurrentSeat()?.email, 'coach.two@gym.com');
+  assert.equal(purchasePromptsHidden(readCurrentSeat()), true);
+
+  signOutInstructorSeat();
+  assert.equal(localStorage.getItem(INSTRUCTOR_SEAT_SESSION_KEY), null);
+  assert.ok(localStorage.getItem(INSTRUCTOR_SEAT_SIGNED_OUT_KEY)?.includes('coach-two'));
+  assert.equal(readCurrentSeat(), null);
+  assert.equal(purchasePromptsHidden(readCurrentSeat()), false);
+  assert.equal(readSignedOutToast(), true);
+  assert.equal(inviteReloadBlocked('coach-two', 'reload', 'coach-two'), true);
+  assert.equal(inviteReloadBlocked('coach-two', 'navigate', 'coach-two'), false);
+  assert.equal(inviteReloadBlocked('coach-two', 'reload', null), false);
+  assert.deepEqual(
+    listInstructorSeats().map((seat) => seat.email).sort(),
+    ['coach.two@gym.com', 'pd@gym.com'],
+  );
+
+  const resumed = acceptInstructorInvite('pd-seat');
+  assert.equal(resumed.ok, true);
+  if (!resumed.ok) return;
+  assert.equal(readCurrentSeat()?.email, 'pd@gym.com');
+  assert.equal(readSignedOutToast(), false);
+  assert.equal(purchasePromptsHidden(readCurrentSeat()), true);
+  signOutInstructorSeat();
+  assert.equal(readCurrentSeat(), null);
+  assert.equal(purchasePromptsHidden(readCurrentSeat()), false);
+  assert.equal(acceptInstructorInvite('coach-two').ok, true);
+  assert.equal(readCurrentSeat()?.email, 'coach.two@gym.com');
+});
+
+test('seat chrome stays off the gym TV and purchase prompts follow the live seat', () => {
+  assert.equal(seatChromeHidden('/match'), true);
+  assert.equal(seatChromeHidden('/training'), true);
+  assert.equal(seatChromeHidden('/slideshow'), true);
+  assert.equal(seatChromeHidden('/screensaver'), true);
+  assert.equal(seatChromeHidden('/match/control'), false);
+  assert.equal(seatChromeHidden('/'), false);
+  assert.equal(seatChromeHidden('/coach'), false);
+  assert.equal(seatChromeHidden('/pro'), false);
+  assert.equal(purchasePromptsHidden(null), false);
+  assert.equal(purchasePromptsHidden({ status: 'active' }), true);
+  assert.equal(purchasePromptsHidden({ status: 'invited' }), true);
+  assert.equal(purchasePromptsHidden({ status: 'revoked' }), false);
+
+  const read = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf8');
+  const coach = read('../pages/Coach.tsx');
+  const pro = read('../pages/Pro.tsx');
+  const home = read('../pages/Home.tsx');
+  const bar = read('../components/SeatSessionBar.tsx');
+  const invite = read('../components/InstructorInvitePanel.tsx');
+  const unlimited = read('../pages/CoachUnlimited.tsx');
+  assert.match(coach, /purchasePromptsHidden\(seat\)/);
+  assert.match(coach, /Buy Advantage Coach/);
+  assert.match(pro, /purchasePromptsHidden\(seat\)/);
+  assert.match(pro, /Buy Advantage Pro/);
+  assert.match(home, /purchasePromptsHidden\(seat\)/);
+  assert.match(bar, /Sign out of seat/);
+  assert.match(bar, /Signed out/);
+  assert.match(bar, /seat-session-dock/);
+  assert.match(invite, /preset\.detail\.map/);
+  assert.match(invite, /cloud and sharing match the owner/);
+  assert.doesNotMatch(invite, /Downloads only/i);
+  assert.match(unlimited, /<DriveConnectCard \/>/);
+  assert.doesNotMatch(unlimited, /seat \? null : <DriveConnectCard/);
 });

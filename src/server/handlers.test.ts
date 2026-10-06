@@ -278,6 +278,142 @@ test('webhook stores email and session id and entitlement lookup finds it', asyn
   assert.equal(body.email, 'buyer@gym.test');
 });
 
+function signedWebhook(payload: string, now: Date): Request {
+  const timestamp = Math.floor(now.getTime() / 1000);
+  const signature = createHmac('sha256', env.STRIPE_WEBHOOK_SECRET ?? '')
+    .update(`${timestamp}.${payload}`)
+    .digest('hex');
+  return new Request('http://localhost/api/stripe/webhook', {
+    method: 'POST',
+    headers: { 'stripe-signature': `t=${timestamp},v1=${signature}` },
+    body: payload,
+  });
+}
+
+test('Pro checkout webhook unlocks Pro and a renewal stays entitled', async () => {
+  const store = memoryEntitlementStore();
+  const now = new Date('2026-10-01T12:00:00.000Z');
+  const checkout = JSON.stringify({
+    type: 'checkout.session.completed',
+    data: {
+      object: {
+        id: 'cs_test_pro',
+        object: 'checkout.session',
+        mode: 'subscription',
+        payment_status: 'paid',
+        amount_total: 10298,
+        currency: 'usd',
+        subscription: 'sub_test_pro',
+        customer_details: { email: 'owner@gym.test' },
+        metadata: { product: 'advantage-pro' },
+      },
+    },
+  });
+  const granted = await handleWebhook(signedWebhook(checkout, now), env, store, () => now);
+  assert.equal(granted.status, 200);
+  const lookup = await handleEntitlement(
+    new Request('http://localhost/api/entitlement?session_id=cs_test_pro'),
+    store,
+  );
+  const status = (await lookup.json()) as { entitled: boolean; product: string; email: string };
+  assert.equal(status.entitled, true);
+  assert.equal(status.product, 'advantage-pro');
+  assert.equal(status.email, 'owner@gym.test');
+
+  const whiteLookup = await handleEntitlement(
+    new Request('http://localhost/api/entitlement?email=owner@gym.test'),
+    store,
+  );
+  assert.equal(((await whiteLookup.json()) as { entitled: boolean }).entitled, false);
+  const proEmail = await handleEntitlement(
+    new Request('http://localhost/api/entitlement?email=owner@gym.test&product=pro'),
+    store,
+  );
+  assert.equal(((await proEmail.json()) as { entitled: boolean; product: string }).product, 'advantage-pro');
+
+  const renewal = JSON.stringify({
+    type: 'invoice.paid',
+    data: {
+      object: {
+        object: 'invoice',
+        subscription: 'sub_test_pro',
+        customer_email: 'owner@gym.test',
+        amount_paid: 299,
+        currency: 'usd',
+      },
+    },
+  });
+  const renewedAt = new Date('2026-11-01T12:00:00.000Z');
+  const renewed = await handleWebhook(signedWebhook(renewal, renewedAt), env, store, () => renewedAt);
+  assert.equal(renewed.status, 200);
+  const still = await store.findProBySubscriptionId('sub_test_pro');
+  assert.equal(still?.status, 'active');
+  assert.equal(still?.sessionId, 'cs_test_pro');
+  assert.equal(still?.amountTotal, 10298);
+
+  const ended = JSON.stringify({
+    type: 'customer.subscription.deleted',
+    data: {
+      object: {
+        id: 'sub_test_pro',
+        object: 'subscription',
+        status: 'canceled',
+        metadata: { product: 'advantage-pro' },
+      },
+    },
+  });
+  const endedAt = new Date('2026-12-01T12:00:00.000Z');
+  const revoked = await handleWebhook(signedWebhook(ended, endedAt), env, store, () => endedAt);
+  assert.equal(revoked.status, 200);
+  const after = await handleEntitlement(
+    new Request('http://localhost/api/entitlement?session_id=cs_test_pro'),
+    store,
+  );
+  assert.equal(((await after.json()) as { entitled: boolean; product: string }).entitled, false);
+});
+
+test('an unknown subscription invoice does not create a Pro entitlement', async () => {
+  const store = memoryEntitlementStore();
+  const now = new Date('2026-10-01T12:00:00.000Z');
+  const payload = JSON.stringify({
+    type: 'invoice.paid',
+    data: {
+      object: {
+        object: 'invoice',
+        subscription: 'sub_unknown',
+        customer_email: 'owner@gym.test',
+        amount_paid: 299,
+        currency: 'usd',
+      },
+    },
+  });
+  const response = await handleWebhook(signedWebhook(payload, now), env, store, () => now);
+  assert.equal(response.status, 200);
+  const body = (await response.json()) as { ignored: boolean };
+  assert.equal(body.ignored, true);
+  assert.equal(await store.findProByEmail('owner@gym.test'), null);
+});
+
+test('a paid Pro Checkout session without a subscription id is retried', async () => {
+  const store = memoryEntitlementStore();
+  const now = new Date('2026-10-01T12:00:00.000Z');
+  const payload = JSON.stringify({
+    type: 'checkout.session.completed',
+    data: {
+      object: {
+        id: 'cs_test_pro',
+        object: 'checkout.session',
+        mode: 'subscription',
+        payment_status: 'paid',
+        metadata: { product: 'advantage-pro' },
+      },
+    },
+  });
+  const response = await handleWebhook(signedWebhook(payload, now), env, store, () => now);
+  assert.equal(response.status, 500);
+  assert.equal(await store.findProBySessionId('cs_test_pro'), null);
+});
+
 test('webhook rejects a bad signature and does not record a purchase', async () => {
   const store = memoryEntitlementStore();
   const response = await handleWebhook(
