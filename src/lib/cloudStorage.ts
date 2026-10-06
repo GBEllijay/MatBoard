@@ -5,7 +5,9 @@
  * Coach Unlimited and Advantage Pro stay in alpha until Google Drive,
  * OneDrive, Google Photos, and iCloud all work. Google Drive is live.
  * OneDrive can connect on a build that has the Microsoft client id.
- * Google Photos and iCloud are required for launch and are not connected yet.
+ * iCloud can connect on a build that has the CloudKit web settings.
+ * That iCloud path stores notes in the gym’s iCloud. It is not iCloud Drive.
+ * Google Photos is required for launch and is not connected yet.
  *
  * Dropbox is a reserved slot from an earlier note. It is not on the launch
  * list and it is not half-built. The owner order is OneDrive, then Google
@@ -13,6 +15,7 @@
  */
 
 import { createGoogleDriveConnector } from './googleDriveConnector.ts';
+import { createICloudConnector } from './iCloudConnector.ts';
 import { createOneDriveConnector } from './oneDriveConnector.ts';
 
 export type CloudStorageProviderId = 'googleDrive' | 'oneDrive' | 'googlePhotos' | 'iCloud' | 'dropbox';
@@ -106,11 +109,7 @@ export interface CloudStorageConnector {
 /**
  * Required before Coach and Pro leave alpha. Shown disabled until that sign-in exists.
  */
-function launchConnector(
-  id: 'googlePhotos' | 'iCloud',
-  displayName: string,
-  message: string,
-): CloudStorageConnector {
+function launchConnector(id: 'googlePhotos', displayName: string, message: string): CloudStorageConnector {
   return {
     id,
     displayName,
@@ -160,15 +159,11 @@ const registry: Record<CloudStorageProviderId, CloudStorageConnector> = {
     'Google Photos',
     'Google Photos is coming for launch. It is not connected in this build. Picking a photo from this phone still works. Advantage does not host photos or videos.',
   ),
-  iCloud: launchConnector(
-    'iCloud',
-    'iCloud',
-    'iCloud is coming for launch. It is not connected in this build. Advantage does not host photos or videos.',
-  ),
+  iCloud: createICloudConnector(),
   dropbox: reservedConnector('dropbox', 'Dropbox'),
 };
 
-/** Owner list: live Drive and OneDrive, then the launch providers that are not connected yet. */
+/** Owner list: live Drive, OneDrive, and iCloud, then Google Photos. */
 export const CLOUD_STORAGE_PROVIDER_IDS: readonly CloudStorageProviderId[] = [
   'googleDrive',
   'oneDrive',

@@ -14,4 +14,16 @@ interface ImportMetaEnv {
    * Public in the browser. Set at build time. Never a client secret.
    */
   readonly VITE_MICROSOFT_CLIENT_ID?: string;
+  /**
+   * Advantage CloudKit container id, for example iCloud.com.advantageapp.matboard.
+   * Public in the browser. Set at build time. Never a private key.
+   */
+  readonly VITE_APPLE_CLOUDKIT_CONTAINER?: string;
+  /**
+   * CloudKit web API token from the CloudKit Dashboard. Public and limited to
+   * this site’s domains. Never a server-to-server private key or a .p8 key.
+   */
+  readonly VITE_APPLE_CLOUDKIT_API_TOKEN?: string;
+  /** `development` until the schema is deployed, then `production`. */
+  readonly VITE_APPLE_CLOUDKIT_ENVIRONMENT?: string;
 }

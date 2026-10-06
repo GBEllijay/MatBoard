@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useNavigate, useSearchParams } from 'react-router-dom';
+import { ICloudConnectResume } from './components/ICloudConnectResume';
 import { OneDriveConnectResume } from './components/OneDriveConnectResume';
 import { useCurrentSeat } from './components/SeatSessionBar';
 import { useCoachUnlocked } from './hooks/useCoachUnlocked';
@@ -385,6 +386,7 @@ export default function App() {
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
     <OneDriveConnectResume />
+    <ICloudConnectResume />
     </InviteDoor>
   );
 }
