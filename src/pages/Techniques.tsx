@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { DeviceMediaInput } from '../components/DeviceMediaInput';
 import { OpenMyDrive } from '../components/OpenMyDrive';
 import { FullscreenChip } from '../components/FullscreenChip';
@@ -7,7 +7,9 @@ import { PlayExitMark } from '../components/PlayExitMark';
 import { TvTip } from '../components/TvTip';
 import { VideoSourceSheet } from '../components/VideoSourceSheet';
 import { useInterval } from '../hooks/useClock';
+import { useCurrentSeat } from '../components/SeatSessionBar';
 import { useProUnlocked } from '../hooks/useProUnlocked';
+import { isLiveSeat, menuCloudSharing, seatMenuAllowed } from '../lib/instructorSeats';
 import { useCoachPageSwipe } from '../hooks/useCoachSwipe';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useToolboxParent } from '../hooks/useToolboxParent';
@@ -97,7 +99,9 @@ async function loadSharedCurriculumCards(clips: readonly TechniqueClip[]): Promi
 const idleDriveNotice = { phase: 'idle' as const, text: '' };
 
 export function TechniquesPage() {
-  const proSuite = useProUnlocked();
+  const seat = useCurrentSeat();
+  const videosMenu = seatMenuAllowed(seat, 'downloadTodaysVideos');
+  const proSuite = menuCloudSharing(useProUnlocked(), seat, videosMenu);
   const driveBinding = useSyncExternalStore(subscribeDriveBinding, getDriveBindingSnapshot, () => null);
   const driveNotice = useSyncExternalStore(subscribeDriveNotice, getDriveNotice, () => idleDriveNotice);
   const stayCopy = trainingClipStayCopy({ proSuite, driveConnected: Boolean(driveBinding) });
@@ -548,6 +552,8 @@ export function TechniquesPage() {
       navigate(destination);
     });
   };
+
+  if (isLiveSeat(seat) && !videosMenu) return <Navigate to="/coach" replace />;
 
   const warmup = plan?.slots.find((slot) => slot.kind === 'warmup') ?? null;
   const cooldown = plan?.slots.find((slot) => slot.kind === 'cooldown') ?? null;

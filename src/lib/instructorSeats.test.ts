@@ -18,7 +18,11 @@ import {
   instructorPresetPlan,
   instructorSeatBinderLabel,
   acceptInstructorInvite,
+  isProgramDirectorSeat,
   issueInstructorInvite,
+  menuCloudSharing,
+  seatGrantsMediaConsole,
+  seatMenuAllowed,
   peekInstructorInvite,
   permissionsMatchPreset,
   listInstructorSeats,
@@ -300,7 +304,7 @@ test('four binder presets fill the toggles and stay overridable', () => {
     rosterSubmit: false,
     rosterPull: false,
     downloadTodaysVideos: true,
-    uploadForDistribution: false,
+    uploadForDistribution: true,
     eventsAccess: false,
     proShopAccess: false,
   });
@@ -410,7 +414,7 @@ test('the first assistant coach invite for hapkidoka311@yahoo.com accepts and ga
   assert.equal(visibleCoachControl('galleryUpload', seated), false);
   assert.equal(visibleCoachControl('rosterSubmit', seated), false);
   assert.equal(visibleCoachControl('rosterPull', seated), false);
-  assert.equal(visibleCoachControl('uploadForDistribution', seated), false);
+  assert.equal(visibleCoachControl('uploadForDistribution', seated), true);
   assert.equal(visibleCoachControl('eventsAccess', seated), false);
   assert.equal(visibleCoachControl('proShopAccess', seated), false);
 });
@@ -461,7 +465,7 @@ test('accepting an assistant coach invite starts a seat session and gates contro
     rosterSubmit: false,
     rosterPull: false,
     downloadTodaysVideos: true,
-    uploadForDistribution: false,
+    uploadForDistribution: true,
     eventsAccess: false,
     proShopAccess: false,
   });
@@ -490,12 +494,12 @@ test('accepting an assistant coach invite starts a seat session and gates contro
   assert.equal(visibleCoachControl('galleryUpload', seated), false);
   assert.equal(visibleCoachControl('rosterSubmit', seated), false);
   assert.equal(visibleCoachControl('rosterPull', seated), false);
-  assert.equal(visibleCoachControl('uploadForDistribution', seated), false);
+  assert.equal(visibleCoachControl('uploadForDistribution', seated), true);
   assert.equal(visibleCoachControl('eventsAccess', seated), false);
   assert.equal(visibleCoachControl('proShopAccess', seated), false);
   assert.equal(visibleCoachControl('uploadForDistribution', { owner: true, seat: null }), true);
   assert.equal(visibleCoachControl('downloadTodaysVideos', { owner: false, seat: null }), false);
-  assert.equal(visibleCoachControl('uploadForDistribution', { owner: true, seat: readCurrentSeat() }), false);
+  assert.equal(visibleCoachControl('uploadForDistribution', { owner: true, seat: readCurrentSeat() }), true);
 
   signOutInstructorSeat();
   assert.equal(readCurrentSeat(), null);
@@ -524,12 +528,15 @@ test('accepting an assistant coach invite starts a seat session and gates contro
   assert.equal(readCurrentSeat(), null);
 });
 
-test('the distribution control stays out of the tree when an assistant coach is signed in', () => {
+test('assistant cloud sharing stays on inside authorized menus and Media Console stays closed', () => {
   reset();
-  const assistant = instructorPresetPermissions('assistant-coach');
+  const legacy = {
+    ...instructorPresetPermissions('assistant-coach'),
+    uploadForDistribution: false,
+  };
   const issued = issueInstructorInvite({
     email: 'assistant@gym.com',
-    permissions: assistant,
+    permissions: legacy,
     presetId: 'assistant-coach',
     origin: 'https://advantage.test',
     token: 'assist-ui',
@@ -539,24 +546,23 @@ test('the distribution control stays out of the tree when an assistant coach is 
   const accepted = acceptInstructorInvite('assist-ui');
   assert.equal(accepted.ok, true);
   if (!accepted.ok) return;
-  const access = { owner: true, seat: accepted.seat };
-  const distribute = renderToStaticMarkup(
+  const seat = accepted.seat;
+  assert.equal(seat.permissions.uploadForDistribution, false);
+  assert.equal(seatGrantsMediaConsole(seat), false);
+  assert.equal(isProgramDirectorSeat(seat), false);
+  assert.equal(menuCloudSharing(false, seat, seatMenuAllowed(seat, 'downloadTodaysVideos')), true);
+  assert.equal(menuCloudSharing(false, seat, seatMenuAllowed(seat, 'dailyLessonPlanAccess')), true);
+  assert.equal(menuCloudSharing(true, seat, seatMenuAllowed(seat, 'galleryUpload')), false);
+  assert.equal(menuCloudSharing(true, null, true), true);
+  assert.equal(menuCloudSharing(false, null, true), false);
+  const share = renderToStaticMarkup(
     createElement(
       CollaborationGate,
-      { show: visibleCoachControl('uploadForDistribution', access) },
-      createElement('button', null, 'Upload for instructor distribution'),
+      { show: menuCloudSharing(false, seat, seatMenuAllowed(seat, 'downloadTodaysVideos')) },
+      createElement('button', null, 'Share to the gym Drive'),
     ),
   );
-  assert.equal(distribute, '');
-  const download = renderToStaticMarkup(
-    createElement(
-      CollaborationGate,
-      { show: visibleCoachControl('downloadTodaysVideos', access) },
-      createElement('button', null, "Download today's videos"),
-    ),
-  );
-  assert.match(download, /Download today/);
-  assert.equal(distribute.includes('Upload'), false);
+  assert.match(share, /Share to the gym Drive/);
 });
 
 test('Coach tool seats hide lesson plan and videos and leave the other hubs', () => {

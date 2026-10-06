@@ -7,15 +7,17 @@ import { ProUnlockSheet } from '../components/ProUnlockSheet';
 import { useCurrentSeat } from '../components/SeatSessionBar';
 import { SiteFooter } from '../components/SiteFooter';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
-import { useProUnlocked } from '../hooks/useProUnlocked';
+import { useSeatDoor } from '../hooks/useSeatDoor';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import { lockCoach } from '../lib/coachUnlock';
-import { COACH_HUBS, coachDoorOpen, PRO_HUBS } from '../lib/productNames';
+import { COACH_HUBS, coachDoorOpen, visibleProHubs } from '../lib/productNames';
 import { lockPro } from '../lib/proUnlock';
 import { whiteEntryPath } from '../lib/whiteUnlock';
 
 export function ComingSoonPage() {
-  const proUnlocked = useProUnlocked();
+  const door = useSeatDoor();
+  const proUnlocked = door.proUnlocked;
+  const proHubs = visibleProHubs(door);
   const whiteUnlocked = useWhiteUnlocked();
   const coachUnlocked = useCoachUnlocked();
   const seated = useCurrentSeat() !== null;
@@ -37,8 +39,8 @@ export function ComingSoonPage() {
 
         {coachTools ? (
           <nav className="home__soon-actions" aria-label={proUnlocked ? 'Pro' : 'Coach'}>
-            {proUnlocked
-              ? PRO_HUBS.map((hub) => (
+            {proHubs.length
+              ? proHubs.map((hub) => (
                   <Link key={hub.to} className="btn btn--white" to={hub.to}>
                     <BeltRail kind={hub.belt} />
                     {hub.title}

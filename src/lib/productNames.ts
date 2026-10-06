@@ -303,8 +303,9 @@ export function parentToolboxPath(
   proUnlocked: boolean,
   coachUnlocked: boolean,
   seated = false,
+  proConsole = false,
 ): string {
-  if (proUnlocked) return '/pro';
+  if (proUnlocked || proConsole) return '/pro';
   if (coachUnlocked || seated) return '/coach';
   return '/';
 }
@@ -326,16 +327,72 @@ export function coachToolsOpen(proUnlocked: boolean, coachUnlocked: boolean): bo
 }
 
 /**
- * Owner purchase lock for the Pro console.
- * A live instructor seat does not open it.
+ * Owner purchase lock for the full Pro console.
+ * Tournament Management Pro and invite admin stay on this door.
+ * A live seat does not open those owner hubs.
  */
 export function proDoorOpen(proUnlocked: boolean): boolean {
   return proUnlocked;
 }
 
+/** Owner hubs that the invite picker does not grant: suite and invite admin. */
+export function ownerProHubOpen(proUnlocked: boolean, seated: boolean): boolean {
+  return proDoorOpen(proUnlocked) && !seated;
+}
+
+export type ProSurfaceInput = {
+  proUnlocked: boolean;
+  seated: boolean;
+  /** Invite granted gallery, events, or Pro Shop. */
+  seatGrantsMedia: boolean;
+  programDirectorSeat: boolean;
+  /** Invite granted Daily Lesson Plan or Daily Training Videos. */
+  coachMenus: boolean;
+};
+
+/**
+ * Media Console menu.
+ * No seat: the browser Pro unlock opens it.
+ * A seat is the ceiling: the invite must grant gallery, events, or Pro Shop.
+ * Pro unlock opens that granted menu. A Program Director seat opens it
+ * while Pro is locked. Coach and Assistant Coach presets do not.
+ */
+export function mediaConsoleDoorOpen(input: ProSurfaceInput): boolean {
+  if (!input.seated) return input.proUnlocked;
+  if (!input.seatGrantsMedia) return false;
+  if (input.proUnlocked) return true;
+  return input.programDirectorSeat;
+}
+
+/**
+ * Advantage Coach Unlimited hub.
+ * No seat: browser Pro unlock.
+ * A seat: Pro unlock plus a lesson or videos menu on the invite.
+ * Media Console is not this hub.
+ */
+export function coachUnlimitedDoorOpen(input: ProSurfaceInput): boolean {
+  if (!input.seated) return input.proUnlocked;
+  return input.proUnlocked && input.coachMenus;
+}
+
+/** Hubs this browser may show. A seat never receives owner-only hubs. */
+export function visibleProHubs(input: ProSurfaceInput): readonly (typeof PRO_HUBS)[number][] {
+  if (!input.seated) return input.proUnlocked ? PRO_HUBS : [];
+  const hubs: (typeof PRO_HUBS)[number][] = [];
+  if (mediaConsoleDoorOpen(input)) {
+    const media = PRO_HUBS.find((hub) => hub.to.startsWith('/slideshow'));
+    if (media) hubs.push(media);
+  }
+  if (coachUnlimitedDoorOpen(input)) {
+    const coach = PRO_HUBS.find((hub) => hub.to === COACH_UNLIMITED_PATH);
+    if (coach) hubs.push(coach);
+  }
+  return hubs;
+}
+
 /**
  * Coach tools. The owner purchase lock opens them, and so does a live invite seat.
- * The seat still does not open Pro.
+ * The seat still does not open owner-only Pro hubs.
  */
 export function coachDoorOpen(
   proUnlocked: boolean,

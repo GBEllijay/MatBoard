@@ -9,7 +9,7 @@ import { useCurrentSeat } from '../components/SeatSessionBar';
 import { Sheet } from '../components/Sheet';
 import { SiteFooter } from '../components/SiteFooter';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
-import { useProUnlocked } from '../hooks/useProUnlocked';
+import { useSeatDoor } from '../hooks/useSeatDoor';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import {
   COMING_SOON_ADS,
@@ -22,6 +22,7 @@ import {
   PRO_HOME_LINES,
   WHITE_HOME_DESCRIPTION,
   coachDoorOpen,
+  visibleProHubs,
 } from '../lib/productNames';
 import { purchasePromptsHidden } from '../lib/instructorSeats';
 import { COACH_PRICE_LINE, PRO_PRICE_LINE } from '../lib/productPrices';
@@ -29,7 +30,9 @@ import { WHITE_PRICE_LABEL } from '../lib/whitePurchase';
 import { whiteEntryPath } from '../lib/whiteUnlock';
 
 export function HomePage() {
-  const proUnlocked = useProUnlocked();
+  const door = useSeatDoor();
+  const proUnlocked = door.proUnlocked;
+  const proHubs = visibleProHubs(door);
   const whiteUnlocked = useWhiteUnlocked();
   const seat = useCurrentSeat();
   const seated = purchasePromptsHidden(seat);
@@ -93,7 +96,7 @@ export function HomePage() {
             </article>
           )}
 
-          {proUnlocked ? (
+          {proHubs.length > 0 ? (
             <article className="mode-card mode-card--pro">
               <Link
                 className="mode-card__hit"

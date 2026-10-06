@@ -5,16 +5,26 @@ import { SeatSessionChrome, useCurrentSeat } from './components/SeatSessionBar';
 import { useCoachUnlocked } from './hooks/useCoachUnlocked';
 import { useKeepFocusedFieldVisible } from './hooks/useKeepFocusedFieldVisible';
 import { useProUnlocked } from './hooks/useProUnlocked';
+import { useSeatDoor } from './hooks/useSeatDoor';
 import { useWhiteUnlocked } from './hooks/useWhiteUnlocked';
 import { consumeCoachUnlockQueryNow } from './lib/coachUnlock';
 import {
   acceptInstructorInvite,
   currentNavigationType,
   inviteReloadBlocked,
+  menuCloudSharing,
   peekInstructorInvite,
+  seatMenuAllowed,
   stripInviteFromAddress,
 } from './lib/instructorSeats';
-import { coachDoorOpen, proDoorOpen } from './lib/productNames';
+import {
+  coachDoorOpen,
+  coachUnlimitedDoorOpen,
+  mediaConsoleDoorOpen,
+  ownerProHubOpen,
+  proDoorOpen,
+  visibleProHubs,
+} from './lib/productNames';
 import { proPurchaseReturn } from './lib/proEntitlement';
 import { consumeUnlockQueryNow } from './lib/proUnlock';
 import { WHITE_BUY_PATH } from './lib/whitePurchase';
@@ -78,10 +88,60 @@ function consumeInviteDoorNow(): void {
 
 consumeInviteDoorNow();
 
-function ProRoute({ children }: { children: ReactNode }) {
+/** Full Pro hubs a seat is allowed to see. Owner-only hubs stay out. */
+function ProConsoleRoute({ children }: { children: ReactNode }) {
+  const door = useSeatDoor();
+  if (visibleProHubs(door).length === 0) return <Navigate to="/coming-soon" replace />;
+  return children;
+}
+
+/** Gallery, Events, and Pro Shop. Program Director opens this with Pro locked. */
+function MediaConsoleRoute({ children }: { children: ReactNode }) {
+  const door = useSeatDoor();
+  if (!mediaConsoleDoorOpen(door)) return <Navigate to="/coming-soon" replace />;
+  return children;
+}
+
+/** Tournament suite and invite admin. A signed-in seat does not open these. */
+function OwnerProRoute({ children }: { children: ReactNode }) {
+  const door = useSeatDoor();
+  if (!ownerProHubOpen(door.proUnlocked, door.seated)) return <Navigate to="/coming-soon" replace />;
+  return children;
+}
+
+/** Coach Unlimited hub. A seat needs Pro on and a lesson or videos menu. */
+function CoachUnlimitedRoute({ children }: { children: ReactNode }) {
+  const door = useSeatDoor();
+  if (!coachUnlimitedDoorOpen(door)) return <Navigate to="/coming-soon" replace />;
+  return children;
+}
+
+/**
+ * Class history reads the gym Drive folder.
+ * Owner Pro unlock opens it. A seat opens it from an authorized lesson menu,
+ * with the same cloud path, even when Pro is locked.
+ */
+function LessonCloudRoute({ children }: { children: ReactNode }) {
+  const door = useSeatDoor();
+  const open = menuCloudSharing(
+    door.proUnlocked,
+    door.seat,
+    seatMenuAllowed(door.seat, 'dailyLessonPlanAccess'),
+  );
+  if (!open) return <Navigate to="/coming-soon" replace />;
+  return children;
+}
+
+/**
+ * Buy Pro stays on the owner unlock and a Program Director seat.
+ * Stripe's success return still renders so the webhook can unlock this device.
+ */
+function BuyProRoute({ children }: { children: ReactNode }) {
+  const door = useSeatDoor();
   const [params] = useSearchParams();
-  const unlocked = proDoorOpen(useProUnlocked());
-  if (!unlocked && !proPurchaseReturn(params)) return <Navigate to="/coming-soon" replace />;
+  if (!door.proUnlocked && !door.programDirectorSeat && !proPurchaseReturn(params)) {
+    return <Navigate to="/coming-soon" replace />;
+  }
   return children;
 }
 
@@ -179,9 +239,9 @@ export default function App() {
       <Route
         path="/buy/pro"
         element={
-          <ProRoute>
+          <BuyProRoute>
             <BuyProPage />
-          </ProRoute>
+          </BuyProRoute>
         }
       />
       <Route
@@ -236,9 +296,9 @@ export default function App() {
       <Route
         path="/pro"
         element={
-          <ProRoute>
+          <ProConsoleRoute>
             <ProPage />
-          </ProRoute>
+          </ProConsoleRoute>
         }
       />
       <Route
@@ -268,17 +328,17 @@ export default function App() {
       <Route
         path="/suite"
         element={
-          <ProRoute>
+          <OwnerProRoute>
             <TournamentSuitePage />
-          </ProRoute>
+          </OwnerProRoute>
         }
       />
       <Route
         path="/coach-unlimited"
         element={
-          <ProRoute>
+          <CoachUnlimitedRoute>
             <CoachUnlimitedPage />
-          </ProRoute>
+          </CoachUnlimitedRoute>
         }
       />
       <Route
@@ -292,17 +352,17 @@ export default function App() {
       <Route
         path="/instructors"
         element={
-          <ProRoute>
+          <OwnerProRoute>
             <InstructorCollaborationPage />
-          </ProRoute>
+          </OwnerProRoute>
         }
       />
       <Route
         path="/class-history"
         element={
-          <ProRoute>
+          <LessonCloudRoute>
             <ClassHistoryPage />
-          </ProRoute>
+          </LessonCloudRoute>
         }
       />
       <Route
@@ -364,9 +424,9 @@ export default function App() {
       <Route
         path="/schedule"
         element={
-          <ProRoute>
+          <MediaConsoleRoute>
             <SchedulePage />
-          </ProRoute>
+          </MediaConsoleRoute>
         }
       />
       <Route
@@ -380,17 +440,17 @@ export default function App() {
       <Route
         path="/slideshow"
         element={
-          <ProRoute>
+          <MediaConsoleRoute>
             <ScreensaverPage />
-          </ProRoute>
+          </MediaConsoleRoute>
         }
       />
       <Route
         path="/screensaver"
         element={
-          <ProRoute>
+          <MediaConsoleRoute>
             <ScreensaverPage />
-          </ProRoute>
+          </MediaConsoleRoute>
         }
       />
       <Route path="/coming-soon" element={<ComingSoonPage />} />
