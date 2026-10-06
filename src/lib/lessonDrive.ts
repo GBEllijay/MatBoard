@@ -259,18 +259,88 @@ function setDriveNotice(next: DriveSaveNotice): void {
 }
 
 export function savedPhoneNotice(): string {
-  return 'Saved on this phone. Connect with Google Drive in Advantage Coach Unlimited to keep the lesson and videos in the gym folder. Until then, videos stay on this device.';
+  return 'Saved on this phone. Connect Google Drive, then save this day, to copy the lesson and videos into the gym folder for the gym owner and instructors. Until then, videos stay on this device and are not shared yet.';
 }
 
-/** Shown on Daily Training Videos. Regular Coach stays on this phone. */
-export function trainingClipStayCopy(input: { proSuite: boolean; driveConnected: boolean }): string {
-  if (input.proSuite && input.driveConnected) {
-    return 'Clips stay on this phone for offline play. Saving this day copies them into the gym Google Drive folder.';
+/** Button on Daily Training Videos when the gym folder is not connected yet. */
+export const TRAINING_DRIVE_CONNECT_LABEL = 'Connect Google Drive to share this day';
+/** Button on Daily Training Videos when the gym folder is already connected. */
+export const TRAINING_DRIVE_OPEN_LABEL = 'Open gym Drive folder';
+/** Title of the connect sheet opened from Daily Training Videos. */
+export const TRAINING_DRIVE_CONNECT_TITLE = 'Share this day with Google Drive';
+/** Helper under the Daily Training connect sheet. Distribution, not a cloud backup. */
+export function trainingDriveConnectHint(seated: boolean): string {
+  const same = seated ? ' You have the same Google Drive sharing as the gym owner.' : '';
+  return `Sign in, then pick the gym folder. Saving this day copies clips into that folder for the gym owner and instructors.${same} Until then, clips stay on this device and are not shared. Advantage does not host them.`;
+}
+
+export type TrainingClipHandoff = {
+  /** Owner Pro, or a seated Pro invite in this video menu. */
+  share: boolean;
+  /** How the day reaches the gym folder. Empty for basic Coach. */
+  lead: string;
+  /** What “save this day” means on this page. Empty for basic Coach. */
+  action: string;
+  /** Current limit. For sharing seats this is temporary, not a permanent local playlist. */
+  warning: string;
+};
+
+/**
+ * Daily Training Videos handoff.
+ * Owner Pro and a seated Pro invite in this menu (every level, including
+ * Assistant) share the same way: connect Google Drive, then save this day.
+ * Basic Coach stays on this phone.
+ */
+export function trainingClipHandoff(input: {
+  proSuite: boolean;
+  driveConnected: boolean;
+  /** Live seat allowed into Daily Training Videos. */
+  seatedAuthorized?: boolean;
+}): TrainingClipHandoff {
+  const seated = Boolean(input.seatedAuthorized);
+  const share = input.proSuite || seated;
+  if (!share) {
+    return {
+      share: false,
+      lead: '',
+      action: '',
+      warning: 'Clips stay on this device. Nothing is uploaded.',
+    };
   }
-  if (input.proSuite) {
-    return 'Clips stay on this device until Google Drive is connected. Then saving this day copies them into the gym folder.';
+  const warning = input.driveConnected
+    ? 'Until this day is saved, these clips stay on this device only and are not shared with the owner or other instructors yet. This phone keeps a copy for offline play.'
+    : 'Until Google Drive is connected and this day is saved, these clips stay on this device only and are not shared with the owner or other instructors yet.';
+  const action = input.driveConnected
+    ? 'Adding or replacing a clip saves this day into the gym Drive folder.'
+    : 'Adding or replacing a clip saves this day once Google Drive is connected.';
+  const same = 'You have the same Google Drive sharing as the gym owner. ';
+  if (input.driveConnected) {
+    return {
+      share: true,
+      lead: `${seated ? same : ''}Save this day to copy these clips into the gym Drive folder for the gym owner and instructors.`,
+      action,
+      warning,
+    };
   }
-  return 'Clips stay on this device. Nothing is uploaded.';
+  return {
+    share: true,
+    lead: seated
+      ? `${same}Connect Google Drive, then save this day, and these clips copy into the gym Drive folder for the gym owner and instructors.`
+      : 'Connect Google Drive, then save this day. That copies these clips into the gym Drive folder for the gym owner and instructors.',
+    action,
+    warning,
+  };
+}
+
+/** One paragraph for the add-video sheet and status text. */
+export function trainingClipStayCopy(input: {
+  proSuite: boolean;
+  driveConnected: boolean;
+  seatedAuthorized?: boolean;
+}): string {
+  const handoff = trainingClipHandoff(input);
+  if (!handoff.share) return handoff.warning;
+  return `${handoff.lead} ${handoff.action} ${handoff.warning}`;
 }
 
 /**
@@ -305,7 +375,10 @@ export function drivePackageNotice(input: {
     return `Lesson text saved to Google Drive. ${stay} and will try again on the next save.`;
   }
   if (input.uploaded > 0) {
-    const clip = input.uploaded === 1 ? '1 video is in the gym folder.' : `${input.uploaded} videos are in the gym folder.`;
+    const clip =
+      input.uploaded === 1
+        ? '1 video is in the gym folder for the gym owner and instructors.'
+        : `${input.uploaded} videos are in the gym folder for the gym owner and instructors.`;
     return `${savedDriveNotice(input.revisions)} ${clip} This phone keeps a copy for offline play.`;
   }
   return savedDriveNotice(input.revisions);
@@ -767,12 +840,13 @@ async function uploadVideosWithoutLesson(dateKey: string, media: readonly Lesson
 
 /**
  * After a clip is added or removed on Daily Training Videos, push today's
- * package the same way a lesson edit does. Regular Coach does nothing.
+ * package the same way a lesson edit does. Basic Coach does nothing.
+ * Owner Pro and a seated Pro invite in this menu both pass shareDay.
  * Days with lesson text update each of those plans. A day with only videos
  * uploads the files and does not invent an empty lesson.
  */
-export function syncTodayTrainingVideos(videoPlan: VideoPlan, proSuite: boolean): void {
-  if (!proSuite || typeof window === 'undefined') return;
+export function syncTodayTrainingVideos(videoPlan: VideoPlan, shareDay: boolean): void {
+  if (!shareDay || typeof window === 'undefined') return;
   const today = localDateKey();
   const archive = loadTrainingArchive(today);
   const plans = plansOnDay(archive, today).filter(planHasContent);

@@ -21,8 +21,13 @@ import {
   recordLessonRevision,
   scheduleLessonDriveDraft,
   stampDriveIds,
+  TRAINING_DRIVE_CONNECT_LABEL,
+  TRAINING_DRIVE_CONNECT_TITLE,
+  TRAINING_DRIVE_OPEN_LABEL,
   syncTodayTrainingVideos,
+  trainingClipHandoff,
   trainingClipStayCopy,
+  trainingDriveConnectHint,
 } from './lessonDrive.ts';
 import { emptyVideoPlan, setSlotClip } from './techniqueLogic.ts';
 import { emptyPlan, type TrainingNotesPlan } from './trainingNotesStore.ts';
@@ -263,14 +268,49 @@ test('two classes on one day stay separate drafts and keep designation and time'
   assert.equal(flushed?.plan.intro, 'Mount');
 });
 
-test('Daily Training copy stays on the phone until Drive is connected', () => {
+test('Daily Training copy is the Drive day-save handoff, including seated Pro invites', () => {
   assert.equal(
     trainingClipStayCopy({ proSuite: false, driveConnected: false }),
     'Clips stay on this device. Nothing is uploaded.',
   );
-  assert.match(trainingClipStayCopy({ proSuite: true, driveConnected: false }), /until Google Drive is connected/);
-  assert.match(trainingClipStayCopy({ proSuite: true, driveConnected: true }), /offline play/);
-  assert.match(trainingClipStayCopy({ proSuite: true, driveConnected: true }), /gym Google Drive folder/);
+  const ownerWaiting = trainingClipHandoff({ proSuite: true, driveConnected: false });
+  assert.equal(ownerWaiting.share, true);
+  assert.match(ownerWaiting.lead, /Connect Google Drive, then save this day/);
+  assert.match(ownerWaiting.lead, /gym Drive folder for the gym owner and instructors/);
+  assert.match(ownerWaiting.warning, /not shared with the owner or other instructors yet/);
+  assert.doesNotMatch(ownerWaiting.lead, /same Google Drive sharing/);
+  assert.doesNotMatch(`${ownerWaiting.lead} ${ownerWaiting.warning}`, /forever|downloads only|submit for review|inbox/i);
+
+  const seatedWaiting = trainingClipHandoff({
+    proSuite: false,
+    driveConnected: false,
+    seatedAuthorized: true,
+  });
+  assert.equal(seatedWaiting.share, true);
+  assert.match(seatedWaiting.lead, /same Google Drive sharing as the gym owner/);
+  assert.match(seatedWaiting.lead, /Connect Google Drive, then save this day/);
+  assert.match(seatedWaiting.warning, /not shared with the owner or other instructors yet/);
+  assert.doesNotMatch(trainingClipStayCopy({ proSuite: false, driveConnected: false, seatedAuthorized: true }), /Nothing is uploaded/);
+
+  const seatedConnected = trainingClipHandoff({
+    proSuite: true,
+    driveConnected: true,
+    seatedAuthorized: true,
+  });
+  assert.match(seatedConnected.lead, /same Google Drive sharing as the gym owner/);
+  assert.match(seatedConnected.warning, /offline play/);
+  assert.match(seatedConnected.action, /saves this day into the gym Drive folder/);
+
+  assert.equal(TRAINING_DRIVE_CONNECT_LABEL, 'Connect Google Drive to share this day');
+  assert.equal(TRAINING_DRIVE_OPEN_LABEL, 'Open gym Drive folder');
+  assert.equal(TRAINING_DRIVE_CONNECT_TITLE, 'Share this day with Google Drive');
+  const ownerHint = trainingDriveConnectHint(false);
+  const seatedHint = trainingDriveConnectHint(true);
+  assert.match(ownerHint, /gym owner and instructors/);
+  assert.doesNotMatch(ownerHint, /same Google Drive sharing/);
+  assert.match(seatedHint, /same Google Drive sharing as the gym owner/);
+  assert.doesNotMatch(`${ownerHint}\n${seatedHint}`, /submit for review|inbox/i);
+
   assert.equal(driveVideoProgressLabel(0, 3), 'Uploading 1 of 3 videos to Google Drive…');
   assert.equal(driveVideoProgressLabel(2, 3), 'Uploading 2 of 3 videos to Google Drive…');
   assert.match(

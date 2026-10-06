@@ -4,13 +4,14 @@ import { DeviceMediaInput } from '../components/DeviceMediaInput';
 import { OpenMyDrive } from '../components/OpenMyDrive';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { PlayExitMark } from '../components/PlayExitMark';
+import { SeatSessionBar, useCurrentSeat } from '../components/SeatSessionBar';
 import { TvTip } from '../components/TvTip';
 import { VideoSourceSheet } from '../components/VideoSourceSheet';
 import { useInterval } from '../hooks/useClock';
+import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useCoachPageSwipe } from '../hooks/useCoachSwipe';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
-import { useToolboxParent } from '../hooks/useToolboxParent';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import {
@@ -22,11 +23,17 @@ import {
 import { loadCurriculumArchive, writeCurriculumBlockClip } from '../lib/competitionCurriculum';
 import { formatMmSs, formatMss, secondsToMs } from '../lib/format';
 import { getDriveBindingSnapshot, subscribeDriveBinding } from '../lib/googleDrive';
+import { instructorSeatBinderLabel } from '../lib/instructorSeats';
 import {
+  TRAINING_DRIVE_CONNECT_LABEL,
+  TRAINING_DRIVE_CONNECT_TITLE,
+  TRAINING_DRIVE_OPEN_LABEL,
   getDriveNotice,
   subscribeDriveNotice,
   syncTodayTrainingVideos,
+  trainingClipHandoff,
   trainingClipStayCopy,
+  trainingDriveConnectHint,
 } from '../lib/lessonDrive';
 import {
   lessonFocusStatus,
@@ -36,6 +43,7 @@ import {
 import { VIDEO_CAPTURE, VIDEO_PICKER_ACCEPT, VIDEO_RECORD_ACCEPT } from '../lib/mediaPicker';
 import { DEFAULT_MUTE_VIDEO, getSaverPrefs, setSaverMuteVideo } from '../lib/photoStore';
 import { safeTimerReturn } from '../lib/timerReturn';
+import { techniquesPageEyebrow, techniquesParentPath } from '../lib/productNames';
 import { localDateKey } from '../lib/trainingNotesStore';
 import { LOOP_RESTART_MIN_MS, nextLoopStep } from '../lib/videoLoop';
 import { LARGE_MEDIA_BYTES, LARGE_MEDIA_NOTE, quotaAddNote } from '../lib/storageQuota';
@@ -98,9 +106,25 @@ const idleDriveNotice = { phase: 'idle' as const, text: '' };
 
 export function TechniquesPage() {
   const proSuite = useProUnlocked();
+  const coachUnlocked = useCoachUnlocked();
+  const seat = useCurrentSeat();
+  const seatedAuthorized = Boolean(seat?.permissions.downloadTodaysVideos);
   const driveBinding = useSyncExternalStore(subscribeDriveBinding, getDriveBindingSnapshot, () => null);
   const driveNotice = useSyncExternalStore(subscribeDriveNotice, getDriveNotice, () => idleDriveNotice);
-  const stayCopy = trainingClipStayCopy({ proSuite, driveConnected: Boolean(driveBinding) });
+  const handoff = trainingClipHandoff({
+    proSuite,
+    driveConnected: Boolean(driveBinding),
+    seatedAuthorized,
+  });
+  const stayCopy = trainingClipStayCopy({
+    proSuite,
+    driveConnected: Boolean(driveBinding),
+    seatedAuthorized,
+  });
+  const shareDay = handoff.share;
+  const eyebrow = techniquesPageEyebrow(proSuite, coachUnlocked, seat !== null);
+  const exitPath = techniquesParentPath(proSuite, coachUnlocked, seat !== null);
+  const seatRole = seat ? instructorSeatBinderLabel(seat.presetId, seat.permissions) : '';
   const [clips, setClips] = useState<TechniqueClip[]>([]);
   const [plan, setPlan] = useState<VideoPlan | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -120,7 +144,6 @@ export function TechniquesPage() {
   const fsActiveRef = useRef(false);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const parent = useToolboxParent();
   useCoachPageSwipe();
   const launchStarted = useRef(false);
   const launchKey = searchParams.toString();
@@ -484,7 +507,7 @@ export function TechniquesPage() {
       }
       setPickerNote(file.size >= LARGE_MEDIA_BYTES ? LARGE_MEDIA_NOTE : '');
       if (result.status === 'added' || result.status === 'replaced') {
-        syncTodayTrainingVideos(result.plan, proSuite);
+        syncTodayTrainingVideos(result.plan, shareDay);
       }
       const slot = result.plan.slots.find((item) => item.slotId === slotId);
       if (slot && isTimedSlot(slot)) setRemainingMs(secondsToMs(slot.drillSec));
@@ -502,7 +525,7 @@ export function TechniquesPage() {
       setClips(result.clips);
       if (planRef.current?.selectedSlotId === slotId) setPlaying(false);
       setPickerNote('');
-      if (result.status === 'removed') syncTodayTrainingVideos(result.plan, proSuite);
+      if (result.status === 'removed') syncTodayTrainingVideos(result.plan, shareDay);
     } catch {
       setPickerNote('Could not remove that clip on this device.');
     }
@@ -543,7 +566,7 @@ export function TechniquesPage() {
   const exitBoard = () => {
     setPlaying(false);
     setPlayingCurriculum(false);
-    const destination = backPath ?? parent.path;
+    const destination = backPath ?? exitPath;
     void fs.exit().finally(() => {
       navigate(destination);
     });
@@ -557,10 +580,10 @@ export function TechniquesPage() {
     <main
       className={`techniques${playback ? ' techniques--play' : ''}${fs.className ? ` ${fs.className}` : ''}${stage ? ' techniques--fill' : ''}`}
     >
-      <PlayExitMark to={parent.path} onExit={exitBoard} />
+      <PlayExitMark to={exitPath} onExit={exitBoard} />
       <header className="techniques__bar">
         <div className="techniques__brand">
-          <p className="techniques__eyebrow">{parent.eyebrow}</p>
+          <p className="techniques__eyebrow">{eyebrow}</p>
           <h1>Daily Training Videos</h1>
         </div>
         <div className="techniques__actions">
@@ -589,18 +612,34 @@ export function TechniquesPage() {
             {count} {count === 1 ? 'clip' : 'clips'}
           </p>
         </div>
-        <OpenMyDrive />
+        <SeatSessionBar />
+        <OpenMyDrive
+          openLabel={shareDay ? TRAINING_DRIVE_OPEN_LABEL : undefined}
+          connectLabel={shareDay ? TRAINING_DRIVE_CONNECT_LABEL : undefined}
+          connectTitle={shareDay ? TRAINING_DRIVE_CONNECT_TITLE : undefined}
+          connectHint={shareDay ? trainingDriveConnectHint(seatedAuthorized) : undefined}
+        />
       </header>
 
       {playback ? null : (
-        <>
-          <p className="techniques__note">{stayCopy}</p>
-          {proSuite && driveNotice.text ? (
-            <p className="techniques__note" role="status">
-              {driveNotice.text}
+        <section className="techniques__handoff" aria-label="How clips reach the gym">
+          {seat ? (
+            <p className="techniques__context">
+              {shareDay
+                ? `Seated as ${seatRole}. In this menu you share clips the same way the gym owner does. This is not the gym owner console.`
+                : `Seated as ${seatRole}. This is not the gym owner console.`}
             </p>
           ) : null}
-        </>
+          <h2>{shareDay ? 'Share this day' : 'On this device'}</h2>
+          {handoff.lead ? <p>{handoff.lead}</p> : null}
+          {handoff.action ? <p>{handoff.action}</p> : null}
+          <p className="techniques__handoff-warn">{handoff.warning}</p>
+        </section>
+      )}
+      {playback || !shareDay || !driveNotice.text ? null : (
+        <p className="techniques__note" role="status">
+          {driveNotice.text}
+        </p>
       )}
 
       {lessonFocus ? (
@@ -736,6 +775,10 @@ export function TechniquesPage() {
         recordInputId="techniques-video-record"
         libraryInputId="techniques-video-library"
         stay={stayCopy}
+        driveOpenLabel={shareDay ? TRAINING_DRIVE_OPEN_LABEL : undefined}
+        driveConnectLabel={shareDay ? TRAINING_DRIVE_CONNECT_LABEL : undefined}
+        driveConnectTitle={shareDay ? TRAINING_DRIVE_CONNECT_TITLE : undefined}
+        driveConnectHint={shareDay ? trainingDriveConnectHint(seatedAuthorized) : undefined}
         onClose={() => setAddOpen(false)}
       />
       <DeviceMediaInput
