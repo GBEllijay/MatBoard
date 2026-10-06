@@ -287,33 +287,243 @@ function readEmail(session: Record<string, unknown>): string {
   return '';
 }
 
-export function purchaseFromStripeEvent(event: unknown):
+export type ProCheckoutGrant = {
+  email: string;
+  sessionId: string;
+  subscriptionId: string;
+  amountTotal: number | null;
+  currency: string | null;
+};
+
+export type ProSubscriptionSync = {
+  subscriptionId: string;
+  email: string;
+  amountTotal: number | null;
+  currency: string | null;
+  /** True when this payload itself says the subscription is Advantage Pro. */
+  productKnown: boolean;
+  entitled: boolean;
+};
+
+export type StripeEntitlementDecision =
   | { action: 'record'; purchase: CheckoutPurchase }
+  | { action: 'grant-pro'; grant: ProCheckoutGrant }
+  | { action: 'sync-pro'; sync: ProSubscriptionSync }
+  | { action: 'retry' }
   | { action: 'ignore' }
-  | { action: 'invalid' } {
-  if (!event || typeof event !== 'object') return { action: 'invalid' };
-  const type = (event as { type?: unknown }).type;
-  if (type !== 'checkout.session.completed') return { action: 'ignore' };
-  const data = (event as { data?: unknown }).data;
-  if (!data || typeof data !== 'object') return { action: 'invalid' };
-  const session = (data as { object?: unknown }).object;
-  if (!session || typeof session !== 'object') return { action: 'invalid' };
-  const row = session as Record<string, unknown>;
-  if (row.object !== 'checkout.session') return { action: 'invalid' };
-  if (row.mode !== 'payment') return { action: 'ignore' };
+  | { action: 'invalid' };
+
+/**
+ * past_due stays entitled while Stripe retries the renewal invoice.
+ * paused stays entitled. canceled, unpaid, and incomplete_expired do not.
+ */
+const ENTITLED_SUBSCRIPTION_STATUSES = new Set(['active', 'trialing', 'past_due', 'paused']);
+const REVOKED_SUBSCRIPTION_STATUSES = new Set(['canceled', 'unpaid', 'incomplete_expired']);
+
+function readMetaProduct(row: Record<string, unknown>): string {
   const metadata = row.metadata;
-  const product =
-    metadata && typeof metadata === 'object' ? (metadata as { product?: unknown }).product : undefined;
-  if (product !== API_PRODUCT_ID) return { action: 'ignore' };
-  if (row.payment_status !== 'paid' && row.payment_status !== 'no_payment_required') return { action: 'ignore' };
-  if (typeof row.id !== 'string' || !row.id.startsWith('cs_')) return { action: 'invalid' };
+  if (metadata && typeof metadata === 'object' && typeof (metadata as { product?: unknown }).product === 'string') {
+    return (metadata as { product: string }).product;
+  }
+  return '';
+}
+
+function subscriptionIdValue(value: unknown): string {
+  if (typeof value === 'string' && value.startsWith('sub_')) return value;
+  if (value && typeof value === 'object' && typeof (value as { id?: unknown }).id === 'string') {
+    const id = (value as { id: string }).id;
+    if (id.startsWith('sub_')) return id;
+  }
+  return '';
+}
+
+/** Checkout sessions, legacy invoices, and 2025+ invoice.parent shapes. */
+function readSubscriptionId(row: Record<string, unknown>): string {
+  const direct = subscriptionIdValue(row.subscription);
+  if (direct) return direct;
+  const parent = row.parent;
+  if (parent && typeof parent === 'object') {
+    const details = (parent as { subscription_details?: unknown }).subscription_details;
+    if (details && typeof details === 'object') {
+      const fromParent = subscriptionIdValue((details as { subscription?: unknown }).subscription);
+      if (fromParent) return fromParent;
+    }
+  }
+  const lines = row.lines;
+  if (lines && typeof lines === 'object' && Array.isArray((lines as { data?: unknown }).data)) {
+    for (const line of (lines as { data: unknown[] }).data) {
+      if (!line || typeof line !== 'object') continue;
+      const lineRow = line as Record<string, unknown>;
+      const fromLine = subscriptionIdValue(lineRow.subscription);
+      if (fromLine) return fromLine;
+      const lineParent = lineRow.parent;
+      if (lineParent && typeof lineParent === 'object') {
+        const item = (lineParent as { subscription_item_details?: unknown }).subscription_item_details;
+        if (item && typeof item === 'object') {
+          const fromItem = subscriptionIdValue((item as { subscription?: unknown }).subscription);
+          if (fromItem) return fromItem;
+        }
+      }
+    }
+  }
+  return '';
+}
+
+function invoiceProduct(row: Record<string, unknown>): string {
+  const direct = readMetaProduct(row);
+  if (direct) return direct;
+  const parents = [row.parent, row.subscription_details];
+  for (const parent of parents) {
+    if (!parent || typeof parent !== 'object') continue;
+    const details =
+      parent === row.subscription_details
+        ? parent
+        : (parent as { subscription_details?: unknown }).subscription_details;
+    if (details && typeof details === 'object') {
+      const product = readMetaProduct(details as Record<string, unknown>);
+      if (product) return product;
+    }
+  }
+  const lines = row.lines;
+  if (lines && typeof lines === 'object' && Array.isArray((lines as { data?: unknown }).data)) {
+    for (const line of (lines as { data: unknown[] }).data) {
+      if (!line || typeof line !== 'object') continue;
+      const product = readMetaProduct(line as Record<string, unknown>);
+      if (product) return product;
+    }
+  }
+  return '';
+}
+
+function eventObject(event: object): Record<string, unknown> | 'invalid' {
+  const data = (event as { data?: unknown }).data;
+  if (!data || typeof data !== 'object') return 'invalid';
+  const object = (data as { object?: unknown }).object;
+  if (!object || typeof object !== 'object') return 'invalid';
+  return object as Record<string, unknown>;
+}
+
+function money(row: Record<string, unknown>, key: string): number | null {
+  return typeof row[key] === 'number' ? (row[key] as number) : null;
+}
+
+function currencyOf(row: Record<string, unknown>): string | null {
+  return typeof row.currency === 'string' ? row.currency : null;
+}
+
+function checkoutDecision(row: Record<string, unknown>): StripeEntitlementDecision {
+  if (row.object !== 'checkout.session') return { action: 'invalid' };
+  const product = readMetaProduct(row);
+  const paid = row.payment_status === 'paid' || row.payment_status === 'no_payment_required';
+  if (row.mode === 'payment') {
+    if (product !== API_PRODUCT_ID) return { action: 'ignore' };
+    if (!paid) return { action: 'ignore' };
+    if (typeof row.id !== 'string' || !row.id.startsWith('cs_')) return { action: 'invalid' };
+    return {
+      action: 'record',
+      purchase: {
+        email: readEmail(row),
+        sessionId: row.id,
+        amountTotal: money(row, 'amount_total'),
+        currency: currencyOf(row),
+      },
+    };
+  }
+  if (row.mode === 'subscription' && product === API_PRODUCT_PRO) {
+    if (!paid) return { action: 'ignore' };
+    if (typeof row.id !== 'string' || !row.id.startsWith('cs_')) return { action: 'invalid' };
+    const subscriptionId = readSubscriptionId(row);
+    if (!subscriptionId) return { action: 'retry' };
+    return {
+      action: 'grant-pro',
+      grant: {
+        email: readEmail(row),
+        sessionId: row.id,
+        subscriptionId,
+        amountTotal: money(row, 'amount_total'),
+        currency: currencyOf(row),
+      },
+    };
+  }
+  return { action: 'ignore' };
+}
+
+function invoiceDecision(row: Record<string, unknown>): StripeEntitlementDecision {
+  if (row.object !== 'invoice') return { action: 'invalid' };
+  const subscriptionId = readSubscriptionId(row);
+  if (!subscriptionId) return { action: 'ignore' };
+  const product = invoiceProduct(row);
+  if (product && product !== API_PRODUCT_PRO) return { action: 'ignore' };
   return {
-    action: 'record',
-    purchase: {
+    action: 'sync-pro',
+    sync: {
+      subscriptionId,
       email: readEmail(row),
-      sessionId: row.id,
-      amountTotal: typeof row.amount_total === 'number' ? row.amount_total : null,
-      currency: typeof row.currency === 'string' ? row.currency : null,
+      amountTotal: money(row, 'amount_paid'),
+      currency: currencyOf(row),
+      productKnown: product === API_PRODUCT_PRO,
+      entitled: true,
     },
   };
+}
+
+function subscriptionDecision(row: Record<string, unknown>, kind: 'deleted' | 'upsert'): StripeEntitlementDecision {
+  if (row.object !== 'subscription') return { action: 'invalid' };
+  const subscriptionId = typeof row.id === 'string' && row.id.startsWith('sub_') ? row.id : '';
+  if (!subscriptionId) return { action: 'invalid' };
+  const product = readMetaProduct(row);
+  if (product && product !== API_PRODUCT_PRO) return { action: 'ignore' };
+  if (kind === 'upsert') {
+    const status = typeof row.status === 'string' ? row.status : '';
+    if (!ENTITLED_SUBSCRIPTION_STATUSES.has(status) && !REVOKED_SUBSCRIPTION_STATUSES.has(status)) {
+      return { action: 'ignore' };
+    }
+    return {
+      action: 'sync-pro',
+      sync: {
+        subscriptionId,
+        email: '',
+        amountTotal: null,
+        currency: null,
+        productKnown: product === API_PRODUCT_PRO,
+        entitled: ENTITLED_SUBSCRIPTION_STATUSES.has(status),
+      },
+    };
+  }
+  return {
+    action: 'sync-pro',
+    sync: {
+      subscriptionId,
+      email: '',
+      amountTotal: null,
+      currency: null,
+      productKnown: product === API_PRODUCT_PRO,
+      entitled: false,
+    },
+  };
+}
+
+export function purchaseFromStripeEvent(event: unknown): StripeEntitlementDecision {
+  if (!event || typeof event !== 'object') return { action: 'invalid' };
+  const type = (event as { type?: unknown }).type;
+  if (typeof type !== 'string') return { action: 'invalid' };
+  if (
+    type !== 'checkout.session.completed' &&
+    type !== 'checkout.session.async_payment_succeeded' &&
+    type !== 'invoice.paid' &&
+    type !== 'invoice.payment_succeeded' &&
+    type !== 'customer.subscription.created' &&
+    type !== 'customer.subscription.updated' &&
+    type !== 'customer.subscription.deleted'
+  ) {
+    return { action: 'ignore' };
+  }
+  const row = eventObject(event);
+  if (row === 'invalid') return { action: 'invalid' };
+  if (type === 'checkout.session.completed' || type === 'checkout.session.async_payment_succeeded') {
+    return checkoutDecision(row);
+  }
+  if (type === 'invoice.paid' || type === 'invoice.payment_succeeded') return invoiceDecision(row);
+  if (type === 'customer.subscription.deleted') return subscriptionDecision(row, 'deleted');
+  return subscriptionDecision(row, 'upsert');
 }

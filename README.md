@@ -76,7 +76,7 @@ Advantage White is a **one-time $9.99 USD** purchase. Checkout is a Stripe Check
 | --- | --- |
 | Buy page | `/buy` (also linked from `/white`) |
 | Create Checkout | `POST /api/checkout`. Body may include `{ "promotionCode": "WHITE499" }`. Optional `"product"` is `white` (default), `coach`, or `pro`. |
-| Webhook | `POST /api/stripe/webhook` on `checkout.session.completed` |
+| Webhook | `POST /api/stripe/webhook`. White uses `checkout.session.completed`. Pro also uses `invoice.paid` and `customer.subscription.created`, `customer.subscription.updated`, and `customer.subscription.deleted`. |
 | Entitlement check | `GET /api/entitlement?session_id=cs_...` or `?session_id=free_...` or `?email=` |
 | Free unlock | Enter `WHITEFREE` in **Enter a code** on `/buy`, or open `/buy?code=WHITEFREE`. The public page does not print promo names. Records White at $0 with no Stripe call and no Stripe keys. |
 | Local store | `.data/white-entitlements.json` while `npm run dev` or `npm run preview` (gitignored) |
@@ -100,7 +100,7 @@ Use the Stripe test-mode toggle. Then:
    | `advantage_white_free` | 100% (`percent_off` 100) | Once | `WHITEFREE` | $0 |
 
    Restrict each coupon to the Advantage White product if you want it to stay off later prices. Promotion codes are customer-facing; coupon ids are the Dashboard ids. The public buy page does not list them. A code typed on `/buy` is sent with Checkout, except `WHITEFREE`, which unlocks in the app and never calls Stripe. Paid codes can also be typed in Stripe Checkout’s own promo box. The 100% coupon is only for a Checkout test: continue to Stripe and enter `WHITEFREE` there. That session completes with `payment_status` `no_payment_required` and amount `0`; the webhook records it.
-3. **Developers → Webhooks → Add endpoint.** URL: `https://<your-host>/api/stripe/webhook` (local: forward to `http://localhost:5173/api/stripe/webhook`). Event: `checkout.session.completed`. Copy the signing secret into `STRIPE_WEBHOOK_SECRET`.
+3. **Developers → Webhooks → Add endpoint.** URL: `https://<your-host>/api/stripe/webhook` (local: forward to `http://localhost:5173/api/stripe/webhook`). Events: `checkout.session.completed`, `invoice.paid`, `customer.subscription.created`, `customer.subscription.updated`, and `customer.subscription.deleted`. Copy the signing secret into `STRIPE_WEBHOOK_SECRET`. `checkout.session.completed` is the White event and the Pro unlock. The subscription events keep a renewal entitled and remove Pro when the subscription is canceled, unpaid, or deleted. `past_due` stays entitled while Stripe retries.
 4. **Developers → API keys.** Secret key → `STRIPE_SECRET_KEY` (`sk_test_...`).
 5. Optional `STRIPE_SUCCESS_URL` and `STRIPE_CANCEL_URL`. These override **White only**. If empty, White uses the request origin:
    - success: `{origin}/buy?checkout=success&session_id={CHECKOUT_SESSION_ID}`
@@ -111,7 +111,7 @@ Use the Stripe test-mode toggle. Then:
    | Name | Cloudflare | Used for |
    | --- | --- | --- |
    | `STRIPE_SECRET_KEY` | **Secret** (encrypt) | All paid Checkout |
-   | `STRIPE_WEBHOOK_SECRET` | **Secret** (encrypt) | White webhook signature |
+   | `STRIPE_WEBHOOK_SECRET` | **Secret** (encrypt) | Webhook signature for White and Pro |
    | `STRIPE_PRICE_WHITE` | Server variable (not public) | White one-time price |
    | `STRIPE_PRICE_COACH` | Server variable (not public) | Coach one-time price |
    | `STRIPE_PRICE_PRO` | Server variable (not public) | Pro one-time price |
@@ -119,7 +119,7 @@ Use the Stripe test-mode toggle. Then:
    | `STRIPE_SUCCESS_URL` | Optional server variable | White success URL override |
    | `STRIPE_CANCEL_URL` | Optional server variable | White cancel URL override |
 
-7. **Cloudflare Pages → Settings → Bindings → KV namespace.** Variable name exactly `WHITE_ENTITLEMENTS`. The webhook still records Advantage White only.
+7. **Cloudflare Pages → Settings → Bindings → KV namespace.** Variable name exactly `WHITE_ENTITLEMENTS`. The same binding stores Advantage White and Advantage Pro. White email lookup stays White. Pro lookup uses the Checkout session id, or `email` with `product=pro`.
 
 Copy `.env.example` to `.env` for local dev. `.env` is gitignored.
 
@@ -138,7 +138,11 @@ The home **Advantage White** card opens `/buy` until this device is unlocked, th
 
 `POST /api/checkout` with `{ "product": "coach" }` or `{ "product": "pro" }` creates the hosted session. Omitting `product` stays White. White still sends `allow_promotion_codes=true` unless the server attaches a code. Coach and Pro use that same promo-box behavior. `WHITEFREE` still grants White only and does not call Stripe.
 
-Success and cancel return to the request origin: `/buy/coach` or `/buy/pro`, with `checkout=success&session_id={CHECKOUT_SESSION_ID}` or `checkout=cancel`. The White entitlement webhook ignores Coach and Pro sessions. There is no separate Coach or Pro license store.
+Success and cancel return to the request origin: `/buy/coach` or `/buy/pro`, with `checkout=success&session_id={CHECKOUT_SESSION_ID}` or `checkout=cancel`. The webhook ignores Coach sessions. There is no Coach license store.
+
+A paid Pro Checkout session (`checkout.session.completed`, `mode=subscription`, `payment_status` `paid` or `no_payment_required`) stores an active Advantage Pro entitlement: email, Checkout session id, subscription id, amount, and currency. `/buy/pro?checkout=success&session_id=cs_...` is the only Pro buy URL that renders before the alpha door is open. It looks that session up and unlocks Pro on this device when the record is active. The same page locks Pro on this device when that session is stored and inactive. A missing record does not clear an alpha unlock. The checkout button stays hidden until Pro is unlocked, so that return URL does not start a new sale. `/buy/pro` without that paid return still goes to Coming soon. `invoice.paid` (and `invoice.payment_succeeded`) for that subscription keeps it active, including a renewal that does not repeat the product metadata. `customer.subscription.updated` keeps Pro for `active`, `trialing`, `past_due`, and `paused`. It removes Pro for `canceled`, `unpaid`, and `incomplete_expired`. `customer.subscription.deleted` removes Pro. `incomplete` is ignored until a paid Checkout or invoice arrives. Canceling in the Stripe Dashboard sends `customer.subscription.deleted` at period end when `cancel_at_period_end` is set; Pro stays entitled until that event. There is no in-app cancel button.
+
+`GET /api/entitlement?session_id=cs_...` returns the White or Pro row for that session. `GET /api/entitlement?email=` stays Advantage White. `GET /api/entitlement?email=&product=pro` checks Pro. Coach is still not stored.
 
 ### Price ids for Coach and Pro
 
