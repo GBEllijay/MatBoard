@@ -1,6 +1,7 @@
 import { loadEnv, type Connect, type Plugin } from 'vite';
 import { fileEntitlementStore } from './fileEntitlements.ts';
 import { handleCheckout, handleEntitlement, handleWebhook } from './handlers.ts';
+import { MICROSOFT_CLIENT_API, publicMicrosoftClientIdFromEnv } from '../lib/microsoftClientPublic.ts';
 import { API_CHECKOUT_PATH, API_ENTITLEMENT_PATH, API_WEBHOOK_PATH } from './routes.ts';
 import type { EntitlementStore } from './entitlements.ts';
 import type { StripeRuntimeEnv } from './stripeCheckout.ts';
@@ -22,10 +23,18 @@ type NodeResponse = {
   end(body?: Uint8Array | string): void;
 };
 
-function stripeEnv(mode: string, root: string): StripeRuntimeEnv {
+function readEnv(mode: string, root: string): Record<string, string> {
   const file = loadEnv(mode, root, '');
-  const proc = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env;
-  const pick = (name: keyof StripeRuntimeEnv) => file[name] || proc?.[name] || '';
+  const proc = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
+  const names = new Set([...Object.keys(file), ...Object.keys(proc)]);
+  const merged: Record<string, string> = {};
+  for (const name of names) merged[name] = file[name] || proc[name] || '';
+  return merged;
+}
+
+function stripeEnv(mode: string, root: string): StripeRuntimeEnv {
+  const env = readEnv(mode, root);
+  const pick = (name: keyof StripeRuntimeEnv) => env[name] || '';
   return {
     STRIPE_SECRET_KEY: pick('STRIPE_SECRET_KEY'),
     STRIPE_WEBHOOK_SECRET: pick('STRIPE_WEBHOOK_SECRET'),
@@ -99,9 +108,21 @@ async function writeResponse(res: NodeResponse, response: Response): Promise<voi
   res.end(new Uint8Array(await response.arrayBuffer()));
 }
 
-function attach(middlewares: Connect.Server, env: StripeRuntimeEnv, store: EntitlementStore) {
+function attach(
+  middlewares: Connect.Server,
+  env: StripeRuntimeEnv,
+  microsoftEnv: { VITE_MICROSOFT_CLIENT_ID?: string; MICROSOFT_CLIENT_ID?: string },
+  store: EntitlementStore,
+) {
   middlewares.use(async (req, res, next) => {
     const path = (req.url ?? '').split('?')[0];
+    if (path === MICROSOFT_CLIENT_API && (req.method ?? 'GET').toUpperCase() === 'GET') {
+      res.statusCode = 200;
+      res.setHeader('cache-control', 'no-store');
+      res.setHeader('content-type', 'application/json; charset=utf-8');
+      res.end(JSON.stringify({ clientId: publicMicrosoftClientIdFromEnv(microsoftEnv) }));
+      return;
+    }
     if (path !== API_CHECKOUT_PATH && path !== API_ENTITLEMENT_PATH && path !== API_WEBHOOK_PATH) {
       next();
       return;
@@ -128,14 +149,24 @@ export function whitePurchaseApiPlugin(): Plugin {
   return {
     name: 'white-purchase-api',
     configureServer(server) {
-      const env = stripeEnv(server.config.mode, server.config.root || projectRoot());
       const root = server.config.root || projectRoot();
-      attach(server.middlewares, env, fileEntitlementStore(`${root}/.data/white-entitlements.json`));
+      const raw = readEnv(server.config.mode, root);
+      attach(
+        server.middlewares,
+        stripeEnv(server.config.mode, root),
+        raw,
+        fileEntitlementStore(`${root}/.data/white-entitlements.json`),
+      );
     },
     configurePreviewServer(server) {
-      const env = stripeEnv(server.config.mode, server.config.root || projectRoot());
       const root = server.config.root || projectRoot();
-      attach(server.middlewares, env, fileEntitlementStore(`${root}/.data/white-entitlements.json`));
+      const raw = readEnv(server.config.mode, root);
+      attach(
+        server.middlewares,
+        stripeEnv(server.config.mode, root),
+        raw,
+        fileEntitlementStore(`${root}/.data/white-entitlements.json`),
+      );
     },
   };
 }

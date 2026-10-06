@@ -16,6 +16,7 @@ import {
   createOneDriveFolder,
   getOneDriveBindingSnapshot,
   listOneDriveItems,
+  loadMicrosoftClientId,
   microsoftClientId,
   oneDriveAccountLabel,
   oneDriveOwnerFacingError,
@@ -63,11 +64,15 @@ export function createOneDriveConnector(): CloudStorageConnector {
     subscribe: (listener) => subscribeOneDriveBinding(listener),
     emptyFolderMessage: ONEDRIVE_FOLDER_EMPTY,
     async connect(): Promise<CloudConnectResult> {
-      if (!microsoftClientId()) {
+      const clientId = await loadMicrosoftClientId();
+      if (!clientId) {
         return { ok: false, reason: 'unavailable', message: ONEDRIVE_SETUP_NEEDED };
       }
       const auth = await requestOneDriveConsent();
       if (!auth.ok) {
+        if (auth.code === 'redirecting') {
+          return { ok: false, reason: 'redirecting', message: '' };
+        }
         return {
           ok: false,
           reason: auth.code === 'missing-client' ? 'unavailable' : auth.code === 'cancelled' ? 'cancelled' : 'failed',

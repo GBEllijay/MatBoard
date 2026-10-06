@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useNavigate, useSearchParams } from 'react-router-dom';
+import { OneDriveConnectResume } from './components/OneDriveConnectResume';
 import { useCurrentSeat } from './components/SeatSessionBar';
 import { useCoachUnlocked } from './hooks/useCoachUnlocked';
 import { useKeepFocusedFieldVisible } from './hooks/useKeepFocusedFieldVisible';
@@ -383,6 +384,7 @@ export default function App() {
       <Route path="/terms" element={<TermsPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    <OneDriveConnectResume />
     </InviteDoor>
   );
 }

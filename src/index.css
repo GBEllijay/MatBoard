@@ -9456,6 +9456,10 @@ input.roster-pick__name:focus,
   cursor: default;
 }
 
+.drive-connect__providers .btn--unavailable:disabled {
+  opacity: 0.55;
+}
+
 .plan-card .drive-connect__soon {
   margin-left: 0.65rem;
   color: var(--gold-2);

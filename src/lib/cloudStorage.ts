@@ -62,7 +62,7 @@ export type CloudBinding = {
 
 export type CloudConnectResult =
   | { ok: true; session: string; folders: CloudFolderRef[] }
-  | { ok: false; reason: 'unavailable' | 'cancelled' | 'failed'; message: string };
+  | { ok: false; reason: 'unavailable' | 'cancelled' | 'failed' | 'redirecting'; message: string };
 
 /**
  * What Coach Unlimited and Advantage Pro call. Callers pass a provider id.

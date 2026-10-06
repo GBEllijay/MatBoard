@@ -6,13 +6,17 @@ Advantage does not host photos or videos. File bytes stay in the customer’s ow
 
 This build signs in with Microsoft, lists folders, and writes one small text file (`advantage-onedrive-connect.txt`) into the folder the gym picks. Lesson day packages still save to Google Drive. Google Photos and iCloud are not connected yet.
 
-The browser uses [MSAL browser](https://github.com/AzureAD/microsoft-authentication-library-for-js) (auth code + PKCE) and Microsoft Graph. The application id is public in the PWA. **Do not ship a client secret** in the app, in Vite env, or in the owner UI.
+The browser uses [MSAL browser](https://github.com/AzureAD/microsoft-authentication-library-for-js) (auth code + PKCE) and Microsoft Graph. Tapping **OneDrive** sends this window to Microsoft sign-in, then Microsoft sends it back to this site to pick a folder. A popup is not used: the installed app and phone browsers block it, so the tap looked like it did nothing. The application id is public in the PWA. **Do not ship a client secret** in the app, in Vite env, or in the owner UI.
 
 ## Build config
 
-`VITE_MICROSOFT_CLIENT_ID` is read at build time. CI or Cloudflare Pages injects the real company application id. The repo keeps it empty (see `.env.example`). Do not commit a production id.
+`VITE_MICROSOFT_CLIENT_ID` is the Azure **Application (client) ID**. CI or Cloudflare Pages injects it. The repo keeps it empty (see `.env.example`). Do not commit a production id.
 
-On the live website the id always comes from that variable. An id saved in `localStorage` by a dev build (`matboard.pro.microsoftClientId`) is deleted and cannot override the company id.
+Set it on the Cloudflare Pages project for **Production** (and Preview only if that exact origin is also on the Azure redirect list). Vite inlines `VITE_MICROSOFT_CLIENT_ID` when the site is built. `GET /api/microsoft-client` also reads `VITE_MICROSOFT_CLIENT_ID` or `MICROSOFT_CLIENT_ID` from the Pages environment at request time, so a name without the `VITE_` prefix still reaches the button. The response is only the public client id, and only when it is a GUID. Changing the variable requires a new Pages deployment.
+
+On the live website an id saved in `localStorage` by a dev build (`matboard.pro.microsoftClientId`) is deleted and cannot override the company id.
+
+The live site built after OneDrive shipped did not contain this id. The OneDrive button was on the Connect with list, styled like the other buttons, and `disabled`, so the tap did not open Microsoft.
 
 `npm run dev` can show a dev-only **OneDrive app id** field when the variable is empty. Production builds omit that field.
 
@@ -43,11 +47,11 @@ Do this in the [Microsoft Entra admin center](https://entra.microsoft.com/) (or 
 ## What the gym owner sees
 
 1. Tap **Connect with**, then **OneDrive**.
-2. Microsoft opens. They sign in with the account that owns the gym folder and allow Advantage.
-3. They pick a folder, or tap **Create Advantage Lesson Plans**.
+2. This window goes to Microsoft. They sign in with the account that owns the gym folder and allow Advantage.
+3. Microsoft sends them back to the same Advantage page. They pick a folder, or tap **Create Advantage Lesson Plans**.
 4. Advantage writes `advantage-onedrive-connect.txt` in that folder. The file stays in their OneDrive.
 
-If this build has no `VITE_MICROSOFT_CLIENT_ID`, the OneDrive button stays disabled and the owner sees: OneDrive is not available on this build yet — contact Advantage.
+If this deployment has no Microsoft client id, the OneDrive button stays disabled and the owner sees: OneDrive is not available on this build yet — contact Advantage.
 
 ## Common errors
 
@@ -56,7 +60,8 @@ If this build has no `VITE_MICROSOFT_CLIENT_ID`, the OneDrive button stays disab
 | `AADSTS50011` / redirect URI mismatch | The site origin is not on the SPA redirect URI list, or a trailing slash / path does not match `window.location.origin`. |
 | `AADSTS700016` / application was not found | `VITE_MICROSOFT_CLIENT_ID` is missing or wrong. |
 | Need admin approval | The account is a work or school tenant that has not consented to `Files.ReadWrite`. Personal accounts should not see this. |
-| Sign-in window closes with no folder list | The owner closed the window, or the browser blocked the popup. |
+| Button does nothing and Microsoft never opens | The deployment has no client id. Set `VITE_MICROSOFT_CLIENT_ID` (or `MICROSOFT_CLIENT_ID`) on Cloudflare Pages and deploy again. |
+| `AADSTS50011` on a `*.pages.dev` preview | That preview origin is not a redirect URI. Finish the connection on `https://advantagebjjtimer.com` or `https://www.advantagebjjtimer.com`. |
 
 The gym owner still sees the plain sign-in sentence: Microsoft did not finish sign-in. Try again, or ask whoever set up Advantage to allow this website. A local dev build may add a short hint.
 
