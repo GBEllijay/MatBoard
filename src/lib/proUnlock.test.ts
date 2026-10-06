@@ -15,6 +15,8 @@ import {
   tryProductOwnerUnlock,
   tryUnlock,
 } from './proUnlock.ts';
+import { PRO_PRODUCT_ID, proDeviceUnlock, proPurchaseEntitled, proPurchaseReturn } from './proEntitlement.ts';
+import { API_PRODUCT_PRO } from '../server/routes.ts';
 import { WHITE_UNLOCK_STORAGE_KEY, isWhiteUnlocked, setWhiteUnlocked } from './whiteUnlock.ts';
 
 function memoryStorage() {
@@ -120,4 +122,21 @@ test('WINBYADV unlocks White, Coach, and Pro on the owner path', () => {
   assert.equal(isWhiteUnlocked(), true);
   assert.equal(applyFullOwnerSearch(new URLSearchParams('pro=advantage')), false);
   assert.equal(applyFullOwnerSearch(new URLSearchParams('coach=gbellijay')), false);
+});
+
+test('a Pro subscription entitlement matches the Stripe product id', () => {
+  assert.equal(PRO_PRODUCT_ID, API_PRODUCT_PRO);
+  assert.equal(proPurchaseEntitled({ entitled: true, product: 'advantage-pro' }), true);
+  assert.equal(proPurchaseEntitled({ entitled: true, product: 'advantage-white' }), false);
+  assert.equal(proPurchaseEntitled({ entitled: false, product: 'advantage-pro' }), false);
+  assert.equal(proDeviceUnlock({ entitled: true, product: 'advantage-pro' }), true);
+  assert.equal(proDeviceUnlock({ entitled: false, product: 'advantage-pro' }), false);
+  assert.equal(proDeviceUnlock({ entitled: false }), null);
+  assert.equal(proDeviceUnlock({ entitled: true, product: 'advantage-white' }), null);
+  assert.equal(
+    proPurchaseReturn(new URLSearchParams('checkout=success&session_id=cs_test_pro')),
+    true,
+  );
+  assert.equal(proPurchaseReturn(new URLSearchParams('checkout=cancel&session_id=cs_test_pro')), false);
+  assert.equal(proPurchaseReturn(new URLSearchParams('checkout=success')), false);
 });

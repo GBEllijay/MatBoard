@@ -9,6 +9,7 @@ import { useWhiteUnlocked } from './hooks/useWhiteUnlocked';
 import { consumeCoachUnlockQueryNow } from './lib/coachUnlock';
 import { acceptInstructorInvite, peekInstructorInvite } from './lib/instructorSeats';
 import { coachDoorOpen, proDoorOpen } from './lib/productNames';
+import { proPurchaseReturn } from './lib/proEntitlement';
 import { consumeUnlockQueryNow } from './lib/proUnlock';
 import { WHITE_BUY_PATH } from './lib/whitePurchase';
 import { whiteHubAllowed, whiteLiveToolsAllowed } from './lib/whiteUnlock';
@@ -68,8 +69,9 @@ function consumeInviteDoorNow(): void {
 consumeInviteDoorNow();
 
 function ProRoute({ children }: { children: ReactNode }) {
+  const [params] = useSearchParams();
   const unlocked = proDoorOpen(useProUnlocked());
-  if (!unlocked) return <Navigate to="/coming-soon" replace />;
+  if (!unlocked && !proPurchaseReturn(params)) return <Navigate to="/coming-soon" replace />;
   return children;
 }
 

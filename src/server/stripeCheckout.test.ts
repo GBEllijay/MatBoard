@@ -206,10 +206,178 @@ test('other events and unpaid sessions are ignored', () => {
           id: 'cs_test_pro',
           object: 'checkout.session',
           mode: 'subscription',
+          payment_status: 'unpaid',
+          subscription: 'sub_test_pro',
+          metadata: { product: 'advantage-pro' },
+        },
+      },
+    }).action,
+    'ignore',
+  );
+});
+
+test('a paid Pro Checkout session grants the subscription', () => {
+  const parsed = purchaseFromStripeEvent({
+    type: 'checkout.session.completed',
+    data: {
+      object: {
+        id: 'cs_test_pro',
+        object: 'checkout.session',
+        mode: 'subscription',
+        payment_status: 'paid',
+        amount_total: 10298,
+        currency: 'usd',
+        subscription: 'sub_test_pro',
+        customer_details: { email: 'Owner@Gym.test' },
+        metadata: { product: 'advantage-pro' },
+      },
+    },
+  });
+  assert.equal(parsed.action, 'grant-pro');
+  if (parsed.action !== 'grant-pro') return;
+  assert.equal(parsed.grant.email, 'owner@gym.test');
+  assert.equal(parsed.grant.sessionId, 'cs_test_pro');
+  assert.equal(parsed.grant.subscriptionId, 'sub_test_pro');
+  assert.equal(parsed.grant.amountTotal, 10298);
+});
+
+test('a paid Pro Checkout session without a subscription id is retried', () => {
+  assert.equal(
+    purchaseFromStripeEvent({
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          id: 'cs_test_pro',
+          object: 'checkout.session',
+          mode: 'subscription',
           payment_status: 'paid',
           metadata: { product: 'advantage-pro' },
         },
       },
+    }).action,
+    'retry',
+  );
+});
+
+test('invoice.paid keeps a Pro subscription entitled', () => {
+  const legacy = purchaseFromStripeEvent({
+    type: 'invoice.paid',
+    data: {
+      object: {
+        object: 'invoice',
+        subscription: 'sub_test_pro',
+        customer_email: 'owner@gym.test',
+        amount_paid: 299,
+        currency: 'usd',
+        lines: { data: [{ metadata: { product: 'advantage-pro' } }] },
+      },
+    },
+  });
+  assert.equal(legacy.action, 'sync-pro');
+  if (legacy.action !== 'sync-pro') return;
+  assert.equal(legacy.sync.entitled, true);
+  assert.equal(legacy.sync.productKnown, true);
+  assert.equal(legacy.sync.subscriptionId, 'sub_test_pro');
+  assert.equal(legacy.sync.amountTotal, 299);
+
+  const basil = purchaseFromStripeEvent({
+    type: 'invoice.payment_succeeded',
+    data: {
+      object: {
+        object: 'invoice',
+        customer_email: 'owner@gym.test',
+        amount_paid: 299,
+        currency: 'usd',
+        parent: {
+          subscription_details: {
+            subscription: 'sub_test_pro',
+            metadata: { product: 'advantage-pro' },
+          },
+        },
+      },
+    },
+  });
+  assert.equal(basil.action, 'sync-pro');
+  if (basil.action !== 'sync-pro') return;
+  assert.equal(basil.sync.subscriptionId, 'sub_test_pro');
+  assert.equal(basil.sync.productKnown, true);
+});
+
+test('subscription status updates grant, keep, or revoke Pro', () => {
+  const active = purchaseFromStripeEvent({
+    type: 'customer.subscription.updated',
+    data: {
+      object: {
+        id: 'sub_test_pro',
+        object: 'subscription',
+        status: 'active',
+        metadata: { product: 'advantage-pro' },
+      },
+    },
+  });
+  assert.equal(active.action, 'sync-pro');
+  if (active.action === 'sync-pro') assert.equal(active.sync.entitled, true);
+
+  const pastDue = purchaseFromStripeEvent({
+    type: 'customer.subscription.updated',
+    data: {
+      object: {
+        id: 'sub_test_pro',
+        object: 'subscription',
+        status: 'past_due',
+        metadata: { product: 'advantage-pro' },
+      },
+    },
+  });
+  assert.equal(pastDue.action, 'sync-pro');
+  if (pastDue.action === 'sync-pro') assert.equal(pastDue.sync.entitled, true);
+
+  const canceled = purchaseFromStripeEvent({
+    type: 'customer.subscription.deleted',
+    data: {
+      object: {
+        id: 'sub_test_pro',
+        object: 'subscription',
+        status: 'canceled',
+        metadata: { product: 'advantage-pro' },
+      },
+    },
+  });
+  assert.equal(canceled.action, 'sync-pro');
+  if (canceled.action === 'sync-pro') assert.equal(canceled.sync.entitled, false);
+
+  assert.equal(
+    purchaseFromStripeEvent({
+      type: 'customer.subscription.updated',
+      data: {
+        object: {
+          id: 'sub_test_pro',
+          object: 'subscription',
+          status: 'incomplete',
+          metadata: { product: 'advantage-pro' },
+        },
+      },
+    }).action,
+    'ignore',
+  );
+  assert.equal(
+    purchaseFromStripeEvent({
+      type: 'customer.subscription.updated',
+      data: {
+        object: {
+          id: 'sub_other',
+          object: 'subscription',
+          status: 'active',
+          metadata: { product: 'advantage-white' },
+        },
+      },
+    }).action,
+    'ignore',
+  );
+  assert.equal(
+    purchaseFromStripeEvent({
+      type: 'invoice.paid',
+      data: { object: { object: 'invoice', customer_email: 'owner@gym.test', amount_paid: 999 } },
     }).action,
     'ignore',
   );
