@@ -37,12 +37,12 @@ export function CoachUnlimitedPage() {
       <div className="home__inner">
         <HomeMark to="/pro" />
         <section className="suite instructor-hub">
-          <BeltHeader kind="brown" title="Advantage - Coach Unlimited" />
+          <BeltHeader kind="brown" worn title="Advantage - Coach Unlimited" />
           <nav className="instructor-jumps" aria-label={INSTRUCTOR_COACH_ENTRY}>
             <div className="pro-hubs">
               {tools.map((tool) => (
                 <Link key={tool.to} className="pro-hub" to={tool.to}>
-                  <BeltRail kind={tool.belt} />
+                  <BeltRail kind={tool.belt} stripes={'stripes' in tool ? tool.stripes : undefined} />
                   <span>{tool.title}</span>
                 </Link>
               ))}

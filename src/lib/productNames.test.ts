@@ -227,6 +227,10 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
     COACH_UNLIMITED_TOOLS.map((tool) => tool.belt),
     ['brown', 'brown', 'brown', 'brown', 'tournament'],
   );
+  assert.deepEqual(
+    COACH_UNLIMITED_TOOLS.map((tool) => ('stripes' in tool ? tool.stripes : null)),
+    [0, 1, 2, 3, null],
+  );
   assert.equal(COACH_UNLIMITED_TOOLS[3].to, COMPETITOR_ROSTER_PATH);
   assert.equal(COACH_UNLIMITED_TOOLS[3].belt, 'brown');
   assert.equal(COACH_UNLIMITED_TOOLS[4].to, '/competition-curriculum?plan=unlimited');

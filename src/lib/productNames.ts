@@ -123,13 +123,14 @@ export function coachingToolsMenu(unlimited: boolean) {
  * Advantage Coach Unlimited menu, top to bottom.
  * Daily Lesson Plan is the Unlimited plan that can be uploaded for review.
  * Competitor Roster sits under Technique Tree and opens the same list as Competitor Management System.
+ * The four brown rails wear 0-3 white stripes, counted from the tip up toward the header's 4.
  * Sunday review and Drive cards stay on the page, under this menu.
  */
 export const COACH_UNLIMITED_TOOLS = [
-  { title: TRAINING_NOTES_LABEL, to: UNLIMITED_LESSON_PATH, belt: 'brown' as const },
-  { title: 'Daily Training Videos', to: '/techniques', belt: 'brown' as const },
-  { title: TECHNIQUE_TREE_LABEL, to: '/technique-tree', belt: 'brown' as const },
-  { title: COMPETITOR_ROSTER_LABEL, to: COMPETITOR_ROSTER_PATH, belt: 'brown' as const },
+  { title: TRAINING_NOTES_LABEL, to: UNLIMITED_LESSON_PATH, belt: 'brown' as const, stripes: 0 as const },
+  { title: 'Daily Training Videos', to: '/techniques', belt: 'brown' as const, stripes: 1 as const },
+  { title: TECHNIQUE_TREE_LABEL, to: '/technique-tree', belt: 'brown' as const, stripes: 2 as const },
+  { title: COMPETITOR_ROSTER_LABEL, to: COMPETITOR_ROSTER_PATH, belt: 'brown' as const, stripes: 3 as const },
   {
     title: CURRICULUM_LABEL,
     to: `${CURRICULUM_PATH}?plan=${UNLIMITED_LESSON_VALUE}`,
