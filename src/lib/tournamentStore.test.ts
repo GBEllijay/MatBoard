@@ -371,3 +371,124 @@ describe('named on-device bracket library', () => {
     assert.equal(OWNER_BRACKET_CLOUD.ownerSaves, 'local-only');
   });
 });
+
+describe('clearing dependent later rounds', () => {
+  const win = { call: 'win' as const, method: 'points' as const };
+
+  /** 8-person draw: Alex’s quarter feeds the top semi, then the final and champion. */
+  function playedEight() {
+    let board = defaultTournament(8);
+    const names = ['Alex', 'Blair', 'Casey', 'Drew', 'Evan', 'Fran', 'Glen', 'Harper'];
+    seedSlots(board).forEach((id, index) => {
+      board = applySlotName(board, id, names[index]);
+    });
+    board = applyMatchOutcome(board, 'qf-0', 'a', win, { toggle: false });
+    board = applyMatchOutcome(board, 'qf-1', 'a', win, { toggle: false });
+    board = applyMatchOutcome(board, 'qf-2', 'a', win, { toggle: false });
+    board = applyMatchOutcome(board, 'qf-3', 'a', win, { toggle: false });
+    board = applyMatchOutcome(board, 'sf-0', 'a', win, { toggle: false });
+    board = applyMatchOutcome(board, 'sf-1', 'a', win, { toggle: false });
+    board = applyMatchOutcome(board, 'final-0', 'a', win, { toggle: false });
+    return board;
+  }
+
+  it('undo of a quarterfinal clears later slots that advanced from that winner', () => {
+    const board = applyUndoOutcome(playedEight(), 'qf-0');
+    assert.equal(board.results['qf-0'], undefined);
+    assert.equal(board.entries['sf-0-a'], undefined);
+    assert.equal(board.results['sf-0'], undefined);
+    assert.equal(board.entries['final-0-a'], undefined);
+    assert.equal(board.results['final-0'], undefined);
+    assert.equal(board.entries.champion, undefined);
+    assert.equal(board.entries['sf-0-b'], 'Drew');
+    assert.equal(board.results['qf-1']?.winnerSide, 'a');
+    assert.equal(board.results['sf-1']?.winnerSide, 'a');
+    assert.equal(board.entries['final-0-b'], 'Blair');
+    assert.equal(board.entries['qf-0-a'], 'Alex');
+    assert.equal(board.entries['qf-0-b'], 'Harper');
+    assert.equal(board.lastOutcomeMatchId, null);
+  });
+
+  it('undo still clears a later bout won by the other athlete', () => {
+    let board = playedEight();
+    board = applyClearResult(board, 'final-0');
+    board = applyClearResult(board, 'sf-0');
+    board = applyMatchOutcome(board, 'sf-0', 'b', win, { toggle: false });
+    board = applyMatchOutcome(board, 'final-0', 'a', win, { toggle: false });
+    assert.equal(board.entries['final-0-a'], 'Drew');
+    assert.equal(board.entries.champion, 'Drew');
+    board = applyUndoOutcome(board, 'qf-0');
+    assert.equal(board.results['sf-0'], undefined);
+    assert.equal(board.entries['sf-0-a'], undefined);
+    assert.equal(board.entries['sf-0-b'], 'Drew');
+    assert.equal(board.entries['final-0-a'], undefined);
+    assert.equal(board.results['final-0'], undefined);
+    assert.equal(board.entries.champion, undefined);
+    assert.equal(board.entries['final-0-b'], 'Blair');
+  });
+
+  it('re-deciding a quarterfinal wipes the old path so a new champion can be run', () => {
+    let board = applyMatchOutcome(
+      playedEight(),
+      'qf-0',
+      'b',
+      { call: 'win', method: 'submission' },
+      { toggle: false },
+    );
+    assert.equal(board.results['qf-0']?.winnerSide, 'b');
+    assert.equal(board.entries['sf-0-a'], 'Harper');
+    assert.equal(board.results['sf-0'], undefined);
+    assert.equal(board.entries['final-0-a'], undefined);
+    assert.equal(board.results['final-0'], undefined);
+    assert.equal(board.entries.champion, undefined);
+    assert.equal(board.entries['sf-0-b'], 'Drew');
+    assert.equal(board.entries['final-0-b'], 'Blair');
+    assert.equal(board.entries['sf-1-a'], 'Blair');
+    board = applyMatchOutcome(board, 'sf-0', 'a', win, { toggle: false });
+    board = applyMatchOutcome(board, 'final-0', 'a', { call: 'win', method: 'decision' }, { toggle: false });
+    assert.equal(board.entries['final-0-a'], 'Harper');
+    assert.equal(board.entries['final-0-b'], 'Blair');
+    assert.equal(board.entries.champion, 'Harper');
+    assert.equal(board.entries['sf-0-a'], 'Harper');
+    assert.equal(board.entries['qf-0-a'], 'Alex');
+    assert.equal(board.results['sf-0']?.winnerSide, 'a');
+    assert.equal(board.results['final-0']?.winnerSide, 'a');
+  });
+
+  it('keeps downstream results when the same winner is marked a different way', () => {
+    const board = applyMatchOutcome(
+      playedEight(),
+      'qf-0',
+      'a',
+      { call: 'win', method: 'submission' },
+      { toggle: false },
+    );
+    assert.equal(board.results['qf-0']?.method, 'submission');
+    assert.equal(board.results['sf-0']?.winnerSide, 'a');
+    assert.equal(board.results['final-0']?.winnerSide, 'a');
+    assert.equal(board.entries['sf-0-a'], 'Alex');
+    assert.equal(board.entries['final-0-a'], 'Alex');
+    assert.equal(board.entries.champion, 'Alex');
+  });
+
+  it('undo of the 3-person semifinal clears the consolation and the final', () => {
+    let board = applySlotName(defaultTournament(3), 'sf-1-a', 'Alex');
+    board = applySlotName(board, 'sf-0-a', 'Blair');
+    board = applySlotName(board, 'sf-0-b', 'Casey');
+    board = applyMatchOutcome(board, 'sf-0', 'a', win, { toggle: false });
+    board = applyMatchOutcome(board, 'sf-1', 'a', win, { toggle: false });
+    board = applyMatchOutcome(board, 'final-0', 'b', win, { toggle: false });
+    assert.equal(board.entries.champion, 'Alex');
+    board = applyUndoOutcome(board, 'sf-0');
+    assert.equal(board.results['sf-0'], undefined);
+    assert.equal(board.entries['final-0-a'], undefined);
+    assert.equal(board.entries['sf-1-b'], undefined);
+    assert.equal(board.results['sf-1'], undefined);
+    assert.equal(board.entries['final-0-b'], undefined);
+    assert.equal(board.results['final-0'], undefined);
+    assert.equal(board.entries.champion, undefined);
+    assert.equal(board.entries['sf-1-a'], 'Alex');
+    assert.equal(board.entries['sf-0-a'], 'Blair');
+    assert.equal(board.entries['sf-0-b'], 'Casey');
+  });
+});
