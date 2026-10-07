@@ -28,6 +28,7 @@ export function ProPage() {
         <nav className="home__modes" aria-label="Advantage Pro">
           <BeltHeader
             kind={mediaSeat ? 'purple' : 'black'}
+            worn={!mediaSeat}
             title={mediaSeat ? MEDIA_CONSOLE_NAME : 'Advantage Pro'}
             blurb={mediaSeat ? hubs.map((hub) => hub.title).join(', ') : PRO_LADDER_DETAIL}
           />

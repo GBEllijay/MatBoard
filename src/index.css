@@ -459,6 +459,108 @@ label.btn {
   --belt-edge: rgba(8, 10, 16, 0.45);
 }
 
+/* Coach Unlimited degree rails: clean espresso, no fray.
+   A brown tip fills the card's 18px corner. The black bar and every
+   stripe sit above that, on the straight edge. Tape starts at the
+   bottom of the bar and stacks toward the middle. */
+.pro-hub .belt-rail.belt-rail--degrees {
+  --belt-rail-width: 10px;
+  --espresso: #583926;
+  --degree-bar-ink: #121214;
+  --degree-tape: #f7f4ee;
+  --rail-tip: 18px;
+  --degree-tape-h: 3.5px;
+  --degree-gap: 3.5px;
+  --degree-lead: 8px;
+  --degree-span: calc(var(--degree-tape-h) * 3 + var(--degree-gap) * 2 + var(--degree-lead));
+  --degree-bar: calc(var(--rail-tip) + var(--degree-span));
+  background:
+    linear-gradient(
+      to right,
+      transparent 0,
+      transparent calc(var(--belt-rail-width) - 1px),
+      rgba(8, 10, 16, 0.45) calc(var(--belt-rail-width) - 1px),
+      rgba(8, 10, 16, 0.45) var(--belt-rail-width),
+      transparent var(--belt-rail-width)
+    ),
+    var(--degree-stack),
+    linear-gradient(var(--espresso), var(--espresso));
+}
+
+.belt-rail--stripes-0 {
+  --degree-stack: linear-gradient(
+    to top,
+    var(--espresso) 0,
+    var(--espresso) var(--rail-tip),
+    var(--degree-bar-ink) var(--rail-tip),
+    var(--degree-bar-ink) var(--degree-bar),
+    transparent var(--degree-bar)
+  );
+}
+
+.belt-rail--stripes-1 {
+  --tape-a: var(--rail-tip);
+  --tape-b: calc(var(--rail-tip) + var(--degree-tape-h));
+  --degree-stack: linear-gradient(
+    to top,
+    var(--espresso) 0,
+    var(--espresso) var(--tape-a),
+    var(--degree-tape) var(--tape-a),
+    var(--degree-tape) var(--tape-b),
+    var(--degree-bar-ink) var(--tape-b),
+    var(--degree-bar-ink) var(--degree-bar),
+    transparent var(--degree-bar)
+  );
+}
+
+.belt-rail--stripes-2 {
+  --tape-a: var(--rail-tip);
+  --tape-b: calc(var(--rail-tip) + var(--degree-tape-h));
+  --tape-c: calc(var(--tape-b) + var(--degree-gap));
+  --tape-d: calc(var(--tape-c) + var(--degree-tape-h));
+  --degree-stack: linear-gradient(
+    to top,
+    var(--espresso) 0,
+    var(--espresso) var(--tape-a),
+    var(--degree-tape) var(--tape-a),
+    var(--degree-tape) var(--tape-b),
+    var(--degree-bar-ink) var(--tape-b),
+    var(--degree-bar-ink) var(--tape-c),
+    var(--degree-tape) var(--tape-c),
+    var(--degree-tape) var(--tape-d),
+    var(--degree-bar-ink) var(--tape-d),
+    var(--degree-bar-ink) var(--degree-bar),
+    transparent var(--degree-bar)
+  );
+}
+
+.belt-rail--stripes-3 {
+  --tape-a: var(--rail-tip);
+  --tape-b: calc(var(--rail-tip) + var(--degree-tape-h));
+  --tape-c: calc(var(--tape-b) + var(--degree-gap));
+  --tape-d: calc(var(--tape-c) + var(--degree-tape-h));
+  --tape-e: calc(var(--tape-d) + var(--degree-gap));
+  --tape-f: calc(var(--tape-e) + var(--degree-tape-h));
+  --degree-stack: linear-gradient(
+    to top,
+    var(--espresso) 0,
+    var(--espresso) var(--tape-a),
+    var(--degree-tape) var(--tape-a),
+    var(--degree-tape) var(--tape-b),
+    var(--degree-bar-ink) var(--tape-b),
+    var(--degree-bar-ink) var(--tape-c),
+    var(--degree-tape) var(--tape-c),
+    var(--degree-tape) var(--tape-d),
+    var(--degree-bar-ink) var(--tape-d),
+    var(--degree-bar-ink) var(--tape-e),
+    var(--degree-tape) var(--tape-e),
+    var(--degree-tape) var(--tape-f),
+    var(--degree-bar-ink) var(--tape-f),
+    var(--degree-bar-ink) var(--degree-bar),
+    transparent var(--degree-bar)
+  );
+}
+
 /* Live Bout: black tip on the bottom of the accent, including the lower curve.
    No cream degree stripe and no light tip under the black. */
 .belt-rail.belt-rail--flush {
@@ -1862,6 +1964,168 @@ span.role-plan__mark {
   background-color: var(--cloth);
   background-image: var(--weave);
 }
+
+/* Worn cotton for the Coach Unlimited brown belt and the Pro black belt.
+   Rounded ends, a quiet stitch on the cloth, and a fine horizontal weave.
+   Long edges stay straight. Rank bars run the full height and cover the stitch. */
+.belt-header--worn .belt-header__belt {
+  --bar-white: clamp(0.7rem, 1.15vw, 1.05rem);
+  --bar-tail: clamp(0.58rem, 0.95vw, 0.88rem);
+  --rank-width: clamp(6.6rem, 21%, 10.6rem);
+  --end-radius: clamp(8px, 0.7vw, 13px);
+  --cloth: #141416;
+  /* Folded edge: same hue as the cloth, only a shade lighter. Not a light rim. */
+  --band: #232323;
+  --stitch: #2c2c2c;
+  container-type: inline-size;
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--end-radius);
+  background: transparent;
+  box-shadow:
+    0 8px 16px rgba(0, 0, 0, 0.5),
+    0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.belt-header--worn .belt-header__belt::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 0 0 5px var(--band),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.16);
+}
+
+.belt-header--worn .belt-header__belt::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  z-index: 5;
+  pointer-events: none;
+  border-radius: calc(var(--end-radius) - 3px);
+  border: 1px solid var(--stitch);
+  /* Short stitches. The rank bar paints over this and breaks the line. */
+  -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 2px, transparent 2px 6px);
+  mask-image: repeating-linear-gradient(90deg, #000 0 2px, transparent 2px 6px);
+}
+
+.belt-header--worn.belt-header--brown .belt-header__belt {
+  /* Black bar is about 19% of the belt. The cloth tail is the rest of the tip. */
+  --rank-width: 24.5%;
+  --cloth: #583926;
+  /* About 8% lighter than the cloth, same brown. */
+  --band: #5f3e29;
+  --stitch: #684632;
+}
+
+.belt-header--worn .belt-header__cloth {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background-color: var(--cloth);
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.05), transparent 8px),
+    linear-gradient(to left, rgba(255, 255, 255, 0.05), transparent 8px),
+    url('/belt-weave.png');
+  background-size: 8px 100%, 8px 100%, 160px 4px;
+  background-position: left center, right center, 0 0;
+  background-repeat: no-repeat, no-repeat, repeat;
+}
+
+.belt-header--worn .belt-header__title {
+  position: relative;
+  z-index: 2;
+}
+
+@media (max-width: 560px) {
+  /* Same size as the Pro header. Two lines, tight leading, still inside the belt. */
+  .belt-header--worn.belt-header--brown .belt-header__title {
+    line-height: 1.1;
+  }
+}
+
+@media (min-width: 900px) {
+  /* Examples are about 60-65px tall at 1024px wide, and grow with the screen. */
+  .belt-header--worn .belt-header__belt {
+    min-height: clamp(3.9rem, 6vw, 7.5rem);
+  }
+
+  .belt-header--worn .belt-header__title {
+    font-size: clamp(1.55rem, 2.3vw, 2.4rem);
+  }
+}
+
+.belt-header--worn .belt-header__tip {
+  position: relative;
+  z-index: auto;
+  flex: 0 0 var(--rank-width);
+  width: var(--rank-width);
+  max-width: none;
+  min-width: 0;
+  background: transparent;
+}
+
+.belt-header--worn.belt-header--black .belt-header__belt {
+  /* Keep the white | red | white block the same width, and match the cloth tip to the brown tail. */
+  --rank-width: calc(clamp(6.6rem, 21%, 10.6rem) - 16px + 5.4cqw);
+}
+
+.belt-header--worn.belt-header--black .belt-header__stripe,
+.belt-header--worn.belt-header--black .belt-header__rank--red,
+.belt-header--worn.belt-header--brown .belt-header__rank--striped {
+  position: relative;
+  z-index: 6;
+  align-self: stretch;
+}
+
+.belt-header--worn.belt-header--black .belt-header__stripe {
+  flex: 0 0 var(--bar-white);
+  background: #f7f7f5;
+}
+
+.belt-header--worn.belt-header--black .belt-header__stripe--tail {
+  flex-basis: var(--bar-tail);
+}
+
+.belt-header--worn.belt-header--black .belt-header__rank--red {
+  background: #e10600;
+}
+
+.belt-header--worn .belt-header__end {
+  flex: 0 0 5.4cqw;
+  width: 5.4cqw;
+  background: transparent;
+}
+
+.belt-header--worn.belt-header--brown .belt-header__tip {
+  gap: 0;
+  padding: 0;
+  justify-content: flex-end;
+  background: transparent;
+}
+
+.belt-header--worn.belt-header--brown .belt-header__rank--striped {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: 16% 1.15fr 1fr 1.15fr 1fr 1.15fr 1fr 1.15fr 16%;
+  align-items: stretch;
+  background: #121214;
+}
+
+.belt-header--worn .belt-header__degree {
+  min-width: 0;
+  background: #f7f7f5;
+}
+
+.belt-header--worn .belt-header__degree:nth-child(1) { grid-column: 2; }
+.belt-header--worn .belt-header__degree:nth-child(2) { grid-column: 4; }
+.belt-header--worn .belt-header__degree:nth-child(3) { grid-column: 6; }
+.belt-header--worn .belt-header__degree:nth-child(4) { grid-column: 8; }
 
 /* Same quiet line as the HomeMark tagline under the gold mark: regular weight, muted, centered in a short column. */
 .belt-header .belt-header__blurb {
