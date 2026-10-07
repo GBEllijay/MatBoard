@@ -22,6 +22,10 @@ Seams
 
 Check
   python3 scripts/generate-home-mat-tatami.py
+
+Mixed horizontal and vertical mats were searched (scripts/search-mat-layouts.py).
+None tile this 720x960 repeat without a plus junction, so the running bond stays
+the default.
 """
 
 from __future__ import annotations
