@@ -152,6 +152,35 @@ export function kidsWallpaperPath(skin: KidsSkinId): string {
   return `/assets/kids/${skin}.webp`;
 }
 
+/** Query flag so a bout opened from Kids Brackets paints that wallpaper on the scoreboard. */
+export const KIDS_SKIN_PARAM = 'kids';
+
+export function parseKidsSkin(value: unknown): KidsSkinId | null {
+  return isSkin(value) ? value : null;
+}
+
+export function kidsSkinFromSearch(search: URLSearchParams): KidsSkinId | null {
+  return parseKidsSkin(search.get(KIDS_SKIN_PARAM));
+}
+
+export function kidsBoardClass(skin: KidsSkinId | null): string {
+  return skin ? `kids-board kids-board--${skin}` : '';
+}
+
+/** Keep the kids wallpaper on scoreboard, controller, and cast links. */
+export function withKidsSkin(path: string, skin: KidsSkinId | null): string {
+  if (!skin) return path;
+  const hashAt = path.indexOf('#');
+  const hash = hashAt >= 0 ? path.slice(hashAt) : '';
+  const base = hashAt >= 0 ? path.slice(0, hashAt) : path;
+  const queryAt = base.indexOf('?');
+  const pathname = queryAt >= 0 ? base.slice(0, queryAt) : base;
+  const params = new URLSearchParams(queryAt >= 0 ? base.slice(queryAt + 1) : '');
+  params.set(KIDS_SKIN_PARAM, skin);
+  const query = params.toString();
+  return `${pathname}${query ? `?${query}` : ''}${hash}`;
+}
+
 /**
  * Carlos only after the championship bout has a winner. A stored champion name
  * wins; otherwise the finalist's slot name or the same placeholder the card

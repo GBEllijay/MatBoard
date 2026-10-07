@@ -7,7 +7,6 @@ import { KidsBracketChrome, KidsMascotDock } from '../components/KidsBracketChro
 import { KidsScoreboardSwitcher } from '../components/KidsScoreboardSwitcher';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { OutcomePickSheet } from '../components/OutcomeCalls';
-import { RosterNameField } from '../components/RosterNameField';
 import { Sheet } from '../components/Sheet';
 import { useLockViewportZoom, usePinchZoom } from '../hooks/usePinchZoom';
 import { inputTypeUsesKeyboard } from '../lib/keepFieldVisible';
@@ -36,6 +35,7 @@ import {
   kidsSkinChromeHidden,
   kidsWinLines,
   kidsWinState,
+  withKidsSkin,
 } from '../lib/kidsScoreboard';
 import { isSheetLayerOpen, subscribeSheetLayer } from '../lib/sheetLayer';
 import { competitorCards, rosterGymForName, studentRosterCards } from '../lib/rosterStore';
@@ -60,7 +60,9 @@ import {
   placementLabel,
   placementOf,
   matchHasBye,
+  fillSeedNames,
   newBracket,
+  parseNameList,
   renameActiveBracket,
   resetTournament,
   rightRoundIds,
@@ -117,8 +119,8 @@ export function TournamentPage() {
   const [sizeOpen, setSizeOpen] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
-  const [pendingSize, setPendingSize] = useState<number | null>(null);
   const [pendingPlacement, setPendingPlacement] = useState<PlacementStyle | null>(null);
+  const [pasteDraft, setPasteDraft] = useState('');
   const [saveName, setSaveName] = useState('');
   const [customSize, setCustomSize] = useState(String(tournament.size));
   const seeds = seedSlots(tournament);
@@ -170,7 +172,6 @@ export function TournamentPage() {
   const applySize = (size: number) => {
     unlinkBracketBout();
     setCompetitorCount(size, sizeMax);
-    setPendingSize(null);
     setSizeOpen(false);
   };
 
@@ -180,10 +181,6 @@ export function TournamentPage() {
       return;
     }
     setPendingPlacement(null);
-    if (Object.keys(tournament.results).length) {
-      setPendingSize(size);
-      return;
-    }
     applySize(size);
   };
 
@@ -198,7 +195,6 @@ export function TournamentPage() {
       setPendingPlacement(null);
       return;
     }
-    setPendingSize(null);
     if (Object.keys(tournament.results).length) {
       setPendingPlacement(style);
       return;
@@ -282,7 +278,6 @@ export function TournamentPage() {
             className="btn btn--ghost"
             onClick={() => {
               setCustomSize(String(tournament.size));
-              setPendingSize(null);
               setPendingPlacement(null);
               setSizeOpen(true);
             }}
@@ -292,7 +287,14 @@ export function TournamentPage() {
           <button type="button" className="btn btn--ghost tournament__save-btn" onClick={openSaved}>
             {named ? savedLabel : 'Save'}
           </button>
-          <button type="button" className="btn btn--ghost" onClick={() => setNamesOpen(true)}>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={() => {
+              setPasteDraft('');
+              setNamesOpen(true);
+            }}
+          >
             Edit names
           </button>
           <button
@@ -378,6 +380,7 @@ export function TournamentPage() {
                   label={sideRoundLabel(threePerson, prefix, 'left')}
                   detail={sideRoundDetail(threePerson, prefix, 'left')}
                   liveMatchId={liveMatchId}
+                  paired={kidsOn}
                 />
               ))}
             </div>
@@ -398,14 +401,13 @@ export function TournamentPage() {
                   {kidsWin && kidsScore ? <strong className="kids-champ-score">{kidsScore}</strong> : null}
                 </p>
               ) : null}
-              <RosterNameField
+              <input
                 value={champion}
-                onChange={(value) => setSlotName('champion', value)}
-                onPrefill={(prefill) => setSlotName('champion', prefill.name)}
+                onChange={(event) => setSlotName('champion', event.target.value)}
                 placeholder="Winner"
-                ariaLabel="Champion"
-                names={plainCoach ? 'student' : 'competitor'}
-                compact
+                aria-label="Champion"
+                autoComplete="off"
+                autoCapitalize="words"
               />
             </div>
           </div>
@@ -419,6 +421,7 @@ export function TournamentPage() {
                   label={sideRoundLabel(threePerson, prefix, 'right')}
                   detail={sideRoundDetail(threePerson, prefix, 'right')}
                   liveMatchId={liveMatchId}
+                  paired={kidsOn}
                 />
               ))}
             </div>
@@ -442,18 +445,45 @@ export function TournamentPage() {
             ? ' Semifinal is 2nd seed vs 3rd seed. The loser faces the 1st seed. Winners of those two matches meet in the final.'
             : ''}
         </p>
+        <label className="tournament__paste">
+          <span>Paste a list</span>
+          <textarea
+            value={pasteDraft}
+            rows={4}
+            placeholder="One name per line, or commas: Ana, Ben, Cam"
+            aria-label={plainCoach ? 'Paste student names' : 'Paste competitor names'}
+            onChange={(event) => setPasteDraft(event.target.value)}
+            onPaste={(event) => {
+              const names = parseNameList(event.clipboardData.getData('text'));
+              if (names.length < 2) return;
+              event.preventDefault();
+              setPasteDraft(event.clipboardData.getData('text'));
+              fillSeedNames(names, 0);
+            }}
+          />
+        </label>
+        <button
+          type="button"
+          className="btn"
+          onClick={() => {
+            const names = parseNameList(pasteDraft);
+            if (!names.length) return;
+            fillSeedNames(names, 0);
+          }}
+        >
+          Fill bracket
+        </button>
         <ol className="tournament__seeds">
           {seeds.map((id, index) => (
             <li key={id}>
               <label>
                 <span>{index + 1}</span>
-                <RosterNameField
+                <SeedNameInput
                   value={slotName(tournament, id)}
                   onChange={(value) => setSlotName(id, value)}
-                  onPrefill={(prefill) => setSlotName(id, prefill.name)}
                   placeholder={plainCoach ? 'Student name' : seedPlaceholder(index)}
                   ariaLabel={plainCoach ? `Student name ${index + 1}` : `Competitor ${index + 1}`}
-                  names={plainCoach ? 'student' : 'competitor'}
+                  seedIndex={index}
                 />
               </label>
             </li>
@@ -468,7 +498,6 @@ export function TournamentPage() {
         title="Bracket size"
         onClose={() => {
           setSizeOpen(false);
-          setPendingSize(null);
           setPendingPlacement(null);
         }}
       >
@@ -477,7 +506,7 @@ export function TournamentPage() {
           loser faces the 1st seed, and those winners meet in the final. A field of 5 opens with 4th
           vs 5th, and 1st, 2nd, and 3rd receive byes. A field of 7 gives the bye to the 1st seed.
           Eight and up, and every other custom count, fill to the next power of two with those same
-          seeded byes.
+          seeded byes. Tap a size to apply it. Names that fit stay. Results on this board clear.
           {proUnlocked && !plainCoach
             ? ' Pro boards save up to 64 competitors on this device.'
             : ' Mock Tournament stays at 16.'}
@@ -542,20 +571,6 @@ export function TournamentPage() {
         >
           Use custom size
         </button>
-        {pendingSize != null ? (
-          <div className="tournament__confirm">
-            <span>
-              Changing to {pendingSize} clears results and rebuilds the draw. Keep names when they
-              fit.
-            </span>
-            <button type="button" className="btn" onClick={() => applySize(pendingSize)}>
-              Change size
-            </button>
-            <button type="button" className="btn btn--ghost" onClick={() => setPendingSize(null)}>
-              Keep size
-            </button>
-          </div>
-        ) : null}
         {pendingPlacement != null ? (
           <div className="tournament__confirm">
             <span>
@@ -709,24 +724,42 @@ function RoundColumn({
   label,
   detail,
   liveMatchId,
+  paired,
 }: {
   ids: readonly BracketMatchId[];
   label: string;
   detail?: string;
   liveMatchId: BracketMatchId | null;
+  paired: boolean;
 }) {
   if (!ids.length) return null;
+  const pairs = paired && ids.length >= 2 ? pairMatchIds(ids) : null;
   return (
     <div className={`bracket__round bracket__round--${ids.length}`}>
       <h2>{label}</h2>
       {detail ? <p className="bracket__path">{detail}</p> : null}
       <div className="bracket__matches">
-        {ids.map((id) => (
-          <MatchCard key={id} matchId={id} liveMatchId={liveMatchId} />
-        ))}
+        {pairs
+          ? pairs.map((pair) => (
+              <div key={pair[0]} className="bracket__pair">
+                {pair.map((id) => (
+                  <MatchCard key={id} matchId={id} liveMatchId={liveMatchId} />
+                ))}
+              </div>
+            ))
+          : ids.map((id) => <MatchCard key={id} matchId={id} liveMatchId={liveMatchId} />)}
       </div>
     </div>
   );
+}
+
+/** Two matches feed one card in the next round. A last odd card stays in its own pair. */
+function pairMatchIds(ids: readonly BracketMatchId[]): BracketMatchId[][] {
+  const pairs: BracketMatchId[][] = [];
+  for (let index = 0; index < ids.length; index += 2) {
+    pairs.push(ids.slice(index, index + 2));
+  }
+  return pairs;
 }
 
 function MatchCard({
@@ -741,6 +774,8 @@ function MatchCard({
   const [searchParams] = useSearchParams();
   const fromSuite = searchParams.get('from') === SUITE_FROM;
   const plainCoach = usePlainCoachBoard();
+  const kids = useKidsScoreboard();
+  const kidsOn = kidsBracketChromeOn(fromSuite, kids.enabled);
   const hasResult = Boolean(tournament.results[matchId]);
   const live = liveMatchId === matchId;
   const bye = matchHasBye(tournament, matchId);
@@ -748,10 +783,13 @@ function MatchCard({
   const openScore = () => {
     openBracketBout(matchId);
     navigate(
-      withMatchOrigin(scoreboardPath(matchId), {
-        fromSuite,
-        whiteBoard: coachLinkedWhiteBoard(fromSuite, true, plainCoach, false),
-      }),
+      withKidsSkin(
+        withMatchOrigin(scoreboardPath(matchId), {
+          fromSuite,
+          whiteBoard: coachLinkedWhiteBoard(fromSuite, true, plainCoach, false),
+        }),
+        kidsOn ? kids.skin : null,
+      ),
     );
   };
 
@@ -797,6 +835,39 @@ function MatchCard({
         ) : null}
       </div>
     </article>
+  );
+}
+
+function SeedNameInput({
+  value,
+  onChange,
+  placeholder,
+  ariaLabel,
+  seedIndex,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  ariaLabel: string;
+  seedIndex: number;
+}) {
+  return (
+    <input
+      value={value}
+      placeholder={placeholder}
+      aria-label={ariaLabel}
+      autoComplete="off"
+      autoCapitalize="words"
+      enterKeyHint="next"
+      onChange={(event) => onChange(event.target.value)}
+      onPaste={(event) => {
+        if (seedIndex < 0) return;
+        const names = parseNameList(event.clipboardData.getData('text'));
+        if (names.length < 2) return;
+        event.preventDefault();
+        fillSeedNames(names, seedIndex);
+      }}
+    />
   );
 }
 
@@ -851,10 +922,9 @@ function SlotRow({ matchId, side }: { matchId: BracketMatchId; side: MatchSide }
       <div className="t-slot__who">
         {seedIndex >= 0 ? <span className="t-slot__seed">{seedIndex + 1}.</span> : null}
         <div className="t-slot__name">
-          <RosterNameField
+          <SeedNameInput
             value={name}
             onChange={(value) => setSlotName(id, value)}
-            onPrefill={(prefill) => setSlotName(id, prefill.name)}
             placeholder={placeholder}
             ariaLabel={
               plainCoach
@@ -863,8 +933,7 @@ function SlotRow({ matchId, side }: { matchId: BracketMatchId; side: MatchSide }
                   }`
                 : `${roundLabel(matchId)}, ${side === 'a' ? 'top' : 'bottom'} competitor`
             }
-            names={plainCoach ? 'student' : 'competitor'}
-            compact
+            seedIndex={seedIndex}
           />
           {gym ? <span className="t-slot__gym">{gym}</span> : null}
         </div>

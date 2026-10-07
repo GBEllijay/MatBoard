@@ -22,6 +22,7 @@ import { dispatchMatch, expireMatchClock, remainingNow, type Side } from '../lib
 import { needsRefDecision } from '../lib/outcomes';
 import { formatMmSs } from '../lib/format';
 import { carlosMatchComplete, matchCarlosView } from '../lib/carlosCelebration';
+import { kidsBoardClass } from '../lib/kidsScoreboard';
 import { withSuiteFrom } from '../lib/productNames';
 import { SCOREBOARD_SKIN, scoreboardSkinClass } from '../lib/scoreboardSkin';
 
@@ -118,7 +119,7 @@ export function MatchDisplayPage() {
 
   return (
     <main
-      className={`display ${scoreboardSkinClass(skin)}${linkedId ? ' display--linked' : ''}${splash ? ' display--splash' : ''}${
+      className={`display ${scoreboardSkinClass(skin)}${kidsBoardClass(board.kidsSkin)}${linkedId ? ' display--linked' : ''}${splash ? ' display--splash' : ''}${
         suite.fromSuite ? ' origin-suite' : ''
       }${fs.className ? ` ${fs.className}` : ''}`}
       onPointerDown={() => {

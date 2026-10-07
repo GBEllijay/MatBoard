@@ -25,8 +25,12 @@ import {
   kidsShowMascot,
   kidsShowWin,
   kidsSkinChromeHidden,
+  kidsBoardClass,
+  kidsSkinFromSearch,
   kidsSkinLabel,
   kidsWallpaperPath,
+  parseKidsSkin,
+  withKidsSkin,
   kidsWinLines,
   kidsWinState,
   setKidsEnabled,
@@ -214,6 +218,18 @@ test('Carlos stays off during an earlier live bout, and a scoreboard name fills 
   assert.equal(win.name, 'Mia Santos');
   assert.equal(win.scoreLine, '12-0');
   assert.equal(slotName(scored, 'champion'), 'Mia Santos');
+});
+
+test('kids wallpaper rides on the bout url and does not remap the adult skin', () => {
+  assert.equal(parseKidsSkin('robots'), 'robots');
+  assert.equal(parseKidsSkin('nope'), null);
+  assert.equal(kidsSkinFromSearch(new URLSearchParams('kids=ocean')), 'ocean');
+  assert.equal(kidsSkinFromSearch(new URLSearchParams('from=suite')), null);
+  assert.equal(withKidsSkin('/match?bout=sf-0&from=suite', 'robots'), '/match?bout=sf-0&from=suite&kids=robots');
+  assert.equal(withKidsSkin('/match?bout=sf-0', null), '/match?bout=sf-0');
+  assert.equal(kidsBoardClass('space'), 'kids-board kids-board--space');
+  assert.equal(kidsBoardClass(null), '');
+  assert.equal(scoreboardSkinClass(SCOREBOARD_SKIN.KIDS), 'scoreboard-skin--mock-tournament');
 });
 
 test('A scoreboard win stores the points on the bracket without changing adult skins', () => {
