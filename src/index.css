@@ -1974,8 +1974,9 @@ span.role-plan__mark {
   --rank-width: clamp(6.6rem, 21%, 10.6rem);
   --end-radius: clamp(8px, 0.7vw, 13px);
   --cloth: #141416;
-  --band: color-mix(in srgb, var(--cloth) 78%, white);
-  --stitch: color-mix(in srgb, var(--band) 93%, white);
+  /* Folded edge: same hue as the cloth, only a shade lighter. Not a light rim. */
+  --band: #232323;
+  --stitch: #2c2c2c;
   container-type: inline-size;
   position: relative;
   overflow: hidden;
@@ -2015,6 +2016,9 @@ span.role-plan__mark {
   /* Black bar is about 19% of the belt. The cloth tail is the rest of the tip. */
   --rank-width: 24.5%;
   --cloth: #583926;
+  /* About 8% lighter than the cloth, same brown. */
+  --band: #5f3e29;
+  --stitch: #684632;
 }
 
 .belt-header--worn .belt-header__cloth {
