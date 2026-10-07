@@ -16,10 +16,6 @@
   --permission-on: var(--logo-blue);
   --mat-fill: #12243a;
   --mat-tile: min(100vw, 24rem);
-  /* home-mat-tatami.png is --mat-cols by --mat-rows cells. One cell stays --mat-tile / 3. */
-  --mat-cols: 6;
-  --mat-rows: 4;
-  --mat-fit: calc(var(--mat-tile) * var(--mat-cols) / 3) calc(var(--mat-tile) * var(--mat-rows) / 3);
   --mat-image: url('/home-mat-tatami.png');
   --points: #22c55e;
   --adv: #f59e0b;
@@ -64,7 +60,7 @@ body,
   margin: 0;
   background-color: var(--mat-fill);
   background-image: var(--mat-image);
-  background-size: var(--mat-fit);
+  background-size: var(--mat-tile) calc(var(--mat-tile) * 4 / 3);
   background-position: center;
   background-repeat: repeat;
   color: var(--ink);
@@ -220,7 +216,7 @@ label.btn {
 .controller {
   background-color: var(--mat-fill);
   background-image: var(--mat-image);
-  background-size: var(--mat-fit);
+  background-size: var(--mat-tile) calc(var(--mat-tile) * 4 / 3);
   background-position: center;
   background-repeat: repeat;
 }
@@ -3780,7 +3776,7 @@ label {
 .training--themed {
   background-color: var(--mat-fill);
   background-image: var(--mat-image);
-  background-size: var(--mat-fit);
+  background-size: var(--mat-tile) calc(var(--mat-tile) * 4 / 3);
   background-position: center;
   background-repeat: repeat;
 }
@@ -3857,7 +3853,7 @@ label {
   background-image:
     linear-gradient(180deg, rgba(8, 16, 28, 0.42), rgba(8, 16, 28, 0.62)),
     var(--mat-image);
-  background-size: auto, var(--mat-fit);
+  background-size: auto, var(--mat-tile) calc(var(--mat-tile) * 4 / 3);
   background-position: center;
   background-repeat: no-repeat, repeat;
   border-radius: 24px 24px 0 0;
@@ -5191,7 +5187,7 @@ a.saver-folder--link {
 .tournament--bright {
   background-color: var(--mat-fill);
   background-image: var(--mat-image);
-  background-size: var(--mat-fit);
+  background-size: var(--mat-tile) calc(var(--mat-tile) * 4 / 3);
   background-position: center;
   background-repeat: repeat;
 }
@@ -7093,7 +7089,7 @@ a.saver-folder--link {
   flex-direction: column;
   background-color: var(--mat-fill);
   background-image: var(--mat-image);
-  background-size: var(--mat-fit);
+  background-size: var(--mat-tile) calc(var(--mat-tile) * 4 / 3);
   background-position: center;
   background-repeat: repeat;
 }
@@ -8509,7 +8505,7 @@ input.roster-pick__name:focus,
   flex-direction: column;
   background-color: var(--mat-fill);
   background-image: var(--mat-image);
-  background-size: var(--mat-fit);
+  background-size: var(--mat-tile) calc(var(--mat-tile) * 4 / 3);
   background-position: center;
   background-repeat: repeat;
 }
@@ -8860,7 +8856,7 @@ input.roster-pick__name:focus,
   flex-direction: column;
   background-color: var(--mat-fill);
   background-image: var(--mat-image);
-  background-size: var(--mat-fit);
+  background-size: var(--mat-tile) calc(var(--mat-tile) * 4 / 3);
   background-position: center;
   background-repeat: repeat;
 }
@@ -9262,7 +9258,7 @@ input.roster-pick__name:focus,
     calc(1rem + var(--safe-l));
   background-color: var(--mat-fill);
   background-image: var(--mat-image);
-  background-size: var(--mat-fit);
+  background-size: var(--mat-tile) calc(var(--mat-tile) * 4 / 3);
   background-position: center;
   background-repeat: repeat;
 }
@@ -10585,7 +10581,7 @@ input.roster-pick__name:focus,
     calc(1rem + var(--safe-l));
   background-color: var(--mat-fill);
   background-image: var(--mat-image);
-  background-size: var(--mat-fit);
+  background-size: var(--mat-tile) calc(var(--mat-tile) * 4 / 3);
   background-position: center;
   background-repeat: repeat;
 }

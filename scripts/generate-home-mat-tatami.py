@@ -1,33 +1,21 @@
 #!/usr/bin/env python3
-"""Regenerate public/home-mat-tatami.png as a pinwheel-free tatami tile.
+"""Regenerate public/home-mat-tatami.png.
 
-The default layout is a horizontal brick beside a staggered vertical pair on a
-1440x960 tile (6 by 4 cells of 240px). Mats stay 240x480, half the short side
-for the brick offset. index.css tiles that image with --mat-cols / --mat-rows
-so one on-screen cell is still --mat-tile / 3.
+The shipped tile is fallback-tuck: doubled horizontals beside one vertical,
+with vertical mats above, on the original 720x960 image. index.css tiles that
+at the original size, var(--mat-tile) by calc(var(--mat-tile) * 4 / 3).
 
   python3 scripts/generate-home-mat-tatami.py
+  python3 scripts/generate-home-mat-tatami.py --layout brick-pair
   python3 scripts/generate-home-mat-tatami.py --layout running-bond
   python3 scripts/generate-home-mat-tatami.py --layout fallback-band
-  python3 scripts/generate-home-mat-tatami.py --layout fallback-tuck
   python3 scripts/generate-home-mat-tatami.py --list
 
-Why this shape
-  On the original 720x960 (3 by 4) torus every mixed packing has at least two
-  plus junctions. See scripts/search-mat-layouts.py. Even cell grids
-  (4x4, 4x6, 6x4, 6x6, 8x4, 4x8) do no better: once pluses and L-corners are
-  forbidden, the only coverings are running bonds and pinwheel vortices.
-  Half-mats do not open another family there.
-
-  The brick below is still on a 240px module, but neighboring horizontal
-  stacks are offset by 120px and the two vertical columns use the running
-  bond's 160px and 320px phases. Those seam sets never meet, so every
-  junction is a T whose stem points left or right. A hooked cross needs one
-  stem in each direction, so it cannot form, including across the tile edge.
-
-Seams
-  10px cracks, 5px on the tile edge so two tiles meet as one 10px line.
-  A mat that crosses the tile edge is one color with no seam on that edge.
+The gate allows the two plain plus junctions on the 720x960 mixed layouts.
+It still refuses to write a tile that has a same-chirality pinwheel or an
+L-corner. brick-pair and the running bond have zero pluses; brick-pair is
+1440x960, so the page CSS would need a 6 by 4 background-size to show it
+at the same mat scale.
 """
 
 from __future__ import annotations
@@ -791,19 +779,38 @@ def _spot_check_seams(rgb: bytes, columns: tuple, width: int, height: int) -> No
             raise SystemExit("drew a seam across a mat that wraps the tile")
 
 
-def _check_generated(name: str, rgb: bytes, logical: dict, width: int, height: int, distinct_plus: int) -> None:
+def _gate(name: str, report: dict, focus: tuple[int, int, int, int], plus_allowed: int) -> int:
+    """Plain plus junctions may match plus_allowed. A pinwheel or L-corner never may."""
+    if report["pinwheels"]:
+        raise SystemExit(f"{name} has a same-chirality pinwheel {report['pinwheels'][0]}")
+    if report["corners"]:
+        raise SystemExit(f"{name} has {len(report['corners'])} L-corners, first {report['corners'][:4]}")
+    found = len(_distinct(report["plus"], focus))
+    if found != plus_allowed:
+        raise SystemExit(f"{name} has {found} plus junctions; this layout allows {plus_allowed}")
+    return found
+
+
+def _assert_gate_rejects_hook() -> None:
+    """The old hooked cross must fail even if pluses are waved through."""
+    focus = (W, H, 2 * W, 2 * H)
+    legacy = junction_report(legacy_pinwheel_rects(), focus)
+    try:
+        _gate("legacy pinwheel", legacy, focus, plus_allowed=99)
+    except SystemExit as error:
+        if "pinwheel" not in str(error):
+            raise
+        return
+    raise SystemExit("gate accepted the hooked-cross layout")
+
+
+def _check_generated(name: str, rgb: bytes, logical: dict, width: int, height: int, plus_allowed: int) -> None:
     focus = (width, height, 2 * width, 2 * height)
-    if len(_distinct(logical["plus"], focus)) != distinct_plus:
-        raise SystemExit(f"{name} plus junctions {_distinct(logical['plus'], focus)}")
-    if logical["corners"] or logical["pinwheels"]:
-        raise SystemExit(
-            f"{name} corners={len(logical['corners'])} pinwheels={len(logical['pinwheels'])}"
-        )
+    _gate(name, logical, focus, plus_allowed)
     raster = _raster_report(rgb, width, height)
+    _gate(f"{name} raster", raster, focus, plus_allowed)
     if _distinct(raster["plus"], focus) != _distinct(logical["plus"], focus):
-        raise SystemExit(f"{name} raster pluses { _distinct(raster['plus'], focus)}")
-    if raster["corners"] or raster["pinwheels"]:
-        raise SystemExit(f"{name} raster corners/pinwheels do not match the layout")
+        raise SystemExit(f"{name} raster pluses {_distinct(raster['plus'], focus)}")
     logical_tees = {(x, y, dx, dy) for x, y, dx, dy in logical["tees"]}
     raster_tees = {(x, y, dx, dy) for x, y, dx, dy in raster["tees"]}
     if logical_tees != raster_tees:
@@ -848,21 +855,22 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Regenerate the home tatami tile.")
     parser.add_argument(
         "--layout",
-        default="brick-pair",
-        choices=("brick-pair", "running-bond", "fallback-band", "fallback-tuck"),
-        help="brick-pair is the default image (1440x960, zero pluses)",
+        default="fallback-tuck",
+        choices=("fallback-tuck", "brick-pair", "running-bond", "fallback-band"),
+        help="fallback-tuck is the shipped 720x960 image (2 pluses, no pinwheel)",
     )
     parser.add_argument("--out", type=Path, default=OUT)
     parser.add_argument("--list", action="store_true")
     args = parser.parse_args(argv)
     if args.list:
-        print("brick-pair     1440x960  default  plus=0 pinwheel=0  horizontal brick, vertical pair centered")
-        print("running-bond    720x960           plus=0 pinwheel=0  all-vertical stagger")
+        print("fallback-tuck   720x960  default  plus=2 pinwheel=0  doubled horizontals beside one vertical")
         print("fallback-band   720x960           plus=2 pinwheel=0  stacked horizontals over verticals")
-        print("fallback-tuck   720x960           plus=2 pinwheel=0  doubled horizontals beside one vertical")
+        print("brick-pair     1440x960           plus=0 pinwheel=0  horizontal brick, vertical pair centered")
+        print("running-bond    720x960           plus=0 pinwheel=0  all-vertical stagger")
         return
 
     assert_detector_catches_legacy()
+    _assert_gate_rejects_hook()
     assert_contrast()
     assert_clean("running bond", logical_rects(), (W, H, 2 * W, 2 * H))
 
@@ -878,17 +886,15 @@ def main(argv: list[str] | None = None) -> None:
         rgb, logical = _build_brick()
         _write_checked(args.out, rgb, *BRICK_SIZE)
         print(f"wrote {args.out} ({args.out.stat().st_size} bytes) layout=brick-pair")
-        print("css: --mat-cols: 6; --mat-rows: 4;")
+        print("page CSS is the 720x960 size; brick-pair needs a 6 by 4 background-size")
     elif args.layout == "fallback-band":
         rgb, logical = _build_grid("fallback-band", FALLBACK_BAND)
         _write_checked(args.out, rgb, 3 * S, 4 * S)
         print(f"wrote {args.out} ({args.out.stat().st_size} bytes) layout=fallback-band")
-        print("css: --mat-cols: 3; --mat-rows: 4;")
     else:
         rgb, logical = _build_grid("fallback-tuck", FALLBACK_TUCK)
         _write_checked(args.out, rgb, 3 * S, 4 * S)
         print(f"wrote {args.out} ({args.out.stat().st_size} bytes) layout=fallback-tuck")
-        print("css: --mat-cols: 3; --mat-rows: 4;")
 
     focus_w = BRICK_SIZE[0] if args.layout == "brick-pair" else W
     focus_h = BRICK_SIZE[1] if args.layout == "brick-pair" else H
