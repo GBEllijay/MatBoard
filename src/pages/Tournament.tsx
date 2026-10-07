@@ -248,7 +248,7 @@ export function TournamentPage() {
                 type="button"
                 role="radio"
                 aria-checked={theme === 'bright'}
-                className={`chip${theme === 'bright' ? ' chip--gold' : ''}`}
+                className={`chip${theme === 'bright' ? ' chip--on' : ''}`}
                 onClick={() => setBracketTheme('bright')}
               >
                 Bright
@@ -257,7 +257,7 @@ export function TournamentPage() {
                 type="button"
                 role="radio"
                 aria-checked={theme === 'dark'}
-                className={`chip${theme === 'dark' ? ' chip--gold' : ''}`}
+                className={`chip${theme === 'dark' ? ' chip--on' : ''}`}
                 onClick={() => setBracketTheme('dark')}
               >
                 Dark
@@ -481,7 +481,7 @@ export function TournamentPage() {
             type="button"
             role="radio"
             aria-checked={placement === 'ibjjf'}
-            className={`chip${placement === 'ibjjf' ? ' chip--gold' : ''}`}
+            className={`chip${placement === 'ibjjf' ? ' chip--on' : ''}`}
             onClick={() => requestPlacement('ibjjf')}
           >
             {placementLabel('ibjjf')}
@@ -490,7 +490,7 @@ export function TournamentPage() {
             type="button"
             role="radio"
             aria-checked={placement === 'lineup'}
-            className={`chip${placement === 'lineup' ? ' chip--gold' : ''}`}
+            className={`chip${placement === 'lineup' ? ' chip--on' : ''}`}
             onClick={() => requestPlacement('lineup')}
           >
             Lineup
@@ -505,7 +505,7 @@ export function TournamentPage() {
             <button
               key={preset}
               type="button"
-              className={`chip${tournament.size === preset ? ' chip--gold' : ''}`}
+              className={`chip${tournament.size === preset ? ' chip--on' : ''}`}
               onClick={() => requestSize(preset)}
             >
               {preset}
