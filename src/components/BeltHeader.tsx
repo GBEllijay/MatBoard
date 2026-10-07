@@ -5,9 +5,10 @@ type Props = {
   title: string;
   blurb?: string;
   /**
-   * Worn cotton webbing: fabric grain and soft fray on the cloth.
+   * Worn cotton webbing: fabric grain, a straight stitched hem, and soft
+   * fray only on the short vertical ends. The long edges stay clean.
    * The rank bar stays a clean full-height block.
-   * Brown wears four white stripes packed at the tip.
+   * Brown wears four thin white stripes on a black bar, then a short cloth tail.
    * Black wears white | red | white, then a short black tip.
    */
   worn?: boolean;
@@ -36,7 +37,14 @@ export function BeltHeader({ kind, title, blurb, worn = false }: Props) {
                 <span className="belt-header__end" />
               </>
             ) : wornBrown ? (
-              Array.from({ length: 4 }, (_, index) => <span className="belt-header__degree" key={index} />)
+              <>
+                <span className="belt-header__rank belt-header__rank--striped">
+                  {Array.from({ length: 4 }, (_, index) => (
+                    <span className="belt-header__degree" key={index} />
+                  ))}
+                </span>
+                <span className="belt-header__end" />
+              </>
             ) : kind === 'black' ? (
               <>
                 <span className="belt-header__stripe" />
