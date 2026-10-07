@@ -12,6 +12,8 @@
   --white-ink: #14161c;
   --logo-yellow: #fcc000;
   --logo-blue: #004eba;
+  /* Cool cyan for permission ON tracks, ON row chrome, and selected-role rings. */
+  --permission-on: #2ad4f2;
   --mat-fill: #12243a;
   --mat-tile: min(100vw, 24rem);
   --mat-image: url('/home-mat-tatami.png');
@@ -1258,7 +1260,7 @@ button.mode-card__hit {
 }
 
 .binder-pick--on .binder-pick__cover::after {
-  border-color: var(--logo-yellow);
+  border-color: var(--permission-on);
 }
 
 .binder-pick:focus {
@@ -1270,7 +1272,7 @@ button.mode-card__hit {
 }
 
 .binder-pick--on:focus-visible .binder-pick__cover::after {
-  border-color: var(--logo-yellow);
+  border-color: var(--permission-on);
   box-shadow: 0 0 0 2px #fff;
 }
 
@@ -1584,9 +1586,9 @@ span.role-plan__mark {
 }
 
 .invite-switch--on {
-  border-color: rgba(252, 192, 0, 0.85);
-  background: rgba(252, 192, 0, 0.22);
-  color: #fff8e6;
+  border-color: color-mix(in srgb, var(--permission-on) 85%, transparent);
+  background: color-mix(in srgb, var(--permission-on) 22%, transparent);
+  color: #e7f8ff;
 }
 
 .invite-switch__track {
@@ -1610,7 +1612,7 @@ span.role-plan__mark {
 }
 
 .invite-switch--on .invite-switch__track {
-  background: var(--logo-yellow);
+  background: var(--permission-on);
 }
 
 .invite-switch--on .invite-switch__track::after {
