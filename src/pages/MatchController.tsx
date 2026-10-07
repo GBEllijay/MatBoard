@@ -131,7 +131,7 @@ export function MatchControllerPage() {
   };
 
   return (
-    <main className={`controller ${scoreboardSkinClass(skin)}${kidsBoardClass(board.kidsSkin)}${suite.fromSuite ? ' origin-suite' : ''}`}>
+    <main className={`controller ${scoreboardSkinClass(skin)}${board.kidsSkin ? ` ${kidsBoardClass(board.kidsSkin)}` : ''}${suite.fromSuite ? ' origin-suite' : ''}`}>
       <PlayExitMark to={suite.homePath} />
       <Chrome
         right={
