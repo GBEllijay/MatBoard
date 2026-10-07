@@ -2029,10 +2029,9 @@ span.role-plan__mark {
 }
 
 @media (max-width: 560px) {
+  /* Same size as the Pro header. Two lines, tight leading, still inside the belt. */
   .belt-header--worn.belt-header--brown .belt-header__title {
-    font-size: clamp(0.98rem, 3.7vw, 1.2rem);
-    line-height: 1.05;
-    letter-spacing: -0.045em;
+    line-height: 1.1;
   }
 }
 
