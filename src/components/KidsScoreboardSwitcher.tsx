@@ -12,7 +12,7 @@ export function KidsScoreboardSwitcher({ prefs }: { prefs: KidsScoreboardPrefs }
     <div className="kids-switch kids-switch--boards">
       <button
         type="button"
-        className={`chip${prefs.enabled ? ' chip--gold' : ''}`}
+        className={`chip${prefs.enabled ? ' chip--on' : ''}`}
         aria-pressed={prefs.enabled}
         onClick={() => setKidsEnabled(!prefs.enabled)}
       >
@@ -26,7 +26,7 @@ export function KidsScoreboardSwitcher({ prefs }: { prefs: KidsScoreboardPrefs }
               type="button"
               role="radio"
               aria-checked={prefs.skin === skin.id}
-              className={`chip${prefs.skin === skin.id ? ' chip--gold' : ''}`}
+              className={`chip${prefs.skin === skin.id ? ' chip--on' : ''}`}
               onClick={() => setKidsSkin(skin.id)}
             >
               {skin.label}
