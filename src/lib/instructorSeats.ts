@@ -497,6 +497,22 @@ export function proSeatUsageLabel(used: number): string {
   return `${used} of ${PRO_INSTRUCTOR_SEAT_CAP} seats used`;
 }
 
+export function proSeatsRemaining(used: number): number {
+  const open = Number.isFinite(used) ? Math.max(0, Math.floor(used)) : 0;
+  return Math.max(0, PRO_INSTRUCTOR_SEAT_CAP - open);
+}
+
+/** Remaining open seats. One seat stays singular. */
+export function proSeatRemainingLabel(used: number): string {
+  const remaining = proSeatsRemaining(used);
+  return remaining === 1 ? '1 seat remaining' : `${remaining} seats remaining`;
+}
+
+/** Last two open seats, and a full roster, repeat the extra-seat email beside the binders. */
+export function proSeatCapNear(used: number): boolean {
+  return proSeatsRemaining(used) <= 2;
+}
+
 export function proSeatCapBlockedCopy(): string {
   return `All ${PRO_INSTRUCTOR_SEAT_CAP} seats are in use. Revoke a seat to issue another invite. ${PRO_SEAT_CAP_REQUEST_NOTE}`;
 }

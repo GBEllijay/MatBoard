@@ -1115,7 +1115,7 @@ button.mode-card__hit {
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
 }
 
-.invite-form__kicker,
+.home p.invite-form__kicker,
 .invite-form .invite-gym {
   margin: 0;
   color: var(--binder-muted);
@@ -1141,21 +1141,23 @@ button.mode-card__hit {
   gap: 0.35rem;
 }
 
-.invite-seat-cap__count {
+.home p.invite-seat-cap__count,
+.home p.invite-seat-cap__remaining {
   margin: 0;
+  color: #f7f4ee;
   font-size: 1.05rem;
   font-weight: 800;
   letter-spacing: -0.03em;
 }
 
-.invite-cap-note {
+.home p.invite-cap-note {
   margin: 0;
-  color: var(--binder-muted);
+  color: #d7deea;
   font-weight: 600;
   line-height: 1.4;
 }
 
-.invite-cap-note a {
+.home .invite-cap-note a {
   color: var(--logo-yellow);
   font-weight: 800;
   text-decoration: underline;
@@ -1477,10 +1479,24 @@ span.role-plan__mark {
   gap: 0.65rem;
 }
 
-.binder-list > h3 {
+.binder-list__head {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.binder-list > h3,
+.binder-list__head > h3 {
   margin: 0;
   font-size: 1.15rem;
   letter-spacing: -0.03em;
+}
+
+.home p.binder-list__seats {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .binder-list__empty {

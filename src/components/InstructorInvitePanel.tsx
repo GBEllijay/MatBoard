@@ -16,6 +16,8 @@ import {
   issueInstructorInvite,
   listInstructorSeats,
   proSeatCapBlockedCopy,
+  proSeatCapNear,
+  proSeatRemainingLabel,
   proSeatUsageLabel,
   revokeInstructorSeat,
   subscribeInstructorSeats,
@@ -170,7 +172,7 @@ export function InstructorInvitePanel() {
     <div className="invite-panel">
       <form className="invite-stack" onSubmit={submitInvite}>
         <div className="invite-form">
-          <p className="invite-form__kicker">Owner only</p>
+          <p className="invite-form__kicker">Owner only · Soft beta</p>
           <strong>Generate instructor invite</strong>
           <span className="invite-form__note">
             Pick a role, then change any switch for this person. The role chooses which menus
@@ -178,8 +180,9 @@ export function InstructorInvitePanel() {
             device. Nothing is emailed or billed.
           </span>
           {gymName ? <span className="invite-gym">Gym · {gymName}</span> : null}
-          <div className="invite-seat-cap" role="status">
+          <div className="invite-seat-cap" role="status" aria-live="polite">
             <p className="invite-seat-cap__count">{proSeatUsageLabel(seatsUsed)}</p>
+            <p className="invite-seat-cap__remaining">{proSeatRemainingLabel(seatsUsed)}</p>
             <SeatCapRequestNote />
           </div>
           {issued ? (
@@ -264,7 +267,13 @@ export function InstructorInvitePanel() {
       </form>
 
       <section className="binder-list" aria-labelledby={`${formId}-seats`}>
-        <h3 id={`${formId}-seats`}>Binders</h3>
+        <div className="binder-list__head">
+          <h3 id={`${formId}-seats`}>Binders</h3>
+          <p className="binder-list__seats">
+            {proSeatUsageLabel(seatsUsed)} · {proSeatRemainingLabel(seatsUsed)}
+          </p>
+          {proSeatCapNear(seatsUsed) ? <SeatCapRequestNote /> : null}
+        </div>
         {openSeats.length ? (
           <ul className="invite-seats">
             {openSeats.map((seat) => (

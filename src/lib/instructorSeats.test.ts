@@ -33,6 +33,9 @@ import {
   normalizeInstructorPermissions,
   inviteReloadBlocked,
   proSeatCapBlockedCopy,
+  proSeatCapNear,
+  proSeatRemainingLabel,
+  proSeatsRemaining,
   proSeatUsageLabel,
   purchasePromptsHidden,
   readCurrentSeat,
@@ -258,6 +261,14 @@ test('Pro stops at 10 open seats and a revoke frees one', () => {
   reset();
   assert.equal(PRO_INSTRUCTOR_SEAT_CAP, 10);
   assert.equal(proSeatUsageLabel(4), '4 of 10 seats used');
+  assert.equal(proSeatUsageLabel(5), '5 of 10 seats used');
+  assert.equal(proSeatsRemaining(5), 5);
+  assert.equal(proSeatRemainingLabel(5), '5 seats remaining');
+  assert.equal(proSeatRemainingLabel(9), '1 seat remaining');
+  assert.equal(proSeatRemainingLabel(10), '0 seats remaining');
+  assert.equal(proSeatCapNear(5), false);
+  assert.equal(proSeatCapNear(8), true);
+  assert.equal(proSeatCapNear(10), true);
   assert.equal(
     PRO_SEAT_CAP_REQUEST_NOTE,
     `Additional seats may be available for authorization upon owner request. Email ${SITE_FEEDBACK_EMAIL}.`,
@@ -759,7 +770,18 @@ test('seat chrome stays off the gym TV and purchase prompts follow the live seat
   assert.match(bar, /seat-session-dock/);
   assert.match(invite, /preset\.detail\.map/);
   assert.match(invite, /cloud and sharing match the owner/);
+  assert.match(invite, /Owner only · Soft beta/);
+  assert.match(invite, /Nothing is emailed or billed/);
+  assert.doesNotMatch(invite, /or capped/);
+  assert.match(invite, /invite-seat-cap/);
+  assert.match(invite, /proSeatUsageLabel\(seatsUsed\)/);
+  assert.match(invite, /proSeatRemainingLabel\(seatsUsed\)/);
+  assert.match(invite, /SeatCapRequestNote/);
   assert.doesNotMatch(invite, /Downloads only/i);
+  const css = read('../index.css');
+  assert.match(css, /\.home p\.invite-seat-cap__count/);
+  assert.match(css, /\.home p\.invite-cap-note/);
+  assert.match(css, /\.home p\.binder-list__seats/);
   assert.match(unlimited, /<DriveConnectCard \/>/);
   assert.doesNotMatch(unlimited, /seat \? null : <DriveConnectCard/);
 });
