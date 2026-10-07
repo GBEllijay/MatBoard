@@ -62,6 +62,8 @@ If this deployment has no Microsoft client id, the OneDrive button stays disable
 | Need admin approval | The account is a work or school tenant that has not consented to `Files.ReadWrite`. Personal accounts should not see this. |
 | Button does nothing and Microsoft never opens | The deployment has no client id. Set `VITE_MICROSOFT_CLIENT_ID` (or `MICROSOFT_CLIENT_ID`) on Cloudflare Pages and deploy again. |
 | `AADSTS50011` on a `*.pages.dev` preview | That preview origin is not a redirect URI. Finish the connection on `https://advantagebjjtimer.com` or `https://www.advantagebjjtimer.com`. |
+| Personal sign-in says `redirect_uri` is not valid | The browser is on `www` and that origin is not on the SPA list. `https://advantagebjjtimer.com` (no path) is the one personal sign-in accepts. Add `https://www.advantagebjjtimer.com` with no path and no trailing slash, or finish on the apex host. |
+| Sheet says this Microsoft account has no OneDrive | The Advantage page did load. This is Microsoft Graph's Files API, not a missing page on advantagebjjtimer.com. Open OneDrive once in a browser for that account. On the app registration, delegated `Files.ReadWrite` must be listed. |
 
 The gym owner still sees the plain sign-in sentence: Microsoft did not finish sign-in. Try again, or ask whoever set up Advantage to allow this website. A local dev build may add a short hint.
 
