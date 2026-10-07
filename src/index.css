@@ -12,8 +12,8 @@
   --white-ink: #14161c;
   --logo-yellow: #fcc000;
   --logo-blue: #004eba;
-  /* Cool cyan for ON / selected / active / pressed chrome. Logo yellow stays on the mark and primary CTAs. */
-  --permission-on: #2ad4f2;
+  /* Logo blue for ON / selected / active chrome. Labels and knobs stay cream so the fill reads on the dark mat. */
+  --permission-on: var(--logo-blue);
   --mat-fill: #12243a;
   --mat-tile: min(100vw, 24rem);
   --mat-image: url('/home-mat-tatami.png');
@@ -163,7 +163,7 @@ label.btn {
 /* Selected / pressed chip. Gold chips stay primary actions (Cast, Controller, Rounds). */
 .chip--on {
   background: var(--permission-on);
-  color: #14161c;
+  color: var(--white);
   border-color: transparent;
 }
 
@@ -1609,9 +1609,9 @@ span.role-plan__mark {
 }
 
 .invite-switch--on {
-  border-color: color-mix(in srgb, var(--permission-on) 85%, transparent);
-  background: color-mix(in srgb, var(--permission-on) 22%, transparent);
-  color: #e7f8ff;
+  border-color: color-mix(in srgb, var(--permission-on) 85%, #fff);
+  background: color-mix(in srgb, var(--permission-on) 55%, #07080c);
+  color: var(--white);
 }
 
 .invite-switch__track {
@@ -3596,7 +3596,7 @@ span.role-plan__mark {
 
 .preset--on {
   background: var(--permission-on);
-  color: #14161c;
+  color: var(--white);
   border-color: transparent;
 }
 
@@ -4166,14 +4166,14 @@ fieldset {
 
 .folder-row--dragging,
 .saver__row--dragging {
-  background: #e7f8ff;
-  outline: 1px solid color-mix(in srgb, var(--permission-on) 70%, transparent);
+  background: color-mix(in srgb, var(--permission-on) 14%, #fff);
+  outline: 1px solid color-mix(in srgb, var(--permission-on) 70%, #fff);
   z-index: 2;
 }
 
 .folder-row--selected {
-  background: #e7f8ff;
-  outline: 1px solid color-mix(in srgb, var(--permission-on) 65%, transparent);
+  background: color-mix(in srgb, var(--permission-on) 12%, #fff);
+  outline: 1px solid color-mix(in srgb, var(--permission-on) 65%, #fff);
 }
 
 .folder-row--off input {
@@ -4371,7 +4371,7 @@ fieldset {
 
 .folder-row__preview--on .folder-row__preview-check {
   background: var(--permission-on);
-  border-color: #0b2a34;
+  border-color: var(--white);
 }
 
 .folder-row__preview--on .folder-row__preview-check::after {
@@ -4381,7 +4381,7 @@ fieldset {
   top: 2px;
   width: 6px;
   height: 11px;
-  border: solid #0b2a34;
+  border: solid var(--white);
   border-width: 0 2.5px 2.5px 0;
   transform: rotate(45deg);
 }
@@ -4403,8 +4403,8 @@ fieldset {
 }
 
 .folder-row__preview--on .folder-row__preview-state {
-  color: #0b2a34;
-  background: color-mix(in srgb, var(--permission-on) 92%, #fff);
+  color: var(--white);
+  background: var(--permission-on);
 }
 
 .saver .sheet__head h2 {
@@ -5825,7 +5825,7 @@ a.saver-folder--link {
 
 .t-mark--win.is-on {
   background: var(--permission-on);
-  color: #14161c;
+  color: var(--white);
   border-color: transparent;
 }
 
@@ -7263,7 +7263,7 @@ a.saver-folder--link {
 
 .schedule__list-day.is-today h3 {
   background: var(--permission-on);
-  color: #14161c;
+  color: var(--white);
 }
 
 .schedule__time-block {
@@ -8919,7 +8919,7 @@ input.roster-pick__name:focus,
 
 .techniques__mute--on {
   background: var(--permission-on);
-  color: #14161c;
+  color: var(--white);
   border-color: transparent;
 }
 
@@ -9162,7 +9162,7 @@ input.roster-pick__name:focus,
 
 .techniques__chrome-btn--on {
   background: var(--permission-on);
-  color: #14161c;
+  color: var(--white);
   border-color: transparent;
 }
 
@@ -9332,7 +9332,7 @@ input.roster-pick__name:focus,
 .notes__day--on,
 .notes__recent-btn--on {
   background: var(--permission-on);
-  color: #14161c;
+  color: var(--white);
   border-color: transparent;
 }
 
@@ -9425,7 +9425,7 @@ input.roster-pick__name:focus,
 
 .notes__class-btn--on {
   background: var(--permission-on);
-  color: #14161c;
+  color: var(--white);
   border-color: transparent;
 }
 
@@ -9945,11 +9945,11 @@ input.roster-pick__name:focus,
 .notes__tree-choice--on {
   border-color: transparent;
   background: var(--permission-on);
-  color: #14161c;
+  color: var(--white);
 }
 
 .notes__tree-choice--on small {
-  color: #0b2a34;
+  color: var(--white);
 }
 
 .notes__kicker {
@@ -10129,7 +10129,7 @@ input.roster-pick__name:focus,
 }
 
 .notes__break--on .notes__break-hint {
-  color: var(--permission-on);
+  color: var(--white);
 }
 
 .notes__break-state {
@@ -10142,7 +10142,7 @@ input.roster-pick__name:focus,
 }
 
 .notes__break--on .notes__break-state {
-  color: var(--permission-on);
+  color: var(--white);
 }
 
 .notes__add {
@@ -10686,7 +10686,7 @@ input.roster-pick__name:focus,
 
 .tree__library-btn--on {
   background: var(--permission-on);
-  color: #14161c;
+  color: var(--white);
   border-color: transparent;
 }
 
@@ -10696,7 +10696,7 @@ input.roster-pick__name:focus,
 }
 
 .tree__library-btn--on .tree__library-detail {
-  color: #0b2a34;
+  color: var(--white);
 }
 
 .tree__library-actions {
@@ -11039,6 +11039,7 @@ input.roster-pick__name:focus,
 
 .folder-row__slide-choices button[aria-pressed='true'] {
   background: var(--permission-on);
+  color: var(--white);
   border-color: transparent;
 }
 
@@ -12152,7 +12153,7 @@ a.plan-pick {
 
 .ready-pick__status--on,
 .plan-pick__status--on {
-  color: var(--permission-on);
+  color: var(--white);
 }
 
 .ready-division,
@@ -12178,7 +12179,7 @@ a.plan-pick {
 }
 
 .ready-division--on {
-  color: var(--permission-on);
+  color: var(--white);
 }
 
 .ready-list {
@@ -12644,12 +12645,16 @@ a.plan-pick {
   gap: 0.35rem;
 }
 
-/* Brackets footer. Black labels stay readable on the kids wallpaper. */
+/* Brackets footer. Black labels stay readable on the kids wallpaper. Selected chips are logo blue, so their type is cream. */
 .kids-switch--boards .chip,
-.kids-switch--boards .chip--gold,
-.kids-switch--boards .chip--on {
+.kids-switch--boards .chip--gold {
   color: #000;
   -webkit-text-fill-color: #000;
+}
+
+.kids-switch--boards .chip--on {
+  color: var(--white);
+  -webkit-text-fill-color: var(--white);
 }
 
 .kids-switch--boards .chip:not(.chip--gold):not(.chip--on) {
