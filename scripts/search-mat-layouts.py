@@ -10,7 +10,9 @@ The junction rule is the one in generate-home-mat-tatami.py, applied to a 3x3
 repeat: no plus (four mats meeting), no L-corner, no same-chirality pinwheel.
 
 Result: no covering passes. The minimum is two plus junctions per tile. Adding
-half-mats does not remove them. Run:
+half-mats does not remove them. A wider tile can still mix orientations with
+zero pluses: scripts/generate-home-mat-tatami.py offsets horizontal stacks by
+120px and staggers the vertical pair by 160px and 320px. Run:
 
   python3 scripts/search-mat-layouts.py
 """

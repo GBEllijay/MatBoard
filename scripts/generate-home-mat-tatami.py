@@ -1,35 +1,38 @@
 #!/usr/bin/env python3
 """Regenerate public/home-mat-tatami.png as a pinwheel-free tatami tile.
 
-The previous tile was a clockwise hooked-cross (pinwheel) of 2:1 mats. This
-script draws a running bond instead and refuses to write the PNG unless the
-junction rule holds on a 3x3 repeat, including across tile edges.
+The default layout is a horizontal brick beside a staggered vertical pair on a
+1440x960 tile (6 by 4 cells of 240px). Mats stay 240x480, half the short side
+for the brick offset. index.css tiles that image with --mat-cols / --mat-rows
+so one on-screen cell is still --mat-tile / 3.
 
-Layout
-  Vertical 2:1 mats (short side 240px, long side 480px) on the existing
-  720x960 tile, so on-screen scale matches the old art. Columns are staggered
-  by one third of the mat length (0, 160, 320). Three columns close that
-  stagger when the tile repeats, and adjacent columns never share a horizontal
-  seam, so a plus junction cannot form. Every interior junction is a T whose
-  through-line is vertical. Stems only point left or right, so four seams
-  cannot turn the same way around a point.
+  python3 scripts/generate-home-mat-tatami.py
+  python3 scripts/generate-home-mat-tatami.py --layout running-bond
+  python3 scripts/generate-home-mat-tatami.py --layout fallback-band
+  python3 scripts/generate-home-mat-tatami.py --layout fallback-tuck
+  python3 scripts/generate-home-mat-tatami.py --list
+
+Why this shape
+  On the original 720x960 (3 by 4) torus every mixed packing has at least two
+  plus junctions. See scripts/search-mat-layouts.py. Even cell grids
+  (4x4, 4x6, 6x4, 6x6, 8x4, 4x8) do no better: once pluses and L-corners are
+  forbidden, the only coverings are running bonds and pinwheel vortices.
+  Half-mats do not open another family there.
+
+  The brick below is still on a 240px module, but neighboring horizontal
+  stacks are offset by 120px and the two vertical columns use the running
+  bond's 160px and 320px phases. Those seam sets never meet, so every
+  junction is a T whose stem points left or right. A hooked cross needs one
+  stem in each direction, so it cannot form, including across the tile edge.
 
 Seams
   10px cracks, 5px on the tile edge so two tiles meet as one 10px line.
-  The crack is a dark navy, not the old near-black, so the lines stay quiet.
-  A mat that crosses the top/bottom edge is one color with no seam on that
-  edge; the other half of the mat is on the neighboring tile.
-
-Check
-  python3 scripts/generate-home-mat-tatami.py
-
-Mixed horizontal and vertical mats were searched (scripts/search-mat-layouts.py).
-None tile this 720x960 repeat without a plus junction, so the running bond stays
-the default.
+  A mat that crosses the tile edge is one color with no seam on that edge.
 """
 
 from __future__ import annotations
 
+import argparse
 import struct
 import sys
 import zlib
@@ -298,9 +301,10 @@ def _same_chirality_pinwheels(tees: list[tuple], focus: tuple[int, int, int, int
     if any(not by_dir[d] for d in dirs):
         return []
     fx0, fy0, fx1, fy1 = focus
-    # Pad so a pinwheel centered in the focus tile is fully included, without
-    # using T-junctions on the outer sample border (those can be truncated).
-    pad = L
+    # One cell inside the surrounding tile, so a pinwheel that straddles the
+    # tile edge is included and junctions clipped by the sample border are not.
+    span = max(fx1 - fx0, fy1 - fy0)
+    pad = max(L, span - S)
     found = []
     # Bound the search: stems are local. Compare each east-stem T to nearby others.
     for ex, ey in by_dir[(1, 0)]:
@@ -497,22 +501,405 @@ def assert_png_roundtrip(rgb: bytes) -> None:
         raise SystemExit("staggered column drew a seam across a mat that wraps the tile")
 
 
-def main() -> None:
+def _overlap(a0: int, a1: int, b0: int, b1: int) -> bool:
+    return min(a1, b1) > max(a0, b0)
+
+
+def _stack_pieces(height: int, phase: int, length: int) -> list[tuple[int, int, int]]:
+    """(y0, y1, k) inside one tile. A mat that crosses the edge shares k."""
+    if phase == 0:
+        return [(k * length, (k + 1) * length, k) for k in range(height // length)]
+    frags: list[tuple[int, int, int]] = []
+    y = phase
+    k = 0
+    while y < height:
+        y1 = y + length
+        if y1 <= height:
+            frags.append((y, y1, k))
+        else:
+            frags.append((y, height, k))
+            frags.append((0, y1 - height, k))
+        k += 1
+        y += length
+    return frags
+
+
+def _column_mats(columns: tuple, height: int) -> list[list[tuple[int, int, int, int]]]:
+    groups: dict[tuple, list[tuple[int, int, int, int]]] = {}
+    order: list[tuple] = []
+    for ci, (x, cw, phase, length) in enumerate(columns):
+        for y0, y1, k in _stack_pieces(height, phase, length):
+            mid = (ci, k)
+            if mid not in groups:
+                groups[mid] = []
+                order.append(mid)
+            groups[mid].append((x, y0, x + cw, y1))
+    return [groups[mid] for mid in order]
+
+
+def _column_rects(columns: tuple, width: int, height: int, tiles: int = 3) -> list[tuple]:
+    rects = []
+    for tx in range(tiles):
+        for ty in range(tiles):
+            ox, oy = tx * width, ty * height
+            for ci, (x, cw, phase, length) in enumerate(columns):
+                for y0, y1, _k in _stack_pieces(height, phase, length):
+                    n = (oy + y0 - phase) // length
+                    rects.append((ox + x, oy + y0, ox + x + cw, oy + y1, (ci, tx, n)))
+    return _merge_same_id(rects)
+
+
+def _grid_mats(pieces: tuple, cols: int = 3, rows: int = 4) -> list[list[tuple[int, int, int, int]]]:
+    width, height = cols * S, rows * S
+    mats = []
+    for kind, c, r, dc, dr in pieces:
+        cells = [((c + dc * k) % cols, (r + dr * k) % rows) for k in range(1 if kind == "M" else 2)]
+        if kind == "M":
+            cc, rr = cells[0]
+            mats.append([(cc * S, rr * S, (cc + 1) * S, (rr + 1) * S)])
+            continue
+        if kind == "H":
+            ys = cells[0][1]
+            xs = [cc for cc, _rr in cells]
+            y0, y1 = ys * S, ys * S + S
+            if abs(xs[0] - xs[1]) == 1:
+                x0 = min(xs) * S
+                mats.append([(x0, y0, x0 + 2 * S, y1)])
+            else:
+                mats.append([((cols - 1) * S, y0, width, y1), (0, y0, S, y1)])
+            continue
+        xs = cells[0][0]
+        ys = [rr for _cc, rr in cells]
+        x0, x1 = xs * S, xs * S + S
+        if abs(ys[0] - ys[1]) == 1:
+            y0 = min(ys) * S
+            mats.append([(x0, y0, x1, y0 + 2 * S)])
+        else:
+            mats.append([(x0, (rows - 1) * S, x1, height), (x0, 0, x1, S)])
+    return mats
+
+
+def _grid_rects(pieces: tuple, cols: int = 3, rows: int = 4, tiles: int = 3) -> list[tuple]:
+    rects = []
+    for tx in range(tiles):
+        for ty in range(tiles):
+            for pi, (kind, c, r, dc, dr) in enumerate(pieces):
+                gc = tx * cols + c
+                gr = ty * rows + r
+                if kind == "M":
+                    rects.append((gc * S, gr * S, (gc + 1) * S, (gr + 1) * S, ("M", gc, gr, pi)))
+                elif kind == "H":
+                    c0 = gc if dc == 1 else gc + dc
+                    rects.append((c0 * S, gr * S, (c0 + 2) * S, (gr + 1) * S, ("H", c0, gr, pi)))
+                else:
+                    r0 = gr if dr == 1 else gr + dr
+                    rects.append((gc * S, r0 * S, (gc + 1) * S, (r0 + 2) * S, ("V", gc, r0, pi)))
+    return rects
+
+
+def _share_edge(a: list[tuple], b: list[tuple], width: int, height: int) -> bool:
+    shifts = ((0, 0), (width, 0), (-width, 0), (0, height), (0, -height))
+    for ax0, ay0, ax1, ay1 in a:
+        for bx0, by0, bx1, by1 in b:
+            for dx, dy in shifts:
+                u0, v0, u1, v1 = bx0 + dx, by0 + dy, bx1 + dx, by1 + dy
+                if (ax1 == u0 or u1 == ax0) and _overlap(ay0, ay1, v0, v1):
+                    return True
+                if (ay1 == v0 or v1 == ay0) and _overlap(ax0, ax1, u0, u1):
+                    return True
+    return False
+
+
+def _color_mats(mats: list[list[tuple]], width: int, height: int) -> list[tuple[int, int, int]]:
+    palette = list(PANELS.values())
+    adj = [set() for _ in mats]
+    for i, a in enumerate(mats):
+        for j in range(i + 1, len(mats)):
+            if _share_edge(a, mats[j], width, height):
+                adj[i].add(j)
+                adj[j].add(i)
+    chosen: list[int | None] = [None] * len(mats)
+    for i in range(len(mats)):
+        used = {chosen[j] for j in adj[i] if chosen[j] is not None}
+        for color in range(len(palette)):
+            if color not in used:
+                chosen[i] = color
+                break
+        if chosen[i] is None:
+            raise SystemExit(f"six blues cannot color mat {i}; adjacent mats would share a color")
+    return [palette[i] for i in chosen]
+
+
+def _continues(pieces: list[tuple], edge: str, box: tuple, width: int, height: int) -> bool:
+    x0, y0, x1, y1 = box
+    for u0, v0, u1, v1 in pieces:
+        if (u0, v0, u1, v1) == box:
+            continue
+        if edge == "left" and u1 == width and x0 == 0 and _overlap(y0, y1, v0, v1):
+            return True
+        if edge == "right" and x1 == width and u0 == 0 and _overlap(y0, y1, v0, v1):
+            return True
+        if edge == "top" and v1 == height and y0 == 0 and _overlap(x0, x1, u0, u1):
+            return True
+        if edge == "bottom" and y1 == height and v0 == 0 and _overlap(x0, x1, u0, u1):
+            return True
+    return False
+
+
+def _render_mats(mats: list[list[tuple]], width: int, height: int) -> bytes:
+    colors = _color_mats(mats, width, height)
+    px = bytearray(bytes(SEAM_RGB) * (width * height))
+
+    def fill(x0: int, y0: int, x1: int, y1: int, color: tuple[int, int, int]) -> None:
+        if x1 <= x0 or y1 <= y0:
+            return
+        row = bytes(color) * (x1 - x0)
+        for y in range(y0, y1):
+            start = (y * width + x0) * 3
+            px[start : start + (x1 - x0) * 3] = row
+
+    for pieces, color in zip(mats, colors):
+        for box in pieces:
+            x0, y0, x1, y1 = box
+            left = x0 if _continues(pieces, "left", box, width, height) else x0 + HALF
+            right = x1 if _continues(pieces, "right", box, width, height) else x1 - HALF
+            top = y0 if _continues(pieces, "top", box, width, height) else y0 + HALF
+            bot = y1 if _continues(pieces, "bottom", box, width, height) else y1 - HALF
+            fill(left, top, right, bot, color)
+    return bytes(px)
+
+
+def _assert_partition(mats: list[list[tuple]], width: int, height: int) -> None:
+    boxes = [box for pieces in mats for box in pieces]
+    area = 0
+    for x0, y0, x1, y1 in boxes:
+        if x0 < 0 or y0 < 0 or x1 > width or y1 > height or x1 <= x0 or y1 <= y0:
+            raise SystemExit(f"mat fragment {(x0, y0, x1, y1)} leaves the tile")
+        area += (x1 - x0) * (y1 - y0)
+    if area != width * height:
+        raise SystemExit(f"mats cover {area}px of a {width * height}px tile")
+    for i, a in enumerate(boxes):
+        ax0, ay0, ax1, ay1 = a
+        for b in boxes[i + 1 :]:
+            bx0, by0, bx1, by1 = b
+            if _overlap(ax0, ax1, bx0, bx1) and _overlap(ay0, ay1, by0, by1):
+                raise SystemExit(f"mats overlap {a} and {b}")
+
+
+def _raster_report(rgb: bytes, width: int, height: int, tiles: int = 3) -> dict:
+    tw, th = tiles * width, tiles * height
+    seam = bytes(SEAM_RGB)
+    seen = bytearray(tw * th)
+
+    def pix(x: int, y: int) -> bytes:
+        i = ((y % height) * width + (x % width)) * 3
+        return rgb[i : i + 3]
+
+    rects = []
+    for y in range(th):
+        for x in range(tw):
+            if seen[y * tw + x] or pix(x, y) == seam:
+                continue
+            target = pix(x, y)
+            q = deque([(x, y)])
+            seen[y * tw + x] = 1
+            minx = maxx = x
+            miny = maxy = y
+            while q:
+                cx, cy = q.popleft()
+                if cx < minx:
+                    minx = cx
+                if cx > maxx:
+                    maxx = cx
+                if cy < miny:
+                    miny = cy
+                if cy > maxy:
+                    maxy = cy
+                for nx, ny in ((cx + 1, cy), (cx - 1, cy), (cx, cy + 1), (cx, cy - 1)):
+                    if nx < 0 or ny < 0 or nx >= tw or ny >= th:
+                        continue
+                    ni = ny * tw + nx
+                    if seen[ni] or pix(nx, ny) == seam or pix(nx, ny) != target:
+                        continue
+                    seen[ni] = 1
+                    q.append((nx, ny))
+            x0 = minx - HALF if minx > 0 else 0
+            y0 = miny - HALF if miny > 0 else 0
+            x1 = maxx + 1 + HALF if maxx < tw - 1 else tw
+            y1 = maxy + 1 + HALF if maxy < th - 1 else th
+            rects.append((x0, y0, x1, y1, (minx, miny)))
+    focus = (width, height, 2 * width, 2 * height)
+    return junction_report(rects, focus)
+
+
+def _distinct(points: list[tuple], focus: tuple[int, int, int, int]) -> set[tuple[int, int]]:
+    """Fold the far edge of an inclusive focus back onto the near edge."""
+    fx0, fy0, fx1, fy1 = focus
+    folded = set()
+    for x, y in points:
+        if x == fx1:
+            x = fx0
+        if y == fy1:
+            y = fy0
+        folded.add((x, y))
+    return folded
+
+
+# Horizontal stacks at x=0 (seams on the tile edge) and x=960 (offset 120).
+# The vertical pair sits in the middle, phases 160 and 320, so its ends miss
+# both horizontal seam sets. CSS --mat-cols/--mat-rows for this image: 6 and 4.
+BRICK_COLUMNS = (
+    (0, 480, 0, 240),
+    (480, 240, 160, 480),
+    (720, 240, 320, 480),
+    (960, 480, 120, 240),
+)
+BRICK_SIZE = (1440, 960)
+
+# 720x960 mixed layouts from the 3x4 search: 2 distinct pluses, no pinwheel, no L.
+# Band: two stacked horizontals over a vertical field, with a side-by-side pair.
+FALLBACK_BAND = (
+    ("H", 0, 0, 1, 0),
+    ("V", 2, 0, 0, -1),
+    ("H", 0, 1, 1, 0),
+    ("V", 2, 1, 0, 1),
+    ("V", 0, 2, 0, 1),
+    ("V", 1, 2, 0, 1),
+)
+# Tuck: doubled horizontals beside one vertical, vertical mats above them.
+FALLBACK_TUCK = (
+    ("V", 0, 0, 0, 1),
+    ("V", 1, 0, 0, 1),
+    ("V", 2, 0, 0, -1),
+    ("V", 2, 1, 0, 1),
+    ("H", 0, 2, 1, 0),
+    ("H", 0, 3, 1, 0),
+)
+
+
+def _spot_check_seams(rgb: bytes, columns: tuple, width: int, height: int) -> None:
+    def at(x: int, y: int) -> tuple[int, int, int]:
+        i = (y * width + x) * 3
+        return tuple(rgb[i : i + 3])
+
+    for x, cw, phase, _length in columns:
+        cx = x + cw // 2
+        if phase == 0:
+            if at(cx, HALF // 2) != SEAM_RGB or at(cx, height - 2) != SEAM_RGB:
+                raise SystemExit("tile edge is missing its half crack")
+        elif at(cx, 1) == SEAM_RGB or at(cx, height - 2) == SEAM_RGB:
+            raise SystemExit("drew a seam across a mat that wraps the tile")
+
+
+def _check_generated(name: str, rgb: bytes, logical: dict, width: int, height: int, distinct_plus: int) -> None:
+    focus = (width, height, 2 * width, 2 * height)
+    if len(_distinct(logical["plus"], focus)) != distinct_plus:
+        raise SystemExit(f"{name} plus junctions {_distinct(logical['plus'], focus)}")
+    if logical["corners"] or logical["pinwheels"]:
+        raise SystemExit(
+            f"{name} corners={len(logical['corners'])} pinwheels={len(logical['pinwheels'])}"
+        )
+    raster = _raster_report(rgb, width, height)
+    if _distinct(raster["plus"], focus) != _distinct(logical["plus"], focus):
+        raise SystemExit(f"{name} raster pluses { _distinct(raster['plus'], focus)}")
+    if raster["corners"] or raster["pinwheels"]:
+        raise SystemExit(f"{name} raster corners/pinwheels do not match the layout")
+    logical_tees = {(x, y, dx, dy) for x, y, dx, dy in logical["tees"]}
+    raster_tees = {(x, y, dx, dy) for x, y, dx, dy in raster["tees"]}
+    if logical_tees != raster_tees:
+        raise SystemExit(
+            f"{name} raster tees differ: missing {list(logical_tees - raster_tees)[:4]} "
+            f"extra {list(raster_tees - logical_tees)[:4]}"
+        )
+
+
+def _build_brick() -> tuple[bytes, dict]:
+    width, height = BRICK_SIZE
+    mats = _column_mats(BRICK_COLUMNS, height)
+    _assert_partition(mats, width, height)
+    rgb = _render_mats(mats, width, height)
+    _spot_check_seams(rgb, BRICK_COLUMNS, width, height)
+    logical = junction_report(_column_rects(BRICK_COLUMNS, width, height), (width, height, 2 * width, 2 * height))
+    _check_generated("brick-pair", rgb, logical, width, height, 0)
+    return rgb, logical
+
+
+def _build_grid(name: str, pieces: tuple) -> tuple[bytes, dict]:
+    width, height = 3 * S, 4 * S
+    mats = _grid_mats(pieces)
+    _assert_partition(mats, width, height)
+    rgb = _render_mats(mats, width, height)
+    logical = junction_report(_grid_rects(pieces), (width, height, 2 * width, 2 * height))
+    _check_generated(name, rgb, logical, width, height, 2)
+    return rgb, logical
+
+
+def _write_checked(path: Path, rgb: bytes, width: int, height: int) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    write_png(path, width, height, rgb)
+    raw = path.read_bytes()
+    if raw[:8] != b"\x89PNG\r\n\x1a\n":
+        raise SystemExit("output is not a png")
+    if len(raw) > 64_000:
+        raise SystemExit(f"png is {len(raw)} bytes; keep the tile small for page load")
+
+
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(description="Regenerate the home tatami tile.")
+    parser.add_argument(
+        "--layout",
+        default="brick-pair",
+        choices=("brick-pair", "running-bond", "fallback-band", "fallback-tuck"),
+        help="brick-pair is the default image (1440x960, zero pluses)",
+    )
+    parser.add_argument("--out", type=Path, default=OUT)
+    parser.add_argument("--list", action="store_true")
+    args = parser.parse_args(argv)
+    if args.list:
+        print("brick-pair     1440x960  default  plus=0 pinwheel=0  horizontal brick, vertical pair centered")
+        print("running-bond    720x960           plus=0 pinwheel=0  all-vertical stagger")
+        print("fallback-band   720x960           plus=2 pinwheel=0  stacked horizontals over verticals")
+        print("fallback-tuck   720x960           plus=2 pinwheel=0  doubled horizontals beside one vertical")
+        return
+
     assert_detector_catches_legacy()
     assert_contrast()
-    focus = (W, H, 2 * W, 2 * H)
-    logical = assert_clean("layout", logical_rects(), focus)
-    rgb = render_tile()
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    write_png(OUT, W, H, rgb)
-    assert_png_roundtrip(rgb)
-    assert_raster_matches_logic(rgb)
+    assert_clean("running bond", logical_rects(), (W, H, 2 * W, 2 * H))
+
+    if args.layout == "running-bond":
+        rgb = render_tile()
+        _write_checked(args.out, rgb, W, H)
+        if args.out == OUT:
+            assert_png_roundtrip(rgb)
+            assert_raster_matches_logic(rgb)
+        logical = junction_report(logical_rects(), (W, H, 2 * W, 2 * H))
+        print(f"wrote {args.out} ({args.out.stat().st_size} bytes) layout=running-bond")
+    elif args.layout == "brick-pair":
+        rgb, logical = _build_brick()
+        _write_checked(args.out, rgb, *BRICK_SIZE)
+        print(f"wrote {args.out} ({args.out.stat().st_size} bytes) layout=brick-pair")
+        print("css: --mat-cols: 6; --mat-rows: 4;")
+    elif args.layout == "fallback-band":
+        rgb, logical = _build_grid("fallback-band", FALLBACK_BAND)
+        _write_checked(args.out, rgb, 3 * S, 4 * S)
+        print(f"wrote {args.out} ({args.out.stat().st_size} bytes) layout=fallback-band")
+        print("css: --mat-cols: 3; --mat-rows: 4;")
+    else:
+        rgb, logical = _build_grid("fallback-tuck", FALLBACK_TUCK)
+        _write_checked(args.out, rgb, 3 * S, 4 * S)
+        print(f"wrote {args.out} ({args.out.stat().st_size} bytes) layout=fallback-tuck")
+        print("css: --mat-cols: 3; --mat-rows: 4;")
+
+    focus_w = BRICK_SIZE[0] if args.layout == "brick-pair" else W
+    focus_h = BRICK_SIZE[1] if args.layout == "brick-pair" else H
+    distinct = len(_distinct(logical["plus"], (focus_w, focus_h, 2 * focus_w, 2 * focus_h)))
     stems = sorted({(dx, dy) for *_, dx, dy in logical["tees"]})
-    print(f"wrote {OUT.relative_to(ROOT)} ({OUT.stat().st_size} bytes)")
-    print(f"interior T-junctions in the center tile: {len(logical['tees'])}")
-    print(f"stem directions: {stems}")
-    print(f"plus={len(logical['plus'])} corners={len(logical['corners'])} pinwheels={len(logical['pinwheels'])}")
-    print("legacy pinwheel layout is detected; new tile is clean across a 3x3 repeat")
+    print(f"T-junctions in the center tile: {len(logical['tees'])} stems={stems}")
+    print(
+        f"distinct plus={distinct} corners={len(logical['corners'])} "
+        f"pinwheels={len(logical['pinwheels'])}"
+    )
+    print("legacy pinwheel layout is still detected")
 
 
 if __name__ == "__main__":
