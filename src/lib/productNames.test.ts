@@ -22,9 +22,15 @@ import {
   coachUnlimitedDoorOpen,
   isBasicCoach,
   isPlainCoachTournament,
+  MEDIA_CONSOLE_ROUTES,
+  MEDIA_FOLDER_ROUTES,
+  consoleHubs,
+  homeConsoleLabel,
   mediaConsoleDoorOpen,
+  mediaFolderDoorOpen,
   ownerProHubOpen,
   proDoorOpen,
+  visibleMediaSurfaces,
   visibleProHubs,
   parentToolboxPath,
   COACH_UNLIMITED_PATH,
@@ -389,11 +395,18 @@ test('Program Director opens Media Console with Pro locked; other seats do not',
     programDirectorSeat: true,
     coachMenus: false,
   };
+  const directorMenus = { galleryUpload: true, eventsAccess: true, proShopAccess: true };
   assert.equal(mediaConsoleDoorOpen(lockedDirector), true);
+  assert.equal(homeConsoleLabel(lockedDirector), 'Open Media Console');
   assert.deepEqual(
     visibleProHubs(lockedDirector).map((hub) => hub.title),
     [MEDIA_CONSOLE_NAME],
   );
+  assert.deepEqual(
+    consoleHubs(lockedDirector, directorMenus).map((hub) => hub.to),
+    ['/gallery', '/events', '/proshop'],
+  );
+  assert.equal(mediaFolderDoorOpen(lockedDirector, directorMenus, 'shop'), true);
   assert.equal(coachUnlimitedDoorOpen(lockedDirector), false);
 
   const lockedAssistant = {
@@ -404,7 +417,13 @@ test('Program Director opens Media Console with Pro locked; other seats do not',
     coachMenus: true,
   };
   assert.equal(mediaConsoleDoorOpen(lockedAssistant), false);
+  assert.equal(homeConsoleLabel(lockedAssistant), null);
   assert.deepEqual(visibleProHubs(lockedAssistant), []);
+  assert.deepEqual(visibleMediaSurfaces(lockedAssistant, null), []);
+  assert.equal(
+    mediaFolderDoorOpen(lockedAssistant, { galleryUpload: false, eventsAccess: false, proShopAccess: false }, 'gallery'),
+    false,
+  );
 
   const lockedCoachWithGallery = {
     proUnlocked: false,
@@ -414,6 +433,15 @@ test('Program Director opens Media Console with Pro locked; other seats do not',
     coachMenus: true,
   };
   assert.equal(mediaConsoleDoorOpen(lockedCoachWithGallery), false);
+  assert.equal(homeConsoleLabel(lockedCoachWithGallery), null);
+  assert.equal(
+    mediaFolderDoorOpen(
+      lockedCoachWithGallery,
+      { galleryUpload: true, eventsAccess: true, proShopAccess: true },
+      'gallery',
+    ),
+    false,
+  );
 
   const proAssistant = { ...lockedAssistant, proUnlocked: true };
   assert.equal(mediaConsoleDoorOpen(proAssistant), false);
@@ -425,10 +453,21 @@ test('Program Director opens Media Console with Pro locked; other seats do not',
 
   const proDirector = { ...lockedDirector, proUnlocked: true };
   assert.equal(mediaConsoleDoorOpen(proDirector), true);
+  assert.equal(homeConsoleLabel(proDirector), 'Open Media Console');
   assert.deepEqual(
     visibleProHubs(proDirector).map((hub) => hub.title),
     [MEDIA_CONSOLE_NAME],
   );
+  assert.deepEqual(
+    consoleHubs(proDirector, directorMenus).map((hub) => hub.title),
+    ['Gallery', 'Events', 'Pro Shop'],
+  );
+  const eventsOnly = { galleryUpload: false, eventsAccess: true, proShopAccess: false };
+  assert.deepEqual(
+    visibleMediaSurfaces(lockedDirector, eventsOnly).map((surface) => surface.title),
+    ['Events'],
+  );
+  assert.equal(mediaFolderDoorOpen(lockedDirector, eventsOnly, 'gallery'), false);
 
   const strippedDirector = { ...lockedDirector, seatGrantsMedia: false };
   assert.equal(mediaConsoleDoorOpen(strippedDirector), false);
@@ -445,5 +484,17 @@ test('Program Director opens Media Console with Pro locked; other seats do not',
     visibleProHubs(owner).map((hub) => hub.title),
     PRO_HUBS.map((hub) => hub.title),
   );
+  assert.equal(homeConsoleLabel(owner), 'Open Console');
+  assert.deepEqual(
+    consoleHubs(owner, null).map((hub) => hub.title),
+    PRO_HUBS.map((hub) => hub.title),
+  );
+  assert.equal(mediaFolderDoorOpen(owner, null, 'events'), true);
   assert.equal(mediaConsoleDoorOpen({ ...owner, proUnlocked: false }), false);
+  assert.equal(mediaFolderDoorOpen({ ...owner, proUnlocked: false }, null, 'gallery'), false);
+  assert.deepEqual(
+    MEDIA_FOLDER_ROUTES.map((route) => route.path),
+    ['/gallery', '/events', '/proshop', '/pro-shop'],
+  );
+  assert.deepEqual([...MEDIA_CONSOLE_ROUTES], ['/media', '/media-console', '/console']);
 });

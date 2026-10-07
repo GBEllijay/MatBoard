@@ -10,14 +10,14 @@ import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useSeatDoor } from '../hooks/useSeatDoor';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import { lockCoach } from '../lib/coachUnlock';
-import { COACH_HUBS, coachDoorOpen, visibleProHubs } from '../lib/productNames';
+import { COACH_HUBS, coachDoorOpen, consoleHubs } from '../lib/productNames';
 import { lockPro } from '../lib/proUnlock';
 import { whiteEntryPath } from '../lib/whiteUnlock';
 
 export function ComingSoonPage() {
   const door = useSeatDoor();
   const proUnlocked = door.proUnlocked;
-  const proHubs = visibleProHubs(door);
+  const proHubs = consoleHubs(door, door.seat?.permissions ?? null);
   const whiteUnlocked = useWhiteUnlocked();
   const coachUnlocked = useCoachUnlocked();
   const seated = useCurrentSeat() !== null;
