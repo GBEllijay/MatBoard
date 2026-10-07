@@ -21,12 +21,16 @@ import {
   kidsBracketChromeOn,
   kidsLiveLine,
   kidsPointsLine,
+  kidsBracketScoring,
+  kidsShowMascot,
   kidsShowWin,
+  kidsSkinChromeHidden,
   kidsSkinLabel,
   kidsWallpaperPath,
   kidsWinLines,
   kidsWinState,
   setKidsEnabled,
+  setKidsMascot,
   setKidsSkin,
 } from './kidsScoreboard.ts';
 
@@ -55,7 +59,7 @@ test("Kids' Scoreboards is off until this device turns it on", () => {
   assert.equal(KIDS_BRACKETS_SKINS_LABEL, 'Kids Brackets Skins');
   assert.equal(KIDS_WIN_CHEER, 'Bom trabalho!');
   assert.equal(CARLOS_ASSET, '/assets/kids/carlos.webp');
-  assert.deepEqual(getKidsScoreboard(), { enabled: false, skin: 'dinos' });
+  assert.deepEqual(getKidsScoreboard(), { enabled: false, skin: 'dinos', mascot: true });
   assert.deepEqual(
     KIDS_SKINS.map((skin) => skin.label),
     ['Dinos', 'Stars & unicorns', 'Robots', 'Space', 'Ocean', 'Superheroes'],
@@ -72,20 +76,45 @@ test('Kids bracket skins stay on the Pro suite board', () => {
 test('Kids mode and skin persist on this device', () => {
   setKidsEnabled(true);
   setKidsSkin('ocean');
-  assert.deepEqual(getKidsScoreboard(), { enabled: true, skin: 'ocean' });
-  assert.equal(localStorage.getItem(KIDS_MODE_KEY), JSON.stringify({ enabled: true, skin: 'ocean' }));
+  assert.deepEqual(getKidsScoreboard(), { enabled: true, skin: 'ocean', mascot: true });
+  assert.equal(
+    localStorage.getItem(KIDS_MODE_KEY),
+    JSON.stringify({ enabled: true, skin: 'ocean', mascot: true }),
+  );
   assert.equal(kidsSkinLabel('unicorns'), 'Stars & unicorns');
   assert.equal(kidsWallpaperPath('robots'), '/assets/kids/robots.webp');
+  setKidsMascot(false);
+  assert.equal(getKidsScoreboard().mascot, false);
+  assert.equal(getKidsScoreboard().skin, 'ocean');
   setKidsEnabled(false);
   assert.equal(getKidsScoreboard().enabled, false);
   assert.equal(getKidsScoreboard().skin, 'ocean');
+  assert.equal(getKidsScoreboard().mascot, false);
+  setKidsMascot(true);
 });
 
 test('Unknown kids skin falls back to Dinos and stays off when the flag is missing', () => {
   localStorage.setItem(KIDS_MODE_KEY, JSON.stringify({ enabled: true, skin: 'tatami' }));
-  assert.deepEqual(getKidsScoreboard(), { enabled: true, skin: 'dinos' });
+  assert.deepEqual(getKidsScoreboard(), { enabled: true, skin: 'dinos', mascot: true });
+  localStorage.setItem(KIDS_MODE_KEY, JSON.stringify({ enabled: true, skin: 'ocean', mascot: false }));
+  assert.deepEqual(getKidsScoreboard(), { enabled: true, skin: 'ocean', mascot: false });
   localStorage.setItem(KIDS_MODE_KEY, '{');
-  assert.deepEqual(getKidsScoreboard(), { enabled: false, skin: 'dinos' });
+  assert.deepEqual(getKidsScoreboard(), { enabled: false, skin: 'dinos', mascot: true });
+});
+
+test('Skin chrome hides for a sheet, fullscreen, or a linked unscored bout', () => {
+  assert.equal(kidsSkinChromeHidden({ fullscreen: false, sheetOpen: false, scoring: false }), false);
+  assert.equal(kidsSkinChromeHidden({ fullscreen: true, sheetOpen: false, scoring: false }), true);
+  assert.equal(kidsSkinChromeHidden({ fullscreen: false, sheetOpen: true, scoring: false }), true);
+  assert.equal(kidsSkinChromeHidden({ fullscreen: false, sheetOpen: false, scoring: true }), true);
+  assert.equal(kidsBracketScoring(null, false), false);
+  assert.equal(kidsBracketScoring('sf-0', true), false);
+  assert.equal(kidsBracketScoring('sf-0', false), true);
+  assert.equal(kidsShowMascot(true, true, 'Mia Santos', false), true);
+  assert.equal(kidsShowMascot(true, false, 'Mia Santos', false), false);
+  assert.equal(kidsShowMascot(true, true, 'Mia Santos', true), false);
+  assert.equal(kidsShowMascot(false, true, 'Mia Santos', false), false);
+  assert.equal(kidsShowMascot(true, true, '   ', false), false);
 });
 
 test('Carlos appears only after a champion, with a stored score like 12-0', () => {
