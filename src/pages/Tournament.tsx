@@ -317,9 +317,9 @@ export function TournamentPage() {
         ) : (
           <>
             Tap <strong>Score</strong> to open the match board. <strong>Win</strong> or <strong>DQ</strong>{' '}
-            flash the winner. <strong>Undo last result</strong> backs out a mistaken tap. Save a named
-            bracket on this device, then switch without losing progress. Reset asks first so a demo
-            cannot wipe the bracket by accident.
+            flash the winner. <strong>Undo last result</strong> backs out a mistaken tap and clears later
+            rounds that came from it. Save a named bracket on this device, then switch without losing
+            progress. Reset asks first so a demo cannot wipe the bracket by accident.
           </>
         )}
       </p>

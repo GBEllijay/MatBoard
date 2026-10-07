@@ -97,7 +97,7 @@ export type TournamentState = {
   title: string;
   entries: Record<string, string>;
   results: Partial<Record<BracketMatchId, BoutResult>>;
-  /** Most recent bout written from Scoreboard or bracket marks — one-level Undo. */
+  /** Most recent bout written from Scoreboard or bracket marks. Undo clears that bout and later rounds filled from it. */
   lastOutcomeMatchId: BracketMatchId | null;
 };
 
@@ -645,14 +645,17 @@ export function advanceByes(current: TournamentState): TournamentState {
   return next;
 }
 
+/**
+ * A later bout that received this slot is no longer the same matchup.
+ * Drop its result and every round that was filled from it, whoever won it.
+ */
 function clearChildIfFedFrom(next: TournamentState, dest: SlotId, seen: Set<BracketMatchId>): void {
   if (dest === 'champion') return;
   const child = matchIdFromSlot(dest);
-  const side = sideFromSlot(dest);
-  if (child && side && next.results[child]?.winnerSide === side) {
-    delete next.results[child];
-    cascadeWinner(next, child, seen);
-  }
+  if (!child || seen.has(child) || !next.results[child]) return;
+  delete next.results[child];
+  if (next.lastOutcomeMatchId === child) next.lastOutcomeMatchId = null;
+  cascadeWinner(next, child, seen);
 }
 
 function cascadeChildResult(next: TournamentState, dest: SlotId, seen: Set<BracketMatchId>): void {
@@ -705,6 +708,7 @@ export function applyMatchOutcome(
   const toggle = options?.toggle !== false;
   const next = clone(current);
   const existing = next.results[matchId];
+  const previousWinner = existing?.winnerSide;
   const same =
     existing &&
     existing.call === pick.call &&
@@ -734,6 +738,13 @@ export function applyMatchOutcome(
     };
     next.lastOutcomeMatchId = matchId;
   }
+  const updated = next.results[matchId];
+  if (previousWinner && updated && updated.winnerSide !== previousWinner) {
+    const seen = new Set<BracketMatchId>();
+    clearChildIfFedFrom(next, NEXT_SLOT[matchId], seen);
+    const loserDest = threePersonLoserSlot(next, matchId);
+    if (loserDest) clearChildIfFedFrom(next, loserDest, seen);
+  }
   cascadeWinner(next, matchId, new Set());
   return advanceByes(next);
 }
@@ -748,40 +759,10 @@ export function applyClearResult(current: TournamentState, matchId: BracketMatch
 }
 
 /**
- * Gym-owner undo: clear this bout’s result.
- * If the next-round slot was auto-filled from this winner and that later bout has no result yet,
- * the name is removed (same as Phase 1 cascade). If a later bout already has its own result,
- * or the next name was overwritten, those later slots stay put — this bout is unmarked only.
+ * Clear this bout and every later round that was filled from it.
+ * A semifinal or final decided against the old winner does not stay on the board.
  */
-function childMatchHasResult(current: TournamentState, dest: SlotId): boolean {
-  if (dest === 'champion') return false;
-  const child = matchIdFromSlot(dest);
-  return Boolean(child && current.results[child]);
-}
-
 export function applyUndoOutcome(current: TournamentState, matchId: BracketMatchId): TournamentState {
-  const result = current.results[matchId];
-  if (!result) return current;
-  const dest = NEXT_SLOT[matchId];
-  const loserDest = threePersonLoserSlot(current, matchId);
-  const winnerName = slotName(current, slotId(matchId, result.winnerSide));
-  const loserName = slotName(current, slotId(matchId, otherSide(result.winnerSide)));
-  const destName = slotName(current, dest);
-  const destWasAutoFilled = !destName || destName === winnerName;
-  const loserWasAutoFilled =
-    !loserDest || !slotName(current, loserDest) || slotName(current, loserDest) === loserName;
-  const winnerLocked = childMatchHasResult(current, dest);
-  const loserLocked = Boolean(loserDest && childMatchHasResult(current, loserDest));
-
-  if (winnerLocked || loserLocked || !destWasAutoFilled || !loserWasAutoFilled) {
-    const next = clone(current);
-    delete next.results[matchId];
-    if (next.lastOutcomeMatchId === matchId) next.lastOutcomeMatchId = null;
-    if (!winnerLocked && destWasAutoFilled) writeSlot(next, dest, '');
-    if (loserDest && !loserLocked && loserWasAutoFilled) writeSlot(next, loserDest, '');
-    return advanceByes(next);
-  }
-
   return applyClearResult(current, matchId);
 }
 
