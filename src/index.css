@@ -1966,38 +1966,49 @@ span.role-plan__mark {
 }
 
 /* Worn cotton for the Coach Unlimited brown belt and the Pro black belt.
-   Top and bottom are clean straight hems. Soft fiber sits only on the
-   short vertical ends, with no holes through to the mat.
-   The rank bars stay straight and full height. */
+   Rounded ends, a stitched border around the whole belt, and a visible weave.
+   Long edges stay straight. A soft worn fade sits only on the short ends.
+   The rank bar is full height, and the stitch is drawn over it. */
 .belt-header--worn .belt-header__belt {
   --bar-white: clamp(0.7rem, 1.15vw, 1.05rem);
   --bar-tail: clamp(0.58rem, 0.95vw, 0.88rem);
   --bar-end: 16px;
   --rank-width: clamp(6.6rem, 21%, 10.6rem);
+  --end-radius: clamp(8px, 0.7vw, 13px);
   --cloth: #141416;
-  --fiber: color-mix(in srgb, var(--cloth) 68%, white);
-  --selvedge: color-mix(in srgb, var(--cloth) 90%, white);
-  --stitch: color-mix(in srgb, var(--cloth) 74%, white);
-  /* Soft 3px fade on the short ends only. Opaque, no comb, no holes. */
-  --fuzz-left: linear-gradient(
-    to right,
-    var(--fiber) 0 1px,
-    color-mix(in srgb, var(--fiber) 42%, var(--cloth)) 1px 2px,
-    var(--cloth) 2px 3px
-  );
-  --fuzz-right: linear-gradient(
-    to left,
-    var(--fiber) 0 1px,
-    color-mix(in srgb, var(--fiber) 42%, var(--cloth)) 1px 2px,
-    var(--cloth) 2px 3px
-  );
-  /* Straight hem: a quiet 2px band with a short stitch every 7px. */
-  --hem: repeating-linear-gradient(90deg, var(--stitch) 0 1px, var(--selvedge) 1px 7px);
+  --band: color-mix(in srgb, var(--cloth) 70%, white);
+  --stitch: color-mix(in srgb, var(--cloth) 34%, white);
   position: relative;
   overflow: hidden;
-  border-radius: 4px;
+  border-radius: var(--end-radius);
   background: transparent;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.16),
+    0 8px 16px rgba(0, 0, 0, 0.5),
+    0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.belt-header--worn .belt-header__belt::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 0 0 5px var(--band),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -5px 7px rgba(0, 0, 0, 0.34);
+}
+
+.belt-header--worn .belt-header__belt::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  z-index: 5;
+  pointer-events: none;
+  border-radius: calc(var(--end-radius) - 2px);
+  border: 1px dashed var(--stitch);
 }
 
 .belt-header--worn.belt-header--brown .belt-header__belt {
@@ -2017,10 +2028,14 @@ span.role-plan__mark {
   pointer-events: none;
   border-radius: inherit;
   background-color: var(--cloth);
-  background-image: var(--hem), var(--hem), var(--fuzz-left), url('/belt-grain.svg');
-  background-size: 100% 2px, 100% 2px, 3px 100%, 160px 160px;
-  background-position: top center, bottom center, left center, 0 0;
-  background-repeat: repeat-x, repeat-x, repeat-y, repeat;
+  background-image:
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.18), transparent 28%, transparent 68%, rgba(0, 0, 0, 0.28)),
+    linear-gradient(to right, rgba(255, 255, 255, 0.24), transparent 14px),
+    linear-gradient(to left, rgba(255, 255, 255, 0.24), transparent 14px),
+    url('/belt-weave.png');
+  background-size: 100% 100%, 14px 100%, 14px 100%, 256px 128px;
+  background-position: center, left center, right center, 0 0;
+  background-repeat: no-repeat, no-repeat, no-repeat, repeat;
 }
 
 .belt-header--worn .belt-header__title {
@@ -2060,11 +2075,7 @@ span.role-plan__mark {
 
 .belt-header--worn .belt-header__end {
   flex: 0 0 var(--bar-end);
-  background-color: var(--cloth);
-  background-image: var(--hem), var(--hem), var(--fuzz-right);
-  background-size: 100% 2px, 100% 2px, 3px 100%;
-  background-position: top center, bottom center, right center;
-  background-repeat: repeat-x, repeat-x, repeat-y;
+  background: transparent;
 }
 
 .belt-header--worn.belt-header--brown .belt-header__tip {

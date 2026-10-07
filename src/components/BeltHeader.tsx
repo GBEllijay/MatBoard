@@ -5,10 +5,10 @@ type Props = {
   title: string;
   blurb?: string;
   /**
-   * Worn cotton webbing: fabric grain, a straight stitched hem, and soft
-   * fray only on the short vertical ends. The long edges stay clean.
-   * The rank bar stays a clean full-height block.
-   * Brown wears four thin white stripes on a black bar, then a short cloth tail.
+   * Worn cotton webbing: visible weave, a stitched border around the whole
+   * belt, and a soft worn fade only on the short ends. Long edges stay straight.
+   * The rank bar is full height, with the stitch passing over it.
+   * Brown wears four white stripes on a black bar, then a short cloth tail.
    * Black wears white | red | white, then a short black tip.
    */
   worn?: boolean;
