@@ -5036,6 +5036,29 @@ a.saver-folder--link {
   pointer-events: none;
 }
 
+/* Landscape fades the whole controller bar. Keep Back to bracket tappable. */
+.play--landscape .controller .chrome,
+.play--fs .controller .chrome {
+  opacity: 1;
+  pointer-events: none;
+}
+
+.play--landscape .controller .chrome .chip:not(.chip--keep),
+.play--fs .controller .chrome .chip:not(.chip--keep),
+.play--landscape .controller .chrome .chrome__brand,
+.play--fs .controller .chrome .chrome__brand,
+.play--landscape .controller .chrome .chrome__lead,
+.play--fs .controller .chrome .chrome__lead {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.play--landscape .controller .chrome .chip--keep,
+.play--fs .controller .chrome .chip--keep {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .play--landscape .display__chrome {
   justify-content: space-between;
 }
@@ -5844,6 +5867,37 @@ a.saver-folder--link {
 .tournament__sheet-copy {
   color: var(--muted);
   margin-bottom: 0.75rem;
+}
+
+.tournament__paste {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0 0 0.75rem;
+}
+
+.tournament__paste span {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tournament__paste textarea {
+  width: 100%;
+  min-height: 6.5rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1.35;
+  resize: vertical;
+}
+
+.tournament__paste + .btn {
+  margin-bottom: 1rem;
 }
 
 .tournament__seeds {
@@ -12990,8 +13044,7 @@ a.plan-pick {
 .tournament--kids .bracket__side--right .t-match__bouts::after,
 .tournament--kids.tournament--dark .bracket__side--left .t-match__bouts::after,
 .tournament--kids.tournament--dark .bracket__side--right .t-match__bouts::after {
-  background: #7b5cff;
-  height: 3px;
+  content: none;
 }
 
 .tournament--kids .t-match--live .t-match__bouts {
@@ -13005,6 +13058,11 @@ a.plan-pick {
 .tournament--kids.tournament--bright .t-match .t-undo,
 .tournament--kids.tournament--dark .t-match .t-score,
 .tournament--kids.tournament--dark .t-match .t-undo {
+  min-height: 48px;
+  min-width: 5.4rem;
+  padding: 0.35rem 0.9rem;
+  font-size: 1.05rem;
+  letter-spacing: 0.06em;
   background: #101820;
   color: #f7f4ee;
   -webkit-text-fill-color: #f7f4ee;
@@ -13013,12 +13071,127 @@ a.plan-pick {
   opacity: 1;
 }
 
+.tournament--kids .t-mark,
+.tournament--kids.tournament--bright .t-mark,
+.tournament--kids.tournament--dark .t-mark,
+.tournament--kids.tournament--bright .t-match--final .t-mark,
+.tournament--kids.tournament--dark .t-match--final .t-mark {
+  min-height: 48px;
+  min-width: 3.6rem;
+  padding: 0.28rem 0.65rem;
+  font-size: 1.02rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
 .tournament--kids.tournament--bright .t-match--final .t-score,
 .tournament--kids.tournament--dark .t-match--final .t-score {
+  min-height: 56px;
+  min-width: 9rem;
+  padding: 0.45rem 1.3rem;
+  font-size: 1.25rem;
   background: var(--logo-blue);
   color: #fff;
   -webkit-text-fill-color: #fff;
   border-color: transparent;
+}
+
+/* Pair elbows: each match meets a spine, and the spine meets the next round.
+   A set winner turns that path logo blue. */
+.tournament--kids .bracket__matches:has(.bracket__pair) {
+  gap: 0;
+}
+
+.tournament--kids .bracket__pair {
+  position: relative;
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.tournament--kids.tournament--bright .bracket__pair > .t-match,
+.tournament--kids.tournament--dark .bracket__pair > .t-match {
+  flex: 1 1 0;
+  align-content: center;
+}
+
+.tournament--kids .bracket__side--left .bracket__pair::before,
+.tournament--kids .bracket__side--right .bracket__pair::before,
+.tournament--kids .bracket__side--left .bracket__pair::after,
+.tournament--kids .bracket__side--right .bracket__pair::after,
+.tournament--kids .bracket__side--left .t-match::after,
+.tournament--kids .bracket__side--right .t-match::after {
+  content: '';
+  position: absolute;
+  background: #101820;
+  box-shadow: 0 0 0 2px #fff;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.tournament--kids .bracket__side--left .bracket__pair::before,
+.tournament--kids .bracket__side--right .bracket__pair::before {
+  top: 25%;
+  height: 50%;
+  width: 6px;
+  border-radius: 3px;
+}
+
+.tournament--kids .bracket__side--left .bracket__pair::before {
+  right: 0;
+}
+
+.tournament--kids .bracket__side--right .bracket__pair::before {
+  left: 0;
+}
+
+.tournament--kids .bracket__side--left .bracket__pair::after,
+.tournament--kids .bracket__side--right .bracket__pair::after,
+.tournament--kids .bracket__side--left .t-match::after,
+.tournament--kids .bracket__side--right .t-match::after {
+  top: 50%;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 3px;
+}
+
+.tournament--kids .bracket__side--left .bracket__pair .t-match::after {
+  right: 0;
+  width: 1.35rem;
+}
+
+.tournament--kids .bracket__side--right .bracket__pair .t-match::after {
+  left: 0;
+  width: 1.35rem;
+}
+
+.tournament--kids .bracket__side--left .bracket__pair::after {
+  right: -1.5rem;
+  width: 1.5rem;
+}
+
+.tournament--kids .bracket__side--right .bracket__pair::after {
+  left: -1.5rem;
+  width: 1.5rem;
+}
+
+.tournament--kids .bracket__side--left .bracket__round--1 .t-match::after {
+  right: -1.7rem;
+  width: calc(1.25rem + 1.7rem);
+}
+
+.tournament--kids .bracket__side--right .bracket__round--1 .t-match::after {
+  left: -1.7rem;
+  width: calc(1.25rem + 1.7rem);
+}
+
+.tournament--kids .bracket__side--left .t-match--done::after,
+.tournament--kids .bracket__side--right .t-match--done::after,
+.tournament--kids .bracket__pair:has(.t-match--done)::before,
+.tournament--kids .bracket__pair:has(.t-match--done)::after {
+  background: var(--logo-blue);
 }
 
 /* Fading the whole slot to 62% lets pastel art through the name. Keep the card
@@ -14300,4 +14473,138 @@ a.plan-pick {
     font-size: 1.05rem;
     border-radius: 14px;
   }
+}
+
+/* A bout opened from Kids Brackets keeps that wallpaper. The adult skin id stays Mock-Tournament. */
+.display.kids-board,
+.controller.kids-board {
+  background-color: #123044;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.display.kids-board.kids-board--dinos,
+.controller.kids-board.kids-board--dinos {
+  background-image: url('/assets/kids/dinos.webp');
+}
+
+.display.kids-board.kids-board--unicorns,
+.controller.kids-board.kids-board--unicorns {
+  background-image: url('/assets/kids/unicorns.webp');
+}
+
+.display.kids-board.kids-board--robots,
+.controller.kids-board.kids-board--robots {
+  background-image: url('/assets/kids/robots.webp');
+}
+
+.display.kids-board.kids-board--space,
+.controller.kids-board.kids-board--space {
+  background-image: url('/assets/kids/space.webp');
+}
+
+.display.kids-board.kids-board--ocean,
+.controller.kids-board.kids-board--ocean {
+  background-image: url('/assets/kids/ocean.webp');
+}
+
+.display.kids-board.kids-board--superheroes,
+.controller.kids-board.kids-board--superheroes {
+  background-image: url('/assets/kids/superheroes.webp');
+}
+
+.controller.kids-board.kids-board--dinos {
+  background-image: linear-gradient(rgba(12, 20, 34, 0.9), rgba(12, 20, 34, 0.94)), url('/assets/kids/dinos.webp');
+}
+
+.controller.kids-board.kids-board--unicorns {
+  background-image: linear-gradient(rgba(12, 20, 34, 0.9), rgba(12, 20, 34, 0.94)), url('/assets/kids/unicorns.webp');
+}
+
+.controller.kids-board.kids-board--robots {
+  background-image: linear-gradient(rgba(12, 20, 34, 0.9), rgba(12, 20, 34, 0.94)), url('/assets/kids/robots.webp');
+}
+
+.controller.kids-board.kids-board--space {
+  background-image: linear-gradient(rgba(12, 20, 34, 0.9), rgba(12, 20, 34, 0.94)), url('/assets/kids/space.webp');
+}
+
+.controller.kids-board.kids-board--ocean {
+  background-image: linear-gradient(rgba(12, 20, 34, 0.9), rgba(12, 20, 34, 0.94)), url('/assets/kids/ocean.webp');
+}
+
+.controller.kids-board.kids-board--superheroes {
+  background-image: linear-gradient(rgba(12, 20, 34, 0.9), rgba(12, 20, 34, 0.94)), url('/assets/kids/superheroes.webp');
+}
+
+.display.kids-board .bout--blue,
+.display.kids-board .bout--white {
+  background: rgba(255, 255, 255, 0.92);
+  color: #1b2433;
+}
+
+.display.kids-board .bout--blue {
+  box-shadow: inset 12px 0 0 var(--logo-blue);
+}
+
+.display.kids-board .bout--white {
+  box-shadow: inset 12px 0 0 #d7deea;
+}
+
+.display.kids-board .bout--blue .bout__who h1,
+.display.kids-board .bout--blue .bout__who h1 a,
+.display.kids-board .bout--blue .bout__who p,
+.display.kids-board .bout--blue .bout__who p a,
+.display.kids-board .bout--white .bout__who h1,
+.display.kids-board .bout--white .bout__who h1 a,
+.display.kids-board .bout--white .bout__who p,
+.display.kids-board .bout--white .bout__who p a {
+  color: #1b2433;
+}
+
+.display.kids-board .display__mid,
+.display.kids-board.origin-suite .display__mid {
+  background: #0c1422;
+  border-radius: 16px;
+  color: #fff;
+}
+
+.display--linked .display__chrome .chip--keep,
+.controller .chrome .chip--keep {
+  min-height: 48px;
+  padding: 0.4rem 1.05rem;
+  font-size: 1rem;
+  font-weight: 800;
+  opacity: 1;
+  background: var(--logo-blue);
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  border-color: transparent;
+}
+
+.play--tv.play--idle.display--linked .display__chrome {
+  opacity: 1;
+  pointer-events: none;
+}
+
+.play--tv.play--idle.display--linked .display__chrome .chip:not(.chip--keep),
+.play--tv.play--idle.display--linked .display__chrome .play-fs {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.play--tv.play--idle.display--linked .display__chrome .chip--keep {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Score toast sits in the clock band, left of center, so it does not cover POINTS. */
+.display > .tv-tip {
+  top: 50%;
+  left: calc(0.55rem + var(--safe-l));
+  right: auto;
+  transform: translateY(-50%);
+  max-width: min(16rem, 24vw);
+  z-index: 7;
 }

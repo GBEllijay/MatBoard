@@ -23,6 +23,7 @@ import {
   type EndCue,
 } from '../lib/audio';
 import { declareMatchOutcome, scoreboardPath, visibleOutcomeBanner } from '../lib/bracketBout';
+import { kidsBoardClass } from '../lib/kidsScoreboard';
 import { openDisplayWindow, openOrCastDisplay } from '../lib/cast';
 import { minutesToMs, formatMmSs, secondsToMs } from '../lib/format';
 import { competitorFocus, displayFocusId, parseDisplayFocus } from '../lib/matchFocus';
@@ -114,7 +115,11 @@ export function MatchControllerPage() {
   const onCast = async () => {
     void unlockAudio();
     try {
-      const mode = await openOrCastDisplay({ fromSuite: suite.fromSuite, whiteBoard: board.whiteBoard });
+      const mode = await openOrCastDisplay({
+        fromSuite: suite.fromSuite,
+        whiteBoard: board.whiteBoard,
+        kidsSkin: board.kidsSkin,
+      });
       setCastNote(
         mode === 'cast'
           ? 'Display sent to the chosen screen.'
@@ -126,17 +131,27 @@ export function MatchControllerPage() {
   };
 
   return (
-    <main className={`controller ${scoreboardSkinClass(skin)}${suite.fromSuite ? ' origin-suite' : ''}`}>
+    <main className={`controller ${scoreboardSkinClass(skin)}${board.kidsSkin ? ` ${kidsBoardClass(board.kidsSkin)}` : ''}${suite.fromSuite ? ' origin-suite' : ''}`}>
       <PlayExitMark to={suite.homePath} />
       <Chrome
         right={
           <>
             {linkedId ? (
-              <Link to={withSuiteFrom('/tournament', suite.fromSuite)} className="chip">
+              <Link to={withSuiteFrom('/tournament', suite.fromSuite)} className="chip chip--keep">
                 Back to bracket
               </Link>
             ) : null}
-            <button type="button" className="chip" onClick={() => openDisplayWindow({ fromSuite: suite.fromSuite, whiteBoard: board.whiteBoard })}>
+            <button
+              type="button"
+              className="chip"
+              onClick={() =>
+                openDisplayWindow({
+                  fromSuite: suite.fromSuite,
+                  whiteBoard: board.whiteBoard,
+                  kidsSkin: board.kidsSkin,
+                })
+              }
+            >
               Display
             </button>
             <button type="button" className="chip chip--gold" onClick={() => void onCast()}>
@@ -146,7 +161,7 @@ export function MatchControllerPage() {
         }
       />
 
-      {plainWhite ? null : (
+      {plainWhite || board.kidsSkin ? null : (
         <section className="kids-switch-panel" aria-label="Scoreboard skin">
           <p className="cue-preview-label">Scoreboard skin</p>
           <ScoreboardSkinSwitcher skin={match.skin} />

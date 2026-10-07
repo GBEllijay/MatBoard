@@ -9,6 +9,7 @@ import {
   applyUndoOutcome,
   applyNewBracket,
   applyRenameBracket,
+  applySeedNames,
   applySlotName,
   applySwitchBracket,
   bracketHasCompetitors,
@@ -26,6 +27,7 @@ import {
   matchHasBye,
   matchIdsForSize,
   maxCompetitors,
+  parseNameList,
   nextSlot,
   normalizeLibrary,
   seedPlaceholder,
@@ -200,6 +202,37 @@ describe('flexible bracket size', () => {
     board = applyMatchOutcome(board, 'sf-0', 'a', { call: 'win', method: 'points' });
     assert.equal(board.entries['final-0-a'], 'Alex');
     assert.equal(board.results['sf-0']?.winnerSide, 'a');
+  });
+});
+
+describe('paste names into seed order', () => {
+  it('splits lines, and commas only when the paste is one line', () => {
+    assert.deepEqual(parseNameList('Ana\nBen\n\nCam'), ['Ana', 'Ben', 'Cam']);
+    assert.deepEqual(parseNameList('Ana, Ben, Cam'), ['Ana', 'Ben', 'Cam']);
+    assert.deepEqual(parseNameList('Ana, Ben\nCam'), ['Ana, Ben', 'Cam']);
+    assert.deepEqual(parseNameList('  '), []);
+    assert.deepEqual(parseNameList('Ana'), ['Ana']);
+  });
+
+  it('fills slots from a start index and leaves the rest', () => {
+    const board = applySeedNames(defaultTournament(8), ['Ana', 'Ben', 'Cam'], 1);
+    const seeds = seedSlots(board);
+    assert.equal(board.entries[seeds[0]], undefined);
+    assert.equal(board.entries[seeds[1]], 'Ana');
+    assert.equal(board.entries[seeds[2]], 'Ben');
+    assert.equal(board.entries[seeds[3]], 'Cam');
+    assert.equal(board.entries[seeds[4]], undefined);
+  });
+
+  it('ignores names past the draw and refreshes a winner already advanced', () => {
+    let board = applySeedNames(defaultTournament(4), ['Ana', 'Ben', 'Cam', 'Dee']);
+    board = applyMatchOutcome(board, 'sf-0', 'a', { call: 'win', method: 'points' });
+    assert.equal(board.entries['final-0-a'], 'Ana');
+    board = applySeedNames(board, ['Ava'], 0);
+    assert.equal(board.entries['final-0-a'], 'Ava');
+    assert.equal(board.results['sf-0']?.winnerSide, 'a');
+    const extra = applySeedNames(defaultTournament(4), ['A', 'B', 'C', 'D', 'E']);
+    assert.equal(Object.keys(extra.entries).length, 4);
   });
 });
 

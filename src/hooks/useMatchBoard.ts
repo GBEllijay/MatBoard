@@ -1,6 +1,7 @@
 import { useSearchParams } from 'react-router-dom';
 import { linkedBracketMatchId } from '../lib/bracketBout';
 import { masterCarlosOnScoreboard } from '../lib/carlosCelebration';
+import { kidsSkinFromSearch, withKidsSkin } from '../lib/kidsScoreboard';
 import { isBasicCoach } from '../lib/productNames';
 import {
   coachLinkedWhiteBoard,
@@ -34,12 +35,13 @@ export function useMatchBoard() {
   );
   const plainWhite = isPlainWhiteScoreboard(suite.fromSuite, Boolean(linkedId), whiteBoard);
   const showCarlos = masterCarlosOnScoreboard(suite.fromSuite);
+  const kidsSkin = kidsSkinFromSearch(searchParams);
 
   const originPath = (path: string) =>
-    withMatchOrigin(path, { fromSuite: suite.fromSuite, whiteBoard });
+    withKidsSkin(withMatchOrigin(path, { fromSuite: suite.fromSuite, whiteBoard }), kidsSkin);
 
   const skinFor = (skin: ScoreboardSkinId) =>
     visibleScoreboardSkin(skin, suite.fromSuite, Boolean(linkedId), whiteBoard);
 
-  return { suite, linkedId, plainWhite, showCarlos, whiteBoard, originPath, skinFor };
+  return { suite, linkedId, plainWhite, showCarlos, whiteBoard, kidsSkin, originPath, skinFor };
 }

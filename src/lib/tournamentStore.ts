@@ -695,6 +695,44 @@ export function applySlotName(current: TournamentState, id: SlotId, name: string
   return advanceByes(next);
 }
 
+/**
+ * One name per line. A single line with commas is a list too.
+ * Blank lines and empty comma slots are dropped. Extra names past the draw are ignored by the filler.
+ */
+export function parseNameList(raw: string): string[] {
+  const text = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+  if (!text) return [];
+  const lines = text.split('\n').map((line) => line.trim()).filter(Boolean);
+  if (lines.length > 1) return lines;
+  const only = lines[0];
+  if (!only.includes(',')) return [only];
+  return only.split(',').map((part) => part.trim()).filter(Boolean);
+}
+
+/** Write names into seed order, starting at startIndex. Later slots stay as they are. */
+export function applySeedNames(
+  current: TournamentState,
+  names: readonly string[],
+  startIndex = 0,
+): TournamentState {
+  const start = Number.isFinite(startIndex) ? Math.max(0, Math.trunc(startIndex)) : 0;
+  const slots = seedSlots(current);
+  if (!names.length || start >= slots.length) return current;
+  const next = clone(current);
+  const touched = new Set<BracketMatchId>();
+  names.forEach((name, offset) => {
+    const id = slots[start + offset];
+    if (!id) return;
+    writeSlot(next, id, name);
+    const matchId = matchIdFromSlot(id);
+    if (matchId) touched.add(matchId);
+  });
+  for (const matchId of touched) {
+    if (next.results[matchId]) cascadeWinner(next, matchId, new Set());
+  }
+  return advanceByes(next);
+}
+
 export function applyMatchOutcome(
   current: TournamentState,
   matchId: BracketMatchId,
@@ -854,6 +892,10 @@ export function setTournamentTitle(title: string): void {
 
 export function setSlotName(id: SlotId, name: string): void {
   patchActive((board) => applySlotName(board, id, name));
+}
+
+export function fillSeedNames(names: readonly string[], startIndex = 0): void {
+  patchActive((board) => applySeedNames(board, names, startIndex));
 }
 
 export function setMatchOutcome(
