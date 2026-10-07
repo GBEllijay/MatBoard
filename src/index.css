@@ -1966,24 +1966,22 @@ span.role-plan__mark {
 }
 
 /* Worn cotton for the Coach Unlimited brown belt and the Pro black belt.
-   Rounded ends, a stitched border around the whole belt, and a visible weave.
-   Long edges stay straight. A soft worn fade sits only on the short ends.
-   The rank bar is full height, and the stitch is drawn over it. */
+   Rounded ends, a quiet stitch on the cloth, and a fine horizontal weave.
+   Long edges stay straight. Rank bars run the full height and cover the stitch. */
 .belt-header--worn .belt-header__belt {
   --bar-white: clamp(0.7rem, 1.15vw, 1.05rem);
   --bar-tail: clamp(0.58rem, 0.95vw, 0.88rem);
-  --bar-end: 16px;
   --rank-width: clamp(6.6rem, 21%, 10.6rem);
   --end-radius: clamp(8px, 0.7vw, 13px);
   --cloth: #141416;
-  --band: color-mix(in srgb, var(--cloth) 70%, white);
-  --stitch: color-mix(in srgb, var(--cloth) 34%, white);
+  --band: color-mix(in srgb, var(--cloth) 78%, white);
+  --stitch: color-mix(in srgb, var(--band) 93%, white);
+  container-type: inline-size;
   position: relative;
   overflow: hidden;
   border-radius: var(--end-radius);
   background: transparent;
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.16),
     0 8px 16px rgba(0, 0, 0, 0.5),
     0 2px 4px rgba(0, 0, 0, 0.4);
 }
@@ -1997,18 +1995,20 @@ span.role-plan__mark {
   border-radius: inherit;
   box-shadow:
     inset 0 0 0 5px var(--band),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    inset 0 -5px 7px rgba(0, 0, 0, 0.34);
+    inset 0 -2px 4px rgba(0, 0, 0, 0.16);
 }
 
 .belt-header--worn .belt-header__belt::after {
   content: "";
   position: absolute;
-  inset: 2px;
+  inset: 3px;
   z-index: 5;
   pointer-events: none;
-  border-radius: calc(var(--end-radius) - 2px);
-  border: 1px dashed var(--stitch);
+  border-radius: calc(var(--end-radius) - 3px);
+  border: 1px solid var(--stitch);
+  /* Short stitches. The rank bar paints over this and breaks the line. */
+  -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 2px, transparent 2px 6px);
+  mask-image: repeating-linear-gradient(90deg, #000 0 2px, transparent 2px 6px);
 }
 
 .belt-header--worn.belt-header--brown .belt-header__belt {
@@ -2025,13 +2025,12 @@ span.role-plan__mark {
   border-radius: inherit;
   background-color: var(--cloth);
   background-image:
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.18), transparent 28%, transparent 68%, rgba(0, 0, 0, 0.28)),
-    linear-gradient(to right, rgba(255, 255, 255, 0.24), transparent 14px),
-    linear-gradient(to left, rgba(255, 255, 255, 0.24), transparent 14px),
+    linear-gradient(to right, rgba(255, 255, 255, 0.05), transparent 8px),
+    linear-gradient(to left, rgba(255, 255, 255, 0.05), transparent 8px),
     url('/belt-weave.png');
-  background-size: 100% 100%, 14px 100%, 14px 100%, 180px 6px;
-  background-position: center, left center, right center, 0 0;
-  background-repeat: no-repeat, no-repeat, no-repeat, repeat;
+  background-size: 8px 100%, 8px 100%, 160px 4px;
+  background-position: left center, right center, 0 0;
+  background-repeat: no-repeat, no-repeat, repeat;
 }
 
 .belt-header--worn .belt-header__title {
@@ -2059,12 +2058,25 @@ span.role-plan__mark {
 
 .belt-header--worn .belt-header__tip {
   position: relative;
-  z-index: 3;
+  z-index: auto;
   flex: 0 0 var(--rank-width);
   width: var(--rank-width);
   max-width: none;
   min-width: 0;
-  background: #101012;
+  background: transparent;
+}
+
+.belt-header--worn.belt-header--black .belt-header__belt {
+  /* Keep the white | red | white block the same width, and match the cloth tip to the brown tail. */
+  --rank-width: calc(clamp(6.6rem, 21%, 10.6rem) - 16px + 5.4cqw);
+}
+
+.belt-header--worn.belt-header--black .belt-header__stripe,
+.belt-header--worn.belt-header--black .belt-header__rank--red,
+.belt-header--worn.belt-header--brown .belt-header__rank--striped {
+  position: relative;
+  z-index: 6;
+  align-self: stretch;
 }
 
 .belt-header--worn.belt-header--black .belt-header__stripe {
@@ -2081,13 +2093,9 @@ span.role-plan__mark {
 }
 
 .belt-header--worn .belt-header__end {
-  flex: 0 0 var(--bar-end);
+  flex: 0 0 5.4cqw;
+  width: 5.4cqw;
   background: transparent;
-}
-
-.belt-header--worn.belt-header--brown .belt-header__end {
-  /* Cloth after the black bar, about a fifth of the tip. */
-  flex-basis: 22%;
 }
 
 .belt-header--worn.belt-header--brown .belt-header__tip {
