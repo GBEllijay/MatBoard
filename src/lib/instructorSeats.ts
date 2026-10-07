@@ -403,6 +403,34 @@ function readSeat(value: unknown): InstructorSeat | null {
   };
 }
 
+function permissionsEqual(left: InstructorPermissions, right: InstructorPermissions): boolean {
+  return INSTRUCTOR_PERMISSION_FIELDS.every((field) => left[field.key] === right[field.key]);
+}
+
+/**
+ * Named role with no permission object uses that role's menu ceiling.
+ * An explicit object stays the ceiling, including switches turned off.
+ */
+function permissionsForInvite(
+  presetId: InstructorPresetId | null,
+  permissions?: Partial<InstructorPermissions> | null,
+): InstructorPermissions {
+  if (permissions) return normalizeInstructorPermissions(permissions);
+  if (presetId) return instructorPresetPermissions(presetId);
+  return defaultInstructorPermissions();
+}
+
+/**
+ * Issuing a named role used to store the coach factory switches.
+ * That signature is not an owner edit. Read it as the role's menus.
+ * Any other difference, including media turned off, stays as saved.
+ */
+function repairUntouchedPreset(seat: InstructorSeat): InstructorSeat {
+  if (!seat.presetId || permissionsMatchPreset(seat.presetId, seat.permissions)) return seat;
+  if (!permissionsEqual(seat.permissions, DEFAULT_INSTRUCTOR_PERMISSIONS)) return seat;
+  return { ...seat, permissions: instructorPresetPermissions(seat.presetId) };
+}
+
 function readArchive(): SeatArchive {
   try {
     if (typeof localStorage === 'undefined') return emptyArchive();
@@ -416,7 +444,8 @@ function readArchive(): SeatArchive {
         : `device-${newId()}`;
     const seats = parsed.seats
       .map(readSeat)
-      .filter((seat): seat is InstructorSeat => seat !== null);
+      .filter((seat): seat is InstructorSeat => seat !== null)
+      .map(repairUntouchedPreset);
     return { version: 1, deviceGymId, seats };
   } catch {
     return emptyArchive();
@@ -541,7 +570,7 @@ export function issueInstructorInvite(input: {
     status: 'invited',
     issuedAt: input.now ?? Date.now(),
     presetId: normalizeInstructorPresetId(input.presetId),
-    permissions: normalizeInstructorPermissions(input.permissions),
+    permissions: permissionsForInvite(normalizeInstructorPresetId(input.presetId), input.permissions),
     inviteToken: token,
   };
   archive.seats.push(seat);
@@ -791,7 +820,9 @@ export function readCurrentSeat(): InstructorSeat | null {
   const id = readSessionSeatId();
   const seat = id ? readArchive().seats.find((row) => row.id === id) : undefined;
   const live = seat && seat.status !== 'revoked' ? cloneSeat(seat) : null;
-  const key = live ? `${live.id}:${live.status}:${live.email}:${JSON.stringify(live.permissions)}` : '';
+  const key = live
+    ? `${live.id}:${live.status}:${live.presetId ?? ''}:${live.email}:${JSON.stringify(live.permissions)}`
+    : '';
   if (key === seatSnapshotKey) return seatSnapshot;
   seatSnapshotKey = key;
   seatSnapshot = live;

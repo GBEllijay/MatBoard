@@ -17,12 +17,11 @@ import {
 } from '../lib/comingSoonAds';
 import {
   COACH_HOME_DESCRIPTION,
-  GYM_CONSOLE_NAME,
   HOME_MOTTO,
   PRO_HOME_LINES,
   WHITE_HOME_DESCRIPTION,
   coachDoorOpen,
-  visibleProHubs,
+  homeConsoleLabel,
 } from '../lib/productNames';
 import { purchasePromptsHidden } from '../lib/instructorSeats';
 import { COACH_PRICE_LINE, PRO_PRICE_LINE } from '../lib/productPrices';
@@ -32,7 +31,7 @@ import { whiteEntryPath } from '../lib/whiteUnlock';
 export function HomePage() {
   const door = useSeatDoor();
   const proUnlocked = door.proUnlocked;
-  const proHubs = visibleProHubs(door);
+  const consoleLabel = homeConsoleLabel(door);
   const whiteUnlocked = useWhiteUnlocked();
   const seat = useCurrentSeat();
   const seated = purchasePromptsHidden(seat);
@@ -96,18 +95,18 @@ export function HomePage() {
             </article>
           )}
 
-          {proHubs.length > 0 ? (
+          {consoleLabel ? (
             <article className="mode-card mode-card--pro">
               <Link
                 className="mode-card__hit"
                 to="/pro"
                 tabIndex={-1}
-                aria-label={`Open ${GYM_CONSOLE_NAME}`}
+                aria-label={consoleLabel}
               />
               <ProHomeCopy />
               <div className="mode-card__actions">
                 <Link className="btn btn--white" to="/pro">
-                  Open Console
+                  {consoleLabel}
                 </Link>
               </div>
             </article>

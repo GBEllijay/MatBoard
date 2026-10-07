@@ -18,12 +18,16 @@ import {
   stripInviteFromAddress,
 } from './lib/instructorSeats';
 import {
+  MEDIA_CONSOLE_ROUTES,
+  MEDIA_FOLDER_ROUTES,
   coachDoorOpen,
   coachUnlimitedDoorOpen,
   mediaConsoleDoorOpen,
+  mediaFolderDoorOpen,
   ownerProHubOpen,
   proDoorOpen,
   visibleProHubs,
+  type MediaFolderId,
 } from './lib/productNames';
 import { proPurchaseReturn } from './lib/proEntitlement';
 import { consumeUnlockQueryNow } from './lib/proUnlock';
@@ -166,6 +170,22 @@ function WhiteLiveRoute({ children }: { children: ReactNode }) {
     return <Navigate to={WHITE_BUY_PATH} replace />;
   }
   return children;
+}
+
+/** Gallery, Events, or Pro Shop. A closed seat goes to the lock screen, not home. */
+function MediaFolderRoute({ folder }: { folder: MediaFolderId }) {
+  const door = useSeatDoor();
+  if (!mediaFolderDoorOpen(door, door.seat?.permissions ?? null, folder)) {
+    return <Navigate to="/coming-soon" replace />;
+  }
+  return <Navigate to={`/slideshow?folder=${folder}`} replace />;
+}
+
+/** `/media`, `/console`, and `/media-console` open the same seat console as home. */
+function MediaConsoleEntryRoute() {
+  const door = useSeatDoor();
+  if (!mediaConsoleDoorOpen(door)) return <Navigate to="/coming-soon" replace />;
+  return <Navigate to="/pro" replace />;
 }
 
 function CoachRoute({ children }: { children: ReactNode }) {
@@ -445,6 +465,12 @@ export default function App() {
           </MediaConsoleRoute>
         }
       />
+      {MEDIA_FOLDER_ROUTES.map((route) => (
+        <Route key={route.path} path={route.path} element={<MediaFolderRoute folder={route.folder} />} />
+      ))}
+      {MEDIA_CONSOLE_ROUTES.map((path) => (
+        <Route key={path} path={path} element={<MediaConsoleEntryRoute />} />
+      ))}
       <Route
         path="/screensaver"
         element={

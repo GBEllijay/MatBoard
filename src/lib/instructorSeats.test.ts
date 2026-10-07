@@ -5,6 +5,13 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { CollaborationGate } from '../components/CollaborationGate.ts';
 import { GYM_NAME_STORAGE_KEY, writeGymName } from './gymName.ts';
+import {
+  consoleHubs,
+  homeConsoleLabel,
+  mediaConsoleDoorOpen,
+  mediaFolderDoorOpen,
+  ownerProHubOpen,
+} from './productNames.ts';
 import { SITE_FEEDBACK_EMAIL } from './siteFooter.ts';
 import {
   DEFAULT_INSTRUCTOR_PERMISSIONS,
@@ -25,6 +32,7 @@ import {
   isProgramDirectorSeat,
   issueInstructorInvite,
   menuCloudSharing,
+  seatGrantsCoachMenus,
   seatGrantsMediaConsole,
   seatMenuAllowed,
   peekInstructorInvite,
@@ -784,4 +792,125 @@ test('seat chrome stays off the gym TV and purchase prompts follow the live seat
   assert.match(css, /\.home p\.binder-list__seats/);
   assert.match(unlimited, /<DriveConnectCard \/>/);
   assert.doesNotMatch(unlimited, /seat \? null : <DriveConnectCard/);
+});
+
+function doorFrom(proUnlocked: boolean, seat: InstructorSeat) {
+  return {
+    proUnlocked,
+    seated: seat.status !== 'revoked',
+    seatGrantsMedia: seatGrantsMediaConsole(seat),
+    programDirectorSeat: isProgramDirectorSeat(seat),
+    coachMenus: seatGrantsCoachMenus(seat),
+  };
+}
+
+test('a Program Director invite stores gallery, events, and Pro Shop even when permissions are omitted', () => {
+  reset();
+  const issued = issueInstructorInvite({
+    email: 'program-director-bot-one-retest@example.com',
+    presetId: 'program-director',
+    origin: 'https://advantagebjjtimer.com',
+    token: 'pd-retest',
+  });
+  assert.equal(issued.ok, true);
+  if (!issued.ok) return;
+  assert.equal(issued.seat.permissions.galleryUpload, true);
+  assert.equal(issued.seat.permissions.eventsAccess, true);
+  assert.equal(issued.seat.permissions.proShopAccess, true);
+  assert.equal(issued.seat.permissions.dailyLessonPlanAccess, false);
+  const accepted = acceptInstructorInvite('pd-retest');
+  assert.equal(accepted.ok, true);
+  if (!accepted.ok) return;
+  const door = doorFrom(false, accepted.seat);
+  assert.equal(mediaConsoleDoorOpen(door), true);
+  assert.equal(homeConsoleLabel(door), 'Open Media Console');
+  assert.deepEqual(
+    consoleHubs(door, accepted.seat.permissions).map((hub) => hub.title),
+    ['Gallery', 'Events', 'Pro Shop'],
+  );
+  assert.equal(mediaFolderDoorOpen(door, accepted.seat.permissions, 'events'), true);
+  assert.equal(ownerProHubOpen(false, true), false);
+  assert.equal(ownerProHubOpen(true, true), false);
+  const unlocked = doorFrom(true, accepted.seat);
+  assert.equal(mediaConsoleDoorOpen(unlocked), true);
+  assert.equal(homeConsoleLabel(unlocked), 'Open Media Console');
+
+  const home = readFileSync(new URL('../pages/Home.tsx', import.meta.url), 'utf8');
+  const pro = readFileSync(new URL('../pages/Pro.tsx', import.meta.url), 'utf8');
+  const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+  assert.match(home, /homeConsoleLabel\(door\)/);
+  assert.match(home, /\{consoleLabel\}/);
+  assert.match(pro, /consoleHubs\(door, door\.seat\?\.permissions/);
+  assert.match(pro, /MEDIA_CONSOLE_NAME/);
+  assert.match(app, /MEDIA_FOLDER_ROUTES/);
+  assert.match(app, /MEDIA_CONSOLE_ROUTES/);
+  assert.match(app, /MediaFolderRoute/);
+  assert.match(app, /\/coming-soon/);
+});
+
+test('a coach seat without media stays shut when Pro is locked', () => {
+  reset();
+  const issued = issueInstructorInvite({
+    email: 'coach-bot@example.com',
+    presetId: 'coach',
+    origin: 'https://advantagebjjtimer.com',
+    token: 'coach-locked',
+  });
+  assert.equal(issued.ok, true);
+  if (!issued.ok) return;
+  const accepted = acceptInstructorInvite('coach-locked');
+  assert.equal(accepted.ok, true);
+  if (!accepted.ok) return;
+  const door = doorFrom(false, accepted.seat);
+  assert.equal(seatGrantsMediaConsole(accepted.seat), false);
+  assert.equal(mediaConsoleDoorOpen(door), false);
+  assert.equal(homeConsoleLabel(door), null);
+  assert.deepEqual(consoleHubs(door, accepted.seat.permissions), []);
+  assert.equal(mediaFolderDoorOpen(door, accepted.seat.permissions, 'gallery'), false);
+});
+
+test('a stored Program Director binder with factory coach switches is read as the role menus', () => {
+  reset();
+  localStorage.setItem(
+    INSTRUCTOR_SEATS_STORAGE_KEY,
+    JSON.stringify({
+      version: 1,
+      deviceGymId: 'device-pd',
+      seats: [
+        {
+          id: 'pd-old',
+          gymId: 'device-pd',
+          email: 'program-director-bot-one-retest@example.com',
+          status: 'active',
+          issuedAt: 1,
+          presetId: 'program-director',
+          permissions: defaultInstructorPermissions(),
+          inviteToken: 'pd-old',
+        },
+      ],
+    }),
+  );
+  localStorage.setItem(INSTRUCTOR_SEAT_SESSION_KEY, JSON.stringify({ version: 1, seatId: 'pd-old' }));
+  const seat = readCurrentSeat();
+  assert.ok(seat);
+  if (!seat) return;
+  assert.equal(instructorSeatBinderLabel(seat.presetId, seat.permissions), 'Program director');
+  assert.equal(seat.permissions.galleryUpload, true);
+  assert.equal(seat.permissions.eventsAccess, true);
+  assert.equal(seat.permissions.proShopAccess, true);
+  const door = doorFrom(false, seat);
+  assert.equal(homeConsoleLabel(door), 'Open Media Console');
+
+  const stripped = {
+    ...instructorPresetPermissions('program-director'),
+    galleryUpload: false,
+    eventsAccess: false,
+    proShopAccess: false,
+  };
+  const saved = updateInstructorSeatPermissions('pd-old', stripped, 'program-director');
+  assert.equal(saved.ok, true);
+  const after = listInstructorSeats().find((row) => row.id === 'pd-old');
+  assert.equal(after?.permissions.galleryUpload, false);
+  assert.equal(after?.permissions.eventsAccess, false);
+  assert.equal(seatGrantsMediaConsole(after ?? null), false);
 });

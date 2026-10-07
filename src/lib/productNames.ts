@@ -414,6 +414,100 @@ export function visibleProHubs(input: ProSurfaceInput): readonly (typeof PRO_HUB
   return hubs;
 }
 
+export type MediaFolderId = 'gallery' | 'events' | 'shop';
+
+export type MediaPermissionFlags = {
+  galleryUpload: boolean;
+  eventsAccess: boolean;
+  proShopAccess: boolean;
+};
+
+export type ConsoleHub = {
+  title: string;
+  to: string;
+  belt: 'purple' | 'brown' | 'black' | 'tournament';
+};
+
+const MEDIA_SURFACES: readonly {
+  title: string;
+  to: string;
+  folder: MediaFolderId;
+  permission: keyof MediaPermissionFlags;
+}[] = [
+  { title: 'Gallery', to: '/gallery', folder: 'gallery', permission: 'galleryUpload' },
+  { title: 'Events', to: '/events', folder: 'events', permission: 'eventsAccess' },
+  { title: 'Pro Shop', to: '/proshop', folder: 'shop', permission: 'proShopAccess' },
+];
+
+/** Paths that open one media folder. `/pro-shop` shares the Pro Shop folder. */
+export const MEDIA_FOLDER_ROUTES: readonly { path: string; folder: MediaFolderId }[] = [
+  { path: '/gallery', folder: 'gallery' },
+  { path: '/events', folder: 'events' },
+  { path: '/proshop', folder: 'shop' },
+  { path: '/pro-shop', folder: 'shop' },
+];
+
+/** Paths that open the seat's Media Console on `/pro`. */
+export const MEDIA_CONSOLE_ROUTES = ['/media', '/media-console', '/console'] as const;
+
+/**
+ * Home button when any Pro hub is open.
+ * A seat whose only hub is Media Console is named that way.
+ * The owner console keeps Open Console.
+ */
+export function homeConsoleLabel(input: ProSurfaceInput): 'Open Media Console' | 'Open Console' | null {
+  const hubs = visibleProHubs(input);
+  if (hubs.length === 0) return null;
+  if (hubs.every((hub) => hub.title === MEDIA_CONSOLE_NAME)) return 'Open Media Console';
+  return 'Open Console';
+}
+
+/** One granted folder. Owner Pro unlock opens every folder. A seat uses its flags. */
+export function mediaFolderDoorOpen(
+  input: ProSurfaceInput,
+  permissions: MediaPermissionFlags | null,
+  folder: MediaFolderId,
+): boolean {
+  if (!mediaConsoleDoorOpen(input)) return false;
+  if (!input.seated) return true;
+  if (!permissions) return false;
+  const surface = MEDIA_SURFACES.find((item) => item.folder === folder);
+  return surface ? permissions[surface.permission] : false;
+}
+
+/** Gallery, Events, and Pro Shop links for a seated Media Console. Owners keep the single hub. */
+export function visibleMediaSurfaces(
+  input: ProSurfaceInput,
+  permissions: MediaPermissionFlags | null,
+): readonly { title: string; to: string; folder: MediaFolderId; belt: 'purple' }[] {
+  if (!input.seated) return [];
+  return MEDIA_SURFACES.filter((surface) => mediaFolderDoorOpen(input, permissions, surface.folder)).map(
+    (surface) => ({
+      title: surface.title,
+      to: surface.to,
+      folder: surface.folder,
+      belt: 'purple' as const,
+    }),
+  );
+}
+
+/**
+ * Pro page links.
+ * A seated media grant replaces the single slideshow hub with Gallery, Events, and Pro Shop.
+ * Owner-only hubs stay out. Coach Unlimited stays when that door is open.
+ */
+export function consoleHubs(
+  input: ProSurfaceInput,
+  permissions: MediaPermissionFlags | null,
+): readonly ConsoleHub[] {
+  const surfaces = visibleMediaSurfaces(input, permissions);
+  if (surfaces.length === 0) return visibleProHubs(input);
+  return [
+    ...surfaces.map((surface) => ({ title: surface.title, to: surface.to, belt: surface.belt })),
+    ...visibleProHubs(input).filter((hub) => !hub.to.startsWith('/slideshow')),
+  ];
+}
+
 /**
  * Coach tools. The owner purchase lock opens them, and so does a live invite seat.
  * The seat still does not open owner-only Pro hubs.

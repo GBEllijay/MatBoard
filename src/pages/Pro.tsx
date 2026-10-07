@@ -8,7 +8,7 @@ import { SiteFooter } from '../components/SiteFooter';
 import { useSeatDoor } from '../hooks/useSeatDoor';
 import { CHECKOUT_BUY_PATH } from '../lib/checkoutProducts';
 import { PRO_LIST_PRICE_CENTS, PRO_MONTHLY_PRICE_CENTS } from '../lib/productPrices';
-import { MEDIA_CONSOLE_NAME, PRO_LADDER_DETAIL, visibleProHubs } from '../lib/productNames';
+import { MEDIA_CONSOLE_NAME, PRO_LADDER_DETAIL, consoleHubs } from '../lib/productNames';
 import { formatUsdFromCents } from '../lib/whitePurchase';
 import { purchasePromptsHidden } from '../lib/instructorSeats';
 import { lockPro } from '../lib/proUnlock';
@@ -16,8 +16,9 @@ import { lockPro } from '../lib/proUnlock';
 export function ProPage() {
   const navigate = useNavigate();
   const door = useSeatDoor();
-  const hubs = visibleProHubs(door);
+  const hubs = consoleHubs(door, door.seat?.permissions ?? null);
   const seat = useCurrentSeat();
+  const mediaSeat = hubs.length > 0 && hubs.every((hub) => hub.belt === 'purple');
 
   return (
     <main className="home home--pro">
@@ -25,8 +26,12 @@ export function ProPage() {
         <HomeMark to="/" />
 
         <nav className="home__modes" aria-label="Advantage Pro">
-          <BeltHeader kind="black" title="Advantage Pro" blurb={PRO_LADDER_DETAIL} />
-          <ProToolboxCard hubs={hubs} />
+          <BeltHeader
+            kind={mediaSeat ? 'purple' : 'black'}
+            title={mediaSeat ? MEDIA_CONSOLE_NAME : 'Advantage Pro'}
+            blurb={mediaSeat ? hubs.map((hub) => hub.title).join(', ') : PRO_LADDER_DETAIL}
+          />
+          <ProToolboxCard hubs={hubs} label={mediaSeat ? MEDIA_CONSOLE_NAME : 'Advantage Pro hubs'} />
         </nav>
 
         <div className="home__hints">
