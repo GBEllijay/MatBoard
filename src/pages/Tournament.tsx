@@ -1,9 +1,9 @@
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { BeltRail } from '../components/BeltRail';
 import { EmptyHint } from '../components/EmptyHint';
 import { FullscreenChip } from '../components/FullscreenChip';
-import { KidsBracketChrome } from '../components/KidsBracketChrome';
+import { KidsBracketChrome, KidsMascotDock } from '../components/KidsBracketChrome';
 import { KidsScoreboardSwitcher } from '../components/KidsScoreboardSwitcher';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { OutcomePickSheet } from '../components/OutcomeCalls';
@@ -30,9 +30,14 @@ import { DEFAULT_BRACKET_THEME, setBracketTheme } from '../lib/bracketTheme';
 import {
   KIDS_BRACKETS_SKINS_LABEL,
   kidsBracketChromeOn,
+  kidsBracketScoring,
   kidsLiveLine,
+  kidsShowMascot,
+  kidsSkinChromeHidden,
+  kidsWinLines,
   kidsWinState,
 } from '../lib/kidsScoreboard';
+import { isSheetLayerOpen, subscribeSheetLayer } from '../lib/sheetLayer';
 import { competitorCards, rosterGymForName, studentRosterCards } from '../lib/rosterStore';
 import {
   isBasicCoach,
@@ -123,6 +128,13 @@ export function TournamentPage() {
   const kidsWin = kidsCelebration.show;
   const kidsChampion = kidsCelebration.name;
   const kidsScore = kidsCelebration.scoreLine;
+  const sheetOpen = useSyncExternalStore(subscribeSheetLayer, isSheetLayerOpen, () => false);
+  const skinChromeHidden = kidsSkinChromeHidden({
+    fullscreen: fs.active,
+    sheetOpen,
+    scoring: kidsBracketScoring(liveMatchId, liveMatchId ? Boolean(tournament.results[liveMatchId]) : true),
+  });
+  const showMascot = kidsShowMascot(kidsOn, kids.mascot, kidsChampion, skinChromeHidden);
   const champLabel = kidsWin ? kidsChampion : champion;
   const kidsLive =
     kidsOn && liveMatchId && !kidsWin && !tournament.results[liveMatchId]
@@ -242,6 +254,7 @@ export function TournamentPage() {
           </label>
         </div>
         <div className="tournament__actions">
+          {fromSuite ? <KidsScoreboardSwitcher prefs={kids} suppressed={skinChromeHidden} /> : null}
           {plainCoach ? null : (
             <div className="tournament__theme" role="radiogroup" aria-label="Bracket theme">
               <button
@@ -311,8 +324,8 @@ export function TournamentPage() {
       <p className="tournament__hint">
         {kidsOn ? (
           <>
-            {KIDS_BRACKETS_SKINS_LABEL} paints this bracket. Pick a background, then fullscreen for the gym TV.
-            Grand Master Carlos comes in from the left only after a champion, with "Bom trabalho!"
+            {KIDS_BRACKETS_SKINS_LABEL} paints this bracket. Skin in the toolbar opens the backgrounds.
+            Grand Master Carlos stays in the corner after a champion, with "Bom trabalho!" Turn him off from Skin.
           </>
         ) : (
           <>
@@ -341,8 +354,6 @@ export function TournamentPage() {
           <KidsBracketChrome
             skin={kids.skin}
             win={kidsWin}
-            champion={kidsChampion}
-            scoreLine={kidsScore}
             liveLine={kidsLive}
             liveMatch={kidsLive ? match : null}
           />
@@ -416,11 +427,7 @@ export function TournamentPage() {
         </div>
       </div>
 
-      {fromSuite ? (
-        <div className="kids-switch-row">
-          <KidsScoreboardSwitcher prefs={kids} />
-        </div>
-      ) : null}
+      {showMascot ? <KidsMascotDock lines={kidsWinLines(kidsChampion, kidsScore)} /> : null}
 
       <Sheet
         open={namesOpen}
@@ -885,6 +892,7 @@ function SlotRow({ matchId, side }: { matchId: BracketMatchId; side: MatchSide }
         </div>
       )}
       <OutcomePickSheet
+        portal
         open={sheet}
         title={sheet === 'dq' ? `${label} DQ` : `${label} win`}
         onClose={() => setSheet(null)}

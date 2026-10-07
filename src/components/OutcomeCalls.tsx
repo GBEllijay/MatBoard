@@ -18,11 +18,13 @@ type Props = {
   onClose: () => void;
   onPickWin: (method: WinMethod) => void;
   onPickDq: (reason: DqReason) => void;
+  /** Bracket cards trap fixed sheets. Portal so Decision is not stuck under chrome. */
+  portal?: boolean;
 };
 
-export function OutcomePickSheet({ open, title, onClose, onPickWin, onPickDq }: Props) {
+export function OutcomePickSheet({ open, title, onClose, onPickWin, onPickDq, portal = false }: Props) {
   return (
-    <Sheet open={Boolean(open)} title={title} onClose={onClose}>
+    <Sheet open={Boolean(open)} title={title} onClose={onClose} portal={portal}>
       {open === 'win' ? (
         <div className="outcome-picks" role="list">
           {WIN_METHODS.map((method) => (
