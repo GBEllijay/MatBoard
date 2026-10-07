@@ -2012,12 +2012,8 @@ span.role-plan__mark {
 }
 
 .belt-header--worn.belt-header--brown .belt-header__belt {
-  --stripe-w: 6px;
-  --stripe-gap: 6px;
-  --stripe-margin: 8px;
-  --rank-width: calc(
-    (var(--stripe-margin) * 2) + (var(--stripe-w) * 4) + (var(--stripe-gap) * 3) + var(--bar-end)
-  );
+  /* Black bar is about 19% of the belt. The cloth tail is the rest of the tip. */
+  --rank-width: 24.5%;
   --cloth: #583926;
 }
 
@@ -2033,7 +2029,7 @@ span.role-plan__mark {
     linear-gradient(to right, rgba(255, 255, 255, 0.24), transparent 14px),
     linear-gradient(to left, rgba(255, 255, 255, 0.24), transparent 14px),
     url('/belt-weave.png');
-  background-size: 100% 100%, 14px 100%, 14px 100%, 256px 128px;
+  background-size: 100% 100%, 14px 100%, 14px 100%, 180px 6px;
   background-position: center, left center, right center, 0 0;
   background-repeat: no-repeat, no-repeat, no-repeat, repeat;
 }
@@ -2047,6 +2043,17 @@ span.role-plan__mark {
   /* Same size as the Pro header. Two lines, tight leading, still inside the belt. */
   .belt-header--worn.belt-header--brown .belt-header__title {
     line-height: 1.1;
+  }
+}
+
+@media (min-width: 900px) {
+  /* Examples are about 60-65px tall at 1024px wide, and grow with the screen. */
+  .belt-header--worn .belt-header__belt {
+    min-height: clamp(3.9rem, 6vw, 7.5rem);
+  }
+
+  .belt-header--worn .belt-header__title {
+    font-size: clamp(1.55rem, 2.3vw, 2.4rem);
   }
 }
 
@@ -2078,6 +2085,11 @@ span.role-plan__mark {
   background: transparent;
 }
 
+.belt-header--worn.belt-header--brown .belt-header__end {
+  /* Cloth after the black bar, about a fifth of the tip. */
+  flex-basis: 22%;
+}
+
 .belt-header--worn.belt-header--brown .belt-header__tip {
   gap: 0;
   padding: 0;
@@ -2087,19 +2099,21 @@ span.role-plan__mark {
 
 .belt-header--worn.belt-header--brown .belt-header__rank--striped {
   flex: 1 1 auto;
-  display: flex;
+  display: grid;
+  grid-template-columns: 16% 1.15fr 1fr 1.15fr 1fr 1.15fr 1fr 1.15fr 16%;
   align-items: stretch;
-  justify-content: center;
-  gap: var(--stripe-gap);
-  padding-inline: var(--stripe-margin);
   background: #121214;
 }
 
 .belt-header--worn .belt-header__degree {
-  flex: 0 0 var(--stripe-w);
-  width: var(--stripe-w);
+  min-width: 0;
   background: #f7f7f5;
 }
+
+.belt-header--worn .belt-header__degree:nth-child(1) { grid-column: 2; }
+.belt-header--worn .belt-header__degree:nth-child(2) { grid-column: 4; }
+.belt-header--worn .belt-header__degree:nth-child(3) { grid-column: 6; }
+.belt-header--worn .belt-header__degree:nth-child(4) { grid-column: 8; }
 
 /* Same quiet line as the HomeMark tagline under the gold mark: regular weight, muted, centered in a short column. */
 .belt-header .belt-header__blurb {
