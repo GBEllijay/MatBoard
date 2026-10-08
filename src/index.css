@@ -4882,6 +4882,17 @@ a.saver-folder--link {
   gap: 0.35rem;
 }
 
+.media-select {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+}
+
+.media-select .btn {
+  width: 100%;
+  min-height: 48px;
+}
+
 .drive-pick__grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -4905,6 +4916,8 @@ a.saver-folder--link {
 
 .drive-pick__cell.is-selected {
   border-color: var(--permission-on);
+  background: color-mix(in srgb, var(--permission-on) 22%, rgba(8, 10, 16, 0.45));
+  box-shadow: inset 0 0 0 2px var(--permission-on);
 }
 
 .drive-pick__cell img,

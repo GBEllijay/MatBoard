@@ -34,7 +34,12 @@ import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import {
   PICK_FROM_DRIVE_LABEL,
+  driveImportChunkSize,
+  driveImportOutcomeNote,
   driveImportProgressLabel,
+  driveImportSaveErrorNote,
+  drivePickEntry,
+  runDriveImport,
   type DriveBrowseMedia,
   type DrivePickKind,
 } from '../lib/driveMediaPicker';
@@ -293,7 +298,7 @@ export function ScreensaverPage() {
     setDrivePickKind(kind);
     setAddKind(kind === 'video' ? 'video' : 'photo');
     setAddOpen(false);
-    if (!driveBinding) {
+    if (drivePickEntry(Boolean(driveBinding)) === 'connect') {
       setDriveConnectOpen(true);
       return;
     }
@@ -315,36 +320,48 @@ export function ScreensaverPage() {
         showBatchError(folderId, 'Sign in to Google Drive again to pick those files.');
         return;
       }
-      const files: { file: File; driveFileId: string }[] = [];
-      for (let index = 0; index < picked.length; index += 1) {
-        const item = picked[index];
-        setBatchStatus({ tone: 'progress', text: driveImportProgressLabel(index, picked.length) });
-        try {
+      const result = await runDriveImport({
+        items: picked,
+        chunkSize: driveImportChunkSize(drivePickKind),
+        download: async (item) => {
           const blob = await downloadDriveFile(token, item.id);
           const type = item.mime || blob.type || 'application/octet-stream';
-          files.push({
+          return {
             file: new File([blob], item.name || 'Drive file', { type }),
             driveFileId: item.id,
-          });
-        } catch {
-          /* One file can fail. The rest still import. */
+          };
+        },
+        save: (files, report) => addDriveMediaFiles([...files], folderId, { onProgress: report }),
+        onLabel: (text) => setBatchStatus({ tone: 'progress', text }),
+      });
+      if (!result.ok) {
+        showBatchError(
+          folderId,
+          driveImportSaveErrorNote(result.error, result.outcome.added, result.outcome.picked),
+        );
+        if (result.outcome.added > 0) {
+          await refresh();
+          setPlaying(true);
+          setExpanded((prev) => ({ ...prev, [folderId]: true }));
+          setOptions(true);
+        } else {
+          try {
+            await refresh();
+          } catch {
+            /* The note is the signal. */
+          }
         }
-      }
-      if (!files.length) {
-        showBatchError(folderId, 'Those Google Drive files could not be opened. Nothing was saved.');
         return;
       }
-      setBatchStatus({
-        tone: 'progress',
-        text: folderSaveProgressLabel({ done: 0, total: files.length, phase: 'shrink' }),
-      });
-      const added = await addDriveMediaFiles(files, folderId, {
-        onProgress: (progress) => {
-          setBatchStatus({ tone: 'progress', text: folderSaveProgressLabel(progress) });
-        },
-      });
-      if (!added) {
-        showBatchError(folderId, 'Those files are already in this folder, or this folder does not use that kind.');
+      const note = driveImportOutcomeNote(result.outcome);
+      if (note) {
+        showBatchError(folderId, note);
+        if (result.outcome.added > 0) {
+          await refresh();
+          setPlaying(true);
+          setExpanded((prev) => ({ ...prev, [folderId]: true }));
+          setOptions(true);
+        }
         return;
       }
       setBatchStatus(null);
