@@ -17,7 +17,7 @@ export function KidsScoreboardSwitcher({
   suppressed,
 }: {
   prefs: KidsScoreboardPrefs;
-  /** Fullscreen, a bottom sheet, or match scoring. The picker stays closed. */
+  /** Fullscreen or an open sheet. A linked bout does not close the picker. */
   suppressed: boolean;
 }) {
   const [open, setOpen] = useState(false);

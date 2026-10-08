@@ -7,6 +7,7 @@ import { KidsBracketChrome, KidsMascotDock } from '../components/KidsBracketChro
 import { KidsScoreboardSwitcher } from '../components/KidsScoreboardSwitcher';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { OutcomePickSheet } from '../components/OutcomeCalls';
+import { RosterNameField } from '../components/RosterNameField';
 import { Sheet } from '../components/Sheet';
 import { useLockViewportZoom, usePinchZoom } from '../hooks/usePinchZoom';
 import { inputTypeUsesKeyboard } from '../lib/keepFieldVisible';
@@ -32,6 +33,7 @@ import {
   kidsBracketScoring,
   kidsLiveLine,
   kidsShowMascot,
+  kidsSkinButtonSuppressed,
   kidsSkinChromeHidden,
   kidsWinLines,
   kidsWinState,
@@ -136,6 +138,7 @@ export function TournamentPage() {
     sheetOpen,
     scoring: kidsBracketScoring(liveMatchId, liveMatchId ? Boolean(tournament.results[liveMatchId]) : true),
   });
+  const skinButtonSuppressed = kidsSkinButtonSuppressed({ fullscreen: fs.active, sheetOpen });
   const showMascot = kidsShowMascot(kidsOn, kids.mascot, kidsChampion, skinChromeHidden);
   const champLabel = kidsWin ? kidsChampion : champion;
   const kidsLive =
@@ -250,7 +253,7 @@ export function TournamentPage() {
           </label>
         </div>
         <div className="tournament__actions">
-          {fromSuite ? <KidsScoreboardSwitcher prefs={kids} suppressed={skinChromeHidden} /> : null}
+          {fromSuite ? <KidsScoreboardSwitcher prefs={kids} suppressed={skinButtonSuppressed} /> : null}
           {plainCoach ? null : (
             <div className="tournament__theme" role="radiogroup" aria-label="Bracket theme">
               <button
@@ -401,13 +404,14 @@ export function TournamentPage() {
                   {kidsWin && kidsScore ? <strong className="kids-champ-score">{kidsScore}</strong> : null}
                 </p>
               ) : null}
-              <input
+              <RosterNameField
                 value={champion}
-                onChange={(event) => setSlotName('champion', event.target.value)}
+                onChange={(value) => setSlotName('champion', value)}
+                onPrefill={(prefill) => setSlotName('champion', prefill.name)}
                 placeholder="Winner"
-                aria-label="Champion"
-                autoComplete="off"
-                autoCapitalize="words"
+                ariaLabel="Champion"
+                names={plainCoach ? 'student' : 'competitor'}
+                compact
               />
             </div>
           </div>
@@ -478,12 +482,13 @@ export function TournamentPage() {
             <li key={id}>
               <label>
                 <span>{index + 1}</span>
-                <SeedNameInput
+                <RosterNameField
                   value={slotName(tournament, id)}
                   onChange={(value) => setSlotName(id, value)}
+                  onPrefill={(prefill) => setSlotName(id, prefill.name)}
                   placeholder={plainCoach ? 'Student name' : seedPlaceholder(index)}
                   ariaLabel={plainCoach ? `Student name ${index + 1}` : `Competitor ${index + 1}`}
-                  seedIndex={index}
+                  names={plainCoach ? 'student' : 'competitor'}
                 />
               </label>
             </li>
@@ -838,39 +843,6 @@ function MatchCard({
   );
 }
 
-function SeedNameInput({
-  value,
-  onChange,
-  placeholder,
-  ariaLabel,
-  seedIndex,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-  ariaLabel: string;
-  seedIndex: number;
-}) {
-  return (
-    <input
-      value={value}
-      placeholder={placeholder}
-      aria-label={ariaLabel}
-      autoComplete="off"
-      autoCapitalize="words"
-      enterKeyHint="next"
-      onChange={(event) => onChange(event.target.value)}
-      onPaste={(event) => {
-        if (seedIndex < 0) return;
-        const names = parseNameList(event.clipboardData.getData('text'));
-        if (names.length < 2) return;
-        event.preventDefault();
-        fillSeedNames(names, seedIndex);
-      }}
-    />
-  );
-}
-
 function usePlainCoachBoard(): boolean {
   const [searchParams] = useSearchParams();
   return isPlainCoachTournament(searchParams.get('from'), isBasicCoach(useProUnlocked(), useCoachUnlocked()));
@@ -922,9 +894,10 @@ function SlotRow({ matchId, side }: { matchId: BracketMatchId; side: MatchSide }
       <div className="t-slot__who">
         {seedIndex >= 0 ? <span className="t-slot__seed">{seedIndex + 1}.</span> : null}
         <div className="t-slot__name">
-          <SeedNameInput
+          <RosterNameField
             value={name}
             onChange={(value) => setSlotName(id, value)}
+            onPrefill={(prefill) => setSlotName(id, prefill.name)}
             placeholder={placeholder}
             ariaLabel={
               plainCoach
@@ -933,7 +906,8 @@ function SlotRow({ matchId, side }: { matchId: BracketMatchId; side: MatchSide }
                   }`
                 : `${roundLabel(matchId)}, ${side === 'a' ? 'top' : 'bottom'} competitor`
             }
-            seedIndex={seedIndex}
+            names={plainCoach ? 'student' : 'competitor'}
+            compact
           />
           {gym ? <span className="t-slot__gym">{gym}</span> : null}
         </div>

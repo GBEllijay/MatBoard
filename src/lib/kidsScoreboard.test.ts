@@ -24,6 +24,7 @@ import {
   kidsBracketScoring,
   kidsShowMascot,
   kidsShowWin,
+  kidsSkinButtonSuppressed,
   kidsSkinChromeHidden,
   kidsBoardClass,
   kidsSkinFromSearch,
@@ -119,6 +120,14 @@ test('Skin chrome hides for a sheet, fullscreen, or a linked unscored bout', () 
   assert.equal(kidsShowMascot(true, true, 'Mia Santos', true), false);
   assert.equal(kidsShowMascot(false, true, 'Mia Santos', false), false);
   assert.equal(kidsShowMascot(true, true, '   ', false), false);
+});
+
+test('Skin button stays enabled after a linked bout returns to the bracket', () => {
+  assert.equal(kidsBracketScoring('sf-0', false), true);
+  assert.equal(kidsSkinButtonSuppressed({ fullscreen: false, sheetOpen: false }), false);
+  assert.equal(kidsSkinButtonSuppressed({ fullscreen: true, sheetOpen: false }), true);
+  assert.equal(kidsSkinButtonSuppressed({ fullscreen: false, sheetOpen: true }), true);
+  assert.equal(kidsSkinButtonSuppressed({ fullscreen: true, sheetOpen: true }), true);
 });
 
 test('Carlos appears only after a champion, with a stored score like 12-0', () => {

@@ -184,6 +184,21 @@ describe('searchStudents', () => {
       false,
     );
   });
+
+  it('ranks the same closest name for a typed prefix on the bracket and the scoreboard', () => {
+    const roster = [
+      student({ id: 'mila', name: 'Mila Chen', belt: 'White' }),
+      student({ id: 'mia', name: 'Mia Santos', belt: 'Grey' }),
+      student({ id: 'sam', name: 'Sam Miller', belt: 'Blue' }),
+      student({ id: 'open', name: 'No Belt', belt: '' }),
+    ];
+    const ranked = searchStudents(roster, 'mi');
+    assert.equal(ranked[0]?.name, 'Mia Santos');
+    assert.deepEqual(
+      ranked.map((row) => row.name),
+      ['Mia Santos', 'Mila Chen', 'Sam Miller'],
+    );
+  });
 });
 
 describe('confirmManualCompetitor', () => {
