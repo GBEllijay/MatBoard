@@ -2937,6 +2937,45 @@ span.role-plan__mark {
   border-color: transparent;
 }
 
+/* Compact corner return. Sits above Competitor 1 instead of across the name. */
+.display-back {
+  position: absolute;
+  top: calc(0.1rem + var(--safe-t));
+  left: calc(0.1rem + var(--safe-l));
+  z-index: 8;
+  width: 44px;
+  height: 44px;
+  padding: 0 0.15rem 0 0.05rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  border-radius: 14px;
+  background: rgba(8, 12, 20, 0.78);
+  color: #fff;
+  text-decoration: none;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
+}
+
+.display-back svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.display-back img {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: block;
+  pointer-events: none;
+}
+
+.play--tv.play--idle .display-back {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .play-fs-slot {
   position: absolute;
   top: calc(0.55rem + var(--safe-t));
@@ -5346,8 +5385,9 @@ a.saver-folder--link {
 }
 
 .play--landscape.display--linked .bout--blue,
-.play--fs.display--linked .bout--blue {
-  padding-top: calc(1.35rem + var(--safe-t));
+.play--fs.display--linked .bout--blue,
+.play--tv.display--linked .bout--blue {
+  padding-top: calc(2.75rem + var(--safe-t));
 }
 
 @media (orientation: portrait) {
@@ -6307,13 +6347,14 @@ a.saver-folder--link {
 
 .tournament--bright .tournament__center {
   display: none;
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
+  position: static;
+  flex: 1 1 0;
   align-items: center;
+  justify-content: center;
   gap: 0.4rem;
-  max-width: min(28rem, calc(100% - 16rem));
+  min-width: 0;
+  max-width: none;
+  overflow: hidden;
   color: rgba(245, 241, 232, 0.9);
   font-size: 0.98rem;
   font-weight: 650;
@@ -6325,11 +6366,15 @@ a.saver-folder--link {
   display: block;
   position: static;
   transform: none;
+  flex: 0 1 auto;
+  min-width: 0;
   margin: 0;
+  overflow: hidden;
   color: inherit;
   font: inherit;
   letter-spacing: inherit;
   text-align: right;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -6341,9 +6386,10 @@ a.saver-folder--link {
 
 .tournament--bright .tournament__title {
   display: flex;
-  flex: 1 1 8rem;
-  min-width: 7rem;
+  flex: 1 1 auto;
+  min-width: 0;
   margin: 0;
+  overflow: hidden;
   color: inherit;
   font: inherit;
   letter-spacing: inherit;
@@ -6359,13 +6405,24 @@ a.saver-folder--link {
 }
 
 .tournament--bright .tournament__title input {
+  width: 100%;
+  min-width: 0;
   min-height: 0;
   padding: 0.15rem 0;
+  overflow: hidden;
   border: 0;
   background: transparent;
   color: inherit;
   font: inherit;
   letter-spacing: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tournament--bright .tournament__actions {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 auto;
 }
 
 .tournament--bright .tournament__hint {
@@ -6863,13 +6920,14 @@ a.saver-folder--link {
 
 .tournament--dark .tournament__center {
   display: none;
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
+  position: static;
+  flex: 1 1 0;
   align-items: center;
+  justify-content: center;
   gap: 0.4rem;
-  max-width: min(28rem, calc(100% - 16rem));
+  min-width: 0;
+  max-width: none;
+  overflow: hidden;
   color: rgba(245, 241, 232, 0.9);
   font-size: 0.98rem;
   font-weight: 650;
@@ -6881,11 +6939,15 @@ a.saver-folder--link {
   display: block;
   position: static;
   transform: none;
+  flex: 0 1 auto;
+  min-width: 0;
   margin: 0;
+  overflow: hidden;
   color: inherit;
   font: inherit;
   letter-spacing: inherit;
   text-align: right;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -6897,9 +6959,10 @@ a.saver-folder--link {
 
 .tournament--dark .tournament__title {
   display: flex;
-  flex: 1 1 8rem;
-  min-width: 7rem;
+  flex: 1 1 auto;
+  min-width: 0;
   margin: 0;
+  overflow: hidden;
   color: inherit;
   font: inherit;
   letter-spacing: inherit;
@@ -6915,8 +6978,13 @@ a.saver-folder--link {
 }
 
 .tournament--dark .tournament__title input {
+  width: 100%;
+  min-width: 0;
   min-height: 0;
   padding: 0.15rem 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   border: 0;
   background: transparent;
   color: inherit;
@@ -6926,6 +6994,24 @@ a.saver-folder--link {
 
 .tournament--dark .tournament__hint {
   display: none;
+}
+
+.tournament--dark .tournament__actions {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 auto;
+}
+
+/* Narrower than the desktop title row: keep every toolbar button inside the
+   padded bar, wrapping under itself, instead of sliding off the left edge. */
+@media (max-width: 1099px) {
+  .tournament--bright .tournament__actions,
+  .tournament--dark .tournament__actions {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    justify-content: flex-end;
+  }
 }
 
 .tournament--dark .tournament__actions .btn,
@@ -9134,6 +9220,20 @@ input.roster-pick__name:focus,
 .roster-card__checkin {
   min-height: 48px;
   flex: 0 0 auto;
+}
+
+.roster-card .btn.roster-card__checkin.btn--ghost {
+  background: transparent;
+  color: #f7f4ee;
+  -webkit-text-fill-color: #f7f4ee;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.roster-card .btn.roster-card__checkin:not(.btn--ghost) {
+  background: var(--logo-blue);
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  border-color: var(--logo-blue);
 }
 
 .roster-card__meta,

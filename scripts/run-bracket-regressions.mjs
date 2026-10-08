@@ -16,5 +16,5 @@ await build({
   logLevel: 'silent',
 });
 
-const result = spawnSync(process.execPath, ['--test', outfile], { stdio: 'inherit' });
+const result = spawnSync(process.execPath, ['--test', '--test-force-exit', outfile], { stdio: 'inherit' });
 process.exit(result.status ?? 1);

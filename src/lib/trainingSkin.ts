@@ -44,6 +44,14 @@ export function setTrainingSkin(skin: TrainingSkin): void {
   writeSkin(skin);
 }
 
+/**
+ * Advantage is the mat clock. Classic is the black board.
+ * Opening from the Pro suite must not force Advantage.
+ */
+export function trainingUsesAdvantageSkin(skin: TrainingSkin): boolean {
+  return skin === 'themed';
+}
+
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (event) => {
     if (event.key === TRAINING_SKIN_KEY || event.key === null) {
