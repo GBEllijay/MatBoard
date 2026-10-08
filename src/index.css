@@ -6331,6 +6331,7 @@ a.saver-folder--link {
 .tournament--bright .tournament__bar {
   align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
   position: relative;
   min-height: 3.6rem;
   padding-top: calc(0.45rem + var(--safe-t));
@@ -6346,14 +6347,14 @@ a.saver-folder--link {
 }
 
 .tournament--bright .tournament__center {
-  display: none;
+  display: flex;
   position: static;
-  flex: 1 1 0;
+  flex: 1 0 100%;
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
   min-width: 0;
-  max-width: none;
+  max-width: 100%;
   overflow: hidden;
   color: rgba(245, 241, 232, 0.9);
   font-size: 0.98rem;
@@ -6422,7 +6423,10 @@ a.saver-folder--link {
 .tournament--bright .tournament__actions {
   position: relative;
   z-index: 2;
-  flex: 0 0 auto;
+  flex: 1 1 100%;
+  min-width: 0;
+  max-width: 100%;
+  justify-content: flex-end;
 }
 
 .tournament--bright .tournament__hint {
@@ -6849,16 +6853,9 @@ a.saver-folder--link {
   }
 }
 
-@media (min-width: 1100px) {
-  .tournament--bright .tournament__center {
-    display: flex;
-  }
-}
-
 @media (orientation: landscape) and (max-height: 520px) {
   .tournament .empty-hint,
-  .tournament--bright .empty-hint,
-  .tournament--bright .tournament__center {
+  .tournament--bright .empty-hint {
     display: none;
   }
 
@@ -6904,6 +6901,7 @@ a.saver-folder--link {
 .tournament--dark .tournament__bar {
   align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
   position: relative;
   min-height: 3.6rem;
   padding-top: calc(0.45rem + var(--safe-t));
@@ -6919,14 +6917,14 @@ a.saver-folder--link {
 }
 
 .tournament--dark .tournament__center {
-  display: none;
+  display: flex;
   position: static;
-  flex: 1 1 0;
+  flex: 1 0 100%;
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
   min-width: 0;
-  max-width: none;
+  max-width: 100%;
   overflow: hidden;
   color: rgba(245, 241, 232, 0.9);
   font-size: 0.98rem;
@@ -6999,19 +6997,10 @@ a.saver-folder--link {
 .tournament--dark .tournament__actions {
   position: relative;
   z-index: 2;
-  flex: 0 0 auto;
-}
-
-/* Narrower than the desktop title row: keep every toolbar button inside the
-   padded bar, wrapping under itself, instead of sliding off the left edge. */
-@media (max-width: 1099px) {
-  .tournament--bright .tournament__actions,
-  .tournament--dark .tournament__actions {
-    flex: 1 1 auto;
-    min-width: 0;
-    max-width: 100%;
-    justify-content: flex-end;
-  }
+  flex: 1 1 100%;
+  min-width: 0;
+  max-width: 100%;
+  justify-content: flex-end;
 }
 
 .tournament--dark .tournament__actions .btn,
@@ -7434,15 +7423,8 @@ a.saver-folder--link {
   }
 }
 
-@media (min-width: 1100px) {
-  .tournament--dark .tournament__center {
-    display: flex;
-  }
-}
-
 @media (orientation: landscape) and (max-height: 520px) {
-  .tournament--dark .empty-hint,
-  .tournament--dark .tournament__center {
+  .tournament--dark .empty-hint {
     display: none;
   }
 
