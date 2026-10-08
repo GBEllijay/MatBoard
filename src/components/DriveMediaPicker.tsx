@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Sheet } from './Sheet';
+import {
+  allVisibleSelected,
+  anyVisibleSelected,
+  clearVisibleSelection,
+  selectAllVisible,
+} from '../lib/mediaSelection';
 import {
   DRIVE_PICK_BACK,
   DRIVE_PICK_LOADING,
@@ -7,6 +12,11 @@ import {
   DRIVE_PICK_TITLE,
   drivePickDoneLabel,
   drivePickEmptyCopy,
+  drivePickEnterFolder,
+  drivePickGoBack,
+  drivePickPath,
+  drivePickRootStack,
+  drivePickShowsBack,
   splitDriveBrowse,
   toggleDriveSelection,
   type DriveBrowseFolder,
@@ -14,6 +24,8 @@ import {
   type DrivePickKind,
 } from '../lib/driveMediaPicker';
 import { listFolderFiles, readDriveBinding, requestDriveToken } from '../lib/googleDrive';
+import { MediaSelectBar } from './MediaSelectBar';
+import { Sheet } from './Sheet';
 
 type Crumb = { id: string; name: string };
 
@@ -27,7 +39,9 @@ type Props = {
 
 /**
  * Photos-style sheet: browse the connected gym folder, multi-select, Done.
- * Bytes stay in Drive. The parent copies chosen files onto this phone for playback.
+ * Select all / Clear apply to the folder on screen. Choices from a folder you
+ * already left stay selected. Bytes stay in Drive. The parent copies chosen
+ * files onto this phone for playback.
  */
 export function DriveMediaPicker({ open, kind, stacked = false, onClose, onDone }: Props) {
   const [stack, setStack] = useState<Crumb[]>([]);
@@ -44,7 +58,7 @@ export function DriveMediaPicker({ open, kind, stacked = false, onClose, onDone 
     setFolders([]);
     setMedia([]);
     setError('');
-    setStack(binding ? [{ id: binding.folderId, name: binding.folderName }] : []);
+    setStack(drivePickRootStack(binding));
   }, [open]);
 
   const current = stack[stack.length - 1] ?? null;
@@ -80,7 +94,7 @@ export function DriveMediaPicker({ open, kind, stacked = false, onClose, onDone 
     };
   }, [open, current, kind]);
 
-  const path = stack.map((crumb) => crumb.name).join(' / ');
+  const path = drivePickPath(stack);
 
   return (
     <Sheet
@@ -102,10 +116,18 @@ export function DriveMediaPicker({ open, kind, stacked = false, onClose, onDone 
     >
       <p className="saver-sound-hint">{DRIVE_PICK_STAY}</p>
       {path ? <p className="drive-pick__path">{path}</p> : null}
-      {stack.length > 1 ? (
-        <button type="button" className="btn btn--ghost" onClick={() => setStack((prev) => prev.slice(0, -1))}>
+      {drivePickShowsBack(stack) ? (
+        <button type="button" className="btn btn--ghost" onClick={() => setStack((prev) => drivePickGoBack(prev))}>
           {DRIVE_PICK_BACK}
         </button>
+      ) : null}
+      {!loading && media.length > 0 ? (
+        <MediaSelectBar
+          allSelected={allVisibleSelected(selected, media)}
+          anySelected={anyVisibleSelected(selected, media)}
+          onSelectAll={() => setSelected((prev) => selectAllVisible(prev, media))}
+          onClear={() => setSelected((prev) => clearVisibleSelection(prev, media))}
+        />
       ) : null}
       {loading ? (
         <p className="notes__gallery-status" role="status">
@@ -124,7 +146,7 @@ export function DriveMediaPicker({ open, kind, stacked = false, onClose, onDone 
               key={folder.id}
               type="button"
               className="btn btn--ghost"
-              onClick={() => setStack((prev) => [...prev, folder])}
+              onClick={() => setStack((prev) => drivePickEnterFolder(prev, folder))}
             >
               {folder.name}
             </button>
