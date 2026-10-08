@@ -154,10 +154,6 @@ export function descendantCount(node: TechniqueNode): number {
   return node.children.reduce((sum, child) => sum + 1 + descendantCount(child), 0);
 }
 
-export function treeHasContent(doc: TechniqueTreeDoc): boolean {
-  return doc.root !== null;
-}
-
 type FoundNode = { node: TechniqueNode; depth: number };
 
 export function findNode(node: TechniqueNode | null, id: string, depth = 0): FoundNode | null {
