@@ -129,11 +129,7 @@ export function MatchDisplayPage() {
     >
       <div className="display__chrome">
         <div className="display__chrome-start">
-          {linkedId ? (
-            <Link to={withSuiteFrom('/tournament', suite.fromSuite)} className="chip chip--keep">
-              Back to bracket
-            </Link>
-          ) : (
+          {linkedId ? null : (
             <Link to={suite.homePath} className="chip">
               Home
             </Link>
@@ -155,6 +151,21 @@ export function MatchDisplayPage() {
           </Link>
         </div>
       </div>
+      {linkedId ? (
+        <Link to={withSuiteFrom('/tournament', suite.fromSuite)} className="display-back" aria-label="Back to bracket">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M14.5 5.5 8 12l6.5 6.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <img src="/advantage-icon.png" alt="" />
+        </Link>
+      ) : null}
       <TvTip onFullscreen={() => void fs.enter()} />
 
       <CompetitorBand

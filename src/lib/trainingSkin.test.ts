@@ -6,6 +6,7 @@ import {
   TRAINING_SKIN_KEY,
   getTrainingSkin,
   setTrainingSkin,
+  trainingUsesAdvantageSkin,
 } from './trainingSkin.ts';
 
 function memoryStorage() {
@@ -41,6 +42,21 @@ test('Round timer skin persists Classic and Advantage', () => {
 test('Unknown stored timer skin falls back to Classic', () => {
   localStorage.setItem(TRAINING_SKIN_KEY, 'neon');
   assert.equal(getTrainingSkin(), 'classic');
+});
+
+test('Pro suite can switch Advantage, Classic, then Advantage across a reload', () => {
+  setTrainingSkin('themed');
+  assert.equal(trainingUsesAdvantageSkin(getTrainingSkin()), true);
+  setTrainingSkin('classic');
+  assert.equal(localStorage.getItem(TRAINING_SKIN_KEY), 'classic');
+  assert.equal(getTrainingSkin(), 'classic');
+  assert.equal(trainingUsesAdvantageSkin(getTrainingSkin()), false);
+  setTrainingSkin('themed');
+  assert.equal(getTrainingSkin(), 'themed');
+  assert.equal(trainingUsesAdvantageSkin(getTrainingSkin()), true);
+  const page = fs.readFileSync(new URL('../pages/Training.tsx', import.meta.url), 'utf8');
+  assert.match(page, /trainingUsesAdvantageSkin\(skin\)/);
+  assert.doesNotMatch(page, /fromSuite \? ' training--themed'/);
 });
 
 test('Round timer still offers the Advantage skin beside Classic', () => {

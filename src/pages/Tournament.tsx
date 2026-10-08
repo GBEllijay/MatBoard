@@ -1,4 +1,4 @@
-import { useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { BeltRail } from '../components/BeltRail';
 import { EmptyHint } from '../components/EmptyHint';
@@ -107,7 +107,7 @@ export function TournamentPage() {
   const match = useMatchState();
   const theme = useBracketTheme();
   const kids = useKidsScoreboard();
-  const fs = usePlayFullscreen();
+  const fs = usePlayFullscreen({ auto: false });
   const boardRef = useRef<HTMLDivElement>(null);
   const bracketRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -172,6 +172,12 @@ export function TournamentPage() {
   useVisibleViewportHeight();
   useLockViewportZoom();
   usePinchZoom(boardRef, bracketRef);
+
+  // The scoreboard enters fullscreen from the Score tap. Coming back must not
+  // keep that fullscreen, or Skin stays disabled until a reload.
+  useEffect(() => {
+    void fs.exit();
+  }, [fs.exit]);
 
   const exitBoard = () => {
     void fs.exit().finally(() => {

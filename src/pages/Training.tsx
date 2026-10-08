@@ -13,6 +13,7 @@ import { useTrainingSkin, useTrainingState } from '../hooks/useStores';
 import { unlockAudio } from '../lib/audio';
 import { formatMmSs } from '../lib/format';
 import { safeTimerReturn } from '../lib/timerReturn';
+import { trainingUsesAdvantageSkin } from '../lib/trainingSkin';
 import { remainingTraining, tickTraining, toggleTrainingClock } from '../lib/trainingStore';
 
 export function TrainingPage() {
@@ -60,7 +61,7 @@ export function TrainingPage() {
   return (
     <main
       className={`training training--${training.phase}${
-        skin === 'themed' || suite.fromSuite ? ' training--themed' : ''
+        trainingUsesAdvantageSkin(skin) ? ' training--themed' : ''
       }${suite.fromSuite ? ' origin-suite' : ''}${fs.className ? ` ${fs.className}` : ''}`}
       onClick={(event) => {
         const target = event.target as HTMLElement;

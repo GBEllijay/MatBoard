@@ -3,12 +3,15 @@ import test from 'node:test';
 import { Window } from 'happy-dom';
 import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { KidsScoreboardSwitcher } from './KidsScoreboardSwitcher.tsx';
 import { RosterNameField } from './RosterNameField.tsx';
-import { kidsBracketScoring, kidsSkinButtonSuppressed } from '../lib/kidsScoreboard.ts';
+import { MatchDisplayPage } from '../pages/MatchDisplay.tsx';
+import { TournamentPage } from '../pages/Tournament.tsx';
+import { kidsBracketScoring, kidsSkinButtonSuppressed, setKidsEnabled, setKidsSkin } from '../lib/kidsScoreboard.ts';
 import { PRO_UNLOCK_STORAGE_KEY } from '../lib/proUnlock.ts';
 import { addStudent, resetRoster } from '../lib/rosterStore.ts';
+import { fillSeedNames, resetTournament, setCompetitorCount, setTournamentTitle } from '../lib/tournamentStore.ts';
 
 const dom = new Window({ url: 'http://localhost/tournament?from=suite' });
 const view = dom as unknown as Window & typeof globalThis;
@@ -40,12 +43,12 @@ installGlobal('requestAnimationFrame', view.requestAnimationFrame.bind(view));
 installGlobal('cancelAnimationFrame', view.cancelAnimationFrame.bind(view));
 installGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 
-function mount(node: ReactNode): { root: Root; host: HTMLElement } {
+function mount(node: ReactNode, initialEntry = '/'): { root: Root; host: HTMLElement } {
   const host = document.createElement('div');
   document.body.appendChild(host);
   const root = createRoot(host);
   act(() => {
-    root.render(<MemoryRouter>{node}</MemoryRouter>);
+    root.render(<MemoryRouter initialEntries={[initialEntry]}>{node}</MemoryRouter>);
   });
   return { root, host };
 }
@@ -148,6 +151,112 @@ test('Skin opens the thumbnail picker when a linked bout has no result', async (
     assert.equal(picker.querySelectorAll('.kids-skin__thumb').length, 6);
   } finally {
     unmount(mounted);
+  }
+});
+
+test('Skin stays enabled after Score and Back to bracket', { timeout: 8000 }, async () => {
+  localStorage.setItem(PRO_UNLOCK_STORAGE_KEY, '1');
+  resetTournament();
+  setCompetitorCount(4);
+  fillSeedNames(['Ada Cruz', 'Bea Ortiz', 'Cam Diaz', 'Dee Kim']);
+  setTournamentTitle('Sim Back Attacks Mock');
+  setKidsEnabled(true);
+  setKidsSkin('dinos');
+
+  let fullscreenNode: Element | null = null;
+  const enterFullscreen = () => {
+    fullscreenNode = document.documentElement;
+    document.dispatchEvent(new Event('fullscreenchange'));
+    return Promise.resolve();
+  };
+  const exitFullscreen = () => {
+    fullscreenNode = null;
+    document.dispatchEvent(new Event('fullscreenchange'));
+    return Promise.resolve();
+  };
+  document.documentElement.requestFullscreen = enterFullscreen;
+  Element.prototype.requestFullscreen = enterFullscreen;
+  Object.defineProperty(document, 'exitFullscreen', { configurable: true, value: exitFullscreen });
+  Object.defineProperty(document, 'fullscreenEnabled', { configurable: true, get: () => true });
+  Object.defineProperty(document, 'fullscreenElement', { configurable: true, get: () => fullscreenNode });
+  const realMatchMedia = window.matchMedia.bind(window);
+  window.matchMedia = (query: string) => {
+    if (query.includes('orientation')) {
+      return {
+        matches: true,
+        media: query,
+        onchange: null,
+        addListener() {},
+        removeListener() {},
+        addEventListener() {},
+        removeEventListener() {},
+        dispatchEvent() {
+          return false;
+        },
+      } as MediaQueryList;
+    }
+    return realMatchMedia(query);
+  };
+  class ResizeObserverStub {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  installGlobal('ResizeObserver', ResizeObserverStub);
+  view.ResizeObserver = ResizeObserverStub;
+  let realSetInterval = window.setInterval.bind(window);
+  const realError = console.error.bind(console);
+  console.error = (...args: unknown[]) => {
+    const text = args.map((part) => String(part)).join(' ');
+    if (text.includes('not wrapped in act')) return;
+    realError(...args);
+  };
+
+  const mounted = mount(
+    <Routes>
+      <Route path="/tournament" element={<TournamentPage />} />
+      <Route path="/match" element={<MatchDisplayPage />} />
+    </Routes>,
+    '/tournament?from=suite',
+  );
+  try {
+    const skin = () =>
+      [...document.querySelectorAll('button')].find((el) => (el.getAttribute('aria-label') || '').startsWith('Skin'));
+    assert.equal(skin()?.disabled, false, 'Skin starts enabled');
+    const score = document.querySelector('button.t-score');
+    assert.ok(score instanceof HTMLElement, 'semifinal Score button');
+    realSetInterval = window.setInterval.bind(window);
+    window.setInterval = ((fn: TimerHandler, ms?: number, ...args: unknown[]) => {
+      if (ms === 100) return 0;
+      return realSetInterval(fn as () => void, ms, ...(args as []));
+    }) as typeof window.setInterval;
+    act(() => {
+      score.click();
+    });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    const back = document.querySelector('[aria-label="Back to bracket"]');
+    assert.ok(back instanceof HTMLElement, 'scoreboard shows Back to bracket');
+    assert.equal(back.classList.contains('display-back'), true);
+    assert.equal(document.fullscreenElement, document.documentElement, 'scoreboard entered fullscreen');
+    act(() => {
+      back.click();
+    });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    const returned = skin();
+    assert.ok(returned, 'Skin is back on the bracket');
+    assert.equal(returned.disabled, false, 'Skin stays enabled after Back to bracket');
+    assert.equal(document.fullscreenElement, null);
+    act(() => {
+      returned.click();
+    });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    assert.ok(document.querySelector('.kids-skin__picker'), 'Skin picker opens after Back to bracket');
+  } finally {
+    unmount(mounted);
+    window.setInterval = realSetInterval;
+    console.error = realError;
+    window.matchMedia = realMatchMedia;
+    resetTournament();
   }
 });
 
