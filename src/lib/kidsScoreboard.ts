@@ -113,8 +113,10 @@ export function setKidsMascot(mascot: boolean): void {
 }
 
 /**
- * Skin chrome stays off while a sheet (especially win method), fullscreen, or a
- * linked unscored bout is up. That is what used to sit on Decision.
+ * Carlos and other skin chrome stay off during fullscreen, an open sheet
+ * (especially win method), or a linked unscored bout. That chrome used to sit
+ * on Decision. The toolbar Skin button does not use this — see
+ * `kidsSkinButtonSuppressed`.
  */
 export function kidsSkinChromeHidden(input: {
   fullscreen: boolean;
@@ -122,6 +124,15 @@ export function kidsSkinChromeHidden(input: {
   scoring: boolean;
 }): boolean {
   return input.fullscreen || input.sheetOpen || input.scoring;
+}
+
+/**
+ * Toolbar Skin on the bracket page. Close it only for real fullscreen or an
+ * open sheet. A linked bout must not disable it: Back to bracket leaves the
+ * bout linked, and the picker still has to open.
+ */
+export function kidsSkinButtonSuppressed(input: { fullscreen: boolean; sheetOpen: boolean }): boolean {
+  return input.fullscreen || input.sheetOpen;
 }
 
 /** A bracket bout is in scoring when the scoreboard is linked and that bout has no result yet. */
