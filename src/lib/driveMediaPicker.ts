@@ -18,8 +18,6 @@ export const DRIVE_PICK_BESIDE_PHOTOS =
   'Pick from gallery includes Google Photos and this phone. Google Drive is an additional source. Advantage does not host those files.';
 export const DRIVE_PICK_STAY =
   'These files come from the gym Google Drive folder, in addition to Google Photos or this phone. This phone keeps a copy so the TV can play them. Advantage does not host them.';
-export const DRIVE_PICK_NEED_CONNECT =
-  'Connect the gym Google Drive folder to pick photos and videos. Advantage does not host them.';
 
 export type DrivePickKind = 'photo' | 'video' | 'any';
 

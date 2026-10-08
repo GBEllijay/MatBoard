@@ -78,7 +78,6 @@ const ASSET_STORE = 'assets';
 const ASSET_DB_VERSION = 1;
 
 export type ScheduleState = GymCalendarState;
-export type ScheduleClass = WeeklyClassSlot;
 
 export type ScheduleAssets = {
   logo: Blob | null;
@@ -313,15 +312,6 @@ export function removeSpecial(id: string): void {
   patch({ specials: state.specials.filter((row) => row.id !== id) });
 }
 
-export function clearClasses(): void {
-  patch({ classes: [] });
-}
-
-export function resetSchedule(): void {
-  persist(defaultSchedule());
-  void clearScheduleAssets();
-}
-
 function openAssetDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(ASSET_DB, ASSET_DB_VERSION);
@@ -389,11 +379,6 @@ export async function setLogoBlob(blob: Blob | null): Promise<void> {
 export async function setQrImageBlob(blob: Blob | null): Promise<void> {
   await putAsset('qrImage', blob);
   setAssets({ logo: assets.logo, qrImage: blob });
-}
-
-export async function clearScheduleAssets(): Promise<void> {
-  await Promise.all([putAsset('logo', null), putAsset('qrImage', null)]);
-  setAssets({ logo: null, qrImage: null });
 }
 
 function isImageFile(file: File): boolean {

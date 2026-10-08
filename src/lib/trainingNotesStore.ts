@@ -6,6 +6,8 @@
  * This store still keeps the lesson text on the phone.
  */
 
+import { asRecord, clampText } from './plainValue.ts';
+
 export const TRAINING_NOTES_STORAGE_KEY = 'matboard.coach.trainingNotes.v1';
 /** Previous free-text jot. Read once into today's Intro, then removed. */
 export const LEGACY_TRAINING_NOTES_STORAGE_KEY = 'matboard.trainingNotes.v1';
@@ -95,15 +97,6 @@ function createId(prefix: string): string {
   idSeq += 1;
   const rand = Math.random().toString(36).slice(2, 8);
   return `${prefix}-${Date.now().toString(36)}-${idSeq.toString(36)}-${rand}`;
-}
-
-function clampText(value: unknown, max: number): string {
-  return typeof value === 'string' ? value.slice(0, max) : '';
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  return value as Record<string, unknown>;
 }
 
 /** Device local calendar date. A phone set to America/New_York rolls over at local midnight. */

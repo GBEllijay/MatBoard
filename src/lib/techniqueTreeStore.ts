@@ -50,6 +50,7 @@
  * later Daily Lesson Plan or Daily Training Videos link. This screen does not use it.
  */
 
+import { asRecord, clampText } from './plainValue.ts';
 import { isStorageQuotaError } from './storageQuota.ts';
 
 export const TECHNIQUE_TREE_STORAGE_KEY = 'matboard.coach.techniqueTree.v1';
@@ -106,15 +107,6 @@ function createId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${idSeq.toString(36)}-${rand}`;
 }
 
-function asRecord(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  return value as Record<string, unknown>;
-}
-
-function clampText(value: unknown, max: number): string {
-  return typeof value === 'string' ? value.slice(0, max) : '';
-}
-
 export function clampTreeName(value: unknown): string {
   const text = clampText(value, TREE_NAME_MAX).trim();
   return text || DEFAULT_TREE_NAME;
@@ -152,10 +144,6 @@ export function countNodes(node: TechniqueNode | null): number {
 
 export function descendantCount(node: TechniqueNode): number {
   return node.children.reduce((sum, child) => sum + 1 + descendantCount(child), 0);
-}
-
-export function treeHasContent(doc: TechniqueTreeDoc): boolean {
-  return doc.root !== null;
 }
 
 type FoundNode = { node: TechniqueNode; depth: number };

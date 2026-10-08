@@ -107,10 +107,6 @@ export function subscribeTraining(fn: () => void): () => void {
   return () => listeners.delete(fn);
 }
 
-export function patchTraining(partial: Partial<TrainingState>): void {
-  persist({ ...state, ...partial });
-}
-
 export function setWorkMs(workMs: number): void {
   const next = clampWorkMs(workMs);
   persist({

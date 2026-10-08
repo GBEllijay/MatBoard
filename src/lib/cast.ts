@@ -12,7 +12,7 @@ type PresentationRequestCtor = new (urls: string[]) => {
   }>;
 };
 
-export function displayUrl(options?: {
+function displayUrl(options?: {
   fromSuite?: boolean;
   whiteBoard?: boolean;
   kidsSkin?: KidsSkinId | null;
@@ -26,10 +26,6 @@ export function displayUrl(options?: {
     options?.kidsSkin ?? null,
   );
   return new URL(path, window.location.origin).toString();
-}
-
-export function controllerUrl(): string {
-  return new URL('/match/control', window.location.origin).toString();
 }
 
 export async function openOrCastDisplay(options?: {

@@ -14,7 +14,6 @@ export {
 import {
   buildPlayQueue,
   comparePlaylistItems,
-  moveItemIds,
   withFolderOrder as applyFolderOrder,
   type PlaylistItem,
 } from './playlist.ts';
@@ -273,9 +272,6 @@ export function migrateLegacyVideoFolder(rows: PhotoRow[]): { rows: PhotoRow[]; 
   };
 }
 
-export const comparePhotos = comparePlaylistItems;
-export const movePhotoIds = moveItemIds;
-
 export function withFolderOrder(
   photos: StoredPhoto[],
   folderId: FolderId,
@@ -366,8 +362,6 @@ export function playableItems(
   });
 }
 
-export const playablePhotos = playableItems;
-
 export async function listPhotos(folderId?: FolderId): Promise<StoredPhoto[]> {
   const db = await openDb();
   const raw = await new Promise<PhotoRow[]>((resolve, reject) => {
@@ -380,7 +374,7 @@ export async function listPhotos(folderId?: FolderId): Promise<StoredPhoto[]> {
   if (migrated.changed.length) {
     await persistMediaRows(migrated.changed);
   }
-  const rows = migrated.rows.map((row, index) => normalizePhoto(row, index)).sort(comparePhotos);
+  const rows = migrated.rows.map((row, index) => normalizePhoto(row, index)).sort(comparePlaylistItems);
   return folderId ? rows.filter((photo) => photo.folderId === folderId) : rows;
 }
 
@@ -533,10 +527,6 @@ export async function addDriveMediaFiles(
   );
 }
 
-export async function addPhotos(files: File[], folderId: FolderId = 'gallery'): Promise<void> {
-  await addFolderFiles(files, folderId);
-}
-
 export async function setItemPlay(id: string, enabled: boolean): Promise<void> {
   const db = await openDb();
   const tx = db.transaction(STORE, 'readwrite');
@@ -639,10 +629,6 @@ export async function reorderFolderItems(folderId: FolderId, orderedIds: string[
   await txDone(tx);
 }
 
-export async function reorderPhotos(folderId: FolderId, orderedIds: string[]): Promise<void> {
-  await reorderFolderItems(folderId, orderedIds);
-}
-
 export async function clearFolder(folderId: FolderId): Promise<void> {
   const rows = await listPhotos(folderId);
   const db = await openDb();
@@ -650,10 +636,6 @@ export async function clearFolder(folderId: FolderId): Promise<void> {
   const store = tx.objectStore(STORE);
   for (const row of rows) store.delete(row.id);
   await txDone(tx);
-}
-
-export async function clearPhotos(): Promise<void> {
-  await clearFolder('gallery');
 }
 
 export async function getSaverPrefs(): Promise<SaverPrefs> {

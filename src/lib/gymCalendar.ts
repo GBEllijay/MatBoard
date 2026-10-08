@@ -228,13 +228,6 @@ export function formatSpecialDate(date: string): string {
   return next.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-export function weekdayFromIsoDate(date: string): Weekday | null {
-  const iso = normalizeIsoDate(date);
-  if (!iso) return null;
-  const [year, month, day] = iso.split('-').map(Number);
-  return weekdayFromJsDay(new Date(year, (month ?? 1) - 1, day ?? 1).getDay());
-}
-
 function startOfDay(value: Date): Date {
   return new Date(value.getFullYear(), value.getMonth(), value.getDate());
 }
