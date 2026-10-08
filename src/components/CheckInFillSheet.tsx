@@ -27,7 +27,7 @@ type Props = {
   onApply: (names: string[]) => void;
 };
 
-/** '' is roster order. null means a ranking list still has to be chosen. */
+/** '' is division then name. null means a ranking list still has to be chosen. */
 function initialRankingId(
   files: readonly RankingFile[],
   checked: readonly Student[],
@@ -62,8 +62,12 @@ export function CheckInFillSheet({
     setPrimed(false);
   }
 
-  const rows = rankingId ? (files.find((file) => file.id === rankingId)?.rows ?? []) : [];
+  const selectedFile = rankingId ? (files.find((file) => file.id === rankingId) ?? null) : null;
+  const rows = selectedFile?.rows ?? [];
   const ordered: SeededCompetitor[] = rankingId === null ? [] : orderCheckedInByRanking(students, rows);
+  const orderingLabel = selectedFile
+    ? `Seeded by ranking: ${selectedFile.name}`
+    : 'No ranking found, ordered by division then name';
   const size = ordered.length ? seededBracketSize(ordered.length, sizeMax) : 0;
   const placed = ordered.slice(0, size);
   const byes = size ? byeCountFor(size) : 0;
@@ -107,7 +111,8 @@ export function CheckInFillSheet({
         <>
           <p className="tournament__sheet-copy">
             {checked.length} checked in. Ranked names follow the ranking list. Anyone checked in who is
-            not on that list follows in roster order. Check-in stays as it is.
+            not on that list follows by division, then by name. A blank division goes last. Check-in
+            stays as it is.
           </p>
           {files.length ? (
             <div className="tournament__size-presets" role="radiogroup" aria-label="Ranking list">
@@ -118,7 +123,7 @@ export function CheckInFillSheet({
                 className={`chip${rankingId === '' ? ' chip--on' : ''}`}
                 onClick={() => setRankingId('')}
               >
-                Roster order
+                Division then name
               </button>
               {files.map((file) => (
                 <button
@@ -135,15 +140,12 @@ export function CheckInFillSheet({
                 </button>
               ))}
             </div>
-          ) : (
-            <p className="tournament__sheet-copy">
-              No ranking file on this device, so this uses roster order.
-            </p>
-          )}
+          ) : null}
           {rankingId === null ? (
             <p className="tournament__sheet-copy">Pick a ranking list to preview the seed order.</p>
           ) : (
             <>
+              <p className="tournament__sheet-copy">{orderingLabel}</p>
               <p className="tournament__sheet-copy">
                 {firstRoundLabel(size)} · size {size}
                 {byes ? ` · ${byes} ${byes === 1 ? 'bye' : 'byes'}` : ''}

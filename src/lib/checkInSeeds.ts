@@ -23,10 +23,22 @@ export function checkedInCompetitors(students: readonly Student[]): Student[] {
   return competitorCards(students as Student[]).filter((student) => student.checkedIn && rosterNameKey(student.name));
 }
 
+/** Blank divisions sort last. Everyone else is division, then name. Comparison ignores case. */
+function compareDivisionThenName(a: Student, b: Student): number {
+  const divisionA = a.division.trim();
+  const divisionB = b.division.trim();
+  if (!divisionA !== !divisionB) return divisionA ? -1 : 1;
+  const byDivision = divisionA.localeCompare(divisionB, undefined, { sensitivity: 'base' });
+  if (byDivision) return byDivision;
+  return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+}
+
 /**
  * Ranked checked-in competitors in ranking place order, then unranked checked-in
- * competitors in roster order. A tied place keeps the ranking file's row order.
- * A ranking name that is not checked in is skipped. Each roster card is used once.
+ * competitors by division and then by name. A blank division goes last. A tied
+ * place keeps the ranking file's row order. With no ranking rows, the whole
+ * list uses that division order. A ranking name that is not checked in is
+ * skipped. Each roster card is used once.
  */
 export function orderCheckedInByRanking(
   students: readonly Student[],
@@ -58,6 +70,7 @@ export function orderCheckedInByRanking(
 
   const unranked = checked
     .filter((student) => !used.has(student.id))
+    .sort(compareDivisionThenName)
     .map((student) => ({ id: student.id, name: student.name, place: null as number | null }));
   return [...ranked, ...unranked];
 }

@@ -48,7 +48,7 @@ function file(partial: Partial<RankingFile> & Pick<RankingFile, 'id' | 'name'>):
   };
 }
 
-test('ranked checked-in competitors lead in place order, then unranked roster order', () => {
+test('ranked checked-in competitors lead in place order, then unranked division then name', () => {
   const students = [
     card({ id: 'a', name: 'Ada', checkedIn: true }),
     card({ id: 'b', name: 'Bea', checkedIn: true }),
@@ -75,25 +75,42 @@ test('ranked checked-in competitors lead in place order, then unranked roster or
   assert.equal(checkedInCompetitors(students).some((student) => student.name === 'Cam'), false);
 });
 
-test('tied places keep ranking row order, and a missing ranking list stays in roster order', () => {
+test('tied places keep ranking row order, and unranked names follow by division', () => {
   const students = [
-    card({ id: 'a', name: 'Ada', checkedIn: true }),
-    card({ id: 'b', name: 'Bea', checkedIn: true }),
-    card({ id: 'c', name: 'Cam', checkedIn: true }),
+    card({ id: 'zoe', name: 'Zoe', division: 'Kids', checkedIn: true }),
+    card({ id: 'bea', name: 'Bea', division: '  ', checkedIn: true }),
+    card({ id: 'cam', name: 'Cam', division: 'Adult', checkedIn: true }),
+    card({ id: 'amy', name: 'Amy', division: 'adult', checkedIn: true }),
+    card({ id: 'dee', name: 'Dee', division: 'Kids', checkedIn: true }),
+    card({ id: 'no', name: 'Nope', division: 'Adult', checkedIn: false }),
   ];
-  const tied = orderCheckedInByRanking(students, [row(1, 'Bea', 1), row(1, 'Ada', 2)]);
+  const before = structuredClone(students);
+  const tied = orderCheckedInByRanking(students, [row(1, 'Zoe', 1), row(1, 'Cam', 2)]);
   assert.deepEqual(
-    tied.map((seed) => seed.name),
-    ['Bea', 'Ada', 'Cam'],
+    tied.map((seed) => [seed.name, seed.place]),
+    [
+      ['Zoe', 1],
+      ['Cam', 1],
+      ['Amy', null],
+      ['Dee', null],
+      ['Bea', null],
+    ],
   );
   assert.deepEqual(
-    orderCheckedInByRanking(students, []).map((seed) => seed.name),
-    ['Ada', 'Bea', 'Cam'],
+    orderCheckedInByRanking(students, []).map((seed) => [seed.name, seed.place]),
+    [
+      ['Amy', null],
+      ['Cam', null],
+      ['Dee', null],
+      ['Zoe', null],
+      ['Bea', null],
+    ],
   );
   assert.deepEqual(
     orderCheckedInByRanking(students, null).map((seed) => seed.name),
-    ['Ada', 'Bea', 'Cam'],
+    ['Amy', 'Cam', 'Dee', 'Zoe', 'Bea'],
   );
+  assert.deepEqual(students, before);
 });
 
 test('name matching is trimmed and case-insensitive, like the roster name field', () => {
