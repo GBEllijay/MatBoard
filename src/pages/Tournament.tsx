@@ -6,6 +6,7 @@ import { FullscreenChip } from '../components/FullscreenChip';
 import { KidsBracketChrome, KidsMascotDock } from '../components/KidsBracketChrome';
 import { KidsScoreboardSwitcher } from '../components/KidsScoreboardSwitcher';
 import { PlayExitMark } from '../components/PlayExitMark';
+import { CheckInFillSheet } from '../components/CheckInFillSheet';
 import { OutcomePickSheet } from '../components/OutcomeCalls';
 import { RosterNameField } from '../components/RosterNameField';
 import { Sheet } from '../components/Sheet';
@@ -20,6 +21,7 @@ import {
   useBracketTheme,
   useKidsScoreboard,
   useMatchState,
+  useRankings,
   useRosterState,
   useTournamentLibrary,
   useTournamentState,
@@ -50,6 +52,7 @@ import {
 } from '../lib/productNames';
 import { coachLinkedWhiteBoard, withMatchOrigin } from '../lib/scoreboardSkin';
 import {
+  bracketHasCompetitors,
   bracketHasContent,
   bracketRoundLine,
   byeCountFor,
@@ -62,6 +65,7 @@ import {
   placementLabel,
   placementOf,
   matchHasBye,
+  fillCheckedInBracket,
   fillSeedNames,
   newBracket,
   parseNameList,
@@ -98,6 +102,8 @@ import { type OutcomeCall } from '../lib/outcomes';
 export function TournamentPage() {
   const tournament = useTournamentState();
   const library = useTournamentLibrary();
+  const roster = useRosterState();
+  const rankings = useRankings();
   const match = useMatchState();
   const theme = useBracketTheme();
   const kids = useKidsScoreboard();
@@ -123,6 +129,7 @@ export function TournamentPage() {
   const [confirmReset, setConfirmReset] = useState(false);
   const [pendingPlacement, setPendingPlacement] = useState<PlacementStyle | null>(null);
   const [pasteDraft, setPasteDraft] = useState('');
+  const [checkInOpen, setCheckInOpen] = useState(false);
   const [saveName, setSaveName] = useState('');
   const [customSize, setCustomSize] = useState(String(tournament.size));
   const seeds = seedSlots(tournament);
@@ -299,6 +306,9 @@ export function TournamentPage() {
             }}
           >
             Edit names
+          </button>
+          <button type="button" className="btn btn--ghost" onClick={() => setCheckInOpen(true)}>
+            Fill from check-in
           </button>
           <button
             type="button"
@@ -498,6 +508,21 @@ export function TournamentPage() {
           Done
         </button>
       </Sheet>
+      <CheckInFillSheet
+        open={checkInOpen}
+        onClose={() => setCheckInOpen(false)}
+        students={roster.students}
+        files={rankings.files}
+        bracketTitle={tournament.title}
+        hasNames={bracketHasCompetitors(tournament)}
+        hasResults={Object.keys(tournament.results).length > 0}
+        sizeMax={sizeMax}
+        onApply={(names) => {
+          unlinkBracketBout();
+          fillCheckedInBracket(names, sizeMax);
+          setCheckInOpen(false);
+        }}
+      />
       <Sheet
         open={sizeOpen}
         title="Bracket size"

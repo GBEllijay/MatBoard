@@ -24,6 +24,7 @@ import {
   type ScheduleAssets,
   type ScheduleState,
 } from '../lib/scheduleStore';
+import { getRankings, subscribeRankings, type RankingLibrary } from '../lib/rankingStore';
 import { getRoster, subscribeRoster, type RosterState } from '../lib/rosterStore';
 import { getWhiteRoster, subscribeWhiteRoster, type WhiteRosterState } from '../lib/whiteRosterStore';
 import {
@@ -77,6 +78,10 @@ export function useScheduleAssets(): ScheduleAssets {
 
 export function useRosterState(): RosterState {
   return useSyncExternalStore(subscribeRoster, getRoster, getRoster);
+}
+
+export function useRankings(): RankingLibrary {
+  return useSyncExternalStore(subscribeRankings, getRankings, getRankings);
 }
 
 export function useWhiteRosterState(): WhiteRosterState {
