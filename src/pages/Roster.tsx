@@ -47,6 +47,7 @@ import { readGymName } from '../lib/gymName';
 import {
   ADULT_BELTS,
   KIDS_BELTS,
+  LAST_PROMOTION_DETAIL_MAX,
   NOTE_MAX,
   addStudent,
   addStudents,
@@ -403,6 +404,14 @@ function StudentCard({
   onToggleCheckIn: () => void;
 }) {
   const promoted = formatPromotion(student.lastPromotion);
+  const promotionDetail = student.lastPromotionDetail.trim();
+  const promotionLine = promoted && promotionDetail
+    ? `Last promotion ${promoted} · ${promotionDetail}`
+    : promoted
+      ? `Last promotion ${promoted}`
+      : promotionDetail
+        ? `Last promotion ${promotionDetail}`
+        : '';
 
   return (
     <li>
@@ -432,7 +441,7 @@ function StudentCard({
         </header>
         {student.division ? <p className="roster-card__meta">{student.division}</p> : null}
         {student.gym ? <p className="roster-card__meta">{student.gym}</p> : null}
-        {promoted ? <p className="roster-card__meta">Last promotion {promoted}</p> : null}
+        {promotionLine ? <p className="roster-card__meta roster-card__promotion">{promotionLine}</p> : null}
         {student.note ? <p className="roster-card__note">{student.note}</p> : null}
         {pending ? (
           <div className="roster-card__actions">
@@ -646,15 +655,28 @@ function StudentEditor({
           autoComplete="off"
         />
       </label>
-      <label>
-        Last promotion
-        <input
-          type="date"
-          value={draft.lastPromotion}
-          onChange={(event) => patch({ lastPromotion: event.target.value })}
-          aria-label="Last promotion"
-        />
-      </label>
+      <div className="roster-edit__promotion">
+        <label className="roster-edit__promotion-date">
+          Last promotion
+          <input
+            type="date"
+            value={draft.lastPromotion}
+            onChange={(event) => patch({ lastPromotion: event.target.value })}
+            aria-label="Last promotion"
+          />
+        </label>
+        <label className="roster-edit__promotion-detail">
+          Last promotion detail
+          <input
+            value={draft.lastPromotionDetail ?? ''}
+            onChange={(event) => patch({ lastPromotionDetail: event.target.value })}
+            placeholder="e.g. 3rd stripe, white belt"
+            aria-label="Last promotion detail"
+            maxLength={LAST_PROMOTION_DETAIL_MAX}
+            autoComplete="off"
+          />
+        </label>
+      </div>
       <label>
         {studentRoster ? STUDENT_NOTES_LABEL : 'Competitor Notes'}
         <textarea
