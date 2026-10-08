@@ -898,6 +898,29 @@ export function fillSeedNames(names: readonly string[], startIndex = 0): void {
   patchActive((board) => applySeedNames(board, names, startIndex));
 }
 
+/**
+ * Replace the open draw with these seed names. Size follows the name count
+ * (clamped to this board's max). Results on this board clear. Title and
+ * placement stay. Names land through the same seed slots as a manual fill.
+ */
+export function applyCheckedInBracket(
+  current: TournamentState,
+  names: readonly string[],
+  max = PRO_MAX_COMPETITORS,
+): TournamentState {
+  const filled = names.map((name) => name.trim()).filter(Boolean);
+  if (!filled.length) return current;
+  const size = clampCompetitorCount(filled.length, max);
+  const next = defaultTournament(size);
+  next.placement = placementOf(current);
+  next.title = current.title;
+  return applySeedNames(next, filled.slice(0, size), 0);
+}
+
+export function fillCheckedInBracket(names: readonly string[], max = PRO_MAX_COMPETITORS): void {
+  patchActive((board) => applyCheckedInBracket(board, names, max));
+}
+
 export function setMatchOutcome(
   matchId: BracketMatchId,
   side: MatchSide,
