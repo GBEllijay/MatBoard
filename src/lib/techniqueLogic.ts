@@ -11,6 +11,8 @@
  * customer's Drive). This plan never holds the file body.
  */
 
+import { asRecord } from './plainValue.ts';
+
 export const WARMUP_SLOT_ID = 'warmup';
 export const COOLDOWN_SLOT_ID = 'cooldown';
 export const MIN_TECHNIQUE_SLOTS = 3;
@@ -106,11 +108,6 @@ export type VideoPlan = {
   slots: VideoSlot[];
   selectedSlotId: string;
 };
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  return value as Record<string, unknown>;
-}
 
 function blankSlotMedia(): Pick<VideoSlot, 'driveFileId' | 'mediaName' | 'mediaMime'> {
   return { driveFileId: null, mediaName: '', mediaMime: '' };

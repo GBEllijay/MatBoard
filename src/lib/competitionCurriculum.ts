@@ -6,6 +6,7 @@
  */
 
 import { parseMmSs } from './format.ts';
+import { asRecord, clampText } from './plainValue.ts';
 import {
   CLASS_DESIGNATION_MAX,
   CLASS_TIME_MAX,
@@ -102,15 +103,6 @@ function createId(prefix: string): string {
   idSeq += 1;
   const rand = Math.random().toString(36).slice(2, 8);
   return `${prefix}-${Date.now().toString(36)}-${idSeq.toString(36)}-${rand}`;
-}
-
-function clampText(value: unknown, max: number): string {
-  return typeof value === 'string' ? value.slice(0, max) : '';
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  return value as Record<string, unknown>;
 }
 
 export function blockHeading(block: Pick<CurriculumBlock, 'kind' | 'title'>): string {
