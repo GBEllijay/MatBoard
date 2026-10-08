@@ -28,6 +28,8 @@ export const NAME_MAX = 80;
 export const GYM_MAX = 80;
 export const DIVISION_MAX = 80;
 export const BELT_MAX = 40;
+/** What the last promotion was, such as "3rd stripe, white belt". */
+export const LAST_PROMOTION_DETAIL_MAX = 80;
 
 export const ADULT_BELTS = ['White', 'Blue', 'Purple', 'Brown', 'Black'] as const;
 export const KIDS_BELTS = ['Grey', 'Yellow', 'Orange', 'Green'] as const;
@@ -47,6 +49,11 @@ export type Student = {
    */
   photo: string;
   lastPromotion: string;
+  /**
+   * What the last promotion was, in the coach's words. Optional.
+   * Older saves omit this; readers treat a missing value as empty.
+   */
+  lastPromotionDetail: string;
   /** Competitor Notes. Stays on this card. Older saves may also have knownInjuries; that field is dropped on read. */
   note: string;
   /** Present today for the in-house tournament. Off until someone checks them in. */
@@ -119,6 +126,8 @@ export type StudentDraft = {
   division: string;
   gym: string;
   lastPromotion: string;
+  /** Optional. Omit on older drafts; save treats that as empty. */
+  lastPromotionDetail?: string;
   note: string;
   /** Compact face photo data URL. Omit or blank for no photo. */
   photo?: string;
@@ -221,7 +230,16 @@ export function dropSiblingCompetitor(extra: Record<string, unknown>, id: string
 }
 
 export function emptyDraft(): StudentDraft {
-  return { name: '', belt: '', division: '', gym: '', lastPromotion: '', note: '', photo: '' };
+  return {
+    name: '',
+    belt: '',
+    division: '',
+    gym: '',
+    lastPromotion: '',
+    lastPromotionDetail: '',
+    note: '',
+    photo: '',
+  };
 }
 
 export function draftFromStudent(student: Student): StudentDraft {
@@ -231,6 +249,7 @@ export function draftFromStudent(student: Student): StudentDraft {
     division: student.division,
     gym: student.gym,
     lastPromotion: student.lastPromotion,
+    lastPromotionDetail: student.lastPromotionDetail,
     note: student.note,
     photo: student.photo,
   };
@@ -323,6 +342,10 @@ export function clipDivision(value: string): string {
   return value.normalize('NFC').trim().slice(0, DIVISION_MAX);
 }
 
+export function clipLastPromotionDetail(value: string): string {
+  return value.normalize('NFC').trim().slice(0, LAST_PROMOTION_DETAIL_MAX);
+}
+
 export function clipNote(value: string): string {
   return value.trim().slice(0, NOTE_MAX);
 }
@@ -354,6 +377,7 @@ export function studentFromInput(
     gym: clipGym(input.gym ?? ''),
     photo: clipCompetitorPhoto(input.photo),
     lastPromotion: normalizeDate(input.lastPromotion ?? ''),
+    lastPromotionDetail: clipLastPromotionDetail(input.lastPromotionDetail ?? ''),
     note: clipNote(input.note ?? ''),
     checkedIn: parseCheckedIn(input.checkedIn),
   };
@@ -453,6 +477,7 @@ export function confirmManualCompetitor(
         division: '',
         gym: '',
         lastPromotion: '',
+        lastPromotionDetail: '',
         note: '',
       },
       options.rosterList === 'student' ? { rosterList: 'student' } : undefined,
@@ -476,6 +501,7 @@ export function normalizeStudent(raw: unknown): Student | null {
     gym: typeof row.gym === 'string' ? row.gym : '',
     photo: typeof row.photo === 'string' ? row.photo : '',
     lastPromotion: typeof row.lastPromotion === 'string' ? row.lastPromotion : '',
+    lastPromotionDetail: typeof row.lastPromotionDetail === 'string' ? row.lastPromotionDetail : '',
     note: typeof row.note === 'string' ? row.note : '',
     checkedIn: row.checkedIn,
   });
@@ -659,6 +685,8 @@ export function updateStudent(id: string, draft: Partial<StudentDraft>): Student
     gym: draft.gym ?? current.gym,
     photo: draft.photo !== undefined ? draft.photo : current.photo,
     lastPromotion: draft.lastPromotion ?? current.lastPromotion,
+    lastPromotionDetail:
+      draft.lastPromotionDetail !== undefined ? draft.lastPromotionDetail : current.lastPromotionDetail,
     note: draft.note ?? current.note,
     checkedIn: current.checkedIn,
   });

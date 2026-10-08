@@ -9252,6 +9252,37 @@ input.roster-pick__name:focus,
   font: inherit;
 }
 
+.roster-edit__promotion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.55rem 0.75rem;
+  margin: 0;
+  padding: 0.7rem 0.75rem 0.8rem;
+  border: 1px solid rgba(252, 192, 0, 0.28);
+  border-radius: 16px;
+  background: rgba(8, 16, 32, 0.35);
+}
+
+.roster-edit__promotion-date {
+  flex: 0 1 11rem;
+  min-width: min(100%, 9.25rem);
+}
+
+.roster-edit__promotion-detail {
+  flex: 1 1 12rem;
+  min-width: min(100%, 11rem);
+}
+
+.roster-edit__promotion input[type='date'] {
+  min-width: 0;
+  color-scheme: dark;
+}
+
+.roster-card__promotion {
+  overflow-wrap: anywhere;
+}
+
 .roster-edit__belts {
   display: grid;
   gap: 0.55rem;

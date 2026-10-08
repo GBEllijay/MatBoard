@@ -206,7 +206,7 @@ test('Coach CMS roster shows CSV and keeps manual roster language', () => {
   );
   assert.equal(
     ROSTER_CSV_INSTRUCTIONS,
-    'Each row needs a competitor name and a belt. A row missing either one is left out. Division, Gym name / nickname, and Check In can be blank. Competitor Notes are included when the row has them. Face photos stay on this device and are not in the CSV.',
+    'Each row needs a competitor name and a belt. A row missing either one is left out. Division, Gym name / nickname, Last promotion, Last promotion detail, and Check In can be blank. Competitor Notes are included when the row has them. Face photos stay on this device and are not in the CSV.',
   );
   assert.equal(
     ROSTER_CSV_TEMPLATE_NOTE,

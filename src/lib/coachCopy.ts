@@ -115,7 +115,7 @@ export const ROSTER_CSV_DEVICE_NOTE =
 
 /** Shown only from the Instructions control. Import skips a row without both. */
 export const ROSTER_CSV_INSTRUCTIONS =
-  'Each row needs a competitor name and a belt. A row missing either one is left out. Division, Gym name / nickname, and Check In can be blank. Competitor Notes are included when the row has them. Face photos stay on this device and are not in the CSV.';
+  'Each row needs a competitor name and a belt. A row missing either one is left out. Division, Gym name / nickname, Last promotion, Last promotion detail, and Check In can be blank. Competitor Notes are included when the row has them. Face photos stay on this device and are not in the CSV.';
 
 /** Plain text beside the Competitor Roster template download. */
 export const ROSTER_CSV_TEMPLATE_NOTE =

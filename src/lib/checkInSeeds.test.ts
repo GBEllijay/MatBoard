@@ -28,6 +28,7 @@ function card(partial: Partial<Student> & Pick<Student, 'id' | 'name'>): Student
     gym: '',
     photo: '',
     lastPromotion: '',
+    lastPromotionDetail: '',
     note: '',
     checkedIn: false,
     ...partial,
