@@ -4365,6 +4365,31 @@ fieldset {
   transform-origin: 54% 46%;
 }
 
+.saver-caption {
+  position: relative;
+  z-index: 2;
+  margin: 0.6rem 1rem 0;
+  font-weight: 700;
+  text-align: center;
+}
+
+.gallery-schedule {
+  display: grid;
+  gap: 0.35rem;
+  flex: 1 0 100%;
+}
+
+.gallery-schedule__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.gallery-schedule .preset,
+.gallery-schedule input {
+  min-height: 44px;
+}
+
 .saver__video {
   position: absolute;
   inset: 0;
