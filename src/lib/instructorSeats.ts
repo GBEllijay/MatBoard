@@ -1,6 +1,8 @@
 /**
  * Owner-issued instructor seats for Instructor Collaboration and Advantage Coach Unlimited.
- * Soft beta: records stay on this device. Advantage does not email the link.
+ * Soft beta: the seat list on this device is the door. A gym Google Drive folder
+ * can carry the invite text to another browser. Advantage does not email the
+ * link and does not host the files.
  *
  * Pro's default seat budget is 10 open seats (invited or active). Revoked seats
  * free a slot. Every role uses that budget, including assistant coach. A
@@ -902,6 +904,34 @@ export function acceptInstructorInvite(
   emitSeats();
   emitSession();
   return { ok: true, seat: cloneSeat(seat) };
+}
+
+/**
+ * Merge a seat that arrived as text from the gym's cloud folder.
+ * Does not write the owner Pro or Coach unlock.
+ * An active seat on this browser stays active if the packet is still invited.
+ */
+export function importInstructorSeat(
+  value: unknown,
+): { ok: true; seat: InstructorSeat } | { ok: false; reason: 'invalid' | 'storage' } {
+  const incoming = readSeat(value);
+  if (!incoming) return { ok: false, reason: 'invalid' };
+  const archive = readArchive();
+  const index = archive.seats.findIndex(
+    (row) => row.inviteToken === incoming.inviteToken || row.id === incoming.id,
+  );
+  if (index >= 0) {
+    const local = archive.seats[index];
+    const status: SeatStatus =
+      incoming.status === 'revoked' ? 'revoked' : local.status === 'active' && incoming.status === 'invited' ? 'active' : incoming.status;
+    archive.seats[index] = { ...incoming, id: local.id, status };
+  } else {
+    archive.seats.push(incoming);
+  }
+  if (!writeArchive(archive)) return { ok: false, reason: 'storage' };
+  emitSeats();
+  const saved = readArchive().seats.find((row) => row.inviteToken === incoming.inviteToken);
+  return saved ? { ok: true, seat: cloneSeat(saved) } : { ok: false, reason: 'storage' };
 }
 
 export function revokeInstructorSeat(id: string): SeatWriteResult {

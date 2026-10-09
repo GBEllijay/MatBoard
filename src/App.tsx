@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useNavigate, useSearchParams } from 'react-router-dom';
+import { InviteHandoffAccept } from './components/InviteHandoffAccept';
 import { OneDriveConnectResume } from './components/OneDriveConnectResume';
 import { SeatSessionChrome, useCurrentSeat } from './components/SeatSessionBar';
 import { useCoachUnlocked } from './hooks/useCoachUnlocked';
@@ -206,7 +207,8 @@ function InviteDoor({ children }: { children: ReactNode }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get('invite');
-  const open = token !== null && peekInstructorInvite(token) === 'open';
+  const peek = token ? peekInstructorInvite(token) : null;
+  const open = peek === 'open';
 
   useEffect(() => {
     if (!token || !open) return;
@@ -225,6 +227,7 @@ function InviteDoor({ children }: { children: ReactNode }) {
     );
   }, [token, open, navigate, setSearchParams]);
 
+  if (token && peek === 'missing') return <InviteHandoffAccept token={token} />;
   if (open) return null;
   return children;
 }

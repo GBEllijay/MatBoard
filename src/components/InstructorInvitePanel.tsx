@@ -1,6 +1,8 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { useGymName } from '../hooks/useGymBrand';
+import { DRIVE_HANDOFF_SAVED, publishSeatToGym } from '../lib/driveHandoff';
 import { SITE_FEEDBACK_EMAIL } from '../lib/siteFooter';
+import { DriveHandoffGuide, useDriveConnected } from './DriveHandoffGuide';
 import { useCurrentSeat } from './SeatSessionBar';
 import {
   INSTRUCTOR_PERMISSION_FIELDS,
@@ -102,6 +104,8 @@ export function InstructorInvitePanel() {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copyFailedId, setCopyFailedId] = useState<string | null>(null);
+  const [handoffNote, setHandoffNote] = useState<string | null>(null);
+  const driveConnected = useDriveConnected();
   const issuedRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -166,6 +170,10 @@ export function InstructorInvitePanel() {
     });
     setCopiedId(null);
     setCopyFailedId(null);
+    setHandoffNote(null);
+    void publishSeatToGym(result.seat).then((sent) => {
+      setHandoffNote(sent === 'saved' ? DRIVE_HANDOFF_SAVED : null);
+    });
   };
 
   return (
@@ -177,7 +185,7 @@ export function InstructorInvitePanel() {
           <span className="invite-form__note">
             Pick a role, then change any switch for this person. The role chooses which menus
             open. Inside those menus, cloud and sharing match the owner. The link stays on this
-            device. Nothing is emailed or billed.
+            device until the gym Google Drive folder carries it. Nothing is emailed or billed.
           </span>
           {gymName ? <span className="invite-gym">Gym · {gymName}</span> : null}
           <div className="invite-seat-cap" role="status" aria-live="polite">
@@ -209,9 +217,11 @@ export function InstructorInvitePanel() {
               {copyFailedId === 'issued' ? (
                 <span>Select the link and copy it from there.</span>
               ) : null}
+              {handoffNote ? <p role="status">{handoffNote}</p> : null}
               </div>
             </div>
           ) : null}
+          {driveConnected ? null : <DriveHandoffGuide />}
           </div>
           <label className="invite-field invite-field--lead" htmlFor={`${formId}-email`}>
             Instructor email
@@ -322,8 +332,9 @@ export function InstructorInvitePanel() {
                   }}
                 onCancelRevoke={() => setConfirmId(null)}
                 onRevoke={() => {
-                  revokeInstructorSeat(seat.id);
+                  const revoked = revokeInstructorSeat(seat.id);
                   setConfirmId(null);
+                  if (revoked.ok) void publishSeatToGym(revoked.seat);
                 }}
               />
             ))}

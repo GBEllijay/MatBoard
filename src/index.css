@@ -1175,10 +1175,19 @@ button.mode-card__hit {
 
 .home--pro .review-inbox__actions .review-decision--on,
 .notes .lesson-version--on,
-.home--pro .lesson-version--on {
+.home--pro .lesson-version--on,
+.home--pro .drive-handoff .handoff-check--on,
+.notes .drive-handoff .handoff-check--on,
+.home--pro .review-inbox .handoff-check--on,
+.notes .notes__distribute .handoff-check--on {
   background: var(--logo-blue);
   color: #fff;
   border-color: transparent;
+}
+
+.drive-handoff {
+  display: grid;
+  gap: 0.75rem;
 }
 
 .lesson-versions {

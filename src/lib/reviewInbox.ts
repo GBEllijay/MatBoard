@@ -1,7 +1,8 @@
 /**
  * Coach submit-for-review inbox.
- * The plan text and a photo id stay on this device. Photo bytes stay in the
- * class-photo store or the gym's Drive folder. Advantage does not host them.
+ * The plan text and a photo id stay on this device until a gym cloud folder
+ * carries that text to another browser. Photo bytes stay in the class-photo
+ * store or the gym's Drive folder. Advantage does not host them.
  */
 
 import { lessonPlanForDrive } from './lessonDrive.ts';
@@ -290,6 +291,34 @@ export function submitForReview(input: {
   };
   writeAll([next, ...items]);
   return next;
+}
+
+/**
+ * A review packet from the gym folder.
+ * A new id is appended. An id already here keeps its plan text and takes the
+ * packet's status and note.
+ */
+export function upsertReviewHandoff(
+  value: ReviewSubmission,
+  mode: 'add' | 'status',
+): 'added' | 'updated' | 'invalid' {
+  const normalized = normalizeSubmission(value);
+  if (!normalized) return 'invalid';
+  const items = readAll();
+  const index = items.findIndex((item) => item.id === normalized.id);
+  if (index < 0) {
+    writeAll([normalized, ...items]);
+    return 'added';
+  }
+  items[index] = {
+    ...items[index],
+    status: normalized.status,
+    instructorNote: normalized.instructorNote,
+    photoId: items[index].photoId || normalized.photoId,
+    photoName: items[index].photoName || normalized.photoName,
+  };
+  writeAll(items);
+  return mode === 'add' ? 'added' : 'updated';
 }
 
 export function decideReview(
