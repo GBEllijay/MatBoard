@@ -27,6 +27,8 @@ import {
   instructorInviteLink,
   instructorPresetPermissions,
   instructorPresetPlan,
+  SEAT_ADJUSTED_NOTE,
+  instructorSeatAdjusted,
   instructorSeatBinderLabel,
   acceptInstructorInvite,
   isProgramDirectorSeat,
@@ -425,6 +427,13 @@ test('four binder presets fill the toggles and stay overridable', () => {
   const adjusted = { ...instructors, galleryUpload: false };
   assert.equal(permissionsMatchPreset('instructors', adjusted), false);
   assert.equal(instructorSeatBinderLabel('instructors', adjusted), 'Instructors · adjusted');
+  assert.equal(instructorSeatAdjusted('instructors', adjusted), true);
+  assert.equal(instructorSeatAdjusted('instructors', instructors), false);
+  assert.equal(instructorSeatAdjusted(null, adjusted), false);
+  assert.match(SEAT_ADJUSTED_NOTE, /role defaults/);
+  const bar = readFileSync(new URL('../components/SeatSessionBar.tsx', import.meta.url), 'utf8');
+  assert.match(bar, /SEAT_ADJUSTED_NOTE/);
+  assert.match(bar, /instructorSeatAdjusted/);
   assert.equal(instructorSeatBinderLabel(null, adjusted), 'Custom binder');
   assert.equal(instructorSeatBinderLabel('assistant-coach', assistant), 'Assistant coach');
   assert.deepEqual(
@@ -867,6 +876,33 @@ test('a coach seat without media stays shut when Pro is locked', () => {
   assert.equal(homeConsoleLabel(door), null);
   assert.deepEqual(consoleHubs(door, accepted.seat.permissions), []);
   assert.equal(mediaFolderDoorOpen(door, accepted.seat.permissions, 'gallery'), false);
+});
+
+test('a coach seat with Gallery upload opens Gallery when this browser Pro unlock is off', () => {
+  reset();
+  const issued = issueInstructorInvite({
+    email: 'coach-gallery@example.com',
+    presetId: 'coach',
+    origin: 'https://advantagebjjtimer.com',
+    token: 'coach-gallery',
+    permissions: { galleryUpload: true },
+  });
+  assert.equal(issued.ok, true);
+  if (!issued.ok) return;
+  const accepted = acceptInstructorInvite('coach-gallery');
+  assert.equal(accepted.ok, true);
+  if (!accepted.ok) return;
+  assert.equal(accepted.seat.permissions.galleryUpload, true);
+  assert.equal(accepted.seat.permissions.eventsAccess, false);
+  assert.equal(instructorSeatBinderLabel(accepted.seat.presetId, accepted.seat.permissions), 'Coach · adjusted');
+  const door = doorFrom(false, accepted.seat);
+  assert.equal(mediaConsoleDoorOpen(door), true);
+  assert.equal(mediaFolderDoorOpen(door, accepted.seat.permissions, 'gallery'), true);
+  assert.equal(mediaFolderDoorOpen(door, accepted.seat.permissions, 'events'), false);
+  assert.equal(mediaFolderDoorOpen(door, accepted.seat.permissions, 'shop'), false);
+  const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+  assert.match(app, /closedDoorPath\(door\.seated\)/);
+  assert.match(app, /\/coming-soon/);
 });
 
 test('a stored Program Director binder with factory coach switches is read as the role menus', () => {

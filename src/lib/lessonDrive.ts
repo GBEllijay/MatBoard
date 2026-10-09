@@ -104,6 +104,7 @@ export function lessonPlanForDrive(plan: TrainingNotesPlan): TrainingNotesPlan {
     id: typeof plan.id === 'string' ? plan.id : '',
     coachName: plan.coachName,
     classDesignation: plan.classDesignation ?? '',
+    lessonTitle: plan.lessonTitle ?? '',
     classTime: plan.classTime ?? '',
     intro: plan.intro,
     introExpected: plan.introExpected,
@@ -392,8 +393,9 @@ export function savedDriveNotice(revisions: number): string {
 export function lessonRevisionLabel(revision: LessonRevision): string {
   const who = revision.coachName.trim() || 'Coach';
   const designation = revision.plan.classDesignation?.trim() ?? '';
+  const title = revision.plan.lessonTitle?.trim() ?? '';
   const time = revision.plan.classTime?.trim() ?? '';
-  const klass = [designation, time].filter(Boolean).join(' ');
+  const klass = [designation, title, time].filter(Boolean).join(' ');
   const what = revision.kind === 'distribution' ? 'Shared for distribution' : 'Draft';
   return klass
     ? `${who} · ${klass} · ${revision.dateKey} · ${what}`
