@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { ClassPhotoPromotions } from '../components/ClassPhotoPromotions';
+import { PlanDateNav } from '../components/PlanDateNav';
 import { CoachPlanExport } from '../components/CoachPlanExport';
 import { CollaborationGate, useCurrentSeat } from '../components/SeatSessionBar';
 import { LessonMediaRail } from '../components/LessonMediaRail';
@@ -64,12 +65,13 @@ import {
 } from '../lib/instructorSeats';
 import { COACH_UNLIMITED_PATH, INSTRUCTOR_COACH_ENTRY, UNLIMITED_LESSON_VALUE } from '../lib/productNames';
 import { listPhotos } from '../lib/photoStore';
-import { loadTechniqueBoard } from '../lib/techniqueStore';
+import { loadTechniqueBoardForDate } from '../lib/techniqueStore';
 import type { VideoPlan } from '../lib/techniqueLogic';
 import { loadTechniqueArchive, type TechniqueTreeArchive } from '../lib/techniqueTreeStore';
 import {
   CLASS_DESIGNATION_MAX,
   CLASS_TIME_MAX,
+  LESSON_TITLE_MAX,
   CLOSING_MAX,
   COACH_NAME_MAX,
   COOLDOWN_NOTE_MAX,
@@ -94,6 +96,7 @@ import {
   planHasContent,
   planListLabel,
   plansOnDay,
+  searchLessonPlans,
   removeDayPlan,
   removeTechnique,
   saveDay,
@@ -131,16 +134,17 @@ const idleDriveNotice = { phase: 'idle' as const, text: '' };
 function videoOffer(
   videos: TodayVideos | null,
   ref: LessonSlotRef,
-): { show: boolean; slotId: string | null; clipUrl?: string } {
+): { show: boolean; slotId: string | null; clipUrl?: string; mediaName: string } {
   const count = videos ? videos.plan.slots.filter((slot) => slot.kind === 'technique').length : null;
   const show = lessonSlotOffersVideo(ref, count);
-  if (!videos) return { show, slotId: null };
+  if (!videos) return { show, slotId: null, mediaName: '' };
   const slot = parallelVideoSlot(videos.plan, ref);
-  if (!slot) return { show, slotId: null };
+  if (!slot) return { show, slotId: null, mediaName: '' };
   return {
     show,
     slotId: slot.slotId,
     clipUrl: slot.clipId ? videos.urls[slot.clipId] : undefined,
+    mediaName: slot.mediaName?.trim() ?? '',
   };
 }
 
@@ -218,7 +222,7 @@ export function TrainingNotesPage() {
     let created: string[] = [];
     const load = () => {
       setTreeArchive(loadTechniqueArchive());
-      void loadTechniqueBoard()
+      void loadTechniqueBoardForDate(viewKey)
         .then((board) => {
           const next: Record<string, string> = {};
           const fresh: string[] = [];
@@ -249,7 +253,7 @@ export function TrainingNotesPage() {
       document.removeEventListener('visibilitychange', onVisible);
       created.forEach((url) => URL.revokeObjectURL(url));
     };
-  }, [todayKey]);
+  }, [viewKey]);
 
   useEffect(() => {
     if (!unlimitedPlan) {
@@ -261,7 +265,7 @@ export function TrainingNotesPage() {
       void listPhotos('gallery')
         .then((rows) => {
           if (cancelled) return;
-          setGalleryToday({ status: 'ready', videos: galleryVideosForDay(rows, todayKey) });
+          setGalleryToday({ status: 'ready', videos: galleryVideosForDay(rows, viewKey) });
         })
         .catch(() => {
           if (!cancelled) setGalleryToday({ status: 'error', videos: [] });
@@ -276,7 +280,7 @@ export function TrainingNotesPage() {
       cancelled = true;
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [todayKey, unlimitedPlan]);
+  }, [viewKey, unlimitedPlan]);
 
   useEffect(() => {
     if (!unlimitedPlan) {
@@ -286,7 +290,7 @@ export function TrainingNotesPage() {
     let cancelled = false;
     setDriveToday({ status: 'loading', videos: [] });
     const load = () => {
-      void loadTodayDriveVideos(todayKey)
+      void loadTodayDriveVideos(viewKey)
         .then((result) => {
           if (!cancelled) setDriveToday(result);
         })
@@ -303,7 +307,7 @@ export function TrainingNotesPage() {
       cancelled = true;
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [todayKey, unlimitedPlan]);
+  }, [viewKey, unlimitedPlan]);
 
   useEffect(() => {
     const flush = () => flushLessonDriveDraft();
@@ -449,7 +453,7 @@ export function TrainingNotesPage() {
     navigate(
       techniquesFocusPath({
         section: ref.role,
-        date: todayKey,
+        date: viewKey,
         slotId: offer.slotId,
         index: ref.role === 'technique' ? ref.index : undefined,
       }),
@@ -463,6 +467,7 @@ export function TrainingNotesPage() {
     galleryCount,
     driveStatus: driveToday.status,
     driveCount,
+    dayLabel: viewKey === todayKey ? 'today' : planDayTitle(viewKey, todayKey),
   });
   const canDownloadToday = galleryCount + driveCount > 0;
   const downloadBusy = galleryToday.status === 'loading' || driveToday.status === 'loading';
@@ -501,9 +506,10 @@ export function TrainingNotesPage() {
     const linked = tech ? matchLessonTree(tech.title, tech.treeId, treeCandidates) : null;
     return (
       <LessonMediaRail
-        showVideo={editingToday && offer.show}
+        showVideo={offer.show}
         videoLabel={label}
         clipUrl={offer.clipUrl}
+        mediaName={offer.mediaName}
         onPlay={() => openVideo(ref)}
         linkedTree={linked ? { id: linked.id, name: linked.name } : null}
         treeChoices={tech ? treeChoices : []}
@@ -559,6 +565,18 @@ export function TrainingNotesPage() {
           </Link>
         ) : null}
         <section className="notes__archive" aria-label="Saved days">
+          <PlanDateNav
+            todayKey={todayKey}
+            viewKey={viewKey}
+            activePlanId={plan.id}
+            hitsFor={(query) => searchLessonPlans(archive, todayKey, query)}
+            onOpenDate={openDay}
+            onOpenHit={(dateKey, planId) => {
+              const found = plansOnDay(archive, dateKey).find((item) => item.id === planId);
+              if (found) openSavedPlan(dateKey, found);
+              else openDay(dateKey);
+            }}
+          />
           <div className="notes__days">
             <button
               type="button"
@@ -829,18 +847,31 @@ export function TrainingNotesPage() {
               />
             </label>
           ) : null}
-          <label className="notes__field" htmlFor="notes-class">
-            Class designation
-            <input
-              id="notes-class"
-              value={plan.classDesignation}
-              maxLength={CLASS_DESIGNATION_MAX}
-              placeholder="GB1"
-              autoComplete="off"
-              readOnly={!editingToday}
-              onChange={(event) => commit({ ...plan, classDesignation: event.target.value })}
-            />
-          </label>
+          <div className="notes__pair">
+            <label className="notes__field" htmlFor="notes-class">
+              Class designation
+              <input
+                id="notes-class"
+                value={plan.classDesignation}
+                maxLength={CLASS_DESIGNATION_MAX}
+                placeholder="GB1"
+                autoComplete="off"
+                readOnly={!editingToday}
+                onChange={(event) => commit({ ...plan, classDesignation: event.target.value })}
+              />
+            </label>
+            <label className="notes__field" htmlFor="notes-lesson-title">
+              Lesson title
+              <input
+                id="notes-lesson-title"
+                value={plan.lessonTitle}
+                maxLength={LESSON_TITLE_MAX}
+                autoComplete="off"
+                readOnly={!editingToday}
+                onChange={(event) => commit({ ...plan, lessonTitle: event.target.value })}
+              />
+            </label>
+          </div>
           <label className="notes__field" htmlFor="notes-class-time">
             Class time
             <input
@@ -977,9 +1008,9 @@ export function TrainingNotesPage() {
                 </p>
               ) : null}
             </aside>
-            <ClassPhotoPromotions dateKey={todayKey} />
           </>
         ) : null}
+        {showDistribute ? <ClassPhotoPromotions dateKey={viewKey} readOnly={!editingToday} /> : null}
       </div>
       )}
     </main>

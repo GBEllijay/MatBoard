@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DriveConnectCard } from '../components/DriveConnectCard';
+import { PlanDateNav } from '../components/PlanDateNav';
 import { LessonMediaRail } from '../components/LessonMediaRail';
 import { OpenMyDrive } from '../components/OpenMyDrive';
 import { PlayExitMark } from '../components/PlayExitMark';
@@ -42,6 +43,7 @@ import {
   moveBlock,
   normalizeExpectedDuration,
   plansOnCurriculumDay,
+  searchCurriculumPlans,
   removeBlock,
   removeCurriculumPlan,
   saveCurriculum,
@@ -316,6 +318,18 @@ export function CompetitionCurriculumPage() {
       <div className="notes__plan">
         <OpenMyDrive />
         <section className="notes__archive" aria-label="Saved days">
+          <PlanDateNav
+            todayKey={todayKey}
+            viewKey={viewKey}
+            activePlanId={plan.id}
+            hitsFor={(query) => searchCurriculumPlans(archive, todayKey, query)}
+            onOpenDate={openDay}
+            onOpenHit={(dateKey, planId) => {
+              const found = plansOnCurriculumDay(archive, dateKey).find((item) => item.id === planId);
+              if (found) openSavedPlan(dateKey, found);
+              else openDay(dateKey);
+            }}
+          />
           <div className="notes__days">
             <button
               type="button"

@@ -378,15 +378,22 @@ export type ProSurfaceInput = {
 /**
  * Media Console menu.
  * No seat: the browser Pro unlock opens it.
- * A seat is the ceiling: the invite must grant gallery, events, or Pro Shop.
- * Pro unlock opens that granted menu. A Program Director seat opens it
- * while Pro is locked. Coach and Assistant Coach presets do not.
+ * A live invite is Pro-class inside the menus the owner authorized.
+ * Gallery, Events, or Pro Shop on the invite opens this menu even when
+ * this browser's Pro unlock is off. A seat with none of those stays shut.
  */
 export function mediaConsoleDoorOpen(input: ProSurfaceInput): boolean {
   if (!input.seated) return input.proUnlocked;
-  if (!input.seatGrantsMedia) return false;
-  if (input.proUnlocked) return true;
-  return input.programDirectorSeat;
+  return input.seatGrantsMedia;
+}
+
+/**
+ * Closed Pro and media doors.
+ * A signed-in seat never sees the purchase lock or Coming soon.
+ * An unseated visitor still does.
+ */
+export function closedDoorPath(seated: boolean): '/' | '/coming-soon' {
+  return seated ? '/' : '/coming-soon';
 }
 
 /**
