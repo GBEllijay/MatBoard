@@ -9806,6 +9806,43 @@ input.roster-pick__name:focus,
   border-color: transparent;
 }
 
+.notes__date-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: end;
+}
+
+.notes__date-nav .btn,
+.notes__date-field input {
+  min-height: 44px;
+}
+
+.notes__date-field {
+  display: grid;
+  gap: 0.2rem;
+  font-weight: 700;
+}
+
+.notes__date-field input {
+  font: inherit;
+  color: var(--ink);
+  background: rgba(8, 10, 16, 0.55);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.45rem 0.6rem;
+}
+
+.notes__date-nav .notes__recent {
+  flex-basis: 100%;
+}
+
+.notes__video-name {
+  margin: 0.2rem 0 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
 .notes__when,
 .notes__recent-empty,
 .notes__confirm p {

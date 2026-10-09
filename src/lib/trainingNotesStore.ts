@@ -472,6 +472,63 @@ export function plansOnDay(archive: TrainingNotesArchive, dateKey: string): Trai
   return archive.days[dateKey]?.plans ?? [];
 }
 
+export function earliestPlanDate(todayKey: string): string {
+  return shiftDateKey(todayKey, -(PLAN_RETENTION_DAYS - 1));
+}
+
+/** Previous or next day inside the retention window. Null at the ends. */
+export function shiftPlanDate(viewKey: string, todayKey: string, delta: number): string | null {
+  if (!delta) return isWithinRetention(viewKey, todayKey) ? viewKey : null;
+  const next = shiftDateKey(viewKey, delta);
+  return isWithinRetention(next, todayKey) ? next : null;
+}
+
+export type LessonPlanHit = {
+  dateKey: string;
+  planId: string;
+  label: string;
+};
+
+/** Match coach, class, time, section text, or the date. Empty query matches nothing. */
+export function searchLessonPlans(
+  archive: TrainingNotesArchive,
+  todayKey: string,
+  query: string,
+): LessonPlanHit[] {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return [];
+  const hits: LessonPlanHit[] = [];
+  const keys = Object.keys(archive.days)
+    .filter((dateKey) => isWithinRetention(dateKey, todayKey))
+    .sort();
+  for (const dateKey of keys) {
+    for (const plan of archive.days[dateKey]?.plans ?? []) {
+      const haystack = [
+        dateKey,
+        planDayStamp(dateKey),
+        plan.coachName,
+        plan.classDesignation,
+        plan.classTime,
+        plan.intro,
+        plan.warmupNote,
+        plan.specificNote,
+        plan.cooldownNote,
+        plan.closing,
+        ...plan.techniques.flatMap((tech) => [tech.title, tech.notes]),
+      ]
+        .join('\n')
+        .toLowerCase();
+      if (!haystack.includes(needle)) continue;
+      hits.push({
+        dateKey,
+        planId: plan.id,
+        label: `${planDayStamp(dateKey)} · ${classPlanRowLabel(plan)}`,
+      });
+    }
+  }
+  return hits;
+}
+
 export function findPlanById(archive: TrainingNotesArchive, planId: string): TrainingNotesPlan | null {
   for (const day of Object.values(archive.days)) {
     const found = day.plans.find((plan) => plan.id === planId);
