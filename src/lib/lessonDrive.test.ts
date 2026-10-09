@@ -123,6 +123,13 @@ test('Drive history keeps one draft per coach per day and drops file bytes', () 
   assert.equal(saved.find((row) => row.kind === 'distribution')?.driveFileId, 'drive-plan-1');
   assert.equal(JSON.stringify(queue).includes('blob'), false);
   assert.match(lessonRevisionLabel(queue[0]), /Alex · 2026-09-27 · Draft/);
+  assert.equal(withBlob.lessonTitle, '');
+  const titled = lessonPlanForDrive({ ...plan, lessonTitle: 'Guard passing' });
+  assert.equal(titled.lessonTitle, 'Guard passing');
+  assert.match(
+    lessonRevisionLabel({ ...queue[0], plan: titled }),
+    /Alex · Guard passing · 2026-09-27 · Draft/,
+  );
   assert.match(OWNER_DRIVE_BODY, /training-videos folder/);
   assert.match(OWNER_DRIVE_BODY, /offline play/);
   assert.match(OWNER_DRIVE_BODY, /does not host the photos or videos/);

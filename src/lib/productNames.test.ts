@@ -26,6 +26,7 @@ import {
   MEDIA_FOLDER_ROUTES,
   consoleHubs,
   homeConsoleLabel,
+  closedDoorPath,
   mediaConsoleDoorOpen,
   mediaFolderDoorOpen,
   ownerProHubOpen,
@@ -391,7 +392,7 @@ test('Daily Training Videos names a seated coach instead of the gym owner consol
   assert.doesNotMatch(techniquesPageEyebrow(true, false, true), /Gym Owner/);
 });
 
-test('Program Director opens Media Console with Pro locked; other seats do not', () => {
+test('a media grant opens Media Console with Pro locked; a seat without one stays shut', () => {
   const lockedDirector = {
     proUnlocked: false,
     seated: true,
@@ -436,16 +437,14 @@ test('Program Director opens Media Console with Pro locked; other seats do not',
     programDirectorSeat: false,
     coachMenus: true,
   };
-  assert.equal(mediaConsoleDoorOpen(lockedCoachWithGallery), false);
-  assert.equal(homeConsoleLabel(lockedCoachWithGallery), null);
-  assert.equal(
-    mediaFolderDoorOpen(
-      lockedCoachWithGallery,
-      { galleryUpload: true, eventsAccess: true, proShopAccess: true },
-      'gallery',
-    ),
-    false,
-  );
+  const galleryOnly = { galleryUpload: true, eventsAccess: false, proShopAccess: false };
+  assert.equal(mediaConsoleDoorOpen(lockedCoachWithGallery), true);
+  assert.equal(homeConsoleLabel(lockedCoachWithGallery), 'Open Media Console');
+  assert.equal(mediaFolderDoorOpen(lockedCoachWithGallery, galleryOnly, 'gallery'), true);
+  assert.equal(mediaFolderDoorOpen(lockedCoachWithGallery, galleryOnly, 'events'), false);
+  assert.equal(mediaFolderDoorOpen(lockedCoachWithGallery, galleryOnly, 'shop'), false);
+  assert.equal(closedDoorPath(true), '/');
+  assert.equal(closedDoorPath(false), '/coming-soon');
 
   const proAssistant = { ...lockedAssistant, proUnlocked: true };
   assert.equal(mediaConsoleDoorOpen(proAssistant), false);

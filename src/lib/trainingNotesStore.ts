@@ -15,6 +15,8 @@ export const LEGACY_TRAINING_NOTES_STORAGE_KEY = 'matboard.trainingNotes.v1';
 export const COACH_NAME_MAX = 80;
 /** Free-text class label, such as "GB1". Not a fixed list. */
 export const CLASS_DESIGNATION_MAX = 40;
+/** Optional title for this class, such as "Guard passing". Empty on older plans. */
+export const LESSON_TITLE_MAX = 80;
 /** Free-text class time, such as "5:00 PM". Not a clock widget. */
 export const CLASS_TIME_MAX = 40;
 export const INTRO_MAX = 8_000;
@@ -60,6 +62,8 @@ export type TrainingNotesPlan = {
   coachName: string;
   /** Free-text class label under the coach name, such as "GB1". */
   classDesignation: string;
+  /** Optional lesson title beside the class designation. Empty when unset. */
+  lessonTitle: string;
   /** Free-text class time under the coach name, such as "5:00 PM". */
   classTime: string;
   intro: string;
@@ -155,6 +159,7 @@ export function emptyPlan(): TrainingNotesPlan {
     id: createId('plan'),
     coachName: '',
     classDesignation: '',
+    lessonTitle: '',
     classTime: '',
     intro: '',
     introExpected: '',
@@ -173,6 +178,7 @@ export function planHasContent(plan: TrainingNotesPlan): boolean {
   if (
     plan.coachName.trim() ||
     plan.classDesignation.trim() ||
+    plan.lessonTitle.trim() ||
     plan.classTime.trim() ||
     plan.intro.trim() ||
     plan.introExpected.trim() ||
@@ -279,6 +285,7 @@ export function sanitizePlan(input: unknown): { plan: TrainingNotesPlan; repaire
   if (!idRaw || (raw && raw.id !== id)) repaired = true;
   const coachName = clampText(raw?.coachName, COACH_NAME_MAX);
   const classDesignation = clampText(raw?.classDesignation, CLASS_DESIGNATION_MAX);
+  const lessonTitle = clampText(raw?.lessonTitle, LESSON_TITLE_MAX);
   const classTime = clampText(raw?.classTime, CLASS_TIME_MAX);
   const intro = clampText(raw?.intro, INTRO_MAX);
   const introExpected = clampText(raw?.introExpected, EXPECTED_MAX);
@@ -293,6 +300,7 @@ export function sanitizePlan(input: unknown): { plan: TrainingNotesPlan; repaire
     raw &&
     (raw.coachName !== coachName ||
       raw.classDesignation !== classDesignation ||
+      raw.lessonTitle !== lessonTitle ||
       raw.classTime !== classTime ||
       raw.intro !== intro ||
       raw.introExpected !== introExpected ||
@@ -314,6 +322,7 @@ export function sanitizePlan(input: unknown): { plan: TrainingNotesPlan; repaire
       id,
       coachName,
       classDesignation,
+      lessonTitle,
       classTime,
       intro,
       introExpected,
@@ -455,17 +464,25 @@ export function classBrowseFolders(archive: TrainingNotesArchive, todayKey: stri
 export function classPlanRowLabel(plan: TrainingNotesPlan): string {
   const coach = plan.coachName.trim() || 'Coach';
   const designation = plan.classDesignation.trim();
+  const title = plan.lessonTitle.trim();
   const time = plan.classTime.trim() || 'Time';
-  return designation ? `${coach} / ${designation} / ${time}` : `${coach} · ${time}`;
+  if (designation && title) return `${coach} / ${designation} / ${title} / ${time}`;
+  if (designation) return `${coach} / ${designation} / ${time}`;
+  if (title) return `${coach} / ${title} · ${time}`;
+  return `${coach} · ${time}`;
 }
 
 /** Coach / GB1 / 5:00 PM, so a day with several classes is easy to scan. */
 export function planListLabel(plan: TrainingNotesPlan): string {
   const coach = plan.coachName.trim();
   const designation = plan.classDesignation.trim();
+  const title = plan.lessonTitle.trim();
   const time = plan.classTime.trim();
-  if (!coach && !designation && !time) return 'New class plan';
-  return [coach || 'Coach', designation || 'Class', time || 'Time'].join(' / ');
+  if (!coach && !designation && !title && !time) return 'New class plan';
+  const parts = [coach || 'Coach'];
+  if (title) parts.push(title);
+  parts.push(designation || 'Class', time || 'Time');
+  return parts.join(' / ');
 }
 
 export function plansOnDay(archive: TrainingNotesArchive, dateKey: string): TrainingNotesPlan[] {
