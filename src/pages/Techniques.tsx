@@ -44,7 +44,7 @@ import { VIDEO_CAPTURE, VIDEO_PICKER_ACCEPT, VIDEO_RECORD_ACCEPT } from '../lib/
 import { DEFAULT_MUTE_VIDEO, getSaverPrefs, setSaverMuteVideo } from '../lib/photoStore';
 import { safeTimerReturn } from '../lib/timerReturn';
 import { techniquesPageEyebrow, techniquesParentPath } from '../lib/productNames';
-import { localDateKey } from '../lib/trainingNotesStore';
+import { isWithinRetention, localDateKey } from '../lib/trainingNotesStore';
 import { LOOP_RESTART_MIN_MS, nextLoopStep } from '../lib/videoLoop';
 import { LARGE_MEDIA_BYTES, LARGE_MEDIA_NOTE, quotaAddNote } from '../lib/storageQuota';
 import {
@@ -71,7 +71,7 @@ import {
   attachClipToSlot,
   clearSlotClip,
   deleteUnusedTrainingClip,
-  loadTechniqueBoard,
+  loadTechniqueBoardForDate,
   readTrainingClip,
   readTrainingClipBlob,
   saveTechniquePlan,
@@ -149,6 +149,10 @@ export function TechniquesPage() {
   useCoachPageSwipe();
   const launchStarted = useRef(false);
   const launchKey = searchParams.toString();
+  const focusDate = parseLessonVideoFocus(searchParams).date;
+  const boardDate = focusDate && isWithinRetention(focusDate, localDateKey()) ? focusDate : localDateKey();
+  const boardDateRef = useRef(boardDate);
+  boardDateRef.current = boardDate;
   const [lessonFocus, setLessonFocus] = useState<{ slotId: string; text: string } | null>(null);
   const [curriculumCards, setCurriculumCards] = useState<CurriculumVideoCard[]>([]);
   const [curriculumPick, setCurriculumPick] = useState<string | null>(null);
@@ -204,7 +208,7 @@ export function TechniquesPage() {
 
   useEffect(() => {
     let cancelled = false;
-    void loadTechniqueBoard()
+    void loadTechniqueBoardForDate(boardDate)
       .then(async (board) => {
         if (cancelled) return;
         applyPlan(board.plan);
@@ -224,7 +228,7 @@ export function TechniquesPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [boardDate]);
 
   const clipsRef = useRef(clips);
   clipsRef.current = clips;
@@ -260,7 +264,7 @@ export function TechniquesPage() {
   const persistPlan = async (next: VideoPlan) => {
     applyPlan(next);
     try {
-      await saveTechniquePlan(next);
+      await saveTechniquePlan(next, boardDateRef.current);
     } catch {
       setPickerNote('Could not save this plan on this device.');
     }
@@ -409,7 +413,7 @@ export function TechniquesPage() {
       applyPlan(next);
       setPlaying(false);
       if (isTimedSlot(slot)) setRemainingMs(secondsToMs(slot.drillSec));
-      void saveTechniquePlan(next).catch(() => {
+      void saveTechniquePlan(next, boardDateRef.current).catch(() => {
         setPickerNote('Could not save this plan on this device.');
       });
       return () => {

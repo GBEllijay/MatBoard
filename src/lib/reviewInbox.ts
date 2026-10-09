@@ -107,6 +107,7 @@ function blankPlan(id: string, coachName: string, intro: string, closing: string
     id,
     coachName,
     classDesignation: '',
+    lessonTitle: '',
     classTime: '',
     intro,
     introExpected: '',
@@ -228,6 +229,7 @@ export function versionChangeLines(earlier: TrainingNotesPlan | null, later: Tra
   };
   pair('Coach', earlier.coachName, later.coachName);
   pair('Class', earlier.classDesignation, later.classDesignation);
+  pair('Lesson title', earlier.lessonTitle ?? '', later.lessonTitle ?? '');
   pair('Class time', earlier.classTime, later.classTime);
   pair('Intro', earlier.intro, later.intro);
   pair('Warm-up', earlier.warmupNote, later.warmupNote);

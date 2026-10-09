@@ -21,6 +21,7 @@ import {
 import {
   MEDIA_CONSOLE_ROUTES,
   MEDIA_FOLDER_ROUTES,
+  closedDoorPath,
   coachDoorOpen,
   coachUnlimitedDoorOpen,
   mediaConsoleDoorOpen,
@@ -97,28 +98,28 @@ consumeInviteDoorNow();
 /** Full Pro hubs a seat is allowed to see. Owner-only hubs stay out. */
 function ProConsoleRoute({ children }: { children: ReactNode }) {
   const door = useSeatDoor();
-  if (visibleProHubs(door).length === 0) return <Navigate to="/coming-soon" replace />;
+  if (visibleProHubs(door).length === 0) return <Navigate to={closedDoorPath(door.seated)} replace />;
   return children;
 }
 
 /** Gallery, Events, and Pro Shop. Program Director opens this with Pro locked. */
 function MediaConsoleRoute({ children }: { children: ReactNode }) {
   const door = useSeatDoor();
-  if (!mediaConsoleDoorOpen(door)) return <Navigate to="/coming-soon" replace />;
+  if (!mediaConsoleDoorOpen(door)) return <Navigate to={closedDoorPath(door.seated)} replace />;
   return children;
 }
 
 /** Tournament suite and invite admin. A signed-in seat does not open these. */
 function OwnerProRoute({ children }: { children: ReactNode }) {
   const door = useSeatDoor();
-  if (!ownerProHubOpen(door.proUnlocked, door.seated)) return <Navigate to="/coming-soon" replace />;
+  if (!ownerProHubOpen(door.proUnlocked, door.seated)) return <Navigate to={closedDoorPath(door.seated)} replace />;
   return children;
 }
 
 /** Coach Unlimited hub. A seat needs Pro on and a lesson or videos menu. */
 function CoachUnlimitedRoute({ children }: { children: ReactNode }) {
   const door = useSeatDoor();
-  if (!coachUnlimitedDoorOpen(door)) return <Navigate to="/coming-soon" replace />;
+  if (!coachUnlimitedDoorOpen(door)) return <Navigate to={closedDoorPath(door.seated)} replace />;
   return children;
 }
 
@@ -134,7 +135,7 @@ function LessonCloudRoute({ children }: { children: ReactNode }) {
     door.seat,
     seatMenuAllowed(door.seat, 'dailyLessonPlanAccess'),
   );
-  if (!open) return <Navigate to="/coming-soon" replace />;
+  if (!open) return <Navigate to={closedDoorPath(door.seated)} replace />;
   return children;
 }
 
@@ -146,7 +147,7 @@ function BuyProRoute({ children }: { children: ReactNode }) {
   const door = useSeatDoor();
   const [params] = useSearchParams();
   if (!door.proUnlocked && !door.programDirectorSeat && !proPurchaseReturn(params)) {
-    return <Navigate to="/coming-soon" replace />;
+    return <Navigate to={closedDoorPath(door.seated)} replace />;
   }
   return children;
 }
@@ -174,11 +175,11 @@ function WhiteLiveRoute({ children }: { children: ReactNode }) {
   return children;
 }
 
-/** Gallery, Events, or Pro Shop. A closed seat goes to the lock screen, not home. */
+/** Gallery, Events, or Pro Shop. A closed seat goes home. An unseated visitor sees Coming soon. */
 function MediaFolderRoute({ folder }: { folder: MediaFolderId }) {
   const door = useSeatDoor();
   if (!mediaFolderDoorOpen(door, door.seat?.permissions ?? null, folder)) {
-    return <Navigate to="/coming-soon" replace />;
+    return <Navigate to={closedDoorPath(door.seated)} replace />;
   }
   return <Navigate to={`/slideshow?folder=${folder}`} replace />;
 }
@@ -186,7 +187,7 @@ function MediaFolderRoute({ folder }: { folder: MediaFolderId }) {
 /** `/media`, `/console`, and `/media-console` open the same seat console as home. */
 function MediaConsoleEntryRoute() {
   const door = useSeatDoor();
-  if (!mediaConsoleDoorOpen(door)) return <Navigate to="/coming-soon" replace />;
+  if (!mediaConsoleDoorOpen(door)) return <Navigate to={closedDoorPath(door.seated)} replace />;
   return <Navigate to="/pro" replace />;
 }
 
@@ -194,7 +195,7 @@ function CoachRoute({ children }: { children: ReactNode }) {
   const coach = useCoachUnlocked();
   const pro = useProUnlocked();
   const seated = useCurrentSeat() !== null;
-  if (!coachDoorOpen(pro, coach, seated)) return <Navigate to="/coming-soon" replace />;
+  if (!coachDoorOpen(pro, coach, seated)) return <Navigate to={closedDoorPath(seated)} replace />;
   return children;
 }
 

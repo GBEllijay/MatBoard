@@ -249,6 +249,18 @@ export function instructorSeatBinderLabel(
   return permissionsMatchPreset(presetId, permissions) ? name : `${name} · adjusted`;
 }
 
+/** Shown when the binder label ends in "· adjusted". */
+export const SEAT_ADJUSTED_NOTE =
+  "The owner changed this seat's permissions from the role defaults.";
+
+/** True when a named role's switches no longer match that role's defaults. */
+export function instructorSeatAdjusted(
+  presetId: InstructorPresetId | null,
+  permissions: InstructorPermissions,
+): boolean {
+  return presetId !== null && !permissionsMatchPreset(presetId, permissions);
+}
+
 /** Missing keys use the soft-beta defaults. Only real booleans are kept. */
 export function normalizeInstructorPermissions(
   value: Partial<InstructorPermissions> | null | undefined,

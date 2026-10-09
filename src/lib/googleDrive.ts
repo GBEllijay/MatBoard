@@ -114,19 +114,22 @@ export function todayDownloadCopy(input: {
   galleryCount: number;
   driveStatus: TodayDriveStatus;
   driveCount: number;
+  /** "today" on the current day. A past day uses its own label. */
+  dayLabel?: string;
 }): string {
   const galleryCount = Math.max(0, input.galleryCount);
   const driveCount = Math.max(0, input.driveCount);
+  const day = input.dayLabel?.trim() || 'today';
   if (galleryCount + driveCount > 0) {
     if (galleryCount && driveCount) {
       const gallery =
         galleryCount === 1 ? '1 video in the shared gallery' : `${galleryCount} videos in the shared gallery`;
       const drive = driveCount === 1 ? '1 in Google Drive' : `${driveCount} in Google Drive`;
-      return `${gallery} and ${drive} for today.`;
+      return `${gallery} and ${drive} for ${day}.`;
     }
-    if (driveCount === 1) return '1 video in Google Drive for today.';
-    if (driveCount > 1) return `${driveCount} videos in Google Drive for today.`;
-    return galleryTodayReadyCopy(galleryCount);
+    if (driveCount === 1) return `1 video in Google Drive for ${day}.`;
+    if (driveCount > 1) return `${driveCount} videos in Google Drive for ${day}.`;
+    return galleryTodayReadyCopy(galleryCount, day);
   }
   if (input.galleryStatus === 'loading' || input.driveStatus === 'loading') return GALLERY_TODAY_CHECKING;
   if (input.driveStatus === 'error') return DRIVE_CHECK_FAILED;
