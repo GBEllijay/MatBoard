@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { ClassPhotoPromotions } from '../components/ClassPhotoPromotions';
+import { DriveHandoffCheck, DriveHandoffGuide, useDriveConnected } from '../components/DriveHandoffGuide';
 import { LessonVersionHistory } from '../components/LessonVersionHistory';
 import { PlanDateNav } from '../components/PlanDateNav';
 import { CoachPlanExport } from '../components/CoachPlanExport';
@@ -48,6 +49,12 @@ import {
   restoredDayKey,
 } from '../lib/lessonRestore';
 import { listClassPhotoPromotions } from '../lib/classPhotoPromotions';
+import {
+  DRIVE_HANDOFF_EMPTY,
+  DRIVE_HANDOFF_SAVED,
+  publishReviewToGym,
+  pullReviewHandoff,
+} from '../lib/driveHandoff';
 import {
   DISTRIBUTE_BUTTON,
   DISTRIBUTE_DONE,
@@ -195,6 +202,9 @@ export function TrainingNotesPage() {
   const [downloadNote, setDownloadNote] = useState('');
   const [distributeNote, setDistributeNote] = useState('');
   const [reviewNote, setReviewNote] = useState('');
+  const [handoffNote, setHandoffNote] = useState('');
+  const [handoffChecked, setHandoffChecked] = useState(false);
+  const driveConnected = useDriveConnected();
   const driveNotice = useSyncExternalStore(subscribeDriveNotice, getDriveNotice, () => idleDriveNotice);
   const [treeArchive, setTreeArchive] = useState<TechniqueTreeArchive>(() => loadTechniqueArchive());
 
@@ -995,7 +1005,7 @@ export function TrainingNotesPage() {
               onClick={() => {
                 void listClassPhotoPromotions(todayKey).then((photos) => {
                   const photo = photos[photos.length - 1];
-                  submitForReview({
+                  const submitted = submitForReview({
                     revisionId: lessonDraftRevisionId(todayKey, plan.coachName, plan.id),
                     dateKey: todayKey,
                     coachName: plan.coachName,
@@ -1004,6 +1014,10 @@ export function TrainingNotesPage() {
                     photoName: photo?.name ?? '',
                   });
                   setReviewNote(REVIEW_SUBMITTED);
+                  setHandoffChecked(false);
+                  void publishReviewToGym(submitted).then((sent) => {
+                    setHandoffNote(sent === 'saved' ? DRIVE_HANDOFF_SAVED : '');
+                  });
                 });
               }}
             >
@@ -1014,6 +1028,26 @@ export function TrainingNotesPage() {
                 {reviewNote}
               </p>
             ) : null}
+            {handoffNote ? (
+              <p className="notes__distribute-note" role="status">
+                {handoffNote}
+              </p>
+            ) : null}
+            {driveConnected ? null : <DriveHandoffGuide />}
+            <DriveHandoffCheck
+              on={handoffChecked}
+              onClick={() => {
+                void pullReviewHandoff().then((result) => {
+                  if (result === 'connect') {
+                    setHandoffChecked(false);
+                    setHandoffNote('');
+                    return;
+                  }
+                  setHandoffChecked(true);
+                  setHandoffNote(result === 'saved' ? DRIVE_HANDOFF_SAVED : DRIVE_HANDOFF_EMPTY);
+                });
+              }}
+            />
           </aside>
         ) : null}
         <LessonVersionHistory versions={listPlanVersions(viewKey, plan.id)} />

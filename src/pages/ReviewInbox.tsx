@@ -1,9 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { DriveHandoffCheck, DriveHandoffGuide, useDriveConnected } from '../components/DriveHandoffGuide';
 import { HomeMark } from '../components/HomeMark';
 import { LessonVersionHistory } from '../components/LessonVersionHistory';
 import { SiteFooter } from '../components/SiteFooter';
 import { getClassPhotoPromotion } from '../lib/classPhotoPromotions';
+import {
+  DRIVE_HANDOFF_EMPTY,
+  DRIVE_HANDOFF_SAVED,
+  publishReviewToGym,
+  pullReviewHandoff,
+} from '../lib/driveHandoff';
 import { listLessonRevisions } from '../lib/lessonDrive';
 import { addFolderFiles } from '../lib/photoStore';
 import {
@@ -29,6 +36,9 @@ export function ReviewInboxPage() {
   const [tick, setTick] = useState(0);
   const [note, setNote] = useState('');
   const [galleryNote, setGalleryNote] = useState('');
+  const [handoffNote, setHandoffNote] = useState('');
+  const [handoffChecked, setHandoffChecked] = useState(false);
+  const driveConnected = useDriveConnected();
   const revisions = useMemo(() => listLessonRevisions(), [tick]);
   const inbox = useMemo(() => latestReviewSubmissions(), [tick]);
   const revision = revisions.find((item) => item.revisionId === revisionId) ?? null;
@@ -62,9 +72,27 @@ export function ReviewInboxPage() {
   const decide = (status: 'approved' | 'changes' | 'rejected') => {
     const current = openSubmission();
     if (!current) return;
-    decideReview(current.id, status, note);
+    const decided = decideReview(current.id, status, note);
     setGalleryNote('');
     setTick((value) => value + 1);
+    if (decided) {
+      void publishReviewToGym(decided).then((sent) => {
+        setHandoffNote(sent === 'saved' ? DRIVE_HANDOFF_SAVED : '');
+      });
+    }
+  };
+
+  const checkFolder = () => {
+    void pullReviewHandoff().then((result) => {
+      if (result === 'connect') {
+        setHandoffChecked(false);
+        setHandoffNote('');
+        return;
+      }
+      setHandoffChecked(true);
+      setHandoffNote(result === 'saved' ? DRIVE_HANDOFF_SAVED : DRIVE_HANDOFF_EMPTY);
+      setTick((value) => value + 1);
+    });
   };
 
   const addToGallery = async () => {
@@ -93,6 +121,9 @@ export function ReviewInboxPage() {
           <p>
             <Link to="/coach-unlimited">Back to Coach Unlimited</Link>
           </p>
+          <DriveHandoffCheck on={handoffChecked} onClick={checkFolder} />
+          {driveConnected ? null : <DriveHandoffGuide />}
+          {handoffNote ? <p role="status">{handoffNote}</p> : null}
           {inbox.length ? (
             <ul className="plan-card__revisions" aria-label="Submissions">
               {inbox.map((item) => (
