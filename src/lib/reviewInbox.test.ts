@@ -7,8 +7,11 @@ import {
   canAddApprovedPhoto,
   decideReview,
   findReviewSubmission,
+  latestReviewSubmissions,
+  listPlanVersions,
   listReviewSubmissions,
   submitForReview,
+  versionChangeLines,
 } from './reviewInbox.ts';
 import { emptyPlan } from './trainingNotesStore.ts';
 
@@ -29,7 +32,7 @@ function memoryStorage() {
 const storage = memoryStorage();
 Object.defineProperty(globalThis, 'localStorage', { value: storage, configurable: true });
 
-test('a coach submit lands in the inbox and a later submit stays one pending row', () => {
+test('a later submit keeps the earlier proposal and adds a pending copy', () => {
   storage.clear();
   const plan = emptyPlan();
   plan.coachName = 'Alex';
@@ -65,16 +68,38 @@ test('a coach submit lands in the inbox and a later submit stays one pending row
     photoName: 'class.jpg',
     submittedAt: 20,
   });
-  assert.equal(again.id, first.id);
+  assert.notEqual(again.id, first.id);
   assert.equal(again.status, 'pending');
-  assert.equal(again.instructorNote, '');
   assert.equal(again.intro, 'Passing, second pass.');
-  assert.equal(listReviewSubmissions().length, 1);
+  assert.equal(listReviewSubmissions().length, 2);
+  assert.equal(listReviewSubmissions().find((item) => item.id === first.id)?.status, 'changes');
+  assert.equal(listReviewSubmissions().find((item) => item.id === first.id)?.instructorNote, 'Show the knee cut.');
+  assert.equal(latestReviewSubmissions().length, 1);
+  assert.equal(latestReviewSubmissions()[0]?.id, again.id);
+  const versions = listPlanVersions('2026-10-09', plan.id);
+  assert.deepEqual(
+    versionChangeLines(versions[1]?.plan ?? null, versions[0]?.plan ?? again.plan),
+    ['Intro: Passing. → Passing, second pass.'],
+  );
+  assert.deepEqual(versionChangeLines(null, first.plan), ['First proposal.']);
+
+  const same = submitForReview({
+    revisionId,
+    dateKey: '2026-10-09',
+    coachName: 'Alex',
+    plan,
+    photoId: 'photo-1',
+    photoName: 'class.jpg',
+    submittedAt: 30,
+  });
+  assert.equal(same.id, again.id);
+  assert.equal(listReviewSubmissions().length, 2);
 
   const approved = decideReview(again.id, 'approved', 'ignored on approve');
   assert.equal(approved?.status, 'approved');
   assert.equal(approved?.instructorNote, '');
   assert.equal(canAddApprovedPhoto(approved), true);
+  assert.equal(listReviewSubmissions().find((item) => item.id === first.id)?.status, 'changes');
   assert.equal(
     findReviewSubmission({
       revisionId: 'distribution:2026-10-09:alex:' + plan.id,
@@ -120,6 +145,8 @@ test('Sunday review rows open the inbox and the lesson plan can submit', () => {
   assert.match(notes, /Submit for review/);
   assert.match(notes, /submitForReview/);
   assert.match(notes, /listClassPhotoPromotions/);
+  assert.match(notes, /LessonVersionHistory/);
+  assert.match(notes, /REVIEW_VERSION_LEAD/);
   const review = readFileSync(new URL('../pages/ReviewInbox.tsx', import.meta.url), 'utf8');
   assert.match(review, /REVIEW_APPROVE/);
   assert.match(review, /REVIEW_CHANGES/);
@@ -127,8 +154,14 @@ test('Sunday review rows open the inbox and the lesson plan can submit', () => {
   assert.match(review, /REVIEW_GALLERY/);
   assert.match(review, /REVIEW_GALLERY_MISSING/);
   assert.match(review, /addFolderFiles\(\[file\], 'gallery'\)/);
+  assert.match(review, /LessonVersionHistory/);
+  const history = readFileSync(new URL('../components/LessonVersionHistory.tsx', import.meta.url), 'utf8');
+  assert.match(history, /Version history/);
+  assert.match(history, /lesson-version--on/);
+  assert.match(history, /versionChangeLines/);
   const css = readFileSync(new URL('../index.css', import.meta.url), 'utf8');
   assert.match(css, /\.home--pro \.review-inbox__actions \.review-decision--on[\s\S]*background:\s*var\(--logo-blue\)/);
+  assert.match(css, /\.notes \.lesson-version--on[\s\S]*background:\s*var\(--logo-blue\)/);
   const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
   assert.match(app, /path="\/review"/);
 });

@@ -154,7 +154,7 @@ test('Sunday review opens the inbox and the coach can submit', async ({ page }) 
   await page.goto('/coach-unlimited');
   await shot(page, 'review-sunday-phone');
   await page.getByRole('link', { name: /Alex · GB1 5:00 PM · .+ · Draft/ }).click();
-  const phoneReject = page.getByRole('button', { name: 'Reject' });
+  const phoneReject = page.getByRole('button', { name: 'Reject', exact: true });
   await expect(phoneReject).toBeVisible();
   await phoneReject.click();
   await expect(page.getByRole('article', { name: 'This submission' }).getByText('Rejected')).toBeVisible();
