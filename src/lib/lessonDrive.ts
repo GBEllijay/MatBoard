@@ -177,6 +177,11 @@ function revisionKey(
   return id ? `${kind}:${dateKey}:${who}:${id}` : `${kind}:${dateKey}:${who}`;
 }
 
+/** Draft row id Sunday review uses for this class plan. */
+export function lessonDraftRevisionId(dateKey: string, coachName: string, planId: string): string {
+  return revisionKey('draft', dateKey, coachName, planId);
+}
+
 /**
  * One open draft per class plan, and one distribution marker per class plan.
  * The same coach and day can hold GB1 at 5:00 PM and GB2 at 6:00 PM as separate rows.

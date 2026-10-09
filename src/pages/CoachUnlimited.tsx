@@ -56,7 +56,14 @@ export function CoachUnlimitedPage() {
               <>
                 <ul className="plan-card__revisions" aria-label="Lesson drafts waiting for Google Drive">
                   {revisions.map((revision) => (
-                    <li key={revision.revisionId}>{lessonRevisionLabel(revision)}</li>
+                    <li key={revision.revisionId}>
+                      <Link
+                        className="plan-card__review-link"
+                        to={`/review?revision=${encodeURIComponent(revision.revisionId)}`}
+                      >
+                        {lessonRevisionLabel(revision)}
+                      </Link>
+                    </li>
                   ))}
                 </ul>
                 <span>{OWNER_DRIVE_QUEUE}</span>
