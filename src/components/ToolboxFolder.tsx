@@ -1,4 +1,5 @@
 import { PICK_FROM_DRIVE_LABEL } from '../lib/driveMediaPicker';
+import { GALLERY_LINK_TECHNIQUES } from '../lib/gallerySchedule';
 import type { FolderConfig, FolderId, StoredPhoto } from '../lib/photoStore';
 import { FolderItemList } from './FolderItemList';
 import { OpenMyDrive } from './OpenMyDrive';
@@ -22,6 +23,11 @@ type Props = {
   onBuyUrl?: (id: string, buyUrl: string) => Promise<void>;
   onStartsSlide?: (id: string, startsSlide: boolean) => Promise<void>;
   onQrLinks?: (id: string, qrLinks: string[]) => Promise<void>;
+  onGalleryChange?: (
+    id: string,
+    patch: { caption?: string; schedule?: 'always' | 'date' | 'next-class'; showDate?: string },
+  ) => Promise<void>;
+  onLinkTechniques?: () => void;
   notice?: string;
   addDisabled?: boolean;
 };
@@ -46,6 +52,8 @@ export function ToolboxFolder({
   onBuyUrl,
   onStartsSlide,
   onQrLinks,
+  onGalleryChange,
+  onLinkTechniques,
   notice,
   addDisabled,
 }: Props) {
@@ -97,6 +105,11 @@ export function ToolboxFolder({
                 {PICK_FROM_DRIVE_LABEL}
               </button>
             ) : null}
+            {onLinkTechniques ? (
+              <button type="button" className="btn btn--ghost" onClick={onLinkTechniques}>
+                {GALLERY_LINK_TECHNIQUES}
+              </button>
+            ) : null}
             {folder.ready ? <OpenMyDrive /> : null}
             {items.length && onClear ? (
               <button type="button" className="btn btn--ghost" onClick={() => void onClear()}>
@@ -114,6 +127,7 @@ export function ToolboxFolder({
               onBuyUrl={onBuyUrl}
               onStartsSlide={onStartsSlide}
               onQrLinks={onQrLinks}
+              onGalleryChange={onGalleryChange}
             />
           </>
         ) : (
