@@ -24,6 +24,8 @@ import {
   setBreakMs,
   setEndSound,
   setRounds,
+  setStartSound,
+  setWarningSound,
   setWorkMs,
   WORK_PRESETS_MIN,
 } from '../lib/trainingStore';
@@ -164,6 +166,22 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
         <label className="toggle">
           <input
             type="checkbox"
+            checked={training.startSound}
+            onChange={(e) => setStartSound(e.target.checked)}
+          />
+          Start sound
+        </label>
+        <label className="toggle">
+          <input
+            type="checkbox"
+            checked={training.warningSound}
+            onChange={(e) => setWarningSound(e.target.checked)}
+          />
+          10-second warning
+        </label>
+        <label className="toggle">
+          <input
+            type="checkbox"
             checked={training.endSound}
             onChange={(e) => setEndSound(e.target.checked)}
           />
@@ -189,10 +207,20 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
         <div className="cue-preview">
           <p className="cue-preview-label">Preview cues</p>
           <div className="presets presets--three" role="group" aria-label="Preview cues">
-            <button type="button" className="preset" onClick={() => previewCue(playStartCue)}>
+            <button
+              type="button"
+              className="preset"
+              disabled={!training.startSound}
+              onClick={() => previewCue(playStartCue)}
+            >
               Start
             </button>
-            <button type="button" className="preset" onClick={() => previewCue(playWarningCue)}>
+            <button
+              type="button"
+              className="preset"
+              disabled={!training.warningSound}
+              onClick={() => previewCue(playWarningCue)}
+            >
               10s
             </button>
             <button

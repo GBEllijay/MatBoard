@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   CLASS_DESIGNATION_MAX,
   CLASS_TIME_MAX,
+  LESSON_TITLE_MAX,
   COACH_NAME_MAX,
   EXPECTED_MAX,
   INTRO_MAX,
@@ -68,6 +69,7 @@ test('a fresh day is a blank plan and does not write storage', () => {
   assert.equal(plan.version, 1);
   assert.equal(plan.coachName, '');
   assert.equal(plan.classDesignation, '');
+  assert.equal(plan.lessonTitle, '');
   assert.equal(plan.classTime, '');
   assert.ok(plan.id);
   assert.equal(plan.intro, '');
@@ -126,6 +128,7 @@ test('a single-plan v1 card migrates onto today', () => {
   assert.equal(plansOnDay(loaded, TODAY)[0]?.techniques[0].title, 'Armbar');
   assert.equal(plansOnDay(loaded, TODAY)[0]?.techniques[0].slotId, plan.techniques[0].slotId);
   assert.equal(plansOnDay(loaded, TODAY)[0]?.classDesignation, '');
+  assert.equal(plansOnDay(loaded, TODAY)[0]?.lessonTitle, '');
   assert.equal(plansOnDay(loaded, TODAY)[0]?.classTime, '');
   assert.ok(plansOnDay(loaded, TODAY)[0]?.id);
   assert.equal(JSON.parse(localStorage.getItem(TRAINING_NOTES_STORAGE_KEY) ?? '').version, 3);
@@ -541,5 +544,40 @@ test('class folders group designation first, then dates newest first', () => {
   assert.match(source, /classBrowseFolders/);
   assert.match(source, /All classes/);
   assert.match(source, />\s*Classes\s*</);
+  assert.match(source, /Lesson title/);
+  assert.match(source, /notes-lesson-title/);
   assert.equal(UNLABELED_CLASS_LABEL, 'No class name');
+});
+
+test('an optional lesson title is stored, shown, and empty on older plans', () => {
+  storage.clear();
+  const legacy = emptyPlan();
+  legacy.classDesignation = 'GB1';
+  legacy.classTime = '5:00 PM';
+  legacy.coachName = 'Justin';
+  legacy.intro = 'Passing.';
+  const { lessonTitle: omitted, ...withoutTitle } = legacy;
+  void omitted;
+  localStorage.setItem(
+    TRAINING_NOTES_STORAGE_KEY,
+    JSON.stringify({ version: 3, days: { [TODAY]: { plans: [withoutTitle] } } }),
+  );
+  const loaded = plansOnDay(loadTrainingArchive(TODAY), TODAY)[0];
+  assert.ok(loaded);
+  assert.equal(loaded.lessonTitle, '');
+  assert.equal(loaded.classDesignation, 'GB1');
+  assert.equal(classPlanRowLabel(loaded), 'Justin / GB1 / 5:00 PM');
+  assert.equal(planListLabel(loaded), 'Justin / GB1 / 5:00 PM');
+
+  const titled = { ...loaded, lessonTitle: 'Guard passing' };
+  const saved = saveTrainingNotes(titled, TODAY);
+  assert.equal(saved.lessonTitle, 'Guard passing');
+  assert.equal(classPlanRowLabel(saved), 'Justin / GB1 / Guard passing / 5:00 PM');
+  assert.equal(planListLabel(saved), 'Justin / Guard passing / GB1 / 5:00 PM');
+  assert.equal(planHasContent({ ...emptyPlan(), lessonTitle: 'Only a title' }), true);
+
+  const wide = emptyPlan();
+  wide.lessonTitle = 'T'.repeat(LESSON_TITLE_MAX + 12);
+  wide.intro = 'Keep.';
+  assert.equal(saveTrainingNotes(wide, TODAY).lessonTitle.length, LESSON_TITLE_MAX);
 });

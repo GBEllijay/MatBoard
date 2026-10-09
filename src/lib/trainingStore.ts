@@ -1,5 +1,5 @@
-import { clamp } from './format';
-import { endCueFollowMs, playSelectedEndCue, playStartCue, playWarningCue } from './audio';
+import { clamp } from './format.ts';
+import { endCueFollowMs, playSelectedEndCue, playStartCue, playWarningCue } from './audio.ts';
 
 export type TrainingPhase = 'work' | 'break';
 
@@ -14,6 +14,10 @@ export type TrainingState = {
   phase: TrainingPhase;
   currentRound: number;
   warned: boolean;
+  /** Rising start cue. On unless an older save turned it off. */
+  startSound: boolean;
+  /** Ten-second warning ticks. On unless an older save turned it off. */
+  warningSound: boolean;
   /** Round/session end cue. Parallel to Match `endBuzzer`. */
   endSound: boolean;
 };
@@ -59,7 +63,27 @@ export function defaultTraining(): TrainingState {
     phase: 'work',
     currentRound: 1,
     warned: false,
+    startSound: true,
+    warningSound: true,
     endSound: true,
+  };
+}
+
+/** Older saves omit the start and warning switches. Those stay on. */
+export function normalizeStoredTraining(parsed: Partial<TrainingState> | null | undefined): TrainingState {
+  const base = defaultTraining();
+  if (!parsed) return base;
+  return {
+    ...base,
+    ...parsed,
+    workMs: clampWorkMs(typeof parsed.workMs === 'number' ? parsed.workMs : base.workMs),
+    breakMs: clampBreakMs(typeof parsed.breakMs === 'number' ? parsed.breakMs : base.breakMs),
+    startSound: parsed.startSound !== false,
+    warningSound: parsed.warningSound !== false,
+    endSound: parsed.endSound !== false,
+    running: false,
+    startedAt: null,
+    warned: Boolean(parsed.warned),
   };
 }
 
@@ -68,17 +92,7 @@ function load(): TrainingState {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultTraining();
     const parsed = JSON.parse(raw) as Partial<TrainingState>;
-    const base = defaultTraining();
-    return {
-      ...base,
-      ...parsed,
-      workMs: clampWorkMs(typeof parsed.workMs === 'number' ? parsed.workMs : base.workMs),
-      breakMs: clampBreakMs(typeof parsed.breakMs === 'number' ? parsed.breakMs : base.breakMs),
-      endSound: parsed.endSound !== false,
-      running: false,
-      startedAt: null,
-      warned: Boolean(parsed.warned),
-    };
+    return normalizeStoredTraining(parsed);
   } catch {
     return defaultTraining();
   }
@@ -130,6 +144,14 @@ export function setBreakMs(breakMs: number): void {
   });
 }
 
+export function setStartSound(startSound: boolean): void {
+  persist({ ...state, startSound });
+}
+
+export function setWarningSound(warningSound: boolean): void {
+  persist({ ...state, warningSound });
+}
+
 export function setEndSound(endSound: boolean): void {
   persist({ ...state, endSound });
 }
@@ -173,7 +195,7 @@ export function toggleTrainingClock(): void {
     startedAt: Date.now(),
     warned: restarting ? false : state.warned,
   });
-  playStartCue();
+  playTrainStartCue();
 }
 
 function playTrainEndCue(): void {
@@ -181,7 +203,13 @@ function playTrainEndCue(): void {
   playSelectedEndCue('training');
 }
 
+function playTrainStartCue(): void {
+  if (!state.startSound) return;
+  playStartCue();
+}
+
 function followWithStartCue(): void {
+  if (!state.startSound) return;
   if (state.endSound) {
     window.setTimeout(() => playStartCue(), endCueFollowMs());
     return;
@@ -237,15 +265,16 @@ function nextAfterBreak(): void {
     running: true,
     warned: false,
   });
-  playStartCue();
+  playTrainStartCue();
 }
 
 export function tickTraining(): void {
   if (!state.running) return;
   const left = remainingTraining(state);
   if (state.phase === 'work' && !state.warned && left <= 10_000 && left > 0) {
+    const warningSound = state.warningSound;
     persist({ ...state, warned: true });
-    playWarningCue();
+    if (warningSound) playWarningCue();
   }
   if (left > 0) return;
   if (state.phase === 'work') nextAfterWork();
