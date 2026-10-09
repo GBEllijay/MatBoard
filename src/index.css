@@ -1173,10 +1173,40 @@ button.mode-card__hit {
   min-height: 44px;
 }
 
-.home--pro .review-inbox__actions .review-decision--on {
+.home--pro .review-inbox__actions .review-decision--on,
+.notes .lesson-version--on,
+.home--pro .lesson-version--on {
   background: var(--logo-blue);
   color: #fff;
   border-color: transparent;
+}
+
+.lesson-versions {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.lesson-versions__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.lesson-versions__list .btn {
+  min-height: 44px;
+}
+
+.lesson-versions__changes {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.lesson-versions__snapshot {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 0.35rem;
 }
 
 .plan-card .btn {

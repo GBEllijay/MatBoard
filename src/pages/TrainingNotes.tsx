@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { ClassPhotoPromotions } from '../components/ClassPhotoPromotions';
+import { LessonVersionHistory } from '../components/LessonVersionHistory';
 import { CoachPlanExport } from '../components/CoachPlanExport';
 import { CollaborationGate, useCurrentSeat } from '../components/SeatSessionBar';
 import { LessonMediaRail } from '../components/LessonMediaRail';
@@ -58,7 +59,7 @@ import {
   scheduleLessonDriveDraft,
   subscribeDriveNotice,
 } from '../lib/lessonDrive';
-import { REVIEW_SUBMIT, REVIEW_SUBMITTED, submitForReview } from '../lib/reviewInbox';
+import { REVIEW_SUBMIT, REVIEW_SUBMITTED, REVIEW_VERSION_LEAD, listPlanVersions, submitForReview } from '../lib/reviewInbox';
 import {
   isLiveSeat,
   menuCloudSharing,
@@ -956,6 +957,7 @@ export function TrainingNotesPage() {
 
         {editingToday && planHasContent(plan) ? (
           <aside className="notes__distribute" aria-label="Submit for review">
+            {listPlanVersions(todayKey, plan.id).length === 0 ? <p>{REVIEW_VERSION_LEAD}</p> : null}
             <button
               type="button"
               className="btn notes__distribute-btn"
@@ -983,6 +985,7 @@ export function TrainingNotesPage() {
             ) : null}
           </aside>
         ) : null}
+        <LessonVersionHistory versions={listPlanVersions(viewKey, plan.id)} />
         {!unlimitedPlan && editingToday ? <CoachPlanExport dateKey={todayKey} plan={plan} /> : null}
         {showDistribute && editingToday ? (
           <>
