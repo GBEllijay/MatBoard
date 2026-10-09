@@ -44,6 +44,7 @@ import {
   type DrivePickKind,
 } from '../lib/driveMediaPicker';
 import { formatMss, secondsToMs } from '../lib/format';
+import { GALLERY_LINK_DONE, galleryItemShows, nextClassFromDays } from '../lib/gallerySchedule';
 import { downloadDriveFile, getDriveBindingSnapshot, requestDriveToken, subscribeDriveBinding } from '../lib/googleDrive';
 import {
   PHOTO_PICKER_ACCEPT,
@@ -85,6 +86,8 @@ import {
   setFolderPlay,
   setEventsCastMode,
   setItemBuyUrl,
+  linkTechniqueClipsToGallery,
+  setGalleryDetails,
   setItemPlay,
   setItemQrLinks,
   setItemStartsSlide,
@@ -97,6 +100,8 @@ import {
   type StoredPhoto,
 } from '../lib/photoStore';
 import { itemsInFolder } from '../lib/playlist';
+import { loadTechniqueBoard, readTrainingClipBlob } from '../lib/techniqueStore';
+import { isWithinRetention, loadTrainingArchive, localDateKey, planHasContent, plansOnDay } from '../lib/trainingNotesStore';
 import { insertScheduleCastSlide, scheduleCastDwellMs } from '../lib/scheduleCast';
 import { setScheduleCastEnabled } from '../lib/scheduleStore';
 import {
@@ -157,7 +162,18 @@ export function ScreensaverPage() {
   const focusFolder = requestedFolder ?? 'gallery';
   const focusConfig = folderById(focusFolder);
   const schedule = useScheduleState();
-  const queue = useMemo(() => playableItems(photos, folderPlay), [photos, folderPlay]);
+  const todayKey = localDateKey();
+  const nextClass = useMemo(() => {
+    const archive = loadTrainingArchive(todayKey);
+    const dates = Object.keys(archive.days).filter(
+      (dateKey) => isWithinRetention(dateKey, todayKey) && plansOnDay(archive, dateKey).some(planHasContent),
+    );
+    return nextClassFromDays(dates, todayKey);
+  }, [todayKey]);
+  const queue = useMemo(
+    () => playableItems(photos, folderPlay).filter((item) => galleryItemShows(item, todayKey, nextClass)),
+    [photos, folderPlay, todayKey, nextClass],
+  );
   const shopList = useMemo(() => itemsInFolder(photos, 'shop'), [photos]);
   const slides = useMemo(
     () =>
@@ -194,15 +210,35 @@ export function ScreensaverPage() {
 
   const photosRef = useRef(photos);
   photosRef.current = photos;
-  const photoIdsKey = photos.map((photo) => photo.id).join('|');
+  const photoIdsKey = photos
+    .map((photo) => `${photo.id}:${photo.techniqueClipId}:${photo.loopSec}`)
+    .join('|');
 
   useEffect(() => {
-    const next: Record<string, string> = {};
-    for (const photo of photosRef.current) {
-      next[photo.id] = URL.createObjectURL(photo.blob);
-    }
-    setUrlById(next);
-    return () => Object.values(next).forEach((url) => URL.revokeObjectURL(url));
+    let cancelled = false;
+    const urls: string[] = [];
+    void (async () => {
+      const next: Record<string, string> = {};
+      for (const photo of photosRef.current) {
+        let blob = photo.blob;
+        if (photo.techniqueClipId) {
+          const linked = await readTrainingClipBlob(photo.techniqueClipId);
+          if (linked) blob = linked;
+        }
+        const url = URL.createObjectURL(blob);
+        urls.push(url);
+        next[photo.id] = url;
+      }
+      if (cancelled) {
+        urls.forEach((url) => URL.revokeObjectURL(url));
+        return;
+      }
+      setUrlById(next);
+    })();
+    return () => {
+      cancelled = true;
+      urls.forEach((url) => URL.revokeObjectURL(url));
+    };
   }, [photoIdsKey]);
 
   useEffect(() => {
@@ -245,6 +281,13 @@ export function ScreensaverPage() {
     const id = window.setTimeout(advance, dwell);
     return () => window.clearTimeout(id);
   }, [playing, currentSlide, currentIsVideo, order.length, intervalMs, advance, index]);
+
+  useEffect(() => {
+    const loopSec = currentPhoto?.loopSec ?? 0;
+    if (!playing || loopSec <= 0 || order.length <= 1) return;
+    const id = window.setTimeout(advance, loopSec * 1000);
+    return () => window.clearTimeout(id);
+  }, [playing, currentPhoto, order.length, advance, index]);
 
   const commitInterval = (next: number) => {
     const clamped = clampIntervalSec(next);
@@ -573,7 +616,7 @@ export function ScreensaverPage() {
           src={current}
           altFrame={index % 2 === 1}
           playing={playing}
-          loop={order.length <= 1}
+          loop={order.length <= 1 || (currentPhoto.loopSec ?? 0) > 0}
           muted={muteVideo}
           unlockSound={unlockSound}
           onEnded={advance}
@@ -739,6 +782,48 @@ export function ScreensaverPage() {
                       } catch {
                         await refresh();
                       }
+                    }
+                  : undefined
+              }
+              onGalleryChange={
+                folder.id === 'gallery'
+                  ? async (id, patch) => {
+                      setPhotos((rows) =>
+                        rows.map((row) => (row.id === id ? { ...row, ...patch } : row)),
+                      );
+                      try {
+                        await setGalleryDetails(id, patch);
+                      } catch {
+                        await refresh();
+                      }
+                    }
+                  : undefined
+              }
+              onLinkTechniques={
+                folder.id === 'gallery'
+                  ? () => {
+                      void (async () => {
+                        const board = await loadTechniqueBoard();
+                        const clips = board.plan.slots.flatMap((slot) => {
+                          if (!slot.clipId) return [];
+                          const clip = board.clips.find((item) => item.id === slot.clipId);
+                          return [
+                            {
+                              clipId: slot.clipId,
+                              label: slot.mediaName || clip?.label || 'Technique clip',
+                              mime: clip?.mime || slot.mediaMime || 'video/mp4',
+                              loopSec: slot.drillSec,
+                            },
+                          ];
+                        });
+                        const added = await linkTechniqueClipsToGallery(clips);
+                        await refresh();
+                        setPickerNote(
+                          added
+                            ? GALLERY_LINK_DONE
+                            : 'Those technique clips are already linked, or this day has no clips.',
+                        );
+                      })();
                     }
                   : undefined
               }
@@ -1136,6 +1221,7 @@ function SaverSlide({
             if (!loop) onEnded();
           }}
         />
+        {item.caption ? <p className="saver-caption">{item.caption}</p> : null}
         {!muted && needsUnmute ? (
           <button
             type="button"
@@ -1160,6 +1246,7 @@ function SaverSlide({
     <div className={`saver__frame${altFrame ? ' saver__frame--alt' : ''}`}>
       <img className="saver__fill" src={src} alt="" aria-hidden="true" />
       <img className="saver__img" src={src} alt="" />
+      {item.caption ? <p className="saver-caption">{item.caption}</p> : null}
     </div>
   );
 }
