@@ -71,6 +71,7 @@ import { loadTechniqueArchive, type TechniqueTreeArchive } from '../lib/techniqu
 import {
   CLASS_DESIGNATION_MAX,
   CLASS_TIME_MAX,
+  LESSON_TITLE_MAX,
   CLOSING_MAX,
   COACH_NAME_MAX,
   COOLDOWN_NOTE_MAX,
@@ -846,18 +847,31 @@ export function TrainingNotesPage() {
               />
             </label>
           ) : null}
-          <label className="notes__field" htmlFor="notes-class">
-            Class designation
-            <input
-              id="notes-class"
-              value={plan.classDesignation}
-              maxLength={CLASS_DESIGNATION_MAX}
-              placeholder="GB1"
-              autoComplete="off"
-              readOnly={!editingToday}
-              onChange={(event) => commit({ ...plan, classDesignation: event.target.value })}
-            />
-          </label>
+          <div className="notes__pair">
+            <label className="notes__field" htmlFor="notes-class">
+              Class designation
+              <input
+                id="notes-class"
+                value={plan.classDesignation}
+                maxLength={CLASS_DESIGNATION_MAX}
+                placeholder="GB1"
+                autoComplete="off"
+                readOnly={!editingToday}
+                onChange={(event) => commit({ ...plan, classDesignation: event.target.value })}
+              />
+            </label>
+            <label className="notes__field" htmlFor="notes-lesson-title">
+              Lesson title
+              <input
+                id="notes-lesson-title"
+                value={plan.lessonTitle}
+                maxLength={LESSON_TITLE_MAX}
+                autoComplete="off"
+                readOnly={!editingToday}
+                onChange={(event) => commit({ ...plan, lessonTitle: event.target.value })}
+              />
+            </label>
+          </div>
           <label className="notes__field" htmlFor="notes-class-time">
             Class time
             <input

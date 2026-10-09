@@ -146,6 +146,8 @@ export const NOTES_LEAD =
 export const COACH_PLAN_SAVE_LEAD =
   'This plan saves to your phone as you type. Click here to save a copy on your connected Drive.';
 export const COACH_PLAN_SAVE_LINK = 'Click here';
+/** Shown in place of the Drive save link when this phone has no Drive folder yet. */
+export const COACH_PLAN_CONNECT_DRIVE = 'Connect Google Drive first';
 
 /**
  * Intro that used to sit on Instructor Collaboration.

@@ -3,8 +3,10 @@ import { useLocation, useSearchParams } from 'react-router-dom';
 import {
   acceptInstructorInvite,
   consumeSignedOutToast,
+  instructorSeatAdjusted,
   instructorSeatBinderLabel,
   readCurrentSeat,
+  SEAT_ADJUSTED_NOTE,
   readSignedOutToast,
   seatChromeHidden,
   signOutInstructorSeat,
@@ -28,11 +30,17 @@ export function SeatSessionBar() {
   const [search, setSearch] = useSearchParams();
   if (!seat) return null;
   const role = instructorSeatBinderLabel(seat.presetId, seat.permissions);
+  const adjusted = instructorSeatAdjusted(seat.presetId, seat.permissions);
   return (
     <div className="seat-session-dock">
       <div className="seat-session" role="region" aria-label="Instructor seat">
         <span className="seat-session__who">
-          Signed in as {seat.email} · {role}
+          <span>Signed in as {seat.email} · {role}</span>
+          {adjusted ? (
+            <span className="seat-session__note" title={SEAT_ADJUSTED_NOTE}>
+              {SEAT_ADJUSTED_NOTE}
+            </span>
+          ) : null}
         </span>
         <button
           type="button"
