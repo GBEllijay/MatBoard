@@ -11,6 +11,8 @@ type Props = {
   showVideo: boolean;
   videoLabel: string;
   clipUrl?: string;
+  /** Clip name saved with that day's plan. Empty when the slot has no media. */
+  mediaName?: string;
   onPlay: () => void;
   linkedTree?: { id: string; name: string } | null;
   treeChoices?: TreeChoice[];
@@ -25,6 +27,7 @@ export function LessonMediaRail({
   showVideo,
   videoLabel,
   clipUrl,
+  mediaName = '',
   onPlay,
   linkedTree = null,
   treeChoices = [],
@@ -122,6 +125,7 @@ export function LessonMediaRail({
           {clipUrl && !thumbFailed ? <span className="notes__video-mark" aria-hidden="true" /> : null}
         </button>
       ) : null}
+      {showVideo && mediaName ? <p className="notes__video-name">{mediaName}</p> : null}
       {linkedTree && onOpenTree ? (
         <button
           type="button"

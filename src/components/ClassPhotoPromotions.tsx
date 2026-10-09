@@ -35,7 +35,7 @@ type Preview = {
  * Bottom of Daily Lesson Plan on Coach Unlimited, under instructor distribution.
  * Take photo, Record, and Pick from gallery share the Gallery capture inputs.
  */
-export function ClassPhotoPromotions({ dateKey }: { dateKey: string }) {
+export function ClassPhotoPromotions({ dateKey, readOnly = false }: { dateKey: string; readOnly?: boolean }) {
   const photoCaptureRef = useRef<HTMLInputElement>(null);
   const videoRecordRef = useRef<HTMLInputElement>(null);
   const libraryRef = useRef<HTMLInputElement>(null);
@@ -93,15 +93,17 @@ export function ClassPhotoPromotions({ dateKey }: { dateKey: string }) {
   return (
     <aside className="notes__distribute notes__class-photos" aria-label={CLASS_PHOTO_PROMOTIONS_LABEL}>
       <h2>{CLASS_PHOTO_PROMOTIONS_LABEL}</h2>
-      <p>{CLASS_PHOTO_PROMOTIONS_LEAD}</p>
-      <button
-        type="button"
-        className="btn notes__distribute-btn"
-        disabled={busy}
-        onClick={() => setOpen(true)}
-      >
-        {CLASS_PHOTO_PROMOTIONS_ADD}
-      </button>
+      {readOnly ? null : <p>{CLASS_PHOTO_PROMOTIONS_LEAD}</p>}
+      {readOnly ? null : (
+        <button
+          type="button"
+          className="btn notes__distribute-btn"
+          disabled={busy}
+          onClick={() => setOpen(true)}
+        >
+          {CLASS_PHOTO_PROMOTIONS_ADD}
+        </button>
+      )}
       {note ? (
         <p className="notes__distribute-note" role="status">
           {note}
@@ -121,6 +123,8 @@ export function ClassPhotoPromotions({ dateKey }: { dateKey: string }) {
           ))}
         </ul>
       ) : null}
+      {readOnly ? null : (
+      <>
       <MediaSourceSheet
         open={open}
         kind="photo-or-video"
@@ -152,6 +156,8 @@ export function ClassPhotoPromotions({ dateKey }: { dateKey: string }) {
         multiple
         onFiles={onFiles}
       />
+      </>
+      )}
     </aside>
   );
 }

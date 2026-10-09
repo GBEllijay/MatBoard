@@ -221,6 +221,16 @@ label.btn {
   background-repeat: repeat;
 }
 
+.controller.controller--classic {
+  background: #050505;
+  background-image: none;
+}
+
+.controller.controller--classic.controller--break {
+  background: #120e08;
+  background-image: none;
+}
+
 .home {
   min-height: 100dvh;
   isolation: isolate;
@@ -1483,7 +1493,19 @@ button.mode-card__hit {
 .seat-session__who {
   min-width: 0;
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
   line-height: 1.3;
+}
+
+.seat-session__note {
+  display: block;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.35;
 }
 
 .seat-session__out {
@@ -9836,6 +9858,43 @@ input.roster-pick__name:focus,
   border-color: transparent;
 }
 
+.notes__date-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: end;
+}
+
+.notes__date-nav .btn,
+.notes__date-field input {
+  min-height: 44px;
+}
+
+.notes__date-field {
+  display: grid;
+  gap: 0.2rem;
+  font-weight: 700;
+}
+
+.notes__date-field input {
+  font: inherit;
+  color: var(--ink);
+  background: rgba(8, 10, 16, 0.55);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.45rem 0.6rem;
+}
+
+.notes__date-nav .notes__recent {
+  flex-basis: 100%;
+}
+
+.notes__video-name {
+  margin: 0.2rem 0 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
 .notes__when,
 .notes__recent-empty,
 .notes__confirm p {
@@ -10238,6 +10297,17 @@ input.roster-pick__name:focus,
 .notes__time input:read-only,
 .notes__area:read-only {
   cursor: default;
+}
+
+.notes__pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.notes__pair > .notes__field {
+  flex: 1 1 14rem;
+  min-width: 0;
 }
 
 .notes__card {

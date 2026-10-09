@@ -76,7 +76,9 @@ export function ProPage() {
             </p>
           ) : (
             <p className="home__soon">
-              Program director seat. Media Console is open on this browser.{' '}
+              {door.programDirectorSeat
+                ? 'Program director seat. Media Console is open on this browser.'
+                : 'This seat keeps the menus from its invite. Media Console is open on this browser.'}{' '}
               <Link className="home__text-btn" to="/">
                 All products
               </Link>

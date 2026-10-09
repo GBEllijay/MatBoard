@@ -65,3 +65,17 @@ test('Round timer still offers the Advantage skin beside Classic', () => {
   assert.match(source, /setTrainingSkin\('themed'\)/);
   assert.match(source, />\s*Advantage\s*</);
 });
+
+test('Rounds controller uses the Classic board when that skin is picked', () => {
+  const page = fs.readFileSync(new URL('../pages/TrainingController.tsx', import.meta.url), 'utf8');
+  assert.match(page, /useTrainingSkin/);
+  assert.match(page, /trainingUsesAdvantageSkin\(skin\)/);
+  assert.match(page, /controller--classic/);
+  const training = fs.readFileSync(new URL('../pages/Training.tsx', import.meta.url), 'utf8');
+  assert.match(training, /trainingUsesAdvantageSkin\(skin\)/);
+  assert.doesNotMatch(training, /controller--classic/);
+  const css = fs.readFileSync(new URL('../index.css', import.meta.url), 'utf8');
+  assert.match(css, /\.controller\.controller--classic\s*\{[^}]*background:\s*#050505/);
+  assert.match(css, /\.controller\.controller--classic\s*\{[^}]*background-image:\s*none/);
+  assert.match(css, /\.controller\.controller--classic\.controller--break\s*\{[^}]*background:\s*#120e08/);
+});

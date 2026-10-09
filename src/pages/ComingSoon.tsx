@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { AlphaAccessNote } from '../components/AlphaAccessNote';
 import { BeltRail } from '../components/BeltRail';
 import { HomeMark } from '../components/HomeMark';
@@ -23,6 +23,7 @@ export function ComingSoonPage() {
   const seated = useCurrentSeat() !== null;
   const coachTools = coachDoorOpen(proUnlocked, coachUnlocked, seated);
   const [unlockOpen, setUnlockOpen] = useState<'coach' | 'pro' | null>(null);
+  if (door.seated) return <Navigate to="/" replace />;
 
   const tagline = proUnlocked
     ? 'Advantage Pro is on for this browser.'
