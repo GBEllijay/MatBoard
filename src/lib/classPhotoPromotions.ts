@@ -115,6 +115,18 @@ function isItem(value: unknown): value is ClassPhotoPromotionItem {
   );
 }
 
+export async function getClassPhotoPromotion(id: string): Promise<ClassPhotoPromotionItem | null> {
+  if (!id) return null;
+  const db = await openDb();
+  const row = await new Promise<unknown>((resolve, reject) => {
+    const tx = db.transaction(CLASS_PHOTO_PROMOTIONS_STORE, 'readonly');
+    const req = tx.objectStore(CLASS_PHOTO_PROMOTIONS_STORE).get(id);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  return isItem(row) ? row : null;
+}
+
 export async function listClassPhotoPromotions(dateKey: string): Promise<ClassPhotoPromotionItem[]> {
   const db = await openDb();
   const raw = await new Promise<unknown[]>((resolve, reject) => {

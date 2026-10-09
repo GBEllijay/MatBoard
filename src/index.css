@@ -1159,6 +1159,36 @@ button.mode-card__hit {
   font-weight: 700;
 }
 
+.plan-card__review-link {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.review-inbox {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.review-inbox__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.review-inbox__actions .btn {
+  min-height: 44px;
+}
+
+.home--pro .review-inbox__actions .review-decision--on {
+  background: var(--logo-blue);
+  color: #fff;
+  border-color: transparent;
+}
+
 .plan-card .btn {
   width: 100%;
   margin-top: 0.45rem;

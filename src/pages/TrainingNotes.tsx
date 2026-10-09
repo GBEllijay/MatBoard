@@ -46,17 +46,20 @@ import {
   restoreNoticeFromState,
   restoredDayKey,
 } from '../lib/lessonRestore';
+import { listClassPhotoPromotions } from '../lib/classPhotoPromotions';
 import {
   DISTRIBUTE_BUTTON,
   DISTRIBUTE_DONE,
   DISTRIBUTE_LEAD,
   flushLessonDriveDraft,
   getDriveNotice,
+  lessonDraftRevisionId,
   markLessonDistribution,
   mediaRefsFromVideoPlan,
   scheduleLessonDriveDraft,
   subscribeDriveNotice,
 } from '../lib/lessonDrive';
+import { REVIEW_SUBMIT, REVIEW_SUBMITTED, submitForReview } from '../lib/reviewInbox';
 import {
   isLiveSeat,
   menuCloudSharing,
@@ -190,6 +193,7 @@ export function TrainingNotesPage() {
   });
   const [downloadNote, setDownloadNote] = useState('');
   const [distributeNote, setDistributeNote] = useState('');
+  const [reviewNote, setReviewNote] = useState('');
   const driveNotice = useSyncExternalStore(subscribeDriveNotice, getDriveNotice, () => idleDriveNotice);
   const [treeArchive, setTreeArchive] = useState<TechniqueTreeArchive>(() => loadTechniqueArchive());
 
@@ -981,6 +985,35 @@ export function TrainingNotesPage() {
           </label>
         </section>
 
+        {editingToday && planHasContent(plan) ? (
+          <aside className="notes__distribute" aria-label="Submit for review">
+            <button
+              type="button"
+              className="btn notes__distribute-btn"
+              onClick={() => {
+                void listClassPhotoPromotions(todayKey).then((photos) => {
+                  const photo = photos[photos.length - 1];
+                  submitForReview({
+                    revisionId: lessonDraftRevisionId(todayKey, plan.coachName, plan.id),
+                    dateKey: todayKey,
+                    coachName: plan.coachName,
+                    plan,
+                    photoId: photo?.id ?? '',
+                    photoName: photo?.name ?? '',
+                  });
+                  setReviewNote(REVIEW_SUBMITTED);
+                });
+              }}
+            >
+              {REVIEW_SUBMIT}
+            </button>
+            {reviewNote ? (
+              <p className="notes__distribute-note" role="status">
+                {reviewNote}
+              </p>
+            ) : null}
+          </aside>
+        ) : null}
         {!unlimitedPlan && editingToday ? <CoachPlanExport dateKey={todayKey} plan={plan} /> : null}
         {showDistribute && editingToday ? (
           <>

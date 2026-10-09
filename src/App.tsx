@@ -50,6 +50,7 @@ import { InstructorCollaborationPage } from './pages/InstructorCollaboration';
 import { MatchControllerPage } from './pages/MatchController';
 import { MatchDisplayPage } from './pages/MatchDisplay';
 import { ProPage } from './pages/Pro';
+import { ReviewInboxPage } from './pages/ReviewInbox';
 import { RosterPage } from './pages/Roster';
 import { ScreensaverPage } from './pages/Screensaver';
 import { SchedulePage } from './pages/Schedule';
@@ -359,6 +360,14 @@ export default function App() {
         element={
           <CoachUnlimitedRoute>
             <CoachUnlimitedPage />
+          </CoachUnlimitedRoute>
+        }
+      />
+      <Route
+        path="/review"
+        element={
+          <CoachUnlimitedRoute>
+            <ReviewInboxPage />
           </CoachUnlimitedRoute>
         }
       />
