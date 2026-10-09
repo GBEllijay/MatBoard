@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { HomeMark } from '../components/HomeMark';
+import { LessonVersionHistory } from '../components/LessonVersionHistory';
 import { SiteFooter } from '../components/SiteFooter';
 import { getClassPhotoPromotion } from '../lib/classPhotoPromotions';
 import { listLessonRevisions } from '../lib/lessonDrive';
@@ -15,18 +16,12 @@ import {
   canAddApprovedPhoto,
   decideReview,
   findReviewSubmission,
-  listReviewSubmissions,
+  latestReviewSubmissions,
+  listPlanVersions,
+  reviewStatusLabel,
   submissionFromRevision,
-  type ReviewStatus,
   type ReviewSubmission,
 } from '../lib/reviewInbox';
-
-function statusLabel(status: ReviewStatus): string {
-  if (status === 'approved') return 'Approved';
-  if (status === 'changes') return 'Changes requested';
-  if (status === 'rejected') return 'Rejected';
-  return 'Waiting for review';
-}
 
 export function ReviewInboxPage() {
   const [params] = useSearchParams();
@@ -35,7 +30,7 @@ export function ReviewInboxPage() {
   const [note, setNote] = useState('');
   const [galleryNote, setGalleryNote] = useState('');
   const revisions = useMemo(() => listLessonRevisions(), [tick]);
-  const inbox = useMemo(() => listReviewSubmissions(), [tick]);
+  const inbox = useMemo(() => latestReviewSubmissions(), [tick]);
   const revision = revisions.find((item) => item.revisionId === revisionId) ?? null;
   const submission = useMemo(() => {
     if (!revision) return inbox.find((item) => item.revisionId === revisionId) ?? null;
@@ -103,7 +98,7 @@ export function ReviewInboxPage() {
               {inbox.map((item) => (
                 <li key={item.id}>
                   <Link className="plan-card__review-link" to={`/review?revision=${encodeURIComponent(item.revisionId)}`}>
-                    {item.coachName || 'Coach'} · {item.planLabel || item.dateKey} · {statusLabel(item.status)}
+                    {item.coachName || 'Coach'} · {item.planLabel || item.dateKey} · {reviewStatusLabel(item.status)}
                   </Link>
                 </li>
               ))}
@@ -115,7 +110,7 @@ export function ReviewInboxPage() {
             <article className="plan-card" aria-label="This submission">
               <strong>{shown?.coachName || revision?.coachName || 'Coach'}</strong>
               <span>{shown?.planLabel || revision?.dateKey}</span>
-              <p>{statusLabel(shown?.status ?? 'pending')}</p>
+              <p>{reviewStatusLabel(shown?.status ?? 'pending')}</p>
               {planIntro ? <p>{planIntro}</p> : null}
               {planClosing ? <p>{planClosing}</p> : null}
               {shown?.photoName ? <p>Photo: {shown.photoName}</p> : <p>No class photo was submitted with this plan.</p>}
@@ -165,6 +160,9 @@ export function ReviewInboxPage() {
           ) : revisionId ? (
             <p>That Sunday review row is not on this device.</p>
           ) : null}
+          <LessonVersionHistory
+            versions={listPlanVersions(shown?.dateKey || revision?.dateKey || '', shown?.planId || revision?.plan.id || '')}
+          />
         </section>
         <SiteFooter />
       </div>

@@ -26,6 +26,8 @@ export type ReviewSubmission = {
   submittedAt: number;
   status: ReviewStatus;
   instructorNote: string;
+  /** Text snapshot. A later submit appends another snapshot. */
+  plan: TrainingNotesPlan;
 };
 
 const STATUSES: readonly ReviewStatus[] = ['pending', 'approved', 'changes', 'rejected'];
@@ -41,6 +43,15 @@ export const REVIEW_GALLERY_DONE =
   'That photo is in the Gallery on this device. Advantage does not host it.';
 export const REVIEW_GALLERY_MISSING =
   'That photo is not on this device. It stays in the gym folder when Drive is connected. Advantage does not host it.';
+export const REVIEW_VERSION_LEAD =
+  'Submit for review saves a proposed copy. Earlier versions stay in this history.';
+
+export function reviewStatusLabel(status: ReviewStatus): string {
+  if (status === 'approved') return 'Approved';
+  if (status === 'changes') return 'Changes requested';
+  if (status === 'rejected') return 'Rejected';
+  return 'Waiting for review';
+}
 
 function isStatus(value: unknown): value is ReviewStatus {
   return STATUSES.includes(value as ReviewStatus);
@@ -89,6 +100,39 @@ function writeAll(items: ReviewSubmission[]): void {
   localStorage.setItem(REVIEW_INBOX_KEY, JSON.stringify({ version: 1, items }));
 }
 
+function blankPlan(id: string, coachName: string, intro: string, closing: string): TrainingNotesPlan {
+  return {
+    version: 1,
+    id,
+    coachName,
+    classDesignation: '',
+    lessonTitle: '',
+    classTime: '',
+    intro,
+    introExpected: '',
+    warmupNote: '',
+    warmupExpected: '',
+    techniques: [],
+    specificNote: '',
+    specificExpected: '',
+    cooldownNote: '',
+    cooldownExpected: '',
+    closing,
+  };
+}
+
+function snapshotPlan(value: unknown, fallback: TrainingNotesPlan): TrainingNotesPlan {
+  if (!value || typeof value !== 'object') return fallback;
+  const raw = value as Partial<TrainingNotesPlan>;
+  if (raw.version !== 1 || !Array.isArray(raw.techniques)) return fallback;
+  const techniques = raw.techniques.filter((item) => item && typeof item === 'object') as TrainingNotesPlan['techniques'];
+  try {
+    return lessonPlanForDrive({ ...fallback, ...raw, version: 1, techniques });
+  } catch {
+    return fallback;
+  }
+}
+
 function normalizeSubmission(value: unknown): ReviewSubmission | null {
   if (!value || typeof value !== 'object') return null;
   const row = value as Partial<ReviewSubmission>;
@@ -96,21 +140,44 @@ function normalizeSubmission(value: unknown): ReviewSubmission | null {
   const revisionId = clean(row.revisionId, 200);
   const dateKey = clean(row.dateKey, 10);
   if (!id || !revisionId || !dateKey) return null;
+  const intro = clean(row.intro, 8_000);
+  const closing = clean(row.closing, 2_000);
+  const coachName = clean(row.coachName, 80);
+  const planId = clean(row.planId, 80);
+  const plan = snapshotPlan(row.plan, blankPlan(planId, coachName, intro, closing));
   return {
     id,
     revisionId,
     dateKey,
-    coachName: clean(row.coachName, 80),
-    planId: clean(row.planId, 80),
+    coachName,
+    planId,
     planLabel: clean(row.planLabel, 120),
-    intro: clean(row.intro, 8_000),
-    closing: clean(row.closing, 2_000),
+    intro,
+    closing,
     photoId: clean(row.photoId, 80),
     photoName: clean(row.photoName, 180),
     submittedAt: typeof row.submittedAt === 'number' && Number.isFinite(row.submittedAt) ? row.submittedAt : 0,
     status: isStatus(row.status) ? row.status : 'pending',
     instructorNote: clean(row.instructorNote, 500),
+    plan,
   };
+}
+
+function byNewest(a: ReviewSubmission, b: ReviewSubmission): number {
+  return b.submittedAt - a.submittedAt || b.id.localeCompare(a.id);
+}
+
+function planKey(item: Pick<ReviewSubmission, 'dateKey' | 'planId' | 'revisionId'>): string {
+  return item.planId ? `${item.dateKey}:${item.planId}` : item.revisionId;
+}
+
+function clipChange(value: string): string {
+  const text = value.trim() || 'empty';
+  return text.length > 80 ? `${text.slice(0, 77)}…` : text;
+}
+
+function planFingerprint(plan: TrainingNotesPlan): string {
+  return JSON.stringify(lessonPlanForDrive(plan));
 }
 
 export function listReviewSubmissions(): ReviewSubmission[] {
@@ -123,16 +190,63 @@ export function findReviewSubmission(revision: {
   coachName: string;
   planId: string;
 }): ReviewSubmission | null {
-  return (
-    readAll().find((item) =>
-      submissionMatchesRevision(item, revision),
-    ) ?? null
-  );
+  return readAll().filter((item) => submissionMatchesRevision(item, revision)).sort(byNewest)[0] ?? null;
+}
+
+/** Newest proposal for each class plan. Older copies stay in version history. */
+export function latestReviewSubmissions(): ReviewSubmission[] {
+  const latest = new Map<string, ReviewSubmission>();
+  for (const item of readAll()) {
+    const key = planKey(item);
+    const current = latest.get(key);
+    if (!current || byNewest(item, current) < 0) latest.set(key, item);
+  }
+  return [...latest.values()].sort(byNewest);
+}
+
+/** Every proposed copy for one class plan, newest first. */
+export function listPlanVersions(dateKey: string, planId: string): ReviewSubmission[] {
+  if (!planId) return [];
+  return readAll()
+    .filter((item) => item.dateKey === dateKey && item.planId === planId)
+    .sort(byNewest);
+}
+
+export function planVersionNumber(versionsNewestFirst: readonly ReviewSubmission[], id: string): number {
+  const chronological = [...versionsNewestFirst].sort((a, b) => a.submittedAt - b.submittedAt || a.id.localeCompare(b.id));
+  const index = chronological.findIndex((item) => item.id === id);
+  return index < 0 ? chronological.length : index + 1;
+}
+
+/** What changed since the previous proposed copy. The first copy has no earlier text. */
+export function versionChangeLines(earlier: TrainingNotesPlan | null, later: TrainingNotesPlan): string[] {
+  if (!earlier) return ['First proposal.'];
+  const lines: string[] = [];
+  const pair = (label: string, before: string, after: string) => {
+    if ((before ?? '').trim() === (after ?? '').trim()) return;
+    lines.push(`${label}: ${clipChange(before ?? '')} → ${clipChange(after ?? '')}`);
+  };
+  pair('Coach', earlier.coachName, later.coachName);
+  pair('Class', earlier.classDesignation, later.classDesignation);
+  pair('Lesson title', earlier.lessonTitle ?? '', later.lessonTitle ?? '');
+  pair('Class time', earlier.classTime, later.classTime);
+  pair('Intro', earlier.intro, later.intro);
+  pair('Warm-up', earlier.warmupNote, later.warmupNote);
+  pair('Specific', earlier.specificNote, later.specificNote);
+  pair('Cool down', earlier.cooldownNote, later.cooldownNote);
+  pair('Closing', earlier.closing, later.closing);
+  const count = Math.max(earlier.techniques.length, later.techniques.length);
+  for (let index = 0; index < count; index += 1) {
+    pair(`Technique ${index + 1}`, earlier.techniques[index]?.title ?? '', later.techniques[index]?.title ?? '');
+    pair(`Technique ${index + 1} notes`, earlier.techniques[index]?.notes ?? '', later.techniques[index]?.notes ?? '');
+  }
+  return lines.length ? lines : ['No text changes.'];
 }
 
 /**
  * Coach sends the current plan text and the latest class photo id.
- * A later submit of the same class plan updates that inbox row and marks it pending again.
+ * Each submit appends a proposed copy. An earlier version stays as it was.
+ * Submitting the same text again returns the latest copy.
  */
 export function submitForReview(input: {
   revisionId: string;
@@ -145,9 +259,23 @@ export function submitForReview(input: {
 }): ReviewSubmission {
   const plan = lessonPlanForDrive(input.plan);
   const items = readAll();
-  const existing = items.find((item) => item.revisionId === input.revisionId || (item.planId && item.planId === plan.id && item.dateKey === input.dateKey));
+  const family = items.filter((item) =>
+    plan.id ? item.planId === plan.id && item.dateKey === input.dateKey : item.revisionId === input.revisionId,
+  );
+  const latest = family.sort(byNewest)[0] ?? null;
+  const photoId = (input.photoId ?? latest?.photoId ?? '').trim().slice(0, 80);
+  const photoName = (input.photoName ?? latest?.photoName ?? '').trim().slice(0, 180);
+  if (
+    latest &&
+    latest.photoId === photoId &&
+    latest.photoName === photoName &&
+    planFingerprint(latest.plan) === planFingerprint(plan)
+  ) {
+    return latest;
+  }
+  const submittedAt = input.submittedAt ?? Date.now();
   const next: ReviewSubmission = {
-    id: existing?.id ?? `review-${input.dateKey}-${plan.id || 'plan'}`,
+    id: `review-${input.dateKey}-${family.length + 1}-${submittedAt}`,
     revisionId: input.revisionId,
     dateKey: input.dateKey,
     coachName: input.coachName.trim().slice(0, 80),
@@ -155,14 +283,14 @@ export function submitForReview(input: {
     planLabel: reviewPlanLabel(plan),
     intro: plan.intro,
     closing: plan.closing,
-    photoId: (input.photoId ?? existing?.photoId ?? '').trim().slice(0, 80),
-    photoName: (input.photoName ?? existing?.photoName ?? '').trim().slice(0, 180),
-    submittedAt: input.submittedAt ?? Date.now(),
+    photoId,
+    photoName,
+    submittedAt,
     status: 'pending',
     instructorNote: '',
+    plan,
   };
-  const rest = items.filter((item) => item.id !== next.id);
-  writeAll([next, ...rest]);
+  writeAll([next, ...items]);
   return next;
 }
 
