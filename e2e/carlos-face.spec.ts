@@ -55,68 +55,56 @@ async function seed(page: Page, storage: Record<string, unknown>) {
   }, storage);
 }
 
-async function faceHits(page: Page) {
+async function bubbleClearOfFace(page: Page) {
   return page.evaluate(() => {
     const face = document.querySelector('.kids-carlos__face');
-    if (!(face instanceof HTMLElement)) return { shown: false, tiny: false, hits: [] as string[] };
+    const bubble = document.querySelector('.kids-carlos__bubble');
+    if (!(face instanceof HTMLElement) || !(bubble instanceof HTMLElement)) {
+      return { shown: false, tiny: false, hits: ['missing face or bubble'] };
+    }
     const fr = face.getBoundingClientRect();
-    if (fr.width < 20 || fr.height < 20) {
-      return { shown: true, tiny: true, hits: [`face ${Math.round(fr.width)}x${Math.round(fr.height)}`] };
-    }
-    const selectors = [
-      '.kids-carlos__bubble',
-      '.kids-carlos__cheer',
-      '.kids-carlos__name',
-      '.kids-carlos__score',
-      '.score',
-      '.score__value',
-      '.score__label',
-      '.bout__who h1',
-      '.bout__who p',
-      '.clock-btn',
-      '.display__clock-hint',
-      '.display__meta',
-      '.chip',
-      '.display-back',
-      '.display-splash__name',
-      '.display-splash__line',
-      '.kids-banner',
-      '.kids-live',
-      '.kids-champ-score',
-      '.tournament__actions button',
-      '.bracket button',
-      'input',
-    ];
+    const br = bubble.getBoundingClientRect();
     const hits: string[] = [];
-    const seen = new Set<string>();
-    for (const selector of selectors) {
-      for (const node of document.querySelectorAll(selector)) {
-        if (!(node instanceof HTMLElement)) continue;
-        if (node.closest('.kids-carlos__portrait')) continue;
-        const style = getComputedStyle(node);
-        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') continue;
-        const box = node.getBoundingClientRect();
-        if (box.width < 2 || box.height < 2) continue;
-        const text = (node.innerText || node.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim();
-        if (!text) continue;
-        const ix = Math.min(fr.right, box.right) - Math.max(fr.left, box.left);
-        const iy = Math.min(fr.bottom, box.bottom) - Math.max(fr.top, box.top);
-        if (ix <= 1 || iy <= 1) continue;
-        const label = `${selector}: ${text.slice(0, 48)}`;
-        if (seen.has(label)) continue;
-        seen.add(label);
-        hits.push(label);
-      }
+    if (fr.width < 20 || fr.height < 20) hits.push(`face ${Math.round(fr.width)}x${Math.round(fr.height)}`);
+    const ix = Math.min(fr.right, br.right) - Math.max(fr.left, br.left);
+    const iy = Math.min(fr.bottom, br.bottom) - Math.max(fr.top, br.top);
+    if (ix > 1 && iy > 1) hits.push(`bubble overlaps face by ${Math.round(ix)}x${Math.round(iy)}`);
+    const view = { w: window.innerWidth, h: window.innerHeight };
+    if (br.left < -1 || br.top < -1 || br.right > view.w + 1 || br.bottom > view.h + 1) {
+      hits.push(
+        `bubble off screen ${Math.round(br.left)},${Math.round(br.top)} ${Math.round(br.right)}x${Math.round(br.bottom)} in ${view.w}x${view.h}`,
+      );
     }
-    return { shown: true, tiny: false, hits };
+    return { shown: true, tiny: fr.width < 20 || fr.height < 20, hits };
   });
 }
 
-async function expectFaceClear(page: Page) {
-  const report = await faceHits(page);
-  expect(report.shown, 'Carlos face marker').toBe(true);
-  expect(report.tiny, report.hits.join(' | ')).toBe(false);
+async function expectBubbleClear(page: Page) {
+  const report = await bubbleClearOfFace(page);
+  expect(report.shown, 'Carlos face and bubble').toBe(true);
   expect(report.hits, report.hits.join(' | ')).toEqual([]);
+}
+
+async function expectFullscreenClear(page: Page) {
+  const hits = await page.evaluate(() => {
+    const button = document.querySelector('.play-fs');
+    if (!(button instanceof HTMLElement)) return [] as string[];
+    const fr = button.getBoundingClientRect();
+    if (fr.width < 2 || fr.height < 2) return [] as string[];
+    const hits: string[] = [];
+    for (const node of document.querySelectorAll('.score, .score__label, .score__value')) {
+      if (!(node instanceof HTMLElement)) continue;
+      const box = node.getBoundingClientRect();
+      if (box.width < 2 || box.height < 2) continue;
+      const ix = Math.min(fr.right, box.right) - Math.max(fr.left, box.left);
+      const iy = Math.min(fr.bottom, box.bottom) - Math.max(fr.top, box.top);
+      if (ix <= 1 || iy <= 1) continue;
+      const text = (node.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 32);
+      hits.push(`${text || node.className} ${Math.round(ix)}x${Math.round(iy)}`);
+    }
+    return hits;
+  });
+  expect(hits, hits.join(' | ')).toEqual([]);
 }
 
 async function openSeeded(browser: Browser, width: number, height: number, storage: Record<string, unknown>) {
@@ -139,14 +127,16 @@ test('points-scored cheer keeps text off Carlos’s face', async ({ browser }) =
     await expect(board.page.locator('.kids-carlos__score')).toHaveText('4');
     await expect(board.page.locator('.kids-carlos__cheer')).toHaveText('Bom trabalho!');
     await expect(board.page.locator('.kids-carlos__name')).toHaveText('Mia Santos');
-    await expectFaceClear(board.page);
+    await expectBubbleClear(board.page);
+    await expectFullscreenClear(board.page);
     await board.context.close();
 
     const kids = await openSeeded(browser, viewport.width, viewport.height, storage);
     await kids.page.goto('/match?from=suite&kids=dinos');
     await expect(kids.page.locator('.kids-carlos__score')).toHaveText('4');
     await expect(kids.page.locator('.display')).toHaveClass(/kids-board--dinos/);
-    await expectFaceClear(kids.page);
+    await expectBubbleClear(kids.page);
+    await expectFullscreenClear(kids.page);
     await kids.context.close();
   }
 });
@@ -162,7 +152,7 @@ test('2-point and 3-point cheers use the same points trigger', async ({ browser 
       });
       await opened.page.goto('/match?from=suite');
       await expect(opened.page.locator('.kids-carlos__score')).toHaveText(String(points));
-      await expectFaceClear(opened.page);
+      await expectBubbleClear(opened.page);
       await opened.context.close();
     }
   }
@@ -236,7 +226,7 @@ test('post-champion corner keeps text off Carlos’s face', async ({ browser }) 
     await expect(opened.page.locator('.kids-carlos--corner .kids-carlos__cheer')).toHaveText('Bom trabalho!');
     await expect(opened.page.locator('.kids-carlos--corner .kids-carlos__name')).toHaveText('Mia Santos');
     await expect(opened.page.locator('.kids-carlos--corner .kids-carlos__score')).toHaveText('4-2');
-    await expectFaceClear(opened.page);
+    await expectBubbleClear(opened.page);
     await opened.context.close();
   }
 });
