@@ -80,9 +80,47 @@ function StudentClosed() {
   );
 }
 
-/** Debossed Advantage mark. Mask is the clock, ticks, and pointing figure from advantage-icon.png. */
+/** Circle, 24 ticks, and the black pointing figure from advantage-icon.png. No yellow band. */
+const MARK_TICKS = [
+  { x1: 100, y1: 26, x2: 100, y2: 15 },
+  { x1: 119.4, y1: 28.5, x2: 122, y2: 18.2 },
+  { x1: 137.3, y1: 35.9, x2: 142.3, y2: 27.2 },
+  { x1: 152.6, y1: 47.7, x2: 159.6, y2: 40.7 },
+  { x1: 164.1, y1: 62.7, x2: 172.8, y2: 57.7 },
+  { x1: 171.5, y1: 80.6, x2: 181.1, y2: 78 },
+  { x1: 174, y1: 100, x2: 185, y2: 100 },
+  { x1: 171.5, y1: 119.4, x2: 181.1, y2: 122 },
+  { x1: 164.1, y1: 137.3, x2: 172.8, y2: 142.3 },
+  { x1: 152.6, y1: 152.3, x2: 159.6, y2: 159.3 },
+  { x1: 137.3, y1: 164.1, x2: 142.3, y2: 172.8 },
+  { x1: 119.4, y1: 171.5, x2: 122, y2: 181.1 },
+  { x1: 100, y1: 174, x2: 100, y2: 185 },
+  { x1: 80.6, y1: 171.5, x2: 78, y2: 181.1 },
+  { x1: 62.7, y1: 164.1, x2: 57.7, y2: 172.8 },
+  { x1: 47.7, y1: 152.3, x2: 40.7, y2: 159.3 },
+  { x1: 35.9, y1: 137.3, x2: 27.2, y2: 142.3 },
+  { x1: 28.5, y1: 119.4, x2: 18.2, y2: 122 },
+  { x1: 26, y1: 100, x2: 15, y2: 100 },
+  { x1: 28.5, y1: 80.6, x2: 18.2, y2: 78 },
+  { x1: 35.9, y1: 62.7, x2: 27.2, y2: 57.7 },
+  { x1: 47.7, y1: 47.7, x2: 40.7, y2: 40.7 },
+  { x1: 62.7, y1: 35.9, x2: 57.7, y2: 27.2 },
+  { x1: 80.6, y1: 28.5, x2: 78, y2: 18.2 },
+] as const;
+
+const MARK_FIGURE =
+  'M 75.9 50.4 L 71.8 53.4 L 70.7 58.8 L 70.7 64.3 L 72.4 72.5 L 63.3 77.2 L 61.4 79.6 L 59.8 91.1 L 53.2 116.8 L 52.1 129.4 L 53.2 132.2 L 55.7 134.6 L 59 135.2 L 59.8 134.4 L 58.7 133.3 L 59.8 131.1 L 59.2 127.2 L 65.5 110 L 65.8 114.1 L 64.2 121.2 L 62.5 137.6 L 62.5 157.3 L 69.4 160.3 L 77 162 L 79.2 151 L 80.6 154.6 L 81.1 161.7 L 82.5 163.1 L 94.5 163.1 L 95.3 161.7 L 95.3 153 L 98.1 126.7 L 102.5 124.5 L 101.9 116.3 L 98.6 99.3 L 98.6 93.3 L 100.8 85.7 L 102.2 84.3 L 131.7 77.7 L 133.9 74.4 L 136.7 75 L 141 73.9 L 143.2 71.2 L 146 70.6 L 146.8 68.7 L 137.8 70.1 L 129.5 69.5 L 107.1 71.7 L 100.5 71.2 L 98.4 68.4 L 90.2 69.5 L 86.6 66.5 L 87.7 61 L 87.7 55 L 86.6 53.4 L 81.9 50.4 Z';
+
 function AdvantageMark({ header = false }: { header?: boolean }) {
-  return <span className={header ? 'student-mark student-mark--header' : 'student-mark'} aria-hidden="true" />;
+  return (
+    <svg className={header ? 'student-mark student-mark--header' : 'student-mark'} viewBox="0 0 200 200" aria-hidden="true">
+      <circle cx="100" cy="100" r="91" fill="none" stroke="currentColor" />
+      {MARK_TICKS.map((tick) => (
+        <line key={`${tick.x1}-${tick.y1}`} x1={tick.x1} y1={tick.y1} x2={tick.x2} y2={tick.y2} stroke="currentColor" strokeLinecap="butt" />
+      ))}
+      <path d={MARK_FIGURE} fill="currentColor" />
+    </svg>
+  );
 }
 
 function BeltDoodle() {

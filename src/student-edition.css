@@ -76,8 +76,8 @@
   gap: 0.7rem;
   min-height: 4.5rem;
   padding: calc(0.55rem + var(--safe-t)) 0.95rem 0.6rem;
-  color: #3a2416;
-  font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', Palatino, serif;
+  color: #f4e7d4;
+  font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Times New Roman', serif;
   background-color: #5a3824;
   background-image:
     url('/student/leather-grain.png'),
@@ -101,22 +101,23 @@
   position: relative;
   z-index: 1;
   margin: 0;
-  font-size: clamp(1.35rem, 5.4vw, 1.85rem);
-  font-weight: 600;
+  font-size: clamp(1.45rem, 5.8vw, 1.85rem);
+  font-weight: 700;
   letter-spacing: 0.01em;
-  color: #3a2416;
-  text-shadow: 0 1px 0 rgba(255, 220, 180, 0.28), 0 -1px 1px rgba(0, 0, 0, 0.45);
+  color: #f6ead8;
+  text-shadow: 0 1px 0 rgba(255, 248, 236, 0.45), 0 -1px 1px rgba(0, 0, 0, 0.72);
 }
 
 .student-leather__back {
   position: relative;
   z-index: 1;
   margin-left: auto;
-  color: #3a2416;
-  font-size: 1rem;
+  color: #f3e2c8;
+  font-size: 1.12rem;
+  font-weight: 650;
   text-decoration: underline;
-  text-underline-offset: 0.15rem;
-  text-shadow: 0 1px 0 rgba(255, 220, 180, 0.28);
+  text-underline-offset: 0.18rem;
+  text-shadow: 0 1px 0 rgba(255, 248, 236, 0.4), 0 -1px 1px rgba(0, 0, 0, 0.7);
 }
 
 .student-mark {
@@ -124,23 +125,30 @@
   z-index: 1;
   display: block;
   width: min(62%, 12.4rem);
+  height: auto;
   aspect-ratio: 1;
   flex: 0 0 auto;
-  background-color: #2c1810;
-  -webkit-mask-image: url('/student/advantage-deboss-mask.png');
-  mask-image: url('/student/advantage-deboss-mask.png');
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
-  -webkit-mask-size: contain;
-  mask-size: contain;
-  filter: drop-shadow(0 -1px 0 rgba(0, 0, 0, 0.55)) drop-shadow(0 1px 0 rgba(255, 214, 170, 0.4));
+  overflow: visible;
+  color: #160c08;
+  filter: drop-shadow(0 1.5px 0 rgba(255, 224, 186, 0.82)) drop-shadow(0 -1px 0 rgba(0, 0, 0, 0.4));
+}
+
+.student-mark circle,
+.student-mark line {
+  stroke-width: 3.4;
+  fill: none;
 }
 
 .student-mark--header {
-  width: 2.45rem;
-  height: 2.45rem;
+  width: 2.85rem;
+  height: 2.85rem;
+  color: #f7ecdc;
+  filter: drop-shadow(0 1px 0 rgba(255, 246, 230, 0.55)) drop-shadow(0 -1px 1px rgba(0, 0, 0, 0.7));
+}
+
+.student-mark--header circle,
+.student-mark--header line {
+  stroke-width: 6.5;
 }
 
 .student-paper {
@@ -327,12 +335,11 @@ button.student-book {
   overflow: hidden;
   color: #3a2416;
   font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', Palatino, serif;
-  background-color: #5c3a24;
+  background-color: #6a4632;
   background-image:
     url('/student/leather-grain.png'),
-    radial-gradient(ellipse at 18% 0%, rgba(255, 214, 170, 0.22), transparent 40%),
-    radial-gradient(ellipse at 80% 100%, rgba(0, 0, 0, 0.28), transparent 46%),
-    linear-gradient(165deg, #6d4630, #4a2e1c 48%, #3a2416);
+    radial-gradient(ellipse at 18% 0%, rgba(255, 214, 170, 0.18), transparent 42%),
+    linear-gradient(180deg, #7a5340, #6a4632 58%, #5e3d2b);
   background-size: 160px 160px, auto, auto, auto;
   border-radius: 14px 18px 18px 12px;
   box-shadow:
@@ -348,7 +355,7 @@ button.student-book::before {
   pointer-events: none;
   background-image: url('/student/leather-grain.png');
   background-size: 120px 120px;
-  opacity: 0.45;
+  opacity: 0.28;
   mix-blend-mode: multiply;
 }
 
@@ -396,21 +403,27 @@ button.student-book::after {
   z-index: 2;
   margin: 0;
   text-align: center;
-  color: #3a2416;
-  font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', Palatino, serif;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  text-shadow: 0 1px 0 rgba(255, 220, 180, 0.32), 0 -1px 1px rgba(0, 0, 0, 0.4);
+  color: #140c08;
+  font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Times New Roman', serif;
+  font-weight: 700;
+  letter-spacing: 0.012em;
+  padding-right: 0.55rem;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+  text-shadow:
+    0 2px 0 #f8dcb4,
+    0 3px 0 rgba(255, 228, 196, 0.85);
 }
 
 .student-book__edition {
-  margin-top: 0.15rem;
-  font-size: 0.95rem;
-  font-weight: 500;
+  margin-top: 0.25rem;
+  font-size: 1.28rem;
+  font-weight: 650;
 }
 
 .student-book__title {
-  font-size: clamp(1.45rem, 5.2vw, 1.85rem);
+  font-size: clamp(1.95rem, 7vw, 2.3rem);
+  line-height: 1.05;
 }
 
 .student-menu {
