@@ -113,12 +113,31 @@ const MARK_FIGURE =
 
 function AdvantageMark({ header = false }: { header?: boolean }) {
   return (
-    <svg className={header ? 'student-mark student-mark--header' : 'student-mark'} viewBox="0 0 200 200" aria-hidden="true">
-      <circle cx="100" cy="100" r="91" fill="none" stroke="currentColor" />
-      {MARK_TICKS.map((tick) => (
-        <line key={`${tick.x1}-${tick.y1}`} x1={tick.x1} y1={tick.y1} x2={tick.x2} y2={tick.y2} stroke="currentColor" strokeLinecap="butt" />
-      ))}
-      <path d={MARK_FIGURE} fill="currentColor" />
+    <svg
+      className={header ? 'student-mark student-mark--header' : 'student-mark'}
+      viewBox="0 0 200 200"
+      aria-hidden="true"
+      shapeRendering="geometricPrecision"
+    >
+      {header ? null : (
+        <>
+          <defs>
+            <linearGradient id="student-mark-plate" gradientUnits="userSpaceOnUse" x1="100" y1="10" x2="100" y2="190">
+              <stop offset="0" stopColor="#2c2c2c" />
+              <stop offset="0.5" stopColor="#242424" />
+              <stop offset="1" stopColor="#1d1d1d" />
+            </linearGradient>
+          </defs>
+          <circle className="student-mark__plate" cx="100" cy="100" r="90" fill="url(#student-mark-plate)" />
+        </>
+      )}
+      <g className="student-mark__press">
+        <circle cx="100" cy="100" r="91" fill="none" stroke="currentColor" />
+        {MARK_TICKS.map((tick) => (
+          <line key={`${tick.x1}-${tick.y1}`} x1={tick.x1} y1={tick.y1} x2={tick.x2} y2={tick.y2} stroke="currentColor" strokeLinecap="butt" />
+        ))}
+        <path d={MARK_FIGURE} fill="currentColor" />
+      </g>
     </svg>
   );
 }
