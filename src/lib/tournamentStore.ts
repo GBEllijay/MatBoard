@@ -917,8 +917,39 @@ export function applyCheckedInBracket(
   return applySeedNames(next, filled.slice(0, size), 0);
 }
 
-export function fillCheckedInBracket(names: readonly string[], max = PRO_MAX_COMPETITORS): void {
-  patchActive((board) => applyCheckedInBracket(board, names, max));
+type CheckedInFillUndo = { placed: number; board: TournamentState };
+let checkedInFillUndo: CheckedInFillUndo | null = null;
+
+/** How many names the last fill wrote, and the board from just before it. */
+export function peekCheckedInFillUndo(): { placed: number } | null {
+  return checkedInFillUndo ? { placed: checkedInFillUndo.placed } : null;
+}
+
+/**
+ * Replace the open draw with these seed names and remember the previous board
+ * for one Undo. Does not read or write the roster or check-in flags.
+ */
+export function fillCheckedInBracket(names: readonly string[], max = PRO_MAX_COMPETITORS): number {
+  const filled = names.map((name) => name.trim()).filter(Boolean);
+  if (!filled.length) return 0;
+  const previous = structuredClone(getTournament());
+  let placed = 0;
+  patchActive((board) => {
+    const next = applyCheckedInBracket(board, filled, max);
+    placed = seedSlots(next).filter((id) => slotName(next, id).trim()).length;
+    return next;
+  });
+  checkedInFillUndo = { placed, board: previous };
+  return placed;
+}
+
+/** Put the open board back to the moment before the last check-in fill. */
+export function undoCheckedInFill(): boolean {
+  if (!checkedInFillUndo) return false;
+  const board = structuredClone(checkedInFillUndo.board);
+  checkedInFillUndo = null;
+  patchActive(() => board);
+  return true;
 }
 
 export function setMatchOutcome(

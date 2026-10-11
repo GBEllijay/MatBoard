@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  bracketDivisionFilter,
   checkedInCompetitors,
+  competitorsForBracketFill,
   namesForBracket,
   obviousRankingFile,
   orderCheckedInByRanking,
@@ -16,9 +18,16 @@ import {
   applyUndoOutcome,
   canUndoLast,
   defaultTournament,
+  fillCheckedInBracket,
+  getTournament,
+  matchHasBye,
   matchIdFromSlot,
+  peekCheckedInFillUndo,
+  resetTournament,
   seedSlots,
+  setTournamentTitle,
   slotName,
+  undoCheckedInFill,
 } from './tournamentStore.ts';
 
 function card(partial: Partial<Student> & Pick<Student, 'id' | 'name'>): Student {
@@ -185,6 +194,74 @@ test('the board size fits the seeds, and 1 and 2 land on opposite sides', () => 
   assert.equal(undone.results['sf-0'], undefined);
   assert.equal(canUndoLast(undone), false);
   assert.equal(slotName(undone, slots[0]), 'Ada');
+});
+
+test('a bracket title filters to that division, which is the age group and weight class', () => {
+  const students = [
+    card({ id: 'cam', name: 'Cam', division: 'Kids Gi', checkedIn: true }),
+    card({ id: 'amy', name: 'Amy', division: 'Adult', checkedIn: true }),
+    card({ id: 'bea', name: 'Bea', division: '  ', checkedIn: true }),
+    card({ id: 'gus', name: 'Gus', division: 'Kids Gi', checkedIn: false }),
+  ];
+  const before = structuredClone(students);
+  assert.equal(bracketDivisionFilter('Kids Gi', students), 'Kids Gi');
+  assert.equal(bracketDivisionFilter('kids gi', students), 'kids gi');
+  assert.equal(bracketDivisionFilter('Open mat', students), null);
+  assert.equal(bracketDivisionFilter('', students), null);
+  assert.deepEqual(
+    competitorsForBracketFill(students, 'Kids Gi').competitors.map((student) => student.id),
+    ['cam'],
+  );
+  assert.deepEqual(
+    competitorsForBracketFill(students, 'Open mat').competitors.map((student) => student.id),
+    ['cam', 'amy', 'bea'],
+  );
+  assert.deepEqual(students, before);
+});
+
+test('five checked-in seeds take byes on the top seeds, and undo restores the board', () => {
+  resetTournament();
+  setTournamentTitle('Kids Gi');
+  const students = [
+    card({ id: 'eli', name: 'Eli', division: 'Kids Gi', checkedIn: true }),
+    card({ id: 'cam', name: 'Cam', division: 'Kids Gi', checkedIn: true }),
+    card({ id: 'amy', name: 'Amy', division: 'Adult', checkedIn: true }),
+    card({ id: 'dee', name: 'Dee', division: 'Kids Gi', checkedIn: true }),
+    card({ id: 'zoe', name: 'Zoe', division: 'Kids Gi', checkedIn: true }),
+    card({ id: 'noa', name: 'Noa', division: 'Kids Gi', checkedIn: true }),
+    card({ id: 'gus', name: 'Gus', division: 'Kids Gi', checkedIn: false }),
+  ];
+  const before = structuredClone(students);
+  const pool = competitorsForBracketFill(students, 'Kids Gi').competitors;
+  const names = namesForBracket(
+    orderCheckedInByRanking(pool, [row(1, 'Cam'), row(2, 'Zoe'), row(3, 'Noa')]),
+    64,
+  );
+  assert.deepEqual(names, ['Cam', 'Zoe', 'Noa', 'Dee', 'Eli']);
+  const placed = fillCheckedInBracket(names, 64);
+  assert.equal(placed, 5);
+  const board = getTournament();
+  assert.equal(board.size, 5);
+  assert.equal(board.title, 'Kids Gi');
+  assert.equal(Object.keys(board.results).length, 0);
+  assert.equal(matchHasBye(board, 'qf-0'), true);
+  assert.equal(matchHasBye(board, 'qf-2'), true);
+  assert.equal(matchHasBye(board, 'qf-3'), true);
+  assert.equal(matchHasBye(board, 'qf-1'), false);
+  assert.equal(slotName(board, 'sf-0-a'), 'Cam');
+  assert.equal(slotName(board, 'sf-1-a'), 'Zoe');
+  assert.equal(slotName(board, 'sf-1-b'), 'Noa');
+  const seeds = seedSlots(board);
+  assert.notEqual(matchIdFromSlot(seeds[0]), matchIdFromSlot(seeds[1]));
+  assert.equal(peekCheckedInFillUndo()?.placed, 5);
+  assert.equal(undoCheckedInFill(), true);
+  assert.equal(getTournament().title, 'Kids Gi');
+  assert.equal(getTournament().size, 16);
+  assert.equal(slotName(getTournament(), seedSlots(getTournament())[0]), '');
+  assert.equal(undoCheckedInFill(), false);
+  assert.deepEqual(students, before);
+  assert.equal(students.find((student) => student.id === 'gus')?.checkedIn, false);
+  assert.equal(students.find((student) => student.id === 'amy')?.checkedIn, true);
 });
 
 test('filling from check-in clears an older result and does not touch check-in', () => {

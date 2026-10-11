@@ -71,6 +71,7 @@ import {
   matchHasBye,
   fillCheckedInBracket,
   fillSeedNames,
+  undoCheckedInFill,
   newBracket,
   parseNameList,
   renameActiveBracket,
@@ -139,6 +140,7 @@ export function TournamentPage() {
   const [pendingPlacement, setPendingPlacement] = useState<PlacementStyle | null>(null);
   const [pasteDraft, setPasteDraft] = useState('');
   const [checkInOpen, setCheckInOpen] = useState(false);
+  const [fillPlaced, setFillPlaced] = useState<number | null>(null);
   const [saveName, setSaveName] = useState('');
   const [customSize, setCustomSize] = useState(String(tournament.size));
   const seeds = seedSlots(tournament);
@@ -351,6 +353,22 @@ export function TournamentPage() {
         </div>
       </header>
 
+      {fillPlaced != null ? (
+        <p className="tournament__fill-note" role="status">
+          <span>Placed {fillPlaced} from check-in.</span>
+          <button
+            type="button"
+            className="btn btn--white"
+            onClick={() => {
+              undoCheckedInFill();
+              setFillPlaced(null);
+            }}
+          >
+            Undo
+          </button>
+        </p>
+      ) : null}
+
       <p className="tournament__hint">
         {kidsOn ? (
           <>
@@ -535,7 +553,8 @@ export function TournamentPage() {
         sizeMax={sizeMax}
         onApply={(names) => {
           unlinkBracketBout();
-          fillCheckedInBracket(names, sizeMax);
+          const placed = fillCheckedInBracket(names, sizeMax);
+          setFillPlaced(placed > 0 ? placed : null);
           setCheckInOpen(false);
         }}
       />

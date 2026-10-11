@@ -23,6 +23,34 @@ export function checkedInCompetitors(students: readonly Student[]): Student[] {
   return competitorCards(students as Student[]).filter((student) => student.checkedIn && rosterNameKey(student.name));
 }
 
+/**
+ * The bracket title is the division filter. Roster division holds the age group
+ * and the weight class (CSV "weight class" maps to that field). There is no
+ * separate age or weight control on the bracket. A title filters only when it
+ * exactly matches a checked-in division. A nickname that matches nobody does
+ * not drop the list.
+ */
+export function bracketDivisionFilter(title: string, students: readonly Student[]): string | null {
+  const wanted = title.trim().toLowerCase();
+  if (!wanted) return null;
+  const hit = checkedInCompetitors(students).some((student) => student.division.trim().toLowerCase() === wanted);
+  return hit ? title.trim() : null;
+}
+
+export function competitorsForBracketFill(
+  students: readonly Student[],
+  title: string,
+): { filter: string | null; competitors: Student[] } {
+  const checked = checkedInCompetitors(students);
+  const filter = bracketDivisionFilter(title, students);
+  if (!filter) return { filter: null, competitors: checked };
+  const wanted = filter.toLowerCase();
+  return {
+    filter,
+    competitors: checked.filter((student) => student.division.trim().toLowerCase() === wanted),
+  };
+}
+
 /** Blank divisions sort last. Everyone else is division, then name. Comparison ignores case. */
 function compareDivisionThenName(a: Student, b: Student): number {
   const divisionA = a.division.trim();
