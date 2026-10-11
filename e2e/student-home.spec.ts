@@ -32,6 +32,8 @@ test('home picker keeps White, Coach, and Pro and adds locked Student Edition', 
   expect(grain).toContain('black-leather-grain.png');
   const stitch = await spine.evaluate((el) => getComputedStyle(el, '::before').borderLeftStyle);
   expect(stitch).toBe('dashed');
+  const spineWidth = await spine.evaluate((el) => parseFloat(getComputedStyle(el).width));
+  expect(spineWidth).toBeGreaterThanOrEqual(30);
 
   await shot(page, 'home-picker-390');
   await student.screenshot({ path: '/opt/cursor/artifacts/student-button-closeup.png' });
@@ -68,10 +70,17 @@ test('?student=1 opens the Student hub, and submenus go back to it', async ({ pa
   await expect(page).toHaveURL(/\/student\?student=1$/);
   await expect(page.getByRole('link', { name: BACK, exact: true })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute('href', '/?student=1');
-  await expect(page.getByRole('link', { name: 'Journal', exact: true })).toBeVisible();
+  const journal = page.getByRole('link', { name: 'Journal', exact: true });
+  await expect(journal).toBeVisible();
+  await expect(journal).toHaveCSS('background-color', 'rgb(244, 240, 228)');
+  await expect(journal).toHaveCSS('font-family', /Patrick Hand/);
+  const rules = await journal.evaluate((el) => getComputedStyle(el).backgroundImage);
+  expect(rules).toContain('repeating-linear-gradient');
   await expect(page.getByRole('link', { name: 'Journal cards', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Fundamentals', exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Calendar, coming soon' })).toBeVisible();
+  const calendar = page.getByRole('link', { name: 'Calendar, coming soon' });
+  await expect(calendar).toBeVisible();
+  await expect(calendar.locator('.student-hub__stamp')).toHaveText('Coming soon');
   await expect(page.getByRole('link', { name: 'Belt progress, coming soon' })).toBeVisible();
   await shot(page, 'student-hub-390');
 

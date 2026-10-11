@@ -162,13 +162,17 @@ function Hub() {
           {HUB_LINKS.map((item) => (
             <Link
               key={item.to}
-              className="student-hub__link"
+              className={item.soon ? 'student-hub__link student-hub__link--soon' : 'student-hub__link'}
               to={to(item.to)}
               aria-label={item.soon ? `${item.title}, coming soon` : item.title}
             >
               <LeatherSpine />
               <span className="student-hub__title">{item.title}</span>
-              <small>{item.note}</small>
+              {item.soon ? (
+                <span className="student-hub__stamp">Coming soon</span>
+              ) : (
+                <small>{item.note}</small>
+              )}
             </Link>
           ))}
         </nav>

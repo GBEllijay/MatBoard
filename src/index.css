@@ -767,7 +767,7 @@ button.mode-card__hit {
 
 .mode-card--student {
   min-height: 10.5rem;
-  padding-left: 1.55rem;
+  padding-left: 3rem;
   background:
     url('/student/black-leather-grain.png'),
     linear-gradient(165deg, #2c2c2c 0%, #161616 48%, #0c0c0c 100%);
@@ -780,7 +780,7 @@ button.mode-card__hit {
 }
 
 .home--ladder .mode-card.mode-card--student {
-  padding-left: 1.55rem;
+  padding-left: 3rem;
   overflow: hidden;
 }
 
@@ -820,6 +820,30 @@ button.mode-card__hit {
 
 .leather-spine::after {
   left: 12px;
+}
+
+/* Home picker spine is wider so the grain and stitches read at phone width. */
+.mode-card--student > .leather-spine {
+  width: 36px;
+  background-color: #0c0c0c;
+  background-image:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.55), rgba(255, 255, 255, 0.16) 16%, rgba(255, 255, 255, 0.02) 46%, rgba(0, 0, 0, 0.62)),
+    url('/student/leather-grain.png'),
+    url('/student/black-leather-grain.png');
+  background-size: auto, 72px 72px, 40px 40px;
+  background-blend-mode: normal, soft-light, multiply;
+  box-shadow:
+    inset -2px 0 0 rgba(255, 255, 255, 0.22),
+    inset 3px 0 5px rgba(0, 0, 0, 0.6),
+    3px 0 0 rgba(0, 0, 0, 0.45);
+}
+
+.mode-card--student > .leather-spine::before {
+  left: 8px;
+}
+
+.mode-card--student > .leather-spine::after {
+  left: 25px;
 }
 
 .mode-card--coach:not(.mode-card--locked) {
