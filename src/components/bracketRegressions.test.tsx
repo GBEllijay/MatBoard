@@ -8,10 +8,20 @@ import { KidsScoreboardSwitcher } from './KidsScoreboardSwitcher.tsx';
 import { RosterNameField } from './RosterNameField.tsx';
 import { MatchDisplayPage } from '../pages/MatchDisplay.tsx';
 import { TournamentPage } from '../pages/Tournament.tsx';
+import { openBracketBout } from '../lib/bracketBout.ts';
 import { kidsBracketScoring, kidsSkinButtonSuppressed, setKidsEnabled, setKidsSkin } from '../lib/kidsScoreboard.ts';
 import { PRO_UNLOCK_STORAGE_KEY } from '../lib/proUnlock.ts';
 import { addStudent, resetRoster } from '../lib/rosterStore.ts';
-import { fillSeedNames, resetTournament, setCompetitorCount, setTournamentTitle } from '../lib/tournamentStore.ts';
+import {
+  fillSeedNames,
+  getTournament,
+  resetTournament,
+  seedSlots,
+  setCompetitorCount,
+  setMatchOutcome,
+  setTournamentTitle,
+  slotName,
+} from '../lib/tournamentStore.ts';
 
 const dom = new Window({ url: 'http://localhost/tournament?from=suite' });
 const view = dom as unknown as Window & typeof globalThis;
@@ -117,9 +127,14 @@ test('bracket and scoreboard name fields show the same closest roster match', as
     placeholder: 'Competitor 1',
     compact: true,
   });
+  const hinted = await topRosterMatch('Semifinals, bottom competitor', {
+    placeholder: 'TBD',
+    compact: true,
+  });
 
   assert.equal(scoreboard[0], 'Mia Santos');
   assert.deepEqual(scoreboard, bracket);
+  assert.deepEqual(scoreboard, hinted);
   assert.deepEqual(scoreboard, ['Mia Santos', 'Mila Chen', 'Sam Miller']);
   resetRoster();
 });
@@ -256,6 +271,128 @@ test('Skin stays enabled after Score and Back to bracket', { timeout: 8000 }, as
     window.setInterval = realSetInterval;
     console.error = realError;
     window.matchMedia = realMatchMedia;
+    resetTournament();
+  }
+});
+
+test('empty seed slots hint TBD, Undo is logo blue, and the live match wears a LIVE pill', async () => {
+  localStorage.setItem(PRO_UNLOCK_STORAGE_KEY, '1');
+  resetTournament();
+  setCompetitorCount(4);
+  fillSeedNames(['Ada Cruz']);
+  setMatchOutcome('sf-0', 'a', { call: 'win', method: 'points' }, { toggle: false });
+  openBracketBout('sf-1');
+  setKidsEnabled(true);
+  setKidsSkin('dinos');
+
+  const mounted = mount(<TournamentPage />, '/tournament?from=suite');
+  try {
+    const placeholders = [...mounted.host.querySelectorAll('.t-slot input')].map((input) =>
+      input.getAttribute('placeholder'),
+    );
+    assert.ok(placeholders.includes('TBD'));
+    assert.equal(
+      placeholders.some((value) => /^Competitor \d+$/.test(value || '')),
+      false,
+    );
+    const undo = [...mounted.host.querySelectorAll('button')].find(
+      (button) => button.textContent?.trim() === 'Undo last result',
+    );
+    assert.ok(undo);
+    assert.equal(undo.classList.contains('btn--blue'), true);
+    assert.equal(undo.disabled, false);
+    const pill = mounted.host.querySelector('.t-match--live .t-live-pill');
+    assert.equal(pill?.textContent?.trim(), 'LIVE');
+    const names = [...mounted.host.querySelectorAll('button')].find(
+      (button) => button.textContent?.trim() === 'Edit names',
+    );
+    assert.ok(names);
+    act(() => {
+      names.click();
+    });
+    await settle();
+    assert.ok(document.querySelector('.sheet--names'), 'names editor uses the navy sheet');
+    const advanced = slotName(getTournament(), 'final-0-a');
+    assert.equal(advanced, 'Ada Cruz');
+    act(() => {
+      undo.click();
+    });
+    await settle();
+    assert.equal(slotName(getTournament(), 'final-0-a'), '');
+    assert.equal(getTournament().results['sf-0'], undefined);
+  } finally {
+    unmount(mounted);
+    resetTournament();
+  }
+});
+
+test('one tap sets bracket size, and kids connector pairs stay on an eight-person board', async () => {
+  localStorage.setItem(PRO_UNLOCK_STORAGE_KEY, '1');
+  resetTournament();
+  setCompetitorCount(4);
+  fillSeedNames(['Ada Cruz', 'Bea Ortiz', 'Cam Diaz', 'Dee Kim']);
+  setMatchOutcome('sf-0', 'a', { call: 'win', method: 'points' }, { toggle: false });
+  setKidsEnabled(true);
+  setKidsSkin('ocean');
+
+  const mounted = mount(<TournamentPage />, '/tournament?from=suite');
+  try {
+    assert.equal(mounted.host.querySelector('main')?.classList.contains('tournament--kids'), true);
+    const size = [...mounted.host.querySelectorAll('.tournament__actions button')].find(
+      (button) => button.textContent?.trim() === '4',
+    );
+    assert.ok(size, 'size chip shows 4');
+    act(() => {
+      size.click();
+    });
+    await settle();
+    const eight = [...document.querySelectorAll('button')].find((button) => button.textContent?.trim() === '8');
+    assert.ok(eight);
+    act(() => {
+      eight.click();
+    });
+    await settle();
+    assert.equal(document.querySelector('[role="dialog"]'), null);
+    assert.equal(getTournament().size, 8);
+    assert.ok(mounted.host.querySelector('.bracket__pair'), 'eight-person kids board keeps connector pairs');
+    assert.equal(seedSlots(getTournament()).length, 8);
+  } finally {
+    unmount(mounted);
+    resetTournament();
+  }
+});
+
+test('the kids Skin picker stays on the Pro suite and off the Coach board', async () => {
+  localStorage.setItem(PRO_UNLOCK_STORAGE_KEY, '1');
+  resetTournament();
+  setKidsEnabled(true);
+  setKidsSkin('dinos');
+
+  const coach = mount(<TournamentPage />, '/tournament?from=coach');
+  try {
+    const skin = [...coach.host.querySelectorAll('button')].find((button) =>
+      (button.getAttribute('aria-label') || '').startsWith('Skin'),
+    );
+    assert.equal(skin, undefined);
+    assert.equal(coach.host.querySelector('main')?.classList.contains('tournament--kids'), false);
+  } finally {
+    unmount(coach);
+  }
+
+  const suite = mount(<TournamentPage />, '/tournament?from=suite');
+  try {
+    const skin = [...suite.host.querySelectorAll('button')].find((button) =>
+      (button.getAttribute('aria-label') || '').startsWith('Skin'),
+    );
+    assert.ok(skin);
+    assert.equal(skin.disabled, false);
+    act(() => {
+      skin.click();
+    });
+    await settle();
+    assert.equal(document.querySelectorAll('.kids-skin__thumb').length, 6);
+  } finally {
+    unmount(suite);
     resetTournament();
   }
 });

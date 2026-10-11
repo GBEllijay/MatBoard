@@ -6177,9 +6177,35 @@ a.saver-folder--link {
 }
 
 .t-match--live .t-match__bouts {
-  outline: 1px solid rgba(240, 194, 75, 0.5);
+  outline: 2px solid var(--logo-blue);
   outline-offset: 2px;
   border-radius: 12px;
+}
+
+.t-live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  justify-self: start;
+  margin: 0;
+  padding: 0.22rem 0.65rem 0.22rem 0.42rem;
+  border-radius: 999px;
+  background: var(--logo-blue);
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+
+.t-live-pill::before {
+  content: '';
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.35);
 }
 
 .bracket__side--left .t-match {
@@ -6240,9 +6266,10 @@ a.saver-folder--link {
 
 .t-undo {
   min-width: 4.8rem;
-  border: 1px solid var(--gold);
-  background: rgba(212, 160, 23, 0.14);
-  color: var(--gold-2);
+  border: 1.5px solid rgba(20, 22, 28, 0.35);
+  background: #fff;
+  color: #14161c;
+  -webkit-text-fill-color: #14161c;
 }
 
 .t-slot {
@@ -6475,6 +6502,41 @@ a.saver-folder--link {
 .tournament__sheet-copy {
   color: var(--muted);
   margin-bottom: 0.75rem;
+}
+
+/* Names editor. Navy, same family as the home cards, instead of the tatami sheet. */
+.sheet--names .sheet__panel {
+  background-color: #0d1736;
+  background-image: linear-gradient(180deg, #1a4a96 0%, #0d1736 42%, #081018 100%);
+  color: #f5f1e8;
+}
+
+.sheet--names .sheet__head h2,
+.sheet--names .tournament__paste span,
+.sheet--names .tournament__seeds label > span {
+  color: #f5f1e8;
+}
+
+.sheet--names .tournament__sheet-copy {
+  color: #c9d4e6;
+}
+
+.sheet--names .tournament__paste textarea,
+.sheet--names .tournament__seeds input {
+  background: rgba(6, 14, 28, 0.55);
+  color: #f5f1e8;
+  -webkit-text-fill-color: #f5f1e8;
+  caret-color: #f5f1e8;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 12px;
+  color-scheme: dark;
+}
+
+.sheet--names .tournament__paste textarea::placeholder,
+.sheet--names .tournament__seeds input::placeholder {
+  color: rgba(245, 241, 232, 0.45);
+  -webkit-text-fill-color: rgba(245, 241, 232, 0.45);
+  opacity: 1;
 }
 
 .tournament__paste {
@@ -6989,14 +7051,19 @@ a.saver-folder--link {
   justify-items: start;
 }
 
-.tournament--bright .t-score,
-.tournament--bright .t-undo {
+.tournament--bright .t-score {
   min-height: 26px;
   font-size: 0.62rem;
   padding: 0.12rem 0.55rem;
   background: transparent;
   color: rgba(245, 241, 232, 0.72);
   border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.tournament--bright .t-undo {
+  min-height: 26px;
+  font-size: 0.62rem;
+  padding: 0.12rem 0.55rem;
 }
 
 .tournament--bright .bracket__side--left .t-match,
@@ -7559,14 +7626,19 @@ a.saver-folder--link {
   justify-items: start;
 }
 
-.tournament--dark .t-score,
-.tournament--dark .t-undo {
+.tournament--dark .t-score {
   min-height: 26px;
   font-size: 0.62rem;
   padding: 0.12rem 0.55rem;
   background: transparent;
   color: rgba(245, 241, 232, 0.72);
   border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.tournament--dark .t-undo {
+  min-height: 26px;
+  font-size: 0.62rem;
+  padding: 0.12rem 0.55rem;
 }
 
 .tournament--dark .bracket__side--left .t-match,
@@ -7745,9 +7817,7 @@ a.saver-folder--link {
 }
 
 .tournament--dark .bracket__side--left .t-score,
-.tournament--dark .bracket__side--right .t-score,
-.tournament--dark .bracket__side--left .t-undo,
-.tournament--dark .bracket__side--right .t-undo {
+.tournament--dark .bracket__side--right .t-score {
   color: #f5f1e8;
   border-color: rgba(255, 255, 255, 0.42);
   background: rgba(255, 255, 255, 0.08);
@@ -13783,8 +13853,9 @@ a.plan-pick {
 .tournament--kids .bracket__champ input::placeholder,
 .tournament--kids.tournament--bright .bracket__champ input::placeholder,
 .tournament--kids.tournament--dark .bracket__champ input::placeholder {
-  color: #000;
-  -webkit-text-fill-color: #000;
+  color: rgba(27, 36, 51, 0.42);
+  -webkit-text-fill-color: rgba(27, 36, 51, 0.42);
+  font-weight: 650;
 }
 
 .tournament--kids .t-slot__seed,
@@ -13804,16 +13875,15 @@ a.plan-pick {
 }
 
 .tournament--kids .t-match--live .t-match__bouts {
-  outline: 3px solid #6d4aff;
+  outline: 3px solid var(--logo-blue);
   outline-offset: 3px;
 }
 
-/* Side SCORE/UNDO sit on the wallpaper. Transparent cream type disappears on
-   Robots, Ocean, and Stars. Dark pills stay readable. Finals SCORE stays logo blue. */
+/* Side SCORE sits on the wallpaper. Transparent cream type disappears on
+   Robots, Ocean, and Stars. A dark pill stays readable. Finals SCORE stays logo blue.
+   Undo is the white secondary, never the yellow primary. */
 .tournament--kids.tournament--bright .t-match .t-score,
-.tournament--kids.tournament--bright .t-match .t-undo,
-.tournament--kids.tournament--dark .t-match .t-score,
-.tournament--kids.tournament--dark .t-match .t-undo {
+.tournament--kids.tournament--dark .t-match .t-score {
   min-height: 48px;
   min-width: 5.4rem;
   padding: 0.35rem 0.9rem;
@@ -13823,6 +13893,21 @@ a.plan-pick {
   color: #f7f4ee;
   -webkit-text-fill-color: #f7f4ee;
   border: 1.5px solid rgba(255, 255, 255, 0.82);
+  text-shadow: none;
+  opacity: 1;
+}
+
+.tournament--kids.tournament--bright .t-match .t-undo,
+.tournament--kids.tournament--dark .t-match .t-undo {
+  min-height: 48px;
+  min-width: 5.4rem;
+  padding: 0.35rem 0.9rem;
+  font-size: 1.05rem;
+  letter-spacing: 0.06em;
+  background: #fff;
+  color: #14161c;
+  -webkit-text-fill-color: #14161c;
+  border: 1.5px solid rgba(16, 24, 40, 0.35);
   text-shadow: none;
   opacity: 1;
 }

@@ -319,7 +319,7 @@ export function TournamentPage() {
           </button>
           <button
             type="button"
-            className={`btn${undoReady ? '' : ' btn--ghost'}`}
+            className={`btn${undoReady ? ' btn--blue' : ' btn--ghost'}`}
             disabled={!undoReady}
             onClick={() => undoLastOutcome()}
           >
@@ -454,6 +454,7 @@ export function TournamentPage() {
       {showMascot ? <KidsMascotDock lines={kidsWinLines(kidsChampion, kidsScore)} /> : null}
 
       <Sheet
+        className="sheet--names"
         open={namesOpen}
         title={plainCoach ? 'Student names' : 'Competitor names'}
         onClose={() => setNamesOpen(false)}
@@ -837,6 +838,11 @@ function MatchCard({
       }${bye ? ' t-match--bye' : ''}`}
       aria-label={matchAriaLabel(isThreePersonBracket(tournament), matchId)}
     >
+      {live && !hasResult ? (
+        <p className="t-live-pill" role="status">
+          LIVE
+        </p>
+      ) : null}
       {matchId === 'final-0' ? (
         <p className="t-match__finals-label">
           <span>Championship match</span>
