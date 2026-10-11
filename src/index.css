@@ -5915,6 +5915,27 @@ a.saver-folder--link {
   font-size: 0.9rem;
 }
 
+.tournament__fill-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem 0.75rem;
+  margin: 0.2rem auto 0.45rem;
+  max-width: 40rem;
+  padding: 0.4rem 0.5rem 0.4rem 0.9rem;
+  border-radius: 999px;
+  background: #fff;
+  color: #14161c;
+  font-weight: 800;
+  box-shadow: 0 8px 22px rgba(16, 24, 40, 0.28);
+}
+
+.tournament__fill-note .btn {
+  min-height: 40px;
+  padding: 0.35rem 0.9rem;
+}
+
 .tournament__hint {
   margin: 0 calc(1rem + var(--safe-r)) 0.55rem calc(1rem + var(--safe-l));
   color: var(--muted);

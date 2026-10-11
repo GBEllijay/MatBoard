@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { COMPETITOR_ROSTER_LABEL } from '../lib/coachCopy';
 import {
+  bracketDivisionFilter,
   checkedInCompetitors,
+  competitorsForBracketFill,
   namesForBracket,
   obviousRankingFile,
   orderCheckedInByRanking,
@@ -54,7 +56,9 @@ export function CheckInFillSheet({
 }: Props) {
   const [rankingId, setRankingId] = useState<string | null>(null);
   const [primed, setPrimed] = useState(false);
-  const checked = checkedInCompetitors(students);
+  const allChecked = checkedInCompetitors(students);
+  const divisionFilter = bracketDivisionFilter(bracketTitle, students);
+  const checked = competitorsForBracketFill(students, bracketTitle).competitors;
   if (open && !primed) {
     setPrimed(true);
     setRankingId(initialRankingId(files, checked, bracketTitle));
@@ -64,7 +68,7 @@ export function CheckInFillSheet({
 
   const selectedFile = rankingId ? (files.find((file) => file.id === rankingId) ?? null) : null;
   const rows = selectedFile?.rows ?? [];
-  const ordered: SeededCompetitor[] = rankingId === null ? [] : orderCheckedInByRanking(students, rows);
+  const ordered: SeededCompetitor[] = rankingId === null ? [] : orderCheckedInByRanking(checked, rows);
   const orderingLabel = selectedFile
     ? `Seeded by ranking: ${selectedFile.name}`
     : 'No ranking found, ordered by division then name';
@@ -97,7 +101,7 @@ export function CheckInFillSheet({
         ) : null
       }
     >
-      {checked.length === 0 ? (
+      {allChecked.length === 0 ? (
         <>
           <p className="tournament__sheet-copy">
             Nobody is checked in. On the {COMPETITOR_ROSTER_LABEL}, tap Check In for each person who is
@@ -107,12 +111,21 @@ export function CheckInFillSheet({
             Open {COMPETITOR_ROSTER_LABEL}
           </Link>
         </>
+      ) : checked.length === 0 ? (
+        <p className="tournament__sheet-copy">
+          {allChecked.length} checked in, and none are in {divisionFilter}. Clear the division title to
+          fill everyone who is checked in. Check-in stays as it is.
+        </p>
       ) : (
         <>
           <p className="tournament__sheet-copy">
-            {checked.length} checked in. Ranked names follow the ranking list. Anyone checked in who is
-            not on that list follows by division, then by name. A blank division goes last. Check-in
-            stays as it is.
+            {divisionFilter
+              ? `Division filter: ${divisionFilter}. ${checked.length} of ${allChecked.length} checked in. Age group and weight class live in that division.`
+              : bracketTitle.trim()
+                ? `${allChecked.length} checked in. This title does not match a checked-in division, so everyone checked in is included.`
+                : `${allChecked.length} checked in. No division on this bracket, so everyone checked in is included.`}{' '}
+            Ranked names follow the ranking list. Anyone in this fill who is not on that list follows by
+            division, then by name. A blank division goes last. Check-in stays as it is.
           </p>
           {files.length ? (
             <div className="tournament__size-presets" role="radiogroup" aria-label="Ranking list">
