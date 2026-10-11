@@ -366,8 +366,15 @@ function mergeChecklist(
       continue;
     }
     current.name = preferText(current.name, entry.name, `Checklist ${entry.id} name was kept.`, conflicts);
+    current.displayName = preferText(
+      current.displayName,
+      entry.displayName,
+      `Checklist ${entry.id} display name was kept.`,
+      conflicts,
+    );
     current.note = preferText(current.note, entry.note, `Checklist ${entry.id} note was kept.`, conflicts);
     current.learnedOn = preferText(current.learnedOn, entry.learnedOn, `Checklist ${entry.id} date was kept.`, conflicts);
+    if (current.hidden !== entry.hidden) conflicts.push(`Checklist ${entry.id} visibility was kept.`);
     current.catalogItemId = preferText(
       current.catalogItemId,
       entry.catalogItemId,
@@ -549,7 +556,17 @@ function readChecklistEntry(value: unknown, index: number, errors: string[]): St
   const label = `Checklist item ${index + 1}`;
   if (!record) {
     errors.push(`${label} must be an object.`);
-    return { id: '', catalogItemId: '', categoryId: '', name: '', learnedOn: '', note: '', updatedAt: 0 };
+    return {
+      id: '',
+      catalogItemId: '',
+      categoryId: '',
+      name: '',
+      displayName: '',
+      hidden: false,
+      learnedOn: '',
+      note: '',
+      updatedAt: 0,
+    };
   }
   const catalogItemId = readOptionalId(record.catalogItemId, `${label} catalog id`, errors);
   const categoryId = readOptionalId(record.categoryId, `${label} category id`, errors);
@@ -558,6 +575,8 @@ function readChecklistEntry(value: unknown, index: number, errors: string[]): St
     catalogItemId,
     categoryId,
     name: readString(record.name, `${label} name`, PROGRESS_NAME_MAX, errors),
+    displayName: readString(record.displayName, `${label} display name`, PROGRESS_NAME_MAX, errors),
+    hidden: readFlag(record.hidden, `${label} hidden`, errors),
     learnedOn: readDate(record.learnedOn, `${label} learned on`, errors, false),
     note: readString(record.note, `${label} note`, PROGRESS_NOTE_MAX, errors),
     updatedAt: readTime(record.updatedAt, `${label} updatedAt`, errors),
@@ -871,6 +890,13 @@ function realDay(iso: string): boolean {
   return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
 }
 
+function readFlag(value: unknown, label: string, errors: string[]): boolean {
+  if (value == null || value === false) return false;
+  if (value === true) return true;
+  errors.push(`${label} must be true or false.`);
+  return false;
+}
+
 function readString(value: unknown, label: string, max: number, errors: string[]): string {
   if (value == null) return '';
   if (typeof value !== 'string') {
@@ -1032,8 +1058,8 @@ function writeReportRows(lines: string[], packet: StudentProgressReport): void {
       entry.note,
       '',
       '',
-      '',
-      '',
+      entry.displayName,
+      entry.hidden ? 'hidden' : '',
       '',
       '',
       '',

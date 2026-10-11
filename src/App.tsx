@@ -36,6 +36,7 @@ import { consumeUnlockQueryNow } from './lib/proUnlock';
 import { WHITE_BUY_PATH } from './lib/whitePurchase';
 import { whiteHubAllowed, whiteLiveToolsAllowed } from './lib/whiteUnlock';
 import { ClassHistoryPage } from './pages/ClassHistory';
+import { StudentEditionPage } from './pages/StudentEdition';
 import { CoachPage } from './pages/Coach';
 import { CoachUnlimitedPage } from './pages/CoachUnlimited';
 import { CoachingToolsPage } from './pages/CoachingTools';
@@ -492,6 +493,7 @@ export default function App() {
           </MediaConsoleRoute>
         }
       />
+      <Route path="/student/*" element={<StudentEditionPage />} />
       <Route path="/coming-soon" element={<ComingSoonPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/terms" element={<TermsPage />} />
