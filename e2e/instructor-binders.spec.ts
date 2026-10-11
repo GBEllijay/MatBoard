@@ -13,6 +13,14 @@ const ROLES = [
     on: ['Daily training lesson plan access', "Download today's videos", 'Upload for instructor distribution'],
   },
   {
+    id: 'program-director',
+    radio: 'Program Director, Pro · Gallery. Events, Pro Shop, and gallery',
+    label: 'Program director',
+    plan: 'Pro · Gallery',
+    family: 'purple',
+    on: ['Gallery upload', 'Events access', 'Pro Shop access'],
+  },
+  {
     id: 'coach',
     radio: 'Coach, Coach Unlimited. Lesson plans, daily videos, and uploads',
     label: 'Coach',
@@ -25,14 +33,6 @@ const ROLES = [
       "Download today's videos",
       'Upload for instructor distribution',
     ],
-  },
-  {
-    id: 'program-director',
-    radio: 'Program Director, Pro · Gallery. Events, Pro Shop, and gallery',
-    label: 'Program director',
-    plan: 'Pro · Gallery',
-    family: 'purple',
-    on: ['Gallery upload', 'Events access', 'Pro Shop access'],
   },
   {
     id: 'instructors',
@@ -156,7 +156,7 @@ test('an issued invite keeps the picked role, seat count, and permission edit', 
   await expect(page.locator('.invite-seat-cap__count')).toHaveText('0 of 10 seats used');
 
   await page.getByLabel('Instructor email').fill('coach@gym.test');
-  await page.getByRole('radio', { name: ROLES[1].radio }).click();
+  await page.getByRole('radio', { name: ROLES[2].radio }).click();
   await page.getByRole('switch', { name: /Gallery upload/ }).click();
   await page.getByRole('button', { name: 'Issue invite' }).click();
   await expect(page.getByRole('textbox', { name: 'Invite link', exact: true })).toBeVisible();
@@ -168,7 +168,7 @@ test('an issued invite keeps the picked role, seat count, and permission edit', 
 
   const others = [
     { email: 'assist@gym.test', role: ROLES[0] },
-    { email: 'pd@gym.test', role: ROLES[2] },
+    { email: 'pd@gym.test', role: ROLES[1] },
     { email: 'lead@gym.test', role: ROLES[3] },
   ];
   for (const [index, item] of others.entries()) {
@@ -202,8 +202,8 @@ test('an issued invite keeps the picked role, seat count, and permission edit', 
   const coachCard = page.locator('.seat-card', { hasText: 'coach@gym.test' });
   await coachCard.getByRole('button', { name: 'Edit permissions' }).click();
   const editor = page.getByRole('radiogroup', { name: 'Instructor role' }).last();
-  await editor.getByRole('radio', { name: ROLES[2].radio }).click();
-  await expect(editor.getByRole('radio', { name: ROLES[2].radio })).toHaveAttribute('aria-checked', 'true');
+  await editor.getByRole('radio', { name: ROLES[1].radio }).click();
+  await expect(editor.getByRole('radio', { name: ROLES[1].radio })).toHaveAttribute('aria-checked', 'true');
   await expect(page.getByRole('switch', { name: /Events access/ }).last()).toHaveAttribute('aria-checked', 'true');
   await expect(page.getByRole('switch', { name: /Roster submit/ }).last()).toHaveAttribute('aria-checked', 'false');
   await page.getByRole('button', { name: 'Save permissions' }).click();
@@ -266,6 +266,50 @@ test('mobile binder row peeks and scrolls to the last role', async ({ page }) =>
   await instructor.click();
   await expect(instructor).toHaveAttribute('aria-checked', 'true');
   await expect(page.getByRole('switch', { name: /Pro Shop access/ })).toHaveAttribute('aria-checked', 'true');
+});
+
+test('role binders read Assistant, Program Director, Coach, then Instructor', async ({ page }) => {
+  await unlock(page);
+  const order = [
+    'binder-pick--assistant-coach',
+    'binder-pick--program-director',
+    'binder-pick--coach',
+    'binder-pick--instructors',
+  ];
+  const expectOrder = async (row: Locator) => {
+    const radios = row.getByRole('radio');
+    await expect(radios).toHaveCount(4);
+    const placed = await radios.evaluateAll((nodes) =>
+      nodes.map((node) => {
+        const box = node.getBoundingClientRect();
+        return { className: node.className, left: box.left, top: box.top, label: node.getAttribute('aria-label') };
+      }),
+    );
+    for (let index = 0; index < order.length; index += 1) {
+      expect(placed[index].className).toContain(order[index]);
+    }
+    expect(placed.map((item) => item.label)).toEqual(ROLES.map((role) => `${role.radio}. Full cloud and sharing in these menus`));
+    for (let index = 1; index < placed.length; index += 1) {
+      expect(placed[index].left).toBeGreaterThan(placed[index - 1].left + 16);
+      expect(Math.abs(placed[index].top - placed[0].top)).toBeLessThan(8);
+    }
+  };
+
+  for (const viewport of [
+    { width: 1280, height: 900 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto('/instructors');
+    await expectOrder(page.locator('.role-options__row'));
+  }
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.getByLabel('Instructor email').fill('order@gym.test');
+  await page.getByRole('radio', { name: ROLES[0].radio }).click();
+  await page.getByRole('button', { name: 'Issue invite' }).click();
+  await page.locator('.seat-card', { hasText: 'order@gym.test' }).getByRole('button', { name: 'Edit permissions' }).click();
+  await expectOrder(page.getByRole('radiogroup', { name: 'Instructor role' }).last());
 });
 
 test('invite page back mark returns to Pro and the center mark goes Home', async ({ page }) => {

@@ -93,7 +93,12 @@ export type InstructorPreset = {
   permissions: InstructorPermissions;
 };
 
-/** Named starting binders. The stored booleans stay overridable after a pick. */
+/**
+ * Named starting binders, in paint-lock order (2026-10-11):
+ * Assistant Coach, Program Director, Coach, Instructor.
+ * Left to right, and top-left / top-right / bottom-left / bottom-right in a 2×2.
+ * The stored booleans stay overridable after a pick.
+ */
 export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
   {
     id: 'assistant-coach',
@@ -105,22 +110,6 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
       dailyLessonPlanAccess: true,
       rosterSubmit: false,
       rosterPull: false,
-      downloadTodaysVideos: true,
-      uploadForDistribution: true,
-      eventsAccess: false,
-      proShopAccess: false,
-    },
-  },
-  {
-    id: 'coach',
-    label: 'Coach',
-    plan: 'Coach Unlimited',
-    detail: ['Lesson plans, daily videos, and uploads', 'Full cloud and sharing in these menus'],
-    permissions: {
-      galleryUpload: false,
-      dailyLessonPlanAccess: true,
-      rosterSubmit: true,
-      rosterPull: true,
       downloadTodaysVideos: true,
       uploadForDistribution: true,
       eventsAccess: false,
@@ -141,6 +130,22 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
       uploadForDistribution: false,
       eventsAccess: true,
       proShopAccess: true,
+    },
+  },
+  {
+    id: 'coach',
+    label: 'Coach',
+    plan: 'Coach Unlimited',
+    detail: ['Lesson plans, daily videos, and uploads', 'Full cloud and sharing in these menus'],
+    permissions: {
+      galleryUpload: false,
+      dailyLessonPlanAccess: true,
+      rosterSubmit: true,
+      rosterPull: true,
+      downloadTodaysVideos: true,
+      uploadForDistribution: true,
+      eventsAccess: false,
+      proShopAccess: false,
     },
   },
   {
@@ -205,14 +210,14 @@ export function defaultInstructorPermissions(): InstructorPermissions {
 
 const PRESET_IDS: readonly InstructorPresetId[] = [
   'assistant-coach',
-  'coach',
   'program-director',
+  'coach',
   'instructors',
 ];
 
 export function instructorPreset(id: InstructorPresetId): InstructorPreset {
   const preset = INSTRUCTOR_PRESETS.find((item) => item.id === id);
-  if (!preset) return INSTRUCTOR_PRESETS[1];
+  if (!preset) return INSTRUCTOR_PRESETS.find((item) => item.id === 'coach') ?? INSTRUCTOR_PRESETS[0];
   return preset;
 }
 

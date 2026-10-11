@@ -440,14 +440,14 @@ test('four binder presets fill the toggles and stay overridable', () => {
   assert.equal(instructorSeatBinderLabel('assistant-coach', assistant), 'Assistant coach');
   assert.deepEqual(
     INSTRUCTOR_PRESETS.map((preset) => preset.label),
-    ['Assistant coach', 'Coach', 'Program director', 'Instructors'],
+    ['Assistant coach', 'Program director', 'Coach', 'Instructors'],
   );
   assert.deepEqual(
     INSTRUCTOR_PRESETS.map((preset) => preset.detail),
     [
       ['Lesson plans and daily videos', 'Full cloud and sharing in these menus'],
-      ['Lesson plans, daily videos, and uploads', 'Full cloud and sharing in these menus'],
       ['Events, Pro Shop, and gallery', 'Full cloud and sharing in these menus'],
+      ['Lesson plans, daily videos, and uploads', 'Full cloud and sharing in these menus'],
       ['Lessons, uploads, events, Pro Shop, and gallery', 'Full cloud and sharing in these menus'],
     ],
   );
@@ -455,8 +455,8 @@ test('four binder presets fill the toggles and stay overridable', () => {
     INSTRUCTOR_PRESETS.map((preset) => [preset.id, preset.plan]),
     [
       ['assistant-coach', 'Coach Unlimited'],
-      ['coach', 'Coach Unlimited'],
       ['program-director', 'Pro · Gallery'],
+      ['coach', 'Coach Unlimited'],
       ['instructors', 'Coach Unlimited + Pro'],
     ],
   );
