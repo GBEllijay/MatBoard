@@ -1,6 +1,8 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { BeltHeader } from '../components/BeltHeader';
+import { FolderChevron } from '../components/FolderChevron';
+import { MediaConsoleMark } from '../components/MediaConsoleArt';
 import { Chrome } from '../components/Chrome';
 import { GymLogoControl } from '../components/GymLogoControl';
 import { InstructionsButton } from '../components/InstructionsButton';
@@ -12,7 +14,7 @@ import { ShopCastSlide } from '../components/ShopCastSlide';
 import { useCurrentSeat } from '../components/SeatSessionBar';
 import { ToolboxFolder } from '../components/ToolboxFolder';
 import { FullscreenChip } from '../components/FullscreenChip';
-import { SubmenuMarks } from '../components/TierHomeMark';
+import { PlayExitMark } from '../components/PlayExitMark';
 import { TvTip } from '../components/TvTip';
 import { Sheet } from '../components/Sheet';
 import { DriveConnectCard } from '../components/DriveConnectCard';
@@ -71,7 +73,6 @@ import {
   FOLDERS,
   fileMatchesFolder,
   folderById,
-  folderExpandedState,
   getSaverPrefs,
   INTERVAL_PRESETS_SEC,
   isFolderId,
@@ -134,9 +135,7 @@ export function ScreensaverPage() {
   const [shopCastMode, setShopCastModeState] = useState<ShopCastMode>(DEFAULT_SHOP_CAST_MODE);
   const [eventsCastMode, setEventsCastModeState] = useState<EventsCastMode>(DEFAULT_EVENTS_CAST_MODE);
   const [gymLogoUrl, setGymLogoUrl] = useState<string | null>(() => readGymLogo());
-  const [expanded, setExpanded] = useState<Record<FolderId, boolean>>(() =>
-    folderExpandedState('gallery'),
-  );
+  const [openSection, setOpenSection] = useState<FolderId | 'schedule' | null>(null);
   const photoCaptureRef = useRef<HTMLInputElement>(null);
   const photoLibraryRef = useRef<HTMLInputElement>(null);
   const videoRecordRef = useRef<HTMLInputElement>(null);
@@ -154,7 +153,6 @@ export function ScreensaverPage() {
 
   useEffect(() => {
     if (!requestedFolder) return;
-    setExpanded(folderExpandedState(requestedFolder));
     setOptions(true);
     addFolderRef.current = requestedFolder;
   }, [requestedFolder]);
@@ -385,7 +383,7 @@ export function ScreensaverPage() {
         if (result.outcome.added > 0) {
           await refresh();
           setPlaying(true);
-          setExpanded((prev) => ({ ...prev, [folderId]: true }));
+          setOpenSection(folderId);
           setOptions(true);
         } else {
           try {
@@ -402,7 +400,7 @@ export function ScreensaverPage() {
         if (result.outcome.added > 0) {
           await refresh();
           setPlaying(true);
-          setExpanded((prev) => ({ ...prev, [folderId]: true }));
+          setOpenSection(folderId);
           setOptions(true);
         }
         return;
@@ -411,7 +409,7 @@ export function ScreensaverPage() {
       setPickerNote('');
       await refresh();
       setPlaying(true);
-      setExpanded((prev) => ({ ...prev, [folderId]: true }));
+      setOpenSection(folderId);
       setOptions(true);
     } catch (error) {
       showBatchError(
@@ -436,7 +434,7 @@ export function ScreensaverPage() {
   const showBatchError = (folderId: FolderId, text: string) => {
     setPickerNote('');
     setBatchStatus({ tone: 'error', text });
-    setExpanded((prev) => ({ ...prev, [folderId]: true }));
+    setOpenSection(folderId);
     setOptions(true);
   };
 
@@ -571,7 +569,8 @@ export function ScreensaverPage() {
       {!options && batchStatus ? (
         <BatchStatus status={batchStatus} onDismiss={() => setBatchStatus(null)} />
       ) : null}
-      <SubmenuMarks to={back} onExit={exitSlideshow} />
+      <PlayExitMark to={back} onExit={exitSlideshow} />
+      {showBelt ? <MediaConsoleMark /> : null}
       {showBelt ? (
         <div className="saver-belt">
           <BeltHeader kind="purple" title="Advantage - Media Console" />
@@ -696,12 +695,15 @@ export function ScreensaverPage() {
             <Fragment key={folder.id}>
             <ToolboxFolder
               folder={folder}
-              open={expanded[folder.id]}
+              open={openSection === folder.id}
               playEnabled={folderPlay[folder.id]}
               items={itemsInFolder(photos, folder.id)}
               thumbById={urlById}
               onToggle={(next) => {
-                setExpanded((prev) => (prev[folder.id] === next ? prev : { ...prev, [folder.id]: next }));
+                setOpenSection((current) => {
+                  if (next) return folder.id;
+                  return current === folder.id ? null : current;
+                });
               }}
               onPlayToggle={commitFolderPlay}
               onAdd={folder.ready && galleryUpload ? () => openAdd(folder.id, 'photo') : undefined}
@@ -828,7 +830,17 @@ export function ScreensaverPage() {
                   : undefined
               }
             />
-            {folder.id === 'gallery' ? <ClassScheduleEntry /> : null}
+            {folder.id === 'gallery' ? (
+              <ClassScheduleEntry
+                open={openSection === 'schedule'}
+                onToggle={(next) => {
+                  setOpenSection((current) => {
+                    if (next) return 'schedule';
+                    return current === 'schedule' ? null : current;
+                  });
+                }}
+              />
+            ) : null}
             </Fragment>
             );
           })}
@@ -1069,19 +1081,19 @@ function BatchStatus({
   );
 }
 
-function ClassScheduleEntry() {
+function ClassScheduleEntry({ open, onToggle }: { open: boolean; onToggle: (next: boolean) => void }) {
   const schedule = useScheduleState();
   const ready = schedule.classes.length > 0;
-  const [open, setOpen] = useState(false);
   return (
     <details
       className="saver-folder"
       open={open}
       onToggle={(event) => {
-        setOpen(event.currentTarget.open);
+        onToggle(event.currentTarget.open);
       }}
     >
       <summary className="saver-folder__summary">
+        <FolderChevron />
         <span className="saver-folder__title">Class Schedule</span>
         <button
           type="button"

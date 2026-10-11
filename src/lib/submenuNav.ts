@@ -40,6 +40,10 @@ export function submenuHomeTarget(): string {
  * A Pro visit to Daily Training Videos, Technique Tree, or Daily Lesson Plan
  * with no Coach flag returns to Coach Unlimited. That is the menu Pro uses
  * for those tools, including a direct open that never carried ?from=.
+ *
+ * Media Console (/slideshow, /screensaver, and the folder routes) keeps this
+ * corner back and does not render the center Home mark. The purple belt is
+ * the header. Class Schedule still renders both marks.
  */
 export function submenuBackTarget(input: SubmenuNavInput): string | null {
   const params = paramsOf(input.search);

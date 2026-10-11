@@ -1,3 +1,4 @@
+import { writeFileSync } from 'node:fs';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 async function unlock(page: Page) {
@@ -67,6 +68,13 @@ async function fillColor(locator: Locator) {
 test('gallery can schedule a photo and link a technique clip without copying it', async ({ page }) => {
   await unlock(page);
   await page.setViewportSize({ width: 1280, height: 800 });
+  writeFileSync(
+    '/tmp/gallery.png',
+    Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+      'base64',
+    ),
+  );
   await page.goto('/slideshow?folder=gallery');
   await seedTechnique(page);
   const play = page.getByRole('button', { name: 'Play Gallery' });
@@ -77,6 +85,7 @@ test('gallery can schedule a photo and link a technique clip without copying it'
   await expect(play).toHaveAttribute('aria-pressed', 'true');
   expect(await fillColor(play)).toBe('rgb(0, 78, 186)');
 
+  await page.locator('summary').filter({ hasText: 'Gallery' }).locator('.saver-folder__title').click();
   await page.getByRole('dialog').getByRole('button', { name: 'Add photos' }).click();
   await page.locator('#saver-photo-library').setInputFiles('/tmp/gallery.png');
   const caption = page.getByLabel('Caption for Photo 1');
@@ -97,6 +106,12 @@ test('gallery can schedule a photo and link a technique clip without copying it'
   await expect(page.locator('input.folder-row__name').nth(1)).toHaveValue('armbar.mp4');
   await shot(page, 'gallery-schedule-desktop');
 
+  await page.evaluate(async () => {
+    if (document.fullscreenElement) await document.exitFullscreen();
+  });
+  const session = await page.context().newCDPSession(page);
+  const { windowId } = await session.send('Browser.getWindowForTarget');
+  await session.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'normal' } });
   await page.setViewportSize({ width: 390, height: 844 });
   await shot(page, 'gallery-schedule-phone');
 });

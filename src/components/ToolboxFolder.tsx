@@ -1,6 +1,7 @@
 import { PICK_FROM_DRIVE_LABEL } from '../lib/driveMediaPicker';
 import { GALLERY_LINK_TECHNIQUES } from '../lib/gallerySchedule';
 import type { FolderConfig, FolderId, StoredPhoto } from '../lib/photoStore';
+import { FolderChevron } from './FolderChevron';
 import { FolderItemList } from './FolderItemList';
 import { OpenMyDrive } from './OpenMyDrive';
 
@@ -67,6 +68,7 @@ export function ToolboxFolder({
       }}
     >
       <summary className="saver-folder__summary">
+        <FolderChevron />
         <span className="saver-folder__title">
           {folder.label}
           {folder.ready ? null : <small>Coming soon</small>}

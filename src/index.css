@@ -2230,25 +2230,71 @@ span.role-plan__mark {
   text-align: center;
 }
 
+.media-art {
+  position: absolute;
+  z-index: 35;
+  top: calc(0.15rem + var(--safe-t));
+  /* Between the corner back logo and Fullscreen, about 30% larger than 148px. */
+  left: calc(4.35rem + var(--safe-l));
+  right: calc(7.15rem + var(--safe-r));
+  width: min(192px, calc(100vw - 4.35rem - 7.15rem - var(--safe-l) - var(--safe-r)));
+  margin-inline: auto;
+  pointer-events: none;
+}
+
+.media-art svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.saver--belt {
+  --console-head: 8.7rem;
+}
+
+@media (min-width: 720px) {
+  .media-art {
+    left: 50%;
+    right: auto;
+    width: 260px;
+    margin-inline: 0;
+    transform: translateX(-50%);
+  }
+
+  .saver--belt {
+    --console-head: 12.5rem;
+  }
+}
+
+@media (min-width: 1100px) {
+  .media-art {
+    width: 320px;
+  }
+
+  .saver--belt {
+    --console-head: 14.8rem;
+  }
+}
+
 .saver-belt {
   position: fixed;
   z-index: 41;
-  top: calc(4.35rem + var(--safe-t));
+  /* Under the decorative header. Media Console has no center Home mark. */
+  top: calc(var(--console-head) + var(--safe-t));
   left: 0.85rem;
   right: 0.85rem;
   pointer-events: none;
 }
 
-/* The photo-control sheet stays put. Page copy starts one line or two
-   under the purple belt, so the belt reads as the top of the page. */
+/* The photo-control sheet starts under the purple belt. */
 .saver--belt .saver__empty {
   align-content: start;
   justify-content: center;
-  padding-top: calc(10.6rem + var(--safe-t));
+  padding-top: calc(var(--console-head) + 6.25rem + var(--safe-t));
 }
 
 .saver--belt .sheet.sheet--dock-footer {
-  top: calc(10.5rem + var(--safe-t));
+  top: calc(var(--console-head) + 6.15rem + var(--safe-t));
 }
 
 .saver--belt .sheet.sheet--dock-footer .sheet__panel {
@@ -3072,6 +3118,11 @@ span.role-plan__mark {
   top: calc(0.55rem + var(--safe-t));
   right: calc(0.55rem + var(--safe-r));
   z-index: 5;
+}
+
+/* Media Console belt shares the top row. Keep Fullscreen above that belt. */
+.saver > .play-fs-slot {
+  z-index: 46;
 }
 
 /* Play watermark: quiet top-left, fat-thumb hit. Slideshow keeps the bottom free for name labels; Training keeps the clock clear. */
@@ -4996,16 +5047,40 @@ fieldset {
   background: rgba(255, 255, 255, 0.03);
 }
 
+.saver-folder:not([open]) {
+  padding-bottom: 0.15rem;
+}
+
 .saver-folder__summary {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 92px;
-  gap: 0.55rem;
+  grid-template-columns: 1.85rem minmax(0, 1fr) 92px;
+  gap: 0.45rem;
   align-items: center;
   min-height: 64px;
   cursor: pointer;
   font-weight: 800;
   font-size: 1.12rem;
   list-style: none;
+}
+
+.saver-folder__chevron {
+  display: grid;
+  place-items: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(8, 12, 20, 0.35);
+  color: var(--ink);
+}
+
+.saver-folder__chevron svg {
+  display: block;
+  transition: transform 160ms ease;
+}
+
+.saver-folder[open] > .saver-folder__summary .saver-folder__chevron svg {
+  transform: rotate(90deg);
 }
 
 .saver-folder__summary::-webkit-details-marker,
