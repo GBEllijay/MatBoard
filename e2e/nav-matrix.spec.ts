@@ -12,6 +12,12 @@ async function unlock(page: Page) {
   });
 }
 
+async function leaveFullscreen(page: Page) {
+  await page.evaluate(async () => {
+    if (document.fullscreenElement) await document.exitFullscreen();
+  });
+}
+
 function pathOf(page: Page) {
   const url = new URL(page.url());
   return url.pathname + url.search;
@@ -114,7 +120,6 @@ test('Pro menus go back to Pro and home to the tier picker', async ({ page }) =>
     'Advantage Coach Unlimited',
     'Instructor Invitation and Access Management',
     'Tournament Management Pro',
-    'Media Console',
   ] as const;
   for (const name of proMenus) {
     await page.goto('/pro');
@@ -127,7 +132,70 @@ test('Pro menus go back to Pro and home to the tier picker', async ({ page }) =>
   }
 });
 
+test('Media Console keeps only the top-left back logo', async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  await unlock(page);
+  await page.goto('/pro');
+  await openLink(page, 'Media Console');
+  const sheet = page.getByRole('dialog', { name: 'Media Console' });
+  await expect(page.getByRole('heading', { name: 'Advantage - Media Console' })).toBeVisible();
+  await expect(page.getByRole('link', { name: BACK, exact: true })).toHaveAttribute('href', '/pro');
+  await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveCount(0);
+
+  const playing = sheet.getByRole('checkbox', { name: 'Playing' });
+  await expect(playing).toBeChecked();
+  await playing.click();
+  await expect(playing).not.toBeChecked();
+  await playing.click();
+  await expect(playing).toBeChecked();
+
+  const gallery = sheet.getByRole('button', { name: 'Play Gallery' });
+  await expect(gallery).toHaveAttribute('aria-pressed', 'true');
+  await gallery.click();
+  await expect(gallery).toHaveAttribute('aria-pressed', 'false');
+  await gallery.click();
+  await expect(gallery).toHaveAttribute('aria-pressed', 'true');
+
+  await sheet.getByRole('button', { name: 'Add photos', exact: true }).click();
+  const addPhotos = page.getByRole('dialog', { name: 'Add photos' });
+  await expect(addPhotos.getByRole('heading', { name: 'Add photos' })).toBeVisible();
+  await addPhotos.getByRole('button', { name: 'Close', exact: true }).click();
+
+  await sheet.getByRole('button', { name: 'Add videos', exact: true }).click();
+  const addVideos = page.getByRole('dialog', { name: 'Add videos' });
+  await expect(addVideos.getByRole('heading', { name: 'Add videos' })).toBeVisible();
+  await addVideos.getByRole('button', { name: 'Close', exact: true }).click();
+
+  await sheet.getByRole('button', { name: 'Pick from Google Drive', exact: true }).click();
+  const connect = page.getByRole('dialog', { name: 'Connect with' });
+  await expect(connect.getByRole('heading', { name: 'Connect with' })).toBeVisible();
+  await connect.getByRole('button', { name: 'Close', exact: true }).click();
+
+  await sheet.getByRole('button', { name: "Link this day's technique clips" }).click();
+  await expect(sheet.getByRole('status')).toBeVisible();
+
+  const instructions = sheet.getByRole('button', { name: 'Instructions' });
+  await instructions.click();
+  await expect(page.getByRole('region', { name: 'Instructions' })).toBeVisible();
+  await instructions.click();
+
+  const fullscreen = page.getByRole('button', { name: /^Fullscreen/ });
+  await fullscreen.click();
+  await expect(page).toHaveURL(/\/slideshow/);
+  await leaveFullscreen(page);
+
+  await sheet.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(sheet).toHaveCount(0);
+  await page.getByRole('button', { name: 'Options' }).click();
+  await expect(page.getByRole('dialog', { name: 'Media Console' })).toBeVisible();
+
+  await page.getByRole('link', { name: BACK, exact: true }).click();
+  await expect.poll(() => new URL(page.url()).pathname).toBe('/pro');
+});
+
 test('Class Schedule goes back to Media Console; the center home stays off the TV board', async ({ page }) => {
+  // Phone portrait still draws a small center Home mark beside the corner back.
+  // That twin-logo layout stays; Media Console is the page that drops the center mark.
   await unlock(page);
   await page.goto('/pro');
   await openLink(page, 'Media Console');
@@ -142,6 +210,7 @@ test('Class Schedule goes back to Media Console; the center home stays off the T
   await back.click();
   await expect.poll(() => pathOf(page)).toBe('/slideshow?folder=gallery');
 
+  await leaveFullscreen(page);
   await page.setViewportSize(PHONE);
   await page.goto('/schedule');
   await expect(home).toHaveCSS('pointer-events', 'auto');

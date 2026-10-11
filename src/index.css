@@ -2233,22 +2233,44 @@ span.role-plan__mark {
 .saver-belt {
   position: fixed;
   z-index: 41;
-  top: calc(4.35rem + var(--safe-t));
+  /* Sit on the top row with the corner back logo. Media Console has no center Home mark. */
+  top: calc(0.4rem + var(--safe-t));
   left: 0.85rem;
   right: 0.85rem;
   pointer-events: none;
 }
 
-/* The photo-control sheet stays put. Page copy starts one line or two
-   under the purple belt, so the belt reads as the top of the page. */
+.saver-belt .belt-header__title {
+  padding-left: 3.7rem;
+}
+
+@media (max-width: 520px) {
+  .saver-belt {
+    right: calc(7.6rem + var(--safe-r));
+  }
+
+  .saver-belt .belt-header__title {
+    font-size: 1.12rem;
+    padding-top: 0.55rem;
+    padding-bottom: 0.55rem;
+  }
+
+  .saver-belt .belt-header__tip {
+    flex-basis: 18%;
+    min-width: 2.6rem;
+    max-width: 3.2rem;
+  }
+}
+
+/* The photo-control sheet starts under the purple belt, so the belt reads as the top of the page. */
 .saver--belt .saver__empty {
   align-content: start;
   justify-content: center;
-  padding-top: calc(10.6rem + var(--safe-t));
+  padding-top: calc(6.65rem + var(--safe-t));
 }
 
 .saver--belt .sheet.sheet--dock-footer {
-  top: calc(10.5rem + var(--safe-t));
+  top: calc(6.55rem + var(--safe-t));
 }
 
 .saver--belt .sheet.sheet--dock-footer .sheet__panel {
@@ -3072,6 +3094,11 @@ span.role-plan__mark {
   top: calc(0.55rem + var(--safe-t));
   right: calc(0.55rem + var(--safe-r));
   z-index: 5;
+}
+
+/* Media Console belt shares the top row. Keep Fullscreen above that belt. */
+.saver > .play-fs-slot {
+  z-index: 46;
 }
 
 /* Play watermark: quiet top-left, fat-thumb hit. Slideshow keeps the bottom free for name labels; Training keeps the clock clear. */

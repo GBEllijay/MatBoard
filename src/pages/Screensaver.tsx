@@ -12,7 +12,7 @@ import { ShopCastSlide } from '../components/ShopCastSlide';
 import { useCurrentSeat } from '../components/SeatSessionBar';
 import { ToolboxFolder } from '../components/ToolboxFolder';
 import { FullscreenChip } from '../components/FullscreenChip';
-import { SubmenuMarks } from '../components/TierHomeMark';
+import { PlayExitMark } from '../components/PlayExitMark';
 import { TvTip } from '../components/TvTip';
 import { Sheet } from '../components/Sheet';
 import { DriveConnectCard } from '../components/DriveConnectCard';
@@ -571,7 +571,7 @@ export function ScreensaverPage() {
       {!options && batchStatus ? (
         <BatchStatus status={batchStatus} onDismiss={() => setBatchStatus(null)} />
       ) : null}
-      <SubmenuMarks to={back} onExit={exitSlideshow} />
+      <PlayExitMark to={back} onExit={exitSlideshow} />
       {showBelt ? (
         <div className="saver-belt">
           <BeltHeader kind="purple" title="Advantage - Media Console" />
