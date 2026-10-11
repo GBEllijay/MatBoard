@@ -5,6 +5,7 @@
  */
 
 import { asRecord } from '../plainValue.ts';
+import { canonicalFundamentalsCatalogId } from './catalog.ts';
 import {
   CALENDAR_KINDS,
   GAME_TAGS,
@@ -773,7 +774,7 @@ export function parseFundamentalsCatalog(raw: unknown): { ok: true; value: Funda
   const itemIds = categories.flatMap((category) => category.items.map((item) => item.id));
   uniqueIds(itemIds, 'Catalog item', errors);
   const value: FundamentalsCatalog = {
-    id: readId(record.id, 'Catalog id', errors),
+    id: canonicalFundamentalsCatalogId(readId(record.id, 'Catalog id', errors)),
     title: readString(record.title, 'Catalog title', PROGRESS_NAME_MAX, errors),
     draft: record.draft === true,
     categories,

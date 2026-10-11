@@ -1,9 +1,19 @@
 /**
- * Draft fundamentals list for owner review of the names.
- * Names only is the shipping decision. The examples field stays on each item and stays empty.
+ * Owner-approved 2026-10-10. Names only.
+ * The examples field stays on each item and stays empty.
+ * `bjj-fundamentals-draft-1` is the earlier id for this same list. Import accepts it.
  */
 
 import type { FundamentalsCatalog, FundamentalsCategory, FundamentalsItem } from './types.ts';
+
+export const FUNDAMENTALS_CATALOG_ID = 'bjj-fundamentals-starter-1';
+/** Same names, previous id. The parser records this as the starter catalog. */
+export const FUNDAMENTALS_CATALOG_LEGACY_ID = 'bjj-fundamentals-draft-1';
+
+export function canonicalFundamentalsCatalogId(id: string): string {
+  if (id === FUNDAMENTALS_CATALOG_LEGACY_ID) return FUNDAMENTALS_CATALOG_ID;
+  return id;
+}
 
 function item(id: string, name: string): FundamentalsItem {
   return { id, name, examples: [] };
@@ -14,9 +24,9 @@ function category(id: string, name: string, items: FundamentalsItem[]): Fundamen
 }
 
 export const FUNDAMENTALS_CATALOG: FundamentalsCatalog = {
-  id: 'bjj-fundamentals-draft-1',
-  title: 'BJJ fundamentals (draft)',
-  draft: true,
+  id: FUNDAMENTALS_CATALOG_ID,
+  title: 'BJJ fundamentals (starter)',
+  draft: false,
   categories: [
     category('positions', 'Positions', [
       item('pos.closed-guard', 'Closed guard'),

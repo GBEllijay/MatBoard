@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { FUNDAMENTALS_CATALOG } from './catalog.ts';
+import { FUNDAMENTALS_CATALOG, FUNDAMENTALS_CATALOG_ID, FUNDAMENTALS_CATALOG_LEGACY_ID } from './catalog.ts';
 import {
   exportProgressCsv,
   exportProgressPacket,
@@ -215,13 +215,41 @@ test('names only is the shipping decision and the examples field stays empty', (
   const parsed = parseFundamentalsCatalog(FUNDAMENTALS_CATALOG);
   assert.equal(parsed.ok, true);
   if (!parsed.ok) return;
-  assert.equal(parsed.value.draft, true);
-  assert.equal(parsed.value.id, 'bjj-fundamentals-draft-1');
-  const names = parsed.value.categories.flatMap((category) => category.items.map((item) => item.name));
+  assert.equal(parsed.value.draft, false);
+  assert.equal(parsed.value.id, FUNDAMENTALS_CATALOG_ID);
+  assert.equal(parsed.value.title, 'BJJ fundamentals (starter)');
+  assert.equal(parsed.value.categories.length, 6);
+  const items = parsed.value.categories.flatMap((category) => category.items);
+  assert.equal(items.length, 31);
+  const names = items.map((item) => item.name);
   assert.ok(names.includes('Scissor sweep'));
   assert.ok(names.includes('Pendulum sweep'));
   assert.ok(parsed.value.categories.some((category) => category.name === 'Escapes'));
-  assert.ok(parsed.value.categories.every((category) => category.items.every((item) => item.examples.length === 0)));
+  assert.ok(items.every((item) => item.examples.length === 0));
+  assert.deepEqual(
+    items.map((item) => item.id),
+    [
+      'pos.closed-guard', 'pos.open-guard', 'pos.half-guard', 'pos.mount', 'pos.side-control', 'pos.back-control', 'pos.knee-on-belly', 'pos.standing',
+      'sweep.scissor', 'sweep.hip-bump', 'sweep.pendulum', 'sweep.flower', 'sweep.tripod',
+      'escape.mount', 'escape.side-control', 'escape.back', 'escape.headlock',
+      'pass.torreando', 'pass.knee-slice', 'pass.leg-drag', 'pass.stack',
+      'sub.armbar-guard', 'sub.triangle', 'sub.kimura', 'sub.guillotine', 'sub.rear-naked-choke', 'sub.cross-collar',
+      'td.double-leg', 'td.single-leg', 'td.arm-drag', 'td.hip-throw',
+    ],
+  );
+
+  const legacy = structuredClone(FUNDAMENTALS_CATALOG);
+  legacy.id = FUNDAMENTALS_CATALOG_LEGACY_ID;
+  legacy.title = 'BJJ fundamentals (draft)';
+  legacy.draft = true;
+  const imported = parseFundamentalsCatalog(legacy);
+  assert.equal(imported.ok, true);
+  if (!imported.ok) return;
+  assert.equal(imported.value.id, FUNDAMENTALS_CATALOG_ID);
+  assert.deepEqual(
+    imported.value.categories.flatMap((category) => category.items.map((item) => item.id)),
+    items.map((item) => item.id),
+  );
 
   const withExamples = structuredClone(FUNDAMENTALS_CATALOG);
   withExamples.categories[1].items[0].examples = ['Grip the pants before the hip out.'];
