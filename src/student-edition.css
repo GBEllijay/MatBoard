@@ -6,14 +6,30 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: Inter;
+  src: url('/fonts/Inter-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Inter;
+  src: url('/fonts/Inter-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 .student {
   --paper: #f4f0e4;
   --ink: #1c140e;
   --line: rgba(116, 158, 196, 0.62);
   --margin: #e15d5d;
-  --leather: #4a2e1e;
-  --leather-deep: #2e1b12;
-  --stitch: #d7b48a;
+  --leather: #161616;
+  --leather-deep: #0c0c0c;
+  --stitch: rgba(198, 198, 198, 0.85);
   --navy: #0c2344;
   min-height: 100dvh;
   color: var(--ink);
@@ -78,12 +94,12 @@
   padding: calc(0.55rem + var(--safe-t)) 0.95rem 0.6rem;
   color: #f4e7d4;
   font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Times New Roman', serif;
-  background-color: #5a3824;
+  background-color: #161616;
   background-image:
-    url('/student/leather-grain.png'),
-    radial-gradient(ellipse at 12% 0%, rgba(255, 214, 170, 0.2), transparent 42%),
-    radial-gradient(ellipse at 90% 120%, rgba(0, 0, 0, 0.32), transparent 48%),
-    linear-gradient(180deg, #6b4630, #4e3120 46%, #3a2418);
+    url('/student/black-leather-grain.png'),
+    radial-gradient(ellipse at 12% 0%, rgba(255, 255, 255, 0.08), transparent 42%),
+    radial-gradient(ellipse at 90% 120%, rgba(0, 0, 0, 0.35), transparent 48%),
+    linear-gradient(180deg, #2a2a2a, #171717 48%, #101010);
   background-size: 160px 160px, auto, auto, auto;
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.28);
 }
@@ -92,7 +108,7 @@
   content: '';
   position: absolute;
   inset: 7px 8px;
-  border: 1.5px dashed rgba(214, 176, 122, 0.85);
+  border: 1.5px dashed rgba(198, 198, 198, 0.82);
   border-radius: 5px;
   pointer-events: none;
 }
@@ -332,19 +348,19 @@ button.student-book {
   width: min(20.5rem, 86vw);
   aspect-ratio: 3 / 4.05;
   padding: 1.05rem 0 1.15rem;
-  overflow: hidden;
-  color: #3a2416;
-  font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', Palatino, serif;
-  background-color: #6a4632;
+  overflow: visible;
+  color: #a3a3a3;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  background-color: #141414;
   background-image:
-    url('/student/leather-grain.png'),
-    radial-gradient(ellipse at 18% 0%, rgba(255, 214, 170, 0.18), transparent 42%),
-    linear-gradient(180deg, #7a5340, #6a4632 58%, #5e3d2b);
+    url('/student/black-leather-grain.png'),
+    radial-gradient(ellipse at 18% 0%, rgba(255, 255, 255, 0.07), transparent 42%),
+    linear-gradient(180deg, #2b2b2b, #191919 55%, #101010);
   background-size: 160px 160px, auto, auto, auto;
   border-radius: 14px 18px 18px 12px;
   box-shadow:
-    0 18px 36px rgba(0, 0, 0, 0.38),
-    inset 0 1px 0 rgba(255, 220, 180, 0.18);
+    0 18px 36px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 button.student-book::before {
@@ -353,17 +369,17 @@ button.student-book::before {
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  background-image: url('/student/leather-grain.png');
+  background-image: url('/student/black-leather-grain.png');
   background-size: 120px 120px;
-  opacity: 0.28;
-  mix-blend-mode: multiply;
+  opacity: 0.55;
+  mix-blend-mode: soft-light;
 }
 
 button.student-book::after {
   content: '';
   position: absolute;
   inset: 12px 22px 12px 12px;
-  border: 1.5px dashed rgba(214, 176, 122, 0.92);
+  border: 1.5px dashed rgba(198, 198, 198, 0.88);
   border-radius: 8px;
   pointer-events: none;
   z-index: 1;
@@ -393,8 +409,21 @@ button.student-book::after {
   right: 15%;
   width: 13px;
   background: linear-gradient(90deg, #141414, #2c2c2c 42%, #0c0c0c);
-  box-shadow: -1px 0 0 rgba(255, 220, 180, 0.16), 2px 0 5px rgba(0, 0, 0, 0.4);
+  box-shadow: -1px 0 0 rgba(255, 255, 255, 0.08), 2px 0 5px rgba(0, 0, 0, 0.45);
   z-index: 3;
+}
+
+.student-book__ribbon {
+  position: absolute;
+  left: 16%;
+  bottom: -22px;
+  width: 16px;
+  height: 42px;
+  background: linear-gradient(90deg, #050505, #2a2a2a 46%, #0c0c0c);
+  clip-path: polygon(0 0, 100% 0, 100% 74%, 50% 100%, 0 74%);
+  box-shadow: 1px 2px 3px rgba(0, 0, 0, 0.45);
+  z-index: 4;
+  pointer-events: none;
 }
 
 .student-book__face {
@@ -418,33 +447,34 @@ button.student-book::after {
   z-index: 2;
   margin: 0;
   text-align: center;
-  color: #140c08;
-  font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Times New Roman', serif;
-  font-weight: 700;
+  color: #a3a3a3;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-weight: 500;
   letter-spacing: 0.01em;
   max-width: 100%;
   text-wrap: balance;
   -webkit-font-smoothing: antialiased;
   text-rendering: geometricPrecision;
-  text-shadow:
-    0 2px 0 #f8dcb4,
-    0 3px 0 rgba(255, 228, 196, 0.85);
+  text-shadow: none;
 }
 
 .student-book__edition {
-  margin-top: 0.2rem;
-  font-size: clamp(0.95rem, 3.5vw, 1.12rem);
-  font-weight: 650;
-  line-height: 1.15;
+  margin-top: 0.35rem;
+  font-size: clamp(0.82rem, 3.1vw, 0.98rem);
+  font-weight: 400;
+  line-height: 1.2;
 }
 
 .student-book__title {
-  font-size: clamp(1.45rem, 5.5vw, 1.85rem);
-  line-height: 1.08;
+  font-size: clamp(1.35rem, 5.2vw, 1.72rem);
+  font-weight: 700;
+  line-height: 1.1;
 }
 
 button.student-book .student-mark {
   width: min(78%, 11rem);
+  color: #070707;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.28)) drop-shadow(0 -1px 0 rgba(0, 0, 0, 0.8));
 }
 
 .student-menu {
