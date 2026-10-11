@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 const BACK = 'Back. Hold for Home.';
 const DESKTOP = { width: 1280, height: 690 };
@@ -16,6 +16,22 @@ async function leaveFullscreen(page: Page) {
   await page.evaluate(async () => {
     if (document.fullscreenElement) await document.exitFullscreen();
   });
+  try {
+    const session = await page.context().newCDPSession(page);
+    const { windowId } = await session.send('Browser.getWindowForTarget');
+    await session.send('Browser.setWindowBounds', {
+      windowId,
+      bounds: { windowState: 'normal' },
+    });
+  } catch {
+    /* Some browser builds keep fullscreen as a window flag. */
+  }
+}
+
+function consoleSection(root: Locator, name: string) {
+  return root
+    .locator('.saver-folder__title', { hasText: new RegExp(`^${name}$`) })
+    .locator('xpath=ancestor::details[1]');
 }
 
 function pathOf(page: Page) {
@@ -155,7 +171,9 @@ test('Media Console keeps only the top-left back logo', async ({ page }) => {
   await expect(gallery).toHaveAttribute('aria-pressed', 'false');
   await gallery.click();
   await expect(gallery).toHaveAttribute('aria-pressed', 'true');
+  await expect(consoleSection(sheet, 'Gallery')).toHaveJSProperty('open', false);
 
+  await consoleSection(sheet, 'Gallery').locator('.saver-folder__title').click();
   await sheet.getByRole('button', { name: 'Add photos', exact: true }).click();
   const addPhotos = page.getByRole('dialog', { name: 'Add photos' });
   await expect(addPhotos.getByRole('heading', { name: 'Add photos' })).toBeVisible();
@@ -191,6 +209,81 @@ test('Media Console keeps only the top-left back logo', async ({ page }) => {
 
   await page.getByRole('link', { name: BACK, exact: true }).click();
   await expect.poll(() => new URL(page.url()).pathname).toBe('/pro');
+});
+
+test('Media Console sections start collapsed and the play toggle stays separate', async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  await unlock(page);
+  await page.goto('/slideshow?folder=gallery');
+  const sheet = page.getByRole('dialog', { name: 'Media Console' });
+  const art = page.locator('.media-art');
+  await expect(art).toHaveAttribute('aria-hidden', 'true');
+  await expect(art.locator('a')).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveCount(0);
+
+  const names = ['Gallery', 'Class Schedule', 'Pro Shop', 'Events'] as const;
+  for (const name of names) {
+    const section = consoleSection(sheet, name);
+    await expect(section.locator('.saver-folder__title')).toBeVisible();
+    await expect(section).toHaveJSProperty('open', false);
+  }
+
+  for (const name of names) {
+    const section = consoleSection(sheet, name);
+    const play = section.getByRole('button', { name: `Play ${name}` });
+    const wasOn = (await play.getAttribute('aria-pressed')) === 'true';
+    await play.click();
+    await expect(play).toHaveAttribute('aria-pressed', wasOn ? 'false' : 'true');
+    await expect(section).toHaveJSProperty('open', false);
+    await play.click();
+    await expect(play).toHaveAttribute('aria-pressed', wasOn ? 'true' : 'false');
+    await expect(section).toHaveJSProperty('open', false);
+  }
+
+  const gallery = consoleSection(sheet, 'Gallery');
+  await gallery.locator('.saver-folder__title').click();
+  await expect(gallery).toHaveJSProperty('open', true);
+  await expect(gallery.getByRole('button', { name: 'Add photos', exact: true })).toBeVisible();
+  await expect(gallery.getByRole('button', { name: 'Add videos', exact: true })).toBeVisible();
+  await expect(gallery.getByRole('button', { name: 'Pick from Google Drive', exact: true })).toBeVisible();
+  await expect(gallery.getByRole('button', { name: "Link this day's technique clips" })).toBeVisible();
+  for (const name of names.slice(1)) {
+    await expect(consoleSection(sheet, name)).toHaveJSProperty('open', false);
+  }
+  await gallery.locator('.saver-folder__title').click();
+  await expect(gallery).toHaveJSProperty('open', false);
+
+  const schedule = consoleSection(sheet, 'Class Schedule');
+  await schedule.locator('.saver-folder__title').click();
+  await expect(schedule).toHaveJSProperty('open', true);
+  await expect(gallery).toHaveJSProperty('open', false);
+  await expect(schedule.getByRole('link', { name: 'Add class schedule' })).toBeVisible();
+  await schedule.getByRole('radio', { name: 'On the TV' }).click();
+  await expect(schedule.getByRole('button', { name: 'Play Class Schedule' })).toHaveAttribute('aria-pressed', 'true');
+  await schedule.getByRole('radio', { name: 'Off the TV' }).click();
+  await expect(schedule.getByRole('button', { name: 'Play Class Schedule' })).toHaveAttribute('aria-pressed', 'false');
+  await schedule.locator('.saver-folder__title').click();
+  await expect(schedule).toHaveJSProperty('open', false);
+
+  const shop = consoleSection(sheet, 'Pro Shop');
+  await shop.locator('.saver-folder__title').click();
+  await expect(shop).toHaveJSProperty('open', true);
+  await expect(schedule).toHaveJSProperty('open', false);
+  await shop.getByRole('button', { name: 'Add cards', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Add cards' }).getByRole('button', { name: 'Close', exact: true }).click();
+  await shop.getByRole('button', { name: 'Pick from Google Drive', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Connect with' }).getByRole('button', { name: 'Close', exact: true }).click();
+  await shop.locator('.saver-folder__title').click();
+  await expect(shop).toHaveJSProperty('open', false);
+
+  const events = consoleSection(sheet, 'Events');
+  await events.locator('.saver-folder__title').click();
+  await expect(events).toHaveJSProperty('open', true);
+  await expect(shop).toHaveJSProperty('open', false);
+  await events.getByRole('button', { name: 'Add photos', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Add photos' }).getByRole('button', { name: 'Close', exact: true }).click();
+  await events.locator('.saver-folder__title').click();
+  await expect(events).toHaveJSProperty('open', false);
 });
 
 test('Class Schedule goes back to Media Console; the center home stays off the TV board', async ({ page }) => {
