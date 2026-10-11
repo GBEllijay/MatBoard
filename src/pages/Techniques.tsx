@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { DeviceMediaInput } from '../components/DeviceMediaInput';
+import { DriveConnectCard } from '../components/DriveConnectCard';
+import { DriveMediaPicker } from '../components/DriveMediaPicker';
 import { OpenMyDrive } from '../components/OpenMyDrive';
+import { Sheet } from '../components/Sheet';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { useSubmenuBack } from '../hooks/useSubmenuBack';
@@ -24,7 +27,7 @@ import {
 } from '../lib/curriculumVideos';
 import { loadCurriculumArchive, writeCurriculumBlockClip } from '../lib/competitionCurriculum';
 import { formatMmSs, formatMss, secondsToMs } from '../lib/format';
-import { getDriveBindingSnapshot, subscribeDriveBinding } from '../lib/googleDrive';
+import { downloadDriveFile, getDriveBindingSnapshot, requestDriveToken, subscribeDriveBinding } from '../lib/googleDrive';
 import {
   TRAINING_DRIVE_CONNECT_LABEL,
   TRAINING_DRIVE_CONNECT_TITLE,
@@ -41,6 +44,7 @@ import {
   parseLessonVideoFocus,
   resolveFocusedSlot,
 } from '../lib/lessonLinks';
+import type { DriveBrowseMedia } from '../lib/driveMediaPicker';
 import { VIDEO_CAPTURE, VIDEO_PICKER_ACCEPT, VIDEO_RECORD_ACCEPT } from '../lib/mediaPicker';
 import { DEFAULT_MUTE_VIDEO, getSaverPrefs, setSaverMuteVideo } from '../lib/photoStore';
 import { safeTimerReturn } from '../lib/timerReturn';
@@ -62,6 +66,7 @@ import {
   pickAddableVideos,
   remainingOnStart,
   selectSlot,
+  setSlotClip,
   setSlotDrill,
   slotTitle,
   tickRemainingMs,
@@ -75,8 +80,10 @@ import {
   loadTechniqueBoardForDate,
   readTrainingClip,
   readTrainingClipBlob,
+  loadTechniqueBoard,
   saveTechniquePlan,
   saveTrainingClip,
+  storeRestoredDriveClip,
   type TechniqueClip,
 } from '../lib/techniqueStore';
 
@@ -134,7 +141,15 @@ export function TechniquesPage() {
   const [unlockSound, setUnlockSound] = useState(false);
   const [pickerNote, setPickerNote] = useState('');
   const [addOpen, setAddOpen] = useState(false);
+  const [drivePickOpen, setDrivePickOpen] = useState(false);
+  const [driveConnectOpen, setDriveConnectOpen] = useState(false);
   const [replacing, setReplacing] = useState(false);
+
+  useEffect(() => {
+    if (!driveConnectOpen || !driveBinding) return;
+    setDriveConnectOpen(false);
+    setDrivePickOpen(true);
+  }, [driveConnectOpen, driveBinding]);
   const [remainingMs, setRemainingMs] = useState(secondsToMs(300));
   const [customSlotId, setCustomSlotId] = useState<string | null>(null);
   const pickerSlotRef = useRef<string | null>(null);
@@ -439,6 +454,93 @@ export function TechniquesPage() {
       cancelled = true;
     };
   }, [plan, urlById, launchKey, muteVideo, setSearchParams]);
+
+  const openDrivePick = () => {
+    setAddOpen(false);
+    if (!driveBinding) {
+      setDriveConnectOpen(true);
+      return;
+    }
+    setDrivePickOpen(true);
+  };
+
+  const importDriveVideos = async (chosen: readonly DriveBrowseMedia[]) => {
+    const curriculumId = curriculumPickerRef.current;
+    const slotId = pickerSlotRef.current;
+    const current = planRef.current;
+    setDrivePickOpen(false);
+    const [item] = chosen;
+    if (!item) return;
+    const token = (await requestDriveToken('silent')) ?? (await requestDriveToken('consent'));
+    if (!token) {
+      setPickerNote('Sign in to Google Drive again to pick that video.');
+      return;
+    }
+    const mime = item.mime || 'video/mp4';
+    try {
+      if (curriculumId) {
+        curriculumPickerRef.current = null;
+        const blob = await downloadDriveFile(token, item.id);
+        const file = new File([blob], item.name || 'Drive video', { type: mime });
+        const card = curriculumCards.find((row) => row.blockId === curriculumId);
+        const saved = await saveTrainingClip(file, card?.title || item.name);
+        if (!card || !saved) {
+          setPickerNote('That Google Drive video could not be opened. It stays in the gym folder.');
+          return;
+        }
+        const previous = card.clipId;
+        const savedPlan = writeCurriculumBlockClip(card.blockId, saved.id, file.name || saved.label);
+        if (!savedPlan) {
+          void deleteUnusedTrainingClip(saved.id);
+          setPickerNote('That curriculum card is not on this phone anymore.');
+          return;
+        }
+        if (previous && previous !== saved.id) void deleteUnusedTrainingClip(previous);
+        setCurriculumCards((rows) =>
+          rows.map((row) =>
+            row.blockId === card.blockId ? { ...row, clipId: saved.id, mediaName: file.name || saved.label } : row,
+          ),
+        );
+        setClips((rows) => [...rows.filter((clip) => clip.id !== previous && clip.id !== saved.id), saved]);
+        return;
+      }
+      if (!slotId || !current) return;
+      const linked = await storeRestoredDriveClip({
+        driveFileId: item.id,
+        blob: null,
+        mime,
+        label: item.name,
+      });
+      if (linked) {
+        const next = selectSlot(
+          setSlotClip(current, slotId, linked, {
+            driveFileId: item.id,
+            mediaName: item.name,
+            mediaMime: mime,
+          }),
+          slotId,
+        );
+        await saveTechniquePlan(next, boardDateRef.current);
+        applyPlan(next);
+        setClips((await loadTechniqueBoard()).clips);
+        if (shareDay) syncTodayTrainingVideos(next, true);
+        return;
+      }
+      const blob = await downloadDriveFile(token, item.id);
+      const file = new File([blob], item.name || 'Drive video', { type: mime || blob.type || 'video/mp4' });
+      const result = await attachClipToSlot(current, slotId, file, item.id);
+      applyPlan(result.plan);
+      setClips(result.clips);
+      setPlaying(false);
+      if (result.status === 'invalid') {
+        setPickerNote('That file cannot play here. Switch the camera to video, or pick an MP4 / WebM.');
+        return;
+      }
+      if (result.status === 'added' || result.status === 'replaced') syncTodayTrainingVideos(result.plan, shareDay);
+    } catch {
+      setPickerNote('That Google Drive video could not be opened. It stays in the gym folder.');
+    }
+  };
 
   const openChooser = (slot: VideoSlot) => {
     const current = planRef.current;
@@ -788,8 +890,25 @@ export function TechniquesPage() {
         driveConnectLabel={shareDay ? TRAINING_DRIVE_CONNECT_LABEL : undefined}
         driveConnectTitle={shareDay ? TRAINING_DRIVE_CONNECT_TITLE : undefined}
         driveConnectHint={shareDay ? trainingDriveConnectHint(seatedAuthorized) : undefined}
+        onPickDrive={openDrivePick}
         onClose={() => setAddOpen(false)}
       />
+      <DriveMediaPicker
+        open={drivePickOpen}
+        kind="video"
+        onClose={() => setDrivePickOpen(false)}
+        onDone={(files) => {
+          void importDriveVideos(files);
+        }}
+      />
+      <Sheet
+        open={driveConnectOpen && !driveBinding}
+        title="Connect with"
+        onClose={() => setDriveConnectOpen(false)}
+        stacked
+      >
+        <DriveConnectCard />
+      </Sheet>
       <DeviceMediaInput
         id="techniques-video-record"
         inputRef={recordRef}

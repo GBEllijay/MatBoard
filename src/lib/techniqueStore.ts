@@ -311,6 +311,7 @@ export async function attachClipToSlot(
   plan: VideoPlan,
   slotId: string,
   file: File,
+  driveFileId: string | null = null,
 ): Promise<{ plan: VideoPlan; clips: TechniqueClip[]; status: SlotWriteStatus }> {
   const slot = plan.slots.find((item) => item.slotId === slotId);
   const clips = await listTechniqueClips();
@@ -350,7 +351,7 @@ export async function attachClipToSlot(
   // Nothing is uploaded to an Advantage server. The blob is not deleted after upload.
   const next = selectSlot(
     setSlotClip(plan, slotId, clipId, {
-      driveFileId: null,
+      driveFileId,
       mediaName: picked.name || row.label,
       mediaMime: row.mime,
     }),
