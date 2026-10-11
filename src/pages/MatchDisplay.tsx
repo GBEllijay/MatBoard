@@ -120,8 +120,8 @@ export function MatchDisplayPage() {
   return (
     <main
       className={`display ${scoreboardSkinClass(skin)}${board.kidsSkin ? ` ${kidsBoardClass(board.kidsSkin)}` : ''}${linkedId ? ' display--linked' : ''}${splash ? ' display--splash' : ''}${
-        suite.fromSuite ? ' origin-suite' : ''
-      }${fs.className ? ` ${fs.className}` : ''}`}
+        carlos.show ? ' display--carlos' : ''
+      }${suite.fromSuite ? ' origin-suite' : ''}${fs.className ? ` ${fs.className}` : ''}`}
       onPointerDown={() => {
         void unlockAudio();
       }}

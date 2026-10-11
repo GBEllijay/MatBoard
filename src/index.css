@@ -13874,6 +13874,17 @@ a.plan-pick {
   overflow: hidden;
 }
 
+/* Head box of public/assets/kids/carlos.webp. Tests assert text misses this rect. */
+.kids-carlos__face {
+  position: absolute;
+  /* carlos.webp opaque head: x 22–72%, y 2–42% (chin included). */
+  left: 22%;
+  top: 2%;
+  width: 50%;
+  height: 40%;
+  pointer-events: none;
+}
+
 /* Bracket champion: a short corner strip under the tree, not a viewport overlay.
    Overflow stays clipped so the figure and bubble cannot cover semis, SCORE, or Decision. */
 .kids-mascot-dock {
@@ -13881,8 +13892,8 @@ a.plan-pick {
   display: flex;
   align-items: flex-end;
   justify-content: flex-start;
-  min-height: 4.75rem;
-  max-height: 5.6rem;
+  min-height: 8rem;
+  max-height: 9.6rem;
   padding: 0.1rem 0.75rem calc(0.2rem + var(--safe-b)) calc(0.45rem + var(--safe-l));
   overflow: hidden;
   pointer-events: none;
@@ -13895,8 +13906,8 @@ a.plan-pick {
   display: flex;
   align-items: flex-end;
   gap: 0.35rem;
-  width: min(18rem, 78vw);
-  height: 4.5rem;
+  width: min(16rem, 78vw);
+  height: auto;
   overflow: hidden;
 }
 
@@ -13904,27 +13915,40 @@ a.plan-pick {
   position: relative;
   left: auto;
   bottom: auto;
+  flex-direction: column;
+  align-items: flex-start;
   width: auto;
-  height: 4.35rem;
+  height: auto;
   margin: 0;
   animation: kids-carlos-corner-in 0.45s cubic-bezier(0.16, 0.84, 0.32, 1) both;
 }
 
-.kids-carlos--corner .kids-carlos__figure img {
-  width: auto;
-  height: 4.35rem;
+.kids-carlos--corner .kids-carlos__peek {
+  order: 0;
+  width: calc(4.8rem * 845 / 1200);
+  height: 4.8rem;
+}
+
+.kids-carlos--corner .kids-carlos__portrait {
+  height: 4.8rem;
+  width: calc(4.8rem * 845 / 1200);
+}
+
+.kids-carlos--corner .kids-carlos__portrait img {
+  width: 100%;
+  height: 100%;
 }
 
 .kids-carlos--corner .kids-carlos__bubble {
-  --carlos-bubble-shift: 0px;
-  position: relative;
-  top: auto;
-  left: auto;
-  transform: none;
+  order: -1;
+  align-self: flex-start;
   max-width: 12rem;
-  margin: 0 0 0.45rem;
-  padding: 0.4rem 0.65rem;
+  max-height: none;
+  margin: 0 0 0.55rem 0.1rem;
+  padding: 0.35rem 0.6rem;
+  overflow: visible;
   font-size: 0.78rem;
+  line-height: 1.15;
 }
 
 .kids-carlos--corner .kids-carlos__cheer,
@@ -13937,13 +13961,12 @@ a.plan-pick {
 }
 
 .kids-carlos--corner .kids-carlos__bubble::after {
-  left: -0.45rem;
+  left: 0.9rem;
   right: auto;
-  bottom: 0.7rem;
-  border: 0.45rem solid transparent;
-  border-right-color: #fff;
-  border-top-color: transparent;
-  border-bottom-color: transparent;
+  bottom: -0.36rem;
+  border: 0.4rem solid transparent;
+  border-top-color: #fff;
+  border-bottom-width: 0;
 }
 
 .kids-carlos--corner .kids-confetti {
@@ -13966,30 +13989,77 @@ a.plan-pick {
 }
 
 /* Match scoreboard: stay on the board, above the win splash, and let score taps through.
-   Rest on the right so the athlete names on the left stay readable. */
+   The head sits in a reserved bottom-right band. The bubble is to the left of that
+   band, so scores, names, the timer, and buttons stay above his face. */
+.display--carlos {
+  --carlos-face-band: clamp(4.85rem, 18vh, 7.5rem);
+  padding-bottom: calc(var(--carlos-face-band) + 6px + var(--safe-b));
+}
+
+.display--carlos .display-splash {
+  padding-bottom: calc(var(--carlos-face-band) + 1.25rem + var(--safe-b));
+}
+
 .kids-carlos--board {
+  --carlos-face-band: clamp(4.85rem, 18vh, 7.5rem);
   position: absolute;
   z-index: 20;
 }
 
 .kids-carlos--board .kids-carlos__figure {
   left: auto;
-  right: 0;
-  width: min(24vw, 280px);
+  right: calc(0.35rem + var(--safe-r));
+  bottom: var(--safe-b);
+  width: auto;
+  max-width: calc(100% - 0.7rem - var(--safe-r));
+  height: var(--carlos-face-band);
+  justify-content: flex-end;
+  overflow: hidden;
   animation-name: kids-carlos-in-right;
 }
 
+.kids-carlos--board .kids-carlos__peek {
+  order: 0;
+  width: calc(var(--carlos-face-band) * 845 / 1200 / 0.4);
+  height: 100%;
+  overflow: hidden;
+}
+
+.kids-carlos--board .kids-carlos__portrait {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: calc(var(--carlos-face-band) / 0.4);
+  top: calc(var(--carlos-face-band) * -0.02 / 0.4);
+  aspect-ratio: auto;
+}
+
 .kids-carlos--board .kids-carlos__bubble {
-  top: auto;
-  right: 64%;
-  bottom: 82%;
-  left: auto;
-  max-width: min(14rem, 36vw);
+  order: -1;
+  align-self: flex-end;
+  max-width: min(16rem, 46vw);
+  max-height: 100%;
+  margin: 0 0.15rem 0.2rem 0;
+  overflow: hidden;
+  font-size: clamp(0.78rem, 1.6vh, 1.05rem);
+}
+
+.kids-carlos--board .kids-carlos__cheer,
+.kids-carlos--board .kids-carlos__name,
+.kids-carlos--board .kids-carlos__score {
+  max-width: min(16rem, 46vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .kids-carlos--board .kids-carlos__bubble::after {
   left: auto;
-  right: 1.1rem;
+  right: -0.4rem;
+  bottom: 0.7rem;
+  border: 0.42rem solid transparent;
+  border-left-color: #fff;
+  border-right-width: 0;
 }
 
 @keyframes kids-carlos-in-right {
@@ -14011,32 +14081,47 @@ a.plan-pick {
   position: absolute;
   left: 0;
   bottom: 0;
-  width: min(34vw, 420px);
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 0.45rem;
+  width: auto;
   margin: 0;
   animation: kids-carlos-in 0.72s cubic-bezier(0.16, 0.84, 0.32, 1) both;
 }
 
-.kids-carlos__figure img {
+.kids-carlos__peek {
+  position: relative;
+  flex: 0 0 auto;
+  width: min(34vw, 420px);
+}
+
+.kids-carlos__portrait {
+  position: relative;
+  order: -1;
+  width: 100%;
+  aspect-ratio: 845 / 1200;
+}
+
+.kids-carlos__portrait img {
   display: block;
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: fill;
   filter: drop-shadow(0 16px 22px rgba(0, 0, 0, 0.28));
 }
 
-/* Shared by every Carlos speech bubble, bracket and match board.
-   The same nudge keeps the card off his left eye. */
+/* Bubble stays off the face. The scoreboard parks it to the left of his head.
+   The bracket champion parks it above his head. */
 .kids-carlos__bubble {
-  --carlos-bubble-shift: 1.6rem;
-  position: absolute;
+  position: relative;
   z-index: 2;
-  top: 4%;
-  left: 74%;
-  transform: translateX(var(--carlos-bubble-shift));
+  align-self: flex-end;
   display: grid;
   justify-items: start;
   gap: 0.08rem;
   max-width: min(16rem, 46vw);
-  margin: 0;
+  margin: 0 0 0.35rem;
   padding: 0.55rem 0.9rem;
   border-radius: 18px;
   background: #fff;
