@@ -1,6 +1,7 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import { BeltRail } from '../components/BeltRail';
 import { HomeMark } from '../components/HomeMark';
+import { PlayExitMark } from '../components/PlayExitMark';
 import { useCurrentSeat } from '../components/SeatSessionBar';
 import { SiteFooter } from '../components/SiteFooter';
 import { TierLine } from '../components/TierLine';
@@ -30,7 +31,8 @@ export function CoachingToolsPage() {
   return (
     <main className="home home--coach">
       <div className="home__inner">
-        <HomeMark to="/coach" tagline={<TierLine tier="Coach" detail={COACH_TOOLS_TEASER} />} />
+        <PlayExitMark to="/coach" />
+        <HomeMark to="/" tagline={<TierLine tier="Coach" detail={COACH_TOOLS_TEASER} />} />
 
         <nav className="home__modes" aria-label={COACHING_TOOLS_LABEL}>
           <article className="mode-card mode-card--coach">

@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCurrentSeat } from '../components/SeatSessionBar';
 import { EmptyHint } from '../components/EmptyHint';
-import { PlayExitMark } from '../components/PlayExitMark';
+import { SubmenuMarks } from '../components/TierHomeMark';
+import { useSubmenuBack } from '../hooks/useSubmenuBack';
 import { useCoachPageSwipe } from '../hooks/useCoachSwipe';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
@@ -95,14 +96,7 @@ export function RosterPage() {
     !fromCompetitors &&
     (searchParams.get('from') === 'coach' || (coachUnlocked && !proUnlocked));
   const showCsv = !studentRoster && rosterCsvAvailable(proUnlocked, coachUnlocked);
-  const fromSuite = searchParams.get('from') === 'suite';
-  const exitPath = studentRoster || coachRoster
-    ? '/coach'
-    : fromCompetitors
-      ? '/competitors'
-      : fromSuite
-        ? '/suite'
-        : parent.path;
+  const exitPath = useSubmenuBack() ?? parent.path;
   const csvRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [editor, setEditor] = useState<{ id: string | null; draft: StudentDraft } | null>(null);
@@ -196,7 +190,7 @@ export function RosterPage() {
 
   return (
     <main className={studentRoster || coachRoster ? 'roster roster--coach' : fromCompetitors ? 'roster cms' : 'roster'}>
-      <PlayExitMark
+      <SubmenuMarks
         to={exitPath}
         onExit={() => {
           navigate(exitPath);

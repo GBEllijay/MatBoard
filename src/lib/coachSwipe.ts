@@ -1,3 +1,5 @@
+import { carryHubFrom } from './productNames.ts';
+
 /**
  * Coach page swipes. Clear horizontal intent only — short drags and diagonals stay as scroll.
  * Swipes that start on the screen edge are left to the browser (back / forward).
@@ -37,10 +39,16 @@ export function swipeGestureBlocked(target: EventTarget | null): boolean {
   return Boolean(target.closest(EDITABLE));
 }
 
-export function coachSwipeTarget(pathname: string, direction: 'left' | 'right'): string | null {
+export function coachSwipeTarget(
+  pathname: string,
+  direction: 'left' | 'right',
+  search = '',
+): string | null {
   if (pathname === '/roster') return direction === 'right' ? '/tournament?from=coach' : null;
   const index = CHAIN.indexOf(pathname as (typeof CHAIN)[number]);
   if (index < 0) return null;
   const next = direction === 'left' ? index + 1 : index - 1;
-  return CHAIN[next] ?? null;
+  const path = CHAIN[next];
+  if (!path) return null;
+  return carryHubFrom(path, search);
 }

@@ -12,7 +12,7 @@ import { ShopCastSlide } from '../components/ShopCastSlide';
 import { useCurrentSeat } from '../components/SeatSessionBar';
 import { ToolboxFolder } from '../components/ToolboxFolder';
 import { FullscreenChip } from '../components/FullscreenChip';
-import { PlayExitMark } from '../components/PlayExitMark';
+import { SubmenuMarks } from '../components/TierHomeMark';
 import { TvTip } from '../components/TvTip';
 import { Sheet } from '../components/Sheet';
 import { DriveConnectCard } from '../components/DriveConnectCard';
@@ -21,7 +21,7 @@ import { OpenMyDrive } from '../components/OpenMyDrive';
 import { MediaSourceSheet } from '../components/VideoSourceSheet';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useScheduleState } from '../hooks/useStores';
-import { useToolboxParent } from '../hooks/useToolboxParent';
+import { useSubmenuBack } from '../hooks/useSubmenuBack';
 import {
   DEFAULT_EVENTS_CAST_MODE,
   EVENTS_CAST_MODE_OPTIONS,
@@ -146,7 +146,7 @@ export function ScreensaverPage() {
   const intervalMs = secondsToMs(intervalSec);
   const fs = usePlayFullscreen();
   const navigate = useNavigate();
-  const parent = useToolboxParent();
+  const back = useSubmenuBack() ?? '/pro';
   const [searchParams] = useSearchParams();
   const folderParam = searchParams.get('folder');
   const requestedFolder =
@@ -531,7 +531,7 @@ export function ScreensaverPage() {
 
   const exitSlideshow = () => {
     void fs.exit().finally(() => {
-      navigate(parent.path);
+      navigate(back);
     });
   };
 
@@ -562,7 +562,7 @@ export function ScreensaverPage() {
       className={`saver${currentSlide ? ' saver--play' : ''}${showBelt ? ' saver--belt' : ''}${fs.className ? ` ${fs.className}` : ''}`}
       onClick={(event) => {
         const target = event.target as HTMLElement;
-        if (target.closest('.sheet, .chrome, .saver__empty, .btn, input, label, .play-fs, .play-exit, .tv-tip, .saver__unmute, .saver-batch, .week-cast.is-drift, .week-cast.is-paused, .month-cast.is-drift, .month-cast.is-paused')) return;
+        if (target.closest('.sheet, .chrome, .saver__empty, .btn, input, label, .play-fs, .play-exit, .tier-home, .tv-tip, .saver__unmute, .saver-batch, .week-cast.is-drift, .week-cast.is-paused, .month-cast.is-drift, .month-cast.is-paused')) return;
         if (!muteVideo) setUnlockSound(true);
         if (slides.length) setOptions(true);
       }}
@@ -571,7 +571,7 @@ export function ScreensaverPage() {
       {!options && batchStatus ? (
         <BatchStatus status={batchStatus} onDismiss={() => setBatchStatus(null)} />
       ) : null}
-      <PlayExitMark to={parent.path} onExit={exitSlideshow} />
+      <SubmenuMarks to={back} onExit={exitSlideshow} />
       {showBelt ? (
         <div className="saver-belt">
           <BeltHeader kind="purple" title="Advantage - Media Console" />
