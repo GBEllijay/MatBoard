@@ -61,7 +61,9 @@ Criterion ids are `rubric.{belt}.{slug}`, for example `rubric.white.closed-guard
 
 ### FundamentalsCatalog and items
 
-The catalog shipped with the app is `bjj-fundamentals-draft-1`. It is marked `draft: true` so the owner can still review which names belong on the list. Categories are positions, sweeps, escapes, passes, submissions, and takedowns. Each item is a stable id plus a name, such as `sweep.scissor` / "Scissor sweep".
+The catalog shipped with the app is `bjj-fundamentals-starter-1`, titled "BJJ fundamentals (starter)". The owner approved this list on 2026-10-10 (`draft: false`). It is the same names as the earlier draft: 31 techniques in 6 categories (positions, sweeps, escapes, passes, submissions, and takedowns). Item ids did not change. `sweep.scissor` is still "Scissor sweep".
+
+A file that still says `bjj-fundamentals-draft-1` imports as `bjj-fundamentals-starter-1`. That alias is only the catalog id. Checklist rows keep their item ids.
 
 Names only is the shipping decision. `examples` remains on the item. Missing means an empty list. Every item in the shipped catalog has an empty list.
 
@@ -142,4 +144,4 @@ JSON remains the file that import merges. The CSV is the spreadsheet view of tha
 
 ## Code
 
-Types live in `src/lib/progress/types.ts`. The draft name list is `FUNDAMENTALS_CATALOG` in `src/lib/progress/catalog.ts`. Read, write, merge, search, and CSV are in `src/lib/progress/format.ts`.
+Types live in `src/lib/progress/types.ts`. The approved starter list is `FUNDAMENTALS_CATALOG` in `src/lib/progress/catalog.ts`. Read, write, merge, search, and CSV are in `src/lib/progress/format.ts`.
