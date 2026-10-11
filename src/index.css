@@ -10045,6 +10045,88 @@ input.roster-pick__name:focus,
   letter-spacing: -0.04em;
 }
 
+.notes__screen {
+  display: grid;
+  gap: 0.45rem;
+  width: min(40rem, 100%);
+  margin: 0 auto 0.9rem;
+  /* Clears the top-left back mark, which sits outside the title row. */
+  padding-top: 0.45rem;
+}
+
+.notes__screen-hide {
+  width: 100%;
+}
+
+.notes__screen-modes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+}
+
+.notes__screen-modes .preset {
+  width: 100%;
+  min-width: 0;
+}
+
+.notes--covered {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.notes--covered > :not(.notes-cover) {
+  visibility: hidden;
+}
+
+/* Mirrored TV cover. The phone and the TV show this until Show is tapped. */
+.notes-cover {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: #000;
+  color: var(--ink);
+}
+
+.notes-cover--logo {
+  display: grid;
+  place-items: center;
+}
+
+.notes-cover__logo {
+  width: min(68vw, 28rem);
+  max-height: 68vh;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+.notes-cover--black {
+  background: #000;
+}
+
+.notes-cover__show {
+  position: absolute;
+  z-index: 6;
+  top: calc(0.55rem + var(--safe-t));
+  left: calc(0.55rem + var(--safe-l));
+  min-height: 44px;
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(8, 10, 16, 0.55);
+  color: rgba(245, 241, 232, 0.86);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  touch-action: manipulation;
+}
+
+.notes-cover--schedule .week-cast--cast {
+  z-index: 1;
+  padding-left: calc(4.6rem + var(--safe-l));
+}
+
 .notes__lead {
   width: min(40rem, 100%);
   margin: 0 auto 0.9rem;

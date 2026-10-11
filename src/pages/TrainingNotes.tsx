@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { ClassPhotoPromotions } from '../components/ClassPhotoPromotions';
+import { LessonScreenHide } from '../components/LessonScreenCover';
 import { DriveHandoffCheck, DriveHandoffGuide, useDriveConnected } from '../components/DriveHandoffGuide';
 import { LessonVersionHistory } from '../components/LessonVersionHistory';
 import { PlanDateNav } from '../components/PlanDateNav';
@@ -563,6 +564,7 @@ export function TrainingNotesPage() {
           <h1>{TRAINING_NOTES_LABEL}</h1>
         </div>
       </header>
+      {lessonBlocked ? null : <LessonScreenHide />}
       {unlimitedPlan ? <p className="notes__lead">{UNLIMITED_SHARE_LEAD}</p> : null}
       {unlimitedPlan ? <p className="notes__lead">{NOTES_LEAD}</p> : null}
       {lessonBlocked ? (
