@@ -8,7 +8,8 @@ import {
   WEEKDAYS,
   WEEKDAY_LABELS,
   WEEKDAY_SHORT,
-  classProgram,
+  CLASS_LEVEL_META,
+  CLASS_LEVEL_ORDER,
   classesOnDay,
   formatBoardStamp,
   formatClassTime,
@@ -16,6 +17,7 @@ import {
   normalizeQrUrl,
   noticeLines,
   todayWeekday,
+  type ClassLevel,
   type Weekday,
   type WeeklyClassSlot,
 } from '../lib/scheduleStore';
@@ -63,11 +65,18 @@ export function ScheduleWeekBoard({ variant = 'stage', onOpenOptions }: Props) {
     }
     return count;
   }, [columns]);
-  const occupied = useMemo(() => new Set(schedule.classes.map((row) => row.day)), [schedule.classes]);
+  const legend = useMemo(() => {
+    const used = new Set(schedule.classes.map((row) => row.level ?? 'none'));
+    return CLASS_LEVEL_ORDER.filter((level) => used.has(level));
+  }, [schedule.classes]);
   const signature = `${columns
     .map((column) =>
       column.groups
-        .map((group) => group.items.map((item) => `${item.id}:${item.time}:${item.title}:${item.location}:${item.subtitle}`).join('+'))
+        .map((group) =>
+          group.items
+            .map((item) => `${item.id}:${item.time}:${item.title}:${item.location}:${item.subtitle}:${item.level ?? 'none'}`)
+            .join('+'),
+        )
         .join(','),
     )
     .join('|')}:${notices.length}:${variant}`;
@@ -185,20 +194,24 @@ export function ScheduleWeekBoard({ variant = 'stage', onOpenOptions }: Props) {
         {busiest === 0 ? (
           <p className="week-cast__empty">No classes yet. Tap Edit to add the week. Saved on this device.</p>
         ) : (
-          <div
-            className="week-cast__board"
-            style={{
-              ['--week-tracks' as string]: columns
-                .map(({ day }) => (occupied.has(day) ? 'minmax(0, 1fr)' : 'max-content'))
-                .join(' '),
-            }}
-          >
+          <div className="week-cast__board">
             {columns.map(({ day, groups }) => (
-              <WeekColumn key={day} day={day} groups={groups} today={today} occupied={occupied.has(day)} />
+              <WeekColumn key={day} day={day} groups={groups} today={today} />
             ))}
           </div>
         )}
       </div>
+
+      {busiest > 0 && legend.length ? (
+        <footer className="week-cast__legend" aria-label="Belt levels">
+          {legend.map((level) => (
+            <span key={level}>
+              <i data-level={level} aria-hidden="true" />
+              {CLASS_LEVEL_META[level].short}
+            </span>
+          ))}
+        </footer>
+      ) : null}
 
       {notices.length ? (
         <footer className="week-cast__notes" aria-label="Notices">
@@ -228,16 +241,15 @@ function WeekColumn({
   day,
   groups,
   today,
-  occupied,
 }: {
   day: Weekday;
   groups: ReturnType<typeof groupClassesByTime>;
   today: Weekday;
-  occupied: boolean;
 }) {
+  const empty = groups.length === 0;
   return (
     <section
-      className={`week-cast__column${day === today ? ' is-today' : ''}${occupied ? '' : ' is-empty'}`}
+      className={`week-cast__column${day === today ? ' is-today' : ''}${empty ? ' is-empty' : ''}`}
       aria-label={WEEKDAY_LABELS[day]}
       aria-current={day === today ? 'date' : undefined}
     >
@@ -246,6 +258,7 @@ function WeekColumn({
         <span className="week-cast__day-short">{WEEKDAY_SHORT[day]}</span>
       </header>
       <div className="week-cast__stack">
+        {empty ? <p className="week-cast__none">No classes</p> : null}
         {groups.map((group) => {
           const parallel = group.items.length > 1;
           return (
@@ -268,10 +281,12 @@ function ClassCard({ item }: { item: WeeklyClassSlot }) {
   const title = item.title.trim() || 'Class';
   const detail = item.subtitle.trim();
   const mat = item.location.trim();
-  const program = classProgram(title);
+  const level: ClassLevel = item.level ?? 'none';
   const when = formatClassTime(item.time);
   return (
-    <article className="week-cast__class" data-program={program.id}>
+    <article className="week-cast__class" data-level={level}>
+      <i className="week-cast__rail" aria-hidden="true" />
+      <span className="sr-only">{CLASS_LEVEL_META[level].short}</span>
       {when || mat ? (
         <p className="week-cast__meta">
           {when ? (

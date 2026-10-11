@@ -25,6 +25,8 @@ import {
   WEEKDAYS,
   WEEKDAY_LABELS,
   WEEKDAY_SHORT,
+  CLASS_LEVELS,
+  CLASS_LEVEL_META,
   SCHEDULE_TEMPLATE_HINTS,
   displayTemplate,
   SCHEDULE_TEMPLATE_LABELS,
@@ -39,6 +41,7 @@ import {
   formatClassTime,
   getSchedule,
   groupClassesByTime,
+  isClassLevel,
   loadSampleWeek,
   noticeLines,
   normalizeQrUrl,
@@ -56,6 +59,7 @@ import {
   todayWeekday,
   updateClass,
   updateSpecial,
+  type ClassLevel,
   type ClassTimeGroup,
   type ScheduleTemplate,
   type Weekday,
@@ -64,6 +68,15 @@ import {
 import { quotaAddNote } from '../lib/storageQuota';
 
 const BAR_MODES = ['week', 'monthly', 'weekly-list'] as const satisfies readonly ScheduleTemplate[];
+const LEVEL_GROUPS = [
+  { id: 'adults', label: 'Adults' },
+  { id: 'kids', label: 'Kids' },
+  { id: 'other', label: 'Other' },
+] as const satisfies ReadonlyArray<{ id: (typeof CLASS_LEVEL_META)[ClassLevel]['group']; label: string }>;
+
+function levelsIn(group: (typeof LEVEL_GROUPS)[number]['id']): ClassLevel[] {
+  return CLASS_LEVELS.filter((id) => CLASS_LEVEL_META[id].group === group);
+}
 const TV_MODES = ['week', 'monthly'] as const satisfies readonly ScheduleTemplate[];
 
 const TEMPLATE_CHROME: Record<(typeof BAR_MODES)[number], string> = {
@@ -484,6 +497,52 @@ function ScheduleBackup({
   );
 }
 
+function LevelPicker({
+  value,
+  onChange,
+}: {
+  value: ClassLevel;
+  onChange: (level: ClassLevel) => void;
+}) {
+  return (
+    <div className="schedule-edit__levels">
+      <div className="schedule-edit__level-label">
+        <span id="schedule-level-label">Level</span>
+        <span>Sets the belt color on the TV board</span>
+      </div>
+      <div role="radiogroup" aria-labelledby="schedule-level-label">
+        {LEVEL_GROUPS.map((group) => (
+          <div key={group.id} className="schedule-edit__level-group">
+            <p>{group.label}</p>
+            {levelsIn(group.id).map((id) => {
+              const meta = CLASS_LEVEL_META[id];
+              const on = value === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  className={`level-pick${on ? ' level-pick--on' : ''}`}
+                  onClick={() => onChange(id)}
+                >
+                  <i className="belt-swatch" data-level={id} aria-hidden="true" />
+                  <span className="level-pick__copy">
+                    <strong>{meta.label}</strong>
+                    <em>{meta.blurb}</em>
+                  </span>
+                  <span className="level-pick__dot" aria-hidden="true" />
+                </button>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+      <p className="schedule-edit__hint">Classes saved before this update start as No level until you pick one.</p>
+    </div>
+  );
+}
+
 function ScheduleEditor({
   open,
   onClose,
@@ -507,6 +566,7 @@ function ScheduleEditor({
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState<string>(DEFAULT_MATS[0]);
   const [subtitle, setSubtitle] = useState('');
+  const [level, setLevel] = useState<ClassLevel>('none');
   const [pickerNote, setPickerNote] = useState('');
   const titleRef = useRef<HTMLInputElement>(null);
   const csvRef = useRef<HTMLInputElement>(null);
@@ -522,7 +582,7 @@ function ScheduleEditor({
       titleRef.current?.focus();
       return;
     }
-    const added = addClass(day, time, title, location, subtitle);
+    const added = addClass(day, time, title, location, subtitle, level);
     if (added) {
       setTitle('');
       setSubtitle('');
@@ -780,6 +840,7 @@ function ScheduleEditor({
               }}
             />
           </label>
+          <LevelPicker value={level} onChange={setLevel} />
           <button type="button" className="btn" onClick={addRow}>
             Add class
           </button>
@@ -839,6 +900,30 @@ function ScheduleEditor({
                               onChange={(event) => updateClass(item.id, { subtitle: event.target.value })}
                               placeholder="Blue belt & up"
                             />
+                          </label>
+                          <label className="schedule-edit__title schedule-edit__level">
+                            Level
+                            <span className="schedule-edit__level-control">
+                              <i className="belt-swatch" data-level={item.level ?? 'none'} aria-hidden="true" />
+                              <select
+                                aria-label={`Level for ${item.title.trim() || 'class'}`}
+                                value={item.level ?? 'none'}
+                                onChange={(event) => {
+                                  const next = event.target.value;
+                                  if (isClassLevel(next)) updateClass(item.id, { level: next });
+                                }}
+                              >
+                                {LEVEL_GROUPS.map((group) => (
+                                  <optgroup key={group.id} label={group.label}>
+                                    {levelsIn(group.id).map((id) => (
+                                      <option key={id} value={id}>
+                                        {CLASS_LEVEL_META[id].label}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                ))}
+                              </select>
+                            </span>
                           </label>
                           <button
                             type="button"
