@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { SubmenuMarks } from '../components/TierHomeMark';
+import { PlayExitMark } from '../components/PlayExitMark';
 import { useCoachPageSwipe } from '../hooks/useCoachSwipe';
 import { useRosterState } from '../hooks/useStores';
 import { useToolboxParent } from '../hooks/useToolboxParent';
@@ -188,7 +188,7 @@ export function TechniqueTreePage() {
 
   return (
     <main className="tree">
-      <SubmenuMarks
+      <PlayExitMark
         to={exitPath}
         onExit={() => {
           navigate(exitPath);

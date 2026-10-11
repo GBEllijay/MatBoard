@@ -3226,6 +3226,17 @@ main.tree:has(> .tier-home) > .tree__bar {
   margin-top: 3.85rem;
 }
 
+/* Phone Class Schedule keeps the corner back only. Wide screens still show the center mark. */
+@media (max-width: 720px) {
+  .schedule > .tier-home {
+    display: none;
+  }
+
+  main.schedule:has(> .tier-home) > .schedule__bar {
+    padding-top: calc(0.7rem + var(--safe-t));
+  }
+}
+
 main.white-roster:has(> .tier-home) > .white-roster__head {
   margin-top: 3.7rem;
 }

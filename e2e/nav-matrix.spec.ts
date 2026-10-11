@@ -89,7 +89,17 @@ test('Coach hub tools go back to Coach and home to the tier picker', async ({ pa
   await lessonBack.click();
   await expect.poll(() => pathOf(page)).toBe('/coach');
 
-  const coachTools = ['Daily Training Videos', 'Technique Tree', 'Student Roster', 'Mock Tournament'] as const;
+  for (const name of ['Daily Training Videos', 'Technique Tree'] as const) {
+    await page.goto('/coach');
+    await openLink(page, name);
+    await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveCount(0);
+    const back = page.getByRole('link', { name: BACK, exact: true });
+    await expect(back).toHaveAttribute('href', '/coach');
+    await back.click();
+    await expect.poll(() => pathOf(page)).toBe('/coach');
+  }
+
+  const coachTools = ['Student Roster', 'Mock Tournament'] as const;
   for (const name of coachTools) {
     await page.goto('/coach');
     await openLink(page, name);
@@ -122,12 +132,17 @@ test('Coach Unlimited tools go back to Coach Unlimited and home to the tier pick
   await lessonBack.click();
   await expect.poll(() => pathOf(page)).toBe('/coach-unlimited');
 
-  const unlimitedTools = [
-    'Daily Training Videos',
-    'Technique Tree',
-    'Competitor Roster',
-    'Competition Class Curriculum',
-  ] as const;
+  for (const name of ['Daily Training Videos', 'Technique Tree', 'Competition Class Curriculum'] as const) {
+    await page.goto('/coach-unlimited');
+    await openLink(page, name);
+    await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveCount(0);
+    const back = page.getByRole('link', { name: BACK, exact: true });
+    await expect(back).toHaveAttribute('href', '/coach-unlimited');
+    await back.click();
+    await expect.poll(() => pathOf(page)).toBe('/coach-unlimited');
+  }
+
+  const unlimitedTools = ['Competitor Roster'] as const;
   for (const name of unlimitedTools) {
     await page.goto('/coach-unlimited');
     await openLink(page, name);
@@ -295,9 +310,7 @@ test('Media Console sections start collapsed and the play toggle stays separate'
   await expect(events).toHaveJSProperty('open', false);
 });
 
-test('Class Schedule goes back to Media Console; the center home stays off the TV board', async ({ page }) => {
-  // Phone portrait still draws a small center Home mark beside the corner back.
-  // That twin-logo layout stays; Media Console is the page that drops the center mark.
+test('Class Schedule goes back to Media Console; the center home stays off the phone and the TV', async ({ page }) => {
   await unlock(page);
   await page.goto('/pro');
   await openLink(page, 'Media Console');
@@ -307,7 +320,6 @@ test('Class Schedule goes back to Media Console; the center home stays off the T
   const back = page.getByRole('link', { name: BACK, exact: true });
   const home = page.getByRole('link', { name: 'Home', exact: true });
   await expect(back).toHaveAttribute('href', '/slideshow?folder=gallery');
-  await expect(home).toHaveAttribute('href', '/');
   await expect(home).toHaveCSS('pointer-events', 'none');
   await back.click();
   await expect.poll(() => pathOf(page)).toBe('/slideshow?folder=gallery');
@@ -315,9 +327,10 @@ test('Class Schedule goes back to Media Console; the center home stays off the T
   await leaveFullscreen(page);
   await page.setViewportSize(PHONE);
   await page.goto('/schedule');
-  await expect(home).toHaveCSS('pointer-events', 'auto');
-  await home.click();
-  await expect.poll(() => new URL(page.url()).pathname).toBe('/');
+  await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: BACK, exact: true })).toHaveAttribute('href', '/slideshow?folder=gallery');
+  await page.getByRole('link', { name: BACK, exact: true }).click();
+  await expect.poll(() => pathOf(page)).toBe('/slideshow?folder=gallery');
 });
 
 test('Tournament Management Pro and CMS tiles go back one level and home to the tier picker', async ({ page }) => {

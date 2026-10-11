@@ -3,7 +3,7 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { DeviceMediaInput } from '../components/DeviceMediaInput';
 import { OpenMyDrive } from '../components/OpenMyDrive';
 import { FullscreenChip } from '../components/FullscreenChip';
-import { SubmenuMarks } from '../components/TierHomeMark';
+import { PlayExitMark } from '../components/PlayExitMark';
 import { useSubmenuBack } from '../hooks/useSubmenuBack';
 import { SeatSessionBar, useCurrentSeat } from '../components/SeatSessionBar';
 import { TvTip } from '../components/TvTip';
@@ -589,7 +589,7 @@ export function TechniquesPage() {
     <main
       className={`techniques${playback ? ' techniques--play' : ''}${fs.className ? ` ${fs.className}` : ''}${stage ? ' techniques--fill' : ''}`}
     >
-      <SubmenuMarks to={backPath ?? exitPath} onExit={exitBoard} />
+      <PlayExitMark to={backPath ?? exitPath} onExit={exitBoard} />
       <header className="techniques__bar">
         <div className="techniques__brand">
           <p className="techniques__eyebrow">{eyebrow}</p>

@@ -8,26 +8,26 @@ const CLIP = path.join(process.cwd(), 'e2e/fixtures/tiny-lesson.mp4');
 const PAGES: { path: string; home: boolean }[] = [
   { path: '/notes?from=coach', home: false },
   { path: '/notes?plan=unlimited', home: false },
-  { path: '/techniques?from=coach', home: true },
-  { path: '/techniques?from=unlimited', home: true },
-  { path: '/technique-tree?from=coach', home: true },
-  { path: '/technique-tree?from=unlimited', home: true },
+  { path: '/techniques?from=coach', home: false },
+  { path: '/techniques?from=unlimited', home: false },
+  { path: '/technique-tree?from=coach', home: false },
+  { path: '/technique-tree?from=unlimited', home: false },
   { path: '/roster?from=students', home: true },
   { path: '/roster?from=unlimited', home: true },
   { path: '/roster?from=competitors', home: true },
   { path: '/tournament?from=coach', home: true },
   { path: '/tournament?from=suite', home: true },
-  { path: '/competition-curriculum', home: true },
-  { path: '/competition-curriculum?plan=unlimited', home: true },
+  { path: '/competition-curriculum', home: false },
+  { path: '/competition-curriculum?plan=unlimited', home: false },
   { path: '/coach-unlimited', home: true },
   { path: '/instructors', home: true },
   { path: '/suite', home: true },
-  { path: '/schedule', home: true },
+  { path: '/schedule', home: false },
   { path: '/game-plan', home: true },
   { path: '/competition-ready', home: true },
   { path: '/rankings', home: true },
   { path: '/competitors', home: true },
-  { path: '/class-history?from=unlimited', home: true },
+  { path: '/class-history?from=unlimited', home: false },
   { path: '/white/roster', home: true },
   { path: '/coaching-tools', home: true },
   { path: '/review', home: true },
@@ -111,6 +111,7 @@ test('saving a lesson video returns to that Daily Lesson Plan day', async ({ pag
 
     await page.getByRole('button', { name: 'Open Daily Training Videos for Warm-up' }).click();
     await expect(page.getByRole('heading', { name: 'Daily Training Videos' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveCount(0);
     await page.getByRole('button', { name: '+ Add video' }).first().click();
     await expect(page.getByRole('dialog', { name: 'Add video' })).toBeVisible();
     await page.locator('#techniques-video-library').setInputFiles(CLIP);
@@ -133,5 +134,90 @@ test('saving a lesson video returns to that Daily Lesson Plan day', async ({ pag
     await page.getByRole('link', { name: BACK, exact: true }).click();
     await expect.poll(() => new URL(page.url()).pathname).toBe(entry.back);
     await expect(page.getByRole('link', { name: 'Daily Lesson Plan', exact: true })).toBeVisible();
+  }
+});
+
+test('corner-only pages have no center logo and back up one page at phone widths', async ({ page }) => {
+  test.setTimeout(120_000);
+  await unlock(page);
+  const hubs = [
+    { path: '/coach', back: '/coach', lesson: 'from=coach' },
+    { path: '/coach-unlimited', back: '/coach-unlimited', lesson: 'plan=unlimited' },
+  ] as const;
+
+  for (const width of WIDTHS) {
+    await leaveFullscreen(page);
+    await page.setViewportSize({ width, height: 844 });
+
+    for (const hub of hubs) {
+      for (const name of ['Daily Training Videos', 'Technique Tree'] as const) {
+        await page.goto(hub.path);
+        await page.getByRole('link', { name, exact: true }).click();
+        await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveCount(0);
+        const back = page.getByRole('link', { name: BACK, exact: true });
+        await expect(back).toHaveAttribute('href', hub.back);
+        await back.click();
+        await expect.poll(() => new URL(page.url()).pathname).toBe(hub.back);
+      }
+
+      await page.goto(hub.path);
+      await page.getByRole('link', { name: 'Daily Lesson Plan', exact: true }).click();
+      await page.getByRole('button', { name: 'Open Daily Training Videos for Warm-up' }).click();
+      await expect(page.getByRole('heading', { name: 'Daily Training Videos' })).toBeVisible();
+      await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveCount(0);
+      await page.getByRole('link', { name: BACK, exact: true }).click();
+      const lesson = new URL(page.url());
+      expect(lesson.pathname).toBe('/notes');
+      expect(lesson.search).toContain(hub.lesson);
+    }
+
+    await page.goto('/coach-unlimited');
+    await page.getByRole('link', { name: 'Competition Class Curriculum', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Competition Class Curriculum' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveCount(0);
+    const curriculumBack = page.getByRole('link', { name: BACK, exact: true });
+    await expect(curriculumBack).toHaveAttribute('href', '/coach-unlimited');
+    await curriculumBack.click();
+    await expect.poll(() => new URL(page.url()).pathname).toBe('/coach-unlimited');
+
+    await page.goto('/coach-unlimited');
+    await page.getByRole('link', { name: 'Daily Lesson Plan', exact: true }).click();
+    await page.getByRole('link', { name: 'Open a class from Google Drive', exact: true }).click();
+    await expect(page).toHaveURL(/\/class-history\?/);
+    await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveCount(0);
+    await page.getByRole('link', { name: BACK, exact: true }).click();
+    const fromLesson = new URL(page.url());
+    expect(fromLesson.pathname).toBe('/notes');
+    expect(fromLesson.searchParams.get('plan')).toBe('unlimited');
+
+    await page.goto('/class-history?from=unlimited');
+    await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveCount(0);
+    const historyBack = page.getByRole('link', { name: BACK, exact: true });
+    await expect(historyBack).toHaveAttribute('href', '/coach-unlimited');
+    await historyBack.click();
+    await expect.poll(() => new URL(page.url()).pathname).toBe('/coach-unlimited');
+
+    await page.goto('/class-history?from=notes&hub=coach');
+    await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveCount(0);
+    const coachHistory = page.getByRole('link', { name: BACK, exact: true });
+    await expect(coachHistory).toHaveAttribute('href', '/notes?from=coach');
+    await coachHistory.click();
+    const coachLesson = new URL(page.url());
+    expect(coachLesson.pathname).toBe('/notes');
+    expect(coachLesson.searchParams.get('from')).toBe('coach');
+
+    await page.goto('/pro');
+    await page.getByRole('link', { name: 'Media Console', exact: true }).click();
+    await page.locator('summary').filter({ hasText: 'Class Schedule' }).click();
+    await page.getByRole('link', { name: 'Add class schedule', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Class Schedule', level: 1 })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveCount(0);
+    const scheduleBack = page.getByRole('link', { name: BACK, exact: true });
+    await expect(scheduleBack).toHaveAttribute('href', '/slideshow?folder=gallery');
+    await scheduleBack.click();
+    await expect.poll(() => {
+      const url = new URL(page.url());
+      return url.pathname + url.search;
+    }).toBe('/slideshow?folder=gallery');
   }
 });
