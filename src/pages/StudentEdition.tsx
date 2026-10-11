@@ -173,9 +173,11 @@ function Cover() {
         <button type="button" className="student-book" aria-label="Open journal" onClick={() => setOpened(true)}>
           <span className="student-book__pages" aria-hidden="true" />
           <span className="student-book__band" aria-hidden="true" />
-          <AdvantageMark />
-          <span className="student-book__edition">Advantage - Student Edition</span>
-          <span className="student-book__title">Jiu-Jitsu Journal</span>
+          <span className="student-book__face">
+            <AdvantageMark />
+            <span className="student-book__edition">Advantage - Student Edition</span>
+            <span className="student-book__title">Jiu-Jitsu Journal</span>
+          </span>
         </button>
       </main>
     );
