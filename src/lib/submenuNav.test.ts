@@ -59,6 +59,7 @@ test('Competitor Roster follows the menu that opened it', () => {
   assert.equal(submenuBackTarget({ pathname: '/competition-ready', ...pro }), '/competitors');
   assert.equal(submenuBackTarget({ pathname: '/rankings', ...pro }), '/competitors');
   assert.equal(submenuBackTarget({ pathname: '/tournament', search: 'from=suite', ...pro }), '/suite');
+  assert.equal(submenuBackTarget({ pathname: '/tournament', search: 'from=unlimited', ...pro }), '/coach-unlimited');
 });
 
 test('a lesson video returns to that Daily Lesson Plan day, then the hub', () => {

@@ -275,6 +275,56 @@ test('Skin stays enabled after Score and Back to bracket', { timeout: 8000 }, as
   }
 });
 
+test('Coach Unlimited Score keeps the Skin picker on Back to bracket', async () => {
+  localStorage.setItem(PRO_UNLOCK_STORAGE_KEY, '1');
+  resetTournament();
+  setCompetitorCount(4);
+  fillSeedNames(['Ada Cruz', 'Bea Ortiz', 'Cam Diaz', 'Dee Kim']);
+  setKidsEnabled(true);
+  setKidsSkin('dinos');
+  const realSetInterval = window.setInterval.bind(window);
+  window.setInterval = ((fn: TimerHandler, ms?: number, ...args: unknown[]) => {
+    if (ms === 100) return 0;
+    return realSetInterval(fn as () => void, ms, ...(args as []));
+  }) as typeof window.setInterval;
+
+  const mounted = mount(
+    <Routes>
+      <Route path="/tournament" element={<TournamentPage />} />
+      <Route path="/match" element={<MatchDisplayPage />} />
+    </Routes>,
+    '/tournament?from=unlimited',
+  );
+  try {
+    const score = document.querySelector('button.t-score');
+    assert.ok(score instanceof HTMLElement, 'semifinal Score button');
+    act(() => {
+      score.click();
+    });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    const back = document.querySelector('[aria-label="Back to bracket"]');
+    assert.ok(back instanceof HTMLElement, 'scoreboard shows Back to bracket');
+    assert.equal(back.tagName, 'A');
+    assert.match(back.getAttribute('href') || '', /from=unlimited/);
+    assert.match(back.getAttribute('href') || '', /^\/tournament\?/);
+    assert.equal(document.querySelector('main')?.classList.contains('kids-board--dinos'), true);
+    act(() => {
+      back.click();
+    });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    const skin = [...document.querySelectorAll('button')].find((el) =>
+      (el.getAttribute('aria-label') || '').startsWith('Skin'),
+    );
+    assert.ok(skin, 'Skin is back on the Coach Unlimited bracket');
+    assert.equal(skin.disabled, false);
+    assert.equal(document.querySelector('main')?.classList.contains('tournament--kids-dinos'), true);
+  } finally {
+    unmount(mounted);
+    window.setInterval = realSetInterval;
+    resetTournament();
+  }
+});
+
 test('empty seed slots hint TBD, Undo is logo blue, and the live match wears a LIVE pill', async () => {
   localStorage.setItem(PRO_UNLOCK_STORAGE_KEY, '1');
   resetTournament();
@@ -362,8 +412,9 @@ test('one tap sets bracket size, and kids connector pairs stay on an eight-perso
   }
 });
 
-test('the kids Skin picker stays on the Pro suite and off the Coach board', async () => {
+test('the kids Skin picker stays on Pro and Coach Unlimited, and off plain Coach', async () => {
   localStorage.setItem(PRO_UNLOCK_STORAGE_KEY, '1');
+  localStorage.setItem('advantage.coachUnlocked', '1');
   resetTournament();
   setKidsEnabled(true);
   setKidsSkin('dinos');
@@ -379,22 +430,37 @@ test('the kids Skin picker stays on the Pro suite and off the Coach board', asyn
     unmount(coach);
   }
 
-  const suite = mount(<TournamentPage />, '/tournament?from=suite');
-  try {
-    const skin = [...suite.host.querySelectorAll('button')].find((button) =>
-      (button.getAttribute('aria-label') || '').startsWith('Skin'),
-    );
-    assert.ok(skin);
-    assert.equal(skin.disabled, false);
-    act(() => {
-      skin.click();
-    });
-    await settle();
-    assert.equal(document.querySelectorAll('.kids-skin__thumb').length, 6);
-  } finally {
-    unmount(suite);
-    resetTournament();
+  for (const entry of ['/tournament?from=suite', '/tournament?from=unlimited'] as const) {
+    setKidsEnabled(true);
+    setKidsSkin('dinos');
+    const board = mount(<TournamentPage />, entry);
+    try {
+      assert.equal(board.host.querySelector('main')?.classList.contains('tournament--kids-dinos'), true);
+      const skin = [...board.host.querySelectorAll('button')].find((button) =>
+        (button.getAttribute('aria-label') || '').startsWith('Skin'),
+      );
+      assert.ok(skin, `Skin on ${entry}`);
+      assert.equal(skin.disabled, false);
+      act(() => {
+        skin.click();
+      });
+      await settle();
+      assert.equal(document.querySelectorAll('.kids-skin__thumb').length, 6);
+      const ocean = [...document.querySelectorAll('.kids-skin__thumb')].find(
+        (button) => button.textContent?.includes('Ocean'),
+      );
+      assert.ok(ocean instanceof HTMLElement);
+      act(() => {
+        ocean.click();
+      });
+      await settle();
+      assert.equal(board.host.querySelector('main')?.classList.contains('tournament--kids-ocean'), true);
+    } finally {
+      unmount(board);
+    }
   }
+
+  resetTournament();
 });
 
 test('Skin stays shut while a sheet is open and still opens again after it closes', async () => {

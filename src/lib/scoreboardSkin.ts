@@ -10,7 +10,7 @@
  * Kids' Scoreboards paints the Pro bracket, not this skin.
  */
 
-import { withSuiteFrom } from './productNames.ts';
+import { SUITE_FROM, UNLIMITED_FROM, withHubFrom } from './productNames.ts';
 
 /**
  * Old School matches the owner's tabletop flip boards: large points cards,
@@ -123,12 +123,13 @@ export function withCoachWhiteBoard(path: string, whiteBoard: boolean): string {
   return `${pathname}?${params.toString()}${hash}`;
 }
 
-/** Suite origin and the basic-Coach White board, on scoreboard and controller links. */
+/** Suite or Coach Unlimited origin, and the basic-Coach White board, on scoreboard and controller links. */
 export function withMatchOrigin(
   path: string,
-  origin: { fromSuite: boolean; whiteBoard: boolean },
+  origin: { fromSuite: boolean; whiteBoard: boolean; fromUnlimited?: boolean },
 ): string {
-  return withCoachWhiteBoard(withSuiteFrom(path, origin.fromSuite), origin.whiteBoard && !origin.fromSuite);
+  const hub = origin.fromSuite ? SUITE_FROM : origin.fromUnlimited ? UNLIMITED_FROM : null;
+  return withCoachWhiteBoard(withHubFrom(path, hub), origin.whiteBoard && hub == null);
 }
 
 /**

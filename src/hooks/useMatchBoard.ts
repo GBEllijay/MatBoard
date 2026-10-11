@@ -38,7 +38,10 @@ export function useMatchBoard() {
   const kidsSkin = kidsSkinFromSearch(searchParams);
 
   const originPath = (path: string) =>
-    withKidsSkin(withMatchOrigin(path, { fromSuite: suite.fromSuite, whiteBoard }), kidsSkin);
+    withKidsSkin(
+      withMatchOrigin(path, { fromSuite: suite.fromSuite, fromUnlimited: suite.fromUnlimited, whiteBoard }),
+      kidsSkin,
+    );
 
   const skinFor = (skin: ScoreboardSkinId) =>
     visibleScoreboardSkin(skin, suite.fromSuite, Boolean(linkedId), whiteBoard);

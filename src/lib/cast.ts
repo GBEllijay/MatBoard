@@ -14,6 +14,7 @@ type PresentationRequestCtor = new (urls: string[]) => {
 
 function displayUrl(options?: {
   fromSuite?: boolean;
+  fromUnlimited?: boolean;
   whiteBoard?: boolean;
   kidsSkin?: KidsSkinId | null;
 }): string {
@@ -21,6 +22,7 @@ function displayUrl(options?: {
   const path = withKidsSkin(
     withMatchOrigin(isBracketMatchId(bout) ? scoreboardPath(bout) : '/match', {
       fromSuite: Boolean(options?.fromSuite),
+      fromUnlimited: Boolean(options?.fromUnlimited),
       whiteBoard: Boolean(options?.whiteBoard),
     }),
     options?.kidsSkin ?? null,
@@ -30,6 +32,7 @@ function displayUrl(options?: {
 
 export async function openOrCastDisplay(options?: {
   fromSuite?: boolean;
+  fromUnlimited?: boolean;
   whiteBoard?: boolean;
   kidsSkin?: KidsSkinId | null;
 }): Promise<'cast' | 'window'> {
@@ -56,6 +59,7 @@ export async function openOrCastDisplay(options?: {
 
 export function openDisplayWindow(options?: {
   fromSuite?: boolean;
+  fromUnlimited?: boolean;
   whiteBoard?: boolean;
   kidsSkin?: KidsSkinId | null;
 }): void {

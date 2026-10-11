@@ -75,6 +75,7 @@ import {
   UNLIMITED_ROSTER_PATH,
   toolEyebrow,
   tournamentToolLabel,
+  withHubFrom,
   withSuiteFrom,
 } from './productNames.ts';
 
@@ -310,6 +311,10 @@ test('Suite origin stays on Suite links and leaves other paths alone', () => {
   assert.equal(withSuiteFrom('/match/control?focus=round', true), '/match/control?focus=round&from=suite');
   assert.equal(withSuiteFrom('/match?bout=final-0', true), '/match?bout=final-0&from=suite');
   assert.equal(withSuiteFrom('/training?from=suite', true), '/training?from=suite');
+  assert.equal(withHubFrom('/match?bout=sf-0', null), '/match?bout=sf-0');
+  assert.equal(withHubFrom('/match?bout=sf-0', 'suite'), '/match?bout=sf-0&from=suite');
+  assert.equal(withHubFrom('/tournament', 'unlimited'), '/tournament?from=unlimited');
+  assert.equal(withHubFrom('/match?bout=sf-0&kids=ocean', 'unlimited'), '/match?bout=sf-0&kids=ocean&from=unlimited');
 });
 
 test('Owner tournament tool is Tournament Software; Coach keeps Mock Tournament', () => {
@@ -361,6 +366,8 @@ test('Pro unlock includes Coach tools and Coach-only unlock still stands alone',
   assert.equal(isPlainCoachTournament('suite', true), false);
   assert.equal(isPlainCoachTournament('suite', false), false);
   assert.equal(isPlainCoachTournament(null, false), false);
+  assert.equal(isPlainCoachTournament('unlimited', false), false);
+  assert.equal(isPlainCoachTournament('unlimited', true), true);
 });
 
 test('Footer states ownership, alpha testing, and the feedback email only', () => {
