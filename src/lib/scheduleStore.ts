@@ -4,8 +4,10 @@ import {
   createClassId,
   createSpecialId,
   defaultGymCalendar,
+  isClassLevel,
   isScheduleTemplate,
   isWeekday,
+  type ClassLevel,
   normalizeGymCalendar,
   SAMPLE_WEEK_NOTES,
   SAMPLE_WEEK_QR,
@@ -44,8 +46,11 @@ export {
   formatTimeGroupLine,
   classesAt,
   classesInHour,
-  classProgram,
+  CLASS_LEVELS,
+  CLASS_LEVEL_META,
+  CLASS_LEVEL_ORDER,
   groupClassesByTime,
+  isClassLevel,
   isScheduleTemplate,
   isWeekday,
   normalizeQrUrl,
@@ -62,7 +67,7 @@ export {
   weekHourLanes,
   weekTimeRows,
   weekdayFromJsDay,
-  type ClassProgram,
+  type ClassLevel,
   type ClassTimeGroup,
   type GymCalendarState,
   type MonthDay,
@@ -211,6 +216,7 @@ export function addClass(
   title: string,
   location = '',
   subtitle = '',
+  level: ClassLevel = 'none',
 ): WeeklyClassSlot | null {
   const next: WeeklyClassSlot = {
     id: createClassId(),
@@ -220,6 +226,7 @@ export function addClass(
     title: title.trim(),
     location: location.trim(),
     subtitle: subtitle.trim(),
+    level: isClassLevel(level) ? level : 'none',
   };
   if (!next.time && !next.title) return null;
   patch({ classes: sortClasses([...state.classes, next]) });
@@ -238,7 +245,7 @@ export function addParallelClass(id: string): WeeklyClassSlot | null {
 
 export function updateClass(
   id: string,
-  partial: Partial<Pick<WeeklyClassSlot, 'day' | 'time' | 'title' | 'location' | 'subtitle'>>,
+  partial: Partial<Pick<WeeklyClassSlot, 'day' | 'time' | 'title' | 'location' | 'subtitle' | 'level'>>,
 ): void {
   patch({
     classes: sortClasses(
@@ -252,6 +259,7 @@ export function updateClass(
           title: typeof partial.title === 'string' ? partial.title : row.title,
           location: typeof partial.location === 'string' ? partial.location : row.location,
           subtitle: typeof partial.subtitle === 'string' ? partial.subtitle : row.subtitle,
+          level: isClassLevel(partial.level) ? partial.level : (row.level ?? 'none'),
         };
       }),
     ),

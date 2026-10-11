@@ -8,13 +8,13 @@ import {
   WEEKDAYS,
   WEEKDAY_LABELS,
   WEEKDAY_SHORT,
-  classProgram,
+  CLASS_LEVEL_META,
   classesOnDay,
   formatBoardStamp,
   monthWeeks,
   normalizeQrUrl,
   noticeLines,
-  type ClassProgram,
+  type ClassLevel,
   type MonthDay,
   type SpecialDate,
   type WeeklyClassSlot,
@@ -22,8 +22,8 @@ import {
 
 type DayGlance = {
   count: number;
-  programs: ClassProgram[];
-  extraPrograms: number;
+  levels: ClassLevel[];
+  extraLevels: number;
   special: string | null;
 };
 
@@ -43,21 +43,21 @@ function glanceForDay(
   classes: readonly WeeklyClassSlot[],
   specials: readonly SpecialDate[],
 ): DayGlance {
-  if (!day.inMonth) return { count: 0, programs: [], extraPrograms: 0, special: null };
-  const seen = new Set<string>();
-  const programs: ClassProgram[] = [];
+  if (!day.inMonth) return { count: 0, levels: [], extraLevels: 0, special: null };
+  const seen = new Set<ClassLevel>();
+  const levels: ClassLevel[] = [];
   for (const item of classesOnDay(classes, day.weekday)) {
-    const program = classProgram(item.title);
-    if (seen.has(program.id)) continue;
-    seen.add(program.id);
-    programs.push(program);
+    const level = item.level ?? 'none';
+    if (seen.has(level)) continue;
+    seen.add(level);
+    levels.push(level);
   }
   const special = specials.find((item) => item.date === day.iso);
   const specialLabel = special ? (special.title.trim() || special.body.trim() || 'Special').slice(0, 14) : null;
   return {
     count: classesOnDay(classes, day.weekday).length,
-    programs: programs.slice(0, 3),
-    extraPrograms: Math.max(0, programs.length - 3),
+    levels: levels.slice(0, 3),
+    extraLevels: Math.max(0, levels.length - 3),
     special: specialLabel,
   };
 }
@@ -211,15 +211,15 @@ export function ScheduleMonthBoard({ variant = 'stage', onOpenOptions }: Props) 
                       {glance.count} {glance.count === 1 ? 'class' : 'classes'}
                     </p>
                   ) : null}
-                  {glance.programs.length ? (
+                  {glance.levels.length ? (
                     <div className="month-cast__chips">
-                      {glance.programs.map((program) => (
-                        <span key={program.id} className="month-cast__chip" data-program={program.id}>
-                          {program.label}
+                      {glance.levels.map((level) => (
+                        <span key={level} className="month-cast__chip" data-level={level}>
+                          {CLASS_LEVEL_META[level].short}
                         </span>
                       ))}
-                      {glance.extraPrograms > 0 ? (
-                        <span className="month-cast__more">+{glance.extraPrograms}</span>
+                      {glance.extraLevels > 0 ? (
+                        <span className="month-cast__more">+{glance.extraLevels}</span>
                       ) : null}
                     </div>
                   ) : null}
