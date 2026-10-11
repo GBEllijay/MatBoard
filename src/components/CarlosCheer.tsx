@@ -62,7 +62,11 @@ export function CarlosCheer({
             </span>
           ))}
         </p>
-        <img src={CARLOS_ASSET} alt="" width={845} height={1200} />
+        <div className="kids-carlos__portrait">
+          <img src={CARLOS_ASSET} alt="" width={845} height={1200} />
+          {/* Head of carlos.webp (alpha > 40): x 22–72%, y 2–42%, chin included. */}
+          <span className="kids-carlos__face" aria-hidden="true" />
+        </div>
       </figure>
     </div>
   );

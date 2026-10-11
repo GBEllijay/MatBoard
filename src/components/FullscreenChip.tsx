@@ -7,17 +7,17 @@ type Props = {
 };
 
 export function FullscreenChip({ supported, active, nudge, shortcut, onToggle }: Props) {
-  if (!supported || active) return null;
+  if (!supported) return null;
   return (
     <button
       type="button"
-      className={`chip play-fs${nudge ? ' chip--gold play-fs--nudge' : ''}`}
+      className={`chip play-fs${nudge && !active ? ' chip--gold play-fs--nudge' : ''}`}
       onClick={(event) => {
         event.stopPropagation();
         onToggle();
       }}
     >
-      {shortcut ? 'Fullscreen · F' : 'Fullscreen'}
+      {active ? 'Exit fullscreen' : shortcut ? 'Fullscreen · F' : 'Fullscreen'}
     </button>
   );
 }

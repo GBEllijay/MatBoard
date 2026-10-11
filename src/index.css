@@ -5530,8 +5530,32 @@ a.saver-folder--link {
   opacity: 1;
 }
 
+/* Scoreboard landscape: park Fullscreen above the blue name and left of the
+   score columns. The top-right corner is the Penalties label. */
+.display.play--landscape .play-fs {
+  position: absolute;
+  top: calc(0.18rem + var(--safe-t));
+  left: calc(0.4rem + var(--safe-l));
+  right: auto;
+  min-height: 28px;
+  padding: 0.12rem 0.55rem;
+  font-size: 0.72rem;
+  z-index: 6;
+}
+
 .play--fs .play-fs {
   display: none;
+}
+
+/* Scoreboard keeps an exit control. Training and other play pages stay hidden. */
+.display.play--fs .play-fs {
+  display: inline-flex;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.display.display--linked.play--landscape .play-fs {
+  left: calc(3.15rem + var(--safe-l));
 }
 
 /* Desktop / HDMI: read at TV distance, hide leftover phone chrome. */
@@ -13874,6 +13898,16 @@ a.plan-pick {
   overflow: hidden;
 }
 
+/* Head box of public/assets/kids/carlos.webp. The cheer bubble must miss this rect. */
+.kids-carlos__face {
+  position: absolute;
+  left: 22%;
+  top: 2%;
+  width: 50%;
+  height: 40%;
+  pointer-events: none;
+}
+
 /* Bracket champion: a short corner strip under the tree, not a viewport overlay.
    Overflow stays clipped so the figure and bubble cannot cover semis, SCORE, or Decision. */
 .kids-mascot-dock {
@@ -13904,15 +13938,26 @@ a.plan-pick {
   position: relative;
   left: auto;
   bottom: auto;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 0.35rem;
   width: auto;
   height: 4.35rem;
   margin: 0;
   animation: kids-carlos-corner-in 0.45s cubic-bezier(0.16, 0.84, 0.32, 1) both;
 }
 
-.kids-carlos--corner .kids-carlos__figure img {
-  width: auto;
+.kids-carlos--corner .kids-carlos__portrait {
+  flex: 0 0 auto;
+  width: calc(4.35rem * 845 / 1200);
   height: 4.35rem;
+  aspect-ratio: auto;
+}
+
+.kids-carlos--corner .kids-carlos__portrait img {
+  width: 100%;
+  height: 100%;
 }
 
 .kids-carlos--corner .kids-carlos__bubble {
@@ -13920,11 +13965,15 @@ a.plan-pick {
   position: relative;
   top: auto;
   left: auto;
+  align-self: flex-end;
   transform: none;
-  max-width: 12rem;
-  margin: 0 0 0.45rem;
-  padding: 0.4rem 0.65rem;
-  font-size: 0.78rem;
+  max-width: 11rem;
+  max-height: 2.15rem;
+  margin: 0 0 0.12rem;
+  padding: 0.28rem 0.55rem;
+  overflow: hidden;
+  font-size: 0.72rem;
+  line-height: 1.1;
 }
 
 .kids-carlos--corner .kids-carlos__cheer,
@@ -13937,13 +13986,12 @@ a.plan-pick {
 }
 
 .kids-carlos--corner .kids-carlos__bubble::after {
-  left: -0.45rem;
+  left: -0.42rem;
   right: auto;
-  bottom: 0.7rem;
-  border: 0.45rem solid transparent;
+  bottom: 0.45rem;
+  border: 0.42rem solid transparent;
   border-right-color: #fff;
-  border-top-color: transparent;
-  border-bottom-color: transparent;
+  border-left-width: 0;
 }
 
 .kids-carlos--corner .kids-confetti {
@@ -13965,8 +14013,8 @@ a.plan-pick {
   }
 }
 
-/* Match scoreboard: stay on the board, above the win splash, and let score taps through.
-   Rest on the right so the athlete names on the left stay readable. */
+/* Match scoreboard: full-body slide-in on the right, same size as before.
+   The bubble sits to the left of his head, with the tail pointing at his shoulder. */
 .kids-carlos--board {
   position: absolute;
   z-index: 20;
@@ -13980,16 +14028,23 @@ a.plan-pick {
 }
 
 .kids-carlos--board .kids-carlos__bubble {
-  top: auto;
-  right: 64%;
-  bottom: 82%;
+  --carlos-bubble-shift: 0px;
+  top: 0;
+  right: calc(78% + 0.75rem);
+  bottom: auto;
   left: auto;
-  max-width: min(14rem, 36vw);
+  max-width: min(14rem, 36vw, calc(100vw - 0.82 * min(24vw, 280px) - 1.4rem));
+  transform: none;
 }
 
 .kids-carlos--board .kids-carlos__bubble::after {
   left: auto;
-  right: 1.1rem;
+  right: -0.42rem;
+  bottom: 0.55rem;
+  border: 0.42rem solid transparent;
+  border-left-color: #fff;
+  border-right-width: 0;
+  border-bottom-width: 0.42rem;
 }
 
 @keyframes kids-carlos-in-right {
@@ -14016,15 +14071,22 @@ a.plan-pick {
   animation: kids-carlos-in 0.72s cubic-bezier(0.16, 0.84, 0.32, 1) both;
 }
 
-.kids-carlos__figure img {
+.kids-carlos__portrait {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 845 / 1200;
+}
+
+.kids-carlos__portrait img {
   display: block;
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: fill;
   filter: drop-shadow(0 16px 22px rgba(0, 0, 0, 0.28));
 }
 
-/* Shared by every Carlos speech bubble, bracket and match board.
-   The same nudge keeps the card off his left eye. */
+/* Shared by every Carlos speech bubble. The scoreboard and the corner each
+   place this card off his face. */
 .kids-carlos__bubble {
   --carlos-bubble-shift: 1.6rem;
   position: absolute;
