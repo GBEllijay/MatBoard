@@ -1,6 +1,6 @@
 /**
- * Draft fundamentals list for owner review.
- * Names only. Every examples list is empty until the owner asks for worked examples.
+ * Draft fundamentals list for owner review of the names.
+ * Names only is the shipping decision. The examples field stays on each item and stays empty.
  */
 
 import type { FundamentalsCatalog, FundamentalsCategory, FundamentalsItem } from './types.ts';

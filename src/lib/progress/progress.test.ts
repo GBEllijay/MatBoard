@@ -4,6 +4,7 @@ import { FUNDAMENTALS_CATALOG } from './catalog.ts';
 import {
   exportProgressCsv,
   exportProgressPacket,
+  importCoachSuggestion,
   mergeCoachPacket,
   mergeStudentProgress,
   parseFundamentalsCatalog,
@@ -11,10 +12,20 @@ import {
   progressHandoffFileName,
   PROGRESS_CSV_HEADERS,
   searchJournal,
+  sharedCheckpointId,
   sharedCriterionId,
 } from './format.ts';
 import { parseHandoffPacket } from '../driveHandoff.ts';
-import type { CoachPlanPacket, JournalEntry, StudentProgressReport } from './types.ts';
+import {
+  ACADEMY_MEMBER_CODE_LABEL,
+  ACADEMY_MEMBER_DISCOUNT_PERCENT,
+  PRO_INCLUDED_STUDENT_LICENSES,
+  STUDENT_LICENSE_MORE_NOTE,
+  type CoachFeedbackPacket,
+  type CoachPlanPacket,
+  type JournalEntry,
+  type StudentProgressReport,
+} from './types.ts';
 
 function sampleReport(): StudentProgressReport {
   return {
@@ -27,20 +38,34 @@ function sampleReport(): StudentProgressReport {
       id: 'student-alex',
       displayName: 'Alex',
       gymName: 'GB1',
-      beltLevel: { belt: 'white', levelKey: '' },
+      belt: 'white',
       startedOn: '2026-01-15',
+      licenseSource: '',
     },
     rubric: {
       id: 'rubric-alex',
-      beltLevel: { belt: 'white', levelKey: '' },
-      toward: 'Blue',
-      criteria: [
+      levels: [
         {
-          criterionId: sharedCriterionId('white', 'closed guard'),
-          label: 'Closed guard',
-          category: 'positions',
-          met: null,
-          note: '',
+          id: 'level-white',
+          name: 'White',
+          belt: 'white',
+          checkpoints: [
+            {
+              id: sharedCheckpointId('white', 'guard'),
+              name: 'Guard',
+              met: true,
+              note: '',
+              criteria: [
+                {
+                  id: sharedCriterionId('white', 'closed guard'),
+                  requirement: 'Keep closed guard and finish a sweep.',
+                  techniqueRefs: [{ id: 'sweep.scissor', name: 'Scissor sweep' }],
+                  met: true,
+                  note: '',
+                },
+              ],
+            },
+          ],
         },
       ],
     },
@@ -89,6 +114,9 @@ function sampleReport(): StudentProgressReport {
     calendar: [
       { id: 'day-1', date: '2026-02-01', title: 'Fundamentals', kind: 'class', note: '' },
     ],
+    goals: [
+      { id: 'goal-scissor', name: 'Finish the scissor sweep live', note: '', met: false },
+    ],
   };
 }
 
@@ -102,6 +130,12 @@ test('a progress report round-trips and a Drive handoff reader leaves it alone',
   assert.equal(progressHandoffFileName(report), 'advantage-handoff-student-progress-report-report-alex-10.json');
   assert.equal(parseHandoffPacket(text), null);
   assert.equal(sharedCriterionId('white', 'Closed guard'), 'rubric.white.closed-guard');
+  assert.equal(sharedCheckpointId('white', 'Guard'), 'checkpoint.white.guard');
+  const omittedLicense = structuredClone(report) as StudentProgressReport & { profile: { licenseSource?: string } };
+  delete omittedLicense.profile.licenseSource;
+  const filled = parseProgressPacket(JSON.stringify(omittedLicense));
+  assert.equal(filled.ok, true);
+  if (filled.ok && filled.value.kind === 'student-progress-report') assert.equal(filled.value.profile.licenseSource, '');
 });
 
 test('validation rejects a bad game tag, a file payload, and a future schema', () => {
@@ -177,7 +211,7 @@ test('search matches journal text and technique names', () => {
   assert.deepEqual(searchJournal(journal, 'omoplata'), []);
 });
 
-test('the draft fundamentals catalog is names only and still accepts examples', () => {
+test('names only is the shipping decision and the examples field stays empty', () => {
   const parsed = parseFundamentalsCatalog(FUNDAMENTALS_CATALOG);
   assert.equal(parsed.ok, true);
   if (!parsed.ok) return;
@@ -242,7 +276,7 @@ test('coach plan and feedback round-trip, and an older coach file does not repla
       planId: 'plan-1',
       issuedOn: '2026-05-20',
       synopsis: 'The scissor sweep is closer. Keep the pendulum for B game.',
-      criteria: [{ criterionId: 'rubric.white.closed-guard', note: 'Showing up in live rounds.', met: true }],
+      suggestions: [{ id: 'note-1', targetId: 'rubric.white.closed-guard', note: 'Showing up in live rounds.' }],
     },
   }));
   assert.equal(feedback.ok, true);
@@ -262,8 +296,79 @@ test('csv export uses one header row a spreadsheet can filter by sheet', () => {
   const rows = csv.replace(/^\uFEFF/, '').trim().split('\r\n');
   assert.equal(rows[0], PROGRESS_CSV_HEADERS.join(','));
   assert.match(rows[1], /^Profile,student-alex,/);
-  assert.match(rows[2], /^Rubric,/);
+  assert.match(rows[2], /^Level,level-white,/);
+  assert.match(csv, /Checkpoint,checkpoint\.white\.guard,/);
+  assert.match(csv, /Criterion,rubric\.white\.closed-guard,/);
+  assert.match(csv, /Goal,goal-scissor,/);
   assert.match(csv, /Journal,journal-cycle-1,2026-02-01/);
   assert.match(csv, /Scissor sweep/);
   assert.match(csv, /Checklist,check-custom/);
+});
+
+test('importing a coach plan or coach feedback leaves student marks, journal, and goals untouched', () => {
+  const report = sampleReport();
+  const plan: CoachPlanPacket = {
+    schemaVersion: 1,
+    kind: 'coach-plan',
+    id: 'plan-1',
+    studentId: 'student-alex',
+    updatedAt: 50,
+    plan: {
+      title: 'Work on before next promotion',
+      issuedOn: '2026-05-01',
+      note: 'Suggest marking the guard checkpoint unmet and rewriting the journal.',
+      focus: [
+        {
+          id: 'focus-1',
+          criterionId: 'rubric.white.closed-guard',
+          catalogItemId: 'sweep.scissor',
+          name: 'Scissor sweep',
+          note: 'Finish the angle.',
+        },
+      ],
+    },
+  };
+  const feedback: CoachFeedbackPacket = {
+    schemaVersion: 1,
+    kind: 'coach-feedback',
+    id: 'feedback-1',
+    studentId: 'student-alex',
+    updatedAt: 60,
+    feedback: {
+      planId: 'plan-1',
+      issuedOn: '2026-05-20',
+      synopsis: 'Suggestion only: treat the scissor sweep as not yet met and change the goal.',
+      suggestions: [{ id: 'note-1', targetId: 'checkpoint.white.guard', note: 'Keep the collar earlier.' }],
+    },
+  };
+  const fromPlan = importCoachSuggestion(report, plan);
+  const fromFeedback = importCoachSuggestion(report, feedback);
+  assert.deepEqual(fromPlan.report, report);
+  assert.deepEqual(fromFeedback.report, report);
+  assert.equal(fromPlan.report.rubric.levels[0].checkpoints[0].met, true);
+  assert.equal(fromPlan.report.rubric.levels[0].checkpoints[0].criteria[0].met, true);
+  assert.equal(fromFeedback.report.journal[0].body, report.journal[0].body);
+  assert.equal(fromFeedback.report.goals[0].met, false);
+  assert.equal(fromFeedback.packet.kind, 'coach-feedback');
+
+  const marked = parseProgressPacket(JSON.stringify({
+    ...feedback,
+    feedback: { ...feedback.feedback, suggestions: [{ ...feedback.feedback.suggestions[0], met: false }] },
+  }));
+  assert.equal(marked.ok, false);
+  if (!marked.ok) assert.match(marked.errors.join('\n'), /cannot set student marks/);
+
+  const stripes = parseProgressPacket(JSON.stringify({ ...report, stripes: 2 }));
+  assert.equal(stripes.ok, false);
+  if (!stripes.ok) assert.match(stripes.errors.join('\n'), /checkpoints between levels/);
+});
+
+test('the license plan is recorded for a later step', () => {
+  assert.equal(ACADEMY_MEMBER_CODE_LABEL, 'Academy Member');
+  assert.equal(ACADEMY_MEMBER_DISCOUNT_PERCENT, 25);
+  assert.equal(PRO_INCLUDED_STUDENT_LICENSES, 10);
+  assert.equal(
+    STUDENT_LICENSE_MORE_NOTE,
+    'Gyms can email advantageappllc@gmail.com to purchase additional Student Edition licenses at a discount.',
+  );
 });

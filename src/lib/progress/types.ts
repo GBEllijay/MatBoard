@@ -43,53 +43,80 @@ export const PROGRESS_AMENDMENTS_MAX = 50;
 export const PROGRESS_CHECKLIST_MAX = 400;
 export const PROGRESS_CALENDAR_MAX = 500;
 export const PROGRESS_CRITERIA_MAX = 200;
+export const PROGRESS_CHECKPOINTS_MAX = 100;
+export const PROGRESS_LEVELS_MAX = 20;
+export const PROGRESS_GOALS_MAX = 100;
 export const PROGRESS_FOCUS_MAX = 100;
 
 /**
- * Belt plus an open level key. The owner has not chosen stripes versus a
- * next-belt gate, so this file stores the key as text and does not count stripes.
+ * How this Student Edition copy was issued. Empty when the file does not say.
+ * The code is not tied to the buyer.
  */
-export type BeltLevel = {
-  belt: ProgressBelt;
-  levelKey: string;
-};
+export const LICENSE_SOURCES = ['academy-member', 'pro-grant', 'additional'] as const;
+export type LicenseSource = '' | (typeof LICENSE_SOURCES)[number];
+
+/** Coach buyers, and coaches seated under Pro, share this 25% code with no use limit. */
+export const ACADEMY_MEMBER_CODE_LABEL = 'Academy Member';
+export const ACADEMY_MEMBER_DISCOUNT_PERCENT = 25;
+
+/** Free Student Edition licenses included with Pro. The head instructor sends them. */
+export const PRO_INCLUDED_STUDENT_LICENSES = 10;
+
+/** Copy for a later screen. Not shown in this step. */
+export const STUDENT_LICENSE_MORE_NOTE =
+  'Gyms can email advantageappllc@gmail.com to purchase additional Student Edition licenses at a discount.';
 
 export type StudentProfile = {
   id: string;
   displayName: string;
   gymName: string;
-  beltLevel: BeltLevel;
+  belt: ProgressBelt;
   /** YYYY-MM-DD, or empty when the student has not set a start date. */
   startedOn: string;
+  /** Optional. Blank when this file does not record how the license was issued. */
+  licenseSource: LicenseSource;
 };
 
 /**
- * One line on the coach rubric and the student rubric.
- * `id` is the match key. Labels may be edited. Ids may not.
+ * One requirement inside a checkpoint.
+ * `id` matches the coach rubric. The student sets `met`. A coach file cannot.
  */
 export type RubricCriterion = {
   id: string;
-  belt: ProgressBelt;
-  levelKey: string;
-  label: string;
-  category: string;
-};
-
-/** The student's mark against one shared criterion id. */
-export type StudentCriterionMark = {
-  criterionId: string;
-  label: string;
-  category: string;
+  requirement: string;
+  techniqueRefs: TechniqueRef[];
   met: boolean | null;
   note: string;
 };
 
+/** A checkpoint between levels. The student marks it met. */
+export type RubricCheckpoint = {
+  id: string;
+  name: string;
+  met: boolean | null;
+  note: string;
+  criteria: RubricCriterion[];
+};
+
+/** One level on the rubric. Checkpoints are the steps inside it. */
+export type RubricLevel = {
+  id: string;
+  name: string;
+  belt: ProgressBelt;
+  checkpoints: RubricCheckpoint[];
+};
+
 export type StudentRubric = {
   id: string;
-  beltLevel: BeltLevel;
-  /** Next belt or level, in words. Empty until someone sets it. */
-  toward: string;
-  criteria: StudentCriterionMark[];
+  levels: RubricLevel[];
+};
+
+/** A goal the student owns. Coach files do not write these. */
+export type StudentGoal = {
+  id: string;
+  name: string;
+  note: string;
+  met: boolean | null;
 };
 
 /** One fundamentals name. `examples` stays empty while the sheet is names only. */
@@ -176,18 +203,20 @@ export type CoachPlan = {
   focus: CoachPlanFocus[];
 };
 
-export type CoachFeedbackNote = {
-  criterionId: string;
+/** A coach note. It names a checkpoint or criterion. It does not mark it met. */
+export type CoachSuggestion = {
+  id: string;
+  /** Shared checkpoint or criterion id, or empty for a general note. */
+  targetId: string;
   note: string;
-  met: boolean | null;
 };
 
-/** Coach → student. A short synopsis, plus optional marks on shared criterion ids. */
+/** Coach → student. Notes only. Import does not change the student's rubric, journal, or goals. */
 export type CoachFeedback = {
   planId: string;
   issuedOn: string;
   synopsis: string;
-  criteria: CoachFeedbackNote[];
+  suggestions: CoachSuggestion[];
 };
 
 type PacketBase = {
@@ -204,6 +233,7 @@ export type StudentProgressReport = PacketBase & {
   checklist: StudentChecklistEntry[];
   journal: JournalEntry[];
   calendar: CalendarEvent[];
+  goals: StudentGoal[];
 };
 
 export type CoachPlanPacket = PacketBase & {

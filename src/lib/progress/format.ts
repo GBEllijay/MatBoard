@@ -12,26 +12,34 @@ import {
   PROGRESS_BELTS,
   PROGRESS_BODY_MAX,
   PROGRESS_CALENDAR_MAX,
+  LICENSE_SOURCES,
   PROGRESS_CHECKLIST_MAX,
+  PROGRESS_CHECKPOINTS_MAX,
   PROGRESS_CRITERIA_MAX,
   PROGRESS_EXAMPLE_MAX,
   PROGRESS_EXAMPLES_MAX,
   PROGRESS_FOCUS_MAX,
+  PROGRESS_GOALS_MAX,
   PROGRESS_ID_MAX,
   PROGRESS_JOURNAL_MAX,
+  PROGRESS_LEVELS_MAX,
   PROGRESS_NAME_MAX,
   PROGRESS_NOTE_MAX,
   PROGRESS_PACKET_KINDS,
   PROGRESS_SCHEMA_VERSION,
   PROGRESS_SYNOPSIS_MAX,
   type Amendment,
+  type CoachSuggestion,
   type FundamentalsCatalog,
   type FundamentalsCategory,
   type FundamentalsItem,
+  type LicenseSource,
+  type RubricCheckpoint,
+  type RubricCriterion,
+  type RubricLevel,
   type CalendarEvent,
   type CalendarKind,
   type CoachFeedback,
-  type CoachFeedbackNote,
   type CoachFeedbackPacket,
   type CoachPlan,
   type CoachPlanFocus,
@@ -43,7 +51,7 @@ import {
   type ProgressPacket,
   type ProgressParse,
   type StudentChecklistEntry,
-  type StudentCriterionMark,
+  type StudentGoal,
   type StudentProfile,
   type StudentProgressReport,
   type StudentRubric,
@@ -75,10 +83,16 @@ export const PROGRESS_CSV_HEADERS = [
   'Catalog item id',
 ] as const;
 
-/** Shared rubric id. Coach and student files match on this, not on the label. */
+/** Shared criterion id. Coach notes can name it. Only the student file stores whether it is met. */
 export function sharedCriterionId(belt: ProgressBelt, slug: string): string {
   const clean = slug.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   return `rubric.${belt}.${clean || 'item'}`;
+}
+
+/** Shared checkpoint id. Checkpoints are the steps between levels. */
+export function sharedCheckpointId(belt: ProgressBelt, slug: string): string {
+  const clean = slug.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  return `checkpoint.${belt}.${clean || 'item'}`;
 }
 
 export function progressHandoffFileName(packet: Pick<ProgressPacket, 'kind' | 'id' | 'updatedAt'>): string {
@@ -105,6 +119,7 @@ export function parseProgressPacket(text: string): ProgressParse {
 export function parseProgressValue(raw: unknown): ProgressParse {
   const errors: string[] = [];
   if (packetCarriesBytes(raw)) errors.push('A progress file cannot carry photos or videos.');
+  if (carriesStripeKey(raw)) errors.push('Belt progress uses checkpoints between levels.');
   const record = asRecord(raw);
   if (!record) return { ok: false, errors: ['A progress file must be a JSON object.'] };
   if (record.schemaVersion !== PROGRESS_SCHEMA_VERSION) {
@@ -133,8 +148,12 @@ export function parseProgressValue(raw: unknown): ProgressParse {
       checklist: readChecklist(record.checklist, errors),
       journal: readJournal(record.journal, errors),
       calendar: readCalendar(record.calendar, errors),
+      goals: readGoals(record.goals, errors),
     };
     return errors.length ? { ok: false, errors } : { ok: true, value };
+  }
+  if (kind === 'coach-plan' || kind === 'coach-feedback') {
+    if (carriesStudentMark(record)) errors.push('A coach file cannot set student marks, checkpoints, journal, or goals.');
   }
   if (kind === 'coach-plan') {
     const value: CoachPlanPacket = {
@@ -178,14 +197,28 @@ export function mergeStudentProgress(local: StudentProgressReport, incoming: Stu
   }
   mergeRubric(report, incoming, conflicts);
   mergeChecklist(report, incoming, addedChecklist, conflicts);
+  mergeGoals(report, incoming, conflicts);
   mergeJournal(report, incoming, addedJournal, appendedAmendments, conflicts);
   mergeCalendar(report, incoming, conflicts);
   return { report, appendedAmendments, addedJournal, addedChecklist, conflicts };
 }
 
 /**
- * A coach plan or feedback file is one snapshot.
- * A newer updatedAt for the same id replaces it. An older file stays aside.
+ * Keep a coach plan or feedback file beside the student report.
+ * The report that comes back is the student's copy. Marks, checkpoints, journal, and goals stay as they were.
+ * The student can read the suggestion and later choose what to write on their own file.
+ */
+export function importCoachSuggestion(
+  report: StudentProgressReport,
+  packet: CoachPlanPacket | CoachFeedbackPacket,
+): { report: StudentProgressReport; packet: CoachPlanPacket | CoachFeedbackPacket } {
+  return { report: structuredClone(report), packet: structuredClone(packet) };
+}
+
+/**
+ * A coach plan or feedback file is one snapshot of suggestions.
+ * A newer updatedAt for the same id replaces that suggestion. An older file stays aside.
+ * This does not write the student's rubric, journal, or goals.
  */
 export function mergeCoachPacket<T extends CoachPlanPacket | CoachFeedbackPacket>(
   local: T | null,
@@ -249,26 +282,71 @@ function journalHaystack(entry: JournalEntry): string {
 }
 
 function profileText(profile: StudentProfile): string {
-  return [profile.id, profile.displayName, profile.gymName, profile.beltLevel.belt, profile.beltLevel.levelKey, profile.startedOn].join('\n');
+  return [profile.id, profile.displayName, profile.gymName, profile.belt, profile.licenseSource, profile.startedOn].join('\n');
 }
 
 function mergeRubric(report: StudentProgressReport, incoming: StudentProgressReport, conflicts: string[]): void {
-  const byId = new Map(report.rubric.criteria.map((mark) => [mark.criterionId, mark]));
-  for (const mark of incoming.rubric.criteria) {
-    const current = byId.get(mark.criterionId);
+  const levels = new Map(report.rubric.levels.map((level) => [level.id, level]));
+  for (const level of incoming.rubric.levels) {
+    const current = levels.get(level.id);
     if (!current) {
-      report.rubric.criteria.push(structuredClone(mark));
+      report.rubric.levels.push(structuredClone(level));
       continue;
     }
-    current.label = preferText(current.label, mark.label, `Rubric ${mark.criterionId} label was kept.`, conflicts);
-    current.category = preferText(current.category, mark.category, `Rubric ${mark.criterionId} category was kept.`, conflicts);
-    current.note = preferText(current.note, mark.note, `Rubric ${mark.criterionId} note was kept.`, conflicts);
-    current.met = preferMet(current.met, mark.met, `Rubric ${mark.criterionId} mark was kept.`, conflicts);
+    current.name = preferText(current.name, level.name, `Level ${level.id} name was kept.`, conflicts);
+    if (current.belt !== level.belt) conflicts.push(`Level ${level.id} belt was kept.`);
+    mergeCheckpoints(current, level, conflicts);
   }
-  if (report.rubric.toward !== incoming.rubric.toward && incoming.rubric.toward && report.rubric.toward) {
-    conflicts.push('Rubric target on this device was kept.');
-  } else if (!report.rubric.toward) {
-    report.rubric.toward = incoming.rubric.toward;
+}
+
+function mergeCheckpoints(local: RubricLevel, incoming: RubricLevel, conflicts: string[]): void {
+  const byId = new Map(local.checkpoints.map((checkpoint) => [checkpoint.id, checkpoint]));
+  for (const checkpoint of incoming.checkpoints) {
+    const current = byId.get(checkpoint.id);
+    if (!current) {
+      local.checkpoints.push(structuredClone(checkpoint));
+      continue;
+    }
+    current.name = preferText(current.name, checkpoint.name, `Checkpoint ${checkpoint.id} name was kept.`, conflicts);
+    current.note = preferText(current.note, checkpoint.note, `Checkpoint ${checkpoint.id} note was kept.`, conflicts);
+    current.met = preferMet(current.met, checkpoint.met, `Checkpoint ${checkpoint.id} mark was kept.`, conflicts);
+    mergeCriteria(current, checkpoint, conflicts);
+  }
+}
+
+function mergeCriteria(local: RubricCheckpoint, incoming: RubricCheckpoint, conflicts: string[]): void {
+  const byId = new Map(local.criteria.map((criterion) => [criterion.id, criterion]));
+  for (const criterion of incoming.criteria) {
+    const current = byId.get(criterion.id);
+    if (!current) {
+      local.criteria.push(structuredClone(criterion));
+      continue;
+    }
+    current.requirement = preferText(
+      current.requirement,
+      criterion.requirement,
+      `Criterion ${criterion.id} requirement was kept.`,
+      conflicts,
+    );
+    current.note = preferText(current.note, criterion.note, `Criterion ${criterion.id} note was kept.`, conflicts);
+    current.met = preferMet(current.met, criterion.met, `Criterion ${criterion.id} mark was kept.`, conflicts);
+    if (techniqueKey(current.techniqueRefs) !== techniqueKey(criterion.techniqueRefs)) {
+      conflicts.push(`Criterion ${criterion.id} techniques were kept.`);
+    }
+  }
+}
+
+function mergeGoals(report: StudentProgressReport, incoming: StudentProgressReport, conflicts: string[]): void {
+  const byId = new Map(report.goals.map((goal) => [goal.id, goal]));
+  for (const goal of incoming.goals) {
+    const current = byId.get(goal.id);
+    if (!current) {
+      report.goals.push(structuredClone(goal));
+      continue;
+    }
+    current.name = preferText(current.name, goal.name, `Goal ${goal.id} name was kept.`, conflicts);
+    current.note = preferText(current.note, goal.note, `Goal ${goal.id} note was kept.`, conflicts);
+    current.met = preferMet(current.met, goal.met, `Goal ${goal.id} mark was kept.`, conflicts);
   }
 }
 
@@ -372,14 +450,15 @@ function readProfile(value: unknown, errors: string[]): StudentProfile {
   const record = asRecord(value);
   if (!record) {
     errors.push('Profile is missing.');
-    return { id: '', displayName: '', gymName: '', beltLevel: { belt: 'white', levelKey: '' }, startedOn: '' };
+    return { id: '', displayName: '', gymName: '', belt: 'white', startedOn: '', licenseSource: '' };
   }
   return {
     id: readId(record.id, 'Profile id', errors),
     displayName: readString(record.displayName, 'Display name', PROGRESS_NAME_MAX, errors),
     gymName: readString(record.gymName, 'Gym name', PROGRESS_NAME_MAX, errors),
-    beltLevel: readBeltLevel(record.beltLevel, 'Profile belt', errors),
+    belt: readBelt(record.belt, 'Profile belt', errors),
     startedOn: readDate(record.startedOn, 'Start date', errors, false),
+    licenseSource: readLicenseSource(record.licenseSource, errors),
   };
 }
 
@@ -387,30 +466,71 @@ function readRubric(value: unknown, errors: string[]): StudentRubric {
   const record = asRecord(value);
   if (!record) {
     errors.push('Rubric is missing.');
-    return { id: '', beltLevel: { belt: 'white', levelKey: '' }, toward: '', criteria: [] };
+    return { id: '', levels: [] };
   }
-  const rows = readList(record.criteria, 'Rubric criteria', PROGRESS_CRITERIA_MAX, errors);
-  const criteria = rows.map((row, index) => readMark(row, index, errors));
-  uniqueIds(criteria.map((mark) => mark.criterionId), 'Rubric criterion', errors);
+  const levels = readList(record.levels, 'Rubric levels', PROGRESS_LEVELS_MAX, errors).map((row, index) =>
+    readLevel(row, index, errors),
+  );
+  uniqueIds(levels.map((level) => level.id), 'Rubric level', errors);
+  uniqueIds(
+    levels.flatMap((level) => level.checkpoints.map((checkpoint) => checkpoint.id)),
+    'Checkpoint',
+    errors,
+  );
+  uniqueIds(
+    levels.flatMap((level) => level.checkpoints.flatMap((checkpoint) => checkpoint.criteria.map((criterion) => criterion.id))),
+    'Rubric criterion',
+    errors,
+  );
+  return { id: readId(record.id, 'Rubric id', errors), levels };
+}
+
+function readLevel(value: unknown, index: number, errors: string[]): RubricLevel {
+  const record = asRecord(value);
+  const label = `Rubric level ${index + 1}`;
+  if (!record) {
+    errors.push(`${label} must be an object.`);
+    return { id: '', name: '', belt: 'white', checkpoints: [] };
+  }
   return {
-    id: readId(record.id, 'Rubric id', errors),
-    beltLevel: readBeltLevel(record.beltLevel, 'Rubric belt', errors),
-    toward: readString(record.toward, 'Rubric target', PROGRESS_NAME_MAX, errors),
-    criteria,
+    id: readId(record.id, `${label} id`, errors),
+    name: readString(record.name, `${label} name`, PROGRESS_NAME_MAX, errors),
+    belt: readBelt(record.belt, label, errors),
+    checkpoints: readList(record.checkpoints, `${label} checkpoints`, PROGRESS_CHECKPOINTS_MAX, errors).map((row, checkpointIndex) =>
+      readCheckpoint(row, `${label} checkpoint ${checkpointIndex + 1}`, errors),
+    ),
   };
 }
 
-function readMark(value: unknown, index: number, errors: string[]): StudentCriterionMark {
+function readCheckpoint(value: unknown, label: string, errors: string[]): RubricCheckpoint {
   const record = asRecord(value);
-  const label = `Rubric criterion ${index + 1}`;
   if (!record) {
     errors.push(`${label} must be an object.`);
-    return { criterionId: '', label: '', category: '', met: null, note: '' };
+    return { id: '', name: '', met: null, note: '', criteria: [] };
   }
   return {
-    criterionId: readId(record.criterionId, `${label} id`, errors),
-    label: readString(record.label, `${label} label`, PROGRESS_NAME_MAX, errors),
-    category: readString(record.category, `${label} category`, PROGRESS_NAME_MAX, errors),
+    id: readId(record.id, `${label} id`, errors),
+    name: readString(record.name, `${label} name`, PROGRESS_NAME_MAX, errors),
+    met: readMet(record.met, label, errors),
+    note: readString(record.note, `${label} note`, PROGRESS_NOTE_MAX, errors),
+    criteria: readList(record.criteria, `${label} criteria`, PROGRESS_CRITERIA_MAX, errors).map((row, index) =>
+      readCriterion(row, `${label} criterion ${index + 1}`, errors),
+    ),
+  };
+}
+
+function readCriterion(value: unknown, label: string, errors: string[]): RubricCriterion {
+  const record = asRecord(value);
+  if (!record) {
+    errors.push(`${label} must be an object.`);
+    return { id: '', requirement: '', techniqueRefs: [], met: null, note: '' };
+  }
+  return {
+    id: readId(record.id, `${label} id`, errors),
+    requirement: readString(record.requirement, `${label} requirement`, PROGRESS_NOTE_MAX, errors),
+    techniqueRefs: readList(record.techniqueRefs, `${label} techniques`, 20, errors).map((row, index) =>
+      readTechniqueRef(row, `${label} technique ${index + 1}`, errors),
+    ),
     met: readMet(record.met, label, errors),
     note: readString(record.note, `${label} note`, PROGRESS_NOTE_MAX, errors),
   };
@@ -568,48 +688,65 @@ function readFocus(value: unknown, index: number, errors: string[]): CoachPlanFo
   };
 }
 
-function readCoachFeedback(value: unknown, errors: string[]): CoachFeedback {
-  const record = asRecord(value);
-  if (!record) {
-    errors.push('Coach feedback is missing.');
-    return { planId: '', issuedOn: '', synopsis: '', criteria: [] };
-  }
-  const criteria = readList(record.criteria, 'Coach feedback criteria', PROGRESS_CRITERIA_MAX, errors).map((row, index) =>
-    readFeedbackNote(row, index, errors),
-  );
-  uniqueIds(criteria.map((item) => item.criterionId).filter(Boolean), 'Coach feedback criterion', errors);
-  return {
-    planId: readOptionalId(record.planId, 'Coach feedback plan id', errors),
-    issuedOn: readDate(record.issuedOn, 'Coach feedback date', errors, true),
-    synopsis: readString(record.synopsis, 'Coach feedback synopsis', PROGRESS_SYNOPSIS_MAX, errors),
-    criteria,
-  };
+function readGoals(value: unknown, errors: string[]): StudentGoal[] {
+  const rows = readList(value, 'Goals', PROGRESS_GOALS_MAX, errors);
+  const goals = rows.map((row, index) => readGoal(row, index, errors));
+  uniqueIds(goals.map((goal) => goal.id), 'Goal', errors);
+  return goals;
 }
 
-function readFeedbackNote(value: unknown, index: number, errors: string[]): CoachFeedbackNote {
+function readGoal(value: unknown, index: number, errors: string[]): StudentGoal {
   const record = asRecord(value);
-  const label = `Coach feedback criterion ${index + 1}`;
+  const label = `Goal ${index + 1}`;
   if (!record) {
     errors.push(`${label} must be an object.`);
-    return { criterionId: '', note: '', met: null };
+    return { id: '', name: '', note: '', met: null };
   }
   return {
-    criterionId: readId(record.criterionId, `${label} id`, errors),
+    id: readId(record.id, `${label} id`, errors),
+    name: readString(record.name, `${label} name`, PROGRESS_NAME_MAX, errors),
     note: readString(record.note, `${label} note`, PROGRESS_NOTE_MAX, errors),
     met: readMet(record.met, label, errors),
   };
 }
 
-function readBeltLevel(value: unknown, label: string, errors: string[]): { belt: ProgressBelt; levelKey: string } {
+function readCoachFeedback(value: unknown, errors: string[]): CoachFeedback {
   const record = asRecord(value);
   if (!record) {
-    errors.push(`${label} is missing.`);
-    return { belt: 'white', levelKey: '' };
+    errors.push('Coach feedback is missing.');
+    return { planId: '', issuedOn: '', synopsis: '', suggestions: [] };
+  }
+  const suggestions = readList(record.suggestions, 'Coach feedback suggestions', PROGRESS_CRITERIA_MAX, errors).map(
+    (row, index) => readSuggestion(row, index, errors),
+  );
+  uniqueIds(suggestions.map((item) => item.id), 'Coach feedback suggestion', errors);
+  return {
+    planId: readOptionalId(record.planId, 'Coach feedback plan id', errors),
+    issuedOn: readDate(record.issuedOn, 'Coach feedback date', errors, true),
+    synopsis: readString(record.synopsis, 'Coach feedback synopsis', PROGRESS_SYNOPSIS_MAX, errors),
+    suggestions,
+  };
+}
+
+function readSuggestion(value: unknown, index: number, errors: string[]): CoachSuggestion {
+  const record = asRecord(value);
+  const label = `Coach suggestion ${index + 1}`;
+  if (!record) {
+    errors.push(`${label} must be an object.`);
+    return { id: '', targetId: '', note: '' };
   }
   return {
-    belt: readBelt(record.belt, label, errors),
-    levelKey: readString(record.levelKey, `${label} level`, PROGRESS_NAME_MAX, errors),
+    id: readId(record.id, `${label} id`, errors),
+    targetId: readOptionalId(record.targetId, `${label} target`, errors),
+    note: readString(record.note, `${label} note`, PROGRESS_NOTE_MAX, errors),
   };
+}
+
+function readLicenseSource(value: unknown, errors: string[]): LicenseSource {
+  if (value == null || value === '') return '';
+  if (typeof value === 'string' && (LICENSE_SOURCES as readonly string[]).includes(value)) return value as LicenseSource;
+  errors.push('License source must be academy-member, pro-grant, additional, or blank.');
+  return '';
 }
 
 function readBelt(value: unknown, label: string, errors: string[]): ProgressBelt {
@@ -782,35 +919,101 @@ function writeReportRows(lines: string[], packet: StudentProgressReport): void {
     packet.profile.displayName,
     '',
     '',
-    packet.profile.beltLevel.levelKey,
+    packet.profile.licenseSource,
     '',
     '',
     packet.profile.gymName,
     '',
-    packet.profile.beltLevel.belt,
+    packet.profile.belt,
     '',
     '',
     '',
   ]));
-  for (const mark of packet.rubric.criteria) {
+  for (const level of packet.rubric.levels) {
     lines.push(csvRow([
-      'Rubric',
+      'Level',
+      level.id,
+      '',
       packet.rubric.id,
+      '',
+      '',
+      level.name,
+      '',
+      '',
+      '',
+      '',
+      '',
+      level.name,
+      '',
+      level.belt,
+      '',
+      '',
+      '',
+    ]));
+    for (const checkpoint of level.checkpoints) {
+      lines.push(csvRow([
+        'Checkpoint',
+        checkpoint.id,
+        '',
+        level.id,
+        '',
+        '',
+        checkpoint.name,
+        '',
+        '',
+        checkpoint.note,
+        '',
+        metCell(checkpoint.met),
+        level.name,
+        '',
+        level.belt,
+        '',
+        '',
+        '',
+      ]));
+      for (const criterion of checkpoint.criteria) {
+        lines.push(csvRow([
+          'Criterion',
+          criterion.id,
+          '',
+          checkpoint.id,
+          '',
+          '',
+          '',
+          criterion.techniqueRefs.map((ref) => ref.name).join('; '),
+          '',
+          criterion.note,
+          criterion.requirement,
+          metCell(criterion.met),
+          level.name,
+          '',
+          level.belt,
+          '',
+          criterion.id,
+          '',
+        ]));
+      }
+    }
+  }
+  for (const goal of packet.goals) {
+    lines.push(csvRow([
+      'Goal',
+      goal.id,
       '',
       packet.studentId,
       '',
-      mark.category,
-      mark.label,
+      '',
+      goal.name,
       '',
       '',
-      mark.note,
+      goal.note,
       '',
-      metCell(mark.met),
-      packet.rubric.toward,
+      metCell(goal.met),
       '',
-      packet.rubric.beltLevel.belt,
-      packet.rubric.toward,
-      mark.criterionId,
+      '',
+      '',
+      '',
+      '',
       '',
     ]));
   }
@@ -970,10 +1173,10 @@ function writeFeedbackRows(lines: string[], packet: CoachFeedbackPacket): void {
     '',
     packet.feedback.planId,
   ]));
-  for (const mark of packet.feedback.criteria) {
+  for (const suggestion of packet.feedback.suggestions) {
     lines.push(csvRow([
-      'Feedback mark',
-      mark.criterionId,
+      'Suggestion',
+      suggestion.id,
       packet.feedback.issuedOn,
       packet.id,
       '',
@@ -981,14 +1184,14 @@ function writeFeedbackRows(lines: string[], packet: CoachFeedbackPacket): void {
       '',
       '',
       '',
-      mark.note,
+      suggestion.note,
       '',
-      metCell(mark.met),
+      '',
       '',
       packet.kind,
       '',
       '',
-      mark.criterionId,
+      suggestion.targetId,
       '',
     ]));
   }
@@ -1006,4 +1209,28 @@ function csvRow(cells: string[]): string {
 function csvCell(value: string): string {
   if (/[",\r\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`;
   return value;
+}
+
+function carriesStripeKey(value: unknown): boolean {
+  return carriesKey(value, (key) => key === 'stripe' || key === 'stripes' || key === 'levelKey');
+}
+
+function carriesStudentMark(value: unknown): boolean {
+  return carriesKey(value, (key) => key === 'met' || key === 'journal' || key === 'rubric' || key === 'goals');
+}
+
+function carriesKey(value: unknown, match: (key: string) => boolean): boolean {
+  const stack: unknown[] = [value];
+  const seen = new Set<object>();
+  while (stack.length) {
+    const current = stack.pop();
+    if (!current || typeof current !== 'object') continue;
+    if (seen.has(current)) continue;
+    seen.add(current);
+    for (const [key, child] of Object.entries(current as Record<string, unknown>)) {
+      if (match(key)) return true;
+      if (child && typeof child === 'object') stack.push(child);
+    }
+  }
+  return false;
 }
