@@ -673,7 +673,7 @@ button.mode-card__hit {
 }
 
 /* Keep copy grayed without washing out the left-rail belt wink. */
-.mode-card--locked > :not(.belt-rail):not(.alpha-access):not(.mode-card__price) {
+.mode-card--locked > :not(.belt-rail):not(.leather-spine):not(.alpha-access):not(.mode-card__price) {
   filter: saturate(0.45);
 }
 
@@ -765,6 +765,63 @@ button.mode-card__hit {
   min-height: 10.5rem;
 }
 
+.mode-card--student {
+  min-height: 10.5rem;
+  padding-left: 1.55rem;
+  background:
+    url('/student/black-leather-grain.png'),
+    linear-gradient(165deg, #2c2c2c 0%, #161616 48%, #0c0c0c 100%);
+  background-size: 140px 140px, auto;
+  border-color: rgba(198, 198, 198, 0.28);
+}
+
+.mode-card--student:not(.mode-card--locked) {
+  border-color: rgba(198, 198, 198, 0.48);
+}
+
+.home--ladder .mode-card.mode-card--student {
+  padding-left: 1.55rem;
+  overflow: hidden;
+}
+
+/* Book spine on the Student Edition card and hub rows. Grain is the journal cover. */
+.leather-spine {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 18px;
+  pointer-events: none;
+  border-top-left-radius: inherit;
+  border-bottom-left-radius: inherit;
+  background-color: #101010;
+  background-image:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.07), transparent 46%, rgba(0, 0, 0, 0.45)),
+    url('/student/black-leather-grain.png');
+  background-size: auto, 72px 72px;
+  box-shadow:
+    inset -1px 0 0 rgba(255, 255, 255, 0.14),
+    inset 1px 0 0 rgba(0, 0, 0, 0.55);
+}
+
+.leather-spine::before,
+.leather-spine::after {
+  content: '';
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  border-left: 1.5px dashed rgba(198, 198, 198, 0.88);
+}
+
+.leather-spine::before {
+  left: 4px;
+}
+
+.leather-spine::after {
+  left: 12px;
+}
+
 .mode-card--coach:not(.mode-card--locked) {
   border-color: rgba(140, 168, 148, 0.42);
 }
@@ -775,7 +832,8 @@ button.mode-card__hit {
 
 .home--ladder .mode-card--white .mode-card__actions,
 .home--ladder .mode-card--coach .mode-card__actions,
-.home--ladder .mode-card--pro .mode-card__actions {
+.home--ladder .mode-card--pro .mode-card__actions,
+.home--ladder .mode-card--student .mode-card__actions {
   grid-template-columns: 1fr;
 }
 
@@ -2709,6 +2767,46 @@ span.role-plan__mark {
   background: linear-gradient(145deg, rgba(42, 53, 70, 0.55), rgba(12, 17, 24, 0.42));
 }
 
+.soon-ad--student .soon-ad__feature {
+  border-color: rgba(198, 198, 198, 0.24);
+  background: linear-gradient(145deg, rgba(36, 36, 36, 0.72), rgba(12, 12, 12, 0.5));
+}
+
+.soon-ad__journal {
+  position: relative;
+  display: grid;
+  align-content: center;
+  gap: 0.2rem;
+  width: min(100%, 16rem);
+  min-height: 7.5rem;
+  padding: 1.1rem 1rem 1.1rem 2.15rem;
+  overflow: hidden;
+  border-radius: 16px;
+  color: #f6ead8;
+  background-color: #141414;
+  background-image:
+    url('/student/black-leather-grain.png'),
+    linear-gradient(180deg, #2b2b2b, #141414 55%, #0c0c0c);
+  background-size: 140px 140px, auto;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.32);
+}
+
+.soon-ad__journal strong {
+  position: relative;
+  z-index: 1;
+  font-family: Georgia, 'Iowan Old Style', Palatino, 'Times New Roman', serif;
+  font-size: 1.15rem;
+  color: #f6ead8;
+}
+
+.soon-ad__journal span {
+  position: relative;
+  z-index: 1;
+  color: #c8c8c8;
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
 .soon-ad__preview {
   margin: 0;
   display: grid;
@@ -2809,7 +2907,8 @@ span.role-plan__mark {
   }
 
   .home--coach .home__modes,
-  .home--pro .home__modes {
+  .home--pro .home__modes,
+  .home--student .home__modes {
     grid-template-columns: minmax(0, 1fr);
   }
 

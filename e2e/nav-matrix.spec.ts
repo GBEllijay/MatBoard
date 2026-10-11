@@ -69,7 +69,7 @@ async function assertHomeFrom(page: Page, reopen: () => Promise<void>) {
 
 test('tier homes use the center logo for home and have no corner back', async ({ page }) => {
   await unlock(page);
-  for (const path of ['/white', '/coach', '/pro']) {
+  for (const path of ['/white', '/student', '/coach', '/pro']) {
     await page.goto(path);
     await expect(page.getByRole('link', { name: BACK, exact: true })).toHaveCount(0);
     const home = page.getByRole('link', { name: 'Home', exact: true });

@@ -11,6 +11,9 @@ import {
   PRO_CONSOLE_PREVIEW_LABEL,
   PRO_CONSOLE_PREVIEW_NOTE,
   PRO_LAUNCH_PRICE_NOTE,
+  STUDENT_LAUNCH_PRICE_NOTE,
+  STUDENT_PREVIEW_LABEL,
+  STUDENT_PREVIEW_NOTE,
 } from './comingSoonAds.ts';
 import { COACH_HOME_TEASER } from './coachCopy.ts';
 import {
@@ -19,6 +22,8 @@ import {
   INSTRUCTOR_COACH_ENTRY,
   MEDIA_CONSOLE_NAME,
   PRO_LADDER_DETAIL,
+  STUDENT_EDITION_NAME,
+  STUDENT_HOME_DESCRIPTION,
   TOURNAMENT_MANAGEMENT_PRO_LABEL,
 } from './productNames.ts';
 
@@ -140,4 +145,25 @@ test('Pro ad lists the live Pro hubs and keeps launch pricing off the feature co
   assert.equal(PRODUCT_TEASERS.pro, GYM_CONSOLE_NAME);
   assert.match(PRODUCT_TEASERS.proUnlocked, /Console/);
   assert.doesNotMatch(PRODUCT_TEASERS.proUnlocked, /Toolbox/i);
+});
+
+test('Student Edition ad lists the journal and is not a checkout', () => {
+  const text = adText('student');
+  assert.equal(COMING_SOON_ADS.student.title, STUDENT_EDITION_NAME);
+  assert.equal(COMING_SOON_ADS.student.kicker, COMING_SOON_LABEL);
+  assert.equal(COMING_SOON_ADS.student.lead, STUDENT_HOME_DESCRIPTION);
+  assert.equal(STUDENT_PREVIEW_LABEL, STUDENT_EDITION_NAME);
+  assert.match(STUDENT_PREVIEW_NOTE, /Journal/);
+  assert.match(STUDENT_PREVIEW_NOTE, /belt progress/i);
+  assert.deepEqual(
+    COMING_SOON_ADS.student.features.map((feature) => feature.title),
+    ['Journal', 'Journal cards', 'Fundamentals', 'Calendar', 'Belt progress'],
+  );
+  assert.match(text, /Coming soon/);
+  assert.doesNotMatch(text, /\$\d/);
+  assert.doesNotMatch(text, /stripe/i);
+  assert.equal(
+    STUDENT_LAUNCH_PRICE_NOTE,
+    'Price: $19.99 one-time when it launches. Not for sale on this page.',
+  );
 });

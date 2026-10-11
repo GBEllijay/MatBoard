@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { SITE_FEEDBACK_EMAIL } from './siteFooter.ts';
 import { formatUsdFromCents } from './whitePurchase.ts';
+import { CHECKOUT_PRODUCTS } from './checkoutProducts.ts';
 import {
   ALPHA_ACCESS_NOTE,
   COACH_LIST_PRICE_CENTS,
@@ -9,6 +10,9 @@ import {
   PRO_LIST_PRICE_CENTS,
   PRO_MONTHLY_PRICE_CENTS,
   PRO_PRICE_LINE,
+  STUDENT_ALPHA_ACCESS_NOTE,
+  STUDENT_LIST_PRICE_CENTS,
+  STUDENT_PRICE_LINE,
 } from './productPrices.ts';
 
 test('Coach is $29.99 one-time and Pro is $99.99 plus $2.99/month', () => {
@@ -24,6 +28,19 @@ test('Coach is $29.99 one-time and Pro is $99.99 plus $2.99/month', () => {
   );
   assert.equal(PRO_PRICE_LINE, '$99.99 one-time, plus $2.99/month');
   assert.doesNotMatch(`${COACH_PRICE_LINE}\n${PRO_PRICE_LINE}`, /69\.99|6999/);
+});
+
+test('Student Edition is $19.99 one-time and is not a Stripe product', () => {
+  assert.equal(STUDENT_LIST_PRICE_CENTS, 1999);
+  assert.equal(STUDENT_PRICE_LINE, `${formatUsdFromCents(STUDENT_LIST_PRICE_CENTS)} one-time`);
+  assert.equal(STUDENT_PRICE_LINE, '$19.99 one-time');
+  assert.equal(
+    STUDENT_ALPHA_ACCESS_NOTE,
+    'Student Edition is in free alpha testing. Email advantageappllc@gmail.com for a free alpha code.',
+  );
+  assert.match(STUDENT_ALPHA_ACCESS_NOTE, /advantageappllc@gmail.com for a free alpha code/);
+  assert.deepEqual([...CHECKOUT_PRODUCTS], ['white', 'coach', 'pro']);
+  assert.equal((CHECKOUT_PRODUCTS as readonly string[]).includes('student'), false);
 });
 
 test('alpha access uses the existing support address', () => {

@@ -1,9 +1,9 @@
 import { ALPHA_ACCESS_NOTE } from '../lib/productPrices';
 import { SITE_FEEDBACK_EMAIL } from '../lib/siteFooter';
 
-/** Plain alpha line with a mailto. Used wherever Coach or Pro is locked. */
-export function AlphaAccessNote() {
-  const [before, after] = ALPHA_ACCESS_NOTE.split(SITE_FEEDBACK_EMAIL);
+/** Plain alpha line with a mailto. Coach and Pro use the shared note. Student Edition passes its own. */
+export function AlphaAccessNote({ note = ALPHA_ACCESS_NOTE }: { note?: string }) {
+  const [before, after] = note.split(SITE_FEEDBACK_EMAIL);
 
   return (
     <p className="alpha-access">

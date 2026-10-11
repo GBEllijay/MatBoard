@@ -1,3 +1,4 @@
+import { LeatherSpine } from './LeatherSpine';
 import {
   ALPHA_TRIAL_NOTE,
   COACH_LAUNCH_PRICE_NOTE,
@@ -7,9 +8,18 @@ import {
   PRO_CONSOLE_PREVIEW_LABEL,
   PRO_CONSOLE_PREVIEW_NOTE,
   PRO_LAUNCH_PRICE_NOTE,
+  STUDENT_LAUNCH_PRICE_NOTE,
+  STUDENT_PREVIEW_LABEL,
+  STUDENT_PREVIEW_NOTE,
   type SoonProduct,
 } from '../lib/comingSoonAds';
 import { SITE_FEEDBACK_EMAIL } from '../lib/siteFooter';
+
+const LAUNCH_PRICE_NOTE: Record<SoonProduct, string> = {
+  coach: COACH_LAUNCH_PRICE_NOTE,
+  pro: PRO_LAUNCH_PRICE_NOTE,
+  student: STUDENT_LAUNCH_PRICE_NOTE,
+};
 
 type ExtraAction = {
   label: string;
@@ -32,7 +42,7 @@ export function ComingSoonAd({ product }: Props) {
   return (
     <div className={`soon-ad soon-ad--${product}`}>
       <p className="soon-ad__kicker">{ad.kicker}</p>
-      {product === 'coach' ? <CoachPreview /> : <ProConsolePreview />}
+      {product === 'coach' ? <CoachPreview /> : product === 'pro' ? <ProConsolePreview /> : <StudentPreview />}
       {ad.lead ? <p className="soon-ad__lead">{ad.lead}</p> : null}
       <p className="soon-ad__includes">{ad.includes}</p>
       <ul className="soon-ad__features">
@@ -44,7 +54,7 @@ export function ComingSoonAd({ product }: Props) {
         ))}
       </ul>
       {ad.aside ? <p className="soon-ad__aside">{ad.aside}</p> : null}
-      <p className="soon-ad__price">{product === 'coach' ? COACH_LAUNCH_PRICE_NOTE : PRO_LAUNCH_PRICE_NOTE}</p>
+      <p className="soon-ad__price">{LAUNCH_PRICE_NOTE[product]}</p>
       <AlphaTrialNote />
     </div>
   );
@@ -59,6 +69,22 @@ function AlphaTrialNote() {
       <a href={`mailto:${SITE_FEEDBACK_EMAIL}`}>{SITE_FEEDBACK_EMAIL}</a>
       {after}
     </p>
+  );
+}
+
+function StudentPreview() {
+  return (
+    <figure className="soon-ad__preview">
+      <div className="soon-ad__journal">
+        <LeatherSpine />
+        <strong>Jiu-Jitsu Journal</strong>
+        <span>Advantage – Student Edition</span>
+      </div>
+      <figcaption>
+        <strong>{STUDENT_PREVIEW_LABEL}</strong>
+        <span>{STUDENT_PREVIEW_NOTE}</span>
+      </figcaption>
+    </figure>
   );
 }
 
