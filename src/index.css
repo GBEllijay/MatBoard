@@ -1418,7 +1418,8 @@ button.mode-card__hit {
 .binder-pick__cover {
   position: relative;
   width: 100%;
-  aspect-ratio: 1;
+  /* Stamped covers are portrait (paint lock 2026-10-11). */
+  aspect-ratio: 522 / 619;
 }
 
 .binder-pick__art {
@@ -1588,16 +1589,22 @@ button.mode-card__hit {
   white-space: nowrap;
 }
 
+/* Invite-role accents. Paint lock 2026-10-11:
+   Assistant Coach blue, Program Director purple, Coach brown,
+   Instructor black with a red spine.
+   Coach and Program Director swapped the previous purple/brown pairing.
+   Cover leather #5e3120 is too dark for a label, so Coach uses a lightened tan of that leather.
+   Program Director uses a highlight eyedropped from the purple cover. */
 .role-plan--assistant-coach {
   color: #3b82f6;
 }
 
 .role-plan--coach {
-  color: #c084fc;
+  color: #e0a36a;
 }
 
 .role-plan--program-director {
-  color: #e0b34a;
+  color: #b057f7;
 }
 
 .role-plan--instructors {
