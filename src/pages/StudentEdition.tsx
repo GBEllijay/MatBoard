@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
-import { FUNDAMENTALS_CATALOG } from '../lib/progress/catalog.ts';
 import type { GameTag } from '../lib/progress/types.ts';
 import {
   addCustomFundamental,
@@ -11,7 +10,10 @@ import {
   addJournalEntry,
   classLabel,
   fundamentalsBoard,
+  hideFundamental,
   loadStudentReport,
+  renameFundamental,
+  restoreStarterFundamentals,
   saveStudentReport,
   searchStudentJournal,
   setFundamentalLearned,
@@ -78,34 +80,9 @@ function StudentClosed() {
   );
 }
 
-function StudentClock({ cover = false }: { cover?: boolean }) {
-  return (
-    <svg className={cover ? 'student-clock student-clock--cover' : 'student-clock'} viewBox="0 0 120 120" aria-hidden="true">
-      <circle cx="60" cy="60" r="52" fill="none" stroke="currentColor" strokeWidth="3" />
-      {Array.from({ length: 12 }, (_, index) => {
-        const angle = (index / 12) * Math.PI * 2 - Math.PI / 2;
-        const inner = 44;
-        const outer = 50;
-        return (
-          <line
-            key={index}
-            x1={60 + Math.cos(angle) * inner}
-            y1={60 + Math.sin(angle) * inner}
-            x2={60 + Math.cos(angle) * outer}
-            y2={60 + Math.sin(angle) * outer}
-            stroke="currentColor"
-            strokeWidth="2.4"
-            strokeLinecap="round"
-          />
-        );
-      })}
-      <circle cx="50" cy="42" r="7" fill="currentColor" />
-      <path
-        fill="currentColor"
-        d="M42 50h16l2 16h-6l1 16h-8l1-16h-8l2-16zm16 4 28-6 3 5-26 8-5-7z"
-      />
-    </svg>
-  );
+/** Debossed Advantage mark. Mask is the clock, ticks, and pointing figure from advantage-icon.png. */
+function AdvantageMark({ header = false }: { header?: boolean }) {
+  return <span className={header ? 'student-mark student-mark--header' : 'student-mark'} aria-hidden="true" />;
 }
 
 function BeltDoodle() {
@@ -140,7 +117,7 @@ function LeatherHeader({ title = 'Jiu-Jitsu Journal' }: { title?: string }) {
   const to = useStudentPath();
   return (
     <header className="student-leather">
-      <StudentClock />
+      <AdvantageMark header />
       <h1>{title}</h1>
       <Link className="student-leather__back" to={to('/student')}>
         Cover
@@ -156,15 +133,17 @@ function Cover() {
     return (
       <main className="student student-cover">
         <button type="button" className="student-book" aria-label="Open journal" onClick={() => setOpened(true)}>
-          <StudentClock cover />
-          <p className="student-book__edition">Advantage - Student Edition</p>
-          <p className="student-book__title">Jiu-Jitsu Journal</p>
+          <span className="student-book__pages" aria-hidden="true" />
+          <span className="student-book__band" aria-hidden="true" />
+          <AdvantageMark />
+          <span className="student-book__edition">Advantage - Student Edition</span>
+          <span className="student-book__title">Jiu-Jitsu Journal</span>
         </button>
       </main>
     );
   }
   return (
-    <main className="student">
+    <main className="student student-frame">
       <LeatherHeader />
       <div className="student-paper">
         <div className="student-sheet">
@@ -202,8 +181,12 @@ function JournalToday() {
   const [picker, setPicker] = useState<0 | 1 | null>(null);
   const [error, setError] = useState('');
 
-  const choose = (index: 0 | 1, item: { id: string; name: string }) => {
-    setTechniques((current) => current.map((slot, slotIndex) => (slotIndex === index ? { id: item.id, name: item.name } : slot)));
+  const choose = (index: 0 | 1, item: FundamentalRow) => {
+    setTechniques((current) =>
+      current.map((slot, slotIndex) =>
+        slotIndex === index ? { id: item.catalogItemId || item.entryId, name: item.label } : slot,
+      ),
+    );
     setPicker(null);
   };
 
@@ -233,7 +216,7 @@ function JournalToday() {
   };
 
   return (
-    <main className="student">
+    <main className="student student-frame">
       <LeatherHeader />
       <div className="student-paper">
         <form
@@ -277,7 +260,7 @@ function JournalToday() {
           <div className="student-split">
             <div className="student-stack">
               {[0, 1].map((index) => (
-                <label key={index} className={index === 0 ? 'ink' : 'ink ink--wobble'}>
+                <label key={index} className={index === 0 ? 'ink ink--tech' : 'ink ink--wobble ink--tech'}>
                   <span className="ink__label">Technique {index + 1}</span>
                   <input
                     aria-label={`Technique ${index + 1}`}
@@ -324,7 +307,7 @@ function JournalToday() {
           </div>
           {error ? <p role="alert">{error}</p> : null}
           <div className="student-actions">
-            <button type="submit" className="ink-btn">
+            <button type="submit" className="ink-btn ink-btn--save">
               Save entry
             </button>
             <Link className="ink-btn ink-btn--wide" to={to('/student/cards')}>
@@ -338,12 +321,17 @@ function JournalToday() {
           <button type="button" className="ink-btn" onClick={() => setPicker(null)}>
             Close
           </button>
-          {FUNDAMENTALS_CATALOG.categories.map((category) => (
+          {fundamentalsBoard(report).map((category) => (
             <section key={category.id}>
               <h2>{category.name}</h2>
               {category.items.map((item) => (
-                <button key={item.id} type="button" className="student-picker__item" onClick={() => choose(picker, item)}>
-                  {item.name}
+                <button
+                  key={`${item.catalogItemId}-${item.entryId}-${item.name}`}
+                  type="button"
+                  className="student-picker__item"
+                  onClick={() => choose(picker, item)}
+                >
+                  {item.label}
                 </button>
               ))}
             </section>
@@ -360,7 +348,7 @@ function JournalList() {
   const [query, setQuery] = useState('');
   const cards = searchStudentJournal(report, query).map(viewJournalEntry);
   return (
-    <main className="student">
+    <main className="student student-frame">
       <LeatherHeader title="Journal" />
       <div className="student-paper">
         <div className="student-sheet">
@@ -400,7 +388,7 @@ function JournalCardPage({ id }: { id: string }) {
   const [error, setError] = useState('');
   if (!entry) {
     return (
-      <main className="student">
+      <main className="student student-frame">
         <LeatherHeader />
         <div className="student-paper">
           <div className="student-sheet">
@@ -412,7 +400,7 @@ function JournalCardPage({ id }: { id: string }) {
   }
   const card = viewJournalEntry(entry);
   return (
-    <main className="student">
+    <main className="student student-frame">
       <LeatherHeader />
       <div className="student-paper">
         <div className="student-sheet">
@@ -478,8 +466,9 @@ function CardBody({ card }: { card: JournalCardView }) {
 function FundamentalsPage() {
   const { report, commit } = useStudentFile();
   const board = fundamentalsBoard(report);
+  const [confirmRestore, setConfirmRestore] = useState(false);
   return (
-    <main className="student">
+    <main className="student student-frame">
       <LeatherHeader title="Fundamentals" />
       <div className="student-paper">
         <div className="student-sheet">
@@ -490,12 +479,14 @@ function FundamentalsPage() {
               </h2>
               {category.items.map((item) => (
                 <FundamentalLine
-                  key={`${item.categoryId}-${item.catalogItemId}-${item.name}`}
+                  key={`${item.categoryId}-${item.catalogItemId || item.entryId}`}
                   item={item}
                   onLearn={(learned, date) =>
                     commit(setFundamentalLearned(report, item, learned, date || todayIso()))
                   }
                   onFields={(note, learnedOn) => commit(setFundamentalNote(report, item, note, learnedOn))}
+                  onRename={(label) => commit(renameFundamental(report, item, label))}
+                  onRemove={() => commit(hideFundamental(report, item))}
                 />
               ))}
               <CustomFundamental
@@ -504,9 +495,56 @@ function FundamentalsPage() {
               />
             </section>
           ))}
+          <div className="student-restore">
+            {confirmRestore ? (
+              <div className="student-confirm" role="group" aria-label="Restore starter list">
+                <p>Bring starter names back and show hidden starter techniques?</p>
+                <button
+                  type="button"
+                  className="ink-btn"
+                  onClick={() => {
+                    commit(restoreStarterFundamentals(report));
+                    setConfirmRestore(false);
+                  }}
+                >
+                  Confirm restore starter list
+                </button>
+                <button type="button" className="ink-btn" onClick={() => setConfirmRestore(false)}>
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button type="button" className="ink-btn" onClick={() => setConfirmRestore(true)}>
+                Restore starter list
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </main>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M4.5 19.5l4.1-1.05L18.8 8.2 15.7 5.1 5.5 15.3 4.5 19.5z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path d="M13.4 7.4l3.1 3.1" fill="none" stroke="currentColor" strokeWidth="1.8" />
+    </svg>
+  );
+}
+
+function CrossIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+    </svg>
   );
 }
 
@@ -514,42 +552,103 @@ function FundamentalLine({
   item,
   onLearn,
   onFields,
+  onRename,
+  onRemove,
 }: {
   item: FundamentalRow;
   onLearn: (learned: boolean, date: string) => void;
   onFields: (note: string, learnedOn: string) => void;
+  onRename: (label: string) => void;
+  onRemove: () => void;
 }) {
   const [date, setDate] = useState(item.learnedOn);
   const [note, setNote] = useState(item.note);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(item.label);
+  const [confirming, setConfirming] = useState(false);
   useEffect(() => {
     setDate(item.learnedOn);
     setNote(item.note);
-  }, [item.learnedOn, item.note]);
+    setDraft(item.label);
+  }, [item.learnedOn, item.note, item.label]);
   const learned = Boolean(item.learnedOn);
+  const saveName = () => {
+    const next = draft.trim();
+    if (next && next !== item.label) onRename(next);
+    setEditing(false);
+  };
   return (
     <div className="student-fund">
       <div className="student-fund__head">
-        <span>{item.name}</span>
-        <button
-          type="button"
-          className={learned ? 'student-learned is-on' : 'student-learned'}
-          aria-pressed={learned}
-          aria-label={learned ? `Learned ${item.name}` : `Mark ${item.name} learned`}
-          onClick={() => onLearn(!learned, date)}
-        >
-          {learned ? 'Learned' : 'Mark learned'}
-        </button>
+        {editing ? (
+          <form
+            className="student-rename"
+            onSubmit={(event) => {
+              event.preventDefault();
+              saveName();
+            }}
+          >
+            <input
+              aria-label={`New name for ${item.label}`}
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+            />
+            <button type="submit" className="ink-btn">
+              Save name
+            </button>
+          </form>
+        ) : (
+          <span className="student-fund__name">{item.label}</span>
+        )}
+        <div className="student-fund__tools">
+          <button
+            type="button"
+            className="student-icon"
+            aria-label={editing ? `Close rename for ${item.label}` : `Rename ${item.label}`}
+            onClick={() => setEditing((open) => !open)}
+          >
+            <PencilIcon />
+          </button>
+          <button
+            type="button"
+            className="student-icon"
+            aria-label={`Remove ${item.label}`}
+            onClick={() => setConfirming(true)}
+          >
+            <CrossIcon />
+          </button>
+          <button
+            type="button"
+            className={learned ? 'student-learned is-on' : 'student-learned'}
+            aria-pressed={learned}
+            aria-label={learned ? `Learned ${item.label}` : `Mark ${item.label} learned`}
+            onClick={() => onLearn(!learned, date)}
+          >
+            {learned ? 'Learned' : 'Mark learned'}
+          </button>
+        </div>
       </div>
+      {confirming ? (
+        <div className="student-confirm" role="group" aria-label={`Remove ${item.label}`}>
+          <span>Hide {item.label}? Notes and journal cards stay.</span>
+          <button type="button" className="ink-btn" aria-label={`Confirm remove ${item.label}`} onClick={onRemove}>
+            Remove
+          </button>
+          <button type="button" className="ink-btn" onClick={() => setConfirming(false)}>
+            Keep
+          </button>
+        </div>
+      ) : null}
       <div className="student-fund__fields">
         <input
           type="date"
-          aria-label={`${item.name} date learned`}
+          aria-label={`${item.label} date learned`}
           value={date}
           onChange={(event) => setDate(event.target.value)}
           onBlur={() => onFields(note, date)}
         />
         <input
-          aria-label={`${item.name} note`}
+          aria-label={`${item.label} note`}
           value={note}
           placeholder="Note"
           onChange={(event) => setNote(event.target.value)}
@@ -593,7 +692,7 @@ function CustomFundamental({
 
 function ComingNext({ name }: { name: string }) {
   return (
-    <main className="student">
+    <main className="student student-frame">
       <LeatherHeader title={name} />
       <div className="student-paper">
         <div className="student-sheet">

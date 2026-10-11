@@ -148,7 +148,12 @@ export type StudentChecklistEntry = {
   id: string;
   catalogItemId: string;
   categoryId: string;
+  /** Canonical name. Catalog name, or the name first typed for a custom line. Matching uses this, not the display override. */
   name: string;
+  /** Student-facing name. Empty means `name`. */
+  displayName: string;
+  /** Hidden on this student's list. The row and any journal references stay. */
+  hidden: boolean;
   /** YYYY-MM-DD, or empty when the student has not dated it. */
   learnedOn: string;
   note: string;

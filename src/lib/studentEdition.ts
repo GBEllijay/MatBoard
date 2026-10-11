@@ -5,7 +5,7 @@
 
 import { FUNDAMENTALS_CATALOG } from './progress/catalog.ts';
 import { exportProgressPacket, parseProgressPacket, searchJournal } from './progress/format.ts';
-import type { GameTag, JournalEntry, StudentChecklistEntry, StudentProgressReport, TechniqueRef } from './progress/types.ts';
+import { PROGRESS_NAME_MAX, type GameTag, type JournalEntry, type StudentChecklistEntry, type StudentProgressReport, type TechniqueRef } from './progress/types.ts';
 
 export const STUDENT_EDITION_STORAGE_KEY = 'matboard.studentEdition.v1';
 
@@ -29,9 +29,14 @@ export type JournalCardView = JournalDraft & {
 };
 
 export type FundamentalRow = {
+  /** Checklist row id once the line has been saved. Empty until then. */
+  entryId: string;
   catalogItemId: string;
   categoryId: string;
+  /** Canonical name. Catalog name, or the name first typed for a custom line. */
   name: string;
+  /** Name drawn on the page. A rename override, or `name` when there is none. */
+  label: string;
   learnedOn: string;
   note: string;
   custom: boolean;
@@ -242,27 +247,38 @@ function checklistMatch(entry: StudentChecklistEntry, catalogItemId: string, nam
   return entry.catalogItemId === '' && entry.name.trim().toLowerCase() === name.trim().toLowerCase();
 }
 
+function visibleLabel(canonical: string, displayName: string): string {
+  const override = displayName.trim();
+  return override || canonical;
+}
+
 export function fundamentalsBoard(report: StudentProgressReport): FundamentalsCategoryView[] {
   return FUNDAMENTALS_CATALOG.categories.map((category) => {
     const catalogIds = new Set(category.items.map((item) => item.id));
-    const items: FundamentalRow[] = category.items.map((item) => {
+    const items: FundamentalRow[] = [];
+    for (const item of category.items) {
       const saved = report.checklist.find((entry) => entry.categoryId === category.id && entry.catalogItemId === item.id);
-      return {
+      if (saved?.hidden) continue;
+      items.push({
+        entryId: saved?.id ?? '',
         catalogItemId: item.id,
         categoryId: category.id,
         name: item.name,
+        label: visibleLabel(item.name, saved?.displayName ?? ''),
         learnedOn: saved?.learnedOn ?? '',
         note: saved?.note ?? '',
         custom: false,
-      };
-    });
+      });
+    }
     for (const entry of report.checklist) {
-      if (entry.categoryId !== category.id) continue;
+      if (entry.categoryId !== category.id || entry.hidden) continue;
       if (entry.catalogItemId && catalogIds.has(entry.catalogItemId)) continue;
       items.push({
+        entryId: entry.id,
         catalogItemId: '',
         categoryId: category.id,
         name: entry.name,
+        label: visibleLabel(entry.name, entry.displayName),
         learnedOn: entry.learnedOn,
         note: entry.note,
         custom: true,
@@ -277,22 +293,38 @@ export function fundamentalsBoard(report: StudentProgressReport): FundamentalsCa
   });
 }
 
-function upsertChecklist(
+type ChecklistTarget = { entryId?: string; catalogItemId: string; categoryId: string; name: string };
+
+function findChecklistIndex(checklist: StudentChecklistEntry[], target: ChecklistTarget): number {
+  if (target.catalogItemId) {
+    return checklist.findIndex((entry) => entry.catalogItemId === target.catalogItemId && entry.categoryId === target.categoryId);
+  }
+  if (target.entryId) {
+    const byId = checklist.findIndex((entry) => entry.id === target.entryId);
+    if (byId !== -1) return byId;
+  }
+  const name = target.name.trim();
+  return checklist.findIndex((entry) => checklistMatch(entry, '', name) && entry.categoryId === target.categoryId);
+}
+
+function patchChecklist(
   report: StudentProgressReport,
-  row: { catalogItemId: string; categoryId: string; name: string },
-  patch: Partial<Pick<StudentChecklistEntry, 'learnedOn' | 'note'>>,
+  target: ChecklistTarget,
+  patch: Partial<Pick<StudentChecklistEntry, 'learnedOn' | 'note' | 'displayName' | 'hidden'>>,
   now: number,
 ): StudentProgressReport {
-  const name = row.name.trim();
-  if (!name) return report;
-  const index = report.checklist.findIndex((entry) => checklistMatch(entry, row.catalogItemId, name) && entry.categoryId === row.categoryId);
+  const name = target.name.trim();
   const checklist = [...report.checklist];
+  const index = findChecklistIndex(checklist, target);
   if (index === -1) {
+    if (!name) return report;
     checklist.push({
       id: newId('check', now),
-      catalogItemId: row.catalogItemId,
-      categoryId: row.categoryId,
+      catalogItemId: target.catalogItemId,
+      categoryId: target.categoryId,
       name,
+      displayName: patch.displayName ?? '',
+      hidden: patch.hidden ?? false,
       learnedOn: patch.learnedOn ?? '',
       note: patch.note ?? '',
       updatedAt: now,
@@ -301,6 +333,8 @@ function upsertChecklist(
     const current = checklist[index];
     checklist[index] = {
       ...current,
+      displayName: patch.displayName === undefined ? current.displayName : patch.displayName,
+      hidden: patch.hidden === undefined ? current.hidden : patch.hidden,
       learnedOn: patch.learnedOn === undefined ? current.learnedOn : patch.learnedOn,
       note: patch.note === undefined ? current.note : patch.note,
       updatedAt: now,
@@ -317,7 +351,7 @@ export function setFundamentalLearned(
   now = Date.now(),
 ): StudentProgressReport {
   const learnedOn = learned ? (DATE_RE.test(date) ? date : todayIso(new Date(now))) : '';
-  return upsertChecklist(report, row, { learnedOn }, now);
+  return patchChecklist(report, row, { learnedOn }, now);
 }
 
 export function setFundamentalNote(
@@ -327,7 +361,7 @@ export function setFundamentalNote(
   learnedOn: string,
   now = Date.now(),
 ): StudentProgressReport {
-  return upsertChecklist(report, row, { note: note.trim(), learnedOn: DATE_RE.test(learnedOn) ? learnedOn : '' }, now);
+  return patchChecklist(report, row, { note: note.trim(), learnedOn: DATE_RE.test(learnedOn) ? learnedOn : '' }, now);
 }
 
 export function addCustomFundamental(
@@ -339,9 +373,45 @@ export function addCustomFundamental(
   const trimmed = name.trim();
   if (!trimmed) return report;
   if (!FUNDAMENTALS_CATALOG.categories.some((category) => category.id === categoryId)) return report;
-  const exists = report.checklist.some(
+  const existing = report.checklist.find(
     (entry) => entry.categoryId === categoryId && entry.catalogItemId === '' && entry.name.trim().toLowerCase() === trimmed.toLowerCase(),
   );
-  if (exists) return report;
-  return upsertChecklist(report, { catalogItemId: '', categoryId, name: trimmed }, { learnedOn: '', note: '' }, now);
+  if (existing?.hidden) {
+    return patchChecklist(report, { entryId: existing.id, catalogItemId: '', categoryId, name: existing.name }, { hidden: false }, now);
+  }
+  if (existing) return report;
+  return patchChecklist(report, { catalogItemId: '', categoryId, name: trimmed }, { learnedOn: '', note: '' }, now);
+}
+
+/** Display-name override. The catalog id and the canonical name stay so coach matching and old journal cards still line up. */
+export function renameFundamental(
+  report: StudentProgressReport,
+  row: ChecklistTarget,
+  displayName: string,
+  now = Date.now(),
+): StudentProgressReport {
+  const next = displayName.trim().slice(0, PROGRESS_NAME_MAX);
+  if (!next) return report;
+  const canonical = row.name.trim();
+  const override = next.toLowerCase() === canonical.toLowerCase() ? '' : next;
+  return patchChecklist(report, row, { displayName: override }, now);
+}
+
+/** Hide the line. Learned date, note, catalog id, and journal references stay in the file. */
+export function hideFundamental(report: StudentProgressReport, row: ChecklistTarget, now = Date.now()): StudentProgressReport {
+  return patchChecklist(report, row, { hidden: true }, now);
+}
+
+/** Clear starter renames and unhide starter techniques. Custom lines stay as the student left them. */
+export function restoreStarterFundamentals(report: StudentProgressReport, now = Date.now()): StudentProgressReport {
+  const catalogIds = new Set(FUNDAMENTALS_CATALOG.categories.flatMap((category) => category.items.map((item) => item.id)));
+  let changed = false;
+  const checklist = report.checklist.map((entry) => {
+    if (!entry.catalogItemId || !catalogIds.has(entry.catalogItemId)) return entry;
+    if (!entry.hidden && !entry.displayName.trim()) return entry;
+    changed = true;
+    return { ...entry, hidden: false, displayName: '', updatedAt: now };
+  });
+  if (!changed) return report;
+  return { ...report, updatedAt: now, checklist };
 }

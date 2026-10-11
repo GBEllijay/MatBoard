@@ -12,7 +12,10 @@ import {
   blankStudentReport,
   decodeJournalBody,
   fundamentalsBoard,
+  hideFundamental,
   loadStudentReport,
+  renameFundamental,
+  restoreStarterFundamentals,
   saveStudentReport,
   searchStudentJournal,
   setFundamentalLearned,
@@ -137,4 +140,96 @@ test('fundamentals counts grow when items are marked learned, including a custom
   assert.equal(`${view.name} ${view.learned} learned`, 'Sweeps 3 learned');
   const saved = saveStudentReport(memoryStorage(), report);
   assert.equal(saved.checklist.length, 3);
+});
+
+test('rename and remove are per-student overrides, and restore brings the starter line back', () => {
+  let report = addJournalEntry(
+    blankStudentReport(10),
+    {
+      date: '2026-10-11',
+      classKind: 'gi',
+      gameTag: 'a',
+      techniques: [{ id: 'sweep.scissor', name: 'Scissor sweep' }],
+      partners: '',
+      drills: '',
+      rolls: '',
+      notes: 'grip the collar deeper',
+    },
+    10,
+  );
+  report = setFundamentalLearned(
+    report,
+    { catalogItemId: 'sweep.scissor', categoryId: 'sweeps', name: 'Scissor sweep' },
+    true,
+    '2026-10-11',
+    11,
+  );
+  report = addCustomFundamental(report, 'sweeps', 'Lasso sweep', 12);
+  report = setFundamentalLearned(report, { catalogItemId: '', categoryId: 'sweeps', name: 'Lasso sweep' }, true, '2026-10-11', 13);
+
+  const before = fundamentalsBoard(report).find((category) => category.id === 'sweeps');
+  assert.ok(before);
+  assert.equal(before.learned, 2);
+  const scissor = before.items.find((item) => item.catalogItemId === 'sweep.scissor');
+  const lasso = before.items.find((item) => item.custom && item.name === 'Lasso sweep');
+  assert.ok(scissor);
+  assert.ok(lasso);
+
+  report = renameFundamental(report, scissor, 'Hip scissor', 14);
+  report = renameFundamental(report, lasso, 'Lasso from guard', 15);
+  const renamed = saveStudentReport(memoryStorage(), report);
+  const renamedBoard = fundamentalsBoard(renamed).find((category) => category.id === 'sweeps');
+  assert.ok(renamedBoard);
+  assert.equal(renamedBoard.learned, 2);
+  assert.equal(renamedBoard.items.some((item) => item.label === 'Hip scissor' && item.name === 'Scissor sweep'), true);
+  assert.equal(renamedBoard.items.some((item) => item.label === 'Lasso from guard' && item.name === 'Lasso sweep'), true);
+  const scissorRow = renamed.checklist.find((entry) => entry.catalogItemId === 'sweep.scissor');
+  const lassoRow = renamed.checklist.find((entry) => entry.name === 'Lasso sweep');
+  assert.ok(scissorRow);
+  assert.ok(lassoRow);
+  assert.equal(scissorRow.catalogItemId, 'sweep.scissor');
+  assert.equal(scissorRow.name, 'Scissor sweep');
+  assert.equal(scissorRow.displayName, 'Hip scissor');
+  assert.equal(scissorRow.hidden, false);
+  assert.equal(lassoRow.id, lasso.entryId);
+  assert.equal(lassoRow.displayName, 'Lasso from guard');
+  assert.equal(searchStudentJournal(renamed, 'scissor').length, 1);
+  assert.equal(renamed.journal[0].techniqueRefs[0].name, 'Scissor sweep');
+  assert.equal(renamed.journal[0].body.includes('Scissor sweep'), true);
+
+  const hip = renamedBoard.items.find((item) => item.catalogItemId === 'sweep.scissor');
+  const lassoNamed = renamedBoard.items.find((item) => item.entryId === lasso.entryId);
+  assert.ok(hip);
+  assert.ok(lassoNamed);
+  report = hideFundamental(renamed, hip, 16);
+  report = hideFundamental(report, lassoNamed, 17);
+  const hiddenBoard = fundamentalsBoard(report).find((category) => category.id === 'sweeps');
+  assert.ok(hiddenBoard);
+  assert.equal(hiddenBoard.learned, 0);
+  assert.equal(hiddenBoard.items.some((item) => item.catalogItemId === 'sweep.scissor' || item.name === 'Lasso sweep'), false);
+  const hiddenScissor = report.checklist.find((entry) => entry.catalogItemId === 'sweep.scissor');
+  assert.ok(hiddenScissor);
+  assert.equal(hiddenScissor.hidden, true);
+  assert.equal(hiddenScissor.learnedOn, '2026-10-11');
+  assert.equal(hiddenScissor.displayName, 'Hip scissor');
+  assert.equal(searchStudentJournal(report, 'scissor').length, 1);
+
+  report = restoreStarterFundamentals(report, 18);
+  const restored = fundamentalsBoard(report).find((category) => category.id === 'sweeps');
+  assert.ok(restored);
+  assert.equal(restored.learned, 1);
+  const back = restored.items.find((item) => item.catalogItemId === 'sweep.scissor');
+  assert.ok(back);
+  assert.equal(back.label, 'Scissor sweep');
+  assert.equal(back.name, 'Scissor sweep');
+  assert.equal(restored.items.some((item) => item.name === 'Lasso sweep' || item.label === 'Lasso from guard'), false);
+  const restoredRow = report.checklist.find((entry) => entry.catalogItemId === 'sweep.scissor');
+  const stillHidden = report.checklist.find((entry) => entry.name === 'Lasso sweep');
+  assert.ok(restoredRow);
+  assert.ok(stillHidden);
+  assert.equal(restoredRow.hidden, false);
+  assert.equal(restoredRow.displayName, '');
+  assert.equal(restoredRow.catalogItemId, 'sweep.scissor');
+  assert.equal(stillHidden.hidden, true);
+  assert.equal(searchStudentJournal(report, 'scissor').length, 1);
 });
