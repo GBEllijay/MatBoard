@@ -81,13 +81,15 @@ test('tier homes use the center logo for home and have no corner back', async ({
 
 test('Coach hub tools go back to Coach and home to the tier picker', async ({ page }) => {
   await unlock(page);
-  const coachTools = [
-    'Daily Lesson Plan',
-    'Daily Training Videos',
-    'Technique Tree',
-    'Student Roster',
-    'Mock Tournament',
-  ] as const;
+  await page.goto('/coach');
+  await openLink(page, 'Daily Lesson Plan');
+  await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveCount(0);
+  const lessonBack = page.getByRole('link', { name: BACK, exact: true });
+  await expect(lessonBack).toHaveAttribute('href', '/coach');
+  await lessonBack.click();
+  await expect.poll(() => pathOf(page)).toBe('/coach');
+
+  const coachTools = ['Daily Training Videos', 'Technique Tree', 'Student Roster', 'Mock Tournament'] as const;
   for (const name of coachTools) {
     await page.goto('/coach');
     await openLink(page, name);
@@ -112,8 +114,15 @@ test('White Match names goes back to White and home to the tier picker', async (
 
 test('Coach Unlimited tools go back to Coach Unlimited and home to the tier picker', async ({ page }) => {
   await unlock(page);
+  await page.goto('/coach-unlimited');
+  await openLink(page, 'Daily Lesson Plan');
+  await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveCount(0);
+  const lessonBack = page.getByRole('link', { name: BACK, exact: true });
+  await expect(lessonBack).toHaveAttribute('href', '/coach-unlimited');
+  await lessonBack.click();
+  await expect.poll(() => pathOf(page)).toBe('/coach-unlimited');
+
   const unlimitedTools = [
-    'Daily Lesson Plan',
     'Daily Training Videos',
     'Technique Tree',
     'Competitor Roster',

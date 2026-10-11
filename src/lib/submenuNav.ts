@@ -44,6 +44,10 @@ export function submenuHomeTarget(): string {
  * Media Console (/slideshow, /screensaver, and the folder routes) keeps this
  * corner back and does not render the center Home mark. The purple belt is
  * the header. Class Schedule still renders both marks.
+ *
+ * Daily Lesson Plan (/notes, Coach and Coach Unlimited) also keeps only the
+ * corner back. The lesson title fills the top of the phone, so a center Home
+ * mark would sit on the title. Home is still a long-press on that corner mark.
  */
 export function submenuBackTarget(input: SubmenuNavInput): string | null {
   const params = paramsOf(input.search);
