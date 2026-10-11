@@ -4,6 +4,7 @@ import { PlayExitMark } from '../components/PlayExitMark';
 import { useCoachPageSwipe } from '../hooks/useCoachSwipe';
 import { useRosterState } from '../hooks/useStores';
 import { useToolboxParent } from '../hooks/useToolboxParent';
+import { UNLIMITED_LESSON_VALUE, sharedToolBackPath } from '../lib/productNames';
 import { gamePlanMentionIndex, mentionText, mentionsForNode, type GamePlanMention } from '../lib/gamePlan';
 import { TECHNIQUE_TREE_CAP_NOTE, TECHNIQUE_TREE_LABEL, TECHNIQUE_TREE_LEAD } from '../lib/coachCopy';
 import { DEVICE_STORAGE_FULL_NOTE } from '../lib/storageQuota';
@@ -41,6 +42,11 @@ export function TechniqueTreePage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const parent = useToolboxParent();
+  const exitPath = sharedToolBackPath({
+    from: searchParams.get('from'),
+    unlimited: searchParams.get('plan') === UNLIMITED_LESSON_VALUE,
+    fallback: parent.path,
+  });
   useCoachPageSwipe();
   const requestedTreeId = searchParams.get('tree');
   const requestedNodeId = searchParams.get('node');
@@ -187,9 +193,9 @@ export function TechniqueTreePage() {
   return (
     <main className="tree">
       <PlayExitMark
-        to={parent.path}
+        to={exitPath}
         onExit={() => {
-          navigate(parent.path);
+          navigate(exitPath);
         }}
       />
       <header className="tree__bar">

@@ -8,10 +8,12 @@ import { classifyCoachSwipe, coachSwipeTarget, swipeGestureBlocked, swipeStartsI
  */
 export function useCoachPageSwipe(): void {
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const pathRef = useRef(pathname);
+  const searchRef = useRef(search);
   const navigateRef = useRef(navigate);
   pathRef.current = pathname;
+  searchRef.current = search;
   navigateRef.current = navigate;
 
   useEffect(() => {
@@ -45,7 +47,7 @@ export function useCoachPageSwipe(): void {
       if (!touch) return;
       const direction = classifyCoachSwipe(touch.clientX - startX, touch.clientY - startY);
       if (!direction) return;
-      const target = coachSwipeTarget(pathRef.current, direction);
+      const target = coachSwipeTarget(pathRef.current, direction, searchRef.current);
       if (target) navigateRef.current(target);
     };
 

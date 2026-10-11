@@ -43,7 +43,7 @@ import {
 import { VIDEO_CAPTURE, VIDEO_PICKER_ACCEPT, VIDEO_RECORD_ACCEPT } from '../lib/mediaPicker';
 import { DEFAULT_MUTE_VIDEO, getSaverPrefs, setSaverMuteVideo } from '../lib/photoStore';
 import { safeTimerReturn } from '../lib/timerReturn';
-import { techniquesPageEyebrow, techniquesParentPath } from '../lib/productNames';
+import { sharedToolBackPath, techniquesPageEyebrow, techniquesParentPath, UNLIMITED_LESSON_VALUE } from '../lib/productNames';
 import { isWithinRetention, localDateKey } from '../lib/trainingNotesStore';
 import { LOOP_RESTART_MIN_MS, nextLoopStep } from '../lib/videoLoop';
 import { LARGE_MEDIA_BYTES, LARGE_MEDIA_NOTE, quotaAddNote } from '../lib/storageQuota';
@@ -125,7 +125,6 @@ export function TechniquesPage() {
   });
   const shareDay = handoff.share;
   const eyebrow = techniquesPageEyebrow(proUnlocked, coachUnlocked, isLiveSeat(seat));
-  const exitPath = techniquesParentPath(proUnlocked, coachUnlocked, isLiveSeat(seat));
   const seatRole = seat ? instructorSeatBinderLabel(seat.presetId, seat.permissions) : '';
   const [clips, setClips] = useState<TechniqueClip[]>([]);
   const [plan, setPlan] = useState<VideoPlan | null>(null);
@@ -146,6 +145,11 @@ export function TechniquesPage() {
   const fsActiveRef = useRef(false);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const exitPath = sharedToolBackPath({
+    from: searchParams.get('from'),
+    unlimited: searchParams.get('plan') === UNLIMITED_LESSON_VALUE,
+    fallback: techniquesParentPath(proUnlocked, coachUnlocked, isLiveSeat(seat)),
+  });
   useCoachPageSwipe();
   const launchStarted = useRef(false);
   const launchKey = searchParams.toString();
@@ -588,7 +592,7 @@ export function TechniquesPage() {
     <main
       className={`techniques${playback ? ' techniques--play' : ''}${fs.className ? ` ${fs.className}` : ''}${stage ? ' techniques--fill' : ''}`}
     >
-      <PlayExitMark to={exitPath} onExit={exitBoard} />
+      <PlayExitMark to={backPath ?? exitPath} onExit={exitBoard} />
       <header className="techniques__bar">
         <div className="techniques__brand">
           <p className="techniques__eyebrow">{eyebrow}</p>

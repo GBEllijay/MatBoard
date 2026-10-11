@@ -30,6 +30,10 @@ test('coach tools swipe in order, and roster only goes right to the bracket', ()
   assert.equal(coachSwipeTarget('/techniques', 'right'), '/notes');
   assert.equal(coachSwipeTarget('/technique-tree', 'left'), null);
   assert.equal(coachSwipeTarget('/technique-tree', 'right'), '/techniques');
+  assert.equal(coachSwipeTarget('/notes', 'left', '?from=coach'), '/techniques?from=coach');
+  assert.equal(coachSwipeTarget('/techniques', 'left', '?from=coach'), '/technique-tree?from=coach');
+  assert.equal(coachSwipeTarget('/techniques', 'right', '?from=unlimited'), '/notes?plan=unlimited&from=unlimited');
+  assert.equal(coachSwipeTarget('/notes', 'left', '?plan=unlimited'), '/techniques?from=unlimited');
   assert.equal(coachSwipeTarget('/roster', 'right'), '/tournament?from=coach');
   assert.equal(coachSwipeTarget('/roster', 'left'), null);
   assert.equal(coachSwipeTarget('/tournament', 'left'), null);

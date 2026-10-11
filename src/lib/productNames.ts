@@ -71,14 +71,36 @@ export const COACHING_TOOLS_DETAIL =
 export const COACHING_TOOLS_LEAD =
   "Write today's class, loop training clips, and build a technique tree.";
 
+/** Query flag for tools opened from the Advantage Coach page. */
+export const COACH_BOARD_FROM = 'coach';
+
+/** Query flag for tools opened from Advantage Coach Unlimited. */
+export const UNLIMITED_FROM = 'unlimited';
+
+/** Daily Lesson Plan opened from the Coach hub. */
+export const COACH_NOTES_PATH = `/notes?from=${COACH_BOARD_FROM}`;
+
+/** Daily Training Videos opened from the Coach hub. */
+export const COACH_VIDEOS_PATH = `/techniques?from=${COACH_BOARD_FROM}`;
+
+/** Technique Tree opened from the Coach hub. */
+export const COACH_TREE_PATH = `/technique-tree?from=${COACH_BOARD_FROM}`;
+
+/** Daily Training Videos opened from Coach Unlimited. */
+export const UNLIMITED_VIDEOS_PATH = `/techniques?from=${UNLIMITED_FROM}`;
+
+/** Technique Tree opened from Coach Unlimited. */
+export const UNLIMITED_TREE_PATH = `/technique-tree?from=${UNLIMITED_FROM}`;
+
 /**
  * Basic Coaching Tools, top to bottom.
  * Competition Class Curriculum is not on basic Coach.
+ * `from=coach` sends these shared screens back to the Coach hub.
  */
 export const COACHING_TOOLS_MENU = [
-  { title: TRAINING_NOTES_LABEL, to: '/notes', belt: 'coach' as const },
-  { title: 'Daily Training Videos', to: '/techniques', belt: 'coach' as const },
-  { title: TECHNIQUE_TREE_LABEL, to: '/technique-tree', belt: 'coach' as const },
+  { title: TRAINING_NOTES_LABEL, to: COACH_NOTES_PATH, belt: 'coach' as const },
+  { title: 'Daily Training Videos', to: COACH_VIDEOS_PATH, belt: 'coach' as const },
+  { title: TECHNIQUE_TREE_LABEL, to: COACH_TREE_PATH, belt: 'coach' as const },
 ] as const;
 
 /** Basic Coach student list. Same on-phone roster store, student wording, no photo. */
@@ -95,11 +117,11 @@ export const COMPETITOR_ROSTER_PATH = '/roster?from=competitors';
  * No Coaching Tools folder and no Competition Team Management.
  */
 export const COACH_HUBS = [
-  { title: TRAINING_NOTES_LABEL, to: '/notes', belt: 'coach' as const },
-  { title: 'Daily Training Videos', to: '/techniques', belt: 'coach' as const },
-  { title: TECHNIQUE_TREE_LABEL, to: '/technique-tree', belt: 'coach' as const },
+  { title: TRAINING_NOTES_LABEL, to: COACH_NOTES_PATH, belt: 'coach' as const },
+  { title: 'Daily Training Videos', to: COACH_VIDEOS_PATH, belt: 'coach' as const },
+  { title: TECHNIQUE_TREE_LABEL, to: COACH_TREE_PATH, belt: 'coach' as const },
   { title: 'Student Roster', to: STUDENT_ROSTER_PATH, belt: 'coach' as const },
-  { title: MOCK_TOURNAMENT_NAME, to: '/tournament?from=coach', belt: 'tournament' as const },
+  { title: MOCK_TOURNAMENT_NAME, to: `/tournament?from=${COACH_BOARD_FROM}`, belt: 'tournament' as const },
 ] as const;
 
 /**
@@ -111,12 +133,16 @@ export const UNLIMITED_LESSON_VALUE = 'unlimited';
 export const UNLIMITED_LESSON_PATH = `/notes?plan=${UNLIMITED_LESSON_VALUE}`;
 export const COACH_UNLIMITED_PATH = '/coach-unlimited';
 
-/** Unlimited opens Daily Lesson Plan on the Unlimited plan. Basic keeps `/notes`. */
+/** Unlimited opens Daily Lesson Plan on the Unlimited plan. Basic keeps the Coach hub paths. */
 export function coachingToolsMenu(unlimited: boolean) {
   if (!unlimited) return COACHING_TOOLS_MENU;
-  return COACHING_TOOLS_MENU.map((tool) =>
-    tool.to === '/notes' ? { ...tool, to: UNLIMITED_LESSON_PATH } : tool,
-  );
+  return COACHING_TOOLS_MENU.map((tool) => {
+    const path = tool.to.split('?')[0];
+    if (path === '/notes') return { ...tool, to: UNLIMITED_LESSON_PATH };
+    if (path === '/techniques') return { ...tool, to: UNLIMITED_VIDEOS_PATH };
+    if (path === '/technique-tree') return { ...tool, to: UNLIMITED_TREE_PATH };
+    return tool;
+  });
 }
 
 /**
@@ -128,8 +154,8 @@ export function coachingToolsMenu(unlimited: boolean) {
  */
 export const COACH_UNLIMITED_TOOLS = [
   { title: TRAINING_NOTES_LABEL, to: UNLIMITED_LESSON_PATH, belt: 'brown' as const, stripes: 0 as const },
-  { title: 'Daily Training Videos', to: '/techniques', belt: 'brown' as const, stripes: 1 as const },
-  { title: TECHNIQUE_TREE_LABEL, to: '/technique-tree', belt: 'brown' as const, stripes: 2 as const },
+  { title: 'Daily Training Videos', to: UNLIMITED_VIDEOS_PATH, belt: 'brown' as const, stripes: 1 as const },
+  { title: TECHNIQUE_TREE_LABEL, to: UNLIMITED_TREE_PATH, belt: 'brown' as const, stripes: 2 as const },
   { title: COMPETITOR_ROSTER_LABEL, to: COMPETITOR_ROSTER_PATH, belt: 'brown' as const, stripes: 3 as const },
   {
     title: CURRICULUM_LABEL,
@@ -215,9 +241,6 @@ export const ROUND_CONTROLLER_PATH = '/training/control';
 
 /** Query flag so Suite destinations keep the Suite page theme and return path. */
 export const SUITE_FROM = 'suite';
-
-/** Plain Mock Tournament opened from the Advantage Coach page. */
-export const COACH_BOARD_FROM = 'coach';
 
 /**
  * Basic Coach Mock Tournament, including when Pro is also unlocked and the
@@ -339,6 +362,55 @@ export function techniquesParentPath(
 ): string {
   if (seated) return '/coach';
   return parentToolboxPath(proUnlocked, coachUnlocked, false);
+}
+
+/**
+ * Back target for Daily Lesson Plan, Daily Training Videos, and Technique Tree.
+ * Those screens are shared. The hub that opened them wins over the unlock flags:
+ * `from=coach` returns to the Coach hub even when Pro is also on.
+ * `from=unlimited`, or an Unlimited lesson, returns to Coach Unlimited.
+ * Every other entry keeps `fallback` (Pro home when Pro is on).
+ * A live seat's fallback is still Coach, via `techniquesParentPath`.
+ */
+export function sharedToolBackPath(input: {
+  from: string | null;
+  /** Unlimited lesson (`plan=unlimited`) or a live seat already on that plan. */
+  unlimited?: boolean;
+  fallback: string;
+}): string {
+  if (input.from === COACH_BOARD_FROM) return '/coach';
+  if (input.from === UNLIMITED_FROM || input.unlimited) return COACH_UNLIMITED_PATH;
+  return input.fallback;
+}
+
+/**
+ * Keep the opening hub on a link between these shared tools.
+ * Coach stays `from=coach`. Unlimited stays `from=unlimited`, and a lesson
+ * link also keeps `plan=unlimited` so the Unlimited editor stays on.
+ */
+export function carryHubFrom(path: string, search: string): string {
+  const current = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+  const from = current.get('from');
+  const plan = current.get('plan');
+  const hub =
+    from === COACH_BOARD_FROM
+      ? COACH_BOARD_FROM
+      : from === UNLIMITED_FROM || plan === UNLIMITED_LESSON_VALUE
+        ? UNLIMITED_FROM
+        : null;
+  if (!hub) return path;
+  const hashAt = path.indexOf('#');
+  const hash = hashAt >= 0 ? path.slice(hashAt) : '';
+  const base = hashAt >= 0 ? path.slice(0, hashAt) : path;
+  const queryAt = base.indexOf('?');
+  const pathname = queryAt >= 0 ? base.slice(0, queryAt) : base;
+  const params = new URLSearchParams(queryAt >= 0 ? base.slice(queryAt + 1) : '');
+  if (pathname === '/notes' && hub === UNLIMITED_FROM && !params.has('plan')) {
+    params.set('plan', UNLIMITED_LESSON_VALUE);
+  }
+  if (!params.has('from')) params.set('from', hub);
+  const qs = params.toString();
+  return `${pathname}${qs ? `?${qs}` : ''}${hash}`;
 }
 
 /** Owner Console label; Coach keeps Mock Tournament when Pro is off. */

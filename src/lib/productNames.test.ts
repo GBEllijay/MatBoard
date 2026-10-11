@@ -65,6 +65,13 @@ import {
   TOURNAMENT_SUITE_NAME,
   techniquesPageEyebrow,
   techniquesParentPath,
+  sharedToolBackPath,
+  carryHubFrom,
+  COACH_NOTES_PATH,
+  COACH_VIDEOS_PATH,
+  COACH_TREE_PATH,
+  UNLIMITED_VIDEOS_PATH,
+  UNLIMITED_TREE_PATH,
   toolEyebrow,
   tournamentToolLabel,
   withSuiteFrom,
@@ -143,7 +150,13 @@ test('Coach hub is Coaching Tools then Competition Team Management', () => {
   );
   assert.deepEqual(
     COACH_HUBS.map((hub) => hub.to),
-    ['/notes', '/techniques', '/technique-tree', '/roster?from=students', '/tournament?from=coach'],
+    [
+      '/notes?from=coach',
+      '/techniques?from=coach',
+      '/technique-tree?from=coach',
+      '/roster?from=students',
+      '/tournament?from=coach',
+    ],
   );
   assert.deepEqual(
     COACH_HUBS.map((hub) => hub.belt),
@@ -157,7 +170,7 @@ test('Coach hub is Coaching Tools then Competition Team Management', () => {
   );
   assert.deepEqual(
     COACHING_TOOLS_MENU.map((item) => item.to),
-    ['/notes', '/techniques', '/technique-tree'],
+    ['/notes?from=coach', '/techniques?from=coach', '/technique-tree?from=coach'],
   );
   assert.deepEqual(
     COACHING_TOOLS_MENU.map((item) => item.belt),
@@ -167,12 +180,12 @@ test('Coach hub is Coaching Tools then Competition Team Management', () => {
   assert.equal(coachingToolsMenu(true)[0].belt, 'coach');
   assert.deepEqual(
     coachingToolsMenu(false).map((item) => item.to),
-    ['/notes', '/techniques', '/technique-tree'],
+    ['/notes?from=coach', '/techniques?from=coach', '/technique-tree?from=coach'],
   );
   assert.equal(coachingToolsMenu(true)[0].to, UNLIMITED_LESSON_PATH);
   assert.deepEqual(
     coachingToolsMenu(true).slice(1).map((item) => item.to),
-    ['/techniques', '/technique-tree'],
+    ['/techniques?from=unlimited', '/technique-tree?from=unlimited'],
   );
   assert.deepEqual(
     COMPETITION_MENU.map((item) => item.title),
@@ -224,6 +237,8 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
     ],
   );
   assert.equal(COACH_UNLIMITED_TOOLS[0].to, UNLIMITED_LESSON_PATH);
+  assert.equal(COACH_UNLIMITED_TOOLS[1].to, UNLIMITED_VIDEOS_PATH);
+  assert.equal(COACH_UNLIMITED_TOOLS[2].to, UNLIMITED_TREE_PATH);
   assert.deepEqual(
     COACH_UNLIMITED_TOOLS.map((tool) => tool.belt),
     ['brown', 'brown', 'brown', 'brown', 'tournament'],
@@ -379,6 +394,33 @@ test('a live seat opens Coach and leaves the owner Pro hubs closed', () => {
   assert.equal(toolEyebrow(false, false, true), 'Advantage Coach');
   assert.equal(toolEyebrow(true, false, true), GYM_CONSOLE_NAME);
   assert.equal(coachToolsOpen(false, false), false);
+});
+
+test('shared tools return to the hub that opened them', () => {
+  assert.equal(COACH_NOTES_PATH, '/notes?from=coach');
+  assert.equal(COACH_VIDEOS_PATH, '/techniques?from=coach');
+  assert.equal(COACH_TREE_PATH, '/technique-tree?from=coach');
+  assert.equal(UNLIMITED_VIDEOS_PATH, '/techniques?from=unlimited');
+  assert.equal(UNLIMITED_TREE_PATH, '/technique-tree?from=unlimited');
+
+  assert.equal(sharedToolBackPath({ from: 'coach', fallback: '/pro' }), '/coach');
+  assert.equal(sharedToolBackPath({ from: 'coach', unlimited: true, fallback: '/pro' }), '/coach');
+  assert.equal(sharedToolBackPath({ from: 'unlimited', fallback: '/pro' }), '/coach-unlimited');
+  assert.equal(sharedToolBackPath({ from: null, unlimited: true, fallback: '/pro' }), '/coach-unlimited');
+  assert.equal(sharedToolBackPath({ from: null, fallback: '/pro' }), '/pro');
+  assert.equal(sharedToolBackPath({ from: 'suite', fallback: '/pro' }), '/pro');
+  assert.equal(sharedToolBackPath({ from: null, unlimited: false, fallback: '/coach' }), '/coach');
+  assert.equal(sharedToolBackPath({ from: '', fallback: '/pro' }), '/pro');
+
+  assert.equal(carryHubFrom('/techniques', '?from=coach'), '/techniques?from=coach');
+  assert.equal(carryHubFrom('/techniques', 'from=coach'), '/techniques?from=coach');
+  assert.equal(carryHubFrom('/technique-tree?tree=a', '?from=coach'), '/technique-tree?tree=a&from=coach');
+  assert.equal(carryHubFrom('/techniques?focus=1&section=warmup', '?plan=unlimited'), '/techniques?focus=1&section=warmup&from=unlimited');
+  assert.equal(carryHubFrom('/notes', '?from=unlimited'), '/notes?plan=unlimited&from=unlimited');
+  assert.equal(carryHubFrom('/notes', '?plan=unlimited'), '/notes?plan=unlimited&from=unlimited');
+  assert.equal(carryHubFrom('/techniques?from=coach', '?from=unlimited'), '/techniques?from=coach');
+  assert.equal(carryHubFrom('/techniques', ''), '/techniques');
+  assert.equal(carryHubFrom('/tournament?from=suite', '?from=coach'), '/tournament?from=suite');
 });
 
 test('Daily Training Videos names a seated coach instead of the gym owner console', () => {

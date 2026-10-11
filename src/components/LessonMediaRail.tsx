@@ -20,6 +20,8 @@ type Props = {
   storedTreeId?: string;
   onOpenTree?: (treeId: string) => void;
   onPickTree?: (treeId: string | null) => void;
+  /** Empty-library link. Callers pass the hub flag so Back stays on that hub. */
+  treeLibraryTo?: string;
 };
 
 /** Small video preview plus an optional Technique Tree control for one lesson section. */
@@ -35,6 +37,7 @@ export function LessonMediaRail({
   storedTreeId,
   onOpenTree,
   onPickTree,
+  treeLibraryTo = '/technique-tree',
 }: Props) {
   const [open, setOpen] = useState(false);
   const [thumbFailed, setThumbFailed] = useState(false);
@@ -186,7 +189,7 @@ export function LessonMediaRail({
           ) : (
             <li>
               <p className="notes__tree-none">No Technique Tree with a base yet.</p>
-              <Link className="notes__tree-choice" to="/technique-tree" onClick={() => setOpen(false)}>
+              <Link className="notes__tree-choice" to={treeLibraryTo} onClick={() => setOpen(false)}>
                 <span>Open Technique Tree</span>
               </Link>
             </li>
