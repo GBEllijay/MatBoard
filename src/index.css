@@ -3213,6 +3213,34 @@ span.role-plan__mark {
   outline-offset: 2px;
 }
 
+/* The center Home mark is its own row. Titles, kickers, and header buttons start under it. */
+main:has(> .tier-home) > .roster__bar,
+main:has(> .tier-home) > .techniques__bar,
+main:has(> .tier-home) > .tournament__bar,
+main:has(> .tier-home) > .schedule__bar {
+  padding-top: calc(4.7rem + var(--safe-t));
+}
+
+main.notes:has(> .tier-home) > .notes__bar,
+main.tree:has(> .tier-home) > .tree__bar {
+  margin-top: 3.85rem;
+}
+
+/* Phone Class Schedule keeps the corner back only. Wide screens still show the center mark. */
+@media (max-width: 720px) {
+  .schedule > .tier-home {
+    display: none;
+  }
+
+  main.schedule:has(> .tier-home) > .schedule__bar {
+    padding-top: calc(0.7rem + var(--safe-t));
+  }
+}
+
+main.white-roster:has(> .tier-home) > .white-roster__head {
+  margin-top: 3.7rem;
+}
+
 .home .play-exit {
   z-index: 30;
   opacity: 0.9;

@@ -4,7 +4,7 @@ import { DriveConnectCard } from '../components/DriveConnectCard';
 import { PlanDateNav } from '../components/PlanDateNav';
 import { LessonMediaRail } from '../components/LessonMediaRail';
 import { OpenMyDrive } from '../components/OpenMyDrive';
-import { SubmenuMarks } from '../components/TierHomeMark';
+import { PlayExitMark } from '../components/PlayExitMark';
 import { useSubmenuBack } from '../hooks/useSubmenuBack';
 import { Sheet } from '../components/Sheet';
 import { useProUnlocked } from '../hooks/useProUnlocked';
@@ -302,7 +302,7 @@ export function CompetitionCurriculumPage() {
 
   return (
     <main className="notes">
-      <SubmenuMarks
+      <PlayExitMark
         to={parentPath}
         onExit={() => {
           navigate(parentPath);

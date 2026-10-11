@@ -61,6 +61,35 @@ test('Competitor Roster follows the menu that opened it', () => {
   assert.equal(submenuBackTarget({ pathname: '/tournament', search: 'from=suite', ...pro }), '/suite');
 });
 
+test('a lesson video returns to that Daily Lesson Plan day, then the hub', () => {
+  assert.equal(
+    submenuBackTarget({
+      pathname: '/techniques',
+      search:
+        'from=unlimited&back=' +
+        encodeURIComponent('/notes?plan=unlimited&from=unlimited&date=2026-10-11'),
+      ...pro,
+    }),
+    '/notes?plan=unlimited&from=unlimited&date=2026-10-11',
+  );
+  assert.equal(
+    submenuBackTarget({
+      pathname: '/techniques',
+      search: 'from=coach&back=' + encodeURIComponent('/notes?from=coach&date=2026-10-11'),
+      ...pro,
+    }),
+    '/notes?from=coach&date=2026-10-11',
+  );
+  assert.equal(
+    submenuBackTarget({ pathname: '/notes', search: 'plan=unlimited&from=unlimited&date=2026-10-11', ...pro }),
+    '/coach-unlimited',
+  );
+  assert.equal(
+    submenuBackTarget({ pathname: '/notes', search: 'from=coach&date=2026-10-11', ...pro }),
+    '/coach',
+  );
+});
+
 test('curriculum video back wins over the hub, and class history remembers its opener', () => {
   assert.equal(
     submenuBackTarget({

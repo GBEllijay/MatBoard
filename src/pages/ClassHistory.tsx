@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DriveConnectCard } from '../components/DriveConnectCard';
 import { OpenMyDrive } from '../components/OpenMyDrive';
-import { SubmenuMarks } from '../components/TierHomeMark';
+import { PlayExitMark } from '../components/PlayExitMark';
 import { useSubmenuBack } from '../hooks/useSubmenuBack';
 import { useToolboxParent } from '../hooks/useToolboxParent';
 import { cloudStorage } from '../lib/cloudStorage';
@@ -127,7 +127,7 @@ export function ClassHistoryPage() {
 
   return (
     <main className="notes">
-      <SubmenuMarks to={back} onExit={() => navigate(back)} />
+      <PlayExitMark to={back} onExit={() => navigate(back)} />
       <header className="notes__bar">
         <div className="notes__brand">
           <p className="notes__eyebrow">{parent.eyebrow}</p>

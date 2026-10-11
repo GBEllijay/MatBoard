@@ -26,6 +26,7 @@
  * Specific Training / Rounds is a lesson note only. Videos has no slot for it.
  */
 
+import { COACH_BOARD_FROM, UNLIMITED_FROM, UNLIMITED_LESSON_VALUE, carryHubFrom } from './productNames.ts';
 import { localDateKey, planDayStamp } from './trainingNotesStore.ts';
 import {
   MIN_TECHNIQUE_SLOTS,
@@ -116,6 +117,51 @@ export function techniquesFocusPath(input: {
   ) {
     params.set('index', String(input.index));
   }
+  return `/techniques?${params.toString()}`;
+}
+
+/**
+ * Daily Lesson Plan URL to restore after a video add. Keeps the hub
+ * (`from=coach` or `plan=unlimited`) and the day that was open.
+ */
+export function lessonPlanReturnPath(search: string, date: string): string {
+  const current = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+  const params = new URLSearchParams();
+  const from = current.get('from');
+  const plan = current.get('plan');
+  if (from === COACH_BOARD_FROM) {
+    params.set('from', COACH_BOARD_FROM);
+  } else if (from === UNLIMITED_FROM || plan === UNLIMITED_LESSON_VALUE) {
+    params.set('plan', UNLIMITED_LESSON_VALUE);
+    params.set('from', UNLIMITED_FROM);
+  } else if (from) {
+    params.set('from', from);
+  }
+  if (DATE_KEY.test(date)) params.set('date', date);
+  const qs = params.toString();
+  return qs ? `/notes?${qs}` : '/notes';
+}
+
+/** Lesson video link that returns to the Daily Lesson Plan day which opened it. */
+export function lessonVideoHref(input: {
+  section: LessonSection;
+  date: string;
+  slotId?: string | null;
+  index?: number;
+  search: string;
+}): string {
+  const path = carryHubFrom(
+    techniquesFocusPath({
+      section: input.section,
+      date: input.date,
+      slotId: input.slotId,
+      index: input.index,
+    }),
+    input.search,
+  );
+  const queryAt = path.indexOf('?');
+  const params = new URLSearchParams(queryAt >= 0 ? path.slice(queryAt + 1) : '');
+  params.set('back', lessonPlanReturnPath(input.search, input.date));
   return `/techniques?${params.toString()}`;
 }
 

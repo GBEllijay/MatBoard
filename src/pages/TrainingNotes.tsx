@@ -8,7 +8,7 @@ import { CoachPlanExport } from '../components/CoachPlanExport';
 import { CollaborationGate, useCurrentSeat } from '../components/SeatSessionBar';
 import { LessonMediaRail } from '../components/LessonMediaRail';
 import { OpenMyDrive } from '../components/OpenMyDrive';
-import { SubmenuMarks } from '../components/TierHomeMark';
+import { PlayExitMark } from '../components/PlayExitMark';
 import { useCoachPageSwipe } from '../hooks/useCoachSwipe';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useToolboxParent } from '../hooks/useToolboxParent';
@@ -39,7 +39,7 @@ import {
   matchLessonTree,
   parallelVideoSlot,
   techniqueTreeLaunchPath,
-  techniquesFocusPath,
+  lessonVideoHref,
   type LessonSlotRef,
   type LessonTreeCandidate,
 } from '../lib/lessonLinks';
@@ -469,15 +469,13 @@ export function TrainingNotesPage() {
     const offer = videoOffer(videos, ref);
     if (!offer.show) return;
     navigate(
-      carryHubFrom(
-        techniquesFocusPath({
-          section: ref.role,
-          date: viewKey,
-          slotId: offer.slotId,
-          index: ref.role === 'technique' ? ref.index : undefined,
-        }),
-        searchParams.toString(),
-      ),
+      lessonVideoHref({
+        section: ref.role,
+        date: viewKey,
+        slotId: offer.slotId,
+        index: ref.role === 'technique' ? ref.index : undefined,
+        search: searchParams.toString(),
+      }),
     );
   };
 
@@ -553,7 +551,7 @@ export function TrainingNotesPage() {
 
   return (
     <main className="notes">
-      <SubmenuMarks
+      <PlayExitMark
         to={exitPath}
         onExit={() => {
           navigate(exitPath);
