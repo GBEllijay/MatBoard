@@ -33,9 +33,17 @@ export function MediaConsoleMark() {
 
   return (
     <div className="media-art" data-media-art={art} aria-hidden="true">
-      {art === 'tv' ? <ShopTv /> : art === 'monitor' ? <LessonMonitor /> : <RosterCard />}
+      <ArtPicture art={art} />
     </div>
   );
+}
+
+function ArtPicture({ art }: { art: MediaConsoleArt }) {
+  if (art === 'tv') return <ShopTv />;
+  if (art === 'monitor') return <LessonMonitor />;
+  if (art === 'roster') return <RosterCard />;
+  if (art === 'calendar') return <ClassCalendar />;
+  return <SeminarNotice />;
 }
 
 function ShopTv() {
@@ -133,5 +141,121 @@ function RosterLine({ y, name, chip }: { y: number; name: string; chip: string }
       </text>
       <rect x="206" y={y - 12} width="18" height="12" rx="2" fill={chip} stroke="#1c2430" strokeWidth="0.6" />
     </g>
+  );
+}
+
+/** October, Sunday-start. A few days carry a class chip. */
+const CALENDAR_WEEKS = [
+  [0, 0, 0, 0, 1, 2, 3],
+  [4, 5, 6, 7, 8, 9, 10],
+  [11, 12, 13, 14, 15, 16, 17],
+  [18, 19, 20, 21, 22, 23, 24],
+  [25, 26, 27, 28, 29, 30, 31],
+];
+
+const CLASS_CHIPS: Record<number, string> = {
+  6: '#004eba',
+  8: '#6b2d91',
+  10: '#1c6b30',
+  17: '#6b3a1f',
+};
+
+function ClassCalendar() {
+  const heads = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  return (
+    <svg viewBox="0 0 320 210" role="presentation">
+      <rect x="22" y="6" width="276" height="198" rx="12" fill="#f3ecdf" />
+      <rect x="22" y="6" width="276" height="34" rx="12" fill="#1a2230" />
+      <rect x="22" y="26" width="276" height="14" fill="#1a2230" />
+      <text
+        x="160"
+        y="29"
+        textAnchor="middle"
+        fill="#f7f4ee"
+        fontFamily="Inter, system-ui, sans-serif"
+        fontSize="16"
+        fontWeight="800"
+      >
+        October
+      </text>
+      {heads.map((label, col) => (
+        <text
+          key={`${label}-${col}`}
+          x={44 + col * 36}
+          y="56"
+          textAnchor="middle"
+          fill="#6a6256"
+          fontFamily="Inter, system-ui, sans-serif"
+          fontSize="11"
+          fontWeight="700"
+        >
+          {label}
+        </text>
+      ))}
+      {CALENDAR_WEEKS.map((week, row) =>
+        week.map((day, col) => {
+          if (!day) return null;
+          const chip = CLASS_CHIPS[day];
+          const x = 44 + col * 36;
+          const y = 78 + row * 20;
+          return (
+            <g key={day}>
+              {chip ? <rect x={x - 14} y={y - 13} width="28" height="16" rx="4" fill={chip} /> : null}
+              <text
+                x={x}
+                y={y}
+                textAnchor="middle"
+                fill={chip ? '#f7f4ee' : '#1c2430'}
+                fontFamily="Inter, system-ui, sans-serif"
+                fontSize="12"
+                fontWeight="700"
+              >
+                {day}
+              </text>
+            </g>
+          );
+        }),
+      )}
+      <ClassLegend x={36} color="#004eba" label="Gi" />
+      <ClassLegend x={92} color="#6b2d91" label="No-Gi" />
+      <ClassLegend x={168} color="#1c6b30" label="Kids" />
+      <ClassLegend x={228} color="#6b3a1f" label="Open Mat" />
+    </svg>
+  );
+}
+
+function ClassLegend({ x, color, label }: { x: number; color: string; label: string }) {
+  return (
+    <g>
+      <rect x={x} y="180" width="12" height="12" rx="3" fill={color} />
+      <text x={x + 16} y="190" fill="#1c2430" fontFamily="Inter, system-ui, sans-serif" fontSize="11" fontWeight="700">
+        {label}
+      </text>
+    </g>
+  );
+}
+
+function SeminarNotice() {
+  return (
+    <svg viewBox="0 0 320 210" role="presentation">
+      <rect x="28" y="14" width="264" height="182" rx="14" fill="#f3ecdf" />
+      <text x="48" y="48" fill="#004eba" fontFamily="Inter, system-ui, sans-serif" fontSize="13" fontWeight="800">
+        NOTICE
+      </text>
+      <text x="48" y="80" fill="#1c2430" fontFamily="Inter, system-ui, sans-serif" fontSize="22" fontWeight="800">
+        Seminar
+      </text>
+      <text x="48" y="106" fill="#1c2430" fontFamily="Inter, system-ui, sans-serif" fontSize="22" fontWeight="800">
+        Saturday
+      </text>
+      <text x="48" y="138" fill="#3d4654" fontFamily="Inter, system-ui, sans-serif" fontSize="16" fontWeight="700">
+        October 17
+      </text>
+      <line x1="48" y1="154" x2="148" y2="154" stroke="#d9d0c0" strokeWidth="2" />
+      <circle cx="230" cy="72" r="18" fill="#14161c" />
+      <path d="M196 84c10-14 58-14 70 0l6 80h-82z" fill="#14161c" />
+      <rect x="200" y="126" width="60" height="12" fill="#f7f7f5" />
+      <rect x="220" y="126" width="20" height="12" fill="#e10600" />
+    </svg>
   );
 }

@@ -2234,9 +2234,11 @@ span.role-plan__mark {
   position: absolute;
   z-index: 35;
   top: calc(0.15rem + var(--safe-t));
-  left: 50%;
-  width: 148px;
-  transform: translateX(-50%);
+  /* Between the corner back logo and Fullscreen, about 30% larger than 148px. */
+  left: calc(4.35rem + var(--safe-l));
+  right: calc(7.15rem + var(--safe-r));
+  width: min(192px, calc(100vw - 4.35rem - 7.15rem - var(--safe-l) - var(--safe-r)));
+  margin-inline: auto;
   pointer-events: none;
 }
 
@@ -2247,12 +2249,16 @@ span.role-plan__mark {
 }
 
 .saver--belt {
-  --console-head: 7.35rem;
+  --console-head: 8.7rem;
 }
 
 @media (min-width: 720px) {
   .media-art {
+    left: 50%;
+    right: auto;
     width: 260px;
+    margin-inline: 0;
+    transform: translateX(-50%);
   }
 
   .saver--belt {

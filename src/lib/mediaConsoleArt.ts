@@ -1,5 +1,5 @@
 /** Decorative Media Console header. Not a control. */
-export const MEDIA_CONSOLE_ARTS = ['tv', 'monitor', 'roster'] as const;
+export const MEDIA_CONSOLE_ARTS = ['tv', 'monitor', 'roster', 'calendar', 'seminar'] as const;
 
 export type MediaConsoleArt = (typeof MEDIA_CONSOLE_ARTS)[number];
 
