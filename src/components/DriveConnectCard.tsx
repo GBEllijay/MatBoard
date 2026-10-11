@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { DriveMediaPicker } from './DriveMediaPicker';
 import { classHistoryHref } from '../lib/submenuNav';
 import {
   cloudStorage,
@@ -18,14 +19,34 @@ import {
   type CloudStorageConnector,
 } from '../lib/cloudStorage';
 import {
+  driveGallerySavedCopy,
+  driveImportChunkSize,
+  driveImportOutcomeNote,
+  driveImportProgressLabel,
+  driveImportSaveErrorNote,
+  runDriveImport,
+  type DriveBrowseMedia,
+} from '../lib/driveMediaPicker';
+import {
   CLASS_HISTORY_TITLE,
+  DRIVE_BROWSE_LABEL,
+  DRIVE_CHECKING_LABEL,
   DRIVE_DEV_CLIENT_HINT,
   DRIVE_FOLDER_EMPTY,
+  DRIVE_RECONNECT_LABEL,
+  DRIVE_RECONNECT_NOTE,
+  DRIVE_SCOPE_NOTE,
+  downloadDriveFile,
   driveOwnerFacingError,
+  driveSignInFailureCopy,
+  ensureDriveBrowseAccess,
   googleClientId,
   ownedGoogleClientId,
+  requestDriveConsent,
   saveGoogleClientId,
+  type DriveBrowseAccess,
 } from '../lib/googleDrive';
+import { addDriveMediaFiles } from '../lib/photoStore';
 import {
   clearOneDriveResumeFlag,
   loadMicrosoftClientId,
@@ -70,7 +91,14 @@ function connectedDetail(binding: CloudBinding): string {
  */
 let oneDriveResumeStarted = false;
 
-export function DriveConnectCard({ resumeMode = null }: { resumeMode?: 'token' | 'error' | null }) {
+export function DriveConnectCard({
+  resumeMode = null,
+  onReady,
+}: {
+  resumeMode?: 'token' | 'error' | null;
+  /** Fired after a reconnect grants a token that can browse. */
+  onReady?: () => void;
+}) {
   const location = useLocation();
   const owned = ownedGoogleClientId();
   const ownedMicrosoft = ownedMicrosoftClientId();
@@ -87,6 +115,9 @@ export function DriveConnectCard({ resumeMode = null }: { resumeMode?: 'token' |
   const [session, setSession] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [access, setAccess] = useState<DriveBrowseAccess | null>(null);
+  const [browseOpen, setBrowseOpen] = useState(false);
+  const [pickNote, setPickNote] = useState('');
   const connectRef = useRef<(provider: CloudStorageConnector) => Promise<void>>(async () => {});
 
   useEffect(() => {
@@ -106,6 +137,84 @@ export function DriveConnectCard({ resumeMode = null }: { resumeMode?: 'token' |
 
   const choices = cloudStorageChoices();
   const connected = binding ? cloudStorage(binding.providerId) : null;
+  const googleConnected = binding?.providerId === 'googleDrive';
+
+  useEffect(() => {
+    if (!googleConnected) {
+      setAccess(null);
+      setBrowseOpen(false);
+      return;
+    }
+    let cancelled = false;
+    setAccess(null);
+    void ensureDriveBrowseAccess().then((next) => {
+      if (!cancelled) setAccess(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [googleConnected, binding]);
+
+  const reconnect = async () => {
+    setBusyId('googleDrive');
+    setError('');
+    setPickNote('');
+    try {
+      const auth = await requestDriveConsent();
+      if (!auth.ok) {
+        setError(driveSignInFailureCopy(auth));
+        return;
+      }
+      const next = await ensureDriveBrowseAccess();
+      setAccess(next);
+      if (next.state === 'ready') onReady?.();
+      else setError(next.reason === 'scopes' ? DRIVE_SCOPE_NOTE : DRIVE_RECONNECT_NOTE);
+    } catch (reason) {
+      setError(driveOwnerFacingError(reason));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const importPicked = async (chosen: readonly DriveBrowseMedia[]) => {
+    setBrowseOpen(false);
+    const picked = [...chosen];
+    if (!picked.length) return;
+    const token = access?.state === 'ready' ? access.token : null;
+    if (!token) {
+      setAccess({ state: 'reconnect', reason: 'expired' });
+      setPickNote(DRIVE_RECONNECT_NOTE);
+      return;
+    }
+    setBusyId('googleDrive');
+    setPickNote(driveImportProgressLabel(0, picked.length));
+    setError('');
+    try {
+      const result = await runDriveImport({
+        items: picked,
+        chunkSize: driveImportChunkSize('any'),
+        download: async (item) => {
+          const blob = await downloadDriveFile(token, item.id);
+          const type = item.mime || blob.type || 'application/octet-stream';
+          return {
+            file: new File([blob], item.name || 'Drive file', { type }),
+            driveFileId: item.id,
+          };
+        },
+        save: (files, report) => addDriveMediaFiles([...files], 'gallery', { onProgress: report }),
+        onLabel: setPickNote,
+      });
+      if (!result.ok) {
+        setPickNote(driveImportSaveErrorNote(result.error, result.outcome.added, result.outcome.picked));
+        return;
+      }
+      setPickNote(driveImportOutcomeNote(result.outcome) ?? driveGallerySavedCopy(result.outcome.added));
+    } catch (reason) {
+      setPickNote(driveOwnerFacingError(reason));
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   const connect = async (provider: CloudStorageConnector) => {
     if (provider.phase !== 'live' || !provider.isAvailable()) return;
@@ -236,6 +345,25 @@ export function DriveConnectCard({ resumeMode = null }: { resumeMode?: 'token' |
               {CLASS_HISTORY_TITLE}
             </Link>
           ) : null}
+          {googleConnected && access?.state === 'ready' ? (
+            <button
+              type="button"
+              className="btn"
+              disabled={busyId !== null}
+              onClick={() => {
+                setPickNote('');
+                setError('');
+                setBrowseOpen(true);
+              }}
+            >
+              {DRIVE_BROWSE_LABEL}
+            </button>
+          ) : null}
+          {googleConnected && access?.state === 'reconnect' ? (
+            <button type="button" className="btn" disabled={busyId !== null} onClick={() => void reconnect()}>
+              {busyId === 'googleDrive' ? 'Opening Google Drive…' : DRIVE_RECONNECT_LABEL}
+            </button>
+          ) : null}
           <button
             type="button"
             className="btn btn--ghost"
@@ -245,6 +373,9 @@ export function DriveConnectCard({ resumeMode = null }: { resumeMode?: 'token' |
               setPending(null);
               setSession(null);
               setFolders(null);
+              setAccess(null);
+              setBrowseOpen(false);
+              setPickNote('');
             }}
           >
             Disconnect
@@ -324,10 +455,34 @@ export function DriveConnectCard({ resumeMode = null }: { resumeMode?: 'token' |
           ) : null}
         </div>
       ) : null}
+      {googleConnected && access === null ? (
+        <p className="drive-connect__note" role="status">
+          {DRIVE_CHECKING_LABEL}
+        </p>
+      ) : null}
+      {googleConnected && access?.state === 'reconnect' ? (
+        <p className="drive-connect__note">{access.reason === 'scopes' ? DRIVE_SCOPE_NOTE : DRIVE_RECONNECT_NOTE}</p>
+      ) : null}
+      {pickNote ? (
+        <p className="drive-connect__note" role="status">
+          {pickNote}
+        </p>
+      ) : null}
       {error ? (
         <p className="drive-connect__error" role="status">
           {error}
         </p>
+      ) : null}
+      {googleConnected ? (
+        <DriveMediaPicker
+          open={browseOpen}
+          kind="any"
+          stacked
+          onClose={() => setBrowseOpen(false)}
+          onDone={(files) => {
+            void importPicked(files);
+          }}
+        />
       ) : null}
     </article>
   );

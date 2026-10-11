@@ -4,6 +4,7 @@ import type { DriveFileMeta, DriveLessonDocument } from './googleDrive.ts';
 import {
   OPEN_DRIVE_CLASS_LABEL,
   OPEN_THIS_CLASS_LABEL,
+  PICK_LESSON_DRIVE_LABEL,
   RESTORE_EMPTY,
   RESTORE_LESSON_ONLY,
   RESTORE_READY,
@@ -57,6 +58,7 @@ function video(id: string, name: string, localClipId?: string): DriveFileMeta {
 test('Open this class keeps yesterday on that date and an older day on today', () => {
   assert.equal(OPEN_THIS_CLASS_LABEL, 'Open this class');
   assert.equal(OPEN_DRIVE_CLASS_LABEL, 'Open a class from Google Drive');
+  assert.equal(PICK_LESSON_DRIVE_LABEL, 'Pick a lesson from Google Drive');
   assert.equal(restoredLessonPath('2026-10-01'), '/notes?plan=unlimited&date=2026-10-01');
   assert.doesNotMatch(restoredLessonPath('2026-10-01'), /photos\.google|icloud/i);
 

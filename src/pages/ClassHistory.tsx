@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DriveConnectCard } from '../components/DriveConnectCard';
+import { DriveMediaPicker } from '../components/DriveMediaPicker';
 import { OpenMyDrive } from '../components/OpenMyDrive';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { useSubmenuBack } from '../hooks/useSubmenuBack';
 import { useToolboxParent } from '../hooks/useToolboxParent';
 import { cloudStorage } from '../lib/cloudStorage';
+import type { DriveBrowseMedia } from '../lib/driveMediaPicker';
 import {
   CLASS_HISTORY_CHECKING,
   CLASS_HISTORY_CONNECT,
@@ -17,11 +19,17 @@ import {
   loadDriveDayPackage,
   readDriveBinding,
   requestDriveToken,
+  subscribeDriveBinding,
   type ClassDay,
   type DriveBinding,
+  type DriveFileMeta,
+  type DriveLessonDocument,
 } from '../lib/googleDrive';
+import { parseLessonPayload, preferLessonDocuments } from '../lib/lessonPackage';
 import {
+  LESSON_PICK_UNREADABLE,
   OPEN_THIS_CLASS_LABEL,
+  PICK_LESSON_DRIVE_LABEL,
   RESTORE_OPENING,
   restoreDriveDay,
 } from '../lib/lessonRestore';
@@ -56,6 +64,10 @@ export function ClassHistoryPage() {
   const [state, setState] = useState<HistoryState>({ phase: 'checking' });
   const [opening, setOpening] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
+  const [pickOpen, setPickOpen] = useState(false);
+  const [reload, setReload] = useState(0);
+
+  useEffect(() => subscribeDriveBinding(() => setReload((value) => value + 1)), []);
 
   useEffect(() => {
     const current = readDriveBinding();
@@ -89,7 +101,7 @@ export function ClassHistoryPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reload]);
 
   const openClass = (date: string) => {
     if (!binding || opening) return;
@@ -125,6 +137,61 @@ export function ClassHistoryPage() {
       });
   };
 
+  const openPickedLessons = (files: readonly DriveBrowseMedia[]) => {
+    if (!binding || opening) return;
+    setPickOpen(false);
+    const picked = [...files];
+    if (!picked.length) return;
+    setOpening('pick');
+    setNotice('');
+    void requestDriveToken('silent')
+      .then(async (silent) => {
+        const token = silent ?? (await requestDriveToken('consent'));
+        if (!token) throw new Error(CLASS_HISTORY_CONNECT);
+        const parsed: DriveLessonDocument[] = [];
+        for (const file of picked) {
+          const blob = await downloadDriveFile(token, file.id);
+          const doc = parseLessonPayload(await blob.text());
+          if (doc) parsed.push(doc);
+        }
+        if (!parsed.length) return { ok: false as const, path: null, notice: LESSON_PICK_UNREADABLE };
+        const newest = [...parsed].sort((a, b) => b.savedAt - a.savedAt)[0];
+        const dateKey = newest?.date ?? '';
+        let videos: DriveFileMeta[] = [];
+        let folderLessons: DriveLessonDocument[] = [];
+        try {
+          const loaded = await loadDriveDayPackage(token, binding.folderId, dateKey);
+          videos = loaded.videos;
+          folderLessons = loaded.lessons;
+        } catch {
+          videos = [];
+        }
+        const lessons = preferLessonDocuments([parsed.filter((doc) => doc.date === dateKey), folderLessons]);
+        return restoreDriveDay({
+          todayKey: localDateKey(),
+          pack: { dateKey, lessons, videos },
+          downloadVideo: (fileId) => downloadDriveFile(token, fileId),
+          savePlan: (dateKey, plan, todayKey) => {
+            saveDay(dateKey, plan, todayKey);
+          },
+          storeClip: storeRestoredDriveClip,
+          saveVideoPlan: saveTechniquePlan,
+        });
+      })
+      .then((result) => {
+        if (!result || !result.ok || !result.path) {
+          setNotice(result?.notice || LESSON_PICK_UNREADABLE);
+          setOpening(null);
+          return;
+        }
+        navigate(result.path, { state: { driveRestoreNotice: result.notice } });
+      })
+      .catch((reason) => {
+        setNotice(reason instanceof Error ? reason.message : 'This lesson could not be opened.');
+        setOpening(null);
+      });
+  };
+
   return (
     <main className="notes">
       <PlayExitMark to={back} onExit={() => navigate(back)} />
@@ -138,7 +205,14 @@ export function ClassHistoryPage() {
       <div className="notes__plan">
         <OpenMyDrive />
         {binding ? <p className="notes__when">{binding.folderName}</p> : null}
-        {state.phase === 'need-connect' || state.phase === 'error' ? <DriveConnectCard /> : null}
+        {state.phase === 'need-connect' || state.phase === 'error' ? (
+          <DriveConnectCard onReady={() => setReload((value) => value + 1)} />
+        ) : null}
+        {binding && state.phase === 'ready' ? (
+          <button type="button" className="btn btn--ghost" disabled={opening !== null} onClick={() => setPickOpen(true)}>
+            {opening === 'pick' ? RESTORE_OPENING : PICK_LESSON_DRIVE_LABEL}
+          </button>
+        ) : null}
         {state.phase === 'checking' ? (
           <p className="notes__gallery-status" role="status">
             {CLASS_HISTORY_CHECKING}
@@ -198,6 +272,12 @@ export function ClassHistoryPage() {
             ))
           : null}
       </div>
+      <DriveMediaPicker
+        open={pickOpen}
+        kind="lesson"
+        onClose={() => setPickOpen(false)}
+        onDone={(files) => openPickedLessons(files)}
+      />
     </main>
   );
 }
