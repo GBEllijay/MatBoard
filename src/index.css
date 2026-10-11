@@ -3127,6 +3127,54 @@ span.role-plan__mark {
   opacity: 0.55;
 }
 
+/* Center Advantage mark. Home is the tier picker. Same icon as the corner back. */
+.tier-home {
+  position: absolute;
+  top: calc(0.2rem + var(--safe-t));
+  left: 50%;
+  z-index: 22;
+  width: 64px;
+  height: 64px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 18px;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  transform: translateX(-50%);
+  color: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.tier-home img {
+  width: 44px;
+  height: 44px;
+  display: block;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.45)) drop-shadow(0 1px 6px rgba(0, 0, 0, 0.7));
+}
+
+.tier-home:focus-visible {
+  outline: 2px solid rgba(240, 194, 75, 0.55);
+  outline-offset: 2px;
+}
+
+.home .play-exit {
+  z-index: 30;
+  opacity: 0.9;
+}
+
+.techniques--play > .tier-home,
+.saver--play > .tier-home,
+.schedule.play--fs > .tier-home,
+.schedule.play--landscape > .tier-home {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .roster > .play-exit,
 .notes > .play-exit,
 .tree > .play-exit,

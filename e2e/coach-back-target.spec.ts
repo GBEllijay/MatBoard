@@ -45,7 +45,7 @@ test('Coach Unlimited and Pro keep their own back target', async ({ page }) => {
     await openToolAndBack(page, '/coach-unlimited', name, '/coach-unlimited');
   }
 
-  await openToolAndBack(page, '/coach-unlimited', 'Competitor Roster', '/competitors');
+  await openToolAndBack(page, '/coach-unlimited', 'Competitor Roster', '/coach-unlimited');
 
   await page.goto('/pro');
   await page.getByRole('link', { name: 'Advantage Coach Unlimited', exact: true }).click();
@@ -64,11 +64,18 @@ test('Coach Unlimited and Pro keep their own back target', async ({ page }) => {
   await suiteBack.click();
   await expect(page).toHaveURL(/\/suite$/);
 
-  for (const path of ['/notes', '/techniques', '/technique-tree', '/roster', '/tournament']) {
+  const direct = [
+    ['/notes', '/coach-unlimited'],
+    ['/techniques', '/coach-unlimited'],
+    ['/technique-tree', '/coach-unlimited'],
+    ['/roster', '/competitors'],
+    ['/tournament', '/suite'],
+  ] as const;
+  for (const [path, backPath] of direct) {
     await page.goto(path);
     const back = page.getByRole('link', { name: BACK });
-    await expect(back).toHaveAttribute('href', '/pro');
+    await expect(back).toHaveAttribute('href', backPath);
     await back.click();
-    await expect(page).toHaveURL(/\/pro$/);
+    await expect(page).toHaveURL(new RegExp(`${backPath}$`));
   }
 });

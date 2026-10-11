@@ -5,7 +5,8 @@ import { EmptyHint } from '../components/EmptyHint';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { KidsBracketChrome, KidsMascotDock } from '../components/KidsBracketChrome';
 import { KidsScoreboardSwitcher } from '../components/KidsScoreboardSwitcher';
-import { PlayExitMark } from '../components/PlayExitMark';
+import { SubmenuMarks } from '../components/TierHomeMark';
+import { useSubmenuBack } from '../hooks/useSubmenuBack';
 import { CheckInFillSheet } from '../components/CheckInFillSheet';
 import { OutcomePickSheet } from '../components/OutcomeCalls';
 import { RosterNameField } from '../components/RosterNameField';
@@ -121,7 +122,7 @@ export function TournamentPage() {
   const sizeMax = maxCompetitors(proUnlocked);
   const fromSuite = searchParams.get('from') === SUITE_FROM;
   const shownTheme = plainCoach ? DEFAULT_BRACKET_THEME : theme;
-  const exitPath = fromSuite ? '/suite' : plainCoach ? '/coach' : parent.path;
+  const exitPath = useSubmenuBack() ?? (fromSuite ? '/suite' : plainCoach ? '/coach' : parent.path);
   const kidsOn = kidsBracketChromeOn(fromSuite, kids.enabled);
   const [namesOpen, setNamesOpen] = useState(false);
   const [sizeOpen, setSizeOpen] = useState(false);
@@ -247,7 +248,7 @@ export function TournamentPage() {
       className={`tournament tournament--${shownTheme}${kidsOn ? ` tournament--kids tournament--kids-${kids.skin}` : ''}${fs.className ? ` ${fs.className}` : ''}`}
     >
       <BeltRail kind="tournament" />
-      <PlayExitMark to={exitPath} onExit={exitBoard} />
+      <SubmenuMarks to={exitPath} onExit={exitBoard} />
       <header className="tournament__bar">
         <div className="tournament__brand">
           <p className="tournament__eyebrow">{plainCoach ? 'Advantage Coach' : parent.eyebrow}</p>

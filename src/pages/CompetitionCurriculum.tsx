@@ -4,7 +4,8 @@ import { DriveConnectCard } from '../components/DriveConnectCard';
 import { PlanDateNav } from '../components/PlanDateNav';
 import { LessonMediaRail } from '../components/LessonMediaRail';
 import { OpenMyDrive } from '../components/OpenMyDrive';
-import { PlayExitMark } from '../components/PlayExitMark';
+import { SubmenuMarks } from '../components/TierHomeMark';
+import { useSubmenuBack } from '../hooks/useSubmenuBack';
 import { Sheet } from '../components/Sheet';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { COACH_LESSON_EYEBROW } from '../lib/coachCopy';
@@ -66,9 +67,7 @@ export function CompetitionCurriculumPage() {
   const proUnlocked = useProUnlocked();
   const [searchParams] = useSearchParams();
   const unlimitedPlan = proUnlocked && searchParams.get('plan') === UNLIMITED_LESSON_VALUE;
-  const parentPath = unlimitedPlan
-    ? `${COACHING_TOOLS_PATH}?plan=${UNLIMITED_LESSON_VALUE}`
-    : COACHING_TOOLS_PATH;
+  const parentPath = useSubmenuBack({ unlimited: unlimitedPlan }) ?? COACHING_TOOLS_PATH;
   const returnPath = unlimitedPlan ? `${CURRICULUM_PATH}?plan=${UNLIMITED_LESSON_VALUE}` : CURRICULUM_PATH;
   const [boot] = useState(() => {
     const todayKey = localDateKey();
@@ -303,7 +302,7 @@ export function CompetitionCurriculumPage() {
 
   return (
     <main className="notes">
-      <PlayExitMark
+      <SubmenuMarks
         to={parentPath}
         onExit={() => {
           navigate(parentPath);

@@ -3,7 +3,8 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { DeviceMediaInput } from '../components/DeviceMediaInput';
 import { OpenMyDrive } from '../components/OpenMyDrive';
 import { FullscreenChip } from '../components/FullscreenChip';
-import { PlayExitMark } from '../components/PlayExitMark';
+import { SubmenuMarks } from '../components/TierHomeMark';
+import { useSubmenuBack } from '../hooks/useSubmenuBack';
 import { SeatSessionBar, useCurrentSeat } from '../components/SeatSessionBar';
 import { TvTip } from '../components/TvTip';
 import { VideoSourceSheet } from '../components/VideoSourceSheet';
@@ -43,7 +44,7 @@ import {
 import { VIDEO_CAPTURE, VIDEO_PICKER_ACCEPT, VIDEO_RECORD_ACCEPT } from '../lib/mediaPicker';
 import { DEFAULT_MUTE_VIDEO, getSaverPrefs, setSaverMuteVideo } from '../lib/photoStore';
 import { safeTimerReturn } from '../lib/timerReturn';
-import { sharedToolBackPath, techniquesPageEyebrow, techniquesParentPath, UNLIMITED_LESSON_VALUE } from '../lib/productNames';
+import { techniquesPageEyebrow } from '../lib/productNames';
 import { isWithinRetention, localDateKey } from '../lib/trainingNotesStore';
 import { LOOP_RESTART_MIN_MS, nextLoopStep } from '../lib/videoLoop';
 import { LARGE_MEDIA_BYTES, LARGE_MEDIA_NOTE, quotaAddNote } from '../lib/storageQuota';
@@ -145,11 +146,7 @@ export function TechniquesPage() {
   const fsActiveRef = useRef(false);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const exitPath = sharedToolBackPath({
-    from: searchParams.get('from'),
-    unlimited: searchParams.get('plan') === UNLIMITED_LESSON_VALUE,
-    fallback: techniquesParentPath(proUnlocked, coachUnlocked, isLiveSeat(seat)),
-  });
+  const exitPath = useSubmenuBack() ?? '/coach';
   useCoachPageSwipe();
   const launchStarted = useRef(false);
   const launchKey = searchParams.toString();
@@ -592,7 +589,7 @@ export function TechniquesPage() {
     <main
       className={`techniques${playback ? ' techniques--play' : ''}${fs.className ? ` ${fs.className}` : ''}${stage ? ' techniques--fill' : ''}`}
     >
-      <PlayExitMark to={backPath ?? exitPath} onExit={exitBoard} />
+      <SubmenuMarks to={backPath ?? exitPath} onExit={exitBoard} />
       <header className="techniques__bar">
         <div className="techniques__brand">
           <p className="techniques__eyebrow">{eyebrow}</p>

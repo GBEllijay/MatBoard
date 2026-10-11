@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { BeltRail } from '../components/BeltRail';
 import { HomeMark } from '../components/HomeMark';
+import { PlayExitMark } from '../components/PlayExitMark';
 import { SiteFooter } from '../components/SiteFooter';
 import { TierLine } from '../components/TierLine';
 import { unlinkBracketBout } from '../lib/bracketBout';
@@ -15,7 +16,8 @@ export function CompetitionManagementPage() {
   return (
     <main className="home home--coach">
       <div className="home__inner">
-        <HomeMark to="/coach" tagline={<TierLine tier="Coach" detail={COACH_TOOLS_TEASER} />} />
+        <PlayExitMark to="/coach" />
+        <HomeMark to="/" tagline={<TierLine tier="Coach" detail={COACH_TOOLS_TEASER} />} />
 
         <nav className="home__modes" aria-label={COMPETITION_MANAGEMENT_LABEL}>
           <article className="mode-card mode-card--coach">

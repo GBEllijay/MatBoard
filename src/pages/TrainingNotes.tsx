@@ -8,7 +8,7 @@ import { CoachPlanExport } from '../components/CoachPlanExport';
 import { CollaborationGate, useCurrentSeat } from '../components/SeatSessionBar';
 import { LessonMediaRail } from '../components/LessonMediaRail';
 import { OpenMyDrive } from '../components/OpenMyDrive';
-import { PlayExitMark } from '../components/PlayExitMark';
+import { SubmenuMarks } from '../components/TierHomeMark';
 import { useCoachPageSwipe } from '../hooks/useCoachSwipe';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useToolboxParent } from '../hooks/useToolboxParent';
@@ -74,7 +74,9 @@ import {
   seatMenuAllowed,
   visibleCoachControl,
 } from '../lib/instructorSeats';
-import { INSTRUCTOR_COACH_ENTRY, UNLIMITED_LESSON_VALUE, carryHubFrom, sharedToolBackPath } from '../lib/productNames';
+import { INSTRUCTOR_COACH_ENTRY, UNLIMITED_LESSON_VALUE, carryHubFrom } from '../lib/productNames';
+import { classHistoryHref } from '../lib/submenuNav';
+import { useSubmenuBack } from '../hooks/useSubmenuBack';
 import { listPhotos } from '../lib/photoStore';
 import { loadTechniqueBoardForDate } from '../lib/techniqueStore';
 import type { VideoPlan } from '../lib/techniqueLogic';
@@ -174,11 +176,7 @@ export function TrainingNotesPage() {
    */
   const unlimitedPlan =
     lessonCloud && (isLiveSeat(seat) || searchParams.get('plan') === UNLIMITED_LESSON_VALUE);
-  const exitPath = sharedToolBackPath({
-    from: searchParams.get('from'),
-    unlimited: unlimitedPlan,
-    fallback: parent.path,
-  });
+  const exitPath = useSubmenuBack({ unlimited: unlimitedPlan }) ?? parent.path;
   const driveRestoreNotice = restoreNoticeFromState(useLocation().state);
   const showDownload = visibleCoachControl('downloadTodaysVideos', { owner: true, seat });
   const showDistribute = unlimitedPlan;
@@ -555,7 +553,7 @@ export function TrainingNotesPage() {
 
   return (
     <main className="notes">
-      <PlayExitMark
+      <SubmenuMarks
         to={exitPath}
         onExit={() => {
           navigate(exitPath);
@@ -588,7 +586,7 @@ export function TrainingNotesPage() {
         {unlimitedPlan ? null : <OpenMyDrive />}
         {unlimitedPlan && !showDownload ? <OpenMyDrive /> : null}
         {unlimitedPlan ? (
-          <Link className="btn btn--ghost notes__copy" to="/class-history">
+          <Link className="btn btn--ghost notes__copy" to={classHistoryHref('/notes', searchParams.toString())}>
             {OPEN_DRIVE_CLASS_LABEL}
           </Link>
         ) : null}

@@ -92,6 +92,9 @@ export const UNLIMITED_VIDEOS_PATH = `/techniques?from=${UNLIMITED_FROM}`;
 /** Technique Tree opened from Coach Unlimited. */
 export const UNLIMITED_TREE_PATH = `/technique-tree?from=${UNLIMITED_FROM}`;
 
+/** Competitor Roster opened from Coach Unlimited. CMS keeps `from=competitors`. */
+export const UNLIMITED_ROSTER_PATH = `/roster?from=${UNLIMITED_FROM}`;
+
 /**
  * Basic Coaching Tools, top to bottom.
  * Competition Class Curriculum is not on basic Coach.
@@ -156,7 +159,7 @@ export const COACH_UNLIMITED_TOOLS = [
   { title: TRAINING_NOTES_LABEL, to: UNLIMITED_LESSON_PATH, belt: 'brown' as const, stripes: 0 as const },
   { title: 'Daily Training Videos', to: UNLIMITED_VIDEOS_PATH, belt: 'brown' as const, stripes: 1 as const },
   { title: TECHNIQUE_TREE_LABEL, to: UNLIMITED_TREE_PATH, belt: 'brown' as const, stripes: 2 as const },
-  { title: COMPETITOR_ROSTER_LABEL, to: COMPETITOR_ROSTER_PATH, belt: 'brown' as const, stripes: 3 as const },
+  { title: COMPETITOR_ROSTER_LABEL, to: UNLIMITED_ROSTER_PATH, belt: 'brown' as const, stripes: 3 as const },
   {
     title: CURRICULUM_LABEL,
     to: `${CURRICULUM_PATH}?plan=${UNLIMITED_LESSON_VALUE}`,
@@ -173,7 +176,7 @@ export const COACH_UNLIMITED_TOOLS = [
  * timer at `/training`.
  */
 export const COMPETITION_MENU = [
-  { title: COMPETITOR_SYSTEM_NAME, to: '/competitors', belt: 'tournament' as const },
+  { title: COMPETITOR_SYSTEM_NAME, to: '/competitors?from=competition', belt: 'tournament' as const },
   { title: MOCK_TOURNAMENT_NAME, to: '/tournament', belt: 'tournament' as const },
   { title: 'Scoreboard', to: '/match/control', belt: 'tournament' as const, clearBout: true as const },
   { title: 'Round Timer', to: '/training', belt: 'tournament' as const },
@@ -281,7 +284,7 @@ export const COMPETITION_PRO_MENU = [
   },
   {
     title: COMPETITOR_SYSTEM_NAME,
-    to: '/competitors',
+    to: withSuiteFrom('/competitors', true),
     belt: 'tournament' as const,
     clearBout: false,
   },

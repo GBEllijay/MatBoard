@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { BeltTip } from '../components/BeltTip';
-import { PlayExitMark } from '../components/PlayExitMark';
+import { SubmenuMarks } from '../components/TierHomeMark';
 import { WhiteBeltPicker } from '../components/WhiteBeltPicker';
 import { useWhiteRosterState } from '../hooks/useStores';
 import {
@@ -56,7 +56,7 @@ export function WhiteRosterPage() {
 
   return (
     <main className="white-roster">
-      <PlayExitMark to="/white" />
+      <SubmenuMarks to="/white" />
       <header className="white-roster__head">
         <p className="white-roster__eyebrow">Advantage White</p>
         <h1>Match names</h1>

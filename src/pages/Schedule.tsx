@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FullscreenChip } from '../components/FullscreenChip';
-import { PlayExitMark } from '../components/PlayExitMark';
+import { SubmenuMarks } from '../components/TierHomeMark';
 import { ScheduleMonthBoard } from '../components/ScheduleMonthBoard';
 import { ScheduleWeekBoard } from '../components/ScheduleWeekBoard';
 import { MEDIA_CONSOLE_NAME } from '../lib/productNames';
@@ -174,7 +174,7 @@ export function SchedulePage() {
 
   return (
     <main className={`schedule${fs.className ? ` ${fs.className}` : ''}`}>
-      <PlayExitMark to="/slideshow?folder=gallery" onExit={exitBoard} />
+      <SubmenuMarks to="/slideshow?folder=gallery" onExit={exitBoard} />
       <header className="schedule__bar">
         <div className="schedule__brand">
           <p className="schedule__eyebrow">{MEDIA_CONSOLE_NAME}</p>

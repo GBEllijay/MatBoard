@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSyncExternalStore } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PlayExitMark } from '../components/PlayExitMark';
+import { SubmenuMarks } from '../components/TierHomeMark';
 import { Sheet } from '../components/Sheet';
 import { COMPETITOR_SYSTEM_NAME } from '../lib/productNames';
 import {
@@ -36,7 +36,7 @@ export function RankingsPage() {
 
   return (
     <main className="roster rankings cms">
-      <PlayExitMark
+      <SubmenuMarks
         to="/competitors"
         onExit={() => {
           navigate('/competitors');

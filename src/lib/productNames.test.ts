@@ -72,6 +72,7 @@ import {
   COACH_TREE_PATH,
   UNLIMITED_VIDEOS_PATH,
   UNLIMITED_TREE_PATH,
+  UNLIMITED_ROSTER_PATH,
   toolEyebrow,
   tournamentToolLabel,
   withSuiteFrom,
@@ -193,7 +194,7 @@ test('Coach hub is Coaching Tools then Competition Team Management', () => {
   );
   assert.deepEqual(
     COMPETITION_MENU.map((item) => item.to),
-    ['/competitors', '/tournament', '/match/control', '/training'],
+    ['/competitors?from=competition', '/tournament', '/match/control', '/training'],
   );
   assert.equal(COMPETITION_MENU[2].to, MATCH_CONTROLLER_PATH);
   assert.equal('clearBout' in COMPETITION_MENU[2] && COMPETITION_MENU[2].clearBout, true);
@@ -247,7 +248,9 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
     COACH_UNLIMITED_TOOLS.map((tool) => ('stripes' in tool ? tool.stripes : null)),
     [0, 1, 2, 3, null],
   );
-  assert.equal(COACH_UNLIMITED_TOOLS[3].to, COMPETITOR_ROSTER_PATH);
+  assert.equal(COACH_UNLIMITED_TOOLS[3].to, UNLIMITED_ROSTER_PATH);
+  assert.equal(UNLIMITED_ROSTER_PATH, '/roster?from=unlimited');
+  assert.notEqual(UNLIMITED_ROSTER_PATH, COMPETITOR_ROSTER_PATH);
   assert.equal(COACH_UNLIMITED_TOOLS[3].belt, 'brown');
   assert.equal(COACH_UNLIMITED_TOOLS[4].to, '/competition-curriculum?plan=unlimited');
   assert.ok(!COACH_UNLIMITED_TOOLS.some((tool) => tool.to.startsWith('/coaching-tools')));
@@ -283,13 +286,13 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
     COMPETITION_PRO_MENU.map((item) => item.to),
     [
       withSuiteFrom('/tournament', true),
-      '/competitors',
+      withSuiteFrom('/competitors', true),
       withSuiteFrom(MATCH_CONTROLLER_PATH, true),
       withSuiteFrom(ROUND_CONTROLLER_PATH, true),
     ],
   );
   assert.equal(COMPETITION_PRO_MENU[0].to, withSuiteFrom('/tournament', true));
-  assert.equal(COMPETITION_PRO_MENU[1].to, '/competitors');
+  assert.equal(COMPETITION_PRO_MENU[1].to, '/competitors?from=suite');
   assert.deepEqual(
     COMPETITION_PRO_MENU.map((item) => item.belt),
     ['tournament', 'tournament', 'black', 'black'],
