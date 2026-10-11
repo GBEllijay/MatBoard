@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { DriveConnectCard } from '../components/DriveConnectCard';
 import { OpenMyDrive } from '../components/OpenMyDrive';
 import { PlayExitMark } from '../components/PlayExitMark';
+import { useSubmenuBack } from '../hooks/useSubmenuBack';
 import { useToolboxParent } from '../hooks/useToolboxParent';
 import { cloudStorage } from '../lib/cloudStorage';
 import {
@@ -50,6 +51,7 @@ type HistoryState =
 export function ClassHistoryPage() {
   const navigate = useNavigate();
   const parent = useToolboxParent();
+  const back = useSubmenuBack() ?? '/instructors';
   const [binding, setBinding] = useState<DriveBinding | null>(() => readDriveBinding());
   const [state, setState] = useState<HistoryState>({ phase: 'checking' });
   const [opening, setOpening] = useState<string | null>(null);
@@ -125,7 +127,7 @@ export function ClassHistoryPage() {
 
   return (
     <main className="notes">
-      <PlayExitMark to="/instructors" onExit={() => navigate('/instructors')} />
+      <PlayExitMark to={back} onExit={() => navigate(back)} />
       <header className="notes__bar">
         <div className="notes__brand">
           <p className="notes__eyebrow">{parent.eyebrow}</p>

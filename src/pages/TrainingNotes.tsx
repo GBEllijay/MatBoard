@@ -39,7 +39,7 @@ import {
   matchLessonTree,
   parallelVideoSlot,
   techniqueTreeLaunchPath,
-  techniquesFocusPath,
+  lessonVideoHref,
   type LessonSlotRef,
   type LessonTreeCandidate,
 } from '../lib/lessonLinks';
@@ -74,7 +74,9 @@ import {
   seatMenuAllowed,
   visibleCoachControl,
 } from '../lib/instructorSeats';
-import { COACH_UNLIMITED_PATH, INSTRUCTOR_COACH_ENTRY, UNLIMITED_LESSON_VALUE } from '../lib/productNames';
+import { INSTRUCTOR_COACH_ENTRY, UNLIMITED_LESSON_VALUE, carryHubFrom } from '../lib/productNames';
+import { classHistoryHref } from '../lib/submenuNav';
+import { useSubmenuBack } from '../hooks/useSubmenuBack';
 import { listPhotos } from '../lib/photoStore';
 import { loadTechniqueBoardForDate } from '../lib/techniqueStore';
 import type { VideoPlan } from '../lib/techniqueLogic';
@@ -174,6 +176,7 @@ export function TrainingNotesPage() {
    */
   const unlimitedPlan =
     lessonCloud && (isLiveSeat(seat) || searchParams.get('plan') === UNLIMITED_LESSON_VALUE);
+  const exitPath = useSubmenuBack({ unlimited: unlimitedPlan }) ?? parent.path;
   const driveRestoreNotice = restoreNoticeFromState(useLocation().state);
   const showDownload = visibleCoachControl('downloadTodaysVideos', { owner: true, seat });
   const showDistribute = unlimitedPlan;
@@ -466,11 +469,12 @@ export function TrainingNotesPage() {
     const offer = videoOffer(videos, ref);
     if (!offer.show) return;
     navigate(
-      techniquesFocusPath({
+      lessonVideoHref({
         section: ref.role,
         date: viewKey,
         slotId: offer.slotId,
         index: ref.role === 'technique' ? ref.index : undefined,
+        search: searchParams.toString(),
       }),
     );
   };
@@ -530,7 +534,12 @@ export function TrainingNotesPage() {
         treeChoices={tech ? treeChoices : []}
         canEditTree={Boolean(tech) && editingToday}
         storedTreeId={tech?.treeId}
-        onOpenTree={tech ? (treeId) => navigate(techniqueTreeLaunchPath(treeId)) : undefined}
+        onOpenTree={
+          tech
+            ? (treeId) => navigate(carryHubFrom(techniqueTreeLaunchPath(treeId), searchParams.toString()))
+            : undefined
+        }
+        treeLibraryTo={carryHubFrom('/technique-tree', searchParams.toString())}
         onPickTree={
           tech
             ? (treeId) => patchTechnique(tech.id, treeId ? { treeId } : { treeId: undefined })
@@ -543,9 +552,9 @@ export function TrainingNotesPage() {
   return (
     <main className="notes">
       <PlayExitMark
-        to={unlimitedPlan ? COACH_UNLIMITED_PATH : parent.path}
+        to={exitPath}
         onExit={() => {
-          navigate(unlimitedPlan ? COACH_UNLIMITED_PATH : parent.path);
+          navigate(exitPath);
         }}
       />
       <header className="notes__bar">
@@ -575,7 +584,7 @@ export function TrainingNotesPage() {
         {unlimitedPlan ? null : <OpenMyDrive />}
         {unlimitedPlan && !showDownload ? <OpenMyDrive /> : null}
         {unlimitedPlan ? (
-          <Link className="btn btn--ghost notes__copy" to="/class-history">
+          <Link className="btn btn--ghost notes__copy" to={classHistoryHref('/notes', searchParams.toString())}>
             {OPEN_DRIVE_CLASS_LABEL}
           </Link>
         ) : null}

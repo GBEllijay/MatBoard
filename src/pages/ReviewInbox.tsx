@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { DriveHandoffCheck, DriveHandoffGuide, useDriveConnected } from '../components/DriveHandoffGuide';
 import { HomeMark } from '../components/HomeMark';
+import { PlayExitMark } from '../components/PlayExitMark';
 import { LessonVersionHistory } from '../components/LessonVersionHistory';
 import { SiteFooter } from '../components/SiteFooter';
 import { getClassPhotoPromotion } from '../lib/classPhotoPromotions';
@@ -114,7 +115,8 @@ export function ReviewInboxPage() {
   return (
     <main className="home home--pro">
       <div className="home__inner">
-        <HomeMark to="/coach-unlimited" />
+        <PlayExitMark to="/coach-unlimited" />
+        <HomeMark to="/" />
         <section className="review-inbox" aria-label="Review inbox">
           <p className="plan-card__kicker">Review inbox</p>
           <h1>Sunday review</h1>

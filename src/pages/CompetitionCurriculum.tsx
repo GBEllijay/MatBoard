@@ -5,6 +5,7 @@ import { PlanDateNav } from '../components/PlanDateNav';
 import { LessonMediaRail } from '../components/LessonMediaRail';
 import { OpenMyDrive } from '../components/OpenMyDrive';
 import { PlayExitMark } from '../components/PlayExitMark';
+import { useSubmenuBack } from '../hooks/useSubmenuBack';
 import { Sheet } from '../components/Sheet';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { COACH_LESSON_EYEBROW } from '../lib/coachCopy';
@@ -56,7 +57,7 @@ import { deleteUnusedTrainingClip, readTrainingClipBlob } from '../lib/technique
 import { CONNECT_WITH_TITLE } from '../lib/cloudStorage';
 import { CLASS_DESIGNATION_MAX, CLASS_TIME_MAX, CLOSING_MAX, COACH_NAME_MAX, EXPECTED_MAX, TECHNIQUE_NOTES_MAX, TECHNIQUE_TITLE_MAX, localDateKey, planDayStamp, planDayTitle, shiftDateKey } from '../lib/trainingNotesStore';
 import { techniqueTreeLaunchPath } from '../lib/lessonLinks';
-import { COACHING_TOOLS_PATH, UNLIMITED_LESSON_VALUE } from '../lib/productNames';
+import { COACHING_TOOLS_PATH, UNLIMITED_LESSON_VALUE, carryHubFrom } from '../lib/productNames';
 import { loadTechniqueArchive, type TechniqueTreeArchive } from '../lib/techniqueTreeStore';
 import { resetTrainingSession, setRounds, setWorkMs } from '../lib/trainingStore';
 import { trainingPathWithReturn } from '../lib/timerReturn';
@@ -66,9 +67,7 @@ export function CompetitionCurriculumPage() {
   const proUnlocked = useProUnlocked();
   const [searchParams] = useSearchParams();
   const unlimitedPlan = proUnlocked && searchParams.get('plan') === UNLIMITED_LESSON_VALUE;
-  const parentPath = unlimitedPlan
-    ? `${COACHING_TOOLS_PATH}?plan=${UNLIMITED_LESSON_VALUE}`
-    : COACHING_TOOLS_PATH;
+  const parentPath = useSubmenuBack({ unlimited: unlimitedPlan }) ?? COACHING_TOOLS_PATH;
   const returnPath = unlimitedPlan ? `${CURRICULUM_PATH}?plan=${UNLIMITED_LESSON_VALUE}` : CURRICULUM_PATH;
   const [boot] = useState(() => {
     const todayKey = localDateKey();
@@ -555,7 +554,14 @@ export function CompetitionCurriculumPage() {
                   treeChoices={treeChoices}
                   canEditTree={editingToday}
                   storedTreeId={block.treeId}
-                  onOpenTree={(treeId) => navigate(techniqueTreeLaunchPath(treeId))}
+                  onOpenTree={(treeId) =>
+                    navigate(
+                      carryHubFrom(
+                        techniqueTreeLaunchPath(treeId),
+                        unlimitedPlan ? `plan=${UNLIMITED_LESSON_VALUE}` : '',
+                      ),
+                    )
+                  }
                   onPickTree={(treeId) => patchBlock(block.id, treeId ? { treeId } : { treeId: undefined })}
                 />
               ) : null

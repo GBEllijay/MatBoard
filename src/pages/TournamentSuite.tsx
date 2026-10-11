@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { BeltHeader } from '../components/BeltHeader';
 import { BeltRail } from '../components/BeltRail';
 import { HomeMark } from '../components/HomeMark';
+import { PlayExitMark } from '../components/PlayExitMark';
 import { SiteFooter } from '../components/SiteFooter';
 import { unlinkBracketBout } from '../lib/bracketBout';
 import {
@@ -14,7 +15,8 @@ export function TournamentSuitePage() {
   return (
     <main className="home home--pro home--suite">
       <div className="home__inner">
-        <HomeMark to="/pro" tagline="Live event ops on this device." />
+        <PlayExitMark to="/pro" />
+        <HomeMark to="/" tagline="Live event ops on this device." />
         <section className="suite">
           <BeltHeader
             kind="tournament"

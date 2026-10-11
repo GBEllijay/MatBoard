@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import { classHistoryHref } from '../lib/submenuNav';
 import {
   cloudStorage,
   cloudStorageChoices,
@@ -70,6 +71,7 @@ function connectedDetail(binding: CloudBinding): string {
 let oneDriveResumeStarted = false;
 
 export function DriveConnectCard({ resumeMode = null }: { resumeMode?: 'token' | 'error' | null }) {
+  const location = useLocation();
   const owned = ownedGoogleClientId();
   const ownedMicrosoft = ownedMicrosoftClientId();
   const [devAppId, setDevAppId] = useState(() => (import.meta.env.DEV && !owned ? googleClientId() : ''));
@@ -230,7 +232,7 @@ export function DriveConnectCard({ resumeMode = null }: { resumeMode?: 'token' |
       {binding ? (
         <div className="drive-connect__actions">
           {binding.providerId === 'googleDrive' ? (
-            <Link className="btn" to="/class-history">
+            <Link className="btn" to={classHistoryHref(location.pathname, location.search)}>
               {CLASS_HISTORY_TITLE}
             </Link>
           ) : null}

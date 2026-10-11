@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   lessonFocusStatus,
+  lessonPlanReturnPath,
   lessonSlotOffersVideo,
+  lessonVideoHref,
   matchLessonTree,
   parallelVideoSlot,
   parseLessonVideoFocus,
@@ -62,6 +64,19 @@ test('launch paths focus the videos slot or the saved tree', () => {
     /play=/,
   );
   assert.equal(techniqueTreeLaunchPath('tree a'), '/technique-tree?tree=tree+a');
+  assert.equal(
+    lessonPlanReturnPath('plan=unlimited', '2026-10-11'),
+    '/notes?plan=unlimited&from=unlimited&date=2026-10-11',
+  );
+  assert.equal(lessonPlanReturnPath('from=coach', '2026-10-11'), '/notes?from=coach&date=2026-10-11');
+  assert.equal(
+    lessonVideoHref({ section: 'warmup', date: '2026-10-11', slotId: 'warmup', search: 'plan=unlimited' }),
+    '/techniques?focus=1&section=warmup&date=2026-10-11&slot=warmup&from=unlimited&back=%2Fnotes%3Fplan%3Dunlimited%26from%3Dunlimited%26date%3D2026-10-11',
+  );
+  assert.match(
+    lessonVideoHref({ section: 'warmup', date: '2026-10-11', search: 'from=coach' }),
+    /from=coach&back=/,
+  );
 
   const plan = emptyVideoPlan();
   const drill = parseLessonVideoFocus(

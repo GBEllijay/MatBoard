@@ -1,6 +1,8 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import { BeltRail } from '../components/BeltRail';
 import { HomeMark } from '../components/HomeMark';
+import { PlayExitMark } from '../components/PlayExitMark';
+import { useSubmenuBack } from '../hooks/useSubmenuBack';
 import { SiteFooter } from '../components/SiteFooter';
 import {
   COMPETITION_READY_CARD,
@@ -56,11 +58,13 @@ const LINKS = [
 export function CompetitorManagementPage() {
   const [searchParams] = useSearchParams();
   const look = headerLook(searchParams.get('look'));
+  const back = useSubmenuBack() ?? '/suite';
 
   return (
     <main className="home home--pro home--suite">
       <div className="home__inner">
-        <HomeMark to="/competition" />
+        <PlayExitMark to={back} />
+        <HomeMark to="/" />
         <section className="suite competitor-hub">
           <header className={`competitor-hub__header competitor-hub__header--${look}`} data-header-look={look}>
             {look === 'belt' ? <BeltRail kind="tournament" /> : null}

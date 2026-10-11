@@ -4,6 +4,7 @@ import { BeltHeader } from '../components/BeltHeader';
 import { BeltRail } from '../components/BeltRail';
 import { DriveConnectCard } from '../components/DriveConnectCard';
 import { HomeMark } from '../components/HomeMark';
+import { PlayExitMark } from '../components/PlayExitMark';
 import { useCurrentSeat } from '../components/SeatSessionBar';
 import { SiteFooter } from '../components/SiteFooter';
 import { coachToolVisible } from '../lib/instructorSeats';
@@ -35,7 +36,8 @@ export function CoachUnlimitedPage() {
   return (
     <main className="home home--pro home--suite">
       <div className="home__inner">
-        <HomeMark to="/pro" />
+        <PlayExitMark to="/pro" />
+        <HomeMark to="/" />
         <section className="suite instructor-hub">
           <BeltHeader kind="brown" worn title="Advantage - Coach Unlimited" />
           <nav className="instructor-jumps" aria-label={INSTRUCTOR_COACH_ENTRY}>
