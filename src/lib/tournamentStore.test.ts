@@ -19,6 +19,7 @@ import {
   byeSlotIds,
   defaultLibrary,
   defaultTournament,
+  displayBoutName,
   displayBracketName,
   COACH_MAX_COMPETITORS,
   PRO_MAX_COMPETITORS,
@@ -68,9 +69,12 @@ describe('bracket empty helpers', () => {
     assert.equal(bracketHasContent(scored), true);
   });
 
-  it('labels empty seeds as competitors, not students', () => {
-    assert.equal(seedPlaceholder(0), 'Competitor 1');
-    assert.equal(seedPlaceholder(15), 'Competitor 16');
+  it('hints empty seed slots as TBD and keeps scoreboard names', () => {
+    assert.equal(seedPlaceholder(0), 'TBD');
+    assert.equal(seedPlaceholder(2), 'TBD');
+    assert.equal(seedPlaceholder(15), 'TBD');
+    assert.equal(displayBoutName(defaultTournament(4), 'sf-1', 'b'), 'Competitor 3');
+    assert.equal(displayBoutName(defaultTournament(2), 'final-0', 'a'), 'Competitor 1');
   });
 });
 

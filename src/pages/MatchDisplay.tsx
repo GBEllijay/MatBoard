@@ -23,7 +23,6 @@ import { needsRefDecision } from '../lib/outcomes';
 import { formatMmSs } from '../lib/format';
 import { carlosMatchComplete, matchCarlosView } from '../lib/carlosCelebration';
 import { kidsBoardClass } from '../lib/kidsScoreboard';
-import { withSuiteFrom } from '../lib/productNames';
 import { SCOREBOARD_SKIN, scoreboardSkinClass } from '../lib/scoreboardSkin';
 
 export function MatchDisplayPage() {
@@ -152,7 +151,7 @@ export function MatchDisplayPage() {
         </div>
       </div>
       {linkedId ? (
-        <Link to={withSuiteFrom('/tournament', suite.fromSuite)} className="display-back" aria-label="Back to bracket">
+        <Link to={suite.withFrom('/tournament')} className="display-back" aria-label="Back to bracket">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path
               d="M14.5 5.5 8 12l6.5 6.5"

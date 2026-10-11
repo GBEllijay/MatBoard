@@ -97,6 +97,14 @@ test('Basic Coach bracket bouts use the White board; Coach Unlimited keeps the s
     withMatchOrigin('/match/control?focus=round', { fromSuite: false, whiteBoard: true }),
     '/match/control?focus=round&board=white',
   );
+  assert.equal(
+    withMatchOrigin('/match?bout=sf-0', { fromSuite: false, fromUnlimited: true, whiteBoard: true }),
+    '/match?bout=sf-0&from=unlimited',
+  );
+  assert.equal(
+    withMatchOrigin('/match?bout=sf-0&kids=dinos', { fromSuite: true, fromUnlimited: true, whiteBoard: false }),
+    '/match?bout=sf-0&kids=dinos&from=suite',
+  );
 });
 
 test('Mock-Tournament eyedrop colors are the stylesheet tokens', () => {

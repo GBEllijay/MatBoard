@@ -8,10 +8,20 @@ import { KidsScoreboardSwitcher } from './KidsScoreboardSwitcher.tsx';
 import { RosterNameField } from './RosterNameField.tsx';
 import { MatchDisplayPage } from '../pages/MatchDisplay.tsx';
 import { TournamentPage } from '../pages/Tournament.tsx';
+import { openBracketBout } from '../lib/bracketBout.ts';
 import { kidsBracketScoring, kidsSkinButtonSuppressed, setKidsEnabled, setKidsSkin } from '../lib/kidsScoreboard.ts';
 import { PRO_UNLOCK_STORAGE_KEY } from '../lib/proUnlock.ts';
 import { addStudent, resetRoster } from '../lib/rosterStore.ts';
-import { fillSeedNames, resetTournament, setCompetitorCount, setTournamentTitle } from '../lib/tournamentStore.ts';
+import {
+  fillSeedNames,
+  getTournament,
+  resetTournament,
+  seedSlots,
+  setCompetitorCount,
+  setMatchOutcome,
+  setTournamentTitle,
+  slotName,
+} from '../lib/tournamentStore.ts';
 
 const dom = new Window({ url: 'http://localhost/tournament?from=suite' });
 const view = dom as unknown as Window & typeof globalThis;
@@ -117,9 +127,14 @@ test('bracket and scoreboard name fields show the same closest roster match', as
     placeholder: 'Competitor 1',
     compact: true,
   });
+  const hinted = await topRosterMatch('Semifinals, bottom competitor', {
+    placeholder: 'TBD',
+    compact: true,
+  });
 
   assert.equal(scoreboard[0], 'Mia Santos');
   assert.deepEqual(scoreboard, bracket);
+  assert.deepEqual(scoreboard, hinted);
   assert.deepEqual(scoreboard, ['Mia Santos', 'Mila Chen', 'Sam Miller']);
   resetRoster();
 });
@@ -258,6 +273,194 @@ test('Skin stays enabled after Score and Back to bracket', { timeout: 8000 }, as
     window.matchMedia = realMatchMedia;
     resetTournament();
   }
+});
+
+test('Coach Unlimited Score keeps the Skin picker on Back to bracket', async () => {
+  localStorage.setItem(PRO_UNLOCK_STORAGE_KEY, '1');
+  resetTournament();
+  setCompetitorCount(4);
+  fillSeedNames(['Ada Cruz', 'Bea Ortiz', 'Cam Diaz', 'Dee Kim']);
+  setKidsEnabled(true);
+  setKidsSkin('dinos');
+  const realSetInterval = window.setInterval.bind(window);
+  window.setInterval = ((fn: TimerHandler, ms?: number, ...args: unknown[]) => {
+    if (ms === 100) return 0;
+    return realSetInterval(fn as () => void, ms, ...(args as []));
+  }) as typeof window.setInterval;
+
+  const mounted = mount(
+    <Routes>
+      <Route path="/tournament" element={<TournamentPage />} />
+      <Route path="/match" element={<MatchDisplayPage />} />
+    </Routes>,
+    '/tournament?from=unlimited',
+  );
+  try {
+    const score = document.querySelector('button.t-score');
+    assert.ok(score instanceof HTMLElement, 'semifinal Score button');
+    act(() => {
+      score.click();
+    });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    const back = document.querySelector('[aria-label="Back to bracket"]');
+    assert.ok(back instanceof HTMLElement, 'scoreboard shows Back to bracket');
+    assert.equal(back.tagName, 'A');
+    assert.match(back.getAttribute('href') || '', /from=unlimited/);
+    assert.match(back.getAttribute('href') || '', /^\/tournament\?/);
+    assert.equal(document.querySelector('main')?.classList.contains('kids-board--dinos'), true);
+    act(() => {
+      back.click();
+    });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    const skin = [...document.querySelectorAll('button')].find((el) =>
+      (el.getAttribute('aria-label') || '').startsWith('Skin'),
+    );
+    assert.ok(skin, 'Skin is back on the Coach Unlimited bracket');
+    assert.equal(skin.disabled, false);
+    assert.equal(document.querySelector('main')?.classList.contains('tournament--kids-dinos'), true);
+  } finally {
+    unmount(mounted);
+    window.setInterval = realSetInterval;
+    resetTournament();
+  }
+});
+
+test('empty seed slots hint TBD, Undo is logo blue, and the live match wears a LIVE pill', async () => {
+  localStorage.setItem(PRO_UNLOCK_STORAGE_KEY, '1');
+  resetTournament();
+  setCompetitorCount(4);
+  fillSeedNames(['Ada Cruz']);
+  setMatchOutcome('sf-0', 'a', { call: 'win', method: 'points' }, { toggle: false });
+  openBracketBout('sf-1');
+  setKidsEnabled(true);
+  setKidsSkin('dinos');
+
+  const mounted = mount(<TournamentPage />, '/tournament?from=suite');
+  try {
+    const placeholders = [...mounted.host.querySelectorAll('.t-slot input')].map((input) =>
+      input.getAttribute('placeholder'),
+    );
+    assert.ok(placeholders.includes('TBD'));
+    assert.equal(
+      placeholders.some((value) => /^Competitor \d+$/.test(value || '')),
+      false,
+    );
+    const undo = [...mounted.host.querySelectorAll('button')].find(
+      (button) => button.textContent?.trim() === 'Undo last result',
+    );
+    assert.ok(undo);
+    assert.equal(undo.classList.contains('btn--blue'), true);
+    assert.equal(undo.disabled, false);
+    const pill = mounted.host.querySelector('.t-match--live .t-live-pill');
+    assert.equal(pill?.textContent?.trim(), 'LIVE');
+    const names = [...mounted.host.querySelectorAll('button')].find(
+      (button) => button.textContent?.trim() === 'Edit names',
+    );
+    assert.ok(names);
+    act(() => {
+      names.click();
+    });
+    await settle();
+    assert.ok(document.querySelector('.sheet--names'), 'names editor uses the navy sheet');
+    const advanced = slotName(getTournament(), 'final-0-a');
+    assert.equal(advanced, 'Ada Cruz');
+    act(() => {
+      undo.click();
+    });
+    await settle();
+    assert.equal(slotName(getTournament(), 'final-0-a'), '');
+    assert.equal(getTournament().results['sf-0'], undefined);
+  } finally {
+    unmount(mounted);
+    resetTournament();
+  }
+});
+
+test('one tap sets bracket size, and kids connector pairs stay on an eight-person board', async () => {
+  localStorage.setItem(PRO_UNLOCK_STORAGE_KEY, '1');
+  resetTournament();
+  setCompetitorCount(4);
+  fillSeedNames(['Ada Cruz', 'Bea Ortiz', 'Cam Diaz', 'Dee Kim']);
+  setMatchOutcome('sf-0', 'a', { call: 'win', method: 'points' }, { toggle: false });
+  setKidsEnabled(true);
+  setKidsSkin('ocean');
+
+  const mounted = mount(<TournamentPage />, '/tournament?from=suite');
+  try {
+    assert.equal(mounted.host.querySelector('main')?.classList.contains('tournament--kids'), true);
+    const size = [...mounted.host.querySelectorAll('.tournament__actions button')].find(
+      (button) => button.textContent?.trim() === '4',
+    );
+    assert.ok(size, 'size chip shows 4');
+    act(() => {
+      size.click();
+    });
+    await settle();
+    const eight = [...document.querySelectorAll('button')].find((button) => button.textContent?.trim() === '8');
+    assert.ok(eight);
+    act(() => {
+      eight.click();
+    });
+    await settle();
+    assert.equal(document.querySelector('[role="dialog"]'), null);
+    assert.equal(getTournament().size, 8);
+    assert.ok(mounted.host.querySelector('.bracket__pair'), 'eight-person kids board keeps connector pairs');
+    assert.equal(seedSlots(getTournament()).length, 8);
+  } finally {
+    unmount(mounted);
+    resetTournament();
+  }
+});
+
+test('the kids Skin picker stays on Pro and Coach Unlimited, and off plain Coach', async () => {
+  localStorage.setItem(PRO_UNLOCK_STORAGE_KEY, '1');
+  localStorage.setItem('advantage.coachUnlocked', '1');
+  resetTournament();
+  setKidsEnabled(true);
+  setKidsSkin('dinos');
+
+  const coach = mount(<TournamentPage />, '/tournament?from=coach');
+  try {
+    const skin = [...coach.host.querySelectorAll('button')].find((button) =>
+      (button.getAttribute('aria-label') || '').startsWith('Skin'),
+    );
+    assert.equal(skin, undefined);
+    assert.equal(coach.host.querySelector('main')?.classList.contains('tournament--kids'), false);
+  } finally {
+    unmount(coach);
+  }
+
+  for (const entry of ['/tournament?from=suite', '/tournament?from=unlimited'] as const) {
+    setKidsEnabled(true);
+    setKidsSkin('dinos');
+    const board = mount(<TournamentPage />, entry);
+    try {
+      assert.equal(board.host.querySelector('main')?.classList.contains('tournament--kids-dinos'), true);
+      const skin = [...board.host.querySelectorAll('button')].find((button) =>
+        (button.getAttribute('aria-label') || '').startsWith('Skin'),
+      );
+      assert.ok(skin, `Skin on ${entry}`);
+      assert.equal(skin.disabled, false);
+      act(() => {
+        skin.click();
+      });
+      await settle();
+      assert.equal(document.querySelectorAll('.kids-skin__thumb').length, 6);
+      const ocean = [...document.querySelectorAll('.kids-skin__thumb')].find(
+        (button) => button.textContent?.includes('Ocean'),
+      );
+      assert.ok(ocean instanceof HTMLElement);
+      act(() => {
+        ocean.click();
+      });
+      await settle();
+      assert.equal(board.host.querySelector('main')?.classList.contains('tournament--kids-ocean'), true);
+    } finally {
+      unmount(board);
+    }
+  }
+
+  resetTournament();
 });
 
 test('Skin stays shut while a sheet is open and still opens again after it closes', async () => {

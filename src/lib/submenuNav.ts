@@ -110,6 +110,7 @@ export function submenuBackTarget(input: SubmenuNavInput): string | null {
 
   if (path === '/tournament') {
     if (from === SUITE_FROM) return '/suite';
+    if (from === UNLIMITED_FROM) return COACH_UNLIMITED_PATH;
     if (from === COACH_BOARD_FROM) return '/coach';
     if (input.coachUnlocked && !input.proUnlocked) return '/coach';
     if (input.proUnlocked) return '/suite';

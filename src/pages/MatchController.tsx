@@ -38,7 +38,6 @@ import {
   type Side,
 } from '../lib/matchStore';
 import { needsRefDecision, outcomeSubtitle } from '../lib/outcomes';
-import { withSuiteFrom } from '../lib/productNames';
 import { scoreboardSkinClass } from '../lib/scoreboardSkin';
 
 export function MatchControllerPage() {
@@ -117,6 +116,7 @@ export function MatchControllerPage() {
     try {
       const mode = await openOrCastDisplay({
         fromSuite: suite.fromSuite,
+        fromUnlimited: suite.fromUnlimited,
         whiteBoard: board.whiteBoard,
         kidsSkin: board.kidsSkin,
       });
@@ -137,7 +137,7 @@ export function MatchControllerPage() {
         right={
           <>
             {linkedId ? (
-              <Link to={withSuiteFrom('/tournament', suite.fromSuite)} className="chip chip--keep">
+              <Link to={suite.withFrom('/tournament')} className="chip chip--keep">
                 Back to bracket
               </Link>
             ) : null}
@@ -147,6 +147,7 @@ export function MatchControllerPage() {
               onClick={() =>
                 openDisplayWindow({
                   fromSuite: suite.fromSuite,
+                  fromUnlimited: suite.fromUnlimited,
                   whiteBoard: board.whiteBoard,
                   kidsSkin: board.kidsSkin,
                 })

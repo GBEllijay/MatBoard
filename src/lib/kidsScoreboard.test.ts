@@ -19,6 +19,7 @@ import {
   KIDS_WIN_CHEER,
   getKidsScoreboard,
   kidsBracketChromeOn,
+  kidsBracketSkinsAllowed,
   kidsLiveLine,
   kidsPointsLine,
   kidsBracketScoring,
@@ -71,7 +72,11 @@ test("Kids' Scoreboards is off until this device turns it on", () => {
   );
 });
 
-test('Kids bracket skins stay on the Pro suite board', () => {
+test('Kids bracket skins stay on the Pro suite and Coach Unlimited boards', () => {
+  assert.equal(kidsBracketSkinsAllowed('suite'), true);
+  assert.equal(kidsBracketSkinsAllowed('unlimited'), true);
+  assert.equal(kidsBracketSkinsAllowed('coach'), false);
+  assert.equal(kidsBracketSkinsAllowed(null), false);
   assert.equal(kidsBracketChromeOn(true, true), true);
   assert.equal(kidsBracketChromeOn(true, false), false);
   assert.equal(kidsBracketChromeOn(false, true), false);

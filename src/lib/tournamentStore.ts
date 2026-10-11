@@ -985,22 +985,30 @@ export function deleteBracket(id: string): void {
   persistLibrary(applyDeleteBracket(library, id));
 }
 
+/** Empty seed slots. Bye cards already say BYE. This is a hint, not a competitor name. */
+export const EMPTY_SLOT_HINT = 'TBD';
+
 export function seedPlaceholder(index: number): string {
-  return `Competitor ${index + 1}`;
+  void index;
+  return EMPTY_SLOT_HINT;
 }
 
-/** Name on the card, or the same placeholder the bracket and scoreboard show. */
+/**
+ * Name on the scoreboard for a linked bout. An empty bracket slot stays TBD
+ * on the tree. Opening that bout still uses Competitor 1 / Competitor 2 so a
+ * blank scoreboard does not lose its default names.
+ */
 export function displayBoutName(board: TournamentState, matchId: BracketMatchId, side: MatchSide): string {
   const named = slotName(board, slotId(matchId, side)).trim();
   if (named) return named;
   const index = seedSlots(board).indexOf(slotId(matchId, side));
-  if (index >= 0) return seedPlaceholder(index);
+  if (index >= 0) return `Competitor ${index + 1}`;
   return side === 'a' ? 'Competitor 1' : 'Competitor 2';
 }
 
 /**
  * Keep a name typed on the scoreboard when that bracket slot is still empty.
- * Generated placeholders ("Competitor 1") are not written back as real entries.
+ * Generated scoreboard names ("Competitor 1") are not written back as real entries.
  */
 export function applyEmptyBoutNames(
   board: TournamentState,

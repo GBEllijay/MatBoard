@@ -33,6 +33,7 @@ import { DEFAULT_BRACKET_THEME, setBracketTheme } from '../lib/bracketTheme';
 import {
   KIDS_BRACKETS_SKINS_LABEL,
   kidsBracketChromeOn,
+  kidsBracketSkinsAllowed,
   kidsBracketScoring,
   kidsLiveLine,
   kidsShowMascot,
@@ -45,11 +46,13 @@ import {
 import { isSheetLayerOpen, subscribeSheetLayer } from '../lib/sheetLayer';
 import { competitorCards, rosterGymForName, studentRosterCards } from '../lib/rosterStore';
 import {
+  COACH_UNLIMITED_PATH,
   isBasicCoach,
   isPlainCoachTournament,
   MOCK_TOURNAMENT_NAME,
   SUITE_FROM,
   tournamentToolLabel,
+  UNLIMITED_FROM,
 } from '../lib/productNames';
 import { coachLinkedWhiteBoard, withMatchOrigin } from '../lib/scoreboardSkin';
 import {
@@ -120,10 +123,15 @@ export function TournamentPage() {
     isBasicCoach(proUnlocked, useCoachUnlocked()),
   );
   const sizeMax = maxCompetitors(proUnlocked);
-  const fromSuite = searchParams.get('from') === SUITE_FROM;
+  const from = searchParams.get('from');
+  const fromSuite = from === SUITE_FROM;
+  const fromUnlimited = from === UNLIMITED_FROM;
   const shownTheme = plainCoach ? DEFAULT_BRACKET_THEME : theme;
-  const exitPath = useSubmenuBack() ?? (fromSuite ? '/suite' : plainCoach ? '/coach' : parent.path);
-  const kidsOn = kidsBracketChromeOn(fromSuite, kids.enabled);
+  const exitPath =
+    useSubmenuBack() ??
+    (fromSuite ? '/suite' : fromUnlimited ? COACH_UNLIMITED_PATH : plainCoach ? '/coach' : parent.path);
+  const kidsSkins = kidsBracketSkinsAllowed(from) && !plainCoach;
+  const kidsOn = kidsBracketChromeOn(kidsSkins, kids.enabled);
   const [namesOpen, setNamesOpen] = useState(false);
   const [sizeOpen, setSizeOpen] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
@@ -267,7 +275,7 @@ export function TournamentPage() {
           </label>
         </div>
         <div className="tournament__actions">
-          {fromSuite ? <KidsScoreboardSwitcher prefs={kids} suppressed={skinButtonSuppressed} /> : null}
+          {kidsSkins ? <KidsScoreboardSwitcher prefs={kids} suppressed={skinButtonSuppressed} /> : null}
           {plainCoach ? null : (
             <div className="tournament__theme" role="radiogroup" aria-label="Bracket theme">
               <button
@@ -319,7 +327,7 @@ export function TournamentPage() {
           </button>
           <button
             type="button"
-            className={`btn${undoReady ? '' : ' btn--ghost'}`}
+            className={`btn${undoReady ? ' btn--blue' : ' btn--ghost'}`}
             disabled={!undoReady}
             onClick={() => undoLastOutcome()}
           >
@@ -454,6 +462,7 @@ export function TournamentPage() {
       {showMascot ? <KidsMascotDock lines={kidsWinLines(kidsChampion, kidsScore)} /> : null}
 
       <Sheet
+        className="sheet--names"
         open={namesOpen}
         title={plainCoach ? 'Student names' : 'Competitor names'}
         onClose={() => setNamesOpen(false)}
@@ -809,10 +818,12 @@ function MatchCard({
   const tournament = useTournamentState();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const fromSuite = searchParams.get('from') === SUITE_FROM;
+  const from = searchParams.get('from');
+  const fromSuite = from === SUITE_FROM;
+  const fromUnlimited = from === UNLIMITED_FROM;
   const plainCoach = usePlainCoachBoard();
   const kids = useKidsScoreboard();
-  const kidsOn = kidsBracketChromeOn(fromSuite, kids.enabled);
+  const kidsOn = kidsBracketChromeOn(kidsBracketSkinsAllowed(from) && !plainCoach, kids.enabled);
   const hasResult = Boolean(tournament.results[matchId]);
   const live = liveMatchId === matchId;
   const bye = matchHasBye(tournament, matchId);
@@ -823,6 +834,7 @@ function MatchCard({
       withKidsSkin(
         withMatchOrigin(scoreboardPath(matchId), {
           fromSuite,
+          fromUnlimited,
           whiteBoard: coachLinkedWhiteBoard(fromSuite, true, plainCoach, false),
         }),
         kidsOn ? kids.skin : null,
@@ -837,6 +849,11 @@ function MatchCard({
       }${bye ? ' t-match--bye' : ''}`}
       aria-label={matchAriaLabel(isThreePersonBracket(tournament), matchId)}
     >
+      {live && !hasResult ? (
+        <p className="t-live-pill" role="status">
+          LIVE
+        </p>
+      ) : null}
       {matchId === 'final-0' ? (
         <p className="t-match__finals-label">
           <span>Championship match</span>

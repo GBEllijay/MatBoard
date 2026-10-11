@@ -254,17 +254,22 @@ export function isPlainCoachTournament(from: string | null, basicCoach: boolean)
   return from === COACH_BOARD_FROM || basicCoach;
 }
 
-/** Keep `from=suite` on links opened from the Suite hub. Other callers stay unchanged. */
-export function withSuiteFrom(path: string, fromSuite: boolean): string {
-  if (!fromSuite) return path;
+/** Keep `from=suite` or `from=unlimited` on links opened from that hub. Other callers stay unchanged. */
+export function withHubFrom(path: string, from: typeof SUITE_FROM | typeof UNLIMITED_FROM | null): string {
+  if (from !== SUITE_FROM && from !== UNLIMITED_FROM) return path;
   const hashAt = path.indexOf('#');
   const hash = hashAt >= 0 ? path.slice(hashAt) : '';
   const base = hashAt >= 0 ? path.slice(0, hashAt) : path;
   const queryAt = base.indexOf('?');
   const pathname = queryAt >= 0 ? base.slice(0, queryAt) : base;
   const params = new URLSearchParams(queryAt >= 0 ? base.slice(queryAt + 1) : '');
-  params.set('from', SUITE_FROM);
+  params.set('from', from);
   return `${pathname}?${params.toString()}${hash}`;
+}
+
+/** Keep `from=suite` on links opened from the Suite hub. Other callers stay unchanged. */
+export function withSuiteFrom(path: string, fromSuite: boolean): string {
+  return withHubFrom(path, fromSuite ? SUITE_FROM : null);
 }
 
 /**
