@@ -16,6 +16,8 @@ import {
   tryUnlock,
 } from './proUnlock.ts';
 import { PRO_PRODUCT_ID, proDeviceUnlock, proPurchaseEntitled, proPurchaseReturn } from './proEntitlement.ts';
+import { studentEditionOpen } from './studentEdition.ts';
+import { isStudentEditionUnlocked } from './studentUnlock.ts';
 import { API_PRODUCT_PRO } from '../server/routes.ts';
 import { WHITE_UNLOCK_STORAGE_KEY, isWhiteUnlocked, setWhiteUnlocked } from './whiteUnlock.ts';
 
@@ -122,6 +124,65 @@ test('WINBYADV unlocks White, Coach, and Pro on the owner path', () => {
   assert.equal(isWhiteUnlocked(), true);
   assert.equal(applyFullOwnerSearch(new URLSearchParams('pro=advantage')), false);
   assert.equal(applyFullOwnerSearch(new URLSearchParams('coach=gbellijay')), false);
+});
+
+test('full owner unlock grants Student Edition and signing out clears it', () => {
+  resetUnlocks();
+  assert.equal(isStudentEditionUnlocked(), false);
+  assert.equal(tryProductOwnerUnlock('pro', FULL_OWNER_UNLOCK_CODE), true);
+  assert.equal(isStudentEditionUnlocked(), true);
+  assert.equal(localStorage.getItem('advantage.studentEditionUnlocked'), '1');
+  assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: false, coach: false, white: false }), true);
+
+  resetUnlocks();
+  assert.equal(tryProductOwnerUnlock('coach', ` ${FULL_OWNER_UNLOCK_CODE.toLowerCase()} `), true);
+  assert.equal(isStudentEditionUnlocked(), true);
+
+  resetUnlocks();
+  assert.equal(applyFullOwnerSearch(new URLSearchParams(`coach=${FULL_OWNER_UNLOCK_CODE}`)), true);
+  assert.equal(isStudentEditionUnlocked(), true);
+
+  resetUnlocks();
+  assert.equal(applyUnlockSearch(new URLSearchParams(`unlock=${FULL_OWNER_UNLOCK_CODE}`)), true);
+  assert.equal(isStudentEditionUnlocked(), true);
+  assert.equal(isProUnlocked(), true);
+  assert.equal(isCoachUnlocked(), true);
+  assert.equal(isWhiteUnlocked(), true);
+
+  lockPro();
+  assert.equal(isStudentEditionUnlocked(), false);
+  assert.equal(isProUnlocked(), false);
+  assert.equal(isCoachUnlocked(), true);
+  assert.equal(isWhiteUnlocked(), true);
+  assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: false, coach: true, white: true }), false);
+  assert.equal(studentEditionOpen(new URLSearchParams('student=1'), { pro: false, coach: false, white: false }), true);
+
+  resetUnlocks();
+  assert.equal(tryProductOwnerUnlock('pro', FULL_OWNER_UNLOCK_CODE), true);
+  lockCoach();
+  assert.equal(isStudentEditionUnlocked(), false);
+  assert.equal(isCoachUnlocked(), false);
+  assert.equal(isProUnlocked(), true);
+
+  resetUnlocks();
+  assert.equal(tryProductOwnerUnlock('pro', FULL_OWNER_UNLOCK_CODE), true);
+  setWhiteUnlocked(false);
+  assert.equal(isStudentEditionUnlocked(), false);
+  assert.equal(isWhiteUnlocked(), false);
+  assert.equal(isProUnlocked(), true);
+
+  resetUnlocks();
+  assert.equal(tryProductOwnerUnlock('pro', FULL_OWNER_UNLOCK_CODE), true);
+  assert.equal(applyUnlockSearch(new URLSearchParams('pro=0')), true);
+  assert.equal(isStudentEditionUnlocked(), false);
+  assert.equal(isProUnlocked(), false);
+
+  resetUnlocks();
+  assert.equal(tryUnlock('advantage'), true);
+  assert.equal(isStudentEditionUnlocked(), false);
+  assert.equal(tryProductOwnerUnlock('coach', 'gbellijay'), true);
+  assert.equal(isStudentEditionUnlocked(), false);
+  assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: true, coach: true, white: false }), false);
 });
 
 test('a Pro subscription entitlement matches the Stripe product id', () => {

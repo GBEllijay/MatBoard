@@ -1,3 +1,4 @@
+import { lockStudentEdition } from './studentUnlock.ts';
 import { lookupWhiteEntitlement } from './whiteEntitlementClient.ts';
 import { WHITE_BUY_PATH } from './whitePurchase.ts';
 
@@ -37,6 +38,7 @@ export function subscribeWhiteUnlock(fn: () => void): () => void {
 
 export function setWhiteUnlocked(unlocked: boolean): void {
   writeFlag(unlocked);
+  if (!unlocked) lockStudentEdition();
 }
 
 /** Keep a successful Stripe or WHITEFREE result on this device so /white opens. */

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { FULL_OWNER_UNLOCK_CODE } from '../src/lib/proUnlock.ts';
 
 const BACK = 'Back. Hold for Home.';
 
@@ -151,4 +152,28 @@ test('a direct /student visit stays closed, and sign out still leaves the seat',
   await expect(page.getByText('Signed out')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Advantage Coach, coming soon' })).toBeVisible();
   await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/buy');
+});
+
+test('the full owner unlock code opens the Student Edition hub', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Advantage Coach, coming soon' }).click();
+  await page.getByRole('button', { name: 'Owner unlock' }).click();
+  await page.getByPlaceholder('Owner code').fill(FULL_OWNER_UNLOCK_CODE);
+  await page.getByRole('button', { name: 'Unlock Coach' }).click();
+
+  const openStudent = page.getByRole('link', { name: 'Open Student Edition', exact: true });
+  await expect(openStudent).toBeVisible();
+  await openStudent.click();
+  await expect(page).toHaveURL(/\/student$/);
+  await expect(page.getByRole('link', { name: 'Journal', exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Fundamentals', exact: true }).click();
+  await expect(page).toHaveURL(/\/student\/fundamentals$/);
+  await expect(page.getByRole('heading', { name: 'Fundamentals' })).toBeVisible();
+
+  await page.goto('/pro');
+  await page.getByRole('button', { name: 'Lock Pro' }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole('button', { name: 'Advantage Student Edition, coming soon' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open Coach', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/white');
 });
