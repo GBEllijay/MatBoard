@@ -67,8 +67,8 @@ export const STUDENT_PREVIEW_LABEL = STUDENT_EDITION_NAME;
 /** One line under that journal. */
 export const STUDENT_PREVIEW_NOTE = 'Journal, journal cards, a fundamentals checklist, calendar, and belt progress stay on this phone.';
 
-/** Alpha free-trial request. Same inbox as site feedback. */
-export const ALPHA_TRIAL_NOTE = `Free trial: request an alpha testing code by emailing ${SITE_FEEDBACK_EMAIL}.`;
+/** Same request line as the home cards. Product sheets pass their own note. */
+export const ALPHA_TRIAL_NOTE = `Email ${SITE_FEEDBACK_EMAIL} to request an alpha code.`;
 
 export const PRODUCT_TEASERS = {
   coach: COACH_HOME_TEASER,

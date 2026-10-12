@@ -14,12 +14,13 @@ export const DRIVE_PICK_TITLE = 'Pick from Google Drive';
 export const DRIVE_PICK_DONE = 'Done';
 export const DRIVE_PICK_BACK = 'Back';
 export const DRIVE_PICK_LOADING = 'Opening the gym folder…';
+export const DRIVE_PICK_RECONNECT = 'Reconnect';
 export const DRIVE_PICK_BESIDE_PHOTOS =
   'Pick from gallery includes Google Photos and this phone. Google Drive is an additional source. Advantage does not host those files.';
 export const DRIVE_PICK_STAY =
   'These files come from the gym Google Drive folder, in addition to Google Photos or this phone. This phone keeps a copy so the TV can play them. Advantage does not host them.';
 
-export type DrivePickKind = 'photo' | 'video' | 'any';
+export type DrivePickKind = 'photo' | 'video' | 'any' | 'lesson';
 
 export type DriveBrowseFolder = { id: string; name: string };
 
@@ -42,7 +43,19 @@ const FOLDER_MIME = 'application/vnd.google-apps.folder';
 export function drivePickHint(kind: DrivePickKind): string {
   if (kind === 'video') return 'Additional source: videos in the gym Google Drive folder';
   if (kind === 'any') return 'Additional source: photos and videos in the gym Google Drive folder';
+  if (kind === 'lesson') return 'Lesson plans saved in the gym Google Drive folder';
   return 'Additional source: photos in the gym Google Drive folder';
+}
+
+/** A lesson JSON, an older text save, a coach export, or a review packet. */
+export function isDriveLessonFile(file: Pick<DriveBrowseFile, 'name' | 'mimeType'>): boolean {
+  const name = file.name.trim().toLowerCase();
+  if (!name || name.startsWith('advantage-curriculum-')) return false;
+  if (name.startsWith('advantage-lesson-') || name.startsWith('advantage-coach-plan-')) return true;
+  if (name.startsWith('advantage-handoff-review-') && name.endsWith('.json')) return true;
+  const mime = file.mimeType.trim().toLowerCase();
+  if ((mime === 'application/json' || mime.startsWith('text/')) && name.includes('lesson')) return true;
+  return false;
 }
 
 export function driveMediaKind(mime: string): DrivePickKind | null {
@@ -66,6 +79,16 @@ export function splitDriveBrowse(
     seen.add(id);
     if (file.mimeType === FOLDER_MIME) {
       folders.push({ id, name });
+      continue;
+    }
+    if (kind === 'lesson') {
+      if (!isDriveLessonFile(file)) continue;
+      media.push({
+        id,
+        name,
+        mime: file.mimeType,
+        thumbnailLink: file.thumbnailLink ?? null,
+      });
       continue;
     }
     const mediaKind = driveMediaKind(file.mimeType);
@@ -95,7 +118,8 @@ export function drivePickDoneLabel(count: number): string {
 }
 
 export function drivePickEmptyCopy(kind: DrivePickKind, folderCount: number): string {
-  const noun = kind === 'video' ? 'videos' : kind === 'any' ? 'photos or videos' : 'photos';
+  const noun =
+    kind === 'video' ? 'videos' : kind === 'any' ? 'photos or videos' : kind === 'lesson' ? 'lesson plans' : 'photos';
   if (folderCount > 0) return `No ${noun} in this folder. Open a folder below.`;
   return `No ${noun} in this folder.`;
 }
@@ -181,6 +205,14 @@ export type DriveImportOutcome = {
  * A download that fails is named. A batch that opens and then matches nothing
  * keeps the existing "already in this folder" line.
  */
+/** Quiet success still tells the owner the copies landed on this device. */
+export function driveGallerySavedCopy(added: number): string {
+  const count = Math.max(0, Math.floor(added));
+  if (count <= 0) return 'Nothing new was added to the Media Console gallery.';
+  const noun = count === 1 ? 'file is' : 'files are';
+  return `${count} ${noun} in the Media Console gallery on this device. They stay here for the TV. Advantage does not host them.`;
+}
+
 export function driveImportOutcomeNote(input: DriveImportOutcome): string | null {
   if (input.opened <= 0) return 'Those Google Drive files could not be opened. Nothing was saved.';
   const missed =

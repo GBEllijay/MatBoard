@@ -1,6 +1,7 @@
 /** Soft-beta owner unlock. Not real auth — keeps Pro / Console off the public home. */
 
 import { setCoachUnlocked, tryCoachUnlock } from './coachUnlock.ts';
+import { setStudentEditionUnlocked } from './studentUnlock.ts';
 import { setWhiteUnlocked } from './whiteUnlock.ts';
 
 export const PRO_UNLOCK_STORAGE_KEY = 'advantage.proUnlocked';
@@ -17,7 +18,7 @@ export const PRO_UNLOCK_CODE =
 
 /**
  * Full owner code. Same comparison as the other owner codes: trim, then case-insensitive.
- * Unlocks Advantage White, Coach, and Pro. Does not replace `advantage`.
+ * Unlocks Advantage White, Coach, Pro, and Student Edition. Does not replace `advantage`.
  */
 export const FULL_OWNER_UNLOCK_CODE = 'WINBYADV';
 
@@ -65,14 +66,15 @@ export function codesMatch(code: string): boolean {
   return normalized === PRO_UNLOCK_CODE.toLowerCase() || isFullOwnerUnlockCode(code);
 }
 
-/** Write White, Coach, and Pro. Used only for the full owner code. */
+/** Write White, Coach, Pro, and Student Edition. Used only for the full owner code. */
 function grantFullOwnerUnlock(): void {
   writeFlag(true);
   setCoachUnlocked(true);
   setWhiteUnlocked(true);
+  setStudentEditionUnlocked(true);
 }
 
-/** Accepts WINBYADV from either Owner unlock sheet or a `?pro=` / `?unlock=` / `?coach=` value. */
+/** Accepts the full owner code from either Owner unlock sheet or a `?pro=` / `?unlock=` / `?coach=` value. */
 export function tryFullOwnerUnlock(code: string): boolean {
   if (!isFullOwnerUnlockCode(code)) return false;
   grantFullOwnerUnlock();
@@ -80,7 +82,7 @@ export function tryFullOwnerUnlock(code: string): boolean {
 }
 
 /**
- * Owner unlock sheet. WINBYADV opens White, Coach, and Pro.
+ * Owner unlock sheet. The full owner code opens White, Coach, Pro, and Student Edition.
  * The Pro code still opens Pro only. The Coach code still opens Coach only.
  */
 export function tryProductOwnerUnlock(product: 'coach' | 'pro', code: string): boolean {
@@ -112,6 +114,8 @@ export function tryUnlock(code: string): boolean {
 
 export function lockPro(): void {
   writeFlag(false);
+  // Student Edition is granted with this code. Locking Pro signs that grant out too.
+  setStudentEditionUnlocked(false);
 }
 
 /**
@@ -124,7 +128,7 @@ export function applyUnlockSearch(search: URLSearchParams): boolean {
   if (raw == null) return false;
   const trimmed = raw.trim();
   if (trimmed === '0' || trimmed.toLowerCase() === 'lock') {
-    writeFlag(false);
+    lockPro();
     return true;
   }
   return tryUnlock(trimmed);
@@ -132,7 +136,7 @@ export function applyUnlockSearch(search: URLSearchParams): boolean {
 
 /**
  * `?pro=` / `?unlock=` / `?coach=` may carry the full owner code.
- * Grants White, Coach, and Pro. Returns false when none of those values match.
+ * Grants White, Coach, Pro, and Student Edition. Returns false when none of those values match.
  */
 export function applyFullOwnerSearch(search: URLSearchParams): boolean {
   const hit = ['pro', 'unlock', 'coach'].some((key) => {

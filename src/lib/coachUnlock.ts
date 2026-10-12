@@ -1,3 +1,5 @@
+import { lockStudentEdition } from './studentUnlock.ts';
+
 /** Soft-beta owner unlock. Not real auth — keeps Coach off the public home. */
 
 export const COACH_UNLOCK_STORAGE_KEY = 'advantage.coachUnlocked';
@@ -73,6 +75,7 @@ export function tryCoachUnlock(code: string): boolean {
 
 export function lockCoach(): void {
   writeFlag(false);
+  lockStudentEdition();
 }
 
 /**
@@ -85,7 +88,7 @@ export function applyCoachUnlockSearch(search: URLSearchParams): boolean {
   if (raw == null) return false;
   const trimmed = raw.trim();
   if (trimmed === '0' || trimmed.toLowerCase() === 'lock') {
-    writeFlag(false);
+    lockCoach();
     return true;
   }
   return tryCoachUnlock(trimmed);

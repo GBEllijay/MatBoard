@@ -8,6 +8,7 @@ import {
 import {
   DRIVE_PICK_BACK,
   DRIVE_PICK_LOADING,
+  DRIVE_PICK_RECONNECT,
   DRIVE_PICK_STAY,
   DRIVE_PICK_TITLE,
   drivePickDoneLabel,
@@ -50,6 +51,7 @@ export function DriveMediaPicker({ open, kind, stacked = false, onClose, onDone 
   const [selected, setSelected] = useState<DriveBrowseMedia[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!open) return;
@@ -92,7 +94,20 @@ export function DriveMediaPicker({ open, kind, stacked = false, onClose, onDone 
     return () => {
       cancelled = true;
     };
-  }, [open, current, kind]);
+  }, [open, current, kind, attempt]);
+
+  const reconnect = () => {
+    setError('');
+    setLoading(true);
+    void requestDriveToken('consent').then((token) => {
+      if (!token) {
+        setLoading(false);
+        setError('Sign in to Google Drive again to open this folder.');
+        return;
+      }
+      setAttempt((value) => value + 1);
+    });
+  };
 
   const path = drivePickPath(stack);
 
@@ -139,6 +154,11 @@ export function DriveMediaPicker({ open, kind, stacked = false, onClose, onDone 
           {error}
         </p>
       ) : null}
+      {error ? (
+        <button type="button" className="btn" onClick={reconnect}>
+          {DRIVE_PICK_RECONNECT}
+        </button>
+      ) : null}
       {folders.length ? (
         <div className="drive-pick__folders" role="list">
           {folders.map((folder) => (
@@ -154,14 +174,13 @@ export function DriveMediaPicker({ open, kind, stacked = false, onClose, onDone 
         </div>
       ) : null}
       {media.length ? (
-        <div className="drive-pick__grid" role="list">
+        <div className="drive-pick__grid">
           {media.map((item) => {
             const on = selected.some((row) => row.id === item.id);
             return (
               <button
                 key={item.id}
                 type="button"
-                role="listitem"
                 className={on ? 'drive-pick__cell is-selected' : 'drive-pick__cell'}
                 aria-pressed={on}
                 onClick={() => setSelected((prev) => toggleDriveSelection(prev, item))}

@@ -28,7 +28,15 @@ import {
   homeConsoleLabel,
 } from '../lib/productNames';
 import { purchasePromptsHidden } from '../lib/instructorSeats';
-import { COACH_PRICE_LINE, PRO_PRICE_LINE, STUDENT_ALPHA_ACCESS_NOTE, STUDENT_PRICE_LINE } from '../lib/productPrices';
+import {
+  COACH_ALPHA_ACCESS_NOTE,
+  COACH_PRICE_LINE,
+  PRO_ALPHA_ACCESS_NOTE,
+  PRO_PRICE_LINE,
+  STUDENT_ALPHA_ACCESS_NOTE,
+  STUDENT_PRICE_LINE,
+  WHITE_ALPHA_ACCESS_NOTE,
+} from '../lib/productPrices';
 import { WHITE_PRICE_LABEL } from '../lib/whitePurchase';
 import { whiteEntryPath } from '../lib/whiteUnlock';
 
@@ -63,16 +71,29 @@ export function HomePage() {
         <HomeMark motto={HOME_MOTTO} tagline="BJJ scoreboard, round timer, and gym tools." />
 
         <nav className="home__modes" aria-label="Products">
-          <Link className="mode-card mode-card--white" to={whiteEntryPath(whiteUnlocked)}>
-            <BeltRail kind="white" />
-            <strong>Advantage White</strong>
-            <HomeDescription text={WHITE_HOME_DESCRIPTION} />
-            <span className="mode-card__actions">
-              <span className="btn btn--white">
-                {whiteUnlocked ? 'Open White' : `Buy — ${WHITE_PRICE_LABEL}`}
+          {whiteUnlocked ? (
+            <Link className="mode-card mode-card--white" to={whiteEntryPath(true)}>
+              <BeltRail kind="white" />
+              <strong>Advantage White</strong>
+              <HomeDescription text={WHITE_HOME_DESCRIPTION} />
+              <span className="mode-card__actions">
+                <span className="btn btn--white">Open White</span>
               </span>
-            </span>
-          </Link>
+            </Link>
+          ) : (
+            <article className="mode-card mode-card--white">
+              <Link className="mode-card__hit" to={whiteEntryPath(false)} aria-label="Advantage White" />
+              <BeltRail kind="white" />
+              <strong>Advantage White</strong>
+              <HomeDescription text={WHITE_HOME_DESCRIPTION} />
+              <span className="mode-card__actions">
+                <Link className="btn btn--white" to={whiteEntryPath(false)}>
+                  {`Buy — ${WHITE_PRICE_LABEL}`}
+                </Link>
+              </span>
+              <AlphaAccessNote note={WHITE_ALPHA_ACCESS_NOTE} />
+            </article>
+          )}
 
           <StudentHomeCard
             open={studentOpen}
@@ -110,7 +131,7 @@ export function HomePage() {
               <strong>Advantage Coach</strong>
               <HomeDescription text={COACH_HOME_DESCRIPTION} />
               <p className="mode-card__price">{COACH_PRICE_LINE}</p>
-              <AlphaAccessNote />
+              <AlphaAccessNote note={COACH_ALPHA_ACCESS_NOTE} />
             </article>
           )}
 
@@ -140,7 +161,7 @@ export function HomePage() {
               />
               <ProHomeCopy />
               {seated ? null : <p className="mode-card__price">{PRO_PRICE_LINE}</p>}
-              <AlphaAccessNote />
+              <AlphaAccessNote note={PRO_ALPHA_ACCESS_NOTE} />
             </article>
           )}
         </nav>

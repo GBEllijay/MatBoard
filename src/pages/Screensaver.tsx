@@ -130,6 +130,12 @@ export function ScreensaverPage() {
   const [drivePickKind, setDrivePickKind] = useState<DrivePickKind>('photo');
   const [driveConnectOpen, setDriveConnectOpen] = useState(false);
   const driveBinding = useSyncExternalStore(subscribeDriveBinding, getDriveBindingSnapshot, () => null);
+
+  useEffect(() => {
+    if (!driveConnectOpen || !driveBinding) return;
+    setDriveConnectOpen(false);
+    setDrivePickOpen(true);
+  }, [driveConnectOpen, driveBinding]);
   const [unlockSound, setUnlockSound] = useState(false);
   const [folderPlay, setFolderPlayState] = useState(DEFAULT_FOLDER_PLAY);
   const [shopCastMode, setShopCastModeState] = useState<ShopCastMode>(DEFAULT_SHOP_CAST_MODE);

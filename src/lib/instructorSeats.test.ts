@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -25,6 +26,7 @@ import {
   countOpenInstructorSeats,
   defaultInstructorPermissions,
   instructorInviteLink,
+  instructorPreset,
   instructorPresetPermissions,
   instructorPresetPlan,
   SEAT_ADJUSTED_NOTE,
@@ -438,14 +440,14 @@ test('four binder presets fill the toggles and stay overridable', () => {
   assert.equal(instructorSeatBinderLabel('assistant-coach', assistant), 'Assistant coach');
   assert.deepEqual(
     INSTRUCTOR_PRESETS.map((preset) => preset.label),
-    ['Assistant coach', 'Coach', 'Program director', 'Instructors'],
+    ['Assistant coach', 'Program director', 'Coach', 'Instructors'],
   );
   assert.deepEqual(
     INSTRUCTOR_PRESETS.map((preset) => preset.detail),
     [
       ['Lesson plans and daily videos', 'Full cloud and sharing in these menus'],
-      ['Lesson plans, daily videos, and uploads', 'Full cloud and sharing in these menus'],
       ['Events, Pro Shop, and gallery', 'Full cloud and sharing in these menus'],
+      ['Lesson plans, daily videos, and uploads', 'Full cloud and sharing in these menus'],
       ['Lessons, uploads, events, Pro Shop, and gallery', 'Full cloud and sharing in these menus'],
     ],
   );
@@ -453,8 +455,8 @@ test('four binder presets fill the toggles and stay overridable', () => {
     INSTRUCTOR_PRESETS.map((preset) => [preset.id, preset.plan]),
     [
       ['assistant-coach', 'Coach Unlimited'],
-      ['coach', 'Coach Unlimited'],
       ['program-director', 'Pro · Gallery'],
+      ['coach', 'Coach Unlimited'],
       ['instructors', 'Coach Unlimited + Pro'],
     ],
   );
@@ -949,4 +951,56 @@ test('a stored Program Director binder with factory coach switches is read as th
   assert.equal(after?.permissions.galleryUpload, false);
   assert.equal(after?.permissions.eventsAccess, false);
   assert.equal(seatGrantsMediaConsole(after ?? null), false);
+});
+
+test('role binder paint lock 2026-10-11 keeps coach brown and program director purple', () => {
+  reset();
+  const css = readFileSync(new URL('../index.css', import.meta.url), 'utf8');
+  const invite = readFileSync(new URL('../components/InstructorInvitePanel.tsx', import.meta.url), 'utf8');
+  const rule = (name: string) => {
+    const match = css.match(new RegExp(`\\.role-plan--${name}\\s*\\{[^}]*\\}`));
+    assert.ok(match, name);
+    return match[0];
+  };
+  assert.match(rule('assistant-coach'), /#3b82f6/);
+  assert.match(rule('coach'), /#e0a36a/);
+  assert.match(rule('program-director'), /#b057f7/);
+  assert.match(rule('instructors'), /#f04343/);
+  assert.doesNotMatch(rule('coach'), /#c084fc|#e0b34a/);
+  assert.doesNotMatch(rule('program-director'), /#c084fc|#e0b34a/);
+  assert.match(css, /Paint lock 2026-10-11/);
+  assert.match(invite, /coach: '\/instructor-binders\/coach.png'/);
+  assert.match(invite, /'program-director': '\/instructor-binders\/program-director.png'/);
+  assert.doesNotMatch(invite, /coach-purple|program-director-brown/);
+
+  const root = new URL('../../public/instructor-binders/', import.meta.url);
+  const retired = ['coach-purple.png', 'program-director-brown.png', 'assistant-coach-blue.png', 'instructor-black.png'];
+  for (const name of retired) {
+    assert.equal(existsSync(new URL(name, root)), false, name);
+  }
+  const stamped: Record<string, string> = {
+    'assistant-coach.png': 'af5421035d003570cbc7df4e4c082643db19206decffb4c5f490ea41bc54f890',
+    'coach.png': '5255c2b82d57a9b151b5e6e35442cf1785b6c429d8bfc72ecd624b1b4fde9804',
+    'program-director.png': 'a5fa2bda7e0d248172665e398e892352bb52e08cb63690d54a3ff6f9eebc9745',
+    'instructor.png': '45f4a0834801bcab4c02507f6ffaf749bc7fd303e4749736eeb3deff7059fc79',
+  };
+  for (const [name, hash] of Object.entries(stamped)) {
+    const bytes = readFileSync(new URL(name, root));
+    assert.equal(createHash('sha256').update(bytes).digest('hex'), hash, name);
+  }
+
+  for (const presetId of ['assistant-coach', 'coach', 'program-director', 'instructors'] as const) {
+    const issued = issueInstructorInvite({
+      email: `${presetId}@paint.test`,
+      presetId,
+      permissions: instructorPresetPermissions(presetId),
+      origin: 'https://advantage.test',
+      token: `paint-${presetId}`,
+    });
+    assert.equal(issued.ok, true);
+    if (!issued.ok) return;
+    assert.equal(issued.seat.presetId, presetId);
+    assert.deepEqual(issued.seat.permissions, instructorPresetPermissions(presetId));
+    assert.equal(instructorSeatBinderLabel(issued.seat.presetId, issued.seat.permissions), instructorPreset(presetId).label);
+  }
 });

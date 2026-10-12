@@ -46,7 +46,7 @@ test('buy page lists included tools, browser install, and the Coach and Pro foot
   assert.match(WHITE_FEATURES[2], /music app/);
   assert.equal(
     WHITE_UPGRADE_NOTE,
-    'Coach and Pro are in free alpha testing. Email advantageappllc@gmail.com for a free alpha code.',
+    'Coach and Pro are in alpha testing. Email advantageappllc@gmail.com to request an alpha code.',
   );
 });
 

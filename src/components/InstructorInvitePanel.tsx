@@ -415,6 +415,7 @@ const BINDER_COVER_NAME: Record<InstructorPresetId, string> = {
   instructors: 'Instructor',
 };
 
+/** Stamped covers. Coach is brown. Program Director is purple. Paint lock 2026-10-11. */
 const BINDER_ART: Record<InstructorPresetId, string> = {
   'assistant-coach': '/instructor-binders/assistant-coach.png',
   coach: '/instructor-binders/coach.png',

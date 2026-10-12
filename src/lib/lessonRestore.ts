@@ -30,6 +30,8 @@ import { UNLIMITED_LESSON_VALUE } from './productNames.ts';
 
 export const OPEN_THIS_CLASS_LABEL = 'Open this class';
 export const OPEN_DRIVE_CLASS_LABEL = 'Open a class from Google Drive';
+export const PICK_LESSON_DRIVE_LABEL = 'Pick a lesson from Google Drive';
+export const LESSON_PICK_UNREADABLE = 'That file is not a lesson plan Advantage can open.';
 export const RESTORE_OPENING = 'Opening this class…';
 export const RESTORE_EMPTY =
   'This day has no lesson plan or training videos in the gym Google Drive folder.';
