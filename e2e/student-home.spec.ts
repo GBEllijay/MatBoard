@@ -40,7 +40,8 @@ test('home picker keeps White, Coach, and Pro and adds locked Student Edition', 
   const stitch = await spine.evaluate((el) => getComputedStyle(el, '::before').borderLeftStyle);
   expect(stitch).toBe('dashed');
   const spineWidth = await spine.evaluate((el) => parseFloat(getComputedStyle(el).width));
-  expect(spineWidth).toBeGreaterThanOrEqual(30);
+  expect(spineWidth).toBeGreaterThanOrEqual(16);
+  expect(spineWidth).toBeLessThanOrEqual(20);
 
   await shot(page, 'home-picker-390');
   await student.screenshot({ path: '/opt/cursor/artifacts/student-button-closeup.png' });
