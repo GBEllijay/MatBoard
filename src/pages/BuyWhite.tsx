@@ -6,6 +6,7 @@ import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
+import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import { lookupWhiteEntitlement, type WhiteEntitlementStatus } from '../lib/whiteEntitlementClient';
 import {
@@ -76,6 +77,7 @@ export function BuyWhitePage() {
     pro: useProUnlocked(),
     coach: useCoachUnlocked(),
     white: unlocked,
+    student: useStudentEditionUnlocked(),
   });
 
   useEffect(() => {

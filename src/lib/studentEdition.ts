@@ -101,12 +101,15 @@ export function todayIso(now = new Date()): string {
 
 export function studentEditionOpen(
   search: URLSearchParams,
-  owner: { pro: boolean; coach: boolean; white: boolean },
+  owner: { pro: boolean; coach: boolean; white: boolean; student?: boolean },
 ): boolean {
   if (search.get('student') === '1') return true;
-  if (isStudentEditionUnlocked()) return true;
+  // `student` is the subscribed snapshot from useStudentEditionUnlocked.
+  // The storage read covers callers that have not passed that snapshot yet.
+  if (owner.student || isStudentEditionUnlocked()) return true;
   if (isStudentPurchased()) return true;
-  return owner.pro && owner.coach && owner.white;
+  // Pro alone opens Student Edition. Coach and White are not required.
+  return owner.pro;
 }
 
 export function blankStudentReport(now = Date.now()): StudentProgressReport {

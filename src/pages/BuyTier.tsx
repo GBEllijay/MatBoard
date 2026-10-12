@@ -4,6 +4,7 @@ import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
+import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import type { CheckoutProduct } from '../lib/checkoutProducts';
 import { PRO_PRODUCT_ID, proDeviceUnlock, proPurchaseEntitled } from '../lib/proEntitlement';
@@ -84,6 +85,7 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
     pro: proUnlocked,
     coach: useCoachUnlocked(),
     white: useWhiteUnlocked(),
+    student: useStudentEditionUnlocked(),
   });
   const showCheckout = tier.product === 'pro' ? proUnlocked : tier.product === 'student' ? studentDoor : true;
   const openPath = tier.product === 'student' && params.get('student') === '1' ? '/student?student=1' : tier.openPath;

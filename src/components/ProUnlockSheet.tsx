@@ -3,7 +3,7 @@ import { GYM_CONSOLE_NAME } from '../lib/productNames';
 import { tryProductOwnerUnlock } from '../lib/proUnlock';
 import { Sheet } from './Sheet';
 
-type Product = 'coach' | 'pro';
+type Product = 'coach' | 'pro' | 'student';
 
 type Props = {
   open: boolean;
@@ -28,6 +28,13 @@ const COPY: Record<
     name: 'coach-unlock',
     placeholder: 'Owner code',
     submit: 'Unlock Coach',
+  },
+  student: {
+    title: 'Owner unlock',
+    body: 'Turns on Advantage Student Edition on this browser. Soft beta only — not a login.',
+    name: 'student-unlock',
+    placeholder: 'Owner code',
+    submit: 'Unlock Student Edition',
   },
 };
 
