@@ -11,6 +11,13 @@ export const WHITE_LADDER_DETAIL = 'BJJ scoreboard and timer, live match and rou
 export const WHITE_HOME_DESCRIPTION =
   'BJJ scoreboard and round timer for live matches and rounds. Display stays on the TV, the controller stays in your hand.';
 
+/** Home Student Edition title. Sits between White and Coach. */
+export const STUDENT_EDITION_NAME = 'Advantage – Student Edition';
+
+/** Home Student Edition card body. One line under the title. */
+export const STUDENT_HOME_DESCRIPTION =
+  'Your jiu-jitsu journal: daily notes, A/B/C game, fundamentals checklist, and belt progress.';
+
 /** Home Coach card body. The only line under the Advantage Coach title. */
 export const COACH_HOME_DESCRIPTION =
   'Daily Lesson Planner with Expandable Technique Trees and Video Looper. Bracketing and Mock Tournament Tool with Student Roster.';

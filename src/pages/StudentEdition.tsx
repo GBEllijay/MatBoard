@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { HomeMark } from '../components/HomeMark';
+import { LeatherSpine } from '../components/LeatherSpine';
+import { SiteFooter } from '../components/SiteFooter';
+import { SubmenuMarks } from '../components/TierHomeMark';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
+import { STUDENT_EDITION_NAME, STUDENT_HOME_DESCRIPTION } from '../lib/productNames';
+import { submenuBackTarget } from '../lib/submenuNav';
 import type { GameTag } from '../lib/progress/types.ts';
 import {
   addCustomFundamental,
@@ -65,81 +71,34 @@ export function StudentEditionPage() {
   if (rest.startsWith('cards/')) return <JournalCardPage id={decodeURIComponent(rest.slice('cards/'.length))} />;
   if (rest === 'fundamentals') return <FundamentalsPage />;
   if (rest === 'calendar') return <ComingNext name="Calendar" />;
-  if (rest === 'rubric') return <ComingNext name="Rubric" />;
-  return <Cover />;
+  if (rest === 'rubric' || rest === 'belt') return <ComingNext name="Belt progress" />;
+  return <Hub />;
 }
 
 function StudentClosed() {
   return (
-    <main className="student student-closed">
-      <div className="ink">
-        <h1>Jiu-Jitsu Journal</h1>
-        <p>This preview opens with the owner unlock, or with ?student=1 on the address.</p>
+    <main className="home home--student">
+      <div className="home__inner">
+        <HomeMark to="/" />
+        <div className="student-hub">
+          <header className="student-hub__band">
+            <LeatherSpine />
+            <h2>{STUDENT_EDITION_NAME}</h2>
+            <p>This preview opens with the owner unlock, or with ?student=1 on the address.</p>
+          </header>
+        </div>
+        <SiteFooter />
       </div>
     </main>
   );
 }
 
-/** Circle, 24 ticks, and the black pointing figure from advantage-icon.png. No yellow band. */
-const MARK_TICKS = [
-  { x1: 100, y1: 26, x2: 100, y2: 15 },
-  { x1: 119.4, y1: 28.5, x2: 122, y2: 18.2 },
-  { x1: 137.3, y1: 35.9, x2: 142.3, y2: 27.2 },
-  { x1: 152.6, y1: 47.7, x2: 159.6, y2: 40.7 },
-  { x1: 164.1, y1: 62.7, x2: 172.8, y2: 57.7 },
-  { x1: 171.5, y1: 80.6, x2: 181.1, y2: 78 },
-  { x1: 174, y1: 100, x2: 185, y2: 100 },
-  { x1: 171.5, y1: 119.4, x2: 181.1, y2: 122 },
-  { x1: 164.1, y1: 137.3, x2: 172.8, y2: 142.3 },
-  { x1: 152.6, y1: 152.3, x2: 159.6, y2: 159.3 },
-  { x1: 137.3, y1: 164.1, x2: 142.3, y2: 172.8 },
-  { x1: 119.4, y1: 171.5, x2: 122, y2: 181.1 },
-  { x1: 100, y1: 174, x2: 100, y2: 185 },
-  { x1: 80.6, y1: 171.5, x2: 78, y2: 181.1 },
-  { x1: 62.7, y1: 164.1, x2: 57.7, y2: 172.8 },
-  { x1: 47.7, y1: 152.3, x2: 40.7, y2: 159.3 },
-  { x1: 35.9, y1: 137.3, x2: 27.2, y2: 142.3 },
-  { x1: 28.5, y1: 119.4, x2: 18.2, y2: 122 },
-  { x1: 26, y1: 100, x2: 15, y2: 100 },
-  { x1: 28.5, y1: 80.6, x2: 18.2, y2: 78 },
-  { x1: 35.9, y1: 62.7, x2: 27.2, y2: 57.7 },
-  { x1: 47.7, y1: 47.7, x2: 40.7, y2: 40.7 },
-  { x1: 62.7, y1: 35.9, x2: 57.7, y2: 27.2 },
-  { x1: 80.6, y1: 28.5, x2: 78, y2: 18.2 },
-] as const;
-
-const MARK_FIGURE =
-  'M 75.9 50.4 L 71.8 53.4 L 70.7 58.8 L 70.7 64.3 L 72.4 72.5 L 63.3 77.2 L 61.4 79.6 L 59.8 91.1 L 53.2 116.8 L 52.1 129.4 L 53.2 132.2 L 55.7 134.6 L 59 135.2 L 59.8 134.4 L 58.7 133.3 L 59.8 131.1 L 59.2 127.2 L 65.5 110 L 65.8 114.1 L 64.2 121.2 L 62.5 137.6 L 62.5 157.3 L 69.4 160.3 L 77 162 L 79.2 151 L 80.6 154.6 L 81.1 161.7 L 82.5 163.1 L 94.5 163.1 L 95.3 161.7 L 95.3 153 L 98.1 126.7 L 102.5 124.5 L 101.9 116.3 L 98.6 99.3 L 98.6 93.3 L 100.8 85.7 L 102.2 84.3 L 131.7 77.7 L 133.9 74.4 L 136.7 75 L 141 73.9 L 143.2 71.2 L 146 70.6 L 146.8 68.7 L 137.8 70.1 L 129.5 69.5 L 107.1 71.7 L 100.5 71.2 L 98.4 68.4 L 90.2 69.5 L 86.6 66.5 L 87.7 61 L 87.7 55 L 86.6 53.4 L 81.9 50.4 Z';
-
-function AdvantageMark({ header = false }: { header?: boolean }) {
-  return (
-    <svg
-      className={header ? 'student-mark student-mark--header' : 'student-mark'}
-      viewBox="0 0 200 200"
-      aria-hidden="true"
-      shapeRendering="geometricPrecision"
-    >
-      {header ? null : (
-        <>
-          <defs>
-            <linearGradient id="student-mark-plate" gradientUnits="userSpaceOnUse" x1="100" y1="10" x2="100" y2="190">
-              <stop offset="0" stopColor="#2c2c2c" />
-              <stop offset="0.5" stopColor="#242424" />
-              <stop offset="1" stopColor="#1d1d1d" />
-            </linearGradient>
-          </defs>
-          <circle className="student-mark__plate" cx="100" cy="100" r="90" fill="url(#student-mark-plate)" />
-        </>
-      )}
-      <g className="student-mark__press">
-        <circle cx="100" cy="100" r="91" fill="none" stroke="currentColor" />
-        {MARK_TICKS.map((tick) => (
-          <line key={`${tick.x1}-${tick.y1}`} x1={tick.x1} y1={tick.y1} x2={tick.x2} y2={tick.y2} stroke="currentColor" strokeLinecap="butt" />
-        ))}
-        <path d={MARK_FIGURE} fill="currentColor" />
-      </g>
-    </svg>
-  );
+function StudentMarks() {
+  const { pathname, search } = useLocation();
+  const back = submenuBackTarget({ pathname, search });
+  const home = new URLSearchParams(search).get('student') === '1' ? '/?student=1' : '/';
+  if (!back) return null;
+  return <SubmenuMarks to={back} homeTo={home} />;
 }
 
 function BeltDoodle() {
@@ -171,53 +130,53 @@ function BeltDoodle() {
 }
 
 function LeatherHeader({ title = 'Jiu-Jitsu Journal' }: { title?: string }) {
-  const to = useStudentPath();
   return (
     <header className="student-leather">
-      <AdvantageMark header />
       <h1>{title}</h1>
-      <Link className="student-leather__back" to={to('/student')}>
-        Cover
-      </Link>
     </header>
   );
 }
 
-function Cover() {
+const HUB_LINKS = [
+  { title: 'Journal', note: "Today's page", to: '/student/journal', soon: false },
+  { title: 'Journal cards', note: 'Search your notes', to: '/student/cards', soon: false },
+  { title: 'Fundamentals', note: 'Checklist', to: '/student/fundamentals', soon: false },
+  { title: 'Calendar', note: 'Coming soon', to: '/student/calendar', soon: true },
+  { title: 'Belt progress', note: 'Coming soon', to: '/student/rubric', soon: true },
+] as const;
+
+function Hub() {
   const to = useStudentPath();
-  const [opened, setOpened] = useState(false);
-  if (!opened) {
-    return (
-      <main className="student student-cover">
-        <button type="button" className="student-book" aria-label="Open journal" onClick={() => setOpened(true)}>
-          <span className="student-book__pages" aria-hidden="true" />
-          <span className="student-book__band" aria-hidden="true" />
-          <span className="student-book__ribbon" aria-hidden="true" />
-          <span className="student-book__face">
-            <AdvantageMark />
-            <span className="student-book__edition">Advantage - Student Edition</span>
-            <span className="student-book__title">Jiu-Jitsu Journal</span>
-          </span>
-        </button>
-      </main>
-    );
-  }
+  const [params] = useSearchParams();
+  const home = params.get('student') === '1' ? '/?student=1' : '/';
   return (
-    <main className="student student-frame">
-      <LeatherHeader />
-      <div className="student-paper">
-        <div className="student-sheet">
-          <nav className="student-menu" aria-label="Journal">
-            <Link to={to('/student/journal')}>Journal</Link>
-            <Link to={to('/student/fundamentals')}>Fundamentals</Link>
-            <Link to={to('/student/calendar')}>
-              Calendar <small>coming next</small>
+    <main className="home home--student">
+      <div className="home__inner">
+        <HomeMark to={home} />
+        <nav className="home__modes student-hub" aria-label="Advantage Student Edition">
+          <header className="student-hub__band">
+            <LeatherSpine />
+            <h2>{STUDENT_EDITION_NAME}</h2>
+            <p>{STUDENT_HOME_DESCRIPTION}</p>
+          </header>
+          {HUB_LINKS.map((item) => (
+            <Link
+              key={item.to}
+              className={item.soon ? 'student-hub__link student-hub__link--soon' : 'student-hub__link'}
+              to={to(item.to)}
+              aria-label={item.soon ? `${item.title}, coming soon` : item.title}
+            >
+              <LeatherSpine />
+              <span className="student-hub__title">{item.title}</span>
+              {item.soon ? (
+                <span className="student-hub__stamp">Coming soon</span>
+              ) : (
+                <small>{item.note}</small>
+              )}
             </Link>
-            <Link to={to('/student/rubric')}>
-              Rubric <small>coming next</small>
-            </Link>
-          </nav>
-        </div>
+          ))}
+        </nav>
+        <SiteFooter />
       </div>
     </main>
   );
@@ -277,7 +236,8 @@ function JournalToday() {
 
   return (
     <main className="student student-frame">
-      <LeatherHeader />
+      <StudentMarks />
+      <LeatherHeader title="Journal" />
       <div className="student-paper">
         <form
           className="student-sheet"
@@ -409,7 +369,8 @@ function JournalList() {
   const cards = searchStudentJournal(report, query).map(viewJournalEntry);
   return (
     <main className="student student-frame">
-      <LeatherHeader title="Journal" />
+      <StudentMarks />
+      <LeatherHeader title="Journal cards" />
       <div className="student-paper">
         <div className="student-sheet">
           <label className="ink student-search">
@@ -449,7 +410,8 @@ function JournalCardPage({ id }: { id: string }) {
   if (!entry) {
     return (
       <main className="student student-frame">
-        <LeatherHeader />
+      <StudentMarks />
+        <LeatherHeader title="Journal card" />
         <div className="student-paper">
           <div className="student-sheet">
             <p>That card is not on this device.</p>
@@ -461,7 +423,8 @@ function JournalCardPage({ id }: { id: string }) {
   const card = viewJournalEntry(entry);
   return (
     <main className="student student-frame">
-      <LeatherHeader />
+      <StudentMarks />
+      <LeatherHeader title="Journal card" />
       <div className="student-paper">
         <div className="student-sheet">
           <CardBody card={card} />
@@ -529,6 +492,7 @@ function FundamentalsPage() {
   const [confirmRestore, setConfirmRestore] = useState(false);
   return (
     <main className="student student-frame">
+      <StudentMarks />
       <LeatherHeader title="Fundamentals" />
       <div className="student-paper">
         <div className="student-sheet">
@@ -753,12 +717,12 @@ function CustomFundamental({
 function ComingNext({ name }: { name: string }) {
   return (
     <main className="student student-frame">
+      <StudentMarks />
       <LeatherHeader title={name} />
       <div className="student-paper">
         <div className="student-sheet">
           <div className="ink">
-            <h2 className="ink__label">{name}</h2>
-            <p>Coming next. The journal and fundamentals are the first pages.</p>
+            <p>Coming soon.</p>
           </div>
         </div>
       </div>

@@ -8,11 +8,27 @@ test('center logo is the tier picker on every page', () => {
   assert.equal(submenuHomeTarget(), '/');
 });
 
-test('White, Coach, and Pro homes have no corner back', () => {
+test('White, Student Edition, Coach, and Pro homes have no corner back', () => {
   assert.equal(submenuBackTarget({ pathname: '/' }), null);
   assert.equal(submenuBackTarget({ pathname: '/white' }), null);
+  assert.equal(submenuBackTarget({ pathname: '/student' }), null);
   assert.equal(submenuBackTarget({ pathname: '/coach', ...pro }), null);
   assert.equal(submenuBackTarget({ pathname: '/pro', ...pro }), null);
+});
+
+test('Student Edition pages go back one level, and a card returns to the card list', () => {
+  assert.equal(submenuBackTarget({ pathname: '/student/journal' }), '/student');
+  assert.equal(submenuBackTarget({ pathname: '/student/journal', search: 'student=1' }), '/student?student=1');
+  assert.equal(submenuBackTarget({ pathname: '/student/cards', search: '?student=1' }), '/student?student=1');
+  assert.equal(submenuBackTarget({ pathname: '/student/cards/card.1' }), '/student/cards');
+  assert.equal(
+    submenuBackTarget({ pathname: '/student/cards/card.1', search: 'student=1' }),
+    '/student/cards?student=1',
+  );
+  assert.equal(submenuBackTarget({ pathname: '/student/fundamentals' }), '/student');
+  assert.equal(submenuBackTarget({ pathname: '/student/calendar', search: 'student=1' }), '/student?student=1');
+  assert.equal(submenuBackTarget({ pathname: '/student/rubric' }), '/student');
+  assert.equal(submenuBackTarget({ pathname: '/student/belt', search: 'student=1' }), '/student?student=1');
 });
 
 test('Pro submenus go back one level to Pro', () => {

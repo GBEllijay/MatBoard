@@ -40,7 +40,7 @@ This is not a login. The gym owner can keep testing Coach / Console / Tournament
 
 Unlocked home shows an active Pro card and **Open Console**. The code lives in `src/lib/proUnlock.ts` as `PRO_UNLOCK_CODE` (default `advantage`). Override at build time with `VITE_PRO_UNLOCK_CODE`. Lock again with **Lock Pro** on home, `?pro=0`, or by clearing that flag.
 
-`WINBYADV` is a second code on that same Owner unlock path (`?pro=`, `?unlock=`, `?coach=`, or either Owner unlock field). It is trimmed and compared case-insensitively, like the other owner codes. It unlocks Advantage White, Advantage Coach, and Advantage Pro on this browser. `advantage` still unlocks Pro only (Coach tools stay available while Pro is on) and does not unlock White.
+`WINBYADV` is a second code on that same Owner unlock path (`?pro=`, `?unlock=`, `?coach=`, or either Owner unlock field). It is trimmed and compared case-insensitively, like the other owner codes. It unlocks Advantage White, Advantage Coach, Advantage Pro, and Advantage – Student Edition on this browser. Lock Pro, Lock Coach, or clearing the White flag signs Student Edition out with that product. `advantage` still unlocks Pro only (Coach tools stay available while Pro is on) and does not unlock White.
 
 **Advantage Coach** (same pattern, separate flag and code)
 

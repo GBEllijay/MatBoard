@@ -15,6 +15,8 @@ import {
   PRO_HOME_LINES,
   PRO_LADDER_DETAIL,
   COACH_HOME_DESCRIPTION,
+  STUDENT_EDITION_NAME,
+  STUDENT_HOME_DESCRIPTION,
   WHITE_HOME_DESCRIPTION,
   WHITE_LADDER_DETAIL,
   coachDoorOpen,
@@ -104,6 +106,17 @@ test('Home ladder details keep White meaning and a plain Pro subtitle', () => {
   assert.match(COACH_HOME_DESCRIPTION, /Student Roster/);
   assert.doesNotMatch(WHITE_HOME_DESCRIPTION, /student/i);
   assert.doesNotMatch(COACH_HOME_DESCRIPTION, /competitor roster/i);
+  assert.equal(STUDENT_EDITION_NAME, 'Advantage – Student Edition');
+  assert.equal(
+    STUDENT_HOME_DESCRIPTION,
+    'Your jiu-jitsu journal: daily notes, A/B/C game, fundamentals checklist, and belt progress.',
+  );
+  assert.equal(STUDENT_HOME_DESCRIPTION.includes('\n'), false);
+  assert.ok(STUDENT_HOME_DESCRIPTION.length < COACH_HOME_DESCRIPTION.length);
+  assert.match(STUDENT_HOME_DESCRIPTION, /journal/i);
+  assert.match(STUDENT_HOME_DESCRIPTION, /A\/B\/C/);
+  assert.match(STUDENT_HOME_DESCRIPTION, /fundamentals/);
+  assert.match(STUDENT_HOME_DESCRIPTION, /belt progress/);
   assert.equal(PRO_LADDER_DETAIL, 'Gym Owner and Instructors Console');
   assert.doesNotMatch(PRO_LADDER_DETAIL, /for this gym/i);
   assert.doesNotMatch(PRO_LADDER_DETAIL, /'/);
