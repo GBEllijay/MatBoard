@@ -5,6 +5,7 @@ import { LeatherSpine } from '../components/LeatherSpine';
 import { SiteFooter } from '../components/SiteFooter';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
+import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import { STUDENT_EDITION_NAME, STUDENT_HOME_DESCRIPTION } from '../lib/productNames';
 import type { GameTag } from '../lib/progress/types.ts';
@@ -47,6 +48,7 @@ export function StudentEditionPage() {
     pro: useProUnlocked(),
     coach: useCoachUnlocked(),
     white: useWhiteUnlocked(),
+    student: useStudentEditionUnlocked(),
   });
   if (!open) return <StudentClosed />;
 

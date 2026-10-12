@@ -11,6 +11,7 @@ import { Sheet } from '../components/Sheet';
 import { SiteFooter } from '../components/SiteFooter';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useSeatDoor } from '../hooks/useSeatDoor';
+import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import {
   COMING_SOON_ADS,
@@ -46,6 +47,7 @@ export function HomePage() {
   const consoleLabel = homeConsoleLabel(door);
   const whiteUnlocked = useWhiteUnlocked();
   const coachUnlocked = useCoachUnlocked();
+  const studentUnlocked = useStudentEditionUnlocked();
   const seat = useCurrentSeat();
   const seated = purchasePromptsHidden(seat);
   const coachOpen = coachDoorOpen(proUnlocked, coachUnlocked, seated);
@@ -55,12 +57,13 @@ export function HomePage() {
     pro: proUnlocked,
     coach: coachUnlocked,
     white: whiteUnlocked,
+    student: studentUnlocked,
   });
   const studentTo = studentPreview ? '/student?student=1' : '/student';
-  const [unlockOpen, setUnlockOpen] = useState<'coach' | 'pro' | null>(null);
+  const [unlockOpen, setUnlockOpen] = useState<'coach' | 'pro' | 'student' | null>(null);
   const [soon, setSoon] = useState<SoonProduct | null>(null);
 
-  const openUnlock = (product: 'coach' | 'pro') => {
+  const openUnlock = (product: 'coach' | 'pro' | 'student') => {
     setSoon(null);
     setUnlockOpen(product);
   };
@@ -185,7 +188,7 @@ export function HomePage() {
               product={soon}
               onDismiss={() => setSoon(null)}
               extraAction={
-                soon === 'coach' || soon === 'pro'
+                soon === 'coach' || soon === 'pro' || soon === 'student'
                   ? {
                       label: 'Owner unlock',
                       onClick: () => openUnlock(soon),

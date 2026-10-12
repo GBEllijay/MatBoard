@@ -74,7 +74,7 @@ function grantFullOwnerUnlock(): void {
   setStudentEditionUnlocked(true);
 }
 
-/** Accepts the full owner code from either Owner unlock sheet or a `?pro=` / `?unlock=` / `?coach=` value. */
+/** Accepts the full owner code from an Owner unlock sheet or a `?pro=` / `?unlock=` / `?coach=` / `?student=` value. */
 export function tryFullOwnerUnlock(code: string): boolean {
   if (!isFullOwnerUnlockCode(code)) return false;
   grantFullOwnerUnlock();
@@ -84,9 +84,11 @@ export function tryFullOwnerUnlock(code: string): boolean {
 /**
  * Owner unlock sheet. The full owner code opens White, Coach, Pro, and Student Edition.
  * The Pro code still opens Pro only. The Coach code still opens Coach only.
+ * The Student Edition sheet accepts only the full owner code.
  */
-export function tryProductOwnerUnlock(product: 'coach' | 'pro', code: string): boolean {
+export function tryProductOwnerUnlock(product: 'coach' | 'pro' | 'student', code: string): boolean {
   if (tryFullOwnerUnlock(code)) return true;
+  if (product === 'student') return false;
   return product === 'coach' ? tryCoachUnlock(code) : tryUnlock(code);
 }
 
@@ -135,11 +137,12 @@ export function applyUnlockSearch(search: URLSearchParams): boolean {
 }
 
 /**
- * `?pro=` / `?unlock=` / `?coach=` may carry the full owner code.
+ * `?pro=` / `?unlock=` / `?coach=` / `?student=` may carry the full owner code.
  * Grants White, Coach, Pro, and Student Edition. Returns false when none of those values match.
+ * `?student=1` is a preview flag and is not a full owner code.
  */
 export function applyFullOwnerSearch(search: URLSearchParams): boolean {
-  const hit = ['pro', 'unlock', 'coach'].some((key) => {
+  const hit = ['pro', 'unlock', 'coach', 'student'].some((key) => {
     const raw = search.get(key);
     return raw != null && isFullOwnerUnlockCode(raw);
   });
@@ -152,6 +155,14 @@ export function stripUnlockParams(search: URLSearchParams): URLSearchParams {
   const next = new URLSearchParams(search);
   next.delete('pro');
   next.delete('unlock');
+  return next;
+}
+
+/** Drop `?student=` only when it is the full owner code. `?student=1` stays. */
+export function stripFullOwnerStudentParam(search: URLSearchParams): URLSearchParams {
+  const next = new URLSearchParams(search);
+  const raw = next.get('student');
+  if (raw != null && isFullOwnerUnlockCode(raw)) next.delete('student');
   return next;
 }
 

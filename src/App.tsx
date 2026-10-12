@@ -7,6 +7,7 @@ import { useCoachUnlocked } from './hooks/useCoachUnlocked';
 import { useKeepFocusedFieldVisible } from './hooks/useKeepFocusedFieldVisible';
 import { useProUnlocked } from './hooks/useProUnlocked';
 import { useSeatDoor } from './hooks/useSeatDoor';
+import { useStudentEditionUnlocked } from './hooks/useStudentEditionUnlocked';
 import { useWhiteUnlocked } from './hooks/useWhiteUnlocked';
 import { consumeCoachUnlockQueryNow } from './lib/coachUnlock';
 import {
@@ -167,6 +168,7 @@ function BuyStudentRoute({ children }: { children: ReactNode }) {
     pro: useProUnlocked(),
     coach: useCoachUnlocked(),
     white: useWhiteUnlocked(),
+    student: useStudentEditionUnlocked(),
   });
   if (!open && !studentPurchaseReturn(params)) {
     return <Navigate to={closedDoorPath(seated)} replace />;
