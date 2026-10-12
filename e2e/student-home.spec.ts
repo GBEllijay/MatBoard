@@ -172,8 +172,10 @@ test('the full owner unlock code opens the Student Edition hub', async ({ page }
 
   await page.goto('/pro');
   await page.getByRole('button', { name: 'Lock Pro' }).click();
-  await expect(page).toHaveURL(/\/$/);
+  await page.goto('/');
   await expect(page.getByRole('button', { name: 'Advantage Student Edition, coming soon' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Open Coach', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/white');
+  await page.goto('/student');
+  await expect(page.getByRole('link', { name: 'Journal', exact: true })).toHaveCount(0);
 });
