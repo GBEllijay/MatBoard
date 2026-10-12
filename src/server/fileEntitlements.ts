@@ -3,6 +3,7 @@ import { dirname } from 'node:path';
 import {
   applyEntitlement,
   applyProEntitlement,
+  applyStudentEntitlement,
   emptyEntitlementIndex,
   entitlementByEmail,
   entitlementBySession,
@@ -10,8 +11,11 @@ import {
   proEntitlementByEmail,
   proEntitlementBySession,
   proEntitlementBySubscription,
+  studentEntitlementByEmail,
+  studentEntitlementBySession,
   type EntitlementStore,
   type ProEntitlement,
+  type StudentEntitlement,
   type WhiteEntitlement,
 } from './entitlements.ts';
 
@@ -55,6 +59,20 @@ export function fileEntitlementStore(filePath: string): EntitlementStore {
     },
     findBySessionId(sessionId) {
       return run(() => entitlementBySession(read(), sessionId));
+    },
+    saveStudent(record: StudentEntitlement) {
+      return run(() => {
+        const index = read();
+        const stored = applyStudentEntitlement(index, record);
+        write(index);
+        return stored;
+      });
+    },
+    findStudentByEmail(email) {
+      return run(() => studentEntitlementByEmail(read(), email));
+    },
+    findStudentBySessionId(sessionId) {
+      return run(() => studentEntitlementBySession(read(), sessionId));
     },
     savePro(record: ProEntitlement) {
       return run(() => {

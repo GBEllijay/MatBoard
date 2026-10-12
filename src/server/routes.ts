@@ -1,6 +1,9 @@
 /** Keep in sync with src/lib/whitePurchase.ts. */
 export const API_PRODUCT_ID = 'advantage-white';
 
+/** Stripe metadata for gated Student Edition Checkout. One-time. Not a public buy button. */
+export const API_PRODUCT_STUDENT = 'advantage-student';
+
 /** Stripe metadata for gated Coach Checkout. Not a public catalog flag. */
 export const API_PRODUCT_COACH = 'advantage-coach';
 

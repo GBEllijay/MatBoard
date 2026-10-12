@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { API_PRODUCT_STUDENT } from '../server/routes.ts';
 import { lockCoach } from './coachUnlock.ts';
 import { FUNDAMENTALS_CATALOG } from './progress/catalog.ts';
 import { parseProgressPacket, searchJournal } from './progress/format.ts';
@@ -19,8 +20,12 @@ import {
   saveStudentReport,
   searchStudentJournal,
   setFundamentalLearned,
+  rememberStudentPurchase,
+  setStudentPurchased,
   studentEditionOpen,
+  studentPurchaseReturn,
   STUDENT_EDITION_STORAGE_KEY,
+  STUDENT_PRODUCT_ID,
   viewJournalEntry,
 } from './studentEdition.ts';
 
@@ -44,6 +49,7 @@ function resetUnlocks(): void {
   lockPro();
   lockCoach();
   setWhiteUnlocked(false);
+  setStudentPurchased(false);
 }
 
 test('preview flag opens Student Edition without unlocking other products', () => {
@@ -52,6 +58,21 @@ test('preview flag opens Student Edition without unlocking other products', () =
   assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: false, coach: false, white: false }), false);
   assert.equal(tryUnlock('advantage'), true);
   assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: true, coach: false, white: false }), false);
+  resetUnlocks();
+});
+
+test('a completed Student Edition Checkout unlocks the journal', () => {
+  resetUnlocks();
+  assert.equal(STUDENT_PRODUCT_ID, API_PRODUCT_STUDENT);
+  assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: false, coach: false, white: false }), false);
+  assert.equal(rememberStudentPurchase({ entitled: true, product: 'advantage-white' }), false);
+  assert.equal(rememberStudentPurchase({ entitled: true, product: 'advantage-pro' }), false);
+  assert.equal(rememberStudentPurchase({ entitled: false, product: STUDENT_PRODUCT_ID }), false);
+  assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: false, coach: false, white: false }), false);
+  assert.equal(rememberStudentPurchase({ entitled: true, product: STUDENT_PRODUCT_ID }), true);
+  assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: false, coach: false, white: false }), true);
+  assert.equal(studentPurchaseReturn(new URLSearchParams('checkout=success&session_id=cs_test_student')), true);
+  assert.equal(studentPurchaseReturn(new URLSearchParams('checkout=cancel&session_id=cs_test_student')), false);
   resetUnlocks();
 });
 

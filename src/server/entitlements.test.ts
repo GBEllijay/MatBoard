@@ -7,6 +7,7 @@ import { fileEntitlementStore } from './fileEntitlements.ts';
 import {
   applyEntitlement,
   applyProEntitlement,
+  applyStudentEntitlement,
   emptyEntitlementIndex,
   entitlementByEmail,
   kvEntitlementStore,
@@ -15,7 +16,10 @@ import {
   proEntitlementByEmail,
   proEntitlementStatus,
   type KvBinding,
+  studentEntitlementByEmail,
+  studentEntitlementStatus,
   type ProEntitlement,
+  type StudentEntitlement,
   type WhiteEntitlement,
 } from './entitlements.ts';
 
@@ -140,6 +144,34 @@ test('an older White index still parses and can store Pro beside it', () => {
   assert.equal(index.proSessions.cs_test_pro.subscriptionId, 'sub_test_pro');
 });
 
+function student(overrides: Partial<StudentEntitlement> = {}): StudentEntitlement {
+  return {
+    email: 'student@gym.test',
+    sessionId: 'cs_test_student',
+    product: 'advantage-student',
+    amountTotal: 1999,
+    currency: 'usd',
+    createdAt: '2026-10-12T00:00:00.000Z',
+    ...overrides,
+  };
+}
+
+test('Student Edition stays off the White and Pro indexes', async () => {
+  const store = memoryEntitlementStore();
+  await store.save(purchase({ email: 'student@gym.test', sessionId: 'cs_test_white' }));
+  await store.savePro(pro({ email: 'student@gym.test' }));
+  await store.saveStudent(student());
+  assert.equal((await store.findByEmail('student@gym.test'))?.product, 'advantage-white');
+  assert.equal((await store.findProByEmail('student@gym.test'))?.product, 'advantage-pro');
+  assert.equal((await store.findStudentBySessionId('cs_test_student'))?.email, 'student@gym.test');
+  assert.equal(studentEntitlementStatus(await store.findStudentByEmail('Student@Gym.test')).entitled, true);
+  assert.equal(studentEntitlementStatus(await store.findStudentByEmail('Student@Gym.test')).product, 'advantage-student');
+  const index = emptyEntitlementIndex();
+  applyStudentEntitlement(index, student());
+  applyStudentEntitlement(index, student({ createdAt: '2026-10-13T00:00:00.000Z' }));
+  assert.equal(studentEntitlementByEmail(index, 'student@gym.test')?.createdAt, '2026-10-12T00:00:00.000Z');
+});
+
 test('file store writes email and session id', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'white-entitlements-'));
   const file = join(dir, 'white-entitlements.json');
@@ -155,4 +187,7 @@ test('file store writes email and session id', async () => {
   await store.savePro(pro());
   assert.equal((await store.findProBySubscriptionId('sub_test_pro'))?.sessionId, 'cs_test_pro');
   assert.equal((await store.findBySessionId('cs_test_123'))?.email, 'gym@example.com');
+  await store.saveStudent(student());
+  assert.equal((await store.findStudentByEmail('student@gym.test'))?.sessionId, 'cs_test_student');
+  assert.equal((await store.findBySessionId('cs_test_123'))?.product, 'advantage-white');
 });

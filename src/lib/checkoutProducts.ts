@@ -1,12 +1,13 @@
 /** Checkout product keys. Price ids stay in server env, never in this file. */
 
-export const CHECKOUT_PRODUCTS = ['white', 'coach', 'pro'] as const;
+export const CHECKOUT_PRODUCTS = ['white', 'student', 'coach', 'pro'] as const;
 
 export type CheckoutProduct = (typeof CHECKOUT_PRODUCTS)[number];
 
 /** Return path after Stripe hosted Checkout. White stays on the public buy page. */
 export const CHECKOUT_BUY_PATH: Record<CheckoutProduct, string> = {
   white: '/buy',
+  student: '/buy/student',
   coach: '/buy/coach',
   pro: '/buy/pro',
 };

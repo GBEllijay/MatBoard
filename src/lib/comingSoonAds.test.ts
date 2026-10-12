@@ -139,7 +139,7 @@ test('Pro ad lists the live Pro hubs and keeps launch pricing off the feature co
   assert.doesNotMatch(text, /\$\d/);
   assert.equal(
     PRO_LAUNCH_PRICE_NOTE,
-    'Price: $99.99 one-time, plus $2.99/month when it launches. Not for sale on this page.',
+    'Price: $99.99 one-time, plus $5.99/month when it launches. Not for sale on this page.',
   );
   assert.equal(COMING_SOON_ADS.pro.kicker, COMING_SOON_LABEL);
   assert.equal(PRODUCT_TEASERS.pro, GYM_CONSOLE_NAME);

@@ -18,10 +18,10 @@ import {
   WHITE_ALPHA_ACCESS_NOTE,
 } from './productPrices.ts';
 
-test('Coach is $29.99 one-time and Pro is $99.99 plus $2.99/month', () => {
+test('Coach is $29.99 one-time and Pro is $99.99 plus $5.99/month', () => {
   assert.equal(COACH_LIST_PRICE_CENTS, 2999);
   assert.equal(PRO_LIST_PRICE_CENTS, 9999);
-  assert.equal(PRO_MONTHLY_PRICE_CENTS, 299);
+  assert.equal(PRO_MONTHLY_PRICE_CENTS, 599);
   assert.notEqual(PRO_LIST_PRICE_CENTS, 6999);
   assert.equal(COACH_PRICE_LINE, `${formatUsdFromCents(COACH_LIST_PRICE_CENTS)} one-time`);
   assert.equal(COACH_PRICE_LINE, '$29.99 one-time');
@@ -29,11 +29,11 @@ test('Coach is $29.99 one-time and Pro is $99.99 plus $2.99/month', () => {
     PRO_PRICE_LINE,
     `${formatUsdFromCents(PRO_LIST_PRICE_CENTS)} one-time, plus ${formatUsdFromCents(PRO_MONTHLY_PRICE_CENTS)}/month`,
   );
-  assert.equal(PRO_PRICE_LINE, '$99.99 one-time, plus $2.99/month');
-  assert.doesNotMatch(`${COACH_PRICE_LINE}\n${PRO_PRICE_LINE}`, /69\.99|6999/);
+  assert.equal(PRO_PRICE_LINE, '$99.99 one-time, plus $5.99/month');
+  assert.doesNotMatch(`${COACH_PRICE_LINE}\n${PRO_PRICE_LINE}`, /69\.99|6999|\$2\.99/);
 });
 
-test('Student Edition is $19.99 one-time and is not a Stripe product', () => {
+test('Student Edition is $19.99 one-time and checkout uses that display price', () => {
   assert.equal(STUDENT_LIST_PRICE_CENTS, 1999);
   assert.equal(STUDENT_PRICE_LINE, `${formatUsdFromCents(STUDENT_LIST_PRICE_CENTS)} one-time`);
   assert.equal(STUDENT_PRICE_LINE, '$19.99 one-time');
@@ -42,8 +42,8 @@ test('Student Edition is $19.99 one-time and is not a Stripe product', () => {
     'Student Edition is in alpha testing. Email advantageappllc@gmail.com to request an alpha code.',
   );
   assert.doesNotMatch(STUDENT_ALPHA_ACCESS_NOTE, /free/i);
-  assert.deepEqual([...CHECKOUT_PRODUCTS], ['white', 'coach', 'pro']);
-  assert.equal((CHECKOUT_PRODUCTS as readonly string[]).includes('student'), false);
+  assert.doesNotMatch(STUDENT_PRICE_LINE, /Coach/);
+  assert.deepEqual([...CHECKOUT_PRODUCTS], ['white', 'student', 'coach', 'pro']);
 });
 
 test('alpha access uses the existing support address', () => {
@@ -63,7 +63,13 @@ test('alpha access uses the existing support address', () => {
     ALPHA_ACCESS_NOTE,
     'Coach and Pro are in alpha testing. Email advantageappllc@gmail.com to request an alpha code.',
   );
-  for (const note of [WHITE_ALPHA_ACCESS_NOTE, COACH_ALPHA_ACCESS_NOTE, PRO_ALPHA_ACCESS_NOTE, ALPHA_ACCESS_NOTE]) {
+  for (const note of [
+    WHITE_ALPHA_ACCESS_NOTE,
+    STUDENT_ALPHA_ACCESS_NOTE,
+    COACH_ALPHA_ACCESS_NOTE,
+    PRO_ALPHA_ACCESS_NOTE,
+    ALPHA_ACCESS_NOTE,
+  ]) {
     assert.doesNotMatch(note, /free/i);
     assert.match(note, /to request an alpha code/);
   }
