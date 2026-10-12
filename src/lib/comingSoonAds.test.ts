@@ -76,7 +76,7 @@ test('Coach ad lists basic Coach tools, student roster, and no checkout price', 
   );
   assert.equal(
     ALPHA_TRIAL_NOTE,
-    'Free trial: request an alpha testing code by emailing advantageappllc@gmail.com.',
+    'Email advantageappllc@gmail.com to request an alpha code.',
   );
   assert.doesNotMatch(PRODUCT_TEASERS.coach, /\$\d/);
   assert.equal(PRODUCT_TEASERS.coach, COACH_HOME_TEASER);

@@ -18,8 +18,18 @@ export const COACH_PRICE_LINE = '$29.99 one-time';
 
 export const PRO_PRICE_LINE = '$99.99 one-time, plus $2.99/month';
 
-/** Locked Coach and Pro surfaces. The address is the existing support inbox. */
-export const ALPHA_ACCESS_NOTE = `Coach and Pro are in free alpha testing. Email ${SITE_FEEDBACK_EMAIL} for a free alpha code.`;
+/** Locked-card alpha line. The address is the existing support inbox. */
+export function alphaAccessNote(product: string): string {
+  return `${product} is in alpha testing. Email ${SITE_FEEDBACK_EMAIL} to request an alpha code.`;
+}
 
-/** Locked Student Edition card. Same inbox, and not a checkout button. */
-export const STUDENT_ALPHA_ACCESS_NOTE = `Student Edition is in free alpha testing. Email ${SITE_FEEDBACK_EMAIL} for a free alpha code.`;
+export const WHITE_ALPHA_ACCESS_NOTE = alphaAccessNote('White');
+
+export const STUDENT_ALPHA_ACCESS_NOTE = alphaAccessNote('Student Edition');
+
+export const COACH_ALPHA_ACCESS_NOTE = alphaAccessNote('Coach');
+
+export const PRO_ALPHA_ACCESS_NOTE = alphaAccessNote('Pro');
+
+/** Coming soon page, where Coach and Pro share one line. */
+export const ALPHA_ACCESS_NOTE = `Coach and Pro are in alpha testing. Email ${SITE_FEEDBACK_EMAIL} to request an alpha code.`;

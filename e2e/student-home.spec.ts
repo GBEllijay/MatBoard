@@ -19,9 +19,15 @@ test('home picker keeps White, Coach, and Pro and adds locked Student Edition', 
     'Advantage Pro',
   ]);
 
-  const white = page.getByRole('link', { name: /Advantage White/ });
-  await expect(white).toHaveAttribute('href', '/buy');
-  await expect(white).toContainText('Buy — $9.99');
+  const white = page.locator('.mode-card--white');
+  await expect(white.getByRole('link', { name: 'Advantage White' })).toHaveAttribute('href', '/buy');
+  await expect(white.getByRole('link', { name: 'Buy — $9.99' })).toHaveAttribute('href', '/buy');
+  await expect(white.getByRole('link', { name: 'advantageappllc@gmail.com' })).toBeVisible();
+  await expect(white).toContainText('White is in alpha testing.');
+  await expect(white).not.toContainText(/free/i);
+  await expect(page.locator('.mode-card--coach')).toContainText('Coach is in alpha testing.');
+  await expect(page.locator('.mode-card--pro')).toContainText('Pro is in alpha testing.');
+  await expect(page.locator('.mode-card--student')).toContainText('Student Edition is in alpha testing.');
 
   const student = page.locator('.mode-card--student');
   await expect(student).toContainText('$19.99 one-time');
@@ -44,6 +50,8 @@ test('home picker keeps White, Coach, and Pro and adds locked Student Edition', 
   await expect(dialog).toBeVisible();
   await expect(dialog.getByText('Price: $19.99 one-time when it launches. Not for sale on this page.')).toBeVisible();
   await expect(dialog.getByRole('link', { name: 'advantageappllc@gmail.com' })).toBeVisible();
+  await expect(dialog).toContainText('Student Edition is in alpha testing.');
+  await expect(dialog).not.toContainText(/free/i);
   await expect(dialog.getByRole('button', { name: 'Owner unlock' })).toHaveCount(0);
   await expect(dialog.getByRole('link', { name: /Buy/ })).toHaveCount(0);
   await page.getByRole('button', { name: 'Got it' }).click();
