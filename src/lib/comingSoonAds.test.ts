@@ -159,7 +159,10 @@ test('Student Edition ad lists the journal and is not a checkout', () => {
     COMING_SOON_ADS.student.features.map((feature) => feature.title),
     ['Journal', 'Journal cards', 'Fundamentals', 'Calendar', 'Belt progress'],
   );
-  assert.match(text, /Coming soon/);
+  assert.match(text, /Coming Soon/);
+  assert.match(text, /Days with journal cards are marked/);
+  assert.match(text, /Filled checkpoints between belts/);
+  assert.doesNotMatch(text, /Coming soon\./);
   assert.doesNotMatch(text, /\$\d/);
   assert.doesNotMatch(text, /stripe/i);
   assert.equal(

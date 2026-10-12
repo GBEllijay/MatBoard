@@ -65,7 +65,7 @@ export const STUDENT_LAUNCH_PRICE_NOTE = `Price: ${STUDENT_PRICE_LINE} when it l
 export const STUDENT_PREVIEW_LABEL = STUDENT_EDITION_NAME;
 
 /** One line under that journal. */
-export const STUDENT_PREVIEW_NOTE = 'Journal, journal cards, and a fundamentals checklist. Calendar and belt progress come later.';
+export const STUDENT_PREVIEW_NOTE = 'Journal, journal cards, a fundamentals checklist, calendar, and belt progress stay on this phone.';
 
 /** Same request line as the home cards. Product sheets pass their own note. */
 export const ALPHA_TRIAL_NOTE = `Email ${SITE_FEEDBACK_EMAIL} to request an alpha code.`;
@@ -154,11 +154,11 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
       },
       {
         title: 'Calendar',
-        body: 'Coming soon.',
+        body: 'A month page. Days with journal cards are marked. Add a class, open mat, tournament, or promotion test.',
       },
       {
         title: 'Belt progress',
-        body: 'Coming soon.',
+        body: 'Filled checkpoints between belts, goals, and coach notes you can copy.',
       },
     ],
     dismiss: 'Got it',

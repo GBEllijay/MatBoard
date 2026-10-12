@@ -816,23 +816,228 @@ button.student-book .student-mark__press {
   opacity: 0.4;
 }
 
-.student-hub__stamp {
+.student-hub__menu {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 0.35rem;
+  min-height: 5.5rem;
+  padding: 0.7rem 1rem 0.75rem 3.15rem;
+  border: 2px solid #1c140e;
+  border-radius: 4px 14px 6px 16px / 12px 5px 14px 6px;
+  color: #1c140e;
+  font-family: 'Patrick Hand', 'Segoe Print', cursive;
+  background-color: #f4f0e4;
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 27px, rgba(116, 158, 196, 0.62) 28px);
+  background-position: 0 12px;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.22);
+}
+
+.student-hub__menu::before {
+  content: '';
   position: absolute;
   z-index: 2;
-  top: 0.7rem;
-  right: 0.55rem;
-  padding: 0.08rem 0.45rem 0.12rem;
-  border: 2px solid #c44949;
-  border-radius: 3px 7px 4px 8px / 7px 3px 8px 4px;
-  color: #c44949;
-  background: rgba(244, 240, 228, 0.55);
-  font-family: 'Patrick Hand', 'Segoe Print', cursive;
-  font-size: 1.15rem;
-  font-weight: 400;
-  letter-spacing: 0.03em;
-  line-height: 1.1;
-  transform: rotate(-8deg);
+  top: 0;
+  bottom: 0;
+  left: 26px;
+  width: 2px;
+  background: #e15d5d;
   pointer-events: none;
+}
+
+.student-hub__menu summary {
+  position: relative;
+  z-index: 1;
+  font-size: clamp(1.55rem, 6vw, 1.9rem);
+  cursor: pointer;
+  list-style: none;
+}
+
+.student-hub__menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.student-hub__menu-list {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.student-hub__menu-list a {
+  color: inherit;
+  font-size: 1.25rem;
+}
+
+.cal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.cal-nav__label {
+  margin: 0;
+  text-align: center;
+  font-size: 1.35rem;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.15rem;
+}
+
+.cal-dow,
+.student .cal-day {
+  min-height: 2.55rem;
+  text-align: center;
+}
+
+.cal-dow {
+  position: relative;
+  font-size: 1rem;
+}
+
+.cal-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.student .cal-day {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 0.05rem;
+  padding: 0.15rem 0;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+}
+
+.student .cal-day.is-today {
+  border-color: var(--ink);
+}
+
+.student .cal-day.has-journal {
+  background: rgba(28, 20, 14, 0.16);
+}
+
+.cal-day--out {
+  color: rgba(28, 20, 14, 0.35);
+}
+
+.cal-dot {
+  display: block;
+  width: 0.62rem;
+  height: 0.62rem;
+  border-radius: 50%;
+  background: #1c140e;
+}
+
+.cal-dot--event {
+  background: transparent;
+  border: 2px solid var(--ink);
+  box-sizing: border-box;
+}
+
+.cal-gym-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.student .cal-gym-toggle input {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.cal-gym,
+.cal-events {
+  margin: 0.2rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.cal-events li {
+  display: grid;
+  gap: 0.2rem;
+  margin-bottom: 0.45rem;
+}
+
+.belt-ends {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin: 0.2rem 0;
+  font-size: 1.45rem;
+}
+
+.belt-ends p {
+  margin: 0;
+}
+
+.checkpoint-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 0.7rem;
+  margin: 0.2rem 0 0.4rem;
+  padding: 0;
+  list-style: none;
+}
+
+.checkpoint-row li {
+  display: grid;
+  justify-items: center;
+  gap: 0.1rem;
+  width: 4.6rem;
+  text-align: center;
+  font-size: 1.02rem;
+}
+
+.checkpoint-box {
+  width: 1.65rem;
+  height: 1.65rem;
+  border: 2.5px solid var(--ink);
+  border-radius: 3px;
+  background: transparent;
+}
+
+.checkpoint-row li.is-filled .checkpoint-box {
+  background: var(--ink);
+}
+
+.criterion,
+.coach-line {
+  display: grid;
+  gap: 0.2rem;
+  margin-top: 0.55rem;
+}
+
+.criterion p,
+.coach-line p,
+.coach-panel h3 {
+  margin: 0;
+}
+
+.coach-panel {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.belt-block > h2,
+.goals-block > h2,
+.coach-panel > h2,
+.coach-panel h3 {
+  margin: 0.2rem 0;
+  font-weight: 400;
+  font-size: 1.45rem;
 }
 
 .student-closed {
