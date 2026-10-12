@@ -157,8 +157,8 @@ function BuyProRoute({ children }: { children: ReactNode }) {
 
 /**
  * Buy Student Edition stays behind the same owner unlock as the journal
- * (`?student=1`, a completed Student Edition Checkout, or the owner code that
- * opens White, Coach, and Pro together). Stripe's success return still renders
+ * (`?student=1`, a completed Student Edition Checkout, a Pro unlock, or the
+ * owner code that opens White, Coach, and Pro together). Stripe's success return still renders
  * so the webhook can unlock this device. There is no public Buy button.
  */
 function BuyStudentRoute({ children }: { children: ReactNode }) {

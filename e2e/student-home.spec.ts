@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { FULL_OWNER_UNLOCK_CODE } from '../src/lib/proUnlock.ts';
+import { FULL_OWNER_UNLOCK_CODE, PRO_UNLOCK_CODE } from '../src/lib/proUnlock.ts';
 
 const BACK = 'Back. Hold for Home.';
 
@@ -208,6 +208,22 @@ test('full owner URL params open Student Edition', async ({ browser }) => {
     await expect(page.getByRole('link', { name: 'Journal', exact: true })).toBeVisible();
     await context.close();
   }
+});
+
+test('the Pro owner code opens the Student Edition card', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Advantage Pro, coming soon' }).click();
+  await page.getByRole('button', { name: 'Owner unlock' }).click();
+  await page.getByPlaceholder('Owner code').fill(PRO_UNLOCK_CODE);
+  await page.getByRole('button', { name: 'Unlock Pro' }).click();
+
+  const openStudent = page.getByRole('link', { name: 'Open Student Edition', exact: true });
+  await expect(openStudent).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open Coach', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/buy');
+  await openStudent.click();
+  await expect(page).toHaveURL(/\/student$/);
+  await expect(page.getByRole('link', { name: 'Journal', exact: true })).toBeVisible();
 });
 
 test('the full owner unlock code opens the Student Edition hub', async ({ page }) => {

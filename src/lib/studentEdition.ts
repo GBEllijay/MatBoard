@@ -108,7 +108,8 @@ export function studentEditionOpen(
   // The storage read covers callers that have not passed that snapshot yet.
   if (owner.student || isStudentEditionUnlocked()) return true;
   if (isStudentPurchased()) return true;
-  return owner.pro && owner.coach && owner.white;
+  // Pro alone opens Student Edition. Coach and White are not required.
+  return owner.pro;
 }
 
 export function blankStudentReport(now = Date.now()): StudentProgressReport {

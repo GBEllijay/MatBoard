@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { API_PRODUCT_STUDENT } from '../server/routes.ts';
-import { lockCoach } from './coachUnlock.ts';
+import { isCoachUnlocked, lockCoach } from './coachUnlock.ts';
 import { FUNDAMENTALS_CATALOG } from './progress/catalog.ts';
 import { parseProgressPacket, searchJournal } from './progress/format.ts';
 import { lockPro, tryProductOwnerUnlock, tryUnlock } from './proUnlock.ts';
@@ -56,8 +56,20 @@ test('preview flag opens Student Edition without unlocking other products', () =
   resetUnlocks();
   assert.equal(studentEditionOpen(new URLSearchParams('student=1'), { pro: false, coach: false, white: false }), true);
   assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: false, coach: false, white: false }), false);
+  resetUnlocks();
+});
+
+test('a Pro unlock opens Student Edition and the Coach-only code does not', () => {
+  resetUnlocks();
   assert.equal(tryUnlock('advantage'), true);
-  assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: true, coach: false, white: false }), false);
+  assert.equal(isCoachUnlocked(), false);
+  assert.equal(isWhiteUnlocked(), false);
+  assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: true, coach: false, white: false }), true);
+  assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: false, coach: false, white: false }), true);
+  resetUnlocks();
+  assert.equal(tryProductOwnerUnlock('coach', 'gbellijay'), true);
+  assert.equal(isCoachUnlocked(), true);
+  assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: false, coach: true, white: false }), false);
   resetUnlocks();
 });
 

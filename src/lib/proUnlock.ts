@@ -9,7 +9,7 @@ export const PRO_UNLOCK_STORAGE_KEY = 'advantage.proUnlocked';
 /**
  * Gym-owner code for Pro unlock. Change this anytime, or set VITE_PRO_UNLOCK_CODE
  * at build time. Compared case-insensitively after trim.
- * `advantage` unlocks Pro. Coach tools follow that Pro door. It does not unlock White.
+ * `advantage` unlocks Pro and Student Edition. Coach tools follow that Pro door. It does not unlock White.
  */
 export const PRO_UNLOCK_CODE =
   (typeof import.meta.env?.VITE_PRO_UNLOCK_CODE === 'string'
@@ -39,6 +39,8 @@ function writeFlag(unlocked: boolean): void {
   } catch {
     /* ignore quota / private mode */
   }
+  // Pro opens Student Edition. Locking Pro closes that grant. Coach-only does not write this flag.
+  setStudentEditionUnlocked(unlocked);
   listeners.forEach((fn) => fn());
 }
 
@@ -83,7 +85,7 @@ export function tryFullOwnerUnlock(code: string): boolean {
 
 /**
  * Owner unlock sheet. The full owner code opens White, Coach, Pro, and Student Edition.
- * The Pro code still opens Pro only. The Coach code still opens Coach only.
+ * The Pro code opens Pro and Student Edition. The Coach code still opens Coach only.
  * The Student Edition sheet accepts only the full owner code.
  */
 export function tryProductOwnerUnlock(product: 'coach' | 'pro' | 'student', code: string): boolean {
@@ -115,9 +117,8 @@ export function tryUnlock(code: string): boolean {
 }
 
 export function lockPro(): void {
+  // writeFlag also clears the Student Edition grant that follows Pro.
   writeFlag(false);
-  // Student Edition is granted with this code. Locking Pro signs that grant out too.
-  setStudentEditionUnlocked(false);
 }
 
 /**
