@@ -67,6 +67,12 @@ export function submenuBackTarget(input: SubmenuNavInput): string | null {
     if (path.startsWith('/student/cards/') && path.length > '/student/cards/'.length) {
       return `/student/cards${preview}`;
     }
+    if (path.startsWith('/student/calendar/') && path.length > '/student/calendar/'.length) {
+      return `/student/calendar${preview}`;
+    }
+    if (path === '/student/share' && (from === 'rubric' || from === 'belt')) {
+      return `/student/rubric${preview}`;
+    }
     return `/student${preview}`;
   }
   if (path === '/white/roster') return '/white';

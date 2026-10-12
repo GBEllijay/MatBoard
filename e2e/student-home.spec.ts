@@ -78,23 +78,23 @@ test('?student=1 opens the Student hub, and submenus go back to it', async ({ pa
   expect(rules).toContain('repeating-linear-gradient');
   await expect(page.getByRole('link', { name: 'Journal cards', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Fundamentals', exact: true })).toBeVisible();
-  const calendar = page.getByRole('link', { name: 'Calendar, coming soon' });
-  await expect(calendar).toBeVisible();
-  await expect(calendar.locator('.student-hub__stamp')).toHaveText('Coming soon');
-  await expect(page.getByRole('link', { name: 'Belt progress, coming soon' })).toBeVisible();
+  await expect(page.locator('.student-hub__stamp')).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Calendar', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Belt progress', exact: true })).toBeVisible();
   await shot(page, 'student-hub-390');
 
-  await page.getByRole('link', { name: 'Calendar, coming soon' }).click();
+  await page.getByRole('link', { name: 'Calendar', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Calendar' })).toBeVisible();
-  await expect(page.getByText('Coming soon.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Previous month' })).toBeVisible();
+  await expect(page.getByText('Coming soon.')).toHaveCount(0);
   await expect(page.getByRole('link', { name: BACK, exact: true })).toHaveAttribute('href', '/student?student=1');
   await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute('href', '/?student=1');
   await page.getByRole('link', { name: BACK, exact: true }).click();
   await expect(page).toHaveURL(/\/student\?student=1$/);
 
-  await page.getByRole('link', { name: 'Belt progress, coming soon' }).click();
+  await page.getByRole('link', { name: 'Belt progress', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Belt progress' })).toBeVisible();
-  await expect(page.getByText('Coming soon.')).toBeVisible();
+  await expect(page.getByText('Coming soon.')).toHaveCount(0);
   await page.getByRole('link', { name: 'Home', exact: true }).click();
   await expect(page).toHaveURL(/\/\?student=1$/);
   await expect(page.getByRole('link', { name: 'Open Student Edition', exact: true })).toBeVisible();

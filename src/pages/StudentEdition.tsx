@@ -3,13 +3,16 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import { HomeMark } from '../components/HomeMark';
 import { LeatherSpine } from '../components/LeatherSpine';
 import { SiteFooter } from '../components/SiteFooter';
-import { SubmenuMarks } from '../components/TierHomeMark';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import { STUDENT_EDITION_NAME, STUDENT_HOME_DESCRIPTION } from '../lib/productNames';
-import { submenuBackTarget } from '../lib/submenuNav';
 import type { GameTag } from '../lib/progress/types.ts';
+import { isIsoDate } from '../lib/studentTools';
+import { BeltPage } from './student/BeltPage';
+import { CalendarDayPage, CalendarPage } from './student/CalendarPages';
+import { BeltDoodle, LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './student/chrome';
+import { SharePage } from './student/SharePage';
 import {
   addCustomFundamental,
   addJournalAmendment,
@@ -17,10 +20,8 @@ import {
   classLabel,
   fundamentalsBoard,
   hideFundamental,
-  loadStudentReport,
   renameFundamental,
   restoreStarterFundamentals,
-  saveStudentReport,
   searchStudentJournal,
   setFundamentalLearned,
   setFundamentalNote,
@@ -39,22 +40,6 @@ const GAMES: { tag: GameTag; letter: string }[] = [
   { tag: 'c', letter: 'C' },
 ];
 
-function useStudentPath() {
-  const [params] = useSearchParams();
-  const preview = params.get('student') === '1';
-  return (path: string) => (preview ? `${path}?student=1` : path);
-}
-
-function useStudentFile() {
-  const [report, setReport] = useState(() => loadStudentReport(localStorage));
-  const commit = (next: ReturnType<typeof loadStudentReport>) => {
-    const saved = saveStudentReport(localStorage, next);
-    setReport(saved);
-    return saved;
-  };
-  return { report, commit };
-}
-
 export function StudentEditionPage() {
   const [params] = useSearchParams();
   const path = useLocation().pathname.replace(/\/+$/, '');
@@ -70,8 +55,10 @@ export function StudentEditionPage() {
   if (rest === 'cards') return <JournalList />;
   if (rest.startsWith('cards/')) return <JournalCardPage id={decodeURIComponent(rest.slice('cards/'.length))} />;
   if (rest === 'fundamentals') return <FundamentalsPage />;
-  if (rest === 'calendar') return <ComingNext name="Calendar" />;
-  if (rest === 'rubric' || rest === 'belt') return <ComingNext name="Belt progress" />;
+  if (rest === 'calendar') return <CalendarPage />;
+  if (rest.startsWith('calendar/')) return <CalendarDayPage date={decodeURIComponent(rest.slice('calendar/'.length))} />;
+  if (rest === 'rubric' || rest === 'belt') return <BeltPage />;
+  if (rest === 'share') return <SharePage />;
   return <Hub />;
 }
 
@@ -93,56 +80,12 @@ function StudentClosed() {
   );
 }
 
-function StudentMarks() {
-  const { pathname, search } = useLocation();
-  const back = submenuBackTarget({ pathname, search });
-  const home = new URLSearchParams(search).get('student') === '1' ? '/?student=1' : '/';
-  if (!back) return null;
-  return <SubmenuMarks to={back} homeTo={home} />;
-}
-
-function BeltDoodle() {
-  return (
-    <svg className="student-belt" viewBox="0 0 140 70" aria-hidden="true">
-      <path
-        d="M8 36c18-16 28-16 40-4 6 6 8 8 14 2 8-8 14-10 22-4 10 8 8 16-2 18-8 2-12-2-16-8"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="3"
-        strokeLinecap="round"
-      />
-      <path
-        d="M78 28c10 2 22 10 34 8 8-1 16 4 18 10"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="3"
-        strokeLinecap="round"
-      />
-      <path
-        d="M62 40c8 10 18 14 28 8 4-2 6-8 2-12-6-6-16-2-22 6"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="3"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function LeatherHeader({ title = 'Jiu-Jitsu Journal' }: { title?: string }) {
-  return (
-    <header className="student-leather">
-      <h1>{title}</h1>
-    </header>
-  );
-}
-
 const HUB_LINKS = [
-  { title: 'Journal', note: "Today's page", to: '/student/journal', soon: false },
-  { title: 'Journal cards', note: 'Search your notes', to: '/student/cards', soon: false },
-  { title: 'Fundamentals', note: 'Checklist', to: '/student/fundamentals', soon: false },
-  { title: 'Calendar', note: 'Coming soon', to: '/student/calendar', soon: true },
-  { title: 'Belt progress', note: 'Coming soon', to: '/student/rubric', soon: true },
+  { title: 'Journal', note: "Today's page", to: '/student/journal' },
+  { title: 'Journal cards', note: 'Search your notes', to: '/student/cards' },
+  { title: 'Fundamentals', note: 'Checklist', to: '/student/fundamentals' },
+  { title: 'Calendar', note: 'Month and your events', to: '/student/calendar' },
+  { title: 'Belt progress', note: 'Checkpoints and goals', to: '/student/rubric' },
 ] as const;
 
 function Hub() {
@@ -160,21 +103,20 @@ function Hub() {
             <p>{STUDENT_HOME_DESCRIPTION}</p>
           </header>
           {HUB_LINKS.map((item) => (
-            <Link
-              key={item.to}
-              className={item.soon ? 'student-hub__link student-hub__link--soon' : 'student-hub__link'}
-              to={to(item.to)}
-              aria-label={item.soon ? `${item.title}, coming soon` : item.title}
-            >
+            <Link key={item.to} className="student-hub__link" to={to(item.to)} aria-label={item.title}>
               <LeatherSpine />
               <span className="student-hub__title">{item.title}</span>
-              {item.soon ? (
-                <span className="student-hub__stamp">Coming soon</span>
-              ) : (
-                <small>{item.note}</small>
-              )}
+              <small>{item.note}</small>
             </Link>
           ))}
+          <details className="student-hub__menu">
+            <LeatherSpine />
+            <summary>Menu</summary>
+            <div className="student-hub__menu-list">
+              <Link to={to('/student/share')}>Send to coach</Link>
+              <Link to={to('/student/share#import')}>Import from coach</Link>
+            </div>
+          </details>
         </nav>
         <SiteFooter />
       </div>
@@ -186,7 +128,9 @@ function JournalToday() {
   const to = useStudentPath();
   const { report, commit } = useStudentFile();
   const navigate = useNavigate();
-  const [date, setDate] = useState(todayIso());
+  const [params] = useSearchParams();
+  const requested = params.get('date') ?? '';
+  const [date, setDate] = useState(isIsoDate(requested) ? requested : todayIso());
   const [classKind, setClassKind] = useState<ClassKind>('');
   const [gameTag, setGameTag] = useState<GameTag | ''>('');
   const [techniques, setTechniques] = useState([
@@ -714,18 +658,3 @@ function CustomFundamental({
   );
 }
 
-function ComingNext({ name }: { name: string }) {
-  return (
-    <main className="student student-frame">
-      <StudentMarks />
-      <LeatherHeader title={name} />
-      <div className="student-paper">
-        <div className="student-sheet">
-          <div className="ink">
-            <p>Coming soon.</p>
-          </div>
-        </div>
-      </div>
-    </main>
-  );
-}
