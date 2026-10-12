@@ -9,9 +9,11 @@ const env: StripeRuntimeEnv = {
   STRIPE_SECRET_KEY: 'sk_test_123',
   STRIPE_WEBHOOK_SECRET: 'whsec_test',
   STRIPE_PRICE_WHITE: 'price_white',
+  STRIPE_PRICE_STUDENT: 'price_student',
   STRIPE_PRICE_COACH: 'price_coach',
   STRIPE_PRICE_PRO: 'price_pro',
   STRIPE_PRICE_PRO_MONTHLY: 'price_pro_monthly',
+  STRIPE_PRICE_PRO_MONTHLY_DISCOUNT: 'price_kept_monthly',
 };
 
 function jsonRequest(url: string, body: unknown): Request {
@@ -156,6 +158,8 @@ test('Pro checkout puts the one-time price and the monthly price in one session'
     assert.equal(fields.get('mode'), 'subscription');
     assert.equal(fields.get('line_items[0][price]'), 'price_pro');
     assert.equal(fields.get('line_items[1][price]'), 'price_pro_monthly');
+    assert.equal(fields.get('line_items[2][price]'), null);
+    assert.doesNotMatch(fields.toString(), /price_kept_monthly/);
     assert.equal(fields.get('metadata[product]'), 'advantage-pro');
     assert.equal(fields.get('subscription_data[metadata][product]'), 'advantage-pro');
     assert.equal(fields.get('payment_intent_data[metadata][product]'), null);
@@ -204,7 +208,7 @@ test('an unknown product does not open Checkout', async () => {
   );
   assert.equal(response.status, 400);
   const body = (await response.json()) as { error: string };
-  assert.match(body.error, /white, coach, or pro/);
+  assert.match(body.error, /white, student, coach, or pro/);
 });
 
 test('WHITEFREE does not unlock Coach', async () => {
@@ -433,4 +437,108 @@ test('webhook rejects a bad signature and does not record a purchase', async () 
 test('entitlement lookup without a store explains the missing binding', async () => {
   const response = await handleEntitlement(new Request('http://localhost/api/entitlement?email=a@b.co'), null);
   assert.equal(response.status, 503);
+});
+
+test('Student checkout is a one-time hosted session', async () => {
+  const fetchImpl: typeof fetch = async (_input, init) => {
+    const fields = new URLSearchParams(String(init?.body ?? ''));
+    assert.equal(fields.get('mode'), 'payment');
+    assert.equal(fields.get('line_items[0][price]'), 'price_student');
+    assert.equal(fields.get('line_items[1][price]'), null);
+    assert.equal(fields.get('metadata[product]'), 'advantage-student');
+    assert.equal(fields.get('payment_intent_data[metadata][product]'), 'advantage-student');
+    assert.equal(fields.get('allow_promotion_codes'), 'true');
+    assert.equal(
+      fields.get('success_url'),
+      'https://advantagebjjtimer.com/buy/student?checkout=success&session_id={CHECKOUT_SESSION_ID}',
+    );
+    assert.equal(fields.get('cancel_url'), 'https://advantagebjjtimer.com/buy/student?checkout=cancel');
+    return new Response(
+      JSON.stringify({ id: 'cs_test_student', url: 'https://checkout.stripe.com/c/pay/cs_test_student' }),
+      { status: 200 },
+    );
+  };
+  const response = await handleCheckout(
+    jsonRequest('https://advantagebjjtimer.com/api/checkout', { product: 'Student' }),
+    {
+      ...env,
+      STRIPE_SUCCESS_URL: 'https://advantagebjjtimer.com/buy?checkout=success&session_id={CHECKOUT_SESSION_ID}',
+      STRIPE_CANCEL_URL: 'https://advantagebjjtimer.com/buy?checkout=cancel',
+    },
+    fetchImpl,
+  );
+  assert.equal(response.status, 200);
+  const body = (await response.json()) as { url: string };
+  assert.equal(body.url, 'https://checkout.stripe.com/c/pay/cs_test_student');
+});
+
+test('Student checkout names the missing Price id', async () => {
+  const response = await handleCheckout(
+    jsonRequest('https://advantagebjjtimer.com/api/checkout', { product: 'student' }),
+    { STRIPE_SECRET_KEY: 'sk_test_123', STRIPE_PRICE_WHITE: 'price_white' },
+  );
+  assert.equal(response.status, 503);
+  const body = (await response.json()) as { error: string };
+  assert.match(body.error, /STRIPE_PRICE_STUDENT/);
+});
+
+test('WHITEFREE does not unlock Student Edition', async () => {
+  const store = memoryEntitlementStore();
+  const response = await handleCheckout(
+    jsonRequest('http://localhost/api/checkout', { product: 'student', promotionCode: 'WHITEFREE' }),
+    env,
+    async () => new Response(JSON.stringify({ data: [] }), { status: 200 }),
+    store,
+  );
+  assert.equal(response.status, 400);
+  assert.equal(await store.findStudentByEmail(''), null);
+  assert.equal(await store.findByEmail(''), null);
+});
+
+test('Student checkout webhook unlocks Student Edition and leaves White and Pro alone', async () => {
+  const store = memoryEntitlementStore();
+  const now = new Date('2026-10-12T12:00:00.000Z');
+  const payload = JSON.stringify({
+    type: 'checkout.session.completed',
+    data: {
+      object: {
+        id: 'cs_test_student',
+        object: 'checkout.session',
+        mode: 'payment',
+        payment_status: 'paid',
+        amount_total: 1999,
+        currency: 'usd',
+        customer_details: { email: 'student@gym.test' },
+        metadata: { product: 'advantage-student' },
+      },
+    },
+  });
+  const response = await handleWebhook(signedWebhook(payload, now), env, store, () => now);
+  assert.equal(response.status, 200);
+  const saved = await store.findStudentByEmail('Student@Gym.test');
+  assert.equal(saved?.sessionId, 'cs_test_student');
+  assert.equal(saved?.product, 'advantage-student');
+  assert.equal(saved?.amountTotal, 1999);
+  assert.equal(await store.findByEmail('student@gym.test'), null);
+  assert.equal(await store.findProByEmail('student@gym.test'), null);
+
+  const lookup = await handleEntitlement(
+    new Request('http://localhost/api/entitlement?session_id=cs_test_student'),
+    store,
+  );
+  const status = (await lookup.json()) as { entitled: boolean; product: string; email: string };
+  assert.equal(status.entitled, true);
+  assert.equal(status.product, 'advantage-student');
+  assert.equal(status.email, 'student@gym.test');
+
+  const byEmail = await handleEntitlement(
+    new Request('http://localhost/api/entitlement?email=student@gym.test&product=student'),
+    store,
+  );
+  assert.equal(((await byEmail.json()) as { entitled: boolean; product: string }).product, 'advantage-student');
+  const whiteEmail = await handleEntitlement(
+    new Request('http://localhost/api/entitlement?email=student@gym.test'),
+    store,
+  );
+  assert.equal(((await whiteEmail.json()) as { entitled: boolean }).entitled, false);
 });

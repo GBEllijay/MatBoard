@@ -1,6 +1,6 @@
 import { CHECKOUT_BUY_PATH, isCheckoutProduct, type CheckoutProduct } from '../lib/checkoutProducts.ts';
 import { normalizeEmail } from './entitlements.ts';
-import { API_PRODUCT_COACH, API_PRODUCT_ID, API_PRODUCT_PRO } from './routes.ts';
+import { API_PRODUCT_COACH, API_PRODUCT_ID, API_PRODUCT_PRO, API_PRODUCT_STUDENT } from './routes.ts';
 
 export type { CheckoutProduct };
 
@@ -8,9 +8,15 @@ export type StripeRuntimeEnv = {
   STRIPE_SECRET_KEY?: string;
   STRIPE_WEBHOOK_SECRET?: string;
   STRIPE_PRICE_WHITE?: string;
+  STRIPE_PRICE_STUDENT?: string;
   STRIPE_PRICE_COACH?: string;
   STRIPE_PRICE_PRO?: string;
   STRIPE_PRICE_PRO_MONTHLY?: string;
+  /**
+   * Optional. Not used by Checkout. Reserved for a future discount code that
+   * bills the previous monthly Stripe price. Leave unset until that path exists.
+   */
+  STRIPE_PRICE_PRO_MONTHLY_DISCOUNT?: string;
   STRIPE_SUCCESS_URL?: string;
   STRIPE_CANCEL_URL?: string;
 };
@@ -34,12 +40,14 @@ export function normalizePromoCode(raw: unknown): string | null {
 
 const PRODUCT_META: Record<CheckoutProduct, string> = {
   white: API_PRODUCT_ID,
+  student: API_PRODUCT_STUDENT,
   coach: API_PRODUCT_COACH,
   pro: API_PRODUCT_PRO,
 };
 
 const CHECKOUT_MODE: Record<CheckoutProduct, 'payment' | 'subscription'> = {
   white: 'payment',
+  student: 'payment',
   coach: 'payment',
   pro: 'subscription',
 };
@@ -51,23 +59,35 @@ const CHECKOUT_MODE: Record<CheckoutProduct, 'payment' | 'subscription'> = {
  */
 const PRICE_ENV_KEYS: Record<CheckoutProduct, (keyof StripeRuntimeEnv)[]> = {
   white: ['STRIPE_PRICE_WHITE'],
+  student: ['STRIPE_PRICE_STUDENT'],
   coach: ['STRIPE_PRICE_COACH'],
   pro: ['STRIPE_PRICE_PRO', 'STRIPE_PRICE_PRO_MONTHLY'],
 };
 
 const CONFIG_HINT: Record<CheckoutProduct, string> = {
   white: 'STRIPE_SECRET_KEY and STRIPE_PRICE_WHITE',
+  student: 'STRIPE_SECRET_KEY and STRIPE_PRICE_STUDENT',
   coach: 'STRIPE_SECRET_KEY and STRIPE_PRICE_COACH',
   pro: 'STRIPE_SECRET_KEY, STRIPE_PRICE_PRO, and STRIPE_PRICE_PRO_MONTHLY',
 };
 
+/**
+ * Previous monthly price id, when the owner sets STRIPE_PRICE_PRO_MONTHLY_DISCOUNT.
+ * Checkout does not call this. A future discount code can.
+ */
+export function readOptionalProMonthlyDiscountPrice(env: StripeRuntimeEnv): string | null {
+  const price = env.STRIPE_PRICE_PRO_MONTHLY_DISCOUNT?.trim() ?? '';
+  if (!price.startsWith('price_')) return null;
+  return price;
+}
+
 export function readCheckoutProduct(raw: unknown): CheckoutProduct | { error: string } {
   if (raw === undefined || raw === null) return 'white';
-  if (typeof raw !== 'string') return { error: 'Product must be white, coach, or pro.' };
+  if (typeof raw !== 'string') return { error: 'Product must be white, student, coach, or pro.' };
   const product = raw.trim().toLowerCase();
   if (!product) return 'white';
   if (isCheckoutProduct(product)) return product;
-  return { error: 'Product must be white, coach, or pro.' };
+  return { error: 'Product must be white, student, coach, or pro.' };
 }
 
 export function checkoutFormFields(input: {
@@ -307,6 +327,7 @@ export type ProSubscriptionSync = {
 
 export type StripeEntitlementDecision =
   | { action: 'record'; purchase: CheckoutPurchase }
+  | { action: 'record-student'; purchase: CheckoutPurchase }
   | { action: 'grant-pro'; grant: ProCheckoutGrant }
   | { action: 'sync-pro'; sync: ProSubscriptionSync }
   | { action: 'retry' }
@@ -416,18 +437,17 @@ function checkoutDecision(row: Record<string, unknown>): StripeEntitlementDecisi
   const product = readMetaProduct(row);
   const paid = row.payment_status === 'paid' || row.payment_status === 'no_payment_required';
   if (row.mode === 'payment') {
-    if (product !== API_PRODUCT_ID) return { action: 'ignore' };
+    if (product !== API_PRODUCT_ID && product !== API_PRODUCT_STUDENT) return { action: 'ignore' };
     if (!paid) return { action: 'ignore' };
     if (typeof row.id !== 'string' || !row.id.startsWith('cs_')) return { action: 'invalid' };
-    return {
-      action: 'record',
-      purchase: {
-        email: readEmail(row),
-        sessionId: row.id,
-        amountTotal: money(row, 'amount_total'),
-        currency: currencyOf(row),
-      },
+    const purchase: CheckoutPurchase = {
+      email: readEmail(row),
+      sessionId: row.id,
+      amountTotal: money(row, 'amount_total'),
+      currency: currencyOf(row),
     };
+    if (product === API_PRODUCT_STUDENT) return { action: 'record-student', purchase };
+    return { action: 'record', purchase };
   }
   if (row.mode === 'subscription' && product === API_PRODUCT_PRO) {
     if (!paid) return { action: 'ignore' };

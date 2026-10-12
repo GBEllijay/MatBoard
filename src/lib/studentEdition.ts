@@ -9,6 +9,44 @@ import { PROGRESS_NAME_MAX, type GameTag, type JournalEntry, type StudentCheckli
 
 export const STUDENT_EDITION_STORAGE_KEY = 'matboard.studentEdition.v1';
 
+/** Must match the server product metadata for Student Edition (`API_PRODUCT_STUDENT`). */
+export const STUDENT_PRODUCT_ID = 'advantage-student';
+
+/** This browser finished a Student Edition Checkout. Not an owner code. */
+export const STUDENT_PURCHASE_STORAGE_KEY = 'advantage.studentUnlocked';
+
+export function isStudentPurchased(): boolean {
+  try {
+    return localStorage.getItem(STUDENT_PURCHASE_STORAGE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function setStudentPurchased(purchased: boolean): void {
+  try {
+    if (purchased) localStorage.setItem(STUDENT_PURCHASE_STORAGE_KEY, '1');
+    else localStorage.removeItem(STUDENT_PURCHASE_STORAGE_KEY);
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+/** A completed Student Edition Checkout unlocks this device. A White or Pro purchase does not. */
+export function rememberStudentPurchase(status: { entitled?: boolean; product?: string }): boolean {
+  if (status.entitled === true && status.product === STUDENT_PRODUCT_ID) {
+    setStudentPurchased(true);
+    return true;
+  }
+  return false;
+}
+
+/** Stripe success return for `/buy/student`. The page can render before the alpha door is open. */
+export function studentPurchaseReturn(search: URLSearchParams): boolean {
+  const sessionId = search.get('session_id')?.trim() ?? '';
+  return search.get('checkout') === 'success' && sessionId.length > 0;
+}
+
 export type ClassKind = '' | 'gi' | 'nogi';
 
 export type JournalDraft = {
@@ -65,6 +103,7 @@ export function studentEditionOpen(
   owner: { pro: boolean; coach: boolean; white: boolean },
 ): boolean {
   if (search.get('student') === '1') return true;
+  if (isStudentPurchased()) return true;
   return owner.pro && owner.coach && owner.white;
 }
 

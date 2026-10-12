@@ -32,6 +32,7 @@ import {
   type MediaFolderId,
 } from './lib/productNames';
 import { proPurchaseReturn } from './lib/proEntitlement';
+import { studentEditionOpen, studentPurchaseReturn } from './lib/studentEdition';
 import { consumeUnlockQueryNow } from './lib/proUnlock';
 import { WHITE_BUY_PATH } from './lib/whitePurchase';
 import { whiteHubAllowed, whiteLiveToolsAllowed } from './lib/whiteUnlock';
@@ -65,7 +66,7 @@ import { TournamentSuitePage } from './pages/TournamentSuite';
 import { TrainingNotesPage } from './pages/TrainingNotes';
 import { TrainingControllerPage } from './pages/TrainingController';
 import { TrainingPage } from './pages/Training';
-import { BuyCoachPage, BuyProPage } from './pages/BuyTier';
+import { BuyCoachPage, BuyProPage, BuyStudentPage } from './pages/BuyTier';
 import { BuyWhitePage } from './pages/BuyWhite';
 import { WhitePage } from './pages/White';
 import { WhiteRosterPage } from './pages/WhiteRoster';
@@ -149,6 +150,26 @@ function BuyProRoute({ children }: { children: ReactNode }) {
   const [params] = useSearchParams();
   if (!door.proUnlocked && !door.programDirectorSeat && !proPurchaseReturn(params)) {
     return <Navigate to={closedDoorPath(door.seated)} replace />;
+  }
+  return children;
+}
+
+/**
+ * Buy Student Edition stays behind the same owner unlock as the journal
+ * (`?student=1`, a completed Student Edition Checkout, or the owner code that
+ * opens White, Coach, and Pro together). Stripe's success return still renders
+ * so the webhook can unlock this device. There is no public Buy button.
+ */
+function BuyStudentRoute({ children }: { children: ReactNode }) {
+  const [params] = useSearchParams();
+  const seated = useCurrentSeat() !== null;
+  const open = studentEditionOpen(params, {
+    pro: useProUnlocked(),
+    coach: useCoachUnlocked(),
+    white: useWhiteUnlocked(),
+  });
+  if (!open && !studentPurchaseReturn(params)) {
+    return <Navigate to={closedDoorPath(seated)} replace />;
   }
   return children;
 }
@@ -254,6 +275,14 @@ export default function App() {
         }
       />
       <Route path="/buy" element={<BuyWhitePage />} />
+      <Route
+        path="/buy/student"
+        element={
+          <BuyStudentRoute>
+            <BuyStudentPage />
+          </BuyStudentRoute>
+        }
+      />
       <Route
         path="/buy/coach"
         element={

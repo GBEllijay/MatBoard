@@ -1,11 +1,22 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { AlphaAccessNote } from '../components/AlphaAccessNote';
 import { ComingSoonAd } from '../components/ComingSoonAd';
 import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
+import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
+import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import { lookupWhiteEntitlement, type WhiteEntitlementStatus } from '../lib/whiteEntitlementClient';
-import { COACH_LIST_PRICE_CENTS, PRO_LIST_PRICE_CENTS, PRO_MONTHLY_PRICE_CENTS } from '../lib/productPrices';
+import {
+  COACH_LIST_PRICE_CENTS,
+  PRO_LIST_PRICE_CENTS,
+  PRO_MONTHLY_PRICE_CENTS,
+  STUDENT_ALPHA_ACCESS_NOTE,
+  STUDENT_EDITION_LABEL,
+  STUDENT_LIST_PRICE_CENTS,
+} from '../lib/productPrices';
+import { studentEditionOpen } from '../lib/studentEdition';
 import {
   WHITE_CHECKOUT_API,
   WHITE_FEATURES,
@@ -58,7 +69,14 @@ export function BuyWhitePage() {
   const [restoreEmail, setRestoreEmail] = useState('');
   const [restorePending, setRestorePending] = useState(false);
   const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [studentPending, setStudentPending] = useState(false);
+  const [studentError, setStudentError] = useState<string | null>(null);
   const unlocked = useWhiteUnlocked();
+  const studentOpen = studentEditionOpen(params, {
+    pro: useProUnlocked(),
+    coach: useCoachUnlocked(),
+    white: unlocked,
+  });
 
   useEffect(() => {
     const previous = document.title;
@@ -136,6 +154,30 @@ export function BuyWhitePage() {
     const result = await restoreWhiteByEmail(restoreEmail);
     if (!result.ok) setRestoreError(result.error);
     setRestorePending(false);
+  }
+
+  async function onStudentSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (studentPending || !studentOpen) return;
+    setStudentError(null);
+    setStudentPending(true);
+    try {
+      const response = await fetch(WHITE_CHECKOUT_API, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ product: 'student' }),
+      });
+      const body = (await response.json()) as { url?: string; error?: string };
+      if (!response.ok || !body.url) {
+        setStudentError(body.error || 'Checkout could not start.');
+        setStudentPending(false);
+        return;
+      }
+      window.location.assign(body.url);
+    } catch {
+      setStudentError('Checkout could not start. Check your connection and try again.');
+      setStudentPending(false);
+    }
   }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -298,6 +340,42 @@ export function BuyWhitePage() {
               </button>
             </form>
           )}
+
+          <section className="buy__card buy__soon" aria-label={STUDENT_EDITION_LABEL}>
+            <div className="buy__soon-head">
+              <span className="belt-tip belt-tip--grey" aria-hidden="true">
+                <span className="belt-tip__bar" />
+              </span>
+              <span>
+                <span className="buy__kicker">{studentOpen ? 'Alpha' : 'Coming soon'}</span>
+                <h2>{STUDENT_EDITION_LABEL}</h2>
+              </span>
+            </div>
+            <p className="buy__price">
+              {formatUsdFromCents(STUDENT_LIST_PRICE_CENTS)}{' '}
+              <span>USD — one-time, when it launches</span>
+            </p>
+            <p>
+              Advantage Student Edition is a separate add-on. It does not include Advantage Coach.
+              Journal notes, journal cards, and a fundamentals checklist stay on this phone.
+            </p>
+            {studentOpen ? null : <p>Not for sale on this page.</p>}
+            {studentError ? (
+              <p className="buy__status buy__status--bad" role="alert">
+                {studentError}
+              </p>
+            ) : null}
+            {studentOpen ? (
+              <form onSubmit={(event) => void onStudentSubmit(event)}>
+                <button className="btn btn--white" type="submit" disabled={studentPending}>
+                  {studentPending
+                    ? 'Opening checkout…'
+                    : `Continue to checkout — ${formatUsdFromCents(STUDENT_LIST_PRICE_CENTS)}`}
+                </button>
+              </form>
+            ) : null}
+            <AlphaAccessNote note={STUDENT_ALPHA_ACCESS_NOTE} />
+          </section>
 
           <details className="buy__card buy__soon">
             <summary>

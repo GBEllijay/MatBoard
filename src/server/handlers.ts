@@ -1,11 +1,13 @@
 import {
   entitlementStatus,
   proEntitlementStatus,
+  studentEntitlementStatus,
   type EntitlementStore,
   type ProEntitlement,
+  type StudentEntitlement,
   type WhiteEntitlement,
 } from './entitlements.ts';
-import { API_FREE_CODE, API_PRODUCT_ID, API_PRODUCT_PRO } from './routes.ts';
+import { API_FREE_CODE, API_PRODUCT_ID, API_PRODUCT_PRO, API_PRODUCT_STUDENT } from './routes.ts';
 import {
   checkoutFormFields,
   checkoutReturnUrls,
@@ -138,14 +140,27 @@ export async function handleWebhook(
       error: 'Entitlement store is not configured. Bind WHITE_ENTITLEMENTS or use local dev.',
     });
   }
-  if (parsed.action === 'record') {
+  if (parsed.action === 'record' || parsed.action === 'record-student') {
+    const stamp = now().toISOString();
+    if (parsed.action === 'record-student') {
+      const record: StudentEntitlement = {
+        email: parsed.purchase.email,
+        sessionId: parsed.purchase.sessionId,
+        product: API_PRODUCT_STUDENT,
+        amountTotal: parsed.purchase.amountTotal,
+        currency: parsed.purchase.currency,
+        createdAt: stamp,
+      };
+      const stored = await store.saveStudent(record);
+      return json(200, { received: true, sessionId: stored.sessionId });
+    }
     const record: WhiteEntitlement = {
       email: parsed.purchase.email,
       sessionId: parsed.purchase.sessionId,
       product: API_PRODUCT_ID,
       amountTotal: parsed.purchase.amountTotal,
       currency: parsed.purchase.currency,
-      createdAt: now().toISOString(),
+      createdAt: stamp,
     };
     const stored = await store.save(record);
     return json(200, { received: true, sessionId: stored.sessionId });
@@ -226,12 +241,17 @@ export async function handleEntitlement(request: Request, store: EntitlementStor
   if (email && (email.length > 320 || !email.includes('@') || /\s/.test(email))) {
     return json(400, { error: 'email is not valid.' });
   }
-  if (product && product !== 'white' && product !== 'pro') return json(400, { error: 'Product must be white or pro.' });
+  if (product && product !== 'white' && product !== 'pro' && product !== 'student') {
+    return json(400, { error: 'Product must be white, student, or pro.' });
+  }
   if (sessionId) {
     const white = await store.findBySessionId(sessionId);
     if (white) return json(200, entitlementStatus(white));
+    const student = await store.findStudentBySessionId(sessionId);
+    if (student) return json(200, studentEntitlementStatus(student));
     return json(200, proEntitlementStatus(await store.findProBySessionId(sessionId)));
   }
   if (product === 'pro') return json(200, proEntitlementStatus(await store.findProByEmail(email)));
+  if (product === 'student') return json(200, studentEntitlementStatus(await store.findStudentByEmail(email)));
   return json(200, entitlementStatus(await store.findByEmail(email)));
 }

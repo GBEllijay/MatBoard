@@ -10,7 +10,7 @@ export function TermsPage() {
   return (
     <LegalPage
       title="Terms of Service — Advantage"
-      updated="October 5, 2026"
+      updated="October 12, 2026"
       related={{ to: '/privacy', label: 'Privacy Policy' }}
     >
       <section>
@@ -53,10 +53,14 @@ export function TermsPage() {
         <ul>
           <li>Advantage White costs $9.99 as a one-time purchase.</li>
           <li>
+            Advantage Student Edition costs $19.99 as a one-time purchase, once it’s offered for
+            sale.
+          </li>
+          <li>
             Advantage Coach costs $29.99 as a one-time purchase, once it’s offered for sale.
           </li>
           <li>
-            Advantage Pro costs $99.99 as a one-time purchase, plus a subscription of $2.99 per
+            Advantage Pro costs $99.99 as a one-time purchase, plus a subscription of $5.99 per
             month, once it’s offered for sale. The subscription renews monthly until you cancel.
             Canceling stops future charges, and subscription features stay available through the end
             of the period you’ve already paid for.
@@ -64,7 +68,8 @@ export function TermsPage() {
         </ul>
         <p>
           Advantage Coach includes everything in Advantage White. Advantage Pro includes everything
-          in Advantage Coach and Advantage White.
+          in Advantage Coach and Advantage White. Advantage Student Edition is a separate add-on. It
+          does not include Advantage Coach.
         </p>
         <p>
           Payments are processed by Stripe. Advantage App, LLC does not receive or store your full

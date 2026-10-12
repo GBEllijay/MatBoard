@@ -113,9 +113,11 @@ Use the Stripe test-mode toggle. Then:
    | `STRIPE_SECRET_KEY` | **Secret** (encrypt) | All paid Checkout |
    | `STRIPE_WEBHOOK_SECRET` | **Secret** (encrypt) | Webhook signature for White and Pro |
    | `STRIPE_PRICE_WHITE` | Server variable (not public) | White one-time price |
+   | `STRIPE_PRICE_STUDENT` | Server variable (not public) | Student Edition one-time price |
    | `STRIPE_PRICE_COACH` | Server variable (not public) | Coach one-time price |
    | `STRIPE_PRICE_PRO` | Server variable (not public) | Pro one-time price |
-   | `STRIPE_PRICE_PRO_MONTHLY` | Server variable (not public) | Pro $2.99/month price |
+   | `STRIPE_PRICE_PRO_MONTHLY` | Server variable (not public) | Pro $5.99/month price for new Checkouts |
+   | `STRIPE_PRICE_PRO_MONTHLY_DISCOUNT` | Optional. Not read by Checkout | Reserved for a future code that bills the previous monthly price |
    | `STRIPE_SUCCESS_URL` | Optional server variable | White success URL override |
    | `STRIPE_CANCEL_URL` | Optional server variable | White cancel URL override |
 
@@ -126,30 +128,31 @@ Copy `.env.example` to `.env` for local dev. `.env` is gitignored.
 ### Test-mode click path
 
 1. Free unlock, no Stripe keys required: `npm run dev`, open `http://localhost:5173/buy?code=WHITEFREE`. The page does not show the code. It says White is unlocked at $0, then the address bar is `/buy`. The local file stores `amountTotal: 0` and a `free_...` session id. `GET /api/entitlement?session_id=free_...` returns `{ "entitled": true, "sessionId": "free_..." }`.
-2. Paid path: fill `.env` with test keys and restart `npm run dev`. Open `/buy` (home **Advantage White**, or White → **Buy Advantage White — $9.99**). The page has an enter-a-code field and does not print promo names. Coach and Pro on that page are Coming soon and do not start Checkout.
+2. Paid path: fill `.env` with test keys and restart `npm run dev`. Open `/buy` (home **Advantage White**, or White → **Buy Advantage White — $9.99**). The page has an enter-a-code field and does not print promo names. Student Edition, Coach, and Pro on that page are Coming soon and do not start Checkout. Student Edition sits between White and Coach. Its checkout button appears only when the Student Edition door is already open (owner unlock, `?student=1`, or a completed Student Edition purchase).
 3. **Continue to checkout.** Pay with `4242 4242 4242 4242`, any future expiry, any CVC, any ZIP. On Stripe’s page, optional promo codes are `WHITE499` and `WHITE099`.
 4. Stripe returns to `/buy?checkout=success&session_id=cs_test_...`. Cancel returns to `/buy?checkout=cancel` and does not charge.
 5. Deliver the webhook (`stripe listen --forward-to localhost:5173/api/stripe/webhook`, or the Dashboard endpoint). The buy page looks up the session a few times.
 6. `GET /api/entitlement?session_id=cs_test_...` returns `{ "entitled": true, "email": "...", "sessionId": "cs_test_..." }`. Locally that row is in `.data/white-entitlements.json`.
 
-Coach is a **one-time $29.99 USD** product (`mode=payment`, `STRIPE_PRICE_COACH`). Pro is **one Checkout session** with two line items: one-time **$99.99 USD** (`STRIPE_PRICE_PRO`) plus **$2.99 USD per month** (`STRIPE_PRICE_PRO_MONTHLY`). Stripe mixed carts use `mode=subscription`. Do not reuse an older Pro price.
+Student Edition is a **one-time $19.99 USD** product (`mode=payment`, `STRIPE_PRICE_STUDENT`). Coach is a **one-time $29.99 USD** product (`mode=payment`, `STRIPE_PRICE_COACH`). Pro is **one Checkout session** with two line items: one-time **$99.99 USD** (`STRIPE_PRICE_PRO`) plus **$5.99 USD per month** (`STRIPE_PRICE_PRO_MONTHLY`). Stripe mixed carts use `mode=subscription`. New Pro Checkouts use the $5.99 monthly price. A subscription that already pays $2.99 stays on that Stripe price. `STRIPE_PRICE_PRO_MONTHLY_DISCOUNT` is optional and is not sent to Checkout. It is reserved for a future discount code that should bill that earlier monthly price. Do not put either price id in source.
 
-The home **Advantage White** card opens `/buy` until this device is unlocked, then it opens `/white`. Public home cards do not sell Coach or Pro. Those cards open Coming soon details (features, launch price, and a request for an alpha testing code at advantageappllc@gmail.com) and do not link to Checkout. `/buy/coach` and `/buy/pro` use the same door as `/coach` and `/pro` (owner unlock or, for Coach, an instructor seat). Until that door is open, those URLs go to Coming soon. The unlocked Coach and Pro pages link to checkout. White at `/buy` stays the only public purchase.
+The home **Advantage White** card opens `/buy` until this device is unlocked, then it opens `/white`. Public home cards do not sell Coach or Pro. Those cards open Coming soon details (features, launch price, and a request for an alpha testing code at advantageappllc@gmail.com) and do not link to Checkout. `/buy/coach` and `/buy/pro` use the same door as `/coach` and `/pro` (owner unlock or, for Coach, an instructor seat). Until that door is open, those URLs go to Coming soon. The unlocked Coach and Pro pages link to checkout. White at `/buy` stays the only public purchase. `/buy/student` uses the Student Edition door: `?student=1`, a stored Student Edition purchase, or the owner unlock that opens White, Coach, and Pro together. Until that door is open, `/buy/student` goes to Coming soon, except a Stripe success return, which still renders so the webhook can unlock this device. The checkout button on `/buy` and `/buy/student` stays hidden until that door is open.
 
-`POST /api/checkout` with `{ "product": "coach" }` or `{ "product": "pro" }` creates the hosted session. Omitting `product` stays White. White still sends `allow_promotion_codes=true` unless the server attaches a code. Coach and Pro use that same promo-box behavior. `WHITEFREE` still grants White only and does not call Stripe.
+`POST /api/checkout` with `{ "product": "student" }`, `{ "product": "coach" }`, or `{ "product": "pro" }` creates the hosted session. Omitting `product` stays White. White still sends `allow_promotion_codes=true` unless the server attaches a code. Student, Coach, and Pro use that same promo-box behavior. `WHITEFREE` still grants White only and does not call Stripe.
 
-Success and cancel return to the request origin: `/buy/coach` or `/buy/pro`, with `checkout=success&session_id={CHECKOUT_SESSION_ID}` or `checkout=cancel`. The webhook ignores Coach sessions. There is no Coach license store.
+Success and cancel return to the request origin: `/buy/student`, `/buy/coach`, or `/buy/pro`, with `checkout=success&session_id={CHECKOUT_SESSION_ID}` or `checkout=cancel`. A paid Student Edition Checkout (`checkout.session.completed`, `mode=payment`, product `advantage-student`) stores an entitlement the same way White does, and `/buy/student?checkout=success&session_id=cs_...` unlocks Student Edition on this device. The webhook ignores Coach sessions. There is no Coach license store.
 
 A paid Pro Checkout session (`checkout.session.completed`, `mode=subscription`, `payment_status` `paid` or `no_payment_required`) stores an active Advantage Pro entitlement: email, Checkout session id, subscription id, amount, and currency. `/buy/pro?checkout=success&session_id=cs_...` is the only Pro buy URL that renders before the alpha door is open. It looks that session up and unlocks Pro on this device when the record is active. The same page locks Pro on this device when that session is stored and inactive. A missing record does not clear an alpha unlock. The checkout button stays hidden until Pro is unlocked, so that return URL does not start a new sale. `/buy/pro` without that paid return still goes to Coming soon. `invoice.paid` (and `invoice.payment_succeeded`) for that subscription keeps it active, including a renewal that does not repeat the product metadata. `customer.subscription.updated` keeps Pro for `active`, `trialing`, `past_due`, and `paused`. It removes Pro for `canceled`, `unpaid`, and `incomplete_expired`. `customer.subscription.deleted` removes Pro. `incomplete` is ignored until a paid Checkout or invoice arrives. Canceling in the Stripe Dashboard sends `customer.subscription.deleted` at period end when `cancel_at_period_end` is set; Pro stays entitled until that event. There is no in-app cancel button.
 
-`GET /api/entitlement?session_id=cs_...` returns the White or Pro row for that session. `GET /api/entitlement?email=` stays Advantage White. `GET /api/entitlement?email=&product=pro` checks Pro. Coach is still not stored.
+`GET /api/entitlement?session_id=cs_...` returns the White, Student Edition, or Pro row for that session. `GET /api/entitlement?email=` stays Advantage White. `GET /api/entitlement?email=&product=student` checks Student Edition. `GET /api/entitlement?email=&product=pro` checks Pro. Coach is still not stored. Student Edition does not include Coach.
 
-### Price ids for Coach and Pro
+### Price ids for Student Edition, Coach, and Pro
 
 1. **Advantage Pro → one-time price, USD 99.99.** Copy the Price id to `STRIPE_PRICE_PRO`.
-2. **Same product → recurring price, USD 2.99, billed monthly.** Copy that Price id to `STRIPE_PRICE_PRO_MONTHLY`. Both ids go on the same Checkout session.
-3. **Advantage Coach → one-time price, USD 29.99.** Copy the Price id to `STRIPE_PRICE_COACH`.
-4. **White promotion codes** (the public buy page does not show the code text). White Checkout still sends `allow_promotion_codes=true` unless a code was attached by the server. Create these coupons, restricted to Advantage White, if they are not already in the Dashboard:
+2. **Same product → recurring price, USD 5.99, billed monthly.** Copy that Price id to `STRIPE_PRICE_PRO_MONTHLY`. Both ids go on the same Checkout session. Keep the earlier monthly price in Stripe. Existing subscriptions stay on it. `STRIPE_PRICE_PRO_MONTHLY_DISCOUNT` can hold that earlier price id later. Checkout does not read it yet.
+3. **Advantage Student Edition → one-time price, USD 19.99.** Copy the Price id to `STRIPE_PRICE_STUDENT`.
+4. **Advantage Coach → one-time price, USD 29.99.** Copy the Price id to `STRIPE_PRICE_COACH`.
+5. **White promotion codes** (the public buy page does not show the code text). White Checkout still sends `allow_promotion_codes=true` unless a code was attached by the server. Create these coupons, restricted to Advantage White, if they are not already in the Dashboard:
 
    | Customer pays | Amount off the $9.99 price | Duration |
    | --- | --- | --- |
@@ -158,7 +161,7 @@ A paid Pro Checkout session (`checkout.session.completed`, `mode=subscription`, 
 
    The code strings stay in the owner notes above (`WHITE499`, `WHITE099`). Do not print them on the buy page.
 
-The White buy page does not start a Coach or Pro session. Coach and Pro each have their own gated Checkout session.
+The White buy page does not start a Student, Coach, or Pro session unless that product’s alpha door is already open. Student Edition, Coach, and Pro each have their own gated Checkout session. Student Edition on `/buy` has no Buy button until that door is open.
 
 ## Google Drive sign-in
 
