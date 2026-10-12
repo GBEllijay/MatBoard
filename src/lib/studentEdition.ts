@@ -4,6 +4,7 @@
  */
 
 import { FUNDAMENTALS_CATALOG } from './progress/catalog.ts';
+import { isStudentEditionUnlocked } from './studentUnlock.ts';
 import { exportProgressPacket, parseProgressPacket, searchJournal } from './progress/format.ts';
 import { PROGRESS_NAME_MAX, type GameTag, type JournalEntry, type StudentChecklistEntry, type StudentProgressReport, type TechniqueRef } from './progress/types.ts';
 
@@ -103,6 +104,7 @@ export function studentEditionOpen(
   owner: { pro: boolean; coach: boolean; white: boolean },
 ): boolean {
   if (search.get('student') === '1') return true;
+  if (isStudentEditionUnlocked()) return true;
   if (isStudentPurchased()) return true;
   return owner.pro && owner.coach && owner.white;
 }

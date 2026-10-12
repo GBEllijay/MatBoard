@@ -23,6 +23,7 @@
 }
 
 .student {
+  position: relative;
   --paper: #f4f0e4;
   --ink: #1c140e;
   --line: rgba(116, 158, 196, 0.62);
@@ -90,8 +91,10 @@
   display: flex;
   align-items: center;
   gap: 0.7rem;
-  min-height: 4.5rem;
-  padding: calc(0.55rem + var(--safe-t)) 0.95rem 0.6rem;
+  min-height: 0;
+  justify-content: center;
+  text-align: center;
+  padding: calc(4.7rem + var(--safe-t)) 1.15rem 0.8rem;
   color: #f4e7d4;
   font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Times New Roman', serif;
   background-color: #161616;
@@ -107,7 +110,10 @@
 .student-leather::after {
   content: '';
   position: absolute;
-  inset: 7px 8px;
+  top: calc(4.35rem + var(--safe-t));
+  right: 8px;
+  bottom: 7px;
+  left: 8px;
   border: 1.5px dashed rgba(198, 198, 198, 0.82);
   border-radius: 5px;
   pointer-events: none;
@@ -116,6 +122,7 @@
 .student-leather h1 {
   position: relative;
   z-index: 1;
+  width: 100%;
   margin: 0;
   font-size: clamp(1.45rem, 5.8vw, 1.85rem);
   font-weight: 700;
@@ -248,8 +255,9 @@
 .student-choice.is-on,
 .game-chip.is-on,
 .student-learned.is-on {
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--logo-blue);
+  color: #fff;
+  border-color: var(--logo-blue);
 }
 
 .student-games {
@@ -312,9 +320,9 @@
   min-height: 48px;
   min-width: 8.6rem;
   padding: 0.35rem 1.25rem;
-  background: var(--ink);
-  color: var(--paper);
-  border-color: var(--ink);
+  background: var(--logo-yellow);
+  color: #14161c;
+  border-color: #14161c;
   font-size: 1.4rem;
 }
 
@@ -662,7 +670,7 @@ button.student-book .student-mark__press {
 .student-picker {
   position: fixed;
   inset: 0;
-  z-index: 6;
+  z-index: 40;
   overflow: auto;
   padding: calc(0.8rem + var(--safe-t)) 0.8rem calc(1rem + var(--safe-b)) 1.8rem;
   background-color: var(--paper);
@@ -682,6 +690,149 @@ button.student-book .student-mark__press {
   min-height: 44px;
   padding: 0.35rem 0.2rem;
   border-bottom: 1px solid rgba(28, 20, 14, 0.15);
+}
+
+.student > .play-exit {
+  opacity: 1;
+  z-index: 8;
+}
+
+.home--student .home__modes {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.student-hub {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.student-hub__band {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 0.28rem;
+  min-height: 5.4rem;
+  padding: 0.95rem 1rem 1rem 1.85rem;
+  border-radius: 18px;
+  color: #f6ead8;
+  background-color: #141414;
+  background-image:
+    url('/student/black-leather-grain.png'),
+    radial-gradient(ellipse at 12% 0%, rgba(255, 255, 255, 0.08), transparent 46%),
+    linear-gradient(180deg, #2a2a2a, #171717 52%, #101010);
+  background-size: 160px 160px, auto, auto;
+  border: 1px solid rgba(198, 198, 198, 0.28);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+}
+
+.student-hub__band h2,
+.student-hub__band p {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+}
+
+.student-hub__band h2 {
+  color: #f6ead8;
+  font-family: Georgia, 'Iowan Old Style', Palatino, 'Times New Roman', serif;
+  font-weight: 800;
+  font-size: clamp(1.25rem, 4.2vw, 1.6rem);
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.student-hub__band p {
+  color: #c8c8c8;
+  font-size: 0.88rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+/* Hub rows are journal pages: cream paper, blue rules, ink handwriting, leather spine. */
+.student-hub__link {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.05rem;
+  min-height: 5.5rem;
+  padding: 0.7rem 1rem 0.75rem 3.15rem;
+  border: 2px solid var(--ink, #1c140e);
+  border-radius: 4px 14px 6px 16px / 12px 5px 14px 6px;
+  text-decoration: none;
+  color: #1c140e;
+  font-family: 'Patrick Hand', 'Segoe Print', cursive;
+  background-color: #f4f0e4;
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 27px, rgba(116, 158, 196, 0.62) 28px);
+  background-position: 0 12px;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.22);
+}
+
+.student-hub__link::before {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  bottom: 0;
+  left: 26px;
+  width: 2px;
+  background: #e15d5d;
+  pointer-events: none;
+}
+
+.student-hub__title,
+.student-hub__link small {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  color: #1c140e;
+  font-family: 'Patrick Hand', 'Segoe Print', cursive;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.15;
+}
+
+.student-hub__title {
+  font-size: clamp(1.55rem, 6vw, 1.9rem);
+}
+
+.student-hub__link small {
+  font-size: 1.15rem;
+}
+
+.student-hub__link--soon {
+  background-color: #e6e1d4;
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 27px, rgba(116, 158, 196, 0.28) 28px);
+  color: rgba(28, 20, 14, 0.5);
+  padding-right: 8.2rem;
+}
+
+.student-hub__link--soon .student-hub__title {
+  color: rgba(28, 20, 14, 0.5);
+}
+
+.student-hub__link--soon::before {
+  opacity: 0.4;
+}
+
+.student-hub__stamp {
+  position: absolute;
+  z-index: 2;
+  top: 0.7rem;
+  right: 0.55rem;
+  padding: 0.08rem 0.45rem 0.12rem;
+  border: 2px solid #c44949;
+  border-radius: 3px 7px 4px 8px / 7px 3px 8px 4px;
+  color: #c44949;
+  background: rgba(244, 240, 228, 0.55);
+  font-family: 'Patrick Hand', 'Segoe Print', cursive;
+  font-size: 1.15rem;
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  line-height: 1.1;
+  transform: rotate(-8deg);
+  pointer-events: none;
 }
 
 .student-closed {

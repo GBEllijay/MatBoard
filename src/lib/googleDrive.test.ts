@@ -13,8 +13,12 @@ import {
 import {
   CLASS_HISTORY_EMPTY,
   DATE_BUCKET_NAMES,
+  DRIVE_BROWSE_LABEL,
   DRIVE_DEV_CLIENT_HINT,
+  DRIVE_FILE_SCOPE,
   DRIVE_FOLDER_MIME,
+  DRIVE_READONLY_SCOPE,
+  DRIVE_RECONNECT_LABEL,
   DRIVE_SCOPES,
   DRIVE_SETUP_NEEDED,
   DRIVE_SIGN_IN_FAILED,
@@ -25,8 +29,10 @@ import {
   buildLessonDocument,
   classifyDriveAuthDetail,
   clearDateFolderCache,
+  classifyDriveGrant,
   driveOwnerFacingError,
   driveQueryLiteral,
+  driveScopeAllowsBrowse,
   driveSignInFailureCopy,
   ensureDateFolderTree,
   findOrCreateChildFolder,
@@ -272,11 +278,36 @@ test('class history groups Drive files and does not invent an empty day', () => 
   assert.equal(buildClassHistory({ files: [], lessons: [] }).length, 0);
 });
 
-test('Drive scopes stay file and readonly', () => {
+test('Drive scopes stay file and readonly, and a narrow grant must reconnect', () => {
+  assert.equal(DRIVE_SCOPES, [DRIVE_FILE_SCOPE, DRIVE_READONLY_SCOPE].join(' '));
+  assert.equal(driveScopeAllowsBrowse(DRIVE_SCOPES), true);
+  assert.equal(driveScopeAllowsBrowse(DRIVE_FILE_SCOPE), false);
+  assert.equal(driveScopeAllowsBrowse(DRIVE_READONLY_SCOPE), false);
+  const now = 1_000_000;
+  assert.equal(classifyDriveGrant(null, now), 'missing');
   assert.equal(
-    DRIVE_SCOPES,
-    ['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/drive.readonly'].join(' '),
+    classifyDriveGrant({ accessToken: 'tok', expiresAt: now, scope: DRIVE_SCOPES }, now),
+    'expired',
   );
+  assert.equal(
+    classifyDriveGrant({ accessToken: 'tok', expiresAt: now + 120_000, scope: DRIVE_FILE_SCOPE }, now),
+    'scopes',
+  );
+  assert.equal(
+    classifyDriveGrant({ accessToken: 'tok', expiresAt: now + 120_000 }, now),
+    'unverified',
+  );
+  assert.equal(
+    classifyDriveGrant({ accessToken: 'tok', expiresAt: now + 120_000, scope: DRIVE_SCOPES }, now),
+    'ready',
+  );
+  assert.equal(DRIVE_BROWSE_LABEL, 'Browse photos and videos');
+  assert.equal(DRIVE_RECONNECT_LABEL, 'Reconnect');
+  const card = readFileSync(new URL('../components/DriveConnectCard.tsx', import.meta.url), 'utf8');
+  assert.match(card, /DRIVE_BROWSE_LABEL/);
+  assert.match(card, /DRIVE_RECONNECT_LABEL/);
+  assert.doesNotMatch(card, /Select all/);
+  assert.match(readFileSync(new URL('../components/DriveMediaPicker.tsx', import.meta.url), 'utf8'), /DRIVE_PICK_RECONNECT/);
 });
 
 type StoredDriveFile = {
@@ -999,6 +1030,95 @@ describe('date folder tree', { concurrency: false }, () => {
       pack.videos.map((file) => file.name),
       ['Armbar.mp4'],
     );
+  });
+
+  test('a saved lesson JSON round-trips, and a BOM or older text file still opens', async () => {
+    const drive = createFakeDrive('roundtrip');
+    const plan = emptyPlan();
+    plan.coachName = 'Justin';
+    plan.lessonTitle = 'Guard passing';
+    plan.classDesignation = 'GB1';
+    plan.classTime = '5:00 PM';
+    plan.intro = 'Start standing';
+    plan.techniques[0].title = 'Knee cut';
+    plan.techniques[0].notes = 'Keep the knee heavy';
+    const document = buildLessonDocument({
+      date: '2026-09-28',
+      coachName: 'Justin',
+      savedAt: 8,
+      kind: 'draft',
+      distributedAt: null,
+      plan,
+      media: [
+        {
+          section: 'technique',
+          index: 0,
+          localClipId: 'clip-knee',
+          driveFileId: 'round-clip',
+          name: 'KneeCut.mp4',
+          mime: 'video/mp4',
+        },
+      ],
+    });
+    await upsertLessonFile({
+      token: 'token',
+      folderId: 'root-roundtrip',
+      document,
+      fetcher: drive.fetcher,
+    });
+    const saved = drive.files.find((file) => file.name.startsWith('advantage-lesson-'));
+    assert.ok(saved?.content);
+    assert.match(saved.content, /"advantage": "lesson-plan"/);
+    assert.match(saved.content, /"version": 1/);
+    assert.doesNotMatch(saved.content, /blob|base64/);
+    const pack = await loadDriveDayPackage('token', 'root-roundtrip', '2026-09-28', drive.fetcher);
+    assert.equal(pack.lessons[0]?.plan.lessonTitle, 'Guard passing');
+    assert.equal(pack.lessons[0]?.plan.techniques[0].title, 'Knee cut');
+    assert.equal(pack.lessons[0]?.plan.techniques[0].notes, 'Keep the knee heavy');
+    assert.equal(pack.lessons[0]?.plan.intro, 'Start standing');
+    assert.equal(pack.lessons[0]?.media[0]?.driveFileId, 'round-clip');
+
+    const text = [
+      'Advantage lesson',
+      'date: 2026-09-28',
+      'coach: Justin',
+      'title: Old guard',
+      'class: GB2',
+      'time: 6:00 PM',
+      'intro: Grip fight',
+      'technique: Armbar',
+      'notes: Elbow tight',
+      'video: Armbar.mp4 | text-clip | technique | 0',
+    ].join('\n');
+    drive.seed({
+      id: 'round-text',
+      name: 'advantage-lesson-2026-09-28-justin-text.txt',
+      mimeType: 'text/plain',
+      parents: [drive.files.find((file) => file.name === 'lesson-plans')?.id ?? 'root-roundtrip'],
+      appProperties: { advantage: 'lesson', date: '2026-09-28' },
+      content: `\uFEFF${text}`,
+    });
+    drive.seed({
+      id: 'round-bom',
+      name: 'advantage-lesson-2026-09-28-justin-bom.json',
+      mimeType: 'application/json',
+      parents: [drive.files.find((file) => file.name === 'lesson-plans')?.id ?? 'root-roundtrip'],
+      appProperties: { advantage: 'lesson', date: '2026-09-28' },
+      content: `\uFEFF${JSON.stringify(document)}`,
+    });
+    const again = await loadDriveDayPackage('token', 'root-roundtrip', '2026-09-28', drive.fetcher);
+    const titles = again.lessons.flatMap((lesson) => [
+      lesson.plan.lessonTitle,
+      ...lesson.plan.techniques.map((tech) => tech.title),
+    ]);
+    assert.ok(titles.includes('Guard passing'));
+    assert.ok(titles.includes('Old guard'));
+    assert.ok(titles.includes('Armbar'));
+    const textLesson = again.lessons.find((lesson) => lesson.plan.lessonTitle === 'Old guard');
+    assert.equal(textLesson?.plan.classDesignation, 'GB2');
+    assert.equal(textLesson?.plan.techniques[0]?.notes, 'Elbow tight');
+    assert.equal(textLesson?.media[0]?.driveFileId, 'text-clip');
+    assert.equal(textLesson?.media[0]?.name, 'Armbar.mp4');
   });
 
   test('class history lists a video stored in the date training-videos folder', async () => {

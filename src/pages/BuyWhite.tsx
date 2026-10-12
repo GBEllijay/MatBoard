@@ -13,9 +13,9 @@ import {
   PRO_LIST_PRICE_CENTS,
   PRO_MONTHLY_PRICE_CENTS,
   STUDENT_ALPHA_ACCESS_NOTE,
-  STUDENT_EDITION_LABEL,
   STUDENT_LIST_PRICE_CENTS,
 } from '../lib/productPrices';
+import { STUDENT_EDITION_NAME } from '../lib/productNames';
 import { studentEditionOpen } from '../lib/studentEdition';
 import {
   WHITE_CHECKOUT_API,
@@ -341,14 +341,14 @@ export function BuyWhitePage() {
             </form>
           )}
 
-          <section className="buy__card buy__soon" aria-label={STUDENT_EDITION_LABEL}>
+          <section className="buy__card buy__soon" aria-label={STUDENT_EDITION_NAME}>
             <div className="buy__soon-head">
               <span className="belt-tip belt-tip--grey" aria-hidden="true">
                 <span className="belt-tip__bar" />
               </span>
               <span>
                 <span className="buy__kicker">{studentOpen ? 'Alpha' : 'Coming soon'}</span>
-                <h2>{STUDENT_EDITION_LABEL}</h2>
+                <h2>{STUDENT_EDITION_NAME}</h2>
               </span>
             </div>
             <p className="buy__price">

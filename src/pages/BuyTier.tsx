@@ -12,9 +12,9 @@ import {
   COACH_LIST_PRICE_CENTS,
   PRO_LIST_PRICE_CENTS,
   PRO_MONTHLY_PRICE_CENTS,
-  STUDENT_EDITION_LABEL,
   STUDENT_LIST_PRICE_CENTS,
 } from '../lib/productPrices';
+import { STUDENT_EDITION_NAME } from '../lib/productNames';
 import { rememberStudentPurchase, STUDENT_PRODUCT_ID, studentEditionOpen } from '../lib/studentEdition';
 import { lookupWhiteEntitlement, type WhiteEntitlementStatus } from '../lib/whiteEntitlementClient';
 import { formatUsdFromCents, WHITE_CHECKOUT_API, WHITE_STRIPE_NOTE } from '../lib/whitePurchase';
@@ -39,7 +39,7 @@ type TierCopy = {
 const TIERS: Record<TierCopy['product'], TierCopy> = {
   student: {
     product: 'student',
-    title: STUDENT_EDITION_LABEL,
+    title: STUDENT_EDITION_NAME,
     priceLabel: STUDENT_PRICE,
     priceDetail: 'USD — One Time Purchase',
     buttonPrice: STUDENT_PRICE,

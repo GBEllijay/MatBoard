@@ -8,7 +8,7 @@ import {
 } from './productNames.ts';
 import { safeTimerReturn } from './timerReturn.ts';
 
-/** Main tier picker: White, Coach, Pro, and later Student Edition. */
+/** Main tier picker: White, Student Edition, Coach, and Pro. */
 export const TIER_PICKER_PATH = '/';
 
 export type SubmenuNavInput = {
@@ -34,8 +34,8 @@ export function submenuHomeTarget(): string {
 
 /**
  * Top-left back: exactly one level, to the menu that opened this page.
- * Null on the tier picker and the tier homes (Coach, Pro, White). Those
- * pages use the center logo for home and do not add a second back control.
+ * Null on the tier picker and the tier homes (White, Student Edition, Coach, Pro).
+ * Those pages use the center logo for home and do not add a second back control.
  *
  * A Pro visit to Daily Training Videos, Technique Tree, or Daily Lesson Plan
  * with no Coach flag returns to Coach Unlimited. That is the menu Pro uses
@@ -59,7 +59,16 @@ export function submenuBackTarget(input: SubmenuNavInput): string | null {
     input.unlimited || from === UNLIMITED_FROM || plan === UNLIMITED_LESSON_VALUE;
   const explicitBack = safeTimerReturn(params.get('back'));
 
-  if (path === '/' || path === '/coach' || path === '/pro' || path === '/white') return null;
+  if (path === '/' || path === '/coach' || path === '/pro' || path === '/white' || path === '/student') {
+    return null;
+  }
+  if (path.startsWith('/student/')) {
+    const preview = params.get('student') === '1' ? '?student=1' : '';
+    if (path.startsWith('/student/cards/') && path.length > '/student/cards/'.length) {
+      return `/student/cards${preview}`;
+    }
+    return `/student${preview}`;
+  }
   if (path === '/white/roster') return '/white';
 
   if (path === '/coach-unlimited' || path === '/instructors' || path === '/suite') return '/pro';

@@ -40,7 +40,7 @@ This is not a login. The gym owner can keep testing Coach / Console / Tournament
 
 Unlocked home shows an active Pro card and **Open Console**. The code lives in `src/lib/proUnlock.ts` as `PRO_UNLOCK_CODE` (default `advantage`). Override at build time with `VITE_PRO_UNLOCK_CODE`. Lock again with **Lock Pro** on home, `?pro=0`, or by clearing that flag.
 
-`WINBYADV` is a second code on that same Owner unlock path (`?pro=`, `?unlock=`, `?coach=`, or either Owner unlock field). It is trimmed and compared case-insensitively, like the other owner codes. It unlocks Advantage White, Advantage Coach, and Advantage Pro on this browser. `advantage` still unlocks Pro only (Coach tools stay available while Pro is on) and does not unlock White.
+`WINBYADV` is a second code on that same Owner unlock path (`?pro=`, `?unlock=`, `?coach=`, or either Owner unlock field). It is trimmed and compared case-insensitively, like the other owner codes. It unlocks Advantage White, Advantage Coach, Advantage Pro, and Advantage – Student Edition on this browser. Lock Pro, Lock Coach, or clearing the White flag signs Student Edition out with that product. `advantage` still unlocks Pro only (Coach tools stay available while Pro is on) and does not unlock White.
 
 **Advantage Coach** (same pattern, separate flag and code)
 
@@ -116,8 +116,8 @@ Use the Stripe test-mode toggle. Then:
    | `STRIPE_PRICE_STUDENT` | Server variable (not public) | Student Edition one-time price |
    | `STRIPE_PRICE_COACH` | Server variable (not public) | Coach one-time price |
    | `STRIPE_PRICE_PRO` | Server variable (not public) | Pro one-time price |
-   | `STRIPE_PRICE_PRO_MONTHLY` | Server variable (not public) | Pro $5.99/month price for new Checkouts |
-   | `STRIPE_PRICE_PRO_MONTHLY_DISCOUNT` | Optional. Not read by Checkout | Reserved for a future code that bills the previous monthly price |
+   | `STRIPE_PRICE_PRO_MONTHLY` | Server variable (not public) | Pro $5.99/month price |
+   | `STRIPE_PRICE_PRO_MONTHLY_DISCOUNT` | Optional. Not read by Checkout | Reserved for a future discount price id |
    | `STRIPE_SUCCESS_URL` | Optional server variable | White success URL override |
    | `STRIPE_CANCEL_URL` | Optional server variable | White cancel URL override |
 
@@ -134,7 +134,7 @@ Copy `.env.example` to `.env` for local dev. `.env` is gitignored.
 5. Deliver the webhook (`stripe listen --forward-to localhost:5173/api/stripe/webhook`, or the Dashboard endpoint). The buy page looks up the session a few times.
 6. `GET /api/entitlement?session_id=cs_test_...` returns `{ "entitled": true, "email": "...", "sessionId": "cs_test_..." }`. Locally that row is in `.data/white-entitlements.json`.
 
-Student Edition is a **one-time $19.99 USD** product (`mode=payment`, `STRIPE_PRICE_STUDENT`). Coach is a **one-time $29.99 USD** product (`mode=payment`, `STRIPE_PRICE_COACH`). Pro is **one Checkout session** with two line items: one-time **$99.99 USD** (`STRIPE_PRICE_PRO`) plus **$5.99 USD per month** (`STRIPE_PRICE_PRO_MONTHLY`). Stripe mixed carts use `mode=subscription`. New Pro Checkouts use the $5.99 monthly price. A subscription that already pays $2.99 stays on that Stripe price. `STRIPE_PRICE_PRO_MONTHLY_DISCOUNT` is optional and is not sent to Checkout. It is reserved for a future discount code that should bill that earlier monthly price. Do not put either price id in source.
+Student Edition is a **one-time $19.99 USD** product (`mode=payment`, `STRIPE_PRICE_STUDENT`). Coach is a **one-time $29.99 USD** product (`mode=payment`, `STRIPE_PRICE_COACH`). Pro is **one Checkout session** with two line items: one-time **$99.99 USD** (`STRIPE_PRICE_PRO`) plus **$5.99 USD per month** (`STRIPE_PRICE_PRO_MONTHLY`). Stripe mixed carts use `mode=subscription`. `STRIPE_PRICE_PRO_MONTHLY_DISCOUNT` is optional and is not sent to Checkout. It is reserved for a future discount price id. Do not put a price id in source.
 
 The home **Advantage White** card opens `/buy` until this device is unlocked, then it opens `/white`. Public home cards do not sell Coach or Pro. Those cards open Coming soon details (features, launch price, and a request for an alpha testing code at advantageappllc@gmail.com) and do not link to Checkout. `/buy/coach` and `/buy/pro` use the same door as `/coach` and `/pro` (owner unlock or, for Coach, an instructor seat). Until that door is open, those URLs go to Coming soon. The unlocked Coach and Pro pages link to checkout. White at `/buy` stays the only public purchase. `/buy/student` uses the Student Edition door: `?student=1`, a stored Student Edition purchase, or the owner unlock that opens White, Coach, and Pro together. Until that door is open, `/buy/student` goes to Coming soon, except a Stripe success return, which still renders so the webhook can unlock this device. The checkout button on `/buy` and `/buy/student` stays hidden until that door is open.
 
@@ -149,7 +149,7 @@ A paid Pro Checkout session (`checkout.session.completed`, `mode=subscription`, 
 ### Price ids for Student Edition, Coach, and Pro
 
 1. **Advantage Pro → one-time price, USD 99.99.** Copy the Price id to `STRIPE_PRICE_PRO`.
-2. **Same product → recurring price, USD 5.99, billed monthly.** Copy that Price id to `STRIPE_PRICE_PRO_MONTHLY`. Both ids go on the same Checkout session. Keep the earlier monthly price in Stripe. Existing subscriptions stay on it. `STRIPE_PRICE_PRO_MONTHLY_DISCOUNT` can hold that earlier price id later. Checkout does not read it yet.
+2. **Same product → recurring price, USD 5.99, billed monthly.** Copy that Price id to `STRIPE_PRICE_PRO_MONTHLY`. Both ids go on the same Checkout session. `STRIPE_PRICE_PRO_MONTHLY_DISCOUNT` is optional and is not read by Checkout. It can hold a future discount price id.
 3. **Advantage Student Edition → one-time price, USD 19.99.** Copy the Price id to `STRIPE_PRICE_STUDENT`.
 4. **Advantage Coach → one-time price, USD 29.99.** Copy the Price id to `STRIPE_PRICE_COACH`.
 5. **White promotion codes** (the public buy page does not show the code text). White Checkout still sends `allow_promotion_codes=true` unless a code was attached by the server. Create these coupons, restricted to Advantage White, if they are not already in the Dashboard:

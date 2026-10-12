@@ -17,6 +17,7 @@ import {
   driveImportChunkSize,
   driveImportOutcomeNote,
   driveImportProgressLabel,
+  driveGallerySavedCopy,
   driveImportSaveErrorNote,
   drivePickDoneLabel,
   drivePickEmptyCopy,
@@ -27,6 +28,7 @@ import {
   drivePickPath,
   drivePickRootStack,
   drivePickShowsBack,
+  isDriveLessonFile,
   runDriveImport,
   splitDriveBrowse,
   toggleDriveSelection,
@@ -82,6 +84,30 @@ test('Drive picker lists folders and the matching photos or videos', () => {
     ['Armbar.mp4'],
   );
   assert.equal(videos.folders.length, 0);
+
+  const lessons = splitDriveBrowse(
+    [
+      { id: 'day', name: '2026-09-28', mimeType: FOLDER },
+      { id: 'plan', name: 'advantage-lesson-2026-09-28-justin.json', mimeType: 'application/json' },
+      { id: 'text', name: 'advantage-lesson-2026-09-28-justin.txt', mimeType: 'text/plain' },
+      { id: 'coach', name: 'advantage-coach-plan-2026-09-28-justin.json', mimeType: 'application/json' },
+      { id: 'review', name: 'advantage-handoff-review-1.json', mimeType: 'application/json' },
+      { id: 'tree', name: 'advantage-curriculum-2026-09-28-justin.json', mimeType: 'application/json' },
+      { id: 'pic', name: 'Belt.jpg', mimeType: 'image/jpeg' },
+      { id: 'clip', name: 'Armbar.mp4', mimeType: 'video/mp4' },
+    ],
+    'lesson',
+  );
+  assert.deepEqual(lessons.folders.map((folder) => folder.name), ['2026-09-28']);
+  assert.deepEqual(
+    lessons.media.map((item) => item.id),
+    ['coach', 'review', 'plan', 'text'],
+  );
+  assert.equal(isDriveLessonFile({ name: 'notes.txt', mimeType: 'text/plain' }), false);
+  assert.equal(drivePickEmptyCopy('lesson', 1), 'No lesson plans in this folder. Open a folder below.');
+  assert.equal(drivePickHint('lesson'), 'Lesson plans saved in the gym Google Drive folder');
+  assert.match(driveGallerySavedCopy(2), /2 files are in the Media Console gallery/);
+  assert.match(driveGallerySavedCopy(2), /does not host/);
 });
 
 test('Drive picker selection toggles and Done counts the chosen files', () => {

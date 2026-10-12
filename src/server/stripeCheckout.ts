@@ -13,8 +13,7 @@ export type StripeRuntimeEnv = {
   STRIPE_PRICE_PRO?: string;
   STRIPE_PRICE_PRO_MONTHLY?: string;
   /**
-   * Optional. Not used by Checkout. Reserved for a future discount code that
-   * bills the previous monthly Stripe price. Leave unset until that path exists.
+   * Optional. Not used by Checkout. Reserved for a future discount price id.
    */
   STRIPE_PRICE_PRO_MONTHLY_DISCOUNT?: string;
   STRIPE_SUCCESS_URL?: string;
@@ -72,7 +71,7 @@ const CONFIG_HINT: Record<CheckoutProduct, string> = {
 };
 
 /**
- * Previous monthly price id, when the owner sets STRIPE_PRICE_PRO_MONTHLY_DISCOUNT.
+ * Discount price id, when the owner sets STRIPE_PRICE_PRO_MONTHLY_DISCOUNT.
  * Checkout does not call this. A future discount code can.
  */
 export function readOptionalProMonthlyDiscountPrice(env: StripeRuntimeEnv): string | null {

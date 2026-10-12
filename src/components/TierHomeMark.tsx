@@ -2,10 +2,15 @@ import { Link } from 'react-router-dom';
 import { PlayExitMark } from './PlayExitMark';
 import { submenuHomeTarget } from '../lib/submenuNav';
 
-/** Small center Advantage mark. Always the tier picker. */
-export function TierHomeMark() {
+type HomeProps = {
+  /** Tier picker. Student Edition preview keeps ?student=1 so the home card stays open. */
+  to?: string;
+};
+
+/** Small center Advantage mark. Always the tier picker, unless a preview flag has to ride along. */
+export function TierHomeMark({ to = submenuHomeTarget() }: HomeProps) {
   return (
-    <Link className="tier-home" to={submenuHomeTarget()} aria-label="Home">
+    <Link className="tier-home" to={to} aria-label="Home">
       <img src="/advantage-icon.png" alt="" draggable={false} width={713} height={713} />
     </Link>
   );
@@ -15,14 +20,16 @@ type Props = {
   /** Menu that opened this page. */
   to: string;
   onExit?: () => void;
+  /** Center logo destination. Defaults to the tier picker. */
+  homeTo?: string;
 };
 
 /** Top-left back, one level. Center mark goes home. */
-export function SubmenuMarks({ to, onExit }: Props) {
+export function SubmenuMarks({ to, onExit, homeTo }: Props) {
   return (
     <>
       <PlayExitMark to={to} onExit={onExit} />
-      <TierHomeMark />
+      <TierHomeMark to={homeTo} />
     </>
   );
 }

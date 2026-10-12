@@ -22,8 +22,15 @@
  * is ignored on the live website so it cannot override the company client.
  * Scopes: `drive.file` (create and update lesson JSON and training videos)
  * and `drive.readonly` (list the chosen folder, thumbnails, and download a
- * video the owner stored). Adding photos still uses Google Photos.
- * Drive is an additional folder.
+ * video the owner stored). `drive.file` alone only sees files this app created
+ * or the user opened with Google Picker. Browsing the gym folder for photos
+ * and videos uses `drive.readonly`, which is already approved. This client
+ * does not add a scope and does not load Google Picker.
+ * Adding photos still uses Google Photos. Drive is an additional folder.
+ *
+ * A Daily Lesson Plan file is structured JSON (`advantage: "lesson-plan"`,
+ * `version: 1`), not a display-only note. The reader also accepts older
+ * labeled text, a coach self-export, and a review handoff packet.
  */
 
 import {
@@ -32,6 +39,7 @@ import {
   GALLERY_TODAY_UNAVAILABLE,
   galleryTodayReadyCopy,
 } from './galleryDay.ts';
+import { parseLessonPayload } from './lessonPackage.ts';
 import { localDateKey } from './trainingNotesStore.ts';
 import type { TrainingNotesPlan } from './trainingNotesStore.ts';
 
@@ -40,10 +48,19 @@ export const GOOGLE_CLIENT_ID_KEY = 'matboard.pro.googleClientId';
 export const DRIVE_BINDING_KEY = 'matboard.pro.googleDriveFolder.v1';
 const DRIVE_TOKEN_KEY = 'matboard.pro.googleDriveToken';
 
-export const DRIVE_SCOPES = [
-  'https://www.googleapis.com/auth/drive.file',
-  'https://www.googleapis.com/auth/drive.readonly',
-].join(' ');
+export const DRIVE_FILE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+export const DRIVE_READONLY_SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
+export const DRIVE_SCOPES = [DRIVE_FILE_SCOPE, DRIVE_READONLY_SCOPE].join(' ');
+
+/** Connected card. Opens the gym folder so photos and videos can be picked. */
+export const DRIVE_BROWSE_LABEL = 'Browse photos and videos';
+/** Connected card when the saved sign-in is missing, expired, or missing a scope. */
+export const DRIVE_RECONNECT_LABEL = 'Reconnect';
+export const DRIVE_CHECKING_LABEL = 'Checking Google Drive…';
+export const DRIVE_RECONNECT_NOTE =
+  'Sign in to Google Drive again to browse folders and pick photos or videos. They stay in your Drive. Advantage does not host them.';
+export const DRIVE_SCOPE_NOTE =
+  'Saving a file Advantage creates is allowed, but listing folders needs the read access already approved for this app. Reconnect to allow it. No new permission is added. Advantage does not host the files.';
 
 export const DRIVE_FOLDER_MIME = 'application/vnd.google-apps.folder';
 export const LESSON_ROOT_NAME = 'Advantage Lesson Plans';
@@ -217,6 +234,7 @@ export type DriveDayVideo = {
 type TokenResponse = {
   access_token?: string;
   expires_in?: number;
+  scope?: string;
   error?: string;
 };
 
@@ -693,30 +711,103 @@ export function writeDriveBinding(binding: DriveBinding | null): void {
   notifyDriveBinding();
 }
 
-type StoredToken = { accessToken: string; expiresAt: number };
+type StoredDriveGrant = { accessToken: string; expiresAt: number; scope?: string };
 
-function readStoredToken(): string | null {
+export type DriveGrantState = 'ready' | 'missing' | 'expired' | 'scopes' | 'unverified';
+
+/**
+ * `drive.file` creates files. `drive.readonly` lists folders and media the
+ * app did not create. Both are already on the OAuth client. A grant that
+ * is missing either one cannot browse the gym folder.
+ */
+export function driveScopeAllowsBrowse(scope: string | null | undefined): boolean {
+  const granted = new Set((scope ?? '').split(/\s+/).filter(Boolean));
+  return granted.has(DRIVE_FILE_SCOPE) && granted.has(DRIVE_READONLY_SCOPE);
+}
+
+/** Pure check so a missing, expired, or narrow grant becomes a reconnect. */
+export function classifyDriveGrant(
+  grant: { accessToken?: string; expiresAt?: number; scope?: string } | null,
+  now = Date.now(),
+): DriveGrantState {
+  if (!grant?.accessToken || typeof grant.expiresAt !== 'number') return 'missing';
+  if (grant.expiresAt < now + 60_000) return 'expired';
+  if (!grant.scope?.trim()) return 'unverified';
+  if (!driveScopeAllowsBrowse(grant.scope)) return 'scopes';
+  return 'ready';
+}
+
+function readStoredGrant(): StoredDriveGrant | null {
   try {
     const raw = sessionStorage.getItem(DRIVE_TOKEN_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as StoredToken;
-    if (!parsed.accessToken || parsed.expiresAt < Date.now() + 60_000) return null;
-    return parsed.accessToken;
+    const parsed = JSON.parse(raw) as Partial<StoredDriveGrant>;
+    if (!parsed.accessToken || typeof parsed.expiresAt !== 'number') return null;
+    return {
+      accessToken: parsed.accessToken,
+      expiresAt: parsed.expiresAt,
+      scope: typeof parsed.scope === 'string' ? parsed.scope : undefined,
+    };
   } catch {
     return null;
   }
 }
 
-function writeStoredToken(token: string, expiresIn: number): void {
-  const payload: StoredToken = {
+function readStoredToken(): string | null {
+  const grant = readStoredGrant();
+  if (!grant || grant.expiresAt < Date.now() + 60_000) return null;
+  return grant.accessToken;
+}
+
+function writeStoredToken(token: string, expiresIn: number, scope?: string): void {
+  const payload: StoredDriveGrant = {
     accessToken: token,
     expiresAt: Date.now() + Math.max(60, expiresIn) * 1000,
   };
+  const granted = scope?.trim();
+  if (granted) payload.scope = granted;
   try {
     sessionStorage.setItem(DRIVE_TOKEN_KEY, JSON.stringify(payload));
   } catch {
     /* memory copy below still covers this page */
   }
+}
+
+export type DriveBrowseAccess =
+  | { state: 'ready'; token: string }
+  | { state: 'reconnect'; reason: 'missing' | 'expired' | 'scopes' };
+
+async function lookupDriveScope(token: string, fetcher: typeof fetch): Promise<string | null> {
+  const response = await fetcher(
+    `https://oauth2.googleapis.com/tokeninfo?access_token=${encodeURIComponent(token)}`,
+  );
+  if (!response.ok) return null;
+  try {
+    const data = (await response.json()) as { scope?: string };
+    return typeof data.scope === 'string' ? data.scope : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A usable token with both approved scopes can browse. Anything else asks
+ * the owner to reconnect. The binding (which folder) stays put.
+ */
+export async function ensureDriveBrowseAccess(fetcher: typeof fetch = fetch): Promise<DriveBrowseAccess> {
+  const grant = readStoredGrant();
+  const state = classifyDriveGrant(grant);
+  if (state === 'missing') return { state: 'reconnect', reason: 'missing' };
+  if (state === 'expired') return { state: 'reconnect', reason: 'expired' };
+  if (!grant) return { state: 'reconnect', reason: 'missing' };
+  if (state === 'scopes') return { state: 'reconnect', reason: 'scopes' };
+  if (state === 'ready') return { state: 'ready', token: grant.accessToken };
+  const scope = await lookupDriveScope(grant.accessToken, fetcher);
+  if (!scope) return { state: 'reconnect', reason: 'expired' };
+  const seconds = Math.max(60, Math.round((grant.expiresAt - Date.now()) / 1000));
+  writeStoredToken(grant.accessToken, seconds, scope);
+  if (!driveScopeAllowsBrowse(scope)) return { state: 'reconnect', reason: 'scopes' };
+  return { state: 'ready', token: grant.accessToken };
 }
 
 export function clearDriveSession(): void {
@@ -759,7 +850,7 @@ function requestDriveTokenOutcome(mode: 'silent' | 'consent'): Promise<DriveToke
               resolve({ ok: false, code: classifyDriveAuthDetail(detail), detail });
               return;
             }
-            writeStoredToken(response.access_token, response.expires_in ?? 3600);
+            writeStoredToken(response.access_token, response.expires_in ?? 3600, response.scope);
             resolve({ ok: true, token: response.access_token });
           },
           error_callback: (error) => {
@@ -1091,18 +1182,18 @@ function mergeDriveFiles(groups: readonly (readonly DriveFileMeta[])[]): DriveFi
   return files;
 }
 
-async function downloadJson(
+async function downloadLessonDocument(
   token: string,
   fileId: string,
   fetcher: DriveFetch,
-): Promise<unknown> {
+): Promise<DriveLessonDocument | null> {
   const response = await fetcher(
     `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`,
     { headers: { Authorization: `Bearer ${token}` } },
   );
   if (!response.ok) return null;
   try {
-    return await response.json();
+    return parseLessonPayload(await response.text());
   } catch {
     return null;
   }
@@ -1138,8 +1229,7 @@ export async function loadClassHistory(
   for (const file of lessonFiles) {
     if (seenLessons.has(file.id)) continue;
     seenLessons.add(file.id);
-    const raw = await downloadJson(token, file.id, fetcher);
-    const doc = parseLessonDocument(raw);
+    const doc = await downloadLessonDocument(token, file.id, fetcher);
     if (doc) lessons.push({ fileId: file.id, doc });
   }
   return buildClassHistory({ files, lessons });
@@ -1197,8 +1287,7 @@ export async function loadDriveDayPackage(
   for (const file of lessonFiles) {
     if (seenLessons.has(file.id)) continue;
     seenLessons.add(file.id);
-    const raw = await downloadJson(token, file.id, fetcher);
-    const doc = parseLessonDocument(raw);
+    const doc = await downloadLessonDocument(token, file.id, fetcher);
     if (!doc || doc.date !== dateKey) continue;
     lessons.push(doc);
   }
@@ -1379,15 +1468,16 @@ async function writeLessonFile(
     folderId: input.folderId,
     dateKey: input.document.date,
     name,
-    documentJson: JSON.stringify(input.document),
+    documentJson: JSON.stringify(input.document, null, 2),
     appProperties: lessonAppProperties(input.document),
     fetcher: input.fetcher,
   });
 }
 
 /**
- * Write lesson JSON into `{root}/{YYYY-MM-DD}/lesson-plans/`, creating the
- * date folder and the six buckets when they are missing.
+ * Write lesson JSON (`advantage: "lesson-plan"`, `version: 1`) into
+ * `{root}/{YYYY-MM-DD}/lesson-plans/`, creating the date folder and the six
+ * buckets when they are missing. The body is structured JSON, not display text.
  * `folderId` is the connected root. A same-named lesson that still sits in
  * that root is updated and moved into `lesson-plans`.
  * Writes for one file name run one after another so a draft save and the
@@ -1491,7 +1581,9 @@ async function beginResumableUpload(input: {
   size: number;
   fetcher: DriveFetch;
 }): Promise<string> {
-  const response = await input.fetcher(input.endpoint, {
+  // Keep fetch off the input object. A method call sets `this` and Chrome rejects window.fetch.
+  const fetcher = input.fetcher;
+  const response = await fetcher(input.endpoint, {
     method: input.method,
     headers: {
       Authorization: `Bearer ${input.token}`,
@@ -1519,7 +1611,8 @@ async function finishResumableUpload(input: {
   bytes: Blob;
   fetcher: DriveFetch;
 }): Promise<string> {
-  const response = await input.fetcher(input.location, {
+  const fetcher = input.fetcher;
+  const response = await fetcher(input.location, {
     method: 'PUT',
     headers: {
       Authorization: `Bearer ${input.token}`,
@@ -1858,7 +1951,7 @@ export async function upsertCoachPlanFile(input: {
       folderId: input.folderId,
       dateKey: input.document.date,
       name,
-      documentJson: JSON.stringify(input.document),
+      documentJson: JSON.stringify(input.document, null, 2),
       appProperties: {
         advantage: 'coach-plan',
         date: input.document.date,
@@ -1932,7 +2025,7 @@ export async function downloadDriveFile(token: string, fileId: string, fetcher: 
     `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`,
     { headers: { Authorization: `Bearer ${token}` } },
   );
-  if (!response.ok) throw new Error('That Drive video could not be downloaded.');
+  if (!response.ok) throw new Error('That Google Drive file could not be downloaded.');
   return response.blob();
 }
 
