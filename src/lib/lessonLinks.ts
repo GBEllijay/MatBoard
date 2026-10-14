@@ -138,6 +138,8 @@ export function lessonPlanReturnPath(search: string, date: string): string {
     params.set('from', from);
   }
   if (DATE_KEY.test(date)) params.set('date', date);
+  const classId = current.get('class')?.trim() ?? '';
+  if (classId) params.set('class', classId);
   const qs = params.toString();
   return qs ? `/notes?${qs}` : '/notes';
 }
@@ -149,6 +151,8 @@ export function lessonVideoHref(input: {
   slotId?: string | null;
   index?: number;
   search: string;
+  /** Class plan id, so the video save and Back land on that plan. */
+  classId?: string | null;
 }): string {
   const path = carryHubFrom(
     techniquesFocusPath({
@@ -161,7 +165,14 @@ export function lessonVideoHref(input: {
   );
   const queryAt = path.indexOf('?');
   const params = new URLSearchParams(queryAt >= 0 ? path.slice(queryAt + 1) : '');
-  params.set('back', lessonPlanReturnPath(input.search, input.date));
+  const fromSearch = new URLSearchParams(input.search.startsWith('?') ? input.search.slice(1) : input.search);
+  const classId = (input.classId ?? fromSearch.get('class') ?? '').trim();
+  const backSearch = new URLSearchParams(fromSearch);
+  if (classId) {
+    params.set('class', classId);
+    backSearch.set('class', classId);
+  }
+  params.set('back', lessonPlanReturnPath(backSearch.toString(), input.date));
   return `/techniques?${params.toString()}`;
 }
 

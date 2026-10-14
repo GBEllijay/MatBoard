@@ -116,6 +116,19 @@ export function lessonPlanForDrive(plan: TrainingNotesPlan): TrainingNotesPlan {
     cooldownNote: plan.cooldownNote,
     cooldownExpected: plan.cooldownExpected,
     closing: plan.closing,
+    ...(plan.videos
+      ? {
+          videos: plan.videos.map((row) => ({
+            section: row.section,
+            index: row.section === 'technique' ? row.index : null,
+            localClipId: row.localClipId,
+            driveFileId: clampDriveFileId(row.driveFileId),
+            url: row.url,
+            name: row.name,
+            mime: row.mime,
+          })),
+        }
+      : {}),
   };
 }
 
