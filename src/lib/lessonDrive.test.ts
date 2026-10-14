@@ -360,6 +360,32 @@ test('a known Drive id is not uploaded again, and an empty blob is skipped', () 
   syncTodayTrainingVideos(plan, false);
 });
 
+test('a pending clip takes the class designation and technique title', () => {
+  const plan = samplePlan();
+  plan.classDesignation = 'GB1';
+  plan.lessonTitle = 'Guard day';
+  plan.techniques[0].title = 'Armbar from guard';
+  const videoPlan = setSlotClip(emptyVideoPlan(), 'tech-1', 'clip-3', {
+    driveFileId: null,
+    mediaName: 'advantage-video-raw.mp4',
+    mediaMime: 'video/mp4',
+  });
+  const pending = pendingTrainingVideos(
+    mediaRefsFromVideoPlan(videoPlan),
+    [{ id: 'clip-3', blob: new Blob(['x']), mime: 'video/mp4', label: 'raw' }],
+    {
+      classDesignation: plan.classDesignation,
+      lessonTitle: plan.lessonTitle,
+      techniqueTitles: plan.techniques.map((tech) => tech.title),
+    },
+  );
+  assert.equal(pending.length, 1);
+  assert.equal(pending[0]?.classDesignation, 'GB1');
+  assert.equal(pending[0]?.lessonTitle, 'Armbar from guard');
+  assert.equal(pending[0]?.clipNumber, 1);
+  assert.equal(pending[0]?.localClipId, 'clip-3');
+});
+
 test('day package uploads video bytes to Drive and still saves lesson text when a video fails', async () => {
   const plan = samplePlan();
   const videoPlan = setSlotClip(emptyVideoPlan(), 'tech-1', 'clip-1', {

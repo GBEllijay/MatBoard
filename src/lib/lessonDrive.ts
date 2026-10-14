@@ -12,13 +12,15 @@
  *
  * When this browser has connected a Google Drive folder, a debounced write
  * sends the text plan to `{folder}/{YYYY-MM-DD}/lesson-plans/` and copies
- * attached technique clips into `{folder}/{YYYY-MM-DD}/training-videos/`
- * (`googleDrive.ts`). Video bytes go only to the gym's Google Drive.
+ * attached technique clips into `{folder}/Videos/{YYYY-MM-DD (Ddd)}/`
+ * (`googleDrive.ts`). Older clips already in `training-videos` stay there.
+ * Video bytes go only to the gym's Google Drive.
  * Regular Coach does not queue a Drive revision.
  *
  * Opening a previous day is Class History → Open this class (`lessonRestore.ts`).
- * That reads `{date}/lesson-plans/` and `{date}/training-videos/`, writes the
- * lesson text back onto this phone, and keeps a local copy of each video.
+ * That reads `{date}/lesson-plans/`, `{date}/training-videos/`, and
+ * `Videos/{date} (Ddd)/`, writes the lesson text back onto this phone, and
+ * keeps a local copy of each video.
  *
  * Local cache: after a clip uploads, the phone keeps the blob so offline
  * play still works. `driveFileId` marks Drive as the source of truth. A later
@@ -57,7 +59,7 @@ export const DISTRIBUTE_DONE =
 export const OWNER_DRIVE_KICKER = 'Sunday review';
 export const OWNER_DRIVE_TITLE = 'Class plans in your Google Drive';
 export const OWNER_DRIVE_BODY =
-  'When the gym Google Drive folder is connected, a lesson plan saves there as the coach types, and attached technique videos are copied into that day’s training-videos folder. This phone keeps those clips for offline play. Leaving the page or skipping upload still keeps the draft. Version history in that folder shows each coach’s week so you can choose what to keep. Advantage does not host the photos or videos.';
+  'When the gym Google Drive folder is connected, a lesson plan saves there as the coach types, and attached technique videos are copied into a dated folder under Videos. Older clips already in that day’s training-videos folder stay there. This phone keeps those clips for offline play. Leaving the page or skipping upload still keeps the draft. Version history in that folder shows each coach’s week so you can choose what to keep. Advantage does not host the photos or videos.';
 export const OWNER_DRIVE_QUEUE =
   'These rows are lesson text and Drive file ids on this phone. When Google Drive is connected, the lesson text and video files are in that folder. Advantage does not store the video files.';
 
@@ -524,15 +526,27 @@ export function mediaWithPlanDriveIds(
 export function pendingTrainingVideos(
   media: readonly LessonMediaRef[],
   clips: readonly DayPackageClip[],
+  naming?: {
+    classDesignation?: string;
+    lessonTitle?: string;
+    techniqueTitles?: readonly string[];
+  },
 ): TrainingVideoUpload[] {
   const byId = new Map(clips.map((clip) => [clip.id, clip]));
   const pending: TrainingVideoUpload[] = [];
   const seen = new Set<string>();
+  let ordinal = 0;
   for (const item of media) {
-    if (!item.localClipId || item.driveFileId || seen.has(item.localClipId)) continue;
+    if (!item.localClipId) continue;
+    ordinal += 1;
+    if (item.driveFileId || seen.has(item.localClipId)) continue;
     const clip = byId.get(item.localClipId);
     if (!clip || clip.blob.size <= 0) continue;
     seen.add(item.localClipId);
+    const techniqueTitle =
+      item.section === 'technique' && item.index != null
+        ? naming?.techniqueTitles?.[item.index]?.trim() ?? ''
+        : '';
     pending.push({
       localClipId: item.localClipId,
       name: item.name || clip.label,
@@ -540,6 +554,9 @@ export function pendingTrainingVideos(
       bytes: clip.blob,
       section: item.section,
       index: item.index,
+      classDesignation: naming?.classDesignation?.trim() ?? '',
+      lessonTitle: techniqueTitle || naming?.lessonTitle?.trim() || '',
+      clipNumber: ordinal,
     });
   }
   return pending;
@@ -657,7 +674,11 @@ export async function commitDayPackage(input: {
     /* Lesson text stays on this phone. The retry below runs after videos. */
   }
 
-  const pending = pendingTrainingVideos(known, input.clips);
+  const pending = pendingTrainingVideos(known, input.clips, {
+    classDesignation: input.plan.classDesignation,
+    lessonTitle: input.plan.lessonTitle,
+    techniqueTitles: input.plan.techniques.map((tech) => tech.title),
+  });
   let results: TrainingVideoUploadResult[] | null = [];
   let unreachable = false;
   if (pending.length > 0) {

@@ -2,7 +2,7 @@
  * Open a previous Pro day from the gym Google Drive folder.
  *
  * Class History lists `{date}` folders. Open this class reads
- * `{date}/lesson-plans/` and `{date}/training-videos/`, writes the lesson
+ * `{date}/lesson-plans/`, `{date}/training-videos/`, and `Videos/{date} (Ddd)/`, writes the lesson
  * text back onto this phone, and keeps a local copy of each video so Daily
  * Training Videos can play offline. Drive file ids stay the reference.
  * Advantage does not host the bytes. Google Photos stays the phone gallery
