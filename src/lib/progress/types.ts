@@ -39,6 +39,8 @@ export const PROGRESS_SYNOPSIS_MAX = 4000;
 export const PROGRESS_EXAMPLE_MAX = 200;
 export const PROGRESS_EXAMPLES_MAX = 8;
 export const PROGRESS_JOURNAL_MAX = 500;
+export const PROGRESS_CLIPS_MAX = 200;
+export const PROGRESS_CLIP_URL_MAX = 2000;
 export const PROGRESS_AMENDMENTS_MAX = 50;
 export const PROGRESS_CHECKLIST_MAX = 400;
 export const PROGRESS_CALENDAR_MAX = 500;
@@ -184,6 +186,18 @@ export type JournalEntry = {
   updatedAt: number;
 };
 
+/**
+ * A link the student saved on the journal page.
+ * Absent on older files. An empty list means this file has a clipboard and it is empty.
+ */
+export type JournalClip = {
+  id: string;
+  url: string;
+  description: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
 export type CalendarEvent = {
   id: string;
   date: string;
@@ -239,6 +253,8 @@ export type StudentProgressReport = PacketBase & {
   journal: JournalEntry[];
   calendar: CalendarEvent[];
   goals: StudentGoal[];
+  /** Optional. Omitted on files written before the clipboard. */
+  clips?: JournalClip[];
 };
 
 export type CoachPlanPacket = PacketBase & {

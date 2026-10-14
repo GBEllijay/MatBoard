@@ -12,6 +12,7 @@ import {
   progressHandoffFileName,
   PROGRESS_CSV_HEADERS,
   searchJournal,
+  searchJournalClips,
   sharedCheckpointId,
   sharedCriterionId,
 } from './format.ts';
@@ -192,6 +193,75 @@ test('an amendment appends on import and does not overwrite the original card', 
   assert.equal(again.report.journal[0].amendments[0].body, 'Cycle 2: the scissor sweep still needs the collar earlier.');
   assert.equal(again.appendedAmendments.length, 0);
   assert.match(again.conflicts.join('\n'), /Amendment amend-cycle-2 was kept/);
+});
+
+test('clips are optional and an older file without them still imports', () => {
+  const report = sampleReport();
+  const text = exportProgressPacket(report);
+  assert.equal(text.includes('"clips"'), false);
+  const parsed = parseProgressPacket(text);
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok || parsed.value.kind !== 'student-progress-report') return;
+  assert.equal('clips' in parsed.value, false);
+
+  const withClips = {
+    ...report,
+    clips: [
+      {
+        id: 'clip-armbar',
+        url: 'https://www.youtube.com/watch?v=armbar',
+        description: 'Armbar from closed guard',
+        createdAt: 15,
+        updatedAt: 15,
+      },
+      {
+        id: 'clip-empty-list-friend',
+        url: 'https://www.instagram.com/reel/pass',
+        description: 'Knee slice pass',
+        createdAt: 16,
+        updatedAt: 16,
+      },
+    ],
+  };
+  const roundTrip = parseProgressPacket(exportProgressPacket(withClips));
+  assert.equal(roundTrip.ok, true);
+  if (!roundTrip.ok || roundTrip.value.kind !== 'student-progress-report') return;
+  assert.deepEqual(roundTrip.value.clips, withClips.clips);
+  assert.deepEqual(
+    searchJournalClips(roundTrip.value.clips ?? [], 'closed guard').map((clip) => clip.id),
+    ['clip-armbar'],
+  );
+  assert.deepEqual(
+    searchJournalClips(roundTrip.value.clips ?? [], 'instagram.com/reel').map((clip) => clip.id),
+    ['clip-empty-list-friend'],
+  );
+
+  const empty = parseProgressPacket(JSON.stringify({ ...report, clips: [] }));
+  assert.equal(empty.ok, true);
+  if (empty.ok && empty.value.kind === 'student-progress-report') assert.deepEqual(empty.value.clips, []);
+
+  const bad = parseProgressPacket(JSON.stringify({
+    ...report,
+    clips: [{ id: 'clip-bad', url: 'javascript:alert(1)', description: 'no', createdAt: 1, updatedAt: 1 }],
+  }));
+  assert.equal(bad.ok, false);
+  if (!bad.ok) assert.match(bad.errors.join('\n'), /http or https/);
+
+  const kept = mergeStudentProgress(report, withClips);
+  assert.deepEqual(kept.report.clips, withClips.clips);
+  const incoming = structuredClone(withClips);
+  incoming.clips[0].description = 'A later note that must not replace the first.';
+  incoming.clips[0].url = 'https://example.com/other';
+  const again = mergeStudentProgress(kept.report, incoming);
+  assert.equal(again.report.clips?.[0].description, 'Armbar from closed guard');
+  assert.equal(again.report.clips?.[0].url, 'https://www.youtube.com/watch?v=armbar');
+  const older = mergeStudentProgress(again.report, report);
+  assert.equal(older.report.clips?.length, 2);
+
+  const csv = exportProgressCsv(withClips);
+  assert.match(csv, /Clip,clip-armbar,/);
+  assert.match(csv, /https:\/\/www\.youtube\.com\/watch\?v=armbar/);
+  assert.equal(exportProgressCsv(report).includes('\r\nClip,'), false);
 });
 
 test('search matches journal text and technique names', () => {

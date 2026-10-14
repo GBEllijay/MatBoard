@@ -17,22 +17,27 @@ import { SharePage } from './student/SharePage';
 import {
   addCustomFundamental,
   addJournalAmendment,
+  addJournalClip,
   addJournalEntry,
   classLabel,
+  deleteJournalClip,
   fundamentalsBoard,
   hideFundamental,
   renameFundamental,
   restoreStarterFundamentals,
+  searchStudentClips,
   searchStudentJournal,
   setFundamentalLearned,
   setFundamentalNote,
   studentEditionOpen,
   todayIso,
+  updateJournalClip,
   viewJournalEntry,
   type ClassKind,
   type FundamentalRow,
   type JournalCardView,
 } from '../lib/studentEdition.ts';
+import type { JournalClip } from '../lib/progress/types.ts';
 import '../student-edition.css';
 
 const GAMES: { tag: GameTag; letter: string }[] = [
@@ -272,6 +277,7 @@ function JournalToday() {
             <BeltDoodle />
           </div>
           {error ? <p role="alert">{error}</p> : null}
+          <JournalClips report={report} commit={commit} />
           <div className="student-actions">
             <button type="submit" className="ink-btn ink-btn--save">
               Save entry
@@ -305,6 +311,167 @@ function JournalToday() {
         </div>
       )}
     </main>
+  );
+}
+
+function JournalClips({
+  report,
+  commit,
+}: {
+  report: ReturnType<typeof useStudentFile>['report'];
+  commit: ReturnType<typeof useStudentFile>['commit'];
+}) {
+  const [query, setQuery] = useState('');
+  const [url, setUrl] = useState('');
+  const [description, setDescription] = useState('');
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editUrl, setEditUrl] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const [error, setError] = useState('');
+  const clips = report.clips ?? [];
+  const matched = new Set(searchStudentClips(report, query).map((clip) => clip.id));
+  const shown = clips.filter((clip) => matched.has(clip.id) || clip.id === editing);
+
+  const saveNew = () => {
+    try {
+      commit(addJournalClip(report, url, description));
+      setUrl('');
+      setDescription('');
+      setError('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save this clip.');
+    }
+  };
+
+  const saveEdit = (clip: JournalClip) => {
+    try {
+      commit(updateJournalClip(report, clip.id, editUrl, editDescription));
+      setEditing(null);
+      setError('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save this clip.');
+    }
+  };
+
+  return (
+    <section
+      className="student-clips"
+      aria-label="Clips"
+      onKeyDown={(event) => {
+        if (event.key !== 'Enter') return;
+        const target = event.target;
+        if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) event.preventDefault();
+      }}
+    >
+      <h2>Clips</h2>
+      <p className="student-quiet">YouTube or Instagram links work well. Any http or https link is fine.</p>
+      <label className="ink student-search">
+        <span className="ink__label">Search clips</span>
+        <input
+          aria-label="Search clips"
+          value={query}
+          placeholder="Description or link"
+          onChange={(event) => setQuery(event.target.value)}
+        />
+      </label>
+      {shown.length === 0 ? <p className="student-quiet">No clips yet.</p> : null}
+      {shown.map((clip) =>
+        editing === clip.id ? (
+          <div key={clip.id} className="ink student-clip">
+            <label className="ink__label">
+              Link
+              <input aria-label={`Edit link for ${clip.description}`} value={editUrl} onChange={(event) => setEditUrl(event.target.value)} />
+            </label>
+            <label className="ink__label">
+              What to train
+              <input
+                aria-label={`Edit description for ${clip.description}`}
+                value={editDescription}
+                onChange={(event) => setEditDescription(event.target.value)}
+              />
+            </label>
+            <div className="student-clip__actions">
+              <button type="button" className="ink-btn" onClick={() => saveEdit(clip)}>
+                Save clip changes
+              </button>
+              <button type="button" className="ink-btn" onClick={() => setEditing(null)}>
+                Cancel clip edit
+              </button>
+            </div>
+          </div>
+        ) : (
+          <article key={clip.id} className="ink student-clip">
+            <a href={clip.url} target="_blank" rel="noopener noreferrer">
+              {clip.description}
+            </a>
+            <p className="student-clip__url">{clip.url}</p>
+            <div className="student-clip__actions">
+              <button
+                type="button"
+                className="ink-btn"
+                onClick={() => {
+                  setEditing(clip.id);
+                  setEditUrl(clip.url);
+                  setEditDescription(clip.description);
+                  setConfirming(null);
+                  setError('');
+                }}
+              >
+                {`Edit ${clip.description}`}
+              </button>
+              {confirming === clip.id ? (
+                <div className="student-confirm" role="group" aria-label={`Delete ${clip.description}`}>
+                  <span>Delete this clip?</span>
+                  <button
+                    type="button"
+                    className="ink-btn"
+                    onClick={() => {
+                      commit(deleteJournalClip(report, clip.id));
+                      setConfirming(null);
+                    }}
+                  >
+                    {`Confirm delete ${clip.description}`}
+                  </button>
+                  <button type="button" className="ink-btn" onClick={() => setConfirming(null)}>
+                    Keep clip
+                  </button>
+                </div>
+              ) : (
+                <button type="button" className="ink-btn" onClick={() => setConfirming(clip.id)}>
+                  {`Delete ${clip.description}`}
+                </button>
+              )}
+            </div>
+          </article>
+        ),
+      )}
+      <label className="ink">
+        <span className="ink__label">Link</span>
+        <input
+          aria-label="Clip link"
+          inputMode="url"
+          value={url}
+          placeholder="https://"
+          onChange={(event) => setUrl(event.target.value)}
+        />
+      </label>
+      <label className="ink ink--wobble">
+        <span className="ink__label">What to train</span>
+        <input
+          aria-label="Clip description"
+          value={description}
+          placeholder="What this clip is for"
+          onChange={(event) => setDescription(event.target.value)}
+        />
+      </label>
+      {error ? <p role="alert">{error}</p> : null}
+      <div className="student-clip__actions">
+        <button type="button" className="ink-btn" onClick={saveNew}>
+          Save clip
+        </button>
+      </div>
+    </section>
   );
 }
 

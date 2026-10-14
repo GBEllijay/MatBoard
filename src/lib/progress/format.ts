@@ -15,6 +15,8 @@ import {
   PROGRESS_CALENDAR_MAX,
   LICENSE_SOURCES,
   PROGRESS_CHECKLIST_MAX,
+  PROGRESS_CLIP_URL_MAX,
+  PROGRESS_CLIPS_MAX,
   PROGRESS_CHECKPOINTS_MAX,
   PROGRESS_CRITERIA_MAX,
   PROGRESS_EXAMPLE_MAX,
@@ -46,6 +48,7 @@ import {
   type CoachPlanFocus,
   type CoachPlanPacket,
   type GameTag,
+  type JournalClip,
   type JournalEntry,
   type ProgressBelt,
   type ProgressMerge,
@@ -151,6 +154,8 @@ export function parseProgressValue(raw: unknown): ProgressParse {
       calendar: readCalendar(record.calendar, errors),
       goals: readGoals(record.goals, errors),
     };
+    const clips = readClips(record.clips, errors);
+    if (clips) value.clips = clips;
     return errors.length ? { ok: false, errors } : { ok: true, value };
   }
   if (kind === 'coach-plan' || kind === 'coach-feedback') {
@@ -201,6 +206,7 @@ export function mergeStudentProgress(local: StudentProgressReport, incoming: Stu
   mergeGoals(report, incoming, conflicts);
   mergeJournal(report, incoming, addedJournal, appendedAmendments, conflicts);
   mergeCalendar(report, incoming, conflicts);
+  mergeClips(report, incoming, conflicts);
   return { report, appendedAmendments, addedJournal, addedChecklist, conflicts };
 }
 
@@ -248,6 +254,13 @@ export function searchJournal(journal: readonly JournalEntry[], query: string): 
   const needle = query.trim().toLowerCase();
   if (!needle) return [...journal];
   return journal.filter((entry) => journalHaystack(entry).includes(needle));
+}
+
+/** Case-insensitive match on a clip description and its URL. */
+export function searchJournalClips(clips: readonly JournalClip[], query: string): JournalClip[] {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return [...clips];
+  return clips.filter((clip) => `${clip.description}\n${clip.url}`.toLowerCase().includes(needle));
 }
 
 export function exportProgressCsv(packet: ProgressPacket): string {
@@ -422,6 +435,32 @@ function mergeJournal(
   }
 }
 
+function mergeClips(report: StudentProgressReport, incoming: StudentProgressReport, conflicts: string[]): void {
+  if (!incoming.clips) return;
+  if (!report.clips) {
+    report.clips = incoming.clips.map((clip) => structuredClone(clip));
+    return;
+  }
+  const byId = new Map(report.clips.map((clip) => [clip.id, clip]));
+  for (const clip of incoming.clips) {
+    const current = byId.get(clip.id);
+    if (!current) {
+      const added = structuredClone(clip);
+      report.clips.push(added);
+      byId.set(clip.id, added);
+      continue;
+    }
+    current.url = preferText(current.url, clip.url, `Clip ${clip.id} link was kept.`, conflicts);
+    current.description = preferText(
+      current.description,
+      clip.description,
+      `Clip ${clip.id} note was kept.`,
+      conflicts,
+    );
+    current.updatedAt = Math.max(current.updatedAt, clip.updatedAt);
+  }
+}
+
 function mergeCalendar(report: StudentProgressReport, incoming: StudentProgressReport, conflicts: string[]): void {
   const byId = new Map(report.calendar.map((event) => [event.id, event]));
   for (const event of incoming.calendar) {
@@ -581,6 +620,50 @@ function readChecklistEntry(value: unknown, index: number, errors: string[]): St
     note: readString(record.note, `${label} note`, PROGRESS_NOTE_MAX, errors),
     updatedAt: readTime(record.updatedAt, `${label} updatedAt`, errors),
   };
+}
+
+function readClips(value: unknown, errors: string[]): JournalClip[] | undefined {
+  if (value == null) return undefined;
+  const rows = readList(value, 'Clips', PROGRESS_CLIPS_MAX, errors);
+  const clips = rows.map((row, index) => readClip(row, index, errors));
+  uniqueIds(clips.map((clip) => clip.id), 'Clip', errors);
+  return clips;
+}
+
+function readClip(value: unknown, index: number, errors: string[]): JournalClip {
+  const record = asRecord(value);
+  const label = `Clip ${index + 1}`;
+  if (!record) {
+    errors.push(`${label} must be an object.`);
+    return { id: '', url: '', description: '', createdAt: 0, updatedAt: 0 };
+  }
+  return {
+    id: readId(record.id, `${label} id`, errors),
+    url: readHttpUrl(record.url, `${label} link`, errors),
+    description: readString(record.description, `${label} note`, PROGRESS_NOTE_MAX, errors),
+    createdAt: readTime(record.createdAt, `${label} createdAt`, errors),
+    updatedAt: readTime(record.updatedAt, `${label} updatedAt`, errors),
+  };
+}
+
+function readHttpUrl(value: unknown, label: string, errors: string[]): string {
+  const text = readString(value, label, PROGRESS_CLIP_URL_MAX, errors).trim();
+  if (!text) {
+    errors.push(`${label} needs an http or https link.`);
+    return '';
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(text);
+  } catch {
+    errors.push(`${label} must be an http or https link.`);
+    return '';
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    errors.push(`${label} must be an http or https link.`);
+    return '';
+  }
+  return text;
 }
 
 function readJournal(value: unknown, errors: string[]): JournalEntry[] {
@@ -1109,6 +1192,28 @@ function writeReportRows(lines: string[], packet: StudentProgressReport): void {
         '',
       ]));
     }
+  }
+  for (const clip of packet.clips ?? []) {
+    lines.push(csvRow([
+      'Clip',
+      clip.id,
+      '',
+      packet.studentId,
+      '',
+      '',
+      clip.description,
+      '',
+      '',
+      clip.description,
+      clip.url,
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+    ]));
   }
   for (const event of packet.calendar) {
     lines.push(csvRow([

@@ -529,6 +529,53 @@ button.student-book .student-mark__press {
   gap: 0.35rem;
 }
 
+.student-clips {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.4rem;
+  padding-top: 0.7rem;
+  border-top: 1.5px dashed rgba(28, 20, 14, 0.35);
+}
+
+.student-clips h2 {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 400;
+}
+
+.student-clip {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.student-clip a {
+  color: inherit;
+  font-size: 1.25rem;
+  text-decoration: underline;
+  text-underline-offset: 0.16rem;
+  overflow-wrap: anywhere;
+}
+
+.student-clip__url {
+  margin: 0;
+  color: #3d3128;
+  overflow-wrap: anywhere;
+}
+
+.student-clip__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.student-clip .ink-btn,
+.student-clips > .student-clip__actions .ink-btn {
+  min-height: 40px;
+  padding: 0.1rem 0.8rem;
+  font-size: 1.1rem;
+}
+
 .student-card-link {
   display: grid;
   gap: 0.15rem;
