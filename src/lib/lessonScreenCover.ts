@@ -22,6 +22,9 @@ export const LESSON_COVER_LABELS: Record<LessonCoverMode, string> = {
 
 export const DEFAULT_LESSON_COVER_MODE: LessonCoverMode = 'logo';
 
+/** Shown when element fullscreen is unavailable, which includes iOS Safari. */
+export const LESSON_COVER_HOME_HINT = 'Add this site to the Home Screen for full coverage.';
+
 type LessonCoverRecord = {
   version: 1;
   mode: LessonCoverMode;

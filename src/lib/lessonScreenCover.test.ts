@@ -103,6 +103,9 @@ test('Daily Lesson Plan keeps the corner back and adds Hide screen without a cen
   assert.match(page, /Technique \/ Drill/);
   assert.match(cover, /Hide screen/);
   assert.match(cover, /Show screen/);
+  assert.match(cover, /requestElementFullscreen/);
+  assert.match(cover, /LESSON_COVER_HOME_HINT/);
+  assert.match(cover, /notes-cover__logo-hit/);
   assert.match(cover, /ScheduleWeekBoard/);
   assert.match(cover, /ScheduleMonthBoard/);
   assert.match(cover, /lessonCoverLogoSrc/);
