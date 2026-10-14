@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } fr
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { ClassPhotoPromotions } from '../components/ClassPhotoPromotions';
 import { DriveVideoFolders } from '../components/DriveVideoFolders';
+import { CompetitionCurriculumPage } from './CompetitionCurriculum';
 import { LessonScreenHide } from '../components/LessonScreenCover';
 import { DriveHandoffCheck, DriveHandoffGuide, useDriveConnected } from '../components/DriveHandoffGuide';
 import { LessonVersionHistory } from '../components/LessonVersionHistory';
@@ -78,6 +79,24 @@ import {
   seatMenuAllowed,
   visibleCoachControl,
 } from '../lib/instructorSeats';
+import {
+  LESSON_TEMPLATE_LABELS,
+  LESSON_TEMPLATES,
+  MAX_GAMES,
+  activeLessonTemplate,
+  addLessonGame,
+  addLessonTechnique,
+  applyLessonTemplate,
+  blockHeading,
+  blockKey,
+  lessonBlocks,
+  moveLessonBlock,
+  removeLessonBlock,
+  templateAlreadyApplied,
+  templateChangeNeedsConfirm,
+  type GameBlock,
+  type LessonTemplateId,
+} from '../lib/lessonTemplates';
 import { INSTRUCTOR_COACH_ENTRY, UNLIMITED_LESSON_VALUE, carryHubFrom } from '../lib/productNames';
 import { classHistoryHref } from '../lib/submenuNav';
 import { useSubmenuBack } from '../hooks/useSubmenuBack';
@@ -101,12 +120,10 @@ import {
   EXPECTED_MAX,
   INTRO_MAX,
   MAX_TECHNIQUES,
-  MIN_TECHNIQUES,
   SPECIFIC_NOTE_MAX,
   TECHNIQUE_NOTES_MAX,
   TECHNIQUE_TITLE_MAX,
   WARMUP_NOTE_MAX,
-  addTechnique,
   classBrowseFolders,
   classPlanRowLabel,
   copyPlan,
@@ -122,7 +139,6 @@ import {
   type PlanVideoRef,
   searchLessonPlans,
   removeDayPlan,
-  removeTechnique,
   saveDay,
   shiftDateKey,
   type TechniqueBlock,
@@ -131,6 +147,7 @@ import {
 } from '../lib/trainingNotesStore';
 
 type TodayVideos = {
+  dateKey: string;
   plan: VideoPlan;
   urls: Record<string, string>;
 };
@@ -228,6 +245,8 @@ export function TrainingNotesPage() {
   const [folderKey, setFolderKey] = useState<string | null>(null);
   const [confirmPlanId, setConfirmPlanId] = useState<string | null>(null);
   const [removeArmed, setRemoveArmed] = useState(false);
+  const [templateAsk, setTemplateAsk] = useState<LessonTemplateId | null>(null);
+  const [removeBlockKey, setRemoveBlockKey] = useState<string | null>(null);
   const [videos, setVideos] = useState<TodayVideos | null>(null);
   const [galleryToday, setGalleryToday] = useState<GalleryTodayState>({ status: 'loading', videos: [] });
   const [driveToday, setDriveToday] = useState<DriveTodayState>({
@@ -236,6 +255,9 @@ export function TrainingNotesPage() {
     groups: [],
   });
   const [driveTick, setDriveTick] = useState(0);
+  // The board load is async. Until it finishes, `videos` can still be the previous day.
+  // Adopting that board would stamp the wrong clips onto the plan just opened.
+  const dayVideos = videos?.dateKey === viewKey ? videos : null;
   const [downloadNote, setDownloadNote] = useState('');
   const [distributeNote, setDistributeNote] = useState('');
   const [reviewNote, setReviewNote] = useState('');
@@ -289,7 +311,7 @@ export function TrainingNotesPage() {
           }
           created.forEach((url) => URL.revokeObjectURL(url));
           created = fresh;
-          setVideos({ plan: board.plan, urls: next });
+          setVideos({ dateKey: viewKey, plan: board.plan, urls: next });
         })
         .catch(() => {
           if (!cancelled) setVideos(null);
@@ -371,12 +393,12 @@ export function TrainingNotesPage() {
   }, [plan.id, searchParams, setSearchParams]);
 
   useEffect(() => {
-    if (plan.videos || !videos || !planHasContent(plan)) return;
-    const saved = adoptPlanVideos(viewKey, plan.id, planVideoRefsFromVideoPlan(videos.plan), todayKey);
+    if (plan.videos || !dayVideos || !planHasContent(plan)) return;
+    const saved = adoptPlanVideos(viewKey, plan.id, planVideoRefsFromVideoPlan(dayVideos.plan), todayKey);
     if (!saved) return;
     setArchive(loadTrainingArchive(todayKey));
     setPlan((current) => (current.id === saved.id && current.videos === undefined ? saved : current));
-  }, [plan, videos, viewKey, todayKey]);
+  }, [plan, dayVideos, viewKey, todayKey]);
 
   useEffect(() => {
     const flush = () => flushLessonDriveDraft();
@@ -432,8 +454,8 @@ export function TrainingNotesPage() {
     // A plan that has never stored its own videos picks up the day's board once.
     // A plan with an empty list keeps that empty list.
     const stamped =
-      next.videos === undefined && videos
-        ? { ...next, videos: planVideoRefsFromVideoPlan(videos.plan) }
+      next.videos === undefined && dayVideos
+        ? { ...next, videos: planVideoRefsFromVideoPlan(dayVideos.plan) }
         : next;
     const saved = saveDay(todayKey, stamped, todayKey);
     setArchive(saved.archive);
@@ -443,8 +465,8 @@ export function TrainingNotesPage() {
     // A previous day is opened from Class History, which reads the gym Drive folder.
     const media = saved.plan.videos
       ? lessonMediaFromPlanVideos(saved.plan.videos)
-      : videos
-        ? mediaRefsFromVideoPlan(videos.plan)
+      : dayVideos
+        ? mediaRefsFromVideoPlan(dayVideos.plan)
         : [];
     scheduleLessonDriveDraft({
       proSuite: unlimitedPlan,
@@ -468,6 +490,8 @@ export function TrainingNotesPage() {
     setClassesOpen(false);
     setFolderKey(null);
     setPlan(plansOnDay(archive, key)[0] ?? emptyPlan());
+    setTemplateAsk(null);
+    setRemoveBlockKey(null);
   };
 
   const openSavedPlan = (dateKey: string, next: TrainingNotesPlan) => {
@@ -477,6 +501,8 @@ export function TrainingNotesPage() {
     setRemoveArmed(false);
     setClassesOpen(false);
     setFolderKey(null);
+    setTemplateAsk(null);
+    setRemoveBlockKey(null);
   };
 
   const applyCopy = (source: TrainingNotesPlan) => {
@@ -501,8 +527,8 @@ export function TrainingNotesPage() {
 
   const addClassPlan = () => {
     if (!editingToday || !planHasContent(plan)) return;
-    if (plan.videos === undefined && videos) {
-      const adopted = adoptPlanVideos(todayKey, plan.id, planVideoRefsFromVideoPlan(videos.plan), todayKey);
+    if (plan.videos === undefined && dayVideos) {
+      const adopted = adoptPlanVideos(todayKey, plan.id, planVideoRefsFromVideoPlan(dayVideos.plan), todayKey);
       if (adopted) {
         setArchive(loadTrainingArchive(todayKey));
       }
@@ -532,11 +558,38 @@ export function TrainingNotesPage() {
     });
   };
 
-  const atMax = plan.techniques.length >= MAX_TECHNIQUES;
+  const competitionAllowed = proUnlocked || unlimitedPlan;
+  const showCompetition = activeLessonTemplate(plan) === 'competition' && competitionAllowed;
+  const orderedBlocks = lessonBlocks(plan);
+  const atMax = orderedBlocks.filter((block) => block.kind === 'technique').length >= MAX_TECHNIQUES;
+  const atMaxGames = orderedBlocks.filter((block) => block.kind === 'game').length >= MAX_GAMES;
   const canRemoveClass = editingToday && (planHasContent(plan) || classPlans.length > 1);
 
+  const requestTemplate = (template: LessonTemplateId) => {
+    if (!editingToday) return;
+    if (template === 'competition' && !competitionAllowed) return;
+    if (templateAlreadyApplied(plan, template)) {
+      setTemplateAsk(null);
+      return;
+    }
+    if (templateChangeNeedsConfirm(plan)) {
+      setTemplateAsk(template);
+      setRemoveBlockKey(null);
+      return;
+    }
+    setTemplateAsk(null);
+    commit(applyLessonTemplate(plan, template));
+  };
+
+  const applyAskedTemplate = () => {
+    if (!templateAsk) return;
+    commit(applyLessonTemplate(plan, templateAsk));
+    setTemplateAsk(null);
+    setRemoveBlockKey(null);
+  };
+
   const openVideo = (ref: LessonSlotRef) => {
-    const offer = videoOffer(videos, plan.videos, ref);
+    const offer = videoOffer(dayVideos, plan.videos, ref);
     if (!offer.show) return;
     navigate(
       lessonVideoHref({
@@ -600,7 +653,7 @@ export function TrainingNotesPage() {
   };
 
   const sectionMedia = (ref: LessonSlotRef, label: string, tech?: TechniqueBlock) => {
-    const offer = videoOffer(videos, plan.videos, ref);
+    const offer = videoOffer(dayVideos, plan.videos, ref);
     const linked = tech ? matchLessonTree(tech.title, tech.treeId, treeCandidates) : null;
     return (
       <LessonMediaRail
@@ -661,6 +714,28 @@ export function TrainingNotesPage() {
 
       {lessonBlocked ? null : (
       <div className="notes__plan">
+        <LessonTemplatePicker
+          template={activeLessonTemplate(plan)}
+          competitionAllowed={competitionAllowed}
+          readOnly={!editingToday}
+          onPick={requestTemplate}
+        />
+        {templateAsk ? (
+          <div className="notes__confirm" role="group" aria-label="Apply class template">
+            <p>{templateConfirmCopy(templateAsk)}</p>
+            <div className="notes__confirm-actions">
+              <button type="button" className="btn btn--ghost" onClick={() => setTemplateAsk(null)}>
+                Cancel
+              </button>
+              <button type="button" className="btn" onClick={applyAskedTemplate}>
+                Apply template
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {!competitionAllowed ? (
+          <p className="notes__when">Competition class is included with Coach Unlimited and Pro.</p>
+        ) : null}
         {unlimitedPlan ? null : <OpenMyDrive />}
         {unlimitedPlan && !showDownload ? <OpenMyDrive /> : null}
         {unlimitedPlan ? (
@@ -668,6 +743,8 @@ export function TrainingNotesPage() {
             {OPEN_DRIVE_CLASS_LABEL}
           </Link>
         ) : null}
+        {showCompetition ? <CompetitionCurriculumPage embedded /> : (
+        <>
         <section className="notes__archive" aria-label="Saved days">
           <PlanDateNav
             todayKey={todayKey}
@@ -891,11 +968,11 @@ export function TrainingNotesPage() {
                       className={item.id === plan.id ? 'notes__class-btn notes__class-btn--on' : 'notes__class-btn'}
                       aria-pressed={item.id === plan.id}
                       onClick={() => {
-                        if (plan.videos === undefined && videos && planHasContent(plan)) {
+                        if (plan.videos === undefined && dayVideos && planHasContent(plan)) {
                           const adopted = adoptPlanVideos(
                             viewKey,
                             plan.id,
-                            planVideoRefsFromVideoPlan(videos.plan),
+                            planVideoRefsFromVideoPlan(dayVideos.plan),
                             todayKey,
                           );
                           if (adopted) setArchive(loadTrainingArchive(todayKey));
@@ -999,102 +1076,166 @@ export function TrainingNotesPage() {
               onChange={(event) => commit({ ...plan, classTime: event.target.value })}
             />
           </label>
-          <div className="notes__field">
-            <div className="notes__field-bar">
-              <label htmlFor="notes-intro">Intro</label>
-              <ExpectedTime
-                id="notes-intro-time"
-                value={plan.introExpected}
-                readOnly={!editingToday}
-                onChange={(introExpected) => commit({ ...plan, introExpected })}
-              />
-            </div>
-            <textarea
-              id="notes-intro"
-              value={plan.intro}
-              rows={4}
-              maxLength={INTRO_MAX}
-              readOnly={!editingToday}
-              onChange={(event) => commit({ ...plan, intro: event.target.value })}
-            />
-          </div>
         </section>
 
-        <NoteSection
-          id="notes-warmup"
-          title="Warm-up"
-          label="Special note"
-          value={plan.warmupNote}
-          expected={plan.warmupExpected}
-          maxLength={WARMUP_NOTE_MAX}
-          readOnly={!editingToday}
-          onChange={(warmupNote) => commit({ ...plan, warmupNote })}
-          onExpected={(warmupExpected) => commit({ ...plan, warmupExpected })}
-          media={sectionMedia({ role: 'warmup' }, 'Warm-up')}
-        />
-
-        {plan.techniques.map((tech, index) => (
-          <TechniqueBlockView
-            key={tech.id}
-            index={index}
-            tech={tech}
-            readOnly={!editingToday}
-            canRemove={editingToday && index >= MIN_TECHNIQUES}
-            onChange={(patch) => patchTechnique(tech.id, patch)}
-            onRemove={() => commit(removeTechnique(plan, tech.id))}
-            media={sectionMedia({ role: 'technique', index }, `Technique / Drill ${index + 1}`, tech)}
-          />
-        ))}
+        {orderedBlocks.map((block, index) => {
+          const key = blockKey(block, index);
+          const techniqueOrdinal = orderedBlocks.slice(0, index + 1).filter((item) => item.kind === 'technique').length;
+          const gameOrdinal = orderedBlocks.slice(0, index + 1).filter((item) => item.kind === 'game').length;
+          const heading = blockHeading(block, techniqueOrdinal, gameOrdinal);
+          const tech = block.kind === 'technique' ? plan.techniques.find((item) => item.id === block.id) : undefined;
+          const game = block.kind === 'game' ? plan.games?.find((item) => item.id === block.id) : undefined;
+          return (
+            <div key={key} className="notes__block">
+              {block.kind === 'intro' ? (
+                <section className="notes__card">
+                  <div className="notes__field">
+                    <div className="notes__field-bar">
+                      <label htmlFor="notes-intro">Intro</label>
+                      <ExpectedTime
+                        id="notes-intro-time"
+                        value={plan.introExpected}
+                        readOnly={!editingToday}
+                        onChange={(introExpected) => commit({ ...plan, introExpected })}
+                      />
+                    </div>
+                    <textarea
+                      id="notes-intro"
+                      value={plan.intro}
+                      rows={4}
+                      maxLength={INTRO_MAX}
+                      readOnly={!editingToday}
+                      onChange={(event) => commit({ ...plan, intro: event.target.value })}
+                    />
+                  </div>
+                </section>
+              ) : null}
+              {block.kind === 'warmup' ? (
+                <NoteSection
+                  id="notes-warmup"
+                  title="Warm-up"
+                  label="Special note"
+                  value={plan.warmupNote}
+                  expected={plan.warmupExpected}
+                  maxLength={WARMUP_NOTE_MAX}
+                  readOnly={!editingToday}
+                  onChange={(warmupNote) => commit({ ...plan, warmupNote })}
+                  onExpected={(warmupExpected) => commit({ ...plan, warmupExpected })}
+                  media={sectionMedia({ role: 'warmup' }, 'Warm-up')}
+                />
+              ) : null}
+              {block.kind === 'technique' && tech ? (
+                <TechniqueBlockView
+                  index={techniqueOrdinal - 1}
+                  tech={tech}
+                  readOnly={!editingToday}
+                  onChange={(patch) => patchTechnique(tech.id, patch)}
+                  media={sectionMedia({ role: 'technique', index: techniqueOrdinal - 1 }, heading, tech)}
+                />
+              ) : null}
+              {block.kind === 'game' && game ? (
+                <GameBlockView
+                  heading={heading}
+                  game={game}
+                  readOnly={!editingToday}
+                  onChange={(patch) =>
+                    commit({
+                      ...plan,
+                      games: (plan.games ?? []).map((item) => (item.id === game.id ? { ...item, ...patch } : item)),
+                    })
+                  }
+                />
+              ) : null}
+              {block.kind === 'specific' ? (
+                <NoteSection
+                  id="notes-specific"
+                  title="Specific Training / Rounds"
+                  label="Special note"
+                  value={plan.specificNote}
+                  expected={plan.specificExpected}
+                  maxLength={SPECIFIC_NOTE_MAX}
+                  readOnly={!editingToday}
+                  onChange={(specificNote) => commit({ ...plan, specificNote })}
+                  onExpected={(specificExpected) => commit({ ...plan, specificExpected })}
+                />
+              ) : null}
+              {block.kind === 'cooldown' ? (
+                <NoteSection
+                  id="notes-cooldown"
+                  title="Cool down"
+                  label="Special note"
+                  value={plan.cooldownNote}
+                  expected={plan.cooldownExpected}
+                  maxLength={COOLDOWN_NOTE_MAX}
+                  readOnly={!editingToday}
+                  onChange={(cooldownNote) => commit({ ...plan, cooldownNote })}
+                  onExpected={(cooldownExpected) => commit({ ...plan, cooldownExpected })}
+                  media={sectionMedia({ role: 'cooldown' }, 'Cool down')}
+                />
+              ) : null}
+              {block.kind === 'closing' ? (
+                <section className="notes__card">
+                  <label className="notes__field" htmlFor="notes-closing">
+                    Closing
+                    <textarea
+                      id="notes-closing"
+                      value={plan.closing}
+                      rows={4}
+                      maxLength={CLOSING_MAX}
+                      readOnly={!editingToday}
+                      onChange={(event) => commit({ ...plan, closing: event.target.value })}
+                    />
+                  </label>
+                </section>
+              ) : null}
+              {editingToday ? (
+                <BlockTools
+                  heading={heading}
+                  index={index}
+                  count={orderedBlocks.length}
+                  confirming={removeBlockKey === key}
+                  onMove={(direction) => {
+                    setRemoveBlockKey(null);
+                    commit(moveLessonBlock(plan, index, direction));
+                  }}
+                  onAskRemove={() => setRemoveBlockKey(key)}
+                  onCancelRemove={() => setRemoveBlockKey(null)}
+                  onRemove={() => {
+                    commit(removeLessonBlock(plan, index));
+                    setRemoveBlockKey(null);
+                  }}
+                />
+              ) : null}
+            </div>
+          );
+        })}
 
         {editingToday ? (
-          <button
-            type="button"
-            className="btn notes__add"
-            disabled={atMax}
-            onClick={() => commit(addTechnique(plan))}
-          >
-            + Add another
-          </button>
+          <div className="notes__add-row">
+            <button
+              type="button"
+              className="btn notes__add"
+              disabled={atMax}
+              onClick={() => {
+                setRemoveBlockKey(null);
+                commit(addLessonTechnique(plan));
+              }}
+            >
+              Add technique
+            </button>
+            <button
+              type="button"
+              className="btn notes__add"
+              disabled={atMaxGames}
+              onClick={() => {
+                setRemoveBlockKey(null);
+                commit(addLessonGame(plan));
+              }}
+            >
+              Add game
+            </button>
+          </div>
         ) : null}
-
-        <NoteSection
-          id="notes-specific"
-          title="Specific Training / Rounds"
-          label="Special note"
-          value={plan.specificNote}
-          expected={plan.specificExpected}
-          maxLength={SPECIFIC_NOTE_MAX}
-          readOnly={!editingToday}
-          onChange={(specificNote) => commit({ ...plan, specificNote })}
-          onExpected={(specificExpected) => commit({ ...plan, specificExpected })}
-        />
-
-        <NoteSection
-          id="notes-cooldown"
-          title="Cool down"
-          label="Special note"
-          value={plan.cooldownNote}
-          expected={plan.cooldownExpected}
-          maxLength={COOLDOWN_NOTE_MAX}
-          readOnly={!editingToday}
-          onChange={(cooldownNote) => commit({ ...plan, cooldownNote })}
-          onExpected={(cooldownExpected) => commit({ ...plan, cooldownExpected })}
-          media={sectionMedia({ role: 'cooldown' }, 'Cool down')}
-        />
-
-        <section className="notes__card">
-          <label className="notes__field" htmlFor="notes-closing">
-            Closing
-            <textarea
-              id="notes-closing"
-              value={plan.closing}
-              rows={4}
-              maxLength={CLOSING_MAX}
-              readOnly={!editingToday}
-              onChange={(event) => commit({ ...plan, closing: event.target.value })}
-            />
-          </label>
-        </section>
 
         {editingToday && planHasContent(plan) ? (
           <aside className="notes__distribute" aria-label="Submit for review">
@@ -1167,8 +1308,8 @@ export function TrainingNotesPage() {
                     plan,
                     media: plan.videos
                       ? lessonMediaFromPlanVideos(plan.videos)
-                      : videos
-                        ? mediaRefsFromVideoPlan(videos.plan)
+                      : dayVideos
+                        ? mediaRefsFromVideoPlan(dayVideos.plan)
                         : [],
                   });
                   setDistributeNote(revision ? DISTRIBUTE_DONE : DISTRIBUTE_LEAD);
@@ -1185,6 +1326,8 @@ export function TrainingNotesPage() {
           </>
         ) : null}
         {showDistribute ? <ClassPhotoPromotions dateKey={viewKey} readOnly={!editingToday} /> : null}
+        </>
+        )}
       </div>
       )}
     </main>
@@ -1275,17 +1418,13 @@ function TechniqueBlockView({
   index,
   tech,
   readOnly,
-  canRemove,
   onChange,
-  onRemove,
   media,
 }: {
   index: number;
   tech: TechniqueBlock;
   readOnly: boolean;
-  canRemove: boolean;
   onChange: (patch: Partial<TechniqueBlock>) => void;
-  onRemove: () => void;
   media?: ReactNode;
 }) {
   const number = index + 1;
@@ -1296,14 +1435,7 @@ function TechniqueBlockView({
       <section className="notes__card" aria-labelledby={`notes-tech-heading-${tech.id}`}>
         <div className="notes__section-head">
           <h2 id={`notes-tech-heading-${tech.id}`}>Technique / Drill {number}</h2>
-          <div className="notes__section-side">
-            {canRemove ? (
-              <button type="button" className="btn btn--ghost notes__remove" onClick={onRemove}>
-                Remove
-              </button>
-            ) : null}
-            {media}
-          </div>
+          <div className="notes__section-side">{media}</div>
         </div>
         <label className="notes__field" htmlFor={titleId}>
           Title
@@ -1351,6 +1483,183 @@ function TechniqueBlockView({
           {tech.waterBreak ? <span className="notes__break-hint">Before the next section</span> : null}
         </span>
         <span className="notes__break-state">{tech.waterBreak ? 'On' : 'Off'}</span>
+      </button>
+    </div>
+  );
+}
+
+function GameBlockView({
+  heading,
+  game,
+  readOnly,
+  onChange,
+}: {
+  heading: string;
+  game: GameBlock;
+  readOnly: boolean;
+  onChange: (patch: Partial<GameBlock>) => void;
+}) {
+  const titleId = `notes-game-${game.id}`;
+  const notesId = `notes-game-notes-${game.id}`;
+  return (
+    <div className="notes__block">
+      <section className="notes__card" aria-labelledby={`notes-game-heading-${game.id}`}>
+        <h2 id={`notes-game-heading-${game.id}`}>{heading}</h2>
+        <label className="notes__field" htmlFor={titleId}>
+          Title
+          <input
+            id={titleId}
+            value={game.title}
+            maxLength={TECHNIQUE_TITLE_MAX}
+            readOnly={readOnly}
+            autoComplete="off"
+            onChange={(event) => onChange({ title: event.target.value })}
+          />
+        </label>
+        <div className="notes__field">
+          <div className="notes__field-bar">
+            <label htmlFor={notesId}>Notes</label>
+            <ExpectedTime
+              id={`notes-game-time-${game.id}`}
+              value={game.expected}
+              readOnly={readOnly}
+              onChange={(expected) => onChange({ expected })}
+            />
+          </div>
+          <textarea
+            id={notesId}
+            value={game.notes}
+            rows={4}
+            maxLength={TECHNIQUE_NOTES_MAX}
+            readOnly={readOnly}
+            onChange={(event) => onChange({ notes: event.target.value })}
+          />
+        </div>
+      </section>
+      <button
+        type="button"
+        className={game.waterBreak ? 'notes__break notes__break--on' : 'notes__break'}
+        role="switch"
+        aria-checked={game.waterBreak}
+        aria-label={`Water break after ${heading}`}
+        disabled={readOnly}
+        onClick={() => onChange({ waterBreak: !game.waterBreak })}
+      >
+        <span className="notes__switch" aria-hidden="true" />
+        <span className="notes__break-copy">
+          <span className="notes__break-label">Water break</span>
+          {game.waterBreak ? <span className="notes__break-hint">Before the next section</span> : null}
+        </span>
+        <span className="notes__break-state">{game.waterBreak ? 'On' : 'Off'}</span>
+      </button>
+    </div>
+  );
+}
+
+function LessonTemplatePicker({
+  template,
+  competitionAllowed,
+  readOnly,
+  onPick,
+}: {
+  template: LessonTemplateId;
+  competitionAllowed: boolean;
+  readOnly: boolean;
+  onPick: (template: LessonTemplateId) => void;
+}) {
+  return (
+    <div className="presets notes__templates" role="radiogroup" aria-label="Class template">
+      {LESSON_TEMPLATES.map((id) => {
+        const locked = id === 'competition' && !competitionAllowed;
+        const on = template === id;
+        return (
+          <button
+            key={id}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            className={`preset${on ? ' preset--on' : ''}`}
+            disabled={locked}
+            aria-disabled={readOnly || locked}
+            onClick={() => {
+              if (readOnly || locked) return;
+              onPick(id);
+            }}
+          >
+            {LESSON_TEMPLATE_LABELS[id]}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function templateConfirmCopy(template: LessonTemplateId): string {
+  if (template === 'competition') {
+    return 'Open the Competition class on this plan? Lesson notes stay on this plan. The competition curriculum keeps its own saved days.';
+  }
+  if (template === 'kids') {
+    return 'Apply the Kids class template? This sets the starting blocks: Technique 1, a Game, then Technique 2. Notes on the blocks that remain stay. You can reorder them after.';
+  }
+  return 'Apply the Adult class template? This sets the starting blocks: Intro, three techniques, Cool down, Closing, and the other sections. Notes on the blocks that remain stay.';
+}
+
+function BlockTools({
+  heading,
+  index,
+  count,
+  confirming,
+  onMove,
+  onAskRemove,
+  onCancelRemove,
+  onRemove,
+}: {
+  heading: string;
+  index: number;
+  count: number;
+  confirming: boolean;
+  onMove: (direction: -1 | 1) => void;
+  onAskRemove: () => void;
+  onCancelRemove: () => void;
+  onRemove: () => void;
+}) {
+  if (confirming) {
+    return (
+      <div className="notes__confirm" role="group" aria-label={`Remove ${heading}`}>
+        <p>Remove {heading}?</p>
+        <div className="notes__confirm-actions">
+          <button type="button" className="btn btn--ghost" onClick={onCancelRemove}>
+            Cancel
+          </button>
+          <button type="button" className="btn" onClick={onRemove}>
+            Remove
+          </button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="notes__block-tools">
+      <button type="button" className="btn btn--ghost notes__remove" onClick={onAskRemove}>
+        Remove
+      </button>
+      <button
+        type="button"
+        className="btn btn--ghost notes__remove"
+        aria-label={`Move ${heading} up`}
+        disabled={index === 0}
+        onClick={() => onMove(-1)}
+      >
+        Move up
+      </button>
+      <button
+        type="button"
+        className="btn btn--ghost notes__remove"
+        aria-label={`Move ${heading} down`}
+        disabled={index >= count - 1}
+        onClick={() => onMove(1)}
+      >
+        Move down
       </button>
     </div>
   );

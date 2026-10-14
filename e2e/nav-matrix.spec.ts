@@ -132,7 +132,8 @@ test('Coach Unlimited tools go back to Coach Unlimited and home to the tier pick
   await lessonBack.click();
   await expect.poll(() => pathOf(page)).toBe('/coach-unlimited');
 
-  for (const name of ['Daily Training Videos', 'Technique Tree', 'Competition Class Curriculum'] as const) {
+  await expect(page.getByRole('link', { name: 'Competition Class Curriculum', exact: true })).toHaveCount(0);
+  for (const name of ['Daily Training Videos', 'Technique Tree'] as const) {
     await page.goto('/coach-unlimited');
     await openLink(page, name);
     await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveCount(0);

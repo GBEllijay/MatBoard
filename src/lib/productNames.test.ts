@@ -243,30 +243,24 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   assert.equal(COMPETITOR_ROSTER_PATH, '/roster?from=competitors');
   assert.deepEqual(
     COACH_UNLIMITED_TOOLS.map((tool) => tool.title),
-    [
-      'Daily Lesson Plan',
-      'Daily Training Videos',
-      'Technique Tree',
-      'Competitor Roster',
-      'Competition Class Curriculum',
-    ],
+    ['Daily Lesson Plan', 'Daily Training Videos', 'Technique Tree', 'Competitor Roster'],
   );
   assert.equal(COACH_UNLIMITED_TOOLS[0].to, UNLIMITED_LESSON_PATH);
   assert.equal(COACH_UNLIMITED_TOOLS[1].to, UNLIMITED_VIDEOS_PATH);
   assert.equal(COACH_UNLIMITED_TOOLS[2].to, UNLIMITED_TREE_PATH);
   assert.deepEqual(
     COACH_UNLIMITED_TOOLS.map((tool) => tool.belt),
-    ['brown', 'brown', 'brown', 'brown', 'tournament'],
+    ['brown', 'brown', 'brown', 'brown'],
   );
   assert.deepEqual(
     COACH_UNLIMITED_TOOLS.map((tool) => ('stripes' in tool ? tool.stripes : null)),
-    [0, 1, 2, 3, null],
+    [0, 1, 2, 3],
   );
   assert.equal(COACH_UNLIMITED_TOOLS[3].to, UNLIMITED_ROSTER_PATH);
   assert.equal(UNLIMITED_ROSTER_PATH, '/roster?from=unlimited');
   assert.notEqual(UNLIMITED_ROSTER_PATH, COMPETITOR_ROSTER_PATH);
   assert.equal(COACH_UNLIMITED_TOOLS[3].belt, 'brown');
-  assert.equal(COACH_UNLIMITED_TOOLS[4].to, '/competition-curriculum?plan=unlimited');
+  assert.ok(!COACH_UNLIMITED_TOOLS.some((tool) => /curriculum/i.test(tool.title) || tool.to.includes('competition-curriculum')));
   assert.ok(!COACH_UNLIMITED_TOOLS.some((tool) => tool.to.startsWith('/coaching-tools')));
   assert.deepEqual(
     PRO_HUBS.map((hub) => hub.title),

@@ -187,7 +187,10 @@ test('the curriculum page keeps the requested copy and does not edit Daily Lesso
   assert.match(page, /data-add-another/);
   assert.match(page, /data-water-break/);
   assert.match(page, /showStructure/);
-  assert.doesNotMatch(lesson, /Competition Class Curriculum/);
+  assert.match(lesson, /Adult class/);
+  assert.match(lesson, /Kids class/);
+  assert.match(lesson, /Competition class/);
+  assert.match(lesson, /CompetitionCurriculumPage/);
   assert.doesNotMatch(lesson, /Timer only/);
   assert.match(page, /exportCurriculumToDrive/);
 });
