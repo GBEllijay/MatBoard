@@ -7,6 +7,7 @@
  */
 
 import { asRecord, clampText } from './plainValue.ts';
+import { clampDriveFileId } from './techniqueLogic.ts';
 
 export const TRAINING_NOTES_STORAGE_KEY = 'matboard.coach.trainingNotes.v1';
 /** Previous free-text jot. Read once into today's Intro, then removed. */
@@ -55,6 +56,27 @@ export type TechniqueBlock = {
   treeId?: string;
 };
 
+export type PlanVideoSection = 'warmup' | 'technique' | 'cooldown';
+
+/**
+ * One video on a class plan. The bytes stay in the clip store or in the gym
+ * Drive folder. This record is the reference the plan keeps, the same way it
+ * keeps its text blocks.
+ */
+export type PlanVideoRef = {
+  section: PlanVideoSection;
+  /** Zero-based technique ordinal. Null for Warm-up and Cool down. */
+  index: number | null;
+  /** On-device clip id. Null when the pointer is a Drive file or a URL. */
+  localClipId: string | null;
+  /** Customer Drive file id. Null until a Drive pick or upload fills it. */
+  driveFileId: string | null;
+  /** http(s) URL when the picker stored a link. Null for a file reference. */
+  url: string | null;
+  name: string;
+  mime: string;
+};
+
 export type TrainingNotesPlan = {
   version: 1;
   /** Stable id so one day can hold more than one class plan. */
@@ -77,6 +99,12 @@ export type TrainingNotesPlan = {
   cooldownNote: string;
   cooldownExpected: string;
   closing: string;
+  /**
+   * Videos that belong to this class plan.
+   * Absent on plans saved before per-plan videos: those still follow the day's board
+   * until this plan is saved again. An empty list means this plan has no video.
+   */
+  videos?: PlanVideoRef[];
 };
 
 /** One calendar day. Several class plans can share the date. */
@@ -174,6 +202,54 @@ export function emptyPlan(): TrainingNotesPlan {
   };
 }
 
+const PLAN_VIDEO_URL_MAX = 2_000;
+
+function httpUrl(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > PLAN_VIDEO_URL_MAX) return null;
+  if (!/^https?:\/\//i.test(trimmed)) return null;
+  return trimmed;
+}
+
+function sanitizeVideoRef(value: unknown): PlanVideoRef | null {
+  const raw = asRecord(value);
+  if (!raw) return null;
+  const section =
+    raw.section === 'warmup' || raw.section === 'technique' || raw.section === 'cooldown' ? raw.section : null;
+  if (!section) return null;
+  const index =
+    section === 'technique' && typeof raw.index === 'number' && Number.isFinite(raw.index)
+      ? Math.max(0, Math.min(MAX_TECHNIQUES - 1, Math.floor(raw.index)))
+      : null;
+  const localRaw = typeof raw.localClipId === 'string' ? raw.localClipId.trim().slice(0, 80) : '';
+  const localClipId = localRaw || null;
+  const driveFileId = clampDriveFileId(raw.driveFileId);
+  const url = httpUrl(raw.url);
+  const name = clampText(raw.name, 180);
+  const mime = clampText(raw.mime, 120);
+  if (!localClipId && !driveFileId && !url && !name) return null;
+  return { section, index, localClipId, driveFileId, url, name, mime };
+}
+
+/** Absent stays absent. A present list is cleaned. Junk rows are dropped. */
+function sanitizePlanVideos(value: unknown): { videos: PlanVideoRef[] | undefined; repaired: boolean } {
+  if (value === undefined) return { videos: undefined, repaired: false };
+  if (!Array.isArray(value)) return { videos: [], repaired: true };
+  let repaired = false;
+  const videos: PlanVideoRef[] = [];
+  for (const item of value) {
+    const next = sanitizeVideoRef(item);
+    if (!next) {
+      repaired = true;
+      continue;
+    }
+    videos.push(next);
+  }
+  if (videos.length !== value.length) repaired = true;
+  return { videos, repaired };
+}
+
 export function planHasContent(plan: TrainingNotesPlan): boolean {
   if (
     plan.coachName.trim() ||
@@ -192,6 +268,7 @@ export function planHasContent(plan: TrainingNotesPlan): boolean {
   ) {
     return true;
   }
+  if (plan.videos?.some((row) => row.localClipId || row.driveFileId || row.url || row.name.trim())) return true;
   return plan.techniques.some(
     (tech) =>
       tech.title.trim() ||
@@ -280,6 +357,9 @@ export function sanitizePlan(input: unknown): { plan: TrainingNotesPlan; repaire
   }
   if (uniquify(techniques)) repaired = true;
 
+  const videosRead = sanitizePlanVideos(raw && Object.prototype.hasOwnProperty.call(raw, 'videos') ? raw.videos : undefined);
+  if (videosRead.repaired) repaired = true;
+
   const idRaw = raw && typeof raw.id === 'string' ? raw.id.trim() : '';
   const id = idRaw ? idRaw.slice(0, 80) : createId('plan');
   if (!idRaw || (raw && raw.id !== id)) repaired = true;
@@ -315,33 +395,32 @@ export function sanitizePlan(input: unknown): { plan: TrainingNotesPlan; repaire
     repaired = true;
   }
 
-  return {
-    repaired,
-    plan: {
-      version: 1,
-      id,
-      coachName,
-      classDesignation,
-      lessonTitle,
-      classTime,
-      intro,
-      introExpected,
-      warmupNote,
-      warmupExpected,
-      techniques,
-      specificNote,
-      specificExpected,
-      cooldownNote,
-      cooldownExpected,
-      closing,
-    },
+  const plan: TrainingNotesPlan = {
+    version: 1,
+    id,
+    coachName,
+    classDesignation,
+    lessonTitle,
+    classTime,
+    intro,
+    introExpected,
+    warmupNote,
+    warmupExpected,
+    techniques,
+    specificNote,
+    specificExpected,
+    cooldownNote,
+    cooldownExpected,
+    closing,
   };
+  if (videosRead.videos) plan.videos = videosRead.videos;
+  return { repaired, plan };
 }
 
 /** Fresh technique ids so a copied day does not share a later video slot with the source. */
 export function copyPlan(source: TrainingNotesPlan): TrainingNotesPlan {
   const { plan } = sanitizePlan(source);
-  return {
+  const next: TrainingNotesPlan = {
     ...plan,
     id: createId('plan'),
     techniques: plan.techniques.map((tech) => ({
@@ -350,6 +429,8 @@ export function copyPlan(source: TrainingNotesPlan): TrainingNotesPlan {
       slotId: createId('slot'),
     })),
   };
+  if (plan.videos) next.videos = plan.videos.map((row) => ({ ...row }));
+  return next;
 }
 
 function uniquifyPlanIds(plans: TrainingNotesPlan[]): boolean {
@@ -696,7 +777,13 @@ export function saveDay(
   const existing = days[dateKey]?.plans ?? [];
   if (planHasContent(clean) && isWithinRetention(dateKey, today)) {
     const index = existing.findIndex((item) => item.id === clean.id);
-    const plans = index >= 0 ? existing.map((item, i) => (i === index ? clean : item)) : [...existing, clean];
+    const previous = index >= 0 ? existing[index] : undefined;
+    // A text edit that did not mention videos keeps the refs already stored on this plan.
+    const stored =
+      previous && clean.videos === undefined && previous.videos !== undefined
+        ? { ...clean, videos: previous.videos.map((row) => ({ ...row })) }
+        : clean;
+    const plans = index >= 0 ? existing.map((item, i) => (i === index ? stored : item)) : [...existing, stored];
     days[dateKey] = { plans };
   } else {
     const plans = existing.filter((item) => item.id !== clean.id);

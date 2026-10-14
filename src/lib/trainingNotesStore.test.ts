@@ -581,3 +581,116 @@ test('an optional lesson title is stored, shown, and empty on older plans', () =
   wide.intro = 'Keep.';
   assert.equal(saveTrainingNotes(wide, TODAY).lessonTitle.length, LESSON_TITLE_MAX);
 });
+
+test('each class plan keeps its own video and a plan with no video stays empty', () => {
+  storage.clear();
+  const alpha = emptyPlan();
+  alpha.classDesignation = 'Plan A';
+  alpha.intro = 'Alpha';
+  alpha.videos = [
+    {
+      section: 'technique',
+      index: 0,
+      localClipId: 'clip-a',
+      driveFileId: 'drive-a',
+      url: null,
+      name: 'VideoA.mp4',
+      mime: 'video/mp4',
+    },
+  ];
+  const beta = emptyPlan();
+  beta.classDesignation = 'Plan B';
+  beta.intro = 'Beta';
+  beta.videos = [
+    {
+      section: 'technique',
+      index: 0,
+      localClipId: 'clip-b',
+      driveFileId: null,
+      url: 'https://example.com/video-b.mp4',
+      name: 'VideoB.mp4',
+      mime: 'video/mp4',
+    },
+  ];
+  const blank = emptyPlan();
+  blank.classDesignation = 'Plan C';
+  blank.intro = 'Blank';
+  blank.videos = [];
+
+  saveDay(TODAY, alpha, TODAY);
+  saveDay(TODAY, beta, TODAY);
+  saveDay(TODAY, blank, TODAY);
+  const loaded = plansOnDay(loadTrainingArchive(TODAY), TODAY);
+  assert.equal(loaded.find((plan) => plan.id === alpha.id)?.videos?.[0]?.name, 'VideoA.mp4');
+  assert.equal(loaded.find((plan) => plan.id === beta.id)?.videos?.[0]?.url, 'https://example.com/video-b.mp4');
+  assert.deepEqual(loaded.find((plan) => plan.id === blank.id)?.videos, []);
+
+  const edited = loaded.find((plan) => plan.id === alpha.id);
+  assert.ok(edited);
+  const { videos: omitted, ...withoutVideos } = edited;
+  void omitted;
+  saveDay(TODAY, withoutVideos as typeof edited, TODAY);
+  assert.equal(plansOnDay(loadTrainingArchive(TODAY), TODAY).find((plan) => plan.id === alpha.id)?.videos?.[0]?.localClipId, 'clip-a');
+
+  const legacy = emptyPlan();
+  legacy.intro = 'Older';
+  const { videos: dropped, ...legacyRaw } = legacy;
+  void dropped;
+  localStorage.setItem(
+    TRAINING_NOTES_STORAGE_KEY,
+    JSON.stringify({ version: 3, days: { [TODAY]: { plans: [legacyRaw] } } }),
+  );
+  const restored = plansOnDay(loadTrainingArchive(TODAY), TODAY)[0];
+  assert.equal(restored?.videos, undefined);
+  assert.equal(planHasContent({ ...emptyPlan(), videos: alpha.videos }), true);
+});
+
+test('opening a class plan loads that plans video and leaves the other plans clip stored', async () => {
+  storage.clear();
+  const { emptyVideoPlan, setSlotClip } = await import('./techniqueLogic.ts');
+  const {
+    adoptPlanVideos,
+    lessonPlanVideoOverlay,
+    planVideoRefsFromVideoPlan,
+    videoPlanWithPlanVideos,
+    writeLessonPlanVideos,
+  } = await import('./planVideos.ts');
+  const day = emptyVideoPlan();
+  const withA = setSlotClip(day, 'tech-1', 'clip-a', {
+    driveFileId: 'drive-a',
+    mediaName: 'VideoA.mp4',
+    mediaMime: 'video/mp4',
+  });
+  const planA = emptyPlan();
+  planA.intro = 'Alpha';
+  planA.videos = planVideoRefsFromVideoPlan(withA);
+  saveDay(TODAY, planA, TODAY);
+  const planB = emptyPlan();
+  planB.intro = 'Beta';
+  planB.videos = [];
+  saveDay(TODAY, planB, TODAY);
+
+  assert.equal(lessonPlanVideoOverlay(TODAY, planA.id, TODAY)?.[0]?.name, 'VideoA.mp4');
+  assert.deepEqual(lessonPlanVideoOverlay(TODAY, planB.id, TODAY), []);
+  const shownB = videoPlanWithPlanVideos(withA, []);
+  assert.equal(shownB.slots.find((slot) => slot.slotId === 'tech-1')?.clipId, null);
+  const shownA = videoPlanWithPlanVideos(shownB, planA.videos ?? []);
+  assert.equal(shownA.slots.find((slot) => slot.slotId === 'tech-1')?.mediaName, 'VideoA.mp4');
+
+  const withB = setSlotClip(shownB, 'tech-1', 'clip-b', {
+    driveFileId: null,
+    mediaName: 'VideoB.mp4',
+    mediaMime: 'video/mp4',
+  });
+  writeLessonPlanVideos(TODAY, planB.id, planVideoRefsFromVideoPlan(withB), TODAY);
+  const again = plansOnDay(loadTrainingArchive(TODAY), TODAY);
+  assert.equal(again.find((plan) => plan.id === planA.id)?.videos?.[0]?.localClipId, 'clip-a');
+  assert.equal(again.find((plan) => plan.id === planB.id)?.videos?.[0]?.localClipId, 'clip-b');
+
+  const legacy = emptyPlan();
+  legacy.intro = 'Legacy';
+  saveDay(TODAY, legacy, TODAY);
+  const adopted = adoptPlanVideos(TODAY, legacy.id, planVideoRefsFromVideoPlan(withA), TODAY);
+  assert.equal(adopted?.videos?.[0]?.name, 'VideoA.mp4');
+  assert.equal(adoptPlanVideos(TODAY, legacy.id, [], TODAY), null);
+});

@@ -79,6 +79,12 @@ import { INSTRUCTOR_COACH_ENTRY, UNLIMITED_LESSON_VALUE, carryHubFrom } from '..
 import { classHistoryHref } from '../lib/submenuNav';
 import { useSubmenuBack } from '../hooks/useSubmenuBack';
 import { listPhotos } from '../lib/photoStore';
+import {
+  adoptPlanVideos,
+  lessonMediaFromPlanVideos,
+  planVideoRefFor,
+  planVideoRefsFromVideoPlan,
+} from '../lib/planVideos';
 import { loadTechniqueBoardForDate } from '../lib/techniqueStore';
 import type { VideoPlan } from '../lib/techniqueLogic';
 import { loadTechniqueArchive, type TechniqueTreeArchive } from '../lib/techniqueTreeStore';
@@ -110,6 +116,7 @@ import {
   planHasContent,
   planListLabel,
   plansOnDay,
+  type PlanVideoRef,
   searchLessonPlans,
   removeDayPlan,
   removeTechnique,
@@ -145,19 +152,36 @@ type DriveTodayState = {
 
 const idleDriveNotice = { phase: 'idle' as const, text: '' };
 
+function clipUrlForRef(ref: PlanVideoRef, videos: TodayVideos | null): string | undefined {
+  if (ref.url) return ref.url;
+  if (ref.localClipId && videos?.urls[ref.localClipId]) return videos.urls[ref.localClipId];
+  if (!ref.driveFileId || !videos) return undefined;
+  const slot = videos.plan.slots.find((item) => item.driveFileId === ref.driveFileId && item.clipId);
+  return slot?.clipId ? videos.urls[slot.clipId] : undefined;
+}
+
 function videoOffer(
   videos: TodayVideos | null,
+  planVideos: PlanVideoRef[] | undefined,
   ref: LessonSlotRef,
 ): { show: boolean; slotId: string | null; clipUrl?: string; mediaName: string } {
   const count = videos ? videos.plan.slots.filter((slot) => slot.kind === 'technique').length : null;
   const show = lessonSlotOffersVideo(ref, count);
-  if (!videos) return { show, slotId: null, mediaName: '' };
-  const slot = parallelVideoSlot(videos.plan, ref);
+  const slot = videos ? parallelVideoSlot(videos.plan, ref) : null;
+  if (planVideos) {
+    const owned = planVideoRefFor(planVideos, ref.role, ref.role === 'technique' ? ref.index : undefined);
+    return {
+      show,
+      slotId: slot?.slotId ?? null,
+      clipUrl: owned ? clipUrlForRef(owned, videos) : undefined,
+      mediaName: owned?.name.trim() ?? '',
+    };
+  }
   if (!slot) return { show, slotId: null, mediaName: '' };
   return {
     show,
     slotId: slot.slotId,
-    clipUrl: slot.clipId ? videos.urls[slot.clipId] : undefined,
+    clipUrl: slot.clipId ? videos?.urls[slot.clipId] : undefined,
     mediaName: slot.mediaName?.trim() ?? '',
   };
 }
@@ -166,7 +190,7 @@ export function TrainingNotesPage() {
   const navigate = useNavigate();
   const parent = useToolboxParent();
   const proUnlocked = useProUnlocked();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const seat = useCurrentSeat();
   const lessonMenu = seatMenuAllowed(seat, 'dailyLessonPlanAccess');
   const lessonCloud = menuCloudSharing(proUnlocked, seat, lessonMenu);
@@ -187,7 +211,10 @@ export function TrainingNotesPage() {
     const today = localDateKey();
     const archive = loadTrainingArchive(today);
     const viewKey = restoredDayKey(searchParams.get('date'), today, (dateKey) => plansOnDay(archive, dateKey).length > 0);
-    return { today, archive, viewKey, plan: plansOnDay(archive, viewKey)[0] ?? emptyPlan() };
+    const dayPlans = plansOnDay(archive, viewKey);
+    const requested = searchParams.get('class');
+    const plan = dayPlans.find((item) => item.id === requested) ?? dayPlans[0] ?? emptyPlan();
+    return { today, archive, viewKey, plan };
   });
   const [todayKey, setTodayKey] = useState(boot.today);
   const [archive, setArchive] = useState<TrainingNotesArchive>(boot.archive);
@@ -329,6 +356,21 @@ export function TrainingNotesPage() {
   }, [viewKey, unlimitedPlan]);
 
   useEffect(() => {
+    if (!plan.id || searchParams.get('class') === plan.id) return;
+    const next = new URLSearchParams(searchParams);
+    next.set('class', plan.id);
+    setSearchParams(next, { replace: true });
+  }, [plan.id, searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (plan.videos || !videos || !planHasContent(plan)) return;
+    const saved = adoptPlanVideos(viewKey, plan.id, planVideoRefsFromVideoPlan(videos.plan), todayKey);
+    if (!saved) return;
+    setArchive(loadTrainingArchive(todayKey));
+    setPlan((current) => (current.id === saved.id && current.videos === undefined ? saved : current));
+  }, [plan, videos, viewKey, todayKey]);
+
+  useEffect(() => {
     const flush = () => flushLessonDriveDraft();
     const onHide = () => {
       if (document.visibilityState === 'hidden') flush();
@@ -379,18 +421,29 @@ export function TrainingNotesPage() {
   const confirmPlan = confirmPlanId ? findPlanById(archive, confirmPlanId) : null;
 
   const persistToday = (next: TrainingNotesPlan) => {
-    const saved = saveDay(todayKey, next, todayKey);
+    // A plan that has never stored its own videos picks up the day's board once.
+    // A plan with an empty list keeps that empty list.
+    const stamped =
+      next.videos === undefined && videos
+        ? { ...next, videos: planVideoRefsFromVideoPlan(videos.plan) }
+        : next;
+    const saved = saveDay(todayKey, stamped, todayKey);
     setArchive(saved.archive);
     setPlan(saved.plan);
     // Local text is already stored. Unlimited queues a Drive draft (text + file ids).
     // Limited Coach skips the queue. Either way, leaving the page does not drop the plan.
     // A previous day is opened from Class History, which reads the gym Drive folder.
+    const media = saved.plan.videos
+      ? lessonMediaFromPlanVideos(saved.plan.videos)
+      : videos
+        ? mediaRefsFromVideoPlan(videos.plan)
+        : [];
     scheduleLessonDriveDraft({
       proSuite: unlimitedPlan,
       dateKey: todayKey,
       coachName: saved.plan.coachName,
       plan: saved.plan,
-      media: videos ? mediaRefsFromVideoPlan(videos.plan) : [],
+      media,
     });
     return saved;
   };
@@ -440,7 +493,15 @@ export function TrainingNotesPage() {
 
   const addClassPlan = () => {
     if (!editingToday || !planHasContent(plan)) return;
-    setPlan(emptyPlan());
+    if (plan.videos === undefined && videos) {
+      const adopted = adoptPlanVideos(todayKey, plan.id, planVideoRefsFromVideoPlan(videos.plan), todayKey);
+      if (adopted) {
+        setArchive(loadTrainingArchive(todayKey));
+      }
+    }
+    const next = emptyPlan();
+    next.videos = [];
+    setPlan(next);
     setConfirmPlanId(null);
     setRemoveArmed(false);
     setViewKey(todayKey);
@@ -467,7 +528,7 @@ export function TrainingNotesPage() {
   const canRemoveClass = editingToday && (planHasContent(plan) || classPlans.length > 1);
 
   const openVideo = (ref: LessonSlotRef) => {
-    const offer = videoOffer(videos, ref);
+    const offer = videoOffer(videos, plan.videos, ref);
     if (!offer.show) return;
     navigate(
       lessonVideoHref({
@@ -476,6 +537,7 @@ export function TrainingNotesPage() {
         slotId: offer.slotId,
         index: ref.role === 'technique' ? ref.index : undefined,
         search: searchParams.toString(),
+        classId: plan.id,
       }),
     );
   };
@@ -522,7 +584,7 @@ export function TrainingNotesPage() {
   };
 
   const sectionMedia = (ref: LessonSlotRef, label: string, tech?: TechniqueBlock) => {
-    const offer = videoOffer(videos, ref);
+    const offer = videoOffer(videos, plan.videos, ref);
     const linked = tech ? matchLessonTree(tech.title, tech.treeId, treeCandidates) : null;
     return (
       <LessonMediaRail
@@ -811,6 +873,15 @@ export function TrainingNotesPage() {
                       className={item.id === plan.id ? 'notes__class-btn notes__class-btn--on' : 'notes__class-btn'}
                       aria-pressed={item.id === plan.id}
                       onClick={() => {
+                        if (plan.videos === undefined && videos && planHasContent(plan)) {
+                          const adopted = adoptPlanVideos(
+                            viewKey,
+                            plan.id,
+                            planVideoRefsFromVideoPlan(videos.plan),
+                            todayKey,
+                          );
+                          if (adopted) setArchive(loadTrainingArchive(todayKey));
+                        }
                         setPlan(item);
                         setConfirmPlanId(null);
                         setRemoveArmed(false);
@@ -1076,7 +1147,11 @@ export function TrainingNotesPage() {
                     dateKey: todayKey,
                     coachName: plan.coachName,
                     plan,
-                    media: videos ? mediaRefsFromVideoPlan(videos.plan) : [],
+                    media: plan.videos
+                      ? lessonMediaFromPlanVideos(plan.videos)
+                      : videos
+                        ? mediaRefsFromVideoPlan(videos.plan)
+                        : [],
                   });
                   setDistributeNote(revision ? DISTRIBUTE_DONE : DISTRIBUTE_LEAD);
                 }}

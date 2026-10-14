@@ -86,6 +86,7 @@ import {
   storeRestoredDriveClip,
   type TechniqueClip,
 } from '../lib/techniqueStore';
+import { lessonPlanVideoOverlay, planVideoRefsFromVideoPlan, videoPlanWithPlanVideos, writeLessonPlanVideos } from '../lib/planVideos';
 
 async function loadSharedCurriculumCards(clips: readonly TechniqueClip[]): Promise<{
   cards: CurriculumVideoCard[];
@@ -169,6 +170,10 @@ export function TechniquesPage() {
   const boardDate = focusDate && isWithinRetention(focusDate, localDateKey()) ? focusDate : localDateKey();
   const boardDateRef = useRef(boardDate);
   boardDateRef.current = boardDate;
+  const lessonPlanIdRef = useRef<string | null>(new URLSearchParams(launchKey).get('class'));
+  if (new URLSearchParams(launchKey).get('class')) {
+    lessonPlanIdRef.current = new URLSearchParams(launchKey).get('class');
+  }
   const [lessonFocus, setLessonFocus] = useState<{ slotId: string; text: string } | null>(null);
   const [curriculumCards, setCurriculumCards] = useState<CurriculumVideoCard[]>([]);
   const [curriculumPick, setCurriculumPick] = useState<string | null>(null);
@@ -222,12 +227,19 @@ export function TechniquesPage() {
     setPlan(next);
   };
 
+  const rememberLessonVideos = (next: VideoPlan) => {
+    const planId = lessonPlanIdRef.current;
+    if (!planId) return;
+    writeLessonPlanVideos(boardDateRef.current, planId, planVideoRefsFromVideoPlan(next));
+  };
+
   useEffect(() => {
     let cancelled = false;
     void loadTechniqueBoardForDate(boardDate)
       .then(async (board) => {
         if (cancelled) return;
-        applyPlan(board.plan);
+        const overlay = lessonPlanVideoOverlay(boardDate, lessonPlanIdRef.current);
+        applyPlan(overlay === null ? board.plan : videoPlanWithPlanVideos(board.plan, overlay));
         const shared = await loadSharedCurriculumCards(board.clips);
         if (cancelled) return;
         setCurriculumCards(shared.cards);
@@ -281,6 +293,7 @@ export function TechniquesPage() {
     applyPlan(next);
     try {
       await saveTechniquePlan(next, boardDateRef.current);
+      rememberLessonVideos(next);
     } catch {
       setPickerNote('Could not save this plan on this device.');
     }
@@ -429,9 +442,11 @@ export function TechniquesPage() {
       applyPlan(next);
       setPlaying(false);
       if (isTimedSlot(slot)) setRemainingMs(secondsToMs(slot.drillSec));
-      void saveTechniquePlan(next, boardDateRef.current).catch(() => {
-        setPickerNote('Could not save this plan on this device.');
-      });
+      void saveTechniquePlan(next, boardDateRef.current)
+        .then(() => rememberLessonVideos(next))
+        .catch(() => {
+          setPickerNote('Could not save this plan on this device.');
+        });
       return () => {
         cancelled = true;
       };
@@ -522,6 +537,7 @@ export function TechniquesPage() {
         );
         await saveTechniquePlan(next, boardDateRef.current);
         applyPlan(next);
+        rememberLessonVideos(next);
         setClips((await loadTechniqueBoard()).clips);
         if (shareDay) syncTodayTrainingVideos(next, true);
         return;
@@ -530,6 +546,7 @@ export function TechniquesPage() {
       const file = new File([blob], item.name || 'Drive video', { type: mime || blob.type || 'video/mp4' });
       const result = await attachClipToSlot(current, slotId, file, item.id);
       applyPlan(result.plan);
+      rememberLessonVideos(result.plan);
       setClips(result.clips);
       setPlaying(false);
       if (result.status === 'invalid') {
@@ -608,6 +625,7 @@ export function TechniquesPage() {
     try {
       const result = await attachClipToSlot(current, slotId, file);
       applyPlan(result.plan);
+      rememberLessonVideos(result.plan);
       setClips(result.clips);
       setPlaying(false);
       if (result.status === 'invalid') {
@@ -631,6 +649,7 @@ export function TechniquesPage() {
     try {
       const result = await clearSlotClip(current, slotId);
       applyPlan(result.plan);
+      rememberLessonVideos(result.plan);
       setClips(result.clips);
       if (planRef.current?.selectedSlotId === slotId) setPlaying(false);
       setPickerNote('');

@@ -19,6 +19,7 @@ import { mimeFromFile, VIDEO_ACCEPT } from './photoStore';
 import { assertOriginRoom, isStorageQuotaError, StorageQuotaError } from './storageQuota.ts';
 import { readCurriculumClip } from './curriculumClips.ts';
 import { curriculumReferencedClipIds, loadCurriculumArchive } from './competitionCurriculum.ts';
+import { lessonPlansReferencingClip } from './planVideos.ts';
 import { otherDateClipIds, saveTechniquePlanOnDate, storedTechniquePlan } from './techniquePlanDates.ts';
 import { localDateKey } from './trainingNotesStore.ts';
 
@@ -337,7 +338,7 @@ export async function attachClipToSlot(
     const db = await openDb();
     const tx = db.transaction(CLIPS, 'readwrite');
     const store = tx.objectStore(CLIPS);
-    if (slot.clipId) store.delete(slot.clipId);
+    if (slot.clipId && !lessonPlansReferencingClip(slot.clipId)) store.delete(slot.clipId);
     store.put(row);
     await txDone(tx);
   } catch (error) {
@@ -378,10 +379,12 @@ export async function clearSlotClip(
     const clips = await listTechniqueClips();
     return { plan, clips, status: 'empty' };
   }
-  const db = await openDb();
-  const tx = db.transaction(CLIPS, 'readwrite');
-  tx.objectStore(CLIPS).delete(slot.clipId);
-  await txDone(tx);
+  if (!lessonPlansReferencingClip(slot.clipId)) {
+    const db = await openDb();
+    const tx = db.transaction(CLIPS, 'readwrite');
+    tx.objectStore(CLIPS).delete(slot.clipId);
+    await txDone(tx);
+  }
   const next = setSlotClip(plan, slotId, null);
   await saveTechniquePlan(next);
   return { plan: next, clips: await listTechniqueClips(), status: 'removed' };
