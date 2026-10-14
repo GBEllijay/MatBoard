@@ -9,7 +9,11 @@ import { isWhiteUnlocked, setWhiteUnlocked } from './whiteUnlock.ts';
 import {
   addCustomFundamental,
   addJournalAmendment,
+  addJournalClip,
   addJournalEntry,
+  deleteJournalClip,
+  searchStudentClips,
+  updateJournalClip,
   blankStudentReport,
   decodeJournalBody,
   fundamentalsBoard,
@@ -121,6 +125,39 @@ test('a saved journal card stays in the progress file and search finds the techn
   assert.equal(searchStudentJournal(saved, 'scissor').length, 1);
   assert.equal(searchJournal(saved.journal, 'collar').length, 1);
   assert.equal(decodeJournalBody(saved.journal[0].body).partners, 'Alex');
+});
+
+test('a journal clip can be added, found by description or url, saved, and deleted', () => {
+  const storage = memoryStorage();
+  let report = blankStudentReport(10);
+  assert.equal('clips' in report, false);
+  assert.throws(() => addJournalClip(report, 'notaurl', 'armbar', 11), /http or https/);
+  assert.throws(() => addJournalClip(report, 'https://youtu.be/abc', '   ', 11), /short note/);
+  report = addJournalClip(report, 'https://www.youtube.com/watch?v=armbar', 'Armbar from closed guard', 11);
+  report = addJournalClip(report, 'https://www.instagram.com/reel/kneeslice', 'Knee slice pass', 12);
+  assert.deepEqual(searchStudentClips(report, 'closed guard').map((clip) => clip.description), ['Armbar from closed guard']);
+  assert.deepEqual(searchStudentClips(report, 'instagram.com/reel').map((clip) => clip.id), [report.clips?.[1].id]);
+  const armbarId = report.clips?.[0].id ?? '';
+  report = updateJournalClip(report, armbarId, 'https://youtu.be/armbar-2', 'Armbar finish', 13);
+  assert.equal(report.clips?.[0].url, 'https://youtu.be/armbar-2');
+  assert.equal(report.clips?.[0].description, 'Armbar finish');
+  assert.equal(report.clips?.[0].createdAt, 11);
+  const saved = saveStudentReport(storage, report);
+  const loaded = loadStudentReport(storage);
+  assert.equal(loaded.clips?.length, 2);
+  assert.equal(loaded.clips?.[0].description, 'Armbar finish');
+  assert.equal(saved.journal.length, 0);
+  const removed = deleteJournalClip(loaded, armbarId, 14);
+  assert.equal(removed.clips?.length, 1);
+  assert.equal(removed.clips?.[0].description, 'Knee slice pass');
+  const cleared = saveStudentReport(storage, deleteJournalClip(removed, removed.clips?.[0].id ?? '', 15));
+  assert.deepEqual(cleared.clips, []);
+  const legacy = JSON.parse(storage.getItem(STUDENT_EDITION_STORAGE_KEY) ?? '{}') as { clips?: unknown };
+  delete legacy.clips;
+  storage.setItem(STUDENT_EDITION_STORAGE_KEY, JSON.stringify(legacy));
+  const oldFile = loadStudentReport(storage);
+  assert.equal('clips' in oldFile, false);
+  assert.equal(oldFile.kind, 'student-progress-report');
 });
 
 test('an amendment is appended and the original card is unchanged', () => {

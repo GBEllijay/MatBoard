@@ -19,7 +19,7 @@ Every file is one JSON object with `schemaVersion`, `kind`, `id`, `studentId`, a
 
 | Kind | Who writes it | What it carries |
 | --- | --- | --- |
-| `student-progress-report` | Student | Profile, rubric, fundamentals checklist, journal, calendar, goals |
+| `student-progress-report` | Student | Profile, rubric, fundamentals checklist, journal, calendar, goals, and an optional clip clipboard |
 | `coach-plan` | Coach | Suggestions under "Work on before next promotion" |
 | `coach-feedback` | Coach | A synopsis and suggestion notes |
 
@@ -79,6 +79,14 @@ A card has a date, `gameTag` of `a`, `b`, or `c` (A game / B game / C game), the
 
 `Amendment` is a dated note on that same card. A later curriculum cycle appends an amendment. It does not replace the cycle-1 card.
 
+### JournalClip
+
+Optional on a student progress report. Older files omit `clips`, and import leaves them that way. A present `clips` array, including an empty one, is the clipboard.
+
+Each clip has a stable id, an `http` or `https` URL, a short `description` of what the link is for or what to train, and `createdAt` / `updatedAt` in milliseconds. The description is at most 500 characters. The URL is at most 2000 characters. Any http(s) link is allowed. YouTube and Instagram are the usual ones, and the file does not limit the host. A `data:` URL or any other scheme is refused.
+
+Search matches the description and the URL. Send to coach includes `clips` in the JSON only when the field is present on the report. The CSV adds a `Clip` sheet row for each saved clip (name and note are the description, body is the URL) and omits that sheet when the field is absent.
+
 ### CalendarEvent
 
 A day on the student calendar: id, date, title, kind (`class`, `training`, `promotion`, `note`, `other`), and a note.
@@ -97,7 +105,7 @@ Issue date, the plan id it answers (or empty), a synopsis, and suggestion notes.
 
 ## Stable ids
 
-Ids are letters, numbers, dots, hyphens, and underscores, up to 80 characters. Dots separate the parts of a shared id, as in `sweep.scissor` or `rubric.white.closed-guard`. Catalog ids, criterion ids, and checkpoint ids are shared vocabulary. Journal, amendment, checklist, calendar, goal, plan, and packet ids are created once on the device that wrote them.
+Ids are letters, numbers, dots, hyphens, and underscores, up to 80 characters. Dots separate the parts of a shared id, as in `sweep.scissor` or `rubric.white.closed-guard`. Catalog ids, criterion ids, and checkpoint ids are shared vocabulary. Journal, amendment, clip, checklist, calendar, goal, plan, and packet ids are created once on the device that wrote them.
 
 A new export of the same living report keeps the same packet id and moves `updatedAt` forward.
 
@@ -109,7 +117,8 @@ Import of a `student-progress-report` merges into the copy already on the device
 - The profile on the device is kept when the two profiles differ.
 - A journal card that already exists keeps its original text, date, game tag, and technique names. A different incoming card is reported and ignored.
 - Amendments on that card append when the amendment id is new. The same amendment id with different text keeps the text already on the device.
-- A checklist line, goal, checkpoint, criterion, or calendar event that already has text keeps that text. An empty field can be filled from the incoming student file. A new id is added. A mark the student already set is kept.
+- A checklist line, goal, checkpoint, criterion, calendar event, or clip that already has text keeps that text. An empty field can be filled from the incoming student file. A new id is added. A mark the student already set is kept.
+- A file with no `clips` field does not clear a clipboard already on the device. A file that includes `clips` adds new clip ids and keeps the link and note already stored for an id this device has.
 - `importCoachSuggestion` returns the student report unchanged, beside the coach packet. The student can read the suggestion. Nothing in that import writes rubric marks, checkpoints, the journal, or goals. A newer coach file can replace an older coach file of the same id. That replacement is only the suggestion snapshot.
 
 ## Privacy
@@ -133,6 +142,7 @@ Filter the Sheet column:
 | Checklist | One fundamentals line, including a line the student added |
 | Journal | One original card. Technique names are separated with `; ` |
 | Amendment | One later note. Parent id is the journal card id |
+| Clip | One saved link, only when the report includes `clips`. Name and Note are the description. Body is the URL |
 | Calendar | One day |
 | Goal | One student goal |
 | Coach plan | The plan header |

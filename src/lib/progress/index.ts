@@ -12,6 +12,7 @@ export {
   progressHandoffFileName,
   PROGRESS_CSV_HEADERS,
   searchJournal,
+  searchJournalClips,
   sharedCheckpointId,
   sharedCriterionId,
 } from './format.ts';
@@ -29,6 +30,7 @@ export {
   type CoachPlanPacket,
   type FundamentalsCatalog,
   type FundamentalsItem,
+  type JournalClip,
   type JournalEntry,
   type LicenseSource,
   type ProgressPacket,

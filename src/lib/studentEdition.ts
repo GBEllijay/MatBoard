@@ -5,8 +5,19 @@
 
 import { FUNDAMENTALS_CATALOG } from './progress/catalog.ts';
 import { isStudentEditionUnlocked } from './studentUnlock.ts';
-import { exportProgressPacket, parseProgressPacket, searchJournal } from './progress/format.ts';
-import { PROGRESS_NAME_MAX, type GameTag, type JournalEntry, type StudentChecklistEntry, type StudentProgressReport, type TechniqueRef } from './progress/types.ts';
+import { exportProgressPacket, parseProgressPacket, searchJournal, searchJournalClips } from './progress/format.ts';
+import {
+  PROGRESS_CLIP_URL_MAX,
+  PROGRESS_CLIPS_MAX,
+  PROGRESS_NAME_MAX,
+  PROGRESS_NOTE_MAX,
+  type GameTag,
+  type JournalClip,
+  type JournalEntry,
+  type StudentChecklistEntry,
+  type StudentProgressReport,
+  type TechniqueRef,
+} from './progress/types.ts';
 
 export const STUDENT_EDITION_STORAGE_KEY = 'matboard.studentEdition.v1';
 
@@ -284,6 +295,70 @@ export function addJournalAmendment(
 export function searchStudentJournal(report: StudentProgressReport, query: string): JournalEntry[] {
   const newest = [...report.journal].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt);
   return searchJournal(newest, query);
+}
+
+export function searchStudentClips(report: StudentProgressReport, query: string): JournalClip[] {
+  return searchJournalClips(report.clips ?? [], query);
+}
+
+function clipDraftError(url: string, description: string): string {
+  const link = url.trim();
+  const note = description.trim();
+  if (!link) return 'Add an http or https link.';
+  if (link.length > PROGRESS_CLIP_URL_MAX) return `That link is longer than ${PROGRESS_CLIP_URL_MAX} characters.`;
+  let parsed: URL;
+  try {
+    parsed = new URL(link);
+  } catch {
+    return 'Use an http or https link.';
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return 'Use an http or https link.';
+  if (!note) return 'Add a short note about what this clip is for.';
+  if (note.length > PROGRESS_NOTE_MAX) return `That note is longer than ${PROGRESS_NOTE_MAX} characters.`;
+  return '';
+}
+
+export function addJournalClip(
+  report: StudentProgressReport,
+  url: string,
+  description: string,
+  now = Date.now(),
+): StudentProgressReport {
+  const error = clipDraftError(url, description);
+  if (error) throw new Error(error);
+  if ((report.clips?.length ?? 0) >= PROGRESS_CLIPS_MAX) throw new Error('The clip clipboard is full.');
+  const clip: JournalClip = {
+    id: newId('clip', now),
+    url: url.trim(),
+    description: description.trim(),
+    createdAt: now,
+    updatedAt: now,
+  };
+  return { ...report, updatedAt: now, clips: [...(report.clips ?? []), clip] };
+}
+
+export function updateJournalClip(
+  report: StudentProgressReport,
+  id: string,
+  url: string,
+  description: string,
+  now = Date.now(),
+): StudentProgressReport {
+  if (!report.clips?.some((clip) => clip.id === id)) return report;
+  const error = clipDraftError(url, description);
+  if (error) throw new Error(error);
+  return {
+    ...report,
+    updatedAt: now,
+    clips: report.clips.map((clip) =>
+      clip.id === id ? { ...clip, url: url.trim(), description: description.trim(), updatedAt: now } : clip,
+    ),
+  };
+}
+
+export function deleteJournalClip(report: StudentProgressReport, id: string, now = Date.now()): StudentProgressReport {
+  if (!report.clips?.some((clip) => clip.id === id)) return report;
+  return { ...report, updatedAt: now, clips: report.clips.filter((clip) => clip.id !== id) };
 }
 
 function checklistMatch(entry: StudentChecklistEntry, catalogItemId: string, name: string): boolean {
