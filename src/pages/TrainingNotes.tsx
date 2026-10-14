@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { ClassPhotoPromotions } from '../components/ClassPhotoPromotions';
+import { DriveVideoFolders } from '../components/DriveVideoFolders';
 import { LessonScreenHide } from '../components/LessonScreenCover';
 import { DriveHandoffCheck, DriveHandoffGuide, useDriveConnected } from '../components/DriveHandoffGuide';
 import { LessonVersionHistory } from '../components/LessonVersionHistory';
@@ -30,9 +31,11 @@ import {
 import {
   downloadDriveFile,
   loadTodayDriveVideos,
+  renameDriveFile,
   requestDriveToken,
   todayDownloadCopy,
   type DriveDayVideo,
+  type DriveVideoGroup,
   type TodayDriveStatus,
 } from '../lib/googleDrive';
 import {
@@ -148,6 +151,7 @@ type GalleryTodayState = {
 type DriveTodayState = {
   status: TodayDriveStatus;
   videos: DriveDayVideo[];
+  groups: DriveVideoGroup[];
 };
 
 const idleDriveNotice = { phase: 'idle' as const, text: '' };
@@ -229,7 +233,9 @@ export function TrainingNotesPage() {
   const [driveToday, setDriveToday] = useState<DriveTodayState>({
     status: unlimitedPlan ? 'loading' : 'skipped',
     videos: [],
+    groups: [],
   });
+  const [driveTick, setDriveTick] = useState(0);
   const [downloadNote, setDownloadNote] = useState('');
   const [distributeNote, setDistributeNote] = useState('');
   const [reviewNote, setReviewNote] = useState('');
@@ -330,18 +336,20 @@ export function TrainingNotesPage() {
 
   useEffect(() => {
     if (!unlimitedPlan) {
-      setDriveToday({ status: 'skipped', videos: [] });
+      setDriveToday({ status: 'skipped', videos: [], groups: [] });
       return;
     }
     let cancelled = false;
-    setDriveToday({ status: 'loading', videos: [] });
+    setDriveToday((current) =>
+      driveTick === 0 ? { status: 'loading', videos: [], groups: [] } : { ...current, status: 'loading' },
+    );
     const load = () => {
       void loadTodayDriveVideos(viewKey)
         .then((result) => {
           if (!cancelled) setDriveToday(result);
         })
         .catch(() => {
-          if (!cancelled) setDriveToday({ status: 'error', videos: [] });
+          if (!cancelled) setDriveToday({ status: 'error', videos: [], groups: [] });
         });
     };
     load();
@@ -353,7 +361,7 @@ export function TrainingNotesPage() {
       cancelled = true;
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [viewKey, unlimitedPlan]);
+  }, [viewKey, unlimitedPlan, driveTick]);
 
   useEffect(() => {
     if (!plan.id || searchParams.get('class') === plan.id) return;
@@ -554,6 +562,14 @@ export function TrainingNotesPage() {
   const canDownloadToday = galleryCount + driveCount > 0;
   const downloadBusy = galleryToday.status === 'loading' || driveToday.status === 'loading';
 
+  const renameDriveClip = async (fileId: string, name: string) => {
+    const silent = await requestDriveToken('silent');
+    const token = silent ?? (await requestDriveToken('consent'));
+    if (!token) throw new Error('Sign in to Google Drive again to rename this clip.');
+    await renameDriveFile(token, fileId, name);
+    setDriveTick((value) => value + 1);
+  };
+
   const downloadToday = async () => {
     if (!canDownloadToday) return;
     setDownloadNote('');
@@ -750,15 +766,17 @@ export function TrainingNotesPage() {
                 {downloadNote}
               </p>
             ) : null}
-            {canDownloadToday ? (
-              <ul className="notes__gallery" aria-label="Videos available for today">
-                {galleryToday.videos.map((video) => (
-                  <li key={`gallery-${video.id}`}>{video.label}</li>
-                ))}
-                {driveToday.videos.map((video) => (
-                  <li key={`drive-${video.id}`}>{video.label}</li>
-                ))}
-              </ul>
+            {galleryToday.videos.length || driveToday.groups.length ? (
+              <DriveVideoFolders
+                selectedDate={viewKey}
+                groups={driveToday.groups}
+                gallery={galleryToday.videos.map((video) => ({
+                  id: video.id,
+                  label: video.label,
+                  addedAt: video.addedAt,
+                }))}
+                onRename={renameDriveClip}
+              />
             ) : null}
           </div>
           </CollaborationGate>
