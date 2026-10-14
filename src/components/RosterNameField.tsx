@@ -59,17 +59,26 @@ export function RosterNameField({
   const [onKidsBoard, setOnKidsBoard] = useState(false);
   const skipFocusRef = useRef(false);
   const fieldRef = useRef<HTMLDivElement>(null);
+  const pickedRef = useRef(false);
+  const pickingRef = useRef(false);
 
   const openPicker = () => {
     setOnKidsBoard(Boolean(fieldRef.current?.closest('.tournament--kids')));
     setQuery(value);
     setAddToRoster(false);
     setBelt('');
+    pickedRef.current = false;
+    pickingRef.current = false;
     setPickOpen(true);
   };
 
   const closePicker = () => {
     skipFocusRef.current = true;
+    if (!whiteNames && !pickedRef.current) onChange(query);
+    // The sheet blurs its field as it closes. Swallow that blur so a cleared
+    // query cannot wipe the name this close just stored.
+    pickedRef.current = true;
+    pickingRef.current = false;
     setPickOpen(false);
     setQuery('');
     setAddToRoster(false);
@@ -77,7 +86,14 @@ export function RosterNameField({
   };
 
   const pick = (prefill: RosterPrefill) => {
+    pickedRef.current = true;
     onPrefill(prefill);
+    closePicker();
+  };
+
+  const commitTyped = (name: string) => {
+    pickedRef.current = true;
+    onChange(name);
     closePicker();
   };
 
@@ -142,6 +158,15 @@ export function RosterNameField({
             belt={belt}
             onBelt={setBelt}
             onPick={pick}
+            onCommitTyped={commitTyped}
+            onKeepTyped={(name) => {
+              if (pickedRef.current || pickingRef.current) return;
+              onChange(name);
+            }}
+            onPicking={(active) => {
+              pickingRef.current = active;
+            }}
+            holdCommit={() => pickingRef.current || pickedRef.current}
           />
         )}
       </Sheet>
@@ -158,6 +183,10 @@ function RosterPicker({
   belt,
   onBelt,
   onPick,
+  onCommitTyped,
+  onKeepTyped,
+  onPicking,
+  holdCommit,
 }: {
   studentList: boolean;
   query: string;
@@ -167,11 +196,17 @@ function RosterPicker({
   belt: string;
   onBelt: (value: string) => void;
   onPick: (prefill: RosterPrefill) => void;
+  onCommitTyped: (name: string) => void;
+  onKeepTyped: (name: string) => void;
+  onPicking: (active: boolean) => void;
+  holdCommit: () => boolean;
 }) {
   const roster = useRosterState();
   const listed = studentList ? studentRosterCards(roster.students) : competitorCards(roster.students);
   const matches = searchStudents(listed, query);
   const inputRef = useRef<HTMLInputElement>(null);
+  const typedRef = useRef(query);
+  typedRef.current = query;
   const typed = query.trim();
   const canUseTyped = Boolean(typed);
   const canAdd = canUseTyped && Boolean(belt.trim());
@@ -184,14 +219,33 @@ function RosterPicker({
     return () => cancelAnimationFrame(frame);
   }, []);
 
+  useEffect(() => {
+    const input = inputRef.current;
+    if (!input) return;
+    const restoreTyped = (event: Event) => {
+      if (event.target !== input) return;
+      if (input.value === typedRef.current) return;
+      const proto = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+      proto?.set?.call(input, typedRef.current);
+    };
+    // Capture on the window so this runs before React reads a dismissal `change`.
+    window.addEventListener('change', restoreTyped, true);
+    return () => window.removeEventListener('change', restoreTyped, true);
+  }, []);
+
   const useTypedName = () => {
-    const next = confirmManualCompetitor(query, {
-      addToRoster,
-      belt,
-      rosterList: studentList ? 'student' : undefined,
-    });
-    if (!next) return;
-    onPick(next);
+    if (!canUseTyped) return;
+    if (addToRoster) {
+      const next = confirmManualCompetitor(query, {
+        addToRoster,
+        belt,
+        rosterList: studentList ? 'student' : undefined,
+      });
+      if (!next) return;
+      onPick(next);
+      return;
+    }
+    onCommitTyped(typedRef.current);
   };
 
   return (
@@ -207,7 +261,19 @@ function RosterPicker({
             ref={inputRef}
             className="roster-pick__name"
             value={query}
-            onChange={(event) => onQuery(event.target.value)}
+            onChange={(event) => {
+              if (event.nativeEvent.type === 'change') {
+                const proto = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+                proto?.set?.call(event.currentTarget, typedRef.current);
+                return;
+              }
+              typedRef.current = event.target.value;
+              onQuery(event.target.value);
+            }}
+            onBlur={() => {
+              if (holdCommit()) return;
+              onKeepTyped(typedRef.current);
+            }}
             placeholder="Type a name not on the roster"
             aria-label={studentList ? 'Student name' : 'Competitor name'}
             autoComplete="off"
@@ -285,7 +351,14 @@ function RosterPicker({
             if (!prefill) return null;
             return (
               <li key={student.id}>
-                <button type="button" className="roster-pick__row" onClick={() => onPick(prefill)}>
+                <button
+                  type="button"
+                  className="roster-pick__row"
+                  onPointerDown={() => onPicking(true)}
+                  onPointerUp={() => onPicking(false)}
+                  onPointerCancel={() => onPicking(false)}
+                  onClick={() => onPick(prefill)}
+                >
                   <span>
                     <strong>{student.name}</strong>
                     <RankChip belt={student.belt} />

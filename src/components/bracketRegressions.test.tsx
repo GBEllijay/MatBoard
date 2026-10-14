@@ -11,7 +11,7 @@ import { TournamentPage } from '../pages/Tournament.tsx';
 import { openBracketBout } from '../lib/bracketBout.ts';
 import { kidsBracketScoring, kidsSkinButtonSuppressed, setKidsEnabled, setKidsSkin } from '../lib/kidsScoreboard.ts';
 import { PRO_UNLOCK_STORAGE_KEY } from '../lib/proUnlock.ts';
-import { addStudent, resetRoster } from '../lib/rosterStore.ts';
+import { addStudent, getRoster, resetRoster } from '../lib/rosterStore.ts';
 import {
   fillSeedNames,
   getTournament,
@@ -38,6 +38,8 @@ installGlobal('localStorage', view.localStorage);
 installGlobal('sessionStorage', view.sessionStorage);
 installGlobal('HTMLElement', view.HTMLElement);
 installGlobal('HTMLInputElement', view.HTMLInputElement);
+installGlobal('HTMLTextAreaElement', view.HTMLTextAreaElement);
+installGlobal('HTMLButtonElement', view.HTMLButtonElement);
 installGlobal('Element', view.Element);
 installGlobal('Node', view.Node);
 installGlobal('DocumentFragment', view.DocumentFragment);
@@ -76,10 +78,21 @@ async function settle() {
   });
 }
 
+function reactProps(node: Element): Record<string, (...args: never[]) => void> | null {
+  const key = Object.keys(node).find((name) => name.startsWith('__reactProps'));
+  return key ? (node as unknown as Record<string, Record<string, (...args: never[]) => void>>)[key] : null;
+}
+
 function setInputValue(input: HTMLInputElement, value: string) {
   const proto = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
   proto?.set?.call(input, value);
   input.dispatchEvent(new Event('input', { bubbles: true }));
+  // happy-dom does not deliver bubbled portal events to React. Invoke the handler too.
+  reactProps(input)?.onChange?.({
+    target: input,
+    currentTarget: input,
+    nativeEvent: new Event('input'),
+  } as never);
 }
 
 async function topRosterMatch(ariaLabel: string, extra?: { placeholder?: string; compact?: boolean }) {
@@ -137,6 +150,147 @@ test('bracket and scoreboard name fields show the same closest roster match', as
   assert.deepEqual(scoreboard, hinted);
   assert.deepEqual(scoreboard, ['Mia Santos', 'Mila Chen', 'Sam Miller']);
   resetRoster();
+});
+
+test('a free-typed bracket name sticks on blur, Enter, dismiss, win, and undo', async () => {
+  localStorage.setItem(PRO_UNLOCK_STORAGE_KEY, '1');
+  class ResizeObserverStub {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  installGlobal('ResizeObserver', ResizeObserverStub);
+  view.ResizeObserver = ResizeObserverStub;
+  resetRoster();
+  resetTournament();
+  addStudent({ name: 'Mia Santos', belt: 'White', division: '', gym: '', lastPromotion: '', note: '' });
+  setCompetitorCount(4);
+
+  const mounted = mount(<TournamentPage />, '/tournament?from=suite');
+  try {
+    const top = document.querySelector('[aria-label="Semifinals, top competitor"]');
+    assert.ok(top instanceof HTMLInputElement);
+    await act(async () => {
+      top.click();
+    });
+    await settle();
+    const typed = document.querySelector('input.roster-pick__name');
+    assert.ok(typed instanceof HTMLInputElement);
+    await act(async () => {
+      setInputValue(typed, 'Jordan Hale');
+    });
+    await settle();
+    assert.equal(typed.value, 'Jordan Hale');
+    const proto = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+    proto?.set?.call(typed, '');
+    typed.dispatchEvent(new Event('change', { bubbles: true }));
+    assert.equal(typed.value, 'Jordan Hale');
+    await act(async () => {
+      typed.focus();
+      typed.blur();
+    });
+    await settle();
+    assert.equal(slotName(getTournament(), 'sf-0-a'), 'Jordan Hale');
+    assert.equal(document.querySelector('input.roster-pick__name') instanceof HTMLInputElement, true);
+    const add = document.querySelector('.roster-pick__add input');
+    assert.ok(add instanceof HTMLInputElement);
+    await act(async () => {
+      add.click();
+    });
+    await settle();
+    const backdrop = document.querySelector('[aria-label="Close options"]');
+    assert.equal(backdrop.tagName, 'BUTTON');
+    await act(async () => {
+      reactProps(backdrop)?.onClick?.();
+    });
+    await settle();
+    assert.equal(slotName(getTournament(), 'sf-0-a'), 'Jordan Hale');
+    assert.equal(
+      getRoster().students.some((student) => student.name === 'Jordan Hale'),
+      false,
+    );
+
+    const remounted = mount(<TournamentPage />, '/tournament?from=suite');
+    try {
+      const kept = remounted.host.querySelector('[aria-label="Semifinals, top competitor"]');
+      assert.ok(kept instanceof HTMLInputElement);
+      assert.equal(kept.value, 'Jordan Hale');
+    } finally {
+      unmount(remounted);
+    }
+
+    const bottom = document.querySelector('[aria-label="Semifinals, bottom competitor"]');
+    assert.ok(bottom instanceof HTMLInputElement);
+    await act(async () => {
+      bottom.click();
+    });
+    await settle();
+    const suggest = document.querySelector('input.roster-pick__name');
+    assert.ok(suggest instanceof HTMLInputElement);
+    await act(async () => {
+      setInputValue(suggest, 'mi');
+    });
+    await settle();
+    const mia = [...document.querySelectorAll('.roster-pick__row')].find((row) => row.textContent?.includes('Mia Santos'));
+    assert.equal(mia.tagName, 'BUTTON');
+    await act(async () => {
+      reactProps(mia)?.onClick?.();
+    });
+    await settle();
+    assert.equal(slotName(getTournament(), 'sf-0-b'), 'Mia Santos');
+    assert.equal(bottom.value, 'Mia Santos');
+
+    const other = [...document.querySelectorAll('[aria-label="Semifinals, top competitor"]')][1];
+    assert.ok(other instanceof HTMLInputElement);
+    await act(async () => {
+      other.click();
+    });
+    await settle();
+    const entered = document.querySelector('input.roster-pick__name');
+    assert.ok(entered instanceof HTMLInputElement);
+    await act(async () => {
+      setInputValue(entered, 'Casey Ng');
+    });
+    await settle();
+    const named = document.querySelector('input.roster-pick__name');
+    assert.ok(named instanceof HTMLInputElement);
+    await act(async () => {
+      reactProps(named)?.onKeyDown?.({ key: 'Enter', preventDefault() {} } as never);
+    });
+    await settle();
+    assert.equal(slotName(getTournament(), 'sf-1-a'), 'Casey Ng');
+    assert.equal(
+      getRoster().students.some((student) => student.name === 'Casey Ng' || student.name === 'Jordan Hale'),
+      false,
+    );
+
+    const win = [...mounted.host.querySelectorAll('button')].find((button) => button.textContent?.trim() === 'Win');
+    assert.ok(win);
+    await act(async () => {
+      win.click();
+    });
+    await settle();
+    const submission = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('Submission'));
+    assert.ok(submission);
+    await act(async () => {
+      submission.click();
+    });
+    await settle();
+    assert.equal(slotName(getTournament(), 'final-0-a'), 'Jordan Hale');
+    const undo = [...mounted.host.querySelectorAll('button')].find((button) => button.textContent?.trim() === 'Undo last result');
+    assert.ok(undo);
+    await act(async () => {
+      undo.click();
+    });
+    await settle();
+    assert.equal(slotName(getTournament(), 'sf-0-a'), 'Jordan Hale');
+    assert.equal(slotName(getTournament(), 'final-0-a'), '');
+    assert.match(localStorage.getItem('matboard.tournament.v1') ?? '', /Jordan Hale/);
+  } finally {
+    unmount(mounted);
+    resetTournament();
+    resetRoster();
+  }
 });
 
 test('Skin opens the thumbnail picker when a linked bout has no result', async () => {
