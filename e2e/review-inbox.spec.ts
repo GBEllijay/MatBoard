@@ -109,7 +109,7 @@ test('Sunday review opens the inbox and the coach can submit', async ({ page }) 
   await unlock(page);
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/notes?plan=unlimited');
-  await expect(page.getByLabel('Intro')).toHaveValue('Passing series.');
+  await expect(page.getByLabel('Intro', { exact: true })).toHaveValue('Passing series.');
   await seedClassPhoto(page);
   const distribute = page.getByRole('complementary', { name: 'Instructor distribution' });
   await distribute.getByRole('button', { name: 'Upload for instructor distribution' }).click();

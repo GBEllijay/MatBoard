@@ -156,13 +156,13 @@ test('past days keep their video and photo, and dates can be searched', async ({
   await page.goto('/');
   await seedMedia(page);
   await page.goto('/notes?plan=unlimited');
-  await expect(page.getByLabel('Intro')).toHaveValue('Day three pass.');
+  await expect(page.getByLabel('Intro', { exact: true })).toHaveValue('Day three pass.');
   await expect(page.getByRole('button', { name: 'Next day' })).toBeDisabled();
   await expect(page.getByText('day-one.mp4')).toHaveCount(0);
   await page.getByRole('button', { name: 'Previous day' }).click();
   const todayButton = page.getByRole('button', { name: 'Today', exact: true });
   await todayButton.click();
-  await expect(page.getByLabel('Intro')).toHaveValue('Day three pass.');
+  await expect(page.getByLabel('Intro', { exact: true })).toHaveValue('Day three pass.');
   expect(await fillColor(todayButton)).toBe('rgb(0, 78, 186)');
 
   await page.getByLabel('Search plans').fill('');
@@ -173,7 +173,7 @@ test('past days keep their video and photo, and dates can be searched', async ({
   const results = page.getByRole('list', { name: 'Plan search results' });
   const hit = results.getByRole('button');
   await hit.click();
-  await expect(page.getByLabel('Intro')).toHaveValue('Day one guard.');
+  await expect(page.getByLabel('Intro', { exact: true })).toHaveValue('Day one guard.');
   await expect(page.getByText('day-one.mp4')).toBeVisible();
   await expect(page.getByText('day-one.jpg')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Add photo or video' })).toHaveCount(0);
@@ -181,7 +181,7 @@ test('past days keep their video and photo, and dates can be searched', async ({
   await shot(page, 'plan-dates-desktop');
 
   await page.getByLabel('Calendar').fill(dateKey(0));
-  await expect(page.getByLabel('Intro')).toHaveValue('Day three pass.');
+  await expect(page.getByLabel('Intro', { exact: true })).toHaveValue('Day three pass.');
   await expect(page.getByRole('button', { name: 'Add photo or video' })).toBeVisible();
   await page.getByRole('button', { name: 'Yesterday', exact: true }).click();
   await page.getByRole('button', { name: 'Classes' }).click();
@@ -189,7 +189,7 @@ test('past days keep their video and photo, and dates can be searched', async ({
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByLabel('Calendar').fill(dateKey(-2));
-  await expect(page.getByLabel('Intro')).toHaveValue('Day one guard.');
+  await expect(page.getByLabel('Intro', { exact: true })).toHaveValue('Day one guard.');
   await expect(page.getByText('day-one.mp4')).toBeVisible();
   await shot(page, 'plan-dates-phone');
 });

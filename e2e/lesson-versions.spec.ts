@@ -65,13 +65,13 @@ test('a second submit keeps the first proposal in version history', async ({ pag
   await unlock(page);
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/notes?plan=unlimited');
-  await expect(page.getByLabel('Intro')).toHaveValue('Passing series.');
+  await expect(page.getByLabel('Intro', { exact: true })).toHaveValue('Passing series.');
   const submit = page.getByRole('complementary', { name: 'Submit for review' });
   await expect(submit.getByText('Submit for review saves a proposed copy.')).toBeVisible();
   await submit.getByRole('button', { name: 'Submit for review' }).click();
   await expect(page.getByText('Sent for review.')).toBeVisible();
 
-  await page.getByLabel('Intro').fill('Passing series, second.');
+  await page.getByLabel('Intro', { exact: true }).fill('Passing series, second.');
   await submit.getByRole('button', { name: 'Submit for review' }).click();
   const history = page.getByRole('region', { name: 'Version history' });
   const version2 = history.getByRole('button', { name: 'Version 2 · Waiting for review' });

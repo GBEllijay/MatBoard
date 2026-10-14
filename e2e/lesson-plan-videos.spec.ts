@@ -38,7 +38,7 @@ test('each daily lesson plan keeps its own video across switches and reload', as
   await expect(page.getByRole('heading', { name: 'Daily Lesson Plan' })).toBeVisible();
 
   await page.getByLabel('Class designation').fill('Plan A');
-  await page.getByLabel('Intro').fill('Alpha class');
+  await page.getByLabel('Intro', { exact: true }).fill('Alpha class');
   await uploadWarmupVideo(page, 'VideoA.mp4');
   await expect(warmupName(page)).toHaveText('VideoA.mp4');
   const returned = new URL(page.url());
@@ -49,21 +49,21 @@ test('each daily lesson plan keeps its own video across switches and reload', as
   await page.getByRole('button', { name: 'Add class plan' }).click();
   await expect(warmupName(page)).toHaveCount(0);
   await page.getByLabel('Class designation').fill('Plan B');
-  await page.getByLabel('Intro').fill('Beta class');
+  await page.getByLabel('Intro', { exact: true }).fill('Beta class');
   await uploadWarmupVideo(page, 'VideoB.mp4');
   await expect(warmupName(page)).toHaveText('VideoB.mp4');
 
   await page.getByRole('button', { name: 'Coach / Plan A / Time' }).click();
   await expect(page.getByLabel('Class designation')).toHaveValue('Plan A');
-  await expect(page.getByLabel('Intro')).toHaveValue('Alpha class');
+  await expect(page.getByLabel('Intro', { exact: true })).toHaveValue('Alpha class');
   await expect(warmupName(page)).toHaveText('VideoA.mp4');
 
   await page.getByRole('button', { name: 'Coach / Plan B / Time' }).click();
-  await expect(page.getByLabel('Intro')).toHaveValue('Beta class');
+  await expect(page.getByLabel('Intro', { exact: true })).toHaveValue('Beta class');
   await expect(warmupName(page)).toHaveText('VideoB.mp4');
 
   await page.reload();
-  await expect(page.getByLabel('Intro')).toHaveValue('Beta class');
+  await expect(page.getByLabel('Intro', { exact: true })).toHaveValue('Beta class');
   await expect(warmupName(page)).toHaveText('VideoB.mp4');
 
   await page.getByRole('button', { name: 'Coach / Plan A / Time' }).click();

@@ -379,7 +379,8 @@ test('a lesson and video saved to Drive load back into the Daily Lesson Plan', a
     setValue('notes-lesson-title', 'Guard passing');
     setValue('notes-class-time', '5:00 PM');
     setValue('notes-intro', 'Start standing');
-    const block = document.querySelector('.notes__block');
+    const heading = [...document.querySelectorAll('h2')].find((node) => node.textContent === 'Technique / Drill 1');
+    const block = heading?.closest('.notes__block');
     const title = block?.querySelector('input');
     const notes = block?.querySelector('textarea');
     if (!title?.id || !notes?.id) throw new Error('Missing technique fields');
@@ -412,10 +413,13 @@ test('a lesson and video saved to Drive load back into the Daily Lesson Plan', a
   await expect(page).toHaveURL(/\/notes\?/);
   await expect(page.getByLabel('Lesson title')).toHaveValue('Guard passing');
   await expect(page.getByLabel('Class designation')).toHaveValue('GB1');
-  await expect(page.getByLabel('Intro')).toHaveValue('Start standing');
-  await expect(page.locator('.notes__block').first().getByLabel('Title')).toHaveValue('Knee cut');
-  await expect(page.locator('.notes__block').first().getByLabel('Notes')).toHaveValue('Keep the knee heavy');
-  await expect(page.locator('.notes__block').first().locator('.notes__video-name')).toContainText(/kneecut/i);
+  await expect(page.getByLabel('Intro', { exact: true })).toHaveValue('Start standing');
+  const kneeCut = page.locator('.notes__block').filter({
+    has: page.getByRole('heading', { name: 'Technique / Drill 1', exact: true }),
+  });
+  await expect(kneeCut.getByLabel('Title')).toHaveValue('Knee cut');
+  await expect(kneeCut.getByLabel('Notes')).toHaveValue('Keep the knee heavy');
+  await expect(kneeCut.locator('.notes__video-name')).toContainText(/kneecut/i);
 });
 
 test('an older text lesson can be picked from Drive, and Daily Training Videos can pick a Drive video', async ({ page }) => {
@@ -455,8 +459,11 @@ test('an older text lesson can be picked from Drive, and Daily Training Videos c
   await picker.getByRole('button', { name: 'Done · 1 selected', exact: true }).click();
   await expect(page).toHaveURL(/\/notes\?/);
   await expect(page.getByLabel('Lesson title')).toHaveValue('Tomorrow');
-  await expect(page.locator('.notes__block').first().getByLabel('Title')).toHaveValue('Armbar');
-  await expect(page.locator('.notes__block').first().getByLabel('Notes')).toHaveValue('Finish on the far shoulder');
+  const armbar = page.locator('.notes__block').filter({
+    has: page.getByRole('heading', { name: 'Technique / Drill 1', exact: true }),
+  });
+  await expect(armbar.getByLabel('Title')).toHaveValue('Armbar');
+  await expect(armbar.getByLabel('Notes')).toHaveValue('Finish on the far shoulder');
   await expect(page.getByText('Armbar.mp4')).toBeVisible();
 
   await page.goto('/techniques');

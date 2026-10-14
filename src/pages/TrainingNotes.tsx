@@ -147,6 +147,7 @@ import {
 } from '../lib/trainingNotesStore';
 
 type TodayVideos = {
+  dateKey: string;
   plan: VideoPlan;
   urls: Record<string, string>;
 };
@@ -254,6 +255,9 @@ export function TrainingNotesPage() {
     groups: [],
   });
   const [driveTick, setDriveTick] = useState(0);
+  // The board load is async. Until it finishes, `videos` can still be the previous day.
+  // Adopting that board would stamp the wrong clips onto the plan just opened.
+  const dayVideos = videos?.dateKey === viewKey ? videos : null;
   const [downloadNote, setDownloadNote] = useState('');
   const [distributeNote, setDistributeNote] = useState('');
   const [reviewNote, setReviewNote] = useState('');
@@ -307,7 +311,7 @@ export function TrainingNotesPage() {
           }
           created.forEach((url) => URL.revokeObjectURL(url));
           created = fresh;
-          setVideos({ plan: board.plan, urls: next });
+          setVideos({ dateKey: viewKey, plan: board.plan, urls: next });
         })
         .catch(() => {
           if (!cancelled) setVideos(null);
@@ -389,12 +393,12 @@ export function TrainingNotesPage() {
   }, [plan.id, searchParams, setSearchParams]);
 
   useEffect(() => {
-    if (plan.videos || !videos || !planHasContent(plan)) return;
-    const saved = adoptPlanVideos(viewKey, plan.id, planVideoRefsFromVideoPlan(videos.plan), todayKey);
+    if (plan.videos || !dayVideos || !planHasContent(plan)) return;
+    const saved = adoptPlanVideos(viewKey, plan.id, planVideoRefsFromVideoPlan(dayVideos.plan), todayKey);
     if (!saved) return;
     setArchive(loadTrainingArchive(todayKey));
     setPlan((current) => (current.id === saved.id && current.videos === undefined ? saved : current));
-  }, [plan, videos, viewKey, todayKey]);
+  }, [plan, dayVideos, viewKey, todayKey]);
 
   useEffect(() => {
     const flush = () => flushLessonDriveDraft();
@@ -450,8 +454,8 @@ export function TrainingNotesPage() {
     // A plan that has never stored its own videos picks up the day's board once.
     // A plan with an empty list keeps that empty list.
     const stamped =
-      next.videos === undefined && videos
-        ? { ...next, videos: planVideoRefsFromVideoPlan(videos.plan) }
+      next.videos === undefined && dayVideos
+        ? { ...next, videos: planVideoRefsFromVideoPlan(dayVideos.plan) }
         : next;
     const saved = saveDay(todayKey, stamped, todayKey);
     setArchive(saved.archive);
@@ -461,8 +465,8 @@ export function TrainingNotesPage() {
     // A previous day is opened from Class History, which reads the gym Drive folder.
     const media = saved.plan.videos
       ? lessonMediaFromPlanVideos(saved.plan.videos)
-      : videos
-        ? mediaRefsFromVideoPlan(videos.plan)
+      : dayVideos
+        ? mediaRefsFromVideoPlan(dayVideos.plan)
         : [];
     scheduleLessonDriveDraft({
       proSuite: unlimitedPlan,
@@ -523,8 +527,8 @@ export function TrainingNotesPage() {
 
   const addClassPlan = () => {
     if (!editingToday || !planHasContent(plan)) return;
-    if (plan.videos === undefined && videos) {
-      const adopted = adoptPlanVideos(todayKey, plan.id, planVideoRefsFromVideoPlan(videos.plan), todayKey);
+    if (plan.videos === undefined && dayVideos) {
+      const adopted = adoptPlanVideos(todayKey, plan.id, planVideoRefsFromVideoPlan(dayVideos.plan), todayKey);
       if (adopted) {
         setArchive(loadTrainingArchive(todayKey));
       }
@@ -585,7 +589,7 @@ export function TrainingNotesPage() {
   };
 
   const openVideo = (ref: LessonSlotRef) => {
-    const offer = videoOffer(videos, plan.videos, ref);
+    const offer = videoOffer(dayVideos, plan.videos, ref);
     if (!offer.show) return;
     navigate(
       lessonVideoHref({
@@ -649,7 +653,7 @@ export function TrainingNotesPage() {
   };
 
   const sectionMedia = (ref: LessonSlotRef, label: string, tech?: TechniqueBlock) => {
-    const offer = videoOffer(videos, plan.videos, ref);
+    const offer = videoOffer(dayVideos, plan.videos, ref);
     const linked = tech ? matchLessonTree(tech.title, tech.treeId, treeCandidates) : null;
     return (
       <LessonMediaRail
@@ -964,11 +968,11 @@ export function TrainingNotesPage() {
                       className={item.id === plan.id ? 'notes__class-btn notes__class-btn--on' : 'notes__class-btn'}
                       aria-pressed={item.id === plan.id}
                       onClick={() => {
-                        if (plan.videos === undefined && videos && planHasContent(plan)) {
+                        if (plan.videos === undefined && dayVideos && planHasContent(plan)) {
                           const adopted = adoptPlanVideos(
                             viewKey,
                             plan.id,
-                            planVideoRefsFromVideoPlan(videos.plan),
+                            planVideoRefsFromVideoPlan(dayVideos.plan),
                             todayKey,
                           );
                           if (adopted) setArchive(loadTrainingArchive(todayKey));
@@ -1304,8 +1308,8 @@ export function TrainingNotesPage() {
                     plan,
                     media: plan.videos
                       ? lessonMediaFromPlanVideos(plan.videos)
-                      : videos
-                        ? mediaRefsFromVideoPlan(videos.plan)
+                      : dayVideos
+                        ? mediaRefsFromVideoPlan(dayVideos.plan)
                         : [],
                   });
                   setDistributeNote(revision ? DISTRIBUTE_DONE : DISTRIBUTE_LEAD);
