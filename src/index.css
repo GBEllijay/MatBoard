@@ -10748,6 +10748,185 @@ input.roster-pick__name:focus,
   font-weight: 800;
 }
 
+.drive-videos {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.drive-videos__day {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(8, 10, 16, 0.45);
+}
+
+.drive-videos__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 0.4rem 0.7rem;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+
+.drive-videos__toggle--on {
+  background: var(--logo-blue);
+  color: #fff;
+}
+
+.drive-videos__heading,
+.drive-videos__count {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.drive-videos__count {
+  flex: none;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.drive-videos__list {
+  list-style: none;
+  margin: 0;
+  padding: 0.15rem 0.35rem 0.4rem;
+  display: grid;
+  gap: 0.15rem;
+}
+
+.drive-videos__row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  gap: 0.45rem;
+  align-items: center;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0.15rem 0.25rem;
+}
+
+.drive-videos__row img,
+.drive-videos__thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: rgba(8, 10, 16, 0.55);
+  border: 1px solid var(--line);
+}
+
+.drive-videos__copy {
+  min-width: 0;
+}
+
+.drive-videos__label {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.drive-videos__full {
+  margin: 0.15rem 0 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+}
+
+.drive-videos__side {
+  display: grid;
+  justify-items: end;
+  gap: 0.1rem;
+  flex: none;
+}
+
+.drive-videos__meta {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.drive-videos__toggle--on .drive-videos__meta,
+.drive-videos__toggle--on .drive-videos__count {
+  color: #fff;
+}
+
+.drive-videos__rename,
+.drive-videos__more {
+  margin: 0;
+  padding: 0.15rem 0.35rem;
+  border: 0;
+  background: transparent;
+  color: var(--logo-blue);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.drive-videos__toggle--on ~ .drive-videos__list .drive-videos__rename,
+.drive-videos__toggle--on ~ .drive-videos__list .drive-videos__more {
+  color: var(--logo-blue);
+}
+
+.drive-videos__more {
+  min-height: 32px;
+  padding-left: 2.6rem;
+}
+
+.drive-videos__rename-form {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.drive-videos__rename-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  padding: 0.3rem 0.5rem;
+  border-radius: 8px;
+}
+
+.drive-videos__note {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 700;
+}
+
 .notes__distribute {
   display: grid;
   gap: 0.55rem;

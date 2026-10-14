@@ -42,13 +42,14 @@ import {
   lessonClassFileToken,
   lessonDriveFileName,
   upsertCoachPlanFile,
+  driveVideoGroups,
   loadClassHistory,
   loadDriveDayPackage,
+  renameDriveFile,
   CLASS_PHOTO_PROMOTIONS_ROLE,
   CLASS_PHOTOS_FOLDER,
   TRAINING_VIDEOS_FOLDER,
   classPhotoPromotionFileName,
-  trainingVideoFileName,
   uploadClassPhotoPromotions,
   uploadTrainingVideos,
   parseLessonDocument,
@@ -64,7 +65,7 @@ import {
   type DriveLessonDocument,
   type GoogleClientIdStore,
 } from './googleDrive.ts';
-import { emptyPlan } from './trainingNotesStore.ts';
+import { emptyPlan, localDateKey } from './trainingNotesStore.ts';
 
 function memoryStore(initial?: Record<string, string>): GoogleClientIdStore & { values: Map<string, string> } {
   const values = new Map(Object.entries(initial ?? {}));
@@ -317,6 +318,12 @@ type StoredDriveFile = {
   parents: string[];
   appProperties?: Record<string, string>;
   content?: string;
+  description?: string;
+  createdTime?: string;
+  modifiedTime?: string;
+  size?: string;
+  thumbnailLink?: string | null;
+  videoMediaMetadata?: { durationMillis?: string };
 };
 
 function unescapeDriveLiteral(value: string): string {
@@ -379,6 +386,7 @@ function createFakeDrive(prefix: string) {
         mimeType?: string;
         parents?: string[];
         appProperties?: Record<string, string>;
+        description?: string;
       };
       if (session.existingId) {
         const file = files.find((item) => item.id === session.existingId);
@@ -386,6 +394,7 @@ function createFakeDrive(prefix: string) {
         if (metadata.name) file.name = metadata.name;
         if (metadata.mimeType) file.mimeType = metadata.mimeType;
         if (metadata.appProperties) file.appProperties = metadata.appProperties;
+        if (metadata.description) file.description = metadata.description;
         file.content = body;
         return Response.json({ id: file.id });
       }
@@ -395,6 +404,7 @@ function createFakeDrive(prefix: string) {
         mimeType: metadata.mimeType ?? 'application/octet-stream',
         parents: metadata.parents ?? [],
         appProperties: metadata.appProperties,
+        description: metadata.description,
         content: body,
       };
       seq += 1;
@@ -407,14 +417,16 @@ function createFakeDrive(prefix: string) {
         mimeType?: string;
         parents?: string[];
         appProperties?: Record<string, string>;
+        description?: string;
       };
       const existingId = method === 'PATCH' ? decodeURIComponent(url.match(/\/files\/([^/?]+)/)?.[1] ?? '') : '';
       const sessionId = `${prefix}-session-${seq}`;
       seq += 1;
+      const metaText = JSON.stringify(metadata).toLowerCase();
       sessions.set(sessionId, {
         metadata,
         existingId,
-        fail: (metadata.name ?? '').toLowerCase().includes('failvideo'),
+        fail: metaText.includes('failvideo') || metaText.includes('clip-bad'),
       });
       return new Response('{}', {
         status: 200,
@@ -470,6 +482,14 @@ function createFakeDrive(prefix: string) {
       if (!file?.content) return new Response('missing', { status: 404 });
       return new Response(file.content, { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
+    if (method === 'PATCH' && url.includes('/drive/v3/files') && !url.includes('uploadType=')) {
+      const id = decodeURIComponent(url.match(/\/files\/([^/?]+)/)?.[1] ?? '');
+      const file = files.find((item) => item.id === id);
+      if (!file) return new Response('missing', { status: 404 });
+      const metadata = JSON.parse(body || '{}') as { name?: string };
+      if (metadata.name) file.name = metadata.name;
+      return Response.json({ id: file.id, name: file.name });
+    }
     if (method === 'POST' && url.includes('/drive/v3/files')) {
       const metadata = JSON.parse(body) as {
         name?: string;
@@ -499,6 +519,13 @@ function createFakeDrive(prefix: string) {
           name: file.name,
           mimeType: file.mimeType,
           appProperties: file.appProperties,
+          parents: file.parents,
+          description: file.description,
+          createdTime: file.createdTime,
+          modifiedTime: file.modifiedTime,
+          size: file.size,
+          thumbnailLink: file.thumbnailLink,
+          videoMediaMetadata: file.videoMediaMetadata,
         })),
       });
     }
@@ -1149,7 +1176,7 @@ describe('date folder tree', { concurrency: false }, () => {
     );
   });
 
-  test('uploadTrainingVideos writes bytes into training-videos and retries the same file', async () => {
+  test('uploadTrainingVideos writes bytes into Videos/date and retries the same file', async () => {
     const drive = createFakeDrive('upload');
     const marker = 'VIDEO-BYTES-MARKER';
     const progress: number[] = [];
@@ -1171,19 +1198,20 @@ describe('date folder tree', { concurrency: false }, () => {
     });
     assert.equal(first?.failed, false);
     assert.ok(first?.driveFileId);
-    const videosFolder = drive.files.find((file) => file.name === TRAINING_VIDEOS_FOLDER);
+    const videosFolder = drive.files.find((file) => file.name === 'Videos');
+    const dateFolder = drive.files.find((file) => file.name === '2026-09-28 (Mon)');
     assert.ok(videosFolder);
+    assert.equal(dateFolder?.parents[0], videosFolder?.id);
     const stored = drive.files.find((file) => file.id === first?.driveFileId);
-    assert.equal(stored?.parents[0], videosFolder?.id);
+    assert.equal(stored?.parents[0], dateFolder?.id);
     assert.equal(stored?.mimeType, 'video/mp4');
     assert.equal(stored?.content, marker);
     assert.equal(stored?.appProperties?.advantage, 'training-video');
     assert.equal(stored?.appProperties?.localClipId, 'clip-armbar');
     assert.equal(stored?.appProperties?.date, '2026-09-28');
-    assert.equal(
-      stored?.name,
-      trainingVideoFileName('2026-09-28', 'clip-armbar', 'video/mp4', 'Armbar.mp4'),
-    );
+    assert.equal(stored?.description, 'advantage-clip:clip-armbar');
+    assert.equal(stored?.name, '2026-09-28 Clip 1.mp4');
+    assert.doesNotMatch(stored?.name ?? '', /clip-armbar/);
     assert.deepEqual(progress, [0, 1]);
     const init = drive.calls.find((call) => call.url.includes('uploadType=resumable'));
     assert.ok(init);
@@ -1455,4 +1483,130 @@ test('today download copy stays honest when Drive was not checked', () => {
     todayDownloadCopy({ galleryStatus: 'ready', galleryCount: 1, driveStatus: 'ready', driveCount: 2 }),
     /1 video in the shared gallery and 2 in Google Drive/,
   );
+});
+
+test('flat Drive videos group by the date in the filename, then createdTime', () => {
+  const looseCreated = '2026-10-12T12:00:00.000Z';
+  const looseDay = localDateKey(new Date(looseCreated));
+  const days = buildClassHistory({
+    files: [
+      {
+        id: 'raw-1',
+        name: 'advantage-video-2026-10-13-1000015841-0f018a78-abcdef.mp4',
+        mimeType: 'video/mp4',
+        createdTime: '2026-10-14T12:00:00.000Z',
+        size: '18874368',
+      },
+      {
+        id: 'loose-1',
+        name: 'clip.mp4',
+        mimeType: 'video/mp4',
+        createdTime: looseCreated,
+        videoMediaMetadata: { durationMillis: '83000' },
+      },
+      {
+        id: 'titled-1',
+        name: '2026-10-13 GB1 Armbar from guard - clip 3.mp4',
+        mimeType: 'video/mp4',
+        createdTime: '2026-10-13T12:00:00.000Z',
+        thumbnailLink: 'https://lh3.googleusercontent.com/thumb',
+        appProperties: {
+          advantage: 'training-video',
+          date: '2026-10-13',
+          lessonTitle: 'Armbar from guard',
+          classDesignation: 'GB1',
+          localClipId: 'clip-3',
+        },
+      },
+    ],
+    lessons: [],
+  });
+  const groups = driveVideoGroups(days);
+  const tuesday = groups.find((group) => group.dateKey === '2026-10-13');
+  assert.ok(tuesday);
+  assert.equal(tuesday.heading, '2026-10-13 (Tue)');
+  assert.equal(tuesday.videos.length, 2);
+  assert.equal(tuesday.videos.find((video) => video.id === 'raw-1')?.displayLabel.startsWith('Clip '), true);
+  assert.doesNotMatch(tuesday.videos.find((video) => video.id === 'raw-1')?.displayLabel ?? '', /advantage-video/);
+  assert.equal(tuesday.videos.find((video) => video.id === 'raw-1')?.detailLabel, '18 MB');
+  assert.equal(tuesday.videos.find((video) => video.id === 'titled-1')?.shortLabel, 'Armbar from guard');
+  assert.equal(tuesday.videos.find((video) => video.id === 'titled-1')?.thumbnailLink, 'https://lh3.googleusercontent.com/thumb');
+  const loose = groups.find((group) => group.dateKey === looseDay);
+  assert.equal(loose?.videos[0]?.id, 'loose-1');
+  assert.match(loose?.videos[0]?.detailLabel ?? '', /^1:23$/);
+  assert.match(loose?.videos[0]?.displayLabel ?? '', /Clip 1 · /);
+});
+
+test('class history reads Videos date folders and still lists a flat root file', async () => {
+  const drive = createFakeDrive('friendly');
+  drive.seed({
+    id: 'videos-root',
+    name: 'Videos',
+    mimeType: DRIVE_FOLDER_MIME,
+    parents: ['root-friendly'],
+  });
+  drive.seed({
+    id: 'videos-day',
+    name: '2026-10-13 (Tue)',
+    mimeType: DRIVE_FOLDER_MIME,
+    parents: ['videos-root'],
+  });
+  drive.seed({
+    id: 'videos-clip',
+    name: '2026-10-13 GB1 Armbar from guard - clip 3.mp4',
+    mimeType: 'video/mp4',
+    parents: ['videos-day'],
+    createdTime: '2026-10-13T19:15:00.000Z',
+    size: '4096',
+    appProperties: { lessonTitle: 'Armbar from guard', classDesignation: 'GB1', localClipId: 'clip-3' },
+  });
+  drive.seed({
+    id: 'flat-old',
+    name: 'advantage-video-2026-10-12-1000015841-0f018a78-deadbeef.mp4',
+    mimeType: 'video/mp4',
+    parents: ['root-friendly'],
+    createdTime: '2026-11-01T15:00:00.000Z',
+  });
+  const days = await loadClassHistory('token', 'root-friendly', drive.fetcher);
+  assert.deepEqual(driveVideoGroups(days).map((group) => [group.dateKey, group.videos.map((video) => video.id)]), [
+    ['2026-10-13', ['videos-clip']],
+    ['2026-10-12', ['flat-old']],
+  ]);
+  const renamed = await renameDriveFile('token', 'videos-clip', '2026-10-13 GB1 Guard pass - clip 3.mp4', drive.fetcher);
+  assert.equal(renamed.name, '2026-10-13 GB1 Guard pass - clip 3.mp4');
+  assert.equal(
+    drive.files.find((file) => file.id === 'videos-clip')?.appProperties?.localClipId,
+    'clip-3',
+  );
+});
+
+test('a friendly upload uses the lesson title and keeps the clip id out of the name', async () => {
+  const drive = createFakeDrive('named');
+  const [saved] = await uploadTrainingVideos({
+    token: 'token',
+    rootFolderId: 'root-named',
+    dateKey: '2026-10-13',
+    videos: [
+      {
+        localClipId: '0f018a78-clip',
+        name: 'advantage-video-2026-10-13-1000015841-0f018a78-old.mp4',
+        mime: 'video/mp4',
+        bytes: new Blob(['bytes']),
+        section: 'technique',
+        index: 2,
+        classDesignation: 'GB1',
+        lessonTitle: 'Armbar from guard',
+        clipNumber: 3,
+      },
+    ],
+    fetcher: drive.fetcher,
+  });
+  assert.equal(saved?.failed, false);
+  const stored = drive.files.find((file) => file.id === saved?.driveFileId);
+  assert.equal(stored?.name, '2026-10-13 GB1 Armbar from guard - clip 3.mp4');
+  assert.doesNotMatch(stored?.name ?? '', /0f018a78/);
+  assert.equal(stored?.description, 'advantage-clip:0f018a78-clip');
+  assert.equal(drive.files.find((file) => file.name === '2026-10-13 (Tue)')?.parents[0], drive.files.find((file) => file.name === 'Videos')?.id);
+  const pack = await loadDriveDayPackage('token', 'root-named', '2026-10-13', drive.fetcher);
+  assert.deepEqual(pack.videos.map((file) => file.id), [saved?.driveFileId]);
 });
