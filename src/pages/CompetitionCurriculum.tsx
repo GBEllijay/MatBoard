@@ -62,13 +62,18 @@ import { loadTechniqueArchive, type TechniqueTreeArchive } from '../lib/techniqu
 import { resetTrainingSession, setRounds, setWorkMs } from '../lib/trainingStore';
 import { trainingPathWithReturn } from '../lib/timerReturn';
 
-export function CompetitionCurriculumPage() {
+export function CompetitionCurriculumPage({ embedded = false }: { embedded?: boolean }) {
   const navigate = useNavigate();
   const proUnlocked = useProUnlocked();
   const [searchParams] = useSearchParams();
   const unlimitedPlan = proUnlocked && searchParams.get('plan') === UNLIMITED_LESSON_VALUE;
   const parentPath = useSubmenuBack({ unlimited: unlimitedPlan }) ?? COACHING_TOOLS_PATH;
-  const returnPath = unlimitedPlan ? `${CURRICULUM_PATH}?plan=${UNLIMITED_LESSON_VALUE}` : CURRICULUM_PATH;
+  const notesQuery = searchParams.toString();
+  const returnPath = embedded
+    ? `/notes${notesQuery ? `?${notesQuery}` : ''}`
+    : unlimitedPlan
+      ? `${CURRICULUM_PATH}?plan=${UNLIMITED_LESSON_VALUE}`
+      : CURRICULUM_PATH;
   const [boot] = useState(() => {
     const todayKey = localDateKey();
     const archive = loadCurriculumArchive(todayKey);
@@ -300,18 +305,21 @@ export function CompetitionCurriculumPage() {
     return found ? { id: found.id, name: found.name } : null;
   };
 
+  const Shell = embedded ? 'div' : 'main';
   return (
-    <main className="notes">
-      <PlayExitMark
-        to={parentPath}
-        onExit={() => {
-          navigate(parentPath);
-        }}
-      />
+    <Shell className={embedded ? 'curriculum-embed' : 'notes'}>
+      {embedded ? null : (
+        <PlayExitMark
+          to={parentPath}
+          onExit={() => {
+            navigate(parentPath);
+          }}
+        />
+      )}
       <header className="notes__bar">
         <div className="notes__brand">
           <p className="notes__eyebrow">{COACH_LESSON_EYEBROW}</p>
-          <h1>{CURRICULUM_LABEL}</h1>
+          {embedded ? <h2>{CURRICULUM_LABEL}</h2> : <h1>{CURRICULUM_LABEL}</h1>}
         </div>
       </header>
       <div className="notes__plan">
@@ -640,7 +648,7 @@ export function CompetitionCurriculumPage() {
         </p>
         <DriveConnectCard />
       </Sheet>
-    </main>
+    </Shell>
   );
 }
 

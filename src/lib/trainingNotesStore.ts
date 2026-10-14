@@ -6,6 +6,14 @@
  * This store still keeps the lesson text on the phone.
  */
 
+import {
+  planStructureStored,
+  remapTechniqueVideos,
+  sanitizeLessonStructure,
+  type GameBlock,
+  type LessonTemplateId,
+  type PlanBlock,
+} from './lessonTemplates.ts';
 import { asRecord, clampText } from './plainValue.ts';
 import { clampDriveFileId } from './techniqueLogic.ts';
 
@@ -105,6 +113,18 @@ export type TrainingNotesPlan = {
    * until this plan is saved again. An empty list means this plan has no video.
    */
   videos?: PlanVideoRef[];
+  /**
+   * Class template. Absent on plans saved before templates: those open as Adult
+   * and keep the block order already stored in these fields.
+   */
+  template?: LessonTemplateId;
+  /**
+   * Block order for this plan. Absent means the Adult order: intro, warm-up,
+   * each technique, specific training, cool down, closing.
+   */
+  blocks?: PlanBlock[];
+  /** Game blocks. Absent until a Kids template or Add game creates one. */
+  games?: GameBlock[];
 };
 
 /** One calendar day. Several class plans can share the date. */
@@ -269,6 +289,9 @@ export function planHasContent(plan: TrainingNotesPlan): boolean {
     return true;
   }
   if (plan.videos?.some((row) => row.localClipId || row.driveFileId || row.url || row.name.trim())) return true;
+  if (plan.games?.some((game) => game.title.trim() || game.notes.trim() || game.expected.trim() || game.waterBreak)) {
+    return true;
+  }
   return plan.techniques.some(
     (tech) =>
       tech.title.trim() ||
@@ -277,6 +300,11 @@ export function planHasContent(plan: TrainingNotesPlan): boolean {
       tech.waterBreak ||
       Boolean(tech.treeId),
   );
+}
+
+/** Text, a chosen template, or a saved block list. An untouched blank Adult plan stays unsaved. */
+export function planShouldPersist(plan: TrainingNotesPlan): boolean {
+  return planHasContent(plan) || planStructureStored(plan);
 }
 
 function sanitizeTechnique(value: unknown): { block: TechniqueBlock; repaired: boolean } {
@@ -343,22 +371,37 @@ export function sanitizePlan(input: unknown): { plan: TrainingNotesPlan; repaire
   const raw = asRecord(input);
   let repaired = !raw || raw.version !== 1;
   const source = Array.isArray(raw?.techniques) ? raw.techniques : [];
-  if (!raw || !Array.isArray(raw.techniques) || source.length < MIN_TECHNIQUES || source.length > MAX_TECHNIQUES) {
+  const rawHasBlocks = Boolean(raw && Object.prototype.hasOwnProperty.call(raw, 'blocks') && Array.isArray(raw.blocks));
+  if (!raw || !Array.isArray(raw.techniques) || source.length > MAX_TECHNIQUES || (!rawHasBlocks && source.length < MIN_TECHNIQUES)) {
     repaired = true;
   }
-  const techniques = source.slice(0, MAX_TECHNIQUES).map((item) => {
+  let techniques = source.slice(0, MAX_TECHNIQUES).map((item) => {
     const next = sanitizeTechnique(item);
     if (next.repaired) repaired = true;
     return next.block;
   });
-  while (techniques.length < MIN_TECHNIQUES) {
-    techniques.push(createTechnique());
-    repaired = true;
-  }
   if (uniquify(techniques)) repaired = true;
 
-  const videosRead = sanitizePlanVideos(raw && Object.prototype.hasOwnProperty.call(raw, 'videos') ? raw.videos : undefined);
+  const structure = sanitizeLessonStructure(raw, techniques);
+  if (structure.repaired) repaired = true;
+  const techniqueIdsBefore = techniques.map((tech) => tech.id);
+  techniques = structure.techniques;
+  if (!structure.blocks) {
+    while (techniques.length < MIN_TECHNIQUES) {
+      techniques.push(createTechnique());
+      repaired = true;
+    }
+  }
+
+  let videosRead = sanitizePlanVideos(raw && Object.prototype.hasOwnProperty.call(raw, 'videos') ? raw.videos : undefined);
   if (videosRead.repaired) repaired = true;
+  if (videosRead.videos && techniqueIdsBefore.some((id, index) => techniques[index]?.id !== id)) {
+    videosRead = {
+      videos: remapTechniqueVideos(videosRead.videos, techniqueIdsBefore, techniques.map((tech) => tech.id)) ?? [],
+      repaired: true,
+    };
+    repaired = true;
+  }
 
   const idRaw = raw && typeof raw.id === 'string' ? raw.id.trim() : '';
   const id = idRaw ? idRaw.slice(0, 80) : createId('plan');
@@ -414,21 +457,37 @@ export function sanitizePlan(input: unknown): { plan: TrainingNotesPlan; repaire
     closing,
   };
   if (videosRead.videos) plan.videos = videosRead.videos;
+  if (structure.template) plan.template = structure.template;
+  if (structure.blocks) plan.blocks = structure.blocks;
+  if (structure.games) plan.games = structure.games;
   return { repaired, plan };
 }
 
 /** Fresh technique ids so a copied day does not share a later video slot with the source. */
 export function copyPlan(source: TrainingNotesPlan): TrainingNotesPlan {
   const { plan } = sanitizePlan(source);
+  const idMap = new Map<string, string>();
+  const techniques = plan.techniques.map((tech) => {
+    const id = createId('tech');
+    idMap.set(tech.id, id);
+    return { ...tech, id, slotId: createId('slot') };
+  });
+  const games = plan.games?.map((game) => {
+    const id = createId('game');
+    idMap.set(game.id, id);
+    return { ...game, id };
+  });
   const next: TrainingNotesPlan = {
     ...plan,
     id: createId('plan'),
-    techniques: plan.techniques.map((tech) => ({
-      ...tech,
-      id: createId('tech'),
-      slotId: createId('slot'),
-    })),
+    techniques,
   };
+  if (games) next.games = games;
+  if (plan.blocks) {
+    next.blocks = plan.blocks.map((block) =>
+      block.kind === 'technique' || block.kind === 'game' ? { ...block, id: idMap.get(block.id) ?? block.id } : { ...block },
+    );
+  }
   if (plan.videos) next.videos = plan.videos.map((row) => ({ ...row }));
   return next;
 }
@@ -455,7 +514,7 @@ function readDayPlans(value: unknown): { plans: TrainingNotesPlan[]; repaired: b
     for (const item of raw.plans) {
       const next = sanitizePlan(item);
       if (next.repaired) repaired = true;
-      if (!planHasContent(next.plan)) {
+      if (!planShouldPersist(next.plan)) {
         repaired = true;
         continue;
       }
@@ -466,7 +525,7 @@ function readDayPlans(value: unknown): { plans: TrainingNotesPlan[]; repaired: b
   }
   if (raw.version === 1 || Array.isArray(raw.techniques) || typeof raw.coachName === 'string') {
     const { plan } = sanitizePlan(raw);
-    return { plans: planHasContent(plan) ? [plan] : [], repaired: true };
+    return { plans: planShouldPersist(plan) ? [plan] : [], repaired: true };
   }
   return null;
 }
@@ -475,7 +534,7 @@ function pruneDays(days: Record<string, TrainingNotesDay>, todayKey: string): Re
   const next: Record<string, TrainingNotesDay> = {};
   for (const [key, day] of Object.entries(days)) {
     if (!isWithinRetention(key, todayKey)) continue;
-    const plans = day.plans.filter(planHasContent);
+    const plans = day.plans.filter(planShouldPersist);
     if (!plans.length) continue;
     next[key] = plans.length === day.plans.length ? day : { plans };
   }
@@ -613,6 +672,7 @@ export function searchLessonPlans(
         plan.cooldownNote,
         plan.closing,
         ...plan.techniques.flatMap((tech) => [tech.title, tech.notes]),
+        ...(plan.games ?? []).flatMap((game) => [game.title, game.notes]),
       ]
         .join('\n')
         .toLowerCase();
@@ -775,7 +835,7 @@ export function saveDay(
   const { plan: clean } = sanitizePlan(plan);
   const days = { ...loaded.days };
   const existing = days[dateKey]?.plans ?? [];
-  if (planHasContent(clean) && isWithinRetention(dateKey, today)) {
+  if (planShouldPersist(clean) && isWithinRetention(dateKey, today)) {
     const index = existing.findIndex((item) => item.id === clean.id);
     const previous = index >= 0 ? existing[index] : undefined;
     // A text edit that did not mention videos keeps the refs already stored on this plan.

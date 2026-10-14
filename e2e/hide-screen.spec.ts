@@ -229,7 +229,7 @@ test('lesson editor, technique slots, video return, drill timer, and back still 
   const water = page.getByRole('switch', { name: 'Water break after Technique / Drill 1' });
   await water.click();
   await expect(water).toHaveAttribute('aria-checked', 'true');
-  await page.getByRole('button', { name: '+ Add another', exact: true }).click();
+  await page.getByRole('button', { name: 'Add technique', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Technique / Drill 4' })).toBeVisible();
 
   await page.getByRole('radio', { name: 'Black', exact: true }).click();

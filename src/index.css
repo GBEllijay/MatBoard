@@ -11418,6 +11418,45 @@ input.roster-pick__name:focus,
   color: var(--white);
 }
 
+.notes__templates {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+  width: 100%;
+}
+
+.notes__templates .preset {
+  width: 100%;
+  min-width: 0;
+  padding: 0.45rem 0.3rem;
+  line-height: 1.15;
+}
+
+.notes__templates .preset:disabled {
+  opacity: 0.45;
+}
+
+.notes__block-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.notes__block-tools .btn {
+  flex: 1 1 6.5rem;
+  min-height: 48px;
+}
+
+.notes__add-row {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.curriculum-embed {
+  display: grid;
+  gap: 0.8rem;
+}
+
 .notes__add {
   width: 100%;
   min-height: 56px;

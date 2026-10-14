@@ -129,6 +129,19 @@ export function lessonPlanForDrive(plan: TrainingNotesPlan): TrainingNotesPlan {
           })),
         }
       : {}),
+    ...(plan.template ? { template: plan.template } : {}),
+    ...(plan.blocks ? { blocks: plan.blocks.map((block) => ({ ...block })) } : {}),
+    ...(plan.games
+      ? {
+          games: plan.games.map((game) => ({
+            id: game.id,
+            title: game.title,
+            notes: game.notes,
+            expected: game.expected,
+            waterBreak: game.waterBreak,
+          })),
+        }
+      : {}),
   };
 }
 

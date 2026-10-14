@@ -177,11 +177,16 @@ test('corner-only pages have no center logo and back up one page at phone widths
     }
 
     await page.goto('/coach-unlimited');
-    await page.getByRole('link', { name: 'Competition Class Curriculum', exact: true }).click();
+    await expect(page.getByRole('link', { name: 'Competition Class Curriculum', exact: true })).toHaveCount(0);
+    await page.getByRole('link', { name: 'Daily Lesson Plan', exact: true }).click();
+    await page.getByRole('radio', { name: 'Competition class', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Competition Class Curriculum' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveCount(0);
     const curriculumBack = page.getByRole('link', { name: BACK, exact: true });
     await expect(curriculumBack).toHaveAttribute('href', '/coach-unlimited');
+    await page.getByRole('radio', { name: 'Adult class', exact: true }).click();
+    await page.getByRole('group', { name: 'Apply class template' }).getByRole('button', { name: 'Apply template', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Open Daily Training Videos for Warm-up' })).toBeVisible();
     await curriculumBack.click();
     await expect.poll(() => new URL(page.url()).pathname).toBe('/coach-unlimited');
 

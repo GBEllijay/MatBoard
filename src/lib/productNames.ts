@@ -1,4 +1,3 @@
-import { CURRICULUM_LABEL, CURRICULUM_PATH } from './competitionCurriculum.ts';
 import { COMPETITOR_ROSTER_LABEL, TECHNIQUE_TREE_LABEL, TRAINING_NOTES_LABEL } from './coachCopy.ts';
 
 /** User-facing Advantage Pro console name. Keep this exact apostrophe. */
@@ -161,17 +160,13 @@ export function coachingToolsMenu(unlimited: boolean) {
  * Competitor Roster sits under Technique Tree and opens the same list as Competitor Management System.
  * The four brown rails wear 0-3 white stripes, counted from the tip up toward the header's 4.
  * Sunday review and Drive cards stay on the page, under this menu.
+ * Competition Class Curriculum opens from the Daily Lesson Plan template picker.
  */
 export const COACH_UNLIMITED_TOOLS = [
   { title: TRAINING_NOTES_LABEL, to: UNLIMITED_LESSON_PATH, belt: 'brown' as const, stripes: 0 as const },
   { title: 'Daily Training Videos', to: UNLIMITED_VIDEOS_PATH, belt: 'brown' as const, stripes: 1 as const },
   { title: TECHNIQUE_TREE_LABEL, to: UNLIMITED_TREE_PATH, belt: 'brown' as const, stripes: 2 as const },
   { title: COMPETITOR_ROSTER_LABEL, to: UNLIMITED_ROSTER_PATH, belt: 'brown' as const, stripes: 3 as const },
-  {
-    title: CURRICULUM_LABEL,
-    to: `${CURRICULUM_PATH}?plan=${UNLIMITED_LESSON_VALUE}`,
-    belt: 'tournament' as const,
-  },
 ] as const;
 
 /**
