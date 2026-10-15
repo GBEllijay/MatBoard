@@ -79,3 +79,34 @@ export function lessonCoverLogoSrc(gymLogo: string | null | undefined): string {
 export function lessonCoverScheduleKind(template: string | null | undefined): 'week' | 'month' {
   return template === 'monthly' ? 'month' : 'week';
 }
+
+export type LessonCardHidePickerBox = {
+  left: number;
+  width: number;
+  top?: number;
+  bottom?: number;
+};
+
+/**
+ * Place the per-card Logo / Schedule / Black picker on screen.
+ * It stays inside the viewport, including a 390px phone, and opens above
+ * the button when the card is near the bottom so the choices stay visible.
+ */
+export function lessonCardHidePickerBox(input: {
+  button: { top: number; right: number; bottom: number };
+  viewport: { width: number; height: number };
+  pickerHeight?: number;
+}): LessonCardHidePickerBox {
+  const pickerHeight = input.pickerHeight ?? 88;
+  const margin = 8;
+  const width = Math.min(288, Math.max(160, input.viewport.width - margin * 2));
+  const maxLeft = Math.max(margin, input.viewport.width - width - margin);
+  const left = Math.min(Math.max(margin, input.button.right - width), maxLeft);
+  const belowTop = input.button.bottom + 6;
+  const roomBelow = input.viewport.height - margin - belowTop;
+  const roomAbove = input.button.top - margin;
+  if (roomBelow < pickerHeight && roomAbove >= pickerHeight) {
+    return { left, width, bottom: input.viewport.height - input.button.top + 6 };
+  }
+  return { left, width, top: belowTop };
+}

@@ -10512,7 +10512,13 @@ html.lesson-cover-open body {
   overflow: hidden;
 }
 
+.lesson-cover-host {
+  min-width: 0;
+}
+
 .notes-cover {
+  /* The host is hidden while covered. This cover stays visible inside it. */
+  visibility: visible;
   position: fixed;
   inset: 0;
   z-index: 40;
@@ -11301,11 +11307,26 @@ html.lesson-cover-open body {
 
 .notes__section-side {
   display: flex;
+  flex: none;
   flex-wrap: wrap;
   align-items: flex-start;
   justify-content: flex-end;
   gap: 0.45rem 0.65rem;
   margin-left: auto;
+}
+
+.notes__section-head .notes__field-bar {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.notes__card-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  max-width: 100%;
 }
 
 .notes__media {
@@ -11373,6 +11394,95 @@ html.lesson-cover-open body {
   border-style: solid;
   border-width: 9px 0 9px 15px;
   border-color: transparent transparent transparent currentColor;
+}
+
+.notes__card-hide-wrap {
+  position: relative;
+  flex: none;
+}
+
+/* Same footprint as the lesson video button: a 72px gold square, not a full-width bar. */
+.notes__card-hide {
+  width: 72px;
+  height: 72px;
+  min-width: 72px;
+  min-height: 72px;
+  padding: 0.28rem 0.15rem 0.32rem;
+  border-radius: 14px;
+  border: 2px solid var(--gold);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--logo-yellow);
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 0.1rem;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.notes__card-hide-icon {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+
+.notes__card-hide-caption {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.notes__card-hide-modes {
+  position: fixed;
+  z-index: 36;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0.35rem;
+  border-radius: 16px;
+  border: 1px solid rgba(252, 192, 0, 0.45);
+  background: rgba(8, 16, 32, 0.96);
+  box-shadow: var(--shadow);
+}
+
+.notes__card-hide-modes .preset {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0.35rem 0.2rem;
+  font-size: 0.82rem;
+}
+
+@media (max-width: 420px) {
+  .notes__card-actions {
+    gap: 0.35rem;
+  }
+
+  .notes__card-hide,
+  .notes__card-actions .notes__video {
+    width: 64px;
+    height: 64px;
+    min-width: 64px;
+    min-height: 64px;
+    border-radius: 12px;
+  }
+
+  .notes__card-hide {
+    padding: 0.18rem 0.08rem 0.22rem;
+  }
+
+  .notes__card-hide-icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .notes__card-hide-caption {
+    font-size: 0.56rem;
+    letter-spacing: 0.04em;
+  }
 }
 
 .notes__tree {

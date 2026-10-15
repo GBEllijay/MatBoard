@@ -8,6 +8,7 @@ import {
   LESSON_COVER_MODES,
   LESSON_SCREEN_COVER_KEY,
   isLessonCoverMode,
+  lessonCardHidePickerBox,
   lessonCoverLogoSrc,
   lessonCoverScheduleKind,
   readLessonCoverMode,
@@ -97,11 +98,15 @@ test('Daily Lesson Plan keeps the corner back and adds Hide screen without a cen
   const cover = readFileSync(new URL('../components/LessonScreenCover.tsx', import.meta.url), 'utf8');
   assert.match(page, /PlayExitMark/);
   assert.doesNotMatch(page, /TierHomeMark|SubmenuMarks/);
+  assert.match(page, /LessonCoverProvider/);
   assert.match(page, /LessonScreenHide/);
   assert.match(page, /lessonVideoHref/);
   assert.match(page, /notes-intro/);
   assert.match(page, /Technique \/ Drill/);
+  const cardHides = page.match(/<CardHideScreen\b/g) ?? [];
+  assert.ok(cardHides.length >= 5);
   assert.match(cover, /Hide screen/);
+  assert.match(cover, /Hide screen for \$\{label\}/);
   assert.match(cover, /Show screen/);
   assert.match(cover, /requestElementFullscreen/);
   assert.match(cover, /LESSON_COVER_HOME_HINT/);
@@ -110,5 +115,35 @@ test('Daily Lesson Plan keeps the corner back and adds Hide screen without a cen
   assert.match(cover, /ScheduleMonthBoard/);
   assert.match(cover, /lessonCoverLogoSrc/);
   assert.match(cover, /lessonCoverScheduleKind/);
+  assert.match(cover, /lessonCardHidePickerBox/);
+  assert.match(cover, /window\.scrollTo\(0, saved\.y\)/);
   assert.doesNotMatch(cover, /tier-home|aria-label="Home"/);
+});
+
+test('the card hide picker stays inside a 390px phone and opens above a low card', () => {
+  const phone = { width: 390, height: 844 };
+  const low = lessonCardHidePickerBox({
+    button: { top: 760, right: 350, bottom: 832 },
+    viewport: phone,
+  });
+  assert.ok(low.left >= 8);
+  assert.ok(low.left + low.width <= phone.width - 8);
+  assert.equal(low.top, undefined);
+  assert.equal(low.bottom, phone.height - 760 + 6);
+
+  const high = lessonCardHidePickerBox({
+    button: { top: 120, right: 350, bottom: 192 },
+    viewport: phone,
+  });
+  assert.equal(high.top, 198);
+  assert.equal(high.bottom, undefined);
+  assert.ok(high.left + high.width <= phone.width - 8);
+
+  const cramped = lessonCardHidePickerBox({
+    button: { top: 40, right: 70, bottom: 112 },
+    viewport: { width: 320, height: 640 },
+  });
+  assert.ok(cramped.left >= 8);
+  assert.ok(cramped.left + cramped.width <= 312);
+  assert.equal(cramped.top, 118);
 });

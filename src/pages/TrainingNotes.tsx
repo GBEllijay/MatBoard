@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import { ClassPhotoPromotions } from '../components/ClassPhotoPromotions';
 import { DriveVideoFolders } from '../components/DriveVideoFolders';
 import { CompetitionCurriculumPage } from './CompetitionCurriculum';
-import { LessonScreenHide } from '../components/LessonScreenCover';
+import { CardHideScreen, LessonCoverProvider, LessonScreenHide } from '../components/LessonScreenCover';
 import { DriveHandoffCheck, DriveHandoffGuide, useDriveConnected } from '../components/DriveHandoffGuide';
 import { LessonVersionHistory } from '../components/LessonVersionHistory';
 import { PlanDateNav } from '../components/PlanDateNav';
@@ -689,6 +689,7 @@ export function TrainingNotesPage() {
           navigate(exitPath);
         }}
       />
+      <LessonCoverProvider>
       <header className="notes__bar">
         <div className="notes__brand">
           <p className="notes__eyebrow">{unlimitedPlan ? INSTRUCTOR_COACH_ENTRY : COACH_LESSON_EYEBROW}</p>
@@ -1088,16 +1089,23 @@ export function TrainingNotesPage() {
           return (
             <div key={key} className="notes__block">
               {block.kind === 'intro' ? (
-                <section className="notes__card">
+                <section className="notes__card" id="lesson-block-intro" data-lesson-block="Intro">
                   <div className="notes__field">
-                    <div className="notes__field-bar">
-                      <label htmlFor="notes-intro">Intro</label>
-                      <ExpectedTime
-                        id="notes-intro-time"
-                        value={plan.introExpected}
-                        readOnly={!editingToday}
-                        onChange={(introExpected) => commit({ ...plan, introExpected })}
-                      />
+                    <div className="notes__section-head">
+                      <div className="notes__field-bar">
+                        <label htmlFor="notes-intro">Intro</label>
+                        <ExpectedTime
+                          id="notes-intro-time"
+                          value={plan.introExpected}
+                          readOnly={!editingToday}
+                          onChange={(introExpected) => commit({ ...plan, introExpected })}
+                        />
+                      </div>
+                      <div className="notes__section-side">
+                        <div className="notes__card-actions">
+                          <CardHideScreen label="Intro" />
+                        </div>
+                      </div>
                     </div>
                     <textarea
                       id="notes-intro"
@@ -1174,9 +1182,16 @@ export function TrainingNotesPage() {
                 />
               ) : null}
               {block.kind === 'closing' ? (
-                <section className="notes__card">
-                  <label className="notes__field" htmlFor="notes-closing">
-                    Closing
+                <section className="notes__card" id="lesson-block-closing" data-lesson-block="Closing">
+                  <div className="notes__field">
+                    <div className="notes__section-head">
+                      <label htmlFor="notes-closing">Closing</label>
+                      <div className="notes__section-side">
+                        <div className="notes__card-actions">
+                          <CardHideScreen label="Closing" />
+                        </div>
+                      </div>
+                    </div>
                     <textarea
                       id="notes-closing"
                       value={plan.closing}
@@ -1185,7 +1200,7 @@ export function TrainingNotesPage() {
                       readOnly={!editingToday}
                       onChange={(event) => commit({ ...plan, closing: event.target.value })}
                     />
-                  </label>
+                  </div>
                 </section>
               ) : null}
               {editingToday ? (
@@ -1330,6 +1345,7 @@ export function TrainingNotesPage() {
         )}
       </div>
       )}
+      </LessonCoverProvider>
     </main>
   );
 }
@@ -1385,10 +1401,15 @@ function NoteSection({
   media?: ReactNode;
 }) {
   return (
-    <section className="notes__card" aria-labelledby={`${id}-title`}>
+    <section className="notes__card" id={`${id}-card`} data-lesson-block={title} aria-labelledby={`${id}-title`}>
       <div className="notes__section-head">
         <h2 id={`${id}-title`}>{title}</h2>
-        {media ? <div className="notes__section-side">{media}</div> : null}
+        <div className="notes__section-side">
+          <div className="notes__card-actions">
+            <CardHideScreen label={title} />
+            {media}
+          </div>
+        </div>
       </div>
       <div className="notes__field-bar">
         <label className="notes__kicker" htmlFor={id}>
@@ -1432,10 +1453,20 @@ function TechniqueBlockView({
   const notesId = `notes-tech-notes-${tech.id}`;
   return (
     <div className="notes__block">
-      <section className="notes__card" aria-labelledby={`notes-tech-heading-${tech.id}`}>
+      <section
+        className="notes__card"
+        id={`lesson-block-${tech.id}`}
+        data-lesson-block={`Technique / Drill ${number}`}
+        aria-labelledby={`notes-tech-heading-${tech.id}`}
+      >
         <div className="notes__section-head">
           <h2 id={`notes-tech-heading-${tech.id}`}>Technique / Drill {number}</h2>
-          <div className="notes__section-side">{media}</div>
+          <div className="notes__section-side">
+            <div className="notes__card-actions">
+              <CardHideScreen label={`Technique / Drill ${number}`} />
+              {media}
+            </div>
+          </div>
         </div>
         <label className="notes__field" htmlFor={titleId}>
           Title
@@ -1503,8 +1534,20 @@ function GameBlockView({
   const notesId = `notes-game-notes-${game.id}`;
   return (
     <div className="notes__block">
-      <section className="notes__card" aria-labelledby={`notes-game-heading-${game.id}`}>
-        <h2 id={`notes-game-heading-${game.id}`}>{heading}</h2>
+      <section
+        className="notes__card"
+        id={`lesson-block-${game.id}`}
+        data-lesson-block={heading}
+        aria-labelledby={`notes-game-heading-${game.id}`}
+      >
+        <div className="notes__section-head">
+          <h2 id={`notes-game-heading-${game.id}`}>{heading}</h2>
+          <div className="notes__section-side">
+            <div className="notes__card-actions">
+              <CardHideScreen label={heading} />
+            </div>
+          </div>
+        </div>
         <label className="notes__field" htmlFor={titleId}>
           Title
           <input
