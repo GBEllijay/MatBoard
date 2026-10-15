@@ -295,7 +295,7 @@ export function searchJournal(journal: readonly JournalEntry[], query: string): 
 export function searchJournalClips(clips: readonly JournalClip[], query: string): JournalClip[] {
   const needle = query.trim().toLowerCase();
   if (!needle) return [...clips];
-  return clips.filter((clip) => `${clip.description}\n${clip.url}`.toLowerCase().includes(needle));
+  return clips.filter((clip) => `${clip.description}\n${clip.note}\n${clip.url}`.toLowerCase().includes(needle));
 }
 
 export function exportProgressCsv(packet: ProgressPacket): string {
@@ -500,6 +500,7 @@ function mergeClips(report: StudentProgressReport, incoming: StudentProgressRepo
       `Clip ${clip.id} note was kept.`,
       conflicts,
     );
+    current.note = preferText(current.note ?? '', clip.note ?? '', `Clip ${clip.id} text was kept.`, conflicts);
     current.updatedAt = Math.max(current.updatedAt, clip.updatedAt);
   }
 }
@@ -825,12 +826,13 @@ function readClip(value: unknown, index: number, errors: string[]): JournalClip 
   const label = `Clip ${index + 1}`;
   if (!record) {
     errors.push(`${label} must be an object.`);
-    return { id: '', url: '', description: '', createdAt: 0, updatedAt: 0 };
+    return { id: '', url: '', description: '', note: '', createdAt: 0, updatedAt: 0 };
   }
   return {
     id: readId(record.id, `${label} id`, errors),
     url: readHttpUrl(record.url, `${label} link`, errors),
     description: readString(record.description, `${label} note`, PROGRESS_NOTE_MAX, errors),
+    note: readString(record.note, `${label} text`, PROGRESS_NOTE_MAX, errors),
     createdAt: readTime(record.createdAt, `${label} createdAt`, errors),
     updatedAt: readTime(record.updatedAt, `${label} updatedAt`, errors),
   };
@@ -1648,7 +1650,7 @@ function writeReportRows(lines: string[], packet: StudentProgressReport): void {
       clip.description,
       '',
       '',
-      clip.description,
+      clip.note,
       clip.url,
       '',
       '',

@@ -13,6 +13,7 @@ import {
   addJournalEntry,
   deleteJournalClip,
   searchStudentClips,
+  setClipNote,
   updateJournalClip,
   blankStudentReport,
   decodeJournalBody,
@@ -222,7 +223,7 @@ test('a journal clip can be added, found by description or url, saved, and delet
   let report = blankStudentReport(10);
   assert.equal('clips' in report, false);
   assert.throws(() => addJournalClip(report, 'notaurl', 'armbar', 11), /http or https/);
-  assert.throws(() => addJournalClip(report, 'https://youtu.be/abc', '   ', 11), /short note/);
+  assert.throws(() => addJournalClip(report, 'https://youtu.be/abc', '   ', 11), /technique or drill/);
   report = addJournalClip(report, 'https://www.youtube.com/watch?v=armbar', 'Armbar from closed guard', 11);
   report = addJournalClip(report, 'https://www.instagram.com/reel/kneeslice', 'Knee slice pass', 12);
   assert.deepEqual(searchStudentClips(report, 'closed guard').map((clip) => clip.description), ['Armbar from closed guard']);
@@ -231,6 +232,12 @@ test('a journal clip can be added, found by description or url, saved, and delet
   report = updateJournalClip(report, armbarId, 'https://youtu.be/armbar-2', 'Armbar finish', 13);
   assert.equal(report.clips?.[0].url, 'https://youtu.be/armbar-2');
   assert.equal(report.clips?.[0].description, 'Armbar finish');
+  assert.equal(report.clips?.[0].note, '');
+  report = setClipNote(report, armbarId, 'long grip', 14);
+  assert.equal(report.clips?.[0].note, 'long grip');
+  assert.deepEqual(searchStudentClips(report, 'long grip').map((clip) => clip.id), [armbarId]);
+  report = updateJournalClip(report, armbarId, 'https://youtu.be/armbar-2', 'Armbar finish', 15);
+  assert.equal(report.clips?.[0].note, 'long grip');
   assert.equal(report.clips?.[0].createdAt, 11);
   const saved = saveStudentReport(storage, report);
   const loaded = loadStudentReport(storage);

@@ -217,13 +217,15 @@ export type JournalEntry = {
 };
 
 /**
- * A link the student saved on the journal page.
- * Absent on older files. An empty list means this file has a clipboard and it is empty.
+ * A Video Library link. Older files stored these as journal clips.
+ * Absent on older files. An empty list means the library is present and empty.
+ * `note` is the free-text field under the link. Missing on older clips, read as empty.
  */
 export type JournalClip = {
   id: string;
   url: string;
   description: string;
+  note: string;
   createdAt: number;
   updatedAt: number;
 };

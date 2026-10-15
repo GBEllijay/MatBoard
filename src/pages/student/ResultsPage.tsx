@@ -123,7 +123,7 @@ function ResultCard({
   const [confirming, setConfirming] = useState(false);
 
   return (
-    <li className="ink tournament-card">
+    <li id={result.id} className="ink tournament-card">
       <strong>{result.tournamentName}</strong>
       {result.division ? <span>{result.division}</span> : null}
       <ul className="comp-goals" aria-label={`Matches for ${result.tournamentName}`}>

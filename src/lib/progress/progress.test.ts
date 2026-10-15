@@ -213,6 +213,7 @@ test('clips are optional and an older file without them still imports', () => {
         id: 'clip-armbar',
         url: 'https://www.youtube.com/watch?v=armbar',
         description: 'Armbar from closed guard',
+        note: '',
         createdAt: 15,
         updatedAt: 15,
       },
@@ -220,6 +221,7 @@ test('clips are optional and an older file without them still imports', () => {
         id: 'clip-empty-list-friend',
         url: 'https://www.instagram.com/reel/pass',
         description: 'Knee slice pass',
+        note: '',
         createdAt: 16,
         updatedAt: 16,
       },
@@ -228,7 +230,10 @@ test('clips are optional and an older file without them still imports', () => {
   const roundTrip = parseProgressPacket(exportProgressPacket(withClips));
   assert.equal(roundTrip.ok, true);
   if (!roundTrip.ok || roundTrip.value.kind !== 'student-progress-report') return;
-  assert.deepEqual(roundTrip.value.clips, withClips.clips);
+  assert.deepEqual(
+    roundTrip.value.clips,
+    withClips.clips.map((clip) => ({ ...clip, note: '' })),
+  );
   assert.deepEqual(
     searchJournalClips(roundTrip.value.clips ?? [], 'closed guard').map((clip) => clip.id),
     ['clip-armbar'],

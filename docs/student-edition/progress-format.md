@@ -85,11 +85,11 @@ The standing A/B/C game lives once, on `competition.games`. Each letter has `tec
 
 ### JournalClip
 
-Optional on a student progress report. Older files omit `clips`, and import leaves them that way. A present `clips` array, including an empty one, is the clipboard.
+Optional on a student progress report. The student edits these on the Video Library page, not on the daily journal. Older files omit `clips`, and import leaves them that way. A present `clips` array, including an empty one, is the library. A clip saved before the note field existed imports with an empty note.
 
-Each clip has a stable id, an `http` or `https` URL, a short `description` of what the link is for or what to train, and `createdAt` / `updatedAt` in milliseconds. The description is at most 500 characters. The URL is at most 2000 characters. Any http(s) link is allowed. YouTube and Instagram are the usual ones, and the file does not limit the host. A `data:` URL or any other scheme is refused.
+Each clip has a stable id, an `http` or `https` URL, a `description` that titles the link (the technique or drill), an optional free-text `note` under that link, and `createdAt` / `updatedAt` in milliseconds. The description and the note are each at most 500 characters. The URL is at most 2000 characters. Any http(s) link is allowed. YouTube, Instagram, and Facebook are usual ones, and the file does not limit the host. A `data:` URL or any other scheme is refused. Opening the link is a normal new browser tab. There is no app handoff.
 
-Search matches the description and the URL. Send to coach includes `clips` in the JSON only when the field is present on the report. The CSV adds a `Clip` sheet row for each saved clip (name and note are the description, body is the URL) and omits that sheet when the field is absent.
+Search matches the description, the note, and the URL. Send to coach includes `clips` in the JSON only when the field is present on the report. The CSV adds a `Clip` sheet row for each saved clip (Name is the description, Note is the free-text field, Body is the URL) and omits that sheet when the field is absent.
 
 ### CalendarEvent
 
@@ -167,7 +167,7 @@ Filter the Sheet column:
 | Checklist | One fundamentals line, including a line the student added |
 | Journal | One original card. Technique names are separated with `; `. Body lists each saved technique as `Technique drilled #N: name` |
 | Amendment | One later note. Parent id is the journal card id |
-| Clip | One saved link, only when the report includes `clips`. Name and Note are the description. Body is the URL |
+| Clip | One Video Library link, only when the report includes `clips`. Name is the technique or drill. Note is the free-text field. Body is the URL |
 | Calendar | One day |
 | Game | One standing A, B, or C game that has techniques or notes. Game is `a`, `b`, or `c`. Technique names are the sequences. Note is the game notes. Omitted when that letter is blank |
 | Tournament | One tournament. Date is the event day. Learned on is the registration deadline. Category is the division. Note is the location. Body is the link. Kind is `entered` or `considering`. Toward is the target weight and unit when set |

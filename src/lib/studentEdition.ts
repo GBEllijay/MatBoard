@@ -329,7 +329,7 @@ function clipDraftError(url: string, description: string): string {
     return 'Use an http or https link.';
   }
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return 'Use an http or https link.';
-  if (!note) return 'Add a short note about what this clip is for.';
+  if (!note) return 'Add the technique or drill.';
   if (note.length > PROGRESS_NOTE_MAX) return `That note is longer than ${PROGRESS_NOTE_MAX} characters.`;
   return '';
 }
@@ -347,6 +347,7 @@ export function addJournalClip(
     id: newId('clip', now),
     url: url.trim(),
     description: description.trim(),
+    note: '',
     createdAt: now,
     updatedAt: now,
   };
@@ -367,8 +368,26 @@ export function updateJournalClip(
     ...report,
     updatedAt: now,
     clips: report.clips.map((clip) =>
-      clip.id === id ? { ...clip, url: url.trim(), description: description.trim(), updatedAt: now } : clip,
+      clip.id === id
+        ? { ...clip, url: url.trim(), description: description.trim(), note: clip.note ?? '', updatedAt: now }
+        : clip,
     ),
+  };
+}
+
+export function setClipNote(
+  report: StudentProgressReport,
+  id: string,
+  note: string,
+  now = Date.now(),
+): StudentProgressReport {
+  const text = note.slice(0, PROGRESS_NOTE_MAX);
+  const current = report.clips?.find((clip) => clip.id === id);
+  if (!current || (current.note ?? '') === text) return report;
+  return {
+    ...report,
+    updatedAt: now,
+    clips: report.clips?.map((clip) => (clip.id === id ? { ...clip, note: text, updatedAt: now } : clip)),
   };
 }
 
