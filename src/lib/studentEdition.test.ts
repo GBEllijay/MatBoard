@@ -127,6 +127,73 @@ test('a saved journal card stays in the progress file and search finds the techn
   assert.equal(decodeJournalBody(saved.journal[0].body).partners, 'Alex');
 });
 
+test('a new card keeps every drilled technique, and an older card stays the length it was saved', () => {
+  const report = addJournalEntry(
+    blankStudentReport(10),
+    {
+      date: '2026-10-11',
+      classKind: 'gi',
+      gameTag: 'a',
+      techniques: [
+        { id: '', name: 'Scissor sweep' },
+        { id: '', name: '   ' },
+        { id: 'sweep.hip-bump', name: 'Hip bump sweep' },
+        { id: '', name: 'Armbar' },
+      ],
+      partners: '',
+      drills: '',
+      rolls: '',
+      notes: 'grip the collar deeper',
+    },
+    10,
+  );
+  const names = report.journal[0].techniqueRefs.map((item) => item.name);
+  assert.deepEqual(names, ['Scissor sweep', 'Hip bump sweep', 'Armbar']);
+  assert.match(report.journal[0].body, /Technique drilled #1: Scissor sweep/);
+  assert.match(report.journal[0].body, /Technique drilled #2: Hip bump sweep/);
+  assert.match(report.journal[0].body, /Technique drilled #3: Armbar/);
+  assert.match(report.journal[0].body, /Techniques: Scissor sweep; Hip bump sweep; Armbar/);
+  assert.equal(searchStudentJournal(report, 'technique drilled #2').length, 1);
+  assert.equal(searchStudentJournal(report, 'hip bump').length, 1);
+  assert.equal(viewJournalEntry(report.journal[0]).techniques.length, 3);
+
+  const older = addJournalEntry(
+    blankStudentReport(10),
+    {
+      date: '2026-10-11',
+      classKind: 'gi',
+      gameTag: 'a',
+      techniques: [{ id: 'sweep.scissor', name: 'Scissor sweep' }],
+      partners: '',
+      drills: '',
+      rolls: '',
+      notes: '',
+    },
+    11,
+  );
+  older.journal[0].body = 'Class: Gi\nTechniques: Scissor sweep\nNotes:\n';
+  assert.equal(viewJournalEntry(older.journal[0]).techniques.length, 1);
+  assert.equal(viewJournalEntry(older.journal[0]).techniques[0].name, 'Scissor sweep');
+  assert.equal(searchStudentJournal(older, 'technique drilled #1').length, 1);
+
+  const overflow = addJournalEntry(
+    blankStudentReport(10),
+    {
+      date: '2026-10-11',
+      classKind: 'gi',
+      gameTag: 'c',
+      techniques: Array.from({ length: 14 }, (_, index) => ({ id: '', name: `Move ${index + 1}` })),
+      partners: '',
+      drills: '',
+      rolls: '',
+      notes: '',
+    },
+    12,
+  );
+  assert.equal(overflow.journal[0].techniqueRefs.length, 12);
+  assert.equal(overflow.journal[0].techniqueRefs[11].name, 'Move 12');
+});
+
 test('a journal clip can be added, found by description or url, saved, and deleted', () => {
   const storage = memoryStorage();
   let report = blankStudentReport(10);

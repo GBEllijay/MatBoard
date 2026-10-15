@@ -207,8 +207,7 @@
 
 .student-top,
 .student-split,
-.student-stack,
-.student-notes-row {
+.student-stack {
   display: grid;
   gap: 0.8rem;
 }
@@ -328,13 +327,6 @@
 
 .ink-btn--wide {
   border-radius: 999px;
-}
-
-.student-belt {
-  width: 7.2rem;
-  height: auto;
-  justify-self: end;
-  color: var(--ink);
 }
 
 .student-cover {
@@ -724,10 +716,21 @@ button.student-book .student-mark__press {
   background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 27px, var(--line) 28px);
 }
 
-.student-picker h2 {
-  margin: 0.8rem 0 0.25rem;
-  font-size: 1.35rem;
-  font-weight: 400;
+.student-picker h2,
+.student-picker__category {
+  margin: 1.05rem 0 0.35rem;
+  font-family: inherit;
+  font-size: 1.85rem;
+  font-weight: 700;
+  font-synthesis: weight;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+  text-decoration-line: underline;
+  text-decoration-color: var(--ink);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 0.42rem;
+  -webkit-text-stroke: 0.55px var(--ink);
+  paint-order: stroke fill;
 }
 
 .student-picker__item {
@@ -1188,11 +1191,6 @@ button.student-book .student-mark__press {
   .student-split {
     grid-template-columns: 1.15fr 0.85fr;
     align-items: start;
-  }
-
-  .student-notes-row {
-    grid-template-columns: 1fr auto;
-    align-items: end;
   }
 
   .student-sheet {

@@ -38,34 +38,6 @@ export function StudentMarks() {
   return <SubmenuMarks to={back} homeTo={home} />;
 }
 
-export function BeltDoodle() {
-  return (
-    <svg className="student-belt" viewBox="0 0 140 70" aria-hidden="true">
-      <path
-        d="M8 36c18-16 28-16 40-4 6 6 8 8 14 2 8-8 14-10 22-4 10 8 8 16-2 18-8 2-12-2-16-8"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="3"
-        strokeLinecap="round"
-      />
-      <path
-        d="M78 28c10 2 22 10 34 8 8-1 16 4 18 10"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="3"
-        strokeLinecap="round"
-      />
-      <path
-        d="M62 40c8 10 18 14 28 8 4-2 6-8 2-12-6-6-16-2-22 6"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="3"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
 export function LeatherHeader({ title = 'Jiu-Jitsu Journal' }: { title?: string }) {
   return (
     <header className="student-leather">

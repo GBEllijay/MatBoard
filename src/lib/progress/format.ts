@@ -314,8 +314,16 @@ export function packetCarriesBytes(value: unknown): boolean {
   return false;
 }
 
+/** Label on a journal technique row, the saved card, and search. */
+export function techniqueDrilledLabel(index: number): string {
+  return `Technique drilled #${index + 1}`;
+}
+
 function journalHaystack(entry: JournalEntry): string {
-  return [entry.body, ...entry.amendments.map((item) => item.body), ...entry.techniqueRefs.map((item) => item.name)]
+  const drilled = entry.techniqueRefs
+    .filter((item) => item.name.trim())
+    .map((item, index) => `${techniqueDrilledLabel(index)}: ${item.name}`);
+  return [entry.body, ...drilled, ...entry.amendments.map((item) => item.body), ...entry.techniqueRefs.map((item) => item.name)]
     .join('\n')
     .toLowerCase();
 }

@@ -66,7 +66,15 @@ function notesFromJournalBody(body: string): string {
   const lines = body.split('\n');
   const notesAt = lines.findIndex((row) => row === 'Notes:' || row.startsWith('Notes:'));
   if (notesAt >= 0) return lines.slice(notesAt + 1).join('\n').trim();
-  if (lines.some((row) => row.startsWith('Class:') || row.startsWith('Techniques:') || row.startsWith('Training partners:'))) {
+  if (
+    lines.some(
+      (row) =>
+        row.startsWith('Class:') ||
+        row.startsWith('Techniques:') ||
+        row.startsWith('Technique drilled #') ||
+        row.startsWith('Training partners:'),
+    )
+  ) {
     return '';
   }
   return body.trim();
@@ -75,6 +83,12 @@ function notesFromJournalBody(body: string): string {
 function techniquesFromEntry(entry: JournalEntry): string {
   const names = entry.techniqueRefs.map((ref) => ref.name.trim()).filter(Boolean);
   if (names.length) return names.join('; ');
+  const drilled = entry.body
+    .split('\n')
+    .filter((row) => row.startsWith('Technique drilled #'))
+    .map((row) => row.replace(/^Technique drilled #\d+:\s*/, '').trim())
+    .filter(Boolean);
+  if (drilled.length) return drilled.join('; ');
   const line = entry.body.split('\n').find((row) => row.startsWith('Techniques:'));
   return line ? line.slice('Techniques:'.length).trim() : '';
 }

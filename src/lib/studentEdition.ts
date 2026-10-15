@@ -6,7 +6,7 @@
 import { FUNDAMENTALS_CATALOG } from './progress/catalog.ts';
 import { emptyCompetition, matchingGameTags } from './progress/competition.ts';
 import { isStudentEditionUnlocked } from './studentUnlock.ts';
-import { exportProgressPacket, parseProgressPacket, searchJournal, searchJournalClips } from './progress/format.ts';
+import { exportProgressPacket, parseProgressPacket, searchJournal, searchJournalClips, techniqueDrilledLabel } from './progress/format.ts';
 import {
   PROGRESS_CLIP_URL_MAX,
   PROGRESS_CLIPS_MAX,
@@ -21,6 +21,14 @@ import {
 } from './progress/types.ts';
 
 export const STUDENT_EDITION_STORAGE_KEY = 'matboard.studentEdition.v1';
+
+/** Blank technique rows on a new journal page. A saved card keeps the rows it stored. */
+export const JOURNAL_TECHNIQUE_ROWS = 3;
+
+/** Filled techniques a new card will keep. The progress file accepts up to 20. */
+export const JOURNAL_TECHNIQUE_MAX = 12;
+
+export { techniqueDrilledLabel };
 
 /** Must match the server product metadata for Student Edition (`API_PRODUCT_STUDENT`). */
 export const STUDENT_PRODUCT_ID = 'advantage-student';
@@ -174,10 +182,11 @@ export function classLabel(kind: ClassKind): string {
 }
 
 export function encodeJournalBody(draft: Pick<JournalDraft, 'classKind' | 'techniques' | 'partners' | 'drills' | 'rolls' | 'notes'>): string {
-  const techniques = draft.techniques.map((item) => item.name.trim()).filter(Boolean).join('; ');
+  const techniques = draft.techniques.map((item) => item.name.trim()).filter(Boolean);
   return [
     `Class: ${classLabel(draft.classKind)}`,
-    `Techniques: ${techniques}`,
+    ...techniques.map((name, index) => `${techniqueDrilledLabel(index)}: ${name}`),
+    `Techniques: ${techniques.join('; ')}`,
     `Training partners: ${draft.partners.trim()}`,
     `Drills: ${draft.drills.trim()}`,
     `Rolls: ${draft.rolls.trim()}`,
@@ -245,7 +254,7 @@ export function createJournalEntry(draft: JournalDraft, now = Date.now()): Journ
       name: item.name.trim(),
     }))
     .filter((item) => item.name)
-    .slice(0, 2);
+    .slice(0, JOURNAL_TECHNIQUE_MAX);
   return {
     id: newId('card', now),
     date: draft.date,

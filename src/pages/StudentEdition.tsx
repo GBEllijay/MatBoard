@@ -14,7 +14,7 @@ import { isIsoDate } from '../lib/studentTools';
 import { BeltPage } from './student/BeltPage';
 import { CalendarDayPage, CalendarPage } from './student/CalendarPages';
 import { CompetitorPage } from './student/CompetitorPage';
-import { BeltDoodle, LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './student/chrome';
+import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './student/chrome';
 import { applyGameDrafts, StandingGames } from './student/StandingGames';
 import { SharePage } from './student/SharePage';
 import {
@@ -29,10 +29,13 @@ import {
   renameFundamental,
   restoreStarterFundamentals,
   searchStudentClips,
+  JOURNAL_TECHNIQUE_MAX,
+  JOURNAL_TECHNIQUE_ROWS,
   searchStudentJournal,
   setFundamentalLearned,
   setFundamentalNote,
   studentEditionOpen,
+  techniqueDrilledLabel,
   todayIso,
   updateJournalClip,
   viewJournalEntry,
@@ -48,6 +51,10 @@ const GAMES: { tag: GameTag; letter: string }[] = [
   { tag: 'b', letter: 'B' },
   { tag: 'c', letter: 'C' },
 ];
+
+function blankTechniqueRows(count: number): { id: string; name: string }[] {
+  return Array.from({ length: count }, () => ({ id: '', name: '' }));
+}
 
 export function StudentEditionPage() {
   const [params] = useSearchParams();
@@ -145,21 +152,18 @@ function JournalToday() {
   const [date, setDate] = useState(isIsoDate(requested) ? requested : todayIso());
   const [classKind, setClassKind] = useState<ClassKind>('');
   const [gameTag, setGameTag] = useState<GameTag | ''>('');
-  const [techniques, setTechniques] = useState([
-    { id: '', name: '' },
-    { id: '', name: '' },
-  ]);
+  const [techniques, setTechniques] = useState(() => blankTechniqueRows(JOURNAL_TECHNIQUE_ROWS));
   const [partners, setPartners] = useState('');
   const [drills, setDrills] = useState('');
   const [rolls, setRolls] = useState('');
   const [notes, setNotes] = useState('');
-  const [picker, setPicker] = useState<0 | 1 | null>(null);
+  const [picker, setPicker] = useState<number | null>(null);
   const [error, setError] = useState('');
   const gameDrafts = useRef<Record<GameTag, CompetitionGame>>(
     report.competition?.games ?? { a: { techniques: '', notes: '' }, b: { techniques: '', notes: '' }, c: { techniques: '', notes: '' } },
   );
 
-  const choose = (index: 0 | 1, item: FundamentalRow) => {
+  const choose = (index: number, item: FundamentalRow) => {
     setTechniques((current) =>
       current.map((slot, slotIndex) =>
         slotIndex === index ? { id: item.catalogItemId || item.entryId, name: item.label } : slot,
@@ -251,29 +255,38 @@ function JournalToday() {
           )}
           <div className="student-split">
             <div className="student-stack">
-              {[0, 1].map((index) => (
-                <label key={index} className={index === 0 ? 'ink ink--tech' : 'ink ink--wobble ink--tech'}>
-                  <span className="ink__label">Technique {index + 1}</span>
+              {techniques.map((slot, index) => (
+                <label key={index} className={index % 2 === 0 ? 'ink ink--tech' : 'ink ink--wobble ink--tech'}>
+                  <span className="ink__label">{techniqueDrilledLabel(index)}</span>
                   <input
-                    aria-label={`Technique ${index + 1}`}
-                    value={techniques[index].name}
+                    aria-label={techniqueDrilledLabel(index)}
+                    value={slot.name}
                     onChange={(event) => {
                       const name = event.target.value;
                       setTechniques((current) =>
-                        current.map((slot, slotIndex) => (slotIndex === index ? { id: slot.name === name ? slot.id : '', name } : slot)),
+                        current.map((item, slotIndex) => (slotIndex === index ? { id: item.name === name ? item.id : '', name } : item)),
                       );
                     }}
                   />
                   <button
                     type="button"
                     className="student-pick"
-                    aria-label={`Pick technique ${index + 1} from fundamentals`}
-                    onClick={() => setPicker(index as 0 | 1)}
+                    aria-label={`Pick ${techniqueDrilledLabel(index)} from fundamentals`}
+                    onClick={() => setPicker(index)}
                   >
                     Pick
                   </button>
                 </label>
               ))}
+              {techniques.length < JOURNAL_TECHNIQUE_MAX ? (
+                <button
+                  type="button"
+                  className="ink-btn"
+                  onClick={() => setTechniques((current) => [...current, { id: '', name: '' }])}
+                >
+                  Add another technique
+                </button>
+              ) : null}
             </div>
             <div className="student-stack">
               <label className="ink">
@@ -290,13 +303,10 @@ function JournalToday() {
               </label>
             </div>
           </div>
-          <div className="student-notes-row">
-            <label className="ink ink--wobble">
-              <span className="ink__label">Notes</span>
-              <textarea rows={4} value={notes} onChange={(event) => setNotes(event.target.value)} />
-            </label>
-            <BeltDoodle />
-          </div>
+          <label className="ink ink--wobble">
+            <span className="ink__label">Notes</span>
+            <textarea rows={4} value={notes} onChange={(event) => setNotes(event.target.value)} />
+          </label>
           {error ? <p role="alert">{error}</p> : null}
           <JournalClips report={report} commit={commit} />
           <div className="student-actions">
@@ -310,13 +320,13 @@ function JournalToday() {
         </form>
       </div>
       {picker === null ? null : (
-        <div className="student-picker" role="dialog" aria-label={`Pick technique ${picker + 1}`}>
+        <div className="student-picker" role="dialog" aria-label={`Pick ${techniqueDrilledLabel(picker)}`}>
           <button type="button" className="ink-btn" onClick={() => setPicker(null)}>
             Close
           </button>
           {fundamentalsBoard(report).map((category) => (
             <section key={category.id}>
-              <h2>{category.name}</h2>
+              <h2 className="student-picker__category">{category.name}</h2>
               {category.items.map((item) => (
                 <button
                   key={`${item.catalogItemId}-${item.entryId}-${item.name}`}
@@ -614,8 +624,12 @@ function CardBody({ card }: { card: JournalCardView }) {
           {card.date}
           {classLabel(card.classKind) ? ` · ${classLabel(card.classKind)}` : ''} · {card.gameTag.toUpperCase()} game
         </p>
-        <p>Technique 1: {card.techniques[0]?.name || '—'}</p>
-        <p>Technique 2: {card.techniques[1]?.name || '—'}</p>
+        {card.techniques.length === 0 ? <p>Technique drilled: —</p> : null}
+        {card.techniques.map((item, index) => (
+          <p key={`${item.id}-${index}`}>
+            {techniqueDrilledLabel(index)}: {item.name}
+          </p>
+        ))}
         <p>Training partners: {card.partners || '—'}</p>
         <p>Drills: {card.drills || '—'}</p>
         <p>Rolls: {card.rolls || '—'}</p>

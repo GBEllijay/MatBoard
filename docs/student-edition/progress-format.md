@@ -75,7 +75,7 @@ One row on the fundamentals sheet. `catalogItemId` points at a catalog name. An 
 
 ### JournalEntry, game tag, technique refs, amendments
 
-A card has a date, `gameTag` of `a`, `b`, or `c` (A game / B game / C game), the original text, and technique refs. Search looks at the card text, amendment text, technique names, and the standing game for that letter, so "scissor sweep" or "pendulum sweep" finds a card.
+A card has a date, `gameTag` of `a`, `b`, or `c` (A game / B game / C game), the original text, and technique refs. A new journal page starts with three rows labeled `Technique drilled #1`, `#2`, and `#3`. Add another technique adds a row, up to 12. Empty rows are not saved. An older card keeps the techniques it stored and does not gain blank rows. The card text lists each saved technique as `Technique drilled #N: name` and still includes a `Techniques:` line with those names separated by `; `. Search looks at the card text, the Technique drilled label, amendment text, technique names, and the standing game for that letter, so "scissor sweep", "technique drilled", or "pendulum sweep" finds a card.
 
 The standing A/B/C game lives once, on `competition.games`. Each letter has `techniques` (techniques and sequences) and `notes`. The journal chips and the Competitor page edit that same copy. A journal card still keeps the techniques from the day it was written. Search on the journal cards page also lists a standing game whose techniques or notes match.
 
@@ -161,7 +161,7 @@ Filter the Sheet column:
 | Checkpoint | One checkpoint. Parent id is the level id. Met is the student's mark. |
 | Criterion | One requirement. Parent id is the checkpoint id. Body is the requirement. Technique names are separated with `; `. |
 | Checklist | One fundamentals line, including a line the student added |
-| Journal | One original card. Technique names are separated with `; ` |
+| Journal | One original card. Technique names are separated with `; `. Body lists each saved technique as `Technique drilled #N: name` |
 | Amendment | One later note. Parent id is the journal card id |
 | Clip | One saved link, only when the report includes `clips`. Name and Note are the description. Body is the URL |
 | Calendar | One day |
