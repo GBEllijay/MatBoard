@@ -432,13 +432,80 @@ export function noticeLines(notes: string, specials: readonly SpecialDate[], now
   const trimmed = notes.trim();
   if (trimmed) lines.push(trimmed);
   for (const item of sortSpecials(specialsThisWeek(specials, now))) {
-    const label = item.title.trim() || item.body.trim();
-    if (!label) continue;
-    const when = formatSpecialDate(item.date);
-    lines.push(when ? `${when} · ${label}` : label);
+    const line = specialEventLine(item);
+    if (line) lines.push(line);
   }
   return lines;
 }
+
+/** Dated specials in the calendar month `now` is in, plus undated ongoing notices. */
+export function specialsThisMonth(specials: readonly SpecialDate[], now = new Date()): SpecialDate[] {
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  return sortSpecials(
+    specials.filter((item) => {
+      const iso = normalizeIsoDate(item.date);
+      if (!iso) return true;
+      const [y, m, d] = iso.split('-').map(Number);
+      const when = new Date(y, (m ?? 1) - 1, d ?? 1);
+      return when.getFullYear() === year && when.getMonth() === month;
+    }),
+  );
+}
+
+/** One readable strip line. Empty when the special has no title or body. */
+export function specialEventLine(item: SpecialDate): string {
+  const label = item.title.trim() || item.body.trim();
+  if (!label) return '';
+  const when = formatSpecialDate(item.date);
+  return when ? `${when} · ${label}` : label;
+}
+
+/**
+ * Specials the bottom strip can show.
+ * This month, plus a this-week date that spills into the neighboring month,
+ * plus undated notices. Nothing already on the strip is dropped.
+ */
+export function specialsOnStrip(specials: readonly SpecialDate[], now = new Date()): SpecialDate[] {
+  const seen = new Set<string>();
+  const rows: SpecialDate[] = [];
+  for (const item of [...specialsThisMonth(specials, now), ...specialsThisWeek(specials, now)]) {
+    if (seen.has(item.id) || !specialEventLine(item)) continue;
+    seen.add(item.id);
+    rows.push(item);
+  }
+  return sortSpecials(rows);
+}
+
+export type SpecialEventSlide = {
+  id: string;
+  text: string;
+  kind: 'note' | 'event';
+};
+
+/** Notes stay first so a free-text notice is not dropped when events rotate. */
+export function specialEventSlides(
+  notes: string,
+  specials: readonly SpecialDate[],
+  now = new Date(),
+): SpecialEventSlide[] {
+  const slides: SpecialEventSlide[] = [];
+  const note = notes.trim();
+  if (note) slides.push({ id: 'strip-note', text: note, kind: 'note' });
+  for (const item of specialsOnStrip(specials, now)) {
+    const text = specialEventLine(item);
+    if (!text) continue;
+    slides.push({ id: item.id, text, kind: 'event' });
+  }
+  return slides;
+}
+
+export function specialEventCount(slides: readonly SpecialEventSlide[]): number {
+  return slides.reduce((count, slide) => count + (slide.kind === 'event' ? 1 : 0), 0);
+}
+
+/** Cross-fade dwell for the special-events strip. One event never starts this timer. */
+export const SPECIAL_EVENT_DWELL_MS = 3000;
 
 export function defaultGymCalendar(): GymCalendarState {
   return {

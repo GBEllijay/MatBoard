@@ -22,6 +22,11 @@ import {
   normalizeGymCalendar,
   normalizeQrUrl,
   noticeLines,
+  SPECIAL_EVENT_DWELL_MS,
+  specialEventCount,
+  specialEventSlides,
+  specialsOnStrip,
+  specialsThisMonth,
   parseTimeMinutes,
   SAMPLE_WEEK_SLOTS,
   sortClasses,
@@ -362,5 +367,62 @@ describe('specialsThisWeek', () => {
     );
     assert.equal(formatSpecialDate('2026-09-21').includes('Sep'), true);
     assert.deepEqual(noticeLines('Gym note', [rows[1]], now), ['Gym note', `${formatSpecialDate('2026-09-21')} · Kids at 5`]);
+  });
+});
+
+describe('specialsOnStrip', () => {
+  it('keeps this month, undated notices, and a week that crosses months', () => {
+    const now = new Date(2026, 9, 15);
+    const rows = [
+      special({ id: 'earlier', date: '2026-10-03', title: 'Seminar' }),
+      special({ id: 'later', date: '2026-10-28', title: 'Promotion' }),
+      special({ id: 'undated', date: '', title: 'Open mat extra' }),
+      special({ id: 'next-month', date: '2026-11-20', title: 'Holiday party' }),
+      special({ id: 'sunday', date: '2026-10-18', title: 'Sunday open' }),
+      special({ id: 'last-month', date: '2026-09-30', title: 'Last month' }),
+      special({ id: 'blank', date: '2026-10-12', title: '', body: '' }),
+    ];
+    assert.deepEqual(
+      specialsOnStrip(rows, now).map((item) => item.id),
+      ['earlier', 'sunday', 'later', 'undated'],
+    );
+    assert.deepEqual(
+      specialsThisMonth(rows, now).map((item) => item.id),
+      ['earlier', 'blank', 'sunday', 'later', 'undated'],
+    );
+    assert.equal(noticeLines('', rows, now).some((line) => line.includes('Promotion')), false);
+    const endOfMonth = new Date(2026, 9, 31);
+    assert.deepEqual(
+      specialsOnStrip(
+        [
+          special({ id: 'oct', date: '2026-10-03', title: 'Early seminar' }),
+          special({ id: 'nov', date: '2026-11-01', title: 'Sunday seminar' }),
+        ],
+        endOfMonth,
+      ).map((item) => item.id),
+      ['oct', 'nov'],
+    );
+  });
+
+  it('builds one slide per event and keeps the free-text notice first', () => {
+    const now = new Date(2026, 9, 15);
+    const slides = specialEventSlides(
+      'Gym closed Monday',
+      [
+        special({ id: 'later', date: '2026-10-28', title: 'Promotion' }),
+        special({ id: 'earlier', date: '2026-10-03', title: 'Seminar' }),
+      ],
+      now,
+    );
+    assert.equal(SPECIAL_EVENT_DWELL_MS, 3000);
+    assert.equal(specialEventCount(slides), 2);
+    assert.deepEqual(
+      slides.map((slide) => slide.id),
+      ['strip-note', 'earlier', 'later'],
+    );
+    assert.equal(slides[0]?.text, 'Gym closed Monday');
+    assert.equal(slides[1]?.text.includes('Seminar'), true);
+    assert.equal(slides[2]?.text.includes('Promotion'), true);
+    assert.equal(specialEventCount(specialEventSlides('', [special({ id: 'only', date: '2026-10-03', title: 'Seminar' })], now)), 1);
   });
 });

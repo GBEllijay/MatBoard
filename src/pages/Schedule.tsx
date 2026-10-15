@@ -4,6 +4,7 @@ import { FullscreenChip } from '../components/FullscreenChip';
 import { SubmenuMarks } from '../components/TierHomeMark';
 import { ScheduleMonthBoard } from '../components/ScheduleMonthBoard';
 import { ScheduleWeekBoard } from '../components/ScheduleWeekBoard';
+import { SpecialEventsStrip } from '../components/SpecialEventsStrip';
 import { MEDIA_CONSOLE_NAME } from '../lib/productNames';
 import { Sheet } from '../components/Sheet';
 import { useGymLogo } from '../hooks/useGymBrand';
@@ -44,6 +45,7 @@ import {
   isClassLevel,
   loadSampleWeek,
   noticeLines,
+  specialsOnStrip,
   normalizeQrUrl,
   readPickedImage,
   removeClass,
@@ -170,7 +172,11 @@ export function SchedulePage() {
   const qrSrc = qrBuilt || qrImageUrl;
   const notices = noticeLines(schedule.notes, schedule.specials);
   const emptyBoard =
-    schedule.classes.length === 0 && notices.length === 0 && !logoUrl && !qrSrc;
+    schedule.classes.length === 0 &&
+    notices.length === 0 &&
+    specialsOnStrip(schedule.specials).length === 0 &&
+    !logoUrl &&
+    !qrSrc;
   const tv = fs.active || fs.landscape;
   const shown = tv
     ? displayTemplate(castPick ?? schedule.template) === 'monthly'
@@ -286,14 +292,7 @@ export function SchedulePage() {
 
         <WeeklyListBoard classes={schedule.classes} today={today} />
 
-        <aside className={`schedule__notes${notices.length ? ' is-filled' : ''}`} aria-label="Notices">
-          <p className="schedule__notes-label">Notices</p>
-          {notices.length ? (
-            notices.map((line, index) => <p key={`${index}-${line}`}>{line}</p>)
-          ) : (
-            <p>Holiday closings, schedule changes, and special events go here.</p>
-          )}
-        </aside>
+        <SpecialEventsStrip surface="list" notes={schedule.notes} specials={schedule.specials} />
           </>
         )}
       </section>
