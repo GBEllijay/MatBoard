@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useGymLogo, useGymName } from '../hooks/useGymBrand';
 import { useScheduleAssets, useScheduleState } from '../hooks/useStores';
 import { ADVANTAGE_MARK_SRC, resolveScheduleLogo } from '../lib/gymLogo';
+import { SpecialEventsStrip } from './SpecialEventsStrip';
 import { qrDataUrl } from '../lib/qr';
 import { createScheduleScroll, stepScheduleScroll } from '../lib/scheduleScroll';
 import {
@@ -13,7 +14,6 @@ import {
   formatBoardStamp,
   monthWeeks,
   normalizeQrUrl,
-  noticeLines,
   type ClassLevel,
   type MonthDay,
   type SpecialDate,
@@ -76,7 +76,6 @@ export function ScheduleMonthBoard({ variant = 'stage', onOpenOptions }: Props) 
   const [measureTick, setMeasureTick] = useState(0);
   const weeks = useMemo(() => monthWeeks(new Date()), []);
   const todayIso = localIso();
-  const notices = noticeLines(schedule.notes, schedule.specials);
   const gymTitle = schedule.title.trim() || gymName.trim() || 'Class Schedule';
   const logoSrc = resolveScheduleLogo(gymLogo, boardLogoUrl);
   const logoIsMark = logoSrc === ADVANTAGE_MARK_SRC;
@@ -231,13 +230,12 @@ export function ScheduleMonthBoard({ variant = 'stage', onOpenOptions }: Props) 
         </div>
       </div>
 
-      {notices.length && !hideNotes ? (
-        <footer className="week-cast__notes" aria-label="Notices">
-          {notices.map((line) => (
-            <p key={line}>{line}</p>
-          ))}
-        </footer>
-      ) : null}
+      <SpecialEventsStrip
+        surface="board"
+        notes={schedule.notes}
+        specials={schedule.specials}
+        hidden={hideNotes}
+      />
 
       {variant === 'cast' && onOpenOptions ? (
         <button
