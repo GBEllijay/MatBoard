@@ -9903,6 +9903,50 @@ input.roster-pick__name:focus,
   overflow-wrap: anywhere;
 }
 
+.roster-plan {
+  display: grid;
+  gap: 0.3rem;
+  margin-top: 0.45rem;
+}
+
+.roster-plan h3,
+.roster-plan p,
+.roster-plan li {
+  margin: 0;
+}
+
+.roster-plan h3 {
+  font-size: 0.95rem;
+}
+
+.roster-plan__quiet,
+.roster-plan__line {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.roster-plan__list {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.roster-plan__import {
+  display: grid;
+  gap: 0.25rem;
+  font-weight: 700;
+}
+
+.roster-plan__import input {
+  font: inherit;
+}
+
+.checkin-seeds__plan {
+  display: block;
+  font-style: normal;
+  font-weight: 600;
+  color: var(--muted);
+}
+
 .roster-card__actions {
   display: flex;
   flex-wrap: wrap;

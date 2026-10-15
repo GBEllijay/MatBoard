@@ -19,11 +19,11 @@ Every file is one JSON object with `schemaVersion`, `kind`, `id`, `studentId`, a
 
 | Kind | Who writes it | What it carries |
 | --- | --- | --- |
-| `student-progress-report` | Student | Profile, rubric, fundamentals checklist, journal, calendar, goals, and an optional clip clipboard |
+| `student-progress-report` | Student | Profile, rubric, fundamentals checklist, journal, calendar, goals, an optional clip clipboard, and an optional competition section (tournaments, standing A/B/C game, weigh-ins) |
 | `coach-plan` | Coach | Suggestions under "Work on before next promotion" |
 | `coach-feedback` | Coach | A synopsis and suggestion notes |
 
-`schemaVersion` is `1`. A missing version, or any version this build does not know, is refused. The file is left unread. Optional fields that are absent (`examples`, an empty learned-on date, a blank license source, a null checkpoint mark) stay in version 1. A migration is required only when a field is renamed, removed, or an id starts meaning something else.
+`schemaVersion` is `2`. This build also reads version `1`. A missing version, or any other version, is refused. The file is left unread. Optional fields that are absent (`examples`, an empty learned-on date, a blank license source, a null checkpoint mark, `clips`, `competition`) stay valid. Version 1 has no `competition` section. Import fills one. A version 1 journal card tagged A, B, or C copies its techniques and notes into that standing game when the file has no competition section yet. A file that already has `competition`, including empty games, is left as written. A migration that renames or removes a field still has to be explicit.
 
 Invite and review packets in the gym folder use `version`, not `schemaVersion`. Today's Drive handoff reader ignores a progress file (`parseHandoffPacket` returns nothing). Progress files can sit in that folder without changing an invite or a review.
 
@@ -75,7 +75,9 @@ One row on the fundamentals sheet. `catalogItemId` points at a catalog name. An 
 
 ### JournalEntry, game tag, technique refs, amendments
 
-A card has a date, `gameTag` of `a`, `b`, or `c` (A game / B game / C game), the original text, and technique refs. Search looks at the card text, amendment text, and technique names, so "scissor sweep" or "pendulum sweep" finds a card.
+A card has a date, `gameTag` of `a`, `b`, or `c` (A game / B game / C game), the original text, and technique refs. Search looks at the card text, amendment text, technique names, and the standing game for that letter, so "scissor sweep" or "pendulum sweep" finds a card.
+
+The standing A/B/C game lives once, on `competition.games`. Each letter has `techniques` (techniques and sequences) and `notes`. The journal chips and the Competitor page edit that same copy. A journal card still keeps the techniques from the day it was written. Search on the journal cards page also lists a standing game whose techniques or notes match.
 
 `Amendment` is a dated note on that same card. A later curriculum cycle appends an amendment. It does not replace the cycle-1 card.
 
@@ -91,6 +93,22 @@ Search matches the description and the URL. Send to coach includes `clips` in th
 
 A day on the student calendar: id, date, title, kind (`class`, `training`, `promotion`, `note`, `other`), and a note.
 
+Tournaments are not copied into this list. The calendar reads `competition.tournaments` and marks the event day and the registration deadline.
+
+### Competition, tournaments, standing game, weigh-ins
+
+Optional on a student progress report. Version 2 files written by this app include it. Version 1 files omit it. Import of a file with no `competition` field does not clear a competition section already on the device.
+
+`competition.games` is the standing A, B, and C game. `competition.weightUnit` is `lb` or `kg`, the unit the chart and new weigh-ins use on that device. Import keeps the unit already on the device.
+
+`competition.tournaments` lists tournaments the student is `entered` in or `considering`. Each one has a name, event date, location, division / weight class, registration deadline (or empty), an http(s) link (or empty), status, an optional target division weight with its unit, and goals. A tournament goal has an id, name, note, and `met`. Those goals are not the belt goals.
+
+`competition.weighIns` lists dated weigh-ins. Each stores the number in the unit it was entered (`lb` or `kg`) plus an optional note. The chart converts for display.
+
+### CalendarEvent and tournaments
+
+The student calendar shows tournament days from `competition.tournaments` beside journal dots and calendar events. Removing a tournament there removes it from the calendar. A hand-added calendar event with kind `other` (labeled Tournament on the page) stays a separate note.
+
 ### StudentGoal
 
 A goal the student owns: id, name, note, and `met`. Coach files do not write goals.
@@ -105,7 +123,7 @@ Issue date, the plan id it answers (or empty), a synopsis, and suggestion notes.
 
 ## Stable ids
 
-Ids are letters, numbers, dots, hyphens, and underscores, up to 80 characters. Dots separate the parts of a shared id, as in `sweep.scissor` or `rubric.white.closed-guard`. Catalog ids, criterion ids, and checkpoint ids are shared vocabulary. Journal, amendment, clip, checklist, calendar, goal, plan, and packet ids are created once on the device that wrote them.
+Ids are letters, numbers, dots, hyphens, and underscores, up to 80 characters. Dots separate the parts of a shared id, as in `sweep.scissor` or `rubric.white.closed-guard`. Catalog ids, criterion ids, and checkpoint ids are shared vocabulary. Journal, amendment, clip, checklist, calendar, goal, tournament, tournament-goal, weigh-in, plan, and packet ids are created once on the device that wrote them.
 
 A new export of the same living report keeps the same packet id and moves `updatedAt` forward.
 
@@ -119,11 +137,14 @@ Import of a `student-progress-report` merges into the copy already on the device
 - Amendments on that card append when the amendment id is new. The same amendment id with different text keeps the text already on the device.
 - A checklist line, goal, checkpoint, criterion, calendar event, or clip that already has text keeps that text. An empty field can be filled from the incoming student file. A new id is added. A mark the student already set is kept.
 - A file with no `clips` field does not clear a clipboard already on the device. A file that includes `clips` adds new clip ids and keeps the link and note already stored for an id this device has.
+- A file with no `competition` field does not clear tournaments, the standing game, or weigh-ins already on the device. A file that includes `competition` adds new tournament, goal, and weigh-in ids. Text already stored for an id is kept. An empty standing-game field can be filled from the incoming file. The weight unit on the device is kept.
 - `importCoachSuggestion` returns the student report unchanged, beside the coach packet. The student can read the suggestion. Nothing in that import writes rubric marks, checkpoints, the journal, or goals. A newer coach file can replace an older coach file of the same id. That replacement is only the suggestion snapshot.
 
 ## Privacy
 
 The checks refuse `data:` text and keys that mean a file body (`blob`, `bytes`, `base64`, and the same family). Email stays in the person's own mail. The Drive copy stays in the gym folder the owner already connected. Advantage does not receive the JSON.
+
+A coach import of this file copies the competition plan onto that competitor’s roster card on the coach’s phone. Competition Class Curriculum, the competitor roster, check-in, and rankings read that same on-device copy. Nothing is uploaded.
 
 ## Spreadsheet
 
@@ -144,6 +165,10 @@ Filter the Sheet column:
 | Amendment | One later note. Parent id is the journal card id |
 | Clip | One saved link, only when the report includes `clips`. Name and Note are the description. Body is the URL |
 | Calendar | One day |
+| Game | One standing A, B, or C game that has techniques or notes. Game is `a`, `b`, or `c`. Technique names are the sequences. Note is the game notes. Omitted when that letter is blank |
+| Tournament | One tournament. Date is the event day. Learned on is the registration deadline. Category is the division. Note is the location. Body is the link. Kind is `entered` or `considering`. Toward is the target weight and unit when set |
+| Tournament goal | One goal for that tournament. Parent id is the tournament id |
+| Weigh-in | One weigh-in. Name is the number. Kind is `lb` or `kg` |
 | Goal | One student goal |
 | Coach plan | The plan header |
 | Focus | One suggestion line. Parent id is the plan id |

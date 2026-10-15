@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { EmptyHint } from '../components/EmptyHint';
+import { ImportStudentProgress, StudentCompetitionPlan } from '../components/StudentCompetitionPlan';
 import { SubmenuMarks } from '../components/TierHomeMark';
 import { useSubmenuBack } from '../hooks/useSubmenuBack';
 import { RankChip } from '../components/RankChip';
@@ -211,6 +212,10 @@ function Checklist({ student }: { student: Student }) {
         </button>
         {atExtraMax ? <p className="ready-add__hint">Three custom items is the limit.</p> : null}
       </form>
+      {roster.competitionPlans[student.id] ? (
+        <StudentCompetitionPlan plan={roster.competitionPlans[student.id]} />
+      ) : null}
+      <ImportStudentProgress competitorId={student.id} competitorName={student.name} />
       <label className="ready-note">
         Weekend note
         <textarea

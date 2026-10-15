@@ -6,6 +6,7 @@
 
 import { asRecord } from '../plainValue.ts';
 import { canonicalFundamentalsCatalogId } from './catalog.ts';
+import { emptyCompetition, seedGamesFromJournal } from './competition.ts';
 import {
   CALENDAR_KINDS,
   GAME_TAGS,
@@ -30,9 +31,19 @@ import {
   PROGRESS_NOTE_MAX,
   PROGRESS_PACKET_KINDS,
   PROGRESS_SCHEMA_VERSION,
+  PROGRESS_SCHEMA_VERSIONS,
+  PROGRESS_SEQUENCE_MAX,
   PROGRESS_SYNOPSIS_MAX,
+  PROGRESS_TOURNAMENT_GOALS_MAX,
+  PROGRESS_TOURNAMENTS_MAX,
+  PROGRESS_WEIGH_INS_MAX,
+  PROGRESS_WEIGHT_MAX,
+  TOURNAMENT_STATUSES,
+  WEIGHT_UNITS,
   type Amendment,
   type CoachSuggestion,
+  type CompetitionGame,
+  type CompetitionGames,
   type FundamentalsCatalog,
   type FundamentalsCategory,
   type FundamentalsItem,
@@ -55,16 +66,26 @@ import {
   type ProgressPacket,
   type ProgressParse,
   type StudentChecklistEntry,
+  type StudentCompetition,
   type StudentGoal,
   type StudentProfile,
   type StudentProgressReport,
   type StudentRubric,
+  type StudentTournament,
   type TechniqueRef,
+  type TournamentGoal,
+  type TournamentStatus,
+  type WeighIn,
+  type WeightUnit,
 } from './types.ts';
 
 const ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const BYTE_KEY = /blob|bytes|dataurl|base64|filebody|arraybuffer/i;
+
+function supportedSchema(value: unknown): boolean {
+  return typeof value === 'number' && (PROGRESS_SCHEMA_VERSIONS as readonly number[]).includes(value);
+}
 
 export const PROGRESS_CSV_HEADERS = [
   'Sheet',
@@ -119,16 +140,18 @@ export function parseProgressPacket(text: string): ProgressParse {
   return parseProgressValue(raw);
 }
 
-/** schemaVersion 1 is the only readable shape. A newer file waits for a migration. */
+/** Version 1 and version 2 both import. Anything else is left unread. */
 export function parseProgressValue(raw: unknown): ProgressParse {
   const errors: string[] = [];
   if (packetCarriesBytes(raw)) errors.push('A progress file cannot carry photos or videos.');
   if (carriesStripeKey(raw)) errors.push('Belt progress uses checkpoints between levels.');
   const record = asRecord(raw);
   if (!record) return { ok: false, errors: ['A progress file must be a JSON object.'] };
-  if (record.schemaVersion !== PROGRESS_SCHEMA_VERSION) {
+  if (!supportedSchema(record.schemaVersion)) {
     const seen = record.schemaVersion == null ? 'missing' : String(record.schemaVersion);
-    errors.push(`schemaVersion ${seen} is not supported. This build reads version ${PROGRESS_SCHEMA_VERSION}.`);
+    errors.push(
+      `schemaVersion ${seen} is not supported. This build reads version ${PROGRESS_SCHEMA_VERSIONS.join(' and version ')}.`,
+    );
   }
   const kind = record.kind;
   if (typeof kind !== 'string' || !(PROGRESS_PACKET_KINDS as readonly string[]).includes(kind)) {
@@ -156,6 +179,7 @@ export function parseProgressValue(raw: unknown): ProgressParse {
     };
     const clips = readClips(record.clips, errors);
     if (clips) value.clips = clips;
+    value.competition = readCompetition(record, value.journal, errors);
     return errors.length ? { ok: false, errors } : { ok: true, value };
   }
   if (kind === 'coach-plan' || kind === 'coach-feedback') {
@@ -207,6 +231,7 @@ export function mergeStudentProgress(local: StudentProgressReport, incoming: Stu
   mergeJournal(report, incoming, addedJournal, appendedAmendments, conflicts);
   mergeCalendar(report, incoming, conflicts);
   mergeClips(report, incoming, conflicts);
+  mergeCompetition(report, incoming, conflicts);
   return { report, appendedAmendments, addedJournal, addedChecklist, conflicts };
 }
 
@@ -459,6 +484,104 @@ function mergeClips(report: StudentProgressReport, incoming: StudentProgressRepo
     );
     current.updatedAt = Math.max(current.updatedAt, clip.updatedAt);
   }
+}
+
+function mergeCompetition(report: StudentProgressReport, incoming: StudentProgressReport, conflicts: string[]): void {
+  if (!incoming.competition) return;
+  if (!report.competition) {
+    report.competition = structuredClone(incoming.competition);
+    return;
+  }
+  const local = report.competition;
+  const next = incoming.competition;
+  for (const tag of GAME_TAGS) {
+    local.games[tag].techniques = preferText(
+      local.games[tag].techniques,
+      next.games[tag].techniques,
+      `${tag.toUpperCase()} game techniques were kept.`,
+      conflicts,
+    );
+    local.games[tag].notes = preferText(
+      local.games[tag].notes,
+      next.games[tag].notes,
+      `${tag.toUpperCase()} game notes were kept.`,
+      conflicts,
+    );
+  }
+  const byId = new Map(local.tournaments.map((tournament) => [tournament.id, tournament]));
+  for (const tournament of next.tournaments) {
+    const current = byId.get(tournament.id);
+    if (!current) {
+      local.tournaments.push(structuredClone(tournament));
+      continue;
+    }
+    current.name = preferText(current.name, tournament.name, `Tournament ${tournament.id} name was kept.`, conflicts);
+    current.location = preferText(
+      current.location,
+      tournament.location,
+      `Tournament ${tournament.id} location was kept.`,
+      conflicts,
+    );
+    current.division = preferText(
+      current.division,
+      tournament.division,
+      `Tournament ${tournament.id} division was kept.`,
+      conflicts,
+    );
+    current.link = preferText(current.link, tournament.link, `Tournament ${tournament.id} link was kept.`, conflicts);
+    current.deadline = preferText(
+      current.deadline,
+      tournament.deadline,
+      `Tournament ${tournament.id} deadline was kept.`,
+      conflicts,
+    );
+    if (current.date !== tournament.date) conflicts.push(`Tournament ${tournament.id} date was kept.`);
+    if (current.status !== tournament.status) conflicts.push(`Tournament ${tournament.id} status was kept.`);
+    current.targetWeight = preferWeight(
+      current.targetWeight,
+      tournament.targetWeight,
+      `Tournament ${tournament.id} target weight was kept.`,
+      conflicts,
+    );
+    if (current.targetWeight != null && tournament.targetWeight != null && current.targetUnit !== tournament.targetUnit) {
+      conflicts.push(`Tournament ${tournament.id} target unit was kept.`);
+    } else if (current.targetWeight == null && tournament.targetWeight != null) {
+      current.targetUnit = tournament.targetUnit;
+    }
+    mergeTournamentGoals(current, tournament, conflicts);
+  }
+  const weighById = new Map(local.weighIns.map((row) => [row.id, row]));
+  for (const weighIn of next.weighIns) {
+    const current = weighById.get(weighIn.id);
+    if (!current) {
+      local.weighIns.push(structuredClone(weighIn));
+      continue;
+    }
+    if (current.date !== weighIn.date || current.weight !== weighIn.weight || current.unit !== weighIn.unit) {
+      conflicts.push(`Weigh-in ${weighIn.id} was kept.`);
+    }
+    current.note = preferText(current.note, weighIn.note, `Weigh-in ${weighIn.id} note was kept.`, conflicts);
+  }
+}
+
+function mergeTournamentGoals(local: StudentTournament, incoming: StudentTournament, conflicts: string[]): void {
+  const byId = new Map(local.goals.map((goal) => [goal.id, goal]));
+  for (const goal of incoming.goals) {
+    const current = byId.get(goal.id);
+    if (!current) {
+      local.goals.push(structuredClone(goal));
+      continue;
+    }
+    current.name = preferText(current.name, goal.name, `Tournament goal ${goal.id} name was kept.`, conflicts);
+    current.note = preferText(current.note, goal.note, `Tournament goal ${goal.id} note was kept.`, conflicts);
+    current.met = preferMet(current.met, goal.met, `Tournament goal ${goal.id} mark was kept.`, conflicts);
+  }
+}
+
+function preferWeight(local: number | null, incoming: number | null, conflict: string, conflicts: string[]): number | null {
+  if (local == null && incoming != null) return incoming;
+  if (local != null && incoming != null && local !== incoming) conflicts.push(conflict);
+  return local;
 }
 
 function mergeCalendar(report: StudentProgressReport, incoming: StudentProgressReport, conflicts: string[]): void {
@@ -789,6 +912,171 @@ function readFocus(value: unknown, index: number, errors: string[]): CoachPlanFo
     name: readString(record.name, `${label} name`, PROGRESS_NAME_MAX, errors),
     note: readString(record.note, `${label} note`, PROGRESS_NOTE_MAX, errors),
   };
+}
+
+function readCompetition(
+  record: Record<string, unknown>,
+  journal: JournalEntry[],
+  errors: string[],
+): StudentCompetition {
+  if (!Object.prototype.hasOwnProperty.call(record, 'competition') || record.competition == null) {
+    return { ...emptyCompetition(), games: seedGamesFromJournal(journal) };
+  }
+  const competition = asRecord(record.competition);
+  if (!competition) {
+    errors.push('Competition must be an object.');
+    return emptyCompetition();
+  }
+  const tournaments = readTournaments(competition.tournaments, errors);
+  const weighIns = readWeighIns(competition.weighIns, errors);
+  return {
+    games: readGames(competition.games, errors),
+    tournaments,
+    weighIns,
+    weightUnit: readWeightUnit(competition.weightUnit, 'Weight unit', errors),
+  };
+}
+
+function readGames(value: unknown, errors: string[]): CompetitionGames {
+  const record = asRecord(value);
+  if (value != null && !record) errors.push('Competition games must be an object.');
+  return {
+    a: readGame(record?.a, 'A game', errors),
+    b: readGame(record?.b, 'B game', errors),
+    c: readGame(record?.c, 'C game', errors),
+  };
+}
+
+function readGame(value: unknown, label: string, errors: string[]): CompetitionGame {
+  const record = asRecord(value);
+  if (value != null && !record) {
+    errors.push(`${label} must be an object.`);
+    return { techniques: '', notes: '' };
+  }
+  return {
+    techniques: readString(record?.techniques, `${label} techniques`, PROGRESS_SEQUENCE_MAX, errors),
+    notes: readString(record?.notes, `${label} notes`, PROGRESS_NOTE_MAX, errors),
+  };
+}
+
+function readTournaments(value: unknown, errors: string[]): StudentTournament[] {
+  const rows = readList(value, 'Tournaments', PROGRESS_TOURNAMENTS_MAX, errors);
+  const tournaments = rows.map((row, index) => readTournament(row, index, errors));
+  uniqueIds(tournaments.map((tournament) => tournament.id), 'Tournament', errors);
+  uniqueIds(
+    tournaments.flatMap((tournament) => tournament.goals.map((goal) => goal.id)),
+    'Tournament goal',
+    errors,
+  );
+  return tournaments;
+}
+
+function readTournament(value: unknown, index: number, errors: string[]): StudentTournament {
+  const record = asRecord(value);
+  const label = `Tournament ${index + 1}`;
+  if (!record) {
+    errors.push(`${label} must be an object.`);
+    return {
+      id: '',
+      name: '',
+      date: '',
+      location: '',
+      division: '',
+      deadline: '',
+      link: '',
+      status: 'considering',
+      targetWeight: null,
+      targetUnit: 'lb',
+      goals: [],
+    };
+  }
+  return {
+    id: readId(record.id, `${label} id`, errors),
+    name: readString(record.name, `${label} name`, PROGRESS_NAME_MAX, errors),
+    date: readDate(record.date, `${label} date`, errors, true),
+    location: readString(record.location, `${label} location`, PROGRESS_NOTE_MAX, errors),
+    division: readString(record.division, `${label} division`, PROGRESS_NAME_MAX, errors),
+    deadline: readDate(record.deadline, `${label} deadline`, errors, false),
+    link: readOptionalHttpUrl(record.link, `${label} link`, errors),
+    status: readTournamentStatus(record.status, label, errors),
+    targetWeight: readOptionalWeight(record.targetWeight, `${label} target weight`, errors),
+    targetUnit: readWeightUnit(record.targetUnit, `${label} target unit`, errors),
+    goals: readTournamentGoals(record.goals, label, errors),
+  };
+}
+
+function readTournamentGoals(value: unknown, label: string, errors: string[]): TournamentGoal[] {
+  const rows = readList(value, `${label} goals`, PROGRESS_TOURNAMENT_GOALS_MAX, errors);
+  return rows.map((row, index) => readTournamentGoal(row, `${label} goal ${index + 1}`, errors));
+}
+
+function readTournamentGoal(value: unknown, label: string, errors: string[]): TournamentGoal {
+  const record = asRecord(value);
+  if (!record) {
+    errors.push(`${label} must be an object.`);
+    return { id: '', name: '', note: '', met: null };
+  }
+  return {
+    id: readId(record.id, `${label} id`, errors),
+    name: readString(record.name, `${label} name`, PROGRESS_NAME_MAX, errors),
+    note: readString(record.note, `${label} note`, PROGRESS_NOTE_MAX, errors),
+    met: readMet(record.met, label, errors),
+  };
+}
+
+function readWeighIns(value: unknown, errors: string[]): WeighIn[] {
+  const rows = readList(value, 'Weigh-ins', PROGRESS_WEIGH_INS_MAX, errors);
+  const weighIns = rows.map((row, index) => readWeighIn(row, index, errors));
+  uniqueIds(weighIns.map((row) => row.id), 'Weigh-in', errors);
+  return weighIns;
+}
+
+function readWeighIn(value: unknown, index: number, errors: string[]): WeighIn {
+  const record = asRecord(value);
+  const label = `Weigh-in ${index + 1}`;
+  if (!record) {
+    errors.push(`${label} must be an object.`);
+    return { id: '', date: '', weight: 0, unit: 'lb', note: '' };
+  }
+  return {
+    id: readId(record.id, `${label} id`, errors),
+    date: readDate(record.date, `${label} date`, errors, true),
+    weight: readRequiredWeight(record.weight, `${label} weight`, errors),
+    unit: readWeightUnit(record.unit, `${label} unit`, errors),
+    note: readString(record.note, `${label} note`, PROGRESS_NOTE_MAX, errors),
+  };
+}
+
+function readTournamentStatus(value: unknown, label: string, errors: string[]): TournamentStatus {
+  if (typeof value === 'string' && (TOURNAMENT_STATUSES as readonly string[]).includes(value)) return value as TournamentStatus;
+  errors.push(`${label} status must be entered or considering.`);
+  return 'considering';
+}
+
+function readWeightUnit(value: unknown, label: string, errors: string[]): WeightUnit {
+  if (value == null || value === '') return 'lb';
+  if (typeof value === 'string' && (WEIGHT_UNITS as readonly string[]).includes(value)) return value as WeightUnit;
+  errors.push(`${label} must be lb or kg.`);
+  return 'lb';
+}
+
+function readOptionalWeight(value: unknown, label: string, errors: string[]): number | null {
+  if (value == null || value === '') return null;
+  return readRequiredWeight(value, label, errors);
+}
+
+function readRequiredWeight(value: unknown, label: string, errors: string[]): number {
+  const number = typeof value === 'number' ? value : typeof value === 'string' && value.trim() ? Number(value) : Number.NaN;
+  if (!Number.isFinite(number) || number <= 0 || number > PROGRESS_WEIGHT_MAX) {
+    errors.push(`${label} must be a weight above 0.`);
+    return 0;
+  }
+  return Math.round(number * 10) / 10;
+}
+
+function readOptionalHttpUrl(value: unknown, label: string, errors: string[]): string {
+  if (value == null || value === '') return '';
+  return readHttpUrl(value, label, errors);
 }
 
 function readGoals(value: unknown, errors: string[]): StudentGoal[] {
@@ -1231,6 +1519,99 @@ function writeReportRows(lines: string[], packet: StudentProgressReport): void {
       '',
       event.title,
       event.kind,
+      '',
+      '',
+      '',
+      '',
+    ]));
+  }
+  const competition = packet.competition;
+  if (!competition) return;
+  for (const tag of GAME_TAGS) {
+    const game = competition.games[tag];
+    if (!game.techniques.trim() && !game.notes.trim()) continue;
+    lines.push(csvRow([
+      'Game',
+      tag,
+      '',
+      packet.studentId,
+      tag,
+      '',
+      `${tag.toUpperCase()} game`,
+      game.techniques,
+      '',
+      game.notes,
+      '',
+      '',
+      `${tag.toUpperCase()} game`,
+      '',
+      '',
+      '',
+      '',
+      '',
+    ]));
+  }
+  for (const tournament of competition.tournaments) {
+    const target = tournament.targetWeight == null ? '' : `${tournament.targetWeight} ${tournament.targetUnit}`;
+    lines.push(csvRow([
+      'Tournament',
+      tournament.id,
+      tournament.date,
+      packet.studentId,
+      '',
+      tournament.division,
+      tournament.name,
+      '',
+      tournament.deadline,
+      tournament.location,
+      tournament.link,
+      '',
+      tournament.name,
+      tournament.status,
+      '',
+      target,
+      '',
+      '',
+    ]));
+    for (const goal of tournament.goals) {
+      lines.push(csvRow([
+        'Tournament goal',
+        goal.id,
+        tournament.date,
+        tournament.id,
+        '',
+        '',
+        goal.name,
+        '',
+        '',
+        goal.note,
+        '',
+        metCell(goal.met),
+        tournament.name,
+        '',
+        '',
+        '',
+        '',
+        '',
+      ]));
+    }
+  }
+  for (const weighIn of competition.weighIns) {
+    lines.push(csvRow([
+      'Weigh-in',
+      weighIn.id,
+      weighIn.date,
+      packet.studentId,
+      '',
+      '',
+      String(weighIn.weight),
+      '',
+      '',
+      weighIn.note,
+      '',
+      '',
+      '',
+      weighIn.unit,
       '',
       '',
       '',

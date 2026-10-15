@@ -170,7 +170,9 @@ test('belt checkpoints, goals, coach suggestions, and the share file', async ({ 
   );
   const packet = JSON.parse(body);
   expect(packet.kind).toBe('student-progress-report');
-  expect(packet.schemaVersion).toBe(1);
+  expect(packet.schemaVersion).toBe(2);
+  expect(packet.competition.weightUnit).toBe('lb');
+  expect(packet.competition.tournaments).toEqual([]);
   const exportedGuard = packet.rubric.levels
     .find((level: { belt: string }) => level.belt === 'white')
     .checkpoints.find((row: { id: string }) => row.id === 'checkpoint.white.guard');

@@ -995,6 +995,85 @@ button.student-book .student-mark__press {
   box-sizing: border-box;
 }
 
+.cal-dot--tournament {
+  background: transparent;
+  border: 2px solid var(--margin);
+  box-sizing: border-box;
+}
+
+.cal-marks {
+  display: flex;
+  gap: 0.12rem;
+  justify-content: center;
+  min-height: 0.62rem;
+}
+
+.standing-game {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.comp-list {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.comp-list a {
+  color: inherit;
+  overflow-wrap: anywhere;
+}
+
+.tournament-card,
+.comp-form,
+.comp-goal-form,
+.comp-goals li {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.comp-goals {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.comp-earlier summary {
+  cursor: pointer;
+}
+
+.weight-chart {
+  width: 100%;
+  max-width: 28rem;
+  height: auto;
+  overflow: visible;
+}
+
+.weight-chart polyline {
+  fill: none;
+  stroke: #1c140e;
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.weight-chart circle {
+  fill: #1c140e;
+}
+
+.weight-chart__target {
+  stroke: var(--margin);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+}
+
 .cal-gym-toggle {
   display: flex;
   align-items: center;

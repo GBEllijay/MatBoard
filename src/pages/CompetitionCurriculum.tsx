@@ -8,6 +8,9 @@ import { PlayExitMark } from '../components/PlayExitMark';
 import { useSubmenuBack } from '../hooks/useSubmenuBack';
 import { Sheet } from '../components/Sheet';
 import { useProUnlocked } from '../hooks/useProUnlocked';
+import { useRosterState } from '../hooks/useStores';
+import { StudentCompetitionPlan } from '../components/StudentCompetitionPlan';
+import { planHasContent } from '../lib/progress/competition';
 import { COACH_LESSON_EYEBROW } from '../lib/coachCopy';
 import {
   CURRICULUM_ADD_EXAMPLES,
@@ -61,6 +64,29 @@ import { COACHING_TOOLS_PATH, UNLIMITED_LESSON_VALUE, carryHubFrom } from '../li
 import { loadTechniqueArchive, type TechniqueTreeArchive } from '../lib/techniqueTreeStore';
 import { resetTrainingSession, setRounds, setWorkMs } from '../lib/trainingStore';
 import { trainingPathWithReturn } from '../lib/timerReturn';
+
+function StudentsWorkingOn() {
+  const roster = useRosterState();
+  const rows = roster.students.flatMap((student) => {
+    const plan = roster.competitionPlans[student.id];
+    return plan && planHasContent(plan) ? [{ student, plan }] : [];
+  });
+  if (!rows.length) return null;
+  return (
+    <section className="notes__card" aria-label="Students working on">
+      <h2>Students working on</h2>
+      <p>Imported from each student’s progress file. It stays on this phone.</p>
+      <ul className="roster-plan__list">
+        {rows.map(({ student, plan }) => (
+          <li key={student.id}>
+            <strong>{student.name}</strong>
+            <StudentCompetitionPlan plan={plan} compact />
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 export function CompetitionCurriculumPage({ embedded = false }: { embedded?: boolean }) {
   const navigate = useNavigate();
@@ -323,6 +349,7 @@ export function CompetitionCurriculumPage({ embedded = false }: { embedded?: boo
         </div>
       </header>
       <div className="notes__plan">
+        <StudentsWorkingOn />
         <OpenMyDrive />
         <section className="notes__archive" aria-label="Saved days">
           <PlanDateNav

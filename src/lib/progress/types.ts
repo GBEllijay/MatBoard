@@ -4,7 +4,12 @@
  * Photos and videos never belong in this file.
  */
 
-export const PROGRESS_SCHEMA_VERSION = 1 as const;
+/**
+ * Version 2 adds competition: tournaments, the standing A/B/C game, and weigh-ins.
+ * Version 1 files still import. A missing competition section is filled on read.
+ */
+export const PROGRESS_SCHEMA_VERSION = 2 as const;
+export const PROGRESS_SCHEMA_VERSIONS = [1, 2] as const;
 
 export const PROGRESS_BELTS = [
   'white',
@@ -24,6 +29,12 @@ export type ProgressBelt = (typeof PROGRESS_BELTS)[number];
 /** A game / B game / C game. Same letters as the coach game-plan layers. */
 export const GAME_TAGS = ['a', 'b', 'c'] as const;
 export type GameTag = (typeof GAME_TAGS)[number];
+
+export const TOURNAMENT_STATUSES = ['entered', 'considering'] as const;
+export type TournamentStatus = (typeof TOURNAMENT_STATUSES)[number];
+
+export const WEIGHT_UNITS = ['lb', 'kg'] as const;
+export type WeightUnit = (typeof WEIGHT_UNITS)[number];
 
 export const CALENDAR_KINDS = ['class', 'training', 'promotion', 'note', 'other'] as const;
 export type CalendarKind = (typeof CALENDAR_KINDS)[number];
@@ -49,6 +60,12 @@ export const PROGRESS_CHECKPOINTS_MAX = 100;
 export const PROGRESS_LEVELS_MAX = 20;
 export const PROGRESS_GOALS_MAX = 100;
 export const PROGRESS_FOCUS_MAX = 100;
+export const PROGRESS_TOURNAMENTS_MAX = 80;
+export const PROGRESS_TOURNAMENT_GOALS_MAX = 30;
+export const PROGRESS_WEIGH_INS_MAX = 400;
+/** Techniques and sequences on one standing game. */
+export const PROGRESS_SEQUENCE_MAX = 1000;
+export const PROGRESS_WEIGHT_MAX = 999;
 
 /**
  * How this Student Edition copy was issued. Empty when the file does not say.
@@ -206,6 +223,63 @@ export type CalendarEvent = {
   note: string;
 };
 
+/** Standing A, B, or C game. Techniques and sequences, plus notes. One copy for the journal and Competitor. */
+export type CompetitionGame = {
+  techniques: string;
+  notes: string;
+};
+
+export type CompetitionGames = Record<GameTag, CompetitionGame>;
+
+/** A goal for one tournament. Separate from belt goals. */
+export type TournamentGoal = {
+  id: string;
+  name: string;
+  note: string;
+  met: boolean | null;
+};
+
+/**
+ * A tournament the student is entered in or considering.
+ * The student calendar reads this list. It is not copied into calendar events.
+ */
+export type StudentTournament = {
+  id: string;
+  name: string;
+  /** Event day, YYYY-MM-DD. */
+  date: string;
+  location: string;
+  /** Division and weight class, in the student's words. */
+  division: string;
+  /** Registration deadline, YYYY-MM-DD, or empty. */
+  deadline: string;
+  /** http or https link, or empty. */
+  link: string;
+  status: TournamentStatus;
+  /** Target division weight. Null when unset. Stored in `targetUnit`. */
+  targetWeight: number | null;
+  targetUnit: WeightUnit;
+  goals: TournamentGoal[];
+};
+
+/** One weigh-in. The number stays in the unit it was entered. */
+export type WeighIn = {
+  id: string;
+  date: string;
+  weight: number;
+  unit: WeightUnit;
+  note: string;
+};
+
+/** Competition section of a student progress report. Absent on version 1 files until import fills it. */
+export type StudentCompetition = {
+  games: CompetitionGames;
+  tournaments: StudentTournament[];
+  weighIns: WeighIn[];
+  /** How the chart and new weigh-ins are shown on this device. */
+  weightUnit: WeightUnit;
+};
+
 export type CoachPlanFocus = {
   id: string;
   criterionId: string;
@@ -255,6 +329,11 @@ export type StudentProgressReport = PacketBase & {
   goals: StudentGoal[];
   /** Optional. Omitted on files written before the clipboard. */
   clips?: JournalClip[];
+  /**
+   * Tournaments, the standing A/B/C game, and weigh-ins.
+   * Omitted on version 1 files. Import fills it and does not erase a copy already on the device.
+   */
+  competition?: StudentCompetition;
 };
 
 export type CoachPlanPacket = PacketBase & {

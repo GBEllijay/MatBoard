@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { useSyncExternalStore } from 'react';
+import { StudentCompetitionPlan } from '../components/StudentCompetitionPlan';
+import { useRosterState } from '../hooks/useStores';
+import { importedPlanForName } from '../lib/rosterStore';
 import { useNavigate } from 'react-router-dom';
 import { SubmenuMarks } from '../components/TierHomeMark';
 import { Sheet } from '../components/Sheet';
@@ -30,6 +33,7 @@ function formatDate(value: string): string {
 
 export function RankingsPage() {
   const library = useRankings();
+  const roster = useRosterState();
   const navigate = useNavigate();
   const [editor, setEditor] = useState<{ id: string | null; draft: RankingDraft } | null>(null);
   const [pendingRemove, setPendingRemove] = useState<string | null>(null);
@@ -68,12 +72,16 @@ export function RankingsPage() {
                 </p>
                 {file.rows.length ? (
                   <ol className="rankings__rows">
-                    {file.rows.map((row) => (
-                      <li key={row.id}>
-                        <strong>{row.place}.</strong> {row.name}
-                        {row.result ? <span> — {row.result}</span> : null}
-                      </li>
-                    ))}
+                    {file.rows.map((row) => {
+                      const plan = importedPlanForName(roster, row.name);
+                      return (
+                        <li key={row.id}>
+                          <strong>{row.place}.</strong> {row.name}
+                          {row.result ? <span> — {row.result}</span> : null}
+                          {plan ? <StudentCompetitionPlan plan={plan} compact /> : null}
+                        </li>
+                      );
+                    })}
                   </ol>
                 ) : (
                   <p className="roster-card__note">No placements yet.</p>

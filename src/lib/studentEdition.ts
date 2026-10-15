@@ -4,6 +4,7 @@
  */
 
 import { FUNDAMENTALS_CATALOG } from './progress/catalog.ts';
+import { emptyCompetition, matchingGameTags } from './progress/competition.ts';
 import { isStudentEditionUnlocked } from './studentUnlock.ts';
 import { exportProgressPacket, parseProgressPacket, searchJournal, searchJournalClips } from './progress/format.ts';
 import {
@@ -125,7 +126,7 @@ export function studentEditionOpen(
 
 export function blankStudentReport(now = Date.now()): StudentProgressReport {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     kind: 'student-progress-report',
     id: 'student-local',
     studentId: 'student-local',
@@ -143,6 +144,7 @@ export function blankStudentReport(now = Date.now()): StudentProgressReport {
     journal: [],
     calendar: [],
     goals: [],
+    competition: emptyCompetition(),
   };
 }
 
@@ -294,7 +296,10 @@ export function addJournalAmendment(
 
 export function searchStudentJournal(report: StudentProgressReport, query: string): JournalEntry[] {
   const newest = [...report.journal].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt);
-  return searchJournal(newest, query);
+  const needle = query.trim().toLowerCase();
+  if (!needle) return newest;
+  const tags = new Set(matchingGameTags(report.competition, query));
+  return newest.filter((entry) => tags.has(entry.gameTag) || searchJournal([entry], query).length > 0);
 }
 
 export function searchStudentClips(report: StudentProgressReport, query: string): JournalClip[] {

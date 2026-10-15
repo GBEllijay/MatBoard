@@ -33,6 +33,7 @@ const PAGES: { path: string; home: boolean }[] = [
   { path: '/student/cards?student=1', home: true },
   { path: '/student/fundamentals?student=1', home: true },
   { path: '/student/calendar?student=1', home: true },
+  { path: '/student/competitor?student=1', home: true },
   { path: '/student/rubric?student=1', home: true },
   { path: '/coaching-tools', home: true },
   { path: '/review', home: true },

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { HomeMark } from '../components/HomeMark';
 import { LeatherSpine } from '../components/LeatherSpine';
@@ -8,11 +8,14 @@ import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import { STUDENT_EDITION_NAME, STUDENT_HOME_DESCRIPTION } from '../lib/productNames';
-import type { GameTag } from '../lib/progress/types.ts';
+import { matchingGameTags, gameLetter } from '../lib/progress/competition.ts';
+import type { CompetitionGame, GameTag } from '../lib/progress/types.ts';
 import { isIsoDate } from '../lib/studentTools';
 import { BeltPage } from './student/BeltPage';
 import { CalendarDayPage, CalendarPage } from './student/CalendarPages';
+import { CompetitorPage } from './student/CompetitorPage';
 import { BeltDoodle, LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './student/chrome';
+import { applyGameDrafts, StandingGames } from './student/StandingGames';
 import { SharePage } from './student/SharePage';
 import {
   addCustomFundamental,
@@ -66,6 +69,7 @@ export function StudentEditionPage() {
   if (rest.startsWith('calendar/')) return <CalendarDayPage date={decodeURIComponent(rest.slice('calendar/'.length))} />;
   if (rest === 'rubric' || rest === 'belt') return <BeltPage />;
   if (rest === 'share') return <SharePage />;
+  if (rest === 'competitor') return <CompetitorPage />;
   return <Hub />;
 }
 
@@ -92,6 +96,7 @@ const HUB_LINKS = [
   { title: 'Journal cards', note: 'Search your notes', to: '/student/cards' },
   { title: 'Fundamentals', note: 'Checklist', to: '/student/fundamentals' },
   { title: 'Calendar', note: 'Month and your events', to: '/student/calendar' },
+  { title: 'Competitor', note: 'Tournaments, game, and weight', to: '/student/competitor' },
   { title: 'Belt progress', note: 'Checkpoints and goals', to: '/student/rubric' },
 ] as const;
 
@@ -150,6 +155,9 @@ function JournalToday() {
   const [notes, setNotes] = useState('');
   const [picker, setPicker] = useState<0 | 1 | null>(null);
   const [error, setError] = useState('');
+  const gameDrafts = useRef<Record<GameTag, CompetitionGame>>(
+    report.competition?.games ?? { a: { techniques: '', notes: '' }, b: { techniques: '', notes: '' }, c: { techniques: '', notes: '' } },
+  );
 
   const choose = (index: 0 | 1, item: FundamentalRow) => {
     setTechniques((current) =>
@@ -166,8 +174,9 @@ function JournalToday() {
       return;
     }
     try {
+      const withGame = applyGameDrafts(report, gameDrafts.current);
       const next = commit(
-        addJournalEntry(report, {
+        addJournalEntry(withGame, {
           date,
           classKind,
           gameTag,
@@ -228,6 +237,18 @@ function JournalToday() {
               </button>
             ))}
           </div>
+          {gameTag ? (
+            <StandingGames
+              report={report}
+              commit={commit}
+              only={gameTag}
+              onDrafts={(drafts) => {
+                gameDrafts.current = drafts;
+              }}
+            />
+          ) : (
+            <p className="student-quiet">Pick A, B, or C game to write the techniques you are working on for competition.</p>
+          )}
           <div className="student-split">
             <div className="student-stack">
               {[0, 1].map((index) => (
@@ -480,6 +501,7 @@ function JournalList() {
   const { report } = useStudentFile();
   const [query, setQuery] = useState('');
   const cards = searchStudentJournal(report, query).map(viewJournalEntry);
+  const games = matchingGameTags(report.competition, query);
   return (
     <main className="student student-frame">
       <StudentMarks />
@@ -498,6 +520,20 @@ function JournalList() {
           <Link className="ink-btn" to={to('/student/journal')}>
             Today’s page
           </Link>
+          {query.trim() && games.length ? (
+            <section className="ink" aria-label="Competition game">
+              {games.map((tag) => {
+                const game = report.competition?.games[tag];
+                if (!game) return null;
+                return (
+                  <p key={tag}>
+                    <strong>{gameLetter(tag)} game.</strong> {game.techniques || 'No techniques yet'}
+                    {game.notes ? ` — ${game.notes}` : ''}
+                  </p>
+                );
+              })}
+            </section>
+          ) : null}
           {cards.length === 0 ? <p className="student-quiet">No cards match.</p> : null}
           {cards.map((card) => (
             <Link key={card.id} className="ink student-card-link" to={to(`/student/cards/${card.id}`)}>

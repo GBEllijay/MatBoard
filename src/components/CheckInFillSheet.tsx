@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useRosterState } from '../hooks/useStores';
+import { workingOnLine } from '../lib/progress/competition';
 import { COMPETITOR_ROSTER_LABEL } from '../lib/coachCopy';
 import {
   bracketDivisionFilter,
@@ -57,6 +59,7 @@ export function CheckInFillSheet({
   const [rankingId, setRankingId] = useState<string | null>(null);
   const [primed, setPrimed] = useState(false);
   const allChecked = checkedInCompetitors(students);
+  const roster = useRosterState();
   const divisionFilter = bracketDivisionFilter(bracketTitle, students);
   const checked = competitorsForBracketFill(students, bracketTitle).competitors;
   if (open && !primed) {
@@ -168,13 +171,19 @@ export function CheckInFillSheet({
                 {ordered.length === 1 ? '. The smallest bracket is 2, so one slot stays open.' : ''}
               </p>
               <ol className="checkin-seeds">
-                {placed.map((seed, index) => (
-                  <li key={seed.id}>
-                    <span>{index + 1}</span>
-                    <strong>{seed.name}</strong>
-                    <em className="checkin-seeds__place">{seed.place == null ? 'Unranked' : `Place ${seed.place}`}</em>
-                  </li>
-                ))}
+                {placed.map((seed, index) => {
+                  const line = roster.competitionPlans[seed.id]
+                    ? workingOnLine(roster.competitionPlans[seed.id].games)
+                    : '';
+                  return (
+                    <li key={seed.id}>
+                      <span>{index + 1}</span>
+                      <strong>{seed.name}</strong>
+                      <em className="checkin-seeds__place">{seed.place == null ? 'Unranked' : `Place ${seed.place}`}</em>
+                      {line ? <em className="checkin-seeds__plan">{line}</em> : null}
+                    </li>
+                  );
+                })}
               </ol>
               {replaces ? (
                 <p className="tournament__sheet-copy">
