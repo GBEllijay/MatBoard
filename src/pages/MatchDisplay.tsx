@@ -135,13 +135,15 @@ export function MatchDisplayPage() {
           )}
         </div>
         <div className="display__chrome-end">
-          <FullscreenChip
-            supported={fs.supported}
-            active={fs.active}
-            nudge={fs.showFallback}
-            shortcut={fs.tvStation}
-            onToggle={() => void fs.toggle()}
-          />
+          {fs.active ? null : (
+            <FullscreenChip
+              supported={fs.supported}
+              active={fs.active}
+              nudge={fs.showFallback}
+              shortcut={fs.tvStation}
+              onToggle={() => void fs.toggle()}
+            />
+          )}
           <Link
             to={board.originPath(controllerPath(linkedId, endedWithoutWinner ? 'outcome' : undefined))}
             className="chip chip--gold"
