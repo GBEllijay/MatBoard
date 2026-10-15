@@ -80,6 +80,12 @@ export const PROGRESS_RESULTS_MAX = 80;
 export const PROGRESS_RANK_HISTORY_MAX = 40;
 /** Stripe slots on the belt the student wears. The file stores this as tape count, not a stripes key. */
 export const RANK_TAPE_MAX = 4;
+/** Instructor, their instructor, and so on. */
+export const PROGRESS_LINEAGE_MAX = 16;
+/** One compressed promotion photo. */
+export const RANK_PHOTO_MAX_CHARS = 48_000;
+/** Promotion photos included in one export, measured in characters. The rest stay on the phone. */
+export const RANK_EXPORT_BUDGET = 180_000;
 export const PROGRESS_MATCHES_MAX = 40;
 export const PROGRESS_BRACKET_NOTES_MAX = 32;
 /** Techniques and sequences on one standing game. */
@@ -341,6 +347,16 @@ export type RankHistory = {
 };
 
 /**
+ * One promotion photo in an export.
+ * `tapeIndex` is 0 to 3 when the photo belongs to a stripe. Omitted for a belt photo.
+ */
+export type RankPicture = {
+  belt: RankBelt;
+  tapeIndex?: number;
+  image: string;
+};
+
+/**
  * Stripes and dates for the belt on `profile.belt`.
  * Optional. Older files omit it. `tapeCount` is 0 to 4.
  * This object does not use a stripe, stripes, or levelKey field.
@@ -351,6 +367,20 @@ export type StudentRank = {
   awardedOn: string;
   tapeDates: RankTapeDates;
   history: RankHistory[];
+  /**
+   * Instructor lineage. The first line is the student's instructor.
+   * Absent on older files. An empty list is a lineage the student cleared.
+   */
+  lineage?: string[];
+  /**
+   * Compressed promotion photos. Present on an export when they fit.
+   * The copy on the phone keeps the images in local storage, not in this field.
+   */
+  pictures?: RankPicture[];
+  /** Set when one or more promotion photos were left out of the export. */
+  pictureNote?: string;
+  /** How many promotion photos the export kept. */
+  pictureCount?: number;
 };
 
 /** Competition section of a student progress report. Absent on version 1 files until import fills it. */

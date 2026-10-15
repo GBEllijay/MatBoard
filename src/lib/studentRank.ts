@@ -5,6 +5,8 @@
 
 import {
   PROGRESS_ID_MAX,
+  PROGRESS_LINEAGE_MAX,
+  PROGRESS_NOTE_MAX,
   PROGRESS_RANK_HISTORY_MAX,
   RANK_BELTS,
   RANK_TAPE_MAX,
@@ -40,12 +42,72 @@ export function emptyTapeDates(): RankTapeDates {
 }
 
 export function emptyRank(): StudentRank {
-  return { tapeCount: 0, awardedOn: '', tapeDates: emptyTapeDates(), history: [] };
+  return { tapeCount: 0, awardedOn: '', tapeDates: emptyTapeDates(), history: [], lineage: [] };
+}
+
+export type LadderRung = {
+  belt: RankBelt;
+  label: string;
+  current: boolean;
+  reached: boolean;
+  awardedOn: string;
+  tapeCount: number;
+  tapeDates: RankTapeDates;
+  historyId: string;
+};
+
+/** White at the top, then blue, purple, brown, and black. */
+export function ladderRungs(report: StudentProgressReport): LadderRung[] {
+  const rank = rankOf(report);
+  const current = report.profile.belt;
+  const currentIndex = isRankBelt(current) ? RANK_BELTS.indexOf(current) : -1;
+  const historyByBelt = new Map<RankBelt, RankHistory>();
+  for (const row of rank.history) historyByBelt.set(row.belt, row);
+  return RANK_BELTS.map((belt, index) => {
+    const label = BELT_NAMES[belt];
+    if (belt === current) {
+      return {
+        belt,
+        label,
+        current: true,
+        reached: true,
+        awardedOn: rank.awardedOn,
+        tapeCount: rank.tapeCount,
+        tapeDates: copyDates(rank.tapeDates),
+        historyId: '',
+      };
+    }
+    const past = historyByBelt.get(belt);
+    const reached = currentIndex >= 0 && index < currentIndex;
+    if (past) {
+      return {
+        belt,
+        label,
+        current: false,
+        reached: true,
+        awardedOn: past.awardedOn,
+        tapeCount: past.tapeCount,
+        tapeDates: copyDates(past.tapeDates),
+        historyId: past.id,
+      };
+    }
+    return {
+      belt,
+      label,
+      current: false,
+      reached,
+      awardedOn: '',
+      tapeCount: 0,
+      tapeDates: emptyTapeDates(),
+      historyId: '',
+    };
+  });
 }
 
 /** The rank on the report, or an empty one when an older file omitted it. */
 export function rankOf(report: StudentProgressReport): StudentRank {
-  return report.rank ?? emptyRank();
+  const rank = report.rank ?? emptyRank();
+  return { ...rank, lineage: rank.lineage ?? [], tapeDates: copyDates(rank.tapeDates) };
 }
 
 export function rankBeltLabel(belt: ProgressBelt): string {
@@ -96,7 +158,7 @@ export function setRankBelt(report: StudentProgressReport, belt: ProgressBelt, n
   }
   return touch(
     report,
-    { tapeCount: 0, awardedOn: '', tapeDates: emptyTapeDates(), history },
+    { ...current, tapeCount: 0, awardedOn: '', tapeDates: emptyTapeDates(), history },
     belt,
     now,
   );
@@ -131,6 +193,51 @@ export function setRankTapeDate(
   const tapeDates = copyDates(rank.tapeDates);
   tapeDates[index] = awarded;
   return touch(report, { ...rank, tapeDates }, report.profile.belt, now);
+}
+
+export function setRankLineage(report: StudentProgressReport, lines: readonly string[], now = Date.now()): StudentProgressReport {
+  const lineage = lines
+    .map((line) => line.trim().slice(0, PROGRESS_NOTE_MAX))
+    .filter(Boolean)
+    .slice(0, PROGRESS_LINEAGE_MAX);
+  const rank = rankOf(report);
+  const prior = rank.lineage ?? [];
+  if (prior.length === lineage.length && prior.every((line, index) => line === lineage[index])) return report;
+  return touch(report, { ...rank, lineage }, report.profile.belt, now);
+}
+
+export function setRankHistoryAwardedOn(
+  report: StudentProgressReport,
+  id: string,
+  date: string,
+  now = Date.now(),
+): StudentProgressReport {
+  const awardedOn = cleanDate(date);
+  const rank = rankOf(report);
+  if (!rank.history.some((row) => row.id === id)) return report;
+  const history = rank.history.map((row) => (row.id === id ? { ...row, awardedOn } : row));
+  if (rank.history.some((row) => row.id === id && row.awardedOn === awardedOn)) return report;
+  return touch(report, { ...rank, history }, report.profile.belt, now);
+}
+
+export function setRankHistoryTapeDate(
+  report: StudentProgressReport,
+  id: string,
+  index: number,
+  date: string,
+  now = Date.now(),
+): StudentProgressReport {
+  if (!Number.isInteger(index) || index < 0 || index >= RANK_TAPE_MAX) throw new Error('Stripes are 0 to 4.');
+  const rank = rankOf(report);
+  const row = rank.history.find((item) => item.id === id);
+  if (!row) return report;
+  if (index >= row.tapeCount) throw new Error('That stripe is not on the belt yet.');
+  const awarded = cleanDate(date);
+  if (row.tapeDates[index] === awarded) return report;
+  const tapeDates = copyDates(row.tapeDates);
+  tapeDates[index] = awarded;
+  const history = rank.history.map((item) => (item.id === id ? { ...item, tapeDates } : item));
+  return touch(report, { ...rank, history }, report.profile.belt, now);
 }
 
 export function removeRankHistory(report: StudentProgressReport, id: string, now = Date.now()): StudentProgressReport {
@@ -197,13 +304,22 @@ function touch(
     ...report,
     updatedAt: now,
     profile: { ...report.profile, belt },
-    rank: {
-      tapeCount: rank.tapeCount,
-      awardedOn: rank.awardedOn,
-      tapeDates: copyDates(rank.tapeDates),
-      history: rank.history.map((row) => cloneHistory(row)),
-    },
+    rank: rankFields(rank),
   };
+}
+
+function rankFields(rank: StudentRank): StudentRank {
+  const next: StudentRank = {
+    tapeCount: rank.tapeCount,
+    awardedOn: rank.awardedOn,
+    tapeDates: copyDates(rank.tapeDates),
+    history: rank.history.map((row) => cloneHistory(row)),
+    lineage: [...(rank.lineage ?? [])],
+  };
+  if (rank.pictureNote) next.pictureNote = rank.pictureNote;
+  if (rank.pictureCount) next.pictureCount = rank.pictureCount;
+  if (rank.pictures) next.pictures = rank.pictures.map((picture) => ({ ...picture }));
+  return next;
 }
 
 function cloneHistory(row: RankHistory): RankHistory {

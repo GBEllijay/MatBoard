@@ -27,6 +27,9 @@ import {
   PROGRESS_ID_MAX,
   PROGRESS_JOURNAL_MAX,
   PROGRESS_LEVELS_MAX,
+  PROGRESS_LINEAGE_MAX,
+  RANK_EXPORT_BUDGET,
+  RANK_PHOTO_MAX_CHARS,
   MATCH_METHODS,
   MATCH_RESULTS,
   PROGRESS_BRACKET_NOTES_MAX,
@@ -78,6 +81,7 @@ import {
   type ProgressMerge,
   type RankBelt,
   type RankHistory,
+  type RankPicture,
   type RankTapeDates,
   type ProgressPacket,
   type ProgressParse,
@@ -143,8 +147,42 @@ export function progressHandoffFileName(packet: Pick<ProgressPacket, 'kind' | 'i
 }
 
 export function exportProgressPacket(packet: ProgressPacket): string {
-  if (packetCarriesBytes(packet)) throw new Error('A progress file cannot carry photos or videos.');
-  return JSON.stringify(packet);
+  const ready = packet.kind === 'student-progress-report' ? fitRankPictures(packet) : packet;
+  if (packetCarriesBytes(ready)) throw new Error('A progress file cannot carry photos or videos.');
+  return JSON.stringify(ready);
+}
+
+/**
+ * Keep promotion photos that fit in the export budget.
+ * Photos past the budget stay off the file, and pictureNote says how many.
+ */
+export function fitRankPictures(report: StudentProgressReport): StudentProgressReport {
+  if (!report.rank) return report;
+  const incoming = report.rank.pictures ?? [];
+  if (!incoming.length) return report;
+  const kept: RankPicture[] = [];
+  let used = 0;
+  let skipped = 0;
+  for (const picture of incoming) {
+    if (rankImageFits(picture.image) && used + picture.image.length <= RANK_EXPORT_BUDGET) {
+      kept.push({ ...picture });
+      used += picture.image.length;
+      continue;
+    }
+    skipped += 1;
+  }
+  const rank: StudentRank = { ...report.rank };
+  if (kept.length) {
+    rank.pictures = kept;
+    rank.pictureCount = kept.length;
+  } else {
+    delete rank.pictures;
+    delete rank.pictureCount;
+  }
+  if (skipped) {
+    rank.pictureNote = `${skipped} promotion ${skipped === 1 ? 'photo' : 'photos'} stayed on this phone.`;
+  }
+  return { ...report, rank };
 }
 
 export function parseProgressPacket(text: string): ProgressParse {
@@ -317,21 +355,36 @@ export function exportProgressCsv(packet: ProgressPacket): string {
 }
 
 export function packetCarriesBytes(value: unknown): boolean {
-  const stack: unknown[] = [value];
+  const stack: { value: unknown; path: string[] }[] = [{ value, path: [] }];
   const seen = new Set<object>();
   while (stack.length) {
-    const current = stack.pop();
+    const frame = stack.pop();
+    if (!frame) continue;
+    const current = frame.value;
     if (!current || typeof current !== 'object') continue;
     if (current instanceof Uint8Array || current instanceof ArrayBuffer) return true;
     if (seen.has(current)) continue;
     seen.add(current);
     for (const [key, child] of Object.entries(current as Record<string, unknown>)) {
       if (BYTE_KEY.test(key)) return true;
-      if (typeof child === 'string' && child.startsWith('data:')) return true;
-      if (child && typeof child === 'object') stack.push(child);
+      if (typeof child === 'string' && child.startsWith('data:')) {
+        if (allowsRankImage(frame.path, key, child)) continue;
+        return true;
+      }
+      if (child && typeof child === 'object') stack.push({ value: child, path: [...frame.path, key] });
     }
   }
   return false;
+}
+
+function allowsRankImage(path: readonly string[], key: string, value: string): boolean {
+  if (key !== 'image') return false;
+  if (!path.includes('rank') || !path.includes('pictures')) return false;
+  return rankImageFits(value);
+}
+
+function rankImageFits(value: string): boolean {
+  return /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=\s]+$/.test(value) && value.length <= RANK_PHOTO_MAX_CHARS;
 }
 
 /** Label on a journal technique row, the saved card, and search. */
@@ -518,11 +571,14 @@ function mergeClips(report: StudentProgressReport, incoming: StudentProgressRepo
 function mergeRank(report: StudentProgressReport, incoming: StudentProgressReport, conflicts: string[]): void {
   if (!incoming.rank) return;
   if (!report.rank) {
-    report.rank = structuredClone(incoming.rank);
+    report.rank = stripRankPictures(structuredClone(incoming.rank));
     return;
   }
   const local = report.rank;
   const next = incoming.rank;
+  local.lineage = mergeLineage(local.lineage, next.lineage, conflicts);
+  if (!local.pictureNote && next.pictureNote) local.pictureNote = next.pictureNote;
+  delete local.pictures;
   local.awardedOn = preferText(local.awardedOn, next.awardedOn, 'Rank date was kept.', conflicts);
   if (local.tapeCount !== next.tapeCount) {
     if (local.tapeCount === 0 && next.tapeCount > 0) local.tapeCount = next.tapeCount;
@@ -560,6 +616,21 @@ function mergeRank(report: StudentProgressReport, incoming: StudentProgressRepor
     }
     for (let index = current.tapeCount; index < RANK_TAPE_MAX; index += 1) current.tapeDates[index] = '';
   }
+}
+
+function mergeLineage(local: string[] | undefined, incoming: string[] | undefined, conflicts: string[]): string[] | undefined {
+  const kept = (local ?? []).map((line) => line.trim()).filter(Boolean);
+  const next = (incoming ?? []).map((line) => line.trim()).filter(Boolean);
+  if (!kept.length && next.length) return next;
+  if (kept.length && next.length && kept.join('\n') !== next.join('\n')) conflicts.push('Lineage was kept.');
+  return local;
+}
+
+function stripRankPictures(rank: StudentRank): StudentRank {
+  if (!rank.pictures) return rank;
+  const next = { ...rank };
+  delete next.pictures;
+  return next;
 }
 
 function mergeCompetition(report: StudentProgressReport, incoming: StudentProgressReport, conflicts: string[]): void {
@@ -887,12 +958,80 @@ function readRank(value: unknown, errors: string[]): StudentRank | undefined {
   }
   const tapeCount = readTapeCount(record.tapeCount, 'Rank tape count', errors);
   const tapeDates = readTapeDates(record.tapeDates, 'Rank tape dates', errors);
-  return {
+  const rank: StudentRank = {
     tapeCount,
     awardedOn: readDate(record.awardedOn, 'Rank awarded on', errors, false),
     tapeDates: maskTapeDates(tapeDates, tapeCount),
     history: readRankHistory(record.history, errors),
   };
+  if (Object.prototype.hasOwnProperty.call(record, 'lineage')) rank.lineage = readLineage(record.lineage, errors);
+  if (typeof record.pictureNote === 'string') {
+    rank.pictureNote = readString(record.pictureNote, 'Rank photo note', PROGRESS_NOTE_MAX, errors);
+  }
+  if (typeof record.pictureCount === 'number' && Number.isInteger(record.pictureCount) && record.pictureCount >= 0) {
+    rank.pictureCount = record.pictureCount;
+  }
+  const pictures = readRankPictures(record.pictures, errors);
+  if (pictures.length) {
+    const fitted = fitRankPictures({ ...blankPictureReport(), rank: { ...rank, pictures } });
+    if (fitted.rank?.pictures) rank.pictures = fitted.rank.pictures;
+    if (fitted.rank?.pictureNote) rank.pictureNote = fitted.rank.pictureNote;
+    if (fitted.rank?.pictureCount) rank.pictureCount = fitted.rank.pictureCount;
+  }
+  return rank;
+}
+
+function blankPictureReport(): StudentProgressReport {
+  return {
+    schemaVersion: PROGRESS_SCHEMA_VERSION,
+    kind: 'student-progress-report',
+    id: 'rank-photos',
+    studentId: 'rank-photos',
+    updatedAt: 0,
+    profile: { id: 'rank-photos', displayName: '', gymName: '', belt: 'white', startedOn: '', licenseSource: '' },
+    rubric: { id: 'rank-photos', levels: [] },
+    checklist: [],
+    journal: [],
+    calendar: [],
+    goals: [],
+  };
+}
+
+function readLineage(value: unknown, errors: string[]): string[] {
+  const rows = readList(value, 'Lineage', PROGRESS_LINEAGE_MAX, errors);
+  return rows.map((row, index) => readString(row, `Lineage ${index + 1}`, PROGRESS_NOTE_MAX, errors).trim()).filter(Boolean);
+}
+
+function readRankPictures(value: unknown, errors: string[]): RankPicture[] {
+  if (value == null) return [];
+  const rows = readList(value, 'Rank photos', 80, errors);
+  const pictures: RankPicture[] = [];
+  rows.forEach((row, index) => {
+    const picture = readRankPicture(row, index, errors);
+    if (picture) pictures.push(picture);
+  });
+  return pictures;
+}
+
+function readRankPicture(value: unknown, index: number, errors: string[]): RankPicture | null {
+  const record = asRecord(value);
+  const label = `Rank photo ${index + 1}`;
+  if (!record) {
+    errors.push(`${label} must be an object.`);
+    return null;
+  }
+  const image = typeof record.image === 'string' ? record.image : '';
+  if (!rankImageFits(image)) {
+    errors.push(`${label} must be a compressed image.`);
+    return null;
+  }
+  const picture: RankPicture = { belt: readRankBelt(record.belt, `${label} belt`, errors), image };
+  if (record.tapeIndex != null && record.tapeIndex !== '') {
+    const tapeIndex = readTapeCount(record.tapeIndex, `${label} tape`, errors);
+    if (tapeIndex >= RANK_TAPE_MAX) errors.push(`${label} tape must be 0 to 3.`);
+    else picture.tapeIndex = tapeIndex;
+  }
+  return picture;
 }
 
 function readRankHistory(value: unknown, errors: string[]): RankHistory[] {
@@ -1985,9 +2124,31 @@ function writeReportRows(lines: string[], packet: StudentProgressReport): void {
 
 function writeRankRows(lines: string[], packet: StudentProgressReport): void {
   if (!packet.rank) return;
-  lines.push(rankCsvRow('Rank', packet.studentId, packet.profile.belt, packet.rank, packet.studentId));
+  lines.push(rankCsvRow('Rank', packet.studentId, packet.profile.belt, packet.rank, packet.studentId, packet.rank.pictureNote ?? ''));
   for (const row of packet.rank.history) {
-    lines.push(rankCsvRow('Rank history', row.id, row.belt, row, packet.studentId));
+    lines.push(rankCsvRow('Rank history', row.id, row.belt, row, packet.studentId, ''));
+  }
+  for (const [index, name] of (packet.rank.lineage ?? []).entries()) {
+    lines.push(csvRow([
+      'Lineage',
+      String(index + 1),
+      '',
+      packet.studentId,
+      '',
+      '',
+      name,
+      '',
+      '',
+      '',
+      '',
+      '',
+      name,
+      String(index + 1),
+      '',
+      '',
+      '',
+      '',
+    ]));
   }
 }
 
@@ -1997,6 +2158,7 @@ function rankCsvRow(
   belt: string,
   rank: { awardedOn: string; tapeCount: number; tapeDates: readonly string[] },
   parentId: string,
+  note: string,
 ): string {
   const dates = rank.tapeDates
     .map((date, index) => (date ? `${index + 1} ${date}` : ''))
@@ -2012,7 +2174,7 @@ function rankCsvRow(
     belt,
     dates,
     '',
-    '',
+    note,
     '',
     '',
     sheet === 'Rank' ? 'Current rank' : belt,

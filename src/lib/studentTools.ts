@@ -9,6 +9,7 @@ import { classesOnDay, formatClassTime, normalizeGymCalendar, WEEKDAY_LABELS, we
 import {
   exportProgressCsv,
   exportProgressPacket,
+  fitRankPictures,
   importCoachSuggestion,
   mergeCoachPacket,
   parseProgressPacket,
@@ -36,6 +37,7 @@ import {
 } from './progress/types.ts';
 import { todayIso } from './studentEdition.ts';
 import { setRankBelt } from './studentRank.ts';
+import { loadRankPictures, picturesFromStore } from './rankPhotos.ts';
 
 export const COACH_PLAN_STORAGE_KEY = 'matboard.studentEdition.coachPlan.v1';
 export const COACH_FEEDBACK_STORAGE_KEY = 'matboard.studentEdition.coachFeedback.v1';
@@ -612,7 +614,7 @@ export function applyCoachFile(report: StudentProgressReport, shelf: CoachShelf,
 
 export const SHARE_SUBJECT = 'Advantage progress report';
 
-export function progressReportFiles(report: StudentProgressReport): {
+export function progressReportFiles(report: StudentProgressReport, pictures = picturesFromStore(loadRankPictures())): {
   jsonName: string;
   json: string;
   csvName: string;
@@ -620,10 +622,12 @@ export function progressReportFiles(report: StudentProgressReport): {
   subject: string;
   mailto: string;
 } {
-  const jsonName = progressHandoffFileName(report);
-  const json = exportProgressPacket(report);
+  const withPhotos = report.rank && pictures.length ? { ...report, rank: { ...report.rank, pictures } } : report;
+  const fitted = fitRankPictures(withPhotos);
+  const jsonName = progressHandoffFileName(fitted);
+  const json = exportProgressPacket(fitted);
   const csvName = jsonName.replace(/\.json$/, '.csv');
-  const csv = exportProgressCsv(report);
+  const csv = exportProgressCsv(fitted);
   const body = `The progress file ${jsonName} is on this phone. Attach that JSON. Advantage does not host the file.`;
   const mailto = `mailto:?subject=${encodeURIComponent(SHARE_SUBJECT)}&body=${encodeURIComponent(body)}`;
   return { jsonName, json, csvName, csv, subject: SHARE_SUBJECT, mailto };

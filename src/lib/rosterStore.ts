@@ -627,6 +627,9 @@ function rankPacket(rank: ImportedRank | undefined): Omit<ImportedRank, 'belt'> 
     awardedOn: rank.awardedOn,
     tapeDates: rank.tapeDates,
     history: rank.history,
+    lineage: rank.lineage ?? [],
+    pictureNote: rank.pictureNote ?? '',
+    pictureCount: rank.pictureCount ?? 0,
   };
 }
 

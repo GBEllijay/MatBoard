@@ -2,7 +2,7 @@
 
 Step 1 is the shared file format. There is no Student Edition screen, price, or tier check in this change. The planned one-time price in the owner notes is $19.99, between White ($9.99) and Coach ($29.99). That price is not in the app yet.
 
-Advantage never hosts the file. A student or coach keeps it on their device, attaches it to email, or drops the same JSON into the gym Google Drive folder. The file is text. It does not carry photos or videos.
+Advantage never hosts the file. A student or coach keeps it on their device, attaches it to email, or drops the same JSON into the gym Google Drive folder. The file is text. Bracket photos and videos stay off it. A promotion photo is copied in only when the export has room.
 
 Student, Coach, and Pro may all import and export this file. This step does not change who can open a screen. A later step must not refuse a file the person already has because of their tier.
 
@@ -121,9 +121,13 @@ Optional on a student progress report. The current belt stays on `profile.belt`.
 
 `rank.tapeCount` is how many stripes are on the current belt, a whole number from 0 to 4. `rank.awardedOn` is the date they got that belt, or empty. `rank.tapeDates` is four dates, one for each stripe, and slots past `tapeCount` stay empty. `rank.history` lists earlier belts. Each history row has an id, a belt (`white`, `blue`, `purple`, `brown`, or `black`), the date, the stripe count, and the four stripe dates.
 
+`rank.lineage` is the student's instructor lineage. Each line is one person, instructor first, then their instructor. A student can type it as free text, one person per line, or edit the ordered list. Absent on older files. An empty list does not clear a lineage already on the device when the incoming file omits the field. A file that includes `lineage` fills an empty lineage and keeps a lineage already stored.
+
+Promotion photos stay on the phone (`matboard.studentEdition.rankPhotos.v1`), compressed. Send to coach copies them onto `rank.pictures` when they fit in 180,000 characters. Each picture is a `data:image` jpeg, png, or webp of at most 48,000 characters, with a belt and an optional `tapeIndex` (0 to 3) when it belongs to a stripe. Photos past the budget are left out. `rank.pictureNote` then says how many stayed on the phone. `rank.pictureCount` is how many were included. The copy saved on the student phone does not keep those image bytes in the progress file. A bracket photo is still never in the file.
+
 The file uses `tapeCount` and `tapeDates`. A key named `stripe`, `stripes`, or `levelKey` is still refused, because Belt progress stays checkpoints between levels.
 
-A file with no `rank` field imports as it was written and does not clear a rank already on the device. A file that includes `rank` fills an empty date or an empty stripe count and adds new history ids. A date or stripe count already stored is kept.
+A file with no `rank` field imports as it was written and does not clear a rank already on the device. A file that includes `rank` fills an empty date or an empty stripe count and adds new history ids. A date or stripe count already stored is kept. Image bytes in `rank.pictures` are not copied onto the phone's living progress file.
 
 ### StudentGoal
 
@@ -154,7 +158,7 @@ Import of a `student-progress-report` merges into the copy already on the device
 - A checklist line, goal, checkpoint, criterion, calendar event, or clip that already has text keeps that text. An empty field can be filled from the incoming student file. A new id is added. A mark the student already set is kept.
 - A file with no `clips` field does not clear a clipboard already on the device. A file that includes `clips` adds new clip ids and keeps the link and note already stored for an id this device has.
 - A file with no `competition` field does not clear tournaments, the standing game, weigh-ins, or results already on the device. A file that includes `competition` adds new tournament, goal, weigh-in, result, match, and bracket ids. Text already stored for an id is kept. An empty standing-game field can be filled from the incoming file. The weight unit on the device is kept. A missing `results` list does not clear results already on the device.
-- A file with no `rank` field does not clear stripes, belt dates, or promotion history already on the device. A file that includes `rank` fills an empty belt date or an empty stripe count and adds new history ids. A date or stripe count already stored is kept. The profile on the device, including the current belt, is still kept when the two profiles differ.
+- A file with no `rank` field does not clear stripes, belt dates, promotion history, or lineage already on the device. A file that includes `rank` fills an empty belt date, an empty stripe count, or an empty lineage, and adds new history ids. A date, stripe count, or lineage already stored is kept. Promotion photo bytes in that file are not written into the living progress file. The profile on the device, including the current belt, is still kept when the two profiles differ.
 - `importCoachSuggestion` returns the student report unchanged, beside the coach packet. The student can read the suggestion. Nothing in that import writes rubric marks, checkpoints, the journal, or goals. A newer coach file can replace an older coach file of the same id. That replacement is only the suggestion snapshot.
 
 ## Privacy
@@ -189,8 +193,9 @@ Filter the Sheet column:
 | Result | One recorded competition. Name is the tournament. Category is the division. Criterion id is the tracked tournament id when set. Note says a bracket photo is on the student phone when one is |
 | Match | One match. Parent id is the result id. Game is `win`, `loss`, or `draw`. Category is the method. Name is the opponent. Note is the match note |
 | Bracket | One personal bracket line. Parent id is the result id. Category is the round. Name is the person |
-| Rank | The current belt and stripes, only when the report includes `rank`. Date is the belt date. Name and Belt are the current belt. Kind is the stripe count, 0 to 4. Technique names are the stripe dates, as `1 YYYY-MM-DD; 2 YYYY-MM-DD` |
+| Rank | The current belt and stripes, only when the report includes `rank`. Date is the belt date. Name and Belt are the current belt. Kind is the stripe count, 0 to 4. Technique names are the stripe dates, as `1 YYYY-MM-DD; 2 YYYY-MM-DD`. Note is the promotion-photo note when some photos stayed on the phone |
 | Rank history | One earlier belt. Parent id is the student id. Date is the belt date. Belt is that belt. Kind is the stripe count. Technique names are the stripe dates |
+| Lineage | One instructor. Id is the order, starting at 1. Name is that person. The first row is the student's instructor |
 | Goal | One student goal |
 | Coach plan | The plan header |
 | Focus | One suggestion line. Parent id is the plan id |

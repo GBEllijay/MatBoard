@@ -1,20 +1,23 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { competitionSnapshot, rankSummary } from './progress/competition.ts';
-import { parseProgressPacket } from './progress/format.ts';
+import { exportProgressPacket, fitRankPictures, mergeStudentProgress, parseProgressPacket } from './progress/format.ts';
+import { RANK_EXPORT_BUDGET, RANK_PHOTO_MAX_CHARS } from './progress/types.ts';
 import { normalizeRoster, type Student } from './rosterStore.ts';
 import { blankStudentReport } from './studentEdition.ts';
 import {
   emptyRank,
+  ladderRungs,
   rankMarks,
   rankOf,
   removeRankHistory,
   setRankAwardedOn,
   setRankBelt,
+  setRankLineage,
   setRankTapeCount,
   setRankTapeDate,
 } from './studentRank.ts';
-import { addCalendarEvent } from './studentTools.ts';
+import { addCalendarEvent, progressReportFiles } from './studentTools.ts';
 
 test('tapping stripes sets 0 to 4 and drops dates past the last stripe', () => {
   let report = blankStudentReport(10);
@@ -63,6 +66,68 @@ test('a kids belt is not written into promotion history', () => {
   assert.equal(report.rank?.tapeCount, 1);
   assert.equal(report.rank?.history.length, 0);
   assert.equal(report.rank?.history.some((row) => row.belt === 'grey'), false);
+});
+
+test('lineage is an ordered list, and the ladder runs white down to black', () => {
+  let report = setRankLineage(blankStudentReport(10), ['Coach Ana', '', 'Professor Luis'], 11);
+  assert.deepEqual(report.rank?.lineage, ['Coach Ana', 'Professor Luis']);
+  report = setRankBelt(report, 'blue', 12);
+  report = setRankAwardedOn(report, '2026-02-01', 13);
+  const rungs = ladderRungs(report);
+  assert.deepEqual(rungs.map((rung) => rung.belt), ['white', 'blue', 'purple', 'brown', 'black']);
+  assert.equal(rungs[1]?.current, true);
+  assert.equal(rungs[1]?.awardedOn, '2026-02-01');
+  assert.equal(rungs[0]?.awardedOn, '');
+  assert.deepEqual(rankOf(report).lineage, ['Coach Ana', 'Professor Luis']);
+  const parsed = parseProgressPacket(exportProgressPacket(report));
+  assert.equal(parsed.ok, true);
+  if (parsed.ok && parsed.value.kind === 'student-progress-report') {
+    assert.deepEqual(parsed.value.rank?.lineage, ['Coach Ana', 'Professor Luis']);
+  }
+  const incoming = setRankLineage(blankStudentReport(10), ['Someone else'], 14);
+  incoming.studentId = report.studentId;
+  const merged = mergeStudentProgress(report, incoming);
+  assert.deepEqual(merged.report.rank?.lineage, ['Coach Ana', 'Professor Luis']);
+  assert.match(merged.conflicts.join('\n'), /Lineage was kept/);
+});
+
+test('promotion photos export when they fit, and the rest stay off the file with a note', () => {
+  const prefix = 'data:image/jpeg;base64,';
+  const photo = `${prefix}${'A'.repeat(RANK_PHOTO_MAX_CHARS - prefix.length)}`;
+  assert.equal(photo.length, RANK_PHOTO_MAX_CHARS);
+  const report = setRankBelt(blankStudentReport(10), 'blue', 11);
+  const fitted = fitRankPictures({
+    ...report,
+    rank: {
+      ...rankOf(report),
+      pictures: [
+        { belt: 'blue', image: photo },
+        { belt: 'blue', image: photo },
+        { belt: 'blue', image: photo },
+        { belt: 'blue', tapeIndex: 0, image: photo },
+      ],
+    },
+  });
+  assert.equal(fitted.rank?.pictures?.length, 3);
+  assert.equal(fitted.rank?.pictureCount, 3);
+  assert.equal(fitted.rank?.pictureNote, '1 promotion photo stayed on this phone.');
+  assert.ok((fitted.rank?.pictures?.reduce((sum, picture) => sum + picture.image.length, 0) ?? 0) <= RANK_EXPORT_BUDGET);
+  const text = exportProgressPacket(fitted);
+  assert.equal(text.includes('"stripes"'), false);
+  const parsed = parseProgressPacket(text);
+  assert.equal(parsed.ok, true);
+  if (parsed.ok && parsed.value.kind === 'student-progress-report') {
+    assert.equal(parsed.value.rank?.pictures?.length, 3);
+    assert.equal(parsed.value.rank?.pictureNote, '1 promotion photo stayed on this phone.');
+  }
+  const blocked = parseProgressPacket(JSON.stringify({ ...report, photo: photo }));
+  assert.equal(blocked.ok, false);
+
+  const files = progressReportFiles(report, [{ belt: 'blue', image: photo }]);
+  assert.match(files.json, /data:image\/jpeg/);
+  assert.doesNotMatch(files.json, /stayed on this phone/);
+  const kept = mergeStudentProgress(report, parsed.ok && parsed.value.kind === 'student-progress-report' ? parsed.value : report);
+  assert.equal(kept.report.rank?.pictures, undefined);
 });
 
 test('a promotion test on the calendar does not become a belt date', () => {

@@ -257,6 +257,9 @@ export type ImportedRank = {
   awardedOn: string;
   tapeDates: RankTapeDates;
   history: RankHistory[];
+  lineage: string[];
+  pictureNote: string;
+  pictureCount: number;
 };
 
 /** A student's competition plan, copied onto a coach's roster. It stays on that device. */
@@ -279,7 +282,10 @@ export function rankHasContent(rank: ImportedRank | null | undefined): boolean {
   if (rank.belt !== 'white') return true;
   if (rank.tapeCount > 0 || rank.awardedOn.trim()) return true;
   if (rank.tapeDates.some((date) => date.trim())) return true;
-  return rank.history.length > 0;
+  if (rank.history.length > 0) return true;
+  if (rank.lineage?.length) return true;
+  if (rank.pictureNote?.trim()) return true;
+  return (rank.pictureCount ?? 0) > 0;
 }
 
 export function rankSummary(rank: ImportedRank): string {
@@ -320,6 +326,9 @@ export function competitionSnapshot(report: StudentProgressReport, importedAt: n
           awardedOn: report.rank.awardedOn,
           tapeDates: [...report.rank.tapeDates] as RankTapeDates,
           history: report.rank.history.map((row) => ({ ...row, tapeDates: [...row.tapeDates] as RankTapeDates })),
+          lineage: [...(report.rank.lineage ?? [])],
+          pictureNote: report.rank.pictureNote ?? '',
+          pictureCount: report.rank.pictureCount ?? report.rank.pictures?.length ?? 0,
         }
       : undefined,
   };

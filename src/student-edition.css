@@ -1139,84 +1139,157 @@ button.student-book .student-mark__press {
   margin-bottom: 0.45rem;
 }
 
-.rank-belt {
-  margin: 0.4rem 0 0.2rem;
-}
-
-.rank-belt__bar {
+.rank-ladder {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.6rem;
-  min-height: 2.7rem;
-  padding: 0.35rem 0.7rem;
-  border: 2.5px solid #1c140e;
-  border-radius: 4px;
-  background: #f7f4ea;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin: 0.5rem 0 0.8rem;
+  padding: 0 0 0 0.85rem;
+  list-style: none;
+  border-left: 3px solid #1c140e;
 }
 
-.rank-belt--blue .rank-belt__bar {
+.rank-rung {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+}
+
+.rank-line {
+  width: min(100%, 16rem);
+  display: grid;
+  justify-items: center;
+  border-top: 2px solid #1c140e;
+}
+
+.student .rank-line input {
+  width: 9.4rem;
+  margin-top: -0.85rem;
+  text-align: center;
+  background: var(--paper);
+}
+
+.student .rank-bar {
+  width: min(70%, 13.5rem);
+  min-height: 2.2rem;
+  margin-top: 0.15rem;
+  border: 2.5px solid #1c140e;
+  border-radius: 3px;
+  background: #f7f4ea;
+  font-size: 1.3rem;
+}
+
+.student .rank-bar.is-on {
+  outline: 3px solid var(--margin);
+  outline-offset: 2px;
+}
+
+.rank-rung--blue .rank-bar {
   background: #2a4f86;
   color: #f4f0e4;
 }
 
-.rank-belt--purple .rank-belt__bar {
+.rank-rung--purple .rank-bar {
   background: #5c3d86;
   color: #f4f0e4;
 }
 
-.rank-belt--brown .rank-belt__bar {
+.rank-rung--brown .rank-bar {
   background: #6b3e24;
   color: #f4f0e4;
 }
 
-.rank-belt--black .rank-belt__bar {
+.rank-rung--black .rank-bar {
   background: #161616;
   color: #f4f0e4;
 }
 
-.rank-belt__name {
-  font-size: 1.35rem;
+.rank-slots {
+  display: flex;
+  justify-content: center;
+  gap: 0.25rem;
+  width: 100%;
 }
 
-.rank-tapes {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
+.rank-slot {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  width: 4.15rem;
+  gap: 0.15rem;
 }
 
 .student .rank-tape {
-  width: 0.62rem;
-  height: 1.85rem;
+  width: 0.72rem;
+  height: 2.35rem;
   padding: 0;
   border: 2px solid #1c140e;
   border-radius: 1px;
   background: transparent;
 }
 
-.rank-belt--white .rank-tape.is-on,
-.rank-belt--other .rank-tape.is-on {
+.student .rank-tape:disabled {
+  cursor: default;
+}
+
+.rank-rung--white .rank-tape.is-on {
   background: #1c140e;
 }
 
-.rank-belt--blue .rank-tape,
-.rank-belt--purple .rank-tape,
-.rank-belt--brown .rank-tape {
+.rank-rung--blue .rank-tape,
+.rank-rung--purple .rank-tape,
+.rank-rung--brown .rank-tape {
   border-color: #f4f0e4;
+  box-shadow: 0 0 0 2px #1c140e;
 }
 
-.rank-belt--blue .rank-tape.is-on,
-.rank-belt--purple .rank-tape.is-on,
-.rank-belt--brown .rank-tape.is-on {
+.rank-rung--blue .rank-tape.is-on,
+.rank-rung--purple .rank-tape.is-on,
+.rank-rung--brown .rank-tape.is-on {
   background: #f4f0e4;
 }
 
-.rank-belt--black .rank-tape {
+.rank-rung--black .rank-tape {
   border-color: #c23b3b;
 }
 
-.rank-belt--black .rank-tape.is-on {
+.rank-rung--black .rank-tape.is-on {
   background: #c23b3b;
+}
+
+.student .rank-slot input {
+  width: 100%;
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+.rank-photos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  justify-content: center;
+  align-items: end;
+}
+
+.rank-photos figure {
+  display: grid;
+  justify-items: center;
+  gap: 0.1rem;
+  margin: 0;
+}
+
+.rank-photos img {
+  width: 3.1rem;
+  height: 3.1rem;
+  object-fit: cover;
+  border: 2px solid #1c140e;
+}
+
+.rank-lineage {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0.3rem 0;
+  padding-left: 1.2rem;
 }
 
 .belt-ends {

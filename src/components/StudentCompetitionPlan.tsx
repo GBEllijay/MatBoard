@@ -91,6 +91,9 @@ export function StudentCompetitionPlan({
         </ul>
       ) : null}
       {plan.rank && rankHasContent(plan.rank) ? <p>{rankSummary(plan.rank)}</p> : null}
+      {plan.rank?.lineage?.length ? <p>Lineage: {plan.rank.lineage.join(' → ')}</p> : null}
+      {plan.rank?.pictureCount ? <p>{plan.rank.pictureCount === 1 ? '1 promotion photo is in the file.' : `${plan.rank.pictureCount} promotion photos are in the file.`}</p> : null}
+      {plan.rank?.pictureNote ? <p>{plan.rank.pictureNote}</p> : null}
       {plan.weighIns.length ? (
         <p>
           Latest weigh-in{' '}
