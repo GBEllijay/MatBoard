@@ -15,6 +15,7 @@ import {
   type JournalEntry,
   type StudentCompetition,
   type StudentProgressReport,
+  type CompetitionResult,
   type StudentTournament,
   type WeighIn,
   type WeightUnit,
@@ -35,12 +36,22 @@ export function emptyCompetition(): StudentCompetition {
     games: emptyGames(),
     tournaments: [],
     weighIns: [],
+    results: [],
     weightUnit: 'lb',
   };
 }
 
 export function competitionOf(report: { competition?: StudentCompetition }): StudentCompetition {
-  return report.competition ?? emptyCompetition();
+  const competition = report.competition;
+  if (!competition) return emptyCompetition();
+  return {
+    ...emptyCompetition(),
+    ...competition,
+    games: competition.games ?? emptyGames(),
+    tournaments: competition.tournaments ?? [],
+    weighIns: competition.weighIns ?? [],
+    results: competition.results ?? [],
+  };
 }
 
 /** Empty is allowed. Anything else must be an http or https link. */
@@ -205,6 +216,7 @@ export type ImportedCompetitionPlan = {
   games: CompetitionGames;
   tournaments: StudentTournament[];
   weighIns: WeighIn[];
+  results: CompetitionResult[];
   weightUnit: WeightUnit;
 };
 
@@ -225,6 +237,11 @@ export function competitionSnapshot(report: StudentProgressReport, importedAt: n
       goals: tournament.goals.map((goal) => ({ ...goal })),
     })),
     weighIns: competition.weighIns.map((row) => ({ ...row })),
+    results: competition.results.map((result) => ({
+      ...result,
+      matches: result.matches.map((match) => ({ ...match })),
+      bracket: result.bracket.map((note) => ({ ...note })),
+    })),
     weightUnit: competition.weightUnit,
   };
 }
@@ -233,9 +250,10 @@ export function planHasContent(plan: {
   games: CompetitionGames;
   tournaments: readonly StudentTournament[];
   weighIns: readonly WeighIn[];
+  results?: readonly CompetitionResult[];
 }): boolean {
   const games = GAME_TAGS.some((tag) => plan.games[tag].techniques.trim() || plan.games[tag].notes.trim());
-  return games || plan.tournaments.length > 0 || plan.weighIns.length > 0;
+  return games || plan.tournaments.length > 0 || plan.weighIns.length > 0 || (plan.results?.length ?? 0) > 0;
 }
 
 export type ChartPoint = { date: string; value: number };

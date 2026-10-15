@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { HomeMark } from '../components/HomeMark';
 import { LeatherSpine } from '../components/LeatherSpine';
@@ -9,26 +9,27 @@ import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import { STUDENT_EDITION_NAME, STUDENT_HOME_DESCRIPTION } from '../lib/productNames';
 import { matchingGameTags, gameLetter } from '../lib/progress/competition.ts';
-import type { CompetitionGame, GameTag } from '../lib/progress/types.ts';
+import { PROGRESS_NAME_MAX, type JournalClip } from '../lib/progress/types.ts';
 import { isIsoDate } from '../lib/studentTools';
 import { BeltPage } from './student/BeltPage';
 import { CalendarDayPage, CalendarPage } from './student/CalendarPages';
 import { CompetitorPage } from './student/CompetitorPage';
+import { ResultsPage } from './student/ResultsPage';
+import { WeightPage } from './student/WeightPage';
 import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './student/chrome';
-import { applyGameDrafts, StandingGames } from './student/StandingGames';
 import { SharePage } from './student/SharePage';
 import {
   addCustomFundamental,
   addJournalAmendment,
   addJournalClip,
   addJournalEntry,
-  classLabel,
   deleteJournalClip,
   fundamentalsBoard,
   hideFundamental,
   renameFundamental,
   restoreStarterFundamentals,
   searchStudentClips,
+  JOURNAL_CLASS_PLACEHOLDER,
   JOURNAL_TECHNIQUE_MAX,
   JOURNAL_TECHNIQUE_ROWS,
   searchStudentJournal,
@@ -39,18 +40,10 @@ import {
   todayIso,
   updateJournalClip,
   viewJournalEntry,
-  type ClassKind,
   type FundamentalRow,
   type JournalCardView,
 } from '../lib/studentEdition.ts';
-import type { JournalClip } from '../lib/progress/types.ts';
 import '../student-edition.css';
-
-const GAMES: { tag: GameTag; letter: string }[] = [
-  { tag: 'a', letter: 'A' },
-  { tag: 'b', letter: 'B' },
-  { tag: 'c', letter: 'C' },
-];
 
 function blankTechniqueRows(count: number): { id: string; name: string }[] {
   return Array.from({ length: count }, () => ({ id: '', name: '' }));
@@ -77,6 +70,8 @@ export function StudentEditionPage() {
   if (rest === 'rubric' || rest === 'belt') return <BeltPage />;
   if (rest === 'share') return <SharePage />;
   if (rest === 'competitor') return <CompetitorPage />;
+  if (rest === 'weight') return <WeightPage />;
+  if (rest === 'results') return <ResultsPage />;
   return <Hub />;
 }
 
@@ -103,7 +98,9 @@ const HUB_LINKS = [
   { title: 'Journal cards', note: 'Search your notes', to: '/student/cards' },
   { title: 'Fundamentals', note: 'Checklist', to: '/student/fundamentals' },
   { title: 'Calendar', note: 'Month and your events', to: '/student/calendar' },
-  { title: 'Competitor', note: 'Tournaments, game, and weight', to: '/student/competitor' },
+  { title: 'Competitor', note: 'Tournaments and game', to: '/student/competitor' },
+  { title: 'Weight', note: 'Weigh-ins and target', to: '/student/weight' },
+  { title: 'Results', note: 'Matches and bracket notes', to: '/student/results' },
   { title: 'Belt progress', note: 'Checkpoints and goals', to: '/student/rubric' },
 ] as const;
 
@@ -150,8 +147,7 @@ function JournalToday() {
   const [params] = useSearchParams();
   const requested = params.get('date') ?? '';
   const [date, setDate] = useState(isIsoDate(requested) ? requested : todayIso());
-  const [classKind, setClassKind] = useState<ClassKind>('');
-  const [gameTag, setGameTag] = useState<GameTag | ''>('');
+  const [className, setClassName] = useState('');
   const [techniques, setTechniques] = useState(() => blankTechniqueRows(JOURNAL_TECHNIQUE_ROWS));
   const [partners, setPartners] = useState('');
   const [drills, setDrills] = useState('');
@@ -159,9 +155,6 @@ function JournalToday() {
   const [notes, setNotes] = useState('');
   const [picker, setPicker] = useState<number | null>(null);
   const [error, setError] = useState('');
-  const gameDrafts = useRef<Record<GameTag, CompetitionGame>>(
-    report.competition?.games ?? { a: { techniques: '', notes: '' }, b: { techniques: '', notes: '' }, c: { techniques: '', notes: '' } },
-  );
 
   const choose = (index: number, item: FundamentalRow) => {
     setTechniques((current) =>
@@ -173,17 +166,12 @@ function JournalToday() {
   };
 
   const save = () => {
-    if (!gameTag) {
-      setError('Pick an A, B, or C game.');
-      return;
-    }
     try {
-      const withGame = applyGameDrafts(report, gameDrafts.current);
       const next = commit(
-        addJournalEntry(withGame, {
+        addJournalEntry(report, {
           date,
-          classKind,
-          gameTag,
+          className,
+          gameTag: '',
           techniques,
           partners,
           drills,
@@ -215,44 +203,17 @@ function JournalToday() {
               <span className="ink__label">Date</span>
               <input type="date" value={date} onChange={(event) => setDate(event.target.value)} required />
             </label>
-            <div className="ink ink--wobble">
+            <label className="ink ink--wobble">
               <span className="ink__label">Class</span>
-              <div className="student-class" role="group" aria-label="Class">
-                <button type="button" className={classKind === 'gi' ? 'student-choice is-on' : 'student-choice'} aria-pressed={classKind === 'gi'} onClick={() => setClassKind(classKind === 'gi' ? '' : 'gi')}>
-                  Gi
-                </button>
-                <button type="button" className={classKind === 'nogi' ? 'student-choice is-on' : 'student-choice'} aria-pressed={classKind === 'nogi'} onClick={() => setClassKind(classKind === 'nogi' ? '' : 'nogi')}>
-                  No-Gi
-                </button>
-              </div>
-            </div>
+              <input
+                aria-label="Class"
+                value={className}
+                maxLength={PROGRESS_NAME_MAX}
+                placeholder={JOURNAL_CLASS_PLACEHOLDER}
+                onChange={(event) => setClassName(event.target.value)}
+              />
+            </label>
           </div>
-          <div className="student-games" role="group" aria-label="Game">
-            {GAMES.map((game) => (
-              <button
-                key={game.tag}
-                type="button"
-                className={gameTag === game.tag ? 'game-chip is-on' : 'game-chip'}
-                aria-pressed={gameTag === game.tag}
-                onClick={() => setGameTag(game.tag)}
-              >
-                <span className="game-chip__letter">{game.letter}</span>
-                game
-              </button>
-            ))}
-          </div>
-          {gameTag ? (
-            <StandingGames
-              report={report}
-              commit={commit}
-              only={gameTag}
-              onDrafts={(drafts) => {
-                gameDrafts.current = drafts;
-              }}
-            />
-          ) : (
-            <p className="student-quiet">Pick A, B, or C game to write the techniques you are working on for competition.</p>
-          )}
           <div className="student-split">
             <div className="student-stack">
               {techniques.map((slot, index) => (
@@ -281,7 +242,7 @@ function JournalToday() {
               {techniques.length < JOURNAL_TECHNIQUE_MAX ? (
                 <button
                   type="button"
-                  className="ink-btn"
+                  className="ink-btn ink-btn--small"
                   onClick={() => setTechniques((current) => [...current, { id: '', name: '' }])}
                 >
                   Add another technique
@@ -549,7 +510,7 @@ function JournalList() {
             <Link key={card.id} className="ink student-card-link" to={to(`/student/cards/${card.id}`)}>
               <strong>
                 {card.date}
-                {classLabel(card.classKind) ? ` · ${classLabel(card.classKind)}` : ''} · {card.gameTag.toUpperCase()} game
+                {card.className ? ` · ${card.className}` : ''}
               </strong>
               <span>{card.techniques.map((item) => item.name).filter(Boolean).join(', ') || 'No technique yet'}</span>
               <span>{card.notes || card.amendments[0]?.body || 'Empty notes'}</span>
@@ -622,7 +583,7 @@ function CardBody({ card }: { card: JournalCardView }) {
       <div className="ink">
         <p className="ink__label">
           {card.date}
-          {classLabel(card.classKind) ? ` · ${classLabel(card.classKind)}` : ''} · {card.gameTag.toUpperCase()} game
+          {card.className ? ` · ${card.className}` : ''}
         </p>
         {card.techniques.length === 0 ? <p>Technique drilled: —</p> : null}
         {card.techniques.map((item, index) => (

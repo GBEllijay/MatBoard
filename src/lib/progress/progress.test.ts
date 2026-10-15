@@ -149,7 +149,7 @@ test('validation rejects a bad game tag, a file payload, and a future schema', (
   const report = sampleReport();
   const badTag = parseProgressPacket(JSON.stringify({ ...report, journal: [{ ...report.journal[0], gameTag: 'home' }] }));
   assert.equal(badTag.ok, false);
-  if (!badTag.ok) assert.match(badTag.errors.join('\n'), /game tag must be a, b, or c/);
+  if (!badTag.ok) assert.match(badTag.errors.join('\n'), /game tag must be a, b, c, or blank/);
 
   const withFile = parseProgressPacket(JSON.stringify({ ...report, photo: 'data:image/png;base64,abc' }));
   assert.equal(withFile.ok, false);

@@ -10,6 +10,7 @@ import { exportProgressPacket, parseProgressPacket, searchJournal, searchJournal
 import {
   PROGRESS_CLIP_URL_MAX,
   PROGRESS_CLIPS_MAX,
+  GAME_TAGS,
   PROGRESS_NAME_MAX,
   PROGRESS_NOTE_MAX,
   type GameTag,
@@ -68,12 +69,21 @@ export function studentPurchaseReturn(search: URLSearchParams): boolean {
   return search.get('checkout') === 'success' && sessionId.length > 0;
 }
 
-export type ClassKind = '' | 'gi' | 'nogi';
+export const JOURNAL_CLASS_PLACEHOLDER = 'Fundamentals, week 7, class B';
+
+/** Older cards stored Gi or No-Gi. A new card keeps whatever the student types. */
+export function migrateClassText(value: string): string {
+  const text = value.trim();
+  const lower = text.toLowerCase();
+  if (lower === 'gi') return 'Gi';
+  if (lower === 'no-gi' || lower === 'nogi' || lower === 'no gi') return 'No-Gi';
+  return text.slice(0, PROGRESS_NAME_MAX);
+}
 
 export type JournalDraft = {
   date: string;
-  classKind: ClassKind;
-  gameTag: GameTag;
+  className: string;
+  gameTag: GameTag | '';
   techniques: TechniqueRef[];
   partners: string;
   drills: string;
@@ -175,16 +185,10 @@ export function saveStudentReport(storage: MemoryStore, report: StudentProgressR
   return parsed.value;
 }
 
-export function classLabel(kind: ClassKind): string {
-  if (kind === 'gi') return 'Gi';
-  if (kind === 'nogi') return 'No-Gi';
-  return '';
-}
-
-export function encodeJournalBody(draft: Pick<JournalDraft, 'classKind' | 'techniques' | 'partners' | 'drills' | 'rolls' | 'notes'>): string {
+export function encodeJournalBody(draft: Pick<JournalDraft, 'className' | 'techniques' | 'partners' | 'drills' | 'rolls' | 'notes'>): string {
   const techniques = draft.techniques.map((item) => item.name.trim()).filter(Boolean);
   return [
-    `Class: ${classLabel(draft.classKind)}`,
+    `Class: ${migrateClassText(draft.className)}`,
     ...techniques.map((name, index) => `${techniqueDrilledLabel(index)}: ${name}`),
     `Techniques: ${techniques.join('; ')}`,
     `Training partners: ${draft.partners.trim()}`,
@@ -195,18 +199,16 @@ export function encodeJournalBody(draft: Pick<JournalDraft, 'classKind' | 'techn
   ].join('\n');
 }
 
-export function decodeJournalBody(body: string): Pick<JournalDraft, 'classKind' | 'partners' | 'drills' | 'rolls' | 'notes'> {
+export function decodeJournalBody(body: string): Pick<JournalDraft, 'className' | 'partners' | 'drills' | 'rolls' | 'notes'> {
   const lines = body.split('\n');
   const take = (prefix: string) => {
     const line = lines.find((row) => row.startsWith(prefix));
     return line ? line.slice(prefix.length).trim() : '';
   };
-  const classText = take('Class:').toLowerCase();
-  const classKind: ClassKind = classText === 'gi' ? 'gi' : classText === 'no-gi' ? 'nogi' : '';
   const notesAt = lines.findIndex((row) => row === 'Notes:' || row.startsWith('Notes:'));
   const notes = notesAt >= 0 ? lines.slice(notesAt + 1).join('\n').trim() : body.trim();
   return {
-    classKind,
+    className: migrateClassText(take('Class:')),
     partners: take('Training partners:'),
     drills: take('Drills:'),
     rolls: take('Rolls:'),
@@ -219,7 +221,7 @@ export function viewJournalEntry(entry: JournalEntry): JournalCardView {
   return {
     id: entry.id,
     date: entry.date,
-    classKind: decoded.classKind,
+    className: decoded.className,
     gameTag: entry.gameTag,
     techniques: entry.techniqueRefs.map((item) => ({ id: item.id, name: item.name })),
     partners: decoded.partners,
@@ -258,7 +260,7 @@ export function createJournalEntry(draft: JournalDraft, now = Date.now()): Journ
   return {
     id: newId('card', now),
     date: draft.date,
-    gameTag: draft.gameTag,
+    gameTag: (GAME_TAGS as readonly string[]).includes(draft.gameTag) ? draft.gameTag : '',
     body: encodeJournalBody({ ...draft, techniques }),
     techniqueRefs: techniques,
     amendments: [],
@@ -308,7 +310,7 @@ export function searchStudentJournal(report: StudentProgressReport, query: strin
   const needle = query.trim().toLowerCase();
   if (!needle) return newest;
   const tags = new Set(matchingGameTags(report.competition, query));
-  return newest.filter((entry) => tags.has(entry.gameTag) || searchJournal([entry], query).length > 0);
+  return newest.filter((entry) => (entry.gameTag !== '' && tags.has(entry.gameTag)) || searchJournal([entry], query).length > 0);
 }
 
 export function searchStudentClips(report: StudentProgressReport, query: string): JournalClip[] {

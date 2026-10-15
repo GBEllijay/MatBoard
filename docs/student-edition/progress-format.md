@@ -75,7 +75,9 @@ One row on the fundamentals sheet. `catalogItemId` points at a catalog name. An 
 
 ### JournalEntry, game tag, technique refs, amendments
 
-A card has a date, `gameTag` of `a`, `b`, or `c` (A game / B game / C game), the original text, and technique refs. A new journal page starts with three rows labeled `Technique drilled #1`, `#2`, and `#3`. Add another technique adds a row, up to 12. Empty rows are not saved. An older card keeps the techniques it stored and does not gain blank rows. The card text lists each saved technique as `Technique drilled #N: name` and still includes a `Techniques:` line with those names separated by `; `. Search looks at the card text, the Technique drilled label, amendment text, technique names, and the standing game for that letter, so "scissor sweep", "technique drilled", or "pendulum sweep" finds a card.
+A card has a date, an optional `gameTag`, the original text, and technique refs. The Class line is free text, the same kind of note as a lesson plan class description. Older cards that stored Gi or No-Gi keep those words as the class text. A new journal page does not ask for A, B, or C game. `gameTag` is blank on a new card. A card saved when the journal still asked for a game keeps `a`, `b`, or `c`. The standing A/B/C game lives only on `competition.games`.
+
+A new journal page starts with three rows labeled `Technique drilled #1`, `#2`, and `#3`. Add another technique adds a row, up to 12. Empty rows are not saved. An older card keeps the techniques it stored and does not gain blank rows. The card text lists each saved technique as `Technique drilled #N: name` and still includes a `Techniques:` line with those names separated by `; `. Search looks at the card text, the Technique drilled label, amendment text, technique names, and the standing game, so "scissor sweep", "technique drilled", or "pendulum sweep" finds a card.
 
 The standing A/B/C game lives once, on `competition.games`. Each letter has `techniques` (techniques and sequences) and `notes`. The journal chips and the Competitor page edit that same copy. A journal card still keeps the techniques from the day it was written. Search on the journal cards page also lists a standing game whose techniques or notes match.
 
@@ -103,7 +105,9 @@ Optional on a student progress report. Version 2 files written by this app inclu
 
 `competition.tournaments` lists tournaments the student is `entered` in or `considering`. Each one has a name, event date, location, division / weight class, registration deadline (or empty), an http(s) link (or empty), status, an optional target division weight with its unit, and goals. A tournament goal has an id, name, note, and `met`. Those goals are not the belt goals.
 
-`competition.weighIns` lists dated weigh-ins. Each stores the number in the unit it was entered (`lb` or `kg`) plus an optional note. The chart converts for display.
+`competition.weighIns` lists dated weigh-ins. Each stores the number in the unit it was entered (`lb` or `kg`) plus an optional note. The chart converts for display. The student edits weigh-ins, the target, and the chart on the Weight page.
+
+`competition.results` lists competitions the student recorded after the event. Each result points at a tracked tournament id when they picked one, and stores the tournament name, division, matches, and personal bracket lines. A match has an opponent, a result of `win`, `loss`, or `draw`, a method of `points`, `sub`, `advantage`, `dq`, or blank, and a note. Bracket lines are a round and a name. This is a record, not a live scoreboard. `bracketPhoto` is true when a photo of the bracket is on the student's phone. The image is not in this file. A file with no `results` list imports as an empty list and does not clear results already on the device.
 
 ### CalendarEvent and tournaments
 
@@ -137,7 +141,7 @@ Import of a `student-progress-report` merges into the copy already on the device
 - Amendments on that card append when the amendment id is new. The same amendment id with different text keeps the text already on the device.
 - A checklist line, goal, checkpoint, criterion, calendar event, or clip that already has text keeps that text. An empty field can be filled from the incoming student file. A new id is added. A mark the student already set is kept.
 - A file with no `clips` field does not clear a clipboard already on the device. A file that includes `clips` adds new clip ids and keeps the link and note already stored for an id this device has.
-- A file with no `competition` field does not clear tournaments, the standing game, or weigh-ins already on the device. A file that includes `competition` adds new tournament, goal, and weigh-in ids. Text already stored for an id is kept. An empty standing-game field can be filled from the incoming file. The weight unit on the device is kept.
+- A file with no `competition` field does not clear tournaments, the standing game, weigh-ins, or results already on the device. A file that includes `competition` adds new tournament, goal, weigh-in, result, match, and bracket ids. Text already stored for an id is kept. An empty standing-game field can be filled from the incoming file. The weight unit on the device is kept. A missing `results` list does not clear results already on the device.
 - `importCoachSuggestion` returns the student report unchanged, beside the coach packet. The student can read the suggestion. Nothing in that import writes rubric marks, checkpoints, the journal, or goals. A newer coach file can replace an older coach file of the same id. That replacement is only the suggestion snapshot.
 
 ## Privacy
@@ -169,6 +173,9 @@ Filter the Sheet column:
 | Tournament | One tournament. Date is the event day. Learned on is the registration deadline. Category is the division. Note is the location. Body is the link. Kind is `entered` or `considering`. Toward is the target weight and unit when set |
 | Tournament goal | One goal for that tournament. Parent id is the tournament id |
 | Weigh-in | One weigh-in. Name is the number. Kind is `lb` or `kg` |
+| Result | One recorded competition. Name is the tournament. Category is the division. Criterion id is the tracked tournament id when set. Note says a bracket photo is on the student phone when one is |
+| Match | One match. Parent id is the result id. Game is `win`, `loss`, or `draw`. Category is the method. Name is the opponent. Note is the match note |
+| Bracket | One personal bracket line. Parent id is the result id. Category is the round. Name is the person |
 | Goal | One student goal |
 | Coach plan | The plan header |
 | Focus | One suggestion line. Parent id is the plan id |

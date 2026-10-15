@@ -75,7 +75,6 @@ test('journal clips save, search, edit, persist, and delete', async ({ page }) =
   await expect(page.getByRole('status')).toContainText('Downloaded the progress file');
 
   await page.goto('/student/journal?student=1');
-  await page.getByRole('button', { name: 'A game' }).click();
   await page.getByRole('textbox', { name: 'Notes' }).fill('still writes a card');
   await page.getByRole('button', { name: 'Save entry' }).click();
   await expect(page.getByText('still writes a card')).toBeVisible();

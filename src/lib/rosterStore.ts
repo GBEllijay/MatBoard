@@ -635,6 +635,7 @@ function normalizeCompetitionPlan(raw: unknown): ImportedCompetitionPlan | null 
       games: row.games,
       tournaments: row.tournaments,
       weighIns: row.weighIns,
+      results: row.results,
       weightUnit: row.weightUnit,
     },
   };

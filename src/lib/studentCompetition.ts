@@ -5,14 +5,20 @@
 
 import { cleanOptionalLink, competitionOf, emptyCompetition } from './progress/competition.ts';
 import {
+  PROGRESS_BRACKET_NOTES_MAX,
+  PROGRESS_MATCHES_MAX,
   PROGRESS_NAME_MAX,
   PROGRESS_NOTE_MAX,
+  PROGRESS_RESULTS_MAX,
   PROGRESS_SEQUENCE_MAX,
   PROGRESS_TOURNAMENT_GOALS_MAX,
   PROGRESS_TOURNAMENTS_MAX,
   PROGRESS_WEIGH_INS_MAX,
   PROGRESS_WEIGHT_MAX,
+  type CompetitionResult,
   type GameTag,
+  type MatchMethod,
+  type MatchResult,
   type StudentCompetition,
   type StudentProgressReport,
   type StudentTournament,
@@ -268,4 +274,162 @@ export function removeTournamentGoal(
 
 export function blankCompetition(): StudentCompetition {
   return emptyCompetition();
+}
+
+export type ResultDraft = {
+  tournamentId: string;
+  tournamentName: string;
+  division: string;
+};
+
+export function addCompetitionResult(report: StudentProgressReport, draft: ResultDraft, now = Date.now()): StudentProgressReport {
+  const competition = competitionOf(report);
+  if (competition.results.length >= PROGRESS_RESULTS_MAX) throw new Error('The results list is full.');
+  const tournamentName = clip(draft.tournamentName, PROGRESS_NAME_MAX);
+  if (!tournamentName) throw new Error('Choose a tournament or type its name.');
+  const result: CompetitionResult = {
+    id: newId('result', now),
+    tournamentId: clip(draft.tournamentId, PROGRESS_NAME_MAX),
+    tournamentName,
+    division: clip(draft.division, PROGRESS_NAME_MAX),
+    matches: [],
+    bracket: [],
+    bracketPhoto: false,
+  };
+  return withCompetition(report, { ...competition, results: [...competition.results, result] }, now);
+}
+
+export function removeCompetitionResult(report: StudentProgressReport, id: string, now = Date.now()): StudentProgressReport {
+  const competition = competitionOf(report);
+  if (!competition.results.some((result) => result.id === id)) return report;
+  return withCompetition(
+    report,
+    { ...competition, results: competition.results.filter((result) => result.id !== id) },
+    now,
+  );
+}
+
+export function addCompetitionMatch(
+  report: StudentProgressReport,
+  resultId: string,
+  draft: { opponent: string; result: MatchResult; method: MatchMethod; note: string },
+  now = Date.now(),
+): StudentProgressReport {
+  return mapResult(report, resultId, now, (result) => {
+    if (result.matches.length >= PROGRESS_MATCHES_MAX) throw new Error('That result’s match list is full.');
+    const opponent = clip(draft.opponent, PROGRESS_NAME_MAX);
+    if (!opponent) throw new Error('Add an opponent.');
+    return {
+      ...result,
+      matches: [
+        ...result.matches,
+        {
+          id: newId('match', now),
+          opponent,
+          result: draft.result,
+          method: draft.method,
+          note: clip(draft.note, PROGRESS_NOTE_MAX),
+        },
+      ],
+    };
+  });
+}
+
+export function removeCompetitionMatch(
+  report: StudentProgressReport,
+  resultId: string,
+  matchId: string,
+  now = Date.now(),
+): StudentProgressReport {
+  return mapResult(report, resultId, now, (result) => ({
+    ...result,
+    matches: result.matches.filter((match) => match.id !== matchId),
+  }));
+}
+
+export function addBracketNote(
+  report: StudentProgressReport,
+  resultId: string,
+  round: string,
+  name: string,
+  now = Date.now(),
+): StudentProgressReport {
+  return mapResult(report, resultId, now, (result) => {
+    if (result.bracket.length >= PROGRESS_BRACKET_NOTES_MAX) throw new Error('That bracket note list is full.');
+    const person = clip(name, PROGRESS_NAME_MAX);
+    if (!person) throw new Error('Add a name for the bracket.');
+    return {
+      ...result,
+      bracket: [...result.bracket, { id: newId('bracket', now), round: clip(round, PROGRESS_NAME_MAX), name: person }],
+    };
+  });
+}
+
+export function removeBracketNote(
+  report: StudentProgressReport,
+  resultId: string,
+  noteId: string,
+  now = Date.now(),
+): StudentProgressReport {
+  return mapResult(report, resultId, now, (result) => ({
+    ...result,
+    bracket: result.bracket.filter((note) => note.id !== noteId),
+  }));
+}
+
+export function setBracketPhotoFlag(
+  report: StudentProgressReport,
+  resultId: string,
+  present: boolean,
+  now = Date.now(),
+): StudentProgressReport {
+  return mapResult(report, resultId, now, (result) =>
+    result.bracketPhoto === present ? result : { ...result, bracketPhoto: present },
+  );
+}
+
+export function setTournamentTarget(
+  report: StudentProgressReport,
+  tournamentId: string,
+  weight: string,
+  unit: WeightUnit,
+  now = Date.now(),
+): StudentProgressReport {
+  const competition = competitionOf(report);
+  const tournament = competition.tournaments.find((item) => item.id === tournamentId);
+  if (!tournament) return report;
+  const targetWeight = parseWeight(weight, 'Target weight');
+  const targetUnit = unit === 'kg' ? 'kg' : 'lb';
+  if (tournament.targetWeight === targetWeight && tournament.targetUnit === targetUnit) return report;
+  return withCompetition(
+    report,
+    {
+      ...competition,
+      tournaments: competition.tournaments.map((item) =>
+        item.id === tournamentId ? { ...item, targetWeight, targetUnit } : item,
+      ),
+    },
+    now,
+  );
+}
+
+function mapResult(
+  report: StudentProgressReport,
+  resultId: string,
+  now: number,
+  change: (result: CompetitionResult) => CompetitionResult,
+): StudentProgressReport {
+  const competition = competitionOf(report);
+  const current = competition.results.find((result) => result.id === resultId);
+  if (!current) return report;
+  const next = change(current);
+  if (next === current) return report;
+  return withCompetition(
+    report,
+    {
+      ...competition,
+      results: competition.results.map((result) => (result.id === resultId ? next : result)),
+    },
+    now,
+  );
 }

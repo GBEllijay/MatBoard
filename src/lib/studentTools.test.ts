@@ -52,7 +52,7 @@ test('a journal day sits on the month grid and an open mat is a training event',
     blankStudentReport(10),
     {
       date: '2026-10-12',
-      classKind: 'gi',
+      className: 'Gi',
       gameTag: 'a',
       techniques: [{ id: 'sweep.scissor', name: 'Scissor sweep' }],
       partners: '',
@@ -143,7 +143,7 @@ test('coach import stays a suggestion, and the exported report re-imports', () =
     report,
     {
       date: '2026-10-12',
-      classKind: 'gi',
+      className: 'Gi',
       gameTag: 'a',
       techniques: [],
       partners: '',

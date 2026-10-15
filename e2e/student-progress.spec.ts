@@ -19,8 +19,7 @@ test('calendar marks a journal day, stores an event, and can show the gym schedu
     );
   });
   await page.goto('/student/journal?student=1');
-  await page.getByRole('button', { name: 'Gi', exact: true }).click();
-  await page.getByRole('button', { name: 'A game' }).click();
+  await page.getByRole('textbox', { name: 'Class', exact: true }).fill('Fundamentals');
   await page.getByRole('textbox', { name: 'Notes' }).fill('grip the collar deeper');
   await page.getByRole('button', { name: 'Save entry' }).click();
   await expect(page.getByText('grip the collar deeper')).toBeVisible();

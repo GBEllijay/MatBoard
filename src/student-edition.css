@@ -43,7 +43,8 @@
 
 .student button,
 .student input,
-.student textarea {
+.student textarea,
+.student select {
   font: inherit;
   color: inherit;
 }
@@ -55,7 +56,8 @@
 }
 
 .student input,
-.student textarea {
+.student textarea,
+.student select {
   width: 100%;
   margin: 0;
   padding: 0.1rem 0.15rem;
@@ -313,6 +315,36 @@
   border-radius: 999px 1.1rem 999px 0.9rem;
   background: rgba(244, 240, 228, 0.72);
   font-size: 1.05rem;
+}
+
+.student .ink-btn--small {
+  min-height: 36px;
+  align-self: start;
+  padding: 0.05rem 0.75rem;
+  font-size: 1.05rem;
+}
+
+.student-file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+label.ink-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.bracket-photo {
+  width: min(100%, 18rem);
+  height: auto;
+  border: 2px solid var(--ink);
 }
 
 .student .ink-btn--save {

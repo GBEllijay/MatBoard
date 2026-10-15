@@ -104,7 +104,7 @@ test('a saved journal card stays in the progress file and search finds the techn
   const storage = memoryStorage();
   const draft = {
     date: '2026-10-11',
-    classKind: 'gi' as const,
+    className: 'Gi',
     gameTag: 'a' as const,
     techniques: [{ id: 'sweep.scissor', name: 'Scissor sweep' }],
     partners: 'Alex',
@@ -120,11 +120,34 @@ test('a saved journal card stays in the progress file and search finds the techn
   assert.equal(parsed.ok, true);
   const card = viewJournalEntry(saved.journal[0]);
   assert.equal(card.notes, 'grip the collar deeper');
-  assert.equal(card.classKind, 'gi');
+  assert.equal(card.className, 'Gi');
   assert.equal(card.techniques[0].name, 'Scissor sweep');
   assert.equal(searchStudentJournal(saved, 'scissor').length, 1);
   assert.equal(searchJournal(saved.journal, 'collar').length, 1);
   assert.equal(decodeJournalBody(saved.journal[0].body).partners, 'Alex');
+});
+
+test('older gi and no-gi class words stay text, and a new card does not store a game tag', () => {
+  assert.equal(decodeJournalBody('Class: Gi\nNotes:\n').className, 'Gi');
+  assert.equal(decodeJournalBody('Class: No-Gi\nNotes:\n').className, 'No-Gi');
+  assert.equal(decodeJournalBody('Class: Fundamentals, week 7, class B\nNotes:\n').className, 'Fundamentals, week 7, class B');
+  const report = addJournalEntry(
+    blankStudentReport(10),
+    {
+      date: '2026-10-11',
+      className: 'Fundamentals, week 7, class B',
+      gameTag: '',
+      techniques: [],
+      partners: '',
+      drills: '',
+      rolls: '',
+      notes: '',
+    },
+    10,
+  );
+  assert.equal(report.journal[0].gameTag, '');
+  assert.match(report.journal[0].body, /Class: Fundamentals, week 7, class B/);
+  assert.equal(viewJournalEntry(report.journal[0]).className, 'Fundamentals, week 7, class B');
 });
 
 test('a new card keeps every drilled technique, and an older card stays the length it was saved', () => {
@@ -132,7 +155,7 @@ test('a new card keeps every drilled technique, and an older card stays the leng
     blankStudentReport(10),
     {
       date: '2026-10-11',
-      classKind: 'gi',
+      className: 'Gi',
       gameTag: 'a',
       techniques: [
         { id: '', name: 'Scissor sweep' },
@@ -161,7 +184,7 @@ test('a new card keeps every drilled technique, and an older card stays the leng
     blankStudentReport(10),
     {
       date: '2026-10-11',
-      classKind: 'gi',
+      className: 'Gi',
       gameTag: 'a',
       techniques: [{ id: 'sweep.scissor', name: 'Scissor sweep' }],
       partners: '',
@@ -180,7 +203,7 @@ test('a new card keeps every drilled technique, and an older card stays the leng
     blankStudentReport(10),
     {
       date: '2026-10-11',
-      classKind: 'gi',
+      className: 'Gi',
       gameTag: 'c',
       techniques: Array.from({ length: 14 }, (_, index) => ({ id: '', name: `Move ${index + 1}` })),
       partners: '',
@@ -232,7 +255,7 @@ test('an amendment is appended and the original card is unchanged', () => {
     blankStudentReport(10),
     {
       date: '2026-10-11',
-      classKind: 'nogi',
+      className: 'No-Gi',
       gameTag: 'b',
       techniques: [{ id: 'sweep.scissor', name: 'Scissor sweep' }],
       partners: '',
@@ -284,7 +307,7 @@ test('rename and remove are per-student overrides, and restore brings the starte
     blankStudentReport(10),
     {
       date: '2026-10-11',
-      classKind: 'gi',
+      className: 'Gi',
       gameTag: 'a',
       techniques: [{ id: 'sweep.scissor', name: 'Scissor sweep' }],
       partners: '',

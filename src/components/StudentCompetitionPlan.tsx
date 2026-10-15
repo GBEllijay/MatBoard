@@ -70,6 +70,23 @@ export function StudentCompetitionPlan({
           ))}
         </ul>
       ) : null}
+      {plan.results?.length ? (
+        <ul className="roster-plan__list" aria-label="Competition results">
+          {plan.results.map((result) => (
+            <li key={result.id}>
+              {result.tournamentName}
+              {result.division ? ` · ${result.division}` : ''}
+              {result.matches.length
+                ? ` · ${result.matches
+                    .map((match) => `${match.result} ${match.opponent}${match.method ? ` ${match.method}` : ''}`)
+                    .join('; ')}`
+                : ''}
+              {result.bracket.length ? ` · bracket ${result.bracket.map((note) => note.name).join(', ')}` : ''}
+              {result.bracketPhoto ? ' · bracket photo on the student phone' : ''}
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {plan.weighIns.length ? (
         <p>
           Latest weigh-in{' '}

@@ -27,8 +27,13 @@ import {
   PROGRESS_ID_MAX,
   PROGRESS_JOURNAL_MAX,
   PROGRESS_LEVELS_MAX,
+  MATCH_METHODS,
+  MATCH_RESULTS,
+  PROGRESS_BRACKET_NOTES_MAX,
+  PROGRESS_MATCHES_MAX,
   PROGRESS_NAME_MAX,
   PROGRESS_NOTE_MAX,
+  PROGRESS_RESULTS_MAX,
   PROGRESS_PACKET_KINDS,
   PROGRESS_SCHEMA_VERSION,
   PROGRESS_SCHEMA_VERSIONS,
@@ -42,8 +47,13 @@ import {
   WEIGHT_UNITS,
   type Amendment,
   type CoachSuggestion,
+  type BracketNote,
   type CompetitionGame,
   type CompetitionGames,
+  type CompetitionMatch,
+  type CompetitionResult,
+  type MatchMethod,
+  type MatchResult,
   type FundamentalsCatalog,
   type FundamentalsCategory,
   type FundamentalsItem,
@@ -570,6 +580,55 @@ function mergeCompetition(report: StudentProgressReport, incoming: StudentProgre
     }
     current.note = preferText(current.note, weighIn.note, `Weigh-in ${weighIn.id} note was kept.`, conflicts);
   }
+  const resultById = new Map(local.results.map((result) => [result.id, result]));
+  for (const result of next.results) {
+    const current = resultById.get(result.id);
+    if (!current) {
+      local.results.push(structuredClone(result));
+      continue;
+    }
+    current.tournamentName = preferText(
+      current.tournamentName,
+      result.tournamentName,
+      `Result ${result.id} tournament was kept.`,
+      conflicts,
+    );
+    current.division = preferText(current.division, result.division, `Result ${result.id} division was kept.`, conflicts);
+    if (current.tournamentId !== result.tournamentId) conflicts.push(`Result ${result.id} tournament link was kept.`);
+    if (current.bracketPhoto !== result.bracketPhoto && !current.bracketPhoto && result.bracketPhoto) {
+      current.bracketPhoto = true;
+    }
+    mergeMatches(current, result, conflicts);
+    mergeBracket(current, result, conflicts);
+  }
+}
+
+function mergeMatches(local: CompetitionResult, incoming: CompetitionResult, conflicts: string[]): void {
+  const byId = new Map(local.matches.map((match) => [match.id, match]));
+  for (const match of incoming.matches) {
+    const current = byId.get(match.id);
+    if (!current) {
+      local.matches.push(structuredClone(match));
+      continue;
+    }
+    current.opponent = preferText(current.opponent, match.opponent, `Match ${match.id} opponent was kept.`, conflicts);
+    current.note = preferText(current.note, match.note, `Match ${match.id} note was kept.`, conflicts);
+    if (current.result !== match.result) conflicts.push(`Match ${match.id} result was kept.`);
+    if (current.method !== match.method) conflicts.push(`Match ${match.id} method was kept.`);
+  }
+}
+
+function mergeBracket(local: CompetitionResult, incoming: CompetitionResult, conflicts: string[]): void {
+  const byId = new Map(local.bracket.map((note) => [note.id, note]));
+  for (const note of incoming.bracket) {
+    const current = byId.get(note.id);
+    if (!current) {
+      local.bracket.push(structuredClone(note));
+      continue;
+    }
+    current.round = preferText(current.round, note.round, `Bracket ${note.id} round was kept.`, conflicts);
+    current.name = preferText(current.name, note.name, `Bracket ${note.id} name was kept.`, conflicts);
+  }
 }
 
 function mergeTournamentGoals(local: StudentTournament, incoming: StudentTournament, conflicts: string[]): void {
@@ -937,10 +996,12 @@ function readCompetition(
   }
   const tournaments = readTournaments(competition.tournaments, errors);
   const weighIns = readWeighIns(competition.weighIns, errors);
+  const results = readResults(competition.results, errors);
   return {
     games: readGames(competition.games, errors),
     tournaments,
     weighIns,
+    results,
     weightUnit: readWeightUnit(competition.weightUnit, 'Weight unit', errors),
   };
 }
@@ -1055,6 +1116,92 @@ function readWeighIn(value: unknown, index: number, errors: string[]): WeighIn {
   };
 }
 
+function readResults(value: unknown, errors: string[]): CompetitionResult[] {
+  const rows = readList(value, 'Results', PROGRESS_RESULTS_MAX, errors);
+  const results = rows.map((row, index) => readResult(row, index, errors));
+  uniqueIds(results.map((result) => result.id), 'Result', errors);
+  uniqueIds(
+    results.flatMap((result) => result.matches.map((match) => match.id)),
+    'Match',
+    errors,
+  );
+  uniqueIds(
+    results.flatMap((result) => result.bracket.map((note) => note.id)),
+    'Bracket note',
+    errors,
+  );
+  return results;
+}
+
+function readResult(value: unknown, index: number, errors: string[]): CompetitionResult {
+  const record = asRecord(value);
+  const label = `Result ${index + 1}`;
+  if (!record) {
+    errors.push(`${label} must be an object.`);
+    return { id: '', tournamentId: '', tournamentName: '', division: '', matches: [], bracket: [], bracketPhoto: false };
+  }
+  return {
+    id: readId(record.id, `${label} id`, errors),
+    tournamentId: readOptionalId(record.tournamentId, `${label} tournament id`, errors),
+    tournamentName: readString(record.tournamentName, `${label} tournament`, PROGRESS_NAME_MAX, errors),
+    division: readString(record.division, `${label} division`, PROGRESS_NAME_MAX, errors),
+    matches: readMatches(record.matches, label, errors),
+    bracket: readBracket(record.bracket, label, errors),
+    bracketPhoto: readFlag(record.bracketPhoto, `${label} bracket photo`, errors),
+  };
+}
+
+function readMatches(value: unknown, label: string, errors: string[]): CompetitionMatch[] {
+  const rows = readList(value, `${label} matches`, PROGRESS_MATCHES_MAX, errors);
+  return rows.map((row, index) => readMatch(row, `${label} match ${index + 1}`, errors));
+}
+
+function readMatch(value: unknown, label: string, errors: string[]): CompetitionMatch {
+  const record = asRecord(value);
+  if (!record) {
+    errors.push(`${label} must be an object.`);
+    return { id: '', opponent: '', result: 'loss', method: '', note: '' };
+  }
+  return {
+    id: readId(record.id, `${label} id`, errors),
+    opponent: readString(record.opponent, `${label} opponent`, PROGRESS_NAME_MAX, errors),
+    result: readMatchResult(record.result, label, errors),
+    method: readMatchMethod(record.method, label, errors),
+    note: readString(record.note, `${label} note`, PROGRESS_NOTE_MAX, errors),
+  };
+}
+
+function readBracket(value: unknown, label: string, errors: string[]): BracketNote[] {
+  const rows = readList(value, `${label} bracket`, PROGRESS_BRACKET_NOTES_MAX, errors);
+  return rows.map((row, index) => readBracketNote(row, `${label} bracket ${index + 1}`, errors));
+}
+
+function readBracketNote(value: unknown, label: string, errors: string[]): BracketNote {
+  const record = asRecord(value);
+  if (!record) {
+    errors.push(`${label} must be an object.`);
+    return { id: '', round: '', name: '' };
+  }
+  return {
+    id: readId(record.id, `${label} id`, errors),
+    round: readString(record.round, `${label} round`, PROGRESS_NAME_MAX, errors),
+    name: readString(record.name, `${label} name`, PROGRESS_NAME_MAX, errors),
+  };
+}
+
+function readMatchResult(value: unknown, label: string, errors: string[]): MatchResult {
+  if (typeof value === 'string' && (MATCH_RESULTS as readonly string[]).includes(value)) return value as MatchResult;
+  errors.push(`${label} result must be win, loss, or draw.`);
+  return 'loss';
+}
+
+function readMatchMethod(value: unknown, label: string, errors: string[]): MatchMethod {
+  if (value == null || value === '') return '';
+  if (typeof value === 'string' && (MATCH_METHODS as readonly string[]).includes(value)) return value as MatchMethod;
+  errors.push(`${label} method must be points, sub, advantage, dq, or blank.`);
+  return '';
+}
+
 function readTournamentStatus(value: unknown, label: string, errors: string[]): TournamentStatus {
   if (typeof value === 'string' && (TOURNAMENT_STATUSES as readonly string[]).includes(value)) return value as TournamentStatus;
   errors.push(`${label} status must be entered or considering.`);
@@ -1154,10 +1301,11 @@ function readBelt(value: unknown, label: string, errors: string[]): ProgressBelt
   return 'white';
 }
 
-function readGameTag(value: unknown, label: string, errors: string[]): GameTag {
+function readGameTag(value: unknown, label: string, errors: string[]): GameTag | '' {
+  if (value == null || value === '') return '';
   if (typeof value === 'string' && (GAME_TAGS as readonly string[]).includes(value)) return value as GameTag;
-  errors.push(`${label} game tag must be a, b, or c.`);
-  return 'a';
+  errors.push(`${label} game tag must be a, b, c, or blank.`);
+  return '';
 }
 
 /** Names-only catalogs leave every examples list empty. A filled list is a worked checklist. */
@@ -1596,6 +1744,72 @@ function writeReportRows(lines: string[], packet: StudentProgressReport): void {
         '',
         metCell(goal.met),
         tournament.name,
+        '',
+        '',
+        '',
+        '',
+        '',
+      ]));
+    }
+  }
+  for (const result of competition.results) {
+    lines.push(csvRow([
+      'Result',
+      result.id,
+      '',
+      packet.studentId,
+      '',
+      result.division,
+      result.tournamentName,
+      '',
+      '',
+      result.bracketPhoto ? 'bracket photo on the student phone' : '',
+      '',
+      '',
+      result.tournamentName,
+      '',
+      '',
+      result.tournamentId,
+      '',
+      '',
+    ]));
+    for (const match of result.matches) {
+      lines.push(csvRow([
+        'Match',
+        match.id,
+        '',
+        result.id,
+        match.result,
+        match.method,
+        match.opponent,
+        '',
+        '',
+        match.note,
+        '',
+        '',
+        result.tournamentName,
+        '',
+        '',
+        '',
+        '',
+        '',
+      ]));
+    }
+    for (const note of result.bracket) {
+      lines.push(csvRow([
+        'Bracket',
+        note.id,
+        '',
+        result.id,
+        '',
+        note.round,
+        note.name,
+        '',
+        '',
+        '',
+        '',
+        '',
+        result.tournamentName,
         '',
         '',
         '',

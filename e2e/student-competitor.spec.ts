@@ -55,13 +55,37 @@ test('competitor tracker, game, weight, calendar, and coach import', async ({ br
   await page.getByLabel('A game techniques').fill('Armbar from mount');
   await page.getByLabel('A game plan').fill('Finish the grip');
   await page.getByRole('button', { name: 'Save game A', exact: true }).click();
+  await expect(page.getByLabel('Weigh-in weight')).toHaveCount(0);
+  await shot(page, 'competitor-section-390');
 
+  await page.getByRole('link', { name: BACK, exact: true }).click();
+  await page.getByRole('link', { name: 'Weight', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Weight' })).toBeVisible();
+  await expect(page.getByRole('link', { name: BACK, exact: true })).toHaveAttribute('href', '/student');
   await page.getByLabel('Weigh-in weight').fill('170');
   await page.getByRole('button', { name: 'Add weigh-in', exact: true }).click();
   await expect(page.getByText(`${today} · 170 lb`)).toBeVisible();
   await page.getByRole('group', { name: 'Weight unit', exact: true }).getByRole('button', { name: 'Kilograms' }).click();
   await expect(page.getByText(new RegExp(`${today} · 77\\.1 kg`))).toBeVisible();
-  await shot(page, 'competitor-section-390');
+  await expect(page.getByLabel('Target weight for Spring Open')).toHaveValue('170');
+  await shot(page, 'weight-page-390');
+
+  await page.getByRole('link', { name: BACK, exact: true }).click();
+  await page.getByRole('link', { name: 'Results', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Results' })).toBeVisible();
+  await page.getByLabel('Tracked tournament').selectOption({ label: 'Spring Open' });
+  await expect(page.getByLabel('Result tournament name')).toHaveValue('Spring Open');
+  await page.getByRole('button', { name: 'Add result', exact: true }).click();
+  await page.getByLabel('Opponent for Spring Open').fill('Sam');
+  await page.getByRole('group', { name: 'Result for Spring Open' }).getByRole('button', { name: 'Win', exact: true }).click();
+  await page.getByRole('group', { name: 'Method for Spring Open' }).getByRole('button', { name: 'Sub', exact: true }).click();
+  await page.getByRole('button', { name: 'Add match for Spring Open' }).click();
+  await expect(page.getByText('Win · Sam · Sub')).toBeVisible();
+  await page.getByLabel('Bracket round for Spring Open').fill('Final');
+  await page.getByLabel('Bracket name for Spring Open').fill('Sam');
+  await page.getByRole('button', { name: 'Add bracket line for Spring Open' }).click();
+  await expect(page.getByText('Final — Sam')).toBeVisible();
+  await shot(page, 'results-page-390');
 
   await page.getByRole('link', { name: BACK, exact: true }).click();
   await page.getByRole('link', { name: 'Calendar', exact: true }).click();
@@ -80,14 +104,17 @@ test('competitor tracker, game, weight, calendar, and coach import', async ({ br
   await expect(page.getByRole('region', { name: 'Competition game' })).toContainText('Finish the grip');
 
   await page.goto('/student/journal');
-  await page.getByRole('button', { name: 'A game' }).click();
+  await expect(page.getByRole('button', { name: 'A game' })).toHaveCount(0);
+  await expect(page.getByRole('textbox', { name: 'Class', exact: true })).toBeVisible();
+  await page.goto('/student/competitor');
   await expect(page.getByLabel('A game techniques')).toHaveValue('Armbar from mount');
   await expect(page.getByLabel('A game plan')).toHaveValue('Finish the grip');
-  await shot(page, 'competitor-journal-game-390');
 
   const progress = await page.evaluate(() => localStorage.getItem('matboard.studentEdition.v1') ?? '');
   expect(progress).toContain('"schemaVersion":2');
   expect(progress).toContain('Spring Open');
+  expect(progress).toContain('Sam');
+  expect(progress).not.toContain('data:image');
 
   await page.goto('/roster?from=competitors');
   await page.getByRole('button', { name: 'Add competitor', exact: true }).first().click();
@@ -103,6 +130,7 @@ test('competitor tracker, game, weight, calendar, and coach import', async ({ br
   await expect(card.getByText('Competition plan is on this phone.')).toBeVisible();
   await expect(card.getByRole('region', { name: 'Student competition plan' })).toContainText('Armbar from mount');
   await expect(card.getByRole('region', { name: 'Student competition plan' })).toContainText('Spring Open');
+  await expect(card.getByRole('region', { name: 'Student competition plan' })).toContainText('win Sam');
   await shot(page, 'competitor-roster-plan-390');
   await context.close();
 });

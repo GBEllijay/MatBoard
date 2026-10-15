@@ -36,6 +36,12 @@ export type TournamentStatus = (typeof TOURNAMENT_STATUSES)[number];
 export const WEIGHT_UNITS = ['lb', 'kg'] as const;
 export type WeightUnit = (typeof WEIGHT_UNITS)[number];
 
+export const MATCH_RESULTS = ['win', 'loss', 'draw'] as const;
+export type MatchResult = (typeof MATCH_RESULTS)[number];
+
+export const MATCH_METHODS = ['points', 'sub', 'advantage', 'dq'] as const;
+export type MatchMethod = '' | (typeof MATCH_METHODS)[number];
+
 export const CALENDAR_KINDS = ['class', 'training', 'promotion', 'note', 'other'] as const;
 export type CalendarKind = (typeof CALENDAR_KINDS)[number];
 
@@ -63,6 +69,9 @@ export const PROGRESS_FOCUS_MAX = 100;
 export const PROGRESS_TOURNAMENTS_MAX = 80;
 export const PROGRESS_TOURNAMENT_GOALS_MAX = 30;
 export const PROGRESS_WEIGH_INS_MAX = 400;
+export const PROGRESS_RESULTS_MAX = 80;
+export const PROGRESS_MATCHES_MAX = 40;
+export const PROGRESS_BRACKET_NOTES_MAX = 32;
 /** Techniques and sequences on one standing game. */
 export const PROGRESS_SEQUENCE_MAX = 1000;
 export const PROGRESS_WEIGHT_MAX = 999;
@@ -195,7 +204,11 @@ export type Amendment = {
 export type JournalEntry = {
   id: string;
   date: string;
-  gameTag: GameTag;
+  /**
+   * a, b, or c on a card saved when the journal asked for a game.
+   * Blank on a new card. The standing game lives on `competition.games`.
+   */
+  gameTag: GameTag | '';
   body: string;
   techniqueRefs: TechniqueRef[];
   amendments: Amendment[];
@@ -271,11 +284,44 @@ export type WeighIn = {
   note: string;
 };
 
+/** One match the student recorded after a competition. Not a live score. */
+export type CompetitionMatch = {
+  id: string;
+  opponent: string;
+  result: MatchResult;
+  method: MatchMethod;
+  note: string;
+};
+
+/** One name on a personal bracket note. Not a live bracket. */
+export type BracketNote = {
+  id: string;
+  round: string;
+  name: string;
+};
+
+/**
+ * A competition the student recorded after the event.
+ * `tournamentId` points at a tracked tournament when they picked one.
+ * A bracket photo stays on the phone. This record only says whether one exists.
+ */
+export type CompetitionResult = {
+  id: string;
+  tournamentId: string;
+  tournamentName: string;
+  division: string;
+  matches: CompetitionMatch[];
+  bracket: BracketNote[];
+  bracketPhoto: boolean;
+};
+
 /** Competition section of a student progress report. Absent on version 1 files until import fills it. */
 export type StudentCompetition = {
   games: CompetitionGames;
   tournaments: StudentTournament[];
   weighIns: WeighIn[];
+  /** Recorded matches and personal bracket notes. Absent on older files until import fills it. */
+  results: CompetitionResult[];
   /** How the chart and new weigh-ins are shown on this device. */
   weightUnit: WeightUnit;
 };

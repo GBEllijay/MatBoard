@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { convertWeight, formatWeight, tournamentsOnDate } from './progress/competition.ts';
-import { parseProgressPacket } from './progress/format.ts';
+import { exportProgressCsv, exportProgressPacket, parseProgressPacket } from './progress/format.ts';
 import {
   addStudent,
   getRoster,
@@ -16,10 +16,14 @@ import {
   searchStudentJournal,
 } from './studentEdition.ts';
 import {
+  addBracketNote,
+  addCompetitionMatch,
+  addCompetitionResult,
   addTournament,
   addTournamentGoal,
   addWeighIn,
   removeTournament,
+  setBracketPhotoFlag,
   setCompetitionGame,
   setWeightUnit,
 } from './studentCompetition.ts';
@@ -31,7 +35,7 @@ test('standing game, tournament, and weigh-in stay in one progress file', () => 
     report,
     {
       date: '2026-10-12',
-      classKind: 'gi',
+      className: 'Gi',
       gameTag: 'a',
       techniques: [{ id: 'sweep.scissor', name: 'Scissor sweep' }],
       partners: '',
@@ -122,4 +126,31 @@ test('a coach import keeps the competition plan on the roster and drops it with 
   removeStudent(added.id);
   assert.equal(getRoster().competitionPlans[added.id], undefined);
   resetRoster();
+});
+
+test('a recorded match and bracket note export, and the photo stays out of the file', () => {
+  let report = addCompetitionResult(
+    blankStudentReport(30),
+    { tournamentId: '', tournamentName: 'Spring Open', division: 'Adult Blue' },
+    31,
+  );
+  const id = report.competition?.results[0]?.id ?? '';
+  report = addCompetitionMatch(report, id, { opponent: 'Sam', result: 'win', method: 'sub', note: 'armbar' }, 32);
+  report = addBracketNote(report, id, 'Final', 'Sam', 33);
+  report = setBracketPhotoFlag(report, id, true, 34);
+  const text = exportProgressPacket(report);
+  assert.equal(text.includes('data:'), false);
+  assert.match(text, /"bracketPhoto":true/);
+  const parsed = parseProgressPacket(text);
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok || parsed.value.kind !== 'student-progress-report') return;
+  assert.equal(parsed.value.competition?.results[0]?.matches[0]?.opponent, 'Sam');
+  assert.equal(parsed.value.competition?.results[0]?.matches[0]?.method, 'sub');
+  assert.equal(parsed.value.competition?.results[0]?.bracket[0]?.round, 'Final');
+  const csv = exportProgressCsv(parsed.value);
+  assert.match(csv, /Result,/);
+  assert.match(csv, /Match,/);
+  assert.match(csv, /Bracket,/);
+  assert.match(csv, /Sam/);
+  assert.doesNotMatch(csv, /data:image/);
 });
