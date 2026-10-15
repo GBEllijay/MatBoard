@@ -35,6 +35,7 @@ import {
   type StudentProgressReport,
 } from './progress/types.ts';
 import { todayIso } from './studentEdition.ts';
+import { setRankBelt } from './studentRank.ts';
 
 export const COACH_PLAN_STORAGE_KEY = 'matboard.studentEdition.coachPlan.v1';
 export const COACH_FEEDBACK_STORAGE_KEY = 'matboard.studentEdition.coachFeedback.v1';
@@ -455,8 +456,7 @@ export function setCheckpointMark(
 }
 
 export function setStudentBelt(report: StudentProgressReport, belt: ProgressBelt, now = Date.now()): StudentProgressReport {
-  if (report.profile.belt === belt) return report;
-  return touch({ ...report, profile: { ...report.profile, belt } }, now);
+  return setRankBelt(report, belt, now);
 }
 
 export function addGoal(report: StudentProgressReport, name: string, note: string, now = Date.now()): StudentProgressReport {

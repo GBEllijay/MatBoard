@@ -38,6 +38,7 @@ const PAGES: { path: string; home: boolean }[] = [
   { path: '/student/results?student=1', home: true },
   { path: '/student/scouting?student=1', home: true },
   { path: '/student/videos?student=1', home: true },
+  { path: '/student/rank?student=1', home: true },
   { path: '/student/rubric?student=1', home: true },
   { path: '/coaching-tools', home: true },
   { path: '/review', home: true },

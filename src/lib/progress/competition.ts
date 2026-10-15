@@ -16,6 +16,9 @@ import {
   type StudentCompetition,
   type StudentProgressReport,
   type CompetitionResult,
+  type ProgressBelt,
+  type RankHistory,
+  type RankTapeDates,
   type StudentTournament,
   type WeighIn,
   type WeightUnit,
@@ -244,6 +247,18 @@ export function workingOnLine(games: CompetitionGames): string {
     .join(' · ');
 }
 
+/**
+ * The student's own belt and stripes, copied with the progress file.
+ * `belt` is profile.belt at import. The roster card's belt is separate.
+ */
+export type ImportedRank = {
+  belt: ProgressBelt;
+  tapeCount: number;
+  awardedOn: string;
+  tapeDates: RankTapeDates;
+  history: RankHistory[];
+};
+
 /** A student's competition plan, copied onto a coach's roster. It stays on that device. */
 export type ImportedCompetitionPlan = {
   studentId: string;
@@ -255,7 +270,25 @@ export type ImportedCompetitionPlan = {
   weighIns: WeighIn[];
   results: CompetitionResult[];
   weightUnit: WeightUnit;
+  /** Present when the progress file included My rank. */
+  rank?: ImportedRank;
 };
+
+export function rankHasContent(rank: ImportedRank | null | undefined): boolean {
+  if (!rank) return false;
+  if (rank.belt !== 'white') return true;
+  if (rank.tapeCount > 0 || rank.awardedOn.trim()) return true;
+  if (rank.tapeDates.some((date) => date.trim())) return true;
+  return rank.history.length > 0;
+}
+
+export function rankSummary(rank: ImportedRank): string {
+  const name = rank.belt.charAt(0).toUpperCase() + rank.belt.slice(1);
+  const stripes = rank.tapeCount === 1 ? '1 stripe' : `${rank.tapeCount} stripes`;
+  const date = rank.awardedOn ? ` · belt on ${rank.awardedOn}` : '';
+  const earlier = rank.history.length === 1 ? ' · 1 earlier belt' : rank.history.length > 1 ? ` · ${rank.history.length} earlier belts` : '';
+  return `${name} · ${stripes}${date}${earlier}`;
+}
 
 export function competitionSnapshot(report: StudentProgressReport, importedAt: number): ImportedCompetitionPlan {
   const competition = competitionOf(report);
@@ -280,6 +313,15 @@ export function competitionSnapshot(report: StudentProgressReport, importedAt: n
       bracket: result.bracket.map((note) => ({ ...note })),
     })),
     weightUnit: competition.weightUnit,
+    rank: report.rank
+      ? {
+          belt: report.profile.belt,
+          tapeCount: report.rank.tapeCount,
+          awardedOn: report.rank.awardedOn,
+          tapeDates: [...report.rank.tapeDates] as RankTapeDates,
+          history: report.rank.history.map((row) => ({ ...row, tapeDates: [...row.tapeDates] as RankTapeDates })),
+        }
+      : undefined,
   };
 }
 
@@ -288,9 +330,10 @@ export function planHasContent(plan: {
   tournaments: readonly StudentTournament[];
   weighIns: readonly WeighIn[];
   results?: readonly CompetitionResult[];
+  rank?: ImportedRank | null;
 }): boolean {
   const games = GAME_TAGS.some((tag) => plan.games[tag].techniques.trim() || plan.games[tag].notes.trim());
-  return games || plan.tournaments.length > 0 || plan.weighIns.length > 0 || (plan.results?.length ?? 0) > 0;
+  return games || plan.tournaments.length > 0 || plan.weighIns.length > 0 || (plan.results?.length ?? 0) > 0 || rankHasContent(plan.rank);
 }
 
 export type ChartPoint = { date: string; value: number };

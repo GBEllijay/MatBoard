@@ -473,6 +473,78 @@ test('importing a coach plan or coach feedback leaves student marks, journal, an
   const stripes = parseProgressPacket(JSON.stringify({ ...report, stripes: 2 }));
   assert.equal(stripes.ok, false);
   if (!stripes.ok) assert.match(stripes.errors.join('\n'), /checkpoints between levels/);
+
+  const nested = parseProgressPacket(JSON.stringify({ ...report, rank: { stripes: 2 } }));
+  assert.equal(nested.ok, false);
+  if (!nested.ok) assert.match(nested.errors.join('\n'), /checkpoints between levels/);
+});
+
+test('rank tape count and dates round-trip, and a file without rank does not clear one', () => {
+  const report = sampleReport();
+  const plain = parseProgressPacket(exportProgressPacket(report));
+  assert.equal(plain.ok, true);
+  if (plain.ok && plain.value.kind === 'student-progress-report') assert.equal('rank' in plain.value, false);
+  assert.equal(exportProgressCsv(report).includes('Rank,'), false);
+
+  const ranked = {
+    ...report,
+    profile: { ...report.profile, belt: 'blue' as const },
+    rank: {
+      tapeCount: 2,
+      awardedOn: '2026-02-01',
+      tapeDates: ['2026-03-01', '2026-04-01', '', ''] as [string, string, string, string],
+      history: [
+        {
+          id: 'rank-white',
+          belt: 'white' as const,
+          awardedOn: '2025-01-01',
+          tapeCount: 4,
+          tapeDates: ['2025-02-01', '2025-03-01', '2025-04-01', '2025-05-01'] as [string, string, string, string],
+        },
+      ],
+    },
+  };
+  const parsed = parseProgressPacket(exportProgressPacket(ranked));
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok || parsed.value.kind !== 'student-progress-report') return;
+  assert.equal(parsed.value.profile.belt, 'blue');
+  assert.deepEqual(parsed.value.rank, ranked.rank);
+  const csv = exportProgressCsv(parsed.value);
+  assert.match(csv, /Rank,student-alex,2026-02-01/);
+  assert.match(csv, /Rank history,rank-white,2025-01-01/);
+  assert.match(csv, /1 2026-03-01; 2 2026-04-01/);
+
+  const tooMany = parseProgressPacket(JSON.stringify({ ...report, rank: { tapeCount: 5 } }));
+  assert.equal(tooMany.ok, false);
+  if (!tooMany.ok) assert.match(tooMany.errors.join('\n'), /whole number from 0 to 4/);
+
+  const kept = mergeStudentProgress(ranked, report);
+  assert.deepEqual(kept.report.rank, ranked.rank);
+  assert.equal(kept.report.profile.belt, 'blue');
+
+  const incoming = {
+    ...report,
+    rank: {
+      tapeCount: 1,
+      awardedOn: '2026-08-01',
+      tapeDates: ['2026-08-02', '', '', ''] as [string, string, string, string],
+      history: [
+        {
+          id: 'rank-new',
+          belt: 'white' as const,
+          awardedOn: '2024-01-01',
+          tapeCount: 0,
+          tapeDates: ['', '', '', ''] as [string, string, string, string],
+        },
+      ],
+    },
+  };
+  const merged = mergeStudentProgress(ranked, incoming);
+  assert.equal(merged.report.rank?.awardedOn, '2026-02-01');
+  assert.equal(merged.report.rank?.tapeCount, 2);
+  assert.equal(merged.report.rank?.history.some((row) => row.id === 'rank-white'), true);
+  assert.equal(merged.report.rank?.history.some((row) => row.id === 'rank-new'), true);
+  assert.match(merged.conflicts.join('\n'), /Rank date was kept/);
 });
 
 test('version 1 files import, and journal A/B/C tags become the standing game', () => {

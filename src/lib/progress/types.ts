@@ -26,6 +26,12 @@ export const PROGRESS_BELTS = [
 
 export type ProgressBelt = (typeof PROGRESS_BELTS)[number];
 
+/** Belts the student sets on My rank. Kids belts stay on the profile when a file already has one. */
+export const RANK_BELTS = ['white', 'blue', 'purple', 'brown', 'black'] as const;
+export type RankBelt = (typeof RANK_BELTS)[number];
+/** Four stripe dates. Empty string means that stripe has no date. Slots past the tape count stay empty. */
+export type RankTapeDates = [string, string, string, string];
+
 /** A game / B game / C game. Same letters as the coach game-plan layers. */
 export const GAME_TAGS = ['a', 'b', 'c'] as const;
 export type GameTag = (typeof GAME_TAGS)[number];
@@ -70,6 +76,10 @@ export const PROGRESS_TOURNAMENTS_MAX = 80;
 export const PROGRESS_TOURNAMENT_GOALS_MAX = 30;
 export const PROGRESS_WEIGH_INS_MAX = 400;
 export const PROGRESS_RESULTS_MAX = 80;
+/** Earlier belts kept on My rank. */
+export const PROGRESS_RANK_HISTORY_MAX = 40;
+/** Stripe slots on the belt the student wears. The file stores this as tape count, not a stripes key. */
+export const RANK_TAPE_MAX = 4;
 export const PROGRESS_MATCHES_MAX = 40;
 export const PROGRESS_BRACKET_NOTES_MAX = 32;
 /** Techniques and sequences on one standing game. */
@@ -317,6 +327,32 @@ export type CompetitionResult = {
   bracketPhoto: boolean;
 };
 
+/**
+ * One earlier belt. Written when the student changes the belt they wear
+ * and that belt already had a date or a stripe.
+ */
+export type RankHistory = {
+  id: string;
+  belt: RankBelt;
+  /** YYYY-MM-DD, or empty. */
+  awardedOn: string;
+  tapeCount: number;
+  tapeDates: RankTapeDates;
+};
+
+/**
+ * Stripes and dates for the belt on `profile.belt`.
+ * Optional. Older files omit it. `tapeCount` is 0 to 4.
+ * This object does not use a stripe, stripes, or levelKey field.
+ */
+export type StudentRank = {
+  tapeCount: number;
+  /** YYYY-MM-DD the student got the current belt, or empty. */
+  awardedOn: string;
+  tapeDates: RankTapeDates;
+  history: RankHistory[];
+};
+
 /** Competition section of a student progress report. Absent on version 1 files until import fills it. */
 export type StudentCompetition = {
   games: CompetitionGames;
@@ -382,6 +418,11 @@ export type StudentProgressReport = PacketBase & {
    * Omitted on version 1 files. Import fills it and does not erase a copy already on the device.
    */
   competition?: StudentCompetition;
+  /**
+   * My rank: stripes and promotion dates for `profile.belt`.
+   * Omitted on older files. Import does not erase a rank already on the device.
+   */
+  rank?: StudentRank;
 };
 
 export type CoachPlanPacket = PacketBase & {

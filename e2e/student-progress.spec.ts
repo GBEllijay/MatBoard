@@ -54,7 +54,9 @@ test('belt checkpoints, goals, coach suggestions, and the share file', async ({ 
   await page.getByRole('region', { name: 'Sweeps' }).getByRole('button', { name: 'Mark Scissor sweep learned' }).click();
   await page.goto('/student/rubric?student=1');
   await expect(page.getByRole('heading', { name: 'Belt progress' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'White', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('link', { name: 'My rank', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'White', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('paragraph').filter({ hasText: /^White$/ })).toBeVisible();
   await expect(page.getByRole('paragraph').filter({ hasText: /^Blue$/ })).toBeVisible();
   await expect(page.getByRole('listitem', { name: 'Guard, open' })).toBeVisible();
   await expect(page.getByText('Counted from your fundamentals.')).toBeVisible();

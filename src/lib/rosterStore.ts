@@ -8,8 +8,10 @@ import {
   competitionSnapshot,
   planMatchesCoachResultQuery,
   type ImportedCompetitionPlan,
+  type ImportedRank,
 } from './progress/competition.ts';
 import { parseProgressPacket } from './progress/format.ts';
+import { PROGRESS_BELTS, type ProgressBelt } from './progress/types.ts';
 import {
   emptyGamePlan,
   normalizeGamePlan,
@@ -613,6 +615,21 @@ function normalizeCompetitionPlans(raw: unknown, studentIds: Set<string>): Recor
   return plans;
 }
 
+function rankBelt(rank: ImportedRank | undefined): ProgressBelt {
+  if (rank && (PROGRESS_BELTS as readonly string[]).includes(rank.belt)) return rank.belt;
+  return 'white';
+}
+
+function rankPacket(rank: ImportedRank | undefined): Omit<ImportedRank, 'belt'> | undefined {
+  if (!rank) return undefined;
+  return {
+    tapeCount: rank.tapeCount,
+    awardedOn: rank.awardedOn,
+    tapeDates: rank.tapeDates,
+    history: rank.history,
+  };
+}
+
 function normalizeCompetitionPlan(raw: unknown): ImportedCompetitionPlan | null {
   if (!raw || typeof raw !== 'object') return null;
   const row = raw as Partial<ImportedCompetitionPlan>;
@@ -628,7 +645,7 @@ function normalizeCompetitionPlan(raw: unknown): ImportedCompetitionPlan | null 
       id: studentId,
       displayName: typeof row.displayName === 'string' ? row.displayName : '',
       gymName: '',
-      belt: 'white',
+      belt: rankBelt(row.rank),
       startedOn: '',
       licenseSource: '',
     },
@@ -644,6 +661,7 @@ function normalizeCompetitionPlan(raw: unknown): ImportedCompetitionPlan | null 
       results: row.results,
       weightUnit: row.weightUnit,
     },
+    rank: rankPacket(row.rank),
   };
   const parsed = parseProgressPacket(JSON.stringify(fake));
   if (!parsed.ok || parsed.value.kind !== 'student-progress-report' || !parsed.value.competition) return null;

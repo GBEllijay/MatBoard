@@ -14,6 +14,7 @@ import { isIsoDate } from '../lib/studentTools';
 import { BeltPage } from './student/BeltPage';
 import { CalendarDayPage, CalendarPage } from './student/CalendarPages';
 import { CompetitorPage } from './student/CompetitorPage';
+import { RankPage } from './student/RankPage';
 import { ResultsPage } from './student/ResultsPage';
 import { ScoutingPage } from './student/ScoutingPage';
 import { VideoLibraryPage } from './student/VideoLibraryPage';
@@ -66,6 +67,7 @@ export function StudentEditionPage() {
   if (rest === 'calendar') return <CalendarPage />;
   if (rest.startsWith('calendar/')) return <CalendarDayPage date={decodeURIComponent(rest.slice('calendar/'.length))} />;
   if (rest === 'rubric' || rest === 'belt') return <BeltPage />;
+  if (rest === 'rank') return <RankPage />;
   if (rest === 'share') return <SharePage />;
   if (rest === 'competitor') return <CompetitorPage />;
   if (rest === 'weight') return <WeightPage />;
@@ -103,6 +105,7 @@ const HUB_LINKS = [
   { title: 'Results', note: 'Matches and bracket notes', to: '/student/results' },
   { title: 'Scouting', note: 'Weight class and open class', to: '/student/scouting' },
   { title: 'Video Library', note: 'Technique and drill links', to: '/student/videos' },
+  { title: 'My rank', note: 'Belt and stripes', to: '/student/rank' },
   { title: 'Belt progress', note: 'Checkpoints and goals', to: '/student/rubric' },
 ] as const;
 

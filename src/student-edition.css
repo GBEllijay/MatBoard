@@ -1036,6 +1036,13 @@ button.student-book .student-mark__press {
   box-sizing: border-box;
 }
 
+.cal-dot--rank {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 2px;
+  background: #2a4f86;
+}
+
 .cal-marks {
   display: flex;
   gap: 0.12rem;
@@ -1130,6 +1137,86 @@ button.student-book .student-mark__press {
   display: grid;
   gap: 0.2rem;
   margin-bottom: 0.45rem;
+}
+
+.rank-belt {
+  margin: 0.4rem 0 0.2rem;
+}
+
+.rank-belt__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  min-height: 2.7rem;
+  padding: 0.35rem 0.7rem;
+  border: 2.5px solid #1c140e;
+  border-radius: 4px;
+  background: #f7f4ea;
+}
+
+.rank-belt--blue .rank-belt__bar {
+  background: #2a4f86;
+  color: #f4f0e4;
+}
+
+.rank-belt--purple .rank-belt__bar {
+  background: #5c3d86;
+  color: #f4f0e4;
+}
+
+.rank-belt--brown .rank-belt__bar {
+  background: #6b3e24;
+  color: #f4f0e4;
+}
+
+.rank-belt--black .rank-belt__bar {
+  background: #161616;
+  color: #f4f0e4;
+}
+
+.rank-belt__name {
+  font-size: 1.35rem;
+}
+
+.rank-tapes {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.student .rank-tape {
+  width: 0.62rem;
+  height: 1.85rem;
+  padding: 0;
+  border: 2px solid #1c140e;
+  border-radius: 1px;
+  background: transparent;
+}
+
+.rank-belt--white .rank-tape.is-on,
+.rank-belt--other .rank-tape.is-on {
+  background: #1c140e;
+}
+
+.rank-belt--blue .rank-tape,
+.rank-belt--purple .rank-tape,
+.rank-belt--brown .rank-tape {
+  border-color: #f4f0e4;
+}
+
+.rank-belt--blue .rank-tape.is-on,
+.rank-belt--purple .rank-tape.is-on,
+.rank-belt--brown .rank-tape.is-on {
+  background: #f4f0e4;
+}
+
+.rank-belt--black .rank-tape {
+  border-color: #c23b3b;
+}
+
+.rank-belt--black .rank-tape.is-on {
+  background: #c23b3b;
 }
 
 .belt-ends {

@@ -33,8 +33,11 @@ import {
   PROGRESS_MATCHES_MAX,
   PROGRESS_NAME_MAX,
   PROGRESS_NOTE_MAX,
+  PROGRESS_RANK_HISTORY_MAX,
   PROGRESS_RESULTS_MAX,
   PROGRESS_PACKET_KINDS,
+  RANK_BELTS,
+  RANK_TAPE_MAX,
   PROGRESS_SCHEMA_VERSION,
   PROGRESS_SCHEMA_VERSIONS,
   PROGRESS_SEQUENCE_MAX,
@@ -73,6 +76,9 @@ import {
   type JournalEntry,
   type ProgressBelt,
   type ProgressMerge,
+  type RankBelt,
+  type RankHistory,
+  type RankTapeDates,
   type ProgressPacket,
   type ProgressParse,
   type StudentChecklistEntry,
@@ -80,6 +86,7 @@ import {
   type StudentGoal,
   type StudentProfile,
   type StudentProgressReport,
+  type StudentRank,
   type StudentRubric,
   type StudentTournament,
   type TechniqueRef,
@@ -190,6 +197,8 @@ export function parseProgressValue(raw: unknown): ProgressParse {
     const clips = readClips(record.clips, errors);
     if (clips) value.clips = clips;
     value.competition = readCompetition(record, value.journal, errors);
+    const rank = readRank(record.rank, errors);
+    if (rank) value.rank = rank;
     return errors.length ? { ok: false, errors } : { ok: true, value };
   }
   if (kind === 'coach-plan' || kind === 'coach-feedback') {
@@ -242,6 +251,7 @@ export function mergeStudentProgress(local: StudentProgressReport, incoming: Stu
   mergeCalendar(report, incoming, conflicts);
   mergeClips(report, incoming, conflicts);
   mergeCompetition(report, incoming, conflicts);
+  mergeRank(report, incoming, conflicts);
   return { report, appendedAmendments, addedJournal, addedChecklist, conflicts };
 }
 
@@ -502,6 +512,53 @@ function mergeClips(report: StudentProgressReport, incoming: StudentProgressRepo
     );
     current.note = preferText(current.note ?? '', clip.note ?? '', `Clip ${clip.id} text was kept.`, conflicts);
     current.updatedAt = Math.max(current.updatedAt, clip.updatedAt);
+  }
+}
+
+function mergeRank(report: StudentProgressReport, incoming: StudentProgressReport, conflicts: string[]): void {
+  if (!incoming.rank) return;
+  if (!report.rank) {
+    report.rank = structuredClone(incoming.rank);
+    return;
+  }
+  const local = report.rank;
+  const next = incoming.rank;
+  local.awardedOn = preferText(local.awardedOn, next.awardedOn, 'Rank date was kept.', conflicts);
+  if (local.tapeCount !== next.tapeCount) {
+    if (local.tapeCount === 0 && next.tapeCount > 0) local.tapeCount = next.tapeCount;
+    else conflicts.push('Rank tape count was kept.');
+  }
+  for (let index = 0; index < local.tapeCount; index += 1) {
+    local.tapeDates[index] = preferText(
+      local.tapeDates[index] ?? '',
+      next.tapeDates[index] ?? '',
+      `Rank tape ${index + 1} date was kept.`,
+      conflicts,
+    );
+  }
+  for (let index = local.tapeCount; index < RANK_TAPE_MAX; index += 1) local.tapeDates[index] = '';
+  const byId = new Map(local.history.map((row) => [row.id, row]));
+  for (const row of next.history) {
+    const current = byId.get(row.id);
+    if (!current) {
+      local.history.push(structuredClone(row));
+      continue;
+    }
+    if (current.belt !== row.belt) conflicts.push(`Rank history ${row.id} belt was kept.`);
+    current.awardedOn = preferText(current.awardedOn, row.awardedOn, `Rank history ${row.id} date was kept.`, conflicts);
+    if (current.tapeCount !== row.tapeCount) {
+      if (current.tapeCount === 0 && row.tapeCount > 0) current.tapeCount = row.tapeCount;
+      else conflicts.push(`Rank history ${row.id} tape count was kept.`);
+    }
+    for (let index = 0; index < current.tapeCount; index += 1) {
+      current.tapeDates[index] = preferText(
+        current.tapeDates[index] ?? '',
+        row.tapeDates[index] ?? '',
+        `Rank history ${row.id} tape ${index + 1} date was kept.`,
+        conflicts,
+      );
+    }
+    for (let index = current.tapeCount; index < RANK_TAPE_MAX; index += 1) current.tapeDates[index] = '';
   }
 }
 
@@ -819,6 +876,87 @@ function readClips(value: unknown, errors: string[]): JournalClip[] | undefined 
   const clips = rows.map((row, index) => readClip(row, index, errors));
   uniqueIds(clips.map((clip) => clip.id), 'Clip', errors);
   return clips;
+}
+
+function readRank(value: unknown, errors: string[]): StudentRank | undefined {
+  if (value == null) return undefined;
+  const record = asRecord(value);
+  if (!record) {
+    errors.push('Rank must be an object.');
+    return undefined;
+  }
+  const tapeCount = readTapeCount(record.tapeCount, 'Rank tape count', errors);
+  const tapeDates = readTapeDates(record.tapeDates, 'Rank tape dates', errors);
+  return {
+    tapeCount,
+    awardedOn: readDate(record.awardedOn, 'Rank awarded on', errors, false),
+    tapeDates: maskTapeDates(tapeDates, tapeCount),
+    history: readRankHistory(record.history, errors),
+  };
+}
+
+function readRankHistory(value: unknown, errors: string[]): RankHistory[] {
+  const rows = readList(value, 'Rank history', PROGRESS_RANK_HISTORY_MAX, errors);
+  const history = rows.map((row, index) => readRankHistoryRow(row, index, errors));
+  uniqueIds(history.map((row) => row.id), 'Rank history', errors);
+  return history;
+}
+
+function readRankHistoryRow(value: unknown, index: number, errors: string[]): RankHistory {
+  const record = asRecord(value);
+  const label = `Rank history ${index + 1}`;
+  if (!record) {
+    errors.push(`${label} must be an object.`);
+    return { id: '', belt: 'white', awardedOn: '', tapeCount: 0, tapeDates: blankTapeDates() };
+  }
+  const tapeCount = readTapeCount(record.tapeCount, `${label} tape count`, errors);
+  const tapeDates = readTapeDates(record.tapeDates, `${label} tape dates`, errors);
+  return {
+    id: readId(record.id, `${label} id`, errors),
+    belt: readRankBelt(record.belt, `${label} belt`, errors),
+    awardedOn: readDate(record.awardedOn, `${label} date`, errors, false),
+    tapeCount,
+    tapeDates: maskTapeDates(tapeDates, tapeCount),
+  };
+}
+
+function readRankBelt(value: unknown, label: string, errors: string[]): RankBelt {
+  if (typeof value === 'string' && (RANK_BELTS as readonly string[]).includes(value)) return value as RankBelt;
+  errors.push(`${label} must be white, blue, purple, brown, or black.`);
+  return 'white';
+}
+
+function readTapeCount(value: unknown, label: string, errors: string[]): number {
+  if (value == null || value === '') return 0;
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > RANK_TAPE_MAX) {
+    errors.push(`${label} must be a whole number from 0 to 4.`);
+    return 0;
+  }
+  return value;
+}
+
+function readTapeDates(value: unknown, label: string, errors: string[]): RankTapeDates {
+  const dates = blankTapeDates();
+  if (value == null) return dates;
+  if (!Array.isArray(value)) {
+    errors.push(`${label} must be a list.`);
+    return dates;
+  }
+  if (value.length > RANK_TAPE_MAX) errors.push(`${label} has more than 4 dates.`);
+  for (let index = 0; index < Math.min(value.length, RANK_TAPE_MAX); index += 1) {
+    dates[index] = readDate(value[index], `${label} ${index + 1}`, errors, false);
+  }
+  return dates;
+}
+
+function blankTapeDates(): RankTapeDates {
+  return ['', '', '', ''];
+}
+
+function maskTapeDates(dates: RankTapeDates, tapeCount: number): RankTapeDates {
+  const next = blankTapeDates();
+  for (let index = 0; index < tapeCount; index += 1) next[index] = dates[index] ?? '';
+  return next;
 }
 
 function readClip(value: unknown, index: number, errors: string[]): JournalClip {
@@ -1683,6 +1821,7 @@ function writeReportRows(lines: string[], packet: StudentProgressReport): void {
       '',
     ]));
   }
+  writeRankRows(lines, packet);
   const competition = packet.competition;
   if (!competition) return;
   for (const tag of GAME_TAGS) {
@@ -1842,6 +1981,47 @@ function writeReportRows(lines: string[], packet: StudentProgressReport): void {
       '',
     ]));
   }
+}
+
+function writeRankRows(lines: string[], packet: StudentProgressReport): void {
+  if (!packet.rank) return;
+  lines.push(rankCsvRow('Rank', packet.studentId, packet.profile.belt, packet.rank, packet.studentId));
+  for (const row of packet.rank.history) {
+    lines.push(rankCsvRow('Rank history', row.id, row.belt, row, packet.studentId));
+  }
+}
+
+function rankCsvRow(
+  sheet: string,
+  id: string,
+  belt: string,
+  rank: { awardedOn: string; tapeCount: number; tapeDates: readonly string[] },
+  parentId: string,
+): string {
+  const dates = rank.tapeDates
+    .map((date, index) => (date ? `${index + 1} ${date}` : ''))
+    .filter(Boolean)
+    .join('; ');
+  return csvRow([
+    sheet,
+    id,
+    rank.awardedOn,
+    parentId,
+    '',
+    '',
+    belt,
+    dates,
+    '',
+    '',
+    '',
+    '',
+    sheet === 'Rank' ? 'Current rank' : belt,
+    String(rank.tapeCount),
+    belt,
+    '',
+    '',
+    '',
+  ]);
 }
 
 function writePlanRows(lines: string[], packet: CoachPlanPacket): void {

@@ -5,6 +5,7 @@
 
 import { FUNDAMENTALS_CATALOG } from './progress/catalog.ts';
 import { emptyCompetition, matchingGameTags } from './progress/competition.ts';
+import { emptyRank } from './studentRank.ts';
 import { isStudentEditionUnlocked } from './studentUnlock.ts';
 import { exportProgressPacket, parseProgressPacket, searchJournal, searchJournalClips, techniqueDrilledLabel } from './progress/format.ts';
 import {
@@ -163,6 +164,7 @@ export function blankStudentReport(now = Date.now()): StudentProgressReport {
     calendar: [],
     goals: [],
     competition: emptyCompetition(),
+    rank: emptyRank(),
   };
 }
 

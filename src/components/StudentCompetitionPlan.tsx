@@ -3,6 +3,8 @@ import {
   formatWeight,
   isUpcomingTournament,
   planHasContent,
+  rankHasContent,
+  rankSummary,
   tournamentStatusLabel,
   workingOnLine,
   type ImportedCompetitionPlan,
@@ -36,6 +38,7 @@ export function StudentCompetitionPlan({
       <p className="roster-plan__line">
         {line || 'Competition plan imported'}
         {next ? ` · ${tournamentStatusLabel(next.status)} ${next.name} ${next.date}` : ''}
+        {plan.rank && rankHasContent(plan.rank) ? ` · ${rankSummary(plan.rank)}` : ''}
       </p>
     );
   }
@@ -87,6 +90,7 @@ export function StudentCompetitionPlan({
           ))}
         </ul>
       ) : null}
+      {plan.rank && rankHasContent(plan.rank) ? <p>{rankSummary(plan.rank)}</p> : null}
       {plan.weighIns.length ? (
         <p>
           Latest weigh-in{' '}

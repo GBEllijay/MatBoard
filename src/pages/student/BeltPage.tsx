@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { PROGRESS_BELTS, type RubricCriterion } from '../../lib/progress/types';
+import type { RubricCriterion } from '../../lib/progress/types';
 import { loadStudentReport } from '../../lib/studentEdition';
 import {
   addGoal,
@@ -17,7 +17,6 @@ import {
   setCheckpointMark,
   setCriterionMark,
   setGoalMet,
-  setStudentBelt,
   splitMarkNote,
   updateGoal,
   withStarterRubric,
@@ -47,7 +46,7 @@ export function BeltPage() {
   const filled = checkpoints.filter((row) => checkpointFilled(row, learned)).length;
   const share = to('/student/share?from=rubric');
 
-  const run = (next: ReturnType<typeof commit> | ReturnType<typeof setStudentBelt>) => {
+  const run = (next: ReturnType<typeof commit>) => {
     try {
       commit(next);
       setError('');
@@ -62,19 +61,9 @@ export function BeltPage() {
       <LeatherHeader title="Belt progress" />
       <div className="student-paper">
         <div className="student-sheet">
-          <div className="student-games" role="group" aria-label="Current belt">
-            {PROGRESS_BELTS.map((item) => (
-              <button
-                key={item}
-                type="button"
-                className={item === belt ? 'student-choice is-on' : 'student-choice'}
-                aria-pressed={item === belt}
-                onClick={() => run(setStudentBelt(report, item))}
-              >
-                {BELT_LABELS[item]}
-              </button>
-            ))}
-          </div>
+          <p className="student-quiet">
+            Current belt is set on <Link to={to('/student/rank')}>My rank</Link>. This page is the path ahead.
+          </p>
           <div className="belt-lane">
           <div className="belt-ends">
             <p>{BELT_LABELS[belt]}</p>

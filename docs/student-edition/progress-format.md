@@ -19,11 +19,11 @@ Every file is one JSON object with `schemaVersion`, `kind`, `id`, `studentId`, a
 
 | Kind | Who writes it | What it carries |
 | --- | --- | --- |
-| `student-progress-report` | Student | Profile, rubric, fundamentals checklist, journal, calendar, goals, an optional clip clipboard, and an optional competition section (tournaments, standing A/B/C game, weigh-ins) |
+| `student-progress-report` | Student | Profile, rubric, fundamentals checklist, journal, calendar, goals, an optional clip clipboard, an optional competition section (tournaments, standing A/B/C game, weigh-ins), and an optional rank section (belt stripes and promotion dates) |
 | `coach-plan` | Coach | Suggestions under "Work on before next promotion" |
 | `coach-feedback` | Coach | A synopsis and suggestion notes |
 
-`schemaVersion` is `2`. This build also reads version `1`. A missing version, or any other version, is refused. The file is left unread. Optional fields that are absent (`examples`, an empty learned-on date, a blank license source, a null checkpoint mark, `clips`, `competition`) stay valid. Version 1 has no `competition` section. Import fills one. A version 1 journal card tagged A, B, or C copies its techniques and notes into that standing game when the file has no competition section yet. A file that already has `competition`, including empty games, is left as written. A migration that renames or removes a field still has to be explicit.
+`schemaVersion` is `2`. This build also reads version `1`. A missing version, or any other version, is refused. The file is left unread. Optional fields that are absent (`examples`, an empty learned-on date, a blank license source, a null checkpoint mark, `clips`, `competition`, `rank`) stay valid. Version 1 has no `competition` section. Import fills one. A version 1 journal card tagged A, B, or C copies its techniques and notes into that standing game when the file has no competition section yet. A file that already has `competition`, including empty games, is left as written. A migration that renames or removes a field still has to be explicit.
 
 Invite and review packets in the gym folder use `version`, not `schemaVersion`. Today's Drive handoff reader ignores a progress file (`parseHandoffPacket` returns nothing). Progress files can sit in that folder without changing an invite or a review.
 
@@ -97,6 +97,8 @@ A day on the student calendar: id, date, title, kind (`class`, `training`, `prom
 
 Tournaments are not copied into this list. The calendar reads `competition.tournaments` and marks the event day and the registration deadline.
 
+Kind `promotion` is a Promotion test the student adds by hand: a title, a date, and a note. It does not store a belt or a stripe. `profile.startedOn` is a start date, not a promotion date. A checkpoint note can hold a date, and that date belongs to Belt progress. My rank dates are not copied into calendar events, and a Promotion test is not copied into the belt date. The calendar reads `rank` and marks those days.
+
 ### Competition, tournaments, standing game, weigh-ins
 
 Optional on a student progress report. Version 2 files written by this app include it. Version 1 files omit it. Import of a file with no `competition` field does not clear a competition section already on the device.
@@ -111,7 +113,17 @@ Optional on a student progress report. Version 2 files written by this app inclu
 
 ### CalendarEvent and tournaments
 
-The student calendar shows tournament days from `competition.tournaments` beside journal dots and calendar events. Removing a tournament there removes it from the calendar. A hand-added calendar event with kind `other` (labeled Tournament on the page) stays a separate note.
+The student calendar shows tournament days from `competition.tournaments` beside journal dots and calendar events. Removing a tournament there removes it from the calendar. A hand-added calendar event with kind `other` (labeled Tournament on the page) stays a separate note. Belt and stripe dates from `rank` are shown the same way: the calendar reads them and does not store a second copy. A Promotion test event stays its own event.
+
+### Rank
+
+Optional on a student progress report. The current belt stays on `profile.belt`. My rank is the page that sets it. Belt progress reads that belt and does not write a second one.
+
+`rank.tapeCount` is how many stripes are on the current belt, a whole number from 0 to 4. `rank.awardedOn` is the date they got that belt, or empty. `rank.tapeDates` is four dates, one for each stripe, and slots past `tapeCount` stay empty. `rank.history` lists earlier belts. Each history row has an id, a belt (`white`, `blue`, `purple`, `brown`, or `black`), the date, the stripe count, and the four stripe dates.
+
+The file uses `tapeCount` and `tapeDates`. A key named `stripe`, `stripes`, or `levelKey` is still refused, because Belt progress stays checkpoints between levels.
+
+A file with no `rank` field imports as it was written and does not clear a rank already on the device. A file that includes `rank` fills an empty date or an empty stripe count and adds new history ids. A date or stripe count already stored is kept.
 
 ### StudentGoal
 
@@ -142,6 +154,7 @@ Import of a `student-progress-report` merges into the copy already on the device
 - A checklist line, goal, checkpoint, criterion, calendar event, or clip that already has text keeps that text. An empty field can be filled from the incoming student file. A new id is added. A mark the student already set is kept.
 - A file with no `clips` field does not clear a clipboard already on the device. A file that includes `clips` adds new clip ids and keeps the link and note already stored for an id this device has.
 - A file with no `competition` field does not clear tournaments, the standing game, weigh-ins, or results already on the device. A file that includes `competition` adds new tournament, goal, weigh-in, result, match, and bracket ids. Text already stored for an id is kept. An empty standing-game field can be filled from the incoming file. The weight unit on the device is kept. A missing `results` list does not clear results already on the device.
+- A file with no `rank` field does not clear stripes, belt dates, or promotion history already on the device. A file that includes `rank` fills an empty belt date or an empty stripe count and adds new history ids. A date or stripe count already stored is kept. The profile on the device, including the current belt, is still kept when the two profiles differ.
 - `importCoachSuggestion` returns the student report unchanged, beside the coach packet. The student can read the suggestion. Nothing in that import writes rubric marks, checkpoints, the journal, or goals. A newer coach file can replace an older coach file of the same id. That replacement is only the suggestion snapshot.
 
 ## Privacy
@@ -176,6 +189,8 @@ Filter the Sheet column:
 | Result | One recorded competition. Name is the tournament. Category is the division. Criterion id is the tracked tournament id when set. Note says a bracket photo is on the student phone when one is |
 | Match | One match. Parent id is the result id. Game is `win`, `loss`, or `draw`. Category is the method. Name is the opponent. Note is the match note |
 | Bracket | One personal bracket line. Parent id is the result id. Category is the round. Name is the person |
+| Rank | The current belt and stripes, only when the report includes `rank`. Date is the belt date. Name and Belt are the current belt. Kind is the stripe count, 0 to 4. Technique names are the stripe dates, as `1 YYYY-MM-DD; 2 YYYY-MM-DD` |
+| Rank history | One earlier belt. Parent id is the student id. Date is the belt date. Belt is that belt. Kind is the stripe count. Technique names are the stripe dates |
 | Goal | One student goal |
 | Coach plan | The plan header |
 | Focus | One suggestion line. Parent id is the plan id |
@@ -186,4 +201,4 @@ JSON remains the file that import merges. The CSV is the spreadsheet view of tha
 
 ## Code
 
-Types live in `src/lib/progress/types.ts`. The approved starter list is `FUNDAMENTALS_CATALOG` in `src/lib/progress/catalog.ts`. Read, write, merge, search, and CSV are in `src/lib/progress/format.ts`.
+Types live in `src/lib/progress/types.ts`. The approved starter list is `FUNDAMENTALS_CATALOG` in `src/lib/progress/catalog.ts`. Read, write, merge, search, and CSV are in `src/lib/progress/format.ts`. My rank edits are in `src/lib/studentRank.ts`.
