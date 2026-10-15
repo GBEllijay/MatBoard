@@ -4,11 +4,14 @@
  */
 
 import { FUNDAMENTALS_CATALOG } from './progress/catalog.ts';
+import { emptyCompetition, matchingGameTags } from './progress/competition.ts';
+import { emptyRank } from './studentRank.ts';
 import { isStudentEditionUnlocked } from './studentUnlock.ts';
-import { exportProgressPacket, parseProgressPacket, searchJournal, searchJournalClips } from './progress/format.ts';
+import { exportProgressPacket, parseProgressPacket, searchJournal, searchJournalClips, techniqueDrilledLabel } from './progress/format.ts';
 import {
   PROGRESS_CLIP_URL_MAX,
   PROGRESS_CLIPS_MAX,
+  GAME_TAGS,
   PROGRESS_NAME_MAX,
   PROGRESS_NOTE_MAX,
   type GameTag,
@@ -20,6 +23,14 @@ import {
 } from './progress/types.ts';
 
 export const STUDENT_EDITION_STORAGE_KEY = 'matboard.studentEdition.v1';
+
+/** Blank technique rows on a new journal page. A saved card keeps the rows it stored. */
+export const JOURNAL_TECHNIQUE_ROWS = 3;
+
+/** Filled techniques a new card will keep. The progress file accepts up to 20. */
+export const JOURNAL_TECHNIQUE_MAX = 12;
+
+export { techniqueDrilledLabel };
 
 /** Must match the server product metadata for Student Edition (`API_PRODUCT_STUDENT`). */
 export const STUDENT_PRODUCT_ID = 'advantage-student';
@@ -59,12 +70,21 @@ export function studentPurchaseReturn(search: URLSearchParams): boolean {
   return search.get('checkout') === 'success' && sessionId.length > 0;
 }
 
-export type ClassKind = '' | 'gi' | 'nogi';
+export const JOURNAL_CLASS_PLACEHOLDER = 'Fundamentals, week 7, class B';
+
+/** Older cards stored Gi or No-Gi. A new card keeps whatever the student types. */
+export function migrateClassText(value: string): string {
+  const text = value.trim();
+  const lower = text.toLowerCase();
+  if (lower === 'gi') return 'Gi';
+  if (lower === 'no-gi' || lower === 'nogi' || lower === 'no gi') return 'No-Gi';
+  return text.slice(0, PROGRESS_NAME_MAX);
+}
 
 export type JournalDraft = {
   date: string;
-  classKind: ClassKind;
-  gameTag: GameTag;
+  className: string;
+  gameTag: GameTag | '';
   techniques: TechniqueRef[];
   partners: string;
   drills: string;
@@ -125,7 +145,7 @@ export function studentEditionOpen(
 
 export function blankStudentReport(now = Date.now()): StudentProgressReport {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     kind: 'student-progress-report',
     id: 'student-local',
     studentId: 'student-local',
@@ -143,6 +163,8 @@ export function blankStudentReport(now = Date.now()): StudentProgressReport {
     journal: [],
     calendar: [],
     goals: [],
+    competition: emptyCompetition(),
+    rank: emptyRank(),
   };
 }
 
@@ -165,17 +187,12 @@ export function saveStudentReport(storage: MemoryStore, report: StudentProgressR
   return parsed.value;
 }
 
-export function classLabel(kind: ClassKind): string {
-  if (kind === 'gi') return 'Gi';
-  if (kind === 'nogi') return 'No-Gi';
-  return '';
-}
-
-export function encodeJournalBody(draft: Pick<JournalDraft, 'classKind' | 'techniques' | 'partners' | 'drills' | 'rolls' | 'notes'>): string {
-  const techniques = draft.techniques.map((item) => item.name.trim()).filter(Boolean).join('; ');
+export function encodeJournalBody(draft: Pick<JournalDraft, 'className' | 'techniques' | 'partners' | 'drills' | 'rolls' | 'notes'>): string {
+  const techniques = draft.techniques.map((item) => item.name.trim()).filter(Boolean);
   return [
-    `Class: ${classLabel(draft.classKind)}`,
-    `Techniques: ${techniques}`,
+    `Class: ${migrateClassText(draft.className)}`,
+    ...techniques.map((name, index) => `${techniqueDrilledLabel(index)}: ${name}`),
+    `Techniques: ${techniques.join('; ')}`,
     `Training partners: ${draft.partners.trim()}`,
     `Drills: ${draft.drills.trim()}`,
     `Rolls: ${draft.rolls.trim()}`,
@@ -184,18 +201,16 @@ export function encodeJournalBody(draft: Pick<JournalDraft, 'classKind' | 'techn
   ].join('\n');
 }
 
-export function decodeJournalBody(body: string): Pick<JournalDraft, 'classKind' | 'partners' | 'drills' | 'rolls' | 'notes'> {
+export function decodeJournalBody(body: string): Pick<JournalDraft, 'className' | 'partners' | 'drills' | 'rolls' | 'notes'> {
   const lines = body.split('\n');
   const take = (prefix: string) => {
     const line = lines.find((row) => row.startsWith(prefix));
     return line ? line.slice(prefix.length).trim() : '';
   };
-  const classText = take('Class:').toLowerCase();
-  const classKind: ClassKind = classText === 'gi' ? 'gi' : classText === 'no-gi' ? 'nogi' : '';
   const notesAt = lines.findIndex((row) => row === 'Notes:' || row.startsWith('Notes:'));
   const notes = notesAt >= 0 ? lines.slice(notesAt + 1).join('\n').trim() : body.trim();
   return {
-    classKind,
+    className: migrateClassText(take('Class:')),
     partners: take('Training partners:'),
     drills: take('Drills:'),
     rolls: take('Rolls:'),
@@ -208,7 +223,7 @@ export function viewJournalEntry(entry: JournalEntry): JournalCardView {
   return {
     id: entry.id,
     date: entry.date,
-    classKind: decoded.classKind,
+    className: decoded.className,
     gameTag: entry.gameTag,
     techniques: entry.techniqueRefs.map((item) => ({ id: item.id, name: item.name })),
     partners: decoded.partners,
@@ -243,11 +258,11 @@ export function createJournalEntry(draft: JournalDraft, now = Date.now()): Journ
       name: item.name.trim(),
     }))
     .filter((item) => item.name)
-    .slice(0, 2);
+    .slice(0, JOURNAL_TECHNIQUE_MAX);
   return {
     id: newId('card', now),
     date: draft.date,
-    gameTag: draft.gameTag,
+    gameTag: (GAME_TAGS as readonly string[]).includes(draft.gameTag) ? draft.gameTag : '',
     body: encodeJournalBody({ ...draft, techniques }),
     techniqueRefs: techniques,
     amendments: [],
@@ -294,7 +309,10 @@ export function addJournalAmendment(
 
 export function searchStudentJournal(report: StudentProgressReport, query: string): JournalEntry[] {
   const newest = [...report.journal].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt);
-  return searchJournal(newest, query);
+  const needle = query.trim().toLowerCase();
+  if (!needle) return newest;
+  const tags = new Set(matchingGameTags(report.competition, query));
+  return newest.filter((entry) => (entry.gameTag !== '' && tags.has(entry.gameTag)) || searchJournal([entry], query).length > 0);
 }
 
 export function searchStudentClips(report: StudentProgressReport, query: string): JournalClip[] {
@@ -313,7 +331,7 @@ function clipDraftError(url: string, description: string): string {
     return 'Use an http or https link.';
   }
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return 'Use an http or https link.';
-  if (!note) return 'Add a short note about what this clip is for.';
+  if (!note) return 'Add the technique or drill.';
   if (note.length > PROGRESS_NOTE_MAX) return `That note is longer than ${PROGRESS_NOTE_MAX} characters.`;
   return '';
 }
@@ -331,6 +349,7 @@ export function addJournalClip(
     id: newId('clip', now),
     url: url.trim(),
     description: description.trim(),
+    note: '',
     createdAt: now,
     updatedAt: now,
   };
@@ -351,8 +370,26 @@ export function updateJournalClip(
     ...report,
     updatedAt: now,
     clips: report.clips.map((clip) =>
-      clip.id === id ? { ...clip, url: url.trim(), description: description.trim(), updatedAt: now } : clip,
+      clip.id === id
+        ? { ...clip, url: url.trim(), description: description.trim(), note: clip.note ?? '', updatedAt: now }
+        : clip,
     ),
+  };
+}
+
+export function setClipNote(
+  report: StudentProgressReport,
+  id: string,
+  note: string,
+  now = Date.now(),
+): StudentProgressReport {
+  const text = note.slice(0, PROGRESS_NOTE_MAX);
+  const current = report.clips?.find((clip) => clip.id === id);
+  if (!current || (current.note ?? '') === text) return report;
+  return {
+    ...report,
+    updatedAt: now,
+    clips: report.clips?.map((clip) => (clip.id === id ? { ...clip, note: text, updatedAt: now } : clip)),
   };
 }
 

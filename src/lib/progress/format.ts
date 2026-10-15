@@ -6,6 +6,7 @@
 
 import { asRecord } from '../plainValue.ts';
 import { canonicalFundamentalsCatalogId } from './catalog.ts';
+import { emptyCompetition, seedGamesFromJournal } from './competition.ts';
 import {
   CALENDAR_KINDS,
   GAME_TAGS,
@@ -26,13 +27,39 @@ import {
   PROGRESS_ID_MAX,
   PROGRESS_JOURNAL_MAX,
   PROGRESS_LEVELS_MAX,
+  PROGRESS_LINEAGE_MAX,
+  RANK_EXPORT_BUDGET,
+  RANK_PHOTO_MAX_CHARS,
+  MATCH_METHODS,
+  MATCH_RESULTS,
+  PROGRESS_BRACKET_NOTES_MAX,
+  PROGRESS_MATCHES_MAX,
   PROGRESS_NAME_MAX,
   PROGRESS_NOTE_MAX,
+  PROGRESS_RANK_HISTORY_MAX,
+  PROGRESS_RESULTS_MAX,
   PROGRESS_PACKET_KINDS,
+  RANK_BELTS,
+  RANK_TAPE_MAX,
   PROGRESS_SCHEMA_VERSION,
+  PROGRESS_SCHEMA_VERSIONS,
+  PROGRESS_SEQUENCE_MAX,
   PROGRESS_SYNOPSIS_MAX,
+  PROGRESS_TOURNAMENT_GOALS_MAX,
+  PROGRESS_TOURNAMENTS_MAX,
+  PROGRESS_WEIGH_INS_MAX,
+  PROGRESS_WEIGHT_MAX,
+  TOURNAMENT_STATUSES,
+  WEIGHT_UNITS,
   type Amendment,
   type CoachSuggestion,
+  type BracketNote,
+  type CompetitionGame,
+  type CompetitionGames,
+  type CompetitionMatch,
+  type CompetitionResult,
+  type MatchMethod,
+  type MatchResult,
   type FundamentalsCatalog,
   type FundamentalsCategory,
   type FundamentalsItem,
@@ -52,19 +79,34 @@ import {
   type JournalEntry,
   type ProgressBelt,
   type ProgressMerge,
+  type RankBelt,
+  type RankHistory,
+  type RankPicture,
+  type RankTapeDates,
   type ProgressPacket,
   type ProgressParse,
   type StudentChecklistEntry,
+  type StudentCompetition,
   type StudentGoal,
   type StudentProfile,
   type StudentProgressReport,
+  type StudentRank,
   type StudentRubric,
+  type StudentTournament,
   type TechniqueRef,
+  type TournamentGoal,
+  type TournamentStatus,
+  type WeighIn,
+  type WeightUnit,
 } from './types.ts';
 
 const ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const BYTE_KEY = /blob|bytes|dataurl|base64|filebody|arraybuffer/i;
+
+function supportedSchema(value: unknown): boolean {
+  return typeof value === 'number' && (PROGRESS_SCHEMA_VERSIONS as readonly number[]).includes(value);
+}
 
 export const PROGRESS_CSV_HEADERS = [
   'Sheet',
@@ -105,8 +147,42 @@ export function progressHandoffFileName(packet: Pick<ProgressPacket, 'kind' | 'i
 }
 
 export function exportProgressPacket(packet: ProgressPacket): string {
-  if (packetCarriesBytes(packet)) throw new Error('A progress file cannot carry photos or videos.');
-  return JSON.stringify(packet);
+  const ready = packet.kind === 'student-progress-report' ? fitRankPictures(packet) : packet;
+  if (packetCarriesBytes(ready)) throw new Error('A progress file cannot carry photos or videos.');
+  return JSON.stringify(ready);
+}
+
+/**
+ * Keep promotion photos that fit in the export budget.
+ * Photos past the budget stay off the file, and pictureNote says how many.
+ */
+export function fitRankPictures(report: StudentProgressReport): StudentProgressReport {
+  if (!report.rank) return report;
+  const incoming = report.rank.pictures ?? [];
+  if (!incoming.length) return report;
+  const kept: RankPicture[] = [];
+  let used = 0;
+  let skipped = 0;
+  for (const picture of incoming) {
+    if (rankImageFits(picture.image) && used + picture.image.length <= RANK_EXPORT_BUDGET) {
+      kept.push({ ...picture });
+      used += picture.image.length;
+      continue;
+    }
+    skipped += 1;
+  }
+  const rank: StudentRank = { ...report.rank };
+  if (kept.length) {
+    rank.pictures = kept;
+    rank.pictureCount = kept.length;
+  } else {
+    delete rank.pictures;
+    delete rank.pictureCount;
+  }
+  if (skipped) {
+    rank.pictureNote = `${skipped} promotion ${skipped === 1 ? 'photo' : 'photos'} stayed on this phone.`;
+  }
+  return { ...report, rank };
 }
 
 export function parseProgressPacket(text: string): ProgressParse {
@@ -119,16 +195,18 @@ export function parseProgressPacket(text: string): ProgressParse {
   return parseProgressValue(raw);
 }
 
-/** schemaVersion 1 is the only readable shape. A newer file waits for a migration. */
+/** Version 1 and version 2 both import. Anything else is left unread. */
 export function parseProgressValue(raw: unknown): ProgressParse {
   const errors: string[] = [];
   if (packetCarriesBytes(raw)) errors.push('A progress file cannot carry photos or videos.');
   if (carriesStripeKey(raw)) errors.push('Belt progress uses checkpoints between levels.');
   const record = asRecord(raw);
   if (!record) return { ok: false, errors: ['A progress file must be a JSON object.'] };
-  if (record.schemaVersion !== PROGRESS_SCHEMA_VERSION) {
+  if (!supportedSchema(record.schemaVersion)) {
     const seen = record.schemaVersion == null ? 'missing' : String(record.schemaVersion);
-    errors.push(`schemaVersion ${seen} is not supported. This build reads version ${PROGRESS_SCHEMA_VERSION}.`);
+    errors.push(
+      `schemaVersion ${seen} is not supported. This build reads version ${PROGRESS_SCHEMA_VERSIONS.join(' and version ')}.`,
+    );
   }
   const kind = record.kind;
   if (typeof kind !== 'string' || !(PROGRESS_PACKET_KINDS as readonly string[]).includes(kind)) {
@@ -156,6 +234,9 @@ export function parseProgressValue(raw: unknown): ProgressParse {
     };
     const clips = readClips(record.clips, errors);
     if (clips) value.clips = clips;
+    value.competition = readCompetition(record, value.journal, errors);
+    const rank = readRank(record.rank, errors);
+    if (rank) value.rank = rank;
     return errors.length ? { ok: false, errors } : { ok: true, value };
   }
   if (kind === 'coach-plan' || kind === 'coach-feedback') {
@@ -207,6 +288,8 @@ export function mergeStudentProgress(local: StudentProgressReport, incoming: Stu
   mergeJournal(report, incoming, addedJournal, appendedAmendments, conflicts);
   mergeCalendar(report, incoming, conflicts);
   mergeClips(report, incoming, conflicts);
+  mergeCompetition(report, incoming, conflicts);
+  mergeRank(report, incoming, conflicts);
   return { report, appendedAmendments, addedJournal, addedChecklist, conflicts };
 }
 
@@ -260,7 +343,7 @@ export function searchJournal(journal: readonly JournalEntry[], query: string): 
 export function searchJournalClips(clips: readonly JournalClip[], query: string): JournalClip[] {
   const needle = query.trim().toLowerCase();
   if (!needle) return [...clips];
-  return clips.filter((clip) => `${clip.description}\n${clip.url}`.toLowerCase().includes(needle));
+  return clips.filter((clip) => `${clip.description}\n${clip.note}\n${clip.url}`.toLowerCase().includes(needle));
 }
 
 export function exportProgressCsv(packet: ProgressPacket): string {
@@ -272,25 +355,48 @@ export function exportProgressCsv(packet: ProgressPacket): string {
 }
 
 export function packetCarriesBytes(value: unknown): boolean {
-  const stack: unknown[] = [value];
+  const stack: { value: unknown; path: string[] }[] = [{ value, path: [] }];
   const seen = new Set<object>();
   while (stack.length) {
-    const current = stack.pop();
+    const frame = stack.pop();
+    if (!frame) continue;
+    const current = frame.value;
     if (!current || typeof current !== 'object') continue;
     if (current instanceof Uint8Array || current instanceof ArrayBuffer) return true;
     if (seen.has(current)) continue;
     seen.add(current);
     for (const [key, child] of Object.entries(current as Record<string, unknown>)) {
       if (BYTE_KEY.test(key)) return true;
-      if (typeof child === 'string' && child.startsWith('data:')) return true;
-      if (child && typeof child === 'object') stack.push(child);
+      if (typeof child === 'string' && child.startsWith('data:')) {
+        if (allowsRankImage(frame.path, key, child)) continue;
+        return true;
+      }
+      if (child && typeof child === 'object') stack.push({ value: child, path: [...frame.path, key] });
     }
   }
   return false;
 }
 
+function allowsRankImage(path: readonly string[], key: string, value: string): boolean {
+  if (key !== 'image') return false;
+  if (!path.includes('rank') || !path.includes('pictures')) return false;
+  return rankImageFits(value);
+}
+
+function rankImageFits(value: string): boolean {
+  return /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=\s]+$/.test(value) && value.length <= RANK_PHOTO_MAX_CHARS;
+}
+
+/** Label on a journal technique row, the saved card, and search. */
+export function techniqueDrilledLabel(index: number): string {
+  return `Technique drilled #${index + 1}`;
+}
+
 function journalHaystack(entry: JournalEntry): string {
-  return [entry.body, ...entry.amendments.map((item) => item.body), ...entry.techniqueRefs.map((item) => item.name)]
+  const drilled = entry.techniqueRefs
+    .filter((item) => item.name.trim())
+    .map((item, index) => `${techniqueDrilledLabel(index)}: ${item.name}`);
+  return [entry.body, ...drilled, ...entry.amendments.map((item) => item.body), ...entry.techniqueRefs.map((item) => item.name)]
     .join('\n')
     .toLowerCase();
 }
@@ -457,8 +563,221 @@ function mergeClips(report: StudentProgressReport, incoming: StudentProgressRepo
       `Clip ${clip.id} note was kept.`,
       conflicts,
     );
+    current.note = preferText(current.note ?? '', clip.note ?? '', `Clip ${clip.id} text was kept.`, conflicts);
     current.updatedAt = Math.max(current.updatedAt, clip.updatedAt);
   }
+}
+
+function mergeRank(report: StudentProgressReport, incoming: StudentProgressReport, conflicts: string[]): void {
+  if (!incoming.rank) return;
+  if (!report.rank) {
+    report.rank = stripRankPictures(structuredClone(incoming.rank));
+    return;
+  }
+  const local = report.rank;
+  const next = incoming.rank;
+  local.lineage = mergeLineage(local.lineage, next.lineage, conflicts);
+  if (!local.pictureNote && next.pictureNote) local.pictureNote = next.pictureNote;
+  delete local.pictures;
+  local.awardedOn = preferText(local.awardedOn, next.awardedOn, 'Rank date was kept.', conflicts);
+  if (local.tapeCount !== next.tapeCount) {
+    if (local.tapeCount === 0 && next.tapeCount > 0) local.tapeCount = next.tapeCount;
+    else conflicts.push('Rank tape count was kept.');
+  }
+  for (let index = 0; index < local.tapeCount; index += 1) {
+    local.tapeDates[index] = preferText(
+      local.tapeDates[index] ?? '',
+      next.tapeDates[index] ?? '',
+      `Rank tape ${index + 1} date was kept.`,
+      conflicts,
+    );
+  }
+  for (let index = local.tapeCount; index < RANK_TAPE_MAX; index += 1) local.tapeDates[index] = '';
+  const byId = new Map(local.history.map((row) => [row.id, row]));
+  for (const row of next.history) {
+    const current = byId.get(row.id);
+    if (!current) {
+      local.history.push(structuredClone(row));
+      continue;
+    }
+    if (current.belt !== row.belt) conflicts.push(`Rank history ${row.id} belt was kept.`);
+    current.awardedOn = preferText(current.awardedOn, row.awardedOn, `Rank history ${row.id} date was kept.`, conflicts);
+    if (current.tapeCount !== row.tapeCount) {
+      if (current.tapeCount === 0 && row.tapeCount > 0) current.tapeCount = row.tapeCount;
+      else conflicts.push(`Rank history ${row.id} tape count was kept.`);
+    }
+    for (let index = 0; index < current.tapeCount; index += 1) {
+      current.tapeDates[index] = preferText(
+        current.tapeDates[index] ?? '',
+        row.tapeDates[index] ?? '',
+        `Rank history ${row.id} tape ${index + 1} date was kept.`,
+        conflicts,
+      );
+    }
+    for (let index = current.tapeCount; index < RANK_TAPE_MAX; index += 1) current.tapeDates[index] = '';
+  }
+}
+
+function mergeLineage(local: string[] | undefined, incoming: string[] | undefined, conflicts: string[]): string[] | undefined {
+  const kept = (local ?? []).map((line) => line.trim()).filter(Boolean);
+  const next = (incoming ?? []).map((line) => line.trim()).filter(Boolean);
+  if (!kept.length && next.length) return next;
+  if (kept.length && next.length && kept.join('\n') !== next.join('\n')) conflicts.push('Lineage was kept.');
+  return local;
+}
+
+function stripRankPictures(rank: StudentRank): StudentRank {
+  if (!rank.pictures) return rank;
+  const next = { ...rank };
+  delete next.pictures;
+  return next;
+}
+
+function mergeCompetition(report: StudentProgressReport, incoming: StudentProgressReport, conflicts: string[]): void {
+  if (!incoming.competition) return;
+  if (!report.competition) {
+    report.competition = structuredClone(incoming.competition);
+    return;
+  }
+  const local = report.competition;
+  const next = incoming.competition;
+  for (const tag of GAME_TAGS) {
+    local.games[tag].techniques = preferText(
+      local.games[tag].techniques,
+      next.games[tag].techniques,
+      `${tag.toUpperCase()} game techniques were kept.`,
+      conflicts,
+    );
+    local.games[tag].notes = preferText(
+      local.games[tag].notes,
+      next.games[tag].notes,
+      `${tag.toUpperCase()} game notes were kept.`,
+      conflicts,
+    );
+  }
+  const byId = new Map(local.tournaments.map((tournament) => [tournament.id, tournament]));
+  for (const tournament of next.tournaments) {
+    const current = byId.get(tournament.id);
+    if (!current) {
+      local.tournaments.push(structuredClone(tournament));
+      continue;
+    }
+    current.name = preferText(current.name, tournament.name, `Tournament ${tournament.id} name was kept.`, conflicts);
+    current.location = preferText(
+      current.location,
+      tournament.location,
+      `Tournament ${tournament.id} location was kept.`,
+      conflicts,
+    );
+    current.division = preferText(
+      current.division,
+      tournament.division,
+      `Tournament ${tournament.id} division was kept.`,
+      conflicts,
+    );
+    current.link = preferText(current.link, tournament.link, `Tournament ${tournament.id} link was kept.`, conflicts);
+    current.deadline = preferText(
+      current.deadline,
+      tournament.deadline,
+      `Tournament ${tournament.id} deadline was kept.`,
+      conflicts,
+    );
+    if (current.date !== tournament.date) conflicts.push(`Tournament ${tournament.id} date was kept.`);
+    if (current.status !== tournament.status) conflicts.push(`Tournament ${tournament.id} status was kept.`);
+    current.targetWeight = preferWeight(
+      current.targetWeight,
+      tournament.targetWeight,
+      `Tournament ${tournament.id} target weight was kept.`,
+      conflicts,
+    );
+    if (current.targetWeight != null && tournament.targetWeight != null && current.targetUnit !== tournament.targetUnit) {
+      conflicts.push(`Tournament ${tournament.id} target unit was kept.`);
+    } else if (current.targetWeight == null && tournament.targetWeight != null) {
+      current.targetUnit = tournament.targetUnit;
+    }
+    mergeTournamentGoals(current, tournament, conflicts);
+  }
+  const weighById = new Map(local.weighIns.map((row) => [row.id, row]));
+  for (const weighIn of next.weighIns) {
+    const current = weighById.get(weighIn.id);
+    if (!current) {
+      local.weighIns.push(structuredClone(weighIn));
+      continue;
+    }
+    if (current.date !== weighIn.date || current.weight !== weighIn.weight || current.unit !== weighIn.unit) {
+      conflicts.push(`Weigh-in ${weighIn.id} was kept.`);
+    }
+    current.note = preferText(current.note, weighIn.note, `Weigh-in ${weighIn.id} note was kept.`, conflicts);
+  }
+  const resultById = new Map(local.results.map((result) => [result.id, result]));
+  for (const result of next.results) {
+    const current = resultById.get(result.id);
+    if (!current) {
+      local.results.push(structuredClone(result));
+      continue;
+    }
+    current.tournamentName = preferText(
+      current.tournamentName,
+      result.tournamentName,
+      `Result ${result.id} tournament was kept.`,
+      conflicts,
+    );
+    current.division = preferText(current.division, result.division, `Result ${result.id} division was kept.`, conflicts);
+    if (current.tournamentId !== result.tournamentId) conflicts.push(`Result ${result.id} tournament link was kept.`);
+    if (current.bracketPhoto !== result.bracketPhoto && !current.bracketPhoto && result.bracketPhoto) {
+      current.bracketPhoto = true;
+    }
+    mergeMatches(current, result, conflicts);
+    mergeBracket(current, result, conflicts);
+  }
+}
+
+function mergeMatches(local: CompetitionResult, incoming: CompetitionResult, conflicts: string[]): void {
+  const byId = new Map(local.matches.map((match) => [match.id, match]));
+  for (const match of incoming.matches) {
+    const current = byId.get(match.id);
+    if (!current) {
+      local.matches.push(structuredClone(match));
+      continue;
+    }
+    current.opponent = preferText(current.opponent, match.opponent, `Match ${match.id} opponent was kept.`, conflicts);
+    current.note = preferText(current.note, match.note, `Match ${match.id} note was kept.`, conflicts);
+    if (current.result !== match.result) conflicts.push(`Match ${match.id} result was kept.`);
+    if (current.method !== match.method) conflicts.push(`Match ${match.id} method was kept.`);
+  }
+}
+
+function mergeBracket(local: CompetitionResult, incoming: CompetitionResult, conflicts: string[]): void {
+  const byId = new Map(local.bracket.map((note) => [note.id, note]));
+  for (const note of incoming.bracket) {
+    const current = byId.get(note.id);
+    if (!current) {
+      local.bracket.push(structuredClone(note));
+      continue;
+    }
+    current.round = preferText(current.round, note.round, `Bracket ${note.id} round was kept.`, conflicts);
+    current.name = preferText(current.name, note.name, `Bracket ${note.id} name was kept.`, conflicts);
+  }
+}
+
+function mergeTournamentGoals(local: StudentTournament, incoming: StudentTournament, conflicts: string[]): void {
+  const byId = new Map(local.goals.map((goal) => [goal.id, goal]));
+  for (const goal of incoming.goals) {
+    const current = byId.get(goal.id);
+    if (!current) {
+      local.goals.push(structuredClone(goal));
+      continue;
+    }
+    current.name = preferText(current.name, goal.name, `Tournament goal ${goal.id} name was kept.`, conflicts);
+    current.note = preferText(current.note, goal.note, `Tournament goal ${goal.id} note was kept.`, conflicts);
+    current.met = preferMet(current.met, goal.met, `Tournament goal ${goal.id} mark was kept.`, conflicts);
+  }
+}
+
+function preferWeight(local: number | null, incoming: number | null, conflict: string, conflicts: string[]): number | null {
+  if (local == null && incoming != null) return incoming;
+  if (local != null && incoming != null && local !== incoming) conflicts.push(conflict);
+  return local;
 }
 
 function mergeCalendar(report: StudentProgressReport, incoming: StudentProgressReport, conflicts: string[]): void {
@@ -630,17 +949,167 @@ function readClips(value: unknown, errors: string[]): JournalClip[] | undefined 
   return clips;
 }
 
+function readRank(value: unknown, errors: string[]): StudentRank | undefined {
+  if (value == null) return undefined;
+  const record = asRecord(value);
+  if (!record) {
+    errors.push('Rank must be an object.');
+    return undefined;
+  }
+  const tapeCount = readTapeCount(record.tapeCount, 'Rank tape count', errors);
+  const tapeDates = readTapeDates(record.tapeDates, 'Rank tape dates', errors);
+  const rank: StudentRank = {
+    tapeCount,
+    awardedOn: readDate(record.awardedOn, 'Rank awarded on', errors, false),
+    tapeDates: maskTapeDates(tapeDates, tapeCount),
+    history: readRankHistory(record.history, errors),
+  };
+  if (Object.prototype.hasOwnProperty.call(record, 'lineage')) rank.lineage = readLineage(record.lineage, errors);
+  if (typeof record.pictureNote === 'string') {
+    rank.pictureNote = readString(record.pictureNote, 'Rank photo note', PROGRESS_NOTE_MAX, errors);
+  }
+  if (typeof record.pictureCount === 'number' && Number.isInteger(record.pictureCount) && record.pictureCount >= 0) {
+    rank.pictureCount = record.pictureCount;
+  }
+  const pictures = readRankPictures(record.pictures, errors);
+  if (pictures.length) {
+    const fitted = fitRankPictures({ ...blankPictureReport(), rank: { ...rank, pictures } });
+    if (fitted.rank?.pictures) rank.pictures = fitted.rank.pictures;
+    if (fitted.rank?.pictureNote) rank.pictureNote = fitted.rank.pictureNote;
+    if (fitted.rank?.pictureCount) rank.pictureCount = fitted.rank.pictureCount;
+  }
+  return rank;
+}
+
+function blankPictureReport(): StudentProgressReport {
+  return {
+    schemaVersion: PROGRESS_SCHEMA_VERSION,
+    kind: 'student-progress-report',
+    id: 'rank-photos',
+    studentId: 'rank-photos',
+    updatedAt: 0,
+    profile: { id: 'rank-photos', displayName: '', gymName: '', belt: 'white', startedOn: '', licenseSource: '' },
+    rubric: { id: 'rank-photos', levels: [] },
+    checklist: [],
+    journal: [],
+    calendar: [],
+    goals: [],
+  };
+}
+
+function readLineage(value: unknown, errors: string[]): string[] {
+  const rows = readList(value, 'Lineage', PROGRESS_LINEAGE_MAX, errors);
+  return rows.map((row, index) => readString(row, `Lineage ${index + 1}`, PROGRESS_NOTE_MAX, errors).trim()).filter(Boolean);
+}
+
+function readRankPictures(value: unknown, errors: string[]): RankPicture[] {
+  if (value == null) return [];
+  const rows = readList(value, 'Rank photos', 80, errors);
+  const pictures: RankPicture[] = [];
+  rows.forEach((row, index) => {
+    const picture = readRankPicture(row, index, errors);
+    if (picture) pictures.push(picture);
+  });
+  return pictures;
+}
+
+function readRankPicture(value: unknown, index: number, errors: string[]): RankPicture | null {
+  const record = asRecord(value);
+  const label = `Rank photo ${index + 1}`;
+  if (!record) {
+    errors.push(`${label} must be an object.`);
+    return null;
+  }
+  const image = typeof record.image === 'string' ? record.image : '';
+  if (!rankImageFits(image)) {
+    errors.push(`${label} must be a compressed image.`);
+    return null;
+  }
+  const picture: RankPicture = { belt: readRankBelt(record.belt, `${label} belt`, errors), image };
+  if (record.tapeIndex != null && record.tapeIndex !== '') {
+    const tapeIndex = readTapeCount(record.tapeIndex, `${label} tape`, errors);
+    if (tapeIndex >= RANK_TAPE_MAX) errors.push(`${label} tape must be 0 to 3.`);
+    else picture.tapeIndex = tapeIndex;
+  }
+  return picture;
+}
+
+function readRankHistory(value: unknown, errors: string[]): RankHistory[] {
+  const rows = readList(value, 'Rank history', PROGRESS_RANK_HISTORY_MAX, errors);
+  const history = rows.map((row, index) => readRankHistoryRow(row, index, errors));
+  uniqueIds(history.map((row) => row.id), 'Rank history', errors);
+  return history;
+}
+
+function readRankHistoryRow(value: unknown, index: number, errors: string[]): RankHistory {
+  const record = asRecord(value);
+  const label = `Rank history ${index + 1}`;
+  if (!record) {
+    errors.push(`${label} must be an object.`);
+    return { id: '', belt: 'white', awardedOn: '', tapeCount: 0, tapeDates: blankTapeDates() };
+  }
+  const tapeCount = readTapeCount(record.tapeCount, `${label} tape count`, errors);
+  const tapeDates = readTapeDates(record.tapeDates, `${label} tape dates`, errors);
+  return {
+    id: readId(record.id, `${label} id`, errors),
+    belt: readRankBelt(record.belt, `${label} belt`, errors),
+    awardedOn: readDate(record.awardedOn, `${label} date`, errors, false),
+    tapeCount,
+    tapeDates: maskTapeDates(tapeDates, tapeCount),
+  };
+}
+
+function readRankBelt(value: unknown, label: string, errors: string[]): RankBelt {
+  if (typeof value === 'string' && (RANK_BELTS as readonly string[]).includes(value)) return value as RankBelt;
+  errors.push(`${label} must be white, blue, purple, brown, or black.`);
+  return 'white';
+}
+
+function readTapeCount(value: unknown, label: string, errors: string[]): number {
+  if (value == null || value === '') return 0;
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > RANK_TAPE_MAX) {
+    errors.push(`${label} must be a whole number from 0 to 4.`);
+    return 0;
+  }
+  return value;
+}
+
+function readTapeDates(value: unknown, label: string, errors: string[]): RankTapeDates {
+  const dates = blankTapeDates();
+  if (value == null) return dates;
+  if (!Array.isArray(value)) {
+    errors.push(`${label} must be a list.`);
+    return dates;
+  }
+  if (value.length > RANK_TAPE_MAX) errors.push(`${label} has more than 4 dates.`);
+  for (let index = 0; index < Math.min(value.length, RANK_TAPE_MAX); index += 1) {
+    dates[index] = readDate(value[index], `${label} ${index + 1}`, errors, false);
+  }
+  return dates;
+}
+
+function blankTapeDates(): RankTapeDates {
+  return ['', '', '', ''];
+}
+
+function maskTapeDates(dates: RankTapeDates, tapeCount: number): RankTapeDates {
+  const next = blankTapeDates();
+  for (let index = 0; index < tapeCount; index += 1) next[index] = dates[index] ?? '';
+  return next;
+}
+
 function readClip(value: unknown, index: number, errors: string[]): JournalClip {
   const record = asRecord(value);
   const label = `Clip ${index + 1}`;
   if (!record) {
     errors.push(`${label} must be an object.`);
-    return { id: '', url: '', description: '', createdAt: 0, updatedAt: 0 };
+    return { id: '', url: '', description: '', note: '', createdAt: 0, updatedAt: 0 };
   }
   return {
     id: readId(record.id, `${label} id`, errors),
     url: readHttpUrl(record.url, `${label} link`, errors),
     description: readString(record.description, `${label} note`, PROGRESS_NOTE_MAX, errors),
+    note: readString(record.note, `${label} text`, PROGRESS_NOTE_MAX, errors),
     createdAt: readTime(record.createdAt, `${label} createdAt`, errors),
     updatedAt: readTime(record.updatedAt, `${label} updatedAt`, errors),
   };
@@ -791,6 +1260,259 @@ function readFocus(value: unknown, index: number, errors: string[]): CoachPlanFo
   };
 }
 
+function readCompetition(
+  record: Record<string, unknown>,
+  journal: JournalEntry[],
+  errors: string[],
+): StudentCompetition {
+  if (!Object.prototype.hasOwnProperty.call(record, 'competition') || record.competition == null) {
+    return { ...emptyCompetition(), games: seedGamesFromJournal(journal) };
+  }
+  const competition = asRecord(record.competition);
+  if (!competition) {
+    errors.push('Competition must be an object.');
+    return emptyCompetition();
+  }
+  const tournaments = readTournaments(competition.tournaments, errors);
+  const weighIns = readWeighIns(competition.weighIns, errors);
+  const results = readResults(competition.results, errors);
+  return {
+    games: readGames(competition.games, errors),
+    tournaments,
+    weighIns,
+    results,
+    weightUnit: readWeightUnit(competition.weightUnit, 'Weight unit', errors),
+  };
+}
+
+function readGames(value: unknown, errors: string[]): CompetitionGames {
+  const record = asRecord(value);
+  if (value != null && !record) errors.push('Competition games must be an object.');
+  return {
+    a: readGame(record?.a, 'A game', errors),
+    b: readGame(record?.b, 'B game', errors),
+    c: readGame(record?.c, 'C game', errors),
+  };
+}
+
+function readGame(value: unknown, label: string, errors: string[]): CompetitionGame {
+  const record = asRecord(value);
+  if (value != null && !record) {
+    errors.push(`${label} must be an object.`);
+    return { techniques: '', notes: '' };
+  }
+  return {
+    techniques: readString(record?.techniques, `${label} techniques`, PROGRESS_SEQUENCE_MAX, errors),
+    notes: readString(record?.notes, `${label} notes`, PROGRESS_NOTE_MAX, errors),
+  };
+}
+
+function readTournaments(value: unknown, errors: string[]): StudentTournament[] {
+  const rows = readList(value, 'Tournaments', PROGRESS_TOURNAMENTS_MAX, errors);
+  const tournaments = rows.map((row, index) => readTournament(row, index, errors));
+  uniqueIds(tournaments.map((tournament) => tournament.id), 'Tournament', errors);
+  uniqueIds(
+    tournaments.flatMap((tournament) => tournament.goals.map((goal) => goal.id)),
+    'Tournament goal',
+    errors,
+  );
+  return tournaments;
+}
+
+function readTournament(value: unknown, index: number, errors: string[]): StudentTournament {
+  const record = asRecord(value);
+  const label = `Tournament ${index + 1}`;
+  if (!record) {
+    errors.push(`${label} must be an object.`);
+    return {
+      id: '',
+      name: '',
+      date: '',
+      location: '',
+      division: '',
+      deadline: '',
+      link: '',
+      status: 'considering',
+      targetWeight: null,
+      targetUnit: 'lb',
+      goals: [],
+    };
+  }
+  return {
+    id: readId(record.id, `${label} id`, errors),
+    name: readString(record.name, `${label} name`, PROGRESS_NAME_MAX, errors),
+    date: readDate(record.date, `${label} date`, errors, true),
+    location: readString(record.location, `${label} location`, PROGRESS_NOTE_MAX, errors),
+    division: readString(record.division, `${label} division`, PROGRESS_NAME_MAX, errors),
+    deadline: readDate(record.deadline, `${label} deadline`, errors, false),
+    link: readOptionalHttpUrl(record.link, `${label} link`, errors),
+    status: readTournamentStatus(record.status, label, errors),
+    targetWeight: readOptionalWeight(record.targetWeight, `${label} target weight`, errors),
+    targetUnit: readWeightUnit(record.targetUnit, `${label} target unit`, errors),
+    goals: readTournamentGoals(record.goals, label, errors),
+  };
+}
+
+function readTournamentGoals(value: unknown, label: string, errors: string[]): TournamentGoal[] {
+  const rows = readList(value, `${label} goals`, PROGRESS_TOURNAMENT_GOALS_MAX, errors);
+  return rows.map((row, index) => readTournamentGoal(row, `${label} goal ${index + 1}`, errors));
+}
+
+function readTournamentGoal(value: unknown, label: string, errors: string[]): TournamentGoal {
+  const record = asRecord(value);
+  if (!record) {
+    errors.push(`${label} must be an object.`);
+    return { id: '', name: '', note: '', met: null };
+  }
+  return {
+    id: readId(record.id, `${label} id`, errors),
+    name: readString(record.name, `${label} name`, PROGRESS_NAME_MAX, errors),
+    note: readString(record.note, `${label} note`, PROGRESS_NOTE_MAX, errors),
+    met: readMet(record.met, label, errors),
+  };
+}
+
+function readWeighIns(value: unknown, errors: string[]): WeighIn[] {
+  const rows = readList(value, 'Weigh-ins', PROGRESS_WEIGH_INS_MAX, errors);
+  const weighIns = rows.map((row, index) => readWeighIn(row, index, errors));
+  uniqueIds(weighIns.map((row) => row.id), 'Weigh-in', errors);
+  return weighIns;
+}
+
+function readWeighIn(value: unknown, index: number, errors: string[]): WeighIn {
+  const record = asRecord(value);
+  const label = `Weigh-in ${index + 1}`;
+  if (!record) {
+    errors.push(`${label} must be an object.`);
+    return { id: '', date: '', weight: 0, unit: 'lb', note: '' };
+  }
+  return {
+    id: readId(record.id, `${label} id`, errors),
+    date: readDate(record.date, `${label} date`, errors, true),
+    weight: readRequiredWeight(record.weight, `${label} weight`, errors),
+    unit: readWeightUnit(record.unit, `${label} unit`, errors),
+    note: readString(record.note, `${label} note`, PROGRESS_NOTE_MAX, errors),
+  };
+}
+
+function readResults(value: unknown, errors: string[]): CompetitionResult[] {
+  const rows = readList(value, 'Results', PROGRESS_RESULTS_MAX, errors);
+  const results = rows.map((row, index) => readResult(row, index, errors));
+  uniqueIds(results.map((result) => result.id), 'Result', errors);
+  uniqueIds(
+    results.flatMap((result) => result.matches.map((match) => match.id)),
+    'Match',
+    errors,
+  );
+  uniqueIds(
+    results.flatMap((result) => result.bracket.map((note) => note.id)),
+    'Bracket note',
+    errors,
+  );
+  return results;
+}
+
+function readResult(value: unknown, index: number, errors: string[]): CompetitionResult {
+  const record = asRecord(value);
+  const label = `Result ${index + 1}`;
+  if (!record) {
+    errors.push(`${label} must be an object.`);
+    return { id: '', tournamentId: '', tournamentName: '', division: '', matches: [], bracket: [], bracketPhoto: false };
+  }
+  return {
+    id: readId(record.id, `${label} id`, errors),
+    tournamentId: readOptionalId(record.tournamentId, `${label} tournament id`, errors),
+    tournamentName: readString(record.tournamentName, `${label} tournament`, PROGRESS_NAME_MAX, errors),
+    division: readString(record.division, `${label} division`, PROGRESS_NAME_MAX, errors),
+    matches: readMatches(record.matches, label, errors),
+    bracket: readBracket(record.bracket, label, errors),
+    bracketPhoto: readFlag(record.bracketPhoto, `${label} bracket photo`, errors),
+  };
+}
+
+function readMatches(value: unknown, label: string, errors: string[]): CompetitionMatch[] {
+  const rows = readList(value, `${label} matches`, PROGRESS_MATCHES_MAX, errors);
+  return rows.map((row, index) => readMatch(row, `${label} match ${index + 1}`, errors));
+}
+
+function readMatch(value: unknown, label: string, errors: string[]): CompetitionMatch {
+  const record = asRecord(value);
+  if (!record) {
+    errors.push(`${label} must be an object.`);
+    return { id: '', opponent: '', result: 'loss', method: '', note: '' };
+  }
+  return {
+    id: readId(record.id, `${label} id`, errors),
+    opponent: readString(record.opponent, `${label} opponent`, PROGRESS_NAME_MAX, errors),
+    result: readMatchResult(record.result, label, errors),
+    method: readMatchMethod(record.method, label, errors),
+    note: readString(record.note, `${label} note`, PROGRESS_NOTE_MAX, errors),
+  };
+}
+
+function readBracket(value: unknown, label: string, errors: string[]): BracketNote[] {
+  const rows = readList(value, `${label} bracket`, PROGRESS_BRACKET_NOTES_MAX, errors);
+  return rows.map((row, index) => readBracketNote(row, `${label} bracket ${index + 1}`, errors));
+}
+
+function readBracketNote(value: unknown, label: string, errors: string[]): BracketNote {
+  const record = asRecord(value);
+  if (!record) {
+    errors.push(`${label} must be an object.`);
+    return { id: '', round: '', name: '' };
+  }
+  return {
+    id: readId(record.id, `${label} id`, errors),
+    round: readString(record.round, `${label} round`, PROGRESS_NAME_MAX, errors),
+    name: readString(record.name, `${label} name`, PROGRESS_NAME_MAX, errors),
+  };
+}
+
+function readMatchResult(value: unknown, label: string, errors: string[]): MatchResult {
+  if (typeof value === 'string' && (MATCH_RESULTS as readonly string[]).includes(value)) return value as MatchResult;
+  errors.push(`${label} result must be win, loss, or draw.`);
+  return 'loss';
+}
+
+function readMatchMethod(value: unknown, label: string, errors: string[]): MatchMethod {
+  if (value == null || value === '') return '';
+  if (typeof value === 'string' && (MATCH_METHODS as readonly string[]).includes(value)) return value as MatchMethod;
+  errors.push(`${label} method must be points, sub, advantage, dq, or blank.`);
+  return '';
+}
+
+function readTournamentStatus(value: unknown, label: string, errors: string[]): TournamentStatus {
+  if (typeof value === 'string' && (TOURNAMENT_STATUSES as readonly string[]).includes(value)) return value as TournamentStatus;
+  errors.push(`${label} status must be entered or considering.`);
+  return 'considering';
+}
+
+function readWeightUnit(value: unknown, label: string, errors: string[]): WeightUnit {
+  if (value == null || value === '') return 'lb';
+  if (typeof value === 'string' && (WEIGHT_UNITS as readonly string[]).includes(value)) return value as WeightUnit;
+  errors.push(`${label} must be lb or kg.`);
+  return 'lb';
+}
+
+function readOptionalWeight(value: unknown, label: string, errors: string[]): number | null {
+  if (value == null || value === '') return null;
+  return readRequiredWeight(value, label, errors);
+}
+
+function readRequiredWeight(value: unknown, label: string, errors: string[]): number {
+  const number = typeof value === 'number' ? value : typeof value === 'string' && value.trim() ? Number(value) : Number.NaN;
+  if (!Number.isFinite(number) || number <= 0 || number > PROGRESS_WEIGHT_MAX) {
+    errors.push(`${label} must be a weight above 0.`);
+    return 0;
+  }
+  return Math.round(number * 10) / 10;
+}
+
+function readOptionalHttpUrl(value: unknown, label: string, errors: string[]): string {
+  if (value == null || value === '') return '';
+  return readHttpUrl(value, label, errors);
+}
+
 function readGoals(value: unknown, errors: string[]): StudentGoal[] {
   const rows = readList(value, 'Goals', PROGRESS_GOALS_MAX, errors);
   const goals = rows.map((row, index) => readGoal(row, index, errors));
@@ -858,10 +1580,11 @@ function readBelt(value: unknown, label: string, errors: string[]): ProgressBelt
   return 'white';
 }
 
-function readGameTag(value: unknown, label: string, errors: string[]): GameTag {
+function readGameTag(value: unknown, label: string, errors: string[]): GameTag | '' {
+  if (value == null || value === '') return '';
   if (typeof value === 'string' && (GAME_TAGS as readonly string[]).includes(value)) return value as GameTag;
-  errors.push(`${label} game tag must be a, b, or c.`);
-  return 'a';
+  errors.push(`${label} game tag must be a, b, c, or blank.`);
+  return '';
 }
 
 /** Names-only catalogs leave every examples list empty. A filled list is a worked checklist. */
@@ -1204,7 +1927,7 @@ function writeReportRows(lines: string[], packet: StudentProgressReport): void {
       clip.description,
       '',
       '',
-      clip.description,
+      clip.note,
       clip.url,
       '',
       '',
@@ -1237,6 +1960,230 @@ function writeReportRows(lines: string[], packet: StudentProgressReport): void {
       '',
     ]));
   }
+  writeRankRows(lines, packet);
+  const competition = packet.competition;
+  if (!competition) return;
+  for (const tag of GAME_TAGS) {
+    const game = competition.games[tag];
+    if (!game.techniques.trim() && !game.notes.trim()) continue;
+    lines.push(csvRow([
+      'Game',
+      tag,
+      '',
+      packet.studentId,
+      tag,
+      '',
+      `${tag.toUpperCase()} game`,
+      game.techniques,
+      '',
+      game.notes,
+      '',
+      '',
+      `${tag.toUpperCase()} game`,
+      '',
+      '',
+      '',
+      '',
+      '',
+    ]));
+  }
+  for (const tournament of competition.tournaments) {
+    const target = tournament.targetWeight == null ? '' : `${tournament.targetWeight} ${tournament.targetUnit}`;
+    lines.push(csvRow([
+      'Tournament',
+      tournament.id,
+      tournament.date,
+      packet.studentId,
+      '',
+      tournament.division,
+      tournament.name,
+      '',
+      tournament.deadline,
+      tournament.location,
+      tournament.link,
+      '',
+      tournament.name,
+      tournament.status,
+      '',
+      target,
+      '',
+      '',
+    ]));
+    for (const goal of tournament.goals) {
+      lines.push(csvRow([
+        'Tournament goal',
+        goal.id,
+        tournament.date,
+        tournament.id,
+        '',
+        '',
+        goal.name,
+        '',
+        '',
+        goal.note,
+        '',
+        metCell(goal.met),
+        tournament.name,
+        '',
+        '',
+        '',
+        '',
+        '',
+      ]));
+    }
+  }
+  for (const result of competition.results) {
+    lines.push(csvRow([
+      'Result',
+      result.id,
+      '',
+      packet.studentId,
+      '',
+      result.division,
+      result.tournamentName,
+      '',
+      '',
+      result.bracketPhoto ? 'bracket photo on the student phone' : '',
+      '',
+      '',
+      result.tournamentName,
+      '',
+      '',
+      result.tournamentId,
+      '',
+      '',
+    ]));
+    for (const match of result.matches) {
+      lines.push(csvRow([
+        'Match',
+        match.id,
+        '',
+        result.id,
+        match.result,
+        match.method,
+        match.opponent,
+        '',
+        '',
+        match.note,
+        '',
+        '',
+        result.tournamentName,
+        '',
+        '',
+        '',
+        '',
+        '',
+      ]));
+    }
+    for (const note of result.bracket) {
+      lines.push(csvRow([
+        'Bracket',
+        note.id,
+        '',
+        result.id,
+        '',
+        note.round,
+        note.name,
+        '',
+        '',
+        '',
+        '',
+        '',
+        result.tournamentName,
+        '',
+        '',
+        '',
+        '',
+        '',
+      ]));
+    }
+  }
+  for (const weighIn of competition.weighIns) {
+    lines.push(csvRow([
+      'Weigh-in',
+      weighIn.id,
+      weighIn.date,
+      packet.studentId,
+      '',
+      '',
+      String(weighIn.weight),
+      '',
+      '',
+      weighIn.note,
+      '',
+      '',
+      '',
+      weighIn.unit,
+      '',
+      '',
+      '',
+      '',
+    ]));
+  }
+}
+
+function writeRankRows(lines: string[], packet: StudentProgressReport): void {
+  if (!packet.rank) return;
+  lines.push(rankCsvRow('Rank', packet.studentId, packet.profile.belt, packet.rank, packet.studentId, packet.rank.pictureNote ?? ''));
+  for (const row of packet.rank.history) {
+    lines.push(rankCsvRow('Rank history', row.id, row.belt, row, packet.studentId, ''));
+  }
+  for (const [index, name] of (packet.rank.lineage ?? []).entries()) {
+    lines.push(csvRow([
+      'Lineage',
+      String(index + 1),
+      '',
+      packet.studentId,
+      '',
+      '',
+      name,
+      '',
+      '',
+      '',
+      '',
+      '',
+      name,
+      String(index + 1),
+      '',
+      '',
+      '',
+      '',
+    ]));
+  }
+}
+
+function rankCsvRow(
+  sheet: string,
+  id: string,
+  belt: string,
+  rank: { awardedOn: string; tapeCount: number; tapeDates: readonly string[] },
+  parentId: string,
+  note: string,
+): string {
+  const dates = rank.tapeDates
+    .map((date, index) => (date ? `${index + 1} ${date}` : ''))
+    .filter(Boolean)
+    .join('; ');
+  return csvRow([
+    sheet,
+    id,
+    rank.awardedOn,
+    parentId,
+    '',
+    '',
+    belt,
+    dates,
+    '',
+    note,
+    '',
+    '',
+    sheet === 'Rank' ? 'Current rank' : belt,
+    String(rank.tapeCount),
+    belt,
+    '',
+    '',
+    '',
+  ]);
 }
 
 function writePlanRows(lines: string[], packet: CoachPlanPacket): void {

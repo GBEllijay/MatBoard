@@ -13,6 +13,8 @@ import {
   readGymSchedule,
   removeCalendarEvent,
 } from '../../lib/studentTools';
+import { isUpcomingTournament, tournamentStatusLabel, tournamentsOnDate } from '../../lib/progress/competition';
+import { rankMarks, rankMarksOnDate } from '../../lib/studentRank';
 import { todayIso, viewJournalEntry } from '../../lib/studentEdition';
 import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './chrome';
 
@@ -22,7 +24,7 @@ function monthName(year: number, month: number): string {
   return new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 }
 
-function dayLabel(iso: string, journal: boolean, event: boolean): string {
+function dayLabel(iso: string, journal: boolean, event: boolean, tournament: boolean, rank: boolean): string {
   const [year, month, day] = iso.split('-').map(Number);
   const pretty = new Date(year, month - 1, day).toLocaleDateString('en-US', {
     month: 'long',
@@ -32,6 +34,8 @@ function dayLabel(iso: string, journal: boolean, event: boolean): string {
   const bits = [pretty];
   if (journal) bits.push('journal entry');
   if (event) bits.push('calendar event');
+  if (tournament) bits.push('tournament');
+  if (rank) bits.push('belt');
   return bits.join(', ');
 }
 
@@ -53,10 +57,19 @@ export function CalendarPage() {
   const gym = readGymSchedule(typeof localStorage === 'undefined' ? null : localStorage.getItem(GYM_SCHEDULE_STORAGE_KEY));
   const marked = new Set(journalDates(report));
   const weeks = monthGrid(cursor.year, cursor.month);
+  const tournaments = report.competition?.tournaments ?? [];
+  const tournamentDays = new Set(tournaments.flatMap((tournament) => [tournament.date, tournament.deadline].filter(Boolean)));
+  const rankDays = new Set(rankMarks(report).map((mark) => mark.date));
+  const upcoming = tournaments
+    .filter((tournament) => isUpcomingTournament(tournament, today))
+    .sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name));
 
   const openDay = (iso: string) => {
     const hasJournal = marked.has(iso);
-    if (!hasJournal && iso === today) {
+    const hasTournament = tournamentDays.has(iso);
+    const hasEvent = eventsOnDate(report, iso).length > 0;
+    const hasRank = rankDays.has(iso);
+    if (!hasJournal && !hasTournament && !hasEvent && !hasRank && iso === today) {
       navigate(to('/student/journal'));
       return;
     }
@@ -97,17 +110,23 @@ export function CalendarPage() {
                 <button
                   key={cell.iso}
                   type="button"
-                  className={`cal-day${cell.iso === today ? ' is-today' : ''}${marked.has(cell.iso) ? ' has-journal' : ''}`}
+                  className={`cal-day${cell.iso === today ? ' is-today' : ''}${marked.has(cell.iso) ? ' has-journal' : ''}${tournamentDays.has(cell.iso) ? ' has-tournament' : ''}${rankDays.has(cell.iso) ? ' has-rank' : ''}`}
                   aria-current={cell.iso === today ? 'date' : undefined}
-                  aria-label={dayLabel(cell.iso, marked.has(cell.iso), eventsOnDate(report, cell.iso).length > 0)}
+                  aria-label={dayLabel(cell.iso, marked.has(cell.iso), eventsOnDate(report, cell.iso).length > 0, tournamentDays.has(cell.iso), rankDays.has(cell.iso))}
                   data-journal={marked.has(cell.iso) ? 'true' : 'false'}
+                  data-tournament={tournamentDays.has(cell.iso) ? 'true' : 'false'}
+                  data-rank={rankDays.has(cell.iso) ? 'true' : 'false'}
                   onClick={() => openDay(cell.iso)}
                 >
                   <span>{cell.day}</span>
-                  {marked.has(cell.iso) ? <span className="cal-dot" /> : null}
-                  {!marked.has(cell.iso) && eventsOnDate(report, cell.iso).length > 0 ? (
-                    <span className="cal-dot cal-dot--event" />
-                  ) : null}
+                  <span className="cal-marks">
+                    {marked.has(cell.iso) ? <span className="cal-dot" /> : null}
+                    {!marked.has(cell.iso) && eventsOnDate(report, cell.iso).length > 0 ? (
+                      <span className="cal-dot cal-dot--event" />
+                    ) : null}
+                    {tournamentDays.has(cell.iso) ? <span className="cal-dot cal-dot--tournament" /> : null}
+                    {rankDays.has(cell.iso) ? <span className="cal-dot cal-dot--rank" /> : null}
+                  </span>
                 </button>
               ) : (
                 <span key={cell.iso} className="cal-day cal-day--out" aria-hidden="true">
@@ -116,7 +135,32 @@ export function CalendarPage() {
               ),
             )}
           </div>
-          <p className="student-quiet">A filled dot is a journal entry. Tap a day to open that day’s cards, or start today’s page.</p>
+          <p className="student-quiet">
+            A filled dot is a journal entry. An open dot is another event. A red ring is a tournament. A blue square is a belt date from My rank. Tap a day to open that day’s cards, or start today’s page.
+          </p>
+          {upcoming.length ? (
+            <section className="ink" aria-label="Tournaments">
+              <p className="ink__label">Tournaments</p>
+              <ul className="comp-list">
+                {upcoming.map((tournament) => (
+                  <li key={tournament.id}>
+                    <Link to={to(`/student/calendar/${tournament.date}`)}>
+                      {tournamentStatusLabel(tournament.status)} · {tournament.name}
+                      {tournament.division ? ` · ${tournament.division}` : ''}
+                    </Link>
+                    <span>
+                      {tournament.date}
+                      {tournament.location ? ` · ${tournament.location}` : ''}
+                      {tournament.deadline ? ` · register by ${tournament.deadline}` : ''}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <Link className="ink-btn" to={to('/student/competitor')}>
+                Competitor page
+              </Link>
+            </section>
+          ) : null}
           {gym ? (
             <label className="ink cal-gym-toggle">
               <input type="checkbox" checked={showGym} onChange={(event) => setShowGym(event.target.checked)} />
@@ -207,6 +251,8 @@ export function CalendarDayPage({ date }: { date: string }) {
   }
   const cards = entriesFor(report, date);
   const events = eventsOnDate(report, date);
+  const tournaments = tournamentsOnDate(report.competition?.tournaments ?? [], date);
+  const ranks = rankMarksOnDate(report, date);
   const today = date === todayIso();
   return (
     <main className="student student-frame">
@@ -214,7 +260,46 @@ export function CalendarDayPage({ date }: { date: string }) {
       <LeatherHeader title="Calendar" />
       <div className="student-paper">
         <div className="student-sheet">
-          <p className="cal-nav__label">{dayLabel(date, cards.length > 0, events.length > 0)}</p>
+          <p className="cal-nav__label">{dayLabel(date, cards.length > 0, events.length > 0, tournaments.length > 0, ranks.length > 0)}</p>
+          {ranks.length ? (
+            <section className="ink" aria-label="My rank">
+              <p className="ink__label">My rank</p>
+              <ul className="comp-list">
+                {ranks.map((mark) => (
+                  <li key={`${mark.date}-${mark.label}`}>{mark.label}</li>
+                ))}
+              </ul>
+              <Link className="ink-btn" to={to('/student/rank')}>
+                My rank
+              </Link>
+            </section>
+          ) : null}
+          {tournaments.length ? (
+            <section className="ink" aria-label="Tournaments">
+              <p className="ink__label">Tournaments</p>
+              <ul className="comp-list">
+                {tournaments.map((tournament) => (
+                  <li key={tournament.id}>
+                    <strong>
+                      {tournament.date === date ? tournamentStatusLabel(tournament.status) : 'Registration deadline'} · {tournament.name}
+                    </strong>
+                    <span>
+                      {[tournament.location, tournament.division].filter(Boolean).join(' · ')}
+                      {tournament.deadline && tournament.deadline !== tournament.date ? ` · register by ${tournament.deadline}` : ''}
+                    </span>
+                    {tournament.link ? (
+                      <a href={tournament.link} target="_blank" rel="noopener noreferrer">
+                        {tournament.link}
+                      </a>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+              <Link className="ink-btn" to={to('/student/competitor')}>
+                Competitor page
+              </Link>
+            </section>
+          ) : null}
           {cards.length === 0 ? <p className="student-quiet">No journal card on this day.</p> : null}
           {cards.map((card) => (
             <Link key={card.id} className="ink student-card-link" to={to(`/student/cards/${card.id}`)}>

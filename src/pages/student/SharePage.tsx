@@ -55,7 +55,7 @@ export function SharePage() {
           <section className="ink" aria-label="Send to coach">
             <p className="ink__label">Send to coach</p>
             <p className="student-quiet">
-              The progress file stays on this phone. Advantage does not host it. Share it with your mail app or the gym Google Drive folder.
+              The progress file stays on this phone. Advantage does not host it. It includes your journal, tournaments, A/B/C game, weights, competition results, video library links, rank, and lineage. Promotion photos are included when the file has room. The ones that do not fit stay on this phone, and the file says so. A bracket photo stays on this phone and is not in the file. Share it with your mail app or the gym Google Drive folder.
             </p>
             <label className="cal-gym-toggle">
               <input type="checkbox" checked={includeCsv} onChange={(event) => setIncludeCsv(event.target.checked)} />

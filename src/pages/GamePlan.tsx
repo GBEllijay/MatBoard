@@ -63,8 +63,8 @@ export function GamePlanPage() {
   const selected = cards.find((row) => row.id === selectedId) ?? null;
   const exitPath = useSubmenuBack({ detailOpen: Boolean(selected) }) ?? '/competitors';
   const competitors = useMemo(
-    () => (query.trim() ? searchStudents(cards, query) : cards),
-    [query, cards],
+    () => (query.trim() ? searchStudents(cards, query, roster.competitionPlans) : cards),
+    [query, cards, roster.competitionPlans],
   );
 
   return (
@@ -94,7 +94,7 @@ export function GamePlanPage() {
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Name, belt, or division"
+                placeholder="Name, belt, division, opponent, or tournament"
                 aria-label="Find competitor"
                 autoComplete="off"
               />

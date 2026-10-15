@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { EmptyHint } from '../components/EmptyHint';
+import { ImportStudentProgress, StudentCompetitionPlan } from '../components/StudentCompetitionPlan';
 import { SubmenuMarks } from '../components/TierHomeMark';
 import { useSubmenuBack } from '../hooks/useSubmenuBack';
 import { RankChip } from '../components/RankChip';
@@ -43,8 +44,8 @@ export function CompetitionReadyPage() {
   const selected = cards.find((row) => row.id === selectedId) ?? null;
   const exitPath = useSubmenuBack({ detailOpen: Boolean(selected) }) ?? '/competitors';
   const competitors = useMemo(
-    () => (query.trim() ? searchStudents(cards, query) : cards),
-    [query, cards],
+    () => (query.trim() ? searchStudents(cards, query, roster.competitionPlans) : cards),
+    [query, cards, roster.competitionPlans],
   );
 
   return (
@@ -74,7 +75,7 @@ export function CompetitionReadyPage() {
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Name, belt, or division"
+                placeholder="Name, belt, division, opponent, or tournament"
                 aria-label="Find competitor"
                 autoComplete="off"
               />
@@ -211,6 +212,10 @@ function Checklist({ student }: { student: Student }) {
         </button>
         {atExtraMax ? <p className="ready-add__hint">Three custom items is the limit.</p> : null}
       </form>
+      {roster.competitionPlans[student.id] ? (
+        <StudentCompetitionPlan plan={roster.competitionPlans[student.id]} />
+      ) : null}
+      <ImportStudentProgress competitorId={student.id} competitorName={student.name} />
       <label className="ready-note">
         Weekend note
         <textarea

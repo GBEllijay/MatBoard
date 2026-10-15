@@ -17,6 +17,7 @@ import {
   sharedCriterionId,
 } from './format.ts';
 import { parseHandoffPacket } from '../driveHandoff.ts';
+import { emptyCompetition } from './competition.ts';
 import {
   ACADEMY_MEMBER_CODE_LABEL,
   ACADEMY_MEMBER_DISCOUNT_PERCENT,
@@ -30,7 +31,7 @@ import {
 
 function sampleReport(): StudentProgressReport {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     kind: 'student-progress-report',
     id: 'report-alex',
     studentId: 'student-alex',
@@ -122,6 +123,7 @@ function sampleReport(): StudentProgressReport {
     goals: [
       { id: 'goal-scissor', name: 'Finish the scissor sweep live', note: '', met: false },
     ],
+    competition: emptyCompetition(),
   };
 }
 
@@ -147,15 +149,15 @@ test('validation rejects a bad game tag, a file payload, and a future schema', (
   const report = sampleReport();
   const badTag = parseProgressPacket(JSON.stringify({ ...report, journal: [{ ...report.journal[0], gameTag: 'home' }] }));
   assert.equal(badTag.ok, false);
-  if (!badTag.ok) assert.match(badTag.errors.join('\n'), /game tag must be a, b, or c/);
+  if (!badTag.ok) assert.match(badTag.errors.join('\n'), /game tag must be a, b, c, or blank/);
 
   const withFile = parseProgressPacket(JSON.stringify({ ...report, photo: 'data:image/png;base64,abc' }));
   assert.equal(withFile.ok, false);
   if (!withFile.ok) assert.match(withFile.errors.join('\n'), /cannot carry photos or videos/);
 
-  const future = parseProgressPacket(JSON.stringify({ ...report, schemaVersion: 2 }));
+  const future = parseProgressPacket(JSON.stringify({ ...report, schemaVersion: 3 }));
   assert.equal(future.ok, false);
-  if (!future.ok) assert.match(future.errors.join('\n'), /schemaVersion 2 is not supported/);
+  if (!future.ok) assert.match(future.errors.join('\n'), /schemaVersion 3 is not supported/);
 
   assert.throws(() => exportProgressPacket({ ...report, blob: 'abc' } as StudentProgressReport));
 });
@@ -211,6 +213,7 @@ test('clips are optional and an older file without them still imports', () => {
         id: 'clip-armbar',
         url: 'https://www.youtube.com/watch?v=armbar',
         description: 'Armbar from closed guard',
+        note: '',
         createdAt: 15,
         updatedAt: 15,
       },
@@ -218,6 +221,7 @@ test('clips are optional and an older file without them still imports', () => {
         id: 'clip-empty-list-friend',
         url: 'https://www.instagram.com/reel/pass',
         description: 'Knee slice pass',
+        note: '',
         createdAt: 16,
         updatedAt: 16,
       },
@@ -226,7 +230,10 @@ test('clips are optional and an older file without them still imports', () => {
   const roundTrip = parseProgressPacket(exportProgressPacket(withClips));
   assert.equal(roundTrip.ok, true);
   if (!roundTrip.ok || roundTrip.value.kind !== 'student-progress-report') return;
-  assert.deepEqual(roundTrip.value.clips, withClips.clips);
+  assert.deepEqual(
+    roundTrip.value.clips,
+    withClips.clips.map((clip) => ({ ...clip, note: '' })),
+  );
   assert.deepEqual(
     searchJournalClips(roundTrip.value.clips ?? [], 'closed guard').map((clip) => clip.id),
     ['clip-armbar'],
@@ -366,7 +373,10 @@ test('coach plan and feedback round-trip, and an older coach file does not repla
   };
   const parsedPlan = parseProgressPacket(exportProgressPacket(plan));
   assert.equal(parsedPlan.ok, true);
-  if (parsedPlan.ok) assert.deepEqual(parsedPlan.value, plan);
+  if (parsedPlan.ok && parsedPlan.value.kind === 'coach-plan') {
+    assert.equal(parsedPlan.value.schemaVersion, 2);
+    assert.deepEqual(parsedPlan.value.plan, plan.plan);
+  }
 
   const feedback = parseProgressPacket(exportProgressPacket({
     schemaVersion: 1,
@@ -463,6 +473,149 @@ test('importing a coach plan or coach feedback leaves student marks, journal, an
   const stripes = parseProgressPacket(JSON.stringify({ ...report, stripes: 2 }));
   assert.equal(stripes.ok, false);
   if (!stripes.ok) assert.match(stripes.errors.join('\n'), /checkpoints between levels/);
+
+  const nested = parseProgressPacket(JSON.stringify({ ...report, rank: { stripes: 2 } }));
+  assert.equal(nested.ok, false);
+  if (!nested.ok) assert.match(nested.errors.join('\n'), /checkpoints between levels/);
+});
+
+test('rank tape count and dates round-trip, and a file without rank does not clear one', () => {
+  const report = sampleReport();
+  const plain = parseProgressPacket(exportProgressPacket(report));
+  assert.equal(plain.ok, true);
+  if (plain.ok && plain.value.kind === 'student-progress-report') assert.equal('rank' in plain.value, false);
+  assert.equal(exportProgressCsv(report).includes('Rank,'), false);
+
+  const ranked = {
+    ...report,
+    profile: { ...report.profile, belt: 'blue' as const },
+    rank: {
+      tapeCount: 2,
+      awardedOn: '2026-02-01',
+      tapeDates: ['2026-03-01', '2026-04-01', '', ''] as [string, string, string, string],
+      history: [
+        {
+          id: 'rank-white',
+          belt: 'white' as const,
+          awardedOn: '2025-01-01',
+          tapeCount: 4,
+          tapeDates: ['2025-02-01', '2025-03-01', '2025-04-01', '2025-05-01'] as [string, string, string, string],
+        },
+      ],
+    },
+  };
+  const parsed = parseProgressPacket(exportProgressPacket(ranked));
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok || parsed.value.kind !== 'student-progress-report') return;
+  assert.equal(parsed.value.profile.belt, 'blue');
+  assert.deepEqual(parsed.value.rank, ranked.rank);
+  const csv = exportProgressCsv(parsed.value);
+  assert.match(csv, /Rank,student-alex,2026-02-01/);
+  assert.match(csv, /Rank history,rank-white,2025-01-01/);
+  assert.match(csv, /1 2026-03-01; 2 2026-04-01/);
+
+  const tooMany = parseProgressPacket(JSON.stringify({ ...report, rank: { tapeCount: 5 } }));
+  assert.equal(tooMany.ok, false);
+  if (!tooMany.ok) assert.match(tooMany.errors.join('\n'), /whole number from 0 to 4/);
+
+  const kept = mergeStudentProgress(ranked, report);
+  assert.deepEqual(kept.report.rank, ranked.rank);
+  assert.equal(kept.report.profile.belt, 'blue');
+
+  const incoming = {
+    ...report,
+    rank: {
+      tapeCount: 1,
+      awardedOn: '2026-08-01',
+      tapeDates: ['2026-08-02', '', '', ''] as [string, string, string, string],
+      history: [
+        {
+          id: 'rank-new',
+          belt: 'white' as const,
+          awardedOn: '2024-01-01',
+          tapeCount: 0,
+          tapeDates: ['', '', '', ''] as [string, string, string, string],
+        },
+      ],
+    },
+  };
+  const merged = mergeStudentProgress(ranked, incoming);
+  assert.equal(merged.report.rank?.awardedOn, '2026-02-01');
+  assert.equal(merged.report.rank?.tapeCount, 2);
+  assert.equal(merged.report.rank?.history.some((row) => row.id === 'rank-white'), true);
+  assert.equal(merged.report.rank?.history.some((row) => row.id === 'rank-new'), true);
+  assert.match(merged.conflicts.join('\n'), /Rank date was kept/);
+});
+
+test('version 1 files import, and journal A/B/C tags become the standing game', () => {
+  const current = sampleReport();
+  const legacy = { ...current, schemaVersion: 1 } as Omit<StudentProgressReport, 'competition'> & { schemaVersion: number };
+  delete (legacy as { competition?: unknown }).competition;
+  const parsed = parseProgressPacket(JSON.stringify(legacy));
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok || parsed.value.kind !== 'student-progress-report') return;
+  assert.equal(parsed.value.schemaVersion, 2);
+  assert.equal(parsed.value.competition?.games.a.techniques, 'Scissor sweep');
+  assert.match(parsed.value.competition?.games.a.notes ?? '', /Collar grip was late/);
+  assert.equal(parsed.value.competition?.games.b.techniques, 'Pendulum sweep');
+  assert.equal(parsed.value.competition?.games.c.techniques, '');
+  assert.deepEqual(parsed.value.competition?.tournaments, []);
+  assert.equal(parsed.value.journal[0].gameTag, 'a');
+  assert.equal(parsed.value.journal[0].techniqueRefs[0].name, 'Scissor sweep');
+
+  const explicit = parseProgressPacket(JSON.stringify({ ...legacy, competition: emptyCompetition() }));
+  assert.equal(explicit.ok, true);
+  if (explicit.ok && explicit.value.kind === 'student-progress-report') {
+    assert.equal(explicit.value.competition?.games.a.techniques, '');
+  }
+
+  const local = sampleReport();
+  local.competition = emptyCompetition();
+  local.competition.games.a = { techniques: 'Armbar', notes: 'Finish the grip' };
+  const merged = mergeStudentProgress(local, parsed.value);
+  assert.equal(merged.report.competition?.games.a.techniques, 'Armbar');
+  assert.match(merged.conflicts.join('\n'), /A game techniques were kept/);
+  assert.equal(merged.report.competition?.games.b.techniques, 'Pendulum sweep');
+
+  const withMeet = structuredClone(parsed.value);
+  const competition = withMeet.competition ?? emptyCompetition();
+  competition.tournaments = [{
+    id: 'meet-spring',
+    name: 'Spring Open',
+    date: '2026-11-02',
+    location: 'Atlanta',
+    division: 'Adult Blue Middle',
+    deadline: '2026-10-20',
+    link: 'https://example.com/spring',
+    status: 'entered',
+    targetWeight: 170,
+    targetUnit: 'lb',
+    goals: [{ id: 'goal-pass', name: 'Pass half guard', note: 'knee slice', met: false }],
+  }];
+  competition.weighIns = [{ id: 'weigh-1', date: '2026-10-01', weight: 174.2, unit: 'lb', note: 'morning' }];
+  competition.weightUnit = 'lb';
+  withMeet.competition = competition;
+  const csv = exportProgressCsv(withMeet);
+  assert.match(csv, /Game,a,/);
+  assert.match(csv, /Tournament,meet-spring,2026-11-02/);
+  assert.match(csv, /entered/);
+  assert.match(csv, /Tournament goal,goal-pass/);
+  assert.match(csv, /Weigh-in,weigh-1,2026-10-01/);
+  const roundTrip = parseProgressPacket(exportProgressPacket(withMeet));
+  assert.equal(roundTrip.ok, true);
+  if (roundTrip.ok && roundTrip.value.kind === 'student-progress-report') {
+    assert.equal(roundTrip.value.competition?.tournaments[0].status, 'entered');
+    assert.equal(roundTrip.value.competition?.weighIns[0].weight, 174.2);
+  }
+
+  const badStatus = parseProgressPacket(JSON.stringify({
+    ...withMeet,
+    competition: { ...competition, tournaments: [{ ...competition.tournaments[0], status: 'done' }] },
+  }));
+  assert.equal(badStatus.ok, false);
+
+  const omitted = mergeStudentProgress(withMeet, sampleReport());
+  assert.equal(omitted.report.competition?.tournaments[0].name, 'Spring Open');
 });
 
 test('the license plan is recorded for a later step', () => {

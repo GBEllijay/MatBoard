@@ -19,8 +19,7 @@ test('calendar marks a journal day, stores an event, and can show the gym schedu
     );
   });
   await page.goto('/student/journal?student=1');
-  await page.getByRole('button', { name: 'Gi', exact: true }).click();
-  await page.getByRole('button', { name: 'A game' }).click();
+  await page.getByRole('textbox', { name: 'Class', exact: true }).fill('Fundamentals');
   await page.getByRole('textbox', { name: 'Notes' }).fill('grip the collar deeper');
   await page.getByRole('button', { name: 'Save entry' }).click();
   await expect(page.getByText('grip the collar deeper')).toBeVisible();
@@ -55,7 +54,9 @@ test('belt checkpoints, goals, coach suggestions, and the share file', async ({ 
   await page.getByRole('region', { name: 'Sweeps' }).getByRole('button', { name: 'Mark Scissor sweep learned' }).click();
   await page.goto('/student/rubric?student=1');
   await expect(page.getByRole('heading', { name: 'Belt progress' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'White', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('link', { name: 'My rank', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'White', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('paragraph').filter({ hasText: /^White$/ })).toBeVisible();
   await expect(page.getByRole('paragraph').filter({ hasText: /^Blue$/ })).toBeVisible();
   await expect(page.getByRole('listitem', { name: 'Guard, open' })).toBeVisible();
   await expect(page.getByText('Counted from your fundamentals.')).toBeVisible();
@@ -170,7 +171,9 @@ test('belt checkpoints, goals, coach suggestions, and the share file', async ({ 
   );
   const packet = JSON.parse(body);
   expect(packet.kind).toBe('student-progress-report');
-  expect(packet.schemaVersion).toBe(1);
+  expect(packet.schemaVersion).toBe(2);
+  expect(packet.competition.weightUnit).toBe('lb');
+  expect(packet.competition.tournaments).toEqual([]);
   const exportedGuard = packet.rubric.levels
     .find((level: { belt: string }) => level.belt === 'white')
     .checkpoints.find((row: { id: string }) => row.id === 'checkpoint.white.guard');

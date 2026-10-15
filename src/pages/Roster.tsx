@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCurrentSeat } from '../components/SeatSessionBar';
 import { EmptyHint } from '../components/EmptyHint';
+import { ImportStudentProgress, StudentCompetitionPlan } from '../components/StudentCompetitionPlan';
 import { SubmenuMarks } from '../components/TierHomeMark';
 import { useSubmenuBack } from '../hooks/useSubmenuBack';
 import { useCoachPageSwipe } from '../hooks/useCoachSwipe';
@@ -108,8 +109,11 @@ export function RosterPage() {
     [roster.students, studentRoster],
   );
   const competitors = useMemo(
-    () => (query.trim() ? searchStudents(listed, query) : listed),
-    [query, listed],
+    () =>
+      query.trim()
+        ? searchStudents(listed, query, studentRoster ? undefined : roster.competitionPlans)
+        : listed,
+    [query, listed, studentRoster, roster.competitionPlans],
   );
   const openAdd = () => setEditor({ id: null, draft: { ...emptyDraft(), gym: readGymName() } });
 
@@ -234,7 +238,7 @@ export function RosterPage() {
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Name, belt, or division"
+          placeholder={studentRoster ? 'Name, belt, or division' : 'Name, belt, division, opponent, or tournament'}
           aria-label={studentRoster ? 'Find student' : 'Find competitor'}
           autoComplete="off"
         />
@@ -248,6 +252,7 @@ export function RosterPage() {
               key={competitor.id}
               student={competitor}
               studentRoster={studentRoster}
+              plan={studentRoster ? undefined : roster.competitionPlans[competitor.id]}
               pending={pendingRemove === competitor.id}
               onEdit={() => setEditor({ id: competitor.id, draft: draftFromStudent(competitor) })}
               onAskRemove={() => setPendingRemove(competitor.id)}
@@ -381,6 +386,7 @@ function CsvInstructions() {
 function StudentCard({
   student,
   studentRoster,
+  plan,
   pending,
   onEdit,
   onAskRemove,
@@ -390,6 +396,7 @@ function StudentCard({
 }: {
   student: Student;
   studentRoster: boolean;
+  plan?: ReturnType<typeof useRosterState>['competitionPlans'][string];
   pending: boolean;
   onEdit: () => void;
   onAskRemove: () => void;
@@ -437,6 +444,8 @@ function StudentCard({
         {student.gym ? <p className="roster-card__meta">{student.gym}</p> : null}
         {promotionLine ? <p className="roster-card__meta roster-card__promotion">{promotionLine}</p> : null}
         {student.note ? <p className="roster-card__note">{student.note}</p> : null}
+        {plan ? <StudentCompetitionPlan plan={plan} /> : null}
+        {studentRoster ? null : <ImportStudentProgress competitorId={student.id} competitorName={student.name} />}
         {pending ? (
           <div className="roster-card__actions">
             <span className="roster-card__confirm">Remove {student.name}?</span>

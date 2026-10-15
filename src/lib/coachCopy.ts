@@ -39,7 +39,8 @@ export const COACH_HUB_BLURB =
 export const EMPTY_ROSTER_TITLE = 'No competitors yet';
 export const EMPTY_ROSTER_BODY =
   'Add a name and belt, then pick them into a match or bracket.';
-export const EMPTY_ROSTER_SEARCH = 'No competitors match that name, belt, or division.';
+export const EMPTY_ROSTER_SEARCH =
+  'No competitors match that name, belt, division, opponent, tournament, or method.';
 
 export const EMPTY_NOTES_TITLE = 'No notes yet';
 export const EMPTY_NOTES_BODY = 'Jot a class plan — warm-up, drills, who goes first.';

@@ -13,6 +13,7 @@ import {
   addJournalEntry,
   deleteJournalClip,
   searchStudentClips,
+  setClipNote,
   updateJournalClip,
   blankStudentReport,
   decodeJournalBody,
@@ -104,7 +105,7 @@ test('a saved journal card stays in the progress file and search finds the techn
   const storage = memoryStorage();
   const draft = {
     date: '2026-10-11',
-    classKind: 'gi' as const,
+    className: 'Gi',
     gameTag: 'a' as const,
     techniques: [{ id: 'sweep.scissor', name: 'Scissor sweep' }],
     partners: 'Alex',
@@ -120,11 +121,101 @@ test('a saved journal card stays in the progress file and search finds the techn
   assert.equal(parsed.ok, true);
   const card = viewJournalEntry(saved.journal[0]);
   assert.equal(card.notes, 'grip the collar deeper');
-  assert.equal(card.classKind, 'gi');
+  assert.equal(card.className, 'Gi');
   assert.equal(card.techniques[0].name, 'Scissor sweep');
   assert.equal(searchStudentJournal(saved, 'scissor').length, 1);
   assert.equal(searchJournal(saved.journal, 'collar').length, 1);
   assert.equal(decodeJournalBody(saved.journal[0].body).partners, 'Alex');
+});
+
+test('older gi and no-gi class words stay text, and a new card does not store a game tag', () => {
+  assert.equal(decodeJournalBody('Class: Gi\nNotes:\n').className, 'Gi');
+  assert.equal(decodeJournalBody('Class: No-Gi\nNotes:\n').className, 'No-Gi');
+  assert.equal(decodeJournalBody('Class: Fundamentals, week 7, class B\nNotes:\n').className, 'Fundamentals, week 7, class B');
+  const report = addJournalEntry(
+    blankStudentReport(10),
+    {
+      date: '2026-10-11',
+      className: 'Fundamentals, week 7, class B',
+      gameTag: '',
+      techniques: [],
+      partners: '',
+      drills: '',
+      rolls: '',
+      notes: '',
+    },
+    10,
+  );
+  assert.equal(report.journal[0].gameTag, '');
+  assert.match(report.journal[0].body, /Class: Fundamentals, week 7, class B/);
+  assert.equal(viewJournalEntry(report.journal[0]).className, 'Fundamentals, week 7, class B');
+});
+
+test('a new card keeps every drilled technique, and an older card stays the length it was saved', () => {
+  const report = addJournalEntry(
+    blankStudentReport(10),
+    {
+      date: '2026-10-11',
+      className: 'Gi',
+      gameTag: 'a',
+      techniques: [
+        { id: '', name: 'Scissor sweep' },
+        { id: '', name: '   ' },
+        { id: 'sweep.hip-bump', name: 'Hip bump sweep' },
+        { id: '', name: 'Armbar' },
+      ],
+      partners: '',
+      drills: '',
+      rolls: '',
+      notes: 'grip the collar deeper',
+    },
+    10,
+  );
+  const names = report.journal[0].techniqueRefs.map((item) => item.name);
+  assert.deepEqual(names, ['Scissor sweep', 'Hip bump sweep', 'Armbar']);
+  assert.match(report.journal[0].body, /Technique drilled #1: Scissor sweep/);
+  assert.match(report.journal[0].body, /Technique drilled #2: Hip bump sweep/);
+  assert.match(report.journal[0].body, /Technique drilled #3: Armbar/);
+  assert.match(report.journal[0].body, /Techniques: Scissor sweep; Hip bump sweep; Armbar/);
+  assert.equal(searchStudentJournal(report, 'technique drilled #2').length, 1);
+  assert.equal(searchStudentJournal(report, 'hip bump').length, 1);
+  assert.equal(viewJournalEntry(report.journal[0]).techniques.length, 3);
+
+  const older = addJournalEntry(
+    blankStudentReport(10),
+    {
+      date: '2026-10-11',
+      className: 'Gi',
+      gameTag: 'a',
+      techniques: [{ id: 'sweep.scissor', name: 'Scissor sweep' }],
+      partners: '',
+      drills: '',
+      rolls: '',
+      notes: '',
+    },
+    11,
+  );
+  older.journal[0].body = 'Class: Gi\nTechniques: Scissor sweep\nNotes:\n';
+  assert.equal(viewJournalEntry(older.journal[0]).techniques.length, 1);
+  assert.equal(viewJournalEntry(older.journal[0]).techniques[0].name, 'Scissor sweep');
+  assert.equal(searchStudentJournal(older, 'technique drilled #1').length, 1);
+
+  const overflow = addJournalEntry(
+    blankStudentReport(10),
+    {
+      date: '2026-10-11',
+      className: 'Gi',
+      gameTag: 'c',
+      techniques: Array.from({ length: 14 }, (_, index) => ({ id: '', name: `Move ${index + 1}` })),
+      partners: '',
+      drills: '',
+      rolls: '',
+      notes: '',
+    },
+    12,
+  );
+  assert.equal(overflow.journal[0].techniqueRefs.length, 12);
+  assert.equal(overflow.journal[0].techniqueRefs[11].name, 'Move 12');
 });
 
 test('a journal clip can be added, found by description or url, saved, and deleted', () => {
@@ -132,7 +223,7 @@ test('a journal clip can be added, found by description or url, saved, and delet
   let report = blankStudentReport(10);
   assert.equal('clips' in report, false);
   assert.throws(() => addJournalClip(report, 'notaurl', 'armbar', 11), /http or https/);
-  assert.throws(() => addJournalClip(report, 'https://youtu.be/abc', '   ', 11), /short note/);
+  assert.throws(() => addJournalClip(report, 'https://youtu.be/abc', '   ', 11), /technique or drill/);
   report = addJournalClip(report, 'https://www.youtube.com/watch?v=armbar', 'Armbar from closed guard', 11);
   report = addJournalClip(report, 'https://www.instagram.com/reel/kneeslice', 'Knee slice pass', 12);
   assert.deepEqual(searchStudentClips(report, 'closed guard').map((clip) => clip.description), ['Armbar from closed guard']);
@@ -141,6 +232,12 @@ test('a journal clip can be added, found by description or url, saved, and delet
   report = updateJournalClip(report, armbarId, 'https://youtu.be/armbar-2', 'Armbar finish', 13);
   assert.equal(report.clips?.[0].url, 'https://youtu.be/armbar-2');
   assert.equal(report.clips?.[0].description, 'Armbar finish');
+  assert.equal(report.clips?.[0].note, '');
+  report = setClipNote(report, armbarId, 'long grip', 14);
+  assert.equal(report.clips?.[0].note, 'long grip');
+  assert.deepEqual(searchStudentClips(report, 'long grip').map((clip) => clip.id), [armbarId]);
+  report = updateJournalClip(report, armbarId, 'https://youtu.be/armbar-2', 'Armbar finish', 15);
+  assert.equal(report.clips?.[0].note, 'long grip');
   assert.equal(report.clips?.[0].createdAt, 11);
   const saved = saveStudentReport(storage, report);
   const loaded = loadStudentReport(storage);
@@ -165,7 +262,7 @@ test('an amendment is appended and the original card is unchanged', () => {
     blankStudentReport(10),
     {
       date: '2026-10-11',
-      classKind: 'nogi',
+      className: 'No-Gi',
       gameTag: 'b',
       techniques: [{ id: 'sweep.scissor', name: 'Scissor sweep' }],
       partners: '',
@@ -217,7 +314,7 @@ test('rename and remove are per-student overrides, and restore brings the starte
     blankStudentReport(10),
     {
       date: '2026-10-11',
-      classKind: 'gi',
+      className: 'Gi',
       gameTag: 'a',
       techniques: [{ id: 'sweep.scissor', name: 'Scissor sweep' }],
       partners: '',
