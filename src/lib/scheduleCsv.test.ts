@@ -93,6 +93,10 @@ describe('schedule CSV round trip', () => {
     assert.equal(next.payload?.classes[0]?.level, 'kids');
     assert.equal(next.payload?.classes[1]?.level, 'kids-advanced');
     assert.match(csv, /Kids Advanced/);
+    const header = csv.split('\r\n')[0]?.split(',') ?? [];
+    assert.equal(header[6], 'Level');
+    const classLine = csv.split('\r\n').find((line) => line.startsWith('class,Monday'));
+    assert.equal(classLine?.split(',')[6], 'Kids');
     assert.equal(next.payload?.specials?.[0]?.date, '2026-12-24');
     assert.equal(next.payload?.specials?.[0]?.title, 'Closed');
     assert.equal(next.payload?.specials?.[0]?.body, 'Christmas Eve');
@@ -143,6 +147,27 @@ describe('schedule CSV round trip', () => {
     );
     assert.equal(next.payload?.classes[0]?.title, 'Fundamentals');
     assert.equal(next.payload?.classes[1]?.title, 'Open Mat');
+  });
+
+  it('reads Level from an older file that puts it last, and from a Difficulty column', () => {
+    const legacy = [
+      'Record,Day,Time,Class name,Mat,Detail,Date,Title,Body,Board title,QR link,Notices,Template,Play on TV,Id,Flyer id,Level',
+      'class,Monday,17:00,Noon Gi,MAT 1,detail,,,,,,,,,c-old,,Kids Advanced',
+    ].join('\r\n');
+    const fromLegacy = importScheduleCsv(legacy);
+    assert.equal(fromLegacy.error, undefined);
+    assert.equal(fromLegacy.payload?.classes[0]?.title, 'Noon Gi');
+    assert.equal(fromLegacy.payload?.classes[0]?.level, 'kids-advanced');
+    assert.equal(fromLegacy.payload?.classes[0]?.subtitle, 'detail');
+
+    const difficulty = ['Day,Time,Class name,Difficulty', 'Tuesday,6:00 PM,Open Mat,Expert'].join('\r\n');
+    const fromDifficulty = importScheduleCsv(difficulty);
+    assert.equal(fromDifficulty.error, undefined);
+    assert.equal(fromDifficulty.payload?.classes[0]?.level, 'expert');
+    assert.equal(fromDifficulty.payload?.classes[0]?.title, 'Open Mat');
+
+    const belt = ['Day,Time,Class name,Belt level', 'Wednesday,7:00 PM,Fundamentals,All Levels'].join('\r\n');
+    assert.equal(importScheduleCsv(belt).payload?.classes[0]?.level, 'kids');
   });
 
   it('imports the template, then replaces an on-device board', () => {

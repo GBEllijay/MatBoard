@@ -125,6 +125,25 @@ export const CLASS_LEVEL_META: Record<
   none: { label: 'No level', short: 'No level', group: 'other', blurb: 'Open Mat, events — not level-gated' },
 };
 
+/**
+ * Id or owner-facing label. Blank and unknown values are `null` so a bad edit
+ * does not wipe a level that was already saved. "No level" is `none`.
+ */
+export function coerceClassLevel(value: unknown): ClassLevel | null {
+  if (isClassLevel(value)) return value;
+  if (typeof value !== 'string') return null;
+  const key = value.trim().toLowerCase().replace(/_+/g, ' ').replace(/\s+/g, ' ');
+  if (!key) return null;
+  if (isClassLevel(key)) return key;
+  const dashed = key.replace(/ /g, '-');
+  if (isClassLevel(dashed)) return dashed;
+  for (const id of CLASS_LEVELS) {
+    const meta = CLASS_LEVEL_META[id];
+    if (meta.short.toLowerCase() === key || meta.label.toLowerCase() === key) return id;
+  }
+  return null;
+}
+
 /** Legend and picker order. No level stays last. */
 export const CLASS_LEVEL_ORDER: readonly ClassLevel[] = [
   'fundamentals',
@@ -602,7 +621,7 @@ function normalizeClass(raw: unknown, fallbackId: string): WeeklyClassSlot | nul
   const id = typeof row.id === 'string' && row.id.trim() ? row.id.trim() : fallbackId;
   const location = typeof row.location === 'string' ? row.location.trim() : '';
   const subtitle = typeof row.subtitle === 'string' ? row.subtitle.trim() : '';
-  const level = isClassLevel(row.level) ? row.level : 'none';
+  const level = coerceClassLevel(row.level) ?? 'none';
   return { id, kind: 'class', day: row.day, time, title, location, subtitle, level };
 }
 

@@ -2,8 +2,7 @@
 
 import {
   CLASS_LEVEL_META,
-  CLASS_LEVELS,
-  isClassLevel,
+  coerceClassLevel,
   isScheduleTemplate,
   normalizeGymCalendar,
   WEEKDAY_LABELS,
@@ -34,6 +33,7 @@ export const SCHEDULE_CSV_HEADERS = [
   'Class name',
   'Mat',
   'Detail',
+  'Level',
   'Date',
   'Title',
   'Body',
@@ -44,7 +44,6 @@ export const SCHEDULE_CSV_HEADERS = [
   'Play on TV',
   'Id',
   'Flyer id',
-  'Level',
 ] as const;
 
 export const SCHEDULE_CSV_SAVE_HINT =
@@ -148,6 +147,9 @@ const HEADER_ALIASES: Record<string, Field> = {
   flyer: 'flyerId',
   level: 'level',
   'class level': 'level',
+  difficulty: 'level',
+  'difficulty level': 'level',
+  'belt level': 'level',
 };
 
 export type ScheduleCsvMode = 'replace-board' | 'replace-classes';
@@ -207,16 +209,7 @@ function parseTemplate(value: string): ScheduleTemplate | null {
 
 /** Id or label, case-insensitive. Blank and unknown values are No level. */
 export function parseClassLevel(value: string): ClassLevel {
-  const key = value.trim().toLowerCase().replace(/[_]+/g, ' ').replace(/\s+/g, ' ');
-  if (!key) return 'none';
-  if (isClassLevel(key)) return key;
-  const dashed = key.replace(/ /g, '-');
-  if (isClassLevel(dashed)) return dashed;
-  for (const id of CLASS_LEVELS) {
-    const meta = CLASS_LEVEL_META[id];
-    if (meta.short.toLowerCase() === key || meta.label.toLowerCase() === key) return id;
-  }
-  return 'none';
+  return coerceClassLevel(value) ?? 'none';
 }
 
 function parseCast(value: string): boolean | null {
@@ -283,12 +276,12 @@ export function serializeScheduleCsv(state: GymCalendarState): string {
     '',
     '',
     '',
+    '',
     state.title,
     state.qrUrl,
     state.notes,
     state.template,
     state.castEnabled ? 'yes' : 'no',
-    '',
     '',
     '',
   ];
@@ -299,6 +292,7 @@ export function serializeScheduleCsv(state: GymCalendarState): string {
     row.title,
     row.location,
     row.subtitle,
+    CLASS_LEVEL_META[coerceClassLevel(row.level) ?? 'none'].short,
     '',
     '',
     '',
@@ -309,10 +303,10 @@ export function serializeScheduleCsv(state: GymCalendarState): string {
     '',
     row.id,
     '',
-    CLASS_LEVEL_META[row.level ?? 'none'].short,
   ]);
   const specials = state.specials.map((row) => [
     'special',
+    '',
     '',
     '',
     '',
@@ -328,7 +322,6 @@ export function serializeScheduleCsv(state: GymCalendarState): string {
     '',
     row.id,
     row.flyerId ?? '',
-    '',
   ]);
   const lines = [SCHEDULE_CSV_HEADERS.join(','), line(board), ...classes.map(line), ...specials.map(line)];
   return `${lines.join('\r\n')}\r\n`;

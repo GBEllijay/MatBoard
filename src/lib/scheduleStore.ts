@@ -1,10 +1,10 @@
 /** Class Schedule persistence. Calendar item shapes live in gymCalendar for Events later. */
 
 import {
+  coerceClassLevel,
   createClassId,
   createSpecialId,
   defaultGymCalendar,
-  isClassLevel,
   isScheduleTemplate,
   isWeekday,
   type ClassLevel,
@@ -50,6 +50,7 @@ export {
   CLASS_LEVEL_META,
   CLASS_LEVEL_ORDER,
   groupClassesByTime,
+  coerceClassLevel,
   isClassLevel,
   isScheduleTemplate,
   isWeekday,
@@ -233,7 +234,7 @@ export function addClass(
     title: title.trim(),
     location: location.trim(),
     subtitle: subtitle.trim(),
-    level: isClassLevel(level) ? level : 'none',
+    level: coerceClassLevel(level) ?? 'none',
   };
   if (!next.time && !next.title) return null;
   patch({ classes: sortClasses([...state.classes, next]) });
@@ -266,7 +267,10 @@ export function updateClass(
           title: typeof partial.title === 'string' ? partial.title : row.title,
           location: typeof partial.location === 'string' ? partial.location : row.location,
           subtitle: typeof partial.subtitle === 'string' ? partial.subtitle : row.subtitle,
-          level: isClassLevel(partial.level) ? partial.level : (row.level ?? 'none'),
+          level:
+            partial.level === undefined
+              ? (coerceClassLevel(row.level) ?? 'none')
+              : (coerceClassLevel(partial.level) ?? coerceClassLevel(row.level) ?? 'none'),
         };
       }),
     ),

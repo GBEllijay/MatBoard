@@ -916,7 +916,7 @@ function ScheduleEditor({
                                   <optgroup key={group.id} label={group.label}>
                                     {levelsIn(group.id).map((id) => (
                                       <option key={id} value={id}>
-                                        {CLASS_LEVEL_META[id].label}
+                                        {id === 'kids-advanced' ? CLASS_LEVEL_META[id].short : CLASS_LEVEL_META[id].label}
                                       </option>
                                     ))}
                                   </optgroup>
