@@ -109,8 +109,11 @@ export function RosterPage() {
     [roster.students, studentRoster],
   );
   const competitors = useMemo(
-    () => (query.trim() ? searchStudents(listed, query) : listed),
-    [query, listed],
+    () =>
+      query.trim()
+        ? searchStudents(listed, query, studentRoster ? undefined : roster.competitionPlans)
+        : listed,
+    [query, listed, studentRoster, roster.competitionPlans],
   );
   const openAdd = () => setEditor({ id: null, draft: { ...emptyDraft(), gym: readGymName() } });
 
@@ -235,7 +238,7 @@ export function RosterPage() {
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Name, belt, or division"
+          placeholder={studentRoster ? 'Name, belt, or division' : 'Name, belt, division, opponent, or tournament'}
           aria-label={studentRoster ? 'Find student' : 'Find competitor'}
           autoComplete="off"
         />

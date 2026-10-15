@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { convertWeight, formatWeight, tournamentsOnDate } from './progress/competition.ts';
+import { convertWeight, formatWeight, matchingResults, tournamentsOnDate } from './progress/competition.ts';
 import { exportProgressCsv, exportProgressPacket, parseProgressPacket } from './progress/format.ts';
 import {
   addStudent,
@@ -9,6 +9,7 @@ import {
   importedPlanForName,
   removeStudent,
   resetRoster,
+  searchStudents,
 } from './rosterStore.ts';
 import {
   addJournalEntry,
@@ -153,4 +154,60 @@ test('a recorded match and bracket note export, and the photo stays out of the f
   assert.match(csv, /Bracket,/);
   assert.match(csv, /Sam/);
   assert.doesNotMatch(csv, /data:image/);
+});
+
+test('journal search finds a result, and coach search uses opponent, tournament, or method', () => {
+  let report = addCompetitionResult(
+    blankStudentReport(40),
+    { tournamentId: '', tournamentName: 'Spring Open', division: 'Adult Blue Middle' },
+    41,
+  );
+  const id = report.competition?.results[0]?.id ?? '';
+  report = addCompetitionMatch(report, id, { opponent: 'Sam', result: 'win', method: 'sub', note: 'closed the guard' }, 42);
+  report = addBracketNote(report, id, 'Quarterfinal', 'Riley', 43);
+
+  assert.equal(matchingResults(report.competition, 'sam').length, 1);
+  assert.equal(matchingResults(report.competition, 'Adult Blue').length, 1);
+  assert.equal(matchingResults(report.competition, 'win').length, 1);
+  assert.equal(matchingResults(report.competition, 'sub').length, 1);
+  assert.equal(matchingResults(report.competition, 'closed the guard').length, 1);
+  assert.equal(matchingResults(report.competition, 'Riley').length, 1);
+  assert.equal(matchingResults(report.competition, 'Quarterfinal').length, 0);
+  assert.equal(matchingResults(report.competition, 'missing').length, 0);
+  assert.equal(matchingResults(report.competition, '  ').length, 0);
+  assert.equal(searchStudentJournal(report, 'Riley').length, 0);
+
+  resetRoster();
+  const fighter = addStudent({
+    name: 'Alex Student',
+    belt: 'Blue',
+    division: '',
+    gym: '',
+    lastPromotion: '',
+    note: '',
+  });
+  const named = addStudent({
+    name: 'Sam Diaz',
+    belt: 'White',
+    division: '',
+    gym: '',
+    lastPromotion: '',
+    note: '',
+  });
+  assert.ok(fighter && named);
+  assert.equal(importStudentCompetition(fighter.id, JSON.stringify(report), 44), '');
+  const plans = getRoster().competitionPlans;
+  const people = [fighter, named];
+  assert.deepEqual(
+    searchStudents(people, 'sam', plans).map((row) => row.name),
+    ['Sam Diaz', 'Alex Student'],
+  );
+  assert.deepEqual(searchStudents(people, 'Spring', plans).map((row) => row.name), ['Alex Student']);
+  assert.deepEqual(searchStudents(people, 'sub', plans).map((row) => row.name), ['Alex Student']);
+  assert.equal(searchStudents(people, 'Riley', plans).length, 0);
+  assert.equal(searchStudents(people, 'closed the guard', plans).length, 0);
+  assert.equal(searchStudents(people, 'Adult Blue Middle', plans).length, 0);
+  assert.equal(searchStudents(people, 'win', plans).length, 0);
+  assert.equal(searchStudents(people, 'Sam').length, 1);
+  resetRoster();
 });

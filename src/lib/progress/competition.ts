@@ -157,6 +157,43 @@ export function matchingGameTags(competition: StudentCompetition | undefined, qu
   return GAME_TAGS.filter((tag) => gameHaystack(tag, competition.games[tag]).includes(needle));
 }
 
+/** Tournament, division, opponents, result, method, match notes, and filled-in bracket names. */
+export function resultHaystack(result: CompetitionResult): string {
+  return [
+    result.tournamentName,
+    result.division,
+    ...result.matches.flatMap((match) => [match.opponent, match.result, match.method, match.note]),
+    ...result.bracket.map((note) => note.name),
+  ]
+    .join('\n')
+    .toLowerCase();
+}
+
+export function matchingResults(
+  competition: StudentCompetition | undefined,
+  query: string,
+): CompetitionResult[] {
+  const needle = query.trim().toLowerCase();
+  if (!needle || !competition) return [];
+  return (competition.results ?? []).filter((result) => resultHaystack(result).includes(needle));
+}
+
+/** Coach lookup: opponent, tournament name, or method. */
+export function coachResultHaystack(result: CompetitionResult): string {
+  return [result.tournamentName, ...result.matches.flatMap((match) => [match.opponent, match.method])]
+    .join('\n')
+    .toLowerCase();
+}
+
+export function planMatchesCoachResultQuery(
+  plan: { results?: readonly CompetitionResult[] } | undefined,
+  query: string,
+): boolean {
+  const needle = query.trim().toLowerCase();
+  if (!needle || !plan) return false;
+  return (plan.results ?? []).some((result) => coachResultHaystack(result).includes(needle));
+}
+
 export function tournamentHaystack(tournament: StudentTournament): string {
   return [
     tournament.name,

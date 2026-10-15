@@ -6,6 +6,7 @@
 import { clipCompetitorPhoto } from './competitorPhoto.ts';
 import {
   competitionSnapshot,
+  planMatchesCoachResultQuery,
   type ImportedCompetitionPlan,
 } from './progress/competition.ts';
 import { parseProgressPacket } from './progress/format.ts';
@@ -428,7 +429,11 @@ export function sortStudents(students: Student[]): Student[] {
   return [...students].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
 }
 
-export function searchStudents(students: Student[], query: string): Student[] {
+export function searchStudents(
+  students: Student[],
+  query: string,
+  plans?: Readonly<Record<string, ImportedCompetitionPlan>>,
+): Student[] {
   const eligible = sortStudents(students.filter(canPrefill));
   const q = query.trim().toLowerCase();
   if (!q) return eligible;
@@ -443,6 +448,7 @@ export function searchStudents(students: Student[], query: string): Student[] {
       else if (name.includes(q)) score = 2;
       else if (belt.startsWith(q) || belt.includes(q)) score = 1;
       else if (division.startsWith(q) || division.includes(q)) score = 1;
+      else if (plans && planMatchesCoachResultQuery(plans[student.id], q)) score = 1;
       else return null;
       return { student, score };
     })

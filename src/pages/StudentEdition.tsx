@@ -8,8 +8,8 @@ import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import { STUDENT_EDITION_NAME, STUDENT_HOME_DESCRIPTION } from '../lib/productNames';
-import { matchingGameTags, gameLetter } from '../lib/progress/competition.ts';
-import { PROGRESS_NAME_MAX, type JournalClip } from '../lib/progress/types.ts';
+import { matchingGameTags, matchingResults, gameLetter } from '../lib/progress/competition.ts';
+import { PROGRESS_NAME_MAX, type CompetitionResult, type JournalClip, type MatchMethod, type MatchResult } from '../lib/progress/types.ts';
 import { isIsoDate } from '../lib/studentTools';
 import { BeltPage } from './student/BeltPage';
 import { CalendarDayPage, CalendarPage } from './student/CalendarPages';
@@ -467,12 +467,39 @@ function JournalClips({
   );
 }
 
+function resultWord(result: MatchResult): string {
+  if (result === 'win') return 'Win';
+  if (result === 'draw') return 'Draw';
+  return 'Loss';
+}
+
+function methodWord(method: MatchMethod): string {
+  if (method === 'points') return 'Points';
+  if (method === 'sub') return 'Sub';
+  if (method === 'advantage') return 'Advantage';
+  if (method === 'dq') return 'DQ';
+  return '';
+}
+
+function resultSearchLine(result: CompetitionResult): string {
+  const matches = result.matches
+    .map((match) => {
+      const method = methodWord(match.method);
+      const note = match.note.trim();
+      return `${resultWord(match.result)} · ${match.opponent}${method ? ` · ${method}` : ''}${note ? ` — ${note}` : ''}`;
+    })
+    .join('; ');
+  const names = result.bracket.map((note) => note.name.trim()).filter(Boolean).join(', ');
+  return `${result.division ? ` · ${result.division}` : ''}${matches ? ` · ${matches}` : ''}${names ? ` · ${names}` : ''}`;
+}
+
 function JournalList() {
   const to = useStudentPath();
   const { report } = useStudentFile();
   const [query, setQuery] = useState('');
   const cards = searchStudentJournal(report, query).map(viewJournalEntry);
   const games = matchingGameTags(report.competition, query);
+  const results = matchingResults(report.competition, query);
   return (
     <main className="student student-frame">
       <StudentMarks />
@@ -484,7 +511,7 @@ function JournalList() {
             <input
               aria-label="Search journal"
               value={query}
-              placeholder="Technique, note, or later note"
+              placeholder="Technique, note, opponent, or tournament"
               onChange={(event) => setQuery(event.target.value)}
             />
           </label>
@@ -503,6 +530,16 @@ function JournalList() {
                   </p>
                 );
               })}
+            </section>
+          ) : null}
+          {query.trim() && results.length ? (
+            <section className="ink" aria-label="Competition results">
+              {results.map((result) => (
+                <p key={result.id}>
+                  <Link to={to('/student/results')}>{result.tournamentName}</Link>
+                  {resultSearchLine(result)}
+                </p>
+              ))}
             </section>
           ) : null}
           {cards.length === 0 ? <p className="student-quiet">No cards match.</p> : null}
