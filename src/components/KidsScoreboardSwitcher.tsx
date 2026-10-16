@@ -11,7 +11,7 @@ import {
   type KidsSkinId,
 } from '../lib/kidsScoreboard';
 
-/** Toolbar Skin control. One button opens thumbnails. The pinned footer bar is gone. */
+/** Skin control under the bracket. One button opens thumbnails. */
 export function KidsScoreboardSwitcher({
   prefs,
   suppressed,
@@ -30,16 +30,37 @@ export function KidsScoreboardSwitcher({
     const root = rootRef.current;
     const picker = pickerRef.current;
     if (!showing || !root || !picker) return;
-    const anchor = root.getBoundingClientRect();
-    const width = Math.min(360, window.innerWidth - 16);
-    let left = anchor.left;
-    if (left + width > window.innerWidth - 8) left = window.innerWidth - 8 - width;
-    if (left < 8) left = 8;
-    picker.style.position = 'fixed';
-    picker.style.top = `${Math.round(anchor.bottom + 6)}px`;
-    picker.style.left = `${Math.round(left)}px`;
-    picker.style.width = `${Math.round(width)}px`;
-    picker.style.right = 'auto';
+    const place = () => {
+      const anchor = root.getBoundingClientRect();
+      const width = Math.min(360, window.innerWidth - 16);
+      let left = anchor.left;
+      if (left + width > window.innerWidth - 8) left = window.innerWidth - 8 - width;
+      if (left < 8) left = 8;
+      const margin = 6;
+      const height = picker.offsetHeight;
+      const spaceBelow = window.innerHeight - anchor.bottom - margin;
+      const spaceAbove = anchor.top - margin;
+      const openUp = spaceBelow < height && spaceAbove > spaceBelow;
+      picker.style.position = 'fixed';
+      picker.style.zIndex = '32';
+      picker.style.left = `${Math.round(left)}px`;
+      picker.style.width = `${Math.round(width)}px`;
+      picker.style.right = 'auto';
+      if (openUp) {
+        picker.style.top = 'auto';
+        picker.style.bottom = `${Math.round(Math.max(8, window.innerHeight - anchor.top + margin))}px`;
+      } else {
+        picker.style.bottom = 'auto';
+        picker.style.top = `${Math.round(anchor.bottom + margin)}px`;
+      }
+    };
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
   }, [showing]);
 
   useEffect(() => {

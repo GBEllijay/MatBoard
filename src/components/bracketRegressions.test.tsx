@@ -617,6 +617,133 @@ test('the kids Skin picker stays on Pro and Coach Unlimited, and off plain Coach
   resetTournament();
 });
 
+test('bracket controls sit under the board and each one still clicks', async () => {
+  localStorage.setItem(PRO_UNLOCK_STORAGE_KEY, '1');
+  localStorage.setItem('advantage.coachUnlocked', '1');
+  localStorage.setItem('matboard.bracketTheme.v1', 'bright');
+  resetTournament();
+  setCompetitorCount(16);
+  setTournamentTitle('Stars & unicorns');
+  fillSeedNames([
+    'Ada Cruz',
+    'Bea Ortiz',
+    'Cam Diaz',
+    'Dee Kim',
+    'Eli Park',
+    'Faye Cho',
+    'Gus Hale',
+    'Hana Ito',
+    'Ian Brooks',
+    'Jade Nguyen',
+    'Kai Silva',
+    'Luz Marin',
+    'Max Patel',
+    'Noa Berg',
+    'Omar Shah',
+    'Pia Rossi',
+  ]);
+  setMatchOutcome('r16-0', 'a', { call: 'win', method: 'points' }, { toggle: false });
+  setKidsEnabled(true);
+  setKidsSkin('unicorns');
+
+  let fullscreenCalls = 0;
+  const enterFullscreen = () => {
+    fullscreenCalls += 1;
+    return Promise.resolve();
+  };
+  document.documentElement.requestFullscreen = enterFullscreen;
+  Element.prototype.requestFullscreen = enterFullscreen;
+  Object.defineProperty(document, 'fullscreenEnabled', { configurable: true, get: () => true });
+
+  const mounted = mount(<TournamentPage />, '/tournament?from=suite');
+  try {
+    await settle();
+    const main = mounted.host.querySelector('main');
+    assert.equal(main?.classList.contains('tournament--kids-unicorns'), true);
+    const bar = mounted.host.querySelector('.tournament__bar');
+    const tools = mounted.host.querySelector('.tournament__tools');
+    const bracket = mounted.host.querySelector('.bracket');
+    assert.ok(bar instanceof HTMLElement);
+    assert.ok(tools instanceof HTMLElement);
+    assert.ok(bracket instanceof HTMLElement);
+    assert.equal(bar.querySelector('.tournament__actions'), null, 'header keeps seed info without the control bar');
+    assert.ok(bar.querySelector('[aria-label="Division or class name"]') instanceof HTMLInputElement);
+    assert.ok(bar.querySelector('.tournament__roundline'));
+    assert.equal(tools.getAttribute('aria-label'), 'Bracket controls');
+    assert.ok(
+      bracket.compareDocumentPosition(tools) & Node.DOCUMENT_POSITION_FOLLOWING,
+      'controls follow the bracket',
+    );
+
+    const control = (label: string) =>
+      [...tools.querySelectorAll('button')].find((button) => button.textContent?.trim() === label);
+    for (const label of ['Skin', 'Bright', 'Dark', '16', 'Edit names', 'Fill from check-in', 'Undo last result', 'Reset']) {
+      assert.ok(control(label), `${label} is under the bracket`);
+    }
+    const save = tools.querySelector('.tournament__save-btn');
+    assert.ok(save instanceof HTMLButtonElement, 'Save is under the bracket');
+    assert.equal(save.disabled, false);
+    const fullscreen = tools.querySelector('.play-fs');
+    assert.ok(fullscreen instanceof HTMLButtonElement, 'Fullscreen is under the bracket');
+
+    const click = async (button: HTMLElement) => {
+      await act(async () => {
+        button.click();
+      });
+      await settle();
+    };
+    const closeSheet = async () => {
+      const close = [...document.querySelectorAll('.sheet__head button')].find(
+        (button) => button.textContent?.trim() === 'Close',
+      );
+      assert.ok(close instanceof HTMLElement);
+      await click(close);
+      assert.equal(document.querySelector('.sheet'), null);
+    };
+
+    await click(control('Dark')!);
+    assert.equal(main?.classList.contains('tournament--dark'), true);
+    await click(control('Bright')!);
+    assert.equal(main?.classList.contains('tournament--bright'), true);
+
+    await click(control('16')!);
+    assert.equal(document.querySelector('.sheet h2')?.textContent, 'Bracket size');
+    await closeSheet();
+
+    await click(save);
+    assert.equal(document.querySelector('.sheet h2')?.textContent, 'Saved brackets');
+    await closeSheet();
+
+    await click(control('Edit names')!);
+    assert.equal(document.querySelector('.sheet h2')?.textContent, 'Competitor names');
+    await closeSheet();
+
+    await click(control('Fill from check-in')!);
+    assert.equal(document.querySelector('.sheet h2')?.textContent, 'Fill from check-in');
+    await closeSheet();
+
+    assert.equal(control('Undo last result')?.disabled, false);
+    await click(control('Undo last result')!);
+    assert.equal(getTournament().results['r16-0'], undefined);
+    assert.equal(slotName(getTournament(), 'r16-0-a'), 'Ada Cruz');
+
+    await click(control('Reset')!);
+    assert.equal(document.querySelector('.sheet h2')?.textContent, 'Reset this bracket?');
+    await closeSheet();
+    assert.equal(slotName(getTournament(), 'r16-0-a'), 'Ada Cruz');
+
+    await click(control('Skin')!);
+    assert.ok(document.querySelector('.kids-skin__picker'), 'Skin picker opens from under the bracket');
+    assert.equal(document.querySelectorAll('.kids-skin__thumb').length, 6);
+
+    await click(fullscreen);
+    assert.equal(fullscreenCalls, 1);
+  } finally {
+    unmount(mounted);
+    resetTournament();
+  }
+});
+
 test('Skin stays shut while a sheet is open and still opens again after it closes', async () => {
   const mounted = mount(
     <KidsScoreboardSwitcher

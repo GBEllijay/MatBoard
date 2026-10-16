@@ -276,103 +276,12 @@ export function TournamentPage() {
             />
           </label>
         </div>
-        <div className="tournament__actions">
-          {kidsSkins ? <KidsScoreboardSwitcher prefs={kids} suppressed={skinButtonSuppressed} /> : null}
-          {plainCoach ? null : (
-            <div className="tournament__theme" role="radiogroup" aria-label="Bracket theme">
-              <button
-                type="button"
-                role="radio"
-                aria-checked={theme === 'bright'}
-                className={`chip${theme === 'bright' ? ' chip--on' : ''}`}
-                onClick={() => setBracketTheme('bright')}
-              >
-                Bright
-              </button>
-              <button
-                type="button"
-                role="radio"
-                aria-checked={theme === 'dark'}
-                className={`chip${theme === 'dark' ? ' chip--on' : ''}`}
-                onClick={() => setBracketTheme('dark')}
-              >
-                Dark
-              </button>
-            </div>
-          )}
-          <button
-            type="button"
-            className="btn btn--ghost"
-            onClick={() => {
-              setCustomSize(String(tournament.size));
-              setPendingPlacement(null);
-              setSizeOpen(true);
-            }}
-          >
-            {placement === 'lineup' ? `Lineup ${tournament.size}` : tournament.size}
-          </button>
-          <button type="button" className="btn btn--ghost tournament__save-btn" onClick={openSaved}>
-            {named ? savedLabel : 'Save'}
-          </button>
-          <button
-            type="button"
-            className="btn btn--ghost"
-            onClick={() => {
-              setPasteDraft('');
-              setNamesOpen(true);
-            }}
-          >
-            Edit names
-          </button>
-          <button type="button" className="btn btn--ghost" onClick={() => setCheckInOpen(true)}>
-            Fill from check-in
-          </button>
-          <button
-            type="button"
-            className={`btn${undoReady ? ' btn--blue' : ' btn--ghost'}`}
-            disabled={!undoReady}
-            onClick={() => undoLastOutcome()}
-          >
-            Undo last result
-          </button>
-          <button
-            type="button"
-            className="btn btn--ghost"
-            disabled={!canReset}
-            onClick={() => setConfirmReset(true)}
-          >
-            Reset
-          </button>
-          <FullscreenChip
-            supported={fs.supported}
-            active={fs.active}
-            nudge={fs.showFallback}
-            shortcut={fs.tvStation}
-            onToggle={() => void fs.toggle()}
-          />
-        </div>
       </header>
-
-      {fillPlaced != null ? (
-        <p className="tournament__fill-note" role="status">
-          <span>Placed {fillPlaced} from check-in.</span>
-          <button
-            type="button"
-            className="btn btn--white"
-            onClick={() => {
-              undoCheckedInFill();
-              setFillPlaced(null);
-            }}
-          >
-            Undo
-          </button>
-        </p>
-      ) : null}
 
       <p className="tournament__hint">
         {kidsOn ? (
           <>
-            {KIDS_BRACKETS_SKINS_LABEL} paints this bracket. Skin in the toolbar opens the backgrounds.
+            {KIDS_BRACKETS_SKINS_LABEL} paints this bracket. Skin under the bracket opens the backgrounds.
             Grand Master Carlos stays in the corner after a champion, with "Bom trabalho!" Turn him off from Skin.
           </>
         ) : (
@@ -473,6 +382,98 @@ export function TournamentPage() {
               ))}
             </div>
           ) : null}
+          </div>
+        </div>
+        <div className="tournament__tools" role="region" aria-label="Bracket controls">
+          {fillPlaced != null ? (
+            <p className="tournament__fill-note" role="status">
+              <span>Placed {fillPlaced} from check-in.</span>
+              <button
+                type="button"
+                className="btn btn--white"
+                onClick={() => {
+                  undoCheckedInFill();
+                  setFillPlaced(null);
+                }}
+              >
+                Undo
+              </button>
+            </p>
+          ) : null}
+          <div className="tournament__actions">
+            {kidsSkins ? <KidsScoreboardSwitcher prefs={kids} suppressed={skinButtonSuppressed} /> : null}
+            {plainCoach ? null : (
+              <div className="tournament__theme" role="radiogroup" aria-label="Bracket theme">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={theme === 'bright'}
+                  className={`chip${theme === 'bright' ? ' chip--on' : ''}`}
+                  onClick={() => setBracketTheme('bright')}
+                >
+                  Bright
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={theme === 'dark'}
+                  className={`chip${theme === 'dark' ? ' chip--on' : ''}`}
+                  onClick={() => setBracketTheme('dark')}
+                >
+                  Dark
+                </button>
+              </div>
+            )}
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => {
+                setCustomSize(String(tournament.size));
+                setPendingPlacement(null);
+                setSizeOpen(true);
+              }}
+            >
+              {placement === 'lineup' ? `Lineup ${tournament.size}` : tournament.size}
+            </button>
+            <button type="button" className="btn btn--ghost tournament__save-btn" onClick={openSaved}>
+              {named ? savedLabel : 'Save'}
+            </button>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => {
+                setPasteDraft('');
+                setNamesOpen(true);
+              }}
+            >
+              Edit names
+            </button>
+            <button type="button" className="btn btn--ghost" onClick={() => setCheckInOpen(true)}>
+              Fill from check-in
+            </button>
+            <button
+              type="button"
+              className={`btn${undoReady ? ' btn--blue' : ' btn--ghost'}`}
+              disabled={!undoReady}
+              onClick={() => undoLastOutcome()}
+            >
+              Undo last result
+            </button>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              disabled={!canReset}
+              onClick={() => setConfirmReset(true)}
+            >
+              Reset
+            </button>
+            <FullscreenChip
+              supported={fs.supported}
+              active={fs.active}
+              nudge={fs.showFallback}
+              shortcut={fs.tvStation}
+              onToggle={() => void fs.toggle()}
+            />
           </div>
         </div>
       </div>

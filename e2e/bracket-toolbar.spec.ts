@@ -79,6 +79,7 @@ function chip(page: Page, label: string) {
 async function hitAtCenter(page: Page, label: string) {
   const button = chip(page, label);
   await expect(button).toBeVisible();
+  await button.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'nearest' }));
   const box = await button.boundingBox();
   expect(box, label).toBeTruthy();
   const point = { x: box!.x + box!.width / 2, y: box!.y + box!.height / 2 };
@@ -126,7 +127,34 @@ test('seat-bar toolbar chips receive the pointer, and only Fullscreen asks for f
     await page.goto('/tournament?from=suite');
     await expect(page.getByRole('region', { name: 'Instructor seat' })).toContainText('coach-bot-three@example.com');
     await expect(page.getByLabel('Division or class name')).toHaveValue('Sim Back Attacks Mock');
+    await expect(page.locator('.tournament__bar .tournament__actions')).toHaveCount(0);
+    await expect(page.locator('.tournament__bar').getByLabel('Division or class name')).toBeVisible();
+    const order = await page.evaluate(() => {
+      const bracket = document.querySelector('.bracket');
+      const tools = document.querySelector('.tournament__tools');
+      if (!bracket || !tools) return null;
+      const bracketBox = bracket.getBoundingClientRect();
+      const toolsBox = tools.getBoundingClientRect();
+      return {
+        toolsAfter: Boolean(bracket.compareDocumentPosition(tools) & Node.DOCUMENT_POSITION_FOLLOWING),
+        toolsBelow: toolsBox.top >= bracketBox.bottom - 8,
+      };
+    });
+    expect(order?.toolsAfter, 'controls follow the bracket').toBe(true);
+    expect(order?.toolsBelow, 'controls sit under the bracket').toBe(true);
     for (const label of CHIPS) await hitAtCenter(page, label);
+    const fullscreen = page.locator('.tournament__tools .play-fs');
+    if (await fullscreen.count()) {
+      await fullscreen.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'nearest' }));
+      await expect(fullscreen).toBeVisible();
+      const fsBox = await fullscreen.boundingBox();
+      expect(fsBox).toBeTruthy();
+      const fsHit = await page.evaluate(({ x, y }) => {
+        const el = document.elementFromPoint(x, y);
+        return el instanceof HTMLElement ? el.closest('button')?.className ?? '' : '';
+      }, { x: fsBox!.x + fsBox!.width / 2, y: fsBox!.y + fsBox!.height / 2 });
+      expect(fsHit, 'Fullscreen center').toContain('play-fs');
+    }
   }
 
   await page.setViewportSize({ width: 1280, height: 690 });
