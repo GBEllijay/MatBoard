@@ -9,10 +9,12 @@ import { RosterNameField } from './RosterNameField.tsx';
 import { MatchDisplayPage } from '../pages/MatchDisplay.tsx';
 import { TournamentPage } from '../pages/Tournament.tsx';
 import { openBracketBout } from '../lib/bracketBout.ts';
-import { kidsBracketScoring, kidsSkinButtonSuppressed, setKidsEnabled, setKidsSkin } from '../lib/kidsScoreboard.ts';
+import { setBracketTheme } from '../lib/bracketTheme.ts';
+import { KIDS_SKINS, kidsBracketScoring, kidsSkinButtonSuppressed, setKidsEnabled, setKidsSkin } from '../lib/kidsScoreboard.ts';
 import { PRO_UNLOCK_STORAGE_KEY } from '../lib/proUnlock.ts';
 import { addStudent, getRoster, resetRoster } from '../lib/rosterStore.ts';
 import {
+  DEFAULT_BRACKET_HEADLINE,
   fillSeedNames,
   getTournament,
   resetTournament,
@@ -21,6 +23,7 @@ import {
   setMatchOutcome,
   setTournamentTitle,
   slotName,
+  STORAGE_KEY,
 } from '../lib/tournamentStore.ts';
 
 const dom = new Window({ url: 'http://localhost/tournament?from=suite' });
@@ -666,9 +669,19 @@ test('bracket controls sit under the board and each one still clicks', async () 
     assert.ok(bar instanceof HTMLElement);
     assert.ok(tools instanceof HTMLElement);
     assert.ok(bracket instanceof HTMLElement);
-    assert.equal(bar.querySelector('.tournament__actions'), null, 'header keeps seed info without the control bar');
-    assert.ok(bar.querySelector('[aria-label="Division or class name"]') instanceof HTMLInputElement);
-    assert.ok(bar.querySelector('.tournament__roundline'));
+    assert.equal(bar.querySelector('.tournament__actions'), null, 'header no longer holds the control bar');
+    assert.equal(bar.querySelector('.tournament__center'), null, 'seed line left the header');
+    assert.equal(bar.querySelector('[aria-label="Division or class name"]'), null);
+    const center = tools.querySelector('.tournament__center');
+    assert.ok(center instanceof HTMLElement);
+    assert.ok(center.querySelector('[aria-label="Division or class name"]') instanceof HTMLInputElement);
+    assert.ok(center.querySelector('.tournament__roundline'));
+    const skinButton = [...tools.querySelectorAll('button')].find((button) => button.textContent?.trim() === 'Skin');
+    assert.ok(skinButton);
+    assert.ok(
+      center.compareDocumentPosition(skinButton) & Node.DOCUMENT_POSITION_FOLLOWING,
+      'seed line sits above Skin',
+    );
     assert.equal(tools.getAttribute('aria-label'), 'Bracket controls');
     assert.ok(
       bracket.compareDocumentPosition(tools) & Node.DOCUMENT_POSITION_FOLLOWING,
@@ -741,6 +754,142 @@ test('bracket controls sit under the board and each one still clicks', async () 
   } finally {
     unmount(mounted);
     resetTournament();
+  }
+});
+
+test('the bracket title is editable on every skin and never shows the skin name', async () => {
+  localStorage.setItem(PRO_UNLOCK_STORAGE_KEY, '1');
+  localStorage.setItem('advantage.coachUnlocked', '1');
+  localStorage.setItem('matboard.bracketTheme.v1', 'bright');
+  resetTournament();
+  setKidsEnabled(true);
+  setKidsSkin('space');
+  setBracketTheme('bright');
+
+  const headline = (host: ParentNode) => host.querySelector('[aria-label="Tournament title"]');
+
+  const kids = mount(<TournamentPage />, '/tournament?from=suite');
+  try {
+    await settle();
+    const first = headline(kids.host);
+    assert.ok(first instanceof HTMLInputElement);
+    assert.equal(first.value, DEFAULT_BRACKET_HEADLINE);
+    assert.equal(kids.host.querySelector('.kids-banner__title'), null);
+    assert.equal(kids.host.textContent?.includes("Kids' Scoreboards"), false);
+    const bracket = kids.host.querySelector('.bracket');
+    const back = kids.host.querySelector('.play-exit');
+    assert.ok(bracket instanceof HTMLElement);
+    assert.ok(back instanceof HTMLElement);
+    assert.ok(first.compareDocumentPosition(bracket) & Node.DOCUMENT_POSITION_FOLLOWING);
+    assert.equal(kids.host.querySelector('.tournament__bar .tournament__center'), null);
+    const hint = kids.host.querySelector('.empty-hint');
+    assert.ok(hint instanceof HTMLElement);
+    assert.ok(bracket.compareDocumentPosition(hint) & Node.DOCUMENT_POSITION_FOLLOWING);
+    const hintEdit = [...hint.querySelectorAll('button')].find((button) => button.textContent?.trim() === 'Edit names');
+    assert.ok(hintEdit instanceof HTMLElement);
+    await act(async () => {
+      hintEdit.click();
+    });
+    await settle();
+    assert.equal(document.querySelector('.sheet h2')?.textContent, 'Competitor names');
+    const close = [...document.querySelectorAll('.sheet__head button')].find((button) => button.textContent?.trim() === 'Close');
+    assert.ok(close instanceof HTMLElement);
+    await act(async () => {
+      close.click();
+    });
+    await settle();
+    assert.equal(document.querySelector('.sheet'), null);
+
+    setInputValue(first, 'Spring Open');
+    await settle();
+    assert.equal(getTournament().headline, 'Spring Open');
+    assert.equal(getTournament().title, '');
+
+    for (const skin of KIDS_SKINS) {
+      setKidsSkin(skin.id);
+      await settle();
+      const current = headline(kids.host);
+      assert.ok(current instanceof HTMLInputElement);
+      assert.equal(current.value, 'Spring Open');
+      assert.equal(kids.host.querySelector('main')?.classList.contains(`tournament--kids-${skin.id}`), true);
+      assert.equal(current.closest('.bracket-headline')?.textContent?.includes(skin.label), false);
+    }
+
+    setBracketTheme('dark');
+    await settle();
+    assert.equal(kids.host.querySelector('main')?.classList.contains('tournament--dark'), true);
+    assert.equal((headline(kids.host) as HTMLInputElement).value, 'Spring Open');
+
+    const division = kids.host.querySelector('[aria-label="Division or class name"]');
+    assert.ok(division instanceof HTMLInputElement);
+    assert.equal(division.closest('.tournament__tools') instanceof HTMLElement, true);
+    setInputValue(division, 'Kids Gi');
+    await settle();
+    assert.equal(getTournament().title, 'Kids Gi');
+    assert.equal(getTournament().headline, 'Spring Open');
+
+    setInputValue(headline(kids.host) as HTMLInputElement, '');
+    await settle();
+    assert.equal(getTournament().headline, '');
+    const raw = localStorage.getItem(STORAGE_KEY);
+    assert.ok(raw);
+    const saved = JSON.parse(raw) as {
+      activeId: string;
+      saved: { id: string; board: { headline?: string; title?: string } }[];
+    };
+    const active = saved.saved.find((row) => row.id === saved.activeId);
+    assert.equal(active?.board.headline, '');
+    assert.equal(active?.board.title, 'Kids Gi');
+  } finally {
+    unmount(kids);
+  }
+
+  const kept = mount(<TournamentPage />, '/tournament?from=suite');
+  try {
+    await settle();
+    const input = headline(kept.host);
+    assert.ok(input instanceof HTMLInputElement);
+    assert.equal(input.value, '');
+    assert.equal(kept.host.querySelector('[aria-label="Division or class name"]') instanceof HTMLInputElement, true);
+    assert.equal((kept.host.querySelector('[aria-label="Division or class name"]') as HTMLInputElement).value, 'Kids Gi');
+  } finally {
+    unmount(kept);
+  }
+
+  resetTournament();
+  setKidsEnabled(false);
+  setBracketTheme('bright');
+  const adult = mount(<TournamentPage />, '/tournament?from=suite');
+  try {
+    await settle();
+    const input = headline(adult.host);
+    assert.ok(input instanceof HTMLInputElement);
+    assert.equal(input.value, DEFAULT_BRACKET_HEADLINE);
+    assert.equal(adult.host.querySelector('main')?.classList.contains('tournament--kids'), false);
+    assert.equal(adult.host.querySelector('.tournament__tools .tournament__center') instanceof HTMLElement, true);
+    setInputValue(input, 'Adult Open');
+    await settle();
+    assert.equal(getTournament().headline, 'Adult Open');
+  } finally {
+    unmount(adult);
+    resetTournament();
+  }
+
+  setKidsEnabled(true);
+  const coach = mount(<TournamentPage />, '/tournament?from=coach');
+  try {
+    await settle();
+    const input = headline(coach.host);
+    assert.ok(input instanceof HTMLInputElement);
+    assert.equal(input.value, DEFAULT_BRACKET_HEADLINE);
+    assert.equal(coach.host.querySelector('.tournament__tools .tournament__roundline') instanceof HTMLElement, true);
+    assert.equal(coach.host.querySelector('.tournament__bar .tournament__roundline'), null);
+    assert.equal([...coach.host.querySelectorAll('button')].some((button) => button.textContent?.trim() === 'Skin'), false);
+  } finally {
+    unmount(coach);
+    resetTournament();
+    setKidsEnabled(false);
+    setBracketTheme('bright');
   }
 });
 

@@ -1,20 +1,9 @@
 import { useState } from 'react';
 import { useInterval } from '../hooks/useClock';
 import { formatMss } from '../lib/format';
-import { KIDS_SCOREBOARDS_NAME, kidsSkinLabel, type KidsSkinId } from '../lib/kidsScoreboard';
 import { remainingNow, type MatchState } from '../lib/matchStore';
+import { BRACKET_NAME_MAX } from '../lib/tournamentStore';
 import { CarlosCheer } from './CarlosCheer';
-
-function SkinMark() {
-  return (
-    <svg className="kids-banner__mark" viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        fill="currentColor"
-        d="M8.2 3.2c1.6 0 2.6 1.3 2.6 2.8 0 1-.4 1.8-1 2.4.8.3 1.7.4 2.5.2 1.2-.3 2.2-1.2 2.6-2.3.5-1.4 1.8-2.3 3.3-2.1 1.6.2 2.8 1.6 2.8 3.3 0 1.2-.6 2.2-1.5 2.8 1 .7 1.7 1.8 1.7 3.1 0 2.1-1.8 3.6-3.8 3.4-1.1-.1-2-.7-2.6-1.5-.5 1.3-1.6 2.3-3.1 2.6-2.2.5-4.3-.7-5.1-2.7-.3.2-.7.3-1.1.3-1.5 0-2.7-1.2-2.7-2.7 0-.8.3-1.5.9-2-.8-.5-1.3-1.4-1.3-2.4 0-1.6 1.3-2.9 2.9-2.9.5 0 1 .1 1.4.4.2-1.6 1.4-2.7 3.1-2.7Z"
-      />
-    </svg>
-  );
-}
 
 function KidsLiveClock({
   match,
@@ -27,35 +16,47 @@ function KidsLiveClock({
   return <span className="kids-live__clock">{formatMss(seconds)}</span>;
 }
 
+/** Name painted on the bracket. Tap the pill to type. Blank stays blank. */
+export function BracketHeadline({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="bracket-headline">
+      <label className="bracket-headline__pill">
+        <input
+          value={value}
+          maxLength={BRACKET_NAME_MAX}
+          aria-label="Tournament title"
+          autoComplete="off"
+          spellCheck={false}
+          enterKeyHint="done"
+          onChange={(event) => onChange(event.target.value)}
+        />
+      </label>
+    </div>
+  );
+}
+
+/** Live bout under the title. The title itself is BracketHeadline on every skin. */
 export function KidsBracketChrome({
-  skin,
-  win,
   liveLine,
   liveMatch,
 }: {
-  skin: KidsSkinId;
-  win: boolean;
   liveLine: string | null;
   liveMatch: Pick<MatchState, 'running' | 'startedAt' | 'remainingMs'> | null;
 }) {
-  const label = kidsSkinLabel(skin);
+  if (!liveLine || !liveMatch) return null;
   return (
     <div className="kids-banner">
-      <p className="kids-banner__title">
-        <SkinMark />
-        <span>
-          {KIDS_SCOREBOARDS_NAME} · {label}
-          {win ? ' · Win' : ''}
-        </span>
-        <SkinMark />
+      <p className="kids-live" role="status">
+        <span className="kids-live__badge">LIVE</span>
+        <span>Current Match: {liveLine}</span>
+        <KidsLiveClock match={liveMatch} />
       </p>
-      {liveLine && liveMatch ? (
-        <p className="kids-live" role="status">
-          <span className="kids-live__badge">LIVE</span>
-          <span>Current Match: {liveLine}</span>
-          <KidsLiveClock match={liveMatch} />
-        </p>
-      ) : null}
     </div>
   );
 }

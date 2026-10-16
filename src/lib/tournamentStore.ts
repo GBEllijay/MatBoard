@@ -23,6 +23,8 @@ export const MAX_COMPETITORS = PRO_MAX_COMPETITORS;
 export const SIZE_PRESETS = [2, 3, 4, 5, 7, 8, 16] as const;
 export const PRO_SIZE_PRESETS = [2, 3, 4, 5, 7, 8, 16, 32, 64] as const;
 export const BRACKET_NAME_MAX = 80;
+/** Header on the bracket. A new board starts here. Blank is a real saved value. */
+export const DEFAULT_BRACKET_HEADLINE = 'Tournament';
 
 export type TreeSize = 2 | 4 | 8 | 16 | 32 | 64;
 export type RoundPrefix = 'r64' | 'r32' | 'r16' | 'qf' | 'sf' | 'final';
@@ -94,7 +96,10 @@ export type TournamentState = {
   size: number;
   /** Draw rules. Missing values load as the seeded draw. */
   placement: PlacementStyle;
+  /** Division or class. Filters check-in and labels the seed line. */
   title: string;
+  /** Editable name painted on the bracket. Not the skin, and not the division. */
+  headline: string;
   entries: Record<string, string>;
   results: Partial<Record<BracketMatchId, BoutResult>>;
   /** Most recent bout written from Scoreboard or bracket marks. Undo clears that bout and later rounds filled from it. */
@@ -395,12 +400,18 @@ export function slotName(current: TournamentState, id: SlotId | string): string 
   return current.entries[id] ?? '';
 }
 
+export function bracketHeadline(value: unknown): string {
+  if (typeof value !== 'string') return DEFAULT_BRACKET_HEADLINE;
+  return value.slice(0, BRACKET_NAME_MAX);
+}
+
 export function defaultTournament(size: number = TOURNAMENT_SIZE): TournamentState {
   return {
     version: 1,
     size: clampCompetitorCount(size),
     placement: 'ibjjf',
     title: '',
+    headline: DEFAULT_BRACKET_HEADLINE,
     entries: {},
     results: {},
     lastOutcomeMatchId: null,
@@ -483,6 +494,7 @@ export function normalizeBoard(raw: unknown): TournamentState {
     size,
     placement: placementOf(parsed),
     title: typeof parsed.title === 'string' ? parsed.title : '',
+    headline: bracketHeadline(parsed.headline),
     entries,
     results,
     lastOutcomeMatchId: isKnownMatchId(last) && allowedMatches.has(last) ? last : null,
@@ -548,6 +560,7 @@ function clone(current: TournamentState): TournamentState {
     size: clampCompetitorCount(current.size),
     placement: placementOf(current),
     title: current.title,
+    headline: bracketHeadline(current.headline),
     entries: { ...current.entries },
     results: { ...current.results },
     lastOutcomeMatchId: current.lastOutcomeMatchId ?? null,
@@ -815,6 +828,7 @@ export function applyCompetitorCount(
   const next = defaultTournament(nextSize);
   next.placement = placementOf(current);
   next.title = current.title;
+  next.headline = bracketHeadline(current.headline);
   const dest = seedSlots(next);
   names.forEach((name, index) => {
     if (index < dest.length && name.trim()) writeSlot(next, dest[index], name);
@@ -829,6 +843,7 @@ export function applyPlacement(current: TournamentState, placement: PlacementSty
   const next = defaultTournament(current.size);
   next.placement = nextStyle;
   next.title = current.title;
+  next.headline = bracketHeadline(current.headline);
   const dest = seedSlots(next);
   names.forEach((name, index) => {
     if (index < dest.length && name.trim()) writeSlot(next, dest[index], name);
@@ -890,6 +905,10 @@ export function setTournamentTitle(title: string): void {
   patchActive((board) => ({ ...clone(board), title }));
 }
 
+export function setBracketHeadline(headline: string): void {
+  patchActive((board) => ({ ...clone(board), headline: bracketHeadline(headline) }));
+}
+
 export function setSlotName(id: SlotId, name: string): void {
   patchActive((board) => applySlotName(board, id, name));
 }
@@ -900,8 +919,9 @@ export function fillSeedNames(names: readonly string[], startIndex = 0): void {
 
 /**
  * Replace the open draw with these seed names. Size follows the name count
- * (clamped to this board's max). Results on this board clear. Title and
- * placement stay. Names land through the same seed slots as a manual fill.
+ * (clamped to this board's max). Results on this board clear. Division,
+ * headline, and placement stay. Names land through the same seed slots as a
+ * manual fill.
  */
 export function applyCheckedInBracket(
   current: TournamentState,
@@ -914,6 +934,7 @@ export function applyCheckedInBracket(
   const next = defaultTournament(size);
   next.placement = placementOf(current);
   next.title = current.title;
+  next.headline = bracketHeadline(current.headline);
   return applySeedNames(next, filled.slice(0, size), 0);
 }
 

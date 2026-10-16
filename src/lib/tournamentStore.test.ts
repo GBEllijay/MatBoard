@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   OWNER_BRACKET_CLOUD,
+  applyCheckedInBracket,
   applyClearResult,
   applyCompetitorCount,
   applyDeleteBracket,
@@ -17,6 +18,7 @@ import {
   bracketRoundLine,
   byeCountFor,
   byeSlotIds,
+  DEFAULT_BRACKET_HEADLINE,
   defaultLibrary,
   defaultTournament,
   displayBoutName,
@@ -30,6 +32,7 @@ import {
   maxCompetitors,
   parseNameList,
   nextSlot,
+  normalizeBoard,
   normalizeLibrary,
   seedPlaceholder,
   seedSlots,
@@ -345,6 +348,47 @@ describe('3-person bracket', () => {
     const back = applyPlacement(three, 'ibjjf');
     assert.equal(isThreePersonBracket(back), true);
     assert.equal(back.placement, 'ibjjf');
+  });
+});
+
+describe('bracket headline', () => {
+  it('defaults to Tournament, keeps a blank name, and stays with the bracket', () => {
+    assert.equal(defaultTournament().headline, DEFAULT_BRACKET_HEADLINE);
+    assert.equal(defaultTournament().title, '');
+    const legacy = normalizeBoard({
+      version: 1,
+      size: 16,
+      title: 'Kids Gi',
+      entries: { 'r16-0-a': 'Alex' },
+      results: {},
+    });
+    assert.equal(legacy.headline, 'Tournament');
+    assert.equal(legacy.title, 'Kids Gi');
+    const blank = normalizeBoard({ ...legacy, headline: '' });
+    assert.equal(blank.headline, '');
+    const named = { ...defaultTournament(16), headline: 'Spring Open', title: 'Kids Gi' };
+    assert.equal(applyCompetitorCount(named, 8).headline, 'Spring Open');
+    assert.equal(applyCompetitorCount(named, 8).title, 'Kids Gi');
+    assert.equal(applyPlacement(named, 'lineup').headline, 'Spring Open');
+    const filled = applyCheckedInBracket(named, ['Ana', 'Bea', 'Cam', 'Dee']);
+    assert.equal(filled.headline, 'Spring Open');
+    assert.equal(filled.title, 'Kids Gi');
+    assert.equal(filled.size, 4);
+    const cleared = applyCheckedInBracket({ ...named, headline: '' }, ['Ana', 'Bea']);
+    assert.equal(cleared.headline, '');
+    assert.equal(normalizeBoard({ ...named, headline: 'x'.repeat(200) }).headline.length, 80);
+  });
+
+  it('stores a different headline on each saved bracket', () => {
+    let lib = defaultLibrary();
+    lib.saved[0].board = { ...lib.saved[0].board, headline: 'Gi Open' };
+    lib = applyNewBracket(lib, 4);
+    const second = lib.saved.find((row) => row.id === lib.activeId);
+    assert.ok(second);
+    second.board = { ...second.board, headline: '' };
+    lib = applySwitchBracket(lib, lib.saved[0].id);
+    assert.equal(lib.saved[0].board.headline, 'Gi Open');
+    assert.equal(lib.saved.find((row) => row.id !== lib.saved[0].id)?.board.headline, '');
   });
 });
 

@@ -127,21 +127,31 @@ test('seat-bar toolbar chips receive the pointer, and only Fullscreen asks for f
     await page.goto('/tournament?from=suite');
     await expect(page.getByRole('region', { name: 'Instructor seat' })).toContainText('coach-bot-three@example.com');
     await expect(page.getByLabel('Division or class name')).toHaveValue('Sim Back Attacks Mock');
+    await expect(page.getByLabel('Tournament title')).toHaveValue('Tournament');
     await expect(page.locator('.tournament__bar .tournament__actions')).toHaveCount(0);
-    await expect(page.locator('.tournament__bar').getByLabel('Division or class name')).toBeVisible();
+    await expect(page.locator('.tournament__bar').getByLabel('Division or class name')).toHaveCount(0);
+    await expect(page.locator('.tournament__tools').getByLabel('Division or class name')).toBeVisible();
     const order = await page.evaluate(() => {
       const bracket = document.querySelector('.bracket');
       const tools = document.querySelector('.tournament__tools');
-      if (!bracket || !tools) return null;
+      const center = document.querySelector('.tournament__tools .tournament__center');
+      const skin = [...document.querySelectorAll('.tournament__tools button')].find(
+        (button) => button.textContent?.trim() === 'Skin',
+      );
+      if (!bracket || !tools || !center || !skin) return null;
       const bracketBox = bracket.getBoundingClientRect();
       const toolsBox = tools.getBoundingClientRect();
+      const centerBox = center.getBoundingClientRect();
+      const skinBox = skin.getBoundingClientRect();
       return {
         toolsAfter: Boolean(bracket.compareDocumentPosition(tools) & Node.DOCUMENT_POSITION_FOLLOWING),
         toolsBelow: toolsBox.top >= bracketBox.bottom - 8,
+        infoAboveSkin: centerBox.bottom <= skinBox.top + 2,
       };
     });
     expect(order?.toolsAfter, 'controls follow the bracket').toBe(true);
     expect(order?.toolsBelow, 'controls sit under the bracket').toBe(true);
+    expect(order?.infoAboveSkin, 'seed line sits above Skin').toBe(true);
     for (const label of CHIPS) await hitAtCenter(page, label);
     const fullscreen = page.locator('.tournament__tools .play-fs');
     if (await fullscreen.count()) {
