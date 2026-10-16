@@ -325,9 +325,9 @@ test('an expired or narrow Drive sign-in asks to reconnect, then browse returns'
   await card.getByRole('button', { name: 'Disconnect', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Google Drive', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'OneDrive', exact: true })).toBeVisible();
-  await expect(page.getByText('Google Photos', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Google Photos', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: /iCloud/ })).toBeVisible();
-  await expect(page.getByText('Coming soon', { exact: true })).toBeVisible();
+  await expect(page.getByText('Coming for launch', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Disconnect', exact: true })).toHaveCount(0);
 });
 

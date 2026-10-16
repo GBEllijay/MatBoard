@@ -3346,7 +3346,6 @@ span.role-plan__mark {
 /* The center Home mark is its own row. Titles, kickers, and header buttons start under it. */
 main:has(> .tier-home) > .roster__bar,
 main:has(> .tier-home) > .techniques__bar,
-main:has(> .tier-home) > .tournament__bar,
 main:has(> .tier-home) > .schedule__bar {
   padding-top: calc(4.7rem + var(--safe-t));
 }

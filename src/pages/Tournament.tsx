@@ -5,7 +5,7 @@ import { EmptyHint } from '../components/EmptyHint';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { KidsBracketChrome, KidsMascotDock } from '../components/KidsBracketChrome';
 import { KidsScoreboardSwitcher } from '../components/KidsScoreboardSwitcher';
-import { SubmenuMarks } from '../components/TierHomeMark';
+import { PlayExitMark } from '../components/PlayExitMark';
 import { useSubmenuBack } from '../hooks/useSubmenuBack';
 import { CheckInFillSheet } from '../components/CheckInFillSheet';
 import { OutcomePickSheet } from '../components/OutcomeCalls';
@@ -258,7 +258,7 @@ export function TournamentPage() {
       className={`tournament tournament--${shownTheme}${kidsOn ? ` tournament--kids tournament--kids-${kids.skin}` : ''}${fs.className ? ` ${fs.className}` : ''}`}
     >
       <BeltRail kind="tournament" />
-      <SubmenuMarks to={exitPath} onExit={exitBoard} />
+      <PlayExitMark to={exitPath} onExit={exitBoard} />
       <header className="tournament__bar">
         <div className="tournament__brand">
           <p className="tournament__eyebrow">{plainCoach ? 'Advantage Coach' : parent.eyebrow}</p>

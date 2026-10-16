@@ -709,6 +709,14 @@ function mergeCompetition(report: StudentProgressReport, incoming: StudentProgre
     }
     current.note = preferText(current.note, weighIn.note, `Weigh-in ${weighIn.id} note was kept.`, conflicts);
   }
+  const previousGoal = local.goalWeight ?? null;
+  local.goalWeight = preferWeight(previousGoal, next.goalWeight ?? null, 'Goal weight was kept.', conflicts);
+  if (previousGoal != null && (next.goalWeight ?? null) != null && (local.goalUnit ?? 'lb') !== (next.goalUnit ?? 'lb')) {
+    conflicts.push('Goal weight unit was kept.');
+  } else if (previousGoal == null && (next.goalWeight ?? null) != null) {
+    local.goalUnit = next.goalUnit === 'kg' ? 'kg' : 'lb';
+  }
+  local.weighDate = preferText(local.weighDate ?? '', next.weighDate ?? '', 'Weigh-in date was kept.', conflicts);
   const resultById = new Map(local.results.map((result) => [result.id, result]));
   for (const result of next.results) {
     const current = resultById.get(result.id);
@@ -1282,6 +1290,9 @@ function readCompetition(
     weighIns,
     results,
     weightUnit: readWeightUnit(competition.weightUnit, 'Weight unit', errors),
+    goalWeight: readOptionalWeight(competition.goalWeight, 'Goal weight', errors),
+    goalUnit: readWeightUnit(competition.goalUnit, 'Goal weight unit', errors),
+    weighDate: readDate(competition.weighDate, 'Competition weigh-in date', errors, false),
   };
 }
 
@@ -2115,6 +2126,29 @@ function writeReportRows(lines: string[], packet: StudentProgressReport): void {
       '',
       weighIn.unit,
       '',
+      '',
+      '',
+      '',
+    ]));
+  }
+  if (competition.goalWeight != null || (competition.weighDate ?? '').trim()) {
+    const goal = competition.goalWeight == null ? '' : `${competition.goalWeight} ${competition.goalUnit === 'kg' ? 'kg' : 'lb'}`;
+    lines.push(csvRow([
+      'Weight chart',
+      packet.studentId,
+      competition.weighDate ?? '',
+      packet.studentId,
+      '',
+      '',
+      'Goal weight',
+      '',
+      '',
+      goal,
+      '',
+      '',
+      '',
+      '',
+      goal,
       '',
       '',
       '',

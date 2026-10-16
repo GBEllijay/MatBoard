@@ -41,6 +41,9 @@ export function emptyCompetition(): StudentCompetition {
     weighIns: [],
     results: [],
     weightUnit: 'lb',
+    goalWeight: null,
+    goalUnit: 'lb',
+    weighDate: '',
   };
 }
 
@@ -54,6 +57,10 @@ export function competitionOf(report: { competition?: StudentCompetition }): Stu
     tournaments: competition.tournaments ?? [],
     weighIns: competition.weighIns ?? [],
     results: competition.results ?? [],
+    weightUnit: competition.weightUnit === 'kg' ? 'kg' : 'lb',
+    goalWeight: competition.goalWeight ?? null,
+    goalUnit: competition.goalUnit === 'kg' ? 'kg' : 'lb',
+    weighDate: competition.weighDate ?? '',
   };
 }
 
@@ -273,6 +280,11 @@ export type ImportedCompetitionPlan = {
   weighIns: WeighIn[];
   results: CompetitionResult[];
   weightUnit: WeightUnit;
+  /** Chart goal. Absent on roster copies saved before the weight chart redesign. */
+  goalWeight?: number | null;
+  goalUnit?: WeightUnit;
+  /** YYYY-MM-DD, or empty. Absent on older roster copies. */
+  weighDate?: string;
   /** Present when the progress file included My rank. */
   rank?: ImportedRank;
 };
@@ -319,6 +331,9 @@ export function competitionSnapshot(report: StudentProgressReport, importedAt: n
       bracket: result.bracket.map((note) => ({ ...note })),
     })),
     weightUnit: competition.weightUnit,
+    goalWeight: competition.goalWeight ?? null,
+    goalUnit: competition.goalUnit === 'kg' ? 'kg' : 'lb',
+    weighDate: competition.weighDate ?? '',
     rank: report.rank
       ? {
           belt: report.profile.belt,
@@ -352,4 +367,101 @@ export function chartPoints(weighIns: readonly WeighIn[], unit: WeightUnit): Cha
     .filter((row) => row.date)
     .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
     .map((row) => ({ date: row.date, value: convertWeight(row.weight, row.unit, unit) }));
+}
+
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+function utcDay(iso: string): number {
+  const [year, month, day] = iso.split('-').map(Number);
+  return Date.UTC(year, month - 1, day);
+}
+
+/** Whole days from `today` to `target`. Negative when the date has passed. */
+export function daysUntil(target: string, today: string): number | null {
+  if (!ISO_DAY.test(target) || !ISO_DAY.test(today)) return null;
+  return Math.round((utcDay(target) - utcDay(today)) / 86_400_000);
+}
+
+export function countdownLabel(days: number): string {
+  if (days === 0) return 'Today';
+  const count = Math.abs(days);
+  const word = count === 1 ? 'day' : 'days';
+  return days > 0 ? `${count} ${word}` : `${count} ${word} ago`;
+}
+
+export type WeightCountdown = {
+  date: string;
+  days: number;
+  source: 'saved' | 'tournament';
+  tournamentName: string;
+};
+
+/** Saved weigh-in date, or the next tournament day when the student has not set one. */
+export function weightCountdown(competition: StudentCompetition, today: string): WeightCountdown | null {
+  const saved = (competition.weighDate ?? '').trim();
+  if (saved) {
+    const days = daysUntil(saved, today);
+    if (days == null) return null;
+    return { date: saved, days, source: 'saved', tournamentName: '' };
+  }
+  const next = [...competition.tournaments]
+    .filter((tournament) => tournament.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name))[0];
+  if (!next) return null;
+  const days = daysUntil(next.date, today);
+  if (days == null) return null;
+  return { date: next.date, days, source: 'tournament', tournamentName: next.name };
+}
+
+export type ResolvedGoal = {
+  weight: number;
+  unit: WeightUnit;
+  source: 'goal' | 'tournament';
+  tournamentName: string;
+};
+
+/** Saved goal, or the next upcoming tournament target when the goal field is empty. */
+export function resolvedGoal(competition: StudentCompetition, today: string): ResolvedGoal | null {
+  if (competition.goalWeight != null) {
+    return {
+      weight: competition.goalWeight,
+      unit: competition.goalUnit === 'kg' ? 'kg' : 'lb',
+      source: 'goal',
+      tournamentName: '',
+    };
+  }
+  const next = [...competition.tournaments]
+    .filter((tournament) => tournament.targetWeight != null && tournament.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name))[0];
+  if (!next || next.targetWeight == null) return null;
+  return {
+    weight: next.targetWeight,
+    unit: next.targetUnit === 'kg' ? 'kg' : 'lb',
+    source: 'tournament',
+    tournamentName: next.name,
+  };
+}
+
+/** Signed distance from a weigh-in to the goal, in the display unit. Positive is still above the goal. */
+export function weightToTarget(
+  weight: number,
+  weightUnit: WeightUnit,
+  goal: number,
+  goalUnit: WeightUnit,
+  display: WeightUnit,
+): number {
+  const shown = convertWeight(weight, weightUnit, display);
+  const target = convertWeight(goal, goalUnit, display);
+  return Math.round((shown - target) * 10) / 10;
+}
+
+export function formatWeightDelta(delta: number, unit: WeightUnit): string {
+  const rounded = Math.round(delta * 10) / 10;
+  const text = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  return `${text} ${weightUnitLabel(unit)}`;
+}
+
+/** Visible table heading. Pounds when the chart is in lb, kilograms when it is in kg. */
+export function toTargetColumn(unit: WeightUnit): string {
+  return unit === 'kg' ? 'Kilograms to Target' : 'Pounds to Target';
 }

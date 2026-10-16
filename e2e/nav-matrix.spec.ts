@@ -89,7 +89,7 @@ test('Coach hub tools go back to Coach and home to the tier picker', async ({ pa
   await lessonBack.click();
   await expect.poll(() => pathOf(page)).toBe('/coach');
 
-  for (const name of ['Daily Training Videos', 'Technique Tree'] as const) {
+  for (const name of ['Daily Training Videos', 'Technique Tree', 'Mock Tournament'] as const) {
     await page.goto('/coach');
     await openLink(page, name);
     await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveCount(0);
@@ -99,7 +99,7 @@ test('Coach hub tools go back to Coach and home to the tier picker', async ({ pa
     await expect.poll(() => pathOf(page)).toBe('/coach');
   }
 
-  const coachTools = ['Student Roster', 'Mock Tournament'] as const;
+  const coachTools = ['Student Roster'] as const;
   for (const name of coachTools) {
     await page.goto('/coach');
     await openLink(page, name);
@@ -339,11 +339,11 @@ test('Tournament Management Pro and CMS tiles go back one level and home to the 
 
   await page.goto('/suite');
   await openLink(page, 'Brackets-Tournament Software');
-  await assertBackAndHome(page, '/suite');
-  await assertHomeFrom(page, async () => {
-    await page.goto('/suite');
-    await openLink(page, 'Brackets-Tournament Software');
-  });
+  await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveCount(0);
+  const bracketBack = page.getByRole('link', { name: BACK, exact: true });
+  await expect(bracketBack).toHaveAttribute('href', '/suite');
+  await bracketBack.click();
+  await expect.poll(() => pathOf(page)).toBe('/suite');
 
   await page.goto('/suite');
   await openLink(page, 'Competitor Management System');
