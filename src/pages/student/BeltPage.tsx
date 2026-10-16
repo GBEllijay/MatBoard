@@ -95,7 +95,7 @@ export function BeltPage() {
           {checkpoints.map((row) => {
             const done = checkpointFilled(row, learned);
             return (
-              <section key={row.id} className="ink belt-block" aria-label={`${row.name} checkpoint`}>
+              <section key={row.id} id={row.id} className="ink belt-block" aria-label={`${row.name} checkpoint`}>
                 <h2>{row.name}</h2>
                 <button
                   type="button"

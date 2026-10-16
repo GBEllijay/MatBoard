@@ -1,0 +1,689 @@
+/**
+ * Competitor tab only. The Student Edition hub, back/home marks, and the
+ * journal pages stay on the notebook styles in student-edition.css.
+ * This skin is a quiet dark surface: Inter, generous space, hairline depth.
+ */
+
+.student.student--arena {
+  --arena-bg: #000000;
+  --arena-card: #1c1c1e;
+  --arena-fill: #2c2c2e;
+  --arena-line: rgba(255, 255, 255, 0.1);
+  --arena-text: #f5f5f7;
+  --arena-muted: #c7c7cc;
+  --arena-blue: #0a84ff;
+  --arena-pad: 16px;
+  color: var(--arena-text);
+  color-scheme: dark;
+  background: var(--arena-bg);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 17px;
+  line-height: 1.35;
+  font-weight: 400;
+}
+
+.student.student--arena button,
+.student.student--arena input,
+.student.student--arena textarea,
+.student.student--arena select {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 17px;
+  line-height: 1.3;
+}
+
+.arena-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  background: var(--arena-bg);
+}
+
+.arena-column {
+  width: min(720px, 100%);
+  margin: 0 auto;
+}
+
+.arena-hero {
+  position: relative;
+  z-index: 1;
+  padding: calc(4.7rem + var(--safe-t)) 16px 22px 60px;
+  background: #000000;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.arena-hero::after {
+  content: '';
+  position: absolute;
+  left: 18px;
+  bottom: -5px;
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  background: #000000;
+}
+
+.arena-rank {
+  --belt: #f5f5f7;
+  padding-top: 2px;
+  border-top: 3px solid var(--belt);
+}
+
+.arena-rank--white { --belt: #f5f5f7; }
+.arena-rank--blue { --belt: #3a7bd5; }
+.arena-rank--purple { --belt: #7d5ea8; }
+.arena-rank--brown { --belt: #8d5a3c; }
+.arena-rank--black { --belt: #d8d8dc; }
+.arena-rank--grey { --belt: #b0b4bc; }
+.arena-rank--yellow { --belt: #e0b000; }
+.arena-rank--orange { --belt: #e07a2f; }
+.arena-rank--green { --belt: #3d9a62; }
+.arena-rank--coral { --belt: #d4656e; }
+
+.arena-kicker,
+.student.student--arena .arena-hero h1 {
+  margin: 0;
+  color: var(--arena-muted);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.arena-rank__name {
+  margin: 8px 0 0;
+  color: var(--arena-text);
+  font-size: clamp(48px, 14vw, 64px);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 0.95;
+}
+
+.arena-rank__meta {
+  margin: 10px 0 0;
+  color: var(--arena-muted);
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+}
+
+.arena-stripes {
+  display: flex;
+  gap: 8px;
+  margin: 16px 0 0;
+}
+
+.arena-stripes span {
+  width: 10px;
+  height: 28px;
+  border: 1.5px solid var(--belt);
+  border-radius: 2px;
+  background: transparent;
+}
+
+.arena-stripes span.is-on {
+  background: var(--belt);
+}
+
+.arena-rank__link,
+.student.student--arena .arena-journal__actions a,
+.student.student--arena .ink-btn,
+.student.student--arena .student-choice,
+.student.student--arena .assess-tap,
+.student.student--arena .assess-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  padding: 12px 18px;
+  border-radius: 14px;
+  text-decoration: none;
+  touch-action: manipulation;
+  transition: transform 180ms cubic-bezier(0.2, 0, 0, 1), background-color 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.arena-rank__link {
+  width: 100%;
+  margin-top: 20px;
+  box-sizing: border-box;
+  background: #f5f5f7;
+  color: #000000;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.student.student--arena .arena-hero h1 {
+  margin: 22px 0 0;
+}
+
+.arena-tail {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  margin: 0;
+  padding: 28px var(--arena-pad) 56px 0;
+}
+
+.arena-tail::before {
+  content: '';
+  position: absolute;
+  left: 22px;
+  top: -12px;
+  bottom: 32px;
+  width: 1.5px;
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.arena-tail > * {
+  position: relative;
+  margin-left: 44px;
+}
+
+.arena-node {
+  position: absolute;
+  left: -26px;
+  top: 26px;
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  background: #000000;
+  pointer-events: none;
+}
+
+.arena-journal {
+  position: relative;
+  padding: 18px 18px 20px 28px;
+  color: #1c140e;
+  font-family: 'Patrick Hand', 'Segoe Print', cursive;
+  font-size: 22px;
+  line-height: 1.25;
+  background-color: #f4f0e4;
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 27px, rgba(116, 158, 196, 0.62) 28px);
+  background-position: 0 10px;
+  border: 2px solid #1c140e;
+  border-radius: 4px 16px 6px 18px / 14px 5px 16px 6px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+}
+
+.arena-journal::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 16px;
+  width: 2px;
+  background: #e15d5d;
+  pointer-events: none;
+}
+
+.arena-journal h2,
+.arena-journal p {
+  position: relative;
+  margin: 0;
+  color: #1c140e;
+  font-family: 'Patrick Hand', 'Segoe Print', cursive;
+  font-weight: 400;
+}
+
+.arena-journal h2 {
+  font-size: 30px;
+  line-height: 1.15;
+}
+
+.arena-journal p {
+  margin-top: 8px;
+  font-size: 20px;
+}
+
+.arena-journal__actions {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.student.student--arena .arena-journal__actions a {
+  flex: 1 1 140px;
+  border: 2px solid #1c140e;
+  border-radius: 999px;
+  background: rgba(244, 240, 228, 0.82);
+  color: #1c140e;
+  font-family: 'Patrick Hand', 'Segoe Print', cursive;
+  font-size: 22px;
+  font-weight: 400;
+}
+
+.student.student--arena .student-paper {
+  background: #000000;
+  background-image: none;
+}
+
+.student.student--arena .student-sheet::before {
+  display: none;
+}
+
+.student.student--arena .student-sheet {
+  max-width: 720px;
+  padding: 12px 16px 56px;
+  gap: 24px;
+}
+
+.student.student--arena .student-leather {
+  color: #f5f5f7;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  background: #000000;
+  background-image: none;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.student.student--arena .student-leather::after {
+  display: none;
+}
+
+.student.student--arena .student-leather h1 {
+  color: #f5f5f7;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  text-shadow: none;
+}
+
+.arena-block {
+  display: grid;
+  gap: 16px;
+}
+
+.student.student--arena .ink,
+.student.student--arena .tournament-card,
+.student.student--arena .comp-form,
+.assess {
+  border: 1px solid var(--arena-line);
+  border-radius: 18px;
+  background: var(--arena-card);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04), 0 16px 40px rgba(0, 0, 0, 0.28);
+  padding: 20px 16px 18px;
+}
+
+.assess-visual {
+  border-radius: 14px;
+  background: #2c2c2e;
+  padding: 16px 14px 14px;
+}
+
+.student.student--arena .ink .comp-form,
+.student.student--arena .ink .ink,
+.student.student--arena .tournament-card .comp-form {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.student.student--arena .ink__label,
+.assess-visual h3 {
+  display: block;
+  margin: 0 0 8px;
+  color: var(--arena-muted);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.student.student--arena h2.ink__label,
+.assess > h2 {
+  color: var(--arena-text);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-transform: none;
+}
+
+.student.student--arena .student-quiet {
+  margin: 0;
+  color: var(--arena-muted);
+  font-size: 17px;
+  line-height: 1.4;
+}
+
+.student.student--arena input,
+.student.student--arena textarea,
+.student.student--arena select {
+  width: 100%;
+  min-height: 56px;
+  margin: 0;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: 12px;
+  background: #2c2c2e;
+  color: #f5f5f7;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.student.student--arena textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.student.student--arena .ink-btn,
+.student.student--arena .student-choice,
+.student.student--arena .assess-tap {
+  border: 0;
+  background: #2c2c2e;
+  color: #f5f5f7;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.student.student--arena .ink-btn--small {
+  min-height: 56px;
+  font-size: 17px;
+}
+
+.student.student--arena .ink-btn--save,
+.student.student--arena .student-choice.is-on,
+.student.student--arena .assess-tap.is-on {
+  background: #f5f5f7;
+  color: #000000;
+  box-shadow: none;
+}
+
+.student.student--arena .ink-btn:active,
+.student.student--arena .student-choice:active,
+.student.student--arena .assess-tap:active,
+.arena-rank__link:active,
+.student.student--arena .arena-journal__actions a:active {
+  transform: scale(0.98);
+}
+
+.student.student--arena a:not(.play-exit):not(.tier-home):not(.arena-rank__link) {
+  color: var(--arena-blue);
+}
+
+.student.student--arena .arena-journal a {
+  color: #1c140e;
+}
+
+.student.student--arena input:focus,
+.student.student--arena textarea:focus,
+.student.student--arena select:focus,
+.student.student--arena button:focus-visible,
+.student.student--arena a:focus-visible {
+  outline: 3px solid #0a84ff;
+  outline-offset: 3px;
+}
+
+.student.student--arena .student-games,
+.student.student--arena .student-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.student.student--arena .student-actions .ink-btn,
+.student.student--arena .student-games .student-choice {
+  flex: 1 1 148px;
+}
+
+.assess-scale {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.student.student--arena .assess-tap {
+  width: 100%;
+  padding: 0;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.student.student--arena .comp-list {
+  gap: 16px;
+}
+
+.student.student--arena .comp-earlier summary {
+  display: flex;
+  align-items: center;
+  min-height: 56px;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.student.student--arena .weight-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 8px;
+}
+
+.student.student--arena .weight-chart polyline {
+  fill: none;
+  stroke: #f5f5f7;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.student.student--arena .weight-chart circle {
+  fill: #f5f5f7;
+}
+
+.student.student--arena .weight-chart__target {
+  stroke: #ff9f0a;
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+}
+
+.student.student--arena .weight-count {
+  justify-items: start;
+  text-align: left;
+  gap: 6px;
+  padding: 0 0 8px;
+}
+
+.student.student--arena .weight-count__days {
+  color: #f5f5f7;
+  font-size: 48px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.student.student--arena .weight-table th,
+.student.student--arena .weight-table td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f5f5f7;
+  padding: 12px 12px 12px 0;
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+}
+
+.student.student--arena .weight-table th {
+  border-bottom-color: rgba(255, 255, 255, 0.28);
+  color: #c7c7cc;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.assess {
+  display: grid;
+  gap: 22px;
+}
+
+.assess-lead {
+  display: grid;
+  gap: 8px;
+}
+
+.assess-lead h2,
+.assess-lead p {
+  margin: 0;
+}
+
+.assess-area {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.assess legend {
+  padding: 0;
+  color: var(--arena-text);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-transform: none;
+}
+
+.assess-link {
+  justify-content: flex-start;
+  padding: 8px 2px;
+  background: transparent;
+  color: #0a84ff;
+  font-size: 17px;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.assess-form,
+.assess-history,
+.assess-visuals {
+  display: grid;
+  gap: 16px;
+}
+
+.assess-stat {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+}
+
+.assess-stat strong {
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.assess-stat span,
+.assess-scoreline {
+  color: var(--arena-muted);
+  font-size: 15px;
+}
+
+.assess-visuals {
+  grid-template-columns: 1fr;
+}
+
+.assess-chart {
+  width: 100%;
+  height: auto;
+}
+
+.assess-legend {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 18px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.assess-legend li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 28px;
+  color: var(--arena-text);
+  font-size: 15px;
+}
+
+.assess-legend li span:last-child {
+  color: var(--arena-muted);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.assess-chart__grid {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.14);
+  stroke-width: 1;
+}
+
+.assess-chart__shape {
+  fill: rgba(10, 132, 255, 0.18);
+  stroke: #0a84ff;
+  stroke-width: 1.5;
+}
+
+.assess-chart__line {
+  fill: none;
+  stroke: #f5f5f7;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.assess-chart__dot {
+  fill: #f5f5f7;
+}
+
+.assess-row {
+  display: grid;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.assess-row__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.assess-row__top span,
+.assess-row p {
+  margin: 0;
+}
+
+@media (min-width: 800px) {
+  .arena-hero,
+  .student.student--arena .student-sheet {
+    padding-left: 28px;
+    padding-right: 28px;
+  }
+
+  .assess-visuals {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .student.student--arena .ink-btn,
+  .student.student--arena .student-choice,
+  .student.student--arena .assess-tap,
+  .arena-rank__link,
+  .student.student--arena .arena-journal__actions a {
+    transition: none;
+  }
+}

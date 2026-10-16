@@ -40,7 +40,7 @@ export function WeightPage() {
   const notes = shown.filter((row) => row.note.trim());
 
   return (
-    <main className="student student-frame">
+    <main className="student student-frame student--arena">
       <StudentMarks />
       <LeatherHeader title="Weight" />
       <div className="student-paper">

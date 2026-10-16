@@ -1473,6 +1473,10 @@ button.student-book .student-mark__press {
   gap: 0.7rem;
 }
 
+.belt-block {
+  scroll-margin-top: 5.5rem;
+}
+
 .belt-block > h2,
 .goals-block > h2,
 .coach-panel > h2,
