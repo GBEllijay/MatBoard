@@ -83,27 +83,6 @@ async function openBoard(page: Page, viewport: { width: number; height: number }
   await expect(page.getByText('Kat B.', { exact: true })).toBeVisible();
 }
 
-/** The scoreboard has a corner back and no center Home mark. */
-async function expectCornerBackOnly(page: Page) {
-  await expect(page.locator('.tier-home')).toHaveCount(0);
-  await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveCount(0);
-  const back = page.locator('.display-back');
-  await expect(back).toBeVisible();
-  const logo = back.locator('img[src="/advantage-icon.png"]');
-  await expect(logo).toHaveCount(1);
-  const box = await logo.boundingBox();
-  const backBox = await back.boundingBox();
-  const viewport = page.viewportSize();
-  expect(box).not.toBeNull();
-  expect(backBox).not.toBeNull();
-  const center = box!.x + box!.width / 2;
-  expect(center).toBeLessThan((viewport?.width ?? 390) * 0.25);
-  expect(box!.x).toBeGreaterThanOrEqual(backBox!.x - 1);
-  expect(box!.x + box!.width).toBeLessThanOrEqual(backBox!.x + backBox!.width + 1);
-  expect(box!.y).toBeGreaterThanOrEqual(backBox!.y - 1);
-  expect(box!.y + box!.height).toBeLessThanOrEqual(backBox!.y + backBox!.height + 1);
-}
-
 async function enterFullscreen(page: Page) {
   const board = page.locator('main.display');
   if (!(await board.evaluate((el) => el.classList.contains('play--fs')))) {
@@ -159,10 +138,7 @@ test('fullscreen scoreboard drops Exit fullscreen and sits the top row on the sc
   mkdirSync('/opt/cursor/artifacts', { recursive: true });
   await openBoard(page, PHONE);
   await expect(page.getByRole('button', { name: 'Fullscreen', exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Controller', exact: true })).toBeVisible();
-  await expectCornerBackOnly(page);
   await enterFullscreen(page);
-  await expectCornerBackOnly(page);
 
   const metrics = await topRowMetrics(page);
   expect(metrics, 'blue scorecard metrics').not.toBeNull();
@@ -225,60 +201,4 @@ test('landscape fullscreen keeps the clock and the score pads beside the name', 
   expect(scoreLeft).toBeGreaterThan(nameRight - 1);
   await expect(page.getByRole('button', { name: 'Start or pause match clock' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Back to bracket' })).toBeVisible();
-  await expectCornerBackOnly(page);
-});
-
-test('an open scoreboard has no center Home mark and the corner back returns to White', async ({ page }) => {
-  mkdirSync('/opt/cursor/artifacts', { recursive: true });
-  await installFullscreenMock(page);
-  await page.addInitScript(() => {
-    localStorage.setItem('advantage.whiteUnlocked', '1');
-    localStorage.setItem('advantage.proUnlocked', '1');
-    localStorage.setItem('matboard.tvTip.v1', '1');
-    localStorage.setItem(
-      'matboard.match.v1',
-      JSON.stringify({
-        blue: { name: 'Kat B.', gym: 'Alliance', rank: '', points: 0, advantages: 0, disadvantages: 0 },
-        white: { name: 'Sam R.', gym: 'Checkmat', rank: '', points: 0, advantages: 0, disadvantages: 0 },
-        round: 'Final',
-        division: 'Adult',
-        durationMs: 300000,
-        remainingMs: 300000,
-        running: false,
-        startedAt: null,
-        startBeep: false,
-        warningBeep: false,
-        warned: false,
-        endBuzzer: false,
-        endCue: 'off',
-        bracketMatchId: null,
-        autoAnnounce: false,
-        skin: 'MOCK_TOURNAMENT',
-        carlos: { enabled: false, onWin: false, onPoints: false, pointsThreshold: 8 },
-        outcome: null,
-        outcomeFlash: null,
-        revision: 1,
-      }),
-    );
-  });
-  await page.setViewportSize(PHONE);
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/match');
-  await expect(page.getByText('Kat B.', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Fullscreen', exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Controller', exact: true })).toBeVisible();
-  const back = page.getByRole('link', { name: 'Back', exact: true });
-  await expect(back).toHaveAttribute('href', '/white');
-  await expectCornerBackOnly(page);
-  await page.screenshot({ path: '/opt/cursor/artifacts/scoreboard-no-center-home.png' });
-
-  await back.click();
-  await expect.poll(() => new URL(page.url()).pathname).toBe('/white');
-  await expect(page.getByRole('link', { name: 'Open Scoreboard' })).toBeVisible();
-
-  await page.goto('/match?from=suite');
-  await expect(page.getByRole('link', { name: 'Back', exact: true })).toHaveAttribute('href', '/suite');
-  await expectCornerBackOnly(page);
-  await page.getByRole('link', { name: 'Back', exact: true }).click();
-  await expect.poll(() => new URL(page.url()).pathname).toBe('/suite');
 });

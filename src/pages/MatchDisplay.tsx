@@ -97,11 +97,6 @@ export function MatchDisplayPage() {
       })
     : { show: false, lines: [] as string[] };
 
-  // Corner logo goes back one level. A linked bout returns to the bracket.
-  // An open scoreboard returns to the hub that opened it. There is no center Home mark.
-  const backTo = linkedId ? suite.withFrom('/tournament') : suite.homePath;
-  const backLabel = linkedId ? 'Back to bracket' : 'Back';
-
   const clockControl = (
     <button type="button" className="clock-btn" onClick={toggleClock} aria-label="Start or pause match clock">
       {formatMmSs(remaining)}
@@ -132,7 +127,13 @@ export function MatchDisplayPage() {
       onClick={onBoardClick}
     >
       <div className="display__chrome">
-        <div className="display__chrome-start" />
+        <div className="display__chrome-start">
+          {linkedId ? null : (
+            <Link to={suite.homePath} className="chip">
+              Home
+            </Link>
+          )}
+        </div>
         <div className="display__chrome-end">
           {fs.active ? null : (
             <FullscreenChip
@@ -151,19 +152,21 @@ export function MatchDisplayPage() {
           </Link>
         </div>
       </div>
-      <Link to={backTo} className="display-back" aria-label={backLabel}>
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            d="M14.5 5.5 8 12l6.5 6.5"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-        <img src="/advantage-icon.png" alt="" />
-      </Link>
+      {linkedId ? (
+        <Link to={suite.withFrom('/tournament')} className="display-back" aria-label="Back to bracket">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M14.5 5.5 8 12l6.5 6.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <img src="/advantage-icon.png" alt="" />
+        </Link>
+      ) : null}
       <TvTip onFullscreen={() => void fs.enter()} />
 
       <CompetitorBand

@@ -50,9 +50,8 @@ export function submenuHomeTarget(): string {
  * on that mark still goes home. Class Schedule keeps the center Home mark on
  * wide screens. Phone widths hide it, and landscape / the TV board already hide it.
  *
- * The match scoreboard keeps the top header and the corner back. It does not
- * render the center Home mark. A linked bout returns to the bracket. An open
- * scoreboard returns to the hub that opened it.
+ * Kids and adult brackets keep the slim round and division header and the
+ * corner back. They do not render the center Home mark.
  */
 export function submenuBackTarget(input: SubmenuNavInput): string | null {
   const params = paramsOf(input.search);
