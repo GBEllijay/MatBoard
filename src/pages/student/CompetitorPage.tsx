@@ -18,7 +18,9 @@ import {
   type TournamentDraft,
 } from '../../lib/studentCompetition';
 import { todayIso } from '../../lib/studentEdition';
-import { LeatherHeader, StudentMarks, useStudentFile } from './chrome';
+import { StudentMarks, useStudentFile, useStudentPath } from './chrome';
+import { JournalGate, RankHero } from './CompetitorLead';
+import { SelfAssessment } from './SelfAssessment';
 import { StandingGames } from './StandingGames';
 
 const STATUSES: { status: TournamentStatus; label: string }[] = [
@@ -55,6 +57,7 @@ function draftFromTournament(tournament: StudentTournament): TournamentDraft {
 }
 
 export function CompetitorPage() {
+  const to = useStudentPath();
   const { report, commit } = useStudentFile();
   const competition = competitionOf(report);
   const [query, setQuery] = useState('');
@@ -87,11 +90,19 @@ export function CompetitorPage() {
   };
 
   return (
-    <main className="student student-frame">
+    <main className="student student-frame student--arena">
       <StudentMarks />
-      <LeatherHeader title="Competitor" />
-      <div className="student-paper">
-        <div className="student-sheet">
+      <div className="arena-scroll">
+        <div className="arena-column">
+          <header className="arena-hero">
+            <RankHero report={report} to={to} />
+            <h1>Competitor</h1>
+          </header>
+          <div className="arena-tail">
+            <JournalGate report={report} to={to} />
+            <SelfAssessment report={report} to={to} />
+            <div className="arena-block">
+              <span className="arena-node" aria-hidden="true" />
           <p className="student-quiet">
             Tournaments, your A, B, and C game, and weigh-ins stay on this phone. Send to coach puts them in the same progress file.
           </p>
@@ -104,8 +115,10 @@ export function CompetitorPage() {
               onChange={(event) => setQuery(event.target.value)}
             />
           </label>
+            </div>
 
-          <section className="ink" aria-label="Tournaments">
+          <section className="arena-block" aria-label="Tournaments">
+            <span className="arena-node" aria-hidden="true" />
             <h2 className="ink__label">Tournaments</h2>
             <p className="student-quiet">Entered and considering dates show on your calendar.</p>
             {upcoming.length === 0 && earlier.length === 0 ? <p className="student-quiet">No tournaments yet.</p> : null}
@@ -235,11 +248,15 @@ export function CompetitorPage() {
             </form>
           </section>
 
-          <StandingGames
-            report={report}
-            commit={commit}
-            query={needle}
-          />
+          <div className="arena-block">
+            <span className="arena-node" aria-hidden="true" />
+            <StandingGames
+              report={report}
+              commit={commit}
+              query={needle}
+            />
+          </div>
+          </div>
         </div>
       </div>
     </main>

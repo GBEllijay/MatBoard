@@ -43,7 +43,7 @@ export function ResultsPage() {
   };
 
   return (
-    <main className="student student-frame">
+    <main className="student student-frame student--arena">
       <StudentMarks />
       <LeatherHeader title="Results" />
       <div className="student-paper">

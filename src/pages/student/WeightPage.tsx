@@ -32,7 +32,7 @@ export function WeightPage() {
     .sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name));
 
   return (
-    <main className="student student-frame">
+    <main className="student student-frame student--arena">
       <StudentMarks />
       <LeatherHeader title="Weight" />
       <div className="student-paper">

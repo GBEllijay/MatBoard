@@ -43,6 +43,7 @@ import {
   type JournalCardView,
 } from '../lib/studentEdition.ts';
 import '../student-edition.css';
+import './student/arena.css';
 
 function blankTechniqueRows(count: number): { id: string; name: string }[] {
   return Array.from({ length: count }, () => ({ id: '', name: '' }));

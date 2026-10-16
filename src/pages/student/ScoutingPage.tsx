@@ -56,7 +56,7 @@ export function ScoutingPage() {
   };
 
   return (
-    <main className="student student-frame">
+    <main className="student student-frame student--arena">
       <StudentMarks />
       <LeatherHeader title="Scouting" />
       <div className="student-paper">
