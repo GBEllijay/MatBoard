@@ -5783,8 +5783,8 @@ a.saver-folder--link {
 
 /* Landscape before fullscreen: keep the name clear of Back and the Fullscreen chip.
    Once fullscreen, that chip is gone and the athlete row meets the screen. */
-.play--landscape.display--linked:not(.play--fs) .bout--blue,
-.play--tv.display--linked:not(.play--fs) .bout--blue {
+.play--landscape.display:has(> .display-back):not(.play--fs) .bout--blue,
+.play--tv.display:has(> .display-back):not(.play--fs) .bout--blue {
   padding-top: calc(2.75rem + var(--safe-t));
 }
 
@@ -5822,7 +5822,7 @@ a.saver-folder--link {
   display: none;
 }
 
-.display.display--linked.play--landscape .play-fs {
+.display.play--landscape:has(> .display-back) .play-fs {
   left: calc(3.15rem + var(--safe-l));
 }
 
@@ -5898,7 +5898,7 @@ a.saver-folder--link {
   border-top-right-radius: 0;
 }
 
-.display.play--fs.display--linked > .bout--blue .bout__who {
+.display.play--fs:has(> .display-back) > .bout--blue .bout__who {
   padding-left: max(3.15rem, calc(2.9rem + var(--safe-l)));
 }
 

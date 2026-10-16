@@ -49,6 +49,10 @@ export function submenuHomeTarget(): string {
  * Curriculum, and Class History also keep only the corner back. A long-press
  * on that mark still goes home. Class Schedule keeps the center Home mark on
  * wide screens. Phone widths hide it, and landscape / the TV board already hide it.
+ *
+ * The match scoreboard keeps the top header and the corner back. It does not
+ * render the center Home mark. A linked bout returns to the bracket. An open
+ * scoreboard returns to the hub that opened it.
  */
 export function submenuBackTarget(input: SubmenuNavInput): string | null {
   const params = paramsOf(input.search);
