@@ -1,6 +1,8 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { BeltHeader } from '../components/BeltHeader';
+import { FolderChevron } from '../components/FolderChevron';
+import { MediaConsoleMark } from '../components/MediaConsoleArt';
 import { Chrome } from '../components/Chrome';
 import { GymLogoControl } from '../components/GymLogoControl';
 import { InstructionsButton } from '../components/InstructionsButton';
@@ -22,7 +24,7 @@ import { OpenMyDrive } from '../components/OpenMyDrive';
 import { MediaSourceSheet } from '../components/VideoSourceSheet';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useScheduleState } from '../hooks/useStores';
-import { useToolboxParent } from '../hooks/useToolboxParent';
+import { useSubmenuBack } from '../hooks/useSubmenuBack';
 import {
   DEFAULT_EVENTS_CAST_MODE,
   EVENTS_CAST_MODE_OPTIONS,
@@ -35,11 +37,17 @@ import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import {
   PICK_FROM_DRIVE_LABEL,
+  driveImportChunkSize,
+  driveImportOutcomeNote,
   driveImportProgressLabel,
+  driveImportSaveErrorNote,
+  drivePickEntry,
+  runDriveImport,
   type DriveBrowseMedia,
   type DrivePickKind,
 } from '../lib/driveMediaPicker';
 import { formatMss, secondsToMs } from '../lib/format';
+import { GALLERY_LINK_DONE, galleryItemShows, nextClassFromDays } from '../lib/gallerySchedule';
 import { downloadDriveFile, getDriveBindingSnapshot, requestDriveToken, subscribeDriveBinding } from '../lib/googleDrive';
 import {
   PHOTOS_PICK_LABEL,
@@ -49,6 +57,7 @@ import {
   photosImportProgressLabel,
   requestPhotosToken,
   subscribePhotosBinding,
+  type PhotosPickKind,
   type PhotosPickedItem,
 } from '../lib/googlePhotos';
 import {
@@ -76,7 +85,6 @@ import {
   FOLDERS,
   fileMatchesFolder,
   folderById,
-  folderExpandedState,
   getSaverPrefs,
   INTERVAL_PRESETS_SEC,
   isFolderId,
@@ -91,6 +99,8 @@ import {
   setFolderPlay,
   setEventsCastMode,
   setItemBuyUrl,
+  linkTechniqueClipsToGallery,
+  setGalleryDetails,
   setItemPlay,
   setItemQrLinks,
   setItemStartsSlide,
@@ -103,6 +113,8 @@ import {
   type StoredPhoto,
 } from '../lib/photoStore';
 import { itemsInFolder } from '../lib/playlist';
+import { loadTechniqueBoard, readTrainingClipBlob } from '../lib/techniqueStore';
+import { isWithinRetention, loadTrainingArchive, localDateKey, planHasContent, plansOnDay } from '../lib/trainingNotesStore';
 import { insertScheduleCastSlide, scheduleCastDwellMs } from '../lib/scheduleCast';
 import { setScheduleCastEnabled } from '../lib/scheduleStore';
 import {
@@ -131,21 +143,25 @@ export function ScreensaverPage() {
   const [driveConnectOpen, setDriveConnectOpen] = useState(false);
   const [photosConnectOpen, setPhotosConnectOpen] = useState(false);
   const [photosPickOpen, setPhotosPickOpen] = useState(false);
-  const [photosPickKind, setPhotosPickKind] = useState<DrivePickKind>('photo');
+  const [photosPickKind, setPhotosPickKind] = useState<PhotosPickKind>('photo');
   const driveBinding = useSyncExternalStore(subscribeDriveBinding, getDriveBindingSnapshot, () => null);
   const photosBinding = useSyncExternalStore(subscribePhotosBinding, getPhotosBindingSnapshot, () => null);
   useEffect(() => {
     if (photosBinding) setPhotosConnectOpen(false);
   }, [photosBinding]);
   const photosPopupRef = useRef<Window | null>(null);
+
+  useEffect(() => {
+    if (!driveConnectOpen || !driveBinding) return;
+    setDriveConnectOpen(false);
+    setDrivePickOpen(true);
+  }, [driveConnectOpen, driveBinding]);
   const [unlockSound, setUnlockSound] = useState(false);
   const [folderPlay, setFolderPlayState] = useState(DEFAULT_FOLDER_PLAY);
   const [shopCastMode, setShopCastModeState] = useState<ShopCastMode>(DEFAULT_SHOP_CAST_MODE);
   const [eventsCastMode, setEventsCastModeState] = useState<EventsCastMode>(DEFAULT_EVENTS_CAST_MODE);
   const [gymLogoUrl, setGymLogoUrl] = useState<string | null>(() => readGymLogo());
-  const [expanded, setExpanded] = useState<Record<FolderId, boolean>>(() =>
-    folderExpandedState('gallery'),
-  );
+  const [openSection, setOpenSection] = useState<FolderId | 'schedule' | null>(null);
   const photoCaptureRef = useRef<HTMLInputElement>(null);
   const photoLibraryRef = useRef<HTMLInputElement>(null);
   const videoRecordRef = useRef<HTMLInputElement>(null);
@@ -155,7 +171,7 @@ export function ScreensaverPage() {
   const intervalMs = secondsToMs(intervalSec);
   const fs = usePlayFullscreen();
   const navigate = useNavigate();
-  const parent = useToolboxParent();
+  const back = useSubmenuBack() ?? '/pro';
   const [searchParams] = useSearchParams();
   const folderParam = searchParams.get('folder');
   const requestedFolder =
@@ -163,7 +179,6 @@ export function ScreensaverPage() {
 
   useEffect(() => {
     if (!requestedFolder) return;
-    setExpanded(folderExpandedState(requestedFolder));
     setOptions(true);
     addFolderRef.current = requestedFolder;
   }, [requestedFolder]);
@@ -171,7 +186,18 @@ export function ScreensaverPage() {
   const focusFolder = requestedFolder ?? 'gallery';
   const focusConfig = folderById(focusFolder);
   const schedule = useScheduleState();
-  const queue = useMemo(() => playableItems(photos, folderPlay), [photos, folderPlay]);
+  const todayKey = localDateKey();
+  const nextClass = useMemo(() => {
+    const archive = loadTrainingArchive(todayKey);
+    const dates = Object.keys(archive.days).filter(
+      (dateKey) => isWithinRetention(dateKey, todayKey) && plansOnDay(archive, dateKey).some(planHasContent),
+    );
+    return nextClassFromDays(dates, todayKey);
+  }, [todayKey]);
+  const queue = useMemo(
+    () => playableItems(photos, folderPlay).filter((item) => galleryItemShows(item, todayKey, nextClass)),
+    [photos, folderPlay, todayKey, nextClass],
+  );
   const shopList = useMemo(() => itemsInFolder(photos, 'shop'), [photos]);
   const slides = useMemo(
     () =>
@@ -208,15 +234,35 @@ export function ScreensaverPage() {
 
   const photosRef = useRef(photos);
   photosRef.current = photos;
-  const photoIdsKey = photos.map((photo) => photo.id).join('|');
+  const photoIdsKey = photos
+    .map((photo) => `${photo.id}:${photo.techniqueClipId}:${photo.loopSec}`)
+    .join('|');
 
   useEffect(() => {
-    const next: Record<string, string> = {};
-    for (const photo of photosRef.current) {
-      next[photo.id] = URL.createObjectURL(photo.blob);
-    }
-    setUrlById(next);
-    return () => Object.values(next).forEach((url) => URL.revokeObjectURL(url));
+    let cancelled = false;
+    const urls: string[] = [];
+    void (async () => {
+      const next: Record<string, string> = {};
+      for (const photo of photosRef.current) {
+        let blob = photo.blob;
+        if (photo.techniqueClipId) {
+          const linked = await readTrainingClipBlob(photo.techniqueClipId);
+          if (linked) blob = linked;
+        }
+        const url = URL.createObjectURL(blob);
+        urls.push(url);
+        next[photo.id] = url;
+      }
+      if (cancelled) {
+        urls.forEach((url) => URL.revokeObjectURL(url));
+        return;
+      }
+      setUrlById(next);
+    })();
+    return () => {
+      cancelled = true;
+      urls.forEach((url) => URL.revokeObjectURL(url));
+    };
   }, [photoIdsKey]);
 
   useEffect(() => {
@@ -259,6 +305,13 @@ export function ScreensaverPage() {
     const id = window.setTimeout(advance, dwell);
     return () => window.clearTimeout(id);
   }, [playing, currentSlide, currentIsVideo, order.length, intervalMs, advance, index]);
+
+  useEffect(() => {
+    const loopSec = currentPhoto?.loopSec ?? 0;
+    if (!playing || loopSec <= 0 || order.length <= 1) return;
+    const id = window.setTimeout(advance, loopSec * 1000);
+    return () => window.clearTimeout(id);
+  }, [playing, currentPhoto, order.length, advance, index]);
 
   const commitInterval = (next: number) => {
     const clamped = clampIntervalSec(next);
@@ -312,7 +365,7 @@ export function ScreensaverPage() {
     setDrivePickKind(kind);
     setAddKind(kind === 'video' ? 'video' : 'photo');
     setAddOpen(false);
-    if (!driveBinding) {
+    if (drivePickEntry(Boolean(driveBinding)) === 'connect') {
       setDriveConnectOpen(true);
       return;
     }
@@ -325,7 +378,7 @@ export function ScreensaverPage() {
     setPhotosPickOpen(false);
   };
 
-  const openPhotosPick = (folderId: FolderId, kind: DrivePickKind) => {
+  const openPhotosPick = (folderId: FolderId, kind: PhotosPickKind) => {
     addFolderRef.current = folderId;
     setPhotosPickKind(kind);
     setAddKind(kind === 'video' ? 'video' : 'photo');
@@ -391,7 +444,7 @@ export function ScreensaverPage() {
       setPickerNote('');
       await refresh();
       setPlaying(true);
-      setExpanded((prev) => ({ ...prev, [folderId]: true }));
+      setOpenSection(folderId);
       setOptions(true);
     } catch (error) {
       showBatchError(
@@ -423,43 +476,55 @@ export function ScreensaverPage() {
         showBatchError(folderId, 'Sign in to Google Drive again to pick those files.');
         return;
       }
-      const files: { file: File; driveFileId: string }[] = [];
-      for (let index = 0; index < picked.length; index += 1) {
-        const item = picked[index];
-        setBatchStatus({ tone: 'progress', text: driveImportProgressLabel(index, picked.length) });
-        try {
+      const result = await runDriveImport({
+        items: picked,
+        chunkSize: driveImportChunkSize(drivePickKind),
+        download: async (item) => {
           const blob = await downloadDriveFile(token, item.id);
           const type = item.mime || blob.type || 'application/octet-stream';
-          files.push({
+          return {
             file: new File([blob], item.name || 'Drive file', { type }),
             driveFileId: item.id,
-          });
-        } catch {
-          /* One file can fail. The rest still import. */
+          };
+        },
+        save: (files, report) => addDriveMediaFiles([...files], folderId, { onProgress: report }),
+        onLabel: (text) => setBatchStatus({ tone: 'progress', text }),
+      });
+      if (!result.ok) {
+        showBatchError(
+          folderId,
+          driveImportSaveErrorNote(result.error, result.outcome.added, result.outcome.picked),
+        );
+        if (result.outcome.added > 0) {
+          await refresh();
+          setPlaying(true);
+          setOpenSection(folderId);
+          setOptions(true);
+        } else {
+          try {
+            await refresh();
+          } catch {
+            /* The note is the signal. */
+          }
         }
-      }
-      if (!files.length) {
-        showBatchError(folderId, 'Those Google Drive files could not be opened. Nothing was saved.');
         return;
       }
-      setBatchStatus({
-        tone: 'progress',
-        text: folderSaveProgressLabel({ done: 0, total: files.length, phase: 'shrink' }),
-      });
-      const added = await addDriveMediaFiles(files, folderId, {
-        onProgress: (progress) => {
-          setBatchStatus({ tone: 'progress', text: folderSaveProgressLabel(progress) });
-        },
-      });
-      if (!added) {
-        showBatchError(folderId, 'Those files are already in this folder, or this folder does not use that kind.');
+      const note = driveImportOutcomeNote(result.outcome);
+      if (note) {
+        showBatchError(folderId, note);
+        if (result.outcome.added > 0) {
+          await refresh();
+          setPlaying(true);
+          setOpenSection(folderId);
+          setOptions(true);
+        }
         return;
       }
       setBatchStatus(null);
       setPickerNote('');
       await refresh();
       setPlaying(true);
-      setExpanded((prev) => ({ ...prev, [folderId]: true }));
+      setOpenSection(folderId);
       setOptions(true);
     } catch (error) {
       showBatchError(
@@ -484,7 +549,7 @@ export function ScreensaverPage() {
   const showBatchError = (folderId: FolderId, text: string) => {
     setPickerNote('');
     setBatchStatus({ tone: 'error', text });
-    setExpanded((prev) => ({ ...prev, [folderId]: true }));
+    setOpenSection(folderId);
     setOptions(true);
   };
 
@@ -579,7 +644,7 @@ export function ScreensaverPage() {
 
   const exitSlideshow = () => {
     void fs.exit().finally(() => {
-      navigate(parent.path);
+      navigate(back);
     });
   };
 
@@ -610,7 +675,7 @@ export function ScreensaverPage() {
       className={`saver${currentSlide ? ' saver--play' : ''}${showBelt ? ' saver--belt' : ''}${fs.className ? ` ${fs.className}` : ''}`}
       onClick={(event) => {
         const target = event.target as HTMLElement;
-        if (target.closest('.sheet, .chrome, .saver__empty, .btn, input, label, .play-fs, .play-exit, .tv-tip, .saver__unmute, .saver-batch, .week-cast.is-drift, .week-cast.is-paused, .month-cast.is-drift, .month-cast.is-paused')) return;
+        if (target.closest('.sheet, .chrome, .saver__empty, .btn, input, label, .play-fs, .play-exit, .tier-home, .tv-tip, .saver__unmute, .saver-batch, .week-cast.is-drift, .week-cast.is-paused, .month-cast.is-drift, .month-cast.is-paused')) return;
         if (!muteVideo) setUnlockSound(true);
         if (slides.length) setOptions(true);
       }}
@@ -619,7 +684,8 @@ export function ScreensaverPage() {
       {!options && batchStatus ? (
         <BatchStatus status={batchStatus} onDismiss={() => setBatchStatus(null)} />
       ) : null}
-      <PlayExitMark to={parent.path} onExit={exitSlideshow} />
+      <PlayExitMark to={back} onExit={exitSlideshow} />
+      {showBelt ? <MediaConsoleMark /> : null}
       {showBelt ? (
         <div className="saver-belt">
           <BeltHeader kind="purple" title="Advantage - Media Console" />
@@ -664,7 +730,7 @@ export function ScreensaverPage() {
           src={current}
           altFrame={index % 2 === 1}
           playing={playing}
-          loop={order.length <= 1}
+          loop={order.length <= 1 || (currentPhoto.loopSec ?? 0) > 0}
           muted={muteVideo}
           unlockSound={unlockSound}
           onEnded={advance}
@@ -742,6 +808,7 @@ export function ScreensaverPage() {
             if (!seat) return true;
             if (folder.id === 'shop') return seatPermissionAllows(seat.permissions, 'proShopAccess');
             if (folder.id === 'events') return seatPermissionAllows(seat.permissions, 'eventsAccess');
+            if (folder.id === 'gallery') return seatPermissionAllows(seat.permissions, 'galleryUpload');
             return true;
           }).map((folder) => {
             const galleryUpload =
@@ -750,12 +817,15 @@ export function ScreensaverPage() {
             <Fragment key={folder.id}>
             <ToolboxFolder
               folder={folder}
-              open={expanded[folder.id]}
+              open={openSection === folder.id}
               playEnabled={folderPlay[folder.id]}
               items={itemsInFolder(photos, folder.id)}
               thumbById={urlById}
               onToggle={(next) => {
-                setExpanded((prev) => (prev[folder.id] === next ? prev : { ...prev, [folder.id]: next }));
+                setOpenSection((current) => {
+                  if (next) return folder.id;
+                  return current === folder.id ? null : current;
+                });
               }}
               onPlayToggle={commitFolderPlay}
               onAdd={folder.ready && galleryUpload ? () => openAdd(folder.id, 'photo') : undefined}
@@ -844,8 +914,60 @@ export function ScreensaverPage() {
                     }
                   : undefined
               }
+              onGalleryChange={
+                folder.id === 'gallery'
+                  ? async (id, patch) => {
+                      setPhotos((rows) =>
+                        rows.map((row) => (row.id === id ? { ...row, ...patch } : row)),
+                      );
+                      try {
+                        await setGalleryDetails(id, patch);
+                      } catch {
+                        await refresh();
+                      }
+                    }
+                  : undefined
+              }
+              onLinkTechniques={
+                folder.id === 'gallery'
+                  ? () => {
+                      void (async () => {
+                        const board = await loadTechniqueBoard();
+                        const clips = board.plan.slots.flatMap((slot) => {
+                          if (!slot.clipId) return [];
+                          const clip = board.clips.find((item) => item.id === slot.clipId);
+                          return [
+                            {
+                              clipId: slot.clipId,
+                              label: slot.mediaName || clip?.label || 'Technique clip',
+                              mime: clip?.mime || slot.mediaMime || 'video/mp4',
+                              loopSec: slot.drillSec,
+                            },
+                          ];
+                        });
+                        const added = await linkTechniqueClipsToGallery(clips);
+                        await refresh();
+                        setPickerNote(
+                          added
+                            ? GALLERY_LINK_DONE
+                            : 'Those technique clips are already linked, or this day has no clips.',
+                        );
+                      })();
+                    }
+                  : undefined
+              }
             />
-            {folder.id === 'gallery' ? <ClassScheduleEntry /> : null}
+            {folder.id === 'gallery' ? (
+              <ClassScheduleEntry
+                open={openSection === 'schedule'}
+                onToggle={(next) => {
+                  setOpenSection((current) => {
+                    if (next) return 'schedule';
+                    return current === 'schedule' ? null : current;
+                  });
+                }}
+              />
+            ) : null}
             </Fragment>
             );
           })}
@@ -1105,19 +1227,19 @@ function BatchStatus({
   );
 }
 
-function ClassScheduleEntry() {
+function ClassScheduleEntry({ open, onToggle }: { open: boolean; onToggle: (next: boolean) => void }) {
   const schedule = useScheduleState();
   const ready = schedule.classes.length > 0;
-  const [open, setOpen] = useState(false);
   return (
     <details
       className="saver-folder"
       open={open}
       onToggle={(event) => {
-        setOpen(event.currentTarget.open);
+        onToggle(event.currentTarget.open);
       }}
     >
       <summary className="saver-folder__summary">
+        <FolderChevron />
         <span className="saver-folder__title">Class Schedule</span>
         <button
           type="button"
@@ -1257,6 +1379,7 @@ function SaverSlide({
             if (!loop) onEnded();
           }}
         />
+        {item.caption ? <p className="saver-caption">{item.caption}</p> : null}
         {!muted && needsUnmute ? (
           <button
             type="button"
@@ -1281,6 +1404,7 @@ function SaverSlide({
     <div className={`saver__frame${altFrame ? ' saver__frame--alt' : ''}`}>
       <img className="saver__fill" src={src} alt="" aria-hidden="true" />
       <img className="saver__img" src={src} alt="" />
+      {item.caption ? <p className="saver-caption">{item.caption}</p> : null}
     </div>
   );
 }

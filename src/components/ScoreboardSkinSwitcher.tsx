@@ -14,7 +14,7 @@ export function ScoreboardSkinSwitcher({ skin }: { skin: ScoreboardSkinId }) {
           type="button"
           role="radio"
           aria-checked={skin === option.id}
-          className={`chip${skin === option.id ? ' chip--gold' : ''}`}
+          className={`chip${skin === option.id ? ' chip--on' : ''}`}
           onClick={() => dispatchMatch({ type: 'setSkin', value: option.id })}
         >
           {option.label}

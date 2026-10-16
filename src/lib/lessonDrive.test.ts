@@ -21,8 +21,13 @@ import {
   recordLessonRevision,
   scheduleLessonDriveDraft,
   stampDriveIds,
+  TRAINING_DRIVE_CONNECT_LABEL,
+  TRAINING_DRIVE_CONNECT_TITLE,
+  TRAINING_DRIVE_OPEN_LABEL,
   syncTodayTrainingVideos,
+  trainingClipHandoff,
   trainingClipStayCopy,
+  trainingDriveConnectHint,
 } from './lessonDrive.ts';
 import { emptyVideoPlan, setSlotClip } from './techniqueLogic.ts';
 import { emptyPlan, type TrainingNotesPlan } from './trainingNotesStore.ts';
@@ -118,6 +123,13 @@ test('Drive history keeps one draft per coach per day and drops file bytes', () 
   assert.equal(saved.find((row) => row.kind === 'distribution')?.driveFileId, 'drive-plan-1');
   assert.equal(JSON.stringify(queue).includes('blob'), false);
   assert.match(lessonRevisionLabel(queue[0]), /Alex · 2026-09-27 · Draft/);
+  assert.equal(withBlob.lessonTitle, '');
+  const titled = lessonPlanForDrive({ ...plan, lessonTitle: 'Guard passing' });
+  assert.equal(titled.lessonTitle, 'Guard passing');
+  assert.match(
+    lessonRevisionLabel({ ...queue[0], plan: titled }),
+    /Alex · Guard passing · 2026-09-27 · Draft/,
+  );
   assert.match(OWNER_DRIVE_BODY, /training-videos folder/);
   assert.match(OWNER_DRIVE_BODY, /offline play/);
   assert.match(OWNER_DRIVE_BODY, /does not host the photos or videos/);
@@ -263,14 +275,49 @@ test('two classes on one day stay separate drafts and keep designation and time'
   assert.equal(flushed?.plan.intro, 'Mount');
 });
 
-test('Daily Training copy stays on the phone until Drive is connected', () => {
+test('Daily Training copy is the Drive day-save handoff, including seated Pro invites', () => {
   assert.equal(
     trainingClipStayCopy({ proSuite: false, driveConnected: false }),
     'Clips stay on this device. Nothing is uploaded.',
   );
-  assert.match(trainingClipStayCopy({ proSuite: true, driveConnected: false }), /until Google Drive is connected/);
-  assert.match(trainingClipStayCopy({ proSuite: true, driveConnected: true }), /offline play/);
-  assert.match(trainingClipStayCopy({ proSuite: true, driveConnected: true }), /gym Google Drive folder/);
+  const ownerWaiting = trainingClipHandoff({ proSuite: true, driveConnected: false });
+  assert.equal(ownerWaiting.share, true);
+  assert.match(ownerWaiting.lead, /Connect Google Drive, then save this day/);
+  assert.match(ownerWaiting.lead, /gym Drive folder for the gym owner and instructors/);
+  assert.match(ownerWaiting.warning, /not shared with the owner or other instructors yet/);
+  assert.doesNotMatch(ownerWaiting.lead, /same Google Drive sharing/);
+  assert.doesNotMatch(`${ownerWaiting.lead} ${ownerWaiting.warning}`, /forever|downloads only|submit for review|inbox/i);
+
+  const seatedWaiting = trainingClipHandoff({
+    proSuite: false,
+    driveConnected: false,
+    seatedAuthorized: true,
+  });
+  assert.equal(seatedWaiting.share, true);
+  assert.match(seatedWaiting.lead, /same Google Drive sharing as the gym owner/);
+  assert.match(seatedWaiting.lead, /Connect Google Drive, then save this day/);
+  assert.match(seatedWaiting.warning, /not shared with the owner or other instructors yet/);
+  assert.doesNotMatch(trainingClipStayCopy({ proSuite: false, driveConnected: false, seatedAuthorized: true }), /Nothing is uploaded/);
+
+  const seatedConnected = trainingClipHandoff({
+    proSuite: true,
+    driveConnected: true,
+    seatedAuthorized: true,
+  });
+  assert.match(seatedConnected.lead, /same Google Drive sharing as the gym owner/);
+  assert.match(seatedConnected.warning, /offline play/);
+  assert.match(seatedConnected.action, /saves this day into the gym Drive folder/);
+
+  assert.equal(TRAINING_DRIVE_CONNECT_LABEL, 'Connect Google Drive to share this day');
+  assert.equal(TRAINING_DRIVE_OPEN_LABEL, 'Open gym Drive folder');
+  assert.equal(TRAINING_DRIVE_CONNECT_TITLE, 'Share this day with Google Drive');
+  const ownerHint = trainingDriveConnectHint(false);
+  const seatedHint = trainingDriveConnectHint(true);
+  assert.match(ownerHint, /gym owner and instructors/);
+  assert.doesNotMatch(ownerHint, /same Google Drive sharing/);
+  assert.match(seatedHint, /same Google Drive sharing as the gym owner/);
+  assert.doesNotMatch(`${ownerHint}\n${seatedHint}`, /submit for review|inbox/i);
+
   assert.equal(driveVideoProgressLabel(0, 3), 'Uploading 1 of 3 videos to Google Drive…');
   assert.equal(driveVideoProgressLabel(2, 3), 'Uploading 2 of 3 videos to Google Drive…');
   assert.match(
@@ -311,6 +358,32 @@ test('a known Drive id is not uploaded again, and an empty blob is skipped', () 
     [],
   );
   syncTodayTrainingVideos(plan, false);
+});
+
+test('a pending clip takes the class designation and technique title', () => {
+  const plan = samplePlan();
+  plan.classDesignation = 'GB1';
+  plan.lessonTitle = 'Guard day';
+  plan.techniques[0].title = 'Armbar from guard';
+  const videoPlan = setSlotClip(emptyVideoPlan(), 'tech-1', 'clip-3', {
+    driveFileId: null,
+    mediaName: 'advantage-video-raw.mp4',
+    mediaMime: 'video/mp4',
+  });
+  const pending = pendingTrainingVideos(
+    mediaRefsFromVideoPlan(videoPlan),
+    [{ id: 'clip-3', blob: new Blob(['x']), mime: 'video/mp4', label: 'raw' }],
+    {
+      classDesignation: plan.classDesignation,
+      lessonTitle: plan.lessonTitle,
+      techniqueTitles: plan.techniques.map((tech) => tech.title),
+    },
+  );
+  assert.equal(pending.length, 1);
+  assert.equal(pending[0]?.classDesignation, 'GB1');
+  assert.equal(pending[0]?.lessonTitle, 'Armbar from guard');
+  assert.equal(pending[0]?.clipNumber, 1);
+  assert.equal(pending[0]?.localClipId, 'clip-3');
 });
 
 test('day package uploads video bytes to Drive and still saves lesson text when a video fails', async () => {

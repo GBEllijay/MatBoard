@@ -5,8 +5,9 @@
  * Coach Unlimited and Advantage Pro stay in alpha until Google Drive,
  * OneDrive, Google Photos, and iCloud all work. Google Drive is live.
  * OneDrive can connect on a build that has the Microsoft client id.
- * Google Photos can connect on a build that has the Google client id.
- * iCloud is required for launch and is not connected yet.
+ * Google Photos can connect on a build that has the Google client id
+ * and picks albums through the Photos Picker API. iCloud stays on the
+ * Connect with list as Coming for launch until that connect is live.
  *
  * Dropbox is a reserved slot from an earlier note. It is not on the launch
  * list and it is not half-built. The owner order is OneDrive, then Google
@@ -19,17 +20,20 @@ import { createOneDriveConnector } from './oneDriveConnector.ts';
 
 export type CloudStorageProviderId = 'googleDrive' | 'oneDrive' | 'googlePhotos' | 'iCloud' | 'dropbox';
 
-/** `live` can connect. `coming-for-launch` is required before public sale and stays disabled. */
+/** `live` can connect. `coming-for-launch` stays visible and disabled. */
 export type CloudStoragePhase = 'live' | 'coming-for-launch' | 'reserved';
 
 export const CONNECT_WITH_KICKER = 'Your folder';
 export const CONNECT_WITH_TITLE = 'Connect with';
 export const CONNECT_WITH_BODY =
-  'Choose a folder the gym already owns. Lesson plans, photos, and videos stay there. Advantage does not host photos or videos, and Advantage does not manage the gym cloud account. Adding a photo still includes Google Photos and the phone gallery. Google Drive is an additional folder. OneDrive, Google Photos, and iCloud are required before Coach Unlimited and Advantage Pro leave alpha.';
+  'Choose a folder the gym already owns. Lesson plans, photos, and videos stay there. Advantage does not host photos or videos, and Advantage does not manage the gym cloud account. Adding a photo still includes Google Photos and the phone gallery. Google Drive is an additional folder. iCloud is coming for launch.';
 export const CONNECT_ACCOUNT_NOTE =
   'Advantage does not host photos or videos. The gym uses its own cloud account. Advantage does not manage that account.';
+/** Gold label on the iCloud row only. Google Photos is a live connect and does not use this. */
 export const CONNECT_LAUNCH_BADGE = 'Coming for launch';
-/** @deprecated Display string is `CONNECT_LAUNCH_BADGE`. Kept so older imports still compile. */
+/** @deprecated Display string is `CONNECT_LAUNCH_BADGE`. Only iCloud shows it. */
+export const CONNECT_COMING_SOON_BADGE = CONNECT_LAUNCH_BADGE;
+/** @deprecated Display string is `CONNECT_LAUNCH_BADGE`. */
 export const CONNECT_COMING_SOON = CONNECT_LAUNCH_BADGE;
 export const CONNECT_CHOOSE_FOLDER = 'Choose a folder.';
 /**
@@ -107,9 +111,7 @@ export interface CloudStorageConnector {
   disconnect(): void;
 }
 
-/**
- * Required before Coach and Pro leave alpha. Shown disabled until that sign-in exists.
- */
+/** On the Connect with list, but not a live sign-in. iCloud until that connect is live. */
 function launchConnector(id: 'iCloud', displayName: string, message: string): CloudStorageConnector {
   return {
     id,
@@ -159,18 +161,23 @@ const registry: Record<CloudStorageProviderId, CloudStorageConnector> = {
   iCloud: launchConnector(
     'iCloud',
     'iCloud',
-    'iCloud is coming for launch. It is not connected in this build. Advantage does not host photos or videos.',
+    'iCloud is coming for launch. It is not a live connect in this build. Advantage does not host photos or videos.',
   ),
   dropbox: reservedConnector('dropbox', 'Dropbox'),
 };
 
-/** Owner list: live Drive, OneDrive, and Google Photos, then iCloud. */
+/** Owner list: live Drive, OneDrive, and Google Photos, then iCloud (Coming for launch). */
 export const CLOUD_STORAGE_PROVIDER_IDS: readonly CloudStorageProviderId[] = [
   'googleDrive',
   'oneDrive',
   'googlePhotos',
   'iCloud',
 ];
+
+/** Gold Coming for launch label for iCloud. Google Photos is a live connect and gets none. */
+export function connectListBadge(provider: CloudStorageConnector): string | null {
+  return provider.phase === 'coming-for-launch' ? CONNECT_LAUNCH_BADGE : null;
+}
 
 /** Google Drive is the default. Pass another id when that provider is wired. */
 export function cloudStorage(id: CloudStorageProviderId = 'googleDrive'): CloudStorageConnector {

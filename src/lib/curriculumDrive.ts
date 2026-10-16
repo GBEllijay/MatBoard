@@ -8,12 +8,7 @@ import {
   sanitizeCurriculum,
   type CurriculumPlan,
 } from './competitionCurriculum.ts';
-import {
-  curriculumDriveFileName,
-  readDriveBinding,
-  requestDriveToken,
-  upsertCurriculumFile,
-} from './googleDrive.ts';
+import { readDriveBinding, requestDriveToken, upsertCurriculumFile } from './googleDrive.ts';
 import { driveFolderWebUrl } from './openMyDrive.ts';
 
 export type CurriculumDriveDocument = {
@@ -48,11 +43,6 @@ export function curriculumDriveDocument(input: {
     purpose: 'self',
     curriculum: plan,
   };
-}
-
-export function curriculumDriveName(dateKey: string, plan: CurriculumPlan): string {
-  const { plan: clean } = sanitizeCurriculum(plan);
-  return curriculumDriveFileName(dateKey, clean.coachName, clean.id);
 }
 
 export async function exportCurriculumToDrive(input: {

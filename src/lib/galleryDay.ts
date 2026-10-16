@@ -51,9 +51,10 @@ export function galleryVideosForDay<T extends GalleryDayClip>(
     .sort((a, b) => a.addedAt - b.addedAt || a.id.localeCompare(b.id));
 }
 
-export function galleryTodayReadyCopy(count: number): string {
-  if (count === 1) return '1 video in the shared gallery for today.';
-  return `${count} videos in the shared gallery for today.`;
+export function galleryTodayReadyCopy(count: number, dayLabel = 'today'): string {
+  const day = dayLabel.trim() || 'today';
+  if (count === 1) return `1 video in the shared gallery for ${day}.`;
+  return `${count} videos in the shared gallery for ${day}.`;
 }
 
 export function galleryVideoExtension(mime: string): string {

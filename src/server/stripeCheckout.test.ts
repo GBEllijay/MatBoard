@@ -6,6 +6,7 @@ import {
   checkoutReturnUrls,
   isStripeCheckoutUrl,
   purchaseFromStripeEvent,
+  readOptionalProMonthlyDiscountPrice,
   verifyStripeSignature,
 } from './stripeCheckout.ts';
 
@@ -72,6 +73,53 @@ test('default return URLs come back to the buy page', () => {
   if ('error' in urls) return;
   assert.equal(urls.cancelUrl, 'http://localhost:5173/buy?checkout=cancel');
   assert.match(urls.successUrl, /^http:\/\/localhost:5173\/buy\?checkout=success&session_id=\{CHECKOUT_SESSION_ID\}$/);
+});
+
+test('Student Edition checkout is one payment line and returns to /buy/student', () => {
+  const fields = checkoutFormFields({
+    priceIds: ['price_student'],
+    mode: 'payment',
+    productId: 'advantage-student',
+    successUrl: 'https://advantagebjjtimer.com/buy/student?checkout=success&session_id={CHECKOUT_SESSION_ID}',
+    cancelUrl: 'https://advantagebjjtimer.com/buy/student?checkout=cancel',
+  });
+  assert.equal(fields.get('mode'), 'payment');
+  assert.equal(fields.get('line_items[0][price]'), 'price_student');
+  assert.equal(fields.get('line_items[1][price]'), null);
+  assert.equal(fields.get('metadata[product]'), 'advantage-student');
+  assert.equal(fields.get('payment_intent_data[metadata][product]'), 'advantage-student');
+  assert.equal(fields.get('allow_promotion_codes'), 'true');
+  const urls = checkoutReturnUrls('https://advantagebjjtimer.com/api/checkout', {
+    STRIPE_SUCCESS_URL: 'https://advantagebjjtimer.com/buy?checkout=success&session_id={CHECKOUT_SESSION_ID}',
+    STRIPE_CANCEL_URL: 'https://advantagebjjtimer.com/buy?checkout=cancel',
+  }, 'student');
+  assert.ok(!('error' in urls));
+  if ('error' in urls) return;
+  assert.equal(urls.cancelUrl, 'https://advantagebjjtimer.com/buy/student?checkout=cancel');
+  assert.equal(
+    urls.successUrl,
+    'https://advantagebjjtimer.com/buy/student?checkout=success&session_id={CHECKOUT_SESSION_ID}',
+  );
+});
+
+test('the optional monthly discount price is readable and is not a Checkout line item', () => {
+  assert.equal(readOptionalProMonthlyDiscountPrice({}), null);
+  assert.equal(readOptionalProMonthlyDiscountPrice({ STRIPE_PRICE_PRO_MONTHLY_DISCOUNT: 'not-a-price' }), null);
+  assert.equal(
+    readOptionalProMonthlyDiscountPrice({ STRIPE_PRICE_PRO_MONTHLY_DISCOUNT: ' price_kept_monthly ' }),
+    'price_kept_monthly',
+  );
+  const fields = checkoutFormFields({
+    priceIds: ['price_pro', 'price_pro_monthly'],
+    mode: 'subscription',
+    productId: 'advantage-pro',
+    successUrl: 'https://advantagebjjtimer.com/buy/pro?checkout=success&session_id={CHECKOUT_SESSION_ID}',
+    cancelUrl: 'https://advantagebjjtimer.com/buy/pro?checkout=cancel',
+  });
+  assert.equal(fields.get('line_items[0][price]'), 'price_pro');
+  assert.equal(fields.get('line_items[1][price]'), 'price_pro_monthly');
+  assert.equal(fields.get('line_items[2][price]'), null);
+  assert.doesNotMatch(fields.toString(), /price_kept_monthly/);
 });
 
 test('Coach and Pro return to their buy paths on the request origin', () => {
@@ -206,8 +254,214 @@ test('other events and unpaid sessions are ignored', () => {
           id: 'cs_test_pro',
           object: 'checkout.session',
           mode: 'subscription',
+          payment_status: 'unpaid',
+          subscription: 'sub_test_pro',
+          metadata: { product: 'advantage-pro' },
+        },
+      },
+    }).action,
+    'ignore',
+  );
+});
+
+test('a paid Pro Checkout session grants the subscription', () => {
+  const parsed = purchaseFromStripeEvent({
+    type: 'checkout.session.completed',
+    data: {
+      object: {
+        id: 'cs_test_pro',
+        object: 'checkout.session',
+        mode: 'subscription',
+        payment_status: 'paid',
+        amount_total: 10298,
+        currency: 'usd',
+        subscription: 'sub_test_pro',
+        customer_details: { email: 'Owner@Gym.test' },
+        metadata: { product: 'advantage-pro' },
+      },
+    },
+  });
+  assert.equal(parsed.action, 'grant-pro');
+  if (parsed.action !== 'grant-pro') return;
+  assert.equal(parsed.grant.email, 'owner@gym.test');
+  assert.equal(parsed.grant.sessionId, 'cs_test_pro');
+  assert.equal(parsed.grant.subscriptionId, 'sub_test_pro');
+  assert.equal(parsed.grant.amountTotal, 10298);
+});
+
+test('a paid Pro Checkout session without a subscription id is retried', () => {
+  assert.equal(
+    purchaseFromStripeEvent({
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          id: 'cs_test_pro',
+          object: 'checkout.session',
+          mode: 'subscription',
           payment_status: 'paid',
           metadata: { product: 'advantage-pro' },
+        },
+      },
+    }).action,
+    'retry',
+  );
+});
+
+test('invoice.paid keeps a Pro subscription entitled', () => {
+  const legacy = purchaseFromStripeEvent({
+    type: 'invoice.paid',
+    data: {
+      object: {
+        object: 'invoice',
+        subscription: 'sub_test_pro',
+        customer_email: 'owner@gym.test',
+        amount_paid: 299,
+        currency: 'usd',
+        lines: { data: [{ metadata: { product: 'advantage-pro' } }] },
+      },
+    },
+  });
+  assert.equal(legacy.action, 'sync-pro');
+  if (legacy.action !== 'sync-pro') return;
+  assert.equal(legacy.sync.entitled, true);
+  assert.equal(legacy.sync.productKnown, true);
+  assert.equal(legacy.sync.subscriptionId, 'sub_test_pro');
+  assert.equal(legacy.sync.amountTotal, 299);
+
+  const basil = purchaseFromStripeEvent({
+    type: 'invoice.payment_succeeded',
+    data: {
+      object: {
+        object: 'invoice',
+        customer_email: 'owner@gym.test',
+        amount_paid: 299,
+        currency: 'usd',
+        parent: {
+          subscription_details: {
+            subscription: 'sub_test_pro',
+            metadata: { product: 'advantage-pro' },
+          },
+        },
+      },
+    },
+  });
+  assert.equal(basil.action, 'sync-pro');
+  if (basil.action !== 'sync-pro') return;
+  assert.equal(basil.sync.subscriptionId, 'sub_test_pro');
+  assert.equal(basil.sync.productKnown, true);
+});
+
+test('subscription status updates grant, keep, or revoke Pro', () => {
+  const active = purchaseFromStripeEvent({
+    type: 'customer.subscription.updated',
+    data: {
+      object: {
+        id: 'sub_test_pro',
+        object: 'subscription',
+        status: 'active',
+        metadata: { product: 'advantage-pro' },
+      },
+    },
+  });
+  assert.equal(active.action, 'sync-pro');
+  if (active.action === 'sync-pro') assert.equal(active.sync.entitled, true);
+
+  const pastDue = purchaseFromStripeEvent({
+    type: 'customer.subscription.updated',
+    data: {
+      object: {
+        id: 'sub_test_pro',
+        object: 'subscription',
+        status: 'past_due',
+        metadata: { product: 'advantage-pro' },
+      },
+    },
+  });
+  assert.equal(pastDue.action, 'sync-pro');
+  if (pastDue.action === 'sync-pro') assert.equal(pastDue.sync.entitled, true);
+
+  const canceled = purchaseFromStripeEvent({
+    type: 'customer.subscription.deleted',
+    data: {
+      object: {
+        id: 'sub_test_pro',
+        object: 'subscription',
+        status: 'canceled',
+        metadata: { product: 'advantage-pro' },
+      },
+    },
+  });
+  assert.equal(canceled.action, 'sync-pro');
+  if (canceled.action === 'sync-pro') assert.equal(canceled.sync.entitled, false);
+
+  assert.equal(
+    purchaseFromStripeEvent({
+      type: 'customer.subscription.updated',
+      data: {
+        object: {
+          id: 'sub_test_pro',
+          object: 'subscription',
+          status: 'incomplete',
+          metadata: { product: 'advantage-pro' },
+        },
+      },
+    }).action,
+    'ignore',
+  );
+  assert.equal(
+    purchaseFromStripeEvent({
+      type: 'customer.subscription.updated',
+      data: {
+        object: {
+          id: 'sub_other',
+          object: 'subscription',
+          status: 'active',
+          metadata: { product: 'advantage-white' },
+        },
+      },
+    }).action,
+    'ignore',
+  );
+  assert.equal(
+    purchaseFromStripeEvent({
+      type: 'invoice.paid',
+      data: { object: { object: 'invoice', customer_email: 'owner@gym.test', amount_paid: 999 } },
+    }).action,
+    'ignore',
+  );
+});
+
+test('a paid Student Edition Checkout records the purchase', () => {
+  const parsed = purchaseFromStripeEvent({
+    type: 'checkout.session.completed',
+    data: {
+      object: {
+        id: 'cs_test_student',
+        object: 'checkout.session',
+        mode: 'payment',
+        payment_status: 'paid',
+        amount_total: 1999,
+        currency: 'usd',
+        customer_details: { email: 'Student@Gym.test' },
+        metadata: { product: 'advantage-student' },
+      },
+    },
+  });
+  assert.equal(parsed.action, 'record-student');
+  if (parsed.action !== 'record-student') return;
+  assert.equal(parsed.purchase.email, 'student@gym.test');
+  assert.equal(parsed.purchase.sessionId, 'cs_test_student');
+  assert.equal(parsed.purchase.amountTotal, 1999);
+  assert.equal(
+    purchaseFromStripeEvent({
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          id: 'cs_test_student',
+          object: 'checkout.session',
+          mode: 'payment',
+          payment_status: 'unpaid',
+          metadata: { product: 'advantage-student' },
         },
       },
     }).action,

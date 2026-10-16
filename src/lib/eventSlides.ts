@@ -1,8 +1,7 @@
-import { buyLinkForQr } from './shopSlides.ts';
 import {
+  buyLinkForQr,
   DEFAULT_SHOP_CAST_MODE,
   SHOP_CAST_MODE_OPTIONS,
-  SHOP_CAST_MODES,
   normalizeShopCastMode,
   type ShopCastMode,
 } from './shopSlides.ts';
@@ -13,12 +12,9 @@ import {
  * Optional links become QR codes beside that photo, like Pro Shop.
  */
 
-export const EVENTS_FOLDER_ID = 'events';
-
 /** How many QR targets one event photo can show beside itself. */
 export const EVENT_QR_CAP = 6;
 
-export const EVENTS_CAST_MODES = SHOP_CAST_MODES;
 export type EventsCastMode = ShopCastMode;
 
 /** Images + QR is the owner default. Logo stays opt-in until a gym mark is saved. */

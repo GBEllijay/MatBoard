@@ -1,6 +1,7 @@
-import { useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { releaseTextFocus } from '../lib/keepFieldVisible';
+import { popSheetLayer, pushSheetLayer } from '../lib/sheetLayer';
 
 type Props = {
   open: boolean;
@@ -37,6 +38,12 @@ export function Sheet({
     }
     releaseTextFocus(rootRef.current);
     setMounted(false);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    pushSheetLayer();
+    return () => popSheetLayer();
   }, [open]);
 
   if (!mounted) return null;

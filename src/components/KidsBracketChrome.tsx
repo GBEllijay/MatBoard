@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useInterval } from '../hooks/useClock';
 import { formatMss } from '../lib/format';
-import { KIDS_SCOREBOARDS_NAME, kidsSkinLabel, kidsWinLines, type KidsSkinId } from '../lib/kidsScoreboard';
+import { KIDS_SCOREBOARDS_NAME, kidsSkinLabel, type KidsSkinId } from '../lib/kidsScoreboard';
 import { remainingNow, type MatchState } from '../lib/matchStore';
 import { CarlosCheer } from './CarlosCheer';
 
@@ -30,40 +30,41 @@ function KidsLiveClock({
 export function KidsBracketChrome({
   skin,
   win,
-  champion,
-  scoreLine,
   liveLine,
   liveMatch,
 }: {
   skin: KidsSkinId;
   win: boolean;
-  champion: string;
-  scoreLine: string | null;
   liveLine: string | null;
   liveMatch: Pick<MatchState, 'running' | 'startedAt' | 'remainingMs'> | null;
 }) {
   const label = kidsSkinLabel(skin);
-  const winLines = kidsWinLines(champion, scoreLine);
   return (
-    <>
-      <div className="kids-banner">
-        <p className="kids-banner__title">
-          <SkinMark />
-          <span>
-            {KIDS_SCOREBOARDS_NAME} · {label}
-            {win ? ' · Win' : ''}
-          </span>
-          <SkinMark />
+    <div className="kids-banner">
+      <p className="kids-banner__title">
+        <SkinMark />
+        <span>
+          {KIDS_SCOREBOARDS_NAME} · {label}
+          {win ? ' · Win' : ''}
+        </span>
+        <SkinMark />
+      </p>
+      {liveLine && liveMatch ? (
+        <p className="kids-live" role="status">
+          <span className="kids-live__badge">LIVE</span>
+          <span>Current Match: {liveLine}</span>
+          <KidsLiveClock match={liveMatch} />
         </p>
-        {liveLine && liveMatch ? (
-          <p className="kids-live" role="status">
-            <span className="kids-live__badge">LIVE</span>
-            <span>Current Match: {liveLine}</span>
-            <KidsLiveClock match={liveMatch} />
-          </p>
-        ) : null}
-      </div>
-      {win ? <CarlosCheer lines={winLines} /> : null}
-    </>
+      ) : null}
+    </div>
+  );
+}
+
+/** Reserved bottom corner. The figure stays in this strip so cards, SCORE, and Decision stay clear. */
+export function KidsMascotDock({ lines }: { lines: readonly string[] }) {
+  return (
+    <div className="kids-mascot-dock">
+      <CarlosCheer lines={lines} corner />
+    </div>
   );
 }

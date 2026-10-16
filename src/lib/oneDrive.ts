@@ -33,8 +33,13 @@ export const ONEDRIVE_DEV_CLIENT_HINT =
 export const ONEDRIVE_SIGN_IN_FAILED =
   'Microsoft did not finish sign-in. Try again, or ask whoever set up Advantage to allow this website.';
 export const ONEDRIVE_FOLDER_EMPTY = 'This OneDrive account does not have any folders yet.';
+/** Graph Files API 404. The Advantage page did load. */
+export const ONEDRIVE_NO_DRIVE =
+  'Advantage opened. This Microsoft account has no OneDrive yet. Open OneDrive in a browser once, then try Connect with again.';
+export const ONEDRIVE_FOLDER_MISSING = 'That OneDrive folder could not be opened. Pick a folder again.';
 
 export const GRAPH_ROOT = 'https://graph.microsoft.com/v1.0/me/drive';
+export const GRAPH_DRIVES = 'https://graph.microsoft.com/v1.0/me/drives?$select=id,driveType';
 
 export type OneDriveBinding = {
   folderId: string;
@@ -407,21 +412,43 @@ export function oneDriveFileName(name: string): string {
   return cleaned.slice(0, 180) || ONEDRIVE_CONNECT_FILE_NAME;
 }
 
-export function graphChildrenUrl(folderId?: string): string {
+function graphDriveRoot(driveId?: string | null): string {
+  if (!driveId) return GRAPH_ROOT;
+  return `https://graph.microsoft.com/v1.0/drives/${encodeURIComponent(driveId)}`;
+}
+
+export function graphChildrenUrl(folderId?: string, driveId?: string | null): string {
+  const root = graphDriveRoot(driveId);
   const select = '$select=id,name,folder';
-  if (!folderId) return `${GRAPH_ROOT}/root/children?$top=200&${select}`;
-  return `${GRAPH_ROOT}/items/${encodeURIComponent(folderId)}/children?$top=200&${select}`;
+  if (!folderId) return `${root}/root/children?$top=200&${select}`;
+  return `${root}/items/${encodeURIComponent(folderId)}/children?$top=200&${select}`;
 }
 
-export function graphTextUploadUrl(parentId: string | undefined, name: string): string {
+export function graphTextUploadUrl(parentId: string | undefined, name: string, driveId?: string | null): string {
+  const root = graphDriveRoot(driveId);
   const fileName = encodeURIComponent(oneDriveFileName(name));
-  if (!parentId) return `${GRAPH_ROOT}/root:/${fileName}:/content`;
-  return `${GRAPH_ROOT}/items/${encodeURIComponent(parentId)}:/${fileName}:/content`;
+  if (!parentId) return `${root}/root:/${fileName}:/content`;
+  return `${root}/items/${encodeURIComponent(parentId)}:/${fileName}:/content`;
 }
 
-export function graphCreateChildUrl(parentId?: string): string {
-  if (!parentId) return `${GRAPH_ROOT}/root/children`;
-  return `${GRAPH_ROOT}/items/${encodeURIComponent(parentId)}/children`;
+export function graphCreateChildUrl(parentId?: string, driveId?: string | null): string {
+  const root = graphDriveRoot(driveId);
+  if (!parentId) return `${root}/root/children`;
+  return `${root}/items/${encodeURIComponent(parentId)}/children`;
+}
+
+/** Prefer the personal OneDrive when `/me/drive` is missing. */
+export function oneDriveIdFromDrives(payload: unknown): string | null {
+  const value = (payload as { value?: unknown[] } | null)?.value;
+  if (!Array.isArray(value)) return null;
+  const rows: { id: string; driveType?: string }[] = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== 'object') continue;
+    const row = entry as { id?: string; driveType?: string };
+    if (!row.id) continue;
+    rows.push({ id: row.id, driveType: row.driveType });
+  }
+  return (rows.find((row) => row.driveType === 'personal') ?? rows[0])?.id ?? null;
 }
 
 export function oneDriveItemsFromGraph(payload: unknown, foldersOnly = false): CloudItemRef[] {
@@ -440,14 +467,46 @@ export function oneDriveItemsFromGraph(payload: unknown, foldersOnly = false): C
 
 type OneDriveFetch = typeof fetch;
 
-async function graphError(response: Response): Promise<Error> {
+const driveIdByToken = new Map<string, string>();
+
+async function graphError(response: Response, missing: 'drive' | 'folder' = 'drive'): Promise<Error> {
   const detail = await response.text().catch(() => '');
   if (response.status === 401 || response.status === 403) {
     return new Error('OneDrive did not allow this. Sign in again.');
   }
+  if (response.status === 404) {
+    return new Error(missing === 'folder' ? ONEDRIVE_FOLDER_MISSING : ONEDRIVE_NO_DRIVE);
+  }
   const trimmed = detail.replace(/\s+/g, ' ').trim().slice(0, 160);
   if (trimmed && !/[{}]/.test(trimmed)) return new Error(trimmed);
   return new Error(`OneDrive returned ${response.status}.`);
+}
+
+async function findOneDriveDriveId(token: string, fetcher: OneDriveFetch): Promise<string | null> {
+  const response = await fetcher(GRAPH_DRIVES, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) return null;
+  return oneDriveIdFromDrives(await response.json());
+}
+
+/**
+ * `/me/drive` 404s for some personal accounts that still have a drive.
+ * One lookup of `/me/drives` is enough for the rest of this sign-in.
+ */
+async function graphFetch(
+  token: string,
+  fetcher: OneDriveFetch,
+  urlFor: (driveId: string | null) => string,
+  init: RequestInit,
+): Promise<Response> {
+  const known = driveIdByToken.get(token) ?? null;
+  const first = await fetcher(urlFor(known), init);
+  if (first.status !== 404 || known) return first;
+  const found = await findOneDriveDriveId(token, fetcher);
+  if (!found) return first;
+  driveIdByToken.set(token, found);
+  return fetcher(urlFor(found), init);
 }
 
 export async function listOneDriveItems(
@@ -455,13 +514,16 @@ export async function listOneDriveItems(
   input: { folderId?: string; foldersOnly?: boolean; fetcher?: OneDriveFetch } = {},
 ): Promise<CloudItemRef[]> {
   const fetcher = input.fetcher ?? fetch;
-  let url: string | undefined = graphChildrenUrl(input.folderId);
+  const missing = input.folderId ? 'folder' : 'drive';
+  const auth = { headers: { Authorization: `Bearer ${token}` } };
+  let url: string | undefined = graphChildrenUrl(input.folderId, driveIdByToken.get(token) ?? null);
   const items: CloudItemRef[] = [];
   for (let page = 0; page < 3 && url; page += 1) {
-    const response = await fetcher(url, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!response.ok) throw await graphError(response);
+    const response =
+      page === 0
+        ? await graphFetch(token, fetcher, (driveId) => graphChildrenUrl(input.folderId, driveId), auth)
+        : await fetcher(url, auth);
+    if (!response.ok) throw await graphError(response, missing);
     const payload = (await response.json()) as GraphList;
     items.push(...oneDriveItemsFromGraph(payload, input.foldersOnly ?? false));
     url = payload['@odata.nextLink'];
@@ -476,7 +538,7 @@ export async function saveOneDriveText(
   fetcher: OneDriveFetch = fetch,
 ): Promise<CloudItemRef> {
   const name = oneDriveFileName(file.name);
-  const response = await fetcher(graphTextUploadUrl(folderId, name), {
+  const response = await graphFetch(token, fetcher, (driveId) => graphTextUploadUrl(folderId, name, driveId), {
     method: 'PUT',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -484,7 +546,7 @@ export async function saveOneDriveText(
     },
     body: file.text,
   });
-  if (!response.ok) throw await graphError(response);
+  if (!response.ok) throw await graphError(response, folderId ? 'folder' : 'drive');
   const saved = (await response.json()) as GraphItem;
   if (!saved.id) throw new Error('OneDrive did not return a file id.');
   return { id: saved.id, name: saved.name || name };
@@ -497,7 +559,7 @@ export async function createOneDriveFolder(
   parentId?: string,
 ): Promise<CloudItemRef> {
   const folderName = oneDriveFileName(name);
-  const response = await fetcher(graphCreateChildUrl(parentId), {
+  const response = await graphFetch(token, fetcher, (driveId) => graphCreateChildUrl(parentId, driveId), {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -514,7 +576,7 @@ export async function createOneDriveFolder(
     const match = existing.find((item) => item.name === folderName);
     if (match) return match;
   }
-  if (!response.ok) throw await graphError(response);
+  if (!response.ok) throw await graphError(response, parentId ? 'folder' : 'drive');
   const created = (await response.json()) as GraphItem;
   if (!created.id) throw new Error('OneDrive did not return the new folder.');
   return { id: created.id, name: created.name || folderName };

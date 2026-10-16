@@ -23,6 +23,7 @@ import {
   EMPTY_VIDEOS_TITLE,
   NOTES_LEAD,
   COACH_LESSON_EYEBROW,
+  COACH_PLAN_CONNECT_DRIVE,
   COACH_PLAN_SAVE_LEAD,
   COACH_PLAN_SAVE_LINK,
   UNLIMITED_SHARE_LEAD,
@@ -206,7 +207,7 @@ test('Coach CMS roster shows CSV and keeps manual roster language', () => {
   );
   assert.equal(
     ROSTER_CSV_INSTRUCTIONS,
-    'Each row needs a competitor name and a belt. A row missing either one is left out. Division, Gym name / nickname, and Check In can be blank. Competitor Notes are included when the row has them. Face photos stay on this device and are not in the CSV.',
+    'Each row needs a competitor name and a belt. A row missing either one is left out. Division, Gym name / nickname, Last promotion, Last promotion detail, and Check In can be blank. Competitor Notes are included when the row has them. Face photos stay on this device and are not in the CSV.',
   );
   assert.equal(
     ROSTER_CSV_TEMPLATE_NOTE,
@@ -227,6 +228,7 @@ test('Coach Daily Lesson Plan copy stays on this device and does not name a day 
     'This plan saves to your phone as you type. Click here to save a copy on your connected Drive.',
   );
   assert.equal(COACH_PLAN_SAVE_LINK, 'Click here');
+  assert.equal(COACH_PLAN_CONNECT_DRIVE, 'Connect Google Drive first');
   assert.equal(
     UNLIMITED_SHARE_LEAD,
     'Instructors share class plans, technique trees, and training videos with you. Each day they can send class photos and short clips for you to look over. Their screen works like Coach. You approve what plays on the gym TV and what joins the gym roster.',

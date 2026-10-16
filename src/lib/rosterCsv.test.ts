@@ -252,11 +252,12 @@ describe('division column', () => {
         division: 'Adult Blue, Gi',
         gym: 'Atos',
         lastPromotion: '2026-01-02',
+        lastPromotionDetail: '',
         note: 'Quiet',
         checkedIn: false,
       },
     ]);
-    assert.match(csv, /Sam,Blue,"Adult Blue, Gi",Atos,2026-01-02,Quiet,No/);
+    assert.match(csv, /Sam,Blue,"Adult Blue, Gi",Atos,2026-01-02,,Quiet,No/);
     const next = importRosterCsv(csv);
     assert.equal(next.imported, 1);
     assert.equal(next.students[0]?.division, 'Adult Blue, Gi');
@@ -268,6 +269,7 @@ describe('division column', () => {
     assert.equal(older.students[0]?.division, '');
     assert.equal(older.students[0]?.gym, 'Alliance');
     assert.equal(older.students[0]?.note, 'Quiet');
+    assert.equal(older.students[0]?.lastPromotionDetail, '');
     assert.equal(older.students[0]?.checkedIn, false);
 
     const aliased = importRosterCsv('Name,Belt,Weight class\nAlex,Purple,Masters 1\n');
@@ -277,6 +279,50 @@ describe('division column', () => {
     assert.equal(nickname.imported, 1);
     assert.equal(nickname.students[0]?.gym, 'Moose');
     assert.equal(nickname.students[0]?.photo, '');
+  });
+});
+
+describe('last promotion detail column', () => {
+  it('round-trips the detail beside the date and still imports a CSV that omits the column', () => {
+    const csv = serializeRosterCsv([
+      {
+        name: 'Ada Cruz',
+        belt: 'White',
+        division: 'Kids Gi',
+        gym: 'GB Ellijay',
+        lastPromotion: '2026-04-01',
+        lastPromotionDetail: '3rd stripe, white belt',
+        note: 'Tape',
+        checkedIn: true,
+      },
+    ]);
+    assert.match(
+      csv,
+      /Ada Cruz,White,Kids Gi,GB Ellijay,2026-04-01,"3rd stripe, white belt",Tape,Yes/,
+    );
+    const next = importRosterCsv(csv);
+    assert.equal(next.imported, 1);
+    assert.equal(next.students[0]?.lastPromotion, '2026-04-01');
+    assert.equal(next.students[0]?.lastPromotionDetail, '3rd stripe, white belt');
+    assert.equal(next.students[0]?.note, 'Tape');
+    assert.equal(next.students[0]?.checkedIn, true);
+
+    const legacy = importRosterCsv('Name,Belt,Last promotion,Notes\nPat,Brown,2026-01-02,Quiet\n');
+    assert.equal(legacy.imported, 1);
+    assert.equal(legacy.students[0]?.lastPromotion, '2026-01-02');
+    assert.equal(legacy.students[0]?.lastPromotionDetail, '');
+    assert.equal(legacy.students[0]?.note, 'Quiet');
+
+    const aliased = importRosterCsv(
+      'Name,Belt,Promotion date,Promotion detail\nSam,Blue,3/12/2026,blue belt\n',
+    );
+    assert.equal(aliased.students[0]?.lastPromotion, '2026-03-12');
+    assert.equal(aliased.students[0]?.lastPromotionDetail, 'blue belt');
+
+    const clipped = importRosterCsv(
+      `Name,Belt,Last promotion detail\nSam,Blue,${'x'.repeat(120)}\n`,
+    );
+    assert.equal(clipped.students[0]?.lastPromotionDetail.length, 80);
   });
 });
 
@@ -298,12 +344,14 @@ describe('serializeRosterCsv', () => {
     assert.equal(csv.includes('#'), false);
     assert.equal(csv.includes('Alex Rivera'), false);
     assert.equal(
-      csv.startsWith('Name,Belt,Division,Gym name / nickname,Last promotion,Notes,Check In\r\n'),
+      csv.startsWith(
+        'Name,Belt,Division,Gym name / nickname,Last promotion,Last promotion detail,Notes,Check In\r\n',
+      ),
       true,
     );
     const lines = csv.split('\r\n').filter((line) => line.length);
     assert.equal(lines.length, 4);
-    assert.equal(lines.slice(1).every((line) => line === ',,,,,,'), true);
+    assert.equal(lines.slice(1).every((line) => line === ',,,,,,,'), true);
     const rows = parseCsv(csv, detectCsvDelimiter(csv));
     assert.equal(rows.length, 1);
     assert.equal(rows[0]?.[0], 'Name');
@@ -351,11 +399,12 @@ describe('serializeRosterCsv', () => {
         division: 'Kids Gi',
         gym: 'Atos',
         lastPromotion: '2026-01-02',
+        lastPromotionDetail: '',
         note: 'Rest, ice',
         checkedIn: true,
       },
     ]);
-    assert.match(csv, /Sam,Blue,Kids Gi,Atos,2026-01-02,"Rest, ice",Yes/);
+    assert.match(csv, /Sam,Blue,Kids Gi,Atos,2026-01-02,,"Rest, ice",Yes/);
     const next = importRosterCsv(csv);
     assert.equal(next.students[0]?.checkedIn, true);
     assert.equal(next.students[0] != null && 'knownInjuries' in next.students[0], false);

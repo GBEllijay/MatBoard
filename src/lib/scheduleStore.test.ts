@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import {
   WEEKDAYS,
@@ -13,13 +14,19 @@ import {
   formatClassTime,
   formatSpecialDate,
   formatTimeGroupLine,
-  classProgram,
+  CLASS_LEVEL_META,
+  isClassLevel,
   groupClassesByTime,
   monthWeeks,
   weekHourLanes,
   normalizeGymCalendar,
   normalizeQrUrl,
   noticeLines,
+  SPECIAL_EVENT_DWELL_MS,
+  specialEventCount,
+  specialEventSlides,
+  specialsOnStrip,
+  specialsThisMonth,
   parseTimeMinutes,
   SAMPLE_WEEK_SLOTS,
   sortClasses,
@@ -30,6 +37,15 @@ import {
   type SpecialDate,
   type WeeklyClassSlot,
 } from './gymCalendar.ts';
+import {
+  addClass,
+  addParallelClass,
+  applyScheduleImport,
+  getSchedule,
+  normalizeSchedule,
+  STORAGE_KEY,
+  updateClass,
+} from './scheduleStore.ts';
 
 function row(partial: Partial<WeeklyClassSlot> & Pick<WeeklyClassSlot, 'id'>): WeeklyClassSlot {
   return {
@@ -244,22 +260,155 @@ describe('weekly list helpers', () => {
     assert.equal(lanes.at(-1), '19:00');
     assert.equal(lanes.includes('07:00'), true);
     assert.equal(lanes.includes('13:00'), true);
-    assert.equal(classProgram('Tiny Champions').id, 'kids');
-    assert.equal(classProgram('Little Champions').id, classProgram('Kids BJJ').id);
-    assert.equal(classProgram('Fundamentals').id, 'fundamentals');
-    assert.equal(classProgram('GB3').id, 'advanced');
+    const levelOf = (title: string) => SAMPLE_WEEK_SLOTS.find((slot) => slot.title === title)?.level;
+    assert.equal(levelOf('Fundamentals'), 'fundamentals');
+    assert.equal(levelOf('Beginner'), 'fundamentals');
+    assert.equal(levelOf('Blue Belt and Up'), 'advanced');
+    assert.equal(levelOf('Advanced'), 'advanced');
+    assert.equal(levelOf('Kids 3-5'), 'kids');
+    assert.equal(levelOf('Youth Class'), 'kids');
+    assert.equal(levelOf('Kids BJJ'), 'kids');
+    assert.equal(levelOf('Advanced Kids'), 'kids-advanced');
+    assert.equal(levelOf('Morning Gi'), 'none');
+    assert.equal(levelOf('No-Gi'), 'none');
+    assert.equal(levelOf('Homeschool Gi'), 'none');
+    assert.equal(levelOf('Open Mat'), 'none');
     const sampleTitles = SAMPLE_WEEK_SLOTS.map((slot) => `${slot.title} ${slot.subtitle}`).join('\n');
     assert.doesNotMatch(sampleTitles, /gracie|barra|tiny champions|little champions|\bGB\d?\b/i);
     assert.match(sampleTitles, /Kids 3-5/);
     assert.match(sampleTitles, /Youth Class/);
     assert.match(sampleTitles, /Beginner/);
-    assert.equal(classProgram('No-Gi').id, 'nogi');
     assert.equal(times.includes('17:00'), true);
     assert.equal(classesAt(
       SAMPLE_WEEK_SLOTS.map((slot, index) => ({ ...slot, id: `s${index}`, kind: 'class' })),
       'mon',
       '17:00',
     ).length, 2);
+  });
+});
+
+describe('class level', () => {
+  it('loads a missing or bad level as No level and keeps a valid one', () => {
+    assert.equal(isClassLevel('fundamentals'), true);
+    assert.equal(isClassLevel('kids-advanced'), true);
+    assert.equal(isClassLevel('program'), false);
+    assert.equal(isClassLevel(undefined), false);
+    const missing = normalizeGymCalendar({
+      classes: [{ id: 'old', day: 'mon', time: '18:00', title: 'Fundamentals', location: 'MAT 1' }],
+    });
+    assert.equal(missing.classes[0]?.level, 'none');
+    assert.equal(missing.classes[0]?.title, 'Fundamentals');
+    const bad = normalizeGymCalendar({
+      classes: [{ id: 'bad', day: 'tue', time: '18:00', title: 'GB3', level: 'blue' }],
+    });
+    assert.equal(bad.classes[0]?.level, 'none');
+    assert.equal(bad.classes[0]?.title, 'GB3');
+    const kept = normalizeGymCalendar({
+      classes: [
+        { id: 'a', day: 'mon', time: '17:00', title: 'Same name', level: 'kids' },
+        { id: 'b', day: 'mon', time: '18:00', title: 'Same name', level: 'expert' },
+      ],
+    });
+    assert.equal(kept.classes[0]?.level, 'kids');
+    assert.equal(kept.classes[1]?.level, 'expert');
+    assert.equal(kept.classes[0]?.title, kept.classes[1]?.title);
+    assert.equal(CLASS_LEVEL_META.kids.short, 'Kids');
+    assert.equal(CLASS_LEVEL_META['kids-advanced'].label, 'Advanced');
+    assert.equal(CLASS_LEVEL_META.none.blurb.includes('Open Mat'), true);
+  });
+
+  it('does not color the boards from the class title', () => {
+    const read = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf8');
+    const sources = [
+      read('./gymCalendar.ts'),
+      read('../components/ScheduleWeekBoard.tsx'),
+      read('../components/ScheduleMonthBoard.tsx'),
+      read('./scheduleStore.ts'),
+    ].join('\n');
+    assert.doesNotMatch(sources, /classProgram|ClassProgram|data-program/);
+    assert.match(read('../components/ScheduleWeekBoard.tsx'), /data-level/);
+    assert.match(read('../components/ScheduleWeekBoard.tsx'), /week-cast__rail/);
+    assert.match(read('../components/ScheduleWeekBoard.tsx'), /sr-only/);
+    assert.match(read('../components/ScheduleWeekBoard.tsx'), /No classes/);
+    assert.match(read('../components/ScheduleMonthBoard.tsx'), /data-level/);
+  });
+});
+
+describe('saved class level', () => {
+  it('keeps the picked level when the title changes and starts another mat at No level', () => {
+    applyScheduleImport({
+      classes: [],
+      specials: [],
+      title: '',
+      qrUrl: '',
+      notes: '',
+      template: 'week',
+      castEnabled: true,
+    });
+    const added = addClass('tue', '18:00', 'GB2', 'MAT 2', '3 Stripes and Up', 'intermediate');
+    assert.ok(added);
+    assert.equal(getSchedule().classes[0]?.level, 'intermediate');
+    updateClass(added.id, { title: 'Renamed class' });
+    assert.equal(getSchedule().classes[0]?.title, 'Renamed class');
+    assert.equal(getSchedule().classes[0]?.level, 'intermediate');
+    updateClass(added.id, { level: 'not-a-level' as 'intermediate' });
+    assert.equal(getSchedule().classes[0]?.level, 'intermediate');
+    const parallel = addParallelClass(added.id);
+    assert.equal(parallel?.level, 'none');
+    assert.equal(parallel?.day, 'tue');
+    assert.equal(parallel?.time, '18:00');
+    assert.equal(getSchedule().classes.find((row) => row.id === added.id)?.level, 'intermediate');
+  });
+
+  it('reloads a saved level, including an owner-facing label, from localStorage', () => {
+    const bag = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => bag.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        bag.set(key, String(value));
+      },
+      removeItem: (key: string) => {
+        bag.delete(key);
+      },
+      clear: () => {
+        bag.clear();
+      },
+      key: (index: number) => [...bag.keys()][index] ?? null,
+      get length() {
+        return bag.size;
+      },
+    };
+    Object.defineProperty(globalThis, 'localStorage', { value: storage, configurable: true });
+    try {
+      applyScheduleImport({
+        classes: [],
+        specials: [],
+        title: 'Gym',
+        qrUrl: '',
+        notes: '',
+        template: 'week',
+        castEnabled: true,
+      });
+      const added = addClass('thu', '19:00', 'Competition', 'MAT 1', '', 'expert');
+      assert.ok(added);
+      const raw = localStorage.getItem(STORAGE_KEY);
+      assert.ok(raw);
+      const stored = JSON.parse(raw) as { classes: Array<{ id: string; level?: string }> };
+      assert.equal(stored.classes.find((row) => row.id === added.id)?.level, 'expert');
+      assert.equal(normalizeSchedule(JSON.parse(raw)).classes.find((row) => row.id === added.id)?.level, 'expert');
+      updateClass(added.id, { title: 'Open rounds' });
+      const afterEdit = normalizeSchedule(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}'));
+      assert.equal(afterEdit.classes.find((row) => row.id === added.id)?.title, 'Open rounds');
+      assert.equal(afterEdit.classes.find((row) => row.id === added.id)?.level, 'expert');
+
+      const labeled = normalizeSchedule({
+        classes: [{ id: 'labeled', day: 'mon', time: '17:00', title: 'Kids', level: 'Kids Advanced' }],
+      });
+      assert.equal(labeled.classes[0]?.level, 'kids-advanced');
+      assert.equal(labeled.classes[0]?.title, 'Kids');
+    } finally {
+      Reflect.deleteProperty(globalThis, 'localStorage');
+    }
   });
 });
 
@@ -277,5 +426,62 @@ describe('specialsThisWeek', () => {
     );
     assert.equal(formatSpecialDate('2026-09-21').includes('Sep'), true);
     assert.deepEqual(noticeLines('Gym note', [rows[1]], now), ['Gym note', `${formatSpecialDate('2026-09-21')} · Kids at 5`]);
+  });
+});
+
+describe('specialsOnStrip', () => {
+  it('keeps this month, undated notices, and a week that crosses months', () => {
+    const now = new Date(2026, 9, 15);
+    const rows = [
+      special({ id: 'earlier', date: '2026-10-03', title: 'Seminar' }),
+      special({ id: 'later', date: '2026-10-28', title: 'Promotion' }),
+      special({ id: 'undated', date: '', title: 'Open mat extra' }),
+      special({ id: 'next-month', date: '2026-11-20', title: 'Holiday party' }),
+      special({ id: 'sunday', date: '2026-10-18', title: 'Sunday open' }),
+      special({ id: 'last-month', date: '2026-09-30', title: 'Last month' }),
+      special({ id: 'blank', date: '2026-10-12', title: '', body: '' }),
+    ];
+    assert.deepEqual(
+      specialsOnStrip(rows, now).map((item) => item.id),
+      ['earlier', 'sunday', 'later', 'undated'],
+    );
+    assert.deepEqual(
+      specialsThisMonth(rows, now).map((item) => item.id),
+      ['earlier', 'blank', 'sunday', 'later', 'undated'],
+    );
+    assert.equal(noticeLines('', rows, now).some((line) => line.includes('Promotion')), false);
+    const endOfMonth = new Date(2026, 9, 31);
+    assert.deepEqual(
+      specialsOnStrip(
+        [
+          special({ id: 'oct', date: '2026-10-03', title: 'Early seminar' }),
+          special({ id: 'nov', date: '2026-11-01', title: 'Sunday seminar' }),
+        ],
+        endOfMonth,
+      ).map((item) => item.id),
+      ['oct', 'nov'],
+    );
+  });
+
+  it('builds one slide per event and keeps the free-text notice first', () => {
+    const now = new Date(2026, 9, 15);
+    const slides = specialEventSlides(
+      'Gym closed Monday',
+      [
+        special({ id: 'later', date: '2026-10-28', title: 'Promotion' }),
+        special({ id: 'earlier', date: '2026-10-03', title: 'Seminar' }),
+      ],
+      now,
+    );
+    assert.equal(SPECIAL_EVENT_DWELL_MS, 3000);
+    assert.equal(specialEventCount(slides), 2);
+    assert.deepEqual(
+      slides.map((slide) => slide.id),
+      ['strip-note', 'earlier', 'later'],
+    );
+    assert.equal(slides[0]?.text, 'Gym closed Monday');
+    assert.equal(slides[1]?.text.includes('Seminar'), true);
+    assert.equal(slides[2]?.text.includes('Promotion'), true);
+    assert.equal(specialEventCount(specialEventSlides('', [special({ id: 'only', date: '2026-10-03', title: 'Seminar' })], now)), 1);
   });
 });

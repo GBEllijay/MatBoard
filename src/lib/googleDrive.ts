@@ -6,7 +6,9 @@
  * holds one `YYYY-MM-DD` folder per lesson date. Each date folder holds
  * `lesson-plans`, `training-videos`, `technique-trees`, `class-photos`,
  * `roster`, and `tournament-results`. Lesson JSON goes in `lesson-plans`.
- * Attached technique clips go in `training-videos` as real video files.
+ * New technique clips go in `Videos/YYYY-MM-DD (Ddd)/` with a readable file
+ * name. Clips already stored flat in the root, or in `training-videos`, stay
+ * where they are and are still listed.
  * Today's class photo / promotions (a photo or a video) goes in `class-photos`
  * under names that start with `advantage-class-photo-promotions-`.
  * Photo and video bytes are never sent to an Advantage server. This module
@@ -22,8 +24,15 @@
  * is ignored on the live website so it cannot override the company client.
  * Scopes: `drive.file` (create and update lesson JSON and training videos)
  * and `drive.readonly` (list the chosen folder, thumbnails, and download a
- * video the owner stored). Adding photos still uses Google Photos.
- * Drive is an additional folder.
+ * video the owner stored). `drive.file` alone only sees files this app created
+ * or the user opened with Google Picker. Browsing the gym folder for photos
+ * and videos uses `drive.readonly`, which is already approved. This client
+ * does not add a scope and does not load Google Picker.
+ * Adding photos still uses Google Photos. Drive is an additional folder.
+ *
+ * A Daily Lesson Plan file is structured JSON (`advantage: "lesson-plan"`,
+ * `version: 1`), not a display-only note. The reader also accepts older
+ * labeled text, a coach self-export, and a review handoff packet.
  */
 
 import {
@@ -32,6 +41,19 @@ import {
   GALLERY_TODAY_UNAVAILABLE,
   galleryTodayReadyCopy,
 } from './galleryDay.ts';
+import {
+  VIDEOS_FOLDER_NAME,
+  dateInDriveVideoName,
+  driveClipDescription,
+  driveVideoCountLabel,
+  driveVideoDateKey,
+  driveVideoMeasure,
+  friendlyTrainingVideoName,
+  parseVideoDateFolderName,
+  presentDriveVideo,
+  videoDateFolderName,
+} from './driveVideoNames.ts';
+import { parseLessonPayload } from './lessonPackage.ts';
 import { localDateKey } from './trainingNotesStore.ts';
 import type { TrainingNotesPlan } from './trainingNotesStore.ts';
 
@@ -40,10 +62,19 @@ export const GOOGLE_CLIENT_ID_KEY = 'matboard.pro.googleClientId';
 export const DRIVE_BINDING_KEY = 'matboard.pro.googleDriveFolder.v1';
 const DRIVE_TOKEN_KEY = 'matboard.pro.googleDriveToken';
 
-export const DRIVE_SCOPES = [
-  'https://www.googleapis.com/auth/drive.file',
-  'https://www.googleapis.com/auth/drive.readonly',
-].join(' ');
+export const DRIVE_FILE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+export const DRIVE_READONLY_SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
+export const DRIVE_SCOPES = [DRIVE_FILE_SCOPE, DRIVE_READONLY_SCOPE].join(' ');
+
+/** Connected card. Opens the gym folder so photos and videos can be picked. */
+export const DRIVE_BROWSE_LABEL = 'Browse photos and videos';
+/** Connected card when the saved sign-in is missing, expired, or missing a scope. */
+export const DRIVE_RECONNECT_LABEL = 'Reconnect';
+export const DRIVE_CHECKING_LABEL = 'Checking Google Drive…';
+export const DRIVE_RECONNECT_NOTE =
+  'Sign in to Google Drive again to browse folders and pick photos or videos. They stay in your Drive. Advantage does not host them.';
+export const DRIVE_SCOPE_NOTE =
+  'Saving a file Advantage creates is allowed, but listing folders needs the read access already approved for this app. Reconnect to allow it. No new permission is added. Advantage does not host the files.';
 
 export const DRIVE_FOLDER_MIME = 'application/vnd.google-apps.folder';
 export const LESSON_ROOT_NAME = 'Advantage Lesson Plans';
@@ -114,19 +145,22 @@ export function todayDownloadCopy(input: {
   galleryCount: number;
   driveStatus: TodayDriveStatus;
   driveCount: number;
+  /** "today" on the current day. A past day uses its own label. */
+  dayLabel?: string;
 }): string {
   const galleryCount = Math.max(0, input.galleryCount);
   const driveCount = Math.max(0, input.driveCount);
+  const day = input.dayLabel?.trim() || 'today';
   if (galleryCount + driveCount > 0) {
     if (galleryCount && driveCount) {
       const gallery =
         galleryCount === 1 ? '1 video in the shared gallery' : `${galleryCount} videos in the shared gallery`;
       const drive = driveCount === 1 ? '1 in Google Drive' : `${driveCount} in Google Drive`;
-      return `${gallery} and ${drive} for today.`;
+      return `${gallery} and ${drive} for ${day}.`;
     }
-    if (driveCount === 1) return '1 video in Google Drive for today.';
-    if (driveCount > 1) return `${driveCount} videos in Google Drive for today.`;
-    return galleryTodayReadyCopy(galleryCount);
+    if (driveCount === 1) return `1 video in Google Drive for ${day}.`;
+    if (driveCount > 1) return `${driveCount} videos in Google Drive for ${day}.`;
+    return galleryTodayReadyCopy(galleryCount, day);
   }
   if (input.galleryStatus === 'loading' || input.driveStatus === 'loading') return GALLERY_TODAY_CHECKING;
   if (input.driveStatus === 'error') return DRIVE_CHECK_FAILED;
@@ -179,8 +213,13 @@ export type DriveFileMeta = {
   name: string;
   mimeType: string;
   modifiedTime?: string;
+  createdTime?: string;
+  size?: string;
+  description?: string;
   thumbnailLink?: string | null;
+  parents?: string[];
   appProperties?: Record<string, string>;
+  videoMediaMetadata?: { durationMillis?: string };
 };
 
 export type DriveFolderChoice = { id: string; name: string };
@@ -196,6 +235,11 @@ export type ClassMedia = {
   name: string;
   mime: string;
   thumbnailLink: string | null;
+  createdTime?: string;
+  sizeBytes?: number | null;
+  durationMillis?: number | null;
+  lessonTitle?: string;
+  classDesignation?: string;
 };
 
 export type ClassDay = {
@@ -207,13 +251,28 @@ export type ClassDay = {
 
 export type DriveDayVideo = {
   id: string;
+  /** Full Drive file name. */
   label: string;
   mime: string;
+  dateKey: string;
+  shortLabel: string;
+  timeLabel: string;
+  displayLabel: string;
+  detailLabel: string;
+  thumbnailLink: string | null;
+};
+
+export type DriveVideoGroup = {
+  dateKey: string;
+  heading: string;
+  countLabel: string;
+  videos: DriveDayVideo[];
 };
 
 type TokenResponse = {
   access_token?: string;
   expires_in?: number;
+  scope?: string;
   error?: string;
 };
 
@@ -601,7 +660,9 @@ export function buildClassHistory(input: {
     // Coach self-export and competition curriculum text are not class-history media.
     if (isCoachSelfDriveFile(file)) continue;
     const lesson = lessonsByFile.get(file.id) ?? null;
-    const date = fileClassDay(file, lesson?.date ?? null);
+    const mime = file.mimeType.toLowerCase();
+    const date =
+      (mime.startsWith('video/') ? driveVideoDateKey(file) : null) ?? fileClassDay(file, lesson?.date ?? null);
     if (!date) continue;
     if (isLessonFile(file) || file.mimeType === 'application/json') {
       const day = ensure(date);
@@ -611,12 +672,16 @@ export function buildClassHistory(input: {
       }
       continue;
     }
-    const mime = file.mimeType.toLowerCase();
     const media: ClassMedia = {
       id: file.id,
       name: file.name,
       mime,
       thumbnailLink: file.thumbnailLink ?? null,
+      createdTime: file.createdTime,
+      sizeBytes: driveVideoMeasure(file.size),
+      durationMillis: driveVideoMeasure(file.videoMediaMetadata?.durationMillis),
+      lessonTitle: file.appProperties?.lessonTitle,
+      classDesignation: file.appProperties?.classDesignation,
     };
     if (mime.startsWith('image/')) ensure(date).photos.push(media);
     else if (mime.startsWith('video/')) ensure(date).videos.push(media);
@@ -625,14 +690,50 @@ export function buildClassHistory(input: {
   return [...days.values()].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 }
 
+function compareClassVideos(a: ClassMedia, b: ClassMedia): number {
+  const aTime = a.createdTime ? Date.parse(a.createdTime) : Number.NaN;
+  const bTime = b.createdTime ? Date.parse(b.createdTime) : Number.NaN;
+  const aOk = Number.isFinite(aTime);
+  const bOk = Number.isFinite(bTime);
+  if (aOk && bOk && aTime !== bTime) return aTime - bTime;
+  return 0;
+}
+
 export function videosOnDay(days: readonly ClassDay[], dateKey: string): DriveDayVideo[] {
   const day = days.find((item) => item.date === dateKey);
   if (!day) return [];
-  return day.videos.map((video) => ({
-    id: video.id,
-    label: video.name,
-    mime: video.mime || 'video/mp4',
+  return [...day.videos].sort(compareClassVideos).map((video, index) => ({
+    dateKey,
+    ...presentDriveVideo(
+      {
+        id: video.id,
+        name: video.name,
+        mime: video.mime || 'video/mp4',
+        thumbnailLink: video.thumbnailLink,
+        createdTime: video.createdTime,
+        size: video.sizeBytes,
+        durationMillis: video.durationMillis,
+        lessonTitle: video.lessonTitle,
+        classDesignation: video.classDesignation,
+      },
+      index + 1,
+    ),
   }));
+}
+
+/** One folder per day that actually has a video. Newest day first. */
+export function driveVideoGroups(days: readonly ClassDay[]): DriveVideoGroup[] {
+  return days
+    .filter((day) => day.videos.length > 0)
+    .map((day) => {
+      const videos = videosOnDay(days, day.date);
+      return {
+        dateKey: day.date,
+        heading: videoDateFolderName(day.date),
+        countLabel: driveVideoCountLabel(videos.length),
+        videos,
+      };
+    });
 }
 
 export function readDriveBinding(): DriveBinding | null {
@@ -690,30 +791,103 @@ export function writeDriveBinding(binding: DriveBinding | null): void {
   notifyDriveBinding();
 }
 
-type StoredToken = { accessToken: string; expiresAt: number };
+type StoredDriveGrant = { accessToken: string; expiresAt: number; scope?: string };
 
-function readStoredToken(): string | null {
+export type DriveGrantState = 'ready' | 'missing' | 'expired' | 'scopes' | 'unverified';
+
+/**
+ * `drive.file` creates files. `drive.readonly` lists folders and media the
+ * app did not create. Both are already on the OAuth client. A grant that
+ * is missing either one cannot browse the gym folder.
+ */
+export function driveScopeAllowsBrowse(scope: string | null | undefined): boolean {
+  const granted = new Set((scope ?? '').split(/\s+/).filter(Boolean));
+  return granted.has(DRIVE_FILE_SCOPE) && granted.has(DRIVE_READONLY_SCOPE);
+}
+
+/** Pure check so a missing, expired, or narrow grant becomes a reconnect. */
+export function classifyDriveGrant(
+  grant: { accessToken?: string; expiresAt?: number; scope?: string } | null,
+  now = Date.now(),
+): DriveGrantState {
+  if (!grant?.accessToken || typeof grant.expiresAt !== 'number') return 'missing';
+  if (grant.expiresAt < now + 60_000) return 'expired';
+  if (!grant.scope?.trim()) return 'unverified';
+  if (!driveScopeAllowsBrowse(grant.scope)) return 'scopes';
+  return 'ready';
+}
+
+function readStoredGrant(): StoredDriveGrant | null {
   try {
     const raw = sessionStorage.getItem(DRIVE_TOKEN_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as StoredToken;
-    if (!parsed.accessToken || parsed.expiresAt < Date.now() + 60_000) return null;
-    return parsed.accessToken;
+    const parsed = JSON.parse(raw) as Partial<StoredDriveGrant>;
+    if (!parsed.accessToken || typeof parsed.expiresAt !== 'number') return null;
+    return {
+      accessToken: parsed.accessToken,
+      expiresAt: parsed.expiresAt,
+      scope: typeof parsed.scope === 'string' ? parsed.scope : undefined,
+    };
   } catch {
     return null;
   }
 }
 
-function writeStoredToken(token: string, expiresIn: number): void {
-  const payload: StoredToken = {
+function readStoredToken(): string | null {
+  const grant = readStoredGrant();
+  if (!grant || grant.expiresAt < Date.now() + 60_000) return null;
+  return grant.accessToken;
+}
+
+function writeStoredToken(token: string, expiresIn: number, scope?: string): void {
+  const payload: StoredDriveGrant = {
     accessToken: token,
     expiresAt: Date.now() + Math.max(60, expiresIn) * 1000,
   };
+  const granted = scope?.trim();
+  if (granted) payload.scope = granted;
   try {
     sessionStorage.setItem(DRIVE_TOKEN_KEY, JSON.stringify(payload));
   } catch {
     /* memory copy below still covers this page */
   }
+}
+
+export type DriveBrowseAccess =
+  | { state: 'ready'; token: string }
+  | { state: 'reconnect'; reason: 'missing' | 'expired' | 'scopes' };
+
+async function lookupDriveScope(token: string, fetcher: typeof fetch): Promise<string | null> {
+  const response = await fetcher(
+    `https://oauth2.googleapis.com/tokeninfo?access_token=${encodeURIComponent(token)}`,
+  );
+  if (!response.ok) return null;
+  try {
+    const data = (await response.json()) as { scope?: string };
+    return typeof data.scope === 'string' ? data.scope : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A usable token with both approved scopes can browse. Anything else asks
+ * the owner to reconnect. The binding (which folder) stays put.
+ */
+export async function ensureDriveBrowseAccess(fetcher: typeof fetch = fetch): Promise<DriveBrowseAccess> {
+  const grant = readStoredGrant();
+  const state = classifyDriveGrant(grant);
+  if (state === 'missing') return { state: 'reconnect', reason: 'missing' };
+  if (state === 'expired') return { state: 'reconnect', reason: 'expired' };
+  if (!grant) return { state: 'reconnect', reason: 'missing' };
+  if (state === 'scopes') return { state: 'reconnect', reason: 'scopes' };
+  if (state === 'ready') return { state: 'ready', token: grant.accessToken };
+  const scope = await lookupDriveScope(grant.accessToken, fetcher);
+  if (!scope) return { state: 'reconnect', reason: 'expired' };
+  const seconds = Math.max(60, Math.round((grant.expiresAt - Date.now()) / 1000));
+  writeStoredToken(grant.accessToken, seconds, scope);
+  if (!driveScopeAllowsBrowse(scope)) return { state: 'reconnect', reason: 'scopes' };
+  return { state: 'ready', token: grant.accessToken };
 }
 
 export function clearDriveSession(): void {
@@ -756,7 +930,7 @@ function requestDriveTokenOutcome(mode: 'silent' | 'consent'): Promise<DriveToke
               resolve({ ok: false, code: classifyDriveAuthDetail(detail), detail });
               return;
             }
-            writeStoredToken(response.access_token, response.expires_in ?? 3600);
+            writeStoredToken(response.access_token, response.expires_in ?? 3600, response.scope);
             resolve({ ok: true, token: response.access_token });
           },
           error_callback: (error) => {
@@ -1011,7 +1185,9 @@ async function listFilesByQuery(token: string, query: string, fetcher: DriveFetc
   for (let page = 0; page < 3; page += 1) {
     const url =
       'https://www.googleapis.com/drive/v3/files?pageSize=100&fields=' +
-      encodeURIComponent('nextPageToken,files(id,name,mimeType,modifiedTime,thumbnailLink,appProperties)') +
+      encodeURIComponent(
+        'nextPageToken,files(id,name,mimeType,modifiedTime,createdTime,size,thumbnailLink,description,parents,appProperties,videoMediaMetadata)',
+      ) +
       '&q=' +
       encodeURIComponent(query) +
       (pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : '');
@@ -1064,15 +1240,84 @@ async function listDateClassFiles(
     .map((file) => file.id);
   if (dateFolderIdsInRoot.length === 0) return [];
   const dateChildren = await listFilesInParents(token, dateFolderIdsInRoot, fetcher);
-  const bucketIds = dateChildren
-    .filter(
-      (file) =>
-        file.mimeType === DRIVE_FOLDER_MIME &&
-        (CLASS_HISTORY_BUCKETS as readonly string[]).includes(file.name),
-    )
-    .map((file) => file.id);
-  if (bucketIds.length === 0) return [];
-  return listFilesInParents(token, bucketIds, fetcher);
+  const dateByFolderId = new Map(
+    rootFiles
+      .filter((file) => file.mimeType === DRIVE_FOLDER_MIME && DATE_FOLDER_NAME.test(file.name))
+      .map((file) => [file.id, file.name] as const),
+  );
+  const buckets = dateChildren.filter(
+    (file) =>
+      file.mimeType === DRIVE_FOLDER_MIME &&
+      (CLASS_HISTORY_BUCKETS as readonly string[]).includes(file.name),
+  );
+  if (buckets.length === 0) return [];
+  const dateByBucketId = new Map<string, string>();
+  for (const bucket of buckets) {
+    const parent = bucket.parents?.find((id) => dateByFolderId.has(id));
+    const date = parent ? dateByFolderId.get(parent) : undefined;
+    if (date) dateByBucketId.set(bucket.id, date);
+  }
+  const nested = await listFilesInParents(
+    token,
+    buckets.map((file) => file.id),
+    fetcher,
+  );
+  return nested.map((file) => {
+    const parent = file.parents?.find((id) => dateByBucketId.has(id));
+    const date = parent ? dateByBucketId.get(parent) : undefined;
+    return date ? stampVideoFolderDate(file, date) : file;
+  });
+}
+
+/**
+ * Videos/{YYYY-MM-DD (Ddd)} plus any video sitting directly in Videos/.
+ * Missing Videos folder means this gym has not saved a clip in the new layout.
+ */
+async function listFriendlyVideoFiles(
+  token: string,
+  rootFiles: readonly DriveFileMeta[],
+  fetcher: DriveFetch,
+): Promise<DriveFileMeta[]> {
+  const videosFolder = rootFiles.find(
+    (file) => file.mimeType === DRIVE_FOLDER_MIME && file.name === VIDEOS_FOLDER_NAME,
+  );
+  if (!videosFolder) return [];
+  const children = await listFolderFiles(token, videosFolder.id, fetcher);
+  const loose = children.filter(isDriveVideo);
+  const dateFolders = children.filter(
+    (file) => file.mimeType === DRIVE_FOLDER_MIME && parseVideoDateFolderName(file.name),
+  );
+  if (dateFolders.length === 0) return loose;
+  const dateById = new Map(
+    dateFolders.flatMap((file) => {
+      const date = parseVideoDateFolderName(file.name);
+      return date ? [[file.id, date] as const] : [];
+    }),
+  );
+  const nested = await listFilesInParents(
+    token,
+    dateFolders.map((file) => file.id),
+    fetcher,
+  );
+  const stamped = nested.map((file) => {
+    const parent = file.parents?.find((id) => dateById.has(id));
+    const date = parent ? dateById.get(parent) : undefined;
+    return date ? stampVideoFolderDate(file, date) : file;
+  });
+  return [...loose, ...stamped];
+}
+
+function isDriveVideo(file: DriveFileMeta): boolean {
+  return file.mimeType.toLowerCase().startsWith('video/') && Boolean(file.id);
+}
+
+/** Prefer the folder date when the file name does not already carry one. */
+function stampVideoFolderDate(file: DriveFileMeta, folderDate: string): DriveFileMeta {
+  if (!folderDate || !isDriveVideo(file)) return file;
+  if (dateInDriveVideoName(file.name)) return file;
+  const stamped = file.appProperties?.date?.trim() ?? '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(stamped)) return file;
+  return { ...file, appProperties: { ...file.appProperties, date: folderDate } };
 }
 
 function mergeDriveFiles(groups: readonly (readonly DriveFileMeta[])[]): DriveFileMeta[] {
@@ -1088,18 +1333,18 @@ function mergeDriveFiles(groups: readonly (readonly DriveFileMeta[])[]): DriveFi
   return files;
 }
 
-async function downloadJson(
+async function downloadLessonDocument(
   token: string,
   fileId: string,
   fetcher: DriveFetch,
-): Promise<unknown> {
+): Promise<DriveLessonDocument | null> {
   const response = await fetcher(
     `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`,
     { headers: { Authorization: `Bearer ${token}` } },
   );
   if (!response.ok) return null;
   try {
-    return await response.json();
+    return parseLessonPayload(await response.text());
   } catch {
     return null;
   }
@@ -1108,9 +1353,9 @@ async function downloadJson(
 /**
  * Class history reads the connected root, including flat files saved before
  * the date tree, plus `lesson-plans/`, `training-videos/`, and `class-photos/`
- * under each `YYYY-MM-DD` folder. A video that still lives in `lesson-plans`
- * is included the same way. Roster, technique trees, and tournament results
- * are not class-history rows.
+ * under each `YYYY-MM-DD` folder, plus `Videos/YYYY-MM-DD (Ddd)/`. A video
+ * that still lives in `lesson-plans` is included the same way. Roster,
+ * technique trees, and tournament results are not class-history rows.
  */
 export async function loadClassHistory(
   token: string,
@@ -1125,7 +1370,13 @@ export async function loadClassHistory(
     // A date-folder walk must not hide flat files already stored in the root.
     nestedLessonFiles = [];
   }
-  const files = mergeDriveFiles([rootFiles, nestedLessonFiles]);
+  let friendlyVideos: DriveFileMeta[] = [];
+  try {
+    friendlyVideos = await listFriendlyVideoFiles(token, rootFiles, fetcher);
+  } catch {
+    friendlyVideos = [];
+  }
+  const files = mergeDriveFiles([rootFiles, nestedLessonFiles, friendlyVideos]);
   const lessons: { fileId: string; doc: DriveLessonDocument }[] = [];
   const lessonFiles = [
     ...rootFiles.filter(isLessonFile).slice(0, 40),
@@ -1135,8 +1386,7 @@ export async function loadClassHistory(
   for (const file of lessonFiles) {
     if (seenLessons.has(file.id)) continue;
     seenLessons.add(file.id);
-    const raw = await downloadJson(token, file.id, fetcher);
-    const doc = parseLessonDocument(raw);
+    const doc = await downloadLessonDocument(token, file.id, fetcher);
     if (doc) lessons.push({ fileId: file.id, doc });
   }
   return buildClassHistory({ files, lessons });
@@ -1148,15 +1398,11 @@ export type DriveDayPackage = {
   videos: DriveFileMeta[];
 };
 
-function isDriveVideo(file: DriveFileMeta): boolean {
-  return file.mimeType.toLowerCase().startsWith('video/') && Boolean(file.id);
-}
-
 /**
  * One class day from the connected folder: lesson JSON in `{date}/lesson-plans/`
- * and video files in `{date}/training-videos/`. A lesson JSON that still sits
- * in the root is included when its date matches. Class photos, roster, and
- * other dates stay out.
+ * and video files in `{date}/training-videos/` or `Videos/{date} (Ddd)/`.
+ * A lesson JSON or a flat video that still sits in the root is included when
+ * its date matches. Class photos, roster, and other dates stay out.
  */
 export async function loadDriveDayPackage(
   token: string,
@@ -1189,13 +1435,31 @@ export async function loadDriveDayPackage(
       videoFiles.push(...nested.filter(isDriveVideo));
     }
   }
+  const videosRoot = rootFiles.find(
+    (file) => file.mimeType === DRIVE_FOLDER_MIME && file.name === VIDEOS_FOLDER_NAME,
+  );
+  if (videosRoot) {
+    const children = await listFolderFiles(token, videosRoot.id, fetcher);
+    videoFiles.push(
+      ...children.filter((file) => isDriveVideo(file) && driveVideoDateKey(file) === dateKey),
+    );
+    const dated = children.find(
+      (file) => file.mimeType === DRIVE_FOLDER_MIME && parseVideoDateFolderName(file.name) === dateKey,
+    );
+    if (dated) {
+      const nested = await listFolderFiles(token, dated.id, fetcher);
+      videoFiles.push(...nested.filter(isDriveVideo).map((file) => stampVideoFolderDate(file, dateKey)));
+    }
+  }
+  videoFiles.push(
+    ...rootFiles.filter((file) => isDriveVideo(file) && driveVideoDateKey(file) === dateKey),
+  );
   const lessons: DriveLessonDocument[] = [];
   const seenLessons = new Set<string>();
   for (const file of lessonFiles) {
     if (seenLessons.has(file.id)) continue;
     seenLessons.add(file.id);
-    const raw = await downloadJson(token, file.id, fetcher);
-    const doc = parseLessonDocument(raw);
+    const doc = await downloadLessonDocument(token, file.id, fetcher);
     if (!doc || doc.date !== dateKey) continue;
     lessons.push(doc);
   }
@@ -1376,15 +1640,16 @@ async function writeLessonFile(
     folderId: input.folderId,
     dateKey: input.document.date,
     name,
-    documentJson: JSON.stringify(input.document),
+    documentJson: JSON.stringify(input.document, null, 2),
     appProperties: lessonAppProperties(input.document),
     fetcher: input.fetcher,
   });
 }
 
 /**
- * Write lesson JSON into `{root}/{YYYY-MM-DD}/lesson-plans/`, creating the
- * date folder and the six buckets when they are missing.
+ * Write lesson JSON (`advantage: "lesson-plan"`, `version: 1`) into
+ * `{root}/{YYYY-MM-DD}/lesson-plans/`, creating the date folder and the six
+ * buckets when they are missing. The body is structured JSON, not display text.
  * `folderId` is the connected root. A same-named lesson that still sits in
  * that root is updated and moved into `lesson-plans`.
  * Writes for one file name run one after another so a draft save and the
@@ -1423,6 +1688,12 @@ export type TrainingVideoUpload = {
   bytes: Blob;
   section: 'warmup' | 'technique' | 'cooldown';
   index: number | null;
+  /** Class label such as GB1. Omitted from the file name when blank. */
+  classDesignation?: string;
+  /** Lesson or technique title. Blank becomes Clip N. */
+  lessonTitle?: string;
+  /** 1-based clip on that day. */
+  clipNumber?: number;
 };
 
 export type TrainingVideoUploadResult = {
@@ -1468,15 +1739,32 @@ async function findTrainingVideoId(
   name: string,
   fetcher: DriveFetch,
 ): Promise<string | null> {
-  const byClip = await findFileByAppProperty(
+  const clipId = clipAppProperty(localClipId);
+  const byClip = await findFileByAppProperty(token, parentId, 'localClipId', clipId, fetcher);
+  if (byClip) return byClip;
+  const anywhere = await findFileByAppPropertyAnywhere(token, 'localClipId', clipId, fetcher);
+  if (anywhere) return anywhere;
+  return findFileIdInParent(token, parentId, name, fetcher);
+}
+
+async function findFileByAppPropertyAnywhere(
+  token: string,
+  key: string,
+  value: string,
+  fetcher: DriveFetch,
+): Promise<string | null> {
+  if (!value) return null;
+  const query = [
+    'trashed=false',
+    `appProperties has { key='${driveQueryLiteral(key)}' and value='${driveQueryLiteral(value)}' }`,
+  ].join(' and ');
+  const found = await driveJson<{ files?: { id: string }[] }>(
     token,
-    parentId,
-    'localClipId',
-    clipAppProperty(localClipId),
+    'https://www.googleapis.com/drive/v3/files?pageSize=1&fields=files(id)&q=' + encodeURIComponent(query),
+    {},
     fetcher,
   );
-  if (byClip) return byClip;
-  return findFileIdInParent(token, parentId, name, fetcher);
+  return found.files?.[0]?.id ?? null;
 }
 
 async function beginResumableUpload(input: {
@@ -1488,7 +1776,9 @@ async function beginResumableUpload(input: {
   size: number;
   fetcher: DriveFetch;
 }): Promise<string> {
-  const response = await input.fetcher(input.endpoint, {
+  // Keep fetch off the input object. A method call sets `this` and Chrome rejects window.fetch.
+  const fetcher = input.fetcher;
+  const response = await fetcher(input.endpoint, {
     method: input.method,
     headers: {
       Authorization: `Bearer ${input.token}`,
@@ -1516,7 +1806,8 @@ async function finishResumableUpload(input: {
   bytes: Blob;
   fetcher: DriveFetch;
 }): Promise<string> {
-  const response = await input.fetcher(input.location, {
+  const fetcher = input.fetcher;
+  const response = await fetcher(input.location, {
     method: 'PUT',
     headers: {
       Authorization: `Bearer ${input.token}`,
@@ -1541,13 +1832,26 @@ async function uploadTrainingVideoFile(input: {
   fetcher: DriveFetch;
 }): Promise<string> {
   const mime = trainingVideoMime(input.video.mime);
-  const name = trainingVideoFileName(input.dateKey, input.video.localClipId, mime, input.video.name);
-  const appProperties = {
+  const clipId = clipAppProperty(input.video.localClipId);
+  const name = friendlyTrainingVideoName({
+    dateKey: input.dateKey,
+    classDesignation: input.video.classDesignation,
+    lessonTitle: input.video.lessonTitle,
+    clipNumber: input.video.clipNumber,
+    mime,
+    originalName: input.video.name,
+  });
+  const appProperties: Record<string, string> = {
     advantage: 'training-video',
     date: input.dateKey,
-    localClipId: clipAppProperty(input.video.localClipId),
+    localClipId: clipId,
     section: input.video.section,
   };
+  const designation = input.video.classDesignation?.trim() ?? '';
+  const lessonTitle = input.video.lessonTitle?.trim() ?? '';
+  if (designation) appProperties.classDesignation = designation.slice(0, 80);
+  if (lessonTitle) appProperties.lessonTitle = lessonTitle.slice(0, 120);
+  const description = driveClipDescription(clipId);
   const existingId = await findTrainingVideoId(
     input.token,
     input.parentId,
@@ -1562,6 +1866,7 @@ async function uploadTrainingVideoFile(input: {
     mime,
     bytes: input.video.bytes,
     appProperties,
+    description,
     existingId,
     fetcher: input.fetcher,
   });
@@ -1574,16 +1879,23 @@ async function putResumableMediaFile(input: {
   mime: string;
   bytes: Blob;
   appProperties: Record<string, string>;
+  description?: string;
   existingId: string | null;
   fetcher: DriveFetch;
 }): Promise<string> {
   const metadata = input.existingId
-    ? { name: input.name, mimeType: input.mime, appProperties: input.appProperties }
+    ? {
+        name: input.name,
+        mimeType: input.mime,
+        appProperties: input.appProperties,
+        description: input.description,
+      }
     : {
         name: input.name,
         mimeType: input.mime,
         parents: [input.parentId],
         appProperties: input.appProperties,
+        description: input.description,
       };
   const endpoint = input.existingId
     ? `https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(input.existingId)}?uploadType=resumable`
@@ -1624,10 +1936,11 @@ function uploadTrainingVideoDeduped(input: {
 }
 
 /**
- * Copy technique clips into `{root}/{YYYY-MM-DD}/training-videos/`.
+ * Copy technique clips into `{root}/Videos/{YYYY-MM-DD (Ddd)}/`.
  * Uses a resumable upload so files over the multipart 5 MB cap still land.
  * One failure does not throw: that clip is marked failed and the rest continue.
  * Bytes are sent only to Google. The phone copy is not deleted here.
+ * A clip that already exists (same local id) is updated in place.
  */
 export async function uploadTrainingVideos(input: {
   token: string;
@@ -1641,15 +1954,27 @@ export async function uploadTrainingVideos(input: {
   const total = input.videos.length;
   const failedAll = (): TrainingVideoUploadResult[] =>
     input.videos.map((video) => ({ localClipId: video.localClipId, driveFileId: null, failed: true }));
+  if (!DATE_FOLDER_NAME.test(input.dateKey)) {
+    input.onProgress?.(0, total);
+    return failedAll();
+  }
   let parentId: string;
   try {
-    const tree = await ensureDateFolderTree({
-      token: input.token,
-      rootFolderId: input.rootFolderId,
-      dateKey: input.dateKey,
+    const videosRoot = await findOrCreateChildFolder(
+      input.token,
+      input.rootFolderId,
+      VIDEOS_FOLDER_NAME,
       fetcher,
-    });
-    parentId = tree.folders[TRAINING_VIDEOS_FOLDER];
+      { advantageRole: 'videos' },
+    );
+    const dateFolder = await findOrCreateChildFolder(
+      input.token,
+      videosRoot.id,
+      videoDateFolderName(input.dateKey),
+      fetcher,
+      { advantageRole: 'video-date', date: input.dateKey },
+    );
+    parentId = dateFolder.id;
   } catch {
     input.onProgress?.(0, total);
     return failedAll();
@@ -1855,7 +2180,7 @@ export async function upsertCoachPlanFile(input: {
       folderId: input.folderId,
       dateKey: input.document.date,
       name,
-      documentJson: JSON.stringify(input.document),
+      documentJson: JSON.stringify(input.document, null, 2),
       appProperties: {
         advantage: 'coach-plan',
         date: input.document.date,
@@ -1929,20 +2254,44 @@ export async function downloadDriveFile(token: string, fileId: string, fetcher: 
     `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`,
     { headers: { Authorization: `Bearer ${token}` } },
   );
-  if (!response.ok) throw new Error('That Drive video could not be downloaded.');
+  if (!response.ok) throw new Error('That Google Drive file could not be downloaded.');
   return response.blob();
 }
 
 export async function loadTodayDriveVideos(dateKey: string): Promise<{
   status: 'disconnected' | 'needs-sign-in' | 'ready';
   videos: DriveDayVideo[];
+  groups: DriveVideoGroup[];
 }> {
   const binding = readDriveBinding();
-  if (!binding) return { status: 'disconnected', videos: [] };
+  if (!binding) return { status: 'disconnected', videos: [], groups: [] };
   const token = await requestDriveToken('silent');
-  if (!token) return { status: 'needs-sign-in', videos: [] };
+  if (!token) return { status: 'needs-sign-in', videos: [], groups: [] };
   const days = await loadClassHistory(token, binding.folderId);
-  return { status: 'ready', videos: videosOnDay(days, dateKey) };
+  return { status: 'ready', videos: videosOnDay(days, dateKey), groups: driveVideoGroups(days) };
+}
+
+/** Rename one clip in the gym Drive folder. The clip id stays in appProperties. */
+export async function renameDriveFile(
+  token: string,
+  fileId: string,
+  name: string,
+  fetcher: DriveFetch = fetch,
+): Promise<{ id: string; name: string }> {
+  const id = fileId.trim();
+  const next = name.trim();
+  if (!id || !next) throw new Error('Google Drive needs a file name.');
+  const saved = await driveJson<{ id?: string; name?: string }>(
+    token,
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?fields=id,name`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ name: next }),
+    },
+    fetcher,
+  );
+  if (!saved.id) throw new Error('Google Drive did not rename that clip.');
+  return { id: saved.id, name: saved.name || next };
 }
 
 /**

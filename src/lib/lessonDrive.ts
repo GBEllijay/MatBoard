@@ -12,13 +12,15 @@
  *
  * When this browser has connected a Google Drive folder, a debounced write
  * sends the text plan to `{folder}/{YYYY-MM-DD}/lesson-plans/` and copies
- * attached technique clips into `{folder}/{YYYY-MM-DD}/training-videos/`
- * (`googleDrive.ts`). Video bytes go only to the gym's Google Drive.
+ * attached technique clips into `{folder}/Videos/{YYYY-MM-DD (Ddd)}/`
+ * (`googleDrive.ts`). Older clips already in `training-videos` stay there.
+ * Video bytes go only to the gym's Google Drive.
  * Regular Coach does not queue a Drive revision.
  *
  * Opening a previous day is Class History → Open this class (`lessonRestore.ts`).
- * That reads `{date}/lesson-plans/` and `{date}/training-videos/`, writes the
- * lesson text back onto this phone, and keeps a local copy of each video.
+ * That reads `{date}/lesson-plans/`, `{date}/training-videos/`, and
+ * `Videos/{date} (Ddd)/`, writes the lesson text back onto this phone, and
+ * keeps a local copy of each video.
  *
  * Local cache: after a clip uploads, the phone keeps the blob so offline
  * play still works. `driveFileId` marks Drive as the source of truth. A later
@@ -57,7 +59,7 @@ export const DISTRIBUTE_DONE =
 export const OWNER_DRIVE_KICKER = 'Sunday review';
 export const OWNER_DRIVE_TITLE = 'Class plans in your Google Drive';
 export const OWNER_DRIVE_BODY =
-  'When the gym Google Drive folder is connected, a lesson plan saves there as the coach types, and attached technique videos are copied into that day’s training-videos folder. This phone keeps those clips for offline play. Leaving the page or skipping upload still keeps the draft. Version history in that folder shows each coach’s week so you can choose what to keep. Advantage does not host the photos or videos.';
+  'When the gym Google Drive folder is connected, a lesson plan saves there as the coach types, and attached technique videos are copied into a dated folder under Videos. Older clips already in that day’s training-videos folder stay there. This phone keeps those clips for offline play. Leaving the page or skipping upload still keeps the draft. Version history in that folder shows each coach’s week so you can choose what to keep. Advantage does not host the photos or videos.';
 export const OWNER_DRIVE_QUEUE =
   'These rows are lesson text and Drive file ids on this phone. When Google Drive is connected, the lesson text and video files are in that folder. Advantage does not store the video files.';
 
@@ -104,6 +106,7 @@ export function lessonPlanForDrive(plan: TrainingNotesPlan): TrainingNotesPlan {
     id: typeof plan.id === 'string' ? plan.id : '',
     coachName: plan.coachName,
     classDesignation: plan.classDesignation ?? '',
+    lessonTitle: plan.lessonTitle ?? '',
     classTime: plan.classTime ?? '',
     intro: plan.intro,
     introExpected: plan.introExpected,
@@ -115,6 +118,32 @@ export function lessonPlanForDrive(plan: TrainingNotesPlan): TrainingNotesPlan {
     cooldownNote: plan.cooldownNote,
     cooldownExpected: plan.cooldownExpected,
     closing: plan.closing,
+    ...(plan.videos
+      ? {
+          videos: plan.videos.map((row) => ({
+            section: row.section,
+            index: row.section === 'technique' ? row.index : null,
+            localClipId: row.localClipId,
+            driveFileId: clampDriveFileId(row.driveFileId),
+            url: row.url,
+            name: row.name,
+            mime: row.mime,
+          })),
+        }
+      : {}),
+    ...(plan.template ? { template: plan.template } : {}),
+    ...(plan.blocks ? { blocks: plan.blocks.map((block) => ({ ...block })) } : {}),
+    ...(plan.games
+      ? {
+          games: plan.games.map((game) => ({
+            id: game.id,
+            title: game.title,
+            notes: game.notes,
+            expected: game.expected,
+            waterBreak: game.waterBreak,
+          })),
+        }
+      : {}),
   };
 }
 
@@ -175,6 +204,11 @@ function revisionKey(
   const who = coachName.trim().toLowerCase();
   const id = planId.trim();
   return id ? `${kind}:${dateKey}:${who}:${id}` : `${kind}:${dateKey}:${who}`;
+}
+
+/** Draft row id Sunday review uses for this class plan. */
+export function lessonDraftRevisionId(dateKey: string, coachName: string, planId: string): string {
+  return revisionKey('draft', dateKey, coachName, planId);
 }
 
 /**
@@ -259,18 +293,88 @@ function setDriveNotice(next: DriveSaveNotice): void {
 }
 
 export function savedPhoneNotice(): string {
-  return 'Saved on this phone. Connect with Google Drive in Advantage Coach Unlimited to keep the lesson and videos in the gym folder. Until then, videos stay on this device.';
+  return 'Saved on this phone. Connect Google Drive, then save this day, to copy the lesson and videos into the gym folder for the gym owner and instructors. Until then, videos stay on this device and are not shared yet.';
 }
 
-/** Shown on Daily Training Videos. Regular Coach stays on this phone. */
-export function trainingClipStayCopy(input: { proSuite: boolean; driveConnected: boolean }): string {
-  if (input.proSuite && input.driveConnected) {
-    return 'Clips stay on this phone for offline play. Saving this day copies them into the gym Google Drive folder.';
+/** Button on Daily Training Videos when the gym folder is not connected yet. */
+export const TRAINING_DRIVE_CONNECT_LABEL = 'Connect Google Drive to share this day';
+/** Button on Daily Training Videos when the gym folder is already connected. */
+export const TRAINING_DRIVE_OPEN_LABEL = 'Open gym Drive folder';
+/** Title of the connect sheet opened from Daily Training Videos. */
+export const TRAINING_DRIVE_CONNECT_TITLE = 'Share this day with Google Drive';
+/** Helper under the Daily Training connect sheet. Distribution, not a cloud backup. */
+export function trainingDriveConnectHint(seated: boolean): string {
+  const same = seated ? ' You have the same Google Drive sharing as the gym owner.' : '';
+  return `Sign in, then pick the gym folder. Saving this day copies clips into that folder for the gym owner and instructors.${same} Until then, clips stay on this device and are not shared. Advantage does not host them.`;
+}
+
+export type TrainingClipHandoff = {
+  /** Owner Pro, or a seated Pro invite in this video menu. */
+  share: boolean;
+  /** How the day reaches the gym folder. Empty for basic Coach. */
+  lead: string;
+  /** What “save this day” means on this page. Empty for basic Coach. */
+  action: string;
+  /** Current limit. For sharing seats this is temporary, not a permanent local playlist. */
+  warning: string;
+};
+
+/**
+ * Daily Training Videos handoff.
+ * Owner Pro and a seated Pro invite in this menu (every level, including
+ * Assistant) share the same way: connect Google Drive, then save this day.
+ * Basic Coach stays on this phone.
+ */
+export function trainingClipHandoff(input: {
+  proSuite: boolean;
+  driveConnected: boolean;
+  /** Live seat allowed into Daily Training Videos. */
+  seatedAuthorized?: boolean;
+}): TrainingClipHandoff {
+  const seated = Boolean(input.seatedAuthorized);
+  const share = input.proSuite || seated;
+  if (!share) {
+    return {
+      share: false,
+      lead: '',
+      action: '',
+      warning: 'Clips stay on this device. Nothing is uploaded.',
+    };
   }
-  if (input.proSuite) {
-    return 'Clips stay on this device until Google Drive is connected. Then saving this day copies them into the gym folder.';
+  const warning = input.driveConnected
+    ? 'Until this day is saved, these clips stay on this device only and are not shared with the owner or other instructors yet. This phone keeps a copy for offline play.'
+    : 'Until Google Drive is connected and this day is saved, these clips stay on this device only and are not shared with the owner or other instructors yet.';
+  const action = input.driveConnected
+    ? 'Adding or replacing a clip saves this day into the gym Drive folder.'
+    : 'Adding or replacing a clip saves this day once Google Drive is connected.';
+  const same = 'You have the same Google Drive sharing as the gym owner. ';
+  if (input.driveConnected) {
+    return {
+      share: true,
+      lead: `${seated ? same : ''}Save this day to copy these clips into the gym Drive folder for the gym owner and instructors.`,
+      action,
+      warning,
+    };
   }
-  return 'Clips stay on this device. Nothing is uploaded.';
+  return {
+    share: true,
+    lead: seated
+      ? `${same}Connect Google Drive, then save this day, and these clips copy into the gym Drive folder for the gym owner and instructors.`
+      : 'Connect Google Drive, then save this day. That copies these clips into the gym Drive folder for the gym owner and instructors.',
+    action,
+    warning,
+  };
+}
+
+/** One paragraph for the add-video sheet and status text. */
+export function trainingClipStayCopy(input: {
+  proSuite: boolean;
+  driveConnected: boolean;
+  seatedAuthorized?: boolean;
+}): string {
+  const handoff = trainingClipHandoff(input);
+  if (!handoff.share) return handoff.warning;
+  return `${handoff.lead} ${handoff.action} ${handoff.warning}`;
 }
 
 /**
@@ -305,7 +409,10 @@ export function drivePackageNotice(input: {
     return `Lesson text saved to Google Drive. ${stay} and will try again on the next save.`;
   }
   if (input.uploaded > 0) {
-    const clip = input.uploaded === 1 ? '1 video is in the gym folder.' : `${input.uploaded} videos are in the gym folder.`;
+    const clip =
+      input.uploaded === 1
+        ? '1 video is in the gym folder for the gym owner and instructors.'
+        : `${input.uploaded} videos are in the gym folder for the gym owner and instructors.`;
     return `${savedDriveNotice(input.revisions)} ${clip} This phone keeps a copy for offline play.`;
   }
   return savedDriveNotice(input.revisions);
@@ -319,8 +426,9 @@ export function savedDriveNotice(revisions: number): string {
 export function lessonRevisionLabel(revision: LessonRevision): string {
   const who = revision.coachName.trim() || 'Coach';
   const designation = revision.plan.classDesignation?.trim() ?? '';
+  const title = revision.plan.lessonTitle?.trim() ?? '';
   const time = revision.plan.classTime?.trim() ?? '';
-  const klass = [designation, time].filter(Boolean).join(' ');
+  const klass = [designation, title, time].filter(Boolean).join(' ');
   const what = revision.kind === 'distribution' ? 'Shared for distribution' : 'Draft';
   return klass
     ? `${who} · ${klass} · ${revision.dateKey} · ${what}`
@@ -431,15 +539,27 @@ export function mediaWithPlanDriveIds(
 export function pendingTrainingVideos(
   media: readonly LessonMediaRef[],
   clips: readonly DayPackageClip[],
+  naming?: {
+    classDesignation?: string;
+    lessonTitle?: string;
+    techniqueTitles?: readonly string[];
+  },
 ): TrainingVideoUpload[] {
   const byId = new Map(clips.map((clip) => [clip.id, clip]));
   const pending: TrainingVideoUpload[] = [];
   const seen = new Set<string>();
+  let ordinal = 0;
   for (const item of media) {
-    if (!item.localClipId || item.driveFileId || seen.has(item.localClipId)) continue;
+    if (!item.localClipId) continue;
+    ordinal += 1;
+    if (item.driveFileId || seen.has(item.localClipId)) continue;
     const clip = byId.get(item.localClipId);
     if (!clip || clip.blob.size <= 0) continue;
     seen.add(item.localClipId);
+    const techniqueTitle =
+      item.section === 'technique' && item.index != null
+        ? naming?.techniqueTitles?.[item.index]?.trim() ?? ''
+        : '';
     pending.push({
       localClipId: item.localClipId,
       name: item.name || clip.label,
@@ -447,6 +567,9 @@ export function pendingTrainingVideos(
       bytes: clip.blob,
       section: item.section,
       index: item.index,
+      classDesignation: naming?.classDesignation?.trim() ?? '',
+      lessonTitle: techniqueTitle || naming?.lessonTitle?.trim() || '',
+      clipNumber: ordinal,
     });
   }
   return pending;
@@ -564,7 +687,11 @@ export async function commitDayPackage(input: {
     /* Lesson text stays on this phone. The retry below runs after videos. */
   }
 
-  const pending = pendingTrainingVideos(known, input.clips);
+  const pending = pendingTrainingVideos(known, input.clips, {
+    classDesignation: input.plan.classDesignation,
+    lessonTitle: input.plan.lessonTitle,
+    techniqueTitles: input.plan.techniques.map((tech) => tech.title),
+  });
   let results: TrainingVideoUploadResult[] | null = [];
   let unreachable = false;
   if (pending.length > 0) {
@@ -767,12 +894,13 @@ async function uploadVideosWithoutLesson(dateKey: string, media: readonly Lesson
 
 /**
  * After a clip is added or removed on Daily Training Videos, push today's
- * package the same way a lesson edit does. Regular Coach does nothing.
+ * package the same way a lesson edit does. Basic Coach does nothing.
+ * Owner Pro and a seated Pro invite in this menu both pass shareDay.
  * Days with lesson text update each of those plans. A day with only videos
  * uploads the files and does not invent an empty lesson.
  */
-export function syncTodayTrainingVideos(videoPlan: VideoPlan, proSuite: boolean): void {
-  if (!proSuite || typeof window === 'undefined') return;
+export function syncTodayTrainingVideos(videoPlan: VideoPlan, shareDay: boolean): void {
+  if (!shareDay || typeof window === 'undefined') return;
   const today = localDateKey();
   const archive = loadTrainingArchive(today);
   const plans = plansOnDay(archive, today).filter(planHasContent);

@@ -14,7 +14,6 @@ export {
 import {
   buildPlayQueue,
   comparePlaylistItems,
-  moveItemIds,
   withFolderOrder as applyFolderOrder,
   type PlaylistItem,
 } from './playlist.ts';
@@ -26,6 +25,14 @@ import {
   normalizeStartsSlide,
   type ShopCastMode,
 } from './shopSlides.ts';
+import {
+  clipsNotYetLinked,
+  galleryCaption,
+  galleryClipId,
+  galleryLoopSec,
+  gallerySchedule,
+  galleryShowDate,
+} from './gallerySchedule.ts';
 
 const DB_NAME = 'matboard';
 const STORE = 'photos';
@@ -141,6 +148,16 @@ export type StoredPhoto = PlaylistItem & {
    * The blob is the on-device copy the TV plays. Advantage does not host it.
    */
   driveFileId: string | null;
+  /** Gallery caption. Empty on Pro Shop and Events. */
+  caption: string;
+  /** Gallery items with no choice keep playing every day. */
+  schedule: 'always' | 'date' | 'next-class';
+  /** Used when schedule is `date`. */
+  showDate: string;
+  /** Daily Training clip id. Empty when this item has its own file. */
+  techniqueClipId: string;
+  /** Loop timer in seconds from that technique slot. 0 uses the slideshow timer. */
+  loopSec: number;
 };
 
 export const DEFAULT_SHUFFLE = false;
@@ -158,7 +175,18 @@ export type SaverPrefs = {
 
 export type PhotoRow = Omit<
   StoredPhoto,
-  'folderId' | 'sortOrder' | 'playEnabled' | 'buyUrl' | 'startsSlide' | 'qrLinks' | 'driveFileId'
+  | 'folderId'
+  | 'sortOrder'
+  | 'playEnabled'
+  | 'buyUrl'
+  | 'startsSlide'
+  | 'qrLinks'
+  | 'driveFileId'
+  | 'caption'
+  | 'schedule'
+  | 'showDate'
+  | 'techniqueClipId'
+  | 'loopSec'
 > & {
   folderId?: FolderId | string;
   sortOrder?: number;
@@ -167,6 +195,11 @@ export type PhotoRow = Omit<
   startsSlide?: boolean;
   qrLinks?: unknown;
   driveFileId?: string | null;
+  caption?: unknown;
+  schedule?: unknown;
+  showDate?: unknown;
+  techniqueClipId?: unknown;
+  loopSec?: unknown;
 };
 
 export function isFolderId(value: unknown): value is FolderId {
@@ -229,6 +262,11 @@ function normalizePhoto(row: PhotoRow, index: number): StoredPhoto {
     startsSlide: normalizeStartsSlide(row.startsSlide),
     qrLinks: normalizeQrLinks(row.qrLinks),
     driveFileId: clampStoredDriveFileId(row.driveFileId),
+    caption: galleryCaption(row.caption),
+    schedule: gallerySchedule(row.schedule),
+    showDate: galleryShowDate(row.showDate),
+    techniqueClipId: galleryClipId(row.techniqueClipId),
+    loopSec: galleryLoopSec(row.loopSec),
   };
 }
 
@@ -272,9 +310,6 @@ export function migrateLegacyVideoFolder(rows: PhotoRow[]): { rows: PhotoRow[]; 
     changed: [...patch.values()],
   };
 }
-
-export const comparePhotos = comparePlaylistItems;
-export const movePhotoIds = moveItemIds;
 
 export function withFolderOrder(
   photos: StoredPhoto[],
@@ -366,8 +401,6 @@ export function playableItems(
   });
 }
 
-export const playablePhotos = playableItems;
-
 export async function listPhotos(folderId?: FolderId): Promise<StoredPhoto[]> {
   const db = await openDb();
   const raw = await new Promise<PhotoRow[]>((resolve, reject) => {
@@ -380,7 +413,7 @@ export async function listPhotos(folderId?: FolderId): Promise<StoredPhoto[]> {
   if (migrated.changed.length) {
     await persistMediaRows(migrated.changed);
   }
-  const rows = migrated.rows.map((row, index) => normalizePhoto(row, index)).sort(comparePhotos);
+  const rows = migrated.rows.map((row, index) => normalizePhoto(row, index)).sort(comparePlaylistItems);
   return folderId ? rows.filter((photo) => photo.folderId === folderId) : rows;
 }
 
@@ -492,6 +525,11 @@ async function saveFolderMedia(
       startsSlide: true,
       qrLinks: [],
       driveFileId,
+      caption: '',
+      schedule: 'always',
+      showDate: '',
+      techniqueClipId: '',
+      loopSec: 0,
     };
     try {
       await assertOriginRoom(photo.blob.size, added);
@@ -533,10 +571,6 @@ export async function addDriveMediaFiles(
   );
 }
 
-export async function addPhotos(files: File[], folderId: FolderId = 'gallery'): Promise<void> {
-  await addFolderFiles(files, folderId);
-}
-
 export async function setItemPlay(id: string, enabled: boolean): Promise<void> {
   const db = await openDb();
   const tx = db.transaction(STORE, 'readwrite');
@@ -549,6 +583,76 @@ export async function setItemPlay(id: string, enabled: boolean): Promise<void> {
   if (!current) return;
   store.put({ ...normalizePhoto(current, 0), playEnabled: enabled });
   await txDone(tx);
+}
+
+export async function setGalleryDetails(
+  id: string,
+  patch: {
+    caption?: string;
+    schedule?: 'always' | 'date' | 'next-class';
+    showDate?: string;
+  },
+): Promise<void> {
+  const db = await openDb();
+  const tx = db.transaction(STORE, 'readwrite');
+  const store = tx.objectStore(STORE);
+  const current = await new Promise<PhotoRow | undefined>((resolve, reject) => {
+    const req = store.get(id);
+    req.onsuccess = () => resolve(req.result as PhotoRow | undefined);
+    req.onerror = () => reject(req.error);
+  });
+  if (!current) return;
+  const photo = normalizePhoto(current, 0);
+  store.put({
+    ...photo,
+    caption: patch.caption === undefined ? photo.caption : galleryCaption(patch.caption),
+    schedule: patch.schedule === undefined ? photo.schedule : gallerySchedule(patch.schedule),
+    showDate: patch.showDate === undefined ? photo.showDate : galleryShowDate(patch.showDate),
+  });
+  await txDone(tx);
+}
+
+/** Point the gallery at technique clips. Does not copy their bytes into the gallery. */
+export async function linkTechniqueClipsToGallery(
+  clips: readonly { clipId: string; label: string; mime: string; loopSec: number }[],
+): Promise<number> {
+  const existing = await listPhotos('gallery');
+  const fresh = clipsNotYetLinked(
+    existing.map((photo) => photo.techniqueClipId),
+    clips,
+  );
+  if (!fresh.length) return 0;
+  const db = await openDb();
+  let nextOrder = existing.reduce((max, photo) => Math.max(max, photo.sortOrder), -1);
+  let added = 0;
+  for (const clip of fresh) {
+    nextOrder += 1;
+    const photo: StoredPhoto = {
+      id: crypto.randomUUID(),
+      mime: clip.mime.startsWith('video/') ? clip.mime : 'video/mp4',
+      addedAt: Date.now(),
+      blob: new Blob(),
+      label: clip.label.trim().slice(0, 80) || 'Technique clip',
+      folderId: 'gallery',
+      sortOrder: nextOrder,
+      playEnabled: true,
+      buyUrl: '',
+      startsSlide: true,
+      qrLinks: [],
+      driveFileId: null,
+      caption: '',
+      schedule: 'always',
+      showDate: '',
+      techniqueClipId: galleryClipId(clip.clipId),
+      loopSec: galleryLoopSec(clip.loopSec),
+    };
+    if (!photo.techniqueClipId) continue;
+    const tx = db.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).put(photo);
+    await txDone(tx);
+    added += 1;
+  }
+  return added;
 }
 
 export async function setItemBuyUrl(id: string, buyUrl: string): Promise<void> {
@@ -639,10 +743,6 @@ export async function reorderFolderItems(folderId: FolderId, orderedIds: string[
   await txDone(tx);
 }
 
-export async function reorderPhotos(folderId: FolderId, orderedIds: string[]): Promise<void> {
-  await reorderFolderItems(folderId, orderedIds);
-}
-
 export async function clearFolder(folderId: FolderId): Promise<void> {
   const rows = await listPhotos(folderId);
   const db = await openDb();
@@ -650,10 +750,6 @@ export async function clearFolder(folderId: FolderId): Promise<void> {
   const store = tx.objectStore(STORE);
   for (const row of rows) store.delete(row.id);
   await txDone(tx);
-}
-
-export async function clearPhotos(): Promise<void> {
-  await clearFolder('gallery');
 }
 
 export async function getSaverPrefs(): Promise<SaverPrefs> {

@@ -1,16 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { DeviceMediaInput } from '../components/DeviceMediaInput';
+import { DriveConnectCard } from '../components/DriveConnectCard';
+import { DriveMediaPicker } from '../components/DriveMediaPicker';
 import { OpenMyDrive } from '../components/OpenMyDrive';
+import { Sheet } from '../components/Sheet';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { PlayExitMark } from '../components/PlayExitMark';
+import { useSubmenuBack } from '../hooks/useSubmenuBack';
+import { SeatSessionBar, useCurrentSeat } from '../components/SeatSessionBar';
 import { TvTip } from '../components/TvTip';
 import { VideoSourceSheet } from '../components/VideoSourceSheet';
 import { useInterval } from '../hooks/useClock';
+import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
+import { instructorSeatBinderLabel, isLiveSeat, menuCloudSharing, seatMenuAllowed } from '../lib/instructorSeats';
 import { useCoachPageSwipe } from '../hooks/useCoachSwipe';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
-import { useToolboxParent } from '../hooks/useToolboxParent';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import {
@@ -21,22 +27,29 @@ import {
 } from '../lib/curriculumVideos';
 import { loadCurriculumArchive, writeCurriculumBlockClip } from '../lib/competitionCurriculum';
 import { formatMmSs, formatMss, secondsToMs } from '../lib/format';
-import { getDriveBindingSnapshot, subscribeDriveBinding } from '../lib/googleDrive';
+import { downloadDriveFile, getDriveBindingSnapshot, requestDriveToken, subscribeDriveBinding } from '../lib/googleDrive';
 import {
+  TRAINING_DRIVE_CONNECT_LABEL,
+  TRAINING_DRIVE_CONNECT_TITLE,
+  TRAINING_DRIVE_OPEN_LABEL,
   getDriveNotice,
   subscribeDriveNotice,
   syncTodayTrainingVideos,
+  trainingClipHandoff,
   trainingClipStayCopy,
+  trainingDriveConnectHint,
 } from '../lib/lessonDrive';
 import {
   lessonFocusStatus,
   parseLessonVideoFocus,
   resolveFocusedSlot,
 } from '../lib/lessonLinks';
+import type { DriveBrowseMedia } from '../lib/driveMediaPicker';
 import { VIDEO_CAPTURE, VIDEO_PICKER_ACCEPT, VIDEO_RECORD_ACCEPT } from '../lib/mediaPicker';
 import { DEFAULT_MUTE_VIDEO, getSaverPrefs, setSaverMuteVideo } from '../lib/photoStore';
 import { safeTimerReturn } from '../lib/timerReturn';
-import { localDateKey } from '../lib/trainingNotesStore';
+import { techniquesPageEyebrow } from '../lib/productNames';
+import { isWithinRetention, localDateKey } from '../lib/trainingNotesStore';
 import { LOOP_RESTART_MIN_MS, nextLoopStep } from '../lib/videoLoop';
 import { LARGE_MEDIA_BYTES, LARGE_MEDIA_NOTE, quotaAddNote } from '../lib/storageQuota';
 import {
@@ -53,6 +66,7 @@ import {
   pickAddableVideos,
   remainingOnStart,
   selectSlot,
+  setSlotClip,
   setSlotDrill,
   slotTitle,
   tickRemainingMs,
@@ -63,13 +77,16 @@ import {
   attachClipToSlot,
   clearSlotClip,
   deleteUnusedTrainingClip,
-  loadTechniqueBoard,
+  loadTechniqueBoardForDate,
   readTrainingClip,
   readTrainingClipBlob,
+  loadTechniqueBoard,
   saveTechniquePlan,
   saveTrainingClip,
+  storeRestoredDriveClip,
   type TechniqueClip,
 } from '../lib/techniqueStore';
+import { lessonPlanVideoOverlay, planVideoRefsFromVideoPlan, videoPlanWithPlanVideos, writeLessonPlanVideos } from '../lib/planVideos';
 
 async function loadSharedCurriculumCards(clips: readonly TechniqueClip[]): Promise<{
   cards: CurriculumVideoCard[];
@@ -97,10 +114,27 @@ async function loadSharedCurriculumCards(clips: readonly TechniqueClip[]): Promi
 const idleDriveNotice = { phase: 'idle' as const, text: '' };
 
 export function TechniquesPage() {
-  const proSuite = useProUnlocked();
+  const seat = useCurrentSeat();
+  const videosMenu = seatMenuAllowed(seat, 'downloadTodaysVideos');
+  const proUnlocked = useProUnlocked();
+  const coachUnlocked = useCoachUnlocked();
+  const proSuite = menuCloudSharing(proUnlocked, seat, videosMenu);
+  const seatedAuthorized = isLiveSeat(seat) && videosMenu;
   const driveBinding = useSyncExternalStore(subscribeDriveBinding, getDriveBindingSnapshot, () => null);
   const driveNotice = useSyncExternalStore(subscribeDriveNotice, getDriveNotice, () => idleDriveNotice);
-  const stayCopy = trainingClipStayCopy({ proSuite, driveConnected: Boolean(driveBinding) });
+  const handoff = trainingClipHandoff({
+    proSuite,
+    driveConnected: Boolean(driveBinding),
+    seatedAuthorized,
+  });
+  const stayCopy = trainingClipStayCopy({
+    proSuite,
+    driveConnected: Boolean(driveBinding),
+    seatedAuthorized,
+  });
+  const shareDay = handoff.share;
+  const eyebrow = techniquesPageEyebrow(proUnlocked, coachUnlocked, isLiveSeat(seat));
+  const seatRole = seat ? instructorSeatBinderLabel(seat.presetId, seat.permissions) : '';
   const [clips, setClips] = useState<TechniqueClip[]>([]);
   const [plan, setPlan] = useState<VideoPlan | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -108,7 +142,15 @@ export function TechniquesPage() {
   const [unlockSound, setUnlockSound] = useState(false);
   const [pickerNote, setPickerNote] = useState('');
   const [addOpen, setAddOpen] = useState(false);
+  const [drivePickOpen, setDrivePickOpen] = useState(false);
+  const [driveConnectOpen, setDriveConnectOpen] = useState(false);
   const [replacing, setReplacing] = useState(false);
+
+  useEffect(() => {
+    if (!driveConnectOpen || !driveBinding) return;
+    setDriveConnectOpen(false);
+    setDrivePickOpen(true);
+  }, [driveConnectOpen, driveBinding]);
   const [remainingMs, setRemainingMs] = useState(secondsToMs(300));
   const [customSlotId, setCustomSlotId] = useState<string | null>(null);
   const pickerSlotRef = useRef<string | null>(null);
@@ -120,10 +162,18 @@ export function TechniquesPage() {
   const fsActiveRef = useRef(false);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const parent = useToolboxParent();
+  const exitPath = useSubmenuBack() ?? '/coach';
   useCoachPageSwipe();
   const launchStarted = useRef(false);
   const launchKey = searchParams.toString();
+  const focusDate = parseLessonVideoFocus(searchParams).date;
+  const boardDate = focusDate && isWithinRetention(focusDate, localDateKey()) ? focusDate : localDateKey();
+  const boardDateRef = useRef(boardDate);
+  boardDateRef.current = boardDate;
+  const lessonPlanIdRef = useRef<string | null>(new URLSearchParams(launchKey).get('class'));
+  if (new URLSearchParams(launchKey).get('class')) {
+    lessonPlanIdRef.current = new URLSearchParams(launchKey).get('class');
+  }
   const [lessonFocus, setLessonFocus] = useState<{ slotId: string; text: string } | null>(null);
   const [curriculumCards, setCurriculumCards] = useState<CurriculumVideoCard[]>([]);
   const [curriculumPick, setCurriculumPick] = useState<string | null>(null);
@@ -177,12 +227,19 @@ export function TechniquesPage() {
     setPlan(next);
   };
 
+  const rememberLessonVideos = (next: VideoPlan) => {
+    const planId = lessonPlanIdRef.current;
+    if (!planId) return;
+    writeLessonPlanVideos(boardDateRef.current, planId, planVideoRefsFromVideoPlan(next));
+  };
+
   useEffect(() => {
     let cancelled = false;
-    void loadTechniqueBoard()
+    void loadTechniqueBoardForDate(boardDate)
       .then(async (board) => {
         if (cancelled) return;
-        applyPlan(board.plan);
+        const overlay = lessonPlanVideoOverlay(boardDate, lessonPlanIdRef.current);
+        applyPlan(overlay === null ? board.plan : videoPlanWithPlanVideos(board.plan, overlay));
         const shared = await loadSharedCurriculumCards(board.clips);
         if (cancelled) return;
         setCurriculumCards(shared.cards);
@@ -199,7 +256,7 @@ export function TechniquesPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [boardDate]);
 
   const clipsRef = useRef(clips);
   clipsRef.current = clips;
@@ -235,7 +292,8 @@ export function TechniquesPage() {
   const persistPlan = async (next: VideoPlan) => {
     applyPlan(next);
     try {
-      await saveTechniquePlan(next);
+      await saveTechniquePlan(next, boardDateRef.current);
+      rememberLessonVideos(next);
     } catch {
       setPickerNote('Could not save this plan on this device.');
     }
@@ -384,9 +442,11 @@ export function TechniquesPage() {
       applyPlan(next);
       setPlaying(false);
       if (isTimedSlot(slot)) setRemainingMs(secondsToMs(slot.drillSec));
-      void saveTechniquePlan(next).catch(() => {
-        setPickerNote('Could not save this plan on this device.');
-      });
+      void saveTechniquePlan(next, boardDateRef.current)
+        .then(() => rememberLessonVideos(next))
+        .catch(() => {
+          setPickerNote('Could not save this plan on this device.');
+        });
       return () => {
         cancelled = true;
       };
@@ -409,6 +469,95 @@ export function TechniquesPage() {
       cancelled = true;
     };
   }, [plan, urlById, launchKey, muteVideo, setSearchParams]);
+
+  const openDrivePick = () => {
+    setAddOpen(false);
+    if (!driveBinding) {
+      setDriveConnectOpen(true);
+      return;
+    }
+    setDrivePickOpen(true);
+  };
+
+  const importDriveVideos = async (chosen: readonly DriveBrowseMedia[]) => {
+    const curriculumId = curriculumPickerRef.current;
+    const slotId = pickerSlotRef.current;
+    const current = planRef.current;
+    setDrivePickOpen(false);
+    const [item] = chosen;
+    if (!item) return;
+    const token = (await requestDriveToken('silent')) ?? (await requestDriveToken('consent'));
+    if (!token) {
+      setPickerNote('Sign in to Google Drive again to pick that video.');
+      return;
+    }
+    const mime = item.mime || 'video/mp4';
+    try {
+      if (curriculumId) {
+        curriculumPickerRef.current = null;
+        const blob = await downloadDriveFile(token, item.id);
+        const file = new File([blob], item.name || 'Drive video', { type: mime });
+        const card = curriculumCards.find((row) => row.blockId === curriculumId);
+        const saved = await saveTrainingClip(file, card?.title || item.name);
+        if (!card || !saved) {
+          setPickerNote('That Google Drive video could not be opened. It stays in the gym folder.');
+          return;
+        }
+        const previous = card.clipId;
+        const savedPlan = writeCurriculumBlockClip(card.blockId, saved.id, file.name || saved.label);
+        if (!savedPlan) {
+          void deleteUnusedTrainingClip(saved.id);
+          setPickerNote('That curriculum card is not on this phone anymore.');
+          return;
+        }
+        if (previous && previous !== saved.id) void deleteUnusedTrainingClip(previous);
+        setCurriculumCards((rows) =>
+          rows.map((row) =>
+            row.blockId === card.blockId ? { ...row, clipId: saved.id, mediaName: file.name || saved.label } : row,
+          ),
+        );
+        setClips((rows) => [...rows.filter((clip) => clip.id !== previous && clip.id !== saved.id), saved]);
+        return;
+      }
+      if (!slotId || !current) return;
+      const linked = await storeRestoredDriveClip({
+        driveFileId: item.id,
+        blob: null,
+        mime,
+        label: item.name,
+      });
+      if (linked) {
+        const next = selectSlot(
+          setSlotClip(current, slotId, linked, {
+            driveFileId: item.id,
+            mediaName: item.name,
+            mediaMime: mime,
+          }),
+          slotId,
+        );
+        await saveTechniquePlan(next, boardDateRef.current);
+        applyPlan(next);
+        rememberLessonVideos(next);
+        setClips((await loadTechniqueBoard()).clips);
+        if (shareDay) syncTodayTrainingVideos(next, true);
+        return;
+      }
+      const blob = await downloadDriveFile(token, item.id);
+      const file = new File([blob], item.name || 'Drive video', { type: mime || blob.type || 'video/mp4' });
+      const result = await attachClipToSlot(current, slotId, file, item.id);
+      applyPlan(result.plan);
+      rememberLessonVideos(result.plan);
+      setClips(result.clips);
+      setPlaying(false);
+      if (result.status === 'invalid') {
+        setPickerNote('That file cannot play here. Switch the camera to video, or pick an MP4 / WebM.');
+        return;
+      }
+      if (result.status === 'added' || result.status === 'replaced') syncTodayTrainingVideos(result.plan, shareDay);
+    } catch {
+      setPickerNote('That Google Drive video could not be opened. It stays in the gym folder.');
+    }
+  };
 
   const openChooser = (slot: VideoSlot) => {
     const current = planRef.current;
@@ -476,6 +625,7 @@ export function TechniquesPage() {
     try {
       const result = await attachClipToSlot(current, slotId, file);
       applyPlan(result.plan);
+      rememberLessonVideos(result.plan);
       setClips(result.clips);
       setPlaying(false);
       if (result.status === 'invalid') {
@@ -484,7 +634,7 @@ export function TechniquesPage() {
       }
       setPickerNote(file.size >= LARGE_MEDIA_BYTES ? LARGE_MEDIA_NOTE : '');
       if (result.status === 'added' || result.status === 'replaced') {
-        syncTodayTrainingVideos(result.plan, proSuite);
+        syncTodayTrainingVideos(result.plan, shareDay);
       }
       const slot = result.plan.slots.find((item) => item.slotId === slotId);
       if (slot && isTimedSlot(slot)) setRemainingMs(secondsToMs(slot.drillSec));
@@ -499,10 +649,11 @@ export function TechniquesPage() {
     try {
       const result = await clearSlotClip(current, slotId);
       applyPlan(result.plan);
+      rememberLessonVideos(result.plan);
       setClips(result.clips);
       if (planRef.current?.selectedSlotId === slotId) setPlaying(false);
       setPickerNote('');
-      if (result.status === 'removed') syncTodayTrainingVideos(result.plan, proSuite);
+      if (result.status === 'removed') syncTodayTrainingVideos(result.plan, shareDay);
     } catch {
       setPickerNote('Could not remove that clip on this device.');
     }
@@ -543,11 +694,13 @@ export function TechniquesPage() {
   const exitBoard = () => {
     setPlaying(false);
     setPlayingCurriculum(false);
-    const destination = backPath ?? parent.path;
+    const destination = backPath ?? exitPath;
     void fs.exit().finally(() => {
       navigate(destination);
     });
   };
+
+  if (isLiveSeat(seat) && !videosMenu) return <Navigate to="/coach" replace />;
 
   const warmup = plan?.slots.find((slot) => slot.kind === 'warmup') ?? null;
   const cooldown = plan?.slots.find((slot) => slot.kind === 'cooldown') ?? null;
@@ -557,10 +710,10 @@ export function TechniquesPage() {
     <main
       className={`techniques${playback ? ' techniques--play' : ''}${fs.className ? ` ${fs.className}` : ''}${stage ? ' techniques--fill' : ''}`}
     >
-      <PlayExitMark to={parent.path} onExit={exitBoard} />
+      <PlayExitMark to={backPath ?? exitPath} onExit={exitBoard} />
       <header className="techniques__bar">
         <div className="techniques__brand">
-          <p className="techniques__eyebrow">{parent.eyebrow}</p>
+          <p className="techniques__eyebrow">{eyebrow}</p>
           <h1>Daily Training Videos</h1>
         </div>
         <div className="techniques__actions">
@@ -589,18 +742,34 @@ export function TechniquesPage() {
             {count} {count === 1 ? 'clip' : 'clips'}
           </p>
         </div>
-        <OpenMyDrive />
+        <SeatSessionBar />
+        <OpenMyDrive
+          openLabel={shareDay ? TRAINING_DRIVE_OPEN_LABEL : undefined}
+          connectLabel={shareDay ? TRAINING_DRIVE_CONNECT_LABEL : undefined}
+          connectTitle={shareDay ? TRAINING_DRIVE_CONNECT_TITLE : undefined}
+          connectHint={shareDay ? trainingDriveConnectHint(seatedAuthorized) : undefined}
+        />
       </header>
 
       {playback ? null : (
-        <>
-          <p className="techniques__note">{stayCopy}</p>
-          {proSuite && driveNotice.text ? (
-            <p className="techniques__note" role="status">
-              {driveNotice.text}
+        <section className="techniques__handoff" aria-label="How clips reach the gym">
+          {seat ? (
+            <p className="techniques__context">
+              {shareDay
+                ? `Seated as ${seatRole}. In this menu you share clips the same way the gym owner does. This is not the gym owner console.`
+                : `Seated as ${seatRole}. This is not the gym owner console.`}
             </p>
           ) : null}
-        </>
+          <h2>{shareDay ? 'Share this day' : 'On this device'}</h2>
+          {handoff.lead ? <p>{handoff.lead}</p> : null}
+          {handoff.action ? <p>{handoff.action}</p> : null}
+          <p className="techniques__handoff-warn">{handoff.warning}</p>
+        </section>
+      )}
+      {playback || !shareDay || !driveNotice.text ? null : (
+        <p className="techniques__note" role="status">
+          {driveNotice.text}
+        </p>
       )}
 
       {lessonFocus ? (
@@ -736,8 +905,29 @@ export function TechniquesPage() {
         recordInputId="techniques-video-record"
         libraryInputId="techniques-video-library"
         stay={stayCopy}
+        driveOpenLabel={shareDay ? TRAINING_DRIVE_OPEN_LABEL : undefined}
+        driveConnectLabel={shareDay ? TRAINING_DRIVE_CONNECT_LABEL : undefined}
+        driveConnectTitle={shareDay ? TRAINING_DRIVE_CONNECT_TITLE : undefined}
+        driveConnectHint={shareDay ? trainingDriveConnectHint(seatedAuthorized) : undefined}
+        onPickDrive={openDrivePick}
         onClose={() => setAddOpen(false)}
       />
+      <DriveMediaPicker
+        open={drivePickOpen}
+        kind="video"
+        onClose={() => setDrivePickOpen(false)}
+        onDone={(files) => {
+          void importDriveVideos(files);
+        }}
+      />
+      <Sheet
+        open={driveConnectOpen && !driveBinding}
+        title="Connect with"
+        onClose={() => setDriveConnectOpen(false)}
+        stacked
+      >
+        <DriveConnectCard />
+      </Sheet>
       <DeviceMediaInput
         id="techniques-video-record"
         inputRef={recordRef}

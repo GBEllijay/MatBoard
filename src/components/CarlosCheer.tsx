@@ -18,10 +18,19 @@ const CONFETTI = [
 ] as const;
 
 /** Grand Master Carlos slide-in. Shared by the bracket champion and the match scoreboard. */
-export function CarlosCheer({ lines, board = false }: { lines: readonly string[]; board?: boolean }) {
+export function CarlosCheer({
+  lines,
+  board = false,
+  corner = false,
+}: {
+  lines: readonly string[];
+  board?: boolean;
+  /** Bracket dock: small, in the reserved corner, not over the tree. */
+  corner?: boolean;
+}) {
   const lastIsScore = lines.length > 2;
   return (
-    <div className={`kids-carlos${board ? ' kids-carlos--board' : ''}`} role="status">
+    <div className={`kids-carlos${board ? ' kids-carlos--board' : ''}${corner ? ' kids-carlos--corner' : ''}`} role="status">
       <div className="kids-confetti" aria-hidden="true">
         {CONFETTI.map((piece) => (
           <span
@@ -53,7 +62,11 @@ export function CarlosCheer({ lines, board = false }: { lines: readonly string[]
             </span>
           ))}
         </p>
-        <img src={CARLOS_ASSET} alt="" width={845} height={1200} />
+        <div className="kids-carlos__portrait">
+          <img src={CARLOS_ASSET} alt="" width={845} height={1200} />
+          {/* Head of carlos.webp (alpha > 40): x 22–72%, y 2–42%, chin included. */}
+          <span className="kids-carlos__face" aria-hidden="true" />
+        </div>
       </figure>
     </div>
   );

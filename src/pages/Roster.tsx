@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCurrentSeat } from '../components/SeatSessionBar';
 import { EmptyHint } from '../components/EmptyHint';
-import { PlayExitMark } from '../components/PlayExitMark';
+import { ImportStudentProgress, StudentCompetitionPlan } from '../components/StudentCompetitionPlan';
+import { SubmenuMarks } from '../components/TierHomeMark';
+import { useSubmenuBack } from '../hooks/useSubmenuBack';
 import { useCoachPageSwipe } from '../hooks/useCoachSwipe';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
@@ -47,6 +49,7 @@ import { readGymName } from '../lib/gymName';
 import {
   ADULT_BELTS,
   KIDS_BELTS,
+  LAST_PROMOTION_DETAIL_MAX,
   NOTE_MAX,
   addStudent,
   addStudents,
@@ -94,14 +97,7 @@ export function RosterPage() {
     !fromCompetitors &&
     (searchParams.get('from') === 'coach' || (coachUnlocked && !proUnlocked));
   const showCsv = !studentRoster && rosterCsvAvailable(proUnlocked, coachUnlocked);
-  const fromSuite = searchParams.get('from') === 'suite';
-  const exitPath = studentRoster || coachRoster
-    ? '/coach'
-    : fromCompetitors
-      ? '/competitors'
-      : fromSuite
-        ? '/suite'
-        : parent.path;
+  const exitPath = useSubmenuBack() ?? parent.path;
   const csvRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [editor, setEditor] = useState<{ id: string | null; draft: StudentDraft } | null>(null);
@@ -113,8 +109,11 @@ export function RosterPage() {
     [roster.students, studentRoster],
   );
   const competitors = useMemo(
-    () => (query.trim() ? searchStudents(listed, query) : listed),
-    [query, listed],
+    () =>
+      query.trim()
+        ? searchStudents(listed, query, studentRoster ? undefined : roster.competitionPlans)
+        : listed,
+    [query, listed, studentRoster, roster.competitionPlans],
   );
   const openAdd = () => setEditor({ id: null, draft: { ...emptyDraft(), gym: readGymName() } });
 
@@ -195,7 +194,7 @@ export function RosterPage() {
 
   return (
     <main className={studentRoster || coachRoster ? 'roster roster--coach' : fromCompetitors ? 'roster cms' : 'roster'}>
-      <PlayExitMark
+      <SubmenuMarks
         to={exitPath}
         onExit={() => {
           navigate(exitPath);
@@ -239,7 +238,7 @@ export function RosterPage() {
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Name, belt, or division"
+          placeholder={studentRoster ? 'Name, belt, or division' : 'Name, belt, division, opponent, or tournament'}
           aria-label={studentRoster ? 'Find student' : 'Find competitor'}
           autoComplete="off"
         />
@@ -253,6 +252,7 @@ export function RosterPage() {
               key={competitor.id}
               student={competitor}
               studentRoster={studentRoster}
+              plan={studentRoster ? undefined : roster.competitionPlans[competitor.id]}
               pending={pendingRemove === competitor.id}
               onEdit={() => setEditor({ id: competitor.id, draft: draftFromStudent(competitor) })}
               onAskRemove={() => setPendingRemove(competitor.id)}
@@ -386,6 +386,7 @@ function CsvInstructions() {
 function StudentCard({
   student,
   studentRoster,
+  plan,
   pending,
   onEdit,
   onAskRemove,
@@ -395,6 +396,7 @@ function StudentCard({
 }: {
   student: Student;
   studentRoster: boolean;
+  plan?: ReturnType<typeof useRosterState>['competitionPlans'][string];
   pending: boolean;
   onEdit: () => void;
   onAskRemove: () => void;
@@ -403,6 +405,14 @@ function StudentCard({
   onToggleCheckIn: () => void;
 }) {
   const promoted = formatPromotion(student.lastPromotion);
+  const promotionDetail = student.lastPromotionDetail.trim();
+  const promotionLine = promoted && promotionDetail
+    ? `Last promotion ${promoted} · ${promotionDetail}`
+    : promoted
+      ? `Last promotion ${promoted}`
+      : promotionDetail
+        ? `Last promotion ${promotionDetail}`
+        : '';
 
   return (
     <li>
@@ -432,8 +442,10 @@ function StudentCard({
         </header>
         {student.division ? <p className="roster-card__meta">{student.division}</p> : null}
         {student.gym ? <p className="roster-card__meta">{student.gym}</p> : null}
-        {promoted ? <p className="roster-card__meta">Last promotion {promoted}</p> : null}
+        {promotionLine ? <p className="roster-card__meta roster-card__promotion">{promotionLine}</p> : null}
         {student.note ? <p className="roster-card__note">{student.note}</p> : null}
+        {plan ? <StudentCompetitionPlan plan={plan} /> : null}
+        {studentRoster ? null : <ImportStudentProgress competitorId={student.id} competitorName={student.name} />}
         {pending ? (
           <div className="roster-card__actions">
             <span className="roster-card__confirm">Remove {student.name}?</span>
@@ -646,15 +658,28 @@ function StudentEditor({
           autoComplete="off"
         />
       </label>
-      <label>
-        Last promotion
-        <input
-          type="date"
-          value={draft.lastPromotion}
-          onChange={(event) => patch({ lastPromotion: event.target.value })}
-          aria-label="Last promotion"
-        />
-      </label>
+      <div className="roster-edit__promotion">
+        <label className="roster-edit__promotion-date">
+          Last promotion
+          <input
+            type="date"
+            value={draft.lastPromotion}
+            onChange={(event) => patch({ lastPromotion: event.target.value })}
+            aria-label="Last promotion"
+          />
+        </label>
+        <label className="roster-edit__promotion-detail">
+          Last promotion detail
+          <input
+            value={draft.lastPromotionDetail ?? ''}
+            onChange={(event) => patch({ lastPromotionDetail: event.target.value })}
+            placeholder="e.g. 3rd stripe, white belt"
+            aria-label="Last promotion detail"
+            maxLength={LAST_PROMOTION_DETAIL_MAX}
+            autoComplete="off"
+          />
+        </label>
+      </div>
       <label>
         {studentRoster ? STUDENT_NOTES_LABEL : 'Competitor Notes'}
         <textarea

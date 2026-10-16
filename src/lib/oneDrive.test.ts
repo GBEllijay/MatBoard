@@ -3,10 +3,12 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { createOneDriveConnector } from './oneDriveConnector.ts';
 import {
+  GRAPH_DRIVES,
   GRAPH_ROOT,
   MICROSOFT_CLIENT_ID_KEY,
   ONEDRIVE_CONNECT_FILE_NAME,
   ONEDRIVE_CONNECT_FILE_TEXT,
+  ONEDRIVE_NO_DRIVE,
   ONEDRIVE_SCOPES,
   ONEDRIVE_SETUP_NEEDED,
   ONEDRIVE_SIGN_IN_FAILED,
@@ -20,6 +22,7 @@ import {
   markOneDriveResume,
   MSAL_INTERACTION_STATUS_KEY,
   oneDriveFileName,
+  oneDriveIdFromDrives,
   oneDriveItemsFromGraph,
   oneDriveOwnerFacingError,
   oneDriveRedirectPending,
@@ -89,6 +92,8 @@ test('OneDrive sign-in copy stays plain and the Graph scopes are the two delegat
   assert.equal(oneDriveOwnerFacingError(new Error('{"error":"invalid_client"}')), ONEDRIVE_SIGN_IN_FAILED);
   assert.equal(oneDriveOwnerFacingError('OneDrive did not return a file id.'), 'OneDrive did not return a file id.');
   assert.equal(oneDriveOwnerFacingError('Paste a client id from Azure'), 'OneDrive could not be opened.');
+  assert.equal(oneDriveOwnerFacingError(new Error(ONEDRIVE_NO_DRIVE)), ONEDRIVE_NO_DRIVE);
+  assert.doesNotMatch(ONEDRIVE_NO_DRIVE, /404/);
 });
 
 test('Vite can inline the Microsoft client id and the app never ships a secret', () => {
@@ -111,6 +116,8 @@ test('Vite can inline the Microsoft client id and the app never ships a secret',
   assert.doesNotMatch(`${source}\n${auth}\n${api}`, /client_secret|CLIENT_SECRET|clientSecret/);
   assert.match(auth, /window\.location\.origin/);
   assert.doesNotMatch(`${source}\n${auth}`, /matboard\.pages\.dev/);
+  assert.match(source, /\/me\/drives/);
+  assert.match(source, /status === 404/);
 });
 
 test('OneDrive sign-in is a redirect to Microsoft, and the public client id is a GUID only', () => {
@@ -240,6 +247,56 @@ test('Graph helpers list folders and write a text file in the gym OneDrive', asy
   const posted = JSON.parse(post?.body ?? '{}') as { name?: string; folder?: unknown };
   assert.equal(posted.name, 'Advantage Lesson Plans');
   assert.deepEqual(posted.folder, {});
+});
+
+test('a Graph 404 on /me/drive is OneDrive, and a listed drive still opens', async () => {
+  assert.equal(
+    oneDriveIdFromDrives({
+      value: [
+        { id: 'business-1', driveType: 'business' },
+        { id: 'personal-1', driveType: 'personal' },
+      ],
+    }),
+    'personal-1',
+  );
+  assert.equal(oneDriveIdFromDrives({ value: [] }), null);
+
+  const calls: string[] = [];
+  const fetcher: typeof fetch = async (input) => {
+    const url = String(input);
+    calls.push(url);
+    if (url === GRAPH_DRIVES) {
+      return Response.json({ value: [{ id: 'drive-1', driveType: 'personal' }] });
+    }
+    if (url.includes('/drives/drive-1/root/children')) {
+      return Response.json({ value: [{ id: 'folder-1', name: 'Gym', folder: {} }] });
+    }
+    if (url.includes('/me/drive/root/children')) {
+      return Response.json({ error: { code: 'itemNotFound', message: 'The resource could not be found.' } }, { status: 404 });
+    }
+    return new Response('missing', { status: 500 });
+  };
+
+  const folders = await listOneDriveItems('token-fallback-drive', { foldersOnly: true, fetcher });
+  assert.deepEqual(folders, [{ id: 'folder-1', name: 'Gym' }]);
+  assert.match(calls[0] ?? '', /\/me\/drive\/root\/children/);
+  assert.equal(calls[1], GRAPH_DRIVES);
+  assert.match(calls[2] ?? '', /\/drives\/drive-1\/root\/children/);
+
+  const empty: typeof fetch = async (input) => {
+    const url = String(input);
+    if (url === GRAPH_DRIVES) return Response.json({ value: [] });
+    return Response.json({ error: { code: 'itemNotFound' } }, { status: 404 });
+  };
+  await assert.rejects(
+    () => listOneDriveItems('token-no-drive', { fetcher: empty }),
+    (error: unknown) => {
+      assert.ok(error instanceof Error);
+      assert.equal(error.message, ONEDRIVE_NO_DRIVE);
+      assert.doesNotMatch(error.message, /404/);
+      return true;
+    },
+  );
 });
 
 test('choosing a OneDrive folder writes the connect file in that folder', async () => {

@@ -15,16 +15,30 @@ import {
   PRO_HOME_LINES,
   PRO_LADDER_DETAIL,
   COACH_HOME_DESCRIPTION,
+  STUDENT_EDITION_NAME,
+  STUDENT_HOME_DESCRIPTION,
   WHITE_HOME_DESCRIPTION,
   WHITE_LADDER_DETAIL,
   coachDoorOpen,
   coachToolsOpen,
+  coachUnlimitedDoorOpen,
   isBasicCoach,
   isPlainCoachTournament,
+  MEDIA_CONSOLE_ROUTES,
+  MEDIA_FOLDER_ROUTES,
+  consoleHubs,
+  homeConsoleLabel,
+  closedDoorPath,
+  mediaConsoleDoorOpen,
+  mediaFolderDoorOpen,
+  ownerProHubOpen,
   proDoorOpen,
+  visibleMediaSurfaces,
+  visibleProHubs,
   parentToolboxPath,
   COACH_UNLIMITED_PATH,
   COACH_UNLIMITED_TOOLS,
+  COMPETITOR_ROSTER_PATH,
   coachingToolsMenu,
   COMPETITOR_SYSTEM_NAME,
   INSTRUCTOR_COLLAB_HUB_LABEL,
@@ -51,8 +65,19 @@ import {
   ROUND_CONTROLLER_PATH,
   TOURNAMENT_SOFTWARE_NAME,
   TOURNAMENT_SUITE_NAME,
+  techniquesPageEyebrow,
+  techniquesParentPath,
+  sharedToolBackPath,
+  carryHubFrom,
+  COACH_NOTES_PATH,
+  COACH_VIDEOS_PATH,
+  COACH_TREE_PATH,
+  UNLIMITED_VIDEOS_PATH,
+  UNLIMITED_TREE_PATH,
+  UNLIMITED_ROSTER_PATH,
   toolEyebrow,
   tournamentToolLabel,
+  withHubFrom,
   withSuiteFrom,
 } from './productNames.ts';
 
@@ -81,6 +106,17 @@ test('Home ladder details keep White meaning and a plain Pro subtitle', () => {
   assert.match(COACH_HOME_DESCRIPTION, /Student Roster/);
   assert.doesNotMatch(WHITE_HOME_DESCRIPTION, /student/i);
   assert.doesNotMatch(COACH_HOME_DESCRIPTION, /competitor roster/i);
+  assert.equal(STUDENT_EDITION_NAME, 'Advantage – Student Edition');
+  assert.equal(
+    STUDENT_HOME_DESCRIPTION,
+    'Your jiu-jitsu journal: daily notes, A/B/C game, fundamentals checklist, and belt progress.',
+  );
+  assert.equal(STUDENT_HOME_DESCRIPTION.includes('\n'), false);
+  assert.ok(STUDENT_HOME_DESCRIPTION.length < COACH_HOME_DESCRIPTION.length);
+  assert.match(STUDENT_HOME_DESCRIPTION, /journal/i);
+  assert.match(STUDENT_HOME_DESCRIPTION, /A\/B\/C/);
+  assert.match(STUDENT_HOME_DESCRIPTION, /fundamentals/);
+  assert.match(STUDENT_HOME_DESCRIPTION, /belt progress/);
   assert.equal(PRO_LADDER_DETAIL, 'Gym Owner and Instructors Console');
   assert.doesNotMatch(PRO_LADDER_DETAIL, /for this gym/i);
   assert.doesNotMatch(PRO_LADDER_DETAIL, /'/);
@@ -129,7 +165,13 @@ test('Coach hub is Coaching Tools then Competition Team Management', () => {
   );
   assert.deepEqual(
     COACH_HUBS.map((hub) => hub.to),
-    ['/notes', '/techniques', '/technique-tree', '/roster?from=students', '/tournament?from=coach'],
+    [
+      '/notes?from=coach',
+      '/techniques?from=coach',
+      '/technique-tree?from=coach',
+      '/roster?from=students',
+      '/tournament?from=coach',
+    ],
   );
   assert.deepEqual(
     COACH_HUBS.map((hub) => hub.belt),
@@ -143,7 +185,7 @@ test('Coach hub is Coaching Tools then Competition Team Management', () => {
   );
   assert.deepEqual(
     COACHING_TOOLS_MENU.map((item) => item.to),
-    ['/notes', '/techniques', '/technique-tree'],
+    ['/notes?from=coach', '/techniques?from=coach', '/technique-tree?from=coach'],
   );
   assert.deepEqual(
     COACHING_TOOLS_MENU.map((item) => item.belt),
@@ -153,12 +195,12 @@ test('Coach hub is Coaching Tools then Competition Team Management', () => {
   assert.equal(coachingToolsMenu(true)[0].belt, 'coach');
   assert.deepEqual(
     coachingToolsMenu(false).map((item) => item.to),
-    ['/notes', '/techniques', '/technique-tree'],
+    ['/notes?from=coach', '/techniques?from=coach', '/technique-tree?from=coach'],
   );
   assert.equal(coachingToolsMenu(true)[0].to, UNLIMITED_LESSON_PATH);
   assert.deepEqual(
     coachingToolsMenu(true).slice(1).map((item) => item.to),
-    ['/techniques', '/technique-tree'],
+    ['/techniques?from=unlimited', '/technique-tree?from=unlimited'],
   );
   assert.deepEqual(
     COMPETITION_MENU.map((item) => item.title),
@@ -166,7 +208,7 @@ test('Coach hub is Coaching Tools then Competition Team Management', () => {
   );
   assert.deepEqual(
     COMPETITION_MENU.map((item) => item.to),
-    ['/competitors', '/tournament', '/match/control', '/training'],
+    ['/competitors?from=competition', '/tournament', '/match/control', '/training'],
   );
   assert.equal(COMPETITION_MENU[2].to, MATCH_CONTROLLER_PATH);
   assert.equal('clearBout' in COMPETITION_MENU[2] && COMPETITION_MENU[2].clearBout, true);
@@ -198,16 +240,27 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   );
   assert.equal(COACH_UNLIMITED_PATH, '/coach-unlimited');
   assert.equal(UNLIMITED_LESSON_PATH, '/notes?plan=unlimited');
+  assert.equal(COMPETITOR_ROSTER_PATH, '/roster?from=competitors');
   assert.deepEqual(
     COACH_UNLIMITED_TOOLS.map((tool) => tool.title),
-    ['Daily Lesson Plan', 'Daily Training Videos', 'Technique Tree', 'Competition Class Curriculum'],
+    ['Daily Lesson Plan', 'Daily Training Videos', 'Technique Tree', 'Competitor Roster'],
   );
   assert.equal(COACH_UNLIMITED_TOOLS[0].to, UNLIMITED_LESSON_PATH);
+  assert.equal(COACH_UNLIMITED_TOOLS[1].to, UNLIMITED_VIDEOS_PATH);
+  assert.equal(COACH_UNLIMITED_TOOLS[2].to, UNLIMITED_TREE_PATH);
   assert.deepEqual(
     COACH_UNLIMITED_TOOLS.map((tool) => tool.belt),
-    ['brown', 'brown', 'brown', 'tournament'],
+    ['brown', 'brown', 'brown', 'brown'],
   );
-  assert.equal(COACH_UNLIMITED_TOOLS[3].to, '/competition-curriculum?plan=unlimited');
+  assert.deepEqual(
+    COACH_UNLIMITED_TOOLS.map((tool) => ('stripes' in tool ? tool.stripes : null)),
+    [0, 1, 2, 3],
+  );
+  assert.equal(COACH_UNLIMITED_TOOLS[3].to, UNLIMITED_ROSTER_PATH);
+  assert.equal(UNLIMITED_ROSTER_PATH, '/roster?from=unlimited');
+  assert.notEqual(UNLIMITED_ROSTER_PATH, COMPETITOR_ROSTER_PATH);
+  assert.equal(COACH_UNLIMITED_TOOLS[3].belt, 'brown');
+  assert.ok(!COACH_UNLIMITED_TOOLS.some((tool) => /curriculum/i.test(tool.title) || tool.to.includes('competition-curriculum')));
   assert.ok(!COACH_UNLIMITED_TOOLS.some((tool) => tool.to.startsWith('/coaching-tools')));
   assert.deepEqual(
     PRO_HUBS.map((hub) => hub.title),
@@ -241,13 +294,13 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
     COMPETITION_PRO_MENU.map((item) => item.to),
     [
       withSuiteFrom('/tournament', true),
-      '/competitors',
+      withSuiteFrom('/competitors', true),
       withSuiteFrom(MATCH_CONTROLLER_PATH, true),
       withSuiteFrom(ROUND_CONTROLLER_PATH, true),
     ],
   );
   assert.equal(COMPETITION_PRO_MENU[0].to, withSuiteFrom('/tournament', true));
-  assert.equal(COMPETITION_PRO_MENU[1].to, '/competitors');
+  assert.equal(COMPETITION_PRO_MENU[1].to, '/competitors?from=suite');
   assert.deepEqual(
     COMPETITION_PRO_MENU.map((item) => item.belt),
     ['tournament', 'tournament', 'black', 'black'],
@@ -265,6 +318,10 @@ test('Suite origin stays on Suite links and leaves other paths alone', () => {
   assert.equal(withSuiteFrom('/match/control?focus=round', true), '/match/control?focus=round&from=suite');
   assert.equal(withSuiteFrom('/match?bout=final-0', true), '/match?bout=final-0&from=suite');
   assert.equal(withSuiteFrom('/training?from=suite', true), '/training?from=suite');
+  assert.equal(withHubFrom('/match?bout=sf-0', null), '/match?bout=sf-0');
+  assert.equal(withHubFrom('/match?bout=sf-0', 'suite'), '/match?bout=sf-0&from=suite');
+  assert.equal(withHubFrom('/tournament', 'unlimited'), '/tournament?from=unlimited');
+  assert.equal(withHubFrom('/match?bout=sf-0&kids=ocean', 'unlimited'), '/match?bout=sf-0&kids=ocean&from=unlimited');
 });
 
 test('Owner tournament tool is Tournament Software; Coach keeps Mock Tournament', () => {
@@ -316,6 +373,8 @@ test('Pro unlock includes Coach tools and Coach-only unlock still stands alone',
   assert.equal(isPlainCoachTournament('suite', true), false);
   assert.equal(isPlainCoachTournament('suite', false), false);
   assert.equal(isPlainCoachTournament(null, false), false);
+  assert.equal(isPlainCoachTournament('unlimited', false), false);
+  assert.equal(isPlainCoachTournament('unlimited', true), true);
 });
 
 test('Footer states ownership, alpha testing, and the feedback email only', () => {
@@ -336,16 +395,168 @@ test('Shared tools prefer Pro console, then Coach', () => {
   assert.equal(toolEyebrow(false, true), 'Advantage Coach');
 });
 
-test('a live seat opens Coach and leaves the Pro purchase lock closed', () => {
+test('a live seat opens Coach and leaves the owner Pro hubs closed', () => {
   assert.equal(coachDoorOpen(false, false, true), true);
   assert.equal(coachDoorOpen(false, false, false), false);
   assert.equal(coachDoorOpen(false, true, false), true);
   assert.equal(coachDoorOpen(true, false, false), true);
   assert.equal(proDoorOpen(false), false);
   assert.equal(proDoorOpen(true), true);
+  assert.equal(ownerProHubOpen(true, false), true);
+  assert.equal(ownerProHubOpen(true, true), false);
+  assert.equal(ownerProHubOpen(false, false), false);
   assert.equal(parentToolboxPath(false, false, true), '/coach');
   assert.equal(parentToolboxPath(true, false, true), '/pro');
+  assert.equal(parentToolboxPath(false, false, true, true), '/pro');
   assert.equal(toolEyebrow(false, false, true), 'Advantage Coach');
   assert.equal(toolEyebrow(true, false, true), GYM_CONSOLE_NAME);
   assert.equal(coachToolsOpen(false, false), false);
+});
+
+test('shared tools return to the hub that opened them', () => {
+  assert.equal(COACH_NOTES_PATH, '/notes?from=coach');
+  assert.equal(COACH_VIDEOS_PATH, '/techniques?from=coach');
+  assert.equal(COACH_TREE_PATH, '/technique-tree?from=coach');
+  assert.equal(UNLIMITED_VIDEOS_PATH, '/techniques?from=unlimited');
+  assert.equal(UNLIMITED_TREE_PATH, '/technique-tree?from=unlimited');
+
+  assert.equal(sharedToolBackPath({ from: 'coach', fallback: '/pro' }), '/coach');
+  assert.equal(sharedToolBackPath({ from: 'coach', unlimited: true, fallback: '/pro' }), '/coach');
+  assert.equal(sharedToolBackPath({ from: 'unlimited', fallback: '/pro' }), '/coach-unlimited');
+  assert.equal(sharedToolBackPath({ from: null, unlimited: true, fallback: '/pro' }), '/coach-unlimited');
+  assert.equal(sharedToolBackPath({ from: null, fallback: '/pro' }), '/pro');
+  assert.equal(sharedToolBackPath({ from: 'suite', fallback: '/pro' }), '/pro');
+  assert.equal(sharedToolBackPath({ from: null, unlimited: false, fallback: '/coach' }), '/coach');
+  assert.equal(sharedToolBackPath({ from: '', fallback: '/pro' }), '/pro');
+
+  assert.equal(carryHubFrom('/techniques', '?from=coach'), '/techniques?from=coach');
+  assert.equal(carryHubFrom('/techniques', 'from=coach'), '/techniques?from=coach');
+  assert.equal(carryHubFrom('/technique-tree?tree=a', '?from=coach'), '/technique-tree?tree=a&from=coach');
+  assert.equal(carryHubFrom('/techniques?focus=1&section=warmup', '?plan=unlimited'), '/techniques?focus=1&section=warmup&from=unlimited');
+  assert.equal(carryHubFrom('/notes', '?from=unlimited'), '/notes?plan=unlimited&from=unlimited');
+  assert.equal(carryHubFrom('/notes', '?plan=unlimited'), '/notes?plan=unlimited&from=unlimited');
+  assert.equal(carryHubFrom('/techniques?from=coach', '?from=unlimited'), '/techniques?from=coach');
+  assert.equal(carryHubFrom('/techniques', ''), '/techniques');
+  assert.equal(carryHubFrom('/tournament?from=suite', '?from=coach'), '/tournament?from=suite');
+});
+
+test('Daily Training Videos names a seated coach instead of the gym owner console', () => {
+  assert.equal(techniquesPageEyebrow(true, false, true), 'Advantage Coach');
+  assert.equal(techniquesPageEyebrow(true, false, false), GYM_CONSOLE_NAME);
+  assert.equal(techniquesPageEyebrow(false, true, false), 'Advantage Coach');
+  assert.equal(techniquesPageEyebrow(false, false, true), 'Advantage Coach');
+  assert.equal(techniquesParentPath(true, false, true), '/coach');
+  assert.equal(techniquesParentPath(true, false, false), '/pro');
+  assert.equal(techniquesParentPath(false, true, false), '/coach');
+  assert.doesNotMatch(techniquesPageEyebrow(true, false, true), /Gym Owner/);
+});
+
+test('a media grant opens Media Console with Pro locked; a seat without one stays shut', () => {
+  const lockedDirector = {
+    proUnlocked: false,
+    seated: true,
+    seatGrantsMedia: true,
+    programDirectorSeat: true,
+    coachMenus: false,
+  };
+  const directorMenus = { galleryUpload: true, eventsAccess: true, proShopAccess: true };
+  assert.equal(mediaConsoleDoorOpen(lockedDirector), true);
+  assert.equal(homeConsoleLabel(lockedDirector), 'Open Media Console');
+  assert.deepEqual(
+    visibleProHubs(lockedDirector).map((hub) => hub.title),
+    [MEDIA_CONSOLE_NAME],
+  );
+  assert.deepEqual(
+    consoleHubs(lockedDirector, directorMenus).map((hub) => hub.to),
+    ['/gallery', '/events', '/proshop'],
+  );
+  assert.equal(mediaFolderDoorOpen(lockedDirector, directorMenus, 'shop'), true);
+  assert.equal(coachUnlimitedDoorOpen(lockedDirector), false);
+
+  const lockedAssistant = {
+    proUnlocked: false,
+    seated: true,
+    seatGrantsMedia: false,
+    programDirectorSeat: false,
+    coachMenus: true,
+  };
+  assert.equal(mediaConsoleDoorOpen(lockedAssistant), false);
+  assert.equal(homeConsoleLabel(lockedAssistant), null);
+  assert.deepEqual(visibleProHubs(lockedAssistant), []);
+  assert.deepEqual(visibleMediaSurfaces(lockedAssistant, null), []);
+  assert.equal(
+    mediaFolderDoorOpen(lockedAssistant, { galleryUpload: false, eventsAccess: false, proShopAccess: false }, 'gallery'),
+    false,
+  );
+
+  const lockedCoachWithGallery = {
+    proUnlocked: false,
+    seated: true,
+    seatGrantsMedia: true,
+    programDirectorSeat: false,
+    coachMenus: true,
+  };
+  const galleryOnly = { galleryUpload: true, eventsAccess: false, proShopAccess: false };
+  assert.equal(mediaConsoleDoorOpen(lockedCoachWithGallery), true);
+  assert.equal(homeConsoleLabel(lockedCoachWithGallery), 'Open Media Console');
+  assert.equal(mediaFolderDoorOpen(lockedCoachWithGallery, galleryOnly, 'gallery'), true);
+  assert.equal(mediaFolderDoorOpen(lockedCoachWithGallery, galleryOnly, 'events'), false);
+  assert.equal(mediaFolderDoorOpen(lockedCoachWithGallery, galleryOnly, 'shop'), false);
+  assert.equal(closedDoorPath(true), '/');
+  assert.equal(closedDoorPath(false), '/coming-soon');
+
+  const proAssistant = { ...lockedAssistant, proUnlocked: true };
+  assert.equal(mediaConsoleDoorOpen(proAssistant), false);
+  assert.equal(coachUnlimitedDoorOpen(proAssistant), true);
+  assert.deepEqual(
+    visibleProHubs(proAssistant).map((hub) => hub.to),
+    [COACH_UNLIMITED_PATH],
+  );
+
+  const proDirector = { ...lockedDirector, proUnlocked: true };
+  assert.equal(mediaConsoleDoorOpen(proDirector), true);
+  assert.equal(homeConsoleLabel(proDirector), 'Open Media Console');
+  assert.deepEqual(
+    visibleProHubs(proDirector).map((hub) => hub.title),
+    [MEDIA_CONSOLE_NAME],
+  );
+  assert.deepEqual(
+    consoleHubs(proDirector, directorMenus).map((hub) => hub.title),
+    ['Gallery', 'Events', 'Pro Shop'],
+  );
+  const eventsOnly = { galleryUpload: false, eventsAccess: true, proShopAccess: false };
+  assert.deepEqual(
+    visibleMediaSurfaces(lockedDirector, eventsOnly).map((surface) => surface.title),
+    ['Events'],
+  );
+  assert.equal(mediaFolderDoorOpen(lockedDirector, eventsOnly, 'gallery'), false);
+
+  const strippedDirector = { ...lockedDirector, seatGrantsMedia: false };
+  assert.equal(mediaConsoleDoorOpen(strippedDirector), false);
+
+  const owner = {
+    proUnlocked: true,
+    seated: false,
+    seatGrantsMedia: false,
+    programDirectorSeat: false,
+    coachMenus: false,
+  };
+  assert.equal(mediaConsoleDoorOpen(owner), true);
+  assert.deepEqual(
+    visibleProHubs(owner).map((hub) => hub.title),
+    PRO_HUBS.map((hub) => hub.title),
+  );
+  assert.equal(homeConsoleLabel(owner), 'Open Console');
+  assert.deepEqual(
+    consoleHubs(owner, null).map((hub) => hub.title),
+    PRO_HUBS.map((hub) => hub.title),
+  );
+  assert.equal(mediaFolderDoorOpen(owner, null, 'events'), true);
+  assert.equal(mediaConsoleDoorOpen({ ...owner, proUnlocked: false }), false);
+  assert.equal(mediaFolderDoorOpen({ ...owner, proUnlocked: false }, null, 'gallery'), false);
+  assert.deepEqual(
+    MEDIA_FOLDER_ROUTES.map((route) => route.path),
+    ['/gallery', '/events', '/proshop', '/pro-shop'],
+  );
+  assert.deepEqual([...MEDIA_CONSOLE_ROUTES], ['/media', '/media-console', '/console']);
 });

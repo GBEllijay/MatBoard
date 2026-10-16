@@ -1,9 +1,13 @@
 import {
   entitlementStatus,
+  proEntitlementStatus,
+  studentEntitlementStatus,
   type EntitlementStore,
+  type ProEntitlement,
+  type StudentEntitlement,
   type WhiteEntitlement,
 } from './entitlements.ts';
-import { API_FREE_CODE, API_PRODUCT_ID } from './routes.ts';
+import { API_FREE_CODE, API_PRODUCT_ID, API_PRODUCT_PRO, API_PRODUCT_STUDENT } from './routes.ts';
 import {
   checkoutFormFields,
   checkoutReturnUrls,
@@ -114,7 +118,7 @@ export async function handleWebhook(
   const secret = env.STRIPE_WEBHOOK_SECRET?.trim() ?? '';
   if (!secret) return json(503, { error: 'Stripe webhook is not configured. Set STRIPE_WEBHOOK_SECRET.' });
   const payload = await request.text();
-  if (payload.length > 200_000) return json(413, { error: 'Webhook body is too large.' });
+  if (payload.length > 1_000_000) return json(413, { error: 'Webhook body is too large.' });
   const signature = request.headers.get('stripe-signature');
   const valid = await verifyStripeSignature(payload, signature, secret, Math.floor(now().getTime() / 1000));
   if (!valid) return json(400, { error: 'Invalid Stripe signature.' });
@@ -126,23 +130,72 @@ export async function handleWebhook(
     return json(400, { error: 'Webhook body must be JSON.' });
   }
   const parsed = purchaseFromStripeEvent(event);
-  if (parsed.action === 'invalid') return json(400, { error: 'Webhook event is not a Checkout session.' });
+  if (parsed.action === 'invalid') return json(400, { error: 'Webhook event is not valid.' });
   if (parsed.action === 'ignore') return json(200, { received: true, ignored: true });
+  if (parsed.action === 'retry') {
+    return json(500, { error: 'Pro Checkout session is missing the subscription id.' });
+  }
   if (!store) {
     return json(500, {
       error: 'Entitlement store is not configured. Bind WHITE_ENTITLEMENTS or use local dev.',
     });
   }
-  const record: WhiteEntitlement = {
-    email: parsed.purchase.email,
-    sessionId: parsed.purchase.sessionId,
-    product: API_PRODUCT_ID,
-    amountTotal: parsed.purchase.amountTotal,
-    currency: parsed.purchase.currency,
-    createdAt: now().toISOString(),
+  if (parsed.action === 'record' || parsed.action === 'record-student') {
+    const stamp = now().toISOString();
+    if (parsed.action === 'record-student') {
+      const record: StudentEntitlement = {
+        email: parsed.purchase.email,
+        sessionId: parsed.purchase.sessionId,
+        product: API_PRODUCT_STUDENT,
+        amountTotal: parsed.purchase.amountTotal,
+        currency: parsed.purchase.currency,
+        createdAt: stamp,
+      };
+      const stored = await store.saveStudent(record);
+      return json(200, { received: true, sessionId: stored.sessionId });
+    }
+    const record: WhiteEntitlement = {
+      email: parsed.purchase.email,
+      sessionId: parsed.purchase.sessionId,
+      product: API_PRODUCT_ID,
+      amountTotal: parsed.purchase.amountTotal,
+      currency: parsed.purchase.currency,
+      createdAt: stamp,
+    };
+    const stored = await store.save(record);
+    return json(200, { received: true, sessionId: stored.sessionId });
+  }
+  const stamp = now().toISOString();
+  if (parsed.action === 'grant-pro') {
+    const stored = await store.savePro({
+      email: parsed.grant.email,
+      sessionId: parsed.grant.sessionId,
+      subscriptionId: parsed.grant.subscriptionId,
+      product: API_PRODUCT_PRO,
+      status: 'active',
+      amountTotal: parsed.grant.amountTotal,
+      currency: parsed.grant.currency,
+      createdAt: stamp,
+      updatedAt: stamp,
+    });
+    return json(200, { received: true, sessionId: stored.sessionId, entitled: true });
+  }
+  const existing = await store.findProBySubscriptionId(parsed.sync.subscriptionId);
+  if (!parsed.sync.productKnown && !existing) return json(200, { received: true, ignored: true });
+  if (!parsed.sync.entitled && !existing) return json(200, { received: true, ignored: true });
+  const next: ProEntitlement = {
+    email: parsed.sync.email || existing?.email || '',
+    sessionId: existing?.sessionId.startsWith('cs_') ? existing.sessionId : parsed.sync.subscriptionId,
+    subscriptionId: parsed.sync.subscriptionId,
+    product: API_PRODUCT_PRO,
+    status: parsed.sync.entitled ? 'active' : 'inactive',
+    amountTotal: existing?.amountTotal ?? parsed.sync.amountTotal,
+    currency: existing?.currency ?? parsed.sync.currency,
+    createdAt: existing?.createdAt ?? stamp,
+    updatedAt: stamp,
   };
-  const stored = await store.save(record);
-  return json(200, { received: true, sessionId: stored.sessionId });
+  const stored = await store.savePro(next);
+  return json(200, { received: true, sessionId: stored.sessionId, entitled: stored.status === 'active' });
 }
 
 const SESSION_ID = /^(?:cs|free)_[A-Za-z0-9_]+$/;
@@ -182,11 +235,23 @@ export async function handleEntitlement(request: Request, store: EntitlementStor
   const url = new URL(request.url);
   const sessionId = url.searchParams.get('session_id')?.trim() ?? '';
   const email = url.searchParams.get('email')?.trim() ?? '';
+  const product = url.searchParams.get('product')?.trim().toLowerCase() ?? '';
   if (!sessionId && !email) return json(400, { error: 'Pass email or session_id.' });
   if (sessionId && !SESSION_ID.test(sessionId)) return json(400, { error: 'session_id is not a purchase id.' });
   if (email && (email.length > 320 || !email.includes('@') || /\s/.test(email))) {
     return json(400, { error: 'email is not valid.' });
   }
-  const record = sessionId ? await store.findBySessionId(sessionId) : await store.findByEmail(email);
-  return json(200, entitlementStatus(record));
+  if (product && product !== 'white' && product !== 'pro' && product !== 'student') {
+    return json(400, { error: 'Product must be white, student, or pro.' });
+  }
+  if (sessionId) {
+    const white = await store.findBySessionId(sessionId);
+    if (white) return json(200, entitlementStatus(white));
+    const student = await store.findStudentBySessionId(sessionId);
+    if (student) return json(200, studentEntitlementStatus(student));
+    return json(200, proEntitlementStatus(await store.findProBySessionId(sessionId)));
+  }
+  if (product === 'pro') return json(200, proEntitlementStatus(await store.findProByEmail(email)));
+  if (product === 'student') return json(200, studentEntitlementStatus(await store.findStudentByEmail(email)));
+  return json(200, entitlementStatus(await store.findByEmail(email)));
 }

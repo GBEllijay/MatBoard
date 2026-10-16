@@ -11,12 +11,14 @@ import {
   INSTRUCTOR_COACH_ENTRY,
   MEDIA_CONSOLE_NAME,
   PRO_LADDER_DETAIL,
+  STUDENT_EDITION_NAME,
+  STUDENT_HOME_DESCRIPTION,
   TOURNAMENT_MANAGEMENT_PRO_LABEL,
 } from './productNames.ts';
-import { COACH_PRICE_LINE, PRO_PRICE_LINE } from './productPrices.ts';
+import { COACH_PRICE_LINE, PRO_PRICE_LINE, STUDENT_PRICE_LINE } from './productPrices.ts';
 import { SITE_FEEDBACK_EMAIL } from './siteFooter.ts';
 
-export type SoonProduct = 'coach' | 'pro';
+export type SoonProduct = 'coach' | 'pro' | 'student';
 
 export type ComingSoonFeature = {
   title: string;
@@ -56,8 +58,17 @@ export const COACH_LAUNCH_PRICE_NOTE = `Price: ${COACH_PRICE_LINE} when it launc
 /** Shown on Coming soon. Not a checkout button. Numbers stay the locked Pro prices. */
 export const PRO_LAUNCH_PRICE_NOTE = `Price: ${PRO_PRICE_LINE} when it launches. Not for sale on this page.`;
 
-/** Alpha free-trial request. Same inbox as site feedback. */
-export const ALPHA_TRIAL_NOTE = `Free trial: request an alpha testing code by emailing ${SITE_FEEDBACK_EMAIL}.`;
+/** Shown on Coming soon. Student Edition has no Stripe price in this build. */
+export const STUDENT_LAUNCH_PRICE_NOTE = `Price: ${STUDENT_PRICE_LINE} when it launches. Not for sale on this page.`;
+
+/** Caption on the Student Edition Coming Soon journal. */
+export const STUDENT_PREVIEW_LABEL = STUDENT_EDITION_NAME;
+
+/** One line under that journal. */
+export const STUDENT_PREVIEW_NOTE = 'Journal, journal cards, a fundamentals checklist, calendar, and belt progress stay on this phone.';
+
+/** Same request line as the home cards. Product sheets pass their own note. */
+export const ALPHA_TRIAL_NOTE = `Email ${SITE_FEEDBACK_EMAIL} to request an alpha code.`;
 
 export const PRODUCT_TEASERS = {
   coach: COACH_HOME_TEASER,
@@ -119,6 +130,35 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
       {
         title: TOURNAMENT_MANAGEMENT_PRO_LABEL,
         body: 'Pro brackets, the scoreboard, and the round timer, with extra skins and animations.',
+      },
+    ],
+    dismiss: 'Got it',
+  },
+  student: {
+    title: STUDENT_EDITION_NAME,
+    kicker: COMING_SOON_LABEL,
+    lead: STUDENT_HOME_DESCRIPTION,
+    includes: 'Daily notes, journal cards, and a fundamentals checklist stay on this phone.',
+    features: [
+      {
+        title: 'Journal',
+        body: "Today's page: date, gi or no-gi, an A/B/C game, techniques, partners, drills, rolls, and notes.",
+      },
+      {
+        title: 'Journal cards',
+        body: 'Search saved cards and add a later note. The first note stays.',
+      },
+      {
+        title: 'Fundamentals',
+        body: 'A checklist. Mark what you have learned and add your own lines.',
+      },
+      {
+        title: 'Calendar',
+        body: 'A month page. Days with journal cards are marked. Add a class, open mat, tournament, or promotion test.',
+      },
+      {
+        title: 'Belt progress',
+        body: 'Filled checkpoints between belts, goals, and coach notes you can copy.',
       },
     ],
     dismiss: 'Got it',

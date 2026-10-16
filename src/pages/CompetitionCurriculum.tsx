@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DriveConnectCard } from '../components/DriveConnectCard';
+import { PlanDateNav } from '../components/PlanDateNav';
 import { LessonMediaRail } from '../components/LessonMediaRail';
 import { OpenMyDrive } from '../components/OpenMyDrive';
 import { PlayExitMark } from '../components/PlayExitMark';
-import { SeatSessionBar } from '../components/SeatSessionBar';
+import { useSubmenuBack } from '../hooks/useSubmenuBack';
 import { Sheet } from '../components/Sheet';
 import { useProUnlocked } from '../hooks/useProUnlocked';
+import { useRosterState } from '../hooks/useStores';
+import { StudentCompetitionPlan } from '../components/StudentCompetitionPlan';
+import { planHasContent } from '../lib/progress/competition';
 import { COACH_LESSON_EYEBROW } from '../lib/coachCopy';
 import {
   CURRICULUM_ADD_EXAMPLES,
@@ -43,6 +47,7 @@ import {
   moveBlock,
   normalizeExpectedDuration,
   plansOnCurriculumDay,
+  searchCurriculumPlans,
   removeBlock,
   removeCurriculumPlan,
   saveCurriculum,
@@ -55,20 +60,46 @@ import { deleteUnusedTrainingClip, readTrainingClipBlob } from '../lib/technique
 import { CONNECT_WITH_TITLE } from '../lib/cloudStorage';
 import { CLASS_DESIGNATION_MAX, CLASS_TIME_MAX, CLOSING_MAX, COACH_NAME_MAX, EXPECTED_MAX, TECHNIQUE_NOTES_MAX, TECHNIQUE_TITLE_MAX, localDateKey, planDayStamp, planDayTitle, shiftDateKey } from '../lib/trainingNotesStore';
 import { techniqueTreeLaunchPath } from '../lib/lessonLinks';
-import { COACHING_TOOLS_PATH, UNLIMITED_LESSON_VALUE } from '../lib/productNames';
+import { COACHING_TOOLS_PATH, UNLIMITED_LESSON_VALUE, carryHubFrom } from '../lib/productNames';
 import { loadTechniqueArchive, type TechniqueTreeArchive } from '../lib/techniqueTreeStore';
 import { resetTrainingSession, setRounds, setWorkMs } from '../lib/trainingStore';
 import { trainingPathWithReturn } from '../lib/timerReturn';
 
-export function CompetitionCurriculumPage() {
+function StudentsWorkingOn() {
+  const roster = useRosterState();
+  const rows = roster.students.flatMap((student) => {
+    const plan = roster.competitionPlans[student.id];
+    return plan && planHasContent(plan) ? [{ student, plan }] : [];
+  });
+  if (!rows.length) return null;
+  return (
+    <section className="notes__card" aria-label="Students working on">
+      <h2>Students working on</h2>
+      <p>Imported from each student’s progress file. It stays on this phone.</p>
+      <ul className="roster-plan__list">
+        {rows.map(({ student, plan }) => (
+          <li key={student.id}>
+            <strong>{student.name}</strong>
+            <StudentCompetitionPlan plan={plan} compact />
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+export function CompetitionCurriculumPage({ embedded = false }: { embedded?: boolean }) {
   const navigate = useNavigate();
   const proUnlocked = useProUnlocked();
   const [searchParams] = useSearchParams();
   const unlimitedPlan = proUnlocked && searchParams.get('plan') === UNLIMITED_LESSON_VALUE;
-  const parentPath = unlimitedPlan
-    ? `${COACHING_TOOLS_PATH}?plan=${UNLIMITED_LESSON_VALUE}`
-    : COACHING_TOOLS_PATH;
-  const returnPath = unlimitedPlan ? `${CURRICULUM_PATH}?plan=${UNLIMITED_LESSON_VALUE}` : CURRICULUM_PATH;
+  const parentPath = useSubmenuBack({ unlimited: unlimitedPlan }) ?? COACHING_TOOLS_PATH;
+  const notesQuery = searchParams.toString();
+  const returnPath = embedded
+    ? `/notes${notesQuery ? `?${notesQuery}` : ''}`
+    : unlimitedPlan
+      ? `${CURRICULUM_PATH}?plan=${UNLIMITED_LESSON_VALUE}`
+      : CURRICULUM_PATH;
   const [boot] = useState(() => {
     const todayKey = localDateKey();
     const archive = loadCurriculumArchive(todayKey);
@@ -300,24 +331,39 @@ export function CompetitionCurriculumPage() {
     return found ? { id: found.id, name: found.name } : null;
   };
 
+  const Shell = embedded ? 'div' : 'main';
   return (
-    <main className="notes">
-      <PlayExitMark
-        to={parentPath}
-        onExit={() => {
-          navigate(parentPath);
-        }}
-      />
+    <Shell className={embedded ? 'curriculum-embed' : 'notes'}>
+      {embedded ? null : (
+        <PlayExitMark
+          to={parentPath}
+          onExit={() => {
+            navigate(parentPath);
+          }}
+        />
+      )}
       <header className="notes__bar">
         <div className="notes__brand">
           <p className="notes__eyebrow">{COACH_LESSON_EYEBROW}</p>
-          <h1>{CURRICULUM_LABEL}</h1>
+          {embedded ? <h2>{CURRICULUM_LABEL}</h2> : <h1>{CURRICULUM_LABEL}</h1>}
         </div>
       </header>
-      <SeatSessionBar />
       <div className="notes__plan">
+        <StudentsWorkingOn />
         <OpenMyDrive />
         <section className="notes__archive" aria-label="Saved days">
+          <PlanDateNav
+            todayKey={todayKey}
+            viewKey={viewKey}
+            activePlanId={plan.id}
+            hitsFor={(query) => searchCurriculumPlans(archive, todayKey, query)}
+            onOpenDate={openDay}
+            onOpenHit={(dateKey, planId) => {
+              const found = plansOnCurriculumDay(archive, dateKey).find((item) => item.id === planId);
+              if (found) openSavedPlan(dateKey, found);
+              else openDay(dateKey);
+            }}
+          />
           <div className="notes__days">
             <button
               type="button"
@@ -543,7 +589,14 @@ export function CompetitionCurriculumPage() {
                   treeChoices={treeChoices}
                   canEditTree={editingToday}
                   storedTreeId={block.treeId}
-                  onOpenTree={(treeId) => navigate(techniqueTreeLaunchPath(treeId))}
+                  onOpenTree={(treeId) =>
+                    navigate(
+                      carryHubFrom(
+                        techniqueTreeLaunchPath(treeId),
+                        unlimitedPlan ? `plan=${UNLIMITED_LESSON_VALUE}` : '',
+                      ),
+                    )
+                  }
                   onPickTree={(treeId) => patchBlock(block.id, treeId ? { treeId } : { treeId: undefined })}
                 />
               ) : null
@@ -622,7 +675,7 @@ export function CompetitionCurriculumPage() {
         </p>
         <DriveConnectCard />
       </Sheet>
-    </main>
+    </Shell>
   );
 }
 

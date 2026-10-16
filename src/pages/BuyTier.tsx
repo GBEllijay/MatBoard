@@ -2,27 +2,53 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
+import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
+import { useProUnlocked } from '../hooks/useProUnlocked';
+import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
+import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import type { CheckoutProduct } from '../lib/checkoutProducts';
-import { COACH_LIST_PRICE_CENTS, PRO_LIST_PRICE_CENTS, PRO_MONTHLY_PRICE_CENTS } from '../lib/productPrices';
+import { PRO_PRODUCT_ID, proDeviceUnlock, proPurchaseEntitled } from '../lib/proEntitlement';
+import { setProUnlocked } from '../lib/proUnlock';
+import {
+  COACH_LIST_PRICE_CENTS,
+  PRO_LIST_PRICE_CENTS,
+  PRO_MONTHLY_PRICE_CENTS,
+  STUDENT_LIST_PRICE_CENTS,
+} from '../lib/productPrices';
+import { STUDENT_EDITION_NAME } from '../lib/productNames';
+import { rememberStudentPurchase, STUDENT_PRODUCT_ID, studentEditionOpen } from '../lib/studentEdition';
+import { lookupWhiteEntitlement, type WhiteEntitlementStatus } from '../lib/whiteEntitlementClient';
 import { formatUsdFromCents, WHITE_CHECKOUT_API, WHITE_STRIPE_NOTE } from '../lib/whitePurchase';
 
 const COACH_PRICE = formatUsdFromCents(COACH_LIST_PRICE_CENTS);
 const PRO_PRICE = formatUsdFromCents(PRO_LIST_PRICE_CENTS);
 const PRO_MONTHLY = formatUsdFromCents(PRO_MONTHLY_PRICE_CENTS);
+const STUDENT_PRICE = formatUsdFromCents(STUDENT_LIST_PRICE_CENTS);
 
 type TierCopy = {
-  product: Extract<CheckoutProduct, 'coach' | 'pro'>;
+  product: Extract<CheckoutProduct, 'student' | 'coach' | 'pro'>;
   title: string;
   priceLabel: string;
   priceDetail: string;
   buttonPrice: string;
-  belt: 'blue' | 'black';
-  theme: 'coach' | 'pro';
+  belt: 'grey' | 'blue' | 'black';
+  theme: 'white' | 'coach' | 'pro';
   openPath: string;
   openLabel: string;
 };
 
 const TIERS: Record<TierCopy['product'], TierCopy> = {
+  student: {
+    product: 'student',
+    title: STUDENT_EDITION_NAME,
+    priceLabel: STUDENT_PRICE,
+    priceDetail: 'USD — One Time Purchase',
+    buttonPrice: STUDENT_PRICE,
+    belt: 'grey',
+    theme: 'white',
+    openPath: '/student',
+    openLabel: 'Open Student Edition',
+  },
   coach: {
     product: 'coach',
     title: 'Advantage Coach',
@@ -50,8 +76,19 @@ const TIERS: Record<TierCopy['product'], TierCopy> = {
 function BuyTierPage({ tier }: { tier: TierCopy }) {
   const [params] = useSearchParams();
   const checkout = params.get('checkout');
+  const sessionId = params.get('session_id');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [record, setRecord] = useState<WhiteEntitlementStatus | null>(null);
+  const proUnlocked = useProUnlocked();
+  const studentDoor = studentEditionOpen(params, {
+    pro: proUnlocked,
+    coach: useCoachUnlocked(),
+    white: useWhiteUnlocked(),
+    student: useStudentEditionUnlocked(),
+  });
+  const showCheckout = tier.product === 'pro' ? proUnlocked : tier.product === 'student' ? studentDoor : true;
+  const openPath = tier.product === 'student' && params.get('student') === '1' ? '/student?student=1' : tier.openPath;
 
   useEffect(() => {
     const previous = document.title;
@@ -60,6 +97,53 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
       document.title = previous;
     };
   }, [tier.title]);
+
+  useEffect(() => {
+    if (tier.product !== 'student' || checkout !== 'success' || !sessionId) return;
+    let cancelled = false;
+    let attempts = 0;
+    let timer = 0;
+    const tick = async () => {
+      const status = await lookupWhiteEntitlement({ sessionId });
+      rememberStudentPurchase(status);
+      if (cancelled) return;
+      attempts += 1;
+      if ((status.entitled && status.product === STUDENT_PRODUCT_ID) || attempts >= 4) {
+        setRecord(status);
+        return;
+      }
+      timer = window.setTimeout(() => void tick(), 1000);
+    };
+    void tick();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [checkout, sessionId, tier.product]);
+
+  useEffect(() => {
+    if (tier.product !== 'pro' || checkout !== 'success' || !sessionId) return;
+    let cancelled = false;
+    let attempts = 0;
+    let timer = 0;
+    const tick = async () => {
+      const status = await lookupWhiteEntitlement({ sessionId });
+      const deviceUnlock = proDeviceUnlock(status);
+      if (deviceUnlock !== null) setProUnlocked(deviceUnlock);
+      if (cancelled) return;
+      attempts += 1;
+      if (deviceUnlock !== null || attempts >= 4) {
+        setRecord(status);
+        return;
+      }
+      timer = window.setTimeout(() => void tick(), 1000);
+    };
+    void tick();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [checkout, sessionId, tier.product]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -104,7 +188,17 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
           <form className="buy__card" onSubmit={(event) => void onSubmit(event)}>
             {checkout === 'success' ? (
               <p className="buy__status buy__status--ok" role="status">
-                Payment submitted. Stripe Checkout is complete.
+                {tier.product === 'pro'
+                  ? record && proPurchaseEntitled(record)
+                    ? `Advantage Pro is unlocked${record.email ? ` for ${record.email}` : ''}.`
+                    : record?.product === PRO_PRODUCT_ID
+                      ? 'This Advantage Pro subscription is not active.'
+                      : 'Payment submitted. Advantage unlocks Pro when Stripe confirms the subscription.'
+                  : tier.product === 'student'
+                    ? record?.entitled && record.product === STUDENT_PRODUCT_ID
+                      ? `Advantage Student Edition is unlocked${record.email ? ` for ${record.email}` : ''}.`
+                      : 'Payment submitted. Advantage unlocks Student Edition when Stripe confirms the purchase.'
+                    : 'Payment submitted. Stripe Checkout is complete.'}
               </p>
             ) : null}
             {checkout === 'cancel' ? (
@@ -117,15 +211,17 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
                 {error}
               </p>
             ) : null}
-            <button className="btn btn--white" type="submit" disabled={pending}>
-              {pending ? 'Opening checkout…' : `Continue to checkout — ${tier.buttonPrice}`}
-            </button>
+            {showCheckout ? (
+              <button className="btn btn--white" type="submit" disabled={pending}>
+                {pending ? 'Opening checkout…' : `Continue to checkout — ${tier.buttonPrice}`}
+              </button>
+            ) : null}
             <p>
               <Link to="/terms">Terms of Service</Link>
               {' · '}
               <Link to="/privacy">Privacy Policy</Link>
               {' · '}
-              <Link to={tier.openPath}>{tier.openLabel}</Link>
+              <Link to={openPath}>{tier.openLabel}</Link>
             </p>
           </form>
         </article>
@@ -133,6 +229,10 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
       </div>
     </main>
   );
+}
+
+export function BuyStudentPage() {
+  return <BuyTierPage tier={TIERS.student} />;
 }
 
 export function BuyCoachPage() {

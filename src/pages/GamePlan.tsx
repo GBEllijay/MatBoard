@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { EmptyHint } from '../components/EmptyHint';
-import { PlayExitMark } from '../components/PlayExitMark';
+import { SubmenuMarks } from '../components/TierHomeMark';
+import { useSubmenuBack } from '../hooks/useSubmenuBack';
 import { RankChip } from '../components/RankChip';
 import { useRosterState } from '../hooks/useStores';
 import {
@@ -60,15 +61,15 @@ export function GamePlanPage() {
   const selectedId = searchParams.get('id') ?? '';
   const cards = useMemo(() => competitorCards(roster.students), [roster.students]);
   const selected = cards.find((row) => row.id === selectedId) ?? null;
-  const exitPath = selected ? '/game-plan' : '/competitors';
+  const exitPath = useSubmenuBack({ detailOpen: Boolean(selected) }) ?? '/competitors';
   const competitors = useMemo(
-    () => (query.trim() ? searchStudents(cards, query) : cards),
-    [query, cards],
+    () => (query.trim() ? searchStudents(cards, query, roster.competitionPlans) : cards),
+    [query, cards, roster.competitionPlans],
   );
 
   return (
     <main className="roster plan cms">
-      <PlayExitMark
+      <SubmenuMarks
         to={exitPath}
         onExit={() => {
           navigate(exitPath);
@@ -93,7 +94,7 @@ export function GamePlanPage() {
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Name, belt, or division"
+                placeholder="Name, belt, division, opponent, or tournament"
                 aria-label="Find competitor"
                 autoComplete="off"
               />

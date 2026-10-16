@@ -4,7 +4,7 @@ Internal setup for Advantage App, LLC. Gym owners never do these steps. Owner st
 
 Advantage does not host photos or videos. File bytes stay in the customer’s own OneDrive. Advantage does not manage that Microsoft account. Coach Unlimited and Advantage Pro stay in alpha until Google Drive, OneDrive, Google Photos, and iCloud all work.
 
-This build signs in with Microsoft, lists folders, and writes one small text file (`advantage-onedrive-connect.txt`) into the folder the gym picks. Lesson day packages still save to Google Drive. Google Photos connects separately for Media Console. iCloud is not connected yet.
+This build signs in with Microsoft, lists folders, and writes one small text file (`advantage-onedrive-connect.txt`) into the folder the gym picks. Lesson day packages still save to Google Drive. Google Photos connects separately for Media Console. iCloud shows as Coming for launch and is not a live connect yet.
 
 The browser uses [MSAL browser](https://github.com/AzureAD/microsoft-authentication-library-for-js) (auth code + PKCE) and Microsoft Graph. Tapping **OneDrive** sends this window to Microsoft sign-in, then Microsoft sends it back to this site to pick a folder. A popup is not used: the installed app and phone browsers block it, so the tap looked like it did nothing. The application id is public in the PWA. **Do not ship a client secret** in the app, in Vite env, or in the owner UI.
 
@@ -62,6 +62,8 @@ If this deployment has no Microsoft client id, the OneDrive button stays disable
 | Need admin approval | The account is a work or school tenant that has not consented to `Files.ReadWrite`. Personal accounts should not see this. |
 | Button does nothing and Microsoft never opens | The deployment has no client id. Set `VITE_MICROSOFT_CLIENT_ID` (or `MICROSOFT_CLIENT_ID`) on Cloudflare Pages and deploy again. |
 | `AADSTS50011` on a `*.pages.dev` preview | That preview origin is not a redirect URI. Finish the connection on `https://advantagebjjtimer.com` or `https://www.advantagebjjtimer.com`. |
+| Personal sign-in says `redirect_uri` is not valid | The browser is on `www` and that origin is not on the SPA list. `https://advantagebjjtimer.com` (no path) is the one personal sign-in accepts. Add `https://www.advantagebjjtimer.com` with no path and no trailing slash, or finish on the apex host. |
+| Sheet says this Microsoft account has no OneDrive | The Advantage page did load. This is Microsoft Graph's Files API, not a missing page on advantagebjjtimer.com. Open OneDrive once in a browser for that account. On the app registration, delegated `Files.ReadWrite` must be listed. |
 
 The gym owner still sees the plain sign-in sentence: Microsoft did not finish sign-in. Try again, or ask whoever set up Advantage to allow this website. A local dev build may add a short hint.
 

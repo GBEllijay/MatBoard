@@ -52,6 +52,9 @@ test('Coach Daily Lesson Plan page keeps gallery download on Pro only', () => {
   assert.ok(gateAt >= 0 && downloadAt > gateAt);
   const exportSource = readFileSync(new URL('../components/CoachPlanExport.tsx', import.meta.url), 'utf8');
   assert.match(exportSource, /COACH_PLAN_SAVE_LINK/);
+  assert.match(exportSource, /COACH_PLAN_CONNECT_DRIVE/);
+  assert.match(exportSource, /DriveConnectCard/);
   assert.match(exportSource, /TODO: Save `plan` for `dateKey`/);
   assert.doesNotMatch(exportSource, /exportCoachPlanToOwnDrive/);
+  assert.doesNotMatch(exportSource, /VITE_|client_id|oauth/i);
 });

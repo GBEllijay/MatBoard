@@ -10,6 +10,7 @@ export const ROSTER_CSV_HEADERS = [
   'Division',
   COMPETITOR_GYM_LABEL,
   'Last promotion',
+  'Last promotion detail',
   'Competitor Notes',
   'Check In',
 ] as const;
@@ -23,6 +24,7 @@ export const ROSTER_CSV_TEMPLATE_HEADERS = [
   'Division',
   COMPETITOR_GYM_LABEL,
   'Last promotion',
+  'Last promotion detail',
   'Notes',
   'Check In',
 ] as const;
@@ -30,7 +32,7 @@ const ROSTER_CSV_TEMPLATE_BLANK_ROWS = 3;
 
 export type RosterCsvRow = Pick<
   Student,
-  'name' | 'belt' | 'division' | 'gym' | 'lastPromotion' | 'note' | 'checkedIn'
+  'name' | 'belt' | 'division' | 'gym' | 'lastPromotion' | 'lastPromotionDetail' | 'note' | 'checkedIn'
 >;
 
 export type RosterCsvImport = {
@@ -49,6 +51,7 @@ type HeaderField =
   | 'division'
   | 'gym'
   | 'lastPromotion'
+  | 'lastPromotionDetail'
   | 'note'
   | 'checkedIn';
 
@@ -89,6 +92,10 @@ const HEADER_ALIASES: Record<string, HeaderField> = {
   'promotion date': 'lastPromotion',
   'last promoted': 'lastPromotion',
   promoted: 'lastPromotion',
+  'last promotion detail': 'lastPromotionDetail',
+  'promotion detail': 'lastPromotionDetail',
+  'last promotion note': 'lastPromotionDetail',
+  'promotion text': 'lastPromotionDetail',
   notes: 'note',
   note: 'note',
   'short note': 'note',
@@ -351,6 +358,7 @@ export function serializeRosterCsv(rows: RosterCsvRow[]): string {
         row.division,
         row.gym,
         row.lastPromotion,
+        row.lastPromotionDetail,
         row.note,
         formatCheckedIn(row.checkedIn),
       ]
@@ -482,6 +490,7 @@ function peopleFromCells(
   divisionCell: string,
   gymCell: string,
   lastPromotion: string,
+  lastPromotionDetail: string,
   note: string,
   checkedInCell: string,
 ): Array<{
@@ -490,6 +499,7 @@ function peopleFromCells(
   division: string;
   gym: string;
   lastPromotion: string;
+  lastPromotionDetail: string;
   note: string;
   checkedIn: string;
 }> {
@@ -504,6 +514,7 @@ function peopleFromCells(
     division: alignedField(divisionCell, names, index),
     gym: alignedField(gymCell, names, index),
     lastPromotion,
+    lastPromotionDetail: alignedField(lastPromotionDetail, names, index),
     note,
     checkedIn: alignedField(checkedInCell, names, index),
   }));
@@ -573,6 +584,7 @@ function importParsedRows(rows: string[][], options: ImportOptions): RosterCsvIm
     division: string;
     gym: string;
     lastPromotion: string;
+    lastPromotionDetail: string;
     note: string;
     checkedIn: string;
   }) => {
@@ -604,6 +616,7 @@ function importParsedRows(rows: string[][], options: ImportOptions): RosterCsvIm
     const gymCell = cell(row, columns.gym);
     const checkedInCell = cell(row, columns.checkedIn);
     const lastPromotion = parseImportDate(cell(row, columns.lastPromotion));
+    const lastPromotionDetail = cell(row, columns.lastPromotionDetail);
     let note = cell(row, columns.note);
 
     if (options.salvage && !studentFromInput({ name: splitLines(nameCell)[0] ?? '', belt: splitLines(beltCell)[0] ?? '' })) {
@@ -636,6 +649,7 @@ function importParsedRows(rows: string[][], options: ImportOptions): RosterCsvIm
       divisionCell,
       gymCell,
       lastPromotion,
+      lastPromotionDetail,
       note,
       checkedInCell,
     );

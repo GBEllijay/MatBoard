@@ -22,7 +22,7 @@ import { dispatchMatch, expireMatchClock, remainingNow, type Side } from '../lib
 import { needsRefDecision } from '../lib/outcomes';
 import { formatMmSs } from '../lib/format';
 import { carlosMatchComplete, matchCarlosView } from '../lib/carlosCelebration';
-import { withSuiteFrom } from '../lib/productNames';
+import { kidsBoardClass } from '../lib/kidsScoreboard';
 import { SCOREBOARD_SKIN, scoreboardSkinClass } from '../lib/scoreboardSkin';
 
 export function MatchDisplayPage() {
@@ -118,7 +118,7 @@ export function MatchDisplayPage() {
 
   return (
     <main
-      className={`display ${scoreboardSkinClass(skin)}${linkedId ? ' display--linked' : ''}${splash ? ' display--splash' : ''}${
+      className={`display ${scoreboardSkinClass(skin)}${board.kidsSkin ? ` ${kidsBoardClass(board.kidsSkin)}` : ''}${linkedId ? ' display--linked' : ''}${splash ? ' display--splash' : ''}${
         suite.fromSuite ? ' origin-suite' : ''
       }${fs.className ? ` ${fs.className}` : ''}`}
       onPointerDown={() => {
@@ -128,24 +128,22 @@ export function MatchDisplayPage() {
     >
       <div className="display__chrome">
         <div className="display__chrome-start">
-          {linkedId ? (
-            <Link to={withSuiteFrom('/tournament', suite.fromSuite)} className="chip chip--keep">
-              Back to bracket
-            </Link>
-          ) : (
+          {linkedId ? null : (
             <Link to={suite.homePath} className="chip">
               Home
             </Link>
           )}
         </div>
         <div className="display__chrome-end">
-          <FullscreenChip
-            supported={fs.supported}
-            active={fs.active}
-            nudge={fs.showFallback}
-            shortcut={fs.tvStation}
-            onToggle={() => void fs.toggle()}
-          />
+          {fs.active ? null : (
+            <FullscreenChip
+              supported={fs.supported}
+              active={fs.active}
+              nudge={fs.showFallback}
+              shortcut={fs.tvStation}
+              onToggle={() => void fs.toggle()}
+            />
+          )}
           <Link
             to={board.originPath(controllerPath(linkedId, endedWithoutWinner ? 'outcome' : undefined))}
             className="chip chip--gold"
@@ -154,6 +152,21 @@ export function MatchDisplayPage() {
           </Link>
         </div>
       </div>
+      {linkedId ? (
+        <Link to={suite.withFrom('/tournament')} className="display-back" aria-label="Back to bracket">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M14.5 5.5 8 12l6.5 6.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <img src="/advantage-icon.png" alt="" />
+        </Link>
+      ) : null}
       <TvTip onFullscreen={() => void fs.enter()} />
 
       <CompetitorBand

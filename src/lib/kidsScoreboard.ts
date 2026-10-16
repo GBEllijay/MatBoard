@@ -1,10 +1,12 @@
 /**
- * Kids' Scoreboards — device-local bracket TV mode on the Pro suite board.
- * Coach and Coach Unlimited mock tournaments stay on the plain Bright/Dark tree.
+ * Kids' Scoreboards — device-local bracket TV mode.
+ * Pro suite and Coach Unlimited share the Skin picker and wallpaper.
+ * Plain Coach mock tournaments stay on the plain Bright/Dark tree.
  * The existing tree stays. A skin is only a wallpaper behind frosted name bubbles.
- * Grand Master Carlos is a win overlay, never a live-match graphic.
+ * Grand Master Carlos is a corner win celebration, never a live-match graphic.
  */
 
+import { SUITE_FROM, UNLIMITED_FROM } from './productNames.ts';
 import { displayBoutName, slotName, type BoutPoints, type TournamentState } from './tournamentStore.ts';
 
 export const KIDS_SCOREBOARDS_NAME = "Kids' Scoreboards";
@@ -28,9 +30,11 @@ export type KidsSkinId = (typeof KIDS_SKINS)[number]['id'];
 export type KidsScoreboardPrefs = {
   enabled: boolean;
   skin: KidsSkinId;
+  /** Grand Master Carlos after a champion. Off leaves the corner empty. */
+  mascot: boolean;
 };
 
-const DEFAULT_PREFS: KidsScoreboardPrefs = { enabled: false, skin: 'dinos' };
+const DEFAULT_PREFS: KidsScoreboardPrefs = { enabled: false, skin: 'dinos', mascot: true };
 
 const listeners = new Set<() => void>();
 let snapshot: KidsScoreboardPrefs = DEFAULT_PREFS;
@@ -39,12 +43,19 @@ let snapshotRaw: string | null = null;
 function parsePrefs(raw: string | null): KidsScoreboardPrefs {
   if (!raw) return DEFAULT_PREFS;
   try {
-    const parsed = JSON.parse(raw) as { enabled?: unknown; skin?: unknown };
+    const parsed = JSON.parse(raw) as { enabled?: unknown; skin?: unknown; mascot?: unknown };
     const next: KidsScoreboardPrefs = {
       enabled: parsed.enabled === true,
       skin: isSkin(parsed.skin) ? parsed.skin : DEFAULT_PREFS.skin,
+      mascot: parsed.mascot !== false,
     };
-    if (next.enabled === DEFAULT_PREFS.enabled && next.skin === DEFAULT_PREFS.skin) return DEFAULT_PREFS;
+    if (
+      next.enabled === DEFAULT_PREFS.enabled &&
+      next.skin === DEFAULT_PREFS.skin &&
+      next.mascot === DEFAULT_PREFS.mascot
+    ) {
+      return DEFAULT_PREFS;
+    }
     return next;
   } catch {
     return DEFAULT_PREFS;
@@ -99,9 +110,56 @@ export function setKidsSkin(skin: KidsSkinId): void {
   writePrefs({ ...readPrefs(), skin });
 }
 
-/** Kids wallpaper and bracket Carlos belong on the Pro suite board only. */
-export function kidsBracketChromeOn(fromSuite: boolean, enabled: boolean): boolean {
-  return fromSuite && enabled;
+export function setKidsMascot(mascot: boolean): void {
+  writePrefs({ ...readPrefs(), mascot });
+}
+
+/**
+ * Carlos and other skin chrome stay off during fullscreen, an open sheet
+ * (especially win method), or a linked unscored bout. That chrome used to sit
+ * on Decision. The toolbar Skin button does not use this — see
+ * `kidsSkinButtonSuppressed`.
+ */
+export function kidsSkinChromeHidden(input: {
+  fullscreen: boolean;
+  sheetOpen: boolean;
+  scoring: boolean;
+}): boolean {
+  return input.fullscreen || input.sheetOpen || input.scoring;
+}
+
+/**
+ * Toolbar Skin on the bracket page. Close it only for real fullscreen or an
+ * open sheet. A linked bout must not disable it: Back to bracket leaves the
+ * bout linked, and the picker still has to open.
+ */
+export function kidsSkinButtonSuppressed(input: { fullscreen: boolean; sheetOpen: boolean }): boolean {
+  return input.fullscreen || input.sheetOpen;
+}
+
+/** A bracket bout is in scoring when the scoreboard is linked and that bout has no result yet. */
+export function kidsBracketScoring(liveMatchId: string | null, hasResult: boolean): boolean {
+  return liveMatchId != null && liveMatchId !== '' && !hasResult;
+}
+
+/** Carlos only in the corner, and only when skin chrome is allowed to show. */
+export function kidsShowMascot(
+  enabled: boolean,
+  mascot: boolean,
+  championName: string,
+  chromeHidden: boolean,
+): boolean {
+  return mascot && !chromeHidden && kidsShowWin(enabled, championName);
+}
+
+/** Skin picker and wallpaper: Pro suite and Coach Unlimited. Plain Coach stays off. */
+export function kidsBracketSkinsAllowed(from: string | null): boolean {
+  return from === SUITE_FROM || from === UNLIMITED_FROM;
+}
+
+/** Wallpaper follows the device toggle once this hub allows kids skins. */
+export function kidsBracketChromeOn(allowed: boolean, enabled: boolean): boolean {
+  return allowed && enabled;
 }
 
 export function kidsSkinLabel(skin: KidsSkinId): string {
@@ -110,6 +168,35 @@ export function kidsSkinLabel(skin: KidsSkinId): string {
 
 export function kidsWallpaperPath(skin: KidsSkinId): string {
   return `/assets/kids/${skin}.webp`;
+}
+
+/** Query flag so a bout opened from Kids Brackets paints that wallpaper on the scoreboard. */
+export const KIDS_SKIN_PARAM = 'kids';
+
+export function parseKidsSkin(value: unknown): KidsSkinId | null {
+  return isSkin(value) ? value : null;
+}
+
+export function kidsSkinFromSearch(search: URLSearchParams): KidsSkinId | null {
+  return parseKidsSkin(search.get(KIDS_SKIN_PARAM));
+}
+
+export function kidsBoardClass(skin: KidsSkinId | null): string {
+  return skin ? `kids-board kids-board--${skin}` : '';
+}
+
+/** Keep the kids wallpaper on scoreboard, controller, and cast links. */
+export function withKidsSkin(path: string, skin: KidsSkinId | null): string {
+  if (!skin) return path;
+  const hashAt = path.indexOf('#');
+  const hash = hashAt >= 0 ? path.slice(hashAt) : '';
+  const base = hashAt >= 0 ? path.slice(0, hashAt) : path;
+  const queryAt = base.indexOf('?');
+  const pathname = queryAt >= 0 ? base.slice(0, queryAt) : base;
+  const params = new URLSearchParams(queryAt >= 0 ? base.slice(queryAt + 1) : '');
+  params.set(KIDS_SKIN_PARAM, skin);
+  const query = params.toString();
+  return `${pathname}${query ? `?${query}` : ''}${hash}`;
 }
 
 /**

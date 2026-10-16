@@ -9,6 +9,7 @@
  * Node ids are the tree's own ids (`findNode`). `slotId` stays the lesson hook.
  */
 
+import { asRecord } from './plainValue.ts';
 import type { TechniqueNode, TechniqueTreeArchive, TechniqueTreeDoc, TreeNodeKind } from './techniqueTreeStore.ts';
 
 export const GAME_NOTE_MAX = 400;
@@ -107,11 +108,6 @@ export function gamePlanStatusLabel(plan: CompetitorGamePlan): string {
   }
   if (layerHasContent(plan.home)) bits.push('Home focus');
   return bits.length ? bits.join(' · ') : 'No game plan yet';
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  return value as Record<string, unknown>;
 }
 
 function clipId(value: unknown): string {

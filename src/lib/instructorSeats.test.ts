@@ -1,27 +1,58 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { CollaborationGate } from '../components/CollaborationGate.ts';
 import { GYM_NAME_STORAGE_KEY, writeGymName } from './gymName.ts';
 import {
+  consoleHubs,
+  homeConsoleLabel,
+  mediaConsoleDoorOpen,
+  mediaFolderDoorOpen,
+  ownerProHubOpen,
+} from './productNames.ts';
+import { SITE_FEEDBACK_EMAIL } from './siteFooter.ts';
+import {
   DEFAULT_INSTRUCTOR_PERMISSIONS,
   INSTRUCTOR_PERMISSION_FIELDS,
   INSTRUCTOR_SEAT_SESSION_KEY,
+  INSTRUCTOR_SEAT_SIGNED_OUT_KEY,
   INSTRUCTOR_SEATS_STORAGE_KEY,
   INSTRUCTOR_PRESETS,
+  PRO_INSTRUCTOR_SEAT_CAP,
+  PRO_SEAT_CAP_REQUEST_NOTE,
+  countOpenInstructorSeats,
   defaultInstructorPermissions,
   instructorInviteLink,
+  instructorPreset,
   instructorPresetPermissions,
   instructorPresetPlan,
+  SEAT_ADJUSTED_NOTE,
+  instructorSeatAdjusted,
   instructorSeatBinderLabel,
   acceptInstructorInvite,
+  isProgramDirectorSeat,
   issueInstructorInvite,
+  menuCloudSharing,
+  seatGrantsCoachMenus,
+  seatGrantsMediaConsole,
+  seatMenuAllowed,
   peekInstructorInvite,
   permissionsMatchPreset,
   listInstructorSeats,
   normalizeInstructorPermissions,
+  inviteReloadBlocked,
+  proSeatCapBlockedCopy,
+  proSeatCapNear,
+  proSeatRemainingLabel,
+  proSeatsRemaining,
+  proSeatUsageLabel,
+  purchasePromptsHidden,
   readCurrentSeat,
+  readSignedOutToast,
+  seatChromeHidden,
   revokeInstructorSeat,
   coachToolVisible,
   seatPermissionAllows,
@@ -29,6 +60,7 @@ import {
   updateInstructorSeatPermissions,
   visibleCoachControl,
   type InstructorPermissions,
+  type InstructorPresetId,
   type InstructorSeat,
 } from './instructorSeats.ts';
 
@@ -219,20 +251,8 @@ test('open seats can be edited and revoked, and a revoked email can be invited a
   assert.equal(listInstructorSeats()[0].inviteToken, 'new-token');
 });
 
-test('there is no invite cap, and junk storage is ignored', () => {
+test('junk storage is ignored', () => {
   reset();
-  for (let index = 0; index < 12; index += 1) {
-    const issued = issueInstructorInvite({
-      email: `coach${index}@gym.com`,
-      origin: 'https://advantage.test',
-      now: index,
-      token: `tok-${index}`,
-    });
-    assert.equal(issued.ok, true);
-  }
-  assert.equal(listInstructorSeats().length, 12);
-  assert.equal(listInstructorSeats()[0].email, 'coach11@gym.com');
-
   localStorage.setItem(INSTRUCTOR_SEATS_STORAGE_KEY, '{');
   assert.deepEqual(listInstructorSeats(), []);
   localStorage.setItem(
@@ -247,6 +267,99 @@ test('there is no invite cap, and junk storage is ignored', () => {
     ok: false,
     reason: 'missing',
   });
+});
+
+test('Pro stops at 10 open seats and a revoke frees one', () => {
+  reset();
+  assert.equal(PRO_INSTRUCTOR_SEAT_CAP, 10);
+  assert.equal(proSeatUsageLabel(4), '4 of 10 seats used');
+  assert.equal(proSeatUsageLabel(5), '5 of 10 seats used');
+  assert.equal(proSeatsRemaining(5), 5);
+  assert.equal(proSeatRemainingLabel(5), '5 seats remaining');
+  assert.equal(proSeatRemainingLabel(9), '1 seat remaining');
+  assert.equal(proSeatRemainingLabel(10), '0 seats remaining');
+  assert.equal(proSeatCapNear(5), false);
+  assert.equal(proSeatCapNear(8), true);
+  assert.equal(proSeatCapNear(10), true);
+  assert.equal(
+    PRO_SEAT_CAP_REQUEST_NOTE,
+    `Additional seats may be available for authorization upon owner request. Email ${SITE_FEEDBACK_EMAIL}.`,
+  );
+  assert.match(PRO_SEAT_CAP_REQUEST_NOTE, /advantageappllc@gmail.com/);
+  assert.equal(
+    proSeatCapBlockedCopy(),
+    `All 10 seats are in use. Revoke a seat to issue another invite. ${PRO_SEAT_CAP_REQUEST_NOTE}`,
+  );
+
+  const presets: InstructorPresetId[] = ['coach', 'program-director', 'instructors', 'assistant-coach'];
+  for (let index = 0; index < PRO_INSTRUCTOR_SEAT_CAP; index += 1) {
+    const presetId = presets[index % presets.length];
+    const issued = issueInstructorInvite({
+      email: `seat${index}@gym.com`,
+      presetId,
+      permissions: instructorPresetPermissions(presetId),
+      origin: 'https://advantage.test',
+      now: index,
+      token: `tok-${index}`,
+    });
+    assert.equal(issued.ok, true);
+  }
+  assert.equal(countOpenInstructorSeats(listInstructorSeats()), 10);
+  assert.equal(listInstructorSeats()[0].email, 'seat9@gym.com');
+
+  const blocked = issueInstructorInvite({
+    email: 'extra@gym.com',
+    presetId: 'assistant-coach',
+    permissions: instructorPresetPermissions('assistant-coach'),
+    origin: 'https://advantage.test',
+  });
+  assert.deepEqual(blocked, { ok: false, reason: 'cap' });
+  assert.equal(listInstructorSeats().length, 10);
+
+  const held = listInstructorSeats().find((seat) => seat.email === 'seat0@gym.com');
+  assert.ok(held);
+  assert.equal(revokeInstructorSeat(held.id).ok, true);
+  assert.equal(countOpenInstructorSeats(listInstructorSeats()), 9);
+  const again = issueInstructorInvite({
+    email: 'extra@gym.com',
+    presetId: 'coach',
+    origin: 'https://advantage.test',
+    token: 'tok-extra',
+  });
+  assert.equal(again.ok, true);
+  if (!again.ok) return;
+  assert.equal(countOpenInstructorSeats(listInstructorSeats()), 10);
+});
+
+test('a signed-in coach, program director, or instructor cannot issue invites', () => {
+  for (const presetId of ['coach', 'program-director', 'instructors'] as const) {
+    reset();
+    const issued = issueInstructorInvite({
+      email: `${presetId}@gym.com`,
+      presetId,
+      permissions: instructorPresetPermissions(presetId),
+      origin: 'https://advantage.test',
+      token: `tok-${presetId}`,
+    });
+    assert.equal(issued.ok, true);
+    assert.equal(acceptInstructorInvite(`tok-${presetId}`).ok, true);
+    const blocked = issueInstructorInvite({
+      email: 'assistant@gym.com',
+      presetId: 'assistant-coach',
+      permissions: instructorPresetPermissions('assistant-coach'),
+      origin: 'https://advantage.test',
+    });
+    assert.deepEqual(blocked, { ok: false, reason: 'owner' });
+    assert.equal(listInstructorSeats().filter((seat) => seat.status !== 'revoked').length, 1);
+    signOutInstructorSeat();
+    const owner = issueInstructorInvite({
+      email: 'assistant@gym.com',
+      presetId: 'assistant-coach',
+      origin: 'https://advantage.test',
+      token: `owner-${presetId}`,
+    });
+    assert.equal(owner.ok, true);
+  }
 });
 
 test('a stored seat with a missing permission fills that default on read', () => {
@@ -294,7 +407,7 @@ test('four binder presets fill the toggles and stay overridable', () => {
     rosterSubmit: false,
     rosterPull: false,
     downloadTodaysVideos: true,
-    uploadForDistribution: false,
+    uploadForDistribution: true,
     eventsAccess: false,
     proShopAccess: false,
   });
@@ -316,27 +429,34 @@ test('four binder presets fill the toggles and stay overridable', () => {
   const adjusted = { ...instructors, galleryUpload: false };
   assert.equal(permissionsMatchPreset('instructors', adjusted), false);
   assert.equal(instructorSeatBinderLabel('instructors', adjusted), 'Instructors · adjusted');
+  assert.equal(instructorSeatAdjusted('instructors', adjusted), true);
+  assert.equal(instructorSeatAdjusted('instructors', instructors), false);
+  assert.equal(instructorSeatAdjusted(null, adjusted), false);
+  assert.match(SEAT_ADJUSTED_NOTE, /role defaults/);
+  const bar = readFileSync(new URL('../components/SeatSessionBar.tsx', import.meta.url), 'utf8');
+  assert.match(bar, /SEAT_ADJUSTED_NOTE/);
+  assert.match(bar, /instructorSeatAdjusted/);
   assert.equal(instructorSeatBinderLabel(null, adjusted), 'Custom binder');
   assert.equal(instructorSeatBinderLabel('assistant-coach', assistant), 'Assistant coach');
   assert.deepEqual(
     INSTRUCTOR_PRESETS.map((preset) => preset.label),
-    ['Assistant coach', 'Coach', 'Program director', 'Instructors'],
+    ['Assistant coach', 'Program director', 'Coach', 'Instructors'],
   );
   assert.deepEqual(
     INSTRUCTOR_PRESETS.map((preset) => preset.detail),
     [
-      ['Lesson plans and daily videos', 'Downloads only'],
-      ['Lesson plans and daily videos with uploads'],
-      ['Events, Pro Shop, and gallery'],
-      ['Adds the slideshow for events, Pro Shop, and gallery'],
+      ['Lesson plans and daily videos', 'Full cloud and sharing in these menus'],
+      ['Events, Pro Shop, and gallery', 'Full cloud and sharing in these menus'],
+      ['Lesson plans, daily videos, and uploads', 'Full cloud and sharing in these menus'],
+      ['Lessons, uploads, events, Pro Shop, and gallery', 'Full cloud and sharing in these menus'],
     ],
   );
   assert.deepEqual(
     INSTRUCTOR_PRESETS.map((preset) => [preset.id, preset.plan]),
     [
       ['assistant-coach', 'Coach Unlimited'],
-      ['coach', 'Coach Unlimited'],
       ['program-director', 'Pro · Gallery'],
+      ['coach', 'Coach Unlimited'],
       ['instructors', 'Coach Unlimited + Pro'],
     ],
   );
@@ -404,7 +524,7 @@ test('the first assistant coach invite for hapkidoka311@yahoo.com accepts and ga
   assert.equal(visibleCoachControl('galleryUpload', seated), false);
   assert.equal(visibleCoachControl('rosterSubmit', seated), false);
   assert.equal(visibleCoachControl('rosterPull', seated), false);
-  assert.equal(visibleCoachControl('uploadForDistribution', seated), false);
+  assert.equal(visibleCoachControl('uploadForDistribution', seated), true);
   assert.equal(visibleCoachControl('eventsAccess', seated), false);
   assert.equal(visibleCoachControl('proShopAccess', seated), false);
 });
@@ -455,7 +575,7 @@ test('accepting an assistant coach invite starts a seat session and gates contro
     rosterSubmit: false,
     rosterPull: false,
     downloadTodaysVideos: true,
-    uploadForDistribution: false,
+    uploadForDistribution: true,
     eventsAccess: false,
     proShopAccess: false,
   });
@@ -484,12 +604,12 @@ test('accepting an assistant coach invite starts a seat session and gates contro
   assert.equal(visibleCoachControl('galleryUpload', seated), false);
   assert.equal(visibleCoachControl('rosterSubmit', seated), false);
   assert.equal(visibleCoachControl('rosterPull', seated), false);
-  assert.equal(visibleCoachControl('uploadForDistribution', seated), false);
+  assert.equal(visibleCoachControl('uploadForDistribution', seated), true);
   assert.equal(visibleCoachControl('eventsAccess', seated), false);
   assert.equal(visibleCoachControl('proShopAccess', seated), false);
   assert.equal(visibleCoachControl('uploadForDistribution', { owner: true, seat: null }), true);
   assert.equal(visibleCoachControl('downloadTodaysVideos', { owner: false, seat: null }), false);
-  assert.equal(visibleCoachControl('uploadForDistribution', { owner: true, seat: readCurrentSeat() }), false);
+  assert.equal(visibleCoachControl('uploadForDistribution', { owner: true, seat: readCurrentSeat() }), true);
 
   signOutInstructorSeat();
   assert.equal(readCurrentSeat(), null);
@@ -518,12 +638,15 @@ test('accepting an assistant coach invite starts a seat session and gates contro
   assert.equal(readCurrentSeat(), null);
 });
 
-test('the distribution control stays out of the tree when an assistant coach is signed in', () => {
+test('assistant cloud sharing stays on inside authorized menus and Media Console stays closed', () => {
   reset();
-  const assistant = instructorPresetPermissions('assistant-coach');
+  const legacy = {
+    ...instructorPresetPermissions('assistant-coach'),
+    uploadForDistribution: false,
+  };
   const issued = issueInstructorInvite({
     email: 'assistant@gym.com',
-    permissions: assistant,
+    permissions: legacy,
     presetId: 'assistant-coach',
     origin: 'https://advantage.test',
     token: 'assist-ui',
@@ -533,24 +656,23 @@ test('the distribution control stays out of the tree when an assistant coach is 
   const accepted = acceptInstructorInvite('assist-ui');
   assert.equal(accepted.ok, true);
   if (!accepted.ok) return;
-  const access = { owner: true, seat: accepted.seat };
-  const distribute = renderToStaticMarkup(
+  const seat = accepted.seat;
+  assert.equal(seat.permissions.uploadForDistribution, false);
+  assert.equal(seatGrantsMediaConsole(seat), false);
+  assert.equal(isProgramDirectorSeat(seat), false);
+  assert.equal(menuCloudSharing(false, seat, seatMenuAllowed(seat, 'downloadTodaysVideos')), true);
+  assert.equal(menuCloudSharing(false, seat, seatMenuAllowed(seat, 'dailyLessonPlanAccess')), true);
+  assert.equal(menuCloudSharing(true, seat, seatMenuAllowed(seat, 'galleryUpload')), false);
+  assert.equal(menuCloudSharing(true, null, true), true);
+  assert.equal(menuCloudSharing(false, null, true), false);
+  const share = renderToStaticMarkup(
     createElement(
       CollaborationGate,
-      { show: visibleCoachControl('uploadForDistribution', access) },
-      createElement('button', null, 'Upload for instructor distribution'),
+      { show: menuCloudSharing(false, seat, seatMenuAllowed(seat, 'downloadTodaysVideos')) },
+      createElement('button', null, 'Share to the gym Drive'),
     ),
   );
-  assert.equal(distribute, '');
-  const download = renderToStaticMarkup(
-    createElement(
-      CollaborationGate,
-      { show: visibleCoachControl('downloadTodaysVideos', access) },
-      createElement('button', null, "Download today's videos"),
-    ),
-  );
-  assert.match(download, /Download today/);
-  assert.equal(distribute.includes('Upload'), false);
+  assert.match(share, /Share to the gym Drive/);
 });
 
 test('Coach tool seats hide lesson plan and videos and leave the other hubs', () => {
@@ -586,4 +708,299 @@ test('device guests have no seat, so collaboration controls stay hidden', () => 
   assert.equal(seatPermissionAllows(defaultInstructorPermissions(), 'galleryUpload'), false);
   assert.equal(seatPermissionAllows(defaultInstructorPermissions(), 'downloadTodaysVideos'), true);
   assert.equal(seatPermissionAllows(defaultInstructorPermissions(), 'uploadForDistribution'), true);
+});
+
+test('sign out clears Coach Two immediately and does not fall back to the program director seat', () => {
+  reset();
+  const coach = issueInstructorInvite({
+    email: 'coach.two@gym.com',
+    presetId: 'coach',
+    origin: 'https://advantage.test',
+    token: 'coach-two',
+  });
+  const director = issueInstructorInvite({
+    email: 'pd@gym.com',
+    presetId: 'program-director',
+    origin: 'https://advantage.test',
+    token: 'pd-seat',
+  });
+  assert.equal(coach.ok, true);
+  assert.equal(director.ok, true);
+  if (!coach.ok || !director.ok) return;
+  assert.equal(acceptInstructorInvite('coach-two').ok, true);
+  assert.equal(readCurrentSeat()?.email, 'coach.two@gym.com');
+  assert.equal(purchasePromptsHidden(readCurrentSeat()), true);
+
+  signOutInstructorSeat();
+  assert.equal(localStorage.getItem(INSTRUCTOR_SEAT_SESSION_KEY), null);
+  assert.ok(localStorage.getItem(INSTRUCTOR_SEAT_SIGNED_OUT_KEY)?.includes('coach-two'));
+  assert.equal(readCurrentSeat(), null);
+  assert.equal(purchasePromptsHidden(readCurrentSeat()), false);
+  assert.equal(readSignedOutToast(), true);
+  assert.equal(inviteReloadBlocked('coach-two', 'reload', 'coach-two'), true);
+  assert.equal(inviteReloadBlocked('coach-two', 'navigate', 'coach-two'), false);
+  assert.equal(inviteReloadBlocked('coach-two', 'reload', null), false);
+  assert.deepEqual(
+    listInstructorSeats().map((seat) => seat.email).sort(),
+    ['coach.two@gym.com', 'pd@gym.com'],
+  );
+
+  const resumed = acceptInstructorInvite('pd-seat');
+  assert.equal(resumed.ok, true);
+  if (!resumed.ok) return;
+  assert.equal(readCurrentSeat()?.email, 'pd@gym.com');
+  assert.equal(readSignedOutToast(), false);
+  assert.equal(purchasePromptsHidden(readCurrentSeat()), true);
+  signOutInstructorSeat();
+  assert.equal(readCurrentSeat(), null);
+  assert.equal(purchasePromptsHidden(readCurrentSeat()), false);
+  assert.equal(acceptInstructorInvite('coach-two').ok, true);
+  assert.equal(readCurrentSeat()?.email, 'coach.two@gym.com');
+});
+
+test('seat chrome stays off the gym TV and purchase prompts follow the live seat', () => {
+  assert.equal(seatChromeHidden('/match'), true);
+  assert.equal(seatChromeHidden('/training'), true);
+  assert.equal(seatChromeHidden('/slideshow'), true);
+  assert.equal(seatChromeHidden('/screensaver'), true);
+  assert.equal(seatChromeHidden('/match/control'), false);
+  assert.equal(seatChromeHidden('/'), false);
+  assert.equal(seatChromeHidden('/coach'), false);
+  assert.equal(seatChromeHidden('/pro'), false);
+  assert.equal(purchasePromptsHidden(null), false);
+  assert.equal(purchasePromptsHidden({ status: 'active' }), true);
+  assert.equal(purchasePromptsHidden({ status: 'invited' }), true);
+  assert.equal(purchasePromptsHidden({ status: 'revoked' }), false);
+
+  const read = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf8');
+  const coach = read('../pages/Coach.tsx');
+  const pro = read('../pages/Pro.tsx');
+  const home = read('../pages/Home.tsx');
+  const bar = read('../components/SeatSessionBar.tsx');
+  const invite = read('../components/InstructorInvitePanel.tsx');
+  const unlimited = read('../pages/CoachUnlimited.tsx');
+  assert.match(coach, /purchasePromptsHidden\(seat\)/);
+  assert.match(coach, /Buy Advantage Coach/);
+  assert.match(pro, /purchasePromptsHidden\(seat\)/);
+  assert.match(pro, /Buy Advantage Pro/);
+  assert.match(home, /purchasePromptsHidden\(seat\)/);
+  assert.match(bar, /Sign out of seat/);
+  assert.match(bar, /Signed out/);
+  assert.match(bar, /seat-session-dock/);
+  assert.match(invite, /preset\.detail\.map/);
+  assert.match(invite, /cloud and sharing match the owner/);
+  assert.match(invite, /Owner only · Soft beta/);
+  assert.match(invite, /Nothing is emailed or billed/);
+  assert.doesNotMatch(invite, /or capped/);
+  assert.match(invite, /invite-seat-cap/);
+  assert.match(invite, /proSeatUsageLabel\(seatsUsed\)/);
+  assert.match(invite, /proSeatRemainingLabel\(seatsUsed\)/);
+  assert.match(invite, /SeatCapRequestNote/);
+  assert.doesNotMatch(invite, /Downloads only/i);
+  const css = read('../index.css');
+  assert.match(css, /\.home p\.invite-seat-cap__count/);
+  assert.match(css, /\.home p\.invite-cap-note/);
+  assert.match(css, /\.home p\.binder-list__seats/);
+  assert.match(unlimited, /<DriveConnectCard \/>/);
+  assert.doesNotMatch(unlimited, /seat \? null : <DriveConnectCard/);
+});
+
+function doorFrom(proUnlocked: boolean, seat: InstructorSeat) {
+  return {
+    proUnlocked,
+    seated: seat.status !== 'revoked',
+    seatGrantsMedia: seatGrantsMediaConsole(seat),
+    programDirectorSeat: isProgramDirectorSeat(seat),
+    coachMenus: seatGrantsCoachMenus(seat),
+  };
+}
+
+test('a Program Director invite stores gallery, events, and Pro Shop even when permissions are omitted', () => {
+  reset();
+  const issued = issueInstructorInvite({
+    email: 'program-director-bot-one-retest@example.com',
+    presetId: 'program-director',
+    origin: 'https://advantagebjjtimer.com',
+    token: 'pd-retest',
+  });
+  assert.equal(issued.ok, true);
+  if (!issued.ok) return;
+  assert.equal(issued.seat.permissions.galleryUpload, true);
+  assert.equal(issued.seat.permissions.eventsAccess, true);
+  assert.equal(issued.seat.permissions.proShopAccess, true);
+  assert.equal(issued.seat.permissions.dailyLessonPlanAccess, false);
+  const accepted = acceptInstructorInvite('pd-retest');
+  assert.equal(accepted.ok, true);
+  if (!accepted.ok) return;
+  const door = doorFrom(false, accepted.seat);
+  assert.equal(mediaConsoleDoorOpen(door), true);
+  assert.equal(homeConsoleLabel(door), 'Open Media Console');
+  assert.deepEqual(
+    consoleHubs(door, accepted.seat.permissions).map((hub) => hub.title),
+    ['Gallery', 'Events', 'Pro Shop'],
+  );
+  assert.equal(mediaFolderDoorOpen(door, accepted.seat.permissions, 'events'), true);
+  assert.equal(ownerProHubOpen(false, true), false);
+  assert.equal(ownerProHubOpen(true, true), false);
+  const unlocked = doorFrom(true, accepted.seat);
+  assert.equal(mediaConsoleDoorOpen(unlocked), true);
+  assert.equal(homeConsoleLabel(unlocked), 'Open Media Console');
+
+  const home = readFileSync(new URL('../pages/Home.tsx', import.meta.url), 'utf8');
+  const pro = readFileSync(new URL('../pages/Pro.tsx', import.meta.url), 'utf8');
+  const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+  assert.match(home, /homeConsoleLabel\(door\)/);
+  assert.match(home, /\{consoleLabel\}/);
+  assert.match(pro, /consoleHubs\(door, door\.seat\?\.permissions/);
+  assert.match(pro, /MEDIA_CONSOLE_NAME/);
+  assert.match(app, /MEDIA_FOLDER_ROUTES/);
+  assert.match(app, /MEDIA_CONSOLE_ROUTES/);
+  assert.match(app, /MediaFolderRoute/);
+  assert.match(app, /\/coming-soon/);
+});
+
+test('a coach seat without media stays shut when Pro is locked', () => {
+  reset();
+  const issued = issueInstructorInvite({
+    email: 'coach-bot@example.com',
+    presetId: 'coach',
+    origin: 'https://advantagebjjtimer.com',
+    token: 'coach-locked',
+  });
+  assert.equal(issued.ok, true);
+  if (!issued.ok) return;
+  const accepted = acceptInstructorInvite('coach-locked');
+  assert.equal(accepted.ok, true);
+  if (!accepted.ok) return;
+  const door = doorFrom(false, accepted.seat);
+  assert.equal(seatGrantsMediaConsole(accepted.seat), false);
+  assert.equal(mediaConsoleDoorOpen(door), false);
+  assert.equal(homeConsoleLabel(door), null);
+  assert.deepEqual(consoleHubs(door, accepted.seat.permissions), []);
+  assert.equal(mediaFolderDoorOpen(door, accepted.seat.permissions, 'gallery'), false);
+});
+
+test('a coach seat with Gallery upload opens Gallery when this browser Pro unlock is off', () => {
+  reset();
+  const issued = issueInstructorInvite({
+    email: 'coach-gallery@example.com',
+    presetId: 'coach',
+    origin: 'https://advantagebjjtimer.com',
+    token: 'coach-gallery',
+    permissions: { galleryUpload: true },
+  });
+  assert.equal(issued.ok, true);
+  if (!issued.ok) return;
+  const accepted = acceptInstructorInvite('coach-gallery');
+  assert.equal(accepted.ok, true);
+  if (!accepted.ok) return;
+  assert.equal(accepted.seat.permissions.galleryUpload, true);
+  assert.equal(accepted.seat.permissions.eventsAccess, false);
+  assert.equal(instructorSeatBinderLabel(accepted.seat.presetId, accepted.seat.permissions), 'Coach · adjusted');
+  const door = doorFrom(false, accepted.seat);
+  assert.equal(mediaConsoleDoorOpen(door), true);
+  assert.equal(mediaFolderDoorOpen(door, accepted.seat.permissions, 'gallery'), true);
+  assert.equal(mediaFolderDoorOpen(door, accepted.seat.permissions, 'events'), false);
+  assert.equal(mediaFolderDoorOpen(door, accepted.seat.permissions, 'shop'), false);
+  const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+  assert.match(app, /closedDoorPath\(door\.seated\)/);
+  assert.match(app, /\/coming-soon/);
+});
+
+test('a stored Program Director binder with factory coach switches is read as the role menus', () => {
+  reset();
+  localStorage.setItem(
+    INSTRUCTOR_SEATS_STORAGE_KEY,
+    JSON.stringify({
+      version: 1,
+      deviceGymId: 'device-pd',
+      seats: [
+        {
+          id: 'pd-old',
+          gymId: 'device-pd',
+          email: 'program-director-bot-one-retest@example.com',
+          status: 'active',
+          issuedAt: 1,
+          presetId: 'program-director',
+          permissions: defaultInstructorPermissions(),
+          inviteToken: 'pd-old',
+        },
+      ],
+    }),
+  );
+  localStorage.setItem(INSTRUCTOR_SEAT_SESSION_KEY, JSON.stringify({ version: 1, seatId: 'pd-old' }));
+  const seat = readCurrentSeat();
+  assert.ok(seat);
+  if (!seat) return;
+  assert.equal(instructorSeatBinderLabel(seat.presetId, seat.permissions), 'Program director');
+  assert.equal(seat.permissions.galleryUpload, true);
+  assert.equal(seat.permissions.eventsAccess, true);
+  assert.equal(seat.permissions.proShopAccess, true);
+  const door = doorFrom(false, seat);
+  assert.equal(homeConsoleLabel(door), 'Open Media Console');
+
+  const stripped = {
+    ...instructorPresetPermissions('program-director'),
+    galleryUpload: false,
+    eventsAccess: false,
+    proShopAccess: false,
+  };
+  const saved = updateInstructorSeatPermissions('pd-old', stripped, 'program-director');
+  assert.equal(saved.ok, true);
+  const after = listInstructorSeats().find((row) => row.id === 'pd-old');
+  assert.equal(after?.permissions.galleryUpload, false);
+  assert.equal(after?.permissions.eventsAccess, false);
+  assert.equal(seatGrantsMediaConsole(after ?? null), false);
+});
+
+test('role binder paint lock 2026-10-11 keeps coach brown and program director purple', () => {
+  reset();
+  const css = readFileSync(new URL('../index.css', import.meta.url), 'utf8');
+  const invite = readFileSync(new URL('../components/InstructorInvitePanel.tsx', import.meta.url), 'utf8');
+  const rule = (name: string) => {
+    const match = css.match(new RegExp(`\\.role-plan--${name}\\s*\\{[^}]*\\}`));
+    assert.ok(match, name);
+    return match[0];
+  };
+  assert.match(rule('assistant-coach'), /#3b82f6/);
+  assert.match(rule('coach'), /#e0a36a/);
+  assert.match(rule('program-director'), /#b057f7/);
+  assert.match(rule('instructors'), /#f04343/);
+  assert.doesNotMatch(rule('coach'), /#c084fc|#e0b34a/);
+  assert.doesNotMatch(rule('program-director'), /#c084fc|#e0b34a/);
+  assert.match(css, /Paint lock 2026-10-11/);
+  assert.match(invite, /coach: '\/instructor-binders\/coach.png'/);
+  assert.match(invite, /'program-director': '\/instructor-binders\/program-director.png'/);
+  assert.doesNotMatch(invite, /coach-purple|program-director-brown/);
+
+  const root = new URL('../../public/instructor-binders/', import.meta.url);
+  const retired = ['coach-purple.png', 'program-director-brown.png', 'assistant-coach-blue.png', 'instructor-black.png'];
+  for (const name of retired) {
+    assert.equal(existsSync(new URL(name, root)), false, name);
+  }
+  const stamped: Record<string, string> = {
+    'assistant-coach.png': 'af5421035d003570cbc7df4e4c082643db19206decffb4c5f490ea41bc54f890',
+    'coach.png': '5255c2b82d57a9b151b5e6e35442cf1785b6c429d8bfc72ecd624b1b4fde9804',
+    'program-director.png': 'a5fa2bda7e0d248172665e398e892352bb52e08cb63690d54a3ff6f9eebc9745',
+    'instructor.png': '45f4a0834801bcab4c02507f6ffaf749bc7fd303e4749736eeb3deff7059fc79',
+  };
+  for (const [name, hash] of Object.entries(stamped)) {
+    const bytes = readFileSync(new URL(name, root));
+    assert.equal(createHash('sha256').update(bytes).digest('hex'), hash, name);
+  }
+
+  for (const presetId of ['assistant-coach', 'coach', 'program-director', 'instructors'] as const) {
+    const issued = issueInstructorInvite({
+      email: `${presetId}@paint.test`,
+      presetId,
+      permissions: instructorPresetPermissions(presetId),
+      origin: 'https://advantage.test',
+      token: `paint-${presetId}`,
+    });
+    assert.equal(issued.ok, true);
+    if (!issued.ok) return;
+    assert.equal(issued.seat.presetId, presetId);
+    assert.deepEqual(issued.seat.permissions, instructorPresetPermissions(presetId));
+    assert.equal(instructorSeatBinderLabel(issued.seat.presetId, issued.seat.permissions), instructorPreset(presetId).label);
+  }
 });

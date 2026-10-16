@@ -1,6 +1,8 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import { BeltRail } from '../components/BeltRail';
 import { HomeMark } from '../components/HomeMark';
+import { PlayExitMark } from '../components/PlayExitMark';
+import { useSubmenuBack } from '../hooks/useSubmenuBack';
 import { SiteFooter } from '../components/SiteFooter';
 import {
   COMPETITION_READY_CARD,
@@ -12,6 +14,7 @@ import {
   GAME_PLAN_LABEL,
   RANKINGS_RESULTS_CARD,
 } from '../lib/coachCopy';
+import { COMPETITOR_ROSTER_PATH } from '../lib/productNames';
 
 /**
  * Light paint options for this header, so the preview can be compared.
@@ -27,22 +30,22 @@ function headerLook(value: string | null): HeaderLook {
 
 const LINKS = [
   {
-    to: '/roster?from=competitors',
+    to: COMPETITOR_ROSTER_PATH,
     title: COMPETITOR_ROSTER_LABEL,
     body: COMPETITOR_ROSTER_CARD,
-    belt: 'brown',
+    belt: 'blue',
   },
   {
     to: '/competition-ready',
     title: COMPETITION_READY_LABEL,
     body: COMPETITION_READY_CARD,
-    belt: 'blue',
+    belt: 'purple',
   },
   {
     to: '/game-plan',
     title: GAME_PLAN_LABEL,
     body: GAME_PLAN_CARD,
-    belt: 'purple',
+    belt: 'brown',
   },
   {
     to: '/rankings',
@@ -55,11 +58,13 @@ const LINKS = [
 export function CompetitorManagementPage() {
   const [searchParams] = useSearchParams();
   const look = headerLook(searchParams.get('look'));
+  const back = useSubmenuBack() ?? '/suite';
 
   return (
     <main className="home home--pro home--suite">
       <div className="home__inner">
-        <HomeMark to="/competition" />
+        <PlayExitMark to={back} />
+        <HomeMark to="/" />
         <section className="suite competitor-hub">
           <header className={`competitor-hub__header competitor-hub__header--${look}`} data-header-look={look}>
             {look === 'belt' ? <BeltRail kind="tournament" /> : null}

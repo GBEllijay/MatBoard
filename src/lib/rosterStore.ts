@@ -5,6 +5,14 @@
 
 import { clipCompetitorPhoto } from './competitorPhoto.ts';
 import {
+  competitionSnapshot,
+  planMatchesCoachResultQuery,
+  type ImportedCompetitionPlan,
+  type ImportedRank,
+} from './progress/competition.ts';
+import { parseProgressPacket } from './progress/format.ts';
+import { PROGRESS_BELTS, type ProgressBelt } from './progress/types.ts';
+import {
   emptyGamePlan,
   normalizeGamePlan,
   normalizeGamePlanMap,
@@ -28,6 +36,8 @@ export const NAME_MAX = 80;
 export const GYM_MAX = 80;
 export const DIVISION_MAX = 80;
 export const BELT_MAX = 40;
+/** What the last promotion was, such as "3rd stripe, white belt". */
+export const LAST_PROMOTION_DETAIL_MAX = 80;
 
 export const ADULT_BELTS = ['White', 'Blue', 'Purple', 'Brown', 'Black'] as const;
 export const KIDS_BELTS = ['Grey', 'Yellow', 'Orange', 'Green'] as const;
@@ -47,6 +57,11 @@ export type Student = {
    */
   photo: string;
   lastPromotion: string;
+  /**
+   * What the last promotion was, in the coach's words. Optional.
+   * Older saves omit this; readers treat a missing value as empty.
+   */
+  lastPromotionDetail: string;
   /** Competitor Notes. Stays on this card. Older saves may also have knownInjuries; that field is dropped on read. */
   note: string;
   /** Present today for the in-house tournament. Off until someone checks them in. */
@@ -101,9 +116,14 @@ export type RosterState = {
    * Unknown maps on this save stay in place beside these two.
    */
   gamePlans: Record<string, CompetitorGamePlan>;
+  /**
+   * A student's competition plan, keyed by competitor id.
+   * Imported from their progress file on this device. Older saves omit it.
+   */
+  competitionPlans: Record<string, ImportedCompetitionPlan>;
 };
 
-const ROSTER_OWNED_KEYS = new Set(['version', 'students', 'gamePlans', 'ready']);
+const ROSTER_OWNED_KEYS = new Set(['version', 'students', 'gamePlans', 'ready', 'competitionPlans']);
 
 /** Name, belt, optional gym, and optional division. Notes and promotion dates stay on the roster card. */
 export type RosterPrefill = {
@@ -119,6 +139,8 @@ export type StudentDraft = {
   division: string;
   gym: string;
   lastPromotion: string;
+  /** Optional. Omit on older drafts; save treats that as empty. */
+  lastPromotionDetail?: string;
   note: string;
   /** Compact face photo data URL. Omit or blank for no photo. */
   photo?: string;
@@ -139,7 +161,7 @@ export function createStudentId(): string {
 }
 
 export function defaultRoster(): RosterState {
-  return { version: 1, students: [], ready: {}, gamePlans: {} };
+  return { version: 1, students: [], ready: {}, gamePlans: {}, competitionPlans: {} };
 }
 
 export function emptyReadyFlags(): Record<ReadyItemId, boolean> {
@@ -221,7 +243,16 @@ export function dropSiblingCompetitor(extra: Record<string, unknown>, id: string
 }
 
 export function emptyDraft(): StudentDraft {
-  return { name: '', belt: '', division: '', gym: '', lastPromotion: '', note: '', photo: '' };
+  return {
+    name: '',
+    belt: '',
+    division: '',
+    gym: '',
+    lastPromotion: '',
+    lastPromotionDetail: '',
+    note: '',
+    photo: '',
+  };
 }
 
 export function draftFromStudent(student: Student): StudentDraft {
@@ -231,6 +262,7 @@ export function draftFromStudent(student: Student): StudentDraft {
     division: student.division,
     gym: student.gym,
     lastPromotion: student.lastPromotion,
+    lastPromotionDetail: student.lastPromotionDetail,
     note: student.note,
     photo: student.photo,
   };
@@ -323,6 +355,10 @@ export function clipDivision(value: string): string {
   return value.normalize('NFC').trim().slice(0, DIVISION_MAX);
 }
 
+export function clipLastPromotionDetail(value: string): string {
+  return value.normalize('NFC').trim().slice(0, LAST_PROMOTION_DETAIL_MAX);
+}
+
 export function clipNote(value: string): string {
   return value.trim().slice(0, NOTE_MAX);
 }
@@ -354,6 +390,7 @@ export function studentFromInput(
     gym: clipGym(input.gym ?? ''),
     photo: clipCompetitorPhoto(input.photo),
     lastPromotion: normalizeDate(input.lastPromotion ?? ''),
+    lastPromotionDetail: clipLastPromotionDetail(input.lastPromotionDetail ?? ''),
     note: clipNote(input.note ?? ''),
     checkedIn: parseCheckedIn(input.checkedIn),
   };
@@ -394,7 +431,11 @@ export function sortStudents(students: Student[]): Student[] {
   return [...students].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
 }
 
-export function searchStudents(students: Student[], query: string): Student[] {
+export function searchStudents(
+  students: Student[],
+  query: string,
+  plans?: Readonly<Record<string, ImportedCompetitionPlan>>,
+): Student[] {
   const eligible = sortStudents(students.filter(canPrefill));
   const q = query.trim().toLowerCase();
   if (!q) return eligible;
@@ -409,6 +450,7 @@ export function searchStudents(students: Student[], query: string): Student[] {
       else if (name.includes(q)) score = 2;
       else if (belt.startsWith(q) || belt.includes(q)) score = 1;
       else if (division.startsWith(q) || division.includes(q)) score = 1;
+      else if (plans && planMatchesCoachResultQuery(plans[student.id], q)) score = 1;
       else return null;
       return { student, score };
     })
@@ -453,6 +495,7 @@ export function confirmManualCompetitor(
         division: '',
         gym: '',
         lastPromotion: '',
+        lastPromotionDetail: '',
         note: '',
       },
       options.rosterList === 'student' ? { rosterList: 'student' } : undefined,
@@ -476,6 +519,7 @@ export function normalizeStudent(raw: unknown): Student | null {
     gym: typeof row.gym === 'string' ? row.gym : '',
     photo: typeof row.photo === 'string' ? row.photo : '',
     lastPromotion: typeof row.lastPromotion === 'string' ? row.lastPromotion : '',
+    lastPromotionDetail: typeof row.lastPromotionDetail === 'string' ? row.lastPromotionDetail : '',
     note: typeof row.note === 'string' ? row.note : '',
     checkedIn: row.checkedIn,
   });
@@ -556,7 +600,78 @@ export function normalizeRoster(raw: unknown): RosterState {
     students: sorted,
     ready: normalizeReadyMap(parsed.ready, ids),
     gamePlans: normalizeGamePlanMap(parsed.gamePlans, ids),
+    competitionPlans: normalizeCompetitionPlans(parsed.competitionPlans, ids),
   };
+}
+
+function normalizeCompetitionPlans(raw: unknown, studentIds: Set<string>): Record<string, ImportedCompetitionPlan> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const plans: Record<string, ImportedCompetitionPlan> = {};
+  for (const [id, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!studentIds.has(id)) continue;
+    const plan = normalizeCompetitionPlan(value);
+    if (plan) plans[id] = plan;
+  }
+  return plans;
+}
+
+function rankBelt(rank: ImportedRank | undefined): ProgressBelt {
+  if (rank && (PROGRESS_BELTS as readonly string[]).includes(rank.belt)) return rank.belt;
+  return 'white';
+}
+
+function rankPacket(rank: ImportedRank | undefined): Omit<ImportedRank, 'belt'> | undefined {
+  if (!rank) return undefined;
+  return {
+    tapeCount: rank.tapeCount,
+    awardedOn: rank.awardedOn,
+    tapeDates: rank.tapeDates,
+    history: rank.history,
+    lineage: rank.lineage ?? [],
+    pictureNote: rank.pictureNote ?? '',
+    pictureCount: rank.pictureCount ?? 0,
+  };
+}
+
+function normalizeCompetitionPlan(raw: unknown): ImportedCompetitionPlan | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const row = raw as Partial<ImportedCompetitionPlan>;
+  const studentId = typeof row.studentId === 'string' ? row.studentId.trim() : '';
+  if (!studentId) return null;
+  const fake = {
+    schemaVersion: 2,
+    kind: 'student-progress-report',
+    id: 'roster-import',
+    studentId,
+    updatedAt: typeof row.sourceUpdatedAt === 'number' ? row.sourceUpdatedAt : 0,
+    profile: {
+      id: studentId,
+      displayName: typeof row.displayName === 'string' ? row.displayName : '',
+      gymName: '',
+      belt: rankBelt(row.rank),
+      startedOn: '',
+      licenseSource: '',
+    },
+    rubric: { id: 'rubric-import', levels: [] },
+    checklist: [],
+    journal: [],
+    calendar: [],
+    goals: [],
+    competition: {
+      games: row.games,
+      tournaments: row.tournaments,
+      weighIns: row.weighIns,
+      results: row.results,
+      weightUnit: row.weightUnit,
+    },
+    rank: rankPacket(row.rank),
+  };
+  const parsed = parseProgressPacket(JSON.stringify(fake));
+  if (!parsed.ok || parsed.value.kind !== 'student-progress-report' || !parsed.value.competition) return null;
+  return competitionSnapshot(
+    parsed.value,
+    typeof row.importedAt === 'number' && Number.isFinite(row.importedAt) ? row.importedAt : parsed.value.updatedAt,
+  );
 }
 
 function readStorage(): string | null {
@@ -609,8 +724,9 @@ function commit(
   students: Student[],
   gamePlans: Record<string, CompetitorGamePlan> = state.gamePlans,
   ready: Record<string, CompetitorReady> = state.ready,
+  competitionPlans: Record<string, ImportedCompetitionPlan> = state.competitionPlans,
 ): void {
-  persist({ version: 1, students, gamePlans, ready });
+  persist({ version: 1, students, gamePlans, ready, competitionPlans });
 }
 
 function writeGamePlan(studentId: string, plan: CompetitorGamePlan): void {
@@ -659,6 +775,8 @@ export function updateStudent(id: string, draft: Partial<StudentDraft>): Student
     gym: draft.gym ?? current.gym,
     photo: draft.photo !== undefined ? draft.photo : current.photo,
     lastPromotion: draft.lastPromotion ?? current.lastPromotion,
+    lastPromotionDetail:
+      draft.lastPromotionDetail !== undefined ? draft.lastPromotionDetail : current.lastPromotionDetail,
     note: draft.note ?? current.note,
     checkedIn: current.checkedIn,
   });
@@ -753,11 +871,38 @@ export function removeStudent(id: string): void {
   delete gamePlans[id];
   const ready = { ...state.ready };
   delete ready[id];
+  const competitionPlans = { ...state.competitionPlans };
+  delete competitionPlans[id];
   commit(
     state.students.filter((row) => row.id !== id),
     gamePlans,
     ready,
+    competitionPlans,
   );
+}
+
+/**
+ * Read a student progress file onto this competitor's card.
+ * The plan stays in the roster save on this device. Advantage does not host it.
+ * Returns an error message, or an empty string when the plan is saved.
+ */
+export function importStudentCompetition(competitorId: string, text: string, now = Date.now()): string {
+  if (!state.students.some((row) => row.id === competitorId)) return 'That competitor is not on this device.';
+  const parsed = parseProgressPacket(text);
+  if (!parsed.ok) return parsed.errors[0] ?? 'Could not read that file.';
+  if (parsed.value.kind !== 'student-progress-report') return 'That file is not a student progress report.';
+  const plan = competitionSnapshot(parsed.value, now);
+  commit(state.students, state.gamePlans, state.ready, { ...state.competitionPlans, [competitorId]: plan });
+  return '';
+}
+
+export function importedPlanForName(roster: RosterState, name: string): ImportedCompetitionPlan | undefined {
+  const key = name.trim().toLowerCase();
+  if (!key) return undefined;
+  const student = roster.students.find(
+    (row) => row.name.trim().toLowerCase() === key && roster.competitionPlans[row.id],
+  );
+  return student ? roster.competitionPlans[student.id] : undefined;
 }
 
 export function resetRoster(): void {

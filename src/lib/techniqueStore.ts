@@ -4,6 +4,7 @@ import {
   clampDrillSec,
   clampDriveFileId,
   DEFAULT_DRILL_SEC,
+  emptyVideoPlan,
   pickAddableVideos,
   planFromFlatClips,
   sanitizeVideoPlan,
@@ -18,6 +19,9 @@ import { mimeFromFile, VIDEO_ACCEPT } from './photoStore';
 import { assertOriginRoom, isStorageQuotaError, StorageQuotaError } from './storageQuota.ts';
 import { readCurriculumClip } from './curriculumClips.ts';
 import { curriculumReferencedClipIds, loadCurriculumArchive } from './competitionCurriculum.ts';
+import { lessonPlansReferencingClip } from './planVideos.ts';
+import { otherDateClipIds, saveTechniquePlanOnDate, storedTechniquePlan } from './techniquePlanDates.ts';
+import { localDateKey } from './trainingNotesStore.ts';
 
 export {
   canAssignClip,
@@ -47,7 +51,7 @@ export const TECHNIQUE_FOLDER = {
   mimePrefix: 'video/',
   labelPrefix: 'Clip',
   emptyCopy:
-    'Add video opens Record or Pick from gallery — one clip per card. Clips stay on this device until Google Drive is connected.',
+    'Add video opens Record or Pick from gallery — one clip per card. Connect Google Drive, then save this day, to copy clips into the gym Drive folder for the gym owner and instructors. Until then, they stay on this device and are not shared yet.',
   orderHint: 'Tap a card to select it. Start loops that clip.',
 } as const;
 
@@ -136,7 +140,9 @@ async function readPrefs(): Promise<{ plan: unknown; selectedId: unknown; drillS
   }
 }
 
-export async function saveTechniquePlan(plan: VideoPlan): Promise<void> {
+export async function saveTechniquePlan(plan: VideoPlan, dateKey = localDateKey()): Promise<void> {
+  saveTechniquePlanOnDate(dateKey, plan);
+  if (dateKey !== localDateKey()) return;
   const db = await openDb();
   const tx = db.transaction(PREFS, 'readwrite');
   tx.objectStore(PREFS).put(plan, PLAN_KEY);
@@ -161,6 +167,7 @@ export async function loadTechniqueBoard(): Promise<{ clips: TechniqueClip[]; pl
   let plan: VideoPlan;
   let changed: boolean;
   const reserved = reservedCurriculumClipIds();
+  for (const clipId of otherDateClipIds(localDateKey())) reserved.add(clipId);
   if (version === 2) {
     const sanitized = sanitizeVideoPlan(rawPlan, clipIds);
     const placed = assignOrphanClips(sanitized.plan, clipIds, reserved);
@@ -177,7 +184,21 @@ export async function loadTechniqueBoard(): Promise<{ clips: TechniqueClip[]; pl
     changed = true;
   }
   if (changed) await saveTechniquePlan(plan);
+  else saveTechniquePlanOnDate(localDateKey(), plan);
   return { clips, plan };
+}
+
+/** Today's board, or an earlier day's snapshot. A past day does not show today's clips. */
+export async function loadTechniqueBoardForDate(
+  dateKey: string,
+): Promise<{ clips: TechniqueClip[]; plan: VideoPlan }> {
+  if (dateKey === localDateKey()) return loadTechniqueBoard();
+  const clips = await listTechniqueClips();
+  const saved = storedTechniquePlan(
+    dateKey,
+    clips.map((clip) => clip.id),
+  );
+  return { clips, plan: saved ?? emptyVideoPlan() };
 }
 
 function reservedCurriculumClipIds(): Set<string> {
@@ -291,6 +312,7 @@ export async function attachClipToSlot(
   plan: VideoPlan,
   slotId: string,
   file: File,
+  driveFileId: string | null = null,
 ): Promise<{ plan: VideoPlan; clips: TechniqueClip[]; status: SlotWriteStatus }> {
   const slot = plan.slots.find((item) => item.slotId === slotId);
   const clips = await listTechniqueClips();
@@ -316,7 +338,7 @@ export async function attachClipToSlot(
     const db = await openDb();
     const tx = db.transaction(CLIPS, 'readwrite');
     const store = tx.objectStore(CLIPS);
-    if (slot.clipId) store.delete(slot.clipId);
+    if (slot.clipId && !lessonPlansReferencingClip(slot.clipId)) store.delete(slot.clipId);
     store.put(row);
     await txDone(tx);
   } catch (error) {
@@ -330,7 +352,7 @@ export async function attachClipToSlot(
   // Nothing is uploaded to an Advantage server. The blob is not deleted after upload.
   const next = selectSlot(
     setSlotClip(plan, slotId, clipId, {
-      driveFileId: null,
+      driveFileId,
       mediaName: picked.name || row.label,
       mediaMime: row.mime,
     }),
@@ -357,10 +379,12 @@ export async function clearSlotClip(
     const clips = await listTechniqueClips();
     return { plan, clips, status: 'empty' };
   }
-  const db = await openDb();
-  const tx = db.transaction(CLIPS, 'readwrite');
-  tx.objectStore(CLIPS).delete(slot.clipId);
-  await txDone(tx);
+  if (!lessonPlansReferencingClip(slot.clipId)) {
+    const db = await openDb();
+    const tx = db.transaction(CLIPS, 'readwrite');
+    tx.objectStore(CLIPS).delete(slot.clipId);
+    await txDone(tx);
+  }
   const next = setSlotClip(plan, slotId, null);
   await saveTechniquePlan(next);
   return { plan: next, clips: await listTechniqueClips(), status: 'removed' };

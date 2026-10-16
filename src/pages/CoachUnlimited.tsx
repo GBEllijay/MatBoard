@@ -4,6 +4,7 @@ import { BeltHeader } from '../components/BeltHeader';
 import { BeltRail } from '../components/BeltRail';
 import { DriveConnectCard } from '../components/DriveConnectCard';
 import { HomeMark } from '../components/HomeMark';
+import { PlayExitMark } from '../components/PlayExitMark';
 import { useCurrentSeat } from '../components/SeatSessionBar';
 import { SiteFooter } from '../components/SiteFooter';
 import { coachToolVisible } from '../lib/instructorSeats';
@@ -35,37 +36,43 @@ export function CoachUnlimitedPage() {
   return (
     <main className="home home--pro home--suite">
       <div className="home__inner">
-        <HomeMark to="/pro" />
+        <PlayExitMark to="/pro" />
+        <HomeMark to="/" />
         <section className="suite instructor-hub">
-          <BeltHeader kind="brown" title="Advantage - Coach Unlimited" />
+          <BeltHeader kind="brown" worn title="Advantage - Coach Unlimited" />
           <nav className="instructor-jumps" aria-label={INSTRUCTOR_COACH_ENTRY}>
             <div className="pro-hubs">
               {tools.map((tool) => (
                 <Link key={tool.to} className="pro-hub" to={tool.to}>
-                  <BeltRail kind={tool.belt} />
+                  <BeltRail kind={tool.belt} stripes={'stripes' in tool ? tool.stripes : undefined} />
                   <span>{tool.title}</span>
                 </Link>
               ))}
             </div>
           </nav>
-          {seat ? null : (
-            <article className="plan-card">
-              <p className="plan-card__kicker">{OWNER_DRIVE_KICKER}</p>
-              <strong>{OWNER_DRIVE_TITLE}</strong>
-              <span>{OWNER_DRIVE_BODY}</span>
-              {revisions.length ? (
-                <>
-                  <ul className="plan-card__revisions" aria-label="Lesson drafts waiting for Google Drive">
-                    {revisions.map((revision) => (
-                      <li key={revision.revisionId}>{lessonRevisionLabel(revision)}</li>
-                    ))}
-                  </ul>
-                  <span>{OWNER_DRIVE_QUEUE}</span>
-                </>
-              ) : null}
-            </article>
-          )}
-          {seat ? null : <DriveConnectCard />}
+          <article className="plan-card">
+            <p className="plan-card__kicker">{OWNER_DRIVE_KICKER}</p>
+            <strong>{OWNER_DRIVE_TITLE}</strong>
+            <span>{OWNER_DRIVE_BODY}</span>
+            {revisions.length ? (
+              <>
+                <ul className="plan-card__revisions" aria-label="Lesson drafts waiting for Google Drive">
+                  {revisions.map((revision) => (
+                    <li key={revision.revisionId}>
+                      <Link
+                        className="plan-card__review-link"
+                        to={`/review?revision=${encodeURIComponent(revision.revisionId)}`}
+                      >
+                        {lessonRevisionLabel(revision)}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+                <span>{OWNER_DRIVE_QUEUE}</span>
+              </>
+            ) : null}
+          </article>
+          <DriveConnectCard />
         </section>
         <SiteFooter />
       </div>

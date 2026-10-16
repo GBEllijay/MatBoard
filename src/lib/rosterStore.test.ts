@@ -13,9 +13,11 @@ import {
   findStudentByName,
   formatPromotion,
   getRoster,
+  LAST_PROMOTION_DETAIL_MAX,
   normalizeDate,
   normalizeRoster,
   prefillFields,
+  rosterSavePayload,
   READY_EXTRA_MAX,
   READY_ITEMS,
   addReadyExtra,
@@ -50,6 +52,7 @@ function student(partial: Partial<Student> & Pick<Student, 'id' | 'name'>): Stud
     photo: '',
     checkedIn: false,
     lastPromotion: '2026-03-12',
+    lastPromotionDetail: '',
     note: 'Keep this off the scoreboard',
     ...partial,
   };
@@ -74,7 +77,24 @@ describe('studentFromInput', () => {
     assert.equal(next.photo, '');
     assert.equal(next.checkedIn, false);
     assert.equal(next.lastPromotion, '2026-03-12');
+    assert.equal(next.lastPromotionDetail, '');
     assert.equal(next.note, 'Left knee');
+  });
+
+  it('keeps an optional last promotion detail and clips it to 80 characters', () => {
+    const next = studentFromInput({
+      name: 'Sam',
+      belt: 'White',
+      lastPromotionDetail: '  third stripe on white belt  ',
+    });
+    assert.ok(next);
+    assert.equal(next.lastPromotionDetail, 'third stripe on white belt');
+    const long = studentFromInput({
+      name: 'Sam',
+      belt: 'White',
+      lastPromotionDetail: ` ${'x'.repeat(LAST_PROMOTION_DETAIL_MAX + 25)} `,
+    });
+    assert.equal(long?.lastPromotionDetail.length, LAST_PROMOTION_DETAIL_MAX);
   });
 
   it('keeps an optional division and clips a long one', () => {
@@ -119,6 +139,7 @@ describe('prefillFields', () => {
     });
     assert.equal('note' in (prefillFields(row) ?? {}), false);
     assert.equal('lastPromotion' in (prefillFields(row) ?? {}), false);
+    assert.equal('lastPromotionDetail' in (prefillFields(row) ?? {}), false);
     assert.equal(canPrefill({ name: 'Alex', belt: '' }), false);
   });
 });
@@ -148,9 +169,46 @@ describe('normalizeRoster', () => {
     assert.equal(next.students.find((row) => row.name === 'Sam')?.division, 'Adult Blue');
     assert.equal(next.students.find((row) => row.name === 'Alex')?.division, '');
     assert.equal(next.students.find((row) => row.name === 'Sam')?.checkedIn, false);
+    assert.equal(next.students.find((row) => row.name === 'Sam')?.lastPromotionDetail, '');
+    assert.equal(next.students.find((row) => row.name === 'Alex')?.lastPromotionDetail, '');
     assert.equal(next.students.find((row) => row.name === 'Alex')?.checkedIn, false);
     assert.equal(next.students.find((row) => row.name === 'Sam')?.photo, '');
     assert.equal(next.students.some((row) => row.name === 'Duplicate id'), false);
+  });
+
+  it('loads an older roster without last promotion detail and round-trips a saved one', () => {
+    const legacy = normalizeRoster({
+      version: 1,
+      students: [{ id: 'sam', name: 'Sam', belt: 'Blue', lastPromotion: '2026-03-12', note: 'Quiet' }],
+    });
+    assert.equal(legacy.students[0]?.lastPromotion, '2026-03-12');
+    assert.equal(legacy.students[0]?.lastPromotionDetail, '');
+
+    resetRoster();
+    const added = addStudent({
+      name: 'Ada Cruz',
+      belt: 'White',
+      division: 'Kids Gi',
+      gym: '',
+      lastPromotion: '2026-04-01',
+      lastPromotionDetail: 'third stripe on white belt',
+      note: 'Tape',
+    });
+    assert.ok(added);
+    const edited = updateStudent(added.id, { lastPromotionDetail: 'blue belt' });
+    assert.equal(edited?.lastPromotionDetail, 'blue belt');
+    assert.equal(edited?.lastPromotion, '2026-04-01');
+    const kept = updateStudent(added.id, { note: 'Tape the knee' });
+    assert.equal(kept?.lastPromotionDetail, 'blue belt');
+
+    const payload = rosterSavePayload(getRoster(), { handoff: { folder: 'gym' } });
+    const reloaded = normalizeRoster(JSON.parse(JSON.stringify(payload)));
+    const row = reloaded.students.find((student) => student.name === 'Ada Cruz');
+    assert.equal(row?.lastPromotion, '2026-04-01');
+    assert.equal(row?.lastPromotionDetail, 'blue belt');
+    assert.equal(row?.note, 'Tape the knee');
+    assert.equal((payload.handoff as { folder: string }).folder, 'gym');
+    resetRoster();
   });
 });
 
@@ -182,6 +240,21 @@ describe('searchStudents', () => {
     assert.equal(
       searchStudents(rows, '').some((row) => row.id === '4'),
       false,
+    );
+  });
+
+  it('ranks the same closest name for a typed prefix on the bracket and the scoreboard', () => {
+    const roster = [
+      student({ id: 'mila', name: 'Mila Chen', belt: 'White' }),
+      student({ id: 'mia', name: 'Mia Santos', belt: 'Grey' }),
+      student({ id: 'sam', name: 'Sam Miller', belt: 'Blue' }),
+      student({ id: 'open', name: 'No Belt', belt: '' }),
+    ];
+    const ranked = searchStudents(roster, 'mi');
+    assert.equal(ranked[0]?.name, 'Mia Santos');
+    assert.deepEqual(
+      ranked.map((row) => row.name),
+      ['Mia Santos', 'Mila Chen', 'Sam Miller'],
     );
   });
 });

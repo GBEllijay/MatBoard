@@ -6,6 +6,7 @@
  */
 
 import { parseMmSs } from './format.ts';
+import { asRecord, clampText } from './plainValue.ts';
 import {
   CLASS_DESIGNATION_MAX,
   CLASS_TIME_MAX,
@@ -18,6 +19,7 @@ import {
   UNLABELED_CLASS_LABEL,
   isWithinRetention,
   localDateKey,
+  planDayStamp,
 } from './trainingNotesStore.ts';
 
 export const CURRICULUM_STORAGE_KEY = 'matboard.coach.competitionCurriculum.v1';
@@ -102,15 +104,6 @@ function createId(prefix: string): string {
   idSeq += 1;
   const rand = Math.random().toString(36).slice(2, 8);
   return `${prefix}-${Date.now().toString(36)}-${idSeq.toString(36)}-${rand}`;
-}
-
-function clampText(value: unknown, max: number): string {
-  return typeof value === 'string' ? value.slice(0, max) : '';
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  return value as Record<string, unknown>;
 }
 
 export function blockHeading(block: Pick<CurriculumBlock, 'kind' | 'title'>): string {
@@ -449,6 +442,52 @@ export function curriculumListLabel(plan: CurriculumPlan): string {
 
 export function plansOnCurriculumDay(archive: CurriculumArchive, dateKey: string): CurriculumPlan[] {
   return archive.days[dateKey]?.plans ?? [];
+}
+
+export type CurriculumPlanHit = {
+  dateKey: string;
+  planId: string;
+  label: string;
+};
+
+/** Match coach, class, time, block text, or the date. Empty query matches nothing. */
+export function searchCurriculumPlans(
+  archive: CurriculumArchive,
+  todayKey: string,
+  query: string,
+): CurriculumPlanHit[] {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return [];
+  const hits: CurriculumPlanHit[] = [];
+  const keys = Object.keys(archive.days)
+    .filter((dateKey) => isWithinRetention(dateKey, todayKey))
+    .sort();
+  for (const dateKey of keys) {
+    for (const plan of archive.days[dateKey]?.plans ?? []) {
+      const haystack = [
+        dateKey,
+        planDayStamp(dateKey),
+        plan.coachName,
+        plan.classDesignation,
+        plan.classTime,
+        plan.closing,
+        ...plan.blocks.flatMap((block) => [block.title, block.notes, block.mediaName]),
+      ]
+        .join('\n')
+        .toLowerCase();
+      if (!haystack.includes(needle)) continue;
+      const designation = plan.classDesignation.trim();
+      const who = plan.coachName.trim() || 'Coach';
+      const time = plan.classTime.trim() || 'Time';
+      const row = designation ? `${who} / ${designation} / ${time}` : `${who} · ${time}`;
+      hits.push({
+        dateKey,
+        planId: plan.id,
+        label: `${planDayStamp(dateKey)} · ${row}`,
+      });
+    }
+  }
+  return hits;
 }
 
 /** Clip ids saved on any curriculum day. Daily Training must not treat these as spare lesson clips. */

@@ -1,8 +1,15 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { useGymName } from '../hooks/useGymBrand';
+import { DRIVE_HANDOFF_SAVED, publishSeatToGym } from '../lib/driveHandoff';
+import { SITE_FEEDBACK_EMAIL } from '../lib/siteFooter';
+import { DriveHandoffGuide, useDriveConnected } from './DriveHandoffGuide';
+import { useCurrentSeat } from './SeatSessionBar';
 import {
   INSTRUCTOR_PERMISSION_FIELDS,
   INSTRUCTOR_PRESETS,
+  PRO_INSTRUCTOR_SEAT_CAP,
+  PRO_SEAT_CAP_REQUEST_NOTE,
+  countOpenInstructorSeats,
   defaultInstructorPermissions,
   instructorInviteLink,
   instructorPresetPermissions,
@@ -10,12 +17,17 @@ import {
   instructorSeatBinderLabel,
   issueInstructorInvite,
   listInstructorSeats,
+  proSeatCapBlockedCopy,
+  proSeatCapNear,
+  proSeatRemainingLabel,
+  proSeatUsageLabel,
   revokeInstructorSeat,
   subscribeInstructorSeats,
   updateInstructorSeatPermissions,
   type InstructorPermissions,
   type InstructorPresetId,
   type InstructorSeat,
+  type IssueInviteFailure,
   type SeatStatus,
 } from '../lib/instructorSeats';
 
@@ -50,10 +62,24 @@ function permissionSummary(permissions: InstructorPermissions): string {
   return on.join(' · ');
 }
 
-function issueError(reason: 'email' | 'duplicate' | 'storage'): string {
+function issueError(reason: IssueInviteFailure): string {
   if (reason === 'duplicate') return 'That email already has an open seat.';
   if (reason === 'storage') return 'This device could not save the seat.';
+  if (reason === 'cap') return proSeatCapBlockedCopy();
+  if (reason === 'owner') return 'Only the gym owner can issue invites.';
   return "Enter the instructor's email.";
+}
+
+function SeatCapRequestNote() {
+  const emailAt = PRO_SEAT_CAP_REQUEST_NOTE.indexOf(SITE_FEEDBACK_EMAIL);
+  if (emailAt < 0) return <p className="invite-cap-note">{PRO_SEAT_CAP_REQUEST_NOTE}</p>;
+  return (
+    <p className="invite-cap-note">
+      {PRO_SEAT_CAP_REQUEST_NOTE.slice(0, emailAt)}
+      <a href={`mailto:${SITE_FEEDBACK_EMAIL}`}>{SITE_FEEDBACK_EMAIL}</a>
+      {PRO_SEAT_CAP_REQUEST_NOTE.slice(emailAt + SITE_FEEDBACK_EMAIL.length)}
+    </p>
+  );
 }
 
 function useInstructorSeats(): InstructorSeat[] {
@@ -65,6 +91,7 @@ function useInstructorSeats(): InstructorSeat[] {
 export function InstructorInvitePanel() {
   const formId = useId();
   const gymName = useGymName();
+  const currentSeat = useCurrentSeat();
   const seats = useInstructorSeats();
   const [email, setEmail] = useState('');
   const [permissions, setPermissions] = useState<InstructorPermissions>(() => defaultInstructorPermissions());
@@ -77,6 +104,8 @@ export function InstructorInvitePanel() {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copyFailedId, setCopyFailedId] = useState<string | null>(null);
+  const [handoffNote, setHandoffNote] = useState<string | null>(null);
+  const driveConnected = useDriveConnected();
   const issuedRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -90,8 +119,18 @@ export function InstructorInvitePanel() {
     issuedRef.current?.scrollIntoView({ block: 'nearest' });
   }, [issued]);
 
+  if (currentSeat) {
+    return (
+      <section className="invite-owner-only" aria-label="Instructor invites">
+        <p>Only the gym owner can issue invites. This seat cannot create or send them.</p>
+      </section>
+    );
+  }
+
   const openSeats = seats.filter((seat) => seat.status === 'invited' || seat.status === 'active');
   const revokedSeats = seats.filter((seat) => seat.status === 'revoked');
+  const seatsUsed = countOpenInstructorSeats(seats);
+  const atCap = seatsUsed >= PRO_INSTRUCTOR_SEAT_CAP;
   const origin = typeof window === 'undefined' ? '' : window.location.origin;
 
   const copyLink = async (id: string, link: string) => {
@@ -115,8 +154,8 @@ export function InstructorInvitePanel() {
       origin,
     });
     if (!result.ok) {
-      setError(issueError(result.reason));
       setIssued(null);
+      setError(result.reason === 'cap' ? null : issueError(result.reason));
       return;
     }
     setError(null);
@@ -131,6 +170,10 @@ export function InstructorInvitePanel() {
     });
     setCopiedId(null);
     setCopyFailedId(null);
+    setHandoffNote(null);
+    void publishSeatToGym(result.seat).then((sent) => {
+      setHandoffNote(sent === 'saved' ? DRIVE_HANDOFF_SAVED : null);
+    });
   };
 
   return (
@@ -140,10 +183,16 @@ export function InstructorInvitePanel() {
           <p className="invite-form__kicker">Owner only · Soft beta</p>
           <strong>Generate instructor invite</strong>
           <span className="invite-form__note">
-            Pick a role, then change any switch for this person. The link stays on this
-            device. Nothing is emailed, billed, or capped.
+            Pick a role, then change any switch for this person. The role chooses which menus
+            open. Inside those menus, cloud and sharing match the owner. The link stays on this
+            device until the gym Google Drive folder carries it. Nothing is emailed or billed.
           </span>
           {gymName ? <span className="invite-gym">Gym · {gymName}</span> : null}
+          <div className="invite-seat-cap" role="status" aria-live="polite">
+            <p className="invite-seat-cap__count">{proSeatUsageLabel(seatsUsed)}</p>
+            <p className="invite-seat-cap__remaining">{proSeatRemainingLabel(seatsUsed)}</p>
+            <SeatCapRequestNote />
+          </div>
           {issued ? (
             <div className="invite-link" role="status" ref={issuedRef}>
               <div className="invite-link__copy">
@@ -168,9 +217,11 @@ export function InstructorInvitePanel() {
               {copyFailedId === 'issued' ? (
                 <span>Select the link and copy it from there.</span>
               ) : null}
+              {handoffNote ? <p role="status">{handoffNote}</p> : null}
               </div>
             </div>
           ) : null}
+          {driveConnected ? null : <DriveHandoffGuide />}
           </div>
           <label className="invite-field invite-field--lead" htmlFor={`${formId}-email`}>
             Instructor email
@@ -204,19 +255,35 @@ export function InstructorInvitePanel() {
             permissions={permissions}
             onToggle={(key) => setPermissions((current) => ({ ...current, [key]: !current[key] }))}
           />
+          {atCap ? (
+            <p className="invite-error" id={`${formId}-cap`} role="alert">
+              {proSeatCapBlockedCopy()}
+            </p>
+          ) : null}
           {error ? (
             <p className="invite-error" role="alert">
               {error}
             </p>
           ) : null}
-          <button type="submit" className="btn">
+          <button
+            type="submit"
+            className="btn"
+            disabled={atCap}
+            aria-describedby={atCap ? `${formId}-cap` : undefined}
+          >
             Issue invite
           </button>
           </div>
       </form>
 
       <section className="binder-list" aria-labelledby={`${formId}-seats`}>
-        <h3 id={`${formId}-seats`}>Binders</h3>
+        <div className="binder-list__head">
+          <h3 id={`${formId}-seats`}>Binders</h3>
+          <p className="binder-list__seats">
+            {proSeatUsageLabel(seatsUsed)} · {proSeatRemainingLabel(seatsUsed)}
+          </p>
+          {proSeatCapNear(seatsUsed) ? <SeatCapRequestNote /> : null}
+        </div>
         {openSeats.length ? (
           <ul className="invite-seats">
             {openSeats.map((seat) => (
@@ -265,8 +332,9 @@ export function InstructorInvitePanel() {
                   }}
                 onCancelRevoke={() => setConfirmId(null)}
                 onRevoke={() => {
-                  revokeInstructorSeat(seat.id);
+                  const revoked = revokeInstructorSeat(seat.id);
                   setConfirmId(null);
+                  if (revoked.ok) void publishSeatToGym(revoked.seat);
                 }}
               />
             ))}
@@ -347,6 +415,7 @@ const BINDER_COVER_NAME: Record<InstructorPresetId, string> = {
   instructors: 'Instructor',
 };
 
+/** Stamped covers. Coach is brown. Program Director is purple. Paint lock 2026-10-11. */
 const BINDER_ART: Record<InstructorPresetId, string> = {
   'assistant-coach': '/instructor-binders/assistant-coach.png',
   coach: '/instructor-binders/coach.png',
@@ -405,7 +474,7 @@ function RoleOptions({
               type="button"
               role="radio"
               aria-checked={on}
-              aria-label={`${coverName}, ${preset.plan}`}
+              aria-label={`${coverName}, ${preset.plan}. ${preset.detail.join('. ')}`}
               className={`binder-pick binder-pick--${preset.id}${on ? ' binder-pick--on' : ''}`}
               onClick={() => onSelect(preset.id)}
             >
@@ -413,6 +482,11 @@ function RoleOptions({
                 <img className="binder-pick__art" src={BINDER_ART[preset.id]} alt="" draggable={false} />
               </span>
               <PlanBadge presetId={preset.id} />
+              <span className="binder-pick__detail">
+                {preset.detail.map((line) => (
+                  <span key={line}>{line}</span>
+                ))}
+              </span>
             </button>
           );
         })}

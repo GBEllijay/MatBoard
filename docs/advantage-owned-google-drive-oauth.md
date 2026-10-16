@@ -32,10 +32,14 @@ On the live website the id always comes from that variable. A client id saved in
 6. This flow is the browser token client. A redirect URI is not required for it.
 7. Put **only the client id** in `VITE_GOOGLE_CLIENT_ID` for the hosting build.
 
-Scopes used by the app:
+Scopes used by the app (no others):
 
-- `https://www.googleapis.com/auth/drive.file` — lesson JSON the app creates
-- `https://www.googleapis.com/auth/drive.readonly` — list the chosen folder, thumbnails, and download a video the owner stored
+- `https://www.googleapis.com/auth/drive.file` — lesson JSON and videos the app creates
+- `https://www.googleapis.com/auth/drive.readonly` — list the chosen folder, including photos and videos the app did not create, plus thumbnails and download
+
+`drive.file` alone only sees files this app created or that the user opened with the Google Picker. Browsing the gym folder after Connect uses `drive.readonly`, which is already approved on this client. The app does not add a scope and does not load the Google Picker. If a saved sign-in is missing `drive.readonly`, expired, or gone, the Drive card asks the owner to reconnect and requests these same two scopes again.
+
+A Daily Lesson Plan file is structured JSON with `advantage` set to `lesson-plan` and `version` set to `1`. Opening it in Drive shows that JSON as text. The app reads it back into the Daily Lesson Plan, including technique notes and Drive file ids for videos. Older labeled text files, a coach self-export (`advantage: coach-plan`), and a review handoff packet are still read when someone picks them.
 
 `drive.readonly` is a restricted scope. While the consent screen stays in **Testing**, only listed test users can sign in. To let any Google account connect, submit the app for **Google verification** (sensitive / restricted Drive scopes) and move the consent screen to **In production**. Expect a verification review, and a security assessment if Google requires one for the restricted scope.
 
@@ -55,4 +59,4 @@ The owner screen is a **Connect with** list, not a Google-only button. `src/lib/
 
 Coach Unlimited and Advantage Pro stay in alpha until Google Drive, OneDrive, Google Photos, and iCloud all work.
 
-Google Drive (`googleDrive`) is `live`. OneDrive (`oneDrive`) is `live` in code and connects when `VITE_MICROSOFT_CLIENT_ID` is set (see `docs/advantage-owned-onedrive-oauth.md`). Google Photos (`googlePhotos`) is `live` in code and connects with this same client id when the Photos Picker API is enabled (see `docs/advantage-owned-google-photos-oauth.md`). `iCloud` is `coming-for-launch`: same interface, disabled, not implemented. Dropbox is a reserved slot from an earlier note. It is not half-built and it is not on the launch list.
+Google Drive (`googleDrive`) is `live`. OneDrive (`oneDrive`) is `live` in code and connects when `VITE_MICROSOFT_CLIENT_ID` is set (see `docs/advantage-owned-onedrive-oauth.md`). Google Photos (`googlePhotos`) is `live` in code and connects with this same client id when the Photos Picker API is enabled (see `docs/advantage-owned-google-photos-oauth.md`). `iCloud` is `coming-for-launch`: visible, not tappable, badge **Coming for launch**. Dropbox is a reserved slot from an earlier note. It is not half-built and it is not on the launch list.

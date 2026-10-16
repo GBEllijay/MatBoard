@@ -19,14 +19,24 @@ import {
   KIDS_WIN_CHEER,
   getKidsScoreboard,
   kidsBracketChromeOn,
+  kidsBracketSkinsAllowed,
   kidsLiveLine,
   kidsPointsLine,
+  kidsBracketScoring,
+  kidsShowMascot,
   kidsShowWin,
+  kidsSkinButtonSuppressed,
+  kidsSkinChromeHidden,
+  kidsBoardClass,
+  kidsSkinFromSearch,
   kidsSkinLabel,
   kidsWallpaperPath,
+  parseKidsSkin,
+  withKidsSkin,
   kidsWinLines,
   kidsWinState,
   setKidsEnabled,
+  setKidsMascot,
   setKidsSkin,
 } from './kidsScoreboard.ts';
 
@@ -55,14 +65,18 @@ test("Kids' Scoreboards is off until this device turns it on", () => {
   assert.equal(KIDS_BRACKETS_SKINS_LABEL, 'Kids Brackets Skins');
   assert.equal(KIDS_WIN_CHEER, 'Bom trabalho!');
   assert.equal(CARLOS_ASSET, '/assets/kids/carlos.webp');
-  assert.deepEqual(getKidsScoreboard(), { enabled: false, skin: 'dinos' });
+  assert.deepEqual(getKidsScoreboard(), { enabled: false, skin: 'dinos', mascot: true });
   assert.deepEqual(
     KIDS_SKINS.map((skin) => skin.label),
     ['Dinos', 'Stars & unicorns', 'Robots', 'Space', 'Ocean', 'Superheroes'],
   );
 });
 
-test('Kids bracket skins stay on the Pro suite board', () => {
+test('Kids bracket skins stay on the Pro suite and Coach Unlimited boards', () => {
+  assert.equal(kidsBracketSkinsAllowed('suite'), true);
+  assert.equal(kidsBracketSkinsAllowed('unlimited'), true);
+  assert.equal(kidsBracketSkinsAllowed('coach'), false);
+  assert.equal(kidsBracketSkinsAllowed(null), false);
   assert.equal(kidsBracketChromeOn(true, true), true);
   assert.equal(kidsBracketChromeOn(true, false), false);
   assert.equal(kidsBracketChromeOn(false, true), false);
@@ -72,20 +86,53 @@ test('Kids bracket skins stay on the Pro suite board', () => {
 test('Kids mode and skin persist on this device', () => {
   setKidsEnabled(true);
   setKidsSkin('ocean');
-  assert.deepEqual(getKidsScoreboard(), { enabled: true, skin: 'ocean' });
-  assert.equal(localStorage.getItem(KIDS_MODE_KEY), JSON.stringify({ enabled: true, skin: 'ocean' }));
+  assert.deepEqual(getKidsScoreboard(), { enabled: true, skin: 'ocean', mascot: true });
+  assert.equal(
+    localStorage.getItem(KIDS_MODE_KEY),
+    JSON.stringify({ enabled: true, skin: 'ocean', mascot: true }),
+  );
   assert.equal(kidsSkinLabel('unicorns'), 'Stars & unicorns');
   assert.equal(kidsWallpaperPath('robots'), '/assets/kids/robots.webp');
+  setKidsMascot(false);
+  assert.equal(getKidsScoreboard().mascot, false);
+  assert.equal(getKidsScoreboard().skin, 'ocean');
   setKidsEnabled(false);
   assert.equal(getKidsScoreboard().enabled, false);
   assert.equal(getKidsScoreboard().skin, 'ocean');
+  assert.equal(getKidsScoreboard().mascot, false);
+  setKidsMascot(true);
 });
 
 test('Unknown kids skin falls back to Dinos and stays off when the flag is missing', () => {
   localStorage.setItem(KIDS_MODE_KEY, JSON.stringify({ enabled: true, skin: 'tatami' }));
-  assert.deepEqual(getKidsScoreboard(), { enabled: true, skin: 'dinos' });
+  assert.deepEqual(getKidsScoreboard(), { enabled: true, skin: 'dinos', mascot: true });
+  localStorage.setItem(KIDS_MODE_KEY, JSON.stringify({ enabled: true, skin: 'ocean', mascot: false }));
+  assert.deepEqual(getKidsScoreboard(), { enabled: true, skin: 'ocean', mascot: false });
   localStorage.setItem(KIDS_MODE_KEY, '{');
-  assert.deepEqual(getKidsScoreboard(), { enabled: false, skin: 'dinos' });
+  assert.deepEqual(getKidsScoreboard(), { enabled: false, skin: 'dinos', mascot: true });
+});
+
+test('Skin chrome hides for a sheet, fullscreen, or a linked unscored bout', () => {
+  assert.equal(kidsSkinChromeHidden({ fullscreen: false, sheetOpen: false, scoring: false }), false);
+  assert.equal(kidsSkinChromeHidden({ fullscreen: true, sheetOpen: false, scoring: false }), true);
+  assert.equal(kidsSkinChromeHidden({ fullscreen: false, sheetOpen: true, scoring: false }), true);
+  assert.equal(kidsSkinChromeHidden({ fullscreen: false, sheetOpen: false, scoring: true }), true);
+  assert.equal(kidsBracketScoring(null, false), false);
+  assert.equal(kidsBracketScoring('sf-0', true), false);
+  assert.equal(kidsBracketScoring('sf-0', false), true);
+  assert.equal(kidsShowMascot(true, true, 'Mia Santos', false), true);
+  assert.equal(kidsShowMascot(true, false, 'Mia Santos', false), false);
+  assert.equal(kidsShowMascot(true, true, 'Mia Santos', true), false);
+  assert.equal(kidsShowMascot(false, true, 'Mia Santos', false), false);
+  assert.equal(kidsShowMascot(true, true, '   ', false), false);
+});
+
+test('Skin button stays enabled after a linked bout returns to the bracket', () => {
+  assert.equal(kidsBracketScoring('sf-0', false), true);
+  assert.equal(kidsSkinButtonSuppressed({ fullscreen: false, sheetOpen: false }), false);
+  assert.equal(kidsSkinButtonSuppressed({ fullscreen: true, sheetOpen: false }), true);
+  assert.equal(kidsSkinButtonSuppressed({ fullscreen: false, sheetOpen: true }), true);
+  assert.equal(kidsSkinButtonSuppressed({ fullscreen: true, sheetOpen: true }), true);
 });
 
 test('Carlos appears only after a champion, with a stored score like 12-0', () => {
@@ -185,6 +232,18 @@ test('Carlos stays off during an earlier live bout, and a scoreboard name fills 
   assert.equal(win.name, 'Mia Santos');
   assert.equal(win.scoreLine, '12-0');
   assert.equal(slotName(scored, 'champion'), 'Mia Santos');
+});
+
+test('kids wallpaper rides on the bout url and does not remap the adult skin', () => {
+  assert.equal(parseKidsSkin('robots'), 'robots');
+  assert.equal(parseKidsSkin('nope'), null);
+  assert.equal(kidsSkinFromSearch(new URLSearchParams('kids=ocean')), 'ocean');
+  assert.equal(kidsSkinFromSearch(new URLSearchParams('from=suite')), null);
+  assert.equal(withKidsSkin('/match?bout=sf-0&from=suite', 'robots'), '/match?bout=sf-0&from=suite&kids=robots');
+  assert.equal(withKidsSkin('/match?bout=sf-0', null), '/match?bout=sf-0');
+  assert.equal(kidsBoardClass('space'), 'kids-board kids-board--space');
+  assert.equal(kidsBoardClass(null), '');
+  assert.equal(scoreboardSkinClass(SCOREBOARD_SKIN.KIDS), 'scoreboard-skin--mock-tournament');
 });
 
 test('A scoreboard win stores the points on the bracket without changing adult skins', () => {

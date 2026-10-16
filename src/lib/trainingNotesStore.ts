@@ -6,6 +6,17 @@
  * This store still keeps the lesson text on the phone.
  */
 
+import {
+  planStructureStored,
+  remapTechniqueVideos,
+  sanitizeLessonStructure,
+  type GameBlock,
+  type LessonTemplateId,
+  type PlanBlock,
+} from './lessonTemplates.ts';
+import { asRecord, clampText } from './plainValue.ts';
+import { clampDriveFileId } from './techniqueLogic.ts';
+
 export const TRAINING_NOTES_STORAGE_KEY = 'matboard.coach.trainingNotes.v1';
 /** Previous free-text jot. Read once into today's Intro, then removed. */
 export const LEGACY_TRAINING_NOTES_STORAGE_KEY = 'matboard.trainingNotes.v1';
@@ -13,6 +24,8 @@ export const LEGACY_TRAINING_NOTES_STORAGE_KEY = 'matboard.trainingNotes.v1';
 export const COACH_NAME_MAX = 80;
 /** Free-text class label, such as "GB1". Not a fixed list. */
 export const CLASS_DESIGNATION_MAX = 40;
+/** Optional title for this class, such as "Guard passing". Empty on older plans. */
+export const LESSON_TITLE_MAX = 80;
 /** Free-text class time, such as "5:00 PM". Not a clock widget. */
 export const CLASS_TIME_MAX = 40;
 export const INTRO_MAX = 8_000;
@@ -51,6 +64,27 @@ export type TechniqueBlock = {
   treeId?: string;
 };
 
+export type PlanVideoSection = 'warmup' | 'technique' | 'cooldown';
+
+/**
+ * One video on a class plan. The bytes stay in the clip store or in the gym
+ * Drive folder. This record is the reference the plan keeps, the same way it
+ * keeps its text blocks.
+ */
+export type PlanVideoRef = {
+  section: PlanVideoSection;
+  /** Zero-based technique ordinal. Null for Warm-up and Cool down. */
+  index: number | null;
+  /** On-device clip id. Null when the pointer is a Drive file or a URL. */
+  localClipId: string | null;
+  /** Customer Drive file id. Null until a Drive pick or upload fills it. */
+  driveFileId: string | null;
+  /** http(s) URL when the picker stored a link. Null for a file reference. */
+  url: string | null;
+  name: string;
+  mime: string;
+};
+
 export type TrainingNotesPlan = {
   version: 1;
   /** Stable id so one day can hold more than one class plan. */
@@ -58,6 +92,8 @@ export type TrainingNotesPlan = {
   coachName: string;
   /** Free-text class label under the coach name, such as "GB1". */
   classDesignation: string;
+  /** Optional lesson title beside the class designation. Empty when unset. */
+  lessonTitle: string;
   /** Free-text class time under the coach name, such as "5:00 PM". */
   classTime: string;
   intro: string;
@@ -71,6 +107,24 @@ export type TrainingNotesPlan = {
   cooldownNote: string;
   cooldownExpected: string;
   closing: string;
+  /**
+   * Videos that belong to this class plan.
+   * Absent on plans saved before per-plan videos: those still follow the day's board
+   * until this plan is saved again. An empty list means this plan has no video.
+   */
+  videos?: PlanVideoRef[];
+  /**
+   * Class template. Absent on plans saved before templates: those open as Adult
+   * and keep the block order already stored in these fields.
+   */
+  template?: LessonTemplateId;
+  /**
+   * Block order for this plan. Absent means the Adult order: intro, warm-up,
+   * each technique, specific training, cool down, closing.
+   */
+  blocks?: PlanBlock[];
+  /** Game blocks. Absent until a Kids template or Add game creates one. */
+  games?: GameBlock[];
 };
 
 /** One calendar day. Several class plans can share the date. */
@@ -95,15 +149,6 @@ function createId(prefix: string): string {
   idSeq += 1;
   const rand = Math.random().toString(36).slice(2, 8);
   return `${prefix}-${Date.now().toString(36)}-${idSeq.toString(36)}-${rand}`;
-}
-
-function clampText(value: unknown, max: number): string {
-  return typeof value === 'string' ? value.slice(0, max) : '';
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  return value as Record<string, unknown>;
 }
 
 /** Device local calendar date. A phone set to America/New_York rolls over at local midnight. */
@@ -162,6 +207,7 @@ export function emptyPlan(): TrainingNotesPlan {
     id: createId('plan'),
     coachName: '',
     classDesignation: '',
+    lessonTitle: '',
     classTime: '',
     intro: '',
     introExpected: '',
@@ -176,10 +222,59 @@ export function emptyPlan(): TrainingNotesPlan {
   };
 }
 
+const PLAN_VIDEO_URL_MAX = 2_000;
+
+function httpUrl(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > PLAN_VIDEO_URL_MAX) return null;
+  if (!/^https?:\/\//i.test(trimmed)) return null;
+  return trimmed;
+}
+
+function sanitizeVideoRef(value: unknown): PlanVideoRef | null {
+  const raw = asRecord(value);
+  if (!raw) return null;
+  const section =
+    raw.section === 'warmup' || raw.section === 'technique' || raw.section === 'cooldown' ? raw.section : null;
+  if (!section) return null;
+  const index =
+    section === 'technique' && typeof raw.index === 'number' && Number.isFinite(raw.index)
+      ? Math.max(0, Math.min(MAX_TECHNIQUES - 1, Math.floor(raw.index)))
+      : null;
+  const localRaw = typeof raw.localClipId === 'string' ? raw.localClipId.trim().slice(0, 80) : '';
+  const localClipId = localRaw || null;
+  const driveFileId = clampDriveFileId(raw.driveFileId);
+  const url = httpUrl(raw.url);
+  const name = clampText(raw.name, 180);
+  const mime = clampText(raw.mime, 120);
+  if (!localClipId && !driveFileId && !url && !name) return null;
+  return { section, index, localClipId, driveFileId, url, name, mime };
+}
+
+/** Absent stays absent. A present list is cleaned. Junk rows are dropped. */
+function sanitizePlanVideos(value: unknown): { videos: PlanVideoRef[] | undefined; repaired: boolean } {
+  if (value === undefined) return { videos: undefined, repaired: false };
+  if (!Array.isArray(value)) return { videos: [], repaired: true };
+  let repaired = false;
+  const videos: PlanVideoRef[] = [];
+  for (const item of value) {
+    const next = sanitizeVideoRef(item);
+    if (!next) {
+      repaired = true;
+      continue;
+    }
+    videos.push(next);
+  }
+  if (videos.length !== value.length) repaired = true;
+  return { videos, repaired };
+}
+
 export function planHasContent(plan: TrainingNotesPlan): boolean {
   if (
     plan.coachName.trim() ||
     plan.classDesignation.trim() ||
+    plan.lessonTitle.trim() ||
     plan.classTime.trim() ||
     plan.intro.trim() ||
     plan.introExpected.trim() ||
@@ -193,6 +288,10 @@ export function planHasContent(plan: TrainingNotesPlan): boolean {
   ) {
     return true;
   }
+  if (plan.videos?.some((row) => row.localClipId || row.driveFileId || row.url || row.name.trim())) return true;
+  if (plan.games?.some((game) => game.title.trim() || game.notes.trim() || game.expected.trim() || game.waterBreak)) {
+    return true;
+  }
   return plan.techniques.some(
     (tech) =>
       tech.title.trim() ||
@@ -201,6 +300,11 @@ export function planHasContent(plan: TrainingNotesPlan): boolean {
       tech.waterBreak ||
       Boolean(tech.treeId),
   );
+}
+
+/** Text, a chosen template, or a saved block list. An untouched blank Adult plan stays unsaved. */
+export function planShouldPersist(plan: TrainingNotesPlan): boolean {
+  return planHasContent(plan) || planStructureStored(plan);
 }
 
 function sanitizeTechnique(value: unknown): { block: TechniqueBlock; repaired: boolean } {
@@ -267,25 +371,44 @@ export function sanitizePlan(input: unknown): { plan: TrainingNotesPlan; repaire
   const raw = asRecord(input);
   let repaired = !raw || raw.version !== 1;
   const source = Array.isArray(raw?.techniques) ? raw.techniques : [];
-  if (!raw || !Array.isArray(raw.techniques) || source.length < MIN_TECHNIQUES || source.length > MAX_TECHNIQUES) {
+  const rawHasBlocks = Boolean(raw && Object.prototype.hasOwnProperty.call(raw, 'blocks') && Array.isArray(raw.blocks));
+  if (!raw || !Array.isArray(raw.techniques) || source.length > MAX_TECHNIQUES || (!rawHasBlocks && source.length < MIN_TECHNIQUES)) {
     repaired = true;
   }
-  const techniques = source.slice(0, MAX_TECHNIQUES).map((item) => {
+  let techniques = source.slice(0, MAX_TECHNIQUES).map((item) => {
     const next = sanitizeTechnique(item);
     if (next.repaired) repaired = true;
     return next.block;
   });
-  while (techniques.length < MIN_TECHNIQUES) {
-    techniques.push(createTechnique());
+  if (uniquify(techniques)) repaired = true;
+
+  const structure = sanitizeLessonStructure(raw, techniques);
+  if (structure.repaired) repaired = true;
+  const techniqueIdsBefore = techniques.map((tech) => tech.id);
+  techniques = structure.techniques;
+  if (!structure.blocks) {
+    while (techniques.length < MIN_TECHNIQUES) {
+      techniques.push(createTechnique());
+      repaired = true;
+    }
+  }
+
+  let videosRead = sanitizePlanVideos(raw && Object.prototype.hasOwnProperty.call(raw, 'videos') ? raw.videos : undefined);
+  if (videosRead.repaired) repaired = true;
+  if (videosRead.videos && techniqueIdsBefore.some((id, index) => techniques[index]?.id !== id)) {
+    videosRead = {
+      videos: remapTechniqueVideos(videosRead.videos, techniqueIdsBefore, techniques.map((tech) => tech.id)) ?? [],
+      repaired: true,
+    };
     repaired = true;
   }
-  if (uniquify(techniques)) repaired = true;
 
   const idRaw = raw && typeof raw.id === 'string' ? raw.id.trim() : '';
   const id = idRaw ? idRaw.slice(0, 80) : createId('plan');
   if (!idRaw || (raw && raw.id !== id)) repaired = true;
   const coachName = clampText(raw?.coachName, COACH_NAME_MAX);
   const classDesignation = clampText(raw?.classDesignation, CLASS_DESIGNATION_MAX);
+  const lessonTitle = clampText(raw?.lessonTitle, LESSON_TITLE_MAX);
   const classTime = clampText(raw?.classTime, CLASS_TIME_MAX);
   const intro = clampText(raw?.intro, INTRO_MAX);
   const introExpected = clampText(raw?.introExpected, EXPECTED_MAX);
@@ -300,6 +423,7 @@ export function sanitizePlan(input: unknown): { plan: TrainingNotesPlan; repaire
     raw &&
     (raw.coachName !== coachName ||
       raw.classDesignation !== classDesignation ||
+      raw.lessonTitle !== lessonTitle ||
       raw.classTime !== classTime ||
       raw.intro !== intro ||
       raw.introExpected !== introExpected ||
@@ -314,40 +438,58 @@ export function sanitizePlan(input: unknown): { plan: TrainingNotesPlan; repaire
     repaired = true;
   }
 
-  return {
-    repaired,
-    plan: {
-      version: 1,
-      id,
-      coachName,
-      classDesignation,
-      classTime,
-      intro,
-      introExpected,
-      warmupNote,
-      warmupExpected,
-      techniques,
-      specificNote,
-      specificExpected,
-      cooldownNote,
-      cooldownExpected,
-      closing,
-    },
+  const plan: TrainingNotesPlan = {
+    version: 1,
+    id,
+    coachName,
+    classDesignation,
+    lessonTitle,
+    classTime,
+    intro,
+    introExpected,
+    warmupNote,
+    warmupExpected,
+    techniques,
+    specificNote,
+    specificExpected,
+    cooldownNote,
+    cooldownExpected,
+    closing,
   };
+  if (videosRead.videos) plan.videos = videosRead.videos;
+  if (structure.template) plan.template = structure.template;
+  if (structure.blocks) plan.blocks = structure.blocks;
+  if (structure.games) plan.games = structure.games;
+  return { repaired, plan };
 }
 
 /** Fresh technique ids so a copied day does not share a later video slot with the source. */
 export function copyPlan(source: TrainingNotesPlan): TrainingNotesPlan {
   const { plan } = sanitizePlan(source);
-  return {
+  const idMap = new Map<string, string>();
+  const techniques = plan.techniques.map((tech) => {
+    const id = createId('tech');
+    idMap.set(tech.id, id);
+    return { ...tech, id, slotId: createId('slot') };
+  });
+  const games = plan.games?.map((game) => {
+    const id = createId('game');
+    idMap.set(game.id, id);
+    return { ...game, id };
+  });
+  const next: TrainingNotesPlan = {
     ...plan,
     id: createId('plan'),
-    techniques: plan.techniques.map((tech) => ({
-      ...tech,
-      id: createId('tech'),
-      slotId: createId('slot'),
-    })),
+    techniques,
   };
+  if (games) next.games = games;
+  if (plan.blocks) {
+    next.blocks = plan.blocks.map((block) =>
+      block.kind === 'technique' || block.kind === 'game' ? { ...block, id: idMap.get(block.id) ?? block.id } : { ...block },
+    );
+  }
+  if (plan.videos) next.videos = plan.videos.map((row) => ({ ...row }));
+  return next;
 }
 
 function uniquifyPlanIds(plans: TrainingNotesPlan[]): boolean {
@@ -372,7 +514,7 @@ function readDayPlans(value: unknown): { plans: TrainingNotesPlan[]; repaired: b
     for (const item of raw.plans) {
       const next = sanitizePlan(item);
       if (next.repaired) repaired = true;
-      if (!planHasContent(next.plan)) {
+      if (!planShouldPersist(next.plan)) {
         repaired = true;
         continue;
       }
@@ -383,7 +525,7 @@ function readDayPlans(value: unknown): { plans: TrainingNotesPlan[]; repaired: b
   }
   if (raw.version === 1 || Array.isArray(raw.techniques) || typeof raw.coachName === 'string') {
     const { plan } = sanitizePlan(raw);
-    return { plans: planHasContent(plan) ? [plan] : [], repaired: true };
+    return { plans: planShouldPersist(plan) ? [plan] : [], repaired: true };
   }
   return null;
 }
@@ -392,7 +534,7 @@ function pruneDays(days: Record<string, TrainingNotesDay>, todayKey: string): Re
   const next: Record<string, TrainingNotesDay> = {};
   for (const [key, day] of Object.entries(days)) {
     if (!isWithinRetention(key, todayKey)) continue;
-    const plans = day.plans.filter(planHasContent);
+    const plans = day.plans.filter(planShouldPersist);
     if (!plans.length) continue;
     next[key] = plans.length === day.plans.length ? day : { plans };
   }
@@ -462,21 +604,87 @@ export function classBrowseFolders(archive: TrainingNotesArchive, todayKey: stri
 export function classPlanRowLabel(plan: TrainingNotesPlan): string {
   const coach = plan.coachName.trim() || 'Coach';
   const designation = plan.classDesignation.trim();
+  const title = plan.lessonTitle.trim();
   const time = plan.classTime.trim() || 'Time';
-  return designation ? `${coach} / ${designation} / ${time}` : `${coach} · ${time}`;
+  if (designation && title) return `${coach} / ${designation} / ${title} / ${time}`;
+  if (designation) return `${coach} / ${designation} / ${time}`;
+  if (title) return `${coach} / ${title} · ${time}`;
+  return `${coach} · ${time}`;
 }
 
 /** Coach / GB1 / 5:00 PM, so a day with several classes is easy to scan. */
 export function planListLabel(plan: TrainingNotesPlan): string {
   const coach = plan.coachName.trim();
   const designation = plan.classDesignation.trim();
+  const title = plan.lessonTitle.trim();
   const time = plan.classTime.trim();
-  if (!coach && !designation && !time) return 'New class plan';
-  return [coach || 'Coach', designation || 'Class', time || 'Time'].join(' / ');
+  if (!coach && !designation && !title && !time) return 'New class plan';
+  const parts = [coach || 'Coach'];
+  if (title) parts.push(title);
+  parts.push(designation || 'Class', time || 'Time');
+  return parts.join(' / ');
 }
 
 export function plansOnDay(archive: TrainingNotesArchive, dateKey: string): TrainingNotesPlan[] {
   return archive.days[dateKey]?.plans ?? [];
+}
+
+export function earliestPlanDate(todayKey: string): string {
+  return shiftDateKey(todayKey, -(PLAN_RETENTION_DAYS - 1));
+}
+
+/** Previous or next day inside the retention window. Null at the ends. */
+export function shiftPlanDate(viewKey: string, todayKey: string, delta: number): string | null {
+  if (!delta) return isWithinRetention(viewKey, todayKey) ? viewKey : null;
+  const next = shiftDateKey(viewKey, delta);
+  return isWithinRetention(next, todayKey) ? next : null;
+}
+
+export type LessonPlanHit = {
+  dateKey: string;
+  planId: string;
+  label: string;
+};
+
+/** Match coach, class, time, section text, or the date. Empty query matches nothing. */
+export function searchLessonPlans(
+  archive: TrainingNotesArchive,
+  todayKey: string,
+  query: string,
+): LessonPlanHit[] {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return [];
+  const hits: LessonPlanHit[] = [];
+  const keys = Object.keys(archive.days)
+    .filter((dateKey) => isWithinRetention(dateKey, todayKey))
+    .sort();
+  for (const dateKey of keys) {
+    for (const plan of archive.days[dateKey]?.plans ?? []) {
+      const haystack = [
+        dateKey,
+        planDayStamp(dateKey),
+        plan.coachName,
+        plan.classDesignation,
+        plan.classTime,
+        plan.intro,
+        plan.warmupNote,
+        plan.specificNote,
+        plan.cooldownNote,
+        plan.closing,
+        ...plan.techniques.flatMap((tech) => [tech.title, tech.notes]),
+        ...(plan.games ?? []).flatMap((game) => [game.title, game.notes]),
+      ]
+        .join('\n')
+        .toLowerCase();
+      if (!haystack.includes(needle)) continue;
+      hits.push({
+        dateKey,
+        planId: plan.id,
+        label: `${planDayStamp(dateKey)} · ${classPlanRowLabel(plan)}`,
+      });
+    }
+  }
+  return hits;
 }
 
 export function findPlanById(archive: TrainingNotesArchive, planId: string): TrainingNotesPlan | null {
@@ -627,9 +835,15 @@ export function saveDay(
   const { plan: clean } = sanitizePlan(plan);
   const days = { ...loaded.days };
   const existing = days[dateKey]?.plans ?? [];
-  if (planHasContent(clean) && isWithinRetention(dateKey, today)) {
+  if (planShouldPersist(clean) && isWithinRetention(dateKey, today)) {
     const index = existing.findIndex((item) => item.id === clean.id);
-    const plans = index >= 0 ? existing.map((item, i) => (i === index ? clean : item)) : [...existing, clean];
+    const previous = index >= 0 ? existing[index] : undefined;
+    // A text edit that did not mention videos keeps the refs already stored on this plan.
+    const stored =
+      previous && clean.videos === undefined && previous.videos !== undefined
+        ? { ...clean, videos: previous.videos.map((row) => ({ ...row })) }
+        : clean;
+    const plans = index >= 0 ? existing.map((item, i) => (i === index ? stored : item)) : [...existing, stored];
     days[dateKey] = { plans };
   } else {
     const plans = existing.filter((item) => item.id !== clean.id);

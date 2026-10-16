@@ -1,0 +1,200 @@
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useRosterState } from '../hooks/useStores';
+import { workingOnLine } from '../lib/progress/competition';
+import { COMPETITOR_ROSTER_LABEL } from '../lib/coachCopy';
+import {
+  bracketDivisionFilter,
+  checkedInCompetitors,
+  competitorsForBracketFill,
+  namesForBracket,
+  obviousRankingFile,
+  orderCheckedInByRanking,
+  seededBracketSize,
+  type SeededCompetitor,
+} from '../lib/checkInSeeds';
+import type { RankingFile } from '../lib/rankingStore';
+import { COMPETITOR_ROSTER_PATH } from '../lib/productNames';
+import type { Student } from '../lib/rosterStore';
+import { byeCountFor, firstRoundLabel } from '../lib/tournamentStore';
+import { Sheet } from './Sheet';
+
+type Props = {
+  open: boolean;
+  onClose: () => void;
+  students: readonly Student[];
+  files: readonly RankingFile[];
+  bracketTitle: string;
+  hasNames: boolean;
+  hasResults: boolean;
+  sizeMax: number;
+  onApply: (names: string[]) => void;
+};
+
+/** '' is division then name. null means a ranking list still has to be chosen. */
+function initialRankingId(
+  files: readonly RankingFile[],
+  checked: readonly Student[],
+  title: string,
+): string | null {
+  if (!files.length) return '';
+  const obvious = obviousRankingFile(files, {
+    title,
+    divisions: checked.map((student) => student.division),
+  });
+  return obvious ? obvious.id : null;
+}
+
+export function CheckInFillSheet({
+  open,
+  onClose,
+  students,
+  files,
+  bracketTitle,
+  hasNames,
+  hasResults,
+  sizeMax,
+  onApply,
+}: Props) {
+  const [rankingId, setRankingId] = useState<string | null>(null);
+  const [primed, setPrimed] = useState(false);
+  const allChecked = checkedInCompetitors(students);
+  const roster = useRosterState();
+  const divisionFilter = bracketDivisionFilter(bracketTitle, students);
+  const checked = competitorsForBracketFill(students, bracketTitle).competitors;
+  if (open && !primed) {
+    setPrimed(true);
+    setRankingId(initialRankingId(files, checked, bracketTitle));
+  } else if (!open && primed) {
+    setPrimed(false);
+  }
+
+  const selectedFile = rankingId ? (files.find((file) => file.id === rankingId) ?? null) : null;
+  const rows = selectedFile?.rows ?? [];
+  const ordered: SeededCompetitor[] = rankingId === null ? [] : orderCheckedInByRanking(checked, rows);
+  const orderingLabel = selectedFile
+    ? `Seeded by ranking: ${selectedFile.name}`
+    : 'No ranking found, ordered by division then name';
+  const size = ordered.length ? seededBracketSize(ordered.length, sizeMax) : 0;
+  const placed = ordered.slice(0, size);
+  const byes = size ? byeCountFor(size) : 0;
+  const canFill = rankingId !== null && placed.length > 0;
+  const replaces = hasNames || hasResults;
+
+  return (
+    <Sheet
+      open={open}
+      title="Fill from check-in"
+      onClose={onClose}
+      footer={
+        checked.length ? (
+          <>
+            <button
+              type="button"
+              className="btn"
+              disabled={!canFill}
+              onClick={() => onApply(namesForBracket(ordered, sizeMax))}
+            >
+              {replaces ? 'Replace names' : 'Fill bracket'}
+            </button>
+            <button type="button" className="btn btn--ghost" onClick={onClose}>
+              Cancel
+            </button>
+          </>
+        ) : null
+      }
+    >
+      {allChecked.length === 0 ? (
+        <>
+          <p className="tournament__sheet-copy">
+            Nobody is checked in. On the {COMPETITOR_ROSTER_LABEL}, tap Check In for each person who is
+            here today. That list is the only selection for this fill. It does not change the roster.
+          </p>
+          <Link className="text-link" to={COMPETITOR_ROSTER_PATH}>
+            Open {COMPETITOR_ROSTER_LABEL}
+          </Link>
+        </>
+      ) : checked.length === 0 ? (
+        <p className="tournament__sheet-copy">
+          {allChecked.length} checked in, and none are in {divisionFilter}. Clear the division title to
+          fill everyone who is checked in. Check-in stays as it is.
+        </p>
+      ) : (
+        <>
+          <p className="tournament__sheet-copy">
+            {divisionFilter
+              ? `Division filter: ${divisionFilter}. ${checked.length} of ${allChecked.length} checked in. Age group and weight class live in that division.`
+              : bracketTitle.trim()
+                ? `${allChecked.length} checked in. This title does not match a checked-in division, so everyone checked in is included.`
+                : `${allChecked.length} checked in. No division on this bracket, so everyone checked in is included.`}{' '}
+            Ranked names follow the ranking list. Anyone in this fill who is not on that list follows by
+            division, then by name. A blank division goes last. Check-in stays as it is.
+          </p>
+          {files.length ? (
+            <div className="tournament__size-presets" role="radiogroup" aria-label="Ranking list">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={rankingId === ''}
+                className={`chip${rankingId === '' ? ' chip--on' : ''}`}
+                onClick={() => setRankingId('')}
+              >
+                Division then name
+              </button>
+              {files.map((file) => (
+                <button
+                  key={file.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={rankingId === file.id}
+                  className={`chip${rankingId === file.id ? ' chip--on' : ''}`}
+                  onClick={() => setRankingId(file.id)}
+                >
+                  {file.division && file.division.trim().toLowerCase() !== file.name.trim().toLowerCase()
+                    ? `${file.name} · ${file.division}`
+                    : file.name}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          {rankingId === null ? (
+            <p className="tournament__sheet-copy">Pick a ranking list to preview the seed order.</p>
+          ) : (
+            <>
+              <p className="tournament__sheet-copy">{orderingLabel}</p>
+              <p className="tournament__sheet-copy">
+                {firstRoundLabel(size)} · size {size}
+                {byes ? ` · ${byes} ${byes === 1 ? 'bye' : 'byes'}` : ''}
+                {ordered.length > placed.length
+                  ? `. This board holds ${size}, so the first ${size} are placed.`
+                  : ''}
+                {ordered.length === 1 ? '. The smallest bracket is 2, so one slot stays open.' : ''}
+              </p>
+              <ol className="checkin-seeds">
+                {placed.map((seed, index) => {
+                  const line = roster.competitionPlans[seed.id]
+                    ? workingOnLine(roster.competitionPlans[seed.id].games)
+                    : '';
+                  return (
+                    <li key={seed.id}>
+                      <span>{index + 1}</span>
+                      <strong>{seed.name}</strong>
+                      <em className="checkin-seeds__place">{seed.place == null ? 'Unranked' : `Place ${seed.place}`}</em>
+                      {line ? <em className="checkin-seeds__plan">{line}</em> : null}
+                    </li>
+                  );
+                })}
+              </ol>
+              {replaces ? (
+                <p className="tournament__sheet-copy">
+                  This replaces names on the open bracket.
+                  {hasResults ? ' Results on this board clear.' : ''} Other saved brackets stay put.
+                </p>
+              ) : null}
+            </>
+          )}
+        </>
+      )}
+    </Sheet>
+  );
+}

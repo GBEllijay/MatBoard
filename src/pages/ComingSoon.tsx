@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { AlphaAccessNote } from '../components/AlphaAccessNote';
 import { BeltRail } from '../components/BeltRail';
 import { HomeMark } from '../components/HomeMark';
@@ -7,20 +7,23 @@ import { ProUnlockSheet } from '../components/ProUnlockSheet';
 import { useCurrentSeat } from '../components/SeatSessionBar';
 import { SiteFooter } from '../components/SiteFooter';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
-import { useProUnlocked } from '../hooks/useProUnlocked';
+import { useSeatDoor } from '../hooks/useSeatDoor';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import { lockCoach } from '../lib/coachUnlock';
-import { COACH_HUBS, coachDoorOpen, PRO_HUBS } from '../lib/productNames';
+import { COACH_HUBS, coachDoorOpen, consoleHubs } from '../lib/productNames';
 import { lockPro } from '../lib/proUnlock';
 import { whiteEntryPath } from '../lib/whiteUnlock';
 
 export function ComingSoonPage() {
-  const proUnlocked = useProUnlocked();
+  const door = useSeatDoor();
+  const proUnlocked = door.proUnlocked;
+  const proHubs = consoleHubs(door, door.seat?.permissions ?? null);
   const whiteUnlocked = useWhiteUnlocked();
   const coachUnlocked = useCoachUnlocked();
   const seated = useCurrentSeat() !== null;
   const coachTools = coachDoorOpen(proUnlocked, coachUnlocked, seated);
   const [unlockOpen, setUnlockOpen] = useState<'coach' | 'pro' | null>(null);
+  if (door.seated) return <Navigate to="/" replace />;
 
   const tagline = proUnlocked
     ? 'Advantage Pro is on for this browser.'
@@ -37,8 +40,8 @@ export function ComingSoonPage() {
 
         {coachTools ? (
           <nav className="home__soon-actions" aria-label={proUnlocked ? 'Pro' : 'Coach'}>
-            {proUnlocked
-              ? PRO_HUBS.map((hub) => (
+            {proHubs.length
+              ? proHubs.map((hub) => (
                   <Link key={hub.to} className="btn btn--white" to={hub.to}>
                     <BeltRail kind={hub.belt} />
                     {hub.title}

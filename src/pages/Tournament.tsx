@@ -1,11 +1,13 @@
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { BeltRail } from '../components/BeltRail';
 import { EmptyHint } from '../components/EmptyHint';
 import { FullscreenChip } from '../components/FullscreenChip';
-import { KidsBracketChrome } from '../components/KidsBracketChrome';
+import { KidsBracketChrome, KidsMascotDock } from '../components/KidsBracketChrome';
 import { KidsScoreboardSwitcher } from '../components/KidsScoreboardSwitcher';
-import { PlayExitMark } from '../components/PlayExitMark';
+import { SubmenuMarks } from '../components/TierHomeMark';
+import { useSubmenuBack } from '../hooks/useSubmenuBack';
+import { CheckInFillSheet } from '../components/CheckInFillSheet';
 import { OutcomePickSheet } from '../components/OutcomeCalls';
 import { RosterNameField } from '../components/RosterNameField';
 import { Sheet } from '../components/Sheet';
@@ -20,6 +22,7 @@ import {
   useBracketTheme,
   useKidsScoreboard,
   useMatchState,
+  useRankings,
   useRosterState,
   useTournamentLibrary,
   useTournamentState,
@@ -30,19 +33,30 @@ import { DEFAULT_BRACKET_THEME, setBracketTheme } from '../lib/bracketTheme';
 import {
   KIDS_BRACKETS_SKINS_LABEL,
   kidsBracketChromeOn,
+  kidsBracketSkinsAllowed,
+  kidsBracketScoring,
   kidsLiveLine,
+  kidsShowMascot,
+  kidsSkinButtonSuppressed,
+  kidsSkinChromeHidden,
+  kidsWinLines,
   kidsWinState,
+  withKidsSkin,
 } from '../lib/kidsScoreboard';
+import { isSheetLayerOpen, subscribeSheetLayer } from '../lib/sheetLayer';
 import { competitorCards, rosterGymForName, studentRosterCards } from '../lib/rosterStore';
 import {
+  COACH_UNLIMITED_PATH,
   isBasicCoach,
   isPlainCoachTournament,
   MOCK_TOURNAMENT_NAME,
   SUITE_FROM,
   tournamentToolLabel,
+  UNLIMITED_FROM,
 } from '../lib/productNames';
 import { coachLinkedWhiteBoard, withMatchOrigin } from '../lib/scoreboardSkin';
 import {
+  bracketHasCompetitors,
   bracketHasContent,
   bracketRoundLine,
   byeCountFor,
@@ -55,7 +69,11 @@ import {
   placementLabel,
   placementOf,
   matchHasBye,
+  fillCheckedInBracket,
+  fillSeedNames,
+  undoCheckedInFill,
   newBracket,
+  parseNameList,
   renameActiveBracket,
   resetTournament,
   rightRoundIds,
@@ -89,10 +107,12 @@ import { type OutcomeCall } from '../lib/outcomes';
 export function TournamentPage() {
   const tournament = useTournamentState();
   const library = useTournamentLibrary();
+  const roster = useRosterState();
+  const rankings = useRankings();
   const match = useMatchState();
   const theme = useBracketTheme();
   const kids = useKidsScoreboard();
-  const fs = usePlayFullscreen();
+  const fs = usePlayFullscreen({ auto: false });
   const boardRef = useRef<HTMLDivElement>(null);
   const bracketRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -104,16 +124,23 @@ export function TournamentPage() {
     isBasicCoach(proUnlocked, useCoachUnlocked()),
   );
   const sizeMax = maxCompetitors(proUnlocked);
-  const fromSuite = searchParams.get('from') === SUITE_FROM;
+  const from = searchParams.get('from');
+  const fromSuite = from === SUITE_FROM;
+  const fromUnlimited = from === UNLIMITED_FROM;
   const shownTheme = plainCoach ? DEFAULT_BRACKET_THEME : theme;
-  const exitPath = fromSuite ? '/suite' : plainCoach ? '/coach' : parent.path;
-  const kidsOn = kidsBracketChromeOn(fromSuite, kids.enabled);
+  const exitPath =
+    useSubmenuBack() ??
+    (fromSuite ? '/suite' : fromUnlimited ? COACH_UNLIMITED_PATH : plainCoach ? '/coach' : parent.path);
+  const kidsSkins = kidsBracketSkinsAllowed(from) && !plainCoach;
+  const kidsOn = kidsBracketChromeOn(kidsSkins, kids.enabled);
   const [namesOpen, setNamesOpen] = useState(false);
   const [sizeOpen, setSizeOpen] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
-  const [pendingSize, setPendingSize] = useState<number | null>(null);
   const [pendingPlacement, setPendingPlacement] = useState<PlacementStyle | null>(null);
+  const [pasteDraft, setPasteDraft] = useState('');
+  const [checkInOpen, setCheckInOpen] = useState(false);
+  const [fillPlaced, setFillPlaced] = useState<number | null>(null);
   const [saveName, setSaveName] = useState('');
   const [customSize, setCustomSize] = useState(String(tournament.size));
   const seeds = seedSlots(tournament);
@@ -123,6 +150,14 @@ export function TournamentPage() {
   const kidsWin = kidsCelebration.show;
   const kidsChampion = kidsCelebration.name;
   const kidsScore = kidsCelebration.scoreLine;
+  const sheetOpen = useSyncExternalStore(subscribeSheetLayer, isSheetLayerOpen, () => false);
+  const skinChromeHidden = kidsSkinChromeHidden({
+    fullscreen: fs.active,
+    sheetOpen,
+    scoring: kidsBracketScoring(liveMatchId, liveMatchId ? Boolean(tournament.results[liveMatchId]) : true),
+  });
+  const skinButtonSuppressed = kidsSkinButtonSuppressed({ fullscreen: fs.active, sheetOpen });
+  const showMascot = kidsShowMascot(kidsOn, kids.mascot, kidsChampion, skinChromeHidden);
   const champLabel = kidsWin ? kidsChampion : champion;
   const kidsLive =
     kidsOn && liveMatchId && !kidsWin && !tournament.results[liveMatchId]
@@ -149,6 +184,12 @@ export function TournamentPage() {
   useLockViewportZoom();
   usePinchZoom(boardRef, bracketRef);
 
+  // The scoreboard enters fullscreen from the Score tap. Coming back must not
+  // keep that fullscreen, or Skin stays disabled until a reload.
+  useEffect(() => {
+    void fs.exit();
+  }, [fs.exit]);
+
   const exitBoard = () => {
     void fs.exit().finally(() => {
       navigate(exitPath);
@@ -158,7 +199,6 @@ export function TournamentPage() {
   const applySize = (size: number) => {
     unlinkBracketBout();
     setCompetitorCount(size, sizeMax);
-    setPendingSize(null);
     setSizeOpen(false);
   };
 
@@ -168,10 +208,6 @@ export function TournamentPage() {
       return;
     }
     setPendingPlacement(null);
-    if (Object.keys(tournament.results).length) {
-      setPendingSize(size);
-      return;
-    }
     applySize(size);
   };
 
@@ -186,7 +222,6 @@ export function TournamentPage() {
       setPendingPlacement(null);
       return;
     }
-    setPendingSize(null);
     if (Object.keys(tournament.results).length) {
       setPendingPlacement(style);
       return;
@@ -223,7 +258,7 @@ export function TournamentPage() {
       className={`tournament tournament--${shownTheme}${kidsOn ? ` tournament--kids tournament--kids-${kids.skin}` : ''}${fs.className ? ` ${fs.className}` : ''}`}
     >
       <BeltRail kind="tournament" />
-      <PlayExitMark to={exitPath} onExit={exitBoard} />
+      <SubmenuMarks to={exitPath} onExit={exitBoard} />
       <header className="tournament__bar">
         <div className="tournament__brand">
           <p className="tournament__eyebrow">{plainCoach ? 'Advantage Coach' : parent.eyebrow}</p>
@@ -241,85 +276,20 @@ export function TournamentPage() {
             />
           </label>
         </div>
-        <div className="tournament__actions">
-          {plainCoach ? null : (
-            <div className="tournament__theme" role="radiogroup" aria-label="Bracket theme">
-              <button
-                type="button"
-                role="radio"
-                aria-checked={theme === 'bright'}
-                className={`chip${theme === 'bright' ? ' chip--gold' : ''}`}
-                onClick={() => setBracketTheme('bright')}
-              >
-                Bright
-              </button>
-              <button
-                type="button"
-                role="radio"
-                aria-checked={theme === 'dark'}
-                className={`chip${theme === 'dark' ? ' chip--gold' : ''}`}
-                onClick={() => setBracketTheme('dark')}
-              >
-                Dark
-              </button>
-            </div>
-          )}
-          <button
-            type="button"
-            className="btn btn--ghost"
-            onClick={() => {
-              setCustomSize(String(tournament.size));
-              setPendingSize(null);
-              setPendingPlacement(null);
-              setSizeOpen(true);
-            }}
-          >
-            {placement === 'lineup' ? `Lineup ${tournament.size}` : tournament.size}
-          </button>
-          <button type="button" className="btn btn--ghost tournament__save-btn" onClick={openSaved}>
-            {named ? savedLabel : 'Save'}
-          </button>
-          <button type="button" className="btn btn--ghost" onClick={() => setNamesOpen(true)}>
-            Edit names
-          </button>
-          <button
-            type="button"
-            className={`btn${undoReady ? '' : ' btn--ghost'}`}
-            disabled={!undoReady}
-            onClick={() => undoLastOutcome()}
-          >
-            Undo last result
-          </button>
-          <button
-            type="button"
-            className="btn btn--ghost"
-            disabled={!canReset}
-            onClick={() => setConfirmReset(true)}
-          >
-            Reset
-          </button>
-          <FullscreenChip
-            supported={fs.supported}
-            active={fs.active}
-            nudge={fs.showFallback}
-            shortcut={fs.tvStation}
-            onToggle={() => void fs.toggle()}
-          />
-        </div>
       </header>
 
       <p className="tournament__hint">
         {kidsOn ? (
           <>
-            {KIDS_BRACKETS_SKINS_LABEL} paints this bracket. Pick a background, then fullscreen for the gym TV.
-            Grand Master Carlos comes in from the left only after a champion, with "Bom trabalho!"
+            {KIDS_BRACKETS_SKINS_LABEL} paints this bracket. Skin under the bracket opens the backgrounds.
+            Grand Master Carlos stays in the corner after a champion, with "Bom trabalho!" Turn him off from Skin.
           </>
         ) : (
           <>
             Tap <strong>Score</strong> to open the match board. <strong>Win</strong> or <strong>DQ</strong>{' '}
-            flash the winner. <strong>Undo last result</strong> backs out a mistaken tap. Save a named
-            bracket on this device, then switch without losing progress. Reset asks first so a demo
-            cannot wipe the bracket by accident.
+            flash the winner. <strong>Undo last result</strong> backs out a mistaken tap and clears later
+            rounds that came from it. Save a named bracket on this device, then switch without losing
+            progress. Reset asks first so a demo cannot wipe the bracket by accident.
           </>
         )}
       </p>
@@ -341,8 +311,6 @@ export function TournamentPage() {
           <KidsBracketChrome
             skin={kids.skin}
             win={kidsWin}
-            champion={kidsChampion}
-            scoreLine={kidsScore}
             liveLine={kidsLive}
             liveMatch={kidsLive ? match : null}
           />
@@ -367,6 +335,7 @@ export function TournamentPage() {
                   label={sideRoundLabel(threePerson, prefix, 'left')}
                   detail={sideRoundDetail(threePerson, prefix, 'left')}
                   liveMatchId={liveMatchId}
+                  paired={kidsOn}
                 />
               ))}
             </div>
@@ -408,21 +377,111 @@ export function TournamentPage() {
                   label={sideRoundLabel(threePerson, prefix, 'right')}
                   detail={sideRoundDetail(threePerson, prefix, 'right')}
                   liveMatchId={liveMatchId}
+                  paired={kidsOn}
                 />
               ))}
             </div>
           ) : null}
           </div>
         </div>
+        <div className="tournament__tools" role="region" aria-label="Bracket controls">
+          {fillPlaced != null ? (
+            <p className="tournament__fill-note" role="status">
+              <span>Placed {fillPlaced} from check-in.</span>
+              <button
+                type="button"
+                className="btn btn--white"
+                onClick={() => {
+                  undoCheckedInFill();
+                  setFillPlaced(null);
+                }}
+              >
+                Undo
+              </button>
+            </p>
+          ) : null}
+          <div className="tournament__actions">
+            {kidsSkins ? <KidsScoreboardSwitcher prefs={kids} suppressed={skinButtonSuppressed} /> : null}
+            {plainCoach ? null : (
+              <div className="tournament__theme" role="radiogroup" aria-label="Bracket theme">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={theme === 'bright'}
+                  className={`chip${theme === 'bright' ? ' chip--on' : ''}`}
+                  onClick={() => setBracketTheme('bright')}
+                >
+                  Bright
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={theme === 'dark'}
+                  className={`chip${theme === 'dark' ? ' chip--on' : ''}`}
+                  onClick={() => setBracketTheme('dark')}
+                >
+                  Dark
+                </button>
+              </div>
+            )}
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => {
+                setCustomSize(String(tournament.size));
+                setPendingPlacement(null);
+                setSizeOpen(true);
+              }}
+            >
+              {placement === 'lineup' ? `Lineup ${tournament.size}` : tournament.size}
+            </button>
+            <button type="button" className="btn btn--ghost tournament__save-btn" onClick={openSaved}>
+              {named ? savedLabel : 'Save'}
+            </button>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => {
+                setPasteDraft('');
+                setNamesOpen(true);
+              }}
+            >
+              Edit names
+            </button>
+            <button type="button" className="btn btn--ghost" onClick={() => setCheckInOpen(true)}>
+              Fill from check-in
+            </button>
+            <button
+              type="button"
+              className={`btn${undoReady ? ' btn--blue' : ' btn--ghost'}`}
+              disabled={!undoReady}
+              onClick={() => undoLastOutcome()}
+            >
+              Undo last result
+            </button>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              disabled={!canReset}
+              onClick={() => setConfirmReset(true)}
+            >
+              Reset
+            </button>
+            <FullscreenChip
+              supported={fs.supported}
+              active={fs.active}
+              nudge={fs.showFallback}
+              shortcut={fs.tvStation}
+              onToggle={() => void fs.toggle()}
+            />
+          </div>
+        </div>
       </div>
 
-      {fromSuite ? (
-        <div className="kids-switch-row">
-          <KidsScoreboardSwitcher prefs={kids} />
-        </div>
-      ) : null}
+      {showMascot ? <KidsMascotDock lines={kidsWinLines(kidsChampion, kidsScore)} /> : null}
 
       <Sheet
+        className="sheet--names"
         open={namesOpen}
         title={plainCoach ? 'Student names' : 'Competitor names'}
         onClose={() => setNamesOpen(false)}
@@ -435,6 +494,34 @@ export function TournamentPage() {
             ? ' Semifinal is 2nd seed vs 3rd seed. The loser faces the 1st seed. Winners of those two matches meet in the final.'
             : ''}
         </p>
+        <label className="tournament__paste">
+          <span>Paste a list</span>
+          <textarea
+            value={pasteDraft}
+            rows={4}
+            placeholder="One name per line, or commas: Ana, Ben, Cam"
+            aria-label={plainCoach ? 'Paste student names' : 'Paste competitor names'}
+            onChange={(event) => setPasteDraft(event.target.value)}
+            onPaste={(event) => {
+              const names = parseNameList(event.clipboardData.getData('text'));
+              if (names.length < 2) return;
+              event.preventDefault();
+              setPasteDraft(event.clipboardData.getData('text'));
+              fillSeedNames(names, 0);
+            }}
+          />
+        </label>
+        <button
+          type="button"
+          className="btn"
+          onClick={() => {
+            const names = parseNameList(pasteDraft);
+            if (!names.length) return;
+            fillSeedNames(names, 0);
+          }}
+        >
+          Fill bracket
+        </button>
         <ol className="tournament__seeds">
           {seeds.map((id, index) => (
             <li key={id}>
@@ -456,12 +543,27 @@ export function TournamentPage() {
           Done
         </button>
       </Sheet>
+      <CheckInFillSheet
+        open={checkInOpen}
+        onClose={() => setCheckInOpen(false)}
+        students={roster.students}
+        files={rankings.files}
+        bracketTitle={tournament.title}
+        hasNames={bracketHasCompetitors(tournament)}
+        hasResults={Object.keys(tournament.results).length > 0}
+        sizeMax={sizeMax}
+        onApply={(names) => {
+          unlinkBracketBout();
+          const placed = fillCheckedInBracket(names, sizeMax);
+          setFillPlaced(placed > 0 ? placed : null);
+          setCheckInOpen(false);
+        }}
+      />
       <Sheet
         open={sizeOpen}
         title="Bracket size"
         onClose={() => {
           setSizeOpen(false);
-          setPendingSize(null);
           setPendingPlacement(null);
         }}
       >
@@ -470,7 +572,7 @@ export function TournamentPage() {
           loser faces the 1st seed, and those winners meet in the final. A field of 5 opens with 4th
           vs 5th, and 1st, 2nd, and 3rd receive byes. A field of 7 gives the bye to the 1st seed.
           Eight and up, and every other custom count, fill to the next power of two with those same
-          seeded byes.
+          seeded byes. Tap a size to apply it. Names that fit stay. Results on this board clear.
           {proUnlocked && !plainCoach
             ? ' Pro boards save up to 64 competitors on this device.'
             : ' Mock Tournament stays at 16.'}
@@ -481,7 +583,7 @@ export function TournamentPage() {
             type="button"
             role="radio"
             aria-checked={placement === 'ibjjf'}
-            className={`chip${placement === 'ibjjf' ? ' chip--gold' : ''}`}
+            className={`chip${placement === 'ibjjf' ? ' chip--on' : ''}`}
             onClick={() => requestPlacement('ibjjf')}
           >
             {placementLabel('ibjjf')}
@@ -490,7 +592,7 @@ export function TournamentPage() {
             type="button"
             role="radio"
             aria-checked={placement === 'lineup'}
-            className={`chip${placement === 'lineup' ? ' chip--gold' : ''}`}
+            className={`chip${placement === 'lineup' ? ' chip--on' : ''}`}
             onClick={() => requestPlacement('lineup')}
           >
             Lineup
@@ -505,7 +607,7 @@ export function TournamentPage() {
             <button
               key={preset}
               type="button"
-              className={`chip${tournament.size === preset ? ' chip--gold' : ''}`}
+              className={`chip${tournament.size === preset ? ' chip--on' : ''}`}
               onClick={() => requestSize(preset)}
             >
               {preset}
@@ -535,20 +637,6 @@ export function TournamentPage() {
         >
           Use custom size
         </button>
-        {pendingSize != null ? (
-          <div className="tournament__confirm">
-            <span>
-              Changing to {pendingSize} clears results and rebuilds the draw. Keep names when they
-              fit.
-            </span>
-            <button type="button" className="btn" onClick={() => applySize(pendingSize)}>
-              Change size
-            </button>
-            <button type="button" className="btn btn--ghost" onClick={() => setPendingSize(null)}>
-              Keep size
-            </button>
-          </div>
-        ) : null}
         {pendingPlacement != null ? (
           <div className="tournament__confirm">
             <span>
@@ -702,24 +790,42 @@ function RoundColumn({
   label,
   detail,
   liveMatchId,
+  paired,
 }: {
   ids: readonly BracketMatchId[];
   label: string;
   detail?: string;
   liveMatchId: BracketMatchId | null;
+  paired: boolean;
 }) {
   if (!ids.length) return null;
+  const pairs = paired && ids.length >= 2 ? pairMatchIds(ids) : null;
   return (
     <div className={`bracket__round bracket__round--${ids.length}`}>
       <h2>{label}</h2>
       {detail ? <p className="bracket__path">{detail}</p> : null}
       <div className="bracket__matches">
-        {ids.map((id) => (
-          <MatchCard key={id} matchId={id} liveMatchId={liveMatchId} />
-        ))}
+        {pairs
+          ? pairs.map((pair) => (
+              <div key={pair[0]} className="bracket__pair">
+                {pair.map((id) => (
+                  <MatchCard key={id} matchId={id} liveMatchId={liveMatchId} />
+                ))}
+              </div>
+            ))
+          : ids.map((id) => <MatchCard key={id} matchId={id} liveMatchId={liveMatchId} />)}
       </div>
     </div>
   );
+}
+
+/** Two matches feed one card in the next round. A last odd card stays in its own pair. */
+function pairMatchIds(ids: readonly BracketMatchId[]): BracketMatchId[][] {
+  const pairs: BracketMatchId[][] = [];
+  for (let index = 0; index < ids.length; index += 2) {
+    pairs.push(ids.slice(index, index + 2));
+  }
+  return pairs;
 }
 
 function MatchCard({
@@ -732,8 +838,12 @@ function MatchCard({
   const tournament = useTournamentState();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const fromSuite = searchParams.get('from') === SUITE_FROM;
+  const from = searchParams.get('from');
+  const fromSuite = from === SUITE_FROM;
+  const fromUnlimited = from === UNLIMITED_FROM;
   const plainCoach = usePlainCoachBoard();
+  const kids = useKidsScoreboard();
+  const kidsOn = kidsBracketChromeOn(kidsBracketSkinsAllowed(from) && !plainCoach, kids.enabled);
   const hasResult = Boolean(tournament.results[matchId]);
   const live = liveMatchId === matchId;
   const bye = matchHasBye(tournament, matchId);
@@ -741,10 +851,14 @@ function MatchCard({
   const openScore = () => {
     openBracketBout(matchId);
     navigate(
-      withMatchOrigin(scoreboardPath(matchId), {
-        fromSuite,
-        whiteBoard: coachLinkedWhiteBoard(fromSuite, true, plainCoach, false),
-      }),
+      withKidsSkin(
+        withMatchOrigin(scoreboardPath(matchId), {
+          fromSuite,
+          fromUnlimited,
+          whiteBoard: coachLinkedWhiteBoard(fromSuite, true, plainCoach, false),
+        }),
+        kidsOn ? kids.skin : null,
+      ),
     );
   };
 
@@ -755,6 +869,11 @@ function MatchCard({
       }${bye ? ' t-match--bye' : ''}`}
       aria-label={matchAriaLabel(isThreePersonBracket(tournament), matchId)}
     >
+      {live && !hasResult ? (
+        <p className="t-live-pill" role="status">
+          LIVE
+        </p>
+      ) : null}
       {matchId === 'final-0' ? (
         <p className="t-match__finals-label">
           <span>Championship match</span>
@@ -885,6 +1004,7 @@ function SlotRow({ matchId, side }: { matchId: BracketMatchId; side: MatchSide }
         </div>
       )}
       <OutcomePickSheet
+        portal
         open={sheet}
         title={sheet === 'dq' ? `${label} DQ` : `${label} win`}
         onClose={() => setSheet(null)}

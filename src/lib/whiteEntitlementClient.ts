@@ -2,6 +2,7 @@ import { WHITE_ENTITLEMENT_API } from './whitePurchase.ts';
 
 export type WhiteEntitlementStatus = {
   entitled: boolean;
+  product?: string;
   email?: string;
   sessionId?: string;
   createdAt?: string;
@@ -20,6 +21,7 @@ export async function lookupWhiteEntitlement(query: {
   const body = (await response.json()) as WhiteEntitlementStatus;
   return {
     entitled: Boolean(body.entitled),
+    product: typeof body.product === 'string' ? body.product : undefined,
     email: typeof body.email === 'string' ? body.email : undefined,
     sessionId: typeof body.sessionId === 'string' ? body.sessionId : undefined,
     createdAt: typeof body.createdAt === 'string' ? body.createdAt : undefined,

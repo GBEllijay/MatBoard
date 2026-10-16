@@ -39,7 +39,7 @@ export const SCHEDULE_TEMPLATE_HINTS: Record<ScheduleTemplate, string> = {
   week: 'Stacked days, Monday–Sunday. One readable type size, with time, mat, class name, and a short detail. Scrolls when a day runs long.',
   'weekly-list': 'Day banners for editing on a phone. The TV still casts Week or Month.',
   'week-grid': 'The old grid is retired. This board uses the full week.',
-  monthly: 'This month at a glance. Color chips by program and a class count. Not full class titles.',
+  monthly: 'This month at a glance. Color chips by the level picked in Edit, and a class count. Not full class titles.',
 };
 
 /** What the screen should draw. The overlapping grid never comes back. */
@@ -96,6 +96,65 @@ export function monthWeeks(now = new Date()): MonthDay[][] {
   return weeks;
 }
 
+/** Owner-picked belt level. Card color comes only from this, never from the class title. */
+export const CLASS_LEVELS = [
+  'none',
+  'fundamentals',
+  'intermediate',
+  'advanced',
+  'expert',
+  'kids',
+  'kids-advanced',
+] as const;
+export type ClassLevel = (typeof CLASS_LEVELS)[number];
+
+export function isClassLevel(value: unknown): value is ClassLevel {
+  return typeof value === 'string' && (CLASS_LEVELS as readonly string[]).includes(value);
+}
+
+export const CLASS_LEVEL_META: Record<
+  ClassLevel,
+  { label: string; short: string; group: 'adults' | 'kids' | 'other'; blurb: string }
+> = {
+  fundamentals: { label: 'Fundamentals', short: 'Fundamentals', group: 'adults', blurb: 'Open to everyone' },
+  intermediate: { label: 'Intermediate', short: 'Intermediate', group: 'adults', blurb: '3 stripes and up' },
+  advanced: { label: 'Advanced', short: 'Advanced', group: 'adults', blurb: 'Blue belt and up' },
+  expert: { label: 'Expert', short: 'Expert', group: 'adults', blurb: 'Black belt program / invite only' },
+  kids: { label: 'All Levels', short: 'Kids', group: 'kids', blurb: 'Kids of all ages and skill levels' },
+  'kids-advanced': { label: 'Advanced', short: 'Kids Advanced', group: 'kids', blurb: 'Advanced kids' },
+  none: { label: 'No level', short: 'No level', group: 'other', blurb: 'Open Mat, events — not level-gated' },
+};
+
+/**
+ * Id or owner-facing label. Blank and unknown values are `null` so a bad edit
+ * does not wipe a level that was already saved. "No level" is `none`.
+ */
+export function coerceClassLevel(value: unknown): ClassLevel | null {
+  if (isClassLevel(value)) return value;
+  if (typeof value !== 'string') return null;
+  const key = value.trim().toLowerCase().replace(/_+/g, ' ').replace(/\s+/g, ' ');
+  if (!key) return null;
+  if (isClassLevel(key)) return key;
+  const dashed = key.replace(/ /g, '-');
+  if (isClassLevel(dashed)) return dashed;
+  for (const id of CLASS_LEVELS) {
+    const meta = CLASS_LEVEL_META[id];
+    if (meta.short.toLowerCase() === key || meta.label.toLowerCase() === key) return id;
+  }
+  return null;
+}
+
+/** Legend and picker order. No level stays last. */
+export const CLASS_LEVEL_ORDER: readonly ClassLevel[] = [
+  'fundamentals',
+  'intermediate',
+  'advanced',
+  'expert',
+  'kids',
+  'kids-advanced',
+  'none',
+];
+
 /** Recurring weekly slot on the Class Schedule board. */
 export type WeeklyClassSlot = {
   id: string;
@@ -107,6 +166,11 @@ export type WeeklyClassSlot = {
   location: string;
   /** Optional detail under the title, e.g. "Blue belt & up". */
   subtitle: string;
+  /**
+   * Belt level for the TV board. Missing on saves from before this field
+   * existed; readers use `slot.level ?? 'none'`.
+   */
+  level?: ClassLevel;
 };
 
 export type ClassTimeGroup = {
@@ -228,13 +292,6 @@ export function formatSpecialDate(date: string): string {
   return next.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-export function weekdayFromIsoDate(date: string): Weekday | null {
-  const iso = normalizeIsoDate(date);
-  if (!iso) return null;
-  const [year, month, day] = iso.split('-').map(Number);
-  return weekdayFromJsDay(new Date(year, (month ?? 1) - 1, day ?? 1).getDay());
-}
-
 function startOfDay(value: Date): Date {
   return new Date(value.getFullYear(), value.getMonth(), value.getDate());
 }
@@ -333,30 +390,6 @@ export function classesInHour(
   });
 }
 
-export type ClassProgramId = 'kids' | 'fundamentals' | 'advanced' | 'nogi' | 'open' | 'gi' | 'other';
-
-export type ClassProgram = {
-  id: ClassProgramId;
-  label: string;
-};
-
-/**
- * Stable program color. Same kind of class stays the same color all week.
- * GB1 / GB2 / GB3 are only recognized when that text is already the class title
- * someone typed. They are not labels this app shows on its own.
- */
-export function classProgram(title: string): ClassProgram {
-  const name = title.trim().toLowerCase();
-  if (/tiny|little|kids|youth|homeschool|champion/.test(name)) return { id: 'kids', label: 'Kids' };
-  if (/no-?gi/.test(name)) return { id: 'nogi', label: 'No-Gi' };
-  if (/open mat|open rolling|\brolling\b/.test(name)) return { id: 'open', label: 'Open' };
-  if (/advanced|blue belt|competition|\bgb3\b/.test(name)) return { id: 'advanced', label: 'Advanced' };
-  if (/fundamental|\bgb1\b|\bgb2\b|beginner/.test(name)) return { id: 'fundamentals', label: 'Fundamentals' };
-  if (/\bgi\b|morning/.test(name)) return { id: 'gi', label: 'Gi' };
-  const word = title.trim().split(/\s+/)[0] ?? 'Class';
-  return { id: 'other', label: word.slice(0, 10) };
-}
-
 /** Classes that share one day and clock time (MAT 1 beside MAT 2). */
 export function classesAt(
   classes: readonly WeeklyClassSlot[],
@@ -418,13 +451,80 @@ export function noticeLines(notes: string, specials: readonly SpecialDate[], now
   const trimmed = notes.trim();
   if (trimmed) lines.push(trimmed);
   for (const item of sortSpecials(specialsThisWeek(specials, now))) {
-    const label = item.title.trim() || item.body.trim();
-    if (!label) continue;
-    const when = formatSpecialDate(item.date);
-    lines.push(when ? `${when} · ${label}` : label);
+    const line = specialEventLine(item);
+    if (line) lines.push(line);
   }
   return lines;
 }
+
+/** Dated specials in the calendar month `now` is in, plus undated ongoing notices. */
+export function specialsThisMonth(specials: readonly SpecialDate[], now = new Date()): SpecialDate[] {
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  return sortSpecials(
+    specials.filter((item) => {
+      const iso = normalizeIsoDate(item.date);
+      if (!iso) return true;
+      const [y, m, d] = iso.split('-').map(Number);
+      const when = new Date(y, (m ?? 1) - 1, d ?? 1);
+      return when.getFullYear() === year && when.getMonth() === month;
+    }),
+  );
+}
+
+/** One readable strip line. Empty when the special has no title or body. */
+export function specialEventLine(item: SpecialDate): string {
+  const label = item.title.trim() || item.body.trim();
+  if (!label) return '';
+  const when = formatSpecialDate(item.date);
+  return when ? `${when} · ${label}` : label;
+}
+
+/**
+ * Specials the bottom strip can show.
+ * This month, plus a this-week date that spills into the neighboring month,
+ * plus undated notices. Nothing already on the strip is dropped.
+ */
+export function specialsOnStrip(specials: readonly SpecialDate[], now = new Date()): SpecialDate[] {
+  const seen = new Set<string>();
+  const rows: SpecialDate[] = [];
+  for (const item of [...specialsThisMonth(specials, now), ...specialsThisWeek(specials, now)]) {
+    if (seen.has(item.id) || !specialEventLine(item)) continue;
+    seen.add(item.id);
+    rows.push(item);
+  }
+  return sortSpecials(rows);
+}
+
+export type SpecialEventSlide = {
+  id: string;
+  text: string;
+  kind: 'note' | 'event';
+};
+
+/** Notes stay first so a free-text notice is not dropped when events rotate. */
+export function specialEventSlides(
+  notes: string,
+  specials: readonly SpecialDate[],
+  now = new Date(),
+): SpecialEventSlide[] {
+  const slides: SpecialEventSlide[] = [];
+  const note = notes.trim();
+  if (note) slides.push({ id: 'strip-note', text: note, kind: 'note' });
+  for (const item of specialsOnStrip(specials, now)) {
+    const text = specialEventLine(item);
+    if (!text) continue;
+    slides.push({ id: item.id, text, kind: 'event' });
+  }
+  return slides;
+}
+
+export function specialEventCount(slides: readonly SpecialEventSlide[]): number {
+  return slides.reduce((count, slide) => count + (slide.kind === 'event' ? 1 : 0), 0);
+}
+
+/** Cross-fade dwell for the special-events strip. One event never starts this timer. */
+export const SPECIAL_EVENT_DWELL_MS = 3000;
 
 export function defaultGymCalendar(): GymCalendarState {
   return {
@@ -446,33 +546,33 @@ export const SAMPLE_WEEK_NOTES =
 
 /** Sample week of a typical class mix. Not a real gym’s schedule. Sunday is empty on purpose. */
 export const SAMPLE_WEEK_SLOTS: ReadonlyArray<Omit<WeeklyClassSlot, 'id' | 'kind'>> = [
-  { day: 'mon', time: '06:00', title: 'Morning Gi', location: 'MAT 1', subtitle: '' },
-  { day: 'mon', time: '12:00', title: 'Advanced', location: 'MAT 2', subtitle: '' },
-  { day: 'mon', time: '17:00', title: 'Kids 3-5', location: 'MAT 1', subtitle: '3-5 Years Old' },
-  { day: 'mon', time: '17:00', title: 'Blue Belt and Up', location: 'MAT 2', subtitle: '' },
-  { day: 'mon', time: '18:00', title: 'Youth Class', location: 'MAT 1', subtitle: '5-10 Years Old' },
-  { day: 'mon', time: '18:00', title: 'Fundamentals', location: 'MAT 2', subtitle: 'All Levels' },
-  { day: 'tue', time: '06:00', title: 'Morning Gi', location: 'MAT 1', subtitle: '' },
-  { day: 'tue', time: '17:00', title: 'Beginner', location: 'MAT 1', subtitle: '' },
-  { day: 'tue', time: '17:00', title: 'Fundamentals', location: 'MAT 2', subtitle: 'All Levels' },
-  { day: 'tue', time: '18:00', title: 'Youth Class', location: 'MAT 1', subtitle: '5-10 Years Old' },
-  { day: 'tue', time: '18:00', title: 'Advanced Kids', location: 'MAT 2', subtitle: 'Grey & White+' },
-  { day: 'wed', time: '10:00', title: 'Homeschool Gi', location: 'MAT 1', subtitle: '' },
-  { day: 'wed', time: '12:00', title: 'Advanced', location: 'MAT 2', subtitle: '' },
-  { day: 'wed', time: '17:00', title: 'Kids 3-5', location: 'MAT 1', subtitle: '3-5 Years Old' },
-  { day: 'wed', time: '18:00', title: 'Youth Class', location: 'MAT 1', subtitle: '5-10 Years Old' },
-  { day: 'wed', time: '18:00', title: 'No-Gi', location: 'MAT 2', subtitle: 'All Levels' },
-  { day: 'thu', time: '06:00', title: 'Morning Gi', location: 'MAT 1', subtitle: '' },
-  { day: 'thu', time: '17:00', title: 'Fundamentals', location: 'MAT 1', subtitle: 'All Levels' },
-  { day: 'thu', time: '17:00', title: 'Blue Belt and Up', location: 'MAT 2', subtitle: '' },
-  { day: 'thu', time: '18:00', title: 'Competition Class', location: 'MAT 1', subtitle: '' },
-  { day: 'thu', time: '19:00', title: 'Open Rolling', location: 'MAT 1', subtitle: 'All Levels' },
-  { day: 'fri', time: '12:00', title: 'Advanced', location: 'MAT 2', subtitle: '' },
-  { day: 'fri', time: '17:00', title: 'Kids BJJ', location: 'MAT 1', subtitle: '' },
-  { day: 'fri', time: '18:00', title: 'Youth Class', location: 'MAT 1', subtitle: '5-10 Years Old' },
-  { day: 'fri', time: '18:00', title: 'Fundamentals', location: 'MAT 2', subtitle: 'All Levels' },
-  { day: 'sat', time: '10:00', title: 'Kids BJJ', location: 'MAT 1', subtitle: '' },
-  { day: 'sat', time: '11:00', title: 'Open Mat', location: 'MAT 1', subtitle: 'All Levels' },
+  { day: 'mon', time: '06:00', title: 'Morning Gi', location: 'MAT 1', subtitle: '', level: 'none' },
+  { day: 'mon', time: '12:00', title: 'Advanced', location: 'MAT 2', subtitle: '', level: 'advanced' },
+  { day: 'mon', time: '17:00', title: 'Kids 3-5', location: 'MAT 1', subtitle: '3-5 Years Old', level: 'kids' },
+  { day: 'mon', time: '17:00', title: 'Blue Belt and Up', location: 'MAT 2', subtitle: '', level: 'advanced' },
+  { day: 'mon', time: '18:00', title: 'Youth Class', location: 'MAT 1', subtitle: '5-10 Years Old', level: 'kids' },
+  { day: 'mon', time: '18:00', title: 'Fundamentals', location: 'MAT 2', subtitle: 'All Levels', level: 'fundamentals' },
+  { day: 'tue', time: '06:00', title: 'Morning Gi', location: 'MAT 1', subtitle: '', level: 'none' },
+  { day: 'tue', time: '17:00', title: 'Beginner', location: 'MAT 1', subtitle: '', level: 'fundamentals' },
+  { day: 'tue', time: '17:00', title: 'Fundamentals', location: 'MAT 2', subtitle: 'All Levels', level: 'fundamentals' },
+  { day: 'tue', time: '18:00', title: 'Youth Class', location: 'MAT 1', subtitle: '5-10 Years Old', level: 'kids' },
+  { day: 'tue', time: '18:00', title: 'Advanced Kids', location: 'MAT 2', subtitle: 'Grey & White+', level: 'kids-advanced' },
+  { day: 'wed', time: '10:00', title: 'Homeschool Gi', location: 'MAT 1', subtitle: '', level: 'none' },
+  { day: 'wed', time: '12:00', title: 'Advanced', location: 'MAT 2', subtitle: '', level: 'advanced' },
+  { day: 'wed', time: '17:00', title: 'Kids 3-5', location: 'MAT 1', subtitle: '3-5 Years Old', level: 'kids' },
+  { day: 'wed', time: '18:00', title: 'Youth Class', location: 'MAT 1', subtitle: '5-10 Years Old', level: 'kids' },
+  { day: 'wed', time: '18:00', title: 'No-Gi', location: 'MAT 2', subtitle: 'All Levels', level: 'none' },
+  { day: 'thu', time: '06:00', title: 'Morning Gi', location: 'MAT 1', subtitle: '', level: 'none' },
+  { day: 'thu', time: '17:00', title: 'Fundamentals', location: 'MAT 1', subtitle: 'All Levels', level: 'fundamentals' },
+  { day: 'thu', time: '17:00', title: 'Blue Belt and Up', location: 'MAT 2', subtitle: '', level: 'advanced' },
+  { day: 'thu', time: '18:00', title: 'Competition Class', location: 'MAT 1', subtitle: '', level: 'none' },
+  { day: 'thu', time: '19:00', title: 'Open Rolling', location: 'MAT 1', subtitle: 'All Levels', level: 'none' },
+  { day: 'fri', time: '12:00', title: 'Advanced', location: 'MAT 2', subtitle: '', level: 'advanced' },
+  { day: 'fri', time: '17:00', title: 'Kids BJJ', location: 'MAT 1', subtitle: '', level: 'kids' },
+  { day: 'fri', time: '18:00', title: 'Youth Class', location: 'MAT 1', subtitle: '5-10 Years Old', level: 'kids' },
+  { day: 'fri', time: '18:00', title: 'Fundamentals', location: 'MAT 2', subtitle: 'All Levels', level: 'fundamentals' },
+  { day: 'sat', time: '10:00', title: 'Kids BJJ', location: 'MAT 1', subtitle: '', level: 'kids' },
+  { day: 'sat', time: '11:00', title: 'Open Mat', location: 'MAT 1', subtitle: 'All Levels', level: 'none' },
 ];
 
 export function sampleWeekClasses(): WeeklyClassSlot[] {
@@ -521,7 +621,8 @@ function normalizeClass(raw: unknown, fallbackId: string): WeeklyClassSlot | nul
   const id = typeof row.id === 'string' && row.id.trim() ? row.id.trim() : fallbackId;
   const location = typeof row.location === 'string' ? row.location.trim() : '';
   const subtitle = typeof row.subtitle === 'string' ? row.subtitle.trim() : '';
-  return { id, kind: 'class', day: row.day, time, title, location, subtitle };
+  const level = coerceClassLevel(row.level) ?? 'none';
+  return { id, kind: 'class', day: row.day, time, title, location, subtitle, level };
 }
 
 function normalizeSpecial(raw: unknown, fallbackId: string): SpecialDate | null {

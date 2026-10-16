@@ -1,10 +1,19 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FullscreenChip } from '../components/FullscreenChip';
-import { PlayExitMark } from '../components/PlayExitMark';
+import { SubmenuMarks } from '../components/TierHomeMark';
 import { ScheduleMonthBoard } from '../components/ScheduleMonthBoard';
 import { ScheduleWeekBoard } from '../components/ScheduleWeekBoard';
+import { SpecialEventsStrip } from '../components/SpecialEventsStrip';
 import { MEDIA_CONSOLE_NAME } from '../lib/productNames';
+import {
+  exitPageFullscreen,
+  fullscreenElement,
+  fullscreenSupported,
+  requestElementFullscreen,
+  type FullscreenRequestResult,
+} from '../lib/fullscreen';
+import { LESSON_COVER_HOME_HINT } from '../lib/lessonScreenCover';
 import { Sheet } from '../components/Sheet';
 import { useGymLogo } from '../hooks/useGymBrand';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
@@ -25,6 +34,8 @@ import {
   WEEKDAYS,
   WEEKDAY_LABELS,
   WEEKDAY_SHORT,
+  CLASS_LEVELS,
+  CLASS_LEVEL_META,
   SCHEDULE_TEMPLATE_HINTS,
   displayTemplate,
   SCHEDULE_TEMPLATE_LABELS,
@@ -39,8 +50,10 @@ import {
   formatClassTime,
   getSchedule,
   groupClassesByTime,
+  isClassLevel,
   loadSampleWeek,
   noticeLines,
+  specialsOnStrip,
   normalizeQrUrl,
   readPickedImage,
   removeClass,
@@ -56,6 +69,7 @@ import {
   todayWeekday,
   updateClass,
   updateSpecial,
+  type ClassLevel,
   type ClassTimeGroup,
   type ScheduleTemplate,
   type Weekday,
@@ -64,6 +78,15 @@ import {
 import { quotaAddNote } from '../lib/storageQuota';
 
 const BAR_MODES = ['week', 'monthly', 'weekly-list'] as const satisfies readonly ScheduleTemplate[];
+const LEVEL_GROUPS = [
+  { id: 'adults', label: 'Adults' },
+  { id: 'kids', label: 'Kids' },
+  { id: 'other', label: 'Other' },
+] as const satisfies ReadonlyArray<{ id: (typeof CLASS_LEVEL_META)[ClassLevel]['group']; label: string }>;
+
+function levelsIn(group: (typeof LEVEL_GROUPS)[number]['id']): ClassLevel[] {
+  return CLASS_LEVELS.filter((id) => CLASS_LEVEL_META[id].group === group);
+}
 const TV_MODES = ['week', 'monthly'] as const satisfies readonly ScheduleTemplate[];
 
 const TEMPLATE_CHROME: Record<(typeof BAR_MODES)[number], string> = {
@@ -71,6 +94,15 @@ const TEMPLATE_CHROME: Record<(typeof BAR_MODES)[number], string> = {
   monthly: 'Month',
   'weekly-list': 'List',
 };
+
+type ScheduleCoverFit = 'off' | 'pending' | 'visual' | FullscreenRequestResult;
+
+function isTypingTarget(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
+  if (!el) return false;
+  if (el.isContentEditable) return true;
+  return Boolean(el.closest('input, textarea, select, [contenteditable="true"]'));
+}
 
 function downloadScheduleCsv(filename: string, csv: string): void {
   const blob = new Blob([withUtf8Bom(csv)], { type: 'text/csv;charset=utf-8' });
@@ -87,11 +119,58 @@ function downloadScheduleCsv(filename: string, csv: string): void {
 export function SchedulePage() {
   const schedule = useScheduleState();
   const assets = useScheduleAssets();
-  const fs = usePlayFullscreen();
+  const fs = usePlayFullscreen({ auto: false });
   const navigate = useNavigate();
+  const rootRef = useRef<HTMLElement>(null);
+  const coverGen = useRef(0);
+  const [boardFit, setBoardFit] = useState<ScheduleCoverFit>('off');
   const [editOpen, setEditOpen] = useState(false);
   const [castPick, setCastPick] = useState<ScheduleTemplate | null>(null);
   const [searchParams] = useSearchParams();
+
+  const enterBoard = useCallback(async () => {
+    const ticket = ++coverGen.current;
+    setBoardFit('pending');
+    const el = rootRef.current;
+    const result = el ? await requestElementFullscreen(el) : 'unsupported';
+    if (ticket !== coverGen.current) return;
+    if (result === 'unsupported' && fullscreenSupported()) {
+      setBoardFit(fullscreenElement() ? 'standard' : 'visual');
+      return;
+    }
+    setBoardFit(result);
+  }, []);
+
+  const leaveBoard = useCallback(async () => {
+    coverGen.current += 1;
+    setBoardFit('off');
+    await exitPageFullscreen();
+  }, []);
+
+  useEffect(() => {
+    const onFs = () => {
+      if (fullscreenElement()) return;
+      setBoardFit((current) => (current === 'standard' || current === 'webkit' ? 'off' : current));
+    };
+    document.addEventListener('fullscreenchange', onFs);
+    document.addEventListener('webkitfullscreenchange', onFs);
+    return () => {
+      document.removeEventListener('fullscreenchange', onFs);
+      document.removeEventListener('webkitfullscreenchange', onFs);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (boardFit === 'off') return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.repeat) return;
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
+      if (isTypingTarget(event.target)) return;
+      void leaveBoard();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [boardFit, leaveBoard]);
   const [logoUrl, setLogoUrl] = useState('');
   const [qrImageUrl, setQrImageUrl] = useState('');
   const [qrBuilt, setQrBuilt] = useState('');
@@ -157,7 +236,11 @@ export function SchedulePage() {
   const qrSrc = qrBuilt || qrImageUrl;
   const notices = noticeLines(schedule.notes, schedule.specials);
   const emptyBoard =
-    schedule.classes.length === 0 && notices.length === 0 && !logoUrl && !qrSrc;
+    schedule.classes.length === 0 &&
+    notices.length === 0 &&
+    specialsOnStrip(schedule.specials).length === 0 &&
+    !logoUrl &&
+    !qrSrc;
   const tv = fs.active || fs.landscape;
   const shown = tv
     ? displayTemplate(castPick ?? schedule.template) === 'monthly'
@@ -165,16 +248,46 @@ export function SchedulePage() {
       : 'week'
     : displayTemplate(schedule.template);
   const showHero = shown === 'week' || shown === 'monthly';
+  const calendarOn = boardFit !== 'off';
+  const hideChrome = calendarOn || fs.active;
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('schedule-fs-open', hideChrome);
+    return () => document.documentElement.classList.remove('schedule-fs-open');
+  }, [hideChrome]);
 
   const exitBoard = () => {
-    void fs.exit().finally(() => {
+    void leaveBoard().finally(() => {
       navigate('/slideshow?folder=gallery');
     });
   };
 
+  const fullscreenControl = () =>
+    hideChrome ? null : (
+      <FullscreenChip
+        supported
+        active={false}
+        nudge={fs.showFallback}
+        shortcut={fs.tvStation}
+        onToggle={() => void enterBoard()}
+      />
+    );
+
   return (
-    <main className={`schedule${fs.className ? ` ${fs.className}` : ''}`}>
-      <PlayExitMark to="/slideshow?folder=gallery" onExit={exitBoard} />
+    <main
+      ref={rootRef}
+      className={[
+        'schedule',
+        fs.className,
+        hideChrome ? 'schedule--calendar-fs' : '',
+        boardFit === 'unsupported' ? 'schedule--fs-fallback' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      data-cover-api={boardFit === 'off' ? undefined : boardFit}
+    >
+      <SubmenuMarks to="/slideshow?folder=gallery" onExit={exitBoard} />
+      {hideChrome ? null : (
       <header className="schedule__bar">
         <div className="schedule__brand">
           <p className="schedule__eyebrow">{MEDIA_CONSOLE_NAME}</p>
@@ -202,16 +315,11 @@ export function SchedulePage() {
           <button type="button" className="btn" onClick={() => setEditOpen(true)}>
             Edit
           </button>
-          <FullscreenChip
-            supported={fs.supported}
-            active={fs.active}
-            nudge={fs.showFallback}
-            shortcut={fs.tvStation}
-            onToggle={() => void fs.toggle()}
-          />
+          {fullscreenControl()}
         </div>
       </header>
-      {tv ? (
+      )}
+      {tv && !hideChrome ? (
         <>
           <button type="button" className="btn schedule__cast-edit" onClick={() => setEditOpen(true)}>
             Edit
@@ -233,15 +341,7 @@ export function SchedulePage() {
               </button>
             ))}
           </div>
-          <div className="schedule__cast-tools">
-            <FullscreenChip
-              supported={fs.supported}
-              active={fs.active}
-              nudge={fs.showFallback}
-              shortcut={fs.tvStation}
-              onToggle={() => void fs.toggle()}
-            />
-          </div>
+          <div className="schedule__cast-tools">{fullscreenControl()}</div>
         </>
       ) : null}
 
@@ -273,20 +373,15 @@ export function SchedulePage() {
 
         <WeeklyListBoard classes={schedule.classes} today={today} />
 
-        <aside className={`schedule__notes${notices.length ? ' is-filled' : ''}`} aria-label="Notices">
-          <p className="schedule__notes-label">Notices</p>
-          {notices.length ? (
-            notices.map((line, index) => <p key={`${index}-${line}`}>{line}</p>)
-          ) : (
-            <p>Holiday closings, schedule changes, and special events go here.</p>
-          )}
-        </aside>
+        <SpecialEventsStrip surface="list" notes={schedule.notes} specials={schedule.specials} />
           </>
         )}
       </section>
 
+      {boardFit === 'unsupported' ? <p className="schedule__fs-hint">{LESSON_COVER_HOME_HINT}</p> : null}
+
       <ScheduleEditor
-        open={editOpen}
+        open={editOpen && !hideChrome}
         onClose={() => setEditOpen(false)}
         logoUrl={logoUrl}
         qrImageUrl={qrImageUrl}
@@ -484,6 +579,52 @@ function ScheduleBackup({
   );
 }
 
+function LevelPicker({
+  value,
+  onChange,
+}: {
+  value: ClassLevel;
+  onChange: (level: ClassLevel) => void;
+}) {
+  return (
+    <div className="schedule-edit__levels">
+      <div className="schedule-edit__level-label">
+        <span id="schedule-level-label">Level</span>
+        <span>Sets the belt color on the TV board</span>
+      </div>
+      <div role="radiogroup" aria-labelledby="schedule-level-label">
+        {LEVEL_GROUPS.map((group) => (
+          <div key={group.id} className="schedule-edit__level-group">
+            <p>{group.label}</p>
+            {levelsIn(group.id).map((id) => {
+              const meta = CLASS_LEVEL_META[id];
+              const on = value === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  className={`level-pick${on ? ' level-pick--on' : ''}`}
+                  onClick={() => onChange(id)}
+                >
+                  <i className="belt-swatch" data-level={id} aria-hidden="true" />
+                  <span className="level-pick__copy">
+                    <strong>{meta.label}</strong>
+                    <em>{meta.blurb}</em>
+                  </span>
+                  <span className="level-pick__dot" aria-hidden="true" />
+                </button>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+      <p className="schedule-edit__hint">Classes saved before this update start as No level until you pick one.</p>
+    </div>
+  );
+}
+
 function ScheduleEditor({
   open,
   onClose,
@@ -507,6 +648,7 @@ function ScheduleEditor({
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState<string>(DEFAULT_MATS[0]);
   const [subtitle, setSubtitle] = useState('');
+  const [level, setLevel] = useState<ClassLevel>('none');
   const [pickerNote, setPickerNote] = useState('');
   const titleRef = useRef<HTMLInputElement>(null);
   const csvRef = useRef<HTMLInputElement>(null);
@@ -522,7 +664,7 @@ function ScheduleEditor({
       titleRef.current?.focus();
       return;
     }
-    const added = addClass(day, time, title, location, subtitle);
+    const added = addClass(day, time, title, location, subtitle, level);
     if (added) {
       setTitle('');
       setSubtitle('');
@@ -780,6 +922,7 @@ function ScheduleEditor({
               }}
             />
           </label>
+          <LevelPicker value={level} onChange={setLevel} />
           <button type="button" className="btn" onClick={addRow}>
             Add class
           </button>
@@ -839,6 +982,30 @@ function ScheduleEditor({
                               onChange={(event) => updateClass(item.id, { subtitle: event.target.value })}
                               placeholder="Blue belt & up"
                             />
+                          </label>
+                          <label className="schedule-edit__title schedule-edit__level">
+                            Level
+                            <span className="schedule-edit__level-control">
+                              <i className="belt-swatch" data-level={item.level ?? 'none'} aria-hidden="true" />
+                              <select
+                                aria-label={`Level for ${item.title.trim() || 'class'}`}
+                                value={item.level ?? 'none'}
+                                onChange={(event) => {
+                                  const next = event.target.value;
+                                  if (isClassLevel(next)) updateClass(item.id, { level: next });
+                                }}
+                              >
+                                {LEVEL_GROUPS.map((group) => (
+                                  <optgroup key={group.id} label={group.label}>
+                                    {levelsIn(group.id).map((id) => (
+                                      <option key={id} value={id}>
+                                        {id === 'kids-advanced' ? CLASS_LEVEL_META[id].short : CLASS_LEVEL_META[id].label}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                ))}
+                              </select>
+                            </span>
                           </label>
                           <button
                             type="button"

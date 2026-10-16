@@ -39,7 +39,8 @@ export const COACH_HUB_BLURB =
 export const EMPTY_ROSTER_TITLE = 'No competitors yet';
 export const EMPTY_ROSTER_BODY =
   'Add a name and belt, then pick them into a match or bracket.';
-export const EMPTY_ROSTER_SEARCH = 'No competitors match that name, belt, or division.';
+export const EMPTY_ROSTER_SEARCH =
+  'No competitors match that name, belt, division, opponent, tournament, or method.';
 
 export const EMPTY_NOTES_TITLE = 'No notes yet';
 export const EMPTY_NOTES_BODY = 'Jot a class plan — warm-up, drills, who goes first.';
@@ -115,7 +116,7 @@ export const ROSTER_CSV_DEVICE_NOTE =
 
 /** Shown only from the Instructions control. Import skips a row without both. */
 export const ROSTER_CSV_INSTRUCTIONS =
-  'Each row needs a competitor name and a belt. A row missing either one is left out. Division, Gym name / nickname, and Check In can be blank. Competitor Notes are included when the row has them. Face photos stay on this device and are not in the CSV.';
+  'Each row needs a competitor name and a belt. A row missing either one is left out. Division, Gym name / nickname, Last promotion, Last promotion detail, and Check In can be blank. Competitor Notes are included when the row has them. Face photos stay on this device and are not in the CSV.';
 
 /** Plain text beside the Competitor Roster template download. */
 export const ROSTER_CSV_TEMPLATE_NOTE =
@@ -146,6 +147,8 @@ export const NOTES_LEAD =
 export const COACH_PLAN_SAVE_LEAD =
   'This plan saves to your phone as you type. Click here to save a copy on your connected Drive.';
 export const COACH_PLAN_SAVE_LINK = 'Click here';
+/** Shown in place of the Drive save link when this phone has no Drive folder yet. */
+export const COACH_PLAN_CONNECT_DRIVE = 'Connect Google Drive first';
 
 /**
  * Intro that used to sit on Instructor Collaboration.
