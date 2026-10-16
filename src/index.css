@@ -14692,7 +14692,7 @@ a.plan-pick {
 
 /* Kids' Scoreboards — wallpaper + frosted bubbles on the existing bracket.
    Bright and Dark stay in the DOM. This paint only applies while Kids mode is on.
-   Skins open from the toolbar Skin button. Nothing stays pinned over Decision. */
+   Skins open from the Skin button under the bracket. Nothing stays pinned over Decision. */
 .kids-switch {
   display: flex;
   flex-wrap: wrap;
@@ -14726,10 +14726,12 @@ a.plan-pick {
 
 .kids-skin__picker {
   position: absolute;
-  z-index: 6;
+  z-index: 32;
   top: calc(100% + 0.4rem);
   left: 0;
   width: min(22.5rem, calc(100vw - 1.4rem));
+  max-height: min(28rem, calc(100dvh - 1rem));
+  overflow: auto;
   padding: 0.65rem;
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.22);
@@ -14841,12 +14843,20 @@ a.plan-pick {
   z-index: 22;
 }
 
-/* Pastel wallpapers (Robots, Ocean, Stars) wash out cream-on-transparent chrome.
-   A solid dark toolbar keeps the status line and buttons readable. Space already
-   reads because the art is dark; this matches that without covering the cards. */
+/* The skin paints the whole board, including the area above the cards.
+   The round line stays in a slim pill. Controls sit under the bracket. */
 .tournament--kids .tournament__bar {
-  background: #0c1422;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  background: transparent;
+  box-shadow: none;
+}
+
+.tournament--kids .tournament__center {
+  width: auto;
+  max-width: 100%;
+  padding: 0.22rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(12, 20, 34, 0.78);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
 }
 
 .tournament--kids .tournament__center,
@@ -14863,10 +14873,36 @@ a.plan-pick {
   border: 1px solid rgba(255, 255, 255, 0.62);
 }
 
-/* The kids toolbar can overlap the corner mark. Keep the Advantage logo above it.
-   Carlos ignores pointers, so the mark still goes back. */
+/* The corner mark sits on the slim header. Carlos ignores pointers, so the mark still goes back. */
 .tournament--kids > .play-exit {
   z-index: 25;
+}
+
+/* Controls follow the bracket in the board scroller. Sticky on the inline axis
+   keeps the cluster in view while a wide tree is panned sideways. */
+.tournament__tools {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  box-sizing: border-box;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0.9rem 0 0.2rem;
+  padding: 0.7rem 0.7rem calc(0.85rem + var(--safe-b));
+  border-radius: 18px;
+  background: rgba(8, 12, 20, 0.9);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.32);
+}
+
+.tournament--bright .tournament__tools .tournament__actions,
+.tournament--dark .tournament__tools .tournament__actions {
+  flex: 1 1 auto;
+  justify-content: flex-start;
+  max-width: none;
+}
+
+.tournament__tools .tournament__fill-note {
+  margin: 0 0 0.55rem;
 }
 
 .tournament--kids .tournament__hint {
