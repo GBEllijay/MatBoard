@@ -120,6 +120,28 @@ export function setWeightUnit(report: StudentProgressReport, unit: WeightUnit, n
   return withCompetition(report, { ...competition, weightUnit: unit }, now);
 }
 
+export function setGoalWeight(
+  report: StudentProgressReport,
+  weight: string,
+  unit: WeightUnit,
+  now = Date.now(),
+): StudentProgressReport {
+  const competition = competitionOf(report);
+  const goalWeight = parseWeight(weight, 'Goal weight');
+  const goalUnit = unit === 'kg' ? 'kg' : 'lb';
+  const current = competition.goalWeight ?? null;
+  const currentUnit = competition.goalUnit === 'kg' ? 'kg' : 'lb';
+  if (current === goalWeight && (goalWeight == null || currentUnit === goalUnit)) return report;
+  return withCompetition(report, { ...competition, goalWeight, goalUnit }, now);
+}
+
+export function setWeighDate(report: StudentProgressReport, date: string, now = Date.now()): StudentProgressReport {
+  const competition = competitionOf(report);
+  const weighDate = optionalDate(date, 'Competition weigh-in date');
+  if ((competition.weighDate ?? '') === weighDate) return report;
+  return withCompetition(report, { ...competition, weighDate }, now);
+}
+
 export function addWeighIn(report: StudentProgressReport, draft: WeighInDraft, now = Date.now()): StudentProgressReport {
   const competition = competitionOf(report);
   if (competition.weighIns.length >= PROGRESS_WEIGH_INS_MAX) throw new Error('The weigh-in list is full.');
