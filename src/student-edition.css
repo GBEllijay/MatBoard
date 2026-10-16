@@ -1311,6 +1311,79 @@ button.student-book .student-mark__press {
   text-align: center;
 }
 
+.rank-stripe-date {
+  margin: 0;
+  max-width: 100%;
+  font-size: 0.72rem;
+  line-height: 1.05;
+  text-align: center;
+}
+
+.rank-stripe-thumb {
+  width: 2.4rem;
+  height: 2.4rem;
+  object-fit: cover;
+  border: 2px solid #1c140e;
+}
+
+.rank-stripe-editor {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  align-items: end;
+  justify-items: center;
+}
+
+.student.rank-stripe-editor .rank-stripe-editor__backdrop {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: rgba(28, 20, 14, 0.45);
+  min-height: 0;
+}
+
+.rank-stripe-editor__panel {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 28rem);
+  max-height: min(88dvh, 40rem);
+  overflow: auto;
+  padding: 0.9rem 1rem calc(1rem + env(safe-area-inset-bottom));
+  background: var(--paper);
+  border: 3px solid #1c140e;
+  border-bottom: 0;
+}
+
+.rank-stripe-editor__panel h2 {
+  margin: 0.2rem 0 0.35rem;
+}
+
+.rank-stripe-detail {
+  margin: 0 0 0.7rem;
+}
+
+.rank-stripe-editor__panel label {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0.7rem 0 0.35rem;
+}
+
+.rank-stripe-editor__panel input[type='date'] {
+  width: 100%;
+  min-height: 44px;
+  border-bottom: 2px solid #1c140e;
+  text-align: left;
+}
+
+.rank-stripe-editor .rank-photos {
+  justify-content: flex-start;
+  margin-top: 0.45rem;
+}
+
 .rank-photos {
   display: flex;
   flex-wrap: wrap;

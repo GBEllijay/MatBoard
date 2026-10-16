@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { RANK_TAPE_MAX, type RankBelt } from '../../lib/progress/types';
 import {
@@ -24,6 +25,7 @@ import {
   setRankLineage,
   setRankTapeCount,
   setRankTapeDate,
+  stripeCountControl,
   type LadderRung,
 } from '../../lib/studentRank';
 import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './chrome';
@@ -101,6 +103,7 @@ export function RankPage() {
                       rung={rung}
                       slot={slot}
                       photos={tapePhotos(photos, rung.belt, slot - 1)}
+                      error={error}
                       onTap={() => {
                         if (!rung.current) return;
                         run(setRankTapeCount(report, slot === rung.tapeCount ? slot - 1 : slot));
@@ -125,7 +128,7 @@ export function RankPage() {
             ))}
           </ol>
           <p className="student-quiet">
-            {rank.tapeCount === 0 ? 'No stripes' : rank.tapeCount === 1 ? '1 stripe' : `${rank.tapeCount} stripes`} of {RANK_TAPE_MAX} on the belt you wear. Tap a stripe to add it. Tap the last one again to take it off. The date on the line is the day that belt was achieved.
+            {rank.tapeCount === 0 ? 'No stripes' : rank.tapeCount === 1 ? '1 stripe' : `${rank.tapeCount} stripes`} of {RANK_TAPE_MAX} on the belt you wear. Tap a stripe to open it. Add a photo, a date, or both, and remove either one. Tap an empty stripe to add it. Take the last stripe off from that stripe. The date on the line is the day that belt was achieved.
           </p>
           <p className="student-quiet">
             Photos stay on this phone. Send to coach includes them when the file has room.
@@ -195,6 +198,7 @@ function StripeSlot({
   rung,
   slot,
   photos,
+  error,
   onTap,
   onDate,
   onPhoto,
@@ -203,39 +207,144 @@ function StripeSlot({
   rung: LadderRung;
   slot: number;
   photos: string[];
+  error: string;
   onTap: () => void;
   onDate: (value: string) => void;
   onPhoto: (file: File | undefined) => void;
   onRemovePhoto: (index: number) => void;
 }) {
+  const [open, setOpen] = useState(false);
   const on = slot <= rung.tapeCount;
+  const date = rung.tapeDates[slot - 1] ?? '';
   const stripeLabel = rung.current ? `Stripe ${slot}` : `${rung.label} stripe ${slot}`;
   const dateLabel = rung.current ? `Stripe ${slot} date` : `${rung.label} stripe ${slot} date`;
+  const countControl = stripeCountControl(slot, rung.tapeCount, stripeLabel);
   return (
     <div className="rank-slot">
       <button
         type="button"
         className={on ? 'rank-tape is-on' : 'rank-tape'}
         aria-pressed={on}
+        aria-expanded={open}
+        aria-haspopup="dialog"
         aria-label={stripeLabel}
-        disabled={!rung.current}
-        onClick={onTap}
+        disabled={!rung.current && !on}
+        onClick={() => {
+          if (rung.current && countControl.action === 'add') onTap();
+          setOpen(true);
+        }}
       />
-      {on ? (
-        <input type="date" aria-label={dateLabel} value={rung.tapeDates[slot - 1] ?? ''} onChange={(event) => onDate(event.target.value)} />
+      {on && date ? <span className="rank-stripe-date">{date}</span> : null}
+      {on && !open && photos[0] ? (
+        <img className="rank-stripe-thumb" src={photos[0]} alt={`${rung.label} stripe ${slot} photo 1`} />
       ) : null}
-      {on ? (
-        <PhotoRow
+      {open ? (
+        <StripeEditor
+          stripeLabel={stripeLabel}
+          dateLabel={dateLabel}
+          rung={rung}
+          slot={slot}
+          date={date}
           photos={photos}
-          addLabel={`Add ${rung.label} stripe ${slot} photo`}
-          removeLabel={(index) => `Remove ${rung.label} stripe ${slot} photo ${index + 1}`}
-          alt={(index) => `${rung.label} stripe ${slot} photo ${index + 1}`}
+          error={error}
+          countName={rung.current ? countControl.name : ''}
+          onTap={onTap}
+          onDate={onDate}
           onPhoto={onPhoto}
-          onRemove={onRemovePhoto}
+          onRemovePhoto={onRemovePhoto}
+          onClose={() => setOpen(false)}
         />
       ) : null}
     </div>
   );
+}
+
+function StripeEditor({
+  stripeLabel,
+  dateLabel,
+  rung,
+  slot,
+  date,
+  photos,
+  error,
+  countName,
+  onTap,
+  onDate,
+  onPhoto,
+  onRemovePhoto,
+  onClose,
+}: {
+  stripeLabel: string;
+  dateLabel: string;
+  rung: LadderRung;
+  slot: number;
+  date: string;
+  photos: string[];
+  error: string;
+  countName: string;
+  onTap: () => void;
+  onDate: (value: string) => void;
+  onPhoto: (file: File | undefined) => void;
+  onRemovePhoto: (index: number) => void;
+  onClose: () => void;
+}) {
+  const on = slot <= rung.tapeCount;
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  const photoCount = photos.length === 0 ? 'No photo.' : photos.length === 1 ? '1 photo.' : `${photos.length} photos.`;
+  const editor = (
+    <div className="student rank-stripe-editor" role="dialog" aria-modal="true" aria-label={`${stripeLabel} details`}>
+      <button type="button" className="rank-stripe-editor__backdrop" aria-label="Close stripe" onClick={onClose} />
+      <div className="rank-stripe-editor__panel">
+        <h2>{stripeLabel}</h2>
+        {on ? (
+          <p className="rank-stripe-detail">
+            {date ? `Date ${date}` : 'No date'}. {photoCount}
+          </p>
+        ) : (
+          <p className="rank-stripe-detail">This stripe is not on the belt yet. Add it to keep a photo or a date.</p>
+        )}
+        {countName ? (
+          <button type="button" className="ink-btn" onClick={onTap}>
+            {countName}
+          </button>
+        ) : null}
+        {on ? (
+          <label>
+            <span className="ink__label">Date</span>
+            <input type="date" aria-label={dateLabel} value={date} onChange={(event) => onDate(event.target.value)} />
+          </label>
+        ) : null}
+        {on && date ? (
+          <button type="button" className="ink-btn ink-btn--small" onClick={() => onDate('')}>
+            Remove date
+          </button>
+        ) : null}
+        {on ? (
+          <PhotoRow
+            photos={photos}
+            addLabel={`Add ${rung.label} stripe ${slot} photo`}
+            removeLabel={(index) => `Remove ${rung.label} stripe ${slot} photo ${index + 1}`}
+            alt={(index) => `${rung.label} stripe ${slot} photo ${index + 1}`}
+            onPhoto={onPhoto}
+            onRemove={onRemovePhoto}
+          />
+        ) : null}
+        {error ? <p role="alert">{error}</p> : null}
+        <div className="student-actions">
+          <button type="button" className="ink-btn" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+  return createPortal(editor, document.body);
 }
 
 function BeltPhotos({

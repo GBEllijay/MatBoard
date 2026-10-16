@@ -16,6 +16,7 @@ import {
   setRankLineage,
   setRankTapeCount,
   setRankTapeDate,
+  stripeCountControl,
 } from './studentRank.ts';
 import { addCalendarEvent, progressReportFiles } from './studentTools.ts';
 
@@ -182,6 +183,37 @@ test('an imported plan keeps the rank after a roster reload', () => {
   assert.equal(text.includes('"tapeCount"'), true);
   const parsed = parseProgressPacket(text);
   assert.equal(parsed.ok, true);
+});
+
+test('a stripe date is optional, can be cleared, and does not need a photo', () => {
+  let report = setRankTapeCount(setRankBelt(blankStudentReport(10), 'blue', 11), 1, 12);
+  assert.deepEqual(report.rank?.tapeDates, ['', '', '', '']);
+  assert.equal(report.rank?.pictures, undefined);
+  report = setRankTapeDate(report, 0, '2026-05-02', 13);
+  assert.equal(report.rank?.tapeDates[0], '2026-05-02');
+  report = setRankTapeDate(report, 0, '', 14);
+  assert.equal(report.rank?.tapeDates[0], '');
+  assert.equal(report.rank?.pictures, undefined);
+  assert.throws(() => setRankTapeDate(report, 0, '2026-02-31'), /YYYY-MM-DD/);
+  const packet = JSON.parse(exportProgressPacket(report)) as { rank?: { tapeDates?: unknown; pictures?: unknown } };
+  delete packet.rank?.tapeDates;
+  const image = `data:image/png;base64,${'A'.repeat(40)}`;
+  packet.rank = { ...packet.rank, pictures: [{ belt: 'blue', tapeIndex: 0, image }] };
+  const parsed = parseProgressPacket(JSON.stringify(packet));
+  assert.equal(parsed.ok, true);
+  if (parsed.ok && parsed.value.kind === 'student-progress-report') {
+    assert.deepEqual(parsed.value.rank?.tapeDates, ['', '', '', '']);
+    assert.equal(parsed.value.rank?.pictures?.[0]?.tapeIndex, 0);
+    assert.equal(parsed.value.rank?.pictures?.[0]?.image, image);
+    assert.equal(parsed.value.rank?.tapeCount, 1);
+  }
+});
+
+test('stripe controls add, take off the last stripe, or drop the ones after it', () => {
+  assert.deepEqual(stripeCountControl(2, 0, 'Stripe 2'), { action: 'add', name: 'Add Stripe 2' });
+  assert.deepEqual(stripeCountControl(2, 2, 'Stripe 2'), { action: 'remove', name: 'Take off Stripe 2' });
+  assert.deepEqual(stripeCountControl(1, 4, 'Stripe 1'), { action: 'trim', name: 'Drop stripes after Stripe 1' });
+  assert.deepEqual(stripeCountControl(1, 2, 'Blue stripe 1'), { action: 'trim', name: 'Drop stripes after Blue stripe 1' });
 });
 
 test('a blank rank is empty and an older report without rank still reads', () => {
