@@ -5781,17 +5781,11 @@ a.saver-folder--link {
   padding-top: calc(0.28rem + var(--safe-t));
 }
 
-.play--landscape.display--linked .bout--blue,
-.play--fs.display--linked .bout--blue,
-.play--tv.display--linked .bout--blue {
+/* Landscape before fullscreen: keep the name clear of Back and the Fullscreen chip.
+   Once fullscreen, that chip is gone and the athlete row meets the screen. */
+.play--landscape.display--linked:not(.play--fs) .bout--blue,
+.play--tv.display--linked:not(.play--fs) .bout--blue {
   padding-top: calc(2.75rem + var(--safe-t));
-}
-
-@media (orientation: portrait) {
-  .play--fs .bout--blue,
-  .play--fs.display--linked .bout--blue {
-    padding-top: max(3.5rem, calc(2.75rem + var(--safe-t)));
-  }
 }
 
 .play--landscape.training,
@@ -5826,13 +5820,6 @@ a.saver-folder--link {
 
 .play--fs .play-fs {
   display: none;
-}
-
-/* Scoreboard keeps an exit control. Training and other play pages stay hidden. */
-.display.play--fs .play-fs {
-  display: inline-flex;
-  opacity: 1;
-  pointer-events: auto;
 }
 
 .display.display--linked.play--landscape .play-fs {
@@ -5875,9 +5862,8 @@ a.saver-folder--link {
     padding: 1.15rem 1.35rem;
   }
 
-  .play--landscape .bout--blue,
-  .play--fs .bout--blue,
-  .play--tv .bout--blue {
+  .play--landscape:not(.play--fs) .bout--blue,
+  .play--tv:not(.play--fs) .bout--blue {
     padding-top: 1.15rem;
   }
 
@@ -5895,9 +5881,25 @@ a.saver-folder--link {
     opacity: 1;
   }
 
-  .play--tv .bout--blue {
+  .play--tv:not(.play--fs) .bout--blue {
     padding-top: calc(1.15rem + var(--safe-t));
   }
+}
+
+/* Fullscreen scoreboard has no Exit fullscreen chip. The top athlete row
+   meets the screen; a notch uses the safe-area inset and nothing more. */
+.display.play--fs {
+  padding-top: 0;
+}
+
+.display.play--fs > .bout.bout--blue {
+  padding-top: var(--safe-t);
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.display.play--fs.display--linked > .bout--blue .bout__who {
+  padding-left: max(3.15rem, calc(2.9rem + var(--safe-l)));
 }
 
 .play--tv .display__chrome,
