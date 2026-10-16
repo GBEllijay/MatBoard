@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { BeltRail } from '../components/BeltRail';
 import { EmptyHint } from '../components/EmptyHint';
 import { FullscreenChip } from '../components/FullscreenChip';
-import { KidsBracketChrome, KidsMascotDock } from '../components/KidsBracketChrome';
+import { BracketHeadline, KidsBracketChrome, KidsMascotDock } from '../components/KidsBracketChrome';
 import { KidsScoreboardSwitcher } from '../components/KidsScoreboardSwitcher';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { useSubmenuBack } from '../hooks/useSubmenuBack';
@@ -83,6 +83,7 @@ import {
   setCompetitorCount,
   setMatchOutcome,
   setPlacement,
+  setBracketHeadline,
   setSlotName,
   setTournamentTitle,
   slotId,
@@ -264,18 +265,6 @@ export function TournamentPage() {
           <p className="tournament__eyebrow">{plainCoach ? 'Advantage Coach' : parent.eyebrow}</p>
           <h1>{plainCoach ? MOCK_TOURNAMENT_NAME : tournamentToolLabel(proUnlocked)}</h1>
         </div>
-        <div className="tournament__center">
-          <p className="tournament__roundline">{bracketRoundLine(tournament)}</p>
-          <label className="tournament__title">
-            <span>Division</span>
-            <input
-              value={tournament.title}
-              onChange={(event) => setTournamentTitle(event.target.value)}
-              placeholder="Division or class (optional)"
-              aria-label="Division or class name"
-            />
-          </label>
-        </div>
       </header>
 
       <p className="tournament__hint">
@@ -294,23 +283,10 @@ export function TournamentPage() {
         )}
       </p>
 
-      {emptyBracket ? (
-        <EmptyHint
-          title={EMPTY_BRACKET_TITLE}
-          body={EMPTY_BRACKET_BODY}
-          action={
-            <button type="button" className="btn" onClick={() => setNamesOpen(true)}>
-              Edit names
-            </button>
-          }
-        />
-      ) : null}
-
       <div className="tournament__board" ref={boardRef} onPointerDown={blurTextEntry}>
+        <BracketHeadline value={tournament.headline} onChange={setBracketHeadline} />
         {kidsOn ? (
           <KidsBracketChrome
-            skin={kids.skin}
-            win={kidsWin}
             liveLine={kidsLive}
             liveMatch={kidsLive ? match : null}
           />
@@ -384,6 +360,17 @@ export function TournamentPage() {
           ) : null}
           </div>
         </div>
+        {emptyBracket ? (
+          <EmptyHint
+            title={EMPTY_BRACKET_TITLE}
+            body={EMPTY_BRACKET_BODY}
+            action={
+              <button type="button" className="btn" onClick={() => setNamesOpen(true)}>
+                Edit names
+              </button>
+            }
+          />
+        ) : null}
         <div className="tournament__tools" role="region" aria-label="Bracket controls">
           {fillPlaced != null ? (
             <p className="tournament__fill-note" role="status">
@@ -400,6 +387,18 @@ export function TournamentPage() {
               </button>
             </p>
           ) : null}
+          <div className="tournament__center">
+            <p className="tournament__roundline">{bracketRoundLine(tournament)}</p>
+            <label className="tournament__title">
+              <span>Division</span>
+              <input
+                value={tournament.title}
+                onChange={(event) => setTournamentTitle(event.target.value)}
+                placeholder="Division or class (optional)"
+                aria-label="Division or class name"
+              />
+            </label>
+          </div>
           <div className="tournament__actions">
             {kidsSkins ? <KidsScoreboardSwitcher prefs={kids} suppressed={skinButtonSuppressed} /> : null}
             {plainCoach ? null : (
