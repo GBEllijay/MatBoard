@@ -37,7 +37,15 @@ import {
   type SpecialDate,
   type WeeklyClassSlot,
 } from './gymCalendar.ts';
-import { addClass, addParallelClass, applyScheduleImport, getSchedule, updateClass } from './scheduleStore.ts';
+import {
+  addClass,
+  addParallelClass,
+  applyScheduleImport,
+  getSchedule,
+  normalizeSchedule,
+  STORAGE_KEY,
+  updateClass,
+} from './scheduleStore.ts';
 
 function row(partial: Partial<WeeklyClassSlot> & Pick<WeeklyClassSlot, 'id'>): WeeklyClassSlot {
   return {
@@ -350,6 +358,57 @@ describe('saved class level', () => {
     assert.equal(parallel?.day, 'tue');
     assert.equal(parallel?.time, '18:00');
     assert.equal(getSchedule().classes.find((row) => row.id === added.id)?.level, 'intermediate');
+  });
+
+  it('reloads a saved level, including an owner-facing label, from localStorage', () => {
+    const bag = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => bag.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        bag.set(key, String(value));
+      },
+      removeItem: (key: string) => {
+        bag.delete(key);
+      },
+      clear: () => {
+        bag.clear();
+      },
+      key: (index: number) => [...bag.keys()][index] ?? null,
+      get length() {
+        return bag.size;
+      },
+    };
+    Object.defineProperty(globalThis, 'localStorage', { value: storage, configurable: true });
+    try {
+      applyScheduleImport({
+        classes: [],
+        specials: [],
+        title: 'Gym',
+        qrUrl: '',
+        notes: '',
+        template: 'week',
+        castEnabled: true,
+      });
+      const added = addClass('thu', '19:00', 'Competition', 'MAT 1', '', 'expert');
+      assert.ok(added);
+      const raw = localStorage.getItem(STORAGE_KEY);
+      assert.ok(raw);
+      const stored = JSON.parse(raw) as { classes: Array<{ id: string; level?: string }> };
+      assert.equal(stored.classes.find((row) => row.id === added.id)?.level, 'expert');
+      assert.equal(normalizeSchedule(JSON.parse(raw)).classes.find((row) => row.id === added.id)?.level, 'expert');
+      updateClass(added.id, { title: 'Open rounds' });
+      const afterEdit = normalizeSchedule(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}'));
+      assert.equal(afterEdit.classes.find((row) => row.id === added.id)?.title, 'Open rounds');
+      assert.equal(afterEdit.classes.find((row) => row.id === added.id)?.level, 'expert');
+
+      const labeled = normalizeSchedule({
+        classes: [{ id: 'labeled', day: 'mon', time: '17:00', title: 'Kids', level: 'Kids Advanced' }],
+      });
+      assert.equal(labeled.classes[0]?.level, 'kids-advanced');
+      assert.equal(labeled.classes[0]?.title, 'Kids');
+    } finally {
+      Reflect.deleteProperty(globalThis, 'localStorage');
+    }
   });
 });
 
