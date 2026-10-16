@@ -30,10 +30,7 @@ test('my rank sets the belt and stripes, and belt progress reads that belt', asy
   expect(blueBox!.y).toBeLessThan(blackBox!.y);
   await expect(page.getByLabel('Date of this belt')).toHaveValue('');
   await page.getByRole('button', { name: 'Blue', exact: true }).click();
-  await page.getByRole('button', { name: 'Stripe 2', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Stripe 1', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.getByRole('button', { name: 'Stripe 2', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.getByRole('button', { name: 'Stripe 3', exact: true })).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   const today = await page.evaluate(() => {
     const now = new Date();
     const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -41,7 +38,17 @@ test('my rank sets the belt and stripes, and belt progress reads that belt', asy
     return `${now.getFullYear()}-${month}-${day}`;
   });
   await page.getByLabel('Date of this belt').fill(today);
-  await page.getByLabel('Stripe 2 date').fill(today);
+  await page.getByRole('button', { name: 'Stripe 2', exact: true }).click();
+  const stripe = page.getByRole('dialog', { name: 'Stripe 2 details' });
+  await expect(stripe).toBeVisible();
+  await expect(stripe.getByText('No date')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Stripe 1', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Stripe 2', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Stripe 3', exact: true })).toHaveAttribute('aria-pressed', 'false');
+  await stripe.getByLabel('Stripe 2 date').fill(today);
+  await expect(stripe.getByText(`Date ${today}`)).toBeVisible();
+  await stripe.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByLabel('Date of this belt')).toHaveValue(today);
   await page.getByLabel('Lineage').fill('Coach Ana\nProfessor Luis');
   await page.getByLabel('Lineage').blur();
@@ -59,6 +66,7 @@ test('my rank sets the belt and stripes, and belt progress reads that belt', asy
   await page.locator('.rank-ladder').screenshot({ path: '/opt/cursor/artifacts/my-rank-ladder-390.png' });
 
   await page.getByRole('button', { name: 'Purple', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Purple', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByLabel('Date of this belt')).toHaveValue('');
   const history = page.getByRole('region', { name: 'Promotion history' });
@@ -66,6 +74,7 @@ test('my rank sets the belt and stripes, and belt progress reads that belt', asy
   await expect(history).toContainText(today);
   await expect(history).toContainText('2 stripes');
   await page.getByRole('button', { name: 'Stripe 1', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Stripe 1 details' }).getByRole('button', { name: 'Close', exact: true }).click();
   await page.locator('.student-sheet').screenshot({ path: '/opt/cursor/artifacts/my-rank-390.png' });
 
   const stored = await page.evaluate(() => localStorage.getItem('matboard.studentEdition.v1') ?? '');

@@ -2,6 +2,8 @@
  * Promotion photos live on this phone.
  * Send to coach copies them into the progress file when they fit.
  * A photo that does not fit stays here, and the file says so.
+ * Stripe dates are not stored here. They live on the progress file as tapeDates.
+ * A saved photo with no date is the normal record and must keep loading.
  */
 
 import { shrinkImageFile } from './imageShrink.ts';

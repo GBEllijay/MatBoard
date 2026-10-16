@@ -41,6 +41,19 @@ export function emptyTapeDates(): RankTapeDates {
   return ['', '', '', ''];
 }
 
+export type StripeCountAction = 'add' | 'remove' | 'trim';
+
+/**
+ * What the stripe control does. Slot is 1 to 4.
+ * An empty stripe adds through that slot. The last stripe comes off.
+ * A stripe before the last one drops the stripes after it.
+ */
+export function stripeCountControl(slot: number, tapeCount: number, label: string): { action: StripeCountAction; name: string } {
+  if (slot === tapeCount) return { action: 'remove', name: `Take off ${label}` };
+  if (slot < tapeCount) return { action: 'trim', name: `Drop stripes after ${label}` };
+  return { action: 'add', name: `Add ${label}` };
+}
+
 export function emptyRank(): StudentRank {
   return { tapeCount: 0, awardedOn: '', tapeDates: emptyTapeDates(), history: [], lineage: [] };
 }
