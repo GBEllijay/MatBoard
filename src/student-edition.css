@@ -1091,6 +1091,54 @@ button.student-book .student-mark__press {
   cursor: pointer;
 }
 
+.weight-count-block,
+.weight-count {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.weight-count {
+  justify-items: center;
+  margin: 0;
+  padding: 0.1rem 0 0.35rem;
+  text-align: center;
+}
+
+.weight-count__days {
+  font-size: 3rem;
+  line-height: 0.95;
+}
+
+.weight-table-wrap {
+  overflow-x: auto;
+}
+
+.weight-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: transparent;
+}
+
+.weight-table th,
+.weight-table td {
+  padding: 0.35rem 0.45rem 0.28rem 0;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  font-weight: 400;
+  vertical-align: top;
+}
+
+.weight-table th {
+  border-bottom: 2px solid var(--ink);
+  font-size: 1.08rem;
+}
+
+.weight-date {
+  display: grid;
+  gap: 0.25rem;
+  justify-items: start;
+}
+
 .weight-chart {
   width: 100%;
   max-width: 28rem;
@@ -1261,6 +1309,79 @@ button.student-book .student-mark__press {
   width: 100%;
   font-size: 0.78rem;
   text-align: center;
+}
+
+.rank-stripe-date {
+  margin: 0;
+  max-width: 100%;
+  font-size: 0.72rem;
+  line-height: 1.05;
+  text-align: center;
+}
+
+.rank-stripe-thumb {
+  width: 2.4rem;
+  height: 2.4rem;
+  object-fit: cover;
+  border: 2px solid #1c140e;
+}
+
+.rank-stripe-editor {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  align-items: end;
+  justify-items: center;
+}
+
+.student.rank-stripe-editor .rank-stripe-editor__backdrop {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: rgba(28, 20, 14, 0.45);
+  min-height: 0;
+}
+
+.rank-stripe-editor__panel {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 28rem);
+  max-height: min(88dvh, 40rem);
+  overflow: auto;
+  padding: 0.9rem 1rem calc(1rem + env(safe-area-inset-bottom));
+  background: var(--paper);
+  border: 3px solid #1c140e;
+  border-bottom: 0;
+}
+
+.rank-stripe-editor__panel h2 {
+  margin: 0.2rem 0 0.35rem;
+}
+
+.rank-stripe-detail {
+  margin: 0 0 0.7rem;
+}
+
+.rank-stripe-editor__panel label {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0.7rem 0 0.35rem;
+}
+
+.rank-stripe-editor__panel input[type='date'] {
+  width: 100%;
+  min-height: 44px;
+  border-bottom: 2px solid #1c140e;
+  text-align: left;
+}
+
+.rank-stripe-editor .rank-photos {
+  justify-content: flex-start;
+  margin-top: 0.45rem;
 }
 
 .rank-photos {

@@ -214,10 +214,14 @@ test('weight, results, and scouting keep their controls on the same skin', () =>
   labeled(weight.host, 'Weigh-in weight');
   labeled(weight.host, 'Weigh-in note');
   labeled(weight.host, 'Weight unit');
+  labeled(weight.host, 'Competition weigh-in date');
   control(weight.host, 'button', 'Add weigh-in');
+  control(weight.host, 'button', 'Save weigh-in date');
+  control(weight.host, 'button', 'Save goal weight');
   assert.ok(weight.host.querySelector('svg.weight-chart'));
   assert.ok(weight.host.querySelector('.weight-chart__target'));
   assert.match(weight.host.textContent ?? '', /2026-10-01/);
+  assert.match(weight.host.textContent ?? '', /Pounds to Target/);
   unmount(weight);
 
   const results = mount(<ResultsPage />, '/student/results');
