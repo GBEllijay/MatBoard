@@ -218,35 +218,3 @@ test('iOS Safari falls back to a fixed 100dvh calendar and a Home Screen hint', 
   await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible();
   await expect(page.getByText('Add this site to the Home Screen for full coverage.')).toHaveCount(0);
 });
-
-test('Media Console opens the fullscreen calendar instead of the editor', async ({ page }) => {
-  await installStandardFullscreen(page);
-  await unlock(page);
-  await page.clock.install({ time: WHEN });
-  await page.setViewportSize(PHONE);
-  await page.goto('/slideshow?folder=gallery');
-  const sheet = page.getByRole('dialog', { name: 'Media Console' });
-  const schedule = sheet.locator('details').filter({ hasText: 'Class Schedule' });
-  await schedule.locator('.saver-folder__title').click();
-  await expect(schedule.getByRole('link', { name: 'Add class schedule', exact: true })).toBeVisible();
-  await schedule.getByRole('link', { name: 'Open calendar', exact: true }).click();
-
-  await expect(page).toHaveURL(/\/schedule\?view=calendar/);
-  const board = page.locator('main.schedule');
-  await expect(board).toHaveAttribute('data-cover-api', 'standard');
-  await expect(page.getByRole('heading', { name: 'GRACIE BARRA ELLIJAY' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Edit', exact: true })).toHaveCount(0);
-  await expect(page.getByRole('radio', { name: 'Week', exact: true })).toHaveCount(0);
-  await expect(page.getByRole('radio', { name: 'Month', exact: true })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Fullscreen', exact: true })).toHaveCount(0);
-  await expect(page.locator('.week-cast__legend')).toBeVisible();
-  await expect(page.locator('.week-cast__notes')).toBeVisible();
-  const back = page.getByRole('link', { name: BACK, exact: true });
-  await expect(back).toBeVisible();
-  await expect(back).toHaveAttribute('href', '/slideshow?folder=gallery');
-  await page.screenshot({ path: '/opt/cursor/artifacts/schedule-calendar-from-gallery-390.png' });
-  await back.click();
-  await expect(page).toHaveURL(/\/slideshow\?folder=gallery/);
-  const exits = await page.evaluate(() => (window as unknown as { __fs: { exits: number } }).__fs.exits);
-  expect(exits).toBeGreaterThan(0);
-});

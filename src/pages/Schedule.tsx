@@ -6,7 +6,6 @@ import { ScheduleMonthBoard } from '../components/ScheduleMonthBoard';
 import { ScheduleWeekBoard } from '../components/ScheduleWeekBoard';
 import { SpecialEventsStrip } from '../components/SpecialEventsStrip';
 import { MEDIA_CONSOLE_NAME } from '../lib/productNames';
-import { scheduleCalendarRequested } from '../lib/scheduleCast';
 import {
   exitPageFullscreen,
   fullscreenElement,
@@ -128,7 +127,6 @@ export function SchedulePage() {
   const [editOpen, setEditOpen] = useState(false);
   const [castPick, setCastPick] = useState<ScheduleTemplate | null>(null);
   const [searchParams] = useSearchParams();
-  const calendarView = scheduleCalendarRequested(searchParams.toString());
 
   const enterBoard = useCallback(async () => {
     const ticket = ++coverGen.current;
@@ -148,11 +146,6 @@ export function SchedulePage() {
     setBoardFit('off');
     await exitPageFullscreen();
   }, []);
-
-  useEffect(() => {
-    if (!calendarView) return;
-    void enterBoard();
-  }, [calendarView, enterBoard]);
 
   useEffect(() => {
     const onFs = () => {

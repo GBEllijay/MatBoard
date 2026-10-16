@@ -2,14 +2,6 @@
 
 export const SCHEDULE_CAST_SLIDE_ID = 'class-schedule';
 
-/** Gallery opens this instead of the editor. `view=calendar` starts the fullscreen board. */
-export const SCHEDULE_CALENDAR_HREF = '/schedule?view=calendar';
-
-export function scheduleCalendarRequested(search: string): boolean {
-  const query = search.startsWith('?') ? search.slice(1) : search;
-  return new URLSearchParams(query).get('view') === 'calendar';
-}
-
 /** Long enough to read a full week. Photo interval still wins when it is longer. */
 export const SCHEDULE_CAST_DWELL_MS = 30_000;
 
