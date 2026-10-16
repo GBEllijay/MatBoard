@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { SubmenuMarks } from '../components/TierHomeMark';
@@ -6,6 +6,15 @@ import { ScheduleMonthBoard } from '../components/ScheduleMonthBoard';
 import { ScheduleWeekBoard } from '../components/ScheduleWeekBoard';
 import { SpecialEventsStrip } from '../components/SpecialEventsStrip';
 import { MEDIA_CONSOLE_NAME } from '../lib/productNames';
+import { scheduleCalendarRequested } from '../lib/scheduleCast';
+import {
+  exitPageFullscreen,
+  fullscreenElement,
+  fullscreenSupported,
+  requestElementFullscreen,
+  type FullscreenRequestResult,
+} from '../lib/fullscreen';
+import { LESSON_COVER_HOME_HINT } from '../lib/lessonScreenCover';
 import { Sheet } from '../components/Sheet';
 import { useGymLogo } from '../hooks/useGymBrand';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
@@ -87,6 +96,15 @@ const TEMPLATE_CHROME: Record<(typeof BAR_MODES)[number], string> = {
   'weekly-list': 'List',
 };
 
+type ScheduleCoverFit = 'off' | 'pending' | 'visual' | FullscreenRequestResult;
+
+function isTypingTarget(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
+  if (!el) return false;
+  if (el.isContentEditable) return true;
+  return Boolean(el.closest('input, textarea, select, [contenteditable="true"]'));
+}
+
 function downloadScheduleCsv(filename: string, csv: string): void {
   const blob = new Blob([withUtf8Bom(csv)], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -102,11 +120,64 @@ function downloadScheduleCsv(filename: string, csv: string): void {
 export function SchedulePage() {
   const schedule = useScheduleState();
   const assets = useScheduleAssets();
-  const fs = usePlayFullscreen();
+  const fs = usePlayFullscreen({ auto: false });
   const navigate = useNavigate();
+  const rootRef = useRef<HTMLElement>(null);
+  const coverGen = useRef(0);
+  const [boardFit, setBoardFit] = useState<ScheduleCoverFit>('off');
   const [editOpen, setEditOpen] = useState(false);
   const [castPick, setCastPick] = useState<ScheduleTemplate | null>(null);
   const [searchParams] = useSearchParams();
+  const calendarView = scheduleCalendarRequested(searchParams.toString());
+
+  const enterBoard = useCallback(async () => {
+    const ticket = ++coverGen.current;
+    setBoardFit('pending');
+    const el = rootRef.current;
+    const result = el ? await requestElementFullscreen(el) : 'unsupported';
+    if (ticket !== coverGen.current) return;
+    if (result === 'unsupported' && fullscreenSupported()) {
+      setBoardFit(fullscreenElement() ? 'standard' : 'visual');
+      return;
+    }
+    setBoardFit(result);
+  }, []);
+
+  const leaveBoard = useCallback(async () => {
+    coverGen.current += 1;
+    setBoardFit('off');
+    await exitPageFullscreen();
+  }, []);
+
+  useEffect(() => {
+    if (!calendarView) return;
+    void enterBoard();
+  }, [calendarView, enterBoard]);
+
+  useEffect(() => {
+    const onFs = () => {
+      if (fullscreenElement()) return;
+      setBoardFit((current) => (current === 'standard' || current === 'webkit' ? 'off' : current));
+    };
+    document.addEventListener('fullscreenchange', onFs);
+    document.addEventListener('webkitfullscreenchange', onFs);
+    return () => {
+      document.removeEventListener('fullscreenchange', onFs);
+      document.removeEventListener('webkitfullscreenchange', onFs);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (boardFit === 'off') return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.repeat) return;
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
+      if (isTypingTarget(event.target)) return;
+      void leaveBoard();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [boardFit, leaveBoard]);
   const [logoUrl, setLogoUrl] = useState('');
   const [qrImageUrl, setQrImageUrl] = useState('');
   const [qrBuilt, setQrBuilt] = useState('');
@@ -184,16 +255,46 @@ export function SchedulePage() {
       : 'week'
     : displayTemplate(schedule.template);
   const showHero = shown === 'week' || shown === 'monthly';
+  const calendarOn = boardFit !== 'off';
+  const hideChrome = calendarOn || fs.active;
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('schedule-fs-open', hideChrome);
+    return () => document.documentElement.classList.remove('schedule-fs-open');
+  }, [hideChrome]);
 
   const exitBoard = () => {
-    void fs.exit().finally(() => {
+    void leaveBoard().finally(() => {
       navigate('/slideshow?folder=gallery');
     });
   };
 
+  const fullscreenControl = () =>
+    hideChrome ? null : (
+      <FullscreenChip
+        supported
+        active={false}
+        nudge={fs.showFallback}
+        shortcut={fs.tvStation}
+        onToggle={() => void enterBoard()}
+      />
+    );
+
   return (
-    <main className={`schedule${fs.className ? ` ${fs.className}` : ''}`}>
+    <main
+      ref={rootRef}
+      className={[
+        'schedule',
+        fs.className,
+        hideChrome ? 'schedule--calendar-fs' : '',
+        boardFit === 'unsupported' ? 'schedule--fs-fallback' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      data-cover-api={boardFit === 'off' ? undefined : boardFit}
+    >
       <SubmenuMarks to="/slideshow?folder=gallery" onExit={exitBoard} />
+      {hideChrome ? null : (
       <header className="schedule__bar">
         <div className="schedule__brand">
           <p className="schedule__eyebrow">{MEDIA_CONSOLE_NAME}</p>
@@ -221,16 +322,11 @@ export function SchedulePage() {
           <button type="button" className="btn" onClick={() => setEditOpen(true)}>
             Edit
           </button>
-          <FullscreenChip
-            supported={fs.supported}
-            active={fs.active}
-            nudge={fs.showFallback}
-            shortcut={fs.tvStation}
-            onToggle={() => void fs.toggle()}
-          />
+          {fullscreenControl()}
         </div>
       </header>
-      {tv ? (
+      )}
+      {tv && !hideChrome ? (
         <>
           <button type="button" className="btn schedule__cast-edit" onClick={() => setEditOpen(true)}>
             Edit
@@ -252,15 +348,7 @@ export function SchedulePage() {
               </button>
             ))}
           </div>
-          <div className="schedule__cast-tools">
-            <FullscreenChip
-              supported={fs.supported}
-              active={fs.active}
-              nudge={fs.showFallback}
-              shortcut={fs.tvStation}
-              onToggle={() => void fs.toggle()}
-            />
-          </div>
+          <div className="schedule__cast-tools">{fullscreenControl()}</div>
         </>
       ) : null}
 
@@ -297,8 +385,10 @@ export function SchedulePage() {
         )}
       </section>
 
+      {boardFit === 'unsupported' ? <p className="schedule__fs-hint">{LESSON_COVER_HOME_HINT}</p> : null}
+
       <ScheduleEditor
-        open={editOpen}
+        open={editOpen && !hideChrome}
         onClose={() => setEditOpen(false)}
         logoUrl={logoUrl}
         qrImageUrl={qrImageUrl}

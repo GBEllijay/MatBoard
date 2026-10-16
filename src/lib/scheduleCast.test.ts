@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { readFileSync } from 'node:fs';
 import {
+  SCHEDULE_CALENDAR_HREF,
   SCHEDULE_CAST_DWELL_MS,
   insertScheduleCastSlide,
+  scheduleCalendarRequested,
   scheduleCastDwellMs,
 } from './scheduleCast.ts';
 
@@ -33,6 +36,20 @@ describe('insertScheduleCastSlide', () => {
     assert.equal(insertScheduleCastSlide(slides, true).at(-1)?.kind, 'schedule');
     assert.equal(insertScheduleCastSlide(slides, false).some((slide) => slide.kind === 'schedule'), false);
     assert.equal(insertScheduleCastSlide([], true)[0]?.kind, 'schedule');
+  });
+});
+
+describe('scheduleCalendarRequested', () => {
+  it('opens the fullscreen calendar from the gallery, and leaves the editor alone', () => {
+    assert.equal(SCHEDULE_CALENDAR_HREF, '/schedule?view=calendar');
+    assert.equal(scheduleCalendarRequested('view=calendar'), true);
+    assert.equal(scheduleCalendarRequested('?view=calendar'), true);
+    assert.equal(scheduleCalendarRequested(''), false);
+    assert.equal(scheduleCalendarRequested('view=week'), false);
+    const gallery = readFileSync(new URL('../pages/Screensaver.tsx', import.meta.url), 'utf8');
+    assert.match(gallery, /SCHEDULE_CALENDAR_HREF/);
+    assert.match(gallery, /Open calendar/);
+    assert.match(gallery, /Add class schedule/);
   });
 });
 

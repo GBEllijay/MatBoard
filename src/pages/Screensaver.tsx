@@ -103,7 +103,7 @@ import {
 import { itemsInFolder } from '../lib/playlist';
 import { loadTechniqueBoard, readTrainingClipBlob } from '../lib/techniqueStore';
 import { isWithinRetention, loadTrainingArchive, localDateKey, planHasContent, plansOnDay } from '../lib/trainingNotesStore';
-import { insertScheduleCastSlide, scheduleCastDwellMs } from '../lib/scheduleCast';
+import { SCHEDULE_CALENDAR_HREF, insertScheduleCastSlide, scheduleCastDwellMs } from '../lib/scheduleCast';
 import { setScheduleCastEnabled } from '../lib/scheduleStore';
 import {
   buildCastSlides,
@@ -1117,7 +1117,10 @@ function ClassScheduleEntry({ open, onToggle }: { open: boolean; onToggle: (next
         </button>
       </summary>
       <div className="saver-folder__panel">
-        <Link className="btn" to="/schedule">
+        <Link className="btn" to={SCHEDULE_CALENDAR_HREF}>
+          Open calendar
+        </Link>
+        <Link className="btn btn--ghost" to="/schedule">
           Add class schedule
         </Link>
         <div className="presets presets--split" role="radiogroup" aria-label="Class Schedule on the TV">
@@ -1142,8 +1145,8 @@ function ClassScheduleEntry({ open, onToggle }: { open: boolean; onToggle: (next
         </div>
         <p className="saver-folder__empty">
           {ready
-            ? 'On adds the full week or month after Gallery and before Pro Shop. Off keeps Gallery, Pro Shop, and Events.'
-            : 'Add classes on the schedule page, then turn this on to play the week board in the cast.'}
+            ? 'Open calendar shows this week or month fullscreen. On adds that board after Gallery and before Pro Shop. Off keeps Gallery, Pro Shop, and Events.'
+            : 'Open calendar shows the board fullscreen. Add classes, then turn this on to play the week board in the cast.'}
         </p>
       </div>
     </details>
