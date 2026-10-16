@@ -2,10 +2,12 @@
  * Owner cloud storage. Advantage does not host photos or videos.
  * Bytes stay in the gym's own account. Advantage does not manage that account.
  *
- * Google Drive is live. OneDrive can connect on a build that has the Microsoft
- * client id. Google Photos is already reachable from Pick from gallery:
- * collections come from Google Photos when it is set up on the phone. iCloud
- * stays on the Connect with list as Coming soon until CloudKit connect is live.
+ * Coach Unlimited and Advantage Pro stay in alpha until Google Drive,
+ * OneDrive, Google Photos, and iCloud all work. Google Drive is live.
+ * OneDrive can connect on a build that has the Microsoft client id.
+ * Google Photos can connect on a build that has the Google client id
+ * and picks albums through the Photos Picker API. iCloud stays on the
+ * Connect with list as Coming for launch until that connect is live.
  *
  * Dropbox is a reserved slot from an earlier note. It is not on the launch
  * list and it is not half-built. The owner order is OneDrive, then Google
@@ -13,30 +15,26 @@
  */
 
 import { createGoogleDriveConnector } from './googleDriveConnector.ts';
+import { createGooglePhotosConnector } from './googlePhotosConnector.ts';
 import { createOneDriveConnector } from './oneDriveConnector.ts';
 
 export type CloudStorageProviderId = 'googleDrive' | 'oneDrive' | 'googlePhotos' | 'iCloud' | 'dropbox';
 
-/** `live` can connect. `coming-soon` stays visible and disabled. `gallery` is already in Pick from gallery. */
-export type CloudStoragePhase = 'live' | 'coming-soon' | 'gallery' | 'reserved';
+/** `live` can connect. `coming-for-launch` stays visible and disabled. */
+export type CloudStoragePhase = 'live' | 'coming-for-launch' | 'reserved';
 
 export const CONNECT_WITH_KICKER = 'Your folder';
 export const CONNECT_WITH_TITLE = 'Connect with';
 export const CONNECT_WITH_BODY =
-  'Choose a folder the gym already owns. Lesson plans, photos, and videos stay there. Advantage does not host photos or videos, and Advantage does not manage the gym cloud account. Adding a photo still includes Google Photos and the phone gallery. Google Drive is an additional folder. iCloud is coming soon.';
+  'Choose a folder the gym already owns. Lesson plans, photos, and videos stay there. Advantage does not host photos or videos, and Advantage does not manage the gym cloud account. Adding a photo still includes Google Photos and the phone gallery. Google Drive is an additional folder. iCloud is coming for launch.';
 export const CONNECT_ACCOUNT_NOTE =
   'Advantage does not host photos or videos. The gym uses its own cloud account. Advantage does not manage that account.';
-/** Gold label on the iCloud row only. Google Photos does not use this. */
-export const CONNECT_COMING_SOON_BADGE = 'Coming soon';
-/**
- * Short status on the Google Photos row. Not a connect action, and not a
- * coming-soon badge: Pick from gallery already includes Google Photos.
- */
-export const CONNECT_PHOTOS_GALLERY = 'Already in gallery';
-/** @deprecated Display string is `CONNECT_COMING_SOON_BADGE`. Only iCloud shows it. */
-export const CONNECT_LAUNCH_BADGE = CONNECT_COMING_SOON_BADGE;
-/** @deprecated Display string is `CONNECT_COMING_SOON_BADGE`. */
-export const CONNECT_COMING_SOON = CONNECT_COMING_SOON_BADGE;
+/** Gold label on the iCloud row only. Google Photos is a live connect and does not use this. */
+export const CONNECT_LAUNCH_BADGE = 'Coming for launch';
+/** @deprecated Display string is `CONNECT_LAUNCH_BADGE`. Only iCloud shows it. */
+export const CONNECT_COMING_SOON_BADGE = CONNECT_LAUNCH_BADGE;
+/** @deprecated Display string is `CONNECT_LAUNCH_BADGE`. */
+export const CONNECT_COMING_SOON = CONNECT_LAUNCH_BADGE;
 export const CONNECT_CHOOSE_FOLDER = 'Choose a folder.';
 /**
  * Temporary owner heads-up while Advantage’s Google app is in Testing
@@ -103,6 +101,8 @@ export interface CloudStorageConnector {
   createFolderLabel?: string;
   /** Shown when connect returns no folders. */
   emptyFolderMessage?: string;
+  /** Replaces “Choose a folder.” when this provider is not a Drive-style folder. */
+  choosePrompt?: string;
   /** Write a text file into a folder the gym owns. Omit folderId for the account root. */
   save(session: string, file: CloudTextSave, folderId?: string): Promise<CloudItemRef>;
   /** List names in a folder the gym owns. Omit folderId to list the account root. */
@@ -111,21 +111,12 @@ export interface CloudStorageConnector {
   disconnect(): void;
 }
 
-/**
- * On the Connect with list, but not a live sign-in.
- * `gallery` is Google Photos (already in Pick from gallery).
- * `coming-soon` is iCloud until CloudKit connect is live.
- */
-function listedConnector(
-  id: 'googlePhotos' | 'iCloud',
-  displayName: string,
-  phase: 'gallery' | 'coming-soon',
-  message: string,
-): CloudStorageConnector {
+/** On the Connect with list, but not a live sign-in. iCloud until that connect is live. */
+function launchConnector(id: 'iCloud', displayName: string, message: string): CloudStorageConnector {
   return {
     id,
     displayName,
-    phase,
+    phase: 'coming-for-launch',
     isAvailable: () => false,
     unavailableMessage: () => message,
     isConnected: () => false,
@@ -166,22 +157,16 @@ function reservedConnector(id: 'dropbox', displayName: string): CloudStorageConn
 const registry: Record<CloudStorageProviderId, CloudStorageConnector> = {
   googleDrive: createGoogleDriveConnector(),
   oneDrive: createOneDriveConnector(),
-  googlePhotos: listedConnector(
-    'googlePhotos',
-    'Google Photos',
-    'gallery',
-    'Google Photos is already included when you pick from gallery. If Google Photos is set up on this phone, collections come from there. Advantage does not host photos or videos.',
-  ),
-  iCloud: listedConnector(
+  googlePhotos: createGooglePhotosConnector(),
+  iCloud: launchConnector(
     'iCloud',
     'iCloud',
-    'coming-soon',
-    'iCloud is coming soon. It is not a live connect in this build. Advantage does not host photos or videos.',
+    'iCloud is coming for launch. It is not a live connect in this build. Advantage does not host photos or videos.',
   ),
   dropbox: reservedConnector('dropbox', 'Dropbox'),
 };
 
-/** Owner list: Drive, OneDrive, Google Photos (gallery), then iCloud (coming soon). */
+/** Owner list: live Drive, OneDrive, and Google Photos, then iCloud (Coming for launch). */
 export const CLOUD_STORAGE_PROVIDER_IDS: readonly CloudStorageProviderId[] = [
   'googleDrive',
   'oneDrive',
@@ -189,9 +174,9 @@ export const CLOUD_STORAGE_PROVIDER_IDS: readonly CloudStorageProviderId[] = [
   'iCloud',
 ];
 
-/** Gold Coming soon label for iCloud. Every other provider, including Google Photos, gets none. */
+/** Gold Coming for launch label for iCloud. Google Photos is a live connect and gets none. */
 export function connectListBadge(provider: CloudStorageConnector): string | null {
-  return provider.phase === 'coming-soon' ? CONNECT_COMING_SOON_BADGE : null;
+  return provider.phase === 'coming-for-launch' ? CONNECT_LAUNCH_BADGE : null;
 }
 
 /** Google Drive is the default. Pass another id when that provider is wired. */

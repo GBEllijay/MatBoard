@@ -5,7 +5,6 @@ import {
   CONNECT_COMING_SOON,
   CONNECT_COMING_SOON_BADGE,
   CONNECT_LAUNCH_BADGE,
-  CONNECT_PHOTOS_GALLERY,
   CONNECT_GOOGLE_UNVERIFIED_NOTE,
   CONNECT_WITH_BODY,
   CONNECT_WITH_TITLE,
@@ -90,11 +89,9 @@ test('lesson file names and Drive queries stay literal', () => {
   assert.equal(lessonClassFileToken(emptyPlan()), '');
   assert.equal(driveQueryLiteral("O'Brien\\folder"), "O\\'Brien\\\\folder");
   assert.equal(CONNECT_WITH_TITLE, 'Connect with');
-  assert.equal(CONNECT_COMING_SOON_BADGE, 'Coming soon');
-  assert.equal(CONNECT_LAUNCH_BADGE, CONNECT_COMING_SOON_BADGE);
-  assert.equal(CONNECT_COMING_SOON, CONNECT_COMING_SOON_BADGE);
-  assert.equal(CONNECT_PHOTOS_GALLERY, 'Already in gallery');
-  assert.doesNotMatch(`${CONNECT_PHOTOS_GALLERY}`, /coming soon|coming for launch/i);
+  assert.equal(CONNECT_LAUNCH_BADGE, 'Coming for launch');
+  assert.equal(CONNECT_COMING_SOON_BADGE, CONNECT_LAUNCH_BADGE);
+  assert.equal(CONNECT_COMING_SOON, CONNECT_LAUNCH_BADGE);
   assert.equal(
     CONNECT_GOOGLE_UNVERIFIED_NOTE,
     'Google may show a notice that this connection isn’t verified yet. Tap Continue, or Advanced then Continue, to proceed. This is temporary.',
@@ -194,10 +191,9 @@ test('connect card does not ask a gym owner for a client id', () => {
   assert.match(card, /import\.meta\.env\.DEV/);
   assert.match(card, /cloudStorageChoices\(/);
   assert.match(card, /connectListBadge/);
-  assert.match(card, /CONNECT_COMING_SOON_BADGE/);
-  assert.match(card, /CONNECT_PHOTOS_GALLERY/);
-  assert.match(card, /phase === 'gallery'/);
-  assert.doesNotMatch(card, /Coming for launch|coming-for-launch|CONNECT_LAUNCH_BADGE/);
+  assert.match(card, /CONNECT_LAUNCH_BADGE/);
+  assert.match(card, /googlePhotos/);
+  assert.doesNotMatch(card, /CONNECT_PHOTOS_GALLERY|phase === 'gallery'|Already in gallery/);
   assert.match(card, /CONNECT_ACCOUNT_NOTE/);
   assert.match(card, /CONNECT_GOOGLE_UNVERIFIED_NOTE/);
   assert.match(card, /provider\.id === 'googleDrive' && provider\.isAvailable\(\)/);

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { DriveMediaPicker } from './DriveMediaPicker';
 import { classHistoryHref } from '../lib/submenuNav';
@@ -7,9 +7,8 @@ import {
   cloudStorageChoices,
   CONNECT_ACCOUNT_NOTE,
   CONNECT_CHOOSE_FOLDER,
-  CONNECT_COMING_SOON_BADGE,
   CONNECT_GOOGLE_UNVERIFIED_NOTE,
-  CONNECT_PHOTOS_GALLERY,
+  CONNECT_LAUNCH_BADGE,
   CONNECT_WITH_BODY,
   CONNECT_WITH_KICKER,
   CONNECT_WITH_TITLE,
@@ -46,6 +45,7 @@ import {
   saveGoogleClientId,
   type DriveBrowseAccess,
 } from '../lib/googleDrive';
+import { PHOTOS_CONNECTED, photosOwnerFacingError } from '../lib/googlePhotos';
 import { addDriveMediaFiles } from '../lib/photoStore';
 import {
   clearOneDriveResumeFlag,
@@ -61,6 +61,7 @@ import {
 
 function connectedBinding(): CloudBinding | null {
   for (const provider of cloudStorageChoices()) {
+    if (provider.id === 'googlePhotos') continue;
     const binding = provider.binding();
     if (binding) return binding;
   }
@@ -69,6 +70,7 @@ function connectedBinding(): CloudBinding | null {
 
 function ownerError(provider: CloudStorageConnector | null, reason: unknown): string {
   if (provider?.id === 'oneDrive') return oneDriveOwnerFacingError(reason);
+  if (provider?.id === 'googlePhotos') return photosOwnerFacingError(reason);
   return driveOwnerFacingError(reason);
 }
 
@@ -84,10 +86,9 @@ function connectedDetail(binding: CloudBinding): string {
  * Connect with list for Coach Unlimited and Advantage Pro.
  * Google Drive signs in and picks a folder. OneDrive does the same when this
  * build has Microsoft sign-in: the tap leaves for Microsoft, then comes back
- * to this list. Google Photos is already included in Pick from gallery, so that
- * row is not Coming soon and is not a connect button. iCloud stays visible
- * and disabled with Coming soon until that connect is live.
- * The build supplies sign-in. Owners do not type a setup code.
+ * to this list. Google Photos connects the gym library beside that folder.
+ * iCloud stays visible and disabled with Coming for launch until that connect
+ * is live. The build supplies sign-in. Owners do not type a setup code.
  */
 let oneDriveResumeStarted = false;
 
@@ -136,6 +137,8 @@ export function DriveConnectCard({
   }, []);
 
   const choices = cloudStorageChoices();
+  const photos = cloudStorage('googlePhotos');
+  const photosBinding = useSyncExternalStore(photos.subscribe, photos.getBindingSnapshot, () => null);
   const connected = binding ? cloudStorage(binding.providerId) : null;
   const googleConnected = binding?.providerId === 'googleDrive';
 
@@ -262,9 +265,10 @@ export function DriveConnectCard({
     setError('');
     try {
       const next = await pending.pickFolder(session, folder);
-      setBinding(next);
       setFolders(null);
       setPending(null);
+      setSession(null);
+      if (next.providerId !== 'googlePhotos') setBinding(next);
     } catch (reason) {
       setError(ownerError(pending, reason));
     } finally {
@@ -387,32 +391,21 @@ export function DriveConnectCard({
             <p className="drive-connect__note">{CONNECT_GOOGLE_UNVERIFIED_NOTE}</p>
           ) : null}
           <ul className="drive-connect__providers" aria-label={CONNECT_WITH_TITLE}>
-            {choices.map((provider) => {
-              const comingSoon = connectListBadge(provider) === CONNECT_COMING_SOON_BADGE;
-              const viaGallery = provider.phase === 'gallery';
+            {choices.filter((provider) => provider.id !== 'googlePhotos' || !photosBinding).map((provider) => {
+              const comingForLaunch = connectListBadge(provider) === CONNECT_LAUNCH_BADGE;
               const waitingForMicrosoft = provider.id === 'oneDrive' && !microsoftChecked;
               const canConnect = provider.phase === 'live' && provider.isAvailable();
               const opening = busyId === provider.id;
-              if (viaGallery) {
-                return (
-                  <li key={provider.id}>
-                    <div className="btn btn--ghost drive-connect__gallery">
-                      <span className="drive-connect__gallery-name">{provider.displayName}</span>
-                      <span className="drive-connect__gallery-note">{CONNECT_PHOTOS_GALLERY}</span>
-                    </div>
-                  </li>
-                );
-              }
               return (
                 <li key={provider.id}>
                   <button
                     type="button"
-                    className={canConnect ? 'btn' : comingSoon ? 'btn btn--ghost' : 'btn btn--ghost btn--unavailable'}
+                    className={canConnect ? 'btn' : comingForLaunch ? 'btn btn--ghost' : 'btn btn--ghost btn--unavailable'}
                     disabled={!canConnect || busyId !== null || waitingForMicrosoft}
                     onClick={() => void connect(provider)}
                   >
                     {opening ? `Opening ${provider.displayName}…` : provider.displayName}
-                    {comingSoon ? <span className="drive-connect__soon">{CONNECT_COMING_SOON_BADGE}</span> : null}
+                    {comingForLaunch ? <span className="drive-connect__soon">{CONNECT_LAUNCH_BADGE}</span> : null}
                   </button>
                 </li>
               );
@@ -432,9 +425,42 @@ export function DriveConnectCard({
               </p>
             ))
         : null}
+      {!folders && photosBinding ? (
+        <div className="drive-connect__actions">
+          <p className="drive-connect__note">
+            {photosBinding.accountLabel ? `${photosBinding.accountLabel}. ` : ''}
+            {PHOTOS_CONNECTED}
+          </p>
+          <a className="btn btn--ghost" href={photos.openFolderUrl(photosBinding.folderId) ?? undefined} target="_blank" rel="noreferrer">
+            Open Google Photos
+          </a>
+          <button type="button" className="btn btn--ghost" onClick={() => photos.disconnect()}>
+            Disconnect Google Photos
+          </button>
+        </div>
+      ) : null}
+      {!folders && binding && !photosBinding && photos.phase === 'live' ? (
+        photos.isAvailable() ? (
+          <>
+            <p className="drive-connect__note">{CONNECT_GOOGLE_UNVERIFIED_NOTE}</p>
+            <button
+              type="button"
+              className="btn"
+              disabled={busyId !== null}
+              onClick={() => void connect(photos)}
+            >
+              {busyId === 'googlePhotos' ? 'Opening Google Photos…' : 'Google Photos'}
+            </button>
+          </>
+        ) : (
+          <p className="drive-connect__note" role="status">
+            {photos.unavailableMessage()}
+          </p>
+        )
+      ) : null}
       {folders && pending ? (
         <div className="drive-connect__folders">
-          <p>{CONNECT_CHOOSE_FOLDER}</p>
+          <p>{pending.choosePrompt ?? CONNECT_CHOOSE_FOLDER}</p>
           {folders.length ? (
             <ul>
               {folders.map((folder) => (
