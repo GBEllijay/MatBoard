@@ -663,6 +663,9 @@ function normalizeCompetitionPlan(raw: unknown): ImportedCompetitionPlan | null 
       weighIns: row.weighIns,
       results: row.results,
       weightUnit: row.weightUnit,
+      goalWeight: row.goalWeight,
+      goalUnit: row.goalUnit,
+      weighDate: row.weighDate,
     },
     rank: rankPacket(row.rank),
   };

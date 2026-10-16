@@ -1091,6 +1091,54 @@ button.student-book .student-mark__press {
   cursor: pointer;
 }
 
+.weight-count-block,
+.weight-count {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.weight-count {
+  justify-items: center;
+  margin: 0;
+  padding: 0.1rem 0 0.35rem;
+  text-align: center;
+}
+
+.weight-count__days {
+  font-size: 3rem;
+  line-height: 0.95;
+}
+
+.weight-table-wrap {
+  overflow-x: auto;
+}
+
+.weight-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: transparent;
+}
+
+.weight-table th,
+.weight-table td {
+  padding: 0.35rem 0.45rem 0.28rem 0;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  font-weight: 400;
+  vertical-align: top;
+}
+
+.weight-table th {
+  border-bottom: 2px solid var(--ink);
+  font-size: 1.08rem;
+}
+
+.weight-date {
+  display: grid;
+  gap: 0.25rem;
+  justify-items: start;
+}
+
 .weight-chart {
   width: 100%;
   max-width: 28rem;

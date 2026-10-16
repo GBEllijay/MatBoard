@@ -103,6 +103,8 @@ export function StudentCompetitionPlan({
           })()}
         </p>
       ) : null}
+      {plan.goalWeight != null ? <p>Goal weight {formatWeight(plan.goalWeight, plan.goalUnit === 'kg' ? 'kg' : 'lb')}</p> : null}
+      {plan.weighDate ? <p>Weigh-in date {plan.weighDate}</p> : null}
     </section>
   );
 }

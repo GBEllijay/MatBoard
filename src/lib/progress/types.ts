@@ -392,6 +392,19 @@ export type StudentCompetition = {
   results: CompetitionResult[];
   /** How the chart and new weigh-ins are shown on this device. */
   weightUnit: WeightUnit;
+  /**
+   * Goal weight for the chart. Null or absent when unset.
+   * Stored in `goalUnit`. Older files omit it.
+   */
+  goalWeight?: number | null;
+  /** Unit `goalWeight` was saved in. Absent means pounds. */
+  goalUnit?: WeightUnit;
+  /**
+   * Competition weigh-in day for the countdown, YYYY-MM-DD.
+   * Empty or absent when the student has not set one.
+   * The chart then counts down to the next tournament date.
+   */
+  weighDate?: string;
 };
 
 export type CoachPlanFocus = {

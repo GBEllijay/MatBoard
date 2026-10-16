@@ -1,15 +1,21 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { StudentTournament, WeighIn, WeightUnit } from '../../lib/progress/types';
 import {
   chartPoints,
   competitionOf,
   convertWeight,
+  countdownLabel,
   formatWeight,
+  formatWeightDelta,
   isUpcomingTournament,
+  resolvedGoal,
+  toTargetColumn,
+  weightCountdown,
+  weightToTarget,
   weightUnitLabel,
-  type ChartPoint,
+  type ResolvedGoal,
 } from '../../lib/progress/competition';
-import { addWeighIn, removeWeighIn, setTournamentTarget, setWeightUnit } from '../../lib/studentCompetition';
+import { addWeighIn, removeWeighIn, setGoalWeight, setTournamentTarget, setWeighDate, setWeightUnit } from '../../lib/studentCompetition';
 import { todayIso } from '../../lib/studentEdition';
 import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './chrome';
 import { Link } from 'react-router-dom';
@@ -26,10 +32,12 @@ export function WeightPage() {
   const [error, setError] = useState('');
   const shown = [...competition.weighIns].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
   const points = chartPoints(competition.weighIns, unit);
-  const target = upcomingTarget(competition.tournaments, unit, today);
+  const goal = resolvedGoal(competition, today);
+  const chartTarget = goal == null ? null : convertWeight(goal.weight, goal.unit, unit);
   const upcoming = competition.tournaments
     .filter((tournament) => isUpcomingTournament(tournament, today))
     .sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name));
+  const notes = shown.filter((row) => row.note.trim());
 
   return (
     <main className="student student-frame">
@@ -38,41 +46,55 @@ export function WeightPage() {
       <div className="student-paper">
         <div className="student-sheet">
           <section className="ink" aria-label="Weight">
+            <WeightCountdownBlock
+              date={competition.weighDate ?? ''}
+              today={today}
+              competition={competition}
+              onSave={(value) => commit(setWeighDate(report, value))}
+            />
             <p className="student-quiet">Weigh-ins stay on this phone. Advantage does not host them.</p>
             <UnitToggle unit={unit} group="Weight unit" onChange={(next) => commit(setWeightUnit(report, next))} />
-            <WeightChart points={points} unit={unit} target={target} />
-            {target != null ? (
-              <p className="student-quiet">The dashed line is the next tournament target, shown in {weightUnitLabel(unit)}.</p>
+            <GoalWeightField
+              goal={goal}
+              stored={competition.goalWeight ?? null}
+              storedUnit={competition.goalUnit === 'kg' ? 'kg' : 'lb'}
+              unit={unit}
+              onSave={(value) => commit(setGoalWeight(report, value, unit))}
+            />
+            <WeightChart points={points} unit={unit} target={chartTarget} />
+            {chartTarget != null ? (
+              <p className="student-quiet">The dashed line is the goal weight, shown in {weightUnitLabel(unit)}.</p>
             ) : null}
-          </section>
-
-          <section className="ink" aria-label="Target division weight">
-            <h2 className="ink__label">Target</h2>
-            {upcoming.length === 0 ? (
-              <p className="student-quiet">
-                Add a tournament on <Link to={to('/student/competitor')}>Competitor</Link> to set a target division weight.
-              </p>
-            ) : (
-              <ul className="comp-list">
-                {upcoming.map((tournament) => (
-                  <TargetRow
-                    key={tournament.id}
-                    tournament={tournament}
-                    onSave={(value, nextUnit) => commit(setTournamentTarget(report, tournament.id, value, nextUnit))}
-                  />
-                ))}
-              </ul>
-            )}
           </section>
 
           <section className="ink" aria-label="Weigh-ins">
             <h2 className="ink__label">Weigh-ins</h2>
             {shown.length === 0 ? <p className="student-quiet">No weigh-ins yet.</p> : null}
-            <ul className="comp-list">
-              {shown.map((row) => (
-                <WeighInRow key={row.id} row={row} unit={unit} onRemove={() => commit(removeWeighIn(report, row.id))} />
-              ))}
-            </ul>
+            <div className="weight-table-wrap">
+              <table className="weight-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Date</th>
+                    <th scope="col">Weight</th>
+                    <th scope="col">{toTargetColumn(unit)}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {shown.map((row) => (
+                    <WeighInTableRow key={row.id} row={row} unit={unit} goal={goal} onRemove={() => commit(removeWeighIn(report, row.id))} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {notes.length ? (
+              <ul className="comp-list" aria-label="Weigh-in notes">
+                {notes.map((row) => (
+                  <li key={row.id} className="student-quiet">
+                    {row.date}: {row.note}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
             <form
               className="comp-form"
               onSubmit={(event) => {
@@ -106,9 +128,172 @@ export function WeightPage() {
               </button>
             </form>
           </section>
+
+          <section className="ink" aria-label="Target division weight">
+            <h2 className="ink__label">Target</h2>
+            {upcoming.length === 0 ? (
+              <p className="student-quiet">
+                Add a tournament on <Link to={to('/student/competitor')}>Competitor</Link> to set a target division weight.
+              </p>
+            ) : (
+              <ul className="comp-list">
+                {upcoming.map((tournament) => (
+                  <TargetRow
+                    key={tournament.id}
+                    tournament={tournament}
+                    onSave={(value, nextUnit) => commit(setTournamentTarget(report, tournament.id, value, nextUnit))}
+                  />
+                ))}
+              </ul>
+            )}
+          </section>
         </div>
       </div>
     </main>
+  );
+}
+
+function WeightCountdownBlock({
+  date,
+  today,
+  competition,
+  onSave,
+}: {
+  date: string;
+  today: string;
+  competition: ReturnType<typeof competitionOf>;
+  onSave: (value: string) => void;
+}) {
+  const countdown = weightCountdown(competition, today);
+  const [value, setValue] = useState(countdown?.date ?? date);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    setValue(countdown?.date ?? '');
+  }, [countdown?.date]);
+  const label = countdown == null ? 'Set a competition weigh-in date' : countdownLabel(countdown.days);
+  const detail =
+    countdown == null
+      ? 'The countdown starts when you save a date.'
+      : countdown.source === 'tournament'
+        ? `${countdown.tournamentName} · ${countdown.date}. Save a date if the weigh-in is a different day.`
+        : countdown.date;
+  return (
+    <div className="weight-count-block">
+      <p className="weight-count" role="status" aria-live="polite">
+        <span className="weight-count__days">{label}</span>
+        <span className="ink__label">{countdown == null ? 'Competition weigh-in' : 'Until weigh-in'}</span>
+        <span className="student-quiet">{detail}</span>
+      </p>
+      <form
+        className="comp-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          try {
+            onSave(value);
+            setError('');
+          } catch (err) {
+            setError(err instanceof Error ? err.message : 'Could not save that date.');
+          }
+        }}
+      >
+        <label>
+          <span className="ink__label">Competition weigh-in date</span>
+          <input
+            type="date"
+            aria-label="Competition weigh-in date"
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+          />
+        </label>
+        {error ? <p role="alert">{error}</p> : null}
+        <button type="submit" className="ink-btn ink-btn--small">
+          Save weigh-in date
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function GoalWeightField({
+  goal,
+  stored,
+  storedUnit,
+  unit,
+  onSave,
+}: {
+  goal: ResolvedGoal | null;
+  stored: number | null;
+  storedUnit: WeightUnit;
+  unit: WeightUnit;
+  onSave: (weight: string) => void;
+}) {
+  const shown = stored == null ? '' : String(convertWeight(stored, storedUnit, unit));
+  const [text, setText] = useState(shown);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    setText(shown);
+  }, [shown]);
+  return (
+    <form
+      className="comp-form"
+      onSubmit={(event) => {
+        event.preventDefault();
+        try {
+          onSave(text);
+          setError('');
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Could not save that goal.');
+        }
+      }}
+    >
+      <label>
+        <span className="ink__label">Goal weight</span>
+        <input aria-label="Goal weight" inputMode="decimal" value={text} onChange={(event) => setText(event.target.value)} />
+      </label>
+      {stored == null && goal?.source === 'tournament' ? (
+        <p className="student-quiet">
+          The table uses the {goal.tournamentName} target, {formatWeight(convertWeight(goal.weight, goal.unit, unit), unit)}, until you save a goal.
+        </p>
+      ) : null}
+      {error ? <p role="alert">{error}</p> : null}
+      <button type="submit" className="ink-btn ink-btn--small">
+        Save goal weight
+      </button>
+    </form>
+  );
+}
+
+function WeighInTableRow({
+  row,
+  unit,
+  goal,
+  onRemove,
+}: {
+  row: WeighIn;
+  unit: WeightUnit;
+  goal: ResolvedGoal | null;
+  onRemove: () => void;
+}) {
+  const shown = formatWeight(convertWeight(row.weight, row.unit, unit), unit);
+  const original = row.unit === unit ? '' : ` (${formatWeight(row.weight, row.unit)})`;
+  const delta =
+    goal == null ? '—' : formatWeightDelta(weightToTarget(row.weight, row.unit, goal.weight, goal.unit, unit), unit);
+  return (
+    <tr>
+      <td>
+        <div className="weight-date">
+          <span>{row.date}</span>
+          <button type="button" className="ink-btn ink-btn--small" onClick={onRemove}>
+            {`Remove weigh-in ${row.date}`}
+          </button>
+        </div>
+      </td>
+      <td>
+        {shown}
+        {original ? <span className="student-quiet">{original}</span> : null}
+      </td>
+      <td>{delta}</td>
+    </tr>
   );
 }
 
@@ -157,31 +342,6 @@ function TargetRow({
   );
 }
 
-function upcomingTarget(tournaments: StudentTournament[], unit: WeightUnit, today: string): number | null {
-  const next = tournaments
-    .filter((tournament) => tournament.targetWeight != null && isUpcomingTournament(tournament, today))
-    .sort((a, b) => a.date.localeCompare(b.date))[0];
-  if (!next || next.targetWeight == null) return null;
-  return convertWeight(next.targetWeight, next.targetUnit, unit);
-}
-
-function WeighInRow({ row, unit, onRemove }: { row: WeighIn; unit: WeightUnit; onRemove: () => void }) {
-  const shown = formatWeight(convertWeight(row.weight, row.unit, unit), unit);
-  const original = row.unit === unit ? '' : ` (${formatWeight(row.weight, row.unit)})`;
-  return (
-    <li className="ink">
-      <strong>
-        {row.date} · {shown}
-        {original}
-      </strong>
-      {row.note ? <span>{row.note}</span> : null}
-      <button type="button" className="ink-btn" onClick={onRemove}>
-        {`Remove weigh-in ${row.date}`}
-      </button>
-    </li>
-  );
-}
-
 function UnitToggle({
   unit,
   group,
@@ -208,7 +368,15 @@ function UnitToggle({
   );
 }
 
-function WeightChart({ points, unit, target }: { points: ChartPoint[]; unit: WeightUnit; target: number | null }) {
+function WeightChart({
+  points,
+  unit,
+  target,
+}: {
+  points: { date: string; value: number }[];
+  unit: WeightUnit;
+  target: number | null;
+}) {
   if (points.length === 0) return null;
   const width = 320;
   const height = 128;
