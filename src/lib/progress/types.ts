@@ -187,6 +187,8 @@ export type FundamentalsCatalog = {
 /**
  * One line on the student's fundamentals sheet.
  * A catalog id points at a shared name. An empty catalog id is a line the student added.
+ * `level` is proficiency from 0 (not started) through 5 (can teach it).
+ * Older files omit it. A saved learned date means level 3. No date means 0.
  */
 export type StudentChecklistEntry = {
   id: string;
@@ -200,6 +202,8 @@ export type StudentChecklistEntry = {
   hidden: boolean;
   /** YYYY-MM-DD, or empty when the student has not dated it. */
   learnedOn: string;
+  /** 0 Not started, 1 Introduced, 2 Drilling, 3 Live with resistance, 4 Hitting in rolls, 5 Can teach it. */
+  level: 0 | 1 | 2 | 3 | 4 | 5;
   note: string;
   updatedAt: number;
 };

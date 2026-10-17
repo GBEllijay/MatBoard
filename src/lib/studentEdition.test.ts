@@ -25,9 +25,11 @@ import {
   saveStudentReport,
   searchStudentJournal,
   setFundamentalLearned,
+  setFundamentalLevel,
   rememberStudentPurchase,
   setStudentPurchased,
   studentEditionOpen,
+  todayIso,
   studentPurchaseReturn,
   STUDENT_EDITION_STORAGE_KEY,
   STUDENT_PRODUCT_ID,
@@ -398,5 +400,44 @@ test('rename and remove are per-student overrides, and restore brings the starte
   assert.equal(restoredRow.displayName, '');
   assert.equal(restoredRow.catalogItemId, 'sweep.scissor');
   assert.equal(stillHidden.hidden, true);
+  assert.equal(stillHidden.level, 3);
   assert.equal(searchStudentJournal(report, 'scissor').length, 1);
+});
+
+test('proficiency replaces the learned mark without dropping the date or note', () => {
+  let report = blankStudentReport(10);
+  report = setFundamentalLevel(
+    report,
+    { catalogItemId: 'sweep.scissor', categoryId: 'sweeps', name: 'Scissor sweep' },
+    4,
+    20,
+    { note: 'collar deeper', learnedOn: '2026-10-11' },
+  );
+  const row = report.checklist[0];
+  assert.equal(row.level, 4);
+  assert.equal(row.learnedOn, '2026-10-11');
+  assert.equal(row.note, 'collar deeper');
+  assert.equal(row.updatedAt, 20);
+  report = setFundamentalLevel(report, { catalogItemId: 'sweep.scissor', categoryId: 'sweeps', name: 'Scissor sweep' }, 1, 21);
+  assert.equal(report.checklist[0].level, 1);
+  assert.equal(report.checklist[0].learnedOn, '2026-10-11');
+  assert.equal(report.checklist[0].note, 'collar deeper');
+  const stamped = Date.parse('2026-10-12T15:00:00Z');
+  report = setFundamentalLevel(
+    report,
+    { catalogItemId: 'pass.knee-slice', categoryId: 'passes', name: 'Knee slice pass' },
+    3,
+    stamped,
+  );
+  const pass = report.checklist.find((entry) => entry.catalogItemId === 'pass.knee-slice');
+  assert.ok(pass);
+  assert.equal(pass.level, 3);
+  assert.equal(pass.learnedOn, todayIso(new Date(stamped)));
+  const saved = saveStudentReport(memoryStorage(), report);
+  assert.equal(saved.checklist.find((entry) => entry.catalogItemId === 'sweep.scissor')?.level, 1);
+  assert.equal(saved.checklist.find((entry) => entry.catalogItemId === 'pass.knee-slice')?.level, 3);
+  const board = fundamentalsBoard(saved);
+  assert.equal(board.find((category) => category.id === 'sweeps')?.learned, 0);
+  assert.equal(board.find((category) => category.id === 'passes')?.learned, 1);
+  assert.equal(board.find((category) => category.id === 'passes')?.items.find((item) => item.catalogItemId === 'pass.knee-slice')?.level, 3);
 });

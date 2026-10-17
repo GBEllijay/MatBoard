@@ -535,6 +535,7 @@
   padding: 0;
   border: 0;
   min-width: 0;
+  scroll-margin-top: 6.5rem;
 }
 
 .assess legend {

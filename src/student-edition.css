@@ -570,6 +570,7 @@ button.student-book .student-mark__press {
 .student-clip {
   display: grid;
   gap: 0.35rem;
+  scroll-margin-top: 6.5rem;
 }
 
 .student-clip a {

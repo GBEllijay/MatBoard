@@ -53,7 +53,7 @@ export function SelfAssessment({ report, to }: { report: StudentProgressReport; 
   };
 
   return (
-    <section className="assess" aria-label="Self-assessment">
+    <section className="assess" id="self-assessment" aria-label="Self-assessment">
       <span className="arena-node" aria-hidden="true" />
       <div className="assess-lead">
         <h2>Self-assessment</h2>
@@ -86,7 +86,7 @@ export function SelfAssessment({ report, to }: { report: StudentProgressReport; 
         {ASSESSMENT_AREAS.map((area) => {
           const link = links.find((item) => item.areaId === area.id);
           return (
-            <fieldset key={area.id} className="assess-area">
+            <fieldset key={area.id} id={`assess-${area.id}`} className="assess-area">
               <legend>{area.label}</legend>
               {link ? (
                 <Link className="assess-link" to={to(`/student/rubric#${link.checkpointId}`)}>
