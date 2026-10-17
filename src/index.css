@@ -1310,6 +1310,14 @@ button.mode-card__hit {
   margin-top: 0.35rem;
 }
 
+.academy-menu-entry {
+  margin: 1.25rem 0 0;
+}
+
+.academy-menu-entry .btn {
+  width: 100%;
+}
+
 .plan-card .btn {
   width: 100%;
   margin-top: 0.45rem;

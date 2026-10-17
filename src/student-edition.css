@@ -1494,6 +1494,111 @@ button.student-book .student-mark__press {
   background: var(--navy);
 }
 
+.student-film,
+.student-connections {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.student-film h2,
+.student-connections h2,
+.student-connections h3,
+.student-film__card h3 {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 400;
+}
+
+.student-film video,
+.student-film__card video {
+  width: 100%;
+  max-height: 240px;
+  background: #111;
+}
+
+.student-film__where {
+  display: grid;
+  gap: 0.35rem;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.student-connections__folders,
+.student-connections__later {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.student-print-sheet {
+  background: #fff;
+  color: #1c140e;
+  padding: 1rem 1.1rem 2rem;
+}
+
+.student-print-sheet p {
+  margin: 0.15rem 0;
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.student-print-sheet__gap {
+  height: 0.6rem;
+}
+
+.academy-pathway {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: rgba(255, 248, 235, 0.92);
+  color: #1c140e;
+}
+
+.academy-pathway h2,
+.academy-pathway h3 {
+  margin: 0.2rem 0;
+}
+
+.academy-pathway__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.academy-scan {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0.4rem 0 0.2rem;
+}
+
+.academy-scan__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.academy-scan__video {
+  width: 100%;
+  max-height: 16rem;
+  object-fit: cover;
+  background: #111;
+  border: 2px solid #1c140e;
+}
+
+@media print {
+  .student-print-toolbar,
+  .site-footer,
+  .student-marks {
+    display: none !important;
+  }
+
+  .student-print,
+  .student-print-sheet {
+    background: #fff !important;
+    color: #000 !important;
+  }
+}
+
 .student-closed .ink {
   max-width: 22rem;
   background: var(--paper);

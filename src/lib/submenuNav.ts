@@ -80,6 +80,7 @@ export function submenuBackTarget(input: SubmenuNavInput): string | null {
   }
   if (path === '/white/roster') return '/white';
 
+  if (path === '/coach-unlimited/academy') return COACH_UNLIMITED_PATH;
   if (path === '/coach-unlimited' || path === '/instructors' || path === '/suite') return '/pro';
   if (path === '/coaching-tools' || path === '/competition') return '/coach';
   if (path === '/review') return COACH_UNLIMITED_PATH;

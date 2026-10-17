@@ -1525,6 +1525,34 @@ export async function saveDriveTextFile(
   return { id: saved.id, name: saved.name || name };
 }
 
+/**
+ * Bytes into a folder the caller already chose. Resumable, so a large
+ * student backup or filmed move is not capped at the multipart limit.
+ * Training videos still use `uploadTrainingVideos`.
+ */
+export async function saveDriveBytes(
+  token: string,
+  file: { name: string; bytes: Blob; mime: string; parentId?: string },
+  fetcher: DriveFetch = fetch,
+): Promise<{ id: string; name: string }> {
+  const name = file.name.trim();
+  if (!name) throw new Error('Google Drive needs a file name.');
+  const mime = file.mime.trim() || 'application/octet-stream';
+  const metadata: Record<string, unknown> = { name, mimeType: mime };
+  if (file.parentId) metadata.parents = [file.parentId];
+  const location = await beginResumableUpload({
+    token,
+    method: 'POST',
+    endpoint: 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',
+    metadata,
+    mime,
+    size: file.bytes.size,
+    fetcher,
+  });
+  const id = await finishResumableUpload({ token, location, mime, bytes: file.bytes, fetcher });
+  return { id, name };
+}
+
 function lessonAppProperties(document: DriveLessonDocument): Record<string, string> {
   return {
     advantage: 'lesson',

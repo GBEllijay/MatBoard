@@ -21,6 +21,7 @@ import {
   listOneDriveItems,
   markOneDriveResume,
   MSAL_INTERACTION_STATUS_KEY,
+  oneDriveByteRanges,
   oneDriveFileName,
   oneDriveIdFromDrives,
   oneDriveItemsFromGraph,
@@ -32,6 +33,7 @@ import {
   oneDriveSignInFailureCopy,
   readOneDriveSession,
   resolveOwnedMicrosoftClientId,
+  saveOneDriveBytes,
   saveOneDriveText,
   takeOneDriveResumeError,
   writeDevMicrosoftClientId,
@@ -338,4 +340,23 @@ test('choosing a OneDrive folder writes the connect file in that folder', async 
   } finally {
     globalThis.fetch = original;
   }
+});
+
+test('OneDrive byte ranges stay on 320 KiB boundaries and a small video uses one PUT', async () => {
+  const ranges = oneDriveByteRanges(320 * 1024 * 8 + 10);
+  assert.equal(ranges.length, 2);
+  assert.equal(ranges[0]?.end, 320 * 1024 * 8 - 1);
+  assert.equal((ranges[0]!.end - ranges[0]!.start + 1) % (320 * 1024), 0);
+  assert.equal(ranges[1]?.end, 320 * 1024 * 8 + 9);
+
+  const calls: { url: string; method: string; type: string }[] = [];
+  const fetcher: typeof fetch = async (input, init) => {
+    calls.push({ url: String(input), method: init?.method ?? 'GET', type: String(init?.headers && new Headers(init.headers).get('Content-Type')) });
+    return Response.json({ id: 'video-1', name: 'clip.mp4' });
+  };
+  const saved = await saveOneDriveBytes('token', { name: 'clip.mp4', bytes: new Blob(['1234']), mime: 'video/mp4' }, 'folder-1', fetcher);
+  assert.equal(saved.id, 'video-1');
+  assert.equal(calls[0]?.method, 'PUT');
+  assert.match(calls[0]?.url ?? '', /clip\.mp4:\/content$/);
+  assert.equal(calls[0]?.type, 'video/mp4');
 });

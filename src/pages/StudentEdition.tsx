@@ -21,6 +21,8 @@ import { VideoLibraryPage } from './student/VideoLibraryPage';
 import { WeightPage } from './student/WeightPage';
 import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './student/chrome';
 import { SharePage } from './student/SharePage';
+import { AcademyConnectPage, ConnectionsPage } from './student/ConnectionsPage';
+import { PrintReportPage } from './student/PrintReportPage';
 import {
   addCustomFundamental,
   addJournalAmendment,
@@ -74,6 +76,10 @@ export function StudentEditionPage() {
   if (rest === 'weight') return <WeightPage />;
   if (rest === 'results') return <ResultsPage />;
   if (rest === 'videos') return <VideoLibraryPage />;
+  if (rest === 'connections') return <ConnectionsPage />;
+  if (rest === 'academy') return <AcademyConnectPage />;
+  if (rest === 'print/progress') return <PrintReportPage kind="progress" />;
+  if (rest === 'print/assessment') return <PrintReportPage kind="assessment" />;
   if (rest === 'scouting') return <ScoutingPage />;
   return <Hub />;
 }
@@ -135,10 +141,16 @@ function Hub() {
             <LeatherSpine />
             <summary>Menu</summary>
             <div className="student-hub__menu-list">
+              <Link to={to('/student/connections')}>Connections</Link>
               <Link to={to('/student/share')}>Send to coach</Link>
               <Link to={to('/student/share#import')}>Import from coach</Link>
             </div>
           </details>
+          <Link className="student-hub__link" to={to('/student/academy')} aria-label="Connect to my academy">
+            <LeatherSpine />
+            <span className="student-hub__title">Connect to my academy</span>
+            <small>Scan the academy QR</small>
+          </Link>
         </nav>
         <SiteFooter />
       </div>

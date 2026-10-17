@@ -40,7 +40,7 @@ import { whiteHubAllowed, whiteLiveToolsAllowed } from './lib/whiteUnlock';
 import { ClassHistoryPage } from './pages/ClassHistory';
 import { StudentEditionPage } from './pages/StudentEdition';
 import { CoachPage } from './pages/Coach';
-import { CoachUnlimitedPage } from './pages/CoachUnlimited';
+import { AcademyPathwayPage, CoachUnlimitedPage } from './pages/CoachUnlimited';
 import { CoachingToolsPage } from './pages/CoachingTools';
 import { CompetitionCurriculumPage } from './pages/CompetitionCurriculum';
 import { ComingSoonPage } from './pages/ComingSoon';
@@ -395,6 +395,14 @@ export default function App() {
         element={
           <CoachUnlimitedRoute>
             <CoachUnlimitedPage />
+          </CoachUnlimitedRoute>
+        }
+      />
+      <Route
+        path="/coach-unlimited/academy"
+        element={
+          <CoachUnlimitedRoute>
+            <AcademyPathwayPage />
           </CoachUnlimitedRoute>
         }
       />

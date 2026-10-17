@@ -3,7 +3,8 @@
  * The public browser client id comes from `VITE_MICROSOFT_CLIENT_ID`.
  * Gym owners never paste an id, and this app never uses a client secret.
  *
- * This milestone signs in, lists folders, and can write one small text file.
+ * This milestone signs in, lists folders, and can write a text file.
+ * A larger file, such as a student video or backup, uses an upload session.
  * Lesson day packages still go to Google Drive until a later milestone.
  */
 
@@ -431,6 +432,26 @@ export function graphTextUploadUrl(parentId: string | undefined, name: string, d
   return `${root}/items/${encodeURIComponent(parentId)}:/${fileName}:/content`;
 }
 
+export function graphUploadSessionUrl(parentId: string | undefined, name: string, driveId?: string | null): string {
+  const root = graphDriveRoot(driveId);
+  const fileName = encodeURIComponent(oneDriveFileName(name));
+  if (!parentId) return `${root}/root:/${fileName}:/createUploadSession`;
+  return `${root}/items/${encodeURIComponent(parentId)}:/${fileName}:/createUploadSession`;
+}
+
+/** Chunks except the last are multiples of 320 KiB, which Graph requires. */
+export const ONEDRIVE_UPLOAD_CHUNK = 320 * 1024 * 8;
+
+export function oneDriveByteRanges(size: number, chunk = ONEDRIVE_UPLOAD_CHUNK): { start: number; end: number }[] {
+  if (!Number.isFinite(size) || size <= 0) return [];
+  const ranges: { start: number; end: number }[] = [];
+  const step = Math.max(320 * 1024, chunk);
+  for (let start = 0; start < size; start += step) {
+    ranges.push({ start, end: Math.min(size, start + step) - 1 });
+  }
+  return ranges;
+}
+
 export function graphCreateChildUrl(parentId?: string, driveId?: string | null): string {
   const root = graphDriveRoot(driveId);
   if (!parentId) return `${root}/root/children`;
@@ -550,6 +571,88 @@ export async function saveOneDriveText(
   const saved = (await response.json()) as GraphItem;
   if (!saved.id) throw new Error('OneDrive did not return a file id.');
   return { id: saved.id, name: saved.name || name };
+}
+
+const ONEDRIVE_SIMPLE_MAX = 4 * 1024 * 1024;
+
+export async function saveOneDriveBytes(
+  token: string,
+  file: { name: string; bytes: Blob; mime: string },
+  folderId?: string,
+  fetcher: OneDriveFetch = fetch,
+): Promise<CloudItemRef> {
+  const name = oneDriveFileName(file.name);
+  const mime = file.mime.trim() || 'application/octet-stream';
+  if (file.bytes.size <= ONEDRIVE_SIMPLE_MAX) {
+    const response = await graphFetch(token, fetcher, (driveId) => graphTextUploadUrl(folderId, name, driveId), {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': mime,
+      },
+      body: file.bytes,
+    });
+    if (!response.ok) throw await graphError(response, folderId ? 'folder' : 'drive');
+    const saved = (await response.json()) as GraphItem;
+    if (!saved.id) throw new Error('OneDrive did not return a file id.');
+    return { id: saved.id, name: saved.name || name };
+  }
+  const sessionResponse = await graphFetch(token, fetcher, (driveId) => graphUploadSessionUrl(folderId, name, driveId), {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      item: {
+        '@microsoft.graph.conflictBehavior': 'replace',
+        name,
+      },
+    }),
+  });
+  if (!sessionResponse.ok) throw await graphError(sessionResponse, folderId ? 'folder' : 'drive');
+  const session = (await sessionResponse.json()) as { uploadUrl?: string };
+  if (!session.uploadUrl?.startsWith('https://')) throw new Error('OneDrive did not start the upload.');
+  const size = file.bytes.size;
+  const buffer = new Uint8Array(await file.bytes.arrayBuffer());
+  let savedId = '';
+  let savedName = name;
+  for (const range of oneDriveByteRanges(size)) {
+    const slice = buffer.subarray(range.start, range.end + 1);
+    const response = await fetcher(session.uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Length': String(slice.byteLength),
+        'Content-Range': `bytes ${range.start}-${range.end}/${size}`,
+      },
+      body: slice,
+    });
+    if (response.status === 202) continue;
+    if (!response.ok) throw await graphError(response, 'folder');
+    const saved = (await response.json()) as GraphItem;
+    savedId = saved.id ?? savedId;
+    savedName = saved.name || savedName;
+  }
+  if (!savedId) throw new Error('OneDrive did not return a file id.');
+  return { id: savedId, name: savedName };
+}
+
+export async function downloadOneDriveBytes(
+  token: string,
+  itemId: string,
+  fetcher: OneDriveFetch = fetch,
+): Promise<Blob> {
+  const response = await graphFetch(
+    token,
+    fetcher,
+    (driveId) => {
+      const root = graphDriveRoot(driveId);
+      return `${root}/items/${encodeURIComponent(itemId)}/content`;
+    },
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!response.ok) throw await graphError(response, 'folder');
+  return response.blob();
 }
 
 export async function createOneDriveFolder(
