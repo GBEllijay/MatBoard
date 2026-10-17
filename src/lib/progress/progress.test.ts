@@ -80,6 +80,7 @@ function sampleReport(): StudentProgressReport {
         displayName: '',
         hidden: false,
         learnedOn: '2026-02-01',
+        level: 3,
         note: 'From closed guard',
         updatedAt: 10,
       },
@@ -91,6 +92,7 @@ function sampleReport(): StudentProgressReport {
         displayName: '',
         hidden: false,
         learnedOn: '',
+        level: 0,
         note: '',
         updatedAt: 11,
       },
@@ -415,6 +417,31 @@ test('csv export uses one header row a spreadsheet can filter by sheet', () => {
   assert.match(csv, /Journal,journal-cycle-1,2026-02-01/);
   assert.match(csv, /Scissor sweep/);
   assert.match(csv, /Checklist,check-custom/);
+  assert.match(csv, /sweep\.scissor,3/);
+});
+
+test('a checklist line without a level keeps its date and note, and a learned date becomes level 3', () => {
+  const report = sampleReport();
+  const text = exportProgressPacket(report);
+  const raw = JSON.parse(text) as { checklist: { id: string; level?: number; learnedOn: string; note: string }[] };
+  delete raw.checklist[0].level;
+  delete raw.checklist[1].level;
+  const parsed = parseProgressPacket(JSON.stringify(raw));
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok || parsed.value.kind !== 'student-progress-report') return;
+  const scissor = parsed.value.checklist.find((entry) => entry.id === 'check-scissor');
+  const custom = parsed.value.checklist.find((entry) => entry.id === 'check-custom');
+  assert.ok(scissor);
+  assert.ok(custom);
+  assert.equal(scissor.level, 3);
+  assert.equal(scissor.learnedOn, '2026-02-01');
+  assert.equal(scissor.note, 'From closed guard');
+  assert.equal(custom.level, 0);
+  assert.equal(custom.learnedOn, '');
+  const again = parseProgressPacket(exportProgressPacket(parsed.value));
+  assert.equal(again.ok, true);
+  if (!again.ok || again.value.kind !== 'student-progress-report') return;
+  assert.equal(again.value.checklist.find((entry) => entry.id === 'check-scissor')?.level, 3);
 });
 
 test('importing a coach plan or coach feedback leaves student marks, journal, and goals untouched', () => {

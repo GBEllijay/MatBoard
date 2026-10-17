@@ -35,6 +35,7 @@ import {
   type RubricLevel,
   type StudentProgressReport,
 } from './progress/types.ts';
+import { FUNDAMENTAL_LIVE_LEVEL, fundamentalLevelOf } from './fundamentals.ts';
 import { todayIso } from './studentEdition.ts';
 import { setRankBelt } from './studentRank.ts';
 import { loadRankPictures, picturesFromStore } from './rankPhotos.ts';
@@ -375,7 +376,7 @@ export function withStarterRubric(report: StudentProgressReport, now = Date.now(
 export function learnedCatalogIds(report: StudentProgressReport): Set<string> {
   return new Set(
     report.checklist
-      .filter((entry) => entry.catalogItemId && entry.learnedOn && !entry.hidden)
+      .filter((entry) => entry.catalogItemId && !entry.hidden && fundamentalLevelOf(entry) >= FUNDAMENTAL_LIVE_LEVEL)
       .map((entry) => entry.catalogItemId),
   );
 }

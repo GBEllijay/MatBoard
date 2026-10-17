@@ -3,6 +3,7 @@
  * report from src/lib/progress. Nothing here is sent to a server.
  */
 
+import { fundamentalLevelOf, FUNDAMENTAL_LIVE_LEVEL, isFundamentalLevel, type FundamentalLevel } from './fundamentals.ts';
 import { FUNDAMENTALS_CATALOG } from './progress/catalog.ts';
 import { emptyCompetition, matchingGameTags } from './progress/competition.ts';
 import { emptyRank } from './studentRank.ts';
@@ -108,7 +109,11 @@ export type FundamentalRow = {
   /** Name drawn on the page. A rename override, or `name` when there is none. */
   label: string;
   learnedOn: string;
+  /** 0–5 proficiency. Older rows derive this from the learned date. */
+  level: FundamentalLevel;
   note: string;
+  /** Milliseconds, or 0 when this line has never been saved. */
+  updatedAt: number;
   custom: boolean;
 };
 
@@ -422,7 +427,9 @@ export function fundamentalsBoard(report: StudentProgressReport): FundamentalsCa
         name: item.name,
         label: visibleLabel(item.name, saved?.displayName ?? ''),
         learnedOn: saved?.learnedOn ?? '',
+        level: fundamentalLevelOf(saved ?? { learnedOn: '' }),
         note: saved?.note ?? '',
+        updatedAt: saved?.updatedAt ?? 0,
         custom: false,
       });
     }
@@ -436,14 +443,16 @@ export function fundamentalsBoard(report: StudentProgressReport): FundamentalsCa
         name: entry.name,
         label: visibleLabel(entry.name, entry.displayName),
         learnedOn: entry.learnedOn,
+        level: fundamentalLevelOf(entry),
         note: entry.note,
+        updatedAt: entry.updatedAt,
         custom: true,
       });
     }
     return {
       id: category.id,
       name: category.name,
-      learned: items.filter((item) => item.learnedOn).length,
+      learned: items.filter((item) => item.level >= FUNDAMENTAL_LIVE_LEVEL).length,
       items,
     };
   });
@@ -466,7 +475,7 @@ function findChecklistIndex(checklist: StudentChecklistEntry[], target: Checklis
 function patchChecklist(
   report: StudentProgressReport,
   target: ChecklistTarget,
-  patch: Partial<Pick<StudentChecklistEntry, 'learnedOn' | 'note' | 'displayName' | 'hidden'>>,
+  patch: Partial<Pick<StudentChecklistEntry, 'learnedOn' | 'note' | 'displayName' | 'hidden' | 'level'>>,
   now: number,
 ): StudentProgressReport {
   const name = target.name.trim();
@@ -482,6 +491,7 @@ function patchChecklist(
       displayName: patch.displayName ?? '',
       hidden: patch.hidden ?? false,
       learnedOn: patch.learnedOn ?? '',
+      level: patch.level === undefined ? fundamentalLevelOf({ learnedOn: patch.learnedOn ?? '' }) : patch.level,
       note: patch.note ?? '',
       updatedAt: now,
     });
@@ -492,6 +502,7 @@ function patchChecklist(
       displayName: patch.displayName === undefined ? current.displayName : patch.displayName,
       hidden: patch.hidden === undefined ? current.hidden : patch.hidden,
       learnedOn: patch.learnedOn === undefined ? current.learnedOn : patch.learnedOn,
+      level: patch.level === undefined ? fundamentalLevelOf(current) : patch.level,
       note: patch.note === undefined ? current.note : patch.note,
       updatedAt: now,
     };
@@ -501,13 +512,34 @@ function patchChecklist(
 
 export function setFundamentalLearned(
   report: StudentProgressReport,
-  row: { catalogItemId: string; categoryId: string; name: string },
+  row: { entryId?: string; catalogItemId: string; categoryId: string; name: string },
   learned: boolean,
   date: string,
   now = Date.now(),
 ): StudentProgressReport {
   const learnedOn = learned ? (DATE_RE.test(date) ? date : todayIso(new Date(now))) : '';
-  return patchChecklist(report, row, { learnedOn }, now);
+  const current = report.checklist[findChecklistIndex(report.checklist, row)];
+  const level: FundamentalLevel = learned
+    ? (current && fundamentalLevelOf(current) >= FUNDAMENTAL_LIVE_LEVEL ? fundamentalLevelOf(current) : FUNDAMENTAL_LIVE_LEVEL)
+    : 0;
+  return patchChecklist(report, row, { learnedOn, level }, now);
+}
+
+/** Set proficiency. Level 3 and above keeps or stamps a learned date. A lower level keeps the date. */
+export function setFundamentalLevel(
+  report: StudentProgressReport,
+  row: { entryId?: string; catalogItemId: string; categoryId: string; name: string },
+  level: FundamentalLevel,
+  now = Date.now(),
+  fields?: { note?: string; learnedOn?: string },
+): StudentProgressReport {
+  if (!isFundamentalLevel(level)) return report;
+  const current = report.checklist[findChecklistIndex(report.checklist, row)];
+  const requested = fields?.learnedOn === undefined ? current?.learnedOn ?? '' : fields.learnedOn;
+  const learnedOn = level >= FUNDAMENTAL_LIVE_LEVEL && !DATE_RE.test(requested) ? todayIso(new Date(now)) : DATE_RE.test(requested) ? requested : '';
+  const patch: Partial<Pick<StudentChecklistEntry, 'learnedOn' | 'note' | 'level'>> = { level, learnedOn };
+  if (fields?.note !== undefined) patch.note = fields.note.trim();
+  return patchChecklist(report, row, patch, now);
 }
 
 export function setFundamentalNote(

@@ -4,6 +4,7 @@
  * Advantage does not host it.
  */
 
+import { fundamentalLevelOf, isFundamentalLevel } from '../fundamentals.ts';
 import { asRecord } from '../plainValue.ts';
 import { canonicalFundamentalsCatalogId } from './catalog.ts';
 import { emptyCompetition, seedGamesFromJournal } from './competition.ts';
@@ -127,6 +128,7 @@ export const PROGRESS_CSV_HEADERS = [
   'Toward',
   'Criterion id',
   'Catalog item id',
+  'Proficiency',
 ] as const;
 
 /** Shared criterion id. Coach notes can name it. Only the student file stores whether it is met. */
@@ -493,6 +495,8 @@ function mergeChecklist(
     );
     current.note = preferText(current.note, entry.note, `Checklist ${entry.id} note was kept.`, conflicts);
     current.learnedOn = preferText(current.learnedOn, entry.learnedOn, `Checklist ${entry.id} date was kept.`, conflicts);
+    if (entry.level > current.level) current.level = entry.level;
+    else if (entry.level < current.level) conflicts.push(`Checklist ${entry.id} proficiency was kept.`);
     if (current.hidden !== entry.hidden) conflicts.push(`Checklist ${entry.id} visibility was kept.`);
     current.catalogItemId = preferText(
       current.catalogItemId,
@@ -930,6 +934,7 @@ function readChecklistEntry(value: unknown, index: number, errors: string[]): St
       displayName: '',
       hidden: false,
       learnedOn: '',
+      level: 0,
       note: '',
       updatedAt: 0,
     };
@@ -944,6 +949,7 @@ function readChecklistEntry(value: unknown, index: number, errors: string[]): St
     displayName: readString(record.displayName, `${label} display name`, PROGRESS_NAME_MAX, errors),
     hidden: readFlag(record.hidden, `${label} hidden`, errors),
     learnedOn: readDate(record.learnedOn, `${label} learned on`, errors, false),
+    level: readFundamentalLevel(record.level, record.learnedOn, `${label} proficiency`, errors),
     note: readString(record.note, `${label} note`, PROGRESS_NOTE_MAX, errors),
     updatedAt: readTime(record.updatedAt, `${label} updatedAt`, errors),
   };
@@ -1661,6 +1667,18 @@ function readCalendarKind(value: unknown, label: string, errors: string[]): Cale
   return 'other';
 }
 
+function readFundamentalLevel(
+  value: unknown,
+  learnedOn: unknown,
+  label: string,
+  errors: string[],
+): 0 | 1 | 2 | 3 | 4 | 5 {
+  if (value == null || value === '') return fundamentalLevelOf({ learnedOn });
+  if (isFundamentalLevel(value)) return value;
+  errors.push(`${label} must be a whole number from 0 to 5.`);
+  return 0;
+}
+
 function readMet(value: unknown, label: string, errors: string[]): boolean | null {
   if (value == null) return null;
   if (typeof value === 'boolean') return value;
@@ -1881,6 +1899,7 @@ function writeReportRows(lines: string[], packet: StudentProgressReport): void {
       '',
       '',
       entry.catalogItemId,
+      String(fundamentalLevelOf(entry)),
     ]));
   }
   for (const entry of packet.journal) {

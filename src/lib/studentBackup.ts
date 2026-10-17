@@ -10,6 +10,7 @@ import {
   type StudentDriveLink,
 } from './academyPathway.ts';
 import { competitionOf } from './progress/competition.ts';
+import { checklistLevelLine } from './fundamentals.ts';
 import { PROGRESS_CSV_HEADERS, exportProgressCsv, parseProgressPacket, parseProgressValue } from './progress/format.ts';
 import { RANK_BELTS, type JournalEntry, type StudentProgressReport } from './progress/types.ts';
 import { RANK_PHOTO_KEY, emptyRankPhotoStore, type RankPhotoStore } from './rankPhotos.ts';
@@ -161,11 +162,11 @@ export function progressReportLines(report: StudentProgressReport, assessment: A
       lines.push(`  ${checkpoint.name}: ${mark}${checkpoint.note ? ` — ${checkpoint.note}` : ''}`);
     }
   }
-  const learned = report.checklist.filter((row) => row.learnedOn && !row.hidden);
-  if (learned.length) {
-    lines.push('Fundamentals dated:');
-    for (const row of learned.slice(0, 40)) {
-      lines.push(`  ${row.displayName || row.name} learned ${row.learnedOn}`);
+  const fundamentals = report.checklist.filter((row) => !row.hidden);
+  if (fundamentals.length) {
+    lines.push('Fundamentals proficiency:');
+    for (const row of fundamentals.slice(0, 60)) {
+      lines.push(`  ${checklistLevelLine(row)}`);
     }
   }
   lines.push('', 'Journal summary');
@@ -356,6 +357,21 @@ function later<T extends { id: string; updatedAt?: number }>(local: T, incoming:
   return incomingAt >= localAt ? incoming : local;
 }
 
+function mergeChecklistRow(
+  local: StudentProgressReport['checklist'][number],
+  incoming: StudentProgressReport['checklist'][number],
+): StudentProgressReport['checklist'][number] {
+  const newer = incoming.updatedAt >= local.updatedAt ? incoming : local;
+  const older = newer === incoming ? local : incoming;
+  const level = local.level > incoming.level ? local.level : incoming.level;
+  return {
+    ...newer,
+    level,
+    learnedOn: newer.learnedOn || older.learnedOn,
+    note: newer.note || older.note,
+  };
+}
+
 function mergeById<T extends { id: string }>(local: readonly T[], incoming: readonly T[], pick: (local: T, incoming: T) => T): T[] {
   const map = new Map(local.map((item) => [item.id, item]));
   for (const item of incoming) {
@@ -376,7 +392,7 @@ export function mergeStudentReports(local: StudentProgressReport, incoming: Stud
     updatedAt: Math.max(local.updatedAt, incoming.updatedAt),
     profile: incomingNewer ? incoming.profile : local.profile,
     rubric: incomingNewer ? incoming.rubric : local.rubric,
-    checklist: mergeById(local.checklist, incoming.checklist, later),
+    checklist: mergeById(local.checklist, incoming.checklist, mergeChecklistRow),
     journal: mergeById(local.journal, incoming.journal, later),
     calendar: mergeById(local.calendar, incoming.calendar, (_left, right) => right),
     goals: mergeById(local.goals, incoming.goals, (_left, right) => right),

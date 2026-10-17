@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { HomeMark } from '../components/HomeMark';
 import { LeatherSpine } from '../components/LeatherSpine';
@@ -22,21 +22,16 @@ import { WeightPage } from './student/WeightPage';
 import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './student/chrome';
 import { SharePage } from './student/SharePage';
 import { AcademyConnectPage, ConnectionsPage } from './student/ConnectionsPage';
+import { FundamentalsPage } from './student/FundamentalsPage';
 import { PrintReportPage } from './student/PrintReportPage';
 import {
-  addCustomFundamental,
   addJournalAmendment,
   addJournalEntry,
   fundamentalsBoard,
-  hideFundamental,
-  renameFundamental,
-  restoreStarterFundamentals,
   JOURNAL_CLASS_PLACEHOLDER,
   JOURNAL_TECHNIQUE_MAX,
   JOURNAL_TECHNIQUE_ROWS,
   searchStudentJournal,
-  setFundamentalLearned,
-  setFundamentalNote,
   studentEditionOpen,
   techniqueDrilledLabel,
   todayIso,
@@ -105,7 +100,7 @@ function StudentClosed() {
 const HUB_LINKS = [
   { title: 'Journal', note: "Today's page", to: '/student/journal' },
   { title: 'Journal cards', note: 'Search your notes', to: '/student/cards' },
-  { title: 'Fundamentals', note: 'Checklist', to: '/student/fundamentals' },
+  { title: 'Fundamentals', note: 'Levels', to: '/student/fundamentals' },
   { title: 'Calendar', note: 'Month and your events', to: '/student/calendar' },
   { title: 'Competitor', note: 'Tournaments and game', to: '/student/competitor' },
   { title: 'Weight', note: 'Weigh-ins and target', to: '/student/weight' },
@@ -503,232 +498,3 @@ function CardBody({ card }: { card: JournalCardView }) {
     </>
   );
 }
-
-function FundamentalsPage() {
-  const { report, commit } = useStudentFile();
-  const board = fundamentalsBoard(report);
-  const [confirmRestore, setConfirmRestore] = useState(false);
-  return (
-    <main className="student student-frame">
-      <StudentMarks />
-      <LeatherHeader title="Fundamentals" />
-      <div className="student-paper">
-        <div className="student-sheet">
-          {board.map((category) => (
-            <section key={category.id} className="ink" aria-label={category.name}>
-              <h2 className="student-count">
-                {category.name} {category.learned} learned
-              </h2>
-              {category.items.map((item) => (
-                <FundamentalLine
-                  key={`${item.categoryId}-${item.catalogItemId || item.entryId}`}
-                  item={item}
-                  onLearn={(learned, date) =>
-                    commit(setFundamentalLearned(report, item, learned, date || todayIso()))
-                  }
-                  onFields={(note, learnedOn) => commit(setFundamentalNote(report, item, note, learnedOn))}
-                  onRename={(label) => commit(renameFundamental(report, item, label))}
-                  onRemove={() => commit(hideFundamental(report, item))}
-                />
-              ))}
-              <CustomFundamental
-                categoryName={category.name}
-                onAdd={(name) => commit(addCustomFundamental(report, category.id, name))}
-              />
-            </section>
-          ))}
-          <div className="student-restore">
-            {confirmRestore ? (
-              <div className="student-confirm" role="group" aria-label="Restore starter list">
-                <p>Bring starter names back and show hidden starter techniques?</p>
-                <button
-                  type="button"
-                  className="ink-btn"
-                  onClick={() => {
-                    commit(restoreStarterFundamentals(report));
-                    setConfirmRestore(false);
-                  }}
-                >
-                  Confirm restore starter list
-                </button>
-                <button type="button" className="ink-btn" onClick={() => setConfirmRestore(false)}>
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <button type="button" className="ink-btn" onClick={() => setConfirmRestore(true)}>
-                Restore starter list
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </main>
-  );
-}
-
-function PencilIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M4.5 19.5l4.1-1.05L18.8 8.2 15.7 5.1 5.5 15.3 4.5 19.5z"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-      <path d="M13.4 7.4l3.1 3.1" fill="none" stroke="currentColor" strokeWidth="1.8" />
-    </svg>
-  );
-}
-
-function CrossIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function FundamentalLine({
-  item,
-  onLearn,
-  onFields,
-  onRename,
-  onRemove,
-}: {
-  item: FundamentalRow;
-  onLearn: (learned: boolean, date: string) => void;
-  onFields: (note: string, learnedOn: string) => void;
-  onRename: (label: string) => void;
-  onRemove: () => void;
-}) {
-  const [date, setDate] = useState(item.learnedOn);
-  const [note, setNote] = useState(item.note);
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(item.label);
-  const [confirming, setConfirming] = useState(false);
-  useEffect(() => {
-    setDate(item.learnedOn);
-    setNote(item.note);
-    setDraft(item.label);
-  }, [item.learnedOn, item.note, item.label]);
-  const learned = Boolean(item.learnedOn);
-  const saveName = () => {
-    const next = draft.trim();
-    if (next && next !== item.label) onRename(next);
-    setEditing(false);
-  };
-  return (
-    <div className="student-fund">
-      <div className="student-fund__head">
-        {editing ? (
-          <form
-            className="student-rename"
-            onSubmit={(event) => {
-              event.preventDefault();
-              saveName();
-            }}
-          >
-            <input
-              aria-label={`New name for ${item.label}`}
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-            />
-            <button type="submit" className="ink-btn">
-              Save name
-            </button>
-          </form>
-        ) : (
-          <span className="student-fund__name">{item.label}</span>
-        )}
-        <div className="student-fund__tools">
-          <button
-            type="button"
-            className="student-icon"
-            aria-label={editing ? `Close rename for ${item.label}` : `Rename ${item.label}`}
-            onClick={() => setEditing((open) => !open)}
-          >
-            <PencilIcon />
-          </button>
-          <button
-            type="button"
-            className="student-icon"
-            aria-label={`Remove ${item.label}`}
-            onClick={() => setConfirming(true)}
-          >
-            <CrossIcon />
-          </button>
-          <button
-            type="button"
-            className={learned ? 'student-learned is-on' : 'student-learned'}
-            aria-pressed={learned}
-            aria-label={learned ? `Learned ${item.label}` : `Mark ${item.label} learned`}
-            onClick={() => onLearn(!learned, date)}
-          >
-            {learned ? 'Learned' : 'Mark learned'}
-          </button>
-        </div>
-      </div>
-      {confirming ? (
-        <div className="student-confirm" role="group" aria-label={`Remove ${item.label}`}>
-          <span>Hide {item.label}? Notes and journal cards stay.</span>
-          <button type="button" className="ink-btn" aria-label={`Confirm remove ${item.label}`} onClick={onRemove}>
-            Remove
-          </button>
-          <button type="button" className="ink-btn" onClick={() => setConfirming(false)}>
-            Keep
-          </button>
-        </div>
-      ) : null}
-      <div className="student-fund__fields">
-        <input
-          type="date"
-          aria-label={`${item.label} date learned`}
-          value={date}
-          onChange={(event) => setDate(event.target.value)}
-          onBlur={() => onFields(note, date)}
-        />
-        <input
-          aria-label={`${item.label} note`}
-          value={note}
-          placeholder="Note"
-          onChange={(event) => setNote(event.target.value)}
-          onBlur={() => onFields(note, date)}
-        />
-      </div>
-    </div>
-  );
-}
-
-function CustomFundamental({
-  categoryName,
-  onAdd,
-}: {
-  categoryName: string;
-  onAdd: (name: string) => void;
-}) {
-  const [name, setName] = useState('');
-  return (
-    <form
-      className="student-add"
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (!name.trim()) return;
-        onAdd(name);
-        setName('');
-      }}
-    >
-      <input
-        aria-label={`Add your own to ${categoryName}`}
-        value={name}
-        placeholder="Add your own"
-        onChange={(event) => setName(event.target.value)}
-      />
-      <button type="submit" className="ink-btn">
-        Add
-      </button>
-    </form>
-  );
-}
-

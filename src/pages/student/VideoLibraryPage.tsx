@@ -97,7 +97,7 @@ export function VideoLibraryPage() {
             ) : null}
             <FilmedList query={query} tick={filmTick} onChange={() => setFilmTick((value) => value + 1)} />
             {shown.map((clip) => (
-              <article key={clip.id} className="ink student-clip">
+              <article key={clip.id} id={`clip-${clip.id}`} className="ink student-clip">
                 {editing === clip.id ? (
                   <>
                     <label className="ink__label">
@@ -386,7 +386,7 @@ function FilmedList({ query, tick, onChange }: { query: string; tick: number; on
       {visible.map((film) => {
         const label = studentFilmLabel(film);
         return (
-          <article key={film.id} className="ink student-clip student-film__card">
+          <article key={film.id} id={`film-${film.id}`} className="ink student-clip student-film__card">
             {editing === film.id ? (
               <>
                 <label className="ink__label">

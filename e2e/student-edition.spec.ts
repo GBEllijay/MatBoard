@@ -62,19 +62,20 @@ test('student journal saves, searches, amends, and marks a fundamental', async (
   await page.getByRole('link', { name: BACK, exact: true }).click();
   await page.getByRole('link', { name: 'Fundamentals', exact: true }).click();
   const sweeps = page.getByRole('region', { name: 'Sweeps' });
-  await expect(page.getByRole('heading', { name: 'Sweeps 0 learned' })).toBeVisible();
-  await sweeps.getByRole('button', { name: 'Mark Scissor sweep learned' }).click();
-  await expect(page.getByRole('heading', { name: 'Sweeps 1 learned' })).toBeVisible();
+  await expect(sweeps.getByRole('heading', { name: 'Sweeps', exact: true })).toBeVisible();
+  await expect(sweeps.getByText('0 of 5 live or better')).toBeVisible();
+  await sweeps.getByRole('radio', { name: 'Scissor sweep 3 Live with resistance' }).click();
+  await expect(sweeps.getByText('1 of 5 live or better')).toBeVisible();
 
   await sweeps.getByRole('button', { name: 'Rename Scissor sweep' }).click();
   await sweeps.getByRole('textbox', { name: 'New name for Scissor sweep' }).fill('Hip scissor');
   await sweeps.getByRole('button', { name: 'Save name' }).click();
   await expect(sweeps.getByText('Hip scissor', { exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Sweeps 1 learned' })).toBeVisible();
+  await expect(sweeps.getByText('1 of 5 live or better')).toBeVisible();
 
   await sweeps.getByRole('button', { name: 'Remove Hip scissor' }).click();
   await sweeps.getByRole('button', { name: 'Confirm remove Hip scissor' }).click();
-  await expect(page.getByRole('heading', { name: 'Sweeps 0 learned' })).toBeVisible();
+  await expect(sweeps.getByText('0 of 5 live or better')).toBeVisible();
   await expect(sweeps.getByText('Hip scissor', { exact: true })).toHaveCount(0);
 
   await sweeps.getByRole('textbox', { name: 'Add your own to Sweeps' }).fill('Lasso sweep');
@@ -91,7 +92,7 @@ test('student journal saves, searches, amends, and marks a fundamental', async (
   await page.getByRole('button', { name: 'Confirm restore starter list' }).click();
   await expect(sweeps.getByText('Scissor sweep', { exact: true })).toBeVisible();
   await expect(sweeps.getByText('Lasso from guard')).toHaveCount(0);
-  await expect(page.getByRole('heading', { name: 'Sweeps 1 learned' })).toBeVisible();
+  await expect(sweeps.getByText('1 of 5 live or better')).toBeVisible();
 
   await page.getByRole('link', { name: BACK, exact: true }).click();
   await expect(page.getByRole('link', { name: 'Journal', exact: true })).toBeVisible();
