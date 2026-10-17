@@ -67,6 +67,18 @@ function writeStore(store: Record<string, string>): void {
   localStorage.setItem(BRACKET_PHOTO_KEY, JSON.stringify(store));
 }
 
+export function loadBracketPhotos(): Record<string, string> {
+  return readStore();
+}
+
+export function replaceBracketPhotos(next: Record<string, string>): void {
+  const clean: Record<string, string> = {};
+  for (const [id, value] of Object.entries(next)) {
+    if (typeof value === 'string' && value.startsWith('data:image/') && value.length <= MAX_CHARS) clean[id] = value;
+  }
+  writeStore(clean);
+}
+
 export function loadBracketPhoto(id: string): string {
   return readStore()[id] ?? '';
 }

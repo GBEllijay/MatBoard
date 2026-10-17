@@ -12,6 +12,7 @@ import { MEDIA_CONSOLE_NAME, PRO_LADDER_DETAIL, consoleHubs } from '../lib/produ
 import { formatUsdFromCents } from '../lib/whitePurchase';
 import { purchasePromptsHidden } from '../lib/instructorSeats';
 import { lockPro } from '../lib/proUnlock';
+import { AcademyPathwayPanel } from '../components/AcademyPathwayPanel';
 
 export function ProPage() {
   const navigate = useNavigate();
@@ -34,6 +35,8 @@ export function ProPage() {
           />
           <ProToolboxCard hubs={hubs} label={mediaSeat ? MEDIA_CONSOLE_NAME : 'Advantage Pro hubs'} />
         </nav>
+
+        <AcademyPathwayPanel />
 
         <div className="home__hints">
           <InstructionsButton controlsId="pro-instructions">

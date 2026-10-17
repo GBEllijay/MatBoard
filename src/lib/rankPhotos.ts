@@ -61,6 +61,12 @@ export async function rankPhotoFromFile(file: File): Promise<string> {
   return image;
 }
 
+export function replaceRankPhotoStore(value: unknown): RankPhotoStore {
+  const store = normalizeStore(value);
+  writeStore(store);
+  return store;
+}
+
 export function loadRankPictures(): RankPhotoStore {
   try {
     const raw = localStorage.getItem(RANK_PHOTO_KEY);
