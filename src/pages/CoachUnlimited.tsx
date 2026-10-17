@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { AcademyPathwayPanel } from '../components/AcademyPathwayPanel';
 import { BeltHeader } from '../components/BeltHeader';
 import { BeltRail } from '../components/BeltRail';
 import { DriveConnectCard } from '../components/DriveConnectCard';
@@ -18,6 +19,22 @@ import {
   type LessonRevision,
 } from '../lib/lessonDrive';
 import { COACH_UNLIMITED_TOOLS, INSTRUCTOR_COACH_ENTRY } from '../lib/productNames';
+
+/** Same pathway screen as the Pro page: link, QR, copy, and share folder. */
+export function AcademyPathwayPage() {
+  return (
+    <main className="home home--pro home--suite">
+      <div className="home__inner">
+        <PlayExitMark to="/coach-unlimited" />
+        <HomeMark to="/" />
+        <section className="suite instructor-hub">
+          <AcademyPathwayPanel />
+        </section>
+        <SiteFooter />
+      </div>
+    </main>
+  );
+}
 
 /**
  * Advantage Pro hub that replaced Competitor Management System.
@@ -73,6 +90,11 @@ export function CoachUnlimitedPage() {
             ) : null}
           </article>
           <DriveConnectCard />
+          <p className="academy-menu-entry">
+            <Link className="btn" to="/coach-unlimited/academy">
+              Connect to my academy
+            </Link>
+          </p>
         </section>
         <SiteFooter />
       </div>

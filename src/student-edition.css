@@ -1565,6 +1565,26 @@ button.student-book .student-mark__press {
   margin-top: 0.5rem;
 }
 
+.academy-scan {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0.4rem 0 0.2rem;
+}
+
+.academy-scan__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.academy-scan__video {
+  width: 100%;
+  max-height: 16rem;
+  object-fit: cover;
+  background: #111;
+  border: 2px solid #1c140e;
+}
+
 @media print {
   .student-print-toolbar,
   .site-footer,

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { AcademyQrScanner } from '../../components/AcademyQrScanner';
 import { loadBracketPhotos } from '../../lib/bracketPhoto';
 import {
   ACADEMY_ACCESS_ERROR,
@@ -65,6 +66,20 @@ function downloadBlob(filename: string, blob: Blob) {
   URL.revokeObjectURL(url);
 }
 
+export function AcademyConnectPage() {
+  return (
+    <main className="student student-frame">
+      <StudentMarks />
+      <LeatherHeader title={ACADEMY_CONNECT_LABEL} />
+      <div className="student-paper">
+        <div className="student-sheet student-connections">
+          <AcademyConnect showHeading={false} />
+        </div>
+      </div>
+    </main>
+  );
+}
+
 export function ConnectionsPage() {
   const to = useStudentPath();
   return (
@@ -91,7 +106,7 @@ export function ConnectionsPage() {
   );
 }
 
-function AcademyConnect() {
+function AcademyConnect({ showHeading = true }: { showHeading?: boolean }) {
   const [params] = useSearchParams();
   const [text, setText] = useState('');
   const [pathway, setPathway] = useState<AcademyPathway | null>(null);
@@ -193,10 +208,11 @@ function AcademyConnect() {
 
   return (
     <section className="ink" aria-label={ACADEMY_CONNECT_LABEL}>
-      <h2>{ACADEMY_CONNECT_LABEL}</h2>
+      {showHeading ? <h2>{ACADEMY_CONNECT_LABEL}</h2> : null}
       <p className="student-quiet">
-        Paste the academy link from your coach, or open the QR on this phone. You sign in to that Google Drive or OneDrive folder. {ACADEMY_FREE_NOTE}
+        Scan the academy QR, take a photo of it, or paste the academy link. You sign in to that Google Drive or OneDrive folder. {ACADEMY_FREE_NOTE}
       </p>
+      <AcademyQrScanner onScan={useLink} />
       {linked ? (
         <p role="status">
           Connected to {linked.folderName} on {providerLabel(linked.provider)}

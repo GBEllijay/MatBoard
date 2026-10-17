@@ -20,7 +20,7 @@ Students at gyms that do not use Advantage get a printable progress report and a
 
 Connections (`/student/connections`) is the one student area for:
 
-- Connect to my academy. Paste the Pro link, or open the QR. Sign in to that provider with the existing Google Drive or OneDrive sign-in. The folder id is stored on the student phone (`matboard.studentEdition.academyDrive.v1`). It does not replace `matboard.pro.googleDriveFolder.v1`.
+- Connect to my academy. The student hub has a journal-style button that opens this screen (`/student/academy`). Scan the academy QR with the camera, take a photo of the QR, or paste the link. The same controls stay on Connections. Sign in uses the existing Google Drive or OneDrive sign-in. The folder id is stored on the student phone (`matboard.studentEdition.academyDrive.v1`). It does not replace `matboard.pro.googleDriveFolder.v1`.
 - My own drive. Google Drive and OneDrive can be picked for personal backups (`matboard.studentEdition.personalDrive.v1`). Google Photos and iCloud are listed as coming later. They are not backup folders in this build. Google Photos remains the gym media picker on Coach and Pro.
 - Export and print. Back up my journal, print progress report, print self-assessment.
 - Import from coach. Opens the existing import.
@@ -31,7 +31,7 @@ Restore from backup asks for merge or replace. Merge keeps records that exist on
 
 Film a move stays on Video Library beside the existing link form. Record uses `accept="video/*"` and `capture="environment"`. Pick from gallery uses `accept="video/*"` without capture. The saved name uses the Daily Training Videos helper: date, technique, clip number, and extension, under `Videos/{YYYY-MM-DD (Ddd)}/` when it goes to a drive. Phone copies stay in IndexedDB `matboard-student-films`. Playback is a video element in the library. A file that does not fit, is empty, or is not a video gets a plain error. A drive failure does not pretend the clip was saved.
 
-The Pro page shows the academy pathway when a Google Drive or OneDrive folder is already connected on that browser. Copy link, QR, open the folder, and try to share it for student edits. No Stripe charge is added.
+The Pro page still shows the academy pathway when a Google Drive or OneDrive folder is already connected on that browser. Coach Unlimited also has a Connect to my academy button at the bottom of its menu. That button opens the same pathway screen (`/coach-unlimited/academy`): copy link, QR, open the folder, and try to share it for student edits. No Stripe charge is added.
 
 ## How this maps to the code today
 

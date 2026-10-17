@@ -29,6 +29,7 @@ test('Student Edition pages go back one level, and a card returns to the card li
   assert.equal(submenuBackTarget({ pathname: '/student/calendar', search: 'student=1' }), '/student?student=1');
   assert.equal(submenuBackTarget({ pathname: '/student/calendar/2026-10-12', search: 'student=1' }), '/student/calendar?student=1');
   assert.equal(submenuBackTarget({ pathname: '/student/rubric' }), '/student');
+  assert.equal(submenuBackTarget({ pathname: '/student/academy', search: 'student=1' }), '/student?student=1');
   assert.equal(submenuBackTarget({ pathname: '/student/belt', search: 'student=1' }), '/student?student=1');
   assert.equal(submenuBackTarget({ pathname: '/student/share', search: 'student=1' }), '/student?student=1');
   assert.equal(
@@ -57,6 +58,7 @@ test('Coach Unlimited tools go back to Coach Unlimited, including a direct Pro v
   );
   assert.equal(submenuBackTarget({ pathname: '/roster', search: 'from=unlimited', ...pro }), '/coach-unlimited');
   assert.equal(submenuBackTarget({ pathname: '/review', ...pro }), '/coach-unlimited');
+  assert.equal(submenuBackTarget({ pathname: '/coach-unlimited/academy', ...pro }), '/coach-unlimited');
 });
 
 test('Coach hub tools go back to Coach even when Pro is unlocked', () => {
