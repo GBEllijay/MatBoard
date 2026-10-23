@@ -32,7 +32,7 @@ import {
   STUDENT_EDITION_STORAGE_KEY,
 } from '../../lib/studentEdition.ts';
 import { setRankAwardedOn, setRankBelt } from '../../lib/studentRank.ts';
-import { GYM_SCHEDULE_STORAGE_KEY } from '../../lib/studentTools.ts';
+import { addCalendarEvent, GYM_SCHEDULE_STORAGE_KEY } from '../../lib/studentTools.ts';
 import { CalendarDayPage, CalendarPage } from './CalendarPages.tsx';
 
 const dom = new Window({ url: 'http://localhost/student/calendar' });
@@ -378,4 +378,81 @@ test('editing the add-event draft, adding, and removing keep the stored calendar
   assert.equal(empty.host.querySelector('[data-testid="path"]')?.textContent, '/student/journal');
   assert.ok(empty.host.textContent?.includes('Left calendar for /student/journal'));
   unmount(empty);
+});
+
+test('a day with a journal entry and an event shows the open event dot plus a journal mark', () => {
+  localStorage.clear();
+  const today = todayIso();
+  const todayDay = Number(today.slice(-2));
+  const journalDay = todayDay === 1 ? 2 : 1;
+  const eventDay = [1, 2, 3, 4, 5].find((day) => day !== todayDay && day !== journalDay);
+  assert.ok(eventDay);
+  const month = today.slice(0, 8);
+  const journalOnly = `${month}${String(journalDay).padStart(2, '0')}`;
+  const eventOnly = `${month}${String(eventDay).padStart(2, '0')}`;
+
+  let report = addJournalEntry(
+    blankStudentReport(10),
+    {
+      date: today,
+      className: 'Fundamentals',
+      gameTag: 'a',
+      techniques: [],
+      partners: '',
+      drills: '',
+      rolls: '',
+      notes: 'both marks',
+    },
+    10,
+  );
+  report = addJournalEntry(
+    report,
+    {
+      date: journalOnly,
+      className: 'Drilling',
+      gameTag: 'b',
+      techniques: [],
+      partners: '',
+      drills: '',
+      rolls: '',
+      notes: 'journal only',
+    },
+    11,
+  );
+  report = addCalendarEvent(report, { date: today, title: 'Saturday open mat', kind: 'training', note: '' }, 12);
+  report = addCalendarEvent(report, { date: eventOnly, title: 'Seminar', kind: 'class', note: '' }, 13);
+  saveStudentReport(localStorage, report);
+
+  const mounted = mount();
+  const { host } = mounted;
+  const dayButton = (iso: string) => {
+    const [year, monthNumber, day] = iso.split('-').map(Number);
+    const pretty = new Date(year, monthNumber - 1, day).toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+    const found = [...host.querySelectorAll('button.cal-day')].find((node) => node.getAttribute('aria-label')?.startsWith(pretty));
+    assert.ok(found, pretty);
+    return found as HTMLElement;
+  };
+  const dotNames = (button: HTMLElement) =>
+    [...button.querySelectorAll('.cal-dot')].map((node) =>
+      [...node.classList].filter((name) => name !== 'cal-dot').join(' ') || 'filled',
+    );
+
+  const combined = dayButton(today);
+  assert.match(combined.getAttribute('aria-label') ?? '', /journal entry/);
+  assert.match(combined.getAttribute('aria-label') ?? '', /calendar event/);
+  assert.equal(combined.getAttribute('data-journal'), 'true');
+  assert.deepEqual(dotNames(combined).slice(0, 2), ['cal-dot--event', 'cal-dot--journal']);
+  assert.equal(dotNames(dayButton(journalOnly)).join(' '), 'filled');
+  assert.equal(dotNames(dayButton(eventOnly)).join(' '), 'cal-dot--event');
+  assert.ok(host.textContent?.includes('A filled dot is a journal entry. An open dot is another event.'));
+
+  act(() => {
+    combined.click();
+  });
+  assert.equal(host.querySelector('[data-testid="path"]')?.textContent, `/student/calendar/${today}`);
+  unmount(mounted);
 });

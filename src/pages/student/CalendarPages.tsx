@@ -117,25 +117,26 @@ export function CalendarPage() {
             <span aria-hidden="true">{name.slice(0, 1)}</span>
           </div>
         ))}
-        {weeks.flat().map((cell) =>
-          cell.inMonth ? (
+        {weeks.flat().map((cell) => {
+          const hasJournal = marked.has(cell.iso);
+          const hasEvent = eventsOnDate(report, cell.iso).length > 0;
+          return cell.inMonth ? (
             <button
               key={cell.iso}
               type="button"
-              className={`cal-day${cell.iso === today ? ' is-today' : ''}${marked.has(cell.iso) ? ' has-journal' : ''}${tournamentDays.has(cell.iso) ? ' has-tournament' : ''}${rankDays.has(cell.iso) ? ' has-rank' : ''}`}
+              className={`cal-day${cell.iso === today ? ' is-today' : ''}${hasJournal ? ' has-journal' : ''}${tournamentDays.has(cell.iso) ? ' has-tournament' : ''}${rankDays.has(cell.iso) ? ' has-rank' : ''}`}
               aria-current={cell.iso === today ? 'date' : undefined}
-              aria-label={dayLabel(cell.iso, marked.has(cell.iso), eventsOnDate(report, cell.iso).length > 0, tournamentDays.has(cell.iso), rankDays.has(cell.iso))}
-              data-journal={marked.has(cell.iso) ? 'true' : 'false'}
+              aria-label={dayLabel(cell.iso, hasJournal, hasEvent, tournamentDays.has(cell.iso), rankDays.has(cell.iso))}
+              data-journal={hasJournal ? 'true' : 'false'}
               data-tournament={tournamentDays.has(cell.iso) ? 'true' : 'false'}
               data-rank={rankDays.has(cell.iso) ? 'true' : 'false'}
               onClick={() => openDay(cell.iso)}
             >
               <span>{cell.day}</span>
               <span className="cal-marks">
-                {marked.has(cell.iso) ? <span className="cal-dot" /> : null}
-                {!marked.has(cell.iso) && eventsOnDate(report, cell.iso).length > 0 ? (
-                  <span className="cal-dot cal-dot--event" />
-                ) : null}
+                {hasJournal && !hasEvent ? <span className="cal-dot" /> : null}
+                {hasEvent ? <span className="cal-dot cal-dot--event" /> : null}
+                {hasJournal && hasEvent ? <span className="cal-dot cal-dot--journal" /> : null}
                 {tournamentDays.has(cell.iso) ? <span className="cal-dot cal-dot--tournament" /> : null}
                 {rankDays.has(cell.iso) ? <span className="cal-dot cal-dot--rank" /> : null}
               </span>
@@ -144,8 +145,8 @@ export function CalendarPage() {
             <span key={cell.iso} className="cal-day cal-day--out" aria-hidden="true">
               {cell.day}
             </span>
-          ),
-        )}
+          );
+        })}
       </div>
       <p className="student-quiet">
         A filled dot is a journal entry. An open dot is another event. A red ring is a tournament. A blue square is a belt date from My rank. Tap a day to open that day’s cards, or start today’s page.
