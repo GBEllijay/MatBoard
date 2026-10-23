@@ -590,6 +590,41 @@ label.btn {
   );
 }
 
+/* Fourth tape, same stack as stripes 1–3. Coach Unlimited stops at 3.
+   The bar grows with --degree-span where a caller sets that variable. */
+.belt-rail--stripes-4 {
+  --tape-a: var(--rail-tip);
+  --tape-b: calc(var(--rail-tip) + var(--degree-tape-h));
+  --tape-c: calc(var(--tape-b) + var(--degree-gap));
+  --tape-d: calc(var(--tape-c) + var(--degree-tape-h));
+  --tape-e: calc(var(--tape-d) + var(--degree-gap));
+  --tape-f: calc(var(--tape-e) + var(--degree-tape-h));
+  --tape-g: calc(var(--tape-f) + var(--degree-gap));
+  --tape-h: calc(var(--tape-g) + var(--degree-tape-h));
+  --degree-stack: linear-gradient(
+    to top,
+    var(--espresso) 0,
+    var(--espresso) var(--tape-a),
+    var(--degree-tape) var(--tape-a),
+    var(--degree-tape) var(--tape-b),
+    var(--degree-bar-ink) var(--tape-b),
+    var(--degree-bar-ink) var(--tape-c),
+    var(--degree-tape) var(--tape-c),
+    var(--degree-tape) var(--tape-d),
+    var(--degree-bar-ink) var(--tape-d),
+    var(--degree-bar-ink) var(--tape-e),
+    var(--degree-tape) var(--tape-e),
+    var(--degree-tape) var(--tape-f),
+    var(--degree-bar-ink) var(--tape-f),
+    var(--degree-bar-ink) var(--tape-g),
+    var(--degree-tape) var(--tape-g),
+    var(--degree-tape) var(--tape-h),
+    var(--degree-bar-ink) var(--tape-h),
+    var(--degree-bar-ink) var(--degree-bar),
+    transparent var(--degree-bar)
+  );
+}
+
 /* Live Bout: black tip on the bottom of the accent, including the lower curve.
    No cream degree stripe and no light tip under the black. */
 .belt-rail.belt-rail--flush {

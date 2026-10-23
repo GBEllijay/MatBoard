@@ -103,8 +103,15 @@ test('every former hub item is linked from a group menu', () => {
   }
   const progress = pages[1];
   for (const row of RANK_MENU_STRIPES) {
-    assert.equal(progress?.host.querySelector(`[aria-label="${row.label}"]`)?.getAttribute('data-stripes'), String(row.stripes));
+    const link = progress?.host.querySelector(`[aria-label="${row.label}"]`);
+    assert.equal(link?.getAttribute('data-stripes'), String(row.stripes));
+    assert.equal(link?.querySelector('.s-belt'), null);
+    const rail = link?.querySelector('.belt-rail');
+    assert.equal(rail?.classList.contains('belt-rail--white'), true);
+    assert.equal(rail?.classList.contains('belt-rail--degrees'), true);
+    assert.equal(rail?.classList.contains(`belt-rail--stripes-${row.stripes}`), true);
   }
+  assert.equal(progress?.host.querySelector('.s-rank-summary .s-belt')?.getAttribute('data-stripes'), '0');
   const compete = pages[2];
   const competeText = compete?.host.textContent ?? '';
   assert.equal(competeText.includes(SCOUTING_LABEL), true);

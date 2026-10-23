@@ -7,6 +7,16 @@ async function shot(page: Page, name: string) {
   await page.screenshot({ path: `/opt/cursor/artifacts/${name}.png`, fullPage: true });
 }
 
+/** Capture a group page only after that page's heading is on screen. */
+async function shotGroup(page: Page, heading: string, name: string) {
+  const title = page.getByRole('heading', { name: heading, exact: true });
+  await expect(title).toBeVisible();
+  await expect(title).toHaveText(heading);
+  await expect(page.locator('main.s-group')).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: `/opt/cursor/artifacts/${name}.png`, fullPage: true });
+}
+
 test('home picker keeps White, Coach, and Pro and adds locked Student Edition', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/products');
@@ -97,22 +107,86 @@ test('?student=1 opens the Student hub, and submenus go back to it', async ({ pa
   await expect(page.getByRole('link', { name: 'Fundamentals', exact: true })).toHaveCount(0);
   const tileHeight = await training.evaluate((el) => el.getBoundingClientRect().height);
   expect(tileHeight).toBeGreaterThanOrEqual(88);
-  await shot(page, 'student-hub-390');
+  await expect(page.getByRole('heading', { name: 'Advantage – Student Edition', exact: true })).toBeVisible();
+  await shot(page, 'hub-rank-card-272-390');
 
   await page.getByRole('link', { name: 'Training & Journal', exact: true }).click();
-  await shot(page, 'student-group-training-390');
+  await expect(page).toHaveURL(/\/student\/training/);
+  await shotGroup(page, 'Training & Journal', 'group-training-journal-390');
   await page.getByRole('link', { name: BACK, exact: true }).click();
   await page.getByRole('link', { name: 'Rank & Progress', exact: true }).click();
-  await shot(page, 'student-group-progress-390');
+  const homeMark = page.getByRole('link', { name: 'Home', exact: true });
+  const rankTitle = page.getByRole('heading', { name: 'Rank & Progress', exact: true });
+  await expect(homeMark).toBeVisible();
+  await expect(rankTitle).toBeVisible();
+  const homeBox = await homeMark.boundingBox();
+  const rankTitleBox = await rankTitle.boundingBox();
+  expect(homeBox).not.toBeNull();
+  expect(rankTitleBox).not.toBeNull();
+  expect(rankTitleBox!.y).toBeGreaterThan(homeBox!.y + homeBox!.height - 1);
+  const homeImage = await homeMark.locator('img').evaluate((img) => img.getBoundingClientRect().width);
+  const backImage = await page.getByRole('link', { name: BACK, exact: true }).locator('img').evaluate((img) => img.getBoundingClientRect().width);
+  expect(homeImage).toBeGreaterThan(backImage);
+  const rankRows = await page.locator('a.s-row--belt').evaluateAll((nodes) =>
+    nodes.map((node) => {
+      const title = node.querySelector('.s-row__title');
+      const chev = node.querySelector('.s-chev');
+      const rail = node.querySelector('.belt-rail');
+      const rowBox = node.getBoundingClientRect();
+      const chevBox = chev?.getBoundingClientRect();
+      const style = getComputedStyle(node);
+      const railStyle = rail ? getComputedStyle(rail) : null;
+      const stripeClass = rail ? [...rail.classList].find((name) => name.startsWith('belt-rail--stripes-')) ?? '' : '';
+      return {
+        stripes: node.getAttribute('data-stripes'),
+        stripeClass,
+        white: rail?.classList.contains('belt-rail--white') ?? false,
+        degrees: rail?.classList.contains('belt-rail--degrees') ?? false,
+        rightBelt: Boolean(node.querySelector('.s-belt')),
+        wrapped: title ? title.scrollWidth > title.clientWidth + 1 || title.getBoundingClientRect().height > 28 : true,
+        background: style.backgroundImage,
+        railWeave: railStyle?.backgroundImage ?? '',
+        chevronInside: Boolean(
+          chevBox && chevBox.width > 0 && chevBox.left >= rowBox.left && chevBox.right <= rowBox.right + 0.5,
+        ),
+      };
+    }),
+  );
+  expect(rankRows.map((row) => row.stripes)).toEqual(['1', '2', '3', '4']);
+  expect(rankRows.map((row) => row.stripeClass)).toEqual([
+    'belt-rail--stripes-1',
+    'belt-rail--stripes-2',
+    'belt-rail--stripes-3',
+    'belt-rail--stripes-4',
+  ]);
+  expect(rankRows.every((row) => row.white && row.degrees && !row.rightBelt && !row.wrapped && row.chevronInside)).toBeTruthy();
+  expect(rankRows.every((row) => row.background.includes('belt-weave.png') && row.railWeave.includes('belt-weave.png'))).toBeTruthy();
+  const mat = await page.locator('main.s-group').evaluate((el) => getComputedStyle(el).backgroundImage);
+  expect(mat).toContain('home-mat-tatami.png');
+  await shotGroup(page, 'Rank & Progress', 'rank-progress-left-rail-390');
   await page.getByRole('link', { name: BACK, exact: true }).click();
   await page.getByRole('link', { name: 'Competitor', exact: true }).click();
-  await shot(page, 'student-group-compete-390');
+  await expect(page).toHaveURL(/\/student\/compete/);
+  await shotGroup(page, 'Competitor', 'group-competitor-390');
   await page.getByRole('link', { name: BACK, exact: true }).click();
   await page.getByRole('link', { name: 'Coach & Academy', exact: true }).click();
-  await shot(page, 'student-group-coach-390');
+  await expect(page).toHaveURL(/\/student\/coach/);
+  await shotGroup(page, 'Coach & Academy', 'group-coach-academy-390');
   await page.getByRole('link', { name: BACK, exact: true }).click();
   await page.getByRole('link', { name: /Backup & Print/ }).click();
-  await shot(page, 'student-group-backup-390');
+  await expect(page).toHaveURL(/\/student\/backup/);
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  const covered = await page.locator('main.s-group').evaluate((el) => {
+    const box = el.getBoundingClientRect();
+    const image = getComputedStyle(el).backgroundImage;
+    return {
+      image: image.includes('home-mat-tatami.png'),
+      covers: box.top <= 0 && box.bottom >= window.innerHeight - 1,
+    };
+  });
+  expect(covered.image).toBeTruthy();
+  expect(covered.covers).toBeTruthy();
+  await shotGroup(page, 'Backup & Print', 'group-backup-print-390');
   await page.getByRole('link', { name: BACK, exact: true }).click();
   await expect(page).toHaveURL(/\/student\?student=1$/);
 
@@ -139,6 +213,16 @@ test('?student=1 opens the Student hub, and submenus go back to it', async ({ pa
   await page.goto('/student?student=1');
   await expect(page.getByRole('link', { name: BACK, exact: true })).toHaveCount(0);
   await shot(page, 'student-hub-desktop');
+  await page.goto('/student/compete?student=1');
+  const wide = await page.locator('main.s-group').evaluate((el) => {
+    const box = el.getBoundingClientRect();
+    return getComputedStyle(el).backgroundImage.includes('home-mat-tatami.png') && box.height >= window.innerHeight - 1;
+  });
+  expect(wide).toBeTruthy();
+  const competeTitle = await page.getByRole('heading', { name: 'Competitor', exact: true }).boundingBox();
+  const wideHome = await page.getByRole('link', { name: 'Home', exact: true }).boundingBox();
+  expect(competeTitle && wideHome).toBeTruthy();
+  expect(competeTitle!.y).toBeGreaterThan(wideHome!.y + wideHome!.height - 1);
 });
 
 test('a direct /student visit stays closed, and sign out still leaves the seat', async ({ page }) => {

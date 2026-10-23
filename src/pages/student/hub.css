@@ -213,29 +213,32 @@
 .s-belt {
   position: relative;
   display: block;
-  height: 22px;
+  height: 28px;
   margin-top: 14px;
-  border-radius: 5px;
+  border-radius: 4px;
   overflow: hidden;
-  background-color: #f4f1ea;
+  background-color: #f7f4ee;
   background-image: url('/belt-weave.png');
   background-size: 160px 4px;
-  box-shadow: inset 0 0 0 1px rgba(40, 32, 22, 0.25), 0 2px 4px rgba(0, 0, 0, 0.35);
+  background-repeat: repeat;
+  box-shadow: inset 0 0 0 1px rgba(40, 32, 22, 0.35), 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 
 .s-belt__bar {
   position: absolute;
   top: 0;
   bottom: 0;
-  right: 22px;
-  width: 46%;
-  min-width: 148px;
+  left: auto;
+  right: 20px;
+  width: 92px;
+  min-width: 92px;
+  max-width: 92px;
   display: flex;
   align-items: stretch;
-  justify-content: space-evenly;
-  gap: 8px;
-  padding: 0 10px;
-  background: #121214;
+  justify-content: flex-start;
+  gap: 5px;
+  padding: 0 6px;
+  background: #111114;
 }
 
 .s-belt__end {
@@ -243,22 +246,78 @@
   top: 0;
   right: 0;
   bottom: 0;
+  width: 18px;
+  background-color: #f7f4ee;
+  background-image: url('/belt-weave.png');
+  background-size: 160px 4px;
+  background-repeat: repeat;
+}
+
+.s-tape--off {
+  display: none;
+}
+
+.s-tape--on,
+.s-tape--next {
+  width: 11px;
+  flex: 0 0 11px;
+  margin: 4px 0;
+  border-radius: 1px;
+}
+
+.s-tape--on {
+  background: #fff;
+}
+
+.s-tape--next {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px #fff;
+}
+
+/* Hub Rank card only: the #272 black bar, faint stripe slots, and end cap.
+   The rank summary keeps the white-belt progress bar above. */
+.s-tile.s-rank .s-belt {
+  height: 22px;
+  border-radius: 5px;
+  background-color: #f4f1ea;
+  background-image: url('/belt-weave.png');
+  background-size: 160px 4px;
+  box-shadow: inset 0 0 0 1px rgba(40, 32, 22, 0.25), 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+
+.s-tile.s-rank .s-belt__bar {
+  right: 22px;
+  width: 46%;
+  min-width: 148px;
+  max-width: none;
+  justify-content: space-evenly;
+  gap: 8px;
+  padding: 0 10px;
+  background: #121214;
+}
+
+.s-tile.s-rank .s-belt__end {
   width: 22px;
   background-color: #f4f1ea;
   background-image: url('/belt-weave.png');
   background-size: 160px 4px;
 }
 
-.s-tape {
+.s-tile.s-rank .s-tape {
+  display: block;
   width: 8px;
+  flex: 0 0 8px;
+  margin: 0;
+  border-radius: 0;
   background: rgba(255, 255, 255, 0.16);
+  box-shadow: none;
 }
 
-.s-tape--on {
+.s-tile.s-rank .s-tape--on {
   background: #f7f4ee;
 }
 
-.s-tape--next {
+.s-tile.s-rank .s-tape--next {
   background: transparent;
   box-shadow: inset 0 0 0 1.5px rgba(247, 244, 238, 0.75);
 }
@@ -488,11 +547,28 @@
   transform: rotate(45deg);
 }
 
-/* Group pages sit on the tatami, not on black. */
-.student.student--arena.s-group,
-.student.student--arena.s-group .arena-scroll {
-  background: transparent;
+/* Group pages scroll with the document. The tatami is on the page itself,
+   repeated for the whole height, so the bottom of a short page and the
+   area you scroll into stay on the mat. */
+.student.student--arena.s-group {
+  display: block;
+  height: auto;
+  min-height: 100dvh;
+  max-height: none;
+  overflow: visible;
   color: #f2f4f7;
+  background-color: var(--mat-fill);
+  background-image: var(--mat-image);
+  background-size: var(--mat-tile) calc(var(--mat-tile) * 4 / 3);
+  background-repeat: repeat;
+  background-position: center top;
+}
+
+.student.student--arena.s-group .arena-scroll {
+  display: block;
+  overflow: visible;
+  min-height: 100dvh;
+  background: transparent;
 }
 
 .s-group__column {
@@ -500,7 +576,8 @@
   margin: 0 auto;
   display: grid;
   gap: 10px;
-  padding: calc(4.6rem + env(safe-area-inset-top, 0px)) 16px 56px;
+  /* Shared with the pinned Home logo. The title starts below that 112px mark. */
+  padding: calc(var(--mark-home-clear) + var(--safe-t)) 16px calc(56px + var(--safe-b));
 }
 
 .s-group__head h1 {
@@ -580,29 +657,9 @@
 
 .s-row .s-ico,
 .s-row .s-chev,
-.s-row .s-row__text,
-.s-row .s-belt {
+.s-row .s-row__text {
   position: relative;
   z-index: 4;
-}
-
-.s-row .s-belt {
-  width: 132px;
-  height: 18px;
-  margin-top: 0;
-  flex: none;
-}
-
-.s-row .s-belt__bar {
-  min-width: 92px;
-  width: 78%;
-  right: 14px;
-  gap: 5px;
-  padding: 0 6px;
-}
-
-.s-row .s-tape {
-  width: 6px;
 }
 
 .s-pin {
@@ -714,8 +771,183 @@
   background: rgba(143, 182, 255, 0.45);
 }
 
+.s-row--belt {
+  background-color: #f4f1ea;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(60, 48, 32, 0.08)), url('/belt-weave.png');
+  background-size: auto, 160px 4px;
+  color: #1c140c;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.32), inset 0 0 0 1px rgba(40, 32, 22, 0.28);
+  /* Clear the 10px left rail. The chevron stays inside the right padding. */
+  padding-left: 26px;
+}
+
+/* Same degree rail as Coach Unlimited (.pro-hub .belt-rail--degrees):
+   tip in the corner, black rank bar, white tapes counted from the tip.
+   Cloth is the white belt and the approved weave, not espresso.
+   The fourth tape lengthens only this row's bar. */
+.s-row--belt .belt-rail.belt-rail--degrees {
+  --belt-rail-width: 10px;
+  --espresso: #f4f1ea;
+  --degree-bar-ink: #121214;
+  --degree-tape: #f7f4ee;
+  --rail-tip: 14px;
+  --degree-tape-h: 3.5px;
+  --degree-gap: 3.5px;
+  --degree-lead: 8px;
+  /* One bar height for every row, tall enough for four tapes.
+     A black cushion the size of one gap sits under the first tape so it
+     stays on the rank bar instead of disappearing into the white tip. */
+  --degree-span: calc(var(--degree-tape-h) * 4 + var(--degree-gap) * 4 + var(--degree-lead));
+  --degree-bar: calc(var(--rail-tip) + var(--degree-span));
+  background-color: #f4f1ea;
+  background-image:
+    linear-gradient(
+      to right,
+      transparent 0,
+      transparent calc(var(--belt-rail-width) - 1px),
+      rgba(8, 10, 16, 0.45) calc(var(--belt-rail-width) - 1px),
+      rgba(8, 10, 16, 0.45) var(--belt-rail-width),
+      transparent var(--belt-rail-width)
+    ),
+    url('/belt-weave.png'),
+    var(--degree-stack),
+    linear-gradient(#f4f1ea, #f4f1ea);
+  background-size: auto, 160px 4px, auto, auto;
+  background-repeat: no-repeat, repeat, no-repeat, no-repeat;
+}
+
+.s-row--belt .belt-rail.belt-rail--stripes-1 {
+  --tape-a: calc(var(--rail-tip) + var(--degree-gap));
+  --tape-b: calc(var(--tape-a) + var(--degree-tape-h));
+  --degree-stack: linear-gradient(
+    to top,
+    var(--espresso) 0,
+    var(--espresso) var(--rail-tip),
+    var(--degree-bar-ink) var(--rail-tip),
+    var(--degree-bar-ink) var(--tape-a),
+    var(--degree-tape) var(--tape-a),
+    var(--degree-tape) var(--tape-b),
+    var(--degree-bar-ink) var(--tape-b),
+    var(--degree-bar-ink) var(--degree-bar),
+    transparent var(--degree-bar)
+  );
+}
+
+.s-row--belt .belt-rail.belt-rail--stripes-2 {
+  --tape-a: calc(var(--rail-tip) + var(--degree-gap));
+  --tape-b: calc(var(--tape-a) + var(--degree-tape-h));
+  --tape-c: calc(var(--tape-b) + var(--degree-gap));
+  --tape-d: calc(var(--tape-c) + var(--degree-tape-h));
+  --degree-stack: linear-gradient(
+    to top,
+    var(--espresso) 0,
+    var(--espresso) var(--rail-tip),
+    var(--degree-bar-ink) var(--rail-tip),
+    var(--degree-bar-ink) var(--tape-a),
+    var(--degree-tape) var(--tape-a),
+    var(--degree-tape) var(--tape-b),
+    var(--degree-bar-ink) var(--tape-b),
+    var(--degree-bar-ink) var(--tape-c),
+    var(--degree-tape) var(--tape-c),
+    var(--degree-tape) var(--tape-d),
+    var(--degree-bar-ink) var(--tape-d),
+    var(--degree-bar-ink) var(--degree-bar),
+    transparent var(--degree-bar)
+  );
+}
+
+.s-row--belt .belt-rail.belt-rail--stripes-3 {
+  --tape-a: calc(var(--rail-tip) + var(--degree-gap));
+  --tape-b: calc(var(--tape-a) + var(--degree-tape-h));
+  --tape-c: calc(var(--tape-b) + var(--degree-gap));
+  --tape-d: calc(var(--tape-c) + var(--degree-tape-h));
+  --tape-e: calc(var(--tape-d) + var(--degree-gap));
+  --tape-f: calc(var(--tape-e) + var(--degree-tape-h));
+  --degree-stack: linear-gradient(
+    to top,
+    var(--espresso) 0,
+    var(--espresso) var(--rail-tip),
+    var(--degree-bar-ink) var(--rail-tip),
+    var(--degree-bar-ink) var(--tape-a),
+    var(--degree-tape) var(--tape-a),
+    var(--degree-tape) var(--tape-b),
+    var(--degree-bar-ink) var(--tape-b),
+    var(--degree-bar-ink) var(--tape-c),
+    var(--degree-tape) var(--tape-c),
+    var(--degree-tape) var(--tape-d),
+    var(--degree-bar-ink) var(--tape-d),
+    var(--degree-bar-ink) var(--tape-e),
+    var(--degree-tape) var(--tape-e),
+    var(--degree-tape) var(--tape-f),
+    var(--degree-bar-ink) var(--tape-f),
+    var(--degree-bar-ink) var(--degree-bar),
+    transparent var(--degree-bar)
+  );
+}
+
+.s-row--belt .belt-rail.belt-rail--stripes-4 {
+  --tape-a: calc(var(--rail-tip) + var(--degree-gap));
+  --tape-b: calc(var(--tape-a) + var(--degree-tape-h));
+  --tape-c: calc(var(--tape-b) + var(--degree-gap));
+  --tape-d: calc(var(--tape-c) + var(--degree-tape-h));
+  --tape-e: calc(var(--tape-d) + var(--degree-gap));
+  --tape-f: calc(var(--tape-e) + var(--degree-tape-h));
+  --tape-g: calc(var(--tape-f) + var(--degree-gap));
+  --tape-h: calc(var(--tape-g) + var(--degree-tape-h));
+  --degree-stack: linear-gradient(
+    to top,
+    var(--espresso) 0,
+    var(--espresso) var(--rail-tip),
+    var(--degree-bar-ink) var(--rail-tip),
+    var(--degree-bar-ink) var(--tape-a),
+    var(--degree-tape) var(--tape-a),
+    var(--degree-tape) var(--tape-b),
+    var(--degree-bar-ink) var(--tape-b),
+    var(--degree-bar-ink) var(--tape-c),
+    var(--degree-tape) var(--tape-c),
+    var(--degree-tape) var(--tape-d),
+    var(--degree-bar-ink) var(--tape-d),
+    var(--degree-bar-ink) var(--tape-e),
+    var(--degree-tape) var(--tape-e),
+    var(--degree-tape) var(--tape-f),
+    var(--degree-bar-ink) var(--tape-f),
+    var(--degree-bar-ink) var(--tape-g),
+    var(--degree-tape) var(--tape-g),
+    var(--degree-tape) var(--tape-h),
+    var(--degree-bar-ink) var(--tape-h),
+    var(--degree-bar-ink) var(--degree-bar),
+    transparent var(--degree-bar)
+  );
+}
+
+.s-row--belt .s-row__title,
+.s-row--belt .s-ico {
+  color: #1c140c;
+}
+
+.s-row--belt small {
+  color: rgba(28, 20, 12, 0.72);
+}
+
+.s-row--belt .s-chev {
+  border-right-color: rgba(28, 20, 12, 0.55);
+  border-top-color: rgba(28, 20, 12, 0.55);
+}
+
+.s-row--belt .s-row__text {
+  min-width: min-content;
+}
+
+.s-row--belt .s-row__title,
+.s-row--bracket .s-row__title {
+  white-space: nowrap;
+}
+
 .s-row--bracket {
   overflow: visible;
+  background: linear-gradient(180deg, #1b3658, #102033);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .s-row--bracket::after {
