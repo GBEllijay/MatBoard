@@ -3,7 +3,7 @@ import test from 'node:test';
 import { blankStudentReport, setStudentProfile } from './studentEdition.ts';
 import { addJournalClip } from './studentEdition.ts';
 import { extractPdfText, formatPdfNumber, pdfPageCount, pdfToText } from './simplePdf.ts';
-import { chartPoint, layoutAssessment, outerRingRadius, progressReportPdf, radarPolygonRadii, renderReportPages } from './reportPdf.ts';
+import { assessmentReportPdf, chartPoint, layoutAssessment, outerRingRadius, progressReportPdf, radarPolygonRadii, renderReportPages } from './reportPdf.ts';
 import { saveAssessment } from './studentAssessment.ts';
 import {
   applyBackupToMemory,
@@ -255,7 +255,7 @@ test('self-assessment PDF draws the shared radar and does not add an empty page'
   assert.match(text, /Previous 2026-10-01/);
   assert.match(text, /4\.1/);
   assert.equal(text.includes('?'), false);
-  assert.ok(pdfPageCount(pdf) >= 1);
+  assert.equal(pdfPageCount(pdf), 1);
   assert.equal(raw.includes('/Subtype /Image'), true);
   const bodies = raw.split('stream\n').map((part) => part.split('endstream')[0]).filter((part) => part.includes('Tj'));
   for (const body of bodies) {
@@ -264,6 +264,56 @@ test('self-assessment PDF draws the shared radar and does not add an empty page'
   const guard = layout.pages.flatMap((page) => page).find((draw) => draw.op === 'text' && draw.text === 'Guard' && draw.size === 10);
   const guardScore = layout.pages.flatMap((page) => page).find((draw) => draw.op === 'text' && draw.text === '5' && draw.font === 'bold' && guard && draw.y === guard.y);
   assert.ok(guard && guardScore);
+});
+
+test('the black-belt sample fits on one page', () => {
+  let report = setStudentProfile(blankStudentReport(8), { displayName: 'Ada Student', gymName: 'GB Ellijay', startedOn: '2014-03-01' }, 9);
+  report = { ...report, profile: { ...report.profile, belt: 'black' } };
+  const latest = { guard: 5, passing: 4, takedowns: 4, escapes: 5, submissions: 5, conditioning: 3, mindset: 5 } as const;
+  let assessment = saveAssessment(
+    { entries: [] },
+    {
+      date: '2026-08-01',
+      note: 'hip bump is late',
+      scores: { guard: 3, passing: 3, takedowns: 2, escapes: 3, submissions: 3, conditioning: 2, mindset: 4 },
+    },
+  );
+  assessment = saveAssessment(assessment, {
+    date: '2026-09-12',
+    note: 'passing still stalls',
+    scores: { guard: 4, passing: 3, takedowns: 3, escapes: 4, submissions: 4, conditioning: 3, mindset: 4 },
+  });
+  assessment = saveAssessment(assessment, {
+    date: '2026-10-23',
+    note: 'Mock: conditioning is the limiter before Pan Pacific',
+    scores: latest,
+  });
+  const pdf = assessmentReportPdf(report, assessment, '2026-10-23');
+  const text = extractPdfText(pdf);
+  assert.equal(pdfPageCount(pdf), 1);
+  assert.match(text, /Mock: conditioning is the limiter before Pan Pacific/);
+  assert.match(text, /Earlier check-ins/);
+  assert.match(text, /2026-09-12/);
+  assert.match(text, /2026-08-01/);
+  assert.match(text, /hip bump is late/);
+  assert.match(text, /passing still stalls/);
+});
+
+test('a long self-assessment history continues onto the next page', () => {
+  const report = setStudentProfile(blankStudentReport(8), { displayName: 'Ada Student', gymName: 'GB Ellijay', startedOn: '2014-03-01' }, 9);
+  let assessment = { entries: [] } as ReturnType<typeof saveAssessment>;
+  for (let index = 0; index < 8; index += 1) {
+    assessment = saveAssessment(assessment, {
+      date: `2026-0${index + 1}-15`,
+      note: `history note ${index}`,
+      scores: { guard: 3, passing: 3, takedowns: 3, escapes: 3, submissions: 3, conditioning: 3, mindset: 3 },
+    });
+  }
+  const pdf = assessmentReportPdf(report, assessment, '2026-10-23');
+  const text = extractPdfText(pdf);
+  assert.ok(pdfPageCount(pdf) >= 2);
+  assert.match(text, /history note 0/);
+  assert.match(text, /history note 7/);
 });
 
 test('every radar polygon vertex stays on or inside the outer ring', () => {

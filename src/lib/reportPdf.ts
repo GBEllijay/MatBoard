@@ -346,7 +346,7 @@ function drawBars(draws: PdfDraw[], scores: readonly number[], x: number, top: n
   const gap = 10;
   const barW = width - labelW - numW - gap;
   const barH = 7;
-  const rowH = 18;
+  const rowH = 16;
   scores.forEach((score, index) => {
     const area = ASSESSMENT_AREAS[index];
     if (!area) return;
@@ -389,46 +389,49 @@ export function layoutAssessment(report: StudentProgressReport, assessment: Asse
     drawWrapped(state, 'No self-assessment saved on this phone.', 11, 'regular', INK, 4);
   } else {
     const average = assessmentAverage(latest.scores).toFixed(1);
-    state.top += 8;
-    ensure(state, 40);
+    state.top += 2;
+    ensure(state, 26);
     textAt(state, latest.date, 11, 'bold', NAVY);
-    const averageWidth = measure(average, 28, true);
+    const averageWidth = measure(average, 22, true);
     state.draws.push({
       op: 'text',
       text: average,
-      x: PAGE_W - MARGIN_X - averageWidth - 28,
-      y: PAGE_H - state.top - 22,
-      size: 28,
+      x: PAGE_W - MARGIN_X - averageWidth - 22,
+      y: PAGE_H - state.top - 16,
+      size: 22,
       font: 'bold',
       color: NAVY,
     });
     state.draws.push({
       op: 'text',
       text: '/ 5',
-      x: PAGE_W - MARGIN_X - 24,
-      y: PAGE_H - state.top - 16,
+      x: PAGE_W - MARGIN_X - 18,
+      y: PAGE_H - state.top - 12,
       size: 10,
       font: 'regular',
       color: MUTED,
     });
-    state.top += 34;
+    state.top += 24;
 
-    const legendW = 118;
-    const chartSize = CONTENT_W - legendW - 14;
-    const plot = chartSize - 96;
-    ensure(state, chartSize);
+    // The 320-unit radar view includes empty corners. Advance only through the rings and labels.
+    const plot = 304;
+    const scale = plot / 320;
+    const contentRadius = 108 * (5.55 / 5) * scale + 11;
+    const chartHeight = Math.ceil(contentRadius * 2);
+    const bleed = (plot - chartHeight) / 2;
+    ensure(state, chartHeight);
     const chartTop = state.top;
-    radarBox = { x: MARGIN_X, y: PAGE_H - chartTop - chartSize, size: chartSize, plot };
+    radarBox = { x: MARGIN_X, y: PAGE_H - chartTop - chartHeight - bleed, size: plot, plot };
     const current = ASSESSMENT_AREAS.map((area) => latest.scores[area.id]);
     const prior = previous ? ASSESSMENT_AREAS.map((area) => previous.scores[area.id]) : null;
     drawRadar(state.draws, radarBox, current, prior);
-    drawLegend(state.draws, MARGIN_X + chartSize + 14, chartTop + 28, previous?.date ?? null);
-    state.top = chartTop + chartSize + 14;
+    drawLegend(state.draws, MARGIN_X + plot + 12, chartTop + Math.max(0, (chartHeight - 36) / 2), previous?.date ?? null);
+    state.top = chartTop + chartHeight + 4;
     drawBars(state.draws, current, MARGIN_X, state.top, CONTENT_W);
-    state.top += ASSESSMENT_AREAS.length * 18 + 8;
+    state.top += ASSESSMENT_AREAS.length * 16 + 6;
     const note = latest.note.trim() || 'No note on this check-in.';
     const noteLines = wrapReportText(note, 10, false, CONTENT_W - 20);
-    const cardH = 36 + noteLines.length * 13;
+    const cardH = 20 + noteLines.length * 13;
     ensure(state, cardH);
     const cardTop = state.top;
     state.draws.push({
@@ -439,16 +442,16 @@ export function layoutAssessment(report: StudentProgressReport, assessment: Asse
       h: cardH,
       fill: SOFT,
     });
-    state.top += 10;
+    state.top += 6;
     drawWrapped(state, 'Notes', 9, 'bold', NAVY, 2, MARGIN_X + 10, CONTENT_W - 20);
     drawWrapped(state, note, 10, 'regular', INK, 3, MARGIN_X + 10, CONTENT_W - 20);
-    state.top = cardTop + cardH + 12;
+    state.top = cardTop + cardH + 8;
 
     const earlier = entries.slice(1);
     if (earlier.length) {
-      ensure(state, 28);
+      ensure(state, 24);
       textAt(state, 'Earlier check-ins', 12, 'bold', NAVY);
-      state.top += 20;
+      state.top += 16;
       for (const entry of earlier) {
         const bits = [
           `${entry.date} — average ${assessmentAverage(entry.scores).toFixed(1)}`,
@@ -456,7 +459,7 @@ export function layoutAssessment(report: StudentProgressReport, assessment: Asse
         ];
         if (entry.note.trim()) bits.push(entry.note.trim());
         for (const bit of bits) drawWrapped(state, bit, 10, 'regular', INK, 3);
-        state.top += 8;
+        state.top += 4;
       }
     }
   }
