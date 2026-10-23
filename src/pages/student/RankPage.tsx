@@ -29,6 +29,7 @@ import {
   type LadderRung,
 } from '../../lib/studentRank';
 import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './chrome';
+import { StudentProfileFields } from './ProfileFields';
 
 const TAPE_SLOTS = [1, 2, 3, 4] as const;
 
@@ -67,6 +68,13 @@ export function RankPage() {
       <LeatherHeader title="My rank" />
       <div className="student-paper">
         <div className="student-sheet">
+          <section aria-label="Profile">
+            <h2>Profile</h2>
+            <p className="student-quiet">
+              Your name, gym, and start date print on the progress report and the self-assessment. They stay on this phone.
+            </p>
+            <StudentProfileFields report={report} commit={commit} />
+          </section>
           <p className="student-quiet">
             White at the top, then blue, purple, brown, and black. Belt progress reads the belt you wear and shows the checkpoints ahead.
           </p>

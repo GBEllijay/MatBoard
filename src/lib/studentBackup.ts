@@ -10,20 +10,19 @@ import {
   type StudentDriveLink,
 } from './academyPathway.ts';
 import { competitionOf } from './progress/competition.ts';
-import { checklistLevelLine } from './fundamentals.ts';
 import { PROGRESS_CSV_HEADERS, exportProgressCsv, parseProgressPacket, parseProgressValue } from './progress/format.ts';
-import { RANK_BELTS, type JournalEntry, type StudentProgressReport } from './progress/types.ts';
+import { RANK_BELTS, type StudentProgressReport } from './progress/types.ts';
 import { RANK_PHOTO_KEY, emptyRankPhotoStore, type RankPhotoStore } from './rankPhotos.ts';
-import { pdfToText, textToPdf } from './simplePdf.ts';
+import { assessmentReportPdf, progressReportPdf } from './reportPdf.ts';
+import { pdfToText } from './simplePdf.ts';
 import {
   ASSESSMENT_AREAS,
-  assessmentAverage,
   emptyAssessments,
   loadAssessments,
   writeAssessments,
   type AssessmentState,
 } from './studentAssessment.ts';
-import { loadStudentReport, saveStudentReport } from './studentEdition.ts';
+import { loadStudentReport, saveStudentReport, todayIso } from './studentEdition.ts';
 import {
   FILM_STORAGE_KEY,
   loadFilms,
@@ -32,8 +31,11 @@ import {
 } from './studentFilm.ts';
 import { emptyRank } from './studentRank.ts';
 import { loadScouting, saveScouting, SCOUTING_STORAGE_KEY, type ScoutingCard } from './studentScouting.ts';
-import { BELT_LABELS, loadCoachShelf, saveCoachShelf, type CoachShelf } from './studentTools.ts';
 import { BRACKET_PHOTO_KEY } from './bracketPhoto.ts';
+import { progressReportLines, selfAssessmentLines, studentReportPdfName } from './studentReport.ts';
+import { loadCoachShelf, saveCoachShelf, type CoachShelf } from './studentTools.ts';
+
+export { progressReportLines, selfAssessmentLines, studentReportPdfName };
 
 export const STUDENT_BACKUP_KIND = 'student-journal-backup';
 export const STUDENT_BACKUP_VERSION = 1;
@@ -91,8 +93,8 @@ export function studentBackupNames(date: string) {
   return {
     json: `advantage-student-backup-${day}.json`,
     csv: `advantage-student-templates-${day}.csv`,
-    progressPdf: `advantage-student-progress-${day}.pdf`,
-    assessmentPdf: `advantage-student-self-assessment-${day}.pdf`,
+    progressPdf: studentReportPdfName('progress', date),
+    assessmentPdf: studentReportPdfName('assessment', date),
   };
 }
 
@@ -114,116 +116,6 @@ export function base64ToBytes(value: string): Uint8Array | null {
   } catch {
     return null;
   }
-}
-
-function beltName(belt: string): string {
-  return BELT_LABELS[belt as keyof typeof BELT_LABELS] ?? belt;
-}
-
-function journalSummary(entry: JournalEntry): string {
-  const line = entry.body.split('\n').map((part) => part.trim()).find(Boolean) ?? '';
-  return line.slice(0, 180);
-}
-
-export function progressReportLines(report: StudentProgressReport, assessment: AssessmentState): string[] {
-  const rank = report.rank ?? emptyRank();
-  const competition = competitionOf(report);
-  const lines = [
-    'Advantage Student Edition',
-    'Progress report',
-    '',
-    'Hand this page to an instructor. Advantage does not host it.',
-    '',
-    `Student: ${report.profile.displayName || 'Not named'}`,
-    `Gym: ${report.profile.gymName || 'Not named'}`,
-    `Belt: ${beltName(report.profile.belt)}`,
-    `Started: ${report.profile.startedOn || 'Not set'}`,
-    '',
-    'Rank and stripes',
-    `Current belt awarded: ${rank.awardedOn || 'No date'}`,
-    `Stripes: ${rank.tapeCount}`,
-  ];
-  rank.tapeDates.forEach((date, index) => {
-    if (index < rank.tapeCount) lines.push(`Stripe ${index + 1}: ${date || 'No date'}`);
-  });
-  if (rank.history.length) {
-    lines.push('Earlier belts:');
-    for (const row of rank.history) {
-      lines.push(`${beltName(row.belt)} awarded ${row.awardedOn || 'no date'}, ${row.tapeCount} stripes`);
-    }
-  }
-  if (rank.lineage?.length) lines.push(`Lineage: ${rank.lineage.join(' / ')}`);
-  lines.push('', 'Belt progress');
-  if (!report.rubric.levels.length && !report.checklist.length) lines.push('No belt progress recorded.');
-  for (const level of report.rubric.levels) {
-    lines.push(`${level.name} (${beltName(level.belt)})`);
-    for (const checkpoint of level.checkpoints) {
-      const mark = checkpoint.met === true ? 'Met' : checkpoint.met === false ? 'Not yet' : 'Unmarked';
-      lines.push(`  ${checkpoint.name}: ${mark}${checkpoint.note ? ` — ${checkpoint.note}` : ''}`);
-    }
-  }
-  const fundamentals = report.checklist.filter((row) => !row.hidden);
-  if (fundamentals.length) {
-    lines.push('Fundamentals proficiency:');
-    for (const row of fundamentals.slice(0, 60)) {
-      lines.push(`  ${checklistLevelLine(row)}`);
-    }
-  }
-  lines.push('', 'Journal summary');
-  const cards = [...report.journal].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt);
-  if (!cards.length) lines.push('No journal cards.');
-  for (const card of cards.slice(0, 40)) lines.push(`${card.date}: ${journalSummary(card) || 'Card saved'}`);
-  if (cards.length > 40) lines.push(`Showing the latest 40 of ${cards.length} cards.`);
-  lines.push('', 'Competition and weight');
-  for (const tag of ['a', 'b', 'c'] as const) {
-    const game = competition.games[tag];
-    if (game.techniques.trim() || game.notes.trim()) {
-      lines.push(`${tag.toUpperCase()} game: ${game.techniques || game.notes}`);
-    }
-  }
-  if (!competition.tournaments.length) lines.push('No tournaments recorded.');
-  for (const event of competition.tournaments) {
-    lines.push(`${event.date || 'No date'} ${event.name} (${event.status}) ${event.division}`.trim());
-  }
-  const wins = competition.results.reduce((sum, result) => sum + result.matches.filter((match) => match.result === 'win').length, 0);
-  const losses = competition.results.reduce((sum, result) => sum + result.matches.filter((match) => match.result === 'loss').length, 0);
-  if (competition.results.length) lines.push(`Recorded matches: ${wins} wins, ${losses} losses.`);
-  if (competition.goalWeight != null) {
-    lines.push(`Goal weight: ${competition.goalWeight} ${competition.goalUnit ?? competition.weightUnit}`);
-  }
-  const weighs = [...competition.weighIns].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12);
-  for (const weigh of weighs) lines.push(`${weigh.date}: ${weigh.weight} ${weigh.unit}${weigh.note ? ` — ${weigh.note}` : ''}`);
-  if (!weighs.length) lines.push('No weigh-ins.');
-  const latest = [...assessment.entries].sort((a, b) => b.date.localeCompare(a.date))[0];
-  lines.push('', 'Self-assessment');
-  if (!latest) lines.push('No self-assessment yet. A separate self-assessment report prints the full list.');
-  else lines.push(`Latest ${latest.date}: average ${assessmentAverage(latest.scores).toFixed(1)}. See the self-assessment report for each area.`);
-  const clips = report.clips ?? [];
-  lines.push('', 'Video library');
-  if (!clips.length) lines.push('No saved links.');
-  for (const clip of clips) lines.push(`${clip.description}: ${clip.url}`);
-  return lines;
-}
-
-export function selfAssessmentLines(report: StudentProgressReport, assessment: AssessmentState): string[] {
-  const lines = [
-    'Advantage Student Edition',
-    'Self-assessment report',
-    '',
-    'Hand this page to an instructor. 1 is early. 5 is ready to rely on.',
-    `Student: ${report.profile.displayName || 'Not named'}`,
-    `Belt: ${beltName(report.profile.belt)}`,
-    '',
-  ];
-  const entries = [...assessment.entries].sort((a, b) => b.date.localeCompare(a.date));
-  if (!entries.length) lines.push('No self-assessment saved on this phone.');
-  for (const entry of entries) {
-    lines.push(`${entry.date} — average ${assessmentAverage(entry.scores).toFixed(1)}`);
-    for (const area of ASSESSMENT_AREAS) lines.push(`  ${area.label}: ${entry.scores[area.id]}`);
-    if (entry.note.trim()) lines.push(`  Note: ${entry.note.trim()}`);
-    lines.push('');
-  }
-  return lines;
 }
 
 export function studentTemplatesCsv(input: {
@@ -298,14 +190,13 @@ export async function buildStudentBackup(input: {
     if (filmFiles.length) file.filmFiles = filmFiles;
     if (omitted.length) file.filmFilesOmitted = omitted;
   }
-  const progressLines = progressReportLines(input.report, input.assessment);
-  const assessmentLines = selfAssessmentLines(input.report, input.assessment);
+  const issuedOn = todayIso(when);
   return {
     file,
     json: JSON.stringify(file),
     csv: studentTemplatesCsv(input),
-    progressPdf: textToPdf(progressLines),
-    assessmentPdf: textToPdf(assessmentLines),
+    progressPdf: progressReportPdf(input.report, input.assessment, { scouting: input.scouting, films }, issuedOn),
+    assessmentPdf: assessmentReportPdf(input.report, input.assessment, issuedOn),
   };
 }
 

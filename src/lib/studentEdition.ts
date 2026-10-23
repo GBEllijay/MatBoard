@@ -192,6 +192,29 @@ export function saveStudentReport(storage: MemoryStore, report: StudentProgressR
   return parsed.value;
 }
 
+function isCalendarDate(value: string): boolean {
+  if (!DATE_RE.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+}
+
+/** Name, gym, and start date on the progress file. Belt and license stay as they are. */
+export function setStudentProfile(
+  report: StudentProgressReport,
+  patch: { displayName?: string; gymName?: string; startedOn?: string },
+  now = Date.now(),
+): StudentProgressReport {
+  const displayName = patch.displayName === undefined ? report.profile.displayName : patch.displayName.trim().slice(0, PROGRESS_NAME_MAX);
+  const gymName = patch.gymName === undefined ? report.profile.gymName : patch.gymName.trim().slice(0, PROGRESS_NAME_MAX);
+  const startedOn = patch.startedOn === undefined ? report.profile.startedOn : patch.startedOn.trim();
+  if (startedOn && !isCalendarDate(startedOn)) throw new Error('Start date must be YYYY-MM-DD.');
+  if (displayName === report.profile.displayName && gymName === report.profile.gymName && startedOn === report.profile.startedOn) {
+    return report;
+  }
+  return { ...report, updatedAt: now, profile: { ...report.profile, displayName, gymName, startedOn } };
+}
+
 export function encodeJournalBody(draft: Pick<JournalDraft, 'className' | 'techniques' | 'partners' | 'drills' | 'rolls' | 'notes'>): string {
   const techniques = draft.techniques.map((item) => item.name.trim()).filter(Boolean);
   return [

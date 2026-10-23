@@ -1605,6 +1605,14 @@ button.mode-card__hit {
   z-index: 45;
 }
 
+@media print {
+  .seat-session-dock,
+  .seat-session,
+  .seat-toast {
+    display: none !important;
+  }
+}
+
 .seat-session {
   display: flex;
   flex-wrap: nowrap;
