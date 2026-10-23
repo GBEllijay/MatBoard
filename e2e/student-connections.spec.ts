@@ -80,10 +80,24 @@ test('film a move, connections, backup, and print stay beside the link library',
   expect(downloads.filter((name) => name.endsWith('.pdf')).length).toBeGreaterThanOrEqual(2);
   await page.screenshot({ path: '/opt/cursor/artifacts/student-connections.png', fullPage: true });
 
-  await page.getByRole('button', { name: 'Clear journal on this phone' }).click();
+  const backup = page.getByRole('button', { name: 'Back up my journal' });
+  const clear = page.getByRole('button', { name: 'Clear all Student Edition data' });
+  const backupBox = await backup.boundingBox();
+  const clearBox = await clear.boundingBox();
+  expect(backupBox && clearBox).toBeTruthy();
+  expect(clearBox!.y).toBeGreaterThan(backupBox!.y + backupBox!.height + 40);
+  await clear.click();
+  const backUpFirst = page.getByRole('button', { name: 'Back up first' });
+  await expect(backUpFirst).toBeVisible();
   await expect(page.getByText('A backup is recommended before clearing data on this phone.')).toBeVisible();
+  await expect(page.getByText('This only affects Student Edition on this device.')).toBeVisible();
+  const firstBox = await backUpFirst.boundingBox();
+  const continueBox = await page.getByRole('button', { name: 'Continue without a backup' }).boundingBox();
+  expect(firstBox && continueBox).toBeTruthy();
+  expect(continueBox!.y).toBeGreaterThan(firstBox!.y + firstBox!.height - 1);
   await page.screenshot({ path: '/opt/cursor/artifacts/student-clear-warning.png', fullPage: true });
-  await page.getByRole('button', { name: 'Cancel clear' }).click();
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(clear).toBeVisible();
 
   await page.getByRole('link', { name: 'Print progress report' }).click();
   await expect(page.getByRole('article', { name: 'Progress report' })).toContainText('Rank and stripes');
@@ -130,4 +144,52 @@ test('Pro shows an academy pathway when a drive folder is connected', async ({ p
   await expect(opened.getByRole('img', { name: 'QR for the Google Drive academy folder' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Back. Hold for Home.' })).toHaveAttribute('href', '/coach-unlimited');
   await page.screenshot({ path: '/opt/cursor/artifacts/coach-academy-pathway.png', fullPage: true });
+});
+
+test('clear all student edition data requires CLEAR and leaves other tools', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('advantage.proUnlocked', '1');
+    localStorage.setItem('advantage.coachUnlocked', '1');
+    localStorage.setItem('advantage.whiteUnlocked', '1');
+    localStorage.setItem('advantage.studentUnlocked', '1');
+    localStorage.setItem('matboard.roster.v1', '{"students":[{"name":"Keep"}]}');
+    localStorage.setItem('matboard.pro.googleDriveFolder.v1', '{"folderId":"keep-folder"}');
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/student/rank?student=1');
+  await page.getByRole('button', { name: 'Add instructor', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Instructor 1', exact: true }).fill('Coach Ana');
+  await page.getByRole('textbox', { name: 'Instructor 1', exact: true }).blur();
+  await page.goto('/student/connections?student=1');
+  await page.getByRole('button', { name: 'Clear all Student Edition data' }).click();
+  await page.getByRole('button', { name: 'Continue without a backup' }).click();
+  await expect(page.getByRole('listitem').filter({ hasText: 'Journal' })).toBeVisible();
+  await expect(page.getByRole('listitem').filter({ hasText: 'Scouting' })).toBeVisible();
+  await expect(page.getByRole('listitem').filter({ hasText: 'Videos' })).toBeVisible();
+  const erase = page.getByRole('button', { name: 'Erase Student Edition data' });
+  await expect(erase).toBeDisabled();
+  await page.getByLabel('Type CLEAR to confirm').fill('clear');
+  await expect(erase).toBeDisabled();
+  await page.getByLabel('Type CLEAR to confirm').fill('CLEAR');
+  await expect(erase).toBeEnabled();
+  await erase.click();
+  await expect(page.getByRole('status')).toContainText('Student Edition data on this device was cleared.');
+  const kept = await page.evaluate(() => ({
+    pro: localStorage.getItem('advantage.proUnlocked'),
+    coach: localStorage.getItem('advantage.coachUnlocked'),
+    white: localStorage.getItem('advantage.whiteUnlocked'),
+    student: localStorage.getItem('advantage.studentUnlocked'),
+    roster: localStorage.getItem('matboard.roster.v1'),
+    drive: localStorage.getItem('matboard.pro.googleDriveFolder.v1'),
+    journal: localStorage.getItem('matboard.studentEdition.v1') ?? '',
+  }));
+  expect(kept.pro).toBe('1');
+  expect(kept.coach).toBe('1');
+  expect(kept.white).toBe('1');
+  expect(kept.student).toBe('1');
+  expect(kept.roster).toContain('Keep');
+  expect(kept.drive).toContain('keep-folder');
+  expect(kept.journal).not.toContain('Coach Ana');
+  await page.goto('/student/rank?student=1');
+  await expect(page.getByRole('textbox', { name: 'Instructor 1', exact: true })).toHaveCount(0);
 });

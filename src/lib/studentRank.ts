@@ -208,11 +208,24 @@ export function setRankTapeDate(
   return touch(report, { ...rank, tapeDates }, report.profile.belt, now);
 }
 
+/**
+ * One instructor per entry.
+ * A stored string, or one entry that still has line breaks, splits into the list.
+ * Names are kept in order. Nothing is joined back into a single field.
+ */
+export function expandLineage(lines: readonly string[]): string[] {
+  const names: string[] = [];
+  for (const line of lines) {
+    for (const part of line.split(/\r?\n/)) {
+      const name = part.trim().slice(0, PROGRESS_NOTE_MAX);
+      if (name) names.push(name);
+    }
+  }
+  return names.slice(0, PROGRESS_LINEAGE_MAX);
+}
+
 export function setRankLineage(report: StudentProgressReport, lines: readonly string[], now = Date.now()): StudentProgressReport {
-  const lineage = lines
-    .map((line) => line.trim().slice(0, PROGRESS_NOTE_MAX))
-    .filter(Boolean)
-    .slice(0, PROGRESS_LINEAGE_MAX);
+  const lineage = expandLineage(lines);
   const rank = rankOf(report);
   const prior = rank.lineage ?? [];
   if (prior.length === lineage.length && prior.every((line, index) => line === lineage[index])) return report;

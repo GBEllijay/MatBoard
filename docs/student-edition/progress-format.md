@@ -123,7 +123,7 @@ Optional on a student progress report. The current belt stays on `profile.belt`.
 
 `rank.tapeCount` is how many stripes are on the current belt, a whole number from 0 to 4. `rank.awardedOn` is the date they got that belt, or empty. `rank.tapeDates` is four dates, one for each stripe, and slots past `tapeCount` stay empty. `rank.history` lists earlier belts. Each history row has an id, a belt (`white`, `blue`, `purple`, `brown`, or `black`), the date, the stripe count, and the four stripe dates.
 
-`rank.lineage` is the student's instructor lineage. Each line is one person, instructor first, then their instructor. A student can type it as free text, one person per line, or edit the ordered list. Absent on older files. An empty list does not clear a lineage already on the device when the incoming file omits the field. A file that includes `lineage` fills an empty lineage and keeps a lineage already stored.
+`rank.lineage` is an ordered list of instructors. The first person is the student's instructor. The rank page adds, edits, removes, and reorders that list. An older file may store the whole lineage as one string, or as one entry that still contains line breaks. Import splits those into one person per entry and keeps every name. Absent on older files. An empty list does not clear a lineage already on the device when the incoming file omits the field. A file that includes `lineage` fills an empty lineage and keeps a lineage already stored.
 
 Promotion photos stay on the phone (`matboard.studentEdition.rankPhotos.v1`), compressed. Send to coach copies them onto `rank.pictures` when they fit in 180,000 characters. Each picture is a `data:image` jpeg, png, or webp of at most 48,000 characters, with a belt and an optional `tapeIndex` (0 to 3) when it belongs to a stripe. Photos past the budget are left out. `rank.pictureNote` then says how many stayed on the phone. `rank.pictureCount` is how many were included. The copy saved on the student phone does not keep those image bytes in the progress file. A bracket photo is still never in the file.
 
@@ -173,7 +173,9 @@ A coach import of this file copies the competition plan onto that competitor’s
 
 `exportProgressCsv` writes one UTF-8 CSV with a byte-order mark and CRLF, so Excel can open it. The first row is:
 
-`Sheet, Id, Date, Parent id, Game, Category, Name, Technique names, Learned on, Note, Body, Met, Title, Kind, Belt, Toward, Criterion id, Catalog item id`
+`Sheet, Id, Date, Parent id, Game, Category, Name, Technique names, Learned on, Note, Body, Met, Title, Kind, Belt, Toward, Criterion id, Catalog item id, Proficiency`
+
+Every data row has the same number of columns as that header. Proficiency is the fundamentals level, 0 to 5, on a Checklist row. Other sheets leave it blank. A spreadsheet from before that column still imports. It has no level to apply, and levels already stored stay.
 
 Filter the Sheet column:
 
@@ -183,7 +185,7 @@ Filter the Sheet column:
 | Level | One rubric level. Parent id is the rubric id. |
 | Checkpoint | One checkpoint. Parent id is the level id. Met is the student's mark. |
 | Criterion | One requirement. Parent id is the checkpoint id. Body is the requirement. Technique names are separated with `; `. |
-| Checklist | One fundamentals line, including a line the student added |
+| Checklist | One fundamentals line, including a line the student added. Proficiency is that line's level |
 | Journal | One original card. Technique names are separated with `; `. Body lists each saved technique as `Technique drilled #N: name` |
 | Amendment | One later note. Parent id is the journal card id |
 | Clip | One Video Library link, only when the report includes `clips`. Name is the technique or drill. Note is the free-text field. Body is the URL |

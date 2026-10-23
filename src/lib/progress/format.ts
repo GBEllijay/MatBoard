@@ -5,6 +5,7 @@
  */
 
 import { fundamentalLevelOf, isFundamentalLevel } from '../fundamentals.ts';
+import { expandLineage } from '../studentRank.ts';
 import { asRecord } from '../plainValue.ts';
 import { canonicalFundamentalsCatalogId } from './catalog.ts';
 import { emptyCompetition, seedGamesFromJournal } from './competition.ts';
@@ -28,7 +29,6 @@ import {
   PROGRESS_ID_MAX,
   PROGRESS_JOURNAL_MAX,
   PROGRESS_LEVELS_MAX,
-  PROGRESS_LINEAGE_MAX,
   RANK_EXPORT_BUDGET,
   RANK_PHOTO_MAX_CHARS,
   MATCH_METHODS,
@@ -1012,8 +1012,20 @@ function blankPictureReport(): StudentProgressReport {
 }
 
 function readLineage(value: unknown, errors: string[]): string[] {
-  const rows = readList(value, 'Lineage', PROGRESS_LINEAGE_MAX, errors);
-  return rows.map((row, index) => readString(row, `Lineage ${index + 1}`, PROGRESS_NOTE_MAX, errors).trim()).filter(Boolean);
+  if (typeof value === 'string') return expandLineage([value]);
+  if (!Array.isArray(value)) {
+    if (value != null) errors.push('Lineage must be a list.');
+    return [];
+  }
+  const pieces: string[] = [];
+  value.forEach((row, index) => {
+    if (typeof row !== 'string') {
+      errors.push(`Lineage ${index + 1} must be text.`);
+      return;
+    }
+    pieces.push(row);
+  });
+  return expandLineage(pieces);
 }
 
 function readRankPictures(value: unknown, errors: string[]): RankPicture[] {
@@ -2334,8 +2346,98 @@ function metCell(met: boolean | null): string {
   return met ? 'yes' : 'no';
 }
 
-function csvRow(cells: string[]): string {
-  return cells.map(csvCell).join(',');
+function csvRow(cells: readonly string[]): string {
+  const width = PROGRESS_CSV_HEADERS.length;
+  const padded = [...cells];
+  while (padded.length < width) padded.push('');
+  return padded.map((cell) => csvCell(cell ?? '')).join(',');
+}
+
+/** Read a progress spreadsheet. Rows are aligned to the header by column name. */
+export function parseProgressCsv(text: string): { headers: string[]; rows: string[][] } | { error: string } {
+  const table = parseCsvTable(text);
+  if (!table.length) return { error: 'This spreadsheet is empty.' };
+  const headers = table[0].map((cell) => cell.trim());
+  if (headers[0] !== 'Sheet') return { error: 'This spreadsheet is not a Student Edition progress file.' };
+  const width = headers.length;
+  const rows = table.slice(1).map((row) => {
+    const padded = [...row];
+    while (padded.length < width) padded.push('');
+    return padded;
+  });
+  return { headers, rows };
+}
+
+/**
+ * Copy Fundamentals levels from a progress spreadsheet onto this report.
+ * A file from before the Proficiency column has no level to apply. Levels already stored stay.
+ */
+export function applyProgressCsv(
+  report: StudentProgressReport,
+  text: string,
+): { report: StudentProgressReport; error: string } {
+  const parsed = parseProgressCsv(text);
+  if ('error' in parsed) return { report, error: parsed.error };
+  const column = (name: string) => parsed.headers.findIndex((header) => header.toLowerCase() === name.toLowerCase());
+  const sheetAt = column('Sheet');
+  const idAt = column('Id');
+  const proficiencyAt = column('Proficiency');
+  if (sheetAt < 0 || idAt < 0) return { report, error: 'This spreadsheet is not a Student Edition progress file.' };
+  if (proficiencyAt < 0) return { report, error: '' };
+  const next = structuredClone(report);
+  for (const row of parsed.rows) {
+    if ((row[sheetAt] ?? '').trim() !== 'Checklist') continue;
+    const id = (row[idAt] ?? '').trim();
+    const raw = (row[proficiencyAt] ?? '').trim();
+    if (!id || !raw) continue;
+    const level = Number(raw);
+    if (!isFundamentalLevel(level)) continue;
+    const entry = next.checklist.find((item) => item.id === id);
+    if (entry) entry.level = level;
+  }
+  return { report: next, error: '' };
+}
+
+function parseCsvTable(text: string): string[][] {
+  const src = text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = '';
+  let quoted = false;
+  for (let index = 0; index < src.length; index += 1) {
+    const char = src[index];
+    if (quoted) {
+      if (char === '"') {
+        if (src[index + 1] === '"') {
+          field += '"';
+          index += 1;
+        } else quoted = false;
+      } else field += char;
+      continue;
+    }
+    if (char === '"') {
+      quoted = true;
+      continue;
+    }
+    if (char === ',') {
+      row.push(field);
+      field = '';
+      continue;
+    }
+    if (char === '\n') {
+      row.push(field);
+      field = '';
+      if (row.some((cell) => cell.length > 0)) rows.push(row);
+      row = [];
+      continue;
+    }
+    field += char;
+  }
+  if (field.length || row.length) {
+    row.push(field);
+    if (row.some((cell) => cell.length > 0)) rows.push(row);
+  }
+  return rows;
 }
 
 function csvCell(value: string): string {

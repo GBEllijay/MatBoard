@@ -1,10 +1,14 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import type { CompetitionResult } from './progress/types.ts';
 import {
   addScoutingCard,
   exportScoutingCsv,
   importScoutingCsv,
+  scoutingCsvHeaders,
+  scoutingCsvTemplate,
+  scoutingExportFileName,
   pastMatchesFor,
   saveScouting,
   loadScouting,
@@ -244,4 +248,39 @@ test('csv export writes the seven ratings and import still accepts a file withou
   assert.equal(messy.cards[0].ratings.escapes, undefined);
   assert.equal(messy.cards[0].ratings.submissions, 2);
   assert.equal(messy.cards[0].style, '');
+});
+
+test('the scouting template matches the export, and old and new csv files import', () => {
+  assert.equal(scoutingExportFileName('2026-10-23'), 'advantage-student-scouting-2026-10-23.csv');
+  const headers = scoutingCsvHeaders();
+  assert.equal(exportScoutingCsv([]).split('\r\n')[0], headers.join(','));
+  assert.equal(scoutingCsvTemplate().split('\r\n')[0], headers.join(','));
+  assert.ok(headers.includes('Competitor Notes'));
+  assert.ok(headers.includes('Style'));
+  assert.ok(headers.includes('Class'));
+  for (const label of ['Guard', 'Passing', 'Takedowns', 'Escapes', 'Submissions', 'Conditioning', 'Mindset']) {
+    assert.ok(headers.includes(label));
+  }
+
+  const fixture = readFileSync(new URL('./fixtures/scouting-export.csv', import.meta.url), 'utf8');
+  const fromExport = importScoutingCsv(fixture);
+  assert.equal(fromExport.error, undefined);
+  assert.equal(fromExport.cards.length, 3);
+  assert.equal(fromExport.cards[0].name, 'Dario Kent (mock)');
+  assert.equal(fromExport.cards[0].notes.includes('Austin'), true);
+  assert.equal(fromExport.cards[0].style.includes('berimbolo'), true);
+  assert.equal(fromExport.cards[2].group, 'open');
+
+  const oldTemplate = importScoutingCsv(
+    'Name,Belt,Division,Gym name / nickname,Last promotion,Last promotion detail,Notes,Check In\nRiley,Purple,Light,Checkmat,,,lefty,\n',
+  );
+  assert.equal(oldTemplate.error, undefined);
+  assert.equal(oldTemplate.cards[0].notes, 'lefty');
+  assert.equal(oldTemplate.cards[0].style, '');
+  assert.deepEqual(oldTemplate.cards[0].ratings, {});
+
+  const roundTrip = importScoutingCsv(exportScoutingCsv(fromExport.cards));
+  assert.equal(roundTrip.cards[0].name, 'Dario Kent (mock)');
+  assert.equal(roundTrip.cards[0].style.includes('berimbolo'), true);
+  assert.equal(roundTrip.cards[2].group, 'open');
 });

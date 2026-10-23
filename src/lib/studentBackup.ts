@@ -43,6 +43,21 @@ export const STUDENT_BACKUP_VERSION = 1;
 export const STUDENT_BACKUP_VIDEO_MAX_BYTES = 48 * 1024 * 1024;
 
 export const BACKUP_BEFORE_CLEAR = 'A backup is recommended before clearing data on this phone.';
+export const CLEAR_CONFIRM_PHRASE = 'CLEAR';
+export const CLEAR_STUDENT_DEVICE_NOTE =
+  'This only affects Student Edition on this device. Coach tools, unlock codes, and drive connections stay.';
+export const CLEAR_STUDENT_DATA_ITEMS = [
+  'Journal',
+  'Rank and stripes',
+  'Belt progress',
+  'Competitor',
+  'Weight',
+  'Self-assessment',
+  'Tournaments',
+  'Scouting',
+  'Videos',
+  'Coach plans and coach feedback saved on this phone',
+] as const;
 export const BACKUP_REPLACE_WARN =
   'Replace removes the journal on this phone and uses the backup instead. A backup of the current journal is recommended first.';
 export const BACKUP_NOT_A_BACKUP =
