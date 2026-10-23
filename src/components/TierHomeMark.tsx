@@ -7,7 +7,8 @@ type HomeProps = {
   to?: string;
 };
 
-/** Small center Advantage mark. Always the tier picker, unless a preview flag has to ride along. */
+/** Center Advantage mark. Always the tier picker, unless a preview flag has to ride along.
+ * Size comes from --mark-home, which stays larger than the corner --mark-back. */
 export function TierHomeMark({ to = submenuHomeTarget() }: HomeProps) {
   return (
     <Link className="tier-home" to={to} aria-label="Home">

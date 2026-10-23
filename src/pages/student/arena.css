@@ -46,7 +46,7 @@
 .arena-hero {
   position: relative;
   z-index: 1;
-  padding: calc(4.7rem + var(--safe-t)) 16px 22px 60px;
+  padding: calc(var(--mark-home-clear) + var(--safe-t)) 16px 22px 60px;
   background: #000000;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08);
 }
