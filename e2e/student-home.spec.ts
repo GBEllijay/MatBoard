@@ -107,7 +107,8 @@ test('?student=1 opens the Student hub, and submenus go back to it', async ({ pa
   await expect(page.getByRole('link', { name: 'Fundamentals', exact: true })).toHaveCount(0);
   const tileHeight = await training.evaluate((el) => el.getBoundingClientRect().height);
   expect(tileHeight).toBeGreaterThanOrEqual(88);
-  await shot(page, 'hub-white-belt-390');
+  await expect(page.getByRole('heading', { name: 'Advantage – Student Edition', exact: true })).toBeVisible();
+  await shot(page, 'hub-rank-card-272-390');
 
   await page.getByRole('link', { name: 'Training & Journal', exact: true }).click();
   await expect(page).toHaveURL(/\/student\/training/);
@@ -129,26 +130,40 @@ test('?student=1 opens the Student hub, and submenus go back to it', async ({ pa
   const rankRows = await page.locator('a.s-row--belt').evaluateAll((nodes) =>
     nodes.map((node) => {
       const title = node.querySelector('.s-row__title');
-      const tapes = [...node.querySelectorAll('.s-tape')].map((tape) => tape.classList.contains('s-tape--on'));
-      const bar = node.querySelector('.s-belt__bar');
+      const chev = node.querySelector('.s-chev');
+      const rail = node.querySelector('.belt-rail');
+      const rowBox = node.getBoundingClientRect();
+      const chevBox = chev?.getBoundingClientRect();
       const style = getComputedStyle(node);
+      const railStyle = rail ? getComputedStyle(rail) : null;
+      const stripeClass = rail ? [...rail.classList].find((name) => name.startsWith('belt-rail--stripes-')) ?? '' : '';
       return {
         stripes: node.getAttribute('data-stripes'),
-        on: tapes.filter(Boolean).length,
-        slots: tapes.length,
-        bar: bar ? Math.round(bar.getBoundingClientRect().width) : 0,
+        stripeClass,
+        white: rail?.classList.contains('belt-rail--white') ?? false,
+        degrees: rail?.classList.contains('belt-rail--degrees') ?? false,
+        rightBelt: Boolean(node.querySelector('.s-belt')),
         wrapped: title ? title.scrollWidth > title.clientWidth + 1 || title.getBoundingClientRect().height > 28 : true,
         background: style.backgroundImage,
+        railWeave: railStyle?.backgroundImage ?? '',
+        chevronInside: Boolean(
+          chevBox && chevBox.width > 0 && chevBox.left >= rowBox.left && chevBox.right <= rowBox.right + 0.5,
+        ),
       };
     }),
   );
   expect(rankRows.map((row) => row.stripes)).toEqual(['1', '2', '3', '4']);
-  expect(rankRows.map((row) => row.on)).toEqual([1, 2, 3, 4]);
-  expect(rankRows.every((row) => row.on === Number(row.stripes) && row.bar >= 80 && row.bar <= 96 && !row.wrapped)).toBeTruthy();
-  expect(rankRows.every((row) => row.background.includes('belt-weave.png'))).toBeTruthy();
+  expect(rankRows.map((row) => row.stripeClass)).toEqual([
+    'belt-rail--stripes-1',
+    'belt-rail--stripes-2',
+    'belt-rail--stripes-3',
+    'belt-rail--stripes-4',
+  ]);
+  expect(rankRows.every((row) => row.white && row.degrees && !row.rightBelt && !row.wrapped && row.chevronInside)).toBeTruthy();
+  expect(rankRows.every((row) => row.background.includes('belt-weave.png') && row.railWeave.includes('belt-weave.png'))).toBeTruthy();
   const mat = await page.locator('main.s-group').evaluate((el) => getComputedStyle(el).backgroundImage);
   expect(mat).toContain('home-mat-tatami.png');
-  await shotGroup(page, 'Rank & Progress', 'group-rank-progress-390');
+  await shotGroup(page, 'Rank & Progress', 'rank-progress-left-rail-390');
   await page.getByRole('link', { name: BACK, exact: true }).click();
   await page.getByRole('link', { name: 'Competitor', exact: true }).click();
   await expect(page).toHaveURL(/\/student\/compete/);

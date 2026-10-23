@@ -7,8 +7,9 @@ type Props = {
   /**
    * White tape on the black rank bar, counted from the tip (the bottom).
    * 0 is a bare black bar. Omit it for the plain belt-color tip.
+   * Coach Unlimited menus use 0–3. Student rank rows use 1–4.
    */
-  stripes?: 0 | 1 | 2 | 3;
+  stripes?: 0 | 1 | 2 | 3 | 4;
 };
 
 /** Thin left-edge belt ribbon. Rank belts use a tip stack; tournament is green/yellow blocks. */

@@ -1,7 +1,16 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { BeltRail } from '../../components/BeltRail';
 import { StudentMarks, useStudentPath } from './chrome';
-import { Chevron, RowIcon, WhiteBelt } from './hubArt';
+import { Chevron, RowIcon } from './hubArt';
+
+function degreeStripes(count: number): 0 | 1 | 2 | 3 | 4 {
+  if (count <= 0) return 0;
+  if (count === 1) return 1;
+  if (count === 2) return 2;
+  if (count === 3) return 3;
+  return 4;
+}
 
 export function GroupFrame({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -51,7 +60,7 @@ export function MenuRow({
         <span className="s-row__title">{label}</span>
         {note ? <small>{note}</small> : null}
       </span>
-      {stripes ? <WhiteBelt filled={stripes} /> : null}
+      {skin === 'belt' && stripes ? <BeltRail kind="white" stripes={degreeStripes(stripes)} /> : null}
       <Chevron />
     </Link>
   );
