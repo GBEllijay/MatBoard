@@ -3,15 +3,15 @@ import { expect, test } from '@playwright/test';
 test('my rank sets the belt and stripes, and belt progress reads that belt', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/student?student=1');
-  const rankLink = page.getByRole('link', { name: 'My rank', exact: true });
-  const library = page.getByRole('link', { name: 'Video Library', exact: true });
-  const belt = page.getByRole('link', { name: 'Belt progress', exact: true });
-  const rankBox = await rankLink.boundingBox();
-  const libraryBox = await library.boundingBox();
-  const beltBox = await belt.boundingBox();
-  expect(rankBox && libraryBox && beltBox).toBeTruthy();
-  expect(rankBox!.y).toBeGreaterThan(libraryBox!.y);
-  expect(rankBox!.y).toBeLessThan(beltBox!.y);
+  const training = page.getByRole('link', { name: 'Training & Journal', exact: true });
+  const rankGroup = page.getByRole('link', { name: 'Rank & Progress', exact: true });
+  const compete = page.getByRole('link', { name: 'Competitor', exact: true });
+  const trainingBox = await training.boundingBox();
+  const rankBox = await rankGroup.boundingBox();
+  const competeBox = await compete.boundingBox();
+  expect(trainingBox && rankBox && competeBox).toBeTruthy();
+  expect(rankBox!.y).toBeGreaterThan(trainingBox!.y);
+  expect(rankBox!.y).toBeLessThan(competeBox!.y);
 
   await page.goto('/student/calendar?student=1');
   await page.getByLabel('Event date').fill('2020-06-01');

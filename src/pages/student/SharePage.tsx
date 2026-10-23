@@ -10,6 +10,7 @@ import {
   SEND_TO_COACH_MERGE_PROMPT,
   SHARE_SUBJECT,
 } from '../../lib/studentTools';
+import { COACH_FILE_HINT, COACH_FILE_LABEL } from '../../lib/studentHubMenu';
 import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './chrome';
 
 function downloadText(filename: string, text: string, type: string) {
@@ -55,7 +56,7 @@ export function SharePage() {
     if (typeof nav.share === 'function' && nav.canShare?.({ files: sharedFiles })) {
       try {
         await nav.share({ files: sharedFiles, title: SHARE_SUBJECT, text: 'Student progress report' });
-        setStatus('Shared from this phone. Advantage does not host the file.');
+        setStatus('Shared from this device. Advantage does not host the file.');
         return;
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return;
@@ -63,19 +64,20 @@ export function SharePage() {
     }
     downloadText(files.jsonName, files.json, 'application/json');
     if (includeCsv) downloadText(files.csvName, files.csv, 'text/csv');
-    setStatus('Downloaded the progress file on this phone. Email it from your mail app, or put it in the gym Drive folder.');
+    setStatus('Downloaded the progress file on this device. Email it from your mail app, or put it in the gym Drive folder.');
   };
 
   return (
     <main className="student student-frame">
       <StudentMarks />
-      <LeatherHeader title="Send to coach" />
+      <LeatherHeader title={COACH_FILE_LABEL} />
       <div className="student-paper">
         <div className="student-sheet">
-          <section className="ink" aria-label="Send to coach">
-            <p className="ink__label">Send to coach</p>
+          <section className="ink" aria-label={COACH_FILE_LABEL}>
+            <p className="ink__label">{COACH_FILE_LABEL}</p>
+            <p className="student-quiet">{COACH_FILE_HINT}</p>
             <p className="student-quiet">
-              The progress file stays on this phone. Advantage does not host it. It includes your journal, tournaments, A/B/C game, weights, competition results, video library links, rank, and lineage. Promotion photos are included when the file has room. The ones that do not fit stay on this phone, and the file says so. A bracket photo stays on this phone and is not in the file. Share it with your mail app or the gym Google Drive folder.
+              The progress file stays on this device. Advantage does not host it. It includes your journal, tournaments, A/B/C game, weights, competition results, video library links, rank, and lineage. Promotion photos are included when the file has room. The ones that do not fit stay on this device, and the file says so. A bracket photo stays on this device and is not in the file. Share it with your mail app or the gym Google Drive folder.
             </p>
             <label className="cal-gym-toggle">
               <input type="checkbox" checked={includeCsv} onChange={(event) => setIncludeCsv(event.target.checked)} />
@@ -83,7 +85,7 @@ export function SharePage() {
             </label>
             <div className="student-actions">
               <button type="button" className="ink-btn ink-btn--save" onClick={() => void send()}>
-                Send to coach
+                {COACH_FILE_LABEL}
               </button>
               <a className="ink-btn" href={files.mailto}>
                 Email the file

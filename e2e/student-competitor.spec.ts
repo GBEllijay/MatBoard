@@ -17,17 +17,17 @@ test('competitor tracker, game, weight, calendar, and coach import', async ({ br
 
   const competitor = page.getByRole('link', { name: 'Competitor', exact: true });
   await expect(competitor).toBeVisible();
-  await expect(competitor).toHaveCSS('background-color', 'rgb(244, 240, 228)');
-  await expect(competitor).toHaveCSS('font-family', /Patrick Hand/);
-  const rules = await competitor.evaluate((el) => getComputedStyle(el).backgroundImage);
-  expect(rules).toContain('repeating-linear-gradient');
-  const spine = competitor.locator('.leather-spine');
-  const grain = await spine.evaluate((el) => getComputedStyle(el).backgroundImage);
-  expect(grain).toContain('black-leather-grain.png');
+  await expect(competitor).toHaveCSS('font-family', /Inter/);
+  await expect(competitor).toContainText('No event yet');
+  await expect(competitor).toContainText('No matches yet');
+  await expect(competitor.locator('.leather-spine')).toHaveCount(0);
 
   await competitor.click();
   await expect(page.getByRole('heading', { name: 'Competitor' })).toBeVisible();
   await expect(page.getByRole('link', { name: BACK, exact: true })).toHaveAttribute('href', '/student');
+  await page.getByRole('link', { name: 'Upcoming tournaments', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Competitor' })).toBeVisible();
+  await expect(page.getByRole('link', { name: BACK, exact: true })).toHaveAttribute('href', '/student/compete');
   await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute('href', '/products');
 
   const today = await page.evaluate(() => {
@@ -59,9 +59,9 @@ test('competitor tracker, game, weight, calendar, and coach import', async ({ br
   await shot(page, 'competitor-section-390');
 
   await page.getByRole('link', { name: BACK, exact: true }).click();
-  await page.getByRole('link', { name: 'Weight', exact: true }).click();
+  await page.getByRole('link', { name: 'Weight management', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Weight' })).toBeVisible();
-  await expect(page.getByRole('link', { name: BACK, exact: true })).toHaveAttribute('href', '/student');
+  await expect(page.getByRole('link', { name: BACK, exact: true })).toHaveAttribute('href', '/student/compete');
   await expect(page.getByText('Today', { exact: true })).toBeVisible();
   await expect(page.getByRole('columnheader', { name: 'Date', exact: true })).toBeVisible();
   await expect(page.getByRole('columnheader', { name: 'Weight', exact: true })).toBeVisible();
@@ -115,6 +115,8 @@ test('competitor tracker, game, weight, calendar, and coach import', async ({ br
   await shot(page, 'results-page-390');
 
   await page.getByRole('link', { name: BACK, exact: true }).click();
+  await page.getByRole('link', { name: BACK, exact: true }).click();
+  await page.getByRole('link', { name: 'Training & Journal', exact: true }).click();
   await page.getByRole('link', { name: 'Journal cards', exact: true }).click();
   const journalSearch = page.getByRole('textbox', { name: 'Search journal' });
   await expect(journalSearch).toHaveAttribute('placeholder', 'Technique, note, opponent, or tournament');

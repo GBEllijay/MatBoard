@@ -33,6 +33,7 @@ import { emptyRank } from './studentRank.ts';
 import { loadScouting, saveScouting, SCOUTING_STORAGE_KEY, type ScoutingCard } from './studentScouting.ts';
 import { BRACKET_PHOTO_KEY } from './bracketPhoto.ts';
 import { progressReportLines, selfAssessmentLines, studentReportPdfName } from './studentReport.ts';
+import { noteStudentBackupBuilt } from './studentBackupStamp.ts';
 import { loadCoachShelf, saveCoachShelf, type CoachShelf } from './studentTools.ts';
 
 export { progressReportLines, selfAssessmentLines, studentReportPdfName };
@@ -53,7 +54,7 @@ export const CLEAR_STUDENT_DATA_ITEMS = [
   'Weight',
   'Self-assessment',
   'Tournaments',
-  'Scouting',
+  'Opponent scouting',
   'Videos',
   'Coach plans and coach feedback saved on this phone',
 ] as const;
@@ -206,6 +207,7 @@ export async function buildStudentBackup(input: {
     if (omitted.length) file.filmFilesOmitted = omitted;
   }
   const issuedOn = todayIso(when);
+  noteStudentBackupBuilt(when);
   return {
     file,
     json: JSON.stringify(file),

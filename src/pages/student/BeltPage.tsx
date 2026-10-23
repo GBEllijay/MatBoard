@@ -21,6 +21,7 @@ import {
   updateGoal,
   withStarterRubric,
 } from '../../lib/studentTools';
+import { COACH_FILE_LABEL } from '../../lib/studentHubMenu';
 import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './chrome';
 
 export function BeltPage() {
@@ -86,7 +87,7 @@ export function BeltPage() {
           </div>
           <div className="student-actions">
             <Link className="ink-btn ink-btn--save" to={share}>
-              Send to coach
+              {COACH_FILE_LABEL}
             </Link>
             <Link className="ink-btn" to={`${share}#import`}>
               Import from coach

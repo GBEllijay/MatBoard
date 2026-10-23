@@ -38,21 +38,29 @@ test('White, Student Edition, Coach, and Pro homes have no corner back', () => {
 });
 
 test('Student Edition pages go back one level, and a card returns to the card list', () => {
-  assert.equal(submenuBackTarget({ pathname: '/student/journal' }), '/student');
-  assert.equal(submenuBackTarget({ pathname: '/student/journal', search: 'student=1' }), '/student?student=1');
-  assert.equal(submenuBackTarget({ pathname: '/student/cards', search: '?student=1' }), '/student?student=1');
+  assert.equal(submenuBackTarget({ pathname: '/student/training' }), '/student');
+  assert.equal(submenuBackTarget({ pathname: '/student/journal' }), '/student/training');
+  assert.equal(submenuBackTarget({ pathname: '/student/journal', search: 'student=1' }), '/student/training?student=1');
+  assert.equal(submenuBackTarget({ pathname: '/student/cards', search: '?student=1' }), '/student/training?student=1');
   assert.equal(submenuBackTarget({ pathname: '/student/cards/card.1' }), '/student/cards');
   assert.equal(
     submenuBackTarget({ pathname: '/student/cards/card.1', search: 'student=1' }),
     '/student/cards?student=1',
   );
-  assert.equal(submenuBackTarget({ pathname: '/student/fundamentals' }), '/student');
-  assert.equal(submenuBackTarget({ pathname: '/student/calendar', search: 'student=1' }), '/student?student=1');
+  assert.equal(submenuBackTarget({ pathname: '/student/fundamentals' }), '/student/progress');
+  assert.equal(submenuBackTarget({ pathname: '/student/calendar', search: 'student=1' }), '/student/training?student=1');
   assert.equal(submenuBackTarget({ pathname: '/student/calendar/2026-10-12', search: 'student=1' }), '/student/calendar?student=1');
-  assert.equal(submenuBackTarget({ pathname: '/student/rubric' }), '/student');
-  assert.equal(submenuBackTarget({ pathname: '/student/academy', search: 'student=1' }), '/student?student=1');
-  assert.equal(submenuBackTarget({ pathname: '/student/belt', search: 'student=1' }), '/student?student=1');
-  assert.equal(submenuBackTarget({ pathname: '/student/share', search: 'student=1' }), '/student?student=1');
+  assert.equal(submenuBackTarget({ pathname: '/student/rubric' }), '/student/progress');
+  assert.equal(submenuBackTarget({ pathname: '/student/academy', search: 'student=1' }), '/student/coach?student=1');
+  assert.equal(submenuBackTarget({ pathname: '/student/belt', search: 'student=1' }), '/student/progress?student=1');
+  assert.equal(submenuBackTarget({ pathname: '/student/share', search: 'student=1' }), '/student/coach?student=1');
+  assert.equal(submenuBackTarget({ pathname: '/student/competitor' }), '/student/compete');
+  assert.equal(
+    submenuBackTarget({ pathname: '/student/competitor', search: 'from=progress&student=1' }),
+    '/student/progress?student=1',
+  );
+  assert.equal(submenuBackTarget({ pathname: '/student/backup/clear', search: 'student=1' }), '/student/backup?student=1');
+  assert.equal(submenuBackTarget({ pathname: '/student/print/progress' }), '/student/backup');
   assert.equal(
     submenuBackTarget({ pathname: '/student/share', search: 'from=rubric&student=1' }),
     '/student/rubric?student=1',

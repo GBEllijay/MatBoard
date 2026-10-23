@@ -248,7 +248,7 @@ function assessmentBlock(assessment: AssessmentState): ReportBlock {
 }
 
 function scoutingBlock(cards: readonly ScoutingCard[]): ReportBlock {
-  if (!cards.length) return { title: 'Scouting', lines: ['No scouting cards.'] };
+  if (!cards.length) return { title: 'Opponent scouting', lines: ['No scouting cards.'] };
   const lines: string[] = [];
   for (const card of cards) {
     const heading = [card.name, card.belt, card.gym.trim()].filter(Boolean).join(' — ');
@@ -257,7 +257,7 @@ function scoutingBlock(cards: readonly ScoutingCard[]): ReportBlock {
     if (card.style.trim()) lines.push(`  Style: ${card.style.trim()}`);
     if (card.notes.trim()) lines.push(`  ${card.notes.trim()}`);
   }
-  return { title: 'Scouting', lines };
+  return { title: 'Opponent scouting', lines };
 }
 
 function videoBlock(report: StudentProgressReport, films: readonly StudentFilm[]): ReportBlock {

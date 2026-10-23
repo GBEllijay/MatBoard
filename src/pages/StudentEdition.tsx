@@ -7,8 +7,7 @@ import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
-import { PRODUCTS_PATH, STUDENT_EDITION_NAME, STUDENT_HOME_DESCRIPTION } from '../lib/productNames';
-import { tierHomeHref } from '../lib/submenuNav';
+import { PRODUCTS_PATH, STUDENT_EDITION_NAME } from '../lib/productNames';
 import { matchingGameTags, matchingResults, gameLetter } from '../lib/progress/competition.ts';
 import { PROGRESS_NAME_MAX, type CompetitionResult, type MatchMethod, type MatchResult } from '../lib/progress/types.ts';
 import { isIsoDate } from '../lib/studentTools';
@@ -21,6 +20,9 @@ import { ScoutingPage } from './student/ScoutingPage';
 import { VideoLibraryPage } from './student/VideoLibraryPage';
 import { WeightPage } from './student/WeightPage';
 import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './student/chrome';
+import { studentScreen } from '../lib/studentHubMenu';
+import { BackupMenu, ClearStudentMenu } from './student/BackupMenu';
+import { CoachMenu, CompeteMenu, ProgressMenu, StudentHub, TrainingMenu } from './student/StudentMenus';
 import { SharePage } from './student/SharePage';
 import { AcademyConnectPage, ConnectionsPage } from './student/ConnectionsPage';
 import { FundamentalsPage } from './student/FundamentalsPage';
@@ -42,6 +44,7 @@ import {
 } from '../lib/studentEdition.ts';
 import '../student-edition.css';
 import './student/arena.css';
+import './student/hub.css';
 
 function blankTechniqueRows(count: number): { id: string; name: string }[] {
   return Array.from({ length: count }, () => ({ id: '', name: '' }));
@@ -59,25 +62,60 @@ export function StudentEditionPage() {
   if (!open) return <StudentClosed />;
 
   const rest = path.startsWith('/student') ? path.slice('/student'.length).replace(/^\//, '') : '';
-  if (rest === 'journal') return <JournalToday />;
-  if (rest === 'cards') return <JournalList />;
-  if (rest.startsWith('cards/')) return <JournalCardPage id={decodeURIComponent(rest.slice('cards/'.length))} />;
-  if (rest === 'fundamentals') return <FundamentalsPage />;
-  if (rest === 'calendar') return <CalendarPage />;
-  if (rest.startsWith('calendar/')) return <CalendarDayPage date={decodeURIComponent(rest.slice('calendar/'.length))} />;
-  if (rest === 'rubric' || rest === 'belt') return <BeltPage />;
-  if (rest === 'rank') return <RankPage />;
-  if (rest === 'share') return <SharePage />;
-  if (rest === 'competitor') return <CompetitorPage />;
-  if (rest === 'weight') return <WeightPage />;
-  if (rest === 'results') return <ResultsPage />;
-  if (rest === 'videos') return <VideoLibraryPage />;
-  if (rest === 'connections') return <ConnectionsPage />;
-  if (rest === 'academy') return <AcademyConnectPage />;
-  if (rest === 'print/progress') return <PrintReportPage kind="progress" />;
-  if (rest === 'print/assessment') return <PrintReportPage kind="assessment" />;
-  if (rest === 'scouting') return <ScoutingPage />;
-  return <Hub />;
+  switch (studentScreen(rest)) {
+    case 'journal':
+      return <JournalToday />;
+    case 'cards':
+      return <JournalList />;
+    case 'card':
+      return <JournalCardPage id={decodeURIComponent(rest.slice('cards/'.length))} />;
+    case 'fundamentals':
+      return <FundamentalsPage />;
+    case 'calendar':
+      return <CalendarPage />;
+    case 'calendar-day':
+      return <CalendarDayPage date={decodeURIComponent(rest.slice('calendar/'.length))} />;
+    case 'rubric':
+      return <BeltPage />;
+    case 'rank':
+      return <RankPage />;
+    case 'share':
+      return <SharePage />;
+    case 'competitor':
+      return <CompetitorPage />;
+    case 'weight':
+      return <WeightPage />;
+    case 'results':
+      return <ResultsPage />;
+    case 'videos':
+      return <VideoLibraryPage />;
+    case 'connections':
+      return <ConnectionsPage />;
+    case 'academy':
+      return <AcademyConnectPage />;
+    case 'print-progress':
+      return <PrintReportPage kind="progress" />;
+    case 'print-assessment':
+      return <PrintReportPage kind="assessment" />;
+    case 'scouting':
+      return <ScoutingPage />;
+    case 'training':
+      return <TrainingMenu />;
+    case 'progress':
+      return <ProgressMenu />;
+    case 'compete':
+      return <CompeteMenu />;
+    case 'coach':
+      return <CoachMenu />;
+    case 'backup':
+      return <BackupMenu />;
+    case 'backup-clear':
+      return <ClearStudentMenu />;
+    case 'hub':
+      return <StudentHub />;
+    default:
+      return <StudentHub />;
+  }
 }
 
 function StudentClosed() {
@@ -92,62 +130,6 @@ function StudentClosed() {
             <p>This preview opens with the owner unlock, or with ?student=1 on the address.</p>
           </header>
         </div>
-        <SiteFooter />
-      </div>
-    </main>
-  );
-}
-
-const HUB_LINKS = [
-  { title: 'Journal', note: "Today's page", to: '/student/journal' },
-  { title: 'Journal cards', note: 'Search your notes', to: '/student/cards' },
-  { title: 'Fundamentals', note: 'Levels', to: '/student/fundamentals' },
-  { title: 'Calendar', note: 'Month and your events', to: '/student/calendar' },
-  { title: 'Competitor', note: 'Tournaments and game', to: '/student/competitor' },
-  { title: 'Weight', note: 'Weigh-ins and target', to: '/student/weight' },
-  { title: 'Results', note: 'Matches and bracket notes', to: '/student/results' },
-  { title: 'Scouting-Opponent Research', note: 'Weight class and open class', to: '/student/scouting' },
-  { title: 'Video Library', note: 'Technique and drill links', to: '/student/videos' },
-  { title: 'My rank', note: 'Belt and stripes', to: '/student/rank' },
-  { title: 'Belt progress', note: 'Checkpoints and goals', to: '/student/rubric' },
-] as const;
-
-function Hub() {
-  const to = useStudentPath();
-  const [params] = useSearchParams();
-  const home = tierHomeHref(params.toString());
-  return (
-    <main className="home home--student">
-      <div className="home__inner">
-        <HomeMark to={home} />
-        <nav className="home__modes student-hub" aria-label="Advantage Student Edition">
-          <header className="student-hub__band">
-            <LeatherSpine />
-            <h2>{STUDENT_EDITION_NAME}</h2>
-            <p>{STUDENT_HOME_DESCRIPTION}</p>
-          </header>
-          {HUB_LINKS.map((item) => (
-            <Link key={item.to} className="student-hub__link" to={to(item.to)} aria-label={item.title}>
-              <LeatherSpine />
-              <span className="student-hub__title">{item.title}</span>
-              <small>{item.note}</small>
-            </Link>
-          ))}
-          <details className="student-hub__menu">
-            <LeatherSpine />
-            <summary>Menu</summary>
-            <div className="student-hub__menu-list">
-              <Link to={to('/student/connections')}>Connections</Link>
-              <Link to={to('/student/share')}>Send to coach</Link>
-              <Link to={to('/student/share#import')}>Import from coach</Link>
-            </div>
-          </details>
-          <Link className="student-hub__link" to={to('/student/academy')} aria-label="Connect to my academy">
-            <LeatherSpine />
-            <span className="student-hub__title">Connect to my academy</span>
-            <small>Scan the academy QR</small>
-          </Link>
-        </nav>
         <SiteFooter />
       </div>
     </main>

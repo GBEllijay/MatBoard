@@ -199,7 +199,7 @@ test('calendar keeps every control on the dark arena surface', () => {
   assert.ok(main?.classList.contains('student--fundamentals'));
   assert.ok(main?.classList.contains('student--calendar'));
   assert.equal(host.querySelector('h1')?.textContent, 'Calendar');
-  assert.equal(labeled(host, 'Back. Hold for Home.').getAttribute('href'), '/student');
+  assert.equal(labeled(host, 'Back. Hold for Home.').getAttribute('href'), '/student/training');
   assert.equal(labeled(host, 'Home').getAttribute('href'), '/products');
   control(host, 'button', 'Previous month');
   control(host, 'button', 'Next month');

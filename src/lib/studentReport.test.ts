@@ -186,7 +186,7 @@ test('progress PDF keeps every section, the student track, and checkpoint status
     'Journal summary',
     'Competition and weight',
     'Self-assessment',
-    'Scouting',
+    'Opponent scouting',
     'Video library',
   ]) {
     assert.ok(text.includes(title), title);
@@ -368,7 +368,7 @@ test('profile fields survive backup, and the assessment file name matches the do
   assert.equal(pdfIncludes(built.progressPdf, 'Rank and stripes'), true);
   assert.equal(pdfIncludes(built.progressPdf, 'Fundamentals proficiency'), true);
   assert.equal(pdfIncludes(built.progressPdf, 'Journal summary'), true);
-  assert.equal(pdfIncludes(built.progressPdf, 'Scouting'), true);
+  assert.equal(pdfIncludes(built.progressPdf, 'Opponent scouting'), true);
   assert.equal(pdfIncludes(built.assessmentPdf, 'calm rounds'), true);
   assert.equal(extractPdfText(built.progressPdf).includes('?'), false);
   const parsed = parseStudentBackup(built.json);

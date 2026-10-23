@@ -111,7 +111,7 @@ test('competitor keeps every control, with rank then journal then self-assessmen
   const { host } = mounted;
   const main = host.querySelector('main');
   assert.ok(main?.classList.contains('student--arena'));
-  assert.equal(labeled(host, 'Back. Hold for Home.').getAttribute('href'), '/student');
+  assert.equal(labeled(host, 'Back. Hold for Home.').getAttribute('href'), '/student/compete');
   assert.equal(labeled(host, 'Home').getAttribute('href'), '/products');
   assert.equal(host.querySelector('h1')?.textContent, 'Competitor');
   assert.equal(host.textContent?.includes('Scouting-Opponent Tracker'), false);
@@ -261,9 +261,9 @@ test('weight, results, and scouting keep their controls on the same skin', () =>
 
   const scouting = mount(<ScoutingPage />, '/student/scouting');
   assert.ok(scouting.host.querySelector('main')?.classList.contains('student--arena'));
-  assert.equal(scouting.host.querySelector('h1')?.textContent, 'Scouting-Opponent Research');
+  assert.equal(scouting.host.querySelector('h1')?.textContent, 'Opponent scouting');
   assert.equal(
-    [...scouting.host.querySelectorAll('h2')].some((node) => node.textContent?.trim() === 'Scouting-Opponent Tracker'),
+    [...scouting.host.querySelectorAll('h2')].some((node) => node.textContent?.trim() === 'Opponent scouting'),
     true,
   );
   for (const name of [

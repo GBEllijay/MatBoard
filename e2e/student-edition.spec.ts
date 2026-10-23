@@ -8,8 +8,9 @@ test('student journal saves, searches, amends, and marks a fundamental', async (
   await page.goto('/student?student=1');
   await expect(page.getByRole('link', { name: BACK, exact: true })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute('href', '/products?student=1');
-  await page.getByRole('link', { name: 'Journal', exact: true }).click();
-  await expect(page.getByRole('link', { name: BACK, exact: true })).toHaveAttribute('href', '/student?student=1');
+  await page.getByRole('link', { name: 'Training & Journal', exact: true }).click();
+  await page.getByRole('link', { name: "Log today's class", exact: true }).click();
+  await expect(page.getByRole('link', { name: BACK, exact: true })).toHaveAttribute('href', '/student/training?student=1');
   await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute('href', '/products?student=1');
 
   await expect(page.getByRole('button', { name: 'A game' })).toHaveCount(0);
@@ -60,6 +61,8 @@ test('student journal saves, searches, amends, and marks a fundamental', async (
 
   await page.getByRole('link', { name: BACK, exact: true }).click();
   await page.getByRole('link', { name: BACK, exact: true }).click();
+  await page.getByRole('link', { name: BACK, exact: true }).click();
+  await page.getByRole('link', { name: 'Rank & Progress', exact: true }).click();
   await page.getByRole('link', { name: 'Fundamentals', exact: true }).click();
   const sweeps = page.getByRole('region', { name: 'Sweeps' });
   await expect(sweeps.getByRole('heading', { name: 'Sweeps', exact: true })).toBeVisible();
@@ -95,8 +98,9 @@ test('student journal saves, searches, amends, and marks a fundamental', async (
   await expect(sweeps.getByText('1 of 5 live or better')).toBeVisible();
 
   await page.getByRole('link', { name: BACK, exact: true }).click();
-  await expect(page.getByRole('link', { name: 'Journal', exact: true })).toBeVisible();
-  await page.getByRole('link', { name: 'Journal', exact: true }).click();
+  await page.getByRole('link', { name: BACK, exact: true }).click();
+  await page.getByRole('link', { name: 'Training & Journal', exact: true }).click();
+  await page.getByRole('link', { name: "Today's page", exact: true }).click();
   await page.getByRole('link', { name: 'Add note to an earlier card' }).click();
   await page.getByRole('textbox', { name: 'Search journal' }).fill('scissor');
   await expect(page.getByRole('link', { name: /Scissor sweep/ })).toBeVisible();

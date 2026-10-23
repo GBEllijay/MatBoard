@@ -104,7 +104,7 @@ export function CompetitorPage() {
             <div className="arena-block">
               <span className="arena-node" aria-hidden="true" />
           <p className="student-quiet">
-            Tournaments, your A, B, and C game, and weigh-ins stay on this phone. Send to coach puts them in the same progress file.
+            Tournaments, your A, B, and C game, and weigh-ins stay on this device. Make a file for my coach puts them in the same progress file.
           </p>
           <label className="ink student-search">
             <span className="ink__label">Search</span>
