@@ -372,7 +372,9 @@ export type StudentRank = {
   tapeDates: RankTapeDates;
   history: RankHistory[];
   /**
-   * Instructor lineage. The first line is the student's instructor.
+   * Instructor lineage, one person per entry. The first is the student's instructor.
+   * An older file may store the whole list as one newline-separated string.
+   * Import splits that string and keeps every name.
    * Absent on older files. An empty list is a lineage the student cleared.
    */
   lineage?: string[];

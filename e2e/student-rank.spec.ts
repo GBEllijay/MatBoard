@@ -50,9 +50,18 @@ test('my rank sets the belt and stripes, and belt progress reads that belt', asy
   await stripe.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByLabel('Date of this belt')).toHaveValue(today);
-  await page.getByLabel('Lineage').fill('Coach Ana\nProfessor Luis');
-  await page.getByLabel('Lineage').blur();
+  await expect(page.getByRole('heading', { name: 'Lineage', exact: true })).toHaveCount(1);
+  await page.getByRole('button', { name: 'Add instructor', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Instructor 1', exact: true }).fill('Mestre Paulo Reis');
+  await page.getByRole('button', { name: 'Add instructor', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Instructor 2', exact: true }).fill('Professor Luis');
+  await page.getByRole('textbox', { name: 'Instructor 1', exact: true }).fill('Coach Ana');
+  await page.getByRole('textbox', { name: 'Instructor 1', exact: true }).blur();
   await expect(page.getByRole('textbox', { name: 'Instructor 1', exact: true })).toHaveValue('Coach Ana');
+  await expect(page.getByRole('textbox', { name: 'Instructor 2', exact: true })).toHaveValue('Professor Luis');
+  await page.getByRole('button', { name: 'Move instructor 2 up', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'Instructor 1', exact: true })).toHaveValue('Professor Luis');
+  await page.getByRole('button', { name: 'Move instructor 1 down', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Instructor 2', exact: true })).toHaveValue('Professor Luis');
   await page.getByLabel('Add Blue photo').setInputFiles({
     name: 'belt.png',

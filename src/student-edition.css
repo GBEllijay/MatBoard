@@ -1409,9 +1409,10 @@ button.student-book .student-mark__press {
 
 .rank-lineage {
   display: grid;
-  gap: 0.45rem;
-  margin: 0.3rem 0;
-  padding-left: 1.2rem;
+  gap: 0.85rem;
+  margin: 0.75rem 0;
+  padding: 0;
+  list-style: none;
 }
 
 .belt-ends {
@@ -1921,4 +1922,118 @@ button.student-book .student-mark__press {
   .student-sheet::before {
     left: 0.55rem;
   }
+}
+
+.rank-lineage-editor,
+.student-clear-zone,
+.student-import-confirm {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  background: #fff;
+  color: #1d1d1f;
+  border: 1px solid rgba(29, 29, 31, 0.12);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 8px 24px rgba(12, 35, 68, 0.06);
+}
+
+.rank-lineage-editor h2,
+.student-clear-zone h2,
+.student-import-confirm h2,
+.student-import-confirm .ink__label {
+  font-family: inherit;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.35rem;
+}
+
+.rank-lineage-editor p,
+.student-clear-zone p,
+.student-import-confirm p,
+.rank-lineage-editor .ink__label,
+.student-clear-zone .ink__label,
+.rank-lineage-editor input,
+.student-clear-zone input,
+.student-import-confirm input,
+.rank-lineage-editor button,
+.student-clear-zone button,
+.student-import-confirm button {
+  font-family: inherit;
+}
+
+.rank-lineage-editor .ink-btn,
+.student-clear-zone .ink-btn,
+.student-import-confirm .ink-btn {
+  min-height: 48px;
+  min-width: 48px;
+  border: 0;
+  border-radius: 12px;
+  background: #f5f5f7;
+  color: #1d1d1f;
+  font-weight: 600;
+  padding: 0.55rem 1rem;
+}
+
+.rank-lineage-editor .ink-btn--save,
+.student-clear-zone .ink-btn--save,
+.student-import-confirm .ink-btn--save {
+  background: #0c2344;
+  color: #f5f5f7;
+}
+
+.student-clear-zone .ink-btn--danger {
+  background: #fff;
+  color: #9f1c1c;
+  box-shadow: inset 0 0 0 1.5px #e4b4b4;
+}
+
+.student-clear-zone .ink-btn:disabled {
+  opacity: 0.45;
+}
+
+.rank-lineage-editor .student-actions,
+.student-clear-zone .student-confirm,
+.student-import-confirm .student-actions {
+  display: grid;
+  justify-content: stretch;
+  gap: 0.65rem;
+}
+
+.rank-lineage-editor .student-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.rank-lineage-editor .student-actions .ink-btn {
+  flex: 1 1 7rem;
+}
+
+.rank-lineage-editor input[type='text'],
+.student-clear-zone input[type='text'] {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid rgba(29, 29, 31, 0.16);
+  border-radius: 12px;
+  background: #f5f5f7;
+  padding: 0.4rem 0.75rem;
+  font-size: 17px;
+}
+
+.student-import-confirm input[type='file'] {
+  min-height: 48px;
+  font-size: 16px;
+}
+
+.student-clear-zone {
+  margin-top: 2.75rem;
+}
+
+.student-clear-list {
+  margin: 0.35rem 0 0.8rem;
+  padding-left: 1.2rem;
+}
+
+.student-clear-list li {
+  margin: 0.15rem 0;
 }

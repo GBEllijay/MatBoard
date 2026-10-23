@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { fundamentalLevelOf } from '../fundamentals.ts';
 import { FUNDAMENTALS_CATALOG, FUNDAMENTALS_CATALOG_ID, FUNDAMENTALS_CATALOG_LEGACY_ID } from './catalog.ts';
 import {
   exportProgressCsv,
@@ -7,7 +9,9 @@ import {
   importCoachSuggestion,
   mergeCoachPacket,
   mergeStudentProgress,
+  applyProgressCsv,
   parseFundamentalsCatalog,
+  parseProgressCsv,
   parseProgressPacket,
   progressHandoffFileName,
   PROGRESS_CSV_HEADERS,
@@ -643,6 +647,65 @@ test('version 1 files import, and journal A/B/C tags become the standing game', 
 
   const omitted = mergeStudentProgress(withMeet, sampleReport());
   assert.equal(omitted.report.competition?.tournaments[0].name, 'Spring Open');
+});
+
+test('progress csv rows match the header and proficiency is the fundamentals level', () => {
+  const report = sampleReport();
+  const csv = exportProgressCsv(report);
+  const parsed = parseProgressCsv(csv);
+  assert.equal('error' in parsed, false);
+  if ('error' in parsed) return;
+  assert.deepEqual(parsed.headers, [...PROGRESS_CSV_HEADERS]);
+  assert.equal(parsed.headers.length, 19);
+  const sheetAt = parsed.headers.indexOf('Sheet');
+  const idAt = parsed.headers.indexOf('Id');
+  const proficiencyAt = parsed.headers.indexOf('Proficiency');
+  for (const row of parsed.rows) assert.equal(row.length, parsed.headers.length);
+  const checklist = parsed.rows.filter((row) => row[sheetAt] === 'Checklist');
+  assert.ok(checklist.length > 0);
+  for (const row of checklist) {
+    const entry = report.checklist.find((item) => item.id === row[idAt]);
+    assert.ok(entry);
+    assert.equal(row[proficiencyAt], String(fundamentalLevelOf(entry)));
+    assert.notEqual(row[proficiencyAt], '');
+  }
+  for (const row of parsed.rows) {
+    if (row[sheetAt] !== 'Checklist') assert.equal(row[proficiencyAt], '');
+  }
+
+  const oldHeader = PROGRESS_CSV_HEADERS.filter((header) => header !== 'Proficiency');
+  const kept = report.checklist[0];
+  assert.ok(kept);
+  const oldRow = oldHeader.map((header) => {
+    if (header === 'Sheet') return 'Checklist';
+    if (header === 'Id') return kept.id;
+    if (header === 'Catalog item id') return kept.catalogItemId;
+    return '';
+  });
+  const oldCsv = `${oldHeader.join(',')}\r\n${oldRow.join(',')}\r\n`;
+  const appliedOld = applyProgressCsv(report, oldCsv);
+  assert.equal(appliedOld.error, '');
+  assert.equal(appliedOld.report.checklist.find((item) => item.id === kept.id)?.level, kept.level);
+
+  const fixture = readFileSync(new URL('../fixtures/handoff-progress.csv', import.meta.url), 'utf8');
+  const fixtureCsv = parseProgressCsv(fixture);
+  assert.equal('error' in fixtureCsv, false);
+  if ('error' in fixtureCsv) return;
+  const fixtureLevels = fixtureCsv.rows.filter((row) => row[0] === 'Checklist' && row[18]);
+  assert.ok(fixtureLevels.length > 0);
+  const levelReport = structuredClone(report);
+  levelReport.checklist = [
+    ...levelReport.checklist,
+    {
+      ...kept,
+      id: fixtureLevels[0][1],
+      level: 1,
+      catalogItemId: fixtureLevels[0][17] || kept.catalogItemId,
+    },
+  ];
+  const appliedFixture = applyProgressCsv(levelReport, fixture);
+  assert.equal(appliedFixture.error, '');
+  assert.equal(appliedFixture.report.checklist.find((item) => item.id === fixtureLevels[0][1])?.level, Number(fixtureLevels[0][18]));
 });
 
 test('the license plan is recorded for a later step', () => {

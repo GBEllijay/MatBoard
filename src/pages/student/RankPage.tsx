@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { RANK_TAPE_MAX, type RankBelt } from '../../lib/progress/types';
@@ -17,6 +17,7 @@ import {
   ladderRungs,
   rankBeltLabel,
   rankOf,
+  expandLineage,
   removeRankHistory,
   setRankAwardedOn,
   setRankBelt,
@@ -428,79 +429,81 @@ function PhotoRow({
 }
 
 function LineageEditor({ lineage, onSave }: { lineage: string[]; onSave: (lines: string[]) => void }) {
+  const [rows, setRows] = useState<string[]>(() => [...lineage]);
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
   const lineageKey = lineage.join('\n');
-  const [text, setText] = useState(lineageKey);
-  const [rows, setRows] = useState(lineage);
-  useEffect(() => {
-    setText(lineageKey);
-    setRows(lineageKey ? lineageKey.split('\n') : []);
-  }, [lineageKey]);
+  const savedKey = useRef(lineageKey);
 
-  const commitText = (value: string) => {
-    onSave(value.split('\n'));
+  useEffect(() => {
+    if (savedKey.current === lineageKey) return;
+    savedKey.current = lineageKey;
+    setRows((current) => (expandLineage(current).join('\n') === lineageKey ? current : [...lineage]));
+  }, [lineage, lineageKey]);
+
+  const show = (next: string[]) => {
+    rowsRef.current = next;
+    setRows(next);
+  };
+
+  const commit = (next: string[]) => {
+    show(expandLineage(next));
+    onSave(next);
+  };
+
+  const edit = (index: number, value: string) => {
+    show(rowsRef.current.map((line, slot) => (slot === index ? value : line)));
+  };
+
+  const move = (index: number, direction: -1 | 1) => {
+    const next = [...rowsRef.current];
+    const target = index + direction;
+    if (target < 0 || target >= next.length) return;
+    const prior = next[target] ?? '';
+    next[target] = next[index] ?? '';
+    next[index] = prior;
+    commit(next);
   };
 
   return (
-    <section className="ink">
+    <section className="rank-lineage-editor" aria-label="Lineage">
       <h2>Lineage</h2>
-      <label>
-        <span className="ink__label">Lineage</span>
-        <textarea
-          aria-label="Lineage"
-          placeholder="Your instructor, their instructor, and so on"
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          onBlur={(event) => commitText(event.target.value)}
-        />
-      </label>
+      <p>
+        Your instructor first, then their instructor. Each person is their own row. Add, edit, remove, or change the order.
+      </p>
+      {rows.length === 0 ? <p>No instructors yet.</p> : null}
       <ol className="rank-lineage">
         {rows.map((name, index) => (
           <li key={`instructor-${index}`}>
             <label>
               <span className="ink__label">Instructor {index + 1}</span>
               <input
+                type="text"
                 aria-label={`Instructor ${index + 1}`}
                 value={name}
-                onChange={(event) => {
-                  const next = rows.map((line, slot) => (slot === index ? event.target.value : line));
-                  setRows(next);
-                  setText(next.join('\n'));
-                }}
+                onChange={(event) => edit(index, event.target.value)}
                 onBlur={(event) => {
-                  const next = rows.map((line, slot) => (slot === index ? event.target.value : line));
-                  onSave(next);
+                  const next = rowsRef.current.map((line, slot) => (slot === index ? event.target.value : line));
+                  commit(next);
                 }}
               />
             </label>
             <div className="student-actions">
               {index > 0 ? (
-                <button
-                  type="button"
-                  className="ink-btn ink-btn--small"
-                  aria-label={`Move instructor ${index + 1} up`}
-                  onClick={() => {
-                    const next = [...rows];
-                    const prior = next[index - 1] ?? '';
-                    next[index - 1] = next[index] ?? '';
-                    next[index] = prior;
-                    setRows(next);
-                    setText(next.join('\n'));
-                    onSave(next);
-                  }}
-                >
+                <button type="button" className="ink-btn" aria-label={`Move instructor ${index + 1} up`} onClick={() => move(index, -1)}>
                   Up
+                </button>
+              ) : null}
+              {index < rows.length - 1 ? (
+                <button type="button" className="ink-btn" aria-label={`Move instructor ${index + 1} down`} onClick={() => move(index, 1)}>
+                  Down
                 </button>
               ) : null}
               <button
                 type="button"
-                className="ink-btn ink-btn--small"
+                className="ink-btn"
                 aria-label={`Remove instructor ${index + 1}`}
-                onClick={() => {
-                  const next = rows.filter((_, slot) => slot !== index);
-                  setRows(next);
-                  setText(next.join('\n'));
-                  onSave(next);
-                }}
+                onClick={() => commit(rowsRef.current.filter((_, slot) => slot !== index))}
               >
                 Remove
               </button>
@@ -508,15 +511,7 @@ function LineageEditor({ lineage, onSave }: { lineage: string[]; onSave: (lines:
           </li>
         ))}
       </ol>
-      <button
-        type="button"
-        className="ink-btn"
-        onClick={() => {
-          const next = [...rows, ''];
-          setRows(next);
-          setText(next.join('\n'));
-        }}
-      >
+      <button type="button" className="ink-btn ink-btn--save" onClick={() => show([...rowsRef.current, ''])}>
         Add instructor
       </button>
     </section>

@@ -161,7 +161,12 @@ function rankBlock(report: StudentProgressReport): ReportBlock {
       lines.push(`${BELT_LABELS[row.belt] ?? row.belt} awarded ${row.awardedOn || 'no date'}, ${stripes}`);
     }
   }
-  if (rank?.lineage?.length) lines.push(`Lineage: ${rank.lineage.join(' / ')}`);
+  if (rank?.lineage?.length) {
+    lines.push('Lineage:');
+    rank.lineage.forEach((name, index) => {
+      lines.push(`  ${index + 1}. ${name}`);
+    });
+  }
   return { title: 'Rank and stripes', lines };
 }
 

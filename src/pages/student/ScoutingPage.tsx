@@ -24,6 +24,8 @@ import {
   saveScouting,
   scoutingCsvTemplate,
   scoutingDownload,
+  scoutingExportFileName,
+  scoutingTemplateFileName,
   scoutingImportSummary,
   searchScoutingCards,
   scoutGroupLabel,
@@ -31,6 +33,7 @@ import {
   type ScoutingCard,
   type ScoutingDraft,
 } from '../../lib/studentScouting';
+import { todayIso } from '../../lib/studentEdition';
 import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './chrome';
 
 export function ScoutingPage() {
@@ -91,13 +94,13 @@ export function ScoutingPage() {
             Cards for opponents in your weight class and in open class stay on this phone. A past match appears when that name is in Competition results.
           </p>
           <div className="student-actions">
-            <button type="button" className="ink-btn" onClick={() => scoutingDownload('advantage-roster-template.csv', scoutingCsvTemplate())}>
+            <button type="button" className="ink-btn" onClick={() => scoutingDownload(scoutingTemplateFileName(), scoutingCsvTemplate())}>
               Download template
             </button>
             <button type="button" className="ink-btn" onClick={() => csvRef.current?.click()}>
               Import CSV
             </button>
-            <button type="button" className="ink-btn" onClick={() => scoutingDownload('advantage-roster.csv', exportScoutingCsv(cards))}>
+            <button type="button" className="ink-btn" onClick={() => scoutingDownload(scoutingExportFileName(todayIso()), exportScoutingCsv(cards))}>
               Export CSV
             </button>
             <input

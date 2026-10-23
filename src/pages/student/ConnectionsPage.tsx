@@ -39,6 +39,9 @@ import { pdfBlob } from '../../lib/simplePdf';
 import {
   BACKUP_BEFORE_CLEAR,
   BACKUP_REPLACE_WARN,
+  CLEAR_CONFIRM_PHRASE,
+  CLEAR_STUDENT_DATA_ITEMS,
+  CLEAR_STUDENT_DEVICE_NOTE,
   applyBackupToMemory,
   backupVideoTooLargeMessage,
   buildStudentBackup,
@@ -84,6 +87,16 @@ export function AcademyConnectPage() {
 
 export function ConnectionsPage() {
   const to = useStudentPath();
+  const [includeVideos, setIncludeVideos] = useState(false);
+  const [backupBusy, setBackupBusy] = useState(false);
+  const backup = async () => {
+    setBackupBusy(true);
+    try {
+      return await runStudentBackup(includeVideos);
+    } finally {
+      setBackupBusy(false);
+    }
+  };
   return (
     <main className="student student-frame">
       <StudentMarks />
@@ -92,20 +105,64 @@ export function ConnectionsPage() {
         <div className="student-sheet student-connections">
           <AcademyConnect />
           <PersonalDrive />
-          <ExportAndPrint to={to} />
+          <ExportAndPrint to={to} includeVideos={includeVideos} setIncludeVideos={setIncludeVideos} backupBusy={backupBusy} onBackup={backup} />
           <section className="ink" aria-label="Import from coach">
             <h2>Import from coach</h2>
             <p className="student-quiet">
-              A coach plan or coach feedback file is a suggestion. Importing it does not change your rubric marks, checkpoints, journal, or goals.
+              A coach plan or coach feedback file is a suggestion. Importing it does not change your rubric marks, checkpoints, journal, or goals. The progress file from Send to coach merges on that page after you confirm. A backup restores from Restore from backup above.
             </p>
             <Link className="ink-btn" to={to('/student/share#import')}>
               Import from coach
             </Link>
           </section>
+          <ClearStudentData backupBusy={backupBusy} onBackup={backup} />
         </div>
       </div>
     </main>
   );
+}
+
+async function runStudentBackup(includeVideos: boolean): Promise<{ ok: boolean; message: string }> {
+  try {
+    const films = loadFilms(localStorage);
+    const blobs = includeVideos
+      ? await Promise.all(films.map(async (film) => ({ id: film.id, blob: await getFilmBlob(film.id).catch(() => null) })))
+      : [];
+    const built = await buildStudentBackup({
+      report: loadStudentReport(localStorage),
+      assessment: loadAssessments(localStorage),
+      scouting: loadScouting(localStorage),
+      rankPhotos: loadRankPictures(),
+      bracketPhotos: loadBracketPhotos(),
+      shelf: loadCoachShelf(localStorage),
+      films,
+      blobs,
+      includeVideos,
+    });
+    const names = studentBackupNames(todayIso());
+    downloadBlob(names.json, new Blob([built.json], { type: 'application/json' }));
+    downloadBlob(names.csv, new Blob([built.csv], { type: 'text/csv' }));
+    downloadBlob(names.progressPdf, pdfBlob(built.progressPdf));
+    downloadBlob(names.assessmentPdf, pdfBlob(built.assessmentPdf));
+    const files = [
+      { name: names.json, bytes: new Blob([built.json], { type: 'application/json' }), mime: 'application/json' },
+      { name: names.csv, bytes: new Blob([built.csv], { type: 'text/csv' }), mime: 'text/csv' },
+      { name: names.progressPdf, bytes: pdfBlob(built.progressPdf), mime: 'application/pdf' },
+      { name: names.assessmentPdf, bytes: pdfBlob(built.assessmentPdf), mime: 'application/pdf' },
+    ];
+    const targets = connectedBackupTargets(localStorage);
+    if (!targets.length) return { ok: true, message: 'Saved on this phone. No academy folder or personal drive is connected.' };
+    const notes = ['Saved on this phone.'];
+    for (const target of targets) {
+      const copied = await copyFilesToStudentDrive(target, files);
+      if (copied.error) notes.push(`${providerLabel(target.provider)} did not take the copy. ${copied.error}`);
+      else notes.push(`Also saved in ${target.folderName} on ${providerLabel(target.provider)}.`);
+    }
+    return { ok: true, message: notes.join(' ') };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Could not build the backup.';
+    return { ok: false, message: message.includes('too large') ? message : message || backupVideoTooLargeMessage(0) };
+  }
 }
 
 function AcademyConnect({ showHeading = true }: { showHeading?: boolean }) {
@@ -440,63 +497,31 @@ function PersonalDrive() {
   );
 }
 
-function ExportAndPrint({ to }: { to: (path: string) => string }) {
-  const [includeVideos, setIncludeVideos] = useState(false);
+function ExportAndPrint({
+  to,
+  includeVideos,
+  setIncludeVideos,
+  backupBusy,
+  onBackup,
+}: {
+  to: (path: string) => string;
+  includeVideos: boolean;
+  setIncludeVideos: (value: boolean) => void;
+  backupBusy: boolean;
+  onBackup: () => Promise<{ ok: boolean; message: string }>;
+}) {
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<StudentBackupFile | null>(null);
-  const [clearStep, setClearStep] = useState<0 | 1 | 2>(0);
+  const working = busy || backupBusy;
 
   const backup = async () => {
-    setBusy(true);
     setError('');
     setStatus('');
-    try {
-      const films = loadFilms(localStorage);
-      const blobs = includeVideos
-        ? await Promise.all(films.map(async (film) => ({ id: film.id, blob: await getFilmBlob(film.id).catch(() => null) })))
-        : [];
-      const built = await buildStudentBackup({
-        report: loadStudentReport(localStorage),
-        assessment: loadAssessments(localStorage),
-        scouting: loadScouting(localStorage),
-        rankPhotos: loadRankPictures(),
-        bracketPhotos: loadBracketPhotos(),
-        shelf: loadCoachShelf(localStorage),
-        films,
-        blobs,
-        includeVideos,
-      });
-      const names = studentBackupNames(todayIso());
-      downloadBlob(names.json, new Blob([built.json], { type: 'application/json' }));
-      downloadBlob(names.csv, new Blob([built.csv], { type: 'text/csv' }));
-      downloadBlob(names.progressPdf, pdfBlob(built.progressPdf));
-      downloadBlob(names.assessmentPdf, pdfBlob(built.assessmentPdf));
-      const files = [
-        { name: names.json, bytes: new Blob([built.json], { type: 'application/json' }), mime: 'application/json' },
-        { name: names.csv, bytes: new Blob([built.csv], { type: 'text/csv' }), mime: 'text/csv' },
-        { name: names.progressPdf, bytes: pdfBlob(built.progressPdf), mime: 'application/pdf' },
-        { name: names.assessmentPdf, bytes: pdfBlob(built.assessmentPdf), mime: 'application/pdf' },
-      ];
-      const targets = connectedBackupTargets(localStorage);
-      if (!targets.length) {
-        setStatus('Saved on this phone. No academy folder or personal drive is connected.');
-        return;
-      }
-      const notes: string[] = ['Saved on this phone.'];
-      for (const target of targets) {
-        const copied = await copyFilesToStudentDrive(target, files);
-        if (copied.error) notes.push(`${providerLabel(target.provider)} did not take the copy. ${copied.error}`);
-        else notes.push(`Also saved in ${target.folderName} on ${providerLabel(target.provider)}.`);
-      }
-      setStatus(notes.join(' '));
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not build the backup.';
-      setError(message.includes('too large') ? message : message || backupVideoTooLargeMessage(0));
-    } finally {
-      setBusy(false);
-    }
+    const result = await onBackup();
+    if (result.ok) setStatus(result.message);
+    else setError(result.message);
   };
 
   const apply = async (mode: 'merge' | 'replace') => {
@@ -530,8 +555,8 @@ function ExportAndPrint({ to }: { to: (path: string) => string }) {
         <span>Include video files kept on this phone</span>
       </label>
       <div className="student-clip__actions">
-        <button type="button" className="ink-btn ink-btn--save" disabled={busy} onClick={() => void backup()}>
-          {busy ? 'Building backup…' : 'Back up my journal'}
+        <button type="button" className="ink-btn ink-btn--save" disabled={working} onClick={() => void backup()}>
+          {backupBusy ? 'Building backup…' : 'Back up my journal'}
         </button>
         <Link className="ink-btn" to={to('/student/print/progress')}>
           Print progress report
@@ -576,45 +601,105 @@ function ExportAndPrint({ to }: { to: (path: string) => string }) {
           </button>
         </div>
       ) : null}
-      <h3>Clear journal on this phone</h3>
-      {clearStep === 0 ? (
-        <button type="button" className="ink-btn" onClick={() => setClearStep(1)}>
-          Clear journal on this phone
+      {status ? <p role="status">{status}</p> : null}
+      {error ? <p role="alert">{error}</p> : null}
+    </section>
+  );
+}
+
+function ClearStudentData({
+  backupBusy,
+  onBackup,
+}: {
+  backupBusy: boolean;
+  onBackup: () => Promise<{ ok: boolean; message: string }>;
+}) {
+  const [step, setStep] = useState<0 | 1 | 2>(0);
+  const [phrase, setPhrase] = useState('');
+  const [status, setStatus] = useState('');
+  const [error, setError] = useState('');
+  const confirmed = phrase.trim() === CLEAR_CONFIRM_PHRASE;
+
+  const reset = () => {
+    setStep(0);
+    setPhrase('');
+  };
+
+  return (
+    <section className="student-clear-zone" aria-label="Clear all Student Edition data">
+      <h2>Clear all Student Edition data</h2>
+      <p>{CLEAR_STUDENT_DEVICE_NOTE}</p>
+      {step === 0 ? (
+        <button type="button" className="ink-btn ink-btn--danger" onClick={() => setStep(1)}>
+          Clear all Student Edition data
         </button>
       ) : null}
-      {clearStep === 1 ? (
-        <div className="student-confirm" role="group" aria-label="Backup recommended">
-          <p>{BACKUP_BEFORE_CLEAR}</p>
-          <button type="button" className="ink-btn ink-btn--save" onClick={() => void backup()}>
-            Back up my journal
+      {step === 1 ? (
+        <div className="student-confirm" role="group" aria-label="Back up before clear">
+          <p>{BACKUP_BEFORE_CLEAR} Back up first, then decide.</p>
+          <button
+            type="button"
+            className="ink-btn ink-btn--save"
+            disabled={backupBusy}
+            autoFocus
+            onClick={() =>
+              void onBackup().then((result) => {
+                if (result.ok) {
+                  setStatus(result.message);
+                  setError('');
+                } else {
+                  setError(result.message);
+                  setStatus('');
+                }
+              })
+            }
+          >
+            {backupBusy ? 'Building backup…' : 'Back up first'}
           </button>
-          <button type="button" className="ink-btn" onClick={() => setClearStep(2)}>
-            Continue to clear
+          <button type="button" className="ink-btn" onClick={() => setStep(2)}>
+            Continue without a backup
           </button>
-          <button type="button" className="ink-btn" onClick={() => setClearStep(0)}>
-            Cancel clear
+          <button type="button" className="ink-btn" onClick={reset}>
+            Cancel
           </button>
         </div>
       ) : null}
-      {clearStep === 2 ? (
-        <div className="student-confirm" role="group" aria-label="Confirm clear journal">
-          <p>
-            This removes the journal, rank, belt progress, competitor data, weight chart, self-assessment, tournaments, scouting, and videos on this phone. Academy and personal drive connections stay.
-          </p>
+      {step === 2 ? (
+        <div className="student-confirm" role="group" aria-label="Confirm clear all Student Edition data">
+          <p>This erases Student Edition data on this device:</p>
+          <ul className="student-clear-list">
+            {CLEAR_STUDENT_DATA_ITEMS.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+          <p>{CLEAR_STUDENT_DEVICE_NOTE}</p>
+          <label>
+            <span className="ink__label">Type CLEAR to confirm</span>
+            <input
+              type="text"
+              aria-label="Type CLEAR to confirm"
+              value={phrase}
+              autoComplete="off"
+              onChange={(event) => setPhrase(event.target.value)}
+            />
+          </label>
           <button
             type="button"
-            className="ink-btn"
+            className="ink-btn ink-btn--danger"
+            disabled={!confirmed}
             onClick={() => {
+              if (phrase.trim() !== CLEAR_CONFIRM_PHRASE) return;
               clearStudentMemory(localStorage);
               void clearFilmBlobs().catch(() => undefined);
-              setClearStep(0);
-              setStatus('The journal on this phone was cleared.');
+              reset();
+              setStatus('Student Edition data on this device was cleared.');
+              setError('');
             }}
           >
-            Confirm clear journal
+            Erase Student Edition data
           </button>
-          <button type="button" className="ink-btn" onClick={() => setClearStep(0)}>
-            Cancel clear
+          <button type="button" className="ink-btn" onClick={reset}>
+            Cancel
           </button>
         </div>
       ) : null}
