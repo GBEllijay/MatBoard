@@ -25,6 +25,48 @@ test('home picker keeps White, Coach, and Pro and adds locked Student Edition', 
   await expect(white.getByRole('link', { name: 'advantageappllc@gmail.com' })).toBeVisible();
   await expect(white).toContainText('White is in alpha testing.');
   await expect(white).not.toContainText(/free/i);
+
+  const hero = page.locator('picture.home-hero');
+  const heroImg = hero.locator('img');
+  await expect(page.locator('video')).toHaveCount(0);
+  await expect(hero).toBeVisible();
+  await expect(hero.locator('source')).toHaveAttribute('type', 'image/webp');
+  await expect(hero.locator('source')).toHaveAttribute('srcset', '/homepage/hero-still.webp');
+  await expect(heroImg).toHaveAttribute('src', '/homepage/hero-still.jpg');
+  await expect(heroImg).toHaveAttribute(
+    'alt',
+    'Kids rolling at the gym while the Advantage scoreboard runs on the wall TV',
+  );
+  await expect(heroImg).toHaveAttribute('loading', 'eager');
+  await expect(heroImg).toHaveAttribute('width', '1200');
+  await expect(heroImg).toHaveAttribute('height', '676');
+  await expect(heroImg).toBeVisible();
+  await heroImg.evaluate((el) => {
+    if (!(el instanceof HTMLImageElement)) throw new Error('hero still is not an image');
+    return el.decode();
+  });
+  const heroLoaded = await heroImg.evaluate((el) => {
+    if (!(el instanceof HTMLImageElement)) return false;
+    return el.complete && el.naturalWidth === 1200 && el.currentSrc.endsWith('/homepage/hero-still.webp');
+  });
+  expect(heroLoaded).toBe(true);
+  const heroRadius = await heroImg.evaluate((el) => getComputedStyle(el).borderRadius);
+  expect(heroRadius).toBe('16px');
+  const column = page.locator('.home__modes');
+  const columnBox = await column.boundingBox();
+  const whiteBox = await white.boundingBox();
+  const heroBox = await heroImg.boundingBox();
+  const studentBox = await page.locator('.mode-card--student').boundingBox();
+  expect(columnBox).toBeTruthy();
+  expect(whiteBox).toBeTruthy();
+  expect(heroBox).toBeTruthy();
+  expect(studentBox).toBeTruthy();
+  expect(Math.abs(heroBox!.width - columnBox!.width)).toBeLessThan(2);
+  expect(heroBox!.y).toBeGreaterThan(whiteBox!.y + whiteBox!.height - 1);
+  expect(studentBox!.y).toBeGreaterThan(heroBox!.y + heroBox!.height - 1);
+  const heroRatio = heroBox!.width / heroBox!.height;
+  expect(heroRatio).toBeGreaterThan(1.7);
+  expect(heroRatio).toBeLessThan(1.85);
   await expect(page.locator('.mode-card--coach')).toContainText('Coach is in alpha testing.');
   await expect(page.locator('.mode-card--pro')).toContainText('Pro is in alpha testing.');
   await expect(page.locator('.mode-card--student')).toContainText('Student Edition is in alpha testing.');
@@ -70,6 +112,21 @@ test('home picker keeps White, Coach, and Pro and adds locked Student Edition', 
   await page.getByRole('button', { name: 'Got it' }).click();
 
   await page.setViewportSize({ width: 1280, height: 900 });
+  const desktopHero = await heroImg.boundingBox();
+  const desktopColumn = await column.boundingBox();
+  const desktopWhite = await white.boundingBox();
+  const desktopStudent = await student.boundingBox();
+  expect(desktopHero).toBeTruthy();
+  expect(desktopColumn).toBeTruthy();
+  expect(desktopWhite).toBeTruthy();
+  expect(desktopStudent).toBeTruthy();
+  expect(Math.abs(desktopHero!.width - desktopColumn!.width)).toBeLessThan(2);
+  expect(Math.abs(desktopHero!.x - desktopColumn!.x)).toBeLessThan(2);
+  expect(desktopHero!.y).toBeGreaterThan(desktopWhite!.y + desktopWhite!.height - 1);
+  expect(Math.abs(desktopStudent!.y - desktopWhite!.y)).toBeLessThan(8);
+  const desktopRatio = desktopHero!.width / desktopHero!.height;
+  expect(desktopRatio).toBeGreaterThan(1.7);
+  expect(desktopRatio).toBeLessThan(1.85);
   await shot(page, 'home-picker-desktop');
 });
 

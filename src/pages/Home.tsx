@@ -98,6 +98,17 @@ export function HomePage() {
             </article>
           )}
 
+          <picture className="home-hero">
+            <source srcSet="/homepage/hero-still.webp" type="image/webp" />
+            <img
+              src="/homepage/hero-still.jpg"
+              alt="Kids rolling at the gym while the Advantage scoreboard runs on the wall TV"
+              width={1200}
+              height={676}
+              loading="eager"
+            />
+          </picture>
+
           <StudentHomeCard
             open={studentOpen}
             to={studentTo}

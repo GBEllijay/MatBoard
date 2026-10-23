@@ -919,6 +919,24 @@ button.mode-card__hit {
   align-items: stretch;
 }
 
+/* Gym still. Phone: directly under Advantage White.
+   Wide layout: full product-column width on the next row, so the top cards stay put. */
+.home--ladder .home-hero {
+  display: block;
+  width: 100%;
+  margin: 0;
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.home--ladder .home-hero img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1200 / 676;
+  border-radius: 16px;
+}
+
 /* Equal tier cards. Titles share one size. Body copy fills the card and is not clipped. */
 
 .home--ladder .mode-card,
