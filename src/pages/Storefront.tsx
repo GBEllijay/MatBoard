@@ -120,7 +120,7 @@ export function StorefrontPage() {
       <div className="sf-wrap">
         <section className="sf-between" id="round-timer" aria-labelledby="store-timer">
           <Woodblock shot={STOREFRONT_WOODBLOCKS.timer} />
-          <div>
+          <div className="sf-between-copy">
             <div className="sf-eyebrow">{STOREFRONT_TIMER.eyebrow}</div>
             <h2 id="store-timer">{STOREFRONT_TIMER.title}</h2>
             <p>{STOREFRONT_TIMER.body}</p>
@@ -143,7 +143,7 @@ export function StorefrontPage() {
           </div>
           <div className="sf-steps">
             {STOREFRONT_STEPS.map((step) => (
-              <ProgressStep key={step.id} step={step} unlocked={unlocked} />
+              <ProgressStep key={step.id} step={step} />
             ))}
           </div>
           <p className="sf-note">{STOREFRONT_ALPHA_NOTE}</p>
@@ -164,9 +164,8 @@ export function StorefrontPage() {
             </p>
           </div>
           <div className="sf-footer-side">
-            <p>
-              {SITE_FEEDBACK_LEAD}{' '}
-              <a href={`mailto:${SITE_FEEDBACK_EMAIL}`}>{SITE_FEEDBACK_EMAIL}</a>
+            <p className="sf-footer-feedback">
+              <FooterFeedback />
             </p>
             <nav className="sf-footer-links" aria-label="Legal">
               <Link to="/privacy">Privacy Policy</Link>
@@ -209,7 +208,7 @@ function Woodblock({
   );
 }
 
-function ProgressStep({ step, unlocked }: { step: StorefrontStep; unlocked: boolean }) {
+function ProgressStep({ step }: { step: StorefrontStep }) {
   const body = (
     <>
       <div className="sf-rank">
@@ -229,25 +228,36 @@ function ProgressStep({ step, unlocked }: { step: StorefrontStep; unlocked: bool
           <span className={step.status === 'Available now' ? 'sf-status sf-status--now' : 'sf-status sf-status--soon'}>
             {step.status}
           </span>
-          {step.id === 'white' && unlocked ? (
-            <Link className="sf-open" to="/white">
-              Open White
-            </Link>
-          ) : null}
         </div>
       </div>
     </>
   );
 
   const className = `sf-step${step.id === 'white' ? ' sf-step--live' : ''} sf-step--${step.id}`;
-  if (step.to) {
-    return (
-      <Link className={className} to={step.to}>
-        {body}
-      </Link>
-    );
-  }
-  return <div className={className}>{body}</div>;
+  return (
+    <Link className={className} to={step.to}>
+      {body}
+    </Link>
+  );
+}
+
+/** Keeps the address with the last word so it does not sit on a line by itself. */
+function FooterFeedback() {
+  const lead = SITE_FEEDBACK_LEAD;
+  const split = lead.lastIndexOf(' ');
+  const head = split === -1 ? lead : lead.slice(0, split);
+  const tail = split === -1 ? '' : lead.slice(split + 1);
+  return (
+    <>
+      {head}{' '}
+      <span className="sf-footer-tail">
+        {tail}{' '}
+        <a className="sf-footer-mail" href={`mailto:${SITE_FEEDBACK_EMAIL}`}>
+          {SITE_FEEDBACK_EMAIL}
+        </a>
+      </span>
+    </>
+  );
 }
 
 function Belt({ id }: { id: 'white' | 'coach' | 'pro' }) {

@@ -28,8 +28,12 @@
   --sf-belt-black: #0a0b0e;
   --sf-belt-red: #ef4444;
   --sf-bar: #14161c;
-  background-color: var(--sf-navy);
-  background-image: none;
+  background-color: var(--mat-fill);
+  background-image: var(--mat-image);
+  background-size: var(--mat-tile) calc(var(--mat-tile) * 4 / 3);
+  background-position: center top;
+  background-repeat: repeat;
+  background-attachment: scroll;
   color: var(--sf-text);
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -93,6 +97,7 @@
 .home.home--store .sf-hero {
   position: relative;
   background: var(--sf-navy);
+  box-shadow: 0 24px 48px -16px rgba(5, 10, 20, 0.7);
 }
 
 .home.home--store .sf-boardbox {
@@ -329,20 +334,7 @@
 }
 
 .home.home--store .sf-tex {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: -300px;
-  bottom: -40px;
-  z-index: 0;
-  pointer-events: none;
-  background-image: var(--mat-image);
-  background-repeat: repeat;
-  background-position: center top;
-  background-size: var(--mat-tile) calc(var(--mat-tile) * 4 / 3);
-  opacity: 0.13;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 220px, #000 calc(100% - 200px), transparent);
-  mask-image: linear-gradient(to bottom, transparent 0, #000 220px, #000 calc(100% - 200px), transparent);
+  display: none;
 }
 
 .home.home--store .sf-band > .sf-wrap {
@@ -362,6 +354,11 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: 26px;
+  padding: 28px 28px 28px 26px;
+  background: rgba(14, 23, 38, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.25);
 }
 
 .home.home--store .sf-point {
@@ -434,6 +431,11 @@
   font-size: 14px;
   line-height: 1.5;
   color: var(--sf-muted);
+  width: fit-content;
+  background: rgba(14, 23, 38, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  padding: 8px 12px;
 }
 
 .home.home--store .sf-caption b {
@@ -466,6 +468,14 @@
   line-height: 1.6;
 }
 
+.home.home--store .sf-between-copy {
+  padding: 30px 32px 32px;
+  background: rgba(14, 23, 38, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
 .home.home--store .sf-prog {
   margin-top: 110px;
 }
@@ -475,6 +485,11 @@
   justify-content: space-between;
   align-items: flex-end;
   margin-bottom: 34px;
+  padding: 24px 28px;
+  background: rgba(14, 23, 38, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.25);
 }
 
 .home.home--store .sf-progress-link {
@@ -652,10 +667,10 @@
   line-height: 1;
   letter-spacing: 0.02em;
   white-space: nowrap;
-  color: #2a2d33;
+  color: #5a5f69;
   text-shadow:
-    -0.45px -0.55px 0 rgba(0, 0, 0, 0.8),
-    0.5px 0.75px 0 rgba(255, 255, 255, 0.34);
+    -0.6px -0.75px 0 #05060a,
+    0.7px 0.95px 0 rgba(255, 255, 255, 0.55);
   pointer-events: none;
 }
 
@@ -728,12 +743,18 @@
   margin-top: 26px;
   color: var(--sf-muted);
   font-size: 14px;
+  width: fit-content;
+  background: rgba(14, 23, 38, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  padding: 8px 12px;
 }
 
 .home.home--store .sf-footer {
-  border-top: 1px solid var(--sf-line);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   margin-top: 96px;
   padding: 40px 0 56px;
+  background: rgba(11, 18, 32, 0.96);
   color: var(--sf-dim);
   font-size: 13px;
   line-height: 1.8;
@@ -774,6 +795,11 @@
 
 .home.home--store .sf-footer-side {
   text-align: right;
+}
+
+.home.home--store .sf-footer-mail,
+.home.home--store .sf-footer-tail {
+  white-space: nowrap;
 }
 
 .home.home--store .sf-footer a {
@@ -893,11 +919,6 @@
     justify-content: center;
   }
 
-  .home.home--store .sf-tex {
-    top: -380px;
-    bottom: -20px;
-  }
-
   .home.home--store .sf-pair {
     grid-template-columns: 1fr;
     gap: 30px;
@@ -906,6 +927,7 @@
 
   .home.home--store .sf-points {
     gap: 18px;
+    padding: 20px 20px 20px 18px;
   }
 
   .home.home--store .sf-pair .sf-figure {
@@ -923,6 +945,10 @@
     margin-top: 64px;
   }
 
+  .home.home--store .sf-between-copy {
+    padding: 22px 20px 24px;
+  }
+
   .home.home--store .sf-between h2,
   .home.home--store .sf-prog h2 {
     font-size: 30px;
@@ -937,6 +963,7 @@
     align-items: flex-start;
     gap: 6px;
     margin-bottom: 22px;
+    padding: 18px 20px;
   }
 
   .home.home--store .sf-step {

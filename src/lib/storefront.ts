@@ -97,16 +97,17 @@ export type StorefrontStep = {
   price: string;
   /** Short price printed on the progression card. */
   cardPrice: string;
-  to: typeof PRODUCTS_PATH | null;
-  /** Coach and Pro stay off checkout. The White card is not the buy button. */
+  /** White uses the hero checkout route. The other cards open the edition picker. */
+  to: typeof STOREFRONT_BUY_PATH | typeof PRODUCTS_PATH;
+  /** These cards do not start a separate sale. White checkout is the hero route. */
   forSale: false;
   status: 'Available now' | 'Coming soon';
 };
 
 /**
  * Pass 2 progression, top to bottom.
- * Student, Coach, and Pro open the edition picker. None of these start checkout.
- * The hero Buy button is the only link to /buy.
+ * The White card opens the same checkout as the hero Buy button.
+ * Student, Coach, and Pro open the edition picker.
  */
 export const STOREFRONT_STEPS: readonly StorefrontStep[] = [
   {
@@ -117,7 +118,7 @@ export const STOREFRONT_STEPS: readonly StorefrontStep[] = [
     blurb: 'BJJ scoreboard and round timer.',
     price: `${STOREFRONT_PRICE_LABEL} one-time`,
     cardPrice: `${STOREFRONT_PRICE_LABEL} one-time`,
-    to: null,
+    to: STOREFRONT_BUY_PATH,
     forSale: false,
     status: 'Available now',
   },

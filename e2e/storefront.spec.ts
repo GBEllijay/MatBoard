@@ -86,17 +86,23 @@ test('public homepage sells Advantage White and links coming soon to the edition
   await expect(page.getByRole('button', { name: 'Advantage Coach, coming soon' })).toBeVisible();
 });
 
-test('Start with White, Student Edition, and Advantage Coach open the product picker', async ({ page }) => {
+test('White card opens checkout; Student, Coach, Pro, and the heading open the picker', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/');
 
+  const buy = page.getByRole('link', { name: 'Buy Advantage White — $9.99' });
   const heading = page.getByRole('link', { name: 'Start with White. Grow into Pro.', exact: true });
+  const white = page.locator('a.sf-step--white');
   const student = page.locator('a.sf-step--student');
   const coach = page.locator('a.sf-step--coach');
+  const pro = page.locator('a.sf-step--pro');
+  await expect(buy).toHaveAttribute('href', '/buy');
+  await expect(white).toHaveAttribute('href', '/buy');
   await expect(heading).toHaveAttribute('href', '/products');
   await expect(student).toHaveAttribute('href', '/products');
   await expect(coach).toHaveAttribute('href', '/products');
-  for (const link of [heading, student, coach]) {
+  await expect(pro).toHaveAttribute('href', '/products');
+  for (const link of [heading, student, coach, pro]) {
     const href = await link.getAttribute('href');
     expect(href).not.toBe('/buy');
     expect(href).not.toBe('/student');
@@ -104,6 +110,9 @@ test('Start with White, Student Edition, and Advantage Coach open the product pi
     expect(href ?? '').not.toMatch(/^#/);
   }
 
+  await white.click();
+  await expect(page).toHaveURL(/\/buy$/);
+  await page.goto('/');
   await heading.click();
   await expect(page).toHaveURL(/\/products$/);
   await expect(page.getByRole('heading', { name: 'Advantage', exact: true })).toBeVisible();

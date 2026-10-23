@@ -77,7 +77,9 @@ test('the three owner CTAs open the pre-Pass-2 picker and nothing else', () => {
   }
   assert.equal(STOREFRONT_STEPS.find((step) => step.id === 'student')?.to, '/products');
   assert.equal(STOREFRONT_STEPS.find((step) => step.id === 'coach')?.to, '/products');
-  assert.equal(STOREFRONT_STEPS.find((step) => step.id === 'white')?.to, null);
+  assert.equal(STOREFRONT_STEPS.find((step) => step.id === 'pro')?.to, '/products');
+  assert.equal(STOREFRONT_STEPS.find((step) => step.id === 'white')?.to, '/buy');
+  assert.equal(STOREFRONT_STEPS.find((step) => step.id === 'white')?.to, STOREFRONT_BUY_PATH);
 });
 
 test('coming soon stays Student, Coach, Pro and does not sell Coach or Pro', () => {
