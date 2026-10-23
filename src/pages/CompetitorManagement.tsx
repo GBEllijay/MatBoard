@@ -14,7 +14,7 @@ import {
   GAME_PLAN_LABEL,
   RANKINGS_RESULTS_CARD,
 } from '../lib/coachCopy';
-import { COMPETITOR_ROSTER_PATH } from '../lib/productNames';
+import { COMPETITOR_ROSTER_PATH, PRODUCTS_PATH } from '../lib/productNames';
 
 /**
  * Light paint options for this header, so the preview can be compared.
@@ -64,7 +64,7 @@ export function CompetitorManagementPage() {
     <main className="home home--pro home--suite">
       <div className="home__inner">
         <PlayExitMark to={back} />
-        <HomeMark to="/" />
+        <HomeMark to={PRODUCTS_PATH} />
         <section className="suite competitor-hub">
           <header className={`competitor-hub__header competitor-hub__header--${look}`} data-header-look={look}>
             {look === 'belt' ? <BeltRail kind="tournament" /> : null}

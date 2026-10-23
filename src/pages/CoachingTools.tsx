@@ -12,6 +12,7 @@ import {
   COACHING_TOOLS_DETAIL,
   COACHING_TOOLS_LABEL,
   COACHING_TOOLS_LEAD,
+  PRODUCTS_PATH,
   UNLIMITED_LESSON_VALUE,
   coachingToolsMenu,
 } from '../lib/productNames';
@@ -32,7 +33,7 @@ export function CoachingToolsPage() {
     <main className="home home--coach">
       <div className="home__inner">
         <PlayExitMark to="/coach" />
-        <HomeMark to="/" tagline={<TierLine tier="Coach" detail={COACH_TOOLS_TEASER} />} />
+        <HomeMark to={PRODUCTS_PATH} tagline={<TierLine tier="Coach" detail={COACH_TOOLS_TEASER} />} />
 
         <nav className="home__modes" aria-label={COACHING_TOOLS_LABEL}>
           <article className="mode-card mode-card--coach">

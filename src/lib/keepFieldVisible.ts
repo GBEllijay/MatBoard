@@ -8,10 +8,28 @@
  *
  * This walks only the scrollers that contain the field — sheet panel, bracket
  * board, or the document — and scrolls by the delta between the field and the
- * visual viewport. While the keyboard is open, visualViewport resize/scroll
- * runs the same check so the caret stays on screen. Desktop and TV layouts are
- * left alone unless a keyboard-sized inset actually appears.
+ * visual viewport. The first focus, and a short window while the keyboard
+ * animates open, scrolls the field into view once. After that — and as soon
+ * as the person scrolls — visualViewport scroll/resize must not pull the page
+ * back to the caret. Desktop and TV layouts are left alone unless a
+ * keyboard-sized inset actually appears.
  */
+
+/** How long after focus a keyboard resize may still nudge the field. */
+export const FOCUS_CHASE_WINDOW_MS = 1100;
+
+/**
+ * Later viewport events must not chase a field the person has scrolled away
+ * from, and they must not chase after the keyboard-open window.
+ */
+export function shouldChaseFocusedField(input: {
+  userScrolled: boolean;
+  now: number;
+  chaseUntil: number;
+}): boolean {
+  if (input.userScrolled) return false;
+  return input.now <= input.chaseUntil;
+}
 
 export const KEYBOARD_INSET_MIN_PX = 150;
 export const PHONE_LAYOUT_MAX_WIDTH_PX = 900;
@@ -444,9 +462,14 @@ function ensureCenterRoom(scroller: HTMLElement, el: HTMLElement, visualHeight: 
   if (next > 0) setPad(scroller, next);
 }
 
+const SCROLL_AWAY_PX = 28;
+
 export function installKeepFocusedFieldVisible(): () => void {
   let active: HTMLElement | null = null;
   let running = false;
+  let userScrolled = false;
+  let chaseUntil = 0;
+  let gesture: { x: number; y: number } | null = null;
   const timers = new Set<number>();
 
   const clearTimers = () => {
@@ -454,8 +477,13 @@ export function installKeepFocusedFieldVisible(): () => void {
     timers.clear();
   };
 
+  const stopChasing = () => {
+    userScrolled = true;
+    clearTimers();
+  };
+
   const run = (mode: RevealMode) => {
-    if (running || !active || !active.isConnected) return;
+    if (userScrolled || running || !active || !active.isConnected) return;
     const metrics = readMetrics();
     if (!shouldKeepFieldInView(metrics)) {
       clearKeyboardAdjustments();
@@ -472,11 +500,14 @@ export function installKeepFocusedFieldVisible(): () => void {
   const onFocusIn = (event: FocusEvent) => {
     if (!isKeyboardField(event.target)) return;
     active = event.target;
+    userScrolled = false;
+    chaseUntil = performance.now() + FOCUS_CHASE_WINDOW_MS;
     clearTimers();
     run('focus');
     for (const delay of FOCUS_RETRY_MS) {
       const id = window.setTimeout(() => {
         timers.delete(id);
+        if (userScrolled) return;
         run('focus');
       }, delay);
       timers.add(id);
@@ -503,7 +534,28 @@ export function installKeepFocusedFieldVisible(): () => void {
       clearKeyboardAdjustments();
       return;
     }
+    if (!shouldChaseFocusedField({ userScrolled, now: performance.now(), chaseUntil })) return;
     run('viewport');
+  };
+
+  const onPointerDown = (event: PointerEvent) => {
+    gesture = { x: event.clientX, y: event.clientY };
+  };
+
+  const onPointerMove = (event: PointerEvent) => {
+    if (!active || !gesture || userScrolled) return;
+    const distance = Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y);
+    if (distance < SCROLL_AWAY_PX) return;
+    stopChasing();
+  };
+
+  const onPointerEnd = () => {
+    gesture = null;
+  };
+
+  const onWheel = () => {
+    if (!active || userScrolled) return;
+    stopChasing();
   };
 
   const onOrientation = () => {
@@ -517,8 +569,12 @@ export function installKeepFocusedFieldVisible(): () => void {
 
   document.addEventListener('focusin', onFocusIn);
   document.addEventListener('focusout', onFocusOut);
+  document.addEventListener('pointerdown', onPointerDown, true);
+  document.addEventListener('pointermove', onPointerMove, true);
+  document.addEventListener('pointerup', onPointerEnd, true);
+  document.addEventListener('pointercancel', onPointerEnd, true);
+  document.addEventListener('wheel', onWheel, { capture: true, passive: true });
   window.visualViewport?.addEventListener('resize', onViewport);
-  window.visualViewport?.addEventListener('scroll', onViewport);
   window.addEventListener('resize', onViewport);
   window.addEventListener('orientationchange', onOrientation);
   screen.orientation?.addEventListener('change', onOrientation);
@@ -529,8 +585,12 @@ export function installKeepFocusedFieldVisible(): () => void {
     clearKeyboardAdjustments();
     document.removeEventListener('focusin', onFocusIn);
     document.removeEventListener('focusout', onFocusOut);
+    document.removeEventListener('pointerdown', onPointerDown, true);
+    document.removeEventListener('pointermove', onPointerMove, true);
+    document.removeEventListener('pointerup', onPointerEnd, true);
+    document.removeEventListener('pointercancel', onPointerEnd, true);
+    document.removeEventListener('wheel', onWheel, true);
     window.visualViewport?.removeEventListener('resize', onViewport);
-    window.visualViewport?.removeEventListener('scroll', onViewport);
     window.removeEventListener('resize', onViewport);
     window.removeEventListener('orientationchange', onOrientation);
     screen.orientation?.removeEventListener('change', onOrientation);

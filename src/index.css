@@ -16917,6 +16917,187 @@ a.plan-pick {
   pointer-events: auto;
 }
 
+/* Public Advantage White storefront. Same mat, logo, and type as the app. */
+.home--store .home__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: min(52rem, 100%);
+  max-width: 52rem;
+  grid-template-columns: none;
+  grid-template-rows: none;
+  grid-template-areas: none;
+}
+
+.home--store .home__mark,
+.home--store .home__logo {
+  text-align: center;
+  margin-inline: auto;
+}
+
+.home--store .home__logo {
+  width: clamp(6.5rem, 28vw, 9rem);
+}
+
+.store-hero,
+.store-feature,
+.store-soon {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.store-hero {
+  margin-bottom: 1.4rem;
+  padding: 1.15rem 1.2rem 1.3rem;
+  border-radius: var(--radius);
+  background: var(--bg-2);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.46);
+}
+
+.store-hero h2,
+.store-feature h2,
+.store-soon h2 {
+  margin: 0;
+  font-size: clamp(1.7rem, 5vw, 2.4rem);
+  letter-spacing: -0.04em;
+}
+
+.home .store-hero__lead,
+.home .store-feature p,
+.home .store-soon > p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.store-hero__actions {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.store-hero__buy {
+  min-height: 64px;
+  padding: 0.95rem 1.4rem;
+  font-size: 1.2rem;
+  background: var(--logo-yellow);
+  color: #14161c;
+}
+
+.store-feature {
+  margin-bottom: 1.3rem;
+}
+
+.store-feature__shot {
+  margin: 0;
+  overflow: hidden;
+  border-radius: var(--radius);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: #07080b;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.46);
+}
+
+.store-feature__shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.store-soon {
+  margin-top: 0.4rem;
+}
+
+.store-soon__mail {
+  color: var(--gold-2);
+  font-weight: 800;
+}
+
+.store-soon__list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.store-soon__card {
+  position: relative;
+  display: grid;
+  gap: 0.28rem;
+  padding: 0.9rem 1rem 1rem 1.35rem;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--bg-2);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: inherit;
+  text-decoration: none;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.46);
+}
+
+.store-soon__card strong {
+  font-size: 1.2rem;
+  letter-spacing: -0.03em;
+}
+
+.store-soon__status,
+.store-soon__price {
+  color: var(--gold-2);
+  font-weight: 800;
+}
+
+.store-soon__status {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.store-soon__teaser {
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.buy__checkout .buy__code input {
+  min-height: 56px;
+  border-color: rgba(240, 194, 75, 0.75);
+  font-size: 1.05rem;
+}
+
+/*
+ * Corner logo is back. Center logo is Home.
+ * Landscape phone and tablet grids park the Home mark on top of the corner mark
+ * once the logo shrinks. Drop the Home mark below that 64px hit target.
+ */
+@media (orientation: landscape) and (max-width: 1400px) {
+  .home__inner:has(> .play-exit) > .home__mark {
+    padding-top: 4.85rem;
+    text-align: center;
+  }
+
+  .home__inner:has(> .play-exit) > .home__mark .home__logo {
+    margin-inline: auto;
+  }
+}
+
+@media (min-width: 800px) {
+  .store-hero__actions {
+    grid-template-columns: auto auto;
+    justify-content: start;
+  }
+
+  .store-hero__buy,
+  .store-hero__actions .btn {
+    width: auto;
+    min-width: 16rem;
+  }
+
+  .store-feature {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.2fr);
+    align-items: center;
+    gap: 1.2rem;
+  }
+
+  .store-feature:nth-of-type(even) .store-feature__copy {
+    order: 2;
+  }
+}
+
 /* Score toast sits in the clock band, left of center, so it does not cover POINTS. */
 .display > .tv-tip {
   top: 50%;

@@ -10,6 +10,7 @@ import {
   COMPETITION_MANAGEMENT_LABEL,
   COMPETITION_MENU,
   COMPETITION_MENU_PRO,
+  PRODUCTS_PATH,
 } from '../lib/productNames';
 
 export function CompetitionManagementPage() {
@@ -17,7 +18,7 @@ export function CompetitionManagementPage() {
     <main className="home home--coach">
       <div className="home__inner">
         <PlayExitMark to="/coach" />
-        <HomeMark to="/" tagline={<TierLine tier="Coach" detail={COACH_TOOLS_TEASER} />} />
+        <HomeMark to={PRODUCTS_PATH} tagline={<TierLine tier="Coach" detail={COACH_TOOLS_TEASER} />} />
 
         <nav className="home__modes" aria-label={COMPETITION_MANAGEMENT_LABEL}>
           <article className="mode-card mode-card--coach">

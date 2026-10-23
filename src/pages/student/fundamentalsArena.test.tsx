@@ -95,7 +95,7 @@ test('fundamentals keeps every control on the dark arena surface', () => {
   assert.ok(main?.classList.contains('student--arena'));
   assert.ok(main?.classList.contains('student--fundamentals'));
   assert.equal(labeled(host, 'Back. Hold for Home.').getAttribute('href'), '/student');
-  assert.equal(labeled(host, 'Home').getAttribute('href'), '/');
+  assert.equal(labeled(host, 'Home').getAttribute('href'), '/products');
   assert.equal(host.querySelector('h1')?.textContent, 'Fundamentals');
   assert.ok(host.textContent?.includes('0.0'));
   assert.ok(host.textContent?.includes('live or better'));

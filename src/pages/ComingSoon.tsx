@@ -10,7 +10,7 @@ import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useSeatDoor } from '../hooks/useSeatDoor';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import { lockCoach } from '../lib/coachUnlock';
-import { COACH_HUBS, coachDoorOpen, consoleHubs } from '../lib/productNames';
+import { COACH_HUBS, PRODUCTS_PATH, coachDoorOpen, consoleHubs } from '../lib/productNames';
 import { lockPro } from '../lib/proUnlock';
 import { whiteEntryPath } from '../lib/whiteUnlock';
 
@@ -23,7 +23,7 @@ export function ComingSoonPage() {
   const seated = useCurrentSeat() !== null;
   const coachTools = coachDoorOpen(proUnlocked, coachUnlocked, seated);
   const [unlockOpen, setUnlockOpen] = useState<'coach' | 'pro' | null>(null);
-  if (door.seated) return <Navigate to="/" replace />;
+  if (door.seated) return <Navigate to={PRODUCTS_PATH} replace />;
 
   const tagline = proUnlocked
     ? 'Advantage Pro is on for this browser.'
@@ -36,7 +36,7 @@ export function ComingSoonPage() {
   return (
     <main className="home home--soon">
       <div className="home__inner home__inner--soon">
-        <HomeMark to="/" tagline={tagline} />
+        <HomeMark to={PRODUCTS_PATH} tagline={tagline} />
 
         {coachTools ? (
           <nav className="home__soon-actions" aria-label={proUnlocked ? 'Pro' : 'Coach'}>
@@ -65,7 +65,7 @@ export function ComingSoonPage() {
                   </Link>
                 ))
               : null}
-            <Link className="btn btn--ghost" to="/">
+            <Link className="btn btn--ghost" to={PRODUCTS_PATH}>
               Home
             </Link>
             {proUnlocked ? (
@@ -92,7 +92,7 @@ export function ComingSoonPage() {
             <Link className="btn" to={whiteEntryPath(whiteUnlocked)}>
               {whiteUnlocked ? 'Advantage White' : 'Buy Advantage White'}
             </Link>
-            <Link className="btn btn--ghost" to="/">
+            <Link className="btn btn--ghost" to={PRODUCTS_PATH}>
               Back to home
             </Link>
             <button type="button" className="btn btn--ghost" onClick={() => setUnlockOpen('coach')}>

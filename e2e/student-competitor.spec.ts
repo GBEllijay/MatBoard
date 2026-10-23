@@ -28,7 +28,7 @@ test('competitor tracker, game, weight, calendar, and coach import', async ({ br
   await competitor.click();
   await expect(page.getByRole('heading', { name: 'Competitor' })).toBeVisible();
   await expect(page.getByRole('link', { name: BACK, exact: true })).toHaveAttribute('href', '/student');
-  await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute('href', '/');
+  await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute('href', '/products');
 
   const today = await page.evaluate(() => {
     const now = new Date();

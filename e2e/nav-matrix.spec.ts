@@ -51,7 +51,7 @@ async function assertBackAndHome(page: Page, backPath: string) {
   const back = page.getByRole('link', { name: BACK, exact: true });
   const home = page.getByRole('link', { name: 'Home', exact: true });
   await expect(back).toHaveAttribute('href', backPath);
-  await expect(home).toHaveAttribute('href', '/');
+  await expect(home).toHaveAttribute('href', '/products');
   await back.click();
   await expect.poll(() => pathOf(page)).toBe(backPath);
 }
@@ -59,11 +59,11 @@ async function assertBackAndHome(page: Page, backPath: string) {
 async function assertHomeFrom(page: Page, reopen: () => Promise<void>) {
   await reopen();
   const home = page.getByRole('link', { name: 'Home', exact: true });
-  await expect(home).toHaveAttribute('href', '/');
+  await expect(home).toHaveAttribute('href', '/products');
   const covered = await home.evaluate((el) => getComputedStyle(el).pointerEvents === 'none');
   if (covered) await page.setViewportSize(PHONE);
   await home.click();
-  await expect.poll(() => new URL(page.url()).pathname).toBe('/');
+  await expect.poll(() => new URL(page.url()).pathname).toBe('/products');
   if (covered) await page.setViewportSize(DESKTOP);
 }
 
@@ -73,9 +73,9 @@ test('tier homes use the center logo for home and have no corner back', async ({
     await page.goto(path);
     await expect(page.getByRole('link', { name: BACK, exact: true })).toHaveCount(0);
     const home = page.getByRole('link', { name: 'Home', exact: true });
-    await expect(home).toHaveAttribute('href', '/');
+    await expect(home).toHaveAttribute('href', '/products');
     await home.click();
-    await expect.poll(() => new URL(page.url()).pathname).toBe('/');
+    await expect.poll(() => new URL(page.url()).pathname).toBe('/products');
   }
 });
 

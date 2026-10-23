@@ -16,18 +16,18 @@ test('short press keeps the parent page', () => {
 });
 
 test('long press goes home and skips the parent exit', () => {
-  assert.equal(PLAY_EXIT_HOME, '/');
-  assert.equal(playExitDestination('/schedule', true), '/');
-  assert.equal(playExitDestination('/slideshow?folder=gallery', true), '/');
-  assert.equal(playExitDestination('/white', true), '/');
+  assert.equal(PLAY_EXIT_HOME, '/products');
+  assert.equal(playExitDestination('/schedule', true), '/products');
+  assert.equal(playExitDestination('/slideshow?folder=gallery', true), '/products');
+  assert.equal(playExitDestination('/white', true), '/products');
   assert.equal(playExitKeepsParentExit('/schedule', true), false);
   assert.equal(playExitKeepsParentExit('/slideshow?folder=gallery', true), false);
 });
 
 test('long press on a mark that already goes home keeps that exit', () => {
-  assert.equal(playExitDestination('/', true), '/');
-  assert.equal(playExitKeepsParentExit('/', true), true);
-  assert.equal(playExitLabel('/'), 'Home');
+  assert.equal(playExitDestination('/products', true), '/products');
+  assert.equal(playExitKeepsParentExit('/products', true), true);
+  assert.equal(playExitLabel('/products'), 'Home');
 });
 
 test('corner mark names back and hold-for-home when the parent is not home', () => {

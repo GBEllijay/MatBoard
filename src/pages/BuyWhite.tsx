@@ -16,7 +16,7 @@ import {
   STUDENT_ALPHA_ACCESS_NOTE,
   STUDENT_LIST_PRICE_CENTS,
 } from '../lib/productPrices';
-import { STUDENT_EDITION_NAME } from '../lib/productNames';
+import { PRODUCTS_PATH, STUDENT_EDITION_NAME } from '../lib/productNames';
 import { studentEditionOpen } from '../lib/studentEdition';
 import {
   WHITE_CHECKOUT_API,
@@ -187,6 +187,7 @@ export function BuyWhitePage() {
     if (pending) return;
     setError(null);
     const typed = promoInput.trim();
+    if (unlocked && !typed) return;
     if (isWhiteFreeCode(typed)) {
       setPending(true);
       const result = await unlockFromPrivateLink(typed);
@@ -237,26 +238,7 @@ export function BuyWhitePage() {
             <p>{WHITE_STRIPE_NOTE}</p>
           </header>
 
-          <section className="buy__card">
-            <div className="buy__block">
-              <h3>Included</h3>
-              <ul>
-                {WHITE_INCLUDED.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-            <div className="buy__block">
-              <h3>Features</h3>
-              <ul>
-                {WHITE_FEATURES.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-          </section>
-
-          <form className="buy__card" onSubmit={(event) => void onSubmit(event)}>
+          <form className="buy__card buy__checkout" onSubmit={(event) => void onSubmit(event)}>
             {checkout === 'success' ? (
               <p className="buy__status buy__status--ok" role="status">
                 {record?.entitled
@@ -284,36 +266,66 @@ export function BuyWhitePage() {
                 {error}
               </p>
             ) : null}
+            <label className="buy__code" htmlFor="promotion-code">
+              Unlock or promo code
+              <input
+                id="promotion-code"
+                name="promotionCode"
+                value={promoInput}
+                onChange={(event) => setPromoInput(event.target.value)}
+                autoComplete="off"
+                autoCapitalize="characters"
+                spellCheck={false}
+                enterKeyHint="done"
+                aria-label="Unlock or promo code"
+                placeholder="Optional"
+              />
+            </label>
+            <p className="buy__hint">
+              Optional. An unlock code opens Advantage White on this device. A promo code applies at Stripe checkout.
+            </p>
             {unlocked ? (
               <Link className="btn btn--white" to="/white">
                 Open White
               </Link>
-            ) : (
-              <>
-                <label className="buy__code">
-                  Enter a code
-                  <input
-                    name="promotionCode"
-                    value={promoInput}
-                    onChange={(event) => setPromoInput(event.target.value)}
-                    autoComplete="off"
-                    autoCapitalize="characters"
-                    spellCheck={false}
-                    enterKeyHint="done"
-                  />
-                </label>
-                <p className="buy__hint">Optional. A code can unlock Advantage White or apply at checkout.</p>
-                <button className="btn btn--white" type="submit" disabled={pending}>
-                  {pending ? 'Opening checkout…' : `Continue to checkout — ${WHITE_PRICE_LABEL}`}
-                </button>
-              </>
-            )}
+            ) : null}
+            {!unlocked || promoInput.trim() ? (
+              <button className="btn btn--white" type="submit" disabled={pending}>
+                {pending
+                  ? 'Opening checkout…'
+                  : unlocked
+                    ? 'Apply code'
+                    : `Continue to checkout — ${WHITE_PRICE_LABEL}`}
+              </button>
+            ) : null}
             <p>
               <Link to="/terms">Terms of Service</Link>
               {' · '}
               <Link to="/privacy">Privacy Policy</Link>
+              {' · '}
+              <Link to={PRODUCTS_PATH}>All editions</Link>
             </p>
           </form>
+
+          <section className="buy__card">
+            <div className="buy__block">
+              <h3>Included</h3>
+              <ul>
+                {WHITE_INCLUDED.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="buy__block">
+              <h3>Features</h3>
+              <ul>
+                {WHITE_FEATURES.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          </section>
+
           {unlocked ? null : (
             <form className="buy__card" onSubmit={(event) => void onRestore(event)}>
               <h3>Already purchased?</h3>

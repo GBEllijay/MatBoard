@@ -13,7 +13,7 @@ import {
   type SoonProduct,
 } from '../lib/comingSoonAds';
 import { COACH_ALPHA_ACCESS_NOTE, PRO_ALPHA_ACCESS_NOTE, STUDENT_ALPHA_ACCESS_NOTE } from '../lib/productPrices';
-import { SITE_FEEDBACK_EMAIL } from '../lib/siteFooter';
+import { alphaRequestMailto, SITE_FEEDBACK_EMAIL } from '../lib/siteFooter';
 
 const LAUNCH_PRICE_NOTE: Record<SoonProduct, string> = {
   coach: COACH_LAUNCH_PRICE_NOTE,
@@ -72,7 +72,7 @@ function AlphaTrialNote({ note }: { note: string }) {
   return (
     <p className="soon-ad__trial">
       {before}
-      <a href={`mailto:${SITE_FEEDBACK_EMAIL}`}>{SITE_FEEDBACK_EMAIL}</a>
+      <a href={alphaRequestMailto()}>{SITE_FEEDBACK_EMAIL}</a>
       {after}
     </p>
   );

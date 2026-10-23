@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { DriveHandoffCheck, DriveHandoffGuide, useDriveConnected } from './DriveHandoffGuide';
+import { PRODUCTS_PATH } from '../lib/productNames';
 import {
   DRIVE_HANDOFF_LEAD,
   DRIVE_HANDOFF_MISSING,
@@ -37,7 +38,7 @@ export function InviteHandoffAccept({ token }: { token: string }) {
     }
     setChecked(true);
     setNote(DRIVE_HANDOFF_SAVED);
-    navigate('/', { replace: true });
+    navigate(PRODUCTS_PATH, { replace: true });
   };
 
   return (
@@ -48,7 +49,7 @@ export function InviteHandoffAccept({ token }: { token: string }) {
           <h1>Open this invite</h1>
           <p>{DRIVE_HANDOFF_LEAD}</p>
           <p>
-            <Link to="/">Back</Link>
+            <Link to={PRODUCTS_PATH}>Back</Link>
           </p>
           {connected ? <DriveHandoffCheck on={checked} onClick={() => void check()} /> : null}
           {!connected || needsConnect ? <DriveHandoffGuide /> : null}

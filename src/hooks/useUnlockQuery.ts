@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { applyCoachUnlockSearch, stripCoachUnlockParams } from '../lib/coachUnlock';
+import { PRODUCTS_PATH } from '../lib/productNames';
 import {
   applyFullOwnerSearch,
   applyUnlockSearch,
@@ -15,6 +16,8 @@ import {
  */
 export function useUnlockQuery(): void {
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const hasPro = searchParams.has('pro') || searchParams.has('unlock');
@@ -27,6 +30,12 @@ export function useUnlockQuery(): void {
     const appliedFull = applyFullOwnerSearch(searchParams);
     if (!appliedPro && !appliedCoach && !appliedFull) return;
     const next = stripFullOwnerStudentParam(stripCoachUnlockParams(stripUnlockParams(searchParams)));
+    // Stripping the code on `/` would leave the storefront. Owner links still open the edition picker.
+    if (location.pathname === '/' || location.pathname === '/editions') {
+      const qs = next.toString();
+      navigate({ pathname: PRODUCTS_PATH, search: qs ? `?${qs}` : '' }, { replace: true });
+      return;
+    }
     setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, location.pathname, navigate]);
 }
