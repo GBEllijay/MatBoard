@@ -278,13 +278,114 @@ test('portrait stacks the logo, wordmark, and link bar above Competitor 1', asyn
     const mark = getComputedStyle(document.querySelector('.sf-hero-brand')!).display;
     const copy = document.querySelector('.sf-copy')!.getBoundingClientRect();
     const board = document.querySelector('.sf-sb')!.getBoundingClientRect();
+    const logo = document.querySelector('.sf-portrait-brand img')!.getBoundingClientRect();
+    const word = document.querySelector('.sf-portrait-word')!.getBoundingClientRect();
     const hits =
       copy.left < board.right - 1 && copy.right > board.left + 1 && copy.top < board.bottom - 1 && copy.bottom > board.top + 1;
-    return { brand, mark, hits };
+    const overlaps = (a: DOMRect, b: DOMRect) =>
+      a.left < b.right - 1 && a.right > b.left + 1 && a.top < b.bottom - 1 && a.bottom > b.top + 1;
+    return {
+      brand,
+      mark,
+      hits,
+      logoAboveWord: logo.bottom <= word.top + 1,
+      wordAboveBoard: word.bottom <= board.top + 1,
+      logoHitsBoard: overlaps(logo, board),
+      wordHitsBoard: overlaps(word, board),
+    };
   });
-  expect(desktop.brand).toBe('none');
-  expect(desktop.mark).not.toBe('none');
+  expect(desktop.brand).not.toBe('none');
+  expect(desktop.mark).toBe('none');
+  expect(desktop.logoAboveWord).toBe(true);
+  expect(desktop.wordAboveBoard).toBe(true);
+  expect(desktop.logoHitsBoard).toBe(false);
+  expect(desktop.wordHitsBoard).toBe(false);
   expect(desktop.hits).toBe(true);
+});
+
+test('homepage Home logo stays pinned above the scoreboard after scroll and hover', async ({ page }) => {
+  for (const size of [
+    { width: 390, height: 844 },
+    { width: 1280, height: 800 },
+    { width: 1440, height: 900 },
+  ]) {
+    await page.setViewportSize(size);
+    await page.goto('/');
+    const logo = page.locator('.sf-portrait-brand img');
+    await expect(logo).toBeVisible();
+    const read = () =>
+      page.evaluate(() => {
+        const rect = (el: Element | null) => {
+          if (!(el instanceof HTMLElement)) return null;
+          const r = el.getBoundingClientRect();
+          return { top: r.top, left: r.left, right: r.right, bottom: r.bottom, width: r.width, height: r.height };
+        };
+        const overlaps = (
+          a: { left: number; right: number; top: number; bottom: number } | null,
+          b: { left: number; right: number; top: number; bottom: number } | null,
+        ) => Boolean(a && b && a.left < b.right - 1 && a.right > b.left + 1 && a.top < b.bottom - 1 && a.bottom > b.top + 1);
+        const logoBox = rect(document.querySelector('.sf-portrait-brand img'));
+        const word = rect(document.querySelector('.sf-portrait-word'));
+        const board = rect(document.querySelector('.sf-sb'));
+        const title = rect(document.querySelector('h1'));
+        const scroller = document.querySelector('.sf-scroll');
+        const clip = (
+          r: { top: number; left: number; right: number; bottom: number } | null,
+        ) => {
+          if (!r || !(scroller instanceof HTMLElement)) return r;
+          const c = scroller.getBoundingClientRect();
+          const next = {
+            top: Math.max(r.top, c.top),
+            bottom: Math.min(r.bottom, c.bottom),
+            left: Math.max(r.left, c.left),
+            right: Math.min(r.right, c.right),
+          };
+          if (next.bottom - next.top < 1 || next.right - next.left < 1) return null;
+          return next;
+        };
+        const boardSeen = clip(board);
+        const titleSeen = clip(title);
+        const hit = logoBox
+          ? document.elementFromPoint(logoBox.left + logoBox.width / 2, logoBox.top + logoBox.height / 2)
+          : null;
+        const mark = document.querySelector('.sf-portrait-brand');
+        return {
+          logo: logoBox,
+          wordAboveBoard: word != null && board != null && word.bottom <= board.top + 1,
+          logoAboveWord: logoBox != null && word != null && logoBox.bottom <= word.top + 1,
+          logoHitsBoard: overlaps(logoBox, boardSeen),
+          logoHitsTitle: overlaps(logoBox, titleSeen),
+          wordHitsBoard: overlaps(word, boardSeen),
+          onTop: hit instanceof Node && mark instanceof Node && mark.contains(hit),
+        };
+      });
+    const before = await read();
+    expect(before.logoAboveWord, `${size.width} logo above Advantage`).toBe(true);
+    expect(before.wordAboveBoard, `${size.width} Advantage above the scoreboard`).toBe(true);
+    expect(before.logoHitsBoard, `${size.width} logo covers the scoreboard`).toBe(false);
+    expect(before.logoHitsTitle, `${size.width} logo covers the title`).toBe(false);
+    expect(before.wordHitsBoard, `${size.width} Advantage covers the scoreboard`).toBe(false);
+    expect(before.onTop, `${size.width} logo receives the pointer`).toBe(true);
+    await logo.hover();
+    await page.locator('.sf-sb').hover();
+    const hovered = await read();
+    expect(Math.abs((hovered.logo?.top ?? 0) - (before.logo?.top ?? 0)), `${size.width} hover`).toBeLessThan(1);
+    expect(Math.abs((hovered.logo?.left ?? 0) - (before.logo?.left ?? 0)), `${size.width} hover`).toBeLessThan(1);
+    const moved = await page.evaluate(() => {
+      const scroller = document.querySelector('.sf-scroll');
+      if (!(scroller instanceof HTMLElement)) return 0;
+      scroller.scrollTop = Math.min(640, scroller.scrollHeight);
+      return scroller.scrollTop;
+    });
+    expect(moved, `${size.width} scrolls`).toBeGreaterThan(40);
+    const after = await read();
+    expect(after.logo && after.logo.top >= -1 && after.logo.bottom <= size.height + 1, `${size.width} logo in view`).toBe(true);
+    expect(Math.abs((after.logo?.top ?? 0) - (before.logo?.top ?? 0)), `${size.width} scrolled`).toBeLessThan(1);
+    expect(Math.abs((after.logo?.left ?? 0) - (before.logo?.left ?? 0)), `${size.width} scrolled`).toBeLessThan(1);
+    expect(after.logoHitsBoard, `${size.width} logo covers the scoreboard after scroll`).toBe(false);
+    expect(after.onTop, `${size.width} logo stays above scrolling content`).toBe(true);
+    expect(after.logo && after.logo.width >= 44 * 1.6, `${size.width} pinned logo scale`).toBe(true);
+  }
 });
 
 test('a focused field is not pulled back after the person scrolls', async ({ page }) => {
@@ -292,12 +393,29 @@ test('a focused field is not pulled back after the person scrolls', async ({ pag
   await page.goto('/buy');
   const field = page.getByRole('textbox', { name: 'Unlock or promo code' });
   await field.focus();
-  const before = await page.evaluate(() => window.scrollY);
+  const readScroll = () =>
+    page.evaluate(() => {
+      const active = document.activeElement;
+      let node = active instanceof HTMLElement ? active.parentElement : null;
+      while (node) {
+        const style = getComputedStyle(node);
+        if (
+          (style.overflowY === 'auto' || style.overflowY === 'scroll') &&
+          node.scrollHeight > node.clientHeight + 8
+        ) {
+          return node.scrollTop;
+        }
+        node = node.parentElement;
+      }
+      return window.scrollY;
+    });
+  const before = await readScroll();
+  await field.hover();
   await page.mouse.wheel(0, 400);
   await page.waitForTimeout(250);
-  const afterWheel = await page.evaluate(() => window.scrollY);
+  const afterWheel = await readScroll();
   expect(afterWheel).toBeGreaterThan(before + 40);
   await page.waitForTimeout(800);
-  const settled = await page.evaluate(() => window.scrollY);
+  const settled = await readScroll();
   expect(Math.abs(settled - afterWheel)).toBeLessThan(30);
 });

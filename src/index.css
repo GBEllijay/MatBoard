@@ -264,14 +264,26 @@ label.btn {
   text-align: center;
 }
 
+/* Pinned size is --mark-home (112px), not the old in-flow clamp (~164px on a phone).
+   112 / 44 = 2.55, still clearly above the 1.6 floor, and the reserved band stays
+   about 127px so the title and scoreboard keep the rest of the screen.
+   max-width holds later clamps to this pinned size. No hover offset. */
 .home__logo {
-  width: clamp(max(8rem, var(--mark-home)), 42vw, 11.5rem);
+  position: fixed;
+  top: calc(0.2rem + var(--safe-t));
+  left: 50%;
+  z-index: 24;
+  width: var(--mark-home);
+  height: var(--mark-home);
   min-width: var(--mark-home);
-  height: auto;
+  min-height: var(--mark-home);
+  max-width: var(--mark-home);
+  max-height: var(--mark-home);
   aspect-ratio: 1;
   flex-shrink: 0;
   display: block;
-  margin: 0 auto 1.05rem;
+  margin: 0;
+  transform: translateX(-50%);
   filter: drop-shadow(0 16px 36px rgba(0, 0, 0, 0.42));
 }
 
@@ -3278,9 +3290,10 @@ span.role-plan__mark {
   z-index: 46;
 }
 
-/* Play watermark: quiet top-left, fat-thumb hit. Slideshow keeps the bottom free for name labels; Training keeps the clock clear. */
+/* Play watermark: quiet top-left, fat-thumb hit. Slideshow keeps the bottom free for name labels; Training keeps the clock clear.
+   Pinned to the viewport. Size, corner, and hold-for-home behavior stay the same. */
 .play-exit {
-  position: absolute;
+  position: fixed;
   top: calc(0.2rem + var(--safe-t));
   left: calc(0.15rem + var(--safe-l));
   z-index: 6;
@@ -3332,9 +3345,10 @@ span.role-plan__mark {
   opacity: 0.55;
 }
 
-/* Center Advantage mark. Home is the tier picker. Larger than the corner back. */
+/* Center Advantage mark. Home is the tier picker. Larger than the corner back.
+   Pinned with the corner mark. --mark-home (112px) is 2.55× the 44px back image. */
 .tier-home {
-  position: absolute;
+  position: fixed;
   top: calc(0.2rem + var(--safe-t));
   left: 50%;
   z-index: 22;
@@ -3374,11 +3388,31 @@ span.role-plan__mark {
   outline-offset: 2px;
 }
 
-/* The center Home mark is its own row. Titles, kickers, and header buttons start under it. */
-main:has(> .tier-home) > .roster__bar,
-main:has(> .tier-home) > .techniques__bar,
-main:has(> .tier-home) > .schedule__bar {
+/* Class Schedule fills the screen and does not scroll the page. The bar's top
+   padding keeps the title under the pinned center mark. Phone hides that mark. */
+main.schedule:has(> .tier-home) > .schedule__bar {
   padding-top: calc(var(--mark-home-clear) + var(--safe-t));
+}
+
+/* Document pages scroll inside the page, under a border the content cannot enter.
+   The border is the reserved band for the pinned Home logo. */
+main.home:has(.home__logo),
+main.roster:has(> .tier-home),
+main.white-roster:has(> .tier-home) {
+  box-sizing: border-box;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: auto;
+  border-top: calc(var(--mark-home-clear) + var(--safe-t)) solid transparent;
+}
+
+main.roster:has(> .tier-home) > :not(.play-exit):not(.tier-home) {
+  flex-shrink: 0;
+}
+
+main.home:has(.home__logo) > .home__inner {
+  min-height: 0;
+  align-items: start;
 }
 
 main.notes:has(> .tier-home) > .notes__bar,
@@ -3397,9 +3431,6 @@ main.tree:has(> .tier-home) > .tree__bar {
   }
 }
 
-main.white-roster:has(> .tier-home) > .white-roster__head {
-  margin-top: calc(var(--mark-home-clear) - 0.85rem);
-}
 
 .home .play-exit {
   z-index: 30;
@@ -17083,13 +17114,12 @@ a.plan-pick {
 }
 
 /*
- * Corner logo is back. Center logo is Home.
- * Landscape phone and tablet grids park the Home mark on the corner mark.
- * Drop the Home mark below that corner hit target. --mark-home keeps it larger.
+ * Corner logo is back. Center logo is Home, pinned at the top.
+ * The page border reserves the band, so the title does not need extra padding.
  */
 @media (orientation: landscape) and (max-width: 1400px) {
   .home__inner:has(> .play-exit) > .home__mark {
-    padding-top: 4.85rem;
+    padding-top: 0;
     text-align: center;
   }
 
