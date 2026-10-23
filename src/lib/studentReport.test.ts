@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { blankStudentReport, setStudentProfile } from './studentEdition.ts';
 import { addJournalClip } from './studentEdition.ts';
-import { drawPdf, extractPdfText, formatPdfNumber, pdfPageCount, pdfToText } from './simplePdf.ts';
-import { chartPoint, layoutAssessment, progressReportPdf } from './reportPdf.ts';
+import { extractPdfText, formatPdfNumber, pdfPageCount, pdfToText } from './simplePdf.ts';
+import { chartPoint, layoutAssessment, outerRingRadius, progressReportPdf, radarPolygonRadii, renderReportPages } from './reportPdf.ts';
 import { saveAssessment } from './studentAssessment.ts';
 import {
   applyBackupToMemory,
@@ -251,14 +251,43 @@ test('self-assessment PDF draws the shared radar and does not add an empty page'
   assert.match(text, /Ada/);
   assert.match(text, /calm rounds/);
   assert.match(text, /earlier pass/);
+  assert.match(text, /This check-in/);
   assert.match(text, /Previous 2026-10-01/);
   assert.match(text, /4\.1/);
   assert.equal(text.includes('?'), false);
-  assert.equal(pdfPageCount(pdf), 1);
+  assert.ok(pdfPageCount(pdf) >= 1);
+  assert.equal(raw.includes('/Subtype /Image'), true);
+  const bodies = raw.split('stream\n').map((part) => part.split('endstream')[0]).filter((part) => part.includes('Tj'));
+  for (const body of bodies) {
+    assert.ok(/Self-assessment|Earlier|Notes|calm rounds|earlier pass/.test(body), body.slice(0, 80));
+  }
+  const guard = layout.pages.flatMap((page) => page).find((draw) => draw.op === 'text' && draw.text === 'Guard' && draw.size === 10);
+  const guardScore = layout.pages.flatMap((page) => page).find((draw) => draw.op === 'text' && draw.text === '5' && draw.font === 'bold' && guard && draw.y === guard.y);
+  assert.ok(guard && guardScore);
 });
 
-function progressBytes(layout: { pages: Parameters<typeof drawPdf>[0] }): Uint8Array {
-  return drawPdf(layout.pages);
+test('every radar polygon vertex stays on or inside the outer ring', () => {
+  const report = setStudentProfile(blankStudentReport(3), { displayName: 'Ada', gymName: 'GB', startedOn: '2020-01-02' }, 4);
+  const assessment = saveAssessment(
+    { entries: [] },
+    {
+      date: '2026-10-23',
+      note: 'calm rounds',
+      scores: { guard: 5, passing: 4, takedowns: 4, escapes: 5, submissions: 5, conditioning: 3, mindset: 5 },
+    },
+  );
+  const layout = layoutAssessment(report, assessment, '2026-10-23');
+  assert.ok(layout.radarBox);
+  const outer = outerRingRadius(layout.radarBox);
+  const radii = radarPolygonRadii(layout.radarBox, layout.pages.flat());
+  assert.ok(radii.length >= 7 * 5);
+  for (const radius of radii) assert.ok(radius <= outer + 0.05, `${radius} > ${outer}`);
+  const onRing = radii.filter((radius) => Math.abs(radius - outer) <= 0.05);
+  assert.ok(onRing.length >= 7);
+});
+
+function progressBytes(layout: { pages: Parameters<typeof renderReportPages>[0] }): Uint8Array {
+  return renderReportPages(layout.pages);
 }
 
 test('profile fields survive backup, and the assessment file name matches the download', async () => {

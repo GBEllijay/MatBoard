@@ -52,7 +52,7 @@ export type Rgb = readonly [number, number, number];
 
 export type PdfDraw =
   | { op: 'rect'; x: number; y: number; w: number; h: number; fill?: Rgb; stroke?: Rgb; lineWidth?: number }
-  | { op: 'line'; x1: number; y1: number; x2: number; y2: number; color: Rgb; lineWidth: number }
+  | { op: 'line'; x1: number; y1: number; x2: number; y2: number; color: Rgb; lineWidth: number; dash?: boolean }
   | {
       op: 'poly';
       points: readonly { x: number; y: number }[];
@@ -61,8 +61,20 @@ export type PdfDraw =
       lineWidth?: number;
       fillOpacity?: number;
       dash?: boolean;
+      /** Round joins keep stroke corners from sticking out past a vertex. */
+      lineJoin?: 'miter' | 'round';
     }
-  | { op: 'text'; text: string; x: number; y: number; size: number; font: 'regular' | 'bold'; color: Rgb };
+  | { op: 'text'; text: string; x: number; y: number; size: number; font: 'regular' | 'bold'; color: Rgb }
+  | { op: 'image'; id: string; x: number; y: number; w: number; h: number }
+  | { op: 'group'; clip?: readonly { x: number; y: number }[]; draws: readonly PdfDraw[] };
+
+export type PdfImageAsset = {
+  id: string;
+  width: number;
+  height: number;
+  /** Uppercase hex of zlib-compressed DeviceRGB samples. */
+  flateHex: string;
+};
 
 function winAnsiByte(code: number): number | null {
   if ((code >= 0x20 && code <= 0x7e) || (code >= 0xa0 && code <= 0xff)) return code;
@@ -201,6 +213,7 @@ function compileDraws(draws: readonly PdfDraw[]): string {
         'q',
         `${rgb(draw.color)} RG`,
         `${formatPdfNumber(draw.lineWidth)} w`,
+        ...(draw.dash ? ['[3 2] 0 d'] : []),
         `${formatPdfNumber(draw.x1)} ${formatPdfNumber(draw.y1)} m`,
         `${formatPdfNumber(draw.x2)} ${formatPdfNumber(draw.y2)} l`,
         'S',
@@ -216,9 +229,22 @@ function compileDraws(draws: readonly PdfDraw[]): string {
       }
       if (draw.stroke) {
         parts.push('q', `${rgb(draw.stroke)} RG`, `${formatPdfNumber(draw.lineWidth ?? 1)} w`);
+        if (draw.lineJoin === 'round') parts.push('1 j', '1 J');
         if (draw.dash) parts.push('[3 2] 0 d');
         parts.push(path, 'h', 'S', 'Q');
       }
+    } else if (draw.op === 'image') {
+      parts.push(
+        'q',
+        `${formatPdfNumber(draw.w)} 0 0 ${formatPdfNumber(draw.h)} ${formatPdfNumber(draw.x)} ${formatPdfNumber(draw.y)} cm`,
+        `/${draw.id} Do`,
+        'Q',
+      );
+    } else if (draw.op === 'group') {
+      parts.push('q');
+      if (draw.clip && draw.clip.length >= 3) parts.push(pathOf(draw.clip), 'h', 'W', 'n');
+      parts.push(compileDraws(draw.draws));
+      parts.push('Q');
     } else if (draw.op === 'text') {
       const font = draw.font === 'bold' ? '/F2' : '/F1';
       parts.push(
@@ -234,8 +260,15 @@ function compileDraws(draws: readonly PdfDraw[]): string {
   return parts.join('\n');
 }
 
+function imageObject(image: PdfImageAsset): string {
+  const hex = image.flateHex.replace(/\s+/g, '');
+  const wrapped = hex.match(/.{1,80}/g)?.join('\n') ?? hex;
+  const stream = `${wrapped}\n>\n`;
+  return `<< /Type /XObject /Subtype /Image /Width ${image.width} /Height ${image.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter [/ASCIIHexDecode /FlateDecode] /Length ${stream.length} >>\nstream\n${stream}endstream`;
+}
+
 /** Vector pages. Coordinates are PDF user space, origin at the bottom left. */
-export function drawPdf(pages: readonly (readonly PdfDraw[])[]): Uint8Array {
+export function drawPdf(pages: readonly (readonly PdfDraw[])[], images: readonly PdfImageAsset[] = []): Uint8Array {
   const sheets = pages.length ? pages : [[]];
   const objects: string[] = [];
   const pageObjectIds: number[] = [];
@@ -244,14 +277,24 @@ export function drawPdf(pages: readonly (readonly PdfDraw[])[]): Uint8Array {
   objects[3] = fontObject('Helvetica-Bold');
   objects[4] = '<< /Type /ExtGState /ca 0.18 /CA 1 >>';
   objects[5] = '<< /Type /ExtGState /ca 0.4 /CA 1 >>';
-  const firstPageId = 7;
-  sheets.forEach((draws, index) => {
-    const pageId = firstPageId + index * 2;
+  let nextId = 7;
+  const imageIds = new Map<string, number>();
+  for (const image of images) {
+    imageIds.set(image.id, nextId);
+    objects[nextId - 1] = imageObject(image);
+    nextId += 1;
+  }
+  const xobject = images.length
+    ? ` /XObject << ${images.map((image) => `/${image.id} ${imageIds.get(image.id)} 0 R`).join(' ')} >>`
+    : '';
+  sheets.forEach((draws) => {
+    const pageId = nextId;
     const contentId = pageId + 1;
+    nextId += 2;
     pageObjectIds.push(pageId);
     const stream = compileDraws(draws);
     objects[pageId - 1] =
-      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_W} ${PAGE_H}] /Contents ${contentId} 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> /ExtGState << /gs18 5 0 R /gs40 6 0 R >> >> >>`;
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_W} ${PAGE_H}] /Contents ${contentId} 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> /ExtGState << /gs18 5 0 R /gs40 6 0 R >>${xobject} >> >>`;
     objects[contentId - 1] = streamObject(stream);
   });
   objects[1] = `<< /Type /Pages /Count ${sheets.length} /Kids [${pageObjectIds.map((id) => `${id} 0 R`).join(' ')}] >>`;

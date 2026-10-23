@@ -6,6 +6,7 @@
 
 import { ASSESSMENT_AREAS, assessmentAverage, type AssessmentState } from './studentAssessment.ts';
 import { radarPoint, RADAR_CENTER } from './radarChart.ts';
+import { advantageLogo } from './advantageLogo.ts';
 import { drawPdf, type PdfDraw, type Rgb } from './simplePdf.ts';
 import {
   progressReportBlocks,
@@ -145,32 +146,17 @@ function drawIdentity(state: PageState, title: string, identity: ReportIdentity,
   state.top += 8;
 }
 
-function logoTriangle(draws: PdfDraw[]) {
-  const left = 28;
-  const bottom = PAGE_H - 46;
-  const width = 18;
-  const height = 22;
-  draws.push({
-    op: 'poly',
-    points: [
-      { x: left + width / 2, y: bottom + height },
-      { x: left + width, y: bottom },
-      { x: left, y: bottom },
-    ],
-    fill: GOLD,
-  });
-}
-
 function chrome(pageNumber: number, pageCount: number, kind: string): PdfDraw[] {
+  const logo = 40;
   const draws: PdfDraw[] = [
     { op: 'rect', x: 0, y: 0, w: PAGE_W, h: PAGE_H, fill: PAPER },
     { op: 'rect', x: 0, y: PAGE_H - HEADER, w: PAGE_W, h: HEADER, fill: NAVY },
     { op: 'rect', x: 0, y: PAGE_H - HEADER - 3, w: PAGE_W, h: 3, fill: GOLD },
+    { op: 'image', id: advantageLogo.id, x: 14, y: PAGE_H - 12 - logo, w: logo, h: logo },
   ];
-  logoTriangle(draws);
   draws.push(
-    { op: 'text', text: 'ADVANTAGE', x: 54, y: PAGE_H - 30, size: 13, font: 'bold', color: WHITE },
-    { op: 'text', text: 'STUDENT EDITION', x: 54, y: PAGE_H - 46, size: 8, font: 'regular', color: [0.78, 0.84, 0.9] },
+    { op: 'text', text: 'ADVANTAGE', x: 62, y: PAGE_H - 30, size: 13, font: 'bold', color: WHITE },
+    { op: 'text', text: 'STUDENT EDITION', x: 62, y: PAGE_H - 46, size: 8, font: 'regular', color: [0.78, 0.84, 0.9] },
     { op: 'text', text: kind, x: PAGE_W - MARGIN_X - measure(kind, 8, true), y: PAGE_H - 36, size: 8, font: 'bold', color: GOLD },
     {
       op: 'text',
@@ -239,6 +225,32 @@ function seriesPolygon(values: readonly number[], box: RadarBox): { x: number; y
   return values.map((value, index) => chartPoint(index, value, box));
 }
 
+/** Distance from the chart center to the level-5 ring. Series vertices must stay inside it. */
+export function outerRingRadius(box: RadarBox): number {
+  const center = chartCenter(box);
+  const spot = chartPoint(0, 5, box);
+  return Math.hypot(spot.x - center.x, spot.y - center.y);
+}
+
+export function radarPolygonRadii(box: RadarBox, draws: readonly PdfDraw[]): number[] {
+  const center = chartCenter(box);
+  const radii: number[] = [];
+  const visit = (list: readonly PdfDraw[]) => {
+    for (const draw of list) {
+      if (draw.op === 'poly') {
+        for (const point of draw.points) radii.push(Math.hypot(point.x - center.x, point.y - center.y));
+      } else if (draw.op === 'group') {
+        if (draw.clip) {
+          for (const point of draw.clip) radii.push(Math.hypot(point.x - center.x, point.y - center.y));
+        }
+        visit(draw.draws);
+      }
+    }
+  };
+  visit(draws);
+  return radii;
+}
+
 function drawRadar(
   draws: PdfDraw[],
   box: RadarBox,
@@ -246,66 +258,115 @@ function drawRadar(
   previous: readonly number[] | null,
 ) {
   const center = chartCenter(box);
-  for (const value of [1, 2, 3, 4, 5]) {
-    draws.push({ op: 'poly', points: ring(box, value), stroke: value === 5 ? NAVY : RULE, lineWidth: value === 5 ? 1 : 0.6 });
+  const outer = ring(box, 5);
+  for (const value of [1, 2, 3, 4]) {
+    draws.push({ op: 'poly', points: ring(box, value), stroke: RULE, lineWidth: 0.7, lineJoin: 'round' });
   }
   for (let index = 0; index < ASSESSMENT_AREAS.length; index += 1) {
     const end = chartPoint(index, 5, box);
-    draws.push({ op: 'line', x1: center.x, y1: center.y, x2: end.x, y2: end.y, color: RULE, lineWidth: 0.6 });
+    draws.push({ op: 'line', x1: center.x, y1: center.y, x2: end.x, y2: end.y, color: RULE, lineWidth: 0.7 });
   }
+  const series: PdfDraw[] = [];
   if (previous) {
-    draws.push({
+    series.push({
       op: 'poly',
       points: seriesPolygon(previous, box),
       stroke: PREVIOUS,
-      lineWidth: 1.4,
+      lineWidth: 1.35,
       dash: true,
+      lineJoin: 'round',
     });
   }
-  draws.push({
+  series.push({
     op: 'poly',
     points: seriesPolygon(current, box),
     fill: NAVY,
-    fillOpacity: 0.18,
-    stroke: NAVY,
-    lineWidth: 1.6,
+    fillOpacity: 0.4,
+    stroke: GOLD,
+    lineWidth: 1.8,
+    lineJoin: 'round',
   });
+  // Clip the series to the outer ring so a stroke cannot draw a second outline past the grid.
+  draws.push({ op: 'group', clip: outer, draws: series });
+  draws.push({ op: 'poly', points: outer, stroke: NAVY, lineWidth: 1.15, lineJoin: 'round' });
+
+  const radius = outerRingRadius(box);
+  for (const value of [1, 2, 3, 4, 5]) {
+    const text = String(value);
+    const y = center.y + (value / 5) * radius - 8;
+    draws.push({
+      op: 'text',
+      text,
+      x: center.x - measure(text, 7, false) - 4,
+      y,
+      size: 7,
+      font: 'regular',
+      color: MUTED,
+    });
+  }
   ASSESSMENT_AREAS.forEach((area, index) => {
-    const spot = chartPoint(index, 5.45, box);
-    const width = measure(area.label, 8, false);
+    const spot = chartPoint(index, 5.55, box);
+    const width = measure(area.label, 9, false);
     let x = spot.x - width / 2;
-    if (spot.x < center.x - 6) x = spot.x - width - 3;
-    else if (spot.x > center.x + 6) x = spot.x + 3;
-    x = Math.max(box.x + 2, Math.min(box.x + box.size - width - 2, x));
-    const y = Math.max(box.y + 2, Math.min(box.y + box.size - 10, spot.y - 3));
-    draws.push({ op: 'text', text: area.label, x, y, size: 8, font: 'regular', color: MUTED });
+    if (spot.x < center.x - 8) x = spot.x - width - 4;
+    else if (spot.x > center.x + 8) x = spot.x + 4;
+    draws.push({ op: 'text', text: area.label, x, y: spot.y - 3, size: 9, font: 'regular', color: INK });
   });
 }
 
-function drawBars(draws: PdfDraw[], scores: readonly number[], x: number, top: number) {
-  const labelW = 78;
-  const barW = 118;
+function drawLegend(draws: PdfDraw[], x: number, top: number, previousDate: string | null) {
+  const swatch = 16;
+  const row = (label: string, y: number, paint: (y: number) => void) => {
+    paint(y);
+    draws.push({ op: 'text', text: label, x: x + swatch + 8, y, size: 9, font: 'regular', color: INK });
+  };
+  row('This check-in', PAGE_H - top - 10, (y) => {
+    draws.push({ op: 'rect', x, y: y + 1, w: swatch, h: 7, fill: NAVY });
+    draws.push({ op: 'rect', x, y: y + 1, w: swatch, h: 7, stroke: GOLD, lineWidth: 1.2 });
+  });
+  if (previousDate) {
+    row(`Previous ${previousDate}`, PAGE_H - top - 28, (y) => {
+      draws.push({
+        op: 'line',
+        x1: x,
+        y1: y + 4,
+        x2: x + swatch,
+        y2: y + 4,
+        color: PREVIOUS,
+        lineWidth: 1.4,
+        dash: true,
+      });
+    });
+  }
+}
+
+function drawBars(draws: PdfDraw[], scores: readonly number[], x: number, top: number, width: number) {
+  const labelW = 92;
+  const numW = 16;
+  const gap = 10;
+  const barW = width - labelW - numW - gap;
   const barH = 7;
+  const rowH = 18;
   scores.forEach((score, index) => {
-    const rowTop = top + index * 28;
-    const baseline = PAGE_H - rowTop - 11;
     const area = ASSESSMENT_AREAS[index];
     if (!area) return;
-    draws.push({ op: 'text', text: area.label, x, y: baseline + 12, size: 9, font: 'regular', color: INK });
-    draws.push({ op: 'rect', x: x + labelW, y: baseline + 2, w: barW, h: barH, fill: TRACK });
+    const baseline = PAGE_H - (top + index * rowH) - 12;
+    draws.push({ op: 'text', text: area.label, x, y: baseline, size: 10, font: 'regular', color: INK });
+    draws.push({ op: 'rect', x: x + labelW, y: baseline + 1, w: barW, h: barH, fill: TRACK });
     draws.push({
       op: 'rect',
       x: x + labelW,
-      y: baseline + 2,
+      y: baseline + 1,
       w: Math.max(2, (score / 5) * barW),
       h: barH,
       fill: NAVY,
     });
+    const num = String(score);
     draws.push({
       op: 'text',
-      text: String(score),
-      x: x + labelW + barW + 8,
-      y: baseline + 1,
+      text: num,
+      x: x + labelW + barW + gap + (numW - measure(num, 10, true)),
+      y: baseline,
       size: 10,
       font: 'bold',
       color: NAVY,
@@ -352,19 +413,19 @@ export function layoutAssessment(report: StudentProgressReport, assessment: Asse
     });
     state.top += 34;
 
-    const size = 236;
-    const plot = 156;
-    radarBox = { x: MARGIN_X, y: PAGE_H - state.top - size, size, plot };
+    const legendW = 118;
+    const chartSize = CONTENT_W - legendW - 14;
+    const plot = chartSize - 96;
+    ensure(state, chartSize);
+    const chartTop = state.top;
+    radarBox = { x: MARGIN_X, y: PAGE_H - chartTop - chartSize, size: chartSize, plot };
     const current = ASSESSMENT_AREAS.map((area) => latest.scores[area.id]);
     const prior = previous ? ASSESSMENT_AREAS.map((area) => previous.scores[area.id]) : null;
     drawRadar(state.draws, radarBox, current, prior);
-    drawBars(state.draws, current, MARGIN_X + size + 18, state.top + 16);
-    state.top += size + 8;
-
-    if (previous) {
-      drawWrapped(state, `This check-in  ·  Previous ${previous.date}`, 9, 'regular', MUTED, 3);
-      state.top += 4;
-    }
+    drawLegend(state.draws, MARGIN_X + chartSize + 14, chartTop + 28, previous?.date ?? null);
+    state.top = chartTop + chartSize + 14;
+    drawBars(state.draws, current, MARGIN_X, state.top, CONTENT_W);
+    state.top += ASSESSMENT_AREAS.length * 18 + 8;
     const note = latest.note.trim() || 'No note on this check-in.';
     const noteLines = wrapReportText(note, 10, false, CONTENT_W - 20);
     const cardH = 36 + noteLines.length * 13;
@@ -402,8 +463,12 @@ export function layoutAssessment(report: StudentProgressReport, assessment: Asse
   return { pages: finish(state, 'SELF-ASSESSMENT'), radarBox };
 }
 
+export function renderReportPages(pages: readonly PdfDraw[][]): Uint8Array {
+  return drawPdf(pages, [advantageLogo]);
+}
+
 export function assessmentReportPdf(report: StudentProgressReport, assessment: AssessmentState, issuedOn: string): Uint8Array {
-  return drawPdf(layoutAssessment(report, assessment, issuedOn).pages);
+  return renderReportPages(layoutAssessment(report, assessment, issuedOn).pages);
 }
 
 export function progressReportPdf(
@@ -416,6 +481,6 @@ export function progressReportPdf(
   const state = freshPage();
   drawIdentity(state, 'Progress report', identity, issuedOn);
   drawBlocks(state, progressReportBlocks(report, assessment, extra));
-  return drawPdf(finish(state, 'PROGRESS'));
+  return renderReportPages(finish(state, 'PROGRESS'));
 }
 
