@@ -194,7 +194,7 @@ export function FundamentalsPage() {
 function Meter({ value, label }: { value: number; label: string }) {
   const width = Math.max(0, Math.min(100, (value / 5) * 100));
   return (
-    <div className="fund-meter" role="img" aria-label={label}>
+    <div className="fund-meter" role="img" aria-label={label} data-value={value}>
       <span style={{ width: `${width}%` }} />
     </div>
   );

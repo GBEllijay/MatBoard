@@ -78,7 +78,9 @@ test('moves link to a checkpoint, a self-assessment area, and a matching clip', 
   const report = withStarterRubric(blankStudentReport(10), 10);
   const checkpoint = checkpointForMove(report.rubric.levels, 'sweep.scissor', 'white');
   assert.equal(checkpoint?.checkpointId, 'checkpoint.white.guard');
-  assert.equal(checkpointForMove(report.rubric.levels, 'escape.back', 'white'), null);
+  const backEscape = checkpointForMove(report.rubric.levels, 'escape.back', 'white');
+  assert.equal(backEscape?.checkpointId, 'checkpoint.white.escapes');
+  assert.equal(backEscape?.checkpointName, 'Back escape');
   assert.equal(assessmentAreaForMove('sweeps', 'Scissor sweep'), 'guard');
   assert.equal(assessmentAreaForMove('positions', 'Closed guard'), 'guard');
   assert.equal(assessmentAreaForMove('positions', 'Mount'), '');

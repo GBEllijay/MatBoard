@@ -73,7 +73,7 @@ export function VideoLibraryPage() {
   };
 
   return (
-    <main className="student student-frame">
+    <main className="student student-frame student--arena">
       <StudentMarks />
       <LeatherHeader title="Video Library" />
       <div className="student-paper">
@@ -295,15 +295,24 @@ function FilmAMove({ onSaved }: { onSaved: () => void }) {
       <p className="student-quiet">
         Record a coach or partner showing the night&apos;s technique, or pick a video already on this phone. The name is the date plus the technique you type.
       </p>
-      <DeviceMediaInput
-        inputRef={recordRef}
-        id="student-film-record"
-        accept="video/*"
-        capture="environment"
-        onFiles={take}
-      />
-      <DeviceMediaInput inputRef={libraryRef} id="student-film-library" accept="video/*" onFiles={take} />
-      <div className="student-clip__actions">
+      <div className="student-film__inputs">
+        <DeviceMediaInput
+          inputRef={recordRef}
+          id="student-film-record"
+          className="student-film-file"
+          accept="video/*"
+          capture="environment"
+          onFiles={take}
+        />
+        <DeviceMediaInput
+          inputRef={libraryRef}
+          id="student-film-library"
+          className="student-film-file"
+          accept="video/*"
+          onFiles={take}
+        />
+      </div>
+      <div className="student-film__actions">
         <label className="ink-btn" htmlFor="student-film-record">
           Film a move
         </label>

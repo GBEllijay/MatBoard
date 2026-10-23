@@ -124,6 +124,15 @@ test('competitor chips name the next event and the win-loss record', () => {
   assert.equal(empty.weight, WEIGHT_UNSET_LABEL);
   report.competition.results[0]?.matches.push({ id: 'm3', opponent: 'Pat', result: 'draw', method: 'points', note: '' });
   assert.equal(competitorHubSummary(report, '2026-10-23').record, 'Record 1-1-1');
+  report.competition.results[0]?.matches.push({
+    id: 'm-dated',
+    opponent: 'Rio',
+    result: 'win',
+    method: 'points',
+    note: '',
+    date: '2026-10-20',
+  });
+  assert.equal(competitorHubSummary(report, '2026-10-23').record, 'Record 2-1-1');
   const dqOnly = blankStudentReport(1);
   dqOnly.competition = {
     ...emptyCompetition(),

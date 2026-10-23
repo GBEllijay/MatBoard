@@ -144,10 +144,26 @@ export function checkpointForMove(
         criterion.techniqueRefs.some((ref) => ref.id === catalogItemId),
       );
       if (!hit) continue;
-      return { checkpointId: checkpoint.id, checkpointName: checkpoint.name, belt: level.belt };
+      return namedCheckpoint(checkpoint.id, checkpoint.name, level.belt, catalogItemId);
+    }
+  }
+  if (catalogItemId === 'escape.back') {
+    for (const level of ordered) {
+      const checkpoint = level.checkpoints.find((row) => row.id === `checkpoint.${level.belt}.escapes`);
+      if (!checkpoint) continue;
+      return namedCheckpoint(checkpoint.id, checkpoint.name, level.belt, catalogItemId);
     }
   }
   return null;
+}
+
+/** Back escape belongs on the Escapes checkpoint. The link names that move. */
+function namedCheckpoint(checkpointId: string, checkpointName: string, belt: string, catalogItemId: string): CheckpointHit {
+  return {
+    checkpointId,
+    checkpointName: catalogItemId === 'escape.back' ? 'Back escape' : checkpointName,
+    belt,
+  };
 }
 
 function textHitsName(haystack: string, name: string): boolean {

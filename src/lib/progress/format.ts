@@ -11,6 +11,7 @@ import { canonicalFundamentalsCatalogId } from './catalog.ts';
 import { emptyCompetition, seedGamesFromJournal } from './competition.ts';
 import {
   CALENDAR_KINDS,
+  CALENDAR_REPEATS,
   GAME_TAGS,
   PROGRESS_AMENDMENTS_MAX,
   PROGRESS_BELTS,
@@ -70,6 +71,7 @@ import {
   type RubricLevel,
   type CalendarEvent,
   type CalendarKind,
+  type CalendarRepeat,
   type CoachFeedback,
   type CoachFeedbackPacket,
   type CoachPlan,
@@ -756,6 +758,8 @@ function mergeMatches(local: CompetitionResult, incoming: CompetitionResult, con
     current.note = preferText(current.note, match.note, `Match ${match.id} note was kept.`, conflicts);
     if (current.result !== match.result) conflicts.push(`Match ${match.id} result was kept.`);
     if (current.method !== match.method) conflicts.push(`Match ${match.id} method was kept.`);
+    if (!current.date && match.date) current.date = match.date;
+    else if (current.date && match.date && current.date !== match.date) conflicts.push(`Match ${match.id} date was kept.`);
   }
 }
 
@@ -804,6 +808,12 @@ function mergeCalendar(report: StudentProgressReport, incoming: StudentProgressR
     current.note = preferText(current.note, event.note, `Calendar ${event.id} note was kept.`, conflicts);
     if (current.date !== event.date || current.kind !== event.kind) {
       conflicts.push(`Calendar ${event.id} day was kept.`);
+    }
+    if (!current.time && event.time) current.time = event.time;
+    else if (current.time && event.time && current.time !== event.time) conflicts.push(`Calendar ${event.id} time was kept.`);
+    if (!current.repeat && event.repeat) current.repeat = event.repeat;
+    else if (current.repeat && event.repeat && current.repeat !== event.repeat) {
+      conflicts.push(`Calendar ${event.id} repeat was kept.`);
     }
   }
 }
@@ -1243,13 +1253,18 @@ function readCalendarEvent(value: unknown, index: number, errors: string[]): Cal
     errors.push(`${label} must be an object.`);
     return { id: '', date: '', title: '', kind: 'other', note: '' };
   }
-  return {
+  const event: CalendarEvent = {
     id: readId(record.id, `${label} id`, errors),
     date: readDate(record.date, `${label} date`, errors, true),
     title: readString(record.title, `${label} title`, PROGRESS_NAME_MAX, errors),
     kind: readCalendarKind(record.kind, label, errors),
     note: readString(record.note, `${label} note`, PROGRESS_NOTE_MAX, errors),
   };
+  const time = readOptionalClock(record.time);
+  const repeat = readOptionalRepeat(record.repeat);
+  if (time) event.time = time;
+  if (repeat) event.repeat = repeat;
+  return event;
 }
 
 function readCoachPlan(value: unknown, errors: string[]): CoachPlan {
@@ -1470,13 +1485,16 @@ function readMatch(value: unknown, label: string, errors: string[]): Competition
     errors.push(`${label} must be an object.`);
     return { id: '', opponent: '', result: 'loss', method: '', note: '' };
   }
-  return {
+  const match: CompetitionMatch = {
     id: readId(record.id, `${label} id`, errors),
     opponent: readString(record.opponent, `${label} opponent`, PROGRESS_NAME_MAX, errors),
     result: readMatchResult(record.result, label, errors),
     method: readMatchMethod(record.method, label, errors),
     note: readString(record.note, `${label} note`, PROGRESS_NOTE_MAX, errors),
   };
+  const date = readOptionalDay(record.date);
+  if (date) match.date = date;
+  return match;
 }
 
 function readBracket(value: unknown, label: string, errors: string[]): BracketNote[] {
@@ -1671,6 +1689,28 @@ function readExamples(value: unknown, label: string, errors: string[]): string[]
   if (value == null) return [];
   const rows = readList(value, `${label} examples`, PROGRESS_EXAMPLES_MAX, errors);
   return rows.map((row, index) => readString(row, `${label} example ${index + 1}`, PROGRESS_EXAMPLE_MAX, errors));
+}
+
+const CLOCK_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/** A blank or older file has no clock. A bad clock is dropped so the rest of the file still opens. */
+function readOptionalClock(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  return CLOCK_RE.test(value) ? value : '';
+}
+
+/** Blank, missing, or `none` stays off the object. Anything else that is not a repeat is ignored. */
+function readOptionalRepeat(value: unknown): CalendarEvent['repeat'] | undefined {
+  if (typeof value !== 'string' || value === '' || value === 'none') return undefined;
+  if ((CALENDAR_REPEATS as readonly string[]).includes(value)) return value as Exclude<CalendarRepeat, 'none'>;
+  return undefined;
+}
+
+/** A blank or older match has no date. A bad date is dropped so the match itself still opens. */
+function readOptionalDay(value: unknown): string {
+  if (typeof value !== 'string' || value === '') return '';
+  if (!DATE_RE.test(value) || !realDay(value)) return '';
+  return value;
 }
 
 function readCalendarKind(value: unknown, label: string, errors: string[]): CalendarKind {
@@ -1996,8 +2036,8 @@ function writeReportRows(lines: string[], packet: StudentProgressReport): void {
       '',
       event.title,
       event.kind,
-      '',
-      '',
+      event.time ?? '',
+      event.repeat ?? '',
       '',
       '',
     ]));
@@ -2099,7 +2139,7 @@ function writeReportRows(lines: string[], packet: StudentProgressReport): void {
       lines.push(csvRow([
         'Match',
         match.id,
-        '',
+        match.date ?? '',
         result.id,
         match.result,
         match.method,

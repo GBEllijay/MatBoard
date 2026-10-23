@@ -172,7 +172,7 @@ export function resultHaystack(result: CompetitionResult): string {
   return [
     result.tournamentName,
     result.division,
-    ...result.matches.flatMap((match) => [match.opponent, match.result, match.method, match.note]),
+    ...result.matches.flatMap((match) => [match.opponent, match.result, match.method, match.note, match.date ?? '']),
     ...result.bracket.map((note) => note.name),
   ]
     .join('\n')

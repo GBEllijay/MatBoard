@@ -456,3 +456,56 @@ test('a day with a journal entry and an event shows the open event dot plus a jo
   assert.equal(host.querySelector('[data-testid="path"]')?.textContent, `/student/calendar/${today}`);
   unmount(mounted);
 });
+
+test('event time and repeat save, the date field returns to today, and a tournament is a ring', () => {
+  localStorage.clear();
+  const today = todayIso();
+  const meet = isoOffset(2);
+  saveStudentReport(
+    localStorage,
+    addTournament(
+      blankStudentReport(10),
+      {
+        name: 'Spring Open',
+        date: today,
+        location: 'Atlanta',
+        division: 'Adult Blue',
+        deadline: '',
+        link: '',
+        status: 'entered',
+        targetWeight: '',
+        targetUnit: 'lb',
+      },
+      11,
+    ),
+  );
+  const mounted = mount();
+  const { host } = mounted;
+  const ring = host.querySelector('.cal-dot--tournament');
+  assert.ok(ring);
+  assert.equal(ring?.classList.contains('cal-dot'), true);
+  assert.equal(host.querySelector('[data-tournament="true"] .cal-dot--tournament'), ring);
+
+  const date = labeled(host, 'Event date') as HTMLInputElement;
+  const time = labeled(host, 'Event time') as HTMLInputElement;
+  typeInto(date, meet);
+  typeInto(time, '18:30');
+  act(() => {
+    control(host, 'button', 'Weekly').click();
+  });
+  assert.equal(control(host, 'button', 'Weekly').getAttribute('aria-pressed'), 'true');
+  typeInto(labeled(host, 'Event title') as HTMLInputElement, 'Evening rounds');
+  act(() => {
+    control(host, 'button', 'Add event').click();
+  });
+  const added = storedReport().calendar[0];
+  assert.equal(added.date, meet);
+  assert.equal(added.title, 'Evening rounds');
+  assert.equal((added as { time?: string }).time, '18:30');
+  assert.equal((added as { repeat?: string }).repeat, 'weekly');
+  assert.equal((labeled(host, 'Event date') as HTMLInputElement).value, today);
+  assert.equal((labeled(host, 'Event time') as HTMLInputElement).value, '');
+  assert.equal(control(host, 'button', 'None').getAttribute('aria-pressed'), 'true');
+  assert.equal(control(host, 'button', 'Weekly').getAttribute('aria-pressed'), 'false');
+  unmount(mounted);
+});

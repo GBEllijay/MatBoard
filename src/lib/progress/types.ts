@@ -51,6 +51,10 @@ export type MatchMethod = '' | (typeof MATCH_METHODS)[number];
 export const CALENDAR_KINDS = ['class', 'training', 'promotion', 'note', 'other'] as const;
 export type CalendarKind = (typeof CALENDAR_KINDS)[number];
 
+/** How often a calendar event repeats. Omitted on older events, which happen once. */
+export const CALENDAR_REPEATS = ['none', 'weekly', 'biweekly', 'monthly'] as const;
+export type CalendarRepeat = (typeof CALENDAR_REPEATS)[number];
+
 export const PROGRESS_PACKET_KINDS = ['student-progress-report', 'coach-plan', 'coach-feedback'] as const;
 export type ProgressPacketKind = (typeof PROGRESS_PACKET_KINDS)[number];
 
@@ -256,6 +260,16 @@ export type CalendarEvent = {
   title: string;
   kind: CalendarKind;
   note: string;
+  /**
+   * 24-hour HH:MM. Omitted on older events and when the student left the time blank.
+   * A missing time is not a midnight event.
+   */
+  time?: string;
+  /**
+   * Omitted on older events and when the event does not repeat.
+   * `weekly`, `biweekly` (every 2 weeks), or `monthly` from `date`.
+   */
+  repeat?: Exclude<CalendarRepeat, 'none'>;
 };
 
 /** Standing A, B, or C game. Techniques and sequences, plus notes. One copy for the journal and Competitor. */
@@ -313,6 +327,11 @@ export type CompetitionMatch = {
   result: MatchResult;
   method: MatchMethod;
   note: string;
+  /**
+   * YYYY-MM-DD the match happened. Omitted on older matches.
+   * A new match defaults to the day it is saved. A missing date is not today.
+   */
+  date?: string;
 };
 
 /** One name on a personal bracket note. Not a live bracket. */

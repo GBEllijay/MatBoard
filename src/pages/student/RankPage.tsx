@@ -137,7 +137,7 @@ export function RankPage() {
             ))}
           </ol>
           <p className="student-quiet">
-            {rank.tapeCount === 0 ? 'No stripes' : rank.tapeCount === 1 ? '1 stripe' : `${rank.tapeCount} stripes`} of {RANK_TAPE_MAX} on the belt you wear. Tap a stripe to open it. Add a photo, a date, or both, and remove either one. Tap an empty stripe to add it. Take the last stripe off from that stripe. The date on the line is the day that belt was achieved.
+            {rank.tapeCount === 0 ? 'No stripes' : rank.tapeCount === 1 ? '1 stripe' : `${rank.tapeCount} stripes`} of {RANK_TAPE_MAX} on the belt you wear. Tap an empty stripe to add it, then the next empty stripe. Tap a stripe that is already on to add a photo, a date, or both, and remove either one. Take the last stripe off from that stripe. The date on the line is the day that belt was achieved.
           </p>
           <p className="student-quiet">
             Photos stay on this phone. Send to coach includes them when the file has room.
@@ -152,15 +152,12 @@ export function RankPage() {
             <ul className="comp-list">
               {rank.history.map((row) => {
                 const label = rankBeltLabel(row.belt);
-                const when = row.awardedOn ? ` · ${row.awardedOn}` : '';
                 const stripes = row.tapeCount === 1 ? '1 stripe' : `${row.tapeCount} stripes`;
                 return (
-                  <li key={row.id}>
-                    <strong>
-                      {label}
-                      {when}
-                    </strong>
-                    <span>{stripes}</span>
+                  <li key={row.id} className="rank-history">
+                    <span className="rank-history__label">{label}</span>
+                    <span className="rank-history__date">{row.awardedOn || 'No date'}</span>
+                    <span className="rank-history__stripes">{stripes}</span>
                     {dropId === row.id ? (
                       <div className="student-actions">
                         <button
@@ -239,7 +236,11 @@ function StripeSlot({
         aria-label={stripeLabel}
         disabled={!rung.current && !on}
         onClick={() => {
-          if (rung.current && countControl.action === 'add') onTap();
+          if (rung.current && countControl.action === 'add') {
+            onTap();
+            setOpen(false);
+            return;
+          }
           setOpen(true);
         }}
       />

@@ -12,6 +12,8 @@ import {
   addJournalClip,
   addJournalEntry,
   deleteJournalClip,
+  deleteJournalEntry,
+  updateJournalEntry,
   searchStudentClips,
   setClipNote,
   updateJournalClip,
@@ -440,4 +442,40 @@ test('proficiency replaces the learned mark without dropping the date or note', 
   assert.equal(board.find((category) => category.id === 'sweeps')?.learned, 0);
   assert.equal(board.find((category) => category.id === 'passes')?.learned, 1);
   assert.equal(board.find((category) => category.id === 'passes')?.items.find((item) => item.catalogItemId === 'pass.knee-slice')?.level, 3);
+});
+
+test('editing a card keeps its id and later notes, and delete removes only that card', () => {
+  const draft = {
+    date: '2026-10-11',
+    className: 'Gi',
+    gameTag: 'a' as const,
+    techniques: [{ id: 'sweep.scissor', name: 'Scissor sweep' }],
+    partners: 'Alex',
+    drills: 'hip escapes',
+    rolls: '5 rounds',
+    notes: 'grip the collar deeper',
+  };
+  let report = addJournalEntry(blankStudentReport(10), draft, 10);
+  report = addJournalEntry(
+    report,
+    { ...draft, date: '2026-10-12', className: 'No-Gi', notes: 'keep me', partners: '', drills: '', rolls: '' },
+    11,
+  );
+  const id = report.journal[0].id;
+  report = addJournalAmendment(report, id, 'later note', '2026-10-13', 12);
+  report = updateJournalEntry(report, id, { ...draft, notes: 'updated', partners: 'Sam', drills: 'shrimps', rolls: '6 rounds' }, 13);
+  assert.equal(report.journal.length, 2);
+  assert.equal(report.journal[0].id, id);
+  assert.equal(report.journal[0].createdAt, 10);
+  assert.equal(report.journal[0].amendments[0]?.body, 'later note');
+  const card = viewJournalEntry(report.journal[0]);
+  assert.equal(card.notes, 'updated');
+  assert.equal(card.partners, 'Sam');
+  assert.equal(card.drills, 'shrimps');
+  assert.equal(card.rolls, '6 rounds');
+  assert.equal(card.techniques[0]?.name, 'Scissor sweep');
+  const gone = deleteJournalEntry(report, id, 14);
+  assert.equal(gone.journal.length, 1);
+  assert.equal(viewJournalEntry(gone.journal[0]).notes, 'keep me');
+  assert.equal(deleteJournalEntry(gone, id, 15), gone);
 });

@@ -11,6 +11,8 @@ import {
   setBracketPhotoFlag,
 } from '../../lib/studentCompetition';
 import { bracketPhotoFromFile, deleteBracketPhoto, loadBracketPhoto, writeBracketPhoto } from '../../lib/bracketPhoto';
+import { todayIso } from '../../lib/studentEdition';
+import { isIsoDate } from '../../lib/studentTools';
 import { LeatherHeader, StudentMarks, useStudentFile } from './chrome';
 
 const RESULTS: { id: MatchResult; label: string }[] = [
@@ -115,6 +117,8 @@ function ResultCard({
   const [opponent, setOpponent] = useState('');
   const [outcome, setOutcome] = useState<MatchResult>('win');
   const [method, setMethod] = useState<MatchMethod>('points');
+  const [matchDate, setMatchDate] = useState(todayIso);
+  const [matchDateKey, setMatchDateKey] = useState(0);
   const [note, setNote] = useState('');
   const [round, setRound] = useState('');
   const [bracketName, setBracketName] = useState('');
@@ -129,10 +133,13 @@ function ResultCard({
       <ul className="comp-goals" aria-label={`Matches for ${result.tournamentName}`}>
         {result.matches.map((match) => (
           <li key={match.id}>
-            <span>
-              {matchLabel(match.result)} · {match.opponent}
-              {match.method ? ` · ${methodLabel(match.method)}` : ''}
-              {match.note ? ` — ${match.note}` : ''}
+            <span className="match-line">
+              {match.date ? <span className="match-line__date">{match.date}</span> : null}
+              <span className="match-line__result">
+                {matchLabel(match.result)} · {match.opponent}
+                {match.method ? ` · ${methodLabel(match.method)}` : ''}
+                {match.note ? ` — ${match.note}` : ''}
+              </span>
             </span>
             <button type="button" className="ink-btn ink-btn--small" onClick={() => commit(removeCompetitionMatch(report, result.id, match.id))}>
               {`Remove match ${match.opponent}`}
@@ -145,9 +152,15 @@ function ResultCard({
         onSubmit={(event) => {
           event.preventDefault();
           try {
-            commit(addCompetitionMatch(report, result.id, { opponent, result: outcome, method, note }));
+            const picked = inputValue(event.currentTarget, 'match-date');
+            const date = isIsoDate(picked) ? picked : matchDate;
+            commit(addCompetitionMatch(report, result.id, { opponent, result: outcome, method, note, date }));
             setOpponent('');
             setNote('');
+            setOutcome('win');
+            setMethod('points');
+            setMatchDate(todayIso());
+            setMatchDateKey((value) => value + 1);
             setError('');
           } catch (err) {
             setError(err instanceof Error ? err.message : 'Could not add that match.');
@@ -155,6 +168,19 @@ function ResultCard({
         }}
       >
         <p className="ink__label">Match</p>
+        <label>
+          <span className="ink__label">Date</span>
+          <input
+            key={matchDateKey}
+            type="date"
+            name="match-date"
+            autoComplete="off"
+            aria-label={`Match date for ${result.tournamentName}`}
+            value={matchDate}
+            onChange={(event) => setMatchDate(event.target.value)}
+            required
+          />
+        </label>
         <label>
           <span className="ink__label">Opponent</span>
           <input aria-label={`Opponent for ${result.tournamentName}`} value={opponent} onChange={(event) => setOpponent(event.target.value)} />
@@ -299,6 +325,11 @@ function ResultCard({
       )}
     </li>
   );
+}
+
+function inputValue(form: HTMLFormElement, name: string): string {
+  const field = form.elements.namedItem(name);
+  return field instanceof HTMLInputElement ? field.value : '';
 }
 
 function matchLabel(result: MatchResult): string {
