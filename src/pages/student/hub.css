@@ -488,11 +488,28 @@
   transform: rotate(45deg);
 }
 
-/* Group pages sit on the tatami, not on black. */
-.student.student--arena.s-group,
-.student.student--arena.s-group .arena-scroll {
-  background: transparent;
+/* Group pages scroll with the document. The tatami is on the page itself,
+   repeated for the whole height, so the bottom of a short page and the
+   area you scroll into stay on the mat. */
+.student.student--arena.s-group {
+  display: block;
+  height: auto;
+  min-height: 100dvh;
+  max-height: none;
+  overflow: visible;
   color: #f2f4f7;
+  background-color: var(--mat-fill);
+  background-image: var(--mat-image);
+  background-size: var(--mat-tile) calc(var(--mat-tile) * 4 / 3);
+  background-repeat: repeat;
+  background-position: center top;
+}
+
+.student.student--arena.s-group .arena-scroll {
+  display: block;
+  overflow: visible;
+  min-height: 100dvh;
+  background: transparent;
 }
 
 .s-group__column {
@@ -500,7 +517,8 @@
   margin: 0 auto;
   display: grid;
   gap: 10px;
-  padding: calc(4.6rem + env(safe-area-inset-top, 0px)) 16px 56px;
+  /* Shared with the pinned Home logo. The title starts below that 112px mark. */
+  padding: calc(var(--mark-home-clear) + var(--safe-t)) 16px calc(56px + var(--safe-b));
 }
 
 .s-group__head h1 {
@@ -587,22 +605,35 @@
 }
 
 .s-row .s-belt {
-  width: 132px;
+  width: 108px;
   height: 18px;
   margin-top: 0;
   flex: none;
 }
 
 .s-row .s-belt__bar {
-  min-width: 92px;
-  width: 78%;
+  left: 4px;
   right: 14px;
-  gap: 5px;
-  padding: 0 6px;
+  width: auto;
+  min-width: 0;
+  gap: 3px;
+  padding: 0 3px;
+  justify-content: space-evenly;
+}
+
+.s-row .s-belt__end {
+  width: 12px;
 }
 
 .s-row .s-tape {
-  width: 6px;
+  width: 8px;
+  flex: 0 0 8px;
+  background: #1a1a1e;
+}
+
+.s-row .s-tape--on {
+  background: #fff;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2);
 }
 
 .s-pin {
@@ -714,8 +745,42 @@
   background: rgba(143, 182, 255, 0.45);
 }
 
+.s-row--belt {
+  background-color: #f4f1ea;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(60, 48, 32, 0.08)), url('/belt-weave.png');
+  background-size: auto, 160px 4px;
+  color: #1c140c;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.32), inset 0 0 0 1px rgba(40, 32, 22, 0.28);
+}
+
+.s-row--belt .s-row__title,
+.s-row--belt .s-ico {
+  color: #1c140c;
+}
+
+.s-row--belt small {
+  color: rgba(28, 20, 12, 0.72);
+}
+
+.s-row--belt .s-chev {
+  border-right-color: rgba(28, 20, 12, 0.55);
+  border-top-color: rgba(28, 20, 12, 0.55);
+}
+
+.s-row--belt .s-row__text {
+  min-width: min-content;
+}
+
+.s-row--belt .s-row__title,
+.s-row--bracket .s-row__title {
+  white-space: nowrap;
+}
+
 .s-row--bracket {
   overflow: visible;
+  background: linear-gradient(180deg, #1b3658, #102033);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .s-row--bracket::after {

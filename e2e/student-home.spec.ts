@@ -103,6 +103,40 @@ test('?student=1 opens the Student hub, and submenus go back to it', async ({ pa
   await shot(page, 'student-group-training-390');
   await page.getByRole('link', { name: BACK, exact: true }).click();
   await page.getByRole('link', { name: 'Rank & Progress', exact: true }).click();
+  const homeMark = page.getByRole('link', { name: 'Home', exact: true });
+  const rankTitle = page.getByRole('heading', { name: 'Rank & Progress', exact: true });
+  await expect(homeMark).toBeVisible();
+  await expect(rankTitle).toBeVisible();
+  const homeBox = await homeMark.boundingBox();
+  const rankTitleBox = await rankTitle.boundingBox();
+  expect(homeBox).not.toBeNull();
+  expect(rankTitleBox).not.toBeNull();
+  expect(rankTitleBox!.y).toBeGreaterThan(homeBox!.y + homeBox!.height - 1);
+  const homeImage = await homeMark.locator('img').evaluate((img) => img.getBoundingClientRect().width);
+  const backImage = await page.getByRole('link', { name: BACK, exact: true }).locator('img').evaluate((img) => img.getBoundingClientRect().width);
+  expect(homeImage).toBeGreaterThan(backImage);
+  const rankRows = await page.locator('a.s-row--belt').evaluateAll((nodes) =>
+    nodes.map((node) => {
+      const title = node.querySelector('.s-row__title');
+      const tapes = [...node.querySelectorAll('.s-tape')].map((tape) => tape.classList.contains('s-tape--on'));
+      const bar = node.querySelector('.s-belt__bar');
+      const style = getComputedStyle(node);
+      return {
+        stripes: node.getAttribute('data-stripes'),
+        on: tapes.filter(Boolean).length,
+        slots: tapes.length,
+        bar: bar ? Math.round(bar.getBoundingClientRect().width) : 0,
+        wrapped: title ? title.scrollWidth > title.clientWidth + 1 || title.getBoundingClientRect().height > 28 : true,
+        background: style.backgroundImage,
+      };
+    }),
+  );
+  expect(rankRows.map((row) => row.stripes)).toEqual(['1', '2', '3', '4']);
+  expect(rankRows.map((row) => row.on)).toEqual([1, 2, 3, 4]);
+  expect(rankRows.every((row) => row.slots === 4 && row.bar >= 72 && !row.wrapped)).toBeTruthy();
+  expect(rankRows.every((row) => row.background.includes('belt-weave.png'))).toBeTruthy();
+  const mat = await page.locator('main.s-group').evaluate((el) => getComputedStyle(el).backgroundImage);
+  expect(mat).toContain('home-mat-tatami.png');
   await shot(page, 'student-group-progress-390');
   await page.getByRole('link', { name: BACK, exact: true }).click();
   await page.getByRole('link', { name: 'Competitor', exact: true }).click();
@@ -112,6 +146,18 @@ test('?student=1 opens the Student hub, and submenus go back to it', async ({ pa
   await shot(page, 'student-group-coach-390');
   await page.getByRole('link', { name: BACK, exact: true }).click();
   await page.getByRole('link', { name: /Backup & Print/ }).click();
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  const covered = await page.locator('main.s-group').evaluate((el) => {
+    const box = el.getBoundingClientRect();
+    const image = getComputedStyle(el).backgroundImage;
+    return {
+      image: image.includes('home-mat-tatami.png'),
+      covers: box.top <= 0 && box.bottom >= window.innerHeight - 1,
+    };
+  });
+  expect(covered.image).toBeTruthy();
+  expect(covered.covers).toBeTruthy();
+  await page.evaluate(() => window.scrollTo(0, 0));
   await shot(page, 'student-group-backup-390');
   await page.getByRole('link', { name: BACK, exact: true }).click();
   await expect(page).toHaveURL(/\/student\?student=1$/);
@@ -139,6 +185,16 @@ test('?student=1 opens the Student hub, and submenus go back to it', async ({ pa
   await page.goto('/student?student=1');
   await expect(page.getByRole('link', { name: BACK, exact: true })).toHaveCount(0);
   await shot(page, 'student-hub-desktop');
+  await page.goto('/student/compete?student=1');
+  const wide = await page.locator('main.s-group').evaluate((el) => {
+    const box = el.getBoundingClientRect();
+    return getComputedStyle(el).backgroundImage.includes('home-mat-tatami.png') && box.height >= window.innerHeight - 1;
+  });
+  expect(wide).toBeTruthy();
+  const competeTitle = await page.getByRole('heading', { name: 'Competitor', exact: true }).boundingBox();
+  const wideHome = await page.getByRole('link', { name: 'Home', exact: true }).boundingBox();
+  expect(competeTitle && wideHome).toBeTruthy();
+  expect(competeTitle!.y).toBeGreaterThan(wideHome!.y + wideHome!.height - 1);
 });
 
 test('a direct /student visit stays closed, and sign out still leaves the seat', async ({ page }) => {
