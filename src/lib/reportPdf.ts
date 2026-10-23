@@ -1,0 +1,421 @@
+/**
+ * Designed Student Edition PDFs.
+ * Light paper, navy header, Helvetica. The radar is vector paths from the
+ * shared radar geometry, not a picture of the chart.
+ */
+
+import { ASSESSMENT_AREAS, assessmentAverage, type AssessmentState } from './studentAssessment.ts';
+import { radarPoint, RADAR_CENTER } from './radarChart.ts';
+import { drawPdf, type PdfDraw, type Rgb } from './simplePdf.ts';
+import {
+  progressReportBlocks,
+  reportIdentity,
+  type ReportBlock,
+  type ReportExtras,
+  type ReportIdentity,
+} from './studentReport.ts';
+import type { StudentProgressReport } from './progress/types.ts';
+
+const PAGE_W = 612;
+const PAGE_H = 792;
+const MARGIN_X = 48;
+const CONTENT_W = PAGE_W - MARGIN_X * 2;
+const HEADER = 64;
+const CONTENT_TOP = 86;
+const FOOTER = 42;
+const NAVY: Rgb = [0.047, 0.137, 0.267];
+const INK: Rgb = [0.114, 0.114, 0.122];
+const MUTED: Rgb = [0.431, 0.431, 0.451];
+const GOLD: Rgb = [0.831, 0.627, 0.09];
+const WHITE: Rgb = [1, 1, 1];
+const PAPER: Rgb = [1, 1, 1];
+const SOFT: Rgb = [0.961, 0.961, 0.969];
+const TRACK: Rgb = [0.91, 0.91, 0.929];
+const RULE: Rgb = [0.89, 0.9, 0.93];
+const PREVIOUS: Rgb = [0.557, 0.557, 0.576];
+
+export type RadarBox = { x: number; y: number; size: number; plot: number };
+
+type PageState = { pages: PdfDraw[][]; draws: PdfDraw[]; top: number };
+
+function measure(text: string, size: number, bold: boolean): number {
+  return text.length * size * (bold ? 0.56 : 0.5);
+}
+
+export function wrapReportText(value: string, size: number, bold: boolean, maxWidth: number): string[] {
+  const words = value.replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+  if (!words.length) return [''];
+  const lines: string[] = [];
+  let current = '';
+  const place = (word: string) => {
+    const next = current ? `${current} ${word}` : word;
+    if (!current || measure(next, size, bold) <= maxWidth) current = next;
+    else {
+      lines.push(current);
+      current = word;
+    }
+  };
+  for (const word of words) {
+    if (measure(word, size, bold) <= maxWidth) {
+      place(word);
+      continue;
+    }
+    if (current) {
+      lines.push(current);
+      current = '';
+    }
+    let chunk = '';
+    for (const char of word) {
+      const next = chunk + char;
+      if (chunk && measure(next, size, bold) > maxWidth) {
+        lines.push(chunk);
+        chunk = char;
+      } else chunk = next;
+    }
+    current = chunk;
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
+export function chartPoint(index: number, value: number, box: RadarBox): { x: number; y: number } {
+  const plot = box.plot;
+  const pad = (box.size - plot) / 2;
+  const scale = plot / 320;
+  const spot = radarPoint(index, value);
+  return {
+    x: Math.round((box.x + pad + spot.x * scale) * 100) / 100,
+    y: Math.round((box.y + pad + (320 - spot.y) * scale) * 100) / 100,
+  };
+}
+
+export function chartCenter(box: RadarBox): { x: number; y: number } {
+  const plot = box.plot;
+  const pad = (box.size - plot) / 2;
+  const scale = plot / 320;
+  return {
+    x: Math.round((box.x + pad + RADAR_CENTER * scale) * 100) / 100,
+    y: Math.round((box.y + pad + (320 - RADAR_CENTER) * scale) * 100) / 100,
+  };
+}
+
+function metaLine(identity: ReportIdentity, issuedOn: string): string {
+  return `${identity.belt}  ·  ${identity.gym}  ·  Started ${identity.started}  ·  ${issuedOn}`;
+}
+
+function freshPage(): PageState {
+  return { pages: [], draws: [], top: CONTENT_TOP };
+}
+
+function breakPage(state: PageState) {
+  state.pages.push(state.draws);
+  state.draws = [];
+  state.top = CONTENT_TOP;
+}
+
+function ensure(state: PageState, height: number) {
+  if (state.top > CONTENT_TOP && state.top + height > PAGE_H - FOOTER) breakPage(state);
+}
+
+function textAt(state: PageState, text: string, size: number, font: 'regular' | 'bold', color: Rgb, x = MARGIN_X) {
+  state.draws.push({
+    op: 'text',
+    text,
+    x,
+    y: PAGE_H - state.top - size,
+    size,
+    font,
+    color,
+  });
+}
+
+function drawWrapped(state: PageState, value: string, size: number, font: 'regular' | 'bold', color: Rgb, gap: number, x = MARGIN_X, width = CONTENT_W) {
+  const lines = wrapReportText(value, size, font === 'bold', width);
+  for (const line of lines) {
+    ensure(state, size + gap);
+    textAt(state, line, size, font, color, x);
+    state.top += size + gap;
+  }
+}
+
+function drawIdentity(state: PageState, title: string, identity: ReportIdentity, issuedOn: string) {
+  drawWrapped(state, title, 22, 'bold', NAVY, 4);
+  drawWrapped(state, identity.name, 16, 'bold', INK, 4);
+  drawWrapped(state, metaLine(identity, issuedOn), 10, 'regular', MUTED, 4);
+  state.top += 8;
+}
+
+function logoTriangle(draws: PdfDraw[]) {
+  const left = 28;
+  const bottom = PAGE_H - 46;
+  const width = 18;
+  const height = 22;
+  draws.push({
+    op: 'poly',
+    points: [
+      { x: left + width / 2, y: bottom + height },
+      { x: left + width, y: bottom },
+      { x: left, y: bottom },
+    ],
+    fill: GOLD,
+  });
+}
+
+function chrome(pageNumber: number, pageCount: number, kind: string): PdfDraw[] {
+  const draws: PdfDraw[] = [
+    { op: 'rect', x: 0, y: 0, w: PAGE_W, h: PAGE_H, fill: PAPER },
+    { op: 'rect', x: 0, y: PAGE_H - HEADER, w: PAGE_W, h: HEADER, fill: NAVY },
+    { op: 'rect', x: 0, y: PAGE_H - HEADER - 3, w: PAGE_W, h: 3, fill: GOLD },
+  ];
+  logoTriangle(draws);
+  draws.push(
+    { op: 'text', text: 'ADVANTAGE', x: 54, y: PAGE_H - 30, size: 13, font: 'bold', color: WHITE },
+    { op: 'text', text: 'STUDENT EDITION', x: 54, y: PAGE_H - 46, size: 8, font: 'regular', color: [0.78, 0.84, 0.9] },
+    { op: 'text', text: kind, x: PAGE_W - MARGIN_X - measure(kind, 8, true), y: PAGE_H - 36, size: 8, font: 'bold', color: GOLD },
+    {
+      op: 'text',
+      text: `Hand this page to an instructor.  ·  Page ${pageNumber} of ${pageCount}`,
+      x: MARGIN_X,
+      y: 22,
+      size: 8,
+      font: 'regular',
+      color: MUTED,
+    },
+  );
+  return draws;
+}
+
+function finish(state: PageState, kind: string): PdfDraw[][] {
+  if (state.draws.length || !state.pages.length) state.pages.push(state.draws);
+  const count = state.pages.length;
+  return state.pages.map((body, index) => [...chrome(index + 1, count, kind), ...body]);
+}
+
+function drawBlocks(state: PageState, blocks: readonly ReportBlock[]) {
+  for (const block of blocks) {
+    ensure(state, 36);
+    textAt(state, block.title, 12, 'bold', NAVY);
+    state.top += 18;
+    let continued = false;
+    const lines = block.lines.length ? block.lines : [''];
+    for (const raw of lines) {
+      const indent = raw.startsWith('  ');
+      const text = indent ? raw.trimStart() : raw;
+      const size = 10;
+      const wrapped = wrapReportText(text, size, false, CONTENT_W - (indent ? 14 : 0));
+      for (const line of wrapped) {
+        if (state.top + 14 > PAGE_H - FOOTER) {
+          breakPage(state);
+          continued = true;
+        }
+        if (continued) {
+          textAt(state, `${block.title} continued`, 9, 'bold', MUTED);
+          state.top += 16;
+          continued = false;
+        }
+        textAt(state, line, size, 'regular', INK, MARGIN_X + (indent ? 14 : 0));
+        state.top += 14;
+      }
+    }
+    state.top += 8;
+    state.draws.push({
+      op: 'line',
+      x1: MARGIN_X,
+      y1: PAGE_H - state.top,
+      x2: PAGE_W - MARGIN_X,
+      y2: PAGE_H - state.top,
+      color: RULE,
+      lineWidth: 0.6,
+    });
+    state.top += 12;
+  }
+}
+
+function ring(box: RadarBox, value: number): { x: number; y: number }[] {
+  return ASSESSMENT_AREAS.map((_, index) => chartPoint(index, value, box));
+}
+
+function seriesPolygon(values: readonly number[], box: RadarBox): { x: number; y: number }[] {
+  return values.map((value, index) => chartPoint(index, value, box));
+}
+
+function drawRadar(
+  draws: PdfDraw[],
+  box: RadarBox,
+  current: readonly number[],
+  previous: readonly number[] | null,
+) {
+  const center = chartCenter(box);
+  for (const value of [1, 2, 3, 4, 5]) {
+    draws.push({ op: 'poly', points: ring(box, value), stroke: value === 5 ? NAVY : RULE, lineWidth: value === 5 ? 1 : 0.6 });
+  }
+  for (let index = 0; index < ASSESSMENT_AREAS.length; index += 1) {
+    const end = chartPoint(index, 5, box);
+    draws.push({ op: 'line', x1: center.x, y1: center.y, x2: end.x, y2: end.y, color: RULE, lineWidth: 0.6 });
+  }
+  if (previous) {
+    draws.push({
+      op: 'poly',
+      points: seriesPolygon(previous, box),
+      stroke: PREVIOUS,
+      lineWidth: 1.4,
+      dash: true,
+    });
+  }
+  draws.push({
+    op: 'poly',
+    points: seriesPolygon(current, box),
+    fill: NAVY,
+    fillOpacity: 0.18,
+    stroke: NAVY,
+    lineWidth: 1.6,
+  });
+  ASSESSMENT_AREAS.forEach((area, index) => {
+    const spot = chartPoint(index, 5.45, box);
+    const width = measure(area.label, 8, false);
+    let x = spot.x - width / 2;
+    if (spot.x < center.x - 6) x = spot.x - width - 3;
+    else if (spot.x > center.x + 6) x = spot.x + 3;
+    x = Math.max(box.x + 2, Math.min(box.x + box.size - width - 2, x));
+    const y = Math.max(box.y + 2, Math.min(box.y + box.size - 10, spot.y - 3));
+    draws.push({ op: 'text', text: area.label, x, y, size: 8, font: 'regular', color: MUTED });
+  });
+}
+
+function drawBars(draws: PdfDraw[], scores: readonly number[], x: number, top: number) {
+  const labelW = 78;
+  const barW = 118;
+  const barH = 7;
+  scores.forEach((score, index) => {
+    const rowTop = top + index * 28;
+    const baseline = PAGE_H - rowTop - 11;
+    const area = ASSESSMENT_AREAS[index];
+    if (!area) return;
+    draws.push({ op: 'text', text: area.label, x, y: baseline + 12, size: 9, font: 'regular', color: INK });
+    draws.push({ op: 'rect', x: x + labelW, y: baseline + 2, w: barW, h: barH, fill: TRACK });
+    draws.push({
+      op: 'rect',
+      x: x + labelW,
+      y: baseline + 2,
+      w: Math.max(2, (score / 5) * barW),
+      h: barH,
+      fill: NAVY,
+    });
+    draws.push({
+      op: 'text',
+      text: String(score),
+      x: x + labelW + barW + 8,
+      y: baseline + 1,
+      size: 10,
+      font: 'bold',
+      color: NAVY,
+    });
+  });
+}
+
+export type AssessmentLayout = { pages: PdfDraw[][]; radarBox: RadarBox | null };
+
+export function layoutAssessment(report: StudentProgressReport, assessment: AssessmentState, issuedOn: string): AssessmentLayout {
+  const identity = reportIdentity(report);
+  const entries = [...assessment.entries].sort((left, right) => right.date.localeCompare(left.date) || right.id.localeCompare(left.id));
+  const state = freshPage();
+  drawIdentity(state, 'Self-assessment', identity, issuedOn);
+
+  const latest = entries[0];
+  const previous = entries[1] ?? null;
+  let radarBox: RadarBox | null = null;
+  if (!latest) {
+    drawWrapped(state, 'No self-assessment saved on this phone.', 11, 'regular', INK, 4);
+  } else {
+    const average = assessmentAverage(latest.scores).toFixed(1);
+    state.top += 8;
+    ensure(state, 40);
+    textAt(state, latest.date, 11, 'bold', NAVY);
+    const averageWidth = measure(average, 28, true);
+    state.draws.push({
+      op: 'text',
+      text: average,
+      x: PAGE_W - MARGIN_X - averageWidth - 28,
+      y: PAGE_H - state.top - 22,
+      size: 28,
+      font: 'bold',
+      color: NAVY,
+    });
+    state.draws.push({
+      op: 'text',
+      text: '/ 5',
+      x: PAGE_W - MARGIN_X - 24,
+      y: PAGE_H - state.top - 16,
+      size: 10,
+      font: 'regular',
+      color: MUTED,
+    });
+    state.top += 34;
+
+    const size = 236;
+    const plot = 156;
+    radarBox = { x: MARGIN_X, y: PAGE_H - state.top - size, size, plot };
+    const current = ASSESSMENT_AREAS.map((area) => latest.scores[area.id]);
+    const prior = previous ? ASSESSMENT_AREAS.map((area) => previous.scores[area.id]) : null;
+    drawRadar(state.draws, radarBox, current, prior);
+    drawBars(state.draws, current, MARGIN_X + size + 18, state.top + 16);
+    state.top += size + 8;
+
+    if (previous) {
+      drawWrapped(state, `This check-in  ·  Previous ${previous.date}`, 9, 'regular', MUTED, 3);
+      state.top += 4;
+    }
+    const note = latest.note.trim() || 'No note on this check-in.';
+    const noteLines = wrapReportText(note, 10, false, CONTENT_W - 20);
+    const cardH = 36 + noteLines.length * 13;
+    ensure(state, cardH);
+    const cardTop = state.top;
+    state.draws.push({
+      op: 'rect',
+      x: MARGIN_X,
+      y: PAGE_H - cardTop - cardH,
+      w: CONTENT_W,
+      h: cardH,
+      fill: SOFT,
+    });
+    state.top += 10;
+    drawWrapped(state, 'Notes', 9, 'bold', NAVY, 2, MARGIN_X + 10, CONTENT_W - 20);
+    drawWrapped(state, note, 10, 'regular', INK, 3, MARGIN_X + 10, CONTENT_W - 20);
+    state.top = cardTop + cardH + 12;
+
+    const earlier = entries.slice(1);
+    if (earlier.length) {
+      ensure(state, 28);
+      textAt(state, 'Earlier check-ins', 12, 'bold', NAVY);
+      state.top += 20;
+      for (const entry of earlier) {
+        const bits = [
+          `${entry.date} — average ${assessmentAverage(entry.scores).toFixed(1)}`,
+          ASSESSMENT_AREAS.map((area) => `${area.label} ${entry.scores[area.id]}`).join(', '),
+        ];
+        if (entry.note.trim()) bits.push(entry.note.trim());
+        for (const bit of bits) drawWrapped(state, bit, 10, 'regular', INK, 3);
+        state.top += 8;
+      }
+    }
+  }
+  return { pages: finish(state, 'SELF-ASSESSMENT'), radarBox };
+}
+
+export function assessmentReportPdf(report: StudentProgressReport, assessment: AssessmentState, issuedOn: string): Uint8Array {
+  return drawPdf(layoutAssessment(report, assessment, issuedOn).pages);
+}
+
+export function progressReportPdf(
+  report: StudentProgressReport,
+  assessment: AssessmentState,
+  extra: ReportExtras = {},
+  issuedOn = '',
+): Uint8Array {
+  const identity = reportIdentity(report);
+  const state = freshPage();
+  drawIdentity(state, 'Progress report', identity, issuedOn);
+  drawBlocks(state, progressReportBlocks(report, assessment, extra));
+  return drawPdf(finish(state, 'PROGRESS'));
+}
+

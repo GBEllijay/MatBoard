@@ -104,9 +104,14 @@ export function calendarKindLabel(kind: CalendarKind): string {
   return CALENDAR_KIND_CHOICES.find((choice) => choice.kind === kind)?.label ?? (kind === 'note' ? 'Note' : 'Other');
 }
 
+/** Adult belts, white through coral, or the kids belts when the student is on that track. */
+export function beltTrack(belt: ProgressBelt): readonly ProgressBelt[] {
+  return (KIDS_BELTS as readonly string[]).includes(belt) ? KIDS_BELTS : ADULT_BELTS;
+}
+
 /** Next belt on the adult line, or the kids line when the current belt is a kids belt. */
 export function nextBelt(belt: ProgressBelt): ProgressBelt | null {
-  const line: readonly ProgressBelt[] = (KIDS_BELTS as readonly string[]).includes(belt) ? KIDS_BELTS : ADULT_BELTS;
+  const line = beltTrack(belt);
   const index = line.indexOf(belt);
   if (index < 0 || index >= line.length - 1) return null;
   return line[index + 1] ?? null;
