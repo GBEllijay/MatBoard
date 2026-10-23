@@ -138,7 +138,8 @@ function matchLine(match: CompetitionMatch): string {
   const by = method ? ` by ${method}` : '';
   const note = match.note.trim() ? ` — ${match.note.trim()}` : '';
   const who = match.opponent.trim() || 'Unknown opponent';
-  return `${result} vs ${who}${by}${note}`;
+  const when = match.date ? `${match.date} — ` : '';
+  return `${when}${result} vs ${who}${by}${note}`;
 }
 
 export function ratingLine(ratings: AreaRatings | undefined): string {

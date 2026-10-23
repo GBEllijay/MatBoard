@@ -596,7 +596,7 @@ button.student-book .student-mark__press {
 
 .student-clip .ink-btn,
 .student-clips > .student-clip__actions .ink-btn {
-  min-height: 40px;
+  min-height: 44px;
   padding: 0.1rem 0.8rem;
   font-size: 1.1rem;
 }
@@ -1032,8 +1032,11 @@ button.student-book .student-mark__press {
 }
 
 .cal-dot--tournament {
+  width: 12px;
+  height: 12px;
   background: transparent;
   border: 2px solid var(--margin);
+  border-radius: 50%;
   box-sizing: border-box;
 }
 
@@ -1318,6 +1321,137 @@ button.student-book .student-mark__press {
   font-size: 0.72rem;
   line-height: 1.05;
   text-align: center;
+}
+
+.rank-history {
+  display: grid;
+  gap: 0.15rem;
+  justify-items: start;
+}
+
+.rank-history__label,
+.rank-history__date,
+.rank-history__stripes {
+  display: block;
+  margin: 0;
+}
+
+.rank-history__label {
+  font-weight: 700;
+}
+
+.match-line {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.match-line__date,
+.match-line__result {
+  display: block;
+  margin: 0;
+}
+
+.weight-target__name,
+.weight-target__date,
+.weight-target__division {
+  display: block;
+  margin: 0;
+}
+
+.weight-target__date,
+.weight-target__division {
+  margin-top: 0.2rem;
+}
+
+.weight-count__detail {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.student-card {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.student-card__actions,
+.student-card__confirm {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.student-card__confirm {
+  grid-column: 1 / -1;
+}
+
+.student-card__actions .ink-btn,
+.student-card__confirm .ink-btn {
+  min-height: 44px;
+  width: 100%;
+  box-sizing: border-box;
+  justify-content: center;
+}
+
+.student-saved {
+  margin: 0 0 0.7rem;
+  padding: 0.45rem 0.75rem;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  background: rgba(252, 192, 0, 0.35);
+}
+
+.student-film__inputs {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+input.sr-only.student-film-file {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  border: 0;
+}
+
+.student-film__actions,
+.student-clips .student-clip__actions {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.student-film__actions .ink-btn,
+.student-clips .ink-btn,
+.student-film .ink-btn {
+  position: relative;
+  z-index: 2;
+  min-height: 44px;
+  width: 100%;
+  box-sizing: border-box;
+  justify-content: center;
+}
+
+@media (min-width: 720px) {
+  .student-film__actions {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 .rank-stripe-thumb {

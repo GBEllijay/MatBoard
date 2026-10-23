@@ -175,14 +175,22 @@ function WeightCountdownBlock({
     countdown == null
       ? 'The countdown starts when you save a date.'
       : countdown.source === 'tournament'
-        ? `${countdown.tournamentName} · ${countdown.date}. Save a date if the weigh-in is a different day.`
+        ? ''
         : countdown.date;
   return (
     <div className="weight-count-block">
       <p className="weight-count" role="status" aria-live="polite">
         <span className="weight-count__days">{label}</span>
         <span className="ink__label">{countdown == null ? 'Competition weigh-in' : 'Until weigh-in'}</span>
-        <span className="student-quiet">{detail}</span>
+        {countdown?.source === 'tournament' ? (
+          <span className="student-quiet weight-count__detail">
+            <span className="weight-target__name">{countdown.tournamentName}</span>
+            <span className="weight-target__date">{countdown.date}</span>
+            <span>Save a date if the weigh-in is a different day.</span>
+          </span>
+        ) : (
+          <span className="student-quiet">{detail}</span>
+        )}
       </p>
       <form
         className="comp-form"
@@ -309,8 +317,9 @@ function TargetRow({
   const [error, setError] = useState('');
   return (
     <li className="ink">
-      <strong>{tournament.name}</strong>
-      <span>{tournament.date}{tournament.division ? ` · ${tournament.division}` : ''}</span>
+      <strong className="weight-target__name">{tournament.name}</strong>
+      <span className="weight-target__date">{tournament.date}</span>
+      {tournament.division ? <span className="weight-target__division">{tournament.division}</span> : null}
       <form
         className="comp-form"
         onSubmit={(event) => {

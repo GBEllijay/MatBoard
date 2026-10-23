@@ -4,7 +4,10 @@ import type { CalendarKind } from '../../lib/progress/types';
 import {
   addCalendarEvent,
   CALENDAR_KIND_CHOICES,
+  CALENDAR_REPEAT_CHOICES,
   calendarKindLabel,
+  calendarRepeatLabel,
+  calendarRepeatOf,
   eventsOnDate,
   GYM_SCHEDULE_STORAGE_KEY,
   isIsoDate,
@@ -14,6 +17,8 @@ import {
   removeCalendarEvent,
 } from '../../lib/studentTools';
 import { isUpcomingTournament, tournamentStatusLabel, tournamentsOnDate } from '../../lib/progress/competition';
+import type { CalendarEvent, CalendarRepeat } from '../../lib/progress/types';
+import { formatClassTime } from '../../lib/gymCalendar';
 import { rankMarks, rankMarksOnDate } from '../../lib/studentRank';
 import { todayIso, viewJournalEntry } from '../../lib/studentEdition';
 import { StudentMarks, useStudentFile, useStudentPath } from './chrome';
@@ -65,6 +70,9 @@ export function CalendarPage() {
     return { year, month };
   });
   const [date, setDate] = useState(today);
+  const [dateKey, setDateKey] = useState(0);
+  const [time, setTime] = useState('');
+  const [repeat, setRepeat] = useState<CalendarRepeat>('none');
   const [title, setTitle] = useState('');
   const [kind, setKind] = useState<CalendarKind>('class');
   const [note, setNote] = useState('');
@@ -195,10 +203,16 @@ export function CalendarPage() {
         className="ink"
         onSubmit={(event) => {
           event.preventDefault();
+          const picked = inputValue(event.currentTarget, 'event-date');
+          const nextDate = isIsoDate(picked) ? picked : date;
           try {
-            commit(addCalendarEvent(report, { date, title, kind, note }));
+            commit(addCalendarEvent(report, { date: nextDate, title, kind, note, time, repeat }));
             setTitle('');
             setNote('');
+            setTime('');
+            setRepeat('none');
+            setDate(todayIso());
+            setDateKey((value) => value + 1);
             setError('');
           } catch (err) {
             setError(err instanceof Error ? err.message : 'Could not add that event.');
@@ -208,8 +222,34 @@ export function CalendarPage() {
         <h2 className="ink__label">Add an event</h2>
         <label>
           <span className="ink__label">Date</span>
-          <input type="date" aria-label="Event date" value={date} onChange={(event) => setDate(event.target.value)} required />
+          <input
+            key={dateKey}
+            type="date"
+            name="event-date"
+            aria-label="Event date"
+            autoComplete="off"
+            value={date}
+            onChange={(event) => setDate(event.target.value)}
+            required
+          />
         </label>
+        <label>
+          <span className="ink__label">Time</span>
+          <input type="time" aria-label="Event time" value={time} onChange={(event) => setTime(event.target.value)} />
+        </label>
+        <div className="student-games" role="group" aria-label="Repeat">
+          {CALENDAR_REPEAT_CHOICES.map((choice) => (
+            <button
+              key={choice.repeat}
+              type="button"
+              className={repeat === choice.repeat ? 'student-choice is-on' : 'student-choice'}
+              aria-pressed={repeat === choice.repeat}
+              onClick={() => setRepeat(choice.repeat)}
+            >
+              {choice.label}
+            </button>
+          ))}
+        </div>
         <label>
           <span className="ink__label">Title</span>
           <input aria-label="Event title" value={title} onChange={(event) => setTitle(event.target.value)} required />
@@ -245,6 +285,8 @@ export function CalendarDayPage({ date }: { date: string }) {
   const { report, commit } = useStudentFile();
   const [title, setTitle] = useState('');
   const [kind, setKind] = useState<CalendarKind>('training');
+  const [time, setTime] = useState('');
+  const [repeat, setRepeat] = useState<CalendarRepeat>('none');
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
   if (!isIsoDate(date)) {
@@ -323,7 +365,7 @@ export function CalendarDayPage({ date }: { date: string }) {
               <strong>
                 {calendarKindLabel(event.kind)} · {event.title}
               </strong>
-              {event.note ? <span>{event.note}</span> : null}
+              {eventDetail(event) ? <span>{eventDetail(event)}</span> : null}
               <button
                 type="button"
                 className="ink-btn"
@@ -341,9 +383,11 @@ export function CalendarDayPage({ date }: { date: string }) {
         onSubmit={(event) => {
           event.preventDefault();
           try {
-            commit(addCalendarEvent(report, { date, title, kind, note }));
+            commit(addCalendarEvent(report, { date, title, kind, note, time, repeat }));
             setTitle('');
             setNote('');
+            setTime('');
+            setRepeat('none');
             setError('');
           } catch (err) {
             setError(err instanceof Error ? err.message : 'Could not add that event.');
@@ -355,6 +399,23 @@ export function CalendarDayPage({ date }: { date: string }) {
           <span className="ink__label">Title</span>
           <input aria-label="Event title" value={title} onChange={(event) => setTitle(event.target.value)} required />
         </label>
+        <label>
+          <span className="ink__label">Time</span>
+          <input type="time" aria-label="Event time" value={time} onChange={(event) => setTime(event.target.value)} />
+        </label>
+        <div className="student-games" role="group" aria-label="Repeat">
+          {CALENDAR_REPEAT_CHOICES.map((choice) => (
+            <button
+              key={choice.repeat}
+              type="button"
+              className={repeat === choice.repeat ? 'student-choice is-on' : 'student-choice'}
+              aria-pressed={repeat === choice.repeat}
+              onClick={() => setRepeat(choice.repeat)}
+            >
+              {choice.label}
+            </button>
+          ))}
+        </div>
         <div className="student-games" role="group" aria-label="Event kind">
           {CALENDAR_KIND_CHOICES.map((choice) => (
             <button
@@ -379,6 +440,20 @@ export function CalendarDayPage({ date }: { date: string }) {
       </form>
     </CalendarFrame>
   );
+}
+
+function inputValue(form: HTMLFormElement, name: string): string {
+  const field = form.elements.namedItem(name);
+  return field instanceof HTMLInputElement ? field.value : '';
+}
+
+function eventDetail(event: CalendarEvent): string {
+  const bits: string[] = [];
+  if (event.time) bits.push(formatClassTime(event.time));
+  const repeat = calendarRepeatOf(event);
+  if (repeat !== 'none') bits.push(`${calendarRepeatLabel(repeat)} from ${event.date}`);
+  if (event.note) bits.push(event.note);
+  return bits.join(' · ');
 }
 
 function entriesFor(report: ReturnType<typeof useStudentFile>['report'], date: string) {

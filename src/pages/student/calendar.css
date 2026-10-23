@@ -129,8 +129,12 @@
 }
 
 .student.student--calendar .cal-dot--tournament {
+  width: 12px;
+  height: 12px;
   background: transparent;
-  border: 1.5px solid #ff453a;
+  border: 2px solid #ff453a;
+  border-radius: 50%;
+  box-sizing: border-box;
 }
 
 .student.student--calendar .cal-dot--rank {

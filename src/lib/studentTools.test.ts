@@ -83,6 +83,46 @@ test('a journal day sits on the month grid and an open mat is a training event',
   assert.equal(withEvent.calendar[0].note, 'no-gi');
   assert.deepEqual(Object.keys(withEvent.calendar[0]).sort(), ['date', 'id', 'kind', 'note', 'title']);
   assert.equal(eventsOnDate(withEvent, '2026-10-18')[0].title, 'Saturday open mat');
+  assert.equal(eventsOnDate(withEvent, '2026-10-25').length, 0);
+  const repeating = addCalendarEvent(
+    withEvent,
+    { date: '2026-10-18', title: 'Evening rounds', kind: 'training', note: 'gi', time: '18:30', repeat: 'weekly' },
+    30,
+  );
+  assert.equal(repeating.calendar[1].time, '18:30');
+  assert.equal(repeating.calendar[1].repeat, 'weekly');
+  assert.deepEqual(Object.keys(repeating.calendar[0]).sort(), ['date', 'id', 'kind', 'note', 'title']);
+  assert.equal(eventsOnDate(repeating, '2026-11-01')[0]?.title, 'Evening rounds');
+  assert.equal(eventsOnDate(repeating, '2026-10-19').some((event) => event.title === 'Evening rounds'), false);
+  const biweekly = addCalendarEvent(
+    blankStudentReport(31),
+    { date: '2026-10-01', title: 'Every other week', kind: 'class', note: '', repeat: 'biweekly' },
+    31,
+  );
+  assert.equal(eventsOnDate(biweekly, '2026-10-15')[0]?.title, 'Every other week');
+  assert.equal(eventsOnDate(biweekly, '2026-10-08').length, 0);
+  const monthly = addCalendarEvent(
+    blankStudentReport(32),
+    { date: '2026-01-31', title: 'Month end', kind: 'other', note: '', repeat: 'monthly', time: '09:00' },
+    32,
+  );
+  assert.equal(eventsOnDate(monthly, '2026-03-31')[0]?.title, 'Month end');
+  assert.equal(eventsOnDate(monthly, '2026-02-28').length, 0);
+  assert.equal(eventsOnDate(monthly, '2026-01-31')[0]?.time, '09:00');
+  const roundTrip = parseProgressPacket(exportProgressPacket(repeating));
+  assert.equal(roundTrip.ok, true);
+  if (roundTrip.ok && roundTrip.value.kind === 'student-progress-report') {
+    const kept = roundTrip.value.calendar.find((event) => event.title === 'Evening rounds');
+    assert.equal(kept?.time, '18:30');
+    assert.equal(kept?.repeat, 'weekly');
+    const older = roundTrip.value.calendar.find((event) => event.title === 'Saturday open mat');
+    assert.equal(older?.time, undefined);
+    assert.equal(older?.repeat, undefined);
+  }
+  assert.throws(
+    () => addCalendarEvent(withEvent, { date: '2026-10-18', title: 'Bad clock', kind: 'class', note: '', time: '25:00' }, 33),
+    /HH:MM/,
+  );
   assert.equal(withEvent.journal.length, drafted.journal.length);
   assert.throws(
     () => addCalendarEvent(withEvent, { date: 'nope', title: 'Seminar', kind: 'class', note: '' }, 20),

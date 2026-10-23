@@ -24,8 +24,10 @@ import {
   PROGRESS_ID_MAX,
   PROGRESS_NAME_MAX,
   PROGRESS_NOTE_MAX,
+  CALENDAR_REPEATS,
   type CalendarEvent,
   type CalendarKind,
+  type CalendarRepeat,
   type CoachFeedbackPacket,
   type CoachPlanFocus,
   type CoachPlanPacket,
@@ -71,6 +73,16 @@ export const CALENDAR_KIND_CHOICES: { kind: CalendarKind; label: string }[] = [
   { kind: 'other', label: 'Tournament' },
   { kind: 'promotion', label: 'Promotion test' },
 ];
+
+/** Repeat choices on the add-event form. `none` is not written onto the event. */
+export const CALENDAR_REPEAT_CHOICES: { repeat: CalendarRepeat; label: string }[] = [
+  { repeat: 'none', label: 'None' },
+  { repeat: 'weekly', label: 'Weekly' },
+  { repeat: 'biweekly', label: 'Every 2 weeks' },
+  { repeat: 'monthly', label: 'Monthly' },
+];
+
+const CLOCK_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 export type CoachShelf = {
   plan: CoachPlanPacket | null;
@@ -151,8 +163,43 @@ export function entriesOnDate(report: StudentProgressReport, date: string) {
     .sort((a, b) => a.createdAt - b.createdAt);
 }
 
+export function calendarRepeatOf(event: CalendarEvent): CalendarRepeat {
+  return event.repeat && (CALENDAR_REPEATS as readonly string[]).includes(event.repeat) ? event.repeat : 'none';
+}
+
+export function calendarRepeatLabel(repeat: CalendarRepeat): string {
+  return CALENDAR_REPEAT_CHOICES.find((choice) => choice.repeat === repeat)?.label ?? 'None';
+}
+
+function utcDay(iso: string): number {
+  const [year, month, day] = iso.split('-').map(Number);
+  return Date.UTC(year, month - 1, day);
+}
+
+function daysAfter(start: string, date: string): number {
+  return Math.round((utcDay(date) - utcDay(start)) / 86400000);
+}
+
+/** True when `date` is the event day or a later repeat of it. Dates before the start are not. */
+export function eventOccursOn(event: CalendarEvent, date: string): boolean {
+  if (!isIsoDate(date) || !isIsoDate(event.date)) return false;
+  if (date < event.date) return false;
+  const repeat = calendarRepeatOf(event);
+  if (repeat === 'none' || event.date === date) return event.date === date;
+  if (repeat === 'weekly' || repeat === 'biweekly') {
+    const days = daysAfter(event.date, date);
+    return days > 0 && days % (repeat === 'weekly' ? 7 : 14) === 0;
+  }
+  const [, , startDay] = event.date.split('-');
+  const [year, month, day] = date.split('-').map(Number);
+  if (String(day).padStart(2, '0') !== startDay) return false;
+  const [startYear, startMonth] = event.date.split('-').map(Number);
+  const months = (year - startYear) * 12 + (month - startMonth);
+  return months > 0;
+}
+
 export function eventsOnDate(report: StudentProgressReport, date: string): CalendarEvent[] {
-  return report.calendar.filter((event) => event.date === date);
+  return report.calendar.filter((event) => eventOccursOn(event, date));
 }
 
 /** Sunday-first month grid. Days outside the month stay in the grid so the columns line up. */
@@ -176,13 +223,17 @@ export function monthGrid(year: number, month: number): MonthCell[][] {
 
 export function addCalendarEvent(
   report: StudentProgressReport,
-  draft: { date: string; title: string; kind: CalendarKind; note: string },
+  draft: { date: string; title: string; kind: CalendarKind; note: string; time?: string; repeat?: CalendarRepeat },
   now = Date.now(),
 ): StudentProgressReport {
   if (!isIsoDate(draft.date)) throw new Error('Date must be YYYY-MM-DD.');
   const title = draft.title.trim();
   if (!title) throw new Error('Add a title.');
   if (report.calendar.length >= PROGRESS_CALENDAR_MAX) throw new Error('The calendar is full.');
+  const time = (draft.time ?? '').trim();
+  if (time && !CLOCK_RE.test(time)) throw new Error('Time must be HH:MM.');
+  const repeat = draft.repeat ?? 'none';
+  if (!(CALENDAR_REPEATS as readonly string[]).includes(repeat)) throw new Error('Pick how often it repeats.');
   const event: CalendarEvent = {
     id: newId('cal', now),
     date: draft.date,
@@ -190,6 +241,8 @@ export function addCalendarEvent(
     kind: draft.kind,
     note: draft.note.trim().slice(0, PROGRESS_NOTE_MAX),
   };
+  if (time) event.time = time;
+  if (repeat !== 'none') event.repeat = repeat;
   return touch({ ...report, calendar: [...report.calendar, event] }, now);
 }
 

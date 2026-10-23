@@ -147,6 +147,8 @@ test('a recorded match and bracket note export, and the photo stays out of the f
   if (!parsed.ok || parsed.value.kind !== 'student-progress-report') return;
   assert.equal(parsed.value.competition?.results[0]?.matches[0]?.opponent, 'Sam');
   assert.equal(parsed.value.competition?.results[0]?.matches[0]?.method, 'sub');
+  assert.equal(parsed.value.competition?.results[0]?.matches[0]?.date, undefined);
+  assert.equal(Object.hasOwn(report.competition?.results[0]?.matches[0] ?? {}, 'date'), false);
   assert.equal(parsed.value.competition?.results[0]?.bracket[0]?.round, 'Final');
   const csv = exportProgressCsv(parsed.value);
   assert.match(csv, /Result,/);
@@ -154,6 +156,36 @@ test('a recorded match and bracket note export, and the photo stays out of the f
   assert.match(csv, /Bracket,/);
   assert.match(csv, /Sam/);
   assert.doesNotMatch(csv, /data:image/);
+});
+
+test('a match date is stored only when one is set, and an old match stays undated', () => {
+  let report = addCompetitionResult(
+    blankStudentReport(50),
+    { tournamentId: '', tournamentName: 'Spring Open', division: '' },
+    51,
+  );
+  const id = report.competition?.results[0]?.id ?? '';
+  report = addCompetitionMatch(report, id, { opponent: 'Sam', result: 'win', method: 'points', note: '' }, 52);
+  report = addCompetitionMatch(
+    report,
+    id,
+    { opponent: 'Jo', result: 'loss', method: 'sub', note: 'closed the guard', date: '2026-10-20' },
+    53,
+  );
+  const matches = report.competition?.results[0]?.matches ?? [];
+  assert.equal(Object.hasOwn(matches[0] ?? {}, 'date'), false);
+  assert.equal(matches[1]?.date, '2026-10-20');
+  assert.throws(
+    () => addCompetitionMatch(report, id, { opponent: 'Pat', result: 'draw', method: 'points', note: '', date: '20-10-2026' }, 54),
+    /YYYY-MM-DD/,
+  );
+  const parsed = parseProgressPacket(exportProgressPacket(report));
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok || parsed.value.kind !== 'student-progress-report') return;
+  const kept = parsed.value.competition?.results[0]?.matches ?? [];
+  assert.equal(kept[0]?.date, undefined);
+  assert.equal(kept[1]?.date, '2026-10-20');
+  assert.equal(kept[1]?.opponent, 'Jo');
 });
 
 test('journal search finds a result, and coach search uses opponent, tournament, or method', () => {

@@ -334,25 +334,26 @@ export function removeCompetitionResult(report: StudentProgressReport, id: strin
 export function addCompetitionMatch(
   report: StudentProgressReport,
   resultId: string,
-  draft: { opponent: string; result: MatchResult; method: MatchMethod; note: string },
+  draft: { opponent: string; result: MatchResult; method: MatchMethod; note: string; date?: string },
   now = Date.now(),
 ): StudentProgressReport {
   return mapResult(report, resultId, now, (result) => {
     if (result.matches.length >= PROGRESS_MATCHES_MAX) throw new Error('That result’s match list is full.');
     const opponent = clip(draft.opponent, PROGRESS_NAME_MAX);
     if (!opponent) throw new Error('Add an opponent.');
+    const date = (draft.date ?? '').trim();
+    if (date && !isIsoDate(date)) throw new Error('Match date must be YYYY-MM-DD.');
+    const match = {
+      id: newId('match', now),
+      opponent,
+      result: draft.result,
+      method: draft.method,
+      note: clip(draft.note, PROGRESS_NOTE_MAX),
+      ...(date ? { date } : {}),
+    };
     return {
       ...result,
-      matches: [
-        ...result.matches,
-        {
-          id: newId('match', now),
-          opponent,
-          result: draft.result,
-          method: draft.method,
-          note: clip(draft.note, PROGRESS_NOTE_MAX),
-        },
-      ],
+      matches: [...result.matches, match],
     };
   });
 }

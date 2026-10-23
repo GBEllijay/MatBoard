@@ -132,6 +132,12 @@ test('belt tap still sets the belt and does not open a stripe editor', async () 
 test('tapping a stripe opens an editor for an optional date and photo', async () => {
   const mounted = mount(<RankPage />);
   try {
+    await click(labeled('Stripe 1'));
+    assert.equal(document.querySelector('[role="dialog"]'), null);
+    await click(labeled('Stripe 2'));
+    assert.equal(document.querySelector('[role="dialog"]'), null);
+    assert.equal(labeled('Stripe 1').getAttribute('aria-pressed'), 'true');
+    assert.equal(labeled('Stripe 2').getAttribute('aria-pressed'), 'true');
     await click(labeled('Stripe 2'));
     const dialog = document.querySelector('[role="dialog"]');
     assert.ok(dialog instanceof HTMLElement);
@@ -204,7 +210,9 @@ test('take off, add again, and drop later stripes stay available inside the stri
   const mounted = mount(<RankPage />);
   try {
     await click(labeled('Stripe 3'));
+    assert.equal(document.querySelector('[role="dialog"]'), null);
     assert.equal(labeled('Stripe 3').getAttribute('aria-pressed'), 'true');
+    await click(labeled('Stripe 3'));
     await click([...document.querySelectorAll('button')].find((button) => button.textContent === 'Close') as HTMLButtonElement);
     await click(labeled('Stripe 1'));
     const dialog = document.querySelector('[role="dialog"]');
@@ -233,12 +241,18 @@ test('belt date, lineage, belt photo, and promotion history stay in place', asyn
     assert.ok(beltDate instanceof HTMLInputElement);
     await typeControl(beltDate, '2026-02-01');
     await click(labeled('Stripe 1'));
+    assert.equal(document.querySelector('[role="dialog"]'), null);
+    assert.equal(labeled('Stripe 1').getAttribute('aria-pressed'), 'true');
+    await click(labeled('Stripe 1'));
     await typeControl(labeled('Stripe 1 date') as HTMLInputElement, '2026-03-01');
     await click(buttonNamed('Blue'));
     assert.equal(document.querySelector('[aria-label="Stripe 1 details"]'), null);
     const history = document.querySelector('[aria-label="Promotion history"]');
-    assert.match(history?.textContent ?? '', /White/);
-    assert.match(history?.textContent ?? '', /2026-02-01/);
+    const row = history?.querySelector('.rank-history');
+    assert.equal(row?.querySelector('.rank-history__label')?.textContent, 'White');
+    assert.equal(row?.querySelector('.rank-history__date')?.textContent, '2026-02-01');
+    assert.match(row?.querySelector('.rank-history__stripes')?.textContent ?? '', /stripe/);
+    assert.notEqual(row?.querySelector('.rank-history__label'), row?.querySelector('.rank-history__date'));
     assert.equal(buttonNamed('Blue').getAttribute('aria-pressed'), 'true');
     assert.equal((labeled('Date of this belt') as HTMLInputElement).value, '');
     assert.ok(document.querySelector('[aria-label="Add Blue photo"]'));

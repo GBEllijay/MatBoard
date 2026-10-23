@@ -146,10 +146,17 @@ test('a learned date without a level opens at live, and taps, sort, filter, note
   assert.equal(control(sweeps, 'a', 'Open Scissor sweep detail in Video Library').getAttribute('href')?.startsWith('/student/videos#clip-'), true);
   assert.ok(sweeps.textContent?.includes('Updated'));
 
+  const sweepsMeter = () => labeled(host, 'Sweeps').querySelector('.fund-meter');
+  const before = sweepsMeter()?.getAttribute('data-value');
   act(() => {
     labeled(sweeps, 'Scissor sweep 5 Can teach it').click();
   });
   assert.equal(labeled(sweeps, 'Scissor sweep 5 Can teach it').getAttribute('aria-checked'), 'true');
+  const afterMeter = sweepsMeter();
+  assert.notEqual(afterMeter?.getAttribute('data-value'), before);
+  assert.equal((afterMeter?.querySelector('span') as HTMLElement | null)?.style.width.endsWith('%'), true);
+  const escapes = labeled(host, 'Escapes');
+  assert.equal(control(escapes, 'a', 'Open Back escape checkpoint').getAttribute('href'), '/student/rubric#checkpoint.white.escapes');
   const saved = JSON.parse(localStorage.getItem(STUDENT_EDITION_STORAGE_KEY) ?? '{}') as {
     checklist: { catalogItemId: string; level: number; learnedOn: string; note: string }[];
   };

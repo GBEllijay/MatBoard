@@ -308,6 +308,34 @@ export function addJournalEntry(report: StudentProgressReport, draft: JournalDra
   };
 }
 
+/** Replace one card’s text. The id, later notes, and the day it was first saved stay. */
+export function updateJournalEntry(
+  report: StudentProgressReport,
+  entryId: string,
+  draft: JournalDraft,
+  now = Date.now(),
+): StudentProgressReport {
+  const index = report.journal.findIndex((entry) => entry.id === entryId);
+  if (index < 0) return report;
+  const current = report.journal[index];
+  const next = createJournalEntry({ ...draft, gameTag: draft.gameTag || current.gameTag }, now);
+  const journal = report.journal.slice();
+  journal[index] = {
+    ...next,
+    id: current.id,
+    amendments: current.amendments,
+    createdAt: current.createdAt,
+    updatedAt: now,
+  };
+  return { ...report, updatedAt: now, journal };
+}
+
+/** Remove one card. Later notes on that card go with it. Other cards stay. */
+export function deleteJournalEntry(report: StudentProgressReport, entryId: string, now = Date.now()): StudentProgressReport {
+  if (!report.journal.some((entry) => entry.id === entryId)) return report;
+  return { ...report, updatedAt: now, journal: report.journal.filter((entry) => entry.id !== entryId) };
+}
+
 /** Append a dated note. The original card text, techniques, and date stay as saved. */
 export function addJournalAmendment(
   report: StudentProgressReport,
