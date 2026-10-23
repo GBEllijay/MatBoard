@@ -283,7 +283,8 @@ test('a connected Drive card browses folders, selects all, and saves gallery cop
   await page.goto('/coach-unlimited');
   const card = page.locator('article.plan-card').filter({ hasText: 'GBLJ Instructors' });
   await expect(card.getByRole('link', { name: 'Class history', exact: true })).toBeVisible();
-  await expect(card.getByRole('button', { name: 'Disconnect', exact: true })).toBeVisible();
+  await expect(card.getByRole('button', { name: 'Change folder', exact: true })).toBeVisible();
+  await expect(card.getByRole('button', { name: 'Disconnect Google Drive', exact: true })).toBeVisible();
   await card.getByRole('button', { name: 'Browse photos and videos', exact: true }).click();
 
   const picker = page.getByRole('dialog', { name: 'Pick from Google Drive' });
@@ -316,19 +317,31 @@ test('an expired or narrow Drive sign-in asks to reconnect, then browse returns'
   await expect(card.getByRole('button', { name: 'Reconnect', exact: true })).toBeVisible();
   await expect(card.getByText('Sign in to Google Drive again to browse folders')).toBeVisible();
   await expect(card.getByRole('button', { name: 'Browse photos and videos', exact: true })).toHaveCount(0);
-  await expect(card.getByRole('button', { name: 'Disconnect', exact: true })).toBeVisible();
+  await expect(card.getByRole('button', { name: 'Change folder', exact: true })).toBeVisible();
+  await expect(card.getByRole('button', { name: 'Disconnect Google Drive', exact: true })).toBeVisible();
 
   await installGoogleSignIn(page);
   await card.getByRole('button', { name: 'Reconnect', exact: true }).click();
   await expect(card.getByRole('button', { name: 'Browse photos and videos', exact: true })).toBeVisible();
 
-  await card.getByRole('button', { name: 'Disconnect', exact: true }).click();
+  await card.getByRole('button', { name: 'Change folder', exact: true }).click();
+  await expect(card.getByText('GBLJ Instructors')).toBeVisible();
+  await expect(card.getByText('This Google Drive account does not have any folders yet.')).toBeVisible();
+
+  await card.getByRole('button', { name: 'Disconnect Google Drive', exact: true }).click();
+  await expect(card.getByText('Lesson plans, rosters, and journals on this device stay.')).toBeVisible();
+  await card.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(card.getByText('GBLJ Instructors')).toBeVisible();
+
+  await card.getByRole('button', { name: 'Disconnect Google Drive', exact: true }).click();
+  await card.getByRole('button', { name: 'Disconnect Google Drive', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Google Drive', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'OneDrive', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Google Photos', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: /iCloud/ })).toBeVisible();
   await expect(page.getByText('Coming for launch', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Disconnect', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Disconnect Google Drive', exact: true })).toHaveCount(0);
 });
 
 test('a sign-in that cannot list folders asks to reconnect for the approved read scope', async ({ page }) => {

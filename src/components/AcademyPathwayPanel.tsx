@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { GoogleDriveFolderTools } from './GoogleDriveFolderTools';
 import {
   ACADEMY_FREE_NOTE,
   ACADEMY_NO_FOLDER,
@@ -11,8 +12,9 @@ import {
   shareOneDriveFolderWithAnyone,
   type AcademyPathway,
 } from '../lib/academyPathway';
+import { cloudStorage } from '../lib/cloudStorage';
 import { readGymName } from '../lib/gymName';
-import { readDriveBinding, requestDriveToken } from '../lib/googleDrive';
+import { readDriveBinding, requestDriveToken, subscribeDriveBinding } from '../lib/googleDrive';
 import { readOneDriveBinding, readOneDriveSession } from '../lib/oneDrive';
 import { COACH_UNLIMITED_PATH } from '../lib/productNames';
 import { qrDataUrl } from '../lib/qr';
@@ -48,8 +50,9 @@ export function AcademyPathwayPanel() {
   const [rows, setRows] = useState<Row[]>([]);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
+  const [driveTick, setDriveTick] = useState(0);
 
-  useEffect(() => {
+  const reload = useCallback(() => {
     const gymName = readGymName();
     const pathways: AcademyPathway[] = [];
     const google = readDriveBinding();
@@ -80,6 +83,15 @@ export function AcademyPathwayPanel() {
       alive = false;
     };
   }, []);
+
+  useEffect(() => {
+    const stopAlive = reload();
+    return () => {
+      stopAlive?.();
+    };
+  }, [reload, driveTick]);
+
+  useEffect(() => subscribeDriveBinding(() => setDriveTick((value) => value + 1)), []);
 
   const copy = async (url: string) => {
     try {
@@ -168,6 +180,23 @@ export function AcademyPathwayPanel() {
               <p>Open this folder in OneDrive and share it if the edit link is not created here.</p>
             )}
           </div>
+          {row.pathway.provider === 'googleDrive' ? (
+            <GoogleDriveFolderTools
+              folderId={row.pathway.folderId}
+              picker="inline"
+              onPick={async (folder, token) => {
+                await cloudStorage('googleDrive').pickFolder(token, folder);
+                setDriveTick((value) => value + 1);
+                setStatus(`Connected to ${folder.name}. Pick another folder any time, or disconnect to sign in with a different account.`);
+                setError('');
+              }}
+              onDisconnected={() => {
+                setDriveTick((value) => value + 1);
+                setStatus('Google Drive is disconnected on this device. Connect again to pick a folder or account.');
+                setError('');
+              }}
+            />
+          ) : null}
         </article>
       ))}
       {status ? <p role="status">{status}</p> : null}

@@ -1,5 +1,5 @@
 node_modules
-.cache
+.regression-cache
 dist
 dev-dist
 .data

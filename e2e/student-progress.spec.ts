@@ -23,14 +23,23 @@ test('calendar marks a journal day, stores an event, and can show the gym schedu
   await page.getByRole('textbox', { name: 'Notes' }).fill('grip the collar deeper');
   await page.getByRole('button', { name: 'Save entry' }).click();
   await expect(page.getByText('grip the collar deeper')).toBeVisible();
+  await expect(page.locator('main.student')).toHaveCSS('font-family', /Patrick Hand/);
+  await expect(page.locator('.student-paper')).toHaveCSS('background-color', 'rgb(244, 240, 228)');
 
   await page.goto('/student/calendar?student=1');
   const marked = page.getByRole('button', { name: /journal entry/ });
   await expect(marked).toBeVisible();
   await expect(marked).toHaveAttribute('data-journal', 'true');
+  const calendar = page.locator('main.student');
+  await expect(calendar).toHaveCSS('background-color', 'rgb(0, 0, 0)');
+  await expect(calendar).toHaveCSS('font-family', /Inter/);
+  await expect(page.getByRole('button', { name: 'Previous month' })).toHaveCSS('min-height', '56px');
+  await expect(page.getByRole('button', { name: 'Add event', exact: true })).toHaveCSS('background-color', 'rgb(245, 245, 247)');
+  await expect(page.getByRole('button', { name: 'Add event', exact: true })).toHaveCSS('color', 'rgb(0, 0, 0)');
   await shot(page, 'student-calendar-390');
 
   await page.getByLabel('Event title').fill('Saturday open mat');
+  await page.getByLabel('Event note').fill('no-gi rounds');
   await page.getByRole('button', { name: 'Open mat', exact: true }).click();
   await page.getByRole('button', { name: 'Add event', exact: true }).click();
   await expect(page.getByRole('button', { name: /Saturday open mat|calendar event/ })).toBeVisible();
@@ -41,11 +50,20 @@ test('calendar marks a journal day, stores an event, and can show the gym schedu
   const stored = await page.evaluate(() => localStorage.getItem('matboard.studentEdition.v1') ?? '');
   expect(stored).not.toContain('Morning Gi');
   expect(stored).toContain('Saturday open mat');
+  expect(stored).toContain('no-gi rounds');
   expect(stored).toContain('"kind":"training"');
 
   await marked.click();
   await expect(page.getByText('grip the collar deeper')).toBeVisible();
+  await expect(page.getByText('Open mat · Saturday open mat')).toBeVisible();
   await expect(page.getByRole('link', { name: BACK, exact: true })).toHaveAttribute('href', /\/student\/calendar\?student=1/);
+  await page.getByRole('button', { name: 'Remove Saturday open mat' }).click();
+  await expect(page.getByText('Open mat · Saturday open mat')).toHaveCount(0);
+  const afterRemove = await page.evaluate(() => localStorage.getItem('matboard.studentEdition.v1') ?? '');
+  expect(afterRemove).not.toContain('Saturday open mat');
+  expect(afterRemove).not.toContain('no-gi rounds');
+  expect(afterRemove).toContain('grip the collar deeper');
+  expect(afterRemove).toContain('"calendar":[]');
 });
 
 test('belt checkpoints, goals, coach suggestions, and the share file', async ({ page }) => {
