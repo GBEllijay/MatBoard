@@ -29,6 +29,10 @@ export function StorefrontPage() {
 
   return (
     <main className="home home--store">
+      <div className="sf-portrait-brand">
+        <img src="/advantage-icon.png" alt="" width={54} height={54} />
+        <span className="sf-portrait-word">Advantage</span>
+      </div>
       <div className="sf-topbar">
         <div className="sf-wrap">
           <nav className="sf-nav" aria-label="On this page">
