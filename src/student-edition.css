@@ -96,7 +96,7 @@
   min-height: 0;
   justify-content: center;
   text-align: center;
-  padding: calc(4.7rem + var(--safe-t)) 1.15rem 0.8rem;
+  padding: calc(var(--mark-home-clear) + var(--safe-t)) 1.15rem 0.8rem;
   color: #f4e7d4;
   font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Times New Roman', serif;
   background-color: #161616;
@@ -112,7 +112,7 @@
 .student-leather::after {
   content: '';
   position: absolute;
-  top: calc(4.35rem + var(--safe-t));
+  top: calc(var(--mark-home-clear) - 0.35rem + var(--safe-t));
   right: 8px;
   bottom: 7px;
   left: 8px;

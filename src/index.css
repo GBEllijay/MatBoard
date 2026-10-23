@@ -27,6 +27,11 @@
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-l: env(safe-area-inset-left, 0px);
   --safe-r: env(safe-area-inset-right, 0px);
+  /* Corner back stays a small mark. Center Home is the large mark.
+     Shared by .play-exit, .tier-home, and .home__logo so new pages inherit both sizes. */
+  --mark-back: 44px;
+  --mark-home: 112px;
+  --mark-home-clear: calc(0.25rem + var(--mark-home) + 0.7rem);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
 }
 
@@ -259,12 +264,26 @@ label.btn {
   text-align: center;
 }
 
+/* Pinned size is --mark-home (112px), not the old in-flow clamp (~164px on a phone).
+   112 / 44 = 2.55, still clearly above the 1.6 floor, and the reserved band stays
+   about 127px so the title and scoreboard keep the rest of the screen.
+   max-width holds later clamps to this pinned size. No hover offset. */
 .home__logo {
-  width: clamp(8rem, 42vw, 11.5rem);
-  height: auto;
+  position: fixed;
+  top: calc(0.2rem + var(--safe-t));
+  left: 50%;
+  z-index: 24;
+  width: var(--mark-home);
+  height: var(--mark-home);
+  min-width: var(--mark-home);
+  min-height: var(--mark-home);
+  max-width: var(--mark-home);
+  max-height: var(--mark-home);
   aspect-ratio: 1;
+  flex-shrink: 0;
   display: block;
-  margin: 0 auto 1.05rem;
+  margin: 0;
+  transform: translateX(-50%);
   filter: drop-shadow(0 16px 36px rgba(0, 0, 0, 0.42));
 }
 
@@ -875,7 +894,7 @@ button.mode-card__hit {
 }
 
 .home--ladder .home__logo {
-  width: clamp(4.4rem, 13.5vh, 7rem);
+  width: max(var(--mark-home), clamp(4.4rem, 13.5vh, 7rem));
   margin-bottom: clamp(0.28rem, 0.9vh, 0.65rem);
 }
 
@@ -2924,7 +2943,7 @@ span.role-plan__mark {
 
   .home__logo {
     margin: 0 0 1rem;
-    width: clamp(6.4rem, 12vw, 9.6rem);
+    width: max(var(--mark-home), clamp(6.4rem, 12vw, 9.6rem));
   }
 
   .home h1 {
@@ -3051,7 +3070,7 @@ span.role-plan__mark {
   }
 
   .home__logo {
-    width: clamp(4.2rem, 11vh, 5.8rem);
+    width: max(var(--mark-home), clamp(4.2rem, 11vh, 5.8rem));
     margin-bottom: 0.45rem;
   }
 
@@ -3106,7 +3125,7 @@ span.role-plan__mark {
 
   .home--ladder .home__logo {
     grid-row: 1 / span 3;
-    width: clamp(3.1rem, 16vh, 4.2rem);
+    width: max(var(--mark-home), clamp(3.1rem, 16vh, 4.2rem));
     margin: 0;
   }
 
@@ -3271,9 +3290,10 @@ span.role-plan__mark {
   z-index: 46;
 }
 
-/* Play watermark: quiet top-left, fat-thumb hit. Slideshow keeps the bottom free for name labels; Training keeps the clock clear. */
+/* Play watermark: quiet top-left, fat-thumb hit. Slideshow keeps the bottom free for name labels; Training keeps the clock clear.
+   Pinned to the viewport. Size, corner, and hold-for-home behavior stay the same. */
 .play-exit {
-  position: absolute;
+  position: fixed;
   top: calc(0.2rem + var(--safe-t));
   left: calc(0.15rem + var(--safe-l));
   z-index: 6;
@@ -3305,8 +3325,9 @@ span.role-plan__mark {
 }
 
 .play-exit img {
-  width: 44px;
-  height: 44px;
+  width: var(--mark-back);
+  height: var(--mark-back);
+  flex-shrink: 0;
   display: block;
   border-radius: 50%;
   pointer-events: none;
@@ -3324,21 +3345,25 @@ span.role-plan__mark {
   opacity: 0.55;
 }
 
-/* Center Advantage mark. Home is the tier picker. Same icon as the corner back. */
+/* Center Advantage mark. Home is the tier picker. Larger than the corner back.
+   Pinned with the corner mark. --mark-home (112px) is 2.55× the 44px back image. */
 .tier-home {
-  position: absolute;
+  position: fixed;
   top: calc(0.2rem + var(--safe-t));
   left: 50%;
   z-index: 22;
-  width: 64px;
-  height: 64px;
+  width: var(--mark-home);
+  height: var(--mark-home);
+  min-width: var(--mark-home);
+  min-height: var(--mark-home);
   margin: 0;
   padding: 0;
   border: 0;
-  border-radius: 18px;
+  border-radius: 22px;
   background: transparent;
   display: grid;
   place-items: center;
+  flex-shrink: 0;
   transform: translateX(-50%);
   color: inherit;
   cursor: pointer;
@@ -3346,8 +3371,12 @@ span.role-plan__mark {
 }
 
 .tier-home img {
-  width: 44px;
-  height: 44px;
+  width: var(--mark-home);
+  height: var(--mark-home);
+  min-width: var(--mark-home);
+  min-height: var(--mark-home);
+  max-width: none;
+  flex-shrink: 0;
   display: block;
   border-radius: 50%;
   pointer-events: none;
@@ -3359,16 +3388,36 @@ span.role-plan__mark {
   outline-offset: 2px;
 }
 
-/* The center Home mark is its own row. Titles, kickers, and header buttons start under it. */
-main:has(> .tier-home) > .roster__bar,
-main:has(> .tier-home) > .techniques__bar,
-main:has(> .tier-home) > .schedule__bar {
-  padding-top: calc(4.7rem + var(--safe-t));
+/* Class Schedule fills the screen and does not scroll the page. The bar's top
+   padding keeps the title under the pinned center mark. Phone hides that mark. */
+main.schedule:has(> .tier-home) > .schedule__bar {
+  padding-top: calc(var(--mark-home-clear) + var(--safe-t));
+}
+
+/* Document pages scroll inside the page, under a border the content cannot enter.
+   The border is the reserved band for the pinned Home logo. */
+main.home:has(.home__logo),
+main.roster:has(> .tier-home),
+main.white-roster:has(> .tier-home) {
+  box-sizing: border-box;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: auto;
+  border-top: calc(var(--mark-home-clear) + var(--safe-t)) solid transparent;
+}
+
+main.roster:has(> .tier-home) > :not(.play-exit):not(.tier-home) {
+  flex-shrink: 0;
+}
+
+main.home:has(.home__logo) > .home__inner {
+  min-height: 0;
+  align-items: start;
 }
 
 main.notes:has(> .tier-home) > .notes__bar,
 main.tree:has(> .tier-home) > .tree__bar {
-  margin-top: 3.85rem;
+  margin-top: var(--mark-home-clear);
 }
 
 /* Phone Class Schedule keeps the corner back only. Wide screens still show the center mark. */
@@ -3382,9 +3431,6 @@ main.tree:has(> .tier-home) > .tree__bar {
   }
 }
 
-main.white-roster:has(> .tier-home) > .white-roster__head {
-  margin-top: 3.7rem;
-}
 
 .home .play-exit {
   z-index: 30;
@@ -14705,7 +14751,7 @@ a.plan-pick {
 }
 
 .home--legal .home__logo {
-  width: clamp(4.4rem, 22vw, 6.4rem);
+  width: max(var(--mark-home), clamp(4.4rem, 22vw, 6.4rem));
   margin: 0 auto 0.55rem;
 }
 
@@ -16944,7 +16990,7 @@ a.plan-pick {
 }
 
 .home--store .home__logo {
-  width: clamp(6.5rem, 28vw, 9rem);
+  width: max(var(--mark-home), clamp(6.5rem, 28vw, 9rem));
 }
 
 .store-hero,
@@ -17068,13 +17114,12 @@ a.plan-pick {
 }
 
 /*
- * Corner logo is back. Center logo is Home.
- * Landscape phone and tablet grids park the Home mark on top of the corner mark
- * once the logo shrinks. Drop the Home mark below that 64px hit target.
+ * Corner logo is back. Center logo is Home, pinned at the top.
+ * The page border reserves the band, so the title does not need extra padding.
  */
 @media (orientation: landscape) and (max-width: 1400px) {
   .home__inner:has(> .play-exit) > .home__mark {
-    padding-top: 4.85rem;
+    padding-top: 0;
     text-align: center;
   }
 

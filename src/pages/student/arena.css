@@ -43,10 +43,16 @@
   margin: 0 auto;
 }
 
+/* The scrollport starts under the pinned Home mark. Padding inside the scroller
+   would slide the title up into that band. */
+.student.student--arena:has(> .arena-scroll) {
+  padding-top: calc(var(--mark-home-clear) + var(--safe-t));
+}
+
 .arena-hero {
   position: relative;
   z-index: 1;
-  padding: calc(4.7rem + var(--safe-t)) 16px 22px 60px;
+  padding: 18px 16px 22px 60px;
   background: #000000;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08);
 }

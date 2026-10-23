@@ -29,23 +29,26 @@ export function StorefrontPage() {
 
   return (
     <main className="home home--store">
-      <div className="sf-portrait-brand">
-        <img src="/advantage-icon.png" alt="" width={54} height={54} />
-        <span className="sf-portrait-word">Advantage</span>
-      </div>
-      <div className="sf-topbar">
-        <div className="sf-wrap">
-          <nav className="sf-nav" aria-label="On this page">
-            <div className="sf-nav-links">
-              {STOREFRONT_NAV.map((item) => (
-                <a key={item.href} href={item.href}>
-                  {item.label}
-                </a>
-              ))}
-            </div>
-          </nav>
+      <header className="sf-pin">
+        <Link className="sf-portrait-brand" to="/" aria-label="Home">
+          <img src="/advantage-icon.png" alt="" width={112} height={112} draggable={false} />
+          <span className="sf-portrait-word">Advantage</span>
+        </Link>
+        <div className="sf-topbar">
+          <div className="sf-wrap">
+            <nav className="sf-nav" aria-label="On this page">
+              <div className="sf-nav-links">
+                {STOREFRONT_NAV.map((item) => (
+                  <a key={item.href} href={item.href}>
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+            </nav>
+          </div>
         </div>
-      </div>
+      </header>
+      <div className="sf-scroll">
 
       <section className="sf-hero" aria-label="Advantage scoreboard">
         <div className="sf-boardbox">
@@ -54,7 +57,7 @@ export function StorefrontPage() {
               <div className="sf-sb-row sf-c1">
                 <div className="sf-sb-name sf-hero-name">
                   <div className="sf-hero-brand">
-                    <img src="/advantage-icon.png" alt="" width={44} height={44} />
+                    <img src="/advantage-icon.png" alt="" width={44} height={44} draggable={false} />
                     <span>Advantage</span>
                   </div>
                   <span className="sf-nm1">Competitor 1</span>
@@ -178,6 +181,7 @@ export function StorefrontPage() {
           </div>
         </div>
       </footer>
+      </div>
     </main>
   );
 }
