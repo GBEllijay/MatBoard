@@ -31,11 +31,11 @@ test('home picker keeps White, Coach, and Pro and adds locked Student Edition', 
   await expect(page.locator('video')).toHaveCount(0);
   await expect(hero).toBeVisible();
   await expect(hero.locator('source')).toHaveAttribute('type', 'image/webp');
-  await expect(hero.locator('source')).toHaveAttribute('srcset', '/homepage/hero-still.webp');
-  await expect(heroImg).toHaveAttribute('src', '/homepage/hero-still.jpg');
+  await expect(hero.locator('source')).toHaveAttribute('srcset', '/homepage/hero-woodblock-scoreboard.webp');
+  await expect(heroImg).toHaveAttribute('src', '/homepage/hero-woodblock-scoreboard.jpg');
   await expect(heroImg).toHaveAttribute(
     'alt',
-    'Kids rolling at the gym while the Advantage scoreboard runs on the wall TV',
+    'Woodblock-style illustration of kids rolling at the gym while the Advantage scoreboard runs on the wall TV',
   );
   await expect(heroImg).toHaveAttribute('loading', 'eager');
   await expect(heroImg).toHaveAttribute('width', '1200');
@@ -47,7 +47,7 @@ test('home picker keeps White, Coach, and Pro and adds locked Student Edition', 
   });
   const heroLoaded = await heroImg.evaluate((el) => {
     if (!(el instanceof HTMLImageElement)) return false;
-    return el.complete && el.naturalWidth === 1200 && el.currentSrc.endsWith('/homepage/hero-still.webp');
+    return el.complete && el.naturalWidth === 1200 && el.currentSrc.endsWith('/homepage/hero-woodblock-scoreboard.webp');
   });
   expect(heroLoaded).toBe(true);
   const heroRadius = await heroImg.evaluate((el) => getComputedStyle(el).borderRadius);
