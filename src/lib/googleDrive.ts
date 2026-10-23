@@ -70,6 +70,13 @@ export const DRIVE_SCOPES = [DRIVE_FILE_SCOPE, DRIVE_READONLY_SCOPE].join(' ');
 export const DRIVE_BROWSE_LABEL = 'Browse photos and videos';
 /** Connected card when the saved sign-in is missing, expired, or missing a scope. */
 export const DRIVE_RECONNECT_LABEL = 'Reconnect';
+/** Leaves the saved Google Drive folder and sign-in on this device. */
+export const DRIVE_DISCONNECT_LABEL = 'Disconnect Google Drive';
+export const DRIVE_DISCONNECT_CONFIRM =
+  'Disconnect Google Drive on this device? You can connect again and pick any folder or account. The folder stays in Google Drive. Lesson plans, rosters, and journals on this device stay.';
+/** Reopens the folder list, or steps up to the parent folder, without signing out. */
+export const DRIVE_CHANGE_FOLDER_LABEL = 'Change folder';
+export const DRIVE_FOLDER_UP_LABEL = 'Up';
 export const DRIVE_CHECKING_LABEL = 'Checking Google Drive…';
 export const DRIVE_RECONNECT_NOTE =
   'Sign in to Google Drive again to browse folders and pick photos or videos. They stay in your Drive. Advantage does not host them.';
@@ -289,6 +296,8 @@ type GoogleTokenApi = {
         callback: (response: TokenResponse) => void;
         error_callback?: (error: { type?: string }) => void;
       }) => TokenClient;
+      /** Present once the Google Identity Services script has loaded. */
+      revoke?: (accessToken: string, done?: () => void) => void;
     };
   };
 };
@@ -900,6 +909,43 @@ export function clearDriveSession(): void {
   writeDriveBinding(null);
 }
 
+/**
+ * Revoke the saved Drive token when Google Identity Services exposes
+ * `google.accounts.oauth2.revoke`. A missing script or method does not throw.
+ * The caller still clears the token stored on this device.
+ */
+export async function revokeDriveAccessToken(): Promise<boolean> {
+  const token = readStoredGrant()?.accessToken ?? null;
+  if (!token) return false;
+  if (typeof window !== 'undefined' && typeof window.google?.accounts?.oauth2?.revoke !== 'function') {
+    try {
+      await loadGis();
+    } catch {
+      /* revoke is optional */
+    }
+  }
+  const revoke = typeof window === 'undefined' ? undefined : window.google?.accounts?.oauth2?.revoke;
+  if (typeof revoke !== 'function') return false;
+  try {
+    revoke(token);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Token for Change folder. A live grant is reused. Otherwise the existing
+ * silent grant, then the existing consent popup. This does not clear the folder.
+ */
+export async function tokenForDriveFolderChange(): Promise<DriveTokenOutcome> {
+  const browse = await ensureDriveBrowseAccess();
+  if (browse.state === 'ready') return { ok: true, token: browse.token };
+  const silent = await requestDriveToken('silent');
+  if (silent) return { ok: true, token: silent };
+  return requestDriveConsent();
+}
+
 function loadGis(): Promise<void> {
   if (typeof window === 'undefined') return Promise.reject(new Error('Google sign-in needs a browser.'));
   if (window.google?.accounts?.oauth2) return Promise.resolve();
@@ -994,6 +1040,99 @@ export async function listDriveFolders(token: string, fetcher: DriveFetch = fetc
   return (data.files ?? []).filter((folder) => folder.id && folder.name);
 }
 
+export type DriveFolderLevel = {
+  folders: DriveFolderChoice[];
+  /** Parent to open on the next Up. Null when Up returns to the account-wide list. */
+  upFolderId: string | null;
+  /** True when Up should list every folder instead of a parent. */
+  upToAccount: boolean;
+  upLabel: string | null;
+};
+
+/** Name and parents of one folder. Null when Drive does not return that file. */
+export async function readDriveFolderMeta(
+  token: string,
+  folderId: string,
+  fetcher: DriveFetch = fetch,
+): Promise<{ id: string; name: string; parents: string[] } | null> {
+  const id = folderId.trim();
+  if (!id) return null;
+  try {
+    const data = await driveJson<{ id?: string; name?: string; parents?: string[] }>(
+      token,
+      `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?fields=id,name,parents&supportsAllDrives=true`,
+      {},
+      fetcher,
+    );
+    if (!data?.id) return null;
+    const parents = Array.isArray(data.parents) ? data.parents.filter((parent) => typeof parent === 'string' && parent) : [];
+    return { id: data.id, name: data.name?.trim() || 'Folder', parents };
+  } catch {
+    return null;
+  }
+}
+
+/** Child folders of one parent. Shared drives are included on this path only. */
+export async function listChildDriveFolders(
+  token: string,
+  parentId: string,
+  fetcher: DriveFetch = fetch,
+): Promise<DriveFolderChoice[]> {
+  const query = [
+    `'${driveQueryLiteral(parentId)}' in parents`,
+    `mimeType='${DRIVE_FOLDER_MIME}'`,
+    'trashed=false',
+  ].join(' and ');
+  const url =
+    'https://www.googleapis.com/drive/v3/files?pageSize=100&orderBy=name&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true&q=' +
+    encodeURIComponent(query);
+  const data = await driveJson<{ files?: DriveFolderChoice[] }>(token, url, {}, fetcher);
+  return (data.files ?? []).filter((folder) => folder.id && folder.name);
+}
+
+/** Children of `parentId`, or every folder when `parentId` is null. */
+export async function listDriveFolderLevel(
+  token: string,
+  parentId: string | null,
+  fetcher: DriveFetch = fetch,
+): Promise<DriveFolderLevel> {
+  if (!parentId) {
+    return { folders: await listDriveFolders(token, fetcher), upFolderId: null, upToAccount: false, upLabel: null };
+  }
+  const folders = await listChildDriveFolders(token, parentId, fetcher);
+  const parent = await readDriveFolderMeta(token, parentId, fetcher);
+  const grandId = parent?.parents[0] ?? null;
+  if (grandId) {
+    const grand = await readDriveFolderMeta(token, grandId, fetcher);
+    const name = grand?.name?.trim();
+    return {
+      folders,
+      upFolderId: grandId,
+      upToAccount: false,
+      upLabel: name ? `Up to ${name}` : DRIVE_FOLDER_UP_LABEL,
+    };
+  }
+  return { folders, upFolderId: null, upToAccount: true, upLabel: DRIVE_FOLDER_UP_LABEL };
+}
+
+/**
+ * Change folder starts one level above the connected folder so a sibling
+ * (for example pictures next to Daily Training Videos) can be chosen.
+ * With no parent, the account-wide folder list opens instead.
+ */
+export async function openDriveChangeFolder(
+  token: string,
+  currentFolderId: string | null,
+  fetcher: DriveFetch = fetch,
+): Promise<DriveFolderLevel> {
+  if (currentFolderId) {
+    const current = await readDriveFolderMeta(token, currentFolderId, fetcher);
+    const parentId = current?.parents[0];
+    if (parentId) return listDriveFolderLevel(token, parentId, fetcher);
+  }
+  return listDriveFolderLevel(token, null, fetcher);
+}
+
 export async function createLessonRoot(token: string, fetcher: DriveFetch = fetch): Promise<DriveFolderChoice> {
   const created = await driveJson<DriveFolderChoice>(
     token,
@@ -1032,6 +1171,8 @@ function dateFolderKey(parentId: string, name: string): string {
 /** Drop remembered folder ids so the next save looks them up again. */
 export function clearDateFolderCache(): void {
   dateFolderIds.clear();
+  dateFolderCreates.clear();
+  dateTreeBuilds.clear();
   trainingVideoUploads.clear();
   classPhotoPromotionUploads.clear();
 }

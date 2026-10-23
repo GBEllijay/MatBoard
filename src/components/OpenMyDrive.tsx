@@ -1,7 +1,9 @@
-import { useState, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { DriveConnectCard } from './DriveConnectCard';
+import { GoogleDriveFolderTools } from './GoogleDriveFolderTools';
 import { Sheet } from './Sheet';
 import { cloudStorage, CONNECT_WITH_TITLE } from '../lib/cloudStorage';
+import { DRIVE_CHANGE_FOLDER_LABEL } from '../lib/googleDrive';
 import { OPEN_MY_DRIVE_CONNECT, OPEN_MY_DRIVE_LABEL } from '../lib/openMyDrive';
 
 type Props = {
@@ -29,23 +31,42 @@ export function OpenMyDrive({
   const drive = cloudStorage();
   const binding = useSyncExternalStore(drive.subscribe, drive.getBindingSnapshot, () => null);
   const href = binding ? drive.openFolderUrl(binding.folderId) : null;
-  const [connectOpen, setConnectOpen] = useState(false);
+  const [sheet, setSheet] = useState<null | 'connect' | 'change'>(null);
+
+  useEffect(() => {
+    if (!binding && sheet === 'change') setSheet(null);
+  }, [binding, sheet]);
+
+  const sheetOpen = sheet === 'change' || (sheet === 'connect' && !href);
 
   return (
-    <>
+    <div className="open-drive-wrap">
       {href ? (
         <a className="btn btn--ghost open-drive" href={href} target="_blank" rel="noopener noreferrer">
           {openLabel}
         </a>
       ) : (
-        <button type="button" className="btn btn--ghost open-drive" onClick={() => setConnectOpen(true)}>
+        <button type="button" className="btn btn--ghost open-drive" onClick={() => setSheet('connect')}>
           {connectLabel}
         </button>
       )}
-      <Sheet open={connectOpen && !href} title={connectTitle} onClose={() => setConnectOpen(false)} stacked>
+      {binding?.providerId === 'googleDrive' ? (
+        <GoogleDriveFolderTools
+          folderId={binding.folderId}
+          picker="external"
+          onChangeFolder={() => setSheet('change')}
+          onDisconnected={() => setSheet(null)}
+        />
+      ) : null}
+      <Sheet
+        open={sheetOpen}
+        title={sheet === 'change' ? DRIVE_CHANGE_FOLDER_LABEL : connectTitle}
+        onClose={() => setSheet(null)}
+        stacked
+      >
         <p className="saver-sound-hint">{connectHint}</p>
-        <DriveConnectCard />
+        <DriveConnectCard changeFolderOnOpen={sheet === 'change'} />
       </Sheet>
-    </>
+    </div>
   );
 }
