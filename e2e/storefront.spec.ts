@@ -9,6 +9,23 @@ const LANDSCAPES = [
   { width: 1180, height: 820 },
 ] as const;
 
+const HOME_LANDSCAPES = [
+  { width: 844, height: 390 },
+  { width: 932, height: 430 },
+  { width: 667, height: 375 },
+  { width: 740, height: 360 },
+  { width: 1024, height: 768 },
+  { width: 1180, height: 820 },
+] as const;
+
+const HOME_PORTRAITS = [
+  { width: 390, height: 844 },
+  { width: 360, height: 780 },
+  { width: 430, height: 932 },
+  { width: 768, height: 1024 },
+  { width: 820, height: 1180 },
+] as const;
+
 async function shot(page: Page, name: string) {
   await page.screenshot({ path: `/opt/cursor/artifacts/${name}.png`, fullPage: true });
 }
@@ -78,7 +95,8 @@ test('public homepage sells Advantage White and links coming soon to the edition
   await shot(page, 'storefront-desktop');
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.getByRole('navigation', { name: 'On this page' })).toBeHidden();
+  await expect(page.getByRole('navigation', { name: 'On this page' }).getByRole('link', { name: 'Scoreboard' })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'On this page' }).getByRole('link', { name: 'Round timer' })).toBeVisible();
   await shot(page, 'storefront-mobile');
   await page.setViewportSize({ width: 1440, height: 900 });
   await coach.click();
@@ -169,6 +187,104 @@ test('Coach Unlimited landscape keeps the corner back off the center Home logo',
   }
   await page.setViewportSize({ width: 844, height: 390 });
   await shot(page, 'coach-unlimited-landscape');
+});
+
+test('landscape headline stays off the scoreboard and prices stay on their cards', async ({ page }) => {
+  for (const size of HOME_LANDSCAPES) {
+    await page.setViewportSize(size);
+    await page.goto('/');
+    const overlap = await page.evaluate(() => {
+      const box = (el: Element | null) => {
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+      };
+      const intersects = (a: NonNullable<ReturnType<typeof box>>, b: NonNullable<ReturnType<typeof box>>) =>
+        a.left < b.right - 1 && a.right > b.left + 1 && a.top < b.bottom - 1 && a.bottom > b.top + 1;
+      const copy = box(document.querySelector('.sf-copy'));
+      const board = box(document.querySelector('.sf-sb'));
+      const image = box(document.querySelector('.sf-print img'));
+      const prices = [...document.querySelectorAll('.sf-price-now, .sf-price-soon')].map((el) => {
+        const price = box(el);
+        const card = box(el.closest('.sf-step'));
+        const inside =
+          price != null &&
+          card != null &&
+          price.left >= card.left - 1 &&
+          price.right <= card.right + 1 &&
+          price.top >= card.top - 1 &&
+          price.bottom <= card.bottom + 1;
+        return { text: el.textContent?.trim() ?? '', inside };
+      });
+      return {
+        copyOnBoard: copy != null && board != null && intersects(copy, board),
+        copyOnImage: copy != null && image != null && intersects(copy, image),
+        prices,
+        scrollWidth: document.documentElement.scrollWidth,
+        innerWidth: window.innerWidth,
+      };
+    });
+    expect(overlap.copyOnBoard, `${size.width}x${size.height} headline covers the scoreboard`).toBe(false);
+    expect(overlap.copyOnImage, `${size.width}x${size.height} headline covers the woodblock`).toBe(false);
+    expect(overlap.scrollWidth, `${size.width}x${size.height}`).toBeLessThanOrEqual(size.width + 1);
+    expect(overlap.prices, `${size.width}x${size.height}`).toEqual([
+      { text: '$9.99 one-time', inside: true },
+      { text: '$19.99 one-time', inside: true },
+      { text: '$29.99 one-time', inside: true },
+      { text: '$99.99 + $5.99/mo', inside: true },
+    ]);
+  }
+});
+
+test('portrait stacks the logo, wordmark, and link bar above Competitor 1', async ({ page }) => {
+  for (const size of HOME_PORTRAITS) {
+    await page.setViewportSize(size);
+    await page.goto('/');
+    const stack = await page.evaluate(() => {
+      const box = (el: Element | null) => {
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height };
+      };
+      const logo = box(document.querySelector('.sf-portrait-brand img'));
+      const word = box(document.querySelector('.sf-portrait-word'));
+      const bar = box(document.querySelector('.sf-topbar'));
+      const comp = box(document.querySelector('.sf-nm1'));
+      const board = box(document.querySelector('.sf-sb'));
+      return { logo, word, bar, comp, board };
+    });
+    expect(stack.logo, `${size.width}x${size.height} logo`).not.toBeNull();
+    expect(stack.word, `${size.width}x${size.height} wordmark`).not.toBeNull();
+    expect(stack.bar, `${size.width}x${size.height} link bar`).not.toBeNull();
+    expect(stack.comp, `${size.width}x${size.height} competitor`).not.toBeNull();
+    expect(stack.board, `${size.width}x${size.height} scoreboard`).not.toBeNull();
+    const logo = stack.logo!;
+    const word = stack.word!;
+    const bar = stack.bar!;
+    const comp = stack.comp!;
+    const board = stack.board!;
+    expect(logo.bottom, `${size.width}x${size.height} logo above word`).toBeLessThanOrEqual(word.top + 1);
+    expect(word.bottom, `${size.width}x${size.height} word above link bar`).toBeLessThanOrEqual(bar.top + 1);
+    expect(word.bottom, `${size.width}x${size.height} word above the blue board`).toBeLessThanOrEqual(board.top + 1);
+    expect(logo.bottom, `${size.width}x${size.height} logo above the blue board`).toBeLessThanOrEqual(board.top + 1);
+    expect(comp.left - board.left, `${size.width}x${size.height} Competitor 1 left`).toBeLessThan(board.width * 0.35);
+    expect(comp.left, `${size.width}x${size.height} Competitor 1 not on the right`).toBeLessThan(board.left + board.width * 0.45);
+  }
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  const desktop = await page.evaluate(() => {
+    const brand = getComputedStyle(document.querySelector('.sf-portrait-brand')!).display;
+    const mark = getComputedStyle(document.querySelector('.sf-hero-brand')!).display;
+    const copy = document.querySelector('.sf-copy')!.getBoundingClientRect();
+    const board = document.querySelector('.sf-sb')!.getBoundingClientRect();
+    const hits =
+      copy.left < board.right - 1 && copy.right > board.left + 1 && copy.top < board.bottom - 1 && copy.bottom > board.top + 1;
+    return { brand, mark, hits };
+  });
+  expect(desktop.brand).toBe('none');
+  expect(desktop.mark).not.toBe('none');
+  expect(desktop.hits).toBe(true);
 });
 
 test('a focused field is not pulled back after the person scrolls', async ({ page }) => {
