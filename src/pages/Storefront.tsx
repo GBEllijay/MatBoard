@@ -29,6 +29,7 @@ export function StorefrontPage() {
 
   return (
     <main className="home home--store">
+      <div className="sf-scroll">
       <header className="sf-pin">
         <Link className="sf-portrait-brand" to="/" aria-label="Home">
           <img src="/advantage-icon.png" alt="" width={112} height={112} draggable={false} />
@@ -48,7 +49,6 @@ export function StorefrontPage() {
           </div>
         </div>
       </header>
-      <div className="sf-scroll">
 
       <section className="sf-hero" aria-label="Advantage scoreboard">
         <div className="sf-boardbox">
