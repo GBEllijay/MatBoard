@@ -1,8 +1,17 @@
 import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { RadarChart, type RadarSeries } from '../../components/RadarChart';
 import { competitionOf } from '../../lib/progress/competition';
 import type { CompetitionResult } from '../../lib/progress/types';
-import { BELT_CHOICES } from '../../lib/rosterStore';
+import {
+  compareToOpponent,
+  isCompleteRatings,
+  matchupLabels,
+  matchupLine,
+  type AreaRatings,
+} from '../../lib/opponentAssessment';
+import { BELT_CHOICES, NOTE_MAX } from '../../lib/rosterStore';
+import { ASSESSMENT_AREAS, loadAssessments, type AssessmentScores } from '../../lib/studentAssessment';
 import {
   SCOUTING_GYM_LABEL,
   addScoutingCard,
@@ -36,6 +45,7 @@ export function ScoutingPage() {
   const [error, setError] = useState('');
   const [csvNote, setCsvNote] = useState('');
   const csvRef = useRef<HTMLInputElement>(null);
+  const [selfScores] = useState(() => loadAssessments(localStorage).entries[0]?.scores ?? null);
   const shown = useMemo(() => searchScoutingCards(cards, results, query), [cards, results, query]);
   const weight = shown.filter((card) => card.group !== 'open');
   const open = shown.filter((card) => card.group === 'open');
@@ -46,7 +56,19 @@ export function ScoutingPage() {
 
   const save = () => {
     try {
-      commit(editing ? updateScoutingCard(cards, editing, draft) : addScoutingCard(cards, draft));
+      if (editing) {
+        const current = cards.find((card) => card.id === editing);
+        commit(
+          updateScoutingCard(cards, editing, {
+            ...draft,
+            ratings: current?.ratings ?? draft.ratings,
+            strengths: current?.strengths ?? draft.strengths,
+            weaknesses: current?.weaknesses ?? draft.weaknesses,
+          }),
+        );
+      } else {
+        commit(addScoutingCard(cards, draft));
+      }
       setDraft(emptyScoutingDraft());
       setEditing(null);
       setError('');
@@ -55,10 +77,14 @@ export function ScoutingPage() {
     }
   };
 
+  const saveTracker = (card: ScoutingCard, patch: { ratings: AreaRatings; strengths: string; weaknesses: string }) => {
+    commit(updateScoutingCard(cards, card.id, { ...draftFromCard(card), ...patch }));
+  };
+
   return (
     <main className="student student-frame student--arena">
       <StudentMarks />
-      <LeatherHeader title="Scouting" />
+      <LeatherHeader title="Scouting-Opponent Research" />
       <div className="student-paper">
         <div className="student-sheet">
           <p className="student-quiet">
@@ -106,12 +132,20 @@ export function ScoutingPage() {
             />
           </label>
 
+          <section className="ink" aria-label="Scouting-Opponent Tracker">
+            <h2 className="ink__label">Scouting-Opponent Tracker</h2>
+            <p className="student-quiet">
+              Rate an opponent on the same seven areas as your self-assessment. Strengths, weaknesses, and the me versus them chart stay on this phone with the card.
+            </p>
+          </section>
+
           <ScoutList
             title="Weight class"
             cards={weight}
             results={results}
             to={to}
             confirming={confirming}
+            selfScores={selfScores}
             onEdit={(card) => {
               setEditing(card.id);
               setDraft(draftFromCard(card));
@@ -120,6 +154,7 @@ export function ScoutingPage() {
             }}
             onAskRemove={setConfirming}
             onKeep={() => setConfirming(null)}
+            onTracker={saveTracker}
             onRemove={(id) => {
               commit(removeScoutingCard(cards, id));
               setConfirming(null);
@@ -135,6 +170,7 @@ export function ScoutingPage() {
             results={results}
             to={to}
             confirming={confirming}
+            selfScores={selfScores}
             onEdit={(card) => {
               setEditing(card.id);
               setDraft(draftFromCard(card));
@@ -143,6 +179,7 @@ export function ScoutingPage() {
             }}
             onAskRemove={setConfirming}
             onKeep={() => setConfirming(null)}
+            onTracker={saveTracker}
             onRemove={(id) => {
               commit(removeScoutingCard(cards, id));
               setConfirming(null);
@@ -254,6 +291,9 @@ function draftFromCard(card: ScoutingCard): ScoutingDraft {
     group: card.group,
     style: card.style,
     notes: card.notes,
+    ratings: card.ratings,
+    strengths: card.strengths,
+    weaknesses: card.weaknesses,
   };
 }
 
@@ -263,9 +303,11 @@ function ScoutList({
   results,
   to,
   confirming,
+  selfScores,
   onEdit,
   onAskRemove,
   onKeep,
+  onTracker,
   onRemove,
 }: {
   title: string;
@@ -273,9 +315,11 @@ function ScoutList({
   results: CompetitionResult[];
   to: (path: string) => string;
   confirming: string | null;
+  selfScores: AssessmentScores | null;
   onEdit: (card: ScoutingCard) => void;
   onAskRemove: (id: string) => void;
   onKeep: () => void;
+  onTracker: (card: ScoutingCard, patch: { ratings: AreaRatings; strengths: string; weaknesses: string }) => void;
   onRemove: (id: string) => void;
 }) {
   return (
@@ -303,6 +347,7 @@ function ScoutList({
                   </p>
                 ))}
               </div>
+              <OpponentTracker card={card} selfScores={selfScores} to={to} onSave={(patch) => onTracker(card, patch)} />
               {confirming === card.id ? (
                 <div className="student-confirm" role="group" aria-label={`Remove ${card.name}`}>
                   <button type="button" className="ink-btn" onClick={() => onRemove(card.id)}>
@@ -334,4 +379,106 @@ function matchWord(result: CompetitionResult['matches'][number]['result']): stri
   if (result === 'win') return 'Win';
   if (result === 'draw') return 'Draw';
   return 'Loss';
+}
+
+function chartSeries(name: string, mine: AssessmentScores | null, theirs: AssessmentScores | null): RadarSeries[] {
+  const series: RadarSeries[] = [];
+  if (mine) series.push({ name: 'Me', scores: mine, tone: 'me' });
+  if (theirs) series.push({ name, scores: theirs, tone: 'opponent' });
+  if (!series.length) series.push({ name, scores: null, tone: 'opponent' });
+  return series;
+}
+
+function OpponentTracker({
+  card,
+  selfScores,
+  to,
+  onSave,
+}: {
+  card: ScoutingCard;
+  selfScores: AssessmentScores | null;
+  to: (path: string) => string;
+  onSave: (patch: { ratings: AreaRatings; strengths: string; weaknesses: string }) => void;
+}) {
+  const theirs = isCompleteRatings(card.ratings) ? card.ratings : null;
+  const rows = compareToOpponent(selfScores, card.ratings);
+  const groups = matchupLabels(rows);
+  const save = (patch: { ratings: AreaRatings; strengths: string; weaknesses: string }) => onSave(patch);
+
+  return (
+    <section className="scout-tracker" aria-label={`Scouting-Opponent Tracker for ${card.name}`}>
+      <div className="scout-rates" role="group" aria-label={`Ratings for ${card.name}`}>
+        <h3>Scouting-Opponent Tracker</h3>
+        <p className="student-quiet">{`Rate ${card.name}. 1 is early. 5 is ready to rely on.`}</p>
+        {ASSESSMENT_AREAS.map((area) => (
+          <fieldset key={area.id} className="assess-area">
+            <legend>{area.label}</legend>
+            <div className="assess-scale" role="group" aria-label={`${card.name} ${area.label} rating`}>
+              {([1, 2, 3, 4, 5] as const).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={card.ratings[area.id] === value ? 'assess-tap is-on' : 'assess-tap'}
+                  aria-pressed={card.ratings[area.id] === value}
+                  aria-label={`${card.name} ${area.label} ${value}`}
+                  onClick={() => save({ ratings: { ...card.ratings, [area.id]: value }, strengths: card.strengths, weaknesses: card.weaknesses })}
+                >
+                  {value}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+        ))}
+        <label>
+          <span className="ink__label">Strengths</span>
+          <textarea
+            aria-label={`Strengths for ${card.name}`}
+            rows={3}
+            maxLength={NOTE_MAX}
+            value={card.strengths}
+            onChange={(event) => save({ ratings: card.ratings, strengths: event.target.value, weaknesses: card.weaknesses })}
+          />
+        </label>
+        <label>
+          <span className="ink__label">Weaknesses</span>
+          <textarea
+            aria-label={`Weaknesses for ${card.name}`}
+            rows={3}
+            maxLength={NOTE_MAX}
+            value={card.weaknesses}
+            onChange={(event) => save({ ratings: card.ratings, strengths: card.strengths, weaknesses: event.target.value })}
+          />
+        </label>
+        <div className="student-actions">
+          <button
+            type="button"
+            className="ink-btn ink-btn--save"
+            onClick={() => save({ ratings: card.ratings, strengths: card.strengths, weaknesses: card.weaknesses })}
+          >
+            {`Save notes for ${card.name}`}
+          </button>
+        </div>
+      </div>
+      <div className="scout-overlay" role="region" aria-label={`Me versus ${card.name}`}>
+        <RadarChart
+          series={chartSeries(card.name, selfScores, theirs)}
+          title={selfScores && theirs ? 'Me vs them' : 'Shape'}
+          empty="Rate this opponent to see their shape."
+        />
+        {selfScores && rows.length ? (
+          <ul className="scout-matchup" aria-label={`Comparison with ${card.name}`}>
+            <li>{`Favored: ${matchupLine(groups.favored)}`}</li>
+            <li>{`Even: ${matchupLine(groups.even)}`}</li>
+            <li>{`At a disadvantage: ${matchupLine(groups.disadvantage)}`}</li>
+          </ul>
+        ) : null}
+        {selfScores && rows.length === 0 ? <p className="student-quiet">Rate this opponent to compare.</p> : null}
+        {selfScores ? null : (
+          <Link className="assess-link" to={to('/student/competitor#self-assessment')}>
+            Do your self-assessment
+          </Link>
+        )}
+      </div>
+    </section>
+  );
 }

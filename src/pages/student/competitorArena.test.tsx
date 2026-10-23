@@ -20,6 +20,10 @@
  * Weight: unit, chart, target, weigh-in date/weight/note, Add weigh-in, Remove weigh-in.
  * Results: tracked tournament, name, division, Add result, match, method, bracket, photo, remove.
  * Scouting: template, import, export, search, class, opponent fields, add/edit/remove.
+ * Scouting-Opponent Research (same /student/scouting route and hub button):
+ * page title, Scouting-Opponent Tracker, {name} area 1–5, strengths, weaknesses,
+ * Save notes, Me versus overlay, Do your self-assessment when no check-in exists.
+ * Competitor does not host the tracker. Unlock codes are untouched.
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -27,8 +31,11 @@ import { Window } from 'happy-dom';
 import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
+import { radarPoints, selfAssessmentShapeLabel } from '../../lib/radarChart.ts';
+import { emptyAssessments, saveAssessment, writeAssessments, type AssessmentScores } from '../../lib/studentAssessment.ts';
 import { addTournament, addWeighIn } from '../../lib/studentCompetition.ts';
 import { blankStudentReport, saveStudentReport } from '../../lib/studentEdition.ts';
+import { SCOUTING_STORAGE_KEY, addScoutingCard, loadScouting, saveScouting } from '../../lib/studentScouting.ts';
 import { withStarterRubric } from '../../lib/studentTools.ts';
 import { CompetitorPage } from './CompetitorPage.tsx';
 import { ResultsPage } from './ResultsPage.tsx';
@@ -107,6 +114,8 @@ test('competitor keeps every control, with rank then journal then self-assessmen
   assert.equal(labeled(host, 'Back. Hold for Home.').getAttribute('href'), '/student');
   assert.equal(labeled(host, 'Home').getAttribute('href'), '/products');
   assert.equal(host.querySelector('h1')?.textContent, 'Competitor');
+  assert.equal(host.textContent?.includes('Scouting-Opponent Tracker'), false);
+  assert.equal(host.textContent?.includes('Scouting-Opponent Research'), false);
 
   const rank = labeled(host, 'Belt rank');
   const journal = labeled(host, 'Jiu-Jitsu Journal');
@@ -149,7 +158,10 @@ test('competitor keeps every control, with rank then journal then self-assessmen
   for (const area of ['Guard', 'Passing', 'Takedowns', 'Escapes', 'Submissions', 'Conditioning', 'Mindset']) {
     for (const score of [1, 2, 3, 4, 5]) labeled(host, `${area} ${score}`);
   }
-  assert.ok(host.querySelector('[aria-label^="Self-assessment shape"]'));
+  const shape = host.querySelector('svg.assess-chart');
+  assert.equal(shape?.getAttribute('aria-label'), selfAssessmentShapeLabel(null));
+  assert.equal(host.querySelectorAll('polygon.assess-chart__shape').length, 0);
+  assert.equal(host.querySelector('.assess-key'), null);
   assert.ok(host.querySelector('[aria-label^="Self-assessment trend"]'));
   unmount(mounted);
 });
@@ -177,6 +189,20 @@ test('a self-assessment saves on this phone and a rubric checkpoint links from t
     const props = key ? (note as unknown as Record<string, { onChange?: (event: unknown) => void }>)[key] : null;
     props?.onChange?.({ target: note, currentTarget: note });
   });
+  const filled: AssessmentScores = {
+    guard: 4,
+    passing: 4,
+    takedowns: 4,
+    escapes: 4,
+    submissions: 4,
+    conditioning: 4,
+    mindset: 4,
+  };
+  const shape = host.querySelector('svg.assess-chart');
+  assert.equal(shape?.getAttribute('aria-label'), selfAssessmentShapeLabel(filled));
+  assert.equal(shape?.querySelectorAll('polygon.assess-chart__shape').length, 1);
+  assert.equal(shape?.querySelector('polygon.assess-chart__shape--opponent'), null);
+  assert.equal(shape?.querySelector('polygon.assess-chart__shape')?.getAttribute('points'), radarPoints([4, 4, 4, 4, 4, 4, 4]));
   act(() => {
     control(host, 'button', 'Save self-assessment').click();
   });
@@ -235,7 +261,11 @@ test('weight, results, and scouting keep their controls on the same skin', () =>
 
   const scouting = mount(<ScoutingPage />, '/student/scouting');
   assert.ok(scouting.host.querySelector('main')?.classList.contains('student--arena'));
-  assert.equal(scouting.host.querySelector('h1')?.textContent, 'Scouting');
+  assert.equal(scouting.host.querySelector('h1')?.textContent, 'Scouting-Opponent Research');
+  assert.equal(
+    [...scouting.host.querySelectorAll('h2')].some((node) => node.textContent?.trim() === 'Scouting-Opponent Tracker'),
+    true,
+  );
   for (const name of [
     'Search opponents',
     'Opponent class',
@@ -256,4 +286,146 @@ test('weight, results, and scouting keep their controls on the same skin', () =>
     );
   }
   unmount(scouting);
+});
+
+function setControl(node: HTMLInputElement | HTMLTextAreaElement, value: string) {
+  const proto = Object.getOwnPropertyDescriptor(node.constructor.prototype, 'value');
+  proto?.set?.call(node, value);
+  act(() => {
+    node.dispatchEvent(new Event('input', { bubbles: true }));
+    const key = Object.keys(node).find((name) => name.startsWith('__reactProps'));
+    const props = key ? (node as unknown as Record<string, { onChange?: (event: unknown) => void }>)[key] : null;
+    props?.onChange?.({ target: node, currentTarget: node });
+  });
+}
+
+function allScores(value: AssessmentScores['guard']): AssessmentScores {
+  return {
+    guard: value,
+    passing: value,
+    takedowns: value,
+    escapes: value,
+    submissions: value,
+    conditioning: value,
+    mindset: value,
+  };
+}
+
+test('opponent ratings persist, an old card still opens, and me versus them uses the latest self-assessment', () => {
+  localStorage.clear();
+  const mine: AssessmentScores = {
+    guard: 5,
+    passing: 1,
+    takedowns: 3,
+    escapes: 4,
+    submissions: 2,
+    conditioning: 5,
+    mindset: 3,
+  };
+  let assessments = saveAssessment(emptyAssessments(), { date: '2026-10-01', note: 'old', scores: allScores(1) }, 1);
+  assessments = saveAssessment(assessments, { date: '2026-10-20', note: 'new', scores: mine }, 2);
+  writeAssessments(localStorage, assessments);
+  const theirs = {
+    guard: 2,
+    passing: 4,
+    takedowns: 3,
+    escapes: 1,
+    submissions: 5,
+    conditioning: 5,
+    mindset: 4,
+  } as const;
+  saveScouting(
+    localStorage,
+    addScoutingCard(
+      [],
+      {
+        name: 'Sam',
+        gym: 'Atos',
+        belt: 'Blue',
+        weightClass: 'Middle',
+        group: 'weight',
+        style: 'pressure',
+        notes: 'long arms',
+        ratings: theirs,
+        strengths: '',
+        weaknesses: '',
+      },
+      30,
+    ),
+  );
+
+  const mounted = mount(<ScoutingPage />, '/student/scouting?student=1');
+  const { host } = mounted;
+  const lines = () => [...host.querySelectorAll('.scout-matchup li')].map((item) => item.textContent?.trim());
+  assert.deepEqual(lines(), [
+    'Favored: Guard, Escapes',
+    'Even: Takedowns, Conditioning',
+    'At a disadvantage: Passing, Submissions, Mindset',
+  ]);
+  const overlay = labeled(host, 'Me versus Sam');
+  assert.equal(overlay.querySelectorAll('polygon.assess-chart__shape').length, 2);
+  assert.equal(overlay.querySelectorAll('polygon.assess-chart__shape--opponent').length, 1);
+  assert.match(overlay.textContent ?? '', /Me/);
+  assert.match(overlay.textContent ?? '', /Sam/);
+  assert.equal(
+    [...host.querySelectorAll('a')].some((link) => link.textContent?.includes('Do your self-assessment')),
+    false,
+  );
+  for (const area of ['Guard', 'Passing', 'Takedowns', 'Escapes', 'Submissions', 'Conditioning', 'Mindset']) {
+    for (const score of [1, 2, 3, 4, 5]) labeled(host, `Sam ${area} ${score}`);
+  }
+  labeled(host, 'Strengths for Sam');
+  labeled(host, 'Weaknesses for Sam');
+  control(host, 'button', 'Save notes for Sam');
+
+  act(() => {
+    labeled(host, 'Sam Guard 5').click();
+  });
+  assert.equal(loadScouting(localStorage)[0].ratings.guard, 5);
+  assert.deepEqual(lines(), [
+    'Favored: Escapes',
+    'Even: Guard, Takedowns, Conditioning',
+    'At a disadvantage: Passing, Submissions, Mindset',
+  ]);
+
+  setControl(labeled(host, 'Strengths for Sam') as HTMLTextAreaElement, 'frames');
+  setControl(labeled(host, 'Weaknesses for Sam') as HTMLTextAreaElement, 'open guard');
+  act(() => {
+    control(host, 'button', 'Save notes for Sam').click();
+  });
+  assert.equal(loadScouting(localStorage)[0].strengths, 'frames');
+  assert.equal(loadScouting(localStorage)[0].weaknesses, 'open guard');
+  assert.equal(loadScouting(localStorage)[0].ratings.guard, 5);
+
+  act(() => {
+    control(host, 'button', 'Edit Sam').click();
+  });
+  setControl(labeled(host, 'Opponent weight class') as HTMLInputElement, 'Heavy');
+  act(() => {
+    control(host, 'button', 'Save opponent').click();
+  });
+  const kept = loadScouting(localStorage)[0];
+  assert.equal(kept.weightClass, 'Heavy');
+  assert.equal(kept.ratings.guard, 5);
+  assert.equal(kept.ratings.passing, 4);
+  assert.equal(kept.strengths, 'frames');
+  unmount(mounted);
+
+  localStorage.clear();
+  localStorage.setItem(
+    SCOUTING_STORAGE_KEY,
+    JSON.stringify({
+      version: 1,
+      cards: [{ id: 'scout.old', name: 'Riley', gym: 'Checkmat', belt: 'Purple', weightClass: 'Light', group: 'open', style: 'guard', notes: 'lefty' }],
+    }),
+  );
+  const legacy = mount(<ScoutingPage />, '/student/scouting?student=1');
+  assert.equal(labeled(legacy.host, 'Riley Guard 1').getAttribute('aria-pressed'), 'false');
+  assert.equal(
+    control(legacy.host, 'a', 'Do your self-assessment').getAttribute('href'),
+    '/student/competitor?student=1#self-assessment',
+  );
+  assert.match(legacy.host.textContent ?? '', /Rate this opponent to see their shape/);
+  assert.equal(legacy.host.querySelectorAll('polygon.assess-chart__shape').length, 0);
+  unmount(legacy);
 });

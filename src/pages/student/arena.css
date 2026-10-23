@@ -287,6 +287,8 @@
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   font-weight: 700;
   letter-spacing: -0.03em;
+  line-height: 1.12;
+  text-wrap: balance;
   text-shadow: none;
 }
 
@@ -642,6 +644,92 @@
 
 .assess-chart__dot {
   fill: #f5f5f7;
+}
+
+.assess-chart__shape--opponent {
+  fill: rgba(255, 159, 10, 0.2);
+  stroke: #ff9f0a;
+  stroke-width: 2;
+}
+
+.assess-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.assess-key li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  color: var(--arena-text);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.assess-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  flex: none;
+}
+
+.assess-swatch--me {
+  background: #0a84ff;
+}
+
+.assess-swatch--opponent {
+  background: #ff9f0a;
+}
+
+.scout-tracker {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.scout-rates,
+.scout-overlay {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.student.student--arena .scout-rates > h3 {
+  margin: 0;
+  color: var(--arena-text);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.scout-tracker legend {
+  padding: 0;
+  color: var(--arena-text);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.scout-matchup {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.scout-matchup li {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.35;
 }
 
 .assess-row {
