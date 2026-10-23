@@ -156,8 +156,12 @@ function labelFor(id: AssessmentAreaId): string {
   return ASSESSMENT_AREAS.find((area) => area.id === id)?.label ?? id;
 }
 
-function isScore(value: unknown): value is AssessmentScore {
+export function isAssessmentScore(value: unknown): value is AssessmentScore {
   return value === 1 || value === 2 || value === 3 || value === 4 || value === 5;
+}
+
+function isScore(value: unknown): value is AssessmentScore {
+  return isAssessmentScore(value);
 }
 
 function requireDate(value: string): string {

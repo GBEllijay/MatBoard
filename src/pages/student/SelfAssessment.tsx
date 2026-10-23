@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { RadarChart } from '../../components/RadarChart';
 import type { StudentProgressReport } from '../../lib/progress/types';
 import { todayIso } from '../../lib/studentEdition';
 import {
@@ -68,7 +69,7 @@ export function SelfAssessment({ report, to }: { report: StudentProgressReport; 
       ) : null}
 
       <div className="assess-visuals">
-        <Radar scores={radarScores} />
+        <RadarChart scores={radarScores} />
         <Trend points={trend} />
       </div>
 
@@ -192,45 +193,6 @@ function HistoryRow({
   );
 }
 
-function Radar({ scores }: { scores: AssessmentScores | null }) {
-  const label = scores
-    ? `Self-assessment shape, ${ASSESSMENT_AREAS.map((area) => `${area.label} ${scores[area.id]}`).join(', ')}`
-    : 'Self-assessment shape. No saved ratings yet.';
-  const shape = scores
-    ? ASSESSMENT_AREAS.map((area, index) => {
-        const spot = at(index, scores[area.id], 108);
-        return `${spot.x},${spot.y}`;
-      }).join(' ')
-    : '';
-  return (
-    <div className="assess-visual">
-      <h3>Shape</h3>
-      <svg className="assess-chart" viewBox="0 0 320 320" role="img" aria-label={label}>
-        {[5, 3].map((ring) => (
-          <polygon key={ring} className="assess-chart__grid" points={ASSESSMENT_AREAS.map((_, index) => {
-            const spot = at(index, ring, 108);
-            return `${spot.x},${spot.y}`;
-          }).join(' ')} />
-        ))}
-        {ASSESSMENT_AREAS.map((area, index) => {
-          const end = at(index, 5, 108);
-          return <line key={area.id} className="assess-chart__grid" x1="160" y1="160" x2={end.x} y2={end.y} />;
-        })}
-        {shape ? <polygon className="assess-chart__shape" points={shape} /> : null}
-      </svg>
-      <ul className="assess-legend">
-        {ASSESSMENT_AREAS.map((area) => (
-          <li key={area.id}>
-            <span>{area.label}</span>
-            <span>{scores ? scores[area.id] : '—'}</span>
-          </li>
-        ))}
-      </ul>
-      {scores ? null : <p className="student-quiet">Save a check-in to see your shape.</p>}
-    </div>
-  );
-}
-
 function Trend({ points }: { points: { date: string; average: number }[] }) {
   const label = points.length
     ? `Self-assessment trend, ${points.map((point) => `${point.date} ${point.average}`).join(', ')}`
@@ -256,14 +218,4 @@ function Trend({ points }: { points: { date: string; average: number }[] }) {
       {points.length === 0 ? <p className="student-quiet">Each saved day adds a point.</p> : null}
     </div>
   );
-}
-
-function angle(index: number): number {
-  return -Math.PI / 2 + (index * 2 * Math.PI) / ASSESSMENT_AREAS.length;
-}
-
-function at(index: number, value: number, radius: number): { x: number; y: number } {
-  const theta = angle(index);
-  const span = (value / 5) * radius;
-  return { x: 160 + Math.cos(theta) * span, y: 160 + Math.sin(theta) * span };
 }

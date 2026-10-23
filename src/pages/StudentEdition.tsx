@@ -106,7 +106,7 @@ const HUB_LINKS = [
   { title: 'Competitor', note: 'Tournaments and game', to: '/student/competitor' },
   { title: 'Weight', note: 'Weigh-ins and target', to: '/student/weight' },
   { title: 'Results', note: 'Matches and bracket notes', to: '/student/results' },
-  { title: 'Scouting', note: 'Weight class and open class', to: '/student/scouting' },
+  { title: 'Scouting-Opponent Research', note: 'Weight class and open class', to: '/student/scouting' },
   { title: 'Video Library', note: 'Technique and drill links', to: '/student/videos' },
   { title: 'My rank', note: 'Belt and stripes', to: '/student/rank' },
   { title: 'Belt progress', note: 'Checkpoints and goals', to: '/student/rubric' },

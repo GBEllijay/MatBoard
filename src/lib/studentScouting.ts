@@ -1,9 +1,13 @@
 /**
  * Opponent scouting cards. They stay on this phone, like the coach roster.
- * CSV import and export use the coach roster columns, plus Style and Class.
+ * CSV import and export use the coach roster columns, plus Style, Class,
+ * the seven rating columns, and optional Strengths and Weaknesses.
+ * A file without the rating columns still imports.
  */
 
 import type { CompetitionResult } from './progress/types.ts';
+import { ASSESSMENT_AREAS } from './studentAssessment.ts';
+import { cleanRatings, type AreaRatings } from './opponentAssessment.ts';
 import {
   COMPETITOR_GYM_LABEL,
 } from './coachCopy.ts';
@@ -33,6 +37,10 @@ export type ScoutingCard = {
   group: ScoutGroup;
   style: string;
   notes: string;
+  /** Absent on cards saved before opponent ratings. Empty when nothing is rated. */
+  ratings: AreaRatings;
+  strengths: string;
+  weaknesses: string;
 };
 
 export type ScoutingDraft = {
@@ -43,6 +51,9 @@ export type ScoutingDraft = {
   group: ScoutGroup;
   style: string;
   notes: string;
+  ratings?: AreaRatings;
+  strengths?: string;
+  weaknesses?: string;
 };
 
 export type ScoutingImport = {
@@ -54,6 +65,11 @@ export type ScoutingImport = {
 };
 
 const SCOUT_EXTRA_HEADERS = ['Style', 'Class'] as const;
+const SCOUT_NOTE_HEADERS = ['Strengths', 'Weaknesses'] as const;
+
+function scoutingCsvHeader(): string[] {
+  return [...ROSTER_CSV_HEADERS, ...SCOUT_EXTRA_HEADERS, ...ASSESSMENT_AREAS.map((area) => area.label), ...SCOUT_NOTE_HEADERS];
+}
 
 function clip(value: string, max: number): string {
   return value.normalize('NFC').trim().slice(0, max);
@@ -64,7 +80,18 @@ function newId(now: number): string {
 }
 
 export function emptyScoutingDraft(): ScoutingDraft {
-  return { name: '', gym: '', belt: '', weightClass: '', group: 'weight', style: '', notes: '' };
+  return {
+    name: '',
+    gym: '',
+    belt: '',
+    weightClass: '',
+    group: 'weight',
+    style: '',
+    notes: '',
+    ratings: {},
+    strengths: '',
+    weaknesses: '',
+  };
 }
 
 export function scoutGroupLabel(group: ScoutGroup): string {
@@ -77,7 +104,7 @@ export function readScoutGroup(value: string): ScoutGroup {
   return 'weight';
 }
 
-function cardFromDraft(draft: ScoutingDraft, id: string): ScoutingCard | null {
+function cardFromDraft(draft: ScoutingDraft, id: string, prior?: ScoutingCard): ScoutingCard | null {
   const name = clipName(draft.name);
   const belt = canonicalBelt(draft.belt);
   if (!name || !belt) return null;
@@ -90,6 +117,9 @@ function cardFromDraft(draft: ScoutingDraft, id: string): ScoutingCard | null {
     group: draft.group === 'open' ? 'open' : 'weight',
     style: clip(draft.style, NOTE_MAX),
     notes: clip(draft.notes, NOTE_MAX),
+    ratings: draft.ratings === undefined ? (prior?.ratings ?? {}) : cleanRatings(draft.ratings),
+    strengths: draft.strengths === undefined ? (prior?.strengths ?? '') : clip(draft.strengths, NOTE_MAX),
+    weaknesses: draft.weaknesses === undefined ? (prior?.weaknesses ?? '') : clip(draft.weaknesses, NOTE_MAX),
   };
 }
 
@@ -104,10 +134,11 @@ export function updateScoutingCard(
   id: string,
   draft: ScoutingDraft,
 ): ScoutingCard[] {
-  if (!cards.some((card) => card.id === id)) return [...cards];
-  const card = cardFromDraft(draft, id);
+  const current = cards.find((card) => card.id === id);
+  if (!current) return [...cards];
+  const card = cardFromDraft(draft, id, current);
   if (!card) throw new Error('Add a name and a belt.');
-  return cards.map((current) => (current.id === id ? card : current));
+  return cards.map((item) => (item.id === id ? card : item));
 }
 
 export function removeScoutingCard(cards: readonly ScoutingCard[], id: string): ScoutingCard[] {
@@ -134,7 +165,18 @@ export function scoutingHaystack(card: ScoutingCard, results: readonly Competiti
     hit.match.method,
     hit.match.note,
   ]);
-  return [card.name, card.gym, card.belt, card.weightClass, scoutGroupLabel(card.group), card.style, card.notes, ...matches]
+  return [
+    card.name,
+    card.gym,
+    card.belt,
+    card.weightClass,
+    scoutGroupLabel(card.group),
+    card.style,
+    card.notes,
+    card.strengths,
+    card.weaknesses,
+    ...matches,
+  ]
     .join('\n')
     .toLowerCase();
 }
@@ -187,6 +229,9 @@ function normalizeCard(value: unknown): ScoutingCard | null {
       group: row.group === 'open' ? 'open' : 'weight',
       style: typeof row.style === 'string' ? row.style : '',
       notes: typeof row.notes === 'string' ? row.notes : '',
+      ratings: cleanRatings(row.ratings),
+      strengths: typeof row.strengths === 'string' ? row.strengths : '',
+      weaknesses: typeof row.weaknesses === 'string' ? row.weaknesses : '',
     },
     typeof row.id === 'string' && row.id.trim() ? row.id.trim().slice(0, NAME_MAX) : newId(Date.now()),
   );
@@ -196,23 +241,47 @@ function headerKey(value: string): string {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
-function extraByRow(text: string): { style: string; group: ScoutGroup }[] {
+type ScoutExtra = {
+  style: string;
+  group: ScoutGroup;
+  ratings: AreaRatings;
+  strengths: string;
+  weaknesses: string;
+};
+
+function columnAt(header: string[], ...keys: string[]): number {
+  return header.findIndex((cell) => keys.includes(cell));
+}
+
+function extraByRow(text: string): ScoutExtra[] {
   const table = parseCsv(text.replace(/^\uFEFF/, ''), detectCsvDelimiter(text));
-  const headerIndex = table.findIndex((row) => row.some((cell) => headerKey(cell) === 'name' || headerKey(cell) === 'belt'));
-  if (headerIndex < 0) return [];
-  const header = table[headerIndex].map(headerKey);
-  const styleAt = header.findIndex((cell) => cell === 'style' || cell === 'tendencies' || cell === 'style tendencies');
-  const classAt = header.findIndex((cell) => cell === 'class' || cell === 'opponent class');
-  const nameAt = header.findIndex((cell) => cell === 'name' || cell === 'competitor' || cell === 'competitor name');
-  const beltAt = header.findIndex((cell) => cell === 'belt' || cell === 'rank');
-  const extras: { style: string; group: ScoutGroup }[] = [];
-  for (const row of table.slice(headerIndex + 1)) {
+  const headerRow = table.findIndex((row) => row.some((cell) => headerKey(cell) === 'name' || headerKey(cell) === 'belt'));
+  if (headerRow < 0) return [];
+  const header = table[headerRow].map(headerKey);
+  const styleAt = columnAt(header, 'style', 'tendencies', 'style tendencies');
+  const classAt = columnAt(header, 'class', 'opponent class');
+  const nameAt = columnAt(header, 'name', 'competitor', 'competitor name');
+  const beltAt = columnAt(header, 'belt', 'rank');
+  const strengthsAt = columnAt(header, 'strengths', 'strength');
+  const weaknessesAt = columnAt(header, 'weaknesses', 'weakness');
+  const ratingAt = ASSESSMENT_AREAS.map((area) => columnAt(header, headerKey(area.label), headerKey(`${area.label} rating`)));
+  const extras: ScoutExtra[] = [];
+  for (const row of table.slice(headerRow + 1)) {
     const name = nameAt >= 0 ? row[nameAt] ?? '' : '';
     const belt = beltAt >= 0 ? row[beltAt] ?? '' : '';
     if (!name.trim() || !belt.trim()) continue;
+    const rawRatings: Record<string, string> = {};
+    ASSESSMENT_AREAS.forEach((area, index) => {
+      const at = ratingAt[index] ?? -1;
+      if (at < 0) return;
+      rawRatings[area.id] = row[at] ?? '';
+    });
     extras.push({
       style: styleAt >= 0 ? (row[styleAt] ?? '').trim() : '',
       group: readScoutGroup(classAt >= 0 ? (row[classAt] ?? '') : ''),
+      ratings: cleanRatings(rawRatings),
+      strengths: strengthsAt >= 0 ? (row[strengthsAt] ?? '').trim() : '',
+      weaknesses: weaknessesAt >= 0 ? (row[weaknessesAt] ?? '').trim() : '',
     });
   }
   return extras;
@@ -235,6 +304,9 @@ export function importScoutingCsv(text: string): ScoutingImport {
       group: extra?.group ?? 'weight',
       style: clip(extra?.style ?? '', NOTE_MAX),
       notes: student.note,
+      ratings: extra?.ratings ?? {},
+      strengths: clip(extra?.strengths ?? '', NOTE_MAX),
+      weaknesses: clip(extra?.weaknesses ?? '', NOTE_MAX),
     } satisfies ScoutingCard;
   });
   return {
@@ -262,7 +334,7 @@ export async function importScoutingCsvFile(file: {
 }
 
 export function exportScoutingCsv(cards: readonly ScoutingCard[]): string {
-  const header = [...ROSTER_CSV_HEADERS, ...SCOUT_EXTRA_HEADERS];
+  const header = scoutingCsvHeader();
   const lines = [
     header.join(','),
     ...cards.map((card) =>
@@ -277,6 +349,9 @@ export function exportScoutingCsv(cards: readonly ScoutingCard[]): string {
         '',
         card.style,
         scoutGroupLabel(card.group),
+        ...ASSESSMENT_AREAS.map((area) => (card.ratings[area.id] ? String(card.ratings[area.id]) : '')),
+        card.strengths,
+        card.weaknesses,
       ]
         .map(csvField)
         .join(','),
@@ -286,7 +361,7 @@ export function exportScoutingCsv(cards: readonly ScoutingCard[]): string {
 }
 
 export function scoutingCsvTemplate(): string {
-  const header = [...ROSTER_CSV_HEADERS, ...SCOUT_EXTRA_HEADERS];
+  const header = scoutingCsvHeader();
   const blank = header.map(() => '').join(',');
   return `${[header.join(','), blank, blank, blank].join('\r\n')}\r\n`;
 }

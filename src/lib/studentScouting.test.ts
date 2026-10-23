@@ -130,4 +130,118 @@ test('search finds style and a recorded match, and the name links that match', (
   });
   assert.equal(edited[0].weightClass, 'Medium Heavy');
   assert.equal(edited[0].notes, 'watch the underhook');
+  assert.deepEqual(edited[0].ratings, {});
+});
+
+const rated = {
+  guard: 4,
+  passing: 2,
+  takedowns: 5,
+  escapes: 3,
+  submissions: 1,
+  conditioning: 4,
+  mindset: 5,
+} as const;
+
+test('ratings and notes stay on the card, and a card saved without them still loads', () => {
+  const storage = memory();
+  storage.setItem(
+    'matboard.studentEdition.scouting.v1',
+    JSON.stringify({
+      version: 1,
+      cards: [{ id: 'scout.old', name: 'Riley', gym: 'Checkmat', belt: 'Purple', weightClass: 'Light', group: 'open', style: '', notes: 'lefty' }],
+    }),
+  );
+  const legacy = loadScouting(storage);
+  assert.equal(legacy.length, 1);
+  assert.equal(legacy[0].name, 'Riley');
+  assert.equal(legacy[0].group, 'open');
+  assert.deepEqual(legacy[0].ratings, {});
+  assert.equal(legacy[0].strengths, '');
+  assert.equal(legacy[0].weaknesses, '');
+
+  const cards = addScoutingCard(
+    legacy,
+    {
+      name: 'Sam',
+      gym: 'Atos',
+      belt: 'Blue',
+      weightClass: 'Middle',
+      group: 'weight',
+      style: 'pressure',
+      notes: '',
+      ratings: { ...rated, guard: 9 as never, passing: '2' as never },
+      strengths: 'frames',
+      weaknesses: 'open guard',
+    },
+    20,
+  );
+  assert.equal(cards[1].ratings.guard, undefined);
+  assert.equal(cards[1].ratings.passing, 2);
+  assert.equal(cards[1].ratings.takedowns, 5);
+  const saved = saveScouting(storage, cards);
+  const loaded = loadScouting(storage);
+  assert.equal(loaded[1].strengths, 'frames');
+  assert.equal(loaded[1].weaknesses, 'open guard');
+  assert.equal(loaded[1].ratings.mindset, 5);
+  const renamed = updateScoutingCard(saved, saved[1].id, {
+    name: 'Sam',
+    gym: 'Atos',
+    belt: 'Blue',
+    weightClass: 'Medium Heavy',
+    group: 'weight',
+    style: 'pressure',
+    notes: 'watch the underhook',
+  });
+  assert.equal(renamed[1].weightClass, 'Medium Heavy');
+  assert.equal(renamed[1].ratings.mindset, 5);
+  assert.equal(renamed[1].strengths, 'frames');
+  assert.deepEqual(
+    searchScoutingCards(renamed, [], 'frames').map((card) => card.name),
+    ['Sam'],
+  );
+});
+
+test('csv export writes the seven ratings and import still accepts a file without them', () => {
+  const cards = addScoutingCard(
+    [],
+    {
+      name: 'Sam',
+      gym: 'Atos',
+      belt: 'Blue',
+      weightClass: 'Middle',
+      group: 'weight',
+      style: 'pressure passer',
+      notes: 'long arms',
+      ratings: rated,
+      strengths: 'frames, long',
+      weaknesses: 'open guard',
+    },
+    21,
+  );
+  const csv = exportScoutingCsv(cards);
+  assert.match(csv, /Style,Class,Guard,Passing,Takedowns,Escapes,Submissions,Conditioning,Mindset,Strengths,Weaknesses/);
+  const imported = importScoutingCsv(csv);
+  assert.equal(imported.error, undefined);
+  assert.deepEqual(imported.cards[0].ratings, rated);
+  assert.equal(imported.cards[0].strengths, 'frames, long');
+  assert.equal(imported.cards[0].weaknesses, 'open guard');
+  assert.equal(imported.cards[0].style, 'pressure passer');
+  assert.equal(imported.cards[0].group, 'weight');
+
+  const old = importScoutingCsv('Name,Belt,Weight class,School,Notes\nRiley,Purple,Light,Checkmat,lefty\n');
+  assert.equal(old.cards.length, 1);
+  assert.deepEqual(old.cards[0].ratings, {});
+  assert.equal(old.cards[0].strengths, '');
+  assert.equal(old.cards[0].weaknesses, '');
+
+  const messy = importScoutingCsv(
+    'Name,Belt,Guard,Passing,Takedowns,Escapes,Submissions,Conditioning,Mindset\nAlex,Blue,5,4,9,,2,1,3\n',
+  );
+  assert.equal(messy.cards[0].ratings.guard, 5);
+  assert.equal(messy.cards[0].ratings.passing, 4);
+  assert.equal(messy.cards[0].ratings.takedowns, undefined);
+  assert.equal(messy.cards[0].ratings.escapes, undefined);
+  assert.equal(messy.cards[0].ratings.submissions, 2);
+  assert.equal(messy.cards[0].style, '');
 });
