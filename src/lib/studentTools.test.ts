@@ -76,9 +76,23 @@ test('a journal day sits on the month grid and an open mat is a training event',
   );
   assert.equal(calendarKindLabel(withEvent.calendar[0].kind), 'Open mat');
   assert.equal(withEvent.calendar[0].kind, 'training');
+  assert.equal(withEvent.calendar[0].date, '2026-10-18');
+  assert.equal(withEvent.calendar[0].note, 'no-gi');
+  assert.deepEqual(Object.keys(withEvent.calendar[0]).sort(), ['date', 'id', 'kind', 'note', 'title']);
   assert.equal(eventsOnDate(withEvent, '2026-10-18')[0].title, 'Saturday open mat');
+  assert.equal(withEvent.journal.length, drafted.journal.length);
+  assert.throws(
+    () => addCalendarEvent(withEvent, { date: 'nope', title: 'Seminar', kind: 'class', note: '' }, 20),
+    /YYYY-MM-DD/,
+  );
+  assert.throws(
+    () => addCalendarEvent(withEvent, { date: '2026-10-18', title: '   ', kind: 'class', note: '' }, 21),
+    /Add a title/,
+  );
   const removed = removeCalendarEvent(withEvent, withEvent.calendar[0].id, 19);
   assert.equal(removed.calendar.length, 0);
+  assert.equal(removed.journal.length, drafted.journal.length);
+  assert.equal(removeCalendarEvent(removed, 'missing', 22), removed);
 
   const schedule = JSON.stringify({
     version: 1,
