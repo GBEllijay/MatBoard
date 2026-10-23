@@ -17,8 +17,9 @@ test('competitor tracker, game, weight, calendar, and coach import', async ({ br
 
   const competitor = page.getByRole('link', { name: 'Competitor', exact: true });
   await expect(competitor).toBeVisible();
-  await expect(competitor).toHaveCSS('background-color', 'rgb(28, 28, 30)');
   await expect(competitor).toHaveCSS('font-family', /Inter/);
+  await expect(competitor).toContainText('No event yet');
+  await expect(competitor).toContainText('No matches yet');
   await expect(competitor.locator('.leather-spine')).toHaveCount(0);
 
   await competitor.click();

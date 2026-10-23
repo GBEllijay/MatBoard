@@ -23,6 +23,18 @@ export const COACH_FILE_LABEL = 'Make a file for my coach';
 export const COACH_FILE_HINT = 'This makes a file. You send it yourself.';
 export const LOG_TODAY_LABEL = "Log today's class";
 export const CLEAR_STUDENT_LABEL = 'Clear all Student Edition data';
+export const SCOUTING_LABEL = 'Opponent scouting';
+export const NO_EVENT_LABEL = 'No event yet';
+export const NO_MATCHES_LABEL = 'No matches yet';
+export const WEIGHT_UNSET_LABEL = 'Not set';
+
+/** Sub-menu belts fill a white belt: 1, then 2, then 3, then 4 stripes. */
+export const RANK_MENU_STRIPES = [
+  { label: 'Fundamentals', stripes: 1 },
+  { label: 'Belt progress', stripes: 2 },
+  { label: 'My rank', stripes: 3 },
+  { label: 'Self-assessment', stripes: 4 },
+] as const;
 
 export type MenuLink = {
   label: string;
@@ -51,19 +63,16 @@ const ASSESSMENT_LINK: MenuLink = {
   to: '/student/competitor?from=progress#self-assessment',
 };
 
-/** White and blue, plus kids belts, open Fundamentals first. Purple and up open My rank first. */
-const FUNDAMENTALS_FIRST = new Set(['white', 'blue', 'grey', 'yellow', 'orange', 'green']);
-
-export function progressLinks(belt: string): MenuLink[] {
-  if (FUNDAMENTALS_FIRST.has(belt)) return [FUNDAMENTALS_LINK, BELT_LINK, RANK_LINK, ASSESSMENT_LINK];
-  return [RANK_LINK, BELT_LINK, FUNDAMENTALS_LINK, ASSESSMENT_LINK];
+/** The rank menu is this order on every belt, so the stripe row reads 1 through 4. */
+export function progressLinks(_belt = 'white'): MenuLink[] {
+  return [FUNDAMENTALS_LINK, BELT_LINK, RANK_LINK, ASSESSMENT_LINK];
 }
 
 export const COMPETE_LINKS: readonly MenuLink[] = [
   { label: 'Upcoming tournaments', note: 'A, B, and C game plan', to: '/student/competitor' },
   { label: 'Weight management', note: 'Weigh-ins and target', to: '/student/weight' },
   {
-    label: 'Scouting-Opponent Research and Tracker',
+    label: SCOUTING_LABEL,
     note: 'Weight class and open class',
     to: '/student/scouting',
   },
@@ -96,7 +105,7 @@ export const FORMER_HUB_ITEMS: readonly MenuLink[] = [
   { label: 'Competitor', note: 'Tournaments and game', to: '/student/competitor' },
   { label: 'Weight', note: 'Weigh-ins and target', to: '/student/weight' },
   { label: 'Results', note: 'Matches and bracket notes', to: '/student/results' },
-  { label: 'Scouting-Opponent Research', note: 'Weight class and open class', to: '/student/scouting' },
+  { label: SCOUTING_LABEL, note: 'Weight class and open class', to: '/student/scouting' },
   { label: 'Video Library', note: 'Technique and drill links', to: '/student/videos' },
   { label: 'My rank', note: 'Belt and stripes', to: '/student/rank' },
   { label: 'Belt progress', note: 'Checkpoints and goals', to: '/student/rubric' },
@@ -262,11 +271,13 @@ export const LEGACY_STUDENT_RESTS = [
 ] as const;
 
 export type CompetitorHubSummary = {
-  eventName: string;
-  countdown: string;
-  weight: string;
+  /** Hub chip and the Next event cell. "Next: Atlanta Open · 18d", or "No event yet". */
+  next: string;
+  /** Hub chip and the Record cell. "Record 3-1", or "No matches yet". */
   record: string;
-  tile: string;
+  /** Weight cell. A real delta, or "Not set". */
+  weight: string;
+  eventName: string;
 };
 
 function matchRecord(report: StudentProgressReport): { wins: number; losses: number; draws: number } {
@@ -281,24 +292,33 @@ function matchRecord(report: StudentProgressReport): { wins: number; losses: num
   return totals;
 }
 
-function recordLabel(totals: { wins: number; losses: number; draws: number }): string {
-  if (totals.draws) return `${totals.wins}–${totals.losses}–${totals.draws}`;
-  return `${totals.wins}–${totals.losses}`;
+/** Wins-losses. Draws are a Results outcome, so they are a third number only when one exists. DQ is a method, not a tally. */
+function recordChip(totals: { wins: number; losses: number; draws: number }): string {
+  if (totals.wins + totals.losses + totals.draws === 0) return NO_MATCHES_LABEL;
+  if (totals.draws > 0) return `Record ${totals.wins}-${totals.losses}-${totals.draws}`;
+  return `Record ${totals.wins}-${totals.losses}`;
 }
 
-/** Next event, days out, pounds to go, and match record for the Competitor group. */
+function nextChip(name: string, days: number | null): string {
+  if (!name) return NO_EVENT_LABEL;
+  if (days == null) return `Next: ${name}`;
+  if (days === 0) return `Next: ${name} · Today`;
+  if (days > 0) return `Next: ${name} · ${days}d`;
+  return `Next: ${name} · ${countdownLabel(days)}`;
+}
+
+/** Next event, weight, and win-loss record for the Competitor card and sub-menu strip. */
 export function competitorHubSummary(report: StudentProgressReport, today: string): CompetitorHubSummary {
   const competition = competitionOf(report);
-  const next = competition.tournaments
+  const upcoming = competition.tournaments
     .filter((tournament) => isUpcomingTournament(tournament, today))
     .sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name))[0];
-  const eventName = next?.name.trim() ?? '';
-  const days = next ? daysUntil(next.date, today) : null;
-  const countdown = days == null ? '' : countdownLabel(days);
+  const eventName = upcoming?.name.trim() ?? '';
+  const days = upcoming ? daysUntil(upcoming.date, today) : null;
 
   const latest = [...competition.weighIns].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id))[0];
   const goal = resolvedGoal(competition, today);
-  let weight = '';
+  let weight = WEIGHT_UNSET_LABEL;
   if (latest && goal) {
     const delta = weightToTarget(latest.weight, latest.unit, goal.weight, goal.unit, competition.weightUnit);
     if (delta > 0) weight = `${formatWeightDelta(delta, competition.weightUnit)} to go`;
@@ -306,15 +326,10 @@ export function competitorHubSummary(report: StudentProgressReport, today: strin
     else weight = 'At target';
   }
 
-  const totals = matchRecord(report);
-  const record = recordLabel(totals);
-  const hasMatches = totals.wins + totals.losses + totals.draws > 0;
-  let tile = 'Tournaments, weight, opponents, and results';
-  if (eventName) {
-    tile = [eventName, countdown, weight].filter(Boolean).join(' · ');
-  } else if (hasMatches) {
-    tile = `Record ${record}`;
-  }
-
-  return { eventName, countdown, weight, record, tile };
+  return {
+    next: nextChip(eventName, days),
+    record: recordChip(matchRecord(report)),
+    weight,
+    eventName,
+  };
 }

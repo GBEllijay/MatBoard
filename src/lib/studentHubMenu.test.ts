@@ -7,7 +7,12 @@ import {
   COACH_FILE_LABEL,
   FORMER_HUB_ITEMS,
   LEGACY_STUDENT_RESTS,
+  NO_EVENT_LABEL,
+  NO_MATCHES_LABEL,
+  RANK_MENU_STRIPES,
+  SCOUTING_LABEL,
   TRAINING_GROUP_LABEL,
+  WEIGHT_UNSET_LABEL,
   competitorHubSummary,
   formerHubItemReachable,
   groupMenuLinks,
@@ -53,24 +58,26 @@ test('every former hub item is reachable from the new menus', () => {
   assert.equal(links.some((link) => link.label === 'Menu'), false);
 });
 
-test('rank menu leads with fundamentals for white and blue, and rank for purple and up', () => {
-  assert.equal(progressLinks('white')[0]?.label, 'Fundamentals');
-  assert.equal(progressLinks('blue')[0]?.label, 'Fundamentals');
-  assert.equal(progressLinks('grey')[0]?.label, 'Fundamentals');
-  assert.equal(progressLinks('purple')[0]?.label, 'My rank');
-  assert.equal(progressLinks('black')[0]?.label, 'My rank');
-  assert.equal(progressLinks('coral')[0]?.label, 'My rank');
+test('rank menu rows stay in order and each belt shows one more stripe', () => {
+  const labels = ['Fundamentals', 'Belt progress', 'My rank', 'Self-assessment'];
+  for (const belt of ['white', 'blue', 'purple', 'black', 'coral']) {
+    assert.deepEqual(
+      progressLinks(belt).map((item) => item.label),
+      labels,
+    );
+  }
   assert.deepEqual(
-    progressLinks('white').map((item) => item.label),
-    ['Fundamentals', 'Belt progress', 'My rank', 'Self-assessment'],
-  );
-  assert.deepEqual(
-    progressLinks('purple').map((item) => item.label),
-    ['My rank', 'Belt progress', 'Fundamentals', 'Self-assessment'],
+    RANK_MENU_STRIPES.map((row) => [row.label, row.stripes]),
+    [
+      ['Fundamentals', 1],
+      ['Belt progress', 2],
+      ['My rank', 3],
+      ['Self-assessment', 4],
+    ],
   );
 });
 
-test('competitor summary names the next event, the cut, and the record', () => {
+test('competitor chips name the next event and the win-loss record', () => {
   const report = blankStudentReport(1);
   const tournament: StudentTournament = {
     id: 't1',
@@ -108,11 +115,28 @@ test('competitor summary names the next event, the cut, and the record', () => {
   };
   const summary = competitorHubSummary(report, '2026-10-23');
   assert.equal(summary.eventName, 'Spring Open');
-  assert.equal(summary.countdown, '29 days');
+  assert.equal(summary.next, 'Next: Spring Open · 29d');
   assert.equal(summary.weight, '3.4 lb to go');
-  assert.equal(summary.record, '1–1');
-  assert.equal(summary.tile, 'Spring Open · 29 days · 3.4 lb to go');
-  assert.equal(competitorHubSummary(blankStudentReport(1), '2026-10-23').tile, 'Tournaments, weight, opponents, and results');
+  assert.equal(summary.record, 'Record 1-1');
+  const empty = competitorHubSummary(blankStudentReport(1), '2026-10-23');
+  assert.equal(empty.next, NO_EVENT_LABEL);
+  assert.equal(empty.record, NO_MATCHES_LABEL);
+  assert.equal(empty.weight, WEIGHT_UNSET_LABEL);
+  report.competition.results[0]?.matches.push({ id: 'm3', opponent: 'Pat', result: 'draw', method: 'points', note: '' });
+  assert.equal(competitorHubSummary(report, '2026-10-23').record, 'Record 1-1-1');
+  const dqOnly = blankStudentReport(1);
+  dqOnly.competition = {
+    ...emptyCompetition(),
+    results: [
+      {
+        ...result,
+        matches: [{ id: 'm4', opponent: 'Dee', result: 'win', method: 'dq', note: '' }],
+      },
+    ],
+  };
+  assert.equal(competitorHubSummary(dqOnly, '2026-10-23').record, 'Record 1-0');
+  assert.equal(groupMenuLinks().some((link) => link.label === SCOUTING_LABEL && link.to === '/student/scouting'), true);
+  assert.equal(groupMenuLinks().some((link) => link.label.includes('Scouting-Opponent')), false);
 });
 
 test('a built backup records the day, and a missing stamp reads as not yet', () => {

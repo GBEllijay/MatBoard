@@ -82,8 +82,12 @@ test('?student=1 opens the Student hub, and submenus go back to it', async ({ pa
   await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute('href', '/products?student=1');
   const training = page.getByRole('link', { name: 'Training & Journal', exact: true });
   await expect(training).toBeVisible();
-  await expect(training).toHaveCSS('background-color', 'rgb(28, 28, 30)');
   await expect(training).toHaveCSS('font-family', /Inter/);
+  const leather = await training.evaluate((el) => getComputedStyle(el).backgroundImage);
+  expect(leather).toContain('black-leather-grain.png');
+  await expect(page.getByText('No event yet')).toBeVisible();
+  await expect(page.getByText('No matches yet')).toBeVisible();
+  await expect(page.locator('.student-menu-home .site-footer a[href^="mailto:"]')).toHaveCSS('color', 'rgb(0, 78, 186)');
   await expect(page.getByRole('link', { name: 'Rank & Progress', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Competitor', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Coach & Academy', exact: true })).toBeVisible();

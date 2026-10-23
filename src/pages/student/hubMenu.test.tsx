@@ -8,9 +8,16 @@ import { Window } from 'happy-dom';
 import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
+import { blankStudentReport, saveStudentReport, todayIso } from '../../lib/studentEdition.ts';
+import { emptyCompetition } from '../../lib/progress/competition.ts';
 import {
   FORMER_HUB_ITEMS,
+  NO_EVENT_LABEL,
+  NO_MATCHES_LABEL,
+  RANK_MENU_STRIPES,
+  SCOUTING_LABEL,
   TRAINING_GROUP_LABEL,
+  WEIGHT_UNSET_LABEL,
   menuDestination,
 } from '../../lib/studentHubMenu.ts';
 import { BackupMenu, ClearStudentMenu } from './BackupMenu.tsx';
@@ -68,6 +75,11 @@ test('the hub is five groups and has no Menu card', () => {
   assert.equal(labels.includes('Competitor'), true);
   assert.equal(labels.includes('Coach & Academy'), true);
   assert.equal(labels.some((label) => label.startsWith('Backup & Print')), true);
+  assert.equal(text.includes(NO_EVENT_LABEL), true);
+  assert.equal(text.includes(NO_MATCHES_LABEL), true);
+  assert.equal(text.includes('Scouting-Opponent'), false);
+  assert.equal(hub.host.querySelector('.s-journal')?.getAttribute('aria-label'), TRAINING_GROUP_LABEL);
+  assert.equal(hub.host.querySelector('.s-belt')?.getAttribute('data-stripes'), '0');
   unmount(hub);
 });
 
@@ -89,6 +101,17 @@ test('every former hub item is linked from a group menu', () => {
       item.label,
     );
   }
+  const progress = pages[1];
+  for (const row of RANK_MENU_STRIPES) {
+    assert.equal(progress?.host.querySelector(`[aria-label="${row.label}"]`)?.getAttribute('data-stripes'), String(row.stripes));
+  }
+  const compete = pages[2];
+  const competeText = compete?.host.textContent ?? '';
+  assert.equal(competeText.includes(SCOUTING_LABEL), true);
+  assert.equal(competeText.includes(NO_EVENT_LABEL), true);
+  assert.equal(competeText.includes(NO_MATCHES_LABEL), true);
+  assert.equal(competeText.includes(WEIGHT_UNSET_LABEL), true);
+  assert.equal(competeText.includes('Scouting-Opponent'), false);
   const training = pages[0];
   assert.equal(training?.host.textContent?.includes(TRAINING_GROUP_LABEL), true);
   assert.ok(training?.host.querySelector('a[aria-label="Back. Hold for Home."]'));
@@ -103,4 +126,72 @@ test('every former hub item is linked from a group menu', () => {
     /\/student\/backup\?student=1$/,
   );
   for (const page of pages) unmount(page);
+});
+
+test('competitor chips show a named event and a win-loss record when results exist', () => {
+  const now = new Date();
+  const date = todayIso(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 18));
+  const report = blankStudentReport(1);
+  report.competition = {
+    ...emptyCompetition(),
+    tournaments: [
+      {
+        id: 't1',
+        name: 'Atlanta Open',
+        date,
+        location: 'Atlanta',
+        division: '',
+        deadline: '',
+        link: '',
+        status: 'entered',
+        targetWeight: null,
+        targetUnit: 'lb',
+        goals: [],
+      },
+    ],
+    results: [
+      {
+        id: 'r1',
+        tournamentId: '',
+        tournamentName: 'Fall Open',
+        division: '',
+        matches: [
+          { id: 'm1', opponent: 'A', result: 'win', method: 'sub', note: '' },
+          { id: 'm2', opponent: 'B', result: 'win', method: 'points', note: '' },
+          { id: 'm3', opponent: 'C', result: 'win', method: 'points', note: '' },
+          { id: 'm4', opponent: 'D', result: 'loss', method: 'points', note: '' },
+        ],
+        bracket: [],
+        bracketPhoto: false,
+      },
+    ],
+  };
+  saveStudentReport(localStorage, report);
+  const page = mount(<CompeteMenu />, '/student/compete?student=1');
+  const text = page.host.textContent ?? '';
+  assert.equal(text.includes('Next: Atlanta Open · 18d'), true);
+  assert.equal(text.includes('Record 3-1'), true);
+  assert.equal(text.includes(WEIGHT_UNSET_LABEL), true);
+  unmount(page);
+  localStorage.clear();
+});
+
+test('clearing student data asks for a backup, then the word CLEAR', () => {
+  const page = mount(<ClearStudentMenu />, '/student/backup/clear?student=1');
+  const click = (name: string) => {
+    const button = [...page.host.querySelectorAll('button')].find((node) => node.textContent?.trim() === name);
+    assert.ok(button, name);
+    act(() => {
+      button.click();
+    });
+  };
+  click('Clear all Student Edition data');
+  assert.equal(page.host.textContent?.includes('Back up first'), true);
+  click('Continue without a backup');
+  const erase = [...page.host.querySelectorAll('button')].find((node) => node.textContent?.trim() === 'Erase Student Edition data');
+  assert.equal((erase as HTMLButtonElement | undefined)?.disabled, true);
+  assert.ok(page.host.querySelector('input[aria-label="Type CLEAR to confirm"]'));
+  assert.equal(page.host.textContent?.includes('Confirm clear'), false);
+  assert.equal(page.host.textContent?.includes('Journal'), true);
+  unmount(page);
 });

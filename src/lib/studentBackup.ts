@@ -54,7 +54,7 @@ export const CLEAR_STUDENT_DATA_ITEMS = [
   'Weight',
   'Self-assessment',
   'Tournaments',
-  'Scouting',
+  'Opponent scouting',
   'Videos',
   'Coach plans and coach feedback saved on this phone',
 ] as const;

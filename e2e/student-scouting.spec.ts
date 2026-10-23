@@ -14,7 +14,7 @@ test('scouting cards import a roster csv and link a recorded match', async ({ pa
 
   await page.goto('/student?student=1');
   await page.getByRole('link', { name: 'Competitor', exact: true }).click();
-  const scouting = page.getByRole('link', { name: 'Scouting-Opponent Research and Tracker', exact: true });
+  const scouting = page.getByRole('link', { name: 'Opponent scouting', exact: true });
   const weightLink = page.getByRole('link', { name: 'Weight management', exact: true });
   const scoutingBox = await scouting.boundingBox();
   const weightBox = await weightLink.boundingBox();
@@ -22,8 +22,8 @@ test('scouting cards import a roster csv and link a recorded match', async ({ pa
   expect(scoutingBox!.y).toBeGreaterThan(weightBox!.y);
   await scouting.click();
 
-  await expect(page.getByRole('heading', { name: 'Scouting-Opponent Research' })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Scouting-Opponent Tracker', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Opponent scouting' }).first()).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Opponent scouting', exact: true })).toBeVisible();
   await page.getByRole('group', { name: 'Opponent class' }).getByRole('button', { name: 'Weight class', exact: true }).click();
   await page.getByLabel('Opponent name').fill('Sam');
   await page.getByLabel('Opponent gym').fill('Atos');
@@ -37,7 +37,7 @@ test('scouting cards import a roster csv and link a recorded match', async ({ pa
   await expect(weight.locator('strong').filter({ hasText: /^Sam$/ })).toBeVisible();
   await expect(weight.getByText('pressure passer')).toBeVisible();
   await expect(weight.getByRole('link', { name: 'Spring Open · Win · sub' })).toHaveAttribute('href', /\/student\/results/);
-  await expect(page.getByRole('region', { name: 'Scouting-Opponent Tracker for Sam' }).getByRole('link', { name: 'Do your self-assessment' })).toHaveAttribute(
+  await expect(page.getByRole('region', { name: 'Opponent scouting for Sam' }).getByRole('link', { name: 'Do your self-assessment' })).toHaveAttribute(
     'href',
     '/student/competitor?student=1#self-assessment',
   );
@@ -105,7 +105,7 @@ test('scouting opponent tracker compares the latest self-assessment', async ({ p
     Conditioning: '4',
     Mindset: '5',
   };
-  const tracker = page.getByRole('region', { name: 'Scouting-Opponent Tracker for Sam' });
+  const tracker = page.getByRole('region', { name: 'Opponent scouting for Sam' });
   for (const [area, score] of Object.entries(theirs)) {
     await tracker.getByRole('button', { name: `Sam ${area} ${score}`, exact: true }).click();
   }

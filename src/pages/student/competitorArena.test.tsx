@@ -261,9 +261,9 @@ test('weight, results, and scouting keep their controls on the same skin', () =>
 
   const scouting = mount(<ScoutingPage />, '/student/scouting');
   assert.ok(scouting.host.querySelector('main')?.classList.contains('student--arena'));
-  assert.equal(scouting.host.querySelector('h1')?.textContent, 'Scouting-Opponent Research');
+  assert.equal(scouting.host.querySelector('h1')?.textContent, 'Opponent scouting');
   assert.equal(
-    [...scouting.host.querySelectorAll('h2')].some((node) => node.textContent?.trim() === 'Scouting-Opponent Tracker'),
+    [...scouting.host.querySelectorAll('h2')].some((node) => node.textContent?.trim() === 'Opponent scouting'),
     true,
   );
   for (const name of [

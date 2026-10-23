@@ -87,7 +87,7 @@ export function ScoutingPage() {
   return (
     <main className="student student-frame student--arena">
       <StudentMarks />
-      <LeatherHeader title="Scouting-Opponent Research" />
+      <LeatherHeader title="Opponent scouting" />
       <div className="student-paper">
         <div className="student-sheet">
           <p className="student-quiet">
@@ -135,8 +135,8 @@ export function ScoutingPage() {
             />
           </label>
 
-          <section className="ink" aria-label="Scouting-Opponent Tracker">
-            <h2 className="ink__label">Scouting-Opponent Tracker</h2>
+          <section className="ink" aria-label="Opponent scouting">
+            <h2 className="ink__label">Opponent scouting</h2>
             <p className="student-quiet">
               Rate an opponent on the same seven areas as your self-assessment. Strengths, weaknesses, and the me versus them chart stay on this phone with the card.
             </p>
@@ -409,9 +409,9 @@ function OpponentTracker({
   const save = (patch: { ratings: AreaRatings; strengths: string; weaknesses: string }) => onSave(patch);
 
   return (
-    <section className="scout-tracker" aria-label={`Scouting-Opponent Tracker for ${card.name}`}>
+    <section className="scout-tracker" aria-label={`Opponent scouting for ${card.name}`}>
       <div className="scout-rates" role="group" aria-label={`Ratings for ${card.name}`}>
-        <h3>Scouting-Opponent Tracker</h3>
+        <h3>Opponent scouting</h3>
         <p className="student-quiet">{`Rate ${card.name}. 1 is early. 5 is ready to rely on.`}</p>
         {ASSESSMENT_AREAS.map((area) => (
           <fieldset key={area.id} className="assess-area">
