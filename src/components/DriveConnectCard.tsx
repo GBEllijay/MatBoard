@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { DriveMediaPicker } from './DriveMediaPicker';
+import { GoogleDriveFolderTools } from './GoogleDriveFolderTools';
 import { classHistoryHref } from '../lib/submenuNav';
 import {
   cloudStorage,
@@ -39,11 +40,18 @@ import {
   driveOwnerFacingError,
   driveSignInFailureCopy,
   ensureDriveBrowseAccess,
+  getDriveBindingSnapshot,
   googleClientId,
+  listDriveFolderLevel,
+  openDriveChangeFolder,
   ownedGoogleClientId,
+  readDriveBinding,
   requestDriveConsent,
   saveGoogleClientId,
+  subscribeDriveBinding,
+  tokenForDriveFolderChange,
   type DriveBrowseAccess,
+  type DriveFolderLevel,
 } from '../lib/googleDrive';
 import { PHOTOS_CONNECTED, photosOwnerFacingError } from '../lib/googlePhotos';
 import { addDriveMediaFiles } from '../lib/photoStore';
@@ -95,10 +103,13 @@ let oneDriveResumeStarted = false;
 export function DriveConnectCard({
   resumeMode = null,
   onReady,
+  changeFolderOnOpen = false,
 }: {
   resumeMode?: 'token' | 'error' | null;
   /** Fired after a reconnect grants a token that can browse. */
   onReady?: () => void;
+  /** Open the folder picker once, without clearing the connected folder. */
+  changeFolderOnOpen?: boolean;
 }) {
   const location = useLocation();
   const owned = ownedGoogleClientId();
@@ -119,7 +130,10 @@ export function DriveConnectCard({
   const [access, setAccess] = useState<DriveBrowseAccess | null>(null);
   const [browseOpen, setBrowseOpen] = useState(false);
   const [pickNote, setPickNote] = useState('');
+  const [folderLevel, setFolderLevel] = useState<DriveFolderLevel | null>(null);
   const connectRef = useRef<(provider: CloudStorageConnector) => Promise<void>>(async () => {});
+  const changeFolderRef = useRef<() => Promise<void>>(async () => {});
+  const openedChange = useRef(false);
 
   useEffect(() => {
     googleClientId();
@@ -143,9 +157,21 @@ export function DriveConnectCard({
   const googleConnected = binding?.providerId === 'googleDrive';
 
   useEffect(() => {
+    return subscribeDriveBinding(() => {
+      setBinding((current) => {
+        if (current && current.providerId !== 'googleDrive') return current;
+        const stored = getDriveBindingSnapshot();
+        if (!stored) return null;
+        return cloudStorage('googleDrive').binding();
+      });
+    });
+  }, []);
+
+  useEffect(() => {
     if (!googleConnected) {
       setAccess(null);
       setBrowseOpen(false);
+      setFolderLevel(null);
       return;
     }
     let cancelled = false;
@@ -157,6 +183,55 @@ export function DriveConnectCard({
       cancelled = true;
     };
   }, [googleConnected, binding]);
+
+  const changeFolder = async () => {
+    setBusyId('googleDrive');
+    setError('');
+    setPickNote('');
+    try {
+      const auth = await tokenForDriveFolderChange();
+      if (!auth.ok) {
+        setError(driveSignInFailureCopy(auth));
+        return;
+      }
+      if (!readDriveBinding()) return;
+      const provider = cloudStorage('googleDrive');
+      const next = await openDriveChangeFolder(auth.token, binding?.folderId ?? readDriveBinding()?.folderId ?? null);
+      if (!readDriveBinding()) return;
+      setPending(provider);
+      setSession(auth.token);
+      setFolders(next.folders);
+      setFolderLevel(next.upLabel ? next : null);
+      setAccess({ state: 'ready', token: auth.token });
+    } catch (reason) {
+      setError(driveOwnerFacingError(reason));
+    } finally {
+      setBusyId(null);
+    }
+  };
+  changeFolderRef.current = changeFolder;
+
+  const goUp = async () => {
+    if (!session || !folderLevel?.upLabel) return;
+    setBusyId('googleDrive');
+    setError('');
+    try {
+      const parentId = folderLevel.upToAccount ? null : folderLevel.upFolderId;
+      const next = await listDriveFolderLevel(session, parentId);
+      setFolders(next.folders);
+      setFolderLevel(next.upLabel ? next : null);
+    } catch (reason) {
+      setError(driveOwnerFacingError(reason));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  useEffect(() => {
+    if (!changeFolderOnOpen || openedChange.current || !googleConnected) return;
+    openedChange.current = true;
+    void changeFolderRef.current();
+  }, [changeFolderOnOpen, googleConnected]);
 
   const reconnect = async () => {
     setBusyId('googleDrive');
@@ -266,6 +341,7 @@ export function DriveConnectCard({
     try {
       const next = await pending.pickFolder(session, folder);
       setFolders(null);
+      setFolderLevel(null);
       setPending(null);
       setSession(null);
       if (next.providerId !== 'googlePhotos') setBinding(next);
@@ -285,6 +361,7 @@ export function DriveConnectCard({
       const next = await pending.pickFolder(session, created);
       setBinding(next);
       setFolders(null);
+      setFolderLevel(null);
       setPending(null);
     } catch (reason) {
       setError(ownerError(pending, reason));
@@ -368,22 +445,43 @@ export function DriveConnectCard({
               {busyId === 'googleDrive' ? 'Opening Google Drive…' : DRIVE_RECONNECT_LABEL}
             </button>
           ) : null}
-          <button
-            type="button"
-            className="btn btn--ghost"
-            onClick={() => {
-              connected?.disconnect();
-              setBinding(null);
-              setPending(null);
-              setSession(null);
-              setFolders(null);
-              setAccess(null);
-              setBrowseOpen(false);
-              setPickNote('');
-            }}
-          >
-            Disconnect
-          </button>
+          {googleConnected ? (
+            <GoogleDriveFolderTools
+              folderId={binding.folderId}
+              busy={busyId !== null}
+              picker="external"
+              onChangeFolder={changeFolder}
+              onDisconnected={() => {
+                setBinding(null);
+                setPending(null);
+                setSession(null);
+                setFolders(null);
+                setFolderLevel(null);
+                setAccess(null);
+                setBrowseOpen(false);
+                setPickNote('');
+                setError('');
+              }}
+            />
+          ) : (
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => {
+                connected?.disconnect();
+                setBinding(null);
+                setPending(null);
+                setSession(null);
+                setFolders(null);
+                setFolderLevel(null);
+                setAccess(null);
+                setBrowseOpen(false);
+                setPickNote('');
+              }}
+            >
+              Disconnect
+            </button>
+          )}
         </div>
       ) : folders ? null : (
         <>
@@ -461,6 +559,11 @@ export function DriveConnectCard({
       {folders && pending ? (
         <div className="drive-connect__folders">
           <p>{pending.choosePrompt ?? CONNECT_CHOOSE_FOLDER}</p>
+          {folderLevel?.upLabel ? (
+            <button type="button" className="btn btn--ghost" disabled={busyId !== null} onClick={() => void goUp()}>
+              {folderLevel.upLabel}
+            </button>
+          ) : null}
           {folders.length ? (
             <ul>
               {folders.map((folder) => (

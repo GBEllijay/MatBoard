@@ -2,8 +2,8 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { build } from 'esbuild';
 
-mkdirSync('.cache', { recursive: true });
-const outfile = '.cache/fundamentals-arena.test.mjs';
+mkdirSync('.regression-cache', { recursive: true });
+const outfile = '.regression-cache/fundamentals-arena.test.mjs';
 await build({
   entryPoints: ['src/pages/student/fundamentalsArena.test.tsx'],
   bundle: true,
