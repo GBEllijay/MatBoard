@@ -2,8 +2,8 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { build } from 'esbuild';
 
-mkdirSync('node_modules/.cache', { recursive: true });
-const outfile = 'node_modules/.cache/bracket-regressions.test.mjs';
+mkdirSync('.regression-cache', { recursive: true });
+const outfile = '.regression-cache/bracket-regressions.test.mjs';
 await build({
   entryPoints: ['src/components/bracketRegressions.test.tsx'],
   bundle: true,

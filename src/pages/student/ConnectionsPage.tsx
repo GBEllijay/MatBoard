@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AcademyQrScanner } from '../../components/AcademyQrScanner';
+import { GoogleDriveFolderTools } from '../../components/GoogleDriveFolderTools';
 import { loadBracketPhotos } from '../../lib/bracketPhoto';
 import {
   ACADEMY_ACCESS_ERROR,
@@ -23,6 +24,7 @@ import {
   type AcademyPathway,
   type StudentDriveLink,
 } from '../../lib/academyPathway';
+import { subscribeGoogleDriveDisconnect } from '../../lib/driveSession';
 import { driveAccountEmail, driveSignInFailureCopy, listDriveFolders, requestDriveConsent } from '../../lib/googleDrive';
 import {
   dismissOneDriveResume,
@@ -114,6 +116,8 @@ function AcademyConnect({ showHeading = true }: { showHeading?: boolean }) {
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => subscribeGoogleDriveDisconnect(() => setLinked(loadAcademyLink(localStorage))), []);
 
   const useLink = (value: string) => {
     const parsed = parseAcademyInput(value);
@@ -251,6 +255,27 @@ function AcademyConnect({ showHeading = true }: { showHeading?: boolean }) {
           </button>
         ) : null}
       </div>
+      {linked?.provider === 'googleDrive' ? (
+        <GoogleDriveFolderTools
+          folderId={linked.folderId}
+          buttonClassName="ink-btn"
+          primaryClassName="ink-btn ink-btn--save"
+          picker="inline"
+          onPick={(folder) => {
+            const saved = saveStudentDriveLink(localStorage, {
+              ...linked,
+              folderId: folder.id,
+              folderName: folder.name,
+            });
+            setLinked(saved);
+            setStatus(`Connected to ${saved.folderName}. ${ACADEMY_FREE_NOTE}`);
+          }}
+          onDisconnected={() => {
+            setLinked(loadAcademyLink(localStorage));
+            setStatus('Google Drive is disconnected on this device. Connect again to pick a folder or account.');
+          }}
+        />
+      ) : null}
       {status ? <p role="status">{status}</p> : null}
       {error ? <p role="alert">{error}</p> : null}
     </section>
@@ -264,6 +289,8 @@ function PersonalDrive() {
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => subscribeGoogleDriveDisconnect(() => setLinked(loadPersonalDrive(localStorage))), []);
 
   const pick = async (provider: 'googleDrive' | 'oneDrive', folderId: string, folderName: string, accountLabel: string | null) => {
     const saved = saveStudentDriveLink(localStorage, {
@@ -369,6 +396,29 @@ function PersonalDrive() {
           </button>
         ) : null}
       </div>
+      {linked?.provider === 'googleDrive' ? (
+        <GoogleDriveFolderTools
+          folderId={linked.folderId}
+          buttonClassName="ink-btn"
+          primaryClassName="ink-btn ink-btn--save"
+          picker="inline"
+          onPick={(folder) => {
+            const saved = saveStudentDriveLink(localStorage, {
+              ...linked,
+              folderId: folder.id,
+              folderName: folder.name,
+            });
+            setLinked(saved);
+            setFolders([]);
+            setStatus(`Personal backups can save to ${saved.folderName} on ${providerLabel('googleDrive')}.`);
+          }}
+          onDisconnected={() => {
+            setLinked(loadPersonalDrive(localStorage));
+            setFolders([]);
+            setStatus('Google Drive is disconnected on this device. Connect again to pick a folder or account.');
+          }}
+        />
+      ) : null}
       {folders.length ? (
         <ul className="student-connections__folders">
           {folders.map((folder) => (
