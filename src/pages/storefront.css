@@ -92,8 +92,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 12px 16px 8px;
+  gap: 2px;
+  padding: 4px 16px 2px;
   background: transparent;
   color: #fff;
   text-align: center;
@@ -125,19 +125,20 @@
 .home.home--store .sf-topbar {
   position: relative;
   z-index: 5;
-  background: rgba(14, 23, 38, 0.92);
-  border-bottom: 1px solid var(--sf-line);
+  background: #000;
+  border-bottom: 0;
 }
 
 .home.home--store .sf-nav {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  height: 52px;
+  justify-content: center;
+  height: 40px;
 }
 
 .home.home--store .sf-nav-links {
   display: flex;
+  justify-content: center;
   gap: 28px;
   font-size: 14px;
   font-weight: 600;
@@ -299,6 +300,7 @@
 }
 
 .home.home--store .sf-fade {
+  display: none;
   position: absolute;
   left: 0;
   right: 0;
@@ -309,12 +311,15 @@
   pointer-events: none;
 }
 
+/* Copy sits under the board. An absolute bottom offset paints the headline
+   and Buy button on Competitor 2. The scroll region did not add that offset;
+   it only made the overlaid row the first thing still on screen. */
 .home.home--store .sf-copy {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 20px;
-  z-index: 3;
+  position: relative;
+  inset: auto;
+  z-index: auto;
+  margin-top: 22px;
+  padding-bottom: 28px;
 }
 
 .home.home--store .sf-copy-row {
@@ -932,6 +937,7 @@
   }
 
   .home.home--store .sf-fade {
+    display: block;
     height: 32%;
     bottom: auto;
     top: calc(470px * 0.71);
