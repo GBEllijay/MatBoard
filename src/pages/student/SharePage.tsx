@@ -1,12 +1,16 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import type { StudentProgressReport } from '../../lib/progress/types';
 import {
   applyCoachFile,
   loadCoachShelf,
+  mergeOwnStudentFile,
   progressReportFiles,
   saveCoachShelf,
+  SEND_TO_COACH_MERGE_PROMPT,
   SHARE_SUBJECT,
 } from '../../lib/studentTools';
-import { LeatherHeader, StudentMarks, useStudentFile } from './chrome';
+import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './chrome';
 
 function downloadText(filename: string, text: string, type: string) {
   const blob = new Blob([text], { type });
@@ -19,12 +23,28 @@ function downloadText(filename: string, text: string, type: string) {
 }
 
 export function SharePage() {
-  const { report } = useStudentFile();
+  const to = useStudentPath();
+  const { report, commit } = useStudentFile();
   const [shelf, setShelf] = useState(() => loadCoachShelf(localStorage));
   const [includeCsv, setIncludeCsv] = useState(false);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
+  const [pendingOwn, setPendingOwn] = useState<StudentProgressReport | null>(null);
   const files = progressReportFiles(report);
+
+  const mergeOwn = () => {
+    if (!pendingOwn) return;
+    const result = mergeOwnStudentFile(report, pendingOwn);
+    if (result.error) {
+      setError(result.error);
+      setStatus('');
+      return;
+    }
+    commit(result.report);
+    setPendingOwn(null);
+    setError('');
+    setStatus(result.message);
+  };
 
   const send = async () => {
     setError('');
@@ -70,10 +90,10 @@ export function SharePage() {
               </a>
             </div>
           </section>
-          <section className="ink ink--wobble" id="import">
-            <p className="ink__label">Import from coach</p>
-            <p className="student-quiet">
-              A coach plan or coach feedback file is a suggestion. Importing it does not change your rubric marks, checkpoints, journal, or goals.
+          <section className="student-import-confirm" id="import">
+            <h2>Import from coach</h2>
+            <p>
+              A coach plan or coach feedback file is a suggestion. Importing it does not change your rubric marks, checkpoints, journal, or goals. The progress file from Send to coach can be merged into the journal on this phone after you confirm. A backup from Back up my journal restores from Connections.
             </p>
             <input
               type="file"
@@ -85,6 +105,13 @@ export function SharePage() {
                 if (!file) return;
                 void file.text().then((text) => {
                   const result = applyCoachFile(report, shelf, text);
+                  if (result.pendingReport) {
+                    setPendingOwn(result.pendingReport);
+                    setError('');
+                    setStatus('');
+                    return;
+                  }
+                  setPendingOwn(null);
                   if (result.error) {
                     setError(result.error);
                     setStatus('');
@@ -97,6 +124,22 @@ export function SharePage() {
                 });
               }}
             />
+            {pendingOwn ? (
+              <div className="student-confirm" role="group" aria-label="Merge progress file">
+                <p>{SEND_TO_COACH_MERGE_PROMPT}</p>
+                <div className="student-actions">
+                  <button type="button" className="ink-btn ink-btn--save" onClick={mergeOwn}>
+                    Merge into my journal
+                  </button>
+                  <Link className="ink-btn" to={to('/student/connections')}>
+                    Open Connections
+                  </Link>
+                  <button type="button" className="ink-btn" onClick={() => setPendingOwn(null)}>
+                    Cancel merge
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </section>
           {status ? <p role="status">{status}</p> : null}
           {error ? <p role="alert">{error}</p> : null}

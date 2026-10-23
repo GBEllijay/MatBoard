@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { exportProgressPacket } from './progress/format.ts';
 import { addJournalClip, addJournalEntry, blankStudentReport, loadStudentReport } from './studentEdition.ts';
+import { setRankLineage } from './studentRank.ts';
 import { saveAssessment } from './studentAssessment.ts';
 import {
   BACKUP_BEFORE_CLEAR,
@@ -139,10 +141,65 @@ test('restore refuses a coach file, and clear warns before it empties the journa
   const storage = memory();
   const report = addJournalClip(journal('keep me', 3), 'https://example.com/a', 'Link', 4);
   storage.setItem('matboard.studentEdition.v1', JSON.stringify(report));
+  storage.setItem('advantage.proUnlocked', '1');
+  storage.setItem('advantage.coachUnlocked', '1');
+  storage.setItem('advantage.whiteUnlocked', '1');
+  storage.setItem('advantage.studentUnlocked', '1');
+  storage.setItem('advantage.studentEditionUnlocked', '1');
+  storage.setItem('matboard.roster.v1', '{"students":[{"name":"Keep"}]}');
+  storage.setItem('matboard.pro.googleDriveFolder.v1', '{"folderId":"keep-folder"}');
+  storage.setItem('matboard.studentEdition.academyDrive.v1', '{"folderId":"academy"}');
   clearStudentMemory(storage);
   const cleared = loadStudentReport(storage);
   assert.equal(cleared.journal.length, 0);
   assert.equal((cleared.clips ?? []).length, 0);
+  assert.equal(storage.getItem('advantage.proUnlocked'), '1');
+  assert.equal(storage.getItem('advantage.coachUnlocked'), '1');
+  assert.equal(storage.getItem('advantage.whiteUnlocked'), '1');
+  assert.equal(storage.getItem('advantage.studentUnlocked'), '1');
+  assert.equal(storage.getItem('advantage.studentEditionUnlocked'), '1');
+  assert.match(storage.getItem('matboard.roster.v1') ?? '', /Keep/);
+  assert.match(storage.getItem('matboard.pro.googleDriveFolder.v1') ?? '', /keep-folder/);
+  assert.match(storage.getItem('matboard.studentEdition.academyDrive.v1') ?? '', /academy/);
+  assert.equal(storage.getItem('matboard.studentEdition.scouting.v1'), JSON.stringify({ version: 1, cards: [] }));
+});
+
+test('newline lineage migrates and both instructors survive backup and restore', async () => {
+  const seeded = setRankLineage(blankStudentReport(8), ['Mestre Paulo Reis (mock)', 'Prof. Elena Duarte (mock)'], 9);
+  const raw = JSON.parse(exportProgressPacket(seeded)) as { rank: { lineage: unknown } };
+  raw.rank.lineage = 'Mestre Paulo Reis (mock)\nProf. Elena Duarte (mock)';
+  const storage = memory();
+  storage.setItem('matboard.studentEdition.v1', JSON.stringify(raw));
+  const loaded = loadStudentReport(storage);
+  assert.deepEqual(loaded.rank?.lineage, ['Mestre Paulo Reis (mock)', 'Prof. Elena Duarte (mock)']);
+  const built = await buildStudentBackup({
+    report: loaded,
+    assessment: { entries: [] },
+    scouting: [],
+    rankPhotos: emptyRankPhotoStore(),
+    bracketPhotos: {},
+    shelf: { plan: null, feedback: null },
+    films: [],
+    includeVideos: false,
+    now: new Date('2026-10-23T12:00:00Z'),
+  });
+  assert.deepEqual(built.file.report.rank?.lineage, ['Mestre Paulo Reis (mock)', 'Prof. Elena Duarte (mock)']);
+  const lines = progressReportLines(built.file.report, { entries: [] });
+  assert.ok(lines.some((line) => line.includes('Mestre Paulo Reis (mock)')));
+  assert.ok(lines.some((line) => line.includes('Prof. Elena Duarte (mock)')));
+  const parsed = parseStudentBackup(built.json);
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok) return;
+  const restored = memory();
+  applyBackupToMemory(restored, parsed.file, 'replace', { rank: emptyRankPhotoStore(), bracket: {} });
+  assert.deepEqual(loadStudentReport(restored).rank?.lineage, ['Mestre Paulo Reis (mock)', 'Prof. Elena Duarte (mock)']);
+  const phone = memory();
+  phone.setItem('matboard.studentEdition.v1', JSON.stringify(journal('only here', 4)));
+  applyBackupToMemory(phone, parsed.file, 'merge', { rank: emptyRankPhotoStore(), bracket: {} });
+  const merged = loadStudentReport(phone);
+  assert.equal(merged.journal.length, 1);
+  assert.match(merged.journal[0]?.body ?? '', /only here/);
+  assert.deepEqual(merged.rank?.lineage, ['Mestre Paulo Reis (mock)', 'Prof. Elena Duarte (mock)']);
 });
 
 test('a video bundle over the backup cap explains itself', () => {

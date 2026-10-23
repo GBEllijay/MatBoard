@@ -90,6 +90,20 @@ test('lineage is an ordered list, and the ladder runs white down to black', () =
   const merged = mergeStudentProgress(report, incoming);
   assert.deepEqual(merged.report.rank?.lineage, ['Coach Ana', 'Professor Luis']);
   assert.match(merged.conflicts.join('\n'), /Lineage was kept/);
+
+  const raw = JSON.parse(exportProgressPacket(report)) as { rank: { lineage: unknown } };
+  raw.rank.lineage = 'Mestre Paulo Reis (mock)\nProf. Elena Duarte (mock)';
+  const migrated = parseProgressPacket(JSON.stringify(raw));
+  assert.equal(migrated.ok, true);
+  if (migrated.ok && migrated.value.kind === 'student-progress-report') {
+    assert.deepEqual(migrated.value.rank?.lineage, ['Mestre Paulo Reis (mock)', 'Prof. Elena Duarte (mock)']);
+  }
+  raw.rank.lineage = ['Mestre Paulo Reis (mock)\nProf. Elena Duarte (mock)'];
+  const split = parseProgressPacket(JSON.stringify(raw));
+  assert.equal(split.ok, true);
+  if (split.ok && split.value.kind === 'student-progress-report') {
+    assert.deepEqual(split.value.rank?.lineage, ['Mestre Paulo Reis (mock)', 'Prof. Elena Duarte (mock)']);
+  }
 });
 
 test('promotion photos export when they fit, and the rest stay off the file with a note', () => {

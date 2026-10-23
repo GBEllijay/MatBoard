@@ -12,6 +12,7 @@ import {
   fitRankPictures,
   importCoachSuggestion,
   mergeCoachPacket,
+  mergeStudentProgress,
   parseProgressPacket,
   progressHandoffFileName,
   sharedCheckpointId,
@@ -582,17 +583,44 @@ export type CoachImportResult = {
   shelf: CoachShelf;
   message: string;
   error: string;
+  /** The student's own Send to coach file. Merge only after the student confirms. */
+  pendingReport?: StudentProgressReport;
 };
 
+export const SEND_TO_COACH_MERGE_PROMPT =
+  'This is a Student Edition progress file, the same kind Send to coach downloads. Merge it into the journal on this phone? Records that are only on this phone stay. A backup restores from Connections.';
+
+export const BACKUP_PICKER_MESSAGE =
+  'This is a Student Edition backup. Restore it from Connections. Send to coach files merge here after you confirm. A coach plan or coach feedback file is a suggestion and does not change your marks.';
+
+export const COACH_PICKER_MESSAGE =
+  'This picker takes a coach plan, coach feedback, or the progress file from Send to coach. A backup restores from Connections.';
+
 /**
- * Read a coach-plan or coach-feedback file.
+ * Read a coach-plan, coach-feedback, or the student's own Send to coach file.
+ * A Send to coach file is returned as pendingReport and is not merged until mergeOwnStudentFile.
  * importCoachSuggestion returns the student report unchanged.
  */
 export function applyCoachFile(report: StudentProgressReport, shelf: CoachShelf, text: string): CoachImportResult {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    return { report, shelf, message: '', error: 'This file is not JSON.' };
+  }
+  if (raw && typeof raw === 'object' && (raw as { advantage?: unknown }).advantage === 'student-journal-backup') {
+    return { report, shelf, message: '', error: BACKUP_PICKER_MESSAGE };
+  }
   const parsed = parseProgressPacket(text);
-  if (!parsed.ok) return { report, shelf, message: '', error: parsed.errors.join(' ') };
+  if (!parsed.ok) return { report, shelf, message: '', error: `${parsed.errors.join(' ')} ${COACH_PICKER_MESSAGE}` };
   if (parsed.value.kind === 'student-progress-report') {
-    return { report, shelf, message: '', error: 'This picker takes a coach plan or coach feedback file.' };
+    return {
+      report,
+      shelf,
+      message: SEND_TO_COACH_MERGE_PROMPT,
+      error: '',
+      pendingReport: parsed.value,
+    };
   }
   if (parsed.value.kind === 'coach-plan') {
     const merged = mergeCoachPacket(shelf.plan, parsed.value);
@@ -614,6 +642,82 @@ export function applyCoachFile(report: StudentProgressReport, shelf: CoachShelf,
     message: merged.replaced
       ? 'Coach feedback is on this phone. Your rubric, journal, and goals were not changed.'
       : merged.conflicts.join(' '),
+    error: '',
+  };
+}
+
+function studentFileIsBlank(report: StudentProgressReport): boolean {
+  const rank = report.rank;
+  const rankBlank =
+    !rank || (rank.tapeCount === 0 && !rank.awardedOn && rank.history.length === 0 && !(rank.lineage?.length));
+  const competition = report.competition;
+  const games = competition?.games;
+  const gamesBlank =
+    !games || (['a', 'b', 'c'] as const).every((tag) => !games[tag].techniques.trim() && !games[tag].notes.trim());
+  const competitionBlank =
+    !competition ||
+    (gamesBlank &&
+      competition.tournaments.length === 0 &&
+      competition.weighIns.length === 0 &&
+      competition.results.length === 0 &&
+      competition.goalWeight == null &&
+      !competition.weighDate);
+  const rubricBlank = report.rubric.levels.every((level) =>
+    level.checkpoints.every(
+      (checkpoint) =>
+        checkpoint.met == null &&
+        !checkpoint.note.trim() &&
+        checkpoint.criteria.every((item) => item.met == null && !item.note.trim()),
+    ),
+  );
+  return (
+    report.profile.belt === 'white' &&
+    !report.profile.displayName.trim() &&
+    !report.profile.gymName.trim() &&
+    !report.profile.startedOn &&
+    report.journal.length === 0 &&
+    report.checklist.length === 0 &&
+    report.goals.length === 0 &&
+    report.calendar.length === 0 &&
+    !(report.clips?.length) &&
+    rankBlank &&
+    competitionBlank &&
+    rubricBlank
+  );
+}
+
+/** Merge a Send to coach progress file into the journal on this phone. A blank phone takes the file. */
+export function mergeOwnStudentFile(
+  local: StudentProgressReport,
+  incoming: StudentProgressReport,
+): { report: StudentProgressReport; message: string; error: string } {
+  if (studentFileIsBlank(local)) {
+    return {
+      report: structuredClone(incoming),
+      message: 'Merged this progress file into the journal on this phone.',
+      error: '',
+    };
+  }
+  if (local.studentId !== incoming.studentId) {
+    return {
+      report: local,
+      message: '',
+      error: 'This progress file is for a different student. It was not merged. The journal on this phone was left as it is. A backup restores from Connections.',
+    };
+  }
+  const merged = mergeStudentProgress(local, incoming);
+  const profile = { ...merged.report.profile };
+  if (!profile.displayName.trim()) profile.displayName = incoming.profile.displayName;
+  if (!profile.gymName.trim()) profile.gymName = incoming.profile.gymName;
+  if (!profile.startedOn) profile.startedOn = incoming.profile.startedOn;
+  if (!profile.licenseSource) profile.licenseSource = incoming.profile.licenseSource;
+  const rank = local.rank;
+  const beltUntouched =
+    local.profile.belt === 'white' && (!rank || (rank.tapeCount === 0 && !rank.awardedOn && rank.history.length === 0));
+  if (beltUntouched) profile.belt = incoming.profile.belt;
+  return {
+    report: { ...merged.report, profile },
+    message: 'Merged this progress file into the journal on this phone. Records that were only on this phone were kept.',
     error: '',
   };
 }

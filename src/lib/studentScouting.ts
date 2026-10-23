@@ -366,6 +366,20 @@ export function scoutingCsvTemplate(): string {
   return `${[header.join(','), blank, blank, blank].join('\r\n')}\r\n`;
 }
 
+/** Same columns as exportScoutingCsv. Older templates that say Notes, or omit Style, Class, and ratings, still import. */
+export function scoutingCsvHeaders(): readonly string[] {
+  return scoutingCsvHeader();
+}
+
+export function scoutingExportFileName(day: string): string {
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : 'scouting';
+  return `advantage-student-scouting-${date}.csv`;
+}
+
+export function scoutingTemplateFileName(): string {
+  return 'advantage-student-scouting-template.csv';
+}
+
 export function scoutingDownload(filename: string, csv: string): void {
   const blob = new Blob([withUtf8Bom(csv)], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);

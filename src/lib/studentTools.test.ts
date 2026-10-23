@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { exportProgressPacket, mergeStudentProgress, parseProgressPacket, sharedCriterionId } from './progress/format.ts';
 import type { CoachFeedbackPacket, CoachPlanPacket } from './progress/types.ts';
@@ -12,6 +13,7 @@ import {
   addCalendarEvent,
   addGoal,
   applyCoachFile,
+  BACKUP_PICKER_MESSAGE,
   beltLevel,
   calendarKindLabel,
   checkpointFilled,
@@ -23,6 +25,7 @@ import {
   gymClassesOnDate,
   journalDates,
   learnedCatalogIds,
+  mergeOwnStudentFile,
   monthGrid,
   nextBelt,
   progressReportFiles,
@@ -252,4 +255,46 @@ test('coach import stays a suggestion, and the exported report re-imports', () =
   assert.equal(reloaded.criteria.find((row) => row.id === 'rubric.white.closed-guard')?.met, true);
   assert.equal(merged.report.journal.some((entry) => entry.body.includes('grip the collar deeper')), true);
   assert.equal(merged.report.goals.some((goal) => goal.name === 'Scissor sweep'), true);
+});
+
+test('the uploaded send to coach file merges after confirm and a backup points to Connections', () => {
+  const handoff = readFileSync(new URL('./fixtures/send-to-coach-handoff.json', import.meta.url), 'utf8');
+  const local = blankStudentReport(1);
+  const pending = applyCoachFile(local, { plan: null, feedback: null }, handoff);
+  assert.equal(pending.error, '');
+  assert.equal(pending.pendingReport?.kind, 'student-progress-report');
+  assert.equal(pending.report.journal.length, 0);
+  assert.equal(pending.shelf.plan, null);
+  const incoming = pending.pendingReport;
+  assert.ok(incoming);
+  const merged = mergeOwnStudentFile(local, incoming);
+  assert.equal(merged.error, '');
+  assert.equal(merged.report.profile.belt, 'black');
+  assert.deepEqual(merged.report.rank?.lineage, ['Prof. Elena Duarte (mock)']);
+  assert.ok(merged.report.journal.length >= 3);
+  assert.equal(merged.report.checklist.find((item) => item.catalogItemId === 'pos.closed-guard')?.level, 5);
+
+  const phone = addJournalEntry(
+    blankStudentReport(2),
+    {
+      date: '2026-10-23',
+      className: 'Fundamentals',
+      gameTag: '',
+      techniques: [],
+      partners: '',
+      drills: '',
+      rolls: '',
+      notes: 'only on this phone',
+    },
+    3,
+  );
+  const kept = mergeOwnStudentFile(phone, incoming);
+  assert.equal(kept.error, '');
+  assert.ok(kept.report.journal.some((entry) => entry.body.includes('only on this phone')));
+  assert.ok(kept.report.journal.length > phone.journal.length);
+
+  const backup = applyCoachFile(local, { plan: null, feedback: null }, JSON.stringify({ advantage: 'student-journal-backup', version: 1 }));
+  assert.equal(backup.error, BACKUP_PICKER_MESSAGE);
+  assert.equal(backup.pendingReport, undefined);
+  assert.equal(backup.report, local);
 });

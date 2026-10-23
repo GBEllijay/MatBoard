@@ -1,0 +1,206 @@
+﻿Sheet,Id,Date,Parent id,Game,Category,Name,Technique names,Learned on,Note,Body,Met,Title,Kind,Belt,Toward,Criterion id,Catalog item id,Proficiency
+Profile,student-local,,student-local,,,,,,,,,,,white,,,
+Level,level.white,,rubric-local,,,White,,,,,,White,,white,,,
+Checkpoint,checkpoint.white.guard,,level.white,,,Guard,,,,,,White,,white,,,
+Criterion,rubric.white.closed-guard,,checkpoint.white.guard,,,,Closed guard,,,Hold closed guard.,,White,,white,,rubric.white.closed-guard,
+Criterion,rubric.white.scissor-sweep,,checkpoint.white.guard,,,,Scissor sweep,,,Finish a scissor sweep.,,White,,white,,rubric.white.scissor-sweep,
+Checkpoint,checkpoint.white.escapes,,level.white,,,Escapes,,,,,,White,,white,,,
+Criterion,rubric.white.mount-escape,,checkpoint.white.escapes,,,,Mount escape,,,Escape mount.,,White,,white,,rubric.white.mount-escape,
+Criterion,rubric.white.side-control-escape,,checkpoint.white.escapes,,,,Side control escape,,,Escape side control.,,White,,white,,rubric.white.side-control-escape,
+Checkpoint,checkpoint.white.passes,,level.white,,,Passes,,,,,,White,,white,,,
+Criterion,rubric.white.knee-slice,,checkpoint.white.passes,,,,Knee slice pass,,,Finish a knee slice pass.,,White,,white,,rubric.white.knee-slice,
+Criterion,rubric.white.torreando,,checkpoint.white.passes,,,,Torreando pass,,,Finish a torreando pass.,,White,,white,,rubric.white.torreando,
+Level,level.blue,,rubric-local,,,Blue,,,,,,Blue,,blue,,,
+Checkpoint,checkpoint.blue.half-guard,,level.blue,,,Half guard,,,,,,Blue,,blue,,,
+Criterion,rubric.blue.half-guard,,checkpoint.blue.half-guard,,,,Half guard,,,Play half guard.,,Blue,,blue,,rubric.blue.half-guard,
+Criterion,rubric.blue.tripod-sweep,,checkpoint.blue.half-guard,,,,Tripod sweep,,,Finish a tripod sweep.,,Blue,,blue,,rubric.blue.tripod-sweep,
+Checkpoint,checkpoint.blue.submissions,,level.blue,,,Submissions,,,,,,Blue,,blue,,,
+Criterion,rubric.blue.kimura,,checkpoint.blue.submissions,,,,Kimura,,,Finish a kimura.,,Blue,,blue,,rubric.blue.kimura,
+Criterion,rubric.blue.triangle,,checkpoint.blue.submissions,,,,Triangle,,,Finish a triangle.,,Blue,,blue,,rubric.blue.triangle,
+Checkpoint,checkpoint.blue.takedowns,,level.blue,,,Takedowns,,,,,,Blue,,blue,,,
+Criterion,rubric.blue.single-leg,,checkpoint.blue.takedowns,,,,Single leg,,,Finish a single leg.,,Blue,,blue,,rubric.blue.single-leg,
+Criterion,rubric.blue.arm-drag,,checkpoint.blue.takedowns,,,,Arm drag,,,Finish an arm drag.,,Blue,,blue,,rubric.blue.arm-drag,
+Level,level.purple,,rubric-local,,,Purple,,,,,,Purple,,purple,,,
+Checkpoint,checkpoint.purple.back,,level.purple,,,Back,,,,,,Purple,,purple,,,
+Criterion,rubric.purple.back-control,,checkpoint.purple.back,,,,Back control,,,Take the back.,,Purple,,purple,,rubric.purple.back-control,
+Criterion,rubric.purple.rear-naked-choke,,checkpoint.purple.back,,,,Rear naked choke,,,Finish a rear naked choke.,,Purple,,purple,,rubric.purple.rear-naked-choke,
+Checkpoint,checkpoint.purple.open-guard,,level.purple,,,Open guard,,,,,,Purple,,purple,,,
+Criterion,rubric.purple.open-guard,,checkpoint.purple.open-guard,,,,Open guard,,,Play open guard.,,Purple,,purple,,rubric.purple.open-guard,
+Criterion,rubric.purple.flower-sweep,,checkpoint.purple.open-guard,,,,Flower sweep,,,Finish a flower sweep.,,Purple,,purple,,rubric.purple.flower-sweep,
+Checkpoint,checkpoint.purple.passing,,level.purple,,,Passing,,,,,,Purple,,purple,,,
+Criterion,rubric.purple.leg-drag,,checkpoint.purple.passing,,,,Leg drag,,,Finish a leg drag.,,Purple,,purple,,rubric.purple.leg-drag,
+Criterion,rubric.purple.stack-pass,,checkpoint.purple.passing,,,,Stack pass,,,Finish a stack pass.,,Purple,,purple,,rubric.purple.stack-pass,
+Level,level.brown,,rubric-local,,,Brown,,,,,,Brown,,brown,,,
+Checkpoint,checkpoint.brown.top,,level.brown,,,Top,,,,,,Brown,,brown,,,
+Criterion,rubric.brown.mount,,checkpoint.brown.top,,,,Mount,,,Hold mount.,,Brown,,brown,,rubric.brown.mount,
+Criterion,rubric.brown.knee-on-belly,,checkpoint.brown.top,,,,Knee on belly,,,Hold knee on belly.,,Brown,,brown,,rubric.brown.knee-on-belly,
+Checkpoint,checkpoint.brown.standing,,level.brown,,,Standing,,,,,,Brown,,brown,,,
+Criterion,rubric.brown.standing,,checkpoint.brown.standing,,,,Standing,,,Work standing.,,Brown,,brown,,rubric.brown.standing,
+Criterion,rubric.brown.double-leg,,checkpoint.brown.standing,,,,Double leg,,,Finish a double leg.,,Brown,,brown,,rubric.brown.double-leg,
+Criterion,rubric.brown.hip-throw,,checkpoint.brown.standing,,,,Hip throw,,,Finish a hip throw.,,Brown,,brown,,rubric.brown.hip-throw,
+Checkpoint,checkpoint.brown.chokes,,level.brown,,,Chokes,,,,,,Brown,,brown,,,
+Criterion,rubric.brown.guillotine,,checkpoint.brown.chokes,,,,Guillotine,,,Finish a guillotine.,,Brown,,brown,,rubric.brown.guillotine,
+Criterion,rubric.brown.cross-collar,,checkpoint.brown.chokes,,,,Cross collar choke,,,Finish a cross collar choke.,,Brown,,brown,,rubric.brown.cross-collar,
+Level,level.black,,rubric-local,,,Black,,,,,,Black,,black,,,
+Checkpoint,checkpoint.black.pressure,,level.black,,,Pressure,,,,,,Black,,black,,,
+Criterion,rubric.black.side-control,,checkpoint.black.pressure,,,,Side control,,,Hold side control.,,Black,,black,,rubric.black.side-control,
+Criterion,rubric.black.mount,,checkpoint.black.pressure,,,,Mount,,,Hold mount.,,Black,,black,,rubric.black.mount,
+Checkpoint,checkpoint.black.guard,,level.black,,,Guard,,,,,,Black,,black,,,
+Criterion,rubric.black.closed-guard,,checkpoint.black.guard,,,,Closed guard,,,Recover closed guard.,,Black,,black,,rubric.black.closed-guard,
+Criterion,rubric.black.hip-bump,,checkpoint.black.guard,,,,Hip bump sweep,,,Finish a hip bump sweep.,,Black,,black,,rubric.black.hip-bump,
+Level,level.coral,,rubric-local,,,Coral,,,,,,Coral,,coral,,,
+Checkpoint,checkpoint.coral.review,,level.coral,,,Review,,,,,,Coral,,coral,,,
+Criterion,rubric.coral.scissor-sweep,,checkpoint.coral.review,,,,Scissor sweep,,,Teach a scissor sweep.,,Coral,,coral,,rubric.coral.scissor-sweep,
+Criterion,rubric.coral.armbar,,checkpoint.coral.review,,,,Armbar from guard,,,Teach an armbar from guard.,,Coral,,coral,,rubric.coral.armbar,
+Level,level.grey,,rubric-local,,,Grey,,,,,,Grey,,grey,,,
+Checkpoint,checkpoint.grey.positions,,level.grey,,,Positions,,,,,,Grey,,grey,,,
+Criterion,rubric.grey.closed-guard,,checkpoint.grey.positions,,,,Closed guard,,,Hold closed guard.,,Grey,,grey,,rubric.grey.closed-guard,
+Criterion,rubric.grey.mount,,checkpoint.grey.positions,,,,Mount,,,Hold mount.,,Grey,,grey,,rubric.grey.mount,
+Level,level.yellow,,rubric-local,,,Yellow,,,,,,Yellow,,yellow,,,
+Checkpoint,checkpoint.yellow.sweeps,,level.yellow,,,Sweeps,,,,,,Yellow,,yellow,,,
+Criterion,rubric.yellow.hip-bump,,checkpoint.yellow.sweeps,,,,Hip bump sweep,,,Finish a hip bump sweep.,,Yellow,,yellow,,rubric.yellow.hip-bump,
+Criterion,rubric.yellow.pendulum,,checkpoint.yellow.sweeps,,,,Pendulum sweep,,,Finish a pendulum sweep.,,Yellow,,yellow,,rubric.yellow.pendulum,
+Level,level.orange,,rubric-local,,,Orange,,,,,,Orange,,orange,,,
+Checkpoint,checkpoint.orange.escapes,,level.orange,,,Escapes,,,,,,Orange,,orange,,,
+Criterion,rubric.orange.mount-escape,,checkpoint.orange.escapes,,,,Mount escape,,,Escape mount.,,Orange,,orange,,rubric.orange.mount-escape,
+Criterion,rubric.orange.headlock,,checkpoint.orange.escapes,,,,Headlock escape,,,Escape a headlock.,,Orange,,orange,,rubric.orange.headlock,
+Level,level.green,,rubric-local,,,Green,,,,,,Green,,green,,,
+Checkpoint,checkpoint.green.takedowns,,level.green,,,Takedowns,,,,,,Green,,green,,,
+Criterion,rubric.green.double-leg,,checkpoint.green.takedowns,,,,Double leg,,,Finish a double leg.,,Green,,green,,rubric.green.double-leg,
+Criterion,rubric.green.single-leg,,checkpoint.green.takedowns,,,,Single leg,,,Finish a single leg.,,Green,,green,,rubric.green.single-leg,
+Checklist,check.mvkiil6w.btft0p,,student-local,,escapes,Mount escape,,,,,,,,,,,escape.mount,2
+Checklist,check.mvkiil8h.0t2kax,,student-local,,escapes,Side control escape,,,,,,,,,,,escape.side-control,2
+Checklist,check.mvkiil9w.z8sf75,,student-local,,escapes,Back escape,,,,,,,,,,,escape.back,1
+Checklist,check.mvkiilb9.183ybk,,student-local,,escapes,Headlock escape,,,,,,,,,,,escape.headlock,2
+Checklist,check.mvkiilco.76p6dl,,student-local,,positions,Closed guard,,,,,,,,,,,pos.closed-guard,2
+Checklist,check.mvkiile2.g6mrgd,,student-local,,positions,Half guard,,,,,,,,,,,pos.half-guard,1
+Checklist,check.mvkiilfg.ykw32e,,student-local,,sweeps,Scissor sweep,,,,,,,,,,,sweep.scissor,1
+Checklist,check.mvkiilgt.jaczmp,,student-local,,submissions,Armbar from guard,,,,,,,,,,,sub.armbar-guard,1
+Checklist,check.mvkiili8.p0b5ed,,student-local,,submissions,Triangle,,,,,,,,,,,sub.triangle,1
+Checklist,check.mvkiiljr.cpksh4,,student-local,,submissions,Kimura,,,,,,,,,,,sub.kimura,1
+Checklist,check.mvkiill3.od3hog,,student-local,,takedowns,Double leg,,,,,,,,,,,td.double-leg,1
+Checklist,check.mvkiilmy.c5ko3p,,student-local,,passes,Knee slice pass,,,,,,,,,,,pass.knee-slice,1
+Checklist,check.mvkiilob.nh4afj,,student-local,,positions,Mount,,,,,,,,,,,pos.mount,1
+Checklist,check.mvkiilpn.hko2ii,,student-local,,positions,Side control,,,,,,,,,,,pos.side-control,1
+Journal,card.mvkifynl.3evcl0,2026-09-23,student-local,,,,Shrimp / hip escape; Technical stand-up,,,"Class: 
+Technique drilled #1: Shrimp / hip escape
+Technique drilled #2: Technical stand-up
+Techniques: Shrimp / hip escape; Technical stand-up
+Training partners: Sam Chen
+Drills: Shrimping lines 3x
+Rolls: 0 (watched)
+Notes:
+First class. Gassed fast.",,,,,,,
+Journal,card.mvkigdp8.78psbo,2026-09-25,student-local,,,,Closed guard posture; Scissor sweep,,,"Class: 
+Technique drilled #1: Closed guard posture
+Technique drilled #2: Scissor sweep
+Techniques: Closed guard posture; Scissor sweep
+Training partners: Sam Chen, Priya Nair
+Drills: Posture-up reps 5x10
+Rolls: 1 positional (guard)
+Notes:
+Keep elbows in.",,,,,,,
+Journal,card.mvkigdw4.33ab3s,2026-09-28,student-local,,,,Mount escape (upa); Elbow-knee escape,,,"Class: 
+Technique drilled #1: Mount escape (upa)
+Technique drilled #2: Elbow-knee escape
+Techniques: Mount escape (upa); Elbow-knee escape
+Training partners: Marco Diaz
+Drills: Upa 3x10 each side
+Rolls: 1 positional (mount)
+Notes:
+Bridge toward trapped side.",,,,,,,
+Journal,card.mvkige27.1jpudr,2026-09-30,student-local,,,,Side control escape; Frame + shrimp to guard,,,"Class: 
+Technique drilled #1: Side control escape
+Technique drilled #2: Frame + shrimp to guard
+Techniques: Side control escape; Frame + shrimp to guard
+Training partners: Priya Nair
+Drills: Frame-shrimp 3x10
+Rolls: 2 positional
+Notes:
+Frames before moving.",,,,,,,
+Journal,card.mvkige8m.3ioz7s,2026-10-02,student-local,,,,Cross collar choke from guard; Armbar from guard,,,"Class: 
+Technique drilled #1: Cross collar choke from guard
+Technique drilled #2: Armbar from guard
+Techniques: Cross collar choke from guard; Armbar from guard
+Training partners: Sam Chen
+Drills: Grip-fighting 3 min
+Rolls: 2 x 4 min
+Notes:
+Finished nothing, survived.",,,,,,,
+Journal,card.mvkigefm.13fhag,2026-10-05,student-local,,,,Hip bump sweep; Kimura from guard,,,"Class: 
+Technique drilled #1: Hip bump sweep
+Technique drilled #2: Kimura from guard
+Techniques: Hip bump sweep; Kimura from guard
+Training partners: Tom Okafor
+Drills: Hip bump 3x10
+Rolls: 2 x 4 min
+Notes:
+Sit up on the elbow.",,,,,,,
+Journal,card.mvkigemi.5idp1e,2026-10-07,student-local,,,,Rear naked choke; Back control (seatbelt),,,"Class: 
+Technique drilled #1: Rear naked choke
+Technique drilled #2: Back control (seatbelt)
+Techniques: Rear naked choke; Back control (seatbelt)
+Training partners: Marco Diaz
+Drills: Seatbelt + hooks 3x2 min
+Rolls: 2 x 5 min
+Notes:
+Don't cross feet.",,,,,,,
+Journal,card.mvkigjux.ij9i8c,2026-10-09,student-local,,,,Americana from mount; Maintaining mount,,,"Class: 
+Technique drilled #1: Americana from mount
+Technique drilled #2: Maintaining mount
+Techniques: Americana from mount; Maintaining mount
+Training partners: Priya Nair
+Drills: Mount balance 3 min
+Rolls: 3 x 5 min
+Notes:
+Got swept twice.",,,,,,,
+Journal,card.mvkigjzk.52arkm,2026-10-12,student-local,,,,Knee cut pass; Toreando pass,,,"Class: 
+Technique drilled #1: Knee cut pass
+Technique drilled #2: Toreando pass
+Techniques: Knee cut pass; Toreando pass
+Training partners: Tom Okafor
+Drills: Pass/retain 4 x 2 min
+Rolls: 2 x 5 min
+Notes:
+Head position matters.",,,,,,,
+Journal,card.mvkigk4o.pszmxv,2026-10-14,student-local,,,,Double-leg takedown; Sprawl,,,"Class: 
+Technique drilled #1: Double-leg takedown
+Technique drilled #2: Sprawl
+Techniques: Double-leg takedown; Sprawl
+Training partners: Sam Chen
+Drills: Takedown entries 3x10
+Rolls: 2 x 5 min
+Notes:
+Level change first.",,,,,,,
+Journal,card.mvkigk9a.2wfi3b,2026-10-16,student-local,,,,Guard retention (shin frame); Re-guard from side,,,"Class: 
+Technique drilled #1: Guard retention (shin frame)
+Technique drilled #2: Re-guard from side
+Techniques: Guard retention (shin frame); Re-guard from side
+Training partners: Marco Diaz
+Drills: Retention game 4 x 2 min
+Rolls: 3 x 5 min
+Notes:
+Better cardio.",,,,,,,
+Journal,card.mvkigkdh.66mb18,2026-10-19,student-local,,,,Triangle choke; Triangle setup from guard,,,"Class: 
+Technique drilled #1: Triangle choke
+Technique drilled #2: Triangle setup from guard
+Techniques: Triangle choke; Triangle setup from guard
+Training partners: Priya Nair
+Drills: Triangle 3x10 each side
+Rolls: 2 x 5 min
+Notes:
+Angle off; cut the angle.",,,,,,,
+Journal,card.mvkigkho.l8em6f,2026-10-21,student-local,,,,Review: mount + side escapes; Scissor sweep review,,,"Class: 
+Technique drilled #1: Review: mount + side escapes
+Technique drilled #2: Scissor sweep review
+Techniques: Review: mount + side escapes; Scissor sweep review
+Training partners: Tom Okafor, Sam Chen
+Drills: Escape circuit 3 rounds
+Rolls: 3 x 5 min
+Notes:
+First sweep in a live roll!",,,,,,,
+Calendar,cal.mvkihz73.d2iyun,2026-10-23,student-local,,,Fundamentals 6:30 PM,,,,,,Fundamentals 6:30 PM,class,,,,
+Calendar,cal.mvkihzb6.agnt2h,2026-10-26,student-local,,,Fundamentals 6:30 PM,,,,,,Fundamentals 6:30 PM,class,,,,
+Calendar,cal.mvkihzef.ijxsa9,2026-10-28,student-local,,,Fundamentals 6:30 PM,,,,,,Fundamentals 6:30 PM,class,,,,
+Calendar,cal.mvkihzh6.rgl1wc,2026-10-30,student-local,,,Open Mat 6:30 PM,,,,,,Open Mat 6:30 PM,training,,,,
+Rank,student-local,,student-local,,,white,,,,,,Current rank,0,white,,,

@@ -255,16 +255,49 @@ test('belt date, lineage, belt photo, and promotion history stay in place', asyn
     assert.equal((labeled('White stripe 1 date') as HTMLInputElement).value, '');
     await click(labeled('Close stripe'));
 
-    const lineage = labeled('Lineage');
-    assert.ok(lineage instanceof HTMLTextAreaElement);
-    await typeControl(lineage, 'Coach Ana', 'input');
-    await typeControl(lineage, 'Coach Ana', 'blur');
+    const lineageHeadings = [...document.querySelectorAll('h2')].filter((heading) => heading.textContent === 'Lineage');
+    assert.equal(lineageHeadings.length, 1);
+    assert.equal(document.querySelector('textarea'), null);
+    await click(buttonNamed('Add instructor'));
+    await typeControl(labeled('Instructor 1') as HTMLInputElement, 'Coach Ana', 'input');
+    await typeControl(labeled('Instructor 1') as HTMLInputElement, 'Coach Ana', 'blur');
     assert.equal((labeled('Instructor 1') as HTMLInputElement).value, 'Coach Ana');
 
     await click(labeled('Remove White history'));
     await click(labeled('Confirm remove White history'));
     assert.doesNotMatch(document.querySelector('[aria-label="Promotion history"]')?.textContent ?? '', /2026-02-01/);
     assert.ok(document.querySelector('a[href="/student/rubric?student=1"]'));
+  } finally {
+    unmount(mounted);
+  }
+});
+
+test('editing instructor 1 keeps the second instructor', async () => {
+  const report = blankStudentReport(40);
+  const raw = {
+    ...report,
+    rank: { ...report.rank, lineage: 'Mestre Paulo Reis (mock)\nProf. Elena Duarte (mock)' },
+  };
+  localStorage.setItem('matboard.studentEdition.v1', JSON.stringify(raw));
+  const mounted = mount(<RankPage />);
+  try {
+    assert.equal((labeled('Instructor 1') as HTMLInputElement).value, 'Mestre Paulo Reis (mock)');
+    assert.equal((labeled('Instructor 2') as HTMLInputElement).value, 'Prof. Elena Duarte (mock)');
+    await typeControl(labeled('Instructor 1') as HTMLInputElement, 'New Coach', 'input');
+    await typeControl(labeled('Instructor 1') as HTMLInputElement, 'New Coach', 'blur');
+    assert.equal((labeled('Instructor 2') as HTMLInputElement).value, 'Prof. Elena Duarte (mock)');
+    const stored = JSON.parse(localStorage.getItem('matboard.studentEdition.v1') ?? '{}') as {
+      rank?: { lineage?: string[] };
+    };
+    assert.deepEqual(stored.rank?.lineage, ['New Coach', 'Prof. Elena Duarte (mock)']);
+    await click(labeled('Move instructor 2 up'));
+    assert.equal((labeled('Instructor 1') as HTMLInputElement).value, 'Prof. Elena Duarte (mock)');
+    assert.equal((labeled('Instructor 2') as HTMLInputElement).value, 'New Coach');
+    await click(labeled('Move instructor 1 down'));
+    assert.equal((labeled('Instructor 1') as HTMLInputElement).value, 'New Coach');
+    await click(labeled('Remove instructor 2'));
+    assert.equal(document.querySelector('[aria-label="Instructor 2"]'), null);
+    assert.equal((labeled('Instructor 1') as HTMLInputElement).value, 'New Coach');
   } finally {
     unmount(mounted);
   }
