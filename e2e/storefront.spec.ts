@@ -300,7 +300,58 @@ test('portrait stacks the logo, wordmark, and link bar above Competitor 1', asyn
   expect(desktop.wordAboveBoard).toBe(true);
   expect(desktop.logoHitsBoard).toBe(false);
   expect(desktop.wordHitsBoard).toBe(false);
-  expect(desktop.hits).toBe(true);
+  expect(desktop.hits).toBe(false);
+});
+
+test('desktop homepage text and buttons stay off the scoreboard', async ({ page }) => {
+  for (const size of [
+    { width: 1280, height: 800 },
+    { width: 1440, height: 900 },
+  ]) {
+    await page.setViewportSize(size);
+    await page.goto('/');
+    const result = await page.evaluate(() => {
+      const boardEl = document.querySelector('.sf-sb');
+      if (!(boardEl instanceof HTMLElement)) return { offenders: ['missing board'], barWidth: 0, centered: false, barBelowWord: false };
+      const board = boardEl.getBoundingClientRect();
+      const overlaps = (a: DOMRect, b: DOMRect) =>
+        a.left < b.right - 1 && a.right > b.left + 1 && a.top < b.bottom - 1 && a.bottom > b.top + 1;
+      const offenders: string[] = [];
+      for (const el of document.querySelectorAll('h1, h2, h3, p, a, button')) {
+        if (!(el instanceof HTMLElement)) continue;
+        if (el.closest('.sf-sb')) continue;
+        const r = el.getBoundingClientRect();
+        if (r.width < 1 || r.height < 1) continue;
+        if (!overlaps(r, board)) continue;
+        offenders.push((el.innerText || el.textContent || el.tagName).trim().replace(/\s+/g, ' ').slice(0, 80));
+      }
+      const bar = document.querySelector('.sf-topbar')!.getBoundingClientRect();
+      const word = document.querySelector('.sf-portrait-word')!.getBoundingClientRect();
+      const links = document.querySelector('.sf-nav-links')!.getBoundingClientRect();
+      const wordMid = (word.left + word.right) / 2;
+      const linksMid = (links.left + links.right) / 2;
+      return {
+        offenders,
+        barWidth: bar.width,
+        centered: Math.abs(linksMid - wordMid) < 24,
+        barBelowWord: bar.top >= word.bottom - 1,
+      };
+    });
+    expect(result.offenders, `${size.width}x${size.height}`).toEqual([]);
+    expect(result.barWidth, `${size.width} bar width`).toBeGreaterThan(size.width - 2);
+    expect(result.barBelowWord, `${size.width} bar under Advantage`).toBe(true);
+    expect(result.centered, `${size.width} links centered`).toBe(true);
+  }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  const pin = await page.evaluate(() => {
+    const header = document.querySelector('.sf-pin')!.getBoundingClientRect();
+    const logo = document.querySelector('.sf-portrait-brand img')!.getBoundingClientRect();
+    return { height: header.height, logo: logo.width };
+  });
+  expect(pin.logo).toBeGreaterThanOrEqual(112);
+  expect(pin.height).toBeLessThan(200);
 });
 
 test('homepage Home logo stays pinned above the scoreboard after scroll and hover', async ({ page }) => {
