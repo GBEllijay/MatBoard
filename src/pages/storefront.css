@@ -39,6 +39,9 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  /* The homepage header scrolls with the page. Do not reserve a fixed band. */
+  padding-top: 0;
+  border-top: 0;
   color: var(--sf-text);
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -73,12 +76,12 @@
   color: var(--sf-muted);
 }
 
-/* Logo, then the word Advantage, then the link bar. This band does not scroll.
+/* Logo, then the word Advantage, then the link bar. This band is the first
+   thing in the page and scrolls away with it. It is not fixed or sticky.
    The old desktop mark lived in the scoreboard name cell, so it sat mid-board
    and left the top only if that cell reflowed. It is not used. */
 .home.home--store .sf-pin {
-  flex: 0 0 auto;
-  z-index: 6;
+  position: static;
   background: var(--sf-navy);
 }
 
@@ -86,6 +89,8 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
+  padding-top: 0;
+  border-top: 0;
 }
 
 .home.home--store .sf-portrait-brand {
@@ -123,8 +128,7 @@
 }
 
 .home.home--store .sf-topbar {
-  position: relative;
-  z-index: 5;
+  position: static;
   background: #000;
   border-bottom: 0;
 }
@@ -937,16 +941,13 @@
   }
 
   .home.home--store .sf-fade {
-    display: block;
-    height: 32%;
-    bottom: auto;
-    top: calc(470px * 0.71);
+    display: none;
   }
 
   .home.home--store .sf-copy {
     position: relative;
     bottom: auto;
-    margin-top: -118px;
+    margin-top: 22px;
     padding-bottom: 8px;
   }
 
@@ -1078,7 +1079,8 @@
 }
 
 /* Portrait keeps logo, then the word, then the link bar, above the scoreboard.
-   Competitor 1 stays in the left of the blue board. The pinned mark stays --mark-home. */
+   Competitor 1 stays in the left of the blue board. The mark stays --mark-home
+   and scrolls away with the page. */
 @media (orientation: portrait) {
   .home.home--store .sf-portrait-brand {
     display: flex;

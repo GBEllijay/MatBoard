@@ -354,7 +354,7 @@ test('desktop homepage text and buttons stay off the scoreboard', async ({ page 
   expect(pin.height).toBeLessThan(200);
 });
 
-test('homepage Home logo stays pinned above the scoreboard after scroll and hover', async ({ page }) => {
+test('homepage header scrolls out of view and stays off the scoreboard', async ({ page }) => {
   for (const size of [
     { width: 390, height: 844 },
     { width: 1280, height: 800 },
@@ -364,6 +364,10 @@ test('homepage Home logo stays pinned above the scoreboard after scroll and hove
     await page.goto('/');
     const logo = page.locator('.sf-portrait-brand img');
     await expect(logo).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute('href', '/');
+    const nav = page.getByRole('navigation', { name: 'On this page' });
+    await expect(nav.getByRole('link', { name: 'Scoreboard', exact: true })).toHaveAttribute('href', '#scoreboard');
+    await expect(nav.getByRole('link', { name: 'Round timer', exact: true })).toHaveAttribute('href', '#round-timer');
     const read = () =>
       page.evaluate(() => {
         const rect = (el: Element | null) => {
@@ -377,66 +381,105 @@ test('homepage Home logo stays pinned above the scoreboard after scroll and hove
         ) => Boolean(a && b && a.left < b.right - 1 && a.right > b.left + 1 && a.top < b.bottom - 1 && a.bottom > b.top + 1);
         const logoBox = rect(document.querySelector('.sf-portrait-brand img'));
         const word = rect(document.querySelector('.sf-portrait-word'));
+        const bar = rect(document.querySelector('.sf-topbar'));
         const board = rect(document.querySelector('.sf-sb'));
-        const title = rect(document.querySelector('h1'));
+        const header = document.querySelector('.sf-pin');
         const scroller = document.querySelector('.sf-scroll');
-        const clip = (
-          r: { top: number; left: number; right: number; bottom: number } | null,
-        ) => {
-          if (!r || !(scroller instanceof HTMLElement)) return r;
-          const c = scroller.getBoundingClientRect();
-          const next = {
-            top: Math.max(r.top, c.top),
-            bottom: Math.min(r.bottom, c.bottom),
-            left: Math.max(r.left, c.left),
-            right: Math.min(r.right, c.right),
-          };
-          if (next.bottom - next.top < 1 || next.right - next.left < 1) return null;
-          return next;
-        };
-        const boardSeen = clip(board);
-        const titleSeen = clip(title);
-        const hit = logoBox
-          ? document.elementFromPoint(logoBox.left + logoBox.width / 2, logoBox.top + logoBox.height / 2)
-          : null;
-        const mark = document.querySelector('.sf-portrait-brand');
+        const main = document.querySelector('main.home--store');
+        const pinStyle = header instanceof HTMLElement ? getComputedStyle(header) : null;
+        const barEl = document.querySelector('.sf-topbar');
+        const barStyle = barEl instanceof HTMLElement ? getComputedStyle(barEl) : null;
+        const mainStyle = main instanceof HTMLElement ? getComputedStyle(main) : null;
+        const scrollStyle = scroller instanceof HTMLElement ? getComputedStyle(scroller) : null;
+        const backSize = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--mark-back'));
+        const offenders: string[] = [];
+        if (board) {
+          for (const el of document.querySelectorAll('h1, h2, h3, p, a, button, img')) {
+            if (!(el instanceof HTMLElement)) continue;
+            if (el.closest('.sf-sb')) continue;
+            const r = el.getBoundingClientRect();
+            if (r.width < 1 || r.height < 1) continue;
+            if (r.bottom <= 0 || r.top >= window.innerHeight) continue;
+            if (!overlaps(r, board)) continue;
+            offenders.push((el.innerText || el.getAttribute('aria-label') || el.tagName).trim().replace(/\s+/g, ' ').slice(0, 80));
+          }
+          for (const el of document.querySelectorAll('body *')) {
+            if (!(el instanceof HTMLElement)) continue;
+            if (el.closest('.sf-sb')) continue;
+            const style = getComputedStyle(el);
+            if (style.position !== 'fixed' && style.position !== 'sticky') continue;
+            if (style.display === 'none' || style.visibility === 'hidden' || Number.parseFloat(style.opacity) === 0) continue;
+            const r = el.getBoundingClientRect();
+            if (r.width < 1 || r.height < 1) continue;
+            if (!overlaps(r, board)) continue;
+            offenders.push(`pinned ${el.className || el.tagName}`.slice(0, 80));
+          }
+        }
+        const headerTopGap =
+          header instanceof HTMLElement && scroller instanceof HTMLElement
+            ? header.getBoundingClientRect().top - scroller.getBoundingClientRect().top
+            : 999;
         return {
           logo: logoBox,
-          wordAboveBoard: word != null && board != null && word.bottom <= board.top + 1,
+          word,
+          bar,
+          board,
+          pinPosition: pinStyle?.position ?? '',
+          barPosition: barStyle?.position ?? '',
+          mainPaddingTop: mainStyle?.paddingTop ?? '',
+          mainBorderTop: mainStyle?.borderTopWidth ?? '',
+          scrollPaddingTop: scrollStyle?.paddingTop ?? '',
+          headerTopGap,
+          backSize,
+          offenders,
           logoAboveWord: logoBox != null && word != null && logoBox.bottom <= word.top + 1,
-          logoHitsBoard: overlaps(logoBox, boardSeen),
-          logoHitsTitle: overlaps(logoBox, titleSeen),
-          wordHitsBoard: overlaps(word, boardSeen),
-          onTop: hit instanceof Node && mark instanceof Node && mark.contains(hit),
+          wordAboveBar: word != null && bar != null && word.bottom <= bar.top + 1,
+          barAboveBoard: bar != null && board != null && bar.bottom <= board.top + 1,
         };
       });
     const before = await read();
+    expect(before.pinPosition, `${size.width} header position`).toBe('static');
+    expect(before.barPosition, `${size.width} bar position`).toBe('static');
+    expect(before.mainPaddingTop, `${size.width} reserved padding`).toBe('0px');
+    expect(before.mainBorderTop, `${size.width} reserved border`).toBe('0px');
+    expect(before.scrollPaddingTop, `${size.width} scroll padding`).toBe('0px');
+    expect(Math.abs(before.headerTopGap), `${size.width} header starts at the top`).toBeLessThan(2);
     expect(before.logoAboveWord, `${size.width} logo above Advantage`).toBe(true);
-    expect(before.wordAboveBoard, `${size.width} Advantage above the scoreboard`).toBe(true);
-    expect(before.logoHitsBoard, `${size.width} logo covers the scoreboard`).toBe(false);
-    expect(before.logoHitsTitle, `${size.width} logo covers the title`).toBe(false);
-    expect(before.wordHitsBoard, `${size.width} Advantage covers the scoreboard`).toBe(false);
-    expect(before.onTop, `${size.width} logo receives the pointer`).toBe(true);
-    await logo.hover();
-    await page.locator('.sf-sb').hover();
-    const hovered = await read();
-    expect(Math.abs((hovered.logo?.top ?? 0) - (before.logo?.top ?? 0)), `${size.width} hover`).toBeLessThan(1);
-    expect(Math.abs((hovered.logo?.left ?? 0) - (before.logo?.left ?? 0)), `${size.width} hover`).toBeLessThan(1);
+    expect(before.wordAboveBar, `${size.width} Advantage above the bar`).toBe(true);
+    expect(before.barAboveBoard, `${size.width} bar above the scoreboard`).toBe(true);
+    expect(before.logo && before.logo.width >= 112, `${size.width} logo size`).toBe(true);
+    expect(before.logo && before.backSize > 0 && before.logo.width >= before.backSize * 1.6, `${size.width} logo vs back`).toBe(true);
+    expect(before.offenders, `${size.width} overlap before scroll`).toEqual([]);
     const moved = await page.evaluate(() => {
       const scroller = document.querySelector('.sf-scroll');
-      if (!(scroller instanceof HTMLElement)) return 0;
-      scroller.scrollTop = Math.min(640, scroller.scrollHeight);
+      const header = document.querySelector('.sf-pin');
+      if (!(scroller instanceof HTMLElement) || !(header instanceof HTMLElement)) return 0;
+      scroller.scrollTop = Math.ceil(header.getBoundingClientRect().height) + 8;
       return scroller.scrollTop;
     });
     expect(moved, `${size.width} scrolls`).toBeGreaterThan(40);
     const after = await read();
-    expect(after.logo && after.logo.top >= -1 && after.logo.bottom <= size.height + 1, `${size.width} logo in view`).toBe(true);
-    expect(Math.abs((after.logo?.top ?? 0) - (before.logo?.top ?? 0)), `${size.width} scrolled`).toBeLessThan(1);
-    expect(Math.abs((after.logo?.left ?? 0) - (before.logo?.left ?? 0)), `${size.width} scrolled`).toBeLessThan(1);
-    expect(after.logoHitsBoard, `${size.width} logo covers the scoreboard after scroll`).toBe(false);
-    expect(after.onTop, `${size.width} logo stays above scrolling content`).toBe(true);
-    expect(after.logo && after.logo.width >= 44 * 1.6, `${size.width} pinned logo scale`).toBe(true);
+    expect(after.logo && after.logo.bottom <= 1, `${size.width} logo scrolled away`).toBe(true);
+    expect(after.word && after.word.bottom <= 1, `${size.width} Advantage scrolled away`).toBe(true);
+    expect(after.bar && after.bar.bottom <= 1, `${size.width} bar scrolled away`).toBe(true);
+    expect(after.board && after.board.top <= 16, `${size.width} scoreboard reaches the top`).toBe(true);
+    expect(after.board && after.board.bottom > 40, `${size.width} scoreboard still on screen`).toBe(true);
+    expect(after.offenders, `${size.width} overlap after scroll`).toEqual([]);
   }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.getByRole('link', { name: 'Home', exact: true }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator('.sf-portrait-brand img')).toBeVisible();
+  await page.getByRole('navigation', { name: 'On this page' }).getByRole('link', { name: 'Scoreboard', exact: true }).click();
+  await expect(page.locator('#scoreboard')).toBeInViewport();
+  await page.evaluate(() => {
+    const scroller = document.querySelector('.sf-scroll');
+    if (scroller instanceof HTMLElement) scroller.scrollTop = 0;
+  });
+  await page.getByRole('navigation', { name: 'On this page' }).getByRole('link', { name: 'Round timer', exact: true }).click();
+  await expect(page.locator('#round-timer')).toBeInViewport();
 });
 
 test('a focused field is not pulled back after the person scrolls', async ({ page }) => {
