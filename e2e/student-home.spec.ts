@@ -7,6 +7,16 @@ async function shot(page: Page, name: string) {
   await page.screenshot({ path: `/opt/cursor/artifacts/${name}.png`, fullPage: true });
 }
 
+/** Capture a group page only after that page's heading is on screen. */
+async function shotGroup(page: Page, heading: string, name: string) {
+  const title = page.getByRole('heading', { name: heading, exact: true });
+  await expect(title).toBeVisible();
+  await expect(title).toHaveText(heading);
+  await expect(page.locator('main.s-group')).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: `/opt/cursor/artifacts/${name}.png`, fullPage: true });
+}
+
 test('home picker keeps White, Coach, and Pro and adds locked Student Edition', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/products');
@@ -97,10 +107,11 @@ test('?student=1 opens the Student hub, and submenus go back to it', async ({ pa
   await expect(page.getByRole('link', { name: 'Fundamentals', exact: true })).toHaveCount(0);
   const tileHeight = await training.evaluate((el) => el.getBoundingClientRect().height);
   expect(tileHeight).toBeGreaterThanOrEqual(88);
-  await shot(page, 'student-hub-390');
+  await shot(page, 'hub-white-belt-390');
 
   await page.getByRole('link', { name: 'Training & Journal', exact: true }).click();
-  await shot(page, 'student-group-training-390');
+  await expect(page).toHaveURL(/\/student\/training/);
+  await shotGroup(page, 'Training & Journal', 'group-training-journal-390');
   await page.getByRole('link', { name: BACK, exact: true }).click();
   await page.getByRole('link', { name: 'Rank & Progress', exact: true }).click();
   const homeMark = page.getByRole('link', { name: 'Home', exact: true });
@@ -133,19 +144,22 @@ test('?student=1 opens the Student hub, and submenus go back to it', async ({ pa
   );
   expect(rankRows.map((row) => row.stripes)).toEqual(['1', '2', '3', '4']);
   expect(rankRows.map((row) => row.on)).toEqual([1, 2, 3, 4]);
-  expect(rankRows.every((row) => row.slots === 4 && row.bar >= 72 && !row.wrapped)).toBeTruthy();
+  expect(rankRows.every((row) => row.on === Number(row.stripes) && row.bar >= 80 && row.bar <= 96 && !row.wrapped)).toBeTruthy();
   expect(rankRows.every((row) => row.background.includes('belt-weave.png'))).toBeTruthy();
   const mat = await page.locator('main.s-group').evaluate((el) => getComputedStyle(el).backgroundImage);
   expect(mat).toContain('home-mat-tatami.png');
-  await shot(page, 'student-group-progress-390');
+  await shotGroup(page, 'Rank & Progress', 'group-rank-progress-390');
   await page.getByRole('link', { name: BACK, exact: true }).click();
   await page.getByRole('link', { name: 'Competitor', exact: true }).click();
-  await shot(page, 'student-group-compete-390');
+  await expect(page).toHaveURL(/\/student\/compete/);
+  await shotGroup(page, 'Competitor', 'group-competitor-390');
   await page.getByRole('link', { name: BACK, exact: true }).click();
   await page.getByRole('link', { name: 'Coach & Academy', exact: true }).click();
-  await shot(page, 'student-group-coach-390');
+  await expect(page).toHaveURL(/\/student\/coach/);
+  await shotGroup(page, 'Coach & Academy', 'group-coach-academy-390');
   await page.getByRole('link', { name: BACK, exact: true }).click();
   await page.getByRole('link', { name: /Backup & Print/ }).click();
+  await expect(page).toHaveURL(/\/student\/backup/);
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   const covered = await page.locator('main.s-group').evaluate((el) => {
     const box = el.getBoundingClientRect();
@@ -157,8 +171,7 @@ test('?student=1 opens the Student hub, and submenus go back to it', async ({ pa
   });
   expect(covered.image).toBeTruthy();
   expect(covered.covers).toBeTruthy();
-  await page.evaluate(() => window.scrollTo(0, 0));
-  await shot(page, 'student-group-backup-390');
+  await shotGroup(page, 'Backup & Print', 'group-backup-print-390');
   await page.getByRole('link', { name: BACK, exact: true }).click();
   await expect(page).toHaveURL(/\/student\?student=1$/);
 
