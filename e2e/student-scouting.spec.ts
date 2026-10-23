@@ -13,15 +13,13 @@ test('scouting cards import a roster csv and link a recorded match', async ({ pa
   await expect(page.getByText('Win · Sam · Sub')).toBeVisible();
 
   await page.goto('/student?student=1');
-  const scouting = page.getByRole('link', { name: 'Scouting-Opponent Research', exact: true });
-  const calendar = page.getByRole('link', { name: 'Calendar', exact: true });
-  const belt = page.getByRole('link', { name: 'Belt progress', exact: true });
+  await page.getByRole('link', { name: 'Competitor', exact: true }).click();
+  const scouting = page.getByRole('link', { name: 'Scouting-Opponent Research and Tracker', exact: true });
+  const weightLink = page.getByRole('link', { name: 'Weight management', exact: true });
   const scoutingBox = await scouting.boundingBox();
-  const calendarBox = await calendar.boundingBox();
-  const beltBox = await belt.boundingBox();
-  expect(scoutingBox && calendarBox && beltBox).toBeTruthy();
-  expect(scoutingBox!.y).toBeGreaterThan(calendarBox!.y);
-  expect(scoutingBox!.y).toBeLessThan(beltBox!.y);
+  const weightBox = await weightLink.boundingBox();
+  expect(scoutingBox && weightBox).toBeTruthy();
+  expect(scoutingBox!.y).toBeGreaterThan(weightBox!.y);
   await scouting.click();
 
   await expect(page.getByRole('heading', { name: 'Scouting-Opponent Research' })).toBeVisible();

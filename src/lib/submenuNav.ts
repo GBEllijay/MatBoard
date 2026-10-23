@@ -7,6 +7,7 @@ import {
   UNLIMITED_LESSON_PATH,
   UNLIMITED_LESSON_VALUE,
 } from './productNames.ts';
+import { studentPageBack } from './studentHubMenu.ts';
 import { safeTimerReturn } from './timerReturn.ts';
 
 /** Main tier picker: White, Student Edition, Coach, and Pro. */
@@ -99,7 +100,7 @@ export function submenuBackTarget(input: SubmenuNavInput): string | null {
     if (path === '/student/share' && (from === 'rubric' || from === 'belt')) {
       return `/student/rubric${preview}`;
     }
-    return `/student${preview}`;
+    return studentPageBack(path, preview, from);
   }
   if (path === '/white/roster') return '/white';
 

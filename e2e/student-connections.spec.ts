@@ -32,19 +32,9 @@ test('film a move, connections, backup, and print stay beside the link library',
   await page.screenshot({ path: '/opt/cursor/artifacts/student-film-library.png', fullPage: true });
 
   await page.goto('/student?student=1');
+  await page.getByRole('link', { name: 'Coach & Academy', exact: true }).click();
   const academyHub = page.getByRole('link', { name: 'Connect to my academy', exact: true });
-  const belt = page.getByRole('link', { name: 'Belt progress', exact: true });
-  const libraryLink = page.getByRole('link', { name: 'Video Library', exact: true });
-  const calendar = page.getByRole('link', { name: 'Calendar', exact: true });
   await expect(academyHub).toBeVisible();
-  const academyBox = await academyHub.boundingBox();
-  const beltBox = await belt.boundingBox();
-  const libraryBox = await libraryLink.boundingBox();
-  const calendarBox = await calendar.boundingBox();
-  expect(libraryBox && calendarBox && beltBox && academyBox).toBeTruthy();
-  expect(libraryBox!.y).toBeGreaterThan(calendarBox!.y);
-  expect(libraryBox!.y).toBeLessThan(beltBox!.y);
-  expect(academyBox!.y).toBeGreaterThan(beltBox!.y);
   await page.screenshot({ path: '/opt/cursor/artifacts/student-hub-academy.png', fullPage: true });
   await academyHub.click();
   await expect(page.getByRole('heading', { name: 'Connect to my academy' })).toBeVisible();
@@ -68,9 +58,7 @@ test('film a move, connections, backup, and print stay beside the link library',
   await expect(page.getByRole('status')).toContainText('Students do not pay');
   await page.screenshot({ path: '/opt/cursor/artifacts/student-academy-scan.png', fullPage: true });
 
-  await page.goto('/student?student=1');
-  await page.locator('summary', { hasText: 'Menu' }).click();
-  await page.getByRole('link', { name: 'Connections', exact: true }).click();
+  await page.goto('/student/connections?student=1');
   await expect(page.getByRole('heading', { name: 'Connect to my academy' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'My own drive' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Export and print' })).toBeVisible();

@@ -111,7 +111,7 @@ test('competitor keeps every control, with rank then journal then self-assessmen
   const { host } = mounted;
   const main = host.querySelector('main');
   assert.ok(main?.classList.contains('student--arena'));
-  assert.equal(labeled(host, 'Back. Hold for Home.').getAttribute('href'), '/student');
+  assert.equal(labeled(host, 'Back. Hold for Home.').getAttribute('href'), '/student/compete');
   assert.equal(labeled(host, 'Home').getAttribute('href'), '/products');
   assert.equal(host.querySelector('h1')?.textContent, 'Competitor');
   assert.equal(host.textContent?.includes('Scouting-Opponent Tracker'), false);

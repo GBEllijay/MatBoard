@@ -10,16 +10,14 @@ test('video library saves, searches, edits, and deletes, and the journal has no 
   await expect(page.getByRole('link', { name: 'Add note to an earlier card' })).toBeVisible();
 
   await page.goto('/student?student=1');
+  await page.getByRole('link', { name: 'Training & Journal', exact: true }).click();
   const library = page.getByRole('link', { name: 'Video Library', exact: true });
   const calendar = page.getByRole('link', { name: 'Calendar', exact: true });
-  const belt = page.getByRole('link', { name: 'Belt progress', exact: true });
   await expect(library).toBeVisible();
   const libraryBox = await library.boundingBox();
   const calendarBox = await calendar.boundingBox();
-  const beltBox = await belt.boundingBox();
-  expect(libraryBox && calendarBox && beltBox).toBeTruthy();
+  expect(libraryBox && calendarBox).toBeTruthy();
   expect(libraryBox!.y).toBeGreaterThan(calendarBox!.y);
-  expect(libraryBox!.y).toBeLessThan(beltBox!.y);
   await library.click();
 
   await expect(page.getByRole('heading', { name: 'Video Library' })).toBeVisible();
@@ -82,11 +80,12 @@ test('video library saves, searches, edits, and deletes, and the journal has no 
   await expect(page.getByRole('link', { name: 'Armbar finish' })).toBeVisible();
 
   await page.getByRole('link', { name: 'Back. Hold for Home.' }).click();
-  await page.locator('summary', { hasText: 'Menu' }).click();
-  await page.getByRole('link', { name: 'Send to coach', exact: true }).click();
+  await page.getByRole('link', { name: 'Back. Hold for Home.' }).click();
+  await page.getByRole('link', { name: 'Coach & Academy', exact: true }).click();
+  await page.getByRole('link', { name: 'Make a file for my coach', exact: true }).click();
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByRole('button', { name: 'Send to coach' }).click(),
+    page.getByRole('button', { name: 'Make a file for my coach' }).click(),
   ]);
   const sent = await readFile(await download.path(), 'utf8');
   const packet = JSON.parse(sent) as { clips?: { description: string; url: string; note: string }[] };

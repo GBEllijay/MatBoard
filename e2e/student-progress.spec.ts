@@ -69,7 +69,7 @@ test('calendar marks a journal day, stores an event, and can show the gym schedu
 test('belt checkpoints, goals, coach suggestions, and the share file', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/student/fundamentals?student=1');
-  await page.getByRole('region', { name: 'Sweeps' }).getByRole('button', { name: 'Mark Scissor sweep learned' }).click();
+  await page.getByRole('region', { name: 'Sweeps' }).getByRole('radio', { name: 'Scissor sweep 3 Live with resistance' }).click();
   await page.goto('/student/rubric?student=1');
   await expect(page.getByRole('heading', { name: 'Belt progress' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'My rank', exact: true })).toBeVisible();
@@ -170,12 +170,12 @@ test('belt checkpoints, goals, coach suggestions, and the share file', async ({ 
   expect(report.goals.some((goal: { name: string }) => goal.name === 'Scissor sweep')).toBe(true);
   expect(report.journal).toEqual([]);
 
-  await page.getByRole('link', { name: 'Send to coach', exact: true }).click();
+  await page.getByRole('link', { name: 'Make a file for my coach', exact: true }).click();
   await expect(page.getByRole('link', { name: 'Email the file' })).toHaveAttribute('href', /subject=Advantage%20progress%20report/);
   await expect(page.getByRole('checkbox', { name: 'Also include the spreadsheet' })).toBeVisible();
   await shot(page, 'student-share-390');
   const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Send to coach', exact: true }).click();
+  await page.getByRole('button', { name: 'Make a file for my coach', exact: true }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toContain('advantage-handoff-student-progress-report-');
   const body = await download.createReadStream().then(
