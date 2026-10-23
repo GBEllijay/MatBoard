@@ -7,6 +7,7 @@ import { SiteFooter } from '../components/SiteFooter';
 import { unlinkBracketBout } from '../lib/bracketBout';
 import {
   COMPETITION_PRO_MENU,
+  PRODUCTS_PATH,
   TOURNAMENT_MANAGEMENT_PRO_LABEL,
   TOURNAMENT_MANAGEMENT_PRO_LEAD,
 } from '../lib/productNames';
@@ -16,7 +17,7 @@ export function TournamentSuitePage() {
     <main className="home home--pro home--suite">
       <div className="home__inner">
         <PlayExitMark to="/pro" />
-        <HomeMark to="/" tagline="Live event ops on this device." />
+        <HomeMark to={PRODUCTS_PATH} tagline="Live event ops on this device." />
         <section className="suite">
           <BeltHeader
             kind="tournament"

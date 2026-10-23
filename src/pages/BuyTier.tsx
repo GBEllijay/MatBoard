@@ -15,7 +15,7 @@ import {
   PRO_MONTHLY_PRICE_CENTS,
   STUDENT_LIST_PRICE_CENTS,
 } from '../lib/productPrices';
-import { STUDENT_EDITION_NAME } from '../lib/productNames';
+import { PRODUCTS_PATH, STUDENT_EDITION_NAME } from '../lib/productNames';
 import { rememberStudentPurchase, STUDENT_PRODUCT_ID, studentEditionOpen } from '../lib/studentEdition';
 import { lookupWhiteEntitlement, type WhiteEntitlementStatus } from '../lib/whiteEntitlementClient';
 import { formatUsdFromCents, WHITE_CHECKOUT_API, WHITE_STRIPE_NOTE } from '../lib/whitePurchase';
@@ -172,7 +172,7 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
   return (
     <main className={`home home--${tier.theme}`}>
       <div className="home__inner">
-        <HomeMark to="/" />
+        <HomeMark to={PRODUCTS_PATH} />
         <article className="buy">
           <header className="buy__card">
             <span className={`belt-tip belt-tip--${tier.belt}`} aria-hidden="true">

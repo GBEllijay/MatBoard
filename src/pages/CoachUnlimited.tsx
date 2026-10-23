@@ -18,7 +18,7 @@ import {
   OWNER_DRIVE_TITLE,
   type LessonRevision,
 } from '../lib/lessonDrive';
-import { COACH_UNLIMITED_TOOLS, INSTRUCTOR_COACH_ENTRY } from '../lib/productNames';
+import { COACH_UNLIMITED_TOOLS, INSTRUCTOR_COACH_ENTRY, PRODUCTS_PATH } from '../lib/productNames';
 
 /** Same pathway screen as the Pro page: link, QR, copy, and share folder. */
 export function AcademyPathwayPage() {
@@ -26,7 +26,7 @@ export function AcademyPathwayPage() {
     <main className="home home--pro home--suite">
       <div className="home__inner">
         <PlayExitMark to="/coach-unlimited" />
-        <HomeMark to="/" />
+        <HomeMark to={PRODUCTS_PATH} />
         <section className="suite instructor-hub">
           <AcademyPathwayPanel />
         </section>
@@ -54,7 +54,7 @@ export function CoachUnlimitedPage() {
     <main className="home home--pro home--suite">
       <div className="home__inner">
         <PlayExitMark to="/pro" />
-        <HomeMark to="/" />
+        <HomeMark to={PRODUCTS_PATH} />
         <section className="suite instructor-hub">
           <BeltHeader kind="brown" worn title="Advantage - Coach Unlimited" />
           <nav className="instructor-jumps" aria-label={INSTRUCTOR_COACH_ENTRY}>

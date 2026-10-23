@@ -12,7 +12,7 @@ import { lockCoach } from '../lib/coachUnlock';
 import { coachToolVisible, purchasePromptsHidden } from '../lib/instructorSeats';
 import { CHECKOUT_BUY_PATH } from '../lib/checkoutProducts';
 import { COACH_LIST_PRICE_CENTS } from '../lib/productPrices';
-import { COACH_HUBS } from '../lib/productNames';
+import { COACH_HUBS, PRODUCTS_PATH } from '../lib/productNames';
 import { formatUsdFromCents } from '../lib/whitePurchase';
 
 export function CoachPage() {
@@ -24,7 +24,7 @@ export function CoachPage() {
   return (
     <main className="home home--coach">
       <div className="home__inner">
-        <HomeMark to="/" />
+        <HomeMark to={PRODUCTS_PATH} />
 
         <InviteAccept />
         <nav className="home__modes" aria-label="Advantage Coach">
@@ -65,7 +65,7 @@ export function CoachPage() {
           {ownerOpen ? (
             <p className="home__soon">
               Advantage Coach is on for this browser.{' '}
-              <Link className="home__text-btn" to="/">
+              <Link className="home__text-btn" to={PRODUCTS_PATH}>
                 All products
               </Link>
               {' · '}
@@ -74,7 +74,7 @@ export function CoachPage() {
                 className="home__text-btn"
                 onClick={() => {
                   lockCoach();
-                  navigate('/');
+                  navigate(PRODUCTS_PATH);
                 }}
               >
                 Lock Coach

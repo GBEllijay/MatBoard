@@ -110,7 +110,7 @@ test('a locked browser accepts an invite from the gym folder', async ({ page }) 
   expect(locked.coach).toBeNull();
   await page.screenshot({ path: '/opt/cursor/artifacts/drive-handoff-desktop.png' });
   await page.getByRole('link', { name: 'Back' }).click();
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/products$/);
   await page.goto('/instructors?invite=cross-device-token');
   await connect.click();
   await page.setViewportSize({ width: 390, height: 844 });
@@ -122,7 +122,7 @@ test('a locked browser accepts an invite from the gym folder', async ({ page }) 
   await expect(page).not.toHaveURL(/coming-soon/);
   await page.getByRole('button', { name: 'Check the gym folder' }).click();
   await expect(page.getByText('Signed in as coach@gym.test')).toBeVisible();
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/products$/);
   const unlocked = await page.evaluate(() => ({
     pro: localStorage.getItem('advantage.proUnlocked'),
     coach: localStorage.getItem('advantage.coachUnlocked'),

@@ -153,7 +153,7 @@ test('a Gallery seat opens Gallery and an adjusted seat explains the label', asy
     seat: seatRecord('coach', 'coach-gallery@example.com', { ...COACH_PERMS, galleryUpload: true }),
   });
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto('/');
+  await page.goto('/products');
   await expect(page.getByText('Coach · adjusted')).toBeVisible();
   await expect(page.getByText("The owner changed this seat's permissions from the role defaults.")).toBeVisible();
   await shot(page, 'seat-adjusted-desktop');
@@ -168,14 +168,14 @@ test('a Gallery seat opens Gallery and an adjusted seat explains the label', asy
   await shot(page, 'gallery-seat-desktop');
 
   await page.goto('/events');
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/products$/);
   await expect(page).not.toHaveURL(/coming-soon/);
   await page.goto('/coming-soon');
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/products$/);
   await expect(page).not.toHaveURL(/coming-soon/);
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/');
+  await page.goto('/products');
   await expect(page.getByText("The owner changed this seat's permissions from the role defaults.")).toBeVisible();
   await shot(page, 'seat-adjusted-phone');
   await page.goto('/gallery');
@@ -183,7 +183,7 @@ test('a Gallery seat opens Gallery and an adjusted seat explains the label', asy
   await expect(page.getByRole('button', { name: 'Add photos' }).first()).toBeVisible();
   await shot(page, 'gallery-seat-phone');
 
-  await page.goto('/');
+  await page.goto('/products');
   await page.getByRole('button', { name: 'Sign out of seat' }).click();
   await expect(page.getByText('Signed in as')).toHaveCount(0);
 });
@@ -191,7 +191,7 @@ test('a Gallery seat opens Gallery and an adjusted seat explains the label', asy
 test('a seat without Gallery stays out of Gallery and off Coming soon', async ({ page }) => {
   await seed(page, { seat: seatRecord('coach', 'coach-plain@example.com', COACH_PERMS) });
   await page.goto('/gallery');
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/products$/);
   await expect(page).not.toHaveURL(/coming-soon/);
   await expect(page.getByRole('link', { name: 'Open Media Console' })).toHaveCount(0);
 });

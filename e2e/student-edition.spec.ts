@@ -7,10 +7,10 @@ test('student journal saves, searches, amends, and marks a fundamental', async (
   const page = await context.newPage();
   await page.goto('/student?student=1');
   await expect(page.getByRole('link', { name: BACK, exact: true })).toHaveCount(0);
-  await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute('href', '/?student=1');
+  await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute('href', '/products?student=1');
   await page.getByRole('link', { name: 'Journal', exact: true }).click();
   await expect(page.getByRole('link', { name: BACK, exact: true })).toHaveAttribute('href', '/student?student=1');
-  await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute('href', '/?student=1');
+  await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute('href', '/products?student=1');
 
   await expect(page.getByRole('button', { name: 'A game' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Gi', exact: true })).toHaveCount(0);
@@ -75,7 +75,7 @@ test('student journal saves, searches, amends, and marks a fundamental', async (
 
   await sweeps.getByRole('button', { name: 'Remove Hip scissor' }).click();
   await sweeps.getByRole('button', { name: 'Confirm remove Hip scissor' }).click();
-  await expect(sweeps.getByText('0 of 5 live or better')).toBeVisible();
+  await expect(sweeps.getByText('0 of 4 live or better')).toBeVisible();
   await expect(sweeps.getByText('Hip scissor', { exact: true })).toHaveCount(0);
 
   await sweeps.getByRole('textbox', { name: 'Add your own to Sweeps' }).fill('Lasso sweep');

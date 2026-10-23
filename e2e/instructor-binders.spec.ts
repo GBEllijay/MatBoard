@@ -320,5 +320,5 @@ test('invite page back mark returns to Pro and the center mark goes Home', async
   await expect(page).toHaveURL(/\/pro$/);
   await page.goto('/instructors');
   await page.getByRole('link', { name: 'Home', exact: true }).click();
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/products$/);
 });

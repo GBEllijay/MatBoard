@@ -14,6 +14,7 @@ import {
   layoutKeyboardOverlap,
   overlayBottomInset,
   revealAction,
+  shouldChaseFocusedField,
   shouldKeepFieldInView,
 } from './keepFieldVisible.ts';
 
@@ -80,6 +81,14 @@ describe('keyboard inset', () => {
       }),
       false,
     );
+  });
+});
+
+describe('keyboard chase', () => {
+  it('follows the field once during the focus window and stops after a scroll', () => {
+    assert.equal(shouldChaseFocusedField({ userScrolled: false, now: 100, chaseUntil: 1100 }), true);
+    assert.equal(shouldChaseFocusedField({ userScrolled: true, now: 100, chaseUntil: 1100 }), false);
+    assert.equal(shouldChaseFocusedField({ userScrolled: false, now: 1101, chaseUntil: 1100 }), false);
   });
 });
 

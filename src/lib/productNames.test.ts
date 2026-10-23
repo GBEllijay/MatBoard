@@ -95,28 +95,29 @@ test('Home ladder details keep White meaning and a plain Pro subtitle', () => {
   assert.equal(WHITE_LADDER_DETAIL, 'BJJ scoreboard and timer, live match and rounds');
   assert.equal(
     WHITE_HOME_DESCRIPTION,
-    'BJJ scoreboard and round timer for live matches and rounds. Display stays on the TV, the controller stays in your hand.',
+    'Live BJJ scoreboard and customizable round timer. Cast the display to a TV and keep the controller on your phone.',
   );
   assert.equal(
     COACH_HOME_DESCRIPTION,
-    'Daily Lesson Planner with Expandable Technique Trees and Video Looper. Bracketing and Mock Tournament Tool with Student Roster.',
+    'Daily lesson plans, training videos, and a technique tree. Includes everything in Advantage White.',
   );
   assert.doesNotMatch(WHITE_HOME_DESCRIPTION, /White —/);
-  assert.match(COACH_HOME_DESCRIPTION, /Technique Trees/);
-  assert.match(COACH_HOME_DESCRIPTION, /Student Roster/);
+  assert.match(COACH_HOME_DESCRIPTION, /lesson plans/);
+  assert.match(COACH_HOME_DESCRIPTION, /technique tree/);
+  assert.match(COACH_HOME_DESCRIPTION, /everything in Advantage White/);
   assert.doesNotMatch(WHITE_HOME_DESCRIPTION, /student/i);
   assert.doesNotMatch(COACH_HOME_DESCRIPTION, /competitor roster/i);
   assert.equal(STUDENT_EDITION_NAME, 'Advantage – Student Edition');
   assert.equal(
     STUDENT_HOME_DESCRIPTION,
-    'Your jiu-jitsu journal: daily notes, A/B/C game, fundamentals checklist, and belt progress.',
+    'A personal BJJ training journal with rank and stripes, fundamentals proficiency, and competitor prep.',
   );
   assert.equal(STUDENT_HOME_DESCRIPTION.includes('\n'), false);
-  assert.ok(STUDENT_HOME_DESCRIPTION.length < COACH_HOME_DESCRIPTION.length);
+  assert.equal(COACH_HOME_DESCRIPTION.includes('\n'), false);
   assert.match(STUDENT_HOME_DESCRIPTION, /journal/i);
-  assert.match(STUDENT_HOME_DESCRIPTION, /A\/B\/C/);
+  assert.match(STUDENT_HOME_DESCRIPTION, /rank and stripes/);
   assert.match(STUDENT_HOME_DESCRIPTION, /fundamentals/);
-  assert.match(STUDENT_HOME_DESCRIPTION, /belt progress/);
+  assert.match(STUDENT_HOME_DESCRIPTION, /competitor prep/);
   assert.equal(PRO_LADDER_DETAIL, 'Gym Owner and Instructors Console');
   assert.doesNotMatch(PRO_LADDER_DETAIL, /for this gym/i);
   assert.doesNotMatch(PRO_LADDER_DETAIL, /'/);
@@ -333,13 +334,13 @@ test('Owner tournament tool is Tournament Software; Coach keeps Mock Tournament'
 
 test('Home Pro card describes the console without a Coming Soon line', () => {
   assert.deepEqual(PRO_HOME_LINES, [
-    "Gym Owner and Instructor's Console",
-    'Easily cast class schedules, pro shop inventory, events, recent promotions, and more to your gym TV.',
-    'Coordinate and create In-House Tournaments in moments and track the results for review and ranking.',
-    'Provide your instructors with access to our collaborative coaching tools and give your gym the ultimate Advantage!',
+    'Academy management with a shared drive, events, pro shop, and gallery, plus instructor collaboration and student seats. Includes everything in Advantage Coach.',
   ]);
   const home = PRO_HOME_LINES.join('\n');
-  assert.match(home, /Instructor's Console/);
+  assert.match(home, /shared drive/);
+  assert.match(home, /instructor collaboration/);
+  assert.match(home, /student seats/);
+  assert.match(home, /everything in Advantage Coach/);
   assert.doesNotMatch(home, /Coming Soon/);
   assert.doesNotMatch(PRO_HOME_LINES[0], /^Pro\b/);
   assert.equal(PRO_HOME_DETAIL, `${GYM_CONSOLE_NAME} — Coming Soon`);
@@ -390,7 +391,7 @@ test('Shared tools prefer Pro console, then Coach', () => {
   assert.equal(parentToolboxPath(true, true), '/pro');
   assert.equal(parentToolboxPath(true, false), '/pro');
   assert.equal(parentToolboxPath(false, true), '/coach');
-  assert.equal(parentToolboxPath(false, false), '/');
+  assert.equal(parentToolboxPath(false, false), '/products');
   assert.equal(toolEyebrow(true, false), GYM_CONSOLE_NAME);
   assert.equal(toolEyebrow(false, true), 'Advantage Coach');
 });
@@ -502,7 +503,7 @@ test('a media grant opens Media Console with Pro locked; a seat without one stay
   assert.equal(mediaFolderDoorOpen(lockedCoachWithGallery, galleryOnly, 'gallery'), true);
   assert.equal(mediaFolderDoorOpen(lockedCoachWithGallery, galleryOnly, 'events'), false);
   assert.equal(mediaFolderDoorOpen(lockedCoachWithGallery, galleryOnly, 'shop'), false);
-  assert.equal(closedDoorPath(true), '/');
+  assert.equal(closedDoorPath(true), '/products');
   assert.equal(closedDoorPath(false), '/coming-soon');
 
   const proAssistant = { ...lockedAssistant, proUnlocked: true };

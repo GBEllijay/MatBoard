@@ -105,7 +105,7 @@ test('competitor keeps every control, with rank then journal then self-assessmen
   const main = host.querySelector('main');
   assert.ok(main?.classList.contains('student--arena'));
   assert.equal(labeled(host, 'Back. Hold for Home.').getAttribute('href'), '/student');
-  assert.equal(labeled(host, 'Home').getAttribute('href'), '/');
+  assert.equal(labeled(host, 'Home').getAttribute('href'), '/products');
   assert.equal(host.querySelector('h1')?.textContent, 'Competitor');
 
   const rank = labeled(host, 'Belt rank');

@@ -1,15 +1,36 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { classHistoryHref, submenuBackTarget, submenuHomeTarget } from './submenuNav.ts';
+import {
+  classHistoryHref,
+  preservesAppHomeQuery,
+  submenuBackTarget,
+  submenuHomeTarget,
+  tierHomeHref,
+} from './submenuNav.ts';
 
 const pro = { proUnlocked: true, coachUnlocked: true };
 
 test('center logo is the tier picker on every page', () => {
-  assert.equal(submenuHomeTarget(), '/');
+  assert.equal(submenuHomeTarget(), '/products');
+  assert.equal(tierHomeHref(), '/products');
+  assert.equal(tierHomeHref('student=1'), '/products?student=1');
+  assert.equal(tierHomeHref('?student=1'), '/products?student=1');
+  assert.equal(tierHomeHref('from=coach'), '/products');
+});
+
+test('owner-code and student preview queries stay on the edition picker', () => {
+  assert.equal(preservesAppHomeQuery(new URLSearchParams('student=1')), true);
+  assert.equal(preservesAppHomeQuery(new URLSearchParams('student=WINBYADV')), true);
+  assert.equal(preservesAppHomeQuery(new URLSearchParams('pro=advantage')), true);
+  assert.equal(preservesAppHomeQuery(new URLSearchParams('unlock=1')), true);
+  assert.equal(preservesAppHomeQuery(new URLSearchParams('coach=1')), true);
+  assert.equal(preservesAppHomeQuery(new URLSearchParams('')), false);
+  assert.equal(preservesAppHomeQuery(new URLSearchParams('checkout=success')), false);
 });
 
 test('White, Student Edition, Coach, and Pro homes have no corner back', () => {
   assert.equal(submenuBackTarget({ pathname: '/' }), null);
+  assert.equal(submenuBackTarget({ pathname: '/products' }), null);
   assert.equal(submenuBackTarget({ pathname: '/white' }), null);
   assert.equal(submenuBackTarget({ pathname: '/student' }), null);
   assert.equal(submenuBackTarget({ pathname: '/coach', ...pro }), null);

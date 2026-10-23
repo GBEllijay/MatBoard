@@ -7,7 +7,8 @@ import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
-import { STUDENT_EDITION_NAME, STUDENT_HOME_DESCRIPTION } from '../lib/productNames';
+import { PRODUCTS_PATH, STUDENT_EDITION_NAME, STUDENT_HOME_DESCRIPTION } from '../lib/productNames';
+import { tierHomeHref } from '../lib/submenuNav';
 import { matchingGameTags, matchingResults, gameLetter } from '../lib/progress/competition.ts';
 import { PROGRESS_NAME_MAX, type CompetitionResult, type MatchMethod, type MatchResult } from '../lib/progress/types.ts';
 import { isIsoDate } from '../lib/studentTools';
@@ -83,7 +84,7 @@ function StudentClosed() {
   return (
     <main className="home home--student">
       <div className="home__inner">
-        <HomeMark to="/" />
+        <HomeMark to={PRODUCTS_PATH} />
         <div className="student-hub">
           <header className="student-hub__band">
             <LeatherSpine />
@@ -114,7 +115,7 @@ const HUB_LINKS = [
 function Hub() {
   const to = useStudentPath();
   const [params] = useSearchParams();
-  const home = params.get('student') === '1' ? '/?student=1' : '/';
+  const home = tierHomeHref(params.toString());
   return (
     <main className="home home--student">
       <div className="home__inner">

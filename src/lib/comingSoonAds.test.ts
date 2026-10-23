@@ -164,7 +164,7 @@ test('Student Edition ad lists the journal and is not a checkout', () => {
   assert.match(text, /Filled checkpoints between belts/);
   assert.doesNotMatch(text, /Coming soon\./);
   assert.doesNotMatch(text, /\$\d/);
-  assert.doesNotMatch(text, /stripe/i);
+  assert.doesNotMatch(text, /\bstripe\b/i);
   assert.equal(
     STUDENT_LAUNCH_PRICE_NOTE,
     'Price: $19.99 one-time when it launches. Not for sale on this page.',

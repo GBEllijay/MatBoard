@@ -2,8 +2,8 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { build } from 'esbuild';
 
-mkdirSync('node_modules/.cache', { recursive: true });
-const outfile = 'node_modules/.cache/rank-regressions.test.mjs';
+mkdirSync('.cache', { recursive: true });
+const outfile = '.cache/rank-regressions.test.mjs';
 await build({
   entryPoints: ['src/pages/student/RankPage.regressions.test.tsx'],
   bundle: true,

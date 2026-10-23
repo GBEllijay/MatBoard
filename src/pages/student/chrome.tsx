@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { SubmenuMarks } from '../../components/TierHomeMark';
-import { submenuBackTarget } from '../../lib/submenuNav';
+import { submenuBackTarget, tierHomeHref } from '../../lib/submenuNav';
 import type { StudentProgressReport } from '../../lib/progress/types';
 import { loadStudentReport, saveStudentReport } from '../../lib/studentEdition';
 
@@ -33,7 +33,7 @@ export function useStudentFile() {
 export function StudentMarks() {
   const { pathname, search } = useLocation();
   const back = submenuBackTarget({ pathname, search });
-  const home = new URLSearchParams(search).get('student') === '1' ? '/?student=1' : '/';
+  const home = tierHomeHref(search);
   if (!back) return null;
   return <SubmenuMarks to={back} homeTo={home} />;
 }

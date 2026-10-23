@@ -1,6 +1,7 @@
 import {
   COACH_BOARD_FROM,
   COACH_UNLIMITED_PATH,
+  PRODUCTS_PATH,
   SUITE_FROM,
   UNLIMITED_FROM,
   UNLIMITED_LESSON_PATH,
@@ -9,7 +10,22 @@ import {
 import { safeTimerReturn } from './timerReturn.ts';
 
 /** Main tier picker: White, Student Edition, Coach, and Pro. */
-export const TIER_PICKER_PATH = '/';
+export const TIER_PICKER_PATH = PRODUCTS_PATH;
+
+/** Query keys that belong on the edition picker, including owner codes and `?student=1`. */
+const APP_HOME_QUERY_KEYS = ['student', 'pro', 'unlock', 'coach'] as const;
+
+/** True when `/` should keep the existing edition-picker behavior instead of the storefront. */
+export function preservesAppHomeQuery(search: URLSearchParams): boolean {
+  return APP_HOME_QUERY_KEYS.some((key) => search.has(key));
+}
+
+/** Center Home logo. Student Edition preview keeps `?student=1` on the edition picker. */
+export function tierHomeHref(search = ''): string {
+  const params = paramsOf(search);
+  if (params.get('student') === '1') return `${TIER_PICKER_PATH}?student=1`;
+  return TIER_PICKER_PATH;
+}
 
 export type SubmenuNavInput = {
   pathname: string;
@@ -29,7 +45,7 @@ function paramsOf(search: string | undefined): URLSearchParams {
 
 /** Center logo. Always the tier picker. */
 export function submenuHomeTarget(): string {
-  return TIER_PICKER_PATH;
+  return tierHomeHref();
 }
 
 /**
@@ -62,7 +78,14 @@ export function submenuBackTarget(input: SubmenuNavInput): string | null {
     input.unlimited || from === UNLIMITED_FROM || plan === UNLIMITED_LESSON_VALUE;
   const explicitBack = safeTimerReturn(params.get('back'));
 
-  if (path === '/' || path === '/coach' || path === '/pro' || path === '/white' || path === '/student') {
+  if (
+    path === '/' ||
+    path === TIER_PICKER_PATH ||
+    path === '/coach' ||
+    path === '/pro' ||
+    path === '/white' ||
+    path === '/student'
+  ) {
     return null;
   }
   if (path.startsWith('/student/')) {

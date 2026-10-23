@@ -8,18 +8,18 @@ export const WHITE_LADDER_DETAIL = 'BJJ scoreboard and timer, live match and rou
 
 /** Home White card body. The only line under the Advantage White title. */
 export const WHITE_HOME_DESCRIPTION =
-  'BJJ scoreboard and round timer for live matches and rounds. Display stays on the TV, the controller stays in your hand.';
+  'Live BJJ scoreboard and customizable round timer. Cast the display to a TV and keep the controller on your phone.';
 
 /** Home Student Edition title. Sits between White and Coach. */
 export const STUDENT_EDITION_NAME = 'Advantage – Student Edition';
 
 /** Home Student Edition card body. One line under the title. */
 export const STUDENT_HOME_DESCRIPTION =
-  'Your jiu-jitsu journal: daily notes, A/B/C game, fundamentals checklist, and belt progress.';
+  'A personal BJJ training journal with rank and stripes, fundamentals proficiency, and competitor prep.';
 
 /** Home Coach card body. The only line under the Advantage Coach title. */
 export const COACH_HOME_DESCRIPTION =
-  'Daily Lesson Planner with Expandable Technique Trees and Video Looper. Bracketing and Mock Tournament Tool with Student Roster.';
+  'Daily lesson plans, training videos, and a technique tree. Includes everything in Advantage White.';
 
 /** Line under the black Advantage Pro belt. Not the Owner Console page title. */
 export const PRO_LADDER_DETAIL = 'Gym Owner and Instructors Console';
@@ -33,13 +33,16 @@ export const HOME_MOTTO = 'Win by Advantage';
  */
 export const PRO_HOME_DETAIL = `${GYM_CONSOLE_NAME} — Coming Soon`;
 
-/** Home Pro card body, one paragraph per line under Advantage Pro. */
+/**
+ * Home Pro card body. One explanatory line.
+ * The longer appetite copy stays in PRO_COMING_SOON_LINES and off this card.
+ */
 export const PRO_HOME_LINES = [
-  "Gym Owner and Instructor's Console",
-  'Easily cast class schedules, pro shop inventory, events, recent promotions, and more to your gym TV.',
-  'Coordinate and create In-House Tournaments in moments and track the results for review and ranking.',
-  'Provide your instructors with access to our collaborative coaching tools and give your gym the ultimate Advantage!',
+  'Academy management with a shared drive, events, pro shop, and gallery, plus instructor collaboration and student seats. Includes everything in Advantage Coach.',
 ] as const;
+
+/** In-app edition picker. The public storefront lives at `/`. */
+export const PRODUCTS_PATH = '/products';
 
 /**
  * Longer Pro appetite copy. Not on the home card and not in the Pro splash.
@@ -341,7 +344,7 @@ export function parentToolboxPath(
 ): string {
   if (proUnlocked || proConsole) return '/pro';
   if (coachUnlocked || seated) return '/coach';
-  return '/';
+  return PRODUCTS_PATH;
 }
 
 export function toolEyebrow(proUnlocked: boolean, coachUnlocked: boolean, seated = false): string {
@@ -474,8 +477,8 @@ export function mediaConsoleDoorOpen(input: ProSurfaceInput): boolean {
  * A signed-in seat never sees the purchase lock or Coming soon.
  * An unseated visitor still does.
  */
-export function closedDoorPath(seated: boolean): '/' | '/coming-soon' {
-  return seated ? '/' : '/coming-soon';
+export function closedDoorPath(seated: boolean): typeof PRODUCTS_PATH | '/coming-soon' {
+  return seated ? PRODUCTS_PATH : '/coming-soon';
 }
 
 /**

@@ -8,7 +8,7 @@ import { SiteFooter } from '../components/SiteFooter';
 import { useSeatDoor } from '../hooks/useSeatDoor';
 import { CHECKOUT_BUY_PATH } from '../lib/checkoutProducts';
 import { PRO_LIST_PRICE_CENTS, PRO_MONTHLY_PRICE_CENTS } from '../lib/productPrices';
-import { MEDIA_CONSOLE_NAME, PRO_LADDER_DETAIL, consoleHubs } from '../lib/productNames';
+import { MEDIA_CONSOLE_NAME, PRO_LADDER_DETAIL, PRODUCTS_PATH, consoleHubs } from '../lib/productNames';
 import { formatUsdFromCents } from '../lib/whitePurchase';
 import { purchasePromptsHidden } from '../lib/instructorSeats';
 import { lockPro } from '../lib/proUnlock';
@@ -24,7 +24,7 @@ export function ProPage() {
   return (
     <main className="home home--pro">
       <div className="home__inner">
-        <HomeMark to="/" />
+        <HomeMark to={PRODUCTS_PATH} />
 
         <nav className="home__modes" aria-label="Advantage Pro">
           <BeltHeader
@@ -62,7 +62,7 @@ export function ProPage() {
             <p className="home__soon">
               Advantage Pro is on for this browser.
               {door.seated ? ' This seat keeps the menus from its invite.' : ''}{' '}
-              <Link className="home__text-btn" to="/">
+              <Link className="home__text-btn" to={PRODUCTS_PATH}>
                 All products
               </Link>
               {' · '}
@@ -71,7 +71,7 @@ export function ProPage() {
                 className="home__text-btn"
                 onClick={() => {
                   lockPro();
-                  navigate('/');
+                  navigate(PRODUCTS_PATH);
                 }}
               >
                 Lock Pro
@@ -82,7 +82,7 @@ export function ProPage() {
               {door.programDirectorSeat
                 ? 'Program director seat. Media Console is open on this browser.'
                 : 'This seat keeps the menus from its invite. Media Console is open on this browser.'}{' '}
-              <Link className="home__text-btn" to="/">
+              <Link className="home__text-btn" to={PRODUCTS_PATH}>
                 All products
               </Link>
             </p>

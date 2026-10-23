@@ -6,12 +6,13 @@ import { LiveBoutCard } from '../components/LiveBoutCard';
 import { RoundsCard } from '../components/RoundsCard';
 import { WhiteRosterCard } from '../components/WhiteRosterCard';
 import { SiteFooter } from '../components/SiteFooter';
+import { PRODUCTS_PATH } from '../lib/productNames';
 
 export function WhitePage() {
   return (
     <main className="home home--white">
       <div className="home__inner">
-        <HomeMark to="/" />
+        <HomeMark to={PRODUCTS_PATH} />
 
         <nav className="home__modes" aria-label="Advantage White">
           <BeltHeader
@@ -44,7 +45,7 @@ export function WhitePage() {
               Buy Advantage White — $9.99
             </Link>
             {' · '}
-            <Link className="home__text-btn" to="/">
+            <Link className="home__text-btn" to={PRODUCTS_PATH}>
               All products
             </Link>
           </p>

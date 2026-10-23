@@ -1,5 +1,7 @@
-/** Public home. A long press on the corner Advantage mark always lands here. */
-export const PLAY_EXIT_HOME = '/';
+import { PRODUCTS_PATH } from './productNames.ts';
+
+/** Edition picker. A long press on the corner Advantage mark always lands here. */
+export const PLAY_EXIT_HOME = PRODUCTS_PATH;
 
 /**
  * Same delay as score-box holds (`useHoldPress` default).

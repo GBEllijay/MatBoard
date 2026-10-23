@@ -2,8 +2,8 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { build } from 'esbuild';
 
-mkdirSync('node_modules/.cache', { recursive: true });
-const outfile = 'node_modules/.cache/competitor-arena.test.mjs';
+mkdirSync('.cache', { recursive: true });
+const outfile = '.cache/competitor-arena.test.mjs';
 await build({
   entryPoints: ['src/pages/student/competitorArena.test.tsx'],
   bundle: true,

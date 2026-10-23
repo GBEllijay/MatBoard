@@ -5,6 +5,7 @@ import { PlayExitMark } from '../components/PlayExitMark';
 import { InstructorInvitePanel } from '../components/InstructorInvitePanel';
 import { InviteAccept, useCurrentSeat } from '../components/SeatSessionBar';
 import { SiteFooter } from '../components/SiteFooter';
+import { PRODUCTS_PATH } from '../lib/productNames';
 
 /**
  * Invite and access only. Unlimited lesson tools, Sunday review, and Drive
@@ -17,7 +18,7 @@ export function InstructorCollaborationPage() {
     <main className="home home--pro home--suite">
       <div className="home__inner">
         <PlayExitMark to="/pro" />
-        <HomeMark to="/" />
+        <HomeMark to={PRODUCTS_PATH} />
         <section className="suite instructor-hub">
           <BeltHeader kind="black" title="Instructor Invitations and Access Management" />
           <InviteAccept />

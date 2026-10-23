@@ -22,6 +22,7 @@ import {
 import {
   MEDIA_CONSOLE_ROUTES,
   MEDIA_FOLDER_ROUTES,
+  PRODUCTS_PATH,
   closedDoorPath,
   coachDoorOpen,
   coachUnlimitedDoorOpen,
@@ -35,6 +36,7 @@ import {
 import { proPurchaseReturn } from './lib/proEntitlement';
 import { studentEditionOpen, studentPurchaseReturn } from './lib/studentEdition';
 import { consumeUnlockQueryNow } from './lib/proUnlock';
+import { preservesAppHomeQuery } from './lib/submenuNav';
 import { WHITE_BUY_PATH } from './lib/whitePurchase';
 import { whiteHubAllowed, whiteLiveToolsAllowed } from './lib/whiteUnlock';
 import { ClassHistoryPage } from './pages/ClassHistory';
@@ -49,6 +51,7 @@ import { CompetitionReadyPage } from './pages/CompetitionReady';
 import { CompetitorManagementPage } from './pages/CompetitorManagement';
 import { GamePlanPage } from './pages/GamePlan';
 import { HomePage } from './pages/Home';
+import { StorefrontPage } from './pages/Storefront';
 import { PrivacyPage } from './pages/Privacy';
 import { InstructorCollaborationPage } from './pages/InstructorCollaboration';
 import { MatchControllerPage } from './pages/MatchController';
@@ -91,7 +94,7 @@ function consumeInviteDoorNow(): void {
   }
   if (!acceptInstructorInvite(token).ok) return;
   const url = new URL(window.location.href);
-  url.pathname = '/';
+  url.pathname = PRODUCTS_PATH;
   url.search = '';
   window.history.replaceState(window.history.state, '', `${url.pathname}${url.hash}`);
 }
@@ -239,7 +242,7 @@ function InviteDoor({ children }: { children: ReactNode }) {
     if (!token || !open) return;
     const result = acceptInstructorInvite(token);
     if (result.ok) {
-      navigate('/', { replace: true });
+      navigate(PRODUCTS_PATH, { replace: true });
       return;
     }
     setSearchParams(
@@ -257,6 +260,22 @@ function InviteDoor({ children }: { children: ReactNode }) {
   return children;
 }
 
+/** Owner-code and `?student=1` links keep the edition picker. A bare `/` is the storefront. */
+function PublicHomeRoute() {
+  const [params] = useSearchParams();
+  if (preservesAppHomeQuery(params)) {
+    const search = params.toString();
+    return <Navigate to={search ? `${PRODUCTS_PATH}?${search}` : PRODUCTS_PATH} replace />;
+  }
+  return <StorefrontPage />;
+}
+
+function EditionsRedirect() {
+  const [params] = useSearchParams();
+  const search = params.toString();
+  return <Navigate to={search ? `${PRODUCTS_PATH}?${search}` : PRODUCTS_PATH} replace />;
+}
+
 export default function App() {
   useKeepFocusedFieldVisible();
   useProUnlocked();
@@ -267,7 +286,9 @@ export default function App() {
     <SeatSessionChrome />
     <InviteDoor>
     <Routes>
-      <Route path="/" element={<HomePage />} />
+      <Route path="/" element={<PublicHomeRoute />} />
+      <Route path="/products" element={<HomePage />} />
+      <Route path="/editions" element={<EditionsRedirect />} />
       <Route
         path="/white"
         element={
