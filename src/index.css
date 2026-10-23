@@ -5307,11 +5307,32 @@ a.saver-folder--link {
   text-decoration: none;
 }
 
-.techniques__bar > .open-drive {
+.open-drive-wrap {
+  display: grid;
+  gap: 0.45rem;
+  width: 100%;
+}
+
+.drive-session-actions,
+.drive-session-confirm {
+  display: grid;
+  gap: 0.45rem;
+  width: 100%;
+}
+
+.drive-session-confirm p {
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.techniques__bar > .open-drive,
+.techniques__bar > .open-drive-wrap {
   flex: 1 1 100%;
 }
 
-.notes__plan > .open-drive {
+.notes__plan > .open-drive,
+.notes__plan > .open-drive-wrap {
   margin-bottom: 0.35rem;
 }
 
