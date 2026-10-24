@@ -133,7 +133,7 @@ test('hide screen covers a saved lesson with Logo, Schedule, and Black', async (
   const logoOn = await page.getByRole('radio', { name: 'Logo', exact: true }).evaluate((el) => getComputedStyle(el).backgroundColor);
   const hideFill = await page.getByRole('button', { name: 'Hide screen', exact: true }).evaluate((el) => getComputedStyle(el).backgroundColor);
   expect(logoOn).toBe('rgb(0, 78, 186)');
-  expect(hideFill).toBe('rgb(252, 192, 0)');
+  expect(hideFill).toBe('rgb(255, 255, 255)');
 
   await page.getByRole('radio', { name: 'Logo', exact: true }).click();
   const cover = page.getByRole('dialog', { name: 'Screen hidden' });

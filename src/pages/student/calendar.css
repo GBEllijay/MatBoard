@@ -184,7 +184,7 @@
 }
 
 .student.student--calendar form.ink > .ink-btn--save {
-  color: #000000;
+  color: var(--cta-ink);
 }
 
 .student.student--calendar .comp-list {

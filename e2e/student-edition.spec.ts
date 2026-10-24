@@ -18,7 +18,9 @@ test('student journal saves, searches, amends, and marks a fundamental', async (
   const classField = page.getByRole('textbox', { name: 'Class', exact: true });
   await expect(classField).toHaveAttribute('placeholder', 'Fundamentals, week 7, class B');
   await classField.fill('Fundamentals, week 7, class B');
-  await expect(page.getByRole('button', { name: 'Save entry' })).toHaveCSS('background-color', 'rgb(252, 192, 0)');
+  await expect(page.getByRole('button', { name: 'Save entry' })).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+  await expect(page.getByRole('button', { name: 'Save entry' })).toHaveCSS('color', 'rgb(14, 23, 38)');
+  await expect(page.getByRole('button', { name: 'Save entry' })).toHaveCSS('border-top-color', 'rgb(14, 23, 38)');
   await expect(page.getByRole('textbox', { name: 'Technique drilled #1' })).toBeVisible();
   await expect(page.getByRole('textbox', { name: 'Technique drilled #2' })).toBeVisible();
   await expect(page.getByRole('textbox', { name: 'Technique drilled #3' })).toBeVisible();

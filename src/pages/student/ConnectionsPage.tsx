@@ -294,7 +294,7 @@ function AcademyConnect({ showHeading = true }: { showHeading?: boolean }) {
           Use this academy link
         </button>
         {pathway ? (
-          <button type="button" className="ink-btn ink-btn--save" disabled={busy} onClick={() => void finish(pathway)}>
+          <button type="button" className="ink-btn ink-btn--save ink-btn--keep" disabled={busy} onClick={() => void finish(pathway)}>
             {busy ? 'Connecting…' : `Sign in to ${providerLabel(pathway.provider)}`}
           </button>
         ) : null}
@@ -316,7 +316,7 @@ function AcademyConnect({ showHeading = true }: { showHeading?: boolean }) {
         <GoogleDriveFolderTools
           folderId={linked.folderId}
           buttonClassName="ink-btn"
-          primaryClassName="ink-btn ink-btn--save"
+          primaryClassName="ink-btn ink-btn--save ink-btn--keep"
           picker="inline"
           onPick={(folder) => {
             const saved = saveStudentDriveLink(localStorage, {
@@ -457,7 +457,7 @@ function PersonalDrive() {
         <GoogleDriveFolderTools
           folderId={linked.folderId}
           buttonClassName="ink-btn"
-          primaryClassName="ink-btn ink-btn--save"
+          primaryClassName="ink-btn ink-btn--save ink-btn--keep"
           picker="inline"
           onPick={(folder) => {
             const saved = saveStudentDriveLink(localStorage, {

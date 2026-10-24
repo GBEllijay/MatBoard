@@ -15,6 +15,7 @@
   --sf-text: #eef2f8;
   --sf-muted: #9aa6b8;
   --sf-dim: #6c788b;
+  /* Logo art carries the yellow. Primary buttons use --cta-bg. */
   --sf-yellow: #f6c000;
   --sf-blue-hi: #3d86ff;
   --sf-sb-blue: #223bca;
@@ -367,13 +368,25 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  background: var(--sf-yellow);
-  color: #111;
+  background: var(--cta-bg);
+  color: var(--cta-ink);
   font-weight: 800;
   font-size: 17px;
   padding: 16px 26px;
   border-radius: 12px;
-  box-shadow: 0 10px 30px -8px rgba(246, 192, 0, 0.45), inset 0 -2px 0 rgba(0, 0, 0, 0.15);
+  box-shadow: var(--cta-shadow);
+}
+
+@media (hover: hover) {
+  .home.home--store .sf-buy:hover {
+    background: #f4f7fb;
+    color: var(--cta-ink);
+  }
+}
+
+.home.home--store .sf-buy:focus-visible {
+  outline: 3px solid var(--cta-focus);
+  outline-offset: 3px;
 }
 
 .home.home--store .sf-fine {
