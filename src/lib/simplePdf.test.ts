@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { extractPdfText, pdfPageCount, pdfToText, textToPdf, wrapPdfLine } from './simplePdf.ts';
+import { extractPdfText, pdfPageCount, pdfPlainText, pdfToText, textToPdf, wrapPdfLine } from './simplePdf.ts';
 
 test('a text PDF starts with the PDF header and keeps the words', () => {
   const wrapped = wrapPdfLine('Armbar from closed guard', 12);
@@ -14,15 +14,25 @@ test('a text PDF starts with the PDF header and keeps the words', () => {
   assert.match(text, /WinAnsiEncoding/);
 });
 
-test('dashes and middle dots stay glyphs instead of question marks', () => {
-  const pdf = textToPdf(['Met — kept', '179.4 lb · On track', 'A – B', '“quote”']);
+test('dashes and other non-Latin-1 marks do not become question marks', () => {
+  const source = 'Met — kept\n179.4 lb · On track\nA – B\n“quote”\nWait…\n• one\nWhat?';
+  assert.equal(pdfPlainText(source).includes('?'), true);
+  assert.equal(pdfPlainText('— – “ ” • …').includes('?'), false);
+  const pdf = textToPdf(source.split('\n'));
   const text = extractPdfText(pdf);
-  assert.match(text, /Met — kept/);
+  const raw = pdfToText(pdf);
+  assert.match(text, /Met -- kept/);
   assert.match(text, /179\.4 lb · On track/);
-  assert.match(text, /A – B/);
-  assert.match(text, /“quote”/);
-  assert.equal(text.includes('?'), false);
-  assert.equal(pdfToText(pdf).includes('?'), false);
+  assert.match(text, /A - B/);
+  assert.match(text, /"quote"/);
+  assert.match(text, /Wait\.\.\./);
+  assert.match(text, /\* one/);
+  assert.match(text, /What\?/);
+  assert.equal(raw.includes('\\226'), false);
+  assert.equal(raw.includes('\\227'), false);
+  assert.equal(raw.includes('\\223'), false);
+  const fromDashes = text.replaceAll('What?', '');
+  assert.equal(fromDashes.includes('?'), false);
 });
 
 test('a long report keeps the last line on a later page', () => {

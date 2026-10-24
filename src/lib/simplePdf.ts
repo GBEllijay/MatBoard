@@ -1,7 +1,11 @@
 /**
  * Small PDF writer for Student Edition reports.
- * Helvetica with WinAnsiEncoding so dashes, middle dots, and quotes
- * keep their glyphs. Drawing commands are vector operators, not a bitmap.
+ * Helvetica is one of the standard 14 fonts and is not embedded. Viewers
+ * paint WinAnsi bytes 0x80-0x9F (em dash, en dash, smart quotes, bullets,
+ * ellipsis) with a missing glyph, which shows up as "?". Those characters
+ * are rewritten to ASCII before they are encoded. Latin-1, including the
+ * middle dot, stays. Anything else is omitted, never replaced with "?".
+ * Drawing commands are vector operators, not a bitmap.
  */
 
 const PAGE_W = 612;
@@ -40,13 +44,52 @@ const WINANSI_SPECIAL: Record<number, string> = {
   0x9f: '\u0178',
 };
 
-const UNICODE_TO_WINANSI = new Map<number, number>();
-for (const [byte, glyph] of Object.entries(WINANSI_SPECIAL)) {
-  UNICODE_TO_WINANSI.set(glyph.codePointAt(0) ?? 0, Number(byte));
+/**
+ * Marks that would have been stored as WinAnsi 0x80-0x9F.
+ * Em dash becomes two hyphens so it stays distinct from an en dash.
+ */
+const PDF_ASCII: Record<string, string> = {
+  '\u2010': '-',
+  '\u2011': '-',
+  '\u2012': '-',
+  '\u2013': '-',
+  '\u2014': '--',
+  '\u2015': '--',
+  '\u2212': '-',
+  '\u00ad': '-',
+  '\u2018': "'",
+  '\u2019': "'",
+  '\u201a': "'",
+  '\u201b': "'",
+  '\u201c': '"',
+  '\u201d': '"',
+  '\u201e': '"',
+  '\u201f': '"',
+  '\u2026': '...',
+  '\u2022': '*',
+  '\u2043': '-',
+  '\u00a0': ' ',
+  '\u202f': ' ',
+  '\u2007': ' ',
+  '\u2009': ' ',
+  '\u200a': ' ',
+  '\ufeff': '',
+};
+
+/** ASCII or Latin-1 text that standard Helvetica can draw. No "?" substitutions. */
+export function pdfPlainText(value: string): string {
+  let out = '';
+  for (const char of value) {
+    const replacement = PDF_ASCII[char];
+    if (replacement != null) {
+      out += replacement;
+      continue;
+    }
+    const code = char.codePointAt(0) ?? 0;
+    if ((code >= 0x20 && code <= 0x7e) || (code >= 0xa0 && code <= 0xff)) out += char;
+  }
+  return out;
 }
-UNICODE_TO_WINANSI.set(0x2212, 0x2d);
-UNICODE_TO_WINANSI.set(0x2011, 0x2d);
-UNICODE_TO_WINANSI.set(0x00ad, 0x2d);
 
 export type Rgb = readonly [number, number, number];
 
@@ -76,23 +119,16 @@ export type PdfImageAsset = {
   flateHex: string;
 };
 
-function winAnsiByte(code: number): number | null {
-  if ((code >= 0x20 && code <= 0x7e) || (code >= 0xa0 && code <= 0xff)) return code;
-  if (code === 0x0a || code === 0x09 || code === 0x0d) return 0x20;
-  return UNICODE_TO_WINANSI.get(code) ?? null;
-}
-
 /** PDF literal-string contents. Bytes outside ASCII are octal escapes. Unmapped characters are omitted, never replaced with "?". */
 export function escapePdfText(value: string): string {
   let out = '';
-  for (const char of value) {
-    const byte = winAnsiByte(char.codePointAt(0) ?? 0);
-    if (byte == null) continue;
+  for (const char of pdfPlainText(value)) {
+    const byte = char.charCodeAt(0);
     if (byte === 0x5c) out += '\\\\';
     else if (byte === 0x28) out += '\\(';
     else if (byte === 0x29) out += '\\)';
     else if (byte < 0x20 || byte > 0x7e) out += `\\${byte.toString(8).padStart(3, '0')}`;
-    else out += String.fromCharCode(byte);
+    else out += char;
   }
   return out;
 }
