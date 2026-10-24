@@ -45,6 +45,7 @@ import { CoachPage } from './pages/Coach';
 import { AcademyPathwayPage, CoachUnlimitedPage } from './pages/CoachUnlimited';
 import { CoachingToolsPage } from './pages/CoachingTools';
 import { CompetitionCurriculumPage } from './pages/CompetitionCurriculum';
+import { CardPage } from './pages/Card';
 import { ComingSoonPage } from './pages/ComingSoon';
 import { CompetitionManagementPage } from './pages/CompetitionManagement';
 import { CompetitionReadyPage } from './pages/CompetitionReady';
@@ -555,6 +556,7 @@ export default function App() {
       />
       <Route path="/student/*" element={<StudentEditionPage />} />
       <Route path="/coming-soon" element={<ComingSoonPage />} />
+      <Route path="/card" element={<CardPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/terms" element={<TermsPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />

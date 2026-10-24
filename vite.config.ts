@@ -1,6 +1,7 @@
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { cardPagePlugin } from './src/server/cardPagePlugin.ts';
 import { whitePurchaseApiPlugin } from './src/server/devApiPlugin.ts';
 
 /** Build id written into the app and into /version.json (Cache-Control: no-store). */
@@ -37,6 +38,7 @@ export default defineConfig({
   plugins: [
     matboardBuildStamp(),
     whitePurchaseApiPlugin(),
+    cardPagePlugin(),
     react(),
     VitePWA({
       registerType: 'autoUpdate',
@@ -79,8 +81,18 @@ export default defineConfig({
         // Navigations now try the network first. Hashed JS/CSS and media stay
         // precached so an offline gym TV can still open the last good build.
         globPatterns: ['**/*.{js,css,ico,png,jpg,svg,woff2,webp,mp3}'],
-        globIgnores: ['**/branding/**', '**/sw.js', '**/workbox-*.js', '**/version.json'],
+        globIgnores: [
+          '**/branding/**',
+          '**/sw.js',
+          '**/workbox-*.js',
+          '**/version.json',
+          '**/card.html',
+          '**/card-logo.*',
+          '**/card-qr.*',
+        ],
         navigateFallback: null,
+        // /card is the lightweight card.html page. Keep it off any app-shell fallback.
+        navigateFallbackDenylist: [/^\/api\//, /^\/card\/?(?:$|\?)/],
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
