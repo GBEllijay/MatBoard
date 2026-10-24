@@ -16,7 +16,9 @@ import {
   competitorHubSummary,
   formerHubItemReachable,
   groupMenuLinks,
+  PROFILE_LINK,
   progressLinks,
+  studentPageBack,
   studentScreen,
 } from './studentHubMenu.ts';
 import { backupStampLabel, noteStudentBackupBuilt, readStudentBackupStamp } from './studentBackupStamp.ts';
@@ -41,7 +43,10 @@ test('every legacy student route still resolves to its own screen', () => {
   assert.equal(studentScreen('belt'), 'rubric');
   assert.equal(studentScreen('print/progress'), 'print-progress');
   assert.equal(studentScreen('print/assessment'), 'print-assessment');
+  assert.equal(studentScreen('profile'), 'profile');
   assert.equal(studentScreen('not-a-page'), 'hub');
+  assert.equal(studentPageBack('/student/profile', '?student=1', null), '/student/progress?student=1');
+  assert.equal(groupMenuLinks().some((link) => link.label === PROFILE_LINK.label && link.to === PROFILE_LINK.to), true);
 });
 
 test('every former hub item is reachable from the new menus', () => {

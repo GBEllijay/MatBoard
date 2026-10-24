@@ -125,12 +125,12 @@ test('print reports hide the seat bar, save a profile, and download matching PDF
 
   const prompt = page.getByRole('form', { name: 'Student profile' });
   await expect(prompt).toBeVisible();
-  await prompt.getByLabel('Student name').fill('Ada Student');
-  await prompt.getByLabel('Student name').blur();
-  await prompt.getByLabel('Gym name').fill('GB Ellijay');
-  await prompt.getByLabel('Gym name').blur();
-  await prompt.getByLabel('Start date').fill('2014-03-01');
-  await prompt.getByLabel('Start date').blur();
+  await prompt.getByLabel('Name').fill('Ada Student');
+  await prompt.getByLabel('Name').blur();
+  await prompt.getByLabel('Gym').fill('GB Ellijay');
+  await prompt.getByLabel('Gym').blur();
+  await prompt.getByLabel('Training start date').fill('2014-03-01');
+  await prompt.getByLabel('Training start date').blur();
   await expect(prompt).toHaveCount(0);
 
   const sheet = page.getByRole('article', { name: 'Self-assessment' });
@@ -207,9 +207,9 @@ test('print reports hide the seat bar, save a profile, and download matching PDF
   await page.emulateMedia({ media: 'screen' });
   await page.goto('/student/rank?student=1');
   const profile = page.getByRole('region', { name: 'Profile' });
-  await expect(profile.getByLabel('Student name')).toHaveValue('Ada Student');
-  await expect(profile.getByLabel('Gym name')).toHaveValue('GB Ellijay');
-  await expect(profile.getByLabel('Start date')).toHaveValue('2014-03-01');
+  await expect(profile.getByLabel('Name')).toHaveValue('Ada Student');
+  await expect(profile.getByLabel('Gym')).toHaveValue('GB Ellijay');
+  await expect(profile.getByLabel('Training start date')).toHaveValue('2014-03-01');
   await expect(page.getByRole('button', { name: 'White', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Sign out of seat' })).toHaveCount(0);
 });

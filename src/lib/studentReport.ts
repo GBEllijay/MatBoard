@@ -73,6 +73,17 @@ export function profileNeedsPrompt(report: StudentProgressReport): boolean {
   return !identity.named || !identity.gymNamed || !identity.startedSet;
 }
 
+/** The four lines both print pages and the plain-text report share. */
+export function reportHeaderLines(report: StudentProgressReport): string[] {
+  const identity = reportIdentity(report);
+  return [
+    `Student: ${identity.name}`,
+    `Gym: ${identity.gym}`,
+    `Belt: ${identity.belt}`,
+    `Started: ${identity.started}`,
+  ];
+}
+
 export function studentReportPdfName(kind: 'progress' | 'assessment', date: string): string {
   const day = /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : 'journal';
   const label = kind === 'assessment' ? 'self-assessment' : 'progress';
@@ -296,17 +307,13 @@ export function progressReportBlocks(report: StudentProgressReport, assessment: 
 }
 
 export function progressReportLines(report: StudentProgressReport, assessment: AssessmentState, extra: ReportExtras = {}): string[] {
-  const identity = reportIdentity(report);
   const lines = [
     'Advantage Student Edition',
     'Progress report',
     '',
     'Hand this page to an instructor. Advantage does not host it.',
     '',
-    `Student: ${identity.name}`,
-    `Gym: ${identity.gym}`,
-    `Belt: ${identity.belt}`,
-    `Started: ${identity.started}`,
+    ...reportHeaderLines(report),
   ];
   for (const block of progressReportBlocks(report, assessment, extra)) {
     lines.push('', block.title, ...block.lines);
@@ -315,16 +322,12 @@ export function progressReportLines(report: StudentProgressReport, assessment: A
 }
 
 export function selfAssessmentLines(report: StudentProgressReport, assessment: AssessmentState): string[] {
-  const identity = reportIdentity(report);
   const lines = [
     'Advantage Student Edition',
     'Self-assessment report',
     '',
     'Hand this page to an instructor. 1 is early. 5 is ready to rely on.',
-    `Student: ${identity.name}`,
-    `Gym: ${identity.gym}`,
-    `Belt: ${identity.belt}`,
-    `Started: ${identity.started}`,
+    ...reportHeaderLines(report),
     '',
   ];
   const entries = [...assessment.entries].sort((left, right) => right.date.localeCompare(left.date));

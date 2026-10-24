@@ -1,0 +1,102 @@
+/**
+ * My profile only. Same Inter surface as Fundamentals: black, grouped card,
+ * 56px targets. The handwritten journal is not this page.
+ */
+
+.student.student--arena.student--profile {
+  background: #000000;
+}
+
+.student.student--profile .profile-hero {
+  padding: 8px 16px 4px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.student.student--profile .profile-hero::after {
+  display: none;
+}
+
+.student.student--profile .profile-hero h1 {
+  margin: 0;
+  color: #f5f5f7;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: clamp(34px, 9vw, 40px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  text-transform: none;
+}
+
+.student.student--profile .profile-hero p {
+  margin: 10px 0 0;
+  color: #c7c7cc;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 17px;
+  line-height: 1.35;
+}
+
+.profile-stack {
+  width: min(720px, 100%);
+  margin: 0 auto;
+  padding: 20px 16px 56px;
+  box-sizing: border-box;
+}
+
+.student.student--profile .profile-fields {
+  display: grid;
+  gap: 16px;
+}
+
+.profile-card {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  background: #1c1c1e;
+}
+
+.profile-row {
+  display: grid;
+  gap: 6px;
+  padding: 12px 16px 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.profile-row:first-child {
+  border-top: 0;
+}
+
+.student.student--profile .profile-row .ink__label {
+  margin: 0;
+  color: #c7c7cc;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.profile-optional {
+  color: #c7c7cc;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 15px;
+}
+
+.student.student--profile .profile-save {
+  width: 100%;
+  min-height: 56px;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 17px;
+}
+
+.student.student--profile .profile-fields .student-quiet,
+.student.student--profile .profile-fields [role='alert'] {
+  margin: 0;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 15px;
+}
+
+.student.student--profile .profile-fields [role='alert'] {
+  color: #ffb4ab;
+}

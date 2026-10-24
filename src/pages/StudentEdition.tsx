@@ -27,6 +27,7 @@ import { SharePage } from './student/SharePage';
 import { AcademyConnectPage, ConnectionsPage } from './student/ConnectionsPage';
 import { FundamentalsPage } from './student/FundamentalsPage';
 import { PrintReportPage } from './student/PrintReportPage';
+import { ProfilePage } from './student/ProfilePage';
 import {
   addJournalAmendment,
   addJournalEntry,
@@ -79,6 +80,8 @@ export function StudentEditionPage() {
       return <CalendarDayPage date={decodeURIComponent(rest.slice('calendar/'.length))} />;
     case 'rubric':
       return <BeltPage />;
+    case 'profile':
+      return <ProfilePage />;
     case 'rank':
       return <RankPage />;
     case 'share':

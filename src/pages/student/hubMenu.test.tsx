@@ -71,6 +71,10 @@ test('the hub is five groups and has no Menu card', () => {
   assert.match(hub.host.querySelector('a[aria-label="Home"]')?.getAttribute('href') ?? '', /\/products\?student=1$/);
   const labels = [...hub.host.querySelectorAll('a')].map((node) => node.getAttribute('aria-label') ?? '');
   assert.equal(labels.includes('Training & Journal'), true);
+  assert.equal(labels.includes('My profile'), true);
+  assert.match(hub.host.querySelector('a[aria-label="My profile"]')?.getAttribute('href') ?? '', /\/student\/profile\?student=1$/);
+  assert.equal(text.includes('Pan Pacific'), false);
+  assert.equal(text.includes('(mock)'), false);
   assert.equal(labels.includes('Rank & Progress'), true);
   assert.equal(labels.includes('Competitor'), true);
   assert.equal(labels.includes('Coach & Academy'), true);
@@ -118,6 +122,7 @@ test('every former hub item is linked from a group menu', () => {
     assert.equal(rail?.classList.contains(`belt-rail--stripes-${row.stripes}`), true);
   }
   assert.equal(progress?.host.querySelector('.s-rank-summary .s-belt')?.getAttribute('data-stripes'), '0');
+  assert.match(progress?.host.querySelector('a[aria-label="My profile"]')?.getAttribute('href') ?? '', /\/student\/profile\?student=1$/);
   const compete = pages[2];
   const competeText = compete?.host.textContent ?? '';
   assert.equal(competeText.includes(SCOUTING_LABEL), true);

@@ -93,15 +93,11 @@ function ReportHero({
       <div>
         <p className="report-kicker">Advantage Student Edition</p>
         <h1>{title}</h1>
+        <p>Student: {identity.name}</p>
+        <p>Gym: {identity.gym}</p>
+        <p>Started: {identity.started}</p>
         <p>
-          {identity.name}
-          <span aria-hidden="true"> · </span>
           {identity.belt}
-          <span aria-hidden="true"> · </span>
-          {identity.gym}
-        </p>
-        <p>
-          Started {identity.started}
           <span aria-hidden="true"> · </span>
           {issuedOn}
         </p>
