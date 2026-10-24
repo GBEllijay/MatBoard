@@ -8,6 +8,7 @@ import { joinJournalNotes, splitJournalNotes } from './journalNotes.ts';
 import { FUNDAMENTALS_CATALOG } from './progress/catalog.ts';
 import { emptyCompetition, matchingGameTags } from './progress/competition.ts';
 import { emptyRank } from './studentRank.ts';
+import { beginAppStudentSave, endAppStudentSave, noteAppStudentSave } from './studentDemo.ts';
 import { isStudentEditionUnlocked } from './studentUnlock.ts';
 import { exportProgressPacket, parseProgressPacket, searchJournal, searchJournalClips, techniqueDrilledLabel } from './progress/format.ts';
 import {
@@ -195,7 +196,13 @@ export function saveStudentReport(storage: MemoryStore, report: StudentProgressR
     const errors = parsed.ok ? ['Student Edition file was not a progress report.'] : parsed.errors;
     throw new Error(errors.join(' '));
   }
-  storage.setItem(STUDENT_EDITION_STORAGE_KEY, text);
+  beginAppStudentSave();
+  try {
+    storage.setItem(STUDENT_EDITION_STORAGE_KEY, text);
+    noteAppStudentSave(text);
+  } finally {
+    endAppStudentSave();
+  }
   return parsed.value;
 }
 
