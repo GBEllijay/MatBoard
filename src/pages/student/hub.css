@@ -225,7 +225,7 @@
   justify-content: flex-start;
   gap: 5px;
   padding: 0 6px;
-  background: #111114;
+  background: #121214;
 }
 
 .s-belt__end {
@@ -240,29 +240,20 @@
   background-repeat: repeat;
 }
 
-.s-tape--off {
-  display: none;
-}
-
+.s-tape--off,
 .s-tape--on,
 .s-tape--next {
+  display: block;
   width: 11px;
   flex: 0 0 11px;
   margin: 4px 0;
   border-radius: 1px;
-}
-
-.s-tape--on {
-  background: #fff;
-}
-
-.s-tape--next {
   background: transparent;
-  box-shadow: inset 0 0 0 1.5px #fff;
+  box-shadow: inset 0 0 0 1.5px rgba(247, 244, 238, 0.92);
 }
 
-/* Hub Rank card only: the #272 black bar, faint stripe slots, and end cap.
-   The rank summary keeps the white-belt progress bar above. */
+/* Hub Rank card and the rank summary: empty rectangles on the black bar.
+   Earned stripes are not filled yet. */
 .s-tile.s-rank .s-belt {
   height: 22px;
   border-radius: 5px;
@@ -283,6 +274,17 @@
   background: #121214;
 }
 
+.s-tile.s-rank .s-tape,
+.s-tile.s-rank .s-tape--on,
+.s-tile.s-rank .s-tape--next,
+.s-rank-summary .s-tape,
+.s-rank-summary .s-tape--on,
+.s-rank-summary .s-tape--next {
+  display: block;
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px rgba(247, 244, 238, 0.92);
+}
+
 .s-tile.s-rank .s-belt__end {
   width: 22px;
   background-color: #f4f1ea;
@@ -291,22 +293,10 @@
 }
 
 .s-tile.s-rank .s-tape {
-  display: block;
   width: 8px;
   flex: 0 0 8px;
   margin: 0;
   border-radius: 0;
-  background: rgba(255, 255, 255, 0.16);
-  box-shadow: none;
-}
-
-.s-tile.s-rank .s-tape--on {
-  background: #f7f4ee;
-}
-
-.s-tile.s-rank .s-tape--next {
-  background: transparent;
-  box-shadow: inset 0 0 0 1.5px rgba(247, 244, 238, 0.75);
 }
 
 .s-meter {
@@ -769,14 +759,15 @@
 }
 
 /* Same degree rail as Coach Unlimited (.pro-hub .belt-rail--degrees):
-   tip in the corner, black rank bar, white tapes counted from the tip.
+   tip in the corner, black rank bar, empty stripe rectangles.
    Cloth is the white belt and the approved weave, not espresso.
+   Earned stripes are not filled yet, so the tape color matches the bar.
    The fourth tape lengthens only this row's bar. */
 .s-row--belt .belt-rail.belt-rail--degrees {
   --belt-rail-width: 10px;
   --espresso: #f4f1ea;
   --degree-bar-ink: #121214;
-  --degree-tape: #f7f4ee;
+  --degree-tape: #121214;
   --rail-tip: 14px;
   --degree-tape-h: 3.5px;
   --degree-gap: 3.5px;
@@ -801,6 +792,32 @@
     linear-gradient(#f4f1ea, #f4f1ea);
   background-size: auto, 160px 4px, auto, auto;
   background-repeat: no-repeat, repeat, no-repeat, no-repeat;
+}
+
+.s-row--belt .belt-slot {
+  position: absolute;
+  left: 1px;
+  width: 8px;
+  height: var(--degree-tape-h);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgba(247, 244, 238, 0.92);
+  pointer-events: none;
+}
+
+.s-row--belt .belt-slot[data-slot='1'] {
+  bottom: calc(var(--rail-tip) + var(--degree-gap));
+}
+
+.s-row--belt .belt-slot[data-slot='2'] {
+  bottom: calc(var(--rail-tip) + var(--degree-gap) * 2 + var(--degree-tape-h));
+}
+
+.s-row--belt .belt-slot[data-slot='3'] {
+  bottom: calc(var(--rail-tip) + var(--degree-gap) * 3 + var(--degree-tape-h) * 2);
+}
+
+.s-row--belt .belt-slot[data-slot='4'] {
+  bottom: calc(var(--rail-tip) + var(--degree-gap) * 4 + var(--degree-tape-h) * 3);
 }
 
 .s-row--belt .belt-rail.belt-rail--stripes-1 {

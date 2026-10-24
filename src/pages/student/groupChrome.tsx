@@ -60,7 +60,7 @@ export function MenuRow({
         <span className="s-row__title">{label}</span>
         {note ? <small>{note}</small> : null}
       </span>
-      {skin === 'belt' && stripes ? <BeltRail kind="white" stripes={degreeStripes(stripes)} /> : null}
+      {skin === 'belt' && stripes ? <BeltRail kind="white" stripes={degreeStripes(stripes)} emptySlots /> : null}
       <Chevron />
     </Link>
   );

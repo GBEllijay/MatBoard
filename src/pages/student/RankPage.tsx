@@ -27,6 +27,7 @@ import {
   setRankTapeCount,
   setRankTapeDate,
   stripeCountControl,
+  stripeDateText,
   type LadderRung,
 } from '../../lib/studentRank';
 import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './chrome';
@@ -221,7 +222,7 @@ function StripeSlot({
 }) {
   const [open, setOpen] = useState(false);
   const on = slot <= rung.tapeCount;
-  const date = rung.tapeDates[slot - 1] ?? '';
+  const date = stripeDateText(rung.tapeDates?.[slot - 1]);
   const stripeLabel = rung.current ? `Stripe ${slot}` : `${rung.label} stripe ${slot}`;
   const dateLabel = rung.current ? `Stripe ${slot} date` : `${rung.label} stripe ${slot} date`;
   const countControl = stripeCountControl(slot, rung.tapeCount, stripeLabel);
@@ -314,7 +315,8 @@ function StripeEditor({
         <h2>{stripeLabel}</h2>
         {on ? (
           <p className="rank-stripe-detail">
-            {date ? `Date ${date}` : 'No date'}. {photoCount}
+            {date ? `Date ${date}. ` : ''}
+            {photoCount}
           </p>
         ) : (
           <p className="rank-stripe-detail">This stripe is not on the belt yet. Add it to keep a photo or a date.</p>
@@ -327,7 +329,13 @@ function StripeEditor({
         {on ? (
           <label>
             <span className="ink__label">Date</span>
-            <input type="date" aria-label={dateLabel} value={date} onChange={(event) => onDate(event.target.value)} />
+            <input
+              type="date"
+              aria-label={dateLabel}
+              value={date}
+              required={false}
+              onChange={(event) => onDate(event.target.value)}
+            />
           </label>
         ) : null}
         {on && date ? (

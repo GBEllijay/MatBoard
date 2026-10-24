@@ -209,6 +209,40 @@ test('progress PDF keeps every section, the student track, and checkpoint status
   assert.match(pdfToText(pdf), /WinAnsiEncoding/);
 });
 
+test('an undated stripe is listed without a date and a dated stripe keeps its date', () => {
+  let report = withStarterRubric(blankStudentReport(8), 9);
+  report = {
+    ...report,
+    profile: { ...report.profile, belt: 'blue' },
+    rank: {
+      tapeCount: 3,
+      awardedOn: '2011-04-02',
+      tapeDates: ['2012-01-01', '', '', ''],
+      history: [
+        {
+          id: 'rank-white',
+          belt: 'white',
+          awardedOn: '2008-06-01',
+          tapeCount: 2,
+          tapeDates: ['', '2009-08-01', '', ''],
+        },
+      ],
+      lineage: [],
+    },
+  };
+  const lines = progressReportLines(report, { entries: [] });
+  const rank = lines.slice(lines.indexOf('Rank and stripes'), lines.indexOf('Belt progress'));
+  assert.deepEqual(
+    rank.filter((line) => /^ {0,2}Stripe \d/.test(line)),
+    ['Stripe 1: 2012-01-01', 'Stripe 2', 'Stripe 3', '  Stripe 1', '  Stripe 2: 2009-08-01'],
+  );
+  const block = rank.join('\n');
+  assert.equal(block.includes('No date'), false);
+  assert.equal(block.includes('Invalid Date'), false);
+  assert.match(block, /Stripes: 3/);
+  assert.match(block, /2 stripes/);
+});
+
 test('a kids belt report lists only the kids track, in order', () => {
   let report = withStarterRubric(blankStudentReport(4), 5);
   report = { ...report, profile: { ...report.profile, belt: 'grey' } };

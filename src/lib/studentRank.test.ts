@@ -8,6 +8,7 @@ import { blankStudentReport } from './studentEdition.ts';
 import {
   emptyRank,
   ladderRungs,
+  normalizeStoredRank,
   rankMarks,
   rankOf,
   removeRankHistory,
@@ -17,6 +18,7 @@ import {
   setRankTapeCount,
   setRankTapeDate,
   stripeCountControl,
+  stripeReportLine,
 } from './studentRank.ts';
 import { addCalendarEvent, progressReportFiles } from './studentTools.ts';
 
@@ -221,6 +223,39 @@ test('a stripe date is optional, can be cleared, and does not need a photo', () 
     assert.equal(parsed.value.rank?.pictures?.[0]?.image, image);
     assert.equal(parsed.value.rank?.tapeCount, 1);
   }
+});
+
+test('an undated stripe still counts, and a missing date list on an older rank does too', () => {
+  const report = setRankTapeCount(setRankBelt(blankStudentReport(30), 'blue', 31), 3, 32);
+  assert.equal(report.rank?.tapeCount, 3);
+  assert.deepEqual(report.rank?.tapeDates, ['', '', '', '']);
+  assert.equal(stripeReportLine(1, ''), 'Stripe 1');
+  assert.equal(stripeReportLine(2, '2024-07-15'), 'Stripe 2: 2024-07-15');
+  assert.equal(stripeReportLine(3, 'not a date'), 'Stripe 3');
+  const older = normalizeStoredRank({ tapeCount: 3, awardedOn: '', history: [], lineage: [] });
+  assert.equal(older.tapeCount, 3);
+  assert.deepEqual(older.tapeDates, ['', '', '', '']);
+  const partial = normalizeStoredRank({
+    tapeCount: 3,
+    awardedOn: '2011-04-02',
+    tapeDates: ['2012-01-01'] as unknown as [string, string, string, string],
+    history: [
+      {
+        id: 'rank-white',
+        belt: 'white',
+        awardedOn: '',
+        tapeCount: 2,
+        tapeDates: ['', '2009-08-01', '', ''],
+      },
+    ],
+  });
+  assert.equal(partial.tapeCount, 3);
+  assert.deepEqual(partial.tapeDates, ['2012-01-01', '', '', '']);
+  assert.equal(partial.awardedOn, '2011-04-02');
+  assert.deepEqual(partial.history[0]?.tapeDates, ['', '2009-08-01', '', '']);
+  const read = rankOf({ ...report, rank: { ...report.rank!, tapeDates: undefined as unknown as [string, string, string, string] } });
+  assert.equal(read.tapeCount, 3);
+  assert.deepEqual(read.tapeDates, ['', '', '', '']);
 });
 
 test('stripe controls add, take off the last stripe, or drop the ones after it', () => {

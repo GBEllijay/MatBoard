@@ -1,6 +1,7 @@
 /**
  * My rank controls. Belt tap stays a belt change. A stripe tap opens the
  * stripe detail, where a photo and a date are each optional and removable.
+ * An undated stripe does not show a stand-in date.
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -146,7 +147,11 @@ test('tapping a stripe opens an editor for an optional date and photo', async ()
     assert.equal(labeled('Stripe 1').getAttribute('aria-pressed'), 'true');
     assert.equal(labeled('Stripe 2').getAttribute('aria-pressed'), 'true');
     assert.equal(labeled('Stripe 3').getAttribute('aria-pressed'), 'false');
-    assert.match(dialog.textContent ?? '', /No date/);
+    const emptyDate = labeled('Stripe 2 date');
+    assert.ok(emptyDate instanceof HTMLInputElement);
+    assert.equal(emptyDate.required, false);
+    assert.equal(emptyDate.value, '');
+    assert.doesNotMatch(dialog.textContent ?? '', /No date|Invalid Date/);
     assert.match(dialog.textContent ?? '', /No photo/);
     assert.ok(dialog.querySelector('[aria-label="Add White stripe 2 photo"]'));
     assert.equal(dialog.textContent?.includes('Take off Stripe 2'), true);
@@ -162,7 +167,7 @@ test('tapping a stripe opens an editor for an optional date and photo', async ()
 
     await click(buttonNamed('Remove date'));
     assert.equal((labeled('Stripe 2 date') as HTMLInputElement).value, '');
-    assert.match(dialog.textContent ?? '', /No date/);
+    assert.doesNotMatch(dialog.textContent ?? '', /No date|Invalid Date|2026-04-02/);
     assert.equal(document.querySelector('.rank-stripe-date'), null);
     assert.doesNotMatch(localStorage.getItem('matboard.studentEdition.v1') ?? '', /2026-04-02/);
 
@@ -189,7 +194,7 @@ test('a saved stripe photo with no date opens in the stripe detail and can be re
     await click(labeled('Stripe 1'));
     const dialog = document.querySelector('[role="dialog"]');
     assert.ok(dialog instanceof HTMLElement);
-    assert.match(dialog.textContent ?? '', /No date/);
+    assert.doesNotMatch(dialog.textContent ?? '', /No date|Invalid Date/);
     assert.match(dialog.textContent ?? '', /1 photo/);
     assert.equal((dialog.querySelector('[aria-label="Stripe 1 date"]') as HTMLInputElement).value, '');
     assert.equal([...dialog.querySelectorAll('button')].some((button) => button.textContent?.trim() === 'Remove date'), false);
