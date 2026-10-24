@@ -135,6 +135,66 @@ test('backup round-trips journal, rank words, assessment, and filmed metadata', 
   assert.equal(after.rank?.tapeCount, 2);
 });
 
+test('an undated stripe survives backup and an older backup that omitted dates', async () => {
+  let report = journal('third stripe', 40);
+  report = {
+    ...report,
+    profile: { ...report.profile, belt: 'blue' },
+    rank: {
+      tapeCount: 3,
+      awardedOn: '2011-04-02',
+      tapeDates: ['2012-01-01', '', '', ''],
+      history: [],
+      lineage: [],
+    },
+  };
+  const built = await buildStudentBackup({
+    report,
+    assessment: { entries: [] },
+    scouting: [],
+    rankPhotos: emptyRankPhotoStore(),
+    bracketPhotos: {},
+    shelf: { plan: null, feedback: null },
+    films: [],
+    blobs: [],
+    includeVideos: false,
+    now: new Date('2026-10-17T12:00:00Z'),
+  });
+  const lines = progressReportLines(report, { entries: [] }).join('\n');
+  assert.match(lines, /Stripe 1: 2012-01-01/);
+  assert.match(lines, /^Stripe 2$/m);
+  assert.match(lines, /^Stripe 3$/m);
+  assert.equal(lines.includes('Invalid Date'), false);
+  assert.equal(pdfIncludes(built.progressPdf, 'Stripe 1: 2012-01-01'), true);
+  assert.equal(pdfIncludes(built.progressPdf, 'Stripe 2'), true);
+  assert.equal(pdfIncludes(built.progressPdf, 'No date'), false);
+  assert.equal(pdfIncludes(built.progressPdf, 'Invalid Date'), false);
+  assert.match(built.csv, /1 2012-01-01/);
+  assert.equal(built.csv.includes('No date'), false);
+  assert.equal(built.csv.includes('Invalid Date'), false);
+
+  const parsed = parseStudentBackup(built.json);
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok) return;
+  const storage = memory();
+  storage.setItem('matboard.studentEdition.v1', JSON.stringify(journal('local', 1)));
+  applyBackupToMemory(storage, parsed.file, 'replace', { rank: emptyRankPhotoStore(), bracket: {} });
+  const restored = loadStudentReport(storage);
+  assert.equal(restored.rank?.tapeCount, 3);
+  assert.deepEqual(restored.rank?.tapeDates, ['2012-01-01', '', '', '']);
+
+  const raw = JSON.parse(built.json) as { report: { rank?: { tapeDates?: unknown } } };
+  delete raw.report.rank?.tapeDates;
+  const older = parseStudentBackup(JSON.stringify(raw));
+  assert.equal(older.ok, true);
+  if (!older.ok) return;
+  applyBackupToMemory(storage, older.file, 'replace', { rank: emptyRankPhotoStore(), bracket: {} });
+  const fromOlder = loadStudentReport(storage);
+  assert.equal(fromOlder.rank?.tapeCount, 3);
+  assert.deepEqual(fromOlder.rank?.tapeDates, ['', '', '', '']);
+  assert.equal(fromOlder.profile.belt, 'blue');
+});
+
 test('restore refuses a coach file, and clear warns before it empties the journal', async () => {
   const refused = parseStudentBackup(JSON.stringify({ kind: 'coach-plan', schemaVersion: 2 }));
   assert.equal(refused.ok, false);

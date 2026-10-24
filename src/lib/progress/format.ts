@@ -6,7 +6,7 @@
 
 import { splitCombinedDivision } from '../divisionFields.ts';
 import { fundamentalLevelOf, isFundamentalLevel } from '../fundamentals.ts';
-import { expandLineage } from '../studentRank.ts';
+import { expandLineage, stripeDateText } from '../studentRank.ts';
 import { asRecord } from '../plainValue.ts';
 import { canonicalFundamentalsCatalogId } from './catalog.ts';
 import { emptyCompetition, seedGamesFromJournal } from './competition.ts';
@@ -1127,9 +1127,16 @@ function readTapeDates(value: unknown, label: string, errors: string[]): RankTap
   }
   if (value.length > RANK_TAPE_MAX) errors.push(`${label} has more than 4 dates.`);
   for (let index = 0; index < Math.min(value.length, RANK_TAPE_MAX); index += 1) {
-    dates[index] = readDate(value[index], `${label} ${index + 1}`, errors, false);
+    dates[index] = readOptionalStripeDate(value[index]);
   }
   return dates;
+}
+
+/** A stripe date is optional. Blank, missing, or unreadable values stay empty and still count. */
+function readOptionalStripeDate(value: unknown): string {
+  if (value == null || value === '') return '';
+  if (typeof value !== 'string' || !DATE_RE.test(value) || !realDay(value)) return '';
+  return value;
 }
 
 function blankTapeDates(): RankTapeDates {
@@ -2282,8 +2289,11 @@ function rankCsvRow(
   parentId: string,
   note: string,
 ): string {
-  const dates = rank.tapeDates
-    .map((date, index) => (date ? `${index + 1} ${date}` : ''))
+  const dates = (rank.tapeDates ?? [])
+    .map((date, index) => {
+      const when = stripeDateText(date);
+      return when ? `${index + 1} ${when}` : '';
+    })
     .filter(Boolean)
     .join('; ');
   return csvRow([

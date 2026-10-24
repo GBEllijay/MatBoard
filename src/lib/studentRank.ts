@@ -41,6 +41,48 @@ export function emptyTapeDates(): RankTapeDates {
   return ['', '', '', ''];
 }
 
+/** A real stripe date, or empty when the stripe was saved without one. */
+export function stripeDateText(date: string | null | undefined): string {
+  const trimmed = (date ?? '').trim();
+  return isIsoDate(trimmed) ? trimmed : '';
+}
+
+/**
+ * One stripe on a report. Slot order is 1 to 4.
+ * A dated stripe keeps its date. An undated stripe is named with no date after it.
+ */
+export function stripeReportLine(slot: number, date: string | null | undefined): string {
+  const when = stripeDateText(date);
+  return when ? `Stripe ${slot}: ${when}` : `Stripe ${slot}`;
+}
+
+/** Older files can omit tape dates. The stripe count still stands. */
+export function normalizeStoredRank(rank: Partial<StudentRank> | null | undefined): StudentRank {
+  const source = rank ?? {};
+  const tapeCount = clampTapeCount(source.tapeCount);
+  const history = (source.history ?? []).map((row) => {
+    const count = clampTapeCount(row.tapeCount);
+    return {
+      id: row.id,
+      belt: row.belt,
+      awardedOn: typeof row.awardedOn === 'string' ? row.awardedOn : '',
+      tapeCount: count,
+      tapeDates: datesForCount(row.tapeDates ?? [], count),
+    };
+  });
+  const next: StudentRank = {
+    tapeCount,
+    awardedOn: typeof source.awardedOn === 'string' ? source.awardedOn : '',
+    tapeDates: datesForCount(source.tapeDates ?? [], tapeCount),
+    history,
+    lineage: [...(source.lineage ?? [])],
+  };
+  if (source.pictureNote) next.pictureNote = source.pictureNote;
+  if (source.pictureCount) next.pictureCount = source.pictureCount;
+  if (source.pictures) next.pictures = source.pictures.map((picture) => ({ ...picture }));
+  return next;
+}
+
 export type StripeCountAction = 'add' | 'remove' | 'trim';
 
 /**
@@ -296,14 +338,20 @@ function rankHasMark(rank: StudentRank): boolean {
   return Boolean(rank.awardedOn) || rank.tapeCount > 0 || rank.tapeDates.some((date) => date.trim());
 }
 
-function datesForCount(dates: readonly string[], count: number): RankTapeDates {
+function datesForCount(dates: readonly string[] | null | undefined, count: number): RankTapeDates {
   const next = emptyTapeDates();
-  for (let index = 0; index < count; index += 1) next[index] = dates[index] ?? '';
+  const source = dates ?? [];
+  for (let index = 0; index < count; index += 1) next[index] = stripeDateText(source[index]);
   return next;
 }
 
-function copyDates(dates: readonly string[]): RankTapeDates {
+function copyDates(dates: readonly string[] | null | undefined): RankTapeDates {
   return datesForCount(dates, RANK_TAPE_MAX);
+}
+
+function clampTapeCount(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) return 0;
+  return Math.min(RANK_TAPE_MAX, value);
 }
 
 function cleanDate(date: string): string {

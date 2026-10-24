@@ -578,6 +578,61 @@ test('rank tape count and dates round-trip, and a file without rank does not cle
   assert.match(merged.conflicts.join('\n'), /Rank date was kept/);
 });
 
+test('an undated stripe still exports, and an older rank without dates still imports', () => {
+  const report = sampleReport();
+  const ranked = {
+    ...report,
+    profile: { ...report.profile, belt: 'blue' as const },
+    rank: {
+      tapeCount: 3,
+      awardedOn: '2011-04-02',
+      tapeDates: ['2012-01-01', '', '', ''] as [string, string, string, string],
+      history: [
+        {
+          id: 'rank-white',
+          belt: 'white' as const,
+          awardedOn: '2008-06-01',
+          tapeCount: 4,
+          tapeDates: ['', '2009-03-01', '', ''] as [string, string, string, string],
+        },
+      ],
+    },
+  };
+  const csv = exportProgressCsv(ranked);
+  assert.match(csv, /Rank,student-alex,2011-04-02/);
+  assert.match(csv, /1 2012-01-01/);
+  assert.equal(csv.includes('No date'), false);
+  assert.equal(csv.includes('Invalid Date'), false);
+  assert.match(csv, /,3,blue,/);
+  assert.match(csv, /2 2009-03-01/);
+  assert.equal(csv.includes('1 2008'), false);
+
+  const older = {
+    ...ranked,
+    rank: {
+      tapeCount: 3,
+      awardedOn: '2011-04-02',
+      history: [
+        {
+          id: 'rank-white',
+          belt: 'white',
+          awardedOn: '',
+          tapeCount: 2,
+          tapeDates: ['sometime', '', null, ''],
+        },
+      ],
+    },
+  };
+  const parsed = parseProgressPacket(JSON.stringify(older));
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok || parsed.value.kind !== 'student-progress-report') return;
+  assert.equal(parsed.value.rank?.tapeCount, 3);
+  assert.deepEqual(parsed.value.rank?.tapeDates, ['', '', '', '']);
+  assert.equal(parsed.value.rank?.history[0]?.tapeCount, 2);
+  assert.deepEqual(parsed.value.rank?.history[0]?.tapeDates, ['', '', '', '']);
+  assert.equal(parsed.value.profile.belt, 'blue');
+});
+
 test('version 1 files import, and journal A/B/C tags become the standing game', () => {
   const current = sampleReport();
   const legacy = { ...current, schemaVersion: 1 } as Omit<StudentProgressReport, 'competition'> & { schemaVersion: number };

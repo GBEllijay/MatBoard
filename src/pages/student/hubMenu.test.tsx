@@ -116,6 +116,7 @@ test('every former hub item is linked from a group menu', () => {
     assert.equal(rail?.classList.contains('belt-rail--white'), true);
     assert.equal(rail?.classList.contains('belt-rail--degrees'), true);
     assert.equal(rail?.classList.contains(`belt-rail--stripes-${row.stripes}`), true);
+    assert.equal(link?.querySelectorAll('.belt-slot').length, 4);
   }
   assert.equal(progress?.host.querySelector('.s-rank-summary .s-belt')?.getAttribute('data-stripes'), '0');
   const compete = pages[2];
