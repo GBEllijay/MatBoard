@@ -136,7 +136,7 @@
 
 .student.student--arena.student--rank a.ink-btn--save:not(.play-exit),
 .student.student--arena.student--belt a.ink-btn--save:not(.play-exit) {
-  color: #000000;
+  color: var(--cta-ink);
 }
 
 .student.student--arena.student--rank .rank-stack > a.ink-btn,

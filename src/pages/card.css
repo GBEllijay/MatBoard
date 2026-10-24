@@ -120,8 +120,16 @@ body:has(.card),
 }
 
 .card__btn--primary {
-  background: linear-gradient(180deg, #f0c24b, #d4a017 58%, #a87412);
-  color: #1c140e;
+  background: var(--cta-bg, #fff);
+  color: var(--cta-ink, #0e1726);
+  box-shadow: var(--cta-shadow, 0 10px 30px -8px rgba(255, 255, 255, 0.25), inset 0 -2px 0 rgba(14, 23, 38, 0.12));
+}
+
+@media (hover: hover) {
+  .card__btn--primary:hover {
+    background: #f4f7fb;
+    color: var(--cta-ink, #0e1726);
+  }
 }
 
 .card__btn--secondary {
@@ -131,7 +139,7 @@ body:has(.card),
 }
 
 .card__btn:focus-visible {
-  outline: 3px solid #f5f1e8;
+  outline: 3px solid var(--cta-focus, #004eba);
   outline-offset: 3px;
 }
 

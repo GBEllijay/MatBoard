@@ -12,6 +12,12 @@
   --white-ink: #14161c;
   --logo-yellow: #fcc000;
   --logo-blue: #004eba;
+  /* Shared primary CTA. Yellow stays on the logo. Light pages add an edge so the fill still reads. */
+  --cta-bg: #fff;
+  --cta-ink: #0e1726;
+  --cta-shadow: 0 10px 30px -8px rgba(255, 255, 255, 0.25), inset 0 -2px 0 rgba(14, 23, 38, 0.12);
+  --cta-shadow-light: 0 8px 18px -10px rgba(14, 23, 38, 0.45), inset 0 0 0 1px rgba(14, 23, 38, 0.28), inset 0 -2px 0 rgba(14, 23, 38, 0.12);
+  --cta-focus: #004eba;
   /* Logo blue for ON / selected / active chrome. Labels and knobs stay cream so the fill reads on the dark mat. */
   --permission-on: var(--logo-blue);
   --mat-fill: #12243a;
@@ -116,9 +122,13 @@ p {
   padding: 0.7rem 1rem;
   border-radius: 999px;
   border: 0;
-  background: var(--logo-yellow);
-  color: #14161c;
   font-weight: 700;
+}
+
+.btn {
+  background: var(--cta-bg);
+  color: var(--cta-ink);
+  box-shadow: var(--cta-shadow);
 }
 
 label.btn {
@@ -131,6 +141,7 @@ label.btn {
   background: rgba(255, 255, 255, 0.08);
   color: var(--ink);
   border: 1px solid var(--line);
+  box-shadow: none;
 }
 
 .controller .btn--ghost,
@@ -150,22 +161,25 @@ label.btn {
 }
 
 .btn--white {
-  background: var(--white);
-  color: var(--white-ink);
+  background: var(--cta-bg);
+  color: var(--cta-ink);
+  box-shadow: var(--cta-shadow);
 }
 
 .btn--blue {
   background: var(--logo-blue);
   color: #fff;
+  box-shadow: none;
 }
 
 .chip--gold {
-  background: var(--gold);
-  color: #1a1404;
+  background: var(--cta-bg);
+  color: var(--cta-ink);
   border-color: transparent;
+  box-shadow: var(--cta-shadow);
 }
 
-/* Selected / pressed chip. Gold chips stay primary actions (Cast, Controller, Rounds). */
+/* Selected / pressed chip. Cast, Controller, and Rounds use the white primary. */
 .chip--on {
   background: var(--permission-on);
   color: var(--white);
@@ -1061,10 +1075,11 @@ button.mode-card__hit {
   padding: 0.4rem 0.75rem;
 }
 
-/* Locked: do not restyle homepage White / Coach / Pro card CTAs. */
+/* Products-page card CTAs use the shared white primary. */
 .home--ladder .mode-card__actions .btn--white {
-  background: var(--white);
-  color: var(--white-ink);
+  background: var(--cta-bg);
+  color: var(--cta-ink);
+  box-shadow: var(--cta-shadow);
 }
 
 .home--ladder .home__hints {
@@ -3269,9 +3284,10 @@ span.role-plan__mark {
 }
 
 .display__chrome .chip--gold {
-  background: var(--gold);
-  color: #1a1404;
+  background: var(--cta-bg);
+  color: var(--cta-ink);
   border-color: transparent;
+  box-shadow: var(--cta-shadow);
 }
 
 /* Compact corner return. Sits above Competitor 1 instead of across the name. */
@@ -3530,8 +3546,9 @@ main.tree:has(> .tier-home) > .tree__bar {
 }
 
 .tv-tip__go {
-  background: var(--gold);
-  color: #1a1404;
+  background: var(--cta-bg);
+  color: var(--cta-ink);
+  box-shadow: var(--cta-shadow);
 }
 
 .tv-tip__dismiss {
@@ -4192,8 +4209,9 @@ main.tree:has(> .tier-home) > .tree__bar {
 }
 
 .pad-call--win {
-  background: var(--logo-yellow);
-  color: #14161c;
+  background: var(--cta-bg);
+  color: var(--cta-ink);
+  box-shadow: var(--cta-shadow);
 }
 
 .pad-call--dq {
@@ -4510,9 +4528,10 @@ label {
   background: #120e08;
 }
 
-.training:not(.training--themed) .btn {
-  background: var(--gold);
-  color: #1a1404;
+.training:not(.training--themed) .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger) {
+  background: var(--cta-bg);
+  color: var(--cta-ink);
+  box-shadow: var(--cta-shadow);
 }
 
 .training:not(.training--themed) .sheet__panel {
@@ -4656,8 +4675,9 @@ label {
 }
 
 .outcome-pick--submission {
-  background: var(--gold);
-  color: #1a1404;
+  background: var(--cta-bg);
+  color: var(--cta-ink);
+  box-shadow: var(--cta-shadow);
 }
 
 .outcome-pick--points {
@@ -4856,9 +4876,10 @@ fieldset {
   padding: 0.7rem 1.15rem;
   border: 0;
   border-radius: 999px;
-  background: var(--gold);
-  color: #1a1404;
+  background: var(--cta-bg);
+  color: var(--cta-ink);
   font-weight: 800;
+  box-shadow: var(--cta-shadow);
 }
 
 @keyframes kenburns-in {
@@ -6530,8 +6551,14 @@ a.saver-folder--link {
 
 .t-score {
   border: 0;
-  background: var(--gold);
-  color: #1a1404;
+  background: var(--cta-bg);
+  color: var(--cta-ink);
+  box-shadow: var(--cta-shadow);
+}
+
+/* Bright bracket cards are white. The inset edge keeps SCORE from disappearing. */
+.tournament--bright .t-match .t-score {
+  box-shadow: var(--cta-shadow-light);
 }
 
 .t-undo {
@@ -10522,9 +10549,10 @@ input.roster-pick__name:focus,
 }
 
 .techniques__chrome-btn--go {
-  background: var(--logo-yellow);
-  color: #14161c;
+  background: var(--cta-bg);
+  color: var(--cta-ink);
   border-color: transparent;
+  box-shadow: var(--cta-shadow);
 }
 
 .techniques__chrome-btn--on {
@@ -11722,11 +11750,15 @@ html.lesson-cover-open body {
 .notes__tree--link {
   min-height: 52px;
   padding: 0.4rem 0.7rem;
-  border-color: #14161c;
-  background: var(--logo-yellow);
-  color: #14161c;
+  border-color: transparent;
+  background: var(--cta-bg);
+  color: var(--cta-ink);
   font-size: 0.95rem;
-  box-shadow: 0 0 0 2px var(--logo-yellow);
+  box-shadow: var(--cta-shadow);
+}
+
+.notes__tree--link .notes__tree-kicker {
+  color: inherit;
 }
 
 .notes__tree--change {
@@ -12324,8 +12356,9 @@ html.lesson-cover-open body {
 }
 
 .home--white .mode-card__actions .btn:not(.btn--ghost) {
-  background: var(--board-white);
-  color: var(--board-ink);
+  background: var(--cta-bg);
+  color: var(--cta-ink);
+  box-shadow: var(--cta-shadow);
 }
 
 .home--white .mode-card__actions .btn--ghost {
@@ -15409,7 +15442,7 @@ a.plan-pick {
 
 /* Side SCORE sits on the wallpaper. Transparent cream type disappears on
    Robots, Ocean, and Stars. A dark pill stays readable. Finals SCORE stays logo blue.
-   Undo is the white secondary, never the yellow primary. */
+   Undo stays the white secondary. The default SCORE uses the shared white primary. */
 .tournament--kids.tournament--bright .t-match .t-score,
 .tournament--kids.tournament--dark .t-match .t-score {
   min-height: 48px;
@@ -17069,8 +17102,9 @@ a.plan-pick {
   min-height: 64px;
   padding: 0.95rem 1.4rem;
   font-size: 1.2rem;
-  background: var(--logo-yellow);
-  color: #14161c;
+  background: var(--cta-bg);
+  color: var(--cta-ink);
+  box-shadow: var(--cta-shadow);
 }
 
 .store-feature {
@@ -17267,4 +17301,127 @@ a.plan-pick {
   transform: translateY(-50%);
   max-width: min(16rem, 24vw);
   z-index: 7;
+}
+
+/* Primary CTA hover, focus, and disabled. Ghost, blue, and danger stay on their own fills.
+   Selected blue controls (Approve, Kids skin, checked-in) and the non-white outcome
+   colors keep their own paint while the pointer is still over them. */
+@media (hover: hover) {
+  .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):not(.review-decision--on):not(.kids-skin__btn--on):not(.roster-card__checkin):not(.outcome-pick--points):not(.outcome-pick--decision):not(.outcome-pick--technical):not(.outcome-pick--medical):not(.outcome-pick--library):hover,
+  .chip--gold:hover,
+  .tv-tip__go:hover,
+  .pad-call--win:hover,
+  .saver__unmute:hover,
+  .t-score:hover,
+  .techniques__chrome-btn--go:hover,
+  .notes__tree--link:hover,
+  .store-hero__buy:hover,
+  .outcome-pick--submission:hover {
+    background: #f4f7fb;
+    color: var(--cta-ink);
+  }
+}
+
+.btn:focus-visible,
+.chip:focus-visible,
+.chip--gold:focus-visible,
+.tv-tip__go:focus-visible,
+.pad-call--win:focus-visible,
+.saver__unmute:focus-visible,
+.t-score:focus-visible,
+.t-undo:focus-visible,
+.techniques__chrome-btn:focus-visible,
+.notes__tree:focus-visible,
+.store-hero__buy:focus-visible,
+.outcome-pick:focus-visible {
+  outline: 3px solid var(--cta-focus);
+  outline-offset: 3px;
+}
+
+.btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
+.pad-call--win:disabled,
+.saver__unmute:disabled,
+.t-score:disabled,
+.techniques__chrome-btn--go:disabled,
+.store-hero__buy:disabled,
+.outcome-pick--submission:disabled {
+  background: #e4ebf4;
+  color: #334155;
+  box-shadow: inset 0 0 0 1px rgba(14, 23, 38, 0.22);
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+/* Left yellow on purpose: owner unlock, Drive/OAuth, and destructive confirms. */
+.home__unlock-form .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger),
+.home__unlock-form .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):hover,
+.home__unlock-form .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
+.drive-connect__actions .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger),
+.drive-connect__actions .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):hover,
+.drive-connect__actions .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
+.drive-connect__providers .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger),
+.drive-connect__providers .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):hover,
+.drive-connect__providers .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
+.drive-connect__folders .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger),
+.drive-connect__folders .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):hover,
+.drive-connect__folders .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
+.drive-handoff .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger),
+.drive-handoff .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):hover,
+.drive-handoff .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
+.drive-session-confirm .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger),
+.drive-session-confirm .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):hover,
+.drive-session-confirm .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
+.drive-session-actions .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger),
+.drive-session-actions .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):hover,
+.drive-session-actions .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
+.drive-picker-sheet .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger),
+.drive-picker-sheet .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):hover,
+.drive-picker-sheet .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
+a.btn[target='_blank']:not(.btn--ghost):not(.btn--blue):not(.btn--danger),
+a.btn[target='_blank']:not(.btn--ghost):not(.btn--blue):not(.btn--danger):hover,
+a.btn[target='_blank']:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
+.tree__confirm .btn:not(.btn--ghost):not(.btn--blue),
+.tree__confirm .btn:not(.btn--ghost):not(.btn--blue):hover,
+.tree__confirm .btn:not(.btn--ghost):not(.btn--blue):disabled,
+.notes__confirm .btn:not(.btn--ghost):not(.btn--blue),
+.notes__confirm .btn:not(.btn--ghost):not(.btn--blue):hover,
+.notes__confirm .btn:not(.btn--ghost):not(.btn--blue):disabled,
+.roster-card__confirm + .btn:not(.btn--ghost):not(.btn--blue),
+.roster-card__confirm + .btn:not(.btn--ghost):not(.btn--blue):hover,
+.roster-card__confirm + .btn:not(.btn--ghost):not(.btn--blue):disabled,
+.invite-confirm .btn:not(.btn--ghost):not(.btn--blue),
+.invite-confirm .btn:not(.btn--ghost):not(.btn--blue):hover,
+.invite-confirm .btn:not(.btn--ghost):not(.btn--blue):disabled,
+.schedule-edit__confirm .btn:not(.btn--ghost):not(.btn--blue),
+.schedule-edit__confirm .btn:not(.btn--ghost):not(.btn--blue):hover,
+.schedule-edit__confirm .btn:not(.btn--ghost):not(.btn--blue):disabled,
+.white-roster__actions .btn:not(.btn--ghost):not(.btn--blue),
+.white-roster__actions .btn:not(.btn--ghost):not(.btn--blue):hover,
+.white-roster__actions .btn:not(.btn--ghost):not(.btn--blue):disabled,
+.btn--danger,
+.btn--danger:hover,
+.btn--danger:disabled {
+  background: var(--logo-yellow);
+  color: #14161c;
+  box-shadow: none;
+}
+
+.home__unlock-form .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
+.drive-connect__actions .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
+.drive-connect__providers .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
+.drive-connect__folders .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
+.drive-handoff .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
+.drive-session-confirm .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
+.drive-session-actions .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
+.drive-picker-sheet .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
+a.btn[target='_blank']:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
+.tree__confirm .btn:not(.btn--ghost):not(.btn--blue):disabled,
+.notes__confirm .btn:not(.btn--ghost):not(.btn--blue):disabled,
+.roster-card__confirm + .btn:not(.btn--ghost):not(.btn--blue):disabled,
+.invite-confirm .btn:not(.btn--ghost):not(.btn--blue):disabled,
+.schedule-edit__confirm .btn:not(.btn--ghost):not(.btn--blue):disabled,
+.white-roster__actions .btn:not(.btn--ghost):not(.btn--blue):disabled,
+.btn--danger:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }

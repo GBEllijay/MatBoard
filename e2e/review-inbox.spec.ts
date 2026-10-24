@@ -131,7 +131,7 @@ test('Sunday review opens the inbox and the coach can submit', async ({ page }) 
   await expect(changes).toBeVisible();
   await expect(reject).toBeVisible();
   await expect(card.getByText('Photo: class.png')).toBeVisible();
-  expect(await fillColor(approve)).toBe('rgb(252, 192, 0)');
+  expect(await fillColor(approve)).toBe('rgb(255, 255, 255)');
   await page.getByLabel('Note to the coach').fill('Show the knee cut.');
   await changes.click();
   await expect(card.getByText('Changes requested')).toBeVisible();

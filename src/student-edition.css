@@ -361,10 +361,62 @@ label.ink-btn {
   min-height: 48px;
   min-width: 8.6rem;
   padding: 0.35rem 1.25rem;
+  background: var(--cta-bg);
+  color: var(--cta-ink);
+  /* Paper is cream. Keep the existing border so the white fill does not vanish. */
+  border-color: var(--cta-ink);
+  font-size: 1.4rem;
+  box-shadow: var(--cta-shadow-light);
+}
+
+.student .ink-btn--save.ink-btn--keep {
   background: var(--logo-yellow);
   color: #14161c;
   border-color: #14161c;
-  font-size: 1.4rem;
+  box-shadow: none;
+}
+
+@media (hover: hover) {
+  .student .ink-btn--save:hover:not(:disabled) {
+    background: #f4f7fb;
+    color: var(--cta-ink);
+  }
+
+  .student .ink-btn--save.ink-btn--keep:hover,
+  .student .student-clear-zone .ink-btn--save:hover,
+  .student .rank-lineage-editor .ink-btn--save:hover,
+  .student .student-import-confirm .ink-btn--save:hover {
+    background: var(--logo-yellow);
+    color: #14161c;
+  }
+
+  .student .student-clear-zone .ink-btn--save:hover,
+  .student .rank-lineage-editor .ink-btn--save:hover,
+  .student .student-import-confirm .ink-btn--save:hover {
+    background: #0c2344;
+    color: #f5f5f7;
+  }
+}
+
+.student .ink-btn--save:focus-visible {
+  outline: 3px solid var(--cta-focus);
+  outline-offset: 3px;
+}
+
+.student .ink-btn--save:not(.ink-btn--keep):disabled {
+  background: #e4ebf4;
+  color: #334155;
+  border-color: #334155;
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+.student .student-clear-zone .ink-btn--save:disabled,
+.student .rank-lineage-editor .ink-btn--save:disabled,
+.student .student-import-confirm .ink-btn--save:disabled {
+  background: #0c2344;
+  color: #f5f5f7;
+  opacity: 0.45;
 }
 
 .ink-btn--wide {

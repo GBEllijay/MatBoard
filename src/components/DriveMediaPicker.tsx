@@ -113,7 +113,7 @@ export function DriveMediaPicker({ open, kind, stacked = false, onClose, onDone 
 
   return (
     <Sheet
-      className="sheet--dock-footer"
+      className="sheet--dock-footer drive-picker-sheet"
       open={open}
       title={DRIVE_PICK_TITLE}
       stacked={stacked}

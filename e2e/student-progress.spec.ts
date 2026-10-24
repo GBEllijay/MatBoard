@@ -34,8 +34,8 @@ test('calendar marks a journal day, stores an event, and can show the gym schedu
   await expect(calendar).toHaveCSS('background-color', 'rgb(0, 0, 0)');
   await expect(calendar).toHaveCSS('font-family', /Inter/);
   await expect(page.getByRole('button', { name: 'Previous month' })).toHaveCSS('min-height', '56px');
-  await expect(page.getByRole('button', { name: 'Add event', exact: true })).toHaveCSS('background-color', 'rgb(245, 245, 247)');
-  await expect(page.getByRole('button', { name: 'Add event', exact: true })).toHaveCSS('color', 'rgb(0, 0, 0)');
+  await expect(page.getByRole('button', { name: 'Add event', exact: true })).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+  await expect(page.getByRole('button', { name: 'Add event', exact: true })).toHaveCSS('color', 'rgb(14, 23, 38)');
   await shot(page, 'student-calendar-390');
 
   await page.getByLabel('Event title').fill('Saturday open mat');

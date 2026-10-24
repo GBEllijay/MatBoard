@@ -109,8 +109,8 @@ test('each invite role uses the 2026-10-11 binder and keeps its switches', async
   await expect(page.getByText('Generate instructor invite')).toBeVisible();
   await expect(page.locator('.invite-form__note')).toHaveText(NOTE);
   const issue = page.getByRole('button', { name: 'Issue invite' });
-  await expect(issue).toHaveCSS('background-color', 'rgb(252, 192, 0)');
-  await expect(issue).toHaveCSS('color', 'rgb(20, 22, 28)');
+  await expect(issue).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+  await expect(issue).toHaveCSS('color', 'rgb(14, 23, 38)');
 
   const row = page.locator('.role-options__row');
   const fit = await row.evaluate((el) => el.scrollWidth <= el.clientWidth + 2);

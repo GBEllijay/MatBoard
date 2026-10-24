@@ -32,7 +32,7 @@ test('plain Coach keeps Adult, locks Competition, and Kids starts with a Game be
   const adultFill = await adult.evaluate((el) => getComputedStyle(el).backgroundColor);
   const addFill = await page.getByRole('button', { name: 'Add technique', exact: true }).evaluate((el) => getComputedStyle(el).backgroundColor);
   expect(adultFill).toBe('rgb(0, 78, 186)');
-  expect(addFill).toBe('rgb(252, 192, 0)');
+  expect(addFill).toBe('rgb(255, 255, 255)');
   await expect(page.getByRole('heading', { name: 'Technique / Drill 3', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Game', exact: true })).toHaveCount(0);
   await page.screenshot({ path: '/opt/cursor/artifacts/lesson-template-adult-390.png' });

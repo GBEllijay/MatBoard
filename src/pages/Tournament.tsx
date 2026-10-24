@@ -720,7 +720,7 @@ export function TournamentPage() {
           <>
             <button
               type="button"
-              className="btn"
+              className="btn btn--danger"
               onClick={() => {
                 resetTournament();
                 setConfirmReset(false);
