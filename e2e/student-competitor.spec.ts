@@ -40,7 +40,8 @@ test('competitor tracker, game, weight, calendar, and coach import', async ({ br
   await page.getByLabel('Tournament name').fill('Spring Open');
   await page.getByLabel('Tournament date').fill(today);
   await page.getByLabel('Tournament location').fill('Atlanta');
-  await page.getByLabel('Division and weight class').fill('Adult Blue Middle');
+  await page.getByLabel('Division', { exact: true }).fill('Adult Blue');
+  await page.getByLabel('Weight class', { exact: true }).fill('Middle');
   await page.getByLabel('Registration deadline').fill(today);
   await page.getByLabel('Tournament link').fill('https://example.com/spring');
   await page.getByRole('button', { name: 'Entered', exact: true }).click();
@@ -125,7 +126,7 @@ test('competitor tracker, game, weight, calendar, and coach import', async ({ br
   await expect(found).toContainText('Spring Open');
   await expect(found).toContainText('Win · Sam · Sub — closed the guard');
   await journalSearch.fill('Middle');
-  await expect(found).toContainText('Adult Blue Middle');
+  await expect(found).toContainText('Adult Blue · Middle');
   await journalSearch.fill('Final');
   await expect(page.getByRole('region', { name: 'Competition results' })).toHaveCount(0);
   await journalSearch.fill('Sam');

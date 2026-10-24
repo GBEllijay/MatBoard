@@ -4,6 +4,7 @@
  * one and vanish on the other.
  */
 
+import { tournamentClassLine } from './divisionFields.ts';
 import { competitionOf } from './progress/competition.ts';
 import { checklistLevelLine, fundamentalLevelOf, proficiencySummary } from './fundamentals.ts';
 import type { CompetitionMatch, JournalEntry, MatchMethod, ProgressBelt, StudentProgressReport } from './progress/types.ts';
@@ -216,7 +217,7 @@ function competitionBlock(report: StudentProgressReport): ReportBlock {
   }
   if (!competition.tournaments.length) lines.push('No tournaments recorded.');
   for (const event of competition.tournaments) {
-    lines.push(`${event.date || 'No date'} ${event.name} (${event.status}) ${event.division}`.trim());
+    lines.push(`${event.date || 'No date'} ${event.name} (${event.status}) ${tournamentClassLine(event)}`.trim());
   }
   const matches = competition.results.flatMap((result) => result.matches);
   const wins = matches.filter((match) => match.result === 'win').length;

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { tournamentClassLine } from '../lib/divisionFields';
 import {
   formatWeight,
   isUpcomingTournament,
@@ -63,7 +64,7 @@ export function StudentCompetitionPlan({
           {plan.tournaments.map((tournament) => (
             <li key={tournament.id}>
               {tournamentStatusLabel(tournament.status)} · {tournament.name} · {tournament.date}
-              {tournament.division ? ` · ${tournament.division}` : ''}
+              {tournamentClassLine(tournament) ? ` · ${tournamentClassLine(tournament)}` : ''}
               {tournament.location ? ` · ${tournament.location}` : ''}
               {tournament.targetWeight != null ? ` · target ${formatWeight(tournament.targetWeight, tournament.targetUnit)}` : ''}
               {tournament.goals.length

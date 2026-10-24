@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { exportProgressPacket } from './progress/format.ts';
+import { addTournament } from './studentCompetition.ts';
 import { addJournalClip, addJournalEntry, blankStudentReport, loadStudentReport } from './studentEdition.ts';
 import { setRankLineage } from './studentRank.ts';
 import { saveAssessment } from './studentAssessment.ts';
@@ -222,4 +223,51 @@ test('a video bundle over the backup cap explains itself', () => {
   const pdf = textToPdf(['Progress report', 'Self-assessment']);
   assert.equal(pdfIncludes(pdf, '%PDF'), true);
   assert.equal(pdfIncludes(pdf, 'Progress report'), true);
+});
+
+test('an older backup splits a clear division and weight class and keeps an unclear one', () => {
+  const report = addTournament(
+    blankStudentReport(30),
+    {
+      name: 'Legacy Open',
+      date: '2026-12-01',
+      location: 'Atlanta',
+      division: 'Adult Blue / Feather',
+      deadline: '',
+      link: '',
+      status: 'considering',
+      targetWeight: '',
+      targetUnit: 'lb',
+    },
+    31,
+  );
+  const packet = JSON.parse(exportProgressPacket(report)) as {
+    competition: { tournaments: { division: string; weightClass?: string }[] };
+  };
+  packet.competition.tournaments[0].division = 'Adult Blue / Feather';
+  delete packet.competition.tournaments[0].weightClass;
+  const backup = {
+    advantage: 'student-journal-backup',
+    version: 1,
+    exportedAt: '2026-10-24T00:00:00.000Z',
+    report: packet,
+    assessment: { entries: [] },
+    scouting: [],
+    films: [],
+  };
+  const parsed = parseStudentBackup(JSON.stringify(backup));
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok) return;
+  assert.equal(parsed.file.report.competition?.tournaments[0].division, 'Adult Blue');
+  assert.equal(parsed.file.report.competition?.tournaments[0].weightClass, 'Feather');
+  const lines = progressReportLines(parsed.file.report, { entries: [] });
+  assert.ok(lines.some((line) => line.includes('Adult Blue · Feather')));
+
+  packet.competition.tournaments[0].division = 'Adult Blue Middle';
+  delete packet.competition.tournaments[0].weightClass;
+  const plain = parseStudentBackup(JSON.stringify(backup));
+  assert.equal(plain.ok, true);
+  if (!plain.ok) return;
+  assert.equal(plain.file.report.competition?.tournaments[0].division, 'Adult Blue Middle');
+  assert.equal(plain.file.report.competition?.tournaments[0].weightClass, '');
 });

@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { convertWeight, formatWeight, matchingResults, tournamentsOnDate } from './progress/competition.ts';
-import { exportProgressCsv, exportProgressPacket, parseProgressPacket } from './progress/format.ts';
+import { isKnownWeightClass, splitCombinedDivision, suggestionList, tournamentClassLine } from './divisionFields.ts';
+import { convertWeight, formatWeight, matchingResults, textHits, tournamentHaystack, tournamentsOnDate } from './progress/competition.ts';
+import { exportProgressCsv, exportProgressPacket, parseProgressCsv, parseProgressPacket } from './progress/format.ts';
+import { progressReportPdf } from './reportPdf.ts';
+import { extractPdfText } from './simplePdf.ts';
+import { progressReportLines } from './studentReport.ts';
 import {
   addStudent,
   getRoster,
@@ -242,4 +246,111 @@ test('journal search finds a result, and coach search uses opponent, tournament,
   assert.equal(searchStudents(people, 'win', plans).length, 0);
   assert.equal(searchStudents(people, 'Sam').length, 1);
   resetRoster();
+});
+
+test('a combined division splits only when the weight class is clear', () => {
+  assert.deepEqual(splitCombinedDivision('Adult Blue / Feather'), { division: 'Adult Blue', weightClass: 'Feather' });
+  assert.deepEqual(splitCombinedDivision('Master 2 / Light Feather'), { division: 'Master 2', weightClass: 'Light Feather' });
+  assert.deepEqual(splitCombinedDivision('Kids|Rooster'), { division: 'Kids', weightClass: 'Rooster' });
+  assert.deepEqual(splitCombinedDivision('Adult - Open Class'), { division: 'Adult', weightClass: 'Open Class' });
+  assert.deepEqual(splitCombinedDivision('Juvenile, Ultra-Heavy'), { division: 'Juvenile', weightClass: 'Ultra-Heavy' });
+  assert.deepEqual(splitCombinedDivision('Adult / Feather Gi'), { division: 'Adult', weightClass: 'Feather Gi' });
+  assert.deepEqual(splitCombinedDivision('Adult Blue Middle'), { division: 'Adult Blue Middle', weightClass: '' });
+  assert.deepEqual(splitCombinedDivision('No-Gi'), { division: 'No-Gi', weightClass: '' });
+  assert.deepEqual(splitCombinedDivision('Adult Blue, Gi'), { division: 'Adult Blue, Gi', weightClass: '' });
+  assert.deepEqual(splitCombinedDivision('Feather'), { division: 'Feather', weightClass: '' });
+  assert.deepEqual(splitCombinedDivision(''), { division: '', weightClass: '' });
+  assert.equal(isKnownWeightClass('Medium Heavy'), true);
+  assert.equal(isKnownWeightClass('Open'), true);
+  assert.equal(isKnownWeightClass('Gi'), false);
+  assert.deepEqual(suggestionList(['Adult', 'Master 1'], ['Adult Blue'], 'blue'), ['Adult Blue']);
+  assert.deepEqual(suggestionList(['Adult', 'Master 1', 'Gi'], [], 'a'), ['Adult', 'Master 1']);
+  assert.equal(tournamentClassLine({ division: 'Adult', weightClass: 'Feather' }), 'Adult · Feather');
+  assert.equal(tournamentClassLine({ division: 'Adult Blue Middle' }), 'Adult Blue Middle');
+});
+
+test('division and weight class round-trip, and an older file splits only a clear pair', () => {
+  let report = addTournament(
+    blankStudentReport(60),
+    {
+      name: 'Spring Open',
+      date: '2026-11-02',
+      location: 'Atlanta',
+      division: 'Adult Blue',
+      weightClass: 'Feather',
+      deadline: '',
+      link: '',
+      status: 'entered',
+      targetWeight: '',
+      targetUnit: 'lb',
+    },
+    61,
+  );
+  const stored = report.competition?.tournaments[0];
+  assert.equal(stored?.division, 'Adult Blue');
+  assert.equal(stored?.weightClass, 'Feather');
+  assert.equal(textHits(tournamentHaystack(stored!), 'feather'), true);
+  assert.equal(textHits(tournamentHaystack(stored!), 'adult blue'), true);
+  assert.equal(textHits(tournamentHaystack(stored!), 'adult blue / feather'), true);
+  assert.equal(textHits(tournamentHaystack(stored!), 'rooster'), false);
+
+  const parsed = parseProgressPacket(exportProgressPacket(report));
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok || parsed.value.kind !== 'student-progress-report') return;
+  assert.equal(parsed.value.competition?.tournaments[0].division, 'Adult Blue');
+  assert.equal(parsed.value.competition?.tournaments[0].weightClass, 'Feather');
+
+  const csv = exportProgressCsv(parsed.value);
+  const table = parseProgressCsv(csv);
+  assert.equal('error' in table, false);
+  if ('error' in table) return;
+  const weightAt = table.headers.indexOf('Weight class');
+  const divisionAt = table.headers.indexOf('Category');
+  const sheetAt = table.headers.indexOf('Sheet');
+  const tournamentRow = table.rows.find((row) => row[sheetAt] === 'Tournament');
+  assert.ok(tournamentRow);
+  assert.equal(tournamentRow[divisionAt], 'Adult Blue');
+  assert.equal(tournamentRow[weightAt], 'Feather');
+  assert.equal(table.headers.at(-1), 'Weight class');
+
+  const olderHeader = table.headers.filter((header) => header !== 'Weight class');
+  const olderRow = tournamentRow.slice(0, olderHeader.length);
+  const olderCsv = `${olderHeader.join(',')}\r\n${olderRow.join(',')}\r\n`;
+  const olderTable = parseProgressCsv(olderCsv);
+  assert.equal('error' in olderTable, false);
+  if ('error' in olderTable) return;
+  assert.equal(olderTable.headers.includes('Weight class'), false);
+  assert.equal(olderTable.rows[0]?.[divisionAt], 'Adult Blue');
+
+  const lines = progressReportLines(parsed.value, { entries: [] }).join('\n');
+  assert.match(lines, /Spring Open \(entered\) Adult Blue · Feather/);
+  const pdf = extractPdfText(progressReportPdf(parsed.value, { entries: [] }, {}, '2026-10-24'));
+  assert.match(pdf, /Adult Blue · Feather/);
+
+  const raw = JSON.parse(exportProgressPacket(report)) as {
+    competition: { tournaments: { division: string; weightClass?: string }[] };
+  };
+  raw.competition.tournaments[0].division = 'Adult Blue / Feather';
+  delete raw.competition.tournaments[0].weightClass;
+  const migrated = parseProgressPacket(JSON.stringify(raw));
+  assert.equal(migrated.ok, true);
+  if (!migrated.ok || migrated.value.kind !== 'student-progress-report') return;
+  assert.equal(migrated.value.competition?.tournaments[0].division, 'Adult Blue');
+  assert.equal(migrated.value.competition?.tournaments[0].weightClass, 'Feather');
+
+  raw.competition.tournaments[0].division = 'Adult Blue Middle';
+  delete raw.competition.tournaments[0].weightClass;
+  const kept = parseProgressPacket(JSON.stringify(raw));
+  assert.equal(kept.ok, true);
+  if (!kept.ok || kept.value.kind !== 'student-progress-report') return;
+  assert.equal(kept.value.competition?.tournaments[0].division, 'Adult Blue Middle');
+  assert.equal(kept.value.competition?.tournaments[0].weightClass, '');
+
+  raw.competition.tournaments[0].division = 'Adult Blue / Feather';
+  raw.competition.tournaments[0].weightClass = 'Middle';
+  const explicit = parseProgressPacket(JSON.stringify(raw));
+  assert.equal(explicit.ok, true);
+  if (!explicit.ok || explicit.value.kind !== 'student-progress-report') return;
+  assert.equal(explicit.value.competition?.tournaments[0].division, 'Adult Blue / Feather');
+  assert.equal(explicit.value.competition?.tournaments[0].weightClass, 'Middle');
 });
