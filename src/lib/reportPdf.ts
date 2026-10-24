@@ -101,7 +101,7 @@ export function chartCenter(box: RadarBox): { x: number; y: number } {
 }
 
 function metaLine(identity: ReportIdentity, issuedOn: string): string {
-  return `${identity.belt}  ·  ${identity.gym}  ·  Started ${identity.started}  ·  ${issuedOn}`;
+  return `Gym: ${identity.gym}  ·  Started: ${identity.started}  ·  ${identity.belt}  ·  ${issuedOn}`;
 }
 
 function freshPage(): PageState {
@@ -141,7 +141,7 @@ function drawWrapped(state: PageState, value: string, size: number, font: 'regul
 
 function drawIdentity(state: PageState, title: string, identity: ReportIdentity, issuedOn: string) {
   drawWrapped(state, title, 22, 'bold', NAVY, 4);
-  drawWrapped(state, identity.name, 16, 'bold', INK, 4);
+  drawWrapped(state, `Student: ${identity.name}`, 16, 'bold', INK, 4);
   drawWrapped(state, metaLine(identity, issuedOn), 10, 'regular', MUTED, 4);
   state.top += 8;
 }

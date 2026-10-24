@@ -19,6 +19,7 @@ import {
   updateJournalClip,
   blankStudentReport,
   decodeJournalBody,
+  setStudentProfile,
   fundamentalsBoard,
   hideFundamental,
   loadStudentReport,
@@ -528,4 +529,62 @@ test('an older combined note stays readable, and a Stop doing line splits out', 
     notes: 'collar deeper',
   });
   assert.equal(viewJournalEntry(again.journal[0]).stopDoing, 'posting the near hand');
+});
+
+test('a fresh journal starts white, and a file without name, gym, or start date keeps its cards', () => {
+  const fresh = blankStudentReport(4);
+  assert.equal(fresh.profile.belt, 'white');
+  assert.equal(fresh.profile.displayName, '');
+  assert.equal(fresh.profile.gymName, '');
+  assert.equal(fresh.profile.startedOn, '');
+  assert.equal(fresh.journal.length, 0);
+  assert.equal(fresh.rank?.tapeCount, 0);
+  assert.equal(fresh.competition?.tournaments.length, 0);
+  assert.equal(JSON.stringify(fresh).includes('Pan Pacific'), false);
+  assert.equal(JSON.stringify(fresh).includes('(mock)'), false);
+
+  const storage = memoryStorage();
+  const written = addJournalEntry(
+    blankStudentReport(8),
+    {
+      date: '2026-04-02',
+      className: 'Fundamentals',
+      gameTag: '',
+      techniques: [{ id: 'sweep.scissor', name: 'Scissor sweep' }],
+      partners: 'Alex',
+      drills: '',
+      rolls: '',
+      notes: 'collar grip deeper',
+    },
+    9,
+  );
+  const raw = JSON.parse(JSON.stringify(written)) as {
+    profile: { displayName?: string; gymName?: string; startedOn?: string; belt: string };
+    journal: { id: string }[];
+  };
+  delete raw.profile.displayName;
+  delete raw.profile.gymName;
+  delete raw.profile.startedOn;
+  raw.profile.belt = 'blue';
+  storage.setItem(STUDENT_EDITION_STORAGE_KEY, JSON.stringify(raw));
+  const loaded = loadStudentReport(storage);
+  assert.equal(loaded.profile.displayName, '');
+  assert.equal(loaded.profile.gymName, '');
+  assert.equal(loaded.profile.startedOn, '');
+  assert.equal(loaded.profile.belt, 'blue');
+  assert.equal(loaded.journal.length, 1);
+  assert.equal(loaded.journal[0]?.id, written.journal[0]?.id);
+  assert.match(loaded.journal[0]?.body ?? '', /collar grip deeper/);
+  const named = setStudentProfile(loaded, { displayName: 'Ada Student', gymName: 'GB Ellijay' }, 12);
+  assert.equal(named.profile.startedOn, '');
+  assert.equal(named.profile.belt, 'blue');
+  assert.equal(named.journal.length, 1);
+  const dated = setStudentProfile(named, { startedOn: '2014-03-01' }, 13);
+  saveStudentReport(storage, dated);
+  const roundTrip = loadStudentReport(storage);
+  assert.equal(roundTrip.profile.displayName, 'Ada Student');
+  assert.equal(roundTrip.profile.gymName, 'GB Ellijay');
+  assert.equal(roundTrip.profile.startedOn, '2014-03-01');
+  assert.equal(roundTrip.profile.belt, 'blue');
+  assert.match(roundTrip.journal[0]?.body ?? '', /collar grip deeper/);
 });

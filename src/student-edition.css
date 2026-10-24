@@ -1848,6 +1848,19 @@ input.sr-only.student-film-file {
   gap: 0.55rem;
 }
 
+.profile-fields,
+.profile-fields .ink__label,
+.profile-fields input,
+.profile-fields .student-quiet,
+.profile-fields [role='alert'] {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+.profile-fields input {
+  min-height: 56px;
+  font-size: 17px;
+}
+
 .report-sheet {
   width: min(860px, calc(100% - 2rem));
   margin: 1.25rem auto 2.5rem;

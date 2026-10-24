@@ -53,6 +53,11 @@ export const TRAINING_EXTRAS: readonly MenuLink[] = [
   { label: 'Log a roll result', note: '', to: '/student/results' },
 ];
 
+export const PROFILE_LINK: MenuLink = {
+  label: 'My profile',
+  note: 'Name, gym, and start date',
+  to: '/student/profile',
+};
 const RANK_LINK: MenuLink = { label: 'My rank', note: 'Belt and stripes', to: '/student/rank' };
 const BELT_LINK: MenuLink = { label: 'Belt progress', note: 'Checkpoints and goals', to: '/student/rubric' };
 const FUNDAMENTALS_LINK: MenuLink = { label: 'Fundamentals', note: 'Levels', to: '/student/fundamentals' };
@@ -118,6 +123,7 @@ export function groupMenuLinks(belt = 'white'): MenuLink[] {
   return [
     ...TRAINING_LINKS,
     ...TRAINING_EXTRAS,
+    PROFILE_LINK,
     ...progressLinks(belt),
     ...COMPETE_LINKS,
     ...COMPETE_EXTRAS,
@@ -150,6 +156,7 @@ const PAGE_PARENT: Record<string, string> = {
   '/student/cards': '/student/training',
   '/student/calendar': '/student/training',
   '/student/videos': '/student/training',
+  '/student/profile': '/student/progress',
   '/student/rank': '/student/progress',
   '/student/rubric': '/student/progress',
   '/student/belt': '/student/progress',
@@ -193,6 +200,7 @@ export type StudentScreen =
   | 'calendar'
   | 'calendar-day'
   | 'rubric'
+  | 'profile'
   | 'rank'
   | 'share'
   | 'competitor'
@@ -221,6 +229,7 @@ export function studentScreen(rest: string): StudentScreen {
     case 'cards':
     case 'fundamentals':
     case 'calendar':
+    case 'profile':
     case 'rank':
     case 'share':
     case 'competitor':

@@ -75,7 +75,7 @@ export function RankPage() {
           <section aria-label="Profile">
             <h2>Profile</h2>
             <p className="student-quiet">
-              Your name, gym, and start date print on the progress report and the self-assessment. They stay on this phone.
+              Your name, gym, and start date print on the progress report and the self-assessment. The start date can stay blank. They stay on this phone.
             </p>
             <StudentProfileFields report={report} commit={commit} />
           </section>

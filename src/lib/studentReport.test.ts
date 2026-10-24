@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { exportProgressPacket } from './progress/format.ts';
 import { blankStudentReport, setStudentProfile } from './studentEdition.ts';
 import { addJournalClip } from './studentEdition.ts';
 import { extractPdfText, formatPdfNumber, pdfPageCount, pdfToText } from './simplePdf.ts';
@@ -11,9 +12,11 @@ import {
   parseStudentBackup,
   pdfIncludes,
   progressReportLines,
+  selfAssessmentLines,
   studentBackupNames,
   studentReportPdfName,
 } from './studentBackup.ts';
+import { reportHeaderLines } from './studentReport.ts';
 import { emptyRankPhotoStore } from './rankPhotos.ts';
 import type { ScoutingCard } from './studentScouting.ts';
 import type { StudentFilm } from './studentFilm.ts';
@@ -416,4 +419,45 @@ test('profile fields survive backup, and the assessment file name matches the do
   assert.equal(saved.profile?.startedOn, '2011-03-15');
   assert.equal(saved.profile?.belt, 'black');
   assert.throws(() => setStudentProfile(report, { startedOn: '2026-02-31' }), /YYYY-MM-DD/);
+});
+
+test('report headers use the saved name and fall back only when a field is empty', () => {
+  const empty = blankStudentReport(1);
+  assert.equal(empty.profile.belt, 'white');
+  assert.deepEqual(reportHeaderLines(empty), ['Student: Not named', 'Gym: Not named', 'Belt: White', 'Started: Not set']);
+  const blankReport = progressReportLines(empty, { entries: [] }).join('\n');
+  const blankAssessment = selfAssessmentLines(empty, { entries: [] }).join('\n');
+  assert.match(blankReport, /Student: Not named/);
+  assert.match(blankReport, /Gym: Not named/);
+  assert.match(blankReport, /Started: Not set/);
+  assert.match(blankAssessment, /Student: Not named/);
+  assert.match(blankAssessment, /Started: Not set/);
+
+  const named = setStudentProfile(empty, { displayName: 'Ada Student', gymName: 'GB Ellijay' }, 2);
+  assert.equal(named.profile.belt, 'white');
+  assert.equal(named.profile.startedOn, '');
+  assert.match(progressReportLines(named, { entries: [] }).join('\n'), /Student: Ada Student/);
+  assert.match(progressReportLines(named, { entries: [] }).join('\n'), /Gym: GB Ellijay/);
+  assert.match(progressReportLines(named, { entries: [] }).join('\n'), /Started: Not set/);
+
+  const dated = setStudentProfile(named, { startedOn: '2014-03-01' }, 3);
+  const full = progressReportLines(dated, { entries: [] }).join('\n');
+  assert.match(full, /Started: 2014-03-01/);
+  assert.equal(full.includes('Not named'), false);
+  assert.equal(full.includes('Not set'), false);
+  const packet = JSON.parse(exportProgressPacket(dated)) as {
+    profile: { displayName: string; gymName: string; startedOn: string; belt: string };
+  };
+  assert.equal(packet.profile.displayName, 'Ada Student');
+  assert.equal(packet.profile.gymName, 'GB Ellijay');
+  assert.equal(packet.profile.startedOn, '2014-03-01');
+  assert.equal(packet.profile.belt, 'white');
+  const pdf = extractPdfText(progressReportPdf(dated, { entries: [] }, {}, '2026-10-24'));
+  assert.match(pdf, /Student: Ada Student/);
+  assert.match(pdf, /Gym: GB Ellijay/);
+  assert.match(pdf, /Started: 2014-03-01/);
+  const assessmentPdf = extractPdfText(assessmentReportPdf(empty, { entries: [] }, '2026-10-24'));
+  assert.match(assessmentPdf, /Student: Not named/);
+  assert.match(assessmentPdf, /Gym: Not named/);
+  assert.match(assessmentPdf, /Started: Not set/);
 });

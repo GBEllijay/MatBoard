@@ -48,6 +48,7 @@ test('Student Edition pages go back one level, and a card returns to the card li
     '/student/cards?student=1',
   );
   assert.equal(submenuBackTarget({ pathname: '/student/fundamentals' }), '/student/progress');
+  assert.equal(submenuBackTarget({ pathname: '/student/profile', search: 'student=1' }), '/student/progress?student=1');
   assert.equal(submenuBackTarget({ pathname: '/student/calendar', search: 'student=1' }), '/student/training?student=1');
   assert.equal(submenuBackTarget({ pathname: '/student/calendar/2026-10-12', search: 'student=1' }), '/student/calendar?student=1');
   assert.equal(submenuBackTarget({ pathname: '/student/rubric' }), '/student/progress');

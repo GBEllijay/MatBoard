@@ -22,9 +22,11 @@ import {
   progressLinks,
 } from '../../lib/studentHubMenu';
 import { backupStampLabel, readStudentBackupStamp } from '../../lib/studentBackupStamp';
+import { reportIdentity } from '../../lib/studentReport';
+import type { StudentProgressReport } from '../../lib/progress/types';
 import { useStudentFile, useStudentPath } from './chrome';
 import { GroupFrame, MenuList, MenuRow } from './groupChrome';
-import { BinderDecor, BracketArt, JournalDecor, RowIcon, WhiteBelt } from './hubArt';
+import { BinderDecor, BracketArt, Chevron, JournalDecor, RowIcon, WhiteBelt } from './hubArt';
 
 const BELT_WORD: Record<ProgressBelt, string> = {
   white: 'White',
@@ -38,6 +40,27 @@ const BELT_WORD: Record<ProgressBelt, string> = {
   green: 'Green',
   coral: 'Coral',
 };
+
+function profileCardNote(report: StudentProgressReport): string {
+  const identity = reportIdentity(report);
+  if (!identity.named && !identity.gymNamed && !identity.startedSet) return 'Name, gym, and start date';
+  const started = identity.startedSet ? `Started ${identity.started}` : 'Started not set';
+  return `${identity.name} · ${identity.gym} · ${started}`;
+}
+
+export function ProfileCard() {
+  const to = useStudentPath();
+  const { report } = useStudentFile();
+  return (
+    <Link className="s-profile" to={to('/student/profile')} aria-label="My profile">
+      <span className="s-profile__text">
+        <strong>My profile</strong>
+        <small>{profileCardNote(report)}</small>
+      </span>
+      <Chevron />
+    </Link>
+  );
+}
 
 export function StudentHub() {
   const to = useStudentPath();
@@ -62,6 +85,7 @@ export function StudentHub() {
             <h2>{STUDENT_EDITION_NAME}</h2>
             <p>{STUDENT_HOME_DESCRIPTION}</p>
           </header>
+          <ProfileCard />
           <Link className="s-tile s-journal" to={to('/student/training')} aria-label={TRAINING_GROUP_LABEL}>
             <JournalDecor />
             <span className="s-tile__text">
@@ -160,6 +184,7 @@ export function ProgressMenu() {
           <i style={{ width: `${stripePercent}%` }} />
         </span>
       </section>
+      <ProfileCard />
       <MenuList label={RANK_GROUP_LABEL}>
         {links.map((item) => (
           <MenuRow
