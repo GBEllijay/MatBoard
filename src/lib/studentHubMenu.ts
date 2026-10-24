@@ -21,7 +21,6 @@ export const COACH_GROUP_LABEL = 'Coach & Academy';
 export const BACKUP_GROUP_LABEL = 'Backup & Print';
 export const COACH_FILE_LABEL = 'Make a file for my coach';
 export const COACH_FILE_HINT = 'This makes a file. You send it yourself.';
-export const LOG_TODAY_LABEL = "Log today's class";
 export const CLEAR_STUDENT_LABEL = 'Clear all Student Edition data';
 export const SCOUTING_LABEL = 'Opponent scouting';
 export const NO_EVENT_LABEL = 'No event yet';
@@ -117,7 +116,6 @@ export const FORMER_HUB_ITEMS: readonly MenuLink[] = [
 
 export function groupMenuLinks(belt = 'white'): MenuLink[] {
   return [
-    { label: LOG_TODAY_LABEL, note: '', to: '/student/journal' },
     ...TRAINING_LINKS,
     ...TRAINING_EXTRAS,
     ...progressLinks(belt),

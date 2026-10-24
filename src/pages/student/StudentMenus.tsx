@@ -13,7 +13,6 @@ import {
   COMPETE_EXTRAS,
   COMPETE_GROUP_LABEL,
   COMPETE_LINKS,
-  LOG_TODAY_LABEL,
   RANK_GROUP_LABEL,
   RANK_MENU_STRIPES,
   TRAINING_EXTRAS,
@@ -128,9 +127,6 @@ export function TrainingMenu() {
   const to = useStudentPath();
   return (
     <GroupFrame title={TRAINING_GROUP_LABEL}>
-      <Link className="s-pin" to={to('/student/journal')}>
-        {LOG_TODAY_LABEL}
-      </Link>
       <MenuList label={TRAINING_GROUP_LABEL}>
         {TRAINING_LINKS.map((item) => (
           <MenuRow key={item.to} skin="leather" label={item.label} note={item.note} to={item.to} />

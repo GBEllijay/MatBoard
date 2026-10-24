@@ -58,6 +58,25 @@ test('every former hub item is reachable from the new menus', () => {
   assert.equal(links.some((link) => link.label === 'Menu'), false);
 });
 
+test('logging today stays on Today\'s page, with no separate Log today entry', () => {
+  const links = groupMenuLinks();
+  const journal = links.filter((link) => link.to === '/student/journal');
+  assert.deepEqual(
+    journal.map((link) => link.label),
+    ["Today's page"],
+  );
+  assert.equal(links.some((link) => link.label === "Log today's class"), false);
+  assert.deepEqual(
+    links.slice(0, 4).map((link) => [link.label, link.note, link.to]),
+    [
+      ["Today's page", 'The journal for class', '/student/journal'],
+      ['Journal cards', 'Search your notes', '/student/cards'],
+      ['Calendar', 'Classes, open mats, and tournaments', '/student/calendar'],
+      ['Video Library', 'Technique and drill links', '/student/videos'],
+    ],
+  );
+});
+
 test('rank menu rows stay in order and each belt shows one more stripe', () => {
   const labels = ['Fundamentals', 'Belt progress', 'My rank', 'Self-assessment'];
   for (const belt of ['white', 'blue', 'purple', 'black', 'coral']) {
