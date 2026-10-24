@@ -3625,8 +3625,15 @@ main.tree:has(> .tier-home) > .tree__bar {
 }
 
 .bout-call--win {
-  background: #eeb63a;
-  color: #1a1404;
+  background: var(--cta-bg);
+  color: var(--cta-ink);
+  box-shadow: var(--cta-shadow);
+}
+
+/* White athlete card is #F8F9FC. A white fill needs the same 2px edge as paper saves. */
+.bout--white .bout-call--win {
+  border: 2px solid #0e1726;
+  box-shadow: var(--cta-shadow-light);
 }
 
 .bout-call--dq {
@@ -4212,6 +4219,12 @@ main.tree:has(> .tier-home) > .tree__bar {
   background: var(--cta-bg);
   color: var(--cta-ink);
   box-shadow: var(--cta-shadow);
+}
+
+/* Controller white pad is #fff. Keep the Win fill readable on that paper. */
+.pad--white .pad-call--win {
+  border: 2px solid #0e1726;
+  box-shadow: var(--cta-shadow-light);
 }
 
 .pad-call--dq {
@@ -16033,6 +16046,12 @@ a.plan-pick {
   color: #f4f4f4;
 }
 
+/* Old School white side is black, so Win uses the glow instead of the paper edge. */
+.scoreboard-skin--old-school.display .bout--white .bout-call--win {
+  border: 0;
+  box-shadow: var(--cta-shadow);
+}
+
 .scoreboard-skin--old-school.display .bout__scores {
   /* Points keep two cards and take the width the second advantage card used to spend. */
   grid-template-columns: minmax(0, 2.55fr) minmax(0, 0.78fr) minmax(0, 0.6fr);
@@ -16992,6 +17011,12 @@ a.plan-pick {
   box-shadow: inset 12px 0 0 #d7deea;
 }
 
+/* Kids cards are light on both sides. Win stays white with the paper edge. */
+.display.kids-board .bout-call--win {
+  border: 2px solid #0e1726;
+  box-shadow: var(--cta-shadow-light);
+}
+
 .display.kids-board .bout--blue .bout__who h1,
 .display.kids-board .bout--blue .bout__who h1 a,
 .display.kids-board .bout--blue .bout__who p,
@@ -17307,10 +17332,11 @@ a.plan-pick {
    Selected blue controls (Approve, Kids skin, checked-in) and the non-white outcome
    colors keep their own paint while the pointer is still over them. */
 @media (hover: hover) {
-  .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):not(.review-decision--on):not(.kids-skin__btn--on):not(.roster-card__checkin):not(.outcome-pick--points):not(.outcome-pick--decision):not(.outcome-pick--technical):not(.outcome-pick--medical):not(.outcome-pick--library):hover,
+  .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):not(.review-decision--on):not(.kids-skin__btn--on):not(.roster-card__checkin):not(.outcome-pick--points):not(.outcome-pick--decision):not(.outcome-pick--technical):not(.outcome-pick--medical):not(.outcome-pick--library):not(.tree__confirm .btn):not(.notes__confirm[aria-label^='Remove'] .btn):not(.roster-card__confirm + .btn):not(.invite-confirm .btn):not(.schedule-edit__confirm .btn):not(.white-roster__actions button[type='button'].btn):not(.drive-session-confirm .btn):hover,
   .chip--gold:hover,
   .tv-tip__go:hover,
   .pad-call--win:hover,
+  .bout-call--win:hover,
   .saver__unmute:hover,
   .t-score:hover,
   .techniques__chrome-btn--go:hover,
@@ -17327,6 +17353,7 @@ a.plan-pick {
 .chip--gold:focus-visible,
 .tv-tip__go:focus-visible,
 .pad-call--win:focus-visible,
+.bout-call--win:focus-visible,
 .saver__unmute:focus-visible,
 .t-score:focus-visible,
 .t-undo:focus-visible,
@@ -17340,6 +17367,7 @@ a.plan-pick {
 
 .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
 .pad-call--win:disabled,
+.bout-call--win:disabled,
 .saver__unmute:disabled,
 .t-score:disabled,
 .techniques__chrome-btn--go:disabled,
@@ -17352,40 +17380,23 @@ a.plan-pick {
   cursor: not-allowed;
 }
 
-/* Left yellow on purpose: owner unlock, Drive/OAuth, and destructive confirms. */
-.home__unlock-form .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger),
-.home__unlock-form .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):hover,
-.home__unlock-form .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
-.drive-connect__actions .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger),
-.drive-connect__actions .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):hover,
-.drive-connect__actions .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
-.drive-connect__providers .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger),
-.drive-connect__providers .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):hover,
-.drive-connect__providers .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
-.drive-connect__folders .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger),
-.drive-connect__folders .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):hover,
-.drive-connect__folders .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
-.drive-handoff .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger),
-.drive-handoff .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):hover,
-.drive-handoff .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
+.pad--white .pad-call--win:disabled,
+.bout--white .bout-call--win:disabled,
+.display.kids-board .bout-call--win:disabled {
+  border-color: #334155;
+  box-shadow: inset 0 0 0 1px rgba(14, 23, 38, 0.22);
+}
+
+/* Destructive confirms stay yellow. Unlock, Drive/OAuth connect, Sign in, and other primaries use the white CTA. */
 .drive-session-confirm .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger),
 .drive-session-confirm .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):hover,
 .drive-session-confirm .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
-.drive-session-actions .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger),
-.drive-session-actions .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):hover,
-.drive-session-actions .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
-.drive-picker-sheet .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger),
-.drive-picker-sheet .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):hover,
-.drive-picker-sheet .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
-a.btn[target='_blank']:not(.btn--ghost):not(.btn--blue):not(.btn--danger),
-a.btn[target='_blank']:not(.btn--ghost):not(.btn--blue):not(.btn--danger):hover,
-a.btn[target='_blank']:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
 .tree__confirm .btn:not(.btn--ghost):not(.btn--blue),
 .tree__confirm .btn:not(.btn--ghost):not(.btn--blue):hover,
 .tree__confirm .btn:not(.btn--ghost):not(.btn--blue):disabled,
-.notes__confirm .btn:not(.btn--ghost):not(.btn--blue),
-.notes__confirm .btn:not(.btn--ghost):not(.btn--blue):hover,
-.notes__confirm .btn:not(.btn--ghost):not(.btn--blue):disabled,
+.notes__confirm[aria-label^='Remove'] .btn:not(.btn--ghost):not(.btn--blue),
+.notes__confirm[aria-label^='Remove'] .btn:not(.btn--ghost):not(.btn--blue):hover,
+.notes__confirm[aria-label^='Remove'] .btn:not(.btn--ghost):not(.btn--blue):disabled,
 .roster-card__confirm + .btn:not(.btn--ghost):not(.btn--blue),
 .roster-card__confirm + .btn:not(.btn--ghost):not(.btn--blue):hover,
 .roster-card__confirm + .btn:not(.btn--ghost):not(.btn--blue):disabled,
@@ -17395,9 +17406,9 @@ a.btn[target='_blank']:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabl
 .schedule-edit__confirm .btn:not(.btn--ghost):not(.btn--blue),
 .schedule-edit__confirm .btn:not(.btn--ghost):not(.btn--blue):hover,
 .schedule-edit__confirm .btn:not(.btn--ghost):not(.btn--blue):disabled,
-.white-roster__actions .btn:not(.btn--ghost):not(.btn--blue),
-.white-roster__actions .btn:not(.btn--ghost):not(.btn--blue):hover,
-.white-roster__actions .btn:not(.btn--ghost):not(.btn--blue):disabled,
+.white-roster__actions button[type='button'].btn:not(.btn--ghost):not(.btn--blue),
+.white-roster__actions button[type='button'].btn:not(.btn--ghost):not(.btn--blue):hover,
+.white-roster__actions button[type='button'].btn:not(.btn--ghost):not(.btn--blue):disabled,
 .btn--danger,
 .btn--danger:hover,
 .btn--danger:disabled {
@@ -17406,21 +17417,13 @@ a.btn[target='_blank']:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabl
   box-shadow: none;
 }
 
-.home__unlock-form .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
-.drive-connect__actions .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
-.drive-connect__providers .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
-.drive-connect__folders .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
-.drive-handoff .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
 .drive-session-confirm .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
-.drive-session-actions .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
-.drive-picker-sheet .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
-a.btn[target='_blank']:not(.btn--ghost):not(.btn--blue):not(.btn--danger):disabled,
 .tree__confirm .btn:not(.btn--ghost):not(.btn--blue):disabled,
-.notes__confirm .btn:not(.btn--ghost):not(.btn--blue):disabled,
+.notes__confirm[aria-label^='Remove'] .btn:not(.btn--ghost):not(.btn--blue):disabled,
 .roster-card__confirm + .btn:not(.btn--ghost):not(.btn--blue):disabled,
 .invite-confirm .btn:not(.btn--ghost):not(.btn--blue):disabled,
 .schedule-edit__confirm .btn:not(.btn--ghost):not(.btn--blue):disabled,
-.white-roster__actions .btn:not(.btn--ghost):not(.btn--blue):disabled,
+.white-roster__actions button[type='button'].btn:not(.btn--ghost):not(.btn--blue):disabled,
 .btn--danger:disabled {
   opacity: 0.45;
   cursor: not-allowed;

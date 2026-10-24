@@ -363,31 +363,16 @@ label.ink-btn {
   padding: 0.35rem 1.25rem;
   background: var(--cta-bg);
   color: var(--cta-ink);
-  /* Paper is cream. Keep the existing border so the white fill does not vanish. */
-  border-color: var(--cta-ink);
+  /* .student button clears borders. Paper is cream, so put the 2px edge back. */
+  border: 2px solid var(--cta-ink);
   font-size: 1.4rem;
   box-shadow: var(--cta-shadow-light);
-}
-
-.student .ink-btn--save.ink-btn--keep {
-  background: var(--logo-yellow);
-  color: #14161c;
-  border-color: #14161c;
-  box-shadow: none;
 }
 
 @media (hover: hover) {
   .student .ink-btn--save:hover:not(:disabled) {
     background: #f4f7fb;
     color: var(--cta-ink);
-  }
-
-  .student .ink-btn--save.ink-btn--keep:hover,
-  .student .student-clear-zone .ink-btn--save:hover,
-  .student .rank-lineage-editor .ink-btn--save:hover,
-  .student .student-import-confirm .ink-btn--save:hover {
-    background: var(--logo-yellow);
-    color: #14161c;
   }
 
   .student .student-clear-zone .ink-btn--save:hover,
@@ -403,11 +388,26 @@ label.ink-btn {
   outline-offset: 3px;
 }
 
-.student .ink-btn--save:not(.ink-btn--keep):disabled {
+.student .ink-btn--save:disabled {
   background: #e4ebf4;
   color: #334155;
   border-color: #334155;
   opacity: 1;
+  cursor: not-allowed;
+}
+
+/* Disconnect confirm is a revoke. Sign in uses the white paper primary above. */
+.student .drive-session-confirm .ink-btn--save.ink-btn--keep,
+.student .drive-session-confirm .ink-btn--save.ink-btn--keep:hover,
+.student .drive-session-confirm .ink-btn--save.ink-btn--keep:disabled {
+  background: var(--logo-yellow);
+  color: #14161c;
+  border-color: #14161c;
+  box-shadow: none;
+}
+
+.student .drive-session-confirm .ink-btn--save.ink-btn--keep:disabled {
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
