@@ -298,8 +298,17 @@ export type StudentTournament = {
   /** Event day, YYYY-MM-DD. */
   date: string;
   location: string;
-  /** Division and weight class, in the student's words. */
+  /**
+   * Age group, belt, and gi, in the student's words.
+   * Files saved before weight class was its own field may still hold both here.
+   * Import splits that text when the second part is a usual weight class.
+   */
   division: string;
+  /**
+   * Weight class, in the student's words.
+   * Omitted on older files. An empty string means the student left it blank.
+   */
+  weightClass?: string;
   /** Registration deadline, YYYY-MM-DD, or empty. */
   deadline: string;
   /** http or https link, or empty. */

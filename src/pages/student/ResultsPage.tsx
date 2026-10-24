@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { tournamentClassLine } from '../../lib/divisionFields';
 import type { CompetitionResult, MatchMethod, MatchResult } from '../../lib/progress/types';
 import { competitionOf } from '../../lib/progress/competition';
 import {
@@ -41,7 +42,7 @@ export function ResultsPage() {
     const tournament = competition.tournaments.find((item) => item.id === id);
     if (!tournament) return;
     setName(tournament.name);
-    if (!division.trim()) setDivision(tournament.division);
+    if (!division.trim()) setDivision(tournamentClassLine(tournament));
   };
 
   return (

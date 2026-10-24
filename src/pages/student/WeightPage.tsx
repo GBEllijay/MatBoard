@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { tournamentClassLine } from '../../lib/divisionFields';
 import type { StudentTournament, WeighIn, WeightUnit } from '../../lib/progress/types';
 import {
   chartPoints,
@@ -319,7 +320,7 @@ function TargetRow({
     <li className="ink">
       <strong className="weight-target__name">{tournament.name}</strong>
       <span className="weight-target__date">{tournament.date}</span>
-      {tournament.division ? <span className="weight-target__division">{tournament.division}</span> : null}
+      {tournamentClassLine(tournament) ? <span className="weight-target__division">{tournamentClassLine(tournament)}</span> : null}
       <form
         className="comp-form"
         onSubmit={(event) => {

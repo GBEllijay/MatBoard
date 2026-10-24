@@ -10,8 +10,9 @@
  * Self-assessment note, Save self-assessment, Update self-assessment,
  * Remove check-in, Confirm remove check-in, Keep check-in,
  * Open {checkpoint} checkpoint when the rubric has that area.
- * Search competition.
- * Tournament name, date, location, division, deadline, link.
+ * Search competition. It matches division and weight class as separate fields.
+ * Tournament name, date, location, Division, Weight class, deadline, link.
+ * Division suggestions and Weight class suggestions. Free text still saves.
  * Considering, Entered, Pounds, Kilograms.
  * Target division weight, Add tournament, Save tournament, Cancel tournament edit.
  * Earlier tournaments, goal, goal note, add goal, mark met, remove goal,
@@ -137,7 +138,8 @@ test('competitor keeps every control, with rank then journal then self-assessmen
     'Tournament name',
     'Tournament date',
     'Tournament location',
-    'Division and weight class',
+    'Division',
+    'Weight class',
     'Registration deadline',
     'Tournament link',
     'Target division weight',
@@ -152,6 +154,16 @@ test('competitor keeps every control, with rank then journal then self-assessmen
   ]) {
     labeled(host, name);
   }
+  const location = labeled(host, 'Tournament location');
+  const division = labeled(host, 'Division');
+  const weightClass = labeled(host, 'Weight class');
+  const deadline = labeled(host, 'Registration deadline');
+  precedes(location, division);
+  precedes(division, weightClass);
+  precedes(weightClass, deadline);
+  assert.equal(host.querySelector('[aria-label="Division and weight class"]'), null);
+  assert.equal(division.getAttribute('role'), 'combobox');
+  assert.equal(weightClass.getAttribute('role'), 'combobox');
   for (const name of ['Considering', 'Entered', 'Pounds', 'Kilograms', 'Add tournament', 'Save game A', 'Save game B', 'Save game C', 'Save self-assessment']) {
     control(host, 'button', name);
   }

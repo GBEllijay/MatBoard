@@ -16,6 +16,7 @@ import {
   readGymSchedule,
   removeCalendarEvent,
 } from '../../lib/studentTools';
+import { tournamentClassLine } from '../../lib/divisionFields';
 import { isUpcomingTournament, tournamentStatusLabel, tournamentsOnDate } from '../../lib/progress/competition';
 import type { CalendarEvent, CalendarRepeat } from '../../lib/progress/types';
 import { formatClassTime } from '../../lib/gymCalendar';
@@ -167,7 +168,7 @@ export function CalendarPage() {
               <li key={tournament.id}>
                 <Link to={to(`/student/calendar/${tournament.date}`)}>
                   {tournamentStatusLabel(tournament.status)} · {tournament.name}
-                  {tournament.division ? ` · ${tournament.division}` : ''}
+                  {tournamentClassLine(tournament) ? ` · ${tournamentClassLine(tournament)}` : ''}
                 </Link>
                 <span>
                   {tournament.date}
@@ -327,7 +328,7 @@ export function CalendarDayPage({ date }: { date: string }) {
                   {tournament.date === date ? tournamentStatusLabel(tournament.status) : 'Registration deadline'} · {tournament.name}
                 </strong>
                 <span>
-                  {[tournament.location, tournament.division].filter(Boolean).join(' · ')}
+                  {[tournament.location, tournamentClassLine(tournament)].filter(Boolean).join(' · ')}
                   {tournament.deadline && tournament.deadline !== tournament.date ? ` · register by ${tournament.deadline}` : ''}
                 </span>
                 {tournament.link ? (

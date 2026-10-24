@@ -1,4 +1,10 @@
 import { useState } from 'react';
+import {
+  DIVISION_SUGGESTIONS,
+  suggestionList,
+  tournamentClassLine,
+  WEIGHT_CLASS_SUGGESTIONS,
+} from '../../lib/divisionFields';
 import type { StudentTournament, TournamentStatus, WeightUnit } from '../../lib/progress/types';
 import {
   competitionOf,
@@ -34,6 +40,7 @@ function emptyDraft(unit: WeightUnit, date = todayIso()): TournamentDraft {
     date,
     location: '',
     division: '',
+    weightClass: '',
     deadline: '',
     link: '',
     status: 'considering',
@@ -48,6 +55,7 @@ function draftFromTournament(tournament: StudentTournament): TournamentDraft {
     date: tournament.date,
     location: tournament.location,
     division: tournament.division,
+    weightClass: tournament.weightClass ?? '',
     deadline: tournament.deadline,
     link: tournament.link,
     status: tournament.status,
@@ -67,6 +75,8 @@ export function CompetitorPage() {
   const [confirming, setConfirming] = useState<string | null>(null);
   const today = todayIso();
   const needle = query.trim();
+  const usedDivisions = competition.tournaments.map((tournament) => tournament.division);
+  const usedWeightClasses = competition.tournaments.map((tournament) => tournament.weightClass ?? '');
   const tournaments = competition.tournaments.filter((tournament) => textHits(tournamentHaystack(tournament), needle));
   const upcoming = tournaments
     .filter((tournament) => isUpcomingTournament(tournament, today))
@@ -111,7 +121,7 @@ export function CompetitorPage() {
             <input
               aria-label="Search competition"
               value={query}
-              placeholder="Tournament, technique, or weight"
+              placeholder="Tournament, division, weight class, or technique"
               onChange={(event) => setQuery(event.target.value)}
             />
           </label>
@@ -187,10 +197,20 @@ export function CompetitorPage() {
                 <span className="ink__label">Location</span>
                 <input aria-label="Tournament location" value={draft.location} onChange={(event) => setDraft({ ...draft, location: event.target.value })} />
               </label>
-              <label>
-                <span className="ink__label">Division / weight class</span>
-                <input aria-label="Division and weight class" value={draft.division} onChange={(event) => setDraft({ ...draft, division: event.target.value })} />
-              </label>
+              <SuggestField
+                label="Division"
+                value={draft.division}
+                seeds={DIVISION_SUGGESTIONS}
+                used={usedDivisions}
+                onChange={(division) => setDraft({ ...draft, division })}
+              />
+              <SuggestField
+                label="Weight class"
+                value={draft.weightClass ?? ''}
+                seeds={WEIGHT_CLASS_SUGGESTIONS}
+                used={usedWeightClasses}
+                onChange={(weightClass) => setDraft({ ...draft, weightClass })}
+              />
               <label>
                 <span className="ink__label">Registration deadline</span>
                 <input type="date" aria-label="Registration deadline" value={draft.deadline} onChange={(event) => setDraft({ ...draft, deadline: event.target.value })} />
@@ -291,7 +311,7 @@ function TournamentCard({
         {tournamentStatusLabel(tournament.status)} · {tournament.name}
       </strong>
       <span>{tournament.date}{tournament.location ? ` · ${tournament.location}` : ''}</span>
-      {tournament.division ? <span>{tournament.division}</span> : null}
+      {tournamentClassLine(tournament) ? <span>{tournamentClassLine(tournament)}</span> : null}
       {tournament.deadline ? <span>Register by {tournament.deadline}</span> : null}
       {target ? <span>Target {target}</span> : null}
       {tournament.link ? (
@@ -368,6 +388,65 @@ function TournamentCard({
         )}
       </div>
     </li>
+  );
+}
+
+function SuggestField({
+  label,
+  value,
+  seeds,
+  used,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  seeds: readonly string[];
+  used: readonly string[];
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const options = open ? suggestionList(seeds, used, value) : [];
+  const listId = `${label.toLowerCase().replace(/\s+/g, '-')}-suggestions`;
+  return (
+    <div className="field-block">
+      <label>
+        <span className="ink__label">{label}</span>
+        <input
+          aria-label={label}
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={options.length > 0}
+          aria-controls={options.length ? listId : undefined}
+          autoComplete="off"
+          value={value}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setOpen(false)}
+          onChange={(event) => {
+            setOpen(true);
+            onChange(event.target.value);
+          }}
+        />
+      </label>
+      {options.length ? (
+        <div id={listId} className="field-suggest" role="listbox" aria-label={`${label} suggestions`}>
+          {options.map((option) => (
+            <button
+              key={option}
+              type="button"
+              className="field-suggest__option"
+              role="option"
+              aria-selected={option.toLowerCase() === value.trim().toLowerCase()}
+              onMouseDown={(event) => {
+                event.preventDefault();
+                onChange(option);
+              }}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
 

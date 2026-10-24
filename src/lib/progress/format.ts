@@ -4,6 +4,7 @@
  * Advantage does not host it.
  */
 
+import { splitCombinedDivision } from '../divisionFields.ts';
 import { fundamentalLevelOf, isFundamentalLevel } from '../fundamentals.ts';
 import { expandLineage } from '../studentRank.ts';
 import { asRecord } from '../plainValue.ts';
@@ -131,6 +132,7 @@ export const PROGRESS_CSV_HEADERS = [
   'Criterion id',
   'Catalog item id',
   'Proficiency',
+  'Weight class',
 ] as const;
 
 /** Shared criterion id. Coach notes can name it. Only the student file stores whether it is met. */
@@ -679,6 +681,12 @@ function mergeCompetition(report: StudentProgressReport, incoming: StudentProgre
       current.division,
       tournament.division,
       `Tournament ${tournament.id} division was kept.`,
+      conflicts,
+    );
+    current.weightClass = preferText(
+      current.weightClass ?? '',
+      tournament.weightClass ?? '',
+      `Tournament ${tournament.id} weight class was kept.`,
       conflicts,
     );
     current.link = preferText(current.link, tournament.link, `Tournament ${tournament.id} link was kept.`, conflicts);
@@ -1374,6 +1382,7 @@ function readTournament(value: unknown, index: number, errors: string[]): Studen
       date: '',
       location: '',
       division: '',
+      weightClass: '',
       deadline: '',
       link: '',
       status: 'considering',
@@ -1382,12 +1391,18 @@ function readTournament(value: unknown, index: number, errors: string[]): Studen
       goals: [],
     };
   }
+  const divisionText = readString(record.division, `${label} division`, PROGRESS_NAME_MAX, errors);
+  const legacyDivision = !Object.prototype.hasOwnProperty.call(record, 'weightClass');
+  const separated = legacyDivision
+    ? splitCombinedDivision(divisionText)
+    : { division: divisionText, weightClass: readString(record.weightClass, `${label} weight class`, PROGRESS_NAME_MAX, errors) };
   return {
     id: readId(record.id, `${label} id`, errors),
     name: readString(record.name, `${label} name`, PROGRESS_NAME_MAX, errors),
     date: readDate(record.date, `${label} date`, errors, true),
     location: readString(record.location, `${label} location`, PROGRESS_NOTE_MAX, errors),
-    division: readString(record.division, `${label} division`, PROGRESS_NAME_MAX, errors),
+    division: separated.division,
+    weightClass: separated.weightClass,
     deadline: readDate(record.deadline, `${label} deadline`, errors, false),
     link: readOptionalHttpUrl(record.link, `${label} link`, errors),
     status: readTournamentStatus(record.status, label, errors),
@@ -2090,6 +2105,8 @@ function writeReportRows(lines: string[], packet: StudentProgressReport): void {
       target,
       '',
       '',
+      '',
+      tournament.weightClass ?? '',
     ]));
     for (const goal of tournament.goals) {
       lines.push(csvRow([

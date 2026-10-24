@@ -656,7 +656,9 @@ test('progress csv rows match the header and proficiency is the fundamentals lev
   assert.equal('error' in parsed, false);
   if ('error' in parsed) return;
   assert.deepEqual(parsed.headers, [...PROGRESS_CSV_HEADERS]);
-  assert.equal(parsed.headers.length, 19);
+  assert.equal(parsed.headers.length, 20);
+  assert.equal(parsed.headers.at(-1), 'Weight class');
+  assert.equal(parsed.headers.indexOf('Proficiency'), 18);
   const sheetAt = parsed.headers.indexOf('Sheet');
   const idAt = parsed.headers.indexOf('Id');
   const proficiencyAt = parsed.headers.indexOf('Proficiency');

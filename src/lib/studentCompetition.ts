@@ -34,6 +34,8 @@ export type TournamentDraft = {
   date: string;
   location: string;
   division: string;
+  /** Omitted by callers that still build a draft with the older single field. */
+  weightClass?: string;
   deadline: string;
   link: string;
   status: TournamentStatus;
@@ -176,6 +178,7 @@ function tournamentFromDraft(draft: TournamentDraft, id: string, goals: StudentT
     date: requireDate(draft.date, 'Tournament date'),
     location: clip(draft.location, PROGRESS_NOTE_MAX),
     division: clip(draft.division, PROGRESS_NAME_MAX),
+    weightClass: clip(draft.weightClass ?? '', PROGRESS_NAME_MAX),
     deadline: optionalDate(draft.deadline, 'Registration deadline'),
     link: cleanOptionalLink(draft.link),
     status: draft.status === 'entered' ? 'entered' : 'considering',
