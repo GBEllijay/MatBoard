@@ -78,7 +78,13 @@ test('the hub is five groups and has no Menu card', () => {
   assert.equal(text.includes(NO_EVENT_LABEL), true);
   assert.equal(text.includes(NO_MATCHES_LABEL), true);
   assert.equal(text.includes('Scouting-Opponent'), false);
-  assert.equal(hub.host.querySelector('.s-journal')?.getAttribute('aria-label'), TRAINING_GROUP_LABEL);
+  const journal = hub.host.querySelector('.s-journal');
+  assert.equal(journal?.getAttribute('aria-label'), TRAINING_GROUP_LABEL);
+  assert.match(journal?.getAttribute('href') ?? '', /\/student\/training\?student=1$/);
+  assert.equal(journal?.querySelector('.s-journal__pages'), null);
+  assert.equal(journal?.querySelector('.s-journal__elastic') instanceof view.HTMLElement, true);
+  assert.equal(journal?.querySelector('.s-journal__stamp') instanceof view.HTMLElement, true);
+  assert.equal(journal?.querySelector('.s-journal__ribbon') instanceof view.HTMLElement, true);
   assert.equal(hub.host.querySelector('.s-belt')?.getAttribute('data-stripes'), '0');
   unmount(hub);
 });

@@ -97,10 +97,10 @@
   box-shadow: 0 14px 30px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 
-/* Training & Journal: the journal cover, with the label clear of the elastic. */
+/* Training & Journal: the journal cover, with the label clear of the elastic.
+   The leather edge is the card edge, same radius as the hub tiles under it. */
 .s-journal {
   min-height: 100px;
-  margin-right: 5px;
   padding: 20px 128px 20px 22px;
   overflow: visible;
   background-color: #161616;
@@ -120,19 +120,6 @@
   border: 1.5px dashed rgba(198, 198, 198, 0.55);
   pointer-events: none;
   z-index: 2;
-}
-
-.s-journal__pages {
-  position: absolute;
-  top: 5px;
-  bottom: -4px;
-  right: -5px;
-  width: 14px;
-  border-radius: 0 16px 16px 0;
-  background: repeating-linear-gradient(to right, #efe7d4 0 2px, #ddd2b8 2px 3px);
-  box-shadow: 2px 3px 6px rgba(0, 0, 0, 0.4);
-  z-index: 0;
-  pointer-events: none;
 }
 
 .s-journal__elastic {
