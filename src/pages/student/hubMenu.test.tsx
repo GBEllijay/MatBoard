@@ -116,6 +116,7 @@ test('every former hub item is linked from a group menu', () => {
     assert.equal(rail?.classList.contains('belt-rail--white'), true);
     assert.equal(rail?.classList.contains('belt-rail--degrees'), true);
     assert.equal(rail?.classList.contains(`belt-rail--stripes-${row.stripes}`), true);
+    assert.equal(link?.querySelectorAll('.belt-slot').length, 4);
   }
   assert.equal(progress?.host.querySelector('.s-rank-summary .s-belt')?.getAttribute('data-stripes'), '0');
   const compete = pages[2];
@@ -139,6 +140,61 @@ test('every former hub item is linked from a group menu', () => {
     /\/student\/backup\?student=1$/,
   );
   for (const page of pages) unmount(page);
+});
+
+test('Training & Journal has no Log today bar, and the four journal links stay', () => {
+  const hub = mount(<StudentHub />, '/student?student=1');
+  assert.equal(hub.host.textContent?.includes("Log today's class"), false);
+  assert.equal(hub.host.querySelector('.s-pin'), null);
+  assert.match(
+    hub.host.querySelector('a[aria-label="Training & Journal"]')?.getAttribute('href') ?? '',
+    /\/student\/training\?student=1$/,
+  );
+  unmount(hub);
+
+  const page = mount(<TrainingMenu />, '/student/training?student=1');
+  assert.equal(page.host.textContent?.includes("Log today's class"), false);
+  assert.equal(page.host.querySelector('.s-pin'), null);
+  const rows = [...page.host.querySelectorAll('a.s-row')].map((node) => ({
+    label: node.getAttribute('aria-label'),
+    href: node.getAttribute('href'),
+    note: node.querySelector('small')?.textContent ?? '',
+    leather: node.classList.contains('s-row--leather'),
+  }));
+  assert.deepEqual(rows, [
+    {
+      label: "Today's page",
+      href: '/student/journal?student=1',
+      note: 'The journal for class',
+      leather: true,
+    },
+    {
+      label: 'Journal cards',
+      href: '/student/cards?student=1',
+      note: 'Search your notes',
+      leather: true,
+    },
+    {
+      label: 'Calendar',
+      href: '/student/calendar?student=1',
+      note: 'Classes, open mats, and tournaments',
+      leather: true,
+    },
+    {
+      label: 'Video Library',
+      href: '/student/videos?student=1',
+      note: 'Technique and drill links',
+      leather: true,
+    },
+  ]);
+  assert.deepEqual(
+    [...page.host.querySelectorAll('a.s-extra__link')].map((node) => [node.textContent, node.getAttribute('href')]),
+    [
+      ['Film a move', '/student/videos?student=1#student-film-record'],
+      ['Log a roll result', '/student/results?student=1'],
+    ],
+  );
+  unmount(page);
 });
 
 test('competitor chips show a named event and a win-loss record when results exist', () => {

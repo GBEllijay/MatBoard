@@ -9,7 +9,7 @@ test('student journal saves, searches, amends, and marks a fundamental', async (
   await expect(page.getByRole('link', { name: BACK, exact: true })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute('href', '/products?student=1');
   await page.getByRole('link', { name: 'Training & Journal', exact: true }).click();
-  await page.getByRole('link', { name: "Log today's class", exact: true }).click();
+  await page.getByRole('link', { name: "Today's page", exact: true }).click();
   await expect(page.getByRole('link', { name: BACK, exact: true })).toHaveAttribute('href', '/student/training?student=1');
   await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute('href', '/products?student=1');
 

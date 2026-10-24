@@ -17186,6 +17186,79 @@ a.plan-pick {
   }
 }
 
+/* TEMPORARY UPDATE BUTTON — delete this block with src/components/UpdateToLatestButton.tsx */
+.update-latest {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  margin-top: 0.85rem;
+  padding-inline: 1rem;
+  box-sizing: border-box;
+}
+
+.update-latest__button,
+.student .update-latest__button,
+.home--store .update-latest__button {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 0.12rem;
+  min-height: 48px;
+  width: min(100%, 22rem);
+  margin: 0;
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(252, 192, 0, 0.5);
+  background: rgba(8, 10, 16, 0.72);
+  color: var(--gold-2);
+  font: inherit;
+  font-weight: 800;
+  font-size: 1rem;
+  line-height: 1.25;
+  text-align: center;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.update-latest__button:focus-visible,
+.student .update-latest__button:focus-visible {
+  outline: 2px solid var(--gold-2);
+  outline-offset: 3px;
+}
+
+.update-latest__button:disabled,
+.student .update-latest__button:disabled {
+  opacity: 0.72;
+  cursor: progress;
+}
+
+.update-latest__stamp,
+.update-latest__ready,
+.student .update-latest__stamp,
+.student .update-latest__ready {
+  display: block;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.update-latest__ready,
+.student .update-latest__ready {
+  color: var(--gold-2);
+}
+
+.update-latest__note {
+  margin: 0;
+  max-width: 22rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+}
+
 /* Score toast sits in the clock band, left of center, so it does not cover POINTS. */
 .display > .tv-tip {
   top: 50%;

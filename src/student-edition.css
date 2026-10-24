@@ -1267,13 +1267,30 @@ button.student-book .student-mark__press {
 }
 
 .rank-slots {
+  position: relative;
   display: flex;
   justify-content: center;
   gap: 0.25rem;
-  width: 100%;
+  width: min(100%, 18rem);
+  margin-inline: auto;
+}
+
+.rank-slots::before {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 44px;
+  border-radius: 4px;
+  background: #121214;
+  pointer-events: none;
 }
 
 .rank-slot {
+  position: relative;
+  z-index: 1;
   display: grid;
   justify-items: center;
   align-content: start;
@@ -1282,41 +1299,45 @@ button.student-book .student-mark__press {
 }
 
 .student .rank-tape {
-  width: 0.72rem;
-  height: 2.35rem;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   padding: 0;
-  border: 2px solid #1c140e;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.student .rank-tape::before {
+  content: '';
+  display: block;
+  width: 12px;
+  height: 28px;
+  margin: 8px auto;
   border-radius: 1px;
   background: transparent;
+  box-shadow: inset 0 0 0 1.5px rgba(247, 244, 238, 0.92);
 }
 
 .student .rank-tape:disabled {
   cursor: default;
 }
 
-.rank-rung--white .rank-tape.is-on {
-  background: #1c140e;
-}
-
+.student .rank-tape.is-on,
+.rank-rung--white .rank-tape.is-on,
 .rank-rung--blue .rank-tape,
 .rank-rung--purple .rank-tape,
-.rank-rung--brown .rank-tape {
-  border-color: #f4f0e4;
-  box-shadow: 0 0 0 2px #1c140e;
-}
-
+.rank-rung--brown .rank-tape,
+.rank-rung--black .rank-tape,
 .rank-rung--blue .rank-tape.is-on,
 .rank-rung--purple .rank-tape.is-on,
-.rank-rung--brown .rank-tape.is-on {
-  background: #f4f0e4;
-}
-
-.rank-rung--black .rank-tape {
-  border-color: #c23b3b;
-}
-
+.rank-rung--brown .rank-tape.is-on,
 .rank-rung--black .rank-tape.is-on {
-  background: #c23b3b;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
 }
 
 .student .rank-slot input {
