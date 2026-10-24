@@ -26,7 +26,12 @@ const serveCard: Connect.NextHandleFunction = (req, res, next) => {
   res.end(renderCardDocument(cardCss()));
 };
 
-/** Serves /card as one HTML file in dev, preview, and the production build. */
+/**
+ * Serves /card as one HTML file in dev and preview.
+ * The production build emits card.html. Cloudflare Pages serves that file at /card.
+ * Do not add a _redirects rewrite from /card to /card.html; Pages redirects the
+ * .html URL back to /card and the pair loops.
+ */
 export function cardPagePlugin(): Plugin {
   return {
     name: 'advantage-card-page',

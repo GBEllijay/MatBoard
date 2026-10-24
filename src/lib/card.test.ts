@@ -74,10 +74,8 @@ test('the card document is one lightweight page', () => {
 
 test('/card is a direct route and does not take the API functions', () => {
   const redirects = readFileSync(resolve(root, 'public/_redirects'), 'utf8');
-  const cardAt = redirects.search(/^\/card\s+\/card\.html\s+200/m);
-  const slashAt = redirects.search(/^\/card\/\s+\/card\.html\s+200/m);
-  const splatAt = redirects.search(/^\/\*\s+\/index\.html\s+200/m);
-  assert.ok(cardAt >= 0 && slashAt > cardAt && splatAt > slashAt);
+  assert.match(redirects, /^\/\*\s+\/index\.html\s+200/m);
+  assert.doesNotMatch(redirects, /^\/card\/?\s+\/card\.html/m);
   const routes = JSON.parse(readFileSync(resolve(root, 'public/_routes.json'), 'utf8')) as {
     include: string[];
   };

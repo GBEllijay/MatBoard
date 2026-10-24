@@ -1,3 +1,3 @@
-/card     /card.html   200
-/card/    /card.html   200
+# /card is the built card.html file. Pages serves that file at /card and
+# redirects /card.html to /card. Do not rewrite /card back to /card.html.
 /*        /index.html  200
