@@ -29,7 +29,7 @@ import {
   stripeCountControl,
   type LadderRung,
 } from '../../lib/studentRank';
-import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './chrome';
+import { StudentMarks, useStudentFile, useStudentPath } from './chrome';
 import { StudentProfileFields } from './ProfileFields';
 
 const TAPE_SLOTS = [1, 2, 3, 4] as const;
@@ -64,11 +64,13 @@ export function RankPage() {
   };
 
   return (
-    <main className="student student-frame">
+    <main className="student student-frame student--arena student--rank">
       <StudentMarks />
-      <LeatherHeader title="My rank" />
-      <div className="student-paper">
-        <div className="student-sheet">
+      <div className="arena-scroll">
+        <header className="arena-hero rank-hero">
+          <h1>My rank</h1>
+        </header>
+        <div className="student-sheet rank-stack">
           <section aria-label="Profile">
             <h2>Profile</h2>
             <p className="student-quiet">
