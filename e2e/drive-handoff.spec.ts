@@ -101,7 +101,8 @@ test('a locked browser accepts an invite from the gym folder', async ({ page }) 
   await expect(drive).toBeVisible();
   if (await drive.isEnabled()) await drive.click();
   else await expect(page.getByText('Google Drive is not available on this build yet')).toBeVisible();
-  await expect(connect).toHaveCSS('background-color', 'rgb(252, 192, 0)');
+  await expect(connect).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+  await expect(connect).toHaveCSS('color', 'rgb(14, 23, 38)');
   const locked = await page.evaluate(() => ({
     pro: localStorage.getItem('advantage.proUnlocked'),
     coach: localStorage.getItem('advantage.coachUnlocked'),

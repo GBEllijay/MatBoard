@@ -430,12 +430,6 @@
   box-shadow: none;
 }
 
-.student.student--arena .ink-btn--save.ink-btn--keep {
-  background: var(--logo-yellow);
-  color: #14161c;
-  box-shadow: none;
-}
-
 .student.student--arena .ink-btn:active,
 .student.student--arena .student-choice:active,
 .student.student--arena .assess-tap:active,
