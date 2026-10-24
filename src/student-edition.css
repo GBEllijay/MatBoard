@@ -1930,19 +1930,42 @@ input.sr-only.student-film-file {
   align-items: center;
 }
 
+.report-sheet .assess-visual {
+  background: #fff;
+  color: #1d1d1f;
+  padding: 0;
+}
+
+.report-sheet .assess-chart {
+  max-width: 280px;
+}
+
 .report-sheet .assess-chart__grid {
-  stroke: rgba(12, 35, 68, 0.35);
+  stroke: rgba(12, 35, 68, 0.55);
 }
 
 .report-sheet .assess-chart__shape {
-  fill: rgba(12, 35, 68, 0.16);
+  fill: rgba(12, 35, 68, 0.2);
   stroke: #0c2344;
 }
 
 .report-sheet .assess-chart__shape--opponent {
   fill: transparent;
-  stroke: #8e8e93;
+  stroke: #636366;
   stroke-dasharray: 4 3;
+}
+
+.report-sheet .assess-swatch--me {
+  background: #0c2344;
+}
+
+.report-sheet .assess-swatch--opponent {
+  background: #636366;
+}
+
+.report-checkin {
+  display: grid;
+  gap: 0.85rem;
 }
 
 .report-sheet .assess-visual h3,
@@ -2028,6 +2051,11 @@ input.sr-only.student-film-file {
 }
 
 @media print {
+  @page {
+    size: letter;
+    margin: 0.45in;
+  }
+
   .student-print-toolbar,
   .report-prompt,
   .site-footer,
@@ -2038,6 +2066,12 @@ input.sr-only.student-film-file {
   .seat-session,
   .seat-toast {
     display: none !important;
+    position: static !important;
+    height: 0 !important;
+    width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
   }
 
   html,
@@ -2048,11 +2082,13 @@ input.sr-only.student-film-file {
   .student-print,
   .student-print-sheet,
   .report-sheet {
+    display: block !important;
     height: auto !important;
     min-height: 0 !important;
     max-height: none !important;
     overflow: visible !important;
     background: #fff !important;
+    background-image: none !important;
     color: #1d1d1f !important;
     box-shadow: none !important;
   }
@@ -2061,17 +2097,81 @@ input.sr-only.student-film-file {
     width: auto;
     margin: 0;
     border-radius: 0;
+    break-after: avoid;
+    page-break-after: avoid;
   }
 
-  .report-hero,
-  .report-layout,
+  .report-hero {
+    break-inside: avoid;
+    break-after: avoid;
+    padding: 0.45rem 0.6rem;
+  }
+
+  .report-hero h1 {
+    font-size: 1.25rem;
+  }
+
+  .report-hero img {
+    width: 32px;
+    height: 32px;
+  }
+
+  .report-score {
+    font-size: 1.5rem;
+  }
+
+  .report-body {
+    gap: 0.4rem;
+    padding: 0.4rem 0.15rem 0;
+  }
+
+  .report-checkin {
+    break-inside: avoid;
+    gap: 0.3rem;
+  }
+
+  .report-layout {
+    grid-template-columns: 2.15in 1fr !important;
+    gap: 0.35rem;
+    align-items: start;
+    break-inside: auto;
+  }
+
+  .report-sheet .assess-chart {
+    width: 2.05in;
+    max-width: 2.05in;
+  }
+
+  .report-sheet .assess-visual,
+  .report-sheet .assess-key li,
+  .report-sheet .assess-visual h3 {
+    background: #fff !important;
+    color: #1d1d1f !important;
+  }
+
   .report-note {
+    break-inside: avoid;
+    break-before: avoid;
+    page-break-before: avoid;
+    padding: 0.35rem 0.5rem;
+  }
+
+  .report-section h2,
+  .report-note h2,
+  .report-date {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .report-line {
     break-inside: avoid;
   }
 
   .report-hero,
   .report-bar > span,
-  .report-sheet .assess-chart__shape {
+  .report-sheet .assess-chart__shape,
+  .report-sheet .assess-chart__grid,
+  .report-sheet .assess-swatch {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }

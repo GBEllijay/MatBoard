@@ -132,25 +132,27 @@ function AssessmentSheet({
         {!latest ? <p>No self-assessment saved on this phone.</p> : null}
         {latest ? (
           <>
-            <p className="report-date">{latest.date}</p>
-            <div className="report-layout">
-              <RadarChart
-                title="Shape"
-                series={
-                  previous
-                    ? [
-                        { name: `Previous ${previous.date}`, scores: previous.scores, tone: 'opponent' },
-                        { name: 'This check-in', scores: latest.scores, tone: 'me' },
-                      ]
-                    : [{ name: 'This check-in', scores: latest.scores, tone: 'me' }]
-                }
-              />
-              <ScoreBars scores={latest.scores} />
+            <div className="report-checkin">
+              <p className="report-date">{latest.date}</p>
+              <div className="report-layout">
+                <RadarChart
+                  title="Shape"
+                  series={
+                    previous
+                      ? [
+                          { name: `Previous ${previous.date}`, scores: previous.scores, tone: 'opponent' },
+                          { name: 'This check-in', scores: latest.scores, tone: 'me' },
+                        ]
+                      : [{ name: 'This check-in', scores: latest.scores, tone: 'me' }]
+                  }
+                />
+                <ScoreBars scores={latest.scores} />
+              </div>
+              <section className="report-note" aria-label="Notes">
+                <h2>Notes</h2>
+                <p>{latest.note.trim() || 'No note on this check-in.'}</p>
+              </section>
             </div>
-            <section className="report-note" aria-label="Notes">
-              <h2>Notes</h2>
-              <p>{latest.note.trim() || 'No note on this check-in.'}</p>
-            </section>
             {entries.length > 1 ? (
               <section className="report-section" aria-label="Earlier check-ins">
                 <h2>Earlier check-ins</h2>

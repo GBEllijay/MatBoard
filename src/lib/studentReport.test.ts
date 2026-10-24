@@ -16,7 +16,7 @@ import {
   studentBackupNames,
   studentReportPdfName,
 } from './studentBackup.ts';
-import { reportHeaderLines } from './studentReport.ts';
+import { countPhrase, matchRecordLine, reportHeaderLines } from './studentReport.ts';
 import { emptyRankPhotoStore } from './rankPhotos.ts';
 import type { ScoutingCard } from './studentScouting.ts';
 import type { StudentFilm } from './studentFilm.ts';
@@ -101,9 +101,10 @@ function filledReport(): StudentProgressReport {
           bracket: [],
           bracketPhoto: false,
           matches: [
-            { id: 'm1', opponent: 'Kenji Morrow', result: 'win', method: 'sub', note: 'armbar' },
-            { id: 'm2', opponent: 'Rafael Quinn', result: 'loss', method: 'advantage', note: 'final' },
+            { id: 'm1', opponent: 'Kenji Morrow', result: 'win', method: 'sub', note: 'armbar', date: '2026-04-11' },
+            { id: 'm2', opponent: 'Rafael Quinn', result: 'loss', method: 'advantage', note: 'final', date: '2026-04-12' },
           ],
+          bracket: [{ id: 'b1', round: 'Final', name: 'Rafael Quinn' }],
         },
       ],
       weighIns: [{ id: 'w1', date: '2026-10-23', weight: 186, unit: 'lb', note: 'On track' }],
@@ -160,6 +161,10 @@ test('progress PDF keeps every section, the student track, and checkpoint status
   assert.match(joined, /1 win, 1 loss/);
   assert.equal(joined.includes('1 losses'), false);
   assert.equal(joined.includes('1 wins'), false);
+  assert.match(joined, /2026-04-11 — Win vs Kenji Morrow/);
+  assert.match(joined, /2026-04-12 — Loss vs Rafael Quinn/);
+  assert.match(joined, /Bracket notes/);
+  assert.match(joined, /Final — Rafael Quinn/);
   assert.match(joined, /Kenji Morrow/);
   assert.match(joined, /Rafael Quinn/);
   assert.match(joined, /Average 4\.5/);
@@ -204,12 +209,45 @@ test('progress PDF keeps every section, the student track, and checkpoint status
   assert.match(text, /Dario Kent/);
   assert.match(text, /Guard: Met/);
   assert.match(text, /1 win, 1 loss/);
-  assert.match(text, /186 lb — On track/);
+  assert.match(text, /2026-04-12 -- Loss vs Rafael Quinn/);
+  assert.match(text, /Final -- Rafael Quinn/);
+  assert.match(text, /https:\/\/example.com\/armbar/);
+  assert.equal(text.includes('video/mp4'), false);
+  assert.match(text, /186 lb -- On track/);
   assert.equal(text.includes('?'), false);
+  assert.equal(pdfToText(pdf).includes('\\227'), false);
   assert.equal(text.includes('Signed in as'), false);
   assert.equal(text.includes('Sign out of seat'), false);
   assert.ok(pdfPageCount(pdf) >= 2);
   assert.match(pdfToText(pdf), /WinAnsiEncoding/);
+});
+
+test('one win, loss, or draw stays singular everywhere the record is written', () => {
+  assert.equal(matchRecordLine(1, 1, 0), 'Recorded matches: 1 win, 1 loss.');
+  assert.equal(matchRecordLine(1, 1, 1), 'Recorded matches: 1 win, 1 loss, 1 draw.');
+  assert.equal(matchRecordLine(0, 1, 0), 'Recorded matches: 0 wins, 1 loss.');
+  assert.equal(matchRecordLine(2, 0, 2), 'Recorded matches: 2 wins, 0 losses, 2 draws.');
+  assert.equal(countPhrase(1, 'stripe', 'stripes'), '1 stripe');
+  assert.equal(countPhrase(0, 'fundamental', 'fundamentals'), '0 fundamentals');
+  assert.equal(countPhrase(1, 'fundamental', 'fundamentals'), '1 fundamental');
+  const report = filledReport();
+  const lines = progressReportLines(report, { entries: [] }).join('\n');
+  assert.match(lines, /1 win, 1 loss/);
+  assert.equal(lines.includes('1 losses'), false);
+  assert.equal(lines.includes('1 wins'), false);
+  assert.equal(lines.includes('1 draws'), false);
+});
+
+test('an empty progress report omits blank lists or says None yet', () => {
+  const lines = progressReportLines(blankStudentReport(1), { entries: [] });
+  const text = lines.join('\n');
+  assert.match(text, /No journal cards\./);
+  assert.match(text, /No tournaments recorded\./);
+  assert.match(text, /Fundamentals proficiency\nNone yet/);
+  assert.match(text, /Opponent scouting\nNone yet/);
+  assert.match(text, /Video library\nNone yet/);
+  assert.equal(text.includes('No saved links.'), false);
+  assert.equal(text.includes('No filmed clips.'), false);
 });
 
 test('an undated stripe is listed without a date and a dated stripe keeps its date', () => {

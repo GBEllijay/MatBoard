@@ -209,7 +209,7 @@ function beltBlock(report: StudentProgressReport): ReportBlock {
 
 function fundamentalsBlock(report: StudentProgressReport): ReportBlock {
   const rows = report.checklist.filter((row) => !row.hidden);
-  if (!rows.length) return { title: 'Fundamentals proficiency', lines: ['No fundamentals recorded.'] };
+  if (!rows.length) return { title: 'Fundamentals proficiency', lines: ['None yet'] };
   const summary = proficiencySummary(rows.map((row) => ({ level: fundamentalLevelOf(row) })));
   const lines = [
     `Average ${summary.average.toFixed(1)} across ${countPhrase(summary.moves, 'fundamental', 'fundamentals')}.`,
@@ -244,7 +244,16 @@ function competitionBlock(report: StudentProgressReport): ReportBlock {
   for (const result of competition.results) {
     const heading = [result.tournamentName || 'Matches', result.division].filter(Boolean).join(' — ');
     lines.push(heading);
+    if (!result.matches.length) lines.push('  None yet');
     for (const match of result.matches) lines.push(`  ${matchLine(match)}`);
+    if (result.bracket.length) {
+      lines.push('  Bracket notes:');
+      for (const note of result.bracket) {
+        const round = note.round.trim();
+        const name = note.name.trim();
+        lines.push(`  ${round ? `${round} — ${name}` : name}`);
+      }
+    }
   }
   if (competition.goalWeight != null) {
     lines.push(`Goal weight: ${competition.goalWeight} ${competition.goalUnit ?? competition.weightUnit}`);
@@ -269,7 +278,7 @@ function assessmentBlock(assessment: AssessmentState): ReportBlock {
 }
 
 function scoutingBlock(cards: readonly ScoutingCard[]): ReportBlock {
-  if (!cards.length) return { title: 'Opponent scouting', lines: ['No scouting cards.'] };
+  if (!cards.length) return { title: 'Opponent scouting', lines: ['None yet'] };
   const lines: string[] = [];
   for (const card of cards) {
     const heading = [card.name, card.belt, card.gym.trim()].filter(Boolean).join(' — ');
@@ -284,18 +293,18 @@ function scoutingBlock(cards: readonly ScoutingCard[]): ReportBlock {
 function videoBlock(report: StudentProgressReport, films: readonly StudentFilm[]): ReportBlock {
   const lines: string[] = [];
   const clips = report.clips ?? [];
-  if (!clips.length) lines.push('No saved links.');
   for (const clip of clips) {
+    const name = clip.description.trim() || 'Saved link';
     const note = clip.note?.trim() ? ` — ${clip.note.trim()}` : '';
-    lines.push(`${clip.description}: ${clip.url}${note}`);
+    lines.push(clip.url.trim() ? `${name}: ${clip.url.trim()}${note}` : `${name}${note}`);
   }
-  if (!films.length) lines.push('No filmed clips.');
   const ordered = [...films].sort((left, right) => right.createdAt - left.createdAt);
   for (const film of ordered) {
     const title = film.technique.trim() || 'Filmed move';
     const note = film.note.trim() ? ` — ${film.note.trim()}` : '';
     lines.push(`Filmed ${film.date} ${title}${note}`.replace(/\s+/g, ' ').trim());
   }
+  if (!lines.length) return { title: 'Video library', lines: ['None yet'] };
   return { title: 'Video library', lines };
 }
 
