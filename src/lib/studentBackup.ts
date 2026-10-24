@@ -29,7 +29,7 @@ import {
   writeFilms,
   type StudentFilm,
 } from './studentFilm.ts';
-import { emptyRank } from './studentRank.ts';
+import { emptyRank, normalizeStoredRank } from './studentRank.ts';
 import { loadScouting, saveScouting, SCOUTING_STORAGE_KEY, type ScoutingCard } from './studentScouting.ts';
 import { BRACKET_PHOTO_KEY } from './bracketPhoto.ts';
 import { progressReportLines, selfAssessmentLines, studentReportPdfName } from './studentReport.ts';
@@ -347,7 +347,7 @@ export function mergeStudentReports(local: StudentProgressReport, incoming: Stud
     calendar: mergeById(local.calendar, incoming.calendar, (_left, right) => right),
     goals: mergeById(local.goals, incoming.goals, (_left, right) => right),
     clips: local.clips || incoming.clips ? mergeById(local.clips ?? [], incoming.clips ?? [], later) : undefined,
-    rank: { ...rank, history },
+    rank: normalizeStoredRank({ ...rank, history }),
     competition: {
       ...localComp,
       games: incomingNewer ? incomingComp.games : localComp.games,

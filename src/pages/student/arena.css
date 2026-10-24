@@ -130,6 +130,32 @@
   background: var(--belt);
 }
 
+/* Adult belts: empty rectangles on a black bar. Kids belts keep their own fill. */
+.arena-rank--white .arena-stripes,
+.arena-rank--blue .arena-stripes,
+.arena-rank--purple .arena-stripes,
+.arena-rank--brown .arena-stripes,
+.arena-rank--black .arena-stripes {
+  width: fit-content;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: #121214;
+}
+
+.arena-rank--white .arena-stripes span,
+.arena-rank--blue .arena-stripes span,
+.arena-rank--purple .arena-stripes span,
+.arena-rank--brown .arena-stripes span,
+.arena-rank--black .arena-stripes span,
+.arena-rank--white .arena-stripes span.is-on,
+.arena-rank--blue .arena-stripes span.is-on,
+.arena-rank--purple .arena-stripes span.is-on,
+.arena-rank--brown .arena-stripes span.is-on,
+.arena-rank--black .arena-stripes span.is-on {
+  background: transparent;
+  border-color: rgba(247, 244, 238, 0.92);
+}
+
 .arena-rank__link,
 .student.student--arena .arena-journal__actions a,
 .student.student--arena .ink-btn,

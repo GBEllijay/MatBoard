@@ -27,9 +27,10 @@ import {
   setRankTapeCount,
   setRankTapeDate,
   stripeCountControl,
+  stripeDateText,
   type LadderRung,
 } from '../../lib/studentRank';
-import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './chrome';
+import { StudentMarks, useStudentFile, useStudentPath } from './chrome';
 import { StudentProfileFields } from './ProfileFields';
 
 const TAPE_SLOTS = [1, 2, 3, 4] as const;
@@ -64,11 +65,13 @@ export function RankPage() {
   };
 
   return (
-    <main className="student student-frame">
+    <main className="student student-frame student--arena student--rank">
       <StudentMarks />
-      <LeatherHeader title="My rank" />
-      <div className="student-paper">
-        <div className="student-sheet">
+      <div className="arena-scroll">
+        <header className="arena-hero rank-hero">
+          <h1>My rank</h1>
+        </header>
+        <div className="student-sheet rank-stack">
           <section aria-label="Profile">
             <h2>Profile</h2>
             <p className="student-quiet">
@@ -221,7 +224,7 @@ function StripeSlot({
 }) {
   const [open, setOpen] = useState(false);
   const on = slot <= rung.tapeCount;
-  const date = rung.tapeDates[slot - 1] ?? '';
+  const date = stripeDateText(rung.tapeDates?.[slot - 1]);
   const stripeLabel = rung.current ? `Stripe ${slot}` : `${rung.label} stripe ${slot}`;
   const dateLabel = rung.current ? `Stripe ${slot} date` : `${rung.label} stripe ${slot} date`;
   const countControl = stripeCountControl(slot, rung.tapeCount, stripeLabel);
@@ -314,7 +317,8 @@ function StripeEditor({
         <h2>{stripeLabel}</h2>
         {on ? (
           <p className="rank-stripe-detail">
-            {date ? `Date ${date}` : 'No date'}. {photoCount}
+            {date ? `Date ${date}. ` : ''}
+            {photoCount}
           </p>
         ) : (
           <p className="rank-stripe-detail">This stripe is not on the belt yet. Add it to keep a photo or a date.</p>
@@ -327,7 +331,13 @@ function StripeEditor({
         {on ? (
           <label>
             <span className="ink__label">Date</span>
-            <input type="date" aria-label={dateLabel} value={date} onChange={(event) => onDate(event.target.value)} />
+            <input
+              type="date"
+              aria-label={dateLabel}
+              value={date}
+              required={false}
+              onChange={(event) => onDate(event.target.value)}
+            />
           </label>
         ) : null}
         {on && date ? (

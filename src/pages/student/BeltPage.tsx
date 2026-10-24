@@ -22,7 +22,7 @@ import {
   withStarterRubric,
 } from '../../lib/studentTools';
 import { COACH_FILE_LABEL } from '../../lib/studentHubMenu';
-import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './chrome';
+import { StudentMarks, useStudentFile, useStudentPath } from './chrome';
 
 export function BeltPage() {
   const to = useStudentPath();
@@ -57,11 +57,13 @@ export function BeltPage() {
   };
 
   return (
-    <main className="student student-frame">
+    <main className="student student-frame student--arena student--belt">
       <StudentMarks />
-      <LeatherHeader title="Belt progress" />
-      <div className="student-paper">
-        <div className="student-sheet">
+      <div className="arena-scroll">
+        <header className="arena-hero belt-hero">
+          <h1>Belt progress</h1>
+        </header>
+        <div className="student-sheet belt-stack">
           <p className="student-quiet">
             Current belt is set on <Link to={to('/student/rank')}>My rank</Link>. This page is the path ahead.
           </p>

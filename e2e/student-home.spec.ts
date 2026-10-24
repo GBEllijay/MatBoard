@@ -363,6 +363,71 @@ test('the full owner unlock code opens the Student Edition hub', async ({ page }
   await expect(page.getByRole('link', { name: 'Training & Journal', exact: true })).toHaveCount(0);
 });
 
+test('Training & Journal has no Log today bar, and the journal links still open', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/student?student=1');
+  await expect(page.getByRole('link', { name: "Log today's class", exact: true })).toHaveCount(0);
+  await expect(page.locator('.s-pin')).toHaveCount(0);
+
+  await page.getByRole('link', { name: 'Training & Journal', exact: true }).click();
+  await expect(page).toHaveURL(/\/student\/training\?student=1$/);
+  await expect(page.getByRole('heading', { name: 'Training & Journal', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: "Log today's class", exact: true })).toHaveCount(0);
+  await expect(page.locator('.s-pin')).toHaveCount(0);
+
+  const steps: {
+    name: string;
+    url: RegExp;
+    heading: string;
+    marker: () => ReturnType<Page['getByRole']>;
+  }[] = [
+    {
+      name: "Today's page",
+      url: /\/student\/journal\?student=1$/,
+      heading: 'Journal',
+      marker: () => page.getByRole('button', { name: 'Save entry' }),
+    },
+    {
+      name: 'Journal cards',
+      url: /\/student\/cards\?student=1$/,
+      heading: 'Journal cards',
+      marker: () => page.getByRole('textbox', { name: 'Search journal' }),
+    },
+    {
+      name: 'Calendar',
+      url: /\/student\/calendar\?student=1$/,
+      heading: 'Calendar',
+      marker: () => page.getByRole('button', { name: 'Previous month' }),
+    },
+    {
+      name: 'Video Library',
+      url: /\/student\/videos\?student=1$/,
+      heading: 'Video Library',
+      marker: () => page.getByRole('button', { name: 'Add video' }),
+    },
+  ];
+  for (const step of steps) {
+    const link = page.getByRole('link', { name: step.name, exact: true });
+    await expect(link).toBeVisible();
+    const box = await link.boundingBox();
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(64);
+    await link.click();
+    await expect(page).toHaveURL(step.url);
+    await expect(page.getByRole('heading', { name: step.heading, exact: true })).toBeVisible();
+    await expect(step.marker()).toBeVisible();
+    await expect(page.getByRole('link', { name: BACK, exact: true })).toHaveAttribute('href', '/student/training?student=1');
+    await page.getByRole('link', { name: BACK, exact: true }).click();
+    await expect(page).toHaveURL(/\/student\/training\?student=1$/);
+    await expect(page.getByRole('link', { name: "Log today's class", exact: true })).toHaveCount(0);
+  }
+
+  await page.goto('/student/journal?student=1&date=2026-10-24');
+  await expect(page.getByRole('heading', { name: 'Journal', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Save entry' })).toBeVisible();
+  await expect(page.locator('input[type="date"]')).toHaveValue('2026-10-24');
+  await expect(page.getByRole('link', { name: BACK, exact: true })).toHaveAttribute('href', '/student/training?student=1');
+});
+
 test('Training & Journal ends on the leather edge', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/student?student=1');

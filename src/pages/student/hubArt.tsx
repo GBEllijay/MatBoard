@@ -54,7 +54,10 @@ export function Chevron() {
   return <span className="s-chev" aria-hidden="true" />;
 }
 
-/** White belt cloth with a rank bar wide enough for four stripes. */
+/**
+ * White belt cloth with a black rank bar and four stripe rectangles.
+ * The rectangles stay empty. Filling an earned stripe comes later.
+ */
 export function WhiteBelt({
   filled,
   emphasizeNext = false,
