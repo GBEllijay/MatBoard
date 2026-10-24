@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { registerSW } from 'virtual:pwa-register';
 import App from './App';
+import { installStudentMockGuard } from './lib/studentDemo';
 import { initMatchSync } from './lib/matchStore';
 import { settleOneDriveRedirect } from './lib/oneDriveAuth';
 import { initRankingSync } from './lib/rankingStore';
@@ -11,6 +12,7 @@ import { initScheduleSync } from './lib/scheduleStore';
 import { initTournamentSync } from './lib/tournamentStore';
 import './index.css';
 
+installStudentMockGuard();
 initMatchSync();
 initTournamentSync();
 initRosterSync();
