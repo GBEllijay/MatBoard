@@ -477,5 +477,55 @@ test('editing a card keeps its id and later notes, and delete removes only that 
   const gone = deleteJournalEntry(report, id, 14);
   assert.equal(gone.journal.length, 1);
   assert.equal(viewJournalEntry(gone.journal[0]).notes, 'keep me');
+  assert.equal(viewJournalEntry(gone.journal[0]).stopDoing, '');
   assert.equal(deleteJournalEntry(gone, id, 15), gone);
+});
+
+test('an older combined note stays readable, and a Stop doing line splits out', () => {
+  const combined = decodeJournalBody('Class: Gi\nNotes:\ncollar deeper and I keep posting');
+  assert.equal(combined.notes, 'collar deeper and I keep posting');
+  assert.equal(combined.stopDoing, '');
+
+  const marked = decodeJournalBody('Class: Gi\nNotes:\ncollar deeper\nStop doing:\nposting the near hand');
+  assert.equal(marked.notes, 'collar deeper');
+  assert.equal(marked.stopDoing, 'posting the near hand');
+
+  const inline = decodeJournalBody('Notes:\nStop doing: elbow flare');
+  assert.equal(inline.notes, '');
+  assert.equal(inline.stopDoing, 'elbow flare');
+
+  const sentence = decodeJournalBody('Notes:\nI need to stop doing the post');
+  assert.equal(sentence.notes, 'I need to stop doing the post');
+  assert.equal(sentence.stopDoing, '');
+
+  const saved = addJournalEntry(
+    blankStudentReport(10),
+    {
+      date: '2026-10-11',
+      className: 'Gi',
+      gameTag: '',
+      techniques: [],
+      partners: 'Alex',
+      drills: 'hip escapes',
+      rolls: '5 rounds',
+      notes: 'collar deeper',
+      stopDoing: 'posting the near hand',
+    },
+    10,
+  );
+  const card = viewJournalEntry(saved.journal[0]);
+  assert.equal(card.notes, 'collar deeper');
+  assert.equal(card.stopDoing, 'posting the near hand');
+  assert.equal(card.drills, 'hip escapes');
+  const again = updateJournalEntry(saved, saved.journal[0].id, {
+    date: '2026-10-11',
+    className: 'Gi',
+    gameTag: '',
+    techniques: [],
+    partners: 'Alex',
+    drills: 'hip escapes',
+    rolls: '5 rounds',
+    notes: 'collar deeper',
+  });
+  assert.equal(viewJournalEntry(again.journal[0]).stopDoing, 'posting the near hand');
 });

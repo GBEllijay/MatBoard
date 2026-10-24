@@ -117,6 +117,8 @@ export function journalReportLine(entry: JournalEntry): string {
     if (decoded.drills.trim()) parts.push(decoded.drills.trim());
     if (decoded.rolls.trim()) parts.push(decoded.rolls.trim());
   }
+  const stopDoing = decoded.stopDoing?.trim() ?? '';
+  if (stopDoing) parts.push(`Stop doing: ${stopDoing}`);
   const extra = entry.amendments.map((item) => item.body.trim()).filter(Boolean);
   if (extra.length) parts.push(extra[extra.length - 1] ?? '');
   return parts.filter(Boolean).join(' · ');

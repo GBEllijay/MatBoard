@@ -769,7 +769,11 @@ test('seat chrome stays off the gym TV and purchase prompts follow the live seat
   assert.equal(seatChromeHidden('/pro'), false);
   assert.equal(seatChromeHidden('/student/print/progress'), true);
   assert.equal(seatChromeHidden('/student/print/assessment'), true);
-  assert.equal(seatChromeHidden('/student'), false);
+  assert.equal(seatChromeHidden('/student'), true);
+  assert.equal(seatChromeHidden('/student/journal'), true);
+  assert.equal(seatChromeHidden('/student/fundamentals'), true);
+  assert.equal(seatChromeHidden('/coach-unlimited'), false);
+  assert.equal(seatChromeHidden('/instructors'), false);
   assert.equal(purchasePromptsHidden(null), false);
   assert.equal(purchasePromptsHidden({ status: 'active' }), true);
   assert.equal(purchasePromptsHidden({ status: 'invited' }), true);

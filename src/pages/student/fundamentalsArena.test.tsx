@@ -6,7 +6,7 @@
  * Overall proficiency.
  * Self-assessment, Belt checkpoints, Video Library.
  * Sort: List order, Weakest first, Recently updated.
- * Filter: All, Not started, In progress, Live or better.
+ * Filter: All, Not started, In progress, Against resistance.
  * Per move: proficiency 0 Not started through 5 Can teach it, note, date learned.
  * Rename, Close rename, Save name, Remove, Confirm remove, Keep.
  * Add your own, Add, Restore starter list, Confirm restore starter list, Cancel.
@@ -98,9 +98,10 @@ test('fundamentals keeps every control on the dark arena surface', () => {
   assert.equal(labeled(host, 'Home').getAttribute('href'), '/products');
   assert.equal(host.querySelector('h1')?.textContent, 'Fundamentals');
   assert.ok(host.textContent?.includes('0.0'));
-  assert.ok(host.textContent?.includes('live or better'));
+  assert.ok(host.textContent?.includes('0 of 5 ready when a partner resists'));
+  assert.equal(host.textContent?.toLowerCase().includes('live or better'), false);
 
-  for (const name of ['Self-assessment', 'Belt checkpoints', 'Video Library', 'List order', 'Weakest first', 'Recently updated', 'All', 'Not started', 'In progress', 'Live or better', 'Restore starter list']) {
+  for (const name of ['Self-assessment', 'Belt checkpoints', 'Video Library', 'List order', 'Weakest first', 'Recently updated', 'All', 'Not started', 'In progress', 'Against resistance', 'Restore starter list']) {
     control(host, name === 'Self-assessment' || name === 'Belt checkpoints' || name === 'Video Library' ? 'a' : 'button', name);
   }
   const sweeps = labeled(host, 'Sweeps');
@@ -140,7 +141,7 @@ test('a learned date without a level opens at live, and taps, sort, filter, note
   const sweeps = labeled(host, 'Sweeps');
   const live = labeled(sweeps, 'Scissor sweep 3 Live with resistance');
   assert.equal(live.getAttribute('aria-checked'), 'true');
-  assert.ok(sweeps.textContent?.includes('1 of 5 live or better'));
+  assert.ok(sweeps.textContent?.includes('1 of 5 ready when a partner resists'));
   assert.equal(control(sweeps, 'a', 'Open Guard self-assessment').getAttribute('href'), '/student/competitor#assess-guard');
   assert.equal(control(sweeps, 'a', 'Open Guard checkpoint').getAttribute('href'), '/student/rubric#checkpoint.white.guard');
   assert.equal(control(sweeps, 'a', 'Open Scissor sweep detail in Video Library').getAttribute('href')?.startsWith('/student/videos#clip-'), true);
@@ -192,7 +193,7 @@ test('a learned date without a level opens at live, and taps, sort, filter, note
   assert.ok(names.indexOf('Scissor sweep') > names.indexOf('Hip bump sweep'));
 
   act(() => {
-    control(host, 'button', 'Live or better').click();
+    control(host, 'button', 'Against resistance').click();
   });
   const liveNames = [...labeled(host, 'Sweeps').querySelectorAll('h3')].map((node) => node.textContent);
   assert.deepEqual(liveNames, ['Scissor sweep']);

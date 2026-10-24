@@ -4,6 +4,7 @@
  */
 
 import { fundamentalLevelOf, FUNDAMENTAL_LIVE_LEVEL, isFundamentalLevel, type FundamentalLevel } from './fundamentals.ts';
+import { joinJournalNotes, splitJournalNotes } from './journalNotes.ts';
 import { FUNDAMENTALS_CATALOG } from './progress/catalog.ts';
 import { emptyCompetition, matchingGameTags } from './progress/competition.ts';
 import { emptyRank } from './studentRank.ts';
@@ -90,7 +91,13 @@ export type JournalDraft = {
   partners: string;
   drills: string;
   rolls: string;
+  /** What you drilled and what to remember. Older cards stored this with stop-doing notes. */
   notes: string;
+  /**
+   * Mistakes to stop making. Omitted on older cards.
+   * A missing value is empty. Text that lived in `notes` is still read from there.
+   */
+  stopDoing?: string;
 };
 
 export type JournalCardView = JournalDraft & {
@@ -215,7 +222,7 @@ export function setStudentProfile(
   return { ...report, updatedAt: now, profile: { ...report.profile, displayName, gymName, startedOn } };
 }
 
-export function encodeJournalBody(draft: Pick<JournalDraft, 'className' | 'techniques' | 'partners' | 'drills' | 'rolls' | 'notes'>): string {
+export function encodeJournalBody(draft: Pick<JournalDraft, 'className' | 'techniques' | 'partners' | 'drills' | 'rolls' | 'notes' | 'stopDoing'>): string {
   const techniques = draft.techniques.map((item) => item.name.trim()).filter(Boolean);
   return [
     `Class: ${migrateClassText(draft.className)}`,
@@ -225,24 +232,26 @@ export function encodeJournalBody(draft: Pick<JournalDraft, 'className' | 'techn
     `Drills: ${draft.drills.trim()}`,
     `Rolls: ${draft.rolls.trim()}`,
     'Notes:',
-    draft.notes.trim(),
+    joinJournalNotes(draft.notes, draft.stopDoing ?? ''),
   ].join('\n');
 }
 
-export function decodeJournalBody(body: string): Pick<JournalDraft, 'className' | 'partners' | 'drills' | 'rolls' | 'notes'> {
+export function decodeJournalBody(body: string): Pick<JournalDraft, 'className' | 'partners' | 'drills' | 'rolls' | 'notes' | 'stopDoing'> {
   const lines = body.split('\n');
   const take = (prefix: string) => {
     const line = lines.find((row) => row.startsWith(prefix));
     return line ? line.slice(prefix.length).trim() : '';
   };
   const notesAt = lines.findIndex((row) => row === 'Notes:' || row.startsWith('Notes:'));
-  const notes = notesAt >= 0 ? lines.slice(notesAt + 1).join('\n').trim() : body.trim();
+  const rawNotes = notesAt >= 0 ? lines.slice(notesAt + 1).join('\n') : body;
+  const split = splitJournalNotes(rawNotes);
   return {
     className: migrateClassText(take('Class:')),
     partners: take('Training partners:'),
     drills: take('Drills:'),
     rolls: take('Rolls:'),
-    notes,
+    notes: split.notes,
+    stopDoing: split.stopDoing,
   };
 }
 
@@ -258,6 +267,7 @@ export function viewJournalEntry(entry: JournalEntry): JournalCardView {
     drills: decoded.drills,
     rolls: decoded.rolls,
     notes: decoded.notes,
+    stopDoing: decoded.stopDoing,
     amendments: entry.amendments,
     createdAt: entry.createdAt,
   };
@@ -318,7 +328,8 @@ export function updateJournalEntry(
   const index = report.journal.findIndex((entry) => entry.id === entryId);
   if (index < 0) return report;
   const current = report.journal[index];
-  const next = createJournalEntry({ ...draft, gameTag: draft.gameTag || current.gameTag }, now);
+  const stopDoing = draft.stopDoing === undefined ? viewJournalEntry(current).stopDoing : draft.stopDoing;
+  const next = createJournalEntry({ ...draft, stopDoing, gameTag: draft.gameTag || current.gameTag }, now);
   const journal = report.journal.slice();
   journal[index] = {
     ...next,

@@ -122,7 +122,8 @@ test('journal save lands on the card with Saved, and edit and delete keep the ot
   typeInto(field(host, 'Training Partners'), 'Alex');
   typeInto(field(host, 'Drills'), 'hip escapes');
   typeInto(field(host, 'Rolls'), '5 rounds');
-  typeInto(field(host, 'Notes'), 'grip the collar deeper');
+  typeInto(field(host, 'Drill notes'), 'grip the collar deeper');
+  typeInto(field(host, 'Stop doing'), 'posting the near hand');
   click(control(host, 'button', 'Save entry'));
 
   assert.equal(host.querySelector('h1')?.textContent, 'Journal card');
@@ -131,7 +132,8 @@ test('journal save lands on the card with Saved, and edit and delete keep the ot
   assert.match(host.textContent ?? '', /Training partners: Alex/);
   assert.match(host.textContent ?? '', /Drills: hip escapes/);
   assert.match(host.textContent ?? '', /Rolls: 5 rounds/);
-  assert.match(host.textContent ?? '', /Notes: grip the collar deeper/);
+  assert.match(host.textContent ?? '', /Drill notes: grip the collar deeper/);
+  assert.match(host.textContent ?? '', /Stop doing: posting the near hand/);
   assert.equal(host.querySelector('[aria-label="Amendment"]') instanceof HTMLTextAreaElement, true);
   assert.equal(labeled(host, 'Back. Hold for Home.').getAttribute('href'), '/student/cards?student=1');
 
@@ -148,7 +150,8 @@ test('journal save lands on the card with Saved, and edit and delete keep the ot
   assert.equal(field(host, 'Edit training partners') instanceof HTMLTextAreaElement, true);
   assert.equal(field(host, 'Edit drills') instanceof HTMLTextAreaElement, true);
   assert.equal(field(host, 'Edit rolls') instanceof HTMLTextAreaElement, true);
-  assert.equal(field(host, 'Edit notes') instanceof HTMLTextAreaElement, true);
+  assert.equal(field(host, 'Edit drill notes') instanceof HTMLTextAreaElement, true);
+  assert.equal(field(host, 'Edit stop doing') instanceof HTMLTextAreaElement, true);
   assert.match(host.textContent ?? '', /Later notes/);
   typeInto(field(host, 'Edit rolls'), '6 rounds');
   click(control(host, 'button', 'Save card'));

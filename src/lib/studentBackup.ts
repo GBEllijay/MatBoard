@@ -114,6 +114,48 @@ export function studentBackupNames(date: string) {
   };
 }
 
+export type BackupFileGuide = {
+  id: 'json' | 'csv' | 'progressPdf' | 'assessmentPdf';
+  title: string;
+  name: string;
+  detail: string;
+};
+
+/** Plain explanation of the four files Back up my journal writes. Names match the download. */
+export function backupFileGuide(date: string): BackupFileGuide[] {
+  const names = studentBackupNames(date);
+  return [
+    {
+      id: 'json',
+      title: 'Journal backup',
+      name: names.json,
+      detail:
+        'The full copy of Student Edition on this phone: journal, rank, belt progress, competition, self-assessment, scouting, and coach notes saved here. Video files are included only when that box is checked. Use this file to restore with Merge or Replace, or to move the journal to another phone. The other three files cannot restore the phone.',
+    },
+    {
+      id: 'csv',
+      title: 'Spreadsheet',
+      name: names.csv,
+      detail:
+        'The same journal, self-assessment, scouting, and filmed-video rows in a spreadsheet. Use this when you want to open the rows in Excel or Sheets, or send a table to your coach.',
+    },
+    {
+      id: 'progressPdf',
+      title: 'Progress report',
+      name: names.progressPdf,
+      detail:
+        'A printable report of rank, belt progress, fundamentals, journal, competition, self-assessment, scouting, and videos. Use this when you want a page to print or hand to your coach.',
+    },
+    {
+      id: 'assessmentPdf',
+      title: 'Self-assessment',
+      name: names.assessmentPdf,
+      detail:
+        'A printable report of the seven areas and your check-in notes. Use this when you want only the self-assessment, not the full progress report.',
+    },
+  ];
+}
+
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = '';
   const chunk = 0x8000;
