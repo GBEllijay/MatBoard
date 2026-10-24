@@ -15,6 +15,7 @@ import {
   connectedBackupTargets,
   filmBlobsFromBackup,
   parseStudentBackup,
+  backupFileGuide,
   studentBackupNames,
   type StudentBackupFile,
 } from '../../lib/studentBackup';
@@ -74,6 +75,25 @@ async function runMenuBackup(includeVideos: boolean): Promise<{ ok: boolean; mes
   }
 }
 
+function BackupFileGuide() {
+  const files = backupFileGuide(todayIso());
+  return (
+    <section className="s-backup-guide" aria-label="What the four backup files are">
+      <h2>What the four files are for</h2>
+      <p>Back up my journal saves these four files on this phone.</p>
+      <ul>
+        {files.map((file) => (
+          <li key={file.id}>
+            <strong>{file.title}</strong>
+            <code>{file.name}</code>
+            <p>{file.detail}</p>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function downloadBlob(filename: string, blob: Blob) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -129,6 +149,7 @@ export function BackupMenu() {
   return (
     <GroupFrame title={BACKUP_GROUP_LABEL}>
       <p className="s-backup__stamp">Last backup: {stamp}</p>
+      <BackupFileGuide />
       <section className="s-backup" aria-label="Back up and restore">
         <label className="s-backup__check">
           <input type="checkbox" checked={includeVideos} onChange={(event) => setIncludeVideos(event.target.checked)} />

@@ -39,11 +39,11 @@ test('student journal saves, searches, amends, and marks a fundamental', async (
   await picker.getByRole('button', { name: 'Hip bump sweep', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Technique drilled #2' })).toHaveValue('Hip bump sweep');
   await page.getByRole('textbox', { name: 'Training Partners' }).fill('Alex');
-  await page.getByRole('textbox', { name: 'Notes' }).fill('grip the collar deeper');
+  await page.getByRole('textbox', { name: 'Drill notes' }).fill('grip the collar deeper');
   await page.getByRole('button', { name: 'Save entry' }).click();
 
   await expect(page.getByText('grip the collar deeper')).toBeVisible();
-  await expect(page.getByText('Fundamentals, week 7, class B')).toBeVisible();
+  await expect(page.getByText(/· Fundamentals, week 7, class B/)).toBeVisible();
   await expect(page.getByText('Technique drilled #1: Scissor sweep')).toBeVisible();
   await expect(page.getByText('Technique drilled #2: Hip bump sweep')).toBeVisible();
   await expect(page.getByText('Technique drilled #3:')).toHaveCount(0);
@@ -66,19 +66,19 @@ test('student journal saves, searches, amends, and marks a fundamental', async (
   await page.getByRole('link', { name: 'Fundamentals', exact: true }).click();
   const sweeps = page.getByRole('region', { name: 'Sweeps' });
   await expect(sweeps.getByRole('heading', { name: 'Sweeps', exact: true })).toBeVisible();
-  await expect(sweeps.getByText('0 of 5 live or better')).toBeVisible();
+  await expect(sweeps.getByText('0 of 5 ready when a partner resists')).toBeVisible();
   await sweeps.getByRole('radio', { name: 'Scissor sweep 3 Live with resistance' }).click();
-  await expect(sweeps.getByText('1 of 5 live or better')).toBeVisible();
+  await expect(sweeps.getByText('1 of 5 ready when a partner resists')).toBeVisible();
 
   await sweeps.getByRole('button', { name: 'Rename Scissor sweep' }).click();
   await sweeps.getByRole('textbox', { name: 'New name for Scissor sweep' }).fill('Hip scissor');
   await sweeps.getByRole('button', { name: 'Save name' }).click();
   await expect(sweeps.getByText('Hip scissor', { exact: true })).toBeVisible();
-  await expect(sweeps.getByText('1 of 5 live or better')).toBeVisible();
+  await expect(sweeps.getByText('1 of 5 ready when a partner resists')).toBeVisible();
 
   await sweeps.getByRole('button', { name: 'Remove Hip scissor' }).click();
   await sweeps.getByRole('button', { name: 'Confirm remove Hip scissor' }).click();
-  await expect(sweeps.getByText('0 of 4 live or better')).toBeVisible();
+  await expect(sweeps.getByText('0 of 4 ready when a partner resists')).toBeVisible();
   await expect(sweeps.getByText('Hip scissor', { exact: true })).toHaveCount(0);
 
   await sweeps.getByRole('textbox', { name: 'Add your own to Sweeps' }).fill('Lasso sweep');
@@ -95,7 +95,7 @@ test('student journal saves, searches, amends, and marks a fundamental', async (
   await page.getByRole('button', { name: 'Confirm restore starter list' }).click();
   await expect(sweeps.getByText('Scissor sweep', { exact: true })).toBeVisible();
   await expect(sweeps.getByText('Lasso from guard')).toHaveCount(0);
-  await expect(sweeps.getByText('1 of 5 live or better')).toBeVisible();
+  await expect(sweeps.getByText('1 of 5 ready when a partner resists')).toBeVisible();
 
   await page.getByRole('link', { name: BACK, exact: true }).click();
   await page.getByRole('link', { name: BACK, exact: true }).click();

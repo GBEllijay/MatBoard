@@ -100,13 +100,19 @@ test('print reports hide the seat bar, save a profile, and download matching PDF
   await page.setViewportSize({ width: 1280, height: 900 });
   await seed(page);
 
-  await page.goto('/student?student=1');
+  await page.goto('/coach');
+  await expect(page.getByRole('heading', { name: 'Advantage - Coach' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Sign out of seat' })).toBeVisible();
   await expect(page.getByText('coach-bot@example.com')).toBeVisible();
 
+  await page.goto('/student?student=1');
+  await expect(page.getByRole('heading', { name: 'Advantage – Student Edition' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sign out of seat' })).toHaveCount(0);
+  await expect(page.getByText('coach-bot@example.com')).toHaveCount(0);
+
   await page.goto('/student/journal?student=1');
   await page.getByRole('textbox', { name: 'Class', exact: true }).fill('Fundamentals');
-  await page.getByRole('textbox', { name: 'Notes' }).fill('collar grip deeper');
+  await page.getByRole('textbox', { name: 'Drill notes' }).fill('collar grip deeper');
   await page.getByRole('button', { name: 'Save entry' }).click();
   await expect(page.getByText('collar grip deeper')).toBeVisible();
 
@@ -205,5 +211,5 @@ test('print reports hide the seat bar, save a profile, and download matching PDF
   await expect(profile.getByLabel('Gym name')).toHaveValue('GB Ellijay');
   await expect(profile.getByLabel('Start date')).toHaveValue('2014-03-01');
   await expect(page.getByRole('button', { name: 'White', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Sign out of seat' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sign out of seat' })).toHaveCount(0);
 });

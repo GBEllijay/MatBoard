@@ -4,6 +4,7 @@
  * Advantage does not host them.
  */
 
+import { splitJournalNotes } from '../journalNotes.ts';
 import {
   GAME_TAGS,
   PROGRESS_CLIP_URL_MAX,
@@ -86,7 +87,7 @@ function clip(value: string, max: number): string {
 function notesFromJournalBody(body: string): string {
   const lines = body.split('\n');
   const notesAt = lines.findIndex((row) => row === 'Notes:' || row.startsWith('Notes:'));
-  if (notesAt >= 0) return lines.slice(notesAt + 1).join('\n').trim();
+  if (notesAt >= 0) return splitJournalNotes(lines.slice(notesAt + 1).join('\n')).notes;
   if (
     lines.some(
       (row) =>
@@ -98,7 +99,7 @@ function notesFromJournalBody(body: string): string {
   ) {
     return '';
   }
-  return body.trim();
+  return splitJournalNotes(body).notes;
 }
 
 function techniquesFromEntry(entry: JournalEntry): string {

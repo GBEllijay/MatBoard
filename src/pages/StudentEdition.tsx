@@ -151,6 +151,7 @@ function JournalToday() {
   const [drills, setDrills] = useState('');
   const [rolls, setRolls] = useState('');
   const [notes, setNotes] = useState('');
+  const [stopDoing, setStopDoing] = useState('');
   const [picker, setPicker] = useState<number | null>(null);
   const [error, setError] = useState('');
 
@@ -175,6 +176,7 @@ function JournalToday() {
           drills,
           rolls,
           notes,
+          stopDoing,
         }),
       );
       const id = next.journal[next.journal.length - 1]?.id;
@@ -262,9 +264,19 @@ function JournalToday() {
               </label>
             </div>
           </div>
-          <label className="ink ink--wobble">
-            <span className="ink__label">Notes</span>
-            <textarea rows={4} value={notes} onChange={(event) => setNotes(event.target.value)} />
+          <label className="ink journal-note">
+            <span className="ink__label">Drill notes</span>
+            <span className="student-quiet" aria-hidden="true">
+              What you drilled and what to remember.
+            </span>
+            <textarea aria-label="Drill notes" rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} />
+          </label>
+          <label className="ink ink--wobble journal-note">
+            <span className="ink__label">Stop doing</span>
+            <span className="student-quiet" aria-hidden="true">
+              Mistakes to stop making.
+            </span>
+            <textarea aria-label="Stop doing" rows={3} value={stopDoing} onChange={(event) => setStopDoing(event.target.value)} />
           </label>
           {error ? <p role="alert">{error}</p> : null}
           <div className="student-actions">
@@ -395,6 +407,7 @@ function JournalList() {
                 </strong>
                 <span>{card.techniques.map((item) => item.name).filter(Boolean).join(', ') || 'No technique yet'}</span>
                 <span>{card.notes || card.amendments[0]?.body || 'Empty notes'}</span>
+                {card.stopDoing ? <span>Stop doing: {card.stopDoing}</span> : null}
                 <span>Training partners: {card.partners || '—'}</span>
                 <span>Drills: {card.drills || '—'}</span>
                 <span>Rolls: {card.rolls || '—'}</span>
@@ -561,7 +574,8 @@ function CardBody({ card }: { card: JournalCardView }) {
         <p>Training partners: {card.partners || '—'}</p>
         <p>Drills: {card.drills || '—'}</p>
         <p>Rolls: {card.rolls || '—'}</p>
-        <p>Notes: {card.notes || '—'}</p>
+        <p>Drill notes: {card.notes || '—'}</p>
+        <p>Stop doing: {card.stopDoing || '—'}</p>
       </div>
     </>
   );
@@ -597,6 +611,7 @@ function JournalEditor({
     drills: string;
     rolls: string;
     notes: string;
+    stopDoing: string;
   }) => void;
 }) {
   const [date, setDate] = useState(card.date);
@@ -610,6 +625,7 @@ function JournalEditor({
   const [drills, setDrills] = useState(card.drills);
   const [rolls, setRolls] = useState(card.rolls);
   const [notes, setNotes] = useState(card.notes);
+  const [stopDoing, setStopDoing] = useState(card.stopDoing ?? '');
   const [error, setError] = useState('');
 
   return (
@@ -619,7 +635,7 @@ function JournalEditor({
       onSubmit={(event) => {
         event.preventDefault();
         try {
-          onSave({ date, className, techniques, partners, drills, rolls, notes });
+          onSave({ date, className, techniques, partners, drills, rolls, notes, stopDoing });
           setError('');
         } catch (err) {
           setError(err instanceof Error ? err.message : 'Could not save this card.');
@@ -678,9 +694,19 @@ function JournalEditor({
         <span className="ink__label">Rolls</span>
         <textarea aria-label="Edit rolls" rows={2} value={rolls} onChange={(event) => setRolls(event.target.value)} />
       </label>
-      <label className="ink ink--wobble">
-        <span className="ink__label">Notes</span>
-        <textarea aria-label="Edit notes" rows={4} value={notes} onChange={(event) => setNotes(event.target.value)} />
+      <label className="ink journal-note">
+        <span className="ink__label">Drill notes</span>
+        <span className="student-quiet" aria-hidden="true">
+          What you drilled and what to remember.
+        </span>
+        <textarea aria-label="Edit drill notes" rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} />
+      </label>
+      <label className="ink ink--wobble journal-note">
+        <span className="ink__label">Stop doing</span>
+        <span className="student-quiet" aria-hidden="true">
+          Mistakes to stop making.
+        </span>
+        <textarea aria-label="Edit stop doing" rows={3} value={stopDoing} onChange={(event) => setStopDoing(event.target.value)} />
       </label>
       {error ? <p role="alert">{error}</p> : null}
       <div className="student-card__actions">

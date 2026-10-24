@@ -9,11 +9,13 @@ import {
   BACKUP_NOT_A_BACKUP,
   STUDENT_BACKUP_VIDEO_MAX_BYTES,
   applyBackupToMemory,
+  backupFileGuide,
   backupVideoTooLargeMessage,
   buildStudentBackup,
   clearStudentMemory,
   parseStudentBackup,
   pdfIncludes,
+  studentBackupNames,
   progressReportLines,
   selfAssessmentLines,
 } from './studentBackup.ts';
@@ -200,6 +202,19 @@ test('newline lineage migrates and both instructors survive backup and restore',
   assert.equal(merged.journal.length, 1);
   assert.match(merged.journal[0]?.body ?? '', /only here/);
   assert.deepEqual(merged.rank?.lineage, ['Mestre Paulo Reis (mock)', 'Prof. Elena Duarte (mock)']);
+});
+
+test('the backup screen names the four files a backup writes', () => {
+  const names = studentBackupNames('2026-10-24');
+  const guide = backupFileGuide('2026-10-24');
+  assert.deepEqual(
+    guide.map((file) => file.name),
+    [names.json, names.csv, names.progressPdf, names.assessmentPdf],
+  );
+  assert.match(guide[0].detail, /Merge or Replace/);
+  assert.match(guide[1].detail, /spreadsheet/);
+  assert.match(guide[2].detail, /print/);
+  assert.match(guide[3].detail, /self-assessment/);
 });
 
 test('a video bundle over the backup cap explains itself', () => {

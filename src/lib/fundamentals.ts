@@ -20,6 +20,14 @@ export type FundamentalLevel = (typeof FUNDAMENTAL_LEVELS)[number]['level'];
 /** Live with resistance and above. This is the old "learned" mark. */
 export const FUNDAMENTAL_LIVE_LEVEL: FundamentalLevel = 3;
 
+/** Filter for moves at level 3 and above. Plain words, not "live or better". */
+export const FUNDAMENTAL_RESISTANCE_FILTER = 'Against resistance';
+
+/** Count of moves at level 3 and above, in gym-member words. */
+export function fundamentalResistanceCount(ready: number, moves: number): string {
+  return `${ready} of ${moves} ready when a partner resists`;
+}
+
 export type FundamentalSort = 'list' | 'weakest' | 'recent';
 export type FundamentalFilter = 'all' | 'not-started' | 'in-progress' | 'live';
 

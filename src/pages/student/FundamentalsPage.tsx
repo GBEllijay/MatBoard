@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   FUNDAMENTAL_LEVELS,
+  FUNDAMENTAL_RESISTANCE_FILTER,
   filterFundamentalRows,
+  fundamentalResistanceCount,
   formatFundamentalUpdated,
   fundamentalLevelLabel,
   moveLinks,
@@ -38,7 +40,7 @@ const FILTERS: { id: FundamentalFilter; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'not-started', label: 'Not started' },
   { id: 'in-progress', label: 'In progress' },
-  { id: 'live', label: 'Live or better' },
+  { id: 'live', label: FUNDAMENTAL_RESISTANCE_FILTER },
 ];
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -70,7 +72,7 @@ export function FundamentalsPage() {
             {summary.average.toFixed(1)}
           </p>
           <p className="fund-score__caption">
-            Average level · {summary.live} of {summary.moves} live or better
+            Average level · {fundamentalResistanceCount(summary.live, summary.moves)}
           </p>
           <Meter
             value={summary.average}
@@ -126,7 +128,7 @@ export function FundamentalsPage() {
               <section key={category.id} className="ink fund-cat" aria-label={category.name}>
                 <h2>{category.name}</h2>
                 <p className="fund-cat__meta">
-                  {progress.live} of {progress.moves} live or better
+                  {fundamentalResistanceCount(progress.live, progress.moves)}
                 </p>
                 <Meter
                   value={progress.average}
