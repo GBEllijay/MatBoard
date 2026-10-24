@@ -1,11 +1,13 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { cardPagePlugin } from './src/server/cardPagePlugin.ts';
 import { whitePurchaseApiPlugin } from './src/server/devApiPlugin.ts';
 
 export default defineConfig({
   plugins: [
     whitePurchaseApiPlugin(),
+    cardPagePlugin(),
     react(),
     VitePWA({
       registerType: 'autoUpdate',
@@ -43,9 +45,9 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,jpg,svg,woff2,webp,mp3}'],
-        globIgnores: ['**/branding/**'],
+        globIgnores: ['**/branding/**', '**/card.html', '**/card-logo.*', '**/card-qr.*'],
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api\//],
+        navigateFallbackDenylist: [/^\/api\//, /^\/card\/?(?:$|\?)/],
       },
     }),
   ],
