@@ -362,3 +362,50 @@ test('the full owner unlock code opens the Student Edition hub', async ({ page }
   await page.goto('/student');
   await expect(page.getByRole('link', { name: 'Training & Journal', exact: true })).toHaveCount(0);
 });
+
+test('Training & Journal ends on the leather edge', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/student?student=1');
+  await expect(page.getByRole('heading', { name: 'Advantage – Student Edition', exact: true })).toBeVisible();
+
+  const training = page.getByRole('link', { name: 'Training & Journal', exact: true });
+  const rank = page.getByRole('link', { name: 'Rank & Progress', exact: true });
+  await expect(training).toBeVisible();
+  await expect(training.locator('.s-journal__pages')).toHaveCount(0);
+  await expect(training.locator('.s-journal__elastic')).toBeVisible();
+  await expect(training.locator('.s-journal__stamp')).toHaveCount(1);
+  await expect(training.locator('.s-journal__ribbon')).toHaveCount(1);
+
+  const edges = await page.evaluate(() => {
+    const journal = document.querySelector('.s-journal');
+    const rankCard = document.querySelector('.s-rank');
+    if (!(journal instanceof HTMLElement) || !(rankCard instanceof HTMLElement)) return null;
+    const journalBox = journal.getBoundingClientRect();
+    const rankBox = rankCard.getBoundingClientRect();
+    const journalStyle = getComputedStyle(journal);
+    const rankStyle = getComputedStyle(rankCard);
+    const after = getComputedStyle(journal, '::after').content;
+    return {
+      journalRight: journalBox.right,
+      rankRight: rankBox.right,
+      journalLeft: journalBox.left,
+      rankLeft: rankBox.left,
+      journalRadius: journalStyle.borderTopRightRadius,
+      rankRadius: rankStyle.borderTopRightRadius,
+      marginRight: journalStyle.marginRight,
+      after,
+    };
+  });
+  expect(edges).not.toBeNull();
+  expect(Math.abs(edges!.journalRight - edges!.rankRight)).toBeLessThanOrEqual(1);
+  expect(Math.abs(edges!.journalLeft - edges!.rankLeft)).toBeLessThanOrEqual(1);
+  expect(edges!.journalRadius).toBe(edges!.rankRadius);
+  expect(edges!.journalRadius).not.toBe('0px');
+  expect(edges!.marginRight).toBe('0px');
+  expect(edges!.after === 'none' || edges!.after === 'normal').toBe(true);
+
+  await page.screenshot({ path: '/opt/cursor/artifacts/student-hub-journal-edge-390.png' });
+  await training.click();
+  await expect(page).toHaveURL(/\/student\/training/);
+  await expect(page.getByRole('heading', { name: 'Training & Journal', exact: true })).toBeVisible();
+});

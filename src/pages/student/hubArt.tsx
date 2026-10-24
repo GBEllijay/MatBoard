@@ -81,7 +81,6 @@ export function WhiteBelt({
 export function JournalDecor() {
   return (
     <>
-      <span className="s-journal__pages" aria-hidden="true" />
       <span className="s-journal__elastic" aria-hidden="true" />
       <span className="s-journal__stamp" aria-hidden="true" />
       <span className="s-journal__ribbon" aria-hidden="true" />
