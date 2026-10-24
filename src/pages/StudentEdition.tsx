@@ -47,6 +47,7 @@ import {
 import '../student-edition.css';
 import './student/arena.css';
 import './student/hub.css';
+import './student/progressPages.css';
 
 function blankTechniqueRows(count: number): { id: string; name: string }[] {
   return Array.from({ length: count }, () => ({ id: '', name: '' }));

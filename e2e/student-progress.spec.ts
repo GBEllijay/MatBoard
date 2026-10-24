@@ -83,7 +83,7 @@ test('belt checkpoints, goals, coach suggestions, and the share file', async ({ 
   await page.getByRole('button', { name: 'Mark Hold closed guard. met' }).click();
   await expect(page.getByRole('listitem', { name: 'Guard, filled' })).toBeVisible();
   await expect(page.getByText('1 of 3 checkpoints filled.')).toBeVisible();
-  await page.locator('.student-paper').evaluate((el) => {
+  await page.locator('.arena-scroll').evaluate((el) => {
     el.scrollTop = 0;
   });
   await shot(page, 'student-belt-390');

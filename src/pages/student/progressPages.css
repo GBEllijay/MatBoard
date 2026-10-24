@@ -1,0 +1,261 @@
+/**
+ * My rank and Belt progress only.
+ * Same surface as Fundamentals and Self-assessment: Inter, black, grouped
+ * cards, 56px targets. The stripe marks (.rank-tape) and the stripe detail
+ * sheet stay on their existing rules.
+ */
+
+.student.student--arena.student--rank,
+.student.student--arena.student--belt {
+  background: #000000;
+}
+
+.student.student--arena.student--rank .rank-hero,
+.student.student--arena.student--belt .belt-hero {
+  padding: 18px 16px 10px;
+  background: #000000;
+  box-shadow: none;
+}
+
+.student.student--arena.student--rank .rank-hero::after,
+.student.student--arena.student--belt .belt-hero::after {
+  display: none;
+}
+
+.student.student--arena.student--rank .rank-hero h1,
+.student.student--arena.student--belt .belt-hero h1 {
+  margin: 0;
+  color: #f5f5f7;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: clamp(34px, 9vw, 40px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  text-transform: none;
+  text-shadow: none;
+}
+
+.student.student--arena.student--rank .rank-stack,
+.student.student--arena.student--belt .belt-stack {
+  display: grid;
+  gap: 16px;
+  width: min(720px, 100%);
+  margin: 0 auto;
+  padding: 8px 16px 56px;
+  box-sizing: border-box;
+}
+
+.student.student--arena.student--rank .rank-stack > section[aria-label='Profile'],
+.student.student--arena.student--belt .goals-block,
+.student.student--arena.student--belt .coach-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.student.student--arena.student--rank h2,
+.student.student--arena.student--belt h2,
+.student.student--arena.student--belt h3 {
+  margin: 0;
+  color: #f5f5f7;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.student.student--arena.student--rank p,
+.student.student--arena.student--belt p {
+  margin: 0;
+}
+
+.student.student--arena.student--belt .belt-lane,
+.student.student--arena.student--rank .rank-rung {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  background: #1c1c1e;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04), 0 16px 40px rgba(0, 0, 0, 0.28);
+}
+
+.student.student--arena.student--belt .belt-lane {
+  display: grid;
+  gap: 12px;
+  padding: 20px 16px 18px;
+  color: #f5f5f7;
+}
+
+.student.student--arena.student--belt .belt-ends {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.student.student--arena.student--belt .checkpoint-row li {
+  color: #f5f5f7;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.student.student--arena.student--belt .checkpoint-box {
+  border-color: #f5f5f7;
+  border-radius: 6px;
+}
+
+.student.student--arena.student--belt .checkpoint-row li.is-filled .checkpoint-box {
+  background: #f5f5f7;
+}
+
+.student.student--arena.student--belt .criterion,
+.student.student--arena.student--belt .coach-line {
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.student.student--arena.student--belt .criterion p,
+.student.student--arena.student--belt .coach-line p,
+.student.student--arena.student--belt .coach-panel h3 {
+  color: #f5f5f7;
+}
+
+.student.student--arena.student--belt a:not(.ink-btn):not(.play-exit):not(.tier-home) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 2px;
+  font-weight: 700;
+}
+
+.student.student--arena.student--rank a.ink-btn:not(.play-exit),
+.student.student--arena.student--belt a.ink-btn:not(.play-exit) {
+  color: #f5f5f7;
+}
+
+.student.student--arena.student--rank a.ink-btn--save:not(.play-exit),
+.student.student--arena.student--belt a.ink-btn--save:not(.play-exit) {
+  color: #000000;
+}
+
+.student.student--arena.student--rank .rank-stack > a.ink-btn,
+.student.student--arena.student--belt .student-actions > a.ink-btn {
+  flex: 1 1 100%;
+  box-sizing: border-box;
+}
+
+.student.student--arena.student--rank .rank-ladder {
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  border-left: 0;
+}
+
+.student.student--arena.student--rank .rank-rung {
+  justify-items: stretch;
+  gap: 10px;
+  padding: 16px;
+}
+
+.student.student--arena.student--rank .rank-line {
+  width: 100%;
+  border-top: 0;
+  justify-items: stretch;
+}
+
+.student.student--arena.student--rank .rank-line input {
+  width: 100%;
+  margin-top: 0;
+}
+
+.student.student--arena.student--rank .rank-line input:disabled {
+  opacity: 0.45;
+}
+
+.student.student--arena.student--rank .rank-bar {
+  width: 100%;
+  max-width: none;
+  min-height: 56px;
+  border-radius: 12px;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.student.student--arena.student--rank .rank-rung--white .rank-bar {
+  color: #1c140e;
+}
+
+.student.student--arena.student--rank .rank-bar.is-on {
+  outline: 3px solid #f5f5f7;
+  outline-offset: 3px;
+}
+
+/* Light cloth behind the existing stripe marks so they stay readable.
+   Do not set size, border, or fill on .rank-tape. */
+.student.student--arena.student--rank .rank-slots {
+  justify-content: center;
+  align-self: center;
+  width: auto;
+  gap: 4px;
+  margin-top: 2px;
+  padding: 8px 10px 6px;
+  border-radius: 10px;
+  background: #f4f1ea;
+  color: #1c140e;
+}
+
+.student.student--arena.student--rank .rank-lineage-editor {
+  background: #1c1c1e;
+  color: #f5f5f7;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04), 0 16px 40px rgba(0, 0, 0, 0.28);
+}
+
+.student.student--arena.student--rank .rank-lineage-editor h2,
+.student.student--arena.student--rank .rank-lineage-editor p {
+  color: #f5f5f7;
+}
+
+.student.student--arena.student--rank .rank-lineage-editor .ink__label {
+  color: #c7c7cc;
+}
+
+.student.student--arena.student--rank .rank-lineage-editor input[type='text'] {
+  min-height: 56px;
+  border: 0;
+  border-radius: 12px;
+  background: #2c2c2e;
+  color: #f5f5f7;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.student.student--arena.student--rank .rank-lineage-editor .ink-btn {
+  min-height: 56px;
+  background: #2c2c2e;
+  color: #f5f5f7;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.student.student--arena.student--rank .rank-lineage-editor .ink-btn--save {
+  background: #f5f5f7;
+  color: #000000;
+  box-shadow: none;
+}
+
+.student.student--arena.student--rank input.student-file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
