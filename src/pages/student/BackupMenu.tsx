@@ -29,6 +29,7 @@ import { loadRankPictures } from '../../lib/rankPhotos';
 import { loadCoachShelf } from '../../lib/studentTools';
 import { BACKUP_GROUP_LABEL, BACKUP_LINKS, CLEAR_STUDENT_LABEL } from '../../lib/studentHubMenu';
 import { backupStampLabel, readStudentBackupStamp } from '../../lib/studentBackupStamp';
+import { UpdateToLatestButton } from '../../components/UpdateToLatestButton';
 import { useStudentPath } from './chrome';
 import { GroupFrame, MenuList, MenuRow } from './groupChrome';
 
@@ -149,6 +150,8 @@ export function BackupMenu() {
   return (
     <GroupFrame title={BACKUP_GROUP_LABEL}>
       <p className="s-backup__stamp">Last backup: {stamp}</p>
+      {/* TEMPORARY UPDATE BUTTON — delete this line with src/components/UpdateToLatestButton.tsx */}
+      <UpdateToLatestButton />
       <BackupFileGuide />
       <section className="s-backup" aria-label="Back up and restore">
         <label className="s-backup__check">

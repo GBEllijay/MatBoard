@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { UpdateToLatestButton } from '../components/UpdateToLatestButton';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import {
   SITE_ALPHA_LINE,
@@ -180,6 +181,8 @@ export function StorefrontPage() {
             </nav>
           </div>
         </div>
+        {/* TEMPORARY UPDATE BUTTON — delete this line with src/components/UpdateToLatestButton.tsx */}
+        <UpdateToLatestButton />
       </footer>
       </div>
     </main>
