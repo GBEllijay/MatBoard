@@ -141,3 +141,32 @@ test('destructive confirms still use the yellow fill', () => {
   assert.match(student, /\.drive-session-confirm \.ink-btn--save\.ink-btn--keep[\s\S]*background:\s*var\(--logo-yellow\)/);
   assert.doesNotMatch(student, /\.ink-btn--save\.ink-btn--keep \{[^}]*background:\s*var\(--logo-yellow\)/);
 });
+
+test('win call buttons use a green fill with contrast-safe ink', () => {
+  const css = stripComments(readFileSync(join(SRC, 'index.css'), 'utf8'));
+  const rules = rulesIn(css, 'index.css');
+  function lastBackground(match: (selector: string) => boolean): string {
+    const hits = rules.filter((rule) => splitSelectors(rule.selector).some(match) && filledDeclaration(rule.body, 'background'));
+    assert.ok(hits.length > 0);
+    return filledDeclaration(hits[hits.length - 1].body, 'background');
+  }
+  assert.equal(lastBackground((selector) => selector === '.bout-call--win' || selector === '.pad-call--win'), '#16a34a');
+  assert.equal(
+    lastBackground((selector) => selector === '.bout-call--win:hover' || selector === '.pad-call--win:hover'),
+    '#22c55e',
+  );
+  assert.match(css, /\.bout-call--win\s*\{[^}]*color:\s*#0e1726/);
+  assert.match(css, /\.pad-call--win\s*\{[^}]*color:\s*#0e1726/);
+  assert.match(css, /\.bout-call--dq\s*\{[^}]*background:\s*#f5544f/);
+  assert.match(css, /\.pad-call--dq\s*\{[^}]*background:\s*var\(--neg\)/);
+});
+
+function filledDeclaration(body: string, propName: string): string {
+  for (const decl of body.split(';')) {
+    const colon = decl.indexOf(':');
+    if (colon < 0) continue;
+    if (decl.slice(0, colon).trim().toLowerCase() !== propName) continue;
+    return decl.slice(colon + 1).trim();
+  }
+  return '';
+}
