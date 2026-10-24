@@ -18,6 +18,7 @@ import { decodeJournalBody } from './studentEdition.ts';
 import type { StudentFilm } from './studentFilm.ts';
 import type { AreaRatings } from './opponentAssessment.ts';
 import type { ScoutingCard } from './studentScouting.ts';
+import { stripeReportLine } from './studentRank.ts';
 import { BELT_LABELS, beltTrack, checkpointFilled, learnedCatalogIds } from './studentTools.ts';
 import type { RubricCheckpoint, RubricLevel } from './progress/types.ts';
 
@@ -152,17 +153,22 @@ export function ratingLine(ratings: AreaRatings | undefined): string {
   }).join(', ');
 }
 
+function appendStripeLines(lines: string[], tapeCount: number, tapeDates: readonly string[] | undefined, indent = ''): void {
+  for (let index = 0; index < tapeCount; index += 1) {
+    lines.push(`${indent}${stripeReportLine(index + 1, tapeDates?.[index])}`);
+  }
+}
+
 function rankBlock(report: StudentProgressReport): ReportBlock {
   const rank = report.rank;
   const lines = [`Current belt awarded: ${rank?.awardedOn || 'No date'}`, `Stripes: ${rank?.tapeCount ?? 0}`];
-  rank?.tapeDates.forEach((date, index) => {
-    if (rank && index < rank.tapeCount) lines.push(`Stripe ${index + 1}: ${date || 'No date'}`);
-  });
+  if (rank) appendStripeLines(lines, rank.tapeCount, rank.tapeDates);
   if (rank?.history.length) {
     lines.push('Earlier belts:');
     for (const row of rank.history) {
       const stripes = countPhrase(row.tapeCount, 'stripe', 'stripes');
       lines.push(`${BELT_LABELS[row.belt] ?? row.belt} awarded ${row.awardedOn || 'no date'}, ${stripes}`);
+      appendStripeLines(lines, row.tapeCount, row.tapeDates, '  ');
     }
   }
   if (rank?.lineage?.length) {

@@ -10,10 +10,15 @@ type Props = {
    * Coach Unlimited menus use 0–3. Student rank rows use 1–4.
    */
   stripes?: 0 | 1 | 2 | 3 | 4;
+  /**
+   * Four empty stripe rectangles on the black bar.
+   * Earned stripes are not filled yet. Coach rails leave this off.
+   */
+  emptySlots?: boolean;
 };
 
 /** Thin left-edge belt ribbon. Rank belts use a tip stack; tournament is green/yellow blocks. */
-export function BeltRail({ kind, flush = false, stripes }: Props) {
+export function BeltRail({ kind, flush = false, stripes, emptySlots = false }: Props) {
   const degrees = stripes !== undefined;
   return (
     <span
@@ -26,6 +31,10 @@ export function BeltRail({ kind, flush = false, stripes }: Props) {
         .filter(Boolean)
         .join(' ')}
       aria-hidden="true"
-    />
+    >
+      {emptySlots
+        ? [1, 2, 3, 4].map((slot) => <i key={slot} className="belt-slot" data-slot={slot} />)
+        : null}
+    </span>
   );
 }
