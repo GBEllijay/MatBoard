@@ -1,0 +1,642 @@
+/* Woven belts for My rank. Variant B, black bar at 57%, from the approved mock. */
+
+.student.student--rank :where(.rung button) {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.student.student--rank :where(.rung button:disabled) {
+  cursor: default;
+}
+
+.student.student--rank .belt {
+  --h: 64px;
+  --slot: 44px;
+  --barw: calc(var(--slot) * 4 + 12px);
+  position: relative;
+  display: flex;
+  height: var(--h);
+  border-radius: 12px;
+  margin: 4px 3px 0;
+  filter: drop-shadow(0 4px 5px rgba(0, 0, 0, 0.6));
+}
+
+.student.student--rank .belt__body {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 14px 0 18px;
+  text-align: left;
+  border-radius: 12px 0 0 12px;
+  color: #fff;
+  background-color: var(--cloth);
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.34) 0, rgba(255, 255, 255, 0.08) 26%, rgba(255, 255, 255, 0) 48%, rgba(0, 0, 0, 0.14) 74%, rgba(0, 0, 0, 0.3) 100%),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.09) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.2) 0 2px, rgba(255, 255, 255, 0.1) 2px 4px),
+    url(/belt-weave.png);
+  background-size: auto, auto, auto, 160px 8px;
+  box-shadow: inset 0 0 0 1px var(--edge), inset 2px 0 0 rgba(255, 255, 255, 0.14), inset 0 -2px 0 rgba(0, 0, 0, 0.25);
+}
+
+.student.student--rank .belt__body::before,
+.student.student--rank .belt__bar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 12px;
+  right: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--stitch), var(--stitch)) 0 11% / 100% 1px no-repeat,
+    linear-gradient(var(--stitch), var(--stitch)) 0 19% / 100% 1px no-repeat,
+    linear-gradient(var(--stitch), var(--stitch)) 0 81% / 100% 1px no-repeat,
+    linear-gradient(var(--stitch), var(--stitch)) 0 89% / 100% 1px no-repeat;
+}
+
+.student.student--rank .belt__name {
+  position: relative;
+  z-index: 3;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+.student.student--rank .belt__sub {
+  position: relative;
+  z-index: 3;
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.9;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+.student.student--rank .rung--white .belt__name,
+.student.student--rank .rung--white .belt__sub {
+  color: #1d1d1f;
+  text-shadow: none;
+}
+
+.student.student--rank .belt__bar {
+  position: relative;
+  flex: 0 0 var(--barw);
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: center;
+  border-radius: 0 7px 7px 0;
+  padding: 0 6px;
+  background-color: var(--bar);
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.26) 0, rgba(255, 255, 255, 0.05) 26%, rgba(255, 255, 255, 0) 48%, rgba(0, 0, 0, 0.2) 80%, rgba(0, 0, 0, 0.36) 100%),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.08) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.22) 0 2px, rgba(255, 255, 255, 0.07) 2px 4px),
+    url(/belt-weave.png);
+  background-size: auto, auto, auto, 160px 8px;
+  box-shadow: inset 0 0 0 1px var(--bar-edge), inset -2px 0 0 rgba(255, 255, 255, 0.12), -4px 0 5px -2px rgba(0, 0, 0, 0.55);
+}
+
+.student.student--rank .rung:not(.rung--black) .belt__bar {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), inset -2px 0 0 rgba(255, 255, 255, 0.1), -4px 0 5px -2px rgba(0, 0, 0, 0.55);
+}
+
+.student.student--rank .belt__bar::before {
+  left: 0;
+  background:
+    linear-gradient(var(--bar-stitch), var(--bar-stitch)) 0 11% / 100% 1px no-repeat,
+    linear-gradient(var(--bar-stitch), var(--bar-stitch)) 0 19% / 100% 1px no-repeat,
+    linear-gradient(var(--bar-stitch), var(--bar-stitch)) 0 81% / 100% 1px no-repeat,
+    linear-gradient(var(--bar-stitch), var(--bar-stitch)) 0 89% / 100% 1px no-repeat;
+}
+
+.student.student--rank .stripe {
+  position: relative;
+  z-index: 3;
+  flex: 0 0 var(--slot);
+  width: var(--slot);
+  height: 100%;
+  display: block;
+}
+
+.student.student--rank .tape {
+  position: absolute;
+  left: 50%;
+  width: 14px;
+  margin-left: -7px;
+  top: 9px;
+  bottom: 9px;
+  border-radius: 3px;
+  border: 1.5px solid rgba(255, 255, 255, 0.55);
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.student.student--rank .stripe:disabled .tape {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.student.student--rank .stripe.is-on .tape {
+  top: 0;
+  bottom: 0;
+  border: 0;
+  border-radius: 0;
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.09) 0 1px, transparent 1px 3px),
+    linear-gradient(90deg, #e4e0d6, #fff 38%, #fbfaf6 60%, #dcd8cd);
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.7), 1px 0 0 rgba(0, 0, 0, 0.35), -1px 0 0 rgba(0, 0, 0, 0.25);
+}
+
+.student.student--rank .rung.is-current .belt {
+  box-shadow: 0 0 0 2px #1c1c1e, 0 0 0 5px #004eba, 0 0 22px 6px rgba(0, 78, 186, 0.6);
+}
+
+.student.student--rank .rung--white {
+  --cloth: #f1eee5;
+  --edge: #c9c3b3;
+  --stitch: #bdb6a4;
+}
+.student.student--rank .rung--blue {
+  --cloth: #1d4ed8;
+  --edge: #12349b;
+  --stitch: rgba(255, 255, 255, 0.38);
+}
+.student.student--rank .rung--purple {
+  --cloth: #7a3ec8;
+  --edge: #53268f;
+  --stitch: rgba(255, 255, 255, 0.34);
+}
+.student.student--rank .rung--brown {
+  --cloth: #7b4a2a;
+  --edge: #4f2f18;
+  --stitch: rgba(255, 255, 255, 0.3);
+}
+.student.student--rank .rung--black {
+  --cloth: #232326;
+  --edge: rgba(255, 255, 255, 0.2);
+  --stitch: rgba(255, 255, 255, 0.2);
+}
+.student.student--rank .rung {
+  --bar: #101012;
+  --bar-edge: #000;
+  --bar-stitch: rgba(255, 255, 255, 0.22);
+}
+.student.student--rank .rung--black {
+  --bar: #d3161b;
+  --bar-edge: #8c0c10;
+  --bar-stitch: rgba(255, 255, 255, 0.42);
+}
+
+.student.student--rank .belt--slim57 .belt__bar {
+  flex: 0 0 57%;
+  padding: 0;
+  justify-content: stretch;
+}
+.student.student--rank .belt--slim57 .stripe {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+}
+.student.student--rank .belt--slim57 .tape {
+  width: 7px;
+  margin-left: -3.5px;
+}
+.student.student--rank .belt--slim57 .belt__sub {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.student.student--rank .belt[data-instructor-bars='on'] {
+  --ib: 18px;
+}
+.student.student--rank .belt--slim57[data-instructor-bars='on'] .belt__bar {
+  flex-basis: calc(57% + 2 * var(--ib));
+  padding: 0 var(--ib);
+}
+.student.student--rank .ibar {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  bottom: 0;
+  width: 11px;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.09) 0 1px, transparent 1px 3px),
+    linear-gradient(90deg, #e4e0d6, #fff 38%, #fbfaf6 60%, #dcd8cd);
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.7), 1px 0 0 rgba(0, 0, 0, 0.35), -1px 0 0 rgba(0, 0, 0, 0.25);
+}
+.student.student--rank .ibar--l {
+  left: 1.5px;
+}
+.student.student--rank .ibar--r {
+  right: 1.5px;
+}
+.student.student--rank .ibar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(30, 0, 0, 0.8);
+}
+.student.student--rank .ibar--l::after {
+  left: calc(100% + 4px);
+}
+.student.student--rank .ibar--r::after {
+  right: calc(100% + 4px);
+}
+
+.student.student--rank .rung__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+  min-height: 48px;
+}
+
+.student.student--rank .achieved {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 0;
+  color: #8e8e93;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.student.student--rank .achieved b {
+  font-size: 15px;
+  font-weight: 600;
+  color: #f5f5f7;
+  letter-spacing: -0.005em;
+}
+
+.student.student--rank .achieved.is-empty b {
+  color: #aeaeb2;
+  font-weight: 500;
+}
+
+.student.student--rank .achieved input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.student.student--rank .photo {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 22px;
+  background: #2c2c2e;
+  color: #f5f5f7;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+}
+
+.student.student--rank .photo svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.student.student--rank .photo .n {
+  color: #aeaeb2;
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.student.student--rank .rank-stripe-date {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.student.student--rank .rank-stripe-thumb {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.student.student--rank .ibar-switch {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 8px;
+  text-align: left;
+  color: #f5f5f7;
+}
+
+.student.student--rank .ibar-switch__track {
+  position: relative;
+  width: 51px;
+  height: 31px;
+  flex: none;
+  border-radius: 16px;
+  background: #3a3a3c;
+}
+
+.student.student--rank .ibar-switch[aria-checked='true'] .ibar-switch__track {
+  background: #004eba;
+}
+
+.student.student--rank .ibar-switch__knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.student.student--rank .ibar-switch[aria-checked='true'] .ibar-switch__knob {
+  transform: translateX(20px);
+}
+
+.student.student--rank .ibar-switch__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.student.student--rank .ibar-switch__copy strong {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.student.student--rank .ibar-switch__copy small {
+  color: #8e8e93;
+  font-size: 12px;
+}
+
+.student.student--rank .degree-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 14px 0 8px;
+  color: #8e8e93;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.student.student--rank .degree-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.student.student--rank .degree-tile {
+  min-height: 64px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: #2c2c2e;
+  color: #f5f5f7;
+  text-align: left;
+}
+
+.student.student--rank .degree-tile strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.student.student--rank .degree-tile b {
+  display: block;
+  margin-top: 4px;
+  color: #aeaeb2;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.student.student--rank .degree-tile.is-earned {
+  box-shadow: inset 0 0 0 1.5px #d3161b;
+}
+
+.student.student--rank .degree-tile.is-earned b {
+  color: #d3161b;
+}
+
+.student.student--rank .degree-tile.is-now {
+  box-shadow: 0 0 0 2px #1c1c1e, 0 0 0 4px #004eba;
+}
+
+.student.student--rank .degree-tile.is-now b {
+  color: #f5f5f7;
+}
+
+.student.student--rank .degree-caption {
+  margin: 8px 0 0;
+  color: #8e8e93;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.student.student--rank .rank-unlocked {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.student.student--rank .rank-unlocked__kicker {
+  margin: 8px 0 0;
+  color: #8e8e93;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.student.student--rank .final-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.28);
+  border-radius: 14px;
+  background: #141416;
+}
+
+.student.student--rank .final-row.is-current {
+  box-shadow: 0 0 0 2px #004eba;
+}
+
+.student.student--rank .final-row__hit {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  grid-column: 1 / -1;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  text-align: left;
+  color: #f5f5f7;
+}
+
+.student.student--rank .final-row__text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.student.student--rank .final-row__text strong {
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.student.student--rank .final-row__text span {
+  color: #aeaeb2;
+  font-size: 13px;
+}
+
+.student.student--rank .mini-belt {
+  height: 28px;
+  border-radius: 7px;
+  background-color: var(--mini, #d3161b);
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.34) 0, rgba(255, 255, 255, 0.08) 30%, rgba(0, 0, 0, 0.18) 100%),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.1) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.2) 0 2px, rgba(255, 255, 255, 0.1) 2px 4px),
+    var(--mini-split, none),
+    url(/belt-weave.png);
+  background-size: auto, auto, auto, auto, 160px 8px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+.student.student--rank .mini-belt--red-black {
+  --mini: #d3161b;
+  --mini-split: linear-gradient(90deg, #232326 0 46%, #d3161b 54% 100%);
+}
+
+.student.student--rank .mini-belt--red-white {
+  --mini: #f4f1ea;
+  --mini-split: linear-gradient(90deg, #f4f1ea 0 46%, #d3161b 54% 100%);
+}
+
+.student.student--rank .mini-belt--red {
+  --mini: #d3161b;
+  --mini-split: linear-gradient(#d3161b, #d3161b);
+}
+
+.student.student--rank .final-row .achieved {
+  margin-left: 84px;
+  min-height: 36px;
+}
+
+@media (min-width: 700px) {
+  .student.student--rank .belt {
+    --h: 76px;
+    --slot: 56px;
+    --barw: calc(var(--slot) * 4 + 16px);
+  }
+  .student.student--rank .belt__name {
+    font-size: 22px;
+  }
+  .student.student--rank .tape {
+    width: 16px;
+    margin-left: -8px;
+    top: 11px;
+    bottom: 11px;
+  }
+  .student.student--rank .belt--slim57 .belt__bar {
+    flex-basis: 36%;
+  }
+  .student.student--rank .belt--slim57 .tape {
+    width: 8px;
+    margin-left: -4px;
+  }
+  .student.student--rank .belt[data-instructor-bars='on'] {
+    --ib: 22px;
+  }
+  .student.student--rank .belt--slim57[data-instructor-bars='on'] .belt__bar {
+    flex-basis: calc(36% + 2 * var(--ib));
+  }
+  .student.student--rank .ibar {
+    width: 14px;
+  }
+}
+
+/* Kids belts use the adult woven row. The center band is the half-color stripe. */
+.student.student--rank .belt.belt--kids .belt__name {
+  font-size: 15px;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+}
+.student.student--rank .belt.belt--kids .belt__body {
+  padding: 0 8px 0 12px;
+}
+.student.student--rank .belt.belt--kids[data-center='white'] .belt__body,
+.student.student--rank .belt.belt--kids[data-center='black'] .belt__body {
+  justify-content: space-between;
+  padding-top: 5px;
+  padding-bottom: 4px;
+}
+.student.student--rank .belt.belt--kids[data-center='white'] .belt__sub,
+.student.student--rank .belt.belt--kids[data-center='black'] .belt__sub {
+  margin-top: 0;
+}
+.student.student--rank .belt.belt--kids[data-center='white'] .belt__body::after,
+.student.student--rank .belt.belt--kids[data-center='black'] .belt__body::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  right: 0;
+  top: 26px;
+  height: 14px;
+  background: var(--center);
+  pointer-events: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), inset 0 -1px 0 rgba(0, 0, 0, 0.28);
+}
+.student.student--rank .rung--kids-ink-navy .belt__name,
+.student.student--rank .rung--kids-ink-navy .belt__sub {
+  color: #0e1726;
+  text-shadow: none;
+}
+.student.student--rank .belt.belt--kids .stripe.is-on .tape {
+  border: 0;
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.1) 0 1px, transparent 1px 3px),
+    var(--tape, #f4f1ea);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5), 0 0 4px rgba(0, 0, 0, 0.65);
+}

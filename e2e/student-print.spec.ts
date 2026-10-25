@@ -180,7 +180,7 @@ test('print reports hide the seat bar, save a profile, and download matching PDF
   const belts = progress.getByRole('region', { name: 'Belt progress' });
   await expect(belts).toContainText('White');
   await expect(belts).toContainText('Blue');
-  await expect(belts).toContainText('Coral');
+  await expect(belts.getByText('Coral', { exact: true })).toHaveCount(0);
   await expect(belts.getByText('Grey', { exact: true })).toHaveCount(0);
   await expect(belts.getByText('Yellow', { exact: true })).toHaveCount(0);
   const journal = progress.getByRole('region', { name: 'Journal summary' });

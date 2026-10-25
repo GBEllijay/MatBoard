@@ -39,6 +39,8 @@ const BELT_WORD: Record<ProgressBelt, string> = {
   orange: 'Orange',
   green: 'Green',
   coral: 'Coral',
+  redWhite: 'Red and white',
+  red: 'Red',
 };
 
 function profileCardNote(report: StudentProgressReport): string {
@@ -71,10 +73,30 @@ export function StudentHub() {
   const academy = loadAcademyLink(localStorage);
   const stamp = backupStampLabel(readStudentBackupStamp(localStorage));
   const coachNote = academy ? `Connected to ${academy.folderName}` : 'Academy, a file for your coach, and import';
-  const stripes = Math.max(0, Math.min(RANK_TAPE_MAX, report.rank?.tapeCount ?? 0));
-  const beltWord = BELT_WORD[report.profile.belt] ?? 'White';
-  const stripeWord = stripes === 1 ? 'stripe' : 'stripes';
-  const stripePercent = Math.round((stripes / RANK_TAPE_MAX) * 100);
+  const belt = report.profile.belt;
+  const postBlack = belt === 'black' || belt === 'coral' || belt === 'redWhite' || belt === 'red';
+  const stripes = postBlack
+    ? belt === 'coral'
+      ? 7
+      : belt === 'redWhite'
+        ? 8
+        : belt === 'red'
+          ? 9
+          : Math.max(0, Math.min(6, report.rank?.tapeCount ?? 0))
+    : Math.max(0, Math.min(RANK_TAPE_MAX, report.rank?.tapeCount ?? 0));
+  const stripeMax = belt === 'black' ? 6 : postBlack ? 9 : RANK_TAPE_MAX;
+  const beltWord = BELT_WORD[belt] ?? 'White';
+  const stripeWord = postBlack ? (stripes === 1 ? 'degree' : 'degrees') : stripes === 1 ? 'stripe' : 'stripes';
+  const stripePercent = Math.round((stripes / stripeMax) * 100);
+  const nextLabel = postBlack
+    ? belt === 'red'
+      ? 'Final rank'
+      : stripes < stripeMax
+        ? 'Next degree'
+        : 'All six degrees'
+    : stripes < RANK_TAPE_MAX
+      ? 'Next stripe'
+      : 'All four stripes';
 
   return (
     <main className="home home--student student-menu-home">
@@ -100,12 +122,12 @@ export function StudentHub() {
                 <span className="s-rank__meta">{`${beltWord} · ${stripes} ${stripeWord}`}</span>
               </span>
               <small>Belt goals, fundamentals, and self-assessment</small>
-              <WhiteBelt filled={stripes} emphasizeNext={stripes < RANK_TAPE_MAX} />
+              <WhiteBelt filled={Math.min(stripes, 4)} emphasizeNext={!postBlack && stripes < RANK_TAPE_MAX} />
               <span className="s-meter" aria-hidden="true">
                 <i style={{ width: `${stripePercent}%` }} />
               </span>
               <span className="s-rank__cap">
-                <span>{stripes < RANK_TAPE_MAX ? 'Next stripe' : 'All four stripes'}</span>
+                <span>{nextLabel}</span>
                 <span>{`${stripePercent}%`}</span>
               </span>
             </span>
@@ -170,16 +192,36 @@ export function TrainingMenu() {
 export function ProgressMenu() {
   const { report } = useStudentFile();
   const links = progressLinks(report.profile.belt);
-  const stripes = Math.max(0, Math.min(RANK_TAPE_MAX, report.rank?.tapeCount ?? 0));
-  const beltWord = BELT_WORD[report.profile.belt] ?? 'White';
-  const stripeWord = stripes === 1 ? 'stripe' : 'stripes';
-  const stripePercent = Math.round((stripes / RANK_TAPE_MAX) * 100);
+  const belt = report.profile.belt;
+  const postBlack = belt === 'black' || belt === 'coral' || belt === 'redWhite' || belt === 'red';
+  const stripes = postBlack
+    ? belt === 'coral'
+      ? 7
+      : belt === 'redWhite'
+        ? 8
+        : belt === 'red'
+          ? 9
+          : Math.max(0, Math.min(6, report.rank?.tapeCount ?? 0))
+    : Math.max(0, Math.min(RANK_TAPE_MAX, report.rank?.tapeCount ?? 0));
+  const stripeMax = belt === 'black' ? 6 : postBlack ? 9 : RANK_TAPE_MAX;
+  const beltWord = BELT_WORD[belt] ?? 'White';
+  const stripeWord = postBlack ? (stripes === 1 ? 'degree' : 'degrees') : stripes === 1 ? 'stripe' : 'stripes';
+  const stripePercent = Math.round((stripes / stripeMax) * 100);
+  const nextLabel = postBlack
+    ? belt === 'red'
+      ? 'Final rank'
+      : stripes < stripeMax
+        ? 'Next degree'
+        : 'All six degrees'
+    : stripes < RANK_TAPE_MAX
+      ? 'Next stripe'
+      : 'All four stripes';
   return (
     <GroupFrame title={RANK_GROUP_LABEL}>
       <section className="s-rank-summary" aria-label="Belt summary">
         <span>{`${beltWord} belt · ${stripes} ${stripeWord}`}</span>
-        <span>{stripes < RANK_TAPE_MAX ? `Next stripe ${stripePercent}%` : 'All four stripes'}</span>
-        <WhiteBelt filled={stripes} emphasizeNext={stripes < RANK_TAPE_MAX} />
+        <span>{postBlack ? nextLabel : stripes < RANK_TAPE_MAX ? `Next stripe ${stripePercent}%` : 'All four stripes'}</span>
+        <WhiteBelt filled={Math.min(stripes, 4)} emphasizeNext={!postBlack && stripes < RANK_TAPE_MAX} />
         <span className="s-meter" aria-hidden="true">
           <i style={{ width: `${stripePercent}%` }} />
         </span>

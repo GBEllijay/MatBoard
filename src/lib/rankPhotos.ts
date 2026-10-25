@@ -7,7 +7,7 @@
  */
 
 import { shrinkImageFile } from './imageShrink.ts';
-import { RANK_BELTS, RANK_PHOTO_MAX_CHARS, RANK_TAPE_MAX, type RankBelt, type RankPicture } from './progress/types.ts';
+import { BLACK_DEGREE_MAX, RANK_BELTS, RANK_PHOTO_MAX_CHARS, RANK_TAPE_MAX, type RankBelt, type RankPicture } from './progress/types.ts';
 import { assertOriginRoom } from './storageQuota.ts';
 
 export const RANK_PHOTO_KEY = 'matboard.studentEdition.rankPhotos.v1';
@@ -18,8 +18,16 @@ const PER_TAPE = 4;
 
 export type RankPhotoStore = {
   belts: Partial<Record<RankBelt, string[]>>;
-  tapes: Partial<Record<RankBelt, [string[], string[], string[], string[]]>>;
+  tapes: Partial<Record<RankBelt, string[][]>>;
+  /** Kids belt photos. Kept apart from adult belt keys so White does not share a picture. */
+  kidsBelts?: Record<string, string[]>;
 };
+
+const KIDS_BELT_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/;
+
+function slotsFor(belt: RankBelt): number {
+  return belt === 'black' ? BLACK_DEGREE_MAX : RANK_TAPE_MAX;
+}
 
 function isImage(file: File): boolean {
   if (file.type.startsWith('image/')) return true;
@@ -95,7 +103,10 @@ export function addBeltPhoto(store: RankPhotoStore, belt: RankBelt, image: strin
 }
 
 export function addTapePhoto(store: RankPhotoStore, belt: RankBelt, tapeIndex: number, image: string): RankPhotoStore {
-  if (!Number.isInteger(tapeIndex) || tapeIndex < 0 || tapeIndex >= RANK_TAPE_MAX) throw new Error('Stripes are 0 to 4.');
+  const slots = slotsFor(belt);
+  if (!Number.isInteger(tapeIndex) || tapeIndex < 0 || tapeIndex >= slots) {
+    throw new Error(belt === 'black' ? 'Degrees are 0 to 6.' : 'Stripes are 0 to 4.');
+  }
   const current = tapePhotos(store, belt, tapeIndex);
   if (current.length >= PER_TAPE) throw new Error('That stripe already has 4 photos.');
   const next = structuredClone(store);
@@ -111,6 +122,34 @@ export function removeBeltPhoto(store: RankPhotoStore, belt: RankBelt, index: nu
   if (!current[index]) return store;
   const next = structuredClone(store);
   next.belts[belt] = current.filter((_, slot) => slot !== index);
+  writeStore(next);
+  return next;
+}
+
+export function kidsBeltPhotos(store: RankPhotoStore, beltId: string): string[] {
+  return store.kidsBelts?.[beltId] ?? [];
+}
+
+export function addKidsBeltPhoto(store: RankPhotoStore, beltId: string, image: string): RankPhotoStore {
+  if (!KIDS_BELT_ID.test(beltId)) throw new Error('That belt is not on this list.');
+  const current = kidsBeltPhotos(store, beltId);
+  if (current.length >= PER_BELT) throw new Error('That belt already has 8 photos.');
+  const next = structuredClone(store);
+  next.kidsBelts = { ...next.kidsBelts, [beltId]: [...current, image] };
+  writeStore(next);
+  return next;
+}
+
+export function removeKidsBeltPhoto(store: RankPhotoStore, beltId: string, index: number): RankPhotoStore {
+  const current = kidsBeltPhotos(store, beltId);
+  if (!current[index]) return store;
+  const next = structuredClone(store);
+  const list = current.filter((_, slot) => slot !== index);
+  const kidsBelts = { ...next.kidsBelts };
+  if (list.length) kidsBelts[beltId] = list;
+  else delete kidsBelts[beltId];
+  if (Object.keys(kidsBelts).length) next.kidsBelts = kidsBelts;
+  else delete next.kidsBelts;
   writeStore(next);
   return next;
 }
@@ -131,21 +170,19 @@ export function picturesFromStore(store: RankPhotoStore): RankPicture[] {
   const pictures: RankPicture[] = [];
   for (const belt of RANK_BELTS) {
     for (const image of beltPhotos(store, belt)) pictures.push({ belt, image });
-    for (let tapeIndex = 0; tapeIndex < RANK_TAPE_MAX; tapeIndex += 1) {
+    for (let tapeIndex = 0; tapeIndex < slotsFor(belt); tapeIndex += 1) {
       for (const image of tapePhotos(store, belt, tapeIndex)) pictures.push({ belt, tapeIndex, image });
     }
   }
   return pictures;
 }
 
-function tapeRow(store: RankPhotoStore, belt: RankBelt): [string[], string[], string[], string[]] {
+function tapeRow(store: RankPhotoStore, belt: RankBelt): string[][] {
   const current = store.tapes[belt];
-  return [
-    [...(current?.[0] ?? [])],
-    [...(current?.[1] ?? [])],
-    [...(current?.[2] ?? [])],
-    [...(current?.[3] ?? [])],
-  ];
+  const slots = slotsFor(belt);
+  const row: string[][] = [];
+  for (let index = 0; index < slots; index += 1) row.push([...(current?.[index] ?? [])]);
+  return row;
 }
 
 function writeStore(store: RankPhotoStore): void {
@@ -155,7 +192,7 @@ function writeStore(store: RankPhotoStore): void {
 function normalizeStore(value: unknown): RankPhotoStore {
   const store = emptyRankPhotoStore();
   if (!value || typeof value !== 'object' || Array.isArray(value)) return store;
-  const record = value as { belts?: unknown; tapes?: unknown };
+  const record = value as { belts?: unknown; tapes?: unknown; kidsBelts?: unknown };
   const belts = record.belts;
   const tapes = record.tapes;
   if (belts && typeof belts === 'object' && !Array.isArray(belts)) {
@@ -169,12 +206,22 @@ function normalizeStore(value: unknown): RankPhotoStore {
     for (const belt of RANK_BELTS) {
       const row = (tapes as Record<string, unknown>)[belt];
       if (!Array.isArray(row)) continue;
-      const tapesForBelt: [string[], string[], string[], string[]] = [[], [], [], []];
-      for (let index = 0; index < RANK_TAPE_MAX; index += 1) {
+      const tapesForBelt: string[][] = [];
+      for (let index = 0; index < slotsFor(belt); index += 1) {
         tapesForBelt[index] = cleanList(row[index]).slice(0, PER_TAPE);
       }
       if (tapesForBelt.some((list) => list.length)) store.tapes[belt] = tapesForBelt;
     }
+  }
+  const kidsBelts = record.kidsBelts;
+  if (kidsBelts && typeof kidsBelts === 'object' && !Array.isArray(kidsBelts)) {
+    const kept: Record<string, string[]> = {};
+    for (const [beltId, list] of Object.entries(kidsBelts as Record<string, unknown>)) {
+      if (!KIDS_BELT_ID.test(beltId)) continue;
+      const images = cleanList(list).slice(0, PER_BELT);
+      if (images.length) kept[beltId] = images;
+    }
+    if (Object.keys(kept).length) store.kidsBelts = kept;
   }
   return store;
 }

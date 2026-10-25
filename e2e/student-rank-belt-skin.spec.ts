@@ -45,15 +45,17 @@ test('my rank and belt progress keep every control and match the arena skin', as
   await expect(page.getByRole('link', { name: BACK, exact: true })).toHaveAttribute('href', '/student/progress?student=1');
   await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute('href', '/products?student=1');
   await expect(page.getByRole('region', { name: 'Profile' })).toBeVisible();
-  await expect(page.getByLabel('Student name')).toBeVisible();
-  await expect(page.getByLabel('Gym name')).toBeVisible();
-  await expect(page.getByLabel('Start date')).toBeVisible();
+  await expect(page.getByLabel('Name', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Gym', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Training start date', { exact: true })).toBeVisible();
   await expect(page.getByRole('list', { name: 'Belt ladder' })).toBeVisible();
 
   for (const belt of BELTS) {
     const bar = page.getByRole('button', { name: belt, exact: true });
     await expect(bar).toBeVisible();
-    await expect(bar).toHaveCSS('min-height', '56px');
+    const barBox = await bar.boundingBox();
+    expect(barBox).toBeTruthy();
+    expect(barBox!.height).toBeGreaterThanOrEqual(56);
     const dateName = belt === 'White' ? 'Date of this belt' : `Date of ${belt} belt`;
     await expect(page.getByLabel(dateName)).toBeVisible();
     await expect(page.getByLabel(`Add ${belt} photo`)).toBeAttached();
@@ -69,12 +71,9 @@ test('my rank and belt progress keep every control and match the arena skin', as
   const stripe = page.getByRole('button', { name: 'Stripe 1', exact: true });
   const stripeBox = await stripe.boundingBox();
   expect(stripeBox).toBeTruthy();
-  expect(stripeBox!.height).toBeLessThan(48);
-  expect(stripeBox!.width).toBeLessThan(24);
-  await expect(stripe).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
-  await expect(stripe).toHaveCSS('border-top-width', '2px');
-  await expect(stripe).toHaveCSS('border-top-color', 'rgb(28, 20, 14)');
-  await expect(stripe).toHaveClass(/rank-tape/);
+  expect(stripeBox!.height).toBeGreaterThan(60);
+  expect(stripeBox!.width).toBeGreaterThan(40);
+  await expect(stripe).toHaveClass(/stripe/);
 
   await expect(page.getByRole('heading', { name: 'Lineage', exact: true })).toBeVisible();
   const addInstructor = page.getByRole('button', { name: 'Add instructor', exact: true });
@@ -86,8 +85,8 @@ test('my rank and belt progress keep every control and match the arena skin', as
     '/student/rubric?student=1',
   );
 
-  await page.getByLabel('Student name').fill('Ada Silva');
-  await page.getByLabel('Student name').blur();
+  await page.getByLabel('Name', { exact: true }).fill('Ada Silva');
+  await page.getByLabel('Name', { exact: true }).blur();
   await expect(page.getByText('Saved on this phone.')).toBeVisible();
   await page.getByRole('button', { name: 'Stripe 1', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -168,7 +167,7 @@ test('my rank and belt progress keep every control and match the arena skin', as
   await page.getByRole('link', { name: 'My rank', exact: true }).click();
   await expect(page).toHaveURL(/\/student\/rank\?student=1$/);
   await expect(page.getByRole('heading', { name: 'My rank', exact: true })).toBeVisible();
-  await expect(page.getByLabel('Student name')).toHaveValue('Ada Silva');
+  await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Ada Silva');
   await page.getByRole('link', { name: BACK, exact: true }).click();
   await expect(page).toHaveURL(/\/student\/progress\?student=1$/);
   await expect(page.getByRole('heading', { name: 'Rank & Progress', exact: true })).toBeVisible();

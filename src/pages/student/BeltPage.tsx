@@ -1,7 +1,22 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import type { RubricCriterion } from '../../lib/progress/types';
-import { loadStudentReport } from '../../lib/studentEdition';
+import {
+  blackBeltClock,
+  coralRanksUnlocked,
+  cumulativeText,
+  DEGREE_GUIDELINE,
+  DEGREE_TILE_CAPTION,
+  finalRankRules,
+  instructorBarsLine,
+  INSTRUCTOR_BARS_NOTE,
+  nextDegreeRule,
+  timeSoFarText,
+  wornDegree,
+  yearsAtName,
+} from '../../lib/blackBeltDegrees';
+import type { RubricCriterion, StudentProgressReport } from '../../lib/progress/types';
+import { loadStudentReport, todayIso } from '../../lib/studentEdition';
+import { instructorBarsOf, rankOf } from '../../lib/studentRank';
 import {
   addGoal,
   BELT_LABELS,
@@ -15,6 +30,7 @@ import {
   loadCoachShelf,
   nextBelt,
   setCheckpointMark,
+  showsAdultCheckpoints,
   setCriterionMark,
   setGoalMet,
   splitMarkNote,
@@ -40,7 +56,12 @@ export function BeltPage() {
   }, [commit]);
 
   const belt = report.profile.belt;
+  const adultPath = showsAdultCheckpoints(report);
   const upcoming = nextBelt(belt);
+  const rank = rankOf(report);
+  const degree = wornDegree(belt, rank.tapeCount);
+  const nextDegree = degree == null ? null : nextDegreeRule(degree);
+  const endLabel = nextDegree ? nextDegree.label : degree != null ? 'Final rank' : upcoming ? BELT_LABELS[upcoming] : 'Last belt on this list';
   const level = beltLevel(report, belt);
   const learned = learnedCatalogIds(report);
   const checkpoints = level?.checkpoints ?? [];
@@ -66,12 +87,21 @@ export function BeltPage() {
         </header>
         <div className="student-sheet belt-stack">
           <p className="student-quiet">
-            Current belt is set on <Link to={to('/student/rank')}>My rank</Link>. This page is the path ahead.
+            {adultPath ? (
+              <>
+                Current belt is set on <Link to={to('/student/rank')}>My rank</Link>. This page is the path ahead.
+              </>
+            ) : (
+              <>
+                Kids belts are belts and stripes for now. Set them on <Link to={to('/student/rank')}>My rank</Link>.
+              </>
+            )}
           </p>
+          {adultPath ? (
           <div className="belt-lane">
           <div className="belt-ends">
             <p>{BELT_LABELS[belt]}</p>
-            <p>{upcoming ? BELT_LABELS[upcoming] : 'Last belt on this list'}</p>
+            <p>{endLabel}</p>
           </div>
           <ol className="checkpoint-row" aria-label={upcoming ? `Checkpoints between ${BELT_LABELS[belt]} and ${BELT_LABELS[upcoming]}` : `${BELT_LABELS[belt]} checkpoints`}>
             {checkpoints.map((row) => {
@@ -84,10 +114,18 @@ export function BeltPage() {
               );
             })}
           </ol>
-          <p className="student-quiet">
-            {filled} of {checkpoints.length} checkpoints filled. Checkpoints are the steps between belts.
-          </p>
+          {checkpoints.length ? (
+            <p className="student-quiet">
+              {filled} of {checkpoints.length} checkpoints filled. Checkpoints are the steps between belts.
+            </p>
+          ) : null}
+          <DegreePanel report={report} />
           </div>
+          ) : (
+          <section className="belt-lane" aria-label="Kids belts">
+            <p>Checkpoints and fundamentals for kids are not on this page yet.</p>
+          </section>
+          )}
           <div className="student-actions">
             <Link className="ink-btn ink-btn--save" to={share}>
               {COACH_FILE_LABEL}
@@ -96,7 +134,7 @@ export function BeltPage() {
               Import from coach
             </Link>
           </div>
-          {checkpoints.map((row) => {
+          {adultPath ? checkpoints.map((row) => {
             const done = checkpointFilled(row, learned);
             return (
               <section key={row.id} id={row.id} className="ink belt-block" aria-label={`${row.name} checkpoint`}>
@@ -133,7 +171,7 @@ export function BeltPage() {
                 {done ? <p className="student-quiet">Filled.</p> : null}
               </section>
             );
-          })}
+          }) : null}
           <GoalsSection
             report={report}
             onAdd={(name, note) => run(addGoal(report, name, note))}
@@ -190,6 +228,58 @@ export function BeltPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+function DegreePanel({ report }: { report: StudentProgressReport }) {
+  if (!coralRanksUnlocked(report.profile.belt)) return null;
+  const rank = rankOf(report);
+  const degree = wornDegree(report.profile.belt, rank.tapeCount) ?? 0;
+  const next = nextDegreeRule(degree);
+  const clock = blackBeltClock(
+    {
+      belt: report.profile.belt,
+      awardedOn: rank.awardedOn,
+      tapeCount: rank.tapeCount,
+      tapeDates: rank.tapeDates,
+      highDegreeDates: rank.highDegreeDates,
+      history: rank.history,
+    },
+    todayIso(),
+  );
+  const bars = instructorBarsOf(report);
+  const timeLine = clock ? `${timeSoFarText(clock)}. Earliest date ${clock.earliest}.` : 'Add your promotion date in My rank.';
+  return (
+    <section className="ink" aria-label="Black belt degrees">
+      {next ? (
+        <>
+          <h2>Next: {next.label}</h2>
+          <p>
+            {next.yearsAtPrevious} years at {yearsAtName(degree)}.
+          </p>
+          <p>{cumulativeText(next)}</p>
+        </>
+      ) : (
+        <>
+          <h2>9th degree · Red</h2>
+          <p>Final rank.</p>
+          <p>48+ years as a black belt</p>
+        </>
+      )}
+      <p>{timeLine}</p>
+      <p>{DEGREE_GUIDELINE}</p>
+      <p>{INSTRUCTOR_BARS_NOTE}</p>
+      <p>{instructorBarsLine(bars.on, bars.date)}</p>
+      <p className="rank-unlocked__kicker">Unlocked after black belt</p>
+      <ul>
+        {finalRankRules().map((rule) => (
+          <li key={rule.degree}>
+            {rule.label} · {rule.beltLabel}. {cumulativeText(rule)}. {rule.yearsAtPrevious} years at {yearsAtName(rule.degree - 1)}.
+          </li>
+        ))}
+      </ul>
+      <p className="student-quiet">{DEGREE_TILE_CAPTION}</p>
+    </section>
   );
 }
 

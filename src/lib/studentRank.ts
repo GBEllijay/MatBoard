@@ -3,13 +3,17 @@
  * Stripe slots are tapeCount and tapeDates. The progress file rejects a stripes key.
  */
 
+import { highDatesForCount } from './blackBeltDegrees.ts';
 import {
+  BLACK_DEGREE_MAX,
+  FINAL_RANK_BELTS,
   PROGRESS_ID_MAX,
   PROGRESS_LINEAGE_MAX,
   PROGRESS_NOTE_MAX,
   PROGRESS_RANK_HISTORY_MAX,
   RANK_BELTS,
   RANK_TAPE_MAX,
+  type HighDegreeDates,
   type ProgressBelt,
   type RankBelt,
   type RankHistory,
@@ -31,10 +35,17 @@ const BELT_NAMES: Record<ProgressBelt, string> = {
   orange: 'Orange',
   green: 'Green',
   coral: 'Coral',
+  redWhite: 'Red and white',
+  red: 'Red',
 };
 
 export function isRankBelt(belt: string): belt is RankBelt {
-  return (RANK_BELTS as readonly string[]).includes(belt);
+  return (RANK_BELTS as readonly string[]).includes(belt) || (FINAL_RANK_BELTS as readonly string[]).includes(belt);
+}
+
+/** White through brown keep 4 stripes. A black belt keeps 6 degrees in the same count. */
+export function maxStripes(belt: ProgressBelt): number {
+  return belt === 'black' ? BLACK_DEGREE_MAX : RANK_TAPE_MAX;
 }
 
 export function emptyTapeDates(): RankTapeDates {
@@ -56,20 +67,11 @@ export function stripeReportLine(slot: number, date: string | null | undefined):
   return when ? `Stripe ${slot}: ${when}` : `Stripe ${slot}`;
 }
 
-/** Older files can omit tape dates. The stripe count still stands. */
+/** Older files can omit tape dates. The stripe count still stands. A black-belt 5 or 6 is kept. */
 export function normalizeStoredRank(rank: Partial<StudentRank> | null | undefined): StudentRank {
   const source = rank ?? {};
-  const tapeCount = clampTapeCount(source.tapeCount);
-  const history = (source.history ?? []).map((row) => {
-    const count = clampTapeCount(row.tapeCount);
-    return {
-      id: row.id,
-      belt: row.belt,
-      awardedOn: typeof row.awardedOn === 'string' ? row.awardedOn : '',
-      tapeCount: count,
-      tapeDates: datesForCount(row.tapeDates ?? [], count),
-    };
-  });
+  const tapeCount = clampTapeCount(source.tapeCount, BLACK_DEGREE_MAX);
+  const history = (source.history ?? []).map((row) => cloneHistory(row));
   const next: StudentRank = {
     tapeCount,
     awardedOn: typeof source.awardedOn === 'string' ? source.awardedOn : '',
@@ -77,6 +79,10 @@ export function normalizeStoredRank(rank: Partial<StudentRank> | null | undefine
     history,
     lineage: [...(source.lineage ?? [])],
   };
+  const high = highDatesForCount(source.highDegreeDates, tapeCount);
+  if (high) next.highDegreeDates = high;
+  if (source.instructorBars) next.instructorBars = true;
+  if (typeof source.instructorBarsOn === 'string' && source.instructorBarsOn) next.instructorBarsOn = source.instructorBarsOn;
   if (source.pictureNote) next.pictureNote = source.pictureNote;
   if (source.pictureCount) next.pictureCount = source.pictureCount;
   if (source.pictures) next.pictures = source.pictures.map((picture) => ({ ...picture }));
@@ -90,9 +96,14 @@ export type StripeCountAction = 'add' | 'remove' | 'trim';
  * An empty stripe adds through that slot. The last stripe comes off.
  * A stripe before the last one drops the stripes after it.
  */
-export function stripeCountControl(slot: number, tapeCount: number, label: string): { action: StripeCountAction; name: string } {
+export function stripeCountControl(
+  slot: number,
+  tapeCount: number,
+  label: string,
+  noun = 'stripes',
+): { action: StripeCountAction; name: string } {
   if (slot === tapeCount) return { action: 'remove', name: `Take off ${label}` };
-  if (slot < tapeCount) return { action: 'trim', name: `Drop stripes after ${label}` };
+  if (slot < tapeCount) return { action: 'trim', name: `Drop ${noun} after ${label}` };
   return { action: 'add', name: `Add ${label}` };
 }
 
@@ -108,14 +119,26 @@ export type LadderRung = {
   awardedOn: string;
   tapeCount: number;
   tapeDates: RankTapeDates;
+  highDegreeDates?: HighDegreeDates;
+  instructorBars: boolean;
+  instructorBarsOn: string;
   historyId: string;
 };
+
+export function slotDate(dates: readonly string[], high: readonly string[] | undefined, index: number): string {
+  if (index < RANK_TAPE_MAX) return stripeDateText(dates[index]);
+  return stripeDateText(high?.[index - RANK_TAPE_MAX]);
+}
 
 /** White at the top, then blue, purple, brown, and black. */
 export function ladderRungs(report: StudentProgressReport): LadderRung[] {
   const rank = rankOf(report);
   const current = report.profile.belt;
-  const currentIndex = isRankBelt(current) ? RANK_BELTS.indexOf(current) : -1;
+  const currentIndex = (RANK_BELTS as readonly string[]).includes(current)
+    ? RANK_BELTS.indexOf(current as (typeof RANK_BELTS)[number])
+    : (FINAL_RANK_BELTS as readonly string[]).includes(current)
+      ? RANK_BELTS.length
+      : -1;
   const historyByBelt = new Map<RankBelt, RankHistory>();
   for (const row of rank.history) historyByBelt.set(row.belt, row);
   return RANK_BELTS.map((belt, index) => {
@@ -129,6 +152,9 @@ export function ladderRungs(report: StudentProgressReport): LadderRung[] {
         awardedOn: rank.awardedOn,
         tapeCount: rank.tapeCount,
         tapeDates: copyDates(rank.tapeDates),
+        highDegreeDates: rank.highDegreeDates ? ([...rank.highDegreeDates] as HighDegreeDates) : undefined,
+        instructorBars: Boolean(rank.instructorBars),
+        instructorBarsOn: rank.instructorBarsOn ?? '',
         historyId: '',
       };
     }
@@ -143,6 +169,9 @@ export function ladderRungs(report: StudentProgressReport): LadderRung[] {
         awardedOn: past.awardedOn,
         tapeCount: past.tapeCount,
         tapeDates: copyDates(past.tapeDates),
+        highDegreeDates: past.highDegreeDates ? ([...past.highDegreeDates] as HighDegreeDates) : undefined,
+        instructorBars: Boolean(past.instructorBars),
+        instructorBarsOn: past.instructorBarsOn ?? '',
         historyId: past.id,
       };
     }
@@ -154,6 +183,8 @@ export function ladderRungs(report: StudentProgressReport): LadderRung[] {
       awardedOn: '',
       tapeCount: 0,
       tapeDates: emptyTapeDates(),
+      instructorBars: false,
+      instructorBarsOn: '',
       historyId: '',
     };
   });
@@ -175,9 +206,9 @@ export type RankMark = { date: string; label: string };
 export function rankMarks(report: StudentProgressReport): RankMark[] {
   const rank = rankOf(report);
   const marks: RankMark[] = [];
-  pushMarks(marks, report.profile.belt, rank.awardedOn, rank.tapeCount, rank.tapeDates);
+  pushMarks(marks, report.profile.belt, rank.awardedOn, rank.tapeCount, rank.tapeDates, rank.highDegreeDates);
   for (const row of rank.history) {
-    pushMarks(marks, row.belt, row.awardedOn, row.tapeCount, row.tapeDates);
+    pushMarks(marks, row.belt, row.awardedOn, row.tapeCount, row.tapeDates, row.highDegreeDates);
   }
   return marks;
 }
@@ -200,31 +231,26 @@ export function setRankBelt(report: StudentProgressReport, belt: ProgressBelt, n
   let history = current.history;
   if (rankHasMark(current)) {
     if (history.length >= PROGRESS_RANK_HISTORY_MAX) throw new Error('The promotion history is full.');
-    history = [
-      ...history,
-      {
-        id: newId('rank', now),
-        belt: report.profile.belt,
-        awardedOn: current.awardedOn,
-        tapeCount: current.tapeCount,
-        tapeDates: copyDates(current.tapeDates),
-      },
-    ];
+    history = [...history, archiveCurrent(current, report.profile.belt, now)];
   }
-  return touch(
-    report,
-    { ...current, tapeCount: 0, awardedOn: '', tapeDates: emptyTapeDates(), history },
-    belt,
-    now,
-  );
+  const cleared: StudentRank = { ...current, tapeCount: 0, awardedOn: '', tapeDates: emptyTapeDates(), history };
+  delete cleared.highDegreeDates;
+  return touch(report, cleared, belt, now);
 }
 
 /** Tap a stripe slot. The same slot again removes that stripe and the ones after it. */
 export function setRankTapeCount(report: StudentProgressReport, count: number, now = Date.now()): StudentProgressReport {
-  if (!Number.isInteger(count) || count < 0 || count > RANK_TAPE_MAX) throw new Error('Stripes are 0 to 4.');
+  const max = maxStripes(report.profile.belt);
+  if (!Number.isInteger(count) || count < 0 || count > max) {
+    throw new Error(report.profile.belt === 'black' ? 'Degrees are 0 to 6.' : 'Stripes are 0 to 4.');
+  }
   const rank = rankOf(report);
   if (rank.tapeCount === count) return report;
-  return touch(report, { ...rank, tapeCount: count, tapeDates: datesForCount(rank.tapeDates, count) }, report.profile.belt, now);
+  const next: StudentRank = { ...rank, tapeCount: count, tapeDates: datesForCount(rank.tapeDates, count) };
+  const high = highDatesForCount(rank.highDegreeDates, count);
+  if (high) next.highDegreeDates = high;
+  else delete next.highDegreeDates;
+  return touch(report, next, report.profile.belt, now);
 }
 
 export function setRankAwardedOn(report: StudentProgressReport, date: string, now = Date.now()): StudentProgressReport {
@@ -240,14 +266,15 @@ export function setRankTapeDate(
   date: string,
   now = Date.now(),
 ): StudentProgressReport {
-  if (!Number.isInteger(index) || index < 0 || index >= RANK_TAPE_MAX) throw new Error('Stripes are 0 to 4.');
+  const max = maxStripes(report.profile.belt);
+  if (!Number.isInteger(index) || index < 0 || index >= max) {
+    throw new Error(report.profile.belt === 'black' ? 'Degrees are 0 to 6.' : 'Stripes are 0 to 4.');
+  }
   const rank = rankOf(report);
   if (index >= rank.tapeCount) throw new Error('That stripe is not on the belt yet.');
   const awarded = cleanDate(date);
-  if (rank.tapeDates[index] === awarded) return report;
-  const tapeDates = copyDates(rank.tapeDates);
-  tapeDates[index] = awarded;
-  return touch(report, { ...rank, tapeDates }, report.profile.belt, now);
+  if (slotDate(rank.tapeDates, rank.highDegreeDates, index) === awarded) return report;
+  return touch(report, writeSlotDate(rank, index, awarded), report.profile.belt, now);
 }
 
 /**
@@ -295,17 +322,60 @@ export function setRankHistoryTapeDate(
   date: string,
   now = Date.now(),
 ): StudentProgressReport {
-  if (!Number.isInteger(index) || index < 0 || index >= RANK_TAPE_MAX) throw new Error('Stripes are 0 to 4.');
   const rank = rankOf(report);
   const row = rank.history.find((item) => item.id === id);
   if (!row) return report;
+  const max = maxStripes(row.belt);
+  if (!Number.isInteger(index) || index < 0 || index >= max) {
+    throw new Error(row.belt === 'black' ? 'Degrees are 0 to 6.' : 'Stripes are 0 to 4.');
+  }
   if (index >= row.tapeCount) throw new Error('That stripe is not on the belt yet.');
   const awarded = cleanDate(date);
-  if (row.tapeDates[index] === awarded) return report;
-  const tapeDates = copyDates(row.tapeDates);
-  tapeDates[index] = awarded;
-  const history = rank.history.map((item) => (item.id === id ? { ...item, tapeDates } : item));
+  if (slotDate(row.tapeDates, row.highDegreeDates, index) === awarded) return report;
+  const written = writeSlotDate(row, index, awarded);
+  const history = rank.history.map((item) => (item.id === id ? { ...item, ...written, id: item.id, belt: item.belt } : item));
   return touch(report, { ...rank, history }, report.profile.belt, now);
+}
+
+/** Optional instructor bars. Not a degree. Off leaves the date in place. */
+export function setInstructorBars(report: StudentProgressReport, on: boolean, now = Date.now()): StudentProgressReport {
+  const rank = rankOf(report);
+  if (report.profile.belt === 'black') {
+    if (Boolean(rank.instructorBars) === on) return report;
+    return touch(report, applyBars(rank, on), report.profile.belt, now);
+  }
+  const index = lastBlackIndex(rank.history);
+  if (index < 0) return report;
+  if (Boolean(rank.history[index]?.instructorBars) === on) return report;
+  const history = rank.history.map((row, slot) => (slot === index ? applyBars(row, on) : row));
+  const next = applyBars({ ...rank, history }, on);
+  return touch(report, next, report.profile.belt, now);
+}
+
+export function setInstructorBarsOn(report: StudentProgressReport, date: string, now = Date.now()): StudentProgressReport {
+  const awarded = cleanDate(date);
+  const rank = rankOf(report);
+  if (report.profile.belt === 'black') {
+    if ((rank.instructorBarsOn ?? '') === awarded) return report;
+    return touch(report, applyBarsDate(rank, awarded), report.profile.belt, now);
+  }
+  const index = lastBlackIndex(rank.history);
+  if (index < 0) return report;
+  if ((rank.history[index]?.instructorBarsOn ?? '') === awarded) return report;
+  const history = rank.history.map((row, slot) => (slot === index ? applyBarsDate(row, awarded) : row));
+  return touch(report, applyBarsDate({ ...rank, history }, awarded), report.profile.belt, now);
+}
+
+/** The instructor-bar switch the black belt row shows. */
+export function instructorBarsOf(report: StudentProgressReport): { on: boolean; date: string } {
+  const rank = rankOf(report);
+  if (report.profile.belt === 'black') return { on: Boolean(rank.instructorBars), date: rank.instructorBarsOn ?? '' };
+  const index = lastBlackIndex(rank.history);
+  if (index >= 0) {
+    const row = rank.history[index];
+    return { on: Boolean(row?.instructorBars), date: row?.instructorBarsOn ?? '' };
+  }
+  return { on: false, date: '' };
 }
 
 export function removeRankHistory(report: StudentProgressReport, id: string, now = Date.now()): StudentProgressReport {
@@ -325,23 +395,85 @@ function pushMarks(
   awardedOn: string,
   tapeCount: number,
   tapeDates: readonly string[],
+  high?: readonly string[],
 ): void {
   const name = BELT_NAMES[belt];
   if (isIsoDate(awardedOn)) marks.push({ date: awardedOn, label: `${name} belt` });
-  for (let index = 0; index < tapeCount && index < tapeDates.length; index += 1) {
-    const date = tapeDates[index] ?? '';
-    if (isIsoDate(date)) marks.push({ date, label: `${name} stripe ${index + 1}` });
+  const noun = belt === 'black' ? 'degree' : 'stripe';
+  for (let index = 0; index < tapeCount; index += 1) {
+    const date = slotDate(tapeDates, high, index);
+    if (isIsoDate(date)) marks.push({ date, label: `${name} ${noun} ${index + 1}` });
   }
 }
 
 function rankHasMark(rank: StudentRank): boolean {
-  return Boolean(rank.awardedOn) || rank.tapeCount > 0 || rank.tapeDates.some((date) => date.trim());
+  return (
+    Boolean(rank.awardedOn) ||
+    rank.tapeCount > 0 ||
+    rank.tapeDates.some((date) => date.trim()) ||
+    Boolean(rank.highDegreeDates?.some((date) => date.trim()))
+  );
 }
 
 function datesForCount(dates: readonly string[] | null | undefined, count: number): RankTapeDates {
   const next = emptyTapeDates();
   const source = dates ?? [];
-  for (let index = 0; index < count; index += 1) next[index] = stripeDateText(source[index]);
+  const kept = Math.min(count, RANK_TAPE_MAX);
+  for (let index = 0; index < kept; index += 1) next[index] = stripeDateText(source[index]);
+  return next;
+}
+
+function writeSlotDate<T extends { tapeDates: RankTapeDates; highDegreeDates?: HighDegreeDates }>(
+  source: T,
+  index: number,
+  awarded: string,
+): T {
+  if (index < RANK_TAPE_MAX) {
+    const tapeDates = copyDates(source.tapeDates);
+    tapeDates[index] = awarded;
+    return { ...source, tapeDates };
+  }
+  const high = highDatesForCount(source.highDegreeDates, BLACK_DEGREE_MAX) ?? (['', ''] as HighDegreeDates);
+  high[index - RANK_TAPE_MAX] = awarded;
+  return { ...source, highDegreeDates: high };
+}
+
+function archiveCurrent(rank: StudentRank, belt: RankBelt, now: number): RankHistory {
+  const row: RankHistory = {
+    id: newId('rank', now),
+    belt,
+    awardedOn: rank.awardedOn,
+    tapeCount: rank.tapeCount,
+    tapeDates: copyDates(rank.tapeDates),
+  };
+  if (belt === 'black') {
+    const high = highDatesForCount(rank.highDegreeDates, rank.tapeCount);
+    if (high) row.highDegreeDates = high;
+    if (rank.instructorBars) row.instructorBars = true;
+    if (rank.instructorBarsOn) row.instructorBarsOn = rank.instructorBarsOn;
+  }
+  return row;
+}
+
+function lastBlackIndex(history: readonly RankHistory[]): number {
+  let found = -1;
+  history.forEach((row, index) => {
+    if (row.belt === 'black') found = index;
+  });
+  return found;
+}
+
+function applyBars<T extends { instructorBars?: boolean }>(source: T, on: boolean): T {
+  const next = { ...source };
+  if (on) next.instructorBars = true;
+  else delete next.instructorBars;
+  return next;
+}
+
+function applyBarsDate<T extends { instructorBarsOn?: string }>(source: T, date: string): T {
+  const next = { ...source };
+  if (date) next.instructorBarsOn = date;
+  else delete next.instructorBarsOn;
   return next;
 }
 
@@ -349,9 +481,9 @@ function copyDates(dates: readonly string[] | null | undefined): RankTapeDates {
   return datesForCount(dates, RANK_TAPE_MAX);
 }
 
-function clampTapeCount(value: unknown): number {
+function clampTapeCount(value: unknown, max = RANK_TAPE_MAX): number {
   if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) return 0;
-  return Math.min(RANK_TAPE_MAX, value);
+  return Math.min(max, value);
 }
 
 function cleanDate(date: string): string {
@@ -390,6 +522,10 @@ function rankFields(rank: StudentRank): StudentRank {
     history: rank.history.map((row) => cloneHistory(row)),
     lineage: [...(rank.lineage ?? [])],
   };
+  const high = highDatesForCount(rank.highDegreeDates, rank.tapeCount);
+  if (high) next.highDegreeDates = high;
+  if (rank.instructorBars) next.instructorBars = true;
+  if (rank.instructorBarsOn) next.instructorBarsOn = rank.instructorBarsOn;
   if (rank.pictureNote) next.pictureNote = rank.pictureNote;
   if (rank.pictureCount) next.pictureCount = rank.pictureCount;
   if (rank.pictures) next.pictures = rank.pictures.map((picture) => ({ ...picture }));
@@ -397,10 +533,55 @@ function rankFields(rank: StudentRank): StudentRank {
 }
 
 function cloneHistory(row: RankHistory): RankHistory {
-  return { ...row, tapeDates: copyDates(row.tapeDates) };
+  const max = row.belt === 'black' ? BLACK_DEGREE_MAX : RANK_TAPE_MAX;
+  const tapeCount = clampTapeCount(row.tapeCount, max);
+  const next: RankHistory = {
+    id: row.id,
+    belt: row.belt,
+    awardedOn: typeof row.awardedOn === 'string' ? row.awardedOn : '',
+    tapeCount,
+    tapeDates: datesForCount(row.tapeDates ?? [], tapeCount),
+  };
+  if (row.belt === 'black') {
+    const high = highDatesForCount(row.highDegreeDates, tapeCount);
+    if (high) next.highDegreeDates = high;
+    if (row.instructorBars) next.instructorBars = true;
+    if (row.instructorBarsOn) next.instructorBarsOn = row.instructorBarsOn;
+  }
+  return next;
 }
 
 function newId(prefix: string, now: number): string {
   const rand = Math.random().toString(36).slice(2, 8);
   return `${prefix}.${now.toString(36)}.${rand}`.slice(0, PROGRESS_ID_MAX);
 }
+
+/**
+ * Kids belts live on beltBook. These helpers do not write profile.belt or adult stripes.
+ * Adult degrees stay on setRankTapeCount.
+ */
+export {
+  addClassDot,
+  ageWarning,
+  beltModeOf,
+  classesPerTapeOf,
+  currentKidsBelt,
+  guideOf,
+  ibjjfAge,
+  kidsLadder,
+  kidsRankOf,
+  kidsTemplateOf,
+  removeClassDot,
+  removeKidsHistory,
+  setBeltMode,
+  setBirthYear,
+  setClassesPerTape,
+  setKidsAwardedOn,
+  setKidsBelt,
+  setKidsHistoryAwardedOn,
+  setKidsTapeCount,
+  setKidsTapeDate,
+  setTapeGuide,
+  showAdultPrompt,
+  timeGuideText,
+} from './beltBook.ts';

@@ -410,9 +410,10 @@ function mergePhotos(local: RankPhotoStore, incoming: RankPhotoStore): RankPhoto
   for (const belt of RANK_BELTS) {
     const belts = [...new Set([...(local.belts[belt] ?? []), ...(incoming.belts[belt] ?? [])])].slice(0, 8);
     if (belts.length) next.belts[belt] = belts;
-    const tapes: [string[], string[], string[], string[]] = [[], [], [], []];
+    const slots = belt === 'black' ? 6 : 4;
+    const tapes: string[][] = [];
     let any = false;
-    for (let index = 0; index < 4; index += 1) {
+    for (let index = 0; index < slots; index += 1) {
       tapes[index] = [...new Set([...(local.tapes[belt]?.[index] ?? []), ...(incoming.tapes[belt]?.[index] ?? [])])].slice(0, 4);
       if (tapes[index].length) any = true;
     }
