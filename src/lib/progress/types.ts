@@ -483,7 +483,9 @@ export type CompetitionResult = {
 
 /**
  * One earlier belt. Written when the student changes the belt they wear
- * and that belt already had a date or a stripe.
+ * and that belt already had a date, a stripe, or instructor bars.
+ * The same promotion is one row: belt, stripe or degree count, and awarded date.
+ * Selecting that belt again restores the row instead of logging another.
  */
 export type RankHistory = {
   id: string;

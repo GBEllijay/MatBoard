@@ -506,3 +506,34 @@ test('report headers use the saved name and fall back only when a field is empty
   assert.match(assessmentPdf, /Gym: Not named/);
   assert.match(assessmentPdf, /Started: Not set/);
 });
+
+test('the progress PDF lists one row for a repeated promotion', () => {
+  const report = blankStudentReport(8);
+  report.profile = { ...report.profile, belt: 'brown' };
+  const shared = {
+    belt: 'black' as const,
+    awardedOn: '2010-01-02',
+    tapeCount: 2,
+    tapeDates: ['2013-03-04', '2016-05-06', '', ''] as [string, string, string, string],
+    instructorBars: true as const,
+    instructorBarsOn: '2012-02-02',
+  };
+  report.rank = {
+    tapeCount: 0,
+    awardedOn: '',
+    tapeDates: ['', '', '', ''],
+    history: [
+      { ...shared, id: 'rank-black-a' },
+      { ...shared, id: 'rank-black-b' },
+      { ...shared, id: 'rank-black-c', tapeCount: 3 },
+    ],
+    lineage: [],
+  };
+  const lines = progressReportLines(report, { entries: [] });
+  assert.equal(lines.filter((line) => line === 'Black awarded 2010-01-02, 2 degrees').length, 1);
+  assert.equal(lines.filter((line) => line === 'Black awarded 2010-01-02, 3 degrees').length, 1);
+  const pdf = extractPdfText(progressReportPdf(report, { entries: [] }, {}, '2026-10-25'));
+  assert.equal(pdf.split('Black awarded 2010-01-02, 2 degrees').length - 1, 1);
+  assert.equal(pdf.split('Black awarded 2010-01-02, 3 degrees').length - 1, 1);
+  assert.equal(pdf.split('Stripe 1: 2013-03-04').length - 1, 2);
+});

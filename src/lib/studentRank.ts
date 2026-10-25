@@ -71,7 +71,7 @@ export function stripeReportLine(slot: number, date: string | null | undefined):
 export function normalizeStoredRank(rank: Partial<StudentRank> | null | undefined): StudentRank {
   const source = rank ?? {};
   const tapeCount = clampTapeCount(source.tapeCount, BLACK_DEGREE_MAX);
-  const history = (source.history ?? []).map((row) => cloneHistory(row));
+  const history = dedupeRankHistory((source.history ?? []).map((row) => cloneHistory(row)));
   const next: StudentRank = {
     tapeCount,
     awardedOn: typeof source.awardedOn === 'string' ? source.awardedOn : '',
@@ -193,7 +193,12 @@ export function ladderRungs(report: StudentProgressReport): LadderRung[] {
 /** The rank on the report, or an empty one when an older file omitted it. */
 export function rankOf(report: StudentProgressReport): StudentRank {
   const rank = report.rank ?? emptyRank();
-  return { ...rank, lineage: rank.lineage ?? [], tapeDates: copyDates(rank.tapeDates) };
+  return {
+    ...rank,
+    lineage: rank.lineage ?? [],
+    tapeDates: copyDates(rank.tapeDates),
+    history: dedupeRankHistory(rank.history),
+  };
 }
 
 export function rankBeltLabel(belt: ProgressBelt): string {
@@ -219,7 +224,9 @@ export function rankMarksOnDate(report: StudentProgressReport, iso: string): Ran
 
 /**
  * Set the belt the student wears. profile.belt is the only current belt.
- * A previous adult belt is kept on the history list when it had a date or a stripe.
+ * A previous adult belt is kept on the history list when it had a date, a stripe, or instructor bars.
+ * Selecting that belt again puts the saved degrees, stripes, bars, and dates back on it.
+ * The same promotion (belt, degree or stripe count, and awarded date) is not logged twice.
  * Moving off a kids belt keeps the stripes already tapped.
  */
 export function setRankBelt(report: StudentProgressReport, belt: ProgressBelt, now = Date.now()): StudentProgressReport {
@@ -229,13 +236,38 @@ export function setRankBelt(report: StudentProgressReport, belt: ProgressBelt, n
     return touch(report, { ...current }, belt, now);
   }
   let history = current.history;
-  if (rankHasMark(current)) {
-    if (history.length >= PROGRESS_RANK_HISTORY_MAX) throw new Error('The promotion history is full.');
-    history = [...history, archiveCurrent(current, report.profile.belt, now)];
+  if (beltHasSavedState(current, report.profile.belt)) {
+    history = rememberPromotion(history, archiveCurrent(current, report.profile.belt, now));
   }
-  const cleared: StudentRank = { ...current, tapeCount: 0, awardedOn: '', tapeDates: emptyTapeDates(), history };
-  delete cleared.highDegreeDates;
-  return touch(report, cleared, belt, now);
+  if (!isRankBelt(belt)) return touch(report, blankWornRank(current, history), belt, now);
+  const saved = takeLatestBelt(history, belt);
+  if (saved) return touch(report, applyHistoryRow(current, saved.row, saved.history), belt, now);
+  return touch(report, blankWornRank(current, history), belt, now);
+}
+
+/**
+ * One row per promotion. The key is the belt, the degree or stripe count, and the awarded date.
+ * A later copy of that same promotion replaces the earlier one.
+ */
+export function dedupeRankHistory(history: readonly RankHistory[]): RankHistory[] {
+  if (history.length < 2) return [...history];
+  const seen = new Set<string>();
+  const kept: RankHistory[] = [];
+  let dropped = false;
+  for (let index = history.length - 1; index >= 0; index -= 1) {
+    const row = history[index];
+    if (!row) continue;
+    const key = promotionKey(row);
+    if (seen.has(key)) {
+      dropped = true;
+      continue;
+    }
+    seen.add(key);
+    kept.push(row);
+  }
+  if (!dropped) return [...history];
+  kept.reverse();
+  return kept;
 }
 
 /** Tap a stripe slot. The same slot again removes that stripe and the ones after it. */
@@ -413,6 +445,69 @@ function rankHasMark(rank: StudentRank): boolean {
     rank.tapeDates.some((date) => date.trim()) ||
     Boolean(rank.highDegreeDates?.some((date) => date.trim()))
   );
+}
+
+/** Instructor bars are saved with a black belt even when no degree or date is filled in yet. */
+function beltHasSavedState(rank: StudentRank, belt: RankBelt): boolean {
+  if (rankHasMark(rank)) return true;
+  return belt === 'black' && (rank.instructorBars === true || Boolean(rank.instructorBarsOn));
+}
+
+function promotionKey(row: Pick<RankHistory, 'belt' | 'tapeCount' | 'awardedOn'>): string {
+  return `${row.belt}\0${row.tapeCount}\0${row.awardedOn}`;
+}
+
+function rememberPromotion(history: readonly RankHistory[], row: RankHistory): RankHistory[] {
+  const key = promotionKey(row);
+  const index = history.findIndex((item) => promotionKey(item) === key);
+  if (index >= 0) {
+    const prior = history[index];
+    if (!prior) return [...history];
+    const kept: RankHistory = { ...row, id: prior.id };
+    return history.map((item, slot) => (slot === index ? kept : item));
+  }
+  if (history.length >= PROGRESS_RANK_HISTORY_MAX) throw new Error('The promotion history is full.');
+  return [...history, row];
+}
+
+function takeLatestBelt(
+  history: readonly RankHistory[],
+  belt: RankBelt,
+): { row: RankHistory; history: RankHistory[] } | null {
+  let index = -1;
+  history.forEach((row, slot) => {
+    if (row.belt === belt) index = slot;
+  });
+  if (index < 0) return null;
+  const row = history[index];
+  if (!row) return null;
+  return { row, history: history.filter((_, slot) => slot !== index) };
+}
+
+function blankWornRank(current: StudentRank, history: RankHistory[]): StudentRank {
+  const next: StudentRank = { ...current, tapeCount: 0, awardedOn: '', tapeDates: emptyTapeDates(), history };
+  delete next.highDegreeDates;
+  delete next.instructorBars;
+  delete next.instructorBarsOn;
+  return next;
+}
+
+function applyHistoryRow(current: StudentRank, row: RankHistory, history: RankHistory[]): StudentRank {
+  const next: StudentRank = {
+    ...current,
+    tapeCount: row.tapeCount,
+    awardedOn: row.awardedOn,
+    tapeDates: copyDates(row.tapeDates),
+    history,
+  };
+  delete next.highDegreeDates;
+  delete next.instructorBars;
+  delete next.instructorBarsOn;
+  const high = highDatesForCount(row.highDegreeDates, row.tapeCount);
+  if (high) next.highDegreeDates = high;
+  if (row.instructorBars) next.instructorBars = true;
+  if (row.instructorBarsOn) next.instructorBarsOn = row.instructorBarsOn;
+  return next;
 }
 
 function datesForCount(dates: readonly string[] | null | undefined, count: number): RankTapeDates {

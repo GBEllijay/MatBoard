@@ -18,7 +18,7 @@ import { decodeJournalBody } from './studentEdition.ts';
 import type { StudentFilm } from './studentFilm.ts';
 import type { AreaRatings } from './opponentAssessment.ts';
 import type { ScoutingCard } from './studentScouting.ts';
-import { stripeReportLine } from './studentRank.ts';
+import { dedupeRankHistory, stripeReportLine } from './studentRank.ts';
 import { BELT_LABELS, beltTrack, checkpointFilled, learnedCatalogIds } from './studentTools.ts';
 import type { RubricCheckpoint, RubricLevel } from './progress/types.ts';
 
@@ -182,9 +182,10 @@ function rankBlock(report: StudentProgressReport): ReportBlock {
     `${degreeBelt ? 'Degrees' : 'Stripes'}: ${rank?.tapeCount ?? 0}`,
   ];
   if (rank) appendStripeLines(lines, rank.tapeCount, rankDateList(rank.tapeDates, rank.highDegreeDates));
-  if (rank?.history.length) {
+  const history = dedupeRankHistory(rank?.history ?? []);
+  if (history.length) {
     lines.push('Earlier belts:');
-    for (const row of rank.history) {
+    for (const row of history) {
       const noun = row.belt === 'black' ? (row.tapeCount === 1 ? 'degree' : 'degrees') : row.tapeCount === 1 ? 'stripe' : 'stripes';
       const stripes = row.belt === 'black' ? `${row.tapeCount} ${noun}` : countPhrase(row.tapeCount, 'stripe', 'stripes');
       lines.push(`${BELT_LABELS[row.belt] ?? row.belt} awarded ${row.awardedOn || 'no date'}, ${stripes}`);

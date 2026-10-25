@@ -8,7 +8,7 @@ import { mergeBeltBooks, readBeltBook } from '../beltBook.ts';
 import { splitCombinedDivision } from '../divisionFields.ts';
 import { fundamentalLevelOf, isFundamentalLevel } from '../fundamentals.ts';
 import { highDatesForCount } from '../blackBeltDegrees.ts';
-import { expandLineage, stripeDateText } from '../studentRank.ts';
+import { dedupeRankHistory, expandLineage, stripeDateText } from '../studentRank.ts';
 import { asRecord } from '../plainValue.ts';
 import { canonicalFundamentalsCatalogId } from './catalog.ts';
 import { emptyCompetition, seedGamesFromJournal } from './competition.ts';
@@ -159,9 +159,18 @@ export function progressHandoffFileName(packet: Pick<ProgressPacket, 'kind' | 'i
 }
 
 export function exportProgressPacket(packet: ProgressPacket): string {
-  const ready = packet.kind === 'student-progress-report' ? fitRankPictures(packet) : packet;
+  const fitted = packet.kind === 'student-progress-report' ? fitRankPictures(packet) : packet;
+  const ready = fitted.kind === 'student-progress-report' ? withUniquePromotions(fitted) : fitted;
   if (packetCarriesBytes(ready)) throw new Error('A progress file cannot carry photos or videos.');
   return JSON.stringify(ready);
+}
+
+/** The progress file keeps one row for each belt, degree or stripe count, and awarded date. */
+function withUniquePromotions(report: StudentProgressReport): StudentProgressReport {
+  if (!report.rank) return report;
+  const history = dedupeRankHistory(report.rank.history);
+  if (history.length === report.rank.history.length) return report;
+  return { ...report, rank: { ...report.rank, history } };
 }
 
 /**
@@ -591,7 +600,9 @@ function mergeClips(report: StudentProgressReport, incoming: StudentProgressRepo
 function mergeRank(report: StudentProgressReport, incoming: StudentProgressReport, conflicts: string[]): void {
   if (!incoming.rank) return;
   if (!report.rank) {
-    report.rank = stripRankPictures(structuredClone(incoming.rank));
+    const adopted = stripRankPictures(structuredClone(incoming.rank));
+    adopted.history = dedupeRankHistory(adopted.history);
+    report.rank = adopted;
     return;
   }
   const local = report.rank;
@@ -636,6 +647,7 @@ function mergeRank(report: StudentProgressReport, incoming: StudentProgressRepor
     }
     for (let index = current.tapeCount; index < RANK_TAPE_MAX; index += 1) current.tapeDates[index] = '';
   }
+  local.history = dedupeRankHistory(local.history);
 }
 
 function mergeLineage(local: string[] | undefined, incoming: string[] | undefined, conflicts: string[]): string[] | undefined {
@@ -1101,7 +1113,7 @@ function readRankHistory(value: unknown, errors: string[]): RankHistory[] {
   const rows = readList(value, 'Rank history', PROGRESS_RANK_HISTORY_MAX, errors);
   const history = rows.map((row, index) => readRankHistoryRow(row, index, errors));
   uniqueIds(history.map((row) => row.id), 'Rank history', errors);
-  return history;
+  return dedupeRankHistory(history);
 }
 
 function readRankHistoryRow(value: unknown, index: number, errors: string[]): RankHistory {
@@ -2327,7 +2339,7 @@ function writeReportRows(lines: string[], packet: StudentProgressReport): void {
 function writeRankRows(lines: string[], packet: StudentProgressReport): void {
   if (!packet.rank) return;
   lines.push(rankCsvRow('Rank', packet.studentId, packet.profile.belt, packet.rank, packet.studentId, packet.rank.pictureNote ?? ''));
-  for (const row of packet.rank.history) {
+  for (const row of dedupeRankHistory(packet.rank.history)) {
     lines.push(rankCsvRow('Rank history', row.id, row.belt, row, packet.studentId, ''));
   }
   for (const [index, name] of (packet.rank.lineage ?? []).entries()) {
