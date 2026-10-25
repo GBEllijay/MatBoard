@@ -50,19 +50,23 @@ test('backup explains the four real file names', async ({ page }) => {
     ];
   });
 
-  const guide = page.getByRole('region', { name: 'What the four backup files are' });
-  await expect(guide.getByRole('heading', { name: 'What the four files are for' })).toBeVisible();
-  await expect(guide.getByText(names[0], { exact: true })).toBeVisible();
-  await expect(guide.getByText(names[1], { exact: true })).toBeVisible();
-  await expect(guide.getByText(names[2], { exact: true })).toBeVisible();
-  await expect(guide.getByText(names[3], { exact: true })).toBeVisible();
-  await expect(guide.getByText(/Use this file to restore with Merge or Replace/)).toBeVisible();
-  await expect(guide.getByText(/open the rows in Excel or Sheets/)).toBeVisible();
-  await expect(guide.getByText(/page to print or hand to your coach/)).toBeVisible();
-  await expect(guide.getByText(/only the self-assessment/)).toBeVisible();
+  const backup = page.getByRole('region', { name: 'Back up and restore' });
+  await expect(backup.getByRole('button', { name: 'Back up my journal (.json)', exact: true })).toBeVisible();
+  await expect(backup.getByRole('button', { name: 'Download spreadsheet (.csv)', exact: true })).toBeVisible();
+  await expect(backup.getByRole('button', { name: 'Download progress report (.pdf)', exact: true })).toBeVisible();
+  await expect(backup.getByRole('button', { name: 'Download self-assessment (.pdf)', exact: true })).toBeVisible();
+  await expect(backup.getByText(names[0], { exact: false })).toBeVisible();
+  await expect(backup.getByText(names[1], { exact: false })).toBeVisible();
+  await expect(backup.getByText(names[2], { exact: false })).toBeVisible();
+  await expect(backup.getByText(names[3], { exact: false })).toBeVisible();
+  await expect(backup.getByText(/This is the file you restore with Merge or Replace/)).toBeVisible();
+  await expect(backup.getByText(/Excel or Sheets/)).toBeVisible();
+  await expect(backup.getByText(/A printable page of rank, journal, and competition/)).toBeVisible();
+  await expect(backup.getByText(/seven areas/)).toBeVisible();
+  await expect(backup.getByText('Video files: off. The JSON backup does not include video files.')).toBeVisible();
 
   await expect(page.getByRole('checkbox', { name: 'Include video files kept on this device' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Back up my journal' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Back up my journal (.json)' })).toBeVisible();
   await expect(page.getByLabel('Restore from backup')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Print progress report', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Print self-assessment', exact: true })).toBeVisible();

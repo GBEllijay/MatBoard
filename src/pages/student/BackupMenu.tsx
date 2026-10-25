@@ -1,135 +1,57 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { loadBracketPhotos } from '../../lib/bracketPhoto';
-import { pdfBlob } from '../../lib/simplePdf';
 import {
   BACKUP_BEFORE_CLEAR,
+  BACK_UP_FIRST_LABEL,
   BACKUP_REPLACE_WARN,
   CLEAR_CONFIRM_PHRASE,
   CLEAR_STUDENT_DATA_ITEMS,
   CLEAR_STUDENT_DEVICE_NOTE,
   applyBackupToMemory,
-  backupVideoTooLargeMessage,
-  buildStudentBackup,
   clearStudentMemory,
-  connectedBackupTargets,
   filmBlobsFromBackup,
   parseStudentBackup,
-  backupFileGuide,
-  studentBackupNames,
+  studentExportBusyLabel,
   type StudentBackupFile,
+  type StudentExportKind,
 } from '../../lib/studentBackup';
-import { providerLabel } from '../../lib/academyPathway';
-import { copyFilesToStudentDrive } from '../../lib/studentDriveCopy';
-import { loadStudentReport, todayIso } from '../../lib/studentEdition';
-import { clearFilmBlobs, getFilmBlob, loadFilms, putFilmBlob } from '../../lib/studentFilm';
-import { loadAssessments } from '../../lib/studentAssessment';
-import { loadScouting } from '../../lib/studentScouting';
+import { runStudentEditionExport } from '../../lib/studentBackupExport';
+import { clearFilmBlobs, putFilmBlob } from '../../lib/studentFilm';
 import { loadRankPictures } from '../../lib/rankPhotos';
-import { loadCoachShelf } from '../../lib/studentTools';
 import { BACKUP_GROUP_LABEL, BACKUP_LINKS, CLEAR_STUDENT_LABEL } from '../../lib/studentHubMenu';
 import { backupStampLabel, readStudentBackupStamp } from '../../lib/studentBackupStamp';
 import { UpdateToLatestButton } from '../../components/UpdateToLatestButton';
 import { useStudentPath } from './chrome';
+import { ExportChoices } from './ExportChoices';
 import { GroupFrame, MenuList, MenuRow } from './groupChrome';
-
-async function runMenuBackup(includeVideos: boolean): Promise<{ ok: boolean; message: string }> {
-  try {
-    const films = loadFilms(localStorage);
-    const blobs = includeVideos
-      ? await Promise.all(films.map(async (film) => ({ id: film.id, blob: await getFilmBlob(film.id).catch(() => null) })))
-      : [];
-    const built = await buildStudentBackup({
-      report: loadStudentReport(localStorage),
-      assessment: loadAssessments(localStorage),
-      scouting: loadScouting(localStorage),
-      rankPhotos: loadRankPictures(),
-      bracketPhotos: loadBracketPhotos(),
-      shelf: loadCoachShelf(localStorage),
-      films,
-      blobs,
-      includeVideos,
-    });
-    const names = studentBackupNames(todayIso());
-    downloadBlob(names.json, new Blob([built.json], { type: 'application/json' }));
-    downloadBlob(names.csv, new Blob([built.csv], { type: 'text/csv' }));
-    downloadBlob(names.progressPdf, pdfBlob(built.progressPdf));
-    downloadBlob(names.assessmentPdf, pdfBlob(built.assessmentPdf));
-    const files = [
-      { name: names.json, bytes: new Blob([built.json], { type: 'application/json' }), mime: 'application/json' },
-      { name: names.csv, bytes: new Blob([built.csv], { type: 'text/csv' }), mime: 'text/csv' },
-      { name: names.progressPdf, bytes: pdfBlob(built.progressPdf), mime: 'application/pdf' },
-      { name: names.assessmentPdf, bytes: pdfBlob(built.assessmentPdf), mime: 'application/pdf' },
-    ];
-    const targets = connectedBackupTargets(localStorage);
-    if (!targets.length) return { ok: true, message: 'Saved on this device. No academy folder or personal drive is connected.' };
-    const notes = ['Saved on this device.'];
-    for (const target of targets) {
-      const copied = await copyFilesToStudentDrive(target, files);
-      if (copied.error) notes.push(`${providerLabel(target.provider)} did not take the copy. ${copied.error}`);
-      else notes.push(`Also saved in ${target.folderName} on ${providerLabel(target.provider)}.`);
-    }
-    return { ok: true, message: notes.join(' ') };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Could not build the backup.';
-    return { ok: false, message: message.includes('too large') ? message : message || backupVideoTooLargeMessage(0) };
-  }
-}
-
-function BackupFileGuide() {
-  const files = backupFileGuide(todayIso());
-  return (
-    <section className="s-backup-guide" aria-label="What the four backup files are">
-      <h2>What the four files are for</h2>
-      <p>Back up my journal saves these four files on this phone.</p>
-      <ul>
-        {files.map((file) => (
-          <li key={file.id}>
-            <strong>{file.title}</strong>
-            <code>{file.name}</code>
-            <p>{file.detail}</p>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-function downloadBlob(filename: string, blob: Blob) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-}
 
 export function BackupMenu() {
   const to = useStudentPath();
   const [includeVideos, setIncludeVideos] = useState(false);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [busyKind, setBusyKind] = useState<StudentExportKind | null>(null);
+  const [restoreBusy, setRestoreBusy] = useState(false);
   const [pending, setPending] = useState<StudentBackupFile | null>(null);
   const [stamp, setStamp] = useState(() => backupStampLabel(readStudentBackupStamp(localStorage)));
+  const locked = busyKind !== null || restoreBusy;
 
-  const backup = async () => {
-    setBusy(true);
+  const exportFile = async (kind: StudentExportKind, videos = includeVideos) => {
+    setBusyKind(kind);
     setError('');
     setStatus('');
-    const result = await runMenuBackup(includeVideos);
+    const result = await runStudentEditionExport(kind, { includeVideos: videos });
     if (result.ok) {
-      setStamp(backupStampLabel(readStudentBackupStamp(localStorage)));
+      if (kind === 'json') setStamp(backupStampLabel(readStudentBackupStamp(localStorage)));
       setStatus(result.message);
     } else setError(result.message);
-    setBusy(false);
+    setBusyKind(null);
   };
 
   const apply = async (mode: 'merge' | 'replace') => {
     if (!pending) return;
-    setBusy(true);
+    setRestoreBusy(true);
     setError('');
     try {
       if (mode === 'replace') await clearFilmBlobs().catch(() => undefined);
@@ -143,7 +65,7 @@ export function BackupMenu() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not restore that backup.');
     } finally {
-      setBusy(false);
+      setRestoreBusy(false);
     }
   };
 
@@ -152,17 +74,17 @@ export function BackupMenu() {
       <p className="s-backup__stamp">Last backup: {stamp}</p>
       {/* TEMPORARY UPDATE BUTTON — delete this line with src/components/UpdateToLatestButton.tsx */}
       <UpdateToLatestButton />
-      <BackupFileGuide />
       <section className="s-backup" aria-label="Back up and restore">
-        <label className="s-backup__check">
-          <input type="checkbox" checked={includeVideos} onChange={(event) => setIncludeVideos(event.target.checked)} />
-          <span>Include video files kept on this device</span>
-        </label>
-        <div className="s-backup__actions">
-          <button type="button" className="s-cta" disabled={busy} onClick={() => void backup()}>
-            {busy ? 'Building backup…' : 'Back up my journal'}
-          </button>
-        </div>
+        <ExportChoices
+          variant="arena"
+          includeVideos={includeVideos}
+          onIncludeVideos={setIncludeVideos}
+          locked={locked}
+          busyKind={busyKind}
+          stamp={stamp}
+          showStamp={false}
+          onExport={(kind) => void exportFile(kind)}
+        />
         <h2 className="s-kicker">Restore from backup</h2>
         <input
           type="file"
@@ -188,10 +110,10 @@ export function BackupMenu() {
         {pending ? (
           <div className="s-backup__actions" role="group" aria-label="Restore choices">
             <p>{BACKUP_REPLACE_WARN}</p>
-            <button type="button" className="ink-btn" disabled={busy} onClick={() => void apply('merge')}>
+            <button type="button" className="ink-btn" disabled={locked} onClick={() => void apply('merge')}>
               Merge with this phone
             </button>
-            <button type="button" className="ink-btn" disabled={busy} onClick={() => void apply('replace')}>
+            <button type="button" className="ink-btn" disabled={locked} onClick={() => void apply('replace')}>
               Replace this phone
             </button>
             <button type="button" className="ink-btn" onClick={() => setPending(null)}>
@@ -230,7 +152,7 @@ export function ClearStudentMenu() {
   const backUpFirst = async () => {
     setBackupBusy(true);
     setError('');
-    const result = await runMenuBackup(false);
+    const result = await runStudentEditionExport('json', { includeVideos: false });
     if (result.ok) setStatus(result.message);
     else {
       setError(result.message);
@@ -250,9 +172,9 @@ export function ClearStudentMenu() {
         ) : null}
         {step === 1 ? (
           <div className="s-backup__actions" role="group" aria-label="Back up before clear">
-            <p>{BACKUP_BEFORE_CLEAR} Back up first, then decide.</p>
+            <p>{BACKUP_BEFORE_CLEAR} Back up first downloads one JSON file, then decide.</p>
             <button type="button" className="s-cta" disabled={backupBusy} onClick={() => void backUpFirst()}>
-              {backupBusy ? 'Building backup…' : 'Back up first'}
+              {backupBusy ? studentExportBusyLabel('json') : BACK_UP_FIRST_LABEL}
             </button>
             <button type="button" className="ink-btn" onClick={() => setStep(2)}>
               Continue without a backup
