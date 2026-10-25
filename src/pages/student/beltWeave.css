@@ -595,3 +595,48 @@
     width: 14px;
   }
 }
+
+/* Kids belts use the adult woven row. The center band is the half-color stripe. */
+.student.student--rank .belt.belt--kids .belt__name {
+  font-size: 15px;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+}
+.student.student--rank .belt.belt--kids .belt__body {
+  padding: 0 8px 0 12px;
+}
+.student.student--rank .belt.belt--kids[data-center='white'] .belt__body,
+.student.student--rank .belt.belt--kids[data-center='black'] .belt__body {
+  justify-content: space-between;
+  padding-top: 5px;
+  padding-bottom: 4px;
+}
+.student.student--rank .belt.belt--kids[data-center='white'] .belt__sub,
+.student.student--rank .belt.belt--kids[data-center='black'] .belt__sub {
+  margin-top: 0;
+}
+.student.student--rank .belt.belt--kids[data-center='white'] .belt__body::after,
+.student.student--rank .belt.belt--kids[data-center='black'] .belt__body::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  right: 0;
+  top: 26px;
+  height: 14px;
+  background: var(--center);
+  pointer-events: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), inset 0 -1px 0 rgba(0, 0, 0, 0.28);
+}
+.student.student--rank .rung--kids-ink-navy .belt__name,
+.student.student--rank .rung--kids-ink-navy .belt__sub {
+  color: #0e1726;
+  text-shadow: none;
+}
+.student.student--rank .belt.belt--kids .stripe.is-on .tape {
+  border: 0;
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.1) 0 1px, transparent 1px 3px),
+    var(--tape, #f4f1ea);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5), 0 0 4px rgba(0, 0, 0, 0.65);
+}

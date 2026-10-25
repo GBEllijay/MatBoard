@@ -30,6 +30,7 @@ import {
   loadCoachShelf,
   nextBelt,
   setCheckpointMark,
+  showsAdultCheckpoints,
   setCriterionMark,
   setGoalMet,
   splitMarkNote,
@@ -55,6 +56,7 @@ export function BeltPage() {
   }, [commit]);
 
   const belt = report.profile.belt;
+  const adultPath = showsAdultCheckpoints(report);
   const upcoming = nextBelt(belt);
   const rank = rankOf(report);
   const degree = wornDegree(belt, rank.tapeCount);
@@ -85,8 +87,17 @@ export function BeltPage() {
         </header>
         <div className="student-sheet belt-stack">
           <p className="student-quiet">
-            Current belt is set on <Link to={to('/student/rank')}>My rank</Link>. This page is the path ahead.
+            {adultPath ? (
+              <>
+                Current belt is set on <Link to={to('/student/rank')}>My rank</Link>. This page is the path ahead.
+              </>
+            ) : (
+              <>
+                Kids belts are belts and stripes for now. Set them on <Link to={to('/student/rank')}>My rank</Link>.
+              </>
+            )}
           </p>
+          {adultPath ? (
           <div className="belt-lane">
           <div className="belt-ends">
             <p>{BELT_LABELS[belt]}</p>
@@ -110,6 +121,11 @@ export function BeltPage() {
           ) : null}
           <DegreePanel report={report} />
           </div>
+          ) : (
+          <section className="belt-lane" aria-label="Kids belts">
+            <p>Checkpoints and fundamentals for kids are not on this page yet.</p>
+          </section>
+          )}
           <div className="student-actions">
             <Link className="ink-btn ink-btn--save" to={share}>
               {COACH_FILE_LABEL}
@@ -118,7 +134,7 @@ export function BeltPage() {
               Import from coach
             </Link>
           </div>
-          {checkpoints.map((row) => {
+          {adultPath ? checkpoints.map((row) => {
             const done = checkpointFilled(row, learned);
             return (
               <section key={row.id} id={row.id} className="ink belt-block" aria-label={`${row.name} checkpoint`}>
@@ -155,7 +171,7 @@ export function BeltPage() {
                 {done ? <p className="student-quiet">Filled.</p> : null}
               </section>
             );
-          })}
+          }) : null}
           <GoalsSection
             report={report}
             onAdd={(name, note) => run(addGoal(report, name, note))}

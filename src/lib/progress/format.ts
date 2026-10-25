@@ -4,6 +4,7 @@
  * Advantage does not host it.
  */
 
+import { mergeBeltBooks, readBeltBook } from '../beltBook.ts';
 import { splitCombinedDivision } from '../divisionFields.ts';
 import { fundamentalLevelOf, isFundamentalLevel } from '../fundamentals.ts';
 import { highDatesForCount } from '../blackBeltDegrees.ts';
@@ -247,6 +248,9 @@ export function parseProgressValue(raw: unknown): ProgressParse {
     value.competition = readCompetition(record, value.journal, errors);
     const rank = readRank(record.rank, value.profile.belt, errors);
     if (rank) value.rank = rank;
+    const beltBook = readBeltBook(record.beltBook);
+    errors.push(...beltBook.errors);
+    if (beltBook.book) value.beltBook = beltBook.book;
     return errors.length ? { ok: false, errors } : { ok: true, value };
   }
   if (kind === 'coach-plan' || kind === 'coach-feedback') {
@@ -300,6 +304,9 @@ export function mergeStudentProgress(local: StudentProgressReport, incoming: Stu
   mergeClips(report, incoming, conflicts);
   mergeCompetition(report, incoming, conflicts);
   mergeRank(report, incoming, conflicts);
+  const beltBook = mergeBeltBooks(report.beltBook, incoming.beltBook);
+  if (beltBook.book) report.beltBook = beltBook.book;
+  conflicts.push(...beltBook.conflicts);
   return { report, appendedAmendments, addedJournal, addedChecklist, conflicts };
 }
 

@@ -19,7 +19,11 @@ const PER_TAPE = 4;
 export type RankPhotoStore = {
   belts: Partial<Record<RankBelt, string[]>>;
   tapes: Partial<Record<RankBelt, string[][]>>;
+  /** Kids belt photos. Kept apart from adult belt keys so White does not share a picture. */
+  kidsBelts?: Record<string, string[]>;
 };
+
+const KIDS_BELT_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/;
 
 function slotsFor(belt: RankBelt): number {
   return belt === 'black' ? BLACK_DEGREE_MAX : RANK_TAPE_MAX;
@@ -122,6 +126,34 @@ export function removeBeltPhoto(store: RankPhotoStore, belt: RankBelt, index: nu
   return next;
 }
 
+export function kidsBeltPhotos(store: RankPhotoStore, beltId: string): string[] {
+  return store.kidsBelts?.[beltId] ?? [];
+}
+
+export function addKidsBeltPhoto(store: RankPhotoStore, beltId: string, image: string): RankPhotoStore {
+  if (!KIDS_BELT_ID.test(beltId)) throw new Error('That belt is not on this list.');
+  const current = kidsBeltPhotos(store, beltId);
+  if (current.length >= PER_BELT) throw new Error('That belt already has 8 photos.');
+  const next = structuredClone(store);
+  next.kidsBelts = { ...next.kidsBelts, [beltId]: [...current, image] };
+  writeStore(next);
+  return next;
+}
+
+export function removeKidsBeltPhoto(store: RankPhotoStore, beltId: string, index: number): RankPhotoStore {
+  const current = kidsBeltPhotos(store, beltId);
+  if (!current[index]) return store;
+  const next = structuredClone(store);
+  const list = current.filter((_, slot) => slot !== index);
+  const kidsBelts = { ...next.kidsBelts };
+  if (list.length) kidsBelts[beltId] = list;
+  else delete kidsBelts[beltId];
+  if (Object.keys(kidsBelts).length) next.kidsBelts = kidsBelts;
+  else delete next.kidsBelts;
+  writeStore(next);
+  return next;
+}
+
 export function removeTapePhoto(store: RankPhotoStore, belt: RankBelt, tapeIndex: number, index: number): RankPhotoStore {
   const current = tapePhotos(store, belt, tapeIndex);
   if (!current[index]) return store;
@@ -160,7 +192,7 @@ function writeStore(store: RankPhotoStore): void {
 function normalizeStore(value: unknown): RankPhotoStore {
   const store = emptyRankPhotoStore();
   if (!value || typeof value !== 'object' || Array.isArray(value)) return store;
-  const record = value as { belts?: unknown; tapes?: unknown };
+  const record = value as { belts?: unknown; tapes?: unknown; kidsBelts?: unknown };
   const belts = record.belts;
   const tapes = record.tapes;
   if (belts && typeof belts === 'object' && !Array.isArray(belts)) {
@@ -180,6 +212,16 @@ function normalizeStore(value: unknown): RankPhotoStore {
       }
       if (tapesForBelt.some((list) => list.length)) store.tapes[belt] = tapesForBelt;
     }
+  }
+  const kidsBelts = record.kidsBelts;
+  if (kidsBelts && typeof kidsBelts === 'object' && !Array.isArray(kidsBelts)) {
+    const kept: Record<string, string[]> = {};
+    for (const [beltId, list] of Object.entries(kidsBelts as Record<string, unknown>)) {
+      if (!KIDS_BELT_ID.test(beltId)) continue;
+      const images = cleanList(list).slice(0, PER_BELT);
+      if (images.length) kept[beltId] = images;
+    }
+    if (Object.keys(kept).length) store.kidsBelts = kept;
   }
   return store;
 }

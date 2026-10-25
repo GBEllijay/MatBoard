@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import {
@@ -10,15 +10,43 @@ import {
 import type { FinalRankBelt } from '../../lib/progress/types';
 import {
   addBeltPhoto,
+  addKidsBeltPhoto,
   addTapePhoto,
   beltPhotos,
+  kidsBeltPhotos,
   loadRankPictures,
   rankPhotoFromFile,
   removeBeltPhoto,
+  removeKidsBeltPhoto,
   removeTapePhoto,
   tapePhotos,
   type RankPhotoStore,
 } from '../../lib/rankPhotos';
+import {
+  addClassDot,
+  ageWarning,
+  beltModeOf,
+  classesPerTapeOf,
+  compactSlots,
+  currentKidsBelt,
+  guideOf,
+  kidsLadder,
+  kidsRankOf,
+  removeClassDot,
+  removeKidsHistory,
+  setBeltMode,
+  setBirthYear,
+  setClassesPerTape,
+  setKidsAwardedOn,
+  setKidsBelt,
+  setKidsHistoryAwardedOn,
+  setKidsTapeCount,
+  setTapeGuide,
+  showAdultPrompt,
+  tapeCountAfterTap,
+  timeGuideText,
+} from '../../lib/beltBook';
+import { CLASSES_PER_TAPE_MAX, type StudentProgressReport } from '../../lib/progress/types';
 import {
   ladderRungs,
   maxStripes,
@@ -74,6 +102,8 @@ export function RankPage() {
   const rank = rankOf(report);
   const rungs = ladderRungs(report);
   const unlocked = coralRanksUnlocked(report.profile.belt);
+  const mode = beltModeOf(report);
+  const [pendingMode, setPendingMode] = useState<'' | 'adult' | 'kids'>('');
 
   const run = (next: ReturnType<typeof setRankBelt>) => {
     try {
@@ -110,6 +140,33 @@ export function RankPage() {
             </p>
             <StudentProfileFields report={report} commit={commit} />
           </section>
+          <BeltSystemSwitch
+            mode={mode}
+            pending={pendingMode}
+            onAsk={(next) => setPendingMode(next === mode ? '' : next)}
+            onStay={() => setPendingMode('')}
+            onConfirm={() => {
+              const next = pendingMode;
+              setPendingMode('');
+              if (next === 'adult' || next === 'kids') run(setBeltMode(report, next));
+            }}
+          />
+          {mode === 'kids' ? (
+            <KidsRank
+              report={report}
+              run={run}
+              photos={photos}
+              onBeltPhoto={(beltId, file) => void savePhoto(file, (image) => addKidsBeltPhoto(photos, beltId, image))}
+              onRemoveBeltPhoto={(beltId, index) => setPhotos(removeKidsBeltPhoto(photos, beltId, index))}
+              onAdult={() => {
+                setPendingMode('');
+                run(setBeltMode(report, 'adult'));
+              }}
+              lineage={<LineageEditor lineage={rank.lineage ?? []} onSave={(lines) => run(setRankLineage(report, lines))} />}
+              progressLink={<Link className="ink-btn" to={to('/student/rubric')}>Belt progress</Link>}
+            />
+          ) : (
+          <>
           <p className="student-quiet">
             White to brown carry up to 4 stripes. Black carries up to 6 degrees, plus optional instructor bars.
           </p>
@@ -377,6 +434,8 @@ export function RankPage() {
           <Link className="ink-btn" to={to('/student/rubric')}>
             Belt progress
           </Link>
+          </>
+          )}
           {error ? <p role="alert">{error}</p> : null}
         </div>
       </div>
@@ -704,5 +763,337 @@ function LineageEditor({ lineage, onSave }: { lineage: string[]; onSave: (lines:
         Add instructor
       </button>
     </section>
+  );
+}
+
+function BeltSystemSwitch({
+  mode,
+  pending,
+  onAsk,
+  onStay,
+  onConfirm,
+}: {
+  mode: 'adult' | 'kids';
+  pending: '' | 'adult' | 'kids';
+  onAsk: (mode: 'adult' | 'kids') => void;
+  onStay: () => void;
+  onConfirm: () => void;
+}) {
+  const note = pending === 'kids'
+    ? 'Switch to kids belts? Your adult belts stay on this phone.'
+    : 'Switch to adult belts? Your kids belts stay on this phone.';
+  return (
+    <section className="belt-system" aria-label="Belt system">
+      <h2>Belt system</h2>
+      <div className="belt-system__switch" role="group" aria-label="Adult or kids belts">
+        <button type="button" aria-pressed={mode === 'adult'} onClick={() => onAsk('adult')}>
+          Adult
+        </button>
+        <button type="button" aria-pressed={mode === 'kids'} onClick={() => onAsk('kids')}>
+          Kids
+        </button>
+      </div>
+      {pending ? (
+        <div className="belt-system__confirm">
+          <p>{note}</p>
+          <div className="student-actions">
+            <button type="button" className="ink-btn ink-btn--save" onClick={onConfirm}>
+              Switch
+            </button>
+            <button type="button" className="ink-btn" onClick={onStay}>
+              Stay
+            </button>
+          </div>
+        </div>
+      ) : (
+        <p className="student-quiet">
+          {mode === 'kids' ? 'IBJJF kids belts. Your adult belts stay on this phone.' : 'Adult stays the default. Kids belts stay saved if you switch.'}
+        </p>
+      )}
+    </section>
+  );
+}
+
+function KidsRank({
+  report,
+  run,
+  photos,
+  onBeltPhoto,
+  onRemoveBeltPhoto,
+  onAdult,
+  lineage,
+  progressLink,
+}: {
+  report: StudentProgressReport;
+  run: (next: StudentProgressReport) => void;
+  photos: RankPhotoStore;
+  onBeltPhoto: (beltId: string, file: File | undefined) => void;
+  onRemoveBeltPhoto: (beltId: string, index: number) => void;
+  onAdult: () => void;
+  lineage: ReactNode;
+  progressLink: ReactNode;
+}) {
+  const kids = kidsRankOf(report);
+  const rungs = kidsLadder(report);
+  const current = currentKidsBelt(report);
+  const guide = guideOf(report);
+  const classMax = classesPerTapeOf(report);
+  const warning = ageWarning(current, report.beltBook?.birthYear);
+  const [dropId, setDropId] = useState('');
+  const savedYear = report.beltBook?.birthYear ? String(report.beltBook.birthYear) : '';
+  const [yearDraft, setYearDraft] = useState(savedYear);
+  const [classDraft, setClassDraft] = useState(String(classMax));
+  useEffect(() => {
+    setYearDraft(savedYear);
+  }, [savedYear]);
+  useEffect(() => {
+    setClassDraft(String(classMax));
+  }, [classMax]);
+
+  return (
+    <>
+      <p className="student-quiet">
+        IBJJF kids belts, white through green/black. Stripes are a suggestion. Your instructor decides when one goes on.
+      </p>
+      {showAdultPrompt(report) ? (
+        <section className="adult-prompt" aria-label="Time to switch to the adult system">
+          <p>Time to switch to the adult system?</p>
+          <p className="student-quiet">
+            IBJJF moves students to adult belts in the year they turn 16. This is your choice. Nothing switches until you say so.
+          </p>
+          <button type="button" className="ink-btn" onClick={onAdult}>
+            Switch to adult belts
+          </button>
+        </section>
+      ) : null}
+      <label className="kids-year">
+        <span className="ink__label">Birth year</span>
+        <input
+          inputMode="numeric"
+          aria-label="Birth year"
+          value={yearDraft}
+          placeholder="Optional"
+          onChange={(event) => {
+            const text = event.target.value;
+            setYearDraft(text);
+            if (/^\d{4}$/.test(text)) run(setBirthYear(report, Number(text)));
+          }}
+          onBlur={(event) => {
+            const text = event.target.value.trim();
+            if (!text) {
+              run(setBirthYear(report, null));
+              return;
+            }
+            if (/^\d{4}$/.test(text)) run(setBirthYear(report, Number(text)));
+            else setYearDraft(savedYear);
+          }}
+        />
+      </label>
+      <p className="kids-wearing">
+        Current belt: <strong>{current.label}</strong>
+      </p>
+      {warning ? (
+        <p className="kids-age" role="status">
+          {warning}
+        </p>
+      ) : null}
+      <section className="class-tally" aria-label="Classes toward the next stripe">
+        <h2>Next stripe</h2>
+        <div className="guide-switch" role="group" aria-label="Progress toward the next stripe">
+          <button type="button" aria-pressed={guide === 'classes'} onClick={() => run(setTapeGuide(report, 'classes'))}>
+            Classes
+          </button>
+          <button type="button" aria-pressed={guide === 'time'} onClick={() => run(setTapeGuide(report, 'time'))}>
+            Time
+          </button>
+        </div>
+        {guide === 'time' ? (
+          <p>{timeGuideText(report)}</p>
+        ) : (
+          <>
+            <label className="kids-year">
+              <span className="ink__label">Classes per stripe</span>
+              <input
+                inputMode="numeric"
+                aria-label="Classes per stripe"
+                value={classDraft}
+                onChange={(event) => {
+                  const text = event.target.value;
+                  setClassDraft(text);
+                  if (/^\d+$/.test(text)) {
+                    const value = Number(text);
+                    if (value >= 1 && value <= CLASSES_PER_TAPE_MAX) run(setClassesPerTape(report, value));
+                  }
+                }}
+                onBlur={() => setClassDraft(String(classesPerTapeOf(report)))}
+              />
+            </label>
+            <p className="class-tally__count" aria-live="polite">
+              {kids.classCount} of {classMax}
+            </p>
+            <div className="class-dots" aria-hidden="true">
+              {Array.from({ length: classMax }, (_, index) => (
+                <i key={index} className={index < kids.classCount ? 'is-on' : ''} />
+              ))}
+            </div>
+            <button
+              type="button"
+              className="ink-btn ink-btn--save"
+              disabled={kids.classCount >= classMax}
+              onClick={() => run(addClassDot(report))}
+            >
+              Add a class
+            </button>
+            {kids.classCount > 0 ? (
+              <button type="button" className="ink-btn" onClick={() => run(removeClassDot(report))}>
+                Remove a class
+              </button>
+            ) : null}
+            {kids.classCount >= classMax ? <p>Your instructor decides when the stripe goes on.</p> : null}
+          </>
+        )}
+      </section>
+      <ol className="rank-ladder" aria-label="Kids belt ladder">
+        {rungs.map((rung) => {
+          const slots = compactSlots(rung.tapeColors, rung.tapeCount);
+          const pictures = kidsBeltPhotos(photos, rung.beltId);
+          return (
+          <li
+            key={rung.beltId}
+            className={`rank-rung rung rung--kids${rung.ink === 'navy' ? ' rung--kids-ink-navy' : ''}${rung.current ? ' is-current' : ''}`}
+            style={{
+              ['--cloth' as string]: rung.base,
+              ['--edge' as string]: 'rgba(0,0,0,0.28)',
+              ['--stitch' as string]: rung.ink === 'navy' ? '#bdb6a4' : 'rgba(255,255,255,0.35)',
+              ['--center' as string]: rung.centerColor,
+            }}
+          >
+            <div
+              className="belt belt--kids"
+              data-center={rung.center}
+              style={{ ['--barw' as string]: `calc(var(--slot) * ${Math.max(slots.length, 1)} + 12px)` }}
+            >
+              <button
+                type="button"
+                className="belt__body"
+                aria-label={rung.label}
+                aria-pressed={rung.current}
+                onClick={() => {
+                  setDropId('');
+                  run(setKidsBelt(report, rung.beltId));
+                }}
+              >
+                <span className="belt__name">{rung.label}</span>
+                {rung.current ? <span className="belt__sub">Current belt</span> : null}
+              </button>
+              <div className="belt__bar" role="group" aria-label={rung.current ? 'Stripes' : `${rung.label} stripes`}>
+                {slots.map((slot) => {
+                  const stripeLabel = rung.current ? `Stripe ${slot.slot}` : `${rung.label} stripe ${slot.slot}`;
+                  return (
+                    <button
+                      key={slot.slot}
+                      type="button"
+                      className={slot.on ? 'stripe is-on' : 'stripe'}
+                      style={slot.on ? { ['--tape' as string]: slot.color } : undefined}
+                      aria-label={stripeLabel}
+                      aria-pressed={slot.on}
+                      disabled={!rung.current}
+                      onClick={() => {
+                        if (!rung.current) return;
+                        run(setKidsTapeCount(report, tapeCountAfterTap(rung.tapeColors, rung.tapeCount, slot.slot)));
+                      }}
+                    >
+                      <span className="tape" />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="rung__foot">
+              <label className={rung.awardedOn ? 'achieved' : 'achieved is-empty'}>
+                Achieved <b>{rung.awardedOn ? formatAchieved(rung.awardedOn) : 'Add date'}</b>
+                <input
+                  type="date"
+                  aria-label={rung.current ? 'Date of this belt' : `Date of ${rung.label} belt`}
+                  value={rung.awardedOn}
+                  disabled={!rung.current && !rung.historyId}
+                  onChange={(event) => {
+                    if (rung.current) run(setKidsAwardedOn(report, event.target.value));
+                    else if (rung.historyId) run(setKidsHistoryAwardedOn(report, rung.historyId, event.target.value));
+                  }}
+                />
+              </label>
+              <label className="photo">
+                {CAMERA}
+                Photo
+                {pictures.length ? <span className="n">{pictures.length}</span> : null}
+                <input
+                  className="student-file"
+                  type="file"
+                  accept="image/*"
+                  aria-label={`Add ${rung.label} photo`}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = '';
+                    onBeltPhoto(rung.beltId, file);
+                  }}
+                />
+              </label>
+            </div>
+            <PhotoList
+              photos={pictures}
+              removeLabel={(index) => `Remove ${rung.label} photo ${index + 1}`}
+              alt={(index) => `${rung.label} photo ${index + 1}`}
+              onRemove={(index) => onRemoveBeltPhoto(rung.beltId, index)}
+            />
+          </li>
+          );
+        })}
+      </ol>
+      <p className="student-quiet">
+        {kids.tapeCount === 0 ? 'No stripes' : kids.tapeCount === 1 ? '1 stripe' : `${kids.tapeCount} stripes`} of {current.tapeColors.length} on the belt you wear. Tap a stripe to fill it white. When the white stripes are full, tap one to turn it red, then black. Tap the latest stripe to step back. A full class card does not add a stripe.
+      </p>
+      {lineage}
+      <section className="ink" aria-label="Promotion history">
+        <h2>Promotion history</h2>
+        {kids.history.length === 0 ? <p>No earlier belts yet. A belt moves here when you change it and it already has a date or a stripe.</p> : null}
+        <ul className="comp-list">
+          {kids.history.map((row) => {
+            const label = rungs.find((rung) => rung.beltId === row.beltId)?.label ?? row.beltId;
+            const stripes = row.tapeCount === 1 ? '1 stripe' : `${row.tapeCount} stripes`;
+            return (
+              <li key={row.id} className="rank-history">
+                <span className="rank-history__label">{label}</span>
+                <span className="rank-history__date">{row.awardedOn || 'No date'}</span>
+                <span className="rank-history__stripes">{stripes}</span>
+                {dropId === row.id ? (
+                  <div className="student-actions">
+                    <button
+                      type="button"
+                      className="ink-btn"
+                      aria-label={`Confirm remove ${label} history`}
+                      onClick={() => {
+                        run(removeKidsHistory(report, row.id));
+                        setDropId('');
+                      }}
+                    >
+                      Confirm remove
+                    </button>
+                    <button type="button" className="ink-btn" onClick={() => setDropId('')}>
+                      Keep history
+                    </button>
+                  </div>
+                ) : (
+                  <button type="button" className="ink-btn ink-btn--small" aria-label={`Remove ${label} history`} onClick={() => setDropId(row.id)}>
+                    Remove
+                  </button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+      {progressLink}
+    </>
   );
 }
