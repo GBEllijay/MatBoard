@@ -40,9 +40,13 @@ test('student journal saves, searches, amends, and marks a fundamental', async (
   await page.screenshot({ path: '/opt/cursor/artifacts/journal-picker-categories-clear-390.png' });
   await picker.getByRole('button', { name: 'Hip bump sweep', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Technique drilled #2' })).toHaveValue('Hip bump sweep');
-  await page.getByRole('textbox', { name: 'Training Partners' }).fill('Alex');
+  await page.getByRole('textbox', { name: 'Training partners' }).fill('Alex');
   await page.getByRole('textbox', { name: 'Drill notes' }).fill('grip the collar deeper');
   await page.getByRole('button', { name: 'Save entry' }).click();
+  await expect(page.getByRole('status')).toHaveText('Entry saved');
+  await expect(page.getByRole('heading', { name: 'Journal', exact: true })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Technique drilled #1' })).toHaveValue('');
+  await page.getByRole('link', { name: 'See saved card', exact: true }).click();
 
   await expect(page.getByText('grip the collar deeper')).toBeVisible();
   await expect(page.getByText(/· Fundamentals, week 7, class B/)).toBeVisible();

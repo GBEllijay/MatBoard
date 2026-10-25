@@ -11,6 +11,17 @@ import { PRODUCTS_PATH, STUDENT_EDITION_NAME } from '../lib/productNames';
 import { matchingGameTags, matchingResults, gameLetter } from '../lib/progress/competition.ts';
 import { PROGRESS_NAME_MAX, type CompetitionResult, type MatchMethod, type MatchResult } from '../lib/progress/types.ts';
 import { isIsoDate } from '../lib/studentTools';
+import {
+  JOURNAL_DRILLS_LABEL,
+  JOURNAL_NOTES_LABEL,
+  JOURNAL_PARTNERS_LABEL,
+  JOURNAL_ROLLS_LABEL,
+  JOURNAL_SAVED_TOAST,
+  JOURNAL_SEE_CARD,
+  JOURNAL_STOP_LABEL,
+  formatJournalDate,
+  journalActionLabel,
+} from '../lib/journalCopy';
 import { BeltPage } from './student/BeltPage';
 import { CalendarDayPage, CalendarPage } from './student/CalendarPages';
 import { CompetitorPage } from './student/CompetitorPage';
@@ -53,6 +64,58 @@ import './student/progressPages.css';
 
 function blankTechniqueRows(count: number): { id: string; name: string }[] {
   return Array.from({ length: count }, () => ({ id: '', name: '' }));
+}
+
+function firstTechnique(card: JournalCardView): string {
+  return card.techniques.find((item) => item.name.trim())?.name.trim() ?? '';
+}
+
+function entryActionLabel(card: JournalCardView): string {
+  return journalActionLabel(card.date, firstTechnique(card), card.className);
+}
+
+function journalFieldLines(card: JournalCardView): string[] {
+  const techniques = card.techniques.filter((item) => item.name.trim());
+  const techniqueLines = techniques.length
+    ? techniques.map((item, index) => `${techniqueDrilledLabel(index)}: ${item.name}`)
+    : [`${techniqueDrilledLabel(0)}: —`];
+  return [
+    ...techniqueLines,
+    `${JOURNAL_PARTNERS_LABEL}: ${card.partners || '—'}`,
+    `${JOURNAL_DRILLS_LABEL}: ${card.drills || '—'}`,
+    `${JOURNAL_ROLLS_LABEL}: ${card.rolls || '—'}`,
+    `${JOURNAL_NOTES_LABEL}: ${card.notes || '—'}`,
+    `${JOURNAL_STOP_LABEL}: ${card.stopDoing || '—'}`,
+  ];
+}
+
+function EntrySavedToast({ open }: { open: boolean }) {
+  if (!open) return null;
+  return (
+    <p className="journal-toast" role="status" aria-live="polite">
+      {JOURNAL_SAVED_TOAST}
+    </p>
+  );
+}
+
+function JournalDateField({
+  label,
+  ariaLabel,
+  value,
+  onChange,
+}: {
+  label: string;
+  ariaLabel: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="ink journal-date">
+      <span className="ink__label">{label}</span>
+      <span className="journal-date__value">{formatJournalDate(value)}</span>
+      <input aria-label={ariaLabel} type="date" value={value} onChange={(event) => onChange(event.target.value)} required />
+    </label>
+  );
 }
 
 export function StudentEditionPage() {
@@ -148,7 +211,6 @@ function StudentClosed() {
 function JournalToday() {
   const to = useStudentPath();
   const { report, commit } = useStudentFile();
-  const navigate = useNavigate();
   const [params] = useSearchParams();
   const requested = params.get('date') ?? '';
   const [date, setDate] = useState(isIsoDate(requested) ? requested : todayIso());
@@ -161,6 +223,8 @@ function JournalToday() {
   const [stopDoing, setStopDoing] = useState('');
   const [picker, setPicker] = useState<number | null>(null);
   const [error, setError] = useState('');
+  const [savedId, setSavedId] = useState('');
+  const [savedToast, setSavedToast] = useState(false);
 
   const choose = (index: number, item: FundamentalRow) => {
     setTechniques((current) =>
@@ -186,9 +250,20 @@ function JournalToday() {
           stopDoing,
         }),
       );
-      const id = next.journal[next.journal.length - 1]?.id;
-      if (id) navigate(to(`/student/cards/${id}`), { state: { saved: true } });
+      const id = next.journal[next.journal.length - 1]?.id ?? '';
+      setClassName('');
+      setTechniques(blankTechniqueRows(JOURNAL_TECHNIQUE_ROWS));
+      setPartners('');
+      setDrills('');
+      setRolls('');
+      setNotes('');
+      setStopDoing('');
+      setPicker(null);
+      setError('');
+      setSavedId(id);
+      setSavedToast(true);
     } catch (err) {
+      setSavedToast(false);
       setError(err instanceof Error ? err.message : 'Could not save this card.');
     }
   };
@@ -206,10 +281,7 @@ function JournalToday() {
           }}
         >
           <div className="student-top">
-            <label className="ink">
-              <span className="ink__label">Date</span>
-              <input type="date" value={date} onChange={(event) => setDate(event.target.value)} required />
-            </label>
+            <JournalDateField label="Date" ariaLabel="Date" value={date} onChange={setDate} />
             <label className="ink ink--wobble">
               <span className="ink__label">Class</span>
               <input
@@ -258,38 +330,44 @@ function JournalToday() {
             </div>
             <div className="student-stack">
               <label className="ink">
-                <span className="ink__label">Training Partners</span>
-                <textarea rows={3} value={partners} onChange={(event) => setPartners(event.target.value)} />
+                <span className="ink__label">{JOURNAL_PARTNERS_LABEL}</span>
+                <textarea aria-label={JOURNAL_PARTNERS_LABEL} rows={3} value={partners} onChange={(event) => setPartners(event.target.value)} />
               </label>
               <label className="ink ink--wobble">
-                <span className="ink__label">Drills</span>
-                <textarea rows={2} value={drills} onChange={(event) => setDrills(event.target.value)} />
+                <span className="ink__label">{JOURNAL_DRILLS_LABEL}</span>
+                <textarea aria-label={JOURNAL_DRILLS_LABEL} rows={2} value={drills} onChange={(event) => setDrills(event.target.value)} />
               </label>
               <label className="ink">
-                <span className="ink__label">Rolls</span>
-                <textarea rows={2} value={rolls} onChange={(event) => setRolls(event.target.value)} />
+                <span className="ink__label">{JOURNAL_ROLLS_LABEL}</span>
+                <textarea aria-label={JOURNAL_ROLLS_LABEL} rows={2} value={rolls} onChange={(event) => setRolls(event.target.value)} />
               </label>
             </div>
           </div>
           <label className="ink journal-note">
-            <span className="ink__label">Drill notes</span>
+            <span className="ink__label">{JOURNAL_NOTES_LABEL}</span>
             <span className="student-quiet" aria-hidden="true">
               What you drilled and what to remember.
             </span>
-            <textarea aria-label="Drill notes" rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} />
+            <textarea aria-label={JOURNAL_NOTES_LABEL} rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} />
           </label>
           <label className="ink ink--wobble journal-note">
-            <span className="ink__label">Stop doing</span>
+            <span className="ink__label">{JOURNAL_STOP_LABEL}</span>
             <span className="student-quiet" aria-hidden="true">
               Mistakes to stop making.
             </span>
-            <textarea aria-label="Stop doing" rows={3} value={stopDoing} onChange={(event) => setStopDoing(event.target.value)} />
+            <textarea aria-label={JOURNAL_STOP_LABEL} rows={3} value={stopDoing} onChange={(event) => setStopDoing(event.target.value)} />
           </label>
           {error ? <p role="alert">{error}</p> : null}
-          <div className="student-actions">
+          <EntrySavedToast open={savedToast} />
+          <div className="student-actions journal-actions">
             <button type="submit" className="ink-btn ink-btn--save">
               Save entry
             </button>
+            {savedId ? (
+              <Link className="ink-btn ink-btn--wide" to={to(`/student/cards/${savedId}`)}>
+                {JOURNAL_SEE_CARD}
+              </Link>
+            ) : null}
             <Link className="ink-btn ink-btn--wide" to={to('/student/cards')}>
               Add note to an earlier card
             </Link>
@@ -350,10 +428,6 @@ function resultSearchLine(result: CompetitionResult): string {
   return `${result.division ? ` · ${result.division}` : ''}${matches ? ` · ${matches}` : ''}${names ? ` · ${names}` : ''}`;
 }
 
-function cardLabel(card: JournalCardView): string {
-  return card.className ? `${card.date} ${card.className}` : card.date;
-}
-
 function JournalList() {
   const to = useStudentPath();
   const { report, commit } = useStudentFile();
@@ -363,7 +437,7 @@ function JournalList() {
   const games = matchingGameTags(report.competition, query);
   const results = matchingResults(report.competition, query);
   return (
-    <main className="student student-frame">
+    <main className="student student-frame student--arena student--cards">
       <StudentMarks />
       <LeatherHeader title="Journal cards" />
       <div className="student-paper">
@@ -409,22 +483,22 @@ function JournalList() {
             <article key={card.id} className="ink student-card">
               <Link className="student-card-link" to={to(`/student/cards/${card.id}`)}>
                 <strong>
-                  {card.date}
+                  {formatJournalDate(card.date)}
                   {card.className ? ` · ${card.className}` : ''}
                 </strong>
-                <span>{card.techniques.map((item) => item.name).filter(Boolean).join(', ') || 'No technique yet'}</span>
-                <span>{card.notes || card.amendments[0]?.body || 'Empty notes'}</span>
-                {card.stopDoing ? <span>Stop doing: {card.stopDoing}</span> : null}
-                <span>Training partners: {card.partners || '—'}</span>
-                <span>Drills: {card.drills || '—'}</span>
-                <span>Rolls: {card.rolls || '—'}</span>
+                {journalFieldLines(card).map((line) => (
+                  <span key={line}>{line}</span>
+                ))}
+                {card.amendments.map((item) =>
+                  item.body.trim() ? <span key={item.id}>{item.body.trim()}</span> : null,
+                )}
               </Link>
               <div className="student-card__actions">
                 <Link className="ink-btn" to={to(`/student/cards/${card.id}?edit=1`)}>
-                  {`Edit ${cardLabel(card)}`}
+                  {`Edit ${entryActionLabel(card)}`}
                 </Link>
                 {pendingDelete === card.id ? (
-                  <div className="student-card__confirm" role="group" aria-label={`Delete ${cardLabel(card)}`}>
+                  <div className="student-card__confirm" role="group" aria-label={`Delete ${entryActionLabel(card)}`}>
                     <p>Delete this card?</p>
                     <button
                       type="button"
@@ -442,7 +516,7 @@ function JournalList() {
                   </div>
                 ) : (
                   <button type="button" className="ink-btn" onClick={() => setPendingDelete(card.id)}>
-                    {`Delete ${cardLabel(card)}`}
+                    {`Delete ${entryActionLabel(card)}`}
                   </button>
                 )}
               </div>
@@ -468,7 +542,7 @@ function JournalCardPage({ id }: { id: string }) {
   const editing = params.get('edit') === '1' && Boolean(entry);
   if (!entry) {
     return (
-      <main className="student student-frame">
+      <main className="student student-frame student--arena student--cards">
       <StudentMarks />
         <LeatherHeader title="Journal card" />
         <div className="student-paper">
@@ -481,16 +555,12 @@ function JournalCardPage({ id }: { id: string }) {
   }
   const card = viewJournalEntry(entry);
   return (
-    <main className="student student-frame">
+    <main className="student student-frame student--arena student--cards">
       <StudentMarks />
       <LeatherHeader title="Journal card" />
       <div className="student-paper">
         <div className="student-sheet">
-          {saved && !editing ? (
-            <p className="student-saved" role="status">
-              Saved
-            </p>
-          ) : null}
+          <EntrySavedToast open={saved && !editing} />
           {editing ? (
             <JournalEditor
               card={card}
@@ -509,11 +579,11 @@ function JournalCardPage({ id }: { id: string }) {
           <div className="student-card__actions">
             {editing ? null : (
               <Link className="ink-btn" to={to(`/student/cards/${card.id}?edit=1`)}>
-                {`Edit ${cardLabel(card)}`}
+                {`Edit ${entryActionLabel(card)}`}
               </Link>
             )}
             {confirmDelete ? (
-              <div className="student-card__confirm" role="group" aria-label="Delete this card">
+              <div className="student-card__confirm" role="group" aria-label={`Delete ${entryActionLabel(card)}`}>
                 <p>Delete this card?</p>
                 <button
                   type="button"
@@ -531,7 +601,7 @@ function JournalCardPage({ id }: { id: string }) {
               </div>
             ) : (
               <button type="button" className="ink-btn" onClick={() => setConfirmDelete(true)}>
-                Delete this card
+                {`Delete ${entryActionLabel(card)}`}
               </button>
             )}
           </div>
@@ -566,25 +636,15 @@ function JournalCardPage({ id }: { id: string }) {
 
 function CardBody({ card }: { card: JournalCardView }) {
   return (
-    <>
-      <div className="ink">
-        <p className="ink__label">
-          {card.date}
-          {card.className ? ` · ${card.className}` : ''}
-        </p>
-        {card.techniques.length === 0 ? <p>Technique drilled: —</p> : null}
-        {card.techniques.map((item, index) => (
-          <p key={`${item.id}-${index}`}>
-            {techniqueDrilledLabel(index)}: {item.name}
-          </p>
-        ))}
-        <p>Training partners: {card.partners || '—'}</p>
-        <p>Drills: {card.drills || '—'}</p>
-        <p>Rolls: {card.rolls || '—'}</p>
-        <p>Drill notes: {card.notes || '—'}</p>
-        <p>Stop doing: {card.stopDoing || '—'}</p>
-      </div>
-    </>
+    <div className="ink">
+      <p className="journal-card__when">
+        {formatJournalDate(card.date)}
+        {card.className ? ` · ${card.className}` : ''}
+      </p>
+      {journalFieldLines(card).map((line) => (
+        <p key={line}>{line}</p>
+      ))}
+    </div>
   );
 }
 
@@ -595,7 +655,7 @@ function Amendments({ card }: { card: JournalCardView }) {
       {card.amendments.length === 0 ? <p className="student-quiet">No later notes yet.</p> : null}
       {card.amendments.map((item) => (
         <article key={item.id} className="student-amend">
-          <time dateTime={item.date}>{item.date}</time>
+          <time dateTime={item.date}>{formatJournalDate(item.date)}</time>
           <p>{item.body}</p>
         </article>
       ))}
@@ -638,7 +698,7 @@ function JournalEditor({
   return (
     <form
       className="ink"
-      aria-label={`Edit ${cardLabel(card)}`}
+      aria-label={`Edit ${entryActionLabel(card)}`}
       onSubmit={(event) => {
         event.preventDefault();
         try {
@@ -650,10 +710,7 @@ function JournalEditor({
       }}
     >
       <div className="student-top">
-        <label className="ink">
-          <span className="ink__label">Date</span>
-          <input aria-label="Edit date" type="date" value={date} onChange={(event) => setDate(event.target.value)} required />
-        </label>
+        <JournalDateField label="Date" ariaLabel="Edit date" value={date} onChange={setDate} />
         <label className="ink ink--wobble">
           <span className="ink__label">Class</span>
           <input
@@ -690,30 +747,30 @@ function JournalEditor({
         </button>
       ) : null}
       <label className="ink">
-        <span className="ink__label">Training Partners</span>
-        <textarea aria-label="Edit training partners" rows={3} value={partners} onChange={(event) => setPartners(event.target.value)} />
+        <span className="ink__label">{JOURNAL_PARTNERS_LABEL}</span>
+        <textarea aria-label={`Edit ${JOURNAL_PARTNERS_LABEL}`} rows={3} value={partners} onChange={(event) => setPartners(event.target.value)} />
       </label>
       <label className="ink ink--wobble">
-        <span className="ink__label">Drills</span>
-        <textarea aria-label="Edit drills" rows={2} value={drills} onChange={(event) => setDrills(event.target.value)} />
+        <span className="ink__label">{JOURNAL_DRILLS_LABEL}</span>
+        <textarea aria-label={`Edit ${JOURNAL_DRILLS_LABEL}`} rows={2} value={drills} onChange={(event) => setDrills(event.target.value)} />
       </label>
       <label className="ink">
-        <span className="ink__label">Rolls</span>
-        <textarea aria-label="Edit rolls" rows={2} value={rolls} onChange={(event) => setRolls(event.target.value)} />
+        <span className="ink__label">{JOURNAL_ROLLS_LABEL}</span>
+        <textarea aria-label={`Edit ${JOURNAL_ROLLS_LABEL}`} rows={2} value={rolls} onChange={(event) => setRolls(event.target.value)} />
       </label>
       <label className="ink journal-note">
-        <span className="ink__label">Drill notes</span>
+        <span className="ink__label">{JOURNAL_NOTES_LABEL}</span>
         <span className="student-quiet" aria-hidden="true">
           What you drilled and what to remember.
         </span>
-        <textarea aria-label="Edit drill notes" rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} />
+        <textarea aria-label={`Edit ${JOURNAL_NOTES_LABEL}`} rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} />
       </label>
       <label className="ink ink--wobble journal-note">
-        <span className="ink__label">Stop doing</span>
+        <span className="ink__label">{JOURNAL_STOP_LABEL}</span>
         <span className="student-quiet" aria-hidden="true">
           Mistakes to stop making.
         </span>
-        <textarea aria-label="Edit stop doing" rows={3} value={stopDoing} onChange={(event) => setStopDoing(event.target.value)} />
+        <textarea aria-label={`Edit ${JOURNAL_STOP_LABEL}`} rows={3} value={stopDoing} onChange={(event) => setStopDoing(event.target.value)} />
       </label>
       {error ? <p role="alert">{error}</p> : null}
       <div className="student-card__actions">

@@ -1,8 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { exportProgressPacket } from './progress/format.ts';
-import { blankStudentReport, setStudentProfile } from './studentEdition.ts';
-import { addJournalClip } from './studentEdition.ts';
+import { addJournalClip, addJournalEntry, blankStudentReport, setStudentProfile } from './studentEdition.ts';
 import { extractPdfText, formatPdfNumber, pdfPageCount, pdfToText } from './simplePdf.ts';
 import { assessmentReportPdf, chartPoint, layoutAssessment, outerRingRadius, progressReportPdf, radarPolygonRadii, renderReportPages } from './reportPdf.ts';
 import { saveAssessment } from './studentAssessment.ts';
@@ -16,7 +15,8 @@ import {
   studentBackupNames,
   studentReportPdfName,
 } from './studentBackup.ts';
-import { countPhrase, matchRecordLine, reportHeaderLines } from './studentReport.ts';
+import { formatJournalDate } from './journalCopy.ts';
+import { countPhrase, journalReportLine, matchRecordLine, reportHeaderLines } from './studentReport.ts';
 import { emptyRankPhotoStore } from './rankPhotos.ts';
 import type { ScoutingCard } from './studentScouting.ts';
 import type { StudentFilm } from './studentFilm.ts';
@@ -236,6 +236,43 @@ test('one win, loss, or draw stays singular everywhere the record is written', (
   assert.equal(lines.includes('1 losses'), false);
   assert.equal(lines.includes('1 wins'), false);
   assert.equal(lines.includes('1 draws'), false);
+});
+
+test('a journal line uses the card labels and the written date', () => {
+  const report = addJournalEntry(
+    blankStudentReport(1),
+    {
+      date: '2026-10-11',
+      className: 'Fundamentals',
+      gameTag: '',
+      techniques: [{ id: 'sweep.scissor', name: 'Scissor sweep' }],
+      partners: 'Alex',
+      drills: 'hip escapes',
+      rolls: '5 rounds',
+      notes: 'grip the collar deeper',
+      stopDoing: 'posting the near hand',
+    },
+    2,
+  );
+  const line = journalReportLine(report.journal[0]!);
+  assert.equal(formatJournalDate('2026-10-11'), 'October 11, 2026');
+  assert.equal(formatJournalDate('not-a-date'), 'not-a-date');
+  assert.match(line, /October 11, 2026/);
+  assert.equal(line.includes('2026-10-11'), false);
+  assert.equal(line.includes('Class:'), false);
+  assert.match(line, /Fundamentals/);
+  assert.match(line, /Technique drilled #1: Scissor sweep/);
+  assert.match(line, /Training partners: Alex/);
+  assert.match(line, /Drills: hip escapes/);
+  assert.match(line, /Rolls: 5 rounds/);
+  assert.match(line, /Drill notes: grip the collar deeper/);
+  assert.match(line, /Stop doing: posting the near hand/);
+  const pdf = progressReportPdf(report, { entries: [] }, {}, '2026-10-11');
+  const text = extractPdfText(pdf);
+  assert.match(text, /Technique drilled #1: Scissor sweep/);
+  assert.match(text, /Drill notes: grip the collar deeper/);
+  assert.match(text, /October 11, 2026/);
+  assert.equal(text.includes('?'), false);
 });
 
 test('an empty progress report omits blank lists or says None yet', () => {

@@ -22,7 +22,8 @@ test('calendar marks a journal day, stores an event, and can show the gym schedu
   await page.getByRole('textbox', { name: 'Class', exact: true }).fill('Fundamentals');
   await page.getByRole('textbox', { name: 'Drill notes' }).fill('grip the collar deeper');
   await page.getByRole('button', { name: 'Save entry' }).click();
-  await expect(page.getByText('grip the collar deeper')).toBeVisible();
+  await expect(page.getByRole('status')).toHaveText('Entry saved');
+  await expect(page.getByRole('heading', { name: 'Journal', exact: true })).toBeVisible();
   await expect(page.locator('main.student')).toHaveCSS('font-family', /Patrick Hand/);
   await expect(page.locator('.student-paper')).toHaveCSS('background-color', 'rgb(244, 240, 228)');
 

@@ -11,6 +11,8 @@ import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 import { competitorHubSummary } from '../../lib/studentHubMenu.ts';
 import { addCompetitionResult, addTournament } from '../../lib/studentCompetition.ts';
+import { formatJournalDate, journalActionLabel, JOURNAL_SAVED_TOAST, JOURNAL_SEE_CARD } from '../../lib/journalCopy.ts';
+import { setCompetitionGame } from '../../lib/studentCompetition.ts';
 import {
   addJournalEntry,
   blankStudentReport,
@@ -111,64 +113,212 @@ function click(node: HTMLElement) {
   });
 }
 
-test('journal save lands on the card with Saved, and edit and delete keep the other fields', () => {
+test('journal controls stay, save confirms in place, and the card still edits and deletes', () => {
   localStorage.clear();
-  const mounted = mount(<StudentEditionPage />, '/student/journal?student=1');
+  const mounted = mount(<StudentEditionPage />, '/student/journal?date=2026-10-11&student=1');
   const { host } = mounted;
+  const main = host.querySelector('main');
+  assert.equal(main?.classList.contains('student--arena'), false);
+  assert.ok(main?.querySelector('.student-paper'));
   assert.equal(host.querySelector('h1')?.textContent, 'Journal');
   assert.equal(host.querySelector('[role="status"]'), null);
+  assert.equal(labeled(host, 'Back. Hold for Home.').getAttribute('href'), '/student/training?student=1');
+  assert.equal(labeled(host, 'Home').getAttribute('href'), '/products?student=1');
+  assert.equal((field(host, 'Date') as HTMLInputElement).value, '2026-10-11');
+  assert.match(host.textContent ?? '', /October 11, 2026/);
+  for (const name of ['Class', 'Technique drilled #1', 'Technique drilled #2', 'Technique drilled #3', 'Training partners', 'Drills', 'Rolls', 'Drill notes', 'Stop doing']) {
+    field(host, name);
+  }
+  assert.equal(host.querySelector('[aria-label="Technique drilled #4"]'), null);
+  for (const name of ['Pick Technique drilled #1 from fundamentals', 'Pick Technique drilled #2 from fundamentals', 'Pick Technique drilled #3 from fundamentals']) {
+    labeled(host, name);
+  }
+  assert.ok(control(host, 'button', 'Add another technique'));
+  assert.ok(control(host, 'button', 'Save entry'));
+  assert.equal(control(host, 'a', 'Add note to an earlier card').getAttribute('href'), '/student/cards?student=1');
+
+  assert.equal((field(host, 'Date') as HTMLInputElement).required, true);
   typeInto(field(host, 'Class'), 'Fundamentals');
+
+  click(control(host, 'button', 'Add another technique'));
+  assert.ok(field(host, 'Technique drilled #4'));
+  click(labeled(host, 'Pick Technique drilled #2 from fundamentals'));
+  const picker = labeled(host, 'Pick Technique drilled #2');
+  assert.equal(picker.getAttribute('role'), 'dialog');
+  click(control(picker, 'button', 'Close'));
+  assert.equal(host.querySelector('[role="dialog"]'), null);
+  click(labeled(host, 'Pick Technique drilled #2 from fundamentals'));
+  click(control(labeled(host, 'Pick Technique drilled #2'), 'button', 'Hip bump sweep'));
+  assert.equal((field(host, 'Technique drilled #2') as HTMLInputElement).value, 'Hip bump sweep');
   typeInto(field(host, 'Technique drilled #1'), 'Scissor sweep');
-  typeInto(field(host, 'Training Partners'), 'Alex');
+  typeInto(field(host, 'Training partners'), 'Alex');
   typeInto(field(host, 'Drills'), 'hip escapes');
   typeInto(field(host, 'Rolls'), '5 rounds');
   typeInto(field(host, 'Drill notes'), 'grip the collar deeper');
   typeInto(field(host, 'Stop doing'), 'posting the near hand');
   click(control(host, 'button', 'Save entry'));
 
+  assert.equal(host.querySelector('h1')?.textContent, 'Journal');
+  assert.equal(host.querySelector('[role="status"]')?.textContent, JOURNAL_SAVED_TOAST);
+  assert.equal((field(host, 'Class') as HTMLInputElement).value, '');
+  assert.equal((field(host, 'Technique drilled #1') as HTMLInputElement).value, '');
+  assert.equal((field(host, 'Training partners') as HTMLTextAreaElement).value, '');
+  assert.equal((field(host, 'Drills') as HTMLTextAreaElement).value, '');
+  assert.equal((field(host, 'Rolls') as HTMLTextAreaElement).value, '');
+  assert.equal((field(host, 'Drill notes') as HTMLTextAreaElement).value, '');
+  assert.equal((field(host, 'Stop doing') as HTMLTextAreaElement).value, '');
+  assert.equal((field(host, 'Date') as HTMLInputElement).value, '2026-10-11');
+  assert.equal(host.querySelector('[aria-label="Technique drilled #4"]'), null);
+  const stored = loadStudentReport(localStorage).journal;
+  assert.equal(stored.length, 1);
+  assert.match(stored[0]?.body ?? '', /Technique drilled #1: Scissor sweep/);
+  assert.match(stored[0]?.body ?? '', /Drill notes|grip the collar deeper/);
+  assert.match(stored[0]?.body ?? '', /Stop doing/);
+  const seen = control(host, 'a', JOURNAL_SEE_CARD);
+  assert.equal(seen.getAttribute('href'), `/student/cards/${stored[0]?.id}?student=1`);
+  click(seen);
+
   assert.equal(host.querySelector('h1')?.textContent, 'Journal card');
-  assert.equal(host.querySelector('[role="status"]')?.textContent, 'Saved');
+  assert.ok(host.querySelector('main')?.classList.contains('student--arena'));
+  assert.equal(host.querySelector('[role="status"]'), null);
+  const when = formatJournalDate('2026-10-11');
+  assert.match(host.textContent ?? '', new RegExp(when));
+  assert.match(host.textContent ?? '', /Fundamentals/);
   assert.match(host.textContent ?? '', /Technique drilled #1: Scissor sweep/);
+  assert.match(host.textContent ?? '', /Technique drilled #2: Hip bump sweep/);
+  assert.equal(host.textContent?.includes('Technique drilled #3:'), false);
   assert.match(host.textContent ?? '', /Training partners: Alex/);
   assert.match(host.textContent ?? '', /Drills: hip escapes/);
   assert.match(host.textContent ?? '', /Rolls: 5 rounds/);
   assert.match(host.textContent ?? '', /Drill notes: grip the collar deeper/);
   assert.match(host.textContent ?? '', /Stop doing: posting the near hand/);
   assert.equal(host.querySelector('[aria-label="Amendment"]') instanceof HTMLTextAreaElement, true);
-  assert.equal(labeled(host, 'Back. Hold for Home.').getAttribute('href'), '/student/cards?student=1');
-
-  click(labeled(host, 'Back. Hold for Home.'));
-  assert.equal(host.querySelector('h1')?.textContent, 'Journal cards');
-  const link = [...host.querySelectorAll('a.student-card-link')].find((node) => node.textContent?.includes('Scissor sweep'));
-  assert.ok(link);
-  const lines = [...link.querySelectorAll('span')].map((node) => node.textContent);
-  assert.ok(lines.includes('Training partners: Alex'));
-  assert.ok(lines.includes('Drills: hip escapes'));
-  assert.ok(lines.includes('Rolls: 5 rounds'));
-  const date = todayIso();
-  click(control(host, 'a', `Edit ${date} Fundamentals`));
-  assert.equal(field(host, 'Edit training partners') instanceof HTMLTextAreaElement, true);
-  assert.equal(field(host, 'Edit drills') instanceof HTMLTextAreaElement, true);
-  assert.equal(field(host, 'Edit rolls') instanceof HTMLTextAreaElement, true);
-  assert.equal(field(host, 'Edit drill notes') instanceof HTMLTextAreaElement, true);
-  assert.equal(field(host, 'Edit stop doing') instanceof HTMLTextAreaElement, true);
   assert.match(host.textContent ?? '', /Later notes/);
-  typeInto(field(host, 'Edit rolls'), '6 rounds');
+  assert.match(host.textContent ?? '', /Add note to an earlier card/);
+  assert.ok(control(host, 'button', 'Add note'));
+  const action = journalActionLabel('2026-10-11', 'Scissor sweep');
+  assert.equal(labeled(host, 'Back. Hold for Home.').getAttribute('href'), '/student/cards?student=1');
+  assert.ok(control(host, 'a', `Edit ${action}`));
+  assert.ok(control(host, 'button', `Delete ${action}`));
+
+  click(control(host, 'a', `Edit ${action}`));
+  assert.equal((field(host, 'Edit date') as HTMLInputElement).value, '2026-10-11');
+  assert.match(host.textContent ?? '', new RegExp(when));
+  assert.equal((field(host, 'Edit class') as HTMLInputElement).value, 'Fundamentals');
+  assert.equal((field(host, 'Edit Technique drilled #1') as HTMLInputElement).value, 'Scissor sweep');
+  assert.equal((field(host, 'Edit Technique drilled #2') as HTMLInputElement).value, 'Hip bump sweep');
+  assert.equal(field(host, 'Edit Training partners') instanceof HTMLTextAreaElement, true);
+  assert.equal(field(host, 'Edit Drills') instanceof HTMLTextAreaElement, true);
+  assert.equal((field(host, 'Edit Rolls') as HTMLTextAreaElement).value, '5 rounds');
+  assert.equal((field(host, 'Edit Drill notes') as HTMLTextAreaElement).value, 'grip the collar deeper');
+  assert.equal((field(host, 'Edit Stop doing') as HTMLTextAreaElement).value, 'posting the near hand');
+  assert.ok(control(host, 'button', 'Save card'));
+  assert.ok(control(host, 'button', 'Cancel edit'));
+  click(control(host, 'button', 'Cancel edit'));
+  assert.equal(host.querySelector('[aria-label="Edit Rolls"]'), null);
+  assert.match(host.textContent ?? '', /Rolls: 5 rounds/);
+
+  click(control(host, 'a', `Edit ${action}`));
+  typeInto(field(host, 'Edit Rolls'), '6 rounds');
   click(control(host, 'button', 'Save card'));
-  assert.equal(host.querySelector('[role="status"]')?.textContent, 'Saved');
+  assert.equal(host.querySelector('[role="status"]')?.textContent, JOURNAL_SAVED_TOAST);
   assert.match(host.textContent ?? '', /Rolls: 6 rounds/);
   assert.match(host.textContent ?? '', /Training partners: Alex/);
-  assert.equal(host.querySelector('[aria-label="Edit rolls"]'), null);
+  assert.equal(host.querySelector('[aria-label="Edit Rolls"]'), null);
 
-  click(control(host, 'button', 'Delete this card'));
+  typeInto(field(host, 'Amendment'), 'kick the far leg');
+  click(control(host, 'button', 'Add note'));
+  assert.match(host.textContent ?? '', /kick the far leg/);
+  assert.match(host.textContent ?? '', /grip the collar deeper/);
+
+  click(control(host, 'button', `Delete ${action}`));
   assert.match(host.textContent ?? '', /Delete this card\?/);
   click(control(host, 'button', 'Keep card'));
   assert.match(host.textContent ?? '', /Scissor sweep/);
-  click(control(host, 'button', 'Delete this card'));
+  click(control(host, 'button', `Delete ${action}`));
   click(control(host, 'button', 'Confirm delete'));
   assert.equal(host.querySelector('h1')?.textContent, 'Journal cards');
   assert.equal(host.textContent?.includes('Scissor sweep'), false);
   assert.equal(loadStudentReport(localStorage).journal.length, 0);
+  unmount(mounted);
+});
+
+test('cards list labels, search, and competition hits stay, and two same-day cards stay distinct', () => {
+  localStorage.clear();
+  let report = addJournalEntry(
+    blankStudentReport(10),
+    {
+      date: '2026-10-11',
+      className: 'Gi',
+      gameTag: '',
+      techniques: [{ id: 'sweep.scissor', name: 'Scissor sweep' }],
+      partners: 'Alex',
+      drills: 'hip escapes',
+      rolls: '5 rounds',
+      notes: 'grip the collar deeper',
+      stopDoing: 'posting the near hand',
+    },
+    10,
+  );
+  report = addJournalEntry(
+    report,
+    {
+      date: '2026-10-11',
+      className: 'Gi',
+      gameTag: '',
+      techniques: [{ id: 'sub.armbar', name: 'Armbar' }],
+      partners: 'Sam',
+      drills: '',
+      rolls: '',
+      notes: '',
+    },
+    11,
+  );
+  report = setCompetitionGame(report, 'a', { techniques: 'Armbar from mount', notes: 'Finish the grip' }, 12);
+  report = addCompetitionResult(report, { tournamentId: '', tournamentName: 'Spring Open', division: 'Adult Blue' }, 13);
+  saveStudentReport(localStorage, report);
+
+  const mounted = mount(<StudentEditionPage />, '/student/cards?student=1');
+  const { host } = mounted;
+  assert.equal(host.querySelector('h1')?.textContent, 'Journal cards');
+  assert.ok(host.querySelector('main')?.classList.contains('student--arena'));
+  assert.equal(host.querySelector('main')?.classList.contains('student-frame'), true);
+  assert.equal(labeled(host, 'Back. Hold for Home.').getAttribute('href'), '/student/training?student=1');
+  assert.equal(labeled(host, 'Home').getAttribute('href'), '/products?student=1');
+  assert.ok(field(host, 'Search journal'));
+  const today = [...host.querySelectorAll('a')].find((node) => node.textContent?.includes('Today') && node.textContent?.includes('page'));
+  assert.equal(today?.getAttribute('href'), '/student/journal?student=1');
+  const sweep = journalActionLabel('2026-10-11', 'Scissor sweep');
+  const armbar = journalActionLabel('2026-10-11', 'Armbar');
+  assert.notEqual(sweep, armbar);
+  assert.ok(control(host, 'a', `Edit ${sweep}`));
+  assert.ok(control(host, 'button', `Delete ${sweep}`));
+  assert.ok(control(host, 'a', `Edit ${armbar}`));
+  assert.ok(control(host, 'button', `Delete ${armbar}`));
+  assert.match(host.textContent ?? '', /October 11, 2026/);
+  assert.equal(host.textContent?.includes('2026-10-11'), false);
+  assert.match(host.textContent ?? '', /Technique drilled #1: Scissor sweep/);
+  assert.match(host.textContent ?? '', /Technique drilled #1: Armbar/);
+  assert.match(host.textContent ?? '', /Drill notes: grip the collar deeper/);
+  assert.match(host.textContent ?? '', /Stop doing: posting the near hand/);
+  assert.match(host.textContent ?? '', /Training partners: Alex/);
+  assert.match(host.textContent ?? '', /Training partners: Sam/);
+
+  typeInto(field(host, 'Search journal') as HTMLInputElement, 'scissor');
+  assert.match(host.textContent ?? '', /Scissor sweep/);
+  assert.equal(host.textContent?.includes('Armbar'), false);
+  typeInto(field(host, 'Search journal') as HTMLInputElement, 'mount');
+  const games = labeled(host, 'Competition game');
+  assert.match(games.textContent ?? '', /A game/);
+  assert.match(games.textContent ?? '', /Armbar from mount/);
+  typeInto(field(host, 'Search journal') as HTMLInputElement, 'Spring');
+  const results = labeled(host, 'Competition results');
+  assert.match(results.textContent ?? '', /Spring Open/);
+  assert.equal(control(results, 'a', 'Spring Open').getAttribute('href'), '/student/results?student=1');
+  typeInto(field(host, 'Search journal') as HTMLInputElement, 'zzzz-no-card');
+  assert.match(host.textContent ?? '', /No cards match/);
+  assert.equal(host.querySelector('[aria-label="Competition game"]'), null);
+  assert.equal(host.querySelector('[aria-label="Competition results"]'), null);
   unmount(mounted);
 });
 
@@ -194,7 +344,10 @@ test('an older card still shows partners, drills, and rolls, and delete asks bef
   const mounted = mount(<StudentEditionPage />, '/student/cards?student=1');
   const { host } = mounted;
   assert.match(host.textContent ?? '', /Training partners: Alex/);
-  click(control(host, 'button', 'Delete 2026-10-11 Gi'));
+  assert.match(host.textContent ?? '', /October 11, 2026/);
+  assert.match(host.textContent ?? '', /Technique drilled #1: Scissor sweep/);
+  assert.match(host.textContent ?? '', /Drill notes: grip the collar deeper/);
+  click(control(host, 'button', `Delete ${journalActionLabel('2026-10-11', 'Scissor sweep', 'Gi')}`));
   assert.match(host.textContent ?? '', /Delete this card\?/);
   assert.equal(loadStudentReport(localStorage).journal.length, 1);
   click(control(host, 'button', 'Confirm delete'));
