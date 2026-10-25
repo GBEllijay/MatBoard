@@ -12,6 +12,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { RANK_PHOTO_KEY } from '../../lib/rankPhotos.ts';
 import { blankStudentReport, saveStudentReport } from '../../lib/studentEdition.ts';
 import { setRankAwardedOn, setRankBelt, setRankTapeCount, setRankTapeDate } from '../../lib/studentRank.ts';
+import { BeltPage } from './BeltPage.tsx';
 import { RankPage } from './RankPage.tsx';
 
 const dom = new Window({ url: 'http://localhost/student/rank?student=1' });
@@ -337,5 +338,84 @@ test('an earlier belt date stays on the line and is not moved into the stripe ed
     assert.equal((labeled('Date of this belt') as HTMLInputElement).value, '2026-07-01');
   } finally {
     unmount(mounted);
+  }
+});
+
+test('coral stays locked until a black belt is worn, then the quiet rows unlock', async () => {
+  const mounted = mount(<RankPage />);
+  try {
+    assert.equal(document.querySelector('[aria-label="Unlocked after black belt"]'), null);
+    assert.match(labeled('1st degree').textContent ?? '', /3 yrs/);
+    assert.match(labeled('6th degree').textContent ?? '', /24 yrs/);
+    assert.match(document.body.textContent ?? '', /guideline minimums/i);
+    assert.equal(document.querySelector('.mini-belt'), null);
+    await click(buttonNamed('Black'));
+    const unlocked = document.querySelector('[aria-label="Unlocked after black belt"]');
+    assert.ok(unlocked instanceof HTMLElement);
+    assert.match(unlocked.textContent ?? '', /Unlocked after black belt/);
+    assert.match(unlocked.textContent ?? '', /31 years cumulative/);
+    assert.match(unlocked.textContent ?? '', /38 years cumulative/);
+    assert.match(unlocked.textContent ?? '', /48\+ years cumulative/);
+    assert.equal(unlocked.querySelectorAll('.mini-belt').length, 3);
+  } finally {
+    unmount(mounted);
+  }
+});
+
+test('instructor bars sit on the red bar and are not a seventh stripe', async () => {
+  saveStudentReport(localStorage, setRankBelt(blankStudentReport(40), 'black', 41));
+  const mounted = mount(<RankPage />);
+  try {
+    const black = document.querySelector('.rung--black');
+    assert.equal(black?.querySelectorAll('.stripe').length, 6);
+    assert.equal(black?.querySelector('[data-instructor-bars="on"]'), null);
+    assert.equal(black?.querySelectorAll('.ibar').length, 0);
+    await click(labeled('Instructor bars (some schools award these at about 2 years)'));
+    assert.ok(black?.querySelector('[data-instructor-bars="on"]'));
+    assert.equal(black?.querySelectorAll('.ibar').length, 2);
+    assert.equal(black?.querySelectorAll('.stripe').length, 6);
+  } finally {
+    unmount(mounted);
+  }
+});
+
+test('an old four-stripe save still loads and does not unlock coral', async () => {
+  let report = setRankBelt(blankStudentReport(50), 'blue', 51);
+  report = setRankTapeCount(report, 2, 52);
+  report = setRankTapeDate(report, 0, '2012-01-01', 53);
+  saveStudentReport(localStorage, report);
+  const mounted = mount(<RankPage />);
+  try {
+    assert.equal(buttonNamed('Blue').getAttribute('aria-pressed'), 'true');
+    assert.equal(labeled('Stripe 1').getAttribute('aria-pressed'), 'true');
+    assert.equal(labeled('Stripe 2').getAttribute('aria-pressed'), 'true');
+    assert.equal(document.querySelector('[aria-label="Unlocked after black belt"]'), null);
+    await click(labeled('Stripe 1'));
+    assert.equal((labeled('Stripe 1 date') as HTMLInputElement).value, '2012-01-01');
+  } finally {
+    unmount(mounted);
+  }
+});
+
+test('belt progress hides coral until black is worn', async () => {
+  const locked = mount(<BeltPage />);
+  try {
+    assert.equal(document.body.textContent?.includes('Unlocked after black belt'), false);
+    assert.equal(document.body.textContent?.includes('Next: 1st degree'), false);
+    assert.ok(document.querySelector('[aria-label="Checkpoints between White and Blue"]'));
+  } finally {
+    unmount(locked);
+  }
+  saveStudentReport(localStorage, setRankBelt(blankStudentReport(60), 'black', 61));
+  const open = mount(<BeltPage />);
+  try {
+    assert.match(document.body.textContent ?? '', /Next: 1st degree/);
+    assert.match(document.body.textContent ?? '', /3 years at black belt/);
+    assert.match(document.body.textContent ?? '', /Unlocked after black belt/);
+    assert.match(document.body.textContent ?? '', /31 years as a black belt/);
+    assert.match(document.body.textContent ?? '', /48\+ years as a black belt/);
+    assert.match(document.body.textContent ?? '', /Instructor bars: off/);
+  } finally {
+    unmount(open);
   }
 });

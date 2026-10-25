@@ -7,7 +7,7 @@
  */
 
 import { shrinkImageFile } from './imageShrink.ts';
-import { RANK_BELTS, RANK_PHOTO_MAX_CHARS, RANK_TAPE_MAX, type RankBelt, type RankPicture } from './progress/types.ts';
+import { BLACK_DEGREE_MAX, RANK_BELTS, RANK_PHOTO_MAX_CHARS, RANK_TAPE_MAX, type RankBelt, type RankPicture } from './progress/types.ts';
 import { assertOriginRoom } from './storageQuota.ts';
 
 export const RANK_PHOTO_KEY = 'matboard.studentEdition.rankPhotos.v1';
@@ -18,8 +18,12 @@ const PER_TAPE = 4;
 
 export type RankPhotoStore = {
   belts: Partial<Record<RankBelt, string[]>>;
-  tapes: Partial<Record<RankBelt, [string[], string[], string[], string[]]>>;
+  tapes: Partial<Record<RankBelt, string[][]>>;
 };
+
+function slotsFor(belt: RankBelt): number {
+  return belt === 'black' ? BLACK_DEGREE_MAX : RANK_TAPE_MAX;
+}
 
 function isImage(file: File): boolean {
   if (file.type.startsWith('image/')) return true;
@@ -95,7 +99,10 @@ export function addBeltPhoto(store: RankPhotoStore, belt: RankBelt, image: strin
 }
 
 export function addTapePhoto(store: RankPhotoStore, belt: RankBelt, tapeIndex: number, image: string): RankPhotoStore {
-  if (!Number.isInteger(tapeIndex) || tapeIndex < 0 || tapeIndex >= RANK_TAPE_MAX) throw new Error('Stripes are 0 to 4.');
+  const slots = slotsFor(belt);
+  if (!Number.isInteger(tapeIndex) || tapeIndex < 0 || tapeIndex >= slots) {
+    throw new Error(belt === 'black' ? 'Degrees are 0 to 6.' : 'Stripes are 0 to 4.');
+  }
   const current = tapePhotos(store, belt, tapeIndex);
   if (current.length >= PER_TAPE) throw new Error('That stripe already has 4 photos.');
   const next = structuredClone(store);
@@ -131,21 +138,19 @@ export function picturesFromStore(store: RankPhotoStore): RankPicture[] {
   const pictures: RankPicture[] = [];
   for (const belt of RANK_BELTS) {
     for (const image of beltPhotos(store, belt)) pictures.push({ belt, image });
-    for (let tapeIndex = 0; tapeIndex < RANK_TAPE_MAX; tapeIndex += 1) {
+    for (let tapeIndex = 0; tapeIndex < slotsFor(belt); tapeIndex += 1) {
       for (const image of tapePhotos(store, belt, tapeIndex)) pictures.push({ belt, tapeIndex, image });
     }
   }
   return pictures;
 }
 
-function tapeRow(store: RankPhotoStore, belt: RankBelt): [string[], string[], string[], string[]] {
+function tapeRow(store: RankPhotoStore, belt: RankBelt): string[][] {
   const current = store.tapes[belt];
-  return [
-    [...(current?.[0] ?? [])],
-    [...(current?.[1] ?? [])],
-    [...(current?.[2] ?? [])],
-    [...(current?.[3] ?? [])],
-  ];
+  const slots = slotsFor(belt);
+  const row: string[][] = [];
+  for (let index = 0; index < slots; index += 1) row.push([...(current?.[index] ?? [])]);
+  return row;
 }
 
 function writeStore(store: RankPhotoStore): void {
@@ -169,8 +174,8 @@ function normalizeStore(value: unknown): RankPhotoStore {
     for (const belt of RANK_BELTS) {
       const row = (tapes as Record<string, unknown>)[belt];
       if (!Array.isArray(row)) continue;
-      const tapesForBelt: [string[], string[], string[], string[]] = [[], [], [], []];
-      for (let index = 0; index < RANK_TAPE_MAX; index += 1) {
+      const tapesForBelt: string[][] = [];
+      for (let index = 0; index < slotsFor(belt); index += 1) {
         tapesForBelt[index] = cleanList(row[index]).slice(0, PER_TAPE);
       }
       if (tapesForBelt.some((list) => list.length)) store.tapes[belt] = tapesForBelt;

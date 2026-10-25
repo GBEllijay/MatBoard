@@ -170,16 +170,25 @@ function appendStripeLines(lines: string[], tapeCount: number, tapeDates: readon
   }
 }
 
+function rankDateList(tapeDates: readonly string[] | undefined, high: readonly string[] | undefined): string[] {
+  return [...(tapeDates ?? []), ...(high ?? [])];
+}
+
 function rankBlock(report: StudentProgressReport): ReportBlock {
   const rank = report.rank;
-  const lines = [`Current belt awarded: ${rank?.awardedOn || 'No date'}`, `Stripes: ${rank?.tapeCount ?? 0}`];
-  if (rank) appendStripeLines(lines, rank.tapeCount, rank.tapeDates);
+  const degreeBelt = report.profile.belt === 'black';
+  const lines = [
+    `Current belt awarded: ${rank?.awardedOn || 'No date'}`,
+    `${degreeBelt ? 'Degrees' : 'Stripes'}: ${rank?.tapeCount ?? 0}`,
+  ];
+  if (rank) appendStripeLines(lines, rank.tapeCount, rankDateList(rank.tapeDates, rank.highDegreeDates));
   if (rank?.history.length) {
     lines.push('Earlier belts:');
     for (const row of rank.history) {
-      const stripes = countPhrase(row.tapeCount, 'stripe', 'stripes');
+      const noun = row.belt === 'black' ? (row.tapeCount === 1 ? 'degree' : 'degrees') : row.tapeCount === 1 ? 'stripe' : 'stripes';
+      const stripes = row.belt === 'black' ? `${row.tapeCount} ${noun}` : countPhrase(row.tapeCount, 'stripe', 'stripes');
       lines.push(`${BELT_LABELS[row.belt] ?? row.belt} awarded ${row.awardedOn || 'no date'}, ${stripes}`);
-      appendStripeLines(lines, row.tapeCount, row.tapeDates, '  ');
+      appendStripeLines(lines, row.tapeCount, rankDateList(row.tapeDates, row.highDegreeDates), '  ');
     }
   }
   if (rank?.lineage?.length) {

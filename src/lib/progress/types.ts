@@ -22,15 +22,22 @@ export const PROGRESS_BELTS = [
   'orange',
   'green',
   'coral',
+  'redWhite',
+  'red',
 ] as const;
 
 export type ProgressBelt = (typeof PROGRESS_BELTS)[number];
 
-/** Belts the student sets on My rank. Kids belts stay on the profile when a file already has one. */
+/** Belts with stripes on My rank. Kids belts stay on the profile when a file already has one. */
 export const RANK_BELTS = ['white', 'blue', 'purple', 'brown', 'black'] as const;
-export type RankBelt = (typeof RANK_BELTS)[number];
+/** 7th degree (red and black), 8th (red and white), and 9th (solid red). */
+export const FINAL_RANK_BELTS = ['coral', 'redWhite', 'red'] as const;
+export type FinalRankBelt = (typeof FINAL_RANK_BELTS)[number];
+export type RankBelt = (typeof RANK_BELTS)[number] | FinalRankBelt;
 /** Four stripe dates. Empty string means that stripe has no date. Slots past the tape count stay empty. */
 export type RankTapeDates = [string, string, string, string];
+/** Dates for black-belt degrees 5 and 6. Index 0 is the 5th degree. */
+export type HighDegreeDates = [string, string];
 
 /** A game / B game / C game. Same letters as the coach game-plan layers. */
 export const GAME_TAGS = ['a', 'b', 'c'] as const;
@@ -82,8 +89,13 @@ export const PROGRESS_WEIGH_INS_MAX = 400;
 export const PROGRESS_RESULTS_MAX = 80;
 /** Earlier belts kept on My rank. */
 export const PROGRESS_RANK_HISTORY_MAX = 40;
-/** Stripe slots on the belt the student wears. The file stores this as tape count, not a stripes key. */
+/** Stripe slots on white through brown. The file stores this as tape count, not a stripes key. */
 export const RANK_TAPE_MAX = 4;
+/**
+ * Degrees on a black belt, stored in the same tape count.
+ * A saved count of 0 to 4 is that degree. Degrees 5 and 6 are newer.
+ */
+export const BLACK_DEGREE_MAX = 6;
 /** Instructor, their instructor, and so on. */
 export const PROGRESS_LINEAGE_MAX = 16;
 /** One compressed promotion photo. */
@@ -376,11 +388,17 @@ export type RankHistory = {
   awardedOn: string;
   tapeCount: number;
   tapeDates: RankTapeDates;
+  /** Black-belt degrees 5 and 6. Omitted on older rows and on colored belts. */
+  highDegreeDates?: HighDegreeDates;
+  /** Optional instructor bars copied with a black belt. Not a rank. Omitted when off. */
+  instructorBars?: boolean;
+  /** YYYY-MM-DD instructor bars were awarded, or omitted. */
+  instructorBarsOn?: string;
 };
 
 /**
  * One promotion photo in an export.
- * `tapeIndex` is 0 to 3 when the photo belongs to a stripe. Omitted for a belt photo.
+ * `tapeIndex` is 0 to 3 for a stripe, or 0 to 5 for a black-belt degree. Omitted for a belt photo.
  */
 export type RankPicture = {
   belt: RankBelt;
@@ -390,7 +408,8 @@ export type RankPicture = {
 
 /**
  * Stripes and dates for the belt on `profile.belt`.
- * Optional. Older files omit it. `tapeCount` is 0 to 4.
+ * Optional. Older files omit it. `tapeCount` is 0 to 4 stripes.
+ * On a black belt the same count is the degree, 0 to 6. A saved 0 to 4 stays that degree.
  * This object does not use a stripe, stripes, or levelKey field.
  */
 export type StudentRank = {
@@ -398,6 +417,15 @@ export type StudentRank = {
   /** YYYY-MM-DD the student got the current belt, or empty. */
   awardedOn: string;
   tapeDates: RankTapeDates;
+  /** Dates for degrees 5 and 6. Omitted on older files and when the degree is 0 to 4. */
+  highDegreeDates?: HighDegreeDates;
+  /**
+   * Optional instructor bars on a black belt. Some schools award them at about 2 years.
+   * Not a degree and not a rank. Omitted on older files and when the student leaves them off.
+   */
+  instructorBars?: boolean;
+  /** YYYY-MM-DD instructor bars were awarded, or omitted when blank. */
+  instructorBarsOn?: string;
   history: RankHistory[];
   /**
    * Instructor lineage, one person per entry. The first is the student's instructor.

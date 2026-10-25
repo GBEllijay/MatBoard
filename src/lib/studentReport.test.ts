@@ -69,13 +69,19 @@ function filledReport(): StudentProgressReport {
       ...report.rubric,
       levels: report.rubric.levels.map((level) => {
         if (level.belt !== 'black') return level;
+        const legacy = (name: string, note: string, met: boolean | null): RubricCheckpoint => ({
+          id: `checkpoint.black.${name.toLowerCase()}`,
+          name,
+          met,
+          note,
+          criteria: [
+            { id: `${name}.a`, requirement: `${name} hold`, techniqueRefs: [], met: true, note: '' },
+            { id: `${name}.b`, requirement: `${name} recover`, techniqueRefs: [], met: true, note: '' },
+          ],
+        });
         return {
           ...level,
-          checkpoints: level.checkpoints.map((checkpoint) => {
-            if (checkpoint.name === 'Pressure') return { ...markCriteria(checkpoint, true), met: true, note: 'Mock: top pressure sound' };
-            if (checkpoint.name === 'Guard') return { ...markCriteria(checkpoint, true), met: null, note: '' };
-            return checkpoint;
-          }),
+          checkpoints: [legacy('Pressure', 'Mock: top pressure sound', true), legacy('Guard', '', null)],
         };
       }),
     },
@@ -171,13 +177,14 @@ test('progress PDF keeps every section, the student track, and checkpoint status
   assert.match(joined, /Filmed 2026-10-23 Berimbolo to back take/);
   assert.match(joined, /Guard 4, Passing 3, Takedowns 2, Escapes 5, Submissions 4, Conditioning 3, Mindset 5/);
   assert.match(joined, /186 lb — On track/);
-  const black = joined.slice(joined.indexOf('\nBlack\n'), joined.indexOf('\nCoral\n'));
+  const black = joined.slice(joined.indexOf('\nBlack\n'));
   assert.match(black, /Pressure: Met — Mock: top pressure sound/);
   assert.match(black, /Guard: Met/);
   assert.equal(black.includes('Guard: Unmarked'), false);
-  const order = ['White', 'Blue', 'Purple', 'Brown', 'Black', 'Coral'].map((label) => joined.indexOf(`\n${label}\n`));
+  assert.equal(joined.includes('\nCoral\n'), false);
+  const order = ['White', 'Blue', 'Purple', 'Brown', 'Black'].map((label) => joined.indexOf(`\n${label}\n`));
   order.forEach((spot, index) => {
-    assert.ok(spot >= 0, ['White', 'Blue', 'Purple', 'Brown', 'Black', 'Coral'][index]);
+    assert.ok(spot >= 0, ['White', 'Blue', 'Purple', 'Brown', 'Black'][index]);
     if (index > 0) assert.ok(order[index - 1]! < spot);
   });
   assert.equal(joined.includes('\nGrey\n'), false);
