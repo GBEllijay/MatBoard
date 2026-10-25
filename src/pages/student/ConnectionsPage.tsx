@@ -110,7 +110,11 @@ export function ConnectionsPage() {
               Import from coach
             </Link>
           </section>
-          <ClearStudentData busyKind={busyKind} onBackup={() => exportFile('json')} />
+          <ClearStudentData
+            busyKind={busyKind}
+            onBackup={() => exportFile('json')}
+            onCleared={() => setStamp(backupStampLabel(readStudentBackupStamp(localStorage)))}
+          />
         </div>
       </div>
     </main>
@@ -567,9 +571,11 @@ function ExportAndPrint({
 function ClearStudentData({
   busyKind,
   onBackup,
+  onCleared,
 }: {
   busyKind: StudentExportKind | null;
   onBackup: () => Promise<{ ok: boolean; message: string }>;
+  onCleared: () => void;
 }) {
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const [phrase, setPhrase] = useState('');
@@ -648,6 +654,7 @@ function ClearStudentData({
               if (phrase.trim() !== CLEAR_CONFIRM_PHRASE) return;
               clearStudentMemory(localStorage);
               void clearFilmBlobs().catch(() => undefined);
+              onCleared();
               reset();
               setStatus('Student Edition data on this device was cleared.');
               setError('');
