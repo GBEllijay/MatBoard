@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { isKnownWeightClass, splitCombinedDivision, suggestionList, tournamentClassLine } from './divisionFields.ts';
+import { fieldSuggestions, isKnownWeightClass, splitCombinedDivision, suggestionList, tournamentClassLine } from './divisionFields.ts';
 import { convertWeight, formatWeight, matchingResults, textHits, tournamentHaystack, tournamentsOnDate } from './progress/competition.ts';
 import { exportProgressCsv, exportProgressPacket, parseProgressCsv, parseProgressPacket } from './progress/format.ts';
 import { progressReportPdf } from './reportPdf.ts';
@@ -255,18 +255,62 @@ test('a combined division splits only when the weight class is clear', () => {
   assert.deepEqual(splitCombinedDivision('Adult - Open Class'), { division: 'Adult', weightClass: 'Open Class' });
   assert.deepEqual(splitCombinedDivision('Juvenile, Ultra-Heavy'), { division: 'Juvenile', weightClass: 'Ultra-Heavy' });
   assert.deepEqual(splitCombinedDivision('Adult / Feather Gi'), { division: 'Adult', weightClass: 'Feather Gi' });
-  assert.deepEqual(splitCombinedDivision('Adult Blue Middle'), { division: 'Adult Blue Middle', weightClass: '' });
+  assert.deepEqual(splitCombinedDivision('Adult Black Medium Heavy'), { division: 'Adult Black', weightClass: 'Medium Heavy' });
+  assert.deepEqual(splitCombinedDivision('Adult Blue Middle'), { division: 'Adult Blue', weightClass: 'Middle' });
+  assert.deepEqual(splitCombinedDivision('Master 2 Light Feather'), { division: 'Master 2', weightClass: 'Light Feather' });
   assert.deepEqual(splitCombinedDivision('No-Gi'), { division: 'No-Gi', weightClass: '' });
   assert.deepEqual(splitCombinedDivision('Adult Blue, Gi'), { division: 'Adult Blue, Gi', weightClass: '' });
   assert.deepEqual(splitCombinedDivision('Feather'), { division: 'Feather', weightClass: '' });
+  assert.deepEqual(splitCombinedDivision('Medium Heavy'), { division: 'Medium Heavy', weightClass: '' });
+  assert.deepEqual(splitCombinedDivision('Saturday squad'), { division: 'Saturday squad', weightClass: '' });
   assert.deepEqual(splitCombinedDivision(''), { division: '', weightClass: '' });
   assert.equal(isKnownWeightClass('Medium Heavy'), true);
+  assert.equal(isKnownWeightClass('Male Rooster'), true);
   assert.equal(isKnownWeightClass('Open'), true);
   assert.equal(isKnownWeightClass('Gi'), false);
+  assert.equal(isKnownWeightClass('Adult Black Medium Heavy'), false);
   assert.deepEqual(suggestionList(['Adult', 'Master 1'], ['Adult Blue'], 'blue'), ['Adult Blue']);
   assert.deepEqual(suggestionList(['Adult', 'Master 1', 'Gi'], [], 'a'), ['Adult', 'Master 1']);
   assert.equal(tournamentClassLine({ division: 'Adult', weightClass: 'Feather' }), 'Adult · Feather');
-  assert.equal(tournamentClassLine({ division: 'Adult Blue Middle' }), 'Adult Blue Middle');
+  assert.equal(tournamentClassLine({ division: 'Adult Black', weightClass: 'Medium Heavy' }), 'Adult Black · Medium Heavy');
+});
+
+test('division and weight suggestions filter, and an unknown query is empty', () => {
+  const openDivision = fieldSuggestions('division', [], '');
+  for (const name of ['Juvenile', 'Adult', 'Master 1', 'Master 7', 'Mighty Mite 1', 'Pee Wee 1', 'Junior 1', 'Teen 1', 'Black', 'Grey/Black', 'No-Gi']) {
+    assert.equal(openDivision.includes(name), true, name);
+  }
+  assert.ok(openDivision.length > 2);
+  assert.equal(openDivision.length === 2 && openDivision.every((name) => name === 'Black' || name.startsWith('Master')), false);
+
+  const masters = fieldSuggestions('division', [], 'mast');
+  assert.equal(masters.includes('Master 1'), true);
+  assert.equal(masters.includes('Adult'), false);
+  assert.equal(masters.includes('Mighty Mite 1'), false);
+  const blacks = fieldSuggestions('division', ['House League'], 'black');
+  assert.equal(blacks.includes('Black'), true);
+  assert.equal(blacks.includes('Adult Black'), true);
+  assert.equal(blacks.includes('Adult'), false);
+  assert.equal(blacks.includes('House League'), false);
+  assert.deepEqual(fieldSuggestions('division', ['House League'], 'house'), ['House League']);
+  assert.deepEqual(fieldSuggestions('division', [], 'zzzz'), []);
+
+  const openWeight = fieldSuggestions('weight', [], '');
+  for (const name of ['Rooster', 'Light Feather', 'Ultra Heavy', 'Open Class', 'Male Rooster', 'Female Rooster', 'Kids Rooster']) {
+    assert.equal(openWeight.includes(name), true, name);
+  }
+  assert.equal(openWeight.includes('Heavy'), true);
+  const ultras = fieldSuggestions('weight', [], 'ultra');
+  assert.equal(ultras.includes('Ultra Heavy'), true);
+  assert.equal(ultras.includes('Heavy'), false);
+  const female = fieldSuggestions('weight', [], 'female feather');
+  assert.equal(female.includes('Female Feather'), true);
+  assert.equal(female.includes('Male Feather'), false);
+  const kids = fieldSuggestions('weight', [], 'mighty mite rooster');
+  assert.equal(kids.some((name) => name.startsWith('Mighty Mite 1 Rooster')), true);
+  assert.equal(fieldSuggestions('weight', [], '57.5').includes('Male Rooster'), true);
+  assert.equal(fieldSuggestions('weight', ['My class'], 'my class').includes('My class'), true);
+  assert.deepEqual(fieldSuggestions('weight', [], 'zzzz'), []);
 });
 
 test('division and weight class round-trip, and an older file splits only a clear pair', () => {
@@ -338,13 +382,21 @@ test('division and weight class round-trip, and an older file splits only a clea
   assert.equal(migrated.value.competition?.tournaments[0].division, 'Adult Blue');
   assert.equal(migrated.value.competition?.tournaments[0].weightClass, 'Feather');
 
-  raw.competition.tournaments[0].division = 'Adult Blue Middle';
+  raw.competition.tournaments[0].division = 'Adult Black Medium Heavy';
   delete raw.competition.tournaments[0].weightClass;
   const kept = parseProgressPacket(JSON.stringify(raw));
   assert.equal(kept.ok, true);
   if (!kept.ok || kept.value.kind !== 'student-progress-report') return;
-  assert.equal(kept.value.competition?.tournaments[0].division, 'Adult Blue Middle');
-  assert.equal(kept.value.competition?.tournaments[0].weightClass, '');
+  assert.equal(kept.value.competition?.tournaments[0].division, 'Adult Black');
+  assert.equal(kept.value.competition?.tournaments[0].weightClass, 'Medium Heavy');
+
+  raw.competition.tournaments[0].division = 'Saturday squad';
+  delete raw.competition.tournaments[0].weightClass;
+  const unclear = parseProgressPacket(JSON.stringify(raw));
+  assert.equal(unclear.ok, true);
+  if (!unclear.ok || unclear.value.kind !== 'student-progress-report') return;
+  assert.equal(unclear.value.competition?.tournaments[0].division, 'Saturday squad');
+  assert.equal(unclear.value.competition?.tournaments[0].weightClass, '');
 
   raw.competition.tournaments[0].division = 'Adult Blue / Feather';
   raw.competition.tournaments[0].weightClass = 'Middle';

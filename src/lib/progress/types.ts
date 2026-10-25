@@ -417,7 +417,9 @@ export type StudentTournament = {
   /**
    * Age group, belt, and gi, in the student's words.
    * Files saved before weight class was its own field may still hold both here.
-   * Import splits that text when the second part is a usual weight class.
+   * Import splits a usual weight class from the end, with or without a slash:
+   * "Adult / Feather" and "Adult Black Medium Heavy".
+   * A phrase that is not a division plus a weight class stays here whole.
    */
   division: string;
   /**

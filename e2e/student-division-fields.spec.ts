@@ -27,7 +27,7 @@ function legacyProgress(): string {
       name: 'Plain Open',
       date: '2026-12-02',
       location: '',
-      division: 'Adult Blue Middle',
+      division: 'Adult Black Medium Heavy',
       deadline: '',
       link: '',
       status: 'entered',
@@ -41,7 +41,7 @@ function legacyProgress(): string {
   };
   for (const tournament of raw.competition.tournaments) {
     if (tournament.name === 'Legacy Open') tournament.division = 'Adult Blue / Feather';
-    if (tournament.name === 'Plain Open') tournament.division = 'Adult Blue Middle';
+    if (tournament.name === 'Plain Open') tournament.division = 'Adult Black Medium Heavy';
     delete tournament.weightClass;
   }
   return JSON.stringify(raw);
@@ -75,6 +75,8 @@ test('division and weight class are separate searchable fields', async ({ browse
   await expect(page.getByRole('listbox', { name: 'Division suggestions' })).toBeVisible();
   await expect(page.getByRole('option', { name: 'Adult', exact: true })).toBeVisible();
   await expect(page.getByRole('option', { name: 'Master 1', exact: true })).toBeVisible();
+  await expect(page.getByRole('option', { name: 'Mighty Mite 1', exact: true })).toBeVisible();
+  await expect(page.getByRole('option', { name: 'Black', exact: true })).toBeVisible();
   await expect(page.getByRole('option', { name: 'No-Gi', exact: true })).toBeVisible();
   await division.fill('mast');
   await expect(page.getByRole('option', { name: 'Master 1', exact: true })).toBeVisible();
@@ -89,6 +91,9 @@ test('division and weight class are separate searchable fields', async ({ browse
   await expect(page.getByRole('option', { name: 'Rooster', exact: true })).toBeVisible();
   await expect(page.getByRole('option', { name: 'Light Feather', exact: true })).toBeVisible();
   await expect(page.getByRole('option', { name: 'Open Class', exact: true })).toBeVisible();
+  await expect(page.getByRole('option', { name: 'Male Rooster', exact: true })).toBeVisible();
+  await expect(page.getByRole('option', { name: 'Female Rooster', exact: true })).toBeVisible();
+  await expect(page.getByText('57.5 kg / 126.8 lb').first()).toBeVisible();
   await weight.fill('ultra');
   await expect(page.getByRole('option', { name: 'Ultra Heavy', exact: true })).toBeVisible();
   await expect(page.getByRole('option', { name: 'Heavy', exact: true })).toHaveCount(0);
@@ -161,13 +166,13 @@ test('an older combined division migrates without dropping the words', async ({ 
   await expect(page.getByText('Considering · Legacy Open')).toBeVisible();
   await expect(page.getByText('Entered · Plain Open')).toBeVisible();
   await expect(page.getByText('Adult Blue · Feather')).toBeVisible();
-  await expect(page.getByText('Adult Blue Middle')).toBeVisible();
+  await expect(page.getByText('Adult Black · Medium Heavy')).toBeVisible();
 
   const search = page.getByLabel('Search competition');
   await search.fill('Feather');
   await expect(page.getByText('Considering · Legacy Open')).toBeVisible();
   await expect(page.getByText('Entered · Plain Open')).toHaveCount(0);
-  await search.fill('Middle');
+  await search.fill('Medium');
   await expect(page.getByText('Entered · Plain Open')).toBeVisible();
   await expect(page.getByText('Considering · Legacy Open')).toHaveCount(0);
   await search.fill('Adult');
@@ -181,14 +186,16 @@ test('an older combined division migrates without dropping the words', async ({ 
   await page.getByRole('button', { name: 'Save tournament', exact: true }).click();
 
   await page.getByRole('button', { name: 'Edit Plain Open' }).click();
-  await expect(page.getByLabel('Division', { exact: true })).toHaveValue('Adult Blue Middle');
-  await expect(page.getByLabel('Weight class', { exact: true })).toHaveValue('');
+  await expect(page.getByLabel('Division', { exact: true })).toHaveValue('Adult Black');
+  await expect(page.getByLabel('Weight class', { exact: true })).toHaveValue('Medium Heavy');
   await page.getByRole('button', { name: 'Cancel tournament edit', exact: true }).click();
 
   const saved = await page.evaluate((key) => localStorage.getItem(key) ?? '', STUDENT_EDITION_STORAGE_KEY);
   expect(saved).toContain('"division":"Adult Blue"');
   expect(saved).toContain('"weightClass":"Feather"');
-  expect(saved).toContain('"division":"Adult Blue Middle"');
+  expect(saved).toContain('"division":"Adult Black"');
+  expect(saved).toContain('"weightClass":"Medium Heavy"');
   expect(saved).not.toContain('Adult Blue / Feather');
+  expect(saved).not.toContain('Adult Black Medium Heavy');
   await context.close();
 });

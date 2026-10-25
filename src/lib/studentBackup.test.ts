@@ -355,11 +355,20 @@ test('an older backup splits a clear division and weight class and keeps an uncl
   const lines = progressReportLines(parsed.file.report, { entries: [] });
   assert.ok(lines.some((line) => line.includes('Adult Blue · Feather')));
 
-  packet.competition.tournaments[0].division = 'Adult Blue Middle';
+  packet.competition.tournaments[0].division = 'Adult Black Medium Heavy';
   delete packet.competition.tournaments[0].weightClass;
   const plain = parseStudentBackup(JSON.stringify(backup));
   assert.equal(plain.ok, true);
   if (!plain.ok) return;
-  assert.equal(plain.file.report.competition?.tournaments[0].division, 'Adult Blue Middle');
-  assert.equal(plain.file.report.competition?.tournaments[0].weightClass, '');
+  assert.equal(plain.file.report.competition?.tournaments[0].division, 'Adult Black');
+  assert.equal(plain.file.report.competition?.tournaments[0].weightClass, 'Medium Heavy');
+  assert.ok(progressReportLines(plain.file.report, { entries: [] }).some((line) => line.includes('Adult Black · Medium Heavy')));
+
+  packet.competition.tournaments[0].division = 'Saturday squad';
+  delete packet.competition.tournaments[0].weightClass;
+  const unclear = parseStudentBackup(JSON.stringify(backup));
+  assert.equal(unclear.ok, true);
+  if (!unclear.ok) return;
+  assert.equal(unclear.file.report.competition?.tournaments[0].division, 'Saturday squad');
+  assert.equal(unclear.file.report.competition?.tournaments[0].weightClass, '');
 });
