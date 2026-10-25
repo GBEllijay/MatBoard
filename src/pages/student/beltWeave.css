@@ -595,3 +595,68 @@
     width: 14px;
   }
 }
+
+/* Kids belts reuse the woven cloth, stitch, and rank bar. The center bar is the half-color stripe. */
+.student.student--rank .belt.belt--kids {
+  flex-wrap: wrap;
+  height: auto;
+  min-height: 0;
+}
+.student.student--rank .belt.belt--kids .belt__body {
+  flex: 1 1 100%;
+  min-height: 56px;
+  border-radius: 12px 12px 0 0;
+}
+.student.student--rank .belt.belt--kids[data-center='white'] .belt__body::after,
+.student.student--rank .belt.belt--kids[data-center='black'] .belt__body::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  right: 0;
+  top: 37%;
+  height: 26%;
+  background: var(--center);
+  pointer-events: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), inset 0 -1px 0 rgba(0, 0, 0, 0.28);
+}
+.student.student--rank .rung--kids-light .belt__name,
+.student.student--rank .rung--kids-light .belt__sub {
+  color: #0e1726;
+  text-shadow: none;
+}
+.student.student--rank .belt.belt--kids .belt__bar {
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  align-content: center;
+  gap: 4px;
+  min-height: 56px;
+  height: auto;
+  padding: 6px 8px;
+  border-radius: 0 0 12px 12px;
+}
+.student.student--rank .belt.belt--kids .stripe {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+}
+.student.student--rank .belt.belt--kids .stripe .tape {
+  top: 8px;
+  bottom: 8px;
+  width: 12px;
+  margin-left: -6px;
+  border-radius: 2px;
+  border: 1.5px solid var(--tape, #f4f1ea);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+}
+.student.student--rank .belt.belt--kids .stripe.is-on .tape {
+  top: 6px;
+  bottom: 6px;
+  border: 0;
+  background: var(--tape, #f4f1ea);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.45);
+}

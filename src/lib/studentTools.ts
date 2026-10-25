@@ -128,6 +128,14 @@ export function beltTrack(belt: ProgressBelt): readonly ProgressBelt[] {
   return ADULT_BELTS;
 }
 
+/**
+ * Kids belts and stripes do not use the adult checkpoint path.
+ * The rubric stays on the file. Switching back to adult shows it again.
+ */
+export function showsAdultCheckpoints(report: StudentProgressReport): boolean {
+  return report.beltBook?.mode !== 'kids';
+}
+
 /** Next colored belt. Black has degrees, not a jump to coral. */
 export function nextBelt(belt: ProgressBelt): ProgressBelt | null {
   const line: readonly ProgressBelt[] = (KIDS_BELTS as readonly string[]).includes(belt) ? KIDS_BELTS : ADULT_BELTS;

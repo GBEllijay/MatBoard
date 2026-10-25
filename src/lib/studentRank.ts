@@ -555,3 +555,33 @@ function newId(prefix: string, now: number): string {
   const rand = Math.random().toString(36).slice(2, 8);
   return `${prefix}.${now.toString(36)}.${rand}`.slice(0, PROGRESS_ID_MAX);
 }
+
+/**
+ * Kids belts live on beltBook. These helpers do not write profile.belt or adult stripes.
+ * Adult degrees stay on setRankTapeCount.
+ */
+export {
+  addClassDot,
+  ageWarning,
+  beltModeOf,
+  classesPerTapeOf,
+  currentKidsBelt,
+  guideOf,
+  ibjjfAge,
+  kidsLadder,
+  kidsRankOf,
+  kidsTemplateOf,
+  removeClassDot,
+  removeKidsHistory,
+  setBeltMode,
+  setBirthYear,
+  setClassesPerTape,
+  setKidsAwardedOn,
+  setKidsBelt,
+  setKidsHistoryAwardedOn,
+  setKidsTapeCount,
+  setKidsTapeDate,
+  setTapeGuide,
+  showAdultPrompt,
+  timeGuideText,
+} from './beltBook.ts';
