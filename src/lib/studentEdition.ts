@@ -11,6 +11,7 @@ import { emptyRank } from './studentRank.ts';
 import { beginAppStudentSave, endAppStudentSave, noteAppStudentSave } from './studentDemo.ts';
 import { isStudentEditionUnlocked } from './studentUnlock.ts';
 import { exportProgressPacket, parseProgressPacket, searchJournal, searchJournalClips, techniqueDrilledLabel } from './progress/format.ts';
+import { shareTournaments } from './sharedTournaments.ts';
 import {
   PROGRESS_CLIP_URL_MAX,
   PROGRESS_CLIPS_MAX,
@@ -186,11 +187,12 @@ export function loadStudentReport(storage: Pick<Storage, 'getItem'>): StudentPro
   if (!raw) return blankStudentReport();
   const parsed = parseProgressPacket(raw);
   if (!parsed.ok || parsed.value.kind !== 'student-progress-report') return blankStudentReport();
-  return parsed.value;
+  return shareTournaments(parsed.value);
 }
 
 export function saveStudentReport(storage: MemoryStore, report: StudentProgressReport): StudentProgressReport {
-  const text = exportProgressPacket(report);
+  const shared = shareTournaments(report);
+  const text = exportProgressPacket(shared);
   const parsed = parseProgressPacket(text);
   if (!parsed.ok || parsed.value.kind !== 'student-progress-report') {
     const errors = parsed.ok ? ['Student Edition file was not a progress report.'] : parsed.errors;
@@ -203,7 +205,7 @@ export function saveStudentReport(storage: MemoryStore, report: StudentProgressR
   } finally {
     endAppStudentSave();
   }
-  return parsed.value;
+  return shareTournaments(parsed.value);
 }
 
 function isCalendarDate(value: string): boolean {

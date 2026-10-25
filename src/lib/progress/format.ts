@@ -12,6 +12,7 @@ import { expandLineage, stripeDateText } from '../studentRank.ts';
 import { asRecord } from '../plainValue.ts';
 import { canonicalFundamentalsCatalogId } from './catalog.ts';
 import { emptyCompetition, seedGamesFromJournal } from './competition.ts';
+import { shareTournaments } from '../sharedTournaments.ts';
 import {
   CALENDAR_KINDS,
   CALENDAR_REPEATS,
@@ -307,7 +308,7 @@ export function mergeStudentProgress(local: StudentProgressReport, incoming: Stu
   const beltBook = mergeBeltBooks(report.beltBook, incoming.beltBook);
   if (beltBook.book) report.beltBook = beltBook.book;
   conflicts.push(...beltBook.conflicts);
-  return { report, appendedAmendments, addedJournal, addedChecklist, conflicts };
+  return { report: shareTournaments(report), appendedAmendments, addedJournal, addedChecklist, conflicts };
 }
 
 /**
@@ -834,6 +835,7 @@ function mergeCalendar(report: StudentProgressReport, incoming: StudentProgressR
     else if (current.repeat && event.repeat && current.repeat !== event.repeat) {
       conflicts.push(`Calendar ${event.id} repeat was kept.`);
     }
+    if (!current.tournamentId && event.tournamentId) current.tournamentId = event.tournamentId;
   }
 }
 
@@ -1340,8 +1342,10 @@ function readCalendarEvent(value: unknown, index: number, errors: string[]): Cal
   };
   const time = readOptionalClock(record.time);
   const repeat = readOptionalRepeat(record.repeat);
+  const tournamentId = readLooseId(record.tournamentId);
   if (time) event.time = time;
   if (repeat) event.repeat = repeat;
+  if (tournamentId) event.tournamentId = tournamentId;
   return event;
 }
 
@@ -1821,6 +1825,12 @@ function readMet(value: unknown, label: string, errors: string[]): boolean | nul
   if (typeof value === 'boolean') return value;
   errors.push(`${label} mark must be true, false, or blank.`);
   return null;
+}
+
+/** A missing or older link is empty. A bad id is dropped so the rest of the file still opens. */
+function readLooseId(value: unknown): string {
+  if (typeof value !== 'string' || !value || !ID_RE.test(value)) return '';
+  return value;
 }
 
 function readId(value: unknown, label: string, errors: string[]): string {

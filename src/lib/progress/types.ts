@@ -380,6 +380,11 @@ export type CalendarEvent = {
    * `weekly`, `biweekly` (every 2 weeks), or `monthly` from `date`.
    */
   repeat?: Exclude<CalendarRepeat, 'none'>;
+  /**
+   * Set when this event is the calendar copy of one competition tournament.
+   * Omitted on classes, open mats, promotion tests, and older files.
+   */
+  tournamentId?: string;
 };
 
 /** Standing A, B, or C game. Techniques and sequences, plus notes. One copy for the journal and Competitor. */
@@ -400,7 +405,8 @@ export type TournamentGoal = {
 
 /**
  * A tournament the student is entered in or considering.
- * The student calendar reads this list. It is not copied into calendar events.
+ * Competitor, Calendar, and Results share this list.
+ * Calendar keeps one linked event (kind `other`) for the day, time, and repeat.
  */
 export type StudentTournament = {
   id: string;

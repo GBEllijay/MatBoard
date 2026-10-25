@@ -4,6 +4,7 @@
  */
 
 import { cleanOptionalLink, competitionOf, emptyCompetition } from './progress/competition.ts';
+import { eventTargetsTournament, shareTournaments } from './sharedTournaments.ts';
 import {
   PROGRESS_BRACKET_NOTES_MAX,
   PROGRESS_MATCHES_MAX,
@@ -192,7 +193,7 @@ export function addTournament(report: StudentProgressReport, draft: TournamentDr
   const competition = competitionOf(report);
   if (competition.tournaments.length >= PROGRESS_TOURNAMENTS_MAX) throw new Error('The tournament list is full.');
   const tournament = tournamentFromDraft(draft, newId('tournament', now), []);
-  return withCompetition(report, { ...competition, tournaments: [...competition.tournaments, tournament] }, now);
+  return shareTournaments(withCompetition(report, { ...competition, tournaments: [...competition.tournaments, tournament] }, now));
 }
 
 export function updateTournament(
@@ -205,24 +206,38 @@ export function updateTournament(
   const current = competition.tournaments.find((tournament) => tournament.id === id);
   if (!current) return report;
   const next = tournamentFromDraft(draft, id, current.goals);
-  return withCompetition(
-    report,
-    {
-      ...competition,
-      tournaments: competition.tournaments.map((tournament) => (tournament.id === id ? next : tournament)),
-    },
-    now,
-  );
+  const others = competition.tournaments.filter((tournament) => tournament.id !== id);
+  const calendar = report.calendar.map((event) => {
+    if (!eventTargetsTournament(event, current, others)) return event;
+    const note = event.note === current.location ? next.location : event.note;
+    return { ...event, title: next.name, date: next.date, note, tournamentId: id };
+  });
+  return shareTournaments({
+    ...withCompetition(
+      report,
+      {
+        ...competition,
+        tournaments: competition.tournaments.map((tournament) => (tournament.id === id ? next : tournament)),
+      },
+      now,
+    ),
+    calendar,
+  });
 }
 
 export function removeTournament(report: StudentProgressReport, id: string, now = Date.now()): StudentProgressReport {
   const competition = competitionOf(report);
-  if (!competition.tournaments.some((tournament) => tournament.id === id)) return report;
-  return withCompetition(
-    report,
-    { ...competition, tournaments: competition.tournaments.filter((tournament) => tournament.id !== id) },
-    now,
-  );
+  const tournament = competition.tournaments.find((item) => item.id === id);
+  if (!tournament) return report;
+  const tournaments = competition.tournaments.filter((item) => item.id !== id);
+  const calendar = report.calendar.filter((event) => !eventTargetsTournament(event, tournament, tournaments));
+  return {
+    ...report,
+    schemaVersion: 2,
+    updatedAt: now,
+    calendar,
+    competition: { ...competition, tournaments },
+  };
 }
 
 export function addTournamentGoal(

@@ -498,7 +498,8 @@ test('event time and repeat save, the date field returns to today, and a tournam
   act(() => {
     control(host, 'button', 'Add event').click();
   });
-  const added = storedReport().calendar[0];
+  const added = storedReport().calendar.find((event) => event.title === 'Evening rounds');
+  assert.ok(added);
   assert.equal(added.date, meet);
   assert.equal(added.title, 'Evening rounds');
   assert.equal((added as { time?: string }).time, '18:30');
