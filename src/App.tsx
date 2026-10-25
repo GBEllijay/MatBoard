@@ -36,6 +36,7 @@ import {
 import { proPurchaseReturn } from './lib/proEntitlement';
 import { studentEditionOpen, studentPurchaseReturn } from './lib/studentEdition';
 import { consumeUnlockQueryNow } from './lib/proUnlock';
+import { captureHalfOffQuery, consumeHalfOffQueryNow } from './lib/halfOff';
 import { preservesAppHomeQuery } from './lib/submenuNav';
 import { WHITE_BUY_PATH } from './lib/whitePurchase';
 import { whiteHubAllowed, whiteLiveToolsAllowed } from './lib/whiteUnlock';
@@ -46,6 +47,7 @@ import { AcademyPathwayPage, CoachUnlimitedPage } from './pages/CoachUnlimited';
 import { CoachingToolsPage } from './pages/CoachingTools';
 import { CompetitionCurriculumPage } from './pages/CompetitionCurriculum';
 import { CardPage } from './pages/Card';
+import { HalfOffPage } from './pages/HalfOff';
 import { ComingSoonPage } from './pages/ComingSoon';
 import { CompetitionManagementPage } from './pages/CompetitionManagement';
 import { CompetitionReadyPage } from './pages/CompetitionReady';
@@ -78,6 +80,7 @@ import { WhiteRosterPage } from './pages/WhiteRoster';
 
 consumeUnlockQueryNow();
 consumeCoachUnlockQueryNow();
+consumeHalfOffQueryNow();
 
 /**
  * Full page loads read the invite before the router paints a locked route.
@@ -281,6 +284,10 @@ export default function App() {
   useKeepFocusedFieldVisible();
   useProUnlocked();
   useCoachUnlocked();
+  const [halfOffParams] = useSearchParams();
+  useEffect(() => {
+    captureHalfOffQuery(halfOffParams);
+  }, [halfOffParams]);
 
   return (
     <>
@@ -557,6 +564,7 @@ export default function App() {
       <Route path="/student/*" element={<StudentEditionPage />} />
       <Route path="/coming-soon" element={<ComingSoonPage />} />
       <Route path="/card" element={<CardPage />} />
+      <Route path="/half-off" element={<HalfOffPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/terms" element={<TermsPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />

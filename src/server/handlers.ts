@@ -7,12 +7,14 @@ import {
   type StudentEntitlement,
   type WhiteEntitlement,
 } from './entitlements.ts';
+import { isHalfOffCheckoutFlag } from '../lib/halfOff.ts';
 import { API_FREE_CODE, API_PRODUCT_ID, API_PRODUCT_PRO, API_PRODUCT_STUDENT } from './routes.ts';
 import {
   checkoutFormFields,
   checkoutReturnUrls,
   createCheckoutSession,
   findPromotionCodeId,
+  lookupAllowlistedHalfOffPromotion,
   normalizePromoCode,
   purchaseFromStripeEvent,
   readCheckoutProduct,
@@ -74,6 +76,7 @@ export async function handleCheckout(
   if (typeof promoField === 'string' && promoField.trim() && !promo) {
     return json(400, { error: 'Enter a promo code using letters, numbers, underscores, or hyphens.' });
   }
+  const halfOff = isHalfOffCheckoutFlag((body as { halfOff?: unknown }).halfOff);
   const product = readCheckoutProduct((body as { product?: unknown }).product);
   if (typeof product !== 'string') return json(400, { error: product.error });
   if (promo && promo.toUpperCase() === API_FREE_CODE) {
@@ -88,7 +91,11 @@ export async function handleCheckout(
 
   try {
     let promotionCodeId: string | undefined;
-    if (promo) {
+    if (halfOff) {
+      // Allowlist is MEIA inside the lookup. A promotionCode on the same body is ignored.
+      const found = await lookupAllowlistedHalfOffPromotion(config.secret, fetchImpl);
+      if (found) promotionCodeId = found;
+    } else if (promo) {
       const found = await findPromotionCodeId(config.secret, promo, fetchImpl);
       if (!found) return json(400, { error: 'That promo code is not active.' });
       promotionCodeId = found;

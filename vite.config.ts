@@ -2,6 +2,7 @@ import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { cardPagePlugin } from './src/server/cardPagePlugin.ts';
+import { halfOffPagePlugin } from './src/server/halfOffPagePlugin.ts';
 import { whitePurchaseApiPlugin } from './src/server/devApiPlugin.ts';
 
 /** Build id written into the app and into /version.json (Cache-Control: no-store). */
@@ -39,6 +40,7 @@ export default defineConfig({
     matboardBuildStamp(),
     whitePurchaseApiPlugin(),
     cardPagePlugin(),
+    halfOffPagePlugin(),
     react(),
     VitePWA({
       registerType: 'autoUpdate',
@@ -89,10 +91,12 @@ export default defineConfig({
           '**/card.html',
           '**/card-logo.*',
           '**/card-qr.*',
+          '**/half-off.html',
+          '**/half-off/**',
         ],
         navigateFallback: null,
         // /card is the lightweight card.html page. Keep it off any app-shell fallback.
-        navigateFallbackDenylist: [/^\/api\//, /^\/card\/?(?:$|\?)/],
+        navigateFallbackDenylist: [/^\/api\//, /^\/card\/?(?:$|\?)/, /^\/half-off\/?(?:$|\?)/],
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
