@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { RadarChart } from '../../components/RadarChart';
 import type { StudentProgressReport } from '../../lib/progress/types';
 import { todayIso } from '../../lib/studentEdition';
+import { useScrollToHash } from './chrome';
 import {
   ASSESSMENT_AREAS,
   assessmentAverage,
@@ -20,6 +21,7 @@ import {
 type PathFn = (path: string) => string;
 
 export function SelfAssessment({ report, to }: { report: StudentProgressReport; to: PathFn }) {
+  useScrollToHash();
   const initial = loadAssessments(localStorage);
   const today = todayIso();
   const todayEntry = initial.entries.find((entry) => entry.date === today);
@@ -55,9 +57,8 @@ export function SelfAssessment({ report, to }: { report: StudentProgressReport; 
 
   return (
     <section className="assess" id="self-assessment" aria-label="Self-assessment">
-      <span className="arena-node" aria-hidden="true" />
       <div className="assess-lead">
-        <h2>Self-assessment</h2>
+        <h1>Self-assessment</h1>
         <p className="student-quiet">Rate the work in front of you. 1 is early. 5 is ready to rely on. Saved on this phone by date.</p>
       </div>
 

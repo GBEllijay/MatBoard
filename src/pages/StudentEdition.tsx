@@ -14,6 +14,7 @@ import { isIsoDate } from '../lib/studentTools';
 import { BeltPage } from './student/BeltPage';
 import { CalendarDayPage, CalendarPage } from './student/CalendarPages';
 import { CompetitorPage } from './student/CompetitorPage';
+import { SelfAssessmentPage } from './student/SelfAssessmentPage';
 import { RankPage } from './student/RankPage';
 import { ResultsPage } from './student/ResultsPage';
 import { ScoutingPage } from './student/ScoutingPage';
@@ -87,6 +88,8 @@ export function StudentEditionPage() {
       return <RankPage />;
     case 'share':
       return <SharePage />;
+    case 'self-assessment':
+      return <SelfAssessmentPage />;
     case 'competitor':
       return <CompetitorPage />;
     case 'weight':

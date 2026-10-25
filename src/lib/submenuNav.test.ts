@@ -60,6 +60,35 @@ test('Student Edition pages go back one level, and a card returns to the card li
     submenuBackTarget({ pathname: '/student/competitor', search: 'from=progress&student=1' }),
     '/student/progress?student=1',
   );
+  assert.equal(submenuBackTarget({ pathname: '/student/self-assessment' }), '/student/progress');
+  assert.equal(
+    submenuBackTarget({ pathname: '/student/self-assessment', search: 'student=1' }),
+    '/student/progress?student=1',
+  );
+  assert.equal(
+    submenuBackTarget({ pathname: '/student/self-assessment', search: 'from=progress&student=1' }),
+    '/student/progress?student=1',
+  );
+  assert.equal(
+    submenuBackTarget({ pathname: '/student/self-assessment', search: 'from=compete&student=1' }),
+    '/student/compete?student=1',
+  );
+  assert.equal(
+    submenuBackTarget({ pathname: '/student/self-assessment', search: 'from=competitor' }),
+    '/student/competitor',
+  );
+  assert.equal(
+    submenuBackTarget({ pathname: '/student/self-assessment', search: 'from=scouting&student=1' }),
+    '/student/scouting?student=1',
+  );
+  assert.equal(
+    submenuBackTarget({ pathname: '/student/self-assessment', search: 'from=fundamentals&student=1' }),
+    '/student/fundamentals?student=1',
+  );
+  assert.equal(
+    submenuBackTarget({ pathname: '/student/self-assessment', search: 'from=somewhere-else&student=1' }),
+    '/student/progress?student=1',
+  );
   assert.equal(submenuBackTarget({ pathname: '/student/backup/clear', search: 'student=1' }), '/student/backup?student=1');
   assert.equal(submenuBackTarget({ pathname: '/student/print/progress' }), '/student/backup');
   assert.equal(

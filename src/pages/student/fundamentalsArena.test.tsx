@@ -115,7 +115,7 @@ test('fundamentals keeps every control on the dark arena surface', () => {
   labeled(sweeps, 'Rename Scissor sweep');
   labeled(sweeps, 'Remove Scissor sweep');
   labeled(sweeps, 'Add your own to Sweeps');
-  assert.equal(control(host, 'a', 'Self-assessment').getAttribute('href'), '/student/competitor#self-assessment');
+  assert.equal(control(host, 'a', 'Self-assessment').getAttribute('href'), '/student/self-assessment?from=fundamentals');
   assert.equal(control(host, 'a', 'Belt checkpoints').getAttribute('href'), '/student/rubric');
   assert.equal(control(host, 'a', 'Video Library').getAttribute('href'), '/student/videos');
   assert.ok(sweeps.textContent?.includes('Not updated yet'));
@@ -142,7 +142,10 @@ test('a learned date without a level opens at live, and taps, sort, filter, note
   const live = labeled(sweeps, 'Scissor sweep 3 Live with resistance');
   assert.equal(live.getAttribute('aria-checked'), 'true');
   assert.ok(sweeps.textContent?.includes('1 of 5 ready when a partner resists'));
-  assert.equal(control(sweeps, 'a', 'Open Guard self-assessment').getAttribute('href'), '/student/competitor#assess-guard');
+  assert.equal(
+    control(sweeps, 'a', 'Open Guard self-assessment').getAttribute('href'),
+    '/student/self-assessment?from=fundamentals#assess-guard',
+  );
   assert.equal(control(sweeps, 'a', 'Open Guard checkpoint').getAttribute('href'), '/student/rubric#checkpoint.white.guard');
   assert.equal(control(sweeps, 'a', 'Open Scissor sweep detail in Video Library').getAttribute('href')?.startsWith('/student/videos#clip-'), true);
   assert.ok(sweeps.textContent?.includes('Updated'));

@@ -84,6 +84,10 @@
   color: #f5f5f7;
 }
 
+.student.student--arena.student--belt .belt-block {
+  scroll-margin-top: 6.5rem;
+}
+
 .student.student--arena.student--belt .belt-ends {
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   font-size: 28px;

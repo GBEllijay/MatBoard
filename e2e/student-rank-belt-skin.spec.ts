@@ -173,7 +173,21 @@ test('my rank and belt progress keep every control and match the arena skin', as
   await expect(page).toHaveURL(/\/student\/progress\?student=1$/);
   await expect(page.getByRole('heading', { name: 'Rank & Progress', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Fundamentals', exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Self-assessment', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Self-assessment', exact: true })).toHaveAttribute(
+    'href',
+    '/student/self-assessment?from=progress&student=1',
+  );
+  await page.getByRole('link', { name: 'Self-assessment', exact: true }).click();
+  await expect(page).toHaveURL(/\/student\/self-assessment\?from=progress&student=1$/);
+  await expect(page.getByRole('heading', { name: 'Self-assessment', exact: true })).toBeVisible();
+  await expect(page.getByLabel('Self-assessment date')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open Takedowns checkpoint' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Open Guard checkpoint' })).toHaveAttribute(
+    'href',
+    '/student/rubric?student=1#checkpoint.white.guard',
+  );
+  await page.getByRole('link', { name: BACK, exact: true }).click();
+  await expect(page).toHaveURL(/\/student\/progress\?student=1$/);
 
   await page.goto('/student/fundamentals?student=1');
   const fundamentals = page.locator('main.student--fundamentals');
@@ -184,10 +198,14 @@ test('my rank and belt progress keep every control and match the arena skin', as
 
   await page.goto('/student/competitor?from=progress&student=1#self-assessment');
   const assessment = page.locator('#self-assessment');
+  await expect(page).toHaveURL(/\/student\/self-assessment\?from=progress&student=1#self-assessment$/);
   await expect(assessment).toBeVisible();
+  await expect(page.locator('main.student--assess')).toBeVisible();
   await expect(page.locator('main.student--arena')).toBeVisible();
   await expect(page.locator('main.student--rank, main.student--belt')).toHaveCount(0);
   await expect(assessment.getByRole('heading', { name: 'Self-assessment', exact: true })).toBeVisible();
   await expect(assessment.getByLabel('Self-assessment date')).toBeVisible();
   await expect(assessment.getByRole('button', { name: 'Save self-assessment' })).toBeVisible();
+  await page.getByRole('link', { name: BACK, exact: true }).click();
+  await expect(page).toHaveURL(/\/student\/progress\?student=1$/);
 });

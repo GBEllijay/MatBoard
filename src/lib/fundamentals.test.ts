@@ -118,7 +118,7 @@ test('moves link to a checkpoint, a self-assessment area, and a matching clip', 
     to: (path) => path,
   });
   assert.deepEqual(links.map((link) => link.href), [
-    '/student/competitor#assess-guard',
+    '/student/self-assessment?from=fundamentals#assess-guard',
     '/student/rubric#checkpoint.white.guard',
     '/student/videos#clip-clip-scissor',
   ]);

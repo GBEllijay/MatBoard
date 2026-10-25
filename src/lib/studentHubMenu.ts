@@ -13,6 +13,7 @@ import {
   weightToTarget,
 } from './progress/competition.ts';
 import type { StudentProgressReport } from './progress/types.ts';
+import { ASSESSMENT_AREAS } from './studentAssessment.ts';
 
 export const TRAINING_GROUP_LABEL = 'Training & Journal';
 export const RANK_GROUP_LABEL = 'Rank & Progress';
@@ -64,7 +65,7 @@ const FUNDAMENTALS_LINK: MenuLink = { label: 'Fundamentals', note: 'Levels', to:
 const ASSESSMENT_LINK: MenuLink = {
   label: 'Self-assessment',
   note: 'How you are doing',
-  to: '/student/competitor?from=progress#self-assessment',
+  to: '/student/self-assessment?from=progress',
 };
 
 /** The rank menu is this order on every belt, so the stripe row reads 1 through 4. */
@@ -81,7 +82,7 @@ export const COMPETE_LINKS: readonly MenuLink[] = [
     to: '/student/scouting',
   },
   { label: 'Results', note: 'Matches and bracket notes', to: '/student/results' },
-  { label: 'Self-assessment', note: 'Shortcut', to: '/student/competitor#self-assessment' },
+  { label: 'Self-assessment', note: 'Shortcut', to: '/student/self-assessment?from=compete' },
 ];
 
 export const COMPETE_EXTRAS: readonly MenuLink[] = [
@@ -161,6 +162,7 @@ const PAGE_PARENT: Record<string, string> = {
   '/student/rubric': '/student/progress',
   '/student/belt': '/student/progress',
   '/student/fundamentals': '/student/progress',
+  '/student/self-assessment': '/student/progress',
   '/student/competitor': '/student/compete',
   '/student/weight': '/student/compete',
   '/student/results': '/student/compete',
@@ -177,8 +179,54 @@ const PAGE_PARENT: Record<string, string> = {
  * `preview` is `?student=1` or empty. Card and calendar-day backs are handled
  * before this, because they return to the list rather than the group.
  */
+/** Pages that open self-assessment. Unknown values stay on Rank & Progress. */
+const SELF_ASSESSMENT_FROM: Record<string, string> = {
+  progress: '/student/progress',
+  compete: '/student/compete',
+  competitor: '/student/competitor',
+  scouting: '/student/scouting',
+  fundamentals: '/student/fundamentals',
+  rubric: '/student/rubric',
+  belt: '/student/rubric',
+  rank: '/student/rank',
+  profile: '/student/profile',
+  hub: '/student',
+};
+
+export function isSelfAssessmentHash(id: string): boolean {
+  if (id === 'self-assessment') return true;
+  if (!id.startsWith('assess-')) return false;
+  const area = id.slice('assess-'.length);
+  return ASSESSMENT_AREAS.some((item) => item.id === area);
+}
+
+/**
+ * `/student/competitor#self-assessment` and `#assess-{area}` open the
+ * self-assessment page. A `from` already on the address is kept. Otherwise
+ * Back returns to Competitor, which is the page that address used to be.
+ */
+export function legacyCompetitorAssessmentPath(search: string, hash: string): string | null {
+  const raw = hash.startsWith('#') ? hash.slice(1) : hash;
+  if (!raw) return null;
+  let id = raw;
+  try {
+    id = decodeURIComponent(raw);
+  } catch {
+    return null;
+  }
+  if (!isSelfAssessmentHash(id)) return null;
+  const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+  if (!params.get('from')) params.set('from', 'competitor');
+  return `/student/self-assessment?${params.toString()}#${encodeURIComponent(id)}`;
+}
+
 export function studentPageBack(path: string, preview: string, from: string | null): string {
   if (path === '/student/backup/clear') return `/student/backup${preview}`;
+  if (path === '/student/self-assessment') {
+    const returned = from ? SELF_ASSESSMENT_FROM[from] : undefined;
+    if (returned) return `${returned}${preview}`;
+    return `/student/progress${preview}`;
+  }
   if (path === '/student/competitor' && from === 'progress') return `/student/progress${preview}`;
   const parent = PAGE_PARENT[path];
   if (parent) return `${parent}${preview}`;
@@ -203,6 +251,7 @@ export type StudentScreen =
   | 'profile'
   | 'rank'
   | 'share'
+  | 'self-assessment'
   | 'competitor'
   | 'weight'
   | 'results'
@@ -232,6 +281,7 @@ export function studentScreen(rest: string): StudentScreen {
     case 'profile':
     case 'rank':
     case 'share':
+    case 'self-assessment':
     case 'competitor':
     case 'weight':
     case 'results':

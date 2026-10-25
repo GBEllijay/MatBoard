@@ -477,7 +477,7 @@ function OpponentTracker({
         ) : null}
         {selfScores && rows.length === 0 ? <p className="student-quiet">Rate this opponent to compare.</p> : null}
         {selfScores ? null : (
-          <Link className="assess-link" to={to('/student/competitor#self-assessment')}>
+          <Link className="assess-link" to={to('/student/self-assessment?from=scouting')}>
             Do your self-assessment
           </Link>
         )}

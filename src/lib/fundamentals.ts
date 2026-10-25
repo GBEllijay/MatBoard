@@ -207,7 +207,7 @@ export function moveLinks(input: {
   const areaLabel = assessmentAreaLabel(area);
   if (area && areaLabel) {
     links.push({
-      href: input.to(`/student/competitor#assess-${area}`),
+      href: input.to(`/student/self-assessment?from=fundamentals#assess-${area}`),
       label: `Open ${areaLabel} self-assessment`,
     });
   }

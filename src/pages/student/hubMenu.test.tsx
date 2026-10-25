@@ -124,7 +124,15 @@ test('every former hub item is linked from a group menu', () => {
   }
   assert.equal(progress?.host.querySelector('.s-rank-summary .s-belt')?.getAttribute('data-stripes'), '0');
   assert.match(progress?.host.querySelector('a[aria-label="My profile"]')?.getAttribute('href') ?? '', /\/student\/profile\?student=1$/);
+  assert.equal(
+    progress?.host.querySelector('a[aria-label="Self-assessment"]')?.getAttribute('href'),
+    '/student/self-assessment?from=progress&student=1',
+  );
   const compete = pages[2];
+  assert.equal(
+    compete?.host.querySelector('a[aria-label="Self-assessment"]')?.getAttribute('href'),
+    '/student/self-assessment?from=compete&student=1',
+  );
   const competeText = compete?.host.textContent ?? '';
   assert.equal(competeText.includes(SCOUTING_LABEL), true);
   assert.equal(competeText.includes(NO_EVENT_LABEL), true);

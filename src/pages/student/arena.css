@@ -597,6 +597,7 @@
   gap: 8px;
 }
 
+.assess-lead h1,
 .assess-lead h2,
 .assess-lead p {
   margin: 0;
@@ -837,6 +838,67 @@
     grid-template-columns: 1fr 1fr;
     align-items: start;
   }
+}
+
+.assess-gate {
+  display: grid;
+  gap: 12px;
+}
+
+.assess-gate h2 {
+  margin: 0;
+  color: var(--arena-text);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.student.student--arena .assess-gate .ink-btn {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.student.student--arena.student--assess {
+  background: #000000;
+}
+
+.assess-stack {
+  width: min(720px, 100%);
+  margin: 0 auto;
+  padding: 18px 16px 56px;
+  box-sizing: border-box;
+}
+
+.student.student--arena.student--assess .assess {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.student.student--arena.student--assess .assess-lead h1 {
+  color: #f5f5f7;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: clamp(34px, 9vw, 40px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.student.student--arena.student--assess .assess-form,
+.student.student--arena.student--assess .assess-history,
+.student.student--arena.student--assess .assess-visuals {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  background: #1c1c1e;
+  padding: 20px 16px 18px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04), 0 16px 40px rgba(0, 0, 0, 0.28);
+}
+
+.student.student--arena.student--assess .assess-form > .ink-btn--save {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 @media (prefers-reduced-motion: reduce) {
