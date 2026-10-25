@@ -183,7 +183,7 @@ test('products, card, White, Coach, Pro, and media console primaries are white',
 test('student backup and journal save stay white and the backup button still runs', async ({ page }) => {
   await setSize(page, { width: 1280, height: 900 });
   await page.goto('/student/backup?student=1');
-  const backup = page.getByRole('button', { name: 'Back up my journal', exact: true });
+  const backup = page.getByRole('button', { name: 'Back up my journal (.json)', exact: true });
   await expect(backup).toBeEnabled();
   expectWhitePrimary(await paint(backup));
   await backup.focus();

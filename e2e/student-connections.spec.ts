@@ -73,14 +73,20 @@ test('film a move, connections, backup, and print stay beside the link library',
 
   const downloads: string[] = [];
   page.on('download', (download) => downloads.push(download.suggestedFilename()));
-  await page.getByRole('button', { name: 'Back up my journal' }).click();
-  await expect.poll(() => downloads.length).toBeGreaterThanOrEqual(4);
-  expect(downloads.some((name) => name.endsWith('.json'))).toBeTruthy();
-  expect(downloads.some((name) => name.endsWith('.csv'))).toBeTruthy();
-  expect(downloads.filter((name) => name.endsWith('.pdf')).length).toBeGreaterThanOrEqual(2);
+  await page.getByRole('button', { name: 'Back up my journal (.json)' }).click();
+  await expect.poll(() => downloads.length).toBe(1);
+  expect(downloads[0]).toMatch(/\.json$/);
+  await page.getByRole('button', { name: 'Download spreadsheet (.csv)' }).click();
+  await expect.poll(() => downloads.length).toBe(2);
+  await page.getByRole('button', { name: 'Download progress report (.pdf)' }).click();
+  await expect.poll(() => downloads.length).toBe(3);
+  await page.getByRole('button', { name: 'Download self-assessment (.pdf)' }).click();
+  await expect.poll(() => downloads.length).toBe(4);
+  expect(downloads.filter((name) => name.endsWith('.csv')).length).toBe(1);
+  expect(downloads.filter((name) => name.endsWith('.pdf')).length).toBe(2);
   await page.screenshot({ path: '/opt/cursor/artifacts/student-connections.png', fullPage: true });
 
-  const backup = page.getByRole('button', { name: 'Back up my journal' });
+  const backup = page.getByRole('button', { name: 'Back up my journal (.json)' });
   const clear = page.getByRole('button', { name: 'Clear all Student Edition data' });
   const backupBox = await backup.boundingBox();
   const clearBox = await clear.boundingBox();
@@ -163,9 +169,10 @@ test('clear all student edition data requires CLEAR and leaves other tools', asy
   await page.goto('/student/connections?student=1');
   await page.getByRole('button', { name: 'Clear all Student Edition data' }).click();
   await page.getByRole('button', { name: 'Continue without a backup' }).click();
-  await expect(page.getByRole('listitem').filter({ hasText: 'Journal' })).toBeVisible();
-  await expect(page.getByRole('listitem').filter({ hasText: 'Opponent scouting' })).toBeVisible();
-  await expect(page.getByRole('listitem').filter({ hasText: 'Videos' })).toBeVisible();
+  const confirm = page.getByRole('group', { name: 'Confirm clear all Student Edition data' });
+  await expect(confirm.getByRole('listitem').filter({ hasText: /^Journal$/ })).toBeVisible();
+  await expect(confirm.getByRole('listitem').filter({ hasText: /^Opponent scouting$/ })).toBeVisible();
+  await expect(confirm.getByRole('listitem').filter({ hasText: /^Videos$/ })).toBeVisible();
   const erase = page.getByRole('button', { name: 'Erase Student Edition data' });
   await expect(erase).toBeDisabled();
   await page.getByLabel('Type CLEAR to confirm').fill('clear');
