@@ -35,6 +35,7 @@ import {
 } from '../../lib/studentScouting';
 import { todayIso } from '../../lib/studentEdition';
 import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './chrome';
+import { SuggestField } from './SuggestField';
 
 export function ScoutingPage() {
   const to = useStudentPath();
@@ -233,14 +234,14 @@ export function ScoutingPage() {
                 ))}
               </select>
             </label>
-            <label>
-              <span className="ink__label">Weight class</span>
-              <input
-                aria-label="Opponent weight class"
-                value={draft.weightClass}
-                onChange={(event) => setDraft({ ...draft, weightClass: event.target.value })}
-              />
-            </label>
+            <SuggestField
+              label="Weight class"
+              ariaLabel="Opponent weight class"
+              kind="weight"
+              value={draft.weightClass}
+              used={cards.map((card) => card.weightClass)}
+              onChange={(weightClass) => setDraft({ ...draft, weightClass })}
+            />
             <label>
               <span className="ink__label">Style and tendencies</span>
               <textarea

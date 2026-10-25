@@ -53,6 +53,7 @@ import { GYM_SCHEDULE_STORAGE_KEY } from '../../lib/studentTools.ts';
 import { CalendarDayPage, CalendarPage } from './CalendarPages.tsx';
 import { CompetitorPage } from './CompetitorPage.tsx';
 import { ResultsPage } from './ResultsPage.tsx';
+import { ScoutingPage } from './ScoutingPage.tsx';
 
 const dom = new Window({ url: 'http://localhost/student/competitor' });
 const view = dom as unknown as Window & typeof globalThis;
@@ -106,6 +107,7 @@ function Screen() {
   }   else if (pathname === '/student/calendar') page = <CalendarPage />;
   else if (pathname === '/student/competitor') page = <CompetitorPage />;
   else if (pathname === '/student/results') page = <ResultsPage />;
+  else if (pathname === '/student/scouting') page = <ScoutingPage />;
   else page = <p>Left for {pathname}</p>;
   return (
     <>
@@ -141,7 +143,10 @@ function labeled(host: ParentNode, name: string): HTMLElement {
 }
 
 function control(host: ParentNode, tag: string, name: string): HTMLElement {
-  const found = [...host.querySelectorAll(tag)].find((node) => node.textContent?.trim() === name);
+  const found = [...host.querySelectorAll(tag)].find((node) => {
+    if (node.getAttribute('aria-label') === name) return true;
+    return node.textContent?.trim() === name;
+  });
   assert.ok(found, name);
   return found as HTMLElement;
 }
@@ -631,4 +636,79 @@ test('a saved file migrates both lists without dropping a goal, a class, or a di
   assert.equal(options.filter((text) => text === 'Spring Open').length, 1);
   assert.equal(options.filter((text) => text === 'Pan Kids').length, 1);
   unmount(results);
+});
+
+test('division and weight suggestions filter, a custom entry is kept, and a miss explains itself', () => {
+  localStorage.clear();
+  const mounted = mount('/student/competitor');
+  const { host } = mounted;
+  const division = labeled(host, 'Division') as HTMLInputElement;
+  fire(division, 'onFocus');
+  const divisionList = labeled(host, 'Division suggestions');
+  for (const name of ['Juvenile', 'Adult', 'Master 1', 'Mighty Mite 1', 'Black', 'No-Gi']) {
+    control(divisionList, 'button', name);
+  }
+  const openNames = [...divisionList.querySelectorAll('[role="option"]')].map((node) => node.getAttribute('aria-label'));
+  assert.ok(openNames.length > 2);
+  assert.equal(openNames.every((name) => name === 'Black' || name === 'Master'), false);
+
+  typeInto(division, 'mast');
+  const masters = labeled(host, 'Division suggestions');
+  control(masters, 'button', 'Master 1');
+  assert.equal([...masters.querySelectorAll('[role="option"]')].some((node) => node.getAttribute('aria-label') === 'Adult'), false);
+  assert.equal([...masters.querySelectorAll('[role="option"]')].some((node) => node.getAttribute('aria-label') === 'Mighty Mite 1'), false);
+
+  typeInto(division, 'zzzz-div');
+  assert.equal(host.querySelector('[aria-label="Division suggestions"]'), null);
+  assert.match(host.textContent ?? '', /No matches\. Your text is saved as typed\./);
+  assert.equal(division.value, 'zzzz-div');
+
+  const weight = labeled(host, 'Weight class') as HTMLInputElement;
+  fire(weight, 'onFocus');
+  const weightList = labeled(host, 'Weight class suggestions');
+  for (const name of ['Rooster', 'Ultra Heavy', 'Open Class', 'Male Rooster', 'Female Rooster', 'Kids Rooster']) {
+    control(weightList, 'button', name);
+  }
+  assert.match(control(weightList, 'button', 'Rooster').textContent ?? '', /57\.5 kg/);
+  assert.match(control(weightList, 'button', 'Male Rooster').textContent ?? '', /57\.5 kg \/ 126\.8 lb/);
+  assert.match(control(weightList, 'button', 'Female Rooster').textContent ?? '', /48\.5 kg \/ 106\.9 lb/);
+
+  typeInto(weight, 'ultra');
+  const ultras = labeled(host, 'Weight class suggestions');
+  control(ultras, 'button', 'Ultra Heavy');
+  assert.equal([...ultras.querySelectorAll('[role="option"]')].some((node) => node.getAttribute('aria-label') === 'Heavy'), false);
+
+  typeInto(weight, 'female feather');
+  control(labeled(host, 'Weight class suggestions'), 'button', 'Female Feather');
+  typeInto(weight, 'mighty mite 1 rooster');
+  const kids = labeled(host, 'Weight class suggestions');
+  assert.ok([...kids.querySelectorAll('[role="option"]')].some((node) => node.getAttribute('aria-label') === 'Mighty Mite 1 Rooster'));
+  assert.match(control(kids, 'button', 'Mighty Mite 1 Rooster').textContent ?? '', /26 lb/);
+
+  typeInto(division, 'House League');
+  typeInto(weight, 'zzzz-weight');
+  assert.equal(host.querySelector('[aria-label="Weight class suggestions"]'), null);
+  assert.match(host.textContent ?? '', /No matches\. Your text is saved as typed\./);
+  assert.equal((labeled(host, 'Weight class') as HTMLInputElement).value, 'zzzz-weight');
+
+  const today = todayIso();
+  typeInto(labeled(host, 'Tournament name') as HTMLInputElement, 'Custom Open');
+  typeInto(labeled(host, 'Tournament date') as HTMLInputElement, today);
+  click(control(host, 'button', 'Add tournament'));
+  assert.ok(host.textContent?.includes('House League · zzzz-weight'));
+  const stored = loadStudentReport(localStorage).competition?.tournaments.find((tournament) => tournament.name === 'Custom Open');
+  assert.equal(stored?.division, 'House League');
+  assert.equal(stored?.weightClass, 'zzzz-weight');
+  unmount(mounted);
+
+  const scouting = mount('/student/scouting');
+  const opponentWeight = labeled(scouting.host, 'Opponent weight class') as HTMLInputElement;
+  fire(opponentWeight, 'onFocus');
+  const opponentList = labeled(scouting.host, 'Opponent weight class suggestions');
+  control(opponentList, 'button', 'Rooster');
+  control(opponentList, 'button', 'Kids Rooster');
+  typeInto(opponentWeight, 'My class');
+  assert.equal(opponentWeight.value, 'My class');
+  assert.match(scouting.host.textContent ?? '', /No matches\. Your text is saved as typed\./);
+  unmount(scouting);
 });
