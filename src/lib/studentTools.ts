@@ -24,6 +24,7 @@ import {
   PROGRESS_ID_MAX,
   PROGRESS_NAME_MAX,
   PROGRESS_NOTE_MAX,
+  PROGRESS_SCHEMA_VERSION,
   CALENDAR_REPEATS,
   type CalendarEvent,
   type CalendarKind,
@@ -636,44 +637,99 @@ export type CoachImportResult = {
   shelf: CoachShelf;
   message: string;
   error: string;
-  /** The student's own Send to coach file. Merge only after the student confirms. */
+  /** The student's own Send to coach file. It is not imported. Merge only after the student confirms. */
   pendingReport?: StudentProgressReport;
 };
 
+/** Shown when the student picks the progress file Make a file for my coach just downloaded. */
+export const OWN_SEND_FILE_MESSAGE =
+  'This file is the one for your coach. It is not the file to import. Import from coach takes a coach plan or coach feedback file, the file a coach sends back to you.';
+
 export const SEND_TO_COACH_MERGE_PROMPT =
-  'This is a Student Edition progress file, the same kind Send to coach downloads. Merge it into the journal on this phone? Records that are only on this phone stay. A backup restores from Connections.';
+  'You can still merge this progress file into the journal on this phone. Records that are only on this phone stay. A backup restores from Connections.';
 
 export const BACKUP_PICKER_MESSAGE =
-  'This is a Student Edition backup. Restore it from Connections. Send to coach files merge here after you confirm. A coach plan or coach feedback file is a suggestion and does not change your marks.';
+  'This is a Student Edition backup from Back up my journal. Restore it from Connections. It is not a coach plan or coach feedback file.';
 
-export const COACH_PICKER_MESSAGE =
-  'This picker takes a coach plan, coach feedback, or the progress file from Send to coach. A backup restores from Connections.';
+export const SPREADSHEET_PICKER_MESSAGE =
+  'This is a spreadsheet. The spreadsheet from Make a file for my coach is not a coach file. Import from coach takes a coach plan or coach feedback JSON file.';
+
+export const NOT_JSON_MESSAGE =
+  'This file is not JSON. Import from coach takes a coach plan or coach feedback file, which is a .json file a coach sends back to you.';
+
+export const EMPTY_COACH_FILE_MESSAGE =
+  'This file is empty. Import from coach takes a coach plan or coach feedback JSON file, the file a coach sends back to you.';
+
+const COACH_IMPORT_TAKES = 'Import from coach takes a coach plan or coach feedback file, the file a coach sends back to you.';
+
+function refusedCoachFile(report: StudentProgressReport, shelf: CoachShelf, error: string): CoachImportResult {
+  return { report, shelf, message: '', error };
+}
+
+function looksLikeSpreadsheet(text: string): boolean {
+  const body = text.replace(/^\uFEFF/, '').trimStart();
+  if (!body || body.startsWith('{') || body.startsWith('[')) return false;
+  const first = body.split(/\r?\n/, 1)[0] ?? '';
+  return first.startsWith('Sheet,');
+}
 
 /**
- * Read a coach-plan, coach-feedback, or the student's own Send to coach file.
- * A Send to coach file is returned as pendingReport and is not merged until mergeOwnStudentFile.
+ * Read a coach-plan or coach-feedback file.
+ * The student's own Send to coach file is a different kind. It is returned as pendingReport
+ * and is not imported. mergeOwnStudentFile runs only after the student confirms.
  * importCoachSuggestion returns the student report unchanged.
  */
 export function applyCoachFile(report: StudentProgressReport, shelf: CoachShelf, text: string): CoachImportResult {
+  if (!text.trim()) return refusedCoachFile(report, shelf, EMPTY_COACH_FILE_MESSAGE);
+  if (looksLikeSpreadsheet(text)) return refusedCoachFile(report, shelf, SPREADSHEET_PICKER_MESSAGE);
   let raw: unknown;
   try {
     raw = JSON.parse(text);
   } catch {
-    return { report, shelf, message: '', error: 'This file is not JSON.' };
+    return refusedCoachFile(report, shelf, NOT_JSON_MESSAGE);
   }
-  if (raw && typeof raw === 'object' && (raw as { advantage?: unknown }).advantage === 'student-journal-backup') {
-    return { report, shelf, message: '', error: BACKUP_PICKER_MESSAGE };
+  if (Array.isArray(raw) || !raw || typeof raw !== 'object') {
+    return refusedCoachFile(
+      report,
+      shelf,
+      `This JSON file is not a coach plan or coach feedback file. ${COACH_IMPORT_TAKES}`,
+    );
   }
-  const parsed = parseProgressPacket(text);
-  if (!parsed.ok) return { report, shelf, message: '', error: `${parsed.errors.join(' ')} ${COACH_PICKER_MESSAGE}` };
-  if (parsed.value.kind === 'student-progress-report') {
+  const record = raw as { advantage?: unknown; kind?: unknown };
+  if (record.advantage === 'student-journal-backup') return refusedCoachFile(report, shelf, BACKUP_PICKER_MESSAGE);
+  if (record.kind === 'student-progress-report') {
+    const parsed = parseProgressPacket(text);
+    if (!parsed.ok || parsed.value.kind !== 'student-progress-report') {
+      const detail = parsed.ok ? 'It is not a readable progress file.' : parsed.errors.join(' ');
+      return refusedCoachFile(report, shelf, `This file is the one for your coach, but it could not be read. ${detail}`);
+    }
     return {
       report,
       shelf,
-      message: SEND_TO_COACH_MERGE_PROMPT,
+      message: OWN_SEND_FILE_MESSAGE,
       error: '',
       pendingReport: parsed.value,
     };
+  }
+  if (record.kind !== 'coach-plan' && record.kind !== 'coach-feedback') {
+    const parsed = parseProgressPacket(text);
+    const named =
+      typeof record.kind === 'string' && record.kind.trim()
+        ? `This file is a "${record.kind.trim()}" file.`
+        : 'This JSON file has no coach-plan or coach-feedback kind.';
+    const detail = parsed.ok ? '' : ` ${parsed.errors.join(' ')}`;
+    return refusedCoachFile(report, shelf, `${named} ${COACH_IMPORT_TAKES}${detail}`);
+  }
+  const parsed = parseProgressPacket(text);
+  if (!parsed.ok) {
+    if (parsed.errors.some((line) => line.includes('cannot set student marks'))) {
+      return refusedCoachFile(
+        report,
+        shelf,
+        'This coach file tries to set student marks, checkpoints, journal, or goals. A coach file cannot do that, so it was not imported.',
+      );
+    }
+    return refusedCoachFile(report, shelf, `${parsed.errors.join(' ')} It was not imported.`);
   }
   if (parsed.value.kind === 'coach-plan') {
     const merged = mergeCoachPacket(shelf.plan, parsed.value);
@@ -683,9 +739,12 @@ export function applyCoachFile(report: StudentProgressReport, shelf: CoachShelf,
       shelf: { ...shelf, plan: merged.packet },
       message: merged.replaced
         ? `${merged.packet.plan.title || 'Work on before next promotion'} is on this phone. Your rubric, journal, and goals were not changed.`
-        : merged.conflicts.join(' '),
+        : coachFileKept(merged.conflicts),
       error: '',
     };
+  }
+  if (parsed.value.kind !== 'coach-feedback') {
+    return refusedCoachFile(report, shelf, `This file is a "${parsed.value.kind}" file. ${COACH_IMPORT_TAKES}`);
   }
   const merged = mergeCoachPacket(shelf.feedback, parsed.value);
   const suggestion = importCoachSuggestion(report, merged.packet);
@@ -694,9 +753,14 @@ export function applyCoachFile(report: StudentProgressReport, shelf: CoachShelf,
     shelf: { ...shelf, feedback: merged.packet },
     message: merged.replaced
       ? 'Coach feedback is on this phone. Your rubric, journal, and goals were not changed.'
-      : merged.conflicts.join(' '),
+      : coachFileKept(merged.conflicts),
     error: '',
   };
+}
+
+function coachFileKept(conflicts: string[]): string {
+  const detail = conflicts.join(' ').trim();
+  return detail ? `${detail} Nothing on this phone was changed.` : 'Nothing on this phone was changed.';
 }
 
 function studentFileIsBlank(report: StudentProgressReport): boolean {
@@ -776,6 +840,32 @@ export function mergeOwnStudentFile(
 }
 
 export const SHARE_SUBJECT = 'Advantage progress report';
+
+/** A coach plan a student can download to see the file Import from coach reads. */
+export function sampleCoachPlanFile(studentId: string, now = Date.now()): { name: string; json: string } {
+  const packet: CoachPlanPacket = {
+    schemaVersion: PROGRESS_SCHEMA_VERSION,
+    kind: 'coach-plan',
+    id: 'sample-coach-plan',
+    studentId,
+    updatedAt: now,
+    plan: {
+      title: 'Sample coach plan',
+      issuedOn: '2026-01-15',
+      note: 'This is a sample of the file a coach sends back. It is a suggestion. Importing it does not change your marks, journal, or goals.',
+      focus: [
+        {
+          id: 'sample-focus',
+          criterionId: '',
+          catalogItemId: '',
+          name: 'Sample focus',
+          note: 'A coach can name one thing to work on.',
+        },
+      ],
+    },
+  };
+  return { name: progressHandoffFileName(packet), json: exportProgressPacket(packet) };
+}
 
 export function progressReportFiles(report: StudentProgressReport, pictures = picturesFromStore(loadRankPictures())): {
   jsonName: string;

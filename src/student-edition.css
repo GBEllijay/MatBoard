@@ -376,8 +376,7 @@ label.ink-btn {
   }
 
   .student .student-clear-zone .ink-btn--save:hover,
-  .student .rank-lineage-editor .ink-btn--save:hover,
-  .student .student-import-confirm .ink-btn--save:hover {
+  .student .rank-lineage-editor .ink-btn--save:hover {
     background: #0c2344;
     color: #f5f5f7;
   }
@@ -412,8 +411,7 @@ label.ink-btn {
 }
 
 .student .student-clear-zone .ink-btn--save:disabled,
-.student .rank-lineage-editor .ink-btn--save:disabled,
-.student .student-import-confirm .ink-btn--save:disabled {
+.student .rank-lineage-editor .ink-btn--save:disabled {
   background: #0c2344;
   color: #f5f5f7;
   opacity: 0.45;
@@ -2361,9 +2359,24 @@ input.sr-only.student-film-file {
   }
 }
 
+.student.student-share {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  background: #f5f5f7;
+}
+
+.student.student-share .student-paper {
+  background: #f5f5f7;
+  background-image: none;
+}
+
+.student.student-share .student-sheet::before {
+  display: none;
+}
+
 .rank-lineage-editor,
 .student-clear-zone,
-.student-import-confirm {
+.student-import-confirm,
+.student-share-card {
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   background: #fff;
   color: #1d1d1f;
@@ -2376,6 +2389,7 @@ input.sr-only.student-film-file {
 .rank-lineage-editor h2,
 .student-clear-zone h2,
 .student-import-confirm h2,
+.student-share-card h2,
 .student-import-confirm .ink__label {
   font-family: inherit;
   font-size: 1.35rem;
@@ -2387,21 +2401,26 @@ input.sr-only.student-film-file {
 .rank-lineage-editor p,
 .student-clear-zone p,
 .student-import-confirm p,
+.student-share-card p,
 .rank-lineage-editor .ink__label,
 .student-clear-zone .ink__label,
 .rank-lineage-editor input,
 .student-clear-zone input,
 .student-import-confirm input,
+.student-share-card input,
 .rank-lineage-editor button,
 .student-clear-zone button,
-.student-import-confirm button {
+.student-import-confirm button,
+.student-share-card button,
+.student-share-card a {
   font-family: inherit;
 }
 
 .rank-lineage-editor .ink-btn,
 .student-clear-zone .ink-btn,
-.student-import-confirm .ink-btn {
-  min-height: 48px;
+.student-import-confirm .ink-btn,
+.student-share-card .ink-btn {
+  min-height: 56px;
   min-width: 48px;
   border: 0;
   border-radius: 12px;
@@ -2409,13 +2428,21 @@ input.sr-only.student-film-file {
   color: #1d1d1f;
   font-weight: 600;
   padding: 0.55rem 1rem;
+  font-size: 1.05rem;
 }
 
 .rank-lineage-editor .ink-btn--save,
-.student-clear-zone .ink-btn--save,
-.student-import-confirm .ink-btn--save {
+.student-clear-zone .ink-btn--save {
   background: #0c2344;
   color: #f5f5f7;
+}
+
+.student-import-confirm .ink-btn--save,
+.student-share-card .ink-btn--save {
+  background: var(--cta-bg);
+  color: var(--cta-ink);
+  border: 2px solid var(--cta-ink);
+  box-shadow: var(--cta-shadow-light);
 }
 
 .student-clear-zone .ink-btn--danger {
@@ -2434,6 +2461,12 @@ input.sr-only.student-film-file {
   display: grid;
   justify-content: stretch;
   gap: 0.65rem;
+}
+
+.student-share-card .ink-btn--save,
+.student-import-confirm .ink-btn--save {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .rank-lineage-editor .student-actions {
@@ -2458,8 +2491,56 @@ input.sr-only.student-film-file {
 }
 
 .student-import-confirm input[type='file'] {
-  min-height: 48px;
+  min-height: 56px;
   font-size: 16px;
+  width: 100%;
+}
+
+.student-share-check {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 56px;
+  margin: 0.35rem 0;
+  font-size: 1.05rem;
+}
+
+.student-share-check input {
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  flex: none;
+}
+
+.student-share-other {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 1.35rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(29, 29, 31, 0.12);
+}
+
+.student-share-other__label {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6e6e73;
+}
+
+.student-share-other .ink-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  text-decoration: none;
+}
+
+.student-import-confirm {
+  scroll-margin-top: 0.75rem;
 }
 
 .student-clear-zone {

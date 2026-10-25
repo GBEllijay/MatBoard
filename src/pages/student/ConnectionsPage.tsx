@@ -104,7 +104,7 @@ export function ConnectionsPage() {
           <section className="ink" aria-label="Import from coach">
             <h2>Import from coach</h2>
             <p className="student-quiet">
-              A coach plan or coach feedback file is a suggestion. Importing it does not change your rubric marks, checkpoints, journal, or goals. The progress file from Send to coach merges on that page after you confirm. A backup restores from Restore from backup above.
+              Import from coach takes a coach plan or coach feedback file, the file a coach sends back. It is a suggestion and does not change your rubric marks, checkpoints, journal, or goals. The progress file you make for your coach is a different file. On that page it is not imported as a coach file. You can merge it after you confirm. A backup restores from Restore from backup above.
             </p>
             <Link className="ink-btn" to={to('/student/share#import')}>
               Import from coach
