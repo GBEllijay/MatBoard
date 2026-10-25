@@ -24,7 +24,7 @@ export type BeltTemplate = {
   belts: BeltTemplateDef[];
 };
 
-/** White and grey/white: 4 white tapes and 1 red tape. Every other kids belt: 4 white, 4 red, 3 black. */
+/** Plain white: 4 white tapes and 1 red tape. Every other kids belt, including grey/white: 4 white, 4 red, 3 black. */
 export function ibjjfMonthlyTapes(short: boolean): string[] {
   if (short) return [TAPE_WHITE, TAPE_WHITE, TAPE_WHITE, TAPE_WHITE, TAPE_RED];
   return [TAPE_WHITE, TAPE_WHITE, TAPE_WHITE, TAPE_WHITE, TAPE_RED, TAPE_RED, TAPE_RED, TAPE_RED, TAPE_BLACK, TAPE_BLACK, TAPE_BLACK];
@@ -69,9 +69,9 @@ export const IBJJF_KIDS_TEMPLATE: BeltTemplate = {
   ageMode: 'kids',
   belts: [
     belt('white', 'White', '#f1eee5', 'solid', 'navy', true, 'white'),
-    belt('grey-white', 'Grey/White', GREY, 'white', 'white', true, 'grey', 4, 15),
-    belt('grey', 'Grey', GREY, 'solid', 'white', false, 'grey', 4, 15),
-    belt('grey-black', 'Grey/Black', GREY, 'black', 'white', false, 'grey', 4, 15),
+    belt('grey-white', 'Grey/White', GREY, 'white', 'navy', false, 'grey', 4, 15),
+    belt('grey', 'Grey', GREY, 'solid', 'navy', false, 'grey', 4, 15),
+    belt('grey-black', 'Grey/Black', GREY, 'black', 'navy', false, 'grey', 4, 15),
     belt('yellow-white', 'Yellow/White', YELLOW, 'white', 'navy', false, 'yellow', 7, 15),
     belt('yellow', 'Yellow', YELLOW, 'solid', 'navy', false, 'yellow', 7, 15),
     belt('yellow-black', 'Yellow/Black', YELLOW, 'black', 'navy', false, 'yellow', 7, 15),

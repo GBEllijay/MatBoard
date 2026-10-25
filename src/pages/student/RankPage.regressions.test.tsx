@@ -489,6 +489,63 @@ test('adult belts stay put when the student switches to kids and back', async ()
   }
 });
 
+test('kids stripes sit on the adult belt row and change color in place', async () => {
+  saveStudentReport(localStorage, setBeltMode(blankStudentReport(80), 'kids', 81));
+  const mounted = mount(<RankPage />);
+  try {
+    const greyWhite = buttonNamed('Grey/White').closest('li');
+    assert.match(greyWhite?.className ?? '', /rank-rung/);
+    assert.match(greyWhite?.className ?? '', /rung--kids-ink-navy/);
+    assert.equal(greyWhite?.querySelectorAll('.belt__bar button').length, 4);
+    assert.equal(document.querySelector('[aria-label="Stripes"]')?.querySelectorAll('button').length, 4);
+    assert.equal(document.querySelector('[aria-label="Grey stripes"]')?.querySelectorAll('button').length, 4);
+    assert.match(buttonNamed('Grey/Black').closest('li')?.className ?? '', /rung--kids-ink-navy/);
+    assert.match(buttonNamed('Yellow/White').closest('li')?.className ?? '', /rung--kids-ink-navy/);
+    assert.match(buttonNamed('Yellow/Black').closest('li')?.className ?? '', /rung--kids-ink-navy/);
+    assert.ok(labeled('Add Grey/White photo'));
+    assert.ok(greyWhite?.querySelector('.belt.belt--kids > .belt__bar'));
+
+    const tape = (name: string) => labeled(name).getAttribute('style') ?? '';
+    await click(buttonNamed('Grey/White'));
+    await click(labeled('Stripe 4'));
+    assert.match(tape('Stripe 1'), /#f4f1ea/i);
+    assert.match(tape('Stripe 4'), /#f4f1ea/i);
+    await click(labeled('Stripe 1'));
+    assert.match(tape('Stripe 1'), /#d21f1f/i);
+    assert.match(tape('Stripe 2'), /#f4f1ea/i);
+    await click(labeled('Stripe 4'));
+    assert.match(tape('Stripe 1'), /#d21f1f/i);
+    assert.match(tape('Stripe 4'), /#d21f1f/i);
+    await click(labeled('Stripe 1'));
+    assert.match(tape('Stripe 1'), /#121214/i);
+    assert.match(tape('Stripe 2'), /#d21f1f/i);
+    await click(labeled('Stripe 3'));
+    assert.match(tape('Stripe 3'), /#121214/i);
+    assert.match(tape('Stripe 4'), /#d21f1f/i);
+    await click(buttonNamed('Add a class'));
+    const stored = JSON.parse(localStorage.getItem('matboard.studentEdition.v1') ?? '{}') as {
+      beltBook?: { kids?: { beltId?: string; tapeCount?: number; classCount?: number } };
+    };
+    assert.equal(stored.beltBook?.kids?.beltId, 'grey-white');
+    assert.equal(stored.beltBook?.kids?.tapeCount, 11);
+    assert.equal(stored.beltBook?.kids?.classCount, 1);
+
+    await click(buttonNamed('White'));
+    await click(labeled('Stripe 4'));
+    await click(labeled('Stripe 1'));
+    assert.match(tape('Stripe 1'), /#d21f1f/i);
+    assert.match(tape('Stripe 4'), /#f4f1ea/i);
+    await click(labeled('Stripe 2'));
+    const white = JSON.parse(localStorage.getItem('matboard.studentEdition.v1') ?? '{}') as {
+      beltBook?: { kids?: { beltId?: string; tapeCount?: number } };
+    };
+    assert.equal(white.beltBook?.kids?.beltId, 'white');
+    assert.equal(white.beltBook?.kids?.tapeCount, 5);
+  } finally {
+    unmount(mounted);
+  }
+});
+
 test('kids belt progress hides checkpoints and keeps them for adult', async () => {
   let report = setRankBelt(blankStudentReport(70), 'blue', 71);
   report = setBeltMode(report, 'kids', 72);

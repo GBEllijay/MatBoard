@@ -108,6 +108,83 @@ export function kidsRankOf(report: StudentProgressReport): KidsBeltRank {
   return normalizeKids(report.beltBook?.kids, kidsTemplateOf(report));
 }
 
+/**
+ * Letters sit on the belt cloth, clear of the center band.
+ * Light cloth (white, grey, yellow) is navy. Darker cloth (orange, green) is white.
+ */
+export function labelInk(belt: Pick<BeltTemplateDef, 'ink'>): 'navy' | 'white' {
+  return belt.ink;
+}
+
+export type TapeRun = { color: string; count: number; start: number };
+
+/** Consecutive tape colors. The stored list stays the source of truth. */
+export function tapeRuns(colors: string[]): TapeRun[] {
+  const runs: TapeRun[] = [];
+  for (let index = 0; index < colors.length; index += 1) {
+    const color = colors[index] ?? '';
+    const last = runs[runs.length - 1];
+    if (last && last.color === color) last.count += 1;
+    else runs.push({ color, count: 1, start: index });
+  }
+  return runs;
+}
+
+/** How many stripe buttons to draw. The widest color run, so 11 tapes fit on one row. */
+export function compactSlotCount(colors: string[]): number {
+  const runs = tapeRuns(colors);
+  if (!runs.length) return 0;
+  return Math.max(...runs.map((run) => run.count));
+}
+
+export type CompactSlot = { slot: number; on: boolean; color: string };
+
+/**
+ * Paint the compact row from the tape count.
+ * Whites fill first. Later runs repaint those same slots red, then black.
+ */
+export function compactSlots(colors: string[], tapeCount: number): CompactSlot[] {
+  const runs = tapeRuns(colors);
+  const width = compactSlotCount(colors);
+  const slots: CompactSlot[] = Array.from({ length: width }, (_, index) => ({ slot: index + 1, on: false, color: '' }));
+  const count = Math.max(0, Math.min(Number.isInteger(tapeCount) ? tapeCount : 0, colors.length));
+  let consumed = 0;
+  for (const run of runs) {
+    if (count <= consumed) break;
+    const earned = Math.min(run.count, count - consumed);
+    for (let index = 0; index < earned && index < width; index += 1) {
+      slots[index] = { slot: index + 1, on: true, color: run.color };
+    }
+    consumed += run.count;
+  }
+  return slots;
+}
+
+/**
+ * Tap a compact slot. Inside a color, this matches adult stripes.
+ * On a full color, tap the last slot to step back, or an earlier slot to start the next color.
+ */
+export function tapeCountAfterTap(colors: string[], tapeCount: number, slot: number): number {
+  const runs = tapeRuns(colors);
+  const total = colors.length;
+  const count = Math.max(0, Math.min(Number.isInteger(tapeCount) ? tapeCount : 0, total));
+  if (!runs.length || !Number.isInteger(slot) || slot < 1) return count;
+  const phase = count === 0 ? 0 : runs.findIndex((run) => count > run.start && count <= run.start + run.count);
+  const run = runs[phase === -1 ? runs.length - 1 : phase];
+  if (!run) return count;
+  const atEnd = count === run.start + run.count;
+  const next = runs[(phase === -1 ? runs.length - 1 : phase) + 1];
+  if (atEnd && next) {
+    if (slot === Math.min(run.count, compactSlotCount(colors))) return count - 1;
+    if (slot <= next.count) return next.start + slot;
+    return count;
+  }
+  const local = count - run.start;
+  if (slot === local && local > 0) return count - 1;
+  if (slot <= run.count) return run.start + slot;
+  return count;
+}
+
 export function kidsLadder(report: StudentProgressReport): KidsRung[] {
   const template = kidsTemplateOf(report);
   const kids = normalizeKids(report.beltBook?.kids, template);
@@ -428,7 +505,7 @@ function visual(belt: BeltTemplateDef): Omit<KidsRung, 'current' | 'awardedOn' |
     base: belt.base,
     center: belt.center,
     centerColor: belt.centerColor || (belt.center === 'white' ? '#f7f4ee' : belt.center === 'black' ? '#161616' : belt.base),
-    ink: belt.ink,
+    ink: labelInk(belt),
     tapeColors: [...belt.tapeColors],
     ageMin: belt.ageMin,
     ageMax: belt.ageMax,

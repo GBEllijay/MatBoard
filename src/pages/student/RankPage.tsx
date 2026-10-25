@@ -10,11 +10,14 @@ import {
 import type { FinalRankBelt } from '../../lib/progress/types';
 import {
   addBeltPhoto,
+  addKidsBeltPhoto,
   addTapePhoto,
   beltPhotos,
+  kidsBeltPhotos,
   loadRankPictures,
   rankPhotoFromFile,
   removeBeltPhoto,
+  removeKidsBeltPhoto,
   removeTapePhoto,
   tapePhotos,
   type RankPhotoStore,
@@ -24,6 +27,7 @@ import {
   ageWarning,
   beltModeOf,
   classesPerTapeOf,
+  compactSlots,
   currentKidsBelt,
   guideOf,
   kidsLadder,
@@ -39,6 +43,7 @@ import {
   setKidsTapeCount,
   setTapeGuide,
   showAdultPrompt,
+  tapeCountAfterTap,
   timeGuideText,
 } from '../../lib/beltBook';
 import { CLASSES_PER_TAPE_MAX, type StudentProgressReport } from '../../lib/progress/types';
@@ -150,6 +155,9 @@ export function RankPage() {
             <KidsRank
               report={report}
               run={run}
+              photos={photos}
+              onBeltPhoto={(beltId, file) => void savePhoto(file, (image) => addKidsBeltPhoto(photos, beltId, image))}
+              onRemoveBeltPhoto={(beltId, index) => setPhotos(removeKidsBeltPhoto(photos, beltId, index))}
               onAdult={() => {
                 setPendingMode('');
                 run(setBeltMode(report, 'adult'));
@@ -809,12 +817,18 @@ function BeltSystemSwitch({
 function KidsRank({
   report,
   run,
+  photos,
+  onBeltPhoto,
+  onRemoveBeltPhoto,
   onAdult,
   lineage,
   progressLink,
 }: {
   report: StudentProgressReport;
   run: (next: StudentProgressReport) => void;
+  photos: RankPhotoStore;
+  onBeltPhoto: (beltId: string, file: File | undefined) => void;
+  onRemoveBeltPhoto: (beltId: string, index: number) => void;
   onAdult: () => void;
   lineage: ReactNode;
   progressLink: ReactNode;
@@ -939,11 +953,14 @@ function KidsRank({
           </>
         )}
       </section>
-      <ol className="rank-ladder kids-ladder" aria-label="Kids belt ladder">
-        {rungs.map((rung) => (
+      <ol className="rank-ladder" aria-label="Kids belt ladder">
+        {rungs.map((rung) => {
+          const slots = compactSlots(rung.tapeColors, rung.tapeCount);
+          const pictures = kidsBeltPhotos(photos, rung.beltId);
+          return (
           <li
             key={rung.beltId}
-            className={`rung rung--kids${rung.ink === 'navy' ? ' rung--kids-light' : ''}${rung.current ? ' is-current' : ''}`}
+            className={`rank-rung rung rung--kids${rung.ink === 'navy' ? ' rung--kids-ink-navy' : ''}${rung.current ? ' is-current' : ''}`}
             style={{
               ['--cloth' as string]: rung.base,
               ['--edge' as string]: 'rgba(0,0,0,0.28)',
@@ -951,7 +968,11 @@ function KidsRank({
               ['--center' as string]: rung.centerColor,
             }}
           >
-            <div className="belt belt--kids" data-center={rung.center}>
+            <div
+              className="belt belt--kids"
+              data-center={rung.center}
+              style={{ ['--barw' as string]: `calc(var(--slot) * ${Math.max(slots.length, 1)} + 12px)` }}
+            >
               <button
                 type="button"
                 className="belt__body"
@@ -966,22 +987,20 @@ function KidsRank({
                 {rung.current ? <span className="belt__sub">Current belt</span> : null}
               </button>
               <div className="belt__bar" role="group" aria-label={rung.current ? 'Stripes' : `${rung.label} stripes`}>
-                {rung.tapeColors.map((color, index) => {
-                  const slot = index + 1;
-                  const on = slot <= rung.tapeCount;
-                  const stripeLabel = rung.current ? `Stripe ${slot}` : `${rung.label} stripe ${slot}`;
+                {slots.map((slot) => {
+                  const stripeLabel = rung.current ? `Stripe ${slot.slot}` : `${rung.label} stripe ${slot.slot}`;
                   return (
                     <button
-                      key={slot}
+                      key={slot.slot}
                       type="button"
-                      className={on ? 'stripe is-on' : 'stripe'}
-                      style={{ ['--tape' as string]: color }}
+                      className={slot.on ? 'stripe is-on' : 'stripe'}
+                      style={slot.on ? { ['--tape' as string]: slot.color } : undefined}
                       aria-label={stripeLabel}
-                      aria-pressed={on}
+                      aria-pressed={slot.on}
                       disabled={!rung.current}
                       onClick={() => {
                         if (!rung.current) return;
-                        run(setKidsTapeCount(report, slot === rung.tapeCount ? slot - 1 : slot));
+                        run(setKidsTapeCount(report, tapeCountAfterTap(rung.tapeColors, rung.tapeCount, slot.slot)));
                       }}
                     >
                       <span className="tape" />
@@ -1004,12 +1023,35 @@ function KidsRank({
                   }}
                 />
               </label>
+              <label className="photo">
+                {CAMERA}
+                Photo
+                {pictures.length ? <span className="n">{pictures.length}</span> : null}
+                <input
+                  className="student-file"
+                  type="file"
+                  accept="image/*"
+                  aria-label={`Add ${rung.label} photo`}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = '';
+                    onBeltPhoto(rung.beltId, file);
+                  }}
+                />
+              </label>
             </div>
+            <PhotoList
+              photos={pictures}
+              removeLabel={(index) => `Remove ${rung.label} photo ${index + 1}`}
+              alt={(index) => `${rung.label} photo ${index + 1}`}
+              onRemove={(index) => onRemoveBeltPhoto(rung.beltId, index)}
+            />
           </li>
-        ))}
+          );
+        })}
       </ol>
       <p className="student-quiet">
-        {kids.tapeCount === 0 ? 'No stripes' : kids.tapeCount === 1 ? '1 stripe' : `${kids.tapeCount} stripes`} of {current.tapeColors.length} on the belt you wear. Tap an empty stripe to add it. Tap the last stripe to take it off. A full class card does not add a stripe.
+        {kids.tapeCount === 0 ? 'No stripes' : kids.tapeCount === 1 ? '1 stripe' : `${kids.tapeCount} stripes`} of {current.tapeColors.length} on the belt you wear. Tap a stripe to fill it white. When the white stripes are full, tap one to turn it red, then black. Tap the latest stripe to step back. A full class card does not add a stripe.
       </p>
       {lineage}
       <section className="ink" aria-label="Promotion history">

@@ -5,8 +5,10 @@ import {
   addClassDot,
   ageWarning,
   beltModeOf,
+  compactSlots,
   currentKidsBelt,
   kidsLadder,
+  labelInk,
   removeClassDot,
   setBeltMode,
   setBirthYear,
@@ -15,6 +17,7 @@ import {
   setKidsTapeCount,
   setTapeGuide,
   showAdultPrompt,
+  tapeCountAfterTap,
   timeGuideText,
 } from './beltBook.ts';
 import { exportProgressPacket, mergeStudentProgress, parseProgressPacket } from './progress/format.ts';
@@ -68,10 +71,17 @@ test('IBJJF kids template is the 13-belt ladder with monthly tape colors', () =>
   const greyWhite = IBJJF_KIDS_TEMPLATE.belts[1];
   const grey = IBJJF_KIDS_TEMPLATE.belts[2];
   assert.equal(white?.tapeColors.length, 5);
-  assert.equal(greyWhite?.tapeColors.length, 5);
+  assert.equal(greyWhite?.tapeColors.length, 11);
   assert.deepEqual(white?.tapeColors, ibjjfMonthlyTapes(true));
+  assert.deepEqual(greyWhite?.tapeColors, ibjjfMonthlyTapes(false));
   assert.equal(grey?.tapeColors.length, 11);
   assert.deepEqual(grey?.tapeColors.slice(8), ['#121214', '#121214', '#121214']);
+  assert.equal(greyWhite?.ink, 'navy');
+  assert.equal(labelInk(greyWhite ?? { ink: 'navy' }), 'navy');
+  assert.equal(labelInk(IBJJF_KIDS_TEMPLATE.belts[3] ?? { ink: 'navy' }), 'navy');
+  assert.equal(IBJJF_KIDS_TEMPLATE.belts[6]?.ink, 'navy');
+  assert.equal(labelInk(IBJJF_KIDS_TEMPLATE.belts[6] ?? { ink: 'navy' }), 'navy');
+  assert.equal(labelInk(IBJJF_KIDS_TEMPLATE.belts[5] ?? { ink: 'navy' }), 'navy');
   assert.equal(greyWhite?.center, 'white');
   assert.equal(IBJJF_KIDS_TEMPLATE.belts[3]?.center, 'black');
   assert.equal(IBJJF_KIDS_TEMPLATE.belts[5]?.ageMin, 7);
@@ -132,12 +142,61 @@ test('class dots fill a card and do not award a stripe', () => {
   report = setTapeGuide(report, 'time', 34);
   assert.match(timeGuideText(report, new Date('2026-10-25T12:00:00Z')), /one month between stripes/);
   report = setKidsBelt(report, 'grey-white', 35);
+  report = setKidsTapeCount(report, 11, 36);
+  assert.equal(report.beltBook?.kids?.tapeCount, 11);
+  assert.throws(() => setKidsTapeCount(report, 12), /0 to 11/);
+  report = setKidsBelt(report, 'white', 37);
   assert.throws(() => setKidsTapeCount(report, 6), /0 to 5/);
-  report = setKidsBelt(report, 'grey', 36);
-  report = setKidsTapeCount(report, 11, 37);
+  report = setKidsBelt(report, 'grey', 38);
+  report = setKidsTapeCount(report, 11, 39);
   assert.equal(report.beltBook?.kids?.tapeCount, 11);
   assert.throws(() => setKidsTapeCount(report, 12), /0 to 11/);
   assert.throws(() => setRankTapeCount(report, 5), /0 to 6|0 to 4|degree/);
+});
+
+test('compact stripes fill white, then turn red, then black', () => {
+  const full = ibjjfMonthlyTapes(false);
+  const white = '#f4f1ea';
+  const red = '#d21f1f';
+  const black = '#121214';
+  assert.equal(compactSlots(full, 0).length, 4);
+  assert.deepEqual(compactSlots(full, 0).map((slot) => slot.on), [false, false, false, false]);
+  assert.deepEqual(compactSlots(full, 4).map((slot) => slot.color), [white, white, white, white]);
+  assert.deepEqual(compactSlots(full, 6).map((slot) => slot.color), [red, red, white, white]);
+  assert.deepEqual(compactSlots(full, 8).map((slot) => slot.color), [red, red, red, red]);
+  assert.deepEqual(compactSlots(full, 9).map((slot) => slot.color), [black, red, red, red]);
+  assert.deepEqual(compactSlots(full, 11).map((slot) => slot.color), [black, black, black, red]);
+  assert.equal(tapeCountAfterTap(full, 0, 4), 4);
+  assert.equal(tapeCountAfterTap(full, 4, 4), 3);
+  assert.equal(tapeCountAfterTap(full, 4, 1), 5);
+  assert.equal(tapeCountAfterTap(full, 5, 4), 8);
+  assert.equal(tapeCountAfterTap(full, 8, 1), 9);
+  assert.equal(tapeCountAfterTap(full, 9, 3), 11);
+  assert.equal(tapeCountAfterTap(full, 11, 4), 11);
+  assert.equal(tapeCountAfterTap(full, 11, 3), 10);
+
+  const short = ibjjfMonthlyTapes(true);
+  assert.equal(compactSlots(short, 0).length, 4);
+  assert.deepEqual(compactSlots(short, 5).map((slot) => slot.color), [red, white, white, white]);
+  assert.equal(tapeCountAfterTap(short, 4, 1), 5);
+  assert.equal(tapeCountAfterTap(short, 4, 2), 4);
+  assert.equal(tapeCountAfterTap(short, 5, 1), 4);
+  assert.equal(tapeCountAfterTap(short, 5, 2), 5);
+
+  const custom = ['#f4f1ea', '#f4f1ea', '#112233'];
+  assert.equal(compactSlots(custom, 0).length, 2);
+  assert.equal(tapeCountAfterTap(custom, 2, 1), 3);
+  assert.deepEqual(compactSlots(custom, 3).map((slot) => slot.color), ['#112233', '#f4f1ea']);
+
+  let report = setBeltMode(blankStudentReport(40), 'kids', 41);
+  const ink = new Map(kidsLadder(report).map((rung) => [rung.label, rung.ink]));
+  assert.equal(ink.get('Grey/White'), 'navy');
+  assert.equal(ink.get('Yellow/White'), 'navy');
+  assert.equal(ink.get('Orange/White'), 'white');
+  assert.equal(ink.get('Grey/Black'), 'navy');
+  assert.equal(ink.get('Yellow/Black'), 'navy');
+  assert.equal(ink.get('Yellow'), 'navy');
+  assert.equal(ink.get('Grey'), 'navy');
 });
 
 test('an old file stays on adult belts, and a custom template can reorder belts', () => {
