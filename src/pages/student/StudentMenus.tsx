@@ -7,6 +7,7 @@ import { STUDENT_EDITION_NAME, STUDENT_HOME_DESCRIPTION } from '../../lib/produc
 import { tierHomeHref } from '../../lib/submenuNav';
 import { todayIso } from '../../lib/studentEdition';
 import {
+  ADD_TOURNAMENT_LABEL,
   BACKUP_GROUP_LABEL,
   COACH_GROUP_LABEL,
   COACH_LINKS,
@@ -263,6 +264,11 @@ export function CompeteMenu() {
           <b>{summary.record}</b>
         </div>
       </section>
+      {summary.eventName ? null : (
+        <Link className="ink-btn ink-btn--save s-score__add" to={to('/student/competitor')}>
+          {ADD_TOURNAMENT_LABEL}
+        </Link>
+      )}
       <MenuList label={COMPETE_GROUP_LABEL} bracket>
         {COMPETE_LINKS.map((item, index) => (
           <MenuRow

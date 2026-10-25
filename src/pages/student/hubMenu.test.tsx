@@ -136,6 +136,8 @@ test('every former hub item is linked from a group menu', () => {
   const competeText = compete?.host.textContent ?? '';
   assert.equal(competeText.includes(SCOUTING_LABEL), true);
   assert.equal(competeText.includes(NO_EVENT_LABEL), true);
+  assert.equal(competeText.includes('Add a tournament'), true);
+  assert.equal(compete?.host.querySelector('a.s-score__add')?.getAttribute('href'), '/student/competitor?student=1');
   assert.equal(competeText.includes(NO_MATCHES_LABEL), true);
   assert.equal(competeText.includes(WEIGHT_UNSET_LABEL), true);
   assert.equal(competeText.includes('Scouting-Opponent'), false);
@@ -252,6 +254,7 @@ test('competitor chips show a named event and a win-loss record when results exi
   const page = mount(<CompeteMenu />, '/student/compete?student=1');
   const text = page.host.textContent ?? '';
   assert.equal(text.includes('Next: Atlanta Open · 18d'), true);
+  assert.equal(text.includes('Add a tournament'), false);
   assert.equal(text.includes('Record 3-1'), true);
   assert.equal(text.includes(WEIGHT_UNSET_LABEL), true);
   unmount(page);

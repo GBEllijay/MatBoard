@@ -5,6 +5,7 @@
  */
 
 import { splitJournalNotes } from '../journalNotes.ts';
+import { studentDemoRequested } from '../studentDemo.ts';
 import {
   GAME_TAGS,
   PROGRESS_CLIP_URL_MAX,
@@ -248,6 +249,23 @@ export function isUpcomingTournament(tournament: StudentTournament, today: strin
   return Boolean(tournament.deadline && tournament.deadline >= today);
 }
 
+/** Demo rows in the stress-test file. A student-named event is not one of these. */
+export function tournamentIsMock(tournament: { name?: string }): boolean {
+  return (tournament.name ?? '').toLowerCase().includes('(mock)');
+}
+
+/** Soonest event day that has not passed. A past date with a future deadline is not next. */
+export function soonestUpcomingTournament(
+  tournaments: readonly StudentTournament[],
+  today: string,
+  includeMock = false,
+): StudentTournament | undefined {
+  return [...tournaments]
+    .filter((tournament) => includeMock || !tournamentIsMock(tournament))
+    .filter((tournament) => tournament.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name))[0];
+}
+
 export function workingOnLine(games: CompetitionGames): string {
   return GAME_TAGS.map((tag) => {
     const techniques = games[tag].techniques.trim();
@@ -400,17 +418,20 @@ export type WeightCountdown = {
   tournamentName: string;
 };
 
-/** Saved weigh-in date, or the next tournament day when the student has not set one. */
-export function weightCountdown(competition: StudentCompetition, today: string): WeightCountdown | null {
+/** Saved weigh-in date, or the soonest real tournament day when the student has not set one. */
+export function weightCountdown(
+  competition: StudentCompetition,
+  today: string,
+  options?: { includeMock?: boolean },
+): WeightCountdown | null {
+  const includeMock = options?.includeMock ?? studentDemoRequested();
   const saved = (competition.weighDate ?? '').trim();
   if (saved) {
     const days = daysUntil(saved, today);
     if (days == null) return null;
     return { date: saved, days, source: 'saved', tournamentName: '' };
   }
-  const next = [...competition.tournaments]
-    .filter((tournament) => tournament.date >= today)
-    .sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name))[0];
+  const next = soonestUpcomingTournament(competition.tournaments, today, includeMock);
   if (!next) return null;
   const days = daysUntil(next.date, today);
   if (days == null) return null;
@@ -424,8 +445,13 @@ export type ResolvedGoal = {
   tournamentName: string;
 };
 
-/** Saved goal, or the next upcoming tournament target when the goal field is empty. */
-export function resolvedGoal(competition: StudentCompetition, today: string): ResolvedGoal | null {
+/** Saved goal, or the soonest real tournament target when the goal field is empty. */
+export function resolvedGoal(
+  competition: StudentCompetition,
+  today: string,
+  options?: { includeMock?: boolean },
+): ResolvedGoal | null {
+  const includeMock = options?.includeMock ?? studentDemoRequested();
   if (competition.goalWeight != null) {
     return {
       weight: competition.goalWeight,
@@ -435,6 +461,7 @@ export function resolvedGoal(competition: StudentCompetition, today: string): Re
     };
   }
   const next = [...competition.tournaments]
+    .filter((tournament) => includeMock || !tournamentIsMock(tournament))
     .filter((tournament) => tournament.targetWeight != null && tournament.date >= today)
     .sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name))[0];
   if (!next || next.targetWeight == null) return null;

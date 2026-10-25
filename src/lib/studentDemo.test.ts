@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { exportProgressPacket } from './progress/format.ts';
+import { exportProgressPacket, parseProgressPacket } from './progress/format.ts';
 import { addTournament } from './studentCompetition.ts';
 import {
   explicitStudentDemo,
@@ -102,25 +102,45 @@ test('demo=1 and demo=paige allow a raw write of the stress-test file', () => {
   }
 });
 
-test('an app save of the stress-test file sticks, and a file already stored is left alone', () => {
+test('an app save of the stress-test file does not stick unless the demo was requested', () => {
   resetStudentMockGuardForTests();
   const storage = memory();
   installStudentMockGuard(storage, () => '?student=1');
-  const parsed = loadStudentReport({ getItem: () => handoff });
-  saveStudentReport(storage, parsed);
-  assert.equal(loadStudentReport(storage).profile.belt, 'black');
+  const parsed = parseProgressPacket(handoff);
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok || parsed.value.kind !== 'student-progress-report') return;
+  saveStudentReport(storage, parsed.value);
+  assert.equal(loadStudentReport(storage).profile.belt, 'white');
+  assert.equal(storage.getItem(STUDENT_FILE_STORAGE_KEY)?.includes('Pan Pacific'), false);
   reconcileStudentStorage(storage, '?student=1');
-  assert.equal(loadStudentReport(storage).competition?.tournaments.some((row) => row.name === 'Pan Pacific Championship (mock)'), true);
+  assert.equal(loadStudentReport(storage).profile.belt, 'white');
 
+  resetStudentMockGuardForTests();
+  const demo = memory();
+  installStudentMockGuard(demo, () => '?demo=1');
+  saveStudentReport(demo, parsed.value);
+  assert.equal(loadStudentReport(demo).profile.belt, 'black');
+  assert.equal(loadStudentReport(demo).competition?.tournaments.some((row) => row.name === 'Pan Pacific Championship (mock)'), true);
+});
+
+test('a stress-test file already stored is removed unless the demo was requested', () => {
   resetStudentMockGuardForTests();
   const existing = memory();
   existing.poke(STUDENT_FILE_STORAGE_KEY, handoff);
   installStudentMockGuard(existing, () => '?student=1');
   reconcileStudentStorage(existing, '?student=1');
-  assert.equal(loadStudentReport(existing).profile.belt, 'black');
+  assert.equal(existing.getItem(STUDENT_FILE_STORAGE_KEY), null);
+  assert.equal(loadStudentReport(existing).profile.belt, 'white');
+
+  resetStudentMockGuardForTests();
+  const demo = memory();
+  demo.poke(STUDENT_FILE_STORAGE_KEY, handoff);
+  installStudentMockGuard(demo, () => '?demo=paige');
+  reconcileStudentStorage(demo, '?demo=paige');
+  assert.equal(loadStudentReport(demo).profile.belt, 'black');
 });
 
-test('a late bypass write on a blank phone is removed, and another tab is not wiped', () => {
+test('a late stress-test write is removed, including one from another tab, and a real journal from another tab stays', () => {
   resetStudentMockGuardForTests();
   const storage = memory();
   installStudentMockGuard(storage, () => '?student=1');
@@ -132,7 +152,17 @@ test('a late bypass write on a blank phone is removed, and another tab is not wi
   storage.poke(STUDENT_FILE_STORAGE_KEY, handoff);
   noteStudentStorageEvent(STUDENT_FILE_STORAGE_KEY);
   reconcileStudentStorage(storage, '?student=1');
-  assert.equal(loadStudentReport(storage).profile.belt, 'black');
+  assert.equal(storage.getItem(STUDENT_FILE_STORAGE_KEY), null);
+  assert.equal(loadStudentReport(storage).profile.belt, 'white');
+
+  resetStudentMockGuardForTests();
+  const other = memory();
+  installStudentMockGuard(other, () => '?student=1');
+  other.poke(STUDENT_FILE_STORAGE_KEY, realJournal());
+  noteStudentStorageEvent(STUDENT_FILE_STORAGE_KEY);
+  reconcileStudentStorage(other, '?student=1');
+  assert.equal(loadStudentReport(other).profile.belt, 'blue');
+  assert.equal(loadStudentReport(other).competition?.tournaments[0]?.name, 'Spring Open');
 });
 
 test('a late bypass write does not replace a journal this phone already saved', () => {

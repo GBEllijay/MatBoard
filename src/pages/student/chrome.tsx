@@ -3,6 +3,8 @@ import { useLocation, useSearchParams } from 'react-router-dom';
 import { SubmenuMarks } from '../../components/TierHomeMark';
 import { submenuBackTarget, tierHomeHref } from '../../lib/submenuNav';
 import type { StudentProgressReport } from '../../lib/progress/types';
+import { subscribeStudentJournal } from '../../lib/studentDemo';
+import { exportProgressPacket } from '../../lib/progress/format';
 import { loadStudentReport, saveStudentReport } from '../../lib/studentEdition';
 
 export function useStudentPath() {
@@ -26,6 +28,12 @@ export function useStudentFile() {
     const saved = saveStudentReport(localStorage, next);
     setReport(saved);
     return saved;
+  }, []);
+  useEffect(() => {
+    return subscribeStudentJournal(() => {
+      const next = loadStudentReport(localStorage);
+      setReport((current) => (exportProgressPacket(current) === exportProgressPacket(next) ? current : next));
+    });
   }, []);
   return { report, commit };
 }

@@ -18,11 +18,13 @@ import { assessmentReportPdf, progressReportPdf } from './reportPdf.ts';
 import { pdfToText } from './simplePdf.ts';
 import {
   ASSESSMENT_AREAS,
+  ASSESSMENT_STORAGE_KEY,
   emptyAssessments,
   loadAssessments,
   writeAssessments,
   type AssessmentState,
 } from './studentAssessment.ts';
+import { forgetStudentBackupStamp } from './studentBackupStamp.ts';
 import { loadStudentReport, saveStudentReport, todayIso } from './studentEdition.ts';
 import {
   FILM_STORAGE_KEY,
@@ -497,12 +499,17 @@ export function filmBlobsFromBackup(file: StudentBackupFile): { id: string; blob
 export function clearStudentMemory(storage: MemoryStore): void {
   const blank = loadStudentReport({ getItem: () => null });
   saveStudentReport(storage, blank);
-  storage.setItem('matboard.studentEdition.assessment.v1', JSON.stringify(emptyAssessments()));
+  if (storage.removeItem) storage.removeItem(ASSESSMENT_STORAGE_KEY);
+  else storage.setItem(ASSESSMENT_STORAGE_KEY, JSON.stringify(emptyAssessments()));
   storage.setItem(SCOUTING_STORAGE_KEY, JSON.stringify({ version: 1, cards: [] }));
   storage.setItem(RANK_PHOTO_KEY, JSON.stringify(emptyRankPhotoStore()));
   storage.setItem(BRACKET_PHOTO_KEY, JSON.stringify({}));
   storage.setItem(FILM_STORAGE_KEY, JSON.stringify({ version: 1, films: [] }));
   saveCoachShelf(storage, { plan: null, feedback: null });
+  // localStorage.removeItem throws if it is pulled off the store, so keep it bound.
+  if (typeof storage.removeItem === 'function') {
+    forgetStudentBackupStamp({ removeItem: storage.removeItem.bind(storage) });
+  }
 }
 
 export function connectedBackupTargets(storage: MemoryStore): StudentDriveLink[] {

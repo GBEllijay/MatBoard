@@ -8,7 +8,13 @@ import { joinJournalNotes, splitJournalNotes } from './journalNotes.ts';
 import { FUNDAMENTALS_CATALOG } from './progress/catalog.ts';
 import { emptyCompetition, matchingGameTags } from './progress/competition.ts';
 import { emptyRank } from './studentRank.ts';
-import { beginAppStudentSave, endAppStudentSave, noteAppStudentSave } from './studentDemo.ts';
+import {
+  beginAppStudentSave,
+  endAppStudentSave,
+  isBundledMockStudentPayload,
+  noteAppStudentSave,
+  studentDemoRequested,
+} from './studentDemo.ts';
 import { isStudentEditionUnlocked } from './studentUnlock.ts';
 import { exportProgressPacket, parseProgressPacket, searchJournal, searchJournalClips, techniqueDrilledLabel } from './progress/format.ts';
 import { shareTournaments } from './sharedTournaments.ts';
@@ -182,17 +188,25 @@ export function blankStudentReport(now = Date.now()): StudentProgressReport {
   };
 }
 
-export function loadStudentReport(storage: Pick<Storage, 'getItem'>): StudentProgressReport {
+export function loadStudentReport(storage: Pick<Storage, 'getItem'> & { removeItem?: (key: string) => void }): StudentProgressReport {
   const raw = storage.getItem(STUDENT_EDITION_STORAGE_KEY);
   if (!raw) return blankStudentReport();
+  if (!studentDemoRequested() && isBundledMockStudentPayload(raw)) {
+    storage.removeItem?.(STUDENT_EDITION_STORAGE_KEY);
+    return blankStudentReport();
+  }
   const parsed = parseProgressPacket(raw);
   if (!parsed.ok || parsed.value.kind !== 'student-progress-report') return blankStudentReport();
   return shareTournaments(parsed.value);
 }
 
 export function saveStudentReport(storage: MemoryStore, report: StudentProgressReport): StudentProgressReport {
-  const shared = shareTournaments(report);
-  const text = exportProgressPacket(shared);
+  let shared = shareTournaments(report);
+  let text = exportProgressPacket(shared);
+  if (!studentDemoRequested() && isBundledMockStudentPayload(text)) {
+    shared = blankStudentReport(shared.updatedAt);
+    text = exportProgressPacket(shared);
+  }
   const parsed = parseProgressPacket(text);
   if (!parsed.ok || parsed.value.kind !== 'student-progress-report') {
     const errors = parsed.ok ? ['Student Edition file was not a progress report.'] : parsed.errors;

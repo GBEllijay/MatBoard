@@ -10,13 +10,17 @@ import {
   formatWeightDelta,
   isUpcomingTournament,
   resolvedGoal,
+  soonestUpcomingTournament,
   toTargetColumn,
+  tournamentIsMock,
   weightCountdown,
   weightToTarget,
   weightUnitLabel,
   type ResolvedGoal,
 } from '../../lib/progress/competition';
 import { addWeighIn, removeWeighIn, setGoalWeight, setTournamentTarget, setWeighDate, setWeightUnit } from '../../lib/studentCompetition';
+import { studentDemoRequested } from '../../lib/studentDemo';
+import { ADD_TOURNAMENT_LABEL } from '../../lib/studentHubMenu';
 import { todayIso } from '../../lib/studentEdition';
 import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './chrome';
 import { Link } from 'react-router-dom';
@@ -35,9 +39,12 @@ export function WeightPage() {
   const points = chartPoints(competition.weighIns, unit);
   const goal = resolvedGoal(competition, today);
   const chartTarget = goal == null ? null : convertWeight(goal.weight, goal.unit, unit);
+  const includeMock = studentDemoRequested();
   const upcoming = competition.tournaments
+    .filter((tournament) => includeMock || !tournamentIsMock(tournament))
     .filter((tournament) => isUpcomingTournament(tournament, today))
     .sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name));
+  const nextEvent = soonestUpcomingTournament(competition.tournaments, today, includeMock);
   const notes = shown.filter((row) => row.note.trim());
 
   return (
@@ -51,6 +58,8 @@ export function WeightPage() {
               date={competition.weighDate ?? ''}
               today={today}
               competition={competition}
+              includeMock={includeMock}
+              addHref={nextEvent ? '' : to('/student/competitor')}
               onSave={(value) => commit(setWeighDate(report, value))}
             />
             <p className="student-quiet">Weigh-ins stay on this phone. Advantage does not host them.</p>
@@ -158,14 +167,18 @@ function WeightCountdownBlock({
   date,
   today,
   competition,
+  includeMock,
+  addHref,
   onSave,
 }: {
   date: string;
   today: string;
   competition: ReturnType<typeof competitionOf>;
+  includeMock: boolean;
+  addHref: string;
   onSave: (value: string) => void;
 }) {
-  const countdown = weightCountdown(competition, today);
+  const countdown = weightCountdown(competition, today, { includeMock });
   const [value, setValue] = useState(countdown?.date ?? date);
   const [error, setError] = useState('');
   useEffect(() => {
@@ -180,6 +193,15 @@ function WeightCountdownBlock({
         : countdown.date;
   return (
     <div className="weight-count-block">
+      {addHref ? (
+        <div className="weight-empty">
+          <p className="weight-empty__title">No tournament yet</p>
+          <p className="student-quiet">The countdown follows your soonest upcoming tournament.</p>
+          <Link className="ink-btn ink-btn--save" to={addHref}>
+            {ADD_TOURNAMENT_LABEL}
+          </Link>
+        </div>
+      ) : null}
       <p className="weight-count" role="status" aria-live="polite">
         <span className="weight-count__days">{label}</span>
         <span className="ink__label">{countdown == null ? 'Competition weigh-in' : 'Until weigh-in'}</span>

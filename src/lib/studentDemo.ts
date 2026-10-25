@@ -2,9 +2,10 @@
  * The stress-test Send-to-coach file is a black belt, 3 stripes,
  * Pan Pacific Championship (mock), and a 181.4 lb goal. It is a fixture
  * for tests. A new journal must not pick it up from a late localStorage
- * write. Import, backup, and any other save through saveStudentReport
- * still store whatever the student confirmed, including that file.
- * ?demo=1 and ?demo=paige are the only preview switches that allow a raw write.
+ * write, and it is not a saved journal. A save through saveStudentReport
+ * keeps a real journal. This file is kept only when the page asked for the
+ * demo. ?demo=1 and ?demo=paige are the only preview switches. ?student=1
+ * opens the journal and does not load the demo.
  */
 
 export const STUDENT_FILE_STORAGE_KEY = 'matboard.studentEdition.v1';
@@ -29,6 +30,24 @@ let appSaveDepth = 0;
 let lastAppSaved: string | null = null;
 let guardInstalled = false;
 let otherTabWrote = false;
+let readDemoSearch: () => string = () => (typeof window === 'undefined' ? '' : window.location.search);
+const journalListeners = new Set<() => void>();
+
+/** True only for ?demo=1 and ?demo=paige. ?student=1 does not turn the demo on. */
+export function studentDemoRequested(): boolean {
+  return explicitStudentDemo(readDemoSearch());
+}
+
+export function subscribeStudentJournal(listener: () => void): () => void {
+  journalListeners.add(listener);
+  return () => {
+    journalListeners.delete(listener);
+  };
+}
+
+function notifyStudentJournal(): void {
+  for (const listener of journalListeners) listener();
+}
 
 export function noteStudentStorageEvent(key: string | null): void {
   if (key === STUDENT_FILE_STORAGE_KEY) otherTabWrote = true;
@@ -85,20 +104,24 @@ export function shouldDropUnsolicitedStudentWrite(key: string, value: unknown, s
 }
 
 /**
- * If the stress-test file showed up without an app save, put the journal back.
- * Another tab's write is left alone. A file already stored when this page
- * opened is lastAppSaved, so an existing journal is not removed.
+ * The stress-test file is not a journal. Drop it unless this page asked for
+ * the demo. A real journal this phone already saved is put back. Another
+ * tab's real journal is left alone.
  */
 export function reconcileStudentStorage(storage: StorageLike, search: string): void {
-  if (!guardInstalled || otherTabWrote || appSaveDepth > 0 || explicitStudentDemo(search)) return;
+  if (!guardInstalled || appSaveDepth > 0 || explicitStudentDemo(search)) return;
   const raw = storage.getItem(STUDENT_FILE_STORAGE_KEY);
-  if (raw === lastAppSaved) return;
-  if (raw == null || !isBundledMockStudentPayload(raw)) {
-    lastAppSaved = raw;
+  if (raw && isBundledMockStudentPayload(raw)) {
+    if (lastAppSaved && !isBundledMockStudentPayload(lastAppSaved)) storage.setItem(STUDENT_FILE_STORAGE_KEY, lastAppSaved);
+    else {
+      storage.removeItem?.(STUDENT_FILE_STORAGE_KEY);
+      lastAppSaved = null;
+    }
+    notifyStudentJournal();
     return;
   }
-  if (lastAppSaved == null) storage.removeItem?.(STUDENT_FILE_STORAGE_KEY);
-  else storage.setItem(STUDENT_FILE_STORAGE_KEY, lastAppSaved);
+  if (otherTabWrote || raw === lastAppSaved) return;
+  lastAppSaved = raw;
 }
 
 export function installStudentMockGuard(
@@ -107,7 +130,14 @@ export function installStudentMockGuard(
 ): void {
   if (guardInstalled) return;
   guardInstalled = true;
-  lastAppSaved = storage.getItem(STUDENT_FILE_STORAGE_KEY);
+  readDemoSearch = readSearch;
+  const existing = storage.getItem(STUDENT_FILE_STORAGE_KEY);
+  if (existing && !explicitStudentDemo(readSearch()) && isBundledMockStudentPayload(existing)) {
+    storage.removeItem?.(STUDENT_FILE_STORAGE_KEY);
+    lastAppSaved = null;
+  } else {
+    lastAppSaved = existing;
+  }
   const original = storage.setItem.bind(storage);
   storage.setItem = (key: string, value: string) => {
     if (shouldDropUnsolicitedStudentWrite(key, value, readSearch())) return;
@@ -126,4 +156,6 @@ export function resetStudentMockGuardForTests(): void {
   lastAppSaved = null;
   guardInstalled = false;
   otherTabWrote = false;
+  readDemoSearch = () => (typeof window === 'undefined' ? '' : window.location.search);
+  journalListeners.clear();
 }
