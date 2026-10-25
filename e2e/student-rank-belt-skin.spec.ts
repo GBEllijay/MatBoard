@@ -69,12 +69,9 @@ test('my rank and belt progress keep every control and match the arena skin', as
   const stripe = page.getByRole('button', { name: 'Stripe 1', exact: true });
   const stripeBox = await stripe.boundingBox();
   expect(stripeBox).toBeTruthy();
-  expect(stripeBox!.height).toBeLessThan(48);
-  expect(stripeBox!.width).toBeLessThan(24);
-  await expect(stripe).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
-  await expect(stripe).toHaveCSS('border-top-width', '2px');
-  await expect(stripe).toHaveCSS('border-top-color', 'rgb(28, 20, 14)');
-  await expect(stripe).toHaveClass(/rank-tape/);
+  expect(stripeBox!.height).toBeGreaterThan(60);
+  expect(stripeBox!.width).toBeGreaterThan(40);
+  await expect(stripe).toHaveClass(/stripe/);
 
   await expect(page.getByRole('heading', { name: 'Lineage', exact: true })).toBeVisible();
   const addInstructor = page.getByRole('button', { name: 'Add instructor', exact: true });

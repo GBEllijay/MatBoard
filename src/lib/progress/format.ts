@@ -6,6 +6,7 @@
 
 import { splitCombinedDivision } from '../divisionFields.ts';
 import { fundamentalLevelOf, isFundamentalLevel } from '../fundamentals.ts';
+import { highDatesForCount } from '../blackBeltDegrees.ts';
 import { expandLineage, stripeDateText } from '../studentRank.ts';
 import { asRecord } from '../plainValue.ts';
 import { canonicalFundamentalsCatalogId } from './catalog.ts';
@@ -42,6 +43,8 @@ import {
   PROGRESS_RANK_HISTORY_MAX,
   PROGRESS_RESULTS_MAX,
   PROGRESS_PACKET_KINDS,
+  BLACK_DEGREE_MAX,
+  FINAL_RANK_BELTS,
   RANK_BELTS,
   RANK_TAPE_MAX,
   PROGRESS_SCHEMA_VERSION,
@@ -83,6 +86,7 @@ import {
   type JournalEntry,
   type ProgressBelt,
   type ProgressMerge,
+  type HighDegreeDates,
   type RankBelt,
   type RankHistory,
   type RankPicture,
@@ -241,7 +245,7 @@ export function parseProgressValue(raw: unknown): ProgressParse {
     const clips = readClips(record.clips, errors);
     if (clips) value.clips = clips;
     value.competition = readCompetition(record, value.journal, errors);
-    const rank = readRank(record.rank, errors);
+    const rank = readRank(record.rank, value.profile.belt, errors);
     if (rank) value.rank = rank;
     return errors.length ? { ok: false, errors } : { ok: true, value };
   }
@@ -981,21 +985,25 @@ function readClips(value: unknown, errors: string[]): JournalClip[] | undefined 
   return clips;
 }
 
-function readRank(value: unknown, errors: string[]): StudentRank | undefined {
+function readRank(value: unknown, belt: ProgressBelt, errors: string[]): StudentRank | undefined {
   if (value == null) return undefined;
   const record = asRecord(value);
   if (!record) {
     errors.push('Rank must be an object.');
     return undefined;
   }
-  const tapeCount = readTapeCount(record.tapeCount, 'Rank tape count', errors);
-  const tapeDates = readTapeDates(record.tapeDates, 'Rank tape dates', errors);
+  const max = belt === 'black' ? BLACK_DEGREE_MAX : RANK_TAPE_MAX;
+  const tapeCount = readTapeCount(record.tapeCount, 'Rank tape count', errors, max);
+  const tapeDates = readTapeDates(record.tapeDates, 'Rank tape dates', errors, max);
   const rank: StudentRank = {
     tapeCount,
     awardedOn: readDate(record.awardedOn, 'Rank awarded on', errors, false),
-    tapeDates: maskTapeDates(tapeDates, tapeCount),
+    tapeDates: maskTapeDates(tapeDates.dates, tapeCount),
     history: readRankHistory(record.history, errors),
   };
+  const high = highDatesForCount(readOptionalHigh(record.highDegreeDates, 'Rank degree dates', errors) ?? tapeDates.extra, tapeCount);
+  if (high) rank.highDegreeDates = high;
+  readInstructor(record, rank, errors, 'Rank');
   if (Object.prototype.hasOwnProperty.call(record, 'lineage')) rank.lineage = readLineage(record.lineage, errors);
   if (typeof record.pictureNote === 'string') {
     rank.pictureNote = readString(record.pictureNote, 'Rank photo note', PROGRESS_NOTE_MAX, errors);
@@ -1069,10 +1077,12 @@ function readRankPicture(value: unknown, index: number, errors: string[]): RankP
     errors.push(`${label} must be a compressed image.`);
     return null;
   }
-  const picture: RankPicture = { belt: readRankBelt(record.belt, `${label} belt`, errors), image };
+  const pictureBelt = readRankBelt(record.belt, `${label} belt`, errors);
+  const picture: RankPicture = { belt: pictureBelt, image };
   if (record.tapeIndex != null && record.tapeIndex !== '') {
-    const tapeIndex = readTapeCount(record.tapeIndex, `${label} tape`, errors);
-    if (tapeIndex >= RANK_TAPE_MAX) errors.push(`${label} tape must be 0 to 3.`);
+    const tapeMax = pictureBelt === 'black' ? BLACK_DEGREE_MAX : RANK_TAPE_MAX;
+    const tapeIndex = readTapeCount(record.tapeIndex, `${label} tape`, errors, tapeMax);
+    if (tapeIndex >= tapeMax) errors.push(pictureBelt === 'black' ? `${label} tape must be 0 to 5.` : `${label} tape must be 0 to 3.`);
     else picture.tapeIndex = tapeIndex;
   }
   return picture;
@@ -1092,44 +1102,89 @@ function readRankHistoryRow(value: unknown, index: number, errors: string[]): Ra
     errors.push(`${label} must be an object.`);
     return { id: '', belt: 'white', awardedOn: '', tapeCount: 0, tapeDates: blankTapeDates() };
   }
-  const tapeCount = readTapeCount(record.tapeCount, `${label} tape count`, errors);
-  const tapeDates = readTapeDates(record.tapeDates, `${label} tape dates`, errors);
-  return {
+  const belt = readRankBelt(record.belt, `${label} belt`, errors);
+  const max = belt === 'black' ? BLACK_DEGREE_MAX : RANK_TAPE_MAX;
+  const tapeCount = readTapeCount(record.tapeCount, `${label} tape count`, errors, max);
+  const tapeDates = readTapeDates(record.tapeDates, `${label} tape dates`, errors, max);
+  const row: RankHistory = {
     id: readId(record.id, `${label} id`, errors),
-    belt: readRankBelt(record.belt, `${label} belt`, errors),
+    belt,
     awardedOn: readDate(record.awardedOn, `${label} date`, errors, false),
     tapeCount,
-    tapeDates: maskTapeDates(tapeDates, tapeCount),
+    tapeDates: maskTapeDates(tapeDates.dates, tapeCount),
   };
+  const high = highDatesForCount(readOptionalHigh(record.highDegreeDates, `${label} degree dates`, errors) ?? tapeDates.extra, tapeCount);
+  if (belt === 'black' && high) row.highDegreeDates = high;
+  readInstructor(record, row, errors, label);
+  return row;
 }
 
 function readRankBelt(value: unknown, label: string, errors: string[]): RankBelt {
-  if (typeof value === 'string' && (RANK_BELTS as readonly string[]).includes(value)) return value as RankBelt;
+  if (typeof value === 'string' && ((RANK_BELTS as readonly string[]).includes(value) || (FINAL_RANK_BELTS as readonly string[]).includes(value))) {
+    return value as RankBelt;
+  }
   errors.push(`${label} must be white, blue, purple, brown, or black.`);
   return 'white';
 }
 
-function readTapeCount(value: unknown, label: string, errors: string[]): number {
+function readTapeCount(value: unknown, label: string, errors: string[], max = RANK_TAPE_MAX): number {
   if (value == null || value === '') return 0;
-  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > RANK_TAPE_MAX) {
-    errors.push(`${label} must be a whole number from 0 to 4.`);
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > max) {
+    errors.push(`${label} must be a whole number from 0 to ${max}.`);
     return 0;
   }
   return value;
 }
 
-function readTapeDates(value: unknown, label: string, errors: string[]): RankTapeDates {
+function readTapeDates(
+  value: unknown,
+  label: string,
+  errors: string[],
+  max = RANK_TAPE_MAX,
+): { dates: RankTapeDates; extra?: HighDegreeDates } {
   const dates = blankTapeDates();
-  if (value == null) return dates;
+  if (value == null) return { dates };
   if (!Array.isArray(value)) {
     errors.push(`${label} must be a list.`);
-    return dates;
+    return { dates };
   }
-  if (value.length > RANK_TAPE_MAX) errors.push(`${label} has more than 4 dates.`);
+  if (value.length > max) errors.push(max === RANK_TAPE_MAX ? `${label} has more than 4 dates.` : `${label} has more than ${max} dates.`);
   for (let index = 0; index < Math.min(value.length, RANK_TAPE_MAX); index += 1) {
     dates[index] = readOptionalStripeDate(value[index]);
   }
+  if (max <= RANK_TAPE_MAX || value.length <= RANK_TAPE_MAX) return { dates };
+  const extra: HighDegreeDates = ['', ''];
+  for (let index = 0; index < Math.min(2, value.length - RANK_TAPE_MAX); index += 1) {
+    extra[index] = readOptionalStripeDate(value[RANK_TAPE_MAX + index]);
+  }
+  return { dates, extra };
+}
+
+function readOptionalHigh(value: unknown, label: string, errors: string[]): HighDegreeDates | undefined {
+  if (value == null) return undefined;
+  if (!Array.isArray(value)) {
+    errors.push(`${label} must be a list.`);
+    return undefined;
+  }
+  if (value.length > 2) errors.push(`${label} has more than 2 dates.`);
+  const dates: HighDegreeDates = ['', ''];
+  for (let index = 0; index < Math.min(2, value.length); index += 1) dates[index] = readOptionalStripeDate(value[index]);
   return dates;
+}
+
+function readInstructor(
+  record: Record<string, unknown>,
+  target: { instructorBars?: boolean; instructorBarsOn?: string },
+  errors: string[],
+  label: string,
+): void {
+  if (record.instructorBars === true) target.instructorBars = true;
+  else if (record.instructorBars != null && record.instructorBars !== false) {
+    errors.push(`${label} instructor bars must be true or false.`);
+  }
+  if (record.instructorBarsOn == null || record.instructorBarsOn === '') return;
+  const date = readDate(record.instructorBarsOn, `${label} instructor bars date`, errors, false);
+  if (date) target.instructorBarsOn = date;
 }
 
 /** A stripe date is optional. Blank, missing, or unreadable values stay empty and still count. */
@@ -1145,7 +1200,8 @@ function blankTapeDates(): RankTapeDates {
 
 function maskTapeDates(dates: RankTapeDates, tapeCount: number): RankTapeDates {
   const next = blankTapeDates();
-  for (let index = 0; index < tapeCount; index += 1) next[index] = dates[index] ?? '';
+  const kept = Math.min(tapeCount, RANK_TAPE_MAX);
+  for (let index = 0; index < kept; index += 1) next[index] = dates[index] ?? '';
   return next;
 }
 
@@ -2285,11 +2341,12 @@ function rankCsvRow(
   sheet: string,
   id: string,
   belt: string,
-  rank: { awardedOn: string; tapeCount: number; tapeDates: readonly string[] },
+  rank: { awardedOn: string; tapeCount: number; tapeDates: readonly string[]; highDegreeDates?: readonly string[] },
   parentId: string,
   note: string,
 ): string {
-  const dates = (rank.tapeDates ?? [])
+  const dates = [...(rank.tapeDates ?? []), ...(rank.highDegreeDates ?? [])]
+    .slice(0, rank.tapeCount)
     .map((date, index) => {
       const when = stripeDateText(date);
       return when ? `${index + 1} ${when}` : '';

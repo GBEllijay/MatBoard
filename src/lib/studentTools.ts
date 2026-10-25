@@ -50,7 +50,7 @@ export const GYM_SCHEDULE_STORAGE_KEY = 'matboard.schedule.v1';
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MARK_NOTE = /^(\d{4}-\d{2}-\d{2})(?: — ([\s\S]*))?$/;
 
-const ADULT_BELTS = ['white', 'blue', 'purple', 'brown', 'black', 'coral'] as const;
+const ADULT_BELTS = ['white', 'blue', 'purple', 'brown', 'black'] as const;
 const KIDS_BELTS = ['grey', 'yellow', 'orange', 'green'] as const;
 
 export const BELT_LABELS: Record<ProgressBelt, string> = {
@@ -64,6 +64,8 @@ export const BELT_LABELS: Record<ProgressBelt, string> = {
   orange: 'Orange',
   green: 'Green',
   coral: 'Coral',
+  redWhite: 'Red and white',
+  red: 'Red',
 };
 
 /** The four events a student adds. Kinds are the progress-file calendar kinds. */
@@ -117,14 +119,18 @@ export function calendarKindLabel(kind: CalendarKind): string {
   return CALENDAR_KIND_CHOICES.find((choice) => choice.kind === kind)?.label ?? (kind === 'note' ? 'Note' : 'Other');
 }
 
-/** Adult belts, white through coral, or the kids belts when the student is on that track. */
+/** Adult belts, white through black, plus coral and red only once the student wears one. Kids stay on their own line. */
 export function beltTrack(belt: ProgressBelt): readonly ProgressBelt[] {
-  return (KIDS_BELTS as readonly string[]).includes(belt) ? KIDS_BELTS : ADULT_BELTS;
+  if ((KIDS_BELTS as readonly string[]).includes(belt)) return KIDS_BELTS;
+  if (belt === 'coral') return [...ADULT_BELTS, 'coral'];
+  if (belt === 'redWhite') return [...ADULT_BELTS, 'coral', 'redWhite'];
+  if (belt === 'red') return [...ADULT_BELTS, 'coral', 'redWhite', 'red'];
+  return ADULT_BELTS;
 }
 
-/** Next belt on the adult line, or the kids line when the current belt is a kids belt. */
+/** Next colored belt. Black has degrees, not a jump to coral. */
 export function nextBelt(belt: ProgressBelt): ProgressBelt | null {
-  const line = beltTrack(belt);
+  const line: readonly ProgressBelt[] = (KIDS_BELTS as readonly string[]).includes(belt) ? KIDS_BELTS : ADULT_BELTS;
   const index = line.indexOf(belt);
   if (index < 0 || index >= line.length - 1) return null;
   return line[index + 1] ?? null;
@@ -376,22 +382,10 @@ export const STARTER_RUBRIC_LEVELS: RubricLevel[] = [
       criterion('brown', 'cross collar', 'Finish a cross collar choke.', 'sub.cross-collar', 'Cross collar choke'),
     ]),
   ]),
-  level('black', 'Black', [
-    checkpoint('black', 'pressure', 'Pressure', [
-      criterion('black', 'side control', 'Hold side control.', 'pos.side-control', 'Side control'),
-      criterion('black', 'mount', 'Hold mount.', 'pos.mount', 'Mount'),
-    ]),
-    checkpoint('black', 'guard', 'Guard', [
-      criterion('black', 'closed guard', 'Recover closed guard.', 'pos.closed-guard', 'Closed guard'),
-      criterion('black', 'hip bump', 'Finish a hip bump sweep.', 'sweep.hip-bump', 'Hip bump sweep'),
-    ]),
-  ]),
-  level('coral', 'Coral', [
-    checkpoint('coral', 'review', 'Review', [
-      criterion('coral', 'scissor sweep', 'Teach a scissor sweep.', 'sweep.scissor', 'Scissor sweep'),
-      criterion('coral', 'armbar', 'Teach an armbar from guard.', 'sub.armbar-guard', 'Armbar from guard'),
-    ]),
-  ]),
+  level('black', 'Black', []),
+  level('coral', 'Coral', []),
+  level('redWhite', 'Red and white', []),
+  level('red', 'Red', []),
   level('grey', 'Grey', [
     checkpoint('grey', 'positions', 'Positions', [
       criterion('grey', 'closed guard', 'Hold closed guard.', 'pos.closed-guard', 'Closed guard'),
