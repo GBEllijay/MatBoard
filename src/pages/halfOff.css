@@ -1,0 +1,227 @@
+/* Half-off handout. System font on Apple devices, Inter everywhere else. */
+@font-face {
+  font-family: Inter;
+  src: url('/fonts/Inter-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Inter;
+  src: url('/fonts/Inter-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+html:has(.half-off),
+body:has(.half-off),
+#root:has(.half-off) {
+  background: #08172e;
+  background-image: none;
+}
+
+.half-off-body,
+.half-off,
+.half-off * {
+  box-sizing: border-box;
+}
+
+.half-off-body {
+  margin: 0;
+  min-height: 100%;
+  background: #08172e;
+  color: #f7f8fb;
+}
+
+.half-off {
+  box-sizing: border-box;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: safe center;
+  padding:
+    calc(1.75rem + env(safe-area-inset-top, 0px))
+    calc(1.25rem + env(safe-area-inset-right, 0px))
+    calc(1.75rem + env(safe-area-inset-bottom, 0px))
+    calc(1.25rem + env(safe-area-inset-left, 0px));
+  text-align: center;
+  color: #f7f8fb;
+  background:
+    radial-gradient(120% 70% at 50% -8%, rgba(36, 78, 140, 0.55) 0%, rgba(8, 23, 46, 0) 58%),
+    #08172e;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.half-off__logo {
+  display: block;
+  width: 6.75rem;
+  height: 6.75rem;
+  border-radius: 50%;
+}
+
+.half-off__word {
+  margin: 1.15rem 0 0;
+  font-size: clamp(2.65rem, 12vw, 3.35rem);
+  font-weight: 700;
+  letter-spacing: 0.085em;
+  line-height: 0.95;
+  color: #fff;
+}
+
+.half-off__sub {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  max-width: 22rem;
+  margin: 0.95rem 0 0;
+  color: rgba(247, 248, 251, 0.88);
+  font-size: 1.0625rem;
+  font-weight: 400;
+  letter-spacing: -0.014em;
+  line-height: 1.35;
+  text-wrap: balance;
+}
+
+.half-off__board {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr 1fr;
+  width: min(100%, 22.5rem);
+  margin-top: 1.65rem;
+  border: 1.5px solid rgba(255, 255, 255, 0.88);
+  border-radius: 16px;
+  background: rgba(5, 14, 30, 0.35);
+}
+
+.half-off__lane,
+.half-off__clock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  min-height: 5.25rem;
+  padding: 0.75rem 0.35rem 0.85rem;
+}
+
+.half-off__clock {
+  border-left: 1px solid rgba(255, 255, 255, 0.32);
+  border-right: 1px solid rgba(255, 255, 255, 0.32);
+}
+
+.half-off__lane-name,
+.half-off__round {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  line-height: 1;
+}
+
+.half-off__lane-score,
+.half-off__time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1;
+}
+
+.half-off__lane-score {
+  color: #fff;
+  font-size: 2rem;
+}
+
+.half-off__time {
+  color: #ffd84a;
+  font-size: 1.7rem;
+}
+
+.half-off__pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  margin: 1.35rem 0 0;
+  padding: 0.55rem 1.05rem;
+  border-radius: 999px;
+  background: #ffcc00;
+  color: #10203c;
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.045em;
+  line-height: 1;
+}
+
+.half-off__go {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: min(100%, 22.5rem);
+  min-height: 3.5rem;
+  margin-top: 1.15rem;
+  padding: 0.85rem 1.25rem;
+  border-radius: 16px;
+  background: #fff;
+  color: #0b1b33;
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.1;
+  text-decoration: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.half-off__go:hover {
+  background: #f4f7fb;
+}
+
+.half-off__go:active {
+  transform: scale(0.985);
+}
+
+.half-off__go:focus-visible {
+  outline: 3px solid #ffcc00;
+  outline-offset: 3px;
+}
+
+@media (min-width: 720px) {
+  .half-off__logo {
+    width: 7.5rem;
+    height: 7.5rem;
+  }
+
+  .half-off__sub {
+    font-size: 1.125rem;
+  }
+}
+
+@media (max-height: 640px) {
+  .half-off {
+    justify-content: flex-start;
+    padding-top: calc(0.85rem + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(0.85rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .half-off__logo {
+    width: 5.25rem;
+    height: 5.25rem;
+  }
+
+  .half-off__word {
+    margin-top: 0.7rem;
+    font-size: 2.35rem;
+  }
+
+  .half-off__board {
+    margin-top: 1rem;
+  }
+
+  .half-off__lane,
+  .half-off__clock {
+    min-height: 4.4rem;
+  }
+}

@@ -16719,6 +16719,15 @@ a.plan-pick {
   background: rgba(239, 68, 68, 0.16);
 }
 
+.buy__half-off {
+  margin: 0;
+  color: var(--gold-2);
+  font-size: 0.92rem;
+  font-weight: 650;
+  letter-spacing: -0.011em;
+  line-height: 1.35;
+}
+
 .home--buy .home__inner {
   display: flex;
   flex-direction: column;
