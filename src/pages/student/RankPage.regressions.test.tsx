@@ -546,6 +546,35 @@ test('kids stripes sit on the adult belt row and change color in place', async (
   }
 });
 
+test('Grey/White stripes are empty after stepping back to zero and to White', async () => {
+  saveStudentReport(localStorage, setBeltMode(blankStudentReport(90), 'kids', 91));
+  const mounted = mount(<RankPage />);
+  try {
+    const filled = (label: string) => {
+      const stripe = labeled(label);
+      const style = stripe.getAttribute('style') ?? '';
+      return stripe.getAttribute('aria-pressed') === 'true' || stripe.classList.contains('is-on') || /#(?:d21f1f|121214|f4f1ea)/i.test(style);
+    };
+    await click(buttonNamed('Grey/White'));
+    await click(labeled('Stripe 4'));
+    await click(labeled('Stripe 1'));
+    await click(labeled('Stripe 4'));
+    await click(labeled('Stripe 1'));
+    await click(labeled('Stripe 3'));
+    assert.equal(filled('Stripe 1'), true);
+    const back = ['Stripe 3', 'Stripe 2', 'Stripe 1', 'Stripe 4', 'Stripe 3', 'Stripe 2', 'Stripe 1', 'Stripe 4', 'Stripe 3', 'Stripe 2', 'Stripe 1'];
+    for (const name of back) await click(labeled(name));
+    for (const slot of [1, 2, 3, 4]) assert.equal(filled(`Stripe ${slot}`), false);
+    await click(buttonNamed('White'));
+    for (const slot of [1, 2, 3, 4]) assert.equal(filled(`Grey/White stripe ${slot}`), false);
+    for (const belt of ['Grey', 'Yellow/White', 'Yellow', 'Orange/Black', 'Green/Black']) {
+      for (const slot of [1, 2, 3, 4]) assert.equal(filled(`${belt} stripe ${slot}`), false);
+    }
+  } finally {
+    unmount(mounted);
+  }
+});
+
 test('kids belt progress hides checkpoints and keeps them for adult', async () => {
   let report = setRankBelt(blankStudentReport(70), 'blue', 71);
   report = setBeltMode(report, 'kids', 72);

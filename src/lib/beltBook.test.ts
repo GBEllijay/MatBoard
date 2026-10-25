@@ -5,6 +5,7 @@ import {
   addClassDot,
   ageWarning,
   beltModeOf,
+  compactSlotCount,
   compactSlots,
   currentKidsBelt,
   kidsLadder,
@@ -197,6 +198,54 @@ test('compact stripes fill white, then turn red, then black', () => {
   assert.equal(ink.get('Yellow/Black'), 'navy');
   assert.equal(ink.get('Yellow'), 'navy');
   assert.equal(ink.get('Grey'), 'navy');
+});
+
+test('stepping a kids belt back to zero clears every slot, including after a demotion', () => {
+  const full = ibjjfMonthlyTapes(false);
+  const white = '#f4f1ea';
+  const red = '#d21f1f';
+  let count = full.length;
+  while (count > 0) {
+    const slots = compactSlots(full, count);
+    if (count <= 4) {
+      assert.equal(slots.filter((slot) => slot.on).length, count);
+      assert.ok(slots.every((slot) => !slot.on || slot.color === white));
+    }
+    if (count === 5) assert.deepEqual(slots.map((slot) => slot.color), [red, white, white, white]);
+    let stepped = count;
+    for (let slot = 1; slot <= compactSlotCount(full); slot += 1) {
+      if (tapeCountAfterTap(full, count, slot) === count - 1) {
+        stepped = count - 1;
+        break;
+      }
+    }
+    assert.equal(stepped, count - 1);
+    count = stepped;
+  }
+  assert.ok(compactSlots(full, 0).every((slot) => !slot.on && slot.color === ''));
+
+  let report = setBeltMode(blankStudentReport(50), 'kids', 51);
+  for (const belt of IBJJF_KIDS_TEMPLATE.belts) {
+    report = setKidsBelt(report, belt.id, 52);
+    report = setKidsTapeCount(report, belt.tapeColors.length, 53);
+    report = setKidsTapeCount(report, 0, 54);
+    assert.ok(compactSlots(currentKidsBelt(report).tapeColors, currentKidsBelt(report).tapeCount).every((slot) => !slot.on));
+    report = setKidsBelt(report, 'white', 55);
+    const left = kidsLadder(report).find((rung) => rung.beltId === belt.id);
+    assert.equal(left?.tapeCount, 0);
+    assert.ok(compactSlots(left?.tapeColors ?? [], left?.tapeCount ?? 0).every((slot) => !slot.on && slot.color === ''));
+  }
+
+  report = setKidsBelt(report, 'grey-white', 56);
+  report = setKidsTapeCount(report, 11, 57);
+  report = setKidsBelt(report, 'white', 58);
+  const shown = kidsLadder(report).find((rung) => rung.label === 'Grey/White');
+  assert.equal(shown?.tapeCount, 0);
+  assert.ok(compactSlots(shown?.tapeColors ?? full, 0).every((slot) => slot.color !== red));
+  assert.equal(report.beltBook?.kids?.history.some((row) => row.beltId === 'grey-white' && row.tapeCount === 11), true);
+  report = setKidsBelt(report, 'grey-white', 59);
+  report = setKidsBelt(report, 'white', 60);
+  assert.equal(report.beltBook?.kids?.history.some((row) => row.beltId === 'grey-white'), false);
 });
 
 test('an old file stays on adult belts, and a custom template can reorder belts', () => {

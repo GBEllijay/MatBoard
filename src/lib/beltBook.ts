@@ -190,7 +190,12 @@ export function kidsLadder(report: StudentProgressReport): KidsRung[] {
   const kids = normalizeKids(report.beltBook?.kids, template);
   const known = template.belts.some((belt) => belt.id === kids.beltId);
   const history = new Map(kids.history.map((row) => [row.beltId, row]));
-  const rungs = template.belts.map((belt) => rungFrom(belt, kids, history.get(belt.id)));
+  const currentIndex = template.belts.findIndex((belt) => belt.id === kids.beltId);
+  const rungs = template.belts.map((belt, index) => {
+    // A higher belt is not the one they wear. Old stripes stay in the history list, not on that cloth.
+    const past = index < currentIndex ? history.get(belt.id) : undefined;
+    return rungFrom(belt, kids, past);
+  });
   if (!known) rungs.unshift(savedRung(kids));
   return rungs;
 }
@@ -288,6 +293,8 @@ export function setKidsBelt(report: StudentProgressReport, beltId: string, now =
         tapeDates: kids.tapeDates.slice(0, kids.tapeCount),
       },
     ];
+  } else {
+    history = history.filter((row) => row.beltId !== kids.beltId);
   }
   book.kids = {
     beltId,
