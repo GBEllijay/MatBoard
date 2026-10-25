@@ -10,6 +10,7 @@ import {
   type StudentDriveLink,
 } from './academyPathway.ts';
 import { competitionOf } from './progress/competition.ts';
+import { shareTournaments } from './sharedTournaments.ts';
 import { PROGRESS_CSV_HEADERS, exportProgressCsv, parseProgressPacket, parseProgressValue } from './progress/format.ts';
 import { RANK_BELTS, type StudentProgressReport } from './progress/types.ts';
 import { RANK_PHOTO_KEY, emptyRankPhotoStore, type RankPhotoStore } from './rankPhotos.ts';
@@ -373,7 +374,7 @@ export function mergeStudentReports(local: StudentProgressReport, incoming: Stud
   const incomingComp = competitionOf(incoming);
   const rank = incomingNewer ? incoming.rank ?? local.rank ?? emptyRank() : local.rank ?? incoming.rank ?? emptyRank();
   const history = mergeById(local.rank?.history ?? [], incoming.rank?.history ?? [], (_left, right) => right);
-  return {
+  return shareTournaments({
     ...local,
     updatedAt: Math.max(local.updatedAt, incoming.updatedAt),
     profile: incomingNewer ? incoming.profile : local.profile,
@@ -395,7 +396,7 @@ export function mergeStudentReports(local: StudentProgressReport, incoming: Stud
       weighIns: mergeById(localComp.weighIns, incomingComp.weighIns, (_left, right) => right),
       results: mergeById(localComp.results, incomingComp.results, (_left, right) => right),
     },
-  };
+  });
 }
 
 function mergeAssessments(local: AssessmentState, incoming: AssessmentState): AssessmentState {

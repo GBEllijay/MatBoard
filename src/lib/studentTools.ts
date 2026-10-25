@@ -6,6 +6,9 @@
  */
 
 import { classesOnDay, formatClassTime, normalizeGymCalendar, WEEKDAY_LABELS, weekdayFromJsDay } from './gymCalendar.ts';
+import { competitionOf } from './progress/competition.ts';
+import { addTournament, removeTournament, updateTournament } from './studentCompetition.ts';
+import { applyTournamentEventDraft, tournamentMatchingName } from './sharedTournaments.ts';
 import {
   exportProgressCsv,
   exportProgressPacket,
@@ -229,17 +232,69 @@ export function addCalendarEvent(
   if (!isIsoDate(draft.date)) throw new Error('Date must be YYYY-MM-DD.');
   const title = draft.title.trim();
   if (!title) throw new Error('Add a title.');
-  if (report.calendar.length >= PROGRESS_CALENDAR_MAX) throw new Error('The calendar is full.');
   const time = (draft.time ?? '').trim();
   if (time && !CLOCK_RE.test(time)) throw new Error('Time must be HH:MM.');
   const repeat = draft.repeat ?? 'none';
   if (!(CALENDAR_REPEATS as readonly string[]).includes(repeat)) throw new Error('Pick how often it repeats.');
+  const name = title.slice(0, PROGRESS_NAME_MAX);
+  const note = draft.note.trim().slice(0, PROGRESS_NOTE_MAX);
+  if (draft.kind === 'other') {
+    const existing = tournamentMatchingName(report, name, draft.date);
+    const hasMirror = existing
+      ? report.calendar.some(
+          (event) =>
+            event.kind === 'other' &&
+            (event.tournamentId === existing.id ||
+              (event.date === existing.date && event.title.trim().toLowerCase() === existing.name.trim().toLowerCase())),
+        )
+      : false;
+    if (!hasMirror && report.calendar.length >= PROGRESS_CALENDAR_MAX) throw new Error('The calendar is full.');
+    let next = report;
+    if (!existing) {
+      next = addTournament(
+        next,
+        {
+          name,
+          date: draft.date,
+          location: note,
+          division: '',
+          weightClass: '',
+          deadline: '',
+          link: '',
+          status: 'considering',
+          targetWeight: '',
+          targetUnit: competitionOf(report).weightUnit,
+        },
+        now,
+      );
+    } else if (!existing.location.trim() && note) {
+      next = updateTournament(
+        next,
+        existing.id,
+        {
+          name: existing.name,
+          date: existing.date,
+          location: note,
+          division: existing.division,
+          weightClass: existing.weightClass ?? '',
+          deadline: existing.deadline,
+          link: existing.link,
+          status: existing.status,
+          targetWeight: existing.targetWeight == null ? '' : String(existing.targetWeight),
+          targetUnit: existing.targetUnit,
+        },
+        now,
+      );
+    }
+    return applyTournamentEventDraft(next, { date: draft.date, title: name, note, time, repeat }, now);
+  }
+  if (report.calendar.length >= PROGRESS_CALENDAR_MAX) throw new Error('The calendar is full.');
   const event: CalendarEvent = {
     id: newId('cal', now),
     date: draft.date,
-    title: title.slice(0, PROGRESS_NAME_MAX),
+    title: name,
     kind: draft.kind,
-    note: draft.note.trim().slice(0, PROGRESS_NOTE_MAX),
+    note,
   };
   if (time) event.time = time;
   if (repeat !== 'none') event.repeat = repeat;
@@ -247,8 +302,15 @@ export function addCalendarEvent(
 }
 
 export function removeCalendarEvent(report: StudentProgressReport, id: string, now = Date.now()): StudentProgressReport {
-  if (!report.calendar.some((event) => event.id === id)) return report;
-  return touch({ ...report, calendar: report.calendar.filter((event) => event.id !== id) }, now);
+  const event = report.calendar.find((item) => item.id === id);
+  if (!event) return report;
+  if (event.kind === 'other') {
+    const tournament =
+      competitionOf(report).tournaments.find((item) => item.id === event.tournamentId) ??
+      tournamentMatchingName(report, event.title, event.date);
+    if (tournament) return removeTournament(report, tournament.id, now);
+  }
+  return touch({ ...report, calendar: report.calendar.filter((item) => item.id !== id) }, now);
 }
 
 export function readGymSchedule(raw: string | null): { hints: GymHint[] } | null {
