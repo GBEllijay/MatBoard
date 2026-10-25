@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
 import test from 'node:test';
+import { HALF_OFF_CODE, HALF_OFF_PROMOTION_CODE_ID } from '../lib/halfOff.ts';
 import {
   checkoutFormFields,
   checkoutReturnUrls,
   isStripeCheckoutUrl,
+  lookupAllowlistedHalfOffPromotion,
   purchaseFromStripeEvent,
   readOptionalProMonthlyDiscountPrice,
   verifyStripeSignature,
@@ -33,6 +35,52 @@ test('checkout form uses the White price and allows a promo code field', () => {
   assert.equal(fields.get('allow_promotion_codes'), 'true');
   assert.equal(fields.get('discounts[0][promotion_code]'), null);
   assert.match(fields.get('success_url') ?? '', /\{CHECKOUT_SESSION_ID\}/);
+});
+
+test('half-off lookup honors only an active MEIA code and fails closed', async () => {
+  assert.equal(HALF_OFF_CODE, 'MEIA');
+  assert.equal(HALF_OFF_PROMOTION_CODE_ID, 'promo_1UUSYNARhGonKqrOgkxlh3wo');
+  const found = await lookupAllowlistedHalfOffPromotion('sk_test_123', async (input) => {
+    const url = String(input);
+    assert.match(url, /code=MEIA/);
+    assert.match(url, /active=true/);
+    assert.doesNotMatch(url, /WHITE499|SAVE50|promo_evil/);
+    return new Response(
+      JSON.stringify({ data: [{ id: HALF_OFF_PROMOTION_CODE_ID, code: 'MEIA', active: true }] }),
+      { status: 200 },
+    );
+  });
+  assert.equal(found, HALF_OFF_PROMOTION_CODE_ID);
+
+  const mismatch = await lookupAllowlistedHalfOffPromotion('sk_test_123', async () => {
+    return new Response(JSON.stringify({ data: [{ id: 'promo_other', code: 'OTHER', active: true }] }), {
+      status: 200,
+    });
+  });
+  assert.equal(mismatch, null);
+
+  const empty = await lookupAllowlistedHalfOffPromotion('sk_test_123', async () => {
+    return new Response(JSON.stringify({ data: [] }), { status: 200 });
+  });
+  assert.equal(empty, null);
+
+  const inactive = await lookupAllowlistedHalfOffPromotion('sk_test_123', async () => {
+    return new Response(
+      JSON.stringify({ data: [{ id: HALF_OFF_PROMOTION_CODE_ID, code: 'MEIA', active: false }] }),
+      { status: 200 },
+    );
+  });
+  assert.equal(inactive, null);
+
+  const failed = await lookupAllowlistedHalfOffPromotion('sk_test_123', async () => {
+    return new Response('expired', { status: 400 });
+  });
+  assert.equal(failed, null);
+
+  const thrown = await lookupAllowlistedHalfOffPromotion('sk_test_123', async () => {
+    throw new Error('network');
+  });
+  assert.equal(thrown, null);
 });
 
 test('a known promotion code is attached and the Stripe promo box is not also enabled', () => {

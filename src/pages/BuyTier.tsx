@@ -1,7 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { HalfOffCheckoutNote } from '../components/HalfOffCheckoutNote';
 import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
+import { useHalfOffArrival } from '../hooks/useHalfOffArrival';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
@@ -17,6 +19,7 @@ import {
 } from '../lib/productPrices';
 import { PRODUCTS_PATH, STUDENT_EDITION_NAME } from '../lib/productNames';
 import { rememberStudentPurchase, STUDENT_PRODUCT_ID, studentEditionOpen } from '../lib/studentEdition';
+import { buyCheckoutBody } from '../lib/halfOff';
 import { lookupWhiteEntitlement, type WhiteEntitlementStatus } from '../lib/whiteEntitlementClient';
 import { formatUsdFromCents, WHITE_CHECKOUT_API, WHITE_STRIPE_NOTE } from '../lib/whitePurchase';
 
@@ -80,6 +83,7 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [record, setRecord] = useState<WhiteEntitlementStatus | null>(null);
+  const halfOff = useHalfOffArrival();
   const proUnlocked = useProUnlocked();
   const studentDoor = studentEditionOpen(params, {
     pro: proUnlocked,
@@ -154,7 +158,7 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
       const response = await fetch(WHITE_CHECKOUT_API, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ product: tier.product }),
+        body: JSON.stringify(buyCheckoutBody({ product: tier.product, halfOffActive: halfOff })),
       });
       const body = (await response.json()) as { url?: string; error?: string };
       if (!response.ok || !body.url) {
@@ -186,6 +190,7 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
           </header>
 
           <form className="buy__card" onSubmit={(event) => void onSubmit(event)}>
+            <HalfOffCheckoutNote active={halfOff} />
             {checkout === 'success' ? (
               <p className="buy__status buy__status--ok" role="status">
                 {tier.product === 'pro'
