@@ -12,7 +12,8 @@ import { MemoryRouter } from 'react-router-dom';
 import { RANK_PHOTO_KEY } from '../../lib/rankPhotos.ts';
 import { blankStudentReport, saveStudentReport } from '../../lib/studentEdition.ts';
 import { setBeltMode } from '../../lib/beltBook.ts';
-import { setRankAwardedOn, setRankBelt, setRankTapeCount, setRankTapeDate } from '../../lib/studentRank.ts';
+import { INSTRUCTOR_BARS_LABEL } from '../../lib/blackBeltDegrees.ts';
+import { setInstructorBars, setInstructorBarsOn, setRankAwardedOn, setRankBelt, setRankTapeCount, setRankTapeDate } from '../../lib/studentRank.ts';
 import { BeltPage } from './BeltPage.tsx';
 import { RankPage } from './RankPage.tsx';
 
@@ -570,6 +571,110 @@ test('Grey/White stripes are empty after stepping back to zero and to White', as
     for (const belt of ['Grey', 'Yellow/White', 'Yellow', 'Orange/Black', 'Green/Black']) {
       for (const slot of [1, 2, 3, 4]) assert.equal(filled(`${belt} stripe ${slot}`), false);
     }
+  } finally {
+    unmount(mounted);
+  }
+});
+
+test('Black to Brown to Black and Coral to Black keep the black belt record', async () => {
+  let report = setRankBelt(blankStudentReport(90), 'black', 91);
+  report = setRankAwardedOn(report, '2010-01-02', 92);
+  report = setRankTapeCount(report, 2, 93);
+  report = setRankTapeDate(report, 0, '2013-03-04', 94);
+  report = setRankTapeDate(report, 1, '2016-05-06', 95);
+  report = setInstructorBars(report, true, 96);
+  report = setInstructorBarsOn(report, '2012-02-02', 97);
+  saveStudentReport(localStorage, report);
+  const mounted = mount(<RankPage />);
+  const historyLabels = () => [...document.querySelectorAll('.rank-history__label')].map((node) => node.textContent);
+  const storedRank = () =>
+    JSON.parse(localStorage.getItem('matboard.studentEdition.v1') ?? '{}') as {
+      profile?: { belt?: string };
+      rank?: {
+        tapeCount?: number;
+        awardedOn?: string;
+        instructorBars?: boolean;
+        instructorBarsOn?: string;
+        tapeDates?: string[];
+        history?: { belt?: string; tapeCount?: number; awardedOn?: string }[];
+      };
+    };
+  try {
+    assert.equal(buttonNamed('Black').getAttribute('aria-pressed'), 'true');
+    assert.equal(labeled('2nd degree').getAttribute('aria-pressed'), 'true');
+    assert.equal((labeled('Date of this belt') as HTMLInputElement).value, '2010-01-02');
+    assert.equal(labeled(INSTRUCTOR_BARS_LABEL).getAttribute('aria-checked'), 'true');
+    assert.equal((labeled('Instructor bars date') as HTMLInputElement).value, '2012-02-02');
+    assert.match(labeled('Stripe 1').textContent ?? '', /2013-03-04/);
+    assert.match(labeled('Stripe 2').textContent ?? '', /2016-05-06/);
+
+    await click(buttonNamed('Brown'));
+    assert.equal(buttonNamed('Brown').getAttribute('aria-pressed'), 'true');
+    assert.equal(labeled('2nd degree').getAttribute('aria-pressed'), 'true');
+    assert.equal((labeled('Date of Black belt') as HTMLInputElement).value, '2010-01-02');
+    assert.equal(labeled(INSTRUCTOR_BARS_LABEL).getAttribute('aria-checked'), 'true');
+    assert.deepEqual(historyLabels(), ['Black']);
+
+    await click(buttonNamed('Black'));
+    assert.equal(buttonNamed('Black').getAttribute('aria-pressed'), 'true');
+    assert.equal(labeled('2nd degree').getAttribute('aria-pressed'), 'true');
+    assert.equal((labeled('Date of this belt') as HTMLInputElement).value, '2010-01-02');
+    assert.equal((labeled('Instructor bars date') as HTMLInputElement).value, '2012-02-02');
+    assert.match(labeled('Stripe 1').textContent ?? '', /2013-03-04/);
+    assert.match(labeled('Stripe 2').textContent ?? '', /2016-05-06/);
+    assert.deepEqual(historyLabels(), []);
+    assert.equal(storedRank().rank?.tapeCount, 2);
+    assert.equal(storedRank().rank?.instructorBars, true);
+    assert.equal(storedRank().rank?.history?.length, 0);
+
+    await click(buttonNamed('Brown'));
+    await click(buttonNamed('Black'));
+    await click(buttonNamed('Brown'));
+    assert.deepEqual(historyLabels(), ['Black']);
+    assert.equal(storedRank().rank?.history?.filter((row) => row.belt === 'black').length, 1);
+
+    await click(buttonNamed('Black'));
+    await click(labeled('Coral, red and black'));
+    await typeControl(labeled('Date of this belt') as HTMLInputElement, '2024-08-09');
+    await click(buttonNamed('Black'));
+    assert.equal(labeled('2nd degree').getAttribute('aria-pressed'), 'true');
+    assert.equal((labeled('Date of this belt') as HTMLInputElement).value, '2010-01-02');
+    assert.equal(labeled(INSTRUCTOR_BARS_LABEL).getAttribute('aria-checked'), 'true');
+    assert.deepEqual(historyLabels(), ['Coral']);
+    await click(labeled('Coral, red and black'));
+    assert.equal((labeled('Date of this belt') as HTMLInputElement).value, '2024-08-09');
+    await click(buttonNamed('Black'));
+    await click(labeled('Coral, red and black'));
+    await click(buttonNamed('Black'));
+    assert.equal(storedRank().rank?.tapeCount, 2);
+    assert.equal(storedRank().rank?.awardedOn, '2010-01-02');
+    assert.equal(storedRank().rank?.instructorBarsOn, '2012-02-02');
+    assert.deepEqual(storedRank().rank?.tapeDates, ['2013-03-04', '2016-05-06', '', '']);
+    assert.equal(storedRank().rank?.history?.filter((row) => row.belt === 'coral').length, 1);
+    assert.equal(storedRank().rank?.history?.filter((row) => row.belt === 'black').length, 0);
+
+    await click(buttonNamed('Kids'));
+    await click(buttonNamed('Switch'));
+    assert.ok(document.querySelector('[aria-label="Kids belt ladder"]'));
+    await click(buttonNamed('Grey/White'));
+    await click(labeled('Stripe 1'));
+    assert.match(labeled('Stripe 1').getAttribute('style') ?? '', /#f4f1ea/i);
+    await click(buttonNamed('Add a class'));
+    assert.match(document.querySelector('.class-tally__count')?.textContent ?? '', /1 of 8/);
+    await click(buttonNamed('Yellow'));
+    await click(buttonNamed('Grey/White'));
+    assert.equal(buttonNamed('Grey/White').getAttribute('aria-pressed'), 'true');
+    const kids = storedRank() as {
+      beltBook?: { kids?: { beltId?: string; history?: { beltId?: string }[] } };
+      rank?: { tapeCount?: number };
+    };
+    assert.equal(kids.beltBook?.kids?.beltId, 'grey-white');
+    assert.equal(kids.rank?.tapeCount, 2);
+    await click(buttonNamed('Adult'));
+    await click(buttonNamed('Switch'));
+    assert.equal(buttonNamed('Black').getAttribute('aria-pressed'), 'true');
+    assert.equal(labeled('2nd degree').getAttribute('aria-pressed'), 'true');
+    assert.equal(labeled(INSTRUCTOR_BARS_LABEL).getAttribute('aria-checked'), 'true');
   } finally {
     unmount(mounted);
   }

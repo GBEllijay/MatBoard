@@ -581,6 +581,7 @@ export function setCheckpointMark(
   return touch({ ...report, rubric: { ...report.rubric, levels } }, now);
 }
 
+/** The belt the student wears. A saved belt comes back with its stripes, degrees, bars, and dates. */
 export function setStudentBelt(report: StudentProgressReport, belt: ProgressBelt, now = Date.now()): StudentProgressReport {
   return setRankBelt(report, belt, now);
 }
