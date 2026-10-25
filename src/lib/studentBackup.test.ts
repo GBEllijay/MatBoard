@@ -10,6 +10,7 @@ import {
   BACKUP_NOT_A_BACKUP,
   STUDENT_BACKUP_VIDEO_MAX_BYTES,
   applyBackupToMemory,
+  JOURNAL_BACKUP_LABEL,
   backupFileGuide,
   backupVideoTooLargeMessage,
   buildStudentBackup,
@@ -17,9 +18,12 @@ import {
   parseStudentBackup,
   pdfIncludes,
   studentBackupNames,
+  studentExportDetail,
+  videoFilesLine,
   progressReportLines,
   selfAssessmentLines,
 } from './studentBackup.ts';
+import { backupStampLabel, readStudentBackupStamp } from './studentBackupStamp.ts';
 import { emptyRankPhotoStore } from './rankPhotos.ts';
 import { textToPdf } from './simplePdf.ts';
 import type { StudentFilm } from './studentFilm.ts';
@@ -265,17 +269,45 @@ test('newline lineage migrates and both instructors survive backup and restore',
   assert.deepEqual(merged.rank?.lineage, ['Mestre Paulo Reis (mock)', 'Prof. Elena Duarte (mock)']);
 });
 
-test('the backup screen names the four files a backup writes', () => {
+test('each export names one file, and only the JSON backup restores the phone', () => {
   const names = studentBackupNames('2026-10-24');
   const guide = backupFileGuide('2026-10-24');
   assert.deepEqual(
     guide.map((file) => file.name),
     [names.json, names.csv, names.progressPdf, names.assessmentPdf],
   );
-  assert.match(guide[0].detail, /Merge or Replace/);
-  assert.match(guide[1].detail, /spreadsheet/);
-  assert.match(guide[2].detail, /print/);
-  assert.match(guide[3].detail, /self-assessment/);
+  assert.equal(guide[0]?.title, JOURNAL_BACKUP_LABEL);
+  assert.equal(guide[0]?.detail, studentExportDetail('json', '2026-10-24'));
+  assert.match(guide[0]?.detail ?? '', /Downloads advantage-student-backup-2026-10-24\.json/);
+  assert.match(guide[0]?.detail ?? '', /Merge or Replace/);
+  assert.match(guide[1]?.detail ?? '', /Spreadsheet/);
+  assert.match(guide[1]?.detail ?? '', /cannot restore/);
+  assert.match(guide[2]?.detail ?? '', /printable/);
+  assert.match(guide[3]?.detail ?? '', /self-assessment/);
+  assert.match(videoFilesLine(false), /^Video files: off/);
+  assert.match(videoFilesLine(true), /^Video files: on/);
+  assert.match(videoFilesLine(true), /JSON backup/);
+});
+
+test('only the JSON backup updates the last-backup stamp', async () => {
+  const storage = memory();
+  const report = journal('stamp me', 12);
+  const input = {
+    report,
+    assessment: { entries: [] },
+    scouting: [],
+    rankPhotos: emptyRankPhotoStore(),
+    bracketPhotos: {},
+    shelf: { plan: null, feedback: null },
+    films: [],
+    includeVideos: false,
+    now: new Date('2026-10-24T15:00:00Z'),
+    stampStorage: storage,
+  };
+  await buildStudentBackup({ ...input, recordStamp: false });
+  assert.equal(backupStampLabel(readStudentBackupStamp(storage)), 'Not yet');
+  await buildStudentBackup(input);
+  assert.equal(backupStampLabel(readStudentBackupStamp(storage)), '2026-10-24');
 });
 
 test('a video bundle over the backup cap explains itself', () => {

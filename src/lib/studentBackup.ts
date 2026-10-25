@@ -1,6 +1,6 @@
 /**
- * One importable backup of Student Edition data on this phone, plus CSV
- * and PDF copies of the main templates. Video bytes are optional.
+ * Student Edition backup, plus CSV and PDF copies of the main templates.
+ * The JSON file is the one Merge and Replace can restore. Video bytes are optional.
  * Advantage does not host the file.
  */
 
@@ -114,46 +114,79 @@ export function studentBackupNames(date: string) {
   };
 }
 
+export type StudentExportKind = 'json' | 'csv' | 'progressPdf' | 'assessmentPdf';
+
 export type BackupFileGuide = {
-  id: 'json' | 'csv' | 'progressPdf' | 'assessmentPdf';
+  id: StudentExportKind;
   title: string;
   name: string;
   detail: string;
 };
 
-/** Plain explanation of the four files Back up my journal writes. Names match the download. */
+export const JOURNAL_BACKUP_LABEL = 'Back up my journal (.json)';
+export const SPREADSHEET_EXPORT_LABEL = 'Download spreadsheet (.csv)';
+export const PROGRESS_PDF_LABEL = 'Download progress report (.pdf)';
+export const ASSESSMENT_PDF_LABEL = 'Download self-assessment (.pdf)';
+export const BACK_UP_FIRST_LABEL = 'Back up first (.json)';
+
+export function studentExportLabel(kind: StudentExportKind): string {
+  switch (kind) {
+    case 'json':
+      return JOURNAL_BACKUP_LABEL;
+    case 'csv':
+      return SPREADSHEET_EXPORT_LABEL;
+    case 'progressPdf':
+      return PROGRESS_PDF_LABEL;
+    case 'assessmentPdf':
+      return ASSESSMENT_PDF_LABEL;
+  }
+}
+
+export function studentExportBusyLabel(kind: StudentExportKind): string {
+  switch (kind) {
+    case 'json':
+      return 'Building journal backup…';
+    case 'csv':
+      return 'Building spreadsheet…';
+    case 'progressPdf':
+      return 'Building progress report…';
+    case 'assessmentPdf':
+      return 'Building self-assessment…';
+  }
+}
+
+/** Shown beside the include-videos switch. On means the JSON backup carries the files. */
+export function videoFilesLine(included: boolean): string {
+  return included
+    ? 'Video files: on. They are included in the JSON backup.'
+    : 'Video files: off. The JSON backup does not include video files.';
+}
+
+/** One line under each export button. The file name is the file that downloads. */
+export function studentExportDetail(kind: StudentExportKind, date: string): string {
+  const names = studentBackupNames(date);
+  switch (kind) {
+    case 'json':
+      return `Downloads ${names.json}. This is the file you restore with Merge or Replace.`;
+    case 'csv':
+      return `Downloads ${names.csv}. Spreadsheet rows for Excel or Sheets. This file cannot restore the phone.`;
+    case 'progressPdf':
+      return `Downloads ${names.progressPdf}. A printable page of rank, journal, and competition.`;
+    case 'assessmentPdf':
+      return `Downloads ${names.assessmentPdf}. A printable page of the seven areas and check-in notes.`;
+  }
+}
+
+/** Names and one-line descriptions for the four exports. A backup click writes only the JSON. */
 export function backupFileGuide(date: string): BackupFileGuide[] {
   const names = studentBackupNames(date);
-  return [
-    {
-      id: 'json',
-      title: 'Journal backup',
-      name: names.json,
-      detail:
-        'The full copy of Student Edition on this phone: journal, rank, belt progress, competition, self-assessment, scouting, and coach notes saved here. Video files are included only when that box is checked. Use this file to restore with Merge or Replace, or to move the journal to another phone. The other three files cannot restore the phone.',
-    },
-    {
-      id: 'csv',
-      title: 'Spreadsheet',
-      name: names.csv,
-      detail:
-        'The same journal, self-assessment, scouting, and filmed-video rows in a spreadsheet. Use this when you want to open the rows in Excel or Sheets, or send a table to your coach.',
-    },
-    {
-      id: 'progressPdf',
-      title: 'Progress report',
-      name: names.progressPdf,
-      detail:
-        'A printable report of rank, belt progress, fundamentals, journal, competition, self-assessment, scouting, and videos. Use this when you want a page to print or hand to your coach.',
-    },
-    {
-      id: 'assessmentPdf',
-      title: 'Self-assessment',
-      name: names.assessmentPdf,
-      detail:
-        'A printable report of the seven areas and your check-in notes. Use this when you want only the self-assessment, not the full progress report.',
-    },
-  ];
+  const kinds: StudentExportKind[] = ['json', 'csv', 'progressPdf', 'assessmentPdf'];
+  return kinds.map((id) => ({
+    id,
+    title: studentExportLabel(id),
+    name: names[id],
+    detail: studentExportDetail(id, date),
+  }));
 }
 
 function bytesToBase64(bytes: Uint8Array): string {
@@ -209,6 +242,9 @@ export async function buildStudentBackup(input: {
   blobs?: readonly BackupBlob[];
   includeVideos: boolean;
   now?: Date;
+  /** The JSON backup updates Last backup. Spreadsheet and PDF exports leave that stamp alone. */
+  recordStamp?: boolean;
+  stampStorage?: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> | null;
 }): Promise<{ file: StudentBackupFile; json: string; csv: string; progressPdf: Uint8Array; assessmentPdf: Uint8Array }> {
   const when = input.now ?? new Date();
   const films = [...input.films];
@@ -249,7 +285,7 @@ export async function buildStudentBackup(input: {
     if (omitted.length) file.filmFilesOmitted = omitted;
   }
   const issuedOn = todayIso(when);
-  noteStudentBackupBuilt(when);
+  if (input.recordStamp !== false) noteStudentBackupBuilt(when, input.stampStorage);
   return {
     file,
     json: JSON.stringify(file),

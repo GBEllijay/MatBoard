@@ -182,9 +182,11 @@ test('an undated stripe counts, can gain and lose a date, and survives backup', 
     downloads.push(download);
   });
   await page.goto('/student/connections?student=1');
-  await page.getByRole('button', { name: 'Back up my journal', exact: true }).click();
+  await page.getByRole('button', { name: 'Back up my journal (.json)', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('Saved on this phone');
-  await expect.poll(() => downloads.length).toBe(4);
+  await expect.poll(() => downloads.length).toBe(1);
+  await page.getByRole('button', { name: 'Download spreadsheet (.csv)', exact: true }).click();
+  await expect.poll(() => downloads.length).toBe(2);
   const json = downloads.find((download) => download.suggestedFilename().endsWith('.json'));
   const csv = downloads.find((download) => download.suggestedFilename().endsWith('.csv'));
   expect(json && csv).toBeTruthy();

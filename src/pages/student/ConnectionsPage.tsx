@@ -35,41 +35,26 @@ import {
 } from '../../lib/oneDrive';
 import { requestOneDriveConsent } from '../../lib/oneDriveAuth';
 import { loadRankPictures } from '../../lib/rankPhotos';
-import { pdfBlob } from '../../lib/simplePdf';
 import {
   BACKUP_BEFORE_CLEAR,
+  BACK_UP_FIRST_LABEL,
   BACKUP_REPLACE_WARN,
   CLEAR_CONFIRM_PHRASE,
   CLEAR_STUDENT_DATA_ITEMS,
   CLEAR_STUDENT_DEVICE_NOTE,
   applyBackupToMemory,
-  backupVideoTooLargeMessage,
-  buildStudentBackup,
   clearStudentMemory,
-  connectedBackupTargets,
   filmBlobsFromBackup,
   parseStudentBackup,
-  studentBackupNames,
+  studentExportBusyLabel,
   type StudentBackupFile,
+  type StudentExportKind,
 } from '../../lib/studentBackup';
-import { copyFilesToStudentDrive } from '../../lib/studentDriveCopy';
-import { loadStudentReport, todayIso } from '../../lib/studentEdition';
-import { clearFilmBlobs, getFilmBlob, loadFilms, putFilmBlob } from '../../lib/studentFilm';
-import { loadAssessments } from '../../lib/studentAssessment';
-import { loadScouting } from '../../lib/studentScouting';
-import { loadCoachShelf } from '../../lib/studentTools';
+import { runStudentEditionExport } from '../../lib/studentBackupExport';
+import { backupStampLabel, readStudentBackupStamp } from '../../lib/studentBackupStamp';
+import { clearFilmBlobs, putFilmBlob } from '../../lib/studentFilm';
 import { LeatherHeader, StudentMarks, useStudentPath } from './chrome';
-
-function downloadBlob(filename: string, blob: Blob) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-}
+import { ExportChoices } from './ExportChoices';
 
 export function AcademyConnectPage() {
   return (
@@ -88,13 +73,16 @@ export function AcademyConnectPage() {
 export function ConnectionsPage() {
   const to = useStudentPath();
   const [includeVideos, setIncludeVideos] = useState(false);
-  const [backupBusy, setBackupBusy] = useState(false);
-  const backup = async () => {
-    setBackupBusy(true);
+  const [busyKind, setBusyKind] = useState<StudentExportKind | null>(null);
+  const [stamp, setStamp] = useState(() => backupStampLabel(readStudentBackupStamp(localStorage)));
+  const exportFile = async (kind: StudentExportKind) => {
+    setBusyKind(kind);
     try {
-      return await runStudentBackup(includeVideos);
+      const result = await runStudentEditionExport(kind, { includeVideos });
+      if (kind === 'json' && result.ok) setStamp(backupStampLabel(readStudentBackupStamp(localStorage)));
+      return result;
     } finally {
-      setBackupBusy(false);
+      setBusyKind(null);
     }
   };
   return (
@@ -105,7 +93,14 @@ export function ConnectionsPage() {
         <div className="student-sheet student-connections">
           <AcademyConnect />
           <PersonalDrive />
-          <ExportAndPrint to={to} includeVideos={includeVideos} setIncludeVideos={setIncludeVideos} backupBusy={backupBusy} onBackup={backup} />
+          <ExportAndPrint
+            to={to}
+            includeVideos={includeVideos}
+            setIncludeVideos={setIncludeVideos}
+            busyKind={busyKind}
+            stamp={stamp}
+            onExport={exportFile}
+          />
           <section className="ink" aria-label="Import from coach">
             <h2>Import from coach</h2>
             <p className="student-quiet">
@@ -115,54 +110,11 @@ export function ConnectionsPage() {
               Import from coach
             </Link>
           </section>
-          <ClearStudentData backupBusy={backupBusy} onBackup={backup} />
+          <ClearStudentData busyKind={busyKind} onBackup={() => exportFile('json')} />
         </div>
       </div>
     </main>
   );
-}
-
-async function runStudentBackup(includeVideos: boolean): Promise<{ ok: boolean; message: string }> {
-  try {
-    const films = loadFilms(localStorage);
-    const blobs = includeVideos
-      ? await Promise.all(films.map(async (film) => ({ id: film.id, blob: await getFilmBlob(film.id).catch(() => null) })))
-      : [];
-    const built = await buildStudentBackup({
-      report: loadStudentReport(localStorage),
-      assessment: loadAssessments(localStorage),
-      scouting: loadScouting(localStorage),
-      rankPhotos: loadRankPictures(),
-      bracketPhotos: loadBracketPhotos(),
-      shelf: loadCoachShelf(localStorage),
-      films,
-      blobs,
-      includeVideos,
-    });
-    const names = studentBackupNames(todayIso());
-    downloadBlob(names.json, new Blob([built.json], { type: 'application/json' }));
-    downloadBlob(names.csv, new Blob([built.csv], { type: 'text/csv' }));
-    downloadBlob(names.progressPdf, pdfBlob(built.progressPdf));
-    downloadBlob(names.assessmentPdf, pdfBlob(built.assessmentPdf));
-    const files = [
-      { name: names.json, bytes: new Blob([built.json], { type: 'application/json' }), mime: 'application/json' },
-      { name: names.csv, bytes: new Blob([built.csv], { type: 'text/csv' }), mime: 'text/csv' },
-      { name: names.progressPdf, bytes: pdfBlob(built.progressPdf), mime: 'application/pdf' },
-      { name: names.assessmentPdf, bytes: pdfBlob(built.assessmentPdf), mime: 'application/pdf' },
-    ];
-    const targets = connectedBackupTargets(localStorage);
-    if (!targets.length) return { ok: true, message: 'Saved on this phone. No academy folder or personal drive is connected.' };
-    const notes = ['Saved on this phone.'];
-    for (const target of targets) {
-      const copied = await copyFilesToStudentDrive(target, files);
-      if (copied.error) notes.push(`${providerLabel(target.provider)} did not take the copy. ${copied.error}`);
-      else notes.push(`Also saved in ${target.folderName} on ${providerLabel(target.provider)}.`);
-    }
-    return { ok: true, message: notes.join(' ') };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Could not build the backup.';
-    return { ok: false, message: message.includes('too large') ? message : message || backupVideoTooLargeMessage(0) };
-  }
 }
 
 function AcademyConnect({ showHeading = true }: { showHeading?: boolean }) {
@@ -501,25 +453,27 @@ function ExportAndPrint({
   to,
   includeVideos,
   setIncludeVideos,
-  backupBusy,
-  onBackup,
+  busyKind,
+  stamp,
+  onExport,
 }: {
   to: (path: string) => string;
   includeVideos: boolean;
   setIncludeVideos: (value: boolean) => void;
-  backupBusy: boolean;
-  onBackup: () => Promise<{ ok: boolean; message: string }>;
+  busyKind: StudentExportKind | null;
+  stamp: string;
+  onExport: (kind: StudentExportKind) => Promise<{ ok: boolean; message: string }>;
 }) {
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<StudentBackupFile | null>(null);
-  const working = busy || backupBusy;
+  const working = busy || busyKind !== null;
 
-  const backup = async () => {
+  const exportFile = async (kind: StudentExportKind) => {
     setError('');
     setStatus('');
-    const result = await onBackup();
+    const result = await onExport(kind);
     if (result.ok) setStatus(result.message);
     else setError(result.message);
   };
@@ -548,16 +502,19 @@ function ExportAndPrint({
     <section className="ink" aria-label="Export and print">
       <h2>Export and print</h2>
       <p className="student-quiet">
-        Back up my journal saves the journal, rank and stripes with dates, belt progress, competitor data, weight chart, self-assessment, tournaments, scouting, and video library. If your gym does not use Advantage, print the progress report or the self-assessment and hand that page to your instructor.
+        Back up my journal downloads one JSON file. That file restores this phone. Each other button downloads one file. If your gym does not use Advantage, print the progress report or the self-assessment and hand that page to your instructor.
       </p>
-      <label className="cal-gym-toggle">
-        <input type="checkbox" checked={includeVideos} onChange={(event) => setIncludeVideos(event.target.checked)} />
-        <span>Include video files kept on this phone</span>
-      </label>
-      <div className="student-clip__actions">
-        <button type="button" className="ink-btn ink-btn--save" disabled={working} onClick={() => void backup()}>
-          {backupBusy ? 'Building backup…' : 'Back up my journal'}
-        </button>
+      <ExportChoices
+        variant="paper"
+        includeVideos={includeVideos}
+        onIncludeVideos={setIncludeVideos}
+        locked={working}
+        busyKind={busyKind}
+        stamp={stamp}
+        showStamp
+        onExport={(kind) => void exportFile(kind)}
+      />
+      <div className="student-export">
         <Link className="ink-btn" to={to('/student/print/progress')}>
           Print progress report
         </Link>
@@ -608,10 +565,10 @@ function ExportAndPrint({
 }
 
 function ClearStudentData({
-  backupBusy,
+  busyKind,
   onBackup,
 }: {
-  backupBusy: boolean;
+  busyKind: StudentExportKind | null;
   onBackup: () => Promise<{ ok: boolean; message: string }>;
 }) {
   const [step, setStep] = useState<0 | 1 | 2>(0);
@@ -636,11 +593,11 @@ function ClearStudentData({
       ) : null}
       {step === 1 ? (
         <div className="student-confirm" role="group" aria-label="Back up before clear">
-          <p>{BACKUP_BEFORE_CLEAR} Back up first, then decide.</p>
+          <p>{BACKUP_BEFORE_CLEAR} Back up first downloads one JSON file, then decide.</p>
           <button
             type="button"
             className="ink-btn ink-btn--save"
-            disabled={backupBusy}
+            disabled={busyKind !== null}
             autoFocus
             onClick={() =>
               void onBackup().then((result) => {
@@ -654,7 +611,7 @@ function ClearStudentData({
               })
             }
           >
-            {backupBusy ? 'Building backup…' : 'Back up first'}
+            {busyKind === 'json' ? studentExportBusyLabel('json') : BACK_UP_FIRST_LABEL}
           </button>
           <button type="button" className="ink-btn" onClick={() => setStep(2)}>
             Continue without a backup
