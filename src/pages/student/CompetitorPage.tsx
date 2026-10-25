@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import {
   DIVISION_SUGGESTIONS,
   suggestionList,
@@ -24,9 +25,9 @@ import {
   type TournamentDraft,
 } from '../../lib/studentCompetition';
 import { todayIso } from '../../lib/studentEdition';
+import { legacyCompetitorAssessmentPath } from '../../lib/studentHubMenu';
 import { StudentMarks, useStudentFile, useStudentPath } from './chrome';
 import { JournalGate, RankHero } from './CompetitorLead';
-import { SelfAssessment } from './SelfAssessment';
 import { StandingGames } from './StandingGames';
 
 const STATUSES: { status: TournamentStatus; label: string }[] = [
@@ -65,6 +66,8 @@ function draftFromTournament(tournament: StudentTournament): TournamentDraft {
 }
 
 export function CompetitorPage() {
+  const location = useLocation();
+  const legacyAssessment = legacyCompetitorAssessmentPath(location.search, location.hash);
   const to = useStudentPath();
   const { report, commit } = useStudentFile();
   const competition = competitionOf(report);
@@ -99,6 +102,8 @@ export function CompetitorPage() {
     }
   };
 
+  if (legacyAssessment) return <Navigate to={legacyAssessment} replace />;
+
   return (
     <main className="student student-frame student--arena">
       <StudentMarks />
@@ -110,7 +115,16 @@ export function CompetitorPage() {
           </header>
           <div className="arena-tail">
             <JournalGate report={report} to={to} />
-            <SelfAssessment report={report} to={to} />
+            <section className="arena-block assess-gate" aria-label="Self-assessment">
+              <span className="arena-node" aria-hidden="true" />
+              <h2>Self-assessment</h2>
+              <p className="student-quiet">
+                Rate the work in front of you. 1 is early. 5 is ready to rely on. Saved on this phone by date.
+              </p>
+              <Link className="ink-btn ink-btn--save" to={to('/student/self-assessment?from=competitor')}>
+                Open self-assessment
+              </Link>
+            </section>
             <div className="arena-block">
               <span className="arena-node" aria-hidden="true" />
           <p className="student-quiet">

@@ -39,7 +39,7 @@ test('scouting cards import a roster csv and link a recorded match', async ({ pa
   await expect(weight.getByRole('link', { name: 'Spring Open · Win · sub' })).toHaveAttribute('href', /\/student\/results/);
   await expect(page.getByRole('region', { name: 'Opponent scouting for Sam' }).getByRole('link', { name: 'Do your self-assessment' })).toHaveAttribute(
     'href',
-    '/student/competitor?student=1#self-assessment',
+    '/student/self-assessment?from=scouting&student=1',
   );
   await page.getByRole('textbox', { name: 'Search opponents' }).fill('pressure');
   await expect(weight.locator('strong').filter({ hasText: /^Sam$/ })).toBeVisible();
@@ -73,7 +73,7 @@ test('scouting cards import a roster csv and link a recorded match', async ({ pa
 
 test('scouting opponent tracker compares the latest self-assessment', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/student/competitor?student=1');
+  await page.goto('/student/self-assessment?from=scouting&student=1');
   const mine: Record<string, string> = {
     Guard: '5',
     Passing: '4',

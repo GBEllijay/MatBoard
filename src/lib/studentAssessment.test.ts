@@ -112,17 +112,29 @@ test('history keeps the newest days when the list is full', () => {
   assert.equal(state.entries[0].date, isoOffset(ASSESSMENT_MAX + 4));
 });
 
-test('starter checkpoints link the matching areas and skip conditioning and mindset', () => {
+test('starter checkpoints link the matching areas on the belt being worn', () => {
   const report = withStarterRubric(blankStudentReport());
   const links = checkpointLinks(report);
   assert.equal(links.find((link) => link.areaId === 'guard')?.checkpointId, sharedCheckpointId('white', 'guard'));
   assert.equal(links.find((link) => link.areaId === 'passing')?.checkpointName, 'Passes');
   assert.equal(links.find((link) => link.areaId === 'escapes')?.checkpointId, sharedCheckpointId('white', 'escapes'));
-  assert.equal(links.find((link) => link.areaId === 'takedowns')?.checkpointId, sharedCheckpointId('blue', 'takedowns'));
-  assert.equal(links.find((link) => link.areaId === 'submissions')?.checkpointId, sharedCheckpointId('blue', 'submissions'));
+  assert.equal(links.find((link) => link.areaId === 'takedowns'), undefined);
+  assert.equal(links.find((link) => link.areaId === 'submissions'), undefined);
   assert.equal(links.find((link) => link.areaId === 'conditioning'), undefined);
   assert.equal(links.find((link) => link.areaId === 'mindset'), undefined);
+  assert.equal(links.some((link) => link.checkpointId.includes('.blue.')), false);
   assert.equal(checkpointLinks(blankStudentReport()).length, 0);
+});
+
+test('a white belt does not receive a checkpoint from another belt', () => {
+  const white = withStarterRubric(blankStudentReport());
+  white.profile.belt = 'white';
+  assert.equal(checkpointLinks(white).every((link) => link.checkpointId.includes('.white.')), true);
+  const green = withStarterRubric(blankStudentReport());
+  green.profile.belt = 'green';
+  const links = checkpointLinks(green);
+  assert.equal(links.find((link) => link.areaId === 'takedowns')?.checkpointId, sharedCheckpointId('green', 'takedowns'));
+  assert.equal(links.some((link) => link.checkpointId.includes('.blue.')), false);
 });
 
 test('a blue belt prefers the checkpoints on that belt', () => {

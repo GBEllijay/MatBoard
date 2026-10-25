@@ -115,18 +115,16 @@ export function removeAssessment(state: AssessmentState, id: string): Assessment
 }
 
 /**
- * Current belt first, then the rest of the rubric. An area links only when a
- * checkpoint name uses one of that area's words.
+ * Checkpoints on the belt the student wears. An area links only when that
+ * belt's rubric uses one of the area's words. Later belts are not a fallback,
+ * so a white belt does not open a blue checkpoint.
  */
 export function checkpointLinks(report: StudentProgressReport): AssessmentCheckpointLink[] {
   const current = beltLevel(report, report.profile.belt);
-  const rest = report.rubric.levels.filter((level) => level !== current);
-  const levels = current ? [current, ...rest] : rest;
+  if (!current) return [];
   const links: AssessmentCheckpointLink[] = [];
   for (const area of ASSESSMENT_AREAS) {
-    const hit = levels
-      .flatMap((level) => level.checkpoints)
-      .find((row) => nameHits(row.name, AREA_WORDS[area.id]));
+    const hit = current.checkpoints.find((row) => nameHits(row.name, AREA_WORDS[area.id]));
     if (!hit) continue;
     links.push({ areaId: area.id, checkpointId: hit.id, checkpointName: hit.name });
   }

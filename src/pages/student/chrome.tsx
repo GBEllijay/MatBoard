@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { SubmenuMarks } from '../../components/TierHomeMark';
 import { submenuBackTarget, tierHomeHref } from '../../lib/submenuNav';
@@ -28,6 +28,23 @@ export function useStudentFile() {
     return saved;
   }, []);
   return { report, commit };
+}
+
+/** The arena scroller owns overflow, so a hash has to be brought into view. */
+export function useScrollToHash(readyKey = ''): void {
+  const { hash } = useLocation();
+  useEffect(() => {
+    const raw = hash.startsWith('#') ? hash.slice(1) : '';
+    if (!raw) return;
+    let id = raw;
+    try {
+      id = decodeURIComponent(raw);
+    } catch {
+      return;
+    }
+    const node = document.getElementById(id);
+    if (node && typeof node.scrollIntoView === 'function') node.scrollIntoView({ block: 'start' });
+  }, [hash, readyKey]);
 }
 
 export function StudentMarks() {

@@ -16,6 +16,7 @@ import {
   competitorHubSummary,
   formerHubItemReachable,
   groupMenuLinks,
+  legacyCompetitorAssessmentPath,
   PROFILE_LINK,
   progressLinks,
   studentPageBack,
@@ -44,8 +45,28 @@ test('every legacy student route still resolves to its own screen', () => {
   assert.equal(studentScreen('print/progress'), 'print-progress');
   assert.equal(studentScreen('print/assessment'), 'print-assessment');
   assert.equal(studentScreen('profile'), 'profile');
+  assert.equal(studentScreen('self-assessment'), 'self-assessment');
   assert.equal(studentScreen('not-a-page'), 'hub');
   assert.equal(studentPageBack('/student/profile', '?student=1', null), '/student/progress?student=1');
+  assert.equal(studentPageBack('/student/self-assessment', '?student=1', null), '/student/progress?student=1');
+  assert.equal(studentPageBack('/student/self-assessment', '?student=1', 'scouting'), '/student/scouting?student=1');
+  assert.equal(studentPageBack('/student/self-assessment', '', 'competitor'), '/student/competitor');
+  assert.equal(studentPageBack('/student/print/assessment', '', null), '/student/backup');
+  assert.deepEqual(
+    groupMenuLinks().filter((link) => link.label === 'Self-assessment').map((link) => link.to),
+    ['/student/self-assessment?from=progress', '/student/self-assessment?from=compete'],
+  );
+  assert.equal(legacyCompetitorAssessmentPath('', '#self-assessment'), '/student/self-assessment?from=competitor#self-assessment');
+  assert.equal(
+    legacyCompetitorAssessmentPath('?from=progress&student=1', '#self-assessment'),
+    '/student/self-assessment?from=progress&student=1#self-assessment',
+  );
+  assert.equal(
+    legacyCompetitorAssessmentPath('?student=1', '#assess-guard'),
+    '/student/self-assessment?student=1&from=competitor#assess-guard',
+  );
+  assert.equal(legacyCompetitorAssessmentPath('', '#not-an-area'), null);
+  assert.equal(legacyCompetitorAssessmentPath('', ''), null);
   assert.equal(groupMenuLinks().some((link) => link.label === PROFILE_LINK.label && link.to === PROFILE_LINK.to), true);
 });
 

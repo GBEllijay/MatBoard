@@ -81,7 +81,7 @@ export function FundamentalsPage() {
         </header>
         <div className="fund-stack">
           <nav className="fund-jumps" aria-label="Related student tools">
-            <Link to={to('/student/competitor#self-assessment')}>Self-assessment</Link>
+            <Link to={to('/student/self-assessment?from=fundamentals')}>Self-assessment</Link>
             <Link to={to('/student/rubric')}>Belt checkpoints</Link>
             <Link to={to('/student/videos')}>Video Library</Link>
           </nav>

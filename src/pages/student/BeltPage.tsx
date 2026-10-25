@@ -22,7 +22,7 @@ import {
   withStarterRubric,
 } from '../../lib/studentTools';
 import { COACH_FILE_LABEL } from '../../lib/studentHubMenu';
-import { StudentMarks, useStudentFile, useStudentPath } from './chrome';
+import { StudentMarks, useScrollToHash, useStudentFile, useStudentPath } from './chrome';
 
 export function BeltPage() {
   const to = useStudentPath();
@@ -44,6 +44,7 @@ export function BeltPage() {
   const level = beltLevel(report, belt);
   const learned = learnedCatalogIds(report);
   const checkpoints = level?.checkpoints ?? [];
+  useScrollToHash(checkpoints.map((row) => row.id).join('|'));
   const filled = checkpoints.filter((row) => checkpointFilled(row, learned)).length;
   const share = to('/student/share?from=rubric');
 
