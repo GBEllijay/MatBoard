@@ -74,6 +74,7 @@ export function WornBeltMark({ preview }: { preview: WornBeltPreview }) {
               </>
             ) : null}
           </span>
+          {black ? <span className="belt__end" aria-hidden="true" /> : null}
         </span>
       </span>
     </span>

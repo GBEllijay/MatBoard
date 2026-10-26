@@ -20,8 +20,8 @@ import type { StudentFilm } from './studentFilm.ts';
 import type { AreaRatings } from './opponentAssessment.ts';
 import type { ScoutingCard } from './studentScouting.ts';
 import { beltModeOf, currentKidsBelt, earlierKidRows } from './beltBook.ts';
-import { wornDegree } from './blackBeltDegrees.ts';
-import { dedupeRankHistory, degreeFocusOf, stripeReportLine } from './studentRank.ts';
+import { degreeHeadline, wornDegree } from './blackBeltDegrees.ts';
+import { adultRankIndex, dedupeRankHistory, degreeFocusOf, degreeReportLine, stripeReportLine } from './studentRank.ts';
 import { benchmarkView, catalogLevelMap, checkpointsForProgress } from './studentBenchmarks.ts';
 import {
   BELT_LABELS,
@@ -79,7 +79,7 @@ export function reportIdentity(report: StudentProgressReport): ReportIdentity {
   return {
     name: name || 'Not named',
     gym: gym || 'Not named',
-    belt: kids ? currentKidsBelt(report).label : (BELT_LABELS[report.profile.belt] ?? report.profile.belt),
+    belt: kids ? currentKidsBelt(report).label : adultReportBelt(report),
     started: started || 'Not set',
     named: Boolean(name),
     gymNamed: Boolean(gym),
@@ -114,7 +114,18 @@ export function rubricLevelsOnTrack(report: StudentProgressReport): RubricLevel[
   const order = new Map(track.map((belt, index) => [belt, index]));
   return report.rubric.levels
     .filter((level) => order.has(level.belt))
-    .sort((left, right) => (order.get(left.belt) ?? 0) - (order.get(right.belt) ?? 0) || left.name.localeCompare(right.name));
+    .sort((left, right) => {
+      const byRank = rankSort(left.belt, right.belt);
+      if (byRank) return byRank;
+      return (order.get(left.belt) ?? 0) - (order.get(right.belt) ?? 0) || left.name.localeCompare(right.name);
+    });
+}
+
+function rankSort(left: string, right: string): number {
+  const leftRank = adultRankIndex(left);
+  const rightRank = adultRankIndex(right);
+  if (leftRank >= 0 && rightRank >= 0) return leftRank - rightRank;
+  return 0;
 }
 
 export function checkpointStatusLabel(row: RubricCheckpoint, learned: LearnedIndex): 'Met' | 'Not yet' | 'Unmarked' {
@@ -188,6 +199,31 @@ function appendStripeLines(lines: string[], tapeCount: number, tapeDates: readon
   }
 }
 
+function appendDegreeLines(lines: string[], tapeCount: number, tapeDates: readonly string[] | undefined, indent = ''): void {
+  for (let index = 0; index < tapeCount; index += 1) {
+    lines.push(`${indent}${degreeReportLine(index + 1, tapeDates?.[index])}`);
+  }
+}
+
+/** Plain black stays "Black". A degree, coral, or red uses the degree name, not a stripe belt. */
+function adultReportBelt(report: StudentProgressReport): string {
+  const belt = report.profile.belt;
+  const count = report.rank?.tapeCount ?? 0;
+  const degree = wornDegree(belt, count);
+  if (degree != null && (belt !== 'black' || degree > 0)) return degreeHeadline(belt, count);
+  return BELT_LABELS[belt] ?? belt;
+}
+
+function isFinalRank(belt: string): boolean {
+  return belt === 'coral' || belt === 'redWhite' || belt === 'red';
+}
+
+function historyRankText(belt: ProgressBelt, tapeCount: number): string {
+  if (isFinalRank(belt)) return degreeHeadline(belt, tapeCount);
+  if (belt === 'black') return tapeCount === 1 ? '1 degree' : `${tapeCount} degrees`;
+  return countPhrase(tapeCount, 'stripe', 'stripes');
+}
+
 function rankDateList(tapeDates: readonly string[] | undefined, high: readonly string[] | undefined): string[] {
   return [...(tapeDates ?? []), ...(high ?? [])];
 }
@@ -203,20 +239,31 @@ function rankBlock(report: StudentProgressReport): ReportBlock {
     appendStripeLines(lines, worn.tapeCount, worn.tapeDates);
     lines.push('Adult belts saved on this phone:');
   }
-  lines.push(
-    `Current belt awarded: ${rank?.awardedOn || 'No date'}`,
-    `${degreeBelt ? 'Degrees' : 'Stripes'}: ${rank?.tapeCount ?? 0}`,
+  const finalRank = isFinalRank(report.profile.belt);
+  if (finalRank) lines.push(`Current rank: ${degreeHeadline(report.profile.belt, rank?.tapeCount ?? 0)}`);
+  lines.push(`Current belt awarded: ${rank?.awardedOn || 'No date'}`);
+  if (!finalRank) {
+    lines.push(`${degreeBelt ? 'Degrees' : 'Stripes'}: ${rank?.tapeCount ?? 0}`);
+    if (rank) {
+      const dates = rankDateList(rank.tapeDates, rank.highDegreeDates);
+      if (degreeBelt) appendDegreeLines(lines, rank.tapeCount, dates);
+      else appendStripeLines(lines, rank.tapeCount, dates);
+    }
+  }
+  const history = dedupeRankHistory(rank?.history ?? []).sort(
+    (left, right) => rankSort(left.belt, right.belt) || left.awardedOn.localeCompare(right.awardedOn) || left.id.localeCompare(right.id),
   );
-  if (rank) appendStripeLines(lines, rank.tapeCount, rankDateList(rank.tapeDates, rank.highDegreeDates));
-  const history = dedupeRankHistory(rank?.history ?? []);
   const earlierKids = earlierKidRows(report);
   if (history.length) {
     lines.push(earlierKids.length ? 'Adult belt history:' : 'Earlier belts:');
     for (const row of history) {
-      const noun = row.belt === 'black' ? (row.tapeCount === 1 ? 'degree' : 'degrees') : row.tapeCount === 1 ? 'stripe' : 'stripes';
-      const stripes = row.belt === 'black' ? `${row.tapeCount} ${noun}` : countPhrase(row.tapeCount, 'stripe', 'stripes');
-      lines.push(`${BELT_LABELS[row.belt] ?? row.belt} awarded ${row.awardedOn || 'no date'}, ${stripes}`);
-      appendStripeLines(lines, row.tapeCount, rankDateList(row.tapeDates, row.highDegreeDates), '  ');
+      const stripes = historyRankText(row.belt, row.tapeCount);
+      const name = isFinalRank(row.belt) ? stripes : (BELT_LABELS[row.belt] ?? row.belt);
+      const detail = isFinalRank(row.belt) ? '' : `, ${stripes}`;
+      lines.push(`${name} awarded ${row.awardedOn || 'no date'}${detail}`);
+      const dates = rankDateList(row.tapeDates, row.highDegreeDates);
+      if (row.belt === 'black') appendDegreeLines(lines, row.tapeCount, dates, '  ');
+      else if (!isFinalRank(row.belt)) appendStripeLines(lines, row.tapeCount, dates, '  ');
     }
   }
   if (earlierKids.length) {
@@ -245,7 +292,7 @@ function beltBlock(report: StudentProgressReport): ReportBlock {
   const view = benchmarkView(report);
   const lines: string[] = [PRACTICAL_BENCHMARKS_HEADING, PRACTICAL_BENCHMARKS_LINE];
   for (const level of levels) {
-    lines.push(BELT_LABELS[level.belt] ?? level.name);
+    lines.push(isFinalRank(level.belt) ? degreeHeadline(level.belt, 0) : (BELT_LABELS[level.belt] ?? level.name));
     const rows = checkpointsForProgress(level.checkpoints, view);
     if (!rows.length) lines.push(`  ${NO_PRACTICAL_BENCHMARKS}`);
     for (const checkpoint of rows) {

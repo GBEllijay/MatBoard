@@ -8,6 +8,7 @@ import { normalizeRoster, type Student } from './rosterStore.ts';
 import { blankStudentReport } from './studentEdition.ts';
 import { progressReportLines } from './studentReport.ts';
 import {
+  adultRankIndex,
   dedupeRankHistory,
   emptyRank,
   ladderRungs,
@@ -428,6 +429,14 @@ test('kids belt taps stay on the kids ladder when adult belts move', () => {
   assert.equal(report.rank?.tapeCount, 6);
   assert.equal(report.rank?.instructorBars, true);
   assert.equal(report.beltBook?.kids?.history.filter((row) => row.beltId === 'grey-white').length, 1);
+});
+
+test('coral and red are separate ranks after black', () => {
+  assert.equal(adultRankIndex('black') + 1, adultRankIndex('coral'));
+  assert.ok(adultRankIndex('coral') < adultRankIndex('redWhite'));
+  assert.ok(adultRankIndex('redWhite') < adultRankIndex('red'));
+  assert.notEqual(adultRankIndex('coral'), adultRankIndex('red'));
+  assert.equal(adultRankIndex('grey'), -1);
 });
 
 test('a blank rank is empty and an older report without rank still reads', () => {

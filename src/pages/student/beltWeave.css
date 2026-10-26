@@ -199,6 +199,38 @@
   --bar-stitch: rgba(255, 255, 255, 0.42);
 }
 
+/* Black ends like the other belts: red rank bar, then a short black cloth tip. */
+:is(.student.student--rank, .s-belt-mark) .rung--black .belt__bar {
+  border-radius: 0;
+}
+
+:is(.student.student--rank, .s-belt-mark) .belt__end {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 22px;
+  border-radius: 0 12px 12px 0;
+  background-color: var(--cloth);
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.34) 0, rgba(255, 255, 255, 0.08) 26%, rgba(255, 255, 255, 0) 48%, rgba(0, 0, 0, 0.14) 74%, rgba(0, 0, 0, 0.3) 100%),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.09) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.2) 0 2px, rgba(255, 255, 255, 0.1) 2px 4px),
+    url(/belt-weave.png);
+  background-size: auto, auto, auto, 160px 8px;
+  box-shadow: inset 0 0 0 1px var(--edge), inset -2px 0 0 rgba(255, 255, 255, 0.12);
+}
+
+:is(.student.student--rank, .s-belt-mark) .belt__end::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--stitch), var(--stitch)) 0 11% / 100% 1px no-repeat,
+    linear-gradient(var(--stitch), var(--stitch)) 0 19% / 100% 1px no-repeat,
+    linear-gradient(var(--stitch), var(--stitch)) 0 81% / 100% 1px no-repeat,
+    linear-gradient(var(--stitch), var(--stitch)) 0 89% / 100% 1px no-repeat;
+}
+
 :is(.student.student--rank, .s-belt-mark) .belt--slim57 .belt__bar {
   flex: 0 0 57%;
   padding: 0;
@@ -543,14 +575,29 @@
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
 }
 
+/* Five wide bars, so the color changes four times along the whole belt. */
 :is(.student.student--rank, .s-belt-mark) .mini-belt--red-black {
   --mini: #d3161b;
-  --mini-split: linear-gradient(90deg, #232326 0 46%, #d3161b 54% 100%);
+  --mini-split: linear-gradient(
+    90deg,
+    #232326 0 20%,
+    #d3161b 20% 40%,
+    #232326 40% 60%,
+    #d3161b 60% 80%,
+    #232326 80% 100%
+  );
 }
 
 :is(.student.student--rank, .s-belt-mark) .mini-belt--red-white {
   --mini: #f4f1ea;
-  --mini-split: linear-gradient(90deg, #f4f1ea 0 46%, #d3161b 54% 100%);
+  --mini-split: linear-gradient(
+    90deg,
+    #f4f1ea 0 20%,
+    #d3161b 20% 40%,
+    #f4f1ea 40% 60%,
+    #d3161b 60% 80%,
+    #f4f1ea 80% 100%
+  );
 }
 
 :is(.student.student--rank, .s-belt-mark) .mini-belt--red {
