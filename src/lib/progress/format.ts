@@ -41,8 +41,12 @@ import {
   MATCH_RESULTS,
   PROGRESS_BRACKET_NOTES_MAX,
   PROGRESS_MATCHES_MAX,
+  PROGRESS_BENCHMARK_MAX,
   PROGRESS_NAME_MAX,
   PROGRESS_NOTE_MAX,
+  BENCHMARK_POLICIES,
+  BENCHMARK_STAGES,
+  TRAINING_STYLES,
   PROGRESS_RANK_HISTORY_MAX,
   PROGRESS_RESULTS_MAX,
   PROGRESS_PACKET_KINDS,
@@ -72,8 +76,10 @@ import {
   type FundamentalsCatalog,
   type FundamentalsCategory,
   type FundamentalsItem,
+  type CatalogNeed,
   type LicenseSource,
   type RubricCheckpoint,
+  type TechniquePolicy,
   type RubricCriterion,
   type RubricLevel,
   type CalendarEvent,
@@ -911,7 +917,7 @@ function readProfile(value: unknown, errors: string[]): StudentProfile {
     errors.push('Profile is missing.');
     return { id: '', displayName: '', gymName: '', belt: 'white', startedOn: '', licenseSource: '' };
   }
-  return {
+  const profile: StudentProfile = {
     id: readId(record.id, 'Profile id', errors),
     displayName: readString(record.displayName, 'Display name', PROGRESS_NAME_MAX, errors),
     gymName: readString(record.gymName, 'Gym name', PROGRESS_NAME_MAX, errors),
@@ -919,6 +925,11 @@ function readProfile(value: unknown, errors: string[]): StudentProfile {
     startedOn: readDate(record.startedOn, 'Start date', errors, false),
     licenseSource: readLicenseSource(record.licenseSource, errors),
   };
+  const trainingStyle = readChoice(record.trainingStyle, 'Training style', TRAINING_STYLES, errors);
+  if (trainingStyle) profile.trainingStyle = trainingStyle;
+  const techniquePolicy = readTechniquePolicy(record.techniquePolicy, errors);
+  if (techniquePolicy) profile.techniquePolicy = techniquePolicy;
+  return profile;
 }
 
 function readRubric(value: unknown, errors: string[]): StudentRubric {
@@ -956,7 +967,7 @@ function readLevel(value: unknown, index: number, errors: string[]): RubricLevel
     errors.push(`${label} must be an object.`);
     return { id: '', name: '', belt: 'white', checkpoints: [] };
   }
-  return {
+  const level: RubricLevel = {
     id: readId(record.id, `${label} id`, errors),
     name: readString(record.name, `${label} name`, PROGRESS_NAME_MAX, errors),
     belt: readBelt(record.belt, label, errors),
@@ -964,6 +975,9 @@ function readLevel(value: unknown, index: number, errors: string[]): RubricLevel
       readCheckpoint(row, `${label} checkpoint ${checkpointIndex + 1}`, errors),
     ),
   };
+  if (record.starterAck === true) level.starterAck = true;
+  else if (record.starterAck != null && record.starterAck !== false) errors.push(`${label} starterAck must be true or false.`);
+  return level;
 }
 
 function readCheckpoint(value: unknown, label: string, errors: string[]): RubricCheckpoint {
@@ -974,7 +988,7 @@ function readCheckpoint(value: unknown, label: string, errors: string[]): Rubric
   }
   const checkpoint: RubricCheckpoint = {
     id: readId(record.id, `${label} id`, errors),
-    name: readString(record.name, `${label} name`, PROGRESS_NAME_MAX, errors),
+    name: readString(record.name, `${label} name`, PROGRESS_BENCHMARK_MAX, errors),
     met: readMet(record.met, label, errors),
     note: readString(record.note, `${label} note`, PROGRESS_NOTE_MAX, errors),
     criteria: readList(record.criteria, `${label} criteria`, PROGRESS_CRITERIA_MAX, errors).map((row, index) =>
@@ -987,6 +1001,18 @@ function readCheckpoint(value: unknown, label: string, errors: string[]): Rubric
   }
   if (record.edited === true) checkpoint.edited = true;
   else if (record.edited != null && record.edited !== false) errors.push(`${label} edited must be true or false.`);
+  const stage = readChoice(record.stage, `${label} stage`, BENCHMARK_STAGES, errors);
+  if (stage) checkpoint.stage = stage;
+  const style = readChoice(record.style, `${label} style`, TRAINING_STYLES, errors);
+  if (style) checkpoint.style = style;
+  const noGiVariant = readOptionalText(record.noGiVariant, `${label} no-gi line`, PROGRESS_BENCHMARK_MAX, errors);
+  if (noGiVariant) checkpoint.noGiVariant = noGiVariant;
+  const policy = readChoice(record.policy, `${label} policy`, BENCHMARK_POLICIES, errors);
+  if (policy) checkpoint.policy = policy;
+  if (record.rulebook === true) checkpoint.rulebook = true;
+  else if (record.rulebook != null && record.rulebook !== false) errors.push(`${label} rulebook must be true or false.`);
+  if (record.optional === true) checkpoint.optional = true;
+  else if (record.optional != null && record.optional !== false) errors.push(`${label} optional must be true or false.`);
   return checkpoint;
 }
 
@@ -996,7 +1022,7 @@ function readCriterion(value: unknown, label: string, errors: string[]): RubricC
     errors.push(`${label} must be an object.`);
     return { id: '', requirement: '', techniqueRefs: [], met: null, note: '' };
   }
-  return {
+  const criterion: RubricCriterion = {
     id: readId(record.id, `${label} id`, errors),
     requirement: readString(record.requirement, `${label} requirement`, PROGRESS_NOTE_MAX, errors),
     techniqueRefs: readList(record.techniqueRefs, `${label} techniques`, 20, errors).map((row, index) =>
@@ -1005,6 +1031,13 @@ function readCriterion(value: unknown, label: string, errors: string[]): RubricC
     met: readMet(record.met, label, errors),
     note: readString(record.note, `${label} note`, PROGRESS_NOTE_MAX, errors),
   };
+  const match = readChoice(record.match, `${label} match`, ['any', 'all'] as const, errors);
+  if (match) criterion.match = match;
+  const targetLevel = readTargetLevel(record.targetLevel, `${label} target`, errors);
+  if (targetLevel) criterion.targetLevel = targetLevel;
+  const catalogNeed = readCatalogNeed(record.catalogNeed, `${label} catalog need`, errors);
+  if (catalogNeed) criterion.catalogNeed = catalogNeed;
+  return criterion;
 }
 
 function readChecklist(value: unknown, errors: string[]): StudentChecklistEntry[] {
@@ -1381,10 +1414,15 @@ function readTechniqueRef(value: unknown, label: string, errors: string[]): Tech
     errors.push(`${label} must be an object.`);
     return { id: '', name: '' };
   }
-  return {
+  const ref: TechniqueRef = {
     id: readId(record.id, `${label} id`, errors),
     name: readString(record.name, `${label} name`, PROGRESS_NAME_MAX, errors),
   };
+  const style = readChoice(record.style, `${label} style`, TRAINING_STYLES, errors);
+  if (style) ref.style = style;
+  const targetLevel = readTargetLevel(record.targetLevel, `${label} target`, errors);
+  if (targetLevel) ref.targetLevel = targetLevel;
+  return ref;
 }
 
 function readAmendment(value: unknown, label: string, errors: string[]): Amendment {
@@ -1961,6 +1999,72 @@ function readFlag(value: unknown, label: string, errors: string[]): boolean {
   if (value === true) return true;
   errors.push(`${label} must be true or false.`);
   return false;
+}
+
+function readChoice<T extends string>(value: unknown, label: string, allowed: readonly T[], errors: string[]): T | undefined {
+  if (value == null || value === '') return undefined;
+  if (typeof value === 'string' && (allowed as readonly string[]).includes(value)) return value as T;
+  errors.push(`${label} must be ${allowed.join(', ')}.`);
+  return undefined;
+}
+
+function readOptionalText(value: unknown, label: string, max: number, errors: string[]): string {
+  if (value == null || value === '') return '';
+  return readString(value, label, max, errors);
+}
+
+function readTargetLevel(value: unknown, label: string, errors: string[]): 1 | 2 | 3 | 4 | 5 | undefined {
+  if (value == null || value === '') return undefined;
+  if (value === 1 || value === 2 || value === 3 || value === 4 || value === 5) return value;
+  errors.push(`${label} must be a whole number from 1 to 5.`);
+  return undefined;
+}
+
+function readCatalogNeed(value: unknown, label: string, errors: string[]): CatalogNeed | undefined {
+  if (value == null) return undefined;
+  const record = asRecord(value);
+  if (!record) {
+    errors.push(`${label} must be an object.`);
+    return undefined;
+  }
+  const level = readTargetLevel(record.level, `${label} level`, errors);
+  const count = record.count;
+  if (typeof count !== 'number' || !Number.isInteger(count) || count < 1 || count > 100) {
+    errors.push(`${label} count must be a whole number from 1 to 100.`);
+  }
+  if (!level || typeof count !== 'number' || !Number.isInteger(count) || count < 1 || count > 100) return undefined;
+  const need: CatalogNeed = { count, level };
+  if (record.categoryId != null && record.categoryId !== '') {
+    const categoryId = readOptionalId(record.categoryId, `${label} category`, errors);
+    if (categoryId) need.categoryId = categoryId;
+  }
+  return need;
+}
+
+function readTechniquePolicy(value: unknown, errors: string[]): TechniquePolicy | undefined {
+  if (value == null) return undefined;
+  const record = asRecord(value);
+  if (!record) {
+    errors.push('Technique policy must be an object.');
+    return undefined;
+  }
+  const policy: TechniquePolicy = {};
+  const keys = [
+    ['straightAnkleLock', 'Straight ankle lock'],
+    ['wristLocks', 'Wrist locks'],
+    ['legLocks', 'Leg locks'],
+    ['heelHooks', 'Heel hooks'],
+    ['competition', 'Competition prompt'],
+  ] as const;
+  for (const [key, label] of keys) {
+    if (record[key] == null) continue;
+    if (record[key] !== true && record[key] !== false) {
+      errors.push(`${label} must be true or false.`);
+      continue;
+    }
+    policy[key] = record[key];
+  }
+  return Object.keys(policy).length ? policy : undefined;
 }
 
 function readString(value: unknown, label: string, max: number, errors: string[]): string {

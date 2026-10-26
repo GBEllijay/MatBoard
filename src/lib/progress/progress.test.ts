@@ -305,25 +305,30 @@ test('names only is the shipping decision and the examples field stays empty', (
   assert.equal(parsed.value.draft, false);
   assert.equal(parsed.value.id, FUNDAMENTALS_CATALOG_ID);
   assert.equal(parsed.value.title, 'BJJ fundamentals (starter)');
-  assert.equal(parsed.value.categories.length, 6);
+  assert.equal(parsed.value.categories.length, 8);
   const items = parsed.value.categories.flatMap((category) => category.items);
-  assert.equal(items.length, 31);
+  assert.equal(items.length, 47);
   const names = items.map((item) => item.name);
   assert.ok(names.includes('Scissor sweep'));
   assert.ok(names.includes('Pendulum sweep'));
   assert.ok(parsed.value.categories.some((category) => category.name === 'Escapes'));
   assert.ok(items.every((item) => item.examples.length === 0));
+  const legacyIds = [
+    'pos.closed-guard', 'pos.open-guard', 'pos.half-guard', 'pos.mount', 'pos.side-control', 'pos.back-control', 'pos.knee-on-belly', 'pos.standing',
+    'sweep.scissor', 'sweep.hip-bump', 'sweep.pendulum', 'sweep.flower', 'sweep.tripod',
+    'escape.mount', 'escape.side-control', 'escape.back', 'escape.headlock',
+    'pass.torreando', 'pass.knee-slice', 'pass.leg-drag', 'pass.stack',
+    'sub.armbar-guard', 'sub.triangle', 'sub.kimura', 'sub.guillotine', 'sub.rear-naked-choke', 'sub.cross-collar',
+    'td.double-leg', 'td.single-leg', 'td.arm-drag', 'td.hip-throw',
+  ];
   assert.deepEqual(
-    items.map((item) => item.id),
-    [
-      'pos.closed-guard', 'pos.open-guard', 'pos.half-guard', 'pos.mount', 'pos.side-control', 'pos.back-control', 'pos.knee-on-belly', 'pos.standing',
-      'sweep.scissor', 'sweep.hip-bump', 'sweep.pendulum', 'sweep.flower', 'sweep.tripod',
-      'escape.mount', 'escape.side-control', 'escape.back', 'escape.headlock',
-      'pass.torreando', 'pass.knee-slice', 'pass.leg-drag', 'pass.stack',
-      'sub.armbar-guard', 'sub.triangle', 'sub.kimura', 'sub.guillotine', 'sub.rear-naked-choke', 'sub.cross-collar',
-      'td.double-leg', 'td.single-leg', 'td.arm-drag', 'td.hip-throw',
-    ],
+    items.map((item) => item.id).filter((id) => legacyIds.includes(id)),
+    legacyIds,
   );
+  assert.deepEqual(items.map((item) => item.id).slice(-7), [
+    'move.breakfalls', 'move.shrimp', 'move.bridge', 'move.technical-standup',
+    'def.guard-retention', 'def.submission-defense', 'def.sprawl',
+  ]);
 
   const legacy = structuredClone(FUNDAMENTALS_CATALOG);
   legacy.id = FUNDAMENTALS_CATALOG_LEGACY_ID;

@@ -3,7 +3,9 @@
  * report from src/lib/progress. Nothing here is sent to a server.
  */
 
+import { ibjjfAge } from './beltBook.ts';
 import { fundamentalLevelOf, FUNDAMENTAL_LIVE_LEVEL, isFundamentalLevel, type FundamentalLevel } from './fundamentals.ts';
+import { defaultTechniquePolicy } from './studentBenchmarks.ts';
 import { joinJournalNotes, splitJournalNotes } from './journalNotes.ts';
 import { FUNDAMENTALS_CATALOG } from './progress/catalog.ts';
 import { emptyCompetition, matchingGameTags } from './progress/competition.ts';
@@ -30,7 +32,9 @@ import {
   type JournalEntry,
   type StudentChecklistEntry,
   type StudentProgressReport,
+  type TechniquePolicy,
   type TechniqueRef,
+  type TrainingStyle,
 } from './progress/types.ts';
 
 export const STUDENT_EDITION_STORAGE_KEY = 'matboard.studentEdition.v1';
@@ -245,6 +249,47 @@ export function setStudentProfile(
     return report;
   }
   return { ...report, updatedAt: now, profile: { ...report.profile, displayName, gymName, startedOn } };
+}
+
+const POLICY_KEYS = ['straightAnkleLock', 'wristLocks', 'legLocks', 'heelHooks', 'competition'] as const;
+
+function samePolicy(left: TechniquePolicy | undefined, right: TechniquePolicy | undefined): boolean {
+  return POLICY_KEYS.every((key) => left?.[key] === right?.[key]);
+}
+
+/** Gi, no-gi, or both. Both is stored by leaving the field off. */
+export function setTrainingStyle(report: StudentProgressReport, style: TrainingStyle, now = Date.now()): StudentProgressReport {
+  if (style !== 'gi' && style !== 'nogi' && style !== 'both') throw new Error('Training style must be gi, no-gi, or both.');
+  const profile = { ...report.profile };
+  if (style === 'both') delete profile.trainingStyle;
+  else profile.trainingStyle = style;
+  if ((report.profile.trainingStyle ?? 'both') === (profile.trainingStyle ?? 'both') && report.profile.trainingStyle === profile.trainingStyle) {
+    return report;
+  }
+  return { ...report, updatedAt: now, profile };
+}
+
+/**
+ * Save one technique override.
+ * A value that matches the age and belt default is left off the file.
+ */
+export function setTechniquePolicy(
+  report: StudentProgressReport,
+  key: keyof TechniquePolicy,
+  value: boolean,
+  now = Date.now(),
+): StudentProgressReport {
+  const year = report.beltBook?.birthYear;
+  const age = typeof year === 'number' ? ibjjfAge(year) : null;
+  const defaults = defaultTechniquePolicy(report.profile.belt, age);
+  const next: TechniquePolicy = { ...(report.profile.techniquePolicy ?? {}) };
+  if (value === defaults[key]) delete next[key];
+  else next[key] = value;
+  const profile = { ...report.profile };
+  if (Object.keys(next).length) profile.techniquePolicy = next;
+  else delete profile.techniquePolicy;
+  if (samePolicy(report.profile.techniquePolicy, profile.techniquePolicy)) return report;
+  return { ...report, updatedAt: now, profile };
 }
 
 export function encodeJournalBody(draft: Pick<JournalDraft, 'className' | 'techniques' | 'partners' | 'drills' | 'rolls' | 'notes' | 'stopDoing'>): string {

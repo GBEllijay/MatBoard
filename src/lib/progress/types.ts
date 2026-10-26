@@ -166,6 +166,39 @@ export type ProgressPacketKind = (typeof PROGRESS_PACKET_KINDS)[number];
 export const PROGRESS_ID_MAX = 80;
 export const PROGRESS_NAME_MAX = 80;
 export const PROGRESS_NOTE_MAX = 500;
+/** A practical benchmark sentence. Longer than a person's name. */
+export const PROGRESS_BENCHMARK_MAX = 500;
+
+export const TRAINING_STYLES = ['gi', 'nogi', 'both'] as const;
+export type TrainingStyle = (typeof TRAINING_STYLES)[number];
+
+export const BENCHMARK_STAGES = ['stripe-1', 'stripe-2', 'stripe-3', 'stripe-4', 'promotion'] as const;
+export type BenchmarkStage = (typeof BENCHMARK_STAGES)[number];
+
+export const BENCHMARK_POLICIES = ['straight-ankle', 'wrist-lock', 'leg-lock', 'heel-hook', 'competition'] as const;
+export type BenchmarkPolicy = (typeof BENCHMARK_POLICIES)[number];
+
+export type CriterionMatch = 'any' | 'all';
+
+/** Count catalog lines at a level when a benchmark is not tied to named techniques. */
+export type CatalogNeed = {
+  count: number;
+  level: 1 | 2 | 3 | 4 | 5;
+  categoryId?: string;
+};
+
+/**
+ * Saved overrides for technique defaults.
+ * A missing key uses the age and belt default. Leg locks and heel hooks are never shown for gi.
+ */
+export type TechniquePolicy = {
+  straightAnkleLock?: boolean;
+  wristLocks?: boolean;
+  legLocks?: boolean;
+  heelHooks?: boolean;
+  /** Optional brown-belt competition prompt. Missing means off. */
+  competition?: boolean;
+};
 export const PROGRESS_BODY_MAX = 4000;
 export const PROGRESS_SYNOPSIS_MAX = 4000;
 export const PROGRESS_EXAMPLE_MAX = 200;
@@ -233,6 +266,10 @@ export type StudentProfile = {
   startedOn: string;
   /** Optional. Blank when this file does not record how the license was issued. */
   licenseSource: LicenseSource;
+  /** Gi, no-gi, or both. Missing means both. */
+  trainingStyle?: TrainingStyle;
+  /** Saved overrides. A missing key uses the age and belt default. */
+  techniquePolicy?: TechniquePolicy;
 };
 
 /**
@@ -245,6 +282,12 @@ export type RubricCriterion = {
   techniqueRefs: TechniqueRef[];
   met: boolean | null;
   note: string;
+  /** Missing means any one linked technique. `all` means every linked technique. */
+  match?: CriterionMatch;
+  /** Missing means level 3, Live with resistance. */
+  targetLevel?: 1 | 2 | 3 | 4 | 5;
+  /** Count of fundamentals at a level, when the benchmark is not a named list. */
+  catalogNeed?: CatalogNeed;
 };
 
 /** Who wrote a checkpoint. Absent on older files, which means the student. */
@@ -263,6 +306,18 @@ export type RubricCheckpoint = {
   criteria: RubricCriterion[];
   source?: CheckpointSource;
   edited?: boolean;
+  /** Stripe or promotion group. Missing on older lists. */
+  stage?: BenchmarkStage;
+  /** Missing means both. */
+  style?: TrainingStyle;
+  /** Shown as "No-gi: …" when the student trains both, and swapped in for no-gi. */
+  noGiVariant?: string;
+  /** Hidden when this policy is off. Leg locks and heel hooks are also hidden for gi. */
+  policy?: BenchmarkPolicy;
+  /** Link the current IBJJF rule book. */
+  rulebook?: boolean;
+  /** Shown when opted in. Does not count toward the stripe or promotion totals. */
+  optional?: boolean;
 };
 
 /** One level on the rubric. Checkpoints are the steps inside it. */
@@ -271,6 +326,11 @@ export type RubricLevel = {
   name: string;
   belt: ProgressBelt;
   checkpoints: RubricCheckpoint[];
+  /**
+   * The suggested list was applied, or the student cleared it.
+   * Stops an empty list from being filled again. Missing on older files.
+   */
+  starterAck?: boolean;
 };
 
 /**
@@ -347,6 +407,10 @@ export type StudentChecklistEntry = {
 export type TechniqueRef = {
   id: string;
   name: string;
+  /** Missing means both. Gi-only names are hidden when the student trains no-gi. */
+  style?: TrainingStyle;
+  /** Missing means the benchmark target, or level 3. */
+  targetLevel?: 1 | 2 | 3 | 4 | 5;
 };
 
 /** A later-cycle note on a journal card. Append-only. Never replaces the card. */

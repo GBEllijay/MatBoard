@@ -20,19 +20,20 @@ import type { AreaRatings } from './opponentAssessment.ts';
 import type { ScoutingCard } from './studentScouting.ts';
 import { wornDegree } from './blackBeltDegrees.ts';
 import { dedupeRankHistory, degreeFocusOf, stripeReportLine } from './studentRank.ts';
+import { benchmarkView, catalogLevelMap, checkpointsForProgress } from './studentBenchmarks.ts';
 import {
   BELT_LABELS,
   beltRequirementProgress,
   beltTrack,
   checkpointFilled,
   checkpointTitle,
-  learnedCatalogIds,
   NO_PERSONAL_GOALS,
   NO_PRACTICAL_BENCHMARKS,
   PERSONAL_GOALS_HEADING,
   PERSONAL_GOALS_LINE,
   PRACTICAL_BENCHMARKS_HEADING,
   PRACTICAL_BENCHMARKS_LINE,
+  type LearnedIndex,
 } from './studentTools.ts';
 import type { RubricCheckpoint, RubricLevel } from './progress/types.ts';
 
@@ -113,7 +114,7 @@ export function rubricLevelsOnTrack(report: StudentProgressReport): RubricLevel[
     .sort((left, right) => (order.get(left.belt) ?? 0) - (order.get(right.belt) ?? 0) || left.name.localeCompare(right.name));
 }
 
-export function checkpointStatusLabel(row: RubricCheckpoint, learned: ReadonlySet<string>): 'Met' | 'Not yet' | 'Unmarked' {
+export function checkpointStatusLabel(row: RubricCheckpoint, learned: LearnedIndex): 'Met' | 'Not yet' | 'Unmarked' {
   if (checkpointFilled(row, learned)) return 'Met';
   if (row.met === false) return 'Not yet';
   return 'Unmarked';
@@ -221,17 +222,19 @@ function rankBlock(report: StudentProgressReport): ReportBlock {
 function beltBlock(report: StudentProgressReport): ReportBlock {
   const levels = rubricLevelsOnTrack(report);
   if (!levels.length) return { title: 'Belt progress', lines: ['No belt progress recorded.'] };
-  const learned = learnedCatalogIds(report);
+  const learned = catalogLevelMap(report);
+  const view = benchmarkView(report);
   const lines: string[] = [PRACTICAL_BENCHMARKS_HEADING, PRACTICAL_BENCHMARKS_LINE];
   for (const level of levels) {
     lines.push(BELT_LABELS[level.belt] ?? level.name);
-    if (!level.checkpoints.length) lines.push(`  ${NO_PRACTICAL_BENCHMARKS}`);
-    for (const checkpoint of level.checkpoints) {
+    const rows = checkpointsForProgress(level.checkpoints, view);
+    if (!rows.length) lines.push(`  ${NO_PRACTICAL_BENCHMARKS}`);
+    for (const checkpoint of rows) {
       const mark = checkpointStatusLabel(checkpoint, learned);
       const note = checkpoint.note.trim() ? ` — ${checkpoint.note.trim()}` : '';
       lines.push(`  ${checkpointTitle(checkpoint)}: ${mark}${note}`);
     }
-    const progress = beltRequirementProgress(level, learned);
+    const progress = beltRequirementProgress({ ...level, checkpoints: rows }, learned);
     if (progress.requirements) {
       const from = progress.fromFundamentals ? `, ${progress.fromFundamentals} from fundamentals` : '';
       lines.push(`  ${progress.counted} of ${progress.requirements} requirements counted${from}.`);

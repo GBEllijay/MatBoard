@@ -14,8 +14,24 @@ import {
   wornDegree,
   yearsAtName,
 } from '../../lib/blackBeltDegrees';
-import type { RubricCheckpoint, RubricCriterion, StudentGoal, StudentProgressReport } from '../../lib/progress/types';
-import { loadStudentReport, todayIso } from '../../lib/studentEdition';
+import type { RubricCheckpoint, RubricCriterion, StudentGoal, StudentProgressReport, TrainingStyle } from '../../lib/progress/types';
+import {
+  BENCHMARK_DISCLAIMER_MEDIUM,
+  BENCHMARK_DISCLAIMER_SHORT,
+  BLACK_BELT_AGE_NOTE,
+  IBJJF_RULEBOOK_URL,
+  STAGE_SHORT,
+  benchmarkCountHint,
+  benchmarkDisplayName,
+  benchmarkGroups,
+  benchmarkNoGiLine,
+  benchmarkView,
+  benchmarkVisible,
+  catalogLevelMap,
+  checkpointsForProgress,
+} from '../../lib/studentBenchmarks';
+import type { BenchmarkGroup, LearnedIndex } from '../../lib/studentBenchmarks';
+import { loadStudentReport, setTechniquePolicy, todayIso } from '../../lib/studentEdition';
 import { degreeFocusOf, instructorBarsOf, rankOf, setDegreeFocus } from '../../lib/studentRank';
 import {
   addCheckpoint,
@@ -34,7 +50,6 @@ import {
   goalCopied,
   goalsForBelt,
   INSTRUCTOR_FINAL_SAY,
-  learnedCatalogIds,
   loadCoachShelf,
   moveCheckpoint,
   nextBelt,
@@ -49,6 +64,7 @@ import {
   PRACTICAL_BENCHMARKS_LINE,
   removeCheckpoint,
   removeGoal,
+  restoreStarterBenchmarks,
   renameCheckpoint,
   setCheckpointMark,
   showsAdultCheckpoints,
@@ -85,10 +101,15 @@ export function BeltPage() {
   const nextDegree = degree == null ? null : nextDegreeRule(degree);
   const endLabel = nextDegree ? nextDegree.label : degree != null ? 'Final rank' : upcoming ? BELT_LABELS[upcoming] : 'Last belt on this list';
   const level = beltLevel(report, belt);
-  const learned = learnedCatalogIds(report);
+  const learned = catalogLevelMap(report);
+  const view = benchmarkView(report);
   const checkpoints = level?.checkpoints ?? [];
-  useScrollToHash(checkpoints.map((row) => row.id).join('|'));
-  const summary = beltProgressSummary(level, learned);
+  const visible = checkpoints.filter((row) => benchmarkVisible(row, view));
+  const counted = checkpointsForProgress(checkpoints, view);
+  const staged = checkpoints.some((row) => row.stage);
+  const groups = benchmarkGroups(visible, belt);
+  useScrollToHash(visible.map((row) => row.id).join('|'));
+  const summary = beltProgressSummary(level ? { ...level, checkpoints: counted } : null, learned);
   const timeBased = degreeProgressIsTimeBased(belt);
   const openGoals = openGoalBelt(belt);
   const share = to('/student/share?from=rubric');
@@ -134,15 +155,34 @@ export function BeltPage() {
             <h2>{PRACTICAL_BENCHMARKS_HEADING}</h2>
             <p className="student-quiet">{PRACTICAL_BENCHMARKS_LINE}</p>
             {timeBased ? <p>{TIME_BASED_PROGRESS}</p> : null}
-            {!timeBased && checkpoints.length ? (
+            {!timeBased && visible.length ? (
             <ol className="checkpoint-row" aria-label={upcoming ? `Practical benchmarks between ${BELT_LABELS[belt]} and ${BELT_LABELS[upcoming]}` : `${BELT_LABELS[belt]} practical benchmarks`}>
-              {checkpoints.map((row) => {
-                const state = checkpointState(row, learned);
-                const share = checkpointShare(row, learned);
-                const title = checkpointTitle(row);
+              {(staged ? groups : [{ id: 'yours', title: '', rows: visible }]).map((group) => {
+                if (!staged) {
+                  return group.rows.map((row) => {
+                    const state = checkpointState(row, learned);
+                    const share = checkpointShare(row, learned);
+                    const title = checkpointTitle(row);
+                    return (
+                      <li
+                        key={row.id}
+                        className={state === 'filled' ? 'is-filled' : state === 'partly filled' ? 'is-partial' : undefined}
+                        style={{ '--fill': `${Math.round(share * 100)}%` } as CSSProperties}
+                        aria-label={`${title}, ${state}`}
+                      >
+                        <span className="checkpoint-box" />
+                        <span>{title}</span>
+                      </li>
+                    );
+                  });
+                }
+                const rows = checkpointsForProgress(group.rows, view);
+                const share = rows.length ? rows.reduce((sum, row) => sum + checkpointShare(row, learned), 0) / rows.length : 0;
+                const state = share >= 1 ? 'filled' : share > 0 ? 'partly filled' : 'open';
+                const title = STAGE_SHORT[group.id as keyof typeof STAGE_SHORT] ?? group.title;
                 return (
                   <li
-                    key={row.id}
+                    key={group.id}
                     className={state === 'filled' ? 'is-filled' : state === 'partly filled' ? 'is-partial' : undefined}
                     style={{ '--fill': `${Math.round(share * 100)}%` } as CSSProperties}
                     aria-label={`${title}, ${state}`}
@@ -159,7 +199,12 @@ export function BeltPage() {
                 {summary}
               </p>
             ) : null}
-            {checkpoints.length === 0 ? <p>{NO_PRACTICAL_BENCHMARKS}</p> : null}
+            {visible.length === 0 ? <p>{NO_PRACTICAL_BENCHMARKS}</p> : null}
+            {!timeBased && belt === 'brown' && !view.policy.competition ? (
+              <button type="button" className="belt-chip" onClick={() => run(setTechniquePolicy(report, 'competition', true))}>
+                Competition
+              </button>
+            ) : null}
           </section>
           {timeBased ? <DegreeFocus report={report} onFocus={(degree, text) => run(setDegreeFocus(report, degree, text))} /> : null}
           <DegreePanel report={report} />
@@ -177,21 +222,42 @@ export function BeltPage() {
               Import from coach
             </Link>
           </div>
-          {adultPath ? checkpoints.map((row, index) => (
-            <CheckpointCard
-              key={row.id}
-              row={row}
-              index={index}
-              count={checkpoints.length}
-              learned={learned}
-              readOnly={checkpointReadOnly(report, row)}
-              onMark={(met, note) => run(setCheckpointMark(report, row.id, met, note))}
-              onRename={(name) => run(renameCheckpoint(report, row.id, name))}
-              onRemove={() => run(removeCheckpoint(report, row.id))}
-              onMove={(direction) => run(moveCheckpoint(report, row.id, direction))}
-              onCriterion={(id, met, date, note) => run(setCriterionMark(report, id, met, date, note))}
-            />
-          )) : null}
+          {adultPath && !staged
+            ? visible.map((row) => (
+                <CheckpointCard
+                  key={row.id}
+                  row={row}
+                  index={checkpoints.findIndex((item) => item.id === row.id)}
+                  count={checkpoints.length}
+                  learned={learned}
+                  training={view.trainingStyle}
+                  readOnly={checkpointReadOnly(report, row)}
+                  onMark={(met, note) => run(setCheckpointMark(report, row.id, met, note))}
+                  onRename={(name) => run(renameCheckpoint(report, row.id, name))}
+                  onRemove={() => run(removeCheckpoint(report, row.id))}
+                  onMove={(direction) => run(moveCheckpoint(report, row.id, direction))}
+                  onCriterion={(id, met, date, note) => run(setCriterionMark(report, id, met, date, note))}
+                />
+              ))
+            : null}
+          {adultPath && staged
+            ? groups.map((group) => (
+                <BenchmarkGroupSection
+                  key={group.id}
+                  group={group}
+                  belt={belt}
+                  checkpoints={checkpoints}
+                  learned={learned}
+                  training={view.trainingStyle}
+                  report={report}
+                  run={run}
+                />
+              ))
+            : null}
+          {adultPath && !staged && visible.length ? <BenchmarkDisclaimer /> : null}
+          {adultPath && !timeBased ? (
+            <RestoreBenchmarks onRestore={() => run(restoreStarterBenchmarks(report, belt))} />
+          ) : null}
           {adultPath ? (
             <section className="ink" aria-label="Add a practical benchmark">
               <NameForm label="Practical benchmark name" submit="Add a practical benchmark" onAdd={(name) => run(addCheckpoint(report, belt, name))} />
@@ -320,6 +386,82 @@ function OpenGoals({
   );
 }
 
+function BenchmarkDisclaimer() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="belt-disclaimer">
+      <button type="button" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+        {BENCHMARK_DISCLAIMER_SHORT}
+      </button>
+      {open ? <p>{BENCHMARK_DISCLAIMER_MEDIUM}</p> : null}
+    </div>
+  );
+}
+
+function RestoreBenchmarks({ onRestore }: { onRestore: () => void }) {
+  const [ask, setAsk] = useState(false);
+  if (!ask) {
+    return (
+      <button type="button" className="ink-btn" onClick={() => setAsk(true)}>
+        Restore suggested list
+      </button>
+    );
+  }
+  return (
+    <div className="student-actions" role="group" aria-label="Restore suggested list">
+      <p>This puts the suggested list back. Marks on matching items stay. Items you added are removed.</p>
+      <button type="button" className="ink-btn ink-btn--save" onClick={onRestore}>
+        Confirm restore
+      </button>
+      <button type="button" className="ink-btn" onClick={() => setAsk(false)}>
+        Cancel
+      </button>
+    </div>
+  );
+}
+
+function BenchmarkGroupSection({
+  group,
+  belt,
+  checkpoints,
+  learned,
+  training,
+  report,
+  run,
+}: {
+  group: BenchmarkGroup;
+  belt: StudentProgressReport['profile']['belt'];
+  checkpoints: RubricCheckpoint[];
+  learned: LearnedIndex;
+  training: TrainingStyle;
+  report: StudentProgressReport;
+  run: (next: StudentProgressReport) => void;
+}) {
+  return (
+    <section className="belt-stripe" aria-label={group.title || 'Your benchmarks'}>
+      {group.title ? <h2>{group.title}</h2> : null}
+      {belt === 'brown' && group.id === 'promotion' ? <p className="belt-age">{BLACK_BELT_AGE_NOTE}</p> : null}
+      {group.rows.map((row) => (
+        <CheckpointCard
+          key={row.id}
+          row={row}
+          index={checkpoints.findIndex((item) => item.id === row.id)}
+          count={checkpoints.length}
+          learned={learned}
+          training={training}
+          readOnly={checkpointReadOnly(report, row)}
+          onMark={(met, note) => run(setCheckpointMark(report, row.id, met, note))}
+          onRename={(name) => run(renameCheckpoint(report, row.id, name))}
+          onRemove={() => run(removeCheckpoint(report, row.id))}
+          onMove={(direction) => run(moveCheckpoint(report, row.id, direction))}
+          onCriterion={(id, met, date, note) => run(setCriterionMark(report, id, met, date, note))}
+        />
+      ))}
+      <BenchmarkDisclaimer />
+    </section>
+  );
+}
+
 function NameForm({ label, submit, onAdd }: { label: string; submit: string; onAdd: (name: string) => void }) {
   const [name, setName] = useState('');
   return (
@@ -349,6 +491,7 @@ function CheckpointCard({
   index,
   count,
   learned,
+  training,
   readOnly,
   onMark,
   onRename,
@@ -359,7 +502,8 @@ function CheckpointCard({
   row: RubricCheckpoint;
   index: number;
   count: number;
-  learned: ReadonlySet<string>;
+  learned: LearnedIndex;
+  training: TrainingStyle;
   readOnly: boolean;
   onMark: (met: boolean, note: string) => void;
   onRename: (name: string) => void;
@@ -370,8 +514,15 @@ function CheckpointCard({
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState(row.name);
   const [confirmRemove, setConfirmRemove] = useState(false);
-  const title = checkpointTitle(row);
+  const shown = benchmarkDisplayName(row, training);
+  const title = row.source === 'coach' && row.edited === true ? `${shown}*` : shown;
   const done = checkpointState(row, learned) === 'filled';
+  const written = row.criteria.filter((item) => item.requirement.trim());
+  const linked = row.criteria.filter((item) => !item.requirement.trim());
+  const names = visibleNames(row, training);
+  const hint = benchmarkCountHint(row);
+  const noGi = benchmarkNoGiLine(row, training);
+  const fromFundamentals = linked.some((item) => criterionFromFundamentals(item, learned));
   useEffect(() => {
     setDraft(row.name);
   }, [row.name]);
@@ -446,7 +597,16 @@ function CheckpointCard({
           }}
         />
       </label>
-      {row.criteria.map((item) => (
+      {names.length ? <p className="student-quiet">{names.join(', ')}</p> : null}
+      {hint ? <p className="student-quiet">{hint}</p> : null}
+      {noGi ? <p className="student-quiet">{noGi}</p> : null}
+      {fromFundamentals ? <p>Counted from your fundamentals.</p> : null}
+      {row.rulebook ? (
+        <a href={IBJJF_RULEBOOK_URL} target="_blank" rel="noreferrer">
+          IBJJF rule book
+        </a>
+      ) : null}
+      {written.map((item) => (
         <CriterionEditor
           key={item.id}
           row={item}
@@ -457,6 +617,20 @@ function CheckpointCard({
       {done ? <p className="student-quiet">Filled.</p> : null}
     </section>
   );
+}
+
+function visibleNames(row: RubricCheckpoint, training: TrainingStyle): string[] {
+  const names: string[] = [];
+  for (const criterion of row.criteria) {
+    if (criterion.requirement.trim()) continue;
+    for (const ref of criterion.techniqueRefs) {
+      const style = ref.style ?? 'both';
+      if (training === 'gi' && style === 'nogi') continue;
+      if (training === 'nogi' && style === 'gi') continue;
+      if (ref.name) names.push(ref.name);
+    }
+  }
+  return names;
 }
 
 function DegreePanel({ report }: { report: StudentProgressReport }) {

@@ -22,6 +22,7 @@ import {
   sharedCriterionId,
 } from './progress/format.ts';
 import {
+  PROGRESS_BENCHMARK_MAX,
   PROGRESS_CALENDAR_MAX,
   PROGRESS_CHECKPOINTS_MAX,
   PROGRESS_GOALS_MAX,
@@ -45,6 +46,15 @@ import {
   type StudentProgressReport,
 } from './progress/types.ts';
 import { FUNDAMENTAL_LIVE_LEVEL, fundamentalLevelOf } from './fundamentals.ts';
+import {
+  adultStarterLevels,
+  criterionCounts,
+  criterionFromFundamentals,
+  type LearnedIndex,
+} from './studentBenchmarks.ts';
+
+export { criterionCounts, criterionFromFundamentals };
+export type { LearnedIndex };
 import { beltModeOf } from './beltBook.ts';
 import { isGymBrandFile } from './coachGymFile.ts';
 import { readTravelingGym } from './coachGymFit.ts';
@@ -421,51 +431,12 @@ const LEGACY_BROWN_CHECKPOINTS: RubricCheckpoint[] = [
   ]),
 ];
 
-/** Names from the fundamentals catalog. The student marks these. The file has no stripes. */
+/**
+ * White through brown carry the suggested stripe lists.
+ * Black and above stay empty. Kids belts keep their short lists.
+ */
 export const STARTER_RUBRIC_LEVELS: RubricLevel[] = [
-  level('white', 'White', [
-    checkpoint('white', 'guard', 'Guard', [
-      criterion('white', 'closed guard', 'Hold closed guard.', 'pos.closed-guard', 'Closed guard'),
-      criterion('white', 'scissor sweep', 'Finish a scissor sweep.', 'sweep.scissor', 'Scissor sweep'),
-    ]),
-    checkpoint('white', 'escapes', 'Escapes', [
-      criterion('white', 'mount escape', 'Escape mount.', 'escape.mount', 'Mount escape'),
-      criterion('white', 'side control escape', 'Escape side control.', 'escape.side-control', 'Side control escape'),
-    ]),
-    checkpoint('white', 'passes', 'Passes', [
-      criterion('white', 'knee slice', 'Finish a knee slice pass.', 'pass.knee-slice', 'Knee slice pass'),
-      criterion('white', 'torreando', 'Finish a torreando pass.', 'pass.torreando', 'Torreando pass'),
-    ]),
-  ]),
-  level('blue', 'Blue', [
-    checkpoint('blue', 'half-guard', 'Half guard', [
-      criterion('blue', 'half guard', 'Play half guard.', 'pos.half-guard', 'Half guard'),
-      criterion('blue', 'tripod sweep', 'Finish a tripod sweep.', 'sweep.tripod', 'Tripod sweep'),
-    ]),
-    checkpoint('blue', 'submissions', 'Submissions', [
-      criterion('blue', 'kimura', 'Finish a kimura.', 'sub.kimura', 'Kimura'),
-      criterion('blue', 'triangle', 'Finish a triangle.', 'sub.triangle', 'Triangle'),
-    ]),
-    checkpoint('blue', 'takedowns', 'Takedowns', [
-      criterion('blue', 'single leg', 'Finish a single leg.', 'td.single-leg', 'Single leg'),
-      criterion('blue', 'arm drag', 'Finish an arm drag.', 'td.arm-drag', 'Arm drag'),
-    ]),
-  ]),
-  level('purple', 'Purple', [
-    checkpoint('purple', 'back', 'Back', [
-      criterion('purple', 'back control', 'Take the back.', 'pos.back-control', 'Back control'),
-      criterion('purple', 'rear naked choke', 'Finish a rear naked choke.', 'sub.rear-naked-choke', 'Rear naked choke'),
-    ]),
-    checkpoint('purple', 'open-guard', 'Open guard', [
-      criterion('purple', 'open guard', 'Play open guard.', 'pos.open-guard', 'Open guard'),
-      criterion('purple', 'flower sweep', 'Finish a flower sweep.', 'sweep.flower', 'Flower sweep'),
-    ]),
-    checkpoint('purple', 'passing', 'Passing', [
-      criterion('purple', 'leg drag', 'Finish a leg drag.', 'pass.leg-drag', 'Leg drag'),
-      criterion('purple', 'stack pass', 'Finish a stack pass.', 'pass.stack', 'Stack pass'),
-    ]),
-  ]),
-  level('brown', 'Brown', []),
+  ...adultStarterLevels(),
   level('black', 'Black', []),
   level('coral', 'Coral', []),
   level('redWhite', 'Red and white', []),
@@ -513,18 +484,40 @@ export function isUntouchedLegacyBrown(level: RubricLevel): boolean {
   });
 }
 
-/** Add any starter level this file does not already have. Existing marks stay. */
+const SEEDED_ADULT = new Set<ProgressBelt>(['white', 'blue', 'purple', 'brown']);
+
+/**
+ * Add any starter level this file does not already have.
+ * A list that already has benchmarks is kept.
+ * An emptied white, blue, or purple list stays empty.
+ * An old empty brown list, and an untouched legacy brown list, receive the suggested prompts once.
+ */
 export function withStarterRubric(report: StudentProgressReport, now = Date.now()): StudentProgressReport {
   const present = new Set(report.rubric.levels.map((item) => item.id));
   const missing = STARTER_RUBRIC_LEVELS.filter((item) => !present.has(item.id));
-  let cleared = false;
-  const levels = (missing.length ? [...report.rubric.levels, ...structuredClone(missing)] : report.rubric.levels).map((level) => {
-    if (!isUntouchedLegacyBrown(level)) return level;
-    cleared = true;
-    return { ...level, checkpoints: [] };
+  let changed = missing.length > 0;
+  const levels = (missing.length ? [...report.rubric.levels, ...structuredClone(missing)] : report.rubric.levels).map((row) => {
+    const next = settleStarterLevel(row);
+    if (next !== row) changed = true;
+    return next;
   });
-  if (!missing.length && !cleared) return report;
+  if (!changed) return report;
   return touch({ ...report, rubric: { ...report.rubric, levels } }, now);
+}
+
+function settleStarterLevel(row: RubricLevel): RubricLevel {
+  if (isUntouchedLegacyBrown(row)) {
+    const starter = STARTER_RUBRIC_LEVELS.find((item) => item.belt === 'brown');
+    return starter ? structuredClone(starter) : { ...row, checkpoints: [], starterAck: true };
+  }
+  if (!SEEDED_ADULT.has(row.belt)) return row;
+  if (row.checkpoints.length > 0) return row.starterAck ? row : { ...row, starterAck: true };
+  if (row.starterAck) return row;
+  if (row.belt === 'brown') {
+    const starter = STARTER_RUBRIC_LEVELS.find((item) => item.belt === 'brown');
+    return starter ? structuredClone(starter) : { ...row, starterAck: true };
+  }
+  return { ...row, starterAck: true };
 }
 
 export function learnedCatalogIds(report: StudentProgressReport): Set<string> {
@@ -535,32 +528,22 @@ export function learnedCatalogIds(report: StudentProgressReport): Set<string> {
   );
 }
 
-export function criterionCounts(criterionRow: RubricCriterion, learned: ReadonlySet<string>): boolean {
-  if (criterionRow.met === true) return true;
-  return criterionRow.techniqueRefs.some((ref) => ref.id !== '' && learned.has(ref.id));
-}
-
-export function criterionFromFundamentals(criterionRow: RubricCriterion, learned: ReadonlySet<string>): boolean {
-  if (criterionRow.met === true) return false;
-  return criterionRow.techniqueRefs.some((ref) => ref.id !== '' && learned.has(ref.id));
-}
-
 /** A checkpoint is filled when the student marked it, or every requirement counts. Not a stripe. */
-export function checkpointFilled(row: RubricCheckpoint, learned: ReadonlySet<string>): boolean {
+export function checkpointFilled(row: RubricCheckpoint, learned: LearnedIndex): boolean {
   if (row.met === true) return true;
   if (!row.criteria.length) return false;
   return row.criteria.every((item) => criterionCounts(item, learned));
 }
 
 /** 1 when the checkpoint is filled, otherwise the share of requirements that count. */
-export function checkpointShare(row: RubricCheckpoint, learned: ReadonlySet<string>): number {
+export function checkpointShare(row: RubricCheckpoint, learned: LearnedIndex): number {
   if (checkpointFilled(row, learned)) return 1;
   if (!row.criteria.length) return 0;
   const counted = row.criteria.filter((item) => criterionCounts(item, learned)).length;
   return counted / row.criteria.length;
 }
 
-export function checkpointState(row: RubricCheckpoint, learned: ReadonlySet<string>): 'filled' | 'partly filled' | 'open' {
+export function checkpointState(row: RubricCheckpoint, learned: LearnedIndex): 'filled' | 'partly filled' | 'open' {
   const share = checkpointShare(row, learned);
   if (share >= 1) return 'filled';
   if (share > 0) return 'partly filled';
@@ -576,7 +559,7 @@ export type BeltRequirementProgress = {
 };
 
 /** Requirements on this belt. A fundamentals level of 3 or higher counts. */
-export function beltRequirementProgress(level: RubricLevel | null, learned: ReadonlySet<string>): BeltRequirementProgress {
+export function beltRequirementProgress(level: RubricLevel | null, learned: LearnedIndex): BeltRequirementProgress {
   const checkpoints = level?.checkpoints ?? [];
   let requirements = 0;
   let counted = 0;
@@ -597,7 +580,7 @@ export function beltRequirementProgress(level: RubricLevel | null, learned: Read
   };
 }
 
-export function beltProgressSummary(level: RubricLevel | null, learned: ReadonlySet<string>): string {
+export function beltProgressSummary(level: RubricLevel | null, learned: LearnedIndex): string {
   const progress = beltRequirementProgress(level, learned);
   const parts: string[] = [];
   if (progress.checkpoints) parts.push(`${progress.checkpointsFilled} of ${progress.checkpoints} practical benchmarks filled.`);
@@ -777,7 +760,7 @@ export function addCheckpoint(
   if (level.checkpoints.length >= PROGRESS_CHECKPOINTS_MAX) throw new Error('The practical benchmark list is full.');
   const row: RubricCheckpoint = {
     id: checkpointIdFor(prepared.rubric.levels, belt, trimmed, now),
-    name: trimmed.slice(0, PROGRESS_NAME_MAX),
+    name: trimmed.slice(0, PROGRESS_BENCHMARK_MAX),
     met: null,
     note: '',
     criteria: [],
@@ -800,7 +783,7 @@ export function renameCheckpoint(
     checkpoints: level.checkpoints.map((row) => {
       if (row.id !== checkpointId) return row;
       found = true;
-      const name = trimmed.slice(0, PROGRESS_NAME_MAX);
+      const name = trimmed.slice(0, PROGRESS_BENCHMARK_MAX);
       return editedCoach({ ...row, name }, name !== row.name);
     }),
   }));
@@ -820,7 +803,47 @@ export function removeCheckpoint(report: StudentProgressReport, checkpointId: st
     }),
   }));
   if (!found) return report;
-  return touch({ ...report, rubric: { ...report.rubric, levels } }, now);
+  const acked = levels.map((row) => (row.checkpoints.length === 0 && SEEDED_ADULT.has(row.belt) ? { ...row, starterAck: true } : row));
+  return touch({ ...report, rubric: { ...report.rubric, levels: acked } }, now);
+}
+
+/** Put the suggested list back. Marks on matching items stay. Added items are removed unless a coach locked them. */
+export function restoreStarterBenchmarks(report: StudentProgressReport, belt: ProgressBelt, now = Date.now()): StudentProgressReport {
+  const starter = STARTER_RUBRIC_LEVELS.find((item) => item.belt === belt);
+  if (!starter?.checkpoints.length) throw new Error('This belt has no suggested list.');
+  const prepared = ensureBeltLevel(report, belt);
+  const current = beltLevel(prepared, belt);
+  if (!current) return prepared;
+  const previous = new Map(current.checkpoints.map((row) => [row.id, row]));
+  const checkpoints = starter.checkpoints.map((item) => {
+    const old = previous.get(item.id);
+    if (!old) return structuredClone(item);
+    if (checkpointReadOnly(prepared, old)) return old;
+    return mergeStarterMarks(structuredClone(item), old);
+  });
+  for (const row of current.checkpoints) {
+    if (checkpointReadOnly(prepared, row) && !checkpoints.some((item) => item.id === row.id)) checkpoints.push(row);
+  }
+  const acked = {
+    ...prepared,
+    rubric: {
+      ...prepared.rubric,
+      levels: prepared.rubric.levels.map((row) => (row.belt === belt ? { ...row, starterAck: true } : row)),
+    },
+  };
+  return replaceBeltCheckpoints(acked, belt, checkpoints, now);
+}
+
+function mergeStarterMarks(starter: RubricCheckpoint, old: RubricCheckpoint): RubricCheckpoint {
+  const next: RubricCheckpoint = { ...starter, met: old.met, note: old.note };
+  if (old.source) next.source = old.source;
+  if (old.edited) next.edited = true;
+  next.criteria = starter.criteria.map((item) => {
+    const prev = old.criteria.find((row) => row.id === item.id);
+    if (!prev) return item;
+    return { ...item, met: prev.met, note: prev.note };
+  });
+  return next;
 }
 
 /** Move a checkpoint one place. `-1` is up, `1` is down. The ends stay put. */

@@ -155,8 +155,11 @@ test('the self-assessment page keeps every control and Back returns to Rank & Pr
   assert.equal(shape?.getAttribute('aria-label'), selfAssessmentShapeLabel(null));
   assert.equal(host.querySelectorAll('polygon.assess-chart__shape').length, 0);
   assert.ok(host.querySelector('[aria-label^="Self-assessment trend"]'));
-  assert.equal(control(host, 'a', 'Open: Guard benchmark').getAttribute('href'), '/student/rubric?student=1#checkpoint.white.guard');
-  assert.equal(host.textContent?.includes('Open: Takedowns benchmark'), false);
+  assert.equal(
+    host.querySelector('a[href="/student/rubric?student=1#checkpoint.white.s1-positions"]')?.textContent,
+    'Open: Name the four basic control positions and hold each against a cooperative partner: closed guard, side control, mount, back control. benchmark',
+  );
+  assert.equal(host.textContent?.includes('Open: Conditioning benchmark'), false);
   assert.equal(host.querySelector('[aria-label="Division"]'), null);
   assert.equal(host.querySelector('[aria-label="Weight class"]'), null);
   assert.equal(host.textContent?.includes('Patrick Hand'), false);
@@ -185,11 +188,19 @@ test('a check-in saves, updates, and a white belt links only that belt', () => {
   saveStudentReport(localStorage, withStarterRubric(blankStudentReport()));
   const mounted = mount(<SelfAssessmentPage />);
   const { host } = mounted;
-  assert.equal(control(host, 'a', 'Open: Guard benchmark').getAttribute('href'), '/student/rubric#checkpoint.white.guard');
-  assert.equal(control(host, 'a', 'Open: Passes benchmark').getAttribute('href'), '/student/rubric#checkpoint.white.passes');
-  assert.equal(control(host, 'a', 'Open: Escapes benchmark').getAttribute('href'), '/student/rubric#checkpoint.white.escapes');
-  assert.equal(host.textContent?.includes('Open: Takedowns benchmark'), false);
-  assert.equal(host.textContent?.includes('Open: Submissions benchmark'), false);
+  assert.equal(
+    host.querySelector('a[href="/student/rubric#checkpoint.white.s1-positions"]')?.textContent,
+    'Open: Name the four basic control positions and hold each against a cooperative partner: closed guard, side control, mount, back control. benchmark',
+  );
+  assert.equal(
+    host.querySelector('a[href="/student/rubric#checkpoint.white.s1-pass"]')?.textContent,
+    'Open: Open closed guard from the top and pass it one way in drilling. benchmark',
+  );
+  assert.equal(
+    host.querySelector('a[href="/student/rubric#checkpoint.white.s2-escape-resist"]')?.textContent,
+    'Open: Escape mount and side control with two different options each against a partner who starts to resist. benchmark',
+  );
+  assert.ok(host.querySelector('a[href="/student/rubric#checkpoint.white.promo-standing"]'));
   assert.equal(host.textContent?.includes('Open: Conditioning benchmark'), false);
   assert.equal(
     [...host.querySelectorAll('a')].some((link) => link.getAttribute('href')?.includes('checkpoint.blue')),
@@ -265,9 +276,18 @@ test('a blue belt links the benchmarks on blue', () => {
   saveStudentReport(localStorage, report);
   const mounted = mount(<SelfAssessmentPage />);
   const { host } = mounted;
-  assert.equal(control(host, 'a', 'Open: Half guard benchmark').getAttribute('href'), '/student/rubric#checkpoint.blue.half-guard');
-  assert.equal(control(host, 'a', 'Open: Takedowns benchmark').getAttribute('href'), '/student/rubric#checkpoint.blue.takedowns');
-  assert.equal(control(host, 'a', 'Open: Submissions benchmark').getAttribute('href'), '/student/rubric#checkpoint.blue.submissions');
+  assert.equal(
+    host.querySelector('a[href="/student/rubric#checkpoint.blue.s1-half-bottom"]')?.textContent,
+    'Open: Keep your guard from being passed. Half guard from the bottom: a way to recover, a sweep and a back take. benchmark',
+  );
+  assert.equal(
+    host.querySelector('a[href="/student/rubric#checkpoint.blue.s4-takedowns"]')?.textContent,
+    'Open: Takedowns: connect a single leg, a double leg, and an arm drag or hip throw to a finish. benchmark',
+  );
+  assert.equal(
+    host.querySelector('a[href="/student/rubric#checkpoint.blue.s1-defend"]')?.textContent,
+    'Open: Defend submissions early (arm locks, triangle, chokes) before they are tight, stay calm, and escape them. benchmark',
+  );
   assert.equal(
     [...host.querySelectorAll('a')].some((link) => link.getAttribute('href')?.includes('checkpoint.white')),
     false,

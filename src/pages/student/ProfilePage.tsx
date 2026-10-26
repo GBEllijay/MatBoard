@@ -1,6 +1,6 @@
 import { StudentMarks, useStudentFile } from './chrome';
 import { ProfileCornerMarks, ProfileMedia, ProfileSwitches, useProfileMedia } from './ProfileIdentity';
-import { StudentProfileFields } from './ProfileFields';
+import { StudentProfileFields, TrainingSettings } from './ProfileFields';
 import './profile.css';
 
 /** Name, gym, start date, optional photo, and gym logo. Saved on this phone. */
@@ -22,6 +22,7 @@ export function ProfilePage() {
         <div className="profile-stack">
           <ProfileMedia media={media} />
           <StudentProfileFields report={report} commit={commit} variant="page" />
+          <TrainingSettings report={report} commit={commit} />
           <ProfileSwitches report={report} />
         </div>
       </div>
