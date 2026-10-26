@@ -1766,8 +1766,8 @@ input.sr-only.student-film-file {
 .student-export__check {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
-  min-height: 44px;
+  gap: 0.75rem;
+  min-height: 56px;
   font-size: 1.05rem;
 }
 

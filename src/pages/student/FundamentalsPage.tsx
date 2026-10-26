@@ -219,6 +219,14 @@ export function FundamentalsPage() {
   );
 }
 
+/** Filled steps stay filled. Only the chosen level gets the selected ring. */
+function segmentClass(level: FundamentalLevel, step: FundamentalLevel): string {
+  const names = ['fund-seg'];
+  if (step > 0 && level >= step) names.push('is-filled');
+  if (level === step) names.push('is-selected');
+  return names.join(' ');
+}
+
 function Meter({ value, label }: { value: number; label: string }) {
   const width = Math.max(0, Math.min(100, (value / 5) * 100));
   return (
@@ -352,27 +360,32 @@ function FundamentalLine({
         <button
           type="button"
           role="radio"
-          className={item.level === 0 ? 'fund-seg is-selected' : 'fund-seg'}
+          className={segmentClass(item.level, 0)}
           aria-checked={item.level === 0}
+          data-selected={item.level === 0 ? 'yes' : 'no'}
           aria-label={`${item.label} 0 ${fundamentalLevelLabel(0, audience)}`}
           onClick={() => onLevel(0, note, date)}
         >
           0
         </button>
         <div className="fund-track__bar">
-          {levels.filter((step) => step.level > 0).map((step) => (
-            <button
-              key={step.level}
-              type="button"
-              role="radio"
-              className={item.level >= step.level ? 'fund-seg is-filled' : 'fund-seg'}
-              aria-checked={item.level === step.level}
-              aria-label={`${item.label} ${step.level} ${step.label}`}
-              onClick={() => onLevel(step.level, note, date)}
-            >
-              {step.level}
-            </button>
-          ))}
+          {levels.filter((step) => step.level > 0).map((step) => {
+            const selected = item.level === step.level;
+            return (
+              <button
+                key={step.level}
+                type="button"
+                role="radio"
+                className={segmentClass(item.level, step.level)}
+                aria-checked={selected}
+                data-selected={selected ? 'yes' : 'no'}
+                aria-label={`${item.label} ${step.level} ${step.label}`}
+                onClick={() => onLevel(step.level, note, date)}
+              >
+                {step.level}
+              </button>
+            );
+          })}
         </div>
       </div>
       <p className="fund-move__updated">{updated ? `Updated ${updated}` : 'Not updated yet'}</p>

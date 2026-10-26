@@ -12,7 +12,9 @@ import {
   clearStudentMemory,
   filmBlobsFromBackup,
   parseStudentBackup,
+  readBackupIncludeVideos,
   studentExportBusyLabel,
+  writeBackupIncludeVideos,
   type StudentBackupFile,
   type StudentExportKind,
 } from '../../lib/studentBackup';
@@ -28,7 +30,11 @@ import { GroupFrame, MenuList, MenuRow } from './groupChrome';
 
 export function BackupMenu() {
   const to = useStudentPath();
-  const [includeVideos, setIncludeVideos] = useState(false);
+  const [includeVideos, setIncludeVideosState] = useState(() => readBackupIncludeVideos(localStorage));
+  const setIncludeVideos = (included: boolean) => {
+    writeBackupIncludeVideos(localStorage, included);
+    setIncludeVideosState(included);
+  };
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const [busyKind, setBusyKind] = useState<StudentExportKind | null>(null);
@@ -85,6 +91,16 @@ export function BackupMenu() {
           showStamp={false}
           onExport={(kind) => void exportFile(kind)}
         />
+        {status ? (
+          <p className="s-backup__result" role="status" data-kind="ok">
+            {status}
+          </p>
+        ) : null}
+        {error ? (
+          <p className="s-backup__result" role="alert" data-kind="error">
+            {error}
+          </p>
+        ) : null}
         <h2 className="s-kicker">Restore from backup</h2>
         <input
           type="file"
@@ -121,8 +137,6 @@ export function BackupMenu() {
             </button>
           </div>
         ) : null}
-        {status ? <p role="status">{status}</p> : null}
-        {error ? <p role="alert">{error}</p> : null}
       </section>
       <MenuList label={BACKUP_GROUP_LABEL}>
         {BACKUP_LINKS.map((item) => (
@@ -223,8 +237,16 @@ export function ClearStudentMenu() {
             </button>
           </div>
         ) : null}
-        {status ? <p role="status">{status}</p> : null}
-        {error ? <p role="alert">{error}</p> : null}
+        {status ? (
+          <p className="s-backup__result" role="status" data-kind="ok">
+            {status}
+          </p>
+        ) : null}
+        {error ? (
+          <p className="s-backup__result" role="alert" data-kind="error">
+            {error}
+          </p>
+        ) : null}
       </section>
     </GroupFrame>
   );

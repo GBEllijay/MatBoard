@@ -17,6 +17,7 @@ import {
   criterionCounts,
   ageIllegalTechniques,
   defaultTechniquePolicy,
+  benchmarkAnchorFromHash,
   starterCheckpoint,
   visibleTechniqueNames,
 } from './studentBenchmarks.ts';
@@ -268,4 +269,26 @@ test('new benchmark fields round-trip, and restore keeps marks', () => {
     assert.equal(bare.value.profile.trainingStyle, undefined);
     assert.equal(benchmarkView(bare.value).trainingStyle, 'both');
   }
+});
+
+test('a benchmark hash names the belt and the card, including the short blue turtle anchor', () => {
+  assert.deepEqual(benchmarkAnchorFromHash('#checkpoint.white.s1-guard-attack'), {
+    belt: 'white',
+    elementId: 'checkpoint.white.s1-guard-attack',
+  });
+  assert.deepEqual(benchmarkAnchorFromHash('checkpoint.blue.s1-turtle'), {
+    belt: 'blue',
+    elementId: 'checkpoint.blue.s1-turtle',
+  });
+  assert.deepEqual(benchmarkAnchorFromHash('#blue.s1-turtle'), {
+    belt: 'blue',
+    elementId: 'checkpoint.blue.s1-turtle',
+  });
+  assert.deepEqual(benchmarkAnchorFromHash('#rubric.blue.s1-turtle'), {
+    belt: 'blue',
+    elementId: 'checkpoint.blue.s1-turtle',
+  });
+  assert.equal(benchmarkAnchorFromHash(''), null);
+  assert.equal(benchmarkAnchorFromHash('#assess-guard'), null);
+  assert.equal(benchmarkAnchorFromHash('#checkpoint.not-a-belt.s1-turtle'), null);
 });

@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   blackBeltClock,
   coralRanksUnlocked,
@@ -21,6 +21,7 @@ import {
   BLACK_BELT_AGE_NOTE,
   IBJJF_RULEBOOK_URL,
   STAGE_SHORT,
+  benchmarkAnchorFromHash,
   benchmarkCountHint,
   benchmarkDisplayName,
   benchmarkGroups,
@@ -82,6 +83,7 @@ import { StudentMarks, useScrollToHash, useStudentFile, useStudentPath } from '.
 
 export function BeltPage() {
   const to = useStudentPath();
+  const { hash } = useLocation();
   const { report, commit } = useStudentFile();
   const [shelf] = useState(() => loadCoachShelf(localStorage));
   const [error, setError] = useState('');
@@ -110,7 +112,11 @@ export function BeltPage() {
   const counted = checkpointsForProgress(checkpoints, view);
   const staged = checkpoints.some((row) => row.stage);
   const groups = benchmarkGroups(visible, belt);
-  useScrollToHash(visible.map((row) => row.id).join('|'));
+  const anchor = benchmarkAnchorFromHash(hash);
+  const openedBelt = adultPath && anchor && anchor.belt !== belt ? anchor.belt : null;
+  const openedLevel = openedBelt ? beltLevel(report, openedBelt) : null;
+  const openedIds = openedLevel?.checkpoints.map((row) => row.id).join('|') ?? '';
+  useScrollToHash(`${visible.map((row) => row.id).join('|')}|${openedIds}|${anchor?.elementId ?? ''}`, anchor?.elementId ?? '');
   const summary = beltProgressSummary(level ? { ...level, checkpoints: counted } : null, learned);
   const timeBased = degreeProgressIsTimeBased(belt);
   const openGoals = openGoalBelt(belt);
@@ -136,6 +142,18 @@ export function BeltPage() {
           <h1>Belt progress</h1>
         </header>
         <div className="student-sheet belt-stack">
+          {openedBelt && anchor ? (
+            <OpenedBeltBenchmarks
+              worn={belt}
+              belt={openedBelt}
+              anchorId={anchor.elementId}
+              report={report}
+              learned={learned}
+              view={view}
+              to={to}
+              run={run}
+            />
+          ) : null}
           <p className="student-quiet">
             {adultPath ? (
               <>
@@ -227,6 +245,7 @@ export function BeltPage() {
                 <CheckpointCard
                   key={row.id}
                   row={row}
+                  anchored={row.id === anchor?.elementId}
                   index={checkpoints.findIndex((item) => item.id === row.id)}
                   count={checkpoints.length}
                   learned={learned}
@@ -246,6 +265,7 @@ export function BeltPage() {
                   key={group.id}
                   group={group}
                   belt={belt}
+                  anchorId={anchor?.elementId ?? ''}
                   checkpoints={checkpoints}
                   learned={learned}
                   training={view.trainingStyle}
@@ -516,6 +536,7 @@ function RestoreBenchmarks({ onRestore }: { onRestore: () => void }) {
 function BenchmarkGroupSection({
   group,
   belt,
+  anchorId,
   checkpoints,
   learned,
   training,
@@ -524,6 +545,7 @@ function BenchmarkGroupSection({
 }: {
   group: BenchmarkGroup;
   belt: StudentProgressReport['profile']['belt'];
+  anchorId: string;
   checkpoints: RubricCheckpoint[];
   learned: LearnedIndex;
   training: TrainingStyle;
@@ -538,6 +560,7 @@ function BenchmarkGroupSection({
         <CheckpointCard
           key={row.id}
           row={row}
+          anchored={row.id === anchorId}
           index={checkpoints.findIndex((item) => item.id === row.id)}
           count={checkpoints.length}
           learned={learned}
@@ -551,6 +574,80 @@ function BenchmarkGroupSection({
         />
       ))}
       <BenchmarkDisclaimer />
+    </section>
+  );
+}
+
+function OpenedBeltBenchmarks({
+  worn,
+  belt,
+  anchorId,
+  report,
+  learned,
+  view,
+  to,
+  run,
+}: {
+  worn: StudentProgressReport['profile']['belt'];
+  belt: StudentProgressReport['profile']['belt'];
+  anchorId: string;
+  report: StudentProgressReport;
+  learned: LearnedIndex;
+  view: ReturnType<typeof benchmarkView>;
+  to: (path: string) => string;
+  run: (next: StudentProgressReport) => void;
+}) {
+  const level = beltLevel(report, belt);
+  const checkpoints = level?.checkpoints ?? [];
+  const openedView = { ...view, belt };
+  const visible = checkpoints.filter((row) => benchmarkVisible(row, openedView));
+  const staged = checkpoints.some((row) => row.stage);
+  const groups = benchmarkGroups(visible, belt);
+  const label = BELT_LABELS[belt];
+  const found = visible.some((row) => row.id === anchorId);
+  return (
+    <section className="belt-opened" aria-label={`${label} belt benchmarks`}>
+      <h2>{label} belt</h2>
+      <p className="student-quiet">Opened from a link. Your current belt stays {BELT_LABELS[worn]}.</p>
+      <Link className="ink-btn" to={to('/student/rubric')}>
+        Back to {BELT_LABELS[worn]} belt
+      </Link>
+      {found ? null : (
+        <p id={anchorId} className="ink belt-block is-anchor" role="status">
+          That benchmark is not on the {label} list on this phone.
+        </p>
+      )}
+      {staged
+        ? groups.map((group) => (
+            <BenchmarkGroupSection
+              key={group.id}
+              group={group}
+              belt={belt}
+              anchorId={anchorId}
+              checkpoints={checkpoints}
+              learned={learned}
+              training={openedView.trainingStyle}
+              report={report}
+              run={run}
+            />
+          ))
+        : visible.map((row) => (
+            <CheckpointCard
+              key={row.id}
+              row={row}
+              anchored={row.id === anchorId}
+              index={checkpoints.findIndex((item) => item.id === row.id)}
+              count={checkpoints.length}
+              learned={learned}
+              training={openedView.trainingStyle}
+              readOnly={checkpointReadOnly(report, row)}
+              onMark={(met, note) => run(setCheckpointMark(report, row.id, met, note))}
+              onRename={(name) => run(renameCheckpoint(report, row.id, name))}
+              onRemove={() => run(removeCheckpoint(report, row.id))}
+              onMove={(direction) => run(moveCheckpoint(report, row.id, direction))}
+              onCriterion={(id, met, date, note) => run(setCriterionMark(report, id, met, date, note))}
+            />
+          ))}
     </section>
   );
 }
@@ -581,6 +678,7 @@ function NameForm({ label, submit, onAdd }: { label: string; submit: string; onA
 
 function CheckpointCard({
   row,
+  anchored,
   index,
   count,
   learned,
@@ -593,6 +691,7 @@ function CheckpointCard({
   onCriterion,
 }: {
   row: RubricCheckpoint;
+  anchored: boolean;
   index: number;
   count: number;
   learned: LearnedIndex;
@@ -620,7 +719,7 @@ function CheckpointCard({
     setDraft(row.name);
   }, [row.name]);
   return (
-    <section id={row.id} className="ink belt-block" aria-label={`${title} benchmark`}>
+    <section id={row.id} className={anchored ? 'ink belt-block is-anchor' : 'ink belt-block'} aria-label={`${title} benchmark`}>
       <h2>{title}</h2>
       {readOnly ? <p className="student-quiet">From your coach. This practical benchmark stays as they sent it.</p> : null}
       {row.source === 'coach' && row.edited ? <p className="student-quiet">Edited from the coach list.</p> : null}

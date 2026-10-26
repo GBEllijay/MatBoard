@@ -1080,6 +1080,36 @@ export function starterCheckpoint(belt: ProgressBelt, slug: string): RubricCheck
     ?.checkpoints.find((row) => row.id === `checkpoint.${belt}.${slug}`);
 }
 
+const BENCHMARK_BELT_TOKEN = 'white|blue|purple|brown|black|grey|yellow|orange|green|coral|redWhite|red';
+const BENCHMARK_ANCHOR_RE = new RegExp(`^(?:(checkpoint|rubric)\\.)?(${BENCHMARK_BELT_TOKEN})\\.(.+)$`);
+
+export type BenchmarkAnchor = {
+  belt: ProgressBelt;
+  /** Card to bring into view. A criterion hash opens the checkpoint that holds it. */
+  elementId: string;
+};
+
+/**
+ * Fundamentals links use `checkpoint.{belt}.{slug}`.
+ * A short hash such as `blue.s1-turtle` names the same card.
+ */
+export function benchmarkAnchorFromHash(hash: string): BenchmarkAnchor | null {
+  const raw = hash.startsWith('#') ? hash.slice(1) : hash;
+  if (!raw) return null;
+  let id = raw;
+  try {
+    id = decodeURIComponent(raw);
+  } catch {
+    return null;
+  }
+  const match = BENCHMARK_ANCHOR_RE.exec(id);
+  if (!match) return null;
+  const belt = match[2] as ProgressBelt;
+  const slug = match[3]?.trim() ?? '';
+  if (!slug || slug.includes('#')) return null;
+  return { belt, elementId: `checkpoint.${belt}.${slug}` };
+}
+
 export function defaultTechniquePolicy(
   belt: ProgressBelt,
   age: number | null,

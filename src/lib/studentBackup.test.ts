@@ -17,9 +17,14 @@ import {
   clearStudentMemory,
   parseStudentBackup,
   pdfIncludes,
+  BACKUP_INCLUDE_VIDEOS_KEY,
+  journalBackupConfirmation,
+  journalBackupFailure,
+  readBackupIncludeVideos,
   studentBackupNames,
   studentExportDetail,
   videoFilesLine,
+  writeBackupIncludeVideos,
   progressReportLines,
   selfAssessmentLines,
 } from './studentBackup.ts';
@@ -306,6 +311,22 @@ test('each export names one file, and only the JSON backup restores the phone', 
   assert.match(videoFilesLine(false), /^Video files: off/);
   assert.match(videoFilesLine(true), /^Video files: on/);
   assert.match(videoFilesLine(true), /JSON backup/);
+  assert.match(journalBackupConfirmation('advantage-student-backup-2026-10-24.json', false), /Backup saved/);
+  assert.match(journalBackupConfirmation('advantage-student-backup-2026-10-24.json', false), /not included/);
+  assert.match(journalBackupConfirmation('advantage-student-backup-2026-10-24.json', true), /are included/);
+  assert.match(journalBackupFailure('Those video files are too large for one backup (49 MB).'), /^Backup did not finish\./);
+});
+
+test('include video files stays off until the student turns it on', () => {
+  const storage = memory();
+  assert.equal(readBackupIncludeVideos(storage), false);
+  assert.equal(storage.getItem(BACKUP_INCLUDE_VIDEOS_KEY), null);
+  writeBackupIncludeVideos(storage, true);
+  assert.equal(readBackupIncludeVideos(storage), true);
+  writeBackupIncludeVideos(storage, false);
+  assert.equal(readBackupIncludeVideos(storage), false);
+  assert.equal(storage.getItem(BACKUP_INCLUDE_VIDEOS_KEY), '0');
+  assert.equal(readBackupIncludeVideos(null), false);
 });
 
 test('only the JSON backup updates the last-backup stamp', async () => {

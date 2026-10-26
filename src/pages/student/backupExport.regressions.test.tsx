@@ -2,6 +2,9 @@
  * Backup and Connections controls still do their own job:
  * JSON backup, spreadsheet, both PDFs, include videos, Last backup,
  * restore Merge/Replace, drive-not-connected note, and clear.
+ * Include video files stays off until chosen, then stays across reload.
+ * A finished JSON backup says what was saved, with or without videos.
+ * A failed JSON backup shows an error.
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -169,6 +172,10 @@ async function exerciseExports(host: HTMLElement) {
   await click(button(host, 'Back up my journal (.json)'));
   assert.equal(saved.length, before + 4);
   assert.match(saved.at(-1)?.name ?? '', /\.json$/);
+  assert.match(text(), /Backup saved/);
+  assert.match(text(), /Saved on this phone as advantage-student-backup-/);
+  assert.match(text(), /Video files kept on this device are included/);
+  assert.equal(host.querySelector('[data-kind="ok"]')?.getAttribute('role'), 'status');
   const file = JSON.parse(await (saved.at(-1)?.blob.text() ?? '{}')) as {
     films?: { technique?: string }[];
     filmFiles?: unknown;
@@ -310,4 +317,72 @@ test('clear from Backup & Print downloads one JSON file and still requires CLEAR
   await click(button(page.host, 'Erase Student Edition data'));
   assert.equal(loadStudentReport(localStorage).journal.length, 0);
   unmount(page);
+});
+
+function videoCheckbox(host: ParentNode): HTMLInputElement {
+  const box = [...host.querySelectorAll('input[type="checkbox"]')].find((node) =>
+    node.closest('label')?.textContent?.includes('Include video files kept on this device'),
+  );
+  assert.equal(box?.tagName, 'INPUT');
+  return box as HTMLInputElement;
+}
+
+async function setVideoCheckbox(box: HTMLInputElement, included: boolean) {
+  await act(async () => {
+    box.checked = included;
+    box.dispatchEvent(new view.Event('change', { bubbles: true }));
+    reactProps(box)?.onChange?.({ target: box, currentTarget: box });
+  });
+}
+
+test('include video files stays off until chosen, then stays on after reload', async () => {
+  localStorage.clear();
+  saved.length = 0;
+  const first = mount(<BackupMenu />, '/student/backup?student=1');
+  const off = videoCheckbox(first.host);
+  assert.equal(off.checked, false);
+  assert.equal(first.host.querySelector('[data-on="no"]')?.textContent, 'Off');
+  await click(button(first.host, 'Back up my journal (.json)'));
+  assert.match(first.host.textContent ?? '', /Backup saved/);
+  assert.match(first.host.textContent ?? '', /Video files kept on this device are not included/);
+  assert.match(first.host.textContent ?? '', /No academy folder or personal drive is connected/);
+  await setVideoCheckbox(off, true);
+  assert.equal(first.host.querySelector('[data-on="yes"]')?.textContent, 'On');
+  unmount(first);
+
+  const second = mount(<BackupMenu />, '/student/backup?student=1');
+  const on = videoCheckbox(second.host);
+  assert.equal(on.checked, true);
+  assert.equal(second.host.querySelector('[data-on="yes"]')?.textContent, 'On');
+  await setVideoCheckbox(on, false);
+  unmount(second);
+
+  const third = mount(<BackupMenu />, '/student/backup?student=1');
+  assert.equal(videoCheckbox(third.host).checked, false);
+  assert.equal(third.host.querySelector('[data-on="no"]')?.textContent, 'Off');
+  unmount(third);
+});
+
+test('a failed backup shows an error and does not claim the file was saved', async () => {
+  localStorage.clear();
+  saved.length = 0;
+  const page = mount(<BackupMenu />, '/student/backup?student=1');
+  const original = urlApi.createObjectURL;
+  urlApi.createObjectURL = () => {
+    throw new Error('Could not save the backup file.');
+  };
+  view.URL.createObjectURL = urlApi.createObjectURL;
+  try {
+    await click(button(page.host, 'Back up my journal (.json)'));
+    const alert = page.host.querySelector('[role="alert"]');
+    assert.equal(alert?.getAttribute('data-kind'), 'error');
+    assert.match(alert?.textContent ?? '', /Backup did not finish/);
+    assert.match(alert?.textContent ?? '', /Could not save the backup file/);
+    assert.equal(page.host.querySelector('[data-kind="ok"]'), null);
+    assert.equal(saved.length, 0);
+  } finally {
+    urlApi.createObjectURL = original;
+    view.URL.createObjectURL = original;
+    unmount(page);
+  }
 });
