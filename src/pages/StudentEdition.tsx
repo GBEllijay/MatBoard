@@ -21,6 +21,7 @@ import { ScoutingPage } from './student/ScoutingPage';
 import { VideoLibraryPage } from './student/VideoLibraryPage';
 import { WeightPage } from './student/WeightPage';
 import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './student/chrome';
+import { ageIllegalTechniques } from '../lib/studentBenchmarks';
 import { studentScreen } from '../lib/studentHubMenu';
 import { BackupMenu, ClearStudentMenu } from './student/BackupMenu';
 import { CoachMenu, CompeteMenu, ProgressMenu, StudentHub, TrainingMenu } from './student/StudentMenus';
@@ -302,6 +303,9 @@ function JournalToday() {
           <button type="button" className="ink-btn" onClick={() => setPicker(null)}>
             Close
           </button>
+          {ageIllegalTechniques(report).length ? (
+            <p className="student-quiet">Some techniques are hidden. They are illegal for this age until a coach or parent turns them on in Training.</p>
+          ) : null}
           {fundamentalsBoard(report).map((category) => (
             <section key={category.id}>
               <h2 className="student-picker__category">{category.name}</h2>

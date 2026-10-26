@@ -1790,6 +1790,11 @@ function readGoal(value: unknown, index: number, errors: string[]): StudentGoal 
     met: readMet(record.met, label, errors),
   };
   if (record.belt != null && record.belt !== '') goal.belt = readBelt(record.belt, `${label} belt`, errors);
+  if (typeof record.kidsBeltId === 'string' && record.kidsBeltId.trim()) {
+    const kidsBeltId = record.kidsBeltId.trim().slice(0, PROGRESS_ID_MAX);
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(kidsBeltId)) errors.push(`${label} kids belt must be a stable id.`);
+    else goal.kidsBeltId = kidsBeltId;
+  }
   return goal;
 }
 

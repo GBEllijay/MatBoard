@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { beltModeOf } from '../../lib/beltBook';
 import {
   FUNDAMENTAL_LEVELS,
   FUNDAMENTAL_RESISTANCE_FILTER,
+  KIDS_FUNDAMENTAL_LEVELS,
   filterFundamentalRows,
   fundamentalResistanceCount,
   formatFundamentalUpdated,
@@ -13,7 +15,9 @@ import {
   type FundamentalFilter,
   type FundamentalLevel,
   type FundamentalSort,
+  type LevelAudience,
 } from '../../lib/fundamentals';
+import { ageIllegalTechniques } from '../../lib/studentBenchmarks';
 import { loadFilms } from '../../lib/studentFilm';
 import {
   addCustomFundamental,
@@ -36,12 +40,14 @@ const SORTS: { id: FundamentalSort; label: string }[] = [
   { id: 'recent', label: 'Recently updated' },
 ];
 
-const FILTERS: { id: FundamentalFilter; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'not-started', label: 'Not started' },
-  { id: 'in-progress', label: 'In progress' },
-  { id: 'live', label: FUNDAMENTAL_RESISTANCE_FILTER },
-];
+function filterChoices(kids: boolean): { id: FundamentalFilter; label: string }[] {
+  return [
+    { id: 'all', label: 'All' },
+    { id: 'not-started', label: kids ? 'Not yet' : 'Not started' },
+    { id: 'in-progress', label: 'In progress' },
+    { id: 'live', label: FUNDAMENTAL_RESISTANCE_FILTER },
+  ];
+}
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -59,6 +65,10 @@ export function FundamentalsPage() {
   }, [commit]);
 
   const board = fundamentalsBoard(report);
+  const kids = beltModeOf(report) === 'kids';
+  const audience: LevelAudience = kids ? 'kids' : 'adult';
+  const levels = kids ? KIDS_FUNDAMENTAL_LEVELS : FUNDAMENTAL_LEVELS;
+  const illegal = ageIllegalTechniques(report);
   const summary = proficiencySummary(board.flatMap((category) => category.items));
   const clips = report.clips ?? [];
 
@@ -106,7 +116,7 @@ export function FundamentalsPage() {
             <div>
               <p id="fund-filter-label">Filter</p>
               <div className="fund-picks__row fund-picks__row--filter" role="group" aria-labelledby="fund-filter-label">
-                {FILTERS.map((option) => (
+                {filterChoices(kids).map((option) => (
                   <button
                     key={option.id}
                     type="button"
@@ -120,6 +130,20 @@ export function FundamentalsPage() {
               </div>
             </div>
           </section>
+
+          {illegal.length ? (
+            <section className="ink" aria-label="Illegal for this age">
+              <h2>Illegal for this age</h2>
+              <ul>
+                {illegal.map((row) => (
+                  <li key={row.policy}>
+                    {row.name}. {row.reason}
+                  </li>
+                ))}
+              </ul>
+              <p className="student-quiet">Hidden here until a coach or parent turns them on in Training.</p>
+            </section>
+          ) : null}
 
           {board.map((category) => {
             const shown = sortFundamentalRows(filterFundamentalRows(category.items, filter), sort);
@@ -147,6 +171,8 @@ export function FundamentalsPage() {
                       films,
                       to,
                     })}
+                    audience={audience}
+                    levels={levels}
                     onLevel={(level, note, learnedOn) =>
                       commit(setFundamentalLevel(report, item, level, Date.now(), { note, learnedOn }))
                     }
@@ -228,6 +254,8 @@ function CrossIcon() {
 function FundamentalLine({
   item,
   links,
+  audience,
+  levels,
   onLevel,
   onFields,
   onRename,
@@ -235,6 +263,8 @@ function FundamentalLine({
 }: {
   item: FundamentalRow;
   links: { href: string; label: string }[];
+  audience: LevelAudience;
+  levels: readonly { level: FundamentalLevel; label: string }[];
   onLevel: (level: FundamentalLevel, note: string, learnedOn: string) => void;
   onFields: (note: string, learnedOn: string) => void;
   onRename: (label: string) => void;
@@ -316,7 +346,7 @@ function FundamentalLine({
         </div>
       ) : null}
       <p className="fund-move__level">
-        <strong>{item.level}</strong> {fundamentalLevelLabel(item.level)}
+        <strong>{item.level}</strong> {fundamentalLevelLabel(item.level, audience)}
       </p>
       <div className="fund-track" role="radiogroup" aria-label={`${item.label} proficiency`}>
         <button
@@ -324,13 +354,13 @@ function FundamentalLine({
           role="radio"
           className={item.level === 0 ? 'fund-seg is-selected' : 'fund-seg'}
           aria-checked={item.level === 0}
-          aria-label={`${item.label} 0 ${fundamentalLevelLabel(0)}`}
+          aria-label={`${item.label} 0 ${fundamentalLevelLabel(0, audience)}`}
           onClick={() => onLevel(0, note, date)}
         >
           0
         </button>
         <div className="fund-track__bar">
-          {FUNDAMENTAL_LEVELS.filter((step) => step.level > 0).map((step) => (
+          {levels.filter((step) => step.level > 0).map((step) => (
             <button
               key={step.level}
               type="button"

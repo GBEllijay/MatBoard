@@ -1,31 +1,39 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { ADULT_IBJJF_TEMPLATE_ID, IBJJF_KIDS_TEMPLATE, KIDS_IBJJF_TEMPLATE_ID, ibjjfMonthlyTapes } from './beltTemplates.ts';
+import { ADULT_IBJJF_TEMPLATE_ID, IBJJF_ADULT_TEMPLATE, IBJJF_KIDS_TEMPLATE, KIDS_IBJJF_TEMPLATE_ID, ibjjfMonthlyTapes } from './beltTemplates.ts';
 import {
   addClassDot,
+  addKidsBenchmark,
+  adultStartChoices,
   ageWarning,
   beltModeOf,
   compactSlotCount,
   compactSlots,
   currentKidsBelt,
+  earlierKidRows,
+  kidsBenchmarksOf,
   kidsLadder,
   labelInk,
+  literalSlots,
+  literalTapeCountAfterTap,
   removeClassDot,
   setBeltMode,
   setBirthYear,
   setClassesPerTape,
   setKidsBelt,
   setKidsTapeCount,
+  setLastTapeColor,
   setTapeGuide,
   showAdultPrompt,
   tapeCountAfterTap,
   timeGuideText,
+  withBeltTemplate,
 } from './beltBook.ts';
 import { exportProgressPacket, mergeStudentProgress, parseProgressPacket } from './progress/format.ts';
 import type { BeltTemplateRecord, StudentProgressReport } from './progress/types.ts';
 import { blankStudentReport, saveStudentReport } from './studentEdition.ts';
 import { showsAdultCheckpoints } from './studentTools.ts';
-import { setInstructorBars, setRankBelt, setRankTapeCount } from './studentRank.ts';
+import { graduateToAdult, setInstructorBars, setRankBelt, setRankTapeCount } from './studentRank.ts';
 
 const memory = () => {
   const store = new Map<string, string>();
@@ -72,9 +80,9 @@ test('IBJJF kids template is the 13-belt ladder with monthly tape colors', () =>
   const greyWhite = IBJJF_KIDS_TEMPLATE.belts[1];
   const grey = IBJJF_KIDS_TEMPLATE.belts[2];
   assert.equal(white?.tapeColors.length, 5);
-  assert.equal(greyWhite?.tapeColors.length, 11);
+  assert.equal(greyWhite?.tapeColors.length, 5);
   assert.deepEqual(white?.tapeColors, ibjjfMonthlyTapes(true));
-  assert.deepEqual(greyWhite?.tapeColors, ibjjfMonthlyTapes(false));
+  assert.deepEqual(greyWhite?.tapeColors, ibjjfMonthlyTapes(true));
   assert.equal(grey?.tapeColors.length, 11);
   assert.deepEqual(grey?.tapeColors.slice(8), ['#121214', '#121214', '#121214']);
   assert.equal(greyWhite?.ink, 'navy');
@@ -87,9 +95,13 @@ test('IBJJF kids template is the 13-belt ladder with monthly tape colors', () =>
   assert.equal(IBJJF_KIDS_TEMPLATE.belts[3]?.center, 'black');
   assert.equal(IBJJF_KIDS_TEMPLATE.belts[5]?.ageMin, 7);
   assert.equal(ageWarning(IBJJF_KIDS_TEMPLATE.belts[0] ?? { ageMin: undefined }), '');
-  assert.equal(ageWarning({ ageMin: 7 }), 'IBJJF suggests this belt from age 7.');
-  assert.equal(ageWarning({ ageMin: 7, ageMax: 15 }, 2020, new Date('2026-10-25T12:00:00Z')), 'IBJJF suggests this belt from age 7. This reads as age 6.');
-  assert.equal(ageWarning({ ageMin: 7, ageMax: 15 }, 2016, new Date('2026-10-25T12:00:00Z')), 'IBJJF suggests this belt from age 7.');
+  assert.equal(ageWarning({ ageMin: 7, group: 'yellow' }), '');
+  assert.equal(
+    ageWarning({ ageMin: 7, ageMax: 15, group: 'yellow' }, 2020, new Date('2026-10-25T12:00:00Z')),
+    'IBJJF age group: Yellow, ages 7-15.',
+  );
+  assert.equal(ageWarning({ ageMin: 7, ageMax: 15, group: 'yellow' }, 2016, new Date('2026-10-25T12:00:00Z')), '');
+  assert.equal(kidsLadder(setBeltMode(blankStudentReport(3), 'kids', 4)).length, 13);
 });
 
 test('switching ladders keeps adult degrees and kids stripes on the same file', () => {
@@ -143,9 +155,9 @@ test('class dots fill a card and do not award a stripe', () => {
   report = setTapeGuide(report, 'time', 34);
   assert.match(timeGuideText(report, new Date('2026-10-25T12:00:00Z')), /one month between stripes/);
   report = setKidsBelt(report, 'grey-white', 35);
-  report = setKidsTapeCount(report, 11, 36);
-  assert.equal(report.beltBook?.kids?.tapeCount, 11);
-  assert.throws(() => setKidsTapeCount(report, 12), /0 to 11/);
+  report = setKidsTapeCount(report, 5, 36);
+  assert.equal(report.beltBook?.kids?.tapeCount, 5);
+  assert.throws(() => setKidsTapeCount(report, 6), /0 to 5/);
   report = setKidsBelt(report, 'white', 37);
   assert.throws(() => setKidsTapeCount(report, 6), /0 to 5/);
   report = setKidsBelt(report, 'grey', 38);
@@ -237,12 +249,12 @@ test('stepping a kids belt back to zero clears every slot, including after a dem
   }
 
   report = setKidsBelt(report, 'grey-white', 56);
-  report = setKidsTapeCount(report, 11, 57);
+  report = setKidsTapeCount(report, 5, 57);
   report = setKidsBelt(report, 'white', 58);
   const shown = kidsLadder(report).find((rung) => rung.label === 'Grey/White');
   assert.equal(shown?.tapeCount, 0);
   assert.ok(compactSlots(shown?.tapeColors ?? full, 0).every((slot) => slot.color !== red));
-  assert.equal(report.beltBook?.kids?.history.some((row) => row.beltId === 'grey-white' && row.tapeCount === 11), true);
+  assert.equal(report.beltBook?.kids?.history.some((row) => row.beltId === 'grey-white' && row.tapeCount === 5), true);
   report = setKidsBelt(report, 'grey-white', 59);
   report = setKidsBelt(report, 'white', 60);
   assert.equal(report.beltBook?.kids?.history.some((row) => row.beltId === 'grey-white'), false);
@@ -314,4 +326,78 @@ test('an old file stays on adult belts, and a custom template can reorder belts'
   assert.equal(merged.report.beltBook?.kids?.beltId, 'white');
   assert.equal(merged.report.beltBook?.templates?.[0]?.belts[0]?.name, 'Extra');
   assert.match(merged.conflicts.join('\n'), /Kids belts were kept/);
+});
+
+test('an old adult file keeps its rank when it is wrapped as adult IBJJF', () => {
+  const adult = adultWithDegree();
+  const raw = JSON.parse(exportProgressPacket(adult)) as StudentProgressReport;
+  delete raw.beltBook;
+  const text = JSON.stringify(raw);
+  assert.equal(text.includes('adult-ibjjf@1'), false);
+  const store = memory();
+  store.setItem('matboard.studentEdition.v1', text);
+  const loaded = saveStudentReport(store, JSON.parse(store.getItem('matboard.studentEdition.v1') ?? '{}') as StudentProgressReport);
+  assert.equal(loaded.beltBook?.templateId, ADULT_IBJJF_TEMPLATE_ID);
+  assert.equal(loaded.beltBook?.mode, 'adult');
+  assert.equal(loaded.profile.belt, 'blue');
+  assert.equal(loaded.rank?.tapeCount, 2);
+  assert.equal(loaded.rank?.history.some((row) => row.belt === 'black' && row.tapeCount === 3), true);
+  assert.equal(IBJJF_ADULT_TEMPLATE.belts[0]?.name, 'White');
+  assert.equal(IBJJF_ADULT_TEMPLATE.belts[4]?.tapeColors.length, 6);
+  const wrapped = withBeltTemplate(adult);
+  assert.equal(exportProgressPacket(wrapped).includes('adult-ibjjf@1'), true);
+  assert.equal(exportProgressPacket(wrapped).includes('"tapeCount":3'), true);
+});
+
+test('kids stripe slots stay one per tape, and the last three colors can change', () => {
+  const full = ibjjfMonthlyTapes(false);
+  const slots = literalSlots(full, 6);
+  assert.equal(slots.length, 11);
+  assert.deepEqual(slots.slice(0, 6).map((slot) => slot.on), [true, true, true, true, true, true]);
+  assert.equal(slots[5]?.color, '#d21f1f');
+  assert.equal(slots[8]?.on, false);
+  assert.equal(literalTapeCountAfterTap(full, 4, 4), 3);
+  assert.equal(literalTapeCountAfterTap(full, 4, 9), 9);
+  const short = literalSlots(ibjjfMonthlyTapes(true), 5);
+  assert.equal(short.length, 5);
+  assert.equal(short[4]?.color, '#d21f1f');
+
+  let report = setBeltMode(blankStudentReport(70), 'kids', 71);
+  report = setKidsBelt(report, 'grey', 72);
+  report = setLastTapeColor(report, '#2255aa', 73);
+  const grey = currentKidsBelt(report);
+  assert.deepEqual(grey.tapeColors.slice(8), ['#2255aa', '#2255aa', '#2255aa']);
+  assert.equal(report.beltBook?.templateId, 'student-kids');
+  assert.equal(currentKidsBelt(setKidsBelt(report, 'white', 74)).tapeColors.length, 5);
+  assert.throws(() => setLastTapeColor(setKidsBelt(report, 'white', 75), '#2255aa', 76), /keeps its stripe colors/);
+});
+
+test('turning 16 can start the adult belt and keep kids belts read-only', () => {
+  const today = new Date(2026, 5, 1);
+  let report = setBeltMode(blankStudentReport(80), 'kids', 81);
+  report = setBirthYear(report, 2010, 82);
+  report = setKidsBelt(report, 'grey-white', 83);
+  report = setKidsTapeCount(report, 2, 84);
+  report = setKidsBelt(report, 'green', 85);
+  report = setKidsTapeCount(report, 3, 86);
+  assert.deepEqual(adultStartChoices(currentKidsBelt(report)), ['blue', 'purple']);
+  assert.throws(() => graduateToAdult(report, 'white', 87, today), /not the IBJJF step/);
+  const blue = graduateToAdult(report, 'blue', 88, today);
+  assert.equal(blue.profile.belt, 'blue');
+  assert.equal(blue.rank?.tapeCount, 0);
+  assert.equal(blue.rank?.awardedOn, '2026-06-01');
+  assert.equal(beltModeOf(blue), 'adult');
+  assert.equal(blue.beltBook?.templateId, ADULT_IBJJF_TEMPLATE_ID);
+  assert.equal(blue.beltBook?.kids?.beltId, 'green');
+  assert.equal(blue.beltBook?.kids?.tapeCount, 3);
+  assert.equal(earlierKidRows(blue).some((row) => row.label === 'Grey/White' && row.tapeCount === 2), true);
+  assert.equal(earlierKidRows(blue).some((row) => row.label === 'Green' && row.tapeCount === 3), true);
+  const purple = graduateToAdult(report, 'purple', 89, today);
+  assert.equal(purple.profile.belt, 'purple');
+  const whiteKid = setKidsBelt(setBirthYear(setBeltMode(blankStudentReport(90), 'kids', 91), 2010, 92), 'white', 93);
+  assert.deepEqual(adultStartChoices(currentKidsBelt(whiteKid)), ['white']);
+  assert.equal(graduateToAdult(whiteKid, 'white', 94, today).profile.belt, 'white');
+  const yellow = setKidsBelt(whiteKid, 'yellow', 95);
+  assert.deepEqual(adultStartChoices(currentKidsBelt(yellow)), ['blue']);
+  assert.equal(kidsBenchmarksOf(addKidsBenchmark(yellow, 'yellow', 'Bridge', 96), 'yellow')[0]?.name, 'Bridge');
 });

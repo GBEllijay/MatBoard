@@ -17,20 +17,23 @@ const CONFETTI = [
   { left: '78%', delay: '0.95s', color: '#bdb2ff', duration: '3.1s', rotate: '6deg' },
 ] as const;
 
-/** Grand Master Carlos slide-in. Shared by the bracket champion and the match scoreboard. */
+/** Grand Master Carlos slide-in. Shared by the bracket champion, the match scoreboard, and the blue-belt graduation. */
 export function CarlosCheer({
   lines,
   board = false,
   corner = false,
+  onDismiss,
 }: {
   lines: readonly string[];
   board?: boolean;
   /** Bracket dock: small, in the reserved corner, not over the tree. */
   corner?: boolean;
+  /** Optional close control. The overlay itself does not take taps. */
+  onDismiss?: () => void;
 }) {
   const lastIsScore = lines.length > 2;
   return (
-    <div className={`kids-carlos${board ? ' kids-carlos--board' : ''}${corner ? ' kids-carlos--corner' : ''}`} role="status">
+    <div className={`kids-carlos${board ? ' kids-carlos--board' : ''}${corner ? ' kids-carlos--corner' : ''}${onDismiss ? ' kids-carlos--dismiss' : ''}`} role="status">
       <div className="kids-confetti" aria-hidden="true">
         {CONFETTI.map((piece) => (
           <span
@@ -68,6 +71,11 @@ export function CarlosCheer({
           <span className="kids-carlos__face" aria-hidden="true" />
         </div>
       </figure>
+      {onDismiss ? (
+        <button type="button" className="ink-btn ink-btn--save kids-carlos__dismiss" onClick={onDismiss}>
+          Got it
+        </button>
+      ) : null}
     </div>
   );
 }

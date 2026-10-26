@@ -1,11 +1,11 @@
 /**
- * Built-in belt templates. IBJJF is the only prebuilt kids ladder.
- * Custom templates are stored on the student's file and edited later.
- * The adult ladder on My rank is not drawn from a template. Its id is a marker
- * so a saved file can say which system it last used.
+ * Built-in belt templates. IBJJF adult and IBJJF kids are the prebuilt ladders.
+ * A student can change the last three stripe colors on their own kids belts.
+ * The full template editor comes later. Adult My rank still draws its own ladder.
+ * The adult template id wraps a saved file so older adult belts are not rewritten.
  */
 
-import type { BeltCenter, BeltTemplateDef, BeltTemplateRecord } from './progress/types.ts';
+import type { BeltCenter, BeltDef, BeltTemplateRecord } from './progress/types.ts';
 
 export const ADULT_IBJJF_TEMPLATE_ID = 'adult-ibjjf@1';
 export const KIDS_IBJJF_TEMPLATE_ID = 'kids-ibjjf@1';
@@ -21,10 +21,10 @@ export type BeltTemplate = {
   version: number;
   baseId?: string;
   ageMode: 'kids' | 'adult' | 'any';
-  belts: BeltTemplateDef[];
+  belts: BeltDef[];
 };
 
-/** Plain white: 4 white tapes and 1 red tape. Every other kids belt, including grey/white: 4 white, 4 red, 3 black. */
+/** White and Grey/White: 4 white tapes and 1 red tape. Every other kids belt: 4 white, 4 red, 3 black. */
 export function ibjjfMonthlyTapes(short: boolean): string[] {
   if (short) return [TAPE_WHITE, TAPE_WHITE, TAPE_WHITE, TAPE_WHITE, TAPE_RED];
   return [TAPE_WHITE, TAPE_WHITE, TAPE_WHITE, TAPE_WHITE, TAPE_RED, TAPE_RED, TAPE_RED, TAPE_RED, TAPE_BLACK, TAPE_BLACK, TAPE_BLACK];
@@ -40,8 +40,8 @@ function belt(
   group: string,
   ageMin?: number,
   ageMax?: number,
-): BeltTemplateDef {
-  const row: BeltTemplateDef = {
+): BeltDef {
+  const row: BeltDef = {
     id,
     name,
     base,
@@ -49,6 +49,8 @@ function belt(
     ink,
     tapeColors: ibjjfMonthlyTapes(short),
     group,
+    bar: '#101012',
+    curriculumTier: group === 'white' ? 'white' : group,
   };
   if (ageMin != null) row.ageMin = ageMin;
   if (ageMax != null) row.ageMax = ageMax;
@@ -69,7 +71,7 @@ export const IBJJF_KIDS_TEMPLATE: BeltTemplate = {
   ageMode: 'kids',
   belts: [
     belt('white', 'White', '#f1eee5', 'solid', 'navy', true, 'white'),
-    belt('grey-white', 'Grey/White', GREY, 'white', 'navy', false, 'grey', 4, 15),
+    belt('grey-white', 'Grey/White', GREY, 'white', 'navy', true, 'grey', 4, 15),
     belt('grey', 'Grey', GREY, 'solid', 'navy', false, 'grey', 4, 15),
     belt('grey-black', 'Grey/Black', GREY, 'black', 'navy', false, 'grey', 4, 15),
     belt('yellow-white', 'Yellow/White', YELLOW, 'white', 'navy', false, 'yellow', 7, 15),
@@ -81,6 +83,43 @@ export const IBJJF_KIDS_TEMPLATE: BeltTemplate = {
     belt('green-white', 'Green/White', GREEN, 'white', 'white', false, 'green', 13, 15),
     belt('green', 'Green', GREEN, 'solid', 'white', false, 'green', 13, 15),
     belt('green-black', 'Green/Black', GREEN, 'black', 'white', false, 'green', 13, 15),
+  ],
+};
+
+const ADULT_WHITE = '#f4f1ea';
+const ADULT_STRIPES = [ADULT_WHITE, ADULT_WHITE, ADULT_WHITE, ADULT_WHITE];
+
+function adultBelt(id: string, name: string, base: string, ink: 'navy' | 'white', tapes: string[], unlock?: 'afterBlack'): BeltDef {
+  const row: BeltDef = {
+    id,
+    name,
+    base,
+    center: 'solid',
+    ink,
+    tapeColors: tapes,
+    bar: id === 'black' || id === 'coral' ? '#d3161b' : '#101012',
+    curriculumTier: id,
+  };
+  if (unlock) row.unlock = unlock;
+  return row;
+}
+
+/** Adult IBJJF ladder. My rank still stores stripes on `rank`. This id wraps that data. */
+export const IBJJF_ADULT_TEMPLATE: BeltTemplate = {
+  id: ADULT_IBJJF_TEMPLATE_ID,
+  name: 'IBJJF adult',
+  kind: 'builtin',
+  version: 1,
+  ageMode: 'adult',
+  belts: [
+    adultBelt('white', 'White', '#f1eee5', 'navy', ADULT_STRIPES),
+    adultBelt('blue', 'Blue', '#1d4ed8', 'white', ADULT_STRIPES),
+    adultBelt('purple', 'Purple', '#7a3ec8', 'white', ADULT_STRIPES),
+    adultBelt('brown', 'Brown', '#7b4a2a', 'white', ADULT_STRIPES),
+    adultBelt('black', 'Black', '#232326', 'white', [ADULT_WHITE, ADULT_WHITE, ADULT_WHITE, ADULT_WHITE, ADULT_WHITE, ADULT_WHITE]),
+    adultBelt('coral', 'Coral', '#d3161b', 'white', ADULT_STRIPES, 'afterBlack'),
+    adultBelt('redWhite', 'Red and white', '#f4f1ea', 'navy', ADULT_STRIPES, 'afterBlack'),
+    adultBelt('red', 'Red', '#d3161b', 'white', ADULT_STRIPES, 'afterBlack'),
   ],
 };
 

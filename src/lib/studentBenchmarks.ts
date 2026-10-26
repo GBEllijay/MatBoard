@@ -4,7 +4,7 @@
  * A saved list is left alone. Empty brown from the old file, and any missing level, receive these.
  */
 
-import { ibjjfAge } from './beltBook.ts';
+import { beltModeOf, ibjjfAge } from './beltBook.ts';
 import { FUNDAMENTAL_LIVE_LEVEL, fundamentalLevelLabel, fundamentalLevelOf, type FundamentalLevel } from './fundamentals.ts';
 import { FUNDAMENTALS_CATALOG } from './progress/catalog.ts';
 import type {
@@ -1080,7 +1080,20 @@ export function starterCheckpoint(belt: ProgressBelt, slug: string): RubricCheck
     ?.checkpoints.find((row) => row.id === `checkpoint.${belt}.${slug}`);
 }
 
-export function defaultTechniquePolicy(belt: ProgressBelt, age: number | null): ResolvedPolicy {
+export function defaultTechniquePolicy(
+  belt: ProgressBelt,
+  age: number | null,
+  mode: 'adult' | 'kids' = 'adult',
+): ResolvedPolicy {
+  if (mode === 'kids') {
+    return {
+      straightAnkleLock: age != null && age >= 16,
+      wristLocks: false,
+      legLocks: false,
+      heelHooks: false,
+      competition: false,
+    };
+  }
   const rank = ADULT_RANK[belt] ?? 0;
   return {
     straightAnkleLock: age == null || age >= 16,
@@ -1091,8 +1104,13 @@ export function defaultTechniquePolicy(belt: ProgressBelt, age: number | null): 
   };
 }
 
-export function effectiveTechniquePolicy(profile: StudentProfile, belt: ProgressBelt, age: number | null): ResolvedPolicy {
-  const defaults = defaultTechniquePolicy(belt, age);
+export function effectiveTechniquePolicy(
+  profile: StudentProfile,
+  belt: ProgressBelt,
+  age: number | null,
+  mode: 'adult' | 'kids' = 'adult',
+): ResolvedPolicy {
+  const defaults = defaultTechniquePolicy(belt, age, mode);
   const saved = profile.techniquePolicy ?? {};
   return {
     straightAnkleLock: saved.straightAnkleLock ?? defaults.straightAnkleLock,
@@ -1103,13 +1121,49 @@ export function effectiveTechniquePolicy(profile: StudentProfile, belt: Progress
   };
 }
 
+export type AgeIllegalTechnique = {
+  catalogId: string;
+  name: string;
+  policy: keyof TechniquePolicy;
+  reason: string;
+};
+
+/** Techniques hidden because they are illegal at this age. A saved override brings one back. */
+export function ageIllegalTechniques(report: StudentProgressReport): AgeIllegalTechnique[] {
+  const mode = beltModeOf(report);
+  const year = report.beltBook?.birthYear;
+  const age = typeof year === 'number' ? ibjjfAge(year) : null;
+  const policy = effectiveTechniquePolicy(report.profile, report.profile.belt, age, mode);
+  const child = mode === 'kids' || (age != null && age < 16);
+  const rows: AgeIllegalTechnique[] = [];
+  if (child && !policy.straightAnkleLock) {
+    rows.push({
+      catalogId: 'sub.straight-ankle-lock',
+      name: 'Straight ankle lock',
+      policy: 'straightAnkleLock',
+      reason: 'Illegal under 16.',
+    });
+  }
+  if (mode === 'kids' && !policy.wristLocks) {
+    rows.push({ catalogId: 'sub.wrist-lock', name: 'Wrist lock', policy: 'wristLocks', reason: 'Illegal for kids.' });
+  }
+  if (mode === 'kids' && !policy.legLocks) {
+    rows.push({ catalogId: '', name: 'Leg locks', policy: 'legLocks', reason: 'Illegal for this age.' });
+  }
+  if (mode === 'kids' && !policy.heelHooks) {
+    rows.push({ catalogId: '', name: 'Heel hooks', policy: 'heelHooks', reason: 'Illegal for this age.' });
+  }
+  return rows;
+}
+
 export function benchmarkView(report: StudentProgressReport): BenchmarkView {
+  const mode = beltModeOf(report);
   const year = report.beltBook?.birthYear;
   const age = typeof year === 'number' ? ibjjfAge(year) : null;
   return {
     belt: report.profile.belt,
-    trainingStyle: report.profile.trainingStyle ?? 'both',
-    policy: effectiveTechniquePolicy(report.profile, report.profile.belt, age),
+    trainingStyle: report.profile.trainingStyle ?? (mode === 'kids' ? 'gi' : 'both'),
+    policy: effectiveTechniquePolicy(report.profile, report.profile.belt, age, mode),
   };
 }
 

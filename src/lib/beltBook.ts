@@ -26,6 +26,7 @@ import {
   type BeltSystemMode,
   type BeltTemplateDef,
   type BeltTemplateRecord,
+  type KidsBenchmark,
   type KidsBeltHistory,
   type KidsBeltRank,
   type StudentProgressReport,
@@ -47,6 +48,7 @@ export type KidsRung = {
   tapeColors: string[];
   ageMin?: number;
   ageMax?: number;
+  group?: string;
   current: boolean;
   awardedOn: string;
   tapeCount: number;
@@ -74,17 +76,30 @@ export function ibjjfAge(birthYear: number, today = new Date()): number {
 }
 
 /**
- * Soft note for the belt the student wears. Empty when the belt has no age advice.
- * A birth year adds the student's age. It never blocks the belt.
+ * Subtle note for a belt outside the child's IBJJF age group.
+ * Empty when the belt is in range, or when no birth year is saved.
+ * The belt stays on the ladder either way.
  */
-export function ageWarning(belt: Pick<BeltTemplateDef, 'ageMin' | 'ageMax'>, birthYear?: number, today = new Date()): string {
-  if (belt.ageMin == null) return '';
-  const base = `IBJJF suggests this belt from age ${belt.ageMin}.`;
-  if (birthYear == null || !Number.isInteger(birthYear)) return base;
+export function ageWarning(
+  belt: Pick<BeltTemplateDef, 'ageMin' | 'ageMax' | 'group'>,
+  birthYear?: number,
+  today = new Date(),
+): string {
+  if (belt.ageMin == null || birthYear == null || !Number.isInteger(birthYear)) return '';
   const age = ibjjfAge(birthYear, today);
-  if (age < 0 || age > 120) return base;
-  if (age < belt.ageMin || (belt.ageMax != null && age > belt.ageMax)) return `${base} This reads as age ${age}.`;
-  return base;
+  if (age < 0 || age > 120) return '';
+  const outside = age < belt.ageMin || (belt.ageMax != null && age > belt.ageMax);
+  if (!outside) return '';
+  const group = belt.group ? `${belt.group.charAt(0).toUpperCase()}${belt.group.slice(1)}` : 'This belt';
+  const span = belt.ageMax != null ? `${belt.ageMin}-${belt.ageMax}` : `${belt.ageMin} and up`;
+  return `IBJJF age group: ${group}, ages ${span}.`;
+}
+
+/** White stays white. Grey, yellow, and orange move to blue. Green may be blue or purple. */
+export function adultStartChoices(belt: { beltId: string; group?: string }): Array<'white' | 'blue' | 'purple'> {
+  if (belt.beltId === 'white' || belt.group === 'white') return ['white'];
+  if (belt.group === 'green' || belt.beltId.startsWith('green')) return ['blue', 'purple'];
+  return ['blue'];
 }
 
 /** Gentle prompt only. The student stays on kids belts until they switch. */
@@ -93,6 +108,48 @@ export function showAdultPrompt(report: StudentProgressReport, today = new Date(
   const year = report.beltBook?.birthYear;
   if (year == null) return false;
   return ibjjfAge(year, today) >= 16;
+}
+
+/**
+ * Wrap a saved file with the belt template it already uses.
+ * Adult stripes, degrees, and history stay on `rank`. Nothing is rewritten.
+ * A file with no belt book becomes adult IBJJF.
+ */
+export function withBeltTemplate(report: StudentProgressReport): StudentProgressReport {
+  const book = report.beltBook;
+  const mode = book?.mode === 'kids' ? 'kids' : 'adult';
+  const templateId = book?.templateId || (mode === 'kids' ? book?.kidsTemplateId || KIDS_IBJJF_TEMPLATE_ID : ADULT_IBJJF_TEMPLATE_ID);
+  if (book && book.mode === mode && book.templateId === templateId) return report;
+  return { ...report, beltBook: { ...(book ?? {}), mode, templateId } };
+}
+
+export type EarlierKidRow = {
+  id: string;
+  label: string;
+  awardedOn: string;
+  tapeCount: number;
+};
+
+/** Kids belts kept after the move to adult. Empty until that move. */
+export function earlierKidRows(report: StudentProgressReport): EarlierKidRow[] {
+  if (!report.beltBook?.earlier) return [];
+  const kids = kidsRankOf(report);
+  const names = new Map(kidsLadder(report).map((rung) => [rung.beltId, rung.label]));
+  const rows = kids.history.map((row) => ({
+    id: row.id,
+    label: names.get(row.beltId) ?? row.beltId,
+    awardedOn: row.awardedOn,
+    tapeCount: row.tapeCount,
+  }));
+  const worn = {
+    id: 'worn',
+    label: names.get(kids.beltId) ?? kids.beltId,
+    awardedOn: kids.awardedOn,
+    tapeCount: kids.tapeCount,
+  };
+  const last = rows[rows.length - 1];
+  if (!last || last.label !== worn.label || last.tapeCount !== worn.tapeCount || last.awardedOn !== worn.awardedOn) rows.push(worn);
+  return rows;
 }
 
 export function kidsTemplateOf(report: StudentProgressReport): BeltTemplate {
@@ -143,6 +200,28 @@ export type CompactSlot = { slot: number; on: boolean; color: string };
  * Paint the compact row from the tape count.
  * Whites fill first. Later runs repaint those same slots red, then black.
  */
+/** One slot per tape color. Filled slots are the stripes on the belt. */
+export function literalSlots(colors: string[], tapeCount: number): CompactSlot[] {
+  const count = Math.max(0, Math.min(Number.isInteger(tapeCount) ? tapeCount : 0, colors.length));
+  return colors.map((color, index) => ({
+    slot: index + 1,
+    on: index < count,
+    color,
+  }));
+}
+
+/**
+ * Tap a stripe slot. The same slot as the latest stripe takes it off.
+ * An earlier slot drops the stripes after it. A later slot fills through that slot.
+ */
+export function literalTapeCountAfterTap(colors: string[], tapeCount: number, slot: number): number {
+  const max = colors.length;
+  const count = Math.max(0, Math.min(Number.isInteger(tapeCount) ? tapeCount : 0, max));
+  if (!Number.isInteger(slot) || slot < 1 || slot > max) return count;
+  if (slot === count) return count - 1;
+  return slot;
+}
+
 export function compactSlots(colors: string[], tapeCount: number): CompactSlot[] {
   const runs = tapeRuns(colors);
   const width = compactSlotCount(colors);
@@ -223,6 +302,84 @@ export function setBeltMode(report: StudentProgressReport, mode: BeltSystemMode,
     if (book.templateId && book.templateId !== ADULT_IBJJF_TEMPLATE_ID) book.kidsTemplateId = book.templateId;
     book.templateId = ADULT_IBJJF_TEMPLATE_ID;
   }
+  return touch(report, book, now);
+}
+
+/** Remember that kids belts should stay visible after a move to the adult system. */
+export function markEarlierBelts(report: StudentProgressReport, now = Date.now()): StudentProgressReport {
+  if (report.beltBook?.earlier) return report;
+  const book = cloneBook(report.beltBook);
+  book.earlier = true;
+  return touch(report, book, now);
+}
+
+const STUDENT_KIDS_TEMPLATE_ID = 'student-kids';
+
+/** Change the last three stripe colors on the belt the student wears. Other belts stay as they are. */
+export function setLastTapeColor(report: StudentProgressReport, color: string, now = Date.now()): StudentProgressReport {
+  const hex = color.trim().toLowerCase();
+  if (!HEX_RE.test(hex)) throw new Error('Pick a stripe color.');
+  const book = cloneBook(report.beltBook);
+  book.mode = 'kids';
+  const template = templateForBook(book);
+  const kids = normalizeKids(book.kids, template);
+  const belt = template.belts.find((row) => row.id === kids.beltId);
+  if (!belt || belt.tapeColors.length < 8) throw new Error('This belt keeps its stripe colors.');
+  const tapeColors = belt.tapeColors.map((item, index) => (index >= belt.tapeColors.length - 3 ? hex : item));
+  if (tapeColors.every((item, index) => item === belt.tapeColors[index])) return report;
+  const existing = book.templates?.find((item) => item.id === book.templateId);
+  const source = existing?.belts?.length ? existing.belts : template.belts;
+  const belts = source.map((row) => (row.id === belt.id ? { ...row, tapeColors } : { ...row, tapeColors: [...row.tapeColors] }));
+  const record: BeltTemplateRecord = existing
+    ? { ...existing, belts, version: Math.min(999, existing.version + 1) }
+    : {
+        id: STUDENT_KIDS_TEMPLATE_ID,
+        name: 'My kids belts',
+        kind: 'custom',
+        version: 1,
+        baseId: KIDS_IBJJF_TEMPLATE_ID,
+        ageMode: 'kids',
+        belts,
+      };
+  const rest = (book.templates ?? []).filter((item) => item.id !== record.id);
+  book.templates = [...rest, record];
+  book.templateId = record.id;
+  book.kidsTemplateId = record.id;
+  return touch(report, book, now);
+}
+
+export function kidsBenchmarksOf(report: StudentProgressReport, beltId: string): KidsBenchmark[] {
+  return (report.beltBook?.benchmarks ?? []).filter((row) => row.beltId === beltId).map((row) => ({ ...row }));
+}
+
+export function addKidsBenchmark(report: StudentProgressReport, beltId: string, name: string, now = Date.now()): StudentProgressReport {
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error('Add a practical benchmark name.');
+  const book = cloneBook(report.beltBook);
+  const benchmarks = book.benchmarks ?? [];
+  if (benchmarks.length >= 100) throw new Error('The practical benchmark list is full.');
+  book.benchmarks = [
+    ...benchmarks,
+    { id: newId(now), beltId, name: trimmed.slice(0, 500), met: null, note: '' },
+  ];
+  return touch(report, book, now);
+}
+
+export function setKidsBenchmark(report: StudentProgressReport, id: string, name: string, note: string, met: boolean | null, now = Date.now()): StudentProgressReport {
+  const book = cloneBook(report.beltBook);
+  if (!book.benchmarks?.some((row) => row.id === id)) return report;
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error('Add a practical benchmark name.');
+  book.benchmarks = book.benchmarks.map((row) =>
+    row.id === id ? { ...row, name: trimmed.slice(0, 500), note: note.trim().slice(0, 500), met } : row,
+  );
+  return touch(report, book, now);
+}
+
+export function removeKidsBenchmark(report: StudentProgressReport, id: string, now = Date.now()): StudentProgressReport {
+  const book = cloneBook(report.beltBook);
+  if (!book.benchmarks?.some((row) => row.id === id)) return report;
+  book.benchmarks = book.benchmarks.filter((row) => row.id !== id);
   return touch(report, book, now);
 }
 
@@ -416,6 +573,9 @@ export function readBeltBook(value: unknown): { book?: BeltBook; errors: string[
     else book.guide = record.guide;
   }
   if (record.kids != null) book.kids = readKidsRank(record.kids, errors);
+  if (record.earlier === true) book.earlier = true;
+  else if (record.earlier != null && record.earlier !== false) errors.push('Earlier belts must be yes or no.');
+  if (record.benchmarks != null) book.benchmarks = readBenchmarks(record.benchmarks, errors);
   if (record.templates != null) book.templates = readTemplates(record.templates, errors);
   if (!hasBookFields(book)) return { errors };
   return { book, errors };
@@ -433,6 +593,11 @@ export function mergeBeltBooks(local?: BeltBook, incoming?: BeltBook): { book?: 
   if (local.guide == null && incoming.guide != null) book.guide = incoming.guide;
   if (!local.templateId && incoming.templateId) book.templateId = incoming.templateId;
   if (!local.kidsTemplateId && incoming.kidsTemplateId) book.kidsTemplateId = incoming.kidsTemplateId;
+  if (incoming.earlier) book.earlier = true;
+  if ((!local.benchmarks || local.benchmarks.length === 0) && incoming.benchmarks?.length) book.benchmarks = incoming.benchmarks.map((row) => ({ ...row }));
+  else if (local.benchmarks?.length && incoming.benchmarks?.length && JSON.stringify(local.benchmarks) !== JSON.stringify(incoming.benchmarks)) {
+    conflicts.push('Kids benchmarks were kept.');
+  }
   if (!kidsHasMark(local.kids) && incoming.kids && kidsHasMark(incoming.kids)) book.kids = cloneKids(incoming.kids);
   else if (kidsHasMark(local.kids) && incoming.kids && kidsHasMark(incoming.kids) && JSON.stringify(local.kids) !== JSON.stringify(incoming.kids)) {
     conflicts.push('Kids belts were kept.');
@@ -516,6 +681,7 @@ function visual(belt: BeltTemplateDef): Omit<KidsRung, 'current' | 'awardedOn' |
     tapeColors: [...belt.tapeColors],
     ageMin: belt.ageMin,
     ageMax: belt.ageMax,
+    group: belt.group,
   };
 }
 
@@ -608,6 +774,8 @@ function cleanBook(book: BeltBook): BeltBook {
   if (book.classesPerTape != null) next.classesPerTape = book.classesPerTape;
   if (book.guide) next.guide = book.guide;
   if (book.kids) next.kids = cloneKids(book.kids);
+  if (book.earlier) next.earlier = true;
+  if (book.benchmarks?.length) next.benchmarks = book.benchmarks.map((row) => ({ ...row }));
   if (book.templates?.length) next.templates = book.templates.map(cloneTemplate);
   return next;
 }
@@ -654,6 +822,8 @@ function hasBookFields(book: BeltBook): boolean {
       book.classesPerTape != null ||
       book.guide ||
       book.kids ||
+      book.earlier ||
+      book.benchmarks?.length ||
       book.templates?.length,
   );
 }
@@ -677,6 +847,39 @@ function readKidsRank(value: unknown, errors: string[]): KidsBeltRank | undefine
     history,
     classCount,
   };
+}
+
+function readBenchmarks(value: unknown, errors: string[]): KidsBenchmark[] | undefined {
+  if (!Array.isArray(value)) {
+    errors.push('Kids benchmarks must be a list.');
+    return undefined;
+  }
+  if (value.length > 100) errors.push('Kids benchmarks has more than the saved limit.');
+  const rows: KidsBenchmark[] = [];
+  const seen = new Set<string>();
+  value.slice(0, 100).forEach((row, index) => {
+    const record = asRecord(row);
+    const label = `Kids benchmark ${index + 1}`;
+    if (!record) {
+      errors.push(`${label} must be an object.`);
+      return;
+    }
+    const id = readId(record.id, `${label} id`, errors);
+    if (id && seen.has(id)) errors.push(`${label} id ${id} is repeated.`);
+    if (id) seen.add(id);
+    const met = record.met;
+    if (met != null && met !== true && met !== false) errors.push(`${label} mark must be yes, no, or empty.`);
+    const name = typeof record.name === 'string' ? record.name.trim().slice(0, 500) : '';
+    if (!name) errors.push(`${label} name must be text.`);
+    rows.push({
+      id,
+      beltId: readId(record.beltId, `${label} belt`, errors) || 'white',
+      name: name || 'Benchmark',
+      note: typeof record.note === 'string' ? record.note.trim().slice(0, 500) : '',
+      met: met === true ? true : met === false ? false : null,
+    });
+  });
+  return rows;
 }
 
 function readHistory(value: unknown, errors: string[]): KidsBeltHistory[] {
@@ -808,6 +1011,15 @@ function readBeltDef(value: unknown, label: string, errors: string[]): BeltTempl
   if (record.ageMax != null && record.ageMax !== '') belt.ageMax = readAge(record.ageMax, `${label} age`, errors);
   if (belt.ageMin != null && belt.ageMax != null && belt.ageMax < belt.ageMin) errors.push(`${label} age window is out of order.`);
   if (typeof record.group === 'string' && record.group.trim()) belt.group = record.group.trim().slice(0, 40);
+  if (typeof record.curriculumTier === 'string' && record.curriculumTier.trim()) belt.curriculumTier = record.curriculumTier.trim().slice(0, 40);
+  if (record.bar != null && record.bar !== '') {
+    const bar = readHex(record.bar, `${label} bar`, errors);
+    if (bar) belt.bar = bar;
+  }
+  if (record.unlock != null && record.unlock !== '') {
+    if (record.unlock !== 'afterBlack') errors.push(`${label} unlock must be after black.`);
+    else belt.unlock = 'afterBlack';
+  }
   if (record.minMonths != null && record.minMonths !== '') {
     if (typeof record.minMonths !== 'number' || !Number.isInteger(record.minMonths) || record.minMonths < 0 || record.minMonths > 240) {
       errors.push(`${label} months must be a whole number.`);

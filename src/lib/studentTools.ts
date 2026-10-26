@@ -881,12 +881,17 @@ export function goalsForBelt(report: StudentProgressReport, belt: ProgressBelt):
   return report.goals.filter((goal) => !goal.belt || goal.belt === belt);
 }
 
+export function goalsForKidsBelt(report: StudentProgressReport, beltId: string): StudentGoal[] {
+  return report.goals.filter((goal) => goal.kidsBeltId === beltId || (!goal.kidsBeltId && !goal.belt));
+}
+
 export function addGoal(
   report: StudentProgressReport,
   name: string,
   note: string,
   now = Date.now(),
   belt?: ProgressBelt,
+  kidsBeltId?: string,
 ): StudentProgressReport {
   const trimmed = name.trim();
   if (!trimmed) throw new Error('Add a personal goal name.');
@@ -898,6 +903,7 @@ export function addGoal(
     met: false,
   };
   if (belt) goal.belt = belt;
+  if (kidsBeltId) goal.kidsBeltId = kidsBeltId;
   return touch({ ...report, goals: [...report.goals, goal] }, now);
 }
 
@@ -936,35 +942,46 @@ export function setGoalMet(report: StudentProgressReport, id: string, met: boole
   return touch({ ...report, goals }, now);
 }
 
-function copyGoal(report: StudentProgressReport, sourceId: string, name: string, note: string, now: number): StudentProgressReport {
+function copyGoal(
+  report: StudentProgressReport,
+  sourceId: string,
+  name: string,
+  note: string,
+  now: number,
+  kidsBeltId?: string,
+): StudentProgressReport {
   const trimmed = name.trim();
   if (!trimmed) return report;
   const id = `goal.${sourceId}`.slice(0, PROGRESS_ID_MAX);
   if (report.goals.some((goal) => goal.id === id)) return report;
   if (report.goals.length >= PROGRESS_GOALS_MAX) throw new Error('The personal goal list is full.');
-  return touch(
-    {
-      ...report,
-      goals: [
-        ...report.goals,
-        { id, name: trimmed.slice(0, PROGRESS_NAME_MAX), note: note.trim().slice(0, PROGRESS_NOTE_MAX), met: false },
-      ],
-    },
-    now,
-  );
+  const goal: StudentGoal = {
+    id,
+    name: trimmed.slice(0, PROGRESS_NAME_MAX),
+    note: note.trim().slice(0, PROGRESS_NOTE_MAX),
+    met: false,
+  };
+  if (kidsBeltId) goal.kidsBeltId = kidsBeltId;
+  return touch({ ...report, goals: [...report.goals, goal] }, now);
 }
 
-export function copyFocusToGoal(report: StudentProgressReport, focus: CoachPlanFocus, now = Date.now()): StudentProgressReport {
+export function copyFocusToGoal(
+  report: StudentProgressReport,
+  focus: CoachPlanFocus,
+  now = Date.now(),
+  kidsBeltId?: string,
+): StudentProgressReport {
   const name = focus.name.trim() || focus.note.trim();
-  return copyGoal(report, focus.id, name, focus.note, now);
+  return copyGoal(report, focus.id, name, focus.note, now, kidsBeltId);
 }
 
 export function copySuggestionToGoal(
   report: StudentProgressReport,
   suggestion: CoachSuggestion,
   now = Date.now(),
+  kidsBeltId?: string,
 ): StudentProgressReport {
-  return copyGoal(report, suggestion.id, suggestion.note, suggestion.note, now);
+  return copyGoal(report, suggestion.id, suggestion.note, suggestion.note, now, kidsBeltId);
 }
 
 export function goalCopied(report: StudentProgressReport, sourceId: string): boolean {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { PROGRESS_NAME_MAX, type StudentProgressReport, type TrainingStyle } from '../../lib/progress/types';
 import { benchmarkView } from '../../lib/studentBenchmarks';
+import { beltModeOf } from '../../lib/beltBook';
 import { setStudentProfile, setTechniquePolicy, setTrainingStyle } from '../../lib/studentEdition';
 
 /** Name, gym, and start date. Saved on this phone with the rest of the student file. */
@@ -136,6 +137,7 @@ export function TrainingSettings({
   commit: (next: StudentProgressReport) => StudentProgressReport;
 }) {
   const view = benchmarkView(report);
+  const kids = beltModeOf(report) === 'kids';
   const [error, setError] = useState('');
   const save = (next: StudentProgressReport) => {
     try {
@@ -169,25 +171,25 @@ export function TrainingSettings({
       <PolicySwitch
         on={view.policy.straightAnkleLock}
         label="Straight ankle lock"
-        note="On for 16 and older, and when age is not set. Off under 16. You can change it."
+        note={kids ? 'Illegal under 16. Hidden until a coach or parent turns it on.' : 'On for 16 and older, and when age is not set. Off under 16. You can change it.'}
         onToggle={() => save(setTechniquePolicy(report, 'straightAnkleLock', !view.policy.straightAnkleLock))}
       />
       <PolicySwitch
         on={view.policy.wristLocks}
         label="Wrist lock"
-        note="On from blue belt. Off at white. You can change it."
+        note={kids ? 'Illegal for kids. Hidden until a coach or parent turns it on.' : 'On from blue belt. Off at white. You can change it.'}
         onToggle={() => save(setTechniquePolicy(report, 'wristLocks', !view.policy.wristLocks))}
       />
       <PolicySwitch
         on={view.policy.legLocks}
         label="Leg locks"
-        note="Off until you turn them on. Never shown on a gi list."
+        note={kids ? 'Illegal for this age. Hidden until a coach or parent turns it on. Never shown on a gi list.' : 'Off until you turn them on. Never shown on a gi list.'}
         onToggle={() => save(setTechniquePolicy(report, 'legLocks', !view.policy.legLocks))}
       />
       <PolicySwitch
         on={view.policy.heelHooks}
         label="Heel hooks"
-        note="Off through purple, and never shown on a gi list. At brown and black, turning this on also shows the leg-lock prompts."
+        note={kids ? 'Illegal for this age. Hidden until a coach or parent turns it on. Never shown on a gi list.' : 'Off through purple, and never shown on a gi list. At brown and black, turning this on also shows the leg-lock prompts.'}
         onToggle={() => save(setTechniquePolicy(report, 'heelHooks', !view.policy.heelHooks))}
       />
       <PolicySwitch

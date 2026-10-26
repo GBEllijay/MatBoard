@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
   DEFAULT_CARLOS_POINTS_THRESHOLD,
@@ -123,4 +124,13 @@ test('A referee-decision win brings Carlos out only after the bout is over', () 
   assert.equal(recorded.show, true);
   assert.deepEqual(recorded.lines, ['Bom trabalho!', 'Mia Santos', '4-4']);
   assert.equal(refereeDecisionWin('blue').method, 'decision');
+});
+
+test('the Carlos slide-in stands still when motion is reduced', () => {
+  const css = readFileSync(new URL('../index.css', import.meta.url), 'utf8');
+  const start = css.indexOf('@media (prefers-reduced-motion: reduce) {\n  .kids-carlos__figure');
+  assert.ok(start >= 0);
+  const slice = css.slice(start, start + 160);
+  assert.match(slice, /animation: none/);
+  assert.match(slice, /\.kids-confetti \{\s*display: none/);
 });

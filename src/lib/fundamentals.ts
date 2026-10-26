@@ -15,7 +15,18 @@ export const FUNDAMENTAL_LEVELS = [
   { level: 5, label: 'Can teach it' },
 ] as const;
 
+/** Same 0–5 scale. Kids see these words. The saved number does not change. */
+export const KIDS_FUNDAMENTAL_LEVELS = [
+  { level: 0, label: 'Not yet' },
+  { level: 1, label: 'Meeting it' },
+  { level: 2, label: 'Practicing it' },
+  { level: 3, label: 'Playing it' },
+  { level: 4, label: 'Showing it' },
+  { level: 5, label: 'Teaching it' },
+] as const;
+
 export type FundamentalLevel = (typeof FUNDAMENTAL_LEVELS)[number]['level'];
+export type LevelAudience = 'adult' | 'kids';
 
 /** Live with resistance and above. This is the old "learned" mark. */
 export const FUNDAMENTAL_LIVE_LEVEL: FundamentalLevel = 3;
@@ -72,8 +83,8 @@ export function isFundamentalLevel(value: unknown): value is FundamentalLevel {
   return value === 0 || value === 1 || value === 2 || value === 3 || value === 4 || value === 5;
 }
 
-export function fundamentalLevelLabel(level: FundamentalLevel): string {
-  return FUNDAMENTAL_LEVELS[level].label;
+export function fundamentalLevelLabel(level: FundamentalLevel, audience: LevelAudience = 'adult'): string {
+  return (audience === 'kids' ? KIDS_FUNDAMENTAL_LEVELS : FUNDAMENTAL_LEVELS)[level].label;
 }
 
 /** Explicit 0–5 wins. Otherwise a learned date is level 3 and a blank date is 0. */
@@ -257,10 +268,13 @@ export function moveLinks(input: {
   return links;
 }
 
-export function checklistLevelLine(entry: Pick<StudentChecklistEntry, 'displayName' | 'name' | 'level' | 'learnedOn' | 'note'>): string {
+export function checklistLevelLine(
+  entry: Pick<StudentChecklistEntry, 'displayName' | 'name' | 'level' | 'learnedOn' | 'note'>,
+  audience: LevelAudience = 'adult',
+): string {
   const level = fundamentalLevelOf(entry);
   const name = entry.displayName.trim() || entry.name;
   const dated = entry.learnedOn ? `, dated ${entry.learnedOn}` : '';
   const note = entry.note.trim() ? ` — ${entry.note.trim()}` : '';
-  return `${name}: ${level} ${fundamentalLevelLabel(level)}${dated}${note}`;
+  return `${name}: ${level} ${fundamentalLevelLabel(level, audience)}${dated}${note}`;
 }
