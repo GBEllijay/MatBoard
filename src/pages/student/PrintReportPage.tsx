@@ -252,17 +252,50 @@ function ProgressSheet({
   );
 }
 
+function pdfColor(color: readonly number[] | undefined): string {
+  const [red, green, blue] = color ?? [0, 0, 0];
+  return `rgb(${Math.round(red * 255)} ${Math.round(green * 255)} ${Math.round(blue * 255)})`;
+}
+
 /** Full-width print belt. The on-screen half-width degree bar is not used here. */
 function ReportBelt({ report }: { report: StudentProgressReport }) {
   const label = reportIdentity(report).belt;
   const height = REPORT_BELT_HEIGHT;
-  const rects = beltArtDraws(report, 0, 0, REPORT_CONTENT_WIDTH).flatMap((draw) => (draw.op === 'rect' ? [draw] : []));
+  const draws = beltArtDraws(report, 0, 0, REPORT_CONTENT_WIDTH);
   return (
     <svg className="report-belt" viewBox={`0 0 ${REPORT_CONTENT_WIDTH} ${height}`} role="img" aria-label={label}>
-      {rects.map((rect, index) => {
-        const [red, green, blue] = rect.fill ?? [0, 0, 0];
-        const fill = `rgb(${Math.round(red * 255)} ${Math.round(green * 255)} ${Math.round(blue * 255)})`;
-        return <rect key={index} x={rect.x} y={height - rect.y - rect.h} width={rect.w} height={rect.h} fill={fill} />;
+      {draws.map((draw, index) => {
+        if (draw.op === 'rect') {
+          return (
+            <rect
+              key={index}
+              x={draw.x}
+              y={height - draw.y - draw.h}
+              width={draw.w}
+              height={draw.h}
+              fill={pdfColor(draw.fill)}
+            />
+          );
+        }
+        if (draw.op === 'poly' && draw.points.length >= 3) {
+          const points = draw.points.map((point) => `${point.x},${height - point.y}`).join(' ');
+          return <polygon key={index} points={points} fill={pdfColor(draw.fill)} fillOpacity={draw.fillOpacity ?? 1} />;
+        }
+        if (draw.op === 'line') {
+          return (
+            <line
+              key={index}
+              x1={draw.x1}
+              y1={height - draw.y1}
+              x2={draw.x2}
+              y2={height - draw.y2}
+              stroke={pdfColor(draw.color)}
+              strokeWidth={draw.lineWidth}
+              strokeDasharray={draw.dash ? '3 2' : undefined}
+            />
+          );
+        }
+        return null;
       })}
     </svg>
   );

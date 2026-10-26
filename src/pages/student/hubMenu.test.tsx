@@ -320,6 +320,8 @@ test('the main menu belt and the hub current-belt link follow My rank', () => {
   assert.equal(black?.querySelectorAll('.stripe').length, 6);
   assert.equal(black?.querySelectorAll('.stripe.is-on').length, 4);
   assert.equal(black?.querySelector('.belt--slim57') instanceof view.HTMLElement, true);
+  assert.equal(black?.querySelector('.belt__end') instanceof view.HTMLElement, true);
+  assert.equal(black?.querySelector('.mini-belt'), null);
   assert.equal(blackHub.host.textContent?.includes('Black · 4 degrees'), true);
   assert.match(
     blackHub.host.querySelector('a[aria-label="Rank & Progress"]')?.getAttribute('href') ?? '',
@@ -336,6 +338,13 @@ test('the main menu belt and the hub current-belt link follow My rank', () => {
     /\/student\/rank\?student=1#current$/,
   );
   unmount(coralHub);
+
+  wear(setRankBelt(blankStudentReport(9), 'redWhite', 10));
+  const redWhiteHub = mount(<StudentHub />, '/student?student=1');
+  assert.equal(redWhiteHub.host.querySelector('.mini-belt--red-white') instanceof view.HTMLElement, true);
+  assert.equal(redWhiteHub.host.querySelector('.mini-belt--red-black'), null);
+  assert.equal(redWhiteHub.host.textContent?.includes('Red and white · 8 degrees'), true);
+  unmount(redWhiteHub);
 
   wear(setRankBelt(blankStudentReport(10), 'red', 11));
   const redHub = mount(<StudentHub />, '/student?student=1');

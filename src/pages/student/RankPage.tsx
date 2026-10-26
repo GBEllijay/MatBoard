@@ -241,6 +241,7 @@ export function RankPage() {
                         </>
                       ) : null}
                     </div>
+                    {rung.belt === 'black' ? <span className="belt__end" aria-hidden="true" /> : null}
                   </div>
                   <div className="rung__foot">
                     <label className={rung.awardedOn ? 'achieved' : 'achieved is-empty'}>

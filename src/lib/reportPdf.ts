@@ -25,8 +25,15 @@ const CONTENT_W = PAGE_W - MARGIN_X * 2;
 /** The progress-report belt spans the text column. The on-screen degree bar does not. */
 export const REPORT_CONTENT_WIDTH = CONTENT_W;
 export const REPORT_BELT_HEIGHT = 26;
-/** A normal rank tip. Not the on-screen black-belt bar, which is 57% of the belt. */
-const RANK_TIP = 56;
+/** Short cloth after the rank bar. The on-screen black-belt bar stays at 57%. */
+const CLOTH_TIP = 18;
+/** Red rank bar on a black belt. The black tip sits past it. */
+const BLACK_RED_BAR = 42;
+/**
+ * Vertical coral bars. The competition belt repeats green and yellow the same way.
+ * Wide enough to read as cloth bars, and repeated across the whole belt.
+ */
+const CORAL_BAR = 20;
 const HEADER = 64;
 const CONTENT_TOP = 86;
 const FOOTER = 42;
@@ -176,34 +183,90 @@ const EMPTY_TAPE: Rgb = [0.25, 0.25, 0.27];
 /**
  * Vector belt for the progress PDF and the print preview.
  * Every belt is the full text width. Black-belt degrees are not drawn as stripes:
- * the half-width degree bar is only for the screen. Coral is red and black,
- * red and white is split, and 9th degree is solid red.
+ * the half-width degree bar is only for the screen. A black belt is black cloth,
+ * a red bar, and a black tip. Coral repeats red with black or white. 9th degree
+ * is solid red. A weave and a stitch sit on every belt.
  */
 export function beltArtDraws(report: StudentProgressReport, x: number, y: number, width = CONTENT_W): PdfDraw[] {
   const preview = wornBeltPreview(report);
   const h = REPORT_BELT_HEIGHT;
-  if (preview.kind === 'final') return finalBeltDraws(preview.belt, x, y, width, h);
-  if (preview.belt === 'black') return blackBeltDraws(x, y, width, h);
+  if (preview.kind === 'final') return withFabric(finalBeltDraws(preview.belt, x, y, width, h), x, y, width, h);
+  if (preview.belt === 'black') return withFabric(blackBeltDraws(x, y, width, h), x, y, width, h);
   return stripedBeltDraws(preview, x, y, width, h);
+}
+
+function withFabric(draws: PdfDraw[], x: number, y: number, width: number, h: number): PdfDraw[] {
+  return [...draws, ...fabricDraws(x, y, width, h)];
 }
 
 function finalBeltDraws(belt: string, x: number, y: number, width: number, h: number): PdfDraw[] {
   if (belt === 'red') return [{ op: 'rect', x, y, w: width, h, fill: CORAL_RED }];
-  const split = Math.round(width * 0.46);
-  const left = belt === 'redWhite' ? CREAM : (ADULT_CLOTH.black ?? CORAL_RED);
-  const right = CORAL_RED;
-  return [
-    { op: 'rect', x, y, w: split, h, fill: left },
-    { op: 'rect', x: x + split, y, w: width - split, h, fill: right },
-  ];
+  const pair: readonly [Rgb, Rgb] = belt === 'redWhite' ? [CREAM, CORAL_RED] : [ADULT_CLOTH.black ?? CORAL_RED, CORAL_RED];
+  return repeatingBars(pair, x, y, width, h);
+}
+
+function repeatingBars(colors: readonly [Rgb, Rgb], x: number, y: number, width: number, h: number): PdfDraw[] {
+  const draws: PdfDraw[] = [];
+  let cursor = 0;
+  let index = 0;
+  while (cursor < width - 0.01) {
+    let bar = Math.min(CORAL_BAR, width - cursor);
+    if (width - (cursor + bar) < 2) bar = width - cursor;
+    draws.push({ op: 'rect', x: x + cursor, y, w: bar, h, fill: colors[index % 2] ?? CORAL_RED });
+    cursor += bar;
+    index += 1;
+  }
+  return draws;
 }
 
 function blackBeltDraws(x: number, y: number, width: number, h: number): PdfDraw[] {
-  const body = Math.max(1, width - RANK_TIP);
+  const tip = Math.min(CLOTH_TIP, Math.max(8, width * 0.08));
+  const bar = Math.min(BLACK_RED_BAR, Math.max(16, width - tip - 36));
+  const body = Math.max(1, width - bar - tip);
+  const cloth = ADULT_CLOTH.black ?? CORAL_RED;
   return [
-    { op: 'rect', x, y, w: body, h, fill: ADULT_CLOTH.black ?? CORAL_RED },
-    { op: 'rect', x: x + body, y, w: width - body, h, fill: CORAL_RED },
+    { op: 'rect', x, y, w: body, h, fill: cloth },
+    { op: 'rect', x: x + body, y, w: bar, h, fill: CORAL_RED },
+    { op: 'rect', x: x + body + bar, y, w: width - body - bar, h, fill: cloth },
   ];
+}
+
+/** Horizontal cotton ribs and a dashed stitch, the same idea as the on-screen weave. */
+function fabricDraws(x: number, y: number, width: number, h: number): PdfDraw[] {
+  const draws: PdfDraw[] = [];
+  for (let row = 1; row < h - 1; row += 3) {
+    draws.push(shadeRect(x, y + row, width, 1, [1, 1, 1], 0.4));
+    if (row + 2 < h) draws.push(shadeRect(x, y + row + 1, width, 1, [0, 0, 0], 0.18));
+  }
+  const stitch: Rgb = [0.36, 0.33, 0.29];
+  for (const frac of [0.12, 0.2, 0.8, 0.88]) {
+    const sy = y + h * frac;
+    draws.push({
+      op: 'line',
+      x1: x + 3,
+      y1: sy,
+      x2: x + width - 3,
+      y2: sy,
+      color: stitch,
+      lineWidth: 0.45,
+      dash: true,
+    });
+  }
+  return draws;
+}
+
+function shadeRect(x: number, y: number, w: number, h: number, fill: Rgb, fillOpacity: number): PdfDraw {
+  return {
+    op: 'poly',
+    points: [
+      { x, y },
+      { x: x + w, y },
+      { x: x + w, y: y + h },
+      { x, y: y + h },
+    ],
+    fill,
+    fillOpacity,
+  };
 }
 
 function stripedBeltDraws(
@@ -216,13 +279,16 @@ function stripedBeltDraws(
   const slots = preview.slots;
   const cloth = preview.base ? hexRgb(preview.base) : (ADULT_CLOTH[preview.belt] ?? ADULT_CLOTH.black!);
   const slotW = slots.length > 6 ? 7 : 10;
-  const barW = Math.min(width - 36, Math.max(36, slots.length * slotW + 10));
-  const bodyW = width - barW;
-  const draws: PdfDraw[] = [{ op: 'rect', x, y, w: width, h, fill: cloth }];
+  const tip = Math.min(CLOTH_TIP, Math.max(8, width * 0.08));
+  const barW = Math.min(width - tip - 36, Math.max(36, slots.length * slotW + 10));
+  const bodyW = Math.max(1, width - barW - tip);
+  const draws: PdfDraw[] = [{ op: 'rect', x, y, w: bodyW, h, fill: cloth }];
   if (preview.kind === 'kids' && preview.center !== 'solid' && preview.centerColor) {
     draws.push({ op: 'rect', x, y: y + h / 2 - 3, w: bodyW, h: 6, fill: hexRgb(preview.centerColor) });
   }
   draws.push({ op: 'rect', x: x + bodyW, y, w: barW, h, fill: hexRgb('#101012') });
+  draws.push({ op: 'rect', x: x + bodyW + barW, y, w: width - bodyW - barW, h, fill: cloth });
+  draws.push(...fabricDraws(x, y, width, h));
   slots.forEach((slot, index) => {
     const fill = !slot.on ? EMPTY_TAPE : slot.color ? hexRgb(slot.color) : CREAM;
     draws.push({
@@ -238,7 +304,7 @@ function stripedBeltDraws(
 }
 
 function drawWornBelt(state: PageState, report: StudentProgressReport) {
-  const h = 26;
+  const h = REPORT_BELT_HEIGHT;
   ensure(state, h + 12);
   const y = PAGE_H - state.top - h;
   state.draws.push(...beltArtDraws(report, MARGIN_X, y));

@@ -571,6 +571,51 @@ function beltSpan(draws: readonly PdfDraw[]): { rects: BeltRect[]; width: number
   return { rects, width: right - left };
 }
 
+function fullHeightBands(draws: readonly PdfDraw[]): BeltRect[] {
+  return draws
+    .filter((draw): draw is BeltRect => draw.op === 'rect' && draw.h === REPORT_BELT_HEIGHT)
+    .sort((left, right) => left.x - right.x);
+}
+
+function sameFill(left: BeltRect['fill'], right: BeltRect['fill']): boolean {
+  if (!left || !right) return false;
+  return left.every((channel, index) => Math.abs(channel - (right[index] ?? -1)) < 0.02);
+}
+
+function assertRepeatingBars(draws: readonly PdfDraw[]) {
+  const bands = fullHeightBands(draws);
+  assert.ok(bands.length >= 8);
+  assert.equal(beltSpan(draws).width, REPORT_CONTENT_WIDTH);
+  for (let index = 0; index < bands.length - 1; index += 1) {
+    assert.equal(sameFill(bands[index]?.fill, bands[index + 1]?.fill), false);
+    const again = bands[index + 2];
+    if (again) assert.equal(sameFill(bands[index]?.fill, again.fill), true);
+  }
+  assert.ok(draws.some((draw) => draw.op === 'poly' && draw.fillOpacity != null && draw.fillOpacity < 1));
+  assert.ok(draws.some((draw) => draw.op === 'line' && draw.dash === true));
+}
+
+test('every progress belt is woven cloth, and coral repeats along the whole belt', () => {
+  const belts = ['white', 'blue', 'purple', 'brown', 'black', 'coral', 'redWhite', 'red'] as const;
+  for (const belt of belts) {
+    const draws = beltArtDraws(setRankBelt(blankStudentReport(1), belt, 2), 48, 700);
+    assert.equal(beltSpan(draws).width, REPORT_CONTENT_WIDTH);
+    assert.ok(draws.some((draw) => draw.op === 'poly' && (draw.fillOpacity ?? 1) < 1), belt);
+    assert.ok(draws.some((draw) => draw.op === 'line' && draw.dash === true), belt);
+    const widest = Math.max(...fullHeightBands(draws).map((band) => band.w));
+    assert.ok(widest > REPORT_CONTENT_WIDTH * 0.5 || belt === 'coral' || belt === 'redWhite', belt);
+  }
+  let kids = setBeltMode(blankStudentReport(3), 'kids', 4);
+  kids = setKidsBelt(kids, 'yellow-black', 5);
+  const kidsDraws = beltArtDraws(kids, 48, 700);
+  assert.equal(beltSpan(kidsDraws).width, REPORT_CONTENT_WIDTH);
+  assert.ok(kidsDraws.some((draw) => draw.op === 'poly' && (draw.fillOpacity ?? 1) < 1));
+  const black = fullHeightBands(beltArtDraws(setRankBelt(blankStudentReport(6), 'black', 7), 48, 700));
+  assert.equal(black.length, 3);
+  assert.ok(sameFill(black[0]?.fill, black[2]?.fill));
+  assert.equal(sameFill(black[0]?.fill, black[1]?.fill), false);
+});
+
 test('the progress PDF draws full-width belts and names black-belt degrees', () => {
   const white = setRankTapeCount(setRankBelt(blankStudentReport(1), 'white', 2), 1, 3);
   const blue = setRankTapeCount(setRankAwardedOn(setRankBelt(blankStudentReport(4), 'blue', 5), '2018-02-02', 6), 2, 7);
@@ -582,9 +627,16 @@ test('the progress PDF draws full-width belts and names black-belt degrees', () 
     assert.equal(span.width, REPORT_CONTENT_WIDTH);
     assert.ok(span.rects.some((rect) => rect.w > REPORT_CONTENT_WIDTH * 0.6));
   }
-  const blackArt = beltSpan(beltArtDraws(black, 48, 700));
-  assert.equal(blackArt.rects.length, 2);
-  assert.ok(blackArt.rects.every((rect) => rect.h === REPORT_BELT_HEIGHT));
+  const blackDraws = beltArtDraws(black, 48, 700);
+  const blackBands = fullHeightBands(blackDraws);
+  assert.equal(blackBands.length, 3);
+  const [blackBody, redBar, blackTip] = blackBands;
+  assert.ok(blackBody && redBar && blackTip);
+  assert.ok(blackBody.w > redBar.w && blackBody.w > blackTip.w);
+  assert.ok(sameFill(blackBody.fill, blackTip.fill));
+  assert.ok((redBar.fill?.[0] ?? 0) > 0.7 && (redBar.fill?.[1] ?? 1) < 0.25);
+  assert.ok(blackTip.x > redBar.x && redBar.x > blackBody.x);
+  assert.equal(blackDraws.some((draw) => draw.op === 'rect' && draw.h < REPORT_BELT_HEIGHT), false);
   const blueArt = beltSpan(beltArtDraws(blue, 48, 700));
   assert.ok(blueArt.rects.some((rect) => rect.h < REPORT_BELT_HEIGHT));
   const pdf = extractPdfText(progressReportPdf(black, { entries: [] }, {}, '2026-10-26'));
@@ -602,14 +654,20 @@ test('coral and red print as later degrees, in rank order, not as stripe belts',
   report = setRankAwardedOn(setRankBelt(report, 'red', 3), '2015-06-07', 4);
   report = setRankAwardedOn(setRankBelt(report, 'coral', 5), '2012-03-04', 6);
   report = setRankBelt(report, 'red', 7);
-  const coral = beltSpan(beltArtDraws(setRankBelt(blankStudentReport(20), 'coral', 21), 48, 700));
-  const red = beltSpan(beltArtDraws(report, 48, 700));
-  assert.equal(coral.width, REPORT_CONTENT_WIDTH);
-  assert.equal(coral.rects.length, 2);
-  assert.ok(coral.rects.every((rect) => rect.h === REPORT_BELT_HEIGHT));
+  const coralDraws = beltArtDraws(setRankBelt(blankStudentReport(20), 'coral', 21), 48, 700);
+  const redWhiteDraws = beltArtDraws(setRankBelt(blankStudentReport(22), 'redWhite', 23), 48, 700);
+  const redDraws = beltArtDraws(report, 48, 700);
+  assertRepeatingBars(coralDraws);
+  assertRepeatingBars(redWhiteDraws);
+  const coralBands = fullHeightBands(coralDraws);
+  const redWhiteBands = fullHeightBands(redWhiteDraws);
+  assert.ok(coralBands.some((band) => (band.fill?.[0] ?? 1) < 0.3));
+  assert.ok(redWhiteBands.some((band) => (band.fill?.[0] ?? 0) > 0.9 && (band.fill?.[2] ?? 0) > 0.8));
+  assert.equal(sameFill(coralBands[0]?.fill, redWhiteBands[0]?.fill), false);
+  const red = beltSpan(redDraws);
   assert.equal(red.width, REPORT_CONTENT_WIDTH);
-  assert.equal(red.rects.length, 1);
-  assert.equal(red.rects[0]?.w, REPORT_CONTENT_WIDTH);
+  assert.equal(fullHeightBands(redDraws).length, 1);
+  assert.equal(fullHeightBands(redDraws)[0]?.w, REPORT_CONTENT_WIDTH);
   const lines = progressReportLines(report, { entries: [] });
   const joined = lines.join('\n');
   const rank = joined.slice(joined.indexOf('Rank and stripes'), joined.indexOf('Belt progress'));
