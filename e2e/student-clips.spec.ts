@@ -100,7 +100,8 @@ test('video library saves, searches, edits, and deletes, and the journal has no 
   await page.goto('/student/journal?student=1');
   await page.getByRole('textbox', { name: 'Drill notes' }).fill('still writes a card');
   await page.getByRole('button', { name: 'Save entry' }).click();
-  await expect(page.getByText('still writes a card')).toBeVisible();
+  await expect(page.getByRole('status')).toHaveText('Entry saved');
+  await expect(page.getByRole('link', { name: 'See saved card', exact: true })).toBeVisible();
   await page.goto('/student/videos?student=1');
   await expect(page.getByRole('link', { name: 'Armbar finish' })).toBeVisible();
 });

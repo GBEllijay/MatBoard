@@ -15,6 +15,15 @@ import {
   isAssessmentScore,
   type AssessmentState,
 } from './studentAssessment.ts';
+import {
+  JOURNAL_DRILLS_LABEL,
+  JOURNAL_NOTES_LABEL,
+  JOURNAL_PARTNERS_LABEL,
+  JOURNAL_ROLLS_LABEL,
+  JOURNAL_STOP_LABEL,
+  formatJournalDate,
+} from './journalCopy.ts';
+import { techniqueDrilledLabel } from './progress/format.ts';
 import { decodeJournalBody } from './studentEdition.ts';
 import type { StudentFilm } from './studentFilm.ts';
 import type { AreaRatings } from './opponentAssessment.ts';
@@ -146,21 +155,23 @@ function techniqueNames(entry: JournalEntry): string[] {
     .filter(Boolean);
 }
 
-/** Date, class when one was typed, techniques, and the note. Empty labels are left out. */
+/**
+ * Same labels as the journal card. Empty fields are left out.
+ * The class name is the value only, so the report does not print the stored "Class:" prefix.
+ */
 export function journalReportLine(entry: JournalEntry): string {
   const decoded = decodeJournalBody(entry.body);
-  const parts = [entry.date];
+  const parts = [formatJournalDate(entry.date)];
   if (decoded.className.trim()) parts.push(decoded.className.trim());
-  const techniques = techniqueNames(entry);
-  if (techniques.length) parts.push(techniques.join('; '));
-  const notes = decoded.notes.trim();
-  if (notes) parts.push(notes);
-  else {
-    if (decoded.drills.trim()) parts.push(decoded.drills.trim());
-    if (decoded.rolls.trim()) parts.push(decoded.rolls.trim());
-  }
+  techniqueNames(entry).forEach((name, index) => {
+    parts.push(`${techniqueDrilledLabel(index)}: ${name}`);
+  });
+  if (decoded.partners.trim()) parts.push(`${JOURNAL_PARTNERS_LABEL}: ${decoded.partners.trim()}`);
+  if (decoded.drills.trim()) parts.push(`${JOURNAL_DRILLS_LABEL}: ${decoded.drills.trim()}`);
+  if (decoded.rolls.trim()) parts.push(`${JOURNAL_ROLLS_LABEL}: ${decoded.rolls.trim()}`);
+  if (decoded.notes.trim()) parts.push(`${JOURNAL_NOTES_LABEL}: ${decoded.notes.trim()}`);
   const stopDoing = decoded.stopDoing?.trim() ?? '';
-  if (stopDoing) parts.push(`Stop doing: ${stopDoing}`);
+  if (stopDoing) parts.push(`${JOURNAL_STOP_LABEL}: ${stopDoing}`);
   const extra = entry.amendments.map((item) => item.body.trim()).filter(Boolean);
   if (extra.length) parts.push(extra[extra.length - 1] ?? '');
   return parts.filter(Boolean).join(' · ');
