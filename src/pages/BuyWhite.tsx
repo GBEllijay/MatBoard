@@ -404,7 +404,6 @@ export function BuyWhitePage() {
                   <span className="belt-tip__bar" />
                 </span>
                 <span>
-                  <span className="buy__kicker">Coming soon</span>
                   <h2>Advantage Coach</h2>
                 </span>
               </span>

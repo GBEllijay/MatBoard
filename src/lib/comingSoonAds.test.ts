@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
   ALPHA_TRIAL_NOTE,
@@ -15,6 +16,7 @@ import {
   STUDENT_PREVIEW_LABEL,
   STUDENT_PREVIEW_NOTE,
 } from './comingSoonAds.ts';
+import { COACH_ALPHA_ACCESS_NOTE } from './productPrices.ts';
 import { COACH_HOME_TEASER } from './coachCopy.ts';
 import {
   GYM_CONSOLE_NAME,
@@ -34,11 +36,33 @@ function adText(product: keyof typeof COMING_SOON_ADS): string {
   );
 }
 
+/** Every user-facing string on the locked Coach splash, including price and alpha notes. */
+function coachSplashText(): string {
+  const ad = COMING_SOON_ADS.coach;
+  return [
+    ad.title,
+    ad.kicker,
+    ad.lead,
+    ad.includes,
+    ad.aside ?? '',
+    ad.dismiss,
+    COACH_PREVIEW_LABEL,
+    COACH_PREVIEW_NOTE,
+    COACH_LAUNCH_PRICE_NOTE,
+    COACH_ALPHA_ACCESS_NOTE,
+    ALPHA_TRIAL_NOTE,
+    ...ad.features.flatMap((feature) => [feature.title, feature.body]),
+  ].join('\n');
+}
+
 test('Coach ad lists basic Coach tools, student roster, and no checkout price', () => {
   const text = adText('coach');
+  const splash = coachSplashText();
   assert.equal(COMING_SOON_ADS.coach.title, 'Advantage Coach');
-  assert.equal(COMING_SOON_ADS.coach.kicker, COMING_SOON_LABEL);
+  assert.equal(COMING_SOON_ADS.coach.kicker, '');
   assert.equal(COMING_SOON_LABEL, 'Coming Soon');
+  assert.doesNotMatch(splash, /coming soon/i);
+  assert.doesNotMatch(text, /coming soon/i);
   assert.match(COMING_SOON_ADS.coach.lead, /Tools and templates for coaches/);
   assert.equal(COMING_SOON_ADS.coach.includes, 'Includes everything in Advantage White.');
   assert.match(COMING_SOON_ADS.coach.aside ?? '', /Competition Class Curriculum/);
@@ -78,6 +102,26 @@ test('Coach ad lists basic Coach tools, student roster, and no checkout price', 
     ALPHA_TRIAL_NOTE,
     'Email advantageappllc@gmail.com to request an alpha code.',
   );
+  assert.equal(
+    COACH_ALPHA_ACCESS_NOTE,
+    'Coach is in alpha testing. Email advantageappllc@gmail.com to request an alpha code.',
+  );
+  assert.match(splash, /Email advantageappllc@gmail.com to request an alpha code/);
+  assert.match(splash, /\$29\.99 one-time when it launches/);
+  const splashSource = readFileSync(new URL('../components/ComingSoonAd.tsx', import.meta.url), 'utf8');
+  assert.match(splashSource, /ad\.kicker \? <p className="soon-ad__kicker">\{ad\.kicker\}<\/p> : null/);
+  assert.doesNotMatch(splashSource, /coming soon/i);
+  const buy = readFileSync(new URL('../pages/BuyWhite.tsx', import.meta.url), 'utf8');
+  const coachHeading = buy.indexOf('<h2>Advantage Coach</h2>');
+  const proHeading = buy.indexOf('<h2>Advantage Pro</h2>');
+  const coachDetails = buy.lastIndexOf('<details', coachHeading);
+  const proDetails = buy.lastIndexOf('<details', proHeading);
+  const coachSection = buy.slice(coachDetails, proDetails);
+  const proSection = buy.slice(proDetails);
+  assert.doesNotMatch(coachSection, /coming soon/i);
+  assert.match(coachSection, /<ComingSoonAd product="coach" \/>/);
+  assert.match(proSection, /<span className="buy__kicker">Coming soon<\/span>/);
+  assert.match(proSection, /<h2>Advantage Pro<\/h2>/);
   assert.doesNotMatch(PRODUCT_TEASERS.coach, /\$\d/);
   assert.equal(PRODUCT_TEASERS.coach, COACH_HOME_TEASER);
   assert.equal(PRODUCT_TEASERS.coachUnlocked, COACH_HOME_TEASER);

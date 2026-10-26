@@ -35,10 +35,10 @@ export type ComingSoonAdCopy = {
   dismiss: string;
 };
 
-/** Locked-card gold label. Same wording on Coach and Pro / Console. */
+/** Locked Pro and Student splash gold label. Coach does not use this. */
 export const COMING_SOON_LABEL = 'Coming Soon';
 
-/** Caption on the Coach Coming Soon shot of the unlocked Coach home. */
+/** Caption on the locked Coach shot of the unlocked Coach home. */
 export const COACH_PREVIEW_LABEL = 'Advantage Coach';
 
 /** One line under that shot. The picture is the live Coach button list. */
@@ -80,7 +80,7 @@ export const PRODUCT_TEASERS = {
 export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
   coach: {
     title: 'Advantage Coach',
-    kicker: COMING_SOON_LABEL,
+    kicker: '',
     lead: "Tools and templates for coaches. Plan today's class and loop training videos.",
     includes: 'Includes everything in Advantage White.',
     aside:

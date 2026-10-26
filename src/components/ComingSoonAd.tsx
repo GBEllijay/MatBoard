@@ -47,7 +47,7 @@ export function ComingSoonAd({ product }: Props) {
 
   return (
     <div className={`soon-ad soon-ad--${product}`}>
-      <p className="soon-ad__kicker">{ad.kicker}</p>
+      {ad.kicker ? <p className="soon-ad__kicker">{ad.kicker}</p> : null}
       {product === 'coach' ? <CoachPreview /> : product === 'pro' ? <ProConsolePreview /> : <StudentPreview />}
       {ad.lead ? <p className="soon-ad__lead">{ad.lead}</p> : null}
       <p className="soon-ad__includes">{ad.includes}</p>
