@@ -1,5 +1,7 @@
-import { Link } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { LegalContact, LegalPage } from '../components/LegalPage';
+import { BENCHMARK_DISCLAIMER_MEDIUM } from '../lib/studentBenchmarks';
 import { SITE_FEEDBACK_EMAIL } from '../lib/siteFooter';
 
 function SupportEmail() {
@@ -7,10 +9,17 @@ function SupportEmail() {
 }
 
 export function TermsPage() {
+  const { hash } = useLocation();
+  useEffect(() => {
+    const id = hash.startsWith('#') ? hash.slice(1) : '';
+    if (!id) return;
+    document.getElementById(id)?.scrollIntoView({ block: 'start' });
+  }, [hash]);
+
   return (
     <LegalPage
       title="Terms of Service — Advantage"
-      updated="October 12, 2026"
+      updated="October 26, 2026"
       related={{ to: '/privacy', label: 'Privacy Policy' }}
     >
       <section>
@@ -274,8 +283,13 @@ export function TermsPage() {
         </p>
       </section>
 
+      <section id="practical-benchmarks">
+        <h3>17. Practical Benchmarks</h3>
+        <p>{BENCHMARK_DISCLAIMER_MEDIUM}</p>
+      </section>
+
       <section>
-        <h3>17. Contact</h3>
+        <h3>18. Contact</h3>
         <LegalContact />
       </section>
     </LegalPage>

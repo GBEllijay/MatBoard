@@ -388,12 +388,18 @@ function OpenGoals({
 
 function BenchmarkDisclaimer() {
   const [open, setOpen] = useState(false);
+  const to = useStudentPath();
   return (
     <div className="belt-disclaimer">
       <button type="button" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
         {BENCHMARK_DISCLAIMER_SHORT}
       </button>
-      {open ? <p>{BENCHMARK_DISCLAIMER_MEDIUM}</p> : null}
+      {open ? (
+        <p>
+          {BENCHMARK_DISCLAIMER_MEDIUM}{' '}
+          <Link to={to('/terms#practical-benchmarks')}>Terms of Service</Link>
+        </p>
+      ) : null}
     </div>
   );
 }
