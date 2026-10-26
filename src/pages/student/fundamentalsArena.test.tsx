@@ -8,6 +8,8 @@
  * Sort: List order, Weakest first, Recently updated.
  * Filter: All, Not started, In progress, Against resistance.
  * Per move: proficiency 0 Not started through 5 Can teach it, note, date learned.
+ * Levels 1–5 fill up to the chosen level. Only the chosen level has the selected ring
+ * and aria-checked. A link to another belt's benchmark keeps that belt in the address.
  * Rename, Close rename, Save name, Remove, Confirm remove, Keep.
  * Add your own, Add, Restore starter list, Confirm restore starter list, Cancel.
  * Open: {area} self-assessment, Open: {checkpoint} benchmark,
@@ -160,6 +162,10 @@ test('a learned date without a level opens at live, and taps, sort, filter, note
     labeled(sweeps, 'Scissor sweep 5 Can teach it').click();
   });
   assert.equal(labeled(sweeps, 'Scissor sweep 5 Can teach it').getAttribute('aria-checked'), 'true');
+  assert.equal(labeled(sweeps, 'Scissor sweep 5 Can teach it').classList.contains('is-selected'), true);
+  assert.equal(labeled(sweeps, 'Scissor sweep 4 Hitting in rolls').getAttribute('aria-checked'), 'false');
+  assert.equal(labeled(sweeps, 'Scissor sweep 4 Hitting in rolls').classList.contains('is-filled'), true);
+  assert.equal(labeled(sweeps, 'Scissor sweep 4 Hitting in rolls').classList.contains('is-selected'), false);
   const afterMeter = sweepsMeter();
   assert.notEqual(afterMeter?.getAttribute('data-value'), before);
   assert.equal((afterMeter?.querySelector('span') as HTMLElement | null)?.style.width.endsWith('%'), true);
@@ -277,6 +283,52 @@ test('rename, remove, add, and restore keep the saved level', () => {
   assert.equal(scissor?.level, 4);
   assert.ok(scissor?.learnedOn);
   unmount(mounted);
+});
+
+test('a chosen level stays distinct from the filled levels below it, and a blue benchmark link names blue', () => {
+  localStorage.clear();
+  const mounted = mount(<FundamentalsPage />);
+  const { host } = mounted;
+  try {
+    const positions = labeled(host, 'Positions');
+    const turtle = [...positions.querySelectorAll('a')].find((link) => link.getAttribute('href')?.includes('blue.s1-turtle'));
+    assert.equal(turtle?.getAttribute('href'), '/student/rubric#checkpoint.blue.s1-turtle');
+    assert.match(turtle?.textContent ?? '', /benchmark/);
+    const sweeps = labeled(host, 'Sweeps');
+    const whiteLink = control(sweeps, 'a', 'Open: From closed guard, perform one sweep and one submission in drilling. benchmark');
+    assert.equal(whiteLink.getAttribute('href'), '/student/rubric#checkpoint.white.s1-guard-attack');
+    act(() => {
+      labeled(sweeps, 'Scissor sweep 3 Live with resistance').click();
+    });
+    const group = labeled(sweeps, 'Scissor sweep proficiency');
+    const chosen = labeled(group, 'Scissor sweep 3 Live with resistance');
+    assert.equal(chosen.getAttribute('aria-checked'), 'true');
+    assert.equal(chosen.getAttribute('data-selected'), 'yes');
+    assert.equal(chosen.classList.contains('is-selected'), true);
+    assert.equal(chosen.classList.contains('is-filled'), true);
+    for (const level of [1, 2]) {
+      const filled = labeled(group, `Scissor sweep ${level} ${['', 'Introduced', 'Drilling'][level]}`);
+      assert.equal(filled.getAttribute('aria-checked'), 'false');
+      assert.equal(filled.getAttribute('data-selected'), 'no');
+      assert.equal(filled.classList.contains('is-filled'), true);
+      assert.equal(filled.classList.contains('is-selected'), false);
+    }
+    for (const level of [4, 5]) {
+      const names = ['', '', '', '', 'Hitting in rolls', 'Can teach it'];
+      const open = labeled(group, `Scissor sweep ${level} ${names[level]}`);
+      assert.equal(open.getAttribute('aria-checked'), 'false');
+      assert.equal(open.classList.contains('is-filled'), false);
+      assert.equal(open.classList.contains('is-selected'), false);
+    }
+    const zero = labeled(group, 'Scissor sweep 0 Not started');
+    assert.equal(zero.getAttribute('aria-checked'), 'false');
+    assert.equal(zero.classList.contains('is-selected'), false);
+    const checked = [...group.querySelectorAll('[role="radio"]')].filter((node) => node.getAttribute('aria-checked') === 'true');
+    assert.equal(checked.length, 1);
+    assert.equal(checked[0], chosen);
+  } finally {
+    unmount(mounted);
+  }
 });
 
 test('kids fundamentals use kid level words and note illegal techniques', () => {

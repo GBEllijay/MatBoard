@@ -46,7 +46,9 @@ import {
   clearStudentMemory,
   filmBlobsFromBackup,
   parseStudentBackup,
+  readBackupIncludeVideos,
   studentExportBusyLabel,
+  writeBackupIncludeVideos,
   type StudentBackupFile,
   type StudentExportKind,
 } from '../../lib/studentBackup';
@@ -72,7 +74,11 @@ export function AcademyConnectPage() {
 
 export function ConnectionsPage() {
   const to = useStudentPath();
-  const [includeVideos, setIncludeVideos] = useState(false);
+  const [includeVideos, setIncludeVideosState] = useState(() => readBackupIncludeVideos(localStorage));
+  const setIncludeVideos = (included: boolean) => {
+    writeBackupIncludeVideos(localStorage, included);
+    setIncludeVideosState(included);
+  };
   const [busyKind, setBusyKind] = useState<StudentExportKind | null>(null);
   const [stamp, setStamp] = useState(() => backupStampLabel(readStudentBackupStamp(localStorage)));
   const exportFile = async (kind: StudentExportKind) => {
@@ -518,6 +524,16 @@ function ExportAndPrint({
         showStamp
         onExport={(kind) => void exportFile(kind)}
       />
+      {status ? (
+        <p className="s-backup__result" role="status" data-kind="ok">
+          {status}
+        </p>
+      ) : null}
+      {error ? (
+        <p className="s-backup__result" role="alert" data-kind="error">
+          {error}
+        </p>
+      ) : null}
       <div className="student-export">
         <Link className="ink-btn" to={to('/student/print/progress')}>
           Print progress report
@@ -562,8 +578,6 @@ function ExportAndPrint({
           </button>
         </div>
       ) : null}
-      {status ? <p role="status">{status}</p> : null}
-      {error ? <p role="alert">{error}</p> : null}
     </section>
   );
 }

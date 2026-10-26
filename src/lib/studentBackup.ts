@@ -185,6 +185,37 @@ export function videoFilesLine(included: boolean): string {
     : 'Video files: off. The JSON backup does not include video files.';
 }
 
+/** Off until the student turns it on. The choice stays on this device. */
+export const BACKUP_INCLUDE_VIDEOS_KEY = 'matboard.studentEdition.backupIncludeVideos.v1';
+
+export function readBackupIncludeVideos(storage: Pick<Storage, 'getItem'> | null | undefined): boolean {
+  try {
+    return storage?.getItem(BACKUP_INCLUDE_VIDEOS_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function writeBackupIncludeVideos(storage: Pick<Storage, 'setItem'> | null | undefined, included: boolean): void {
+  storage?.setItem(BACKUP_INCLUDE_VIDEOS_KEY, included ? '1' : '0');
+}
+
+/** Confirmation after the JSON backup finishes. Names the file and whether videos were saved. */
+export function journalBackupConfirmation(filename: string, includeVideos: boolean): string {
+  const videos = includeVideos
+    ? 'Video files kept on this device are included.'
+    : 'Video files kept on this device are not included.';
+  return `Backup saved. Saved on this phone as ${filename}. ${videos}`;
+}
+
+export const BACKUP_FAILED_LEAD = 'Backup did not finish.';
+
+export function journalBackupFailure(message: string): string {
+  const detail = message.trim() || 'Could not build the backup.';
+  if (detail.startsWith(BACKUP_FAILED_LEAD)) return detail;
+  return `${BACKUP_FAILED_LEAD} ${detail}`;
+}
+
 /** One line under each export button. The file name is the file that downloads. */
 export function studentExportDetail(kind: StudentExportKind, date: string): string {
   const names = studentBackupNames(date);

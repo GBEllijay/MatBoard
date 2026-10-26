@@ -11,9 +11,10 @@ import { loadRankPictures, type RankPhotoStore } from './rankPhotos.ts';
 import { pdfBlob } from './simplePdf.ts';
 import { loadAssessments, type AssessmentState } from './studentAssessment.ts';
 import {
-  backupVideoTooLargeMessage,
   buildStudentBackup,
   connectedBackupTargets,
+  journalBackupConfirmation,
+  journalBackupFailure,
   studentBackupNames,
   type BackupBlob,
   type BackupMarkImages,
@@ -31,7 +32,7 @@ import { loadCoachShelf, type CoachShelf } from './studentTools.ts';
 import { copyFilesToStudentDrive, type DriveCopyFile } from './studentDriveCopy.ts';
 import type { StudentProgressReport } from './progress/types.ts';
 
-const JSON_SAVED_HERE = 'Saved on this phone. No academy folder or personal drive is connected.';
+const JSON_DRIVE_NOTE = 'No academy folder or personal drive is connected.';
 
 type MemoryStore = {
   getItem: (key: string) => string | null;
@@ -149,9 +150,9 @@ export async function runStudentEditionExport(
     const file = exportFile(kind, built, names);
     download(file.name, file.bytes);
     const targets = connectedBackupTargets(storage);
-    const lead = kind === 'json' ? 'Saved on this phone.' : `Downloaded ${file.name} on this phone.`;
+    const lead = kind === 'json' ? journalBackupConfirmation(file.name, options.includeVideos) : `Downloaded ${file.name} on this phone.`;
     if (!targets.length) {
-      return { ok: true, filename: file.name, message: kind === 'json' ? JSON_SAVED_HERE : lead };
+      return { ok: true, filename: file.name, message: kind === 'json' ? `${lead} ${JSON_DRIVE_NOTE}` : lead };
     }
     const notes = [lead];
     for (const target of targets) {
@@ -161,7 +162,7 @@ export async function runStudentEditionExport(
     }
     return { ok: true, filename: file.name, message: notes.join(' ') };
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Could not build the backup.';
-    return { ok: false, filename: '', message: message.includes('too large') ? message : message || backupVideoTooLargeMessage(0) };
+    const detail = err instanceof Error && err.message ? err.message : 'Could not build the backup.';
+    return { ok: false, filename: '', message: kind === 'json' ? journalBackupFailure(detail) : detail };
   }
 }

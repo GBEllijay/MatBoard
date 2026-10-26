@@ -185,6 +185,7 @@ test('checkpoint links stay on the belt being worn or the next belt', () => {
   assert.equal(checkpointForMove(levels, 'pos.back-control', 'white')?.checkpointId, 'checkpoint.white.s1-positions');
   assert.equal(checkpointForMove(levels, 'sub.rear-naked-choke', 'white')?.checkpointId, 'checkpoint.white.s4-back-choke');
   assert.equal(checkpointForMove(levels, 'pass.leg-drag', 'white')?.checkpointId, 'checkpoint.blue.promo-pass');
+  assert.equal(checkpointForMove(levels, 'pos.turtle', 'white')?.checkpointId, 'checkpoint.blue.s1-turtle');
   assert.equal(checkpointForMove(levels, 'td.double-leg', 'white')?.checkpointId, 'checkpoint.white.s4-single');
   assert.equal(checkpointForMove(levels, 'sub.rear-naked-choke', 'blue')?.checkpointId, 'checkpoint.blue.s4-back');
   assert.equal(checkpointForMove(levels, 'pos.closed-guard', 'blue')?.checkpointId, 'checkpoint.blue.promo-guard');

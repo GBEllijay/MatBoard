@@ -1126,3 +1126,54 @@ test('My rank anchors the belt the student is wearing', () => {
     unmount(kidsPage);
   }
 });
+
+test('a blue benchmark anchor opens Blue and scrolls, and a white anchor still scrolls on White', async () => {
+  const scrolled: string[] = [];
+  const previous = HTMLElement.prototype.scrollIntoView;
+  HTMLElement.prototype.scrollIntoView = function remember(this: HTMLElement) {
+    scrolled.push(this.id);
+  };
+  saveStudentReport(localStorage, withStarterRubric(blankStudentReport(80), 81));
+  const blue = mount(<BeltPage />, '/student/rubric?student=1#blue.s1-turtle');
+  try {
+    const turtle = document.getElementById('checkpoint.blue.s1-turtle');
+    assert.ok(turtle);
+    assert.equal(turtle?.classList.contains('is-anchor'), true);
+    const opened = document.querySelector('[aria-label="Blue belt benchmarks"]');
+    assert.equal(opened?.querySelector('h2')?.textContent, 'Blue belt');
+    assert.match(opened?.textContent ?? '', /Your current belt stays White/);
+    assert.match(opened?.textContent ?? '', /Properly utilize Turtle Position/);
+    const back = [...document.querySelectorAll('a')].find((link) => link.textContent === 'Back to White belt');
+    assert.equal(back?.getAttribute('href'), '/student/rubric?student=1');
+    assert.ok(document.querySelector('[aria-label="Practical benchmarks between White and Blue"]'));
+    assert.ok(document.querySelector('[aria-label="Add a practical benchmark"]'));
+    assert.ok(buttonNamed('Restore suggested list'));
+    assert.ok(scrolled.includes('checkpoint.blue.s1-turtle'));
+    assert.equal(loadStudentReport(localStorage).profile.belt, 'white');
+    assert.equal(document.getElementById('checkpoint.white.s1-guard-attack')?.classList.contains('is-anchor'), false);
+    await click(back as HTMLAnchorElement);
+    assert.equal(document.querySelector('[aria-label="Blue belt benchmarks"]'), null);
+    assert.ok(document.getElementById('checkpoint.white.s1-positions'));
+  } finally {
+    unmount(blue);
+    HTMLElement.prototype.scrollIntoView = previous;
+  }
+
+  scrolled.length = 0;
+  HTMLElement.prototype.scrollIntoView = function remember(this: HTMLElement) {
+    scrolled.push(this.id);
+  };
+  const white = mount(<BeltPage />, '/student/rubric?student=1#checkpoint.white.s1-guard-attack');
+  try {
+    assert.equal(document.querySelector('[aria-label="Blue belt benchmarks"]'), null);
+    const card = document.getElementById('checkpoint.white.s1-guard-attack');
+    assert.ok(card);
+    assert.equal(card?.classList.contains('is-anchor'), true);
+    assert.equal(document.getElementById('checkpoint.blue.s1-turtle'), null);
+    assert.ok(scrolled.includes('checkpoint.white.s1-guard-attack'));
+    assert.ok(document.querySelector('[aria-label="Practical benchmarks between White and Blue"]'));
+  } finally {
+    unmount(white);
+    HTMLElement.prototype.scrollIntoView = previous;
+  }
+});
