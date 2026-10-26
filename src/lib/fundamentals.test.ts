@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { FUNDAMENTALS_CATALOG } from './progress/catalog.ts';
 import {
   assessmentAreaForMove,
   checkpointForMove,
+  checkpointLinkBelts,
   clipsForMove,
   filmsForMove,
   filterFundamentalRows,
@@ -122,4 +124,35 @@ test('moves link to a checkpoint, a self-assessment area, and a matching clip', 
     '/student/rubric#checkpoint.white.guard',
     '/student/videos#clip-clip-scissor',
   ]);
+});
+
+test('checkpoint links stay on the belt being worn or the next belt', () => {
+  const report = withStarterRubric(blankStudentReport(10), 10);
+  const levels = report.rubric.levels;
+  const belts = ['white', 'blue', 'purple', 'brown', 'black', 'grey', 'yellow', 'orange', 'green', 'coral', 'redWhite', 'red'];
+  for (const belt of belts) {
+    const allowed = new Set(checkpointLinkBelts(belt));
+    for (const category of FUNDAMENTALS_CATALOG.categories) {
+      for (const item of category.items) {
+        const hit = checkpointForMove(levels, item.id, belt);
+        if (!hit) continue;
+        assert.ok(allowed.has(hit.belt), `${belt} ${item.id} opened ${hit.belt}`);
+        assert.equal(hit.checkpointId.includes(`.${hit.belt}.`), true);
+      }
+    }
+  }
+  assert.equal(checkpointForMove(levels, 'sweep.scissor', 'white')?.checkpointId, 'checkpoint.white.guard');
+  assert.equal(checkpointForMove(levels, 'pos.half-guard', 'white')?.checkpointId, 'checkpoint.blue.half-guard');
+  assert.equal(checkpointForMove(levels, 'sub.kimura', 'white')?.belt, 'blue');
+  assert.equal(checkpointForMove(levels, 'pos.back-control', 'white'), null);
+  assert.equal(checkpointForMove(levels, 'sub.rear-naked-choke', 'white'), null);
+  assert.equal(checkpointForMove(levels, 'pass.leg-drag', 'white'), null);
+  assert.equal(checkpointForMove(levels, 'td.double-leg', 'white'), null);
+  assert.equal(checkpointForMove(levels, 'sub.rear-naked-choke', 'blue')?.checkpointId, 'checkpoint.purple.back');
+  assert.equal(checkpointForMove(levels, 'pos.closed-guard', 'blue'), null);
+  assert.equal(checkpointForMove(levels, 'pos.mount', 'purple'), null);
+  assert.equal(checkpointForMove(levels, 'escape.back', 'white')?.checkpointId, 'checkpoint.white.escapes');
+  assert.equal(checkpointForMove(levels, 'escape.back', 'blue'), null);
+  assert.equal(checkpointForMove(levels, 'td.double-leg', 'green')?.checkpointId, 'checkpoint.green.takedowns');
+  assert.equal(checkpointForMove(levels, 'td.double-leg', 'grey'), null);
 });

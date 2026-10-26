@@ -92,7 +92,7 @@ export function SelfAssessment({ report, to }: { report: StudentProgressReport; 
               <legend>{area.label}</legend>
               {link ? (
                 <Link className="assess-link" to={to(`/student/rubric#${link.checkpointId}`)}>
-                  {`Open ${link.checkpointName} checkpoint`}
+                  {`Open ${link.checkpointName} benchmark`}
                 </Link>
               ) : null}
               <div className="assess-scale" role="group" aria-label={`${area.label} rating`}>

@@ -457,6 +457,8 @@ function mergeCheckpoints(local: RubricLevel, incoming: RubricLevel, conflicts: 
     current.name = preferText(current.name, checkpoint.name, `Checkpoint ${checkpoint.id} name was kept.`, conflicts);
     current.note = preferText(current.note, checkpoint.note, `Checkpoint ${checkpoint.id} note was kept.`, conflicts);
     current.met = preferMet(current.met, checkpoint.met, `Checkpoint ${checkpoint.id} mark was kept.`, conflicts);
+    if (checkpoint.source === 'coach' && current.source !== 'own') current.source = 'coach';
+    if (current.source === 'coach' && (current.edited || checkpoint.edited || current.name !== checkpoint.name)) current.edited = true;
     mergeCriteria(current, checkpoint, conflicts);
   }
 }
@@ -494,6 +496,7 @@ function mergeGoals(report: StudentProgressReport, incoming: StudentProgressRepo
     current.name = preferText(current.name, goal.name, `Goal ${goal.id} name was kept.`, conflicts);
     current.note = preferText(current.note, goal.note, `Goal ${goal.id} note was kept.`, conflicts);
     current.met = preferMet(current.met, goal.met, `Goal ${goal.id} mark was kept.`, conflicts);
+    if (!current.belt && goal.belt) current.belt = goal.belt;
   }
 }
 
@@ -648,6 +651,20 @@ function mergeRank(report: StudentProgressReport, incoming: StudentProgressRepor
     for (let index = current.tapeCount; index < RANK_TAPE_MAX; index += 1) current.tapeDates[index] = '';
   }
   local.history = dedupeRankHistory(local.history);
+  const focus = mergeDegreeFocus(local.degreeFocus, next.degreeFocus, conflicts);
+  if (focus) local.degreeFocus = focus;
+  else delete local.degreeFocus;
+}
+
+function mergeDegreeFocus(local: string[] | undefined, incoming: string[] | undefined, conflicts: string[]): string[] | undefined {
+  const size = Math.max(local?.length ?? 0, incoming?.length ?? 0);
+  if (!size) return undefined;
+  const notes: string[] = [];
+  for (let index = 0; index < Math.min(size, 10); index += 1) {
+    notes.push(preferText(local?.[index] ?? '', incoming?.[index] ?? '', `Degree focus ${index + 1} was kept.`, conflicts));
+  }
+  while (notes.length && !notes[notes.length - 1]?.trim()) notes.pop();
+  return notes.some((line) => line.trim()) ? notes : undefined;
 }
 
 function mergeLineage(local: string[] | undefined, incoming: string[] | undefined, conflicts: string[]): string[] | undefined {
@@ -903,7 +920,12 @@ function readRubric(value: unknown, errors: string[]): StudentRubric {
     'Rubric criterion',
     errors,
   );
-  return { id: readId(record.id, 'Rubric id', errors), levels };
+  const rubric: StudentRubric = { id: readId(record.id, 'Rubric id', errors), levels };
+  if (record.studentsCanEdit === false) rubric.studentsCanEdit = false;
+  else if (record.studentsCanEdit != null && record.studentsCanEdit !== true) {
+    errors.push('studentsCanEdit must be true or false.');
+  }
+  return rubric;
 }
 
 function readLevel(value: unknown, index: number, errors: string[]): RubricLevel {
@@ -929,7 +951,7 @@ function readCheckpoint(value: unknown, label: string, errors: string[]): Rubric
     errors.push(`${label} must be an object.`);
     return { id: '', name: '', met: null, note: '', criteria: [] };
   }
-  return {
+  const checkpoint: RubricCheckpoint = {
     id: readId(record.id, `${label} id`, errors),
     name: readString(record.name, `${label} name`, PROGRESS_NAME_MAX, errors),
     met: readMet(record.met, label, errors),
@@ -938,6 +960,13 @@ function readCheckpoint(value: unknown, label: string, errors: string[]): Rubric
       readCriterion(row, `${label} criterion ${index + 1}`, errors),
     ),
   };
+  if (record.source != null && record.source !== '') {
+    if (record.source !== 'own' && record.source !== 'coach') errors.push(`${label} source must be own or coach.`);
+    else checkpoint.source = record.source;
+  }
+  if (record.edited === true) checkpoint.edited = true;
+  else if (record.edited != null && record.edited !== false) errors.push(`${label} edited must be true or false.`);
+  return checkpoint;
 }
 
 function readCriterion(value: unknown, label: string, errors: string[]): RubricCriterion {
@@ -1025,6 +1054,8 @@ function readRank(value: unknown, belt: ProgressBelt, errors: string[]): Student
   const high = highDatesForCount(readOptionalHigh(record.highDegreeDates, 'Rank degree dates', errors) ?? tapeDates.extra, tapeCount);
   if (high) rank.highDegreeDates = high;
   readInstructor(record, rank, errors, 'Rank');
+  const focus = readDegreeFocus(record.degreeFocus, errors);
+  if (focus) rank.degreeFocus = focus;
   if (Object.prototype.hasOwnProperty.call(record, 'lineage')) rank.lineage = readLineage(record.lineage, errors);
   if (typeof record.pictureNote === 'string') {
     rank.pictureNote = readString(record.pictureNote, 'Rank photo note', PROGRESS_NOTE_MAX, errors);
@@ -1056,6 +1087,24 @@ function blankPictureReport(): StudentProgressReport {
     calendar: [],
     goals: [],
   };
+}
+
+function readDegreeFocus(value: unknown, errors: string[]): string[] | undefined {
+  if (value == null) return undefined;
+  if (!Array.isArray(value)) {
+    errors.push('Degree focus must be a list.');
+    return undefined;
+  }
+  if (value.length > 10) errors.push('Degree focus has more than 10 notes.');
+  const notes = value.slice(0, 10).map((row, index) => {
+    if (typeof row !== 'string') {
+      errors.push(`Degree focus ${index + 1} must be text.`);
+      return '';
+    }
+    return readString(row, `Degree focus ${index + 1}`, PROGRESS_NOTE_MAX, errors);
+  });
+  while (notes.length && !notes[notes.length - 1]?.trim()) notes.pop();
+  return notes.some((line) => line.trim()) ? notes : undefined;
 }
 
 function readLineage(value: unknown, errors: string[]): string[] {
@@ -1675,12 +1724,14 @@ function readGoal(value: unknown, index: number, errors: string[]): StudentGoal 
     errors.push(`${label} must be an object.`);
     return { id: '', name: '', note: '', met: null };
   }
-  return {
+  const goal: StudentGoal = {
     id: readId(record.id, `${label} id`, errors),
     name: readString(record.name, `${label} name`, PROGRESS_NAME_MAX, errors),
     note: readString(record.note, `${label} note`, PROGRESS_NOTE_MAX, errors),
     met: readMet(record.met, label, errors),
   };
+  if (record.belt != null && record.belt !== '') goal.belt = readBelt(record.belt, `${label} belt`, errors);
+  return goal;
 }
 
 function readCoachFeedback(value: unknown, errors: string[]): CoachFeedback {

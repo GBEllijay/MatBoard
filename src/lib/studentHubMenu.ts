@@ -62,7 +62,7 @@ export const PROFILE_LINK: MenuLink = {
   to: '/student/profile',
 };
 const RANK_LINK: MenuLink = { label: 'My rank', note: 'Belt and stripes', to: '/student/rank' };
-const BELT_LINK: MenuLink = { label: 'Belt progress', note: 'Checkpoints and goals', to: '/student/rubric' };
+const BELT_LINK: MenuLink = { label: 'Belt progress', note: 'Practical benchmarks and personal goals', to: '/student/rubric' };
 const FUNDAMENTALS_LINK: MenuLink = { label: 'Fundamentals', note: 'Levels', to: '/student/fundamentals' };
 const ASSESSMENT_LINK: MenuLink = {
   label: 'Self-assessment',
@@ -115,7 +115,7 @@ export const FORMER_HUB_ITEMS: readonly MenuLink[] = [
   { label: SCOUTING_LABEL, note: 'Weight class and open class', to: '/student/scouting' },
   { label: 'Video Library', note: 'Technique and drill links', to: '/student/videos' },
   { label: 'My rank', note: 'Belt and stripes', to: '/student/rank' },
-  { label: 'Belt progress', note: 'Checkpoints and goals', to: '/student/rubric' },
+  { label: 'Belt progress', note: 'Practical benchmarks and personal goals', to: '/student/rubric' },
   { label: 'Connections', note: 'Backup, print, and restore', to: '/student/connections' },
   { label: 'Send to coach', note: 'Progress file', to: '/student/share' },
   { label: 'Import from coach', note: '', to: '/student/share#import' },

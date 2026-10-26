@@ -10,7 +10,8 @@ import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 import { RANK_PHOTO_KEY } from '../../lib/rankPhotos.ts';
-import { blankStudentReport, saveStudentReport } from '../../lib/studentEdition.ts';
+import { blankStudentReport, loadStudentReport, saveStudentReport, setFundamentalLevel } from '../../lib/studentEdition.ts';
+import { OPEN_GOAL_LINE, TIME_BASED_PROGRESS, withStarterRubric } from '../../lib/studentTools.ts';
 import { setBeltMode } from '../../lib/beltBook.ts';
 import { INSTRUCTOR_BARS_LABEL } from '../../lib/blackBeltDegrees.ts';
 import { setInstructorBars, setInstructorBarsOn, setRankAwardedOn, setRankBelt, setRankTapeCount, setRankTapeDate } from '../../lib/studentRank.ts';
@@ -57,17 +58,45 @@ function labeled(label: string): HTMLElement {
 }
 
 function buttonNamed(name: string): HTMLButtonElement {
-  const found = [...document.querySelectorAll('button')].find((button) => {
-    const label = button.getAttribute('aria-label');
-    return label === name || button.textContent?.trim() === name;
-  });
+  const found = findButton(name);
   assert.ok(found instanceof HTMLButtonElement, `missing button: ${name}`);
   return found;
 }
 
+function hasButton(name: string): boolean {
+  return findButton(name) instanceof HTMLButtonElement;
+}
+
+function findButton(name: string): Element | undefined {
+  return [...document.querySelectorAll('button')].find((button) => {
+    const label = button.getAttribute('aria-label');
+    return label === name || button.textContent?.trim() === name;
+  });
+}
+
+async function submitNamed(name: string) {
+  const button = buttonNamed(name);
+  const form = button.closest('form');
+  assert.ok(form instanceof HTMLElement && form.tagName === 'FORM', `missing form for ${name}`);
+  await act(async () => {
+    reactProps(form)?.onSubmit?.({ preventDefault() {}, stopPropagation() {} } as never);
+  });
+}
+
 function reactProps(node: Element): Record<string, (...args: never[]) => void> | null {
-  const key = Object.keys(node).find((name) => name.startsWith('__reactProps'));
+  const key = reactExpando(node, '__reactProps');
   return key ? (node as unknown as Record<string, Record<string, (...args: never[]) => void>>)[key] : null;
+}
+
+/** Happy-dom form proxies hide expando keys from Object.keys. The suffix is shared. */
+function reactExpando(node: Element, prefix: string): string | undefined {
+  const direct = Object.keys(node).find((name) => name.startsWith(prefix));
+  if (direct) return direct;
+  const sample = document.querySelector('button, input');
+  const sampleKey = sample ? Object.keys(sample).find((name) => name.startsWith(prefix)) : undefined;
+  if (!sampleKey) return undefined;
+  const candidate = `${prefix}${sampleKey.slice(prefix.length)}`;
+  return (node as unknown as Record<string, unknown>)[candidate] ? candidate : undefined;
 }
 
 async function click(el: Element) {
@@ -404,7 +433,7 @@ test('belt progress hides coral until black is worn', async () => {
   try {
     assert.equal(document.body.textContent?.includes('Unlocked after black belt'), false);
     assert.equal(document.body.textContent?.includes('Next: 1st degree'), false);
-    assert.ok(document.querySelector('[aria-label="Checkpoints between White and Blue"]'));
+    assert.ok(document.querySelector('[aria-label="Practical benchmarks between White and Blue"]'));
   } finally {
     unmount(locked);
   }
@@ -687,7 +716,7 @@ test('kids belt progress hides checkpoints and keeps them for adult', async () =
   const kids = mount(<BeltPage />);
   try {
     assert.match(document.body.textContent ?? '', /Checkpoints and fundamentals for kids are not on this page yet/);
-    assert.equal(document.querySelector('[aria-label="Checkpoints between White and Blue"]'), null);
+    assert.equal(document.querySelector('[aria-label="Practical benchmarks between White and Blue"]'), null);
     assert.equal(document.body.textContent?.includes('Next: 1st degree'), false);
     assert.ok(document.querySelector('[aria-label="Goals"]'));
   } finally {
@@ -697,9 +726,121 @@ test('kids belt progress hides checkpoints and keeps them for adult', async () =
   saveStudentReport(localStorage, back);
   const adult = mount(<BeltPage />);
   try {
-    assert.ok(document.querySelector('[aria-label="Checkpoints between Blue and Purple"]'));
+    assert.ok(document.querySelector('[aria-label="Practical benchmarks between Blue and Purple"]'));
     assert.equal(document.body.textContent?.includes('not on this page yet'), false);
   } finally {
     unmount(adult);
+  }
+});
+
+test('fundamentals at live level fill the white belt checkpoint count', async () => {
+  let report = withStarterRubric(blankStudentReport(70), 70);
+  report = setFundamentalLevel(report, { catalogItemId: 'pos.closed-guard', categoryId: 'positions', name: 'Closed guard' }, 3, 71);
+  report = setFundamentalLevel(report, { catalogItemId: 'sweep.scissor', categoryId: 'sweeps', name: 'Scissor sweep' }, 5, 72);
+  saveStudentReport(localStorage, report);
+  const mounted = mount(<BeltPage />);
+  try {
+    assert.match(labeled('Belt progress count').textContent ?? '', /2 of 6 requirements counted\. 2 from fundamentals\./);
+    assert.match(labeled('Belt progress count').textContent ?? '', /1 of 3 practical benchmarks filled/);
+    assert.equal(labeled('Guard, filled').tagName, 'LI');
+    assert.match(document.body.textContent ?? '', /Counted from your fundamentals\./);
+    assert.equal(labeled('Practical Benchmarks').tagName, 'SECTION');
+    assert.match(document.body.textContent ?? '', /Skills the coach or template expects before the next belt/);
+    assert.ok(labeled('Personal goal name'));
+    assert.ok(labeled('Personal goal note'));
+    assert.ok(buttonNamed('Add personal goal'));
+  } finally {
+    unmount(mounted);
+  }
+});
+
+test('brown tap-to-add goals can be edited and removed without becoming checkpoints', async () => {
+  const report = setRankBelt(withStarterRubric(blankStudentReport(80), 80), 'brown', 81);
+  saveStudentReport(localStorage, report);
+  const mounted = mount(<BeltPage />);
+  try {
+    assert.match(document.body.textContent ?? '', new RegExp(OPEN_GOAL_LINE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    assert.ok(document.querySelector('[aria-label="Tap to add"]'));
+    assert.ok(buttonNamed('Add personal goal'));
+    assert.equal(document.querySelector('[aria-label="Goal name"]'), null);
+    assert.match(document.body.textContent ?? '', /Your own goals, which never affect belt or degree milestones/);
+    assert.equal(document.body.textContent?.includes('not on this page yet'), false);
+    await click(buttonNamed('Teaching: lead a class'));
+    const added = loadStudentReport(localStorage);
+    assert.equal(added.goals[0]?.name, 'Teaching: lead a class');
+    assert.equal(added.goals[0]?.belt, 'brown');
+    assert.equal(added.profile.belt, 'brown');
+    await typeControl(labeled('Edit Teaching: lead a class') as HTMLInputElement, 'Lead the kids class');
+    await submitNamed('Save Teaching: lead a class');
+    const renamed = loadStudentReport(localStorage);
+    assert.equal(renamed.goals[0]?.name, 'Lead the kids class');
+    assert.equal(renamed.goals[0]?.belt, 'brown');
+    assert.equal(renamed.rubric.levels.find((level) => level.belt === 'brown')?.checkpoints.length, 0);
+    await click(buttonNamed('Remove Lead the kids class'));
+    assert.equal(loadStudentReport(localStorage).goals.length, 0);
+  } finally {
+    unmount(mounted);
+  }
+});
+
+test('black belt goals and degree focus do not change degree milestones', async () => {
+  let report = setRankBelt(withStarterRubric(blankStudentReport(90), 90), 'black', 91);
+  report = setRankAwardedOn(report, '2010-01-02', 92);
+  report = setRankTapeCount(report, 2, 93);
+  saveStudentReport(localStorage, report);
+  const mounted = mount(<BeltPage />);
+  try {
+    assert.match(document.body.textContent ?? '', new RegExp(TIME_BASED_PROGRESS.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    assert.match(document.body.textContent ?? '', /Next: 3rd degree/);
+    assert.equal(document.querySelector('[aria-label="Practical benchmarks between Black and Coral"]'), null);
+    await click(buttonNamed('Teaching: lead a class'));
+    await click(buttonNamed('Mark Teaching: lead a class met'));
+    await typeControl(labeled('Focus for this degree') as HTMLInputElement, 'Teach the Thursday class', 'blur');
+    const stored = loadStudentReport(localStorage);
+    assert.equal(stored.profile.belt, 'black');
+    assert.equal(stored.rank?.tapeCount, 2);
+    assert.equal(stored.rank?.awardedOn, '2010-01-02');
+    assert.equal(stored.rank?.degreeFocus?.[2], 'Teach the Thursday class');
+    assert.equal(stored.goals[0]?.name, 'Teaching: lead a class');
+    assert.equal(stored.goals[0]?.met, true);
+    assert.equal(stored.goals[0]?.belt, 'black');
+  } finally {
+    unmount(mounted);
+  }
+});
+
+test('a locked coach checkpoint is read-only and an edited coach checkpoint shows an asterisk', async () => {
+  const locked = withStarterRubric(blankStudentReport(100), 100);
+  locked.rubric.studentsCanEdit = false;
+  const lockedGuard = locked.rubric.levels.find((level) => level.belt === 'white')?.checkpoints.find((row) => row.id === 'checkpoint.white.guard');
+  assert.ok(lockedGuard);
+  lockedGuard.source = 'coach';
+  saveStudentReport(localStorage, locked);
+  const readOnly = mount(<BeltPage />);
+  try {
+    assert.match(document.body.textContent ?? '', /From your coach\. This practical benchmark stays as they sent it\./);
+    assert.equal(hasButton('Rename Guard'), false);
+    assert.equal(hasButton('Remove Guard'), false);
+    assert.ok(buttonNamed('Mark Guard benchmark met'));
+    assert.equal(labeled('Guard benchmark').querySelector('h2')?.textContent, 'Guard');
+  } finally {
+    unmount(readOnly);
+  }
+
+  const editable = withStarterRubric(blankStudentReport(110), 110);
+  const guard = editable.rubric.levels.find((level) => level.belt === 'white')?.checkpoints.find((row) => row.id === 'checkpoint.white.guard');
+  assert.ok(guard);
+  guard.source = 'coach';
+  guard.edited = true;
+  saveStudentReport(localStorage, editable);
+  const starred = mount(<BeltPage />);
+  try {
+    assert.equal(labeled('Guard* benchmark').querySelector('h2')?.textContent, 'Guard*');
+    assert.match(labeled('Guard*, open').textContent ?? '', /Guard\*/);
+    assert.ok(buttonNamed('Rename Guard'));
+    assert.match(document.body.textContent ?? '', /Edited from the coach list\./);
+    assert.equal(document.body.textContent?.includes('This practical benchmark stays as they sent it'), false);
+  } finally {
+    unmount(starred);
   }
 });

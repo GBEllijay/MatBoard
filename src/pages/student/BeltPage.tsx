@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import {
   blackBeltClock,
@@ -14,26 +14,48 @@ import {
   wornDegree,
   yearsAtName,
 } from '../../lib/blackBeltDegrees';
-import type { RubricCriterion, StudentProgressReport } from '../../lib/progress/types';
+import type { RubricCheckpoint, RubricCriterion, StudentGoal, StudentProgressReport } from '../../lib/progress/types';
 import { loadStudentReport, todayIso } from '../../lib/studentEdition';
-import { instructorBarsOf, rankOf } from '../../lib/studentRank';
+import { degreeFocusOf, instructorBarsOf, rankOf, setDegreeFocus } from '../../lib/studentRank';
 import {
+  addCheckpoint,
   addGoal,
   BELT_LABELS,
   beltLevel,
-  checkpointFilled,
+  beltProgressSummary,
+  checkpointReadOnly,
+  checkpointShare,
+  checkpointState,
+  checkpointTitle,
   copyFocusToGoal,
   copySuggestionToGoal,
   criterionFromFundamentals,
+  degreeProgressIsTimeBased,
   goalCopied,
+  goalsForBelt,
+  INSTRUCTOR_FINAL_SAY,
   learnedCatalogIds,
   loadCoachShelf,
+  moveCheckpoint,
   nextBelt,
+  NO_PERSONAL_GOALS,
+  NO_PRACTICAL_BENCHMARKS,
+  OPEN_GOAL_LINE,
+  OPEN_GOAL_PROMPTS,
+  openGoalBelt,
+  PERSONAL_GOALS_HEADING,
+  PERSONAL_GOALS_LINE,
+  PRACTICAL_BENCHMARKS_HEADING,
+  PRACTICAL_BENCHMARKS_LINE,
+  removeCheckpoint,
+  removeGoal,
+  renameCheckpoint,
   setCheckpointMark,
   showsAdultCheckpoints,
   setCriterionMark,
   setGoalMet,
   splitMarkNote,
+  TIME_BASED_PROGRESS,
   updateGoal,
   withStarterRubric,
 } from '../../lib/studentTools';
@@ -66,8 +88,13 @@ export function BeltPage() {
   const learned = learnedCatalogIds(report);
   const checkpoints = level?.checkpoints ?? [];
   useScrollToHash(checkpoints.map((row) => row.id).join('|'));
-  const filled = checkpoints.filter((row) => checkpointFilled(row, learned)).length;
+  const summary = beltProgressSummary(level, learned);
+  const timeBased = degreeProgressIsTimeBased(belt);
+  const openGoals = openGoalBelt(belt);
   const share = to('/student/share?from=rubric');
+  const stageGoals = goalsForBelt(report, belt);
+  const usedPrompts = new Set(stageGoals.map((goal) => goal.name.trim().toLowerCase()));
+  const prompts = OPEN_GOAL_PROMPTS.filter((prompt) => !usedPrompts.has(prompt.toLowerCase()));
 
   const run = (next: ReturnType<typeof commit>) => {
     try {
@@ -103,22 +130,38 @@ export function BeltPage() {
             <p>{BELT_LABELS[belt]}</p>
             <p>{endLabel}</p>
           </div>
-          <ol className="checkpoint-row" aria-label={upcoming ? `Checkpoints between ${BELT_LABELS[belt]} and ${BELT_LABELS[upcoming]}` : `${BELT_LABELS[belt]} checkpoints`}>
-            {checkpoints.map((row) => {
-              const done = checkpointFilled(row, learned);
-              return (
-                <li key={row.id} className={done ? 'is-filled' : undefined} aria-label={`${row.name}, ${done ? 'filled' : 'open'}`}>
-                  <span className="checkpoint-box" />
-                  <span>{row.name}</span>
-                </li>
-              );
-            })}
-          </ol>
-          {checkpoints.length ? (
-            <p className="student-quiet">
-              {filled} of {checkpoints.length} checkpoints filled. Checkpoints are the steps between belts.
-            </p>
-          ) : null}
+          <section className="belt-benchmarks" aria-label={PRACTICAL_BENCHMARKS_HEADING}>
+            <h2>{PRACTICAL_BENCHMARKS_HEADING}</h2>
+            <p className="student-quiet">{PRACTICAL_BENCHMARKS_LINE}</p>
+            {timeBased ? <p>{TIME_BASED_PROGRESS}</p> : null}
+            {!timeBased && checkpoints.length ? (
+            <ol className="checkpoint-row" aria-label={upcoming ? `Practical benchmarks between ${BELT_LABELS[belt]} and ${BELT_LABELS[upcoming]}` : `${BELT_LABELS[belt]} practical benchmarks`}>
+              {checkpoints.map((row) => {
+                const state = checkpointState(row, learned);
+                const share = checkpointShare(row, learned);
+                const title = checkpointTitle(row);
+                return (
+                  <li
+                    key={row.id}
+                    className={state === 'filled' ? 'is-filled' : state === 'partly filled' ? 'is-partial' : undefined}
+                    style={{ '--fill': `${Math.round(share * 100)}%` } as CSSProperties}
+                    aria-label={`${title}, ${state}`}
+                  >
+                    <span className="checkpoint-box" />
+                    <span>{title}</span>
+                  </li>
+                );
+              })}
+            </ol>
+            ) : null}
+            {!timeBased && summary ? (
+              <p className="belt-count" aria-label="Belt progress count">
+                {summary}
+              </p>
+            ) : null}
+            {checkpoints.length === 0 ? <p>{NO_PRACTICAL_BENCHMARKS}</p> : null}
+          </section>
+          {timeBased ? <DegreeFocus report={report} onFocus={(degree, text) => run(setDegreeFocus(report, degree, text))} /> : null}
           <DegreePanel report={report} />
           </div>
           ) : (
@@ -134,53 +177,45 @@ export function BeltPage() {
               Import from coach
             </Link>
           </div>
-          {adultPath ? checkpoints.map((row) => {
-            const done = checkpointFilled(row, learned);
-            return (
-              <section key={row.id} id={row.id} className="ink belt-block" aria-label={`${row.name} checkpoint`}>
-                <h2>{row.name}</h2>
-                <button
-                  type="button"
-                  className={row.met === true ? 'student-choice is-on' : 'student-choice'}
-                  aria-pressed={row.met === true}
-                  aria-label={row.met === true ? `${row.name} checkpoint met` : `Mark ${row.name} checkpoint met`}
-                  onClick={() => run(setCheckpointMark(report, row.id, row.met !== true, row.note))}
-                >
-                  {row.met === true ? 'Checkpoint met' : 'Mark checkpoint met'}
-                </button>
-                <label>
-                  <span className="ink__label">Note</span>
-                  <input
-                    aria-label={`${row.name} note`}
-                    defaultValue={row.note}
-                    key={`${row.id}-${row.note}`}
-                    onBlur={(event) => {
-                      if (event.target.value === row.note) return;
-                      run(setCheckpointMark(report, row.id, row.met === true, event.target.value));
-                    }}
-                  />
-                </label>
-                {row.criteria.map((item) => (
-                  <CriterionEditor
-                    key={item.id}
-                    row={item}
-                    fromFundamentals={criterionFromFundamentals(item, learned)}
-                    onSave={(met, date, note) => run(setCriterionMark(report, item.id, met, date, note))}
-                  />
-                ))}
-                {done ? <p className="student-quiet">Filled.</p> : null}
-              </section>
-            );
-          }) : null}
+          {adultPath ? checkpoints.map((row, index) => (
+            <CheckpointCard
+              key={row.id}
+              row={row}
+              index={index}
+              count={checkpoints.length}
+              learned={learned}
+              readOnly={checkpointReadOnly(report, row)}
+              onMark={(met, note) => run(setCheckpointMark(report, row.id, met, note))}
+              onRename={(name) => run(renameCheckpoint(report, row.id, name))}
+              onRemove={() => run(removeCheckpoint(report, row.id))}
+              onMove={(direction) => run(moveCheckpoint(report, row.id, direction))}
+              onCriterion={(id, met, date, note) => run(setCriterionMark(report, id, met, date, note))}
+            />
+          )) : null}
+          {adultPath ? (
+            <section className="ink" aria-label="Add a practical benchmark">
+              <NameForm label="Practical benchmark name" submit="Add a practical benchmark" onAdd={(name) => run(addCheckpoint(report, belt, name))} />
+              <p className="student-quiet">{INSTRUCTOR_FINAL_SAY}</p>
+            </section>
+          ) : null}
           <GoalsSection
-            report={report}
-            onAdd={(name, note) => run(addGoal(report, name, note))}
+            goals={adultPath ? stageGoals : report.goals.filter((goal) => !goal.belt)}
+            personal={adultPath}
+            showForm={!openGoals}
+            prompts={openGoals ? prompts : []}
+            onPrompt={(name) => run(addGoal(report, name, '', Date.now(), belt))}
+            onAdd={(name, note) => run(addGoal(report, name, note, Date.now(), adultPath ? belt : undefined))}
             onUpdate={(id, name, note) => run(updateGoal(report, id, name, note))}
             onMet={(id, met) => run(setGoalMet(report, id, met))}
+            onRemove={adultPath ? (id) => run(removeGoal(report, id)) : undefined}
           />
           <section className="coach-panel" aria-label="From my coach" id="from-coach">
             <h2>From my coach</h2>
-            <p className="student-quiet">Suggestions only. Copy a line into your goals if you want it. Your checkpoints stay as you marked them.</p>
+            <p className="student-quiet">
+              {adultPath
+                ? 'Suggestions only. Copy a line into your personal goals if you want it. Your practical benchmarks stay as you marked them.'
+                : 'Suggestions only. Copy a line into your goals if you want it. Your checkpoints stay as you marked them.'}
+            </p>
             {!shelf.plan && !shelf.feedback ? <p>Nothing from your coach on this phone yet.</p> : null}
             {shelf.plan ? (
               <article className="ink">
@@ -193,11 +228,11 @@ export function BeltPage() {
                     <button
                       type="button"
                       className="ink-btn"
-                      aria-label={`Copy ${line.name || line.note} to my goals`}
+                      aria-label={`Copy ${line.name || line.note} to my ${adultPath ? 'personal goals' : 'goals'}`}
                       disabled={goalCopied(report, line.id)}
                       onClick={() => run(copyFocusToGoal(report, line))}
                     >
-                      {goalCopied(report, line.id) ? 'Copied' : 'Copy to my goals'}
+                      {goalCopied(report, line.id) ? 'Copied' : adultPath ? 'Copy to my personal goals' : 'Copy to my goals'}
                     </button>
                   </div>
                 ))}
@@ -213,11 +248,11 @@ export function BeltPage() {
                     <button
                       type="button"
                       className="ink-btn"
-                      aria-label={`Copy ${line.note} to my goals`}
+                      aria-label={`Copy ${line.note} to my ${adultPath ? 'personal goals' : 'goals'}`}
                       disabled={goalCopied(report, line.id)}
                       onClick={() => run(copySuggestionToGoal(report, line))}
                     >
-                      {goalCopied(report, line.id) ? 'Copied' : 'Copy to my goals'}
+                      {goalCopied(report, line.id) ? 'Copied' : adultPath ? 'Copy to my personal goals' : 'Copy to my goals'}
                     </button>
                   </div>
                 ))}
@@ -228,6 +263,199 @@ export function BeltPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+function DegreeFocus({
+  report,
+  onFocus,
+}: {
+  report: StudentProgressReport;
+  onFocus: (degree: number, text: string) => void;
+}) {
+  const rank = rankOf(report);
+  const degree = wornDegree(report.profile.belt, rank.tapeCount) ?? 0;
+  const focus = degreeFocusOf(rank, degree);
+  return (
+    <label className="belt-focus">
+      <span className="ink__label">Focus for this degree</span>
+      <input
+        aria-label="Focus for this degree"
+        defaultValue={focus}
+        key={`${degree}-${focus}`}
+        onBlur={(event) => {
+          if (event.target.value === focus) return;
+          onFocus(degree, event.target.value);
+        }}
+      />
+      <span className="student-quiet">A note for this degree. It does not change the degree.</span>
+    </label>
+  );
+}
+
+function OpenGoals({
+  prompts,
+  onPrompt,
+  onAdd,
+}: {
+  prompts: readonly string[];
+  onPrompt: (name: string) => void;
+  onAdd: (name: string) => void;
+}) {
+  return (
+    <div className="belt-open">
+      <p className="belt-open__line">{OPEN_GOAL_LINE}</p>
+      <p className="student-quiet">{INSTRUCTOR_FINAL_SAY}</p>
+      {prompts.length ? (
+        <div className="belt-chips" role="group" aria-label="Tap to add">
+          {prompts.map((prompt) => (
+            <button key={prompt} type="button" className="belt-chip" onClick={() => onPrompt(prompt)}>
+              {prompt}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      <NameForm label="Personal goal name" submit="Add personal goal" onAdd={onAdd} />
+    </div>
+  );
+}
+
+function NameForm({ label, submit, onAdd }: { label: string; submit: string; onAdd: (name: string) => void }) {
+  const [name, setName] = useState('');
+  return (
+    <form
+      className="belt-add"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        onAdd(trimmed);
+        setName('');
+      }}
+    >
+      <label>
+        <span className="ink__label">{label}</span>
+        <input aria-label={label} value={name} onChange={(event) => setName(event.target.value)} />
+      </label>
+      <button type="submit" className="ink-btn">
+        {submit}
+      </button>
+    </form>
+  );
+}
+
+function CheckpointCard({
+  row,
+  index,
+  count,
+  learned,
+  readOnly,
+  onMark,
+  onRename,
+  onRemove,
+  onMove,
+  onCriterion,
+}: {
+  row: RubricCheckpoint;
+  index: number;
+  count: number;
+  learned: ReadonlySet<string>;
+  readOnly: boolean;
+  onMark: (met: boolean, note: string) => void;
+  onRename: (name: string) => void;
+  onRemove: () => void;
+  onMove: (direction: -1 | 1) => void;
+  onCriterion: (id: string, met: boolean, date: string, note: string) => void;
+}) {
+  const [renaming, setRenaming] = useState(false);
+  const [draft, setDraft] = useState(row.name);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const title = checkpointTitle(row);
+  const done = checkpointState(row, learned) === 'filled';
+  useEffect(() => {
+    setDraft(row.name);
+  }, [row.name]);
+  return (
+    <section id={row.id} className="ink belt-block" aria-label={`${title} benchmark`}>
+      <h2>{title}</h2>
+      {readOnly ? <p className="student-quiet">From your coach. This practical benchmark stays as they sent it.</p> : null}
+      {row.source === 'coach' && row.edited ? <p className="student-quiet">Edited from the coach list.</p> : null}
+      {readOnly ? null : (
+        <div className="belt-edit">
+          <button type="button" className="ink-btn" aria-label={`Move ${row.name} up`} disabled={index === 0} onClick={() => onMove(-1)}>
+            Move up
+          </button>
+          <button type="button" className="ink-btn" aria-label={`Move ${row.name} down`} disabled={index === count - 1} onClick={() => onMove(1)}>
+            Move down
+          </button>
+          <button type="button" className="ink-btn" aria-label={`Rename ${row.name}`} onClick={() => setRenaming((open) => !open)}>
+            Rename
+          </button>
+          <button type="button" className="ink-btn" aria-label={`Remove ${row.name}`} onClick={() => setConfirmRemove(true)}>
+            Remove
+          </button>
+        </div>
+      )}
+      {renaming && !readOnly ? (
+        <form
+          className="belt-add"
+          onSubmit={(event) => {
+            event.preventDefault();
+            onRename(draft);
+            setRenaming(false);
+          }}
+        >
+          <label>
+            <span className="ink__label">Name</span>
+            <input aria-label={`New name for ${row.name}`} value={draft} onChange={(event) => setDraft(event.target.value)} />
+          </label>
+          <button type="submit" className="ink-btn" aria-label={`Save ${row.name}`}>
+            Save
+          </button>
+        </form>
+      ) : null}
+      {confirmRemove && !readOnly ? (
+        <div className="student-actions" role="group" aria-label={`Remove ${row.name}`}>
+          <button type="button" className="ink-btn" aria-label={`Confirm remove ${row.name}`} onClick={onRemove}>
+            Confirm remove
+          </button>
+          <button type="button" className="ink-btn" aria-label={`Keep ${row.name}`} onClick={() => setConfirmRemove(false)}>
+            Keep
+          </button>
+        </div>
+      ) : null}
+      <button
+        type="button"
+        className={row.met === true ? 'student-choice is-on' : 'student-choice'}
+        aria-pressed={row.met === true}
+        aria-label={row.met === true ? `${row.name} benchmark met` : `Mark ${row.name} benchmark met`}
+        onClick={() => onMark(row.met !== true, row.note)}
+      >
+        {row.met === true ? 'Benchmark met' : 'Mark benchmark met'}
+      </button>
+      <label>
+        <span className="ink__label">Note</span>
+        <input
+          aria-label={`${row.name} note`}
+          defaultValue={row.note}
+          key={`${row.id}-${row.note}`}
+          readOnly={readOnly}
+          onBlur={(event) => {
+            if (readOnly || event.target.value === row.note) return;
+            onMark(row.met === true, event.target.value);
+          }}
+        />
+      </label>
+      {row.criteria.map((item) => (
+        <CriterionEditor
+          key={item.id}
+          row={item}
+          fromFundamentals={criterionFromFundamentals(item, learned)}
+          onSave={(met, date, note) => onCriterion(item.id, met, date, note)}
+        />
+      ))}
+      {done ? <p className="student-quiet">Filled.</p> : null}
+    </section>
   );
 }
 
@@ -339,44 +567,64 @@ function CriterionEditor({
 }
 
 function GoalsSection({
-  report,
+  goals,
+  personal,
+  showForm,
+  prompts,
+  onPrompt,
   onAdd,
   onUpdate,
   onMet,
+  onRemove,
 }: {
-  report: ReturnType<typeof useStudentFile>['report'];
+  goals: StudentGoal[];
+  personal: boolean;
+  showForm: boolean;
+  prompts: readonly string[];
+  onPrompt: (name: string) => void;
   onAdd: (name: string, note: string) => void;
   onUpdate: (id: string, name: string, note: string) => void;
   onMet: (id: string, met: boolean) => void;
+  onRemove?: (id: string) => void;
 }) {
   const [name, setName] = useState('');
   const [note, setNote] = useState('');
+  const nameLabel = personal ? 'Personal goal' : 'Goal';
+  const nameAria = personal ? 'Personal goal name' : 'Goal name';
+  const noteAria = personal ? 'Personal goal note' : 'Goal note';
   return (
-    <section className="goals-block" aria-label="Goals">
-      <h2>Goals</h2>
-      <form
-        className="ink"
-        onSubmit={(event) => {
-          event.preventDefault();
-          onAdd(name, note);
-          setName('');
-          setNote('');
-        }}
-      >
-        <label>
-          <span className="ink__label">Goal</span>
-          <input aria-label="Goal name" value={name} onChange={(event) => setName(event.target.value)} />
-        </label>
-        <label>
-          <span className="ink__label">Note</span>
-          <input aria-label="Goal note" value={note} onChange={(event) => setNote(event.target.value)} />
-        </label>
-        <button type="submit" className="ink-btn">
-          Add goal
-        </button>
-      </form>
-      {report.goals.map((goal) => (
-        <GoalRow key={goal.id} goal={goal} onUpdate={onUpdate} onMet={onMet} />
+    <section className="goals-block" aria-label={personal ? PERSONAL_GOALS_HEADING : 'Goals'}>
+      <h2>{personal ? PERSONAL_GOALS_HEADING : 'Goals'}</h2>
+      {personal ? <p className="student-quiet">{PERSONAL_GOALS_LINE}</p> : null}
+      {personal && !showForm ? (
+        <OpenGoals prompts={prompts} onPrompt={onPrompt} onAdd={(value) => onAdd(value, '')} />
+      ) : null}
+      {showForm ? (
+        <form
+          className="ink"
+          onSubmit={(event) => {
+            event.preventDefault();
+            onAdd(name, note);
+            setName('');
+            setNote('');
+          }}
+        >
+          <label>
+            <span className="ink__label">{nameLabel}</span>
+            <input aria-label={nameAria} value={name} onChange={(event) => setName(event.target.value)} />
+          </label>
+          <label>
+            <span className="ink__label">Note</span>
+            <input aria-label={noteAria} value={note} onChange={(event) => setNote(event.target.value)} />
+          </label>
+          <button type="submit" className="ink-btn">
+            {personal ? 'Add personal goal' : 'Add goal'}
+          </button>
+        </form>
+      ) : null}
+      {personal && goals.length === 0 ? <p>{NO_PERSONAL_GOALS}</p> : null}
+      {goals.map((goal) => (
+        <GoalRow key={goal.id} goal={goal} personal={personal} onUpdate={onUpdate} onMet={onMet} onRemove={onRemove} />
       ))}
     </section>
   );
@@ -384,12 +632,16 @@ function GoalsSection({
 
 function GoalRow({
   goal,
+  personal,
   onUpdate,
   onMet,
+  onRemove,
 }: {
-  goal: ReturnType<typeof useStudentFile>['report']['goals'][number];
+  goal: StudentGoal;
+  personal: boolean;
   onUpdate: (id: string, name: string, note: string) => void;
   onMet: (id: string, met: boolean) => void;
+  onRemove?: (id: string) => void;
 }) {
   const [name, setName] = useState(goal.name);
   const [note, setNote] = useState(goal.note);
@@ -407,7 +659,7 @@ function GoalRow({
       }}
     >
       <label>
-        <span className="ink__label">Goal</span>
+        <span className="ink__label">{personal ? 'Personal goal' : 'Goal'}</span>
         <input aria-label={`Edit ${goal.name}`} value={name} onChange={(event) => setName(event.target.value)} />
       </label>
       <label>
@@ -427,6 +679,11 @@ function GoalRow({
         >
           {met ? 'Met' : 'Mark met'}
         </button>
+        {onRemove ? (
+          <button type="button" className="ink-btn" aria-label={`Remove ${goal.name}`} onClick={() => onRemove(goal.id)}>
+            Remove
+          </button>
+        ) : null}
       </div>
     </form>
   );

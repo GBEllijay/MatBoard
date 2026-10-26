@@ -2,35 +2,47 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { exportProgressPacket, mergeStudentProgress, parseProgressPacket, sharedCriterionId } from './progress/format.ts';
-import type { CoachFeedbackPacket, CoachPlanPacket } from './progress/types.ts';
+import type { CoachFeedbackPacket, CoachPlanPacket, RubricCheckpoint } from './progress/types.ts';
 import {
   addJournalEntry,
   blankStudentReport,
   saveStudentReport,
   setFundamentalLearned,
+  setFundamentalLevel,
 } from './studentEdition.ts';
+import { setRankAwardedOn, setRankBelt, setRankTapeCount, setDegreeFocus } from './studentRank.ts';
 import {
   addCalendarEvent,
+  addCheckpoint,
   addGoal,
   applyCoachFile,
   BACKUP_PICKER_MESSAGE,
   beltLevel,
+  beltProgressSummary,
   calendarKindLabel,
   checkpointFilled,
+  checkpointReadOnly,
+  checkpointTitle,
   copyFocusToGoal,
   copySuggestionToGoal,
   criterionCounts,
   eventsOnDate,
   goalCopied,
+  goalsForBelt,
   gymClassesOnDate,
+  isUntouchedLegacyBrown,
   journalDates,
   learnedCatalogIds,
   mergeOwnStudentFile,
   monthGrid,
+  moveCheckpoint,
   nextBelt,
   progressReportFiles,
   readGymSchedule,
   removeCalendarEvent,
+  removeCheckpoint,
+  removeGoal,
+  renameCheckpoint,
   setCriterionMark,
   setGoalMet,
   updateGoal,
@@ -337,4 +349,175 @@ test('the uploaded send to coach file merges after confirm and a backup points t
   assert.equal(backup.error, BACKUP_PICKER_MESSAGE);
   assert.equal(backup.pendingReport, undefined);
   assert.equal(backup.report, local);
+});
+
+test('completed fundamentals levels count toward belt progress', () => {
+  let report = withStarterRubric(blankStudentReport(10), 10);
+  assert.equal(beltProgressSummary(beltLevel(report, 'white'), learnedCatalogIds(report)), '0 of 3 practical benchmarks filled. 0 of 6 requirements counted.');
+  report = setFundamentalLevel(report, { catalogItemId: 'sweep.scissor', categoryId: 'sweeps', name: 'Scissor sweep' }, 2, 11);
+  assert.equal(beltProgressSummary(beltLevel(report, 'white'), learnedCatalogIds(report)).includes('0 of 6'), true);
+  report = setFundamentalLevel(report, { catalogItemId: 'pos.closed-guard', categoryId: 'positions', name: 'Closed guard' }, 3, 12);
+  report = setFundamentalLevel(report, { catalogItemId: 'sweep.scissor', categoryId: 'sweeps', name: 'Scissor sweep' }, 5, 13);
+  const summary = beltProgressSummary(beltLevel(report, 'white'), learnedCatalogIds(report));
+  assert.match(summary, /1 of 3 practical benchmarks filled/);
+  assert.match(summary, /2 of 6 requirements counted\. 2 from fundamentals\./);
+  const guard = beltLevel(report, 'white')?.checkpoints.find((row) => row.id === 'checkpoint.white.guard');
+  assert.ok(guard);
+  assert.equal(checkpointFilled(guard, learnedCatalogIds(report)), true);
+});
+
+test('legacy brown checkpoints clear only when they were never edited', () => {
+  const fresh = withStarterRubric(blankStudentReport(10), 10);
+  assert.equal(beltLevel(fresh, 'brown')?.checkpoints.length, 0);
+  assert.equal(beltLevel(fresh, 'white')?.checkpoints.length, 3);
+  const legacy = structuredClone(fresh);
+  const brown = beltLevel(legacy, 'brown');
+  assert.ok(brown);
+  brown.checkpoints = [
+    {
+      id: 'checkpoint.brown.top',
+      name: 'Top',
+      met: null,
+      note: '',
+      criteria: [
+        { id: 'rubric.brown.mount', requirement: 'Hold mount.', techniqueRefs: [{ id: 'pos.mount', name: 'Mount' }], met: null, note: '' },
+        { id: 'rubric.brown.knee-on-belly', requirement: 'Hold knee on belly.', techniqueRefs: [{ id: 'pos.knee-on-belly', name: 'Knee on belly' }], met: null, note: '' },
+      ],
+    },
+    {
+      id: 'checkpoint.brown.standing',
+      name: 'Standing',
+      met: null,
+      note: '',
+      criteria: [
+        { id: 'rubric.brown.standing', requirement: 'Work standing.', techniqueRefs: [{ id: 'pos.standing', name: 'Standing' }], met: null, note: '' },
+        { id: 'rubric.brown.double-leg', requirement: 'Finish a double leg.', techniqueRefs: [{ id: 'td.double-leg', name: 'Double leg' }], met: null, note: '' },
+        { id: 'rubric.brown.hip-throw', requirement: 'Finish a hip throw.', techniqueRefs: [{ id: 'td.hip-throw', name: 'Hip throw' }], met: null, note: '' },
+      ],
+    },
+    {
+      id: 'checkpoint.brown.chokes',
+      name: 'Chokes',
+      met: null,
+      note: '',
+      criteria: [
+        { id: 'rubric.brown.guillotine', requirement: 'Finish a guillotine.', techniqueRefs: [{ id: 'sub.guillotine', name: 'Guillotine' }], met: null, note: '' },
+        { id: 'rubric.brown.cross-collar', requirement: 'Finish a cross collar choke.', techniqueRefs: [{ id: 'sub.cross-collar', name: 'Cross collar choke' }], met: null, note: '' },
+      ],
+    },
+  ];
+  assert.equal(isUntouchedLegacyBrown(brown), true);
+  const cleared = withStarterRubric(legacy, 20);
+  assert.equal(beltLevel(cleared, 'brown')?.checkpoints.length, 0);
+  assert.equal(beltLevel(cleared, 'white')?.checkpoints[0]?.id, 'checkpoint.white.guard');
+
+  const marked = structuredClone(legacy);
+  const keptBrown = beltLevel(marked, 'brown');
+  assert.ok(keptBrown);
+  keptBrown.checkpoints[0]!.met = true;
+  const kept = withStarterRubric(marked, 21);
+  assert.equal(beltLevel(kept, 'brown')?.checkpoints[0]?.met, true);
+  assert.equal(beltLevel(kept, 'brown')?.checkpoints.length, 3);
+});
+
+test('goals and higher-belt checkpoints do not change degree milestones', () => {
+  let report = setRankBelt(withStarterRubric(blankStudentReport(10), 10), 'black', 11);
+  report = setRankAwardedOn(report, '2010-01-02', 12);
+  report = setRankTapeCount(report, 2, 13);
+  report = addGoal(report, 'Teaching: lead a class', '', 14, 'black');
+  report = setGoalMet(report, report.goals[0]!.id, true, 15);
+  report = addCheckpoint(report, 'black', 'Personal game refinement', 16);
+  report = setDegreeFocus(report, 2, 'Teach the Thursday class', 17);
+  assert.equal(report.profile.belt, 'black');
+  assert.equal(report.rank?.tapeCount, 2);
+  assert.equal(report.rank?.awardedOn, '2010-01-02');
+  assert.deepEqual(report.rank?.tapeDates, ['', '', '', '']);
+  assert.equal(report.rank?.degreeFocus?.[2], 'Teach the Thursday class');
+  const roundTrip = parseProgressPacket(exportProgressPacket(report));
+  assert.equal(roundTrip.ok, true);
+  if (roundTrip.ok && roundTrip.value.kind === 'student-progress-report') {
+    assert.equal(roundTrip.value.rank?.tapeCount, 2);
+    assert.equal(roundTrip.value.rank?.awardedOn, '2010-01-02');
+    assert.equal(roundTrip.value.rank?.degreeFocus?.[2], 'Teach the Thursday class');
+    assert.equal(roundTrip.value.goals[0]?.belt, 'black');
+  }
+});
+
+test('a student can edit their own checkpoints, and a locked coach checkpoint stays read-only', () => {
+  let report = withStarterRubric(blankStudentReport(10), 10);
+  const guardId = 'checkpoint.white.guard';
+  report = renameCheckpoint(report, guardId, 'Closed guard', 11);
+  report = moveCheckpoint(report, guardId, 1, 12);
+  assert.equal(beltLevel(report, 'white')?.checkpoints[1]?.name, 'Closed guard');
+  assert.equal(beltLevel(report, 'white')?.checkpoints[1]?.edited, undefined);
+  report = moveCheckpoint(report, guardId, -1, 13);
+  report = renameCheckpoint(report, guardId, 'Guard', 14);
+  report = addCheckpoint(report, 'white', 'Grip fighting', 15);
+  report = removeCheckpoint(report, beltLevel(report, 'white')?.checkpoints.at(-1)?.id ?? '', 16);
+  assert.equal(beltLevel(report, 'white')?.checkpoints.some((row) => row.name === 'Grip fighting'), false);
+
+  report.rubric.studentsCanEdit = false;
+  const coach = beltLevel(report, 'white')?.checkpoints[0];
+  assert.ok(coach);
+  coach.source = 'coach';
+  assert.equal(checkpointReadOnly(report, coach), true);
+  assert.throws(() => renameCheckpoint(report, coach.id, 'Other', 17), /coach/);
+  assert.throws(() => removeCheckpoint(report, coach.id, 18), /coach/);
+  assert.equal(coach.name, 'Guard');
+  report.rubric.studentsCanEdit = true;
+  report = renameCheckpoint(report, coach.id, 'Guard details', 19);
+  const edited = beltLevel(report, 'white')?.checkpoints.find((row) => row.id === coach.id);
+  assert.ok(edited);
+  assert.equal(edited.source, 'coach');
+  assert.equal(edited.edited, true);
+  assert.equal(checkpointTitle(edited), 'Guard details*');
+  const saved = parseProgressPacket(exportProgressPacket(report));
+  assert.equal(saved.ok, true);
+  if (saved.ok && saved.value.kind === 'student-progress-report') {
+    const again = saved.value.rubric.levels.find((level) => level.belt === 'white')?.checkpoints.find((row) => row.id === coach.id);
+    assert.equal(again?.source, 'coach');
+    assert.equal(again?.edited, true);
+    assert.equal(saved.value.rubric.studentsCanEdit, undefined);
+  }
+  report.rubric.studentsCanEdit = false;
+  const lockedFile = parseProgressPacket(exportProgressPacket(report));
+  assert.equal(lockedFile.ok, true);
+  if (lockedFile.ok && lockedFile.value.kind === 'student-progress-report') {
+    assert.equal(lockedFile.value.rubric.studentsCanEdit, false);
+  }
+});
+
+test('legacy progress files still load without checkpoint source or degree focus', () => {
+  let report = setRankBelt(withStarterRubric(blankStudentReport(30), 30), 'black', 31);
+  report = setRankAwardedOn(report, '2008-04-05', 32);
+  report = setRankTapeCount(report, 3, 33);
+  report = setCriterionMark(report, 'rubric.white.closed-guard', true, '2010-01-01', 'kept', 34);
+  report = addGoal(report, 'Old goal', 'from before', 35);
+  const raw = JSON.parse(exportProgressPacket(report)) as {
+    rubric: { studentsCanEdit?: boolean; levels: { checkpoints: RubricCheckpoint[] }[] };
+    goals: { belt?: string }[];
+    rank?: { degreeFocus?: string[]; tapeCount?: number; awardedOn?: string };
+  };
+  delete raw.rubric.studentsCanEdit;
+  delete raw.rank?.degreeFocus;
+  for (const level of raw.rubric.levels) {
+    for (const row of level.checkpoints) {
+      delete row.source;
+      delete row.edited;
+    }
+  }
+  for (const goal of raw.goals) delete goal.belt;
+  const parsed = parseProgressPacket(JSON.stringify(raw));
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok || parsed.value.kind !== 'student-progress-report') return;
+  assert.equal(parsed.value.rank?.tapeCount, 3);
+  assert.equal(parsed.value.rank?.awardedOn, '2008-04-05');
+  assert.equal(parsed.value.rank?.degreeFocus, undefined);
+  assert.equal(parsed.value.rubric.studentsCanEdit, undefined);
+  const guard = parsed.value.rubric.levels.find((level) => level.belt === 'white')?.checkpoints.find((row) => row.id === 'checkpoint.white.guard');
+  assert.equal(guard?.criteria[0]?.met, true);
+  assert.equal(guard?.source, undefined);
+  assert.equal(parsed.value.goals[0]?.name, 'Old goal');
+  assert.equal(parsed.value.goals[0]?.belt, undefined);
+  assert.equal(goalsForBelt(parsed.value, 'white').some((goal) => goal.name === 'Old goal'), true);
 });

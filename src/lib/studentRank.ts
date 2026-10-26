@@ -624,7 +624,45 @@ function rankFields(rank: StudentRank): StudentRank {
   if (rank.pictureNote) next.pictureNote = rank.pictureNote;
   if (rank.pictureCount) next.pictureCount = rank.pictureCount;
   if (rank.pictures) next.pictures = rank.pictures.map((picture) => ({ ...picture }));
+  const focus = cleanDegreeFocus(rank.degreeFocus);
+  if (focus) next.degreeFocus = focus;
   return next;
+}
+
+const DEGREE_FOCUS_SLOTS = 10;
+
+/** Notes for degrees 0 through 9. Empty slots at the end are left off the file. */
+export function cleanDegreeFocus(notes: readonly string[] | undefined): string[] | undefined {
+  if (!notes?.length) return undefined;
+  const next = notes.slice(0, DEGREE_FOCUS_SLOTS).map((line) => (typeof line === 'string' ? line.trim() : ''));
+  while (next.length && !next[next.length - 1]) next.pop();
+  return next.length ? next : undefined;
+}
+
+export function degreeFocusOf(rank: Pick<StudentRank, 'degreeFocus'> | undefined, degree: number): string {
+  if (!rank?.degreeFocus || !Number.isInteger(degree) || degree < 0 || degree >= DEGREE_FOCUS_SLOTS) return '';
+  return rank.degreeFocus[degree] ?? '';
+}
+
+/**
+ * One free-text note for a degree. It does not change the degree, the date, or instructor bars.
+ */
+export function setDegreeFocus(
+  report: StudentProgressReport,
+  degree: number,
+  text: string,
+  now = Date.now(),
+): StudentProgressReport {
+  if (!Number.isInteger(degree) || degree < 0 || degree >= DEGREE_FOCUS_SLOTS) return report;
+  const rank = rankOf(report);
+  const notes = Array.from({ length: DEGREE_FOCUS_SLOTS }, (_, index) => rank.degreeFocus?.[index] ?? '');
+  notes[degree] = text.trim().slice(0, PROGRESS_NOTE_MAX);
+  const next: StudentRank = { ...rank };
+  const focus = cleanDegreeFocus(notes);
+  if (focus) next.degreeFocus = focus;
+  else delete next.degreeFocus;
+  if ((rank.degreeFocus ?? []).join('\n') === (next.degreeFocus ?? []).join('\n')) return report;
+  return touch(report, next, report.profile.belt, now);
 }
 
 function cloneHistory(row: RankHistory): RankHistory {

@@ -179,6 +179,10 @@ test('progress PDF keeps every section, the student track, and checkpoint status
   assert.match(joined, /186 lb — On track/);
   const black = joined.slice(joined.indexOf('\nBlack\n'));
   assert.match(black, /Pressure: Met — Mock: top pressure sound/);
+  assert.match(joined, /Practical Benchmarks/);
+  assert.match(joined, /Skills the coach or template expects before the next belt/);
+  assert.match(joined, /Personal Goals/);
+  assert.match(joined, /Your own goals, which never affect belt or degree milestones/);
   assert.match(black, /Guard: Met/);
   assert.equal(black.includes('Guard: Unmarked'), false);
   assert.equal(joined.includes('\nCoral\n'), false);
