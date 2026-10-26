@@ -29,6 +29,7 @@ import {
   type AssessmentState,
 } from './studentAssessment.ts';
 import { forgetStudentBackupStamp } from './studentBackupStamp.ts';
+import { noteStudentStoresCleared } from './studentDemo.ts';
 import { loadStudentReport, saveStudentReport, todayIso } from './studentEdition.ts';
 import {
   FILM_STORAGE_KEY,
@@ -539,7 +540,6 @@ export function filmBlobsFromBackup(file: StudentBackupFile): { id: string; blob
 
 export function clearStudentMemory(storage: MemoryStore): void {
   const blank = loadStudentReport({ getItem: () => null });
-  saveStudentReport(storage, blank);
   if (storage.removeItem) storage.removeItem(ASSESSMENT_STORAGE_KEY);
   else storage.setItem(ASSESSMENT_STORAGE_KEY, JSON.stringify(emptyAssessments()));
   storage.setItem(SCOUTING_STORAGE_KEY, JSON.stringify({ version: 1, cards: [] }));
@@ -554,6 +554,8 @@ export function clearStudentMemory(storage: MemoryStore): void {
   if (typeof storage.removeItem === 'function') {
     forgetStudentBackupStamp({ removeItem: storage.removeItem.bind(storage) });
   }
+  noteStudentStoresCleared();
+  saveStudentReport(storage, blank);
 }
 
 export function connectedBackupTargets(storage: MemoryStore): StudentDriveLink[] {
