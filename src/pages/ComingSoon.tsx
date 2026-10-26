@@ -1,37 +1,47 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
+import { AlphaAccessNote } from '../components/AlphaAccessNote';
 import { BeltRail } from '../components/BeltRail';
 import { HomeMark } from '../components/HomeMark';
 import { ProUnlockSheet } from '../components/ProUnlockSheet';
+import { useCurrentSeat } from '../components/SeatSessionBar';
 import { SiteFooter } from '../components/SiteFooter';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
-import { useProUnlocked } from '../hooks/useProUnlocked';
-import { COMPETITOR_ROSTER_LABEL, TECHNIQUE_TREE_LABEL, TRAINING_NOTES_LABEL } from '../lib/coachCopy';
+import { useSeatDoor } from '../hooks/useSeatDoor';
+import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import { lockCoach } from '../lib/coachUnlock';
-import { coachToolsOpen, MOCK_TOURNAMENT_NAME, PRO_HUBS } from '../lib/productNames';
+import { COACH_HUBS, PRODUCTS_PATH, coachDoorOpen, consoleHubs } from '../lib/productNames';
 import { lockPro } from '../lib/proUnlock';
+import { whiteEntryPath } from '../lib/whiteUnlock';
 
 export function ComingSoonPage() {
-  const proUnlocked = useProUnlocked();
+  const door = useSeatDoor();
+  const proUnlocked = door.proUnlocked;
+  const proHubs = consoleHubs(door, door.seat?.permissions ?? null);
+  const whiteUnlocked = useWhiteUnlocked();
   const coachUnlocked = useCoachUnlocked();
-  const coachTools = coachToolsOpen(proUnlocked, coachUnlocked);
+  const seated = useCurrentSeat() !== null;
+  const coachTools = coachDoorOpen(proUnlocked, coachUnlocked, seated);
   const [unlockOpen, setUnlockOpen] = useState<'coach' | 'pro' | null>(null);
+  if (door.seated) return <Navigate to={PRODUCTS_PATH} replace />;
 
   const tagline = proUnlocked
     ? 'Advantage Pro is on for this browser.'
     : coachUnlocked
       ? 'Advantage Coach is on for this browser.'
-      : 'Coming soon — Advantage Coach and Advantage Pro.';
+      : seated
+        ? 'This browser is signed in with an instructor seat.'
+        : 'Coming soon — Advantage Coach and Advantage Pro.';
 
   return (
     <main className="home home--soon">
       <div className="home__inner home__inner--soon">
-        <HomeMark to="/" tagline={tagline} />
+        <HomeMark to={PRODUCTS_PATH} tagline={tagline} />
 
-        {proUnlocked || coachUnlocked ? (
+        {coachTools ? (
           <nav className="home__soon-actions" aria-label={proUnlocked ? 'Pro' : 'Coach'}>
-            {proUnlocked
-              ? PRO_HUBS.map((hub) => (
+            {proHubs.length
+              ? proHubs.map((hub) => (
                   <Link key={hub.to} className="btn btn--white" to={hub.to}>
                     <BeltRail kind={hub.belt} />
                     {hub.title}
@@ -43,27 +53,19 @@ export function ComingSoonPage() {
                 Open Coach
               </Link>
             ) : null}
-            {coachTools && !proUnlocked ? (
-              <>
-                <Link className="btn" to="/notes">
-                  {TRAINING_NOTES_LABEL}
-                </Link>
-                <Link className="btn" to="/techniques">
-                  Daily Training Videos
-                </Link>
-                <Link className="btn" to="/technique-tree">
-                  {TECHNIQUE_TREE_LABEL}
-                </Link>
-                <Link className="btn btn--white" to="/tournament">
-                  <BeltRail kind="tournament" />
-                  {MOCK_TOURNAMENT_NAME}
-                </Link>
-                <Link className="btn" to="/roster?from=coach">
-                  {COMPETITOR_ROSTER_LABEL}
-                </Link>
-              </>
-            ) : null}
-            <Link className="btn btn--ghost" to="/">
+            {coachTools && !proUnlocked
+              ? COACH_HUBS.map((tool) => (
+                  <Link
+                    key={tool.to}
+                    className={'belt' in tool ? 'btn btn--white' : 'btn'}
+                    to={tool.to}
+                  >
+                    {'belt' in tool ? <BeltRail kind={tool.belt} /> : null}
+                    {tool.title}
+                  </Link>
+                ))
+              : null}
+            <Link className="btn btn--ghost" to={PRODUCTS_PATH}>
               Home
             </Link>
             {proUnlocked ? (
@@ -80,14 +82,17 @@ export function ComingSoonPage() {
         ) : (
           <nav className="home__soon-actions" aria-label="Coming soon">
             <p className="home__soon-lead">
-              Advantage White is ready now — Live Bout and Rounds. Advantage Coach and Advantage
-              Pro stay Coming soon on home. Gym-owner tools stay off until Coach or Pro is unlocked
-              on this browser.
+              {whiteUnlocked
+                ? 'Advantage White is ready on this browser — Live Bout and Rounds. '
+                : 'Advantage White is $9.99 — Live Bout and Rounds unlock after purchase. '}
+              Advantage Coach and Advantage Pro stay Coming soon on home. Gym-owner tools stay off
+              until Coach or Pro is unlocked on this browser.
             </p>
-            <Link className="btn" to="/white">
-              Advantage White
+            <AlphaAccessNote />
+            <Link className="btn" to={whiteEntryPath(whiteUnlocked)}>
+              {whiteUnlocked ? 'Advantage White' : 'Buy Advantage White'}
             </Link>
-            <Link className="btn btn--ghost" to="/">
+            <Link className="btn btn--ghost" to={PRODUCTS_PATH}>
               Back to home
             </Link>
             <button type="button" className="btn btn--ghost" onClick={() => setUnlockOpen('coach')}>

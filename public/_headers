@@ -1,0 +1,40 @@
+# Cloudflare Pages header overrides. More specific rules are listed first
+# (first matching Cache-Control wins).
+#
+# Live check on 2026-10-24: `/` HTML was `max-age=0, must-revalidate`, but
+# `/sw.js` and `/assets/*.js` were `public, max-age=14400` (4 hours).
+# The service worker precached index.html, so a returning browser kept the
+# old shell while a new profile (no worker) got the new HTML.
+
+# Fingerprinted Vite output. Safe to keep for a year.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# The worker script is not fingerprinted. A 4-hour browser cache kept the
+# worker that was still serving yesterday's precached index.html.
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/workbox-*.js
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/index.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/version.json
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/manifest.webmanifest
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/half-off
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/half-off/
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/half-off.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/
+  Cache-Control: no-cache, no-store, must-revalidate

@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef, type PointerEvent as ReactPointerEvent } from 'react';
 import { EVENT_QR_CAP, normalizeQrLinks } from '../lib/eventSlides';
 import { isItemPlayEnabled, moveItemIds } from '../lib/playlist';
+import { GALLERY_NEXT_CLASS, GALLERY_SHOW_ON_DATE } from '../lib/gallerySchedule';
+import { localDateKey } from '../lib/trainingNotesStore';
 import { buyLinkForQr, slideMarksForList } from '../lib/shopSlides';
 
 export type FolderListConfig = {
@@ -24,6 +26,12 @@ export type FolderListItem = {
   buyUrl?: string;
   startsSlide?: boolean;
   qrLinks?: readonly string[];
+  folderId?: string;
+  caption?: string;
+  schedule?: 'always' | 'date' | 'next-class';
+  showDate?: string;
+  techniqueClipId?: string;
+  loopSec?: number;
 };
 
 function isVideoMime(mime?: string): boolean {
@@ -43,6 +51,10 @@ type Props = {
   onBuyUrl?: (id: string, buyUrl: string) => Promise<void>;
   onStartsSlide?: (id: string, startsSlide: boolean) => Promise<void>;
   onQrLinks?: (id: string, qrLinks: string[]) => Promise<void>;
+  onGalleryChange?: (
+    id: string,
+    patch: { caption?: string; schedule?: 'always' | 'date' | 'next-class'; showDate?: string },
+  ) => Promise<void>;
 };
 
 type DragSession = {
@@ -79,6 +91,7 @@ export function FolderItemList({
   onBuyUrl,
   onStartsSlide,
   onQrLinks,
+  onGalleryChange,
 }: Props) {
   const [draftIds, setDraftIds] = useState<string[] | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -184,7 +197,7 @@ export function FolderItemList({
     const target = event.target as HTMLElement;
     if (
       target.closest(
-        'input, .folder-row__move, .folder-row__remove, .folder-row__play, .folder-row__preview, .folder-row__url, .folder-row__slide, .folder-row__qrs',
+        'input, button, .folder-row__move, .folder-row__remove, .folder-row__play, .folder-row__preview, .folder-row__url, .folder-row__slide, .folder-row__qrs, .gallery-schedule',
       )
     )
       return;
@@ -310,6 +323,9 @@ export function FolderItemList({
                 onStartsSlide ? async (startsSlide) => onStartsSlide(item.id, startsSlide) : undefined
               }
               onQrLinks={onQrLinks ? async (qrLinks) => onQrLinks(item.id, qrLinks) : undefined}
+              onGalleryChange={
+                onGalleryChange ? async (patch) => onGalleryChange(item.id, patch) : undefined
+              }
               onMoveUp={() => moveBy(index, index - 1)}
               onMoveDown={() => moveBy(index, index + 1)}
             />
@@ -317,6 +333,70 @@ export function FolderItemList({
         })}
       </ul>
     </>
+  );
+}
+
+function GalleryScheduleFields({
+  item,
+  onChange,
+}: {
+  item: FolderListItem;
+  onChange: (patch: { caption?: string; schedule?: 'always' | 'date' | 'next-class'; showDate?: string }) => Promise<void>;
+}) {
+  const [caption, setCaption] = useState(item.caption ?? '');
+  const schedule = item.schedule ?? 'always';
+  const [showDate, setShowDate] = useState(item.showDate || localDateKey());
+  const name = item.label.trim() || 'item';
+  return (
+    <div className="gallery-schedule">
+      <label className="gallery-schedule__caption">
+        Caption
+        <input
+          value={caption}
+          maxLength={200}
+          aria-label={`Caption for ${name}`}
+          onChange={(event) => setCaption(event.target.value)}
+          onBlur={() => {
+            if (caption !== (item.caption ?? '')) void onChange({ caption });
+          }}
+        />
+      </label>
+      <div className="gallery-schedule__actions">
+        <button
+          type="button"
+          className={`preset${schedule === 'date' ? ' preset--on' : ''}`}
+          aria-pressed={schedule === 'date'}
+          onClick={() => void onChange({ schedule: schedule === 'date' ? 'always' : 'date', showDate })}
+        >
+          {GALLERY_SHOW_ON_DATE}
+        </button>
+        <button
+          type="button"
+          className={`preset${schedule === 'next-class' ? ' preset--on' : ''}`}
+          aria-pressed={schedule === 'next-class'}
+          onClick={() => void onChange({ schedule: schedule === 'next-class' ? 'always' : 'next-class' })}
+        >
+          {GALLERY_NEXT_CLASS}
+        </button>
+      </div>
+      {schedule === 'date' ? (
+        <label className="gallery-schedule__caption">
+          Date
+          <input
+            type="date"
+            value={showDate}
+            aria-label={`Show date for ${name}`}
+            onChange={(event) => {
+              setShowDate(event.target.value);
+              void onChange({ schedule: 'date', showDate: event.target.value });
+            }}
+          />
+        </label>
+      ) : null}
+      {item.techniqueClipId ? (
+        <p>Loop timer {item.loopSec || 0}s. This clip stays in Daily Training.</p>
+      ) : null}
+    </div>
   );
 }
 
@@ -343,6 +423,7 @@ function FolderItemRow({
   onBuyUrl,
   onStartsSlide,
   onQrLinks,
+  onGalleryChange,
   onMoveUp,
   onMoveDown,
 }: {
@@ -368,6 +449,11 @@ function FolderItemRow({
   onBuyUrl?: (buyUrl: string) => Promise<void>;
   onStartsSlide?: (startsSlide: boolean) => Promise<void>;
   onQrLinks?: (qrLinks: string[]) => Promise<void>;
+  onGalleryChange?: (patch: {
+    caption?: string;
+    schedule?: 'always' | 'date' | 'next-class';
+    showDate?: string;
+  }) => Promise<void>;
   onMoveUp: () => void;
   onMoveDown: () => void;
 }) {
@@ -481,6 +567,9 @@ function FolderItemRow({
           if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
         }}
       />
+      {onGalleryChange && item.folderId === 'gallery' ? (
+        <GalleryScheduleFields item={item} onChange={onGalleryChange} />
+      ) : null}
       {onBuyUrl ? (
         <label className="folder-row__url">
           Buy link

@@ -1,51 +1,86 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { CoachToolsCard } from '../components/CoachToolsCard';
+import { BeltHeader } from '../components/BeltHeader';
+import { BeltRail } from '../components/BeltRail';
+import { InviteAccept, useCurrentSeat } from '../components/SeatSessionBar';
 import { HomeMark } from '../components/HomeMark';
+import { InstructionsButton } from '../components/InstructionsButton';
 import { SiteFooter } from '../components/SiteFooter';
-import { TierLine } from '../components/TierLine';
+import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
+import { useProUnlocked } from '../hooks/useProUnlocked';
+import { BASIC_COACH_BELT_LINES } from '../lib/coachCopy';
 import { lockCoach } from '../lib/coachUnlock';
-import { COACH_TOOLS_TEASER } from '../lib/coachCopy';
+import { coachToolVisible, purchasePromptsHidden } from '../lib/instructorSeats';
+import { CHECKOUT_BUY_PATH } from '../lib/checkoutProducts';
+import { COACH_LIST_PRICE_CENTS } from '../lib/productPrices';
+import { COACH_HUBS, PRODUCTS_PATH } from '../lib/productNames';
+import { formatUsdFromCents } from '../lib/whitePurchase';
 
 export function CoachPage() {
   const navigate = useNavigate();
+  const seat = useCurrentSeat();
+  const ownerOpen = useCoachUnlocked() || useProUnlocked();
+  const tools = COACH_HUBS.filter((tool) => coachToolVisible(tool.to, seat));
 
   return (
     <main className="home home--coach">
       <div className="home__inner">
-        <HomeMark to="/" tagline={<TierLine tier="Coach" detail={COACH_TOOLS_TEASER} />} />
+        <HomeMark to={PRODUCTS_PATH} />
 
+        <InviteAccept />
         <nav className="home__modes" aria-label="Advantage Coach">
-          <CoachToolsCard />
+          <BeltHeader
+            kind="blue"
+            title="Advantage - Coach"
+            blurb={BASIC_COACH_BELT_LINES.join('\n')}
+          />
+          {tools.map((tool) => (
+            <Link key={tool.to} className="pro-hub" to={tool.to}>
+              <BeltRail kind={tool.belt} />
+              <span>{tool.title}</span>
+            </Link>
+          ))}
         </nav>
 
         <div className="home__hints">
-          <p className="home__hint">Install Advantage as an app from your browser menu.</p>
-          <p className="home__hint">
-            Gym TV: open this site on a computer plugged into the TV, then fullscreen Display,
-            Rounds, Daily Training Videos, or Mock Tournament. Press F for fullscreen. Daily Lesson
-            Plan, Technique Tree, and Competitor Roster live on the phone.
-          </p>
-          <p className="home__hint">
-            Control from your phone. Cast the scoreboard to your TV, or open Display on a second
-            screen or computer.
-          </p>
-          <p className="home__soon">
-            Advantage Coach is on for this browser.{' '}
-            <Link className="home__text-btn" to="/">
-              All products
-            </Link>
-            {' · '}
-            <button
-              type="button"
-              className="home__text-btn"
-              onClick={() => {
-                lockCoach();
-                navigate('/');
-              }}
-            >
-              Lock Coach
-            </button>
-          </p>
+          <InstructionsButton controlsId="coach-instructions">
+            <p className="home__hint">Install Advantage as an app from your browser menu.</p>
+            <p className="home__hint">
+              Gym TV: open this site on a computer plugged into the TV, then fullscreen Display,
+              Rounds, Daily Training Videos, or Mock Tournament. Press F for fullscreen. Daily
+              Lesson Plan, Daily Training Videos, Technique Tree, Student Roster, and Mock
+              Tournament stay on this phone.
+            </p>
+            <p className="home__hint">
+              Control from your phone. Cast the scoreboard to your TV, or open Display on a second
+              screen or computer.
+            </p>
+          </InstructionsButton>
+          {purchasePromptsHidden(seat) ? null : (
+            <p className="home__soon">
+              <Link className="home__text-btn" to={CHECKOUT_BUY_PATH.coach}>
+                {`Buy Advantage Coach — ${formatUsdFromCents(COACH_LIST_PRICE_CENTS)}`}
+              </Link>
+            </p>
+          )}
+          {ownerOpen ? (
+            <p className="home__soon">
+              Advantage Coach is on for this browser.{' '}
+              <Link className="home__text-btn" to={PRODUCTS_PATH}>
+                All products
+              </Link>
+              {' · '}
+              <button
+                type="button"
+                className="home__text-btn"
+                onClick={() => {
+                  lockCoach();
+                  navigate(PRODUCTS_PATH);
+                }}
+              >
+                Lock Coach
+              </button>
+            </p>
+          ) : null}
         </div>
         <SiteFooter />
       </div>

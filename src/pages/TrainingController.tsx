@@ -1,15 +1,15 @@
 import { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BeltRail } from '../components/BeltRail';
 import { Chrome } from '../components/Chrome';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { TrainingOptions } from '../components/TrainingOptions';
 import { useInterval } from '../hooks/useClock';
 import { useSuiteOrigin } from '../hooks/useSuiteOrigin';
 import { useWakeLock } from '../hooks/useWakeLock';
-import { useTrainingState } from '../hooks/useStores';
+import { useTrainingSkin, useTrainingState } from '../hooks/useStores';
 import { unlockAudio } from '../lib/audio';
 import { formatMmSs } from '../lib/format';
+import { trainingUsesAdvantageSkin } from '../lib/trainingSkin';
 import { remainingTraining, tickTraining, toggleTrainingClock } from '../lib/trainingStore';
 
 function openRoundsWindow(fromSuite: boolean): void {
@@ -20,6 +20,7 @@ function openRoundsWindow(fromSuite: boolean): void {
 /** Fat-thumb remote for the rounds timer. The gym TV stays on /training. */
 export function TrainingControllerPage() {
   const training = useTrainingState();
+  const skin = useTrainingSkin();
   const suite = useSuiteOrigin();
   const [, setTick] = useState(0);
   const remaining = remainingTraining(training);
@@ -47,8 +48,11 @@ export function TrainingControllerPage() {
   };
 
   return (
-    <main className={`controller training-control${suite.fromSuite ? ' origin-suite' : ''}`}>
-      {suite.fromSuite ? <BeltRail kind="tournament" /> : null}
+    <main
+      className={`controller training-control${
+        trainingUsesAdvantageSkin(skin) ? '' : ' controller--classic'
+      }${training.phase === 'break' ? ' controller--break' : ''}${suite.fromSuite ? ' origin-suite' : ''}`}
+    >
       <PlayExitMark to={suite.homePath} />
       <Chrome
         title="Rounds"

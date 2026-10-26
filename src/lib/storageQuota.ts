@@ -14,11 +14,18 @@ export const LARGE_MEDIA_NOTE =
   'That clip is very large. It stays on this device. If Advantage storage fills up, remove an unused Gallery video or training clip.';
 
 export class StorageQuotaError extends Error {
+  /** Files in this attempt stored before the quota stop. */
   saved: number;
-  constructor(saved: number) {
+  /**
+   * Files this attempt was going to store.
+   * Same as `saved` when the caller does not know the rest of the batch.
+   */
+  attempted: number;
+  constructor(saved: number, attempted?: number) {
     super(DEVICE_STORAGE_FULL_NOTE);
     this.name = 'QuotaExceededError';
     this.saved = saved;
+    this.attempted = attempted ?? saved;
   }
 }
 

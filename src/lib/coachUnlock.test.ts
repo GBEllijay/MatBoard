@@ -34,6 +34,7 @@ test('Coach owner code is gbellijay and does not share Pro advantage', () => {
   assert.equal(coachCodesMatch(' GBEllijay '), true);
   assert.equal(coachCodesMatch('GBELLIJAY'), true);
   assert.equal(coachCodesMatch('advantage'), false);
+  assert.equal(coachCodesMatch('WINBYADV'), false);
   assert.equal(coachCodesMatch('nope'), false);
 });
 

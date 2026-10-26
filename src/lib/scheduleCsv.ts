@@ -1,9 +1,12 @@
 /** Class Schedule CSV. Browser file in/out — UTF-8 (BOM), Excel CRLF. */
 
 import {
+  CLASS_LEVEL_META,
+  coerceClassLevel,
   isScheduleTemplate,
   normalizeGymCalendar,
   WEEKDAY_LABELS,
+  type ClassLevel,
   type ScheduleTemplate,
   type SpecialDate,
   type Weekday,
@@ -30,6 +33,7 @@ export const SCHEDULE_CSV_HEADERS = [
   'Class name',
   'Mat',
   'Detail',
+  'Level',
   'Date',
   'Title',
   'Body',
@@ -96,7 +100,8 @@ type Field =
   | 'template'
   | 'cast'
   | 'id'
-  | 'flyerId';
+  | 'flyerId'
+  | 'level';
 
 const HEADER_ALIASES: Record<string, Field> = {
   record: 'record',
@@ -140,6 +145,11 @@ const HEADER_ALIASES: Record<string, Field> = {
   id: 'id',
   'flyer id': 'flyerId',
   flyer: 'flyerId',
+  level: 'level',
+  'class level': 'level',
+  difficulty: 'level',
+  'difficulty level': 'level',
+  'belt level': 'level',
 };
 
 export type ScheduleCsvMode = 'replace-board' | 'replace-classes';
@@ -195,6 +205,11 @@ function parseTemplate(value: string): ScheduleTemplate | null {
   if (!key) return null;
   if (isScheduleTemplate(key)) return key;
   return TEMPLATE_ALIASES[key] ?? null;
+}
+
+/** Id or label, case-insensitive. Blank and unknown values are No level. */
+export function parseClassLevel(value: string): ClassLevel {
+  return coerceClassLevel(value) ?? 'none';
 }
 
 function parseCast(value: string): boolean | null {
@@ -261,6 +276,7 @@ export function serializeScheduleCsv(state: GymCalendarState): string {
     '',
     '',
     '',
+    '',
     state.title,
     state.qrUrl,
     state.notes,
@@ -276,6 +292,7 @@ export function serializeScheduleCsv(state: GymCalendarState): string {
     row.title,
     row.location,
     row.subtitle,
+    CLASS_LEVEL_META[coerceClassLevel(row.level) ?? 'none'].short,
     '',
     '',
     '',
@@ -289,6 +306,7 @@ export function serializeScheduleCsv(state: GymCalendarState): string {
   ]);
   const specials = state.specials.map((row) => [
     'special',
+    '',
     '',
     '',
     '',
@@ -326,6 +344,7 @@ export function scheduleCsvTemplate(): string {
         title: 'Fundamentals',
         location: 'MAT 1',
         subtitle: 'Example — delete this row',
+        level: 'fundamentals',
       },
     ],
     specials: [
@@ -412,6 +431,7 @@ export function importScheduleCsv(text: string): ScheduleCsvImport {
       title,
       location: cell(row, columns.mat).trim(),
       subtitle: cell(row, columns.detail).trim(),
+      level: parseClassLevel(cell(row, columns.level)),
     });
   }
 

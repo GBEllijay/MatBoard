@@ -1,12 +1,17 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  lessonFocusStatus,
+  lessonPlanReturnPath,
   lessonSlotOffersVideo,
+  lessonVideoHref,
   matchLessonTree,
   parallelVideoSlot,
+  parseLessonVideoFocus,
   parseTechniqueTitle,
+  resolveFocusedSlot,
   techniqueTreeLaunchPath,
-  techniquesLaunchPath,
+  techniquesFocusPath,
   type LessonTreeCandidate,
 } from './lessonLinks.ts';
 import { emptyVideoPlan, insertTechniqueSlot, setSlotClip } from './techniqueLogic.ts';
@@ -42,9 +47,68 @@ test('video slots pair by order, not by title', () => {
 });
 
 test('launch paths focus the videos slot or the saved tree', () => {
-  assert.equal(techniquesLaunchPath('warmup'), '/techniques?slot=warmup&play=1');
-  assert.equal(techniquesLaunchPath('tech-2'), '/techniques?slot=tech-2&play=1');
+  assert.equal(
+    techniquesFocusPath({ section: 'warmup', date: '2026-09-27', slotId: 'warmup' }),
+    '/techniques?focus=1&section=warmup&date=2026-09-27&slot=warmup',
+  );
+  assert.equal(
+    techniquesFocusPath({ section: 'technique', index: 0, date: '2026-09-27', slotId: 'tech-1' }),
+    '/techniques?focus=1&section=technique&date=2026-09-27&slot=tech-1&index=0',
+  );
+  assert.equal(
+    techniquesFocusPath({ section: 'cooldown', date: '2026-09-27' }),
+    '/techniques?focus=1&section=cooldown&date=2026-09-27',
+  );
+  assert.doesNotMatch(
+    techniquesFocusPath({ section: 'technique', index: 0, date: '2026-09-27', slotId: 'tech-1' }),
+    /play=/,
+  );
   assert.equal(techniqueTreeLaunchPath('tree a'), '/technique-tree?tree=tree+a');
+  assert.equal(
+    lessonPlanReturnPath('plan=unlimited', '2026-10-11'),
+    '/notes?plan=unlimited&from=unlimited&date=2026-10-11',
+  );
+  assert.equal(lessonPlanReturnPath('from=coach', '2026-10-11'), '/notes?from=coach&date=2026-10-11');
+  assert.equal(
+    lessonVideoHref({ section: 'warmup', date: '2026-10-11', slotId: 'warmup', search: 'plan=unlimited' }),
+    '/techniques?focus=1&section=warmup&date=2026-10-11&slot=warmup&from=unlimited&back=%2Fnotes%3Fplan%3Dunlimited%26from%3Dunlimited%26date%3D2026-10-11',
+  );
+  assert.match(
+    lessonVideoHref({ section: 'warmup', date: '2026-10-11', search: 'from=coach' }),
+    /from=coach&back=/,
+  );
+
+  const plan = emptyVideoPlan();
+  const drill = parseLessonVideoFocus(
+    new URLSearchParams('focus=1&section=technique&date=2026-09-27&slot=missing&index=0&play=1'),
+  );
+  assert.equal(drill.focus, true);
+  assert.equal(drill.play, false);
+  assert.equal(resolveFocusedSlot(plan, drill)?.kind, 'technique');
+  assert.equal(
+    lessonFocusStatus(plan, drill, resolveFocusedSlot(plan, drill)!, '2026-09-27'),
+    "From today's Daily Lesson Plan · Technique / Drill 1. Add, replace, or remove the video on this card.",
+  );
+
+  const warmup = parseLessonVideoFocus(
+    new URLSearchParams('focus=1&section=warmup&date=2026-09-26&slot=tech-1'),
+  );
+  const warmupSlot = resolveFocusedSlot(plan, warmup);
+  assert.equal(warmupSlot?.slotId, 'warmup');
+  assert.match(lessonFocusStatus(plan, warmup, warmupSlot!, '2026-09-27'), /Warm-up/);
+  assert.match(lessonFocusStatus(plan, warmup, warmupSlot!, '2026-09-27'), /Sep 26/);
+
+  const legacy = parseLessonVideoFocus(new URLSearchParams('slot=tech-2&play=1'));
+  assert.equal(legacy.play, true);
+  assert.equal(legacy.focus, false);
+  assert.equal(resolveFocusedSlot(plan, legacy)?.slotId, 'tech-2');
+
+  const missing = parseLessonVideoFocus(new URLSearchParams('focus=1&section=technique&index=9&date=2026-09-27'));
+  assert.equal(resolveFocusedSlot(plan, missing), null);
+  const junk = parseLessonVideoFocus(new URLSearchParams('section=nope&date=yesterday&index=-1'));
+  assert.equal(junk.active, false);
+  assert.equal(junk.section, null);
+  assert.equal(junk.date, null);
 });
 
 test('title forms pick one tree and a saved id wins', () => {

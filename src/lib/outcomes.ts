@@ -124,11 +124,6 @@ function parseLegacyKind(kind: unknown): BoutOutcome | null {
   return null;
 }
 
-/** @deprecated Use parseBoutOutcome. Kept for older tests / comments. */
-export function parseBoutOutcomeKind(value: unknown): BoutOutcome | null {
-  return parseBoutOutcome(value);
-}
-
 export function isWinCall(outcome: BoutOutcome | null | undefined): outcome is WinOutcome {
   return outcome?.call === 'win';
 }

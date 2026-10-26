@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import test from 'node:test';
 import {
   DEFAULT_TRAINING_SKIN,
   TRAINING_SKIN_KEY,
   getTrainingSkin,
   setTrainingSkin,
+  trainingUsesAdvantageSkin,
 } from './trainingSkin.ts';
 
 function memoryStorage() {
@@ -40,4 +42,40 @@ test('Round timer skin persists Classic and Advantage', () => {
 test('Unknown stored timer skin falls back to Classic', () => {
   localStorage.setItem(TRAINING_SKIN_KEY, 'neon');
   assert.equal(getTrainingSkin(), 'classic');
+});
+
+test('Pro suite can switch Advantage, Classic, then Advantage across a reload', () => {
+  setTrainingSkin('themed');
+  assert.equal(trainingUsesAdvantageSkin(getTrainingSkin()), true);
+  setTrainingSkin('classic');
+  assert.equal(localStorage.getItem(TRAINING_SKIN_KEY), 'classic');
+  assert.equal(getTrainingSkin(), 'classic');
+  assert.equal(trainingUsesAdvantageSkin(getTrainingSkin()), false);
+  setTrainingSkin('themed');
+  assert.equal(getTrainingSkin(), 'themed');
+  assert.equal(trainingUsesAdvantageSkin(getTrainingSkin()), true);
+  const page = fs.readFileSync(new URL('../pages/Training.tsx', import.meta.url), 'utf8');
+  assert.match(page, /trainingUsesAdvantageSkin\(skin\)/);
+  assert.doesNotMatch(page, /fromSuite \? ' training--themed'/);
+});
+
+test('Round timer still offers the Advantage skin beside Classic', () => {
+  const source = fs.readFileSync(new URL('../components/TrainingOptions.tsx', import.meta.url), 'utf8');
+  assert.match(source, /setTrainingSkin\('classic'\)/);
+  assert.match(source, /setTrainingSkin\('themed'\)/);
+  assert.match(source, />\s*Advantage\s*</);
+});
+
+test('Rounds controller uses the Classic board when that skin is picked', () => {
+  const page = fs.readFileSync(new URL('../pages/TrainingController.tsx', import.meta.url), 'utf8');
+  assert.match(page, /useTrainingSkin/);
+  assert.match(page, /trainingUsesAdvantageSkin\(skin\)/);
+  assert.match(page, /controller--classic/);
+  const training = fs.readFileSync(new URL('../pages/Training.tsx', import.meta.url), 'utf8');
+  assert.match(training, /trainingUsesAdvantageSkin\(skin\)/);
+  assert.doesNotMatch(training, /controller--classic/);
+  const css = fs.readFileSync(new URL('../index.css', import.meta.url), 'utf8');
+  assert.match(css, /\.controller\.controller--classic\s*\{[^}]*background:\s*#050505/);
+  assert.match(css, /\.controller\.controller--classic\s*\{[^}]*background-image:\s*none/);
+  assert.match(css, /\.controller\.controller--classic\.controller--break\s*\{[^}]*background:\s*#120e08/);
 });

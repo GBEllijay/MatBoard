@@ -1,3 +1,5 @@
+import { COMPETITOR_ROSTER_LABEL, TECHNIQUE_TREE_LABEL, TRAINING_NOTES_LABEL } from './coachCopy.ts';
+
 /** User-facing Advantage Pro console name. Keep this exact apostrophe. */
 export const GYM_CONSOLE_NAME = "Gym Owner and Instructor's Console";
 
@@ -6,13 +8,20 @@ export const WHITE_LADDER_DETAIL = 'BJJ scoreboard and timer, live match and rou
 
 /** Home White card body. The only line under the Advantage White title. */
 export const WHITE_HOME_DESCRIPTION =
-  'BJJ scoreboard and round timer for live matches and rounds. Display stays on the TV, the controller stays in your hand.';
+  'Live BJJ scoreboard and customizable round timer. Cast the display to a TV and keep the controller on your phone.';
+
+/** Home Student Edition title. Sits between White and Coach. */
+export const STUDENT_EDITION_NAME = 'Advantage – Student Edition';
+
+/** Home Student Edition card body. One line under the title. */
+export const STUDENT_HOME_DESCRIPTION =
+  'A personal BJJ training journal with rank and stripes, fundamentals proficiency, and competitor prep.';
 
 /** Home Coach card body. The only line under the Advantage Coach title. */
 export const COACH_HOME_DESCRIPTION =
-  'daily lesson plan, daily training videos, mock tournament, and competitor roster.';
+  'Daily lesson plans, training videos, and a technique tree. Includes everything in Advantage White.';
 
-/** Home ladder and Pro hub line after “Pro —”. Not the Owner Console page title. */
+/** Line under the black Advantage Pro belt. Not the Owner Console page title. */
 export const PRO_LADDER_DETAIL = 'Gym Owner and Instructors Console';
 
 /** Brand line under the Advantage title on the public home page. */
@@ -24,13 +33,16 @@ export const HOME_MOTTO = 'Win by Advantage';
  */
 export const PRO_HOME_DETAIL = `${GYM_CONSOLE_NAME} — Coming Soon`;
 
-/** Home Pro card body, one paragraph per line under Advantage Pro. */
+/**
+ * Home Pro card body. One explanatory line.
+ * The longer appetite copy stays in PRO_COMING_SOON_LINES and off this card.
+ */
 export const PRO_HOME_LINES = [
-  "Gym Owner and Instructor's Console",
-  'Easily cast class schedules, pro shop inventory, events, recent promotions, and more to your gym TV.',
-  'Coordinate and create In-House Tournaments in moments and track the results for review and ranking.',
-  'Provide your instructors with access to our collaborative coaching tools and give your gym the ultimate Advantage!',
+  'Academy management with a shared drive, events, pro shop, and gallery, plus instructor collaboration and student seats. Includes everything in Advantage Coach.',
 ] as const;
+
+/** In-app edition picker. The public storefront lives at `/`. */
+export const PRODUCTS_PATH = '/products';
 
 /**
  * Longer Pro appetite copy. Not on the home card and not in the Pro splash.
@@ -44,21 +56,175 @@ export const PRO_COMING_SOON_LINES = [
 
 /** Coach hub keeps practice framing; Owner Console uses real-event tooling. */
 export const MOCK_TOURNAMENT_NAME = 'Mock Tournament';
-export const TOURNAMENT_SOFTWARE_NAME = 'Tournament Software';
 
-/** Working title until the owner picks a consumer name for bracketing software. */
-export const TOURNAMENT_SUITE_NAME = 'In-House Tournament Management Suite';
+/** Advantage Coach hub. Opens Competitor Management System and Mock Tournament. */
+export const COMPETITION_MANAGEMENT_LABEL = 'Competition Team Management';
 
-/** Pro hub for bout competitors, roster CSV, and on-device rankings. */
+/** Coach competition folder for bout competitors, roster CSV, and on-device rankings. */
 export const COMPETITOR_SYSTEM_NAME = 'Competitor Management System';
 
-/** Plan-only Pro hub page title. No cloud sync in this build. */
-export const INSTRUCTOR_COLLAB_NAME = 'Instructor Collaboration and Cloud Access';
+/** Advantage Coach folder for the daily practice tools. */
+export const COACHING_TOOLS_LABEL = 'Coaching Tools';
 
-/** Pro homepage hub button. The instructor page title stays INSTRUCTOR_COLLAB_NAME. */
-export const INSTRUCTOR_COLLAB_HUB_LABEL = 'Instructor Collaboration & Advantage Coach Unlimited';
+/** Coaching Tools folder. Same navigation style as Competition Team Management. */
+export const COACHING_TOOLS_PATH = '/coaching-tools';
 
-/** Jump from the instructor hub into Advantage Coach. Keep Unlimited in the label. */
+/**
+ * Short line on the Coaching Tools folder.
+ * Names what is inside, the way Live Bout names Match Timer & Scoreboard.
+ */
+export const COACHING_TOOLS_DETAIL =
+  'Daily Lesson Plan, Daily Training Videos, and Technique Tree.';
+
+/** One line under that, in the same voice as the Live Bout card body. */
+export const COACHING_TOOLS_LEAD =
+  "Write today's class, loop training clips, and build a technique tree.";
+
+/** Query flag for tools opened from the Advantage Coach page. */
+export const COACH_BOARD_FROM = 'coach';
+
+/** Query flag for tools opened from Advantage Coach Unlimited. */
+export const UNLIMITED_FROM = 'unlimited';
+
+/** Daily Lesson Plan opened from the Coach hub. */
+export const COACH_NOTES_PATH = `/notes?from=${COACH_BOARD_FROM}`;
+
+/** Daily Training Videos opened from the Coach hub. */
+export const COACH_VIDEOS_PATH = `/techniques?from=${COACH_BOARD_FROM}`;
+
+/** Technique Tree opened from the Coach hub. */
+export const COACH_TREE_PATH = `/technique-tree?from=${COACH_BOARD_FROM}`;
+
+/** Daily Training Videos opened from Coach Unlimited. */
+export const UNLIMITED_VIDEOS_PATH = `/techniques?from=${UNLIMITED_FROM}`;
+
+/** Technique Tree opened from Coach Unlimited. */
+export const UNLIMITED_TREE_PATH = `/technique-tree?from=${UNLIMITED_FROM}`;
+
+/** Competitor Roster opened from Coach Unlimited. CMS keeps `from=competitors`. */
+export const UNLIMITED_ROSTER_PATH = `/roster?from=${UNLIMITED_FROM}`;
+
+/**
+ * Basic Coaching Tools, top to bottom.
+ * Competition Class Curriculum is not on basic Coach.
+ * `from=coach` sends these shared screens back to the Coach hub.
+ */
+export const COACHING_TOOLS_MENU = [
+  { title: TRAINING_NOTES_LABEL, to: COACH_NOTES_PATH, belt: 'coach' as const },
+  { title: 'Daily Training Videos', to: COACH_VIDEOS_PATH, belt: 'coach' as const },
+  { title: TECHNIQUE_TREE_LABEL, to: COACH_TREE_PATH, belt: 'coach' as const },
+] as const;
+
+/** Basic Coach student list. Same on-phone roster store, student wording, no photo. */
+export const STUDENT_ROSTER_PATH = '/roster?from=students';
+
+/**
+ * Competitor Roster. The list Tournament Management Pro opens from
+ * Competitor Management System. Coach Unlimited uses the same path.
+ */
+export const COMPETITOR_ROSTER_PATH = '/roster?from=competitors';
+
+/**
+ * Basic Advantage Coach page, top to bottom.
+ * No Coaching Tools folder and no Competition Team Management.
+ */
+export const COACH_HUBS = [
+  { title: TRAINING_NOTES_LABEL, to: COACH_NOTES_PATH, belt: 'coach' as const },
+  { title: 'Daily Training Videos', to: COACH_VIDEOS_PATH, belt: 'coach' as const },
+  { title: TECHNIQUE_TREE_LABEL, to: COACH_TREE_PATH, belt: 'coach' as const },
+  { title: 'Student Roster', to: STUDENT_ROSTER_PATH, belt: 'coach' as const },
+  { title: MOCK_TOURNAMENT_NAME, to: `/tournament?from=${COACH_BOARD_FROM}`, belt: 'tournament' as const },
+] as const;
+
+/**
+ * Limited Coach opens `/notes` with no plan flag.
+ * Advantage Coach Unlimited opens the same page with this flag so upload and
+ * teammate video download stay off the limited lesson plan.
+ */
+export const UNLIMITED_LESSON_VALUE = 'unlimited';
+export const UNLIMITED_LESSON_PATH = `/notes?plan=${UNLIMITED_LESSON_VALUE}`;
+export const COACH_UNLIMITED_PATH = '/coach-unlimited';
+
+/** Unlimited opens Daily Lesson Plan on the Unlimited plan. Basic keeps the Coach hub paths. */
+export function coachingToolsMenu(unlimited: boolean) {
+  if (!unlimited) return COACHING_TOOLS_MENU;
+  return COACHING_TOOLS_MENU.map((tool) => {
+    const path = tool.to.split('?')[0];
+    if (path === '/notes') return { ...tool, to: UNLIMITED_LESSON_PATH };
+    if (path === '/techniques') return { ...tool, to: UNLIMITED_VIDEOS_PATH };
+    if (path === '/technique-tree') return { ...tool, to: UNLIMITED_TREE_PATH };
+    return tool;
+  });
+}
+
+/**
+ * Advantage Coach Unlimited menu, top to bottom.
+ * Daily Lesson Plan is the Unlimited plan that can be uploaded for review.
+ * Competitor Roster sits under Technique Tree and opens the same list as Competitor Management System.
+ * The four brown rails wear 0-3 white stripes, counted from the tip up toward the header's 4.
+ * Sunday review and Drive cards stay on the page, under this menu.
+ * Competition Class Curriculum opens from the Daily Lesson Plan template picker.
+ */
+export const COACH_UNLIMITED_TOOLS = [
+  { title: TRAINING_NOTES_LABEL, to: UNLIMITED_LESSON_PATH, belt: 'brown' as const, stripes: 0 as const },
+  { title: 'Daily Training Videos', to: UNLIMITED_VIDEOS_PATH, belt: 'brown' as const, stripes: 1 as const },
+  { title: TECHNIQUE_TREE_LABEL, to: UNLIMITED_TREE_PATH, belt: 'brown' as const, stripes: 2 as const },
+  { title: COMPETITOR_ROSTER_LABEL, to: UNLIMITED_ROSTER_PATH, belt: 'brown' as const, stripes: 3 as const },
+] as const;
+
+/**
+ * Competition Team Management submenu.
+ * CMS, then Mock Tournament, then two shortcuts into screens that already exist.
+ * Scoreboard opens the match controller (`/match/control`). With Coach unlocked,
+ * that controller's name fields use the full Competitor Roster. It is not the
+ * plain White display at `/match`. Round Timer opens the same White rounds
+ * timer at `/training`.
+ */
+export const COMPETITION_MENU = [
+  { title: COMPETITOR_SYSTEM_NAME, to: '/competitors?from=competition', belt: 'tournament' as const },
+  { title: MOCK_TOURNAMENT_NAME, to: '/tournament', belt: 'tournament' as const },
+  { title: 'Scoreboard', to: '/match/control', belt: 'tournament' as const, clearBout: true as const },
+  { title: 'Round Timer', to: '/training', belt: 'tournament' as const },
+] as const;
+
+/**
+ * Reserved for later Advantage Pro competition tools (ready checklists, game plans,
+ * rankings, seeding). Empty on purpose — do not render placeholder buttons.
+ * Bout and bracket competitors only, not member progress tracking.
+ */
+export const COMPETITION_MENU_PRO: readonly {
+  title: string;
+  to: string;
+  belt: 'tournament';
+}[] = [];
+
+export const TOURNAMENT_SOFTWARE_NAME = 'Tournament Software';
+
+/** Working title kept for longer appetite copy. Not the Pro hub button or Suite heading. */
+export const TOURNAMENT_SUITE_NAME = 'In-House Tournament Management Suite';
+
+/**
+ * Fourth Advantage Pro hub button and the heading on the page it opens.
+ * The Coming Soon ad keeps COMPETITION_MANAGEMENT_PRO_LABEL.
+ */
+export const TOURNAMENT_MANAGEMENT_PRO_LABEL = 'Tournament Management Pro';
+
+/**
+ * Lead under that heading. Rankings stay on Competitor Management System.
+ */
+export const TOURNAMENT_MANAGEMENT_PRO_LEAD =
+  'Pro Version of Tournament Brackets, Scoreboard and Round Timer - Additional Skins and Animations Included. Rankings stay in Competitor Management System.';
+
+/** Coming Soon ad feature title. Not the Pro hub button or the Suite page heading. */
+export const COMPETITION_MANAGEMENT_PRO_LABEL = 'Competition Management Pro';
+
+/** Owner invite page. Access only — Unlimited tools live on Advantage Coach Unlimited. */
+export const INSTRUCTOR_COLLAB_NAME = 'Instructor Invitation and Access Management';
+
+/** Pro homepage hub button. Same name as the invite page title. */
+export const INSTRUCTOR_COLLAB_HUB_LABEL = 'Instructor Invitation and Access Management';
+
+/** Pro hub that replaced Competitor Management System. Opens Unlimited tools. */
 export const INSTRUCTOR_COACH_ENTRY = 'Advantage Coach Unlimited';
 
 /** Pro gym-TV cast hub. Same screen Gallery opens. Not a rename of the Owner Console. */
@@ -70,43 +236,93 @@ export const MEDIA_CONSOLE_NAME = 'Media Console';
  */
 export const PRO_HUBS = [
   { title: MEDIA_CONSOLE_NAME, to: '/slideshow?folder=gallery', belt: 'purple' },
-  { title: COMPETITOR_SYSTEM_NAME, to: '/competitors', belt: 'brown' },
+  { title: INSTRUCTOR_COACH_ENTRY, to: COACH_UNLIMITED_PATH, belt: 'brown' },
   { title: INSTRUCTOR_COLLAB_HUB_LABEL, to: '/instructors', belt: 'black' },
-  { title: TOURNAMENT_SUITE_NAME, to: '/suite', belt: 'tournament' },
+  { title: TOURNAMENT_MANAGEMENT_PRO_LABEL, to: '/suite', belt: 'tournament' },
 ] as const;
 
-/** Existing White Live Bout controller. The suite deep-links here as Match Controller. */
+/** Existing scoreboard controller. Competition Management Pro opens this; Display stays on that screen. */
 export const MATCH_CONTROLLER_PATH = '/match/control';
 
-/** Existing White Rounds controller. The suite deep-links here as Round Controller. */
+/** Existing round-timer controller. Competition Management Pro opens this; Rounds stays on that screen. */
 export const ROUND_CONTROLLER_PATH = '/training/control';
 
 /** Query flag so Suite destinations keep the Suite page theme and return path. */
 export const SUITE_FROM = 'suite';
 
-/** Keep `from=suite` on links opened from the Suite hub. Other callers stay unchanged. */
-export function withSuiteFrom(path: string, fromSuite: boolean): string {
-  if (!fromSuite) return path;
+/**
+ * Basic Coach Mock Tournament, including when Pro is also unlocked and the
+ * board was opened from the Coach page. Suite brackets stay the Pro board.
+ */
+export function isPlainCoachTournament(from: string | null, basicCoach: boolean): boolean {
+  if (from === SUITE_FROM) return false;
+  return from === COACH_BOARD_FROM || basicCoach;
+}
+
+/** Keep `from=suite` or `from=unlimited` on links opened from that hub. Other callers stay unchanged. */
+export function withHubFrom(path: string, from: typeof SUITE_FROM | typeof UNLIMITED_FROM | null): string {
+  if (from !== SUITE_FROM && from !== UNLIMITED_FROM) return path;
   const hashAt = path.indexOf('#');
   const hash = hashAt >= 0 ? path.slice(hashAt) : '';
   const base = hashAt >= 0 ? path.slice(0, hashAt) : path;
   const queryAt = base.indexOf('?');
   const pathname = queryAt >= 0 ? base.slice(0, queryAt) : base;
   const params = new URLSearchParams(queryAt >= 0 ? base.slice(queryAt + 1) : '');
-  params.set('from', SUITE_FROM);
+  params.set('from', from);
   return `${pathname}?${params.toString()}${hash}`;
 }
+
+/** Keep `from=suite` on links opened from the Suite hub. Other callers stay unchanged. */
+export function withSuiteFrom(path: string, fromSuite: boolean): string {
+  return withHubFrom(path, fromSuite ? SUITE_FROM : null);
+}
+
+/**
+ * Tournament Management Pro folder, top to bottom.
+ * Brackets and Competitor Management System use the yellow/green competition belt.
+ * Scoreboard and Round Timer use the black belt. Both stay title-only.
+ * Brackets opens the same mock-tournament board.
+ * Scoreboard opens the existing match controller. Round Timer opens the existing rounds controller.
+ * Competitor Management System opens the existing gold-medal menu.
+ */
+export const COMPETITION_PRO_MENU = [
+  {
+    title: 'Brackets-Tournament Software',
+    to: withSuiteFrom('/tournament', true),
+    belt: 'tournament' as const,
+    clearBout: false,
+  },
+  {
+    title: COMPETITOR_SYSTEM_NAME,
+    to: withSuiteFrom('/competitors', true),
+    belt: 'tournament' as const,
+    clearBout: false,
+  },
+  {
+    title: 'Scoreboard',
+    to: withSuiteFrom(MATCH_CONTROLLER_PATH, true),
+    belt: 'black' as const,
+    clearBout: true,
+  },
+  {
+    title: 'Round Timer',
+    to: withSuiteFrom(ROUND_CONTROLLER_PATH, true),
+    belt: 'black' as const,
+    clearBout: false,
+  },
+] as const;
 
 /** Bottom-of-page guidance on the Media Console manage screen. */
 export const MEDIA_CONSOLE_INSTRUCTIONS = [
   'Gold On means that folder plays on the TV.',
+  'Add photos still uses Google Photos or this phone. Google Drive is an extra source. Connect Google Photos to pick albums.',
   'Tap the left preview on a photo or video to include or skip it. Checked and bright is On. Dimmed is Off.',
   'Off items stay in the list and keep their order.',
   'One On clip loops alone. Several play in list order.',
   'Enabled folders play Gallery, then Pro Shop, then Events.',
   'Class Schedule casts the full week or month after Gallery, before Pro Shop.',
-  'Turn Class Schedule off on that row to keep Gallery, Pro Shop, and Events.',
-  'Open Class Schedule to edit classes. Export a CSV backup before clearing site data.',
+  'Turn Class Schedule Off to keep Gallery, Pro Shop, and Events.',
+  'Add class schedule opens the editor. Export a CSV backup before clearing site data.',
   'Photos use the Photo interval. Videos play all the way through, then the next item.',
   'Clips stay muted unless Play video sound is on, so gym music in another tab can keep going.',
   'Shuffle randomizes that combined queue.',
@@ -114,22 +330,100 @@ export const MEDIA_CONSOLE_INSTRUCTIONS = [
   'Same slide groups cards on one page. Each card on that page keeps its own QR.',
   'Pro Shop display: Images only, Images + QR, or Images + QR + gym logo.',
   'Pro Shop photos and buy links stay on this device. Nothing is uploaded.',
-  'Events: add a photo, a name, and optional QR links. Codes sit beside that photo.',
+  'Events: add a photo, a name, and optional QR links. The gym logo stays left of those codes.',
   'One event photo can hold several links: registration, brackets, or tickets.',
   'Events display: Images only, Images + QR, or Images + QR + gym logo.',
   'Events photos and QR links stay on this device. Nothing is uploaded.',
 ] as const;
 
-export function parentToolboxPath(proUnlocked: boolean, coachUnlocked: boolean): string {
-  if (proUnlocked) return '/pro';
-  if (coachUnlocked) return '/coach';
-  return '/';
+export function parentToolboxPath(
+  proUnlocked: boolean,
+  coachUnlocked: boolean,
+  seated = false,
+  proConsole = false,
+): string {
+  if (proUnlocked || proConsole) return '/pro';
+  if (coachUnlocked || seated) return '/coach';
+  return PRODUCTS_PATH;
 }
 
-export function toolEyebrow(proUnlocked: boolean, coachUnlocked: boolean): string {
+export function toolEyebrow(proUnlocked: boolean, coachUnlocked: boolean, seated = false): string {
   if (proUnlocked) return GYM_CONSOLE_NAME;
-  if (coachUnlocked) return 'Advantage Coach';
+  if (coachUnlocked || seated) return 'Advantage Coach';
   return GYM_CONSOLE_NAME;
+}
+
+/**
+ * Daily Training Videos header.
+ * A seated coach is not labeled as the gym owner console, even on a Pro browser.
+ * Other tools keep toolEyebrow.
+ */
+export function techniquesPageEyebrow(
+  proUnlocked: boolean,
+  coachUnlocked: boolean,
+  seated = false,
+): string {
+  if (seated) return 'Advantage Coach';
+  return toolEyebrow(proUnlocked, coachUnlocked, false);
+}
+
+/** Back target for Daily Training Videos. A live seat returns to Coach, not the Pro console. */
+export function techniquesParentPath(
+  proUnlocked: boolean,
+  coachUnlocked: boolean,
+  seated = false,
+): string {
+  if (seated) return '/coach';
+  return parentToolboxPath(proUnlocked, coachUnlocked, false);
+}
+
+/**
+ * Back target for Daily Lesson Plan, Daily Training Videos, and Technique Tree.
+ * Those screens are shared. The hub that opened them wins over the unlock flags:
+ * `from=coach` returns to the Coach hub even when Pro is also on.
+ * `from=unlimited`, or an Unlimited lesson, returns to Coach Unlimited.
+ * Every other entry keeps `fallback` (Pro home when Pro is on).
+ * A live seat's fallback is still Coach, via `techniquesParentPath`.
+ */
+export function sharedToolBackPath(input: {
+  from: string | null;
+  /** Unlimited lesson (`plan=unlimited`) or a live seat already on that plan. */
+  unlimited?: boolean;
+  fallback: string;
+}): string {
+  if (input.from === COACH_BOARD_FROM) return '/coach';
+  if (input.from === UNLIMITED_FROM || input.unlimited) return COACH_UNLIMITED_PATH;
+  return input.fallback;
+}
+
+/**
+ * Keep the opening hub on a link between these shared tools.
+ * Coach stays `from=coach`. Unlimited stays `from=unlimited`, and a lesson
+ * link also keeps `plan=unlimited` so the Unlimited editor stays on.
+ */
+export function carryHubFrom(path: string, search: string): string {
+  const current = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+  const from = current.get('from');
+  const plan = current.get('plan');
+  const hub =
+    from === COACH_BOARD_FROM
+      ? COACH_BOARD_FROM
+      : from === UNLIMITED_FROM || plan === UNLIMITED_LESSON_VALUE
+        ? UNLIMITED_FROM
+        : null;
+  if (!hub) return path;
+  const hashAt = path.indexOf('#');
+  const hash = hashAt >= 0 ? path.slice(hashAt) : '';
+  const base = hashAt >= 0 ? path.slice(0, hashAt) : path;
+  const queryAt = base.indexOf('?');
+  const pathname = queryAt >= 0 ? base.slice(0, queryAt) : base;
+  const params = new URLSearchParams(queryAt >= 0 ? base.slice(queryAt + 1) : '');
+  if (pathname === '/notes' && hub === UNLIMITED_FROM && !params.has('plan')) {
+    params.set('plan', UNLIMITED_LESSON_VALUE);
+  }
+  if (!params.has('from')) params.set('from', hub);
+  const qs = params.toString();
+  return `${pathname}${qs ? `?${qs}` : ''}${hash}`;
 }
 
 /** Owner Console label; Coach keeps Mock Tournament when Pro is off. */
@@ -140,4 +434,189 @@ export function tournamentToolLabel(proUnlocked: boolean): string {
 /** Pro includes Coach tools. Coach-only unlock still opens them on its own. */
 export function coachToolsOpen(proUnlocked: boolean, coachUnlocked: boolean): boolean {
   return proUnlocked || coachUnlocked;
+}
+
+/**
+ * Owner purchase lock for the full Pro console.
+ * Tournament Management Pro and invite admin stay on this door.
+ * A live seat does not open those owner hubs.
+ */
+export function proDoorOpen(proUnlocked: boolean): boolean {
+  return proUnlocked;
+}
+
+/** Owner hubs that the invite picker does not grant: suite and invite admin. */
+export function ownerProHubOpen(proUnlocked: boolean, seated: boolean): boolean {
+  return proDoorOpen(proUnlocked) && !seated;
+}
+
+export type ProSurfaceInput = {
+  proUnlocked: boolean;
+  seated: boolean;
+  /** Invite granted gallery, events, or Pro Shop. */
+  seatGrantsMedia: boolean;
+  programDirectorSeat: boolean;
+  /** Invite granted Daily Lesson Plan or Daily Training Videos. */
+  coachMenus: boolean;
+};
+
+/**
+ * Media Console menu.
+ * No seat: the browser Pro unlock opens it.
+ * A live invite is Pro-class inside the menus the owner authorized.
+ * Gallery, Events, or Pro Shop on the invite opens this menu even when
+ * this browser's Pro unlock is off. A seat with none of those stays shut.
+ */
+export function mediaConsoleDoorOpen(input: ProSurfaceInput): boolean {
+  if (!input.seated) return input.proUnlocked;
+  return input.seatGrantsMedia;
+}
+
+/**
+ * Closed Pro and media doors.
+ * A signed-in seat never sees the purchase lock or Coming soon.
+ * An unseated visitor still does.
+ */
+export function closedDoorPath(seated: boolean): typeof PRODUCTS_PATH | '/coming-soon' {
+  return seated ? PRODUCTS_PATH : '/coming-soon';
+}
+
+/**
+ * Advantage Coach Unlimited hub.
+ * No seat: browser Pro unlock.
+ * A seat: Pro unlock plus a lesson or videos menu on the invite.
+ * Media Console is not this hub.
+ */
+export function coachUnlimitedDoorOpen(input: ProSurfaceInput): boolean {
+  if (!input.seated) return input.proUnlocked;
+  return input.proUnlocked && input.coachMenus;
+}
+
+/** Hubs this browser may show. A seat never receives owner-only hubs. */
+export function visibleProHubs(input: ProSurfaceInput): readonly (typeof PRO_HUBS)[number][] {
+  if (!input.seated) return input.proUnlocked ? PRO_HUBS : [];
+  const hubs: (typeof PRO_HUBS)[number][] = [];
+  if (mediaConsoleDoorOpen(input)) {
+    const media = PRO_HUBS.find((hub) => hub.to.startsWith('/slideshow'));
+    if (media) hubs.push(media);
+  }
+  if (coachUnlimitedDoorOpen(input)) {
+    const coach = PRO_HUBS.find((hub) => hub.to === COACH_UNLIMITED_PATH);
+    if (coach) hubs.push(coach);
+  }
+  return hubs;
+}
+
+export type MediaFolderId = 'gallery' | 'events' | 'shop';
+
+export type MediaPermissionFlags = {
+  galleryUpload: boolean;
+  eventsAccess: boolean;
+  proShopAccess: boolean;
+};
+
+export type ConsoleHub = {
+  title: string;
+  to: string;
+  belt: 'purple' | 'brown' | 'black' | 'tournament';
+};
+
+const MEDIA_SURFACES: readonly {
+  title: string;
+  to: string;
+  folder: MediaFolderId;
+  permission: keyof MediaPermissionFlags;
+}[] = [
+  { title: 'Gallery', to: '/gallery', folder: 'gallery', permission: 'galleryUpload' },
+  { title: 'Events', to: '/events', folder: 'events', permission: 'eventsAccess' },
+  { title: 'Pro Shop', to: '/proshop', folder: 'shop', permission: 'proShopAccess' },
+];
+
+/** Paths that open one media folder. `/pro-shop` shares the Pro Shop folder. */
+export const MEDIA_FOLDER_ROUTES: readonly { path: string; folder: MediaFolderId }[] = [
+  { path: '/gallery', folder: 'gallery' },
+  { path: '/events', folder: 'events' },
+  { path: '/proshop', folder: 'shop' },
+  { path: '/pro-shop', folder: 'shop' },
+];
+
+/** Paths that open the seat's Media Console on `/pro`. */
+export const MEDIA_CONSOLE_ROUTES = ['/media', '/media-console', '/console'] as const;
+
+/**
+ * Home button when any Pro hub is open.
+ * A seat whose only hub is Media Console is named that way.
+ * The owner console keeps Open Console.
+ */
+export function homeConsoleLabel(input: ProSurfaceInput): 'Open Media Console' | 'Open Console' | null {
+  const hubs = visibleProHubs(input);
+  if (hubs.length === 0) return null;
+  if (hubs.every((hub) => hub.title === MEDIA_CONSOLE_NAME)) return 'Open Media Console';
+  return 'Open Console';
+}
+
+/** One granted folder. Owner Pro unlock opens every folder. A seat uses its flags. */
+export function mediaFolderDoorOpen(
+  input: ProSurfaceInput,
+  permissions: MediaPermissionFlags | null,
+  folder: MediaFolderId,
+): boolean {
+  if (!mediaConsoleDoorOpen(input)) return false;
+  if (!input.seated) return true;
+  if (!permissions) return false;
+  const surface = MEDIA_SURFACES.find((item) => item.folder === folder);
+  return surface ? permissions[surface.permission] : false;
+}
+
+/** Gallery, Events, and Pro Shop links for a seated Media Console. Owners keep the single hub. */
+export function visibleMediaSurfaces(
+  input: ProSurfaceInput,
+  permissions: MediaPermissionFlags | null,
+): readonly { title: string; to: string; folder: MediaFolderId; belt: 'purple' }[] {
+  if (!input.seated) return [];
+  return MEDIA_SURFACES.filter((surface) => mediaFolderDoorOpen(input, permissions, surface.folder)).map(
+    (surface) => ({
+      title: surface.title,
+      to: surface.to,
+      folder: surface.folder,
+      belt: 'purple' as const,
+    }),
+  );
+}
+
+/**
+ * Pro page links.
+ * A seated media grant replaces the single slideshow hub with Gallery, Events, and Pro Shop.
+ * Owner-only hubs stay out. Coach Unlimited stays when that door is open.
+ */
+export function consoleHubs(
+  input: ProSurfaceInput,
+  permissions: MediaPermissionFlags | null,
+): readonly ConsoleHub[] {
+  const surfaces = visibleMediaSurfaces(input, permissions);
+  if (surfaces.length === 0) return visibleProHubs(input);
+  return [
+    ...surfaces.map((surface) => ({ title: surface.title, to: surface.to, belt: surface.belt })),
+    ...visibleProHubs(input).filter((hub) => !hub.to.startsWith('/slideshow')),
+  ];
+}
+
+/**
+ * Coach tools. The owner purchase lock opens them, and so does a live invite seat.
+ * The seat still does not open owner-only Pro hubs.
+ */
+export function coachDoorOpen(
+  proUnlocked: boolean,
+  coachUnlocked: boolean,
+  seated: boolean,
+): boolean {
+  return coachToolsOpen(proUnlocked, coachUnlocked) || seated;
+}
+
+/**
+ * Advantage Coach without Pro.
+ * Coach Unlimited is a Pro route, so a Pro unlock is not basic Coach.
+ */
+export function isBasicCoach(proUnlocked: boolean, coachUnlocked: boolean): boolean {
+  return coachUnlocked && !proUnlocked;
 }

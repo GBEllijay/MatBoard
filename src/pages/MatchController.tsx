@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { BeltRail } from '../components/BeltRail';
 import { Chrome } from '../components/Chrome';
+import { ScoreboardSkinSwitcher } from '../components/ScoreboardSkinSwitcher';
 import { Sheet } from '../components/Sheet';
 import { OutcomeCalls, OutcomePickSheet, useOutcomeSheet } from '../components/OutcomeCalls';
 import { PlayExitMark } from '../components/PlayExitMark';
@@ -9,9 +9,10 @@ import { RankChip } from '../components/RankChip';
 import { RosterNameField } from '../components/RosterNameField';
 import { useBoutQuerySync, useBracketOutcomeReturn } from '../hooks/useBracketBoutReturn';
 import { useInterval } from '../hooks/useClock';
-import { useSuiteOrigin } from '../hooks/useSuiteOrigin';
+import { useMatchBoard } from '../hooks/useMatchBoard';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useMatchState } from '../hooks/useStores';
+import { CARLOS_THRESHOLD_MAX, CARLOS_THRESHOLD_MIN, type CarlosCelebrationPrefs } from '../lib/carlosCelebration';
 import {
   END_CUE_OPTIONS,
   patchAudioPrefs,
@@ -21,12 +22,8 @@ import {
   unlockAudio,
   type EndCue,
 } from '../lib/audio';
-import {
-  declareMatchOutcome,
-  linkedBracketMatchId,
-  scoreboardPath,
-  visibleOutcomeBanner,
-} from '../lib/bracketBout';
+import { declareMatchOutcome, scoreboardPath, visibleOutcomeBanner } from '../lib/bracketBout';
+import { kidsBoardClass } from '../lib/kidsScoreboard';
 import { openDisplayWindow, openOrCastDisplay } from '../lib/cast';
 import { minutesToMs, formatMmSs, secondsToMs } from '../lib/format';
 import { competitorFocus, displayFocusId, parseDisplayFocus } from '../lib/matchFocus';
@@ -41,6 +38,7 @@ import {
   type Side,
 } from '../lib/matchStore';
 import { needsRefDecision, outcomeSubtitle } from '../lib/outcomes';
+import { scoreboardSkinClass } from '../lib/scoreboardSkin';
 
 export function MatchControllerPage() {
   const match = useMatchState();
@@ -50,11 +48,14 @@ export function MatchControllerPage() {
   const [castNote, setCastNote] = useState('');
   const [tvHelpOpen, setTvHelpOpen] = useState(false);
   const [searchParams] = useSearchParams();
-  const suite = useSuiteOrigin();
+  const board = useMatchBoard();
+  const suite = board.suite;
   const remaining = remainingNow(match);
   const durationIsPreset = TIME_PRESETS_MIN.some((minutes) => match.durationMs === minutesToMs(minutes));
   const focusParam = searchParams.get('focus');
-  const linkedId = linkedBracketMatchId(match.bracketMatchId);
+  const linkedId = board.linkedId;
+  const plainWhite = board.plainWhite;
+  const skin = board.skinFor(match.skin);
   const flashing = Boolean(match.outcomeFlash);
   const banner = visibleOutcomeBanner(match);
   const refNeeded = needsRefDecision({ ...match, remainingMs: remaining });
@@ -103,18 +104,22 @@ export function MatchControllerPage() {
     setCustomOpen(false);
   };
 
+  // Selection only. Switching cues mid-match must not play a stop sound.
+  // Preview cues below are what play the sound.
   const chooseMatchEndCue = (cue: EndCue) => {
     patchAudioPrefs({ endCue: cue });
     dispatchMatch({ type: 'setEndCue', value: cue });
-    void unlockAudio().then(() => {
-      if (match.endBuzzer) playSelectedEndCue('match', cue);
-    });
   };
 
   const onCast = async () => {
     void unlockAudio();
     try {
-      const mode = await openOrCastDisplay({ fromSuite: suite.fromSuite });
+      const mode = await openOrCastDisplay({
+        fromSuite: suite.fromSuite,
+        fromUnlimited: suite.fromUnlimited,
+        whiteBoard: board.whiteBoard,
+        kidsSkin: board.kidsSkin,
+      });
       setCastNote(
         mode === 'cast'
           ? 'Display sent to the chosen screen.'
@@ -126,18 +131,28 @@ export function MatchControllerPage() {
   };
 
   return (
-    <main className={`controller${suite.fromSuite ? ' origin-suite' : ''}`}>
-      {suite.fromSuite ? <BeltRail kind="tournament" /> : null}
+    <main className={`controller ${scoreboardSkinClass(skin)}${board.kidsSkin ? ` ${kidsBoardClass(board.kidsSkin)}` : ''}${suite.fromSuite ? ' origin-suite' : ''}`}>
       <PlayExitMark to={suite.homePath} />
       <Chrome
         right={
           <>
             {linkedId ? (
-              <Link to="/tournament" className="chip">
+              <Link to={suite.withFrom('/tournament')} className="chip chip--keep">
                 Back to bracket
               </Link>
             ) : null}
-            <button type="button" className="chip" onClick={() => openDisplayWindow({ fromSuite: suite.fromSuite })}>
+            <button
+              type="button"
+              className="chip"
+              onClick={() =>
+                openDisplayWindow({
+                  fromSuite: suite.fromSuite,
+                  fromUnlimited: suite.fromUnlimited,
+                  whiteBoard: board.whiteBoard,
+                  kidsSkin: board.kidsSkin,
+                })
+              }
+            >
               Display
             </button>
             <button type="button" className="chip chip--gold" onClick={() => void onCast()}>
@@ -146,6 +161,13 @@ export function MatchControllerPage() {
           </>
         }
       />
+
+      {plainWhite || board.kidsSkin ? null : (
+        <section className="kids-switch-panel" aria-label="Scoreboard skin">
+          <p className="cue-preview-label">Scoreboard skin</p>
+          <ScoreboardSkinSwitcher skin={match.skin} />
+        </section>
+      )}
 
       <section className="controller__clock">
         <button
@@ -215,7 +237,7 @@ export function MatchControllerPage() {
             <label>
               Minutes
               <input
-                inputMode="numeric"
+                inputMode="decimal"
                 value={customMinutes}
                 onChange={(e) => setCustomMinutes(e.target.value)}
               />
@@ -332,6 +354,7 @@ export function MatchControllerPage() {
           />
           Auto-announce winner
         </label>
+        {board.showCarlos ? <CarlosControls prefs={match.carlos} /> : null}
         {castNote ? <p className="cast-note">{castNote}</p> : null}
       </section>
 
@@ -355,6 +378,7 @@ export function MatchControllerPage() {
         focusCalls
         banner={banner?.side === 'blue' ? banner : null}
         reason={banner?.side === 'blue' ? outcomeSubtitle(match.outcome) : null}
+        names={plainWhite ? 'white' : 'competitor'}
         onWin={() => outcomeSheet.openWin('blue', 'Blue')}
         onDq={() => outcomeSheet.openDq('blue', 'Blue')}
       />
@@ -372,6 +396,7 @@ export function MatchControllerPage() {
         highlightCalls={refNeeded}
         banner={banner?.side === 'white' ? banner : null}
         reason={banner?.side === 'white' ? outcomeSubtitle(match.outcome) : null}
+        names={plainWhite ? 'white' : 'competitor'}
         onWin={() => outcomeSheet.openWin('white', 'White')}
         onDq={() => outcomeSheet.openDq('white', 'White')}
       />
@@ -405,7 +430,7 @@ export function MatchControllerPage() {
         >
           Instructions / Suggestions
         </button>
-        <Link className="text-link" to={suite.withFrom(scoreboardPath(linkedId))}>
+        <Link className="text-link" to={board.originPath(scoreboardPath(linkedId))}>
           Open scoreboard on this device
         </Link>
       </section>
@@ -450,6 +475,75 @@ export function MatchControllerPage() {
   );
 }
 
+function CarlosControls({ prefs }: { prefs: CarlosCelebrationPrefs }) {
+  const [draft, setDraft] = useState(String(prefs.pointsThreshold));
+
+  useEffect(() => {
+    setDraft(String(prefs.pointsThreshold));
+  }, [prefs.pointsThreshold]);
+
+  return (
+    <fieldset className="carlos-controls">
+      <legend>Master Carlos</legend>
+      <label className="toggle">
+        <input
+          type="checkbox"
+          checked={prefs.enabled}
+          onChange={(e) => dispatchMatch({ type: 'setCarlos', value: { enabled: e.target.checked } })}
+        />
+        Show on the scoreboard
+      </label>
+      <p className="cast-note">
+        Optional for every kids’ training match. He slides in on this scoreboard only when the match ends —
+        for a win, or if points went over the total during the bout. Off means no Carlos from these triggers.
+      </p>
+      {prefs.enabled ? (
+        <>
+          <label className="toggle">
+            <input
+              type="checkbox"
+              checked={prefs.onWin}
+              onChange={(e) => dispatchMatch({ type: 'setCarlos', value: { onWin: e.target.checked } })}
+            />
+            On a match win
+          </label>
+          <label className="toggle">
+            <input
+              type="checkbox"
+              checked={prefs.onPoints}
+              onChange={(e) => dispatchMatch({ type: 'setCarlos', value: { onPoints: e.target.checked } })}
+            />
+            At match end, if points went over a total
+          </label>
+          <label className="carlos-threshold">
+            Over
+            <input
+              inputMode="numeric"
+              aria-label="Point threshold"
+              value={draft}
+              onChange={(e) => {
+                const next = e.target.value.replace(/\D/g, '').slice(0, 2);
+                setDraft(next);
+                const n = Number(next);
+                if (Number.isInteger(n) && n >= CARLOS_THRESHOLD_MIN && n <= CARLOS_THRESHOLD_MAX) {
+                  dispatchMatch({ type: 'setCarlos', value: { pointsThreshold: n } });
+                }
+              }}
+              onBlur={() => {
+                const n = Number(draft);
+                if (!Number.isInteger(n) || n < CARLOS_THRESHOLD_MIN || n > CARLOS_THRESHOLD_MAX) {
+                  setDraft(String(prefs.pointsThreshold));
+                }
+              }}
+            />
+            points
+          </label>
+        </>
+      ) : null}
+    </fieldset>
+  );
+}
+
 function CompetitorPad({
   side,
   title,
@@ -464,6 +558,7 @@ function CompetitorPad({
   focusCalls = false,
   banner,
   reason,
+  names,
   onWin,
   onDq,
 }: {
@@ -480,6 +575,8 @@ function CompetitorPad({
   focusCalls?: boolean;
   banner: { kind: 'win' | 'dq'; text: string } | null;
   reason: string | null;
+  /** White Live Bout uses the on-phone match-name list. Suite and linked bouts keep the Competitor Roster. */
+  names: 'white' | 'competitor';
   onWin: () => void;
   onDq: () => void;
 }) {
@@ -496,6 +593,7 @@ function CompetitorPad({
             id={displayFocusId(competitorFocus(side, 'name'))}
             value={name}
             ariaLabel={`${title} name`}
+            names={names}
             onChange={(value) => dispatchMatch({ type: 'setCompetitor', side, field: 'name', value })}
             onPrefill={(prefill) => {
               dispatchMatch({ type: 'setCompetitor', side, field: 'name', value: prefill.name });

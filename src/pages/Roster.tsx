@@ -1,25 +1,39 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useCurrentSeat } from '../components/SeatSessionBar';
 import { EmptyHint } from '../components/EmptyHint';
-import { PlayExitMark } from '../components/PlayExitMark';
+import { ImportStudentProgress, StudentCompetitionPlan } from '../components/StudentCompetitionPlan';
+import { SubmenuMarks } from '../components/TierHomeMark';
+import { useSubmenuBack } from '../hooks/useSubmenuBack';
 import { useCoachPageSwipe } from '../hooks/useCoachSwipe';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useToolboxParent } from '../hooks/useToolboxParent';
-import { RankChip } from '../components/RankChip';
+import { BeltTip } from '../components/BeltTip';
 import { Sheet } from '../components/Sheet';
 import { useRosterState } from '../hooks/useStores';
 import { COMPETITOR_SYSTEM_NAME } from '../lib/productNames';
+import { competitorPhotoFromFile } from '../lib/competitorPhoto';
+import { PHOTO_PICKER_ACCEPT, VIDEO_CAPTURE } from '../lib/mediaPicker';
+import { quotaAddNote } from '../lib/storageQuota';
+import { DeviceMediaInput } from '../components/DeviceMediaInput';
+import { MediaSourceSheet } from '../components/VideoSourceSheet';
 import {
+  COMPETITOR_GYM_LABEL,
   COMPETITOR_ROSTER_LABEL,
   EMPTY_ROSTER_BODY,
   EMPTY_ROSTER_SEARCH,
   EMPTY_ROSTER_TITLE,
+  EMPTY_STUDENT_ROSTER_BODY,
+  EMPTY_STUDENT_ROSTER_SEARCH,
+  EMPTY_STUDENT_ROSTER_TITLE,
   ROSTER_CSV_DEVICE_NOTE,
   ROSTER_CSV_INSTRUCTIONS,
-  ROSTER_CSV_PRO_TEASER,
+  ROSTER_CSV_TEMPLATE_NOTE,
   ROSTER_LEAD_COACH,
   ROSTER_LEAD_PRO,
+  STUDENT_NOTES_LABEL,
+  STUDENT_ROSTER_LABEL,
   rosterCsvAvailable,
 } from '../lib/coachCopy';
 import {
@@ -30,19 +44,24 @@ import {
   serializeRosterCsv,
   withUtf8Bom,
 } from '../lib/rosterCsv';
+import { seatPermissionAllows } from '../lib/instructorSeats';
 import { readGymName } from '../lib/gymName';
 import {
   ADULT_BELTS,
   KIDS_BELTS,
+  LAST_PROMOTION_DETAIL_MAX,
   NOTE_MAX,
   addStudent,
   addStudents,
+  competitorCards,
   isKnownBelt,
   draftFromStudent,
   emptyDraft,
   formatPromotion,
   removeStudent,
   searchStudents,
+  setCheckedIn,
+  studentRosterCards,
   updateStudent,
   type Student,
   type StudentDraft,
@@ -61,6 +80,9 @@ function downloadRosterCsv(filename: string, csv: string): void {
 }
 
 export function RosterPage() {
+  const seat = useCurrentSeat();
+  const showRosterSubmit = !seat || seatPermissionAllows(seat.permissions, 'rosterSubmit');
+  const showRosterPull = !seat || seatPermissionAllows(seat.permissions, 'rosterPull');
   const roster = useRosterState();
   const navigate = useNavigate();
   const parent = useToolboxParent();
@@ -68,26 +90,30 @@ export function RosterPage() {
   const coachUnlocked = useCoachUnlocked();
   useCoachPageSwipe();
   const [searchParams] = useSearchParams();
-  const coachRoster =
-    searchParams.get('from') === 'coach' || (coachUnlocked && !proUnlocked);
-  const showCsv = rosterCsvAvailable(proUnlocked, coachRoster);
-  const fromSuite = searchParams.get('from') === 'suite';
   const fromCompetitors = searchParams.get('from') === 'competitors';
-  const exitPath = coachRoster
-    ? '/coach'
-    : fromCompetitors
-      ? '/competitors'
-      : fromSuite
-        ? '/suite'
-        : parent.path;
+  const studentRoster = searchParams.get('from') === 'students';
+  const coachRoster =
+    !studentRoster &&
+    !fromCompetitors &&
+    (searchParams.get('from') === 'coach' || (coachUnlocked && !proUnlocked));
+  const showCsv = !studentRoster && rosterCsvAvailable(proUnlocked, coachUnlocked);
+  const exitPath = useSubmenuBack() ?? parent.path;
   const csvRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [editor, setEditor] = useState<{ id: string | null; draft: StudentDraft } | null>(null);
   const [pendingRemove, setPendingRemove] = useState<string | null>(null);
   const [csvNote, setCsvNote] = useState('');
+  const [saveError, setSaveError] = useState('');
+  const listed = useMemo(
+    () => (studentRoster ? studentRosterCards(roster.students) : competitorCards(roster.students)),
+    [roster.students, studentRoster],
+  );
   const competitors = useMemo(
-    () => (query.trim() ? searchStudents(roster.students, query) : roster.students),
-    [query, roster.students],
+    () =>
+      query.trim()
+        ? searchStudents(listed, query, studentRoster ? undefined : roster.competitionPlans)
+        : listed,
+    [query, listed, studentRoster, roster.competitionPlans],
   );
   const openAdd = () => setEditor({ id: null, draft: { ...emptyDraft(), gym: readGymName() } });
 
@@ -104,7 +130,12 @@ export function RosterPage() {
           setCsvNote(result.error);
           return;
         }
-        addStudents(result.students);
+        try {
+          addStudents(result.students);
+        } catch (error) {
+          setCsvNote(quotaAddNote(error) ?? 'Could not save those names on this device.');
+          return;
+        }
         setCsvNote(formatRosterCsvSummary(result.imported, result.skipped, result.skippedDetail));
       })
       .catch(() => {
@@ -123,19 +154,24 @@ export function RosterPage() {
           >
             Download template
           </button>
-          <button type="button" className="btn btn--ghost" onClick={() => csvRef.current?.click()}>
-            Import CSV
-          </button>
-          <button
-            type="button"
-            className="btn btn--ghost"
-            onClick={() => downloadRosterCsv('advantage-roster.csv', serializeRosterCsv(roster.students))}
-          >
-            Export CSV
-          </button>
+          {showRosterPull ? (
+            <button type="button" className="btn btn--ghost" onClick={() => csvRef.current?.click()}>
+              Import CSV
+            </button>
+          ) : null}
+          {showRosterSubmit ? (
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => downloadRosterCsv('advantage-roster.csv', serializeRosterCsv(listed))}
+            >
+              Export CSV
+            </button>
+          ) : null}
         </div>
         <CsvInstructions />
       </div>
+      <p className="roster__csv-template">{ROSTER_CSV_TEMPLATE_NOTE}</p>
       <p className="roster__csv-hint">{ROSTER_CSV_DEVICE_NOTE}</p>
       {csvNote ? (
         <p className="roster__csv-summary" role="status">
@@ -157,8 +193,8 @@ export function RosterPage() {
   );
 
   return (
-    <main className={coachRoster ? 'roster roster--coach' : 'roster'}>
-      <PlayExitMark
+    <main className={studentRoster || coachRoster ? 'roster roster--coach' : fromCompetitors ? 'roster cms' : 'roster'}>
+      <SubmenuMarks
         to={exitPath}
         onExit={() => {
           navigate(exitPath);
@@ -167,37 +203,43 @@ export function RosterPage() {
       <header className="roster__bar">
         <div className="roster__brand">
           <p className="roster__eyebrow">
-            {coachRoster ? 'Advantage Coach' : fromCompetitors ? COMPETITOR_SYSTEM_NAME : parent.eyebrow}
+            {studentRoster || coachRoster ? 'Advantage Coach' : fromCompetitors ? COMPETITOR_SYSTEM_NAME : parent.eyebrow}
           </p>
-          <h1>{COMPETITOR_ROSTER_LABEL}</h1>
+          <h1>{studentRoster ? STUDENT_ROSTER_LABEL : COMPETITOR_ROSTER_LABEL}</h1>
         </div>
-        {coachRoster ? null : (
+        {studentRoster || coachRoster ? null : (
           <button type="button" className="btn" onClick={openAdd}>
             Add competitor
           </button>
         )}
       </header>
 
-      <p className="roster__lead">{coachRoster ? ROSTER_LEAD_COACH : ROSTER_LEAD_PRO}</p>
+      <p className="roster__lead">
+        {studentRoster
+          ? 'Student Roster with names, belts, and notes. The list stays on this phone.'
+          : coachRoster
+            ? ROSTER_LEAD_COACH
+            : ROSTER_LEAD_PRO}
+      </p>
 
-      {coachRoster ? (
+      {studentRoster || coachRoster ? (
         <div className="roster__add">
           <button type="button" className="btn" onClick={openAdd}>
-            Add Competitor
+            {studentRoster ? 'Add student' : 'Add Competitor'}
           </button>
         </div>
       ) : null}
 
       {showCsv ? csvTools : null}
 
-      {roster.students.length ? (
+      {listed.length ? (
       <label className="roster__search">
         Find
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Name or belt"
-          aria-label="Find competitor"
+          placeholder={studentRoster ? 'Name, belt, or division' : 'Name, belt, division, opponent, or tournament'}
+          aria-label={studentRoster ? 'Find student' : 'Find competitor'}
           autoComplete="off"
         />
       </label>
@@ -209,6 +251,8 @@ export function RosterPage() {
             <StudentCard
               key={competitor.id}
               student={competitor}
+              studentRoster={studentRoster}
+              plan={studentRoster ? undefined : roster.competitionPlans[competitor.id]}
               pending={pendingRemove === competitor.id}
               onEdit={() => setEditor({ id: competitor.id, draft: draftFromStudent(competitor) })}
               onAskRemove={() => setPendingRemove(competitor.id)}
@@ -217,15 +261,30 @@ export function RosterPage() {
                 removeStudent(competitor.id);
                 setPendingRemove(null);
               }}
+              onToggleCheckIn={() => setCheckedIn(competitor.id, !competitor.checkedIn)}
             />
           ))}
         </ul>
       ) : (
         <EmptyHint
-          title={roster.students.length ? 'No match' : EMPTY_ROSTER_TITLE}
-          body={roster.students.length ? EMPTY_ROSTER_SEARCH : EMPTY_ROSTER_BODY}
+          title={
+            listed.length
+              ? 'No match'
+              : studentRoster
+                ? EMPTY_STUDENT_ROSTER_TITLE
+                : EMPTY_ROSTER_TITLE
+          }
+          body={
+            listed.length
+              ? studentRoster
+                ? EMPTY_STUDENT_ROSTER_SEARCH
+                : EMPTY_ROSTER_SEARCH
+              : studentRoster
+                ? EMPTY_STUDENT_ROSTER_BODY
+                : EMPTY_ROSTER_BODY
+          }
           action={
-            roster.students.length || coachRoster ? undefined : (
+            listed.length || coachRoster || studentRoster ? undefined : (
               <button type="button" className="btn" onClick={openAdd}>
                 Add competitor
               </button>
@@ -234,22 +293,43 @@ export function RosterPage() {
         />
       )}
 
-      {coachRoster ? (
-        <div className="roster__csv">
-          <p className="roster__csv-hint">{ROSTER_CSV_PRO_TEASER}</p>
-        </div>
-      ) : null}
-
       <StudentEditor
         open={Boolean(editor)}
-        title={editor?.id ? 'Edit competitor' : 'Add competitor'}
+        title={
+          studentRoster
+            ? editor?.id
+              ? 'Edit student'
+              : 'Add student'
+            : editor?.id
+              ? 'Edit competitor'
+              : 'Add competitor'
+        }
+        studentRoster={studentRoster}
         draft={editor?.draft ?? emptyDraft()}
+        saveError={saveError}
         onChange={(draft) => setEditor((current) => (current ? { ...current, draft } : current))}
-        onClose={() => setEditor(null)}
+        onClose={() => {
+          setSaveError('');
+          setEditor(null);
+        }}
         onSave={() => {
           if (!editor) return;
-          const saved = editor.id ? updateStudent(editor.id, editor.draft) : addStudent(editor.draft);
-          if (saved) setEditor(null);
+          try {
+            const saved = editor.id
+              ? updateStudent(editor.id, editor.draft)
+              : addStudent(editor.draft, studentRoster ? { rosterList: 'student' } : undefined);
+            if (saved) {
+              setSaveError('');
+              setEditor(null);
+            }
+          } catch (error) {
+            setSaveError(
+              quotaAddNote(error) ??
+                (studentRoster
+                  ? 'Could not save this student on this device.'
+                  : 'Could not save this competitor on this device.'),
+            );
+          }
         }}
       />
     </main>
@@ -305,31 +385,67 @@ function CsvInstructions() {
 
 function StudentCard({
   student,
+  studentRoster,
+  plan,
   pending,
   onEdit,
   onAskRemove,
   onCancelRemove,
   onConfirmRemove,
+  onToggleCheckIn,
 }: {
   student: Student;
+  studentRoster: boolean;
+  plan?: ReturnType<typeof useRosterState>['competitionPlans'][string];
   pending: boolean;
   onEdit: () => void;
   onAskRemove: () => void;
   onCancelRemove: () => void;
   onConfirmRemove: () => void;
+  onToggleCheckIn: () => void;
 }) {
   const promoted = formatPromotion(student.lastPromotion);
+  const promotionDetail = student.lastPromotionDetail.trim();
+  const promotionLine = promoted && promotionDetail
+    ? `Last promotion ${promoted} · ${promotionDetail}`
+    : promoted
+      ? `Last promotion ${promoted}`
+      : promotionDetail
+        ? `Last promotion ${promotionDetail}`
+        : '';
 
   return (
     <li>
       <article className="roster-card">
         <header className="roster-card__head">
-          <h2>{student.name}</h2>
-          <RankChip belt={student.belt} />
+          <div className="roster-card__identity">
+            {studentRoster || !student.photo ? null : (
+              <img className="roster-card__photo" src={student.photo} alt={`${student.name} photo`} />
+            )}
+            <div className="roster-card__who">
+              <h2>{student.name}</h2>
+              {studentRoster ? null : (
+                <button
+                  type="button"
+                  className={`btn roster-card__checkin${student.checkedIn ? '' : ' btn--ghost'}`}
+                  aria-pressed={student.checkedIn}
+                  aria-label={`Check In ${student.name}`}
+                  title="Here for today's tournament"
+                  onClick={onToggleCheckIn}
+                >
+                  Check In
+                </button>
+              )}
+            </div>
+          </div>
+          <BeltTip belt={student.belt} />
         </header>
+        {student.division ? <p className="roster-card__meta">{student.division}</p> : null}
         {student.gym ? <p className="roster-card__meta">{student.gym}</p> : null}
-        {promoted ? <p className="roster-card__meta">Last promotion {promoted}</p> : null}
+        {promotionLine ? <p className="roster-card__meta roster-card__promotion">{promotionLine}</p> : null}
         {student.note ? <p className="roster-card__note">{student.note}</p> : null}
+        {plan ? <StudentCompetitionPlan plan={plan} /> : null}
+        {studentRoster ? null : <ImportStudentProgress competitorId={student.id} competitorName={student.name} />}
         {pending ? (
           <div className="roster-card__actions">
             <span className="roster-card__confirm">Remove {student.name}?</span>
@@ -355,44 +471,135 @@ function StudentCard({
   );
 }
 
+const COMPETITOR_PHOTO_CAPTURE_ID = 'competitor-photo-capture';
+const COMPETITOR_PHOTO_LIBRARY_ID = 'competitor-photo-library';
+
+function photoPickNote(error: unknown): string {
+  const quota = quotaAddNote(error);
+  if (quota) return quota;
+  if (error instanceof Error && error.message === 'too-large') {
+    return 'That photo is too large to keep on this device.';
+  }
+  return 'That file is not a photo this roster can keep.';
+}
+
 function StudentEditor({
   open,
   title,
+  studentRoster,
   draft,
+  saveError,
   onChange,
   onClose,
   onSave,
 }: {
   open: boolean;
   title: string;
+  studentRoster: boolean;
   draft: StudentDraft;
+  saveError: string;
   onChange: (draft: StudentDraft) => void;
   onClose: () => void;
   onSave: () => void;
 }) {
   const ready = Boolean(draft.name.trim() && draft.belt.trim());
   const patch = (partial: Partial<StudentDraft>) => onChange({ ...draft, ...partial });
+  const captureRef = useRef<HTMLInputElement>(null);
+  const libraryRef = useRef<HTMLInputElement>(null);
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  const [chooserOpen, setChooserOpen] = useState(false);
+  const [photoNote, setPhotoNote] = useState('');
+  const [photoBusy, setPhotoBusy] = useState(false);
+
+  useEffect(() => {
+    if (open) return;
+    setChooserOpen(false);
+    setPhotoNote('');
+    setPhotoBusy(false);
+  }, [open]);
+
+  const onPhotoFiles = async (files: readonly File[]) => {
+    const file = files[0];
+    setChooserOpen(false);
+    if (!file) return;
+    setPhotoBusy(true);
+    setPhotoNote('');
+    try {
+      const photo = await competitorPhotoFromFile(file);
+      onChange({ ...draftRef.current, photo });
+    } catch (error) {
+      setPhotoNote(photoPickNote(error));
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
 
   return (
+    <>
     <Sheet open={open} title={title} onClose={onClose}>
       <p className="roster-edit__copy">
-        Name and belt are enough to prefill a match. Gym name is optional and shows on the
-        scoreboard and brackets. A new competitor starts with the Media Console gym name when one
-        is saved. Notes stay on this card.
+        {studentRoster ? (
+          <>
+            Name and belt are enough to save a student. Division is optional and stays on this card.
+            {' '}
+            {COMPETITOR_GYM_LABEL} is one field for a gym name or a nickname. {STUDENT_NOTES_LABEL} stay
+            on this card.
+          </>
+        ) : (
+          <>
+            Name and belt are enough to prefill a match. Division is optional and stays on this card.
+            {' '}
+            {COMPETITOR_GYM_LABEL} is optional and shows on the scoreboard and brackets. A new competitor
+            starts with the Media Console gym name when one is saved. A face photo is optional, stays on
+            this device, and is not included in CSV. Competitor Notes stay on this card.
+          </>
+        )}
       </p>
+      {studentRoster ? null : <div className="roster-edit__photo">
+        {draft.photo ? (
+          <img className="roster-edit__photo-img" src={draft.photo} alt="Competitor face photo" />
+        ) : (
+          <span className="roster-edit__photo-empty">No photo</span>
+        )}
+        <div className="roster-edit__photo-actions">
+          <button type="button" className="btn" disabled={photoBusy} onClick={() => setChooserOpen(true)}>
+            {photoBusy ? 'Adding photo…' : draft.photo ? 'Change photo' : 'Add photo'}
+          </button>
+          {draft.photo ? (
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => {
+                setPhotoNote('');
+                patch({ photo: '' });
+              }}
+            >
+              Remove photo
+            </button>
+          ) : null}
+          <p className="roster-edit__hint">Take a photo or pick one from this device.</p>
+          {photoNote ? <p className="roster-edit__error">{photoNote}</p> : null}
+        </div>
+      </div>}
       <label>
         Name
         <input
           value={draft.name}
           onChange={(event) => patch({ name: event.target.value })}
           placeholder="Required"
-          aria-label="Competitor name"
+          aria-label={studentRoster ? 'Student name' : 'Competitor name'}
           autoComplete="off"
         />
       </label>
       <fieldset className="roster-edit__belts">
         <legend>Belt rank</legend>
-        <p className="roster-edit__hint">Required to pick this competitor into Match or a bracket.</p>
+        <p className="roster-edit__hint">
+          {studentRoster
+            ? 'Required. Pick a belt, or type one under Other belt.'
+            : 'Required to pick this competitor into Match or a bracket.'}
+        </p>
+        {draft.belt.trim() ? <BeltTip belt={draft.belt} /> : null}
         <div className="presets roster-edit__belt-row" role="radiogroup" aria-label="Adult belts">
           {ADULT_BELTS.map((belt) => (
             <button
@@ -432,42 +639,93 @@ function StudentEditor({
         </label>
       </fieldset>
       <label>
-        Gym name
+        Division
         <input
-          value={draft.gym}
-          onChange={(event) => patch({ gym: event.target.value })}
-          placeholder="School or academy — optional"
-          aria-label="Gym name"
+          value={draft.division}
+          onChange={(event) => patch({ division: event.target.value })}
+          placeholder="Adult Blue, Kids Gi — optional"
+          aria-label="Division"
           autoComplete="off"
         />
       </label>
       <label>
-        Last promotion
+        {COMPETITOR_GYM_LABEL}
         <input
-          type="date"
-          value={draft.lastPromotion}
-          onChange={(event) => patch({ lastPromotion: event.target.value })}
-          aria-label="Last promotion"
+          value={draft.gym}
+          onChange={(event) => patch({ gym: event.target.value })}
+          placeholder="School, academy, or nickname — optional"
+          aria-label={COMPETITOR_GYM_LABEL}
+          autoComplete="off"
         />
       </label>
+      <div className="roster-edit__promotion">
+        <label className="roster-edit__promotion-date">
+          Last promotion
+          <input
+            type="date"
+            value={draft.lastPromotion}
+            onChange={(event) => patch({ lastPromotion: event.target.value })}
+            aria-label="Last promotion"
+          />
+        </label>
+        <label className="roster-edit__promotion-detail">
+          Last promotion detail
+          <input
+            value={draft.lastPromotionDetail ?? ''}
+            onChange={(event) => patch({ lastPromotionDetail: event.target.value })}
+            placeholder="e.g. 3rd stripe, white belt"
+            aria-label="Last promotion detail"
+            maxLength={LAST_PROMOTION_DETAIL_MAX}
+            autoComplete="off"
+          />
+        </label>
+      </div>
       <label>
-        Short note
+        {studentRoster ? STUDENT_NOTES_LABEL : 'Competitor Notes'}
         <textarea
           value={draft.note}
           onChange={(event) => patch({ note: event.target.value })}
-          placeholder="Optional — stays on this card"
-          rows={3}
+          placeholder="Stays on this card"
+          rows={6}
           maxLength={NOTE_MAX}
-          aria-label="Short note"
+          aria-label={studentRoster ? STUDENT_NOTES_LABEL : 'Competitor Notes'}
         />
         <span className="roster-edit__count">
           {draft.note.trim().length}/{NOTE_MAX}
         </span>
       </label>
       {!ready ? <p className="roster-edit__error">Add a name and a belt to save.</p> : null}
-      <button type="button" className="btn" disabled={!ready} onClick={onSave}>
-        Save competitor
+      {saveError ? <p className="roster-edit__error">{saveError}</p> : null}
+      <button type="button" className="btn" disabled={!ready || photoBusy} onClick={onSave}>
+        {studentRoster ? 'Save student' : 'Save competitor'}
       </button>
     </Sheet>
+    {studentRoster ? null : (
+      <>
+        <MediaSourceSheet
+          open={chooserOpen && open}
+          kind="photo"
+          title="Competitor photo"
+          captureInputId={COMPETITOR_PHOTO_CAPTURE_ID}
+          libraryInputId={COMPETITOR_PHOTO_LIBRARY_ID}
+          stacked
+          onClose={() => setChooserOpen(false)}
+        />
+        <DeviceMediaInput
+          id={COMPETITOR_PHOTO_CAPTURE_ID}
+          inputRef={captureRef}
+          accept={PHOTO_PICKER_ACCEPT}
+          capture={VIDEO_CAPTURE}
+          onFiles={onPhotoFiles}
+        />
+        <DeviceMediaInput
+          id={COMPETITOR_PHOTO_LIBRARY_ID}
+          inputRef={libraryRef}
+          accept={PHOTO_PICKER_ACCEPT}
+          onFiles={onPhotoFiles}
+        />
+      </>
+    )}
+    </>
   );
 }

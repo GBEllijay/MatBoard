@@ -1,10 +1,9 @@
 import { type FormEvent, useState } from 'react';
-import { tryCoachUnlock } from '../lib/coachUnlock';
 import { GYM_CONSOLE_NAME } from '../lib/productNames';
-import { tryUnlock } from '../lib/proUnlock';
+import { tryProductOwnerUnlock } from '../lib/proUnlock';
 import { Sheet } from './Sheet';
 
-type Product = 'coach' | 'pro';
+type Product = 'coach' | 'pro' | 'student';
 
 type Props = {
   open: boolean;
@@ -30,6 +29,13 @@ const COPY: Record<
     placeholder: 'Owner code',
     submit: 'Unlock Coach',
   },
+  student: {
+    title: 'Owner unlock',
+    body: 'Turns on Advantage Student Edition on this browser. Soft beta only — not a login.',
+    name: 'student-unlock',
+    placeholder: 'Owner code',
+    submit: 'Unlock Student Edition',
+  },
 };
 
 export function ProUnlockSheet({ open, onClose, product = 'pro' }: Props) {
@@ -39,7 +45,7 @@ export function ProUnlockSheet({ open, onClose, product = 'pro' }: Props) {
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    const ok = product === 'coach' ? tryCoachUnlock(code) : tryUnlock(code);
+    const ok = tryProductOwnerUnlock(product, code);
     if (ok) {
       setCode('');
       setError('');

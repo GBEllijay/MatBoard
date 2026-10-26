@@ -1,40 +1,79 @@
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { BeltRail } from '../components/BeltRail';
 import { EmptyHint } from '../components/EmptyHint';
 import { FullscreenChip } from '../components/FullscreenChip';
+import { BracketHeadline, KidsBracketChrome, KidsMascotDock } from '../components/KidsBracketChrome';
+import { KidsScoreboardSwitcher } from '../components/KidsScoreboardSwitcher';
 import { PlayExitMark } from '../components/PlayExitMark';
+import { useSubmenuBack } from '../hooks/useSubmenuBack';
+import { CheckInFillSheet } from '../components/CheckInFillSheet';
 import { OutcomePickSheet } from '../components/OutcomeCalls';
 import { RosterNameField } from '../components/RosterNameField';
 import { Sheet } from '../components/Sheet';
 import { useLockViewportZoom, usePinchZoom } from '../hooks/usePinchZoom';
 import { inputTypeUsesKeyboard } from '../lib/keepFieldVisible';
+import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useToolboxParent } from '../hooks/useToolboxParent';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import {
   useBracketTheme,
+  useKidsScoreboard,
   useMatchState,
+  useRankings,
   useRosterState,
   useTournamentLibrary,
   useTournamentState,
 } from '../hooks/useStores';
 import { EMPTY_BRACKET_BODY, EMPTY_BRACKET_TITLE, OWNER_BRACKET_CLOUD_NOTE } from '../lib/coachCopy';
 import { linkedBracketMatchId, openBracketBout, scoreboardPath, unlinkBracketBout } from '../lib/bracketBout';
-import { setBracketTheme } from '../lib/bracketTheme';
-import { rosterGymForName } from '../lib/rosterStore';
-import { tournamentToolLabel } from '../lib/productNames';
+import { DEFAULT_BRACKET_THEME, setBracketTheme } from '../lib/bracketTheme';
 import {
+  KIDS_BRACKETS_SKINS_LABEL,
+  kidsBracketChromeOn,
+  kidsBracketSkinsAllowed,
+  kidsBracketScoring,
+  kidsLiveLine,
+  kidsShowMascot,
+  kidsSkinButtonSuppressed,
+  kidsSkinChromeHidden,
+  kidsWinLines,
+  kidsWinState,
+  withKidsSkin,
+} from '../lib/kidsScoreboard';
+import { isSheetLayerOpen, subscribeSheetLayer } from '../lib/sheetLayer';
+import { competitorCards, rosterGymForName, studentRosterCards } from '../lib/rosterStore';
+import {
+  COACH_UNLIMITED_PATH,
+  isBasicCoach,
+  isPlainCoachTournament,
+  MOCK_TOURNAMENT_NAME,
+  SUITE_FROM,
+  tournamentToolLabel,
+  UNLIMITED_FROM,
+} from '../lib/productNames';
+import { coachLinkedWhiteBoard, withMatchOrigin } from '../lib/scoreboardSkin';
+import {
+  bracketHasCompetitors,
   bracketHasContent,
   bracketRoundLine,
+  byeCountFor,
   canUndoLast,
   deleteBracket,
   displayBracketName,
   isByeSlot,
+  isThreePersonBracket,
   leftRoundIds,
+  placementLabel,
+  placementOf,
   matchHasBye,
+  fillCheckedInBracket,
+  fillSeedNames,
+  undoCheckedInFill,
   newBracket,
+  parseNameList,
   renameActiveBracket,
   resetTournament,
   rightRoundIds,
@@ -43,12 +82,15 @@ import {
   seedSlots,
   setCompetitorCount,
   setMatchOutcome,
+  setPlacement,
+  setBracketHeadline,
   setSlotName,
   setTournamentTitle,
   slotId,
   slotMark,
   slotName,
   switchBracket,
+  THREE_PERSON_LOSER_SLOT,
   treeSizeFor,
   clampCompetitorCount,
   maxCompetitors,
@@ -58,6 +100,7 @@ import {
   visibleRoundPrefixes,
   type BracketMatchId,
   type MatchSide,
+  type PlacementStyle,
   type RoundPrefix,
 } from '../lib/tournamentStore';
 import { type OutcomeCall } from '../lib/outcomes';
@@ -65,32 +108,74 @@ import { type OutcomeCall } from '../lib/outcomes';
 export function TournamentPage() {
   const tournament = useTournamentState();
   const library = useTournamentLibrary();
+  const roster = useRosterState();
+  const rankings = useRankings();
   const match = useMatchState();
   const theme = useBracketTheme();
-  const fs = usePlayFullscreen();
+  const kids = useKidsScoreboard();
+  const fs = usePlayFullscreen({ auto: false });
   const boardRef = useRef<HTMLDivElement>(null);
   const bracketRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const parent = useToolboxParent();
   const proUnlocked = useProUnlocked();
+  const plainCoach = isPlainCoachTournament(
+    searchParams.get('from'),
+    isBasicCoach(proUnlocked, useCoachUnlocked()),
+  );
   const sizeMax = maxCompetitors(proUnlocked);
-  const fromSuite = searchParams.get('from') === 'suite';
-  const exitPath = fromSuite ? '/suite' : parent.path;
+  const from = searchParams.get('from');
+  const fromSuite = from === SUITE_FROM;
+  const fromUnlimited = from === UNLIMITED_FROM;
+  const shownTheme = plainCoach ? DEFAULT_BRACKET_THEME : theme;
+  const exitPath =
+    useSubmenuBack() ??
+    (fromSuite ? '/suite' : fromUnlimited ? COACH_UNLIMITED_PATH : plainCoach ? '/coach' : parent.path);
+  const kidsSkins = kidsBracketSkinsAllowed(from) && !plainCoach;
+  const kidsOn = kidsBracketChromeOn(kidsSkins, kids.enabled);
   const [namesOpen, setNamesOpen] = useState(false);
   const [sizeOpen, setSizeOpen] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
-  const [pendingSize, setPendingSize] = useState<number | null>(null);
+  const [pendingPlacement, setPendingPlacement] = useState<PlacementStyle | null>(null);
+  const [pasteDraft, setPasteDraft] = useState('');
+  const [checkInOpen, setCheckInOpen] = useState(false);
+  const [fillPlaced, setFillPlaced] = useState<number | null>(null);
   const [saveName, setSaveName] = useState('');
   const [customSize, setCustomSize] = useState(String(tournament.size));
   const seeds = seedSlots(tournament);
   const champion = slotName(tournament, 'champion');
   const liveMatchId = linkedBracketMatchId(match.bracketMatchId);
+  const kidsCelebration = kidsWinState(kidsOn, tournament);
+  const kidsWin = kidsCelebration.show;
+  const kidsChampion = kidsCelebration.name;
+  const kidsScore = kidsCelebration.scoreLine;
+  const sheetOpen = useSyncExternalStore(subscribeSheetLayer, isSheetLayerOpen, () => false);
+  const skinChromeHidden = kidsSkinChromeHidden({
+    fullscreen: fs.active,
+    sheetOpen,
+    scoring: kidsBracketScoring(liveMatchId, liveMatchId ? Boolean(tournament.results[liveMatchId]) : true),
+  });
+  const skinButtonSuppressed = kidsSkinButtonSuppressed({ fullscreen: fs.active, sheetOpen });
+  const showMascot = kidsShowMascot(kidsOn, kids.mascot, kidsChampion, skinChromeHidden);
+  const champLabel = kidsWin ? kidsChampion : champion;
+  const kidsLive =
+    kidsOn && liveMatchId && !kidsWin && !tournament.results[liveMatchId]
+      ? kidsLiveLine({
+          title: tournament.title.trim() || match.division,
+          blueName: match.blue.name,
+          whiteName: match.white.name,
+          bluePoints: match.blue.points,
+          whitePoints: match.white.points,
+        })
+      : null;
   const undoReady = canUndoLast(tournament);
   const emptyBracket = !bracketHasContent(tournament);
   const canReset = bracketHasContent(tournament);
   const tree = treeSizeFor(tournament.size);
+  const placement = placementOf(tournament);
+  const threePerson = isThreePersonBracket(tournament);
   const rounds = visibleRoundPrefixes(tree).filter((prefix) => prefix !== 'final');
   const activeRow = library.saved.find((row) => row.id === library.activeId) ?? library.saved[0];
   const savedLabel = activeRow ? displayBracketName(activeRow) : 'Untitled';
@@ -99,6 +184,12 @@ export function TournamentPage() {
   useVisibleViewportHeight();
   useLockViewportZoom();
   usePinchZoom(boardRef, bracketRef);
+
+  // The scoreboard enters fullscreen from the Score tap. Coming back must not
+  // keep that fullscreen, or Skin stays disabled until a reload.
+  useEffect(() => {
+    void fs.exit();
+  }, [fs.exit]);
 
   const exitBoard = () => {
     void fs.exit().finally(() => {
@@ -109,7 +200,6 @@ export function TournamentPage() {
   const applySize = (size: number) => {
     unlinkBracketBout();
     setCompetitorCount(size, sizeMax);
-    setPendingSize(null);
     setSizeOpen(false);
   };
 
@@ -118,11 +208,26 @@ export function TournamentPage() {
       setSizeOpen(false);
       return;
     }
-    if (Object.keys(tournament.results).length) {
-      setPendingSize(size);
+    setPendingPlacement(null);
+    applySize(size);
+  };
+
+  const applyPlacementNow = (style: PlacementStyle) => {
+    unlinkBracketBout();
+    setPlacement(style);
+    setPendingPlacement(null);
+  };
+
+  const requestPlacement = (style: PlacementStyle) => {
+    if (style === placement) {
+      setPendingPlacement(null);
       return;
     }
-    applySize(size);
+    if (Object.keys(tournament.results).length) {
+      setPendingPlacement(style);
+      return;
+    }
+    applyPlacementNow(style);
   };
 
   const openSaved = () => {
@@ -151,117 +256,51 @@ export function TournamentPage() {
 
   return (
     <main
-      className={`tournament tournament--${theme}${fs.className ? ` ${fs.className}` : ''}`}
+      className={`tournament tournament--${shownTheme}${kidsOn ? ` tournament--kids tournament--kids-${kids.skin}` : ''}${fs.className ? ` ${fs.className}` : ''}`}
     >
       <BeltRail kind="tournament" />
       <PlayExitMark to={exitPath} onExit={exitBoard} />
       <header className="tournament__bar">
         <div className="tournament__brand">
-          <p className="tournament__eyebrow">{parent.eyebrow}</p>
-          <h1>{tournamentToolLabel(proUnlocked)}</h1>
-        </div>
-        <div className="tournament__center">
-          <p className="tournament__roundline">{bracketRoundLine(tournament)}</p>
-          <label className="tournament__title">
-            <span>Division</span>
-            <input
-              value={tournament.title}
-              onChange={(event) => setTournamentTitle(event.target.value)}
-              placeholder="Division or class (optional)"
-              aria-label="Division or class name"
-            />
-          </label>
-        </div>
-        <div className="tournament__actions">
-          <div className="tournament__theme" role="radiogroup" aria-label="Bracket theme">
-            <button
-              type="button"
-              role="radio"
-              aria-checked={theme === 'bright'}
-              className={`chip${theme === 'bright' ? ' chip--gold' : ''}`}
-              onClick={() => setBracketTheme('bright')}
-            >
-              Bright
-            </button>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={theme === 'dark'}
-              className={`chip${theme === 'dark' ? ' chip--gold' : ''}`}
-              onClick={() => setBracketTheme('dark')}
-            >
-              Dark
-            </button>
-          </div>
-          <button
-            type="button"
-            className="btn btn--ghost"
-            onClick={() => {
-              setCustomSize(String(tournament.size));
-              setPendingSize(null);
-              setSizeOpen(true);
-            }}
-          >
-            Size {tournament.size}
-          </button>
-          <button type="button" className="btn btn--ghost tournament__save-btn" onClick={openSaved}>
-            {named ? savedLabel : 'Save'}
-          </button>
-          <button type="button" className="btn btn--ghost" onClick={() => setNamesOpen(true)}>
-            Edit names
-          </button>
-          <button
-            type="button"
-            className={`btn${undoReady ? '' : ' btn--ghost'}`}
-            disabled={!undoReady}
-            onClick={() => undoLastOutcome()}
-          >
-            Undo last result
-          </button>
-          <button
-            type="button"
-            className="btn btn--ghost"
-            disabled={!canReset}
-            onClick={() => setConfirmReset(true)}
-          >
-            Reset
-          </button>
-          <FullscreenChip
-            supported={fs.supported}
-            active={fs.active}
-            nudge={fs.showFallback}
-            shortcut={fs.tvStation}
-            onToggle={() => void fs.toggle()}
-          />
+          <p className="tournament__eyebrow">{plainCoach ? 'Advantage Coach' : parent.eyebrow}</p>
+          <h1>{plainCoach ? MOCK_TOURNAMENT_NAME : tournamentToolLabel(proUnlocked)}</h1>
         </div>
       </header>
 
       <p className="tournament__hint">
-        Tap <strong>Score</strong> to open the match board. <strong>Win</strong> or <strong>DQ</strong>{' '}
-        flash the winner. <strong>Undo last result</strong> backs out a mistaken tap. Save a named
-        bracket on this device, then switch without losing progress. Reset asks first so a demo
-        cannot wipe the bracket by accident.
+        {kidsOn ? (
+          <>
+            {KIDS_BRACKETS_SKINS_LABEL} paints this bracket. Skin under the bracket opens the backgrounds.
+            Grand Master Carlos stays in the corner after a champion, with "Bom trabalho!" Turn him off from Skin.
+          </>
+        ) : (
+          <>
+            Tap <strong>Score</strong> to open the match board. <strong>Win</strong> or <strong>DQ</strong>{' '}
+            flash the winner. <strong>Undo last result</strong> backs out a mistaken tap and clears later
+            rounds that came from it. Save a named bracket on this device, then switch without losing
+            progress. Reset asks first so a demo cannot wipe the bracket by accident.
+          </>
+        )}
       </p>
 
-      {emptyBracket ? (
-        <EmptyHint
-          title={EMPTY_BRACKET_TITLE}
-          body={EMPTY_BRACKET_BODY}
-          action={
-            <button type="button" className="btn" onClick={() => setNamesOpen(true)}>
-              Edit names
-            </button>
-          }
-        />
-      ) : null}
-
       <div className="tournament__board" ref={boardRef} onPointerDown={blurTextEntry}>
+        <BracketHeadline value={tournament.headline} onChange={setBracketHeadline} />
+        {kidsOn ? (
+          <KidsBracketChrome
+            liveLine={kidsLive}
+            liveMatch={kidsLive ? match : null}
+          />
+        ) : null}
         <div className="bracket-viewport">
           <div
-            className={`bracket bracket--tree-${tree}`}
+            className={`bracket bracket--tree-${tree}${threePerson ? ' bracket--three' : ''}`}
             ref={bracketRef}
             role="group"
-            aria-label={`${tournament.size}-competitor single-elimination bracket`}
+            aria-label={
+              threePerson
+                ? '3-competitor bracket, 2nd seed versus 3rd seed, loser faces 1st seed, winners meet in the final'
+                : `${tournament.size}-competitor single-elimination bracket`
+            }
           >
           {tree > 2 ? (
             <div className="bracket__side bracket__side--left">
@@ -269,8 +308,10 @@ export function TournamentPage() {
                 <RoundColumn
                   key={`left-${prefix}`}
                   ids={leftRoundIds(prefix)}
-                  label={roundLabel(`${prefix}-0` as BracketMatchId)}
+                  label={sideRoundLabel(threePerson, prefix, 'left')}
+                  detail={sideRoundDetail(threePerson, prefix, 'left')}
                   liveMatchId={liveMatchId}
+                  paired={kidsOn}
                 />
               ))}
             </div>
@@ -278,12 +319,17 @@ export function TournamentPage() {
 
           <div className="bracket__finals">
             <MatchCard matchId="final-0" liveMatchId={liveMatchId} />
-            <div className={`bracket__champ${champion ? ' is-filled' : ''}`}>
+            <div className={`bracket__champ${champLabel ? ' is-filled' : ''}${kidsWin ? ' is-kids-win' : ''}`}>
               <BeltRail kind="tournament" />
-              <span>Champion</span>
-              {champion ? (
-                <p className="bracket__champ-flash" role="status">
-                  {champion}
+              <span>{kidsWin ? 'Winner' : 'Champion'}</span>
+              {champLabel ? (
+                <p
+                  className="bracket__champ-flash"
+                  role="status"
+                  aria-label={kidsWin && kidsScore ? `${kidsChampion}, ${kidsScore}` : champLabel}
+                >
+                  {champLabel}
+                  {kidsWin && kidsScore ? <strong className="kids-champ-score">{kidsScore}</strong> : null}
                 </p>
               ) : null}
               <RosterNameField
@@ -292,6 +338,7 @@ export function TournamentPage() {
                 onPrefill={(prefill) => setSlotName('champion', prefill.name)}
                 placeholder="Winner"
                 ariaLabel="Champion"
+                names={plainCoach ? 'student' : 'competitor'}
                 compact
               />
             </div>
@@ -303,21 +350,177 @@ export function TournamentPage() {
                 <RoundColumn
                   key={`right-${prefix}`}
                   ids={rightRoundIds(prefix)}
-                  label={roundLabel(`${prefix}-0` as BracketMatchId)}
+                  label={sideRoundLabel(threePerson, prefix, 'right')}
+                  detail={sideRoundDetail(threePerson, prefix, 'right')}
                   liveMatchId={liveMatchId}
+                  paired={kidsOn}
                 />
               ))}
             </div>
           ) : null}
           </div>
         </div>
+        {emptyBracket ? (
+          <EmptyHint
+            title={EMPTY_BRACKET_TITLE}
+            body={EMPTY_BRACKET_BODY}
+            action={
+              <button type="button" className="btn" onClick={() => setNamesOpen(true)}>
+                Edit names
+              </button>
+            }
+          />
+        ) : null}
+        <div className="tournament__tools" role="region" aria-label="Bracket controls">
+          {fillPlaced != null ? (
+            <p className="tournament__fill-note" role="status">
+              <span>Placed {fillPlaced} from check-in.</span>
+              <button
+                type="button"
+                className="btn btn--white"
+                onClick={() => {
+                  undoCheckedInFill();
+                  setFillPlaced(null);
+                }}
+              >
+                Undo
+              </button>
+            </p>
+          ) : null}
+          <div className="tournament__center">
+            <p className="tournament__roundline">{bracketRoundLine(tournament)}</p>
+            <label className="tournament__title">
+              <span>Division</span>
+              <input
+                value={tournament.title}
+                onChange={(event) => setTournamentTitle(event.target.value)}
+                placeholder="Division or class (optional)"
+                aria-label="Division or class name"
+              />
+            </label>
+          </div>
+          <div className="tournament__actions">
+            {kidsSkins ? <KidsScoreboardSwitcher prefs={kids} suppressed={skinButtonSuppressed} /> : null}
+            {plainCoach ? null : (
+              <div className="tournament__theme" role="radiogroup" aria-label="Bracket theme">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={theme === 'bright'}
+                  className={`chip${theme === 'bright' ? ' chip--on' : ''}`}
+                  onClick={() => setBracketTheme('bright')}
+                >
+                  Bright
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={theme === 'dark'}
+                  className={`chip${theme === 'dark' ? ' chip--on' : ''}`}
+                  onClick={() => setBracketTheme('dark')}
+                >
+                  Dark
+                </button>
+              </div>
+            )}
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => {
+                setCustomSize(String(tournament.size));
+                setPendingPlacement(null);
+                setSizeOpen(true);
+              }}
+            >
+              {placement === 'lineup' ? `Lineup ${tournament.size}` : tournament.size}
+            </button>
+            <button type="button" className="btn btn--ghost tournament__save-btn" onClick={openSaved}>
+              {named ? savedLabel : 'Save'}
+            </button>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => {
+                setPasteDraft('');
+                setNamesOpen(true);
+              }}
+            >
+              Edit names
+            </button>
+            <button type="button" className="btn btn--ghost" onClick={() => setCheckInOpen(true)}>
+              Fill from check-in
+            </button>
+            <button
+              type="button"
+              className={`btn${undoReady ? ' btn--blue' : ' btn--ghost'}`}
+              disabled={!undoReady}
+              onClick={() => undoLastOutcome()}
+            >
+              Undo last result
+            </button>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              disabled={!canReset}
+              onClick={() => setConfirmReset(true)}
+            >
+              Reset
+            </button>
+            <FullscreenChip
+              supported={fs.supported}
+              active={fs.active}
+              nudge={fs.showFallback}
+              shortcut={fs.tvStation}
+              onToggle={() => void fs.toggle()}
+            />
+          </div>
+        </div>
       </div>
 
-      <Sheet open={namesOpen} title="Competitor names" onClose={() => setNamesOpen(false)}>
+      {showMascot ? <KidsMascotDock lines={kidsWinLines(kidsChampion, kidsScore)} /> : null}
+
+      <Sheet
+        className="sheet--names"
+        open={namesOpen}
+        title={plainCoach ? 'Student names' : 'Competitor names'}
+        onClose={() => setNamesOpen(false)}
+      >
         <p className="tournament__sheet-copy">
-          {tournament.size} competitor{tournament.size === 1 ? '' : 's'}, one bracket
-          {byeCountHint(tournament.size)}.
+          {tournament.size} {plainCoach ? 'student' : 'competitor'}
+          {tournament.size === 1 ? '' : 's'}, one bracket
+          {byeCountHint(tournament)}.
+          {threePerson
+            ? ' Semifinal is 2nd seed vs 3rd seed. The loser faces the 1st seed. Winners of those two matches meet in the final.'
+            : ''}
         </p>
+        <label className="tournament__paste">
+          <span>Paste a list</span>
+          <textarea
+            value={pasteDraft}
+            rows={4}
+            placeholder="One name per line, or commas: Ana, Ben, Cam"
+            aria-label={plainCoach ? 'Paste student names' : 'Paste competitor names'}
+            onChange={(event) => setPasteDraft(event.target.value)}
+            onPaste={(event) => {
+              const names = parseNameList(event.clipboardData.getData('text'));
+              if (names.length < 2) return;
+              event.preventDefault();
+              setPasteDraft(event.clipboardData.getData('text'));
+              fillSeedNames(names, 0);
+            }}
+          />
+        </label>
+        <button
+          type="button"
+          className="btn"
+          onClick={() => {
+            const names = parseNameList(pasteDraft);
+            if (!names.length) return;
+            fillSeedNames(names, 0);
+          }}
+        >
+          Fill bracket
+        </button>
         <ol className="tournament__seeds">
           {seeds.map((id, index) => (
             <li key={id}>
@@ -327,8 +530,9 @@ export function TournamentPage() {
                   value={slotName(tournament, id)}
                   onChange={(value) => setSlotName(id, value)}
                   onPrefill={(prefill) => setSlotName(id, prefill.name)}
-                  placeholder={seedPlaceholder(index)}
-                  ariaLabel={`Competitor ${index + 1}`}
+                  placeholder={plainCoach ? 'Student name' : seedPlaceholder(index)}
+                  ariaLabel={plainCoach ? `Student name ${index + 1}` : `Competitor ${index + 1}`}
+                  names={plainCoach ? 'student' : 'competitor'}
                 />
               </label>
             </li>
@@ -338,26 +542,71 @@ export function TournamentPage() {
           Done
         </button>
       </Sheet>
+      <CheckInFillSheet
+        open={checkInOpen}
+        onClose={() => setCheckInOpen(false)}
+        students={roster.students}
+        files={rankings.files}
+        bracketTitle={tournament.title}
+        hasNames={bracketHasCompetitors(tournament)}
+        hasResults={Object.keys(tournament.results).length > 0}
+        sizeMax={sizeMax}
+        onApply={(names) => {
+          unlinkBracketBout();
+          const placed = fillCheckedInBracket(names, sizeMax);
+          setFillPlaced(placed > 0 ? placed : null);
+          setCheckInOpen(false);
+        }}
+      />
       <Sheet
         open={sizeOpen}
         title="Bracket size"
         onClose={() => {
           setSizeOpen(false);
-          setPendingSize(null);
+          setPendingPlacement(null);
         }}
       >
         <p className="tournament__sheet-copy">
-          Any count from 2 to {sizeMax}. Uneven fields use byes so nobody waits on a phantom pairing.
-          {proUnlocked
+          Any count from 2 to {sizeMax}. Seeded is the default. A field of 3 plays 2nd vs 3rd, the
+          loser faces the 1st seed, and those winners meet in the final. A field of 5 opens with 4th
+          vs 5th, and 1st, 2nd, and 3rd receive byes. A field of 7 gives the bye to the 1st seed.
+          Eight and up, and every other custom count, fill to the next power of two with those same
+          seeded byes. Tap a size to apply it. Names that fit stay. Results on this board clear.
+          {proUnlocked && !plainCoach
             ? ' Pro boards save up to 64 competitors on this device.'
             : ' Mock Tournament stays at 16.'}
+        </p>
+        <p className="tournament__sheet-copy">Placement</p>
+        <div className="tournament__size-presets" role="radiogroup" aria-label="Placement rules">
+          <button
+            type="button"
+            role="radio"
+            aria-checked={placement === 'ibjjf'}
+            className={`chip${placement === 'ibjjf' ? ' chip--on' : ''}`}
+            onClick={() => requestPlacement('ibjjf')}
+          >
+            {placementLabel('ibjjf')}
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={placement === 'lineup'}
+            className={`chip${placement === 'lineup' ? ' chip--on' : ''}`}
+            onClick={() => requestPlacement('lineup')}
+          >
+            Lineup
+          </button>
+        </div>
+        <p className="tournament__sheet-copy">
+          Lineup is the override. Names fill the bracket from the top, and byes sit on the last
+          first-round cards.
         </p>
         <div className="tournament__size-presets" role="group" aria-label="Size presets">
           {sizePresets(proUnlocked).map((preset) => (
             <button
               key={preset}
               type="button"
-              className={`chip${tournament.size === preset ? ' chip--gold' : ''}`}
+              className={`chip${tournament.size === preset ? ' chip--on' : ''}`}
               onClick={() => requestSize(preset)}
             >
               {preset}
@@ -387,16 +636,17 @@ export function TournamentPage() {
         >
           Use custom size
         </button>
-        {pendingSize != null ? (
+        {pendingPlacement != null ? (
           <div className="tournament__confirm">
             <span>
-              Changing to {pendingSize} clears results and rebuilds byes. Keep names when they fit.
+              Switching to {placementLabel(pendingPlacement)} clears results and
+              rebuilds the draw. Names stay in seed order.
             </span>
-            <button type="button" className="btn" onClick={() => applySize(pendingSize)}>
-              Change size
+            <button type="button" className="btn" onClick={() => applyPlacementNow(pendingPlacement)}>
+              Change placement
             </button>
-            <button type="button" className="btn btn--ghost" onClick={() => setPendingSize(null)}>
-              Keep size
+            <button type="button" className="btn btn--ghost" onClick={() => setPendingPlacement(null)}>
+              Keep placement
             </button>
           </div>
         ) : null}
@@ -470,7 +720,7 @@ export function TournamentPage() {
           <>
             <button
               type="button"
-              className="btn"
+              className="btn btn--danger"
               onClick={() => {
                 resetTournament();
                 setConfirmReset(false);
@@ -510,33 +760,71 @@ function blurTextEntry(event: ReactPointerEvent<HTMLElement>) {
   active.blur();
 }
 
-function byeCountHint(size: number): string {
-  const tree = treeSizeFor(size);
-  const byes = tree - size;
+function byeCountHint(current: { size: number; placement?: string }): string {
+  const byes = byeCountFor(current.size, placementOf(current));
   if (!byes) return '';
   return `, plus ${byes} ${byes === 1 ? 'bye' : 'byes'}`;
+}
+
+function sideRoundLabel(threePerson: boolean, prefix: RoundPrefix, side: 'left' | 'right'): string {
+  if (threePerson && prefix === 'sf') {
+    return side === 'left' ? 'Semifinal' : 'Consolation';
+  }
+  return roundLabel(`${prefix}-0` as BracketMatchId);
+}
+
+function sideRoundDetail(threePerson: boolean, prefix: RoundPrefix, side: 'left' | 'right'): string {
+  if (!threePerson || prefix !== 'sf') return '';
+  return side === 'left' ? '2nd seed vs 3rd seed' : 'Loser vs 1st seed';
+}
+
+function matchAriaLabel(threePerson: boolean, matchId: BracketMatchId): string {
+  if (threePerson && matchId === 'sf-0') return 'Semifinal, 2nd seed vs 3rd seed';
+  if (threePerson && matchId === 'sf-1') return 'Consolation, loser vs 1st seed';
+  return roundLabel(matchId);
 }
 
 function RoundColumn({
   ids,
   label,
+  detail,
   liveMatchId,
+  paired,
 }: {
   ids: readonly BracketMatchId[];
   label: string;
+  detail?: string;
   liveMatchId: BracketMatchId | null;
+  paired: boolean;
 }) {
   if (!ids.length) return null;
+  const pairs = paired && ids.length >= 2 ? pairMatchIds(ids) : null;
   return (
     <div className={`bracket__round bracket__round--${ids.length}`}>
       <h2>{label}</h2>
+      {detail ? <p className="bracket__path">{detail}</p> : null}
       <div className="bracket__matches">
-        {ids.map((id) => (
-          <MatchCard key={id} matchId={id} liveMatchId={liveMatchId} />
-        ))}
+        {pairs
+          ? pairs.map((pair) => (
+              <div key={pair[0]} className="bracket__pair">
+                {pair.map((id) => (
+                  <MatchCard key={id} matchId={id} liveMatchId={liveMatchId} />
+                ))}
+              </div>
+            ))
+          : ids.map((id) => <MatchCard key={id} matchId={id} liveMatchId={liveMatchId} />)}
       </div>
     </div>
   );
+}
+
+/** Two matches feed one card in the next round. A last odd card stays in its own pair. */
+function pairMatchIds(ids: readonly BracketMatchId[]): BracketMatchId[][] {
+  const pairs: BracketMatchId[][] = [];
+  for (let index = 0; index < ids.length; index += 2) {
+    pairs.push(ids.slice(index, index + 2));
+  }
+  return pairs;
 }
 
 function MatchCard({
@@ -548,13 +836,29 @@ function MatchCard({
 }) {
   const tournament = useTournamentState();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const from = searchParams.get('from');
+  const fromSuite = from === SUITE_FROM;
+  const fromUnlimited = from === UNLIMITED_FROM;
+  const plainCoach = usePlainCoachBoard();
+  const kids = useKidsScoreboard();
+  const kidsOn = kidsBracketChromeOn(kidsBracketSkinsAllowed(from) && !plainCoach, kids.enabled);
   const hasResult = Boolean(tournament.results[matchId]);
   const live = liveMatchId === matchId;
   const bye = matchHasBye(tournament, matchId);
 
   const openScore = () => {
     openBracketBout(matchId);
-    navigate(scoreboardPath(matchId));
+    navigate(
+      withKidsSkin(
+        withMatchOrigin(scoreboardPath(matchId), {
+          fromSuite,
+          fromUnlimited,
+          whiteBoard: coachLinkedWhiteBoard(fromSuite, true, plainCoach, false),
+        }),
+        kidsOn ? kids.skin : null,
+      ),
+    );
   };
 
   return (
@@ -562,8 +866,13 @@ function MatchCard({
       className={`t-match${matchId === 'final-0' ? ' t-match--final' : ''}${live ? ' t-match--live' : ''}${
         hasResult ? ' t-match--done' : ''
       }${bye ? ' t-match--bye' : ''}`}
-      aria-label={roundLabel(matchId)}
+      aria-label={matchAriaLabel(isThreePersonBracket(tournament), matchId)}
     >
+      {live && !hasResult ? (
+        <p className="t-live-pill" role="status">
+          LIVE
+        </p>
+      ) : null}
       {matchId === 'final-0' ? (
         <p className="t-match__finals-label">
           <span>Championship match</span>
@@ -602,17 +911,33 @@ function MatchCard({
   );
 }
 
+function usePlainCoachBoard(): boolean {
+  const [searchParams] = useSearchParams();
+  return isPlainCoachTournament(searchParams.get('from'), isBasicCoach(useProUnlocked(), useCoachUnlocked()));
+}
+
 function SlotRow({ matchId, side }: { matchId: BracketMatchId; side: MatchSide }) {
   const tournament = useTournamentState();
+  const plainCoach = usePlainCoachBoard();
   const id = slotId(matchId, side);
   const bye = isByeSlot(tournament, id);
   const roster = useRosterState();
   const name = slotName(tournament, id);
-  const gym = rosterGymForName(name, roster.students);
+  const gym = rosterGymForName(
+    name,
+    plainCoach ? studentRosterCards(roster.students) : competitorCards(roster.students),
+  );
   const mark = slotMark(tournament.results[matchId], side);
   const seeds = seedSlots(tournament);
   const seedIndex = seeds.indexOf(id);
-  const placeholder = seedIndex >= 0 ? seedPlaceholder(seedIndex) : 'Winner';
+  const placeholder =
+    isThreePersonBracket(tournament) && id === THREE_PERSON_LOSER_SLOT
+      ? 'Loser'
+      : seedIndex >= 0
+        ? plainCoach
+          ? 'Student name'
+          : seedPlaceholder(seedIndex)
+        : 'Winner';
   const result = tournament.results[matchId];
   const winOn = result?.call === 'win' && result.winnerSide === side;
   const dqOn = result?.call === 'dq' && result.winnerSide !== side;
@@ -642,7 +967,14 @@ function SlotRow({ matchId, side }: { matchId: BracketMatchId; side: MatchSide }
             onChange={(value) => setSlotName(id, value)}
             onPrefill={(prefill) => setSlotName(id, prefill.name)}
             placeholder={placeholder}
-            ariaLabel={`${roundLabel(matchId)}, ${side === 'a' ? 'top' : 'bottom'} competitor`}
+            ariaLabel={
+              plainCoach
+                ? `${roundLabel(matchId)}, ${side === 'a' ? 'top' : 'bottom'} student${
+                    seedIndex >= 0 ? ` ${seedIndex + 1}` : ''
+                  }`
+                : `${roundLabel(matchId)}, ${side === 'a' ? 'top' : 'bottom'} competitor`
+            }
+            names={plainCoach ? 'student' : 'competitor'}
             compact
           />
           {gym ? <span className="t-slot__gym">{gym}</span> : null}
@@ -671,6 +1003,7 @@ function SlotRow({ matchId, side }: { matchId: BracketMatchId; side: MatchSide }
         </div>
       )}
       <OutcomePickSheet
+        portal
         open={sheet}
         title={sheet === 'dq' ? `${label} DQ` : `${label} win`}
         onClose={() => setSheet(null)}

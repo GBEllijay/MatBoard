@@ -100,6 +100,22 @@ export async function unlockAudio(): Promise<void> {
   void loadParouBuffer();
 }
 
+/** True when this document already has an unlocked context that can be heard. */
+export function isAudioRunning(): boolean {
+  return ctx?.state === 'running';
+}
+
+/** Resume this document's context. False when the browser still blocks audio. */
+export async function ensureAudioRunning(): Promise<boolean> {
+  try {
+    const audio = getContext();
+    if (audio.state === 'suspended') await audio.resume();
+    return audio.state === 'running';
+  } catch {
+    return false;
+  }
+}
+
 function getContext(): AudioContext {
   if (!ctx) {
     const Ctor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;

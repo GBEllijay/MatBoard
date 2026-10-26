@@ -239,48 +239,188 @@ describe('gym column', () => {
     assert.equal(older.imported, 1);
     assert.equal(older.students[0]?.gym, '');
     assert.equal(older.students[0]?.note, 'Quiet');
+    assert.equal(older.students[0]?.division, '');
+  });
+});
+
+describe('division column', () => {
+  it('round-trips a division and still imports older files that omit it', () => {
+    const csv = serializeRosterCsv([
+      {
+        name: 'Sam',
+        belt: 'Blue',
+        division: 'Adult Blue, Gi',
+        gym: 'Atos',
+        lastPromotion: '2026-01-02',
+        lastPromotionDetail: '',
+        note: 'Quiet',
+        checkedIn: false,
+      },
+    ]);
+    assert.match(csv, /Sam,Blue,"Adult Blue, Gi",Atos,2026-01-02,,Quiet,No/);
+    const next = importRosterCsv(csv);
+    assert.equal(next.imported, 1);
+    assert.equal(next.students[0]?.division, 'Adult Blue, Gi');
+    assert.equal(next.students[0]?.gym, 'Atos');
+    assert.equal(next.students[0]?.checkedIn, false);
+
+    const older = importRosterCsv('Name,Belt,Gym name,Last promotion,Notes\nPat,Brown,Alliance,2026-01-02,Quiet\n');
+    assert.equal(older.imported, 1);
+    assert.equal(older.students[0]?.division, '');
+    assert.equal(older.students[0]?.gym, 'Alliance');
+    assert.equal(older.students[0]?.note, 'Quiet');
+    assert.equal(older.students[0]?.lastPromotionDetail, '');
+    assert.equal(older.students[0]?.checkedIn, false);
+
+    const aliased = importRosterCsv('Name,Belt,Weight class\nAlex,Purple,Masters 1\n');
+    assert.equal(aliased.students[0]?.division, 'Masters 1');
+
+    const nickname = importRosterCsv('Name,Belt,Gym name / nickname\nSam,Blue,Moose\n');
+    assert.equal(nickname.imported, 1);
+    assert.equal(nickname.students[0]?.gym, 'Moose');
+    assert.equal(nickname.students[0]?.photo, '');
+  });
+});
+
+describe('last promotion detail column', () => {
+  it('round-trips the detail beside the date and still imports a CSV that omits the column', () => {
+    const csv = serializeRosterCsv([
+      {
+        name: 'Ada Cruz',
+        belt: 'White',
+        division: 'Kids Gi',
+        gym: 'GB Ellijay',
+        lastPromotion: '2026-04-01',
+        lastPromotionDetail: '3rd stripe, white belt',
+        note: 'Tape',
+        checkedIn: true,
+      },
+    ]);
+    assert.match(
+      csv,
+      /Ada Cruz,White,Kids Gi,GB Ellijay,2026-04-01,"3rd stripe, white belt",Tape,Yes/,
+    );
+    const next = importRosterCsv(csv);
+    assert.equal(next.imported, 1);
+    assert.equal(next.students[0]?.lastPromotion, '2026-04-01');
+    assert.equal(next.students[0]?.lastPromotionDetail, '3rd stripe, white belt');
+    assert.equal(next.students[0]?.note, 'Tape');
+    assert.equal(next.students[0]?.checkedIn, true);
+
+    const legacy = importRosterCsv('Name,Belt,Last promotion,Notes\nPat,Brown,2026-01-02,Quiet\n');
+    assert.equal(legacy.imported, 1);
+    assert.equal(legacy.students[0]?.lastPromotion, '2026-01-02');
+    assert.equal(legacy.students[0]?.lastPromotionDetail, '');
+    assert.equal(legacy.students[0]?.note, 'Quiet');
+
+    const aliased = importRosterCsv(
+      'Name,Belt,Promotion date,Promotion detail\nSam,Blue,3/12/2026,blue belt\n',
+    );
+    assert.equal(aliased.students[0]?.lastPromotion, '2026-03-12');
+    assert.equal(aliased.students[0]?.lastPromotionDetail, 'blue belt');
+
+    const clipped = importRosterCsv(
+      `Name,Belt,Last promotion detail\nSam,Blue,${'x'.repeat(120)}\n`,
+    );
+    assert.equal(clipped.students[0]?.lastPromotionDetail.length, 80);
+  });
+});
+
+describe('check in column', () => {
+  it('reads Yes and leaves older files unchecked', () => {
+    const yes = importRosterCsv('Name,Belt,Checked in\nSam,Blue,Yes\nPat,Purple,No\n');
+    assert.equal(yes.students[0]?.checkedIn, true);
+    assert.equal(yes.students[1]?.checkedIn, false);
+    const older = importRosterCsv('Name,Belt,Division\nAlex,Purple,Adult Purple\n');
+    assert.equal(older.students[0]?.checkedIn, false);
+    assert.equal(older.students[0]?.division, 'Adult Purple');
   });
 });
 
 describe('serializeRosterCsv', () => {
-  it('writes an Excel-friendly UTF-8 template with a single-cell belt guide', () => {
+  it('writes a header-first template with blank rows and no sample person', () => {
     const csv = rosterCsvTemplate();
-    assert.match(csv, /^sep=,/);
-    assert.match(csv, /Save as CSV UTF-8/);
-    assert.match(csv, /blackbelt/i);
-    assert.match(csv, /black belt/i);
-    assert.equal(csv.includes('Name,Belt,Gym name,Last promotion,Notes\r\n'), true);
-    assert.equal(csv.includes('Alex Rivera,Purple,Alliance,2026-03-12,'), true);
-    const guideRow = parseCsv(csv, detectCsvDelimiter(csv)).find((row) => row[0]?.trim().startsWith('#'));
-    assert.equal(guideRow?.length, 1);
+    assert.equal(csv.startsWith('sep='), false);
+    assert.equal(csv.includes('#'), false);
+    assert.equal(csv.includes('Alex Rivera'), false);
+    assert.equal(
+      csv.startsWith(
+        'Name,Belt,Division,Gym name / nickname,Last promotion,Last promotion detail,Notes,Check In\r\n',
+      ),
+      true,
+    );
+    const lines = csv.split('\r\n').filter((line) => line.length);
+    assert.equal(lines.length, 4);
+    assert.equal(lines.slice(1).every((line) => line === ',,,,,,,'), true);
+    const rows = parseCsv(csv, detectCsvDelimiter(csv));
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0]?.[0], 'Name');
     assert.equal(withUtf8Bom(csv).startsWith('\uFEFF'), true);
-    const roundTrip = importRosterCsv(csv);
-    assert.equal(roundTrip.imported, 1);
-    assert.equal(roundTrip.students[0]?.name, 'Alex Rivera');
-    assert.equal(roundTrip.students[0]?.belt, 'Purple');
-    assert.equal(roundTrip.students[0]?.gym, 'Alliance');
+    const roundTrip = importRosterCsv(withUtf8Bom(csv));
+    assert.equal(roundTrip.imported, 0);
+    assert.equal(roundTrip.skipped, 0);
+    assert.equal(roundTrip.error, undefined);
+  });
+
+  it('still imports an older template with sep=, a # guide, and Competitor Notes', () => {
+    const older = [
+      'sep=,',
+      '"# Save as CSV UTF-8 (comma-separated), not an Excel workbook (.xlsx). One competitor per row."',
+      'Name,Belt,Division,Gym name / nickname,Last promotion,Competitor Notes,Check In',
+      'Alex Rivera,Purple,Adult Purple,Alliance,2026-03-12,Example - delete this row. Save as CSV UTF-8.,No',
+    ].join('\r\n');
+    const next = importRosterCsv(older);
+    assert.equal(next.imported, 1);
+    assert.equal(next.students[0]?.name, 'Alex Rivera');
+    assert.equal(next.students[0]?.belt, 'Purple');
+    assert.equal(next.students[0]?.gym, 'Alliance');
+    assert.equal(next.students[0]?.division, 'Adult Purple');
+    assert.equal(next.students[0]?.note, 'Example - delete this row. Save as CSV UTF-8.');
+    assert.equal(next.students[0]?.checkedIn, false);
+    assert.equal(next.students[0]?.photo, '');
   });
 
   it('imports every filled template row with mixed belts and an accented name', () => {
     const csv = `${rosterCsvTemplate().trimEnd()}\r\n${THREE_ROW_PEOPLE.map((row) => `${csvField(row.name)},${row.belt},,`).join('\r\n')}\r\n`;
     const next = importRosterCsv(csv);
-    assert.equal(next.imported, 4);
+    assert.equal(next.imported, 3);
+    assert.equal(next.skipped, 0);
     assert.deepEqual(
       next.students.map((row) => `${row.name}:${row.belt}`),
-      ['Alex Rivera:Purple', ...THREE_ROW_PEOPLE.map((row) => `${row.name}:${row.belt}`)],
+      THREE_ROW_PEOPLE.map((row) => `${row.name}:${row.belt}`),
     );
   });
 
   it('quotes notes so a round-trip keeps commas', () => {
     const csv = serializeRosterCsv([
-      { name: 'Sam', belt: 'Blue', gym: 'Atos', lastPromotion: '2026-01-02', note: 'Rest, ice' },
+      {
+        name: 'Sam',
+        belt: 'Blue',
+        division: 'Kids Gi',
+        gym: 'Atos',
+        lastPromotion: '2026-01-02',
+        lastPromotionDetail: '',
+        note: 'Rest, ice',
+        checkedIn: true,
+      },
     ]);
-    assert.match(csv, /Sam,Blue,Atos,2026-01-02,"Rest, ice"/);
+    assert.match(csv, /Sam,Blue,Kids Gi,Atos,2026-01-02,,"Rest, ice",Yes/);
     const next = importRosterCsv(csv);
+    assert.equal(next.students[0]?.checkedIn, true);
+    assert.equal(next.students[0] != null && 'knownInjuries' in next.students[0], false);
     assert.deepEqual(
       next.students.map((row) => `${row.name}:${row.note}`),
       ['Sam:Rest, ice'],
     );
+
+    const legacy = importRosterCsv(
+      'Name,Belt,Notes,Known injuries\nSam,Blue,"Rest, ice",Left knee\n',
+    );
+    assert.equal(legacy.students[0]?.note, 'Rest, ice');
+    assert.equal(legacy.students[0] != null && 'knownInjuries' in legacy.students[0], false);
+
+    const named = importRosterCsv('Name,Belt,Competitor Notes\nAlex,Purple,Tape the knee\n');
+    assert.equal(named.students[0]?.note, 'Tape the knee');
   });
 });
 

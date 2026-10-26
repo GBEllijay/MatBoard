@@ -16,8 +16,9 @@ type Props = {
 };
 
 /**
- * One Events TV page. A vertical photo stays in the center. QR codes sit to
- * its right. With the gym logo on, the mark sits to the left of the photo.
+ * One Events TV page. The gym logo stays left of the QR codes. On a phone the
+ * codes sit to the right of the photo. On a wide landscape TV the logo and
+ * codes share the band above the photo.
  */
 export function EventCastSlide({ item, src, mode, logoUrl }: Props) {
   const links = normalizeQrLinks(item.qrLinks);
@@ -66,14 +67,16 @@ export function EventCastSlide({ item, src, mode, logoUrl }: Props) {
             {showLogo && logoUrl ? (
               <img className="event-cast__mark" src={logoUrl} alt="Gym logo" />
             ) : null}
-            {src ? (
-              <img className="shop-cast__photo event-cast__photo" src={src} alt="" />
-            ) : (
-              <div className="shop-cast__photo shop-cast__photo--empty" />
-            )}
+            <div className="event-cast__photo-wrap">
+              {src ? (
+                <img className="shop-cast__photo event-cast__photo" src={src} alt="" />
+              ) : (
+                <div className="shop-cast__photo shop-cast__photo--empty" />
+              )}
+              {codes.length ? null : <p className="shop-cast__name event-cast__caption-name">{name}</p>}
+            </div>
             {codes.length ? (
               <div className="event-cast__side">
-                <p className="shop-cast__name">{name}</p>
                 <div className="event-cast__codes">
                   {codes.map((href) => {
                     const caption = qrLinkCaption(href);
@@ -85,10 +88,9 @@ export function EventCastSlide({ item, src, mode, logoUrl }: Props) {
                     );
                   })}
                 </div>
+                <p className="shop-cast__name">{name}</p>
               </div>
-            ) : (
-              <p className="shop-cast__name event-cast__caption-name">{name}</p>
-            )}
+            ) : null}
           </div>
         </article>
       </div>

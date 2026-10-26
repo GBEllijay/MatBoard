@@ -1,5 +1,7 @@
 import { scoreboardPath } from './bracketBout';
+import { withKidsSkin, type KidsSkinId } from './kidsScoreboard';
 import { attachPresentation, getMatch } from './matchStore';
+import { withMatchOrigin } from './scoreboardSkin';
 import { isBracketMatchId } from './tournamentStore';
 
 type PresentationRequestCtor = new (urls: string[]) => {
@@ -10,19 +12,30 @@ type PresentationRequestCtor = new (urls: string[]) => {
   }>;
 };
 
-export function displayUrl(options?: { fromSuite?: boolean }): string {
+function displayUrl(options?: {
+  fromSuite?: boolean;
+  fromUnlimited?: boolean;
+  whiteBoard?: boolean;
+  kidsSkin?: KidsSkinId | null;
+}): string {
   const bout = getMatch().bracketMatchId;
-  const path = isBracketMatchId(bout) ? scoreboardPath(bout) : '/match';
-  const url = new URL(path, window.location.origin);
-  if (options?.fromSuite) url.searchParams.set('from', 'suite');
-  return url.toString();
+  const path = withKidsSkin(
+    withMatchOrigin(isBracketMatchId(bout) ? scoreboardPath(bout) : '/match', {
+      fromSuite: Boolean(options?.fromSuite),
+      fromUnlimited: Boolean(options?.fromUnlimited),
+      whiteBoard: Boolean(options?.whiteBoard),
+    }),
+    options?.kidsSkin ?? null,
+  );
+  return new URL(path, window.location.origin).toString();
 }
 
-export function controllerUrl(): string {
-  return new URL('/match/control', window.location.origin).toString();
-}
-
-export async function openOrCastDisplay(options?: { fromSuite?: boolean }): Promise<'cast' | 'window'> {
+export async function openOrCastDisplay(options?: {
+  fromSuite?: boolean;
+  fromUnlimited?: boolean;
+  whiteBoard?: boolean;
+  kidsSkin?: KidsSkinId | null;
+}): Promise<'cast' | 'window'> {
   const url = displayUrl(options);
   const Request = (window as typeof window & { PresentationRequest?: PresentationRequestCtor }).PresentationRequest;
   if (Request) {
@@ -44,6 +57,11 @@ export async function openOrCastDisplay(options?: { fromSuite?: boolean }): Prom
   return 'window';
 }
 
-export function openDisplayWindow(options?: { fromSuite?: boolean }): void {
+export function openDisplayWindow(options?: {
+  fromSuite?: boolean;
+  fromUnlimited?: boolean;
+  whiteBoard?: boolean;
+  kidsSkin?: KidsSkinId | null;
+}): void {
   window.open(displayUrl(options), 'matboard-display', 'popup,noopener,noreferrer,width=1280,height=720');
 }

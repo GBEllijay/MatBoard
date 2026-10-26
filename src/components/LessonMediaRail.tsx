@@ -11,6 +11,8 @@ type Props = {
   showVideo: boolean;
   videoLabel: string;
   clipUrl?: string;
+  /** Clip name saved with that day's plan. Empty when the slot has no media. */
+  mediaName?: string;
   onPlay: () => void;
   linkedTree?: { id: string; name: string } | null;
   treeChoices?: TreeChoice[];
@@ -18,6 +20,8 @@ type Props = {
   storedTreeId?: string;
   onOpenTree?: (treeId: string) => void;
   onPickTree?: (treeId: string | null) => void;
+  /** Empty-library link. Callers pass the hub flag so Back stays on that hub. */
+  treeLibraryTo?: string;
 };
 
 /** Small video preview plus an optional Technique Tree control for one lesson section. */
@@ -25,6 +29,7 @@ export function LessonMediaRail({
   showVideo,
   videoLabel,
   clipUrl,
+  mediaName = '',
   onPlay,
   linkedTree = null,
   treeChoices = [],
@@ -32,6 +37,7 @@ export function LessonMediaRail({
   storedTreeId,
   onOpenTree,
   onPickTree,
+  treeLibraryTo = '/technique-tree',
 }: Props) {
   const [open, setOpen] = useState(false);
   const [thumbFailed, setThumbFailed] = useState(false);
@@ -100,9 +106,9 @@ export function LessonMediaRail({
       {showVideo ? (
         <button
           type="button"
-          className={clipUrl ? 'notes__video notes__video--on' : 'notes__video'}
-          disabled={!clipUrl}
-          aria-label={clipUrl ? `Play ${videoLabel}` : `No ${videoLabel} video today`}
+          className={clipUrl && !thumbFailed ? 'notes__video notes__video--on' : 'notes__video notes__video--go'}
+          aria-label={`Open Daily Training Videos for ${videoLabel}`}
+          title={`Open Daily Training Videos for ${videoLabel}`}
           onClick={onPlay}
         >
           {clipUrl && !thumbFailed ? (
@@ -119,8 +125,10 @@ export function LessonMediaRail({
           ) : (
             <span className="notes__video-empty" aria-hidden="true" />
           )}
+          {clipUrl && !thumbFailed ? <span className="notes__video-mark" aria-hidden="true" /> : null}
         </button>
       ) : null}
+      {showVideo && mediaName ? <p className="notes__video-name">{mediaName}</p> : null}
       {linkedTree && onOpenTree ? (
         <button
           type="button"
@@ -181,7 +189,7 @@ export function LessonMediaRail({
           ) : (
             <li>
               <p className="notes__tree-none">No Technique Tree with a base yet.</p>
-              <Link className="notes__tree-choice" to="/technique-tree" onClick={() => setOpen(false)}>
+              <Link className="notes__tree-choice" to={treeLibraryTo} onClick={() => setOpen(false)}>
                 <span>Open Technique Tree</span>
               </Link>
             </li>

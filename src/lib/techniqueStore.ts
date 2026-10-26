@@ -2,7 +2,9 @@ import {
   assignOrphanClips,
   canAssignClip,
   clampDrillSec,
+  clampDriveFileId,
   DEFAULT_DRILL_SEC,
+  emptyVideoPlan,
   pickAddableVideos,
   planFromFlatClips,
   sanitizeVideoPlan,
@@ -15,6 +17,11 @@ import {
 import { comparePlaylistItems, type PlaylistItem } from './playlist';
 import { mimeFromFile, VIDEO_ACCEPT } from './photoStore';
 import { assertOriginRoom, isStorageQuotaError, StorageQuotaError } from './storageQuota.ts';
+import { readCurriculumClip } from './curriculumClips.ts';
+import { curriculumReferencedClipIds, loadCurriculumArchive } from './competitionCurriculum.ts';
+import { lessonPlansReferencingClip } from './planVideos.ts';
+import { otherDateClipIds, saveTechniquePlanOnDate, storedTechniquePlan } from './techniquePlanDates.ts';
+import { localDateKey } from './trainingNotesStore.ts';
 
 export {
   canAssignClip,
@@ -43,7 +50,8 @@ export const TECHNIQUE_FOLDER = {
   accept: VIDEO_ACCEPT,
   mimePrefix: 'video/',
   labelPrefix: 'Clip',
-  emptyCopy: 'Add video opens Record or Pick from gallery — one clip per card. Clips stay on this device.',
+  emptyCopy:
+    'Add video opens Record or Pick from gallery — one clip per card. Connect Google Drive, then save this day, to copy clips into the gym Drive folder for the gym owner and instructors. Until then, they stay on this device and are not shared yet.',
   orderHint: 'Tap a card to select it. Start loops that clip.',
 } as const;
 
@@ -132,7 +140,9 @@ async function readPrefs(): Promise<{ plan: unknown; selectedId: unknown; drillS
   }
 }
 
-export async function saveTechniquePlan(plan: VideoPlan): Promise<void> {
+export async function saveTechniquePlan(plan: VideoPlan, dateKey = localDateKey()): Promise<void> {
+  saveTechniquePlanOnDate(dateKey, plan);
+  if (dateKey !== localDateKey()) return;
   const db = await openDb();
   const tx = db.transaction(PREFS, 'readwrite');
   tx.objectStore(PREFS).put(plan, PLAN_KEY);
@@ -156,9 +166,11 @@ export async function loadTechniqueBoard(): Promise<{ clips: TechniqueClip[]; pl
 
   let plan: VideoPlan;
   let changed: boolean;
+  const reserved = reservedCurriculumClipIds();
+  for (const clipId of otherDateClipIds(localDateKey())) reserved.add(clipId);
   if (version === 2) {
     const sanitized = sanitizeVideoPlan(rawPlan, clipIds);
-    const placed = assignOrphanClips(sanitized.plan, clipIds);
+    const placed = assignOrphanClips(sanitized.plan, clipIds, reserved);
     plan = placed.plan;
     changed = sanitized.changed || placed.changed;
   } else {
@@ -167,12 +179,126 @@ export async function loadTechniqueBoard(): Promise<{ clips: TechniqueClip[]; pl
       selectedClipId: typeof prefs.selectedId === 'string' ? prefs.selectedId : null,
       drillSec: clampDrillSec(Number(prefs.drillSec ?? DEFAULT_DRILL_SEC)),
     });
-    const placed = assignOrphanClips(migrated, clipIds);
+    const placed = assignOrphanClips(migrated, clipIds, reserved);
     plan = placed.plan;
     changed = true;
   }
   if (changed) await saveTechniquePlan(plan);
+  else saveTechniquePlanOnDate(localDateKey(), plan);
   return { clips, plan };
+}
+
+/** Today's board, or an earlier day's snapshot. A past day does not show today's clips. */
+export async function loadTechniqueBoardForDate(
+  dateKey: string,
+): Promise<{ clips: TechniqueClip[]; plan: VideoPlan }> {
+  if (dateKey === localDateKey()) return loadTechniqueBoard();
+  const clips = await listTechniqueClips();
+  const saved = storedTechniquePlan(
+    dateKey,
+    clips.map((clip) => clip.id),
+  );
+  return { clips, plan: saved ?? emptyVideoPlan() };
+}
+
+function reservedCurriculumClipIds(): Set<string> {
+  try {
+    return new Set(curriculumReferencedClipIds(loadCurriculumArchive()));
+  } catch {
+    return new Set();
+  }
+}
+
+function rawPlanClipIds(plan: unknown): Set<string> {
+  const slots =
+    plan && typeof plan === 'object' && !Array.isArray(plan) ? (plan as { slots?: unknown }).slots : null;
+  const ids = new Set<string>();
+  if (!Array.isArray(slots)) return ids;
+  for (const slot of slots) {
+    if (!slot || typeof slot !== 'object') continue;
+    const clipId = (slot as { clipId?: unknown }).clipId;
+    if (typeof clipId === 'string' && clipId) ids.add(clipId);
+  }
+  return ids;
+}
+
+async function putClip(row: TechniqueClip): Promise<void> {
+  const db = await openDb();
+  const tx = db.transaction(CLIPS, 'readwrite');
+  tx.objectStore(CLIPS).put(row);
+  await txDone(tx);
+}
+
+export async function readTrainingClip(id: string): Promise<TechniqueClip | null> {
+  if (!id) return null;
+  const db = await openDb();
+  const row = await new Promise<ClipRow | undefined>((resolve, reject) => {
+    const tx = db.transaction(CLIPS, 'readonly');
+    const req = tx.objectStore(CLIPS).get(id);
+    req.onsuccess = () => resolve(req.result as ClipRow | undefined);
+    req.onerror = () => reject(req.error);
+  });
+  return row ? normalizeClip(row, 0) : null;
+}
+
+/** Save a clip in the Daily Training library without placing it on a lesson card. */
+export async function saveTrainingClip(file: File, label: string): Promise<TechniqueClip | null> {
+  const [picked] = pickAddableVideos([file], 1);
+  if (!picked) return null;
+  const clips = await listTechniqueClips();
+  const nextOrder = clips.reduce((max, clip) => Math.max(max, clip.sortOrder), -1) + 1;
+  const row: TechniqueClip = {
+    id: crypto.randomUUID(),
+    mime: mimeFromFile(picked, TECHNIQUE_FOLDER),
+    addedAt: Date.now(),
+    blob: picked,
+    label: label.trim().slice(0, 180) || TECHNIQUE_FOLDER.labelPrefix,
+    folderId: TECHNIQUE_FOLDER_ID,
+    sortOrder: nextOrder,
+  };
+  await assertOriginRoom(picked.size);
+  try {
+    await putClip(row);
+  } catch (error) {
+    if (error instanceof StorageQuotaError) throw error;
+    if (isStorageQuotaError(error)) throw new StorageQuotaError(0);
+    throw error;
+  }
+  return row;
+}
+
+/**
+ * Find a clip in the Daily Training library. An older curriculum-only copy is
+ * moved into that library so the shared window can play it.
+ */
+export async function readTrainingClipBlob(id: string): Promise<Blob | null> {
+  const current = await readTrainingClip(id);
+  if (current?.blob) return current.blob;
+  const legacy = await readCurriculumClip(id);
+  if (!legacy?.blob) return null;
+  const clips = await listTechniqueClips();
+  const nextOrder = clips.reduce((max, clip) => Math.max(max, clip.sortOrder), -1) + 1;
+  await putClip({
+    id: legacy.id,
+    mime: legacy.mime,
+    addedAt: legacy.addedAt,
+    blob: legacy.blob,
+    label: legacy.name,
+    folderId: TECHNIQUE_FOLDER_ID,
+    sortOrder: nextOrder,
+  });
+  return legacy.blob;
+}
+
+/** Remove a clip that is not sitting on a Daily Training card. */
+export async function deleteUnusedTrainingClip(id: string): Promise<void> {
+  if (!id) return;
+  const prefs = await readPrefs();
+  if (rawPlanClipIds(prefs.plan).has(id)) return;
+  const db = await openDb();
+  const tx = db.transaction(CLIPS, 'readwrite');
+  tx.objectStore(CLIPS).delete(id);
+  await txDone(tx);
 }
 
 function slotClipLabel(plan: VideoPlan, slotId: string): string {
@@ -186,6 +312,7 @@ export async function attachClipToSlot(
   plan: VideoPlan,
   slotId: string,
   file: File,
+  driveFileId: string | null = null,
 ): Promise<{ plan: VideoPlan; clips: TechniqueClip[]; status: SlotWriteStatus }> {
   const slot = plan.slots.find((item) => item.slotId === slotId);
   const clips = await listTechniqueClips();
@@ -211,7 +338,7 @@ export async function attachClipToSlot(
     const db = await openDb();
     const tx = db.transaction(CLIPS, 'readwrite');
     const store = tx.objectStore(CLIPS);
-    if (slot.clipId) store.delete(slot.clipId);
+    if (slot.clipId && !lessonPlansReferencingClip(slot.clipId)) store.delete(slot.clipId);
     store.put(row);
     await txDone(tx);
   } catch (error) {
@@ -220,7 +347,17 @@ export async function attachClipToSlot(
     throw error;
   }
 
-  const next = selectSlot(setSlotClip(plan, slotId, clipId), slotId);
+  // The blob stays in this device's clip store as the offline cache.
+  // A Pro save copies the bytes into the gym Drive folder and then fills driveFileId.
+  // Nothing is uploaded to an Advantage server. The blob is not deleted after upload.
+  const next = selectSlot(
+    setSlotClip(plan, slotId, clipId, {
+      driveFileId,
+      mediaName: picked.name || row.label,
+      mediaMime: row.mime,
+    }),
+    slotId,
+  );
   await saveTechniquePlan(next);
   return {
     plan: next,
@@ -242,11 +379,58 @@ export async function clearSlotClip(
     const clips = await listTechniqueClips();
     return { plan, clips, status: 'empty' };
   }
-  const db = await openDb();
-  const tx = db.transaction(CLIPS, 'readwrite');
-  tx.objectStore(CLIPS).delete(slot.clipId);
-  await txDone(tx);
+  if (!lessonPlansReferencingClip(slot.clipId)) {
+    const db = await openDb();
+    const tx = db.transaction(CLIPS, 'readwrite');
+    tx.objectStore(CLIPS).delete(slot.clipId);
+    await txDone(tx);
+  }
   const next = setSlotClip(plan, slotId, null);
   await saveTechniquePlan(next);
   return { plan: next, clips: await listTechniqueClips(), status: 'removed' };
+}
+
+/**
+ * Keep a Drive training video on this phone. An existing clip with the same
+ * Drive file id is reused, so opening the day again does not download twice.
+ * Pass a null blob to ask for that reuse only.
+ */
+export async function storeRestoredDriveClip(input: {
+  driveFileId: string;
+  blob: Blob | null;
+  mime: string;
+  label: string;
+}): Promise<string | null> {
+  const driveFileId = clampDriveFileId(input.driveFileId);
+  if (!driveFileId) return null;
+  const board = await loadTechniqueBoard();
+  const kept = board.plan.slots.find(
+    (slot) => slot.driveFileId === driveFileId && slot.clipId && board.clips.some((clip) => clip.id === slot.clipId),
+  );
+  if (kept?.clipId) return kept.clipId;
+  if (!input.blob || input.blob.size <= 0) return null;
+  const clipId = crypto.randomUUID();
+  const nextOrder = board.clips.reduce((max, clip) => Math.max(max, clip.sortOrder), -1) + 1;
+  const mime = input.mime.toLowerCase().startsWith('video/') ? input.mime.toLowerCase() : 'video/mp4';
+  const row: TechniqueClip = {
+    id: clipId,
+    mime,
+    addedAt: Date.now(),
+    blob: input.blob,
+    label: input.label.trim().slice(0, 180) || TECHNIQUE_FOLDER.labelPrefix,
+    folderId: TECHNIQUE_FOLDER_ID,
+    sortOrder: nextOrder,
+  };
+  await assertOriginRoom(input.blob.size);
+  try {
+    const db = await openDb();
+    const tx = db.transaction(CLIPS, 'readwrite');
+    tx.objectStore(CLIPS).put(row);
+    await txDone(tx);
+  } catch (error) {
+    if (error instanceof StorageQuotaError) throw error;
+    if (isStorageQuotaError(error)) throw new StorageQuotaError(0);
+    throw error;
+  }
+  return clipId;
 }

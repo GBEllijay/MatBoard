@@ -18,25 +18,41 @@ export function fullscreenSupported(): boolean {
   return Boolean(document.fullscreenEnabled || doc.webkitFullscreenEnabled);
 }
 
-export async function requestPageFullscreen(): Promise<boolean> {
-  const el = document.documentElement as FsEl;
-  try {
-    if (typeof el.requestFullscreen === 'function') {
+export type FullscreenRequestResult = 'standard' | 'webkit' | 'unsupported';
+
+/**
+ * Fullscreen on one element so the browser URL bar and chrome leave the screen.
+ * `requestFullscreen` first, then the webkit prefix. Unsupported means the
+ * caller should use the fixed 100dvh cover instead.
+ */
+export async function requestElementFullscreen(el: HTMLElement): Promise<FullscreenRequestResult> {
+  const target = el as FsEl;
+  if (typeof target.requestFullscreen === 'function') {
+    try {
       try {
-        await el.requestFullscreen({ navigationUI: 'hide' });
+        await target.requestFullscreen({ navigationUI: 'hide' });
       } catch {
-        await el.requestFullscreen();
+        await target.requestFullscreen();
       }
-      return Boolean(fullscreenElement());
+      return fullscreenElement() ? 'standard' : 'unsupported';
+    } catch {
+      /* try the prefix used by older WebKit */
     }
-    if (typeof el.webkitRequestFullscreen === 'function') {
-      el.webkitRequestFullscreen();
-      return true;
-    }
-  } catch {
-    return false;
   }
-  return false;
+  if (typeof target.webkitRequestFullscreen === 'function') {
+    try {
+      target.webkitRequestFullscreen();
+      return 'webkit';
+    } catch {
+      return 'unsupported';
+    }
+  }
+  return 'unsupported';
+}
+
+export async function requestPageFullscreen(): Promise<boolean> {
+  const result = await requestElementFullscreen(document.documentElement);
+  return result !== 'unsupported';
 }
 
 export async function exitPageFullscreen(): Promise<void> {

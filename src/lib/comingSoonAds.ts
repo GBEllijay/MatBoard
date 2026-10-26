@@ -1,18 +1,24 @@
 import {
   COACH_HOME_TEASER,
-  COMPETITOR_ROSTER_LABEL,
+  STUDENT_NOTES_LABEL,
+  STUDENT_ROSTER_LABEL,
   TECHNIQUE_TREE_LABEL,
   TRAINING_NOTES_LABEL,
 } from './coachCopy.ts';
 import {
-  COMPETITOR_SYSTEM_NAME,
   GYM_CONSOLE_NAME,
-  INSTRUCTOR_COLLAB_NAME,
+  INSTRUCTOR_COLLAB_HUB_LABEL,
+  INSTRUCTOR_COACH_ENTRY,
   MEDIA_CONSOLE_NAME,
-  TOURNAMENT_SUITE_NAME,
+  PRO_LADDER_DETAIL,
+  STUDENT_EDITION_NAME,
+  STUDENT_HOME_DESCRIPTION,
+  TOURNAMENT_MANAGEMENT_PRO_LABEL,
 } from './productNames.ts';
+import { COACH_PRICE_LINE, PRO_PRICE_LINE, STUDENT_PRICE_LINE } from './productPrices.ts';
+import { SITE_FEEDBACK_EMAIL } from './siteFooter.ts';
 
-export type SoonProduct = 'coach' | 'pro';
+export type SoonProduct = 'coach' | 'pro' | 'student';
 
 export type ComingSoonFeature = {
   title: string;
@@ -23,19 +29,46 @@ export type ComingSoonAdCopy = {
   title: string;
   kicker: string;
   lead: string;
+  includes: string;
+  aside?: string;
   features: ComingSoonFeature[];
   dismiss: string;
 };
 
-/** Locked Pro splash gold label. Coach is ready and does not use this. */
+/** Locked Pro and Student splash gold label. Coach does not use this. */
 export const COMING_SOON_LABEL = 'Coming Soon';
 
+/** Caption on the locked Coach shot of the unlocked Coach home. */
+export const COACH_PREVIEW_LABEL = 'Advantage Coach';
+
+/** One line under that shot. The picture is the live Coach button list. */
+export const COACH_PREVIEW_NOTE =
+  'Daily Lesson Plan, training videos, Technique Tree, Student Roster, and a plain mock tournament.';
+
 /** Caption on the Pro Coming Soon shot of the unlocked console home. */
-export const PRO_CONSOLE_PREVIEW_LABEL = "Gym Owner and Instructor's Console";
+export const PRO_CONSOLE_PREVIEW_LABEL = 'Advantage Pro';
 
 /** One line under that shot. The picture is the live four-hub console, not a wireframe. */
 export const PRO_CONSOLE_PREVIEW_NOTE =
-  'Media Console, competitors, instructor access, and the tournament suite.';
+  'Media Console, Advantage Coach Unlimited, instructor invites, and Tournament Management Pro.';
+
+/** Shown on Coming soon. Not a checkout button. */
+export const COACH_LAUNCH_PRICE_NOTE = `Price: ${COACH_PRICE_LINE} when it launches. Not for sale on this page.`;
+
+/** Shown on Coming soon. Not a checkout button. Numbers stay the locked Pro prices. */
+export const PRO_LAUNCH_PRICE_NOTE = `Price: ${PRO_PRICE_LINE} when it launches. Not for sale on this page.`;
+
+/** Shown on Coming soon. Student Edition has no Stripe price in this build. */
+export const STUDENT_LAUNCH_PRICE_NOTE = `Price: ${STUDENT_PRICE_LINE} when it launches. Not for sale on this page.`;
+
+/** Caption on the Student Edition Coming Soon journal. */
+export const STUDENT_PREVIEW_LABEL = STUDENT_EDITION_NAME;
+
+/** One line under that journal. */
+export const STUDENT_PREVIEW_NOTE = 'Journal, journal cards, a fundamentals checklist, calendar, and belt progress stay on this phone.';
+
+/** Same request line as the home cards. Product sheets pass their own note. */
+export const ALPHA_TRIAL_NOTE = `Email ${SITE_FEEDBACK_EMAIL} to request an alpha code.`;
 
 export const PRODUCT_TEASERS = {
   coach: COACH_HOME_TEASER,
@@ -48,27 +81,30 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
   coach: {
     title: 'Advantage Coach',
     kicker: '',
-    lead: '',
+    lead: "Tools and templates for coaches. Plan today's class and loop training videos.",
+    includes: 'Includes everything in Advantage White.',
+    aside:
+      'Basic Coach does not include Competition Class Curriculum or Competition Team Management.',
     features: [
       {
         title: TRAINING_NOTES_LABEL,
-        body: 'Everything you need for class — warm-up, techniques, cool-down, and closing. Saved on this device.',
+        body: "Plan today's class on this phone — warm-up, techniques, cool-down, and closing. Saved on this device.",
       },
       {
         title: 'Daily Training Videos',
-        body: 'Up to 10 on-device clips. Loop one while the class drills, with a 2:30 / 5:00 / 7:00 timer on the screen.',
+        body: 'Loop training clips while the class drills. Clips stay on this phone.',
       },
       {
         title: TECHNIQUE_TREE_LABEL,
         body: 'Map a base position into branches and defenses. Trees stay on this phone.',
       },
       {
-        title: 'Mock Tournament',
-        body: 'Run a bracket of up to 16 competitors on the gym TV. Score each bout and track winners on the same easy to use scoreboard.',
+        title: STUDENT_ROSTER_LABEL,
+        body: `Name, belt, other belt, Division, gym name or nickname, last promotion, and ${STUDENT_NOTES_LABEL}. No photo on basic Coach.`,
       },
       {
-        title: COMPETITOR_ROSTER_LABEL,
-        body: 'Names and belts you pick into Live Bout and mock brackets.',
+        title: 'Mock Tournament',
+        body: 'A plain bracket on this phone. No skins and no rankings.',
       },
     ],
     dismiss: 'Got it',
@@ -76,23 +112,53 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
   pro: {
     title: 'Advantage Pro',
     kicker: COMING_SOON_LABEL,
-    lead: '',
+    lead: PRO_LADDER_DETAIL,
+    includes: 'Includes everything in Advantage Coach and Advantage White.',
     features: [
       {
         title: MEDIA_CONSOLE_NAME,
         body: 'Gallery, Class Schedule, Pro Shop, and Events on the gym TV.',
       },
       {
-        title: COMPETITOR_SYSTEM_NAME,
-        body: 'Competitor roster and on-device rankings. Seeding from rankings comes later.',
+        title: INSTRUCTOR_COACH_ENTRY,
+        body: 'Daily Lesson Plan, Daily Training Videos, Technique Tree, and Competition Class Curriculum. Google Drive is an extra folder when this tier is unlocked.',
       },
       {
-        title: INSTRUCTOR_COLLAB_NAME,
-        body: 'Coming soon. An Instructor console, shared training, and roster approval with the owner.',
+        title: INSTRUCTOR_COLLAB_HUB_LABEL,
+        body: 'Invite instructors on this device and choose what each seat can open.',
       },
       {
-        title: TOURNAMENT_SUITE_NAME,
-        body: 'Live event ops: brackets, scoreboard, match controller, rounds, and round controller.',
+        title: TOURNAMENT_MANAGEMENT_PRO_LABEL,
+        body: 'Pro brackets, the scoreboard, and the round timer, with extra skins and animations.',
+      },
+    ],
+    dismiss: 'Got it',
+  },
+  student: {
+    title: STUDENT_EDITION_NAME,
+    kicker: COMING_SOON_LABEL,
+    lead: STUDENT_HOME_DESCRIPTION,
+    includes: 'Daily notes, journal cards, and a fundamentals checklist stay on this phone.',
+    features: [
+      {
+        title: 'Journal',
+        body: "Today's page: date, gi or no-gi, an A/B/C game, techniques, partners, drills, rolls, and notes.",
+      },
+      {
+        title: 'Journal cards',
+        body: 'Search saved cards and add a later note. The first note stays.',
+      },
+      {
+        title: 'Fundamentals',
+        body: 'A checklist. Mark what you have learned and add your own lines.',
+      },
+      {
+        title: 'Calendar',
+        body: 'A month page. Days with journal cards are marked. Add a class, open mat, tournament, or promotion test.',
+      },
+      {
+        title: 'Belt progress',
+        body: 'Filled checkpoints between belts, goals, and coach notes you can copy.',
       },
     ],
     dismiss: 'Got it',

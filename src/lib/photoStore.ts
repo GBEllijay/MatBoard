@@ -1,3 +1,4 @@
+import { FolderBatchError, type FolderSaveProgress } from './folderBatch.ts';
 import { shrinkPhotoForStore } from './imageShrink.ts';
 import { PHOTO_PICKER_ACCEPT, VIDEO_PICKER_ACCEPT } from './mediaPicker.ts';
 import { assertOriginRoom, isStorageQuotaError, StorageQuotaError } from './storageQuota.ts';
@@ -13,7 +14,6 @@ export {
 import {
   buildPlayQueue,
   comparePlaylistItems,
-  moveItemIds,
   withFolderOrder as applyFolderOrder,
   type PlaylistItem,
 } from './playlist.ts';
@@ -25,6 +25,14 @@ import {
   normalizeStartsSlide,
   type ShopCastMode,
 } from './shopSlides.ts';
+import {
+  clipsNotYetLinked,
+  galleryCaption,
+  galleryClipId,
+  galleryLoopSec,
+  gallerySchedule,
+  galleryShowDate,
+} from './gallerySchedule.ts';
 
 const DB_NAME = 'matboard';
 const STORE = 'photos';
@@ -62,7 +70,7 @@ export const FOLDERS = [
     mimePrefix: 'image/',
     labelPrefix: 'Photo',
     emptyCopy:
-      'No media yet. Add photos opens Take photo or Pick from gallery. Add videos opens Record or Pick from gallery. Photos and clips stay on this device, nothing is uploaded. Tap the left preview to include or skip an item. Hold the grip, then drag — or tap Up / Down.',
+      'No media yet. Add photos opens Take photo or Pick from gallery on this phone. Pick from Google Photos uses the connected library, including albums. Pick from Google Drive is an extra source. Photos and clips stay on this device. Tap the left preview to include or skip an item. Hold the grip, then drag — or tap Up / Down.',
     orderHint:
       'Tap the left preview to play or skip that photo or video. Checked / bright = On. Top item plays first when In order is on. Hold the grip, then drag — or tap Up / Down. Videos play all the way through; photos use the slide interval. Clips are muted by default so gym music can keep playing.',
   },
@@ -96,7 +104,7 @@ export const FOLDERS = [
     mimePrefix: 'image/',
     labelPrefix: 'Event',
     emptyCopy:
-      'No event photos yet. Add photos opens Take photo or Pick from gallery. Name the photo, then paste a registration, brackets, or ticket link. The TV puts a QR beside the photo. Photos stay on this device.',
+      'No event photos yet. Add photos opens Take photo or Pick from gallery on this phone. Pick from Google Photos uses the connected library. Pick from Google Drive is an extra source. Name the photo, then paste a registration, brackets, or ticket link. The TV puts a QR beside the photo. Photos stay on this device.',
     orderHint:
       'Tap the left preview to play or skip that photo. Checked / bright = On. Top photo plays first when In order is on. Hold the grip, then drag — or tap Up / Down. Add a QR link under the name. Add QR for another code beside the same photo.',
   },
@@ -135,6 +143,21 @@ export type StoredPhoto = PlaylistItem & {
   startsSlide: boolean;
   /** Events QR targets. Empty on Gallery and Pro Shop. */
   qrLinks: string[];
+  /**
+   * Gym Google Drive file id when this item was picked from Drive.
+   * The blob is the on-device copy the TV plays. Advantage does not host it.
+   */
+  driveFileId: string | null;
+  /** Gallery caption. Empty on Pro Shop and Events. */
+  caption: string;
+  /** Gallery items with no choice keep playing every day. */
+  schedule: 'always' | 'date' | 'next-class';
+  /** Used when schedule is `date`. */
+  showDate: string;
+  /** Daily Training clip id. Empty when this item has its own file. */
+  techniqueClipId: string;
+  /** Loop timer in seconds from that technique slot. 0 uses the slideshow timer. */
+  loopSec: number;
 };
 
 export const DEFAULT_SHUFFLE = false;
@@ -152,7 +175,18 @@ export type SaverPrefs = {
 
 export type PhotoRow = Omit<
   StoredPhoto,
-  'folderId' | 'sortOrder' | 'playEnabled' | 'buyUrl' | 'startsSlide' | 'qrLinks'
+  | 'folderId'
+  | 'sortOrder'
+  | 'playEnabled'
+  | 'buyUrl'
+  | 'startsSlide'
+  | 'qrLinks'
+  | 'driveFileId'
+  | 'caption'
+  | 'schedule'
+  | 'showDate'
+  | 'techniqueClipId'
+  | 'loopSec'
 > & {
   folderId?: FolderId | string;
   sortOrder?: number;
@@ -160,6 +194,12 @@ export type PhotoRow = Omit<
   buyUrl?: string;
   startsSlide?: boolean;
   qrLinks?: unknown;
+  driveFileId?: string | null;
+  caption?: unknown;
+  schedule?: unknown;
+  showDate?: unknown;
+  techniqueClipId?: unknown;
+  loopSec?: unknown;
 };
 
 export function isFolderId(value: unknown): value is FolderId {
@@ -221,7 +261,20 @@ function normalizePhoto(row: PhotoRow, index: number): StoredPhoto {
     buyUrl: normalizeBuyUrl(row.buyUrl),
     startsSlide: normalizeStartsSlide(row.startsSlide),
     qrLinks: normalizeQrLinks(row.qrLinks),
+    driveFileId: clampStoredDriveFileId(row.driveFileId),
+    caption: galleryCaption(row.caption),
+    schedule: gallerySchedule(row.schedule),
+    showDate: galleryShowDate(row.showDate),
+    techniqueClipId: galleryClipId(row.techniqueClipId),
+    loopSec: galleryLoopSec(row.loopSec),
   };
+}
+
+function clampStoredDriveFileId(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!/^[a-zA-Z0-9_-]{8,200}$/.test(trimmed)) return null;
+  return trimmed;
 }
 
 /**
@@ -257,9 +310,6 @@ export function migrateLegacyVideoFolder(rows: PhotoRow[]): { rows: PhotoRow[]; 
     changed: [...patch.values()],
   };
 }
-
-export const comparePhotos = comparePlaylistItems;
-export const movePhotoIds = moveItemIds;
 
 export function withFolderOrder(
   photos: StoredPhoto[],
@@ -351,8 +401,6 @@ export function playableItems(
   });
 }
 
-export const playablePhotos = playableItems;
-
 export async function listPhotos(folderId?: FolderId): Promise<StoredPhoto[]> {
   const db = await openDb();
   const raw = await new Promise<PhotoRow[]>((resolve, reject) => {
@@ -365,7 +413,7 @@ export async function listPhotos(folderId?: FolderId): Promise<StoredPhoto[]> {
   if (migrated.changed.length) {
     await persistMediaRows(migrated.changed);
   }
-  const rows = migrated.rows.map((row, index) => normalizePhoto(row, index)).sort(comparePhotos);
+  const rows = migrated.rows.map((row, index) => normalizePhoto(row, index)).sort(comparePlaylistItems);
   return folderId ? rows.filter((photo) => photo.folderId === folderId) : rows;
 }
 
@@ -391,21 +439,80 @@ async function blobForFolderFile(
   return { blob, mime };
 }
 
-export async function addFolderFiles(files: File[], folderId: FolderId): Promise<number> {
+/** Let the screen paint, and give the last decoded photo a chance to be collected. */
+function yieldToMain(): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, 0);
+  });
+}
+
+function stopFolderSave(error: unknown, saved: number, total: number): Error {
+  if (error instanceof StorageQuotaError) return new StorageQuotaError(saved, total);
+  if (error instanceof FolderBatchError) return error;
+  if (isStorageQuotaError(error)) return new StorageQuotaError(saved, total);
+  return new FolderBatchError(saved, total, error);
+}
+
+export type AddFolderFilesOptions = {
+  /** Called before each shrink and after each successful write. */
+  onProgress?: (progress: FolderSaveProgress) => void;
+};
+
+type IncomingFolderFile = {
+  file: File;
+  driveFileId: string | null;
+};
+
+/**
+ * Save folder media one file at a time. There is no count or megabyte cap —
+ * origin quota is the only hard stop. Shrinking and writing as we go keeps a
+ * large phone pick from holding every decoded photo in memory at once, and
+ * lets the screen show how many are already stored.
+ * A Drive file id already in this folder is skipped so Done does not stack copies.
+ */
+async function saveFolderMedia(
+  items: IncomingFolderFile[],
+  folderId: FolderId,
+  options?: AddFolderFilesOptions,
+): Promise<number> {
   const folder = folderById(folderId);
   const existing = await listPhotos(folderId);
+  const knownDrive = new Set(existing.flatMap((photo) => (photo.driveFileId ? [photo.driveFileId] : [])));
+  const accepted = items.filter((item) => {
+    const driveFileId = clampStoredDriveFileId(item.driveFileId);
+    if (driveFileId && knownDrive.has(driveFileId)) return false;
+    if (!fileMatchesFolder(item.file, folder)) return false;
+    if (driveFileId) knownDrive.add(driveFileId);
+    return true;
+  });
+  if (!accepted.length) return 0;
+
   let photoCount = existing.filter((photo) => !isVideoItem(photo)).length;
   let videoCount = existing.filter((photo) => isVideoItem(photo)).length;
   let nextOrder = existing.reduce((max, photo) => Math.max(max, photo.sortOrder), -1);
-  const pending: StoredPhoto[] = [];
-  for (const file of files) {
-    if (!fileMatchesFolder(file, folder)) continue;
+  const db = await openDb();
+  let added = 0;
+  const total = accepted.length;
+  const report = (phase: FolderSaveProgress['phase']) => {
+    options?.onProgress?.({ done: added, total, phase });
+  };
+
+  for (const item of accepted) {
+    const file = item.file;
+    report('shrink');
+    await yieldToMain();
     nextOrder += 1;
     const video = folder.id === 'gallery' && isAcceptedVideoFile(file);
     if (video) videoCount += 1;
     else photoCount += 1;
-    const stored = await blobForFolderFile(file, folder);
-    pending.push({
+    let stored: { blob: Blob; mime: string };
+    try {
+      stored = await blobForFolderFile(file, folder);
+    } catch (error) {
+      throw new FolderBatchError(added, total, error);
+    }
+    const driveFileId = clampStoredDriveFileId(item.driveFileId);
+    const photo: StoredPhoto = {
       id: crypto.randomUUID(),
       mime: stored.mime,
       addedAt: Date.now(),
@@ -417,29 +524,51 @@ export async function addFolderFiles(files: File[], folderId: FolderId): Promise
       buyUrl: '',
       startsSlide: true,
       qrLinks: [],
-    });
-  }
-  if (!pending.length) return 0;
-  const db = await openDb();
-  let added = 0;
-  for (const photo of pending) {
-    await assertOriginRoom(photo.blob.size, added);
+      driveFileId,
+      caption: '',
+      schedule: 'always',
+      showDate: '',
+      techniqueClipId: '',
+      loopSec: 0,
+    };
     try {
+      await assertOriginRoom(photo.blob.size, added);
       const tx = db.transaction(STORE, 'readwrite');
       tx.objectStore(STORE).put(photo);
       await txDone(tx);
       added += 1;
+      report('save');
+      await yieldToMain();
     } catch (error) {
-      if (error instanceof StorageQuotaError) throw error;
-      if (isStorageQuotaError(error)) throw new StorageQuotaError(added);
-      throw error;
+      throw stopFolderSave(error, added, total);
     }
   }
   return added;
 }
 
-export async function addPhotos(files: File[], folderId: FolderId = 'gallery'): Promise<void> {
-  await addFolderFiles(files, folderId);
+export async function addFolderFiles(
+  files: File[],
+  folderId: FolderId,
+  options?: AddFolderFilesOptions,
+): Promise<number> {
+  return saveFolderMedia(
+    files.map((file) => ({ file, driveFileId: null })),
+    folderId,
+    options,
+  );
+}
+
+/** Same folder write as a phone pick. `driveFileId` marks the gym Drive file. */
+export async function addDriveMediaFiles(
+  items: readonly { file: File; driveFileId: string }[],
+  folderId: FolderId,
+  options?: AddFolderFilesOptions,
+): Promise<number> {
+  return saveFolderMedia(
+    items.map((item) => ({ file: item.file, driveFileId: item.driveFileId })),
+    folderId,
+    options,
+  );
 }
 
 export async function setItemPlay(id: string, enabled: boolean): Promise<void> {
@@ -454,6 +583,76 @@ export async function setItemPlay(id: string, enabled: boolean): Promise<void> {
   if (!current) return;
   store.put({ ...normalizePhoto(current, 0), playEnabled: enabled });
   await txDone(tx);
+}
+
+export async function setGalleryDetails(
+  id: string,
+  patch: {
+    caption?: string;
+    schedule?: 'always' | 'date' | 'next-class';
+    showDate?: string;
+  },
+): Promise<void> {
+  const db = await openDb();
+  const tx = db.transaction(STORE, 'readwrite');
+  const store = tx.objectStore(STORE);
+  const current = await new Promise<PhotoRow | undefined>((resolve, reject) => {
+    const req = store.get(id);
+    req.onsuccess = () => resolve(req.result as PhotoRow | undefined);
+    req.onerror = () => reject(req.error);
+  });
+  if (!current) return;
+  const photo = normalizePhoto(current, 0);
+  store.put({
+    ...photo,
+    caption: patch.caption === undefined ? photo.caption : galleryCaption(patch.caption),
+    schedule: patch.schedule === undefined ? photo.schedule : gallerySchedule(patch.schedule),
+    showDate: patch.showDate === undefined ? photo.showDate : galleryShowDate(patch.showDate),
+  });
+  await txDone(tx);
+}
+
+/** Point the gallery at technique clips. Does not copy their bytes into the gallery. */
+export async function linkTechniqueClipsToGallery(
+  clips: readonly { clipId: string; label: string; mime: string; loopSec: number }[],
+): Promise<number> {
+  const existing = await listPhotos('gallery');
+  const fresh = clipsNotYetLinked(
+    existing.map((photo) => photo.techniqueClipId),
+    clips,
+  );
+  if (!fresh.length) return 0;
+  const db = await openDb();
+  let nextOrder = existing.reduce((max, photo) => Math.max(max, photo.sortOrder), -1);
+  let added = 0;
+  for (const clip of fresh) {
+    nextOrder += 1;
+    const photo: StoredPhoto = {
+      id: crypto.randomUUID(),
+      mime: clip.mime.startsWith('video/') ? clip.mime : 'video/mp4',
+      addedAt: Date.now(),
+      blob: new Blob(),
+      label: clip.label.trim().slice(0, 80) || 'Technique clip',
+      folderId: 'gallery',
+      sortOrder: nextOrder,
+      playEnabled: true,
+      buyUrl: '',
+      startsSlide: true,
+      qrLinks: [],
+      driveFileId: null,
+      caption: '',
+      schedule: 'always',
+      showDate: '',
+      techniqueClipId: galleryClipId(clip.clipId),
+      loopSec: galleryLoopSec(clip.loopSec),
+    };
+    if (!photo.techniqueClipId) continue;
+    const tx = db.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).put(photo);
+    await txDone(tx);
+    added += 1;
+  }
+  return added;
 }
 
 export async function setItemBuyUrl(id: string, buyUrl: string): Promise<void> {
@@ -544,10 +743,6 @@ export async function reorderFolderItems(folderId: FolderId, orderedIds: string[
   await txDone(tx);
 }
 
-export async function reorderPhotos(folderId: FolderId, orderedIds: string[]): Promise<void> {
-  await reorderFolderItems(folderId, orderedIds);
-}
-
 export async function clearFolder(folderId: FolderId): Promise<void> {
   const rows = await listPhotos(folderId);
   const db = await openDb();
@@ -555,10 +750,6 @@ export async function clearFolder(folderId: FolderId): Promise<void> {
   const store = tx.objectStore(STORE);
   for (const row of rows) store.delete(row.id);
   await txDone(tx);
-}
-
-export async function clearPhotos(): Promise<void> {
-  await clearFolder('gallery');
 }
 
 export async function getSaverPrefs(): Promise<SaverPrefs> {

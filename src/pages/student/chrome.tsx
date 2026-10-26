@@ -1,0 +1,75 @@
+import { useCallback, useEffect, useState } from 'react';
+import { useLocation, useSearchParams } from 'react-router-dom';
+import { SubmenuMarks } from '../../components/TierHomeMark';
+import { submenuBackTarget, tierHomeHref } from '../../lib/submenuNav';
+import type { StudentProgressReport } from '../../lib/progress/types';
+import { subscribeStudentJournal } from '../../lib/studentDemo';
+import { exportProgressPacket } from '../../lib/progress/format';
+import { loadStudentReport, saveStudentReport } from '../../lib/studentEdition';
+
+export function useStudentPath() {
+  const [params] = useSearchParams();
+  const preview = params.get('student') === '1';
+  return (path: string) => {
+    if (!preview) return path;
+    const hashAt = path.indexOf('#');
+    const hash = hashAt >= 0 ? path.slice(hashAt) : '';
+    const before = hashAt >= 0 ? path.slice(0, hashAt) : path;
+    const [pathname, search = ''] = before.split('?');
+    const next = new URLSearchParams(search);
+    next.set('student', '1');
+    return `${pathname}?${next.toString()}${hash}`;
+  };
+}
+
+export function useStudentFile() {
+  const [report, setReport] = useState(() => loadStudentReport(localStorage));
+  const commit = useCallback((next: StudentProgressReport) => {
+    const saved = saveStudentReport(localStorage, next);
+    setReport(saved);
+    return saved;
+  }, []);
+  useEffect(() => {
+    return subscribeStudentJournal(() => {
+      const next = loadStudentReport(localStorage);
+      setReport((current) => (exportProgressPacket(current) === exportProgressPacket(next) ? current : next));
+    });
+  }, []);
+  return { report, commit };
+}
+
+/**
+ * The arena scroller owns overflow, so a hash has to be brought into view.
+ * `elementId` is the card to show when the hash names that card by a shorter id.
+ */
+export function useScrollToHash(readyKey = '', elementId = ''): void {
+  const { hash } = useLocation();
+  useEffect(() => {
+    const raw = hash.startsWith('#') ? hash.slice(1) : '';
+    if (!raw && !elementId) return;
+    let id = raw;
+    try {
+      id = raw ? decodeURIComponent(raw) : '';
+    } catch {
+      return;
+    }
+    const node = (elementId && document.getElementById(elementId)) || (id && document.getElementById(id)) || null;
+    if (node && typeof node.scrollIntoView === 'function') node.scrollIntoView({ block: 'start' });
+  }, [hash, readyKey, elementId]);
+}
+
+export function StudentMarks() {
+  const { pathname, search } = useLocation();
+  const back = submenuBackTarget({ pathname, search });
+  const home = tierHomeHref(search);
+  if (!back) return null;
+  return <SubmenuMarks to={back} homeTo={home} />;
+}
+
+export function LeatherHeader({ title = 'Jiu-Jitsu Journal' }: { title?: string }) {
+  return (
+    <header className="student-leather">
+      <h1>{title}</h1>
+    </header>
+  );
+}

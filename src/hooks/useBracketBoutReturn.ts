@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { flashDurationMs, linkedBracketMatchId, syncBoutFromQuery } from '../lib/bracketBout';
 import { dispatchMatch, getMatch, isPresentationReceiver } from '../lib/matchStore';
+import { SUITE_FROM, UNLIMITED_FROM, withHubFrom, withSuiteFrom } from '../lib/productNames';
 import { useMatchState } from './useStores';
 
 /** Load `?bout=` into match state once, without resetting an already-open bout. */
@@ -21,7 +22,11 @@ export function useBoutQuerySync(): void {
 export function useBracketOutcomeReturn(): void {
   const match = useMatchState();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const flash = match.outcomeFlash;
+  const from = params.get('from');
+  const fromSuite = from === SUITE_FROM;
+  const fromUnlimited = from === UNLIMITED_FROM;
 
   useEffect(() => {
     if (!flash) return;
@@ -30,8 +35,14 @@ export function useBracketOutcomeReturn(): void {
       if (isPresentationReceiver()) return;
       const linked = linkedBracketMatchId(getMatch().bracketMatchId);
       dispatchMatch({ type: 'setOutcomeFlash', value: null });
-      if (linked) navigate('/tournament');
+      if (linked) {
+        navigate(
+          fromUnlimited && !fromSuite
+            ? withHubFrom('/tournament', UNLIMITED_FROM)
+            : withSuiteFrom('/tournament', fromSuite),
+        );
+      }
     }, wait);
     return () => window.clearTimeout(timer);
-  }, [flash, navigate]);
+  }, [flash, fromSuite, fromUnlimited, navigate]);
 }

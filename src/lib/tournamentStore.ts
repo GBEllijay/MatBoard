@@ -20,9 +20,11 @@ export const COACH_MAX_COMPETITORS = 16;
 export const PRO_MAX_COMPETITORS = 64;
 /** Storage ceiling. Coach UI passes COACH_MAX_COMPETITORS when it changes size. */
 export const MAX_COMPETITORS = PRO_MAX_COMPETITORS;
-export const SIZE_PRESETS = [2, 4, 8, 16] as const;
-export const PRO_SIZE_PRESETS = [2, 4, 8, 16, 32, 64] as const;
+export const SIZE_PRESETS = [2, 3, 4, 5, 7, 8, 16] as const;
+export const PRO_SIZE_PRESETS = [2, 3, 4, 5, 7, 8, 16, 32, 64] as const;
 export const BRACKET_NAME_MAX = 80;
+/** Header on the bracket. A new board starts here. Blank is a real saved value. */
+export const DEFAULT_BRACKET_HEADLINE = 'Tournament';
 
 export type TreeSize = 2 | 4 | 8 | 16 | 32 | 64;
 export type RoundPrefix = 'r64' | 'r32' | 'r16' | 'qf' | 'sf' | 'final';
@@ -61,18 +63,46 @@ function buildNextSlot(): Record<string, SlotId> {
   return next;
 }
 
+/** Points snapshot from the scoreboard when a bout is called. Winner’s points, then the other side. */
+export type BoutPoints = { winner: number; loser: number };
+
 export type BoutResult = {
   winnerSide: MatchSide;
+  points?: BoutPoints;
 } & BoutOutcome;
+
+export function sanitizeBoutPoints(winner: number, loser: number): BoutPoints | undefined {
+  if (!Number.isFinite(winner) || !Number.isFinite(loser)) return undefined;
+  const nextWinner = Math.round(winner);
+  const nextLoser = Math.round(loser);
+  if (nextWinner < 0 || nextLoser < 0 || nextWinner > 99 || nextLoser > 99) return undefined;
+  return { winner: nextWinner, loser: nextLoser };
+}
+
+/**
+ * The seeded draw is the default. Lineup is the organizer override: names fill the
+ * bracket from the top and byes sit on the last first-round cards.
+ */
+export type PlacementStyle = 'ibjjf' | 'lineup';
+
+/** User-facing name for a placement style. */
+export function placementLabel(style: PlacementStyle): string {
+  return style === 'lineup' ? 'Lineup' : 'Seeded';
+}
 
 export type TournamentState = {
   version: 1;
   /** Competitor count (2–64). Tree size is the next power of 2; extra slots are byes. */
   size: number;
+  /** Draw rules. Missing values load as the seeded draw. */
+  placement: PlacementStyle;
+  /** Division or class. Filters check-in and labels the seed line. */
   title: string;
+  /** Editable name painted on the bracket. Not the skin, and not the division. */
+  headline: string;
   entries: Record<string, string>;
   results: Partial<Record<BracketMatchId, BoutResult>>;
-  /** Most recent bout written from Scoreboard or bracket marks — one-level Undo. */
+  /** Most recent bout written from Scoreboard or bracket marks. Undo clears that bout and later rounds filled from it. */
   lastOutcomeMatchId: BracketMatchId | null;
 };
 
@@ -163,8 +193,54 @@ export function treeSizeFor(count: number): TreeSize {
   return 64;
 }
 
-export function byeCountFor(count: number): number {
+/**
+ * The default draw is single elimination, with one exception:
+ * a bracket of exactly three. The winner of the first match goes to the final,
+ * the loser faces the athlete who sat out, and the winner of that match meets
+ * the first winner in the final.
+ *
+ * On this board the athlete who sits out is the 1st seed, and the first match
+ * is 2nd vs 3rd (`sf-0`). The consolation is `sf-1` (loser vs `sf-1-a`).
+ *
+ * Five, seven, and every other count — including custom sizes of 8 and up —
+ * stay single elimination. Seeds use the standard draw (1 meets the last seed,
+ * 4 meets 5, 2 meets 7, 3 meets 6) and a missing lower seed is a real bye, not
+ * an empty name. A field of five therefore opens with 4th vs 5th; 1st, 2nd,
+ * and 3rd receive byes; the semis are 1st vs that winner, and 2nd vs 3rd.
+ * A field of seven gives the bye only to the 1st seed.
+ *
+ * Seed names are the existing bracket slots, filled from the competitor roster.
+ * Bout wins use the same outcome store the scoreboard writes.
+ */
+export function placementOf(current: { placement?: string } | null | undefined): PlacementStyle {
+  return current?.placement === 'lineup' ? 'lineup' : 'ibjjf';
+}
+
+export function isThreePersonBracket(current: TournamentState): boolean {
+  return placementOf(current) === 'ibjjf' && clampCompetitorCount(current.size) === 3;
+}
+
+/** 1 in slot 1, then 1 vs N, 4 vs 5, 2 vs 7, 3 vs 6, and so on. */
+export function ibjjfSeedOrder(tree: number): number[] {
+  let seeds = [1];
+  while (seeds.length < tree) {
+    const sum = seeds.length * 2 + 1;
+    const next: number[] = [];
+    for (const seed of seeds) next.push(seed, sum - seed);
+    seeds = next;
+  }
+  return seeds;
+}
+
+/** Editor order is seed order: 1st, then 2nd, then 3rd. */
+export const THREE_PERSON_SEED_SLOTS = ['sf-1-a', 'sf-0-a', 'sf-0-b'] as const satisfies readonly SlotId[];
+
+/** Filled when the semifinal has a result. Not a hand-seeded slot. */
+export const THREE_PERSON_LOSER_SLOT = 'sf-1-b' as const satisfies SlotId;
+
+export function byeCountFor(count: number, placement: PlacementStyle = 'ibjjf'): number {
   const n = clampCompetitorCount(count);
+  if (placement === 'ibjjf' && n === 3) return 0;
   return treeSizeFor(n) - n;
 }
 
@@ -263,27 +339,40 @@ export function firstRoundLabel(count: number): string {
 
 export function bracketRoundLine(current: TournamentState): string {
   const n = clampCompetitorCount(current.size);
-  const round = firstRoundLabel(n);
-  const byes = byeCountFor(n);
   const people = `${n} competitor${n === 1 ? '' : 's'}`;
-  if (!byes) return `${round} · ${people}`;
-  return `${round} · ${people} · ${byes} ${byes === 1 ? 'bye' : 'byes'}`;
+  const style = placementOf(current);
+  const label = placementLabel(style);
+  if (isThreePersonBracket(current)) return `${label} · 3-person · ${people}`;
+  const round = firstRoundLabel(n);
+  const byes = byeCountFor(n, style);
+  const prefix = `${label} · `;
+  if (!byes) return `${prefix}${round} · ${people}`;
+  return `${prefix}${round} · ${people} · ${byes} ${byes === 1 ? 'bye' : 'byes'}`;
 }
 
 export function firstRoundSlots(tree: TreeSize): SlotId[] {
   return firstRoundMatchIds(tree).flatMap((id) => [slotId(id, 'a'), slotId(id, 'b')]);
 }
 
-export function byeSlotIds(count: number): SlotId[] {
+function lineupByeSlots(count: number): SlotId[] {
   const n = clampCompetitorCount(count);
-  const byes = byeCountFor(n);
+  const byes = byeCountFor(n, 'lineup');
   if (!byes) return [];
   const matches = firstRoundMatchIds(treeSizeFor(n));
   return matches.slice(matches.length - byes).map((id) => slotId(id, 'b'));
 }
 
+export function byeSlotIds(count: number, placement: PlacementStyle = 'ibjjf'): SlotId[] {
+  const n = clampCompetitorCount(count);
+  if (!byeCountFor(n, placement)) return [];
+  if (placement === 'lineup') return lineupByeSlots(n);
+  const slots = firstRoundSlots(treeSizeFor(n));
+  const seeds = ibjjfSeedOrder(treeSizeFor(n));
+  return slots.filter((_, index) => seeds[index] > n);
+}
+
 export function isByeSlot(current: TournamentState, id: SlotId | string): boolean {
-  return byeSlotIds(current.size).includes(id as SlotId);
+  return byeSlotIds(current.size, placementOf(current)).includes(id as SlotId);
 }
 
 export function matchHasBye(current: TournamentState, matchId: BracketMatchId): boolean {
@@ -291,18 +380,38 @@ export function matchHasBye(current: TournamentState, matchId: BracketMatchId): 
 }
 
 export function seedSlots(current: TournamentState = getTournament()): SlotId[] {
-  return firstRoundSlots(treeSizeFor(current.size)).filter((id) => !isByeSlot(current, id));
+  if (isThreePersonBracket(current)) return [...THREE_PERSON_SEED_SLOTS];
+  const slots = firstRoundSlots(treeSizeFor(current.size));
+  if (placementOf(current) === 'lineup') return slots.filter((id) => !isByeSlot(current, id));
+  const seeds = ibjjfSeedOrder(treeSizeFor(current.size));
+  return slots
+    .map((id, index) => ({ id, seed: seeds[index] }))
+    .filter((row) => row.seed <= clampCompetitorCount(current.size))
+    .sort((a, b) => a.seed - b.seed)
+    .map((row) => row.id);
+}
+
+function threePersonLoserSlot(current: TournamentState, matchId: BracketMatchId): SlotId | null {
+  if (!isThreePersonBracket(current) || matchId !== 'sf-0') return null;
+  return THREE_PERSON_LOSER_SLOT;
 }
 
 export function slotName(current: TournamentState, id: SlotId | string): string {
   return current.entries[id] ?? '';
 }
 
+export function bracketHeadline(value: unknown): string {
+  if (typeof value !== 'string') return DEFAULT_BRACKET_HEADLINE;
+  return value.slice(0, BRACKET_NAME_MAX);
+}
+
 export function defaultTournament(size: number = TOURNAMENT_SIZE): TournamentState {
   return {
     version: 1,
     size: clampCompetitorCount(size),
+    placement: 'ibjjf',
     title: '',
+    headline: DEFAULT_BRACKET_HEADLINE,
     entries: {},
     results: {},
     lastOutcomeMatchId: null,
@@ -332,13 +441,21 @@ export function defaultLibrary(): TournamentLibrary {
   return { version: 2, activeId: first.id, saved: [first] };
 }
 
+function readBoutPoints(raw: unknown): BoutPoints | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const row = raw as { winner?: unknown; loser?: unknown };
+  if (typeof row.winner !== 'number' || typeof row.loser !== 'number') return undefined;
+  return sanitizeBoutPoints(row.winner, row.loser);
+}
+
 function normalizeResult(raw: unknown): BoutResult | null {
   if (!raw || typeof raw !== 'object') return null;
   const row = raw as Record<string, unknown>;
   if (row.winnerSide !== 'a' && row.winnerSide !== 'b') return null;
   const pick = parseBoutOutcome(row);
   if (!pick) return null;
-  return { winnerSide: row.winnerSide, ...pick };
+  const points = readBoutPoints(row.points);
+  return { winnerSide: row.winnerSide, ...pick, ...(points ? { points } : {}) };
 }
 
 function validSlotKeys(size: number): Set<string> {
@@ -375,7 +492,9 @@ export function normalizeBoard(raw: unknown): TournamentState {
   const board: TournamentState = {
     version: 1,
     size,
+    placement: placementOf(parsed),
     title: typeof parsed.title === 'string' ? parsed.title : '',
+    headline: bracketHeadline(parsed.headline),
     entries,
     results,
     lastOutcomeMatchId: isKnownMatchId(last) && allowedMatches.has(last) ? last : null,
@@ -439,7 +558,9 @@ function clone(current: TournamentState): TournamentState {
   return {
     version: 1,
     size: clampCompetitorCount(current.size),
+    placement: placementOf(current),
     title: current.title,
+    headline: bracketHeadline(current.headline),
     entries: { ...current.entries },
     results: { ...current.results },
     lastOutcomeMatchId: current.lastOutcomeMatchId ?? null,
@@ -537,29 +658,43 @@ export function advanceByes(current: TournamentState): TournamentState {
   return next;
 }
 
+/**
+ * A later bout that received this slot is no longer the same matchup.
+ * Drop its result and every round that was filled from it, whoever won it.
+ */
+function clearChildIfFedFrom(next: TournamentState, dest: SlotId, seen: Set<BracketMatchId>): void {
+  if (dest === 'champion') return;
+  const child = matchIdFromSlot(dest);
+  if (!child || seen.has(child) || !next.results[child]) return;
+  delete next.results[child];
+  if (next.lastOutcomeMatchId === child) next.lastOutcomeMatchId = null;
+  cascadeWinner(next, child, seen);
+}
+
+function cascadeChildResult(next: TournamentState, dest: SlotId, seen: Set<BracketMatchId>): void {
+  if (dest === 'champion') return;
+  const child = matchIdFromSlot(dest);
+  if (child && next.results[child]) cascadeWinner(next, child, seen);
+}
+
 /** Re-apply a stored result so the next-round name stays in sync. */
 function cascadeWinner(next: TournamentState, matchId: BracketMatchId, seen: Set<BracketMatchId>): void {
   if (seen.has(matchId)) return;
   seen.add(matchId);
   const result = next.results[matchId];
   const dest = NEXT_SLOT[matchId];
+  const loserDest = threePersonLoserSlot(next, matchId);
   if (!result) {
     writeSlot(next, dest, '');
-    if (dest !== 'champion') {
-      const child = matchIdFromSlot(dest);
-      const side = sideFromSlot(dest);
-      if (child && side && next.results[child]?.winnerSide === side) {
-        delete next.results[child];
-        cascadeWinner(next, child, seen);
-      }
-    }
+    if (loserDest) writeSlot(next, loserDest, '');
+    clearChildIfFedFrom(next, dest, seen);
+    if (loserDest) clearChildIfFedFrom(next, loserDest, seen);
     return;
   }
   writeSlot(next, dest, slotName(next, slotId(matchId, result.winnerSide)));
-  if (dest !== 'champion') {
-    const child = matchIdFromSlot(dest);
-    if (child && next.results[child]) cascadeWinner(next, child, seen);
-  }
+  if (loserDest) writeSlot(next, loserDest, slotName(next, slotId(matchId, otherSide(result.winnerSide))));
+  cascadeChildResult(next, dest, seen);
+  if (loserDest) cascadeChildResult(next, loserDest, seen);
 }
 
 export function applySlotName(current: TournamentState, id: SlotId, name: string): TournamentState {
@@ -567,9 +702,46 @@ export function applySlotName(current: TournamentState, id: SlotId, name: string
   writeSlot(next, id, name);
   if (id === 'champion') return next;
   const matchId = matchIdFromSlot(id);
-  const side = sideFromSlot(id);
-  if (matchId && side && next.results[matchId]?.winnerSide === side) {
+  if (matchId && next.results[matchId]) {
     cascadeWinner(next, matchId, new Set());
+  }
+  return advanceByes(next);
+}
+
+/**
+ * One name per line. A single line with commas is a list too.
+ * Blank lines and empty comma slots are dropped. Extra names past the draw are ignored by the filler.
+ */
+export function parseNameList(raw: string): string[] {
+  const text = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+  if (!text) return [];
+  const lines = text.split('\n').map((line) => line.trim()).filter(Boolean);
+  if (lines.length > 1) return lines;
+  const only = lines[0];
+  if (!only.includes(',')) return [only];
+  return only.split(',').map((part) => part.trim()).filter(Boolean);
+}
+
+/** Write names into seed order, starting at startIndex. Later slots stay as they are. */
+export function applySeedNames(
+  current: TournamentState,
+  names: readonly string[],
+  startIndex = 0,
+): TournamentState {
+  const start = Number.isFinite(startIndex) ? Math.max(0, Math.trunc(startIndex)) : 0;
+  const slots = seedSlots(current);
+  if (!names.length || start >= slots.length) return current;
+  const next = clone(current);
+  const touched = new Set<BracketMatchId>();
+  names.forEach((name, offset) => {
+    const id = slots[start + offset];
+    if (!id) return;
+    writeSlot(next, id, name);
+    const matchId = matchIdFromSlot(id);
+    if (matchId) touched.add(matchId);
+  });
+  for (const matchId of touched) {
+    if (next.results[matchId]) cascadeWinner(next, matchId, new Set());
   }
   return advanceByes(next);
 }
@@ -579,7 +751,7 @@ export function applyMatchOutcome(
   matchId: BracketMatchId,
   side: MatchSide,
   pick: BoutOutcome,
-  options?: { toggle?: boolean },
+  options?: { toggle?: boolean; points?: BoutPoints },
 ): TournamentState {
   if (!matchIdsForSize(current.size).includes(matchId) || matchHasBye(current, matchId)) {
     return current;
@@ -587,6 +759,7 @@ export function applyMatchOutcome(
   const toggle = options?.toggle !== false;
   const next = clone(current);
   const existing = next.results[matchId];
+  const previousWinner = existing?.winnerSide;
   const same =
     existing &&
     existing.call === pick.call &&
@@ -597,16 +770,31 @@ export function applyMatchOutcome(
     delete next.results[matchId];
     if (next.lastOutcomeMatchId === matchId) next.lastOutcomeMatchId = null;
   } else if (pick.call === 'win') {
+    const points = options?.points ? sanitizeBoutPoints(options.points.winner, options.points.loser) : undefined;
     next.results[matchId] = {
       winnerSide: side,
       call: 'win',
       method: pick.method,
       ...(pick.scoreReason ? { scoreReason: pick.scoreReason } : {}),
+      ...(points ? { points } : {}),
     };
     next.lastOutcomeMatchId = matchId;
   } else {
-    next.results[matchId] = { winnerSide: otherSide(side), call: 'dq', reason: pick.reason };
+    const points = options?.points ? sanitizeBoutPoints(options.points.winner, options.points.loser) : undefined;
+    next.results[matchId] = {
+      winnerSide: otherSide(side),
+      call: 'dq',
+      reason: pick.reason,
+      ...(points ? { points } : {}),
+    };
     next.lastOutcomeMatchId = matchId;
+  }
+  const updated = next.results[matchId];
+  if (previousWinner && updated && updated.winnerSide !== previousWinner) {
+    const seen = new Set<BracketMatchId>();
+    clearChildIfFedFrom(next, NEXT_SLOT[matchId], seen);
+    const loserDest = threePersonLoserSlot(next, matchId);
+    if (loserDest) clearChildIfFedFrom(next, loserDest, seen);
   }
   cascadeWinner(next, matchId, new Set());
   return advanceByes(next);
@@ -622,36 +810,10 @@ export function applyClearResult(current: TournamentState, matchId: BracketMatch
 }
 
 /**
- * Gym-owner undo: clear this bout’s result.
- * If the next-round slot was auto-filled from this winner and that later bout has no result yet,
- * the name is removed (same as Phase 1 cascade). If a later bout already has its own result,
- * or the next name was overwritten, those later slots stay put — this bout is unmarked only.
+ * Clear this bout and every later round that was filled from it.
+ * A semifinal or final decided against the old winner does not stay on the board.
  */
 export function applyUndoOutcome(current: TournamentState, matchId: BracketMatchId): TournamentState {
-  const result = current.results[matchId];
-  if (!result) return current;
-  const dest = NEXT_SLOT[matchId];
-  const winnerName = slotName(current, slotId(matchId, result.winnerSide));
-  const destName = slotName(current, dest);
-  const destWasAutoFilled = !destName || destName === winnerName;
-
-  if (dest !== 'champion') {
-    const child = matchIdFromSlot(dest);
-    if (child && current.results[child]) {
-      const next = clone(current);
-      delete next.results[matchId];
-      if (next.lastOutcomeMatchId === matchId) next.lastOutcomeMatchId = null;
-      return advanceByes(next);
-    }
-  }
-
-  if (!destWasAutoFilled) {
-    const next = clone(current);
-    delete next.results[matchId];
-    if (next.lastOutcomeMatchId === matchId) next.lastOutcomeMatchId = null;
-    return advanceByes(next);
-  }
-
   return applyClearResult(current, matchId);
 }
 
@@ -664,7 +826,24 @@ export function applyCompetitorCount(
   if (nextSize === clampCompetitorCount(current.size, max) && nextSize === current.size) return current;
   const names = seedSlots(current).map((id) => slotName(current, id));
   const next = defaultTournament(nextSize);
+  next.placement = placementOf(current);
   next.title = current.title;
+  next.headline = bracketHeadline(current.headline);
+  const dest = seedSlots(next);
+  names.forEach((name, index) => {
+    if (index < dest.length && name.trim()) writeSlot(next, dest[index], name);
+  });
+  return advanceByes(next);
+}
+
+export function applyPlacement(current: TournamentState, placement: PlacementStyle): TournamentState {
+  const nextStyle: PlacementStyle = placement === 'lineup' ? 'lineup' : 'ibjjf';
+  if (nextStyle === placementOf(current)) return current;
+  const names = seedSlots(current).map((id) => slotName(current, id));
+  const next = defaultTournament(current.size);
+  next.placement = nextStyle;
+  next.title = current.title;
+  next.headline = bracketHeadline(current.headline);
   const dest = seedSlots(next);
   names.forEach((name, index) => {
     if (index < dest.length && name.trim()) writeSlot(next, dest[index], name);
@@ -726,15 +905,79 @@ export function setTournamentTitle(title: string): void {
   patchActive((board) => ({ ...clone(board), title }));
 }
 
+export function setBracketHeadline(headline: string): void {
+  patchActive((board) => ({ ...clone(board), headline: bracketHeadline(headline) }));
+}
+
 export function setSlotName(id: SlotId, name: string): void {
   patchActive((board) => applySlotName(board, id, name));
+}
+
+export function fillSeedNames(names: readonly string[], startIndex = 0): void {
+  patchActive((board) => applySeedNames(board, names, startIndex));
+}
+
+/**
+ * Replace the open draw with these seed names. Size follows the name count
+ * (clamped to this board's max). Results on this board clear. Division,
+ * headline, and placement stay. Names land through the same seed slots as a
+ * manual fill.
+ */
+export function applyCheckedInBracket(
+  current: TournamentState,
+  names: readonly string[],
+  max = PRO_MAX_COMPETITORS,
+): TournamentState {
+  const filled = names.map((name) => name.trim()).filter(Boolean);
+  if (!filled.length) return current;
+  const size = clampCompetitorCount(filled.length, max);
+  const next = defaultTournament(size);
+  next.placement = placementOf(current);
+  next.title = current.title;
+  next.headline = bracketHeadline(current.headline);
+  return applySeedNames(next, filled.slice(0, size), 0);
+}
+
+type CheckedInFillUndo = { placed: number; board: TournamentState };
+let checkedInFillUndo: CheckedInFillUndo | null = null;
+
+/** How many names the last fill wrote, and the board from just before it. */
+export function peekCheckedInFillUndo(): { placed: number } | null {
+  return checkedInFillUndo ? { placed: checkedInFillUndo.placed } : null;
+}
+
+/**
+ * Replace the open draw with these seed names and remember the previous board
+ * for one Undo. Does not read or write the roster or check-in flags.
+ */
+export function fillCheckedInBracket(names: readonly string[], max = PRO_MAX_COMPETITORS): number {
+  const filled = names.map((name) => name.trim()).filter(Boolean);
+  if (!filled.length) return 0;
+  const previous = structuredClone(getTournament());
+  let placed = 0;
+  patchActive((board) => {
+    const next = applyCheckedInBracket(board, filled, max);
+    placed = seedSlots(next).filter((id) => slotName(next, id).trim()).length;
+    return next;
+  });
+  checkedInFillUndo = { placed, board: previous };
+  return placed;
+}
+
+/** Put the open board back to the moment before the last check-in fill. */
+export function undoCheckedInFill(): boolean {
+  if (!checkedInFillUndo) return false;
+  const board = structuredClone(checkedInFillUndo.board);
+  checkedInFillUndo = null;
+  patchActive(() => board);
+  return true;
 }
 
 export function setMatchOutcome(
   matchId: BracketMatchId,
   side: MatchSide,
   pick: BoutOutcome,
-  options?: { toggle?: boolean },
+  options?: { toggle?: boolean; points?: BoutPoints },
 ): void {
   patchActive((board) => applyMatchOutcome(board, matchId, side, pick, options));
 }
@@ -770,6 +1013,10 @@ export function setCompetitorCount(size: number, max = PRO_MAX_COMPETITORS): voi
   patchActive((board) => applyCompetitorCount(board, size, max));
 }
 
+export function setPlacement(placement: PlacementStyle): void {
+  patchActive((board) => applyPlacement(board, placement));
+}
+
 export function renameActiveBracket(name: string): void {
   const trimmed = name.trim().slice(0, BRACKET_NAME_MAX);
   persistLibrary(applyRenameBracket(library, library.activeId, trimmed));
@@ -790,8 +1037,60 @@ export function deleteBracket(id: string): void {
   persistLibrary(applyDeleteBracket(library, id));
 }
 
+/** Empty seed slots. Bye cards already say BYE. This is a hint, not a competitor name. */
+export const EMPTY_SLOT_HINT = 'TBD';
+
 export function seedPlaceholder(index: number): string {
-  return `Competitor ${index + 1}`;
+  void index;
+  return EMPTY_SLOT_HINT;
+}
+
+/**
+ * Name on the scoreboard for a linked bout. An empty bracket slot stays TBD
+ * on the tree. Opening that bout still uses Competitor 1 / Competitor 2 so a
+ * blank scoreboard does not lose its default names.
+ */
+export function displayBoutName(board: TournamentState, matchId: BracketMatchId, side: MatchSide): string {
+  const named = slotName(board, slotId(matchId, side)).trim();
+  if (named) return named;
+  const index = seedSlots(board).indexOf(slotId(matchId, side));
+  if (index >= 0) return `Competitor ${index + 1}`;
+  return side === 'a' ? 'Competitor 1' : 'Competitor 2';
+}
+
+/**
+ * Keep a name typed on the scoreboard when that bracket slot is still empty.
+ * Generated scoreboard names ("Competitor 1") are not written back as real entries.
+ */
+export function applyEmptyBoutNames(
+  board: TournamentState,
+  matchId: BracketMatchId,
+  names: { a: string; b: string },
+): TournamentState {
+  let next = board;
+  for (const side of ['a', 'b'] as const) {
+    const typed = names[side].trim();
+    if (!typed) continue;
+    const id = slotId(matchId, side);
+    if (slotName(next, id).trim()) continue;
+    if (typed === displayBoutName(next, matchId, side)) continue;
+    next = applySlotName(next, id, typed);
+  }
+  return next;
+}
+
+export function rememberEmptyBoutNames(
+  matchId: BracketMatchId,
+  names: { a: string; b: string },
+): void {
+  const current = getTournament();
+  const next = applyEmptyBoutNames(current, matchId, names);
+  if (next === current) return;
+  for (const side of ['a', 'b'] as const) {
+    const id = slotId(matchId, side);
+    const after = slotName(next, id);
+    if (after !== slotName(current, id)) setSlotName(id, after);
+  }
 }
 
 export function bracketHasCompetitors(current: TournamentState): boolean {

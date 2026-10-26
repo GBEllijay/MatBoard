@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  emptyChangeWasCancel,
   isImageAccept,
   isVideoAccept,
   openDeviceMediaPicker,
+  MEDIA_LIBRARY_ACCEPT,
   PHOTO_CAPTURE_LABEL,
   PHOTO_PICKER_ACCEPT,
   VIDEO_CAPTURE,
@@ -50,6 +52,16 @@ describe('photo device picker accept', () => {
     assert.equal(isImageAccept('image/jpeg'), true);
     assert.equal(isImageAccept(VIDEO_PICKER_ACCEPT), false);
     assert.equal(isImageAccept(VIDEO_RECORD_ACCEPT), false);
+    assert.equal(isImageAccept(MEDIA_LIBRARY_ACCEPT), false);
+  });
+
+  it('library photo-or-video accept is not a capture accept', () => {
+    assert.equal(MEDIA_LIBRARY_ACCEPT, 'image/*,video/*');
+    assert.notEqual(MEDIA_LIBRARY_ACCEPT, PHOTO_PICKER_ACCEPT);
+    assert.notEqual(MEDIA_LIBRARY_ACCEPT, VIDEO_RECORD_ACCEPT);
+    assert.doesNotMatch(VIDEO_RECORD_ACCEPT, /image/);
+    assert.doesNotMatch(PHOTO_PICKER_ACCEPT, /video/);
+    assert.equal(isVideoAccept(MEDIA_LIBRARY_ACCEPT), false);
   });
 });
 
@@ -106,5 +118,15 @@ describe('openDeviceMediaPicker', () => {
     assert.doesNotThrow(() =>
       openDeviceMediaPicker(null, { accept: VIDEO_PICKER_ACCEPT, mode: 'record' }),
     );
+  });
+});
+
+describe('empty picker versus cancel', () => {
+  it('treats a cancel just before or just after an empty change as a dismiss', () => {
+    const changeAt = 1_000;
+    assert.equal(emptyChangeWasCancel(0, changeAt, changeAt + 80), false);
+    assert.equal(emptyChangeWasCancel(changeAt - 40, changeAt, changeAt + 80), true);
+    assert.equal(emptyChangeWasCancel(changeAt + 30, changeAt, changeAt + 80), true);
+    assert.equal(emptyChangeWasCancel(changeAt - 500, changeAt, changeAt + 80), false);
   });
 });

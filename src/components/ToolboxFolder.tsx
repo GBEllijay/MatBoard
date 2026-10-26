@@ -1,5 +1,10 @@
+import { PICK_FROM_DRIVE_LABEL } from '../lib/driveMediaPicker';
+import { GALLERY_LINK_TECHNIQUES } from '../lib/gallerySchedule';
+import { PHOTOS_PICK_LABEL } from '../lib/googlePhotos';
 import type { FolderConfig, FolderId, StoredPhoto } from '../lib/photoStore';
+import { FolderChevron } from './FolderChevron';
 import { FolderItemList } from './FolderItemList';
+import { OpenMyDrive } from './OpenMyDrive';
 
 type Props = {
   folder: FolderConfig;
@@ -11,6 +16,8 @@ type Props = {
   onPlayToggle: (folderId: FolderId, enabled: boolean) => void;
   onAdd?: () => void;
   onAddVideo?: () => void;
+  onPickDrive?: () => void;
+  onPickPhotos?: () => void;
   onClear?: () => Promise<void>;
   onRename: (id: string, label: string) => Promise<void>;
   onRemove: (id: string) => Promise<void>;
@@ -19,6 +26,11 @@ type Props = {
   onBuyUrl?: (id: string, buyUrl: string) => Promise<void>;
   onStartsSlide?: (id: string, startsSlide: boolean) => Promise<void>;
   onQrLinks?: (id: string, qrLinks: string[]) => Promise<void>;
+  onGalleryChange?: (
+    id: string,
+    patch: { caption?: string; schedule?: 'always' | 'date' | 'next-class'; showDate?: string },
+  ) => Promise<void>;
+  onLinkTechniques?: () => void;
   notice?: string;
   addDisabled?: boolean;
 };
@@ -34,6 +46,8 @@ export function ToolboxFolder({
   onPlayToggle,
   onAdd,
   onAddVideo,
+  onPickDrive,
+  onPickPhotos,
   onClear,
   onRename,
   onRemove,
@@ -42,6 +56,8 @@ export function ToolboxFolder({
   onBuyUrl,
   onStartsSlide,
   onQrLinks,
+  onGalleryChange,
+  onLinkTechniques,
   notice,
   addDisabled,
 }: Props) {
@@ -55,6 +71,7 @@ export function ToolboxFolder({
       }}
     >
       <summary className="saver-folder__summary">
+        <FolderChevron />
         <span className="saver-folder__title">
           {folder.label}
           {folder.ready ? null : <small>Coming soon</small>}
@@ -88,6 +105,22 @@ export function ToolboxFolder({
                 {folder.videoAddLabel}
               </button>
             ) : null}
+            {onPickPhotos ? (
+              <button type="button" className="btn" onClick={onPickPhotos}>
+                {PHOTOS_PICK_LABEL}
+              </button>
+            ) : null}
+            {onPickDrive ? (
+              <button type="button" className="btn" onClick={onPickDrive}>
+                {PICK_FROM_DRIVE_LABEL}
+              </button>
+            ) : null}
+            {onLinkTechniques ? (
+              <button type="button" className="btn btn--ghost" onClick={onLinkTechniques}>
+                {GALLERY_LINK_TECHNIQUES}
+              </button>
+            ) : null}
+            {folder.ready ? <OpenMyDrive /> : null}
             {items.length && onClear ? (
               <button type="button" className="btn btn--ghost" onClick={() => void onClear()}>
                 Clear {folder.label}
@@ -104,6 +137,7 @@ export function ToolboxFolder({
               onBuyUrl={onBuyUrl}
               onStartsSlide={onStartsSlide}
               onQrLinks={onQrLinks}
+              onGalleryChange={onGalleryChange}
             />
           </>
         ) : (

@@ -1,61 +1,376 @@
-import type { ReactNode } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { useEffect, type ReactNode } from 'react';
+import { Navigate, Route, Routes, useNavigate, useSearchParams } from 'react-router-dom';
+import { InviteHandoffAccept } from './components/InviteHandoffAccept';
+import { OneDriveConnectResume } from './components/OneDriveConnectResume';
+import { SeatSessionChrome, useCurrentSeat } from './components/SeatSessionBar';
 import { useCoachUnlocked } from './hooks/useCoachUnlocked';
 import { useKeepFocusedFieldVisible } from './hooks/useKeepFocusedFieldVisible';
 import { useProUnlocked } from './hooks/useProUnlocked';
+import { useSeatDoor } from './hooks/useSeatDoor';
+import { useStudentEditionUnlocked } from './hooks/useStudentEditionUnlocked';
+import { useWhiteUnlocked } from './hooks/useWhiteUnlocked';
 import { consumeCoachUnlockQueryNow } from './lib/coachUnlock';
+import {
+  acceptInstructorInvite,
+  currentNavigationType,
+  inviteReloadBlocked,
+  menuCloudSharing,
+  peekInstructorInvite,
+  seatMenuAllowed,
+  stripInviteFromAddress,
+} from './lib/instructorSeats';
+import {
+  MEDIA_CONSOLE_ROUTES,
+  MEDIA_FOLDER_ROUTES,
+  PRODUCTS_PATH,
+  closedDoorPath,
+  coachDoorOpen,
+  coachUnlimitedDoorOpen,
+  mediaConsoleDoorOpen,
+  mediaFolderDoorOpen,
+  ownerProHubOpen,
+  proDoorOpen,
+  visibleProHubs,
+  type MediaFolderId,
+} from './lib/productNames';
+import { proPurchaseReturn } from './lib/proEntitlement';
+import { studentEditionOpen, studentPurchaseReturn } from './lib/studentEdition';
 import { consumeUnlockQueryNow } from './lib/proUnlock';
+import { captureHalfOffQuery, consumeHalfOffQueryNow } from './lib/halfOff';
+import { preservesAppHomeQuery } from './lib/submenuNav';
+import { WHITE_BUY_PATH } from './lib/whitePurchase';
+import { whiteHubAllowed, whiteLiveToolsAllowed } from './lib/whiteUnlock';
+import { ClassHistoryPage } from './pages/ClassHistory';
+import { StudentEditionPage } from './pages/StudentEdition';
 import { CoachPage } from './pages/Coach';
+import { AcademyPathwayPage, CoachUnlimitedPage } from './pages/CoachUnlimited';
+import { CoachingToolsPage } from './pages/CoachingTools';
+import { CompetitionCurriculumPage } from './pages/CompetitionCurriculum';
+import { CardPage } from './pages/Card';
+import { HalfOffPage } from './pages/HalfOff';
 import { ComingSoonPage } from './pages/ComingSoon';
+import { CompetitionManagementPage } from './pages/CompetitionManagement';
+import { CompetitionReadyPage } from './pages/CompetitionReady';
 import { CompetitorManagementPage } from './pages/CompetitorManagement';
+import { GamePlanPage } from './pages/GamePlan';
 import { HomePage } from './pages/Home';
+import { StorefrontPage } from './pages/Storefront';
+import { PrivacyPage } from './pages/Privacy';
 import { InstructorCollaborationPage } from './pages/InstructorCollaboration';
 import { MatchControllerPage } from './pages/MatchController';
 import { MatchDisplayPage } from './pages/MatchDisplay';
 import { ProPage } from './pages/Pro';
+import { ReviewInboxPage } from './pages/ReviewInbox';
 import { RosterPage } from './pages/Roster';
 import { ScreensaverPage } from './pages/Screensaver';
 import { SchedulePage } from './pages/Schedule';
 import { TechniqueTreePage } from './pages/TechniqueTree';
 import { TechniquesPage } from './pages/Techniques';
+import { TermsPage } from './pages/Terms';
 import { RankingsPage } from './pages/Rankings';
 import { TournamentPage } from './pages/Tournament';
 import { TournamentSuitePage } from './pages/TournamentSuite';
 import { TrainingNotesPage } from './pages/TrainingNotes';
 import { TrainingControllerPage } from './pages/TrainingController';
 import { TrainingPage } from './pages/Training';
+import { BuyCoachPage, BuyProPage, BuyStudentPage } from './pages/BuyTier';
+import { BuyWhitePage } from './pages/BuyWhite';
 import { WhitePage } from './pages/White';
+import { WhiteRosterPage } from './pages/WhiteRoster';
 
 consumeUnlockQueryNow();
 consumeCoachUnlockQueryNow();
+consumeHalfOffQueryNow();
 
-function ProRoute({ children }: { children: ReactNode }) {
-  const unlocked = useProUnlocked();
-  if (!unlocked) return <Navigate to="/coming-soon" replace />;
+/**
+ * Full page loads read the invite before the router paints a locked route.
+ * A live token accepts the seat and replaces the address with home.
+ * The owner code is never added to that address.
+ */
+function consumeInviteDoorNow(): void {
+  if (typeof window === 'undefined') return;
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('invite');
+  if (!token || peekInstructorInvite(token) !== 'open') return;
+  if (inviteReloadBlocked(token, currentNavigationType(), token)) {
+    stripInviteFromAddress();
+    return;
+  }
+  if (!acceptInstructorInvite(token).ok) return;
+  const url = new URL(window.location.href);
+  url.pathname = PRODUCTS_PATH;
+  url.search = '';
+  window.history.replaceState(window.history.state, '', `${url.pathname}${url.hash}`);
+}
+
+consumeInviteDoorNow();
+
+/** Full Pro hubs a seat is allowed to see. Owner-only hubs stay out. */
+function ProConsoleRoute({ children }: { children: ReactNode }) {
+  const door = useSeatDoor();
+  if (visibleProHubs(door).length === 0) return <Navigate to={closedDoorPath(door.seated)} replace />;
   return children;
+}
+
+/** Gallery, Events, and Pro Shop. Program Director opens this with Pro locked. */
+function MediaConsoleRoute({ children }: { children: ReactNode }) {
+  const door = useSeatDoor();
+  if (!mediaConsoleDoorOpen(door)) return <Navigate to={closedDoorPath(door.seated)} replace />;
+  return children;
+}
+
+/** Tournament suite and invite admin. A signed-in seat does not open these. */
+function OwnerProRoute({ children }: { children: ReactNode }) {
+  const door = useSeatDoor();
+  if (!ownerProHubOpen(door.proUnlocked, door.seated)) return <Navigate to={closedDoorPath(door.seated)} replace />;
+  return children;
+}
+
+/** Coach Unlimited hub. A seat needs Pro on and a lesson or videos menu. */
+function CoachUnlimitedRoute({ children }: { children: ReactNode }) {
+  const door = useSeatDoor();
+  if (!coachUnlimitedDoorOpen(door)) return <Navigate to={closedDoorPath(door.seated)} replace />;
+  return children;
+}
+
+/**
+ * Class history reads the gym Drive folder.
+ * Owner Pro unlock opens it. A seat opens it from an authorized lesson menu,
+ * with the same cloud path, even when Pro is locked.
+ */
+function LessonCloudRoute({ children }: { children: ReactNode }) {
+  const door = useSeatDoor();
+  const open = menuCloudSharing(
+    door.proUnlocked,
+    door.seat,
+    seatMenuAllowed(door.seat, 'dailyLessonPlanAccess'),
+  );
+  if (!open) return <Navigate to={closedDoorPath(door.seated)} replace />;
+  return children;
+}
+
+/**
+ * Buy Pro stays on the owner unlock and a Program Director seat.
+ * Stripe's success return still renders so the webhook can unlock this device.
+ */
+function BuyProRoute({ children }: { children: ReactNode }) {
+  const door = useSeatDoor();
+  const [params] = useSearchParams();
+  if (!door.proUnlocked && !door.programDirectorSeat && !proPurchaseReturn(params)) {
+    return <Navigate to={closedDoorPath(door.seated)} replace />;
+  }
+  return children;
+}
+
+/**
+ * Buy Student Edition stays behind the same owner unlock as the journal
+ * (`?student=1`, a completed Student Edition Checkout, a Pro unlock, or the
+ * owner code that opens White, Coach, and Pro together). Stripe's success return still renders
+ * so the webhook can unlock this device. There is no public Buy button.
+ */
+function BuyStudentRoute({ children }: { children: ReactNode }) {
+  const [params] = useSearchParams();
+  const seated = useCurrentSeat() !== null;
+  const open = studentEditionOpen(params, {
+    pro: useProUnlocked(),
+    coach: useCoachUnlocked(),
+    white: useWhiteUnlocked(),
+    student: useStudentEditionUnlocked(),
+  });
+  if (!open && !studentPurchaseReturn(params)) {
+    return <Navigate to={closedDoorPath(seated)} replace />;
+  }
+  return children;
+}
+
+/** Advantage White hub and roster. Purchase, WHITEFREE, or email restore opens them. */
+function WhiteHubRoute({ children }: { children: ReactNode }) {
+  const unlocked = useWhiteUnlocked();
+  if (!whiteHubAllowed(unlocked)) return <Navigate to={WHITE_BUY_PATH} replace />;
+  return children;
+}
+
+/**
+ * Scoreboard and round timer. White buyers use them from /white.
+ * Coach and Pro keep the same screens through their existing doors.
+ */
+function WhiteLiveRoute({ children }: { children: ReactNode }) {
+  const whiteUnlocked = useWhiteUnlocked();
+  const pro = useProUnlocked();
+  const coach = useCoachUnlocked();
+  const seated = useCurrentSeat() !== null;
+  const coachDoor = coachDoorOpen(pro, coach, seated);
+  if (!whiteLiveToolsAllowed({ whiteUnlocked, coachDoor, proDoor: proDoorOpen(pro) })) {
+    return <Navigate to={WHITE_BUY_PATH} replace />;
+  }
+  return children;
+}
+
+/** Gallery, Events, or Pro Shop. A closed seat goes home. An unseated visitor sees Coming soon. */
+function MediaFolderRoute({ folder }: { folder: MediaFolderId }) {
+  const door = useSeatDoor();
+  if (!mediaFolderDoorOpen(door, door.seat?.permissions ?? null, folder)) {
+    return <Navigate to={closedDoorPath(door.seated)} replace />;
+  }
+  return <Navigate to={`/slideshow?folder=${folder}`} replace />;
+}
+
+/** `/media`, `/console`, and `/media-console` open the same seat console as home. */
+function MediaConsoleEntryRoute() {
+  const door = useSeatDoor();
+  if (!mediaConsoleDoorOpen(door)) return <Navigate to={closedDoorPath(door.seated)} replace />;
+  return <Navigate to="/pro" replace />;
 }
 
 function CoachRoute({ children }: { children: ReactNode }) {
   const coach = useCoachUnlocked();
   const pro = useProUnlocked();
-  if (!coach && !pro) return <Navigate to="/coming-soon" replace />;
+  const seated = useCurrentSeat() !== null;
+  if (!coachDoorOpen(pro, coach, seated)) return <Navigate to={closedDoorPath(seated)} replace />;
   return children;
+}
+
+/**
+ * A live invite is its own door. Accept it before a Pro route can bounce the
+ * link to the owner purchase lock, then land on home. The owner code stays out
+ * of the link. A bad token does not open the door.
+ */
+function InviteDoor({ children }: { children: ReactNode }) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const token = searchParams.get('invite');
+  const peek = token ? peekInstructorInvite(token) : null;
+  const open = peek === 'open';
+
+  useEffect(() => {
+    if (!token || !open) return;
+    const result = acceptInstructorInvite(token);
+    if (result.ok) {
+      navigate(PRODUCTS_PATH, { replace: true });
+      return;
+    }
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        next.delete('invite');
+        return next;
+      },
+      { replace: true },
+    );
+  }, [token, open, navigate, setSearchParams]);
+
+  if (token && peek === 'missing') return <InviteHandoffAccept token={token} />;
+  if (open) return null;
+  return children;
+}
+
+/** Owner-code and `?student=1` links keep the edition picker. A bare `/` is the storefront. */
+function PublicHomeRoute() {
+  const [params] = useSearchParams();
+  if (preservesAppHomeQuery(params)) {
+    const search = params.toString();
+    return <Navigate to={search ? `${PRODUCTS_PATH}?${search}` : PRODUCTS_PATH} replace />;
+  }
+  return <StorefrontPage />;
+}
+
+function EditionsRedirect() {
+  const [params] = useSearchParams();
+  const search = params.toString();
+  return <Navigate to={search ? `${PRODUCTS_PATH}?${search}` : PRODUCTS_PATH} replace />;
 }
 
 export default function App() {
   useKeepFocusedFieldVisible();
   useProUnlocked();
   useCoachUnlocked();
+  const [halfOffParams] = useSearchParams();
+  useEffect(() => {
+    captureHalfOffQuery(halfOffParams);
+  }, [halfOffParams]);
 
   return (
+    <>
+    <SeatSessionChrome />
+    <InviteDoor>
     <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/white" element={<WhitePage />} />
+      <Route path="/" element={<PublicHomeRoute />} />
+      <Route path="/products" element={<HomePage />} />
+      <Route path="/editions" element={<EditionsRedirect />} />
+      <Route
+        path="/white"
+        element={
+          <WhiteHubRoute>
+            <WhitePage />
+          </WhiteHubRoute>
+        }
+      />
+      <Route path="/buy" element={<BuyWhitePage />} />
+      <Route
+        path="/buy/student"
+        element={
+          <BuyStudentRoute>
+            <BuyStudentPage />
+          </BuyStudentRoute>
+        }
+      />
+      <Route
+        path="/buy/coach"
+        element={
+          <CoachRoute>
+            <BuyCoachPage />
+          </CoachRoute>
+        }
+      />
+      <Route
+        path="/buy/pro"
+        element={
+          <BuyProRoute>
+            <BuyProPage />
+          </BuyProRoute>
+        }
+      />
+      <Route
+        path="/white/roster"
+        element={
+          <WhiteHubRoute>
+            <WhiteRosterPage />
+          </WhiteHubRoute>
+        }
+      />
       <Route path="/lite" element={<Navigate to="/white" replace />} />
-      <Route path="/match" element={<MatchDisplayPage />} />
-      <Route path="/match/control" element={<MatchControllerPage />} />
-      <Route path="/training" element={<TrainingPage />} />
-      <Route path="/training/control" element={<TrainingControllerPage />} />
+      <Route
+        path="/match"
+        element={
+          <WhiteLiveRoute>
+            <MatchDisplayPage />
+          </WhiteLiveRoute>
+        }
+      />
+      <Route
+        path="/match/control"
+        element={
+          <WhiteLiveRoute>
+            <MatchControllerPage />
+          </WhiteLiveRoute>
+        }
+      />
+      <Route
+        path="/training"
+        element={
+          <WhiteLiveRoute>
+            <TrainingPage />
+          </WhiteLiveRoute>
+        }
+      />
+      <Route
+        path="/training/control"
+        element={
+          <WhiteLiveRoute>
+            <TrainingControllerPage />
+          </WhiteLiveRoute>
+        }
+      />
       <Route
         path="/coach"
         element={
@@ -67,9 +382,25 @@ export default function App() {
       <Route
         path="/pro"
         element={
-          <ProRoute>
+          <ProConsoleRoute>
             <ProPage />
-          </ProRoute>
+          </ProConsoleRoute>
+        }
+      />
+      <Route
+        path="/coaching-tools"
+        element={
+          <CoachRoute>
+            <CoachingToolsPage />
+          </CoachRoute>
+        }
+      />
+      <Route
+        path="/competition"
+        element={
+          <CoachRoute>
+            <CompetitionManagementPage />
+          </CoachRoute>
         }
       />
       <Route
@@ -83,33 +414,81 @@ export default function App() {
       <Route
         path="/suite"
         element={
-          <ProRoute>
+          <OwnerProRoute>
             <TournamentSuitePage />
-          </ProRoute>
+          </OwnerProRoute>
+        }
+      />
+      <Route
+        path="/coach-unlimited"
+        element={
+          <CoachUnlimitedRoute>
+            <CoachUnlimitedPage />
+          </CoachUnlimitedRoute>
+        }
+      />
+      <Route
+        path="/coach-unlimited/academy"
+        element={
+          <CoachUnlimitedRoute>
+            <AcademyPathwayPage />
+          </CoachUnlimitedRoute>
+        }
+      />
+      <Route
+        path="/review"
+        element={
+          <CoachUnlimitedRoute>
+            <ReviewInboxPage />
+          </CoachUnlimitedRoute>
         }
       />
       <Route
         path="/competitors"
         element={
-          <ProRoute>
+          <CoachRoute>
             <CompetitorManagementPage />
-          </ProRoute>
+          </CoachRoute>
         }
       />
       <Route
         path="/instructors"
         element={
-          <ProRoute>
+          <OwnerProRoute>
             <InstructorCollaborationPage />
-          </ProRoute>
+          </OwnerProRoute>
+        }
+      />
+      <Route
+        path="/class-history"
+        element={
+          <LessonCloudRoute>
+            <ClassHistoryPage />
+          </LessonCloudRoute>
         }
       />
       <Route
         path="/rankings"
         element={
-          <ProRoute>
+          <CoachRoute>
             <RankingsPage />
-          </ProRoute>
+          </CoachRoute>
+        }
+      />
+      <Route
+        path="/competition-ready"
+        element={
+          <CoachRoute>
+            <CompetitionReadyPage />
+          </CoachRoute>
+        }
+      />
+      <Route
+        path="/game-plan"
+        element={
+          <CoachRoute>
+            <GamePlanPage />
+          </CoachRoute>
         }
       />
       <Route
@@ -137,11 +516,19 @@ export default function App() {
         }
       />
       <Route
+        path="/competition-curriculum"
+        element={
+          <CoachRoute>
+            <CompetitionCurriculumPage />
+          </CoachRoute>
+        }
+      />
+      <Route
         path="/schedule"
         element={
-          <ProRoute>
+          <MediaConsoleRoute>
             <SchedulePage />
-          </ProRoute>
+          </MediaConsoleRoute>
         }
       />
       <Route
@@ -155,21 +542,35 @@ export default function App() {
       <Route
         path="/slideshow"
         element={
-          <ProRoute>
+          <MediaConsoleRoute>
             <ScreensaverPage />
-          </ProRoute>
+          </MediaConsoleRoute>
         }
       />
+      {MEDIA_FOLDER_ROUTES.map((route) => (
+        <Route key={route.path} path={route.path} element={<MediaFolderRoute folder={route.folder} />} />
+      ))}
+      {MEDIA_CONSOLE_ROUTES.map((path) => (
+        <Route key={path} path={path} element={<MediaConsoleEntryRoute />} />
+      ))}
       <Route
         path="/screensaver"
         element={
-          <ProRoute>
+          <MediaConsoleRoute>
             <ScreensaverPage />
-          </ProRoute>
+          </MediaConsoleRoute>
         }
       />
+      <Route path="/student/*" element={<StudentEditionPage />} />
       <Route path="/coming-soon" element={<ComingSoonPage />} />
+      <Route path="/card" element={<CardPage />} />
+      <Route path="/half-off" element={<HalfOffPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/terms" element={<TermsPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    <OneDriveConnectResume />
+    </InviteDoor>
+    </>
   );
 }

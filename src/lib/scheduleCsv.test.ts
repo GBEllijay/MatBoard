@@ -5,6 +5,7 @@ import {
   formatScheduleCsvSummary,
   importScheduleCsv,
   importScheduleCsvFile,
+  parseClassLevel,
   parseScheduleClock,
   parseScheduleDay,
   scheduleCsvTemplate,
@@ -47,6 +48,7 @@ describe('schedule CSV round trip', () => {
           title: 'Kids BJJ',
           location: 'MAT 1',
           subtitle: '',
+          level: 'kids',
         },
         {
           id: 'class-tue',
@@ -56,6 +58,7 @@ describe('schedule CSV round trip', () => {
           title: 'No-Gi, All Levels',
           location: 'MAT 2',
           subtitle: 'Blue belt & up',
+          level: 'kids-advanced',
         },
       ],
       specials: [
@@ -81,12 +84,19 @@ describe('schedule CSV round trip', () => {
     assert.equal(next.payload?.template, 'week');
     assert.equal(next.payload?.castEnabled, false);
     assert.deepEqual(
-      next.payload?.classes.map((row) => [row.id, row.day, row.time, row.title, row.location, row.subtitle]),
+      next.payload?.classes.map((row) => [row.id, row.day, row.time, row.title, row.location, row.subtitle, row.level]),
       [
-        ['class-mon', 'mon', '17:00', 'Kids BJJ', 'MAT 1', ''],
-        ['class-tue', 'tue', '18:00', 'No-Gi, All Levels', 'MAT 2', 'Blue belt & up'],
+        ['class-mon', 'mon', '17:00', 'Kids BJJ', 'MAT 1', '', 'kids'],
+        ['class-tue', 'tue', '18:00', 'No-Gi, All Levels', 'MAT 2', 'Blue belt & up', 'kids-advanced'],
       ],
     );
+    assert.equal(next.payload?.classes[0]?.level, 'kids');
+    assert.equal(next.payload?.classes[1]?.level, 'kids-advanced');
+    assert.match(csv, /Kids Advanced/);
+    const header = csv.split('\r\n')[0]?.split(',') ?? [];
+    assert.equal(header[6], 'Level');
+    const classLine = csv.split('\r\n').find((line) => line.startsWith('class,Monday'));
+    assert.equal(classLine?.split(',')[6], 'Kids');
     assert.equal(next.payload?.specials?.[0]?.date, '2026-12-24');
     assert.equal(next.payload?.specials?.[0]?.title, 'Closed');
     assert.equal(next.payload?.specials?.[0]?.body, 'Christmas Eve');
@@ -106,6 +116,58 @@ describe('schedule CSV round trip', () => {
     assert.equal(next.payload?.classes[0]?.title, 'Fundamentals');
     assert.equal(next.payload?.classes[0]?.location, 'MAT 1');
     assert.equal(next.payload?.classes[0]?.subtitle, 'All Levels');
+    assert.equal(next.payload?.classes[0]?.level, 'none');
+    assert.equal(next.skipped, 0);
+  });
+
+  it('round-trips a level by id or label and treats a blank or unknown level as No level', () => {
+    assert.equal(parseClassLevel('kids-advanced'), 'kids-advanced');
+    assert.equal(parseClassLevel('Kids Advanced'), 'kids-advanced');
+    assert.equal(parseClassLevel('all levels'), 'kids');
+    assert.equal(parseClassLevel('FUNDAMENTALS'), 'fundamentals');
+    assert.equal(parseClassLevel(''), 'none');
+    assert.equal(parseClassLevel('purple'), 'none');
+    const csv = [
+      'Day,Time,Class name,Level',
+      'Monday,5:00 PM,Fundamentals,Kids Advanced',
+      'Tuesday,6:00 PM,Open Mat,',
+      'Wednesday,7:00 PM,Seminar,not-a-level',
+    ].join('\r\n');
+    const next = importScheduleCsv(csv);
+    assert.equal(next.error, undefined);
+    assert.equal(next.skipped, 0);
+    assert.equal(next.classCount, 3);
+    assert.deepEqual(
+      next.payload?.classes.map((row) => [row.title, row.level]),
+      [
+        ['Fundamentals', 'kids-advanced'],
+        ['Open Mat', 'none'],
+        ['Seminar', 'none'],
+      ],
+    );
+    assert.equal(next.payload?.classes[0]?.title, 'Fundamentals');
+    assert.equal(next.payload?.classes[1]?.title, 'Open Mat');
+  });
+
+  it('reads Level from an older file that puts it last, and from a Difficulty column', () => {
+    const legacy = [
+      'Record,Day,Time,Class name,Mat,Detail,Date,Title,Body,Board title,QR link,Notices,Template,Play on TV,Id,Flyer id,Level',
+      'class,Monday,17:00,Noon Gi,MAT 1,detail,,,,,,,,,c-old,,Kids Advanced',
+    ].join('\r\n');
+    const fromLegacy = importScheduleCsv(legacy);
+    assert.equal(fromLegacy.error, undefined);
+    assert.equal(fromLegacy.payload?.classes[0]?.title, 'Noon Gi');
+    assert.equal(fromLegacy.payload?.classes[0]?.level, 'kids-advanced');
+    assert.equal(fromLegacy.payload?.classes[0]?.subtitle, 'detail');
+
+    const difficulty = ['Day,Time,Class name,Difficulty', 'Tuesday,6:00 PM,Open Mat,Expert'].join('\r\n');
+    const fromDifficulty = importScheduleCsv(difficulty);
+    assert.equal(fromDifficulty.error, undefined);
+    assert.equal(fromDifficulty.payload?.classes[0]?.level, 'expert');
+    assert.equal(fromDifficulty.payload?.classes[0]?.title, 'Open Mat');
+
+    const belt = ['Day,Time,Class name,Belt level', 'Wednesday,7:00 PM,Fundamentals,All Levels'].join('\r\n');
+    assert.equal(importScheduleCsv(belt).payload?.classes[0]?.level, 'kids');
   });
 
   it('imports the template, then replaces an on-device board', () => {

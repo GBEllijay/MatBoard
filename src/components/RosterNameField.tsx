@@ -6,14 +6,20 @@ import { useRosterState } from '../hooks/useStores';
 import {
   ADULT_BELTS,
   KIDS_BELTS,
+  competitorCards,
   confirmManualCompetitor,
   prefillFields,
   searchStudents,
+  studentRosterCards,
   type RosterPrefill,
 } from '../lib/rosterStore';
-import { COMPETITOR_ROSTER_LABEL } from '../lib/coachCopy';
+import { COMPETITOR_ROSTER_LABEL, STUDENT_ROSTER_LABEL } from '../lib/coachCopy';
+import { STUDENT_ROSTER_PATH } from '../lib/productNames';
 import { RankChip } from './RankChip';
 import { Sheet } from './Sheet';
+import { WhiteNamePicker } from './WhiteNamePicker';
+
+type NameList = 'competitor' | 'white' | 'student';
 
 type Props = {
   id?: string;
@@ -23,6 +29,12 @@ type Props = {
   placeholder?: string;
   ariaLabel?: string;
   compact?: boolean;
+  /**
+   * `white` is the Advantage White match-name list on this phone.
+   * Pro scoreboards and suite brackets leave this as `competitor`.
+   * Basic Coach Mock Tournament uses `student` and the Coach Student Roster.
+   */
+  names?: NameList;
 };
 
 export function RosterNameField({
@@ -33,25 +45,40 @@ export function RosterNameField({
   placeholder,
   ariaLabel,
   compact = false,
+  names = 'competitor',
 }: Props) {
   const proUnlocked = useProUnlocked();
   const coachUnlocked = useCoachUnlocked();
-  const unlocked = proUnlocked || coachUnlocked;
+  const whiteNames = names === 'white';
+  const studentNames = names === 'student';
+  const unlocked = whiteNames || proUnlocked || coachUnlocked;
   const [pickOpen, setPickOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [addToRoster, setAddToRoster] = useState(false);
   const [belt, setBelt] = useState('');
+  const [onKidsBoard, setOnKidsBoard] = useState(false);
   const skipFocusRef = useRef(false);
+  const fieldRef = useRef<HTMLDivElement>(null);
+  const pickedRef = useRef(false);
+  const pickingRef = useRef(false);
 
   const openPicker = () => {
+    setOnKidsBoard(Boolean(fieldRef.current?.closest('.tournament--kids')));
     setQuery(value);
     setAddToRoster(false);
     setBelt('');
+    pickedRef.current = false;
+    pickingRef.current = false;
     setPickOpen(true);
   };
 
   const closePicker = () => {
     skipFocusRef.current = true;
+    if (!whiteNames && !pickedRef.current) onChange(query);
+    // The sheet blurs its field as it closes. Swallow that blur so a cleared
+    // query cannot wipe the name this close just stored.
+    pickedRef.current = true;
+    pickingRef.current = false;
     setPickOpen(false);
     setQuery('');
     setAddToRoster(false);
@@ -59,7 +86,14 @@ export function RosterNameField({
   };
 
   const pick = (prefill: RosterPrefill) => {
+    pickedRef.current = true;
     onPrefill(prefill);
+    closePicker();
+  };
+
+  const commitTyped = (name: string) => {
+    pickedRef.current = true;
+    onChange(name);
     closePicker();
   };
 
@@ -94,30 +128,54 @@ export function RosterNameField({
   if (!unlocked) return input;
 
   return (
-    <div className={`roster-field${compact ? ' roster-field--compact' : ''}`}>
+    <div ref={fieldRef} className={`roster-field${compact ? ' roster-field--compact' : ''}`}>
       <div className="roster-field__row">{input}</div>
       <Sheet
         open={pickOpen}
-        title="Pick a competitor"
+        title={studentNames ? 'Pick a student' : 'Pick a competitor'}
         onClose={closePicker}
         stacked
-        className="sheet--roster"
+        portal
+        className={`sheet--roster${onKidsBoard ? ' sheet--on-kids' : ''}`}
       >
-        <RosterPicker
-          query={query}
-          onQuery={setQuery}
-          addToRoster={addToRoster}
-          onAddToRoster={setAddToRoster}
-          belt={belt}
-          onBelt={setBelt}
-          onPick={pick}
-        />
+        {whiteNames ? (
+          <WhiteNamePicker
+            query={query}
+            onQuery={setQuery}
+            saveOnPhone={addToRoster}
+            onSaveOnPhone={setAddToRoster}
+            belt={belt}
+            onBelt={setBelt}
+            onPick={pick}
+          />
+        ) : (
+          <RosterPicker
+            studentList={studentNames}
+            query={query}
+            onQuery={setQuery}
+            addToRoster={addToRoster}
+            onAddToRoster={setAddToRoster}
+            belt={belt}
+            onBelt={setBelt}
+            onPick={pick}
+            onCommitTyped={commitTyped}
+            onKeepTyped={(name) => {
+              if (pickedRef.current || pickingRef.current) return;
+              onChange(name);
+            }}
+            onPicking={(active) => {
+              pickingRef.current = active;
+            }}
+            holdCommit={() => pickingRef.current || pickedRef.current}
+          />
+        )}
       </Sheet>
     </div>
   );
 }
 
 function RosterPicker({
+  studentList,
   query,
   onQuery,
   addToRoster,
@@ -125,7 +183,12 @@ function RosterPicker({
   belt,
   onBelt,
   onPick,
+  onCommitTyped,
+  onKeepTyped,
+  onPicking,
+  holdCommit,
 }: {
+  studentList: boolean;
   query: string;
   onQuery: (value: string) => void;
   addToRoster: boolean;
@@ -133,10 +196,17 @@ function RosterPicker({
   belt: string;
   onBelt: (value: string) => void;
   onPick: (prefill: RosterPrefill) => void;
+  onCommitTyped: (name: string) => void;
+  onKeepTyped: (name: string) => void;
+  onPicking: (active: boolean) => void;
+  holdCommit: () => boolean;
 }) {
   const roster = useRosterState();
-  const matches = searchStudents(roster.students, query);
+  const listed = studentList ? studentRosterCards(roster.students) : competitorCards(roster.students);
+  const matches = searchStudents(listed, query);
   const inputRef = useRef<HTMLInputElement>(null);
+  const typedRef = useRef(query);
+  typedRef.current = query;
   const typed = query.trim();
   const canUseTyped = Boolean(typed);
   const canAdd = canUseTyped && Boolean(belt.trim());
@@ -149,28 +219,63 @@ function RosterPicker({
     return () => cancelAnimationFrame(frame);
   }, []);
 
+  useEffect(() => {
+    const input = inputRef.current;
+    if (!input) return;
+    const restoreTyped = (event: Event) => {
+      if (event.target !== input) return;
+      if (input.value === typedRef.current) return;
+      const proto = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+      proto?.set?.call(input, typedRef.current);
+    };
+    // Capture on the window so this runs before React reads a dismissal `change`.
+    window.addEventListener('change', restoreTyped, true);
+    return () => window.removeEventListener('change', restoreTyped, true);
+  }, []);
+
   const useTypedName = () => {
-    const next = confirmManualCompetitor(query, { addToRoster, belt });
-    if (!next) return;
-    onPick(next);
+    if (!canUseTyped) return;
+    if (addToRoster) {
+      const next = confirmManualCompetitor(query, {
+        addToRoster,
+        belt,
+        rosterList: studentList ? 'student' : undefined,
+      });
+      if (!next) return;
+      onPick(next);
+      return;
+    }
+    onCommitTyped(typedRef.current);
   };
 
   return (
     <>
       <p className="roster-pick__copy">
-        Type a name or pick one already on this device. Notes and last promotion stay on the roster
-        card.
+        Type a name or pick one already on this device. Division, notes, and last promotion date and
+        detail stay on the roster card.
       </p>
       <div className="roster-pick__manual">
         <label>
-          Competitor name
+          {studentList ? 'Student name' : 'Competitor name'}
           <input
             ref={inputRef}
             className="roster-pick__name"
             value={query}
-            onChange={(event) => onQuery(event.target.value)}
+            onChange={(event) => {
+              if (event.nativeEvent.type === 'change') {
+                const proto = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+                proto?.set?.call(event.currentTarget, typedRef.current);
+                return;
+              }
+              typedRef.current = event.target.value;
+              onQuery(event.target.value);
+            }}
+            onBlur={() => {
+              if (holdCommit()) return;
+              onKeepTyped(typedRef.current);
+            }}
             placeholder="Type a name not on the roster"
-            aria-label="Competitor name"
+            aria-label={studentList ? 'Student name' : 'Competitor name'}
             autoComplete="off"
             onKeyDown={(event) => {
               if (event.key !== 'Enter') return;
@@ -187,7 +292,7 @@ function RosterPicker({
             checked={addToRoster}
             onChange={(event) => onAddToRoster(event.target.checked)}
           />
-          Add Competitor to Roster?
+          {studentList ? 'Add student to roster' : 'Add Competitor to Roster?'}
         </label>
         {addToRoster ? (
           <fieldset className="roster-edit__belts">
@@ -232,7 +337,11 @@ function RosterPicker({
           {addToRoster ? 'Use name and add to roster' : 'Use this name'}
         </button>
         {addToRoster && canUseTyped && !canAdd ? (
-          <p className="roster-edit__error">Pick a belt to add this competitor to the roster.</p>
+          <p className="roster-edit__error">
+            {studentList
+              ? 'Pick a belt to add this student to the roster.'
+              : 'Pick a belt to add this competitor to the roster.'}
+          </p>
         ) : null}
       </div>
       {matches.length ? (
@@ -242,10 +351,18 @@ function RosterPicker({
             if (!prefill) return null;
             return (
               <li key={student.id}>
-                <button type="button" className="roster-pick__row" onClick={() => onPick(prefill)}>
+                <button
+                  type="button"
+                  className="roster-pick__row"
+                  onPointerDown={() => onPicking(true)}
+                  onPointerUp={() => onPicking(false)}
+                  onPointerCancel={() => onPicking(false)}
+                  onClick={() => onPick(prefill)}
+                >
                   <span>
                     <strong>{student.name}</strong>
                     <RankChip belt={student.belt} />
+                    {student.division ? <em className="roster-pick__division">{student.division}</em> : null}
                   </span>
                 </button>
               </li>
@@ -254,14 +371,22 @@ function RosterPicker({
         </ul>
       ) : (
         <p className="roster-pick__empty">
-          {roster.students.length
+          {listed.length
             ? 'No match on this device. Use the name above, or add it to the roster.'
-            : `No competitors yet. Type a name above, or add them on ${COMPETITOR_ROSTER_LABEL}.`}
+            : studentList
+              ? `No students yet. Type a name above, or add them on ${STUDENT_ROSTER_LABEL}.`
+              : `No competitors yet. Type a name above, or add them on ${COMPETITOR_ROSTER_LABEL}.`}
         </p>
       )}
-      <Link className="text-link" to="/roster">
-        Open {COMPETITOR_ROSTER_LABEL}
-      </Link>
+      {studentList ? (
+        <Link className="text-link" to={STUDENT_ROSTER_PATH}>
+          Open student roster
+        </Link>
+      ) : (
+        <Link className="text-link" to="/roster?from=competitors">
+          Open {COMPETITOR_ROSTER_LABEL}
+        </Link>
+      )}
     </>
   );
 }

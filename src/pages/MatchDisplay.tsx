@@ -1,25 +1,29 @@
 import { useCallback, useState, type MouseEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { BeltRail } from '../components/BeltRail';
 import { FullscreenChip } from '../components/FullscreenChip';
+import { OutcomeCalls, OutcomePickSheet, useOutcomeSheet } from '../components/OutcomeCalls';
 import { OutcomeSplash } from '../components/OutcomeSplash';
 import { TvTip } from '../components/TvTip';
 import { RankChip } from '../components/RankChip';
+import { CarlosCheer } from '../components/CarlosCheer';
 import { ScoreBox } from '../components/ScoreBox';
 import { useBoutQuerySync, useBracketOutcomeReturn } from '../hooks/useBracketBoutReturn';
 import { useInterval } from '../hooks/useClock';
+import { useMatchBoard } from '../hooks/useMatchBoard';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
-import { useSuiteOrigin } from '../hooks/useSuiteOrigin';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useMatchState } from '../hooks/useStores';
 import { unlockAudio } from '../lib/audio';
-import { controllerPath, linkedBracketMatchId } from '../lib/bracketBout';
+import { controllerPath, declareMatchOutcome } from '../lib/bracketBout';
 import { roundDisplay } from '../lib/roundDisplay';
 import { competitorFocus, type DisplayFocus } from '../lib/matchFocus';
 import { dispatchMatch, expireMatchClock, remainingNow, type Side } from '../lib/matchStore';
 import { needsRefDecision } from '../lib/outcomes';
 import { formatMmSs } from '../lib/format';
+import { carlosMatchComplete, matchCarlosView } from '../lib/carlosCelebration';
+import { kidsBoardClass } from '../lib/kidsScoreboard';
+import { SCOREBOARD_SKIN, scoreboardSkinClass } from '../lib/scoreboardSkin';
 
 export function MatchDisplayPage() {
   const match = useMatchState();
@@ -27,11 +31,14 @@ export function MatchDisplayPage() {
   const remaining = remainingNow(match);
   const fs = usePlayFullscreen();
   const navigate = useNavigate();
-  const suite = useSuiteOrigin();
-  const linkedId = linkedBracketMatchId(match.bracketMatchId);
+  const board = useMatchBoard();
+  const suite = board.suite;
+  const linkedId = board.linkedId;
   const refNeeded = needsRefDecision({ ...match, remainingMs: remaining });
   const endedWithoutWinner = remaining <= 0 && !match.running && !match.outcome;
   const splash = match.outcomeFlash && match.outcome ? match.outcome : null;
+  const flashing = Boolean(match.outcomeFlash);
+  const outcomeSheet = useOutcomeSheet();
   const splashName = splash
     ? (splash.side === 'blue' ? match.blue.name : match.white.name).trim() ||
       (splash.side === 'blue' ? 'Competitor 1' : 'Competitor 2')
@@ -56,7 +63,7 @@ export function MatchDisplayPage() {
   };
 
   const openController = (focus?: DisplayFocus) => {
-    const path = suite.withFrom(controllerPath(linkedId, focus));
+    const path = board.originPath(controllerPath(linkedId, focus));
     void fs.exit().finally(() => navigate(path));
   };
 
@@ -71,10 +78,47 @@ export function MatchDisplayPage() {
   const roundLine = roundDisplay(match.round, Boolean(linkedId));
   const clockStatus = match.running ? 'Running' : remaining <= 0 ? 'Ended' : 'Paused';
   const clockStatusAction = match.running ? 'Pause match clock' : remaining <= 0 ? 'Restart match clock' : 'Start match clock';
+  const skin = board.skinFor(match.skin);
+  const flap = skin === SCOREBOARD_SKIN.OLD_SCHOOL;
+  const boardCalls = skin === SCOREBOARD_SKIN.QUICK_RESULT;
+  const carlos = board.showCarlos
+    ? matchCarlosView({
+        prefs: match.carlos,
+        outcome: match.outcome,
+        blueName: match.blue.name,
+        whiteName: match.white.name,
+        bluePoints: match.blue.points,
+        whitePoints: match.white.points,
+        matchComplete: carlosMatchComplete({
+          running: match.running,
+          remainingMs: remaining,
+          outcome: match.outcome,
+        }),
+      })
+    : { show: false, lines: [] as string[] };
+
+  const clockControl = (
+    <button type="button" className="clock-btn" onClick={toggleClock} aria-label="Start or pause match clock">
+      {formatMmSs(remaining)}
+    </button>
+  );
+  const statusControl = refNeeded ? (
+    <button
+      type="button"
+      className="display__clock-hint display__clock-hint--ref"
+      onClick={() => openController('outcome')}
+    >
+      Referee decision
+    </button>
+  ) : (
+    <button type="button" className="display__clock-hint" onClick={toggleClock} aria-label={clockStatusAction}>
+      {clockStatus}
+    </button>
+  );
 
   return (
     <main
-      className={`display${linkedId ? ' display--linked' : ''}${splash ? ' display--splash' : ''}${
+      className={`display ${scoreboardSkinClass(skin)}${board.kidsSkin ? ` ${kidsBoardClass(board.kidsSkin)}` : ''}${linkedId ? ' display--linked' : ''}${splash ? ' display--splash' : ''}${
         suite.fromSuite ? ' origin-suite' : ''
       }${fs.className ? ` ${fs.className}` : ''}`}
       onPointerDown={() => {
@@ -82,35 +126,47 @@ export function MatchDisplayPage() {
       }}
       onClick={onBoardClick}
     >
-      {suite.fromSuite ? <BeltRail kind="tournament" /> : null}
       <div className="display__chrome">
         <div className="display__chrome-start">
-          {linkedId ? (
-            <Link to="/tournament" className="chip chip--keep">
-              Back to bracket
-            </Link>
-          ) : (
+          {linkedId ? null : (
             <Link to={suite.homePath} className="chip">
               Home
             </Link>
           )}
         </div>
         <div className="display__chrome-end">
-          <FullscreenChip
-            supported={fs.supported}
-            active={fs.active}
-            nudge={fs.showFallback}
-            shortcut={fs.tvStation}
-            onToggle={() => void fs.toggle()}
-          />
+          {fs.active ? null : (
+            <FullscreenChip
+              supported={fs.supported}
+              active={fs.active}
+              nudge={fs.showFallback}
+              shortcut={fs.tvStation}
+              onToggle={() => void fs.toggle()}
+            />
+          )}
           <Link
-            to={suite.withFrom(controllerPath(linkedId, endedWithoutWinner ? 'outcome' : undefined))}
+            to={board.originPath(controllerPath(linkedId, endedWithoutWinner ? 'outcome' : undefined))}
             className="chip chip--gold"
           >
             Controller
           </Link>
         </div>
       </div>
+      {linkedId ? (
+        <Link to={suite.withFrom('/tournament')} className="display-back" aria-label="Back to bracket">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M14.5 5.5 8 12l6.5 6.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <img src="/advantage-icon.png" alt="" />
+        </Link>
+      ) : null}
       <TvTip onFullscreen={() => void fs.enter()} />
 
       <CompetitorBand
@@ -123,10 +179,22 @@ export function MatchDisplayPage() {
         disadvantages={match.blue.disadvantages}
         fallbackName="Competitor 1"
         linked={Boolean(linkedId)}
+        flap={flap}
         onOpenController={openController}
+        calls={
+          boardCalls
+            ? {
+                disabled: flashing,
+                highlight: refNeeded,
+                onWin: () => outcomeSheet.openWin('blue', 'Blue'),
+                onDq: () => outcomeSheet.openDq('blue', 'Blue'),
+              }
+            : undefined
+        }
       />
 
-      <section className="display__mid">
+      <section className={`display__mid${flap ? ' display__mid--stack' : ''}`}>
+        {flap ? clockControl : null}
         <div className="display__meta">
           {roundLine ? (
             <ControllerFocusLink focus="round" label="Edit round on Controller" onOpen={openController}>
@@ -137,22 +205,8 @@ export function MatchDisplayPage() {
             {match.division || 'Open'}
           </ControllerFocusLink>
         </div>
-        <button type="button" className="clock-btn" onClick={toggleClock} aria-label="Start or pause match clock">
-          {formatMmSs(remaining)}
-        </button>
-        {refNeeded ? (
-          <button
-            type="button"
-            className="display__clock-hint display__clock-hint--ref"
-            onClick={() => openController('outcome')}
-          >
-            Referee decision
-          </button>
-        ) : (
-          <button type="button" className="display__clock-hint" onClick={toggleClock} aria-label={clockStatusAction}>
-            {clockStatus}
-          </button>
-        )}
+        {flap ? null : clockControl}
+        {statusControl}
       </section>
 
       <CompetitorBand
@@ -165,10 +219,44 @@ export function MatchDisplayPage() {
         disadvantages={match.white.disadvantages}
         fallbackName="Competitor 2"
         linked={Boolean(linkedId)}
+        flap={flap}
         onOpenController={openController}
+        calls={
+          boardCalls
+            ? {
+                disabled: flashing,
+                highlight: refNeeded,
+                onWin: () => outcomeSheet.openWin('white', 'White'),
+                onDq: () => outcomeSheet.openDq('white', 'White'),
+              }
+            : undefined
+        }
       />
 
+      {boardCalls ? (
+        <OutcomePickSheet
+          open={outcomeSheet.sheet?.call ?? null}
+          title={
+            outcomeSheet.sheet?.call === 'dq'
+              ? `${outcomeSheet.sheet.label} DQ`
+              : `${outcomeSheet.sheet?.label ?? ''} win`
+          }
+          onClose={outcomeSheet.close}
+          onPickWin={(method) => {
+            if (!outcomeSheet.sheet) return;
+            declareMatchOutcome(outcomeSheet.sheet.side, { call: 'win', method });
+            outcomeSheet.close();
+          }}
+          onPickDq={(reason) => {
+            if (!outcomeSheet.sheet) return;
+            declareMatchOutcome(outcomeSheet.sheet.side, { call: 'dq', reason });
+            outcomeSheet.close();
+          }}
+        />
+      ) : null}
+
       {splash ? <OutcomeSplash outcome={splash} name={splashName} /> : null}
+      {carlos.show ? <CarlosCheer lines={carlos.lines} board /> : null}
     </main>
   );
 }
@@ -183,7 +271,9 @@ function CompetitorBand({
   disadvantages,
   fallbackName,
   linked,
+  flap,
   onOpenController,
+  calls,
 }: {
   side: Side;
   name: string;
@@ -194,7 +284,14 @@ function CompetitorBand({
   disadvantages: number;
   fallbackName: string;
   linked: boolean;
+  flap: boolean;
   onOpenController: (focus?: DisplayFocus) => void;
+  calls?: {
+    disabled: boolean;
+    highlight: boolean;
+    onWin: () => void;
+    onDq: () => void;
+  };
 }) {
   const label = side === 'blue' ? 'Blue' : 'White';
 
@@ -220,11 +317,21 @@ function CompetitorBand({
             {gym || '\u00a0'}
           </ControllerFocusLink>
         </p>
+        {calls ? (
+          <OutcomeCalls
+            sideLabel={label}
+            disabled={calls.disabled}
+            highlight={calls.highlight}
+            variant="bout"
+            onWin={calls.onWin}
+            onDq={calls.onDq}
+          />
+        ) : null}
       </div>
       <div className="bout__scores">
-        <ScoreBox side={side} kind="points" value={points} />
-        <ScoreBox side={side} kind="advantages" value={advantages} />
-        <ScoreBox side={side} kind="disadvantages" value={disadvantages} />
+        <ScoreBox side={side} kind="points" value={points} flap={flap} />
+        <ScoreBox side={side} kind="advantages" value={advantages} flap={flap} />
+        <ScoreBox side={side} kind="disadvantages" value={disadvantages} flap={flap} />
       </div>
     </section>
   );
@@ -241,11 +348,10 @@ function ControllerFocusLink({
   onOpen: (focus: DisplayFocus) => void;
   children: ReactNode;
 }) {
-  const linkedId = linkedBracketMatchId(useMatchState().bracketMatchId);
-  const suite = useSuiteOrigin();
+  const board = useMatchBoard();
   return (
     <Link
-      to={suite.withFrom(controllerPath(linkedId, focus))}
+      to={board.originPath(controllerPath(board.linkedId, focus))}
       aria-label={label}
       onClick={(event) => {
         if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;

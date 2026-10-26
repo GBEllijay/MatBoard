@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+import { UpdateToLatestButton } from './UpdateToLatestButton';
 import {
   SITE_ALPHA_LINE,
   SITE_FEEDBACK_EMAIL,
@@ -14,6 +16,12 @@ export function SiteFooter() {
         {SITE_FEEDBACK_LEAD}{' '}
         <a href={`mailto:${SITE_FEEDBACK_EMAIL}`}>{SITE_FEEDBACK_EMAIL}</a>
       </p>
+      <nav className="site-footer__legal" aria-label="Legal">
+        <Link to="/privacy">Privacy Policy</Link>
+        <Link to="/terms">Terms of Service</Link>
+      </nav>
+      {/* TEMPORARY UPDATE BUTTON — delete this line with src/components/UpdateToLatestButton.tsx */}
+      <UpdateToLatestButton />
     </footer>
   );
 }

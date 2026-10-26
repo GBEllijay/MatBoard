@@ -1,34 +1,51 @@
 import { Link } from 'react-router-dom';
+import { BeltHeader } from '../components/BeltHeader';
 import { HomeMark } from '../components/HomeMark';
+import { InstructionsButton } from '../components/InstructionsButton';
 import { LiveBoutCard } from '../components/LiveBoutCard';
 import { RoundsCard } from '../components/RoundsCard';
+import { WhiteRosterCard } from '../components/WhiteRosterCard';
 import { SiteFooter } from '../components/SiteFooter';
-import { TierLine } from '../components/TierLine';
-import { WHITE_LADDER_DETAIL } from '../lib/productNames';
+import { PRODUCTS_PATH } from '../lib/productNames';
 
 export function WhitePage() {
   return (
     <main className="home home--white">
       <div className="home__inner">
-        <HomeMark to="/" tagline={<TierLine tier="White" detail={WHITE_LADDER_DETAIL} />} />
+        <HomeMark to={PRODUCTS_PATH} />
 
         <nav className="home__modes" aria-label="Advantage White">
+          <BeltHeader
+            kind="white"
+            title="Advantage - White"
+            blurb="BJJ Scoreboard and Round Timer. Customizable Live Matches and Rounds"
+          />
           <LiveBoutCard />
           <RoundsCard />
+          <WhiteRosterCard />
         </nav>
 
         <div className="home__hints">
-          <p className="home__hint">Install Advantage as an app from your browser menu.</p>
-          <p className="home__hint">
-            Gym TV: open this site on a computer plugged into the TV, then fullscreen Display or
-            Rounds. Press F for fullscreen.
-          </p>
-          <p className="home__hint">
-            Control from your phone. Cast the scoreboard to your TV, or open Display on a second
-            screen or computer.
-          </p>
+          <InstructionsButton controlsId="white-instructions">
+            <p className="home__hint">Install Advantage as an app from your browser menu.</p>
+            <p className="home__hint">
+              Gym TV: open this site on a computer plugged into the TV, then fullscreen Display or
+              Rounds. Press F for fullscreen.
+            </p>
+            <p className="home__hint">
+              Control from your phone. Cast the scoreboard to your TV, or open Display on a second
+              screen or computer.
+            </p>
+            <p className="home__hint">
+              Match names stay on this phone. Pick a saved name and belt from the scoreboard.
+            </p>
+          </InstructionsButton>
           <p className="home__soon">
-            <Link className="home__text-btn" to="/">
+            <Link className="home__text-btn" to="/buy">
+              Buy Advantage White — $9.99
+            </Link>
+            {' · '}
+            <Link className="home__text-btn" to={PRODUCTS_PATH}>
               All products
             </Link>
           </p>

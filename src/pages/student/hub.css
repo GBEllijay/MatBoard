@@ -1,0 +1,1332 @@
+/* Student hub and group menus on the tatami. Inter only.
+   The handwritten journal stays on the journal pages. */
+
+.student-menu-home {
+  background: transparent;
+  color: #f2f4f7;
+  color-scheme: dark;
+  min-height: 100dvh;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+.student-menu-home::before {
+  display: none;
+}
+
+.student-menu-home .site-footer a[href^='mailto:'] {
+  color: var(--logo-blue);
+}
+
+.s-hub {
+  display: grid;
+  gap: 14px;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+.s-hub__intro {
+  display: grid;
+  gap: 8px;
+  padding: 0 2px 4px;
+}
+
+.s-hub__intro h2,
+.s-hub__intro p,
+.s-tile strong,
+.s-tile small,
+.s-rank__cap,
+.s-ghost__label,
+.s-ghost__status {
+  margin: 0;
+}
+
+.s-hub__intro h2 {
+  color: #f2f4f7;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.s-hub__intro h2::after {
+  display: none;
+}
+
+.s-hub__intro p,
+.s-tile small {
+  color: rgba(235, 240, 247, 0.74);
+  font-size: 13.5px;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+.s-tile {
+  position: relative;
+  display: block;
+  border-radius: 18px;
+  color: inherit;
+  text-decoration: none;
+  overflow: hidden;
+  touch-action: manipulation;
+}
+
+.s-tile__text,
+.s-row__text {
+  position: relative;
+  z-index: 4;
+  min-width: 0;
+}
+
+.s-tile strong {
+  display: block;
+  color: #f2f4f7;
+  font-size: 19px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.s-tile small {
+  display: block;
+  margin-top: 4px;
+}
+
+.s-navy {
+  background: linear-gradient(180deg, rgba(26, 50, 82, 0.96), rgba(16, 32, 54, 0.96));
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+/* Training & Journal: the journal cover, with the label clear of the elastic.
+   The leather edge is the card edge, same radius as the hub tiles under it. */
+.s-journal {
+  min-height: 100px;
+  padding: 20px 128px 20px 22px;
+  overflow: visible;
+  background-color: #161616;
+  background-image:
+    url('/student/black-leather-grain.png'),
+    radial-gradient(ellipse at 18% 0%, rgba(255, 255, 255, 0.08), transparent 42%),
+    linear-gradient(180deg, #2b2b2b, #191919 55%, #101010);
+  background-size: 180px 180px, auto, auto;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.s-journal::before {
+  content: '';
+  position: absolute;
+  inset: 6px 6px 6px 6px;
+  border-radius: 13px;
+  border: 1.5px dashed rgba(198, 198, 198, 0.55);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.s-journal__elastic {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 28px;
+  width: 12px;
+  background: linear-gradient(90deg, #141414, #2c2c2c 42%, #0c0c0c);
+  box-shadow: -1px 0 0 rgba(255, 255, 255, 0.08), 2px 0 5px rgba(0, 0, 0, 0.45);
+  z-index: 3;
+  pointer-events: none;
+}
+
+.s-journal__stamp,
+.s-binder__stamp {
+  background: rgba(255, 255, 255, 0.34);
+  -webkit-mask-image: url('/student/advantage-deboss-mask.png');
+  mask-image: url('/student/advantage-deboss-mask.png');
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  pointer-events: none;
+}
+
+.s-journal__stamp {
+  position: absolute;
+  right: 56px;
+  top: 50%;
+  width: 54px;
+  height: 54px;
+  transform: translateY(-50%);
+  z-index: 3;
+}
+
+.s-journal__ribbon {
+  position: absolute;
+  left: 28px;
+  bottom: -12px;
+  width: 12px;
+  height: 16px;
+  background: #151515;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.s-journal strong {
+  color: #ececec;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+}
+
+.s-journal small {
+  color: rgba(225, 225, 225, 0.72);
+}
+
+.s-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 72px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(26, 50, 82, 0.96), rgba(16, 32, 54, 0.96));
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  color: inherit;
+  text-decoration: none;
+  touch-action: manipulation;
+}
+
+.s-profile__text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.s-profile strong {
+  display: block;
+  color: #f2f4f7;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 19px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.s-profile small {
+  display: block;
+  color: rgba(235, 240, 247, 0.74);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 13.5px;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+.s-rank {
+  padding: 18px 20px 16px;
+}
+
+.s-rank__head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.s-rank__meta {
+  margin-left: auto;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.s-belt {
+  position: relative;
+  display: block;
+  height: 28px;
+  margin-top: 14px;
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: #f7f4ee;
+  background-image: url('/belt-weave.png');
+  background-size: 160px 4px;
+  background-repeat: repeat;
+  box-shadow: inset 0 0 0 1px rgba(40, 32, 22, 0.35), 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.s-belt__bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: auto;
+  right: 20px;
+  width: 92px;
+  min-width: 92px;
+  max-width: 92px;
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 5px;
+  padding: 0 6px;
+  background: #121214;
+}
+
+.s-belt__end {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 18px;
+  background-color: #f7f4ee;
+  background-image: url('/belt-weave.png');
+  background-size: 160px 4px;
+  background-repeat: repeat;
+}
+
+.s-tape--off,
+.s-tape--on,
+.s-tape--next {
+  display: block;
+  width: 11px;
+  flex: 0 0 11px;
+  margin: 4px 0;
+  border-radius: 1px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px rgba(247, 244, 238, 0.92);
+}
+
+/* Hub Rank card and the rank summary: empty rectangles on the black bar.
+   Earned stripes are not filled yet. */
+.s-tile.s-rank .s-belt {
+  height: 22px;
+  border-radius: 5px;
+  background-color: #f4f1ea;
+  background-image: url('/belt-weave.png');
+  background-size: 160px 4px;
+  box-shadow: inset 0 0 0 1px rgba(40, 32, 22, 0.25), 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+
+.s-tile.s-rank .s-belt__bar {
+  right: 22px;
+  width: 46%;
+  min-width: 148px;
+  max-width: none;
+  justify-content: space-evenly;
+  gap: 8px;
+  padding: 0 10px;
+  background: #121214;
+}
+
+.s-tile.s-rank .s-tape,
+.s-tile.s-rank .s-tape--on,
+.s-tile.s-rank .s-tape--next,
+.s-rank-summary .s-tape,
+.s-rank-summary .s-tape--on,
+.s-rank-summary .s-tape--next {
+  display: block;
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px rgba(247, 244, 238, 0.92);
+}
+
+.s-tile.s-rank .s-belt__end {
+  width: 22px;
+  background-color: #f4f1ea;
+  background-image: url('/belt-weave.png');
+  background-size: 160px 4px;
+}
+
+.s-tile.s-rank .s-tape {
+  width: 8px;
+  flex: 0 0 8px;
+  margin: 0;
+  border-radius: 0;
+}
+
+.s-meter {
+  display: block;
+  height: 4px;
+  margin-top: 10px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.s-meter i {
+  display: block;
+  height: 100%;
+  background: var(--logo-blue);
+}
+
+.s-rank__cap {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  color: rgba(235, 240, 247, 0.74);
+  font-size: 12px;
+}
+
+.s-rank__menu {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.s-rank__jump {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #f2f4f7;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  text-decoration: none;
+  touch-action: manipulation;
+}
+
+.s-rank__jump-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.s-rank__jump strong {
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.s-rank__jump small {
+  margin-top: 1px;
+  color: rgba(235, 240, 247, 0.74);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.s-rank__menu:focus-visible,
+.s-rank__jump:focus-visible {
+  outline: 2px solid #8fb6ff;
+  outline-offset: 2px;
+}
+
+.s-tile.s-rank .s-belt-mark .belt,
+.s-rank-summary .s-belt-mark .belt {
+  --h: 44px;
+  --slot: 18px;
+  margin: 12px 0 0;
+  filter: none;
+  border-radius: 8px;
+}
+
+.s-tile.s-rank .s-belt-mark .belt__name,
+.s-rank-summary .s-belt-mark .belt__name {
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.s-tile.s-rank .s-belt-mark .mini-belt,
+.s-rank-summary .s-belt-mark .mini-belt {
+  display: block;
+  height: 44px;
+  margin-top: 12px;
+  border-radius: 8px;
+}
+
+.s-compete {
+  min-height: 112px;
+  padding: 18px 140px 16px 20px;
+}
+
+.s-bracket {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  width: 120px;
+  height: 84px;
+  transform: translateY(-50%);
+  z-index: 3;
+  pointer-events: none;
+}
+
+.s-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.s-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.s-binder {
+  min-height: 100px;
+  padding: 20px 96px 20px 58px;
+  background: #1d3a63;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.s-binder::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url('/student/black-leather-grain.png') 0 0 / 180px 180px;
+  mix-blend-mode: soft-light;
+  opacity: 0.9;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.s-binder::before,
+.s-row--binder::before {
+  content: '';
+  position: absolute;
+  border: 1.5px dashed rgba(255, 255, 255, 0.28);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.s-binder::before {
+  inset: 6px 6px 6px 40px;
+  border-radius: 12px;
+}
+
+.s-binder__spine {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 30px;
+  background: linear-gradient(90deg, #cfcdc9, #f4f3f0 30%, #fbfbf9 55%, #e8e4e0 85%, #bdb9b5);
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.35);
+  z-index: 3;
+  pointer-events: none;
+}
+
+.s-binder__ring {
+  position: absolute;
+  left: 12px;
+  top: 22px;
+  width: 30px;
+  height: 12px;
+  border-radius: 7px;
+  border: 3px solid #b9bec4;
+  border-left-color: #e9edf0;
+  border-bottom-color: #8a9097;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  z-index: 5;
+  pointer-events: none;
+}
+
+.s-tile .s-binder__ring--top,
+.s-tile .s-binder__hole--top {
+  top: 22px;
+}
+
+.s-tile .s-binder__hole--top {
+  top: 24px;
+}
+
+.s-tile .s-binder__ring--bottom {
+  top: auto;
+  bottom: 22px;
+}
+
+.s-tile .s-binder__hole--bottom {
+  top: auto;
+  bottom: 24px;
+}
+
+.s-binder__hole {
+  position: absolute;
+  left: 34px;
+  top: 24px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #0d1a2c;
+  box-shadow: inset 0 1px 2px #000, 0 0 0 2px rgba(255, 255, 255, 0.12);
+  z-index: 4;
+  pointer-events: none;
+}
+
+.s-binder__stamp {
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  width: 58px;
+  height: 58px;
+  transform: translateY(-50%);
+  opacity: 0.55;
+  z-index: 3;
+}
+
+.s-binder strong {
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.45);
+}
+
+.s-ghost {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  margin-top: 6px;
+  padding: 10px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(10, 22, 38, 0.55);
+  color: inherit;
+  text-decoration: none;
+  touch-action: manipulation;
+}
+
+.s-ghost__label {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.s-ghost__status {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(235, 240, 247, 0.74);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.s-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #8a96a8;
+}
+
+.s-ico {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.s-chev {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  margin-left: auto;
+  border-right: 2px solid rgba(255, 255, 255, 0.55);
+  border-top: 2px solid rgba(255, 255, 255, 0.55);
+  transform: rotate(45deg);
+}
+
+/* Group pages scroll with the document. The tatami is on the page itself,
+   repeated for the whole height, so the bottom of a short page and the
+   area you scroll into stay on the mat. */
+.student.student--arena.s-group {
+  display: block;
+  height: auto;
+  min-height: 100dvh;
+  max-height: none;
+  overflow: visible;
+  color: #f2f4f7;
+  background-color: var(--mat-fill);
+  background-image: var(--mat-image);
+  background-size: var(--mat-tile) calc(var(--mat-tile) * 4 / 3);
+  background-repeat: repeat;
+  background-position: center top;
+}
+
+.student.student--arena.s-group .arena-scroll {
+  display: block;
+  overflow: visible;
+  min-height: 100dvh;
+  background: transparent;
+}
+
+.s-group__column {
+  width: min(720px, 100%);
+  margin: 0 auto;
+  display: grid;
+  gap: 10px;
+  /* Shared with the pinned Home logo. The title starts below that 112px mark. */
+  padding: calc(var(--mark-home-clear) + var(--safe-t)) 16px calc(56px + var(--safe-b));
+}
+
+.s-group__head h1 {
+  margin: 2px 0 6px;
+  color: #f2f4f7;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.s-kicker {
+  margin: 0;
+  color: rgba(235, 240, 247, 0.7);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.s-rows,
+.s-bracket-list {
+  display: grid;
+  gap: 10px;
+}
+
+.s-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 64px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  color: inherit;
+  text-decoration: none;
+  overflow: hidden;
+  touch-action: manipulation;
+}
+
+.s-row__title {
+  display: block;
+  color: #f2f4f7;
+  font-size: 16.5px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.s-row small {
+  display: block;
+  margin-top: 2px;
+  color: rgba(235, 240, 247, 0.74);
+  font-size: 12.5px;
+  font-weight: 400;
+  line-height: 1.3;
+}
+
+.s-row--leather {
+  background-color: #161616;
+  background-image: url('/student/black-leather-grain.png'), linear-gradient(180deg, #2b2b2b, #171717);
+  background-size: 180px 180px, auto;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.s-row--leather::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: 10px;
+  border: 1.5px dashed rgba(198, 198, 198, 0.45);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.s-row .s-ico,
+.s-row .s-chev,
+.s-row .s-row__text {
+  position: relative;
+  z-index: 4;
+}
+
+.s-extra {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin: 8px 2px 0;
+}
+
+.s-extra__link {
+  color: #8fb6ff;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.s-rank-summary {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(26, 50, 82, 0.96), rgba(16, 32, 54, 0.96));
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  color: #f2f4f7;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.s-rank-summary .s-belt,
+.s-rank-summary .s-belt-mark,
+.s-rank-summary .s-meter {
+  grid-column: 1 / -1;
+}
+
+.s-rank-summary .s-belt,
+.s-rank-summary .s-belt-mark {
+  margin-top: 4px;
+}
+
+.s-score {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.s-score div {
+  min-width: 0;
+  padding: 10px 12px;
+  background: rgba(14, 28, 48, 0.94);
+}
+
+.s-score small {
+  display: block;
+  color: rgba(235, 240, 247, 0.74);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.s-score__add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 56px;
+  margin-top: 12px;
+  box-sizing: border-box;
+  border-radius: 14px;
+  background: var(--cta-bg);
+  color: var(--cta-ink);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+
+/* Arena links are blue. This primary button stays white with navy text. */
+.student.student--arena.s-group a.ink-btn.ink-btn--save.s-score__add {
+  background: var(--cta-bg);
+  color: var(--cta-ink);
+}
+
+.s-score b {
+  display: block;
+  margin-top: 3px;
+  color: #f2f4f7;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.s-bracket-list {
+  position: relative;
+  margin-left: 22px;
+}
+
+.s-bracket-list::before {
+  content: '';
+  position: absolute;
+  left: -15px;
+  top: 32px;
+  bottom: 32px;
+  width: 2px;
+  border-radius: 1px;
+  background: rgba(143, 182, 255, 0.45);
+}
+
+.s-row--belt {
+  background-color: #f4f1ea;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(60, 48, 32, 0.08)), url('/belt-weave.png');
+  background-size: auto, 160px 4px;
+  color: #1c140c;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.32), inset 0 0 0 1px rgba(40, 32, 22, 0.28);
+  /* Clear the 10px left rail. The chevron stays inside the right padding. */
+  padding-left: 26px;
+}
+
+/* Same degree rail as Coach Unlimited (.pro-hub .belt-rail--degrees):
+   tip in the corner, black rank bar, empty stripe rectangles.
+   Cloth is the white belt and the approved weave, not espresso.
+   Earned stripes are not filled yet, so the tape color matches the bar.
+   The fourth tape lengthens only this row's bar. */
+.s-row--belt .belt-rail.belt-rail--degrees {
+  --belt-rail-width: 10px;
+  --espresso: #f4f1ea;
+  --degree-bar-ink: #121214;
+  --degree-tape: #121214;
+  --rail-tip: 14px;
+  --degree-tape-h: 3.5px;
+  --degree-gap: 3.5px;
+  --degree-lead: 8px;
+  /* One bar height for every row, tall enough for four tapes.
+     A black cushion the size of one gap sits under the first tape so it
+     stays on the rank bar instead of disappearing into the white tip. */
+  --degree-span: calc(var(--degree-tape-h) * 4 + var(--degree-gap) * 4 + var(--degree-lead));
+  --degree-bar: calc(var(--rail-tip) + var(--degree-span));
+  background-color: #f4f1ea;
+  background-image:
+    linear-gradient(
+      to right,
+      transparent 0,
+      transparent calc(var(--belt-rail-width) - 1px),
+      rgba(8, 10, 16, 0.45) calc(var(--belt-rail-width) - 1px),
+      rgba(8, 10, 16, 0.45) var(--belt-rail-width),
+      transparent var(--belt-rail-width)
+    ),
+    url('/belt-weave.png'),
+    var(--degree-stack),
+    linear-gradient(#f4f1ea, #f4f1ea);
+  background-size: auto, 160px 4px, auto, auto;
+  background-repeat: no-repeat, repeat, no-repeat, no-repeat;
+}
+
+.s-row--belt .belt-slot {
+  position: absolute;
+  left: 1px;
+  width: 8px;
+  height: var(--degree-tape-h);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgba(247, 244, 238, 0.92);
+  pointer-events: none;
+}
+
+.s-row--belt .belt-slot[data-slot='1'] {
+  bottom: calc(var(--rail-tip) + var(--degree-gap));
+}
+
+.s-row--belt .belt-slot[data-slot='2'] {
+  bottom: calc(var(--rail-tip) + var(--degree-gap) * 2 + var(--degree-tape-h));
+}
+
+.s-row--belt .belt-slot[data-slot='3'] {
+  bottom: calc(var(--rail-tip) + var(--degree-gap) * 3 + var(--degree-tape-h) * 2);
+}
+
+.s-row--belt .belt-slot[data-slot='4'] {
+  bottom: calc(var(--rail-tip) + var(--degree-gap) * 4 + var(--degree-tape-h) * 3);
+}
+
+.s-row--belt .belt-rail.belt-rail--stripes-1 {
+  --tape-a: calc(var(--rail-tip) + var(--degree-gap));
+  --tape-b: calc(var(--tape-a) + var(--degree-tape-h));
+  --degree-stack: linear-gradient(
+    to top,
+    var(--espresso) 0,
+    var(--espresso) var(--rail-tip),
+    var(--degree-bar-ink) var(--rail-tip),
+    var(--degree-bar-ink) var(--tape-a),
+    var(--degree-tape) var(--tape-a),
+    var(--degree-tape) var(--tape-b),
+    var(--degree-bar-ink) var(--tape-b),
+    var(--degree-bar-ink) var(--degree-bar),
+    transparent var(--degree-bar)
+  );
+}
+
+.s-row--belt .belt-rail.belt-rail--stripes-2 {
+  --tape-a: calc(var(--rail-tip) + var(--degree-gap));
+  --tape-b: calc(var(--tape-a) + var(--degree-tape-h));
+  --tape-c: calc(var(--tape-b) + var(--degree-gap));
+  --tape-d: calc(var(--tape-c) + var(--degree-tape-h));
+  --degree-stack: linear-gradient(
+    to top,
+    var(--espresso) 0,
+    var(--espresso) var(--rail-tip),
+    var(--degree-bar-ink) var(--rail-tip),
+    var(--degree-bar-ink) var(--tape-a),
+    var(--degree-tape) var(--tape-a),
+    var(--degree-tape) var(--tape-b),
+    var(--degree-bar-ink) var(--tape-b),
+    var(--degree-bar-ink) var(--tape-c),
+    var(--degree-tape) var(--tape-c),
+    var(--degree-tape) var(--tape-d),
+    var(--degree-bar-ink) var(--tape-d),
+    var(--degree-bar-ink) var(--degree-bar),
+    transparent var(--degree-bar)
+  );
+}
+
+.s-row--belt .belt-rail.belt-rail--stripes-3 {
+  --tape-a: calc(var(--rail-tip) + var(--degree-gap));
+  --tape-b: calc(var(--tape-a) + var(--degree-tape-h));
+  --tape-c: calc(var(--tape-b) + var(--degree-gap));
+  --tape-d: calc(var(--tape-c) + var(--degree-tape-h));
+  --tape-e: calc(var(--tape-d) + var(--degree-gap));
+  --tape-f: calc(var(--tape-e) + var(--degree-tape-h));
+  --degree-stack: linear-gradient(
+    to top,
+    var(--espresso) 0,
+    var(--espresso) var(--rail-tip),
+    var(--degree-bar-ink) var(--rail-tip),
+    var(--degree-bar-ink) var(--tape-a),
+    var(--degree-tape) var(--tape-a),
+    var(--degree-tape) var(--tape-b),
+    var(--degree-bar-ink) var(--tape-b),
+    var(--degree-bar-ink) var(--tape-c),
+    var(--degree-tape) var(--tape-c),
+    var(--degree-tape) var(--tape-d),
+    var(--degree-bar-ink) var(--tape-d),
+    var(--degree-bar-ink) var(--tape-e),
+    var(--degree-tape) var(--tape-e),
+    var(--degree-tape) var(--tape-f),
+    var(--degree-bar-ink) var(--tape-f),
+    var(--degree-bar-ink) var(--degree-bar),
+    transparent var(--degree-bar)
+  );
+}
+
+.s-row--belt .belt-rail.belt-rail--stripes-4 {
+  --tape-a: calc(var(--rail-tip) + var(--degree-gap));
+  --tape-b: calc(var(--tape-a) + var(--degree-tape-h));
+  --tape-c: calc(var(--tape-b) + var(--degree-gap));
+  --tape-d: calc(var(--tape-c) + var(--degree-tape-h));
+  --tape-e: calc(var(--tape-d) + var(--degree-gap));
+  --tape-f: calc(var(--tape-e) + var(--degree-tape-h));
+  --tape-g: calc(var(--tape-f) + var(--degree-gap));
+  --tape-h: calc(var(--tape-g) + var(--degree-tape-h));
+  --degree-stack: linear-gradient(
+    to top,
+    var(--espresso) 0,
+    var(--espresso) var(--rail-tip),
+    var(--degree-bar-ink) var(--rail-tip),
+    var(--degree-bar-ink) var(--tape-a),
+    var(--degree-tape) var(--tape-a),
+    var(--degree-tape) var(--tape-b),
+    var(--degree-bar-ink) var(--tape-b),
+    var(--degree-bar-ink) var(--tape-c),
+    var(--degree-tape) var(--tape-c),
+    var(--degree-tape) var(--tape-d),
+    var(--degree-bar-ink) var(--tape-d),
+    var(--degree-bar-ink) var(--tape-e),
+    var(--degree-tape) var(--tape-e),
+    var(--degree-tape) var(--tape-f),
+    var(--degree-bar-ink) var(--tape-f),
+    var(--degree-bar-ink) var(--tape-g),
+    var(--degree-tape) var(--tape-g),
+    var(--degree-tape) var(--tape-h),
+    var(--degree-bar-ink) var(--tape-h),
+    var(--degree-bar-ink) var(--degree-bar),
+    transparent var(--degree-bar)
+  );
+}
+
+.s-row--belt .s-row__title,
+.s-row--belt .s-ico {
+  color: #1c140c;
+}
+
+.s-row--belt small {
+  color: rgba(28, 20, 12, 0.72);
+}
+
+.s-row--belt .s-chev {
+  border-right-color: rgba(28, 20, 12, 0.55);
+  border-top-color: rgba(28, 20, 12, 0.55);
+}
+
+.s-row--belt .s-row__text {
+  min-width: min-content;
+}
+
+.s-row--belt .s-row__title,
+.s-row--bracket .s-row__title {
+  white-space: nowrap;
+}
+
+.s-row--bracket {
+  overflow: visible;
+  background: linear-gradient(180deg, #1b3658, #102033);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.s-row--bracket::after {
+  content: '';
+  position: absolute;
+  left: -15px;
+  top: 50%;
+  width: 15px;
+  height: 2px;
+  background: rgba(143, 182, 255, 0.45);
+}
+
+.s-node {
+  position: absolute;
+  left: -20px;
+  top: calc(50% - 5px);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #12243a;
+  border: 2px solid #8fb6ff;
+  z-index: 5;
+}
+
+.s-node--on {
+  background: var(--logo-blue);
+}
+
+.s-row--binder {
+  padding-left: 52px;
+  background: #1d3a63;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.s-row--binder::before {
+  inset: 4px 4px 4px 32px;
+  border-radius: 9px;
+}
+
+.s-row--binder .s-binder__spine {
+  width: 22px;
+}
+
+.s-row--binder .s-binder__ring {
+  left: 8px;
+  top: calc(50% - 6px);
+  width: 24px;
+}
+
+.s-row--binder .s-binder__hole {
+  left: 27px;
+  top: calc(50% - 4px);
+  width: 8px;
+  height: 8px;
+}
+
+.s-row--ghost {
+  min-height: 64px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(10, 22, 38, 0.55);
+}
+
+.s-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 64px;
+  padding: 15px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--cta-bg);
+  color: var(--cta-ink);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 16.5px;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  touch-action: manipulation;
+  box-shadow: var(--cta-shadow);
+}
+
+/* .student button resets fill and color. These rules win so the backup CTA stays painted. */
+.student .s-cta {
+  background: var(--cta-bg);
+  color: var(--cta-ink);
+  box-shadow: var(--cta-shadow);
+}
+
+@media (hover: hover) {
+  .s-cta:hover:not(:disabled),
+  .student .s-cta:hover:not(:disabled) {
+    background: #f4f7fb;
+    color: var(--cta-ink);
+  }
+}
+
+.s-cta:focus-visible,
+.student .s-cta:focus-visible {
+  outline: 3px solid var(--cta-focus);
+  outline-offset: 3px;
+}
+
+.s-cta:disabled,
+.student .s-cta:disabled {
+  background: #e4ebf4;
+  color: #334155;
+  box-shadow: inset 0 0 0 1px rgba(14, 23, 38, 0.22);
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+.s-note,
+.s-backup__stamp,
+.s-clear p {
+  margin: 0;
+  color: rgba(235, 240, 247, 0.8);
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.s-backup,
+.s-clear,
+.s-backup__actions {
+  display: grid;
+  gap: 10px;
+}
+
+.s-backup {
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(14, 28, 48, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.student.student--arena .s-backup .ink-btn,
+.student.student--arena .s-clear .ink-btn,
+.s-backup .ink-btn,
+.s-clear .ink-btn {
+  width: 100%;
+  min-height: 64px;
+  box-sizing: border-box;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+.student.student--arena .s-backup input,
+.student.student--arena .s-clear input {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  color: #f2f4f7;
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.student.student--arena .s-backup input[type='checkbox'] {
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  padding: 0;
+  border-radius: 6px;
+}
+
+.s-backup__check {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  color: #f2f4f7;
+  font-size: 17px;
+}
+
+.s-export,
+.s-export-list,
+.s-export-list li {
+  display: grid;
+  gap: 10px;
+}
+
+.s-export-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.s-export__note,
+.s-backup__videos {
+  margin: 0;
+  color: rgba(235, 240, 247, 0.86);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.s-backup__videos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  color: #f5f5f7;
+  font-size: 16px;
+}
+
+.s-backup__videos-state {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #3a3a3c;
+  color: #f5f5f7;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.s-backup__videos-state[data-on='yes'] {
+  background: #f5f5f7;
+  color: #0c2344;
+}
+
+.s-backup__result {
+  margin: 0;
+  padding: 16px;
+  border-radius: 14px;
+  background: #f5f5f7;
+  color: #0e1726;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.35;
+  box-shadow: inset 0 0 0 1px rgba(14, 23, 38, 0.12);
+}
+
+.s-backup__result[data-kind='error'] {
+  background: #2a1214;
+  color: #ffd7d7;
+  box-shadow: inset 0 0 0 2px #ff8a8a;
+}
+
+.s-clear-link {
+  justify-self: center;
+  margin-top: 12px;
+  color: #ff8a8a;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.s-clear-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: #f2f4f7;
+}
