@@ -32,6 +32,21 @@ import { readProfilePortrait } from './profilePortrait.ts';
 import { readStudentGymLogo } from './studentGymMark.ts';
 import type { StudentFilm } from './studentFilm.ts';
 
+/** Top-right header mark. PDF origin is the bottom left; 596,778 is the corner inset. */
+function headerMark(pdf: Uint8Array, id: string) {
+  const text = pdfToText(pdf);
+  const match = text.match(new RegExp(String.raw`([\d.]+) 0 0 ([\d.]+) ([\d.]+) ([\d.]+) cm\n\/${id} Do`));
+  assert.ok(match, `${id} is drawn in the header`);
+  const at = match.index ?? 0;
+  return {
+    w: Number(match[1]),
+    h: Number(match[2]),
+    x: Number(match[3]),
+    y: Number(match[4]),
+    clipped: text.slice(Math.max(0, at - 500), at).includes('\nW\n'),
+  };
+}
+
 function memory() {
   const store = new Map<string, string>();
   return {
@@ -417,6 +432,14 @@ test('selfie and gym logo are in the backup and progress PDF only when their swi
   assert.equal(on.file.gymLogo, logo);
   assert.equal(pdfToText(on.progressPdf).includes('/Selfie Do'), true);
   assert.equal(pdfIncludes(on.progressPdf, 'GB Ellijay'), true);
+  const adultPhoto = headerMark(on.progressPdf, 'Selfie');
+  const adultLogo = headerMark(on.progressPdf, 'GymLogo');
+  assert.equal(adultPhoto.y, adultLogo.y);
+  assert.ok(adultPhoto.x > adultLogo.x);
+  assert.equal(adultPhoto.x + adultPhoto.w, 596);
+  assert.equal(adultPhoto.y + adultPhoto.h, 778);
+  assert.ok(adultPhoto.clipped);
+  assert.ok(adultLogo.clipped);
 
   const kidsReport = setBeltMode(
     setStudentProfile(blankStudentReport(5), { displayName: 'Sam', gymName: 'GB Ellijay' }, 6),
@@ -434,6 +457,10 @@ test('selfie and gym logo are in the backup and progress PDF only when their swi
   assert.equal(pdfIncludes(kids.progressPdf, 'GB Ellijay'), true);
   assert.equal(pdfToText(kids.progressPdf).includes('/Selfie'), false);
   assert.equal(pdfToText(kids.progressPdf).includes('/GymLogo Do'), true);
+  const kidsLogo = headerMark(kids.progressPdf, 'GymLogo');
+  assert.equal(kidsLogo.x, adultPhoto.x);
+  assert.equal(kidsLogo.y, adultPhoto.y);
+  assert.ok(kidsLogo.clipped);
 
   const legacy = parseStudentBackup(off.json);
   assert.equal(legacy.ok, true);

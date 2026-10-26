@@ -19,8 +19,9 @@ const LOGO_LIBRARY = 'profile-logo-library';
 /**
  * Optional photo and gym logo on My profile.
  * The photo stays on this phone. The gym logo can be replaced or removed.
+ * The pictures themselves sit in the top-right corner. These controls stay in the cards.
  */
-export function ProfileMedia() {
+export function useProfileMedia() {
   const portraitCapture = useRef<HTMLInputElement>(null);
   const portraitLibrary = useRef<HTMLInputElement>(null);
   const logoCapture = useRef<HTMLInputElement>(null);
@@ -66,18 +67,46 @@ export function ProfileMedia() {
     }
   };
 
+  return {
+    portrait,
+    logo,
+    note,
+    error,
+    onPortrait,
+    onLogo,
+    removePortrait: () => {
+      void clearProfilePortrait();
+      setPortrait(null);
+      remember('Photo removed from this phone.');
+    },
+    removeLogo: () => {
+      clearStudentGymLogo();
+      setLogo(null);
+      remember('Gym logo removed from this phone.');
+    },
+    portraitCapture,
+    portraitLibrary,
+    logoCapture,
+    logoLibrary,
+  };
+}
+
+/** Small circles at the top right. One mark sits alone. Two sit side by side. */
+export function ProfileCornerMarks({ portrait, logo }: { portrait: string | null; logo: string | null }) {
+  if (!portrait && !logo) return null;
+  return (
+    <div className="profile-corner">
+      {logo ? <img src={logo} alt="Gym logo" /> : null}
+      {portrait ? <img src={portrait} alt="Profile photo" /> : null}
+    </div>
+  );
+}
+
+export function ProfileMedia({ media }: { media: ReturnType<typeof useProfileMedia> }) {
+  const { portrait, logo, note, error, onPortrait, onLogo, removePortrait, removeLogo } = media;
   return (
     <div className="profile-identity">
       <section className="profile-card profile-photo" aria-label="Profile photo">
-        <div className="profile-photo__frame">
-          {portrait ? (
-            <img src={portrait} alt="Profile photo" />
-          ) : (
-            <span className="profile-photo__empty" aria-hidden="true">
-              Photo
-            </span>
-          )}
-        </div>
         <div className="profile-photo__copy">
           <h2>Photo</h2>
           <p>Optional. Stays on this phone. Nothing is uploaded unless you export a report or a backup with the switch on.</p>
@@ -90,15 +119,7 @@ export function ProfileMedia() {
             Choose photo
           </label>
           {portrait ? (
-            <button
-              type="button"
-              className="profile-action profile-action--quiet"
-              onClick={() => {
-                void clearProfilePortrait();
-                setPortrait(null);
-                remember('Photo removed from this phone.');
-              }}
-            >
+            <button type="button" className="profile-action profile-action--quiet" onClick={removePortrait}>
               Remove photo
             </button>
           ) : null}
@@ -106,12 +127,9 @@ export function ProfileMedia() {
       </section>
 
       <section className="profile-card profile-logo" aria-label="Gym logo">
-        <div className="profile-logo__row">
-          {logo ? <img src={logo} alt="Gym logo" /> : <span className="profile-logo__empty">Logo</span>}
-          <div>
-            <h2>Gym logo</h2>
-            <p>From your coach, or one you choose. You can replace or remove it.</p>
-          </div>
+        <div className="profile-photo__copy">
+          <h2>Gym logo</h2>
+          <p>From your coach, or one you choose. You can replace or remove it.</p>
         </div>
         <div className="profile-photo__actions">
           <label className="profile-action" htmlFor={LOGO_CAPTURE}>
@@ -121,15 +139,7 @@ export function ProfileMedia() {
             Choose logo
           </label>
           {logo ? (
-            <button
-              type="button"
-              className="profile-action profile-action--quiet"
-              onClick={() => {
-                clearStudentGymLogo();
-                setLogo(null);
-                remember('Gym logo removed from this phone.');
-              }}
-            >
+            <button type="button" className="profile-action profile-action--quiet" onClick={removeLogo}>
               Remove logo
             </button>
           ) : null}
@@ -147,27 +157,27 @@ export function ProfileMedia() {
             <>
               <DeviceMediaInput
                 id={PORTRAIT_CAPTURE}
-                inputRef={portraitCapture}
+                inputRef={media.portraitCapture}
                 accept={PHOTO_PICKER_ACCEPT}
                 capture="user"
                 onFiles={onPortrait}
               />
               <DeviceMediaInput
                 id={PORTRAIT_LIBRARY}
-                inputRef={portraitLibrary}
+                inputRef={media.portraitLibrary}
                 accept={PHOTO_PICKER_ACCEPT}
                 onFiles={onPortrait}
               />
               <DeviceMediaInput
                 id={LOGO_CAPTURE}
-                inputRef={logoCapture}
+                inputRef={media.logoCapture}
                 accept={PHOTO_PICKER_ACCEPT}
                 capture="environment"
                 onFiles={onLogo}
               />
               <DeviceMediaInput
                 id={LOGO_LIBRARY}
-                inputRef={logoLibrary}
+                inputRef={media.logoLibrary}
                 accept={PHOTO_PICKER_ACCEPT}
                 onFiles={onLogo}
               />

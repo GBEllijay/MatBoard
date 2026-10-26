@@ -113,7 +113,7 @@ function ReportHero({
   return (
     <header className="report-hero">
       <img src="/advantage-icon.png" alt="" width={713} height={713} />
-      <div>
+      <div className="report-hero__text">
         <p className="report-kicker">Advantage Student Edition</p>
         <h1>{title}</h1>
         <p>Student: {identity.name}</p>
@@ -125,20 +125,16 @@ function ReportHero({
           {issuedOn}
         </p>
       </div>
-      {score || selfie || gymLogo ? (
-        <div className="report-hero__end">
-          {score ? (
-            <p className="report-score">
-              {score}
-              <small> / 5</small>
-            </p>
-          ) : null}
-          {gymLogo || selfie ? (
-            <div className="report-hero__art">
-              {gymLogo ? <img className="report-hero__logo" src={gymLogo} alt="Gym logo" /> : null}
-              {selfie ? <img className="report-hero__selfie" src={selfie} alt="Student photo" /> : null}
-            </div>
-          ) : null}
+      {score ? (
+        <p className="report-score">
+          {score}
+          <small> / 5</small>
+        </p>
+      ) : null}
+      {gymLogo || selfie ? (
+        <div className="report-hero__art">
+          {gymLogo ? <img className="report-hero__logo" src={gymLogo} alt="Gym logo" /> : null}
+          {selfie ? <img className="report-hero__selfie" src={selfie} alt="Student photo" /> : null}
         </div>
       ) : null}
     </header>

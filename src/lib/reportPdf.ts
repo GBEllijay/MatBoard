@@ -177,20 +177,18 @@ function chrome(pageNumber: number, pageCount: number, kind: string, art?: Repor
   let right = PAGE_W - 16;
   const selfie = art?.selfie ?? null;
   const gymLogo = art?.gymLogo ?? null;
-  if (selfie) {
+  const y = PAGE_H - 14 - mark;
+  // Rightmost first, so a single mark sits in the corner and a pair sits side by side.
+  for (const image of [selfie, gymLogo]) {
+    if (!image) continue;
     right -= mark;
     const x = right;
-    const y = PAGE_H - 14 - mark;
     draws.push({
       op: 'group',
       clip: circlePoints(x + mark / 2, y + mark / 2, mark / 2),
-      draws: [{ op: 'image', id: selfie.id, x, y, w: mark, h: mark }],
+      draws: [{ op: 'image', id: image.id, x, y, w: mark, h: mark }],
     });
     right -= 8;
-  }
-  if (gymLogo) {
-    right -= mark;
-    draws.push({ op: 'image', id: gymLogo.id, x: right, y: PAGE_H - 14 - mark, w: mark, h: mark });
   }
   const kindX = selfie || gymLogo ? 62 : PAGE_W - MARGIN_X - measure(kind, 8, true);
   const kindY = selfie || gymLogo ? PAGE_H - 58 : PAGE_H - 36;
