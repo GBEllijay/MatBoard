@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { buildGymBrandFile } from './coachGymFile.ts';
 import { exportProgressPacket, mergeStudentProgress, parseProgressPacket, sharedCriterionId } from './progress/format.ts';
 import type { CoachFeedbackPacket, CoachPlanPacket, RubricCheckpoint, RubricCriterion, RubricLevel, StudentProgressReport } from './progress/types.ts';
 import {
@@ -17,6 +18,11 @@ import {
   addGoal,
   applyCoachFile,
   BACKUP_PICKER_MESSAGE,
+  EMPTY_COACH_FILE_MESSAGE,
+  NOT_JSON_MESSAGE,
+  OWN_SEND_FILE_MESSAGE,
+  sampleCoachPlanFile,
+  SPREADSHEET_PICKER_MESSAGE,
   beltLevel,
   beltProgressSummary,
   calendarKindLabel,
@@ -337,7 +343,7 @@ test('coach import stays a suggestion, and the exported report re-imports', () =
     feedback: { ...feedback.feedback, suggestions: [{ ...feedback.feedback.suggestions[0], met: false }] },
   });
   const refused = applyCoachFile(report, { plan: null, feedback: null }, marked);
-  assert.match(refused.error, /cannot set student marks/);
+  assert.match(refused.error, /cannot do that, so it was not imported/);
   assert.equal(refused.shelf.plan, null);
   assert.equal(refused.report, report);
 
@@ -362,6 +368,9 @@ test('the uploaded send to coach file merges after confirm and a backup points t
   const local = blankStudentReport(1);
   const pending = applyCoachFile(local, { plan: null, feedback: null }, handoff);
   assert.equal(pending.error, '');
+  assert.equal(pending.message, OWN_SEND_FILE_MESSAGE);
+  assert.match(pending.message, /one for your coach/);
+  assert.match(pending.message, /not the file to import/);
   assert.equal(pending.pendingReport?.kind, 'student-progress-report');
   assert.equal(pending.report.journal.length, 0);
   assert.equal(pending.shelf.plan, null);
@@ -397,6 +406,92 @@ test('the uploaded send to coach file merges after confirm and a backup points t
   assert.equal(backup.error, BACKUP_PICKER_MESSAGE);
   assert.equal(backup.pendingReport, undefined);
   assert.equal(backup.report, local);
+
+  const other = structuredClone(incoming);
+  other.studentId = 'student-other';
+  const blocked = mergeOwnStudentFile(phone, other);
+  assert.match(blocked.error, /different student/);
+  assert.equal(blocked.report, phone);
+});
+
+test('a sample coach file imports, and other files say exactly why they were refused', () => {
+  const local = withStarterRubric(blankStudentReport(1), 1);
+  const before = structuredClone(local);
+  const sample = sampleCoachPlanFile(local.studentId, 80);
+  assert.match(sample.name, /^advantage-handoff-coach-plan-sample-coach-plan-80\.json$/);
+  const imported = applyCoachFile(local, { plan: null, feedback: null }, sample.json);
+  assert.equal(imported.error, '');
+  assert.equal(imported.pendingReport, undefined);
+  assert.equal(imported.shelf.plan?.plan.title, 'Sample coach plan');
+  assert.deepEqual(imported.report.rubric, before.rubric);
+  assert.deepEqual(imported.report.journal, before.journal);
+  assert.deepEqual(imported.report.goals, before.goals);
+  assert.match(imported.message, /were not changed/);
+
+  const files = progressReportFiles(local);
+  const sheet = applyCoachFile(local, { plan: null, feedback: null }, files.csv);
+  assert.equal(sheet.error, SPREADSHEET_PICKER_MESSAGE);
+  assert.equal(sheet.report, local);
+
+  assert.equal(applyCoachFile(local, { plan: null, feedback: null }, '   ').error, EMPTY_COACH_FILE_MESSAGE);
+  const notes = applyCoachFile(local, { plan: null, feedback: null }, 'not a file');
+  assert.equal(notes.error, NOT_JSON_MESSAGE);
+  const array = applyCoachFile(local, { plan: null, feedback: null }, '[1,2]');
+  assert.match(array.error, /not a coach plan or coach feedback file/);
+  const unknown = applyCoachFile(local, { plan: null, feedback: null }, JSON.stringify({ kind: 'review', schemaVersion: 2 }));
+  assert.match(unknown.error, /"review"/);
+  assert.match(unknown.error, /coach plan or coach feedback/);
+  const broken = applyCoachFile(local, { plan: null, feedback: null }, '{"hello":1}');
+  assert.match(broken.error, /no coach-plan or coach-feedback kind/);
+  assert.match(broken.error, /schemaVersion missing/);
+  assert.equal(broken.report, local);
+
+  const own = JSON.parse(files.json) as { kind: string; journal: unknown };
+  own.journal = 'nope';
+  const unreadable = applyCoachFile(local, { plan: null, feedback: null }, JSON.stringify(own));
+  assert.equal(unreadable.pendingReport, undefined);
+  assert.match(unreadable.error, /one for your coach, but it could not be read/);
+});
+
+test('a gym brand file still imports the name and logo and leaves the coach plan alone', () => {
+  const local = addJournalEntry(
+    blankStudentReport(1),
+    {
+      date: '2026-10-23',
+      className: 'Fundamentals',
+      gameTag: '',
+      techniques: [],
+      partners: '',
+      drills: '',
+      rolls: '',
+      notes: 'only on this phone',
+    },
+    2,
+  );
+  const planned = applyCoachFile(local, { plan: null, feedback: null }, sampleCoachPlanFile(local.studentId, 80).json);
+  assert.equal(planned.shelf.plan?.id, 'sample-coach-plan');
+  const logo = 'data:image/png;base64,BBBB';
+  const file = buildGymBrandFile({ name: 'GB Ellijay', logo, issuedOn: '2026-10-26', now: 90 });
+  const imported = applyCoachFile(planned.report, planned.shelf, file);
+  assert.equal(imported.error, '');
+  assert.equal(imported.gymBrandOnly, true);
+  assert.equal(imported.pendingReport, undefined);
+  assert.equal(imported.gym?.name, 'GB Ellijay');
+  assert.equal(imported.gym?.logo, logo);
+  assert.equal(imported.report.profile.gymName, 'GB Ellijay');
+  assert.equal(imported.shelf.plan?.id, 'sample-coach-plan');
+  assert.equal(imported.shelf.feedback, null);
+  assert.ok(imported.report.journal.some((entry) => entry.body.includes('only on this phone')));
+  assert.deepEqual(imported.report.rubric, planned.report.rubric);
+  assert.match(imported.message, /Gym name and logo are on this phone/);
+  assert.match(imported.message, /journal was not changed/);
+
+  const named = structuredClone(imported.report);
+  named.profile = { ...named.profile, gymName: 'Already set' };
+  const again = applyCoachFile(named, imported.shelf, file);
+  assert.equal(again.report.profile.gymName, 'GB Ellijay');
+  assert.equal(again.shelf.plan?.id, 'sample-coach-plan');
+  assert.equal(applyCoachFile(again.report, again.shelf, 'not a file').error, NOT_JSON_MESSAGE);
 });
 
 test('completed fundamentals levels count toward belt progress', () => {

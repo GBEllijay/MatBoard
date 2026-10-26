@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import type { StudentProgressReport } from '../../lib/progress/types';
+import type { CoachGymBrand, StudentProgressReport } from '../../lib/progress/types';
 import {
   applyCoachFile,
   loadCoachShelf,
   mergeOwnStudentFile,
+  OWN_SEND_FILE_MESSAGE,
   progressReportFiles,
+  sampleCoachPlanFile,
   saveCoachShelf,
   SEND_TO_COACH_MERGE_PROMPT,
   SHARE_SUBJECT,
@@ -13,8 +15,7 @@ import {
 import { COACH_FILE_HINT, COACH_FILE_LABEL } from '../../lib/studentHubMenu';
 import { setStudentProfile } from '../../lib/studentEdition';
 import { writeStudentGymLogo } from '../../lib/studentGymMark';
-import type { CoachGymBrand } from '../../lib/progress/types';
-import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './chrome';
+import { LeatherHeader, StudentMarks, useScrollToHash, useStudentFile, useStudentPath } from './chrome';
 
 function downloadText(filename: string, text: string, type: string) {
   const blob = new Blob([text], { type });
@@ -29,9 +30,11 @@ function downloadText(filename: string, text: string, type: string) {
 export function SharePage() {
   const to = useStudentPath();
   const { report, commit } = useStudentFile();
+  useScrollToHash();
   const [shelf, setShelf] = useState(() => loadCoachShelf(localStorage));
   const [includeCsv, setIncludeCsv] = useState(false);
-  const [status, setStatus] = useState('');
+  const [sendNote, setSendNote] = useState('');
+  const [importNote, setImportNote] = useState('');
   const [error, setError] = useState('');
   const [pendingOwn, setPendingOwn] = useState<StudentProgressReport | null>(null);
   const [pendingGym, setPendingGym] = useState<CoachGymBrand | null>(null);
@@ -42,7 +45,7 @@ export function SharePage() {
     const result = mergeOwnStudentFile(report, pendingOwn);
     if (result.error) {
       setError(result.error);
-      setStatus('');
+      setImportNote('');
       return;
     }
     let next = result.report;
@@ -52,11 +55,12 @@ export function SharePage() {
     setPendingOwn(null);
     setPendingGym(null);
     setError('');
-    setStatus(result.message);
+    setImportNote(result.message);
   };
 
   const send = async () => {
     setError('');
+    setImportNote('');
     const jsonFile = new File([files.json], files.jsonName, { type: 'application/json' });
     const sharedFiles = [jsonFile];
     if (includeCsv) sharedFiles.push(new File([files.csv], files.csvName, { type: 'text/csv' }));
@@ -64,7 +68,7 @@ export function SharePage() {
     if (typeof nav.share === 'function' && nav.canShare?.({ files: sharedFiles })) {
       try {
         await nav.share({ files: sharedFiles, title: SHARE_SUBJECT, text: 'Student progress report' });
-        setStatus('Shared from this device. Advantage does not host the file.');
+        setSendNote('Shared from this device. Advantage does not host the file.');
         return;
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return;
@@ -72,29 +76,42 @@ export function SharePage() {
     }
     downloadText(files.jsonName, files.json, 'application/json');
     if (includeCsv) downloadText(files.csvName, files.csv, 'text/csv');
-    setStatus('Downloaded the progress file on this device. Email it from your mail app, or put it in the gym Drive folder.');
+    setSendNote('Downloaded the progress file on this device. Email it from your mail app, or put it in the gym Drive folder.');
+  };
+
+  const downloadSample = () => {
+    const sample = sampleCoachPlanFile(report.studentId);
+    downloadText(sample.name, sample.json, 'application/json');
+    setError('');
+    setPendingOwn(null);
+    setPendingGym(null);
+    setSendNote('');
+    setImportNote('Downloaded a sample coach plan. That is the kind of file Import from coach reads. Your journal was not changed.');
   };
 
   return (
-    <main className="student student-frame">
+    <main className="student student-frame student-share">
       <StudentMarks />
       <LeatherHeader title={COACH_FILE_LABEL} />
       <div className="student-paper">
         <div className="student-sheet">
-          <section className="ink" aria-label={COACH_FILE_LABEL}>
-            <p className="ink__label">{COACH_FILE_LABEL}</p>
-            <p className="student-quiet">{COACH_FILE_HINT}</p>
-            <p className="student-quiet">
+          <section className="student-share-card" aria-label={COACH_FILE_LABEL}>
+            <h2>{COACH_FILE_LABEL}</h2>
+            <p>{COACH_FILE_HINT}</p>
+            <p>
               The progress file stays on this device. Advantage does not host it. It includes your journal, tournaments, A/B/C game, weights, competition results, video library links, rank, and lineage. Promotion photos are included when the file has room. The ones that do not fit stay on this device, and the file says so. A bracket photo stays on this device and is not in the file. The gym logo is included when Gym logo on reports and backups is on. Your photo stays on this phone and is not in this file. Share it with your mail app or the gym Google Drive folder.
             </p>
-            <label className="cal-gym-toggle">
+            <label className="student-share-check">
               <input type="checkbox" checked={includeCsv} onChange={(event) => setIncludeCsv(event.target.checked)} />
               <span>Also include the spreadsheet</span>
             </label>
-            <div className="student-actions">
-              <button type="button" className="ink-btn ink-btn--save" onClick={() => void send()}>
-                {COACH_FILE_LABEL}
-              </button>
+            <button type="button" className="ink-btn ink-btn--save" onClick={() => void send()}>
+              {COACH_FILE_LABEL}
+            </button>
+            {sendNote ? <p role="status">{sendNote}</p> : null}
+            <div className="student-share-other" role="group" aria-label="Different action">
+              <p className="student-share-other__label">Different action</p>
+              <p>This opens your mail app with a note about the file. It does not make the file, and it does not attach it.</p>
               <a className="ink-btn" href={files.mailto}>
                 Email the file
               </a>
@@ -103,8 +120,15 @@ export function SharePage() {
           <section className="student-import-confirm" id="import">
             <h2>Import from coach</h2>
             <p>
-              A coach plan or coach feedback file is a suggestion. Importing it does not change your rubric marks, checkpoints, journal, or goals. A gym name or logo in the file is added when it is there, and ignored when an older file does not have one. You can replace or remove the logo on My profile. The progress file from Send to coach can be merged into the journal on this phone after you confirm. A backup from Back up my journal restores from Connections.
+              This takes a coach plan or coach feedback file. That is the JSON file a coach sends back to you. It is not the progress file from Make a file for my coach.
             </p>
+            <p>
+              A coach plan or coach feedback file is a suggestion. Importing it does not change your rubric marks, checkpoints, journal, or goals. A gym name or logo in the file is added when it is there, and ignored when an older file does not have one. You can replace or remove the logo on My profile. You can still merge a progress file into the journal on this phone after you confirm. A backup from Back up my journal restores from Connections.
+            </p>
+            <button type="button" className="ink-btn ink-btn--save" onClick={downloadSample}>
+              Download a sample coach file
+            </button>
+            <p>Choose the coach&apos;s file.</p>
             <input
               type="file"
               accept="application/json,.json"
@@ -119,14 +143,15 @@ export function SharePage() {
                     setPendingOwn(result.pendingReport);
                     setPendingGym(result.gym);
                     setError('');
-                    setStatus('');
+                    setImportNote('');
+                    setSendNote('');
                     return;
                   }
                   setPendingOwn(null);
                   setPendingGym(null);
                   if (result.error) {
                     setError(result.error);
-                    setStatus('');
+                    setImportNote('');
                     return;
                   }
                   if (result.gym?.logo) writeStudentGymLogo(result.gym.logo);
@@ -134,12 +159,14 @@ export function SharePage() {
                   saveCoachShelf(localStorage, result.shelf);
                   setShelf(result.shelf);
                   setError('');
-                  setStatus(result.message);
+                  setSendNote('');
+                  setImportNote(result.message);
                 });
               }}
             />
             {pendingOwn ? (
               <div className="student-confirm" role="group" aria-label="Merge progress file">
+                <p role="status">{OWN_SEND_FILE_MESSAGE}</p>
                 <p>{SEND_TO_COACH_MERGE_PROMPT}</p>
                 <div className="student-actions">
                   <button type="button" className="ink-btn ink-btn--save" onClick={mergeOwn}>
@@ -161,9 +188,9 @@ export function SharePage() {
                 </div>
               </div>
             ) : null}
+            {pendingOwn ? null : importNote ? <p role="status">{importNote}</p> : null}
+            {error ? <p role="alert">{error}</p> : null}
           </section>
-          {status ? <p role="status">{status}</p> : null}
-          {error ? <p role="alert">{error}</p> : null}
         </div>
       </div>
     </main>
