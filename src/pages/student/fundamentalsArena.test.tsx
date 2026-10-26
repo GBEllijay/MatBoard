@@ -20,6 +20,7 @@ import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 import { exportProgressPacket } from '../../lib/progress/format.ts';
+import { setBeltMode } from '../../lib/beltBook.ts';
 import {
   addJournalClip,
   blankStudentReport,
@@ -276,4 +277,29 @@ test('rename, remove, add, and restore keep the saved level', () => {
   assert.equal(scissor?.level, 4);
   assert.ok(scissor?.learnedOn);
   unmount(mounted);
+});
+
+test('kids fundamentals use kid level words and note illegal techniques', () => {
+  localStorage.clear();
+  saveStudentReport(localStorage, setBeltMode(blankStudentReport(20), 'kids', 21));
+  const mounted = mount(<FundamentalsPage />);
+  const { host } = mounted;
+  try {
+    control(host, 'button', 'Not yet');
+    assert.equal(host.textContent?.includes('Not started'), false);
+    const sweeps = labeled(host, 'Sweeps');
+    labeled(sweeps, 'Scissor sweep 0 Not yet');
+    labeled(sweeps, 'Scissor sweep 2 Practicing it');
+    labeled(sweeps, 'Scissor sweep 3 Playing it');
+    labeled(sweeps, 'Scissor sweep 5 Teaching it');
+    const note = labeled(host, 'Illegal for this age');
+    assert.match(note.textContent ?? '', /Straight ankle lock\. Illegal under 16/);
+    assert.match(note.textContent ?? '', /Wrist lock\. Illegal for kids/);
+    assert.match(note.textContent ?? '', /coach or parent/);
+    assert.equal(host.querySelector('[aria-label="Straight ankle lock proficiency"]'), null);
+    assert.equal(host.querySelector('[aria-label="Wrist lock proficiency"]'), null);
+    assert.doesNotMatch(host.textContent ?? '', /Gracie Barra|Alliance/);
+  } finally {
+    unmount(mounted);
+  }
 });

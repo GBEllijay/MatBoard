@@ -9,6 +9,7 @@ import {
   filmsForMove,
   filterFundamentalRows,
   formatFundamentalUpdated,
+  fundamentalLevelLabel,
   fundamentalLevelOf,
   moveLinks,
   proficiencySummary,
@@ -34,6 +35,17 @@ function row(partial: Partial<FundamentalRow> & Pick<FundamentalRow, 'label' | '
     custom: partial.custom ?? false,
   };
 }
+
+test('kids level words use the same 0 to 5 scale', () => {
+  assert.equal(fundamentalLevelLabel(0), 'Not started');
+  assert.equal(fundamentalLevelLabel(3), 'Live with resistance');
+  assert.equal(fundamentalLevelLabel(0, 'kids'), 'Not yet');
+  assert.equal(fundamentalLevelLabel(1, 'kids'), 'Meeting it');
+  assert.equal(fundamentalLevelLabel(2, 'kids'), 'Practicing it');
+  assert.equal(fundamentalLevelLabel(3, 'kids'), 'Playing it');
+  assert.equal(fundamentalLevelLabel(4, 'kids'), 'Showing it');
+  assert.equal(fundamentalLevelLabel(5, 'kids'), 'Teaching it');
+});
 
 test('a missing level follows the old yes or no mark', () => {
   assert.equal(fundamentalLevelOf({ learnedOn: '2026-10-11' }), 3);

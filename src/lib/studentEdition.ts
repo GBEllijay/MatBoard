@@ -3,9 +3,9 @@
  * report from src/lib/progress. Nothing here is sent to a server.
  */
 
-import { ibjjfAge, withBeltTemplate } from './beltBook.ts';
+import { beltModeOf, ibjjfAge, withBeltTemplate } from './beltBook.ts';
 import { fundamentalLevelOf, FUNDAMENTAL_LIVE_LEVEL, isFundamentalLevel, type FundamentalLevel } from './fundamentals.ts';
-import { defaultTechniquePolicy } from './studentBenchmarks.ts';
+import { ageIllegalTechniques, defaultTechniquePolicy } from './studentBenchmarks.ts';
 import { joinJournalNotes, splitJournalNotes } from './journalNotes.ts';
 import { FUNDAMENTALS_CATALOG } from './progress/catalog.ts';
 import { emptyCompetition, matchingGameTags } from './progress/competition.ts';
@@ -257,15 +257,22 @@ function samePolicy(left: TechniquePolicy | undefined, right: TechniquePolicy | 
   return POLICY_KEYS.every((key) => left?.[key] === right?.[key]);
 }
 
-/** Gi, no-gi, or both. Both is stored by leaving the field off. */
+/**
+ * Gi, no-gi, or both.
+ * A missing value is Both for an adult and Gi for a kid.
+ * Choosing that default leaves the field off, unless it was already saved on purpose.
+ */
 export function setTrainingStyle(report: StudentProgressReport, style: TrainingStyle, now = Date.now()): StudentProgressReport {
   if (style !== 'gi' && style !== 'nogi' && style !== 'both') throw new Error('Training style must be gi, no-gi, or both.');
+  const implicit: TrainingStyle = beltModeOf(report) === 'kids' ? 'gi' : 'both';
   const profile = { ...report.profile };
-  if (style === 'both') delete profile.trainingStyle;
-  else profile.trainingStyle = style;
-  if ((report.profile.trainingStyle ?? 'both') === (profile.trainingStyle ?? 'both') && report.profile.trainingStyle === profile.trainingStyle) {
-    return report;
+  if (style === implicit) {
+    if (report.profile.trainingStyle === style) return report;
+    delete profile.trainingStyle;
+  } else {
+    profile.trainingStyle = style;
   }
+  if (report.profile.trainingStyle === profile.trainingStyle) return report;
   return { ...report, updatedAt: now, profile };
 }
 
@@ -281,7 +288,7 @@ export function setTechniquePolicy(
 ): StudentProgressReport {
   const year = report.beltBook?.birthYear;
   const age = typeof year === 'number' ? ibjjfAge(year) : null;
-  const defaults = defaultTechniquePolicy(report.profile.belt, age);
+  const defaults = defaultTechniquePolicy(report.profile.belt, age, beltModeOf(report));
   const next: TechniquePolicy = { ...(report.profile.techniquePolicy ?? {}) };
   if (value === defaults[key]) delete next[key];
   else next[key] = value;
@@ -549,9 +556,10 @@ export function fundamentalsBoard(report: StudentProgressReport): FundamentalsCa
   return FUNDAMENTALS_CATALOG.categories.map((category) => {
     const catalogIds = new Set(category.items.map((item) => item.id));
     const items: FundamentalRow[] = [];
+    const illegal = new Set(ageIllegalTechniques(report).map((row) => row.catalogId).filter(Boolean));
     for (const item of category.items) {
       const saved = report.checklist.find((entry) => entry.categoryId === category.id && entry.catalogItemId === item.id);
-      if (saved?.hidden) continue;
+      if (saved?.hidden || illegal.has(item.id)) continue;
       items.push({
         entryId: saved?.id ?? '',
         catalogItemId: item.id,

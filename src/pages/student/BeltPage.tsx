@@ -341,6 +341,7 @@ function KidsBenchmarks({
 }) {
   const beltId = currentKidsBelt(report).beltId;
   const rows = kidsBenchmarksOf(report, beltId);
+  const competition = benchmarkView(report).policy.competition;
   return (
     <section className="belt-lane" aria-label="Kids belts">
       <section className="belt-benchmarks" aria-label={PRACTICAL_BENCHMARKS_HEADING}>
@@ -351,6 +352,13 @@ function KidsBenchmarks({
           <KidsBenchmarkRow key={row.id} row={row} report={report} run={run} />
         ))}
         <NameForm label="Practical benchmark name" submit="Add a practical benchmark" onAdd={(name) => run(addKidsBenchmark(report, beltId, name))} />
+        {competition ? (
+          <p className="student-quiet">Competition prompt is on. It does not count toward a stripe.</p>
+        ) : (
+          <button type="button" className="belt-chip" onClick={() => run(setTechniquePolicy(report, 'competition', true))}>
+            Competition
+          </button>
+        )}
         <p className="student-quiet">{INSTRUCTOR_FINAL_SAY}</p>
         <BenchmarkDisclaimer />
       </section>

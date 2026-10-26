@@ -7,6 +7,7 @@
 import { tournamentClassLine } from './divisionFields.ts';
 import { competitionOf } from './progress/competition.ts';
 import { checklistLevelLine, fundamentalLevelOf, proficiencySummary } from './fundamentals.ts';
+import { ageIllegalTechniques } from './studentBenchmarks.ts';
 import type { CompetitionMatch, JournalEntry, MatchMethod, ProgressBelt, StudentProgressReport } from './progress/types.ts';
 import {
   ASSESSMENT_AREAS,
@@ -291,12 +292,14 @@ function kidsBeltBlock(report: StudentProgressReport): ReportBlock {
 }
 
 function fundamentalsBlock(report: StudentProgressReport): ReportBlock {
-  const rows = report.checklist.filter((row) => !row.hidden);
+  const illegal = new Set(ageIllegalTechniques(report).map((row) => row.catalogId).filter(Boolean));
+  const rows = report.checklist.filter((row) => !row.hidden && !illegal.has(row.catalogItemId));
   if (!rows.length) return { title: 'Fundamentals proficiency', lines: ['None yet'] };
   const summary = proficiencySummary(rows.map((row) => ({ level: fundamentalLevelOf(row) })));
+  const audience = beltModeOf(report) === 'kids' ? 'kids' : 'adult';
   const lines = [
     `Average ${summary.average.toFixed(1)} across ${countPhrase(summary.moves, 'fundamental', 'fundamentals')}.`,
-    ...rows.map((row) => checklistLevelLine(row)),
+    ...rows.map((row) => checklistLevelLine(row, audience)),
   ];
   return { title: 'Fundamentals proficiency', lines };
 }

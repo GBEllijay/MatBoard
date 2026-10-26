@@ -288,7 +288,7 @@ export type StudentProfile = {
   startedOn: string;
   /** Optional. Blank when this file does not record how the license was issued. */
   licenseSource: LicenseSource;
-  /** Gi, no-gi, or both. Missing means both. */
+  /** Gi, no-gi, or both. Missing means both for an adult and Gi for a kid. */
   trainingStyle?: TrainingStyle;
   /** Saved overrides. A missing key uses the age and belt default. */
   techniquePolicy?: TechniquePolicy;

@@ -625,6 +625,11 @@ test('a kids profile shows the gym name instead of a photo until a parent turns 
     assert.ok(document.querySelector('[aria-label="Kid or Adult"]'));
     assert.ok(labeled('Birth year'));
     assert.equal(buttonNamed('Kid').getAttribute('aria-pressed'), 'true');
+    assert.equal(buttonNamed('Gi').getAttribute('aria-checked'), 'true');
+    assert.equal(buttonNamed('Both').getAttribute('aria-checked'), 'false');
+    assert.match(document.body.textContent ?? '', /Illegal under 16/);
+    assert.match(document.body.textContent ?? '', /coach or parent/);
+    assert.doesNotMatch(document.body.textContent ?? '', /Gracie Barra|Alliance/);
     assert.equal(document.querySelector('img[alt="Profile photo"]'), null);
     assert.match(document.querySelector('.profile-corner__name')?.textContent ?? '', /North Gym/);
     await click(buttonNamed('Adult'));
@@ -786,6 +791,10 @@ test('kids belt progress uses empty practical benchmarks and personal goals', as
     await submitNamed('Add a practical benchmark');
     assert.equal((labeled('Edit Breakfall') as HTMLInputElement).value, 'Breakfall');
     assert.equal(document.body.textContent?.includes('No practical benchmarks yet'), false);
+    assert.ok(buttonNamed('Competition'));
+    await click(buttonNamed('Competition'));
+    assert.match(document.body.textContent ?? '', /Competition prompt is on/);
+    assert.equal(document.body.textContent?.includes('Tap to add: results'), false);
   } finally {
     unmount(kids);
   }

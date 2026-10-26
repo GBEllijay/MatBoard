@@ -15,12 +15,13 @@ import {
   catalogLevelMap,
   checkpointsForProgress,
   criterionCounts,
+  ageIllegalTechniques,
   defaultTechniquePolicy,
   starterCheckpoint,
   visibleTechniqueNames,
 } from './studentBenchmarks.ts';
-import { blankStudentReport, setTechniquePolicy, setTrainingStyle } from './studentEdition.ts';
-import { setFundamentalLevel } from './studentEdition.ts';
+import { setBeltMode, setBirthYear } from './beltBook.ts';
+import { blankStudentReport, fundamentalsBoard, setFundamentalLevel, setTechniquePolicy, setTrainingStyle } from './studentEdition.ts';
 import { setRankBelt } from './studentRank.ts';
 import {
   STARTER_RUBRIC_LEVELS,
@@ -205,6 +206,40 @@ test('all-of bundles, target levels, gi names, and optional prompts follow the r
   );
   assert.match(summary, /from fundamentals/);
   assert.equal(summary.includes(COMPETITION_PROMPT), false);
+});
+
+test('kids default to gi and hide techniques that are illegal at their age', () => {
+  const kids = setBeltMode(blankStudentReport(1), 'kids', 2);
+  assert.equal(kids.profile.trainingStyle, undefined);
+  assert.equal(benchmarkView(kids).trainingStyle, 'gi');
+  assert.equal(benchmarkView(blankStudentReport()).trainingStyle, 'both');
+  const chosen = setTrainingStyle(kids, 'both', 3);
+  assert.equal(chosen.profile.trainingStyle, 'both');
+  assert.equal(benchmarkView(chosen).trainingStyle, 'both');
+  const cleared = setTrainingStyle(chosen, 'gi', 4);
+  assert.equal(cleared.profile.trainingStyle, undefined);
+
+  assert.deepEqual(
+    ageIllegalTechniques(kids).map((row) => row.name),
+    ['Straight ankle lock', 'Wrist lock', 'Leg locks', 'Heel hooks'],
+  );
+  const names = fundamentalsBoard(kids).find((category) => category.id === 'submissions')?.items.map((item) => item.name) ?? [];
+  assert.equal(names.includes('Straight ankle lock'), false);
+  assert.equal(names.includes('Wrist lock'), false);
+  assert.equal(names.includes('Armbar from guard'), true);
+  const unlocked = setTechniquePolicy(kids, 'straightAnkleLock', true, 5);
+  assert.equal(unlocked.profile.techniquePolicy?.straightAnkleLock, true);
+  const back = fundamentalsBoard(unlocked).find((category) => category.id === 'submissions')?.items.map((item) => item.name) ?? [];
+  assert.equal(back.includes('Straight ankle lock'), true);
+  assert.equal(back.includes('Wrist lock'), false);
+
+  const blue = setBeltMode(setRankBelt(blankStudentReport(6), 'blue', 7), 'kids', 8);
+  assert.equal(benchmarkView(blue).policy.wristLocks, false);
+  const older = setBirthYear(kids, new Date().getFullYear() - 16, 9);
+  assert.equal(benchmarkView(older).policy.straightAnkleLock, true);
+  assert.equal(ageIllegalTechniques(older).some((row) => row.name === 'Straight ankle lock'), false);
+  const copy = [...ageIllegalTechniques(kids).map((row) => `${row.name} ${row.reason}`), 'IBJJF kids'].join(' ');
+  assert.doesNotMatch(copy, /Gracie Barra|Alliance|Checkmat/i);
 });
 
 test('new benchmark fields round-trip, and restore keeps marks', () => {
