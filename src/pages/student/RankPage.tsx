@@ -71,6 +71,7 @@ import {
   graduateToAdult,
   type LadderRung,
 } from '../../lib/studentRank';
+import { CarlosCheer } from '../../components/CarlosCheer';
 import { StudentMarks, useScrollToHash, useStudentFile, useStudentPath } from './chrome';
 import { kidsClothStyle } from './wornBelt';
 import { StudentProfileFields } from './ProfileFields';
@@ -109,14 +110,17 @@ export function RankPage() {
   const unlocked = coralRanksUnlocked(report.profile.belt);
   const mode = beltModeOf(report);
   const [pendingMode, setPendingMode] = useState<'' | 'adult' | 'kids'>('');
+  const [coachCheer, setCoachCheer] = useState(false);
   useScrollToHash(mode === 'kids' ? `kids:${currentKidsBelt(report).beltId}` : report.profile.belt);
 
   const run = (next: ReturnType<typeof setRankBelt>) => {
     try {
       commit(next);
       setError('');
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save that.');
+      return false;
     }
   };
 
@@ -134,6 +138,9 @@ export function RankPage() {
   return (
     <main className="student student-frame student--arena student--rank">
       <StudentMarks />
+      {coachCheer ? (
+        <CarlosCheer lines={['Congratulations, Coach!', 'The blue belt is yours.']} onDismiss={() => setCoachCheer(false)} />
+      ) : null}
       <div className="arena-scroll">
         <header className="arena-hero rank-hero">
           <h1>My rank</h1>
@@ -166,7 +173,8 @@ export function RankPage() {
               onRemoveBeltPhoto={(beltId, index) => setPhotos(removeKidsBeltPhoto(photos, beltId, index))}
               onGraduate={(choice) => {
                 setPendingMode('');
-                run(graduateToAdult(report, choice));
+                if (!run(graduateToAdult(report, choice))) return;
+                if (choice === 'blue') setCoachCheer(true);
               }}
               lineage={<LineageEditor lineage={rank.lineage ?? []} onSave={(lines) => run(setRankLineage(report, lines))} />}
               progressLink={<Link className="ink-btn" to={to('/student/rubric')}>Belt progress</Link>}

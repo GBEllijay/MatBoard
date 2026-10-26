@@ -605,8 +605,59 @@ test('the 16-year prompt starts the adult belt and keeps kids belts under Earlie
     assert.equal(stored.beltBook?.templateId, 'adult-ibjjf@1');
     assert.equal(stored.beltBook?.kids?.beltId, 'orange');
     assert.equal(stored.beltBook?.kids?.tapeCount, 2);
+    const cheer = document.querySelector('.kids-carlos');
+    assert.ok(cheer instanceof HTMLElement);
+    assert.match(cheer.textContent ?? '', /Congratulations, Coach!/);
+    assert.match(cheer.textContent ?? '', /The blue belt is yours\./);
+    assert.equal(cheer.querySelector('img')?.getAttribute('src'), '/assets/kids/carlos.webp');
+    await click(buttonNamed('Got it'));
+    assert.equal(document.querySelector('.kids-carlos'), null);
   } finally {
     unmount(mounted);
+  }
+  const again = mount(<RankPage />);
+  try {
+    assert.equal(document.querySelector('.kids-carlos'), null);
+    assert.equal(document.body.textContent?.includes('Congratulations, Coach!'), false);
+  } finally {
+    unmount(again);
+  }
+});
+
+test('Carlos congratulates a blue-belt graduation once, and not a white or purple choice', async () => {
+  const at16 = (beltId: 'white' | 'green') => {
+    let report = setBeltMode(blankStudentReport(40), 'kids', 41);
+    report = setBirthYear(report, new Date().getFullYear() - 16, 42);
+    report = setKidsBelt(report, beltId, 43);
+    return report;
+  };
+  saveStudentReport(localStorage, at16('white'));
+  const white = mount(<RankPage />);
+  try {
+    await click(buttonNamed('Stay on white'));
+    assert.equal(buttonNamed('White').getAttribute('aria-pressed'), 'true');
+    assert.equal(document.querySelector('.kids-carlos'), null);
+  } finally {
+    unmount(white);
+  }
+  saveStudentReport(localStorage, at16('green'));
+  const purple = mount(<RankPage />);
+  try {
+    await click(buttonNamed('Start at purple'));
+    assert.equal(buttonNamed('Purple').getAttribute('aria-pressed'), 'true');
+    assert.equal(document.querySelector('.kids-carlos'), null);
+  } finally {
+    unmount(purple);
+  }
+  saveStudentReport(localStorage, at16('green'));
+  const blue = mount(<RankPage />);
+  try {
+    await click(buttonNamed('Start at blue'));
+    assert.match(document.querySelector('.kids-carlos')?.textContent ?? '', /Coach/);
+    await click(buttonNamed('Got it'));
+    assert.equal(document.querySelector('.kids-carlos'), null);
+  } finally {
+    unmount(blue);
   }
 });
 
