@@ -146,7 +146,7 @@ export function SharePage() {
                     Merge into my journal
                   </button>
                   <Link className="ink-btn" to={to('/student/connections')}>
-                    Open Connections
+                    Open: Connections
                   </Link>
                   <button
                     type="button"

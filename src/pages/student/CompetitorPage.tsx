@@ -118,7 +118,7 @@ export function CompetitorPage() {
                 Rate the work in front of you. 1 is early. 5 is ready to rely on. Saved on this phone by date.
               </p>
               <Link className="ink-btn ink-btn--save" to={to('/student/self-assessment?from=competitor')}>
-                Open self-assessment
+                Open: self-assessment
               </Link>
             </section>
             <div className="arena-block">

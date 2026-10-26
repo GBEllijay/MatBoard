@@ -21,7 +21,7 @@ export function RankHero({ report, to }: { report: StudentProgressReport; to: (p
         ))}
       </div>
       <Link className="arena-rank__link" to={to('/student/rank')}>
-        Open My rank
+        Open: My rank
       </Link>
     </section>
   );

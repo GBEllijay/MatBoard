@@ -10,8 +10,8 @@
  * Per move: proficiency 0 Not started through 5 Can teach it, note, date learned.
  * Rename, Close rename, Save name, Remove, Confirm remove, Keep.
  * Add your own, Add, Restore starter list, Confirm restore starter list, Cancel.
- * Open {area} self-assessment, Open {checkpoint} benchmark,
- * and Open {clip} in Video Library when a clip matches.
+ * Open: {area} self-assessment, Open: {checkpoint} benchmark,
+ * and Open: {clip} in Video Library when a clip matches.
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -143,11 +143,11 @@ test('a learned date without a level opens at live, and taps, sort, filter, note
   assert.equal(live.getAttribute('aria-checked'), 'true');
   assert.ok(sweeps.textContent?.includes('1 of 5 ready when a partner resists'));
   assert.equal(
-    control(sweeps, 'a', 'Open Guard self-assessment').getAttribute('href'),
+    control(sweeps, 'a', 'Open: Guard self-assessment').getAttribute('href'),
     '/student/self-assessment?from=fundamentals#assess-guard',
   );
-  assert.equal(control(sweeps, 'a', 'Open Guard benchmark').getAttribute('href'), '/student/rubric#checkpoint.white.guard');
-  assert.equal(control(sweeps, 'a', 'Open Scissor sweep detail in Video Library').getAttribute('href')?.startsWith('/student/videos#clip-'), true);
+  assert.equal(control(sweeps, 'a', 'Open: Guard benchmark').getAttribute('href'), '/student/rubric#checkpoint.white.guard');
+  assert.equal(control(sweeps, 'a', 'Open: Scissor sweep detail in Video Library').getAttribute('href')?.startsWith('/student/videos#clip-'), true);
   assert.ok(sweeps.textContent?.includes('Updated'));
 
   const sweepsMeter = () => labeled(host, 'Sweeps').querySelector('.fund-meter');
@@ -160,7 +160,7 @@ test('a learned date without a level opens at live, and taps, sort, filter, note
   assert.notEqual(afterMeter?.getAttribute('data-value'), before);
   assert.equal((afterMeter?.querySelector('span') as HTMLElement | null)?.style.width.endsWith('%'), true);
   const escapes = labeled(host, 'Escapes');
-  assert.equal(control(escapes, 'a', 'Open Back escape benchmark').getAttribute('href'), '/student/rubric#checkpoint.white.escapes');
+  assert.equal(control(escapes, 'a', 'Open: Back escape benchmark').getAttribute('href'), '/student/rubric#checkpoint.white.escapes');
   const saved = JSON.parse(localStorage.getItem(STUDENT_EDITION_STORAGE_KEY) ?? '{}') as {
     checklist: { catalogItemId: string; level: number; learnedOn: string; note: string }[];
   };

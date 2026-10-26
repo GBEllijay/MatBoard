@@ -8,7 +8,7 @@
  * Radar chart. Trend chart.
  * Self-assessment date. Changing the date loads that day's note and ratings.
  * Guard, Passing, Takedowns, Escapes, Submissions, Conditioning, Mindset.
- * Each area: rating 1–5, pressed state, and Open {benchmark} benchmark
+ * Each area: rating 1–5, pressed state, and Open: {benchmark} benchmark
  * only when the belt the student wears has that checkpoint.
  * A white belt links Guard, Passes, and Escapes on white. It does not link
  * Takedowns or Submissions on blue. Conditioning and Mindset have no checkpoint.
@@ -20,8 +20,8 @@
  * Division and Weight class stay on the Competitor tournament form.
  *
  * Competitor controls that stay on Competitor, covered in competitorArena.test:
- * Back, Home, Belt rank, Open My rank, Jiu-Jitsu Journal, Today's page,
- * Journal cards, Open self-assessment, Search competition, Tournament name,
+ * Back, Home, Belt rank, Open: My rank, Jiu-Jitsu Journal, Today's page,
+ * Journal cards, Open: self-assessment, Search competition, Tournament name,
  * date, location, Division, Weight class, suggestions, deadline, link,
  * Considering, Entered, Pounds, Kilograms, Target division weight,
  * Add tournament, Save tournament, Cancel tournament edit, Earlier tournaments,
@@ -155,8 +155,8 @@ test('the self-assessment page keeps every control and Back returns to Rank & Pr
   assert.equal(shape?.getAttribute('aria-label'), selfAssessmentShapeLabel(null));
   assert.equal(host.querySelectorAll('polygon.assess-chart__shape').length, 0);
   assert.ok(host.querySelector('[aria-label^="Self-assessment trend"]'));
-  assert.equal(control(host, 'a', 'Open Guard benchmark').getAttribute('href'), '/student/rubric?student=1#checkpoint.white.guard');
-  assert.equal(host.textContent?.includes('Open Takedowns benchmark'), false);
+  assert.equal(control(host, 'a', 'Open: Guard benchmark').getAttribute('href'), '/student/rubric?student=1#checkpoint.white.guard');
+  assert.equal(host.textContent?.includes('Open: Takedowns benchmark'), false);
   assert.equal(host.querySelector('[aria-label="Division"]'), null);
   assert.equal(host.querySelector('[aria-label="Weight class"]'), null);
   assert.equal(host.textContent?.includes('Patrick Hand'), false);
@@ -185,12 +185,12 @@ test('a check-in saves, updates, and a white belt links only that belt', () => {
   saveStudentReport(localStorage, withStarterRubric(blankStudentReport()));
   const mounted = mount(<SelfAssessmentPage />);
   const { host } = mounted;
-  assert.equal(control(host, 'a', 'Open Guard benchmark').getAttribute('href'), '/student/rubric#checkpoint.white.guard');
-  assert.equal(control(host, 'a', 'Open Passes benchmark').getAttribute('href'), '/student/rubric#checkpoint.white.passes');
-  assert.equal(control(host, 'a', 'Open Escapes benchmark').getAttribute('href'), '/student/rubric#checkpoint.white.escapes');
-  assert.equal(host.textContent?.includes('Open Takedowns benchmark'), false);
-  assert.equal(host.textContent?.includes('Open Submissions benchmark'), false);
-  assert.equal(host.textContent?.includes('Open Conditioning benchmark'), false);
+  assert.equal(control(host, 'a', 'Open: Guard benchmark').getAttribute('href'), '/student/rubric#checkpoint.white.guard');
+  assert.equal(control(host, 'a', 'Open: Passes benchmark').getAttribute('href'), '/student/rubric#checkpoint.white.passes');
+  assert.equal(control(host, 'a', 'Open: Escapes benchmark').getAttribute('href'), '/student/rubric#checkpoint.white.escapes');
+  assert.equal(host.textContent?.includes('Open: Takedowns benchmark'), false);
+  assert.equal(host.textContent?.includes('Open: Submissions benchmark'), false);
+  assert.equal(host.textContent?.includes('Open: Conditioning benchmark'), false);
   assert.equal(
     [...host.querySelectorAll('a')].some((link) => link.getAttribute('href')?.includes('checkpoint.blue')),
     false,
@@ -265,9 +265,9 @@ test('a blue belt links the benchmarks on blue', () => {
   saveStudentReport(localStorage, report);
   const mounted = mount(<SelfAssessmentPage />);
   const { host } = mounted;
-  assert.equal(control(host, 'a', 'Open Half guard benchmark').getAttribute('href'), '/student/rubric#checkpoint.blue.half-guard');
-  assert.equal(control(host, 'a', 'Open Takedowns benchmark').getAttribute('href'), '/student/rubric#checkpoint.blue.takedowns');
-  assert.equal(control(host, 'a', 'Open Submissions benchmark').getAttribute('href'), '/student/rubric#checkpoint.blue.submissions');
+  assert.equal(control(host, 'a', 'Open: Half guard benchmark').getAttribute('href'), '/student/rubric#checkpoint.blue.half-guard');
+  assert.equal(control(host, 'a', 'Open: Takedowns benchmark').getAttribute('href'), '/student/rubric#checkpoint.blue.takedowns');
+  assert.equal(control(host, 'a', 'Open: Submissions benchmark').getAttribute('href'), '/student/rubric#checkpoint.blue.submissions');
   assert.equal(
     [...host.querySelectorAll('a')].some((link) => link.getAttribute('href')?.includes('checkpoint.white')),
     false,
@@ -297,7 +297,7 @@ test('old competitor self-assessment addresses open this page and remember where
 
   const stay = mount(routes, '/student/competitor?student=1');
   assert.equal(stay.host.querySelector('h1')?.textContent, 'Competitor');
-  assert.equal(control(stay.host, 'a', 'Open self-assessment').getAttribute('href'), '/student/self-assessment?from=competitor&student=1');
+  assert.equal(control(stay.host, 'a', 'Open: self-assessment').getAttribute('href'), '/student/self-assessment?from=competitor&student=1');
   labeled(stay.host, 'Division');
   labeled(stay.host, 'Weight class');
   unmount(stay);
