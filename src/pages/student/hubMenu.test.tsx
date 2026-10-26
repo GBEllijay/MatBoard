@@ -22,8 +22,10 @@ import {
   WEIGHT_UNSET_LABEL,
   menuDestination,
 } from '../../lib/studentHubMenu.ts';
+import { DRIVE_BINDING_KEY } from '../../lib/googleDrive.ts';
 import { BackupMenu, ClearStudentMenu } from './BackupMenu.tsx';
 import { CoachMenu, CompeteMenu, ProgressMenu, StudentHub, TrainingMenu } from './StudentMenus.tsx';
+import { WhitePage } from '../White.tsx';
 
 const dom = new Window({ url: 'http://localhost/student?student=1' });
 const view = dom as unknown as Window & typeof globalThis;
@@ -437,5 +439,65 @@ test('clearing student data asks for a backup, then the word CLEAR', () => {
   assert.ok(page.host.querySelector('input[aria-label="Type CLEAR to confirm"]'));
   assert.equal(page.host.textContent?.includes('Confirm clear'), false);
   assert.equal(page.host.textContent?.includes('Journal'), true);
+  unmount(page);
+});
+
+test('Lock Student Edition uses the hub text button and leaves the journal in place', () => {
+  localStorage.setItem('advantage.proUnlocked', '1');
+  localStorage.setItem('advantage.coachUnlocked', '1');
+  localStorage.setItem('advantage.whiteUnlocked', '1');
+  localStorage.setItem('advantage.studentEditionUnlocked', '1');
+  localStorage.setItem('advantage.studentUnlocked', '1');
+  localStorage.setItem('matboard.studentEdition.v1', '{"keep":"journal-belt-benchmark"}');
+  localStorage.setItem(DRIVE_BINDING_KEY, '{"folderId":"keep-folder"}');
+  const hub = mount(<StudentHub />, '/student');
+  const lock = [...hub.host.querySelectorAll('button')].find((node) => node.textContent?.trim() === 'Lock Student Edition');
+  assert.ok(lock);
+  assert.equal(lock.className, 'home__text-btn');
+  const line = lock.closest('p');
+  assert.match(line?.textContent ?? '', /Advantage – Student Edition is on for this browser/);
+  assert.match(line?.textContent ?? '', /All products/);
+  assert.equal(line?.querySelector('a')?.getAttribute('href'), '/products');
+  act(() => {
+    lock.click();
+  });
+  assert.equal(localStorage.getItem('advantage.studentEditionUnlocked'), null);
+  assert.equal(localStorage.getItem('advantage.studentUnlocked'), null);
+  assert.equal(localStorage.getItem('advantage.studentEditionRelocked'), '1');
+  assert.equal(localStorage.getItem('advantage.proUnlocked'), '1');
+  assert.equal(localStorage.getItem('advantage.coachUnlocked'), '1');
+  assert.equal(localStorage.getItem('advantage.whiteUnlocked'), '1');
+  assert.equal(localStorage.getItem('matboard.studentEdition.v1'), '{"keep":"journal-belt-benchmark"}');
+  assert.equal(localStorage.getItem(DRIVE_BINDING_KEY), '{"folderId":"keep-folder"}');
+  unmount(hub);
+});
+
+test('Lock White uses the hub text button and leaves roster and journal in place', () => {
+  localStorage.setItem('advantage.whiteUnlocked', '1');
+  localStorage.setItem('advantage.proUnlocked', '1');
+  localStorage.setItem('advantage.coachUnlocked', '1');
+  localStorage.setItem('advantage.studentEditionUnlocked', '1');
+  localStorage.setItem('matboard.whiteRoster.v1', '{"names":["Keepsake"]}');
+  localStorage.setItem('matboard.studentEdition.v1', '{"keep":"journal-belt-benchmark"}');
+  localStorage.setItem(DRIVE_BINDING_KEY, '{"folderId":"keep-folder"}');
+  const page = mount(<WhitePage />, '/white');
+  const lock = [...page.host.querySelectorAll('button')].find((node) => node.textContent?.trim() === 'Lock White');
+  assert.ok(lock);
+  assert.equal(lock.className, 'home__text-btn');
+  const line = lock.closest('p');
+  assert.match(line?.textContent ?? '', /Advantage White is on for this browser/);
+  assert.match(line?.textContent ?? '', /All products/);
+  assert.equal(line?.querySelector('a')?.getAttribute('href'), '/products');
+  assert.match(page.host.textContent ?? '', /Buy Advantage White — \$9\.99/);
+  act(() => {
+    lock.click();
+  });
+  assert.equal(localStorage.getItem('advantage.whiteUnlocked'), null);
+  assert.equal(localStorage.getItem('advantage.proUnlocked'), '1');
+  assert.equal(localStorage.getItem('advantage.coachUnlocked'), '1');
+  assert.equal(localStorage.getItem('advantage.studentEditionUnlocked'), '1');
+  assert.equal(localStorage.getItem('matboard.whiteRoster.v1'), '{"names":["Keepsake"]}');
+  assert.equal(localStorage.getItem('matboard.studentEdition.v1'), '{"keep":"journal-belt-benchmark"}');
+  assert.equal(localStorage.getItem(DRIVE_BINDING_KEY), '{"folderId":"keep-folder"}');
   unmount(page);
 });

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { HomeMark } from '../../components/HomeMark';
 import { SiteFooter } from '../../components/SiteFooter';
 import { loadAcademyLink } from '../../lib/academyPathway';
-import { STUDENT_EDITION_NAME, STUDENT_HOME_DESCRIPTION } from '../../lib/productNames';
+import { PRODUCTS_PATH, STUDENT_EDITION_NAME, STUDENT_HOME_DESCRIPTION } from '../../lib/productNames';
+import { lockStudentEditionBrowser } from '../../lib/studentUnlock';
 import { tierHomeHref } from '../../lib/submenuNav';
 import { todayIso } from '../../lib/studentEdition';
 import { wornBeltPreview } from '../../lib/studentRank';
@@ -55,6 +56,7 @@ export function ProfileCard() {
 
 export function StudentHub() {
   const to = useStudentPath();
+  const navigate = useNavigate();
   const [params] = useSearchParams();
   const home = tierHomeHref(params.toString());
   const { report } = useStudentFile();
@@ -143,6 +145,25 @@ export function StudentHub() {
             </span>
           </Link>
         </nav>
+        <div className="home__hints">
+          <p className="home__soon">
+            {STUDENT_EDITION_NAME} is on for this browser.{' '}
+            <Link className="home__text-btn" to={PRODUCTS_PATH}>
+              All products
+            </Link>
+            {' · '}
+            <button
+              type="button"
+              className="home__text-btn"
+              onClick={() => {
+                lockStudentEditionBrowser();
+                navigate(PRODUCTS_PATH);
+              }}
+            >
+              Lock Student Edition
+            </button>
+          </p>
+        </div>
         <SiteFooter />
       </div>
     </main>
