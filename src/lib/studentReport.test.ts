@@ -4,7 +4,8 @@ import { exportProgressPacket } from './progress/format.ts';
 import { blankStudentReport, setStudentProfile } from './studentEdition.ts';
 import { addJournalClip } from './studentEdition.ts';
 import { extractPdfText, formatPdfNumber, pdfPageCount, pdfToText } from './simplePdf.ts';
-import { assessmentReportPdf, chartPoint, layoutAssessment, outerRingRadius, progressReportPdf, radarPolygonRadii, renderReportPages } from './reportPdf.ts';
+import { assessmentReportPdf, beltArtDraws, chartPoint, layoutAssessment, outerRingRadius, progressReportPdf, radarPolygonRadii, renderReportPages } from './reportPdf.ts';
+import { setBeltMode, setKidsBelt, setKidsTapeCount } from './beltBook.ts';
 import { saveAssessment } from './studentAssessment.ts';
 import {
   applyBackupToMemory,
@@ -540,4 +541,18 @@ test('the progress PDF lists one row for a repeated promotion', () => {
   assert.equal(pdf.split('Black awarded 2010-01-02, 2 degrees').length - 1, 1);
   assert.equal(pdf.split('Black awarded 2010-01-02, 3 degrees').length - 1, 1);
   assert.equal(pdf.split('Stripe 1: 2013-03-04').length - 1, 2);
+});
+
+test('a kids progress PDF draws the belt and names the kids belt', () => {
+  let report = setBeltMode(blankStudentReport(30), 'kids', 31);
+  report = setKidsBelt(report, 'grey-white', 32);
+  report = setKidsTapeCount(report, 2, 33);
+  const art = beltArtDraws(report, 48, 700);
+  const fills = art.filter((draw) => draw.op === 'rect' && draw.fill).length;
+  assert.ok(fills >= 4);
+  const pdf = extractPdfText(progressReportPdf(report, { entries: [] }, {}, '2026-10-26'));
+  assert.match(pdf, /Grey\/White/);
+  assert.match(pdf, /Practical Benchmarks/);
+  assert.match(pdf, /No practical benchmarks yet/);
+  assert.match(pdf, /Personal Goals/);
 });

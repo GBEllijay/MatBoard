@@ -33,6 +33,7 @@ import {
 import type { BenchmarkGroup, LearnedIndex } from '../../lib/studentBenchmarks';
 import { loadStudentReport, setTechniquePolicy, todayIso } from '../../lib/studentEdition';
 import { degreeFocusOf, instructorBarsOf, rankOf, setDegreeFocus } from '../../lib/studentRank';
+import { addKidsBenchmark, currentKidsBelt, kidsBenchmarksOf, removeKidsBenchmark, setKidsBenchmark } from '../../lib/beltBook';
 import {
   addCheckpoint,
   addGoal,
@@ -49,6 +50,7 @@ import {
   degreeProgressIsTimeBased,
   goalCopied,
   goalsForBelt,
+  goalsForKidsBelt,
   INSTRUCTOR_FINAL_SAY,
   loadCoachShelf,
   moveCheckpoint,
@@ -141,7 +143,7 @@ export function BeltPage() {
               </>
             ) : (
               <>
-                Kids belts are belts and stripes for now. Set them on <Link to={to('/student/rank')}>My rank</Link>.
+                Practical benchmarks and personal goals for the kids belt on <Link to={to('/student/rank')}>My rank</Link>. Add the ones you want. Suggested lists come later.
               </>
             )}
           </p>
@@ -210,9 +212,7 @@ export function BeltPage() {
           <DegreePanel report={report} />
           </div>
           ) : (
-          <section className="belt-lane" aria-label="Kids belts">
-            <p>Checkpoints and fundamentals for kids are not on this page yet.</p>
-          </section>
+          <KidsBenchmarks report={report} run={run} />
           )}
           <div className="student-actions">
             <Link className="ink-btn ink-btn--save" to={share}>
@@ -265,22 +265,22 @@ export function BeltPage() {
             </section>
           ) : null}
           <GoalsSection
-            goals={adultPath ? stageGoals : report.goals.filter((goal) => !goal.belt)}
-            personal={adultPath}
-            showForm={!openGoals}
-            prompts={openGoals ? prompts : []}
+            goals={adultPath ? stageGoals : goalsForKidsBelt(report, currentKidsBelt(report).beltId)}
+            personal
+            showForm={adultPath ? !openGoals : true}
+            prompts={adultPath && openGoals ? prompts : []}
             onPrompt={(name) => run(addGoal(report, name, '', Date.now(), belt))}
-            onAdd={(name, note) => run(addGoal(report, name, note, Date.now(), adultPath ? belt : undefined))}
+            onAdd={(name, note) =>
+              run(addGoal(report, name, note, Date.now(), adultPath ? belt : undefined, adultPath ? undefined : currentKidsBelt(report).beltId))
+            }
             onUpdate={(id, name, note) => run(updateGoal(report, id, name, note))}
             onMet={(id, met) => run(setGoalMet(report, id, met))}
-            onRemove={adultPath ? (id) => run(removeGoal(report, id)) : undefined}
+            onRemove={(id) => run(removeGoal(report, id))}
           />
           <section className="coach-panel" aria-label="From my coach" id="from-coach">
             <h2>From my coach</h2>
             <p className="student-quiet">
-              {adultPath
-                ? 'Suggestions only. Copy a line into your personal goals if you want it. Your practical benchmarks stay as you marked them.'
-                : 'Suggestions only. Copy a line into your goals if you want it. Your checkpoints stay as you marked them.'}
+              Suggestions only. Copy a line into your personal goals if you want it. Your practical benchmarks stay as you marked them.
             </p>
             {!shelf.plan && !shelf.feedback ? <p>Nothing from your coach on this phone yet.</p> : null}
             {shelf.plan ? (
@@ -294,11 +294,11 @@ export function BeltPage() {
                     <button
                       type="button"
                       className="ink-btn"
-                      aria-label={`Copy ${line.name || line.note} to my ${adultPath ? 'personal goals' : 'goals'}`}
+                      aria-label={`Copy ${line.name || line.note} to my personal goals`}
                       disabled={goalCopied(report, line.id)}
-                      onClick={() => run(copyFocusToGoal(report, line))}
+                      onClick={() => run(copyFocusToGoal(report, line, Date.now(), adultPath ? undefined : currentKidsBelt(report).beltId))}
                     >
-                      {goalCopied(report, line.id) ? 'Copied' : adultPath ? 'Copy to my personal goals' : 'Copy to my goals'}
+                      {goalCopied(report, line.id) ? 'Copied' : 'Copy to my personal goals'}
                     </button>
                   </div>
                 ))}
@@ -314,11 +314,11 @@ export function BeltPage() {
                     <button
                       type="button"
                       className="ink-btn"
-                      aria-label={`Copy ${line.note} to my ${adultPath ? 'personal goals' : 'goals'}`}
+                      aria-label={`Copy ${line.note} to my personal goals`}
                       disabled={goalCopied(report, line.id)}
-                      onClick={() => run(copySuggestionToGoal(report, line))}
+                      onClick={() => run(copySuggestionToGoal(report, line, Date.now(), adultPath ? undefined : currentKidsBelt(report).beltId))}
                     >
-                      {goalCopied(report, line.id) ? 'Copied' : adultPath ? 'Copy to my personal goals' : 'Copy to my goals'}
+                      {goalCopied(report, line.id) ? 'Copied' : 'Copy to my personal goals'}
                     </button>
                   </div>
                 ))}
@@ -329,6 +329,85 @@ export function BeltPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+function KidsBenchmarks({
+  report,
+  run,
+}: {
+  report: StudentProgressReport;
+  run: (next: StudentProgressReport) => void;
+}) {
+  const beltId = currentKidsBelt(report).beltId;
+  const rows = kidsBenchmarksOf(report, beltId);
+  return (
+    <section className="belt-lane" aria-label="Kids belts">
+      <section className="belt-benchmarks" aria-label={PRACTICAL_BENCHMARKS_HEADING}>
+        <h2>{PRACTICAL_BENCHMARKS_HEADING}</h2>
+        <p className="student-quiet">{PRACTICAL_BENCHMARKS_LINE}</p>
+        {rows.length === 0 ? <p>{NO_PRACTICAL_BENCHMARKS}</p> : null}
+        {rows.map((row) => (
+          <KidsBenchmarkRow key={row.id} row={row} report={report} run={run} />
+        ))}
+        <NameForm label="Practical benchmark name" submit="Add a practical benchmark" onAdd={(name) => run(addKidsBenchmark(report, beltId, name))} />
+        <p className="student-quiet">{INSTRUCTOR_FINAL_SAY}</p>
+        <BenchmarkDisclaimer />
+      </section>
+    </section>
+  );
+}
+
+function KidsBenchmarkRow({
+  row,
+  report,
+  run,
+}: {
+  row: { id: string; name: string; note: string; met: boolean | null };
+  report: StudentProgressReport;
+  run: (next: StudentProgressReport) => void;
+}) {
+  const [name, setName] = useState(row.name);
+  const [note, setNote] = useState(row.note);
+  useEffect(() => {
+    setName(row.name);
+    setNote(row.note);
+  }, [row.name, row.note]);
+  const met = row.met === true;
+  return (
+    <form
+      className="ink"
+      onSubmit={(event) => {
+        event.preventDefault();
+        run(setKidsBenchmark(report, row.id, name, note, row.met));
+      }}
+    >
+      <label>
+        <span className="ink__label">Practical benchmark</span>
+        <input aria-label={`Edit ${row.name}`} value={name} onChange={(event) => setName(event.target.value)} />
+      </label>
+      <label>
+        <span className="ink__label">Note</span>
+        <input aria-label={`Note for ${row.name}`} value={note} onChange={(event) => setNote(event.target.value)} />
+      </label>
+      <div className="student-actions">
+        <button type="submit" className="ink-btn" aria-label={`Save ${row.name}`}>
+          Save
+        </button>
+        <button
+          type="button"
+          className={met ? 'student-choice is-on' : 'student-choice'}
+          aria-pressed={met}
+          aria-label={met ? `${row.name} met` : `Mark ${row.name} met`}
+          onClick={() => run(setKidsBenchmark(report, row.id, name, note, !met))}
+        >
+          {met ? 'Met' : 'Mark met'}
+        </button>
+        <button type="button" className="ink-btn" aria-label={`Remove ${row.name}`} onClick={() => run(removeKidsBenchmark(report, row.id))}>
+          Remove
+        </button>
+      </div>
+    </form>
   );
 }
 

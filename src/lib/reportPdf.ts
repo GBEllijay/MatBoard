@@ -16,6 +16,7 @@ import {
   type ReportIdentity,
 } from './studentReport.ts';
 import type { StudentProgressReport } from './progress/types.ts';
+import { wornBeltPreview } from './studentRank.ts';
 
 const PAGE_W = 612;
 const PAGE_H = 792;
@@ -143,6 +144,61 @@ function drawWrapped(state: PageState, value: string, size: number, font: 'regul
     textAt(state, line, size, font, color, x);
     state.top += size + gap;
   }
+}
+
+const ADULT_CLOTH: Record<string, Rgb> = {
+  white: [0.945, 0.933, 0.898],
+  blue: [0.114, 0.306, 0.847],
+  purple: [0.478, 0.243, 0.784],
+  brown: [0.482, 0.29, 0.165],
+  black: [0.137, 0.137, 0.149],
+  coral: [0.827, 0.086, 0.106],
+  redWhite: [0.957, 0.945, 0.918],
+  red: [0.827, 0.086, 0.106],
+};
+
+function hexRgb(hex: string): Rgb {
+  const raw = hex.replace('#', '');
+  if (!/^[0-9a-fA-F]{6}$/.test(raw)) return [0.14, 0.14, 0.15];
+  const value = Number.parseInt(raw, 16);
+  return [((value >> 16) & 255) / 255, ((value >> 8) & 255) / 255, (value & 255) / 255];
+}
+
+/** Vector belt for the progress PDF. Same cloth, center stripe, and stripe slots as My rank. */
+export function beltArtDraws(report: StudentProgressReport, x: number, y: number): PdfDraw[] {
+  const preview = wornBeltPreview(report);
+  const slots = preview.slots;
+  const cloth = preview.base ? hexRgb(preview.base) : (ADULT_CLOTH[preview.belt] ?? ADULT_CLOTH.black!);
+  const slotW = slots.length > 6 ? 7 : 10;
+  const barW = Math.max(36, slots.length * slotW + 10);
+  const bodyW = Math.min(220, CONTENT_W - barW);
+  const h = 26;
+  const draws: PdfDraw[] = [{ op: 'rect', x, y, w: bodyW + barW, h, fill: cloth }];
+  if (preview.kind === 'kids' && preview.center !== 'solid' && preview.centerColor) {
+    draws.push({ op: 'rect', x, y: y + h / 2 - 3, w: bodyW, h: 6, fill: hexRgb(preview.centerColor) });
+  }
+  const bar = preview.belt === 'black' ? hexRgb('#d3161b') : hexRgb('#101012');
+  draws.push({ op: 'rect', x: x + bodyW, y, w: barW, h, fill: bar });
+  slots.forEach((slot, index) => {
+    const fill = slot.on && slot.color ? hexRgb(slot.color) : ([0.25, 0.25, 0.27] as Rgb);
+    draws.push({
+      op: 'rect',
+      x: x + bodyW + 6 + index * slotW,
+      y: y + 5,
+      w: Math.max(2, slotW - 3),
+      h: h - 10,
+      fill,
+    });
+  });
+  return draws;
+}
+
+function drawWornBelt(state: PageState, report: StudentProgressReport) {
+  const h = 26;
+  ensure(state, h + 12);
+  const y = PAGE_H - state.top - h;
+  state.draws.push(...beltArtDraws(report, MARGIN_X, y));
+  state.top += h + 12;
 }
 
 function drawIdentity(state: PageState, title: string, identity: ReportIdentity, issuedOn: string) {
@@ -522,6 +578,7 @@ export function progressReportPdf(
   const identity = reportIdentity(report);
   const state = freshPage();
   drawIdentity(state, 'Progress report', identity, issuedOn);
+  drawWornBelt(state, report);
   drawBlocks(state, progressReportBlocks(report, assessment, extra));
   const images = [art.gymLogo, art.selfie].filter((image): image is PdfImageAsset => Boolean(image));
   return renderReportPages(finish(state, 'PROGRESS', art), images);

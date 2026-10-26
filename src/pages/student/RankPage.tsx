@@ -24,14 +24,17 @@ import {
 } from '../../lib/rankPhotos';
 import {
   addClassDot,
+  adultStartChoices,
   ageWarning,
   beltModeOf,
   classesPerTapeOf,
-  compactSlots,
   currentKidsBelt,
+  earlierKidRows,
   guideOf,
   kidsLadder,
   kidsRankOf,
+  literalSlots,
+  literalTapeCountAfterTap,
   removeClassDot,
   removeKidsHistory,
   setBeltMode,
@@ -41,9 +44,9 @@ import {
   setKidsBelt,
   setKidsHistoryAwardedOn,
   setKidsTapeCount,
+  setLastTapeColor,
   setTapeGuide,
   showAdultPrompt,
-  tapeCountAfterTap,
   timeGuideText,
 } from '../../lib/beltBook';
 import { CLASSES_PER_TAPE_MAX, type StudentProgressReport } from '../../lib/progress/types';
@@ -65,6 +68,7 @@ import {
   setRankTapeDate,
   slotDate,
   stripeCountControl,
+  graduateToAdult,
   type LadderRung,
 } from '../../lib/studentRank';
 import { StudentMarks, useScrollToHash, useStudentFile, useStudentPath } from './chrome';
@@ -160,9 +164,9 @@ export function RankPage() {
               photos={photos}
               onBeltPhoto={(beltId, file) => void savePhoto(file, (image) => addKidsBeltPhoto(photos, beltId, image))}
               onRemoveBeltPhoto={(beltId, index) => setPhotos(removeKidsBeltPhoto(photos, beltId, index))}
-              onAdult={() => {
+              onGraduate={(choice) => {
                 setPendingMode('');
-                run(setBeltMode(report, 'adult'));
+                run(graduateToAdult(report, choice));
               }}
               lineage={<LineageEditor lineage={rank.lineage ?? []} onSave={(lines) => run(setRankLineage(report, lines))} />}
               progressLink={<Link className="ink-btn" to={to('/student/rubric')}>Belt progress</Link>}
@@ -387,6 +391,7 @@ export function RankPage() {
             A Promotion test on the calendar is a reminder you add by hand. It does not fill a belt date. The calendar reads the dates you save here.
           </p>
           <LineageEditor lineage={rank.lineage ?? []} onSave={(lines) => run(setRankLineage(report, lines))} />
+          <EarlierBelts report={report} />
           <section className="ink" aria-label="Promotion history">
             <h2>Promotion history</h2>
             {rank.history.length === 0 ? <p>No earlier belts yet. A belt moves here when you change it and it already has a date or a stripe.</p> : null}
@@ -772,6 +777,26 @@ function LineageEditor({ lineage, onSave }: { lineage: string[]; onSave: (lines:
   );
 }
 
+function EarlierBelts({ report }: { report: StudentProgressReport }) {
+  const rows = earlierKidRows(report);
+  if (!rows.length) return null;
+  return (
+    <section className="ink" aria-label="Earlier belts">
+      <h2>Earlier belts</h2>
+      <p className="student-quiet">Kids belts stay here. They are kept as they were.</p>
+      <ul className="comp-list">
+        {rows.map((row) => (
+          <li key={row.id} className="rank-history">
+            <span className="rank-history__label">{row.label}</span>
+            <span className="rank-history__date">{row.awardedOn || 'No date'}</span>
+            <span className="rank-history__stripes">{row.tapeCount === 1 ? '1 stripe' : `${row.tapeCount} stripes`}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function BeltSystemSwitch({
   mode,
   pending,
@@ -786,8 +811,8 @@ function BeltSystemSwitch({
   onConfirm: () => void;
 }) {
   const note = pending === 'kids'
-    ? 'Switch to kids belts? Your adult belts stay on this phone.'
-    : 'Switch to adult belts? Your kids belts stay on this phone.';
+    ? 'Switch to kids belts? Your history stays. Your adult belts stay on this phone.'
+    : 'Switch to adult belts? Your history stays. Your kids belts stay on this phone.';
   return (
     <section className="belt-system" aria-label="Belt system">
       <h2>Belt system</h2>
@@ -826,7 +851,7 @@ function KidsRank({
   photos,
   onBeltPhoto,
   onRemoveBeltPhoto,
-  onAdult,
+  onGraduate,
   lineage,
   progressLink,
 }: {
@@ -835,7 +860,7 @@ function KidsRank({
   photos: RankPhotoStore;
   onBeltPhoto: (beltId: string, file: File | undefined) => void;
   onRemoveBeltPhoto: (beltId: string, index: number) => void;
-  onAdult: () => void;
+  onGraduate: (choice: 'white' | 'blue' | 'purple') => void;
   lineage: ReactNode;
   progressLink: ReactNode;
 }) {
@@ -844,8 +869,8 @@ function KidsRank({
   const current = currentKidsBelt(report);
   const guide = guideOf(report);
   const classMax = classesPerTapeOf(report);
-  const warning = ageWarning(current, report.beltBook?.birthYear);
   const [dropId, setDropId] = useState('');
+  const choices = adultStartChoices(current);
   const savedYear = report.beltBook?.birthYear ? String(report.beltBook.birthYear) : '';
   const [yearDraft, setYearDraft] = useState(savedYear);
   const [classDraft, setClassDraft] = useState(String(classMax));
@@ -865,11 +890,15 @@ function KidsRank({
         <section className="adult-prompt" aria-label="Time to switch to the adult system">
           <p>Time to switch to the adult system?</p>
           <p className="student-quiet">
-            IBJJF moves students to adult belts in the year they turn 16. This is your choice. Nothing switches until you say so.
+            IBJJF age is this year minus the birth year. White stays white. Grey, yellow, and orange move to blue. Green may move to blue or purple. Kids belts stay under Earlier belts.
           </p>
-          <button type="button" className="ink-btn" onClick={onAdult}>
-            Switch to adult belts
-          </button>
+          <div className="student-actions">
+            {choices.map((choice) => (
+              <button key={choice} type="button" className="ink-btn ink-btn--save" onClick={() => onGraduate(choice)}>
+                {choice === 'white' ? 'Stay on white' : choice === 'blue' ? 'Start at blue' : 'Start at purple'}
+              </button>
+            ))}
+          </div>
         </section>
       ) : null}
       <label className="kids-year">
@@ -898,11 +927,6 @@ function KidsRank({
       <p className="kids-wearing">
         Current belt: <strong>{current.label}</strong>
       </p>
-      {warning ? (
-        <p className="kids-age" role="status">
-          {warning}
-        </p>
-      ) : null}
       <section className="class-tally" aria-label="Classes toward the next stripe">
         <h2>Next stripe</h2>
         <div className="guide-switch" role="group" aria-label="Progress toward the next stripe">
@@ -961,8 +985,9 @@ function KidsRank({
       </section>
       <ol className="rank-ladder" aria-label="Kids belt ladder">
         {rungs.map((rung) => {
-          const slots = compactSlots(rung.tapeColors, rung.tapeCount);
+          const slots = literalSlots(rung.tapeColors, rung.tapeCount);
           const pictures = kidsBeltPhotos(photos, rung.beltId);
+          const note = ageWarning(rung, report.beltBook?.birthYear);
           return (
           <li
             key={rung.beltId}
@@ -996,13 +1021,13 @@ function KidsRank({
                       key={slot.slot}
                       type="button"
                       className={slot.on ? 'stripe is-on' : 'stripe'}
-                      style={slot.on ? { ['--tape' as string]: slot.color } : undefined}
+                      style={{ ['--tape' as string]: slot.color }}
                       aria-label={stripeLabel}
                       aria-pressed={slot.on}
                       disabled={!rung.current}
                       onClick={() => {
                         if (!rung.current) return;
-                        run(setKidsTapeCount(report, tapeCountAfterTap(rung.tapeColors, rung.tapeCount, slot.slot)));
+                        run(setKidsTapeCount(report, literalTapeCountAfterTap(rung.tapeColors, rung.tapeCount, slot.slot)));
                       }}
                     >
                       <span className="tape" />
@@ -1048,12 +1073,28 @@ function KidsRank({
               alt={(index) => `${rung.label} photo ${index + 1}`}
               onRemove={(index) => onRemoveBeltPhoto(rung.beltId, index)}
             />
+            {note ? (
+              <p className="kids-age kids-age--note" role="status">
+                {note}
+              </p>
+            ) : null}
+            {rung.current && rung.tapeColors.length >= 8 ? (
+              <label className="kids-year">
+                <span className="ink__label">Last 3 stripe color</span>
+                <input
+                  type="color"
+                  aria-label="Last 3 stripe color"
+                  value={rung.tapeColors[rung.tapeColors.length - 1] ?? '#121214'}
+                  onChange={(event) => run(setLastTapeColor(report, event.target.value))}
+                />
+              </label>
+            ) : null}
           </li>
           );
         })}
       </ol>
       <p className="student-quiet">
-        {kids.tapeCount === 0 ? 'No stripes' : kids.tapeCount === 1 ? '1 stripe' : `${kids.tapeCount} stripes`} of {current.tapeColors.length} on the belt you wear. Tap a stripe to fill it white. When the white stripes are full, tap one to turn it red, then black. Tap the latest stripe to step back. A full class card does not add a stripe.
+        {kids.tapeCount === 0 ? 'No stripes' : kids.tapeCount === 1 ? '1 stripe' : `${kids.tapeCount} stripes`} of {current.tapeColors.length} on the belt you wear. White and grey/white use 5 stripes. The other belts use 11: 4 white, 4 red, then 3 black. Tap a stripe to add it. Tap the latest stripe to take it off. The last 3 colors can be changed on the belt you wear. A full class card does not add a stripe.
       </p>
       {lineage}
       <section className="ink" aria-label="Promotion history">

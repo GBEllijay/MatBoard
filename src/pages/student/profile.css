@@ -3,6 +3,28 @@
  * 56px targets. The handwritten journal is not this page.
  */
 
+.student.student--profile .belt-system__switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.student.student--profile .belt-system__switch button {
+  min-height: 56px;
+  border: 0;
+  border-radius: 12px;
+  background: #2c2c2e;
+  color: #f5f5f7;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.student.student--profile .belt-system__switch button[aria-pressed='true'] {
+  background: #f5f5f7;
+  color: #0e1726;
+}
+
 .student.student--arena.student--profile {
   background: #000000;
 }
@@ -41,6 +63,22 @@
   object-fit: cover;
   background: #ffffff;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+
+.profile-corner__name {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  max-width: 9rem;
+  min-height: 44px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: #1c1c1e;
+  color: #f5f5f7;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.2;
+  text-align: center;
 }
 
 .student.student--profile .profile-hero::after {

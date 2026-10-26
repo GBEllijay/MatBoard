@@ -36,6 +36,7 @@ import {
   writeFilms,
   type StudentFilm,
 } from './studentFilm.ts';
+import { withBeltTemplate } from './beltBook.ts';
 import { emptyRank, normalizeStoredRank } from './studentRank.ts';
 import { loadScouting, saveScouting, SCOUTING_STORAGE_KEY, type ScoutingCard } from './studentScouting.ts';
 import { BRACKET_PHOTO_KEY } from './bracketPhoto.ts';
@@ -275,7 +276,7 @@ export async function buildStudentBackup(input: {
     advantage: STUDENT_BACKUP_KIND,
     version: STUDENT_BACKUP_VERSION,
     exportedAt: when.toISOString(),
-    report: input.report,
+    report: withBeltTemplate(input.report),
     assessment: input.assessment,
     scouting: [...input.scouting],
     rankPhotos: input.rankPhotos,

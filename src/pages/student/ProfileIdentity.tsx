@@ -92,24 +92,37 @@ export function useProfileMedia() {
 }
 
 /** Small circles at the top right. One mark sits alone. Two sit side by side. */
-export function ProfileCornerMarks({ portrait, logo }: { portrait: string | null; logo: string | null }) {
-  if (!portrait && !logo) return null;
+export function ProfileCornerMarks({
+  portrait,
+  logo,
+  name = '',
+}: {
+  portrait: string | null;
+  logo: string | null;
+  name?: string;
+}) {
+  if (!portrait && !logo && !name) return null;
   return (
     <div className="profile-corner">
       {logo ? <img src={logo} alt="Gym logo" /> : null}
       {portrait ? <img src={portrait} alt="Profile photo" /> : null}
+      {!logo && !portrait && name ? <span className="profile-corner__name">{name}</span> : null}
     </div>
   );
 }
 
-export function ProfileMedia({ media }: { media: ReturnType<typeof useProfileMedia> }) {
+export function ProfileMedia({ media, kids = false }: { media: ReturnType<typeof useProfileMedia>; kids?: boolean }) {
   const { portrait, logo, note, error, onPortrait, onLogo, removePortrait, removeLogo } = media;
   return (
     <div className="profile-identity">
       <section className="profile-card profile-photo" aria-label="Profile photo">
         <div className="profile-photo__copy">
           <h2>Photo</h2>
-          <p>Optional. Stays on this phone. Nothing is uploaded unless you export a report or a backup with the switch on.</p>
+          <p>
+            {kids
+              ? 'Off for kids. The corner shows the gym logo, or the gym name when there is no logo. A parent can turn a photo on for reports.'
+              : 'Optional. Stays on this phone. Nothing is uploaded unless you export a report or a backup with the switch on.'}
+          </p>
         </div>
         <div className="profile-photo__actions">
           <label className="profile-action" htmlFor={PORTRAIT_CAPTURE}>

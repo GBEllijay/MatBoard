@@ -13,7 +13,8 @@ import { RANK_PHOTO_KEY } from '../../lib/rankPhotos.ts';
 import { BENCHMARK_DISCLAIMER_MEDIUM, BENCHMARK_DISCLAIMER_SHORT, BLACK_BELT_AGE_NOTE } from '../../lib/studentBenchmarks.ts';
 import { blankStudentReport, loadStudentReport, saveStudentReport, setFundamentalLevel, setTrainingStyle } from '../../lib/studentEdition.ts';
 import { OPEN_GOAL_LINE, TIME_BASED_PROGRESS, withStarterRubric } from '../../lib/studentTools.ts';
-import { setBeltMode, setKidsBelt, setKidsTapeCount } from '../../lib/beltBook.ts';
+import { setBeltMode, setBirthYear, setKidsBelt, setKidsTapeCount } from '../../lib/beltBook.ts';
+import { ProfilePage } from './ProfilePage.tsx';
 import { INSTRUCTOR_BARS_LABEL } from '../../lib/blackBeltDegrees.ts';
 import { setInstructorBars, setInstructorBarsOn, setRankAwardedOn, setRankBelt, setRankTapeCount, setRankTapeDate } from '../../lib/studentRank.ts';
 import { BeltPage } from './BeltPage.tsx';
@@ -487,7 +488,8 @@ test('adult belts stay put when the student switches to kids and back', async ()
     assert.equal(JSON.stringify(stored).includes('"stripes"'), false);
 
     await click(buttonNamed('Yellow'));
-    assert.match(document.querySelector('[role="status"]')?.textContent ?? '', /IBJJF suggests this belt from age 7/);
+    assert.equal(document.querySelectorAll('[aria-label="Kids belt ladder"] > li').length, 13);
+    assert.equal(document.querySelector('[role="status"]'), null);
     await click(buttonNamed('Add a class'));
     await click(buttonNamed('Add a class'));
     assert.match(document.querySelector('.class-tally__count')?.textContent ?? '', /2 of 8/);
@@ -520,16 +522,16 @@ test('adult belts stay put when the student switches to kids and back', async ()
   }
 });
 
-test('kids stripes sit on the adult belt row and change color in place', async () => {
+test('kids belts show one stripe slot per tape, including 5 on grey/white and 11 elsewhere', async () => {
   saveStudentReport(localStorage, setBeltMode(blankStudentReport(80), 'kids', 81));
   const mounted = mount(<RankPage />);
   try {
     const greyWhite = buttonNamed('Grey/White').closest('li');
     assert.match(greyWhite?.className ?? '', /rank-rung/);
     assert.match(greyWhite?.className ?? '', /rung--kids-ink-navy/);
-    assert.equal(greyWhite?.querySelectorAll('.belt__bar button').length, 4);
-    assert.equal(document.querySelector('[aria-label="Stripes"]')?.querySelectorAll('button').length, 4);
-    assert.equal(document.querySelector('[aria-label="Grey stripes"]')?.querySelectorAll('button').length, 4);
+    assert.equal(greyWhite?.querySelectorAll('.belt__bar button').length, 5);
+    assert.equal(document.querySelector('[aria-label="Stripes"]')?.querySelectorAll('button').length, 5);
+    assert.equal(document.querySelector('[aria-label="Grey stripes"]')?.querySelectorAll('button').length, 11);
     assert.match(buttonNamed('Grey/Black').closest('li')?.className ?? '', /rung--kids-ink-navy/);
     assert.match(buttonNamed('Yellow/White').closest('li')?.className ?? '', /rung--kids-ink-navy/);
     assert.match(buttonNamed('Yellow/Black').closest('li')?.className ?? '', /rung--kids-ink-navy/);
@@ -541,37 +543,94 @@ test('kids stripes sit on the adult belt row and change color in place', async (
     await click(labeled('Stripe 4'));
     assert.match(tape('Stripe 1'), /#f4f1ea/i);
     assert.match(tape('Stripe 4'), /#f4f1ea/i);
-    await click(labeled('Stripe 1'));
-    assert.match(tape('Stripe 1'), /#d21f1f/i);
-    assert.match(tape('Stripe 2'), /#f4f1ea/i);
-    await click(labeled('Stripe 4'));
-    assert.match(tape('Stripe 1'), /#d21f1f/i);
-    assert.match(tape('Stripe 4'), /#d21f1f/i);
-    await click(labeled('Stripe 1'));
-    assert.match(tape('Stripe 1'), /#121214/i);
-    assert.match(tape('Stripe 2'), /#d21f1f/i);
-    await click(labeled('Stripe 3'));
-    assert.match(tape('Stripe 3'), /#121214/i);
-    assert.match(tape('Stripe 4'), /#d21f1f/i);
+    assert.equal(labeled('Stripe 5').getAttribute('aria-pressed'), 'false');
+    await click(labeled('Stripe 5'));
+    assert.match(tape('Stripe 5'), /#d21f1f/i);
     await click(buttonNamed('Add a class'));
     const stored = JSON.parse(localStorage.getItem('matboard.studentEdition.v1') ?? '{}') as {
       beltBook?: { kids?: { beltId?: string; tapeCount?: number; classCount?: number } };
     };
     assert.equal(stored.beltBook?.kids?.beltId, 'grey-white');
-    assert.equal(stored.beltBook?.kids?.tapeCount, 11);
+    assert.equal(stored.beltBook?.kids?.tapeCount, 5);
     assert.equal(stored.beltBook?.kids?.classCount, 1);
 
+    await click(buttonNamed('Grey'));
+    await click(labeled('Stripe 11'));
+    assert.match(tape('Stripe 9'), /#121214/i);
+    assert.match(tape('Stripe 11'), /#121214/i);
+    assert.equal(labeled('Last 3 stripe color') instanceof HTMLInputElement, true);
+    const grey = JSON.parse(localStorage.getItem('matboard.studentEdition.v1') ?? '{}') as {
+      beltBook?: { kids?: { beltId?: string; tapeCount?: number } };
+    };
+    assert.equal(grey.beltBook?.kids?.beltId, 'grey');
+    assert.equal(grey.beltBook?.kids?.tapeCount, 11);
+
     await click(buttonNamed('White'));
-    await click(labeled('Stripe 4'));
-    await click(labeled('Stripe 1'));
-    assert.match(tape('Stripe 1'), /#d21f1f/i);
-    assert.match(tape('Stripe 4'), /#f4f1ea/i);
-    await click(labeled('Stripe 2'));
+    await click(labeled('Stripe 5'));
+    assert.match(tape('Stripe 5'), /#d21f1f/i);
     const white = JSON.parse(localStorage.getItem('matboard.studentEdition.v1') ?? '{}') as {
       beltBook?: { kids?: { beltId?: string; tapeCount?: number } };
     };
     assert.equal(white.beltBook?.kids?.beltId, 'white');
     assert.equal(white.beltBook?.kids?.tapeCount, 5);
+    assert.equal(document.querySelector('[aria-label="Last 3 stripe color"]'), null);
+  } finally {
+    unmount(mounted);
+  }
+});
+
+test('the 16-year prompt starts the adult belt and keeps kids belts under Earlier belts', async () => {
+  let report = setBeltMode(blankStudentReport(40), 'kids', 41);
+  report = setBirthYear(report, new Date().getFullYear() - 16, 42);
+  report = setKidsBelt(report, 'orange', 43);
+  report = setKidsTapeCount(report, 2, 44);
+  saveStudentReport(localStorage, report);
+  const mounted = mount(<RankPage />);
+  try {
+    assert.match(document.body.textContent ?? '', /Time to switch to the adult system/);
+    assert.ok(buttonNamed('Start at blue'));
+    assert.equal(hasButton('Start at purple'), false);
+    assert.equal(hasButton('Stay on white'), false);
+    await click(buttonNamed('Start at blue'));
+    assert.equal(buttonNamed('Blue').getAttribute('aria-pressed'), 'true');
+    assert.ok(document.querySelector('[aria-label="Earlier belts"]'));
+    assert.match(document.querySelector('[aria-label="Earlier belts"]')?.textContent ?? '', /Orange/);
+    assert.equal(document.querySelector('[aria-label="Remove Orange history"]'), null);
+    const stored = JSON.parse(localStorage.getItem('matboard.studentEdition.v1') ?? '{}') as {
+      profile?: { belt?: string };
+      beltBook?: { templateId?: string; kids?: { beltId?: string; tapeCount?: number } };
+    };
+    assert.equal(stored.profile?.belt, 'blue');
+    assert.equal(stored.beltBook?.templateId, 'adult-ibjjf@1');
+    assert.equal(stored.beltBook?.kids?.beltId, 'orange');
+    assert.equal(stored.beltBook?.kids?.tapeCount, 2);
+  } finally {
+    unmount(mounted);
+  }
+});
+
+test('a kids profile shows the gym name instead of a photo until a parent turns the photo on', async () => {
+  const report = setBeltMode(blankStudentReport(50), 'kids', 51);
+  report.profile.gymName = 'North Gym';
+  saveStudentReport(localStorage, report);
+  localStorage.setItem(
+    'matboard.studentPortrait.v1',
+    JSON.stringify({
+      version: 1,
+      dataUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    }),
+  );
+  const mounted = mount(<ProfilePage />, '/student/profile?student=1');
+  try {
+    assert.ok(document.querySelector('[aria-label="Kid or Adult"]'));
+    assert.ok(labeled('Birth year'));
+    assert.equal(buttonNamed('Kid').getAttribute('aria-pressed'), 'true');
+    assert.equal(document.querySelector('img[alt="Profile photo"]'), null);
+    assert.match(document.querySelector('.profile-corner__name')?.textContent ?? '', /North Gym/);
+    await click(buttonNamed('Adult'));
+    assert.match(document.body.textContent ?? '', /Your history stays/);
+    await click(buttonNamed('Stay'));
+    assert.equal(buttonNamed('Kid').getAttribute('aria-pressed'), 'true');
   } finally {
     unmount(mounted);
   }
@@ -583,21 +642,18 @@ test('Grey/White stripes are empty after stepping back to zero and to White', as
   try {
     const filled = (label: string) => {
       const stripe = labeled(label);
-      const style = stripe.getAttribute('style') ?? '';
-      return stripe.getAttribute('aria-pressed') === 'true' || stripe.classList.contains('is-on') || /#(?:d21f1f|121214|f4f1ea)/i.test(style);
+      return stripe.getAttribute('aria-pressed') === 'true' || stripe.classList.contains('is-on');
     };
     await click(buttonNamed('Grey/White'));
     await click(labeled('Stripe 4'));
     await click(labeled('Stripe 1'));
-    await click(labeled('Stripe 4'));
-    await click(labeled('Stripe 1'));
-    await click(labeled('Stripe 3'));
+    await click(labeled('Stripe 5'));
     assert.equal(filled('Stripe 1'), true);
-    const back = ['Stripe 3', 'Stripe 2', 'Stripe 1', 'Stripe 4', 'Stripe 3', 'Stripe 2', 'Stripe 1', 'Stripe 4', 'Stripe 3', 'Stripe 2', 'Stripe 1'];
-    for (const name of back) await click(labeled(name));
-    for (const slot of [1, 2, 3, 4]) assert.equal(filled(`Stripe ${slot}`), false);
+    assert.equal(filled('Stripe 5'), true);
+    for (const name of ['Stripe 5', 'Stripe 4', 'Stripe 3', 'Stripe 2', 'Stripe 1']) await click(labeled(name));
+    for (const slot of [1, 2, 3, 4, 5]) assert.equal(filled(`Stripe ${slot}`), false);
     await click(buttonNamed('White'));
-    for (const slot of [1, 2, 3, 4]) assert.equal(filled(`Grey/White stripe ${slot}`), false);
+    for (const slot of [1, 2, 3, 4, 5]) assert.equal(filled(`Grey/White stripe ${slot}`), false);
     for (const belt of ['Grey', 'Yellow/White', 'Yellow', 'Orange/Black', 'Green/Black']) {
       for (const slot of [1, 2, 3, 4]) assert.equal(filled(`${belt} stripe ${slot}`), false);
     }
@@ -710,16 +766,26 @@ test('Black to Brown to Black and Coral to Black keep the black belt record', as
   }
 });
 
-test('kids belt progress hides checkpoints and keeps them for adult', async () => {
+test('kids belt progress uses empty practical benchmarks and personal goals', async () => {
   let report = setRankBelt(blankStudentReport(70), 'blue', 71);
   report = setBeltMode(report, 'kids', 72);
   saveStudentReport(localStorage, report);
   const kids = mount(<BeltPage />);
   try {
-    assert.match(document.body.textContent ?? '', /Checkpoints and fundamentals for kids are not on this page yet/);
+    assert.match(document.body.textContent ?? '', /Practical Benchmarks/);
+    assert.match(document.body.textContent ?? '', /No practical benchmarks yet/);
+    assert.match(document.body.textContent ?? '', new RegExp(BENCHMARK_DISCLAIMER_SHORT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    assert.ok(labeled('Practical benchmark name'));
+    assert.ok(buttonNamed('Add a practical benchmark'));
+    assert.ok(document.querySelector('[aria-label="Personal Goals"]'));
+    assert.match(document.body.textContent ?? '', /No personal goals yet/);
     assert.equal(document.querySelector('[aria-label="Practical benchmarks between White and Blue"]'), null);
     assert.equal(document.body.textContent?.includes('Next: 1st degree'), false);
-    assert.ok(document.querySelector('[aria-label="Goals"]'));
+    assert.equal(document.body.textContent?.includes('not on this page yet'), false);
+    await typeControl(labeled('Practical benchmark name') as HTMLInputElement, 'Breakfall');
+    await submitNamed('Add a practical benchmark');
+    assert.equal((labeled('Edit Breakfall') as HTMLInputElement).value, 'Breakfall');
+    assert.equal(document.body.textContent?.includes('No practical benchmarks yet'), false);
   } finally {
     unmount(kids);
   }

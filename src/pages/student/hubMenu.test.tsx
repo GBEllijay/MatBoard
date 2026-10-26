@@ -382,9 +382,9 @@ test('kids stripes and the adult switch repaint the same belt mark', () => {
     report = next;
   });
   const red = [...(hub.host.querySelectorAll('.s-belt-mark .stripe.is-on') ?? [])];
-  assert.equal(red.length, 4);
-  assert.equal((red[0]?.getAttribute('style') ?? '').includes('#d21f1f'), true);
-  assert.equal((red[1]?.getAttribute('style') ?? '').includes('#f4f1ea'), true);
+  assert.equal(red.length, 5);
+  assert.equal((red[0]?.getAttribute('style') ?? '').includes('#f4f1ea'), true);
+  assert.equal((red[4]?.getAttribute('style') ?? '').includes('#d21f1f'), true);
 
   act(() => {
     let next = setKidsBelt(report, 'yellow', 25);

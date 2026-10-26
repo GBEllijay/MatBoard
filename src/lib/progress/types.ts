@@ -82,7 +82,16 @@ export type BeltTemplateDef = {
   group?: string;
   /** Optional guide for a later editor. Not enforced. */
   minMonths?: number;
+  /** End bar. Black on colored belts. Red on a black belt. */
+  bar?: string;
+  /** Nearest curriculum list. Starter sentences for kids come later. */
+  curriculumTier?: string;
+  /** Coral and red stay off the ladder until a black belt is worn. */
+  unlock?: 'afterBlack';
 };
+
+/** One belt on a template. History points at `id`. */
+export type BeltDef = BeltTemplateDef;
 
 /** A custom template saved on the student's file. Built-ins are not copied here. */
 export type BeltTemplateRecord = {
@@ -102,6 +111,15 @@ export type KidsBeltHistory = {
   awardedOn: string;
   tapeCount: number;
   tapeDates: string[];
+};
+
+/** A practical benchmark the student added on a kids belt. Starter lists come later. */
+export type KidsBenchmark = {
+  id: string;
+  beltId: string;
+  name: string;
+  met: boolean | null;
+  note: string;
 };
 
 /** Kids belt the student wears. Adult stripes and degrees stay on `StudentRank`. */
@@ -133,6 +151,10 @@ export type BeltBook = {
   /** How the student tracks the next tape. Default is classes. */
   guide?: TapeGuide;
   kids?: KidsBeltRank;
+  /** Set when the student moves to adult belts at 16. Kids belts stay read-only. */
+  earlier?: boolean;
+  /** Practical benchmarks on kids belts. Empty until the student adds one. */
+  benchmarks?: KidsBenchmark[];
   /** Custom templates for a later editor. Reorder by array order. */
   templates?: BeltTemplateRecord[];
 };
@@ -357,6 +379,8 @@ export type StudentGoal = {
   note: string;
   met: boolean | null;
   belt?: ProgressBelt;
+  /** Kids belt this goal was added on. Absent on adult goals. */
+  kidsBeltId?: string;
 };
 
 /** One fundamentals name. `examples` stays empty while the sheet is names only. */

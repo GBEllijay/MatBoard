@@ -4,7 +4,15 @@
  */
 
 import { highDatesForCount, wornDegree } from './blackBeltDegrees.ts';
-import { beltModeOf, compactSlots, currentKidsBelt } from './beltBook.ts';
+import {
+  adultStartChoices,
+  beltModeOf,
+  currentKidsBelt,
+  literalSlots,
+  markEarlierBelts,
+  setBeltMode,
+  showAdultPrompt,
+} from './beltBook.ts';
 import {
   BLACK_DEGREE_MAX,
   FINAL_RANK_BELTS,
@@ -782,9 +790,9 @@ function kidsWornPreview(report: StudentProgressReport): WornBeltPreview {
     summary: `${rung.label} belt · ${count} ${noun}`,
     nextLabel: count < max ? 'Next stripe' : 'All stripes',
     percent: max <= 0 ? 0 : Math.round((count / max) * 100),
-    slots: compactSlots(rung.tapeColors, rung.tapeCount).map((slot) => ({
+    slots: literalSlots(rung.tapeColors, rung.tapeCount).map((slot) => ({
       on: slot.on,
-      color: slot.on ? slot.color : '',
+      color: slot.color,
     })),
     instructorBars: false,
     ink: rung.ink,
@@ -792,6 +800,44 @@ function kidsWornPreview(report: StudentProgressReport): WornBeltPreview {
     center: rung.center,
     centerColor: rung.centerColor,
   };
+}
+
+function isoDay(today: Date): string {
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${today.getFullYear()}-${month}-${day}`;
+}
+
+/**
+ * Move a 16-year-old onto an adult belt.
+ * White stays white. Grey, yellow, and orange start at blue. Green may start at blue or purple.
+ * The adult belt starts on today's date with no stripes. Kids belts stay on the file.
+ * Any adult belt already saved is kept on the adult history list.
+ */
+export function graduateToAdult(
+  report: StudentProgressReport,
+  choice: 'white' | 'blue' | 'purple',
+  now = Date.now(),
+  today = new Date(),
+): StudentProgressReport {
+  if (!showAdultPrompt(report, today)) throw new Error('The adult system opens at 16.');
+  const worn = currentKidsBelt(report);
+  const choices = adultStartChoices(worn);
+  if (!choices.includes(choice)) throw new Error('That adult belt is not the IBJJF step from this kids belt.');
+  const marked = markEarlierBelts(report, now);
+  const adult = setBeltMode(marked, 'adult', now);
+  return startFreshAdult(adult, choice, isoDay(today), now);
+}
+
+function startFreshAdult(report: StudentProgressReport, belt: ProgressBelt, awardedOn: string, now: number): StudentProgressReport {
+  const current = rankOf(report);
+  let history = current.history;
+  if (isRankBelt(report.profile.belt) && beltHasSavedState(current, report.profile.belt)) {
+    history = rememberPromotion(history, archiveCurrent(current, report.profile.belt, now));
+  }
+  const rank = blankWornRank(current, history);
+  rank.awardedOn = awardedOn;
+  return touch(report, rank, belt, now);
 }
 
 function newId(prefix: string, now: number): string {

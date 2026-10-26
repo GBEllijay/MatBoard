@@ -3,7 +3,7 @@
  * report from src/lib/progress. Nothing here is sent to a server.
  */
 
-import { ibjjfAge } from './beltBook.ts';
+import { ibjjfAge, withBeltTemplate } from './beltBook.ts';
 import { fundamentalLevelOf, FUNDAMENTAL_LIVE_LEVEL, isFundamentalLevel, type FundamentalLevel } from './fundamentals.ts';
 import { defaultTechniquePolicy } from './studentBenchmarks.ts';
 import { joinJournalNotes, splitJournalNotes } from './journalNotes.ts';
@@ -202,11 +202,11 @@ export function loadStudentReport(storage: Pick<Storage, 'getItem'> & { removeIt
   }
   const parsed = parseProgressPacket(raw);
   if (!parsed.ok || parsed.value.kind !== 'student-progress-report') return blankStudentReport();
-  return shareTournaments(parsed.value);
+  return withBeltTemplate(shareTournaments(parsed.value));
 }
 
 export function saveStudentReport(storage: MemoryStore, report: StudentProgressReport): StudentProgressReport {
-  let shared = shareTournaments(report);
+  let shared = withBeltTemplate(shareTournaments(report));
   let text = exportProgressPacket(shared);
   if (!studentDemoRequested() && isBundledMockStudentPayload(text)) {
     shared = blankStudentReport(shared.updatedAt);

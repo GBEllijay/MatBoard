@@ -596,6 +596,30 @@
   }
 }
 
+/* Kids belts use the adult woven row, with a taller bar and one slot per stripe. */
+:is(.student.student--rank) .belt.belt--kids {
+  --h: 76px;
+  --slot: 16px;
+}
+:is(.student.student--rank) .belt.belt--kids .tape {
+  width: 8px;
+  margin-left: -4px;
+}
+:is(.s-belt-mark) .belt.belt--kids {
+  --h: 32px;
+  --slot: 7px;
+}
+:is(.s-belt-mark) .belt.belt--kids .tape {
+  width: 3px;
+  margin-left: -1.5px;
+  top: 6px;
+  bottom: 6px;
+}
+:is(.student.student--rank, .s-belt-mark) .belt.belt--kids .stripe:not(.is-on) .tape {
+  background: color-mix(in srgb, var(--tape, #f4f1ea) 28%, transparent);
+  border-color: color-mix(in srgb, var(--tape, #f4f1ea) 70%, transparent);
+}
+
 /* Kids belts use the adult woven row. The center band is the half-color stripe. */
 :is(.student.student--rank, .s-belt-mark) .belt.belt--kids .belt__name {
   font-size: 15px;
