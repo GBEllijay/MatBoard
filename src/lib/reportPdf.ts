@@ -7,7 +7,7 @@
 import { ASSESSMENT_AREAS, assessmentAverage, type AssessmentState } from './studentAssessment.ts';
 import { radarPoint, RADAR_CENTER } from './radarChart.ts';
 import { advantageLogo } from './advantageLogo.ts';
-import { drawPdf, type PdfDraw, type Rgb } from './simplePdf.ts';
+import { drawPdf, type PdfDraw, type PdfImageAsset, type Rgb } from './simplePdf.ts';
 import {
   progressReportBlocks,
   reportIdentity,
@@ -36,6 +36,12 @@ const RULE: Rgb = [0.89, 0.9, 0.93];
 const PREVIOUS: Rgb = [0.557, 0.557, 0.576];
 
 export type RadarBox = { x: number; y: number; size: number; plot: number };
+
+/** Images in the navy header. Omit a slot to leave it off the page. */
+export type ReportHeaderArt = {
+  selfie?: PdfImageAsset | null;
+  gymLogo?: PdfImageAsset | null;
+};
 
 type PageState = { pages: PdfDraw[][]; draws: PdfDraw[]; top: number };
 
@@ -146,7 +152,20 @@ function drawIdentity(state: PageState, title: string, identity: ReportIdentity,
   state.top += 8;
 }
 
-function chrome(pageNumber: number, pageCount: number, kind: string): PdfDraw[] {
+function circlePoints(cx: number, cy: number, radius: number): { x: number; y: number }[] {
+  const count = 32;
+  const points: { x: number; y: number }[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const angle = (index / count) * Math.PI * 2;
+    points.push({
+      x: cx + Math.cos(angle) * radius,
+      y: cy + Math.sin(angle) * radius,
+    });
+  }
+  return points;
+}
+
+function chrome(pageNumber: number, pageCount: number, kind: string, art?: ReportHeaderArt): PdfDraw[] {
   const logo = 40;
   const draws: PdfDraw[] = [
     { op: 'rect', x: 0, y: 0, w: PAGE_W, h: PAGE_H, fill: PAPER },
@@ -154,10 +173,29 @@ function chrome(pageNumber: number, pageCount: number, kind: string): PdfDraw[] 
     { op: 'rect', x: 0, y: PAGE_H - HEADER - 3, w: PAGE_W, h: 3, fill: GOLD },
     { op: 'image', id: advantageLogo.id, x: 14, y: PAGE_H - 12 - logo, w: logo, h: logo },
   ];
+  const mark = 36;
+  let right = PAGE_W - 16;
+  const selfie = art?.selfie ?? null;
+  const gymLogo = art?.gymLogo ?? null;
+  const y = PAGE_H - 14 - mark;
+  // Rightmost first, so a single mark sits in the corner and a pair sits side by side.
+  for (const image of [selfie, gymLogo]) {
+    if (!image) continue;
+    right -= mark;
+    const x = right;
+    draws.push({
+      op: 'group',
+      clip: circlePoints(x + mark / 2, y + mark / 2, mark / 2),
+      draws: [{ op: 'image', id: image.id, x, y, w: mark, h: mark }],
+    });
+    right -= 8;
+  }
+  const kindX = selfie || gymLogo ? 62 : PAGE_W - MARGIN_X - measure(kind, 8, true);
+  const kindY = selfie || gymLogo ? PAGE_H - 58 : PAGE_H - 36;
   draws.push(
     { op: 'text', text: 'ADVANTAGE', x: 62, y: PAGE_H - 30, size: 13, font: 'bold', color: WHITE },
     { op: 'text', text: 'STUDENT EDITION', x: 62, y: PAGE_H - 46, size: 8, font: 'regular', color: [0.78, 0.84, 0.9] },
-    { op: 'text', text: kind, x: PAGE_W - MARGIN_X - measure(kind, 8, true), y: PAGE_H - 36, size: 8, font: 'bold', color: GOLD },
+    { op: 'text', text: kind, x: kindX, y: kindY, size: 8, font: 'bold', color: GOLD },
     {
       op: 'text',
       text: `Hand this page to an instructor.  ·  Page ${pageNumber} of ${pageCount}`,
@@ -171,10 +209,10 @@ function chrome(pageNumber: number, pageCount: number, kind: string): PdfDraw[] 
   return draws;
 }
 
-function finish(state: PageState, kind: string): PdfDraw[][] {
+function finish(state: PageState, kind: string, art?: ReportHeaderArt): PdfDraw[][] {
   if (state.draws.length || !state.pages.length) state.pages.push(state.draws);
   const count = state.pages.length;
-  return state.pages.map((body, index) => [...chrome(index + 1, count, kind), ...body]);
+  return state.pages.map((body, index) => [...chrome(index + 1, count, kind, art), ...body]);
 }
 
 function drawBlocks(state: PageState, blocks: readonly ReportBlock[]) {
@@ -466,8 +504,8 @@ export function layoutAssessment(report: StudentProgressReport, assessment: Asse
   return { pages: finish(state, 'SELF-ASSESSMENT'), radarBox };
 }
 
-export function renderReportPages(pages: readonly PdfDraw[][]): Uint8Array {
-  return drawPdf(pages, [advantageLogo]);
+export function renderReportPages(pages: readonly PdfDraw[][], images: readonly PdfImageAsset[] = []): Uint8Array {
+  return drawPdf(pages, [advantageLogo, ...images]);
 }
 
 export function assessmentReportPdf(report: StudentProgressReport, assessment: AssessmentState, issuedOn: string): Uint8Array {
@@ -479,11 +517,13 @@ export function progressReportPdf(
   assessment: AssessmentState,
   extra: ReportExtras = {},
   issuedOn = '',
+  art: ReportHeaderArt = {},
 ): Uint8Array {
   const identity = reportIdentity(report);
   const state = freshPage();
   drawIdentity(state, 'Progress report', identity, issuedOn);
   drawBlocks(state, progressReportBlocks(report, assessment, extra));
-  return renderReportPages(finish(state, 'PROGRESS'));
+  const images = [art.gymLogo, art.selfie].filter((image): image is PdfImageAsset => Boolean(image));
+  return renderReportPages(finish(state, 'PROGRESS', art), images);
 }
 

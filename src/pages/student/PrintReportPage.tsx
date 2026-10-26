@@ -1,4 +1,9 @@
 import { useState } from 'react';
+import { beltModeOf } from '../../lib/beltBook';
+import { headerVisibility, readProfileMarks } from '../../lib/profileMarks';
+import { readProfilePortrait } from '../../lib/profilePortrait';
+import { reportHeaderArt } from '../../lib/pdfRaster';
+import { readStudentGymLogo } from '../../lib/studentGymMark';
 import { RadarChart } from '../../components/RadarChart';
 import { ASSESSMENT_AREAS, assessmentAverage, loadAssessments, type AssessmentState } from '../../lib/studentAssessment';
 import { loadFilms, type StudentFilm } from '../../lib/studentFilm';
@@ -24,11 +29,16 @@ export function PrintReportPage({ kind }: { kind: 'progress' | 'assessment' }) {
   const [films] = useState(() => loadFilms(localStorage));
   const title = kind === 'assessment' ? 'Self-assessment' : 'Progress report';
   const issuedOn = todayIso();
+  const visibility = headerVisibility(beltModeOf(report), readProfileMarks());
+  const selfie = kind === 'progress' && visibility.selfie ? readProfilePortrait() : null;
+  const gymLogo = kind === 'progress' && visibility.logo ? readStudentGymLogo() : null;
 
   const download = () => {
+    void (async () => {
+    const art = kind === 'progress' ? await reportHeaderArt({ selfie, gymLogo }) : { selfie: null, gymLogo: null };
     const pdf = kind === 'assessment'
       ? assessmentReportPdf(report, assessment, issuedOn)
-      : progressReportPdf(report, assessment, { scouting, films }, issuedOn);
+      : progressReportPdf(report, assessment, { scouting, films }, issuedOn, art);
     const url = URL.createObjectURL(pdfBlob(pdf));
     const link = document.createElement('a');
     link.href = url;
@@ -37,6 +47,7 @@ export function PrintReportPage({ kind }: { kind: 'progress' | 'assessment' }) {
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
+    })();
   };
 
   return (
@@ -68,7 +79,15 @@ export function PrintReportPage({ kind }: { kind: 'progress' | 'assessment' }) {
         {kind === 'assessment' ? (
           <AssessmentSheet report={report} assessment={assessment} issuedOn={issuedOn} />
         ) : (
-          <ProgressSheet report={report} assessment={assessment} scouting={scouting} films={films} issuedOn={issuedOn} />
+          <ProgressSheet
+            report={report}
+            assessment={assessment}
+            scouting={scouting}
+            films={films}
+            issuedOn={issuedOn}
+            selfie={selfie}
+            gymLogo={gymLogo}
+          />
         )}
       </article>
     </main>
@@ -80,17 +99,21 @@ function ReportHero({
   report,
   issuedOn,
   score,
+  selfie,
+  gymLogo,
 }: {
   title: string;
   report: StudentProgressReport;
   issuedOn: string;
   score?: string;
+  selfie?: string | null;
+  gymLogo?: string | null;
 }) {
   const identity = reportIdentity(report);
   return (
     <header className="report-hero">
       <img src="/advantage-icon.png" alt="" width={713} height={713} />
-      <div>
+      <div className="report-hero__text">
         <p className="report-kicker">Advantage Student Edition</p>
         <h1>{title}</h1>
         <p>Student: {identity.name}</p>
@@ -107,6 +130,12 @@ function ReportHero({
           {score}
           <small> / 5</small>
         </p>
+      ) : null}
+      {gymLogo || selfie ? (
+        <div className="report-hero__art">
+          {gymLogo ? <img className="report-hero__logo" src={gymLogo} alt="Gym logo" /> : null}
+          {selfie ? <img className="report-hero__selfie" src={selfie} alt="Student photo" /> : null}
+        </div>
       ) : null}
     </header>
   );
@@ -198,17 +227,21 @@ function ProgressSheet({
   scouting,
   films,
   issuedOn,
+  selfie,
+  gymLogo,
 }: {
   report: StudentProgressReport;
   assessment: AssessmentState;
   scouting: readonly ScoutingCard[];
   films: readonly StudentFilm[];
   issuedOn: string;
+  selfie: string | null;
+  gymLogo: string | null;
 }) {
   const blocks = progressReportBlocks(report, assessment, { scouting, films });
   return (
     <>
-      <ReportHero title="Progress report" report={report} issuedOn={issuedOn} />
+      <ReportHero title="Progress report" report={report} issuedOn={issuedOn} selfie={selfie} gymLogo={gymLogo} />
       <div className="report-body">
         {blocks.map((block) => (
           <ReportSection key={block.title} block={block} />

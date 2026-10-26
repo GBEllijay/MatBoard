@@ -5,6 +5,7 @@
  */
 
 import { mergeBeltBooks, readBeltBook } from '../beltBook.ts';
+import { coachGymLogoFits, readTravelingGym, softenOversizedGymLogo } from '../coachGymFit.ts';
 import { splitCombinedDivision } from '../divisionFields.ts';
 import { fundamentalLevelOf, isFundamentalLevel } from '../fundamentals.ts';
 import { highDatesForCount } from '../blackBeltDegrees.ts';
@@ -80,6 +81,7 @@ import {
   type CalendarRepeat,
   type CoachFeedback,
   type CoachFeedbackPacket,
+  type CoachGymBrand,
   type CoachPlan,
   type CoachPlanFocus,
   type CoachPlanPacket,
@@ -219,10 +221,14 @@ export function parseProgressPacket(text: string): ProgressParse {
 /** Version 1 and version 2 both import. Anything else is left unread. */
 export function parseProgressValue(raw: unknown): ProgressParse {
   const errors: string[] = [];
-  if (packetCarriesBytes(raw)) errors.push('A progress file cannot carry photos or videos.');
   if (carriesStripeKey(raw)) errors.push('Belt progress uses checkpoints between levels.');
   const record = asRecord(raw);
-  if (!record) return { ok: false, errors: ['A progress file must be a JSON object.'] };
+  if (!record) {
+    if (packetCarriesBytes(raw)) errors.push('A progress file cannot carry photos or videos.');
+    return { ok: false, errors: errors.length ? errors : ['A progress file must be a JSON object.'] };
+  }
+  softenOversizedGymLogo(record);
+  if (packetCarriesBytes(record)) errors.push('A progress file cannot carry photos or videos.');
   if (!supportedSchema(record.schemaVersion)) {
     const seen = record.schemaVersion == null ? 'missing' : String(record.schemaVersion);
     errors.push(
@@ -275,6 +281,8 @@ export function parseProgressValue(raw: unknown): ProgressParse {
       updatedAt,
       plan: readCoachPlan(record.plan, errors),
     };
+    const gym = attachGym(record);
+    if (gym) value.gym = gym;
     return errors.length ? { ok: false, errors } : { ok: true, value };
   }
   const value: CoachFeedbackPacket = {
@@ -285,7 +293,13 @@ export function parseProgressValue(raw: unknown): ProgressParse {
     updatedAt,
     feedback: readCoachFeedback(record.feedback, errors),
   };
+  const gym = attachGym(record);
+  if (gym) value.gym = gym;
   return errors.length ? { ok: false, errors } : { ok: true, value };
+}
+
+function attachGym(record: Record<string, unknown>): CoachGymBrand | undefined {
+  return readTravelingGym(record) ?? undefined;
 }
 
 /**
@@ -396,6 +410,7 @@ export function packetCarriesBytes(value: unknown): boolean {
       if (BYTE_KEY.test(key)) return true;
       if (typeof child === 'string' && child.startsWith('data:')) {
         if (allowsRankImage(frame.path, key, child)) continue;
+        if (allowsGymLogo(frame.path, key, child)) continue;
         return true;
       }
       if (child && typeof child === 'object') stack.push({ value: child, path: [...frame.path, key] });
@@ -408,6 +423,12 @@ function allowsRankImage(path: readonly string[], key: string, value: string): b
   if (key !== 'image') return false;
   if (!path.includes('rank') || !path.includes('pictures')) return false;
   return rankImageFits(value);
+}
+
+/** A gym logo may travel in a coach file. Other data URLs stay refused. */
+function allowsGymLogo(path: readonly string[], key: string, value: string): boolean {
+  if (key !== 'logo' || path.length !== 1 || path[0] !== 'gym') return false;
+  return coachGymLogoFits(value);
 }
 
 function rankImageFits(value: string): boolean {

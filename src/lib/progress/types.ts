@@ -671,14 +671,28 @@ export type StudentProgressReport = PacketBase & {
   beltBook?: BeltBook;
 };
 
+/**
+ * Gym name and optional logo carried in a coach file.
+ * Older files omit this. A student can replace or remove the logo after import.
+ */
+export type CoachGymBrand = {
+  name: string;
+  /** Downscaled data URL. Absent when the file has no logo. */
+  logo?: string;
+};
+
 export type CoachPlanPacket = PacketBase & {
   kind: 'coach-plan';
   plan: CoachPlan;
+  /** Optional. Absent on files written before gym branding. */
+  gym?: CoachGymBrand;
 };
 
 export type CoachFeedbackPacket = PacketBase & {
   kind: 'coach-feedback';
   feedback: CoachFeedback;
+  /** Optional. Absent on files written before gym branding. */
+  gym?: CoachGymBrand;
 };
 
 export type ProgressPacket = StudentProgressReport | CoachPlanPacket | CoachFeedbackPacket;
