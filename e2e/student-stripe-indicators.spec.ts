@@ -62,7 +62,32 @@ async function storeStripes(page: Page, count: number) {
   }, rankFile(count));
 }
 
-test('adult stripe rectangles stay empty on the black bar for 0, 2, and 4 stripes', async ({ page }) => {
+async function expectWornBlueStripes(scope: Locator, count: number) {
+  const mark = scope.locator('.s-belt-mark');
+  await expect(mark).toHaveAttribute('data-belt', 'blue');
+  await expect(mark).toHaveAttribute('data-system', 'adult');
+  await expect(mark).toHaveAttribute('data-stripes', String(count));
+  const bar = mark.locator('.belt__bar');
+  const paint = await bar.evaluate((el) => {
+    const style = getComputedStyle(el);
+    return { image: style.backgroundImage, color: style.backgroundColor };
+  });
+  expect(paint.image).toContain('belt-weave.png');
+  expect(paint.color).toBe('rgb(16, 16, 18)');
+  const stripes = mark.locator('.stripe');
+  await expect(stripes).toHaveCount(4);
+  await expect(mark.locator('.stripe.is-on')).toHaveCount(count);
+  for (let index = 0; index < 4; index += 1) {
+    const tape = await stripes.nth(index).locator('.tape').evaluate((el) => {
+      const style = getComputedStyle(el);
+      return { background: style.backgroundColor, image: style.backgroundImage };
+    });
+    if (index < count) expect(tape.image).toContain('linear-gradient');
+    else expect(tape.background).toBe('rgba(0, 0, 0, 0.22)');
+  }
+}
+
+test('the main menu belt shows the worn blue stripes, and menu rails stay empty outlines', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/student?student=1');
 
@@ -72,15 +97,10 @@ test('adult stripe rectangles stay empty on the black bar for 0, 2, and 4 stripe
     const card = page.getByRole('link', { name: 'Rank & Progress', exact: true });
     await expect(card).toContainText(`Blue · ${count} stripe${count === 1 ? '' : 's'}`);
     await expect(card).toHaveCSS('font-family', /Inter/);
-    const belt = card.locator('.s-belt');
-    await expect(belt).toHaveAttribute('data-stripes', String(count));
-    const weave = await belt.evaluate((el) => getComputedStyle(el).backgroundImage);
-    expect(weave).toContain('belt-weave.png');
-    await expectBlackBar(card.locator('.s-belt__bar'));
-    const tapes = card.locator('.s-tape');
-    await expect(tapes).toHaveCount(4);
-    await expect(card.locator('.s-tape--on')).toHaveCount(count);
-    for (let index = 0; index < 4; index += 1) expectEmpty(await paintOf(tapes.nth(index)));
+    await expect(card).toHaveAttribute('href', /\/student\/progress\?student=1$/);
+    await expectWornBlueStripes(card, count);
+    const jump = page.getByRole('link', { name: 'Current belt', exact: true });
+    await expect(jump).toHaveAttribute('href', /\/student\/rank\?student=1#current$/);
     await page.screenshot({ path: `${ARTIFACTS}/stripe-skin-${count}-390.png` });
   }
 
@@ -88,11 +108,8 @@ test('adult stripe rectangles stay empty on the black bar for 0, 2, and 4 stripe
   await expect(page.getByRole('heading', { name: 'Rank & Progress', exact: true })).toBeVisible();
   const summary = page.getByRole('region', { name: 'Belt summary' });
   await expect(summary).toContainText('Blue belt · 4 stripes');
-  await expect(summary.locator('.s-belt')).toHaveAttribute('data-stripes', '4');
-  await expectBlackBar(summary.locator('.s-belt__bar'));
-  const summaryTapes = summary.locator('.s-tape');
-  await expect(summaryTapes).toHaveCount(4);
-  for (let index = 0; index < 4; index += 1) expectEmpty(await paintOf(summaryTapes.nth(index)));
+  await expect(summary.getByRole('link', { name: 'Current belt' })).toHaveCount(0);
+  await expectWornBlueStripes(summary, 4);
 
   const rows = page.locator('a.s-row--belt');
   await expect(rows).toHaveCount(4);

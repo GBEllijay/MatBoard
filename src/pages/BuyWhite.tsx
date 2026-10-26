@@ -1,9 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AlphaAccessNote } from '../components/AlphaAccessNote';
+import { HalfOffCheckoutNote } from '../components/HalfOffCheckoutNote';
 import { ComingSoonAd } from '../components/ComingSoonAd';
 import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
+import { useHalfOffArrival } from '../hooks/useHalfOffArrival';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
@@ -18,6 +20,7 @@ import {
 } from '../lib/productPrices';
 import { PRODUCTS_PATH, STUDENT_EDITION_NAME } from '../lib/productNames';
 import { studentEditionOpen } from '../lib/studentEdition';
+import { buyCheckoutBody } from '../lib/halfOff';
 import {
   WHITE_CHECKOUT_API,
   WHITE_FEATURES,
@@ -72,6 +75,7 @@ export function BuyWhitePage() {
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const [studentPending, setStudentPending] = useState(false);
   const [studentError, setStudentError] = useState<string | null>(null);
+  const halfOff = useHalfOffArrival();
   const unlocked = useWhiteUnlocked();
   const studentOpen = studentEditionOpen(params, {
     pro: useProUnlocked(),
@@ -167,7 +171,7 @@ export function BuyWhitePage() {
       const response = await fetch(WHITE_CHECKOUT_API, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ product: 'student' }),
+        body: JSON.stringify(buyCheckoutBody({ product: 'student', halfOffActive: halfOff })),
       });
       const body = (await response.json()) as { url?: string; error?: string };
       if (!response.ok || !body.url) {
@@ -206,7 +210,7 @@ export function BuyWhitePage() {
       const response = await fetch(WHITE_CHECKOUT_API, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(typed ? { promotionCode: typed } : {}),
+        body: JSON.stringify(buyCheckoutBody({ typedPromo: typed, halfOffActive: halfOff })),
       });
       const body = (await response.json()) as { url?: string; error?: string };
       if (!response.ok || !body.url) {
@@ -239,6 +243,7 @@ export function BuyWhitePage() {
           </header>
 
           <form className="buy__card buy__checkout" onSubmit={(event) => void onSubmit(event)}>
+            <HalfOffCheckoutNote active={halfOff} />
             {checkout === 'success' ? (
               <p className="buy__status buy__status--ok" role="status">
                 {record?.entitled
@@ -381,6 +386,7 @@ export function BuyWhitePage() {
             ) : null}
             {studentOpen ? (
               <form onSubmit={(event) => void onStudentSubmit(event)}>
+                <HalfOffCheckoutNote active={halfOff} />
                 <button className="btn btn--white" type="submit" disabled={studentPending}>
                   {studentPending
                     ? 'Opening checkout…'

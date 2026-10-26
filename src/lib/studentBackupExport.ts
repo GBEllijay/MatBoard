@@ -11,13 +11,20 @@ import { loadRankPictures, type RankPhotoStore } from './rankPhotos.ts';
 import { pdfBlob } from './simplePdf.ts';
 import { loadAssessments, type AssessmentState } from './studentAssessment.ts';
 import {
-  backupVideoTooLargeMessage,
   buildStudentBackup,
   connectedBackupTargets,
+  journalBackupConfirmation,
+  journalBackupFailure,
   studentBackupNames,
   type BackupBlob,
+  type BackupMarkImages,
   type StudentExportKind,
 } from './studentBackup.ts';
+import { beltModeOf } from './beltBook.ts';
+import { headerVisibility, readProfileMarks } from './profileMarks.ts';
+import { readProfilePortrait } from './profilePortrait.ts';
+import { PDF_GYM_LOGO_ID, PDF_SELFIE_ID, reportHeaderArt } from './pdfRaster.ts';
+import { readStudentGymLogo } from './studentGymMark.ts';
 import { loadStudentReport, todayIso } from './studentEdition.ts';
 import { getFilmBlob, loadFilms, type StudentFilm } from './studentFilm.ts';
 import { loadScouting, type ScoutingCard } from './studentScouting.ts';
@@ -25,7 +32,7 @@ import { loadCoachShelf, type CoachShelf } from './studentTools.ts';
 import { copyFilesToStudentDrive, type DriveCopyFile } from './studentDriveCopy.ts';
 import type { StudentProgressReport } from './progress/types.ts';
 
-const JSON_SAVED_HERE = 'Saved on this phone. No academy folder or personal drive is connected.';
+const JSON_DRIVE_NOTE = 'No academy folder or personal drive is connected.';
 
 type MemoryStore = {
   getItem: (key: string) => string | null;
@@ -42,6 +49,7 @@ export type StudentExportSource = {
   shelf: CoachShelf;
   films: readonly StudentFilm[];
   blobs?: readonly BackupBlob[];
+  marks?: BackupMarkImages;
 };
 
 export type StudentExportResult =
@@ -90,8 +98,13 @@ async function gatherFromThisPhone(includeVideos: boolean): Promise<StudentExpor
   const blobs = includeVideos
     ? await Promise.all(films.map(async (film) => ({ id: film.id, blob: await getFilmBlob(film.id).catch(() => null) })))
     : [];
+  const report = loadStudentReport(localStorage);
+  const visibility = headerVisibility(beltModeOf(report), readProfileMarks());
+  const selfie = visibility.selfie ? readProfilePortrait() : null;
+  const gymLogo = visibility.logo ? readStudentGymLogo() : null;
+  const art = await reportHeaderArt({ selfie, gymLogo });
   return {
-    report: loadStudentReport(localStorage),
+    report,
     assessment: loadAssessments(localStorage),
     scouting: loadScouting(localStorage),
     rankPhotos: loadRankPictures(),
@@ -99,6 +112,16 @@ async function gatherFromThisPhone(includeVideos: boolean): Promise<StudentExpor
     shelf: loadCoachShelf(localStorage),
     films,
     blobs,
+    marks: {
+      includeSelfie: visibility.selfie,
+      includeLogo: visibility.logo,
+      selfie,
+      gymLogo,
+      art: {
+        selfie: art.selfie?.id === PDF_SELFIE_ID ? art.selfie : null,
+        gymLogo: art.gymLogo?.id === PDF_GYM_LOGO_ID ? art.gymLogo : null,
+      },
+    },
   };
 }
 
@@ -127,9 +150,9 @@ export async function runStudentEditionExport(
     const file = exportFile(kind, built, names);
     download(file.name, file.bytes);
     const targets = connectedBackupTargets(storage);
-    const lead = kind === 'json' ? 'Saved on this phone.' : `Downloaded ${file.name} on this phone.`;
+    const lead = kind === 'json' ? journalBackupConfirmation(file.name, options.includeVideos) : `Downloaded ${file.name} on this phone.`;
     if (!targets.length) {
-      return { ok: true, filename: file.name, message: kind === 'json' ? JSON_SAVED_HERE : lead };
+      return { ok: true, filename: file.name, message: kind === 'json' ? `${lead} ${JSON_DRIVE_NOTE}` : lead };
     }
     const notes = [lead];
     for (const target of targets) {
@@ -139,7 +162,7 @@ export async function runStudentEditionExport(
     }
     return { ok: true, filename: file.name, message: notes.join(' ') };
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Could not build the backup.';
-    return { ok: false, filename: '', message: message.includes('too large') ? message : message || backupVideoTooLargeMessage(0) };
+    const detail = err instanceof Error && err.message ? err.message : 'Could not build the backup.';
+    return { ok: false, filename: '', message: kind === 'json' ? journalBackupFailure(detail) : detail };
   }
 }

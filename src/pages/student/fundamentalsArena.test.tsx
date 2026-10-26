@@ -4,14 +4,16 @@
  * Touched controls:
  * Back. Hold for Home. Home.
  * Overall proficiency.
- * Self-assessment, Belt checkpoints, Video Library.
+ * Self-assessment, Practical benchmarks, Video Library.
  * Sort: List order, Weakest first, Recently updated.
  * Filter: All, Not started, In progress, Against resistance.
  * Per move: proficiency 0 Not started through 5 Can teach it, note, date learned.
+ * Levels 1–5 fill up to the chosen level. Only the chosen level has the selected ring
+ * and aria-checked. A link to another belt's benchmark keeps that belt in the address.
  * Rename, Close rename, Save name, Remove, Confirm remove, Keep.
  * Add your own, Add, Restore starter list, Confirm restore starter list, Cancel.
- * Open {area} self-assessment, Open {checkpoint} checkpoint,
- * and Open {clip} in Video Library when a clip matches.
+ * Open: {area} self-assessment, Open: {checkpoint} benchmark,
+ * and Open: {clip} in Video Library when a clip matches.
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -20,6 +22,7 @@ import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 import { exportProgressPacket } from '../../lib/progress/format.ts';
+import { setBeltMode } from '../../lib/beltBook.ts';
 import {
   addJournalClip,
   blankStudentReport,
@@ -98,11 +101,11 @@ test('fundamentals keeps every control on the dark arena surface', () => {
   assert.equal(labeled(host, 'Home').getAttribute('href'), '/products');
   assert.equal(host.querySelector('h1')?.textContent, 'Fundamentals');
   assert.ok(host.textContent?.includes('0.0'));
-  assert.ok(host.textContent?.includes('0 of 5 ready when a partner resists'));
+  assert.ok(host.textContent?.includes('0 of 6 ready when a partner resists'));
   assert.equal(host.textContent?.toLowerCase().includes('live or better'), false);
 
-  for (const name of ['Self-assessment', 'Belt checkpoints', 'Video Library', 'List order', 'Weakest first', 'Recently updated', 'All', 'Not started', 'In progress', 'Against resistance', 'Restore starter list']) {
-    control(host, name === 'Self-assessment' || name === 'Belt checkpoints' || name === 'Video Library' ? 'a' : 'button', name);
+  for (const name of ['Self-assessment', 'Practical benchmarks', 'Video Library', 'List order', 'Weakest first', 'Recently updated', 'All', 'Not started', 'In progress', 'Against resistance', 'Restore starter list']) {
+    control(host, name === 'Self-assessment' || name === 'Practical benchmarks' || name === 'Video Library' ? 'a' : 'button', name);
   }
   const sweeps = labeled(host, 'Sweeps');
   labeled(sweeps, 'Scissor sweep proficiency');
@@ -116,7 +119,7 @@ test('fundamentals keeps every control on the dark arena surface', () => {
   labeled(sweeps, 'Remove Scissor sweep');
   labeled(sweeps, 'Add your own to Sweeps');
   assert.equal(control(host, 'a', 'Self-assessment').getAttribute('href'), '/student/self-assessment?from=fundamentals');
-  assert.equal(control(host, 'a', 'Belt checkpoints').getAttribute('href'), '/student/rubric');
+  assert.equal(control(host, 'a', 'Practical benchmarks').getAttribute('href'), '/student/rubric');
   assert.equal(control(host, 'a', 'Video Library').getAttribute('href'), '/student/videos');
   assert.ok(sweeps.textContent?.includes('Not updated yet'));
   unmount(mounted);
@@ -141,13 +144,16 @@ test('a learned date without a level opens at live, and taps, sort, filter, note
   const sweeps = labeled(host, 'Sweeps');
   const live = labeled(sweeps, 'Scissor sweep 3 Live with resistance');
   assert.equal(live.getAttribute('aria-checked'), 'true');
-  assert.ok(sweeps.textContent?.includes('1 of 5 ready when a partner resists'));
+  assert.ok(sweeps.textContent?.includes('1 of 6 ready when a partner resists'));
   assert.equal(
-    control(sweeps, 'a', 'Open Guard self-assessment').getAttribute('href'),
+    control(sweeps, 'a', 'Open: Guard self-assessment').getAttribute('href'),
     '/student/self-assessment?from=fundamentals#assess-guard',
   );
-  assert.equal(control(sweeps, 'a', 'Open Guard checkpoint').getAttribute('href'), '/student/rubric#checkpoint.white.guard');
-  assert.equal(control(sweeps, 'a', 'Open Scissor sweep detail in Video Library').getAttribute('href')?.startsWith('/student/videos#clip-'), true);
+  assert.equal(
+    control(sweeps, 'a', 'Open: From closed guard, perform one sweep and one submission in drilling. benchmark').getAttribute('href'),
+    '/student/rubric#checkpoint.white.s1-guard-attack',
+  );
+  assert.equal(control(sweeps, 'a', 'Open: Scissor sweep detail in Video Library').getAttribute('href')?.startsWith('/student/videos#clip-'), true);
   assert.ok(sweeps.textContent?.includes('Updated'));
 
   const sweepsMeter = () => labeled(host, 'Sweeps').querySelector('.fund-meter');
@@ -156,11 +162,15 @@ test('a learned date without a level opens at live, and taps, sort, filter, note
     labeled(sweeps, 'Scissor sweep 5 Can teach it').click();
   });
   assert.equal(labeled(sweeps, 'Scissor sweep 5 Can teach it').getAttribute('aria-checked'), 'true');
+  assert.equal(labeled(sweeps, 'Scissor sweep 5 Can teach it').classList.contains('is-selected'), true);
+  assert.equal(labeled(sweeps, 'Scissor sweep 4 Hitting in rolls').getAttribute('aria-checked'), 'false');
+  assert.equal(labeled(sweeps, 'Scissor sweep 4 Hitting in rolls').classList.contains('is-filled'), true);
+  assert.equal(labeled(sweeps, 'Scissor sweep 4 Hitting in rolls').classList.contains('is-selected'), false);
   const afterMeter = sweepsMeter();
   assert.notEqual(afterMeter?.getAttribute('data-value'), before);
   assert.equal((afterMeter?.querySelector('span') as HTMLElement | null)?.style.width.endsWith('%'), true);
   const escapes = labeled(host, 'Escapes');
-  assert.equal(control(escapes, 'a', 'Open Back escape checkpoint').getAttribute('href'), '/student/rubric#checkpoint.white.escapes');
+  assert.equal(control(escapes, 'a', 'Open: Back escape benchmark').getAttribute('href'), '/student/rubric#checkpoint.white.s2-back');
   const saved = JSON.parse(localStorage.getItem(STUDENT_EDITION_STORAGE_KEY) ?? '{}') as {
     checklist: { catalogItemId: string; level: number; learnedOn: string; note: string }[];
   };
@@ -192,7 +202,7 @@ test('a learned date without a level opens at live, and taps, sort, filter, note
   });
   const weakest = labeled(host, 'Sweeps');
   const names = [...weakest.querySelectorAll('h3')].map((node) => node.textContent);
-  assert.equal(names[0], 'Flower sweep');
+  assert.equal(names[0], 'Butterfly sweep');
   assert.ok(names.indexOf('Scissor sweep') > names.indexOf('Hip bump sweep'));
 
   act(() => {
@@ -273,4 +283,75 @@ test('rename, remove, add, and restore keep the saved level', () => {
   assert.equal(scissor?.level, 4);
   assert.ok(scissor?.learnedOn);
   unmount(mounted);
+});
+
+test('a chosen level stays distinct from the filled levels below it, and a blue benchmark link names blue', () => {
+  localStorage.clear();
+  const mounted = mount(<FundamentalsPage />);
+  const { host } = mounted;
+  try {
+    const positions = labeled(host, 'Positions');
+    const turtle = [...positions.querySelectorAll('a')].find((link) => link.getAttribute('href')?.includes('blue.s1-turtle'));
+    assert.equal(turtle?.getAttribute('href'), '/student/rubric#checkpoint.blue.s1-turtle');
+    assert.match(turtle?.textContent ?? '', /benchmark/);
+    const sweeps = labeled(host, 'Sweeps');
+    const whiteLink = control(sweeps, 'a', 'Open: From closed guard, perform one sweep and one submission in drilling. benchmark');
+    assert.equal(whiteLink.getAttribute('href'), '/student/rubric#checkpoint.white.s1-guard-attack');
+    act(() => {
+      labeled(sweeps, 'Scissor sweep 3 Live with resistance').click();
+    });
+    const group = labeled(sweeps, 'Scissor sweep proficiency');
+    const chosen = labeled(group, 'Scissor sweep 3 Live with resistance');
+    assert.equal(chosen.getAttribute('aria-checked'), 'true');
+    assert.equal(chosen.getAttribute('data-selected'), 'yes');
+    assert.equal(chosen.classList.contains('is-selected'), true);
+    assert.equal(chosen.classList.contains('is-filled'), true);
+    for (const level of [1, 2]) {
+      const filled = labeled(group, `Scissor sweep ${level} ${['', 'Introduced', 'Drilling'][level]}`);
+      assert.equal(filled.getAttribute('aria-checked'), 'false');
+      assert.equal(filled.getAttribute('data-selected'), 'no');
+      assert.equal(filled.classList.contains('is-filled'), true);
+      assert.equal(filled.classList.contains('is-selected'), false);
+    }
+    for (const level of [4, 5]) {
+      const names = ['', '', '', '', 'Hitting in rolls', 'Can teach it'];
+      const open = labeled(group, `Scissor sweep ${level} ${names[level]}`);
+      assert.equal(open.getAttribute('aria-checked'), 'false');
+      assert.equal(open.classList.contains('is-filled'), false);
+      assert.equal(open.classList.contains('is-selected'), false);
+    }
+    const zero = labeled(group, 'Scissor sweep 0 Not started');
+    assert.equal(zero.getAttribute('aria-checked'), 'false');
+    assert.equal(zero.classList.contains('is-selected'), false);
+    const checked = [...group.querySelectorAll('[role="radio"]')].filter((node) => node.getAttribute('aria-checked') === 'true');
+    assert.equal(checked.length, 1);
+    assert.equal(checked[0], chosen);
+  } finally {
+    unmount(mounted);
+  }
+});
+
+test('kids fundamentals use kid level words and note illegal techniques', () => {
+  localStorage.clear();
+  saveStudentReport(localStorage, setBeltMode(blankStudentReport(20), 'kids', 21));
+  const mounted = mount(<FundamentalsPage />);
+  const { host } = mounted;
+  try {
+    control(host, 'button', 'Not yet');
+    assert.equal(host.textContent?.includes('Not started'), false);
+    const sweeps = labeled(host, 'Sweeps');
+    labeled(sweeps, 'Scissor sweep 0 Not yet');
+    labeled(sweeps, 'Scissor sweep 2 Practicing it');
+    labeled(sweeps, 'Scissor sweep 3 Playing it');
+    labeled(sweeps, 'Scissor sweep 5 Teaching it');
+    const note = labeled(host, 'Illegal for this age');
+    assert.match(note.textContent ?? '', /Straight ankle lock\. Illegal under 16/);
+    assert.match(note.textContent ?? '', /Wrist lock\. Illegal for kids/);
+    assert.match(note.textContent ?? '', /coach or parent/);
+    assert.equal(host.querySelector('[aria-label="Straight ankle lock proficiency"]'), null);
+    assert.equal(host.querySelector('[aria-label="Wrist lock proficiency"]'), null);
+    assert.doesNotMatch(host.textContent ?? '', /Gracie Barra|Alliance/);
+  } finally {
+    unmount(mounted);
+  }
 });

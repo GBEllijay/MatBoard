@@ -3,6 +3,8 @@ import { useLocation, useSearchParams } from 'react-router-dom';
 import { SubmenuMarks } from '../../components/TierHomeMark';
 import { submenuBackTarget, tierHomeHref } from '../../lib/submenuNav';
 import type { StudentProgressReport } from '../../lib/progress/types';
+import { subscribeStudentJournal } from '../../lib/studentDemo';
+import { exportProgressPacket } from '../../lib/progress/format';
 import { loadStudentReport, saveStudentReport } from '../../lib/studentEdition';
 
 export function useStudentPath() {
@@ -27,24 +29,33 @@ export function useStudentFile() {
     setReport(saved);
     return saved;
   }, []);
+  useEffect(() => {
+    return subscribeStudentJournal(() => {
+      const next = loadStudentReport(localStorage);
+      setReport((current) => (exportProgressPacket(current) === exportProgressPacket(next) ? current : next));
+    });
+  }, []);
   return { report, commit };
 }
 
-/** The arena scroller owns overflow, so a hash has to be brought into view. */
-export function useScrollToHash(readyKey = ''): void {
+/**
+ * The arena scroller owns overflow, so a hash has to be brought into view.
+ * `elementId` is the card to show when the hash names that card by a shorter id.
+ */
+export function useScrollToHash(readyKey = '', elementId = ''): void {
   const { hash } = useLocation();
   useEffect(() => {
     const raw = hash.startsWith('#') ? hash.slice(1) : '';
-    if (!raw) return;
+    if (!raw && !elementId) return;
     let id = raw;
     try {
-      id = decodeURIComponent(raw);
+      id = raw ? decodeURIComponent(raw) : '';
     } catch {
       return;
     }
-    const node = document.getElementById(id);
+    const node = (elementId && document.getElementById(elementId)) || (id && document.getElementById(id)) || null;
     if (node && typeof node.scrollIntoView === 'function') node.scrollIntoView({ block: 'start' });
-  }, [hash, readyKey]);
+  }, [hash, readyKey, elementId]);
 }
 
 export function StudentMarks() {

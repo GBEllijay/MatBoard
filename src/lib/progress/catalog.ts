@@ -1,6 +1,7 @@
 /**
  * Owner-approved 2026-10-10. Names only.
- * The examples field stays on each item and stays empty.
+ * Movement, defense, and the later position and submission names were added 2026-10-26.
+ * Existing ids and names stay. The examples field stays empty.
  * `bjj-fundamentals-draft-1` is the earlier id for this same list. Import accepts it.
  */
 
@@ -37,6 +38,10 @@ export const FUNDAMENTALS_CATALOG: FundamentalsCatalog = {
       item('pos.back-control', 'Back control'),
       item('pos.knee-on-belly', 'Knee on belly'),
       item('pos.standing', 'Standing'),
+      item('pos.turtle', 'Turtle'),
+      item('pos.north-south', 'North-south'),
+      item('pos.scarf-hold', 'Scarf hold'),
+      item('pos.butterfly-guard', 'Butterfly guard'),
     ]),
     category('sweeps', 'Sweeps', [
       item('sweep.scissor', 'Scissor sweep'),
@@ -44,6 +49,7 @@ export const FUNDAMENTALS_CATALOG: FundamentalsCatalog = {
       item('sweep.pendulum', 'Pendulum sweep'),
       item('sweep.flower', 'Flower sweep'),
       item('sweep.tripod', 'Tripod sweep'),
+      item('sweep.butterfly', 'Butterfly sweep'),
     ]),
     category('escapes', 'Escapes', [
       item('escape.mount', 'Mount escape'),
@@ -64,12 +70,27 @@ export const FUNDAMENTALS_CATALOG: FundamentalsCatalog = {
       item('sub.guillotine', 'Guillotine'),
       item('sub.rear-naked-choke', 'Rear naked choke'),
       item('sub.cross-collar', 'Cross collar choke'),
+      item('sub.straight-ankle-lock', 'Straight ankle lock'),
+      item('sub.americana', 'Americana'),
+      item('sub.omoplata', 'Omoplata'),
+      item('sub.wrist-lock', 'Wrist lock'),
     ]),
     category('takedowns', 'Takedowns', [
       item('td.double-leg', 'Double leg'),
       item('td.single-leg', 'Single leg'),
       item('td.arm-drag', 'Arm drag'),
       item('td.hip-throw', 'Hip throw'),
+    ]),
+    category('movement', 'Movement', [
+      item('move.breakfalls', 'Breakfalls'),
+      item('move.shrimp', 'Shrimp'),
+      item('move.bridge', 'Bridge'),
+      item('move.technical-standup', 'Technical lift/stand-up'),
+    ]),
+    category('defense', 'Defense', [
+      item('def.guard-retention', 'Guard retention'),
+      item('def.submission-defense', 'Submission defense'),
+      item('def.sprawl', 'Sprawl'),
     ]),
   ],
 };

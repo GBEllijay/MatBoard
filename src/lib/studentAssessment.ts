@@ -5,6 +5,7 @@
 
 import type { StudentProgressReport } from './progress/types.ts';
 import { PROGRESS_NOTE_MAX } from './progress/types.ts';
+import { beginAppStudentSave, endAppStudentSave } from './studentDemo.ts';
 import { beltLevel } from './studentTools.ts';
 
 export const ASSESSMENT_STORAGE_KEY = 'matboard.studentEdition.assessment.v1';
@@ -91,7 +92,12 @@ export function loadAssessments(storage: Pick<Storage, 'getItem'>): AssessmentSt
 
 export function writeAssessments(storage: MemoryStore, state: AssessmentState): AssessmentState {
   const clean = normalizeState(state);
-  storage.setItem(ASSESSMENT_STORAGE_KEY, JSON.stringify(clean));
+  beginAppStudentSave();
+  try {
+    storage.setItem(ASSESSMENT_STORAGE_KEY, JSON.stringify(clean));
+  } finally {
+    endAppStudentSave();
+  }
   return loadAssessments(storage);
 }
 

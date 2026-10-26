@@ -1,9 +1,14 @@
 import { useState } from 'react';
+import { beltModeOf } from '../../lib/beltBook';
+import { headerVisibility, readProfileMarks } from '../../lib/profileMarks';
+import { readProfilePortrait } from '../../lib/profilePortrait';
+import { reportHeaderArt } from '../../lib/pdfRaster';
+import { readStudentGymLogo } from '../../lib/studentGymMark';
 import { RadarChart } from '../../components/RadarChart';
 import { ASSESSMENT_AREAS, assessmentAverage, loadAssessments, type AssessmentState } from '../../lib/studentAssessment';
 import { loadFilms, type StudentFilm } from '../../lib/studentFilm';
 import { pdfBlob } from '../../lib/simplePdf';
-import { assessmentReportPdf, progressReportPdf } from '../../lib/reportPdf';
+import { assessmentReportPdf, beltArtDraws, progressReportPdf, REPORT_BELT_HEIGHT, REPORT_CONTENT_WIDTH } from '../../lib/reportPdf';
 import {
   profileNeedsPrompt,
   progressReportBlocks,
@@ -24,11 +29,16 @@ export function PrintReportPage({ kind }: { kind: 'progress' | 'assessment' }) {
   const [films] = useState(() => loadFilms(localStorage));
   const title = kind === 'assessment' ? 'Self-assessment' : 'Progress report';
   const issuedOn = todayIso();
+  const visibility = headerVisibility(beltModeOf(report), readProfileMarks());
+  const selfie = kind === 'progress' && visibility.selfie ? readProfilePortrait() : null;
+  const gymLogo = kind === 'progress' && visibility.logo ? readStudentGymLogo() : null;
 
   const download = () => {
+    void (async () => {
+    const art = kind === 'progress' ? await reportHeaderArt({ selfie, gymLogo }) : { selfie: null, gymLogo: null };
     const pdf = kind === 'assessment'
       ? assessmentReportPdf(report, assessment, issuedOn)
-      : progressReportPdf(report, assessment, { scouting, films }, issuedOn);
+      : progressReportPdf(report, assessment, { scouting, films }, issuedOn, art);
     const url = URL.createObjectURL(pdfBlob(pdf));
     const link = document.createElement('a');
     link.href = url;
@@ -37,6 +47,7 @@ export function PrintReportPage({ kind }: { kind: 'progress' | 'assessment' }) {
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
+    })();
   };
 
   return (
@@ -68,7 +79,15 @@ export function PrintReportPage({ kind }: { kind: 'progress' | 'assessment' }) {
         {kind === 'assessment' ? (
           <AssessmentSheet report={report} assessment={assessment} issuedOn={issuedOn} />
         ) : (
-          <ProgressSheet report={report} assessment={assessment} scouting={scouting} films={films} issuedOn={issuedOn} />
+          <ProgressSheet
+            report={report}
+            assessment={assessment}
+            scouting={scouting}
+            films={films}
+            issuedOn={issuedOn}
+            selfie={selfie}
+            gymLogo={gymLogo}
+          />
         )}
       </article>
     </main>
@@ -80,17 +99,21 @@ function ReportHero({
   report,
   issuedOn,
   score,
+  selfie,
+  gymLogo,
 }: {
   title: string;
   report: StudentProgressReport;
   issuedOn: string;
   score?: string;
+  selfie?: string | null;
+  gymLogo?: string | null;
 }) {
   const identity = reportIdentity(report);
   return (
     <header className="report-hero">
       <img src="/advantage-icon.png" alt="" width={713} height={713} />
-      <div>
+      <div className="report-hero__text">
         <p className="report-kicker">Advantage Student Edition</p>
         <h1>{title}</h1>
         <p>Student: {identity.name}</p>
@@ -107,6 +130,12 @@ function ReportHero({
           {score}
           <small> / 5</small>
         </p>
+      ) : null}
+      {gymLogo || selfie ? (
+        <div className="report-hero__art">
+          {gymLogo ? <img className="report-hero__logo" src={gymLogo} alt="Gym logo" /> : null}
+          {selfie ? <img className="report-hero__selfie" src={selfie} alt="Student photo" /> : null}
+        </div>
       ) : null}
     </header>
   );
@@ -198,23 +227,77 @@ function ProgressSheet({
   scouting,
   films,
   issuedOn,
+  selfie,
+  gymLogo,
 }: {
   report: StudentProgressReport;
   assessment: AssessmentState;
   scouting: readonly ScoutingCard[];
   films: readonly StudentFilm[];
   issuedOn: string;
+  selfie: string | null;
+  gymLogo: string | null;
 }) {
   const blocks = progressReportBlocks(report, assessment, { scouting, films });
   return (
     <>
-      <ReportHero title="Progress report" report={report} issuedOn={issuedOn} />
+      <ReportHero title="Progress report" report={report} issuedOn={issuedOn} selfie={selfie} gymLogo={gymLogo} />
       <div className="report-body">
+        <ReportBelt report={report} />
         {blocks.map((block) => (
           <ReportSection key={block.title} block={block} />
         ))}
       </div>
     </>
+  );
+}
+
+function pdfColor(color: readonly number[] | undefined): string {
+  const [red, green, blue] = color ?? [0, 0, 0];
+  return `rgb(${Math.round(red * 255)} ${Math.round(green * 255)} ${Math.round(blue * 255)})`;
+}
+
+/** Full-width print belt. The on-screen half-width degree bar is not used here. */
+function ReportBelt({ report }: { report: StudentProgressReport }) {
+  const label = reportIdentity(report).belt;
+  const height = REPORT_BELT_HEIGHT;
+  const draws = beltArtDraws(report, 0, 0, REPORT_CONTENT_WIDTH);
+  return (
+    <svg className="report-belt" viewBox={`0 0 ${REPORT_CONTENT_WIDTH} ${height}`} role="img" aria-label={label}>
+      {draws.map((draw, index) => {
+        if (draw.op === 'rect') {
+          return (
+            <rect
+              key={index}
+              x={draw.x}
+              y={height - draw.y - draw.h}
+              width={draw.w}
+              height={draw.h}
+              fill={pdfColor(draw.fill)}
+            />
+          );
+        }
+        if (draw.op === 'poly' && draw.points.length >= 3) {
+          const points = draw.points.map((point) => `${point.x},${height - point.y}`).join(' ');
+          return <polygon key={index} points={points} fill={pdfColor(draw.fill)} fillOpacity={draw.fillOpacity ?? 1} />;
+        }
+        if (draw.op === 'line') {
+          return (
+            <line
+              key={index}
+              x1={draw.x1}
+              y1={height - draw.y1}
+              x2={draw.x2}
+              y2={height - draw.y2}
+              stroke={pdfColor(draw.color)}
+              strokeWidth={draw.lineWidth}
+              strokeDasharray={draw.dash ? '3 2' : undefined}
+            />
+          );
+        }
+        return null;
+      })}
+    </svg>
   );
 }
 

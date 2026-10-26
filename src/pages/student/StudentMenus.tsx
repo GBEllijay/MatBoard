@@ -1,12 +1,14 @@
+import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { HomeMark } from '../../components/HomeMark';
 import { SiteFooter } from '../../components/SiteFooter';
 import { loadAcademyLink } from '../../lib/academyPathway';
-import { RANK_TAPE_MAX, type ProgressBelt } from '../../lib/progress/types';
 import { STUDENT_EDITION_NAME, STUDENT_HOME_DESCRIPTION } from '../../lib/productNames';
 import { tierHomeHref } from '../../lib/submenuNav';
 import { todayIso } from '../../lib/studentEdition';
+import { wornBeltPreview } from '../../lib/studentRank';
 import {
+  ADD_TOURNAMENT_LABEL,
   BACKUP_GROUP_LABEL,
   COACH_GROUP_LABEL,
   COACH_LINKS,
@@ -22,24 +24,13 @@ import {
   progressLinks,
 } from '../../lib/studentHubMenu';
 import { backupStampLabel, readStudentBackupStamp } from '../../lib/studentBackupStamp';
+import { subscribeStudentJournal } from '../../lib/studentDemo';
 import { reportIdentity } from '../../lib/studentReport';
 import type { StudentProgressReport } from '../../lib/progress/types';
 import { useStudentFile, useStudentPath } from './chrome';
 import { GroupFrame, MenuList, MenuRow } from './groupChrome';
-import { BinderDecor, BracketArt, Chevron, JournalDecor, RowIcon, WhiteBelt } from './hubArt';
-
-const BELT_WORD: Record<ProgressBelt, string> = {
-  white: 'White',
-  blue: 'Blue',
-  purple: 'Purple',
-  brown: 'Brown',
-  black: 'Black',
-  grey: 'Grey',
-  yellow: 'Yellow',
-  orange: 'Orange',
-  green: 'Green',
-  coral: 'Coral',
-};
+import { BinderDecor, BracketArt, Chevron, JournalDecor, RowIcon } from './hubArt';
+import { WornBeltMark } from './wornBelt';
 
 function profileCardNote(report: StudentProgressReport): string {
   const identity = reportIdentity(report);
@@ -69,12 +60,14 @@ export function StudentHub() {
   const { report } = useStudentFile();
   const summary = competitorHubSummary(report, todayIso());
   const academy = loadAcademyLink(localStorage);
-  const stamp = backupStampLabel(readStudentBackupStamp(localStorage));
+  const [stamp, setStamp] = useState(() => backupStampLabel(readStudentBackupStamp(localStorage)));
+  useEffect(() => {
+    return subscribeStudentJournal(() => {
+      setStamp(backupStampLabel(readStudentBackupStamp(localStorage)));
+    });
+  }, []);
   const coachNote = academy ? `Connected to ${academy.folderName}` : 'Academy, a file for your coach, and import';
-  const stripes = Math.max(0, Math.min(RANK_TAPE_MAX, report.rank?.tapeCount ?? 0));
-  const beltWord = BELT_WORD[report.profile.belt] ?? 'White';
-  const stripeWord = stripes === 1 ? 'stripe' : 'stripes';
-  const stripePercent = Math.round((stripes / RANK_TAPE_MAX) * 100);
+  const worn = wornBeltPreview(report);
 
   return (
     <main className="home home--student student-menu-home">
@@ -93,23 +86,32 @@ export function StudentHub() {
               <small>Today's page, cards, calendar, and videos</small>
             </span>
           </Link>
-          <Link className="s-tile s-navy s-rank" to={to('/student/progress')} aria-label={RANK_GROUP_LABEL}>
-            <span className="s-tile__text">
-              <span className="s-rank__head">
-                <strong>{RANK_GROUP_LABEL}</strong>
-                <span className="s-rank__meta">{`${beltWord} · ${stripes} ${stripeWord}`}</span>
+          <div className="s-tile s-navy s-rank">
+            <Link className="s-rank__menu" to={to('/student/progress')} aria-label={RANK_GROUP_LABEL}>
+              <span className="s-tile__text">
+                <span className="s-rank__head">
+                  <strong>{RANK_GROUP_LABEL}</strong>
+                  <span className="s-rank__meta">{worn.meta}</span>
+                </span>
+                <small>Belt goals, fundamentals, and self-assessment</small>
+                <WornBeltMark preview={worn} />
               </span>
-              <small>Belt goals, fundamentals, and self-assessment</small>
-              <WhiteBelt filled={stripes} emphasizeNext={stripes < RANK_TAPE_MAX} />
-              <span className="s-meter" aria-hidden="true">
-                <i style={{ width: `${stripePercent}%` }} />
+            </Link>
+            <Link className="s-rank__jump" to={to('/student/rank#current')} aria-label="Current belt">
+              <span className="s-rank__jump-copy">
+                <strong>Current belt</strong>
+                <small>{worn.meta}</small>
               </span>
-              <span className="s-rank__cap">
-                <span>{stripes < RANK_TAPE_MAX ? 'Next stripe' : 'All four stripes'}</span>
-                <span>{`${stripePercent}%`}</span>
-              </span>
+              <Chevron />
+            </Link>
+            <span className="s-meter" aria-hidden="true">
+              <i style={{ width: `${worn.percent}%` }} />
             </span>
-          </Link>
+            <span className="s-rank__cap">
+              <span>{worn.nextLabel}</span>
+              <span>{`${worn.percent}%`}</span>
+            </span>
+          </div>
           <Link className="s-tile s-navy s-compete" to={to('/student/compete')} aria-label={COMPETE_GROUP_LABEL}>
             <BracketArt />
             <span className="s-tile__text">
@@ -170,18 +172,16 @@ export function TrainingMenu() {
 export function ProgressMenu() {
   const { report } = useStudentFile();
   const links = progressLinks(report.profile.belt);
-  const stripes = Math.max(0, Math.min(RANK_TAPE_MAX, report.rank?.tapeCount ?? 0));
-  const beltWord = BELT_WORD[report.profile.belt] ?? 'White';
-  const stripeWord = stripes === 1 ? 'stripe' : 'stripes';
-  const stripePercent = Math.round((stripes / RANK_TAPE_MAX) * 100);
+  const worn = wornBeltPreview(report);
+  const next = worn.nextLabel === 'Next stripe' ? `Next stripe ${worn.percent}%` : worn.nextLabel;
   return (
     <GroupFrame title={RANK_GROUP_LABEL}>
       <section className="s-rank-summary" aria-label="Belt summary">
-        <span>{`${beltWord} belt · ${stripes} ${stripeWord}`}</span>
-        <span>{stripes < RANK_TAPE_MAX ? `Next stripe ${stripePercent}%` : 'All four stripes'}</span>
-        <WhiteBelt filled={stripes} emphasizeNext={stripes < RANK_TAPE_MAX} />
+        <span>{worn.summary}</span>
+        <span>{next}</span>
+        <WornBeltMark preview={worn} />
         <span className="s-meter" aria-hidden="true">
-          <i style={{ width: `${stripePercent}%` }} />
+          <i style={{ width: `${worn.percent}%` }} />
         </span>
       </section>
       <ProfileCard />
@@ -221,6 +221,11 @@ export function CompeteMenu() {
           <b>{summary.record}</b>
         </div>
       </section>
+      {summary.eventName ? null : (
+        <Link className="ink-btn ink-btn--save s-score__add" to={to('/student/competitor')}>
+          {ADD_TOURNAMENT_LABEL}
+        </Link>
+      )}
       <MenuList label={COMPETE_GROUP_LABEL} bracket>
         {COMPETE_LINKS.map((item, index) => (
           <MenuRow

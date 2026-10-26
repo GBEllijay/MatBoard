@@ -1,11 +1,6 @@
 import { useState } from 'react';
 import { Link, Navigate, useLocation } from 'react-router-dom';
-import {
-  DIVISION_SUGGESTIONS,
-  suggestionList,
-  tournamentClassLine,
-  WEIGHT_CLASS_SUGGESTIONS,
-} from '../../lib/divisionFields';
+import { tournamentClassLine } from '../../lib/divisionFields';
 import type { StudentTournament, TournamentStatus, WeightUnit } from '../../lib/progress/types';
 import {
   competitionOf,
@@ -29,6 +24,7 @@ import { legacyCompetitorAssessmentPath } from '../../lib/studentHubMenu';
 import { StudentMarks, useStudentFile, useStudentPath } from './chrome';
 import { JournalGate, RankHero } from './CompetitorLead';
 import { StandingGames } from './StandingGames';
+import { SuggestField } from './SuggestField';
 
 const STATUSES: { status: TournamentStatus; label: string }[] = [
   { status: 'considering', label: 'Considering' },
@@ -122,7 +118,7 @@ export function CompetitorPage() {
                 Rate the work in front of you. 1 is early. 5 is ready to rely on. Saved on this phone by date.
               </p>
               <Link className="ink-btn ink-btn--save" to={to('/student/self-assessment?from=competitor')}>
-                Open self-assessment
+                Open: self-assessment
               </Link>
             </section>
             <div className="arena-block">
@@ -213,15 +209,15 @@ export function CompetitorPage() {
               </label>
               <SuggestField
                 label="Division"
+                kind="division"
                 value={draft.division}
-                seeds={DIVISION_SUGGESTIONS}
                 used={usedDivisions}
                 onChange={(division) => setDraft({ ...draft, division })}
               />
               <SuggestField
                 label="Weight class"
+                kind="weight"
                 value={draft.weightClass ?? ''}
-                seeds={WEIGHT_CLASS_SUGGESTIONS}
                 used={usedWeightClasses}
                 onChange={(weightClass) => setDraft({ ...draft, weightClass })}
               />
@@ -402,65 +398,6 @@ function TournamentCard({
         )}
       </div>
     </li>
-  );
-}
-
-function SuggestField({
-  label,
-  value,
-  seeds,
-  used,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  seeds: readonly string[];
-  used: readonly string[];
-  onChange: (value: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const options = open ? suggestionList(seeds, used, value) : [];
-  const listId = `${label.toLowerCase().replace(/\s+/g, '-')}-suggestions`;
-  return (
-    <div className="field-block">
-      <label>
-        <span className="ink__label">{label}</span>
-        <input
-          aria-label={label}
-          role="combobox"
-          aria-autocomplete="list"
-          aria-expanded={options.length > 0}
-          aria-controls={options.length ? listId : undefined}
-          autoComplete="off"
-          value={value}
-          onFocus={() => setOpen(true)}
-          onBlur={() => setOpen(false)}
-          onChange={(event) => {
-            setOpen(true);
-            onChange(event.target.value);
-          }}
-        />
-      </label>
-      {options.length ? (
-        <div id={listId} className="field-suggest" role="listbox" aria-label={`${label} suggestions`}>
-          {options.map((option) => (
-            <button
-              key={option}
-              type="button"
-              className="field-suggest__option"
-              role="option"
-              aria-selected={option.toLowerCase() === value.trim().toLowerCase()}
-              onMouseDown={(event) => {
-                event.preventDefault();
-                onChange(option);
-              }}
-            >
-              {option}
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </div>
   );
 }
 

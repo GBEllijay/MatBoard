@@ -22,7 +22,8 @@ test('calendar marks a journal day, stores an event, and can show the gym schedu
   await page.getByRole('textbox', { name: 'Class', exact: true }).fill('Fundamentals');
   await page.getByRole('textbox', { name: 'Drill notes' }).fill('grip the collar deeper');
   await page.getByRole('button', { name: 'Save entry' }).click();
-  await expect(page.getByText('grip the collar deeper')).toBeVisible();
+  await expect(page.getByRole('status')).toHaveText('Entry saved');
+  await expect(page.getByRole('heading', { name: 'Journal', exact: true })).toBeVisible();
   await expect(page.locator('main.student')).toHaveCSS('font-family', /Patrick Hand/);
   await expect(page.locator('.student-paper')).toHaveCSS('background-color', 'rgb(244, 240, 228)');
 
@@ -82,14 +83,14 @@ test('belt checkpoints, goals, coach suggestions, and the share file', async ({ 
 
   await page.getByRole('button', { name: 'Mark Hold closed guard. met' }).click();
   await expect(page.getByRole('listitem', { name: 'Guard, filled' })).toBeVisible();
-  await expect(page.getByText('1 of 3 checkpoints filled.')).toBeVisible();
+  await expect(page.getByText('1 of 3 practical benchmarks filled.')).toBeVisible();
   await page.locator('.arena-scroll').evaluate((el) => {
     el.scrollTop = 0;
   });
   await shot(page, 'student-belt-390');
-  await page.getByLabel('Goal name').fill('Compete in the spring');
-  await page.getByLabel('Goal note').fill('local');
-  await page.getByRole('button', { name: 'Add goal', exact: true }).click();
+  await page.getByLabel('Personal goal name').fill('Compete in the spring');
+  await page.getByLabel('Personal goal note').fill('local');
+  await page.getByRole('button', { name: 'Add personal goal', exact: true }).click();
   await page.getByLabel('Edit Compete in the spring').fill('Compete in May');
   await page.getByRole('button', { name: 'Save Compete in the spring' }).click();
   await page.getByRole('button', { name: 'Mark Compete in May met' }).click();
@@ -126,7 +127,7 @@ test('belt checkpoints, goals, coach suggestions, and the share file', async ({ 
       }),
     ),
   });
-  await expect(page.getByText('Your rubric, journal, and goals were not changed.')).toBeVisible();
+  await expect(page.getByText('Your rubric, journal, and personal goals were not changed.')).toBeVisible();
   const afterPlan = await page.evaluate(() => localStorage.getItem('matboard.studentEdition.v1'));
   expect(afterPlan).toBe(before);
 
@@ -158,8 +159,8 @@ test('belt checkpoints, goals, coach suggestions, and the share file', async ({ 
   await expect(coach.getByText('The scissor sweep is closer.')).toBeVisible();
   await expect(coach.getByText('Showing up in live rounds.')).toBeVisible();
   await coach.screenshot({ path: '/opt/cursor/artifacts/student-coach-390.png' });
-  await page.getByRole('button', { name: 'Copy Scissor sweep to my goals' }).click();
-  await page.getByRole('button', { name: 'Copy Showing up in live rounds. to my goals' }).click();
+  await page.getByRole('button', { name: 'Copy Scissor sweep to my personal goals' }).click();
+  await page.getByRole('button', { name: 'Copy Showing up in live rounds. to my personal goals' }).click();
   await expect(page.getByLabel('Edit Scissor sweep')).toBeVisible();
   const report = await page.evaluate(() => JSON.parse(localStorage.getItem('matboard.studentEdition.v1') || '{}'));
   const guard = report.rubric.levels.find((level: { belt: string }) => level.belt === 'white').checkpoints.find(

@@ -1,12 +1,16 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { DeviceMediaInput } from './DeviceMediaInput';
 import { OpenMyDrive } from './OpenMyDrive';
 import { MediaSourceSheet } from './VideoSourceSheet';
+import { buildGymBrandFile, GYM_BRAND_FILE_NAME } from '../lib/coachGymFile';
+import { getDriveBindingSnapshot, subscribeDriveBinding } from '../lib/googleDrive';
 import { clearGymLogo, readGymLogo, saveGymLogoFile } from '../lib/gymLogo';
+import { saveGymLogoToDrive } from '../lib/gymLogoDrive';
 import { quotaAddNote } from '../lib/storageQuota';
 import { GYM_NAME_MAX, readGymName, writeGymName } from '../lib/gymName';
 import { PHOTO_PICKER_ACCEPT, VIDEO_CAPTURE } from '../lib/mediaPicker';
+import { todayIso } from '../lib/studentEdition';
 
 const CAPTURE_ID = 'gym-logo-capture';
 const LIBRARY_ID = 'gym-logo-library';
@@ -26,6 +30,9 @@ export function GymLogoControl() {
   const [gymName, setGymName] = useState(() => readGymName());
   const [chooserOpen, setChooserOpen] = useState(false);
   const [note, setNote] = useState('');
+  const [driveNote, setDriveNote] = useState('');
+  const [driveBusy, setDriveBusy] = useState(false);
+  const driveFolder = useSyncExternalStore(subscribeDriveBinding, getDriveBindingSnapshot, () => null);
 
   const onFiles = async (files: readonly File[]) => {
     const file = files[0];
@@ -67,7 +74,44 @@ export function GymLogoControl() {
         </button>
       )}
       <OpenMyDrive />
+      {logoUrl && driveFolder ? (
+        <button
+          type="button"
+          className="btn"
+          disabled={driveBusy}
+          onClick={() => {
+            setDriveBusy(true);
+            setDriveNote('');
+            void saveGymLogoToDrive(logoUrl).then((status) => {
+              setDriveBusy(false);
+              if (status === 'saved') setDriveNote('Saved in the gym Drive folder.');
+              else if (status === 'needs-drive') setDriveNote('');
+              else setDriveNote('Could not save the logo to Drive.');
+            });
+          }}
+        >
+          {driveBusy ? 'Saving logo to Drive…' : 'Save logo to Drive folder'}
+        </button>
+      ) : null}
+      <button
+        type="button"
+        className="btn btn--ghost"
+        onClick={() => {
+          const json = buildGymBrandFile({ name: gymName, logo: logoUrl, issuedOn: todayIso() });
+          const blob = new Blob([json], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = GYM_BRAND_FILE_NAME;
+          link.click();
+          URL.revokeObjectURL(url);
+          setDriveNote('Downloaded the gym file. Students open it from Import from coach.');
+        }}
+      >
+        Download gym file for students
+      </button>
       {note ? <p className="saver-folder__empty">{note}</p> : null}
+      {driveNote ? <p className="saver-folder__empty">{driveNote}</p> : null}
       <label className="gym-logo__name">
         Gym name
         <input
@@ -84,7 +128,8 @@ export function GymLogoControl() {
         />
       </label>
       <p className="gym-logo__hint">
-        Saved on this device. A new competitor starts with this name when their gym is empty.
+        Saved on this device. The gym file carries the name and logo to students. They can replace or remove the logo. A new competitor starts with this name when their gym is empty.
+        {logoUrl && !driveFolder ? ' Connect Google Drive to copy the logo into the gym folder.' : ''}
       </p>
       <MediaSourceSheet
         open={chooserOpen}

@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { exportProgressPacket } from './progress/format.ts';
-import { blankStudentReport, setStudentProfile } from './studentEdition.ts';
-import { addJournalClip } from './studentEdition.ts';
+import { addJournalClip, addJournalEntry, blankStudentReport, setStudentProfile } from './studentEdition.ts';
 import { extractPdfText, formatPdfNumber, pdfPageCount, pdfToText } from './simplePdf.ts';
-import { assessmentReportPdf, chartPoint, layoutAssessment, outerRingRadius, progressReportPdf, radarPolygonRadii, renderReportPages } from './reportPdf.ts';
+import { assessmentReportPdf, beltArtDraws, chartPoint, layoutAssessment, outerRingRadius, progressReportPdf, radarPolygonRadii, renderReportPages, REPORT_BELT_HEIGHT, REPORT_CONTENT_WIDTH } from './reportPdf.ts';
+import { setBeltMode, setKidsBelt, setKidsTapeCount } from './beltBook.ts';
 import { saveAssessment } from './studentAssessment.ts';
 import {
   applyBackupToMemory,
@@ -16,11 +16,14 @@ import {
   studentBackupNames,
   studentReportPdfName,
 } from './studentBackup.ts';
-import { countPhrase, matchRecordLine, reportHeaderLines } from './studentReport.ts';
+import { formatJournalDate } from './journalCopy.ts';
+import { countPhrase, journalReportLine, matchRecordLine, reportHeaderLines } from './studentReport.ts';
 import { emptyRankPhotoStore } from './rankPhotos.ts';
 import type { ScoutingCard } from './studentScouting.ts';
 import type { StudentFilm } from './studentFilm.ts';
+import { setRankAwardedOn, setRankBelt, setRankTapeCount, setRankTapeDate } from './studentRank.ts';
 import { withStarterRubric } from './studentTools.ts';
+import type { PdfDraw } from './simplePdf.ts';
 import type { RubricCheckpoint, StudentChecklistEntry, StudentProgressReport } from './progress/types.ts';
 
 function memory() {
@@ -69,13 +72,19 @@ function filledReport(): StudentProgressReport {
       ...report.rubric,
       levels: report.rubric.levels.map((level) => {
         if (level.belt !== 'black') return level;
+        const legacy = (name: string, note: string, met: boolean | null): RubricCheckpoint => ({
+          id: `checkpoint.black.${name.toLowerCase()}`,
+          name,
+          met,
+          note,
+          criteria: [
+            { id: `${name}.a`, requirement: `${name} hold`, techniqueRefs: [], met: true, note: '' },
+            { id: `${name}.b`, requirement: `${name} recover`, techniqueRefs: [], met: true, note: '' },
+          ],
+        });
         return {
           ...level,
-          checkpoints: level.checkpoints.map((checkpoint) => {
-            if (checkpoint.name === 'Pressure') return { ...markCriteria(checkpoint, true), met: true, note: 'Mock: top pressure sound' };
-            if (checkpoint.name === 'Guard') return { ...markCriteria(checkpoint, true), met: null, note: '' };
-            return checkpoint;
-          }),
+          checkpoints: [legacy('Pressure', 'Mock: top pressure sound', true), legacy('Guard', '', null)],
         };
       }),
     },
@@ -171,13 +180,18 @@ test('progress PDF keeps every section, the student track, and checkpoint status
   assert.match(joined, /Filmed 2026-10-23 Berimbolo to back take/);
   assert.match(joined, /Guard 4, Passing 3, Takedowns 2, Escapes 5, Submissions 4, Conditioning 3, Mindset 5/);
   assert.match(joined, /186 lb — On track/);
-  const black = joined.slice(joined.indexOf('\nBlack\n'), joined.indexOf('\nCoral\n'));
+  const black = joined.slice(joined.indexOf('\nBlack\n'));
   assert.match(black, /Pressure: Met — Mock: top pressure sound/);
+  assert.match(joined, /Practical Benchmarks/);
+  assert.match(joined, /Skills the coach or template expects before the next belt/);
+  assert.match(joined, /Personal Goals/);
+  assert.match(joined, /Your own goals, which never affect belt or degree milestones/);
   assert.match(black, /Guard: Met/);
   assert.equal(black.includes('Guard: Unmarked'), false);
-  const order = ['White', 'Blue', 'Purple', 'Brown', 'Black', 'Coral'].map((label) => joined.indexOf(`\n${label}\n`));
+  assert.equal(joined.includes('\nCoral\n'), false);
+  const order = ['White', 'Blue', 'Purple', 'Brown', 'Black'].map((label) => joined.indexOf(`\n${label}\n`));
   order.forEach((spot, index) => {
-    assert.ok(spot >= 0, ['White', 'Blue', 'Purple', 'Brown', 'Black', 'Coral'][index]);
+    assert.ok(spot >= 0, ['White', 'Blue', 'Purple', 'Brown', 'Black'][index]);
     if (index > 0) assert.ok(order[index - 1]! < spot);
   });
   assert.equal(joined.includes('\nGrey\n'), false);
@@ -236,6 +250,43 @@ test('one win, loss, or draw stays singular everywhere the record is written', (
   assert.equal(lines.includes('1 losses'), false);
   assert.equal(lines.includes('1 wins'), false);
   assert.equal(lines.includes('1 draws'), false);
+});
+
+test('a journal line uses the card labels and the written date', () => {
+  const report = addJournalEntry(
+    blankStudentReport(1),
+    {
+      date: '2026-10-11',
+      className: 'Fundamentals',
+      gameTag: '',
+      techniques: [{ id: 'sweep.scissor', name: 'Scissor sweep' }],
+      partners: 'Alex',
+      drills: 'hip escapes',
+      rolls: '5 rounds',
+      notes: 'grip the collar deeper',
+      stopDoing: 'posting the near hand',
+    },
+    2,
+  );
+  const line = journalReportLine(report.journal[0]!);
+  assert.equal(formatJournalDate('2026-10-11'), 'October 11, 2026');
+  assert.equal(formatJournalDate('not-a-date'), 'not-a-date');
+  assert.match(line, /October 11, 2026/);
+  assert.equal(line.includes('2026-10-11'), false);
+  assert.equal(line.includes('Class:'), false);
+  assert.match(line, /Fundamentals/);
+  assert.match(line, /Technique drilled #1: Scissor sweep/);
+  assert.match(line, /Training partners: Alex/);
+  assert.match(line, /Drills: hip escapes/);
+  assert.match(line, /Rolls: 5 rounds/);
+  assert.match(line, /Drill notes: grip the collar deeper/);
+  assert.match(line, /Stop doing: posting the near hand/);
+  const pdf = progressReportPdf(report, { entries: [] }, {}, '2026-10-11');
+  const text = extractPdfText(pdf);
+  assert.match(text, /Technique drilled #1: Scissor sweep/);
+  assert.match(text, /Drill notes: grip the collar deeper/);
+  assert.match(text, /October 11, 2026/);
+  assert.equal(text.includes('?'), false);
 });
 
 test('an empty progress report omits blank lists or says None yet', () => {
@@ -498,4 +549,195 @@ test('report headers use the saved name and fall back only when a field is empty
   assert.match(assessmentPdf, /Student: Not named/);
   assert.match(assessmentPdf, /Gym: Not named/);
   assert.match(assessmentPdf, /Started: Not set/);
+});
+
+test('the progress PDF lists one row for a repeated promotion', () => {
+  const report = blankStudentReport(8);
+  report.profile = { ...report.profile, belt: 'brown' };
+  const shared = {
+    belt: 'black' as const,
+    awardedOn: '2010-01-02',
+    tapeCount: 2,
+    tapeDates: ['2013-03-04', '2016-05-06', '', ''] as [string, string, string, string],
+    instructorBars: true as const,
+    instructorBarsOn: '2012-02-02',
+  };
+  report.rank = {
+    tapeCount: 0,
+    awardedOn: '',
+    tapeDates: ['', '', '', ''],
+    history: [
+      { ...shared, id: 'rank-black-a' },
+      { ...shared, id: 'rank-black-b' },
+      { ...shared, id: 'rank-black-c', tapeCount: 3 },
+    ],
+    lineage: [],
+  };
+  const lines = progressReportLines(report, { entries: [] });
+  assert.equal(lines.filter((line) => line === 'Black awarded 2010-01-02, 2 degrees').length, 1);
+  assert.equal(lines.filter((line) => line === 'Black awarded 2010-01-02, 3 degrees').length, 1);
+  const pdf = extractPdfText(progressReportPdf(report, { entries: [] }, {}, '2026-10-25'));
+  assert.equal(pdf.split('Black awarded 2010-01-02, 2 degrees').length - 1, 1);
+  assert.equal(pdf.split('Black awarded 2010-01-02, 3 degrees').length - 1, 1);
+  assert.equal(pdf.split('1st degree: 2013-03-04').length - 1, 2);
+  assert.equal(pdf.includes('Stripe 1: 2013-03-04'), false);
+});
+
+test('a kids progress PDF draws the belt and names the kids belt', () => {
+  let report = setBeltMode(blankStudentReport(30), 'kids', 31);
+  report = setKidsBelt(report, 'grey-white', 32);
+  report = setKidsTapeCount(report, 2, 33);
+  const art = beltArtDraws(report, 48, 700);
+  const fills = art.filter((draw) => draw.op === 'rect' && draw.fill).length;
+  assert.ok(fills >= 4);
+  const pdf = extractPdfText(progressReportPdf(report, { entries: [] }, {}, '2026-10-26'));
+  assert.match(pdf, /Grey\/White/);
+  assert.match(pdf, /Practical Benchmarks/);
+  assert.match(pdf, /No practical benchmarks yet/);
+  assert.match(pdf, /Personal Goals/);
+  const span = beltSpan(art);
+  assert.equal(span.width, REPORT_CONTENT_WIDTH);
+});
+
+type BeltRect = Extract<PdfDraw, { op: 'rect' }>;
+
+function beltSpan(draws: readonly PdfDraw[]): { rects: BeltRect[]; width: number } {
+  const rects = draws.filter((draw): draw is BeltRect => draw.op === 'rect');
+  const left = Math.min(...rects.map((rect) => rect.x));
+  const right = Math.max(...rects.map((rect) => rect.x + rect.w));
+  return { rects, width: right - left };
+}
+
+function fullHeightBands(draws: readonly PdfDraw[]): BeltRect[] {
+  return draws
+    .filter((draw): draw is BeltRect => draw.op === 'rect' && draw.h === REPORT_BELT_HEIGHT)
+    .sort((left, right) => left.x - right.x);
+}
+
+function sameFill(left: BeltRect['fill'], right: BeltRect['fill']): boolean {
+  if (!left || !right) return false;
+  return left.every((channel, index) => Math.abs(channel - (right[index] ?? -1)) < 0.02);
+}
+
+function assertRepeatingBars(draws: readonly PdfDraw[]) {
+  const bands = fullHeightBands(draws);
+  assert.equal(bands.length, 5);
+  assert.equal(beltSpan(draws).width, REPORT_CONTENT_WIDTH);
+  const changes = bands.slice(1).filter((band, index) => !sameFill(band.fill, bands[index]?.fill)).length;
+  assert.equal(changes, 4);
+  for (const band of bands) {
+    assert.ok(band.w > REPORT_CONTENT_WIDTH * 0.15, String(band.w));
+    assert.ok(band.w < REPORT_CONTENT_WIDTH * 0.25, String(band.w));
+  }
+  assert.ok(draws.some((draw) => draw.op === 'poly' && draw.fillOpacity != null && draw.fillOpacity < 1));
+  assert.ok(draws.some((draw) => draw.op === 'line' && draw.dash === true));
+}
+
+test('every progress belt is woven cloth, and coral repeats along the whole belt', () => {
+  const belts = ['white', 'blue', 'purple', 'brown', 'black', 'coral', 'redWhite', 'red'] as const;
+  for (const belt of belts) {
+    const draws = beltArtDraws(setRankBelt(blankStudentReport(1), belt, 2), 48, 700);
+    assert.equal(beltSpan(draws).width, REPORT_CONTENT_WIDTH);
+    assert.ok(draws.some((draw) => draw.op === 'poly' && (draw.fillOpacity ?? 1) < 1), belt);
+    assert.ok(draws.some((draw) => draw.op === 'line' && draw.dash === true), belt);
+    const widest = Math.max(...fullHeightBands(draws).map((band) => band.w));
+    assert.ok(widest > REPORT_CONTENT_WIDTH * 0.5 || belt === 'coral' || belt === 'redWhite', belt);
+  }
+  let kids = setBeltMode(blankStudentReport(3), 'kids', 4);
+  kids = setKidsBelt(kids, 'yellow-black', 5);
+  const kidsDraws = beltArtDraws(kids, 48, 700);
+  assert.equal(beltSpan(kidsDraws).width, REPORT_CONTENT_WIDTH);
+  assert.ok(kidsDraws.some((draw) => draw.op === 'poly' && (draw.fillOpacity ?? 1) < 1));
+  const black = fullHeightBands(beltArtDraws(setRankBelt(blankStudentReport(6), 'black', 7), 48, 700));
+  assert.equal(black.length, 3);
+  assert.ok(sameFill(black[0]?.fill, black[2]?.fill));
+  assert.equal(sameFill(black[0]?.fill, black[1]?.fill), false);
+});
+
+test('the progress PDF draws full-width belts and names black-belt degrees', () => {
+  const white = setRankTapeCount(setRankBelt(blankStudentReport(1), 'white', 2), 1, 3);
+  const blue = setRankTapeCount(setRankAwardedOn(setRankBelt(blankStudentReport(4), 'blue', 5), '2018-02-02', 6), 2, 7);
+  let black = setRankTapeCount(setRankAwardedOn(setRankBelt(blankStudentReport(8), 'black', 9), '2010-01-02', 10), 2, 11);
+  black = setRankTapeDate(black, 0, '2013-03-04', 12);
+  black = setRankTapeDate(black, 1, '2016-05-06', 13);
+  for (const report of [white, blue, black]) {
+    const span = beltSpan(beltArtDraws(report, 48, 700));
+    assert.equal(span.width, REPORT_CONTENT_WIDTH);
+    assert.ok(span.rects.some((rect) => rect.w > REPORT_CONTENT_WIDTH * 0.6));
+  }
+  const blackDraws = beltArtDraws(black, 48, 700);
+  const blackBands = fullHeightBands(blackDraws);
+  assert.equal(blackBands.length, 3);
+  const [blackBody, redBar, blackTip] = blackBands;
+  assert.ok(blackBody && redBar && blackTip);
+  assert.ok(blackBody.w > redBar.w && blackBody.w > blackTip.w);
+  assert.ok(sameFill(blackBody.fill, blackTip.fill));
+  assert.ok((redBar.fill?.[0] ?? 0) > 0.7 && (redBar.fill?.[1] ?? 1) < 0.25);
+  assert.ok(blackTip.x > redBar.x && redBar.x > blackBody.x);
+  assert.equal(blackDraws.some((draw) => draw.op === 'rect' && draw.h < REPORT_BELT_HEIGHT), false);
+  const blueArt = beltSpan(beltArtDraws(blue, 48, 700));
+  assert.ok(blueArt.rects.some((rect) => rect.h < REPORT_BELT_HEIGHT));
+  const pdf = extractPdfText(progressReportPdf(black, { entries: [] }, {}, '2026-10-26'));
+  assert.match(pdf, /Black · 2nd degree/);
+  assert.match(pdf, /Degrees: 2/);
+  assert.match(pdf, /1st degree: 2013-03-04/);
+  assert.match(pdf, /2nd degree: 2016-05-06/);
+  assert.equal(pdf.includes('Stripe 1'), false);
+  assert.equal(pdf.includes('Stripe 2'), false);
+  assert.match(pdf, /Current belt awarded: 2010-01-02/);
+});
+
+test('coral and red print as later degrees, in rank order, not as stripe belts', () => {
+  let report = withStarterRubric(blankStudentReport(1), 2);
+  report = setRankAwardedOn(setRankBelt(report, 'red', 3), '2015-06-07', 4);
+  report = setRankAwardedOn(setRankBelt(report, 'coral', 5), '2012-03-04', 6);
+  report = setRankBelt(report, 'red', 7);
+  const coralDraws = beltArtDraws(setRankBelt(blankStudentReport(20), 'coral', 21), 48, 700);
+  const redWhiteDraws = beltArtDraws(setRankBelt(blankStudentReport(22), 'redWhite', 23), 48, 700);
+  const redDraws = beltArtDraws(report, 48, 700);
+  assertRepeatingBars(coralDraws);
+  assertRepeatingBars(redWhiteDraws);
+  const coralBands = fullHeightBands(coralDraws);
+  const redWhiteBands = fullHeightBands(redWhiteDraws);
+  assert.ok(coralBands.some((band) => (band.fill?.[0] ?? 1) < 0.3));
+  assert.ok(redWhiteBands.some((band) => (band.fill?.[0] ?? 0) > 0.9 && (band.fill?.[2] ?? 0) > 0.8));
+  assert.equal(sameFill(coralBands[0]?.fill, redWhiteBands[0]?.fill), false);
+  const red = beltSpan(redDraws);
+  assert.equal(red.width, REPORT_CONTENT_WIDTH);
+  assert.equal(fullHeightBands(redDraws).length, 1);
+  assert.equal(fullHeightBands(redDraws)[0]?.w, REPORT_CONTENT_WIDTH);
+  const lines = progressReportLines(report, { entries: [] });
+  const joined = lines.join('\n');
+  const rank = joined.slice(joined.indexOf('Rank and stripes'), joined.indexOf('Belt progress'));
+  const progress = joined.slice(joined.indexOf('Belt progress'));
+  assert.match(rank, /Current rank: 9th degree · Red/);
+  assert.match(rank, /Current belt awarded: 2015-06-07/);
+  assert.match(rank, /7th degree · Coral, red and black awarded 2012-03-04/);
+  assert.equal(rank.includes('0 stripes'), false);
+  assert.equal(rank.includes('Stripe '), false);
+  assert.equal(progress.includes('\nCoral\n'), false);
+  assert.equal(progress.includes('\nRed\n'), false);
+  let cursor = -1;
+  for (const label of ['White', 'Blue', 'Purple', 'Brown', 'Black', '7th degree', '8th degree', '9th degree']) {
+    const at = progress.indexOf(label);
+    assert.ok(at > cursor, label);
+    cursor = at;
+  }
+  const pdf = extractPdfText(progressReportPdf(report, { entries: [] }, {}, '2026-10-26'));
+  assert.match(pdf, /9th degree · Red/);
+  assert.match(pdf, /7th degree · Coral, red and black/);
+  assert.equal(pdf.includes('0 stripes'), false);
+});
+
+test('a saved current-belt date is what the progress PDF prints', () => {
+  const dated = setRankAwardedOn(setRankBelt(blankStudentReport(1), 'blue', 2), '2019-04-03', 3);
+  const lines = progressReportLines(dated, { entries: [] }).join('\n');
+  assert.match(lines, /Current belt awarded: 2019-04-03/);
+  assert.equal(lines.includes('Current belt awarded: No date'), false);
+  const packet = JSON.parse(exportProgressPacket(dated)) as { rank?: { awardedOn?: string } };
+  assert.equal(packet.rank?.awardedOn, '2019-04-03');
+  const pdf = extractPdfText(progressReportPdf(dated, { entries: [] }, {}, '2026-10-26'));
+  assert.match(pdf, /Current belt awarded: 2019-04-03/);
+  const empty = setRankAwardedOn(dated, '', 4);
+  assert.match(progressReportLines(empty, { entries: [] }).join('\n'), /Current belt awarded: No date/);
 });

@@ -18,7 +18,9 @@ import {
 } from '../../lib/studentTools';
 import { tournamentClassLine } from '../../lib/divisionFields';
 import { isUpcomingTournament, tournamentStatusLabel, tournamentsOnDate } from '../../lib/progress/competition';
-import type { CalendarEvent, CalendarRepeat } from '../../lib/progress/types';
+import { removeTournament } from '../../lib/studentCompetition';
+import { eventHiddenBehindTournament, linkedCalendarEvent } from '../../lib/sharedTournaments';
+import type { CalendarEvent, CalendarRepeat, StudentProgressReport, StudentTournament } from '../../lib/progress/types';
 import { formatClassTime } from '../../lib/gymCalendar';
 import { rankMarks, rankMarksOnDate } from '../../lib/studentRank';
 import { todayIso, viewJournalEntry } from '../../lib/studentEdition';
@@ -92,7 +94,7 @@ export function CalendarPage() {
   const openDay = (iso: string) => {
     const hasJournal = marked.has(iso);
     const hasTournament = tournamentDays.has(iso);
-    const hasEvent = eventsOnDate(report, iso).length > 0;
+    const hasEvent = markedEvents(report, iso).length > 0;
     const hasRank = rankDays.has(iso);
     if (!hasJournal && !hasTournament && !hasEvent && !hasRank && iso === today) {
       navigate(to('/student/journal'));
@@ -128,7 +130,7 @@ export function CalendarPage() {
         ))}
         {weeks.flat().map((cell) => {
           const hasJournal = marked.has(cell.iso);
-          const hasEvent = eventsOnDate(report, cell.iso).length > 0;
+          const hasEvent = markedEvents(report, cell.iso).length > 0;
           return cell.inMonth ? (
             <button
               key={cell.iso}
@@ -298,7 +300,7 @@ export function CalendarDayPage({ date }: { date: string }) {
     );
   }
   const cards = entriesFor(report, date);
-  const events = eventsOnDate(report, date);
+  const events = markedEvents(report, date);
   const tournaments = tournamentsOnDate(report.competition?.tournaments ?? [], date);
   const ranks = rankMarksOnDate(report, date);
   const today = date === todayIso();
@@ -322,7 +324,9 @@ export function CalendarDayPage({ date }: { date: string }) {
         <section className="ink" aria-label="Tournaments">
           <h2 className="ink__label">Tournaments</h2>
           <ul className="comp-list">
-            {tournaments.map((tournament) => (
+            {tournaments.map((tournament) => {
+              const extra = tournament.date === date ? tournamentEventLine(linkedCalendarEvent(report, tournament), tournament) : '';
+              return (
               <li key={tournament.id}>
                 <strong>
                   {tournament.date === date ? tournamentStatusLabel(tournament.status) : 'Registration deadline'} · {tournament.name}
@@ -331,13 +335,23 @@ export function CalendarDayPage({ date }: { date: string }) {
                   {[tournament.location, tournamentClassLine(tournament)].filter(Boolean).join(' · ')}
                   {tournament.deadline && tournament.deadline !== tournament.date ? ` · register by ${tournament.deadline}` : ''}
                 </span>
+                {extra ? <span>{extra}</span> : null}
                 {tournament.link ? (
                   <a href={tournament.link} target="_blank" rel="noopener noreferrer">
                     {tournament.link}
                   </a>
                 ) : null}
+                <button
+                  type="button"
+                  className="ink-btn cal-remove"
+                  aria-label={`Remove ${tournament.name}`}
+                  onClick={() => commit(removeTournament(report, tournament.id))}
+                >
+                  Remove
+                </button>
               </li>
-            ))}
+              );
+            })}
           </ul>
           <Link className="ink-btn" to={to('/student/competitor')}>
             Competitor page
@@ -446,6 +460,21 @@ export function CalendarDayPage({ date }: { date: string }) {
 function inputValue(form: HTMLFormElement, name: string): string {
   const field = form.elements.namedItem(name);
   return field instanceof HTMLInputElement ? field.value : '';
+}
+
+function markedEvents(report: StudentProgressReport, iso: string): CalendarEvent[] {
+  const tournaments = tournamentsOnDate(report.competition?.tournaments ?? [], iso);
+  return eventsOnDate(report, iso).filter((event) => !eventHiddenBehindTournament(event, tournaments, iso));
+}
+
+function tournamentEventLine(event: CalendarEvent | undefined, tournament: StudentTournament): string {
+  if (!event) return '';
+  const bits: string[] = [];
+  if (event.time) bits.push(formatClassTime(event.time));
+  const repeat = calendarRepeatOf(event);
+  if (repeat !== 'none') bits.push(`${calendarRepeatLabel(repeat)} from ${event.date}`);
+  if (event.note && event.note !== tournament.location) bits.push(event.note);
+  return bits.join(' · ');
 }
 
 function eventDetail(event: CalendarEvent): string {

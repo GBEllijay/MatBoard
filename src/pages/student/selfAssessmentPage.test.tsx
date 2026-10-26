@@ -8,7 +8,7 @@
  * Radar chart. Trend chart.
  * Self-assessment date. Changing the date loads that day's note and ratings.
  * Guard, Passing, Takedowns, Escapes, Submissions, Conditioning, Mindset.
- * Each area: rating 1–5, pressed state, and Open {checkpoint} checkpoint
+ * Each area: rating 1–5, pressed state, and Open: {benchmark} benchmark
  * only when the belt the student wears has that checkpoint.
  * A white belt links Guard, Passes, and Escapes on white. It does not link
  * Takedowns or Submissions on blue. Conditioning and Mindset have no checkpoint.
@@ -20,8 +20,8 @@
  * Division and Weight class stay on the Competitor tournament form.
  *
  * Competitor controls that stay on Competitor, covered in competitorArena.test:
- * Back, Home, Belt rank, Open My rank, Jiu-Jitsu Journal, Today's page,
- * Journal cards, Open self-assessment, Search competition, Tournament name,
+ * Back, Home, Belt rank, Open: My rank, Jiu-Jitsu Journal, Today's page,
+ * Journal cards, Open: self-assessment, Search competition, Tournament name,
  * date, location, Division, Weight class, suggestions, deadline, link,
  * Considering, Entered, Pounds, Kilograms, Target division weight,
  * Add tournament, Save tournament, Cancel tournament edit, Earlier tournaments,
@@ -39,7 +39,9 @@ import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { radarPoints, selfAssessmentShapeLabel } from '../../lib/radarChart.ts';
-import { type AssessmentScores } from '../../lib/studentAssessment.ts';
+import { ASSESSMENT_STORAGE_KEY, type AssessmentScores } from '../../lib/studentAssessment.ts';
+import { installStudentMockGuard, resetStudentMockGuardForTests } from '../../lib/studentDemo.ts';
+import { STUDENT_BACKUP_STAMP_KEY } from '../../lib/studentBackupStamp.ts';
 import { blankStudentReport, saveStudentReport, todayIso } from '../../lib/studentEdition.ts';
 import { withStarterRubric } from '../../lib/studentTools.ts';
 import { CompetitorPage } from './CompetitorPage.tsx';
@@ -155,8 +157,11 @@ test('the self-assessment page keeps every control and Back returns to Rank & Pr
   assert.equal(shape?.getAttribute('aria-label'), selfAssessmentShapeLabel(null));
   assert.equal(host.querySelectorAll('polygon.assess-chart__shape').length, 0);
   assert.ok(host.querySelector('[aria-label^="Self-assessment trend"]'));
-  assert.equal(control(host, 'a', 'Open Guard checkpoint').getAttribute('href'), '/student/rubric?student=1#checkpoint.white.guard');
-  assert.equal(host.textContent?.includes('Open Takedowns checkpoint'), false);
+  assert.equal(
+    host.querySelector('a[href="/student/rubric?student=1#checkpoint.white.s1-positions"]')?.textContent,
+    'Open: Name the four basic control positions and hold each against a cooperative partner: closed guard, side control, mount, back control. benchmark',
+  );
+  assert.equal(host.textContent?.includes('Open: Conditioning benchmark'), false);
   assert.equal(host.querySelector('[aria-label="Division"]'), null);
   assert.equal(host.querySelector('[aria-label="Weight class"]'), null);
   assert.equal(host.textContent?.includes('Patrick Hand'), false);
@@ -185,12 +190,20 @@ test('a check-in saves, updates, and a white belt links only that belt', () => {
   saveStudentReport(localStorage, withStarterRubric(blankStudentReport()));
   const mounted = mount(<SelfAssessmentPage />);
   const { host } = mounted;
-  assert.equal(control(host, 'a', 'Open Guard checkpoint').getAttribute('href'), '/student/rubric#checkpoint.white.guard');
-  assert.equal(control(host, 'a', 'Open Passes checkpoint').getAttribute('href'), '/student/rubric#checkpoint.white.passes');
-  assert.equal(control(host, 'a', 'Open Escapes checkpoint').getAttribute('href'), '/student/rubric#checkpoint.white.escapes');
-  assert.equal(host.textContent?.includes('Open Takedowns checkpoint'), false);
-  assert.equal(host.textContent?.includes('Open Submissions checkpoint'), false);
-  assert.equal(host.textContent?.includes('Open Conditioning checkpoint'), false);
+  assert.equal(
+    host.querySelector('a[href="/student/rubric#checkpoint.white.s1-positions"]')?.textContent,
+    'Open: Name the four basic control positions and hold each against a cooperative partner: closed guard, side control, mount, back control. benchmark',
+  );
+  assert.equal(
+    host.querySelector('a[href="/student/rubric#checkpoint.white.s1-pass"]')?.textContent,
+    'Open: Open closed guard from the top and pass it one way in drilling. benchmark',
+  );
+  assert.equal(
+    host.querySelector('a[href="/student/rubric#checkpoint.white.s2-escape-resist"]')?.textContent,
+    'Open: Escape mount and side control with two different options each against a partner who starts to resist. benchmark',
+  );
+  assert.ok(host.querySelector('a[href="/student/rubric#checkpoint.white.promo-standing"]'));
+  assert.equal(host.textContent?.includes('Open: Conditioning benchmark'), false);
   assert.equal(
     [...host.querySelectorAll('a')].some((link) => link.getAttribute('href')?.includes('checkpoint.blue')),
     false,
@@ -258,16 +271,25 @@ test('a check-in saves, updates, and a white belt links only that belt', () => {
   unmount(again);
 });
 
-test('a blue belt links the checkpoints on blue', () => {
+test('a blue belt links the benchmarks on blue', () => {
   localStorage.clear();
   const report = withStarterRubric(blankStudentReport());
   report.profile.belt = 'blue';
   saveStudentReport(localStorage, report);
   const mounted = mount(<SelfAssessmentPage />);
   const { host } = mounted;
-  assert.equal(control(host, 'a', 'Open Half guard checkpoint').getAttribute('href'), '/student/rubric#checkpoint.blue.half-guard');
-  assert.equal(control(host, 'a', 'Open Takedowns checkpoint').getAttribute('href'), '/student/rubric#checkpoint.blue.takedowns');
-  assert.equal(control(host, 'a', 'Open Submissions checkpoint').getAttribute('href'), '/student/rubric#checkpoint.blue.submissions');
+  assert.equal(
+    host.querySelector('a[href="/student/rubric#checkpoint.blue.s1-half-bottom"]')?.textContent,
+    'Open: Keep your guard from being passed. Half guard from the bottom: a way to recover, a sweep and a back take. benchmark',
+  );
+  assert.equal(
+    host.querySelector('a[href="/student/rubric#checkpoint.blue.s4-takedowns"]')?.textContent,
+    'Open: Takedowns: connect a single leg, a double leg, and an arm drag or hip throw to a finish. benchmark',
+  );
+  assert.equal(
+    host.querySelector('a[href="/student/rubric#checkpoint.blue.s1-defend"]')?.textContent,
+    'Open: Defend submissions early (arm locks, triangle, chokes) before they are tight, stay calm, and escape them. benchmark',
+  );
   assert.equal(
     [...host.querySelectorAll('a')].some((link) => link.getAttribute('href')?.includes('checkpoint.white')),
     false,
@@ -297,10 +319,58 @@ test('old competitor self-assessment addresses open this page and remember where
 
   const stay = mount(routes, '/student/competitor?student=1');
   assert.equal(stay.host.querySelector('h1')?.textContent, 'Competitor');
-  assert.equal(control(stay.host, 'a', 'Open self-assessment').getAttribute('href'), '/student/self-assessment?from=competitor&student=1');
+  assert.equal(control(stay.host, 'a', 'Open: self-assessment').getAttribute('href'), '/student/self-assessment?from=competitor&student=1');
   labeled(stay.host, 'Division');
   labeled(stay.host, 'Weight class');
   unmount(stay);
+});
+
+test('a planted sim self-assessment does not show on the page, including a 10-26 entry', () => {
+  resetStudentMockGuardForTests();
+  localStorage.clear();
+  const planted = JSON.stringify({
+    entries: [
+      {
+        id: 'sim-1024',
+        date: '2026-10-24',
+        note: 'Mock self-assessment before Pan Pacific.',
+        scores: { guard: 5, passing: 4, takedowns: 4, escapes: 5, submissions: 4, conditioning: 4, mindset: 5 },
+      },
+      {
+        id: 'sim-1025',
+        date: '2026-10-25',
+        note: 'Drill the pass. Stop reaching.',
+        scores: { guard: 3, passing: 3, takedowns: 3, escapes: 4, submissions: 3, conditioning: 3, mindset: 4 },
+      },
+      {
+        id: 'sim-1026',
+        date: '2026-10-26',
+        note: 'Drill the pass. Stop reaching.',
+        scores: { guard: 3, passing: 3, takedowns: 3, escapes: 4, submissions: 3, conditioning: 3, mindset: 4 },
+      },
+    ],
+  });
+  localStorage.setItem(ASSESSMENT_STORAGE_KEY, planted);
+  localStorage.setItem(STUDENT_BACKUP_STAMP_KEY, '2026-10-25T12:00:00.000Z');
+  installStudentMockGuard(localStorage, () => '?student=1');
+  try {
+    const mounted = mount(<SelfAssessmentPage />, '/student/self-assessment?student=1');
+    assert.match(mounted.host.textContent ?? '', /No check-ins yet/);
+    assert.equal(mounted.host.textContent?.includes('Mock self-assessment'), false);
+    assert.equal(mounted.host.textContent?.includes('2026-10-24'), false);
+    assert.equal(control(mounted.host, 'button', 'Save self-assessment').textContent, 'Save self-assessment');
+    localStorage.setItem(ASSESSMENT_STORAGE_KEY, planted);
+    act(() => {
+      /* a dropped write does not add a row */
+    });
+    assert.match(mounted.host.textContent ?? '', /No check-ins yet/);
+    assert.equal(localStorage.getItem(ASSESSMENT_STORAGE_KEY), null);
+    assert.equal(localStorage.getItem(STUDENT_BACKUP_STAMP_KEY), null);
+    unmount(mounted);
+  } finally {
+    resetStudentMockGuardForTests();
+    localStorage.clear();
+  }
 });
 
 test('the print route still shows the self-assessment report', () => {

@@ -22,15 +22,142 @@ export const PROGRESS_BELTS = [
   'orange',
   'green',
   'coral',
+  'redWhite',
+  'red',
 ] as const;
 
 export type ProgressBelt = (typeof PROGRESS_BELTS)[number];
 
-/** Belts the student sets on My rank. Kids belts stay on the profile when a file already has one. */
+/** Belts with stripes on My rank. Kids belts stay on the profile when a file already has one. */
 export const RANK_BELTS = ['white', 'blue', 'purple', 'brown', 'black'] as const;
-export type RankBelt = (typeof RANK_BELTS)[number];
+/** 7th degree (red and black), 8th (red and white), and 9th (solid red). */
+export const FINAL_RANK_BELTS = ['coral', 'redWhite', 'red'] as const;
+export type FinalRankBelt = (typeof FINAL_RANK_BELTS)[number];
+export type RankBelt = (typeof RANK_BELTS)[number] | FinalRankBelt;
 /** Four stripe dates. Empty string means that stripe has no date. Slots past the tape count stay empty. */
 export type RankTapeDates = [string, string, string, string];
+/** Dates for black-belt degrees 5 and 6. Index 0 is the 5th degree. */
+export type HighDegreeDates = [string, string];
+
+/** Most tape slots one belt template can carry. IBJJF monthly kids belts use 11. */
+export const BELT_TAPE_SLOT_MAX = 16;
+/** Classes toward the next kids stripe, until the student changes it. */
+export const DEFAULT_CLASSES_PER_TAPE = 8;
+export const CLASSES_PER_TAPE_MAX = 40;
+/** Custom belt templates stored on the phone. Built-ins stay in code. */
+export const BELT_TEMPLATE_MAX = 12;
+export const BELT_TEMPLATE_BELTS_MAX = 40;
+
+export const BELT_SYSTEM_MODES = ['adult', 'kids'] as const;
+export type BeltSystemMode = (typeof BELT_SYSTEM_MODES)[number];
+
+export const TAPE_GUIDES = ['classes', 'time'] as const;
+export type TapeGuide = (typeof TAPE_GUIDES)[number];
+
+export const BELT_CENTERS = ['solid', 'white', 'black'] as const;
+export type BeltCenter = (typeof BELT_CENTERS)[number];
+
+/**
+ * One belt on a template. Order in the list is the ladder order.
+ * `id` stays stable so history can point at it after a rename.
+ */
+export type BeltTemplateDef = {
+  id: string;
+  name: string;
+  /** Cloth color, #rrggbb. */
+  base: string;
+  center: BeltCenter;
+  /** Optional cloth color for the center bar. Omitted uses white, black, or the base. */
+  centerColor?: string;
+  /** Name ink. Navy on light cloth, white on dark cloth. */
+  ink: 'navy' | 'white';
+  /**
+   * One color per tape slot. The last slots are the template's choice.
+   * IBJJF monthly defaults the last three to black.
+   */
+  tapeColors: string[];
+  /** Advisory only. The app does not hide or block a belt outside this window. */
+  ageMin?: number;
+  ageMax?: number;
+  group?: string;
+  /** Optional guide for a later editor. Not enforced. */
+  minMonths?: number;
+  /** End bar. Black on colored belts. Red on a black belt. */
+  bar?: string;
+  /** Nearest curriculum list. Starter sentences for kids come later. */
+  curriculumTier?: string;
+  /** Coral and red stay off the ladder until a black belt is worn. */
+  unlock?: 'afterBlack';
+};
+
+/** One belt on a template. History points at `id`. */
+export type BeltDef = BeltTemplateDef;
+
+/** A custom template saved on the student's file. Built-ins are not copied here. */
+export type BeltTemplateRecord = {
+  id: string;
+  name: string;
+  kind: 'custom';
+  version: number;
+  /** Built-in id this was copied from, when a later editor copies one. */
+  baseId?: string;
+  ageMode: 'kids' | 'adult' | 'any';
+  belts: BeltTemplateDef[];
+};
+
+export type KidsBeltHistory = {
+  id: string;
+  beltId: string;
+  awardedOn: string;
+  tapeCount: number;
+  tapeDates: string[];
+};
+
+/** A practical benchmark the student added on a kids belt. Starter lists come later. */
+export type KidsBenchmark = {
+  id: string;
+  beltId: string;
+  name: string;
+  met: boolean | null;
+  note: string;
+};
+
+/** Kids belt the student wears. Adult stripes and degrees stay on `StudentRank`. */
+export type KidsBeltRank = {
+  beltId: string;
+  awardedOn: string;
+  tapeCount: number;
+  tapeDates: string[];
+  history: KidsBeltHistory[];
+  /** Classes logged toward the next tape. Logging a class does not award a tape. */
+  classCount: number;
+};
+
+/**
+ * Which ladder My rank shows.
+ * Older files omit this. Adult is the default, and adult stripes stay on `rank`.
+ * Kids progress stays here when the student switches back to adult.
+ */
+export type BeltBook = {
+  mode?: BeltSystemMode;
+  /** `adult-ibjjf@1`, `kids-ibjjf@1`, or a custom template id. */
+  templateId?: string;
+  /** Kids template to open again after a switch back to adult. */
+  kidsTemplateId?: string;
+  /** Calendar year of birth. IBJJF age is the current year minus this year. */
+  birthYear?: number;
+  /** Classes suggested per tape. Default 8 when omitted. */
+  classesPerTape?: number;
+  /** How the student tracks the next tape. Default is classes. */
+  guide?: TapeGuide;
+  kids?: KidsBeltRank;
+  /** Set when the student moves to adult belts at 16. Kids belts stay read-only. */
+  earlier?: boolean;
+  /** Practical benchmarks on kids belts. Empty until the student adds one. */
+  benchmarks?: KidsBenchmark[];
+  /** Custom templates for a later editor. Reorder by array order. */
+  templates?: BeltTemplateRecord[];
+};
 
 /** A game / B game / C game. Same letters as the coach game-plan layers. */
 export const GAME_TAGS = ['a', 'b', 'c'] as const;
@@ -61,6 +188,39 @@ export type ProgressPacketKind = (typeof PROGRESS_PACKET_KINDS)[number];
 export const PROGRESS_ID_MAX = 80;
 export const PROGRESS_NAME_MAX = 80;
 export const PROGRESS_NOTE_MAX = 500;
+/** A practical benchmark sentence. Longer than a person's name. */
+export const PROGRESS_BENCHMARK_MAX = 500;
+
+export const TRAINING_STYLES = ['gi', 'nogi', 'both'] as const;
+export type TrainingStyle = (typeof TRAINING_STYLES)[number];
+
+export const BENCHMARK_STAGES = ['stripe-1', 'stripe-2', 'stripe-3', 'stripe-4', 'promotion'] as const;
+export type BenchmarkStage = (typeof BENCHMARK_STAGES)[number];
+
+export const BENCHMARK_POLICIES = ['straight-ankle', 'wrist-lock', 'leg-lock', 'heel-hook', 'competition'] as const;
+export type BenchmarkPolicy = (typeof BENCHMARK_POLICIES)[number];
+
+export type CriterionMatch = 'any' | 'all';
+
+/** Count catalog lines at a level when a benchmark is not tied to named techniques. */
+export type CatalogNeed = {
+  count: number;
+  level: 1 | 2 | 3 | 4 | 5;
+  categoryId?: string;
+};
+
+/**
+ * Saved overrides for technique defaults.
+ * A missing key uses the age and belt default. Leg locks and heel hooks are never shown for gi.
+ */
+export type TechniquePolicy = {
+  straightAnkleLock?: boolean;
+  wristLocks?: boolean;
+  legLocks?: boolean;
+  heelHooks?: boolean;
+  /** Optional brown-belt competition prompt. Missing means off. */
+  competition?: boolean;
+};
 export const PROGRESS_BODY_MAX = 4000;
 export const PROGRESS_SYNOPSIS_MAX = 4000;
 export const PROGRESS_EXAMPLE_MAX = 200;
@@ -82,8 +242,13 @@ export const PROGRESS_WEIGH_INS_MAX = 400;
 export const PROGRESS_RESULTS_MAX = 80;
 /** Earlier belts kept on My rank. */
 export const PROGRESS_RANK_HISTORY_MAX = 40;
-/** Stripe slots on the belt the student wears. The file stores this as tape count, not a stripes key. */
+/** Stripe slots on white through brown. The file stores this as tape count, not a stripes key. */
 export const RANK_TAPE_MAX = 4;
+/**
+ * Degrees on a black belt, stored in the same tape count.
+ * A saved count of 0 to 4 is that degree. Degrees 5 and 6 are newer.
+ */
+export const BLACK_DEGREE_MAX = 6;
 /** Instructor, their instructor, and so on. */
 export const PROGRESS_LINEAGE_MAX = 16;
 /** One compressed promotion photo. */
@@ -123,6 +288,10 @@ export type StudentProfile = {
   startedOn: string;
   /** Optional. Blank when this file does not record how the license was issued. */
   licenseSource: LicenseSource;
+  /** Gi, no-gi, or both. Missing means both for an adult and Gi for a kid. */
+  trainingStyle?: TrainingStyle;
+  /** Saved overrides. A missing key uses the age and belt default. */
+  techniquePolicy?: TechniquePolicy;
 };
 
 /**
@@ -135,15 +304,42 @@ export type RubricCriterion = {
   techniqueRefs: TechniqueRef[];
   met: boolean | null;
   note: string;
+  /** Missing means any one linked technique. `all` means every linked technique. */
+  match?: CriterionMatch;
+  /** Missing means level 3, Live with resistance. */
+  targetLevel?: 1 | 2 | 3 | 4 | 5;
+  /** Count of fundamentals at a level, when the benchmark is not a named list. */
+  catalogNeed?: CatalogNeed;
 };
 
-/** A checkpoint between levels. The student marks it met. */
+/** Who wrote a checkpoint. Absent on older files, which means the student. */
+export type CheckpointSource = 'own' | 'coach';
+
+/**
+ * A checkpoint between levels. The student marks it met.
+ * `source` is `coach` when a later coach template sent it. Absent means the student.
+ * `edited` is set when the student changes a coach checkpoint they are allowed to edit.
+ */
 export type RubricCheckpoint = {
   id: string;
   name: string;
   met: boolean | null;
   note: string;
   criteria: RubricCriterion[];
+  source?: CheckpointSource;
+  edited?: boolean;
+  /** Stripe or promotion group. Missing on older lists. */
+  stage?: BenchmarkStage;
+  /** Missing means both. */
+  style?: TrainingStyle;
+  /** Shown as "No-gi: …" when the student trains both, and swapped in for no-gi. */
+  noGiVariant?: string;
+  /** Hidden when this policy is off. Leg locks and heel hooks are also hidden for gi. */
+  policy?: BenchmarkPolicy;
+  /** Link the current IBJJF rule book. */
+  rulebook?: boolean;
+  /** Shown when opted in. Does not count toward the stripe or promotion totals. */
+  optional?: boolean;
 };
 
 /** One level on the rubric. Checkpoints are the steps inside it. */
@@ -152,19 +348,39 @@ export type RubricLevel = {
   name: string;
   belt: ProgressBelt;
   checkpoints: RubricCheckpoint[];
+  /**
+   * The suggested list was applied, or the student cleared it.
+   * Stops an empty list from being filled again. Missing on older files.
+   */
+  starterAck?: boolean;
 };
 
+/**
+ * The student's rubric.
+ * `studentsCanEdit` is the template lock for coach checkpoints.
+ * Absent or true: a student who bought Student Edition can edit every checkpoint.
+ * False: coach-sourced checkpoints stay read-only. Own checkpoints stay editable.
+ * The coach template builder is not in this build.
+ */
 export type StudentRubric = {
   id: string;
   levels: RubricLevel[];
+  studentsCanEdit?: boolean;
 };
 
-/** A goal the student owns. Coach files do not write these. */
+/**
+ * A goal the student owns. Coach files do not write these.
+ * Goals never change a belt, a stripe, or a degree.
+ * `belt` is the stage the goal was added on. Absent on older goals, which stay visible.
+ */
 export type StudentGoal = {
   id: string;
   name: string;
   note: string;
   met: boolean | null;
+  belt?: ProgressBelt;
+  /** Kids belt this goal was added on. Absent on adult goals. */
+  kidsBeltId?: string;
 };
 
 /** One fundamentals name. `examples` stays empty while the sheet is names only. */
@@ -215,6 +431,10 @@ export type StudentChecklistEntry = {
 export type TechniqueRef = {
   id: string;
   name: string;
+  /** Missing means both. Gi-only names are hidden when the student trains no-gi. */
+  style?: TrainingStyle;
+  /** Missing means the benchmark target, or level 3. */
+  targetLevel?: 1 | 2 | 3 | 4 | 5;
 };
 
 /** A later-cycle note on a journal card. Append-only. Never replaces the card. */
@@ -270,6 +490,11 @@ export type CalendarEvent = {
    * `weekly`, `biweekly` (every 2 weeks), or `monthly` from `date`.
    */
   repeat?: Exclude<CalendarRepeat, 'none'>;
+  /**
+   * Set when this event is the calendar copy of one competition tournament.
+   * Omitted on classes, open mats, promotion tests, and older files.
+   */
+  tournamentId?: string;
 };
 
 /** Standing A, B, or C game. Techniques and sequences, plus notes. One copy for the journal and Competitor. */
@@ -290,7 +515,8 @@ export type TournamentGoal = {
 
 /**
  * A tournament the student is entered in or considering.
- * The student calendar reads this list. It is not copied into calendar events.
+ * Competitor, Calendar, and Results share this list.
+ * Calendar keeps one linked event (kind `other`) for the day, time, and repeat.
  */
 export type StudentTournament = {
   id: string;
@@ -301,7 +527,9 @@ export type StudentTournament = {
   /**
    * Age group, belt, and gi, in the student's words.
    * Files saved before weight class was its own field may still hold both here.
-   * Import splits that text when the second part is a usual weight class.
+   * Import splits a usual weight class from the end, with or without a slash:
+   * "Adult / Feather" and "Adult Black Medium Heavy".
+   * A phrase that is not a division plus a weight class stays here whole.
    */
   division: string;
   /**
@@ -367,7 +595,9 @@ export type CompetitionResult = {
 
 /**
  * One earlier belt. Written when the student changes the belt they wear
- * and that belt already had a date or a stripe.
+ * and that belt already had a date, a stripe, or instructor bars.
+ * The same promotion is one row: belt, stripe or degree count, and awarded date.
+ * Selecting that belt again restores the row instead of logging another.
  */
 export type RankHistory = {
   id: string;
@@ -376,11 +606,17 @@ export type RankHistory = {
   awardedOn: string;
   tapeCount: number;
   tapeDates: RankTapeDates;
+  /** Black-belt degrees 5 and 6. Omitted on older rows and on colored belts. */
+  highDegreeDates?: HighDegreeDates;
+  /** Optional instructor bars copied with a black belt. Not a rank. Omitted when off. */
+  instructorBars?: boolean;
+  /** YYYY-MM-DD instructor bars were awarded, or omitted. */
+  instructorBarsOn?: string;
 };
 
 /**
  * One promotion photo in an export.
- * `tapeIndex` is 0 to 3 when the photo belongs to a stripe. Omitted for a belt photo.
+ * `tapeIndex` is 0 to 3 for a stripe, or 0 to 5 for a black-belt degree. Omitted for a belt photo.
  */
 export type RankPicture = {
   belt: RankBelt;
@@ -390,7 +626,8 @@ export type RankPicture = {
 
 /**
  * Stripes and dates for the belt on `profile.belt`.
- * Optional. Older files omit it. `tapeCount` is 0 to 4.
+ * Optional. Older files omit it. `tapeCount` is 0 to 4 stripes.
+ * On a black belt the same count is the degree, 0 to 6. A saved 0 to 4 stays that degree.
  * This object does not use a stripe, stripes, or levelKey field.
  */
 export type StudentRank = {
@@ -398,6 +635,15 @@ export type StudentRank = {
   /** YYYY-MM-DD the student got the current belt, or empty. */
   awardedOn: string;
   tapeDates: RankTapeDates;
+  /** Dates for degrees 5 and 6. Omitted on older files and when the degree is 0 to 4. */
+  highDegreeDates?: HighDegreeDates;
+  /**
+   * Optional instructor bars on a black belt. Some schools award them at about 2 years.
+   * Not a degree and not a rank. Omitted on older files and when the student leaves them off.
+   */
+  instructorBars?: boolean;
+  /** YYYY-MM-DD instructor bars were awarded, or omitted when blank. */
+  instructorBarsOn?: string;
   history: RankHistory[];
   /**
    * Instructor lineage, one person per entry. The first is the student's instructor.
@@ -406,6 +652,12 @@ export type StudentRank = {
    * Absent on older files. An empty list is a lineage the student cleared.
    */
   lineage?: string[];
+  /**
+   * One optional note per degree, index 0 through 9.
+   * 0 is plain black. 1 to 6 are black-belt degrees. 7 is coral, 8 is red and white, 9 is red.
+   * A note is not a checklist and does not change a degree. Absent on older files.
+   */
+  degreeFocus?: string[];
   /**
    * Compressed promotion photos. Present on an export when they fit.
    * The copy on the phone keeps the images in local storage, not in this field.
@@ -500,16 +752,35 @@ export type StudentProgressReport = PacketBase & {
    * Omitted on older files. Import does not erase a rank already on the device.
    */
   rank?: StudentRank;
+  /**
+   * Adult or kids belt ladder. Omitted on older files, which stay on the adult ladder.
+   * Switching ladders does not erase the other one.
+   */
+  beltBook?: BeltBook;
+};
+
+/**
+ * Gym name and optional logo carried in a coach file.
+ * Older files omit this. A student can replace or remove the logo after import.
+ */
+export type CoachGymBrand = {
+  name: string;
+  /** Downscaled data URL. Absent when the file has no logo. */
+  logo?: string;
 };
 
 export type CoachPlanPacket = PacketBase & {
   kind: 'coach-plan';
   plan: CoachPlan;
+  /** Optional. Absent on files written before gym branding. */
+  gym?: CoachGymBrand;
 };
 
 export type CoachFeedbackPacket = PacketBase & {
   kind: 'coach-feedback';
   feedback: CoachFeedback;
+  /** Optional. Absent on files written before gym branding. */
+  gym?: CoachGymBrand;
 };
 
 export type ProgressPacket = StudentProgressReport | CoachPlanPacket | CoachFeedbackPacket;

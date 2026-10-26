@@ -8,9 +8,11 @@ import { Window } from 'happy-dom';
 import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
+import { buildGymBrandFile } from '../../lib/coachGymFile.ts';
 import { exportProgressPacket } from '../../lib/progress/format.ts';
 import type { CoachFeedbackPacket } from '../../lib/progress/types.ts';
 import { addJournalEntry, blankStudentReport, loadStudentReport, saveStudentReport } from '../../lib/studentEdition.ts';
+import { readStudentGymLogo } from '../../lib/studentGymMark.ts';
 import { COACH_FEEDBACK_STORAGE_KEY, COACH_PLAN_STORAGE_KEY } from '../../lib/studentTools.ts';
 import { SharePage } from './SharePage.tsx';
 
@@ -248,7 +250,7 @@ test('share page controls still make a file, explain a coach file, and import on
   assert.equal(page.host.querySelector('[role="alert"]'), null);
   assert.equal(loadStudentReport(localStorage).journal.length, beforePlan.journal.length);
 
-  const connections = [...page.host.querySelectorAll('a')].find((node) => node.textContent?.trim() === 'Open Connections');
+  const connections = [...page.host.querySelectorAll('a')].find((node) => node.textContent?.trim() === 'Open: Connections');
   assert.match(connections?.getAttribute('href') ?? '', /\/student\/connections\?student=1/);
   click(button(page.host, 'Cancel merge'));
   assert.equal(page.host.textContent?.includes('This file is the one for your coach'), false);
@@ -290,6 +292,53 @@ test('share page controls still make a file, explain a coach file, and import on
   await chooseFile(picker, 'marked.json', JSON.stringify(marked));
   assert.match(page.host.querySelector('[role="alert"]')?.textContent ?? '', /cannot do that, so it was not imported/);
   assert.equal(loadStudentReport(localStorage).journal.some((entry) => entry.body.includes('only on this phone')), true);
+
+  unmount(page);
+});
+
+test('a gym brand file still imports the name and logo on the share page', async () => {
+  localStorage.clear();
+  const phone = addJournalEntry(
+    blankStudentReport(8),
+    {
+      date: '2026-10-23',
+      className: 'Fundamentals',
+      gameTag: '',
+      techniques: [],
+      partners: '',
+      drills: '',
+      rolls: '',
+      notes: 'only on this phone',
+    },
+    8,
+  );
+  saveStudentReport(localStorage, phone);
+  const page = mount('/student/share?student=1');
+  const picker = page.host.querySelector('input[type="file"]') as HTMLInputElement;
+  saved.length = 0;
+  click(button(page.host, 'Download a sample coach file'));
+  assert.equal(saved.length, 1);
+  const sampleText = await textOf(saved[0].blob);
+  await chooseFile(picker, saved[0].name, sampleText);
+  const storedPlan = JSON.parse(localStorage.getItem(COACH_PLAN_STORAGE_KEY) ?? '{}') as { plan?: { title?: string } };
+  assert.equal(storedPlan.plan?.title, 'Sample coach plan');
+
+  const logo = 'data:image/png;base64,BBBB';
+  const file = buildGymBrandFile({ name: 'GB Ellijay', logo, issuedOn: '2026-10-26', now: 30 });
+  await chooseFile(picker, 'advantage-gym-file.json', file);
+  assert.match(page.host.textContent ?? '', /Gym name and logo are on this phone/);
+  assert.match(page.host.textContent ?? '', /journal was not changed/);
+  assert.equal(readStudentGymLogo(localStorage), logo);
+  const savedReport = loadStudentReport(localStorage);
+  assert.equal(savedReport.profile.gymName, 'GB Ellijay');
+  assert.ok(savedReport.journal.some((entry) => entry.body.includes('only on this phone')));
+  assert.equal(JSON.parse(localStorage.getItem(COACH_PLAN_STORAGE_KEY) ?? '{}').plan?.title, 'Sample coach plan');
+
+  await chooseFile(picker, 'notes.txt', 'hello from class', 'text/plain');
+  assert.match(page.host.querySelector('[role="alert"]')?.textContent ?? '', /This file is not JSON/);
+  assert.match(page.host.querySelector('[role="alert"]')?.textContent ?? '', /coach plan or coach feedback/);
+  assert.equal(loadStudentReport(localStorage).profile.gymName, 'GB Ellijay');
+  assert.equal(readStudentGymLogo(localStorage), logo);
 
   unmount(page);
 });

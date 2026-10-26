@@ -5,9 +5,9 @@
  *
  * Touched controls:
  * Back. Hold for Home. Home.
- * Belt rank, Open My rank.
+ * Belt rank, Open: My rank.
  * Jiu-Jitsu Journal, Today's page, Journal cards.
- * Self-assessment section, Open self-assessment (the form is on /student/self-assessment).
+ * Self-assessment section, Open: self-assessment (the form is on /student/self-assessment).
  * Search competition. It matches division and weight class as separate fields.
  * Tournament name, date, location, Division, Weight class, deadline, link.
  * Division suggestions and Weight class suggestions. Free text still saves.
@@ -15,7 +15,9 @@
  * Target division weight, Add tournament, Save tournament, Cancel tournament edit.
  * Earlier tournaments, goal, goal note, add goal, mark met, remove goal,
  * Edit, Remove, Confirm remove, Keep tournament.
- * A/B/C game techniques, game plan, Save game A/B/C.
+ * A/B/C game techniques, game plan, per-game Saved/Unsaved, Save game A/B/C.
+ * Saving one game leaves the other games' unsaved text in place.
+ * Leaving the page keeps those drafts. Tournament remove still asks first.
  * Weight: unit, chart, target, weigh-in date/weight/note, Add weigh-in, Remove weigh-in.
  * Results: tracked tournament, name, division, Add result, match, method, bracket, photo, remove.
  * Scouting: template, import, export, search, class, opponent fields, add/edit/remove.
@@ -29,12 +31,13 @@ import test from 'node:test';
 import { Window } from 'happy-dom';
 import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { MemoryRouter } from 'react-router-dom';
+import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { emptyAssessments, saveAssessment, writeAssessments, type AssessmentScores } from '../../lib/studentAssessment.ts';
-import { addTournament, addWeighIn } from '../../lib/studentCompetition.ts';
-import { blankStudentReport, saveStudentReport } from '../../lib/studentEdition.ts';
+import { addTournament, addWeighIn, setCompetitionGame } from '../../lib/studentCompetition.ts';
+import { blankStudentReport, loadStudentReport, saveStudentReport } from '../../lib/studentEdition.ts';
 import { SCOUTING_STORAGE_KEY, addScoutingCard, loadScouting, saveScouting } from '../../lib/studentScouting.ts';
 import { CompetitorPage } from './CompetitorPage.tsx';
+import { GAME_DRAFT_STORAGE_KEY, reconcileGameDrafts } from './StandingGames.tsx';
 import { ResultsPage } from './ResultsPage.tsx';
 import { ScoutingPage } from './ScoutingPage.tsx';
 import { WeightPage } from './WeightPage.tsx';
@@ -104,6 +107,7 @@ function precedes(earlier: Element, later: Element) {
 
 test('competitor keeps every control, with rank then journal then a self-assessment link then the work', () => {
   localStorage.clear();
+  sessionStorage.clear();
   const mounted = mount(<CompetitorPage />);
   const { host } = mounted;
   const main = host.querySelector('main');
@@ -125,7 +129,7 @@ test('competitor keeps every control, with rank then journal then a self-assessm
   precedes(tournaments, games);
   assert.ok(journal.classList.contains('arena-journal'));
   assert.match(rank.textContent ?? '', /White/);
-  assert.equal(control(host, 'a', 'Open My rank').getAttribute('href'), '/student/rank');
+  assert.equal(control(host, 'a', 'Open: My rank').getAttribute('href'), '/student/rank');
   assert.equal(control(host, 'a', "Today's page").getAttribute('href'), '/student/journal');
   assert.equal(control(host, 'a', 'Journal cards').getAttribute('href'), '/student/cards');
 
@@ -161,7 +165,9 @@ test('competitor keeps every control, with rank then journal then a self-assessm
   for (const name of ['Considering', 'Entered', 'Pounds', 'Kilograms', 'Add tournament', 'Save game A', 'Save game B', 'Save game C']) {
     control(host, 'button', name);
   }
-  assert.equal(control(assess, 'a', 'Open self-assessment').getAttribute('href'), '/student/self-assessment?from=competitor');
+  for (const name of ['A game saved', 'B game saved', 'C game saved']) labeled(host, name);
+  assert.match(host.textContent ?? '', /Each game saves on its own/);
+  assert.equal(control(assess, 'a', 'Open: self-assessment').getAttribute('href'), '/student/self-assessment?from=competitor');
   assert.equal(host.querySelector('[aria-label="Self-assessment date"]'), null);
   assert.equal(host.querySelector('[aria-label="Guard 1"]'), null);
   assert.equal(
@@ -383,4 +389,196 @@ test('opponent ratings persist, an old card still opens, and me versus them uses
   assert.match(legacy.host.textContent ?? '', /Rate this opponent to see their shape/);
   assert.equal(legacy.host.querySelectorAll('polygon.assess-chart__shape').length, 0);
   unmount(legacy);
+});
+
+function valueOf(host: ParentNode, name: string): string {
+  return (labeled(host, name) as HTMLTextAreaElement).value;
+}
+
+function leaveCanceled(): boolean {
+  const event = new Event('beforeunload', { cancelable: true });
+  return window.dispatchEvent(event) === false;
+}
+
+test('saving one game keeps the other drafts, then each save and a tournament delete stay separate', () => {
+  localStorage.clear();
+  sessionStorage.clear();
+  let report = blankStudentReport(20);
+  report = setCompetitionGame(report, 'b', { techniques: 'Knee slice', notes: 'far hip' }, 21);
+  saveStudentReport(localStorage, report);
+
+  const hostEl = document.createElement('div');
+  document.body.appendChild(hostEl);
+  const root = createRoot(hostEl);
+  const renderAt = (path: string) => {
+    act(() => {
+      root.render(
+        <MemoryRouter initialEntries={[path]}>
+          <Routes>
+            <Route path="/student/competitor" element={<CompetitorPage />} />
+            <Route path="/student/compete" element={<Link to="/student/competitor">Return to competitor</Link>} />
+          </Routes>
+        </MemoryRouter>,
+      );
+    });
+  };
+  renderAt('/student/competitor');
+
+  assert.equal(valueOf(hostEl, 'B game techniques'), 'Knee slice');
+  assert.equal(valueOf(hostEl, 'B game plan'), 'far hip');
+  labeled(hostEl, 'B game saved');
+
+  setControl(labeled(hostEl, 'A game techniques') as HTMLTextAreaElement, ' Armbar from mount ');
+  setControl(labeled(hostEl, 'A game plan') as HTMLTextAreaElement, 'Finish the grip');
+  setControl(labeled(hostEl, 'B game techniques') as HTMLTextAreaElement, 'Knee slice pass');
+  setControl(labeled(hostEl, 'B game plan') as HTMLTextAreaElement, 'near hip');
+  setControl(labeled(hostEl, 'C game techniques') as HTMLTextAreaElement, 'Berimbolo');
+  setControl(labeled(hostEl, 'C game plan') as HTMLTextAreaElement, 'Invert');
+  labeled(hostEl, 'A game unsaved');
+  labeled(hostEl, 'B game unsaved');
+  labeled(hostEl, 'C game unsaved');
+  assert.equal(leaveCanceled(), true);
+
+  act(() => {
+    control(hostEl, 'button', 'Save game A').click();
+  });
+
+  assert.equal(valueOf(hostEl, 'A game techniques'), 'Armbar from mount');
+  assert.equal(valueOf(hostEl, 'A game plan'), 'Finish the grip');
+  assert.equal(valueOf(hostEl, 'B game techniques'), 'Knee slice pass');
+  assert.equal(valueOf(hostEl, 'B game plan'), 'near hip');
+  assert.equal(valueOf(hostEl, 'C game techniques'), 'Berimbolo');
+  assert.equal(valueOf(hostEl, 'C game plan'), 'Invert');
+  labeled(hostEl, 'A game saved');
+  labeled(hostEl, 'B game unsaved');
+  labeled(hostEl, 'C game unsaved');
+  assert.equal(leaveCanceled(), true);
+
+  let stored = loadStudentReport(localStorage);
+  assert.equal(stored.competition?.games.a.techniques, 'Armbar from mount');
+  assert.equal(stored.competition?.games.a.notes, 'Finish the grip');
+  assert.equal(stored.competition?.games.b.techniques, 'Knee slice');
+  assert.equal(stored.competition?.games.b.notes, 'far hip');
+  assert.equal(stored.competition?.games.c.techniques, '');
+  assert.equal(stored.competition?.games.c.notes, '');
+
+  act(() => {
+    labeled(hostEl, 'Back. Hold for Home.').click();
+  });
+  assert.equal(control(hostEl, 'a', 'Return to competitor').getAttribute('href'), '/student/competitor');
+  act(() => {
+    control(hostEl, 'a', 'Return to competitor').click();
+  });
+  assert.equal(valueOf(hostEl, 'A game techniques'), 'Armbar from mount');
+  assert.equal(valueOf(hostEl, 'B game techniques'), 'Knee slice pass');
+  assert.equal(valueOf(hostEl, 'B game plan'), 'near hip');
+  assert.equal(valueOf(hostEl, 'C game techniques'), 'Berimbolo');
+  assert.equal(valueOf(hostEl, 'C game plan'), 'Invert');
+  labeled(hostEl, 'A game saved');
+  labeled(hostEl, 'B game unsaved');
+  labeled(hostEl, 'C game unsaved');
+
+  act(() => {
+    control(hostEl, 'button', 'Save game B').click();
+  });
+  assert.equal(valueOf(hostEl, 'C game techniques'), 'Berimbolo');
+  assert.equal(valueOf(hostEl, 'C game plan'), 'Invert');
+  labeled(hostEl, 'B game saved');
+  labeled(hostEl, 'C game unsaved');
+  stored = loadStudentReport(localStorage);
+  assert.equal(stored.competition?.games.a.techniques, 'Armbar from mount');
+  assert.equal(stored.competition?.games.b.techniques, 'Knee slice pass');
+  assert.equal(stored.competition?.games.b.notes, 'near hip');
+  assert.equal(stored.competition?.games.c.techniques, '');
+
+  act(() => {
+    control(hostEl, 'button', 'Save game C').click();
+  });
+  assert.equal(valueOf(hostEl, 'A game techniques'), 'Armbar from mount');
+  assert.equal(valueOf(hostEl, 'B game techniques'), 'Knee slice pass');
+  assert.equal(valueOf(hostEl, 'C game techniques'), 'Berimbolo');
+  assert.equal(valueOf(hostEl, 'C game plan'), 'Invert');
+  labeled(hostEl, 'A game saved');
+  labeled(hostEl, 'B game saved');
+  labeled(hostEl, 'C game saved');
+  assert.equal(leaveCanceled(), false);
+  assert.equal(sessionStorage.getItem(GAME_DRAFT_STORAGE_KEY), null);
+  stored = loadStudentReport(localStorage);
+  assert.equal(stored.competition?.games.a.notes, 'Finish the grip');
+  assert.equal(stored.competition?.games.b.notes, 'near hip');
+  assert.equal(stored.competition?.games.c.techniques, 'Berimbolo');
+  assert.equal(stored.competition?.games.c.notes, 'Invert');
+
+  setControl(labeled(hostEl, 'Tournament name') as HTMLInputElement, 'Spring Open');
+  setControl(labeled(hostEl, 'Tournament date') as HTMLInputElement, '2026-12-01');
+  act(() => {
+    control(hostEl, 'button', 'Entered').click();
+  });
+  act(() => {
+    control(hostEl, 'button', 'Add tournament').click();
+  });
+  act(() => {
+    control(hostEl, 'button', 'Remove Spring Open').click();
+  });
+  assert.equal(valueOf(hostEl, 'A game techniques'), 'Armbar from mount');
+  assert.equal(valueOf(hostEl, 'B game plan'), 'near hip');
+  assert.equal(valueOf(hostEl, 'C game techniques'), 'Berimbolo');
+  act(() => {
+    control(hostEl, 'button', 'Keep tournament').click();
+  });
+  assert.match(hostEl.textContent ?? '', /Entered · Spring Open/);
+  act(() => {
+    control(hostEl, 'button', 'Remove Spring Open').click();
+  });
+  act(() => {
+    control(hostEl, 'button', 'Confirm remove Spring Open').click();
+  });
+  assert.equal(hostEl.textContent?.includes('Entered · Spring Open'), false);
+  assert.equal(valueOf(hostEl, 'A game techniques'), 'Armbar from mount');
+  assert.equal(valueOf(hostEl, 'A game plan'), 'Finish the grip');
+  assert.equal(valueOf(hostEl, 'B game techniques'), 'Knee slice pass');
+  assert.equal(valueOf(hostEl, 'B game plan'), 'near hip');
+  assert.equal(valueOf(hostEl, 'C game techniques'), 'Berimbolo');
+  assert.equal(valueOf(hostEl, 'C game plan'), 'Invert');
+  stored = loadStudentReport(localStorage);
+  assert.equal(stored.competition?.tournaments.length, 0);
+  assert.equal(stored.competition?.games.a.techniques, 'Armbar from mount');
+  assert.equal(stored.competition?.games.b.techniques, 'Knee slice pass');
+  assert.equal(stored.competition?.games.c.notes, 'Invert');
+
+  setControl(labeled(hostEl, 'A game techniques') as HTMLTextAreaElement, '');
+  setControl(labeled(hostEl, 'A game plan') as HTMLTextAreaElement, '');
+  labeled(hostEl, 'A game unsaved');
+  act(() => {
+    control(hostEl, 'button', 'Save game A').click();
+  });
+  labeled(hostEl, 'A game saved');
+  assert.equal(valueOf(hostEl, 'B game techniques'), 'Knee slice pass');
+  assert.equal(valueOf(hostEl, 'C game plan'), 'Invert');
+  stored = loadStudentReport(localStorage);
+  assert.equal(stored.competition?.games.a.techniques, '');
+  assert.equal(stored.competition?.games.a.notes, '');
+  assert.equal(stored.competition?.games.b.techniques, 'Knee slice pass');
+  assert.equal(stored.competition?.games.c.techniques, 'Berimbolo');
+  assert.equal(stored.competition?.games.c.notes, 'Invert');
+
+  act(() => root.unmount());
+  hostEl.remove();
+  sessionStorage.clear();
+});
+
+test('a saved game replaces only that draft when the file trims it', () => {
+  const empty = { techniques: '', notes: '' };
+  const kept = reconcileGameDrafts(
+    {
+      a: { techniques: ' Armbar ', notes: 'Finish the grip' },
+      b: { techniques: 'Knee slice pass', notes: 'near hip' },
+      c: { techniques: 'Berimbolo', notes: 'Invert' },
+    },
+    { a: empty, b: { techniques: 'Knee slice', notes: 'far hip' }, c: empty },
+    { a: { techniques: 'Armbar', notes: 'Finish the grip' }, b: { techniques: 'Knee slice', notes: 'far hip' }, c: empty },
+  );
+  assert.deepEqual(kept.a, { techniques: 'Armbar', notes: 'Finish the grip' });
+  assert.deepEqual(kept.b, { techniques: 'Knee slice pass', notes: 'near hip' });
+  assert.deepEqual(kept.c, { techniques: 'Berimbolo', notes: 'Invert' });
 });

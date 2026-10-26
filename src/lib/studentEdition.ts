@@ -3,14 +3,24 @@
  * report from src/lib/progress. Nothing here is sent to a server.
  */
 
+import { beltModeOf, ibjjfAge, withBeltTemplate } from './beltBook.ts';
 import { fundamentalLevelOf, FUNDAMENTAL_LIVE_LEVEL, isFundamentalLevel, type FundamentalLevel } from './fundamentals.ts';
+import { ageIllegalTechniques, defaultTechniquePolicy } from './studentBenchmarks.ts';
 import { joinJournalNotes, splitJournalNotes } from './journalNotes.ts';
 import { FUNDAMENTALS_CATALOG } from './progress/catalog.ts';
 import { emptyCompetition, matchingGameTags } from './progress/competition.ts';
 import { emptyRank } from './studentRank.ts';
-import { beginAppStudentSave, endAppStudentSave, noteAppStudentSave } from './studentDemo.ts';
+import {
+  beginAppStudentSave,
+  endAppStudentSave,
+  isSimulatedStudentPayload,
+  noteAppStudentSave,
+  notifyStudentJournal,
+  studentDemoRequested,
+} from './studentDemo.ts';
 import { isStudentEditionUnlocked } from './studentUnlock.ts';
 import { exportProgressPacket, parseProgressPacket, searchJournal, searchJournalClips, techniqueDrilledLabel } from './progress/format.ts';
+import { shareTournaments } from './sharedTournaments.ts';
 import {
   PROGRESS_CLIP_URL_MAX,
   PROGRESS_CLIPS_MAX,
@@ -22,7 +32,9 @@ import {
   type JournalEntry,
   type StudentChecklistEntry,
   type StudentProgressReport,
+  type TechniquePolicy,
   type TechniqueRef,
+  type TrainingStyle,
 } from './progress/types.ts';
 
 export const STUDENT_EDITION_STORAGE_KEY = 'matboard.studentEdition.v1';
@@ -181,16 +193,25 @@ export function blankStudentReport(now = Date.now()): StudentProgressReport {
   };
 }
 
-export function loadStudentReport(storage: Pick<Storage, 'getItem'>): StudentProgressReport {
+export function loadStudentReport(storage: Pick<Storage, 'getItem'> & { removeItem?: (key: string) => void }): StudentProgressReport {
   const raw = storage.getItem(STUDENT_EDITION_STORAGE_KEY);
   if (!raw) return blankStudentReport();
+  if (!studentDemoRequested() && isSimulatedStudentPayload(raw)) {
+    storage.removeItem?.(STUDENT_EDITION_STORAGE_KEY);
+    return blankStudentReport();
+  }
   const parsed = parseProgressPacket(raw);
   if (!parsed.ok || parsed.value.kind !== 'student-progress-report') return blankStudentReport();
-  return parsed.value;
+  return withBeltTemplate(shareTournaments(parsed.value));
 }
 
 export function saveStudentReport(storage: MemoryStore, report: StudentProgressReport): StudentProgressReport {
-  const text = exportProgressPacket(report);
+  let shared = withBeltTemplate(shareTournaments(report));
+  let text = exportProgressPacket(shared);
+  if (!studentDemoRequested() && isSimulatedStudentPayload(text)) {
+    shared = blankStudentReport(shared.updatedAt);
+    text = exportProgressPacket(shared);
+  }
   const parsed = parseProgressPacket(text);
   if (!parsed.ok || parsed.value.kind !== 'student-progress-report') {
     const errors = parsed.ok ? ['Student Edition file was not a progress report.'] : parsed.errors;
@@ -203,7 +224,8 @@ export function saveStudentReport(storage: MemoryStore, report: StudentProgressR
   } finally {
     endAppStudentSave();
   }
-  return parsed.value;
+  notifyStudentJournal();
+  return shareTournaments(parsed.value);
 }
 
 function isCalendarDate(value: string): boolean {
@@ -227,6 +249,54 @@ export function setStudentProfile(
     return report;
   }
   return { ...report, updatedAt: now, profile: { ...report.profile, displayName, gymName, startedOn } };
+}
+
+const POLICY_KEYS = ['straightAnkleLock', 'wristLocks', 'legLocks', 'heelHooks', 'competition'] as const;
+
+function samePolicy(left: TechniquePolicy | undefined, right: TechniquePolicy | undefined): boolean {
+  return POLICY_KEYS.every((key) => left?.[key] === right?.[key]);
+}
+
+/**
+ * Gi, no-gi, or both.
+ * A missing value is Both for an adult and Gi for a kid.
+ * Choosing that default leaves the field off, unless it was already saved on purpose.
+ */
+export function setTrainingStyle(report: StudentProgressReport, style: TrainingStyle, now = Date.now()): StudentProgressReport {
+  if (style !== 'gi' && style !== 'nogi' && style !== 'both') throw new Error('Training style must be gi, no-gi, or both.');
+  const implicit: TrainingStyle = beltModeOf(report) === 'kids' ? 'gi' : 'both';
+  const profile = { ...report.profile };
+  if (style === implicit) {
+    if (report.profile.trainingStyle === style) return report;
+    delete profile.trainingStyle;
+  } else {
+    profile.trainingStyle = style;
+  }
+  if (report.profile.trainingStyle === profile.trainingStyle) return report;
+  return { ...report, updatedAt: now, profile };
+}
+
+/**
+ * Save one technique override.
+ * A value that matches the age and belt default is left off the file.
+ */
+export function setTechniquePolicy(
+  report: StudentProgressReport,
+  key: keyof TechniquePolicy,
+  value: boolean,
+  now = Date.now(),
+): StudentProgressReport {
+  const year = report.beltBook?.birthYear;
+  const age = typeof year === 'number' ? ibjjfAge(year) : null;
+  const defaults = defaultTechniquePolicy(report.profile.belt, age, beltModeOf(report));
+  const next: TechniquePolicy = { ...(report.profile.techniquePolicy ?? {}) };
+  if (value === defaults[key]) delete next[key];
+  else next[key] = value;
+  const profile = { ...report.profile };
+  if (Object.keys(next).length) profile.techniquePolicy = next;
+  else delete profile.techniquePolicy;
+  if (samePolicy(report.profile.techniquePolicy, profile.techniquePolicy)) return report;
+  return { ...report, updatedAt: now, profile };
 }
 
 export function encodeJournalBody(draft: Pick<JournalDraft, 'className' | 'techniques' | 'partners' | 'drills' | 'rolls' | 'notes' | 'stopDoing'>): string {
@@ -486,9 +556,10 @@ export function fundamentalsBoard(report: StudentProgressReport): FundamentalsCa
   return FUNDAMENTALS_CATALOG.categories.map((category) => {
     const catalogIds = new Set(category.items.map((item) => item.id));
     const items: FundamentalRow[] = [];
+    const illegal = new Set(ageIllegalTechniques(report).map((row) => row.catalogId).filter(Boolean));
     for (const item of category.items) {
       const saved = report.checklist.find((entry) => entry.categoryId === category.id && entry.catalogItemId === item.id);
-      if (saved?.hidden) continue;
+      if (saved?.hidden || illegal.has(item.id)) continue;
       items.push({
         entryId: saved?.id ?? '',
         catalogItemId: item.id,

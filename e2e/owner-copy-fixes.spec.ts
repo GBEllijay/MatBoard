@@ -92,6 +92,9 @@ test('drill notes and stop-doing notes stay separate and old combined notes stil
   await stop.fill('posting the near hand');
   await page.getByRole('textbox', { name: 'Drills', exact: true }).fill('hip escapes');
   await page.getByRole('button', { name: 'Save entry' }).click();
+  await expect(page.getByRole('status')).toHaveText('Entry saved');
+  await expect(page.getByRole('heading', { name: 'Journal', exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'See saved card', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Journal card', exact: true })).toBeVisible();
   await expect(page.getByText('Drill notes: collar deeper')).toBeVisible();
   await expect(page.getByText('Stop doing: posting the near hand')).toBeVisible();

@@ -7,6 +7,7 @@
 import { tournamentClassLine } from './divisionFields.ts';
 import { competitionOf } from './progress/competition.ts';
 import { checklistLevelLine, fundamentalLevelOf, proficiencySummary } from './fundamentals.ts';
+import { ageIllegalTechniques } from './studentBenchmarks.ts';
 import type { CompetitionMatch, JournalEntry, MatchMethod, ProgressBelt, StudentProgressReport } from './progress/types.ts';
 import {
   ASSESSMENT_AREAS,
@@ -14,12 +15,37 @@ import {
   isAssessmentScore,
   type AssessmentState,
 } from './studentAssessment.ts';
+import {
+  JOURNAL_DRILLS_LABEL,
+  JOURNAL_NOTES_LABEL,
+  JOURNAL_PARTNERS_LABEL,
+  JOURNAL_ROLLS_LABEL,
+  JOURNAL_STOP_LABEL,
+  formatJournalDate,
+} from './journalCopy.ts';
+import { techniqueDrilledLabel } from './progress/format.ts';
 import { decodeJournalBody } from './studentEdition.ts';
 import type { StudentFilm } from './studentFilm.ts';
 import type { AreaRatings } from './opponentAssessment.ts';
 import type { ScoutingCard } from './studentScouting.ts';
-import { stripeReportLine } from './studentRank.ts';
-import { BELT_LABELS, beltTrack, checkpointFilled, learnedCatalogIds } from './studentTools.ts';
+import { beltModeOf, currentKidsBelt, earlierKidRows } from './beltBook.ts';
+import { degreeHeadline, wornDegree } from './blackBeltDegrees.ts';
+import { adultRankIndex, dedupeRankHistory, degreeFocusOf, degreeReportLine, stripeReportLine } from './studentRank.ts';
+import { benchmarkView, catalogLevelMap, checkpointsForProgress } from './studentBenchmarks.ts';
+import {
+  BELT_LABELS,
+  beltRequirementProgress,
+  beltTrack,
+  checkpointFilled,
+  checkpointTitle,
+  NO_PERSONAL_GOALS,
+  NO_PRACTICAL_BENCHMARKS,
+  PERSONAL_GOALS_HEADING,
+  PERSONAL_GOALS_LINE,
+  PRACTICAL_BENCHMARKS_HEADING,
+  PRACTICAL_BENCHMARKS_LINE,
+  type LearnedIndex,
+} from './studentTools.ts';
 import type { RubricCheckpoint, RubricLevel } from './progress/types.ts';
 
 export type ReportIdentity = {
@@ -58,10 +84,11 @@ export function reportIdentity(report: StudentProgressReport): ReportIdentity {
   const name = report.profile.displayName.trim();
   const gym = report.profile.gymName.trim();
   const started = report.profile.startedOn.trim();
+  const kids = beltModeOf(report) === 'kids';
   return {
     name: name || 'Not named',
     gym: gym || 'Not named',
-    belt: BELT_LABELS[report.profile.belt] ?? report.profile.belt,
+    belt: kids ? currentKidsBelt(report).label : adultReportBelt(report),
     started: started || 'Not set',
     named: Boolean(name),
     gymNamed: Boolean(gym),
@@ -96,10 +123,21 @@ export function rubricLevelsOnTrack(report: StudentProgressReport): RubricLevel[
   const order = new Map(track.map((belt, index) => [belt, index]));
   return report.rubric.levels
     .filter((level) => order.has(level.belt))
-    .sort((left, right) => (order.get(left.belt) ?? 0) - (order.get(right.belt) ?? 0) || left.name.localeCompare(right.name));
+    .sort((left, right) => {
+      const byRank = rankSort(left.belt, right.belt);
+      if (byRank) return byRank;
+      return (order.get(left.belt) ?? 0) - (order.get(right.belt) ?? 0) || left.name.localeCompare(right.name);
+    });
 }
 
-export function checkpointStatusLabel(row: RubricCheckpoint, learned: ReadonlySet<string>): 'Met' | 'Not yet' | 'Unmarked' {
+function rankSort(left: string, right: string): number {
+  const leftRank = adultRankIndex(left);
+  const rightRank = adultRankIndex(right);
+  if (leftRank >= 0 && rightRank >= 0) return leftRank - rightRank;
+  return 0;
+}
+
+export function checkpointStatusLabel(row: RubricCheckpoint, learned: LearnedIndex): 'Met' | 'Not yet' | 'Unmarked' {
   if (checkpointFilled(row, learned)) return 'Met';
   if (row.met === false) return 'Not yet';
   return 'Unmarked';
@@ -117,21 +155,23 @@ function techniqueNames(entry: JournalEntry): string[] {
     .filter(Boolean);
 }
 
-/** Date, class when one was typed, techniques, and the note. Empty labels are left out. */
+/**
+ * Same labels as the journal card. Empty fields are left out.
+ * The class name is the value only, so the report does not print the stored "Class:" prefix.
+ */
 export function journalReportLine(entry: JournalEntry): string {
   const decoded = decodeJournalBody(entry.body);
-  const parts = [entry.date];
+  const parts = [formatJournalDate(entry.date)];
   if (decoded.className.trim()) parts.push(decoded.className.trim());
-  const techniques = techniqueNames(entry);
-  if (techniques.length) parts.push(techniques.join('; '));
-  const notes = decoded.notes.trim();
-  if (notes) parts.push(notes);
-  else {
-    if (decoded.drills.trim()) parts.push(decoded.drills.trim());
-    if (decoded.rolls.trim()) parts.push(decoded.rolls.trim());
-  }
+  techniqueNames(entry).forEach((name, index) => {
+    parts.push(`${techniqueDrilledLabel(index)}: ${name}`);
+  });
+  if (decoded.partners.trim()) parts.push(`${JOURNAL_PARTNERS_LABEL}: ${decoded.partners.trim()}`);
+  if (decoded.drills.trim()) parts.push(`${JOURNAL_DRILLS_LABEL}: ${decoded.drills.trim()}`);
+  if (decoded.rolls.trim()) parts.push(`${JOURNAL_ROLLS_LABEL}: ${decoded.rolls.trim()}`);
+  if (decoded.notes.trim()) parts.push(`${JOURNAL_NOTES_LABEL}: ${decoded.notes.trim()}`);
   const stopDoing = decoded.stopDoing?.trim() ?? '';
-  if (stopDoing) parts.push(`Stop doing: ${stopDoing}`);
+  if (stopDoing) parts.push(`${JOURNAL_STOP_LABEL}: ${stopDoing}`);
   const extra = entry.amendments.map((item) => item.body.trim()).filter(Boolean);
   if (extra.length) parts.push(extra[extra.length - 1] ?? '');
   return parts.filter(Boolean).join(' · ');
@@ -170,16 +210,77 @@ function appendStripeLines(lines: string[], tapeCount: number, tapeDates: readon
   }
 }
 
+function appendDegreeLines(lines: string[], tapeCount: number, tapeDates: readonly string[] | undefined, indent = ''): void {
+  for (let index = 0; index < tapeCount; index += 1) {
+    lines.push(`${indent}${degreeReportLine(index + 1, tapeDates?.[index])}`);
+  }
+}
+
+/** Plain black stays "Black". A degree, coral, or red uses the degree name, not a stripe belt. */
+function adultReportBelt(report: StudentProgressReport): string {
+  const belt = report.profile.belt;
+  const count = report.rank?.tapeCount ?? 0;
+  const degree = wornDegree(belt, count);
+  if (degree != null && (belt !== 'black' || degree > 0)) return degreeHeadline(belt, count);
+  return BELT_LABELS[belt] ?? belt;
+}
+
+function isFinalRank(belt: string): boolean {
+  return belt === 'coral' || belt === 'redWhite' || belt === 'red';
+}
+
+function historyRankText(belt: ProgressBelt, tapeCount: number): string {
+  if (isFinalRank(belt)) return degreeHeadline(belt, tapeCount);
+  if (belt === 'black') return tapeCount === 1 ? '1 degree' : `${tapeCount} degrees`;
+  return countPhrase(tapeCount, 'stripe', 'stripes');
+}
+
+function rankDateList(tapeDates: readonly string[] | undefined, high: readonly string[] | undefined): string[] {
+  return [...(tapeDates ?? []), ...(high ?? [])];
+}
+
 function rankBlock(report: StudentProgressReport): ReportBlock {
   const rank = report.rank;
-  const lines = [`Current belt awarded: ${rank?.awardedOn || 'No date'}`, `Stripes: ${rank?.tapeCount ?? 0}`];
-  if (rank) appendStripeLines(lines, rank.tapeCount, rank.tapeDates);
-  if (rank?.history.length) {
+  const degreeBelt = report.profile.belt === 'black';
+  const lines: string[] = [];
+  if (beltModeOf(report) === 'kids') {
+    const worn = currentKidsBelt(report);
+    lines.push(`Current belt: ${worn.label}`);
+    lines.push(`Stripes: ${worn.tapeCount}`);
+    appendStripeLines(lines, worn.tapeCount, worn.tapeDates);
+    lines.push('Adult belts saved on this phone:');
+  }
+  const finalRank = isFinalRank(report.profile.belt);
+  if (finalRank) lines.push(`Current rank: ${degreeHeadline(report.profile.belt, rank?.tapeCount ?? 0)}`);
+  lines.push(`Current belt awarded: ${rank?.awardedOn || 'No date'}`);
+  if (!finalRank) {
+    lines.push(`${degreeBelt ? 'Degrees' : 'Stripes'}: ${rank?.tapeCount ?? 0}`);
+    if (rank) {
+      const dates = rankDateList(rank.tapeDates, rank.highDegreeDates);
+      if (degreeBelt) appendDegreeLines(lines, rank.tapeCount, dates);
+      else appendStripeLines(lines, rank.tapeCount, dates);
+    }
+  }
+  const history = dedupeRankHistory(rank?.history ?? []).sort(
+    (left, right) => rankSort(left.belt, right.belt) || left.awardedOn.localeCompare(right.awardedOn) || left.id.localeCompare(right.id),
+  );
+  const earlierKids = earlierKidRows(report);
+  if (history.length) {
+    lines.push(earlierKids.length ? 'Adult belt history:' : 'Earlier belts:');
+    for (const row of history) {
+      const stripes = historyRankText(row.belt, row.tapeCount);
+      const name = isFinalRank(row.belt) ? stripes : (BELT_LABELS[row.belt] ?? row.belt);
+      const detail = isFinalRank(row.belt) ? '' : `, ${stripes}`;
+      lines.push(`${name} awarded ${row.awardedOn || 'no date'}${detail}`);
+      const dates = rankDateList(row.tapeDates, row.highDegreeDates);
+      if (row.belt === 'black') appendDegreeLines(lines, row.tapeCount, dates, '  ');
+      else if (!isFinalRank(row.belt)) appendStripeLines(lines, row.tapeCount, dates, '  ');
+    }
+  }
+  if (earlierKids.length) {
     lines.push('Earlier belts:');
-    for (const row of rank.history) {
-      const stripes = countPhrase(row.tapeCount, 'stripe', 'stripes');
-      lines.push(`${BELT_LABELS[row.belt] ?? row.belt} awarded ${row.awardedOn || 'no date'}, ${stripes}`);
-      appendStripeLines(lines, row.tapeCount, row.tapeDates, '  ');
+    for (const row of earlierKids) {
+      lines.push(`${row.label} awarded ${row.awardedOn || 'no date'}, ${countPhrase(row.tapeCount, 'stripe', 'stripes')}`);
     }
   }
   if (rank?.lineage?.length) {
@@ -188,32 +289,75 @@ function rankBlock(report: StudentProgressReport): ReportBlock {
       lines.push(`  ${index + 1}. ${name}`);
     });
   }
+  const degree = wornDegree(report.profile.belt, rank?.tapeCount ?? 0);
+  const focus = degree == null ? '' : degreeFocusOf(rank, degree);
+  if (focus) lines.push(`Focus for this degree: ${focus}`);
   return { title: 'Rank and stripes', lines };
 }
 
 function beltBlock(report: StudentProgressReport): ReportBlock {
+  if (beltModeOf(report) === 'kids') return kidsBeltBlock(report);
   const levels = rubricLevelsOnTrack(report);
   if (!levels.length) return { title: 'Belt progress', lines: ['No belt progress recorded.'] };
-  const learned = learnedCatalogIds(report);
-  const lines: string[] = [];
+  const learned = catalogLevelMap(report);
+  const view = benchmarkView(report);
+  const lines: string[] = [PRACTICAL_BENCHMARKS_HEADING, PRACTICAL_BENCHMARKS_LINE];
   for (const level of levels) {
-    lines.push(BELT_LABELS[level.belt] ?? level.name);
-    for (const checkpoint of level.checkpoints) {
+    lines.push(isFinalRank(level.belt) ? degreeHeadline(level.belt, 0) : (BELT_LABELS[level.belt] ?? level.name));
+    const rows = checkpointsForProgress(level.checkpoints, view);
+    if (!rows.length) lines.push(`  ${NO_PRACTICAL_BENCHMARKS}`);
+    for (const checkpoint of rows) {
       const mark = checkpointStatusLabel(checkpoint, learned);
       const note = checkpoint.note.trim() ? ` — ${checkpoint.note.trim()}` : '';
-      lines.push(`  ${checkpoint.name}: ${mark}${note}`);
+      lines.push(`  ${checkpointTitle(checkpoint)}: ${mark}${note}`);
     }
+    const progress = beltRequirementProgress({ ...level, checkpoints: rows }, learned);
+    if (progress.requirements) {
+      const from = progress.fromFundamentals ? `, ${progress.fromFundamentals} from fundamentals` : '';
+      lines.push(`  ${progress.counted} of ${progress.requirements} requirements counted${from}.`);
+    }
+    if (progress.checkpoints) {
+      lines.push(`  ${progress.checkpointsFilled} of ${progress.checkpoints} practical benchmarks filled.`);
+    }
+  }
+  lines.push(PERSONAL_GOALS_HEADING, PERSONAL_GOALS_LINE);
+  if (!report.goals.length) lines.push(NO_PERSONAL_GOALS);
+  for (const goal of report.goals) {
+    const note = goal.note.trim() ? ` — ${goal.note.trim()}` : '';
+    lines.push(`  ${goal.name}: ${goal.met ? 'Met' : 'Not yet'}${note}`);
+  }
+  return { title: 'Belt progress', lines };
+}
+
+function kidsBeltBlock(report: StudentProgressReport): ReportBlock {
+  const worn = currentKidsBelt(report);
+  const rows = (report.beltBook?.benchmarks ?? []).filter((row) => row.beltId === worn.beltId);
+  const lines = [PRACTICAL_BENCHMARKS_HEADING, PRACTICAL_BENCHMARKS_LINE];
+  if (!rows.length) lines.push(NO_PRACTICAL_BENCHMARKS);
+  for (const row of rows) {
+    const mark = row.met === true ? 'Met' : row.met === false ? 'Not yet' : 'Unmarked';
+    const note = row.note.trim() ? ` — ${row.note.trim()}` : '';
+    lines.push(`  ${row.name}: ${mark}${note}`);
+  }
+  lines.push(PERSONAL_GOALS_HEADING, PERSONAL_GOALS_LINE);
+  const goals = report.goals.filter((goal) => goal.kidsBeltId === worn.beltId || (!goal.kidsBeltId && !goal.belt));
+  if (!goals.length) lines.push(NO_PERSONAL_GOALS);
+  for (const goal of goals) {
+    const note = goal.note.trim() ? ` — ${goal.note.trim()}` : '';
+    lines.push(`  ${goal.name}: ${goal.met ? 'Met' : 'Not yet'}${note}`);
   }
   return { title: 'Belt progress', lines };
 }
 
 function fundamentalsBlock(report: StudentProgressReport): ReportBlock {
-  const rows = report.checklist.filter((row) => !row.hidden);
+  const illegal = new Set(ageIllegalTechniques(report).map((row) => row.catalogId).filter(Boolean));
+  const rows = report.checklist.filter((row) => !row.hidden && !illegal.has(row.catalogItemId));
   if (!rows.length) return { title: 'Fundamentals proficiency', lines: ['None yet'] };
   const summary = proficiencySummary(rows.map((row) => ({ level: fundamentalLevelOf(row) })));
+  const audience = beltModeOf(report) === 'kids' ? 'kids' : 'adult';
   const lines = [
     `Average ${summary.average.toFixed(1)} across ${countPhrase(summary.moves, 'fundamental', 'fundamentals')}.`,
-    ...rows.map((row) => checklistLevelLine(row)),
+    ...rows.map((row) => checklistLevelLine(row, audience)),
   ];
   return { title: 'Fundamentals proficiency', lines };
 }

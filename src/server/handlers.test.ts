@@ -223,6 +223,162 @@ test('WHITEFREE does not unlock Coach', async () => {
   assert.equal(await store.findByEmail(''), null);
 });
 
+test('half off applies MEIA with discounts and does not also allow promotion codes', async () => {
+  let session = '';
+  const fetchImpl: typeof fetch = async (input, init) => {
+    const url = String(input);
+    if (url.includes('/v1/promotion_codes')) {
+      assert.match(url, /code=MEIA/);
+      assert.doesNotMatch(url, /EVIL/);
+      return new Response(
+        JSON.stringify({ data: [{ id: 'promo_1UUSYNARhGonKqrOgkxlh3wo', code: 'MEIA', active: true }] }),
+        { status: 200 },
+      );
+    }
+    const fields = new URLSearchParams(String(init?.body ?? ''));
+    session = fields.toString();
+    assert.equal(fields.get('line_items[0][price]'), 'price_white');
+    assert.equal(fields.get('discounts[0][promotion_code]'), 'promo_1UUSYNARhGonKqrOgkxlh3wo');
+    assert.equal(fields.get('allow_promotion_codes'), null);
+    assert.doesNotMatch(session, /EVIL/);
+    return new Response(
+      JSON.stringify({ id: 'cs_test_half', url: 'https://checkout.stripe.com/c/pay/cs_test_half' }),
+      { status: 200 },
+    );
+  };
+  const response = await handleCheckout(
+    jsonRequest('https://advantagebjjtimer.com/api/checkout', { halfOff: true, promotionCode: 'EVIL' }),
+    env,
+    fetchImpl,
+  );
+  assert.equal(response.status, 200);
+  const body = (await response.json()) as { url: string };
+  assert.equal(body.url, 'https://checkout.stripe.com/c/pay/cs_test_half');
+});
+
+test('half off falls back to normal checkout when MEIA is inactive or the lookup fails', async () => {
+  for (const mode of ['empty', 'error'] as const) {
+    const fetchImpl: typeof fetch = async (input, init) => {
+      const url = String(input);
+      if (url.includes('/v1/promotion_codes')) {
+        assert.match(url, /code=MEIA/);
+        if (mode === 'error') return new Response('nope', { status: 500 });
+        return new Response(JSON.stringify({ data: [] }), { status: 200 });
+      }
+      const fields = new URLSearchParams(String(init?.body ?? ''));
+      assert.equal(fields.get('allow_promotion_codes'), 'true');
+      assert.equal(fields.get('discounts[0][promotion_code]'), null);
+      assert.doesNotMatch(fields.toString(), /promo_1UUSYNARhGonKqrOgkxlh3wo/);
+      return new Response(
+        JSON.stringify({ id: 'cs_test_plain', url: 'https://checkout.stripe.com/c/pay/cs_test_plain' }),
+        { status: 200 },
+      );
+    };
+    const response = await handleCheckout(
+      jsonRequest('https://advantagebjjtimer.com/api/checkout', { halfOff: true }),
+      env,
+      fetchImpl,
+    );
+    assert.equal(response.status, 200);
+    const body = (await response.json()) as { error?: string; url: string };
+    assert.equal(body.error, undefined);
+    assert.equal(body.url, 'https://checkout.stripe.com/c/pay/cs_test_plain');
+  }
+});
+
+test('a half-off string is not an allowlisted code', async () => {
+  const fetchImpl: typeof fetch = async (_input, init) => {
+    const fields = new URLSearchParams(String(init?.body ?? ''));
+    assert.equal(fields.get('allow_promotion_codes'), 'true');
+    assert.equal(fields.get('discounts[0][promotion_code]'), null);
+    return new Response(
+      JSON.stringify({ id: 'cs_test_plain', url: 'https://checkout.stripe.com/c/pay/cs_test_plain' }),
+      { status: 200 },
+    );
+  };
+  const response = await handleCheckout(
+    jsonRequest('https://advantagebjjtimer.com/api/checkout', { halfOff: 'MEIA' }),
+    env,
+    fetchImpl,
+  );
+  assert.equal(response.status, 200);
+});
+
+test('half off discounts White, Student, Coach, and Pro without changing prices', async () => {
+  const cases = [
+    {
+      product: 'student',
+      price: 'price_student',
+      mode: 'payment',
+      meta: 'advantage-student',
+    },
+    {
+      product: 'coach',
+      price: 'price_coach',
+      mode: 'payment',
+      meta: 'advantage-coach',
+    },
+    {
+      product: 'pro',
+      price: 'price_pro',
+      mode: 'subscription',
+      meta: 'advantage-pro',
+    },
+  ] as const;
+  for (const item of cases) {
+    const fetchImpl: typeof fetch = async (input, init) => {
+      const url = String(input);
+      if (url.includes('/v1/promotion_codes')) {
+        return new Response(
+          JSON.stringify({ data: [{ id: 'promo_1UUSYNARhGonKqrOgkxlh3wo', code: 'MEIA', active: true }] }),
+          { status: 200 },
+        );
+      }
+      const fields = new URLSearchParams(String(init?.body ?? ''));
+      assert.equal(fields.get('mode'), item.mode);
+      assert.equal(fields.get('line_items[0][price]'), item.price);
+      assert.equal(fields.get('metadata[product]'), item.meta);
+      assert.equal(fields.get('discounts[0][promotion_code]'), 'promo_1UUSYNARhGonKqrOgkxlh3wo');
+      assert.equal(fields.get('allow_promotion_codes'), null);
+      assert.doesNotMatch(fields.toString(), /price_kept_monthly/);
+      if (item.product === 'pro') {
+        assert.equal(fields.get('line_items[1][price]'), 'price_pro_monthly');
+        assert.equal(fields.get('subscription_data[metadata][product]'), 'advantage-pro');
+        assert.equal(fields.get('payment_intent_data[metadata][product]'), null);
+      }
+      return new Response(
+        JSON.stringify({ id: 'cs_test_half', url: 'https://checkout.stripe.com/c/pay/cs_test_half' }),
+        { status: 200 },
+      );
+    };
+    const response = await handleCheckout(
+      jsonRequest('https://advantagebjjtimer.com/api/checkout', { product: item.product, halfOff: true }),
+      env,
+      fetchImpl,
+    );
+    assert.equal(response.status, 200);
+  }
+});
+
+test('WHITEFREE still unlocks when a half-off flag is also sent', async () => {
+  const store = memoryEntitlementStore();
+  let calledStripe = false;
+  const fetchImpl: typeof fetch = async () => {
+    calledStripe = true;
+    return new Response('stripe should not be called', { status: 500 });
+  };
+  const response = await handleCheckout(
+    jsonRequest('http://localhost/api/checkout', { halfOff: true, promotionCode: 'WHITEFREE' }),
+    env,
+    fetchImpl,
+    store,
+  );
+  assert.equal(response.status, 200);
+  assert.equal(calledStripe, false);
+  const body = (await response.json()) as { entitled: boolean };
+  assert.equal(body.entitled, true);
+});
+
 test('an unknown promo code does not open Checkout', async () => {
   const fetchImpl: typeof fetch = async () => new Response(JSON.stringify({ data: [] }), { status: 200 });
   const response = await handleCheckout(

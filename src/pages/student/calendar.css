@@ -203,6 +203,11 @@
   border-top: 0;
 }
 
+.student.student--calendar .comp-list .cal-remove {
+  width: 100%;
+  margin-top: 8px;
+}
+
 .student.student--arena.student--fundamentals.student--calendar .comp-list a:not([target='_blank']) {
   color: var(--arena-text);
   font-size: 17px;

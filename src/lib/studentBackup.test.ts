@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { exportProgressPacket } from './progress/format.ts';
 import { addTournament } from './studentCompetition.ts';
-import { addJournalClip, addJournalEntry, blankStudentReport, loadStudentReport } from './studentEdition.ts';
+import { addJournalClip, addJournalEntry, blankStudentReport, loadStudentReport, setStudentProfile } from './studentEdition.ts';
 import { setRankLineage } from './studentRank.ts';
 import { saveAssessment } from './studentAssessment.ts';
 import {
@@ -17,16 +17,40 @@ import {
   clearStudentMemory,
   parseStudentBackup,
   pdfIncludes,
+  BACKUP_INCLUDE_VIDEOS_KEY,
+  journalBackupConfirmation,
+  journalBackupFailure,
+  readBackupIncludeVideos,
   studentBackupNames,
   studentExportDetail,
   videoFilesLine,
+  writeBackupIncludeVideos,
   progressReportLines,
   selfAssessmentLines,
 } from './studentBackup.ts';
 import { backupStampLabel, readStudentBackupStamp } from './studentBackupStamp.ts';
 import { emptyRankPhotoStore } from './rankPhotos.ts';
-import { textToPdf } from './simplePdf.ts';
+import { pdfToText, textToPdf } from './simplePdf.ts';
+import { setBeltMode } from './beltBook.ts';
+import { pdfImageFromRgb } from './pdfRaster.ts';
+import { readProfilePortrait } from './profilePortrait.ts';
+import { readStudentGymLogo } from './studentGymMark.ts';
 import type { StudentFilm } from './studentFilm.ts';
+
+/** Top-right header mark. PDF origin is the bottom left; 596,778 is the corner inset. */
+function headerMark(pdf: Uint8Array, id: string) {
+  const text = pdfToText(pdf);
+  const match = text.match(new RegExp(String.raw`([\d.]+) 0 0 ([\d.]+) ([\d.]+) ([\d.]+) cm\n\/${id} Do`));
+  assert.ok(match, `${id} is drawn in the header`);
+  const at = match.index ?? 0;
+  return {
+    w: Number(match[1]),
+    h: Number(match[2]),
+    x: Number(match[3]),
+    y: Number(match[4]),
+    clipped: text.slice(Math.max(0, at - 500), at).includes('\nW\n'),
+  };
+}
 
 function memory() {
   const store = new Map<string, string>();
@@ -287,6 +311,22 @@ test('each export names one file, and only the JSON backup restores the phone', 
   assert.match(videoFilesLine(false), /^Video files: off/);
   assert.match(videoFilesLine(true), /^Video files: on/);
   assert.match(videoFilesLine(true), /JSON backup/);
+  assert.match(journalBackupConfirmation('advantage-student-backup-2026-10-24.json', false), /Backup saved/);
+  assert.match(journalBackupConfirmation('advantage-student-backup-2026-10-24.json', false), /not included/);
+  assert.match(journalBackupConfirmation('advantage-student-backup-2026-10-24.json', true), /are included/);
+  assert.match(journalBackupFailure('Those video files are too large for one backup (49 MB).'), /^Backup did not finish\./);
+});
+
+test('include video files stays off until the student turns it on', () => {
+  const storage = memory();
+  assert.equal(readBackupIncludeVideos(storage), false);
+  assert.equal(storage.getItem(BACKUP_INCLUDE_VIDEOS_KEY), null);
+  writeBackupIncludeVideos(storage, true);
+  assert.equal(readBackupIncludeVideos(storage), true);
+  writeBackupIncludeVideos(storage, false);
+  assert.equal(readBackupIncludeVideos(storage), false);
+  assert.equal(storage.getItem(BACKUP_INCLUDE_VIDEOS_KEY), '0');
+  assert.equal(readBackupIncludeVideos(null), false);
 });
 
 test('only the JSON backup updates the last-backup stamp', async () => {
@@ -355,11 +395,114 @@ test('an older backup splits a clear division and weight class and keeps an uncl
   const lines = progressReportLines(parsed.file.report, { entries: [] });
   assert.ok(lines.some((line) => line.includes('Adult Blue · Feather')));
 
-  packet.competition.tournaments[0].division = 'Adult Blue Middle';
+  packet.competition.tournaments[0].division = 'Adult Black Medium Heavy';
   delete packet.competition.tournaments[0].weightClass;
   const plain = parseStudentBackup(JSON.stringify(backup));
   assert.equal(plain.ok, true);
   if (!plain.ok) return;
-  assert.equal(plain.file.report.competition?.tournaments[0].division, 'Adult Blue Middle');
-  assert.equal(plain.file.report.competition?.tournaments[0].weightClass, '');
+  assert.equal(plain.file.report.competition?.tournaments[0].division, 'Adult Black');
+  assert.equal(plain.file.report.competition?.tournaments[0].weightClass, 'Medium Heavy');
+  assert.ok(progressReportLines(plain.file.report, { entries: [] }).some((line) => line.includes('Adult Black · Medium Heavy')));
+
+  packet.competition.tournaments[0].division = 'Saturday squad';
+  delete packet.competition.tournaments[0].weightClass;
+  const unclear = parseStudentBackup(JSON.stringify(backup));
+  assert.equal(unclear.ok, true);
+  if (!unclear.ok) return;
+  assert.equal(unclear.file.report.competition?.tournaments[0].division, 'Saturday squad');
+  assert.equal(unclear.file.report.competition?.tournaments[0].weightClass, '');
+});
+
+test('selfie and gym logo are in the backup and progress PDF only when their switches are on', async () => {
+  const selfie = 'data:image/jpeg;base64,AAAA';
+  const logo = 'data:image/png;base64,BBBB';
+  const report = setStudentProfile(blankStudentReport(3), { displayName: 'Ada', gymName: 'GB Ellijay' }, 4);
+  const base = {
+    report,
+    assessment: { entries: [] as [] },
+    scouting: [],
+    rankPhotos: emptyRankPhotoStore(),
+    bracketPhotos: {},
+    shelf: { plan: null, feedback: null },
+    films: [],
+    includeVideos: false,
+    now: new Date('2026-10-26T12:00:00Z'),
+    recordStamp: false,
+  };
+  const off = await buildStudentBackup({
+    ...base,
+    marks: { includeSelfie: false, includeLogo: false, selfie, gymLogo: logo },
+  });
+  assert.equal(off.file.portrait, undefined);
+  assert.equal(off.file.gymLogo, undefined);
+  assert.equal(JSON.parse(off.json).portrait, undefined);
+  assert.equal(pdfToText(off.progressPdf).includes('/Selfie'), false);
+  assert.equal(pdfToText(off.progressPdf).includes('/GymLogo'), false);
+
+  const art = {
+    selfie: await pdfImageFromRgb('Selfie', 1, 1, new Uint8Array([9, 8, 7])),
+    gymLogo: await pdfImageFromRgb('GymLogo', 1, 1, new Uint8Array([1, 2, 3])),
+  };
+  assert.ok(art.selfie);
+  assert.ok(art.gymLogo);
+  const on = await buildStudentBackup({
+    ...base,
+    marks: { includeSelfie: true, includeLogo: true, selfie, gymLogo: logo, art },
+  });
+  assert.equal(on.file.portrait, selfie);
+  assert.equal(on.file.gymLogo, logo);
+  assert.equal(pdfToText(on.progressPdf).includes('/Selfie Do'), true);
+  assert.equal(pdfIncludes(on.progressPdf, 'GB Ellijay'), true);
+  const adultPhoto = headerMark(on.progressPdf, 'Selfie');
+  const adultLogo = headerMark(on.progressPdf, 'GymLogo');
+  assert.equal(adultPhoto.y, adultLogo.y);
+  assert.ok(adultPhoto.x > adultLogo.x);
+  assert.equal(adultPhoto.x + adultPhoto.w, 596);
+  assert.equal(adultPhoto.y + adultPhoto.h, 778);
+  assert.ok(adultPhoto.clipped);
+  assert.ok(adultLogo.clipped);
+
+  const kidsReport = setBeltMode(
+    setStudentProfile(blankStudentReport(5), { displayName: 'Sam', gymName: 'GB Ellijay' }, 6),
+    'kids',
+    7,
+  );
+  const kids = await buildStudentBackup({
+    ...base,
+    report: kidsReport,
+    marks: { includeSelfie: false, includeLogo: true, selfie, gymLogo: logo, art },
+  });
+  assert.equal(kids.file.portrait, undefined);
+  assert.equal(kids.file.gymLogo, logo);
+  assert.equal(pdfIncludes(kids.progressPdf, 'Sam'), true);
+  assert.equal(pdfIncludes(kids.progressPdf, 'GB Ellijay'), true);
+  assert.equal(pdfToText(kids.progressPdf).includes('/Selfie'), false);
+  assert.equal(pdfToText(kids.progressPdf).includes('/GymLogo Do'), true);
+  const kidsLogo = headerMark(kids.progressPdf, 'GymLogo');
+  assert.equal(kidsLogo.x, adultPhoto.x);
+  assert.equal(kidsLogo.y, adultPhoto.y);
+  assert.ok(kidsLogo.clipped);
+
+  const legacy = parseStudentBackup(off.json);
+  assert.equal(legacy.ok, true);
+  if (!legacy.ok) return;
+  assert.equal(legacy.file.portrait, undefined);
+  assert.equal(legacy.file.gymLogo, undefined);
+  const junk = JSON.parse(off.json) as { portrait?: string; gymLogo?: string };
+  junk.portrait = 'https://example.com/selfie.jpg';
+  junk.gymLogo = 'not-a-logo';
+  const ignored = parseStudentBackup(JSON.stringify(junk));
+  assert.equal(ignored.ok, true);
+  if (!ignored.ok) return;
+  assert.equal(ignored.file.portrait, undefined);
+  assert.equal(ignored.file.gymLogo, undefined);
+  assert.equal(ignored.file.report.profile.displayName, 'Ada');
+
+  const storage = memory();
+  applyBackupToMemory(storage, on.file, 'replace', { rank: emptyRankPhotoStore(), bracket: {} });
+  assert.equal(readProfilePortrait(storage), selfie);
+  assert.equal(readStudentGymLogo(storage), logo);
+  clearStudentMemory(storage);
+  assert.equal(readProfilePortrait(storage), null);
+  assert.equal(readStudentGymLogo(storage), null);
 });

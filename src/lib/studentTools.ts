@@ -6,6 +6,9 @@
  */
 
 import { classesOnDay, formatClassTime, normalizeGymCalendar, WEEKDAY_LABELS, weekdayFromJsDay } from './gymCalendar.ts';
+import { competitionOf } from './progress/competition.ts';
+import { addTournament, removeTournament, updateTournament } from './studentCompetition.ts';
+import { applyTournamentEventDraft, tournamentMatchingName } from './sharedTournaments.ts';
 import {
   exportProgressCsv,
   exportProgressPacket,
@@ -19,7 +22,9 @@ import {
   sharedCriterionId,
 } from './progress/format.ts';
 import {
+  PROGRESS_BENCHMARK_MAX,
   PROGRESS_CALENDAR_MAX,
+  PROGRESS_CHECKPOINTS_MAX,
   PROGRESS_GOALS_MAX,
   PROGRESS_ID_MAX,
   PROGRESS_NAME_MAX,
@@ -30,6 +35,7 @@ import {
   type CalendarKind,
   type CalendarRepeat,
   type CoachFeedbackPacket,
+  type CoachGymBrand,
   type CoachPlanFocus,
   type CoachPlanPacket,
   type CoachSuggestion,
@@ -37,10 +43,25 @@ import {
   type RubricCheckpoint,
   type RubricCriterion,
   type RubricLevel,
+  type StudentGoal,
   type StudentProgressReport,
 } from './progress/types.ts';
 import { FUNDAMENTAL_LIVE_LEVEL, fundamentalLevelOf } from './fundamentals.ts';
-import { todayIso } from './studentEdition.ts';
+import {
+  adultStarterLevels,
+  criterionCounts,
+  criterionFromFundamentals,
+  type LearnedIndex,
+} from './studentBenchmarks.ts';
+
+export { criterionCounts, criterionFromFundamentals };
+export type { LearnedIndex };
+import { beltModeOf } from './beltBook.ts';
+import { isGymBrandFile } from './coachGymFile.ts';
+import { readTravelingGym } from './coachGymFit.ts';
+import { headerVisibility, readProfileMarks } from './profileMarks.ts';
+import { readStudentGymLogo } from './studentGymMark.ts';
+import { setStudentProfile, todayIso } from './studentEdition.ts';
 import { setRankBelt } from './studentRank.ts';
 import { loadRankPictures, picturesFromStore } from './rankPhotos.ts';
 
@@ -51,7 +72,7 @@ export const GYM_SCHEDULE_STORAGE_KEY = 'matboard.schedule.v1';
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MARK_NOTE = /^(\d{4}-\d{2}-\d{2})(?: — ([\s\S]*))?$/;
 
-const ADULT_BELTS = ['white', 'blue', 'purple', 'brown', 'black', 'coral'] as const;
+const ADULT_BELTS = ['white', 'blue', 'purple', 'brown', 'black'] as const;
 const KIDS_BELTS = ['grey', 'yellow', 'orange', 'green'] as const;
 
 export const BELT_LABELS: Record<ProgressBelt, string> = {
@@ -65,6 +86,8 @@ export const BELT_LABELS: Record<ProgressBelt, string> = {
   orange: 'Orange',
   green: 'Green',
   coral: 'Coral',
+  redWhite: 'Red and white',
+  red: 'Red',
 };
 
 /** The four events a student adds. Kinds are the progress-file calendar kinds. */
@@ -118,14 +141,26 @@ export function calendarKindLabel(kind: CalendarKind): string {
   return CALENDAR_KIND_CHOICES.find((choice) => choice.kind === kind)?.label ?? (kind === 'note' ? 'Note' : 'Other');
 }
 
-/** Adult belts, white through coral, or the kids belts when the student is on that track. */
+/** Adult belts, white through black, plus coral and red only once the student wears one. Kids stay on their own line. */
 export function beltTrack(belt: ProgressBelt): readonly ProgressBelt[] {
-  return (KIDS_BELTS as readonly string[]).includes(belt) ? KIDS_BELTS : ADULT_BELTS;
+  if ((KIDS_BELTS as readonly string[]).includes(belt)) return KIDS_BELTS;
+  if (belt === 'coral') return [...ADULT_BELTS, 'coral'];
+  if (belt === 'redWhite') return [...ADULT_BELTS, 'coral', 'redWhite'];
+  if (belt === 'red') return [...ADULT_BELTS, 'coral', 'redWhite', 'red'];
+  return ADULT_BELTS;
 }
 
-/** Next belt on the adult line, or the kids line when the current belt is a kids belt. */
+/**
+ * Kids belts and stripes do not use the adult checkpoint path.
+ * The rubric stays on the file. Switching back to adult shows it again.
+ */
+export function showsAdultCheckpoints(report: StudentProgressReport): boolean {
+  return report.beltBook?.mode !== 'kids';
+}
+
+/** Next colored belt. Black has degrees, not a jump to coral. */
 export function nextBelt(belt: ProgressBelt): ProgressBelt | null {
-  const line = beltTrack(belt);
+  const line: readonly ProgressBelt[] = (KIDS_BELTS as readonly string[]).includes(belt) ? KIDS_BELTS : ADULT_BELTS;
   const index = line.indexOf(belt);
   if (index < 0 || index >= line.length - 1) return null;
   return line[index + 1] ?? null;
@@ -230,17 +265,69 @@ export function addCalendarEvent(
   if (!isIsoDate(draft.date)) throw new Error('Date must be YYYY-MM-DD.');
   const title = draft.title.trim();
   if (!title) throw new Error('Add a title.');
-  if (report.calendar.length >= PROGRESS_CALENDAR_MAX) throw new Error('The calendar is full.');
   const time = (draft.time ?? '').trim();
   if (time && !CLOCK_RE.test(time)) throw new Error('Time must be HH:MM.');
   const repeat = draft.repeat ?? 'none';
   if (!(CALENDAR_REPEATS as readonly string[]).includes(repeat)) throw new Error('Pick how often it repeats.');
+  const name = title.slice(0, PROGRESS_NAME_MAX);
+  const note = draft.note.trim().slice(0, PROGRESS_NOTE_MAX);
+  if (draft.kind === 'other') {
+    const existing = tournamentMatchingName(report, name, draft.date);
+    const hasMirror = existing
+      ? report.calendar.some(
+          (event) =>
+            event.kind === 'other' &&
+            (event.tournamentId === existing.id ||
+              (event.date === existing.date && event.title.trim().toLowerCase() === existing.name.trim().toLowerCase())),
+        )
+      : false;
+    if (!hasMirror && report.calendar.length >= PROGRESS_CALENDAR_MAX) throw new Error('The calendar is full.');
+    let next = report;
+    if (!existing) {
+      next = addTournament(
+        next,
+        {
+          name,
+          date: draft.date,
+          location: note,
+          division: '',
+          weightClass: '',
+          deadline: '',
+          link: '',
+          status: 'considering',
+          targetWeight: '',
+          targetUnit: competitionOf(report).weightUnit,
+        },
+        now,
+      );
+    } else if (!existing.location.trim() && note) {
+      next = updateTournament(
+        next,
+        existing.id,
+        {
+          name: existing.name,
+          date: existing.date,
+          location: note,
+          division: existing.division,
+          weightClass: existing.weightClass ?? '',
+          deadline: existing.deadline,
+          link: existing.link,
+          status: existing.status,
+          targetWeight: existing.targetWeight == null ? '' : String(existing.targetWeight),
+          targetUnit: existing.targetUnit,
+        },
+        now,
+      );
+    }
+    return applyTournamentEventDraft(next, { date: draft.date, title: name, note, time, repeat }, now);
+  }
+  if (report.calendar.length >= PROGRESS_CALENDAR_MAX) throw new Error('The calendar is full.');
   const event: CalendarEvent = {
     id: newId('cal', now),
     date: draft.date,
-    title: title.slice(0, PROGRESS_NAME_MAX),
+    title: name,
     kind: draft.kind,
-    note: draft.note.trim().slice(0, PROGRESS_NOTE_MAX),
+    note,
   };
   if (time) event.time = time;
   if (repeat !== 'none') event.repeat = repeat;
@@ -248,8 +335,15 @@ export function addCalendarEvent(
 }
 
 export function removeCalendarEvent(report: StudentProgressReport, id: string, now = Date.now()): StudentProgressReport {
-  if (!report.calendar.some((event) => event.id === id)) return report;
-  return touch({ ...report, calendar: report.calendar.filter((event) => event.id !== id) }, now);
+  const event = report.calendar.find((item) => item.id === id);
+  if (!event) return report;
+  if (event.kind === 'other') {
+    const tournament =
+      competitionOf(report).tournaments.find((item) => item.id === event.tournamentId) ??
+      tournamentMatchingName(report, event.title, event.date);
+    if (tournament) return removeTournament(report, tournament.id, now);
+  }
+  return touch({ ...report, calendar: report.calendar.filter((item) => item.id !== id) }, now);
 }
 
 export function readGymSchedule(raw: string | null): { hints: GymHint[] } | null {
@@ -318,81 +412,36 @@ function level(belt: ProgressBelt, name: string, checkpoints: RubricCheckpoint[]
   return { id: `level.${belt}`, name, belt, checkpoints };
 }
 
-/** Names from the fundamentals catalog. The student marks these. The file has no stripes. */
+/**
+ * Brown used to arrive with a technique list. That list is not a default anymore.
+ * An unmarked copy of it is cleared. A mark, a note, or a renamed row stays.
+ */
+const LEGACY_BROWN_CHECKPOINTS: RubricCheckpoint[] = [
+  checkpoint('brown', 'top', 'Top', [
+    criterion('brown', 'mount', 'Hold mount.', 'pos.mount', 'Mount'),
+    criterion('brown', 'knee on belly', 'Hold knee on belly.', 'pos.knee-on-belly', 'Knee on belly'),
+  ]),
+  checkpoint('brown', 'standing', 'Standing', [
+    criterion('brown', 'standing', 'Work standing.', 'pos.standing', 'Standing'),
+    criterion('brown', 'double leg', 'Finish a double leg.', 'td.double-leg', 'Double leg'),
+    criterion('brown', 'hip throw', 'Finish a hip throw.', 'td.hip-throw', 'Hip throw'),
+  ]),
+  checkpoint('brown', 'chokes', 'Chokes', [
+    criterion('brown', 'guillotine', 'Finish a guillotine.', 'sub.guillotine', 'Guillotine'),
+    criterion('brown', 'cross collar', 'Finish a cross collar choke.', 'sub.cross-collar', 'Cross collar choke'),
+  ]),
+];
+
+/**
+ * White through brown carry the suggested stripe lists.
+ * Black and above stay empty. Kids belts keep their short lists.
+ */
 export const STARTER_RUBRIC_LEVELS: RubricLevel[] = [
-  level('white', 'White', [
-    checkpoint('white', 'guard', 'Guard', [
-      criterion('white', 'closed guard', 'Hold closed guard.', 'pos.closed-guard', 'Closed guard'),
-      criterion('white', 'scissor sweep', 'Finish a scissor sweep.', 'sweep.scissor', 'Scissor sweep'),
-    ]),
-    checkpoint('white', 'escapes', 'Escapes', [
-      criterion('white', 'mount escape', 'Escape mount.', 'escape.mount', 'Mount escape'),
-      criterion('white', 'side control escape', 'Escape side control.', 'escape.side-control', 'Side control escape'),
-    ]),
-    checkpoint('white', 'passes', 'Passes', [
-      criterion('white', 'knee slice', 'Finish a knee slice pass.', 'pass.knee-slice', 'Knee slice pass'),
-      criterion('white', 'torreando', 'Finish a torreando pass.', 'pass.torreando', 'Torreando pass'),
-    ]),
-  ]),
-  level('blue', 'Blue', [
-    checkpoint('blue', 'half-guard', 'Half guard', [
-      criterion('blue', 'half guard', 'Play half guard.', 'pos.half-guard', 'Half guard'),
-      criterion('blue', 'tripod sweep', 'Finish a tripod sweep.', 'sweep.tripod', 'Tripod sweep'),
-    ]),
-    checkpoint('blue', 'submissions', 'Submissions', [
-      criterion('blue', 'kimura', 'Finish a kimura.', 'sub.kimura', 'Kimura'),
-      criterion('blue', 'triangle', 'Finish a triangle.', 'sub.triangle', 'Triangle'),
-    ]),
-    checkpoint('blue', 'takedowns', 'Takedowns', [
-      criterion('blue', 'single leg', 'Finish a single leg.', 'td.single-leg', 'Single leg'),
-      criterion('blue', 'arm drag', 'Finish an arm drag.', 'td.arm-drag', 'Arm drag'),
-    ]),
-  ]),
-  level('purple', 'Purple', [
-    checkpoint('purple', 'back', 'Back', [
-      criterion('purple', 'back control', 'Take the back.', 'pos.back-control', 'Back control'),
-      criterion('purple', 'rear naked choke', 'Finish a rear naked choke.', 'sub.rear-naked-choke', 'Rear naked choke'),
-    ]),
-    checkpoint('purple', 'open-guard', 'Open guard', [
-      criterion('purple', 'open guard', 'Play open guard.', 'pos.open-guard', 'Open guard'),
-      criterion('purple', 'flower sweep', 'Finish a flower sweep.', 'sweep.flower', 'Flower sweep'),
-    ]),
-    checkpoint('purple', 'passing', 'Passing', [
-      criterion('purple', 'leg drag', 'Finish a leg drag.', 'pass.leg-drag', 'Leg drag'),
-      criterion('purple', 'stack pass', 'Finish a stack pass.', 'pass.stack', 'Stack pass'),
-    ]),
-  ]),
-  level('brown', 'Brown', [
-    checkpoint('brown', 'top', 'Top', [
-      criterion('brown', 'mount', 'Hold mount.', 'pos.mount', 'Mount'),
-      criterion('brown', 'knee on belly', 'Hold knee on belly.', 'pos.knee-on-belly', 'Knee on belly'),
-    ]),
-    checkpoint('brown', 'standing', 'Standing', [
-      criterion('brown', 'standing', 'Work standing.', 'pos.standing', 'Standing'),
-      criterion('brown', 'double leg', 'Finish a double leg.', 'td.double-leg', 'Double leg'),
-      criterion('brown', 'hip throw', 'Finish a hip throw.', 'td.hip-throw', 'Hip throw'),
-    ]),
-    checkpoint('brown', 'chokes', 'Chokes', [
-      criterion('brown', 'guillotine', 'Finish a guillotine.', 'sub.guillotine', 'Guillotine'),
-      criterion('brown', 'cross collar', 'Finish a cross collar choke.', 'sub.cross-collar', 'Cross collar choke'),
-    ]),
-  ]),
-  level('black', 'Black', [
-    checkpoint('black', 'pressure', 'Pressure', [
-      criterion('black', 'side control', 'Hold side control.', 'pos.side-control', 'Side control'),
-      criterion('black', 'mount', 'Hold mount.', 'pos.mount', 'Mount'),
-    ]),
-    checkpoint('black', 'guard', 'Guard', [
-      criterion('black', 'closed guard', 'Recover closed guard.', 'pos.closed-guard', 'Closed guard'),
-      criterion('black', 'hip bump', 'Finish a hip bump sweep.', 'sweep.hip-bump', 'Hip bump sweep'),
-    ]),
-  ]),
-  level('coral', 'Coral', [
-    checkpoint('coral', 'review', 'Review', [
-      criterion('coral', 'scissor sweep', 'Teach a scissor sweep.', 'sweep.scissor', 'Scissor sweep'),
-      criterion('coral', 'armbar', 'Teach an armbar from guard.', 'sub.armbar-guard', 'Armbar from guard'),
-    ]),
-  ]),
+  ...adultStarterLevels(),
+  level('black', 'Black', []),
+  level('coral', 'Coral', []),
+  level('redWhite', 'Red and white', []),
+  level('red', 'Red', []),
   level('grey', 'Grey', [
     checkpoint('grey', 'positions', 'Positions', [
       criterion('grey', 'closed guard', 'Hold closed guard.', 'pos.closed-guard', 'Closed guard'),
@@ -419,18 +468,57 @@ export const STARTER_RUBRIC_LEVELS: RubricLevel[] = [
   ]),
 ];
 
-/** Add any starter level this file does not already have. Existing marks stay. */
+function criterionUntouched(row: RubricCriterion, starter: RubricCriterion): boolean {
+  if (row.id !== starter.id || row.requirement !== starter.requirement || row.met != null || row.note.trim()) return false;
+  if (row.techniqueRefs.length !== starter.techniqueRefs.length) return false;
+  return row.techniqueRefs.every((ref, index) => ref.id === starter.techniqueRefs[index]?.id && ref.name === starter.techniqueRefs[index]?.name);
+}
+
+/** True when brown still has the old prefilled list and the student has not edited it. */
+export function isUntouchedLegacyBrown(level: RubricLevel): boolean {
+  if (level.belt !== 'brown' || level.checkpoints.length !== LEGACY_BROWN_CHECKPOINTS.length) return false;
+  return level.checkpoints.every((row, index) => {
+    const starter = LEGACY_BROWN_CHECKPOINTS[index];
+    if (!starter || row.id !== starter.id || row.name !== starter.name || row.met != null || row.note.trim()) return false;
+    if (row.criteria.length !== starter.criteria.length) return false;
+    return row.criteria.every((item, criterionIndex) => criterionUntouched(item, starter.criteria[criterionIndex]!));
+  });
+}
+
+const SEEDED_ADULT = new Set<ProgressBelt>(['white', 'blue', 'purple', 'brown']);
+
+/**
+ * Add any starter level this file does not already have.
+ * A list that already has benchmarks is kept.
+ * An emptied white, blue, or purple list stays empty.
+ * An old empty brown list, and an untouched legacy brown list, receive the suggested prompts once.
+ */
 export function withStarterRubric(report: StudentProgressReport, now = Date.now()): StudentProgressReport {
   const present = new Set(report.rubric.levels.map((item) => item.id));
   const missing = STARTER_RUBRIC_LEVELS.filter((item) => !present.has(item.id));
-  if (!missing.length) return report;
-  return touch(
-    {
-      ...report,
-      rubric: { ...report.rubric, levels: [...report.rubric.levels, ...structuredClone(missing)] },
-    },
-    now,
-  );
+  let changed = missing.length > 0;
+  const levels = (missing.length ? [...report.rubric.levels, ...structuredClone(missing)] : report.rubric.levels).map((row) => {
+    const next = settleStarterLevel(row);
+    if (next !== row) changed = true;
+    return next;
+  });
+  if (!changed) return report;
+  return touch({ ...report, rubric: { ...report.rubric, levels } }, now);
+}
+
+function settleStarterLevel(row: RubricLevel): RubricLevel {
+  if (isUntouchedLegacyBrown(row)) {
+    const starter = STARTER_RUBRIC_LEVELS.find((item) => item.belt === 'brown');
+    return starter ? structuredClone(starter) : { ...row, checkpoints: [], starterAck: true };
+  }
+  if (!SEEDED_ADULT.has(row.belt)) return row;
+  if (row.checkpoints.length > 0) return row.starterAck ? row : { ...row, starterAck: true };
+  if (row.starterAck) return row;
+  if (row.belt === 'brown') {
+    const starter = STARTER_RUBRIC_LEVELS.find((item) => item.belt === 'brown');
+    return starter ? structuredClone(starter) : { ...row, starterAck: true };
+  }
+  return { ...row, starterAck: true };
 }
 
 export function learnedCatalogIds(report: StudentProgressReport): Set<string> {
@@ -441,21 +529,121 @@ export function learnedCatalogIds(report: StudentProgressReport): Set<string> {
   );
 }
 
-export function criterionCounts(criterionRow: RubricCriterion, learned: ReadonlySet<string>): boolean {
-  if (criterionRow.met === true) return true;
-  return criterionRow.techniqueRefs.some((ref) => ref.id !== '' && learned.has(ref.id));
-}
-
-export function criterionFromFundamentals(criterionRow: RubricCriterion, learned: ReadonlySet<string>): boolean {
-  if (criterionRow.met === true) return false;
-  return criterionRow.techniqueRefs.some((ref) => ref.id !== '' && learned.has(ref.id));
-}
-
 /** A checkpoint is filled when the student marked it, or every requirement counts. Not a stripe. */
-export function checkpointFilled(row: RubricCheckpoint, learned: ReadonlySet<string>): boolean {
+export function checkpointFilled(row: RubricCheckpoint, learned: LearnedIndex): boolean {
   if (row.met === true) return true;
   if (!row.criteria.length) return false;
   return row.criteria.every((item) => criterionCounts(item, learned));
+}
+
+/** 1 when the checkpoint is filled, otherwise the share of requirements that count. */
+export function checkpointShare(row: RubricCheckpoint, learned: LearnedIndex): number {
+  if (checkpointFilled(row, learned)) return 1;
+  if (!row.criteria.length) return 0;
+  const counted = row.criteria.filter((item) => criterionCounts(item, learned)).length;
+  return counted / row.criteria.length;
+}
+
+export function checkpointState(row: RubricCheckpoint, learned: LearnedIndex): 'filled' | 'partly filled' | 'open' {
+  const share = checkpointShare(row, learned);
+  if (share >= 1) return 'filled';
+  if (share > 0) return 'partly filled';
+  return 'open';
+}
+
+export type BeltRequirementProgress = {
+  requirements: number;
+  counted: number;
+  fromFundamentals: number;
+  checkpoints: number;
+  checkpointsFilled: number;
+};
+
+/** Requirements on this belt. A fundamentals level of 3 or higher counts. */
+export function beltRequirementProgress(level: RubricLevel | null, learned: LearnedIndex): BeltRequirementProgress {
+  const checkpoints = level?.checkpoints ?? [];
+  let requirements = 0;
+  let counted = 0;
+  let fromFundamentals = 0;
+  for (const row of checkpoints) {
+    for (const item of row.criteria) {
+      requirements += 1;
+      if (criterionCounts(item, learned)) counted += 1;
+      if (criterionFromFundamentals(item, learned)) fromFundamentals += 1;
+    }
+  }
+  return {
+    requirements,
+    counted,
+    fromFundamentals,
+    checkpoints: checkpoints.length,
+    checkpointsFilled: checkpoints.filter((row) => checkpointFilled(row, learned)).length,
+  };
+}
+
+export function beltProgressSummary(level: RubricLevel | null, learned: LearnedIndex): string {
+  const progress = beltRequirementProgress(level, learned);
+  const parts: string[] = [];
+  if (progress.checkpoints) parts.push(`${progress.checkpointsFilled} of ${progress.checkpoints} practical benchmarks filled.`);
+  if (progress.requirements) {
+    const from = progress.fromFundamentals ? ` ${progress.fromFundamentals} from fundamentals.` : '';
+    parts.push(`${progress.counted} of ${progress.requirements} requirements counted.${from}`);
+  }
+  return parts.join(' ');
+}
+
+/** Higher belts start without a benchmark list. Personal goals are added from these prompts. */
+export const OPEN_GOAL_BELTS = ['brown', 'black', 'coral', 'redWhite', 'red'] as const;
+
+export const PRACTICAL_BENCHMARKS_HEADING = 'Practical Benchmarks';
+export const PRACTICAL_BENCHMARKS_LINE = 'Skills the coach or template expects before the next belt.';
+export const PERSONAL_GOALS_HEADING = 'Personal Goals';
+export const PERSONAL_GOALS_LINE = 'Your own goals, which never affect belt or degree milestones.';
+export const NO_PRACTICAL_BENCHMARKS = 'No practical benchmarks yet.';
+export const NO_PERSONAL_GOALS = 'No personal goals yet.';
+
+export const OPEN_GOAL_PROMPTS = [
+  'Teaching: lead a class',
+  'Competition or rolling goals',
+  'Giving back to the gym',
+  'Personal game refinement',
+  'Lineage and history',
+] as const;
+
+export const OPEN_GOAL_LINE = 'Set the personal goals that matter to you at this stage';
+export const INSTRUCTOR_FINAL_SAY = 'Your instructor always has the final say.';
+export const TIME_BASED_PROGRESS =
+  'Progress at this rank is time at the belt. Personal goals do not change a degree, coral, or red.';
+
+export function openGoalBelt(belt: ProgressBelt): boolean {
+  return (OPEN_GOAL_BELTS as readonly string[]).includes(belt);
+}
+
+/** Coach checkpoints are locked only when the template says students cannot edit them. */
+export function checkpointReadOnly(report: StudentProgressReport, row: RubricCheckpoint): boolean {
+  return row.source === 'coach' && report.rubric.studentsCanEdit === false;
+}
+
+/** A coach checkpoint the student changed shows an asterisk. Own checkpoints do not. */
+export function checkpointTitle(row: RubricCheckpoint): string {
+  return row.source === 'coach' && row.edited === true ? `${row.name}*` : row.name;
+}
+
+function editedCoach(row: RubricCheckpoint, changed: boolean): RubricCheckpoint {
+  if (!changed || row.source !== 'coach') return row;
+  return { ...row, edited: true };
+}
+
+function requireCheckpointEdit(report: StudentProgressReport, checkpointId: string): void {
+  for (const level of report.rubric.levels) {
+    const row = level.checkpoints.find((item) => item.id === checkpointId);
+    if (row && checkpointReadOnly(report, row)) throw new Error('This practical benchmark comes from your coach.');
+  }
+}
+
+/** Black, coral, and red move by time. Checkpoints on those belts are focus, not milestones. */
+export function degreeProgressIsTimeBased(belt: ProgressBelt): boolean {
+  return belt === 'black' || belt === 'coral' || belt === 'redWhite' || belt === 'red';
 }
 
 export function beltLevel(report: StudentProgressReport, belt: ProgressBelt): RubricLevel | null {
@@ -511,31 +699,218 @@ export function setCheckpointMark(
     checkpoints: item.checkpoints.map((row) => {
       if (row.id !== checkpointId) return row;
       found = true;
-      return { ...row, met, note: note.trim().slice(0, PROGRESS_NOTE_MAX) };
+      if (checkpointReadOnly(report, row) && note.trim() !== row.note) {
+        throw new Error('This practical benchmark comes from your coach.');
+      }
+      const nextNote = note.trim().slice(0, PROGRESS_NOTE_MAX);
+      return editedCoach({ ...row, met, note: nextNote }, nextNote !== row.note);
     }),
   }));
   if (!found) return report;
   return touch({ ...report, rubric: { ...report.rubric, levels } }, now);
 }
 
+function ensureBeltLevel(report: StudentProgressReport, belt: ProgressBelt): StudentProgressReport {
+  if (beltLevel(report, belt)) return report;
+  const starter = STARTER_RUBRIC_LEVELS.find((item) => item.belt === belt);
+  const next = starter
+    ? structuredClone(starter)
+    : { id: `level.${belt}`, name: BELT_LABELS[belt], belt, checkpoints: [] };
+  return { ...report, rubric: { ...report.rubric, levels: [...report.rubric.levels, next] } };
+}
+
+function checkpointIdFor(levels: readonly RubricLevel[], belt: ProgressBelt, name: string, now: number): string {
+  const used = new Set(levels.flatMap((level) => level.checkpoints.map((row) => row.id)));
+  const base = sharedCheckpointId(belt, name);
+  if (!used.has(base)) return base;
+  let id = newId(`checkpoint.${belt}`, now);
+  while (used.has(id)) id = newId(`checkpoint.${belt}`, now + 1);
+  return id.slice(0, PROGRESS_ID_MAX);
+}
+
+function replaceBeltCheckpoints(
+  report: StudentProgressReport,
+  belt: ProgressBelt,
+  checkpoints: RubricCheckpoint[],
+  now: number,
+): StudentProgressReport {
+  return touch(
+    {
+      ...report,
+      rubric: {
+        ...report.rubric,
+        levels: report.rubric.levels.map((level) => (level.belt === belt ? { ...level, checkpoints } : level)),
+      },
+    },
+    now,
+  );
+}
+
+/** Add a checkpoint on an adult belt. The new row has no requirements until the student writes them. */
+export function addCheckpoint(
+  report: StudentProgressReport,
+  belt: ProgressBelt,
+  name: string,
+  now = Date.now(),
+): StudentProgressReport {
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error('Add a practical benchmark name.');
+  const prepared = ensureBeltLevel(report, belt);
+  const level = beltLevel(prepared, belt);
+  if (!level) return prepared;
+  if (level.checkpoints.length >= PROGRESS_CHECKPOINTS_MAX) throw new Error('The practical benchmark list is full.');
+  const row: RubricCheckpoint = {
+    id: checkpointIdFor(prepared.rubric.levels, belt, trimmed, now),
+    name: trimmed.slice(0, PROGRESS_BENCHMARK_MAX),
+    met: null,
+    note: '',
+    criteria: [],
+  };
+  return replaceBeltCheckpoints(prepared, belt, [...level.checkpoints, row], now);
+}
+
+export function renameCheckpoint(
+  report: StudentProgressReport,
+  checkpointId: string,
+  name: string,
+  now = Date.now(),
+): StudentProgressReport {
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error('Add a practical benchmark name.');
+  requireCheckpointEdit(report, checkpointId);
+  let found = false;
+  const levels = report.rubric.levels.map((level) => ({
+    ...level,
+    checkpoints: level.checkpoints.map((row) => {
+      if (row.id !== checkpointId) return row;
+      found = true;
+      const name = trimmed.slice(0, PROGRESS_BENCHMARK_MAX);
+      return editedCoach({ ...row, name }, name !== row.name);
+    }),
+  }));
+  if (!found) return report;
+  return touch({ ...report, rubric: { ...report.rubric, levels } }, now);
+}
+
+export function removeCheckpoint(report: StudentProgressReport, checkpointId: string, now = Date.now()): StudentProgressReport {
+  requireCheckpointEdit(report, checkpointId);
+  let found = false;
+  const levels = report.rubric.levels.map((level) => ({
+    ...level,
+    checkpoints: level.checkpoints.filter((row) => {
+      if (row.id !== checkpointId) return true;
+      found = true;
+      return false;
+    }),
+  }));
+  if (!found) return report;
+  const acked = levels.map((row) => (row.checkpoints.length === 0 && SEEDED_ADULT.has(row.belt) ? { ...row, starterAck: true } : row));
+  return touch({ ...report, rubric: { ...report.rubric, levels: acked } }, now);
+}
+
+/** Put the suggested list back. Marks on matching items stay. Added items are removed unless a coach locked them. */
+export function restoreStarterBenchmarks(report: StudentProgressReport, belt: ProgressBelt, now = Date.now()): StudentProgressReport {
+  const starter = STARTER_RUBRIC_LEVELS.find((item) => item.belt === belt);
+  if (!starter?.checkpoints.length) throw new Error('This belt has no suggested list.');
+  const prepared = ensureBeltLevel(report, belt);
+  const current = beltLevel(prepared, belt);
+  if (!current) return prepared;
+  const previous = new Map(current.checkpoints.map((row) => [row.id, row]));
+  const checkpoints = starter.checkpoints.map((item) => {
+    const old = previous.get(item.id);
+    if (!old) return structuredClone(item);
+    if (checkpointReadOnly(prepared, old)) return old;
+    return mergeStarterMarks(structuredClone(item), old);
+  });
+  for (const row of current.checkpoints) {
+    if (checkpointReadOnly(prepared, row) && !checkpoints.some((item) => item.id === row.id)) checkpoints.push(row);
+  }
+  const acked = {
+    ...prepared,
+    rubric: {
+      ...prepared.rubric,
+      levels: prepared.rubric.levels.map((row) => (row.belt === belt ? { ...row, starterAck: true } : row)),
+    },
+  };
+  return replaceBeltCheckpoints(acked, belt, checkpoints, now);
+}
+
+function mergeStarterMarks(starter: RubricCheckpoint, old: RubricCheckpoint): RubricCheckpoint {
+  const next: RubricCheckpoint = { ...starter, met: old.met, note: old.note };
+  if (old.source) next.source = old.source;
+  if (old.edited) next.edited = true;
+  next.criteria = starter.criteria.map((item) => {
+    const prev = old.criteria.find((row) => row.id === item.id);
+    if (!prev) return item;
+    return { ...item, met: prev.met, note: prev.note };
+  });
+  return next;
+}
+
+/** Move a checkpoint one place. `-1` is up, `1` is down. The ends stay put. */
+export function moveCheckpoint(
+  report: StudentProgressReport,
+  checkpointId: string,
+  direction: -1 | 1,
+  now = Date.now(),
+): StudentProgressReport {
+  let found = false;
+  const levels = report.rubric.levels.map((level) => {
+    const index = level.checkpoints.findIndex((row) => row.id === checkpointId);
+    const nextIndex = index + direction;
+    if (index < 0 || nextIndex < 0 || nextIndex >= level.checkpoints.length) return level;
+    const row = level.checkpoints[index];
+    if (!row) return level;
+    if (checkpointReadOnly(report, row)) throw new Error('This practical benchmark comes from your coach.');
+    found = true;
+    const checkpoints = [...level.checkpoints];
+    checkpoints.splice(index, 1);
+    checkpoints.splice(nextIndex, 0, editedCoach(row, true));
+    return { ...level, checkpoints };
+  });
+  if (!found) return report;
+  return touch({ ...report, rubric: { ...report.rubric, levels } }, now);
+}
+
+/** The belt the student wears. A saved belt comes back with its stripes, degrees, bars, and dates. */
 export function setStudentBelt(report: StudentProgressReport, belt: ProgressBelt, now = Date.now()): StudentProgressReport {
   return setRankBelt(report, belt, now);
 }
 
-export function addGoal(report: StudentProgressReport, name: string, note: string, now = Date.now()): StudentProgressReport {
+/** Goals for this belt, plus older goals that were saved before goals had a belt. */
+export function goalsForBelt(report: StudentProgressReport, belt: ProgressBelt): StudentGoal[] {
+  return report.goals.filter((goal) => !goal.belt || goal.belt === belt);
+}
+
+export function goalsForKidsBelt(report: StudentProgressReport, beltId: string): StudentGoal[] {
+  return report.goals.filter((goal) => goal.kidsBeltId === beltId || (!goal.kidsBeltId && !goal.belt));
+}
+
+export function addGoal(
+  report: StudentProgressReport,
+  name: string,
+  note: string,
+  now = Date.now(),
+  belt?: ProgressBelt,
+  kidsBeltId?: string,
+): StudentProgressReport {
   const trimmed = name.trim();
-  if (!trimmed) throw new Error('Add a goal name.');
-  if (report.goals.length >= PROGRESS_GOALS_MAX) throw new Error('The goal list is full.');
-  return touch(
-    {
-      ...report,
-      goals: [
-        ...report.goals,
-        { id: newId('goal', now), name: trimmed.slice(0, PROGRESS_NAME_MAX), note: note.trim().slice(0, PROGRESS_NOTE_MAX), met: false },
-      ],
-    },
-    now,
-  );
+  if (!trimmed) throw new Error('Add a personal goal name.');
+  if (report.goals.length >= PROGRESS_GOALS_MAX) throw new Error('The personal goal list is full.');
+  const goal: StudentGoal = {
+    id: newId('goal', now),
+    name: trimmed.slice(0, PROGRESS_NAME_MAX),
+    note: note.trim().slice(0, PROGRESS_NOTE_MAX),
+    met: false,
+  };
+  if (belt) goal.belt = belt;
+  if (kidsBeltId) goal.kidsBeltId = kidsBeltId;
+  return touch({ ...report, goals: [...report.goals, goal] }, now);
+}
+
+export function removeGoal(report: StudentProgressReport, id: string, now = Date.now()): StudentProgressReport {
+  if (!report.goals.some((goal) => goal.id === id)) return report;
+  return touch({ ...report, goals: report.goals.filter((goal) => goal.id !== id) }, now);
 }
 
 export function updateGoal(
@@ -546,7 +921,7 @@ export function updateGoal(
   now = Date.now(),
 ): StudentProgressReport {
   const trimmed = name.trim();
-  if (!trimmed) throw new Error('Add a goal name.');
+  if (!trimmed) throw new Error('Add a personal goal name.');
   let found = false;
   const goals = report.goals.map((goal) => {
     if (goal.id !== id) return goal;
@@ -568,35 +943,46 @@ export function setGoalMet(report: StudentProgressReport, id: string, met: boole
   return touch({ ...report, goals }, now);
 }
 
-function copyGoal(report: StudentProgressReport, sourceId: string, name: string, note: string, now: number): StudentProgressReport {
+function copyGoal(
+  report: StudentProgressReport,
+  sourceId: string,
+  name: string,
+  note: string,
+  now: number,
+  kidsBeltId?: string,
+): StudentProgressReport {
   const trimmed = name.trim();
   if (!trimmed) return report;
   const id = `goal.${sourceId}`.slice(0, PROGRESS_ID_MAX);
   if (report.goals.some((goal) => goal.id === id)) return report;
-  if (report.goals.length >= PROGRESS_GOALS_MAX) throw new Error('The goal list is full.');
-  return touch(
-    {
-      ...report,
-      goals: [
-        ...report.goals,
-        { id, name: trimmed.slice(0, PROGRESS_NAME_MAX), note: note.trim().slice(0, PROGRESS_NOTE_MAX), met: false },
-      ],
-    },
-    now,
-  );
+  if (report.goals.length >= PROGRESS_GOALS_MAX) throw new Error('The personal goal list is full.');
+  const goal: StudentGoal = {
+    id,
+    name: trimmed.slice(0, PROGRESS_NAME_MAX),
+    note: note.trim().slice(0, PROGRESS_NOTE_MAX),
+    met: false,
+  };
+  if (kidsBeltId) goal.kidsBeltId = kidsBeltId;
+  return touch({ ...report, goals: [...report.goals, goal] }, now);
 }
 
-export function copyFocusToGoal(report: StudentProgressReport, focus: CoachPlanFocus, now = Date.now()): StudentProgressReport {
+export function copyFocusToGoal(
+  report: StudentProgressReport,
+  focus: CoachPlanFocus,
+  now = Date.now(),
+  kidsBeltId?: string,
+): StudentProgressReport {
   const name = focus.name.trim() || focus.note.trim();
-  return copyGoal(report, focus.id, name, focus.note, now);
+  return copyGoal(report, focus.id, name, focus.note, now, kidsBeltId);
 }
 
 export function copySuggestionToGoal(
   report: StudentProgressReport,
   suggestion: CoachSuggestion,
   now = Date.now(),
+  kidsBeltId?: string,
 ): StudentProgressReport {
-  return copyGoal(report, suggestion.id, suggestion.note, suggestion.note, now);
+  return copyGoal(report, suggestion.id, suggestion.note, suggestion.note, now, kidsBeltId);
 }
 
 export function goalCopied(report: StudentProgressReport, sourceId: string): boolean {
@@ -639,6 +1025,10 @@ export type CoachImportResult = {
   error: string;
   /** The student's own Send to coach file. It is not imported. Merge only after the student confirms. */
   pendingReport?: StudentProgressReport;
+  /** Gym name and logo from the file, when it had them. Null on older files. */
+  gym: CoachGymBrand | null;
+  /** The gym handout. It does not replace a coach plan already on the phone. */
+  gymBrandOnly?: boolean;
 };
 
 /** Shown when the student picks the progress file Make a file for my coach just downloaded. */
@@ -663,7 +1053,7 @@ export const EMPTY_COACH_FILE_MESSAGE =
 const COACH_IMPORT_TAKES = 'Import from coach takes a coach plan or coach feedback file, the file a coach sends back to you.';
 
 function refusedCoachFile(report: StudentProgressReport, shelf: CoachShelf, error: string): CoachImportResult {
-  return { report, shelf, message: '', error };
+  return { report, shelf, message: '', error, gym: null };
 }
 
 function looksLikeSpreadsheet(text: string): boolean {
@@ -674,11 +1064,18 @@ function looksLikeSpreadsheet(text: string): boolean {
 }
 
 /**
- * Read a coach-plan or coach-feedback file.
+ * Read a coach-plan, coach-feedback, or gym brand file.
  * The student's own Send to coach file is a different kind. It is returned as pendingReport
  * and is not imported. mergeOwnStudentFile runs only after the student confirms.
+ * A gym brand file sets the gym name and logo only. It does not replace a coach plan.
  * importCoachSuggestion returns the student report unchanged.
  */
+function withGymName(report: StudentProgressReport, gym: CoachGymBrand | null, overwrite: boolean): StudentProgressReport {
+  if (!gym?.name) return report;
+  if (!overwrite && report.profile.gymName.trim()) return report;
+  return setStudentProfile(report, { gymName: gym.name });
+}
+
 export function applyCoachFile(report: StudentProgressReport, shelf: CoachShelf, text: string): CoachImportResult {
   if (!text.trim()) return refusedCoachFile(report, shelf, EMPTY_COACH_FILE_MESSAGE);
   if (looksLikeSpreadsheet(text)) return refusedCoachFile(report, shelf, SPREADSHEET_PICKER_MESSAGE);
@@ -696,6 +1093,7 @@ export function applyCoachFile(report: StudentProgressReport, shelf: CoachShelf,
     );
   }
   const record = raw as { advantage?: unknown; kind?: unknown };
+  const gym = readTravelingGym(raw);
   if (record.advantage === 'student-journal-backup') return refusedCoachFile(report, shelf, BACKUP_PICKER_MESSAGE);
   if (record.kind === 'student-progress-report') {
     const parsed = parseProgressPacket(text);
@@ -709,6 +1107,7 @@ export function applyCoachFile(report: StudentProgressReport, shelf: CoachShelf,
       message: OWN_SEND_FILE_MESSAGE,
       error: '',
       pendingReport: parsed.value,
+      gym,
     };
   }
   if (record.kind !== 'coach-plan' && record.kind !== 'coach-feedback') {
@@ -731,16 +1130,30 @@ export function applyCoachFile(report: StudentProgressReport, shelf: CoachShelf,
     }
     return refusedCoachFile(report, shelf, `${parsed.errors.join(' ')} It was not imported.`);
   }
+  if (parsed.value.kind === 'coach-plan' && isGymBrandFile(parsed.value)) {
+    return {
+      report: withGymName(report, gym, true),
+      shelf,
+      message: gym
+        ? 'Gym name and logo are on this phone. Your journal was not changed. You can replace or remove the logo on My profile.'
+        : 'That gym file did not include a name or logo. Your journal was not changed.',
+      error: '',
+      gym,
+      gymBrandOnly: true,
+    };
+  }
   if (parsed.value.kind === 'coach-plan') {
     const merged = mergeCoachPacket(shelf.plan, parsed.value);
     const suggestion = importCoachSuggestion(report, merged.packet);
+    const carried = merged.replaced ? gym : null;
     return {
-      report: suggestion.report,
+      report: withGymName(suggestion.report, carried, false),
       shelf: { ...shelf, plan: merged.packet },
       message: merged.replaced
-        ? `${merged.packet.plan.title || 'Work on before next promotion'} is on this phone. Your rubric, journal, and goals were not changed.`
+        ? `${merged.packet.plan.title || 'Work on before next promotion'} is on this phone. Your rubric, journal, and personal goals were not changed.`
         : coachFileKept(merged.conflicts),
       error: '',
+      gym: carried,
     };
   }
   if (parsed.value.kind !== 'coach-feedback') {
@@ -748,13 +1161,15 @@ export function applyCoachFile(report: StudentProgressReport, shelf: CoachShelf,
   }
   const merged = mergeCoachPacket(shelf.feedback, parsed.value);
   const suggestion = importCoachSuggestion(report, merged.packet);
+  const carried = merged.replaced ? gym : null;
   return {
-    report: suggestion.report,
+    report: withGymName(suggestion.report, carried, false),
     shelf: { ...shelf, feedback: merged.packet },
     message: merged.replaced
-      ? 'Coach feedback is on this phone. Your rubric, journal, and goals were not changed.'
+      ? 'Coach feedback is on this phone. Your rubric, journal, and personal goals were not changed.'
       : coachFileKept(merged.conflicts),
     error: '',
+    gym: carried,
   };
 }
 
@@ -867,7 +1282,21 @@ export function sampleCoachPlanFile(studentId: string, now = Date.now()): { name
   return { name: progressHandoffFileName(packet), json: exportProgressPacket(packet) };
 }
 
-export function progressReportFiles(report: StudentProgressReport, pictures = picturesFromStore(loadRankPictures())): {
+function storageGet(storage: Pick<Storage, 'getItem'> | null | undefined): Pick<Storage, 'getItem'> | null {
+  if (storage) return storage;
+  try {
+    if (typeof localStorage === 'undefined') return null;
+    return localStorage;
+  } catch {
+    return null;
+  }
+}
+
+export function progressReportFiles(
+  report: StudentProgressReport,
+  pictures = picturesFromStore(loadRankPictures()),
+  storage?: Pick<Storage, 'getItem'> | null,
+): {
   jsonName: string;
   json: string;
   csvName: string;
@@ -878,7 +1307,15 @@ export function progressReportFiles(report: StudentProgressReport, pictures = pi
   const withPhotos = report.rank && pictures.length ? { ...report, rank: { ...report.rank, pictures } } : report;
   const fitted = fitRankPictures(withPhotos);
   const jsonName = progressHandoffFileName(fitted);
-  const json = exportProgressPacket(fitted);
+  let json = exportProgressPacket(fitted);
+  const store = storageGet(storage);
+  const visibility = headerVisibility(beltModeOf(fitted), readProfileMarks(store));
+  const logo = visibility.logo ? readStudentGymLogo(store) : null;
+  if (logo) {
+    const parsed = JSON.parse(json) as Record<string, unknown>;
+    parsed.gym = { name: fitted.profile.gymName, logo };
+    json = JSON.stringify(parsed);
+  }
   const csvName = jsonName.replace(/\.json$/, '.csv');
   const csv = exportProgressCsv(fitted);
   const body = `The progress file ${jsonName} is on this phone. Attach that JSON. Advantage does not host the file.`;

@@ -4,12 +4,16 @@
  * Advantage does not host it.
  */
 
+import { mergeBeltBooks, readBeltBook } from '../beltBook.ts';
+import { coachGymLogoFits, readTravelingGym, softenOversizedGymLogo } from '../coachGymFit.ts';
 import { splitCombinedDivision } from '../divisionFields.ts';
 import { fundamentalLevelOf, isFundamentalLevel } from '../fundamentals.ts';
-import { expandLineage, stripeDateText } from '../studentRank.ts';
+import { highDatesForCount } from '../blackBeltDegrees.ts';
+import { dedupeRankHistory, expandLineage, stripeDateText } from '../studentRank.ts';
 import { asRecord } from '../plainValue.ts';
 import { canonicalFundamentalsCatalogId } from './catalog.ts';
 import { emptyCompetition, seedGamesFromJournal } from './competition.ts';
+import { shareTournaments } from '../sharedTournaments.ts';
 import {
   CALENDAR_KINDS,
   CALENDAR_REPEATS,
@@ -37,11 +41,17 @@ import {
   MATCH_RESULTS,
   PROGRESS_BRACKET_NOTES_MAX,
   PROGRESS_MATCHES_MAX,
+  PROGRESS_BENCHMARK_MAX,
   PROGRESS_NAME_MAX,
   PROGRESS_NOTE_MAX,
+  BENCHMARK_POLICIES,
+  BENCHMARK_STAGES,
+  TRAINING_STYLES,
   PROGRESS_RANK_HISTORY_MAX,
   PROGRESS_RESULTS_MAX,
   PROGRESS_PACKET_KINDS,
+  BLACK_DEGREE_MAX,
+  FINAL_RANK_BELTS,
   RANK_BELTS,
   RANK_TAPE_MAX,
   PROGRESS_SCHEMA_VERSION,
@@ -66,8 +76,10 @@ import {
   type FundamentalsCatalog,
   type FundamentalsCategory,
   type FundamentalsItem,
+  type CatalogNeed,
   type LicenseSource,
   type RubricCheckpoint,
+  type TechniquePolicy,
   type RubricCriterion,
   type RubricLevel,
   type CalendarEvent,
@@ -75,6 +87,7 @@ import {
   type CalendarRepeat,
   type CoachFeedback,
   type CoachFeedbackPacket,
+  type CoachGymBrand,
   type CoachPlan,
   type CoachPlanFocus,
   type CoachPlanPacket,
@@ -83,6 +96,7 @@ import {
   type JournalEntry,
   type ProgressBelt,
   type ProgressMerge,
+  type HighDegreeDates,
   type RankBelt,
   type RankHistory,
   type RankPicture,
@@ -153,9 +167,18 @@ export function progressHandoffFileName(packet: Pick<ProgressPacket, 'kind' | 'i
 }
 
 export function exportProgressPacket(packet: ProgressPacket): string {
-  const ready = packet.kind === 'student-progress-report' ? fitRankPictures(packet) : packet;
+  const fitted = packet.kind === 'student-progress-report' ? fitRankPictures(packet) : packet;
+  const ready = fitted.kind === 'student-progress-report' ? withUniquePromotions(fitted) : fitted;
   if (packetCarriesBytes(ready)) throw new Error('A progress file cannot carry photos or videos.');
   return JSON.stringify(ready);
+}
+
+/** The progress file keeps one row for each belt, degree or stripe count, and awarded date. */
+function withUniquePromotions(report: StudentProgressReport): StudentProgressReport {
+  if (!report.rank) return report;
+  const history = dedupeRankHistory(report.rank.history);
+  if (history.length === report.rank.history.length) return report;
+  return { ...report, rank: { ...report.rank, history } };
 }
 
 /**
@@ -204,10 +227,14 @@ export function parseProgressPacket(text: string): ProgressParse {
 /** Version 1 and version 2 both import. Anything else is left unread. */
 export function parseProgressValue(raw: unknown): ProgressParse {
   const errors: string[] = [];
-  if (packetCarriesBytes(raw)) errors.push('A progress file cannot carry photos or videos.');
   if (carriesStripeKey(raw)) errors.push('Belt progress uses checkpoints between levels.');
   const record = asRecord(raw);
-  if (!record) return { ok: false, errors: ['A progress file must be a JSON object.'] };
+  if (!record) {
+    if (packetCarriesBytes(raw)) errors.push('A progress file cannot carry photos or videos.');
+    return { ok: false, errors: errors.length ? errors : ['A progress file must be a JSON object.'] };
+  }
+  softenOversizedGymLogo(record);
+  if (packetCarriesBytes(record)) errors.push('A progress file cannot carry photos or videos.');
   if (!supportedSchema(record.schemaVersion)) {
     const seen = record.schemaVersion == null ? 'missing' : String(record.schemaVersion);
     errors.push(
@@ -241,8 +268,11 @@ export function parseProgressValue(raw: unknown): ProgressParse {
     const clips = readClips(record.clips, errors);
     if (clips) value.clips = clips;
     value.competition = readCompetition(record, value.journal, errors);
-    const rank = readRank(record.rank, errors);
+    const rank = readRank(record.rank, value.profile.belt, errors);
     if (rank) value.rank = rank;
+    const beltBook = readBeltBook(record.beltBook);
+    errors.push(...beltBook.errors);
+    if (beltBook.book) value.beltBook = beltBook.book;
     return errors.length ? { ok: false, errors } : { ok: true, value };
   }
   if (kind === 'coach-plan' || kind === 'coach-feedback') {
@@ -257,6 +287,8 @@ export function parseProgressValue(raw: unknown): ProgressParse {
       updatedAt,
       plan: readCoachPlan(record.plan, errors),
     };
+    const gym = attachGym(record);
+    if (gym) value.gym = gym;
     return errors.length ? { ok: false, errors } : { ok: true, value };
   }
   const value: CoachFeedbackPacket = {
@@ -267,7 +299,13 @@ export function parseProgressValue(raw: unknown): ProgressParse {
     updatedAt,
     feedback: readCoachFeedback(record.feedback, errors),
   };
+  const gym = attachGym(record);
+  if (gym) value.gym = gym;
   return errors.length ? { ok: false, errors } : { ok: true, value };
+}
+
+function attachGym(record: Record<string, unknown>): CoachGymBrand | undefined {
+  return readTravelingGym(record) ?? undefined;
 }
 
 /**
@@ -296,7 +334,10 @@ export function mergeStudentProgress(local: StudentProgressReport, incoming: Stu
   mergeClips(report, incoming, conflicts);
   mergeCompetition(report, incoming, conflicts);
   mergeRank(report, incoming, conflicts);
-  return { report, appendedAmendments, addedJournal, addedChecklist, conflicts };
+  const beltBook = mergeBeltBooks(report.beltBook, incoming.beltBook);
+  if (beltBook.book) report.beltBook = beltBook.book;
+  conflicts.push(...beltBook.conflicts);
+  return { report: shareTournaments(report), appendedAmendments, addedJournal, addedChecklist, conflicts };
 }
 
 /**
@@ -375,6 +416,7 @@ export function packetCarriesBytes(value: unknown): boolean {
       if (BYTE_KEY.test(key)) return true;
       if (typeof child === 'string' && child.startsWith('data:')) {
         if (allowsRankImage(frame.path, key, child)) continue;
+        if (allowsGymLogo(frame.path, key, child)) continue;
         return true;
       }
       if (child && typeof child === 'object') stack.push({ value: child, path: [...frame.path, key] });
@@ -387,6 +429,12 @@ function allowsRankImage(path: readonly string[], key: string, value: string): b
   if (key !== 'image') return false;
   if (!path.includes('rank') || !path.includes('pictures')) return false;
   return rankImageFits(value);
+}
+
+/** A gym logo may travel in a coach file. Other data URLs stay refused. */
+function allowsGymLogo(path: readonly string[], key: string, value: string): boolean {
+  if (key !== 'logo' || path.length !== 1 || path[0] !== 'gym') return false;
+  return coachGymLogoFits(value);
 }
 
 function rankImageFits(value: string): boolean {
@@ -436,6 +484,8 @@ function mergeCheckpoints(local: RubricLevel, incoming: RubricLevel, conflicts: 
     current.name = preferText(current.name, checkpoint.name, `Checkpoint ${checkpoint.id} name was kept.`, conflicts);
     current.note = preferText(current.note, checkpoint.note, `Checkpoint ${checkpoint.id} note was kept.`, conflicts);
     current.met = preferMet(current.met, checkpoint.met, `Checkpoint ${checkpoint.id} mark was kept.`, conflicts);
+    if (checkpoint.source === 'coach' && current.source !== 'own') current.source = 'coach';
+    if (current.source === 'coach' && (current.edited || checkpoint.edited || current.name !== checkpoint.name)) current.edited = true;
     mergeCriteria(current, checkpoint, conflicts);
   }
 }
@@ -473,6 +523,7 @@ function mergeGoals(report: StudentProgressReport, incoming: StudentProgressRepo
     current.name = preferText(current.name, goal.name, `Goal ${goal.id} name was kept.`, conflicts);
     current.note = preferText(current.note, goal.note, `Goal ${goal.id} note was kept.`, conflicts);
     current.met = preferMet(current.met, goal.met, `Goal ${goal.id} mark was kept.`, conflicts);
+    if (!current.belt && goal.belt) current.belt = goal.belt;
   }
 }
 
@@ -579,7 +630,9 @@ function mergeClips(report: StudentProgressReport, incoming: StudentProgressRepo
 function mergeRank(report: StudentProgressReport, incoming: StudentProgressReport, conflicts: string[]): void {
   if (!incoming.rank) return;
   if (!report.rank) {
-    report.rank = stripRankPictures(structuredClone(incoming.rank));
+    const adopted = stripRankPictures(structuredClone(incoming.rank));
+    adopted.history = dedupeRankHistory(adopted.history);
+    report.rank = adopted;
     return;
   }
   const local = report.rank;
@@ -624,6 +677,21 @@ function mergeRank(report: StudentProgressReport, incoming: StudentProgressRepor
     }
     for (let index = current.tapeCount; index < RANK_TAPE_MAX; index += 1) current.tapeDates[index] = '';
   }
+  local.history = dedupeRankHistory(local.history);
+  const focus = mergeDegreeFocus(local.degreeFocus, next.degreeFocus, conflicts);
+  if (focus) local.degreeFocus = focus;
+  else delete local.degreeFocus;
+}
+
+function mergeDegreeFocus(local: string[] | undefined, incoming: string[] | undefined, conflicts: string[]): string[] | undefined {
+  const size = Math.max(local?.length ?? 0, incoming?.length ?? 0);
+  if (!size) return undefined;
+  const notes: string[] = [];
+  for (let index = 0; index < Math.min(size, 10); index += 1) {
+    notes.push(preferText(local?.[index] ?? '', incoming?.[index] ?? '', `Degree focus ${index + 1} was kept.`, conflicts));
+  }
+  while (notes.length && !notes[notes.length - 1]?.trim()) notes.pop();
+  return notes.some((line) => line.trim()) ? notes : undefined;
 }
 
 function mergeLineage(local: string[] | undefined, incoming: string[] | undefined, conflicts: string[]): string[] | undefined {
@@ -823,6 +891,7 @@ function mergeCalendar(report: StudentProgressReport, incoming: StudentProgressR
     else if (current.repeat && event.repeat && current.repeat !== event.repeat) {
       conflicts.push(`Calendar ${event.id} repeat was kept.`);
     }
+    if (!current.tournamentId && event.tournamentId) current.tournamentId = event.tournamentId;
   }
 }
 
@@ -848,7 +917,7 @@ function readProfile(value: unknown, errors: string[]): StudentProfile {
     errors.push('Profile is missing.');
     return { id: '', displayName: '', gymName: '', belt: 'white', startedOn: '', licenseSource: '' };
   }
-  return {
+  const profile: StudentProfile = {
     id: readId(record.id, 'Profile id', errors),
     displayName: readString(record.displayName, 'Display name', PROGRESS_NAME_MAX, errors),
     gymName: readString(record.gymName, 'Gym name', PROGRESS_NAME_MAX, errors),
@@ -856,6 +925,11 @@ function readProfile(value: unknown, errors: string[]): StudentProfile {
     startedOn: readDate(record.startedOn, 'Start date', errors, false),
     licenseSource: readLicenseSource(record.licenseSource, errors),
   };
+  const trainingStyle = readChoice(record.trainingStyle, 'Training style', TRAINING_STYLES, errors);
+  if (trainingStyle) profile.trainingStyle = trainingStyle;
+  const techniquePolicy = readTechniquePolicy(record.techniquePolicy, errors);
+  if (techniquePolicy) profile.techniquePolicy = techniquePolicy;
+  return profile;
 }
 
 function readRubric(value: unknown, errors: string[]): StudentRubric {
@@ -878,7 +952,12 @@ function readRubric(value: unknown, errors: string[]): StudentRubric {
     'Rubric criterion',
     errors,
   );
-  return { id: readId(record.id, 'Rubric id', errors), levels };
+  const rubric: StudentRubric = { id: readId(record.id, 'Rubric id', errors), levels };
+  if (record.studentsCanEdit === false) rubric.studentsCanEdit = false;
+  else if (record.studentsCanEdit != null && record.studentsCanEdit !== true) {
+    errors.push('studentsCanEdit must be true or false.');
+  }
+  return rubric;
 }
 
 function readLevel(value: unknown, index: number, errors: string[]): RubricLevel {
@@ -888,7 +967,7 @@ function readLevel(value: unknown, index: number, errors: string[]): RubricLevel
     errors.push(`${label} must be an object.`);
     return { id: '', name: '', belt: 'white', checkpoints: [] };
   }
-  return {
+  const level: RubricLevel = {
     id: readId(record.id, `${label} id`, errors),
     name: readString(record.name, `${label} name`, PROGRESS_NAME_MAX, errors),
     belt: readBelt(record.belt, label, errors),
@@ -896,6 +975,9 @@ function readLevel(value: unknown, index: number, errors: string[]): RubricLevel
       readCheckpoint(row, `${label} checkpoint ${checkpointIndex + 1}`, errors),
     ),
   };
+  if (record.starterAck === true) level.starterAck = true;
+  else if (record.starterAck != null && record.starterAck !== false) errors.push(`${label} starterAck must be true or false.`);
+  return level;
 }
 
 function readCheckpoint(value: unknown, label: string, errors: string[]): RubricCheckpoint {
@@ -904,15 +986,34 @@ function readCheckpoint(value: unknown, label: string, errors: string[]): Rubric
     errors.push(`${label} must be an object.`);
     return { id: '', name: '', met: null, note: '', criteria: [] };
   }
-  return {
+  const checkpoint: RubricCheckpoint = {
     id: readId(record.id, `${label} id`, errors),
-    name: readString(record.name, `${label} name`, PROGRESS_NAME_MAX, errors),
+    name: readString(record.name, `${label} name`, PROGRESS_BENCHMARK_MAX, errors),
     met: readMet(record.met, label, errors),
     note: readString(record.note, `${label} note`, PROGRESS_NOTE_MAX, errors),
     criteria: readList(record.criteria, `${label} criteria`, PROGRESS_CRITERIA_MAX, errors).map((row, index) =>
       readCriterion(row, `${label} criterion ${index + 1}`, errors),
     ),
   };
+  if (record.source != null && record.source !== '') {
+    if (record.source !== 'own' && record.source !== 'coach') errors.push(`${label} source must be own or coach.`);
+    else checkpoint.source = record.source;
+  }
+  if (record.edited === true) checkpoint.edited = true;
+  else if (record.edited != null && record.edited !== false) errors.push(`${label} edited must be true or false.`);
+  const stage = readChoice(record.stage, `${label} stage`, BENCHMARK_STAGES, errors);
+  if (stage) checkpoint.stage = stage;
+  const style = readChoice(record.style, `${label} style`, TRAINING_STYLES, errors);
+  if (style) checkpoint.style = style;
+  const noGiVariant = readOptionalText(record.noGiVariant, `${label} no-gi line`, PROGRESS_BENCHMARK_MAX, errors);
+  if (noGiVariant) checkpoint.noGiVariant = noGiVariant;
+  const policy = readChoice(record.policy, `${label} policy`, BENCHMARK_POLICIES, errors);
+  if (policy) checkpoint.policy = policy;
+  if (record.rulebook === true) checkpoint.rulebook = true;
+  else if (record.rulebook != null && record.rulebook !== false) errors.push(`${label} rulebook must be true or false.`);
+  if (record.optional === true) checkpoint.optional = true;
+  else if (record.optional != null && record.optional !== false) errors.push(`${label} optional must be true or false.`);
+  return checkpoint;
 }
 
 function readCriterion(value: unknown, label: string, errors: string[]): RubricCriterion {
@@ -921,7 +1022,7 @@ function readCriterion(value: unknown, label: string, errors: string[]): RubricC
     errors.push(`${label} must be an object.`);
     return { id: '', requirement: '', techniqueRefs: [], met: null, note: '' };
   }
-  return {
+  const criterion: RubricCriterion = {
     id: readId(record.id, `${label} id`, errors),
     requirement: readString(record.requirement, `${label} requirement`, PROGRESS_NOTE_MAX, errors),
     techniqueRefs: readList(record.techniqueRefs, `${label} techniques`, 20, errors).map((row, index) =>
@@ -930,6 +1031,13 @@ function readCriterion(value: unknown, label: string, errors: string[]): RubricC
     met: readMet(record.met, label, errors),
     note: readString(record.note, `${label} note`, PROGRESS_NOTE_MAX, errors),
   };
+  const match = readChoice(record.match, `${label} match`, ['any', 'all'] as const, errors);
+  if (match) criterion.match = match;
+  const targetLevel = readTargetLevel(record.targetLevel, `${label} target`, errors);
+  if (targetLevel) criterion.targetLevel = targetLevel;
+  const catalogNeed = readCatalogNeed(record.catalogNeed, `${label} catalog need`, errors);
+  if (catalogNeed) criterion.catalogNeed = catalogNeed;
+  return criterion;
 }
 
 function readChecklist(value: unknown, errors: string[]): StudentChecklistEntry[] {
@@ -981,21 +1089,27 @@ function readClips(value: unknown, errors: string[]): JournalClip[] | undefined 
   return clips;
 }
 
-function readRank(value: unknown, errors: string[]): StudentRank | undefined {
+function readRank(value: unknown, belt: ProgressBelt, errors: string[]): StudentRank | undefined {
   if (value == null) return undefined;
   const record = asRecord(value);
   if (!record) {
     errors.push('Rank must be an object.');
     return undefined;
   }
-  const tapeCount = readTapeCount(record.tapeCount, 'Rank tape count', errors);
-  const tapeDates = readTapeDates(record.tapeDates, 'Rank tape dates', errors);
+  const max = belt === 'black' ? BLACK_DEGREE_MAX : RANK_TAPE_MAX;
+  const tapeCount = readTapeCount(record.tapeCount, 'Rank tape count', errors, max);
+  const tapeDates = readTapeDates(record.tapeDates, 'Rank tape dates', errors, max);
   const rank: StudentRank = {
     tapeCount,
     awardedOn: readDate(record.awardedOn, 'Rank awarded on', errors, false),
-    tapeDates: maskTapeDates(tapeDates, tapeCount),
+    tapeDates: maskTapeDates(tapeDates.dates, tapeCount),
     history: readRankHistory(record.history, errors),
   };
+  const high = highDatesForCount(readOptionalHigh(record.highDegreeDates, 'Rank degree dates', errors) ?? tapeDates.extra, tapeCount);
+  if (high) rank.highDegreeDates = high;
+  readInstructor(record, rank, errors, 'Rank');
+  const focus = readDegreeFocus(record.degreeFocus, errors);
+  if (focus) rank.degreeFocus = focus;
   if (Object.prototype.hasOwnProperty.call(record, 'lineage')) rank.lineage = readLineage(record.lineage, errors);
   if (typeof record.pictureNote === 'string') {
     rank.pictureNote = readString(record.pictureNote, 'Rank photo note', PROGRESS_NOTE_MAX, errors);
@@ -1027,6 +1141,24 @@ function blankPictureReport(): StudentProgressReport {
     calendar: [],
     goals: [],
   };
+}
+
+function readDegreeFocus(value: unknown, errors: string[]): string[] | undefined {
+  if (value == null) return undefined;
+  if (!Array.isArray(value)) {
+    errors.push('Degree focus must be a list.');
+    return undefined;
+  }
+  if (value.length > 10) errors.push('Degree focus has more than 10 notes.');
+  const notes = value.slice(0, 10).map((row, index) => {
+    if (typeof row !== 'string') {
+      errors.push(`Degree focus ${index + 1} must be text.`);
+      return '';
+    }
+    return readString(row, `Degree focus ${index + 1}`, PROGRESS_NOTE_MAX, errors);
+  });
+  while (notes.length && !notes[notes.length - 1]?.trim()) notes.pop();
+  return notes.some((line) => line.trim()) ? notes : undefined;
 }
 
 function readLineage(value: unknown, errors: string[]): string[] {
@@ -1069,10 +1201,12 @@ function readRankPicture(value: unknown, index: number, errors: string[]): RankP
     errors.push(`${label} must be a compressed image.`);
     return null;
   }
-  const picture: RankPicture = { belt: readRankBelt(record.belt, `${label} belt`, errors), image };
+  const pictureBelt = readRankBelt(record.belt, `${label} belt`, errors);
+  const picture: RankPicture = { belt: pictureBelt, image };
   if (record.tapeIndex != null && record.tapeIndex !== '') {
-    const tapeIndex = readTapeCount(record.tapeIndex, `${label} tape`, errors);
-    if (tapeIndex >= RANK_TAPE_MAX) errors.push(`${label} tape must be 0 to 3.`);
+    const tapeMax = pictureBelt === 'black' ? BLACK_DEGREE_MAX : RANK_TAPE_MAX;
+    const tapeIndex = readTapeCount(record.tapeIndex, `${label} tape`, errors, tapeMax);
+    if (tapeIndex >= tapeMax) errors.push(pictureBelt === 'black' ? `${label} tape must be 0 to 5.` : `${label} tape must be 0 to 3.`);
     else picture.tapeIndex = tapeIndex;
   }
   return picture;
@@ -1082,7 +1216,7 @@ function readRankHistory(value: unknown, errors: string[]): RankHistory[] {
   const rows = readList(value, 'Rank history', PROGRESS_RANK_HISTORY_MAX, errors);
   const history = rows.map((row, index) => readRankHistoryRow(row, index, errors));
   uniqueIds(history.map((row) => row.id), 'Rank history', errors);
-  return history;
+  return dedupeRankHistory(history);
 }
 
 function readRankHistoryRow(value: unknown, index: number, errors: string[]): RankHistory {
@@ -1092,44 +1226,89 @@ function readRankHistoryRow(value: unknown, index: number, errors: string[]): Ra
     errors.push(`${label} must be an object.`);
     return { id: '', belt: 'white', awardedOn: '', tapeCount: 0, tapeDates: blankTapeDates() };
   }
-  const tapeCount = readTapeCount(record.tapeCount, `${label} tape count`, errors);
-  const tapeDates = readTapeDates(record.tapeDates, `${label} tape dates`, errors);
-  return {
+  const belt = readRankBelt(record.belt, `${label} belt`, errors);
+  const max = belt === 'black' ? BLACK_DEGREE_MAX : RANK_TAPE_MAX;
+  const tapeCount = readTapeCount(record.tapeCount, `${label} tape count`, errors, max);
+  const tapeDates = readTapeDates(record.tapeDates, `${label} tape dates`, errors, max);
+  const row: RankHistory = {
     id: readId(record.id, `${label} id`, errors),
-    belt: readRankBelt(record.belt, `${label} belt`, errors),
+    belt,
     awardedOn: readDate(record.awardedOn, `${label} date`, errors, false),
     tapeCount,
-    tapeDates: maskTapeDates(tapeDates, tapeCount),
+    tapeDates: maskTapeDates(tapeDates.dates, tapeCount),
   };
+  const high = highDatesForCount(readOptionalHigh(record.highDegreeDates, `${label} degree dates`, errors) ?? tapeDates.extra, tapeCount);
+  if (belt === 'black' && high) row.highDegreeDates = high;
+  readInstructor(record, row, errors, label);
+  return row;
 }
 
 function readRankBelt(value: unknown, label: string, errors: string[]): RankBelt {
-  if (typeof value === 'string' && (RANK_BELTS as readonly string[]).includes(value)) return value as RankBelt;
+  if (typeof value === 'string' && ((RANK_BELTS as readonly string[]).includes(value) || (FINAL_RANK_BELTS as readonly string[]).includes(value))) {
+    return value as RankBelt;
+  }
   errors.push(`${label} must be white, blue, purple, brown, or black.`);
   return 'white';
 }
 
-function readTapeCount(value: unknown, label: string, errors: string[]): number {
+function readTapeCount(value: unknown, label: string, errors: string[], max = RANK_TAPE_MAX): number {
   if (value == null || value === '') return 0;
-  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > RANK_TAPE_MAX) {
-    errors.push(`${label} must be a whole number from 0 to 4.`);
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > max) {
+    errors.push(`${label} must be a whole number from 0 to ${max}.`);
     return 0;
   }
   return value;
 }
 
-function readTapeDates(value: unknown, label: string, errors: string[]): RankTapeDates {
+function readTapeDates(
+  value: unknown,
+  label: string,
+  errors: string[],
+  max = RANK_TAPE_MAX,
+): { dates: RankTapeDates; extra?: HighDegreeDates } {
   const dates = blankTapeDates();
-  if (value == null) return dates;
+  if (value == null) return { dates };
   if (!Array.isArray(value)) {
     errors.push(`${label} must be a list.`);
-    return dates;
+    return { dates };
   }
-  if (value.length > RANK_TAPE_MAX) errors.push(`${label} has more than 4 dates.`);
+  if (value.length > max) errors.push(max === RANK_TAPE_MAX ? `${label} has more than 4 dates.` : `${label} has more than ${max} dates.`);
   for (let index = 0; index < Math.min(value.length, RANK_TAPE_MAX); index += 1) {
     dates[index] = readOptionalStripeDate(value[index]);
   }
+  if (max <= RANK_TAPE_MAX || value.length <= RANK_TAPE_MAX) return { dates };
+  const extra: HighDegreeDates = ['', ''];
+  for (let index = 0; index < Math.min(2, value.length - RANK_TAPE_MAX); index += 1) {
+    extra[index] = readOptionalStripeDate(value[RANK_TAPE_MAX + index]);
+  }
+  return { dates, extra };
+}
+
+function readOptionalHigh(value: unknown, label: string, errors: string[]): HighDegreeDates | undefined {
+  if (value == null) return undefined;
+  if (!Array.isArray(value)) {
+    errors.push(`${label} must be a list.`);
+    return undefined;
+  }
+  if (value.length > 2) errors.push(`${label} has more than 2 dates.`);
+  const dates: HighDegreeDates = ['', ''];
+  for (let index = 0; index < Math.min(2, value.length); index += 1) dates[index] = readOptionalStripeDate(value[index]);
   return dates;
+}
+
+function readInstructor(
+  record: Record<string, unknown>,
+  target: { instructorBars?: boolean; instructorBarsOn?: string },
+  errors: string[],
+  label: string,
+): void {
+  if (record.instructorBars === true) target.instructorBars = true;
+  else if (record.instructorBars != null && record.instructorBars !== false) {
+    errors.push(`${label} instructor bars must be true or false.`);
+  }
+  if (record.instructorBarsOn == null || record.instructorBarsOn === '') return;
+  const date = readDate(record.instructorBarsOn, `${label} instructor bars date`, errors, false);
+  if (date) target.instructorBarsOn = date;
 }
 
 /** A stripe date is optional. Blank, missing, or unreadable values stay empty and still count. */
@@ -1145,7 +1324,8 @@ function blankTapeDates(): RankTapeDates {
 
 function maskTapeDates(dates: RankTapeDates, tapeCount: number): RankTapeDates {
   const next = blankTapeDates();
-  for (let index = 0; index < tapeCount; index += 1) next[index] = dates[index] ?? '';
+  const kept = Math.min(tapeCount, RANK_TAPE_MAX);
+  for (let index = 0; index < kept; index += 1) next[index] = dates[index] ?? '';
   return next;
 }
 
@@ -1234,10 +1414,15 @@ function readTechniqueRef(value: unknown, label: string, errors: string[]): Tech
     errors.push(`${label} must be an object.`);
     return { id: '', name: '' };
   }
-  return {
+  const ref: TechniqueRef = {
     id: readId(record.id, `${label} id`, errors),
     name: readString(record.name, `${label} name`, PROGRESS_NAME_MAX, errors),
   };
+  const style = readChoice(record.style, `${label} style`, TRAINING_STYLES, errors);
+  if (style) ref.style = style;
+  const targetLevel = readTargetLevel(record.targetLevel, `${label} target`, errors);
+  if (targetLevel) ref.targetLevel = targetLevel;
+  return ref;
 }
 
 function readAmendment(value: unknown, label: string, errors: string[]): Amendment {
@@ -1277,8 +1462,10 @@ function readCalendarEvent(value: unknown, index: number, errors: string[]): Cal
   };
   const time = readOptionalClock(record.time);
   const repeat = readOptionalRepeat(record.repeat);
+  const tournamentId = readLooseId(record.tournamentId);
   if (time) event.time = time;
   if (repeat) event.repeat = repeat;
+  if (tournamentId) event.tournamentId = tournamentId;
   return event;
 }
 
@@ -1596,12 +1783,19 @@ function readGoal(value: unknown, index: number, errors: string[]): StudentGoal 
     errors.push(`${label} must be an object.`);
     return { id: '', name: '', note: '', met: null };
   }
-  return {
+  const goal: StudentGoal = {
     id: readId(record.id, `${label} id`, errors),
     name: readString(record.name, `${label} name`, PROGRESS_NAME_MAX, errors),
     note: readString(record.note, `${label} note`, PROGRESS_NOTE_MAX, errors),
     met: readMet(record.met, label, errors),
   };
+  if (record.belt != null && record.belt !== '') goal.belt = readBelt(record.belt, `${label} belt`, errors);
+  if (typeof record.kidsBeltId === 'string' && record.kidsBeltId.trim()) {
+    const kidsBeltId = record.kidsBeltId.trim().slice(0, PROGRESS_ID_MAX);
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(kidsBeltId)) errors.push(`${label} kids belt must be a stable id.`);
+    else goal.kidsBeltId = kidsBeltId;
+  }
+  return goal;
 }
 
 function readCoachFeedback(value: unknown, errors: string[]): CoachFeedback {
@@ -1760,6 +1954,12 @@ function readMet(value: unknown, label: string, errors: string[]): boolean | nul
   return null;
 }
 
+/** A missing or older link is empty. A bad id is dropped so the rest of the file still opens. */
+function readLooseId(value: unknown): string {
+  if (typeof value !== 'string' || !value || !ID_RE.test(value)) return '';
+  return value;
+}
+
 function readId(value: unknown, label: string, errors: string[]): string {
   if (typeof value !== 'string' || !ID_RE.test(value)) {
     errors.push(`${label} must be a stable id (letters, numbers, dot, hyphen, underscore).`);
@@ -1804,6 +2004,72 @@ function readFlag(value: unknown, label: string, errors: string[]): boolean {
   if (value === true) return true;
   errors.push(`${label} must be true or false.`);
   return false;
+}
+
+function readChoice<T extends string>(value: unknown, label: string, allowed: readonly T[], errors: string[]): T | undefined {
+  if (value == null || value === '') return undefined;
+  if (typeof value === 'string' && (allowed as readonly string[]).includes(value)) return value as T;
+  errors.push(`${label} must be ${allowed.join(', ')}.`);
+  return undefined;
+}
+
+function readOptionalText(value: unknown, label: string, max: number, errors: string[]): string {
+  if (value == null || value === '') return '';
+  return readString(value, label, max, errors);
+}
+
+function readTargetLevel(value: unknown, label: string, errors: string[]): 1 | 2 | 3 | 4 | 5 | undefined {
+  if (value == null || value === '') return undefined;
+  if (value === 1 || value === 2 || value === 3 || value === 4 || value === 5) return value;
+  errors.push(`${label} must be a whole number from 1 to 5.`);
+  return undefined;
+}
+
+function readCatalogNeed(value: unknown, label: string, errors: string[]): CatalogNeed | undefined {
+  if (value == null) return undefined;
+  const record = asRecord(value);
+  if (!record) {
+    errors.push(`${label} must be an object.`);
+    return undefined;
+  }
+  const level = readTargetLevel(record.level, `${label} level`, errors);
+  const count = record.count;
+  if (typeof count !== 'number' || !Number.isInteger(count) || count < 1 || count > 100) {
+    errors.push(`${label} count must be a whole number from 1 to 100.`);
+  }
+  if (!level || typeof count !== 'number' || !Number.isInteger(count) || count < 1 || count > 100) return undefined;
+  const need: CatalogNeed = { count, level };
+  if (record.categoryId != null && record.categoryId !== '') {
+    const categoryId = readOptionalId(record.categoryId, `${label} category`, errors);
+    if (categoryId) need.categoryId = categoryId;
+  }
+  return need;
+}
+
+function readTechniquePolicy(value: unknown, errors: string[]): TechniquePolicy | undefined {
+  if (value == null) return undefined;
+  const record = asRecord(value);
+  if (!record) {
+    errors.push('Technique policy must be an object.');
+    return undefined;
+  }
+  const policy: TechniquePolicy = {};
+  const keys = [
+    ['straightAnkleLock', 'Straight ankle lock'],
+    ['wristLocks', 'Wrist locks'],
+    ['legLocks', 'Leg locks'],
+    ['heelHooks', 'Heel hooks'],
+    ['competition', 'Competition prompt'],
+  ] as const;
+  for (const [key, label] of keys) {
+    if (record[key] == null) continue;
+    if (record[key] !== true && record[key] !== false) {
+      errors.push(`${label} must be true or false.`);
+      continue;
+    }
+    policy[key] = record[key];
+  }
+  return Object.keys(policy).length ? policy : undefined;
 }
 
 function readString(value: unknown, label: string, max: number, errors: string[]): string {
@@ -2254,7 +2520,7 @@ function writeReportRows(lines: string[], packet: StudentProgressReport): void {
 function writeRankRows(lines: string[], packet: StudentProgressReport): void {
   if (!packet.rank) return;
   lines.push(rankCsvRow('Rank', packet.studentId, packet.profile.belt, packet.rank, packet.studentId, packet.rank.pictureNote ?? ''));
-  for (const row of packet.rank.history) {
+  for (const row of dedupeRankHistory(packet.rank.history)) {
     lines.push(rankCsvRow('Rank history', row.id, row.belt, row, packet.studentId, ''));
   }
   for (const [index, name] of (packet.rank.lineage ?? []).entries()) {
@@ -2285,11 +2551,12 @@ function rankCsvRow(
   sheet: string,
   id: string,
   belt: string,
-  rank: { awardedOn: string; tapeCount: number; tapeDates: readonly string[] },
+  rank: { awardedOn: string; tapeCount: number; tapeDates: readonly string[]; highDegreeDates?: readonly string[] },
   parentId: string,
   note: string,
 ): string {
-  const dates = (rank.tapeDates ?? [])
+  const dates = [...(rank.tapeDates ?? []), ...(rank.highDegreeDates ?? [])]
+    .slice(0, rank.tapeCount)
     .map((date, index) => {
       const when = stripeDateText(date);
       return when ? `${index + 1} ${when}` : '';

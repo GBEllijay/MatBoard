@@ -8,12 +8,13 @@ import {
   countdownLabel,
   daysUntil,
   formatWeightDelta,
-  isUpcomingTournament,
   resolvedGoal,
+  soonestUpcomingTournament,
   weightToTarget,
 } from './progress/competition.ts';
 import type { StudentProgressReport } from './progress/types.ts';
 import { ASSESSMENT_AREAS } from './studentAssessment.ts';
+import { studentDemoRequested } from './studentDemo.ts';
 
 export const TRAINING_GROUP_LABEL = 'Training & Journal';
 export const RANK_GROUP_LABEL = 'Rank & Progress';
@@ -25,6 +26,7 @@ export const COACH_FILE_HINT = 'This makes a file. You send it yourself.';
 export const CLEAR_STUDENT_LABEL = 'Clear all Student Edition data';
 export const SCOUTING_LABEL = 'Opponent scouting';
 export const NO_EVENT_LABEL = 'No event yet';
+export const ADD_TOURNAMENT_LABEL = 'Add a tournament';
 export const NO_MATCHES_LABEL = 'No matches yet';
 export const WEIGHT_UNSET_LABEL = 'Not set';
 
@@ -60,7 +62,7 @@ export const PROFILE_LINK: MenuLink = {
   to: '/student/profile',
 };
 const RANK_LINK: MenuLink = { label: 'My rank', note: 'Belt and stripes', to: '/student/rank' };
-const BELT_LINK: MenuLink = { label: 'Belt progress', note: 'Checkpoints and goals', to: '/student/rubric' };
+const BELT_LINK: MenuLink = { label: 'Belt progress', note: 'Practical benchmarks and personal goals', to: '/student/rubric' };
 const FUNDAMENTALS_LINK: MenuLink = { label: 'Fundamentals', note: 'Levels', to: '/student/fundamentals' };
 const ASSESSMENT_LINK: MenuLink = {
   label: 'Self-assessment',
@@ -113,7 +115,7 @@ export const FORMER_HUB_ITEMS: readonly MenuLink[] = [
   { label: SCOUTING_LABEL, note: 'Weight class and open class', to: '/student/scouting' },
   { label: 'Video Library', note: 'Technique and drill links', to: '/student/videos' },
   { label: 'My rank', note: 'Belt and stripes', to: '/student/rank' },
-  { label: 'Belt progress', note: 'Checkpoints and goals', to: '/student/rubric' },
+  { label: 'Belt progress', note: 'Practical benchmarks and personal goals', to: '/student/rubric' },
   { label: 'Connections', note: 'Backup, print, and restore', to: '/student/connections' },
   { label: 'Send to coach', note: 'Progress file', to: '/student/share' },
   { label: 'Import from coach', note: '', to: '/student/share#import' },
@@ -365,16 +367,19 @@ function nextChip(name: string, days: number | null): string {
 }
 
 /** Next event, weight, and win-loss record for the Competitor card and sub-menu strip. */
-export function competitorHubSummary(report: StudentProgressReport, today: string): CompetitorHubSummary {
+export function competitorHubSummary(
+  report: StudentProgressReport,
+  today: string,
+  options?: { includeMock?: boolean },
+): CompetitorHubSummary {
   const competition = competitionOf(report);
-  const upcoming = competition.tournaments
-    .filter((tournament) => isUpcomingTournament(tournament, today))
-    .sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name))[0];
+  const includeMock = options?.includeMock ?? studentDemoRequested();
+  const upcoming = soonestUpcomingTournament(competition.tournaments, today, includeMock);
   const eventName = upcoming?.name.trim() ?? '';
   const days = upcoming ? daysUntil(upcoming.date, today) : null;
 
   const latest = [...competition.weighIns].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id))[0];
-  const goal = resolvedGoal(competition, today);
+  const goal = resolvedGoal(competition, today, { includeMock });
   let weight = WEIGHT_UNSET_LABEL;
   if (latest && goal) {
     const delta = weightToTarget(latest.weight, latest.unit, goal.weight, goal.unit, competition.weightUnit);

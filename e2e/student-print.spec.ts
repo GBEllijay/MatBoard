@@ -114,7 +114,8 @@ test('print reports hide the seat bar, save a profile, and download matching PDF
   await page.getByRole('textbox', { name: 'Class', exact: true }).fill('Fundamentals');
   await page.getByRole('textbox', { name: 'Drill notes' }).fill('collar grip deeper');
   await page.getByRole('button', { name: 'Save entry' }).click();
-  await expect(page.getByText('collar grip deeper')).toBeVisible();
+  await expect(page.getByRole('status')).toHaveText('Entry saved');
+  await expect(page.getByRole('link', { name: 'See saved card', exact: true })).toBeVisible();
 
   await page.goto('/student/print/assessment?student=1');
   await expect(page.getByRole('button', { name: 'Sign out of seat' })).toHaveCount(0);
@@ -180,7 +181,7 @@ test('print reports hide the seat bar, save a profile, and download matching PDF
   const belts = progress.getByRole('region', { name: 'Belt progress' });
   await expect(belts).toContainText('White');
   await expect(belts).toContainText('Blue');
-  await expect(belts).toContainText('Coral');
+  await expect(belts.getByText('Coral', { exact: true })).toHaveCount(0);
   await expect(belts.getByText('Grey', { exact: true })).toHaveCount(0);
   await expect(belts.getByText('Yellow', { exact: true })).toHaveCount(0);
   const journal = progress.getByRole('region', { name: 'Journal summary' });

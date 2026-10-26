@@ -127,7 +127,10 @@ test('each export downloads one file and only the JSON backup moves Last backup'
   assert.match(body, /hip escape/);
   assert.equal(body.includes('advantage-student-templates'), false);
   if (json.result.ok) {
-    assert.equal(json.result.message, 'Saved on this phone. No academy folder or personal drive is connected.');
+    assert.equal(
+      json.result.message,
+      'Backup saved. Saved on this phone as advantage-student-backup-2026-10-24.json. Video files kept on this device are not included. No academy folder or personal drive is connected.',
+    );
   }
   assert.equal(backupStampLabel(readStudentBackupStamp(storage)), '2026-10-24');
 });
@@ -145,6 +148,7 @@ test('include video files puts bytes in the JSON backup and leaves them out when
     download: offPack.download,
   });
   assert.equal(off.ok, true);
+  if (off.ok) assert.match(off.message, /Video files kept on this device are not included/);
   const offFile = JSON.parse(await offPack.text()) as { filmFiles?: unknown; films?: { technique?: string }[] };
   assert.equal(offFile.filmFiles, undefined);
   assert.equal(offFile.films?.[0]?.technique, 'Armbar');
@@ -158,6 +162,7 @@ test('include video files puts bytes in the JSON backup and leaves them out when
     download: onPack.download,
   });
   assert.equal(on.ok, true);
+  if (on.ok) assert.match(on.message, /Video files kept on this device are included/);
   const onFile = JSON.parse(await onPack.text()) as { filmFiles?: { base64: string }[] };
   assert.equal((onFile.filmFiles?.[0]?.base64.length ?? 0) > 0, true);
 

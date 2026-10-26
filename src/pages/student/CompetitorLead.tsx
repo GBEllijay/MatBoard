@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { StudentProgressReport } from '../../lib/progress/types';
 import { rankBeltLabel, rankOf } from '../../lib/studentRank';
+import { formatJournalDate } from '../../lib/journalCopy';
 import { viewJournalEntry } from '../../lib/studentEdition';
 
 export function RankHero({ report, to }: { report: StudentProgressReport; to: (path: string) => string }) {
@@ -21,7 +22,7 @@ export function RankHero({ report, to }: { report: StudentProgressReport; to: (p
         ))}
       </div>
       <Link className="arena-rank__link" to={to('/student/rank')}>
-        Open My rank
+        Open: My rank
       </Link>
     </section>
   );
@@ -38,7 +39,7 @@ export function JournalGate({ report, to }: { report: StudentProgressReport; to:
       <p>Today&apos;s page stays in the notebook.</p>
       {view ? (
         <p>
-          {view.date}
+          {formatJournalDate(view.date)}
           {view.className ? ` · ${view.className}` : ''}
           {technique ? ` · ${technique}` : ''}
         </p>

@@ -2460,6 +2460,18 @@ span.role-plan__mark {
   pointer-events: none;
 }
 
+/* Gallery only: the purple belt and "Advantage" title scroll with the list.
+   Events and Pro Shop keep the pinned .saver-belt above. */
+.saver-belt.saver-belt--flow {
+  position: static;
+  z-index: auto;
+  top: auto;
+  left: auto;
+  right: auto;
+  margin: 0 0 0.35rem;
+  pointer-events: none;
+}
+
 /* The photo-control sheet starts under the purple belt. */
 .saver--belt .saver__empty {
   align-content: start;
@@ -2469,6 +2481,30 @@ span.role-plan__mark {
 
 .saver--belt .sheet.sheet--dock-footer {
   top: calc(var(--console-head) + 6.15rem + var(--safe-t));
+}
+
+/* Gallery: the sheet starts under the illustration. The belt is in the
+   scrolling list, so it leaves with the gallery instead of holding a fixed band. */
+.saver--gallery.saver--belt > .saver-belt--flow {
+  margin: calc(var(--console-head) + 0.35rem + var(--safe-t)) 0.85rem 0.75rem;
+}
+
+.saver--gallery.saver--belt .saver__empty {
+  min-height: 0;
+  padding-top: 0.75rem;
+}
+
+.saver--gallery.saver--belt .sheet.sheet--dock-footer {
+  top: calc(var(--console-head) + var(--safe-t));
+}
+
+/* Empty gallery (options closed) scrolls the belt away. The open options
+   sheet keeps its own scroller, so this does not apply while that sheet is up. */
+.saver--gallery.saver--belt:not(:has(> .sheet)) {
+  overflow: auto;
+  height: auto;
+  min-height: 100dvh;
+  max-height: none;
 }
 
 .saver--belt .sheet.sheet--dock-footer .sheet__panel {
@@ -3624,16 +3660,11 @@ main.tree:has(> .tier-home) > .tree__bar {
   touch-action: manipulation;
 }
 
+/* Win is a clear green, on both athlete cards. #16a34a with #0e1726 text is 5.45:1. */
 .bout-call--win {
-  background: var(--cta-bg);
-  color: var(--cta-ink);
-  box-shadow: var(--cta-shadow);
-}
-
-/* White athlete card is #F8F9FC. A white fill needs the same 2px edge as paper saves. */
-.bout--white .bout-call--win {
-  border: 2px solid #0e1726;
-  box-shadow: var(--cta-shadow-light);
+  background: #16a34a;
+  color: #0e1726;
+  box-shadow: inset 0 -2px 0 rgba(14, 23, 38, 0.18);
 }
 
 .bout-call--dq {
@@ -4215,16 +4246,11 @@ main.tree:has(> .tier-home) > .tree__bar {
   min-height: 64px;
 }
 
+/* Same green Win on both controller pads. */
 .pad-call--win {
-  background: var(--cta-bg);
-  color: var(--cta-ink);
-  box-shadow: var(--cta-shadow);
-}
-
-/* Controller white pad is #fff. Keep the Win fill readable on that paper. */
-.pad--white .pad-call--win {
-  border: 2px solid #0e1726;
-  box-shadow: var(--cta-shadow-light);
+  background: #16a34a;
+  color: #0e1726;
+  box-shadow: inset 0 -2px 0 rgba(14, 23, 38, 0.18);
 }
 
 .pad-call--dq {
@@ -15971,6 +15997,19 @@ a.plan-pick {
   }
 }
 
+.kids-carlos--dismiss .kids-carlos__dismiss {
+  pointer-events: auto;
+  position: absolute;
+  z-index: 3;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  min-height: 56px;
+  min-width: 8rem;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 14px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .kids-carlos__figure {
     animation: none;
@@ -16044,12 +16083,6 @@ a.plan-pick {
   background: #101010;
   box-shadow: inset 8px 0 0 var(--os-red);
   color: #f4f4f4;
-}
-
-/* Old School white side is black, so Win uses the glow instead of the paper edge. */
-.scoreboard-skin--old-school.display .bout--white .bout-call--win {
-  border: 0;
-  box-shadow: var(--cta-shadow);
 }
 
 .scoreboard-skin--old-school.display .bout__scores {
@@ -16719,6 +16752,15 @@ a.plan-pick {
   background: rgba(239, 68, 68, 0.16);
 }
 
+.buy__half-off {
+  margin: 0;
+  color: var(--gold-2);
+  font-size: 0.92rem;
+  font-weight: 650;
+  letter-spacing: -0.011em;
+  line-height: 1.35;
+}
+
 .home--buy .home__inner {
   display: flex;
   flex-direction: column;
@@ -17009,12 +17051,6 @@ a.plan-pick {
 
 .display.kids-board .bout--white {
   box-shadow: inset 12px 0 0 #d7deea;
-}
-
-/* Kids cards are light on both sides. Win stays white with the paper edge. */
-.display.kids-board .bout-call--win {
-  border: 2px solid #0e1726;
-  box-shadow: var(--cta-shadow-light);
 }
 
 .display.kids-board .bout--blue .bout__who h1,
@@ -17332,11 +17368,9 @@ a.plan-pick {
    Selected blue controls (Approve, Kids skin, checked-in) and the non-white outcome
    colors keep their own paint while the pointer is still over them. */
 @media (hover: hover) {
-  .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):not(.review-decision--on):not(.kids-skin__btn--on):not(.roster-card__checkin):not(.outcome-pick--points):not(.outcome-pick--decision):not(.outcome-pick--technical):not(.outcome-pick--medical):not(.outcome-pick--library):not(.tree__confirm .btn):not(.notes__confirm[aria-label^='Remove'] .btn):not(.roster-card__confirm + .btn):not(.invite-confirm .btn):not(.schedule-edit__confirm .btn):not(.white-roster__actions button[type='button'].btn):not(.drive-session-confirm .btn):hover,
+  .btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):not(.review-decision--on):not(.kids-skin__btn--on):not(.roster-card__checkin):not(.outcome-pick--points):not(.outcome-pick--decision):not(.outcome-pick--technical):not(.outcome-pick--medical):not(.outcome-pick--library):not(.tree__confirm .btn):not(.notes__confirm[aria-label^='Remove'] .btn):not(.roster-card__confirm + .btn):not(.invite-confirm .btn):not(.schedule-edit__confirm .btn):not(.white-roster__actions button[type='button'].btn):not(.drive-session-confirm .btn):not(.pad-call--win):hover,
   .chip--gold:hover,
   .tv-tip__go:hover,
-  .pad-call--win:hover,
-  .bout-call--win:hover,
   .saver__unmute:hover,
   .t-score:hover,
   .techniques__chrome-btn--go:hover,
@@ -17345,6 +17379,13 @@ a.plan-pick {
   .outcome-pick--submission:hover {
     background: #f4f7fb;
     color: var(--cta-ink);
+  }
+
+  /* Hover stays in the points green. #22c55e with #0e1726 text is 7.88:1. */
+  .pad-call--win:hover,
+  .bout-call--win:hover {
+    background: #22c55e;
+    color: #0e1726;
   }
 }
 
@@ -17383,7 +17424,7 @@ a.plan-pick {
 .pad--white .pad-call--win:disabled,
 .bout--white .bout-call--win:disabled,
 .display.kids-board .bout-call--win:disabled {
-  border-color: #334155;
+  border: 2px solid #334155;
   box-shadow: inset 0 0 0 1px rgba(14, 23, 38, 0.22);
 }
 

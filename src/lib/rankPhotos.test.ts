@@ -2,9 +2,14 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   RANK_PHOTO_KEY,
+  addBeltPhoto,
+  addKidsBeltPhoto,
   addTapePhoto,
+  beltPhotos,
   emptyRankPhotoStore,
+  kidsBeltPhotos,
   loadRankPictures,
+  removeKidsBeltPhoto,
   removeTapePhoto,
   tapePhotos,
 } from './rankPhotos.ts';
@@ -60,5 +65,22 @@ test('a saved stripe photo with no date still loads', () => {
     const removed = removeTapePhoto(saved, 'white', 0, 0);
     assert.deepEqual(tapePhotos(removed, 'white', 0), []);
     assert.deepEqual(tapePhotos(loadRankPictures(), 'white', 0), []);
+  });
+});
+
+test('kids belt photos stay off the adult belts', () => {
+  withStorage(() => {
+    const adult = addBeltPhoto(emptyRankPhotoStore(), 'white', image);
+    const kids = addKidsBeltPhoto(adult, 'grey-white', image);
+    assert.deepEqual(beltPhotos(kids, 'white'), [image]);
+    assert.deepEqual(kidsBeltPhotos(kids, 'grey-white'), [image]);
+    assert.equal(kidsBeltPhotos(kids, 'white').length, 0);
+    const loaded = loadRankPictures();
+    assert.deepEqual(beltPhotos(loaded, 'white'), [image]);
+    assert.deepEqual(kidsBeltPhotos(loaded, 'grey-white'), [image]);
+    const cleared = removeKidsBeltPhoto(loaded, 'grey-white', 0);
+    assert.deepEqual(kidsBeltPhotos(cleared, 'grey-white'), []);
+    assert.equal(JSON.stringify(cleared).includes('grey-white'), false);
+    assert.deepEqual(beltPhotos(loadRankPictures(), 'white'), [image]);
   });
 });

@@ -46,7 +46,9 @@ import {
   clearStudentMemory,
   filmBlobsFromBackup,
   parseStudentBackup,
+  readBackupIncludeVideos,
   studentExportBusyLabel,
+  writeBackupIncludeVideos,
   type StudentBackupFile,
   type StudentExportKind,
 } from '../../lib/studentBackup';
@@ -72,7 +74,11 @@ export function AcademyConnectPage() {
 
 export function ConnectionsPage() {
   const to = useStudentPath();
-  const [includeVideos, setIncludeVideos] = useState(false);
+  const [includeVideos, setIncludeVideosState] = useState(() => readBackupIncludeVideos(localStorage));
+  const setIncludeVideos = (included: boolean) => {
+    writeBackupIncludeVideos(localStorage, included);
+    setIncludeVideosState(included);
+  };
   const [busyKind, setBusyKind] = useState<StudentExportKind | null>(null);
   const [stamp, setStamp] = useState(() => backupStampLabel(readStudentBackupStamp(localStorage)));
   const exportFile = async (kind: StudentExportKind) => {
@@ -110,7 +116,11 @@ export function ConnectionsPage() {
               Import from coach
             </Link>
           </section>
-          <ClearStudentData busyKind={busyKind} onBackup={() => exportFile('json')} />
+          <ClearStudentData
+            busyKind={busyKind}
+            onBackup={() => exportFile('json')}
+            onCleared={() => setStamp(backupStampLabel(readStudentBackupStamp(localStorage)))}
+          />
         </div>
       </div>
     </main>
@@ -514,6 +524,16 @@ function ExportAndPrint({
         showStamp
         onExport={(kind) => void exportFile(kind)}
       />
+      {status ? (
+        <p className="s-backup__result" role="status" data-kind="ok">
+          {status}
+        </p>
+      ) : null}
+      {error ? (
+        <p className="s-backup__result" role="alert" data-kind="error">
+          {error}
+        </p>
+      ) : null}
       <div className="student-export">
         <Link className="ink-btn" to={to('/student/print/progress')}>
           Print progress report
@@ -558,8 +578,6 @@ function ExportAndPrint({
           </button>
         </div>
       ) : null}
-      {status ? <p role="status">{status}</p> : null}
-      {error ? <p role="alert">{error}</p> : null}
     </section>
   );
 }
@@ -567,9 +585,11 @@ function ExportAndPrint({
 function ClearStudentData({
   busyKind,
   onBackup,
+  onCleared,
 }: {
   busyKind: StudentExportKind | null;
   onBackup: () => Promise<{ ok: boolean; message: string }>;
+  onCleared: () => void;
 }) {
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const [phrase, setPhrase] = useState('');
@@ -648,6 +668,7 @@ function ClearStudentData({
               if (phrase.trim() !== CLEAR_CONFIRM_PHRASE) return;
               clearStudentMemory(localStorage);
               void clearFilmBlobs().catch(() => undefined);
+              onCleared();
               reset();
               setStatus('Student Edition data on this device was cleared.');
               setError('');

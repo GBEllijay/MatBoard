@@ -1,12 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { FUNDAMENTALS_CATALOG } from './progress/catalog.ts';
 import {
   assessmentAreaForMove,
   checkpointForMove,
+  checkpointLinkBelts,
   clipsForMove,
   filmsForMove,
   filterFundamentalRows,
   formatFundamentalUpdated,
+  fundamentalLevelLabel,
   fundamentalLevelOf,
   moveLinks,
   proficiencySummary,
@@ -32,6 +35,17 @@ function row(partial: Partial<FundamentalRow> & Pick<FundamentalRow, 'label' | '
     custom: partial.custom ?? false,
   };
 }
+
+test('kids level words use the same 0 to 5 scale', () => {
+  assert.equal(fundamentalLevelLabel(0), 'Not started');
+  assert.equal(fundamentalLevelLabel(3), 'Live with resistance');
+  assert.equal(fundamentalLevelLabel(0, 'kids'), 'Not yet');
+  assert.equal(fundamentalLevelLabel(1, 'kids'), 'Meeting it');
+  assert.equal(fundamentalLevelLabel(2, 'kids'), 'Practicing it');
+  assert.equal(fundamentalLevelLabel(3, 'kids'), 'Playing it');
+  assert.equal(fundamentalLevelLabel(4, 'kids'), 'Showing it');
+  assert.equal(fundamentalLevelLabel(5, 'kids'), 'Teaching it');
+});
 
 test('a missing level follows the old yes or no mark', () => {
   assert.equal(fundamentalLevelOf({ learnedOn: '2026-10-11' }), 3);
@@ -77,9 +91,9 @@ test('summary, sort, and filter stay on the saved levels', () => {
 test('moves link to a checkpoint, a self-assessment area, and a matching clip', () => {
   const report = withStarterRubric(blankStudentReport(10), 10);
   const checkpoint = checkpointForMove(report.rubric.levels, 'sweep.scissor', 'white');
-  assert.equal(checkpoint?.checkpointId, 'checkpoint.white.guard');
+  assert.equal(checkpoint?.checkpointId, 'checkpoint.white.s1-guard-attack');
   const backEscape = checkpointForMove(report.rubric.levels, 'escape.back', 'white');
-  assert.equal(backEscape?.checkpointId, 'checkpoint.white.escapes');
+  assert.equal(backEscape?.checkpointId, 'checkpoint.white.s2-back');
   assert.equal(backEscape?.checkpointName, 'Back escape');
   assert.equal(assessmentAreaForMove('sweeps', 'Scissor sweep'), 'guard');
   assert.equal(assessmentAreaForMove('positions', 'Closed guard'), 'guard');
@@ -119,7 +133,66 @@ test('moves link to a checkpoint, a self-assessment area, and a matching clip', 
   });
   assert.deepEqual(links.map((link) => link.href), [
     '/student/self-assessment?from=fundamentals#assess-guard',
-    '/student/rubric#checkpoint.white.guard',
+    '/student/rubric#checkpoint.white.s1-guard-attack',
     '/student/videos#clip-clip-scissor',
   ]);
+  assert.deepEqual(links.map((link) => link.label), [
+    'Open: Guard self-assessment',
+    'Open: From closed guard, perform one sweep and one submission in drilling. benchmark',
+    'Open: Scissor sweep detail in Video Library',
+  ]);
+  const openGuard = moveLinks({
+    item: { catalogItemId: 'pos.open-guard', categoryId: 'positions', label: 'Open guard', name: 'Open guard' },
+    levels: report.rubric.levels,
+    belt: 'purple',
+    clips: [],
+    films: [],
+    to: (path) => path,
+  });
+  assert.deepEqual(openGuard.map((link) => link.label), [
+    'Open: Guard self-assessment',
+    'Open: Keep your guard from being passed, and get it back when you are passed. benchmark',
+  ]);
+  const filmed = moveLinks({
+    item: { catalogItemId: 'sweep.hip-bump', categoryId: 'sweeps', label: 'Hip bump sweep', name: 'Hip bump sweep' },
+    levels: report.rubric.levels,
+    belt: 'white',
+    clips: [],
+    films,
+    to: (path) => path,
+  });
+  assert.equal(filmed.some((link) => link.label === 'Open: Hip bump sweep in Video Library'), true);
+});
+
+test('checkpoint links stay on the belt being worn or the next belt', () => {
+  const report = withStarterRubric(blankStudentReport(10), 10);
+  const levels = report.rubric.levels;
+  const belts = ['white', 'blue', 'purple', 'brown', 'black', 'grey', 'yellow', 'orange', 'green', 'coral', 'redWhite', 'red'];
+  for (const belt of belts) {
+    const allowed = new Set(checkpointLinkBelts(belt));
+    for (const category of FUNDAMENTALS_CATALOG.categories) {
+      for (const item of category.items) {
+        const hit = checkpointForMove(levels, item.id, belt);
+        if (!hit) continue;
+        assert.ok(allowed.has(hit.belt), `${belt} ${item.id} opened ${hit.belt}`);
+        assert.equal(hit.checkpointId.includes(`.${hit.belt}.`), true);
+      }
+    }
+  }
+  assert.equal(checkpointForMove(levels, 'sweep.scissor', 'white')?.checkpointId, 'checkpoint.white.s1-guard-attack');
+  assert.equal(checkpointForMove(levels, 'pos.half-guard', 'white')?.checkpointId, 'checkpoint.white.s2-guards');
+  assert.equal(checkpointForMove(levels, 'sub.kimura', 'white')?.belt, 'white');
+  assert.equal(checkpointForMove(levels, 'pos.back-control', 'white')?.checkpointId, 'checkpoint.white.s1-positions');
+  assert.equal(checkpointForMove(levels, 'sub.rear-naked-choke', 'white')?.checkpointId, 'checkpoint.white.s4-back-choke');
+  assert.equal(checkpointForMove(levels, 'pass.leg-drag', 'white')?.checkpointId, 'checkpoint.blue.promo-pass');
+  assert.equal(checkpointForMove(levels, 'pos.turtle', 'white')?.checkpointId, 'checkpoint.blue.s1-turtle');
+  assert.equal(checkpointForMove(levels, 'td.double-leg', 'white')?.checkpointId, 'checkpoint.white.s4-single');
+  assert.equal(checkpointForMove(levels, 'sub.rear-naked-choke', 'blue')?.checkpointId, 'checkpoint.blue.s4-back');
+  assert.equal(checkpointForMove(levels, 'pos.closed-guard', 'blue')?.checkpointId, 'checkpoint.blue.promo-guard');
+  assert.equal(checkpointForMove(levels, 'pos.mount', 'purple')?.checkpointId, 'checkpoint.purple.s2-pins');
+  assert.equal(checkpointForMove(levels, 'escape.back', 'white')?.checkpointId, 'checkpoint.white.s2-back');
+  assert.equal(checkpointForMove(levels, 'escape.back', 'blue')?.checkpointId, 'checkpoint.blue.s1-escapes');
+  assert.equal(checkpointForMove(levels, 'escape.back', 'white')?.checkpointName, 'Back escape');
+  assert.equal(checkpointForMove(levels, 'td.double-leg', 'green')?.checkpointId, 'checkpoint.green.takedowns');
+  assert.equal(checkpointForMove(levels, 'td.double-leg', 'grey'), null);
 });

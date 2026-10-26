@@ -1,4 +1,5 @@
 import { CHECKOUT_BUY_PATH, isCheckoutProduct, type CheckoutProduct } from '../lib/checkoutProducts.ts';
+import { HALF_OFF_CODE } from '../lib/halfOff.ts';
 import { normalizeEmail } from './entitlements.ts';
 import { API_PRODUCT_COACH, API_PRODUCT_ID, API_PRODUCT_PRO, API_PRODUCT_STUDENT } from './routes.ts';
 
@@ -230,6 +231,37 @@ export async function findPromotionCodeId(
   };
   const id = body.data?.[0]?.id;
   return typeof id === 'string' && id ? id : null;
+}
+
+/**
+ * Active MEIA promotion code, or null when Stripe has no active code or the
+ * request fails. Callers fall back to checkout without a discount. The code
+ * is the allowlist constant, never a visitor-supplied string. A returned id
+ * is applied with discounts, which cannot be combined with allow_promotion_codes.
+ */
+export async function lookupAllowlistedHalfOffPromotion(
+  secret: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<string | null> {
+  try {
+    const params = new URLSearchParams();
+    params.set('code', HALF_OFF_CODE);
+    params.set('active', 'true');
+    params.set('limit', '1');
+    const body = (await stripeRequest(
+      secret,
+      `/v1/promotion_codes?${params.toString()}`,
+      { method: 'GET' },
+      fetchImpl,
+    )) as { data?: { id?: unknown; code?: unknown; active?: unknown }[] };
+    const row = body.data?.[0];
+    if (!row || row.active === false) return null;
+    if (typeof row.code !== 'string' || row.code.trim().toUpperCase() !== HALF_OFF_CODE) return null;
+    if (typeof row.id !== 'string' || !row.id.startsWith('promo_')) return null;
+    return row.id;
+  } catch {
+    return null;
+  }
 }
 
 export async function createCheckoutSession(
