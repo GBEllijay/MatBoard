@@ -33,6 +33,7 @@ import {
   type CalendarKind,
   type CalendarRepeat,
   type CoachFeedbackPacket,
+  type CoachGymBrand,
   type CoachPlanFocus,
   type CoachPlanPacket,
   type CoachSuggestion,
@@ -44,7 +45,12 @@ import {
   type StudentProgressReport,
 } from './progress/types.ts';
 import { FUNDAMENTAL_LIVE_LEVEL, fundamentalLevelOf } from './fundamentals.ts';
-import { todayIso } from './studentEdition.ts';
+import { beltModeOf } from './beltBook.ts';
+import { isGymBrandFile } from './coachGymFile.ts';
+import { readTravelingGym } from './coachGymFit.ts';
+import { headerVisibility, readProfileMarks } from './profileMarks.ts';
+import { readStudentGymLogo } from './studentGymMark.ts';
+import { setStudentProfile, todayIso } from './studentEdition.ts';
 import { setRankBelt } from './studentRank.ts';
 import { loadRankPictures, picturesFromStore } from './rankPhotos.ts';
 
@@ -978,6 +984,10 @@ export type CoachImportResult = {
   error: string;
   /** The student's own Send to coach file. Merge only after the student confirms. */
   pendingReport?: StudentProgressReport;
+  /** Gym name and logo from the file, when it had them. Null on older files. */
+  gym: CoachGymBrand | null;
+  /** The gym handout. It does not replace a coach plan already on the phone. */
+  gymBrandOnly?: boolean;
 };
 
 export const SEND_TO_COACH_MERGE_PROMPT =
@@ -994,18 +1004,25 @@ export const COACH_PICKER_MESSAGE =
  * A Send to coach file is returned as pendingReport and is not merged until mergeOwnStudentFile.
  * importCoachSuggestion returns the student report unchanged.
  */
+function withGymName(report: StudentProgressReport, gym: CoachGymBrand | null, overwrite: boolean): StudentProgressReport {
+  if (!gym?.name) return report;
+  if (!overwrite && report.profile.gymName.trim()) return report;
+  return setStudentProfile(report, { gymName: gym.name });
+}
+
 export function applyCoachFile(report: StudentProgressReport, shelf: CoachShelf, text: string): CoachImportResult {
   let raw: unknown;
   try {
     raw = JSON.parse(text);
   } catch {
-    return { report, shelf, message: '', error: 'This file is not JSON.' };
+    return { report, shelf, message: '', error: 'This file is not JSON.', gym: null };
   }
   if (raw && typeof raw === 'object' && (raw as { advantage?: unknown }).advantage === 'student-journal-backup') {
-    return { report, shelf, message: '', error: BACKUP_PICKER_MESSAGE };
+    return { report, shelf, message: '', error: BACKUP_PICKER_MESSAGE, gym: null };
   }
+  const gym = readTravelingGym(raw);
   const parsed = parseProgressPacket(text);
-  if (!parsed.ok) return { report, shelf, message: '', error: `${parsed.errors.join(' ')} ${COACH_PICKER_MESSAGE}` };
+  if (!parsed.ok) return { report, shelf, message: '', error: `${parsed.errors.join(' ')} ${COACH_PICKER_MESSAGE}`, gym: null };
   if (parsed.value.kind === 'student-progress-report') {
     return {
       report,
@@ -1013,29 +1030,46 @@ export function applyCoachFile(report: StudentProgressReport, shelf: CoachShelf,
       message: SEND_TO_COACH_MERGE_PROMPT,
       error: '',
       pendingReport: parsed.value,
+      gym,
+    };
+  }
+  if (parsed.value.kind === 'coach-plan' && isGymBrandFile(parsed.value)) {
+    return {
+      report: withGymName(report, gym, true),
+      shelf,
+      message: gym
+        ? 'Gym name and logo are on this phone. Your journal was not changed. You can replace or remove the logo on My profile.'
+        : 'That gym file did not include a name or logo. Your journal was not changed.',
+      error: '',
+      gym,
+      gymBrandOnly: true,
     };
   }
   if (parsed.value.kind === 'coach-plan') {
     const merged = mergeCoachPacket(shelf.plan, parsed.value);
     const suggestion = importCoachSuggestion(report, merged.packet);
+    const carried = merged.replaced ? gym : null;
     return {
-      report: suggestion.report,
+      report: withGymName(suggestion.report, carried, false),
       shelf: { ...shelf, plan: merged.packet },
       message: merged.replaced
         ? `${merged.packet.plan.title || 'Work on before next promotion'} is on this phone. Your rubric, journal, and personal goals were not changed.`
         : merged.conflicts.join(' '),
       error: '',
+      gym: carried,
     };
   }
   const merged = mergeCoachPacket(shelf.feedback, parsed.value);
   const suggestion = importCoachSuggestion(report, merged.packet);
+  const carried = merged.replaced ? gym : null;
   return {
-    report: suggestion.report,
+    report: withGymName(suggestion.report, carried, false),
     shelf: { ...shelf, feedback: merged.packet },
     message: merged.replaced
       ? 'Coach feedback is on this phone. Your rubric, journal, and personal goals were not changed.'
       : merged.conflicts.join(' '),
     error: '',
+    gym: carried,
   };
 }
 
@@ -1117,7 +1151,21 @@ export function mergeOwnStudentFile(
 
 export const SHARE_SUBJECT = 'Advantage progress report';
 
-export function progressReportFiles(report: StudentProgressReport, pictures = picturesFromStore(loadRankPictures())): {
+function storageGet(storage: Pick<Storage, 'getItem'> | null | undefined): Pick<Storage, 'getItem'> | null {
+  if (storage) return storage;
+  try {
+    if (typeof localStorage === 'undefined') return null;
+    return localStorage;
+  } catch {
+    return null;
+  }
+}
+
+export function progressReportFiles(
+  report: StudentProgressReport,
+  pictures = picturesFromStore(loadRankPictures()),
+  storage?: Pick<Storage, 'getItem'> | null,
+): {
   jsonName: string;
   json: string;
   csvName: string;
@@ -1128,7 +1176,15 @@ export function progressReportFiles(report: StudentProgressReport, pictures = pi
   const withPhotos = report.rank && pictures.length ? { ...report, rank: { ...report.rank, pictures } } : report;
   const fitted = fitRankPictures(withPhotos);
   const jsonName = progressHandoffFileName(fitted);
-  const json = exportProgressPacket(fitted);
+  let json = exportProgressPacket(fitted);
+  const store = storageGet(storage);
+  const visibility = headerVisibility(beltModeOf(fitted), readProfileMarks(store));
+  const logo = visibility.logo ? readStudentGymLogo(store) : null;
+  if (logo) {
+    const parsed = JSON.parse(json) as Record<string, unknown>;
+    parsed.gym = { name: fitted.profile.gymName, logo };
+    json = JSON.stringify(parsed);
+  }
   const csvName = jsonName.replace(/\.json$/, '.csv');
   const csv = exportProgressCsv(fitted);
   const body = `The progress file ${jsonName} is on this phone. Attach that JSON. Advantage does not host the file.`;

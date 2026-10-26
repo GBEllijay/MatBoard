@@ -16,8 +16,14 @@ import {
   connectedBackupTargets,
   studentBackupNames,
   type BackupBlob,
+  type BackupMarkImages,
   type StudentExportKind,
 } from './studentBackup.ts';
+import { beltModeOf } from './beltBook.ts';
+import { headerVisibility, readProfileMarks } from './profileMarks.ts';
+import { readProfilePortrait } from './profilePortrait.ts';
+import { PDF_GYM_LOGO_ID, PDF_SELFIE_ID, reportHeaderArt } from './pdfRaster.ts';
+import { readStudentGymLogo } from './studentGymMark.ts';
 import { loadStudentReport, todayIso } from './studentEdition.ts';
 import { getFilmBlob, loadFilms, type StudentFilm } from './studentFilm.ts';
 import { loadScouting, type ScoutingCard } from './studentScouting.ts';
@@ -42,6 +48,7 @@ export type StudentExportSource = {
   shelf: CoachShelf;
   films: readonly StudentFilm[];
   blobs?: readonly BackupBlob[];
+  marks?: BackupMarkImages;
 };
 
 export type StudentExportResult =
@@ -90,8 +97,13 @@ async function gatherFromThisPhone(includeVideos: boolean): Promise<StudentExpor
   const blobs = includeVideos
     ? await Promise.all(films.map(async (film) => ({ id: film.id, blob: await getFilmBlob(film.id).catch(() => null) })))
     : [];
+  const report = loadStudentReport(localStorage);
+  const visibility = headerVisibility(beltModeOf(report), readProfileMarks());
+  const selfie = visibility.selfie ? readProfilePortrait() : null;
+  const gymLogo = visibility.logo ? readStudentGymLogo() : null;
+  const art = await reportHeaderArt({ selfie, gymLogo });
   return {
-    report: loadStudentReport(localStorage),
+    report,
     assessment: loadAssessments(localStorage),
     scouting: loadScouting(localStorage),
     rankPhotos: loadRankPictures(),
@@ -99,6 +111,16 @@ async function gatherFromThisPhone(includeVideos: boolean): Promise<StudentExpor
     shelf: loadCoachShelf(localStorage),
     films,
     blobs,
+    marks: {
+      includeSelfie: visibility.selfie,
+      includeLogo: visibility.logo,
+      selfie,
+      gymLogo,
+      art: {
+        selfie: art.selfie?.id === PDF_SELFIE_ID ? art.selfie : null,
+        gymLogo: art.gymLogo?.id === PDF_GYM_LOGO_ID ? art.gymLogo : null,
+      },
+    },
   };
 }
 

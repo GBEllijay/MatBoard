@@ -2306,6 +2306,36 @@ export async function uploadClassPhotoPromotions(input: {
 }
 
 /**
+ * Put the gym logo in the connected gym folder.
+ * Uses the same resumable upload as class photos. Does not change Drive sign-in.
+ */
+export async function uploadGymLogoFile(input: {
+  token: string;
+  folderId: string;
+  bytes: Blob;
+  mime: string;
+  fetcher?: DriveFetch;
+}): Promise<{ fileId: string }> {
+  const fetcher = input.fetcher ?? fetch;
+  const mime = input.mime.trim().toLowerCase().startsWith('image/') ? input.mime : 'image/jpeg';
+  const ext = mime.includes('png') ? 'png' : mime.includes('webp') ? 'webp' : 'jpg';
+  const name = `advantage-gym-logo.${ext}`;
+  const existingId = await findFileByAppProperty(input.token, input.folderId, 'advantage', 'gym-logo', fetcher);
+  const fileId = await putResumableMediaFile({
+    token: input.token,
+    parentId: input.folderId,
+    name,
+    mime,
+    bytes: input.bytes,
+    appProperties: { advantage: 'gym-logo' },
+    description: 'Gym logo saved from Advantage.',
+    existingId,
+    fetcher,
+  });
+  return { fileId };
+}
+
+/**
  * Upload class photos and promotion clips when a gym Drive folder is connected.
  * Returns null when Drive is not connected or sign-in needs a tap.
  */

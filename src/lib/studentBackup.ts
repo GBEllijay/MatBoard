@@ -15,7 +15,11 @@ import { PROGRESS_CSV_HEADERS, exportProgressCsv, parseProgressPacket, parseProg
 import { RANK_BELTS, type StudentProgressReport } from './progress/types.ts';
 import { RANK_PHOTO_KEY, emptyRankPhotoStore, type RankPhotoStore } from './rankPhotos.ts';
 import { assessmentReportPdf, progressReportPdf } from './reportPdf.ts';
-import { pdfToText } from './simplePdf.ts';
+import { pdfToText, type PdfImageAsset } from './simplePdf.ts';
+import { clearProfileMarks } from './profileMarks.ts';
+import { clearProfilePortrait, portraitFits, writeProfilePortraitSync } from './profilePortrait.ts';
+import { clearStudentGymLogo, writeStudentGymLogo } from './studentGymMark.ts';
+import { coachGymLogoFits } from './coachGymFit.ts';
 import {
   ASSESSMENT_AREAS,
   ASSESSMENT_STORAGE_KEY,
@@ -59,6 +63,8 @@ export const CLEAR_STUDENT_DATA_ITEMS = [
   'Tournaments',
   'Opponent scouting',
   'Videos',
+  'Profile photo',
+  'Gym logo on My profile',
   'Coach plans and coach feedback saved on this phone',
 ] as const;
 export const BACKUP_REPLACE_WARN =
@@ -85,6 +91,18 @@ export type StudentBackupFile = {
   films: StudentFilm[];
   filmFiles?: { id: string; base64: string }[];
   filmFilesOmitted?: { id: string; reason: string }[];
+  /** Profile photo. Present only when that switch was on at export. */
+  portrait?: string;
+  /** Gym logo. Present only when that switch was on at export. */
+  gymLogo?: string;
+};
+
+export type BackupMarkImages = {
+  includeSelfie: boolean;
+  includeLogo: boolean;
+  selfie?: string | null;
+  gymLogo?: string | null;
+  art?: { selfie?: PdfImageAsset | null; gymLogo?: PdfImageAsset | null };
 };
 
 type MemoryStore = {
@@ -248,6 +266,8 @@ export async function buildStudentBackup(input: {
   /** The JSON backup updates Last backup. Spreadsheet and PDF exports leave that stamp alone. */
   recordStamp?: boolean;
   stampStorage?: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> | null;
+  /** Selfie and gym logo ride along only when their switches are on. */
+  marks?: BackupMarkImages;
 }): Promise<{ file: StudentBackupFile; json: string; csv: string; progressPdf: Uint8Array; assessmentPdf: Uint8Array }> {
   const when = input.now ?? new Date();
   const films = [...input.films];
@@ -264,6 +284,9 @@ export async function buildStudentBackup(input: {
     coachFeedback: input.shelf.feedback,
     films,
   };
+  const marks = input.marks;
+  if (marks?.includeSelfie && marks.selfie && portraitFits(marks.selfie)) file.portrait = marks.selfie;
+  if (marks?.includeLogo && marks.gymLogo && coachGymLogoFits(marks.gymLogo)) file.gymLogo = marks.gymLogo;
   if (input.includeVideos) {
     const blobs = input.blobs ?? [];
     let total = 0;
@@ -293,7 +316,10 @@ export async function buildStudentBackup(input: {
     file,
     json: JSON.stringify(file),
     csv: studentTemplatesCsv(input),
-    progressPdf: progressReportPdf(input.report, input.assessment, { scouting: input.scouting, films }, issuedOn),
+    progressPdf: progressReportPdf(input.report, input.assessment, { scouting: input.scouting, films }, issuedOn, {
+      selfie: marks?.includeSelfie ? marks.art?.selfie ?? null : null,
+      gymLogo: marks?.includeLogo ? marks.art?.gymLogo ?? null : null,
+    }),
     assessmentPdf: assessmentReportPdf(input.report, input.assessment, issuedOn),
   };
 }
@@ -336,8 +362,15 @@ export function parseStudentBackup(text: string): { ok: true; file: StudentBacku
       films,
       filmFiles: Array.isArray(record.filmFiles) ? record.filmFiles : undefined,
       filmFilesOmitted: Array.isArray(record.filmFilesOmitted) ? record.filmFilesOmitted : undefined,
+      portrait: keptStill(record.portrait, portraitFits),
+      gymLogo: keptStill(record.gymLogo, coachGymLogoFits),
     },
   };
+}
+
+function keptStill(value: unknown, fits: (text: string) => boolean): string | undefined {
+  if (typeof value !== 'string' || !fits(value)) return undefined;
+  return value;
 }
 
 function later<T extends { id: string; updatedAt?: number }>(local: T, incoming: T): T {
@@ -475,6 +508,14 @@ export function applyBackupToMemory(
   const shelf = backupShelf(file);
   saveCoachShelf(storage, mode === 'replace' ? shelf : mergedShelf(loadCoachShelf(storage), shelf));
   const films = mode === 'replace' ? writeFilms(storage, file.films) : writeFilms(storage, mergeById(loadFilms(storage), file.films, later));
+  if (file.portrait) writeProfilePortraitSync(file.portrait, storage);
+  if (file.gymLogo) {
+    try {
+      writeStudentGymLogo(file.gymLogo, storage);
+    } catch {
+      /* a logo that no longer fits stays off this phone */
+    }
+  }
   return {
     report: saved,
     films,
@@ -506,6 +547,9 @@ export function clearStudentMemory(storage: MemoryStore): void {
   storage.setItem(BRACKET_PHOTO_KEY, JSON.stringify({}));
   storage.setItem(FILM_STORAGE_KEY, JSON.stringify({ version: 1, films: [] }));
   saveCoachShelf(storage, { plan: null, feedback: null });
+  void clearProfilePortrait(storage, null);
+  clearStudentGymLogo(storage);
+  clearProfileMarks(storage);
   // localStorage.removeItem throws if it is pulled off the store, so keep it bound.
   if (typeof storage.removeItem === 'function') {
     forgetStudentBackupStamp({ removeItem: storage.removeItem.bind(storage) });

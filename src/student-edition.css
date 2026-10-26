@@ -2045,6 +2045,33 @@ input.sr-only.student-film-file {
   height: 46px;
 }
 
+.report-hero__end {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
+.report-hero__art {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.report-hero__logo {
+  width: 46px;
+  height: 46px;
+  object-fit: contain;
+  background: #ffffff;
+  border-radius: 8px;
+}
+
+.report-hero__selfie {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 .report-hero h1 {
   margin: 0;
   font-size: 1.7rem;

@@ -11,6 +11,9 @@ import {
   SHARE_SUBJECT,
 } from '../../lib/studentTools';
 import { COACH_FILE_HINT, COACH_FILE_LABEL } from '../../lib/studentHubMenu';
+import { setStudentProfile } from '../../lib/studentEdition';
+import { writeStudentGymLogo } from '../../lib/studentGymMark';
+import type { CoachGymBrand } from '../../lib/progress/types';
 import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './chrome';
 
 function downloadText(filename: string, text: string, type: string) {
@@ -31,6 +34,7 @@ export function SharePage() {
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const [pendingOwn, setPendingOwn] = useState<StudentProgressReport | null>(null);
+  const [pendingGym, setPendingGym] = useState<CoachGymBrand | null>(null);
   const files = progressReportFiles(report);
 
   const mergeOwn = () => {
@@ -41,8 +45,12 @@ export function SharePage() {
       setStatus('');
       return;
     }
-    commit(result.report);
+    let next = result.report;
+    if (pendingGym?.logo) writeStudentGymLogo(pendingGym.logo);
+    if (pendingGym?.name && !next.profile.gymName.trim()) next = setStudentProfile(next, { gymName: pendingGym.name });
+    commit(next);
     setPendingOwn(null);
+    setPendingGym(null);
     setError('');
     setStatus(result.message);
   };
@@ -77,7 +85,7 @@ export function SharePage() {
             <p className="ink__label">{COACH_FILE_LABEL}</p>
             <p className="student-quiet">{COACH_FILE_HINT}</p>
             <p className="student-quiet">
-              The progress file stays on this device. Advantage does not host it. It includes your journal, tournaments, A/B/C game, weights, competition results, video library links, rank, and lineage. Promotion photos are included when the file has room. The ones that do not fit stay on this device, and the file says so. A bracket photo stays on this device and is not in the file. Share it with your mail app or the gym Google Drive folder.
+              The progress file stays on this device. Advantage does not host it. It includes your journal, tournaments, A/B/C game, weights, competition results, video library links, rank, and lineage. Promotion photos are included when the file has room. The ones that do not fit stay on this device, and the file says so. A bracket photo stays on this device and is not in the file. The gym logo is included when Gym logo on reports and backups is on. Your photo stays on this phone and is not in this file. Share it with your mail app or the gym Google Drive folder.
             </p>
             <label className="cal-gym-toggle">
               <input type="checkbox" checked={includeCsv} onChange={(event) => setIncludeCsv(event.target.checked)} />
@@ -95,7 +103,7 @@ export function SharePage() {
           <section className="student-import-confirm" id="import">
             <h2>Import from coach</h2>
             <p>
-              A coach plan or coach feedback file is a suggestion. Importing it does not change your rubric marks, checkpoints, journal, or goals. The progress file from Send to coach can be merged into the journal on this phone after you confirm. A backup from Back up my journal restores from Connections.
+              A coach plan or coach feedback file is a suggestion. Importing it does not change your rubric marks, checkpoints, journal, or goals. A gym name or logo in the file is added when it is there, and ignored when an older file does not have one. You can replace or remove the logo on My profile. The progress file from Send to coach can be merged into the journal on this phone after you confirm. A backup from Back up my journal restores from Connections.
             </p>
             <input
               type="file"
@@ -109,16 +117,20 @@ export function SharePage() {
                   const result = applyCoachFile(report, shelf, text);
                   if (result.pendingReport) {
                     setPendingOwn(result.pendingReport);
+                    setPendingGym(result.gym);
                     setError('');
                     setStatus('');
                     return;
                   }
                   setPendingOwn(null);
+                  setPendingGym(null);
                   if (result.error) {
                     setError(result.error);
                     setStatus('');
                     return;
                   }
+                  if (result.gym?.logo) writeStudentGymLogo(result.gym.logo);
+                  if (result.report !== report) commit(result.report);
                   saveCoachShelf(localStorage, result.shelf);
                   setShelf(result.shelf);
                   setError('');
@@ -136,7 +148,14 @@ export function SharePage() {
                   <Link className="ink-btn" to={to('/student/connections')}>
                     Open Connections
                   </Link>
-                  <button type="button" className="ink-btn" onClick={() => setPendingOwn(null)}>
+                  <button
+                    type="button"
+                    className="ink-btn"
+                    onClick={() => {
+                      setPendingOwn(null);
+                      setPendingGym(null);
+                    }}
+                  >
                     Cancel merge
                   </button>
                 </div>
