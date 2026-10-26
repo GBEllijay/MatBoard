@@ -650,6 +650,14 @@ export function ScreensaverPage() {
 
   const hubTitle = MEDIA_CONSOLE_NAME;
   const showBelt = options || !currentSlide;
+  const galleryPage = focusFolder === 'gallery';
+  // Gallery scrolls the purple belt with the list. Events and Pro Shop keep the pinned belt.
+  const beltInSheet = showBelt && galleryPage && options;
+  const beltHeader = (
+    <div className={galleryPage ? 'saver-belt saver-belt--flow' : 'saver-belt'}>
+      <BeltHeader kind="purple" title="Advantage - Media Console" />
+    </div>
+  );
 
   const focusEmpty = itemsInFolder(photos, focusFolder).length === 0;
   const focusCanUpload =
@@ -672,7 +680,7 @@ export function ScreensaverPage() {
 
   return (
     <main
-      className={`saver${currentSlide ? ' saver--play' : ''}${showBelt ? ' saver--belt' : ''}${fs.className ? ` ${fs.className}` : ''}`}
+      className={`saver${currentSlide ? ' saver--play' : ''}${showBelt ? ' saver--belt' : ''}${showBelt && galleryPage ? ' saver--gallery' : ''}${fs.className ? ` ${fs.className}` : ''}`}
       onClick={(event) => {
         const target = event.target as HTMLElement;
         if (target.closest('.sheet, .chrome, .saver__empty, .btn, input, label, .play-fs, .play-exit, .tier-home, .tv-tip, .saver__unmute, .saver-batch, .week-cast.is-drift, .week-cast.is-paused, .month-cast.is-drift, .month-cast.is-paused')) return;
@@ -686,11 +694,7 @@ export function ScreensaverPage() {
       ) : null}
       <PlayExitMark to={back} onExit={exitSlideshow} />
       {showBelt ? <MediaConsoleMark /> : null}
-      {showBelt ? (
-        <div className="saver-belt">
-          <BeltHeader kind="purple" title="Advantage - Media Console" />
-        </div>
-      ) : null}
+      {showBelt && !beltInSheet ? beltHeader : null}
       <div className="play-fs-slot">
         <FullscreenChip
           supported={fs.supported}
@@ -790,6 +794,7 @@ export function ScreensaverPage() {
           </InstructionsButton>
         }
       >
+        {beltInSheet ? beltHeader : null}
         {options && batchStatus ? (
           <BatchStatus panel status={batchStatus} onDismiss={() => setBatchStatus(null)} />
         ) : null}
