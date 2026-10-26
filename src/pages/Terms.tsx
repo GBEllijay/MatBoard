@@ -1,8 +1,10 @@
 import { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { LegalContact, LegalPage } from '../components/LegalPage';
-import { BENCHMARK_DISCLAIMER_MEDIUM } from '../lib/studentBenchmarks';
 import { SITE_FEEDBACK_EMAIL } from '../lib/siteFooter';
+
+const PRACTICAL_BENCHMARKS_TERMS =
+  'The Practical Benchmarks in Advantage are example suggestions only. They are general guidance based on commonly accepted jiu-jitsu training and have been reviewed by black belts, but they are not an official curriculum, a promotion standard, or a replacement for instruction from a qualified coach. Every academy and coach sees things differently. Always review and adjust the benchmarks with your coach, who has the final say on your progress and promotions. For children, a parent or guardian is responsible for deciding what their child trains and when. Advantage App, LLC does not set, guarantee, or award belt promotions.';
 
 function SupportEmail() {
   return <a href={`mailto:${SITE_FEEDBACK_EMAIL}`}>{SITE_FEEDBACK_EMAIL}</a>;
@@ -285,7 +287,7 @@ export function TermsPage() {
 
       <section id="practical-benchmarks">
         <h3>17. Practical Benchmarks</h3>
-        <p>{BENCHMARK_DISCLAIMER_MEDIUM}</p>
+        <p>{PRACTICAL_BENCHMARKS_TERMS}</p>
       </section>
 
       <section>
