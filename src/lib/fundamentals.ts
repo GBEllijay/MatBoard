@@ -231,27 +231,27 @@ export function moveLinks(input: {
   if (area && areaLabel) {
     links.push({
       href: input.to(`/student/self-assessment?from=fundamentals#assess-${area}`),
-      label: `Open ${areaLabel} self-assessment`,
+      label: `Open: ${areaLabel} self-assessment`,
     });
   }
   const checkpoint = checkpointForMove(input.levels, input.item.catalogItemId, input.belt);
   if (checkpoint) {
     links.push({
       href: input.to(`/student/rubric#${checkpoint.checkpointId}`),
-      label: `Open ${checkpoint.checkpointName} benchmark`,
+      label: `Open: ${checkpoint.checkpointName} benchmark`,
     });
   }
   for (const clip of clipsForMove(input.clips, input.item.label, input.item.name)) {
     links.push({
       href: input.to(`/student/videos#clip-${clip.id}`),
-      label: `Open ${clip.description} in Video Library`,
+      label: `Open: ${clip.description} in Video Library`,
     });
   }
   for (const film of filmsForMove(input.films, input.item.label, input.item.name)) {
     const title = film.technique.trim() || 'Filmed move';
     links.push({
       href: input.to(`/student/videos#film-${film.id}`),
-      label: `Open ${title} in Video Library`,
+      label: `Open: ${title} in Video Library`,
     });
   }
   return links;

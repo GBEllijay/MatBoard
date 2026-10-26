@@ -180,8 +180,8 @@ test('my rank and belt progress keep every control and match the arena skin', as
   await expect(page).toHaveURL(/\/student\/self-assessment\?from=progress&student=1$/);
   await expect(page.getByRole('heading', { name: 'Self-assessment', exact: true })).toBeVisible();
   await expect(page.getByLabel('Self-assessment date')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Open Takedowns benchmark' })).toHaveCount(0);
-  await expect(page.getByRole('link', { name: 'Open Guard benchmark' })).toHaveAttribute(
+  await expect(page.getByRole('link', { name: 'Open: Takedowns benchmark' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Open: Guard benchmark' })).toHaveAttribute(
     'href',
     '/student/rubric?student=1#checkpoint.white.guard',
   );

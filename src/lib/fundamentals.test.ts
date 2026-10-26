@@ -124,6 +124,32 @@ test('moves link to a checkpoint, a self-assessment area, and a matching clip', 
     '/student/rubric#checkpoint.white.guard',
     '/student/videos#clip-clip-scissor',
   ]);
+  assert.deepEqual(links.map((link) => link.label), [
+    'Open: Guard self-assessment',
+    'Open: Guard benchmark',
+    'Open: Scissor sweep detail in Video Library',
+  ]);
+  const openGuard = moveLinks({
+    item: { catalogItemId: 'pos.open-guard', categoryId: 'positions', label: 'Open guard', name: 'Open guard' },
+    levels: report.rubric.levels,
+    belt: 'purple',
+    clips: [],
+    films: [],
+    to: (path) => path,
+  });
+  assert.deepEqual(openGuard.map((link) => link.label), [
+    'Open: Guard self-assessment',
+    'Open: Open guard benchmark',
+  ]);
+  const filmed = moveLinks({
+    item: { catalogItemId: 'sweep.hip-bump', categoryId: 'sweeps', label: 'Hip bump sweep', name: 'Hip bump sweep' },
+    levels: report.rubric.levels,
+    belt: 'white',
+    clips: [],
+    films,
+    to: (path) => path,
+  });
+  assert.equal(filmed.some((link) => link.label === 'Open: Hip bump sweep in Video Library'), true);
 });
 
 test('checkpoint links stay on the belt being worn or the next belt', () => {

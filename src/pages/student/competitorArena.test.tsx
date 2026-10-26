@@ -5,9 +5,9 @@
  *
  * Touched controls:
  * Back. Hold for Home. Home.
- * Belt rank, Open My rank.
+ * Belt rank, Open: My rank.
  * Jiu-Jitsu Journal, Today's page, Journal cards.
- * Self-assessment section, Open self-assessment (the form is on /student/self-assessment).
+ * Self-assessment section, Open: self-assessment (the form is on /student/self-assessment).
  * Search competition. It matches division and weight class as separate fields.
  * Tournament name, date, location, Division, Weight class, deadline, link.
  * Division suggestions and Weight class suggestions. Free text still saves.
@@ -129,7 +129,7 @@ test('competitor keeps every control, with rank then journal then a self-assessm
   precedes(tournaments, games);
   assert.ok(journal.classList.contains('arena-journal'));
   assert.match(rank.textContent ?? '', /White/);
-  assert.equal(control(host, 'a', 'Open My rank').getAttribute('href'), '/student/rank');
+  assert.equal(control(host, 'a', 'Open: My rank').getAttribute('href'), '/student/rank');
   assert.equal(control(host, 'a', "Today's page").getAttribute('href'), '/student/journal');
   assert.equal(control(host, 'a', 'Journal cards').getAttribute('href'), '/student/cards');
 
@@ -167,7 +167,7 @@ test('competitor keeps every control, with rank then journal then a self-assessm
   }
   for (const name of ['A game saved', 'B game saved', 'C game saved']) labeled(host, name);
   assert.match(host.textContent ?? '', /Each game saves on its own/);
-  assert.equal(control(assess, 'a', 'Open self-assessment').getAttribute('href'), '/student/self-assessment?from=competitor');
+  assert.equal(control(assess, 'a', 'Open: self-assessment').getAttribute('href'), '/student/self-assessment?from=competitor');
   assert.equal(host.querySelector('[aria-label="Self-assessment date"]'), null);
   assert.equal(host.querySelector('[aria-label="Guard 1"]'), null);
   assert.equal(
