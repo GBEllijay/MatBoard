@@ -951,6 +951,66 @@
   box-sizing: border-box;
 }
 
+.student.student--arena .standing-game {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 18px 0 0;
+  border: 0;
+  min-width: 0;
+}
+
+.student.student--arena .standing-game + .standing-game {
+  margin-top: 8px;
+  border-top: 1px solid var(--arena-line);
+}
+
+.student.student--arena .standing-game__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+}
+
+.student.student--arena .standing-game__name {
+  margin: 0;
+  color: var(--arena-text);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.student.student--arena .standing-game__state {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-height: 36px;
+  margin: 0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(48, 209, 88, 0.18);
+  color: #30d158;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.student.student--arena .standing-game__state--unsaved {
+  background: rgba(255, 214, 10, 0.16);
+  color: #ffd60a;
+}
+
+.student.student--arena .standing-game .ink-btn {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .student.student--arena .ink-btn,
   .student.student--arena .student-choice,
