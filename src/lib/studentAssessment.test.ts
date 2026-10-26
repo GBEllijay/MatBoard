@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { sharedCheckpointId } from './progress/format.ts';
+import { PROGRESS_BELTS } from './progress/types.ts';
 import { blankStudentReport } from './studentEdition.ts';
 import { withStarterRubric } from './studentTools.ts';
 import {
@@ -135,6 +136,19 @@ test('a white belt does not receive a checkpoint from another belt', () => {
   const links = checkpointLinks(green);
   assert.equal(links.find((link) => link.areaId === 'takedowns')?.checkpointId, sharedCheckpointId('green', 'takedowns'));
   assert.equal(links.some((link) => link.checkpointId.includes('.blue.')), false);
+});
+
+test('every belt links only to checkpoints on that belt', () => {
+  for (const belt of PROGRESS_BELTS) {
+    const report = withStarterRubric(blankStudentReport());
+    report.profile.belt = belt;
+    const links = checkpointLinks(report);
+    assert.equal(
+      links.every((link) => link.checkpointId.startsWith(`checkpoint.${belt}.`)),
+      true,
+      belt,
+    );
+  }
 });
 
 test('a blue belt prefers the checkpoints on that belt', () => {

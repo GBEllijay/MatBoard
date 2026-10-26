@@ -137,15 +137,38 @@ type CheckpointHit = {
   belt: string;
 };
 
-/** Current belt first, then the rest of the rubric, first match only. */
+const ADULT_LINK_BELTS = ['white', 'blue', 'purple', 'brown', 'black'] as const;
+const KIDS_LINK_BELTS = ['grey', 'yellow', 'orange', 'green'] as const;
+
+/**
+ * A move opens the checkpoint on the belt being worn, or on the next belt.
+ * Belts further ahead are not a fallback, so white does not open purple.
+ */
+export function checkpointLinkBelts(currentBelt: string): readonly string[] {
+  const adult = ADULT_LINK_BELTS.indexOf(currentBelt as (typeof ADULT_LINK_BELTS)[number]);
+  if (adult >= 0) {
+    const next = ADULT_LINK_BELTS[adult + 1];
+    return next ? [currentBelt, next] : [currentBelt];
+  }
+  const kids = KIDS_LINK_BELTS.indexOf(currentBelt as (typeof KIDS_LINK_BELTS)[number]);
+  if (kids >= 0) {
+    const next = KIDS_LINK_BELTS[kids + 1];
+    return next ? [currentBelt, next] : [currentBelt];
+  }
+  return [currentBelt];
+}
+
+/** Current belt first, then the next belt only. */
 export function checkpointForMove(
   levels: readonly RubricLevel[],
   catalogItemId: string,
   currentBelt: string,
 ): CheckpointHit | null {
   if (!catalogItemId) return null;
-  const current = levels.find((level) => level.belt === currentBelt);
-  const ordered = current ? [current, ...levels.filter((level) => level !== current)] : [...levels];
+  const byBelt = new Map(levels.map((level) => [level.belt, level]));
+  const ordered = checkpointLinkBelts(currentBelt)
+    .map((belt) => byBelt.get(belt as RubricLevel['belt']))
+    .filter((level): level is RubricLevel => Boolean(level));
   for (const level of ordered) {
     for (const checkpoint of level.checkpoints) {
       const hit = checkpoint.criteria.some((criterion) =>

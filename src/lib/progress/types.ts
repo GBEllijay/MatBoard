@@ -247,13 +247,22 @@ export type RubricCriterion = {
   note: string;
 };
 
-/** A checkpoint between levels. The student marks it met. */
+/** Who wrote a checkpoint. Absent on older files, which means the student. */
+export type CheckpointSource = 'own' | 'coach';
+
+/**
+ * A checkpoint between levels. The student marks it met.
+ * `source` is `coach` when a later coach template sent it. Absent means the student.
+ * `edited` is set when the student changes a coach checkpoint they are allowed to edit.
+ */
 export type RubricCheckpoint = {
   id: string;
   name: string;
   met: boolean | null;
   note: string;
   criteria: RubricCriterion[];
+  source?: CheckpointSource;
+  edited?: boolean;
 };
 
 /** One level on the rubric. Checkpoints are the steps inside it. */
@@ -264,17 +273,30 @@ export type RubricLevel = {
   checkpoints: RubricCheckpoint[];
 };
 
+/**
+ * The student's rubric.
+ * `studentsCanEdit` is the template lock for coach checkpoints.
+ * Absent or true: a student who bought Student Edition can edit every checkpoint.
+ * False: coach-sourced checkpoints stay read-only. Own checkpoints stay editable.
+ * The coach template builder is not in this build.
+ */
 export type StudentRubric = {
   id: string;
   levels: RubricLevel[];
+  studentsCanEdit?: boolean;
 };
 
-/** A goal the student owns. Coach files do not write these. */
+/**
+ * A goal the student owns. Coach files do not write these.
+ * Goals never change a belt, a stripe, or a degree.
+ * `belt` is the stage the goal was added on. Absent on older goals, which stay visible.
+ */
 export type StudentGoal = {
   id: string;
   name: string;
   note: string;
   met: boolean | null;
+  belt?: ProgressBelt;
 };
 
 /** One fundamentals name. `examples` stays empty while the sheet is names only. */
@@ -542,6 +564,12 @@ export type StudentRank = {
    * Absent on older files. An empty list is a lineage the student cleared.
    */
   lineage?: string[];
+  /**
+   * One optional note per degree, index 0 through 9.
+   * 0 is plain black. 1 to 6 are black-belt degrees. 7 is coral, 8 is red and white, 9 is red.
+   * A note is not a checklist and does not change a degree. Absent on older files.
+   */
+  degreeFocus?: string[];
   /**
    * Compressed promotion photos. Present on an export when they fit.
    * The copy on the phone keeps the images in local storage, not in this field.

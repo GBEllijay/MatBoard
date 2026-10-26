@@ -18,8 +18,9 @@ import { decodeJournalBody } from './studentEdition.ts';
 import type { StudentFilm } from './studentFilm.ts';
 import type { AreaRatings } from './opponentAssessment.ts';
 import type { ScoutingCard } from './studentScouting.ts';
-import { dedupeRankHistory, stripeReportLine } from './studentRank.ts';
-import { BELT_LABELS, beltTrack, checkpointFilled, learnedCatalogIds } from './studentTools.ts';
+import { wornDegree } from './blackBeltDegrees.ts';
+import { dedupeRankHistory, degreeFocusOf, stripeReportLine } from './studentRank.ts';
+import { BELT_LABELS, beltRequirementProgress, beltTrack, checkpointFilled, checkpointTitle, learnedCatalogIds } from './studentTools.ts';
 import type { RubricCheckpoint, RubricLevel } from './progress/types.ts';
 
 export type ReportIdentity = {
@@ -198,6 +199,9 @@ function rankBlock(report: StudentProgressReport): ReportBlock {
       lines.push(`  ${index + 1}. ${name}`);
     });
   }
+  const degree = wornDegree(report.profile.belt, rank?.tapeCount ?? 0);
+  const focus = degree == null ? '' : degreeFocusOf(rank, degree);
+  if (focus) lines.push(`Focus for this degree: ${focus}`);
   return { title: 'Rank and stripes', lines };
 }
 
@@ -211,7 +215,12 @@ function beltBlock(report: StudentProgressReport): ReportBlock {
     for (const checkpoint of level.checkpoints) {
       const mark = checkpointStatusLabel(checkpoint, learned);
       const note = checkpoint.note.trim() ? ` — ${checkpoint.note.trim()}` : '';
-      lines.push(`  ${checkpoint.name}: ${mark}${note}`);
+      lines.push(`  ${checkpointTitle(checkpoint)}: ${mark}${note}`);
+    }
+    const progress = beltRequirementProgress(level, learned);
+    if (progress.requirements) {
+      const from = progress.fromFundamentals ? `, ${progress.fromFundamentals} from fundamentals` : '';
+      lines.push(`  ${progress.counted} of ${progress.requirements} requirements counted${from}.`);
     }
   }
   return { title: 'Belt progress', lines };
