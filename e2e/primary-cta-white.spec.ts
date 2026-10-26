@@ -250,7 +250,7 @@ test('instructor issue invite is the white primary', async ({ page }) => {
   await driveConnect.screenshot({ path: `${ARTIFACTS}/connect-drive-390.png` });
 });
 
-test('owner unlock, scoreboard Win, roster Save, and student Sign in are white', async ({ page }) => {
+test('owner unlock, roster Save, and student Sign in are white, and Win calls are green', async ({ page }) => {
   await setSize(page, { width: 1280, height: 900 });
   await page.goto('/products');
   await page.getByRole('button', { name: 'Advantage Pro, coming soon' }).click();
@@ -318,21 +318,32 @@ test('owner unlock, scoreboard Win, roster Save, and student Sign in are white',
   const whiteDq = page.getByRole('button', { name: 'White DQ' });
   await expect(blueWin).toHaveText('Win');
   await expect(whiteWin).toHaveText('Win');
-  expectWhitePrimary(await paint(blueWin));
-  const whiteWinPaint = await paint(whiteWin);
-  expect(whiteWinPaint.backgroundColor).toBe('rgb(255, 255, 255)');
-  expect(whiteWinPaint.color).toBe('rgb(14, 23, 38)');
-  await expect(whiteWin).toHaveCSS('border-top-width', '2px');
-  await expect(whiteWin).toHaveCSS('border-top-color', 'rgb(14, 23, 38)');
+  await page.mouse.move(0, 0);
+  await expect(blueWin).toHaveCSS('background-color', 'rgb(22, 163, 74)');
+  await expect(blueWin).toHaveCSS('color', 'rgb(14, 23, 38)');
+  await expect(whiteWin).toHaveCSS('background-color', 'rgb(22, 163, 74)');
+  await expect(whiteWin).toHaveCSS('color', 'rgb(14, 23, 38)');
   await expect(blueDq).toHaveCSS('background-color', 'rgb(245, 84, 79)');
   await expect(whiteDq).toHaveCSS('background-color', 'rgb(245, 84, 79)');
   await whiteWin.hover();
-  await expect(whiteWin).toHaveCSS('background-color', 'rgb(244, 247, 251)');
+  await expect(whiteWin).toHaveCSS('background-color', 'rgb(34, 197, 94)');
+  await expect(whiteWin).toHaveCSS('color', 'rgb(14, 23, 38)');
+  await page.mouse.move(0, 0);
   await whiteWin.evaluate((el) => {
     if (el instanceof HTMLElement) el.focus({ focusVisible: true });
   });
   await expect(whiteWin).toHaveCSS('outline-style', 'solid');
   await expect(whiteWin).toHaveCSS('outline-color', 'rgb(0, 78, 186)');
+  await expect(whiteWin).toHaveCSS('background-color', 'rgb(22, 163, 74)');
+  const disabledWin = await whiteWin.evaluate((el) => {
+    el.setAttribute('disabled', '');
+    const style = getComputedStyle(el);
+    return { backgroundColor: style.backgroundColor, color: style.color, borderTopWidth: style.borderTopWidth };
+  });
+  expect(disabledWin.backgroundColor).toBe('rgb(228, 235, 244)');
+  expect(disabledWin.color).toBe('rgb(51, 65, 85)');
+  expect(disabledWin.borderTopWidth).toBe('2px');
+  await whiteWin.evaluate((el) => el.removeAttribute('disabled'));
   await page.mouse.move(0, 0);
   await shot(page, 'scoreboard-win-desktop');
   await whiteWin.screenshot({ path: `${ARTIFACTS}/scoreboard-white-win-desktop.png` });
@@ -341,28 +352,45 @@ test('owner unlock, scoreboard Win, roster Save, and student Sign in are white',
   await setSize(page, { width: 390, height: 844 });
   await page.goto('/match?from=suite');
   const whiteWinPhone = page.getByRole('button', { name: 'White Win' });
+  const blueWinPhone = page.getByRole('button', { name: 'Blue Win' });
   await expect(whiteWinPhone).toBeVisible();
-  await expect(whiteWinPhone).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+  await page.mouse.move(0, 0);
+  await expect(whiteWinPhone).toHaveCSS('background-color', 'rgb(22, 163, 74)');
   await expect(whiteWinPhone).toHaveCSS('color', 'rgb(14, 23, 38)');
-  await expect(whiteWinPhone).toHaveCSS('border-top-width', '2px');
-  await expect(whiteWinPhone).toHaveCSS('border-top-color', 'rgb(14, 23, 38)');
+  await expect(blueWinPhone).toHaveCSS('background-color', 'rgb(22, 163, 74)');
+  await expect(blueWinPhone).toHaveCSS('color', 'rgb(14, 23, 38)');
   await shot(page, 'scoreboard-win-390');
   await whiteWinPhone.screenshot({ path: `${ARTIFACTS}/scoreboard-white-win-390.png` });
+  await blueWinPhone.screenshot({ path: `${ARTIFACTS}/scoreboard-blue-win-390.png` });
 
   await page.goto('/products');
   await setSize(page, { width: 1280, height: 900 });
   await page.goto('/match/control');
   const padWin = page.getByRole('button', { name: 'White Win' });
+  const padBlueWin = page.getByRole('button', { name: 'Blue Win' });
   await padWin.scrollIntoViewIfNeeded();
-  await expect(padWin).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+  await page.mouse.move(0, 0);
+  await expect(padWin).toHaveCSS('background-color', 'rgb(22, 163, 74)');
   await expect(padWin).toHaveCSS('color', 'rgb(14, 23, 38)');
-  await expect(padWin).toHaveCSS('border-top-width', '2px');
-  await expect(padWin).toHaveCSS('border-top-color', 'rgb(14, 23, 38)');
+  await expect(padBlueWin).toHaveCSS('background-color', 'rgb(22, 163, 74)');
+  await expect(padBlueWin).toHaveCSS('color', 'rgb(14, 23, 38)');
+  await padWin.hover();
+  await expect(padWin).toHaveCSS('background-color', 'rgb(34, 197, 94)');
+  await page.mouse.move(0, 0);
   await expect(page.getByRole('button', { name: 'White DQ' })).toHaveCSS('background-color', 'rgb(239, 68, 68)');
+  await expect(page.getByRole('button', { name: 'Blue DQ' })).toHaveCSS('background-color', 'rgb(239, 68, 68)');
   await shot(page, 'controller-win-desktop');
+  await padWin.screenshot({ path: `${ARTIFACTS}/controller-white-win-desktop.png` });
+  await page.goto('/products');
   await setSize(page, { width: 390, height: 844 });
-  await padWin.scrollIntoViewIfNeeded();
+  await page.goto('/match/control');
+  const padWinPhone = page.getByRole('button', { name: 'White Win' });
+  await padWinPhone.scrollIntoViewIfNeeded();
+  await page.mouse.move(0, 0);
+  await expect(padWinPhone).toHaveCSS('background-color', 'rgb(22, 163, 74)');
+  await expect(padWinPhone).toHaveCSS('color', 'rgb(14, 23, 38)');
   await shot(page, 'controller-win-390');
+  await padWinPhone.screenshot({ path: `${ARTIFACTS}/controller-white-win-390.png` });
 
   await setSize(page, { width: 1280, height: 900 });
   await page.goto('/white/roster');
