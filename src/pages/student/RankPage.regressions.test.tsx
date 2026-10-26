@@ -10,7 +10,8 @@ import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 import { RANK_PHOTO_KEY } from '../../lib/rankPhotos.ts';
-import { blankStudentReport, loadStudentReport, saveStudentReport, setFundamentalLevel } from '../../lib/studentEdition.ts';
+import { BENCHMARK_DISCLAIMER_MEDIUM, BENCHMARK_DISCLAIMER_SHORT, BLACK_BELT_AGE_NOTE } from '../../lib/studentBenchmarks.ts';
+import { blankStudentReport, loadStudentReport, saveStudentReport, setFundamentalLevel, setTrainingStyle } from '../../lib/studentEdition.ts';
 import { OPEN_GOAL_LINE, TIME_BASED_PROGRESS, withStarterRubric } from '../../lib/studentTools.ts';
 import { setBeltMode, setKidsBelt, setKidsTapeCount } from '../../lib/beltBook.ts';
 import { INSTRUCTOR_BARS_LABEL } from '../../lib/blackBeltDegrees.ts';
@@ -734,7 +735,46 @@ test('kids belt progress hides checkpoints and keeps them for adult', async () =
 });
 
 test('fundamentals at live level fill the white belt checkpoint count', async () => {
-  let report = withStarterRubric(blankStudentReport(70), 70);
+  let report = blankStudentReport(70);
+  report.rubric.levels = [
+    {
+      id: 'level.white',
+      name: 'White',
+      belt: 'white',
+      checkpoints: [
+        {
+          id: 'checkpoint.white.guard',
+          name: 'Guard',
+          met: null,
+          note: '',
+          criteria: [
+            { id: 'rubric.white.closed-guard', requirement: 'Hold closed guard.', techniqueRefs: [{ id: 'pos.closed-guard', name: 'Closed guard' }], met: null, note: '' },
+            { id: 'rubric.white.scissor-sweep', requirement: 'Finish a scissor sweep.', techniqueRefs: [{ id: 'sweep.scissor', name: 'Scissor sweep' }], met: null, note: '' },
+          ],
+        },
+        {
+          id: 'checkpoint.white.escapes',
+          name: 'Escapes',
+          met: null,
+          note: '',
+          criteria: [
+            { id: 'rubric.white.mount-escape', requirement: 'Escape mount.', techniqueRefs: [{ id: 'escape.mount', name: 'Mount escape' }], met: null, note: '' },
+            { id: 'rubric.white.side-control-escape', requirement: 'Escape side control.', techniqueRefs: [{ id: 'escape.side-control', name: 'Side control escape' }], met: null, note: '' },
+          ],
+        },
+        {
+          id: 'checkpoint.white.passes',
+          name: 'Passes',
+          met: null,
+          note: '',
+          criteria: [
+            { id: 'rubric.white.knee-slice', requirement: 'Finish a knee slice pass.', techniqueRefs: [{ id: 'pass.knee-slice', name: 'Knee slice pass' }], met: null, note: '' },
+            { id: 'rubric.white.torreando', requirement: 'Finish a torreando pass.', techniqueRefs: [{ id: 'pass.torreando', name: 'Torreando pass' }], met: null, note: '' },
+          ],
+        },
+      ],
+    },
+  ];
   report = setFundamentalLevel(report, { catalogItemId: 'pos.closed-guard', categoryId: 'positions', name: 'Closed guard' }, 3, 71);
   report = setFundamentalLevel(report, { catalogItemId: 'sweep.scissor', categoryId: 'sweeps', name: 'Scissor sweep' }, 5, 72);
   saveStudentReport(localStorage, report);
@@ -775,7 +815,9 @@ test('brown tap-to-add goals can be edited and removed without becoming checkpoi
     const renamed = loadStudentReport(localStorage);
     assert.equal(renamed.goals[0]?.name, 'Lead the kids class');
     assert.equal(renamed.goals[0]?.belt, 'brown');
-    assert.equal(renamed.rubric.levels.find((level) => level.belt === 'brown')?.checkpoints.length, 0);
+    const brownCount = renamed.rubric.levels.find((level) => level.belt === 'brown')?.checkpoints.length ?? 0;
+    assert.ok(brownCount > 0);
+    assert.equal(brownCount, added.rubric.levels.find((level) => level.belt === 'brown')?.checkpoints.length);
     await click(buttonNamed('Remove Lead the kids class'));
     assert.equal(loadStudentReport(localStorage).goals.length, 0);
   } finally {
@@ -809,12 +851,35 @@ test('black belt goals and degree focus do not change degree milestones', async 
   }
 });
 
+function savedGuard(now: number, source: 'coach', edited?: boolean) {
+  const report = blankStudentReport(now);
+  report.rubric.studentsCanEdit = edited ? undefined : false;
+  report.rubric.levels = [
+    {
+      id: 'level.white',
+      name: 'White',
+      belt: 'white',
+      checkpoints: [
+        {
+          id: 'checkpoint.white.guard',
+          name: 'Guard',
+          met: null,
+          note: '',
+          source,
+          ...(edited ? { edited: true } : {}),
+          criteria: [
+            { id: 'rubric.white.closed-guard', requirement: 'Hold closed guard.', techniqueRefs: [{ id: 'pos.closed-guard', name: 'Closed guard' }], met: null, note: '' },
+          ],
+        },
+      ],
+    },
+  ];
+  if (edited) report.rubric.studentsCanEdit = true;
+  return report;
+}
+
 test('a locked coach checkpoint is read-only and an edited coach checkpoint shows an asterisk', async () => {
-  const locked = withStarterRubric(blankStudentReport(100), 100);
-  locked.rubric.studentsCanEdit = false;
-  const lockedGuard = locked.rubric.levels.find((level) => level.belt === 'white')?.checkpoints.find((row) => row.id === 'checkpoint.white.guard');
-  assert.ok(lockedGuard);
-  lockedGuard.source = 'coach';
+  const locked = savedGuard(100, 'coach');
   saveStudentReport(localStorage, locked);
   const readOnly = mount(<BeltPage />);
   try {
@@ -827,12 +892,7 @@ test('a locked coach checkpoint is read-only and an edited coach checkpoint show
     unmount(readOnly);
   }
 
-  const editable = withStarterRubric(blankStudentReport(110), 110);
-  const guard = editable.rubric.levels.find((level) => level.belt === 'white')?.checkpoints.find((row) => row.id === 'checkpoint.white.guard');
-  assert.ok(guard);
-  guard.source = 'coach';
-  guard.edited = true;
-  saveStudentReport(localStorage, editable);
+  saveStudentReport(localStorage, savedGuard(110, 'coach', true));
   const starred = mount(<BeltPage />);
   try {
     assert.equal(labeled('Guard* benchmark').querySelector('h2')?.textContent, 'Guard*');
@@ -842,6 +902,41 @@ test('a locked coach checkpoint is read-only and an edited coach checkpoint show
     assert.equal(document.body.textContent?.includes('This practical benchmark stays as they sent it'), false);
   } finally {
     unmount(starred);
+  }
+});
+
+test('stripe lists show the disclaimer, no-gi line, and brown prompts', async () => {
+  saveStudentReport(localStorage, withStarterRubric(blankStudentReport(200), 200));
+  const white = mount(<BeltPage />);
+  try {
+    assert.equal(labeled('Stripe 1, open').tagName, 'LI');
+    assert.match(document.body.textContent ?? '', /Stripe 1 — First safe positions/);
+    assert.match(document.body.textContent ?? '', /No-gi uses underhooks/);
+    await click(buttonNamed(BENCHMARK_DISCLAIMER_SHORT));
+    assert.match(document.body.textContent ?? '', new RegExp(BENCHMARK_DISCLAIMER_MEDIUM.slice(0, 40).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    assert.ok(buttonNamed('Restore suggested list'));
+  } finally {
+    unmount(white);
+  }
+
+  saveStudentReport(localStorage, setRankBelt(withStarterRubric(blankStudentReport(210), 210), 'brown', 211));
+  const brown = mount(<BeltPage />);
+  try {
+    assert.match(document.body.textContent ?? '', new RegExp(BLACK_BELT_AGE_NOTE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    assert.equal(document.body.textContent?.includes('Leg locks (optional'), false);
+    await click(buttonNamed('Competition'));
+    assert.match(document.body.textContent ?? '', /only if you compete/);
+  } finally {
+    unmount(brown);
+  }
+
+  saveStudentReport(localStorage, setTrainingStyle(withStarterRubric(blankStudentReport(220), 220), 'gi', 221));
+  const gi = mount(<BeltPage />);
+  try {
+    assert.equal(document.body.textContent?.includes('No-gi uses underhooks'), false);
+    assert.equal(document.body.textContent?.includes('No-gi: Guillotine'), false);
+  } finally {
+    unmount(gi);
   }
 });
 

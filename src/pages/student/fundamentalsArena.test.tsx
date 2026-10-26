@@ -98,7 +98,7 @@ test('fundamentals keeps every control on the dark arena surface', () => {
   assert.equal(labeled(host, 'Home').getAttribute('href'), '/products');
   assert.equal(host.querySelector('h1')?.textContent, 'Fundamentals');
   assert.ok(host.textContent?.includes('0.0'));
-  assert.ok(host.textContent?.includes('0 of 5 ready when a partner resists'));
+  assert.ok(host.textContent?.includes('0 of 6 ready when a partner resists'));
   assert.equal(host.textContent?.toLowerCase().includes('live or better'), false);
 
   for (const name of ['Self-assessment', 'Practical benchmarks', 'Video Library', 'List order', 'Weakest first', 'Recently updated', 'All', 'Not started', 'In progress', 'Against resistance', 'Restore starter list']) {
@@ -141,12 +141,15 @@ test('a learned date without a level opens at live, and taps, sort, filter, note
   const sweeps = labeled(host, 'Sweeps');
   const live = labeled(sweeps, 'Scissor sweep 3 Live with resistance');
   assert.equal(live.getAttribute('aria-checked'), 'true');
-  assert.ok(sweeps.textContent?.includes('1 of 5 ready when a partner resists'));
+  assert.ok(sweeps.textContent?.includes('1 of 6 ready when a partner resists'));
   assert.equal(
     control(sweeps, 'a', 'Open: Guard self-assessment').getAttribute('href'),
     '/student/self-assessment?from=fundamentals#assess-guard',
   );
-  assert.equal(control(sweeps, 'a', 'Open: Guard benchmark').getAttribute('href'), '/student/rubric#checkpoint.white.guard');
+  assert.equal(
+    control(sweeps, 'a', 'Open: From closed guard, perform one sweep and one submission in drilling. benchmark').getAttribute('href'),
+    '/student/rubric#checkpoint.white.s1-guard-attack',
+  );
   assert.equal(control(sweeps, 'a', 'Open: Scissor sweep detail in Video Library').getAttribute('href')?.startsWith('/student/videos#clip-'), true);
   assert.ok(sweeps.textContent?.includes('Updated'));
 
@@ -160,7 +163,7 @@ test('a learned date without a level opens at live, and taps, sort, filter, note
   assert.notEqual(afterMeter?.getAttribute('data-value'), before);
   assert.equal((afterMeter?.querySelector('span') as HTMLElement | null)?.style.width.endsWith('%'), true);
   const escapes = labeled(host, 'Escapes');
-  assert.equal(control(escapes, 'a', 'Open: Back escape benchmark').getAttribute('href'), '/student/rubric#checkpoint.white.escapes');
+  assert.equal(control(escapes, 'a', 'Open: Back escape benchmark').getAttribute('href'), '/student/rubric#checkpoint.white.s2-back');
   const saved = JSON.parse(localStorage.getItem(STUDENT_EDITION_STORAGE_KEY) ?? '{}') as {
     checklist: { catalogItemId: string; level: number; learnedOn: string; note: string }[];
   };
@@ -192,7 +195,7 @@ test('a learned date without a level opens at live, and taps, sort, filter, note
   });
   const weakest = labeled(host, 'Sweeps');
   const names = [...weakest.querySelectorAll('h3')].map((node) => node.textContent);
-  assert.equal(names[0], 'Flower sweep');
+  assert.equal(names[0], 'Butterfly sweep');
   assert.ok(names.indexOf('Scissor sweep') > names.indexOf('Hip bump sweep'));
 
   act(() => {

@@ -203,6 +203,32 @@
   padding: 14px 16px 0;
 }
 
+.training-choices {
+  display: grid;
+  gap: 8px;
+}
+
+.training-choices .ink-btn {
+  width: 100%;
+  min-height: 56px;
+  box-sizing: border-box;
+}
+
+.profile-card h2 {
+  margin: 0;
+  padding: 16px 16px 0;
+  color: #f5f5f7;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.training-choices,
+.profile-card > .profile-switch__note {
+  padding: 12px 16px 0;
+}
+
 .profile-switch-status {
   padding: 0 16px 14px;
 }

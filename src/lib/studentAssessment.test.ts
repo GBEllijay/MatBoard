@@ -116,11 +116,11 @@ test('history keeps the newest days when the list is full', () => {
 test('starter checkpoints link the matching areas on the belt being worn', () => {
   const report = withStarterRubric(blankStudentReport());
   const links = checkpointLinks(report);
-  assert.equal(links.find((link) => link.areaId === 'guard')?.checkpointId, sharedCheckpointId('white', 'guard'));
-  assert.equal(links.find((link) => link.areaId === 'passing')?.checkpointName, 'Passes');
-  assert.equal(links.find((link) => link.areaId === 'escapes')?.checkpointId, sharedCheckpointId('white', 'escapes'));
-  assert.equal(links.find((link) => link.areaId === 'takedowns'), undefined);
-  assert.equal(links.find((link) => link.areaId === 'submissions'), undefined);
+  assert.equal(links.find((link) => link.areaId === 'guard')?.checkpointId, 'checkpoint.white.s1-positions');
+  assert.equal(links.find((link) => link.areaId === 'passing')?.checkpointId, 'checkpoint.white.s1-pass');
+  assert.equal(links.find((link) => link.areaId === 'escapes')?.checkpointId, 'checkpoint.white.s2-escape-resist');
+  assert.equal(links.find((link) => link.areaId === 'takedowns')?.checkpointId, 'checkpoint.white.promo-standing');
+  assert.equal(links.find((link) => link.areaId === 'submissions')?.checkpointId, 'checkpoint.white.s1-guard-attack');
   assert.equal(links.find((link) => link.areaId === 'conditioning'), undefined);
   assert.equal(links.find((link) => link.areaId === 'mindset'), undefined);
   assert.equal(links.some((link) => link.checkpointId.includes('.blue.')), false);
@@ -155,9 +155,9 @@ test('a blue belt prefers the checkpoints on that belt', () => {
   const report = withStarterRubric(blankStudentReport());
   report.profile.belt = 'blue';
   const links = checkpointLinks(report);
-  assert.equal(links.find((link) => link.areaId === 'guard')?.checkpointId, sharedCheckpointId('blue', 'half-guard'));
-  assert.equal(links.find((link) => link.areaId === 'takedowns')?.checkpointName, 'Takedowns');
-  assert.equal(links.find((link) => link.areaId === 'submissions')?.checkpointName, 'Submissions');
+  assert.equal(links.find((link) => link.areaId === 'guard')?.checkpointId, 'checkpoint.blue.s1-half-bottom');
+  assert.equal(links.find((link) => link.areaId === 'takedowns')?.checkpointId, 'checkpoint.blue.s4-takedowns');
+  assert.equal(links.find((link) => link.areaId === 'submissions')?.checkpointId, 'checkpoint.blue.s1-defend');
 });
 
 test('the competitor skin keeps 56px targets and leaves the hub notebook alone', () => {

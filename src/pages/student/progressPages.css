@@ -417,6 +417,39 @@
   font-size: 15px;
 }
 
+.student.student--arena.student--belt .belt-stripe {
+  display: grid;
+  gap: 12px;
+}
+
+.student.student--arena.student--belt .belt-age {
+  color: #c7c7cc;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.student.student--arena.student--belt .belt-disclaimer button {
+  width: 100%;
+  min-height: 56px;
+  margin: 0;
+  padding: 12px 2px;
+  border: 0;
+  background: transparent;
+  color: #c7c7cc;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: left;
+}
+
+.student.student--arena.student--belt .belt-disclaimer p {
+  color: #f5f5f7;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
 .student.student--arena.student--rank input.student-file {
   position: absolute;
   width: 1px;

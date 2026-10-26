@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { exportProgressPacket, mergeStudentProgress, parseProgressPacket, sharedCriterionId } from './progress/format.ts';
-import type { CoachFeedbackPacket, CoachPlanPacket, RubricCheckpoint } from './progress/types.ts';
+import type { CoachFeedbackPacket, CoachPlanPacket, RubricCheckpoint, RubricCriterion, RubricLevel, StudentProgressReport } from './progress/types.ts';
 import {
   addJournalEntry,
   blankStudentReport,
@@ -48,6 +48,54 @@ import {
   updateGoal,
   withStarterRubric,
 } from './studentTools.ts';
+
+function legacyCriterion(belt: string, slug: string, requirement: string, techniqueId: string, techniqueName: string): RubricCriterion {
+  return {
+    id: `rubric.${belt}.${slug.replace(/ /g, '-')}`,
+    requirement,
+    techniqueRefs: [{ id: techniqueId, name: techniqueName }],
+    met: null,
+    note: '',
+  };
+}
+
+function legacyCheckpoint(belt: string, slug: string, name: string, criteria: RubricCriterion[]): RubricCheckpoint {
+  return { id: `checkpoint.${belt}.${slug}`, name, met: null, note: '', criteria };
+}
+
+function legacyLevel(belt: RubricLevel['belt'], name: string, checkpoints: RubricCheckpoint[]): RubricLevel {
+  return { id: `level.${belt}`, name, belt, checkpoints };
+}
+
+/** The benchmark list students saved before the stripe sentences. */
+function legacyAdultReport(now = 10): StudentProgressReport {
+  const report = blankStudentReport(now);
+  report.rubric.levels = [
+    legacyLevel('white', 'White', [
+      legacyCheckpoint('white', 'guard', 'Guard', [
+        legacyCriterion('white', 'closed guard', 'Hold closed guard.', 'pos.closed-guard', 'Closed guard'),
+        legacyCriterion('white', 'scissor sweep', 'Finish a scissor sweep.', 'sweep.scissor', 'Scissor sweep'),
+      ]),
+      legacyCheckpoint('white', 'escapes', 'Escapes', [
+        legacyCriterion('white', 'mount escape', 'Escape mount.', 'escape.mount', 'Mount escape'),
+        legacyCriterion('white', 'side control escape', 'Escape side control.', 'escape.side-control', 'Side control escape'),
+      ]),
+      legacyCheckpoint('white', 'passes', 'Passes', [
+        legacyCriterion('white', 'knee slice', 'Finish a knee slice pass.', 'pass.knee-slice', 'Knee slice pass'),
+        legacyCriterion('white', 'torreando', 'Finish a torreando pass.', 'pass.torreando', 'Torreando pass'),
+      ]),
+    ]),
+    legacyLevel('blue', 'Blue', [
+      legacyCheckpoint('blue', 'half-guard', 'Half guard', [
+        legacyCriterion('blue', 'half guard', 'Play half guard.', 'pos.half-guard', 'Half guard'),
+        legacyCriterion('blue', 'tripod sweep', 'Finish a tripod sweep.', 'sweep.tripod', 'Tripod sweep'),
+      ]),
+    ]),
+    legacyLevel('brown', 'Brown', []),
+    legacyLevel('black', 'Black', []),
+  ];
+  return report;
+}
 
 function memory() {
   const store = new Map<string, string>();
@@ -164,7 +212,7 @@ test('a journal day sits on the month grid and an open mat is a training event',
 });
 
 test('checkpoints fill from marks and learned fundamentals, and goals stay the student\'s', () => {
-  let report = withStarterRubric(blankStudentReport(10), 10);
+  let report = legacyAdultReport(10);
   const saved = saveStudentReport(memory(), report);
   assert.equal(saved.rubric.levels.some((level) => level.belt === 'white'), true);
   assert.equal(nextBelt('white'), 'blue');
@@ -206,7 +254,7 @@ test('checkpoints fill from marks and learned fundamentals, and goals stay the s
 });
 
 test('coach import stays a suggestion, and the exported report re-imports', () => {
-  let report = withStarterRubric(blankStudentReport(10), 10);
+  let report = legacyAdultReport(10);
   report = setCriterionMark(report, 'rubric.white.closed-guard', true, '2026-10-12', 'collar', 12);
   report = addJournalEntry(
     report,
@@ -352,7 +400,7 @@ test('the uploaded send to coach file merges after confirm and a backup points t
 });
 
 test('completed fundamentals levels count toward belt progress', () => {
-  let report = withStarterRubric(blankStudentReport(10), 10);
+  let report = legacyAdultReport(10);
   assert.equal(beltProgressSummary(beltLevel(report, 'white'), learnedCatalogIds(report)), '0 of 3 practical benchmarks filled. 0 of 6 requirements counted.');
   report = setFundamentalLevel(report, { catalogItemId: 'sweep.scissor', categoryId: 'sweeps', name: 'Scissor sweep' }, 2, 11);
   assert.equal(beltProgressSummary(beltLevel(report, 'white'), learnedCatalogIds(report)).includes('0 of 6'), true);
@@ -366,11 +414,11 @@ test('completed fundamentals levels count toward belt progress', () => {
   assert.equal(checkpointFilled(guard, learnedCatalogIds(report)), true);
 });
 
-test('legacy brown checkpoints clear only when they were never edited', () => {
+test('an edited legacy brown list stays, and an untouched one is replaced by the prompts', () => {
   const fresh = withStarterRubric(blankStudentReport(10), 10);
-  assert.equal(beltLevel(fresh, 'brown')?.checkpoints.length, 0);
-  assert.equal(beltLevel(fresh, 'white')?.checkpoints.length, 3);
-  const legacy = structuredClone(fresh);
+  assert.ok((beltLevel(fresh, 'brown')?.checkpoints.length ?? 0) > 0);
+  assert.equal(beltLevel(fresh, 'white')?.checkpoints[0]?.id, 'checkpoint.white.s1-positions');
+  const legacy = legacyAdultReport(10);
   const brown = beltLevel(legacy, 'brown');
   assert.ok(brown);
   brown.checkpoints = [
@@ -407,9 +455,9 @@ test('legacy brown checkpoints clear only when they were never edited', () => {
     },
   ];
   assert.equal(isUntouchedLegacyBrown(brown), true);
-  const cleared = withStarterRubric(legacy, 20);
-  assert.equal(beltLevel(cleared, 'brown')?.checkpoints.length, 0);
-  assert.equal(beltLevel(cleared, 'white')?.checkpoints[0]?.id, 'checkpoint.white.guard');
+  const replaced = withStarterRubric(legacy, 20);
+  assert.equal(beltLevel(replaced, 'brown')?.checkpoints[0]?.id, 'checkpoint.brown.s1-game');
+  assert.equal(beltLevel(replaced, 'white')?.checkpoints[0]?.id, 'checkpoint.white.guard');
 
   const marked = structuredClone(legacy);
   const keptBrown = beltLevel(marked, 'brown');
@@ -418,6 +466,7 @@ test('legacy brown checkpoints clear only when they were never edited', () => {
   const kept = withStarterRubric(marked, 21);
   assert.equal(beltLevel(kept, 'brown')?.checkpoints[0]?.met, true);
   assert.equal(beltLevel(kept, 'brown')?.checkpoints.length, 3);
+  assert.equal(beltLevel(kept, 'white')?.checkpoints[0]?.id, 'checkpoint.white.guard');
 });
 
 test('goals and higher-belt checkpoints do not change degree milestones', () => {
@@ -444,7 +493,7 @@ test('goals and higher-belt checkpoints do not change degree milestones', () => 
 });
 
 test('a student can edit their own checkpoints, and a locked coach checkpoint stays read-only', () => {
-  let report = withStarterRubric(blankStudentReport(10), 10);
+  let report = legacyAdultReport(10);
   const guardId = 'checkpoint.white.guard';
   report = renameCheckpoint(report, guardId, 'Closed guard', 11);
   report = moveCheckpoint(report, guardId, 1, 12);
@@ -488,7 +537,7 @@ test('a student can edit their own checkpoints, and a locked coach checkpoint st
 });
 
 test('legacy progress files still load without checkpoint source or degree focus', () => {
-  let report = setRankBelt(withStarterRubric(blankStudentReport(30), 30), 'black', 31);
+  let report = setRankBelt(legacyAdultReport(30), 'black', 31);
   report = setRankAwardedOn(report, '2008-04-05', 32);
   report = setRankTapeCount(report, 3, 33);
   report = setCriterionMark(report, 'rubric.white.closed-guard', true, '2010-01-01', 'kept', 34);
