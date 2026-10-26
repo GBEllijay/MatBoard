@@ -39,7 +39,9 @@ import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { radarPoints, selfAssessmentShapeLabel } from '../../lib/radarChart.ts';
-import { type AssessmentScores } from '../../lib/studentAssessment.ts';
+import { ASSESSMENT_STORAGE_KEY, type AssessmentScores } from '../../lib/studentAssessment.ts';
+import { installStudentMockGuard, resetStudentMockGuardForTests } from '../../lib/studentDemo.ts';
+import { STUDENT_BACKUP_STAMP_KEY } from '../../lib/studentBackupStamp.ts';
 import { blankStudentReport, saveStudentReport, todayIso } from '../../lib/studentEdition.ts';
 import { withStarterRubric } from '../../lib/studentTools.ts';
 import { CompetitorPage } from './CompetitorPage.tsx';
@@ -321,6 +323,54 @@ test('old competitor self-assessment addresses open this page and remember where
   labeled(stay.host, 'Division');
   labeled(stay.host, 'Weight class');
   unmount(stay);
+});
+
+test('a planted sim self-assessment does not show on the page, including a 10-26 entry', () => {
+  resetStudentMockGuardForTests();
+  localStorage.clear();
+  const planted = JSON.stringify({
+    entries: [
+      {
+        id: 'sim-1024',
+        date: '2026-10-24',
+        note: 'Mock self-assessment before Pan Pacific.',
+        scores: { guard: 5, passing: 4, takedowns: 4, escapes: 5, submissions: 4, conditioning: 4, mindset: 5 },
+      },
+      {
+        id: 'sim-1025',
+        date: '2026-10-25',
+        note: 'Drill the pass. Stop reaching.',
+        scores: { guard: 3, passing: 3, takedowns: 3, escapes: 4, submissions: 3, conditioning: 3, mindset: 4 },
+      },
+      {
+        id: 'sim-1026',
+        date: '2026-10-26',
+        note: 'Drill the pass. Stop reaching.',
+        scores: { guard: 3, passing: 3, takedowns: 3, escapes: 4, submissions: 3, conditioning: 3, mindset: 4 },
+      },
+    ],
+  });
+  localStorage.setItem(ASSESSMENT_STORAGE_KEY, planted);
+  localStorage.setItem(STUDENT_BACKUP_STAMP_KEY, '2026-10-25T12:00:00.000Z');
+  installStudentMockGuard(localStorage, () => '?student=1');
+  try {
+    const mounted = mount(<SelfAssessmentPage />, '/student/self-assessment?student=1');
+    assert.match(mounted.host.textContent ?? '', /No check-ins yet/);
+    assert.equal(mounted.host.textContent?.includes('Mock self-assessment'), false);
+    assert.equal(mounted.host.textContent?.includes('2026-10-24'), false);
+    assert.equal(control(mounted.host, 'button', 'Save self-assessment').textContent, 'Save self-assessment');
+    localStorage.setItem(ASSESSMENT_STORAGE_KEY, planted);
+    act(() => {
+      /* a dropped write does not add a row */
+    });
+    assert.match(mounted.host.textContent ?? '', /No check-ins yet/);
+    assert.equal(localStorage.getItem(ASSESSMENT_STORAGE_KEY), null);
+    assert.equal(localStorage.getItem(STUDENT_BACKUP_STAMP_KEY), null);
+    unmount(mounted);
+  } finally {
+    resetStudentMockGuardForTests();
+    localStorage.clear();
+  }
 });
 
 test('the print route still shows the self-assessment report', () => {

@@ -13,7 +13,7 @@ import { emptyRank } from './studentRank.ts';
 import {
   beginAppStudentSave,
   endAppStudentSave,
-  isBundledMockStudentPayload,
+  isSimulatedStudentPayload,
   noteAppStudentSave,
   notifyStudentJournal,
   studentDemoRequested,
@@ -196,7 +196,7 @@ export function blankStudentReport(now = Date.now()): StudentProgressReport {
 export function loadStudentReport(storage: Pick<Storage, 'getItem'> & { removeItem?: (key: string) => void }): StudentProgressReport {
   const raw = storage.getItem(STUDENT_EDITION_STORAGE_KEY);
   if (!raw) return blankStudentReport();
-  if (!studentDemoRequested() && isBundledMockStudentPayload(raw)) {
+  if (!studentDemoRequested() && isSimulatedStudentPayload(raw)) {
     storage.removeItem?.(STUDENT_EDITION_STORAGE_KEY);
     return blankStudentReport();
   }
@@ -208,7 +208,7 @@ export function loadStudentReport(storage: Pick<Storage, 'getItem'> & { removeIt
 export function saveStudentReport(storage: MemoryStore, report: StudentProgressReport): StudentProgressReport {
   let shared = withBeltTemplate(shareTournaments(report));
   let text = exportProgressPacket(shared);
-  if (!studentDemoRequested() && isBundledMockStudentPayload(text)) {
+  if (!studentDemoRequested() && isSimulatedStudentPayload(text)) {
     shared = blankStudentReport(shared.updatedAt);
     text = exportProgressPacket(shared);
   }

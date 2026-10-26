@@ -17,6 +17,7 @@ import { setBeltMode, setBirthYear, setKidsBelt, setKidsTapeCount } from '../../
 import { ProfilePage } from './ProfilePage.tsx';
 import { INSTRUCTOR_BARS_LABEL } from '../../lib/blackBeltDegrees.ts';
 import { setInstructorBars, setInstructorBarsOn, setRankAwardedOn, setRankBelt, setRankTapeCount, setRankTapeDate } from '../../lib/studentRank.ts';
+import { TermsPage } from '../Terms.tsx';
 import { BeltPage } from './BeltPage.tsx';
 import { RankPage } from './RankPage.tsx';
 
@@ -989,6 +990,10 @@ test('stripe lists show the disclaimer, no-gi line, and brown prompts', async ()
     assert.match(document.body.textContent ?? '', /No-gi uses underhooks/);
     await click(buttonNamed(BENCHMARK_DISCLAIMER_SHORT));
     assert.match(document.body.textContent ?? '', new RegExp(BENCHMARK_DISCLAIMER_MEDIUM.slice(0, 40).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    assert.equal(
+      [...document.querySelectorAll('a')].find((link) => link.textContent?.trim() === 'Terms of Service')?.getAttribute('href'),
+      '/terms?student=1#practical-benchmarks',
+    );
     assert.ok(buttonNamed('Restore suggested list'));
   } finally {
     unmount(white);
@@ -1012,6 +1017,22 @@ test('stripe lists show the disclaimer, no-gi line, and brown prompts', async ()
     assert.equal(document.body.textContent?.includes('No-gi: Guillotine'), false);
   } finally {
     unmount(gi);
+  }
+});
+
+test('Terms contain the Practical Benchmarks section', () => {
+  const page = mount(<TermsPage />, '/terms#practical-benchmarks');
+  try {
+    const section = document.getElementById('practical-benchmarks');
+    assert.ok(section instanceof HTMLElement);
+    assert.match(section?.textContent ?? '', /Practical Benchmarks/);
+    assert.equal(section?.querySelector('p')?.textContent, BENCHMARK_DISCLAIMER_MEDIUM);
+    assert.equal(
+      BENCHMARK_DISCLAIMER_MEDIUM,
+      'These Practical Benchmarks are general suggestions based on commonly accepted jiu-jitsu training, and they have been reviewed by black belts. They are a starting point, not a requirement or a promotion standard. Every academy and coach sees things differently, so review and adjust them with your coach, who has the final say on your progress.',
+    );
+  } finally {
+    unmount(page);
   }
 });
 
