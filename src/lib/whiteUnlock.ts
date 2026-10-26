@@ -41,6 +41,20 @@ export function setWhiteUnlocked(unlocked: boolean): void {
   if (!unlocked) lockStudentEdition();
 }
 
+/**
+ * Testing lock from the White hub. Removes only this browser's White flag.
+ * Student Edition, Pro, Coach, the roster, and the journal stay.
+ * `setWhiteUnlocked(false)` still closes the Student Edition grant; this does not.
+ */
+export function lockWhite(): void {
+  try {
+    localStorage.removeItem(WHITE_UNLOCK_STORAGE_KEY);
+  } catch {
+    /* ignore quota / private mode */
+  }
+  listeners.forEach((fn) => fn());
+}
+
 /** Keep a successful Stripe or WHITEFREE result on this device so /white opens. */
 export function rememberWhitePurchase(status: { entitled: boolean }): boolean {
   if (!status.entitled) return false;

@@ -18,7 +18,7 @@ import {
   notifyStudentJournal,
   studentDemoRequested,
 } from './studentDemo.ts';
-import { isStudentEditionUnlocked } from './studentUnlock.ts';
+import { clearStudentEditionRelock, isStudentEditionRelocked, isStudentEditionUnlocked } from './studentUnlock.ts';
 import { exportProgressPacket, parseProgressPacket, searchJournal, searchJournalClips, techniqueDrilledLabel } from './progress/format.ts';
 import { shareTournaments } from './sharedTournaments.ts';
 import {
@@ -68,6 +68,7 @@ export function setStudentPurchased(purchased: boolean): void {
   } catch {
     /* ignore quota / private mode */
   }
+  if (purchased) clearStudentEditionRelock();
 }
 
 /** A completed Student Edition Checkout unlocks this device. A White or Pro purchase does not. */
@@ -159,7 +160,10 @@ export function studentEditionOpen(
   search: URLSearchParams,
   owner: { pro: boolean; coach: boolean; white: boolean; student?: boolean },
 ): boolean {
+  // Preview query still opens, including after the hub lock button.
   if (search.get('student') === '1') return true;
+  // The hub lock closes the door even when Pro is already stored here.
+  if (isStudentEditionRelocked()) return false;
   // `student` is the subscribed snapshot from useStudentEditionUnlocked.
   // The storage read covers callers that have not passed that snapshot yet.
   if (owner.student || isStudentEditionUnlocked()) return true;

@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { BeltHeader } from '../components/BeltHeader';
 import { HomeMark } from '../components/HomeMark';
 import { InstructionsButton } from '../components/InstructionsButton';
@@ -7,8 +7,10 @@ import { RoundsCard } from '../components/RoundsCard';
 import { WhiteRosterCard } from '../components/WhiteRosterCard';
 import { SiteFooter } from '../components/SiteFooter';
 import { PRODUCTS_PATH } from '../lib/productNames';
+import { lockWhite } from '../lib/whiteUnlock';
 
 export function WhitePage() {
+  const navigate = useNavigate();
   return (
     <main className="home home--white">
       <div className="home__inner">
@@ -44,10 +46,23 @@ export function WhitePage() {
             <Link className="home__text-btn" to="/buy">
               Buy Advantage White — $9.99
             </Link>
-            {' · '}
+          </p>
+          <p className="home__soon">
+            Advantage White is on for this browser.{' '}
             <Link className="home__text-btn" to={PRODUCTS_PATH}>
               All products
             </Link>
+            {' · '}
+            <button
+              type="button"
+              className="home__text-btn"
+              onClick={() => {
+                lockWhite();
+                navigate(PRODUCTS_PATH);
+              }}
+            >
+              Lock White
+            </button>
           </p>
         </div>
         <SiteFooter />

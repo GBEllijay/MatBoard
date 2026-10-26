@@ -4,8 +4,16 @@ import { API_PRODUCT_STUDENT } from '../server/routes.ts';
 import { isCoachUnlocked, lockCoach } from './coachUnlock.ts';
 import { FUNDAMENTALS_CATALOG } from './progress/catalog.ts';
 import { parseProgressPacket, searchJournal } from './progress/format.ts';
-import { lockPro, tryProductOwnerUnlock, tryUnlock } from './proUnlock.ts';
+import { isProUnlocked, lockPro, tryProductOwnerUnlock, tryUnlock } from './proUnlock.ts';
+import {
+  clearStudentEditionRelock,
+  isStudentEditionRelocked,
+  isStudentEditionUnlocked,
+  lockStudentEditionBrowser,
+} from './studentUnlock.ts';
 import { isWhiteUnlocked, setWhiteUnlocked } from './whiteUnlock.ts';
+import { setRankBelt, setRankTapeCount } from './studentRank.ts';
+import { DRIVE_BINDING_KEY } from './googleDrive.ts';
 import {
   addCustomFundamental,
   addJournalAmendment,
@@ -30,6 +38,7 @@ import {
   setFundamentalLearned,
   setFundamentalLevel,
   rememberStudentPurchase,
+  isStudentPurchased,
   setStudentPurchased,
   studentEditionOpen,
   todayIso,
@@ -60,6 +69,7 @@ function resetUnlocks(): void {
   lockCoach();
   setWhiteUnlocked(false);
   setStudentPurchased(false);
+  clearStudentEditionRelock();
 }
 
 test('preview flag opens Student Edition without unlocking other products', () => {
@@ -103,6 +113,84 @@ test('WINBYADV owner unlock opens Student Edition', () => {
   assert.equal(tryProductOwnerUnlock('pro', 'WINBYADV'), true);
   assert.equal(isWhiteUnlocked(), true);
   assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: true, coach: true, white: true }), true);
+  resetUnlocks();
+});
+
+test('locking Student Edition clears only this browser unlock and keeps journal, belt, and benchmarks', () => {
+  resetUnlocks();
+  assert.equal(tryProductOwnerUnlock('student', 'WINBYADV'), true);
+  let report = addJournalEntry(
+    blankStudentReport(10),
+    {
+      date: '2026-10-11',
+      className: 'Relock class',
+      gameTag: 'a',
+      techniques: [{ id: 'sweep.scissor', name: 'Scissor sweep' }],
+      partners: 'Alex',
+      drills: 'hip escapes',
+      rolls: '5 rounds',
+      notes: 'relock keeps the collar note',
+    },
+    10,
+  );
+  report = setRankTapeCount(setRankBelt(report, 'blue', 11), 2, 12);
+  report = setFundamentalLevel(
+    report,
+    { catalogItemId: 'sweep.scissor', categoryId: 'sweeps', name: 'Scissor sweep' },
+    3,
+    13,
+  );
+  saveStudentReport(localStorage, report);
+  const before = localStorage.getItem(STUDENT_EDITION_STORAGE_KEY);
+  localStorage.setItem(DRIVE_BINDING_KEY, '{"folderId":"keep-folder"}');
+  setStudentPurchased(true);
+  assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: true, coach: true, white: true, student: true }), true);
+
+  lockStudentEditionBrowser();
+
+  assert.equal(isStudentEditionUnlocked(), false);
+  assert.equal(isStudentPurchased(), false);
+  assert.equal(isStudentEditionRelocked(), true);
+  assert.equal(isProUnlocked(), true);
+  assert.equal(isCoachUnlocked(), true);
+  assert.equal(isWhiteUnlocked(), true);
+  assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: true, coach: true, white: true, student: true }), false);
+  assert.equal(studentEditionOpen(new URLSearchParams('student=1'), { pro: true, coach: true, white: true }), true);
+  assert.equal(localStorage.getItem(STUDENT_EDITION_STORAGE_KEY), before);
+  assert.equal(localStorage.getItem(DRIVE_BINDING_KEY), '{"folderId":"keep-folder"}');
+  const kept = loadStudentReport(localStorage);
+  assert.equal(kept.journal[0] ? viewJournalEntry(kept.journal[0]).notes : '', 'relock keeps the collar note');
+  assert.equal(kept.profile.belt, 'blue');
+  assert.equal(kept.rank?.tapeCount, 2);
+  assert.equal(kept.checklist.some((row) => row.catalogItemId === 'sweep.scissor' && row.level === 3), true);
+
+  assert.equal(rememberStudentPurchase({ entitled: true, product: STUDENT_PRODUCT_ID }), true);
+  assert.equal(isStudentEditionRelocked(), false);
+  assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: true, coach: true, white: true, student: false }), true);
+
+  lockStudentEditionBrowser();
+  assert.equal(tryProductOwnerUnlock('student', 'WINBYADV'), true);
+  assert.equal(isStudentEditionRelocked(), false);
+  assert.equal(isStudentEditionUnlocked(), true);
+  assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: true, coach: true, white: true, student: true }), true);
+  assert.equal(localStorage.getItem(STUDENT_EDITION_STORAGE_KEY), before);
+
+  lockPro();
+  assert.equal(isStudentEditionRelocked(), false);
+  assert.equal(isProUnlocked(), false);
+  assert.equal(isCoachUnlocked(), true);
+  assert.equal(isWhiteUnlocked(), true);
+  assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: false, coach: true, white: true }), false);
+  assert.equal(localStorage.getItem(STUDENT_EDITION_STORAGE_KEY), before);
+
+  assert.equal(tryProductOwnerUnlock('pro', 'WINBYADV'), true);
+  lockCoach();
+  assert.equal(isStudentEditionRelocked(), false);
+  assert.equal(isCoachUnlocked(), false);
+  assert.equal(isProUnlocked(), true);
+  assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: true, coach: false, white: true }), true);
+  assert.equal(localStorage.getItem(STUDENT_EDITION_STORAGE_KEY), before);
+  assert.equal(localStorage.getItem(DRIVE_BINDING_KEY), '{"folderId":"keep-folder"}');
   resetUnlocks();
 });
 

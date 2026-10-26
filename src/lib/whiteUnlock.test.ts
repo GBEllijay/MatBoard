@@ -1,10 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { WHITE_BUY_PATH } from './whitePurchase.ts';
+import { DRIVE_BINDING_KEY } from './googleDrive.ts';
+import { FULL_OWNER_UNLOCK_CODE, tryProductOwnerUnlock } from './proUnlock.ts';
+import { STUDENT_EDITION_UNLOCK_STORAGE_KEY, isStudentEditionUnlocked } from './studentUnlock.ts';
+import { STUDENT_PURCHASE_STORAGE_KEY } from './studentEdition.ts';
+import { WHITE_FREE_CODE } from './whitePurchase.ts';
 import {
   WHITE_UNLOCK_STORAGE_KEY,
   isWhiteRestoreEmail,
   isWhiteUnlocked,
+  lockWhite,
   rememberWhitePurchase,
   restoreWhiteByEmail,
   setWhiteUnlocked,
@@ -86,6 +92,46 @@ test('a non-entitled email does not unlock White or clear an existing unlock', a
   const still = await restoreWhiteByEmail('advantageappllc@gmail.com', async () => ({ entitled: false }));
   assert.equal(still.ok, false);
   assert.equal(isWhiteUnlocked(), true);
+});
+
+test('lockWhite clears only this browser White flag and the code can open it again', () => {
+  localStorage.setItem('advantage.proUnlocked', '1');
+  localStorage.setItem('advantage.coachUnlocked', '1');
+  localStorage.setItem(STUDENT_EDITION_UNLOCK_STORAGE_KEY, '1');
+  localStorage.setItem(STUDENT_PURCHASE_STORAGE_KEY, '1');
+  localStorage.setItem('matboard.studentEdition.v1', '{"journal":"keep","belt":"blue"}');
+  localStorage.setItem('matboard.whiteRoster.v1', '{"names":["Keepsake"]}');
+  localStorage.setItem(DRIVE_BINDING_KEY, '{"folderId":"keep-folder"}');
+  setWhiteUnlocked(true);
+  assert.equal(WHITE_FREE_CODE, 'WHITEFREE');
+  assert.equal(FULL_OWNER_UNLOCK_CODE, 'WINBYADV');
+
+  lockWhite();
+
+  assert.equal(isWhiteUnlocked(), false);
+  assert.equal(localStorage.getItem(WHITE_UNLOCK_STORAGE_KEY), null);
+  assert.equal(whiteHubAllowed(isWhiteUnlocked()), false);
+  assert.equal(whiteEntryPath(isWhiteUnlocked()), '/buy');
+  assert.equal(localStorage.getItem('advantage.proUnlocked'), '1');
+  assert.equal(localStorage.getItem('advantage.coachUnlocked'), '1');
+  assert.equal(localStorage.getItem(STUDENT_EDITION_UNLOCK_STORAGE_KEY), '1');
+  assert.equal(isStudentEditionUnlocked(), true);
+  assert.equal(localStorage.getItem(STUDENT_PURCHASE_STORAGE_KEY), '1');
+  assert.equal(localStorage.getItem('matboard.studentEdition.v1'), '{"journal":"keep","belt":"blue"}');
+  assert.equal(localStorage.getItem('matboard.whiteRoster.v1'), '{"names":["Keepsake"]}');
+  assert.equal(localStorage.getItem(DRIVE_BINDING_KEY), '{"folderId":"keep-folder"}');
+
+  assert.equal(rememberWhitePurchase({ entitled: true }), true);
+  assert.equal(isWhiteUnlocked(), true);
+  assert.equal(whiteEntryPath(isWhiteUnlocked()), '/white');
+
+  lockWhite();
+  assert.equal(isWhiteUnlocked(), false);
+  assert.equal(tryProductOwnerUnlock('pro', FULL_OWNER_UNLOCK_CODE), true);
+  assert.equal(isWhiteUnlocked(), true);
+  assert.equal(localStorage.getItem('matboard.studentEdition.v1'), '{"journal":"keep","belt":"blue"}');
+  assert.equal(localStorage.getItem('matboard.whiteRoster.v1'), '{"names":["Keepsake"]}');
+  assert.equal(localStorage.getItem(DRIVE_BINDING_KEY), '{"folderId":"keep-folder"}');
 });
 
 test('restore rejects a bad email before lookup and reports a failed lookup', async () => {
