@@ -67,7 +67,8 @@ import {
   stripeCountControl,
   type LadderRung,
 } from '../../lib/studentRank';
-import { StudentMarks, useStudentFile, useStudentPath } from './chrome';
+import { StudentMarks, useScrollToHash, useStudentFile, useStudentPath } from './chrome';
+import { kidsClothStyle } from './wornBelt';
 import { StudentProfileFields } from './ProfileFields';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -104,6 +105,7 @@ export function RankPage() {
   const unlocked = coralRanksUnlocked(report.profile.belt);
   const mode = beltModeOf(report);
   const [pendingMode, setPendingMode] = useState<'' | 'adult' | 'kids'>('');
+  useScrollToHash(mode === 'kids' ? `kids:${currentKidsBelt(report).beltId}` : report.profile.belt);
 
   const run = (next: ReturnType<typeof setRankBelt>) => {
     try {
@@ -175,7 +177,11 @@ export function RankPage() {
               const pictures = beltPhotos(photos, rung.belt);
               const slots = maxStripes(rung.belt);
               return (
-                <li key={rung.belt} className={`rank-rung rung rung--${rung.belt}${rung.current ? ' is-current' : ''}`}>
+                <li
+                  key={rung.belt}
+                  id={rung.current ? 'current' : undefined}
+                  className={`rank-rung rung rung--${rung.belt}${rung.current ? ' is-current' : ''}`}
+                >
                   <div
                     className={rung.belt === 'black' ? 'belt belt--slim57' : 'belt'}
                     data-instructor-bars={rung.belt === 'black' && rung.instructorBars ? 'on' : 'off'}
@@ -339,7 +345,7 @@ export function RankPage() {
                 const years = rule ? (rule.cumulativeAtLeast ? `${rule.cumulativeYears}+` : String(rule.cumulativeYears)) : '';
                 const aria = row.belt === 'coral' ? 'Coral, red and black' : row.belt === 'redWhite' ? 'Coral, red and white' : 'Red';
                 return (
-                  <div key={row.belt} className={current ? 'final-row is-current' : 'final-row'}>
+                  <div key={row.belt} id={current ? 'current' : undefined} className={current ? 'final-row is-current' : 'final-row'}>
                     <button
                       type="button"
                       className="final-row__hit"
@@ -960,13 +966,9 @@ function KidsRank({
           return (
           <li
             key={rung.beltId}
+            id={rung.current ? 'current' : undefined}
             className={`rank-rung rung rung--kids${rung.ink === 'navy' ? ' rung--kids-ink-navy' : ''}${rung.current ? ' is-current' : ''}`}
-            style={{
-              ['--cloth' as string]: rung.base,
-              ['--edge' as string]: 'rgba(0,0,0,0.28)',
-              ['--stitch' as string]: rung.ink === 'navy' ? '#bdb6a4' : 'rgba(255,255,255,0.35)',
-              ['--center' as string]: rung.centerColor,
-            }}
+            style={kidsClothStyle(rung)}
           >
             <div
               className="belt belt--kids"

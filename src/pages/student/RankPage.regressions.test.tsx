@@ -12,7 +12,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { RANK_PHOTO_KEY } from '../../lib/rankPhotos.ts';
 import { blankStudentReport, loadStudentReport, saveStudentReport, setFundamentalLevel } from '../../lib/studentEdition.ts';
 import { OPEN_GOAL_LINE, TIME_BASED_PROGRESS, withStarterRubric } from '../../lib/studentTools.ts';
-import { setBeltMode } from '../../lib/beltBook.ts';
+import { setBeltMode, setKidsBelt, setKidsTapeCount } from '../../lib/beltBook.ts';
 import { INSTRUCTOR_BARS_LABEL } from '../../lib/blackBeltDegrees.ts';
 import { setInstructorBars, setInstructorBarsOn, setRankAwardedOn, setRankBelt, setRankTapeCount, setRankTapeDate } from '../../lib/studentRank.ts';
 import { BeltPage } from './BeltPage.tsx';
@@ -120,12 +120,12 @@ async function typeControl(input: HTMLInputElement | HTMLTextAreaElement, value:
   });
 }
 
-function mount(node: ReactNode): { root: Root; host: HTMLElement } {
+function mount(node: ReactNode, entry = '/student/rank?student=1'): { root: Root; host: HTMLElement } {
   const host = document.createElement('div');
   document.body.appendChild(host);
   const root = createRoot(host);
   act(() => {
-    root.render(<MemoryRouter initialEntries={['/student/rank?student=1']}>{node}</MemoryRouter>);
+    root.render(<MemoryRouter initialEntries={[entry]}>{node}</MemoryRouter>);
   });
   return { root, host };
 }
@@ -842,5 +842,45 @@ test('a locked coach checkpoint is read-only and an edited coach checkpoint show
     assert.equal(document.body.textContent?.includes('This practical benchmark stays as they sent it'), false);
   } finally {
     unmount(starred);
+  }
+});
+
+test('My rank anchors the belt the student is wearing', () => {
+  saveStudentReport(localStorage, setRankTapeCount(setRankBelt(blankStudentReport(1), 'brown', 2), 2, 3));
+  const adult = mount(<RankPage />, '/student/rank?student=1#current');
+  try {
+    const current = document.getElementById('current');
+    assert.equal(current?.classList.contains('rung--brown'), true);
+    assert.equal(current?.classList.contains('is-current'), true);
+    assert.equal(document.querySelector('.rung--white')?.id ?? '', '');
+    assert.equal(labeled('Back. Hold for Home.').getAttribute('href'), '/student/progress?student=1');
+    assert.equal(labeled('Home').getAttribute('href'), '/products?student=1');
+  } finally {
+    unmount(adult);
+  }
+
+  saveStudentReport(localStorage, setRankBelt(blankStudentReport(4), 'coral', 5));
+  const coral = mount(<RankPage />);
+  try {
+    const current = document.getElementById('current');
+    assert.equal(current?.classList.contains('final-row'), true);
+    assert.equal(current?.querySelector('.mini-belt--red-black') instanceof HTMLElement, true);
+    assert.equal(document.querySelector('.rung--black')?.id ?? '', '');
+  } finally {
+    unmount(coral);
+  }
+
+  let kids = setBeltMode(blankStudentReport(6), 'kids', 7);
+  kids = setKidsBelt(kids, 'green-black', 8);
+  kids = setKidsTapeCount(kids, 1, 9);
+  saveStudentReport(localStorage, kids);
+  const kidsPage = mount(<RankPage />, '/student/rank?student=1#current');
+  try {
+    const current = document.getElementById('current');
+    assert.equal(current?.classList.contains('rung--kids'), true);
+    assert.equal(current?.querySelector('[aria-label="Green/Black"]')?.getAttribute('aria-pressed'), 'true');
+    assert.equal(document.querySelector('[aria-label="Adult or kids belts"] [aria-pressed="true"]')?.textContent, 'Kids');
+  } finally {
+    unmount(kidsPage);
   }
 });

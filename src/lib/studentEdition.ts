@@ -13,6 +13,7 @@ import {
   endAppStudentSave,
   isBundledMockStudentPayload,
   noteAppStudentSave,
+  notifyStudentJournal,
   studentDemoRequested,
 } from './studentDemo.ts';
 import { isStudentEditionUnlocked } from './studentUnlock.ts';
@@ -219,6 +220,7 @@ export function saveStudentReport(storage: MemoryStore, report: StudentProgressR
   } finally {
     endAppStudentSave();
   }
+  notifyStudentJournal();
   return shareTournaments(parsed.value);
 }
 

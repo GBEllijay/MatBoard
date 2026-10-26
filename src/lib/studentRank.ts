@@ -3,7 +3,8 @@
  * Stripe slots are tapeCount and tapeDates. The progress file rejects a stripes key.
  */
 
-import { highDatesForCount } from './blackBeltDegrees.ts';
+import { highDatesForCount, wornDegree } from './blackBeltDegrees.ts';
+import { beltModeOf, compactSlots, currentKidsBelt } from './beltBook.ts';
 import {
   BLACK_DEGREE_MAX,
   FINAL_RANK_BELTS,
@@ -682,6 +683,115 @@ function cloneHistory(row: RankHistory): RankHistory {
     if (row.instructorBarsOn) next.instructorBarsOn = row.instructorBarsOn;
   }
   return next;
+}
+
+export type WornBeltSlot = { on: boolean; color: string };
+
+/** The belt the hub and the main menu draw. Adult and kids stay on their own ladders. */
+export type WornBeltPreview = {
+  system: 'adult' | 'kids';
+  belt: string;
+  kind: 'striped' | 'final' | 'kids';
+  /** Adult cloth, a coral/red appearance, or "kids". */
+  appearance: string;
+  label: string;
+  /** "Blue · 2 stripes". */
+  meta: string;
+  /** "Blue belt · 2 stripes". */
+  summary: string;
+  nextLabel: string;
+  percent: number;
+  slots: WornBeltSlot[];
+  instructorBars: boolean;
+  ink: 'navy' | 'white';
+  base: string;
+  center: string;
+  centerColor: string;
+};
+
+/**
+ * Belt shown on the Student Edition main menu and the hub.
+ * Kids mode reads the kids ladder. Adult mode reads profile.belt and its stripes or degrees.
+ * A cleared file is plain white with no stripes.
+ */
+export function wornBeltPreview(report: StudentProgressReport): WornBeltPreview {
+  if (beltModeOf(report) === 'kids') return kidsWornPreview(report);
+  return adultWornPreview(report);
+}
+
+function adultWornPreview(report: StudentProgressReport): WornBeltPreview {
+  const belt = report.profile.belt;
+  const rank = rankOf(report);
+  const label = rankBeltLabel(belt);
+  const final = belt === 'coral' || belt === 'redWhite' || belt === 'red';
+  const black = belt === 'black';
+  const degree = wornDegree(belt, rank.tapeCount);
+  const count = final
+    ? (degree ?? 0)
+    : Math.max(0, Math.min(black ? BLACK_DEGREE_MAX : RANK_TAPE_MAX, rank.tapeCount));
+  const max = black ? BLACK_DEGREE_MAX : final ? 9 : RANK_TAPE_MAX;
+  const noun = black || final ? (count === 1 ? 'degree' : 'degrees') : count === 1 ? 'stripe' : 'stripes';
+  const nextLabel = final
+    ? belt === 'red'
+      ? 'Final rank'
+      : 'Next degree'
+    : black
+      ? count < BLACK_DEGREE_MAX
+        ? 'Next degree'
+        : 'All six degrees'
+      : count < RANK_TAPE_MAX
+        ? 'Next stripe'
+        : 'All four stripes';
+  const appearance = belt === 'coral' ? 'red-black' : belt === 'redWhite' ? 'red-white' : belt === 'red' ? 'red' : belt;
+  return {
+    system: 'adult',
+    belt,
+    kind: final ? 'final' : 'striped',
+    appearance,
+    label,
+    meta: `${label} · ${count} ${noun}`,
+    summary: `${label} belt · ${count} ${noun}`,
+    nextLabel,
+    percent: max <= 0 ? 0 : Math.round((count / max) * 100),
+    slots: final
+      ? []
+      : Array.from({ length: black ? BLACK_DEGREE_MAX : RANK_TAPE_MAX }, (_, index) => ({
+          on: index < count,
+          color: '',
+        })),
+    instructorBars: black && Boolean(rank.instructorBars),
+    ink: 'white',
+    base: '',
+    center: 'solid',
+    centerColor: '',
+  };
+}
+
+function kidsWornPreview(report: StudentProgressReport): WornBeltPreview {
+  const rung = currentKidsBelt(report);
+  const count = Math.max(0, rung.tapeCount);
+  const max = rung.tapeColors.length;
+  const noun = count === 1 ? 'stripe' : 'stripes';
+  return {
+    system: 'kids',
+    belt: rung.beltId,
+    kind: 'kids',
+    appearance: 'kids',
+    label: rung.label,
+    meta: `${rung.label} · ${count} ${noun}`,
+    summary: `${rung.label} belt · ${count} ${noun}`,
+    nextLabel: count < max ? 'Next stripe' : 'All stripes',
+    percent: max <= 0 ? 0 : Math.round((count / max) * 100),
+    slots: compactSlots(rung.tapeColors, rung.tapeCount).map((slot) => ({
+      on: slot.on,
+      color: slot.on ? slot.color : '',
+    })),
+    instructorBars: false,
+    ink: rung.ink,
+    base: rung.base,
+    center: rung.center,
+    centerColor: rung.centerColor,
+  };
 }
 
 function newId(prefix: string, now: number): string {
