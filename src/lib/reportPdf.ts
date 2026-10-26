@@ -22,6 +22,11 @@ const PAGE_W = 612;
 const PAGE_H = 792;
 const MARGIN_X = 48;
 const CONTENT_W = PAGE_W - MARGIN_X * 2;
+/** The progress-report belt spans the text column. The on-screen degree bar does not. */
+export const REPORT_CONTENT_WIDTH = CONTENT_W;
+export const REPORT_BELT_HEIGHT = 26;
+/** A normal rank tip. Not the on-screen black-belt bar, which is 57% of the belt. */
+const RANK_TIP = 56;
 const HEADER = 64;
 const CONTENT_TOP = 86;
 const FOOTER = 42;
@@ -164,23 +169,62 @@ function hexRgb(hex: string): Rgb {
   return [((value >> 16) & 255) / 255, ((value >> 8) & 255) / 255, (value & 255) / 255];
 }
 
-/** Vector belt for the progress PDF. Same cloth, center stripe, and stripe slots as My rank. */
-export function beltArtDraws(report: StudentProgressReport, x: number, y: number): PdfDraw[] {
+const CREAM: Rgb = [0.957, 0.945, 0.918];
+const CORAL_RED: Rgb = [0.827, 0.086, 0.106];
+const EMPTY_TAPE: Rgb = [0.25, 0.25, 0.27];
+
+/**
+ * Vector belt for the progress PDF and the print preview.
+ * Every belt is the full text width. Black-belt degrees are not drawn as stripes:
+ * the half-width degree bar is only for the screen. Coral is red and black,
+ * red and white is split, and 9th degree is solid red.
+ */
+export function beltArtDraws(report: StudentProgressReport, x: number, y: number, width = CONTENT_W): PdfDraw[] {
   const preview = wornBeltPreview(report);
+  const h = REPORT_BELT_HEIGHT;
+  if (preview.kind === 'final') return finalBeltDraws(preview.belt, x, y, width, h);
+  if (preview.belt === 'black') return blackBeltDraws(x, y, width, h);
+  return stripedBeltDraws(preview, x, y, width, h);
+}
+
+function finalBeltDraws(belt: string, x: number, y: number, width: number, h: number): PdfDraw[] {
+  if (belt === 'red') return [{ op: 'rect', x, y, w: width, h, fill: CORAL_RED }];
+  const split = Math.round(width * 0.46);
+  const left = belt === 'redWhite' ? CREAM : (ADULT_CLOTH.black ?? CORAL_RED);
+  const right = CORAL_RED;
+  return [
+    { op: 'rect', x, y, w: split, h, fill: left },
+    { op: 'rect', x: x + split, y, w: width - split, h, fill: right },
+  ];
+}
+
+function blackBeltDraws(x: number, y: number, width: number, h: number): PdfDraw[] {
+  const body = Math.max(1, width - RANK_TIP);
+  return [
+    { op: 'rect', x, y, w: body, h, fill: ADULT_CLOTH.black ?? CORAL_RED },
+    { op: 'rect', x: x + body, y, w: width - body, h, fill: CORAL_RED },
+  ];
+}
+
+function stripedBeltDraws(
+  preview: ReturnType<typeof wornBeltPreview>,
+  x: number,
+  y: number,
+  width: number,
+  h: number,
+): PdfDraw[] {
   const slots = preview.slots;
   const cloth = preview.base ? hexRgb(preview.base) : (ADULT_CLOTH[preview.belt] ?? ADULT_CLOTH.black!);
   const slotW = slots.length > 6 ? 7 : 10;
-  const barW = Math.max(36, slots.length * slotW + 10);
-  const bodyW = Math.min(220, CONTENT_W - barW);
-  const h = 26;
-  const draws: PdfDraw[] = [{ op: 'rect', x, y, w: bodyW + barW, h, fill: cloth }];
+  const barW = Math.min(width - 36, Math.max(36, slots.length * slotW + 10));
+  const bodyW = width - barW;
+  const draws: PdfDraw[] = [{ op: 'rect', x, y, w: width, h, fill: cloth }];
   if (preview.kind === 'kids' && preview.center !== 'solid' && preview.centerColor) {
     draws.push({ op: 'rect', x, y: y + h / 2 - 3, w: bodyW, h: 6, fill: hexRgb(preview.centerColor) });
   }
-  const bar = preview.belt === 'black' ? hexRgb('#d3161b') : hexRgb('#101012');
-  draws.push({ op: 'rect', x: x + bodyW, y, w: barW, h, fill: bar });
+  draws.push({ op: 'rect', x: x + bodyW, y, w: barW, h, fill: hexRgb('#101012') });
   slots.forEach((slot, index) => {
-    const fill = slot.on && slot.color ? hexRgb(slot.color) : ([0.25, 0.25, 0.27] as Rgb);
+    const fill = !slot.on ? EMPTY_TAPE : slot.color ? hexRgb(slot.color) : CREAM;
     draws.push({
       op: 'rect',
       x: x + bodyW + 6 + index * slotW,

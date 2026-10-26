@@ -3,7 +3,7 @@
  * Stripe slots are tapeCount and tapeDates. The progress file rejects a stripes key.
  */
 
-import { highDatesForCount, wornDegree } from './blackBeltDegrees.ts';
+import { degreeRule, highDatesForCount, wornDegree } from './blackBeltDegrees.ts';
 import {
   adultStartChoices,
   beltModeOf,
@@ -52,6 +52,16 @@ export function isRankBelt(belt: string): belt is RankBelt {
   return (RANK_BELTS as readonly string[]).includes(belt) || (FINAL_RANK_BELTS as readonly string[]).includes(belt);
 }
 
+/**
+ * Adult rank order. Coral is 7th degree, red and white is 8th, red is 9th.
+ * They are not the same slot, and they are not the kids belts that follow black in the file's belt list.
+ */
+const ADULT_RANK_ORDER = [...RANK_BELTS, ...FINAL_RANK_BELTS] as const;
+
+export function adultRankIndex(belt: string): number {
+  return (ADULT_RANK_ORDER as readonly string[]).indexOf(belt);
+}
+
 /** White through brown keep 4 stripes. A black belt keeps 6 degrees in the same count. */
 export function maxStripes(belt: ProgressBelt): number {
   return belt === 'black' ? BLACK_DEGREE_MAX : RANK_TAPE_MAX;
@@ -74,6 +84,13 @@ export function stripeDateText(date: string | null | undefined): string {
 export function stripeReportLine(slot: number, date: string | null | undefined): string {
   const when = stripeDateText(date);
   return when ? `Stripe ${slot}: ${when}` : `Stripe ${slot}`;
+}
+
+/** One black-belt degree on a report. Slot 1 is 1st degree. A date stays with that degree. */
+export function degreeReportLine(slot: number, date: string | null | undefined): string {
+  const label = degreeRule(slot)?.label ?? `${slot}th degree`;
+  const when = stripeDateText(date);
+  return when ? `${label}: ${when}` : label;
 }
 
 /** Older files can omit tape dates. The stripe count still stands. A black-belt 5 or 6 is kept. */
@@ -143,11 +160,7 @@ export function slotDate(dates: readonly string[], high: readonly string[] | und
 export function ladderRungs(report: StudentProgressReport): LadderRung[] {
   const rank = rankOf(report);
   const current = report.profile.belt;
-  const currentIndex = (RANK_BELTS as readonly string[]).includes(current)
-    ? RANK_BELTS.indexOf(current as (typeof RANK_BELTS)[number])
-    : (FINAL_RANK_BELTS as readonly string[]).includes(current)
-      ? RANK_BELTS.length
-      : -1;
+  const currentIndex = adultRankIndex(current);
   const historyByBelt = new Map<RankBelt, RankHistory>();
   for (const row of rank.history) historyByBelt.set(row.belt, row);
   return RANK_BELTS.map((belt, index) => {

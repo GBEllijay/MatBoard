@@ -8,7 +8,7 @@ import { RadarChart } from '../../components/RadarChart';
 import { ASSESSMENT_AREAS, assessmentAverage, loadAssessments, type AssessmentState } from '../../lib/studentAssessment';
 import { loadFilms, type StudentFilm } from '../../lib/studentFilm';
 import { pdfBlob } from '../../lib/simplePdf';
-import { assessmentReportPdf, progressReportPdf } from '../../lib/reportPdf';
+import { assessmentReportPdf, beltArtDraws, progressReportPdf, REPORT_BELT_HEIGHT, REPORT_CONTENT_WIDTH } from '../../lib/reportPdf';
 import {
   profileNeedsPrompt,
   progressReportBlocks,
@@ -243,11 +243,28 @@ function ProgressSheet({
     <>
       <ReportHero title="Progress report" report={report} issuedOn={issuedOn} selfie={selfie} gymLogo={gymLogo} />
       <div className="report-body">
+        <ReportBelt report={report} />
         {blocks.map((block) => (
           <ReportSection key={block.title} block={block} />
         ))}
       </div>
     </>
+  );
+}
+
+/** Full-width print belt. The on-screen half-width degree bar is not used here. */
+function ReportBelt({ report }: { report: StudentProgressReport }) {
+  const label = reportIdentity(report).belt;
+  const height = REPORT_BELT_HEIGHT;
+  const rects = beltArtDraws(report, 0, 0, REPORT_CONTENT_WIDTH).flatMap((draw) => (draw.op === 'rect' ? [draw] : []));
+  return (
+    <svg className="report-belt" viewBox={`0 0 ${REPORT_CONTENT_WIDTH} ${height}`} role="img" aria-label={label}>
+      {rects.map((rect, index) => {
+        const [red, green, blue] = rect.fill ?? [0, 0, 0];
+        const fill = `rgb(${Math.round(red * 255)} ${Math.round(green * 255)} ${Math.round(blue * 255)})`;
+        return <rect key={index} x={rect.x} y={height - rect.y - rect.h} width={rect.w} height={rect.h} fill={fill} />;
+      })}
+    </svg>
   );
 }
 
