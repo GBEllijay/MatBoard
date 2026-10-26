@@ -45,7 +45,7 @@ export function subscribeStudentJournal(listener: () => void): () => void {
   };
 }
 
-function notifyStudentJournal(): void {
+export function notifyStudentJournal(): void {
   for (const listener of journalListeners) listener();
 }
 

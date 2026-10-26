@@ -167,6 +167,10 @@
   padding: 16px;
 }
 
+.student.student--arena.student--rank #current {
+  scroll-margin-top: 12px;
+}
+
 .student.student--arena.student--rank .rank-line {
   width: 100%;
   border-top: 0;
