@@ -2460,6 +2460,18 @@ span.role-plan__mark {
   pointer-events: none;
 }
 
+/* Gallery only: the purple belt and "Advantage" title scroll with the list.
+   Events and Pro Shop keep the pinned .saver-belt above. */
+.saver-belt.saver-belt--flow {
+  position: static;
+  z-index: auto;
+  top: auto;
+  left: auto;
+  right: auto;
+  margin: 0 0 0.35rem;
+  pointer-events: none;
+}
+
 /* The photo-control sheet starts under the purple belt. */
 .saver--belt .saver__empty {
   align-content: start;
@@ -2469,6 +2481,30 @@ span.role-plan__mark {
 
 .saver--belt .sheet.sheet--dock-footer {
   top: calc(var(--console-head) + 6.15rem + var(--safe-t));
+}
+
+/* Gallery: the sheet starts under the illustration. The belt is in the
+   scrolling list, so it leaves with the gallery instead of holding a fixed band. */
+.saver--gallery.saver--belt > .saver-belt--flow {
+  margin: calc(var(--console-head) + 0.35rem + var(--safe-t)) 0.85rem 0.75rem;
+}
+
+.saver--gallery.saver--belt .saver__empty {
+  min-height: 0;
+  padding-top: 0.75rem;
+}
+
+.saver--gallery.saver--belt .sheet.sheet--dock-footer {
+  top: calc(var(--console-head) + var(--safe-t));
+}
+
+/* Empty gallery (options closed) scrolls the belt away. The open options
+   sheet keeps its own scroller, so this does not apply while that sheet is up. */
+.saver--gallery.saver--belt:not(:has(> .sheet)) {
+  overflow: auto;
+  height: auto;
+  min-height: 100dvh;
+  max-height: none;
 }
 
 .saver--belt .sheet.sheet--dock-footer .sheet__panel {
