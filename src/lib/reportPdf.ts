@@ -29,11 +29,8 @@ export const REPORT_BELT_HEIGHT = 26;
 const CLOTH_TIP = 18;
 /** Red rank bar on a black belt. The black tip sits past it. */
 const BLACK_RED_BAR = 42;
-/**
- * Vertical coral bars. The competition belt repeats green and yellow the same way.
- * Wide enough to read as cloth bars, and repeated across the whole belt.
- */
-const CORAL_BAR = 20;
+/** Five wide coral bars. The color changes four times along the belt. */
+const CORAL_BARS = 5;
 const HEADER = 64;
 const CONTENT_TOP = 86;
 const FOOTER = 42;
@@ -185,7 +182,7 @@ const EMPTY_TAPE: Rgb = [0.25, 0.25, 0.27];
  * Every belt is the full text width. Black-belt degrees are not drawn as stripes:
  * the half-width degree bar is only for the screen. A black belt is black cloth,
  * a red bar, and a black tip. Coral repeats red with black or white. 9th degree
- * is solid red. A weave and a stitch sit on every belt.
+ * is solid red. Coral uses five wide bars. A weave and a stitch sit on every belt.
  */
 export function beltArtDraws(report: StudentProgressReport, x: number, y: number, width = CONTENT_W): PdfDraw[] {
   const preview = wornBeltPreview(report);
@@ -207,14 +204,10 @@ function finalBeltDraws(belt: string, x: number, y: number, width: number, h: nu
 
 function repeatingBars(colors: readonly [Rgb, Rgb], x: number, y: number, width: number, h: number): PdfDraw[] {
   const draws: PdfDraw[] = [];
-  let cursor = 0;
-  let index = 0;
-  while (cursor < width - 0.01) {
-    let bar = Math.min(CORAL_BAR, width - cursor);
-    if (width - (cursor + bar) < 2) bar = width - cursor;
-    draws.push({ op: 'rect', x: x + cursor, y, w: bar, h, fill: colors[index % 2] ?? CORAL_RED });
-    cursor += bar;
-    index += 1;
+  for (let index = 0; index < CORAL_BARS; index += 1) {
+    const start = Math.round((width * index) / CORAL_BARS);
+    const end = index === CORAL_BARS - 1 ? width : Math.round((width * (index + 1)) / CORAL_BARS);
+    draws.push({ op: 'rect', x: x + start, y, w: end - start, h, fill: colors[index % 2] ?? CORAL_RED });
   }
   return draws;
 }

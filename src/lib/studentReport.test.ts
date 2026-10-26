@@ -584,12 +584,13 @@ function sameFill(left: BeltRect['fill'], right: BeltRect['fill']): boolean {
 
 function assertRepeatingBars(draws: readonly PdfDraw[]) {
   const bands = fullHeightBands(draws);
-  assert.ok(bands.length >= 8);
+  assert.equal(bands.length, 5);
   assert.equal(beltSpan(draws).width, REPORT_CONTENT_WIDTH);
-  for (let index = 0; index < bands.length - 1; index += 1) {
-    assert.equal(sameFill(bands[index]?.fill, bands[index + 1]?.fill), false);
-    const again = bands[index + 2];
-    if (again) assert.equal(sameFill(bands[index]?.fill, again.fill), true);
+  const changes = bands.slice(1).filter((band, index) => !sameFill(band.fill, bands[index]?.fill)).length;
+  assert.equal(changes, 4);
+  for (const band of bands) {
+    assert.ok(band.w > REPORT_CONTENT_WIDTH * 0.15, String(band.w));
+    assert.ok(band.w < REPORT_CONTENT_WIDTH * 0.25, String(band.w));
   }
   assert.ok(draws.some((draw) => draw.op === 'poly' && draw.fillOpacity != null && draw.fillOpacity < 1));
   assert.ok(draws.some((draw) => draw.op === 'line' && draw.dash === true));
