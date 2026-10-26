@@ -1076,12 +1076,16 @@ test('Terms contain the Practical Benchmarks section', () => {
   try {
     const section = document.getElementById('practical-benchmarks');
     assert.ok(section instanceof HTMLElement);
-    assert.match(section?.textContent ?? '', /Practical Benchmarks/);
-    assert.equal(section?.querySelector('p')?.textContent, BENCHMARK_DISCLAIMER_MEDIUM);
+    assert.match(section?.textContent ?? '', /17\. Practical Benchmarks/);
+    assert.equal(
+      section?.querySelector('p')?.textContent,
+      'The Practical Benchmarks in Advantage are example suggestions only. They are general guidance based on commonly accepted jiu-jitsu training and have been reviewed by black belts, but they are not an official curriculum, a promotion standard, or a replacement for instruction from a qualified coach. Every academy and coach sees things differently. Always review and adjust the benchmarks with your coach, who has the final say on your progress and promotions. For children, a parent or guardian is responsible for deciding what their child trains and when. Advantage App, LLC does not set, guarantee, or award belt promotions.',
+    );
     assert.equal(
       BENCHMARK_DISCLAIMER_MEDIUM,
       'These Practical Benchmarks are general suggestions based on commonly accepted jiu-jitsu training, and they have been reviewed by black belts. They are a starting point, not a requirement or a promotion standard. Every academy and coach sees things differently, so review and adjust them with your coach, who has the final say on your progress.',
     );
+    assert.match(document.body.textContent ?? '', /Last updated: October 26, 2026/);
   } finally {
     unmount(page);
   }
