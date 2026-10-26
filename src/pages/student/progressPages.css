@@ -84,6 +84,11 @@
   color: #f5f5f7;
 }
 
+.student.student--arena.student--belt .belt-benchmarks {
+  display: grid;
+  gap: 12px;
+}
+
 .student.student--arena.student--belt .belt-block {
   scroll-margin-top: 6.5rem;
 }

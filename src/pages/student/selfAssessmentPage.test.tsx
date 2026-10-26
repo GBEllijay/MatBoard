@@ -8,7 +8,7 @@
  * Radar chart. Trend chart.
  * Self-assessment date. Changing the date loads that day's note and ratings.
  * Guard, Passing, Takedowns, Escapes, Submissions, Conditioning, Mindset.
- * Each area: rating 1–5, pressed state, and Open {checkpoint} checkpoint
+ * Each area: rating 1–5, pressed state, and Open {benchmark} benchmark
  * only when the belt the student wears has that checkpoint.
  * A white belt links Guard, Passes, and Escapes on white. It does not link
  * Takedowns or Submissions on blue. Conditioning and Mindset have no checkpoint.
@@ -155,8 +155,8 @@ test('the self-assessment page keeps every control and Back returns to Rank & Pr
   assert.equal(shape?.getAttribute('aria-label'), selfAssessmentShapeLabel(null));
   assert.equal(host.querySelectorAll('polygon.assess-chart__shape').length, 0);
   assert.ok(host.querySelector('[aria-label^="Self-assessment trend"]'));
-  assert.equal(control(host, 'a', 'Open Guard checkpoint').getAttribute('href'), '/student/rubric?student=1#checkpoint.white.guard');
-  assert.equal(host.textContent?.includes('Open Takedowns checkpoint'), false);
+  assert.equal(control(host, 'a', 'Open Guard benchmark').getAttribute('href'), '/student/rubric?student=1#checkpoint.white.guard');
+  assert.equal(host.textContent?.includes('Open Takedowns benchmark'), false);
   assert.equal(host.querySelector('[aria-label="Division"]'), null);
   assert.equal(host.querySelector('[aria-label="Weight class"]'), null);
   assert.equal(host.textContent?.includes('Patrick Hand'), false);
@@ -185,12 +185,12 @@ test('a check-in saves, updates, and a white belt links only that belt', () => {
   saveStudentReport(localStorage, withStarterRubric(blankStudentReport()));
   const mounted = mount(<SelfAssessmentPage />);
   const { host } = mounted;
-  assert.equal(control(host, 'a', 'Open Guard checkpoint').getAttribute('href'), '/student/rubric#checkpoint.white.guard');
-  assert.equal(control(host, 'a', 'Open Passes checkpoint').getAttribute('href'), '/student/rubric#checkpoint.white.passes');
-  assert.equal(control(host, 'a', 'Open Escapes checkpoint').getAttribute('href'), '/student/rubric#checkpoint.white.escapes');
-  assert.equal(host.textContent?.includes('Open Takedowns checkpoint'), false);
-  assert.equal(host.textContent?.includes('Open Submissions checkpoint'), false);
-  assert.equal(host.textContent?.includes('Open Conditioning checkpoint'), false);
+  assert.equal(control(host, 'a', 'Open Guard benchmark').getAttribute('href'), '/student/rubric#checkpoint.white.guard');
+  assert.equal(control(host, 'a', 'Open Passes benchmark').getAttribute('href'), '/student/rubric#checkpoint.white.passes');
+  assert.equal(control(host, 'a', 'Open Escapes benchmark').getAttribute('href'), '/student/rubric#checkpoint.white.escapes');
+  assert.equal(host.textContent?.includes('Open Takedowns benchmark'), false);
+  assert.equal(host.textContent?.includes('Open Submissions benchmark'), false);
+  assert.equal(host.textContent?.includes('Open Conditioning benchmark'), false);
   assert.equal(
     [...host.querySelectorAll('a')].some((link) => link.getAttribute('href')?.includes('checkpoint.blue')),
     false,
@@ -258,16 +258,16 @@ test('a check-in saves, updates, and a white belt links only that belt', () => {
   unmount(again);
 });
 
-test('a blue belt links the checkpoints on blue', () => {
+test('a blue belt links the benchmarks on blue', () => {
   localStorage.clear();
   const report = withStarterRubric(blankStudentReport());
   report.profile.belt = 'blue';
   saveStudentReport(localStorage, report);
   const mounted = mount(<SelfAssessmentPage />);
   const { host } = mounted;
-  assert.equal(control(host, 'a', 'Open Half guard checkpoint').getAttribute('href'), '/student/rubric#checkpoint.blue.half-guard');
-  assert.equal(control(host, 'a', 'Open Takedowns checkpoint').getAttribute('href'), '/student/rubric#checkpoint.blue.takedowns');
-  assert.equal(control(host, 'a', 'Open Submissions checkpoint').getAttribute('href'), '/student/rubric#checkpoint.blue.submissions');
+  assert.equal(control(host, 'a', 'Open Half guard benchmark').getAttribute('href'), '/student/rubric#checkpoint.blue.half-guard');
+  assert.equal(control(host, 'a', 'Open Takedowns benchmark').getAttribute('href'), '/student/rubric#checkpoint.blue.takedowns');
+  assert.equal(control(host, 'a', 'Open Submissions benchmark').getAttribute('href'), '/student/rubric#checkpoint.blue.submissions');
   assert.equal(
     [...host.querySelectorAll('a')].some((link) => link.getAttribute('href')?.includes('checkpoint.white')),
     false,

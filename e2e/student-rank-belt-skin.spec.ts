@@ -119,14 +119,14 @@ test('my rank and belt progress keep every control and match the arena skin', as
   await expect(page.getByRole('link', { name: BACK, exact: true })).toHaveAttribute('href', '/student/progress?student=1');
   await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute('href', '/products?student=1');
   await expect(page.getByRole('link', { name: 'My rank', exact: true })).toHaveAttribute('href', '/student/rank?student=1');
-  await expect(page.getByRole('list', { name: 'Checkpoints between White and Blue' })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Practical benchmarks between White and Blue' })).toBeVisible();
   await expect(page.getByRole('paragraph').filter({ hasText: /^White$/ })).toBeVisible();
   await expect(page.getByRole('paragraph').filter({ hasText: /^Blue$/ })).toBeVisible();
 
   for (const checkpoint of CHECKPOINTS) {
     await expect(page.getByRole('listitem', { name: `${checkpoint.name}, open` })).toBeVisible();
-    await expect(page.getByRole('region', { name: `${checkpoint.name} checkpoint` })).toBeVisible();
-    const mark = page.getByRole('button', { name: `Mark ${checkpoint.name} checkpoint met` });
+    await expect(page.getByRole('region', { name: `${checkpoint.name} benchmark` })).toBeVisible();
+    const mark = page.getByRole('button', { name: `Mark ${checkpoint.name} benchmark met` });
     await expect(mark).toBeVisible();
     await expect(mark).toHaveCSS('min-height', '56px');
     await expect(page.getByLabel(checkpoint.note)).toBeVisible();
@@ -147,18 +147,18 @@ test('my rank and belt progress keep every control and match the arena skin', as
     'href',
     '/student/share?from=rubric&student=1#import',
   );
-  await expect(page.getByRole('region', { name: 'Goals' })).toBeVisible();
-  await expect(page.getByLabel('Goal name')).toBeVisible();
-  await expect(page.getByLabel('Goal note')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Add goal', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Personal Goals', exact: true })).toBeVisible();
+  await expect(page.getByLabel('Personal goal name')).toBeVisible();
+  await expect(page.getByLabel('Personal goal note')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add personal goal', exact: true })).toBeVisible();
   await expect(page.getByRole('region', { name: 'From my coach' })).toBeVisible();
   await expect(page.getByText('Nothing from your coach on this phone yet.')).toBeVisible();
 
   await page.getByRole('button', { name: 'Mark Hold closed guard. met' }).click();
   await expect(page.getByRole('button', { name: 'Hold closed guard. met' })).toHaveAttribute('aria-pressed', 'true');
-  await page.getByLabel('Goal name').fill('Compete in May');
-  await page.getByLabel('Goal note').fill('local');
-  await page.getByRole('button', { name: 'Add goal', exact: true }).click();
+  await page.getByLabel('Personal goal name').fill('Compete in May');
+  await page.getByLabel('Personal goal note').fill('local');
+  await page.getByRole('button', { name: 'Add personal goal', exact: true }).click();
   await expect(page.getByLabel('Edit Compete in May')).toBeVisible();
   await expect(page.getByLabel('Note for Compete in May')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Save Compete in May' })).toBeVisible();
@@ -180,8 +180,8 @@ test('my rank and belt progress keep every control and match the arena skin', as
   await expect(page).toHaveURL(/\/student\/self-assessment\?from=progress&student=1$/);
   await expect(page.getByRole('heading', { name: 'Self-assessment', exact: true })).toBeVisible();
   await expect(page.getByLabel('Self-assessment date')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Open Takedowns checkpoint' })).toHaveCount(0);
-  await expect(page.getByRole('link', { name: 'Open Guard checkpoint' })).toHaveAttribute(
+  await expect(page.getByRole('link', { name: 'Open Takedowns benchmark' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Open Guard benchmark' })).toHaveAttribute(
     'href',
     '/student/rubric?student=1#checkpoint.white.guard',
   );

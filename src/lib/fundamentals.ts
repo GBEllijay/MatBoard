@@ -238,7 +238,7 @@ export function moveLinks(input: {
   if (checkpoint) {
     links.push({
       href: input.to(`/student/rubric#${checkpoint.checkpointId}`),
-      label: `Open ${checkpoint.checkpointName} checkpoint`,
+      label: `Open ${checkpoint.checkpointName} benchmark`,
     });
   }
   for (const clip of clipsForMove(input.clips, input.item.label, input.item.name)) {

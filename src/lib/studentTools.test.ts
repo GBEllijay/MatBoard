@@ -353,13 +353,13 @@ test('the uploaded send to coach file merges after confirm and a backup points t
 
 test('completed fundamentals levels count toward belt progress', () => {
   let report = withStarterRubric(blankStudentReport(10), 10);
-  assert.equal(beltProgressSummary(beltLevel(report, 'white'), learnedCatalogIds(report)), '0 of 3 checkpoints filled. 0 of 6 requirements counted.');
+  assert.equal(beltProgressSummary(beltLevel(report, 'white'), learnedCatalogIds(report)), '0 of 3 practical benchmarks filled. 0 of 6 requirements counted.');
   report = setFundamentalLevel(report, { catalogItemId: 'sweep.scissor', categoryId: 'sweeps', name: 'Scissor sweep' }, 2, 11);
   assert.equal(beltProgressSummary(beltLevel(report, 'white'), learnedCatalogIds(report)).includes('0 of 6'), true);
   report = setFundamentalLevel(report, { catalogItemId: 'pos.closed-guard', categoryId: 'positions', name: 'Closed guard' }, 3, 12);
   report = setFundamentalLevel(report, { catalogItemId: 'sweep.scissor', categoryId: 'sweeps', name: 'Scissor sweep' }, 5, 13);
   const summary = beltProgressSummary(beltLevel(report, 'white'), learnedCatalogIds(report));
-  assert.match(summary, /1 of 3 checkpoints filled/);
+  assert.match(summary, /1 of 3 practical benchmarks filled/);
   assert.match(summary, /2 of 6 requirements counted\. 2 from fundamentals\./);
   const guard = beltLevel(report, 'white')?.checkpoints.find((row) => row.id === 'checkpoint.white.guard');
   assert.ok(guard);

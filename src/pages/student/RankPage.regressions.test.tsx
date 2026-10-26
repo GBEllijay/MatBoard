@@ -433,7 +433,7 @@ test('belt progress hides coral until black is worn', async () => {
   try {
     assert.equal(document.body.textContent?.includes('Unlocked after black belt'), false);
     assert.equal(document.body.textContent?.includes('Next: 1st degree'), false);
-    assert.ok(document.querySelector('[aria-label="Checkpoints between White and Blue"]'));
+    assert.ok(document.querySelector('[aria-label="Practical benchmarks between White and Blue"]'));
   } finally {
     unmount(locked);
   }
@@ -716,7 +716,7 @@ test('kids belt progress hides checkpoints and keeps them for adult', async () =
   const kids = mount(<BeltPage />);
   try {
     assert.match(document.body.textContent ?? '', /Checkpoints and fundamentals for kids are not on this page yet/);
-    assert.equal(document.querySelector('[aria-label="Checkpoints between White and Blue"]'), null);
+    assert.equal(document.querySelector('[aria-label="Practical benchmarks between White and Blue"]'), null);
     assert.equal(document.body.textContent?.includes('Next: 1st degree'), false);
     assert.ok(document.querySelector('[aria-label="Goals"]'));
   } finally {
@@ -726,7 +726,7 @@ test('kids belt progress hides checkpoints and keeps them for adult', async () =
   saveStudentReport(localStorage, back);
   const adult = mount(<BeltPage />);
   try {
-    assert.ok(document.querySelector('[aria-label="Checkpoints between Blue and Purple"]'));
+    assert.ok(document.querySelector('[aria-label="Practical benchmarks between Blue and Purple"]'));
     assert.equal(document.body.textContent?.includes('not on this page yet'), false);
   } finally {
     unmount(adult);
@@ -741,12 +741,14 @@ test('fundamentals at live level fill the white belt checkpoint count', async ()
   const mounted = mount(<BeltPage />);
   try {
     assert.match(labeled('Belt progress count').textContent ?? '', /2 of 6 requirements counted\. 2 from fundamentals\./);
-    assert.match(labeled('Belt progress count').textContent ?? '', /1 of 3 checkpoints filled/);
+    assert.match(labeled('Belt progress count').textContent ?? '', /1 of 3 practical benchmarks filled/);
     assert.equal(labeled('Guard, filled').tagName, 'LI');
     assert.match(document.body.textContent ?? '', /Counted from your fundamentals\./);
-    assert.ok(labeled('Goal name'));
-    assert.ok(labeled('Goal note'));
-    assert.ok(buttonNamed('Add goal'));
+    assert.equal(labeled('Practical Benchmarks').tagName, 'SECTION');
+    assert.match(document.body.textContent ?? '', /Skills the coach or template expects before the next belt/);
+    assert.ok(labeled('Personal goal name'));
+    assert.ok(labeled('Personal goal note'));
+    assert.ok(buttonNamed('Add personal goal'));
   } finally {
     unmount(mounted);
   }
@@ -759,8 +761,9 @@ test('brown tap-to-add goals can be edited and removed without becoming checkpoi
   try {
     assert.match(document.body.textContent ?? '', new RegExp(OPEN_GOAL_LINE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
     assert.ok(document.querySelector('[aria-label="Tap to add"]'));
-    assert.ok(buttonNamed('Add your own'));
+    assert.ok(buttonNamed('Add personal goal'));
     assert.equal(document.querySelector('[aria-label="Goal name"]'), null);
+    assert.match(document.body.textContent ?? '', /Your own goals, which never affect belt or degree milestones/);
     assert.equal(document.body.textContent?.includes('not on this page yet'), false);
     await click(buttonNamed('Teaching: lead a class'));
     const added = loadStudentReport(localStorage);
@@ -789,7 +792,7 @@ test('black belt goals and degree focus do not change degree milestones', async 
   try {
     assert.match(document.body.textContent ?? '', new RegExp(TIME_BASED_PROGRESS.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
     assert.match(document.body.textContent ?? '', /Next: 3rd degree/);
-    assert.equal(document.querySelector('[aria-label="Checkpoints between Black and Coral"]'), null);
+    assert.equal(document.querySelector('[aria-label="Practical benchmarks between Black and Coral"]'), null);
     await click(buttonNamed('Teaching: lead a class'));
     await click(buttonNamed('Mark Teaching: lead a class met'));
     await typeControl(labeled('Focus for this degree') as HTMLInputElement, 'Teach the Thursday class', 'blur');
@@ -815,11 +818,11 @@ test('a locked coach checkpoint is read-only and an edited coach checkpoint show
   saveStudentReport(localStorage, locked);
   const readOnly = mount(<BeltPage />);
   try {
-    assert.match(document.body.textContent ?? '', /From your coach\. This checkpoint stays as they sent it\./);
+    assert.match(document.body.textContent ?? '', /From your coach\. This practical benchmark stays as they sent it\./);
     assert.equal(hasButton('Rename Guard'), false);
     assert.equal(hasButton('Remove Guard'), false);
-    assert.ok(buttonNamed('Mark Guard checkpoint met'));
-    assert.equal(labeled('Guard checkpoint').querySelector('h2')?.textContent, 'Guard');
+    assert.ok(buttonNamed('Mark Guard benchmark met'));
+    assert.equal(labeled('Guard benchmark').querySelector('h2')?.textContent, 'Guard');
   } finally {
     unmount(readOnly);
   }
@@ -832,11 +835,11 @@ test('a locked coach checkpoint is read-only and an edited coach checkpoint show
   saveStudentReport(localStorage, editable);
   const starred = mount(<BeltPage />);
   try {
-    assert.equal(labeled('Guard* checkpoint').querySelector('h2')?.textContent, 'Guard*');
+    assert.equal(labeled('Guard* benchmark').querySelector('h2')?.textContent, 'Guard*');
     assert.match(labeled('Guard*, open').textContent ?? '', /Guard\*/);
     assert.ok(buttonNamed('Rename Guard'));
     assert.match(document.body.textContent ?? '', /Edited from the coach list\./);
-    assert.equal(document.body.textContent?.includes('This checkpoint stays as they sent it'), false);
+    assert.equal(document.body.textContent?.includes('This practical benchmark stays as they sent it'), false);
   } finally {
     unmount(starred);
   }

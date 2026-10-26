@@ -594,7 +594,7 @@ export function beltRequirementProgress(level: RubricLevel | null, learned: Read
 export function beltProgressSummary(level: RubricLevel | null, learned: ReadonlySet<string>): string {
   const progress = beltRequirementProgress(level, learned);
   const parts: string[] = [];
-  if (progress.checkpoints) parts.push(`${progress.checkpointsFilled} of ${progress.checkpoints} checkpoints filled.`);
+  if (progress.checkpoints) parts.push(`${progress.checkpointsFilled} of ${progress.checkpoints} practical benchmarks filled.`);
   if (progress.requirements) {
     const from = progress.fromFundamentals ? ` ${progress.fromFundamentals} from fundamentals.` : '';
     parts.push(`${progress.counted} of ${progress.requirements} requirements counted.${from}`);
@@ -602,8 +602,15 @@ export function beltProgressSummary(level: RubricLevel | null, learned: Readonly
   return parts.join(' ');
 }
 
-/** Higher belts start without a checkpoint list. Goals are added from these prompts. */
+/** Higher belts start without a benchmark list. Personal goals are added from these prompts. */
 export const OPEN_GOAL_BELTS = ['brown', 'black', 'coral', 'redWhite', 'red'] as const;
+
+export const PRACTICAL_BENCHMARKS_HEADING = 'Practical Benchmarks';
+export const PRACTICAL_BENCHMARKS_LINE = 'Skills the coach or template expects before the next belt.';
+export const PERSONAL_GOALS_HEADING = 'Personal Goals';
+export const PERSONAL_GOALS_LINE = 'Your own goals, which never affect belt or degree milestones.';
+export const NO_PRACTICAL_BENCHMARKS = 'No practical benchmarks yet.';
+export const NO_PERSONAL_GOALS = 'No personal goals yet.';
 
 export const OPEN_GOAL_PROMPTS = [
   'Teaching: lead a class',
@@ -613,10 +620,10 @@ export const OPEN_GOAL_PROMPTS = [
   'Lineage and history',
 ] as const;
 
-export const OPEN_GOAL_LINE = 'Set the goals that matter to you at this stage';
+export const OPEN_GOAL_LINE = 'Set the personal goals that matter to you at this stage';
 export const INSTRUCTOR_FINAL_SAY = 'Your instructor always has the final say.';
 export const TIME_BASED_PROGRESS =
-  'Progress at this rank is time at the belt. These goals do not change a degree, coral, or red.';
+  'Progress at this rank is time at the belt. Personal goals do not change a degree, coral, or red.';
 
 export function openGoalBelt(belt: ProgressBelt): boolean {
   return (OPEN_GOAL_BELTS as readonly string[]).includes(belt);
@@ -640,7 +647,7 @@ function editedCoach(row: RubricCheckpoint, changed: boolean): RubricCheckpoint 
 function requireCheckpointEdit(report: StudentProgressReport, checkpointId: string): void {
   for (const level of report.rubric.levels) {
     const row = level.checkpoints.find((item) => item.id === checkpointId);
-    if (row && checkpointReadOnly(report, row)) throw new Error('This checkpoint comes from your coach.');
+    if (row && checkpointReadOnly(report, row)) throw new Error('This practical benchmark comes from your coach.');
   }
 }
 
@@ -703,7 +710,7 @@ export function setCheckpointMark(
       if (row.id !== checkpointId) return row;
       found = true;
       if (checkpointReadOnly(report, row) && note.trim() !== row.note) {
-        throw new Error('This checkpoint comes from your coach.');
+        throw new Error('This practical benchmark comes from your coach.');
       }
       const nextNote = note.trim().slice(0, PROGRESS_NOTE_MAX);
       return editedCoach({ ...row, met, note: nextNote }, nextNote !== row.note);
@@ -757,11 +764,11 @@ export function addCheckpoint(
   now = Date.now(),
 ): StudentProgressReport {
   const trimmed = name.trim();
-  if (!trimmed) throw new Error('Add a checkpoint name.');
+  if (!trimmed) throw new Error('Add a practical benchmark name.');
   const prepared = ensureBeltLevel(report, belt);
   const level = beltLevel(prepared, belt);
   if (!level) return prepared;
-  if (level.checkpoints.length >= PROGRESS_CHECKPOINTS_MAX) throw new Error('The checkpoint list is full.');
+  if (level.checkpoints.length >= PROGRESS_CHECKPOINTS_MAX) throw new Error('The practical benchmark list is full.');
   const row: RubricCheckpoint = {
     id: checkpointIdFor(prepared.rubric.levels, belt, trimmed, now),
     name: trimmed.slice(0, PROGRESS_NAME_MAX),
@@ -779,7 +786,7 @@ export function renameCheckpoint(
   now = Date.now(),
 ): StudentProgressReport {
   const trimmed = name.trim();
-  if (!trimmed) throw new Error('Add a checkpoint name.');
+  if (!trimmed) throw new Error('Add a practical benchmark name.');
   requireCheckpointEdit(report, checkpointId);
   let found = false;
   const levels = report.rubric.levels.map((level) => ({
@@ -824,7 +831,7 @@ export function moveCheckpoint(
     if (index < 0 || nextIndex < 0 || nextIndex >= level.checkpoints.length) return level;
     const row = level.checkpoints[index];
     if (!row) return level;
-    if (checkpointReadOnly(report, row)) throw new Error('This checkpoint comes from your coach.');
+    if (checkpointReadOnly(report, row)) throw new Error('This practical benchmark comes from your coach.');
     found = true;
     const checkpoints = [...level.checkpoints];
     checkpoints.splice(index, 1);
@@ -853,8 +860,8 @@ export function addGoal(
   belt?: ProgressBelt,
 ): StudentProgressReport {
   const trimmed = name.trim();
-  if (!trimmed) throw new Error('Add a goal name.');
-  if (report.goals.length >= PROGRESS_GOALS_MAX) throw new Error('The goal list is full.');
+  if (!trimmed) throw new Error('Add a personal goal name.');
+  if (report.goals.length >= PROGRESS_GOALS_MAX) throw new Error('The personal goal list is full.');
   const goal: StudentGoal = {
     id: newId('goal', now),
     name: trimmed.slice(0, PROGRESS_NAME_MAX),
@@ -878,7 +885,7 @@ export function updateGoal(
   now = Date.now(),
 ): StudentProgressReport {
   const trimmed = name.trim();
-  if (!trimmed) throw new Error('Add a goal name.');
+  if (!trimmed) throw new Error('Add a personal goal name.');
   let found = false;
   const goals = report.goals.map((goal) => {
     if (goal.id !== id) return goal;
@@ -905,7 +912,7 @@ function copyGoal(report: StudentProgressReport, sourceId: string, name: string,
   if (!trimmed) return report;
   const id = `goal.${sourceId}`.slice(0, PROGRESS_ID_MAX);
   if (report.goals.some((goal) => goal.id === id)) return report;
-  if (report.goals.length >= PROGRESS_GOALS_MAX) throw new Error('The goal list is full.');
+  if (report.goals.length >= PROGRESS_GOALS_MAX) throw new Error('The personal goal list is full.');
   return touch(
     {
       ...report,
@@ -1015,7 +1022,7 @@ export function applyCoachFile(report: StudentProgressReport, shelf: CoachShelf,
       report: suggestion.report,
       shelf: { ...shelf, plan: merged.packet },
       message: merged.replaced
-        ? `${merged.packet.plan.title || 'Work on before next promotion'} is on this phone. Your rubric, journal, and goals were not changed.`
+        ? `${merged.packet.plan.title || 'Work on before next promotion'} is on this phone. Your rubric, journal, and personal goals were not changed.`
         : merged.conflicts.join(' '),
       error: '',
     };
@@ -1026,7 +1033,7 @@ export function applyCoachFile(report: StudentProgressReport, shelf: CoachShelf,
     report: suggestion.report,
     shelf: { ...shelf, feedback: merged.packet },
     message: merged.replaced
-      ? 'Coach feedback is on this phone. Your rubric, journal, and goals were not changed.'
+      ? 'Coach feedback is on this phone. Your rubric, journal, and personal goals were not changed.'
       : merged.conflicts.join(' '),
     error: '',
   };
