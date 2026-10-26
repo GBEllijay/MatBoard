@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { RadarChart, type RadarSeries } from '../../components/RadarChart';
 import { competitionOf } from '../../lib/progress/competition';
@@ -12,6 +12,7 @@ import {
 } from '../../lib/opponentAssessment';
 import { BELT_CHOICES, NOTE_MAX } from '../../lib/rosterStore';
 import { ASSESSMENT_AREAS, loadAssessments, type AssessmentScores } from '../../lib/studentAssessment';
+import { subscribeStudentJournal } from '../../lib/studentDemo';
 import {
   SCOUTING_GYM_LABEL,
   addScoutingCard,
@@ -49,7 +50,13 @@ export function ScoutingPage() {
   const [error, setError] = useState('');
   const [csvNote, setCsvNote] = useState('');
   const csvRef = useRef<HTMLInputElement>(null);
-  const [selfScores] = useState(() => loadAssessments(localStorage).entries[0]?.scores ?? null);
+  const [selfScores, setSelfScores] = useState(() => loadAssessments(localStorage).entries[0]?.scores ?? null);
+  useEffect(() => {
+    return subscribeStudentJournal(() => {
+      const latest = loadAssessments(localStorage).entries[0]?.scores ?? null;
+      setSelfScores(latest);
+    });
+  }, []);
   const shown = useMemo(() => searchScoutingCards(cards, results, query), [cards, results, query]);
   const weight = shown.filter((card) => card.group !== 'open');
   const open = shown.filter((card) => card.group === 'open');

@@ -3,6 +3,8 @@
  * The backup itself is a download. This stamp is only the date.
  */
 
+import { noteAppBackupStamp } from './studentDemo.ts';
+
 export const STUDENT_BACKUP_STAMP_KEY = 'matboard.studentEdition.lastBackupAt.v1';
 
 const STAMP_RE = /^\d{4}-\d{2}-\d{2}T/;
@@ -23,8 +25,10 @@ function browserStorage(): StampStorage | null {
 export function noteStudentBackupBuilt(when: Date, storage?: StampStorage | null): void {
   const target = storage === undefined ? browserStorage() : storage;
   if (!target) return;
+  const iso = when.toISOString();
+  noteAppBackupStamp(iso);
   try {
-    target.setItem(STUDENT_BACKUP_STAMP_KEY, when.toISOString());
+    target.setItem(STUDENT_BACKUP_STAMP_KEY, iso);
   } catch {
     /* private mode or a full disk */
   }

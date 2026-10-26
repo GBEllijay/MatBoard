@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { RadarChart } from '../../components/RadarChart';
 import type { StudentProgressReport } from '../../lib/progress/types';
+import { subscribeStudentJournal } from '../../lib/studentDemo';
 import { todayIso } from '../../lib/studentEdition';
 import { useScrollToHash } from './chrome';
 import {
@@ -31,6 +32,19 @@ export function SelfAssessment({ report, to }: { report: StudentProgressReport; 
   const [scores, setScores] = useState<Partial<AssessmentScores>>(todayEntry ? { ...todayEntry.scores } : {});
   const [error, setError] = useState('');
   const [confirming, setConfirming] = useState<string | null>(null);
+  const entriesRef = useRef(entries);
+  entriesRef.current = entries;
+  useEffect(() => {
+    return subscribeStudentJournal(() => {
+      const next = loadAssessments(localStorage);
+      if (entriesRef.current.length > 0 && next.entries.length === 0) {
+        setNote('');
+        setScores({});
+        setError('');
+      }
+      setEntries((current) => (sameEntries(current, next.entries) ? current : next.entries));
+    });
+  }, []);
   const links = checkpointLinks(report);
   const savedOnDate = entries.find((entry) => entry.date === date);
   const draftReady = ASSESSMENT_AREAS.every((area) => isTap(scores[area.id]));
@@ -148,6 +162,14 @@ export function SelfAssessment({ report, to }: { report: StudentProgressReport; 
       </div>
     </section>
   );
+}
+
+function sameEntries(left: AssessmentEntry[], right: AssessmentEntry[]): boolean {
+  if (left.length !== right.length) return false;
+  return left.every((entry, index) => {
+    const other = right[index];
+    return other && entry.id === other.id && entry.date === other.date && entry.note === other.note;
+  });
 }
 
 function isTap(value: unknown): value is AssessmentScore {

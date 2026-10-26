@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { HomeMark } from '../../components/HomeMark';
 import { SiteFooter } from '../../components/SiteFooter';
@@ -23,6 +24,7 @@ import {
   progressLinks,
 } from '../../lib/studentHubMenu';
 import { backupStampLabel, readStudentBackupStamp } from '../../lib/studentBackupStamp';
+import { subscribeStudentJournal } from '../../lib/studentDemo';
 import { reportIdentity } from '../../lib/studentReport';
 import type { StudentProgressReport } from '../../lib/progress/types';
 import { useStudentFile, useStudentPath } from './chrome';
@@ -58,7 +60,12 @@ export function StudentHub() {
   const { report } = useStudentFile();
   const summary = competitorHubSummary(report, todayIso());
   const academy = loadAcademyLink(localStorage);
-  const stamp = backupStampLabel(readStudentBackupStamp(localStorage));
+  const [stamp, setStamp] = useState(() => backupStampLabel(readStudentBackupStamp(localStorage)));
+  useEffect(() => {
+    return subscribeStudentJournal(() => {
+      setStamp(backupStampLabel(readStudentBackupStamp(localStorage)));
+    });
+  }, []);
   const coachNote = academy ? `Connected to ${academy.folderName}` : 'Academy, a file for your coach, and import';
   const worn = wornBeltPreview(report);
 
