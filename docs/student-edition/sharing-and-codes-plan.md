@@ -21,7 +21,7 @@ Students at gyms that do not use Advantage get a printable progress report and a
 Connections (`/student/connections`) is the one student area for:
 
 - Connect to my academy. The student hub has a journal-style button that opens this screen (`/student/academy`). Scan the academy QR with the camera, take a photo of the QR, or paste the link. The same controls stay on Connections. Sign in uses the existing Google Drive or OneDrive sign-in. The folder id is stored on the student phone (`matboard.studentEdition.academyDrive.v1`). It does not replace `matboard.pro.googleDriveFolder.v1`.
-- My own drive. Google Drive and OneDrive can be picked for personal backups (`matboard.studentEdition.personalDrive.v1`). Google Photos and iCloud are listed as coming later. They are not backup folders in this build. Google Photos remains the gym media picker on Coach and Pro.
+- My own drive. Google Drive and OneDrive can be picked for personal backups (`matboard.studentEdition.personalDrive.v1`). Google Photos is listed as coming later. It is not a backup folder in this build. Google Photos remains the gym media picker on Coach and Pro.
 - Export and print. Back up my journal, print progress report, print self-assessment.
 - Import from coach. Opens the existing import.
 
@@ -55,6 +55,6 @@ The Pro page still shows the academy pathway when a Google Drive or OneDrive fol
 5. Bulk purchase of more Student codes: a new Stripe price, or the existing email line `STUDENT_LICENSE_MORE_NOTE`?
 6. Should a student Google sign-in replace the Google token already stored for Pro on a shared browser? This build uses the existing sign-in, so one Google account is signed in per phone. Academy and a personal Google folder both use that sign-in. OneDrive is a separate sign-in.
 7. Google Drive `drive.file` plus `drive.readonly` may refuse "anyone can edit" on a folder the app did not create. The fallback is the provider's Share button. Is a broader scope wanted later? This change does not add a scope.
-8. Google Photos and iCloud are named for a later personal-backup connect. Should a student backup ever be a Photos album, or only Drive-like folders?
+8. Google Photos is named for a later personal-backup connect. Should a student backup ever be a Photos album, or only Drive-like folders?
 9. Filmed moves saved only to a drive are not inside the JSON backup. Is a later "download from the academy folder into the backup" step required?
 10. Pro pathway is shown to whoever can open the Pro page on a browser that already has a folder connected. Should a seated coach without the owner Pro unlock see it too?

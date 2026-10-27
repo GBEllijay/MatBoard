@@ -64,7 +64,7 @@ test('film a move, connections, backup, and print stay beside the link library',
   await expect(page.getByRole('heading', { name: 'Export and print' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Import from coach' })).toBeVisible();
   await expect(page.getByText('Google Photos — coming later')).toBeVisible();
-  await expect(page.getByText('iCloud — coming later')).toBeVisible();
+  await expect(page.getByText(/iCloud/i)).toHaveCount(0);
 
   await page.getByRole('textbox', { name: 'Academy link' }).fill('https://drive.google.com/drive/folders/academyFolder123');
   await page.getByRole('button', { name: 'Use this academy link' }).click();

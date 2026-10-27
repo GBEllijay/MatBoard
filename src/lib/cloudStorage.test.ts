@@ -1,31 +1,51 @@
 import assert from 'node:assert/strict';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 import {
   CLOUD_STORAGE_PROVIDER_IDS,
-  CONNECT_LAUNCH_BADGE,
+  CONNECT_WITH_BODY,
   CONNECT_WITH_TITLE,
   cloudStorage,
   cloudStorageChoices,
-  connectListBadge,
 } from './cloudStorage.ts';
 
+const SRC_ROOT = fileURLToPath(new URL('..', import.meta.url));
+
+test('the cloud provider list is exactly Google Drive, OneDrive, and Google Photos', () => {
+  assert.deepEqual(CLOUD_STORAGE_PROVIDER_IDS, ['googleDrive', 'oneDrive', 'googlePhotos']);
+  const choices = cloudStorageChoices();
+  assert.deepEqual(
+    choices.map((provider) => provider.displayName),
+    ['Google Drive', 'OneDrive', 'Google Photos'],
+  );
+  assert.deepEqual(
+    choices.map((provider) => provider.id),
+    ['googleDrive', 'oneDrive', 'googlePhotos'],
+  );
+  assert.equal(choices.every((provider) => provider.phase === 'live'), true);
+  assert.equal(
+    choices.some((provider) => /icloud/i.test(provider.id) || /icloud/i.test(provider.displayName)),
+    false,
+  );
+  assert.doesNotMatch(CONNECT_WITH_BODY, /icloud/i);
+});
+
 test('Google Drive stays the default and launch providers are listed in owner order', async () => {
-  assert.deepEqual(CLOUD_STORAGE_PROVIDER_IDS, ['googleDrive', 'oneDrive', 'googlePhotos', 'iCloud']);
+  assert.deepEqual(CLOUD_STORAGE_PROVIDER_IDS, ['googleDrive', 'oneDrive', 'googlePhotos']);
   assert.equal(CONNECT_WITH_TITLE, 'Connect with');
   const choices = cloudStorageChoices();
   assert.deepEqual(
     choices.map((provider) => provider.displayName),
-    ['Google Drive', 'OneDrive', 'Google Photos', 'iCloud'],
+    ['Google Drive', 'OneDrive', 'Google Photos'],
   );
+  assert.equal(choices.length, 3);
   assert.equal(choices[0]?.phase, 'live');
   assert.equal(choices[1]?.id, 'oneDrive');
   assert.equal(choices[1]?.phase, 'live');
   assert.equal(choices[2]?.id, 'googlePhotos');
   assert.equal(choices[2]?.phase, 'live');
-  assert.equal(choices[3]?.phase, 'coming-for-launch');
-  assert.equal(connectListBadge(choices[2]!), null);
-  assert.equal(connectListBadge(choices[3]!), CONNECT_LAUNCH_BADGE);
-  assert.equal(CONNECT_LAUNCH_BADGE, 'Coming for launch');
   assert.equal(
     choices.some((provider) => provider.id === 'dropbox'),
     false,
@@ -85,7 +105,6 @@ test('Google Drive stays the default and launch providers are listed in owner or
   assert.doesNotMatch(photos.unavailableMessage(), /coming soon|coming for launch|client id|oauth|client secret/i);
   assert.equal(photos.openFolderUrl('library'), 'https://photos.google.com/');
   assert.equal(photos.openFolderUrl('folder'), null);
-  assert.equal(connectListBadge(photos), null);
   const photosConnect = await photos.connect();
   assert.equal(photosConnect.ok, false);
   if (!photosConnect.ok) {
@@ -96,27 +115,43 @@ test('Google Drive stays the default and launch providers are listed in owner or
   await assert.rejects(() => photos.open('token'), /contact Advantage/);
   photos.disconnect();
 
-  const icloud = cloudStorage('iCloud');
-  assert.equal(icloud.id, 'iCloud');
-  assert.equal(icloud.phase, 'coming-for-launch');
-  assert.equal(icloud.isAvailable(), false);
-  assert.equal(icloud.isConnected(), false);
-  assert.equal(icloud.binding(), null);
-  assert.equal(icloud.getBindingSnapshot(), null);
-  assert.equal(icloud.openFolderUrl('folder'), null);
-  assert.equal(connectListBadge(icloud), 'Coming for launch');
-  assert.match(icloud.unavailableMessage(), /coming for launch/i);
-  assert.doesNotMatch(icloud.unavailableMessage(), /coming soon|client id|oauth|cloud console|client secret/i);
-  const icloudConnect = await icloud.connect();
-  assert.equal(icloudConnect.ok, false);
-  if (!icloudConnect.ok) assert.equal(icloudConnect.reason, 'unavailable');
-  await assert.rejects(() => icloud.save('token', { name: 'a.txt', text: 'b' }), /coming for launch/i);
-  await assert.rejects(() => icloud.open('token'), /coming for launch/i);
-  icloud.disconnect();
-
   const dropbox = cloudStorage('dropbox');
   assert.equal(dropbox.phase, 'reserved');
   assert.equal(dropbox.isAvailable(), false);
   assert.match(dropbox.unavailableMessage(), /not on the Coach and Pro launch list/);
   assert.doesNotMatch(dropbox.unavailableMessage(), /coming soon|coming for launch/i);
+});
+
+function sourceFiles(dir: string, out: string[] = []): string[] {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) sourceFiles(path, out);
+    else if (entry.isFile()) out.push(path);
+  }
+  return out;
+}
+
+function isTestPath(path: string): boolean {
+  return /\.(test|spec)\.[cm]?[jt]sx?$/.test(path);
+}
+
+/** Lines that only say iCloud is missing may keep the word. */
+function isAbsenceAssertion(line: string): boolean {
+  return /doesNotMatch|\.not\.(?:toMatch|toContain|toHaveText|toBeVisible)|toHaveCount\(\s*0\s*\)|iCloud is absent|does not (?:include|offer|list|mention|name)|not offered|no longer/i.test(line);
+}
+
+test('user-facing source under src does not mention iCloud', () => {
+  const hits: string[] = [];
+  for (const path of sourceFiles(SRC_ROOT)) {
+    if (isTestPath(path)) continue;
+    if (!/\.(tsx?|jsx?|css|html|md|svg)$/.test(path)) continue;
+    const lines = readFileSync(path, 'utf8').split(/\r?\n/);
+    lines.forEach((line, index) => {
+      if (!/icloud/i.test(line)) return;
+      if (isAbsenceAssertion(line)) return;
+      hits.push(`${path}:${index + 1}: ${line.trim()}`);
+    });
+  }
+  assert.deepEqual(hits, []);
 });

@@ -21,7 +21,7 @@ export function TermsPage() {
   return (
     <LegalPage
       title="Terms of Service — Advantage"
-      updated="October 26, 2026"
+      updated="October 27, 2026"
       related={{ to: '/privacy', label: 'Privacy Policy' }}
     >
       <section>
@@ -80,7 +80,9 @@ export function TermsPage() {
         <p>
           Advantage Coach includes everything in Advantage White. Advantage Pro includes everything
           in Advantage Coach and Advantage White. Advantage Student Edition is a separate add-on. It
-          does not include Advantage Coach.
+          does not include Advantage Coach. It works best when connected to a valid Google Drive,
+          OneDrive, or Google Photos account. Advantage App, LLC does not provide, manage, or back
+          up that storage, and the account you connect is your own.
         </p>
         <p>
           Payments are processed by Stripe. Advantage App, LLC does not receive or store your full
@@ -108,13 +110,11 @@ export function TermsPage() {
       <section>
         <h3>5. Your Cloud Storage Account</h3>
         <p>
-          Advantage Coach Unlimited and Advantage Pro save lesson plans, photos, videos, and related
-          files to a cloud storage account that you own and control. Before Coach and Pro leave
-          alpha and go on sale, Advantage supports connecting your own account with each of these
-          providers: Google Drive, OneDrive, iCloud, and Google Photos. Google Drive is available
-          now. Google Photos can be connected so Media Console can pick albums and photos from the
-          gym’s library. OneDrive connects when this build includes it. iCloud is still part of that
-          launch set and is not connected yet.
+          Advantage Student Edition, Advantage Coach Unlimited, and Advantage Pro save plans, photos,
+          videos, and related files to a cloud storage account that you own and control. The cloud
+          options are Google Drive, OneDrive, and Google Photos. Google Drive is available now.
+          Google Photos can be connected so Media Console can pick albums and photos from the gym’s
+          library. OneDrive connects when this build includes it.
         </p>
         <ul>
           <li>
@@ -129,8 +129,8 @@ export function TermsPage() {
             fees, capacity, access, and backups.
           </li>
           <li>
-            Without a connected storage account, some Coach Unlimited and Pro features will not work
-            or will be limited.
+            The app works best with a connected storage account. Without one, some Student Edition,
+            Coach Unlimited, and Pro features are limited.
           </li>
           <li>
             Advantage App, LLC is not responsible for files lost, deleted, or made unavailable
@@ -146,15 +146,15 @@ export function TermsPage() {
         </p>
         <h4>5.1 Purchase acknowledgment</h4>
         <p>
-          Buyers of Advantage Coach Unlimited and Advantage Pro must accept the statement below.
-          The buy flow does not collect that acceptance yet. It will be required at checkout when
-          those tiers go on sale:
+          Buyers of Advantage Student Edition, Advantage Coach Unlimited, and Advantage Pro must
+          accept the statement below. The buy flow does not collect that acceptance yet. It will be
+          required at checkout when those tiers go on sale:
         </p>
         <p>
-          “I understand that Advantage Coach Unlimited and Advantage Pro require my own Google
-          Drive, OneDrive, iCloud, or Google Photos account to work fully. Advantage App, LLC does
-          not provide, manage, or back up that storage, and the account I connect is my own, not
-          one managed by Advantage App, LLC.”
+          “I understand that Advantage Student Edition, Advantage Coach Unlimited, and Advantage Pro
+          work best when connected to a valid Google Drive, OneDrive, or Google Photos account.
+          Advantage App, LLC does not provide, manage, or back up that storage, and the account I
+          connect is my own, not one managed by Advantage App, LLC.”
         </p>
       </section>
 
@@ -170,16 +170,15 @@ export function TermsPage() {
           and we will work with you promptly.
         </p>
         <p>
-          Coach Unlimited and Advantage Pro need your own cloud storage account to save and open
-          lesson plans, photos, and videos. Google Drive is available now. Google Photos can be
-          connected for Media Console. OneDrive connects when this build includes it. iCloud is
-          still part of that launch set and is not connected yet. Setting up and connecting that
-          account is your responsibility.
-          Advantage App, LLC does not provide, manage, or back up your storage.
+          Advantage Student Edition, Advantage Coach Unlimited, and Advantage Pro work best when
+          connected to your own cloud storage account so they can save and open plans, photos, and
+          videos. Google Drive is available now. Google Photos can be connected for Media Console.
+          OneDrive connects when this build includes it. Setting up and connecting that account is
+          your responsibility. Advantage App, LLC does not provide, manage, or back up your storage.
         </p>
         <p>
           A refund is not available when the app itself is working and the only issue is that your
-          Google Drive, OneDrive, iCloud, or Google Photos account was not connected, not created,
+          Google Drive, OneDrive, or Google Photos account was not connected, not created,
           not signed in, out of space, or otherwise misconfigured. In those cases we will help you
           get connected if we can, but the purchase stands.
         </p>

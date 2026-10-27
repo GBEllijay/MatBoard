@@ -386,7 +386,7 @@ function PersonalDrive() {
     <section className="ink ink--wobble" aria-label="My own drive">
       <h2>My own drive</h2>
       <p className="student-quiet">
-        Connect a drive you own for personal backups. This is separate from the academy folder. Google Photos and iCloud are not a backup folder in this build yet.
+        Connect a drive you own for personal backups. This is separate from the academy folder. Google Photos is not a backup folder in this build yet.
       </p>
       {linked ? (
         <p role="status">
@@ -451,7 +451,6 @@ function PersonalDrive() {
       ) : null}
       <ul className="student-connections__later">
         <li>Google Photos — coming later for personal backups</li>
-        <li>iCloud — coming later for personal backups</li>
       </ul>
       {status ? <p role="status">{status}</p> : null}
       {error ? <p role="alert">{error}</p> : null}
