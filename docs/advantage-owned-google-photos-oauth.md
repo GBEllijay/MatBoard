@@ -79,4 +79,4 @@ The gym owner still sees a plain sentence: Google did not finish sign-in. Try ag
 
 ## What this milestone does not do
 
-iCloud is not in this change. Lesson JSON, training videos, and class history still use Google Drive. Google Photos `save` and `open` on the storage connector do not write lesson files. Picking is Media Console only, through Google’s picker, up to 50 items at a time.
+Lesson JSON, training videos, and class history still use Google Drive. Google Photos `save` and `open` on the storage connector do not write lesson files. Picking is Media Console only, through Google’s picker, up to 50 items at a time.

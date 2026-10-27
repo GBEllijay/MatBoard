@@ -1085,7 +1085,7 @@ test('Terms contain the Practical Benchmarks section', () => {
       BENCHMARK_DISCLAIMER_MEDIUM,
       'These Practical Benchmarks are general suggestions based on commonly accepted jiu-jitsu training, and they have been reviewed by black belts. They are a starting point, not a requirement or a promotion standard. Every academy and coach sees things differently, so review and adjust them with your coach, who has the final say on your progress.',
     );
-    assert.match(document.body.textContent ?? '', /Last updated: October 26, 2026/);
+    assert.match(document.body.textContent ?? '', /Last updated: October 27, 2026/);
   } finally {
     unmount(page);
   }

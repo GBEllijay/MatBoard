@@ -2,9 +2,6 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { beforeEach, describe, test } from 'node:test';
 import {
-  CONNECT_COMING_SOON,
-  CONNECT_COMING_SOON_BADGE,
-  CONNECT_LAUNCH_BADGE,
   CONNECT_GOOGLE_UNVERIFIED_NOTE,
   CONNECT_WITH_BODY,
   CONNECT_WITH_TITLE,
@@ -89,9 +86,7 @@ test('lesson file names and Drive queries stay literal', () => {
   assert.equal(lessonClassFileToken(emptyPlan()), '');
   assert.equal(driveQueryLiteral("O'Brien\\folder"), "O\\'Brien\\\\folder");
   assert.equal(CONNECT_WITH_TITLE, 'Connect with');
-  assert.equal(CONNECT_LAUNCH_BADGE, 'Coming for launch');
-  assert.equal(CONNECT_COMING_SOON_BADGE, CONNECT_LAUNCH_BADGE);
-  assert.equal(CONNECT_COMING_SOON, CONNECT_LAUNCH_BADGE);
+  assert.doesNotMatch(CONNECT_WITH_BODY, /icloud/i);
   assert.equal(
     CONNECT_GOOGLE_UNVERIFIED_NOTE,
     'Google may show a notice that this connection isn’t verified yet. Tap Continue, or Advanced then Continue, to proceed. This is temporary.',
@@ -102,7 +97,7 @@ test('lesson file names and Drive queries stay literal', () => {
   assert.match(CONNECT_WITH_BODY, /Google Drive is an additional folder/);
   assert.match(DRIVE_SETUP_NEEDED, /not available on this build yet — contact Advantage/);
   assert.doesNotMatch(
-    `${CONNECT_WITH_TITLE} ${CONNECT_WITH_BODY} ${CONNECT_COMING_SOON} ${CONNECT_GOOGLE_UNVERIFIED_NOTE} ${DRIVE_SETUP_NEEDED} ${DRIVE_SIGN_IN_FAILED} ${DRIVE_DEV_CLIENT_HINT}`,
+    `${CONNECT_WITH_TITLE} ${CONNECT_WITH_BODY} ${CONNECT_GOOGLE_UNVERIFIED_NOTE} ${DRIVE_SETUP_NEEDED} ${DRIVE_SIGN_IN_FAILED} ${DRIVE_DEV_CLIENT_HINT}`,
     /client id|oauth|cloud console|client secret|unsafe|blocked/i,
   );
   assert.match(CLASS_HISTORY_EMPTY, /Nothing in this Google Drive folder yet/);
@@ -190,8 +185,7 @@ test('connect card does not ask a gym owner for a client id', () => {
   assert.match(card, /<summary>Advanced<\/summary>/);
   assert.match(card, /import\.meta\.env\.DEV/);
   assert.match(card, /cloudStorageChoices\(/);
-  assert.match(card, /connectListBadge/);
-  assert.match(card, /CONNECT_LAUNCH_BADGE/);
+  assert.doesNotMatch(card, /iCloud|connectListBadge|CONNECT_LAUNCH_BADGE/);
   assert.match(card, /googlePhotos/);
   assert.doesNotMatch(card, /CONNECT_PHOTOS_GALLERY|phase === 'gallery'|Already in gallery/);
   assert.match(card, /CONNECT_ACCOUNT_NOTE/);

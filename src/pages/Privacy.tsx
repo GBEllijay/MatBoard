@@ -5,7 +5,7 @@ export function PrivacyPage() {
   return (
     <LegalPage
       title="Privacy Policy — Advantage"
-      updated="October 5, 2026"
+      updated="October 27, 2026"
       related={{ to: '/terms', label: 'Terms of Service' }}
     >
       <section>
@@ -34,8 +34,8 @@ export function PrivacyPage() {
       <section>
         <h3>2. Cloud Storage and Your Files</h3>
         <p>
-          When you connect a supported storage provider (Google Drive, OneDrive, iCloud, or Google
-          Photos), Advantage asks for permission through that provider’s own sign-in screen. It
+          When you connect a supported storage provider (Google Drive, OneDrive, or Google Photos),
+          Advantage asks for permission through that provider’s own sign-in screen. It
           requests only the limited access it needs to save and open the files you create or choose
           in the app. Your photos, videos, and lesson files are stored in your own account, and
           Advantage App, LLC does not keep copies on its servers. The connection is kept on your
@@ -61,8 +61,8 @@ export function PrivacyPage() {
           needed to maintain the connection you authorized.
         </p>
         <p>
-          (b) Cloud storage data you authorize. If you connect Google Drive, OneDrive, iCloud, or
-          Google Photos, we access folders and files only as permitted by the access you approve,
+          (b) Cloud storage data you authorize. If you connect Google Drive, OneDrive, or Google
+          Photos, we access folders and files only as permitted by the access you approve,
           and only as needed to save and open the files you create or choose in the app.
         </p>
         <p>

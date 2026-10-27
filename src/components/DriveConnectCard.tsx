@@ -9,11 +9,9 @@ import {
   CONNECT_ACCOUNT_NOTE,
   CONNECT_CHOOSE_FOLDER,
   CONNECT_GOOGLE_UNVERIFIED_NOTE,
-  CONNECT_LAUNCH_BADGE,
   CONNECT_WITH_BODY,
   CONNECT_WITH_KICKER,
   CONNECT_WITH_TITLE,
-  connectListBadge,
   type CloudBinding,
   type CloudFolderRef,
   type CloudStorageConnector,
@@ -95,8 +93,8 @@ function connectedDetail(binding: CloudBinding): string {
  * Google Drive signs in and picks a folder. OneDrive does the same when this
  * build has Microsoft sign-in: the tap leaves for Microsoft, then comes back
  * to this list. Google Photos connects the gym library beside that folder.
- * iCloud stays visible and disabled with Coming for launch until that connect
- * is live. The build supplies sign-in. Owners do not type a setup code.
+ * The list is the live providers only. The build supplies sign-in. Owners do
+ * not type a setup code.
  */
 let oneDriveResumeStarted = false;
 
@@ -490,7 +488,6 @@ export function DriveConnectCard({
           ) : null}
           <ul className="drive-connect__providers" aria-label={CONNECT_WITH_TITLE}>
             {choices.filter((provider) => provider.id !== 'googlePhotos' || !photosBinding).map((provider) => {
-              const comingForLaunch = connectListBadge(provider) === CONNECT_LAUNCH_BADGE;
               const waitingForMicrosoft = provider.id === 'oneDrive' && !microsoftChecked;
               const canConnect = provider.phase === 'live' && provider.isAvailable();
               const opening = busyId === provider.id;
@@ -498,12 +495,11 @@ export function DriveConnectCard({
                 <li key={provider.id}>
                   <button
                     type="button"
-                    className={canConnect ? 'btn' : comingForLaunch ? 'btn btn--ghost' : 'btn btn--ghost btn--unavailable'}
+                    className={canConnect ? 'btn' : 'btn btn--ghost btn--unavailable'}
                     disabled={!canConnect || busyId !== null || waitingForMicrosoft}
                     onClick={() => void connect(provider)}
                   >
                     {opening ? `Opening ${provider.displayName}…` : provider.displayName}
-                    {comingForLaunch ? <span className="drive-connect__soon">{CONNECT_LAUNCH_BADGE}</span> : null}
                   </button>
                 </li>
               );
