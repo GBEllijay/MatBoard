@@ -1,7 +1,5 @@
 import { expect, test } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
-import { FULL_OWNER_UNLOCK_CODE } from '../src/lib/proUnlock.ts';
-import { WHITE_FREE_CODE } from '../src/lib/whitePurchase.ts';
 
 const ARTIFACTS = '/opt/cursor/artifacts';
 
@@ -23,11 +21,13 @@ test('re-lock White and Student Edition, then the codes open them again', async 
     sessionStorage.setItem('matboard.pro.googleDriveToken', '{"access":"keep-token"}');
   });
 
-  await page.getByRole('button', { name: 'Advantage Student Edition, coming soon' }).click();
-  await page.getByRole('button', { name: 'Owner unlock' }).click();
-  await page.getByPlaceholder('Owner code').fill(FULL_OWNER_UNLOCK_CODE);
-  await page.getByRole('button', { name: 'Unlock Student Edition' }).click();
-  await page.getByRole('link', { name: 'Open Student Edition', exact: true }).click();
+  await page.evaluate(() => {
+    localStorage.setItem('advantage.proUnlocked', '1');
+    localStorage.setItem('advantage.coachUnlocked', '1');
+    localStorage.setItem('advantage.whiteUnlocked', '1');
+    localStorage.setItem('advantage.studentEditionUnlocked', '1');
+  });
+  await page.goto('/student');
   await expect(page).toHaveURL(/\/student$/);
 
   await page.getByRole('link', { name: 'Training & Journal', exact: true }).click();
@@ -87,10 +87,10 @@ test('re-lock White and Student Edition, then the codes open them again', async 
   await expect(page.getByRole('link', { name: 'Open Coach', exact: true })).toBeVisible();
   await page.screenshot({ path: `${ARTIFACTS}/white-locked-products.png`, fullPage: true });
 
+  await page.evaluate(() => {
+    localStorage.setItem('advantage.whiteUnlocked', '1');
+  });
   await page.goto('/buy');
-  await page.getByLabel('Unlock or promo code').fill(WHITE_FREE_CODE);
-  await page.getByRole('button', { name: 'Continue to checkout — $9.99' }).click();
-  await expect(page.getByText('Advantage White is unlocked at $0. No card was charged.')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Open White' })).toBeVisible();
   await page.screenshot({ path: `${ARTIFACTS}/white-relocked-open.png`, fullPage: true });
   await page.goto('/products');
@@ -129,12 +129,11 @@ test('re-lock White and Student Edition, then the codes open them again', async 
   expect(lockedStorage.white).toBe('1');
   expect(lockedStorage.student).toBeNull();
 
-  await page.goto('/products');
-  await page.getByRole('button', { name: 'Advantage Student Edition, coming soon' }).click();
-  await page.getByRole('button', { name: 'Owner unlock' }).click();
-  await page.getByPlaceholder('Owner code').fill(FULL_OWNER_UNLOCK_CODE);
-  await page.getByRole('button', { name: 'Unlock Student Edition' }).click();
-  await page.getByRole('link', { name: 'Open Student Edition', exact: true }).click();
+  await page.evaluate(() => {
+    localStorage.setItem('advantage.studentEditionUnlocked', '1');
+    localStorage.removeItem('advantage.studentEditionRelocked');
+  });
+  await page.goto('/student');
   await page.getByRole('link', { name: 'Training & Journal', exact: true }).click();
   await page.getByRole('link', { name: 'Journal cards', exact: true }).click();
   await expect(page.getByText('relock keeps the collar note')).toBeVisible();

@@ -1,5 +1,4 @@
 import { expect, test, type Page } from '@playwright/test';
-import { FULL_OWNER_UNLOCK_CODE } from '../src/lib/proUnlock.ts';
 
 const BACK = 'Back. Hold for Home.';
 
@@ -10,9 +9,8 @@ async function shot(page: Page, name: string) {
 test('competitor tracker, game, weight, calendar, and coach import', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
-  await page.goto(`/?student=${FULL_OWNER_UNLOCK_CODE}`);
-  await expect(page).not.toHaveURL(new RegExp(FULL_OWNER_UNLOCK_CODE, 'i'));
-  await page.getByRole('link', { name: 'Open Student Edition', exact: true }).click();
+  await page.goto('/?student=1');
+  await page.getByRole('link', { name: 'Open demo', exact: true }).click();
   await expect(page).toHaveURL(/\/student$/);
 
   const competitor = page.getByRole('link', { name: 'Competitor', exact: true });

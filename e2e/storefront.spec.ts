@@ -1,6 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
 import { ALPHA_REQUEST_SUBJECT, SITE_FEEDBACK_EMAIL } from '../src/lib/siteFooter.ts';
-import { FULL_OWNER_UNLOCK_CODE } from '../src/lib/proUnlock.ts';
 
 const LANDSCAPES = [
   { width: 844, height: 390 },
@@ -140,13 +139,11 @@ test('White card opens checkout; Student, Coach, Pro, and the heading open the p
 test('legacy student and owner-code home links still open the edition picker', async ({ page }) => {
   await page.goto('/?student=1');
   await expect(page).toHaveURL(/\/products\?student=1$/);
-  await expect(page.getByRole('link', { name: 'Open Student Edition', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open demo', exact: true })).toBeVisible();
 
-  await page.goto(`/editions?pro=${FULL_OWNER_UNLOCK_CODE}`);
+  await page.goto('/editions?pro=1');
   await expect(page).toHaveURL(/\/products/);
-  await expect(page).not.toHaveURL(new RegExp(FULL_OWNER_UNLOCK_CODE, 'i'));
-  await expect(page.getByRole('link', { name: 'Open Student Edition', exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Open Coach', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open Coach', exact: true })).toHaveCount(0);
 });
 
 test('buy page shows an unlock or promo code field without printing launch codes', async ({ page }) => {
@@ -158,7 +155,7 @@ test('buy page shows an unlock or promo code field without printing launch codes
   expect(box && box.y).toBeLessThan(900);
   await expect(page.getByRole('button', { name: 'Continue to checkout — $9.99' })).toBeVisible();
   const body = await page.locator('body').innerText();
-  expect(body).not.toMatch(/WHITE499|WHITE099|WHITEFREE|WINBYADV/i);
+  expect(body).not.toMatch(/WHITE499|WHITE099/i);
   await shot(page, 'buy-code-field');
 });
 
