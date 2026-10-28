@@ -1,0 +1,88 @@
+import { secretMatches } from './codeCrypto.ts';
+import { GENERIC_CODE_FAILURE } from './paywallDecisions.ts';
+import { allowAttempt, clientIp, rateBucket, rateLimitedResponse, OWNER_TEST_LIMIT } from './rateLimit.ts';
+import type { GrantDoor } from './codeCatalog.ts';
+
+export type OwnerTestEnv = {
+  OWNER_TEST_SECRET?: string;
+  CODE_HASH_PEPPER?: string;
+};
+
+const DOORS: readonly GrantDoor[] = ['white', 'student', 'coach', 'pro', 'seat'];
+
+const TIER_GRANTS: Record<string, GrantDoor[]> = {
+  white: ['white'],
+  student: ['student'],
+  coach: ['coach'],
+  pro: ['pro', 'student'],
+  seat: ['seat'],
+  all: ['white', 'student', 'coach', 'pro', 'seat'],
+};
+
+const JSON_HEADERS = {
+  'content-type': 'application/json; charset=utf-8',
+  'cache-control': 'no-store',
+};
+
+function json(status: number, body: unknown): Response {
+  return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
+}
+
+function genericFailure(): Response {
+  return json(400, { ok: false, error: GENERIC_CODE_FAILURE });
+}
+
+function clampDays(raw: unknown): number {
+  const value = typeof raw === 'number' ? raw : Number(raw);
+  if (!Number.isFinite(value)) return 7;
+  return Math.min(30, Math.max(1, Math.floor(value)));
+}
+
+/**
+ * Owner test unlock. The secret is compared in constant time and is never
+ * logged or returned. An unset secret fails the same way as a wrong secret.
+ */
+export async function handleOwnerTest(
+  request: Request,
+  env: OwnerTestEnv,
+  kv: { get(key: string): Promise<string | null>; put(key: string, value: string): Promise<unknown> } | null = null,
+  now: () => Date = () => new Date(),
+): Promise<Response> {
+  if (request.method !== 'POST') return json(405, { error: 'Method not allowed.' });
+  const pepper = env.CODE_HASH_PEPPER?.trim() ?? '';
+  const bucket = await rateBucket('owner-test', clientIp(request), pepper);
+  if (!(await allowAttempt(bucket, OWNER_TEST_LIMIT, now().getTime(), kv))) return rateLimitedResponse();
+
+  const raw = await request.text();
+  if (raw.length > 4_000) return json(413, { error: 'Request is too large.' });
+  let body: unknown = {};
+  if (raw.trim()) {
+    try {
+      body = JSON.parse(raw) as unknown;
+    } catch {
+      return genericFailure();
+    }
+  }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return genericFailure();
+  const secret = (body as { secret?: unknown }).secret;
+  if (typeof secret !== 'string') return genericFailure();
+  const match = await secretMatches(secret, env.OWNER_TEST_SECRET?.trim());
+  if (!match) return genericFailure();
+
+  const action = (body as { action?: unknown }).action;
+  if (action === 'clear') return json(200, { ok: true, cleared: true, grants: [], source: 'owner-test' });
+
+  const tierRaw = (body as { tier?: unknown }).tier;
+  const tier = typeof tierRaw === 'string' ? tierRaw.trim().toLowerCase() : 'all';
+  const grants = TIER_GRANTS[tier];
+  if (!grants) return genericFailure();
+  const days = clampDays((body as { days?: unknown }).days);
+  const expiresAt = new Date(now().getTime() + days * 24 * 60 * 60 * 1000).toISOString();
+  return json(200, {
+    ok: true,
+    grants: grants.filter((door): door is GrantDoor => (DOORS as readonly string[]).includes(door)),
+    expiresAt,
+    source: 'owner-test',
+    tier,
+  });
+}

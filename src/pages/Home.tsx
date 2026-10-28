@@ -5,6 +5,7 @@ import { BeltRail } from '../components/BeltRail';
 import { ComingSoonAd, ComingSoonAdActions } from '../components/ComingSoonAd';
 import { HomeMark } from '../components/HomeMark';
 import { LeatherSpine } from '../components/LeatherSpine';
+import { OwnerTestSheet } from '../components/OwnerTestSheet';
 import { ProUnlockSheet } from '../components/ProUnlockSheet';
 import { useCurrentSeat } from '../components/SeatSessionBar';
 import { Sheet } from '../components/Sheet';
@@ -17,7 +18,7 @@ import {
   COMING_SOON_ADS,
   type SoonProduct,
 } from '../lib/comingSoonAds';
-import { studentEditionOpen } from '../lib/studentEdition';
+import { studentDemoMode, studentEditionEntitled, studentEditionOpen } from '../lib/studentEdition';
 import {
   COACH_HOME_DESCRIPTION,
   HOME_MOTTO,
@@ -53,14 +54,17 @@ export function HomePage() {
   const coachOpen = coachDoorOpen(proUnlocked, coachUnlocked, seated);
   const [params] = useSearchParams();
   const studentPreview = params.get('student') === '1';
-  const studentOpen = studentEditionOpen(params, {
+  const studentOwner = {
     pro: proUnlocked,
     coach: coachUnlocked,
     white: whiteUnlocked,
     student: studentUnlocked,
-  });
-  const studentTo = studentPreview ? '/student?student=1' : '/student';
+  };
+  const studentOpen = studentEditionOpen(params, studentOwner);
+  const studentDemo = studentDemoMode(params, studentOwner) || !studentEditionEntitled(studentOwner);
+  const studentTo = studentPreview || !studentEditionEntitled(studentOwner) ? '/student?student=1' : '/student';
   const [unlockOpen, setUnlockOpen] = useState<'coach' | 'pro' | 'student' | null>(null);
+  const [ownerTestOpen, setOwnerTestOpen] = useState(false);
   const [soon, setSoon] = useState<SoonProduct | null>(null);
 
   const openUnlock = (product: 'coach' | 'pro' | 'student') => {
@@ -100,6 +104,7 @@ export function HomePage() {
 
           <StudentHomeCard
             open={studentOpen}
+            demo={studentDemo}
             to={studentTo}
             onSoon={() => setSoon('student')}
           />
@@ -173,6 +178,11 @@ export function HomePage() {
           <p className="home__hint">
             Install Advantage as an app from your browser menu for best results.
           </p>
+          <p className="home__hint">
+            <button type="button" className="btn btn--ghost" onClick={() => setOwnerTestOpen(true)}>
+              Owner test unlock
+            </button>
+          </p>
         </div>
         <SiteFooter />
       </div>
@@ -206,16 +216,19 @@ export function HomePage() {
         open={unlockOpen !== null}
         onClose={() => setUnlockOpen(null)}
       />
+      <OwnerTestSheet open={ownerTestOpen} onClose={() => setOwnerTestOpen(false)} />
     </main>
   );
 }
 
 function StudentHomeCard({
   open,
+  demo,
   to,
   onSoon,
 }: {
   open: boolean;
+  demo: boolean;
   to: string;
   onSoon: () => void;
 }) {
@@ -233,7 +246,7 @@ function StudentHomeCard({
         {body}
         <div className="mode-card__actions">
           <Link className="btn btn--white" to={to}>
-            Open Student Edition
+            {demo ? 'Open demo' : 'Open Student Edition'}
           </Link>
         </div>
       </article>
@@ -250,6 +263,11 @@ function StudentHomeCard({
       />
       {body}
       <p className="mode-card__price">{STUDENT_PRICE_LINE}</p>
+      <div className="mode-card__actions">
+        <Link className="btn btn--white" to="/student?student=1">
+          Try the demo
+        </Link>
+      </div>
       <AlphaAccessNote note={STUDENT_ALPHA_ACCESS_NOTE} />
     </article>
   );

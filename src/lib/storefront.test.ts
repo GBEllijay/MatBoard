@@ -18,8 +18,7 @@ import {
   STOREFRONT_TIMER,
   STOREFRONT_WOODBLOCKS,
 } from './storefront.ts';
-import { WHITE_BUY_PATH, WHITE_FREE_CODE, WHITE_LAUNCH_PROMOS, WHITE_PRICE_LABEL } from './whitePurchase.ts';
-import { FULL_OWNER_UNLOCK_CODE } from './proUnlock.ts';
+import { WHITE_BUY_PATH, WHITE_PRICE_LABEL } from './whitePurchase.ts';
 
 test('storefront sells White once and sends Buy Now to the existing checkout', () => {
   assert.equal(STOREFRONT_PRICE_LABEL, '$9.99');
@@ -125,9 +124,5 @@ test('alpha requests keep the existing inbox and the prefilled subject', () => {
   assert.equal(SITE_FEEDBACK_EMAIL, 'advantageappllc@gmail.com');
   const href = alphaRequestMailto();
   assert.equal(href, `mailto:${SITE_FEEDBACK_EMAIL}?subject=${encodeURIComponent(ALPHA_REQUEST_SUBJECT)}`);
-  assert.doesNotMatch(href, new RegExp(WHITE_FREE_CODE, 'i'));
-  assert.doesNotMatch(href, new RegExp(FULL_OWNER_UNLOCK_CODE, 'i'));
-  for (const promo of WHITE_LAUNCH_PROMOS) {
-    assert.doesNotMatch(href, new RegExp(promo.code, 'i'));
-  }
+  assert.equal(href.startsWith('mailto:advantageappllc@gmail.com?subject='), true);
 });

@@ -1,9 +1,12 @@
+import { ownerTestActive, subscribeOwnerTest } from './ownerTestGrant.ts';
 import { lockStudentEdition } from './studentUnlock.ts';
-import { lookupWhiteEntitlement } from './whiteEntitlementClient.ts';
 import { WHITE_BUY_PATH } from './whitePurchase.ts';
 
-/** This browser finished checkout, WHITEFREE, or an email restore. Not a Google login. */
+/** This browser finished a confirmed checkout or a server code redeem. Not a Google login. */
 export const WHITE_UNLOCK_STORAGE_KEY = 'advantage.whiteUnlocked';
+
+/** Set when a code redeem includes an expiry. A Stripe purchase leaves this empty. */
+export const WHITE_EXPIRES_STORAGE_KEY = 'advantage.whiteExpiresAt';
 
 const listeners = new Set<() => void>();
 
@@ -18,21 +21,48 @@ function readFlag(): boolean {
 function writeFlag(unlocked: boolean): void {
   try {
     if (unlocked) localStorage.setItem(WHITE_UNLOCK_STORAGE_KEY, '1');
-    else localStorage.removeItem(WHITE_UNLOCK_STORAGE_KEY);
+    else {
+      localStorage.removeItem(WHITE_UNLOCK_STORAGE_KEY);
+      localStorage.removeItem(WHITE_EXPIRES_STORAGE_KEY);
+    }
   } catch {
     /* ignore quota / private mode */
   }
   listeners.forEach((fn) => fn());
 }
 
+function readExpiry(): string | null {
+  try {
+    return localStorage.getItem(WHITE_EXPIRES_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setWhiteExpiry(expiresAt: string | null): void {
+  try {
+    if (expiresAt) localStorage.setItem(WHITE_EXPIRES_STORAGE_KEY, expiresAt);
+    else localStorage.removeItem(WHITE_EXPIRES_STORAGE_KEY);
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
 export function isWhiteUnlocked(): boolean {
-  return readFlag();
+  if (ownerTestActive('white')) return true;
+  if (!readFlag()) return false;
+  const expiry = readExpiry();
+  if (!expiry) return true;
+  const ends = Date.parse(expiry);
+  return Number.isFinite(ends) && ends > Date.now();
 }
 
 export function subscribeWhiteUnlock(fn: () => void): () => void {
   listeners.add(fn);
+  const offTest = subscribeOwnerTest(fn);
   return () => {
     listeners.delete(fn);
+    offTest();
   };
 }
 
@@ -55,9 +85,11 @@ export function lockWhite(): void {
   listeners.forEach((fn) => fn());
 }
 
-/** Keep a successful Stripe or WHITEFREE result on this device so /white opens. */
-export function rememberWhitePurchase(status: { entitled: boolean }): boolean {
+/** Keep a server-confirmed Stripe result on this device so /white opens. */
+export function rememberWhitePurchase(status: { entitled: boolean; grants?: string[] }): boolean {
   if (!status.entitled) return false;
+  if (status.grants && !status.grants.includes('white')) return false;
+  setWhiteExpiry(null);
   writeFlag(true);
   return true;
 }
@@ -96,32 +128,21 @@ export function isWhiteRestoreEmail(raw: string): boolean {
   return true;
 }
 
-export type WhiteRestoreLookup = (query: { email: string }) => Promise<{ entitled: boolean }>;
-
 export type WhiteRestoreResult = { ok: true } | { ok: false; error: string };
 
+const RESTORE_CLOSED =
+  'Email lookup no longer unlocks a purchase. Finish checkout on this device, or enter a code.';
+
 /**
- * Cross-device restore. An entitled purchase email unlocks White on this device.
- * A miss does not clear an unlock that is already stored.
+ * Email lookup used to say whether an address had paid. It does not unlock,
+ * and it does not say whether the address bought anything. A stored unlock stays.
  */
-export async function restoreWhiteByEmail(
-  email: string,
-  lookup: WhiteRestoreLookup = lookupWhiteEntitlement,
-): Promise<WhiteRestoreResult> {
+export async function restoreWhiteByEmail(email: string): Promise<WhiteRestoreResult> {
   const trimmed = email.trim();
   if (!isWhiteRestoreEmail(trimmed)) {
     return { ok: false, error: 'Enter the email from your purchase.' };
   }
-  try {
-    const status = await lookup({ email: trimmed });
-    if (!status.entitled) {
-      return { ok: false, error: 'That email does not have Advantage White.' };
-    }
-  } catch {
-    return { ok: false, error: 'Could not check that email. Check your connection and try again.' };
-  }
-  writeFlag(true);
-  return { ok: true };
+  return { ok: false, error: RESTORE_CLOSED };
 }
 
 if (typeof window !== 'undefined') {

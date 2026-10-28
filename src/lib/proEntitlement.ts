@@ -17,8 +17,8 @@ export function proDeviceUnlock(status: { entitled?: boolean; product?: string }
 }
 
 /**
- * Stripe's Pro success return. This is the only `/buy/pro` URL that renders
- * before the alpha door is open, so the webhook can unlock this device.
+ * Stripe's Pro success return. The page can render so the server can confirm
+ * the session. The query itself does not unlock Pro.
  */
 export function proPurchaseReturn(search: URLSearchParams): boolean {
   const sessionId = search.get('session_id')?.trim() ?? '';

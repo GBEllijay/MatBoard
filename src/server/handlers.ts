@@ -1,14 +1,13 @@
 import {
-  entitlementStatus,
-  proEntitlementStatus,
-  studentEntitlementStatus,
   type EntitlementStore,
   type ProEntitlement,
   type StudentEntitlement,
   type WhiteEntitlement,
 } from './entitlements.ts';
 import { isHalfOffCheckoutFlag } from '../lib/halfOff.ts';
-import { API_FREE_CODE, API_PRODUCT_ID, API_PRODUCT_PRO, API_PRODUCT_STUDENT } from './routes.ts';
+import { ENTITLEMENT_GENERIC_MESSAGE } from './paywallDecisions.ts';
+import { allowAttempt, clientIp, rateBucket, rateLimitedResponse, ENTITLEMENT_LIMIT } from './rateLimit.ts';
+import { API_PRODUCT_ID, API_PRODUCT_PRO, API_PRODUCT_STUDENT } from './routes.ts';
 import {
   checkoutFormFields,
   checkoutReturnUrls,
@@ -46,16 +45,13 @@ function stripeFailure(error: unknown): Response {
   return json(http, { error: message || 'Stripe request failed.' });
 }
 
-function freeSessionId(): string {
-  return `free_${crypto.randomUUID().replace(/-/g, '')}`;
-}
-
 export async function handleCheckout(
   request: Request,
   env: StripeRuntimeEnv,
   fetchImpl: typeof fetch = fetch,
   store: EntitlementStore | null = null,
 ): Promise<Response> {
+  void store;
   if (request.method !== 'POST') return methodNotAllowed('POST');
   const raw = await request.text();
   if (raw.length > 4_000) return json(413, { error: 'Checkout request is too large.' });
@@ -79,10 +75,6 @@ export async function handleCheckout(
   const halfOff = isHalfOffCheckoutFlag((body as { halfOff?: unknown }).halfOff);
   const product = readCheckoutProduct((body as { product?: unknown }).product);
   if (typeof product !== 'string') return json(400, { error: product.error });
-  if (promo && promo.toUpperCase() === API_FREE_CODE) {
-    if (product !== 'white') return json(400, { error: 'That promo code is not active.' });
-    return grantFreeUnlock(store);
-  }
 
   const config = readStripeConfig(env, product);
   if ('error' in config) return json(503, { error: config.error });
@@ -205,60 +197,21 @@ export async function handleWebhook(
   return json(200, { received: true, sessionId: stored.sessionId, entitled: stored.status === 'active' });
 }
 
-const SESSION_ID = /^(?:cs|free)_[A-Za-z0-9_]+$/;
+const ENTITLEMENT_BODY = { ok: true, message: ENTITLEMENT_GENERIC_MESSAGE };
 
-async function grantFreeUnlock(store: EntitlementStore | null, now: () => Date = () => new Date()): Promise<Response> {
-  if (!store) {
-    return json(503, {
-      error: 'Entitlement store is not configured. Bind WHITE_ENTITLEMENTS or use local dev.',
-    });
-  }
-  const record: WhiteEntitlement = {
-    email: '',
-    sessionId: freeSessionId(),
-    product: API_PRODUCT_ID,
-    amountTotal: 0,
-    currency: 'usd',
-    createdAt: now().toISOString(),
-  };
-  const stored = await store.save(record);
-  return json(200, {
-    entitled: true,
-    free: true,
-    amountTotal: 0,
-    currency: 'usd',
-    product: stored.product,
-    email: stored.email,
-    sessionId: stored.sessionId,
-    createdAt: stored.createdAt,
-  });
-}
-
-export async function handleEntitlement(request: Request, store: EntitlementStore | null): Promise<Response> {
+/**
+ * Same response for every email, session, and product. Does not read the
+ * purchase store, so it cannot say whether someone bought.
+ */
+export async function handleEntitlement(
+  request: Request,
+  _store: EntitlementStore | null,
+  env: { CODE_HASH_PEPPER?: string } = {},
+  kv: { get(key: string): Promise<string | null>; put(key: string, value: string): Promise<unknown> } | null = null,
+  now: () => Date = () => new Date(),
+): Promise<Response> {
   if (request.method !== 'GET') return methodNotAllowed('GET');
-  if (!store) {
-    return json(503, { error: 'Entitlement store is not configured. Bind WHITE_ENTITLEMENTS or use local dev.' });
-  }
-  const url = new URL(request.url);
-  const sessionId = url.searchParams.get('session_id')?.trim() ?? '';
-  const email = url.searchParams.get('email')?.trim() ?? '';
-  const product = url.searchParams.get('product')?.trim().toLowerCase() ?? '';
-  if (!sessionId && !email) return json(400, { error: 'Pass email or session_id.' });
-  if (sessionId && !SESSION_ID.test(sessionId)) return json(400, { error: 'session_id is not a purchase id.' });
-  if (email && (email.length > 320 || !email.includes('@') || /\s/.test(email))) {
-    return json(400, { error: 'email is not valid.' });
-  }
-  if (product && product !== 'white' && product !== 'pro' && product !== 'student') {
-    return json(400, { error: 'Product must be white, student, or pro.' });
-  }
-  if (sessionId) {
-    const white = await store.findBySessionId(sessionId);
-    if (white) return json(200, entitlementStatus(white));
-    const student = await store.findStudentBySessionId(sessionId);
-    if (student) return json(200, studentEntitlementStatus(student));
-    return json(200, proEntitlementStatus(await store.findProBySessionId(sessionId)));
-  }
-  if (product === 'pro') return json(200, proEntitlementStatus(await store.findProByEmail(email)));
-  if (product === 'student') return json(200, studentEntitlementStatus(await store.findStudentByEmail(email)));
-  return json(200, entitlementStatus(await store.findByEmail(email)));
+  const bucket = await rateBucket('entitlement', clientIp(request), env.CODE_HASH_PEPPER?.trim() ?? '');
+  if (!(await allowAttempt(bucket, ENTITLEMENT_LIMIT, now().getTime(), kv))) return rateLimitedResponse();
+  return json(200, ENTITLEMENT_BODY);
 }

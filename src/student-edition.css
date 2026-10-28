@@ -2650,3 +2650,28 @@ input.sr-only.student-film-file {
 .student-clear-list li {
   margin: 0.15rem 0;
 }
+
+.student-demo-banner {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0;
+  padding: 0.65rem 0.9rem;
+  background: #f4e4b2;
+  color: #1c1404;
+  font: 600 0.95rem/1.35 system-ui, sans-serif;
+}
+
+.student-demo-banner p {
+  margin: 0;
+}
+
+.student-demo-banner a {
+  flex: none;
+  color: inherit;
+  font-weight: 700;
+}

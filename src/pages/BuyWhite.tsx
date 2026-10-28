@@ -10,7 +10,8 @@ import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
-import { lookupWhiteEntitlement, type WhiteEntitlementStatus } from '../lib/whiteEntitlementClient';
+import { confirmCheckoutSession, redeemAccessCode } from '../lib/codeRedeemClient';
+import type { WhiteEntitlementStatus } from '../lib/whiteEntitlementClient';
 import {
   COACH_LIST_PRICE_CENTS,
   PRO_LIST_PRICE_CENTS,
@@ -19,7 +20,7 @@ import {
   STUDENT_LIST_PRICE_CENTS,
 } from '../lib/productPrices';
 import { PRODUCTS_PATH, STUDENT_EDITION_NAME } from '../lib/productNames';
-import { studentEditionOpen } from '../lib/studentEdition';
+import { studentEditionEntitled } from '../lib/studentEdition';
 import { buyCheckoutBody } from '../lib/halfOff';
 import {
   WHITE_CHECKOUT_API,
@@ -27,38 +28,10 @@ import {
   WHITE_INCLUDED,
   WHITE_PRICE_DETAIL,
   WHITE_PRICE_LABEL,
-  WHITE_PRODUCT_ID,
   WHITE_STRIPE_NOTE,
   formatUsdFromCents,
-  isWhiteFreeCode,
 } from '../lib/whitePurchase';
 import { rememberWhitePurchase, restoreWhiteByEmail } from '../lib/whiteUnlock';
-
-type FreeLinkResult = { ok: true } | { ok: false; error: string };
-
-let freeLinkPromise: Promise<FreeLinkResult> | null = null;
-
-function unlockFromPrivateLink(code: string): Promise<FreeLinkResult> {
-  if (!freeLinkPromise) {
-    freeLinkPromise = (async () => {
-      try {
-        const response = await fetch(WHITE_CHECKOUT_API, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ promotionCode: code }),
-        });
-        const body = (await response.json()) as { url?: string; error?: string; entitled?: boolean };
-        if (response.ok && body.entitled && !body.url) return { ok: true };
-        freeLinkPromise = null;
-        return { ok: false, error: body.error || 'Unlock could not be recorded.' };
-      } catch {
-        freeLinkPromise = null;
-        return { ok: false, error: 'Unlock could not be recorded. Check your connection and try again.' };
-      }
-    })();
-  }
-  return freeLinkPromise;
-}
 
 export function BuyWhitePage() {
   const [params, setParams] = useSearchParams();
@@ -69,6 +42,7 @@ export function BuyWhitePage() {
   const [error, setError] = useState<string | null>(null);
   const [record, setRecord] = useState<WhiteEntitlementStatus | null>(null);
   const [freeUnlock, setFreeUnlock] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [promoInput, setPromoInput] = useState('');
   const [restoreEmail, setRestoreEmail] = useState('');
   const [restorePending, setRestorePending] = useState(false);
@@ -77,7 +51,7 @@ export function BuyWhitePage() {
   const [studentError, setStudentError] = useState<string | null>(null);
   const halfOff = useHalfOffArrival();
   const unlocked = useWhiteUnlocked();
-  const studentOpen = studentEditionOpen(params, {
+  const studentOpen = studentEditionEntitled({
     pro: useProUnlocked(),
     coach: useCoachUnlocked(),
     white: unlocked,
@@ -95,56 +69,41 @@ export function BuyWhitePage() {
   useEffect(() => {
     if (checkout !== 'success' || !sessionId) return;
     let cancelled = false;
-    let attempts = 0;
-    let timer = 0;
-    const tick = async () => {
-      const status = await lookupWhiteEntitlement({ sessionId });
-      if (status.entitled && (!status.product || status.product === WHITE_PRODUCT_ID)) rememberWhitePurchase(status);
+    setConfirming(true);
+    void confirmCheckoutSession(sessionId).then((result) => {
       if (cancelled) return;
-      attempts += 1;
-      if (status.entitled || attempts >= 4) {
-        setRecord(status);
+      setConfirming(false);
+      if (result.ok && result.grants.includes('white')) {
+        rememberWhitePurchase({ entitled: true, grants: result.grants });
+        setRecord({ entitled: true, product: result.product });
         return;
       }
-      timer = window.setTimeout(() => void tick(), 1000);
-    };
-    void tick();
+      setRecord({ entitled: false });
+      if (!result.ok) setError(result.error);
+    });
     return () => {
       cancelled = true;
-      window.clearTimeout(timer);
     };
   }, [checkout, sessionId]);
 
   useEffect(() => {
-    if (!code || isWhiteFreeCode(code)) return;
-    setParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        next.delete('code');
-        return next;
-      },
-      { replace: true },
-    );
-  }, [code, setParams]);
-
-  useEffect(() => {
-    if (!isWhiteFreeCode(code)) return;
+    if (!code) return;
     let active = true;
-    void unlockFromPrivateLink(code.trim()).then((result) => {
-      if (result.ok) rememberWhitePurchase({ entitled: true });
+    void redeemAccessCode(code).then((result) => {
       if (!active) return;
+      setParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete('code');
+          return next;
+        },
+        { replace: true },
+      );
       if (result.ok) {
         setFreeUnlock(true);
-        setParams(
-          (prev) => {
-            const next = new URLSearchParams(prev);
-            next.delete('code');
-            return next;
-          },
-          { replace: true },
-        );
         return;
       }
+      setPromoInput(code);
       setError(result.error);
     });
     return () => {
@@ -192,18 +151,20 @@ export function BuyWhitePage() {
     setError(null);
     const typed = promoInput.trim();
     if (unlocked && !typed) return;
-    if (isWhiteFreeCode(typed)) {
+    if (typed) {
       setPending(true);
-      const result = await unlockFromPrivateLink(typed);
-      setPending(false);
-      if (result.ok) {
-        rememberWhitePurchase({ entitled: true });
+      const redeemed = await redeemAccessCode(typed);
+      if (redeemed.ok) {
+        setPending(false);
         setFreeUnlock(true);
         setPromoInput('');
         return;
       }
-      setError(result.error);
-      return;
+      if (redeemed.error !== "That code didn't work.") {
+        setPending(false);
+        setError(redeemed.error);
+        return;
+      }
     }
     setPending(true);
     try {
@@ -246,9 +207,11 @@ export function BuyWhitePage() {
             <HalfOffCheckoutNote active={halfOff} />
             {checkout === 'success' ? (
               <p className="buy__status buy__status--ok" role="status">
-                {record?.entitled
-                  ? `Advantage White is recorded${record.email ? ` for ${record.email}` : ''}.`
-                  : 'Payment submitted. Advantage records it when Stripe sends checkout.session.completed.'}
+                {confirming
+                  ? 'Confirming that payment with Stripe.'
+                  : record?.entitled
+                    ? 'Advantage White is unlocked on this device.'
+                    : "That payment isn't confirmed. Nothing was unlocked."}
               </p>
             ) : null}
             {checkout === 'cancel' ? (
@@ -334,7 +297,7 @@ export function BuyWhitePage() {
           {unlocked ? null : (
             <form className="buy__card" onSubmit={(event) => void onRestore(event)}>
               <h3>Already purchased?</h3>
-              <p>Enter the email from your Stripe receipt to unlock White on this device. No second charge.</p>
+              <p>Email lookup does not unlock a purchase. Finish checkout on this device, or enter a code.</p>
               <label className="buy__field">
                 <span>Purchase email</span>
                 <input

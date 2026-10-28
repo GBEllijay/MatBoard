@@ -51,6 +51,7 @@ import {
   JOURNAL_TECHNIQUE_MAX,
   JOURNAL_TECHNIQUE_ROWS,
   searchStudentJournal,
+  studentDemoMode,
   studentEditionOpen,
   techniqueDrilledLabel,
   todayIso,
@@ -58,6 +59,7 @@ import {
   type FundamentalRow,
   type JournalCardView,
 } from '../lib/studentEdition.ts';
+import { clearStudentDemoOverlay } from '../lib/studentDemo';
 import '../student-edition.css';
 import './student/arena.css';
 import './student/hub.css';
@@ -123,15 +125,27 @@ function JournalDateField({
 export function StudentEditionPage() {
   const [params] = useSearchParams();
   const path = useLocation().pathname.replace(/\/+$/, '');
-  const open = studentEditionOpen(params, {
+  const owner = {
     pro: useProUnlocked(),
     coach: useCoachUnlocked(),
     white: useWhiteUnlocked(),
     student: useStudentEditionUnlocked(),
-  });
+  };
+  const open = studentEditionOpen(params, owner);
+  const demo = studentDemoMode(params, owner);
   if (!open) return <StudentClosed />;
 
   const rest = path.startsWith('/student') ? path.slice('/student'.length).replace(/^\//, '') : '';
+  const screen = studentScreenNode(rest);
+  return (
+    <>
+      {demo ? <StudentDemoBanner /> : null}
+      {screen}
+    </>
+  );
+}
+
+function studentScreenNode(rest: string) {
   switch (studentScreen(rest)) {
     case 'journal':
       return <JournalToday />;
@@ -192,6 +206,22 @@ export function StudentEditionPage() {
   }
 }
 
+function StudentDemoBanner() {
+  return (
+    <div className="student-demo-banner" role="note">
+      <p>DEMO MODE. Sample journal on this screen. It is not saved to your real Student Edition.</p>
+      <a
+        href="/products"
+        onClick={() => {
+          clearStudentDemoOverlay();
+        }}
+      >
+        Exit demo
+      </a>
+    </div>
+  );
+}
+
 function StudentClosed() {
   return (
     <main className="home home--student">
@@ -201,7 +231,7 @@ function StudentClosed() {
           <header className="student-hub__band">
             <LeatherSpine />
             <h2>{STUDENT_EDITION_NAME}</h2>
-            <p>This preview opens with the owner unlock, or with ?student=1 on the address.</p>
+            <p>Student Edition opens with a code or a purchase. The demo uses sample data and does not unlock it.</p>
           </header>
         </div>
         <SiteFooter />

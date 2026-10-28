@@ -88,7 +88,7 @@ test('a blank session drops a raw write of the stress-test file and keeps a real
   const storage = memory();
   installStudentMockGuard(storage, () => '?student=1');
   storage.setItem(STUDENT_FILE_STORAGE_KEY, handoff);
-  assert.equal(storage.getItem(STUDENT_FILE_STORAGE_KEY), null);
+  assert.equal(loadStudentReport(storage).profile.displayName, 'Demo Student');
   storage.setItem(STUDENT_FILE_STORAGE_KEY, realJournal());
   assert.equal(loadStudentReport(storage).profile.belt, 'blue');
   assert.equal(loadStudentReport(storage).competition?.tournaments[0]?.name, 'Spring Open');
@@ -136,7 +136,7 @@ test('a stress-test file already stored is removed unless the demo was requested
   existing.poke(STUDENT_FILE_STORAGE_KEY, handoff);
   installStudentMockGuard(existing, () => '?student=1');
   reconcileStudentStorage(existing, '?student=1');
-  assert.equal(existing.getItem(STUDENT_FILE_STORAGE_KEY), null);
+  assert.equal(loadStudentReport(existing).profile.displayName, 'Demo Student');
   assert.equal(loadStudentReport(existing).profile.belt, 'white');
 
   resetStudentMockGuardForTests();
@@ -153,13 +153,13 @@ test('a late stress-test write is removed, including one from another tab, and a
   installStudentMockGuard(storage, () => '?student=1');
   storage.poke(STUDENT_FILE_STORAGE_KEY, handoff);
   reconcileStudentStorage(storage, '?student=1');
-  assert.equal(storage.getItem(STUDENT_FILE_STORAGE_KEY), null);
+  assert.equal(loadStudentReport(storage).profile.displayName, 'Demo Student');
   assert.equal(loadStudentReport(storage).profile.belt, 'white');
 
   storage.poke(STUDENT_FILE_STORAGE_KEY, handoff);
   noteStudentStorageEvent(STUDENT_FILE_STORAGE_KEY);
   reconcileStudentStorage(storage, '?student=1');
-  assert.equal(storage.getItem(STUDENT_FILE_STORAGE_KEY), null);
+  assert.equal(loadStudentReport(storage).profile.displayName, 'Demo Student');
   assert.equal(loadStudentReport(storage).profile.belt, 'white');
 
   resetStudentMockGuardForTests();
@@ -267,12 +267,12 @@ test('a fresh session drops the sim athlete journal, self-assessment history, an
   storage.poke(ASSESSMENT_STORAGE_KEY, simAssessment());
   storage.poke(STUDENT_BACKUP_STAMP_KEY, '2026-10-25T12:00:00.000Z');
   installStudentMockGuard(storage, () => '?student=1');
-  assert.equal(storage.getItem(STUDENT_FILE_STORAGE_KEY), null);
+  assert.equal(loadStudentReport(storage).profile.displayName, 'Demo Student');
   assert.equal(storage.getItem(ASSESSMENT_STORAGE_KEY), null);
   assert.equal(storage.getItem(STUDENT_BACKUP_STAMP_KEY), null);
   const fresh = loadStudentReport(storage);
   assert.equal(fresh.profile.belt, 'white');
-  assert.equal(fresh.profile.displayName, '');
+  assert.equal(fresh.profile.displayName, 'Demo Student');
   assert.equal(fresh.rank?.tapeCount, 0);
   assert.equal(fresh.competition?.tournaments.length, 0);
   assert.equal(loadAssessments(storage).entries.length, 0);
@@ -281,7 +281,7 @@ test('a fresh session drops the sim athlete journal, self-assessment history, an
   storage.setItem(STUDENT_FILE_STORAGE_KEY, simAthleteJournal());
   storage.setItem(ASSESSMENT_STORAGE_KEY, simAssessment());
   storage.setItem(STUDENT_BACKUP_STAMP_KEY, '2026-10-25T12:00:00.000Z');
-  assert.equal(storage.getItem(STUDENT_FILE_STORAGE_KEY), null);
+  assert.equal(storage.getItem(STUDENT_FILE_STORAGE_KEY)?.includes('Sim Athlete') ?? false, false);
   assert.equal(storage.getItem(ASSESSMENT_STORAGE_KEY), null);
   assert.equal(readStudentBackupStamp(storage), null);
   assert.equal(loadStudentReport(storage).profile.belt, 'white');
@@ -295,7 +295,7 @@ test('clear forgets sim self-assessment history, including a later 10-26 entry, 
   storage.poke(ASSESSMENT_STORAGE_KEY, simAssessment());
   storage.poke(STUDENT_BACKUP_STAMP_KEY, '2026-10-25T12:00:00.000Z');
   reconcileStudentStorage(storage, '?student=1');
-  assert.equal(loadStudentReport(storage).profile.displayName, '');
+  assert.notEqual(loadStudentReport(storage).profile.displayName, 'Sim Athlete Coach Two');
   assert.equal(loadAssessments(storage).entries.length, 0);
 
   writeAssessments(
@@ -308,7 +308,7 @@ test('clear forgets sim self-assessment history, including a later 10-26 entry, 
 
   clearStudentMemory(storage);
   assert.equal(loadStudentReport(storage).profile.belt, 'white');
-  assert.equal(loadStudentReport(storage).profile.displayName, '');
+  assert.notEqual(loadStudentReport(storage).profile.displayName, 'Sim Athlete Coach Two');
   assert.equal(loadAssessments(storage).entries.length, 0);
   assert.equal(readStudentBackupStamp(storage), null);
 

@@ -20,8 +20,8 @@ test('center logo is the tier picker on every page', () => {
 
 test('owner-code and student preview queries stay on the edition picker', () => {
   assert.equal(preservesAppHomeQuery(new URLSearchParams('student=1')), true);
-  assert.equal(preservesAppHomeQuery(new URLSearchParams('student=WINBYADV')), true);
-  assert.equal(preservesAppHomeQuery(new URLSearchParams('pro=advantage')), true);
+  assert.equal(preservesAppHomeQuery(new URLSearchParams('student=preview')), true);
+  assert.equal(preservesAppHomeQuery(new URLSearchParams('pro=1')), true);
   assert.equal(preservesAppHomeQuery(new URLSearchParams('unlock=1')), true);
   assert.equal(preservesAppHomeQuery(new URLSearchParams('coach=1')), true);
   assert.equal(preservesAppHomeQuery(new URLSearchParams('')), false);

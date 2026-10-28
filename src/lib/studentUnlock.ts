@@ -1,4 +1,6 @@
-/** This browser was opened with the full owner code. Not a purchase and not `?student=1`. */
+import { ownerTestActive, subscribeOwnerTest } from './ownerTestGrant.ts';
+
+/** This browser redeemed a server code or finished checkout. Not a purchase email and not `?student=1`. */
 
 export const STUDENT_EDITION_UNLOCK_STORAGE_KEY = 'advantage.studentEditionUnlocked';
 
@@ -34,13 +36,15 @@ function writeFlag(unlocked: boolean): void {
 }
 
 export function isStudentEditionUnlocked(): boolean {
-  return readFlag();
+  return readFlag() || ownerTestActive('student') || ownerTestActive('pro');
 }
 
 export function subscribeStudentEditionUnlock(fn: () => void): () => void {
   listeners.add(fn);
+  const offTest = subscribeOwnerTest(fn);
   return () => {
     listeners.delete(fn);
+    offTest();
   };
 }
 
@@ -86,7 +90,7 @@ export function lockStudentEdition(): void {
  * Clears this browser's owner flag and the local purchase remember, and
  * marks the door locked so a Pro unlock already stored here does not keep
  * the journal open. Journal, belts, benchmarks, Pro, Coach, White, Drive,
- * and OAuth stay. `?student=1` still previews. An owner code clears the mark.
+ * and OAuth stay. `?student=1` still opens the demo. A server code clears the mark.
  */
 export function lockStudentEditionBrowser(): void {
   try {

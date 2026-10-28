@@ -1,17 +1,9 @@
+import { ownerTestActive, subscribeOwnerTest } from './ownerTestGrant.ts';
 import { lockStudentEdition } from './studentUnlock.ts';
 
-/** Soft-beta owner unlock. Not real auth — keeps Coach off the public home. */
+/** Coach door on this browser. A server redeem sets the flag. URL params do not. */
 
 export const COACH_UNLOCK_STORAGE_KEY = 'advantage.coachUnlocked';
-
-/**
- * Gym-owner code for Coach unlock. Default is the locked owner code `gbellijay`.
- * Override at build time with VITE_COACH_UNLOCK_CODE. Compared case-insensitively after trim.
- */
-export const COACH_UNLOCK_CODE =
-  (typeof import.meta.env?.VITE_COACH_UNLOCK_CODE === 'string'
-    ? import.meta.env.VITE_COACH_UNLOCK_CODE.trim()
-    : '') || 'gbellijay';
 
 const listeners = new Set<() => void>();
 
@@ -34,13 +26,15 @@ function writeFlag(unlocked: boolean): void {
 }
 
 export function isCoachUnlocked(): boolean {
-  return readFlag();
+  return readFlag() || ownerTestActive('coach');
 }
 
 export function subscribeCoachUnlock(fn: () => void): () => void {
   listeners.add(fn);
+  const offTest = subscribeOwnerTest(fn);
   return () => {
     listeners.delete(fn);
+    offTest();
   };
 }
 
@@ -48,28 +42,13 @@ export function setCoachUnlocked(unlocked: boolean): void {
   writeFlag(unlocked);
 }
 
-export function coachCodesMatch(code: string): boolean {
-  return code.trim().toLowerCase() === COACH_UNLOCK_CODE.toLowerCase();
-}
-
-/** Preview a `?coach=` value without writing storage. `null` = no recognized override. */
-export function previewCoachUnlockFromSearch(search: URLSearchParams): boolean | null {
-  const raw = search.get('coach');
-  if (raw == null) return null;
-  const trimmed = raw.trim();
-  if (trimmed === '0' || trimmed.toLowerCase() === 'lock') return false;
-  if (trimmed === '1' || coachCodesMatch(trimmed)) return true;
+/** Address-bar values never unlock or lock Coach. */
+export function previewCoachUnlockFromSearch(_search: URLSearchParams): boolean | null {
   return null;
 }
 
-/** Accepts the owner code, or `1` as a short query/localStorage-style flag. */
-export function tryCoachUnlock(code: string): boolean {
-  const trimmed = code.trim();
-  if (!trimmed) return false;
-  if (trimmed === '1' || coachCodesMatch(trimmed)) {
-    writeFlag(true);
-    return true;
-  }
+/** Kept so older call sites compile. A code only works through the server redeem. */
+export function tryCoachUnlock(_code: string): boolean {
   return false;
 }
 
@@ -78,20 +57,9 @@ export function lockCoach(): void {
   lockStudentEdition();
 }
 
-/**
- * Apply `?coach=` from the current URL.
- * `1` or the owner code unlocks; `0` or `lock` locks.
- * Returns true when a recognized param was consumed.
- */
-export function applyCoachUnlockSearch(search: URLSearchParams): boolean {
-  const raw = search.get('coach');
-  if (raw == null) return false;
-  const trimmed = raw.trim();
-  if (trimmed === '0' || trimmed.toLowerCase() === 'lock') {
-    lockCoach();
-    return true;
-  }
-  return tryCoachUnlock(trimmed);
+/** `?coach=` does not change Coach. */
+export function applyCoachUnlockSearch(_search: URLSearchParams): boolean {
+  return false;
 }
 
 export function stripCoachUnlockParams(search: URLSearchParams): URLSearchParams {
@@ -100,10 +68,9 @@ export function stripCoachUnlockParams(search: URLSearchParams): URLSearchParams
   return next;
 }
 
-/** Read `window.location.search` so a first paint of a Coach route can unlock. */
+/** Coach query stripping shares the Pro consumer so a shortcut cannot land first. */
 export function consumeCoachUnlockQueryNow(): void {
-  if (typeof window === 'undefined') return;
-  applyCoachUnlockSearch(new URLSearchParams(window.location.search));
+  /* consumeUnlockQueryNow removes ?coach= before paint. */
 }
 
 if (typeof window !== 'undefined') {

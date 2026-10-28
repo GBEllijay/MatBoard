@@ -4,12 +4,14 @@ import { API_PRODUCT_STUDENT } from '../server/routes.ts';
 import { isCoachUnlocked, lockCoach } from './coachUnlock.ts';
 import { FUNDAMENTALS_CATALOG } from './progress/catalog.ts';
 import { parseProgressPacket, searchJournal } from './progress/format.ts';
-import { isProUnlocked, lockPro, tryProductOwnerUnlock, tryUnlock } from './proUnlock.ts';
+import { isProUnlocked, lockPro, setProUnlocked } from './proUnlock.ts';
+import { setCoachUnlocked } from './coachUnlock.ts';
 import {
   clearStudentEditionRelock,
   isStudentEditionRelocked,
   isStudentEditionUnlocked,
   lockStudentEditionBrowser,
+  setStudentEditionUnlocked,
 } from './studentUnlock.ts';
 import { isWhiteUnlocked, setWhiteUnlocked } from './whiteUnlock.ts';
 import { setRankBelt, setRankTapeCount } from './studentRank.ts';
@@ -81,13 +83,14 @@ test('preview flag opens Student Edition without unlocking other products', () =
 
 test('a Pro unlock opens Student Edition and the Coach-only code does not', () => {
   resetUnlocks();
-  assert.equal(tryUnlock('advantage'), true);
+  setProUnlocked(true);
+  assert.equal(isProUnlocked(), true);
   assert.equal(isCoachUnlocked(), false);
   assert.equal(isWhiteUnlocked(), false);
   assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: true, coach: false, white: false }), true);
   assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: false, coach: false, white: false }), true);
   resetUnlocks();
-  assert.equal(tryProductOwnerUnlock('coach', 'gbellijay'), true);
+  setCoachUnlocked(true);
   assert.equal(isCoachUnlocked(), true);
   assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: false, coach: true, white: false }), false);
   resetUnlocks();
@@ -108,9 +111,11 @@ test('a completed Student Edition Checkout unlocks the journal', () => {
   resetUnlocks();
 });
 
-test('WINBYADV owner unlock opens Student Edition', () => {
+test('a full owner grant opens Student Edition', () => {
   resetUnlocks();
-  assert.equal(tryProductOwnerUnlock('pro', 'WINBYADV'), true);
+  setProUnlocked(true);
+  setCoachUnlocked(true);
+  setWhiteUnlocked(true);
   assert.equal(isWhiteUnlocked(), true);
   assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: true, coach: true, white: true }), true);
   resetUnlocks();
@@ -118,7 +123,10 @@ test('WINBYADV owner unlock opens Student Edition', () => {
 
 test('locking Student Edition clears only this browser unlock and keeps journal, belt, and benchmarks', () => {
   resetUnlocks();
-  assert.equal(tryProductOwnerUnlock('student', 'WINBYADV'), true);
+  setProUnlocked(true);
+  setCoachUnlocked(true);
+  setWhiteUnlocked(true);
+  setStudentEditionUnlocked(true);
   let report = addJournalEntry(
     blankStudentReport(10),
     {
@@ -169,7 +177,10 @@ test('locking Student Edition clears only this browser unlock and keeps journal,
   assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: true, coach: true, white: true, student: false }), true);
 
   lockStudentEditionBrowser();
-  assert.equal(tryProductOwnerUnlock('student', 'WINBYADV'), true);
+  setProUnlocked(true);
+  setCoachUnlocked(true);
+  setWhiteUnlocked(true);
+  setStudentEditionUnlocked(true);
   assert.equal(isStudentEditionRelocked(), false);
   assert.equal(isStudentEditionUnlocked(), true);
   assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: true, coach: true, white: true, student: true }), true);
@@ -183,7 +194,7 @@ test('locking Student Edition clears only this browser unlock and keeps journal,
   assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: false, coach: true, white: true }), false);
   assert.equal(localStorage.getItem(STUDENT_EDITION_STORAGE_KEY), before);
 
-  assert.equal(tryProductOwnerUnlock('pro', 'WINBYADV'), true);
+  setProUnlocked(true);
   lockCoach();
   assert.equal(isStudentEditionRelocked(), false);
   assert.equal(isCoachUnlocked(), false);

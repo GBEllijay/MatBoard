@@ -9,7 +9,8 @@ import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import type { CheckoutProduct } from '../lib/checkoutProducts';
-import { PRO_PRODUCT_ID, proDeviceUnlock, proPurchaseEntitled } from '../lib/proEntitlement';
+import { confirmCheckoutSession } from '../lib/codeRedeemClient';
+import { PRO_PRODUCT_ID, proPurchaseEntitled } from '../lib/proEntitlement';
 import { setProUnlocked } from '../lib/proUnlock';
 import {
   COACH_LIST_PRICE_CENTS,
@@ -18,9 +19,9 @@ import {
   STUDENT_LIST_PRICE_CENTS,
 } from '../lib/productPrices';
 import { PRODUCTS_PATH, STUDENT_EDITION_NAME } from '../lib/productNames';
-import { rememberStudentPurchase, STUDENT_PRODUCT_ID, studentEditionOpen } from '../lib/studentEdition';
+import { rememberStudentPurchase, STUDENT_PRODUCT_ID, studentEditionEntitled } from '../lib/studentEdition';
 import { buyCheckoutBody } from '../lib/halfOff';
-import { lookupWhiteEntitlement, type WhiteEntitlementStatus } from '../lib/whiteEntitlementClient';
+import type { WhiteEntitlementStatus } from '../lib/whiteEntitlementClient';
 import { formatUsdFromCents, WHITE_CHECKOUT_API, WHITE_STRIPE_NOTE } from '../lib/whitePurchase';
 
 const COACH_PRICE = formatUsdFromCents(COACH_LIST_PRICE_CENTS);
@@ -83,9 +84,10 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [record, setRecord] = useState<WhiteEntitlementStatus | null>(null);
+  const [confirming, setConfirming] = useState(false);
   const halfOff = useHalfOffArrival();
   const proUnlocked = useProUnlocked();
-  const studentDoor = studentEditionOpen(params, {
+  const studentDoor = studentEditionEntitled({
     pro: proUnlocked,
     coach: useCoachUnlocked(),
     white: useWhiteUnlocked(),
@@ -103,49 +105,31 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
   }, [tier.title]);
 
   useEffect(() => {
-    if (tier.product !== 'student' || checkout !== 'success' || !sessionId) return;
+    if (checkout !== 'success' || !sessionId) return;
+    if (tier.product !== 'student' && tier.product !== 'pro' && tier.product !== 'coach') return;
     let cancelled = false;
-    let attempts = 0;
-    let timer = 0;
-    const tick = async () => {
-      const status = await lookupWhiteEntitlement({ sessionId });
-      rememberStudentPurchase(status);
+    setConfirming(true);
+    void confirmCheckoutSession(sessionId).then((result) => {
       if (cancelled) return;
-      attempts += 1;
-      if ((status.entitled && status.product === STUDENT_PRODUCT_ID) || attempts >= 4) {
-        setRecord(status);
+      setConfirming(false);
+      if (!result.ok) {
+        setRecord({ entitled: false, product: tier.product === 'pro' ? PRO_PRODUCT_ID : STUDENT_PRODUCT_ID });
+        setError(result.error);
         return;
       }
-      timer = window.setTimeout(() => void tick(), 1000);
-    };
-    void tick();
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [checkout, sessionId, tier.product]);
-
-  useEffect(() => {
-    if (tier.product !== 'pro' || checkout !== 'success' || !sessionId) return;
-    let cancelled = false;
-    let attempts = 0;
-    let timer = 0;
-    const tick = async () => {
-      const status = await lookupWhiteEntitlement({ sessionId });
-      const deviceUnlock = proDeviceUnlock(status);
-      if (deviceUnlock !== null) setProUnlocked(deviceUnlock);
-      if (cancelled) return;
-      attempts += 1;
-      if (deviceUnlock !== null || attempts >= 4) {
-        setRecord(status);
-        return;
+      const product =
+        result.product ??
+        (tier.product === 'pro' ? PRO_PRODUCT_ID : tier.product === 'student' ? STUDENT_PRODUCT_ID : 'advantage-coach');
+      const status = { entitled: true, product, grants: result.grants };
+      if (tier.product === 'student') rememberStudentPurchase(status);
+      if (tier.product === 'pro' && result.grants.includes('pro')) setProUnlocked(true);
+      if (tier.product === 'coach' && result.grants.includes('coach')) {
+        /* Coach checkout confirm sets the flag inside applyServerGrant. */
       }
-      timer = window.setTimeout(() => void tick(), 1000);
-    };
-    void tick();
+      setRecord(status);
+    });
     return () => {
       cancelled = true;
-      window.clearTimeout(timer);
     };
   }, [checkout, sessionId, tier.product]);
 
@@ -193,17 +177,19 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
             <HalfOffCheckoutNote active={halfOff} />
             {checkout === 'success' ? (
               <p className="buy__status buy__status--ok" role="status">
-                {tier.product === 'pro'
-                  ? record && proPurchaseEntitled(record)
-                    ? `Advantage Pro is unlocked${record.email ? ` for ${record.email}` : ''}.`
-                    : record?.product === PRO_PRODUCT_ID
-                      ? 'This Advantage Pro subscription is not active.'
-                      : 'Payment submitted. Advantage unlocks Pro when Stripe confirms the subscription.'
-                  : tier.product === 'student'
-                    ? record?.entitled && record.product === STUDENT_PRODUCT_ID
-                      ? `Advantage Student Edition is unlocked${record.email ? ` for ${record.email}` : ''}.`
-                      : 'Payment submitted. Advantage unlocks Student Edition when Stripe confirms the purchase.'
-                    : 'Payment submitted. Stripe Checkout is complete.'}
+                {confirming
+                  ? 'Confirming that payment with Stripe.'
+                  : tier.product === 'pro'
+                    ? record && proPurchaseEntitled(record)
+                      ? 'Advantage Pro is unlocked on this device.'
+                      : "That payment isn't confirmed. Nothing was unlocked."
+                    : tier.product === 'student'
+                      ? record?.entitled && record.product === STUDENT_PRODUCT_ID
+                        ? 'Advantage Student Edition is unlocked on this device.'
+                        : "That payment isn't confirmed. Nothing was unlocked."
+                      : record?.entitled
+                        ? 'Advantage Coach is unlocked on this device.'
+                        : "That payment isn't confirmed. Nothing was unlocked."}
               </p>
             ) : null}
             {checkout === 'cancel' ? (

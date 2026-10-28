@@ -2,10 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { WHITE_BUY_PATH } from './whitePurchase.ts';
 import { DRIVE_BINDING_KEY } from './googleDrive.ts';
-import { FULL_OWNER_UNLOCK_CODE, tryProductOwnerUnlock } from './proUnlock.ts';
+import { setProUnlocked } from './proUnlock.ts';
 import { STUDENT_EDITION_UNLOCK_STORAGE_KEY, isStudentEditionUnlocked } from './studentUnlock.ts';
 import { STUDENT_PURCHASE_STORAGE_KEY } from './studentEdition.ts';
-import { WHITE_FREE_CODE } from './whitePurchase.ts';
 import {
   WHITE_UNLOCK_STORAGE_KEY,
   isWhiteRestoreEmail,
@@ -68,28 +67,15 @@ test('restore email matches the entitlement API check', () => {
   assert.equal(isWhiteRestoreEmail(`${'a'.repeat(320)}@x.com`), false);
 });
 
-test('entitled purchase email restores White on this device', async () => {
+test('an email does not unlock White or reveal a purchase', async () => {
   setWhiteUnlocked(false);
-  let seen = '';
-  const result = await restoreWhiteByEmail('  JustInGuise@gmail.com ', async ({ email }) => {
-    seen = email;
-    return { entitled: true };
-  });
-  assert.equal(result.ok, true);
-  assert.equal(seen, 'JustInGuise@gmail.com');
-  assert.equal(isWhiteUnlocked(), true);
-  assert.equal(whiteHubAllowed(isWhiteUnlocked()), true);
-  assert.equal(whiteEntryPath(isWhiteUnlocked()), '/white');
-});
-
-test('a non-entitled email does not unlock White or clear an existing unlock', async () => {
-  setWhiteUnlocked(false);
-  const denied = await restoreWhiteByEmail('gblajadvantage@gmail.com', async () => ({ entitled: false }));
-  assert.deepEqual(denied, { ok: false, error: 'That email does not have Advantage White.' });
+  const result = await restoreWhiteByEmail('  buyer@gym.com ');
+  assert.equal(result.ok, false);
+  assert.match(result.ok ? '' : result.error, /no longer unlocks/);
   assert.equal(isWhiteUnlocked(), false);
 
   setWhiteUnlocked(true);
-  const still = await restoreWhiteByEmail('advantageappllc@gmail.com', async () => ({ entitled: false }));
+  const still = await restoreWhiteByEmail('buyer@gym.com');
   assert.equal(still.ok, false);
   assert.equal(isWhiteUnlocked(), true);
 });
@@ -103,8 +89,6 @@ test('lockWhite clears only this browser White flag and the code can open it aga
   localStorage.setItem('matboard.whiteRoster.v1', '{"names":["Keepsake"]}');
   localStorage.setItem(DRIVE_BINDING_KEY, '{"folderId":"keep-folder"}');
   setWhiteUnlocked(true);
-  assert.equal(WHITE_FREE_CODE, 'WHITEFREE');
-  assert.equal(FULL_OWNER_UNLOCK_CODE, 'WINBYADV');
 
   lockWhite();
 
@@ -127,7 +111,8 @@ test('lockWhite clears only this browser White flag and the code can open it aga
 
   lockWhite();
   assert.equal(isWhiteUnlocked(), false);
-  assert.equal(tryProductOwnerUnlock('pro', FULL_OWNER_UNLOCK_CODE), true);
+  setProUnlocked(true);
+  setWhiteUnlocked(true);
   assert.equal(isWhiteUnlocked(), true);
   assert.equal(localStorage.getItem('matboard.studentEdition.v1'), '{"journal":"keep","belt":"blue"}');
   assert.equal(localStorage.getItem('matboard.whiteRoster.v1'), '{"names":["Keepsake"]}');
@@ -136,21 +121,11 @@ test('lockWhite clears only this browser White flag and the code can open it aga
 
 test('restore rejects a bad email before lookup and reports a failed lookup', async () => {
   setWhiteUnlocked(false);
-  let calls = 0;
-  const invalid = await restoreWhiteByEmail('not-an-email', async () => {
-    calls += 1;
-    return { entitled: true };
-  });
+  const invalid = await restoreWhiteByEmail('not-an-email');
   assert.deepEqual(invalid, { ok: false, error: 'Enter the email from your purchase.' });
-  assert.equal(calls, 0);
   assert.equal(isWhiteUnlocked(), false);
 
-  const offline = await restoreWhiteByEmail('buyer@gym.com', async () => {
-    throw new Error('offline');
-  });
-  assert.deepEqual(offline, {
-    ok: false,
-    error: 'Could not check that email. Check your connection and try again.',
-  });
+  const lookup = await restoreWhiteByEmail('buyer@gym.com');
+  assert.equal(lookup.ok, false);
   assert.equal(isWhiteUnlocked(), false);
 });

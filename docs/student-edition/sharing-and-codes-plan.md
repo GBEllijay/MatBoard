@@ -38,7 +38,7 @@ The Pro page still shows the academy pathway when a Google Drive or OneDrive fol
 | Rule | Where it lives now | Gap |
 | --- | --- | --- |
 | Student Edition opens for Pro, a student purchase, the owner student flag, or `?student=1` | `studentEditionOpen` in `src/lib/studentEdition.ts`. Pro writes `advantage.studentEditionUnlocked` from `src/lib/proUnlock.ts`. Purchase flag is `advantage.studentUnlocked`. | Coach and White do not open the journal. A half-off code would need to set the student purchase or a new grant. That writer is not built. |
-| Pro unlock | `advantage.proUnlocked`. Owner code `advantage` opens Pro and Student Edition. `WINBYADV` also opens White and Coach. | Not a Stripe subscription check. |
+| Pro unlock | `advantage.proUnlocked`, set after the server accepts a code or a confirmed Stripe session. | Not a Stripe subscription check. URL shortcuts do not set it. |
 | Student price | `STUDENT_LIST_PRICE_CENTS` is 1999. Checkout product `student` uses `STRIPE_PRICE_STUDENT` (`src/server/stripeCheckout.ts`, `src/lib/checkoutProducts.ts`). | No half-off price id. `STRIPE_PRICE_PRO_MONTHLY_DISCOUNT` is a Pro monthly discount, not a Student price. |
 | 10 free licenses | `PRO_INCLUDED_STUDENT_LICENSES` is 10 in `src/lib/progress/types.ts`. `licenseSource` may be `academy-member`, `pro-grant`, or `additional`. | Nothing issues those licenses. The 10-seat cap in `src/lib/instructorSeats.ts` (`PRO_INSTRUCTOR_SEAT_CAP`) is instructor seats, not Student Edition codes. |
 | Academy member discount | `ACADEMY_MEMBER_DISCOUNT_PERCENT` is 25. `ACADEMY_MEMBER_CODE_LABEL` is "Academy Member". `docs/student-edition/progress-format.md` says 25% off with no use limit. | The owner rule in this note is half off (50%). The constant was not changed. |

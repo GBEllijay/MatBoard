@@ -21,37 +21,6 @@ export const WHITE_PRICE_DETAIL = 'USD — One Time Purchase';
 export const WHITE_STRIPE_NOTE =
   'Payments processed through Stripe. Card details are entered on Stripe, not on this page.';
 
-/**
- * In-app unlock on /buy. Grants Advantage White at $0 with no Stripe call.
- * Must match API_FREE_CODE.
- */
-export const WHITE_FREE_CODE = 'WHITEFREE';
-
-export function isWhiteFreeCode(raw: string): boolean {
-  return raw.trim().toUpperCase() === WHITE_FREE_CODE;
-}
-
-/**
- * Launch promo placeholders. Create these in the Stripe Dashboard (test mode).
- * The public buy page has an enter-a-code field and does not print these names.
- * WHITEFREE unlocks in the app. Any other code is sent with Checkout.
- * $9.99 minus the amount off is the charge.
- */
-export const WHITE_LAUNCH_PROMOS = [
-  {
-    code: 'WHITE499',
-    couponId: 'advantage_white_499',
-    amountOffCents: 500,
-    label: '$4.99',
-  },
-  {
-    code: 'WHITE099',
-    couponId: 'advantage_white_099',
-    amountOffCents: 900,
-    label: '$0.99',
-  },
-] as const;
-
 export const WHITE_INCLUDED = [
   'Tournament Style BJJ Scoreboard',
   'Fully Customizable Round Timer',

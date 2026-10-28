@@ -4,5 +4,5 @@ import { pagesEntitlementStore, type PagesEnv } from '../pagesEnv.ts';
 type PagesContext = { request: Request; env: PagesEnv };
 
 export async function onRequest(context: PagesContext): Promise<Response> {
-  return handleEntitlement(context.request, pagesEntitlementStore(context.env));
+  return handleEntitlement(context.request, pagesEntitlementStore(context.env), context.env, context.env.WHITE_ENTITLEMENTS ?? null);
 }

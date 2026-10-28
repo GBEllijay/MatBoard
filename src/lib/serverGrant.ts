@@ -1,0 +1,21 @@
+import { setCoachUnlocked } from './coachUnlock.ts';
+import { setProUnlocked } from './proUnlock.ts';
+import { setStudentEditionUnlocked } from './studentUnlock.ts';
+import { setWhiteExpiry, setWhiteUnlocked } from './whiteUnlock.ts';
+
+export type ServerDoor = 'white' | 'student' | 'coach' | 'pro' | 'seat';
+
+/** Apply the doors a server redeem or checkout confirm returned. Codes stay on the server. */
+export function applyServerGrant(input: { grants?: unknown; expiresAt?: unknown }): boolean {
+  if (!Array.isArray(input.grants) || input.grants.length === 0) return false;
+  const grants = new Set(input.grants.filter((door): door is ServerDoor => typeof door === 'string'));
+  const expiry = typeof input.expiresAt === 'string' ? input.expiresAt : null;
+  if (grants.has('white')) {
+    setWhiteUnlocked(true);
+    setWhiteExpiry(expiry);
+  }
+  if (grants.has('coach')) setCoachUnlocked(true);
+  if (grants.has('pro')) setProUnlocked(true);
+  if (grants.has('student')) setStudentEditionUnlocked(true);
+  return true;
+}
