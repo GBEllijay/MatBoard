@@ -1,42 +1,41 @@
 /** Pro door on this browser. A server redeem or checkout confirm sets the flag. URL params do not. */
 
-import { ownerTestActive, subscribeOwnerTest } from './ownerTestGrant.ts';
+import { doorOpen, notifyEntitlement, subscribeEntitlement } from './entitlement.ts';
+import { PRO_RELOCK_KEY } from './legacyUnlock.ts';
 import { setStudentEditionUnlocked } from './studentUnlock.ts';
 
 export const PRO_UNLOCK_STORAGE_KEY = 'advantage.proUnlocked';
 
 const listeners = new Set<() => void>();
 
-function readFlag(): boolean {
-  try {
-    return localStorage.getItem(PRO_UNLOCK_STORAGE_KEY) === '1';
-  } catch {
-    return false;
-  }
-}
-
 function writeFlag(unlocked: boolean): void {
   try {
-    if (unlocked) localStorage.setItem(PRO_UNLOCK_STORAGE_KEY, '1');
-    else localStorage.removeItem(PRO_UNLOCK_STORAGE_KEY);
+    if (unlocked) {
+      localStorage.setItem(PRO_UNLOCK_STORAGE_KEY, '1');
+      localStorage.removeItem(PRO_RELOCK_KEY);
+    } else {
+      localStorage.removeItem(PRO_UNLOCK_STORAGE_KEY);
+      localStorage.setItem(PRO_RELOCK_KEY, '1');
+    }
   } catch {
     /* ignore quota / private mode */
   }
   // Pro opens Student Edition. Locking Pro closes that grant. Coach-only does not write this flag.
   setStudentEditionUnlocked(unlocked);
   listeners.forEach((fn) => fn());
+  notifyEntitlement();
 }
 
 export function isProUnlocked(): boolean {
-  return readFlag() || ownerTestActive('pro');
+  return doorOpen('pro');
 }
 
 export function subscribeProUnlock(fn: () => void): () => void {
   listeners.add(fn);
-  const offTest = subscribeOwnerTest(fn);
+  const off = subscribeEntitlement(fn);
   return () => {
     listeners.delete(fn);
-    offTest();
+    off();
   };
 }
 

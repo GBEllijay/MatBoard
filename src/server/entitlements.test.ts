@@ -69,7 +69,8 @@ test('KV store round-trips the entitlement index', async () => {
   const store = kvEntitlementStore(kv);
   await store.save(purchase());
   assert.equal((await store.findBySessionId('cs_test_123'))?.email, 'gym@example.com');
-  assert.equal(keys.size, 1);
+  assert.equal(keys.size, 2);
+  assert.equal(keys.has('purchase:advantage-white:cs_test_123'), true);
 });
 
 function pro(overrides: Partial<ProEntitlement> = {}): ProEntitlement {

@@ -2,16 +2,28 @@ import { loadEnv, type Connect, type Plugin } from 'vite';
 import { fileEntitlementStore } from './fileEntitlements.ts';
 import { handleCheckoutConfirm } from './checkoutConfirm.ts';
 import { handleCodeRedeem } from './codeRedeem.ts';
+import { emailSenderFromEnv } from './emailSender.ts';
 import { handleCheckout, handleEntitlement, handleWebhook } from './handlers.ts';
 import { handleOwnerTest } from './ownerTest.ts';
+import { handlePublicConfig } from './publicConfig.ts';
+import { handleRestoreRequest, handleRestoreVerify, handleRevokeOtherDevices } from './restoreAccess.ts';
+import { handleSessionRedeem } from './sessionRedeem.ts';
+import { sqliteD1 } from './sqliteD1.ts';
+import { handleTokenRefresh } from './tokenRefresh.ts';
 import { MemoryRedemptionLedger } from './redemptionLedger.ts';
 import { MICROSOFT_CLIENT_API, publicMicrosoftClientIdFromEnv } from '../lib/microsoftClientPublic.ts';
 import {
   API_CHECKOUT_CONFIRM_PATH,
   API_CHECKOUT_PATH,
   API_CODES_REDEEM_PATH,
+  API_CONFIG_PATH,
+  API_DEVICES_REVOKE_PATH,
   API_ENTITLEMENT_PATH,
   API_OWNER_TEST_PATH,
+  API_RESTORE_REQUEST_PATH,
+  API_RESTORE_VERIFY_PATH,
+  API_SESSION_REDEEM_PATH,
+  API_TOKEN_REFRESH_PATH,
   API_WEBHOOK_PATH,
 } from './routes.ts';
 import type { EntitlementStore } from './entitlements.ts';
@@ -47,6 +59,15 @@ function stripeEnv(mode: string, root: string): StripeRuntimeEnv & {
   CODE_HASH_PEPPER?: string;
   CODE_CATALOG?: string;
   OWNER_TEST_SECRET?: string;
+  ENTITLEMENT_SIGNING_KEY?: string;
+  ENTITLEMENT_KEY_ID?: string;
+  RESEND_API_KEY?: string;
+  EMAIL_FROM?: string;
+  EMAIL_PROVIDER?: string;
+  TURNSTILE_SECRET_KEY?: string;
+  TURNSTILE_SITE_KEY?: string;
+  LEGACY_AMNESTY_ENDS_AT?: string;
+  MIN_APP_VERSION?: string;
 } {
   const env = readEnv(mode, root);
   const pick = (name: string) => env[name] || '';
@@ -64,6 +85,15 @@ function stripeEnv(mode: string, root: string): StripeRuntimeEnv & {
     CODE_HASH_PEPPER: pick('CODE_HASH_PEPPER'),
     CODE_CATALOG: pick('CODE_CATALOG'),
     OWNER_TEST_SECRET: pick('OWNER_TEST_SECRET'),
+    ENTITLEMENT_SIGNING_KEY: pick('ENTITLEMENT_SIGNING_KEY'),
+    ENTITLEMENT_KEY_ID: pick('ENTITLEMENT_KEY_ID'),
+    RESEND_API_KEY: pick('RESEND_API_KEY'),
+    EMAIL_FROM: pick('EMAIL_FROM'),
+    EMAIL_PROVIDER: pick('EMAIL_PROVIDER'),
+    TURNSTILE_SECRET_KEY: pick('TURNSTILE_SECRET_KEY'),
+    TURNSTILE_SITE_KEY: pick('TURNSTILE_SITE_KEY'),
+    LEGACY_AMNESTY_ENDS_AT: pick('LEGACY_AMNESTY_ENDS_AT'),
+    MIN_APP_VERSION: pick('MIN_APP_VERSION'),
   };
 }
 
@@ -129,10 +159,11 @@ async function writeResponse(res: NodeResponse, response: Response): Promise<voi
 }
 
 const devLedger = new MemoryRedemptionLedger();
+const devDb = sqliteD1();
 
 function attach(
   middlewares: Connect.Server,
-  env: StripeRuntimeEnv & { CODE_HASH_PEPPER?: string; CODE_CATALOG?: string; OWNER_TEST_SECRET?: string },
+  env: ReturnType<typeof stripeEnv>,
   microsoftEnv: { VITE_MICROSOFT_CLIENT_ID?: string; MICROSOFT_CLIENT_ID?: string },
   store: EntitlementStore,
 ) {
@@ -151,25 +182,48 @@ function attach(
       path === API_WEBHOOK_PATH ||
       path === API_CODES_REDEEM_PATH ||
       path === API_OWNER_TEST_PATH ||
-      path === API_CHECKOUT_CONFIRM_PATH;
+      path === API_CHECKOUT_CONFIRM_PATH ||
+      path === API_CONFIG_PATH ||
+      path === API_SESSION_REDEEM_PATH ||
+      path === API_TOKEN_REFRESH_PATH ||
+      path === API_RESTORE_REQUEST_PATH ||
+      path === API_RESTORE_VERIFY_PATH ||
+      path === API_DEVICES_REVOKE_PATH;
     if (!api) {
       next();
       return;
     }
     try {
       const request = await toWebRequest(req as NodeRequest);
+      const codeServices = {
+        db: devDb,
+        signingKey: env.ENTITLEMENT_SIGNING_KEY,
+        keyId: env.ENTITLEMENT_KEY_ID,
+      };
       const response =
         path === API_CHECKOUT_PATH
           ? await handleCheckout(request, env, fetch, store)
           : path === API_WEBHOOK_PATH
-            ? await handleWebhook(request, env, store)
+            ? await handleWebhook(request, env, store, () => new Date(), { db: devDb, pepper: env.CODE_HASH_PEPPER })
             : path === API_CODES_REDEEM_PATH
-              ? await handleCodeRedeem(request, env, null, devLedger)
+              ? await handleCodeRedeem(request, env, null, devLedger, () => new Date(), codeServices)
               : path === API_OWNER_TEST_PATH
-                ? await handleOwnerTest(request, env)
+                ? await handleOwnerTest(request, env, null, () => new Date(), codeServices)
                 : path === API_CHECKOUT_CONFIRM_PATH
                   ? await handleCheckoutConfirm(request, env)
-                  : await handleEntitlement(request, store, env);
+                  : path === API_CONFIG_PATH
+                    ? handlePublicConfig(request, env, devDb)
+                    : path === API_SESSION_REDEEM_PATH
+                      ? await handleSessionRedeem(request, env, devDb)
+                      : path === API_TOKEN_REFRESH_PATH
+                        ? await handleTokenRefresh(request, env, devDb)
+                        : path === API_RESTORE_REQUEST_PATH
+                          ? await handleRestoreRequest(request, env, devDb, emailSenderFromEnv(env))
+                          : path === API_RESTORE_VERIFY_PATH
+                            ? await handleRestoreVerify(request, env, devDb)
+                            : path === API_DEVICES_REVOKE_PATH
+                              ? await handleRevokeOtherDevices(request, env, devDb)
+                              : await handleEntitlement(request, store, env);
       await writeResponse(res as NodeResponse, response);
     } catch {
       res.statusCode = 500;

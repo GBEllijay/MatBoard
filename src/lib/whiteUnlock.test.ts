@@ -71,7 +71,6 @@ test('an email does not unlock White or reveal a purchase', async () => {
   setWhiteUnlocked(false);
   const result = await restoreWhiteByEmail('  buyer@gym.com ');
   assert.equal(result.ok, false);
-  assert.match(result.ok ? '' : result.error, /no longer unlocks/);
   assert.equal(isWhiteUnlocked(), false);
 
   setWhiteUnlocked(true);

@@ -9,7 +9,7 @@ import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import type { CheckoutProduct } from '../lib/checkoutProducts';
-import { confirmCheckoutSession } from '../lib/codeRedeemClient';
+import { confirmCheckoutSession, withCheckoutNonce } from '../lib/codeRedeemClient';
 import { PRO_PRODUCT_ID, proPurchaseEntitled } from '../lib/proEntitlement';
 import { setProUnlocked } from '../lib/proUnlock';
 import {
@@ -142,7 +142,7 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
       const response = await fetch(WHITE_CHECKOUT_API, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(buyCheckoutBody({ product: tier.product, halfOffActive: halfOff })),
+        body: JSON.stringify(await withCheckoutNonce(buyCheckoutBody({ product: tier.product, halfOffActive: halfOff }))),
       });
       const body = (await response.json()) as { url?: string; error?: string };
       if (!response.ok || !body.url) {

@@ -1,13 +1,14 @@
+import type { D1Database } from './d1.ts';
 import {
+  type CoachEntitlement,
   type EntitlementStore,
   type ProEntitlement,
   type StudentEntitlement,
   type WhiteEntitlement,
 } from './entitlements.ts';
+import { recordPurchase } from './purchaseRecords.ts';
 import { isHalfOffCheckoutFlag } from '../lib/halfOff.ts';
-import { ENTITLEMENT_GENERIC_MESSAGE } from './paywallDecisions.ts';
-import { allowAttempt, clientIp, rateBucket, rateLimitedResponse, ENTITLEMENT_LIMIT } from './rateLimit.ts';
-import { API_PRODUCT_ID, API_PRODUCT_PRO, API_PRODUCT_STUDENT } from './routes.ts';
+import { API_PRODUCT_COACH, API_PRODUCT_ID, API_PRODUCT_PRO, API_PRODUCT_STUDENT } from './routes.ts';
 import {
   checkoutFormFields,
   checkoutReturnUrls,
@@ -92,6 +93,7 @@ export async function handleCheckout(
       if (!found) return json(400, { error: 'That promo code is not active.' });
       promotionCodeId = found;
     }
+    const nonceHash = (body as { nonceHash?: unknown }).nonceHash;
     const fields = checkoutFormFields({
       priceIds: config.priceIds,
       mode: config.mode,
@@ -99,6 +101,7 @@ export async function handleCheckout(
       successUrl: urls.successUrl,
       cancelUrl: urls.cancelUrl,
       promotionCodeId,
+      clientReferenceId: typeof nonceHash === 'string' ? nonceHash.trim() : undefined,
     });
     const session = await createCheckoutSession(config.secret, fields, fetchImpl);
     return json(200, { url: session.url, id: session.id });
@@ -107,11 +110,44 @@ export async function handleCheckout(
   }
 }
 
+export type WebhookExtras = {
+  db?: D1Database | null;
+  pepper?: string;
+};
+
+async function mirrorPurchase(
+  extras: WebhookExtras,
+  input: {
+    email: string;
+    product: string;
+    source: 'stripe_payment' | 'stripe_subscription';
+    sourceRef: string;
+    sessionId: string;
+    subscriptionId?: string;
+    status?: 'active' | 'inactive';
+    now: Date;
+  },
+): Promise<void> {
+  if (!extras.db) return;
+  await recordPurchase(extras.db, {
+    email: input.email,
+    product: input.product,
+    source: input.source,
+    sourceRef: input.sourceRef,
+    sessionId: input.sessionId,
+    subscriptionId: input.subscriptionId,
+    pepper: extras.pepper ?? '',
+    now: input.now,
+    status: input.status ?? 'active',
+  });
+}
+
 export async function handleWebhook(
   request: Request,
   env: StripeRuntimeEnv,
   store: EntitlementStore | null,
   now: () => Date = () => new Date(),
+  extras: WebhookExtras = {},
 ): Promise<Response> {
   if (request.method !== 'POST') return methodNotAllowed('POST');
   const secret = env.STRIPE_WEBHOOK_SECRET?.trim() ?? '';
@@ -128,6 +164,14 @@ export async function handleWebhook(
   } catch {
     return json(400, { error: 'Webhook body must be JSON.' });
   }
+  const eventId = event && typeof event === 'object' && typeof (event as { id?: unknown }).id === 'string' ? (event as { id: string }).id : '';
+  if (eventId && extras.db) {
+    const seen = await extras.db
+      .prepare(`SELECT event_id AS eventId FROM stripe_events WHERE event_id = ?`)
+      .bind(eventId)
+      .first<{ eventId: string }>();
+    if (seen) return json(200, { received: true, duplicate: true });
+  }
   const parsed = purchaseFromStripeEvent(event);
   if (parsed.action === 'invalid') return json(400, { error: 'Webhook event is not valid.' });
   if (parsed.action === 'ignore') return json(200, { received: true, ignored: true });
@@ -139,8 +183,8 @@ export async function handleWebhook(
       error: 'Entitlement store is not configured. Bind WHITE_ENTITLEMENTS or use local dev.',
     });
   }
+  const stamp = now().toISOString();
   if (parsed.action === 'record' || parsed.action === 'record-student') {
-    const stamp = now().toISOString();
     if (parsed.action === 'record-student') {
       const record: StudentEntitlement = {
         email: parsed.purchase.email,
@@ -151,6 +195,17 @@ export async function handleWebhook(
         createdAt: stamp,
       };
       const stored = await store.saveStudent(record);
+      await mirrorPurchase(extras, {
+        email: stored.email,
+        product: stored.product,
+        source: 'stripe_payment',
+        sourceRef: stored.sessionId,
+        sessionId: stored.sessionId,
+        now: now(),
+      });
+      if (eventId && extras.db) {
+        await extras.db.prepare(`INSERT OR IGNORE INTO stripe_events (event_id, received_at) VALUES (?, ?)`).bind(eventId, stamp).run();
+      }
       return json(200, { received: true, sessionId: stored.sessionId });
     }
     const record: WhiteEntitlement = {
@@ -162,9 +217,42 @@ export async function handleWebhook(
       createdAt: stamp,
     };
     const stored = await store.save(record);
+    await mirrorPurchase(extras, {
+      email: stored.email,
+      product: stored.product,
+      source: 'stripe_payment',
+      sourceRef: stored.sessionId,
+      sessionId: stored.sessionId,
+      now: now(),
+    });
+    if (eventId && extras.db) {
+      await extras.db.prepare(`INSERT OR IGNORE INTO stripe_events (event_id, received_at) VALUES (?, ?)`).bind(eventId, stamp).run();
+    }
     return json(200, { received: true, sessionId: stored.sessionId });
   }
-  const stamp = now().toISOString();
+  if (parsed.action === 'record-coach') {
+    const record: CoachEntitlement = {
+      email: parsed.purchase.email,
+      sessionId: parsed.purchase.sessionId,
+      product: API_PRODUCT_COACH,
+      amountTotal: parsed.purchase.amountTotal,
+      currency: parsed.purchase.currency,
+      createdAt: stamp,
+    };
+    const stored = await store.saveCoach(record);
+    await mirrorPurchase(extras, {
+      email: stored.email,
+      product: stored.product,
+      source: 'stripe_payment',
+      sourceRef: stored.sessionId,
+      sessionId: stored.sessionId,
+      now: now(),
+    });
+    if (eventId && extras.db) {
+      await extras.db.prepare(`INSERT OR IGNORE INTO stripe_events (event_id, received_at) VALUES (?, ?)`).bind(eventId, stamp).run();
+    }
+    return json(200, { received: true, sessionId: stored.sessionId });
+  }
   if (parsed.action === 'grant-pro') {
     const stored = await store.savePro({
       email: parsed.grant.email,
@@ -177,6 +265,19 @@ export async function handleWebhook(
       createdAt: stamp,
       updatedAt: stamp,
     });
+    await mirrorPurchase(extras, {
+      email: stored.email,
+      product: stored.product,
+      source: 'stripe_subscription',
+      sourceRef: stored.sessionId,
+      sessionId: stored.sessionId,
+      subscriptionId: stored.subscriptionId,
+      status: 'active',
+      now: now(),
+    });
+    if (eventId && extras.db) {
+      await extras.db.prepare(`INSERT OR IGNORE INTO stripe_events (event_id, received_at) VALUES (?, ?)`).bind(eventId, stamp).run();
+    }
     return json(200, { received: true, sessionId: stored.sessionId, entitled: true });
   }
   const existing = await store.findProBySubscriptionId(parsed.sync.subscriptionId);
@@ -194,24 +295,36 @@ export async function handleWebhook(
     updatedAt: stamp,
   };
   const stored = await store.savePro(next);
+  await mirrorPurchase(extras, {
+    email: stored.email,
+    product: stored.product,
+    source: 'stripe_subscription',
+    sourceRef: stored.subscriptionId,
+    sessionId: stored.sessionId,
+    subscriptionId: stored.subscriptionId,
+    status: stored.status,
+    now: now(),
+  });
+  if (eventId && extras.db) {
+    await extras.db.prepare(`INSERT OR IGNORE INTO stripe_events (event_id, received_at) VALUES (?, ?)`).bind(eventId, stamp).run();
+  }
   return json(200, { received: true, sessionId: stored.sessionId, entitled: stored.status === 'active' });
 }
 
-const ENTITLEMENT_BODY = { ok: true, message: ENTITLEMENT_GENERIC_MESSAGE };
-
 /**
- * Same response for every email, session, and product. Does not read the
- * purchase store, so it cannot say whether someone bought.
+ * Deleted. Email lookup is replaced by the restore code. The response is the
+ * same for every query and does not read the purchase store.
  */
 export async function handleEntitlement(
   request: Request,
   _store: EntitlementStore | null,
-  env: { CODE_HASH_PEPPER?: string } = {},
-  kv: { get(key: string): Promise<string | null>; put(key: string, value: string): Promise<unknown> } | null = null,
-  now: () => Date = () => new Date(),
+  _env: { CODE_HASH_PEPPER?: string } = {},
+  _kv: { get(key: string): Promise<string | null>; put(key: string, value: string): Promise<unknown> } | null = null,
+  _now: () => Date = () => new Date(),
 ): Promise<Response> {
-  if (request.method !== 'GET') return methodNotAllowed('GET');
-  const bucket = await rateBucket('entitlement', clientIp(request), env.CODE_HASH_PEPPER?.trim() ?? '');
-  if (!(await allowAttempt(bucket, ENTITLEMENT_LIMIT, now().getTime(), kv))) return rateLimitedResponse();
-  return json(200, ENTITLEMENT_BODY);
+  if (request.method !== 'GET' && request.method !== 'POST') return methodNotAllowed('GET');
+  return json(410, {
+    ok: false,
+    error: 'Email lookup has been removed. Use Restore on this site. This check does not say whether an email has a purchase.',
+  });
 }

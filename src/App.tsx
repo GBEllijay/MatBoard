@@ -73,14 +73,18 @@ import { TournamentSuitePage } from './pages/TournamentSuite';
 import { TrainingNotesPage } from './pages/TrainingNotes';
 import { TrainingControllerPage } from './pages/TrainingController';
 import { TrainingPage } from './pages/Training';
+import { LegacyAccessNotice } from './components/LegacyAccessNotice';
+import { bootEntitlement } from './lib/entitlement';
 import { BuyCoachPage, BuyProPage, BuyStudentPage } from './pages/BuyTier';
 import { BuyWhitePage } from './pages/BuyWhite';
+import { RestoreAccessPage } from './pages/RestoreAccess';
 import { WhitePage } from './pages/White';
 import { WhiteRosterPage } from './pages/WhiteRoster';
 
 consumeUnlockQueryNow();
 consumeCoachUnlockQueryNow();
 consumeHalfOffQueryNow();
+bootEntitlement();
 
 /**
  * Full page loads read the invite before the router paints a locked route.
@@ -291,6 +295,7 @@ export default function App() {
   return (
     <>
     <SeatSessionChrome />
+    <LegacyAccessNotice />
     <InviteDoor>
     <Routes>
       <Route path="/" element={<PublicHomeRoute />} />
@@ -305,6 +310,7 @@ export default function App() {
         }
       />
       <Route path="/buy" element={<BuyWhitePage />} />
+      <Route path="/restore" element={<RestoreAccessPage />} />
       <Route
         path="/buy/student"
         element={

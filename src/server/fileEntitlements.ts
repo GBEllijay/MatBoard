@@ -2,8 +2,11 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import {
   applyEntitlement,
+  applyCoachEntitlement,
   applyProEntitlement,
   applyStudentEntitlement,
+  coachEntitlementByEmail,
+  coachEntitlementBySession,
   emptyEntitlementIndex,
   entitlementByEmail,
   entitlementBySession,
@@ -13,6 +16,7 @@ import {
   proEntitlementBySubscription,
   studentEntitlementByEmail,
   studentEntitlementBySession,
+  type CoachEntitlement,
   type EntitlementStore,
   type ProEntitlement,
   type StudentEntitlement,
@@ -73,6 +77,20 @@ export function fileEntitlementStore(filePath: string): EntitlementStore {
     },
     findStudentBySessionId(sessionId) {
       return run(() => studentEntitlementBySession(read(), sessionId));
+    },
+    saveCoach(record: CoachEntitlement) {
+      return run(() => {
+        const index = read();
+        const stored = applyCoachEntitlement(index, record);
+        write(index);
+        return stored;
+      });
+    },
+    findCoachByEmail(email) {
+      return run(() => coachEntitlementByEmail(read(), email));
+    },
+    findCoachBySessionId(sessionId) {
+      return run(() => coachEntitlementBySession(read(), sessionId));
     },
     savePro(record: ProEntitlement) {
       return run(() => {

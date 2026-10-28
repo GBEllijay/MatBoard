@@ -19,6 +19,7 @@ import {
   registerDemoSeed,
   studentDemoRequested,
 } from './studentDemo.ts';
+import { amnestyStillOpen } from './entitlement.ts';
 import { clearStudentEditionRelock, isStudentEditionRelocked, isStudentEditionUnlocked } from './studentUnlock.ts';
 import { exportProgressPacket, parseProgressPacket, searchJournal, searchJournalClips, techniqueDrilledLabel } from './progress/format.ts';
 import { shareTournaments } from './sharedTournaments.ts';
@@ -56,10 +57,11 @@ export const STUDENT_PURCHASE_STORAGE_KEY = 'advantage.studentUnlocked';
 
 export function isStudentPurchased(): boolean {
   try {
-    return localStorage.getItem(STUDENT_PURCHASE_STORAGE_KEY) === '1';
+    if (localStorage.getItem(STUDENT_PURCHASE_STORAGE_KEY) !== '1') return false;
   } catch {
     return false;
   }
+  return amnestyStillOpen();
 }
 
 export function setStudentPurchased(purchased: boolean): void {

@@ -1,11 +1,16 @@
+import type { Door } from '../lib/entitlementToken.ts';
+import type { GrantDoor } from './codeCatalog.ts';
 import { secretMatches } from './codeCrypto.ts';
+import { expandGrants } from './grantMatrix.ts';
 import { GENERIC_CODE_FAILURE } from './paywallDecisions.ts';
 import { allowAttempt, clientIp, rateBucket, rateLimitedResponse, OWNER_TEST_LIMIT } from './rateLimit.ts';
-import type { GrantDoor } from './codeCatalog.ts';
+import { issueToken } from './tokenIssue.ts';
 
 export type OwnerTestEnv = {
   OWNER_TEST_SECRET?: string;
   CODE_HASH_PEPPER?: string;
+  ENTITLEMENT_SIGNING_KEY?: string;
+  ENTITLEMENT_KEY_ID?: string;
 };
 
 const DOORS: readonly GrantDoor[] = ['white', 'student', 'coach', 'pro', 'seat'];
@@ -42,11 +47,17 @@ function clampDays(raw: unknown): number {
  * Owner test unlock. The secret is compared in constant time and is never
  * logged or returned. An unset secret fails the same way as a wrong secret.
  */
+export type OwnerTestServices = {
+  signingKey?: string;
+  keyId?: string;
+};
+
 export async function handleOwnerTest(
   request: Request,
   env: OwnerTestEnv,
   kv: { get(key: string): Promise<string | null>; put(key: string, value: string): Promise<unknown> } | null = null,
   now: () => Date = () => new Date(),
+  services: OwnerTestServices = {},
 ): Promise<Response> {
   if (request.method !== 'POST') return json(405, { error: 'Method not allowed.' });
   const pepper = env.CODE_HASH_PEPPER?.trim() ?? '';
@@ -77,12 +88,36 @@ export async function handleOwnerTest(
   const grants = TIER_GRANTS[tier];
   if (!grants) return genericFailure();
   const days = clampDays((body as { days?: unknown }).days);
-  const expiresAt = new Date(now().getTime() + days * 24 * 60 * 60 * 1000).toISOString();
+  const stamp = now();
+  const expiresAt = new Date(stamp.getTime() + days * 24 * 60 * 60 * 1000).toISOString();
+  const listed = grants.filter((door): door is GrantDoor => (DOORS as readonly string[]).includes(door));
+  const doors = expandGrants(listed.filter((door): door is Door => door !== 'seat'));
+  const deviceField = (body as { deviceId?: unknown }).deviceId;
+  const deviceId = typeof deviceField === 'string' && deviceField.trim() ? deviceField.trim().slice(0, 80) : 'owner-test-device';
+  const signingKey = services.signingKey ?? env.ENTITLEMENT_SIGNING_KEY;
+  let token: string | null = null;
+  if (signingKey && doors.length) {
+    token = await issueToken(
+      signingKey,
+      {
+        licenseId: 'owner-test',
+        grants: doors,
+        tier: 'owner',
+        src: 'owner',
+        deviceId,
+        now: stamp,
+        kind: 'owner-test',
+        ownerTestSeconds: days * 24 * 60 * 60,
+      },
+      services.keyId ?? env.ENTITLEMENT_KEY_ID,
+    );
+  }
   return json(200, {
     ok: true,
-    grants: grants.filter((door): door is GrantDoor => (DOORS as readonly string[]).includes(door)),
+    grants: listed,
     expiresAt,
     source: 'owner-test',
     tier,
+    ...(token ? { token, deviceId } : { degraded: !signingKey }),
   });
 }

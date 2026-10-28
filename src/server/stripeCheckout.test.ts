@@ -292,7 +292,7 @@ test('other events and unpaid sessions are ignored', () => {
         },
       },
     }).action,
-    'ignore',
+    'record-coach',
   );
   assert.equal(
     purchaseFromStripeEvent({

@@ -1,4 +1,4 @@
-import { ownerTestActive, subscribeOwnerTest } from './ownerTestGrant.ts';
+import { doorOpen, subscribeEntitlement } from './entitlement.ts';
 
 /** This browser redeemed a server code or finished checkout. Not a purchase email and not `?student=1`. */
 
@@ -17,14 +17,6 @@ const STUDENT_PURCHASE_REMEMBER_KEY = 'advantage.studentUnlocked';
 
 const listeners = new Set<() => void>();
 
-function readFlag(): boolean {
-  try {
-    return localStorage.getItem(STUDENT_EDITION_UNLOCK_STORAGE_KEY) === '1';
-  } catch {
-    return false;
-  }
-}
-
 function writeFlag(unlocked: boolean): void {
   try {
     if (unlocked) localStorage.setItem(STUDENT_EDITION_UNLOCK_STORAGE_KEY, '1');
@@ -36,15 +28,15 @@ function writeFlag(unlocked: boolean): void {
 }
 
 export function isStudentEditionUnlocked(): boolean {
-  return readFlag() || ownerTestActive('student') || ownerTestActive('pro');
+  return doorOpen('student');
 }
 
 export function subscribeStudentEditionUnlock(fn: () => void): () => void {
   listeners.add(fn);
-  const offTest = subscribeOwnerTest(fn);
+  const off = subscribeEntitlement(fn);
   return () => {
     listeners.delete(fn);
-    offTest();
+    off();
   };
 }
 

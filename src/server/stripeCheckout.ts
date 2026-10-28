@@ -97,6 +97,8 @@ export function checkoutFormFields(input: {
   successUrl: string;
   cancelUrl: string;
   promotionCodeId?: string;
+  /** SHA-256 hex of the browser nonce. Stored as Stripe client_reference_id. */
+  clientReferenceId?: string;
 }): URLSearchParams {
   const params = new URLSearchParams();
   params.set('mode', input.mode);
@@ -111,6 +113,10 @@ export function checkoutFormFields(input: {
     params.set('subscription_data[metadata][product]', input.productId);
   } else {
     params.set('payment_intent_data[metadata][product]', input.productId);
+    params.set('customer_creation', 'always');
+  }
+  if (input.clientReferenceId && /^[a-f0-9]{64}$/.test(input.clientReferenceId)) {
+    params.set('client_reference_id', input.clientReferenceId);
   }
   if (input.promotionCodeId) params.set('discounts[0][promotion_code]', input.promotionCodeId);
   else params.set('allow_promotion_codes', 'true');
@@ -359,6 +365,7 @@ export type ProSubscriptionSync = {
 export type StripeEntitlementDecision =
   | { action: 'record'; purchase: CheckoutPurchase }
   | { action: 'record-student'; purchase: CheckoutPurchase }
+  | { action: 'record-coach'; purchase: CheckoutPurchase }
   | { action: 'grant-pro'; grant: ProCheckoutGrant }
   | { action: 'sync-pro'; sync: ProSubscriptionSync }
   | { action: 'retry' }
@@ -468,7 +475,9 @@ function checkoutDecision(row: Record<string, unknown>): StripeEntitlementDecisi
   const product = readMetaProduct(row);
   const paid = row.payment_status === 'paid' || row.payment_status === 'no_payment_required';
   if (row.mode === 'payment') {
-    if (product !== API_PRODUCT_ID && product !== API_PRODUCT_STUDENT) return { action: 'ignore' };
+    if (product !== API_PRODUCT_ID && product !== API_PRODUCT_STUDENT && product !== API_PRODUCT_COACH) {
+      return { action: 'ignore' };
+    }
     if (!paid) return { action: 'ignore' };
     if (typeof row.id !== 'string' || !row.id.startsWith('cs_')) return { action: 'invalid' };
     const purchase: CheckoutPurchase = {
@@ -478,6 +487,7 @@ function checkoutDecision(row: Record<string, unknown>): StripeEntitlementDecisi
       currency: currencyOf(row),
     };
     if (product === API_PRODUCT_STUDENT) return { action: 'record-student', purchase };
+    if (product === API_PRODUCT_COACH) return { action: 'record-coach', purchase };
     return { action: 'record', purchase };
   }
   if (row.mode === 'subscription' && product === API_PRODUCT_PRO) {

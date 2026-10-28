@@ -10,7 +10,7 @@ import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
-import { confirmCheckoutSession, redeemAccessCode } from '../lib/codeRedeemClient';
+import { confirmCheckoutSession, redeemAccessCode, withCheckoutNonce } from '../lib/codeRedeemClient';
 import type { WhiteEntitlementStatus } from '../lib/whiteEntitlementClient';
 import {
   COACH_LIST_PRICE_CENTS,
@@ -47,6 +47,7 @@ export function BuyWhitePage() {
   const [restoreEmail, setRestoreEmail] = useState('');
   const [restorePending, setRestorePending] = useState(false);
   const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [restoreNote, setRestoreNote] = useState<string | null>(null);
   const [studentPending, setStudentPending] = useState(false);
   const [studentError, setStudentError] = useState<string | null>(null);
   const halfOff = useHalfOffArrival();
@@ -115,9 +116,11 @@ export function BuyWhitePage() {
     event.preventDefault();
     if (restorePending) return;
     setRestoreError(null);
+    setRestoreNote(null);
     setRestorePending(true);
     const result = await restoreWhiteByEmail(restoreEmail);
     if (!result.ok) setRestoreError(result.error);
+    else setRestoreNote(result.message);
     setRestorePending(false);
   }
 
@@ -130,7 +133,7 @@ export function BuyWhitePage() {
       const response = await fetch(WHITE_CHECKOUT_API, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(buyCheckoutBody({ product: 'student', halfOffActive: halfOff })),
+        body: JSON.stringify(await withCheckoutNonce(buyCheckoutBody({ product: 'student', halfOffActive: halfOff }))),
       });
       const body = (await response.json()) as { url?: string; error?: string };
       if (!response.ok || !body.url) {
@@ -171,7 +174,7 @@ export function BuyWhitePage() {
       const response = await fetch(WHITE_CHECKOUT_API, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(buyCheckoutBody({ typedPromo: typed, halfOffActive: halfOff })),
+        body: JSON.stringify(await withCheckoutNonce(buyCheckoutBody({ typedPromo: typed, halfOffActive: halfOff }))),
       });
       const body = (await response.json()) as { url?: string; error?: string };
       if (!response.ok || !body.url) {
@@ -297,7 +300,11 @@ export function BuyWhitePage() {
           {unlocked ? null : (
             <form className="buy__card" onSubmit={(event) => void onRestore(event)}>
               <h3>Already purchased?</h3>
-              <p>Email lookup does not unlock a purchase. Finish checkout on this device, or enter a code.</p>
+              <p>
+                Enter the email from checkout. If it matches a purchase, we email a one-time code. This page does not
+                say whether that address bought anything.{' '}
+                <Link to="/restore">Open the restore page</Link>.
+              </p>
               <label className="buy__field">
                 <span>Purchase email</span>
                 <input
@@ -315,6 +322,11 @@ export function BuyWhitePage() {
               {restoreError ? (
                 <p className="buy__status buy__status--bad" role="alert">
                   {restoreError}
+                </p>
+              ) : null}
+              {restoreNote ? (
+                <p className="buy__status buy__status--ok" role="status">
+                  {restoreNote}
                 </p>
               ) : null}
               <button className="btn btn--ghost" type="submit" disabled={restorePending}>

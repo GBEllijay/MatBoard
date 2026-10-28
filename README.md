@@ -118,13 +118,13 @@ Use the Stripe test-mode toggle. Then:
    | `STRIPE_SUCCESS_URL` | Optional server variable | White success URL override |
    | `STRIPE_CANCEL_URL` | Optional server variable | White cancel URL override |
 
-7. **Cloudflare Pages → Settings → Bindings → KV namespace.** Variable name exactly `WHITE_ENTITLEMENTS`. The same binding stores purchases and, unless `CODE_REDEMPTIONS` is bound, the per-code cap counters. Also set `CODE_HASH_PEPPER` (secret), `CODE_CATALOG` (hashes only), and `OWNER_TEST_SECRET` (secret) before deploy. Steps are in `docs/paywall-phase-plan.md`.
+7. **Cloudflare Pages → Settings → Bindings → KV namespace.** Variable name exactly `WHITE_ENTITLEMENTS`. Purchases also need the D1 binding `ENTITLEMENTS_DB` and the secret `ENTITLEMENT_SIGNING_KEY` (see `docs/paywall-phase-2.md`). Cap counters still use `CODE_REDEMPTIONS` when you want them exact. Also set `CODE_HASH_PEPPER`, `CODE_CATALOG`, and `OWNER_TEST_SECRET` before deploy. Phase 1 steps are in `docs/paywall-phase-plan.md`.
 
 Copy `.env.example` to `.env` for local dev. `.env` is gitignored.
 
 ### Test-mode click path
 
-1. Code unlock: set `CODE_HASH_PEPPER` and `CODE_CATALOG` in `.env` (hashes only), restart `npm run dev`, and type the code on `/buy`. The address bar is not a code. `GET /api/entitlement` does not echo a session or an email.
+1. Code unlock: set `CODE_HASH_PEPPER` and `CODE_CATALOG` in `.env` (hashes only), restart `npm run dev`, and type the code on `/buy`. The address bar is not a code. `GET /api/entitlement` is gone (410). Restore is `/restore` and does not say whether an email bought anything.
 2. Paid path: fill `.env` with test keys and restart `npm run dev`. Open `/buy` (home **Advantage White**, or White → **Buy Advantage White — $9.99**). The page has an enter-a-code field and does not print promo names. Student Edition, Coach, and Pro on that page are Coming soon and do not start Checkout. Student Edition sits between White and Coach. Its checkout button appears only when Student Edition is already entitled (a server code or a confirmed purchase). The demo does not open that button.
 3. **Continue to checkout.** Pay with `4242 4242 4242 4242`, any future expiry, any CVC, any ZIP. On Stripe’s page, optional promo codes are `WHITE499` and `WHITE099`.
 4. Stripe returns to `/buy?checkout=success&session_id=cs_test_...`. Cancel returns to `/buy?checkout=cancel` and does not charge.
