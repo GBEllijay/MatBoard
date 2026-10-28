@@ -10,11 +10,14 @@ export const API_PRODUCT_COACH = 'advantage-coach';
 /** Stripe metadata for gated Pro Checkout (one-time plus monthly). */
 export const API_PRODUCT_PRO = 'advantage-pro';
 
-/** In-app free unlock. Same string as WHITE_FREE_CODE. Does not call Stripe. */
-export const API_FREE_CODE = 'WHITEFREE';
-
 export const API_CHECKOUT_PATH = '/api/checkout';
 
 export const API_ENTITLEMENT_PATH = '/api/entitlement';
 
 export const API_WEBHOOK_PATH = '/api/stripe/webhook';
+
+export const API_CODES_REDEEM_PATH = '/api/codes/redeem';
+
+export const API_OWNER_TEST_PATH = '/api/owner-test';
+
+export const API_CHECKOUT_CONFIRM_PATH = '/api/checkout-confirm';

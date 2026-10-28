@@ -59,44 +59,18 @@ test('checkout creates a session and can attach a promotion code', async () => {
   assert.equal(calls.length, 2);
 });
 
-test('WHITEFREE records a $0 entitlement without Stripe', async () => {
+test('checkout does not grant a code locally', async () => {
   const store = memoryEntitlementStore();
-  let calledStripe = false;
-  const fetchImpl: typeof fetch = async () => {
-    calledStripe = true;
-    return new Response('stripe should not be called', { status: 500 });
-  };
   const response = await handleCheckout(
-    jsonRequest('http://localhost/api/checkout', { promotionCode: 'whitefree' }),
+    jsonRequest('http://localhost/api/checkout', { promotionCode: 'not-a-stripe-code' }),
     {},
-    fetchImpl,
+    async () => new Response('stripe should not be called', { status: 500 }),
     store,
   );
-  assert.equal(response.status, 200);
-  assert.equal(calledStripe, false);
-  const body = (await response.json()) as { entitled: boolean; amountTotal: number; sessionId: string; email: string };
-  assert.equal(body.entitled, true);
-  assert.equal(body.amountTotal, 0);
-  assert.equal(body.email, '');
-  assert.match(body.sessionId, /^free_[a-z0-9]+$/);
-  const saved = await store.findBySessionId(body.sessionId);
-  assert.equal(saved?.amountTotal, 0);
-  assert.equal(saved?.product, 'advantage-white');
-  const lookup = await handleEntitlement(
-    new Request(`http://localhost/api/entitlement?session_id=${body.sessionId}`),
-    store,
-  );
-  assert.equal(lookup.status, 200);
-  const status = (await lookup.json()) as { entitled: boolean; sessionId: string };
-  assert.equal(status.entitled, true);
-  assert.equal(status.sessionId, body.sessionId);
-});
-
-test('WHITEFREE without a store does not call Stripe', async () => {
-  const response = await handleCheckout(jsonRequest('http://localhost/api/checkout', { promotionCode: 'WHITEFREE' }), {});
   assert.equal(response.status, 503);
-  const body = (await response.json()) as { error: string };
-  assert.match(body.error, /Entitlement store/);
+  const body = (await response.json()) as { entitled?: boolean; error: string };
+  assert.notEqual(body.entitled, true);
+  assert.match(body.error, /STRIPE_SECRET_KEY/);
 });
 
 test('omitted product still checks out Advantage White', async () => {
@@ -211,10 +185,10 @@ test('an unknown product does not open Checkout', async () => {
   assert.match(body.error, /white, student, coach, or pro/);
 });
 
-test('WHITEFREE does not unlock Coach', async () => {
+test('a code on Coach checkout is a Stripe promo lookup, not a local grant', async () => {
   const store = memoryEntitlementStore();
   const response = await handleCheckout(
-    jsonRequest('http://localhost/api/checkout', { product: 'coach', promotionCode: 'WHITEFREE' }),
+    jsonRequest('http://localhost/api/checkout', { product: 'coach', promotionCode: 'not-a-stripe-code' }),
     env,
     async () => new Response(JSON.stringify({ data: [] }), { status: 200 }),
     store,
@@ -360,23 +334,23 @@ test('half off discounts White, Student, Coach, and Pro without changing prices'
   }
 });
 
-test('WHITEFREE still unlocks when a half-off flag is also sent', async () => {
+test('half off does not grant a typed code locally', async () => {
   const store = memoryEntitlementStore();
   let calledStripe = false;
   const fetchImpl: typeof fetch = async () => {
     calledStripe = true;
-    return new Response('stripe should not be called', { status: 500 });
+    return new Response('stripe down', { status: 500 });
   };
   const response = await handleCheckout(
-    jsonRequest('http://localhost/api/checkout', { halfOff: true, promotionCode: 'WHITEFREE' }),
+    jsonRequest('http://localhost/api/checkout', { halfOff: true, promotionCode: 'not-a-stripe-code' }),
     env,
     fetchImpl,
     store,
   );
-  assert.equal(response.status, 200);
-  assert.equal(calledStripe, false);
-  const body = (await response.json()) as { entitled: boolean };
-  assert.equal(body.entitled, true);
+  assert.equal(calledStripe, true);
+  const body = (await response.json()) as { entitled?: boolean };
+  assert.notEqual(body.entitled, true);
+  assert.notEqual(response.status, 200);
 });
 
 test('an unknown promo code does not open Checkout', async () => {
@@ -428,14 +402,14 @@ test('webhook stores email and session id and entitlement lookup finds it', asyn
   assert.equal(saved?.sessionId, 'cs_test_abc');
   assert.equal(saved?.amountTotal, 99);
 
-  const lookup = await handleEntitlement(
-    new Request('http://localhost/api/entitlement?session_id=cs_test_abc'),
-    store,
-  );
+  const bySession = await store.findBySessionId('cs_test_abc');
+  assert.equal(bySession?.email, 'buyer@gym.test');
+  const lookup = await handleEntitlement(new Request('http://localhost/api/entitlement?email=buyer@gym.test'), store);
   assert.equal(lookup.status, 200);
-  const body = (await lookup.json()) as { entitled: boolean; email: string };
-  assert.equal(body.entitled, true);
-  assert.equal(body.email, 'buyer@gym.test');
+  const body = (await lookup.json()) as { entitled?: boolean; email?: string; message: string };
+  assert.equal(body.entitled, undefined);
+  assert.equal(body.email, undefined);
+  assert.match(body.message, /does not say/);
 });
 
 function signedWebhook(payload: string, now: Date): Request {
@@ -471,25 +445,11 @@ test('Pro checkout webhook unlocks Pro and a renewal stays entitled', async () =
   });
   const granted = await handleWebhook(signedWebhook(checkout, now), env, store, () => now);
   assert.equal(granted.status, 200);
-  const lookup = await handleEntitlement(
-    new Request('http://localhost/api/entitlement?session_id=cs_test_pro'),
-    store,
-  );
-  const status = (await lookup.json()) as { entitled: boolean; product: string; email: string };
-  assert.equal(status.entitled, true);
-  assert.equal(status.product, 'advantage-pro');
-  assert.equal(status.email, 'owner@gym.test');
-
-  const whiteLookup = await handleEntitlement(
-    new Request('http://localhost/api/entitlement?email=owner@gym.test'),
-    store,
-  );
-  assert.equal(((await whiteLookup.json()) as { entitled: boolean }).entitled, false);
-  const proEmail = await handleEntitlement(
-    new Request('http://localhost/api/entitlement?email=owner@gym.test&product=pro'),
-    store,
-  );
-  assert.equal(((await proEmail.json()) as { entitled: boolean; product: string }).product, 'advantage-pro');
+  const status = await store.findProBySessionId('cs_test_pro');
+  assert.equal(status?.status, 'active');
+  assert.equal(status?.product, 'advantage-pro');
+  assert.equal(status?.email, 'owner@gym.test');
+  assert.equal(await store.findByEmail('owner@gym.test'), null);
 
   const renewal = JSON.stringify({
     type: 'invoice.paid',
@@ -525,11 +485,7 @@ test('Pro checkout webhook unlocks Pro and a renewal stays entitled', async () =
   const endedAt = new Date('2026-12-01T12:00:00.000Z');
   const revoked = await handleWebhook(signedWebhook(ended, endedAt), env, store, () => endedAt);
   assert.equal(revoked.status, 200);
-  const after = await handleEntitlement(
-    new Request('http://localhost/api/entitlement?session_id=cs_test_pro'),
-    store,
-  );
-  assert.equal(((await after.json()) as { entitled: boolean; product: string }).entitled, false);
+  assert.equal((await store.findProBySessionId('cs_test_pro'))?.status, 'inactive');
 });
 
 test('an unknown subscription invoice does not create a Pro entitlement', async () => {
@@ -590,9 +546,12 @@ test('webhook rejects a bad signature and does not record a purchase', async () 
   assert.equal(await store.findBySessionId('cs_test_abc'), null);
 });
 
-test('entitlement lookup without a store explains the missing binding', async () => {
+test('entitlement lookup does not require a store and does not reveal a purchase', async () => {
   const response = await handleEntitlement(new Request('http://localhost/api/entitlement?email=a@b.co'), null);
-  assert.equal(response.status, 503);
+  assert.equal(response.status, 200);
+  const body = (await response.json()) as { entitled?: boolean; message: string };
+  assert.equal(body.entitled, undefined);
+  assert.match(body.message, /does not say/);
 });
 
 test('Student checkout is a one-time hosted session', async () => {
@@ -638,10 +597,10 @@ test('Student checkout names the missing Price id', async () => {
   assert.match(body.error, /STRIPE_PRICE_STUDENT/);
 });
 
-test('WHITEFREE does not unlock Student Edition', async () => {
+test('a code on Student checkout is a Stripe promo lookup, not a local grant', async () => {
   const store = memoryEntitlementStore();
   const response = await handleCheckout(
-    jsonRequest('http://localhost/api/checkout', { product: 'student', promotionCode: 'WHITEFREE' }),
+    jsonRequest('http://localhost/api/checkout', { product: 'student', promotionCode: 'not-a-stripe-code' }),
     env,
     async () => new Response(JSON.stringify({ data: [] }), { status: 200 }),
     store,
@@ -678,23 +637,15 @@ test('Student checkout webhook unlocks Student Edition and leaves White and Pro 
   assert.equal(await store.findByEmail('student@gym.test'), null);
   assert.equal(await store.findProByEmail('student@gym.test'), null);
 
-  const lookup = await handleEntitlement(
-    new Request('http://localhost/api/entitlement?session_id=cs_test_student'),
-    store,
-  );
-  const status = (await lookup.json()) as { entitled: boolean; product: string; email: string };
-  assert.equal(status.entitled, true);
-  assert.equal(status.product, 'advantage-student');
-  assert.equal(status.email, 'student@gym.test');
-
-  const byEmail = await handleEntitlement(
+  const status = await store.findStudentBySessionId('cs_test_student');
+  assert.equal(status?.product, 'advantage-student');
+  assert.equal(status?.email, 'student@gym.test');
+  const hidden = await handleEntitlement(
     new Request('http://localhost/api/entitlement?email=student@gym.test&product=student'),
     store,
   );
-  assert.equal(((await byEmail.json()) as { entitled: boolean; product: string }).product, 'advantage-student');
-  const whiteEmail = await handleEntitlement(
-    new Request('http://localhost/api/entitlement?email=student@gym.test'),
-    store,
-  );
-  assert.equal(((await whiteEmail.json()) as { entitled: boolean }).entitled, false);
+  const hiddenBody = (await hidden.json()) as { entitled?: boolean; product?: string; email?: string };
+  assert.equal(hiddenBody.entitled, undefined);
+  assert.equal(hiddenBody.product, undefined);
+  assert.equal(hiddenBody.email, undefined);
 });

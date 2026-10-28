@@ -61,6 +61,7 @@ export type EntitlementStore = {
 export type KvBinding = {
   get(key: string): Promise<string | null>;
   put(key: string, value: string): Promise<unknown>;
+  list?(options: { prefix?: string }): Promise<{ keys: { name: string }[] }>;
 };
 
 const INDEX_KEY = 'advantage-white-entitlements';

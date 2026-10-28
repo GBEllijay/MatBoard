@@ -1,8 +1,19 @@
 import { loadEnv, type Connect, type Plugin } from 'vite';
 import { fileEntitlementStore } from './fileEntitlements.ts';
+import { handleCheckoutConfirm } from './checkoutConfirm.ts';
+import { handleCodeRedeem } from './codeRedeem.ts';
 import { handleCheckout, handleEntitlement, handleWebhook } from './handlers.ts';
+import { handleOwnerTest } from './ownerTest.ts';
+import { MemoryRedemptionLedger } from './redemptionLedger.ts';
 import { MICROSOFT_CLIENT_API, publicMicrosoftClientIdFromEnv } from '../lib/microsoftClientPublic.ts';
-import { API_CHECKOUT_PATH, API_ENTITLEMENT_PATH, API_WEBHOOK_PATH } from './routes.ts';
+import {
+  API_CHECKOUT_CONFIRM_PATH,
+  API_CHECKOUT_PATH,
+  API_CODES_REDEEM_PATH,
+  API_ENTITLEMENT_PATH,
+  API_OWNER_TEST_PATH,
+  API_WEBHOOK_PATH,
+} from './routes.ts';
 import type { EntitlementStore } from './entitlements.ts';
 import type { StripeRuntimeEnv } from './stripeCheckout.ts';
 
@@ -32,9 +43,13 @@ function readEnv(mode: string, root: string): Record<string, string> {
   return merged;
 }
 
-function stripeEnv(mode: string, root: string): StripeRuntimeEnv {
+function stripeEnv(mode: string, root: string): StripeRuntimeEnv & {
+  CODE_HASH_PEPPER?: string;
+  CODE_CATALOG?: string;
+  OWNER_TEST_SECRET?: string;
+} {
   const env = readEnv(mode, root);
-  const pick = (name: keyof StripeRuntimeEnv) => env[name] || '';
+  const pick = (name: string) => env[name] || '';
   return {
     STRIPE_SECRET_KEY: pick('STRIPE_SECRET_KEY'),
     STRIPE_WEBHOOK_SECRET: pick('STRIPE_WEBHOOK_SECRET'),
@@ -46,6 +61,9 @@ function stripeEnv(mode: string, root: string): StripeRuntimeEnv {
     STRIPE_PRICE_PRO_MONTHLY_DISCOUNT: pick('STRIPE_PRICE_PRO_MONTHLY_DISCOUNT'),
     STRIPE_SUCCESS_URL: pick('STRIPE_SUCCESS_URL'),
     STRIPE_CANCEL_URL: pick('STRIPE_CANCEL_URL'),
+    CODE_HASH_PEPPER: pick('CODE_HASH_PEPPER'),
+    CODE_CATALOG: pick('CODE_CATALOG'),
+    OWNER_TEST_SECRET: pick('OWNER_TEST_SECRET'),
   };
 }
 
@@ -110,9 +128,11 @@ async function writeResponse(res: NodeResponse, response: Response): Promise<voi
   res.end(new Uint8Array(await response.arrayBuffer()));
 }
 
+const devLedger = new MemoryRedemptionLedger();
+
 function attach(
   middlewares: Connect.Server,
-  env: StripeRuntimeEnv,
+  env: StripeRuntimeEnv & { CODE_HASH_PEPPER?: string; CODE_CATALOG?: string; OWNER_TEST_SECRET?: string },
   microsoftEnv: { VITE_MICROSOFT_CLIENT_ID?: string; MICROSOFT_CLIENT_ID?: string },
   store: EntitlementStore,
 ) {
@@ -125,7 +145,14 @@ function attach(
       res.end(JSON.stringify({ clientId: publicMicrosoftClientIdFromEnv(microsoftEnv) }));
       return;
     }
-    if (path !== API_CHECKOUT_PATH && path !== API_ENTITLEMENT_PATH && path !== API_WEBHOOK_PATH) {
+    const api =
+      path === API_CHECKOUT_PATH ||
+      path === API_ENTITLEMENT_PATH ||
+      path === API_WEBHOOK_PATH ||
+      path === API_CODES_REDEEM_PATH ||
+      path === API_OWNER_TEST_PATH ||
+      path === API_CHECKOUT_CONFIRM_PATH;
+    if (!api) {
       next();
       return;
     }
@@ -136,7 +163,13 @@ function attach(
           ? await handleCheckout(request, env, fetch, store)
           : path === API_WEBHOOK_PATH
             ? await handleWebhook(request, env, store)
-            : await handleEntitlement(request, store);
+            : path === API_CODES_REDEEM_PATH
+              ? await handleCodeRedeem(request, env, null, devLedger)
+              : path === API_OWNER_TEST_PATH
+                ? await handleOwnerTest(request, env)
+                : path === API_CHECKOUT_CONFIRM_PATH
+                  ? await handleCheckoutConfirm(request, env)
+                  : await handleEntitlement(request, store, env);
       await writeResponse(res as NodeResponse, response);
     } catch {
       res.statusCode = 500;
