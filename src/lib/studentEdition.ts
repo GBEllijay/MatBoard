@@ -16,6 +16,7 @@ import {
   isSimulatedStudentPayload,
   noteAppStudentSave,
   notifyStudentJournal,
+  registerDemoSeed,
   studentDemoRequested,
 } from './studentDemo.ts';
 import { clearStudentEditionRelock, isStudentEditionRelocked, isStudentEditionUnlocked } from './studentUnlock.ts';
@@ -80,7 +81,10 @@ export function rememberStudentPurchase(status: { entitled?: boolean; product?: 
   return false;
 }
 
-/** Stripe success return for `/buy/student`. The page can render before the alpha door is open. */
+/**
+ * Stripe success return for `/buy/student`. The page can render so the server
+ * can confirm the session. The query itself does not unlock anything.
+ */
 export function studentPurchaseReturn(search: URLSearchParams): boolean {
   const sessionId = search.get('session_id')?.trim() ?? '';
   return search.get('checkout') === 'success' && sessionId.length > 0;
@@ -156,20 +160,52 @@ export function todayIso(now = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
+export function studentEditionEntitled(owner: {
+  pro: boolean;
+  coach: boolean;
+  white: boolean;
+  student?: boolean;
+}): boolean {
+  if (isStudentEditionRelocked()) return false;
+  if (owner.student || isStudentEditionUnlocked()) return true;
+  if (isStudentPurchased()) return true;
+  return owner.pro;
+}
+
+/** `?student=1` opens the labeled demo. It does not set an entitlement flag. */
+export function studentDemoMode(
+  search: URLSearchParams,
+  owner: { pro: boolean; coach: boolean; white: boolean; student?: boolean },
+): boolean {
+  if (search.get('student') !== '1') return false;
+  return !studentEditionEntitled(owner);
+}
+
 export function studentEditionOpen(
   search: URLSearchParams,
   owner: { pro: boolean; coach: boolean; white: boolean; student?: boolean },
 ): boolean {
-  // Preview query still opens, including after the hub lock button.
-  if (search.get('student') === '1') return true;
-  // The hub lock closes the door even when Pro is already stored here.
-  if (isStudentEditionRelocked()) return false;
-  // `student` is the subscribed snapshot from useStudentEditionUnlocked.
-  // The storage read covers callers that have not passed that snapshot yet.
-  if (owner.student || isStudentEditionUnlocked()) return true;
-  if (isStudentPurchased()) return true;
-  // Pro alone opens Student Edition. Coach and White are not required.
-  return owner.pro;
+  if (studentDemoMode(search, owner)) return true;
+  return studentEditionEntitled(owner);
+}
+
+export function demoStudentPacket(): string {
+  const report = setStudentProfile(blankStudentReport(1), { displayName: 'Demo Student', gymName: 'Sample Academy' }, 1);
+  const withCard = addJournalEntry(
+    report,
+    {
+      date: '2026-01-15',
+      className: 'Demo class',
+      gameTag: '',
+      techniques: [{ id: 'sweep.hip-bump', name: 'Hip bump sweep' }],
+      partners: 'Demo partner',
+      drills: 'hip escapes',
+      rolls: '3 rounds',
+      notes: 'Sample notes. This demo is not saved to your journal.',
+    },
+    2,
+  );
+  return exportProgressPacket(withCard);
 }
 
 export function blankStudentReport(now = Date.now()): StudentProgressReport {
@@ -747,3 +783,5 @@ export function restoreStarterFundamentals(report: StudentProgressReport, now = 
   if (!changed) return report;
   return { ...report, updatedAt: now, checklist };
 }
+
+registerDemoSeed(demoStudentPacket);

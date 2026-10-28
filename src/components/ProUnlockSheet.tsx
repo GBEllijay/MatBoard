@@ -1,6 +1,6 @@
 import { type FormEvent, useState } from 'react';
+import { redeemAccessCode } from '../lib/codeRedeemClient';
 import { GYM_CONSOLE_NAME } from '../lib/productNames';
-import { tryProductOwnerUnlock } from '../lib/proUnlock';
 import { Sheet } from './Sheet';
 
 type Product = 'coach' | 'pro' | 'student';
@@ -41,18 +41,23 @@ const COPY: Record<
 export function ProUnlockSheet({ open, onClose, product = 'pro' }: Props) {
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
+  const [pending, setPending] = useState(false);
   const copy = COPY[product];
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    const ok = tryProductOwnerUnlock(product, code);
-    if (ok) {
-      setCode('');
-      setError('');
-      onClose();
-      return;
-    }
-    setError('That code did not match.');
+    if (pending) return;
+    setPending(true);
+    void redeemAccessCode(code).then((result) => {
+      setPending(false);
+      if (result.ok) {
+        setCode('');
+        setError('');
+        onClose();
+        return;
+      }
+      setError(result.error);
+    });
   };
 
   const close = () => {
@@ -80,8 +85,8 @@ export function ProUnlockSheet({ open, onClose, product = 'pro' }: Props) {
           />
         </label>
         {error ? <p className="home__unlock-error">{error}</p> : null}
-        <button type="submit" className="btn">
-          {copy.submit}
+        <button type="submit" className="btn" disabled={pending}>
+          {pending ? 'Checking…' : copy.submit}
         </button>
       </form>
     </Sheet>

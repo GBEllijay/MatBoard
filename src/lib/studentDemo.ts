@@ -1,15 +1,11 @@
 /**
  * Demo data stays off a normal Student Edition.
- * Two seeds exist, and both are fixtures, not a saved journal:
- * - the stress-test Send-to-coach file (black belt, 3 stripes,
- *   Pan Pacific Championship (mock), 181.4 lb goal)
- * - the nightly simulation (Sim Athlete, Sim Gym, Sim Open Holiday Classic,
- *   and the mock self-assessment history that rides with it)
- * A new or cleared journal must not pick either up from a late localStorage
- * write. A save through the app keeps a real journal. These seeds are kept
- * only when the page asked for the demo. ?demo=1 and ?demo=paige are the only
- * preview switches. ?student=1 opens the journal and does not load the demo.
+ * ?student=1 is the public demo. It shows sample data in memory and does not
+ * write the real journal keys. ?demo=1 and ?demo=paige still name the
+ * stress-test seeds. A saved journal is left alone when the demo is on.
  */
+
+import { ownerTestActive } from './ownerTestGrant.ts';
 
 export const STUDENT_FILE_STORAGE_KEY = 'matboard.studentEdition.v1';
 
@@ -56,9 +52,56 @@ let guardTimer: number | null = null;
 let readDemoSearch: () => string = () => (typeof window === 'undefined' ? '' : window.location.search);
 const journalListeners = new Set<() => void>();
 
-/** True only for ?demo=1 and ?demo=paige. ?student=1 does not turn the demo on. */
+/** True for the stress-test switches. ?student=1 uses the separate demo overlay. */
 export function studentDemoRequested(): boolean {
   return explicitStudentDemo(readDemoSearch());
+}
+
+const STUDENT_GUARD_KEYS = new Set([
+  STUDENT_FILE_STORAGE_KEY,
+  STUDENT_ASSESSMENT_GUARD_KEY,
+  STUDENT_BACKUP_STAMP_GUARD_KEY,
+]);
+
+let demoSeedProvider: () => string = () => '';
+const demoOverlay = new Map<string, string>();
+
+/** Student Edition registers the sample packet so this file does not import it. */
+export function registerDemoSeed(provider: () => string): void {
+  demoSeedProvider = provider;
+}
+
+export function clearStudentDemoOverlay(): void {
+  demoOverlay.clear();
+  notifyStudentJournal();
+}
+
+function searchParams(search: string): URLSearchParams {
+  const query = search.includes('?') ? search.slice(search.indexOf('?') + 1) : search;
+  return new URLSearchParams(query.split('#')[0] ?? '');
+}
+
+function entitledJournal(): boolean {
+  if (ownerTestActive('student') || ownerTestActive('pro')) return true;
+  try {
+    if (localStorage.getItem('advantage.studentEditionRelocked') === '1') return false;
+    if (localStorage.getItem('advantage.proUnlocked') === '1') return true;
+    if (localStorage.getItem('advantage.studentEditionUnlocked') === '1') return true;
+    if (localStorage.getItem('advantage.studentUnlocked') === '1') return true;
+  } catch {
+    return false;
+  }
+  return false;
+}
+
+/**
+ * Public `?student=1` demo. Stress-test switches (`?demo=1`, `?demo=paige`)
+ * keep their own seed path. A real entitlement uses the real journal.
+ */
+export function studentDemoIsolated(search = readDemoSearch()): boolean {
+  const params = searchParams(search);
+  if (params.get('student') !== '1' || explicitStudentDemo(search)) return false;
+  return !entitledJournal();
 }
 
 export function subscribeStudentJournal(listener: () => void): () => void {
@@ -355,16 +398,46 @@ export function installStudentMockGuard(
   guardInstalled = true;
   readDemoSearch = readSearch;
   rememberExisting(storage, readSearch());
-  const original = storage.setItem.bind(storage);
-  const wrapped = (key: string, value: string) => {
-    if (shouldDropUnsolicitedStudentWrite(key, value, readSearch())) return;
-    original(key, value);
+  const originalGet = storage.getItem.bind(storage);
+  const originalSet = storage.setItem.bind(storage);
+  const originalRemove = storage.removeItem?.bind(storage);
+  const wrappedGet = (key: string) => {
+    if (!STUDENT_GUARD_KEYS.has(key) || !studentDemoIsolated(readSearch())) return originalGet(key);
+    if (demoOverlay.has(key)) return demoOverlay.get(key) ?? null;
+    const underlying = originalGet(key);
+    if (key === STUDENT_FILE_STORAGE_KEY && underlying && !isSimulatedStudentPayload(underlying)) return underlying;
+    if (key === STUDENT_ASSESSMENT_GUARD_KEY && underlying && !isSimulatedAssessmentPayload(underlying)) return underlying;
+    if (key === STUDENT_FILE_STORAGE_KEY) {
+      const seed = demoSeedProvider();
+      return seed || null;
+    }
+    return null;
   };
-  // Some DOM storage objects ignore `storage.setItem = ...` and keep the prototype method.
+  const wrapped = (key: string, value: string) => {
+    if (STUDENT_GUARD_KEYS.has(key) && studentDemoIsolated(readSearch())) {
+      if (shouldDropUnsolicitedStudentWrite(key, value, readSearch())) return;
+      demoOverlay.set(key, value);
+      return;
+    }
+    if (shouldDropUnsolicitedStudentWrite(key, value, readSearch())) return;
+    originalSet(key, value);
+  };
+  const wrappedRemove = (key: string) => {
+    if (STUDENT_GUARD_KEYS.has(key) && studentDemoIsolated(readSearch())) {
+      demoOverlay.delete(key);
+      return;
+    }
+    originalRemove?.(key);
+  };
+  // Some DOM storage objects ignore assignment and keep the prototype method.
   try {
+    Object.defineProperty(storage, 'getItem', { value: wrappedGet, writable: true, configurable: true });
     Object.defineProperty(storage, 'setItem', { value: wrapped, writable: true, configurable: true });
+    if (originalRemove) Object.defineProperty(storage, 'removeItem', { value: wrappedRemove, writable: true, configurable: true });
   } catch {
+    storage.getItem = wrappedGet;
     storage.setItem = wrapped;
+    if (originalRemove) storage.removeItem = wrappedRemove;
   }
   if (typeof window === 'undefined' || storage !== globalThis.localStorage) return;
   window.addEventListener('storage', (event) => {
@@ -386,6 +459,7 @@ export function resetStudentMockGuardForTests(): void {
   restoring = false;
   guardInstalled = false;
   otherTabWrote = false;
+  demoOverlay.clear();
   readDemoSearch = () => (typeof window === 'undefined' ? '' : window.location.search);
   journalListeners.clear();
 }

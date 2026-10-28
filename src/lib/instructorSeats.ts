@@ -16,6 +16,7 @@
  */
 
 import { readGymName } from './gymName.ts';
+import { ownerTestActive, subscribeOwnerTest } from './ownerTestGrant.ts';
 import { SITE_FEEDBACK_EMAIL } from './siteFooter.ts';
 
 /** Default Pro budget for open coach, program director, and instructor seats. */
@@ -835,11 +836,26 @@ export function purchasePromptsHidden(seat: { status: SeatStatus } | null): bool
   return Boolean(seat && seat.status !== 'revoked');
 }
 
+/** In-memory only. Owner test does not write the seat archive. */
+function ownerTestPreviewSeat(): InstructorSeat {
+  const preset = INSTRUCTOR_PRESETS.find((row) => row.id === 'instructors') ?? INSTRUCTOR_PRESETS[0];
+  return {
+    id: 'owner-test-seat',
+    gymId: 'owner-test',
+    email: 'Owner test',
+    status: 'active',
+    issuedAt: 0,
+    presetId: preset?.id ?? 'instructors',
+    permissions: preset?.permissions ?? DEFAULT_INSTRUCTOR_PERMISSIONS,
+    inviteToken: 'owner-test',
+  };
+}
+
 /** Active seat on this device, or null when signed out, missing, or revoked. */
 export function readCurrentSeat(): InstructorSeat | null {
   const id = readSessionSeatId();
   const seat = id ? readArchive().seats.find((row) => row.id === id) : undefined;
-  const live = seat && seat.status !== 'revoked' ? cloneSeat(seat) : null;
+  const live = seat && seat.status !== 'revoked' ? cloneSeat(seat) : ownerTestActive('seat') ? ownerTestPreviewSeat() : null;
   const key = live
     ? `${live.id}:${live.status}:${live.presetId ?? ''}:${live.email}:${JSON.stringify(live.permissions)}`
     : '';
@@ -850,7 +866,8 @@ export function readCurrentSeat(): InstructorSeat | null {
 }
 
 export function subscribeSeatSession(fn: () => void): () => void {
-  if (typeof window === 'undefined') return () => {};
+  const offTest = subscribeOwnerTest(fn);
+  if (typeof window === 'undefined') return offTest;
   const onStorage = (event: StorageEvent) => {
     if (event.key === INSTRUCTOR_SEAT_SESSION_KEY || event.key === INSTRUCTOR_SEATS_STORAGE_KEY) fn();
   };
@@ -858,6 +875,7 @@ export function subscribeSeatSession(fn: () => void): () => void {
   window.addEventListener(SESSION_EVENT, fn);
   window.addEventListener(SEATS_EVENT, fn);
   return () => {
+    offTest();
     window.removeEventListener('storage', onStorage);
     window.removeEventListener(SESSION_EVENT, fn);
     window.removeEventListener(SEATS_EVENT, fn);

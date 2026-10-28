@@ -34,7 +34,7 @@ import {
   type MediaFolderId,
 } from './lib/productNames';
 import { proPurchaseReturn } from './lib/proEntitlement';
-import { studentEditionOpen, studentPurchaseReturn } from './lib/studentEdition';
+import { studentEditionEntitled, studentPurchaseReturn } from './lib/studentEdition';
 import { consumeUnlockQueryNow } from './lib/proUnlock';
 import { captureHalfOffQuery, consumeHalfOffQueryNow } from './lib/halfOff';
 import { preservesAppHomeQuery } from './lib/submenuNav';
@@ -163,15 +163,14 @@ function BuyProRoute({ children }: { children: ReactNode }) {
 }
 
 /**
- * Buy Student Edition stays behind the same owner unlock as the journal
- * (`?student=1`, a completed Student Edition Checkout, a Pro unlock, or the
- * owner code that opens White, Coach, and Pro together). Stripe's success return still renders
- * so the webhook can unlock this device. There is no public Buy button.
+ * Buy Student Edition stays behind a real Student Edition or Pro grant.
+ * Demo mode does not open checkout. A Stripe return still renders so the
+ * server can confirm the session. The return URL does not unlock by itself.
  */
 function BuyStudentRoute({ children }: { children: ReactNode }) {
   const [params] = useSearchParams();
   const seated = useCurrentSeat() !== null;
-  const open = studentEditionOpen(params, {
+  const open = studentEditionEntitled({
     pro: useProUnlocked(),
     coach: useCoachUnlocked(),
     white: useWhiteUnlocked(),
@@ -183,7 +182,7 @@ function BuyStudentRoute({ children }: { children: ReactNode }) {
   return children;
 }
 
-/** Advantage White hub and roster. Purchase, WHITEFREE, or email restore opens them. */
+/** Advantage White hub and roster. A confirmed purchase or a server code opens them. */
 function WhiteHubRoute({ children }: { children: ReactNode }) {
   const unlocked = useWhiteUnlocked();
   if (!whiteHubAllowed(unlocked)) return <Navigate to={WHITE_BUY_PATH} replace />;
