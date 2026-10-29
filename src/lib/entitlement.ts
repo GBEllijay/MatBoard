@@ -59,6 +59,10 @@ function nowMs(): number {
   return clockOverride ? clockOverride() : Date.now();
 }
 
+export function entitlementNowMs(): number {
+  return nowMs();
+}
+
 function store(): Storage | null {
   try {
     return typeof localStorage === 'undefined' ? null : localStorage;
@@ -258,6 +262,9 @@ export async function acceptServerToken(token: string): Promise<boolean> {
   noteClock(nowMs());
   if (claims.did) writeItem(ENTITLEMENT_DEVICE_KEY, claims.did);
   notifyEntitlement();
+  void import('./paidChunkCache.ts')
+    .then((mod) => mod.syncPaidChunkCache(claims, token))
+    .catch(() => undefined);
   return true;
 }
 
@@ -265,6 +272,9 @@ export function clearEntitlementToken(): void {
   verified = null;
   removeItem(ENTITLEMENT_TOKEN_KEY);
   notifyEntitlement();
+  void import('./paidChunkCache.ts')
+    .then((mod) => mod.clearPaidChunkCache())
+    .catch(() => undefined);
 }
 
 export async function loadPublicConfig(): Promise<void> {
@@ -338,6 +348,13 @@ export function bootEntitlement(): void {
     retireLegacyUnlockFlags(nowMs(), config.legacyAmnestyEndsAt);
     await reverifyStored();
     noteClock(nowMs());
+    if (verified) {
+      const claims = verified;
+      const token = readItem(ENTITLEMENT_TOKEN_KEY) ?? '';
+      void import('./paidChunkCache.ts')
+        .then((mod) => mod.syncPaidChunkCache(claims, token))
+        .catch(() => undefined);
+    }
     if (verified && nowMs() >= verified.refresh_after * 1000) {
       try {
         const { refreshEntitlement } = await import('./entitlementRefresh.ts');

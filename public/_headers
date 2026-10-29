@@ -6,6 +6,12 @@
 # The service worker precached index.html, so a returning browser kept the
 # old shell while a new profile (no worker) got the new HTML.
 
+# Paid screen code. The Function sets the real response headers after the
+# token check. This stops a shared public cache from keeping a copy.
+/paid/*
+  Cache-Control: private, no-store
+  X-Content-Type-Options: nosniff
+
 # Fingerprinted Vite output. Safe to keep for a year.
 /assets/*
   Cache-Control: public, max-age=31536000, immutable

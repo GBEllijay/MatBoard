@@ -39,8 +39,15 @@ export function subscribeProUnlock(fn: () => void): () => void {
   };
 }
 
+function syncPaidScreens(open: boolean): void {
+  void import('./paidChunkCache.ts')
+    .then((mod) => (open ? mod.prefetchStoredPaidChunks() : mod.clearPaidChunkCache()))
+    .catch(() => undefined);
+}
+
 export function setProUnlocked(unlocked: boolean): void {
   writeFlag(unlocked);
+  syncPaidScreens(unlocked);
 }
 
 /** Address-bar values never unlock or lock Pro. */
@@ -60,6 +67,7 @@ export function tryProductOwnerUnlock(_product: 'coach' | 'pro' | 'student', _co
 export function lockPro(): void {
   // writeFlag also clears the Student Edition grant that follows Pro.
   writeFlag(false);
+  syncPaidScreens(false);
 }
 
 /** `?pro=` and `?unlock=` do not change Pro. */

@@ -52,7 +52,8 @@ test('/half-off is a direct page and does not take the API functions', () => {
   const routes = JSON.parse(readFileSync(resolve(root, 'public/_routes.json'), 'utf8')) as {
     include: string[];
   };
-  assert.deepEqual(routes.include, ['/api/*']);
+  assert.deepEqual(routes.include, ['/api/*', '/paid/*']);
+  assert.equal(routes.include.some((path) => path.includes('half-off')), false);
   const viteConfig = readFileSync(resolve(root, 'vite.config.ts'), 'utf8');
   assert.match(viteConfig, /halfOffPagePlugin/);
   assert.match(viteConfig, /half-off/);
