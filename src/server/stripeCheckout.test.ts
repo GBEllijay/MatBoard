@@ -442,20 +442,32 @@ test('subscription status updates grant, keep, or revoke Pro', () => {
   assert.equal(canceled.action, 'sync-pro');
   if (canceled.action === 'sync-pro') assert.equal(canceled.sync.entitled, false);
 
-  assert.equal(
-    purchaseFromStripeEvent({
-      type: 'customer.subscription.updated',
-      data: {
-        object: {
-          id: 'sub_test_pro',
-          object: 'subscription',
-          status: 'incomplete',
-          metadata: { product: 'advantage-pro' },
-        },
+  const incomplete = purchaseFromStripeEvent({
+    type: 'customer.subscription.updated',
+    data: {
+      object: {
+        id: 'sub_test_pro',
+        object: 'subscription',
+        status: 'incomplete',
+        metadata: { product: 'advantage-pro' },
       },
-    }).action,
-    'ignore',
-  );
+    },
+  });
+  assert.equal(incomplete.action, 'sync-pro');
+  if (incomplete.action === 'sync-pro') assert.equal(incomplete.sync.entitled, false);
+  const paused = purchaseFromStripeEvent({
+    type: 'customer.subscription.updated',
+    data: {
+      object: {
+        id: 'sub_test_pro',
+        object: 'subscription',
+        status: 'paused',
+        metadata: { product: 'advantage-pro' },
+      },
+    },
+  });
+  assert.equal(paused.action, 'sync-pro');
+  if (paused.action === 'sync-pro') assert.equal(paused.sync.entitled, false);
   assert.equal(
     purchaseFromStripeEvent({
       type: 'customer.subscription.updated',

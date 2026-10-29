@@ -204,7 +204,11 @@ function attach(
         path === API_CHECKOUT_PATH
           ? await handleCheckout(request, env, fetch, store)
           : path === API_WEBHOOK_PATH
-            ? await handleWebhook(request, env, store, () => new Date(), { db: devDb, pepper: env.CODE_HASH_PEPPER })
+            ? await handleWebhook(request, env, store, () => new Date(), {
+                db: devDb,
+                pepper: env.CODE_HASH_PEPPER,
+                fetchImpl: fetch,
+              })
             : path === API_CODES_REDEEM_PATH
               ? await handleCodeRedeem(request, env, null, devLedger, () => new Date(), codeServices)
               : path === API_OWNER_TEST_PATH
