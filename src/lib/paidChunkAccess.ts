@@ -113,6 +113,32 @@ export function paidChunkAllowedForClient(
   return false;
 }
 
+export type PaidLoadBlock = 'confirm' | 'failed' | 'offline' | 'pending';
+
+/**
+ * What to show before a paid chunk loads.
+ * A reload verifies the saved token after the first paint. Until that finishes,
+ * stay on the loading line. The confirm screen is only for a finished check
+ * with no token during amnesty.
+ */
+export function paidImportBlock(input: {
+  ready: boolean;
+  claims: EntitlementClaims | null;
+  amnesty: boolean;
+  token: string;
+  chunk: PaidChunkId;
+  nowMs: number;
+  offline: boolean;
+}): PaidLoadBlock | null {
+  if (!input.claims) {
+    if (!input.ready) return 'pending';
+    return input.amnesty ? 'confirm' : 'failed';
+  }
+  if (!paidChunkAllowedForClient(input.claims, input.chunk, input.nowMs, input.offline)) return 'failed';
+  if (!input.token) return input.amnesty ? 'confirm' : 'failed';
+  return null;
+}
+
 export function filesForAllowedChunks(
   claims: EntitlementClaims,
   files: Readonly<Record<string, readonly string[]>>,

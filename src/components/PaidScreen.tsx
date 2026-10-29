@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { subscribeEntitlement } from '../lib/entitlement';
 import { refreshEntitlement } from '../lib/entitlementRefresh';
 import { paidChunkLabel, preparePaidImport, type PaidLoadBlock } from '../lib/paidChunkCache';
 import type { PaidChunkId } from '../lib/paidChunkAccess';
@@ -82,25 +83,35 @@ function PaidImport({ chunk, load }: { chunk: PaidChunkId; load: () => Promise<L
 
   useEffect(() => {
     let cancel = false;
-    const blocked = preparePaidImport(chunk);
-    if (blocked) {
-      setView({ status: 'blocked', reason: blocked });
-      return () => {
-        cancel = true;
-      };
-    }
-    setView({ status: 'loading' });
-    load()
-      .then((result) => {
-        if (!cancel) setView({ status: 'ready', node: result.node });
-      })
-      .catch(() => {
-        if (cancel) return;
-        const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
-        setView({ status: 'blocked', reason: offline ? 'offline' : 'failed' });
-      });
+    let started = false;
+    const run = () => {
+      if (cancel || started) return;
+      const blocked = preparePaidImport(chunk);
+      if (blocked === 'pending') {
+        setView({ status: 'loading' });
+        return;
+      }
+      if (blocked) {
+        setView({ status: 'blocked', reason: blocked });
+        return;
+      }
+      started = true;
+      setView({ status: 'loading' });
+      load()
+        .then((result) => {
+          if (!cancel) setView({ status: 'ready', node: result.node });
+        })
+        .catch(() => {
+          if (cancel) return;
+          const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+          setView({ status: 'blocked', reason: offline ? 'offline' : 'failed' });
+        });
+    };
+    run();
+    const stop = subscribeEntitlement(run);
     return () => {
       cancel = true;
+      stop();
     };
   }, [attempt, chunk, load]);
 

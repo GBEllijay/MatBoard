@@ -3,19 +3,20 @@
  * after a token is accepted. The lock and revoke paths delete that cache.
  */
 
-import { entitlementNowMs, entitlementSnapshot, ENTITLEMENT_TOKEN_KEY } from './entitlement.ts';
+import { entitlementNowMs, entitlementReady, entitlementSnapshot, ENTITLEMENT_TOKEN_KEY } from './entitlement.ts';
 import {
   filesForAllowedChunks,
   PAID_CHUNK_CACHE,
   PAID_CHUNK_COOKIE,
   PAID_CHUNK_LABELS,
-  paidChunkAllowedForClient,
+  paidImportBlock,
   type PaidChunkId,
+  type PaidLoadBlock,
 } from './paidChunkAccess.ts';
+
+export type { PaidLoadBlock };
 import type { EntitlementClaims } from './entitlementToken.ts';
 import { PAID_CHUNK_FILES } from 'virtual:paid-chunks';
-
-export type PaidLoadBlock = 'confirm' | 'failed' | 'offline';
 
 function readToken(): string {
   try {
@@ -45,15 +46,23 @@ export function paidChunkLabel(chunk: PaidChunkId): string {
 /** Null means the import may run. Otherwise the screen shows this block. */
 export function preparePaidImport(chunk: PaidChunkId): PaidLoadBlock | null {
   const snap = entitlementSnapshot();
-  if (!snap.claims) {
-    clearPaidCookie();
-    return snap.amnesty ? 'confirm' : 'failed';
-  }
   const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
-  if (!paidChunkAllowedForClient(snap.claims, chunk, entitlementNowMs(), offline)) return 'failed';
   const token = readToken();
-  if (!token) return snap.amnesty ? 'confirm' : 'failed';
-  armPaidChunkRequest(token, snap.claims.exp);
+  const block = paidImportBlock({
+    ready: entitlementReady(),
+    claims: snap.claims,
+    amnesty: snap.amnesty,
+    token,
+    chunk,
+    nowMs: entitlementNowMs(),
+    offline,
+  });
+  if (block === 'pending') return block;
+  if (block) {
+    clearPaidCookie();
+    return block;
+  }
+  if (snap.claims) armPaidChunkRequest(token, snap.claims.exp);
   return null;
 }
 

@@ -5,6 +5,7 @@ import {
   filesForAllowedChunks,
   paidChunkAllowed,
   paidChunkAllowedForClient,
+  paidImportBlock,
   type PaidChunkId,
 } from './paidChunkAccess.ts';
 import { TOKEN_AUD, TOKEN_ISS, TOKEN_VERSION, type EntitlementClaims } from './entitlementToken.ts';
@@ -160,6 +161,58 @@ test('a lock is not waived by offline grace or a future nbf', () => {
     nbf: Math.floor(NOW_MS / 1000) + 100,
   });
   assert.equal(paidChunkAllowed(early, 'lesson-cloud', NOW_MS), false);
+});
+
+test('a paid screen waits for the stored token before showing confirm', () => {
+  const open = claims({ grants: [...pro], tier: 'pro', src: 'stripe', subs: { state: 'active' } });
+  assert.equal(
+    paidImportBlock({
+      ready: false,
+      claims: null,
+      amnesty: true,
+      token: '',
+      chunk: 'pro-console',
+      nowMs: NOW_MS,
+      offline: false,
+    }),
+    'pending',
+  );
+  assert.equal(
+    paidImportBlock({
+      ready: true,
+      claims: null,
+      amnesty: true,
+      token: '',
+      chunk: 'pro-console',
+      nowMs: NOW_MS,
+      offline: false,
+    }),
+    'confirm',
+  );
+  assert.equal(
+    paidImportBlock({
+      ready: true,
+      claims: open,
+      amnesty: true,
+      token: 'signed-token',
+      chunk: 'media-console',
+      nowMs: NOW_MS,
+      offline: false,
+    }),
+    null,
+  );
+  assert.equal(
+    paidImportBlock({
+      ready: true,
+      claims: open,
+      amnesty: false,
+      token: 'signed-token',
+      chunk: 'coach-unlimited',
+      nowMs: NOW_MS,
+      offline: true,
+    }),
+    null,
+  );
 });
 
 test('prefetch lists the files for every screen the token may open', () => {

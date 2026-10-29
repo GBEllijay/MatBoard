@@ -30,7 +30,7 @@ The Function verifies the ES256 signature with `ENTITLEMENT_SIGNING_KEY`. It the
 - A seat token with no preset is a custom binder. The server never stored that binder's toggles, so the seat screens stay available. Named presets stay strict.
 - The Function itself requires a token that is still inside `nbf` and `exp`. Offline grace is not applied here. After `exp`, an offline browser may open a copy it already saved. That is the client-side token check from decision D10.
 
-Legacy flags still open the other doors until the amnesty date. These four screens need a token, because the server cannot see a local flag and a patched client could claim one. Until the token exists, the screen shows confirm-your-access, with Restore and Enter a code. After one confirmation the chunk loads, and later visits can be offline.
+Legacy flags still open the other doors until the amnesty date. These four screens need a token, because the server cannot see a local flag and a patched client could claim one. A reload checks the saved token before it decides. Until that check finishes, the screen stays on Loading. If the check finishes with no token during amnesty, it shows confirm-your-access, with Restore and Enter a code. After one confirmation the chunk loads, and later visits can be offline. An owner-test seat pass has no product door. It still receives a seat token for the instructors preview, so Media Console and Lesson Cloud load.
 
 ## Offline and lock
 

@@ -54,6 +54,8 @@ let config: CachedConfig = {
 let verified: EntitlementClaims | null = null;
 let clockOverride: (() => number) | null = null;
 let offline = false;
+/** False until the first boot has reverified a stored token, or given up. */
+let bootReady = false;
 
 function nowMs(): number {
   return clockOverride ? clockOverride() : Date.now();
@@ -61,6 +63,15 @@ function nowMs(): number {
 
 export function entitlementNowMs(): number {
   return nowMs();
+}
+
+/** The stored token has been checked, or there was nothing to check. */
+export function entitlementReady(): boolean {
+  return bootReady;
+}
+
+export function setEntitlementReadyForTests(ready: boolean): void {
+  bootReady = ready;
 }
 
 function store(): Storage | null {
@@ -363,6 +374,7 @@ export function bootEntitlement(): void {
         offline = true;
       }
     }
+    bootReady = true;
     notifyEntitlement();
   })();
 }
