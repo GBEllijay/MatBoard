@@ -33,3 +33,17 @@ export const API_RESTORE_REQUEST_PATH = '/api/restore/request';
 export const API_RESTORE_VERIFY_PATH = '/api/restore/verify';
 
 export const API_DEVICES_REVOKE_PATH = '/api/devices/revoke-others';
+
+export const API_BILLING_PORTAL_PATH = '/api/billing/portal';
+
+export const API_SEATS_ISSUE_PATH = '/api/seats/issue';
+
+export const API_SEATS_ACCEPT_PATH = '/api/seats/accept';
+
+export const API_SEATS_REVOKE_PATH = '/api/seats/revoke';
+
+export const API_SEATS_RESET_PATH = '/api/seats/reset';
+
+export const API_SEATS_LIST_PATH = '/api/seats/list';
+
+export const API_SEATS_SYNC_PATH = '/api/seats/sync';

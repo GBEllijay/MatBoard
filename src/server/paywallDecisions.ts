@@ -1,8 +1,8 @@
 /**
  * Owner decisions for the paywall. Phase 1 records them and enforces only the
  * pieces that belong in this phase (code caps and the free White campaign).
- * Signed tokens, device registry, subscription state, seat enforcement, and
- * restore email are later phases. See docs/paywall-phase-plan.md.
+ * Phase 3 enforces subscription grace, the lock screen, and instructor seats.
+ * See docs/paywall-phase-3.md.
  */
 
 /** Pro checkout stays one-time plus monthly. Prices are not changed here. */

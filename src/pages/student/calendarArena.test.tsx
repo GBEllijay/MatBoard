@@ -81,6 +81,15 @@ function isoOffset(days: number): string {
   return `${date.getFullYear()}-${month}-${day}`;
 }
 
+/** A different day that stays on the month the calendar is showing. */
+function otherDayThisMonth(): string {
+  const now = new Date();
+  const last = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const day = now.getDate() < last ? now.getDate() + 1 : now.getDate() - 1;
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  return `${now.getFullYear()}-${month}-${String(day).padStart(2, '0')}`;
+}
+
 function Screen() {
   const { pathname } = useLocation();
   let page: ReactNode;
@@ -251,7 +260,7 @@ test('calendar keeps every control on the dark arena surface', () => {
 test('editing the add-event draft, adding, and removing keep the stored calendar shape', () => {
   localStorage.clear();
   const today = todayIso();
-  const other = isoOffset(3);
+  const other = otherDayThisMonth();
   saveStudentReport(
     localStorage,
     addJournalEntry(

@@ -19,6 +19,7 @@ export type PagesEnv = StripeRuntimeEnv & {
   TURNSTILE_SITE_KEY?: string;
   LEGACY_AMNESTY_ENDS_AT?: string;
   MIN_APP_VERSION?: string;
+  SEAT_SUNSET_ENDS_AT?: string;
 };
 
 export function pagesEntitlementStore(env: PagesEnv): EntitlementStore | null {

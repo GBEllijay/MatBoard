@@ -2,6 +2,8 @@ import { CHECKOUT_BUY_PATH, isCheckoutProduct, type CheckoutProduct } from '../l
 import { HALF_OFF_CODE } from '../lib/halfOff.ts';
 import { normalizeEmail } from './entitlements.ts';
 import { API_PRODUCT_COACH, API_PRODUCT_ID, API_PRODUCT_PRO, API_PRODUCT_STUDENT } from './routes.ts';
+import type { BillingEventKind } from './subscriptionAccess.ts';
+import { readCurrentPeriodEnd, readPriceIds } from './stripeSubscription.ts';
 
 export type { CheckoutProduct };
 
@@ -360,6 +362,20 @@ export type ProSubscriptionSync = {
   /** True when this payload itself says the subscription is Advantage Pro. */
   productKnown: boolean;
   entitled: boolean;
+  /** Why this event is syncing. The handler re-reads Stripe and does not trust this flag alone. */
+  billingEvent: BillingEventKind;
+  /** Price ids copied off the event. The handler prefers the fetched subscription. */
+  priceIds: string[];
+  cancelAtPeriodEnd: boolean;
+  currentPeriodEnd: string | null;
+};
+
+export type OneTimeRevocation = {
+  paymentIntentId: string;
+  sessionId: string;
+  /** Full refund or a dispute closed as lost. Partial refunds and open disputes are false. */
+  revoke: boolean;
+  reason: 'refund' | 'dispute';
 };
 
 export type StripeEntitlementDecision =
@@ -368,16 +384,19 @@ export type StripeEntitlementDecision =
   | { action: 'record-coach'; purchase: CheckoutPurchase }
   | { action: 'grant-pro'; grant: ProCheckoutGrant }
   | { action: 'sync-pro'; sync: ProSubscriptionSync }
+  | { action: 'revoke-onetime'; revocation: OneTimeRevocation }
   | { action: 'retry' }
   | { action: 'ignore' }
   | { action: 'invalid' };
 
 /**
- * past_due stays entitled while Stripe retries the renewal invoice.
- * paused stays entitled. canceled, unpaid, and incomplete_expired do not.
+ * Event classification before the handler re-reads Stripe.
+ * past_due stays in this set so a failure is not dropped. Grace and the day-8
+ * lock are applied from past_due_since after the fresh subscription is stored.
+ * paused, unpaid, canceled, and incomplete are not entitled.
  */
-const ENTITLED_SUBSCRIPTION_STATUSES = new Set(['active', 'trialing', 'past_due', 'paused']);
-const REVOKED_SUBSCRIPTION_STATUSES = new Set(['canceled', 'unpaid', 'incomplete_expired']);
+const ENTITLED_SUBSCRIPTION_STATUSES = new Set(['active', 'trialing', 'past_due']);
+const REVOKED_SUBSCRIPTION_STATUSES = new Set(['canceled', 'unpaid', 'incomplete', 'incomplete_expired', 'paused']);
 
 function readMetaProduct(row: Record<string, unknown>): string {
   const metadata = row.metadata;
@@ -509,7 +528,15 @@ function checkoutDecision(row: Record<string, unknown>): StripeEntitlementDecisi
   return { action: 'ignore' };
 }
 
-function invoiceDecision(row: Record<string, unknown>): StripeEntitlementDecision {
+function billingFields(row: Record<string, unknown>): Pick<ProSubscriptionSync, 'priceIds' | 'cancelAtPeriodEnd' | 'currentPeriodEnd'> {
+  return {
+    priceIds: readPriceIds(row),
+    cancelAtPeriodEnd: row.cancel_at_period_end === true,
+    currentPeriodEnd: readCurrentPeriodEnd(row),
+  };
+}
+
+function invoiceDecision(row: Record<string, unknown>, kind: 'paid' | 'failed'): StripeEntitlementDecision {
   if (row.object !== 'invoice') return { action: 'invalid' };
   const subscriptionId = readSubscriptionId(row);
   if (!subscriptionId) return { action: 'ignore' };
@@ -520,10 +547,12 @@ function invoiceDecision(row: Record<string, unknown>): StripeEntitlementDecisio
     sync: {
       subscriptionId,
       email: readEmail(row),
-      amountTotal: money(row, 'amount_paid'),
+      amountTotal: money(row, kind === 'paid' ? 'amount_paid' : 'amount_due'),
       currency: currencyOf(row),
       productKnown: product === API_PRODUCT_PRO,
       entitled: true,
+      billingEvent: kind,
+      ...billingFields(row),
     },
   };
 }
@@ -548,6 +577,8 @@ function subscriptionDecision(row: Record<string, unknown>, kind: 'deleted' | 'u
         currency: null,
         productKnown: product === API_PRODUCT_PRO,
         entitled: ENTITLED_SUBSCRIPTION_STATUSES.has(status),
+        billingEvent: 'upsert',
+        ...billingFields(row),
       },
     };
   }
@@ -560,6 +591,48 @@ function subscriptionDecision(row: Record<string, unknown>, kind: 'deleted' | 'u
       currency: null,
       productKnown: product === API_PRODUCT_PRO,
       entitled: false,
+      billingEvent: 'deleted',
+      ...billingFields(row),
+    },
+  };
+}
+
+function stringId(value: unknown, prefix: string): string {
+  if (typeof value === 'string' && value.startsWith(prefix)) return value;
+  if (value && typeof value === 'object' && typeof (value as { id?: unknown }).id === 'string') {
+    const id = (value as { id: string }).id;
+    if (id.startsWith(prefix)) return id;
+  }
+  return '';
+}
+
+function chargeDecision(row: Record<string, unknown>, type: string): StripeEntitlementDecision {
+  const paymentIntentId = stringId(row.payment_intent, 'pi_');
+  const metadata = row.metadata;
+  const sessionFromMeta =
+    metadata && typeof metadata === 'object' && typeof (metadata as { session_id?: unknown }).session_id === 'string'
+      ? (metadata as { session_id: string }).session_id
+      : '';
+  const sessionId = sessionFromMeta.startsWith('cs_') ? sessionFromMeta : '';
+  if (type === 'charge.refunded') {
+    if (row.object !== 'charge') return { action: 'invalid' };
+    const amount = typeof row.amount === 'number' ? row.amount : 0;
+    const refundedAmount = typeof row.amount_refunded === 'number' ? row.amount_refunded : 0;
+    const full = row.refunded === true || (amount > 0 && refundedAmount >= amount);
+    return {
+      action: 'revoke-onetime',
+      revocation: { paymentIntentId, sessionId, revoke: full, reason: 'refund' },
+    };
+  }
+  if (row.object !== 'dispute') return { action: 'invalid' };
+  const status = typeof row.status === 'string' ? row.status : '';
+  return {
+    action: 'revoke-onetime',
+    revocation: {
+      paymentIntentId,
+      sessionId,
+      revoke: type === 'charge.dispute.closed' && status === 'lost',
+      reason: 'dispute',
     },
   };
 }
@@ -573,9 +646,13 @@ export function purchaseFromStripeEvent(event: unknown): StripeEntitlementDecisi
     type !== 'checkout.session.async_payment_succeeded' &&
     type !== 'invoice.paid' &&
     type !== 'invoice.payment_succeeded' &&
+    type !== 'invoice.payment_failed' &&
     type !== 'customer.subscription.created' &&
     type !== 'customer.subscription.updated' &&
-    type !== 'customer.subscription.deleted'
+    type !== 'customer.subscription.deleted' &&
+    type !== 'charge.refunded' &&
+    type !== 'charge.dispute.created' &&
+    type !== 'charge.dispute.closed'
   ) {
     return { action: 'ignore' };
   }
@@ -584,7 +661,11 @@ export function purchaseFromStripeEvent(event: unknown): StripeEntitlementDecisi
   if (type === 'checkout.session.completed' || type === 'checkout.session.async_payment_succeeded') {
     return checkoutDecision(row);
   }
-  if (type === 'invoice.paid' || type === 'invoice.payment_succeeded') return invoiceDecision(row);
+  if (type === 'invoice.paid' || type === 'invoice.payment_succeeded') return invoiceDecision(row, 'paid');
+  if (type === 'invoice.payment_failed') return invoiceDecision(row, 'failed');
+  if (type === 'charge.refunded' || type === 'charge.dispute.created' || type === 'charge.dispute.closed') {
+    return chargeDecision(row, type);
+  }
   if (type === 'customer.subscription.deleted') return subscriptionDecision(row, 'deleted');
   return subscriptionDecision(row, 'upsert');
 }

@@ -15,7 +15,6 @@ import {
   instructorPresetPermissions,
   instructorPresetPlan,
   instructorSeatBinderLabel,
-  issueInstructorInvite,
   listInstructorSeats,
   proSeatCapBlockedCopy,
   proSeatCapNear,
@@ -30,6 +29,7 @@ import {
   type IssueInviteFailure,
   type SeatStatus,
 } from '../lib/instructorSeats';
+import { issueSeatWithServer, syncLegacySeats } from '../lib/seatClient';
 
 type IssuedLink = {
   email: string;
@@ -119,6 +119,10 @@ export function InstructorInvitePanel() {
     issuedRef.current?.scrollIntoView({ block: 'nearest' });
   }, [issued]);
 
+  useEffect(() => {
+    void syncLegacySeats();
+  }, []);
+
   if (currentSeat) {
     return (
       <section className="invite-owner-only" aria-label="Instructor invites">
@@ -147,7 +151,8 @@ export function InstructorInvitePanel() {
 
   const submitInvite = (event: FormEvent) => {
     event.preventDefault();
-    const result = issueInstructorInvite({
+    void (async () => {
+    const result = await issueSeatWithServer({
       email,
       permissions,
       presetId,
@@ -174,6 +179,7 @@ export function InstructorInvitePanel() {
     void publishSeatToGym(result.seat).then((sent) => {
       setHandoffNote(sent === 'saved' ? DRIVE_HANDOFF_SAVED : null);
     });
+    })();
   };
 
   return (

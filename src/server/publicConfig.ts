@@ -4,11 +4,13 @@ import type { D1Database } from './d1.ts';
 import {
   DEVICE_ACTIVE_DAYS,
   DEVICES_PER_INSTRUCTOR_SEAT,
+  INSTRUCTOR_SEAT_CAP,
   LEGACY_UNLOCK_AMNESTY_DAYS,
   PRO_DEVICES_PER_LICENSE,
   RESTORE_FROM_ADDRESS,
 } from './paywallDecisions.ts';
 import { LEGACY_AMNESTY_ENDS_AT } from '../lib/legacyUnlock.ts';
+import { SEAT_SUNSET_ENDS_AT } from '../lib/seatSunset.ts';
 
 const JSON_HEADERS = {
   'content-type': 'application/json; charset=utf-8',
@@ -25,12 +27,19 @@ export type ConfigEnv = EmailEnv & {
   CODE_HASH_PEPPER?: string;
   LEGACY_AMNESTY_ENDS_AT?: string;
   MIN_APP_VERSION?: string;
+  SEAT_SUNSET_ENDS_AT?: string;
 };
 
 function amnestyEnd(env: ConfigEnv): string {
   const override = env.LEGACY_AMNESTY_ENDS_AT?.trim() ?? '';
   if (override && Number.isFinite(Date.parse(override))) return new Date(override).toISOString();
   return LEGACY_AMNESTY_ENDS_AT;
+}
+
+function seatSunset(env: ConfigEnv): string {
+  const override = env.SEAT_SUNSET_ENDS_AT?.trim() ?? '';
+  if (override && Number.isFinite(Date.parse(override))) return new Date(override).toISOString();
+  return SEAT_SUNSET_ENDS_AT;
 }
 
 export function handlePublicConfig(request: Request, env: ConfigEnv, db: D1Database | null): Response {
@@ -50,6 +59,8 @@ export function handlePublicConfig(request: Request, env: ConfigEnv, db: D1Datab
     keys: signing && privateJwk ? [{ kid, alg: 'ES256', jwk: publicJwkOf(privateJwk) }] : [],
     minAppVersion: env.MIN_APP_VERSION?.trim() || MIN_APP_VERSION,
     legacyAmnestyEndsAt: amnestyEnd(env),
+    seatSunsetEndsAt: seatSunset(env),
+    instructorSeatCap: INSTRUCTOR_SEAT_CAP,
     legacyAmnestyDays: LEGACY_UNLOCK_AMNESTY_DAYS,
     restoreAvailable,
     restoreDryRun: sender?.name === 'dry-run',

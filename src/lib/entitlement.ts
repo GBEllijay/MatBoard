@@ -21,6 +21,7 @@ import {
   WHITE_RELOCK_KEY,
 } from './legacyUnlock.ts';
 import { ownerTestActive, subscribeOwnerTest } from './ownerTestGrant.ts';
+import { noteSeatSunset } from './seatSunset.ts';
 
 export const ENTITLEMENT_TOKEN_KEY = 'advantage.entitlement.token';
 export const ENTITLEMENT_CLOCK_KEY = 'advantage.entitlement.clock';
@@ -157,11 +158,38 @@ function legacyFlag(door: Door): boolean {
   return readItem('advantage.studentUnlocked') === '1';
 }
 
+function subscriptionPaused(claims: EntitlementClaims, ms: number): boolean {
+  if (!claims.subs) return false;
+  if (claims.subs.state === 'locked') return true;
+  if (claims.subs.state === 'grace' && claims.subs.lock_at && ms >= Date.parse(claims.subs.lock_at)) return true;
+  if (claims.subs.ends_at && ms >= Date.parse(claims.subs.ends_at) && claims.subs.state !== 'grace') return true;
+  return false;
+}
+
+/** Pro is paused. One-time doors on the same token stay open. */
+export function proAccessPaused(): boolean {
+  return Boolean(verified && subscriptionPaused(verified, nowMs()));
+}
+
+export function proGraceNotice(): { lockAt: string; seat: boolean; endsAt: string } | null {
+  if (!verified?.subs || verified.subs.state !== 'grace') return null;
+  if (subscriptionPaused(verified, nowMs())) return null;
+  return {
+    lockAt: verified.subs.lock_at ?? '',
+    endsAt: verified.subs.ends_at ?? '',
+    seat: verified.tier === 'seat' || verified.src === 'seat',
+  };
+}
+
+export function proEndsNotice(): { endsAt: string } | null {
+  if (!verified?.subs?.ends_at || verified.subs.state === 'locked') return null;
+  if (subscriptionPaused(verified, nowMs())) return null;
+  return { endsAt: verified.subs.ends_at };
+}
+
 function tokenUsable(claims: EntitlementClaims, ms: number): boolean {
   if (clockRolledBack(ms)) return false;
   if (ms < claims.nbf * 1000) return false;
-  if (claims.subs?.state === 'locked') return false;
-  if (claims.subs?.lock_at && ms >= Date.parse(claims.subs.lock_at)) return false;
   if (ms < claims.exp * 1000) return true;
   const unreachable = offline || (typeof navigator !== 'undefined' && navigator.onLine === false);
   if (!unreachable) return false;
@@ -173,7 +201,12 @@ function tokenUsable(claims: EntitlementClaims, ms: number): boolean {
 function tokenGrants(door: Door): boolean {
   if (!verified) return false;
   if (!tokenUsable(verified, nowMs())) return false;
+  const paused = subscriptionPaused(verified, nowMs());
+  if (paused && door === 'pro') return false;
+  if (paused && verified.subs?.state === 'locked') return verified.grants.includes(door);
+  if (paused && (door === 'student' || door === 'coach')) return false;
   if (door === 'student' && (verified.grants.includes('student') || verified.grants.includes('pro'))) return true;
+  if (door === 'coach' && verified.grants.includes('pro')) return true;
   return verified.grants.includes(door);
 }
 
@@ -245,6 +278,7 @@ export async function loadPublicConfig(): Promise<void> {
       minAppVersion?: string;
       restoreAvailable?: boolean;
       turnstileSiteKey?: string | null;
+      seatSunsetEndsAt?: string;
       message?: string;
     };
     const keys = Array.isArray(body.keys)
@@ -262,15 +296,20 @@ export async function loadPublicConfig(): Promise<void> {
       turnstileSiteKey: typeof body.turnstileSiteKey === 'string' ? body.turnstileSiteKey : null,
       message: typeof body.message === 'string' ? body.message : undefined,
     };
-    writeItem(ENTITLEMENT_CONFIG_KEY, JSON.stringify({ keys, legacyAmnestyEndsAt: config.legacyAmnestyEndsAt }));
+    if (typeof body.seatSunsetEndsAt === 'string') noteSeatSunset(body.seatSunsetEndsAt);
+    writeItem(
+      ENTITLEMENT_CONFIG_KEY,
+      JSON.stringify({ keys, legacyAmnestyEndsAt: config.legacyAmnestyEndsAt, seatSunsetEndsAt: body.seatSunsetEndsAt }),
+    );
   } catch {
     offline = true;
     const cached = readItem(ENTITLEMENT_CONFIG_KEY);
     if (!cached) return;
     try {
-      const parsed = JSON.parse(cached) as { keys?: CachedConfig['keys']; legacyAmnestyEndsAt?: string };
+      const parsed = JSON.parse(cached) as { keys?: CachedConfig['keys']; legacyAmnestyEndsAt?: string; seatSunsetEndsAt?: string };
       if (Array.isArray(parsed.keys)) config = { ...config, keys: parsed.keys, signing: parsed.keys.length > 0 };
       if (typeof parsed.legacyAmnestyEndsAt === 'string') config.legacyAmnestyEndsAt = parsed.legacyAmnestyEndsAt;
+      if (typeof parsed.seatSunsetEndsAt === 'string') noteSeatSunset(parsed.seatSunsetEndsAt);
     } catch {
       /* ignore a damaged cache */
     }
