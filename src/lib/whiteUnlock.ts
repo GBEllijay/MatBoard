@@ -1,4 +1,5 @@
-import { ownerTestActive, subscribeOwnerTest } from './ownerTestGrant.ts';
+import { doorOpen, notifyEntitlement, subscribeEntitlement } from './entitlement.ts';
+import { WHITE_RELOCK_KEY } from './legacyUnlock.ts';
 import { lockStudentEdition } from './studentUnlock.ts';
 import { WHITE_BUY_PATH } from './whitePurchase.ts';
 
@@ -10,33 +11,20 @@ export const WHITE_EXPIRES_STORAGE_KEY = 'advantage.whiteExpiresAt';
 
 const listeners = new Set<() => void>();
 
-function readFlag(): boolean {
-  try {
-    return localStorage.getItem(WHITE_UNLOCK_STORAGE_KEY) === '1';
-  } catch {
-    return false;
-  }
-}
-
 function writeFlag(unlocked: boolean): void {
   try {
-    if (unlocked) localStorage.setItem(WHITE_UNLOCK_STORAGE_KEY, '1');
-    else {
+    if (unlocked) {
+      localStorage.setItem(WHITE_UNLOCK_STORAGE_KEY, '1');
+      localStorage.removeItem(WHITE_RELOCK_KEY);
+    } else {
       localStorage.removeItem(WHITE_UNLOCK_STORAGE_KEY);
       localStorage.removeItem(WHITE_EXPIRES_STORAGE_KEY);
+      localStorage.setItem(WHITE_RELOCK_KEY, '1');
     }
   } catch {
     /* ignore quota / private mode */
   }
   listeners.forEach((fn) => fn());
-}
-
-function readExpiry(): string | null {
-  try {
-    return localStorage.getItem(WHITE_EXPIRES_STORAGE_KEY);
-  } catch {
-    return null;
-  }
 }
 
 export function setWhiteExpiry(expiresAt: string | null): void {
@@ -49,20 +37,15 @@ export function setWhiteExpiry(expiresAt: string | null): void {
 }
 
 export function isWhiteUnlocked(): boolean {
-  if (ownerTestActive('white')) return true;
-  if (!readFlag()) return false;
-  const expiry = readExpiry();
-  if (!expiry) return true;
-  const ends = Date.parse(expiry);
-  return Number.isFinite(ends) && ends > Date.now();
+  return doorOpen('white');
 }
 
 export function subscribeWhiteUnlock(fn: () => void): () => void {
   listeners.add(fn);
-  const offTest = subscribeOwnerTest(fn);
+  const off = subscribeEntitlement(fn);
   return () => {
     listeners.delete(fn);
-    offTest();
+    off();
   };
 }
 
@@ -79,10 +62,12 @@ export function setWhiteUnlocked(unlocked: boolean): void {
 export function lockWhite(): void {
   try {
     localStorage.removeItem(WHITE_UNLOCK_STORAGE_KEY);
+    localStorage.setItem(WHITE_RELOCK_KEY, '1');
   } catch {
     /* ignore quota / private mode */
   }
   listeners.forEach((fn) => fn());
+  notifyEntitlement();
 }
 
 /** Keep a server-confirmed Stripe result on this device so /white opens. */
@@ -128,21 +113,34 @@ export function isWhiteRestoreEmail(raw: string): boolean {
   return true;
 }
 
-export type WhiteRestoreResult = { ok: true } | { ok: false; error: string };
-
-const RESTORE_CLOSED =
-  'Email lookup no longer unlocks a purchase. Finish checkout on this device, or enter a code.';
+export type WhiteRestoreResult = { ok: true; message: string } | { ok: false; error: string };
 
 /**
- * Email lookup used to say whether an address had paid. It does not unlock,
- * and it does not say whether the address bought anything. A stored unlock stays.
+ * Asks the server to email a one-time code. The answer does not say whether
+ * the address bought anything, and it does not unlock this device.
  */
-export async function restoreWhiteByEmail(email: string): Promise<WhiteRestoreResult> {
+export async function restoreWhiteByEmail(
+  email: string,
+  turnstileToken = '',
+): Promise<WhiteRestoreResult> {
   const trimmed = email.trim();
   if (!isWhiteRestoreEmail(trimmed)) {
     return { ok: false, error: 'Enter the email from your purchase.' };
   }
-  return { ok: false, error: RESTORE_CLOSED };
+  try {
+    const response = await fetch('/api/restore/request', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: trimmed, turnstileToken: turnstileToken || undefined }),
+    });
+    const body = (await response.json()) as { ok?: boolean; message?: string; error?: string };
+    if (!response.ok || !body.ok) {
+      return { ok: false, error: body.error || 'Restore is not available yet.' };
+    }
+    return { ok: true, message: body.message || "If that address has a purchase, we've emailed a code." };
+  } catch {
+    return { ok: false, error: 'Could not reach the server. Check your connection and try again.' };
+  }
 }
 
 if (typeof window !== 'undefined') {

@@ -5,7 +5,7 @@
  * stress-test seeds. A saved journal is left alone when the demo is on.
  */
 
-import { ownerTestActive } from './ownerTestGrant.ts';
+import { doorOpen } from './entitlement.ts';
 
 export const STUDENT_FILE_STORAGE_KEY = 'matboard.studentEdition.v1';
 
@@ -82,16 +82,12 @@ function searchParams(search: string): URLSearchParams {
 }
 
 function entitledJournal(): boolean {
-  if (ownerTestActive('student') || ownerTestActive('pro')) return true;
   try {
     if (localStorage.getItem('advantage.studentEditionRelocked') === '1') return false;
-    if (localStorage.getItem('advantage.proUnlocked') === '1') return true;
-    if (localStorage.getItem('advantage.studentEditionUnlocked') === '1') return true;
-    if (localStorage.getItem('advantage.studentUnlocked') === '1') return true;
   } catch {
     return false;
   }
-  return false;
+  return doorOpen('student') || doorOpen('pro');
 }
 
 /**

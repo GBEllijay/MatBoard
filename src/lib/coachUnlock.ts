@@ -1,4 +1,5 @@
-import { ownerTestActive, subscribeOwnerTest } from './ownerTestGrant.ts';
+import { doorOpen, notifyEntitlement, subscribeEntitlement } from './entitlement.ts';
+import { COACH_RELOCK_KEY } from './legacyUnlock.ts';
 import { lockStudentEdition } from './studentUnlock.ts';
 
 /** Coach door on this browser. A server redeem sets the flag. URL params do not. */
@@ -7,34 +8,32 @@ export const COACH_UNLOCK_STORAGE_KEY = 'advantage.coachUnlocked';
 
 const listeners = new Set<() => void>();
 
-function readFlag(): boolean {
-  try {
-    return localStorage.getItem(COACH_UNLOCK_STORAGE_KEY) === '1';
-  } catch {
-    return false;
-  }
-}
-
 function writeFlag(unlocked: boolean): void {
   try {
-    if (unlocked) localStorage.setItem(COACH_UNLOCK_STORAGE_KEY, '1');
-    else localStorage.removeItem(COACH_UNLOCK_STORAGE_KEY);
+    if (unlocked) {
+      localStorage.setItem(COACH_UNLOCK_STORAGE_KEY, '1');
+      localStorage.removeItem(COACH_RELOCK_KEY);
+    } else {
+      localStorage.removeItem(COACH_UNLOCK_STORAGE_KEY);
+      localStorage.setItem(COACH_RELOCK_KEY, '1');
+    }
   } catch {
     /* ignore quota / private mode */
   }
   listeners.forEach((fn) => fn());
+  notifyEntitlement();
 }
 
 export function isCoachUnlocked(): boolean {
-  return readFlag() || ownerTestActive('coach');
+  return doorOpen('coach');
 }
 
 export function subscribeCoachUnlock(fn: () => void): () => void {
   listeners.add(fn);
-  const offTest = subscribeOwnerTest(fn);
+  const off = subscribeEntitlement(fn);
   return () => {
     listeners.delete(fn);
-    offTest();
+    off();
   };
 }
 

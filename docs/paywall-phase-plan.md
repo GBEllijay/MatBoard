@@ -1,6 +1,6 @@
 # Paywall phase plan
 
-Phase 1 is in this branch. Later phases are written down here and are not built.
+Phase 1 is on main. Phase 2 (signed tokens, D1 purchases, restore) is described in `docs/paywall-phase-2.md`. Grace, seats, and server-served chunks are still later.
 
 ## Decisions (owner)
 

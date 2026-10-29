@@ -21,3 +21,15 @@ export const API_CODES_REDEEM_PATH = '/api/codes/redeem';
 export const API_OWNER_TEST_PATH = '/api/owner-test';
 
 export const API_CHECKOUT_CONFIRM_PATH = '/api/checkout-confirm';
+
+export const API_CONFIG_PATH = '/api/config';
+
+export const API_SESSION_REDEEM_PATH = '/api/session/redeem';
+
+export const API_TOKEN_REFRESH_PATH = '/api/token/refresh';
+
+export const API_RESTORE_REQUEST_PATH = '/api/restore/request';
+
+export const API_RESTORE_VERIFY_PATH = '/api/restore/verify';
+
+export const API_DEVICES_REVOKE_PATH = '/api/devices/revoke-others';

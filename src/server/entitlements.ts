@@ -1,4 +1,4 @@
-import { API_PRODUCT_ID, API_PRODUCT_PRO, API_PRODUCT_STUDENT } from './routes.ts';
+import { API_PRODUCT_COACH, API_PRODUCT_ID, API_PRODUCT_PRO, API_PRODUCT_STUDENT } from './routes.ts';
 
 export type WhiteEntitlement = {
   email: string;
@@ -14,6 +14,16 @@ export type StudentEntitlement = {
   email: string;
   sessionId: string;
   product: typeof API_PRODUCT_STUDENT;
+  amountTotal: number | null;
+  currency: string | null;
+  createdAt: string;
+};
+
+/** One-time Advantage Coach. Recorded beside White and Student. */
+export type CoachEntitlement = {
+  email: string;
+  sessionId: string;
+  product: typeof API_PRODUCT_COACH;
   amountTotal: number | null;
   currency: string | null;
   createdAt: string;
@@ -39,6 +49,8 @@ export type EntitlementIndex = {
   emails: Record<string, string>;
   studentSessions: Record<string, StudentEntitlement>;
   studentEmails: Record<string, string>;
+  coachSessions: Record<string, CoachEntitlement>;
+  coachEmails: Record<string, string>;
   proSessions: Record<string, ProEntitlement>;
   proEmails: Record<string, string>;
   proSubscriptions: Record<string, string>;
@@ -51,6 +63,9 @@ export type EntitlementStore = {
   saveStudent(record: StudentEntitlement): Promise<StudentEntitlement>;
   findStudentByEmail(email: string): Promise<StudentEntitlement | null>;
   findStudentBySessionId(sessionId: string): Promise<StudentEntitlement | null>;
+  saveCoach(record: CoachEntitlement): Promise<CoachEntitlement>;
+  findCoachByEmail(email: string): Promise<CoachEntitlement | null>;
+  findCoachBySessionId(sessionId: string): Promise<CoachEntitlement | null>;
   savePro(record: ProEntitlement): Promise<ProEntitlement>;
   findProByEmail(email: string): Promise<ProEntitlement | null>;
   findProBySessionId(sessionId: string): Promise<ProEntitlement | null>;
@@ -66,6 +81,11 @@ export type KvBinding = {
 
 const INDEX_KEY = 'advantage-white-entitlements';
 
+/** One KV key per purchase so two webhooks cannot erase each other. */
+export function purchaseRecordKey(product: string, sessionId: string): string {
+  return `purchase:${product}:${sessionId}`;
+}
+
 export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
@@ -76,6 +96,8 @@ export function emptyEntitlementIndex(): EntitlementIndex {
     emails: {},
     studentSessions: {},
     studentEmails: {},
+    coachSessions: {},
+    coachEmails: {},
     proSessions: {},
     proEmails: {},
     proSubscriptions: {},
@@ -157,6 +179,8 @@ export function parseEntitlementIndex(raw: string): EntitlementIndex {
     emails?: unknown;
     studentSessions?: unknown;
     studentEmails?: unknown;
+    coachSessions?: unknown;
+    coachEmails?: unknown;
     proSessions?: unknown;
     proEmails?: unknown;
   };
@@ -164,6 +188,8 @@ export function parseEntitlementIndex(raw: string): EntitlementIndex {
   const emails: Record<string, string> = {};
   const studentSessions: Record<string, StudentEntitlement> = {};
   const studentEmails: Record<string, string> = {};
+  const coachSessions: Record<string, CoachEntitlement> = {};
+  const coachEmails: Record<string, string> = {};
   const proSessions: Record<string, ProEntitlement> = {};
   const proEmails: Record<string, string> = {};
   const proSubscriptions: Record<string, string> = {};
@@ -189,6 +215,17 @@ export function parseEntitlementIndex(raw: string): EntitlementIndex {
       if (typeof sessionId === 'string' && studentSessions[sessionId]) studentEmails[normalizeEmail(email)] = sessionId;
     }
   }
+  if (body.coachSessions && typeof body.coachSessions === 'object') {
+    for (const value of Object.values(body.coachSessions)) {
+      const record = parseCoachEntitlement(value);
+      if (record) coachSessions[record.sessionId] = record;
+    }
+  }
+  if (body.coachEmails && typeof body.coachEmails === 'object') {
+    for (const [email, sessionId] of Object.entries(body.coachEmails)) {
+      if (typeof sessionId === 'string' && coachSessions[sessionId]) coachEmails[normalizeEmail(email)] = sessionId;
+    }
+  }
   if (body.proSessions && typeof body.proSessions === 'object') {
     for (const value of Object.values(body.proSessions)) {
       const record = parseProEntitlement(value);
@@ -202,7 +239,17 @@ export function parseEntitlementIndex(raw: string): EntitlementIndex {
       if (typeof sessionId === 'string' && proSessions[sessionId]) proEmails[normalizeEmail(email)] = sessionId;
     }
   }
-  return { sessions, emails, studentSessions, studentEmails, proSessions, proEmails, proSubscriptions };
+  return {
+    sessions,
+    emails,
+    studentSessions,
+    studentEmails,
+    coachSessions,
+    coachEmails,
+    proSessions,
+    proEmails,
+    proSubscriptions,
+  };
 }
 
 /** Insert a purchase. The same Checkout session is stored once. Email points at the latest purchase. */
@@ -233,6 +280,47 @@ export function applyStudentEntitlement(index: EntitlementIndex, record: Student
     if (!current || current.createdAt <= stored.createdAt) index.studentEmails[stored.email] = stored.sessionId;
   }
   return stored;
+}
+
+export function parseCoachEntitlement(raw: unknown): CoachEntitlement | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const row = raw as Record<string, unknown>;
+  if (row.product !== API_PRODUCT_COACH) return null;
+  if (typeof row.sessionId !== 'string' || !row.sessionId) return null;
+  if (typeof row.email !== 'string') return null;
+  if (typeof row.createdAt !== 'string' || !row.createdAt) return null;
+  return {
+    email: normalizeEmail(row.email),
+    sessionId: row.sessionId,
+    product: API_PRODUCT_COACH,
+    amountTotal: typeof row.amountTotal === 'number' ? row.amountTotal : null,
+    currency: typeof row.currency === 'string' ? row.currency : null,
+    createdAt: row.createdAt,
+  };
+}
+
+export function applyCoachEntitlement(index: EntitlementIndex, record: CoachEntitlement): CoachEntitlement {
+  const existing = index.coachSessions[record.sessionId];
+  if (existing) return existing;
+  const stored = parseCoachEntitlement(record);
+  if (!stored) throw new Error('Coach entitlement record is not valid.');
+  index.coachSessions[stored.sessionId] = stored;
+  if (stored.email) {
+    const currentId = index.coachEmails[stored.email];
+    const current = currentId ? index.coachSessions[currentId] : undefined;
+    if (!current || current.createdAt <= stored.createdAt) index.coachEmails[stored.email] = stored.sessionId;
+  }
+  return stored;
+}
+
+export function coachEntitlementByEmail(index: EntitlementIndex, email: string): CoachEntitlement | null {
+  const sessionId = index.coachEmails[normalizeEmail(email)];
+  if (!sessionId) return null;
+  return index.coachSessions[sessionId] ?? null;
+}
+
+export function coachEntitlementBySession(index: EntitlementIndex, sessionId: string): CoachEntitlement | null {
+  return index.coachSessions[sessionId] ?? null;
 }
 
 export function studentEntitlementByEmail(index: EntitlementIndex, email: string): StudentEntitlement | null {
@@ -328,6 +416,15 @@ export function memoryEntitlementStore(initial?: EntitlementIndex): EntitlementS
     async findStudentBySessionId(sessionId) {
       return studentEntitlementBySession(index, sessionId);
     },
+    async saveCoach(record) {
+      return applyCoachEntitlement(index, record);
+    },
+    async findCoachByEmail(email) {
+      return coachEntitlementByEmail(index, email);
+    },
+    async findCoachBySessionId(sessionId) {
+      return coachEntitlementBySession(index, sessionId);
+    },
     async savePro(record) {
       return applyProEntitlement(index, record);
     },
@@ -343,6 +440,16 @@ export function memoryEntitlementStore(initial?: EntitlementIndex): EntitlementS
   };
 }
 
+async function readPurchaseKey<T>(kv: KvBinding, product: string, sessionId: string, parse: (raw: unknown) => T | null): Promise<T | null> {
+  const raw = await kv.get(purchaseRecordKey(product, sessionId));
+  if (!raw) return null;
+  try {
+    return parse(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
+
 export function kvEntitlementStore(kv: KvBinding): EntitlementStore {
   const read = async (): Promise<EntitlementIndex> => {
     const raw = await kv.get(INDEX_KEY);
@@ -350,42 +457,68 @@ export function kvEntitlementStore(kv: KvBinding): EntitlementStore {
     return parseEntitlementIndex(raw);
   };
 
+  const writeIndex = async (index: EntitlementIndex, product: string, sessionId: string, record: unknown) => {
+    await kv.put(purchaseRecordKey(product, sessionId), JSON.stringify(record));
+    await kv.put(INDEX_KEY, JSON.stringify(index));
+  };
+
   return {
     async save(record) {
       const index = await read();
       const stored = applyEntitlement(index, record);
-      await kv.put(INDEX_KEY, JSON.stringify(index));
+      await writeIndex(index, stored.product, stored.sessionId, stored);
       return stored;
     },
     async findByEmail(email) {
       return entitlementByEmail(await read(), email);
     },
     async findBySessionId(sessionId) {
-      return entitlementBySession(await read(), sessionId);
+      return (await readPurchaseKey(kv, API_PRODUCT_ID, sessionId, parseWhiteEntitlement)) ?? entitlementBySession(await read(), sessionId);
     },
     async saveStudent(record) {
       const index = await read();
       const stored = applyStudentEntitlement(index, record);
-      await kv.put(INDEX_KEY, JSON.stringify(index));
+      await writeIndex(index, stored.product, stored.sessionId, stored);
       return stored;
     },
     async findStudentByEmail(email) {
       return studentEntitlementByEmail(await read(), email);
     },
     async findStudentBySessionId(sessionId) {
-      return studentEntitlementBySession(await read(), sessionId);
+      return (
+        (await readPurchaseKey(kv, API_PRODUCT_STUDENT, sessionId, parseStudentEntitlement)) ??
+        studentEntitlementBySession(await read(), sessionId)
+      );
+    },
+    async saveCoach(record) {
+      const index = await read();
+      const stored = applyCoachEntitlement(index, record);
+      await writeIndex(index, stored.product, stored.sessionId, stored);
+      return stored;
+    },
+    async findCoachByEmail(email) {
+      return coachEntitlementByEmail(await read(), email);
+    },
+    async findCoachBySessionId(sessionId) {
+      return (
+        (await readPurchaseKey(kv, API_PRODUCT_COACH, sessionId, parseCoachEntitlement)) ??
+        coachEntitlementBySession(await read(), sessionId)
+      );
     },
     async savePro(record) {
       const index = await read();
       const stored = applyProEntitlement(index, record);
-      await kv.put(INDEX_KEY, JSON.stringify(index));
+      await writeIndex(index, stored.product, stored.sessionId, stored);
       return stored;
     },
     async findProByEmail(email) {
       return proEntitlementByEmail(await read(), email);
     },
     async findProBySessionId(sessionId) {
-      return proEntitlementBySession(await read(), sessionId);
+      return (
+        (await readPurchaseKey(kv, API_PRODUCT_PRO, sessionId, parseProEntitlement)) ??
+        proEntitlementBySession(await read(), sessionId)
+      );
     },
     async findProBySubscriptionId(subscriptionId) {
       return proEntitlementBySubscription(await read(), subscriptionId);

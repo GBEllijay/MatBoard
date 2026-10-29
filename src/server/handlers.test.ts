@@ -405,11 +405,11 @@ test('webhook stores email and session id and entitlement lookup finds it', asyn
   const bySession = await store.findBySessionId('cs_test_abc');
   assert.equal(bySession?.email, 'buyer@gym.test');
   const lookup = await handleEntitlement(new Request('http://localhost/api/entitlement?email=buyer@gym.test'), store);
-  assert.equal(lookup.status, 200);
-  const body = (await lookup.json()) as { entitled?: boolean; email?: string; message: string };
+  assert.equal(lookup.status, 410);
+  const body = (await lookup.json()) as { entitled?: boolean; email?: string; error: string };
   assert.equal(body.entitled, undefined);
   assert.equal(body.email, undefined);
-  assert.match(body.message, /does not say/);
+  assert.match(body.error, /does not say/);
 });
 
 function signedWebhook(payload: string, now: Date): Request {
@@ -548,10 +548,10 @@ test('webhook rejects a bad signature and does not record a purchase', async () 
 
 test('entitlement lookup does not require a store and does not reveal a purchase', async () => {
   const response = await handleEntitlement(new Request('http://localhost/api/entitlement?email=a@b.co'), null);
-  assert.equal(response.status, 200);
-  const body = (await response.json()) as { entitled?: boolean; message: string };
+  assert.equal(response.status, 410);
+  const body = (await response.json()) as { entitled?: boolean; error: string };
   assert.equal(body.entitled, undefined);
-  assert.match(body.message, /does not say/);
+  assert.match(body.error, /does not say/);
 });
 
 test('Student checkout is a one-time hosted session', async () => {
@@ -644,6 +644,7 @@ test('Student checkout webhook unlocks Student Edition and leaves White and Pro 
     new Request('http://localhost/api/entitlement?email=student@gym.test&product=student'),
     store,
   );
+  assert.equal(hidden.status, 410);
   const hiddenBody = (await hidden.json()) as { entitled?: boolean; product?: string; email?: string };
   assert.equal(hiddenBody.entitled, undefined);
   assert.equal(hiddenBody.product, undefined);

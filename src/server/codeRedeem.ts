@@ -1,5 +1,11 @@
+import type { Door } from '../lib/entitlementToken.ts';
 import { catalogHasCaps, findCode, loadCodeCatalog, type CodeRecord, type KvListBinding } from './codeCatalog.ts';
 import { keyedHash, normalizeCode, normalizeEmail } from './codeCrypto.ts';
+import type { D1Database } from './d1.ts';
+import { expandGrants, tierForGrants } from './grantMatrix.ts';
+import { emailHint, recordPurchase } from './purchaseRecords.ts';
+import { API_PRODUCT_COACH, API_PRODUCT_ID, API_PRODUCT_PRO, API_PRODUCT_STUDENT } from './routes.ts';
+import { issueToken } from './tokenIssue.ts';
 import {
   CAP_STORE_ERROR,
   CODE_SETUP_ERROR,
@@ -57,12 +63,26 @@ export function ledgerFor(env: CodeRedeemEnv, kv: CounterKv | null, override?: R
   return null;
 }
 
+export type CodeRedeemServices = {
+  db?: D1Database | null;
+  signingKey?: string;
+  keyId?: string;
+};
+
+const PRODUCT_FOR_DOOR: Record<Door, string> = {
+  white: API_PRODUCT_ID,
+  student: API_PRODUCT_STUDENT,
+  coach: API_PRODUCT_COACH,
+  pro: API_PRODUCT_PRO,
+};
+
 export async function handleCodeRedeem(
   request: Request,
   env: CodeRedeemEnv,
   kv: CounterKv | null = null,
   ledger: RedemptionLedger | null = null,
   now: () => Date = () => new Date(),
+  services: CodeRedeemServices = {},
 ): Promise<Response> {
   if (request.method !== 'POST') return json(405, { error: 'Method not allowed.' });
   const pepper = env.CODE_HASH_PEPPER?.trim() ?? '';
@@ -114,10 +134,53 @@ export async function handleCodeRedeem(
     if (!reserved.ok) return json(409, { ok: false, error: capMessage(reserved.reason) });
   }
 
+  const listed = record.grants.filter((door) => door !== 'seat');
+  const doors = expandGrants(listed);
+  const expiresAt = grantExpiry(record, now());
+  const deviceField = (body as { deviceId?: unknown }).deviceId;
+  const deviceId = typeof deviceField === 'string' && deviceField.trim() ? deviceField.trim().slice(0, 80) : crypto.randomUUID();
+  let token: string | null = null;
+  if (services.signingKey && doors.length) {
+    const src = record.kind === 'free-white' ? 'free' : record.kind === 'owner' ? 'owner' : 'code';
+    const refSalt = email ? await keyedHash(normalizeEmail(email), pepper, 'email') : deviceId;
+    let licenseId: string = crypto.randomUUID();
+    if (services.db) {
+      for (const door of doors) {
+        const recorded = await recordPurchase(services.db, {
+          email,
+          product: PRODUCT_FOR_DOOR[door],
+          source: src === 'free' ? 'free' : src === 'owner' ? 'owner' : 'code',
+          sourceRef: `code:${record.id}:${refSalt}:${door}`,
+          sessionId: `code:${record.id}:${refSalt}`,
+          pepper,
+          now: now(),
+          endsAt: expiresAt,
+          status: 'active',
+        });
+        licenseId = recorded.licenseId;
+      }
+    }
+    token = await issueToken(
+      services.signingKey,
+      {
+        licenseId,
+        grants: doors,
+        tier: record.kind === 'owner' ? 'owner' : tierForGrants(doors, src),
+        src,
+        deviceId,
+        now: now(),
+        kind: 'code',
+        grantEndsAt: expiresAt,
+        emailHint: await emailHint(email, pepper),
+      },
+      services.keyId,
+    );
+  }
   return json(200, {
     ok: true,
-    grants: record.grants.filter((door) => door !== 'seat'),
-    expiresAt: grantExpiry(record, now()),
+    grants: listed,
+    expiresAt,
     source: 'code',
+    ...(token ? { token, deviceId } : {}),
   });
 }
