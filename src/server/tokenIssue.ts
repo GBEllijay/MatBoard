@@ -22,7 +22,7 @@ import {
 
 const DAY = 24 * 60 * 60;
 
-export type TokenKind = 'pro' | 'onetime' | 'code' | 'owner-test';
+export type TokenKind = 'pro' | 'onetime' | 'code' | 'owner-test' | 'seat';
 
 export type IssueInput = {
   licenseId: string;
@@ -41,6 +41,9 @@ export type IssueInput = {
   emailHint?: string;
   thumbprint?: string;
   subs?: SubscriptionClaim;
+  gym?: string;
+  sid?: string;
+  preset?: string;
   kid?: string;
 };
 
@@ -61,12 +64,27 @@ export function lifetimeFor(input: IssueInput): Pick<EntitlementClaims, 'exp' | 
     const seconds = Math.max(60, input.ownerTestSeconds ?? 7 * DAY);
     return { exp: now + seconds, refresh_after: now + Math.min(DAY, seconds) };
   }
-  if (input.kind === 'pro') {
-    return {
-      exp: bounded(PRO_TOKEN_DAYS * DAY),
-      refresh_after: now + DAY,
-      offline_grace: PRO_OFFLINE_GRACE_DAYS * DAY,
-    };
+  if (input.kind === 'pro' || input.kind === 'seat') {
+    let exp = bounded(PRO_TOKEN_DAYS * DAY);
+    let refreshAfter = now + DAY;
+    let offlineGrace: number | undefined = PRO_OFFLINE_GRACE_DAYS * DAY;
+    const lockAt = input.subs?.lock_at ? Math.floor(Date.parse(input.subs.lock_at) / 1000) : Number.NaN;
+    const endsAt = input.subs?.ends_at ? Math.floor(Date.parse(input.subs.ends_at) / 1000) : Number.NaN;
+    if (input.subs?.state === 'grace' && Number.isFinite(lockAt)) {
+      exp = Math.min(exp, lockAt);
+      refreshAfter = now;
+      offlineGrace = undefined;
+    }
+    if (input.subs?.state !== 'locked' && Number.isFinite(endsAt)) {
+      exp = Math.min(exp, endsAt);
+      offlineGrace = undefined;
+    }
+    if (input.subs?.state === 'locked') {
+      exp = bounded(DAY);
+      refreshAfter = now;
+      offlineGrace = undefined;
+    }
+    return offlineGrace ? { exp, refresh_after: refreshAfter, offline_grace: offlineGrace } : { exp, refresh_after: refreshAfter };
   }
   if (input.kind === 'onetime') {
     const exp = bounded(ONETIME_TOKEN_DAYS * DAY);
@@ -82,7 +100,8 @@ export function lifetimeFor(input: IssueInput): Pick<EntitlementClaims, 'exp' | 
 
 export async function issueToken(secret: string | undefined, input: IssueInput, keyId = 'k1'): Promise<string | null> {
   const material = signingMaterial(secret, keyId);
-  if (!material || input.grants.length === 0) return null;
+  if (!material) return null;
+  if (input.grants.length === 0 && input.subs?.state !== 'locked') return null;
   const now = Math.floor(input.now.getTime() / 1000);
   const life = lifetimeFor(input);
   const claims: EntitlementClaims = {
@@ -105,6 +124,9 @@ export async function issueToken(secret: string | undefined, input: IssueInput, 
   if (input.emailHint) claims.eh = input.emailHint;
   if (input.thumbprint) claims.cnf = input.thumbprint;
   if (input.subs) claims.subs = input.subs;
+  if (input.gym) claims.gym = input.gym;
+  if (input.sid) claims.sid = input.sid;
+  if (input.preset) claims.preset = input.preset;
   if (claims.exp <= now) return null;
   return signToken(claims, material.privateJwk);
 }

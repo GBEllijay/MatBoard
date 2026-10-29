@@ -9,15 +9,31 @@ import { handlePublicConfig } from './publicConfig.ts';
 import { handleRestoreRequest, handleRestoreVerify, handleRevokeOtherDevices } from './restoreAccess.ts';
 import { handleSessionRedeem } from './sessionRedeem.ts';
 import { sqliteD1 } from './sqliteD1.ts';
+import { handleBillingPortal } from './billingPortal.ts';
+import {
+  handleSeatAccept,
+  handleSeatIssue,
+  handleSeatList,
+  handleSeatReset,
+  handleSeatRevoke,
+  handleSeatSync,
+} from './seats.ts';
 import { handleTokenRefresh } from './tokenRefresh.ts';
 import { MemoryRedemptionLedger } from './redemptionLedger.ts';
 import { MICROSOFT_CLIENT_API, publicMicrosoftClientIdFromEnv } from '../lib/microsoftClientPublic.ts';
 import {
+  API_BILLING_PORTAL_PATH,
   API_CHECKOUT_CONFIRM_PATH,
   API_CHECKOUT_PATH,
   API_CODES_REDEEM_PATH,
   API_CONFIG_PATH,
   API_DEVICES_REVOKE_PATH,
+  API_SEATS_ACCEPT_PATH,
+  API_SEATS_ISSUE_PATH,
+  API_SEATS_LIST_PATH,
+  API_SEATS_RESET_PATH,
+  API_SEATS_REVOKE_PATH,
+  API_SEATS_SYNC_PATH,
   API_ENTITLEMENT_PATH,
   API_OWNER_TEST_PATH,
   API_RESTORE_REQUEST_PATH,
@@ -188,7 +204,14 @@ function attach(
       path === API_TOKEN_REFRESH_PATH ||
       path === API_RESTORE_REQUEST_PATH ||
       path === API_RESTORE_VERIFY_PATH ||
-      path === API_DEVICES_REVOKE_PATH;
+      path === API_DEVICES_REVOKE_PATH ||
+      path === API_BILLING_PORTAL_PATH ||
+      path === API_SEATS_ISSUE_PATH ||
+      path === API_SEATS_ACCEPT_PATH ||
+      path === API_SEATS_REVOKE_PATH ||
+      path === API_SEATS_RESET_PATH ||
+      path === API_SEATS_LIST_PATH ||
+      path === API_SEATS_SYNC_PATH;
     if (!api) {
       next();
       return;
@@ -221,13 +244,27 @@ function attach(
                       ? await handleSessionRedeem(request, env, devDb)
                       : path === API_TOKEN_REFRESH_PATH
                         ? await handleTokenRefresh(request, env, devDb)
-                        : path === API_RESTORE_REQUEST_PATH
-                          ? await handleRestoreRequest(request, env, devDb, emailSenderFromEnv(env))
-                          : path === API_RESTORE_VERIFY_PATH
-                            ? await handleRestoreVerify(request, env, devDb)
-                            : path === API_DEVICES_REVOKE_PATH
-                              ? await handleRevokeOtherDevices(request, env, devDb)
-                              : await handleEntitlement(request, store, env);
+                        : path === API_BILLING_PORTAL_PATH
+                          ? await handleBillingPortal(request, env, devDb)
+                          : path === API_SEATS_ISSUE_PATH
+                            ? await handleSeatIssue(request, env, devDb)
+                            : path === API_SEATS_ACCEPT_PATH
+                              ? await handleSeatAccept(request, env, devDb)
+                              : path === API_SEATS_REVOKE_PATH
+                                ? await handleSeatRevoke(request, env, devDb)
+                                : path === API_SEATS_RESET_PATH
+                                  ? await handleSeatReset(request, env, devDb)
+                                  : path === API_SEATS_LIST_PATH
+                                    ? await handleSeatList(request, env, devDb)
+                                    : path === API_SEATS_SYNC_PATH
+                                      ? await handleSeatSync(request, env, devDb)
+                                      : path === API_RESTORE_REQUEST_PATH
+                                        ? await handleRestoreRequest(request, env, devDb, emailSenderFromEnv(env))
+                                        : path === API_RESTORE_VERIFY_PATH
+                                          ? await handleRestoreVerify(request, env, devDb)
+                                          : path === API_DEVICES_REVOKE_PATH
+                                            ? await handleRevokeOtherDevices(request, env, devDb)
+                                            : await handleEntitlement(request, store, env);
       await writeResponse(res as NodeResponse, response);
     } catch {
       res.statusCode = 500;

@@ -74,6 +74,11 @@ import { TrainingNotesPage } from './pages/TrainingNotes';
 import { TrainingControllerPage } from './pages/TrainingController';
 import { TrainingPage } from './pages/Training';
 import { LegacyAccessNotice } from './components/LegacyAccessNotice';
+import { PaymentGraceBanner } from './components/PaymentGraceBanner';
+import { proAccessPaused } from './lib/entitlement';
+import { acceptSignedSeat } from './lib/seatClient';
+import { isSignedSeatInvite } from './lib/seatSunset';
+import { ProLockedPage } from './pages/ProLocked';
 import { bootEntitlement } from './lib/entitlement';
 import { BuyCoachPage, BuyProPage, BuyStudentPage } from './pages/BuyTier';
 import { BuyWhitePage } from './pages/BuyWhite';
@@ -91,10 +96,25 @@ bootEntitlement();
  * A live token accepts the seat and replaces the address with home.
  * The owner code is never added to that address.
  */
+function closedOrPaused(seated: boolean): string {
+  if (proAccessPaused()) return '/pro/paused';
+  return closedDoorPath(seated);
+}
+
 function consumeInviteDoorNow(): void {
   if (typeof window === 'undefined') return;
   const params = new URLSearchParams(window.location.search);
   const token = params.get('invite');
+  if (token && isSignedSeatInvite(token)) {
+    void acceptSignedSeat(token).then((ok) => {
+      if (!ok) return;
+      const url = new URL(window.location.href);
+      url.pathname = PRODUCTS_PATH;
+      url.search = '';
+      window.history.replaceState(window.history.state, '', `${url.pathname}${url.hash}`);
+    });
+    return;
+  }
   if (!token || peekInstructorInvite(token) !== 'open') return;
   if (inviteReloadBlocked(token, currentNavigationType(), token)) {
     stripInviteFromAddress();
@@ -112,28 +132,28 @@ consumeInviteDoorNow();
 /** Full Pro hubs a seat is allowed to see. Owner-only hubs stay out. */
 function ProConsoleRoute({ children }: { children: ReactNode }) {
   const door = useSeatDoor();
-  if (visibleProHubs(door).length === 0) return <Navigate to={closedDoorPath(door.seated)} replace />;
+  if (visibleProHubs(door).length === 0) return <Navigate to={closedOrPaused(door.seated)} replace />;
   return children;
 }
 
 /** Gallery, Events, and Pro Shop. Program Director opens this with Pro locked. */
 function MediaConsoleRoute({ children }: { children: ReactNode }) {
   const door = useSeatDoor();
-  if (!mediaConsoleDoorOpen(door)) return <Navigate to={closedDoorPath(door.seated)} replace />;
+  if (!mediaConsoleDoorOpen(door)) return <Navigate to={closedOrPaused(door.seated)} replace />;
   return children;
 }
 
 /** Tournament suite and invite admin. A signed-in seat does not open these. */
 function OwnerProRoute({ children }: { children: ReactNode }) {
   const door = useSeatDoor();
-  if (!ownerProHubOpen(door.proUnlocked, door.seated)) return <Navigate to={closedDoorPath(door.seated)} replace />;
+  if (!ownerProHubOpen(door.proUnlocked, door.seated)) return <Navigate to={closedOrPaused(door.seated)} replace />;
   return children;
 }
 
 /** Coach Unlimited hub. A seat needs Pro on and a lesson or videos menu. */
 function CoachUnlimitedRoute({ children }: { children: ReactNode }) {
   const door = useSeatDoor();
-  if (!coachUnlimitedDoorOpen(door)) return <Navigate to={closedDoorPath(door.seated)} replace />;
+  if (!coachUnlimitedDoorOpen(door)) return <Navigate to={closedOrPaused(door.seated)} replace />;
   return children;
 }
 
@@ -149,7 +169,7 @@ function LessonCloudRoute({ children }: { children: ReactNode }) {
     door.seat,
     seatMenuAllowed(door.seat, 'dailyLessonPlanAccess'),
   );
-  if (!open) return <Navigate to={closedDoorPath(door.seated)} replace />;
+  if (!open) return <Navigate to={closedOrPaused(door.seated)} replace />;
   return children;
 }
 
@@ -161,7 +181,7 @@ function BuyProRoute({ children }: { children: ReactNode }) {
   const door = useSeatDoor();
   const [params] = useSearchParams();
   if (!door.proUnlocked && !door.programDirectorSeat && !proPurchaseReturn(params)) {
-    return <Navigate to={closedDoorPath(door.seated)} replace />;
+    return <Navigate to={closedOrPaused(door.seated)} replace />;
   }
   return children;
 }
@@ -181,7 +201,7 @@ function BuyStudentRoute({ children }: { children: ReactNode }) {
     student: useStudentEditionUnlocked(),
   });
   if (!open && !studentPurchaseReturn(params)) {
-    return <Navigate to={closedDoorPath(seated)} replace />;
+    return <Navigate to={closedOrPaused(seated)} replace />;
   }
   return children;
 }
@@ -213,7 +233,7 @@ function WhiteLiveRoute({ children }: { children: ReactNode }) {
 function MediaFolderRoute({ folder }: { folder: MediaFolderId }) {
   const door = useSeatDoor();
   if (!mediaFolderDoorOpen(door, door.seat?.permissions ?? null, folder)) {
-    return <Navigate to={closedDoorPath(door.seated)} replace />;
+    return <Navigate to={closedOrPaused(door.seated)} replace />;
   }
   return <Navigate to={`/slideshow?folder=${folder}`} replace />;
 }
@@ -221,7 +241,7 @@ function MediaFolderRoute({ folder }: { folder: MediaFolderId }) {
 /** `/media`, `/console`, and `/media-console` open the same seat console as home. */
 function MediaConsoleEntryRoute() {
   const door = useSeatDoor();
-  if (!mediaConsoleDoorOpen(door)) return <Navigate to={closedDoorPath(door.seated)} replace />;
+  if (!mediaConsoleDoorOpen(door)) return <Navigate to={closedOrPaused(door.seated)} replace />;
   return <Navigate to="/pro" replace />;
 }
 
@@ -229,7 +249,7 @@ function CoachRoute({ children }: { children: ReactNode }) {
   const coach = useCoachUnlocked();
   const pro = useProUnlocked();
   const seated = useCurrentSeat() !== null;
-  if (!coachDoorOpen(pro, coach, seated)) return <Navigate to={closedDoorPath(seated)} replace />;
+  if (!coachDoorOpen(pro, coach, seated)) return <Navigate to={closedOrPaused(seated)} replace />;
   return children;
 }
 
@@ -242,7 +262,8 @@ function InviteDoor({ children }: { children: ReactNode }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get('invite');
-  const peek = token ? peekInstructorInvite(token) : null;
+  const signedInvite = Boolean(token && isSignedSeatInvite(token));
+  const peek = token && !signedInvite ? peekInstructorInvite(token) : null;
   const open = peek === 'open';
 
   useEffect(() => {
@@ -262,6 +283,14 @@ function InviteDoor({ children }: { children: ReactNode }) {
     );
   }, [token, open, navigate, setSearchParams]);
 
+  useEffect(() => {
+    if (!token || !signedInvite) return;
+    void acceptSignedSeat(token).then((ok) => {
+      if (ok) navigate(PRODUCTS_PATH, { replace: true });
+    });
+  }, [token, signedInvite, navigate]);
+
+  if (signedInvite) return null;
   if (token && peek === 'missing') return <InviteHandoffAccept token={token} />;
   if (open) return null;
   return children;
@@ -296,6 +325,7 @@ export default function App() {
     <>
     <SeatSessionChrome />
     <LegacyAccessNotice />
+    <PaymentGraceBanner />
     <InviteDoor>
     <Routes>
       <Route path="/" element={<PublicHomeRoute />} />
@@ -311,6 +341,7 @@ export default function App() {
       />
       <Route path="/buy" element={<BuyWhitePage />} />
       <Route path="/restore" element={<RestoreAccessPage />} />
+      <Route path="/pro/paused" element={<ProLockedPage />} />
       <Route
         path="/buy/student"
         element={

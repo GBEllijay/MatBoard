@@ -8,7 +8,7 @@ import {
   type BillingEventKind,
   type SubscriptionAccess,
 } from './subscriptionAccess.ts';
-import type { StripeSubscriptionSnapshot } from './stripeSubscription.ts';
+import { canceledSnapshot, fetchStripeSubscription, type StripeSubscriptionSnapshot } from './stripeSubscription.ts';
 import type { StripeRuntimeEnv } from './stripeCheckout.ts';
 
 export type SubscriptionRow = {
@@ -165,4 +165,59 @@ export async function applySubscriptionSnapshot(
     }
   }
   return { ignored: false, licenseId, access, pastDueSince };
+}
+
+const RECONCILE_MS = 24 * 60 * 60 * 1000;
+
+function storedAccess(row: SubscriptionRow, now: Date): SubscriptionAccess {
+  return accessForSubscription(
+    {
+      status: row.status,
+      cancelAtPeriodEnd: row.cancelAtPeriodEnd === 1,
+      currentPeriodEnd: row.currentPeriodEnd,
+      pastDueSince: row.pastDueSince,
+    },
+    now,
+  );
+}
+
+/**
+ * On token refresh, re-read Stripe when the stored row is older than 24 hours
+ * or the subscription is in grace or locked. A failed read keeps the stored row.
+ */
+export async function accessForLicense(
+  db: D1Database,
+  licenseId: string,
+  now: Date,
+  options: { env?: StripeRuntimeEnv; fetchImpl?: typeof fetch; pepper?: string } = {},
+): Promise<{ access: SubscriptionAccess; pastDueSince: string | null } | null> {
+  const row = await readSubscriptionForLicense(db, licenseId);
+  if (!row) return null;
+  const synced = row.lastSyncedAt ? Date.parse(row.lastSyncedAt) : 0;
+  const stale = !Number.isFinite(synced) || now.getTime() - synced > RECONCILE_MS;
+  const sensitive =
+    row.status === 'past_due' ||
+    row.status === 'unpaid' ||
+    row.status === 'paused' ||
+    row.status === 'incomplete' ||
+    row.status === 'incomplete_expired' ||
+    Boolean(row.pastDueSince);
+  const secret = options.env?.STRIPE_SECRET_KEY?.trim() ?? '';
+  if ((stale || sensitive) && secret && options.fetchImpl && options.env) {
+    const fetched = await fetchStripeSubscription(secret, row.subscriptionId, options.fetchImpl);
+    if (fetched !== 'error') {
+      const snapshot = fetched === 'missing' ? canceledSnapshot(row.subscriptionId) : fetched;
+      const applied = await applySubscriptionSnapshot(db, {
+        snapshot,
+        eventKind: 'reconcile',
+        email: '',
+        pepper: options.pepper ?? '',
+        now,
+        env: options.env,
+        alreadyKnown: true,
+      });
+      if (!applied.ignored) return { access: applied.access, pastDueSince: applied.pastDueSince };
+    }
+  }
+  return { access: storedAccess(row, now), pastDueSince: row.pastDueSince };
 }

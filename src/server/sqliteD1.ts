@@ -1,5 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
-import { entitlementMigrationSql } from './d1Schema.ts';
+import { entitlementSchemaSql } from './d1Schema.ts';
 import type { D1Database, D1Prepared } from './d1.ts';
 
 /**
@@ -8,7 +8,7 @@ import type { D1Database, D1Prepared } from './d1.ts';
  */
 export function sqliteD1(path = ':memory:'): D1Database {
   const db = new DatabaseSync(path);
-  db.exec(entitlementMigrationSql());
+  db.exec(entitlementSchemaSql());
   return {
     prepare(sql: string): D1Prepared {
       const statement = db.prepare(sql);

@@ -16,6 +16,7 @@
  */
 
 import { readGymName } from './gymName.ts';
+import { legacySeatBlocked } from './seatSunset.ts';
 import { ownerTestActive, subscribeOwnerTest } from './ownerTestGrant.ts';
 import { SITE_FEEDBACK_EMAIL } from './siteFooter.ts';
 
@@ -573,6 +574,7 @@ export function issueInstructorInvite(input: {
   origin: string;
   now?: number;
   token?: string;
+  id?: string;
 }): IssueInviteResult {
   const email = normalizeInviteEmail(input.email);
   if (!isInviteEmail(email)) return { ok: false, reason: 'email' };
@@ -584,7 +586,7 @@ export function issueInstructorInvite(input: {
   }
   const token = input.token?.trim() || newId();
   const seat: InstructorSeat = {
-    id: newId(),
+    id: input.id?.trim() || newId(),
     gymId: gymIdFor(archive),
     email,
     status: 'invited',
@@ -855,7 +857,8 @@ function ownerTestPreviewSeat(): InstructorSeat {
 export function readCurrentSeat(): InstructorSeat | null {
   const id = readSessionSeatId();
   const seat = id ? readArchive().seats.find((row) => row.id === id) : undefined;
-  const live = seat && seat.status !== 'revoked' ? cloneSeat(seat) : ownerTestActive('seat') ? ownerTestPreviewSeat() : null;
+  const liveSeat = seat && seat.status !== 'revoked' && !legacySeatBlocked(seat.inviteToken) ? cloneSeat(seat) : null;
+  const live = liveSeat ?? (ownerTestActive('seat') ? ownerTestPreviewSeat() : null);
   const key = live
     ? `${live.id}:${live.status}:${live.presetId ?? ''}:${live.email}:${JSON.stringify(live.permissions)}`
     : '';
@@ -908,7 +911,7 @@ export function peekInstructorInvite(token: string): 'open' | 'missing' | 'revok
   if (!trimmed) return 'missing';
   const seat = readArchive().seats.find((row) => row.inviteToken === trimmed);
   if (!seat) return 'missing';
-  if (seat.status === 'revoked') return 'revoked';
+  if (seat.status === 'revoked' || legacySeatBlocked(seat.inviteToken)) return 'revoked';
   return 'open';
 }
 
@@ -917,6 +920,36 @@ export function peekInstructorInvite(token: string): 'open' | 'missing' | 'revok
  * Revoked or unknown tokens do not start a session.
  * The token is the door. This does not write the owner purchase unlock.
  */
+/** Store a seat the server just claimed. Does not count against the local cap again. */
+export function installAcceptedSeat(input: {
+  id: string;
+  email: string;
+  presetId: InstructorPresetId | null;
+  inviteToken: string;
+}): { ok: true } | { ok: false; reason: 'storage' } {
+  const archive = readArchive();
+  const existing = archive.seats.find((row) => row.id === input.id || row.inviteToken === input.inviteToken);
+  const seat: InstructorSeat = existing ?? {
+    id: input.id,
+    gymId: gymIdFor(archive),
+    email: normalizeInviteEmail(input.email || 'seat@local'),
+    status: 'active',
+    issuedAt: Date.now(),
+    presetId: normalizeInstructorPresetId(input.presetId),
+    permissions: permissionsForInvite(normalizeInstructorPresetId(input.presetId)),
+    inviteToken: input.inviteToken,
+  };
+  seat.status = 'active';
+  seat.inviteToken = input.inviteToken;
+  if (!existing) archive.seats.push(seat);
+  if (!writeArchive(archive)) return { ok: false, reason: 'storage' };
+  if (!writeSession(seat.id)) return { ok: false, reason: 'storage' };
+  clearSignedOutBlock();
+  emitSeats();
+  emitSession();
+  return { ok: true };
+}
+
 export function acceptInstructorInvite(
   token: string,
 ): { ok: true; seat: InstructorSeat } | { ok: false; reason: 'missing' | 'revoked' | 'storage' | 'signed-out' } {
@@ -930,7 +963,7 @@ export function acceptInstructorInvite(
   }
   const archive = readArchive();
   const seat = archive.seats.find((row) => row.inviteToken === trimmed);
-  if (!seat) return { ok: false, reason: 'missing' };
+  if (!seat || legacySeatBlocked(seat.inviteToken)) return { ok: false, reason: 'missing' };
   if (seat.status === 'revoked') return { ok: false, reason: 'revoked' };
   if (seat.status === 'invited') seat.status = 'active';
   if (!writeArchive(archive)) return { ok: false, reason: 'storage' };

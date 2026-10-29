@@ -910,7 +910,8 @@ test('a coach seat with Gallery upload opens Gallery when this browser Pro unloc
   assert.equal(mediaFolderDoorOpen(door, accepted.seat.permissions, 'events'), false);
   assert.equal(mediaFolderDoorOpen(door, accepted.seat.permissions, 'shop'), false);
   const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
-  assert.match(app, /closedDoorPath\(door\.seated\)/);
+  assert.match(app, /closedOrPaused\(door\.seated\)/);
+  assert.match(app, /return closedDoorPath\(seated\)/);
   assert.match(app, /\/coming-soon/);
 });
 

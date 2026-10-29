@@ -157,11 +157,45 @@ async function importPublic(jwk: PublicJwk): Promise<CryptoKey> {
 }
 
 export async function signToken(claims: EntitlementClaims, privateJwk: PrivateJwk): Promise<string> {
-  const header = bytesToBase64Url(encoder.encode(JSON.stringify({ alg: 'ES256', typ: 'JWT', kid: claims.kid })));
-  const payload = bytesToBase64Url(encoder.encode(JSON.stringify(claims)));
+  return signJson(claims.kid, claims, privateJwk);
+}
+
+export async function signJson(kid: string, payload: unknown, privateJwk: PrivateJwk): Promise<string> {
+  const header = bytesToBase64Url(encoder.encode(JSON.stringify({ alg: 'ES256', typ: 'JWT', kid })));
+  const body = bytesToBase64Url(encoder.encode(JSON.stringify(payload)));
   const key = await importPrivate(privateJwk);
-  const signature = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, encoder.encode(`${header}.${payload}`));
-  return `${header}.${payload}.${bytesToBase64Url(new Uint8Array(signature))}`;
+  const signature = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, encoder.encode(`${header}.${body}`));
+  return `${header}.${body}.${bytesToBase64Url(new Uint8Array(signature))}`;
+}
+
+export async function readSignedJson(
+  token: string,
+  keys: readonly { kid: string; jwk: PublicJwk }[],
+): Promise<unknown | null> {
+  const parts = token.split('.');
+  if (parts.length !== 3 || parts.some((part) => !part)) return null;
+  let header: { alg?: unknown; kid?: unknown };
+  try {
+    header = JSON.parse(new TextDecoder().decode(base64UrlToBytes(parts[0]))) as { alg?: unknown; kid?: unknown };
+  } catch {
+    return null;
+  }
+  if (header.alg !== 'ES256' || typeof header.kid !== 'string') return null;
+  const listed = keys.find((key) => key.kid === header.kid);
+  if (!listed) return null;
+  try {
+    const key = await importPublic(listed.jwk);
+    const ok = await crypto.subtle.verify(
+      { name: 'ECDSA', hash: 'SHA-256' },
+      key,
+      base64UrlToBytes(parts[2]),
+      encoder.encode(`${parts[0]}.${parts[1]}`),
+    );
+    if (!ok) return null;
+    return JSON.parse(new TextDecoder().decode(base64UrlToBytes(parts[1]))) as unknown;
+  } catch {
+    return null;
+  }
 }
 
 export async function verifyToken(

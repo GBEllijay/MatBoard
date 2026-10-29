@@ -7,6 +7,7 @@ import {
   type WhiteEntitlement,
 } from './entitlements.ts';
 import { recordPurchase } from './purchaseRecords.ts';
+import { lookupCheckoutSessionId, revokeOneTimePurchase } from './refundRevoke.ts';
 import { applySubscriptionSnapshot } from './subscriptionSync.ts';
 import { canceledSnapshot, fetchStripeSubscription, type StripeSubscriptionSnapshot } from './stripeSubscription.ts';
 import { isHalfOffCheckoutFlag } from '../lib/halfOff.ts';
@@ -309,6 +310,31 @@ export async function handleWebhook(
       await extras.db.prepare(`INSERT OR IGNORE INTO stripe_events (event_id, received_at) VALUES (?, ?)`).bind(eventId, stamp).run();
     }
     return json(200, { received: true, sessionId: stored.sessionId, entitled: true });
+  }
+  if (parsed.action === 'revoke-onetime') {
+    if (!parsed.revocation.revoke) {
+      await rememberEvent(extras, eventId, stamp);
+      return json(200, { received: true, ignored: true });
+    }
+    if (!extras.db) return json(500, { error: 'Entitlement storage is not configured. Bind ENTITLEMENTS_DB.' });
+    let sessionId = parsed.revocation.sessionId;
+    if (!sessionId && parsed.revocation.paymentIntentId && extras.fetchImpl && env.STRIPE_SECRET_KEY) {
+      const found = await lookupCheckoutSessionId(env.STRIPE_SECRET_KEY, parsed.revocation.paymentIntentId, extras.fetchImpl);
+      if (found === 'error') return json(500, { error: 'Could not match the refund to a purchase. Stripe will retry.' });
+      sessionId = found ?? '';
+    }
+    if (!sessionId) {
+      await rememberEvent(extras, eventId, stamp);
+      return json(200, { received: true, ignored: true });
+    }
+    const revoked = await revokeOneTimePurchase(
+      extras.db,
+      sessionId,
+      parsed.revocation.reason === 'dispute' ? 'dispute-lost' : 'refund',
+      now(),
+    );
+    await rememberEvent(extras, eventId, stamp);
+    return json(200, { received: true, revoked: revoked > 0 });
   }
   const existing = await store.findProBySubscriptionId(parsed.sync.subscriptionId);
   const fresh = await freshSubscription(env, extras, parsed.sync.subscriptionId);

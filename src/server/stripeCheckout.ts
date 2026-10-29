@@ -370,12 +370,21 @@ export type ProSubscriptionSync = {
   currentPeriodEnd: string | null;
 };
 
+export type OneTimeRevocation = {
+  paymentIntentId: string;
+  sessionId: string;
+  /** Full refund or a dispute closed as lost. Partial refunds and open disputes are false. */
+  revoke: boolean;
+  reason: 'refund' | 'dispute';
+};
+
 export type StripeEntitlementDecision =
   | { action: 'record'; purchase: CheckoutPurchase }
   | { action: 'record-student'; purchase: CheckoutPurchase }
   | { action: 'record-coach'; purchase: CheckoutPurchase }
   | { action: 'grant-pro'; grant: ProCheckoutGrant }
   | { action: 'sync-pro'; sync: ProSubscriptionSync }
+  | { action: 'revoke-onetime'; revocation: OneTimeRevocation }
   | { action: 'retry' }
   | { action: 'ignore' }
   | { action: 'invalid' };
@@ -588,6 +597,46 @@ function subscriptionDecision(row: Record<string, unknown>, kind: 'deleted' | 'u
   };
 }
 
+function stringId(value: unknown, prefix: string): string {
+  if (typeof value === 'string' && value.startsWith(prefix)) return value;
+  if (value && typeof value === 'object' && typeof (value as { id?: unknown }).id === 'string') {
+    const id = (value as { id: string }).id;
+    if (id.startsWith(prefix)) return id;
+  }
+  return '';
+}
+
+function chargeDecision(row: Record<string, unknown>, type: string): StripeEntitlementDecision {
+  const paymentIntentId = stringId(row.payment_intent, 'pi_');
+  const metadata = row.metadata;
+  const sessionFromMeta =
+    metadata && typeof metadata === 'object' && typeof (metadata as { session_id?: unknown }).session_id === 'string'
+      ? (metadata as { session_id: string }).session_id
+      : '';
+  const sessionId = sessionFromMeta.startsWith('cs_') ? sessionFromMeta : '';
+  if (type === 'charge.refunded') {
+    if (row.object !== 'charge') return { action: 'invalid' };
+    const amount = typeof row.amount === 'number' ? row.amount : 0;
+    const refundedAmount = typeof row.amount_refunded === 'number' ? row.amount_refunded : 0;
+    const full = row.refunded === true || (amount > 0 && refundedAmount >= amount);
+    return {
+      action: 'revoke-onetime',
+      revocation: { paymentIntentId, sessionId, revoke: full, reason: 'refund' },
+    };
+  }
+  if (row.object !== 'dispute') return { action: 'invalid' };
+  const status = typeof row.status === 'string' ? row.status : '';
+  return {
+    action: 'revoke-onetime',
+    revocation: {
+      paymentIntentId,
+      sessionId,
+      revoke: type === 'charge.dispute.closed' && status === 'lost',
+      reason: 'dispute',
+    },
+  };
+}
+
 export function purchaseFromStripeEvent(event: unknown): StripeEntitlementDecision {
   if (!event || typeof event !== 'object') return { action: 'invalid' };
   const type = (event as { type?: unknown }).type;
@@ -615,7 +664,7 @@ export function purchaseFromStripeEvent(event: unknown): StripeEntitlementDecisi
   if (type === 'invoice.paid' || type === 'invoice.payment_succeeded') return invoiceDecision(row, 'paid');
   if (type === 'invoice.payment_failed') return invoiceDecision(row, 'failed');
   if (type === 'charge.refunded' || type === 'charge.dispute.created' || type === 'charge.dispute.closed') {
-    return { action: 'ignore' };
+    return chargeDecision(row, type);
   }
   if (type === 'customer.subscription.deleted') return subscriptionDecision(row, 'deleted');
   return subscriptionDecision(row, 'upsert');

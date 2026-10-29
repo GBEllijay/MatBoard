@@ -1,9 +1,14 @@
 import { readPublicJwk, verifyRefreshProof } from '../lib/deviceProof.ts';
-import { verifyToken, type Door } from '../lib/entitlementToken.ts';
+import { verifyToken, type Door, type SubscriptionClaim } from '../lib/entitlementToken.ts';
 import type { D1Database } from './d1.ts';
 import { expandGrants, tierForGrants } from './grantMatrix.ts';
-import { doorsFromStored, grantsForLicense } from './purchaseRecords.ts';
+import { claimForAccess } from './subscriptionAccess.ts';
+import { accessForLicense } from './subscriptionSync.ts';
+import { doorsFromStored, grantsForLicense, type StoredGrant } from './purchaseRecords.ts';
+import { API_PRODUCT_PRO } from './routes.ts';
+import { refreshSeat } from './seats.ts';
 import { issueToken, signingMaterial } from './tokenIssue.ts';
+import type { StripeRuntimeEnv } from './stripeCheckout.ts';
 
 const JSON_HEADERS = {
   'content-type': 'application/json; charset=utf-8',
@@ -14,10 +19,19 @@ function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
 }
 
-export type RefreshEnv = {
+export type RefreshEnv = StripeRuntimeEnv & {
   ENTITLEMENT_SIGNING_KEY?: string;
   ENTITLEMENT_KEY_ID?: string;
+  CODE_HASH_PEPPER?: string;
 };
+
+function doorsForRefresh(rows: readonly StoredGrant[], proEntitled: boolean | null): Door[] {
+  const independent = rows.filter((row) => !(row.product === API_PRODUCT_PRO && row.source === 'stripe_subscription'));
+  const products = doorsFromStored(independent);
+  const keepPro = proEntitled === true || (proEntitled === null && rows.some((row) => row.product === API_PRODUCT_PRO));
+  if (keepPro && !products.includes('pro')) products.push('pro');
+  return expandGrants(products);
+}
 
 /**
  * Exchange a current token for a fresh one. A copied token cannot refresh
@@ -28,6 +42,7 @@ export async function handleTokenRefresh(
   env: RefreshEnv,
   db: D1Database | null,
   now: () => Date = () => new Date(),
+  fetchImpl: typeof fetch = fetch,
 ): Promise<Response> {
   if (request.method !== 'POST') return json(405, { error: 'Method not allowed.' });
   const material = signingMaterial(env.ENTITLEMENT_SIGNING_KEY, env.ENTITLEMENT_KEY_ID);
@@ -78,17 +93,30 @@ export async function handleTokenRefresh(
     if (device?.revokedAt) return json(401, { ok: false, revoked: true, error: 'This device was signed out.' });
   }
   let doors = claims.grants;
-  let kind: 'pro' | 'onetime' | 'code' | 'owner-test' = claims.src === 'owner' ? 'owner-test' : doors.includes('pro') ? 'pro' : 'onetime';
+  let kind: 'pro' | 'onetime' | 'code' | 'owner-test' | 'seat' = claims.src === 'owner' ? 'owner-test' : claims.src === 'seat' ? 'seat' : doors.includes('pro') ? 'pro' : 'onetime';
   let absoluteExp: number | undefined;
+  let subs: SubscriptionClaim | undefined = claims.subs;
   if (claims.src === 'owner') {
     if (nowSeconds >= claims.exp) return json(401, { ok: false, revoked: true, error: 'That test unlock has ended.' });
     absoluteExp = claims.exp;
     kind = 'owner-test';
+  } else if (claims.src === 'seat' && db) {
+    const seat = await refreshSeat(db, env, claims, stamp, fetchImpl);
+    if ('error' in seat) return json(seat.status, seat.body);
+    doors = seat.doors;
+    subs = seat.subs;
+    kind = 'seat';
   } else if (db) {
     const rows = await grantsForLicense(db, claims.sub, stamp);
-    doors = expandGrants(doorsFromStored(rows)) as Door[];
-    if (!doors.length) return json(401, { ok: false, revoked: true, error: 'This access is no longer active.' });
-    kind = doors.includes('pro') ? 'pro' : claims.src === 'code' || claims.src === 'free' ? 'code' : 'onetime';
+    const view = await accessForLicense(db, claims.sub, stamp, { env, fetchImpl, pepper: env.CODE_HASH_PEPPER });
+    doors = doorsForRefresh(rows, view ? view.access.entitled : null);
+    if (view) subs = claimForAccess(view.access);
+    else if (doors.includes('pro')) subs = { state: 'active' };
+    else subs = undefined;
+    if (!doors.length && subs?.state !== 'locked') {
+      return json(401, { ok: false, revoked: true, error: 'This access is no longer active.' });
+    }
+    kind = claims.src === 'seat' ? 'seat' : doors.includes('pro') ? 'pro' : claims.src === 'code' || claims.src === 'free' ? 'code' : subs?.state === 'locked' ? 'pro' : 'onetime';
   } else if (nowSeconds >= claims.exp) {
     return json(503, { ok: false, error: 'Entitlement storage is not set up yet. Bind ENTITLEMENTS_DB.' });
   } else {
@@ -99,7 +127,7 @@ export async function handleTokenRefresh(
     {
       licenseId: claims.sub,
       grants: doors,
-      tier: claims.src === 'owner' ? 'owner' : tierForGrants(doors, claims.src === 'code' || claims.src === 'free' ? 'code' : 'stripe'),
+      tier: claims.src === 'owner' ? 'owner' : claims.src === 'seat' ? 'seat' : tierForGrants(doors, claims.src === 'code' || claims.src === 'free' ? 'code' : 'stripe'),
       src: claims.src,
       deviceId: claims.did,
       now: stamp,
@@ -107,7 +135,10 @@ export async function handleTokenRefresh(
       absoluteExp,
       emailHint: claims.eh,
       thumbprint: claims.cnf,
-      subs: doors.includes('pro') ? (claims.subs ?? { state: 'active' }) : undefined,
+      subs: claims.src === 'seat' || doors.includes('pro') || subs?.state === 'locked' || subs?.state === 'grace' ? subs : undefined,
+      gym: claims.gym,
+      sid: claims.sid,
+      preset: claims.preset,
       grantEndsAt: claims.src === 'free' && claims.fail_open_until ? new Date(claims.fail_open_until * 1000).toISOString() : null,
     },
     env.ENTITLEMENT_KEY_ID,
