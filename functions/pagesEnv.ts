@@ -4,6 +4,8 @@ import type { DoNamespace } from '../src/server/redemptionLedger.ts';
 import type { StripeRuntimeEnv } from '../src/server/stripeCheckout.ts';
 
 export type PagesEnv = StripeRuntimeEnv & {
+  /** Pages static assets. Present on Cloudflare. The paid-chunk Function reads files through it. */
+  ASSETS?: { fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> };
   WHITE_ENTITLEMENTS?: KvBinding;
   CODE_HASH_PEPPER?: string;
   CODE_CATALOG?: string;

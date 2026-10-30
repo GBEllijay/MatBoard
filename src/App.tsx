@@ -40,10 +40,8 @@ import { captureHalfOffQuery, consumeHalfOffQueryNow } from './lib/halfOff';
 import { preservesAppHomeQuery } from './lib/submenuNav';
 import { WHITE_BUY_PATH } from './lib/whitePurchase';
 import { whiteHubAllowed, whiteLiveToolsAllowed } from './lib/whiteUnlock';
-import { ClassHistoryPage } from './pages/ClassHistory';
 import { StudentEditionPage } from './pages/StudentEdition';
 import { CoachPage } from './pages/Coach';
-import { AcademyPathwayPage, CoachUnlimitedPage } from './pages/CoachUnlimited';
 import { CoachingToolsPage } from './pages/CoachingTools';
 import { CompetitionCurriculumPage } from './pages/CompetitionCurriculum';
 import { CardPage } from './pages/Card';
@@ -59,11 +57,16 @@ import { PrivacyPage } from './pages/Privacy';
 import { InstructorCollaborationPage } from './pages/InstructorCollaboration';
 import { MatchControllerPage } from './pages/MatchController';
 import { MatchDisplayPage } from './pages/MatchDisplay';
-import { ProPage } from './pages/Pro';
-import { ReviewInboxPage } from './pages/ReviewInbox';
 import { RosterPage } from './pages/Roster';
-import { ScreensaverPage } from './pages/Screensaver';
-import { SchedulePage } from './pages/Schedule';
+import {
+  PaidAcademyPathwayPage,
+  PaidClassHistoryPage,
+  PaidCoachUnlimitedPage,
+  PaidProPage,
+  PaidReviewInboxPage,
+  PaidSchedulePage,
+  PaidScreensaverPage,
+} from './components/PaidScreen';
 import { TechniqueTreePage } from './pages/TechniqueTree';
 import { TechniquesPage } from './pages/Techniques';
 import { TermsPage } from './pages/Terms';
@@ -419,7 +422,7 @@ export default function App() {
         path="/pro"
         element={
           <ProConsoleRoute>
-            <ProPage />
+            <PaidProPage />
           </ProConsoleRoute>
         }
       />
@@ -459,7 +462,7 @@ export default function App() {
         path="/coach-unlimited"
         element={
           <CoachUnlimitedRoute>
-            <CoachUnlimitedPage />
+            <PaidCoachUnlimitedPage />
           </CoachUnlimitedRoute>
         }
       />
@@ -467,7 +470,7 @@ export default function App() {
         path="/coach-unlimited/academy"
         element={
           <CoachUnlimitedRoute>
-            <AcademyPathwayPage />
+            <PaidAcademyPathwayPage />
           </CoachUnlimitedRoute>
         }
       />
@@ -475,7 +478,7 @@ export default function App() {
         path="/review"
         element={
           <CoachUnlimitedRoute>
-            <ReviewInboxPage />
+            <PaidReviewInboxPage />
           </CoachUnlimitedRoute>
         }
       />
@@ -499,7 +502,7 @@ export default function App() {
         path="/class-history"
         element={
           <LessonCloudRoute>
-            <ClassHistoryPage />
+            <PaidClassHistoryPage />
           </LessonCloudRoute>
         }
       />
@@ -563,7 +566,7 @@ export default function App() {
         path="/schedule"
         element={
           <MediaConsoleRoute>
-            <SchedulePage />
+            <PaidSchedulePage />
           </MediaConsoleRoute>
         }
       />
@@ -579,7 +582,7 @@ export default function App() {
         path="/slideshow"
         element={
           <MediaConsoleRoute>
-            <ScreensaverPage />
+            <PaidScreensaverPage />
           </MediaConsoleRoute>
         }
       />
@@ -593,7 +596,7 @@ export default function App() {
         path="/screensaver"
         element={
           <MediaConsoleRoute>
-            <ScreensaverPage />
+            <PaidScreensaverPage />
           </MediaConsoleRoute>
         }
       />

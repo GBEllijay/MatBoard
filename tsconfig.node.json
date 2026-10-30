@@ -18,6 +18,6 @@
     "noUncheckedSideEffectImports": true,
     "composite": true
   },
-  "include": ["vite.config.ts", "src/server/**/*.ts", "functions/**/*.ts", "src/lib/card.ts", "src/lib/checkoutProducts.ts", "src/lib/halfOff.ts", "src/lib/halfOffPage.ts", "src/lib/microsoftClientPublic.ts", "src/lib/entitlementToken.ts", "src/lib/deviceProof.ts", "src/lib/legacyUnlock.ts", "src/lib/seatSunset.ts"],
+  "include": ["vite.config.ts", "src/server/**/*.ts", "functions/**/*.ts", "src/lib/card.ts", "src/lib/checkoutProducts.ts", "src/lib/halfOff.ts", "src/lib/halfOffPage.ts", "src/lib/microsoftClientPublic.ts", "src/lib/entitlementToken.ts", "src/lib/deviceProof.ts", "src/lib/legacyUnlock.ts", "src/lib/paidChunkAccess.ts", "src/lib/seatSunset.ts"],
   "exclude": ["src/server/**/*.test.ts"]
 }

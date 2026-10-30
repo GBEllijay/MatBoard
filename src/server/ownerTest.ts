@@ -111,6 +111,25 @@ export async function handleOwnerTest(
       },
       services.keyId ?? env.ENTITLEMENT_KEY_ID,
     );
+  } else if (signingKey && listed.includes('seat')) {
+    // The seat preview has no product door. The token still has to fetch Media
+    // Console and Lesson Cloud. Preset matches the in-memory instructors seat.
+    const exp = Math.floor(stamp.getTime() / 1000) + days * 24 * 60 * 60;
+    token = await issueToken(
+      signingKey,
+      {
+        licenseId: 'owner-test',
+        grants: [],
+        tier: 'seat',
+        src: 'seat',
+        deviceId,
+        now: stamp,
+        kind: 'seat',
+        preset: 'instructors',
+        absoluteExp: exp,
+      },
+      services.keyId ?? env.ENTITLEMENT_KEY_ID,
+    );
   }
   return json(200, {
     ok: true,

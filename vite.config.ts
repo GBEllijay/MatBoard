@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { cardPagePlugin } from './src/server/cardPagePlugin.ts';
 import { halfOffPagePlugin } from './src/server/halfOffPagePlugin.ts';
+import { paidChunkPlugin } from './src/server/paidChunkPlugin.ts';
 import { whitePurchaseApiPlugin } from './src/server/devApiPlugin.ts';
 
 /** Build id written into the app and into /version.json (Cache-Control: no-store). */
@@ -42,6 +43,7 @@ export default defineConfig({
     cardPagePlugin(),
     halfOffPagePlugin(),
     react(),
+    paidChunkPlugin(),
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: false,
@@ -93,14 +95,28 @@ export default defineConfig({
           '**/card-qr.*',
           '**/half-off.html',
           '**/half-off/**',
+          // Token-checked screens. Precaching them would ship the code with no grant check.
+          'paid/**',
+          '**/paid/**',
         ],
         navigateFallback: null,
         // /card is the lightweight card.html page. Keep it off any app-shell fallback.
-        navigateFallbackDenylist: [/^\/api\//, /^\/card\/?(?:$|\?)/, /^\/half-off\/?(?:$|\?)/],
+        navigateFallbackDenylist: [/^\/api\//, /^\/paid\//, /^\/card\/?(?:$|\?)/, /^\/half-off\/?(?:$|\?)/],
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
         runtimeCaching: [
+          {
+            // Saved after an authorized fetch. Offline opens use this copy.
+            // The browser's token check is the offline gate (D10).
+            urlPattern: /\/paid\/.+\.(?:js|css)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'paid-chunks',
+              expiration: { maxEntries: 40, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
           {
             urlPattern: ({ request }) => request.mode === 'navigate',
             handler: 'NetworkFirst',

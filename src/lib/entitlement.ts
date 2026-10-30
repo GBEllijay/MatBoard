@@ -55,9 +55,24 @@ let config: CachedConfig = {
 let verified: EntitlementClaims | null = null;
 let clockOverride: (() => number) | null = null;
 let offline = false;
+/** False until the first boot has reverified a stored token, or given up. */
+let bootReady = false;
 
 function nowMs(): number {
   return clockOverride ? clockOverride() : Date.now();
+}
+
+export function entitlementNowMs(): number {
+  return nowMs();
+}
+
+/** The stored token has been checked, or there was nothing to check. */
+export function entitlementReady(): boolean {
+  return bootReady;
+}
+
+export function setEntitlementReadyForTests(ready: boolean): void {
+  bootReady = ready;
 }
 
 function store(): Storage | null {
@@ -259,6 +274,9 @@ export async function acceptServerToken(token: string): Promise<boolean> {
   noteClock(nowMs());
   if (claims.did) writeItem(ENTITLEMENT_DEVICE_KEY, claims.did);
   notifyEntitlement();
+  void import('./paidChunkCache.ts')
+    .then((mod) => mod.syncPaidChunkCache(claims, token))
+    .catch(() => undefined);
   return true;
 }
 
@@ -266,6 +284,9 @@ export function clearEntitlementToken(): void {
   verified = null;
   removeItem(ENTITLEMENT_TOKEN_KEY);
   notifyEntitlement();
+  void import('./paidChunkCache.ts')
+    .then((mod) => mod.clearPaidChunkCache())
+    .catch(() => undefined);
 }
 
 /** License id the server signs into an owner-test token (`sub`). */
@@ -381,6 +402,13 @@ export function bootEntitlement(): void {
     retireLegacyUnlockFlags(nowMs(), config.legacyAmnestyEndsAt);
     await reverifyStored();
     noteClock(nowMs());
+    if (verified) {
+      const claims = verified;
+      const token = readItem(ENTITLEMENT_TOKEN_KEY) ?? '';
+      void import('./paidChunkCache.ts')
+        .then((mod) => mod.syncPaidChunkCache(claims, token))
+        .catch(() => undefined);
+    }
     if (verified && nowMs() >= verified.refresh_after * 1000) {
       try {
         const { refreshEntitlement } = await import('./entitlementRefresh.ts');
@@ -389,6 +417,7 @@ export function bootEntitlement(): void {
         offline = true;
       }
     }
+    bootReady = true;
     notifyEntitlement();
   })();
 }

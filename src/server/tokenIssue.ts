@@ -101,7 +101,8 @@ export function lifetimeFor(input: IssueInput): Pick<EntitlementClaims, 'exp' | 
 export async function issueToken(secret: string | undefined, input: IssueInput, keyId = 'k1'): Promise<string | null> {
   const material = signingMaterial(secret, keyId);
   if (!material) return null;
-  if (input.grants.length === 0 && input.subs?.state !== 'locked') return null;
+  const emptySeatPreview = input.kind === 'seat' && Boolean(input.preset) && input.grants.length === 0;
+  if (input.grants.length === 0 && input.subs?.state !== 'locked' && !emptySeatPreview) return null;
   const now = Math.floor(input.now.getTime() / 1000);
   const life = lifetimeFor(input);
   const claims: EntitlementClaims = {
