@@ -36,7 +36,7 @@ Legacy flags still open the other doors until the amnesty date. These four scree
 
 The service worker does not precache `/paid/**`. After an authorized response it stores the file in the `paid-chunks` cache. Accepting a token, including a refresh, prefetches every file that token may open.
 
-`clearEntitlementToken` (revoked grant, signed-out device) deletes that cache. A locked token deletes it and then fetches again only the screens the seat may still open. Lock Pro on this browser deletes the cache too. Photos, journals, and Drive or OneDrive keys are not touched.
+`clearEntitlementToken` (revoked grant, signed-out device) deletes that cache. A locked token deletes it and then fetches again only the screens the seat may still open. Lock Pro on this browser deletes the cache too. Lock Coach and Lock Student Edition re-sync the cache to the stored token while Pro is still open, and delete it when Pro is closed. Photos, journals, and Drive or OneDrive keys are not touched.
 
 If the chunk cannot load, the screen shows a status line and three actions: Try again, Refresh access, and Restore access. It also links to Enter a code. The page is not left blank.
 

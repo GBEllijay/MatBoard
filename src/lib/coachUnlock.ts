@@ -1,6 +1,7 @@
 import { doorOpen, notifyEntitlement, subscribeEntitlement } from './entitlement.ts';
 import { COACH_RELOCK_KEY } from './legacyUnlock.ts';
 import { dropOwnerTestDoors } from './ownerTestGrant.ts';
+import { syncPaidScreensAfterLock } from './paidScreenSync.ts';
 import { lockStudentEdition } from './studentUnlock.ts';
 
 /** Coach door on this browser. A server redeem sets the flag. URL params do not. */
@@ -57,6 +58,8 @@ export function lockCoach(): void {
   dropOwnerTestDoors(['coach', 'seat']);
   writeFlag(false);
   lockStudentEdition();
+  // Pro still includes Coach Unlimited, so re-sync rather than wipe while Pro is open.
+  void syncPaidScreensAfterLock();
 }
 
 /** `?coach=` does not change Coach. */

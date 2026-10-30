@@ -1,5 +1,6 @@
 import { doorOpen, notifyEntitlement, subscribeEntitlement } from './entitlement.ts';
 import { dropOwnerTestDoors } from './ownerTestGrant.ts';
+import { syncPaidScreensAfterLock } from './paidScreenSync.ts';
 
 /** This browser redeemed a server code or finished checkout. Not a purchase email and not `?student=1`. */
 
@@ -95,6 +96,7 @@ export function lockStudentEditionBrowser(): void {
   writeRelock(true);
   writeFlag(false);
   notifyEntitlement();
+  void syncPaidScreensAfterLock();
 }
 
 if (typeof window !== 'undefined') {
