@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { build } from 'esbuild';
+import { paidChunksStub } from './paidChunksStub.mjs';
 
 // Absolute path: Node's test glob skips a relative file inside node_modules.
 mkdirSync('node_modules/.cache', { recursive: true });
@@ -16,6 +17,7 @@ await build({
   external: ['node:test', 'node:assert', 'node:assert/strict'],
   jsx: 'automatic',
   logLevel: 'silent',
+  plugins: [paidChunksStub],
 });
 
 const result = spawnSync(process.execPath, ['--test', '--test-force-exit', outfile], { stdio: 'inherit' });

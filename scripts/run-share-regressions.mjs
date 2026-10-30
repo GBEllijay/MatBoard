@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { build } from 'esbuild';
+import { paidChunksStub } from './paidChunksStub.mjs';
 
 mkdirSync('node_modules/.cache', { recursive: true });
 const outfile = resolve('node_modules/.cache/share-page.test.mjs');
@@ -16,6 +17,7 @@ await build({
   jsx: 'automatic',
   loader: { '.css': 'empty' },
   logLevel: 'silent',
+  plugins: [paidChunksStub],
 });
 
 const result = spawnSync(process.execPath, ['--test', '--test-force-exit', outfile], { stdio: 'inherit' });
