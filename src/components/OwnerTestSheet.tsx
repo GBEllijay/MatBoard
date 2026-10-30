@@ -1,6 +1,5 @@
 import { type FormEvent, useState } from 'react';
-import { submitOwnerTest } from '../lib/codeRedeemClient';
-import { clearOwnerTestGrant } from '../lib/ownerTestGrant';
+import { clearOwnerTestUnlock, submitOwnerTest } from '../lib/codeRedeemClient';
 import { Sheet } from './Sheet';
 
 const TIERS = [
@@ -54,7 +53,7 @@ export function OwnerTestSheet({ open, onClose }: Props) {
   };
 
   const clear = () => {
-    clearOwnerTestGrant();
+    clearOwnerTestUnlock();
     setNote('Test unlock cleared on this browser.');
     setError('');
     if (!secret.trim()) return;

@@ -5,6 +5,7 @@
  */
 
 import {
+  base64UrlToBytes,
   verifyToken,
   type Door,
   type EntitlementClaims,
@@ -264,6 +265,48 @@ export async function acceptServerToken(token: string): Promise<boolean> {
 export function clearEntitlementToken(): void {
   verified = null;
   removeItem(ENTITLEMENT_TOKEN_KEY);
+  notifyEntitlement();
+}
+
+/** License id the server signs into an owner-test token (`sub`). */
+export const OWNER_TEST_LICENSE_ID = 'owner-test';
+
+function storedTokenSubject(): string | null {
+  const token = readItem(ENTITLEMENT_TOKEN_KEY);
+  const part = token?.split('.')[1];
+  if (!part) return null;
+  try {
+    const claims = JSON.parse(new TextDecoder().decode(base64UrlToBytes(part))) as { sub?: unknown };
+    return typeof claims.sub === 'string' ? claims.sub : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Clear test unlock. Removes the stored token only when the owner test issued
+ * it. A paid, code, or seat token on this browser stays.
+ */
+export function clearOwnerTestToken(): boolean {
+  const fromOwnerTest = verified ? verified.sub === OWNER_TEST_LICENSE_ID : storedTokenSubject() === OWNER_TEST_LICENSE_ID;
+  if (!fromOwnerTest) return false;
+  clearEntitlementToken();
+  return true;
+}
+
+/**
+ * A fresh server grant (owner test or a confirmed checkout token) clears the
+ * testing Lock marks for the doors it opens. Pro also opens Student Edition
+ * and Coach, so it clears those marks too. Other marks stay.
+ */
+export function clearRelocksFor(grants: readonly string[]): void {
+  const keys: string[] = [];
+  if (grants.includes('pro')) keys.push(PRO_RELOCK_KEY);
+  if (grants.includes('coach') || grants.includes('pro')) keys.push(COACH_RELOCK_KEY);
+  if (grants.includes('white')) keys.push(WHITE_RELOCK_KEY);
+  if (grants.includes('student') || grants.includes('pro')) keys.push(STUDENT_RELOCK_KEY);
+  if (!keys.length) return;
+  keys.forEach(removeItem);
   notifyEntitlement();
 }
 

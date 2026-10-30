@@ -72,6 +72,25 @@ export function applyOwnerTestGrant(input: { grants?: unknown; expiresAt?: unkno
   return true;
 }
 
+/**
+ * A Lock button closes its own doors on the owner-test record and leaves the
+ * rest. An empty record is removed. Other tabs hear the access event.
+ */
+export function dropOwnerTestDoors(doors: readonly OwnerTestDoor[]): void {
+  const store = storage();
+  const current = readOwnerTestGrant();
+  if (!store || !current) return;
+  const grants = current.grants.filter((door) => !doors.includes(door));
+  if (grants.length === current.grants.length) return;
+  try {
+    if (grants.length) store.setItem(OWNER_TEST_STORAGE_KEY, JSON.stringify({ ...current, grants }));
+    else store.removeItem(OWNER_TEST_STORAGE_KEY);
+  } catch {
+    /* private mode */
+  }
+  notifyOwnerTest();
+}
+
 export function clearOwnerTestGrant(): void {
   try {
     storage()?.removeItem(OWNER_TEST_STORAGE_KEY);
