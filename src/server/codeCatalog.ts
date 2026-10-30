@@ -58,17 +58,18 @@ function optionalCount(value: unknown, fallback: number | null): number | null {
 export function parseCodeRecord(raw: unknown): CodeRecord | null {
   if (!raw || typeof raw !== 'object') return null;
   const row = raw as Record<string, unknown>;
-  if (!isKind(row.kind)) return null;
-  if (typeof row.hash !== 'string' || !/^[0-9a-f]{64}$/.test(row.hash)) return null;
-  const id = typeof row.id === 'string' && row.id.trim() ? row.id.trim().slice(0, 80) : row.kind;
+  const kind = typeof row.kind === 'string' ? row.kind.trim().toLowerCase() : row.kind;
+  if (!isKind(kind)) return null;
+  const hash = typeof row.hash === 'string' ? row.hash.trim().toLowerCase() : '';
+  if (!/^[0-9a-f]{64}$/.test(hash)) return null;
+  const id = typeof row.id === 'string' && row.id.trim() ? row.id.trim().slice(0, 80) : kind;
   const grants = Array.isArray(row.grants)
     ? row.grants.filter((door): door is GrantDoor => typeof door === 'string' && (DOORS as readonly string[]).includes(door))
-    : grantsForKind(row.kind);
-  const kind = row.kind;
+    : grantsForKind(kind);
   const free = kind === 'free-white';
   return {
     id,
-    hash: row.hash,
+    hash,
     kind,
     grants: grants.length ? grants : grantsForKind(kind),
     maxUses: optionalCount(row.maxUses, free ? FREE_WHITE_TOTAL_CAP : null),
@@ -81,15 +82,172 @@ export function parseCodeRecord(raw: unknown): CodeRecord | null {
   };
 }
 
-export function parseCodeCatalog(raw: string | undefined | null): CodeRecord[] {
-  if (!raw || !raw.trim()) return [];
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed.map(parseCodeRecord).filter((row): row is CodeRecord => row !== null);
-  } catch {
-    return [];
+export type CatalogParse = {
+  records: CodeRecord[];
+  /** Rows that looked like records but had a bad kind or hash. */
+  rejected: number;
+  /** Rejected rows by reason. */
+  badKind: number;
+  badHash: number;
+  /** False when the value was set but nothing in it could be read. */
+  readable: boolean;
+};
+
+function rejectReason(raw: unknown): 'kind' | 'hash' {
+  if (!raw || typeof raw !== 'object') return 'hash';
+  const row = raw as Record<string, unknown>;
+  const kind = typeof row.kind === 'string' ? row.kind.trim().toLowerCase() : row.kind;
+  return isKind(kind) ? 'hash' : 'kind';
+}
+
+const QUOTE_PAIRS: [string, string][] = [
+  ["'", "'"],
+  ['"', '"'],
+  ['`', '`'],
+  ['\u2018', '\u2019'],
+];
+
+/** Strip what a dashboard paste tends to add around the JSON: BOM, a NAME= prefix, outer quotes. */
+function cleanPaste(raw: string): string {
+  // Notes apps and word processors turn " into curly quotes. Records are plain ASCII, so put them back.
+  let text = raw.replace(/^\uFEFF/, '').replace(/[\u201c\u201d]/g, '"').trim();
+  text = text.replace(/^CODE_CATALOG\s*=\s*/, '').trim();
+  for (let pass = 0; pass < 2; pass += 1) {
+    const pair = QUOTE_PAIRS.find(([open, close]) => text.length >= 2 && text.startsWith(open) && text.endsWith(close));
+    if (!pair) break;
+    const inner = text.slice(1, -1).trim();
+    // A JSON string literal such as "[{\"id\":...}]" is decoded below, not stripped here.
+    if (pair[0] === '"' && inner.includes('\\"')) break;
+    text = inner;
   }
+  return text;
+}
+
+/** Every top-level {...} in the text, so one-per-line, comma-separated, or labelled pastes still read. */
+function objectChunks(text: string): string[] {
+  const chunks: string[] = [];
+  let depth = 0;
+  let start = -1;
+  let inString = false;
+  let escaped = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (char === '\\') escaped = true;
+      else if (char === '"') inString = false;
+      continue;
+    }
+    if (char === '"') inString = depth > 0;
+    else if (char === '{') {
+      if (depth === 0) start = index;
+      depth += 1;
+    } else if (char === '}' && depth > 0) {
+      depth -= 1;
+      if (depth === 0 && start >= 0) {
+        chunks.push(text.slice(start, index + 1));
+        start = -1;
+      }
+    }
+  }
+  return chunks;
+}
+
+function rowsFrom(value: unknown, depth = 0): unknown[] | null {
+  if (depth > 2) return null;
+  if (typeof value === 'string') {
+    try {
+      return rowsFrom(JSON.parse(cleanPaste(value)) as unknown, depth + 1);
+    } catch {
+      return null;
+    }
+  }
+  if (Array.isArray(value)) return value;
+  if (!value || typeof value !== 'object') return null;
+  const row = value as Record<string, unknown>;
+  if ('hash' in row || 'kind' in row) return [row];
+  for (const key of ['codes', 'records', 'catalog']) {
+    if (Array.isArray(row[key])) return row[key] as unknown[];
+  }
+  // { "<id>": { hash, kind }, ... }
+  const entries = Object.entries(row).filter(([, item]) => item && typeof item === 'object' && !Array.isArray(item));
+  if (!entries.length) return null;
+  return entries.map(([id, item]) => ({ id, ...(item as Record<string, unknown>) }));
+}
+
+/**
+ * Read CODE_CATALOG. The documented shape is a JSON array of records, but the generator prints one
+ * record at a time, so a single object, several objects (one per line or comma-separated), an object
+ * holding a "codes" array, and a value wrapped in quotes all read the same way.
+ */
+export function parseCodeCatalogDetailed(raw: string | undefined | null): CatalogParse {
+  if (!raw || !raw.trim()) return { records: [], rejected: 0, badKind: 0, badHash: 0, readable: true };
+  const text = cleanPaste(raw);
+  let rows: unknown[] | null = null;
+  try {
+    rows = rowsFrom(JSON.parse(text) as unknown);
+  } catch {
+    rows = null;
+  }
+  if (!rows) {
+    const parsed: unknown[] = [];
+    for (const chunk of objectChunks(text)) {
+      try {
+        parsed.push(JSON.parse(chunk) as unknown);
+      } catch {
+        parsed.push(null);
+      }
+    }
+    rows = parsed.length ? parsed : null;
+  }
+  if (!rows) return { records: [], rejected: 0, badKind: 0, badHash: 0, readable: false };
+  const byHash = new Map<string, CodeRecord>();
+  let badKind = 0;
+  let badHash = 0;
+  for (const row of rows) {
+    const record = parseCodeRecord(row);
+    if (record) byHash.set(record.hash, record);
+    else if (rejectReason(row) === 'kind') badKind += 1;
+    else badHash += 1;
+  }
+  return { records: [...byHash.values()], rejected: badKind + badHash, badKind, badHash, readable: true };
+}
+
+export function parseCodeCatalog(raw: string | undefined | null): CodeRecord[] {
+  return parseCodeCatalogDetailed(raw).records;
+}
+
+const PLAIN_CODE = /\b[A-HJ-NP-Z2-9]{4}(?:[-\s][A-HJ-NP-Z2-9]{4}){3,}\b/i;
+
+export type CatalogStatus = {
+  catalogSet: boolean;
+  catalogLoaded: boolean;
+  entries: number;
+  rejected: number;
+  /** One plain-language reason when nothing loaded, otherwise null. Never echoes the value. */
+  problem: null | 'not-json' | 'looks-like-a-plain-code' | 'hash-without-record' | 'bad-kind' | 'bad-hash';
+};
+
+/** Safe to show anyone: counts and a reason word only, never a hash, id, or code. */
+export function codeCatalogStatus(raw: string | undefined | null): CatalogStatus {
+  const catalogSet = Boolean(raw && raw.trim());
+  const parsed = parseCodeCatalogDetailed(raw);
+  let problem: CatalogStatus['problem'] = null;
+  if (catalogSet && parsed.records.length === 0) {
+    const text = raw as string;
+    if (!parsed.readable && /[0-9a-f]{64}/i.test(text)) problem = 'hash-without-record';
+    else if (!parsed.readable && PLAIN_CODE.test(text)) problem = 'looks-like-a-plain-code';
+    else if (!parsed.readable) problem = 'not-json';
+    else if (parsed.badKind) problem = 'bad-kind';
+    else if (parsed.badHash) problem = 'bad-hash';
+  }
+  return {
+    catalogSet,
+    catalogLoaded: parsed.records.length > 0,
+    entries: parsed.records.length,
+    rejected: parsed.rejected + (parsed.readable ? 0 : 1),
+    problem,
+  };
 }
 
 export function catalogHasCaps(record: CodeRecord): boolean {
@@ -116,8 +274,7 @@ export async function loadCodeCatalog(catalogJson: string | undefined, kv: KvLis
   for (const key of listed.keys) {
     const raw = await kv.get(key.name);
     if (!raw) continue;
-    const record = parseCodeRecord(JSON.parse(raw) as unknown);
-    if (record) fromKv.push(record);
+    for (const record of parseCodeCatalog(raw)) fromKv.push(record);
   }
   const byHash = new Map<string, CodeRecord>();
   for (const record of fromEnv) byHash.set(record.hash, record);
