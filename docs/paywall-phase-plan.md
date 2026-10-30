@@ -74,7 +74,7 @@ node --experimental-strip-types scripts/check-code-catalog.ts catalog.json
 CODE_HASH_PEPPER='…' CHECK_CODE='ABCD-…' node --experimental-strip-types scripts/check-code-catalog.ts catalog.json
 ```
 
-After a deploy, `GET /api/config` shows `codes: { pepperSet, catalogSet, catalogLoaded, entries, rejected }`. These are counts only. If `catalogLoaded` is false or `entries` is lower than the number of codes you made, the pasted value is wrong. If `entries` is right and a code still fails, the pepper you used in the generator is not the one in Cloudflare.
+After a deploy, `GET /api/config` shows `codes: { pepperSet, catalogSet, catalogLoaded, entries, rejected, problem }`. These are counts and one reason word only. `problem` is `not-json`, `looks-like-a-plain-code` (the code itself was pasted, not the record), `hash-without-record` (only the hash or the `code:<hash>` KV key was pasted), `bad-kind`, `bad-hash`, or null. If `catalogLoaded` is false or `entries` is lower than the number of codes you made, the pasted value is wrong. If `entries` is right and a code still fails, the pepper you used in the generator is not the one in Cloudflare.
 
 Or write the record to KV:
 

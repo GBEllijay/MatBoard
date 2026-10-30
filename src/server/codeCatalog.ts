@@ -86,9 +86,19 @@ export type CatalogParse = {
   records: CodeRecord[];
   /** Rows that looked like records but had a bad kind or hash. */
   rejected: number;
+  /** Rejected rows by reason. */
+  badKind: number;
+  badHash: number;
   /** False when the value was set but nothing in it could be read. */
   readable: boolean;
 };
+
+function rejectReason(raw: unknown): 'kind' | 'hash' {
+  if (!raw || typeof raw !== 'object') return 'hash';
+  const row = raw as Record<string, unknown>;
+  const kind = typeof row.kind === 'string' ? row.kind.trim().toLowerCase() : row.kind;
+  return isKind(kind) ? 'hash' : 'kind';
+}
 
 const QUOTE_PAIRS: [string, string][] = [
   ["'", "'"],
@@ -171,7 +181,7 @@ function rowsFrom(value: unknown, depth = 0): unknown[] | null {
  * holding a "codes" array, and a value wrapped in quotes all read the same way.
  */
 export function parseCodeCatalogDetailed(raw: string | undefined | null): CatalogParse {
-  if (!raw || !raw.trim()) return { records: [], rejected: 0, readable: true };
+  if (!raw || !raw.trim()) return { records: [], rejected: 0, badKind: 0, badHash: 0, readable: true };
   const text = cleanPaste(raw);
   let rows: unknown[] | null = null;
   try {
@@ -190,35 +200,53 @@ export function parseCodeCatalogDetailed(raw: string | undefined | null): Catalo
     }
     rows = parsed.length ? parsed : null;
   }
-  if (!rows) return { records: [], rejected: 0, readable: false };
+  if (!rows) return { records: [], rejected: 0, badKind: 0, badHash: 0, readable: false };
   const byHash = new Map<string, CodeRecord>();
-  let rejected = 0;
+  let badKind = 0;
+  let badHash = 0;
   for (const row of rows) {
     const record = parseCodeRecord(row);
     if (record) byHash.set(record.hash, record);
-    else rejected += 1;
+    else if (rejectReason(row) === 'kind') badKind += 1;
+    else badHash += 1;
   }
-  return { records: [...byHash.values()], rejected, readable: true };
+  return { records: [...byHash.values()], rejected: badKind + badHash, badKind, badHash, readable: true };
 }
 
 export function parseCodeCatalog(raw: string | undefined | null): CodeRecord[] {
   return parseCodeCatalogDetailed(raw).records;
 }
 
-/** Safe to show anyone: counts only, never a hash, id, or code. */
-export function codeCatalogStatus(raw: string | undefined | null): {
+const PLAIN_CODE = /\b[A-HJ-NP-Z2-9]{4}(?:[-\s][A-HJ-NP-Z2-9]{4}){3,}\b/i;
+
+export type CatalogStatus = {
   catalogSet: boolean;
   catalogLoaded: boolean;
   entries: number;
   rejected: number;
-} {
+  /** One plain-language reason when nothing loaded, otherwise null. Never echoes the value. */
+  problem: null | 'not-json' | 'looks-like-a-plain-code' | 'hash-without-record' | 'bad-kind' | 'bad-hash';
+};
+
+/** Safe to show anyone: counts and a reason word only, never a hash, id, or code. */
+export function codeCatalogStatus(raw: string | undefined | null): CatalogStatus {
   const catalogSet = Boolean(raw && raw.trim());
   const parsed = parseCodeCatalogDetailed(raw);
+  let problem: CatalogStatus['problem'] = null;
+  if (catalogSet && parsed.records.length === 0) {
+    const text = raw as string;
+    if (!parsed.readable && /[0-9a-f]{64}/i.test(text)) problem = 'hash-without-record';
+    else if (!parsed.readable && PLAIN_CODE.test(text)) problem = 'looks-like-a-plain-code';
+    else if (!parsed.readable) problem = 'not-json';
+    else if (parsed.badKind) problem = 'bad-kind';
+    else if (parsed.badHash) problem = 'bad-hash';
+  }
   return {
     catalogSet,
     catalogLoaded: parsed.records.length > 0,
     entries: parsed.records.length,
     rejected: parsed.rejected + (parsed.readable ? 0 : 1),
+    problem,
   };
 }
 
