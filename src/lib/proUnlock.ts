@@ -2,6 +2,7 @@
 
 import { doorOpen, notifyEntitlement, subscribeEntitlement } from './entitlement.ts';
 import { PRO_RELOCK_KEY } from './legacyUnlock.ts';
+import { dropOwnerTestDoors, readOwnerTestGrant } from './ownerTestGrant.ts';
 import { setStudentEditionUnlocked } from './studentUnlock.ts';
 
 export const PRO_UNLOCK_STORAGE_KEY = 'advantage.proUnlocked';
@@ -65,6 +66,11 @@ export function tryProductOwnerUnlock(_product: 'coach' | 'pro' | 'student', _co
 }
 
 export function lockPro(): void {
+  // The owner-test seat is a Pro preview. It kept Media Console and Coach open after Lock Pro.
+  // A Pro-only owner test carries Student Edition as part of Pro, so that goes too.
+  // An "all" owner test granted Student Edition on its own, and it stays.
+  const proOnlyTest = readOwnerTestGrant()?.tier === 'pro';
+  dropOwnerTestDoors(proOnlyTest ? ['pro', 'seat', 'student'] : ['pro', 'seat']);
   // writeFlag also clears the Student Edition grant that follows Pro.
   writeFlag(false);
   syncPaidScreens(false);
