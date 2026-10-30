@@ -1,4 +1,5 @@
 import { publicJwkOf, parsePrivateJwk } from '../lib/entitlementToken.ts';
+import { codeCatalogStatus } from './codeCatalog.ts';
 import { emailSenderFromEnv, type EmailEnv } from './emailSender.ts';
 import type { D1Database } from './d1.ts';
 import {
@@ -25,6 +26,7 @@ export type ConfigEnv = EmailEnv & {
   TURNSTILE_SECRET_KEY?: string;
   TURNSTILE_SITE_KEY?: string;
   CODE_HASH_PEPPER?: string;
+  CODE_CATALOG?: string;
   LEGACY_AMNESTY_ENDS_AT?: string;
   MIN_APP_VERSION?: string;
   SEAT_SUNSET_ENDS_AT?: string;
@@ -69,6 +71,8 @@ export function handlePublicConfig(request: Request, env: ConfigEnv, db: D1Datab
     devicesPerInstructorSeat: DEVICES_PER_INSTRUCTOR_SEAT,
     deviceActiveDays: DEVICE_ACTIVE_DAYS,
     turnstileSiteKey: env.TURNSTILE_SITE_KEY?.trim() || null,
+    // Setup check for the unlock-code box. Counts only: no hashes, ids, or codes.
+    codes: { pepperSet: Boolean(env.CODE_HASH_PEPPER?.trim()), ...codeCatalogStatus(env.CODE_CATALOG) },
   };
   if (!signing) {
     body.message = 'Entitlement signing is not set up yet. Set ENTITLEMENT_SIGNING_KEY. Owner test unlock still works.';

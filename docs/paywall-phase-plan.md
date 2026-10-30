@@ -65,7 +65,18 @@ CODE_HASH_PEPPER='your-pepper' node --experimental-strip-types scripts/generate-
 CODE_HASH_PEPPER='your-pepper' node --experimental-strip-types scripts/generate-unlock-codes.ts --kind free-white
 ```
 
-The script prints the new code once on your machine and a JSON record of the hash. Paste the record into `CODE_CATALOG`, or write it to KV:
+The script prints the new code once on your machine, a JSON record of the hash, and the same record inside `[ ]`. For one code, paste the `[ ]` line as the whole `CODE_CATALOG` value. For several codes, put every record inside one `[ ]`, separated by commas. The server also reads a single record, records one per line, or a value wrapped in quotes, but the `[ ]` form is the documented one.
+
+Check the value on your machine before you paste it (nothing is sent anywhere):
+
+```bash
+node --experimental-strip-types scripts/check-code-catalog.ts catalog.json
+CODE_HASH_PEPPER='…' CHECK_CODE='ABCD-…' node --experimental-strip-types scripts/check-code-catalog.ts catalog.json
+```
+
+After a deploy, `GET /api/config` shows `codes: { pepperSet, catalogSet, catalogLoaded, entries, rejected }`. These are counts only. If `catalogLoaded` is false or `entries` is lower than the number of codes you made, the pasted value is wrong. If `entries` is right and a code still fails, the pepper you used in the generator is not the one in Cloudflare.
+
+Or write the record to KV:
 
 ```bash
 npx wrangler kv key put --binding WHITE_ENTITLEMENTS "code:<hash>" '<json record>'
