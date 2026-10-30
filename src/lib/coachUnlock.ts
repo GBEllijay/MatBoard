@@ -1,5 +1,6 @@
 import { doorOpen, notifyEntitlement, subscribeEntitlement } from './entitlement.ts';
 import { COACH_RELOCK_KEY } from './legacyUnlock.ts';
+import { dropOwnerTestDoors } from './ownerTestGrant.ts';
 import { lockStudentEdition } from './studentUnlock.ts';
 
 /** Coach door on this browser. A server redeem sets the flag. URL params do not. */
@@ -52,6 +53,8 @@ export function tryCoachUnlock(_code: string): boolean {
 }
 
 export function lockCoach(): void {
+  // The owner-test seat opens the Coach card on its own, so Lock Coach drops it with Coach.
+  dropOwnerTestDoors(['coach', 'seat']);
   writeFlag(false);
   lockStudentEdition();
 }

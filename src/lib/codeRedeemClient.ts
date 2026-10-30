@@ -1,6 +1,6 @@
 import { checkoutNonceHash, currentCheckoutNonce } from './checkoutNonce.ts';
 import { devicePublicJwk } from './deviceKey.ts';
-import { acceptServerToken, readDeviceId } from './entitlement.ts';
+import { acceptServerToken, clearOwnerTestToken, clearRelocksFor, readDeviceId } from './entitlement.ts';
 import { applyOwnerTestGrant, clearOwnerTestGrant } from './ownerTestGrant.ts';
 import { applyServerGrant } from './serverGrant.ts';
 
@@ -66,8 +66,10 @@ export async function confirmCheckoutSession(sessionId: string): Promise<
       return { ok: false, error: body.error || "That payment isn't confirmed." };
     }
     const grants = Array.isArray(body.grants) ? body.grants.filter((door) => typeof door === 'string') : [];
-    if (body.token) await acceptServerToken(body.token);
-    else applyServerGrant({ grants });
+    if (body.token) {
+      // applyServerGrant clears the Lock marks on the flag path. The token path must too.
+      if (await acceptServerToken(body.token)) clearRelocksFor(grants);
+    } else applyServerGrant({ grants });
     return { ok: true, product: body.product, grants };
   } catch {
     return { ok: false, error: 'Could not confirm that payment. Check your connection and try again.' };
@@ -78,6 +80,12 @@ export async function withCheckoutNonce(body: Record<string, unknown>): Promise<
   return { ...body, nonceHash: await checkoutNonceHash() };
 }
 
+/** Clear test unlock: the session record and, when the owner test issued it, the stored token. */
+export function clearOwnerTestUnlock(): void {
+  clearOwnerTestGrant();
+  clearOwnerTestToken();
+}
+
 export async function submitOwnerTest(input: {
   secret: string;
   tier: string;
@@ -85,7 +93,7 @@ export async function submitOwnerTest(input: {
   action?: 'grant' | 'clear';
 }): Promise<RedeemResult> {
   if (input.action === 'clear' && !input.secret.trim()) {
-    clearOwnerTestGrant();
+    clearOwnerTestUnlock();
     return { ok: true };
   }
   try {
@@ -111,11 +119,13 @@ export async function submitOwnerTest(input: {
     };
     if (!response.ok || !body.ok) return { ok: false, error: body.error || "That code didn't work." };
     if (body.cleared || input.action === 'clear') {
-      clearOwnerTestGrant();
+      clearOwnerTestUnlock();
       return { ok: true };
     }
     if (body.token) await acceptServerToken(body.token);
     if (!applyOwnerTestGrant(body) && !body.token) return { ok: false, error: "That code didn't work." };
+    // A new owner test reopens the doors an earlier Lock button closed on this browser.
+    clearRelocksFor(Array.isArray(body.grants) ? body.grants.filter((door) => typeof door === 'string') : []);
     return { ok: true };
   } catch {
     return { ok: false, error: 'Could not reach the server. Check your connection and try again.' };

@@ -6,7 +6,6 @@ import { HomeMark } from '../components/HomeMark';
 import { InstructionsButton } from '../components/InstructionsButton';
 import { SiteFooter } from '../components/SiteFooter';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
-import { useProUnlocked } from '../hooks/useProUnlocked';
 import { BASIC_COACH_BELT_LINES } from '../lib/coachCopy';
 import { lockCoach } from '../lib/coachUnlock';
 import { coachToolVisible, purchasePromptsHidden } from '../lib/instructorSeats';
@@ -18,7 +17,8 @@ import { formatUsdFromCents } from '../lib/whitePurchase';
 export function CoachPage() {
   const navigate = useNavigate();
   const seat = useCurrentSeat();
-  const ownerOpen = useCoachUnlocked() || useProUnlocked();
+  // Coach door alone: a Pro token still counts there, and the Lock Coach mark closes it.
+  const ownerOpen = useCoachUnlocked();
   const tools = COACH_HUBS.filter((tool) => coachToolVisible(tool.to, seat));
 
   return (
