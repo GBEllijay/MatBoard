@@ -16785,6 +16785,16 @@ a.plan-pick {
 }
 
 .buy__code,
+.restore__turnstile {
+  min-height: 65px;
+  margin: 0.25rem 0 0.75rem;
+}
+
+.restore__turnstile:empty {
+  min-height: 0;
+  margin: 0;
+}
+
 .buy__field {
   display: grid;
   gap: 0.4rem;

@@ -355,16 +355,39 @@ test('restore answers are identical, codes are single use, and nothing is logged
     () => now,
   );
   console.log = original;
-  assert.equal(JSON.stringify(await known.json()), JSON.stringify({ ok: true, message: RESTORE_GENERIC }));
-  const unknownBody = await unknown.json();
-  assert.equal(JSON.stringify(unknownBody), JSON.stringify({ ok: true, message: RESTORE_GENERIC }));
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+  const knownBody = (await known.json()) as { ok: boolean; message: string; challengeId: string };
+  const unknownBody = (await unknown.json()) as { ok: boolean; message: string; challengeId: string };
+  assert.equal(known.status, unknown.status);
+  assert.deepEqual(Object.keys(knownBody), Object.keys(unknownBody));
+  assert.deepEqual(Object.keys(knownBody), ['ok', 'message', 'challengeId']);
+  assert.equal(knownBody.ok, true);
+  assert.equal(unknownBody.ok, true);
+  assert.equal(knownBody.message, RESTORE_GENERIC);
+  assert.equal(unknownBody.message, RESTORE_GENERIC);
+  assert.match(knownBody.challengeId, uuid);
+  assert.match(unknownBody.challengeId, uuid);
+  assert.notEqual(knownBody.challengeId, unknownBody.challengeId);
   assert.equal(sender.sent.length, 1);
   assert.equal(sender.sent[0]?.to, 'Buyer@Gym.test');
   assert.equal(logs.some((line) => line.includes('buyer@gym.test') || line.includes('Buyer@Gym.test')), false);
   const code = sender.sent[0]?.text.split('\n').map((line) => line.trim()).find((line) => /^[A-Z0-9]{8}$/.test(line)) ?? '';
   assert.equal(code.length, 8);
-  const challenge = new URL(sender.sent[0]?.text.match(/https?:\/\/\S+/)?.[0] ?? 'http://localhost/restore').searchParams.get('challenge');
-  assert.ok(challenge);
+  // Code only: the email carries no link, so the challenge id comes from the response.
+  assert.equal(/https?:\/\//.test(sender.sent[0]?.text ?? ''), false);
+  assert.equal((sender.sent[0]?.text ?? '').includes('challenge'), false);
+  const challenge = knownBody.challengeId;
+  const fake = await handleRestoreVerify(
+    new Request('http://localhost/api/restore/verify', {
+      method: 'POST',
+      body: JSON.stringify({ challengeId: unknownBody.challengeId, code, deviceId: 'device-r' }),
+    }),
+    env,
+    db,
+    () => now,
+  );
+  assert.equal(fake.status, 400);
+  assert.equal(((await fake.json()) as { error?: string }).error, "That code didn't work.");
   const get = await handleRestoreVerify(new Request(`http://localhost/restore?challenge=${challenge}`), env, db, () => now);
   assert.equal(get.status, 405);
   const keys = await pair();
