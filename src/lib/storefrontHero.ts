@@ -1,5 +1,5 @@
-/** First-screen designs the owner can compare with ?hero=a|b|c|d. d is B v2 (keynote reveal). */
-export const HERO_VARIANTS = ['a', 'b', 'c', 'd'] as const;
+/** First-screen designs the owner can compare with ?hero=a|b|c|d|e. d is B v2 (keynote reveal); e is the mats version with the board and timer stacked. */
+export const HERO_VARIANTS = ['a', 'b', 'c', 'd', 'e'] as const;
 export type HeroVariant = (typeof HERO_VARIANTS)[number];
 export const DEFAULT_HERO_VARIANT: HeroVariant = 'a';
 

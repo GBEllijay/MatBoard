@@ -20,12 +20,14 @@ test('hero variant comes from ?hero= and falls back to the default', () => {
   assert.equal(heroVariantOf(' c '), 'c');
   assert.equal(heroVariantOf('d'), 'd');
   assert.equal(heroVariantOf(' D '), 'd');
+  assert.equal(heroVariantOf('e'), 'e');
+  assert.equal(heroVariantOf(' E '), 'e');
   assert.equal(heroVariantOf(null), DEFAULT_HERO_VARIANT);
   assert.equal(heroVariantOf('z'), DEFAULT_HERO_VARIANT);
 });
 
-test('a, b and c stay selectable, d is added, and the default does not move', () => {
-  assert.deepEqual([...HERO_VARIANTS], ['a', 'b', 'c', 'd']);
+test('a, b, c and d stay selectable, e is added, and the default does not move', () => {
+  assert.deepEqual([...HERO_VARIANTS], ['a', 'b', 'c', 'd', 'e']);
   assert.equal(DEFAULT_HERO_VARIANT, 'a');
   for (const v of HERO_VARIANTS) assert.match(tsx, new RegExp(`variant === '${v}'`));
 });
@@ -33,6 +35,7 @@ test('a, b and c stay selectable, d is added, and the default does not move', ()
 test('?hero= keeps the public storefront instead of redirecting to the app', () => {
   assert.equal(preservesAppHomeQuery(new URLSearchParams('hero=b')), false);
   assert.equal(preservesAppHomeQuery(new URLSearchParams('hero=d')), false);
+  assert.equal(preservesAppHomeQuery(new URLSearchParams('hero=e')), false);
 });
 
 test('B v2 (d): headline outside the board, no duplicate paragraph, real round timer', () => {
@@ -58,8 +61,33 @@ test('B v2 (d): entrance runs once and only without reduced motion', () => {
   assert.match(motion, /sfh-d-in 700ms cubic-bezier\(0\.2, 0\.7, 0\.2, 1\) 120ms both/);
 });
 
-test('C on the mats: transparent hero, black text backdrop, timer kept off the scores', () => {
+test('C on the mats: transparent hero, black text backdrop, stacked app cards behind the board', () => {
   assert.match(rule('.home.home--store .sf-hero.sfh--c'), /background: transparent/);
   assert.match(css, /\.sfh--c \.sfh-text \{[^}]*background: rgba\(0, 0, 0, 0\.6\);[^}]*backdrop-filter: blur\(8px\)/);
-  assert.match(css, /\.sfh--c \.sfh-stage \{[^}]*padding-bottom: calc\(26\.5% \+ 30px\)/);
+  const c = tsx.slice(tsx.indexOf("variant === 'c'"), tsx.indexOf("variant === 'd'"));
+  // Back to front: journal card, brackets card, TV, then the timer over Competitor 2's row.
+  const order = ['sfh-card--journal', 'sfh-card--brackets', 'sfh-tv', 'sfh-frame--timer'].map((k) => c.indexOf(k));
+  assert.ok(order.every((n) => n > -1), 'C stack is complete');
+  assert.deepEqual([...order].sort((x, y) => x - y), order);
+  assert.match(tsx, /brackets-live\.png/);
+  assert.match(tsx, /journal-live\.png/);
+  assert.match(rule('.home.home--store .sfh-card--brackets'), /z-index: 1/);
+  assert.match(rule('.home.home--store .sfh-card--journal'), /z-index: 0/);
+  assert.match(css, /\.sfh--c \.sfh-tv \{\s*z-index: 2;/);
+  assert.match(css, /\.sfh--c \.sfh-frame--timer \{\s*z-index: 3;[^}]*left: 48%;[^}]*margin-top: 29%;/);
+  // The board itself is never dimmed; only the cards behind it are.
+  assert.doesNotMatch(rule('.home.home--store .sfh-frame--tv'), /filter|opacity/);
+});
+
+test('E: board and live round timer stacked as two equal blocks on the mats, no cards', () => {
+  const e = tsx.slice(tsx.indexOf("variant === 'e'"));
+  assert.equal((e.match(/className="sfh-block/g) ?? []).length, 2);
+  assert.match(e, /ROUND_TIMER_LIVE\.src/);
+  assert.doesNotMatch(e, /ROUND_TIMER\.src|<Card /);
+  assert.match(e, /sfh-timer-label">Win by Advantage</);
+  assert.match(e, /<Copy \/>/);
+  assert.match(rule('.home.home--store .sf-hero.sfh--e'), /background: transparent/);
+  assert.match(css, /\.sfh--e \.sfh-text \{[^}]*background: rgba\(0, 0, 0, 0\.6\);/);
+  assert.match(rule('.home.home--store .sfh--e .sfh-stage'), /flex-direction: column;[^}]*gap: 14px;/);
+  assert.match(rule('.home.home--store .sfh-frame--wide'), /aspect-ratio: 16 \/ 5\.5/);
 });

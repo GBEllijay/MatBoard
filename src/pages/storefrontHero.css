@@ -1,4 +1,4 @@
-/* Storefront first screen. Three designs behind ?hero=a|b|c. Everything below the hero is unchanged. */
+/* Storefront first screen. Designs behind ?hero=a|b|c|d|e. Everything below the hero is unchanged. */
 .home.home--store .sfh {
   --sfh-ink: #0e1726;
   --sfh-deep: #070c16;
@@ -629,14 +629,84 @@
   background: radial-gradient(closest-side, rgba(0, 0, 0, 0.75), transparent);
 }
 
-/* The tablet sits below the TV's bottom edge so it never covers Competitor 2's scores. */
+/* C stack: journal card furthest back, brackets card behind the board's lower row, the TV in
+   front, and the round timer floating over Competitor 2's advantages and penalties (on purpose). */
 .home.home--store .sfh--c .sfh-stage {
-  padding-bottom: calc(26.5% + 30px);
+  padding-bottom: 17%;
+}
+
+.home.home--store .sfh--c .sfh-tv {
+  z-index: 2;
+}
+
+.home.home--store .sfh--c .sfh-frame--timer {
+  z-index: 3;
+  top: 0;
+  right: auto;
+  bottom: auto;
+  left: 48%;
+  width: 41%;
+  margin-top: 29%;
+  box-shadow: 0 46px 80px -14px rgba(0, 0, 0, 0.92), 0 20px 34px -10px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.home.home--store .sfh-card {
+  position: absolute;
+  top: 0;
+  margin: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: #0b1220;
+}
+
+.home.home--store .sfh-card img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.home.home--store .sfh-card--brackets {
+  z-index: 1;
+  left: -3%;
+  width: 62%;
+  aspect-ratio: 16 / 9;
+  margin-top: 30%;
+  border-radius: 16px;
+  box-shadow: 0 30px 60px -18px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  filter: brightness(0.86) saturate(0.95) blur(0.5px);
+}
+
+.home.home--store .sfh-card--journal {
+  z-index: 0;
+  right: -4%;
+  width: 34%;
+  aspect-ratio: 4 / 3;
+  margin-top: -7%;
+  border-radius: 14px;
+  box-shadow: 0 24px 50px -16px rgba(0, 0, 0, 0.75);
+  filter: brightness(0.58) saturate(0.8) blur(1.4px);
 }
 
 @media (max-width: 900px) {
   .home.home--store .sfh--c .sfh-stage {
-    padding-bottom: calc(27% + 22px);
+    padding-bottom: 16%;
+  }
+
+  .home.home--store .sfh--c .sfh-frame--timer {
+    width: 41%;
+  }
+
+  /* Phone: only a sliver of the brackets card; the journal card would crowd the board. */
+  .home.home--store .sfh-card--brackets {
+    left: -3%;
+    width: 60%;
+    margin-top: 30%;
+    border-radius: 12px;
+  }
+
+  .home.home--store .sfh-card--journal {
+    display: none;
   }
 
   /* Phone keeps C's order; the backdrop is one panel across logo, headline and lead. */
@@ -936,5 +1006,155 @@
   .home.home--store .sfh--d .sfh-cta {
     width: 100%;
     margin-top: 18px;
+  }
+}
+
+/* ---------- E: the mats version. Board and round timer as two equal stacked blocks ---------- */
+.home.home--store .sf-hero.sfh--e {
+  background: transparent;
+  box-shadow: none;
+}
+
+.home.home--store .sfh--e .sfh-spot {
+  display: none;
+}
+
+.home.home--store .sfh--e .sfh-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 40%) minmax(0, 60%);
+  align-items: center;
+  gap: 24px;
+  min-height: min(700px, calc(100svh - 40px));
+}
+
+.home.home--store .sfh--e .sfh-text {
+  max-width: 540px;
+  padding: 32px 36px 30px;
+  border-radius: 24px;
+  background: rgba(0, 0, 0, 0.6);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.home.home--store .sfh--e .sfh-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 86%;
+}
+
+/* Same bezel, radius and shadow on both blocks. */
+.home.home--store .sfh-block {
+  padding: 10px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, #1a1f29 0%, #0b0e14 100%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 50px 90px -20px rgba(0, 0, 0, 0.85), 0 18px 36px -12px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.home.home--store .sfh-frame--block {
+  border-radius: 10px;
+  border: 0;
+  box-shadow: none;
+}
+
+/* The timer block keeps the board's width and a deliberate 16:5.5 strip, digits centered. */
+.home.home--store .sfh-frame--wide {
+  aspect-ratio: 16 / 5.5;
+}
+
+.home.home--store .sfh-frame--wide img {
+  object-position: 50% 47%;
+}
+
+.home.home--store .sfh-timer-label {
+  position: absolute;
+  top: 14px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.55);
+}
+
+@media (max-width: 900px) {
+  .home.home--store .sfh--e .sfh-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    min-height: 0;
+    padding: 20px 20px 36px;
+    gap: 0;
+  }
+
+  .home.home--store .sfh--e .sfh-text {
+    display: contents;
+  }
+
+  .home.home--store .sfh--e .sfh-brand { order: 1; }
+  .home.home--store .sfh--e .sfh-title { order: 2; }
+  .home.home--store .sfh--e .sfh-lead { order: 3; }
+  .home.home--store .sfh--e .sfh-stage { order: 4; margin-top: 16px; width: 100%; gap: 10px; }
+  .home.home--store .sfh--e .sfh-cta { order: 5; margin-top: 16px; position: relative; z-index: 2; }
+  .home.home--store .sfh--e .sfh-sub { order: 6; margin-top: 18px; text-align: center; }
+
+  .home.home--store .sfh--e .sfh-brand,
+  .home.home--store .sfh--e .sfh-title,
+  .home.home--store .sfh--e .sfh-lead,
+  .home.home--store .sfh--e .sfh-sub {
+    background: rgba(0, 0, 0, 0.64);
+  }
+
+  .home.home--store .sfh--e .sfh-brand {
+    display: flex;
+    padding: 18px 20px 0;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .home.home--store .sfh--e .sfh-title {
+    margin-top: 0;
+    padding: 16px 20px 8px;
+  }
+
+  .home.home--store .sfh--e .sfh-lead {
+    margin-top: 0;
+    padding: 4px 20px 20px;
+    border-radius: 0 0 20px 20px;
+  }
+
+  .home.home--store .sfh--e .sfh-sub {
+    padding: 14px 18px;
+    border-radius: 16px;
+    color: rgba(255, 255, 255, 0.72);
+  }
+
+  .home.home--store .sfh--e .sfh-fine,
+  .home.home--store .sfh--e .sfh-links {
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.6);
+  }
+
+  .home.home--store .sfh-block {
+    padding: 6px;
+    border-radius: 14px;
+  }
+
+  .home.home--store .sfh-frame--block {
+    border-radius: 8px;
+  }
+
+  .home.home--store .sfh-timer-label {
+    top: 8px;
+    font-size: 11px;
   }
 }
