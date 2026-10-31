@@ -241,6 +241,7 @@ function ProgressStep({ step, belts }: { step: BeltRung; belts: BeltsVariant }) 
         <div>
           <h3>{step.title}</h3>
           <p>{step.blurb}</p>
+          {step.detail ? <p className="sf-step-detail">{step.detail}</p> : null}
         </div>
         <div className="sf-meta">
           {step.cardPrice ? (

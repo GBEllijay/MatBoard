@@ -746,6 +746,11 @@
   line-height: 1.5;
 }
 
+.home.home--store .sf-info p.sf-step-detail {
+  margin-top: 2px;
+  font-size: 13px;
+}
+
 .home.home--store .sf-meta {
   text-align: right;
   white-space: nowrap;

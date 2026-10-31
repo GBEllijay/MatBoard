@@ -8,6 +8,7 @@ import {
   STOREFRONT_BELT_LADDER,
   STOREFRONT_LADDER_NOTE,
   beltsVariantOf,
+  proLadderBlurb,
 } from './storefrontBelts.ts';
 import { preservesAppHomeQuery } from './submenuNav.ts';
 
@@ -48,6 +49,9 @@ test('?belts=a embroiders JOURNAL on the blue belt, ?belts=b is the plain blue b
   assert.equal(beltsVariantOf(' B '), 'b');
   assert.equal(beltsVariantOf(null), 'a');
   assert.equal(beltsVariantOf('z'), 'a');
+  const student = STOREFRONT_BELT_LADDER.find((r) => r.id === 'student');
+  assert.equal(student?.blurb, 'A personal BJJ training journal.');
+  assert.equal(student?.cardPrice, '$19.99 one-time');
   assert.match(tsx, /beltsVariantOf\(params\.get\('belts'\)\)/);
   assert.match(tsx, /journal=\{step\.id === 'student' && belts === 'a'\}/);
   assert.match(tsx, />\s*JOURNAL\s*</);
@@ -69,18 +73,20 @@ test('all five belts share one box, weave, stitch and rank bar', () => {
   assert.match(css, /\.sf-belt--blue \{\s*--sf-fill: var\(--sf-belt-blue\);\s*\}/);
 });
 
-test('Coach reads Instructor in this section, with the same code, route, price and features', () => {
+test('Coach reads Instructor in this section, with the same code name, id and route', () => {
   const coach = STOREFRONT_STEPS.find((s) => s.id === 'coach');
   const rung = STOREFRONT_BELT_LADDER.find((r) => r.id === 'coach');
   assert.ok(coach && rung);
   assert.equal(rung.title, 'Advantage Instructor Edition');
   assert.equal(rung.rankLabel, 'INSTRUCTOR');
-  assert.equal(rung.blurb, coach.blurb);
-  assert.equal(rung.cardPrice, '$29.99 one-time');
+  assert.equal(rung.blurb, 'Daily lesson plans, videos, and enhanced training tools. Includes White.');
+  // $49.99 is display only on this tile; the Coach product copy (and Stripe) still says $29.99.
+  assert.equal(rung.cardPrice, '$49.99 one-time');
+  assert.equal(coach.cardPrice, '$29.99 one-time');
   assert.equal(rung.to, '/products');
   assert.equal(rung.status, 'Coming soon');
   for (const r of STOREFRONT_BELT_LADDER) {
-    assert.doesNotMatch(`${r.title} ${r.rankLabel} ${r.blurb}`, /Coach/);
+    assert.doesNotMatch(`${r.title} ${r.rankLabel} ${r.blurb} ${r.detail ?? ''}`, /Coach/);
   }
   assert.doesNotMatch(STOREFRONT_LADDER_NOTE, /Coach/);
   assert.match(STOREFRONT_LADDER_NOTE, /Instructor/);
@@ -88,8 +94,9 @@ test('Coach reads Instructor in this section, with the same code, route, price a
   assert.equal(coach.title, 'Advantage Coach');
 });
 
-test('White and Pro tiles are unchanged (Pro only reads Includes Instructor.)', () => {
+test('White is unchanged; Pro keeps its title, price, belt and link with Instructor wording', () => {
   const [white, , , , pro] = STOREFRONT_BELT_LADDER;
+  assert.equal(white.detail, undefined);
   assert.deepEqual(
     { title: white.title, rankLabel: white.rankLabel, blurb: white.blurb, cardPrice: white.cardPrice, status: white.status, to: white.to },
     { title: 'Advantage White', rankLabel: 'WHITE', blurb: 'BJJ scoreboard and round timer.', cardPrice: '$9.99 one-time', status: 'Available now', to: STOREFRONT_BUY_PATH },
@@ -99,12 +106,18 @@ test('White and Pro tiles are unchanged (Pro only reads Includes Instructor.)', 
   assert.ok(proStep);
   assert.deepEqual(
     { title: pro.title, rankLabel: pro.rankLabel, blurb: pro.blurb, cardPrice: pro.cardPrice, status: pro.status, to: pro.to },
-    { title: proStep.title, rankLabel: proStep.rankLabel, blurb: proStep.blurb.replace('Includes Coach.', 'Includes Instructor.'), cardPrice: proStep.cardPrice, status: proStep.status, to: proStep.to },
+    { title: proStep.title, rankLabel: proStep.rankLabel, blurb: proLadderBlurb(proStep.blurb), cardPrice: proStep.cardPrice, status: proStep.status, to: proStep.to },
   );
   assert.equal(
     pro.blurb,
     'Academy management, shared drive, events, pro shop, gallery, instructor collaboration and student seats. Includes Instructor.',
   );
+  assert.equal(pro.detail, 'Includes instructor communication, distribution and tournament management.');
+  assert.equal(
+    proLadderBlurb('Everything in Advantage Coach Unlimited. Includes Coach.'),
+    'Everything in Advantage Instructor Unlimited. Includes Instructor.',
+  );
+  assert.equal(proLadderBlurb('Coach Unlimited seats.'), 'Advantage Instructor Unlimited seats.');
   // The shared product copy (and its code name) is untouched.
   assert.match(proStep.blurb, /Includes Coach\.$/);
   assert.equal(pro.cardPrice, '$99.99 + $5.99/mo');
@@ -114,11 +127,13 @@ test('White and Pro tiles are unchanged (Pro only reads Includes Instructor.)', 
   assert.match(tsx, /step\.id === 'white' \? ' sf-step--live' : ''/);
 });
 
-test('Academy Enhancement has no product: no price, no checkout, the tile is the alpha request', () => {
+test('Academy Enhancement has no product: display price only, no checkout, the tile is the alpha request', () => {
   const academy = STOREFRONT_BELT_LADDER.find((r) => r.id === 'academy');
   assert.ok(academy);
-  assert.equal(academy.blurb, 'Gives access to the scoreboard, round timer and gallery.');
-  assert.equal(academy.cardPrice, '');
+  assert.equal(academy.blurb, 'Scoreboard, round timer, and media console.');
+  assert.equal(academy.detail, 'Full Media Console included: gallery, class schedule, pro shop and events.');
+  // Display only: no Academy product exists in Stripe.
+  assert.equal(academy.cardPrice, '$29.99');
   assert.equal(academy.status, 'Coming soon');
   assert.equal(academy.to, null);
   assert.match(tsx, /if \(step\.to === null\)[\s\S]*?href=\{alphaRequestMailto\(\)\}/);
@@ -126,4 +141,6 @@ test('Academy Enhancement has no product: no price, no checkout, the tile is the
   assert.equal(STOREFRONT_PROGRESS_HEADING, 'Start with White. Grow into Pro.');
   assert.match(tsx, /Request to join alpha/);
   assert.match(tsx, /<section className="sf-prog" id="progression"/);
+  // The second line is plain text, not a link.
+  assert.match(tsx, /\{step\.detail \? <p className="sf-step-detail">\{step\.detail\}<\/p> : null\}/);
 });

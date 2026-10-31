@@ -26,6 +26,8 @@ export type BeltRung = {
   rankLabel: string;
   title: string;
   blurb: string;
+  /** Optional second line of plain text under the blurb. */
+  detail?: string;
   /** Empty when there is no product price yet. */
   cardPrice: string;
   status: StorefrontStep['status'];
@@ -43,6 +45,13 @@ const white = step('white');
 const student = step('student');
 const coach = step('coach');
 const pro = step('pro');
+
+/** User-facing copy only: the Coach tier reads Instructor on this ladder. */
+export function proLadderBlurb(blurb: string): string {
+  return blurb
+    .replace(/Advantage Coach Unlimited|Coach Unlimited/g, 'Advantage Instructor Unlimited')
+    .replace('Includes Coach.', 'Includes Instructor.');
+}
 
 export const STOREFRONT_BELT_LADDER: readonly BeltRung[] = [
   {
@@ -73,8 +82,10 @@ export const STOREFRONT_BELT_LADDER: readonly BeltRung[] = [
     rank: '03',
     rankLabel: 'ACADEMY',
     title: 'Advantage Academy Enhancement Edition',
-    blurb: 'Gives access to the scoreboard, round timer and gallery.',
-    cardPrice: '',
+    blurb: 'Scoreboard, round timer, and media console.',
+    detail: 'Full Media Console included: gallery, class schedule, pro shop and events.',
+    // Display only: there is no Academy product in Stripe.
+    cardPrice: '$29.99',
     status: 'Coming soon',
     to: null,
   },
@@ -84,8 +95,9 @@ export const STOREFRONT_BELT_LADDER: readonly BeltRung[] = [
     rank: '04',
     rankLabel: 'INSTRUCTOR',
     title: 'Advantage Instructor Edition',
-    blurb: coach.blurb,
-    cardPrice: coach.cardPrice,
+    blurb: 'Daily lesson plans, videos, and enhanced training tools. Includes White.',
+    // Display only on this tile: Stripe still charges the Coach product at $29.99.
+    cardPrice: '$49.99 one-time',
     status: coach.status,
     to: coach.to,
   },
@@ -95,8 +107,8 @@ export const STOREFRONT_BELT_LADDER: readonly BeltRung[] = [
     rank: '05',
     rankLabel: pro.rankLabel,
     title: pro.title,
-    // User-facing copy only: the Coach tier reads Instructor on this ladder.
-    blurb: pro.blurb.replace('Includes Coach.', 'Includes Instructor.'),
+    blurb: proLadderBlurb(pro.blurb),
+    detail: 'Includes instructor communication, distribution and tournament management.',
     cardPrice: pro.cardPrice,
     status: pro.status,
     to: pro.to,
