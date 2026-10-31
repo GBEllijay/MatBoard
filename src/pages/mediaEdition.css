@@ -79,6 +79,20 @@
   list-style: none;
 }
 
+.home--media .media-gallery figure {
+  margin: 0;
+}
+
+.home--media .media-gallery img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 12px;
+  box-shadow: 0 14px 30px -16px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
 .home--media .media-gallery figcaption {
   width: fit-content;
   margin-top: 0.5rem;

@@ -125,6 +125,11 @@ test('the white band is gone from the marketing page', () => {
   assert.doesNotMatch(css, /media-band/);
 });
 
+test('gallery images keep their sizing rules after the band removal', () => {
+  assert.match(css, /\.home--media \.media-gallery figure \{[^}]*margin: 0;/);
+  assert.match(css, /\.home--media \.media-gallery img \{[^}]*width: 100%;[^}]*height: auto;[^}]*aspect-ratio: 16 \/ 9;/);
+});
+
 test('gallery sits directly under the header card, real repo images in order', () => {
   assert.deepEqual(
     MEDIA_EDITION_GALLERY.map((s) => s.src),
