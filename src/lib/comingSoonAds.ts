@@ -8,7 +8,7 @@ import {
 import {
   GYM_CONSOLE_NAME,
   INSTRUCTOR_COLLAB_HUB_LABEL,
-  INSTRUCTOR_COACH_ENTRY,
+  PRO_INSTRUCTOR_HUB_LABEL,
   MEDIA_CONSOLE_NAME,
   PRO_LADDER_DETAIL,
   STUDENT_EDITION_NAME,
@@ -50,7 +50,7 @@ export const PRO_CONSOLE_PREVIEW_LABEL = 'Advantage Pro';
 
 /** One line under that shot. The picture is the live four-hub console, not a wireframe. */
 export const PRO_CONSOLE_PREVIEW_NOTE =
-  'Media Console, Advantage Coach Unlimited, instructor invites, and Tournament Management Pro.';
+  'Media Console, Advantage Instructor Edition, instructor invites, and Tournament Management Pro.';
 
 /** Shown on Coming soon. Not a checkout button. */
 export const COACH_LAUNCH_PRICE_NOTE = `Price: ${COACH_PRICE_LINE} when it launches. Not for sale on this page.`;
@@ -120,7 +120,7 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
         body: 'Gallery, Class Schedule, Pro Shop, and Events on the gym TV.',
       },
       {
-        title: INSTRUCTOR_COACH_ENTRY,
+        title: PRO_INSTRUCTOR_HUB_LABEL,
         body: 'Daily Lesson Plan, Daily Training Videos, Technique Tree, and Competition Class Curriculum. Google Drive is an extra folder when this tier is unlocked.',
       },
       {
