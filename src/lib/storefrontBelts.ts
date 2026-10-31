@@ -46,13 +46,6 @@ const student = step('student');
 const coach = step('coach');
 const pro = step('pro');
 
-/** User-facing copy only: the Coach tier reads Instructor on this ladder. */
-export function proLadderBlurb(blurb: string): string {
-  return blurb
-    .replace(/Advantage Coach Unlimited|Coach Unlimited/g, 'Advantage Instructor Unlimited')
-    .replace('Includes Coach.', 'Includes Instructor.');
-}
-
 export const STOREFRONT_BELT_LADDER: readonly BeltRung[] = [
   {
     id: 'white',
@@ -106,8 +99,9 @@ export const STOREFRONT_BELT_LADDER: readonly BeltRung[] = [
     rank: '05',
     rankLabel: pro.rankLabel,
     title: pro.title,
-    blurb: proLadderBlurb(pro.blurb),
-    detail: 'Includes instructor communication, distribution and tournament management.',
+    // Homepage ladder copy only; the shared Pro product copy is unchanged.
+    blurb:
+      'Academy Management Console, shared drive, events, pro shop, gallery, instructor collaboration, distribution, tournament management, instructor seats, and giftable codes for student edition.',
     cardPrice: pro.cardPrice,
     status: pro.status,
     to: pro.to,

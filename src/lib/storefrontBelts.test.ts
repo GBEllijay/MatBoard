@@ -8,7 +8,6 @@ import {
   STOREFRONT_BELT_LADDER,
   STOREFRONT_LADDER_NOTE,
   beltsVariantOf,
-  proLadderBlurb,
 } from './storefrontBelts.ts';
 import { preservesAppHomeQuery } from './submenuNav.ts';
 
@@ -104,11 +103,11 @@ test('every tier except Pro is priced one-time; Pro is $99.99 + $5.99/mo', () =>
   );
   assert.deepEqual(
     STOREFRONT_BELT_LADDER.map((r) => r.detail ?? null),
-    [null, null, null, null, 'Includes instructor communication, distribution and tournament management.'],
+    [null, null, null, null, null],
   );
 });
 
-test('White is unchanged; Pro keeps its title, price, belt and link with Instructor wording', () => {
+test('White is unchanged; Pro keeps its title, price, belt and link with the owner one-line copy', () => {
   const [white, , , , pro] = STOREFRONT_BELT_LADDER;
   assert.equal(white.detail, undefined);
   assert.deepEqual(
@@ -119,19 +118,16 @@ test('White is unchanged; Pro keeps its title, price, belt and link with Instruc
   const proStep = STOREFRONT_STEPS.find((s) => s.id === 'pro');
   assert.ok(proStep);
   assert.deepEqual(
-    { title: pro.title, rankLabel: pro.rankLabel, blurb: pro.blurb, cardPrice: pro.cardPrice, status: pro.status, to: pro.to },
-    { title: proStep.title, rankLabel: proStep.rankLabel, blurb: proLadderBlurb(proStep.blurb), cardPrice: proStep.cardPrice, status: proStep.status, to: proStep.to },
+    { title: pro.title, rankLabel: pro.rankLabel, cardPrice: pro.cardPrice, status: pro.status, to: pro.to },
+    { title: proStep.title, rankLabel: proStep.rankLabel, cardPrice: proStep.cardPrice, status: proStep.status, to: proStep.to },
   );
+  // Owner copy: one line replaces both earlier Pro lines.
   assert.equal(
     pro.blurb,
-    'Academy management, shared drive, events, pro shop, gallery, instructor collaboration and student seats. Includes Instructor.',
+    'Academy Management Console, shared drive, events, pro shop, gallery, instructor collaboration, distribution, tournament management, instructor seats, and giftable codes for student edition.',
   );
-  assert.equal(pro.detail, 'Includes instructor communication, distribution and tournament management.');
-  assert.equal(
-    proLadderBlurb('Everything in Advantage Coach Unlimited. Includes Coach.'),
-    'Everything in Advantage Instructor Unlimited. Includes Instructor.',
-  );
-  assert.equal(proLadderBlurb('Coach Unlimited seats.'), 'Advantage Instructor Unlimited seats.');
+  assert.equal(pro.detail, undefined);
+  assert.doesNotMatch(pro.blurb, /Includes/);
   // The shared product copy (and its code name) is untouched.
   assert.match(proStep.blurb, /Includes Coach\.$/);
   assert.equal(pro.cardPrice, '$99.99 + $5.99/mo');
