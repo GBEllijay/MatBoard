@@ -92,8 +92,13 @@ test('Instructor card on /products shows $49.99 one-time, matching the belt ladd
   assert.equal(rung?.cardPrice, INSTRUCTOR_DISPLAY_PRICE_LINE);
 });
 
-test('Media card stands out: #6b2d91 edge, glow, bolder title', () => {
-  assert.match(home, /mode-card--media mode-card--locked mode-card--feature/);
+test('locked Media card looks like the other locked cards; the unlocked card keeps the feature edge', () => {
+  assert.match(home, /className="mode-card mode-card--media mode-card--locked">/);
+  assert.doesNotMatch(home, /mode-card--media mode-card--locked mode-card--feature/);
+  assert.match(home, /<BeltRail kind="purple" \/>/);
+  const base = css.match(/\n\.mode-card--media \{[^}]*\}/)?.[0] ?? '';
+  assert.ok(base, 'base .mode-card--media rule');
+  assert.doesNotMatch(base, /#2c2438|176, 150, 204|107, 45, 145|box-shadow/);
   assert.match(css, /\.mode-card--media\.mode-card--feature \{[^}]*rgba\(107, 45, 145/);
   assert.match(css, /\.mode-card--media\.mode-card--feature > strong \{[^}]*font-weight: 800/);
 });

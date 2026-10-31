@@ -23,6 +23,15 @@
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
 }
 
+/* Student hub belt: the Student tier blue from the homepage ladder. */
+.s-hub .belt-header--blue .belt-header__belt {
+  --cloth: #2a5cf0;
+}
+
+.s-hub .belt-header {
+  margin: 0;
+}
+
 .s-hub__intro {
   display: grid;
   gap: 8px;

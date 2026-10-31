@@ -113,16 +113,12 @@ test('Coach ad lists basic Coach tools, student roster, and no checkout price', 
   assert.match(splashSource, /ad\.kicker \? <p className="soon-ad__kicker">\{ad\.kicker\}<\/p> : null/);
   assert.doesNotMatch(splashSource, /coming soon/i);
   const buy = readFileSync(new URL('../pages/BuyWhite.tsx', import.meta.url), 'utf8');
-  const coachHeading = buy.indexOf('<h2>Advantage Coach</h2>');
-  const proHeading = buy.indexOf('<h2>Advantage Pro</h2>');
-  const coachDetails = buy.lastIndexOf('<details', coachHeading);
-  const proDetails = buy.lastIndexOf('<details', proHeading);
-  const coachSection = buy.slice(coachDetails, proDetails);
-  const proSection = buy.slice(proDetails);
-  assert.doesNotMatch(coachSection, /coming soon/i);
-  assert.match(coachSection, /<ComingSoonAd product="coach" \/>/);
-  assert.match(proSection, /<span className="buy__kicker">Coming soon<\/span>/);
-  assert.match(proSection, /<h2>Advantage Pro<\/h2>/);
+  // /buy now lists the higher tiers (Student, Media, Instructor, Pro) as tier cards that link to
+  // each tier's buy page (feat/tier-buy-pages); the Coach splash still renders in the home sheet.
+  assert.match(buy, /<HigherTierList\s+from="white"/);
+  assert.doesNotMatch(buy, /<h2>Advantage Coach<\/h2>/);
+  const home = readFileSync(new URL('../pages/Home.tsx', import.meta.url), 'utf8');
+  assert.match(home, /<ComingSoonAd product=\{soon\} \/>/);
   assert.doesNotMatch(PRODUCT_TEASERS.coach, /\$\d/);
   assert.equal(PRODUCT_TEASERS.coach, COACH_HOME_TEASER);
   assert.equal(PRODUCT_TEASERS.coachUnlocked, COACH_HOME_TEASER);

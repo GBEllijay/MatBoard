@@ -47,6 +47,7 @@ import {
 } from '../lib/productPrices';
 import { WHITE_PRICE_LABEL } from '../lib/whitePurchase';
 import { whiteEntryPath } from '../lib/whiteUnlock';
+import { TIER_BUY_PATHS } from '../lib/tierBuyPages';
 
 export function HomePage() {
   const door = useSeatDoor();
@@ -142,12 +143,10 @@ export function HomePage() {
             </article>
           ) : (
             <article className="mode-card mode-card--coach mode-card--locked">
-              <button
-                type="button"
+              <Link
                 className="mode-card__hit"
-                aria-haspopup="dialog"
+                to={TIER_BUY_PATHS.instructor}
                 aria-label={`${INSTRUCTOR_HOME_TITLE}, coming soon`}
-                onClick={() => setSoon('coach')}
               />
               <BeltRail kind="brown" />
               <strong>{INSTRUCTOR_HOME_TITLE}</strong>
@@ -182,13 +181,7 @@ export function HomePage() {
             </article>
           ) : (
             <article className="mode-card mode-card--pro mode-card--locked">
-              <button
-                type="button"
-                className="mode-card__hit"
-                aria-haspopup="dialog"
-                aria-label="Advantage Pro, coming soon"
-                onClick={() => setSoon('pro')}
-              />
+              <Link className="mode-card__hit" to={TIER_BUY_PATHS.pro} aria-label="Advantage Pro, coming soon" />
               <ProHomeCopy />
               {seated ? null : <p className="mode-card__price">{PRO_PRICE_LINE}</p>}
               <AlphaAccessNote note={EDITION_ALPHA_NOTE} display={EDITION_EMAIL_DISPLAY} />
@@ -281,19 +274,17 @@ function StudentHomeCard({
   }
   return (
     <article className="mode-card mode-card--student mode-card--locked">
-      <button
-        type="button"
-        className="mode-card__hit"
-        aria-haspopup="dialog"
-        aria-label="Advantage Student Edition, coming soon"
-        onClick={onSoon}
-      />
+      <Link className="mode-card__hit" to={TIER_BUY_PATHS.student} aria-label="Advantage Student Edition, coming soon" />
       {body}
       <p className="mode-card__price">{STUDENT_PRICE_LINE}</p>
       <div className="mode-card__actions">
         <Link className="btn btn--white" to="/student?student=1">
           Try the demo
         </Link>
+        {/* The card hit opens the Student buy page; this keeps the Student sheet (and its Owner unlock). */}
+        <button type="button" className="btn btn--ghost mode-card__learn" onClick={onSoon}>
+          Learn more about Student Edition
+        </button>
       </div>
       <AlphaAccessNote note={STUDENT_ALPHA_ACCESS_NOTE} />
     </article>
@@ -323,7 +314,7 @@ function MediaHomeCard({ open }: { open: boolean }) {
     );
   }
   return (
-    <article className="mode-card mode-card--media mode-card--locked mode-card--feature">
+    <article className="mode-card mode-card--media mode-card--locked">
       <Link className="mode-card__hit" to={MEDIA_HOME_PATH} aria-label={`${MEDIA_HOME_TITLE}, open the Media page`} />
       <BeltRail kind="purple" />
       <strong>{MEDIA_HOME_TITLE}</strong>

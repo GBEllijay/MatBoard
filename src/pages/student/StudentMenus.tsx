@@ -1,9 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { BeltHeader } from '../../components/BeltHeader';
 import { HomeMark } from '../../components/HomeMark';
 import { SiteFooter } from '../../components/SiteFooter';
 import { loadAcademyLink } from '../../lib/academyPathway';
-import { PRODUCTS_PATH, STUDENT_EDITION_NAME, STUDENT_HOME_DESCRIPTION } from '../../lib/productNames';
+import {
+  PRODUCTS_PATH,
+  STUDENT_EDITION_HUB_TITLE,
+  STUDENT_EDITION_NAME,
+  STUDENT_HOME_DESCRIPTION,
+} from '../../lib/productNames';
 import { lockStudentEditionBrowser } from '../../lib/studentUnlock';
 import { tierHomeHref } from '../../lib/submenuNav';
 import { todayIso } from '../../lib/studentEdition';
@@ -76,8 +82,8 @@ export function StudentHub() {
       <div className="home__inner">
         <HomeMark to={home} />
         <nav className="s-hub" aria-label="Advantage Student Edition">
+          <BeltHeader kind="blue" title={STUDENT_EDITION_HUB_TITLE} />
           <header className="s-hub__intro">
-            <h2>{STUDENT_EDITION_NAME}</h2>
             <p>{STUDENT_HOME_DESCRIPTION}</p>
           </header>
           <ProfileCard />

@@ -17,6 +17,9 @@ export const STUDENT_EDITION_NAME = 'Advantage – Student Edition';
 export const STUDENT_HOME_DESCRIPTION =
   'A personal BJJ training journal with rank and stripes, fundamentals proficiency, and competitor prep.';
 
+/** Blue belt title at the top of the Student hub (/student), like the /media and /pro belts. */
+export const STUDENT_EDITION_HUB_TITLE = 'Advantage Student Edition';
+
 /** Home Coach card body. The only line under the Advantage Coach title. */
 export const COACH_HOME_DESCRIPTION =
   'Daily lesson plans, training videos, and a technique tree. Includes everything in Advantage White.';
@@ -353,12 +356,14 @@ const suiteMenuLink = (title: string) => {
  * Media Edition hub buttons (/media), top to bottom: Scoreboard, Round Timer,
  * Media Console. Scoreboard and Round Timer are the Tournament Management Pro
  * entries (same path, ?from=suite, belt and bout reset), so they open the same
- * screens. Each hub button adds one short subtitle line.
+ * screens. Each hub button adds one short subtitle line, and all three wear the
+ * purple Media belt accent (the /suite entries keep their black belts).
  * Media Console opens the same full page as the Pro hub's Media Console.
  */
 export const MEDIA_EDITION_MENU: readonly SuiteMenuLink[] = [
-  { ...suiteMenuLink('Scoreboard'), sub: 'Live match scoring. Easily cast to your gym TV.' },
-  { ...suiteMenuLink('Round Timer'), sub: 'Rounds and rest. Easily cast to your gym TV.' },
+  // Hub only: purple belt accent so all three /media buttons match. /suite keeps black.
+  { ...suiteMenuLink('Scoreboard'), belt: 'purple', sub: 'Live match scoring. Easily cast to your gym TV.' },
+  { ...suiteMenuLink('Round Timer'), belt: 'purple', sub: 'Rounds and rest. Easily cast to your gym TV.' },
   {
     title: MEDIA_CONSOLE_NAME,
     to: '/slideshow?folder=gallery',

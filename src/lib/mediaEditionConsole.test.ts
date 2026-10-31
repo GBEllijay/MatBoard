@@ -34,11 +34,18 @@ test('three stacked buttons in order: Scoreboard, Round Timer, Media Console', (
 test('Scoreboard and Round Timer are the /suite entries themselves', () => {
   const board = COMPETITION_PRO_MENU.find((link) => link.title === 'Scoreboard');
   const timer = COMPETITION_PRO_MENU.find((link) => link.title === 'Round Timer');
-  // Same entry as /suite (path, belt, bout reset); the hub only adds a subtitle.
-  const { sub: boardSub, ...boardLink } = MEDIA_EDITION_MENU[0];
-  const { sub: timerSub, ...timerLink } = MEDIA_EDITION_MENU[1];
-  assert.deepEqual(boardLink, board);
-  assert.deepEqual(timerLink, timer);
+  // Same entry as /suite (path, bout reset); the hub adds a subtitle and a purple belt.
+  const { sub: boardSub, belt: boardBelt, ...boardLink } = MEDIA_EDITION_MENU[0];
+  const { sub: timerSub, belt: timerBelt, ...timerLink } = MEDIA_EDITION_MENU[1];
+  const { belt: suiteBoardBelt, ...suiteBoard } = board!;
+  const { belt: suiteTimerBelt, ...suiteTimer } = timer!;
+  assert.deepEqual(boardLink, suiteBoard);
+  assert.deepEqual(timerLink, suiteTimer);
+  assert.equal(boardBelt, 'purple');
+  assert.equal(timerBelt, 'purple');
+  // /suite and the Pro menu keep their black belts.
+  assert.equal(suiteBoardBelt, 'black');
+  assert.equal(suiteTimerBelt, 'black');
   assert.ok(boardSub && timerSub);
   // /suite itself keeps its buttons without subtitles.
   for (const link of COMPETITION_PRO_MENU) assert.equal('sub' in link, false, link.title);
@@ -164,4 +171,9 @@ test('hub keeps Lock Media for a browser holding the Media door', () => {
   assert.match(hub, />\s*Lock Media\s*</);
   // Pro keeps its own Lock Media too.
   assert.match(read('../pages/Pro.tsx'), /onClick=\{\(\) => lockMedia\(\)\}/);
+});
+
+test('/media hub: all three buttons wear the purple belt; /suite belts are unchanged', () => {
+  assert.deepEqual(MEDIA_EDITION_MENU.map((link) => link.belt), ['purple', 'purple', 'purple']);
+  assert.deepEqual(COMPETITION_PRO_MENU.map((link) => link.belt), ['tournament', 'tournament', 'black', 'black']);
 });
