@@ -51,6 +51,7 @@
 .home--media .media-edition__features .soon-ad__feature {
   border-color: rgba(176, 132, 214, 0.28);
   background: linear-gradient(145deg, rgba(107, 45, 145, 0.32), rgba(12, 17, 24, 0.42));
+  align-content: start;
 }
 
 @media (min-width: 740px) {
