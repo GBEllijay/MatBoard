@@ -3,7 +3,6 @@ import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
   MEDIA_EDITION_ALPHA_NOTE,
-  MEDIA_EDITION_BAND_SHOTS,
   MEDIA_EDITION_BELT_CLOTH,
   MEDIA_EDITION_FEATURES,
   MEDIA_EDITION_GALLERY,
@@ -121,29 +120,24 @@ test('features are White plus the real Media Console', () => {
   }
 });
 
-test('white band shows the scoreboard and round timer with the journal-cover mark', () => {
-  assert.deepEqual(
-    MEDIA_EDITION_BAND_SHOTS.map((s) => s.src),
-    ['/storefront/scoreboard.png', '/storefront/round-timer.png'],
-  );
-  assert.match(css, /url\('\/student\/black-leather-grain\.png'\)/);
-  assert.match(css, /url\('\/student\/advantage-deboss-mask\.png'\)/);
-  assert.match(css, /\.home--media \.media-band \{[^}]*background: #f7f7f5;/);
+test('the white band is gone from the marketing page', () => {
+  assert.doesNotMatch(page, /media-band|BAND_SHOTS/);
+  assert.doesNotMatch(css, /media-band/);
 });
 
-test('gallery sits directly under the white band, real repo images in order', () => {
+test('gallery sits directly under the header card, real repo images in order', () => {
   assert.deepEqual(
     MEDIA_EDITION_GALLERY.map((s) => s.src),
     ['/homepage/woodblock-scoreboard.jpg', '/homepage/woodblock-timer.jpg', '/storefront/round-timer-live.png'],
   );
-  for (const shot of [...MEDIA_EDITION_BAND_SHOTS, ...MEDIA_EDITION_GALLERY]) {
+  for (const shot of MEDIA_EDITION_GALLERY) {
     assert.ok(existsSync(new URL(`../../public${shot.src}`, import.meta.url)), shot.src);
     assert.ok(shot.alt.length > 10);
   }
-  const band = page.indexOf('<section className="media-band"');
+  const head = page.indexOf('</article>');
   const gallery = page.indexOf('<section className="media-gallery"');
-  assert.ok(band > 0 && gallery > band);
-  assert.doesNotMatch(page.slice(band + 1, gallery), /<section/);
+  assert.ok(head > 0 && gallery > head);
+  assert.doesNotMatch(page.slice(head, gallery), /<section/);
   // No invented assets: nothing generated under public for this page.
   assert.doesNotMatch(page, /pro-console-preview|coach-preview/);
 });

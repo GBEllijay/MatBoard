@@ -5,7 +5,6 @@ import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
 import {
   MEDIA_EDITION_ALPHA_NOTE,
-  MEDIA_EDITION_BAND_SHOTS,
   MEDIA_EDITION_CTA_LABEL,
   MEDIA_EDITION_FEATURES,
   MEDIA_EDITION_GALLERY,
@@ -60,31 +59,6 @@ export function MediaEditionPage() {
           </section>
         </article>
       </div>
-
-      <section className="media-band" aria-label="Scoreboard and round timer">
-        <div className="media-band__inner">
-          <div className="media-band__brand">
-            <span className="media-band__notebook" aria-hidden="true">
-              <span className="media-band__elastic" />
-              <span className="media-band__stamp" />
-              <span className="media-band__ribbon" />
-            </span>
-            <div>
-              <p className="media-band__eyebrow">{MEDIA_EDITION_NAME}</p>
-              <h2>{MEDIA_EDITION_LEAD}</h2>
-              <p>{MEDIA_EDITION_INCLUDES}</p>
-            </div>
-          </div>
-          <div className="media-band__shots">
-            {MEDIA_EDITION_BAND_SHOTS.map((shot) => (
-              <figure key={shot.src} className="media-band__shot">
-                <img src={shot.src} alt={shot.alt} width={shot.width} height={shot.height} loading="eager" />
-                <figcaption>{shot.caption}</figcaption>
-              </figure>
-            ))}
-          </div>
-        </div>
-      </section>
 
       <section className="media-gallery" aria-label="Gallery">
         <ul className="media-gallery__grid">

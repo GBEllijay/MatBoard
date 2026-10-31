@@ -89,26 +89,8 @@ export type MediaEditionShot = {
   caption: string;
 };
 
-/** White band: the same scoreboard and round timer screens as the homepage hero. */
-export const MEDIA_EDITION_BAND_SHOTS: readonly MediaEditionShot[] = [
-  {
-    src: '/storefront/scoreboard.png',
-    width: 1280,
-    height: 720,
-    alt: 'Advantage scoreboard with points, advantages, and penalties for two competitors',
-    caption: 'Scoreboard',
-  },
-  {
-    src: '/storefront/round-timer.png',
-    width: 1280,
-    height: 720,
-    alt: 'Advantage round timer showing 05:00, work round 1 of 5',
-    caption: 'Round timer',
-  },
-];
-
 /**
- * Gallery under the white band. Real repo images only, in this order.
+ * Gallery under the header card. Real repo images only, in this order.
  * The two woodblocks reuse the homepage alt text and captions.
  */
 export const MEDIA_EDITION_GALLERY: readonly MediaEditionShot[] = [

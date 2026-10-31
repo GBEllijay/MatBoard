@@ -1,6 +1,6 @@
 /**
  * /media for a locked visitor renders the marketing page: title, $29.99
- * one-time, purple belt, alpha CTA, the white band, and the gallery in order.
+ * one-time, purple belt, alpha CTA, then the gallery (no white band).
  * A Pro or owner pass gets the paid console instead. /media-edition redirects.
  * The homepage Media card opens /media.
  */
@@ -90,18 +90,13 @@ test('route renders the Media Edition page with its title, price, belt and CTA',
   m.done();
 });
 
-test('white band then gallery, images in order', () => {
+test('header card then gallery, no white band, images in order', () => {
   const m = mount('/media');
   const { host } = m;
-  const band = host.querySelector('section.media-band');
+  assert.equal(host.querySelector('section.media-band'), null);
   const gallery = host.querySelector('section.media-gallery');
-  assert.ok(band && gallery);
-  assert.equal(band.nextElementSibling, gallery);
-  assert.ok(band.querySelector('.media-band__notebook .media-band__stamp'));
-  assert.deepEqual(
-    [...band.querySelectorAll('img')].map((i) => i.getAttribute('src')),
-    ['/storefront/scoreboard.png', '/storefront/round-timer.png'],
-  );
+  assert.ok(gallery);
+  assert.ok(gallery.previousElementSibling?.querySelector('header.buy__card--belt'));
   const items = [...gallery.querySelectorAll('.media-gallery__grid > li img')];
   assert.deepEqual(
     items.map((i) => i.getAttribute('src')),
