@@ -160,7 +160,7 @@ test('re-lock White and Student Edition, then the codes open them again', async 
   await expect(page.getByRole('button', { name: 'Lock Coach' })).toHaveClass(/home__text-btn/);
   await page.getByRole('button', { name: 'Lock Coach' }).click();
   await page.goto('/products');
-  await expect(page.getByRole('button', { name: 'Advantage Coach, coming soon' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Advantage Instructor Edition, coming soon' })).toBeVisible();
   await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/white');
 
   const after = await page.evaluate(() => localStorage.getItem('matboard.studentEdition.v1'));

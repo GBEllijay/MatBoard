@@ -740,6 +740,29 @@ button.mode-card__hit {
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.36);
 }
 
+/* Learn-more buttons sit above the card hit layer and never get grayed. */
+.mode-card__learn {
+  position: relative;
+  z-index: 2;
+  white-space: normal;
+}
+.mode-card--locked > .mode-card__actions {
+  filter: none;
+}
+
+/* Media Edition stands out: stronger purple edge, soft glow, bolder title, no lock dimming. */
+.mode-card--media.mode-card--feature {
+  opacity: 1;
+  border: 1px solid rgba(107, 45, 145, 0.85);
+  background: linear-gradient(160deg, #3a2550 0%, #1d1529 50%, #0f0c18 100%);
+  box-shadow: 0 0 0 1px rgba(107, 45, 145, 0.35), 0 10px 32px rgba(107, 45, 145, 0.32);
+}
+.mode-card--media.mode-card--feature > strong {
+  font-weight: 800;
+  color: #f1e6fb;
+  filter: none;
+}
+
 /* Keep copy grayed without washing out the left-rail belt wink. */
 .mode-card--locked > :not(.belt-rail):not(.leather-spine):not(.alpha-access):not(.mode-card__price) {
   filter: saturate(0.45);
@@ -823,6 +846,13 @@ button.mode-card__hit {
   border-color: rgba(140, 168, 148, 0.18);
 }
 
+/* Display-only Media tier on /products. Always locked; purple belt rail. */
+.mode-card--media {
+  min-height: 10.5rem;
+  background: linear-gradient(160deg, #2c2438 0%, #17141f 48%, #0c1118 100%);
+  border-color: rgba(176, 150, 204, 0.18);
+}
+
 .mode-card--saver,
 .mode-card--pro {
   background: linear-gradient(145deg, #2a3546 0%, #151c28 48%, #0c1118 100%);
@@ -835,7 +865,6 @@ button.mode-card__hit {
 
 .mode-card--student {
   min-height: 10.5rem;
-  padding-left: 1.55rem;
   background:
     url('/student/black-leather-grain.png'),
     linear-gradient(165deg, #2c2c2c 0%, #161616 48%, #0c0c0c 100%);
@@ -847,8 +876,8 @@ button.mode-card__hit {
   border-color: rgba(198, 198, 198, 0.48);
 }
 
+/* Blue belt rail like the other tiers (the leather spine is gone), so no extra spine padding. */
 .home--ladder .mode-card.mode-card--student {
-  padding-left: 1.55rem;
   overflow: hidden;
 }
 
@@ -925,7 +954,8 @@ button.mode-card__hit {
 .home--ladder .mode-card--white .mode-card__actions,
 .home--ladder .mode-card--coach .mode-card__actions,
 .home--ladder .mode-card--pro .mode-card__actions,
-.home--ladder .mode-card--student .mode-card__actions {
+.home--ladder .mode-card--student .mode-card__actions,
+.home--ladder .mode-card--media .mode-card__actions {
   grid-template-columns: 1fr;
 }
 
