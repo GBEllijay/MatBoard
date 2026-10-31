@@ -10,7 +10,7 @@ import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
-import { confirmCheckoutSession, redeemAccessCode, withCheckoutNonce } from '../lib/codeRedeemClient';
+import { afterFailedUnlock, confirmCheckoutSession, redeemAccessCode, withCheckoutNonce } from '../lib/codeRedeemClient';
 import type { WhiteEntitlementStatus } from '../lib/whiteEntitlementClient';
 import {
   COACH_LIST_PRICE_CENTS,
@@ -163,9 +163,10 @@ export function BuyWhitePage() {
         setPromoInput('');
         return;
       }
-      if (redeemed.error !== "That code didn't work.") {
+      const next = afterFailedUnlock(typed, redeemed.error);
+      if (next.action === 'show') {
         setPending(false);
-        setError(redeemed.error);
+        setError(next.error);
         return;
       }
     }

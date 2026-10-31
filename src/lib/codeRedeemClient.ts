@@ -10,6 +10,27 @@ const API_OWNER_TEST_PATH = '/api/owner-test';
 
 export type RedeemResult = { ok: true } | { ok: false; error: string };
 
+export const GENERIC_CODE_ERROR = "That code didn't work.";
+export const UNLOCK_CODE_NO_MATCH = "That unlock code didn't match. Type it exactly as it was given, or ask for a new one.";
+export const UNLOCK_CODE_MISMATCH_ERROR = `${UNLOCK_CODE_NO_MATCH} It was not sent to checkout as a promo code.`;
+
+/**
+ * True when the text has the shape scripts/generate-unlock-codes.ts prints:
+ * 18 letters and digits without 0, 1, O or I, in groups of four. Spaces, dashes and case do not matter.
+ * Stripe promo codes like HALF50 do not have this shape.
+ */
+export function looksLikeUnlockCode(text: string): boolean {
+  const compact = text.normalize('NFKC').replace(/[\s-]+/g, '').toUpperCase();
+  return /^[A-HJ-NP-Z2-9]{18}$/.test(compact);
+}
+
+/** What the /buy code box should do after the server said no to a typed code. */
+export function afterFailedUnlock(typed: string, error: string): { action: 'show'; error: string } | { action: 'checkout' } {
+  if (error !== GENERIC_CODE_ERROR) return { action: 'show', error };
+  if (looksLikeUnlockCode(typed)) return { action: 'show', error: UNLOCK_CODE_MISMATCH_ERROR };
+  return { action: 'checkout' };
+}
+
 async function readError(response: Response, fallback: string): Promise<string> {
   try {
     const body = (await response.json()) as { error?: string };
@@ -84,6 +105,19 @@ export async function withCheckoutNonce(body: Record<string, unknown>): Promise<
 export function clearOwnerTestUnlock(): void {
   clearOwnerTestGrant();
   clearOwnerTestToken();
+}
+
+/**
+ * The Owner test box takes the owner test secret. If someone types an owner or alpha
+ * unlock code there instead, try it as an unlock code so the wrong box is not a dead end.
+ */
+export async function submitOwnerTestOrCode(input: { secret: string; tier: string; days: number }): Promise<RedeemResult & { via?: 'owner-test' | 'code' }> {
+  const tested = await submitOwnerTest(input);
+  if (tested.ok) return { ok: true, via: 'owner-test' };
+  if (tested.error !== GENERIC_CODE_ERROR || !looksLikeUnlockCode(input.secret)) return tested;
+  const redeemed = await redeemAccessCode(input.secret);
+  if (redeemed.ok) return { ok: true, via: 'code' };
+  return redeemed.error === GENERIC_CODE_ERROR ? { ok: false, error: UNLOCK_CODE_NO_MATCH } : redeemed;
 }
 
 export async function submitOwnerTest(input: {
