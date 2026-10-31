@@ -37,8 +37,25 @@ function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
 }
 
-function genericOk(): Response {
-  return json(200, { ok: true, message: RESTORE_GENERIC });
+/**
+ * Same body whether or not the address bought anything. The page needs a challenge id to show the
+ * code box right away, so an address with no purchase gets a random id that matches nothing.
+ */
+function genericOk(challengeId: string): Response {
+  return json(200, { ok: true, message: RESTORE_GENERIC, challengeId });
+}
+
+/** The code email. Code only: no link, so a mail scanner has nothing to open. */
+export function restoreEmailText(code: string): string {
+  return [
+    'Your Advantage restore code:',
+    '',
+    code,
+    '',
+    'Enter this code on the Advantage restore page. It expires in 15 minutes and works once.',
+    '',
+    `Sent from ${RESTORE_FROM_ADDRESS}. If you did not ask for this, you can ignore it.`,
+  ].join('\n');
 }
 
 export function restoreCode(): string {
@@ -118,9 +135,9 @@ export async function handleRestoreRequest(
   if (!emailAllowed || !ipAllowed) return json(429, { ok: false, error: 'Too many attempts. Wait an hour and try again.' });
 
   const licenseId = await licenseIdForEmail(db, email, pepper);
+  const challengeId = crypto.randomUUID();
   if (licenseId) {
     const code = restoreCode();
-    const challengeId = crypto.randomUUID();
     const codeHash = await keyedHash(code, pepper, 'restore');
     const expires = new Date(stamp.getTime() + CODE_TTL_MS).toISOString();
     await db
@@ -129,24 +146,13 @@ export async function handleRestoreRequest(
       )
       .bind(challengeId, codeHash, emailKey, expires)
       .run();
-    const origin = new URL(request.url).origin;
-    const link = `${origin}/restore?challenge=${encodeURIComponent(challengeId)}`;
     await sender.send({
       to: email,
-      subject: 'Confirm your Advantage purchase',
-      text: [
-        'Use this code to restore Advantage on your device. It expires in 15 minutes and works once.',
-        '',
-        code,
-        '',
-        'Or open this page and press Confirm after you check the code:',
-        link,
-        '',
-        `Sent from ${RESTORE_FROM_ADDRESS}. If you did not ask for this, you can ignore it.`,
-      ].join('\n'),
+      subject: 'Your Advantage restore code',
+      text: restoreEmailText(code),
     });
   }
-  return genericOk();
+  return genericOk(challengeId);
 }
 
 export async function handleRestoreVerify(

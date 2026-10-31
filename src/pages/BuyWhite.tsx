@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AlphaAccessNote } from '../components/AlphaAccessNote';
 import { HalfOffCheckoutNote } from '../components/HalfOffCheckoutNote';
 import { ComingSoonAd } from '../components/ComingSoonAd';
@@ -31,7 +31,11 @@ import {
   WHITE_STRIPE_NOTE,
   formatUsdFromCents,
 } from '../lib/whitePurchase';
-import { rememberWhitePurchase, restoreWhiteByEmail } from '../lib/whiteUnlock';
+import { rememberWhitePurchase } from '../lib/whiteUnlock';
+
+/** The /buy restore panel. The email and the person check live on /restore. */
+export const BUY_RESTORE_COPY =
+  'Already purchased? Enter the email from checkout. If it matches the purchase, we will email a one-time code.';
 
 export function BuyWhitePage() {
   const [params, setParams] = useSearchParams();
@@ -44,10 +48,7 @@ export function BuyWhitePage() {
   const [freeUnlock, setFreeUnlock] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [promoInput, setPromoInput] = useState('');
-  const [restoreEmail, setRestoreEmail] = useState('');
-  const [restorePending, setRestorePending] = useState(false);
-  const [restoreError, setRestoreError] = useState<string | null>(null);
-  const [restoreNote, setRestoreNote] = useState<string | null>(null);
+  const navigate = useNavigate();
   const [studentPending, setStudentPending] = useState(false);
   const [studentError, setStudentError] = useState<string | null>(null);
   const halfOff = useHalfOffArrival();
@@ -111,18 +112,6 @@ export function BuyWhitePage() {
       active = false;
     };
   }, [code, setParams]);
-
-  async function onRestore(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (restorePending) return;
-    setRestoreError(null);
-    setRestoreNote(null);
-    setRestorePending(true);
-    const result = await restoreWhiteByEmail(restoreEmail);
-    if (!result.ok) setRestoreError(result.error);
-    else setRestoreNote(result.message);
-    setRestorePending(false);
-  }
 
   async function onStudentSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -298,41 +287,12 @@ export function BuyWhitePage() {
           </section>
 
           {unlocked ? null : (
-            <form className="buy__card" onSubmit={(event) => void onRestore(event)}>
-              <h3>Already purchased?</h3>
-              <p>
-                Enter the email from checkout. If it matches a purchase, we email a one-time code. This page does not
-                say whether that address bought anything.{' '}
-                <Link to="/restore">Open the restore page</Link>.
-              </p>
-              <label className="buy__field">
-                <span>Purchase email</span>
-                <input
-                  type="email"
-                  name="email"
-                  autoComplete="email"
-                  inputMode="email"
-                  value={restoreEmail}
-                  onChange={(event) => {
-                    setRestoreEmail(event.target.value);
-                    if (restoreError) setRestoreError(null);
-                  }}
-                />
-              </label>
-              {restoreError ? (
-                <p className="buy__status buy__status--bad" role="alert">
-                  {restoreError}
-                </p>
-              ) : null}
-              {restoreNote ? (
-                <p className="buy__status buy__status--ok" role="status">
-                  {restoreNote}
-                </p>
-              ) : null}
-              <button className="btn btn--ghost" type="submit" disabled={restorePending}>
-                {restorePending ? 'Checking…' : 'Restore White'}
+            <section className="buy__card buy__restore" aria-label="Already purchased">
+              <p>{BUY_RESTORE_COPY}</p>
+              <button className="btn btn--white" type="button" onClick={() => navigate('/restore')}>
+                Restore
               </button>
-            </form>
+            </section>
           )}
 
           <section className="buy__card buy__soon" aria-label={STUDENT_EDITION_NAME}>
