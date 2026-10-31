@@ -16,6 +16,9 @@ export const STUDENT_PRICE_LINE = '$19.99 one-time';
 
 export const COACH_PRICE_LINE = '$29.99 one-time';
 
+/** Display only. Media is not for sale and has no Stripe product. Matches the homepage belt ladder. */
+export const MEDIA_PRICE_LINE = '$29.99 one-time';
+
 export const PRO_PRICE_LINE = '$99.99 one-time, plus $5.99/month';
 
 /** Locked-card alpha line. The address is the existing support inbox. */

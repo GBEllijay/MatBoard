@@ -21,6 +21,21 @@ export const STUDENT_HOME_DESCRIPTION =
 export const COACH_HOME_DESCRIPTION =
   'Daily lesson plans, training videos, and a technique tree. Includes everything in Advantage White.';
 
+/** /products title on the Coach card (brown belt). Display only: code kind, entitlement, routes and ids stay `coach`. */
+export const INSTRUCTOR_HOME_TITLE = 'Advantage Instructor Edition';
+
+/** /products Media card (purple belt). Display only: no Media product, code kind, or entitlement exists. */
+export const MEDIA_HOME_TITLE = 'Advantage Media Edition';
+
+/**
+ * /products Media card link. The Media Edition page is built on draft PR #330.
+ * Note: on main `/media` is also a Media Console shortcut (MEDIA_CONSOLE_ROUTES) until that page owns it.
+ */
+export const MEDIA_HOME_PATH = '/media';
+
+/** /products Media card body. Same words as the homepage belt ladder's Media tile. */
+export const MEDIA_HOME_DESCRIPTION = 'Scoreboard, round timer, and media console.';
+
 /** Line under the black Advantage Pro belt. Not the Owner Console page title. */
 export const PRO_LADDER_DETAIL = 'Gym Owner and Instructors Console';
 
