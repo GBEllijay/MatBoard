@@ -53,7 +53,7 @@ export const PRO_HOME_DETAIL = `${GYM_CONSOLE_NAME} — Coming Soon`;
  * The longer appetite copy stays in PRO_COMING_SOON_LINES and off this card.
  */
 export const PRO_HOME_LINES = [
-  'Academy management with a shared drive, events, pro shop, and gallery, plus instructor collaboration and student seats. Includes everything in Advantage Coach.',
+  'Academy management with a shared drive, events, pro shop, and gallery, plus instructor collaboration and student seats. Includes all Advantage products.',
 ] as const;
 
 /** In-app edition picker. The public storefront lives at `/`. */

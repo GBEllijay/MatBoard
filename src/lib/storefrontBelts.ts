@@ -1,3 +1,4 @@
+import { INSTRUCTOR_DISPLAY_PRICE_LINE } from './productPrices.ts';
 import { STOREFRONT_STEPS, type StorefrontStep } from './storefront.ts';
 
 /**
@@ -90,7 +91,7 @@ export const STOREFRONT_BELT_LADDER: readonly BeltRung[] = [
     title: 'Advantage Instructor Edition',
     blurb: 'Daily lesson plans, videos, and enhanced training tools.',
     // Display only on this tile: Stripe still charges the Coach product at $29.99.
-    cardPrice: '$49.99 one-time',
+    cardPrice: INSTRUCTOR_DISPLAY_PRICE_LINE,
     status: coach.status,
     to: coach.to,
   },

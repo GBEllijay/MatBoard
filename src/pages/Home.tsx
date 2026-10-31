@@ -35,10 +35,10 @@ import {
 } from '../lib/productNames';
 import { purchasePromptsHidden } from '../lib/instructorSeats';
 import {
-  COACH_ALPHA_ACCESS_NOTE,
-  COACH_PRICE_LINE,
+  INSTRUCTOR_DISPLAY_PRICE_LINE,
+  EDITION_ALPHA_NOTE,
+  EDITION_EMAIL_DISPLAY,
   MEDIA_PRICE_LINE,
-  PRO_ALPHA_ACCESS_NOTE,
   PRO_PRICE_LINE,
   STUDENT_ALPHA_ACCESS_NOTE,
   STUDENT_PRICE_LINE,
@@ -133,6 +133,9 @@ export function HomePage() {
                 <Link className="btn btn--white" to="/coach">
                   Open Coach
                 </Link>
+                <button type="button" className="btn btn--ghost mode-card__learn" onClick={() => setSoon('coach')}>
+                  Learn more about Instructor Edition
+                </button>
               </div>
             </article>
           ) : (
@@ -147,8 +150,13 @@ export function HomePage() {
               <BeltRail kind="brown" />
               <strong>{INSTRUCTOR_HOME_TITLE}</strong>
               <HomeDescription text={COACH_HOME_DESCRIPTION} />
-              <p className="mode-card__price">{COACH_PRICE_LINE}</p>
-              <AlphaAccessNote note={COACH_ALPHA_ACCESS_NOTE} />
+              <p className="mode-card__price">{INSTRUCTOR_DISPLAY_PRICE_LINE}</p>
+              <AlphaAccessNote note={EDITION_ALPHA_NOTE} display={EDITION_EMAIL_DISPLAY} />
+              <div className="mode-card__actions">
+                <button type="button" className="btn btn--white mode-card__learn" onClick={() => setSoon('coach')}>
+                  Learn more about Instructor Edition
+                </button>
+              </div>
             </article>
           )}
 
@@ -165,6 +173,9 @@ export function HomePage() {
                 <Link className="btn btn--white" to="/pro">
                   {consoleLabel}
                 </Link>
+                <button type="button" className="btn btn--ghost mode-card__learn" onClick={() => setSoon('pro')}>
+                  Learn more about Advantage Pro
+                </button>
               </div>
             </article>
           ) : (
@@ -178,7 +189,12 @@ export function HomePage() {
               />
               <ProHomeCopy />
               {seated ? null : <p className="mode-card__price">{PRO_PRICE_LINE}</p>}
-              <AlphaAccessNote note={PRO_ALPHA_ACCESS_NOTE} />
+              <AlphaAccessNote note={EDITION_ALPHA_NOTE} display={EDITION_EMAIL_DISPLAY} />
+              <div className="mode-card__actions">
+                <button type="button" className="btn btn--white mode-card__learn" onClick={() => setSoon('pro')}>
+                  Learn more about Advantage Pro
+                </button>
+              </div>
             </article>
           )}
         </nav>
@@ -284,21 +300,17 @@ function StudentHomeCard({
 
 /**
  * Display-only Media tier. No product, code kind, or entitlement exists yet, so it keeps the
- * locked look. The card and its button open the Media Edition page (draft PR #330).
+ * locked look. The whole card (keyboard-focusable) opens the Media Edition page (draft PR #330).
  */
 function MediaHomeCard() {
   return (
-    <article className="mode-card mode-card--media mode-card--locked">
-      <Link className="mode-card__hit" to={MEDIA_HOME_PATH} tabIndex={-1} aria-label={MEDIA_HOME_TITLE} />
+    <article className="mode-card mode-card--media mode-card--locked mode-card--feature">
+      <Link className="mode-card__hit" to={MEDIA_HOME_PATH} aria-label={`${MEDIA_HOME_TITLE}, open the Media page`} />
       <BeltRail kind="purple" />
       <strong>{MEDIA_HOME_TITLE}</strong>
       <HomeDescription text={MEDIA_HOME_DESCRIPTION} />
       <p className="mode-card__price">{MEDIA_PRICE_LINE}</p>
-      <div className="mode-card__actions">
-        <Link className="btn btn--white" to={MEDIA_HOME_PATH}>
-          Learn more
-        </Link>
-      </div>
+      <AlphaAccessNote note={EDITION_ALPHA_NOTE} display={EDITION_EMAIL_DISPLAY} />
     </article>
   );
 }

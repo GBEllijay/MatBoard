@@ -340,13 +340,13 @@ test('Owner tournament tool is Tournament Software; Coach keeps Mock Tournament'
 
 test('Home Pro card describes the console without a Coming Soon line', () => {
   assert.deepEqual(PRO_HOME_LINES, [
-    'Academy management with a shared drive, events, pro shop, and gallery, plus instructor collaboration and student seats. Includes everything in Advantage Coach.',
+    'Academy management with a shared drive, events, pro shop, and gallery, plus instructor collaboration and student seats. Includes all Advantage products.',
   ]);
   const home = PRO_HOME_LINES.join('\n');
   assert.match(home, /shared drive/);
   assert.match(home, /instructor collaboration/);
   assert.match(home, /student seats/);
-  assert.match(home, /everything in Advantage Coach/);
+  assert.match(home, /Includes all Advantage products\./);
   assert.doesNotMatch(home, /Coming Soon/);
   assert.doesNotMatch(PRO_HOME_LINES[0], /^Pro\b/);
   assert.equal(PRO_HOME_DETAIL, `${GYM_CONSOLE_NAME} — Coming Soon`);

@@ -16,6 +16,9 @@ export const STUDENT_PRICE_LINE = '$19.99 one-time';
 
 export const COACH_PRICE_LINE = '$29.99 one-time';
 
+/** Display only: Instructor Edition (id coach) card price on /products and the homepage belt ladder. Stripe and COACH_LIST_PRICE_CENTS are unchanged. */
+export const INSTRUCTOR_DISPLAY_PRICE_LINE = '$49.99 one-time';
+
 /** Display only. Media is not for sale and has no Stripe product. Matches the homepage belt ladder. */
 export const MEDIA_PRICE_LINE = '$29.99 one-time';
 
@@ -29,6 +32,12 @@ export function alphaAccessNote(product: string): string {
 export const WHITE_ALPHA_ACCESS_NOTE = alphaAccessNote('White');
 
 export const STUDENT_ALPHA_ACCESS_NOTE = alphaAccessNote('Student Edition');
+
+/** One shared line under the price on the Media, Instructor and Pro cards. */
+export const EDITION_ALPHA_NOTE = `In alpha testing. Email ${SITE_FEEDBACK_EMAIL} for a free alpha code.`;
+
+/** Display casing for the edition cards' mailto link text. */
+export const EDITION_EMAIL_DISPLAY = 'advantageappLLC@gmail.com';
 
 export const COACH_ALPHA_ACCESS_NOTE = alphaAccessNote('Coach');
 

@@ -740,6 +740,29 @@ button.mode-card__hit {
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.36);
 }
 
+/* Learn-more buttons sit above the card hit layer and never get grayed. */
+.mode-card__learn {
+  position: relative;
+  z-index: 2;
+  white-space: normal;
+}
+.mode-card--locked > .mode-card__actions {
+  filter: none;
+}
+
+/* Media Edition stands out: stronger purple edge, soft glow, bolder title, no lock dimming. */
+.mode-card--media.mode-card--feature {
+  opacity: 1;
+  border: 1px solid rgba(107, 45, 145, 0.85);
+  background: linear-gradient(160deg, #3a2550 0%, #1d1529 50%, #0f0c18 100%);
+  box-shadow: 0 0 0 1px rgba(107, 45, 145, 0.35), 0 10px 32px rgba(107, 45, 145, 0.32);
+}
+.mode-card--media.mode-card--feature > strong {
+  font-weight: 800;
+  color: #f1e6fb;
+  filter: none;
+}
+
 /* Keep copy grayed without washing out the left-rail belt wink. */
 .mode-card--locked > :not(.belt-rail):not(.leather-spine):not(.alpha-access):not(.mode-card__price) {
   filter: saturate(0.45);
@@ -931,7 +954,8 @@ button.mode-card__hit {
 .home--ladder .mode-card--white .mode-card__actions,
 .home--ladder .mode-card--coach .mode-card__actions,
 .home--ladder .mode-card--pro .mode-card__actions,
-.home--ladder .mode-card--student .mode-card__actions {
+.home--ladder .mode-card--student .mode-card__actions,
+.home--ladder .mode-card--media .mode-card__actions {
   grid-template-columns: 1fr;
 }
 

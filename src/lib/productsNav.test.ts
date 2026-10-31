@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { historyBackStep } from './historyBack.ts';
 import { INSTRUCTOR_HOME_TITLE, MEDIA_HOME_DESCRIPTION, MEDIA_HOME_PATH, MEDIA_HOME_TITLE } from './productNames.ts';
-import { MEDIA_PRICE_LINE } from './productPrices.ts';
+import { INSTRUCTOR_DISPLAY_PRICE_LINE, MEDIA_PRICE_LINE } from './productPrices.ts';
+import { STOREFRONT_BELT_LADDER } from './storefrontBelts.ts';
 
 const home = readFileSync(new URL('../pages/Home.tsx', import.meta.url), 'utf8');
 const back = readFileSync(new URL('../components/HistoryBackMark.tsx', import.meta.url), 'utf8');
@@ -73,8 +74,52 @@ test('Media card is display-only, locked, purple, $29.99, and links to /media', 
   const card = home.slice(home.indexOf('function MediaHomeCard'), home.indexOf('function HomeDescription'));
   assert.match(card, /mode-card mode-card--media mode-card--locked/);
   assert.match(card, /<BeltRail kind="purple" \/>/);
-  assert.equal(card.match(/to=\{MEDIA_HOME_PATH\}/g)?.length, 2);
-  // No checkout, unlock, or alpha email on this card.
-  assert.doesNotMatch(card, /AlphaAccessNote|onClick|Unlock|checkout|mailto/i);
+  assert.equal(card.match(/to=\{MEDIA_HOME_PATH\}/g)?.length, 1);
+  // No checkout or unlock on this card; the alpha email line is the shared edition note.
+  assert.doesNotMatch(card, /onClick|Unlock|checkout/i);
   assert.match(css, /\.belt-rail--purple \{\s*--belt-fill: #6b2d91;/);
+});
+
+test('Instructor card on /products shows $49.99 one-time, matching the belt ladder', () => {
+  assert.equal(INSTRUCTOR_DISPLAY_PRICE_LINE, '$49.99 one-time');
+  assert.match(home, /<p className="mode-card__price">\{INSTRUCTOR_DISPLAY_PRICE_LINE\}<\/p>/);
+  assert.doesNotMatch(home, /COACH_PRICE_LINE/);
+  const rung = STOREFRONT_BELT_LADDER.find((b) => b.id === 'coach');
+  assert.equal(rung?.cardPrice, INSTRUCTOR_DISPLAY_PRICE_LINE);
+});
+
+test('Media card stands out: #6b2d91 edge, glow, bolder title', () => {
+  assert.match(home, /mode-card--media mode-card--locked mode-card--feature/);
+  assert.match(css, /\.mode-card--media\.mode-card--feature \{[^}]*rgba\(107, 45, 145/);
+  assert.match(css, /\.mode-card--media\.mode-card--feature > strong \{[^}]*font-weight: 800/);
+});
+
+test('Instructor and Pro read "Learn more about <name>"; Media has no learn-more button; existing controls stay', () => {
+  assert.doesNotMatch(home, /Learn more about Media/);
+  assert.match(home, /<Link className="mode-card__hit" to=\{MEDIA_HOME_PATH\}/);
+  assert.equal(home.match(/setSoon\('coach'\)\}>\s*Learn more about Instructor Edition/g)?.length, 2);
+  assert.equal(home.match(/setSoon\('pro'\)\}>\s*Learn more about Advantage Pro/g)?.length, 2);
+  assert.match(home, /Open Coach/);
+  assert.match(home, /\{consoleLabel\}/);
+  assert.match(home, /Owner test unlock/);
+  assert.match(home, /aria-label=\{`\$\{INSTRUCTOR_HOME_TITLE\}, coming soon`\}/);
+  assert.match(home, /aria-label="Advantage Pro, coming soon"/);
+});
+
+test('Pro card on /products says "Includes all Advantage products."', async () => {
+  const n = await import('./productNames.ts');
+  assert.match(n.PRO_HOME_LINES[0], /Includes all Advantage products\.$/);
+  assert.doesNotMatch(n.PRO_HOME_LINES[0], /everything in Advantage Coach/);
+});
+
+test('Media, Instructor and Pro show one shared alpha line directly under the price', async () => {
+  const p = await import('./productPrices.ts');
+  assert.equal(p.EDITION_ALPHA_NOTE, 'In alpha testing. Email advantageappllc@gmail.com for a free alpha code.');
+  assert.equal(p.EDITION_EMAIL_DISPLAY, 'advantageappLLC@gmail.com');
+  const n = '<AlphaAccessNote note={EDITION_ALPHA_NOTE} display={EDITION_EMAIL_DISPLAY} />';
+  const esc = n.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+  assert.match(home, new RegExp(`\\{MEDIA_PRICE_LINE\\}</p>\\s*${esc}`));
+  assert.match(home, new RegExp(`\\{INSTRUCTOR_DISPLAY_PRICE_LINE\\}</p>\\s*${esc}`));
+  assert.match(home, new RegExp(`\\{PRO_PRICE_LINE\\}</p>\\}\\s*${esc}`));
+  assert.doesNotMatch(home, /COACH_ALPHA_ACCESS_NOTE|PRO_ALPHA_ACCESS_NOTE/);
 });
