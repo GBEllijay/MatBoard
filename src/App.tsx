@@ -87,6 +87,7 @@ import { BuyCoachPage, BuyProPage, BuyStudentPage } from './pages/BuyTier';
 import { BuyWhitePage } from './pages/BuyWhite';
 import { RestoreAccessPage } from './pages/RestoreAccess';
 import { WhitePage } from './pages/White';
+import { MediaHubPage } from './pages/MediaHub';
 import { WhiteRosterPage } from './pages/WhiteRoster';
 
 consumeUnlockQueryNow();
@@ -241,10 +242,14 @@ function MediaFolderRoute({ folder }: { folder: MediaFolderId }) {
   return <Navigate to={`/slideshow?folder=${folder}`} replace />;
 }
 
-/** `/media`, `/console`, and `/media-console` open the same seat console as home. */
+/**
+ * `/media`, `/console`, and `/media-console` open the same seat console as home.
+ * A Media Edition browser without Pro gets the Media hub here, never /pro (the Pro Console).
+ */
 function MediaConsoleEntryRoute() {
   const door = useSeatDoor();
   if (!mediaConsoleDoorOpen(door)) return <Navigate to={closedOrPaused(door.seated)} replace />;
+  if (!door.seated && !door.proUnlocked) return <MediaHubPage />;
   return <Navigate to="/pro" replace />;
 }
 

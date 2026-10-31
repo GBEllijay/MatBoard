@@ -8,6 +8,7 @@ const TIERS = [
   ['student', 'Student Edition'],
   ['coach', 'Coach'],
   ['pro', 'Pro'],
+  ['media', 'Media Edition'],
   ['seat', 'Instructor seat'],
 ] as const;
 

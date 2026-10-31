@@ -54,6 +54,15 @@ const CHECKOUT_MODE: Record<CheckoutProduct, 'payment' | 'subscription'> = {
   pro: 'subscription',
 };
 
+/*
+ * MEDIA EDITION PRICE SPOT (not wired, no Stripe product exists yet).
+ * When the owner creates the $29.99 one-time Media Edition price in Stripe:
+ *   1. add STRIPE_PRICE_MEDIA?: string to StripeRuntimeEnv,
+ *   2. add 'media' to CheckoutProduct with ['STRIPE_PRICE_MEDIA'] here,
+ *   3. send metadata product API_PRODUCT_MEDIA ('advantage-media'); the webhook,
+ *      grantsForProduct, restore and refresh already map it to Media + White.
+ */
+
 /**
  * Env names for each product, in line-item order.
  * Pro is a mixed cart: one-time price, then the monthly price. Stripe requires

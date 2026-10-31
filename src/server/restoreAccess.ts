@@ -14,6 +14,7 @@ import {
   revokeOtherDevices,
   touchDevice,
 } from './purchaseRecords.ts';
+import { appVersionOf } from '../lib/appCapability.ts';
 import { issueToken, signingMaterial } from './tokenIssue.ts';
 
 const JSON_HEADERS = {
@@ -237,6 +238,7 @@ export async function handleRestoreVerify(
     emailHint: row.emailHash.slice(0, 16),
     thumbprint,
     subs: pro ? { state: 'active' } : undefined,
+    appVersion: appVersionOf(request),
   }, env.ENTITLEMENT_KEY_ID);
   if (!token) return json(503, { ok: false, error: RESTORE_UNAVAILABLE });
   return json(200, { ok: true, entitled: true, grants: doors, token, deviceId });

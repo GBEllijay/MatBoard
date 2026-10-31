@@ -7,11 +7,11 @@ import {
   FREE_WHITE_TOTAL_CAP,
 } from './paywallDecisions.ts';
 
-export const CODE_KINDS = ['owner', 'alpha-coach', 'alpha-pro', 'alpha-student', 'free-white'] as const;
+export const CODE_KINDS = ['owner', 'alpha-coach', 'alpha-pro', 'alpha-student', 'free-white', 'alpha-media'] as const;
 
 export type CodeKind = (typeof CODE_KINDS)[number];
 
-export type GrantDoor = 'white' | 'student' | 'coach' | 'pro' | 'seat';
+export type GrantDoor = 'white' | 'student' | 'coach' | 'pro' | 'media' | 'seat';
 
 export type CodeRecord = {
   id: string;
@@ -29,15 +29,19 @@ export type CodeRecord = {
   retired: boolean;
 };
 
-const DOORS: readonly GrantDoor[] = ['white', 'student', 'coach', 'pro', 'seat'];
+const DOORS: readonly GrantDoor[] = ['white', 'student', 'coach', 'pro', 'media', 'seat'];
 
-/** Pro opens Student Edition on the client and does not open White. */
+/**
+ * Listed doors per kind. expandGrants (tierImplications.ts) adds what each tier implies,
+ * so 'alpha-pro' also opens Coach, White and Media, and 'alpha-media' also opens White.
+ */
 const DEFAULT_GRANTS: Record<CodeKind, GrantDoor[]> = {
   owner: ['white', 'student', 'coach', 'pro'],
   'alpha-coach': ['coach'],
   'alpha-pro': ['pro', 'student'],
   'alpha-student': ['student'],
   'free-white': ['white'],
+  'alpha-media': ['media'],
 };
 
 export function grantsForKind(kind: CodeKind): GrantDoor[] {

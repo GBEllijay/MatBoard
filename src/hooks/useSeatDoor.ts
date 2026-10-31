@@ -7,6 +7,7 @@ import {
   type InstructorSeat,
 } from '../lib/instructorSeats.ts';
 import { type ProSurfaceInput } from '../lib/productNames.ts';
+import { useMediaUnlocked } from './useMediaUnlocked.ts';
 import { useProUnlocked } from './useProUnlocked.ts';
 
 export type SeatDoor = ProSurfaceInput & {
@@ -16,6 +17,7 @@ export type SeatDoor = ProSurfaceInput & {
 /** Browser Pro unlock plus the signed-in invite, for menu doors. */
 export function useSeatDoor(): SeatDoor {
   const proUnlocked = useProUnlocked();
+  const mediaUnlocked = useMediaUnlocked();
   const seat = useCurrentSeat();
   return {
     proUnlocked,
@@ -24,5 +26,6 @@ export function useSeatDoor(): SeatDoor {
     seatGrantsMedia: seatGrantsMediaConsole(seat),
     programDirectorSeat: isProgramDirectorSeat(seat),
     coachMenus: seatGrantsCoachMenus(seat),
+    mediaUnlocked,
   };
 }

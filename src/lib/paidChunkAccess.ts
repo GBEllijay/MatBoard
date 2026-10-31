@@ -5,6 +5,7 @@
  *
  * Seat presets match the signed invite. A Program Director keeps Media Console
  * when Pro is locked. A lesson seat keeps Lesson Cloud when Pro is locked.
+ * A Media Edition grant opens only Media Console (one-time, no subscription rules).
  * Coach Unlimited stays shut until Pro is open. A custom seat has no preset on
  * the token, so the server cannot see its toggles and allows the seat screens.
  */
@@ -59,6 +60,19 @@ export function proGrantOpen(claims: EntitlementClaims, nowMs: number): boolean 
   return subs.state === 'active' || subs.state === 'grace';
 }
 
+/**
+ * Media Edition is open. A one-time Media grant (code today, $29.99 later) has no
+ * subscription rules. When the pass also carries Pro, Media came with Pro and follows
+ * Pro's subscription state (same as White under a paused Pro). Seats use their preset.
+ */
+export function mediaGrantOpen(claims: EntitlementClaims, nowMs: number): boolean {
+  if (seatToken(claims)) return false;
+  const doors = impliedDoors(claims.grants);
+  if (!doors.includes('media')) return false;
+  if (doors.includes('pro') && claims.grants.includes('pro')) return proGrantOpen(claims, nowMs);
+  return true;
+}
+
 /** Grant check only. Ignores token expiry so offline grace can reuse it. */
 export function paidChunkGrant(claims: EntitlementClaims, chunk: PaidChunkId, nowMs: number): boolean {
   const pro = proGrantOpen(claims, nowMs);
@@ -70,7 +84,7 @@ export function paidChunkGrant(claims: EntitlementClaims, chunk: PaidChunkId, no
 
   if (chunk === 'media-console') {
     if (seated) return mediaPreset || customSeat;
-    return pro;
+    return pro || mediaGrantOpen(claims, nowMs);
   }
   if (chunk === 'lesson-cloud') {
     if (seated && (lessonPreset || customSeat)) return true;
