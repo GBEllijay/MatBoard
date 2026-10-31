@@ -13,6 +13,7 @@ import { SiteFooter } from '../components/SiteFooter';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useSeatDoor } from '../hooks/useSeatDoor';
 import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
+import { useMediaUnlocked } from '../hooks/useMediaUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import {
   COMING_SOON_ADS,
@@ -49,6 +50,7 @@ export function HomePage() {
   const whiteUnlocked = useWhiteUnlocked();
   const coachUnlocked = useCoachUnlocked();
   const studentUnlocked = useStudentEditionUnlocked();
+  const mediaUnlocked = useMediaUnlocked();
   const seat = useCurrentSeat();
   const seated = purchasePromptsHidden(seat);
   const coachOpen = coachDoorOpen(proUnlocked, coachUnlocked, seated);
@@ -108,6 +110,8 @@ export function HomePage() {
             to={studentTo}
             onSoon={() => setSoon('student')}
           />
+
+          <MediaHomeCard open={mediaUnlocked && !seated} />
 
           {coachOpen ? (
             <article className="mode-card mode-card--coach">
@@ -298,5 +302,38 @@ function ProHomeCopy() {
       <strong>Advantage Pro</strong>
       <HomeLines lines={PRO_HOME_LINES} />
     </>
+  );
+}
+
+const MEDIA_HOME_DESCRIPTION = 'Scoreboard, round timer, and Media Console for the gym TV.';
+
+/**
+ * Advantage Media Edition on /products. Open reads the Media door (useMediaUnlocked):
+ * an alpha-media code, or Pro which includes Media. Locked shows the price with no buy
+ * button, since there is no Media product in Stripe yet.
+ */
+function MediaHomeCard({ open }: { open: boolean }) {
+  if (open) {
+    return (
+      <article className="mode-card mode-card--media">
+        <Link className="mode-card__hit" to="/media" tabIndex={-1} aria-label="Open Advantage Media Edition" />
+        <BeltRail kind="purple" />
+        <strong>Advantage Media Edition</strong>
+        <HomeDescription text={MEDIA_HOME_DESCRIPTION} />
+        <div className="mode-card__actions">
+          <Link className="btn btn--white" to="/media">
+            Open Media
+          </Link>
+        </div>
+      </article>
+    );
+  }
+  return (
+    <article className="mode-card mode-card--media mode-card--locked" aria-label="Advantage Media Edition, locked">
+      <BeltRail kind="purple" />
+      <strong>Advantage Media Edition</strong>
+      <HomeDescription text={MEDIA_HOME_DESCRIPTION} />
+      <p className="mode-card__price">$29.99 one-time · Coming soon</p>
+    </article>
   );
 }

@@ -14,6 +14,7 @@ import {
 import { DEVICE_ACTIVE_DAYS, PRO_DEVICES_PER_LICENSE } from './paywallDecisions.ts';
 import { API_PRODUCT_PRO } from './routes.ts';
 import { stripeErrorMessage, type StripeRuntimeEnv } from './stripeCheckout.ts';
+import { appVersionOf } from '../lib/appCapability.ts';
 import { issueToken } from './tokenIssue.ts';
 
 const JSON_HEADERS = {
@@ -172,6 +173,7 @@ export async function handleSessionRedeem(
       emailHint: hint,
       thumbprint,
       subs: product === API_PRODUCT_PRO ? { state: 'active' } : undefined,
+      appVersion: appVersionOf(request),
     },
     env.ENTITLEMENT_KEY_ID,
   );

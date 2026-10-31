@@ -7,6 +7,7 @@ import { accessForLicense } from './subscriptionSync.ts';
 import { doorsFromStored, grantsForLicense, type StoredGrant } from './purchaseRecords.ts';
 import { API_PRODUCT_PRO } from './routes.ts';
 import { refreshSeat } from './seats.ts';
+import { appVersionOf } from '../lib/appCapability.ts';
 import { issueToken, signingMaterial } from './tokenIssue.ts';
 import type { StripeRuntimeEnv } from './stripeCheckout.ts';
 
@@ -140,6 +141,7 @@ export async function handleTokenRefresh(
       sid: claims.sid,
       preset: claims.preset,
       grantEndsAt: claims.src === 'free' && claims.fail_open_until ? new Date(claims.fail_open_until * 1000).toISOString() : null,
+      appVersion: appVersionOf(request),
     },
     env.ENTITLEMENT_KEY_ID,
   );

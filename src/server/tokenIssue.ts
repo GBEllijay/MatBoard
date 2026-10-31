@@ -13,6 +13,7 @@ import {
   type TokenSource,
   type TokenTier,
 } from '../lib/entitlementToken.ts';
+import { passScopeForApp } from '../lib/appCapability.ts';
 import {
   ONETIME_FAIL_OPEN_DAYS,
   ONETIME_TOKEN_DAYS,
@@ -45,6 +46,11 @@ export type IssueInput = {
   sid?: string;
   preset?: string;
   kid?: string;
+  /**
+   * Client app version from the request (appVersionOf). Below MEDIA_APP_VERSION, or
+   * missing, the pass leaves out 'media' so older clients still accept it.
+   */
+  appVersion?: string | null;
 };
 
 export function signingMaterial(secret: string | undefined, keyId = 'k1'): { kid: string; privateJwk: PrivateJwk; publicJwk: PublicJwk } | null {
@@ -103,6 +109,9 @@ export async function issueToken(secret: string | undefined, input: IssueInput, 
   if (!material) return null;
   const emptySeatPreview = input.kind === 'seat' && Boolean(input.preset) && input.grants.length === 0;
   if (input.grants.length === 0 && input.subs?.state !== 'locked' && !emptySeatPreview) return null;
+  // Old-client safety: never put a door the client cannot parse into its pass.
+  const scope = passScopeForApp(input.grants, input.tier, input.appVersion);
+  if (scope.grants.length === 0 && input.subs?.state !== 'locked' && !emptySeatPreview) return null;
   const now = Math.floor(input.now.getTime() / 1000);
   const life = lifetimeFor(input);
   const claims: EntitlementClaims = {
@@ -110,8 +119,8 @@ export async function issueToken(secret: string | undefined, input: IssueInput, 
     aud: TOKEN_AUD,
     kid: material.kid,
     sub: input.licenseId,
-    grants: input.grants,
-    tier: input.tier,
+    grants: scope.grants,
+    tier: scope.tier,
     src: input.src,
     exp: life.exp,
     iat: now,

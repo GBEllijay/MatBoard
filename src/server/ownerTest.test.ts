@@ -26,11 +26,13 @@ test('owner test unlock works only with the server secret', async () => {
   assert.ok(Date.parse(body.expiresAt) > Date.now());
   assert.equal(JSON.stringify(body).includes('test-secret-value'), false);
 
+  const media = await handleOwnerTest(post({ secret: 'test-secret-value', tier: 'media', days: 1 }, '198.51.100.17'), env);
+  assert.deepEqual(((await media.json()) as { grants: string[] }).grants, ['media']);
   const seat = await handleOwnerTest(post({ secret: 'test-secret-value', tier: 'seat', days: 30 }, '198.51.100.12'), env);
   assert.deepEqual(((await seat.json()) as { grants: string[] }).grants, ['seat']);
   const all = await handleOwnerTest(post({ secret: 'test-secret-value', tier: 'all', days: 99 }, '198.51.100.13'), env);
   const allBody = (await all.json()) as { grants: string[] };
-  assert.deepEqual(allBody.grants.sort(), ['coach', 'pro', 'seat', 'student', 'white']);
+  assert.deepEqual(allBody.grants.sort(), ['coach', 'media', 'pro', 'seat', 'student', 'white']);
 
   const wrong = await handleOwnerTest(post({ secret: 'nope', tier: 'all' }, '198.51.100.14'), env);
   const unset = await handleOwnerTest(post({ secret: 'test-secret-value', tier: 'all' }, '198.51.100.15'), {});

@@ -39,7 +39,7 @@ function signed(payload: string, now: Date): Request {
 }
 
 test('Pro opens White, Student and Coach, and the owner test unlock still works', async () => {
-  assert.deepEqual(expandGrants(['pro']), ['white', 'student', 'coach', 'pro']);
+  assert.deepEqual(expandGrants(['pro']), ['white', 'student', 'coach', 'pro', 'media']);
   const response = await handleOwnerTest(
     new Request('http://localhost/api/owner-test', {
       method: 'POST',

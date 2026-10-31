@@ -318,6 +318,41 @@ export const COMPETITION_PRO_MENU = [
   },
 ] as const;
 
+/** One stacked button on the Tournament Management Pro menu. */
+export type SuiteMenuLink = {
+  readonly title: string;
+  readonly to: string;
+  readonly belt: 'tournament' | 'black' | 'purple';
+  readonly clearBout: boolean;
+  /** Optional second line under the title. /suite buttons have none. */
+  readonly sub?: string;
+};
+
+const suiteMenuLink = (title: string) => {
+  const link = COMPETITION_PRO_MENU.find((item) => item.title === title);
+  if (!link) throw new Error(`Missing suite menu link: ${title}`);
+  return link;
+};
+
+/**
+ * Media Edition hub buttons (/media), top to bottom: Scoreboard, Round Timer,
+ * Media Console. Scoreboard and Round Timer are the Tournament Management Pro
+ * entries (same path, ?from=suite, belt and bout reset), so they open the same
+ * screens. Each hub button adds one short subtitle line.
+ * Media Console opens the same full page as the Pro hub's Media Console.
+ */
+export const MEDIA_EDITION_MENU: readonly SuiteMenuLink[] = [
+  { ...suiteMenuLink('Scoreboard'), sub: 'Live match scoring. Easily cast to your gym TV.' },
+  { ...suiteMenuLink('Round Timer'), sub: 'Rounds and rest. Easily cast to your gym TV.' },
+  {
+    title: MEDIA_CONSOLE_NAME,
+    to: '/slideshow?folder=gallery',
+    belt: 'purple',
+    clearBout: false,
+    sub: 'Slideshows, schedule, and events. Easily cast to your gym TV.',
+  },
+];
+
 /** Bottom-of-page guidance on the Media Console manage screen. */
 export const MEDIA_CONSOLE_INSTRUCTIONS = [
   'Gold On means that folder plays on the TV.',
@@ -464,6 +499,11 @@ export type ProSurfaceInput = {
   programDirectorSeat: boolean;
   /** Invite granted Daily Lesson Plan or Daily Training Videos. */
   coachMenus: boolean;
+  /**
+   * Media Edition door on this browser (src/lib/mediaUnlock.ts). Pro includes it.
+   * Left out by older callers, it follows proUnlocked as before.
+   */
+  mediaUnlocked?: boolean;
 };
 
 /**
@@ -474,7 +514,8 @@ export type ProSurfaceInput = {
  * this browser's Pro unlock is off. A seat with none of those stays shut.
  */
 export function mediaConsoleDoorOpen(input: ProSurfaceInput): boolean {
-  if (!input.seated) return input.proUnlocked;
+  // No seat: the Media door (Media Edition, or Pro which includes it). Lock Media closes it.
+  if (!input.seated) return input.mediaUnlocked ?? input.proUnlocked;
   return input.seatGrantsMedia;
 }
 
@@ -500,7 +541,11 @@ export function coachUnlimitedDoorOpen(input: ProSurfaceInput): boolean {
 
 /** Hubs this browser may show. A seat never receives owner-only hubs. */
 export function visibleProHubs(input: ProSurfaceInput): readonly (typeof PRO_HUBS)[number][] {
-  if (!input.seated) return input.proUnlocked ? PRO_HUBS : [];
+  if (!input.seated) {
+    if (!input.proUnlocked) return [];
+    // Lock Media with Pro on hides the Media Console hub; Pro's other hubs stay.
+    return mediaConsoleDoorOpen(input) ? PRO_HUBS : PRO_HUBS.filter((hub) => !hub.to.startsWith('/slideshow'));
+  }
   const hubs: (typeof PRO_HUBS)[number][] = [];
   if (mediaConsoleDoorOpen(input)) {
     const media = PRO_HUBS.find((hub) => hub.to.startsWith('/slideshow'));
@@ -547,7 +592,11 @@ export const MEDIA_FOLDER_ROUTES: readonly { path: string; folder: MediaFolderId
 ];
 
 /** Paths that open the seat's Media Console on `/pro`. */
-export const MEDIA_CONSOLE_ROUTES = ['/media', '/media-console', '/console'] as const;
+/**
+ * Short aliases that open the seat console home. `/media` used to be one; it is
+ * now the Media Edition screen (MEDIA_EDITION_PATH in lib/mediaEdition).
+ */
+export const MEDIA_CONSOLE_ROUTES = ['/media-console', '/console'] as const;
 
 /**
  * Home button when any Pro hub is open.

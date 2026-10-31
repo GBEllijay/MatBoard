@@ -10,6 +10,7 @@ import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useSeatDoor } from '../hooks/useSeatDoor';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import { lockCoach } from '../lib/coachUnlock';
+import { lockMedia } from '../lib/mediaUnlock';
 import { COACH_HUBS, PRODUCTS_PATH, coachDoorOpen, consoleHubs } from '../lib/productNames';
 import { lockPro } from '../lib/proUnlock';
 import { whiteEntryPath } from '../lib/whiteUnlock';
@@ -76,6 +77,11 @@ export function ComingSoonPage() {
             {coachUnlocked ? (
               <button type="button" className="btn btn--ghost" onClick={() => lockCoach()}>
                 Lock Coach
+              </button>
+            ) : null}
+            {door.mediaUnlocked ? (
+              <button type="button" className="btn btn--ghost" onClick={() => lockMedia()}>
+                Lock Media
               </button>
             ) : null}
           </nav>
