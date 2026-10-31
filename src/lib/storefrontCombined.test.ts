@@ -62,7 +62,10 @@ test('every ladder card links somewhere that exists (no 404s)', () => {
   assert.match(tsx, /step\.to === null[\s\S]*href=\{alphaRequestMailto\(\)\}/);
   for (const r of STOREFRONT_BELT_LADDER) {
     if (r.to === null) continue;
-    assert.ok([STOREFRONT_BUY_PATH, PRODUCTS_PATH, '/media'].includes(r.to), `${r.id} -> ${r.to}`);
+    assert.ok(
+      [STOREFRONT_BUY_PATH, PRODUCTS_PATH, '/media', '/editions/student', '/editions/instructor', '/editions/pro'].includes(r.to),
+      `${r.id} -> ${r.to}`,
+    );
     const routed = r.to === '/media' ? /<Route path=\{MEDIA_EDITION_PATH\}/ : new RegExp(`path="${r.to}"`);
     assert.match(app, routed, `route ${r.to} exists`);
   }

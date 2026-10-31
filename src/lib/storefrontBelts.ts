@@ -1,10 +1,12 @@
 import { MEDIA_EDITION_PATH } from './mediaEdition.ts';
 import { INSTRUCTOR_DISPLAY_PRICE_LINE } from './productPrices.ts';
 import { STOREFRONT_STEPS, type StorefrontStep } from './storefront.ts';
+import { TIER_BUY_PATHS } from './tierBuyPages.ts';
 
 /**
  * Homepage belt ladder: five belts in rank order, replacing the four progression tiles.
- * Product ids, kinds, routes and entitlements are unchanged. Only the Coach tile's
+ * Product ids, kinds and entitlements are unchanged. Student, Instructor and Pro open
+ * their public tier buy pages (lib/tierBuyPages). Only the Coach tile's
  * user-facing words say Instructor here.
  */
 export const BELTS_VARIANTS = ['a', 'b'] as const;
@@ -34,7 +36,7 @@ export type BeltRung = {
   cardPrice: string;
   status: StorefrontStep['status'];
   /** Router path, or null for the alpha-request mail link. */
-  to: StorefrontStep['to'] | typeof MEDIA_EDITION_PATH | null;
+  to: StorefrontStep['to'] | (typeof TIER_BUY_PATHS)[keyof typeof TIER_BUY_PATHS] | typeof MEDIA_EDITION_PATH | null;
 };
 
 function step(id: StorefrontStep['id']): StorefrontStep {
@@ -70,7 +72,8 @@ export const STOREFRONT_BELT_LADDER: readonly BeltRung[] = [
     blurb: 'Personal BJJ Training Journal and More.',
     cardPrice: student.cardPrice,
     status: student.status,
-    to: student.to,
+    // Student Edition buy page. White and Media were already wired.
+    to: TIER_BUY_PATHS.student,
   },
   {
     id: 'academy',
@@ -95,7 +98,7 @@ export const STOREFRONT_BELT_LADDER: readonly BeltRung[] = [
     // Display only on this tile: Stripe still charges the Coach product at $29.99.
     cardPrice: INSTRUCTOR_DISPLAY_PRICE_LINE,
     status: coach.status,
-    to: coach.to,
+    to: TIER_BUY_PATHS.instructor,
   },
   {
     id: 'pro',
@@ -108,7 +111,7 @@ export const STOREFRONT_BELT_LADDER: readonly BeltRung[] = [
       'Academy Enhancement Software for Gym Owners and Jiu-Jitsu Professionals.',
     cardPrice: pro.cardPrice,
     status: pro.status,
-    to: pro.to,
+    to: TIER_BUY_PATHS.pro,
   },
 ];
 

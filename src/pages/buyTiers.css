@@ -1,0 +1,74 @@
+/* Tier buy pages and the /buy higher-tier list. Belt colors match the homepage ladder. */
+
+.belt-tip--ladder.belt-tip--white {
+  --belt-cloth: #f4f1ea;
+}
+
+.belt-tip--ladder.belt-tip--blue {
+  --belt-cloth: #2a5cf0;
+}
+
+.belt-tip--ladder.belt-tip--purple {
+  --belt-cloth: #6b2d91;
+}
+
+.belt-tip--ladder.belt-tip--brown {
+  --belt-cloth: #6b3a1f;
+}
+
+.belt-tip--ladder.belt-tip--black {
+  --belt-cloth: #0a0b0e;
+}
+
+/* Red rank bar with white edges, like the homepage black belt. */
+.belt-tip--ladder.belt-tip--black .belt-tip__bar--red {
+  background: #ef4444;
+  box-shadow:
+    -2px 0 0 #f4f1ea,
+    2px 0 0 #f4f1ea;
+}
+
+/* Dark belt headers (blue, brown, black) read white, like the purple /media header. */
+.home .buy .buy__card--tier:not(.buy__card--tier-white) h2,
+.home .buy .buy__card--tier:not(.buy__card--tier-white) p,
+.home .buy .buy__card--tier:not(.buy__card--tier-white) .buy__price {
+  color: #fff;
+}
+
+.home .buy .buy__card--tier:not(.buy__card--tier-white) .buy__price span,
+.home .buy .buy__card--tier:not(.buy__card--tier-white) p.buy__kicker {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.home .buy .buy__card--tier p.buy__lead,
+.home .buy .buy__card--tier p.buy__includes-all {
+  font-size: 1.05rem;
+  font-weight: 650;
+}
+
+.buy__card--tier-black {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.18),
+    0 12px 28px rgba(0, 0, 0, 0.28);
+}
+
+.buy__checkout .btn {
+  min-height: 52px;
+  text-decoration: none;
+}
+
+.buy__checkout a.btn--white {
+  color: #14161c;
+}
+
+.buy__checkout a.btn--ghost {
+  color: var(--ink);
+}
+
+.buy__higher {
+  margin: 0;
+}
+
+.home .buy .buy__features strong {
+  font-weight: 750;
+}

@@ -83,12 +83,30 @@ test('route renders the Media Edition page with its title, price, belt and CTA',
   const cta = host.querySelector('a.btn.btn--white') as HTMLAnchorElement | null;
   assert.equal(cta?.textContent, 'Request an alpha code');
   assert.match(cta?.getAttribute('href') ?? '', /^mailto:advantageappllc@gmail\.com/);
-  assert.match(host.textContent ?? '', /Media Edition is in alpha testing\. Email advantageappllc@gmail\.com to request an alpha code\./);
+  assert.match(host.textContent ?? '', /In alpha testing\. Email advantageappLLC@gmail\.com for a free alpha code\./);
   assert.match(host.textContent ?? '', /Includes everything in Advantage White\./);
   // Not for sale: no checkout form or buy button on the page.
   assert.equal(host.querySelector('form'), null);
   for (const b of host.querySelectorAll('button')) assert.doesNotMatch(b.textContent ?? '', /buy|checkout|pay|purchase/i);
   assert.doesNotMatch(host.innerHTML, /checkout\.stripe|\/api\/.*checkout/i);
+  m.done();
+});
+
+test('tier template: Restore link, then only the higher tiers (Instructor, Pro)', () => {
+  const m = mount('/media');
+  const { host } = m;
+  const restore = host.querySelector('section.buy__restore a[href="/restore"]');
+  assert.ok(restore, 'restore link');
+  const higher = host.querySelector('[data-higher-tiers]');
+  assert.ok(higher);
+  const tiers = [...higher.querySelectorAll('[data-tier]')].map((n) => n.getAttribute('data-tier'));
+  assert.deepEqual(tiers, ['instructor', 'pro']);
+  const links = [...higher.querySelectorAll('a.buy__more')].map((a) => a.getAttribute('href'));
+  assert.deepEqual(links, ['/editions/instructor', '/editions/pro']);
+  // Restore comes after the Media card and before the higher tiers.
+  const order = [...host.querySelectorAll('section.buy__restore, [data-higher-tiers]')];
+  assert.equal(order[0], restore.closest('section'));
+  assert.equal(host.querySelector('form'), null);
   m.done();
 });
 
@@ -182,13 +200,16 @@ test('Media Edition hub buttons render like /suite: stacked pro-hub links in ord
       'Slideshows, schedule, and events. Easily cast to your gym TV.',
     ],
   );
-  assert.match(edition[2].rail ?? '', /belt-rail--purple/);
-  // Scoreboard and Round Timer: same link, belt rail and title as on /suite.
+  // All three hub buttons wear the purple belt rail.
+  for (const l of edition) assert.match(l.rail ?? '', /belt-rail--purple/, l.title);
+  // Scoreboard and Round Timer: same link and title as on /suite.
   const fromSuite = suite.filter((l) => l.title === 'Scoreboard' || l.title === 'Round Timer');
   assert.deepEqual(
-    edition.slice(0, 2).map(({ sub: _s, ...rest }) => rest),
-    fromSuite.map(({ sub: _s, ...rest }) => rest),
+    edition.slice(0, 2).map(({ sub: _s, rail: _r, ...rest }) => rest),
+    fromSuite.map(({ sub: _s, rail: _r, ...rest }) => rest),
   );
+  // /suite keeps its black Scoreboard and Round Timer rails.
+  for (const l of fromSuite) assert.match(l.rail ?? '', /belt-rail--black/, l.title);
   // /suite buttons stay single-line.
   for (const l of suite) assert.equal(l.sub, null, l.title);
 });

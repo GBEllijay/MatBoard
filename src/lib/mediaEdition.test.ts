@@ -87,7 +87,8 @@ test('not for sale: no checkout, Stripe, code kind or entitlement; CTA is the al
   const code = page.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
   assert.doesNotMatch(code, /checkout|stripe|redeem|entitle|WHITE_CHECKOUT_API|fetch\(/i);
   assert.match(page, /href=\{alphaRequestMailto\(\)\}/);
-  assert.match(page, /<AlphaAccessNote note=\{MEDIA_EDITION_ALPHA_NOTE\} \/>/);
+  // Owner alpha line for the tier buy pages (feat/tier-buy-pages). The Media constant is kept.
+  assert.match(page, /<AlphaAccessNote note=\{EDITION_ALPHA_NOTE\} display=\{EDITION_EMAIL_DISPLAY\} \/>/);
   assert.equal(
     MEDIA_EDITION_ALPHA_NOTE,
     'Media Edition is in alpha testing. Email advantageappllc@gmail.com to request an alpha code.',

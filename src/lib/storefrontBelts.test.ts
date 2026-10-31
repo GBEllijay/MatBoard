@@ -86,7 +86,8 @@ test('Coach reads Instructor in this section, with the same code name, id and ro
   // $49.99 is display only on this tile; the Coach product copy (and Stripe) still says $29.99.
   assert.equal(rung.cardPrice, '$49.99 one-time');
   assert.equal(coach.cardPrice, '$29.99 one-time');
-  assert.equal(rung.to, '/products');
+  assert.equal(rung.to, '/editions/instructor');
+  assert.equal(coach.to, '/products');
   assert.equal(rung.status, 'Coming soon');
   for (const r of STOREFRONT_BELT_LADDER) {
     assert.doesNotMatch(`${r.title} ${r.rankLabel} ${r.blurb} ${r.detail ?? ''}`, /Coach/);
@@ -119,9 +120,12 @@ test('White is unchanged; Pro keeps its title, price, belt and link with the own
   const proStep = STOREFRONT_STEPS.find((s) => s.id === 'pro');
   assert.ok(proStep);
   assert.deepEqual(
-    { title: pro.title, rankLabel: pro.rankLabel, cardPrice: pro.cardPrice, status: pro.status, to: pro.to },
-    { title: proStep.title, rankLabel: proStep.rankLabel, cardPrice: proStep.cardPrice, status: proStep.status, to: proStep.to },
+    { title: pro.title, rankLabel: pro.rankLabel, cardPrice: pro.cardPrice, status: pro.status },
+    { title: proStep.title, rankLabel: proStep.rankLabel, cardPrice: proStep.cardPrice, status: proStep.status },
   );
+  // The ladder card opens the Pro buy page; the picker step still links to /products.
+  assert.equal(pro.to, '/editions/pro');
+  assert.equal(proStep.to, '/products');
   // Owner copy: one line replaces both earlier Pro lines.
   assert.equal(
     pro.blurb,
@@ -133,7 +137,7 @@ test('White is unchanged; Pro keeps its title, price, belt and link with the own
   // The shared product copy (and its code name) is untouched.
   assert.match(proStep.blurb, /Includes Coach\.$/);
   assert.equal(pro.cardPrice, '$99.99 + $5.99/mo');
-  assert.equal(pro.to, '/products');
+  assert.equal(pro.to, '/editions/pro');
   // Black keeps the white / red / white bar class; White keeps the live card.
   assert.match(tsx, /color === 'black' \? 'pro' : color/);
   assert.match(tsx, /step\.id === 'white' \? ' sf-step--live' : ''/);

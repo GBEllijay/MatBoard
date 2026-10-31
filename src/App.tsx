@@ -85,6 +85,7 @@ import { ProLockedPage } from './pages/ProLocked';
 import { bootEntitlement } from './lib/entitlement';
 import { BuyCoachPage, BuyProPage, BuyStudentPage } from './pages/BuyTier';
 import { BuyWhitePage } from './pages/BuyWhite';
+import { BuyInstructorEditionPage, BuyProEditionPage, BuyStudentEditionPage } from './pages/BuyEdition';
 import { MediaEditionGate } from './components/MediaEditionGate';
 import { MEDIA_EDITION_OLD_PATH, MEDIA_EDITION_PATH } from './lib/mediaEdition';
 import { RestoreAccessPage } from './pages/RestoreAccess';
@@ -362,6 +363,12 @@ export default function App() {
       <Route path={MEDIA_EDITION_PATH} element={<MediaEditionRoute />} />
       <Route path={MEDIA_EDITION_OLD_PATH} element={<Navigate to={MEDIA_EDITION_PATH} replace />} />
       <Route path="/restore" element={<RestoreAccessPage />} />
+      {/* Public tier buy pages (display + alpha line). The gated /buy/student, /buy/coach and /buy/pro checkouts are unchanged. */}
+      <Route path="/editions/student" element={<BuyStudentEditionPage />} />
+      <Route path="/editions/instructor" element={<BuyInstructorEditionPage />} />
+      <Route path="/editions/pro" element={<BuyProEditionPage />} />
+      <Route path="/editions/media" element={<Navigate to={MEDIA_EDITION_PATH} replace />} />
+      <Route path="/editions/white" element={<Navigate to="/buy" replace />} />
       <Route path="/pro/paused" element={<ProLockedPage />} />
       <Route
         path="/buy/student"

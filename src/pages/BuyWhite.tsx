@@ -1,10 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { AlphaAccessNote } from '../components/AlphaAccessNote';
 import { HalfOffCheckoutNote } from '../components/HalfOffCheckoutNote';
-import { ComingSoonAd } from '../components/ComingSoonAd';
 import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
+import { HigherTierList } from '../components/TierBuyParts';
 import { useHalfOffArrival } from '../hooks/useHalfOffArrival';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
@@ -12,14 +11,8 @@ import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import { afterFailedUnlock, confirmCheckoutSession, redeemAccessCode, withCheckoutNonce } from '../lib/codeRedeemClient';
 import type { WhiteEntitlementStatus } from '../lib/whiteEntitlementClient';
-import {
-  COACH_LIST_PRICE_CENTS,
-  PRO_LIST_PRICE_CENTS,
-  PRO_MONTHLY_PRICE_CENTS,
-  STUDENT_ALPHA_ACCESS_NOTE,
-  STUDENT_LIST_PRICE_CENTS,
-} from '../lib/productPrices';
-import { PRODUCTS_PATH, STUDENT_EDITION_NAME } from '../lib/productNames';
+import { STUDENT_LIST_PRICE_CENTS } from '../lib/productPrices';
+import { PRODUCTS_PATH } from '../lib/productNames';
 import { studentEditionEntitled } from '../lib/studentEdition';
 import { buyCheckoutBody } from '../lib/halfOff';
 import {
@@ -336,83 +329,33 @@ export function BuyWhitePage() {
             </form>
           )}
 
-          <section className="buy__card buy__soon" aria-label={STUDENT_EDITION_NAME}>
-            <div className="buy__soon-head">
-              <span className="belt-tip belt-tip--grey" aria-hidden="true">
-                <span className="belt-tip__bar" />
-              </span>
-              <span>
-                <span className="buy__kicker">{studentOpen ? 'Alpha' : 'Coming soon'}</span>
-                <h2>{STUDENT_EDITION_NAME}</h2>
-              </span>
-            </div>
-            <p className="buy__price">
-              {formatUsdFromCents(STUDENT_LIST_PRICE_CENTS)}{' '}
-              <span>USD — one-time, when it launches</span>
-            </p>
-            <p>
-              Advantage Student Edition is a separate add-on. It does not include Advantage Coach.
-              Journal notes, journal cards, and a fundamentals checklist stay on this phone.
-            </p>
-            {studentOpen ? null : <p>Not for sale on this page.</p>}
-            {studentError ? (
-              <p className="buy__status buy__status--bad" role="alert">
-                {studentError}
-              </p>
-            ) : null}
-            {studentOpen ? (
-              <form onSubmit={(event) => void onStudentSubmit(event)}>
-                <HalfOffCheckoutNote active={halfOff} />
-                <button className="btn btn--white" type="submit" disabled={studentPending}>
-                  {studentPending
-                    ? 'Opening checkout…'
-                    : `Continue to checkout — ${formatUsdFromCents(STUDENT_LIST_PRICE_CENTS)}`}
-                </button>
-              </form>
-            ) : null}
-            <AlphaAccessNote note={STUDENT_ALPHA_ACCESS_NOTE} />
-          </section>
-
-          <details className="buy__card buy__soon">
-            <summary>
-              <span className="buy__soon-head">
-                <span className="belt-tip belt-tip--blue" aria-hidden="true">
-                  <span className="belt-tip__bar" />
-                </span>
-                <span>
-                  <h2>Advantage Coach</h2>
-                </span>
-              </span>
-              <p className="buy__price">
-                {formatUsdFromCents(COACH_LIST_PRICE_CENTS)}{' '}
-                <span>USD — one-time, when it launches</span>
-              </p>
-              <span className="buy__more">See what’s included</span>
-            </summary>
-            <ComingSoonAd product="coach" />
-          </details>
-
-          <details className="buy__card buy__soon">
-            <summary>
-              <span className="buy__soon-head">
-                <span className="belt-tip belt-tip--black" aria-hidden="true">
-                  <span className="belt-tip__bar" />
-                </span>
-                <span>
-                  <span className="buy__kicker">Coming soon</span>
-                  <h2>Advantage Pro</h2>
-                </span>
-              </span>
-              <p className="buy__price">
-                {formatUsdFromCents(PRO_LIST_PRICE_CENTS)}{' '}
-                <span>
-                  {`USD — one-time, plus ${formatUsdFromCents(PRO_MONTHLY_PRICE_CENTS)}/month, when it launches`}
-                </span>
-              </p>
-              <span className="buy__more">See what’s included</span>
-            </summary>
-            <ComingSoonAd product="pro" />
-          </details>
+          {/* Higher tiers in ladder order: Student, Media, Instructor Edition, Pro. */}
+          <HigherTierList
+            from="white"
+            kickers={{ student: studentOpen ? 'Alpha' : 'Coming soon' }}
+            extras={{
+              student: (
+                <>
+                  {studentOpen ? null : <p>Not for sale on this page.</p>}
+                  {studentError ? (
+                    <p className="buy__status buy__status--bad" role="alert">
+                      {studentError}
+                    </p>
+                  ) : null}
+                  {studentOpen ? (
+                    <form onSubmit={(event) => void onStudentSubmit(event)}>
+                      <HalfOffCheckoutNote active={halfOff} />
+                      <button className="btn btn--white" type="submit" disabled={studentPending}>
+                        {studentPending
+                          ? 'Opening checkout…'
+                          : `Continue to checkout — ${formatUsdFromCents(STUDENT_LIST_PRICE_CENTS)}`}
+                      </button>
+                    </form>
+                  ) : null}
+                </>
+              ),
+            }}
+          />
         </article>
         <SiteFooter />
       </div>

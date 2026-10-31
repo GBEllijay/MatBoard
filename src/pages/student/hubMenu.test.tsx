@@ -110,6 +110,16 @@ test('the hub is five groups and has no Menu card', () => {
   unmount(hub);
 });
 
+test('the hub opens with the blue Student belt header', () => {
+  const hub = mount(<StudentHub />, '/student?student=1');
+  const belt = hub.host.querySelector('nav.s-hub > .belt-header.belt-header--blue');
+  assert.ok(belt, 'blue BeltHeader');
+  assert.equal(hub.host.querySelector('nav.s-hub')?.firstElementChild, belt);
+  assert.match(belt?.textContent ?? '', /Advantage Student Edition/);
+  assert.ok(hub.host.querySelector('.s-hub__intro p'));
+  unmount(hub);
+});
+
 test('every former hub item is linked from a group menu', () => {
   const pages = [
     mount(<TrainingMenu />, '/student/training?student=1'),

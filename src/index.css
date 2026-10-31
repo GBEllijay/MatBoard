@@ -750,7 +750,7 @@ button.mode-card__hit {
   filter: none;
 }
 
-/* Media Edition stands out: stronger purple edge, soft glow, bolder title, no lock dimming. */
+/* Unlocked Media card only (the locked card no longer carries --feature): purple edge, soft glow, bolder title. */
 .mode-card--media.mode-card--feature {
   opacity: 1;
   border: 1px solid rgba(107, 45, 145, 0.85);
@@ -846,11 +846,12 @@ button.mode-card__hit {
   border-color: rgba(140, 168, 148, 0.18);
 }
 
-/* Display-only Media tier on /products. Always locked; purple belt rail. */
+/* Media tier on /products. Locked it matches the other locked cards: neutral fill,
+   no purple tint or glow; only the purple belt rail on the left marks it. */
 .mode-card--media {
   min-height: 10.5rem;
-  background: linear-gradient(160deg, #2c2438 0%, #17141f 48%, #0c1118 100%);
-  border-color: rgba(176, 150, 204, 0.18);
+  background: linear-gradient(145deg, #2a3546 0%, #151c28 48%, #0c1118 100%);
+  border-color: rgba(168, 188, 214, 0.2);
 }
 
 .mode-card--saver,
