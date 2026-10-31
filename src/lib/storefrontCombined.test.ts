@@ -57,13 +57,14 @@ test('combined ladder strings and prices are final', () => {
 test('every ladder card links somewhere that exists (no 404s)', () => {
   const byId = Object.fromEntries(STOREFRONT_BELT_LADDER.map((r) => [r.id, r]));
   assert.equal(byId.white.to, STOREFRONT_BUY_PATH);
-  // Media Edition has no page yet: it uses the alpha-code email path until one is built.
-  assert.equal(byId.academy.to, null);
+  // Media Edition opens its own public page (not for sale; the page's CTA is the alpha-code email).
+  assert.equal(byId.academy.to, '/media');
   assert.match(tsx, /step\.to === null[\s\S]*href=\{alphaRequestMailto\(\)\}/);
   for (const r of STOREFRONT_BELT_LADDER) {
     if (r.to === null) continue;
-    assert.ok([STOREFRONT_BUY_PATH, PRODUCTS_PATH].includes(r.to), `${r.id} -> ${r.to}`);
-    assert.match(app, new RegExp(`path="${r.to}"`), `route ${r.to} exists`);
+    assert.ok([STOREFRONT_BUY_PATH, PRODUCTS_PATH, '/media'].includes(r.to), `${r.id} -> ${r.to}`);
+    const routed = r.to === '/media' ? /<Route path=\{MEDIA_EDITION_PATH\}/ : new RegExp(`path="${r.to}"`);
+    assert.match(app, routed, `route ${r.to} exists`);
   }
 });
 

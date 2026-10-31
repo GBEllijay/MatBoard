@@ -85,9 +85,10 @@ import { ProLockedPage } from './pages/ProLocked';
 import { bootEntitlement } from './lib/entitlement';
 import { BuyCoachPage, BuyProPage, BuyStudentPage } from './pages/BuyTier';
 import { BuyWhitePage } from './pages/BuyWhite';
+import { MediaEditionGate } from './components/MediaEditionGate';
+import { MEDIA_EDITION_OLD_PATH, MEDIA_EDITION_PATH } from './lib/mediaEdition';
 import { RestoreAccessPage } from './pages/RestoreAccess';
 import { WhitePage } from './pages/White';
-import { MediaHubPage } from './pages/MediaHub';
 import { WhiteRosterPage } from './pages/WhiteRoster';
 
 consumeUnlockQueryNow();
@@ -145,6 +146,16 @@ function MediaConsoleRoute({ children }: { children: ReactNode }) {
   const door = useSeatDoor();
   if (!mediaConsoleDoorOpen(door)) return <Navigate to={closedOrPaused(door.seated)} replace />;
   return children;
+}
+
+/**
+ * /media, the one Media Edition hub. A browser whose Media door is open (a Media
+ * pass, Pro, or owner) gets the paid hub menu. Everyone else sees the public
+ * $29.99 marketing page, never the paid chunk and never a raw 401.
+ */
+function MediaEditionRoute() {
+  const door = useSeatDoor();
+  return <MediaEditionGate open={mediaConsoleDoorOpen(door)} />;
 }
 
 /** Tournament suite and invite admin. A signed-in seat does not open these. */
@@ -243,13 +254,13 @@ function MediaFolderRoute({ folder }: { folder: MediaFolderId }) {
 }
 
 /**
- * `/media`, `/console`, and `/media-console` open the same seat console as home.
- * A Media Edition browser without Pro gets the Media hub here, never /pro (the Pro Console).
+ * `/console` and `/media-console` open the same seat console as home. `/media` is Media Edition.
+ * A Media Edition browser without Pro goes to the one Media hub at /media, never /pro (the Pro Console).
  */
 function MediaConsoleEntryRoute() {
   const door = useSeatDoor();
   if (!mediaConsoleDoorOpen(door)) return <Navigate to={closedOrPaused(door.seated)} replace />;
-  if (!door.seated && !door.proUnlocked) return <MediaHubPage />;
+  if (!door.seated && !door.proUnlocked) return <Navigate to={MEDIA_EDITION_PATH} replace />;
   return <Navigate to="/pro" replace />;
 }
 
@@ -348,6 +359,8 @@ export default function App() {
         }
       />
       <Route path="/buy" element={<BuyWhitePage />} />
+      <Route path={MEDIA_EDITION_PATH} element={<MediaEditionRoute />} />
+      <Route path={MEDIA_EDITION_OLD_PATH} element={<Navigate to={MEDIA_EDITION_PATH} replace />} />
       <Route path="/restore" element={<RestoreAccessPage />} />
       <Route path="/pro/paused" element={<ProLockedPage />} />
       <Route

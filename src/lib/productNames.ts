@@ -318,6 +318,41 @@ export const COMPETITION_PRO_MENU = [
   },
 ] as const;
 
+/** One stacked button on the Tournament Management Pro menu. */
+export type SuiteMenuLink = {
+  readonly title: string;
+  readonly to: string;
+  readonly belt: 'tournament' | 'black' | 'purple';
+  readonly clearBout: boolean;
+  /** Optional second line under the title. /suite buttons have none. */
+  readonly sub?: string;
+};
+
+const suiteMenuLink = (title: string) => {
+  const link = COMPETITION_PRO_MENU.find((item) => item.title === title);
+  if (!link) throw new Error(`Missing suite menu link: ${title}`);
+  return link;
+};
+
+/**
+ * Media Edition hub buttons (/media), top to bottom: Scoreboard, Round Timer,
+ * Media Console. Scoreboard and Round Timer are the Tournament Management Pro
+ * entries (same path, ?from=suite, belt and bout reset), so they open the same
+ * screens. Each hub button adds one short subtitle line.
+ * Media Console opens the same full page as the Pro hub's Media Console.
+ */
+export const MEDIA_EDITION_MENU: readonly SuiteMenuLink[] = [
+  { ...suiteMenuLink('Scoreboard'), sub: 'Live match scoring. Easily cast to your gym TV.' },
+  { ...suiteMenuLink('Round Timer'), sub: 'Rounds and rest. Easily cast to your gym TV.' },
+  {
+    title: MEDIA_CONSOLE_NAME,
+    to: '/slideshow?folder=gallery',
+    belt: 'purple',
+    clearBout: false,
+    sub: 'Slideshows, schedule, and events. Easily cast to your gym TV.',
+  },
+];
+
 /** Bottom-of-page guidance on the Media Console manage screen. */
 export const MEDIA_CONSOLE_INSTRUCTIONS = [
   'Gold On means that folder plays on the TV.',
@@ -557,7 +592,11 @@ export const MEDIA_FOLDER_ROUTES: readonly { path: string; folder: MediaFolderId
 ];
 
 /** Paths that open the seat's Media Console on `/pro`. */
-export const MEDIA_CONSOLE_ROUTES = ['/media', '/media-console', '/console'] as const;
+/**
+ * Short aliases that open the seat console home. `/media` used to be one; it is
+ * now the Media Edition screen (MEDIA_EDITION_PATH in lib/mediaEdition).
+ */
+export const MEDIA_CONSOLE_ROUTES = ['/media-console', '/console'] as const;
 
 /**
  * Home button when any Pro hub is open.
