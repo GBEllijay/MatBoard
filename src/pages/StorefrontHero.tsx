@@ -5,6 +5,8 @@ import './storefrontHero.css';
 
 const SCOREBOARD = { src: '/storefront/scoreboard.png', width: 1280, height: 720 };
 const ROUND_TIMER = { src: '/storefront/round-timer.png', width: 1280, height: 720 };
+/** Real Round Timer screen (Advantage mat skin, Work · Round 2 / 5, mid-round). Used by B v2. */
+const ROUND_TIMER_LIVE = { src: '/storefront/round-timer-live.png', width: 1280, height: 720 };
 
 function Brand() {
   return (
@@ -12,6 +14,18 @@ function Brand() {
       <img src="/advantage-icon.png" alt="" width={120} height={120} draggable={false} />
       <span>Advantage</span>
     </Link>
+  );
+}
+
+/** B v2: headline in open space, the one-line lead, no duplicate paragraph. */
+function RevealCopy() {
+  return (
+    <div className="sfh-reveal-copy">
+      <h1 className="sfh-title">{STOREFRONT_HERO.title}</h1>
+      <p className="sfh-lead">
+        {STOREFRONT_HERO.leadBeforeBreak} {STOREFRONT_HERO.leadAfterBreak}
+      </p>
+    </div>
   );
 }
 
@@ -113,6 +127,30 @@ export function StorefrontHero({ unlocked }: { unlocked: boolean }) {
             </div>
             <Shot shot={ROUND_TIMER} alt="Advantage round timer showing round 1 of 5 at 05:00" className="sfh-frame--timer" />
             <div className="sfh-floor" aria-hidden="true" />
+          </div>
+        </div>
+      ) : null}
+      {variant === 'd' ? (
+        <div className="sfh-inner">
+          <Brand />
+          <div className="sfh-stage">
+            <div className="sfh-halo" aria-hidden="true" />
+            <div className="sfh-board">
+              <Shot shot={SCOREBOARD} alt="Advantage scoreboard with two competitors and a 05:00 match clock" className="sfh-frame--board" />
+              <figure className="sfh-tablet" aria-hidden="true">
+                <img
+                  src={ROUND_TIMER_LIVE.src}
+                  alt=""
+                  width={ROUND_TIMER_LIVE.width}
+                  height={ROUND_TIMER_LIVE.height}
+                  draggable={false}
+                />
+              </figure>
+            </div>
+          </div>
+          <div className="sfh-after">
+            <RevealCopy />
+            <Cta unlocked={unlocked} />
           </div>
         </div>
       ) : null}
