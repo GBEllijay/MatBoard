@@ -32,7 +32,7 @@ test('belt ladder is white, blue, purple, brown, black in rank order', () => {
     [
       'Advantage White',
       'Advantage – Student Edition',
-      'Advantage Academy Enhancement Edition',
+      'Advantage Media Edition',
       'Advantage Instructor Edition',
       'Advantage Pro',
     ],
@@ -52,7 +52,8 @@ test('?belts=a embroiders JOURNAL on the blue belt, ?belts=b is the plain blue b
   assert.equal(beltsVariantOf('z'), 'b');
   assert.equal(beltsVariantOf(' A '), 'a');
   const student = STOREFRONT_BELT_LADDER.find((r) => r.id === 'student');
-  assert.equal(student?.blurb, 'A personal BJJ training journal.');
+  assert.equal(student?.blurb, 'Personal BJJ Training Journal and More.');
+  assert.doesNotMatch(student?.blurb ?? '', /^A personal BJJ training journal\.$/);
   assert.equal(student?.cardPrice, '$19.99 one-time');
   assert.match(tsx, /beltsVariantOf\(params\.get\('belts'\)\)/);
   assert.match(tsx, /journal=\{step\.id === 'student' && belts === 'a'\}/);
@@ -124,8 +125,9 @@ test('White is unchanged; Pro keeps its title, price, belt and link with the own
   // Owner copy: one line replaces both earlier Pro lines.
   assert.equal(
     pro.blurb,
-    'Academy Management Console, shared drive, events, pro shop, gallery, instructor collaboration, distribution, tournament management, instructor seats, and giftable codes for student edition.',
+    'Academy Enhancement Software for Gym Owners and Jiu-Jitsu Professionals.',
   );
+  assert.doesNotMatch(pro.blurb, /Management Console|giftable codes|instructor seats|Includes Instructor/);
   assert.equal(pro.detail, undefined);
   assert.doesNotMatch(pro.blurb, /Includes/);
   // The shared product copy (and its code name) is untouched.
@@ -137,11 +139,19 @@ test('White is unchanged; Pro keeps its title, price, belt and link with the own
   assert.match(tsx, /step\.id === 'white' \? ' sf-step--live' : ''/);
 });
 
-test('Academy Enhancement has no product: display price only, no checkout, the tile is the alpha request', () => {
+test('Media Edition (purple) has no product: display price only, no checkout, the tile is the alpha request', () => {
   const academy = STOREFRONT_BELT_LADDER.find((r) => r.id === 'academy');
   assert.ok(academy);
   assert.equal(academy.blurb, 'Scoreboard, round timer, and media console.');
   assert.equal(academy.detail, undefined);
+  assert.equal(academy.title, 'Advantage Media Edition');
+  assert.equal(academy.rankLabel, 'MEDIA');
+  assert.equal(academy.belt, 'purple');
+  for (const r of STOREFRONT_BELT_LADDER) {
+    assert.doesNotMatch(`${r.title} ${r.rankLabel}`, /Academy Enhancement Edition|ACADEMY/);
+  }
+  assert.equal(STOREFRONT_LADDER_NOTE, 'Student, Media, Instructor and Pro are in alpha testing.');
+  assert.doesNotMatch(STOREFRONT_LADDER_NOTE, /Academy Enhancement/);
   // Display only: no Academy product exists in Stripe.
   assert.equal(academy.cardPrice, '$29.99 one-time');
   assert.equal(academy.status, 'Coming soon');

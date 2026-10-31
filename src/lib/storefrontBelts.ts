@@ -64,7 +64,8 @@ export const STOREFRONT_BELT_LADDER: readonly BeltRung[] = [
     rank: '02',
     rankLabel: student.rankLabel,
     title: student.title,
-    blurb: student.blurb,
+    // Homepage ladder copy only; the shared Student product copy is unchanged.
+    blurb: 'Personal BJJ Training Journal and More.',
     cardPrice: student.cardPrice,
     status: student.status,
     to: student.to,
@@ -73,10 +74,10 @@ export const STOREFRONT_BELT_LADDER: readonly BeltRung[] = [
     id: 'academy',
     belt: 'purple',
     rank: '03',
-    rankLabel: 'ACADEMY',
-    title: 'Advantage Academy Enhancement Edition',
+    rankLabel: 'MEDIA',
+    title: 'Advantage Media Edition',
     blurb: 'Scoreboard, round timer, and media console.',
-    // Display only: there is no Academy product in Stripe.
+    // Display only: there is no Media (id academy) product in Stripe.
     cardPrice: '$29.99 one-time',
     status: 'Coming soon',
     to: null,
@@ -101,11 +102,11 @@ export const STOREFRONT_BELT_LADDER: readonly BeltRung[] = [
     title: pro.title,
     // Homepage ladder copy only; the shared Pro product copy is unchanged.
     blurb:
-      'Academy Management Console, shared drive, events, pro shop, gallery, instructor collaboration, distribution, tournament management, instructor seats, and giftable codes for student edition.',
+      'Academy Enhancement Software for Gym Owners and Jiu-Jitsu Professionals.',
     cardPrice: pro.cardPrice,
     status: pro.status,
     to: pro.to,
   },
 ];
 
-export const STOREFRONT_LADDER_NOTE = 'Student, Academy Enhancement, Instructor and Pro are in alpha testing.';
+export const STOREFRONT_LADDER_NOTE = 'Student, Media, Instructor and Pro are in alpha testing.';
