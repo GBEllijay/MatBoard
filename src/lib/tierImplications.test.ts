@@ -36,32 +36,41 @@ Object.defineProperty(globalThis, 'localStorage', { value: local, configurable: 
 Object.defineProperty(globalThis, 'sessionStorage', { value: memoryStorage(), configurable: true });
 
 test('the tier table is pinned: Pro opens everything below it, Coach opens White', () => {
-  assert.deepEqual(impliedDoors(['pro']), ['white', 'student', 'coach', 'pro']);
+  assert.deepEqual(impliedDoors(['pro']), ['white', 'student', 'coach', 'pro', 'media']);
+  assert.deepEqual(impliedDoors(['media']), ['white', 'media']);
   assert.deepEqual(impliedDoors(['coach']), ['white', 'coach']);
   assert.deepEqual(impliedDoors(['white']), ['white']);
   // Student Edition is a separate journal product and opens only itself (unchanged on purpose).
   assert.deepEqual(impliedDoors(['student']), ['student']);
   assert.deepEqual(impliedDoors(['bogus', 'seat']), []);
-  assert.deepEqual(doorsThatOpen('white'), ['white', 'coach', 'pro']);
+  assert.deepEqual(doorsThatOpen('white'), ['white', 'coach', 'pro', 'media']);
+  assert.deepEqual(doorsThatOpen('media'), ['pro', 'media']);
   assert.deepEqual(doorsThatOpen('student'), ['student', 'pro']);
   assert.deepEqual(doorsThatOpen('pro'), ['pro']);
   for (const [door, row] of Object.entries(IMPLIED_DOORS)) assert.equal(row.includes(door as never), true, `${door} opens itself`);
 });
 
-test.todo('Media Edition: once the media door exists, impliedDoors(["pro"]) includes "media" (MEDIA slot in tierImplications.ts)');
+test('Media Edition: Pro includes Media; Media opens Media and White only', () => {
+  assert.equal(impliedDoors(['pro']).includes('media'), true);
+  assert.deepEqual(impliedDoors(['media']), ['white', 'media']);
+  assert.equal(impliedDoors(['coach']).includes('media'), false);
+  assert.equal(impliedDoors(['white']).includes('media'), false);
+});
 
 test('server: every Stripe product and code kind carries its implied doors in the pass scope', () => {
   assert.deepEqual(grantsForProduct('advantage-white'), ['white']);
   assert.deepEqual(grantsForProduct('advantage-student'), ['student']);
   assert.deepEqual(grantsForProduct('advantage-coach'), ['white', 'coach']);
-  assert.deepEqual(grantsForProduct('advantage-pro'), ['white', 'student', 'coach', 'pro']);
+  assert.deepEqual(grantsForProduct('advantage-pro'), ['white', 'student', 'coach', 'pro', 'media']);
+  assert.deepEqual(grantsForProduct('advantage-media'), ['white', 'media']);
   const byKind = Object.fromEntries(CODE_KINDS.map((kind) => [kind, expandGrants(grantsForKind(kind))]));
   assert.deepEqual(byKind, {
-    owner: ['white', 'student', 'coach', 'pro'],
+    owner: ['white', 'student', 'coach', 'pro', 'media'],
     'alpha-coach': ['white', 'coach'],
-    'alpha-pro': ['white', 'student', 'coach', 'pro'],
+    'alpha-pro': ['white', 'student', 'coach', 'pro', 'media'],
     'alpha-student': ['student'],
     'free-white': ['white'],
+    'alpha-media': ['white', 'media'],
   });
 });
 

@@ -13,6 +13,7 @@ import { SiteFooter } from '../components/SiteFooter';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useSeatDoor } from '../hooks/useSeatDoor';
 import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
+import { useMediaUnlocked } from '../hooks/useMediaUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import {
   COMING_SOON_ADS,
@@ -54,6 +55,7 @@ export function HomePage() {
   const whiteUnlocked = useWhiteUnlocked();
   const coachUnlocked = useCoachUnlocked();
   const studentUnlocked = useStudentEditionUnlocked();
+  const mediaUnlocked = useMediaUnlocked();
   const seat = useCurrentSeat();
   const seated = purchasePromptsHidden(seat);
   const coachOpen = coachDoorOpen(proUnlocked, coachUnlocked, seated);
@@ -116,7 +118,7 @@ export function HomePage() {
             onSoon={() => setSoon('student')}
           />
 
-          <MediaHomeCard />
+          <MediaHomeCard open={mediaUnlocked && !seated} />
 
           {coachOpen ? (
             <article className="mode-card mode-card--coach">
@@ -299,10 +301,27 @@ function StudentHomeCard({
 }
 
 /**
- * Display-only Media tier. No product, code kind, or entitlement exists yet, so it keeps the
- * locked look. The whole card (keyboard-focusable) opens the Media Edition page (draft PR #330).
+ * Advantage Media Edition on /products. Open reads the Media door (useMediaUnlocked):
+ * an alpha-media code, or Pro which includes Media. The whole card (keyboard-focusable when
+ * locked) opens /media; there is no learn-more button. Locked shows the price and the alpha
+ * line with no buy button, since there is no Media product in Stripe yet.
  */
-function MediaHomeCard() {
+function MediaHomeCard({ open }: { open: boolean }) {
+  if (open) {
+    return (
+      <article className="mode-card mode-card--media mode-card--feature">
+        <Link className="mode-card__hit" to={MEDIA_HOME_PATH} tabIndex={-1} aria-label={`Open ${MEDIA_HOME_TITLE}`} />
+        <BeltRail kind="purple" />
+        <strong>{MEDIA_HOME_TITLE}</strong>
+        <HomeDescription text={MEDIA_HOME_DESCRIPTION} />
+        <div className="mode-card__actions">
+          <Link className="btn btn--white" to={MEDIA_HOME_PATH}>
+            Open Media
+          </Link>
+        </div>
+      </article>
+    );
+  }
   return (
     <article className="mode-card mode-card--media mode-card--locked mode-card--feature">
       <Link className="mode-card__hit" to={MEDIA_HOME_PATH} aria-label={`${MEDIA_HOME_TITLE}, open the Media page`} />
@@ -342,3 +361,4 @@ function ProHomeCopy() {
     </>
   );
 }
+

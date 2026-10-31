@@ -28,9 +28,9 @@ test('grant matrix: Pro opens Coach, Student and White; Coach opens White', () =
   assert.deepEqual(grantsForProduct('advantage-white'), ['white']);
   assert.deepEqual(grantsForProduct('advantage-student'), ['student']);
   assert.deepEqual(grantsForProduct('advantage-coach'), ['white', 'coach']);
-  assert.deepEqual(grantsForProduct('advantage-pro'), ['white', 'student', 'coach', 'pro']);
-  assert.deepEqual(expandGrants(['pro']), ['white', 'student', 'coach', 'pro']);
-  assert.deepEqual(expandGrants(['white', 'student', 'coach', 'pro']), ['white', 'student', 'coach', 'pro']);
+  assert.deepEqual(grantsForProduct('advantage-pro'), ['white', 'student', 'coach', 'pro', 'media']);
+  assert.deepEqual(expandGrants(['pro']), ['white', 'student', 'coach', 'pro', 'media']);
+  assert.deepEqual(expandGrants(['white', 'student', 'coach', 'pro']), ['white', 'student', 'coach', 'pro', 'media']);
   assert.equal(LEGACY_UNLOCK_AMNESTY_DAYS, 45);
   assert.equal(Date.parse(LEGACY_AMNESTY_ENDS_AT) - Date.parse('2026-10-28T00:00:00.000Z'), 45 * 24 * 60 * 60 * 1000);
 });

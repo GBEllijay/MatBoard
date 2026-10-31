@@ -1,3 +1,4 @@
+import { appVersionHeaders } from './appCapability.ts';
 import { checkoutNonceHash, currentCheckoutNonce } from './checkoutNonce.ts';
 import { devicePublicJwk } from './deviceKey.ts';
 import { acceptServerToken, clearOwnerTestToken, clearRelocksFor, readDeviceId } from './entitlement.ts';
@@ -46,7 +47,7 @@ export async function redeemAccessCode(code: string, email = ''): Promise<Redeem
     const publicJwk = await devicePublicJwk();
     const response = await fetch(API_CODES_REDEEM_PATH, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...appVersionHeaders() },
       body: JSON.stringify({ code, email: email || undefined, deviceId: readDeviceId(), publicJwk }),
     });
     if (response.status === 429) return { ok: false, error: await readError(response, 'Too many attempts. Wait a few minutes and try again.') };
@@ -69,7 +70,7 @@ export async function confirmCheckoutSession(sessionId: string): Promise<
     const publicJwk = await devicePublicJwk();
     const response = await fetch(API_SESSION_REDEEM_PATH, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...appVersionHeaders() },
       body: JSON.stringify({
         sessionId,
         nonce: currentCheckoutNonce(),
@@ -135,7 +136,7 @@ export async function submitOwnerTest(input: {
   try {
     const response = await fetch(API_OWNER_TEST_PATH, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...appVersionHeaders() },
       body: JSON.stringify({
         secret: input.secret,
         tier: input.tier,

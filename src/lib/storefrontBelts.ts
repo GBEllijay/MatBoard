@@ -1,3 +1,4 @@
+import { MEDIA_EDITION_PATH } from './mediaEdition.ts';
 import { INSTRUCTOR_DISPLAY_PRICE_LINE } from './productPrices.ts';
 import { STOREFRONT_STEPS, type StorefrontStep } from './storefront.ts';
 
@@ -33,7 +34,7 @@ export type BeltRung = {
   cardPrice: string;
   status: StorefrontStep['status'];
   /** Router path, or null for the alpha-request mail link. */
-  to: StorefrontStep['to'] | null;
+  to: StorefrontStep['to'] | typeof MEDIA_EDITION_PATH | null;
 };
 
 function step(id: StorefrontStep['id']): StorefrontStep {
@@ -81,7 +82,8 @@ export const STOREFRONT_BELT_LADDER: readonly BeltRung[] = [
     // Display only: there is no Media (id academy) product in Stripe.
     cardPrice: '$29.99 one-time',
     status: 'Coming soon',
-    to: null,
+    // Public Media Edition page. Still not for sale: its CTA is the alpha-code email.
+    to: MEDIA_EDITION_PATH,
   },
   {
     id: 'coach',

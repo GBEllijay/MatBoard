@@ -41,7 +41,7 @@ test('/products cards follow the belt ladder order: White, Student, Media, Instr
   const order = [
     at('<strong>Advantage White</strong>'),
     at('<StudentHomeCard'),
-    at('<MediaHomeCard />'),
+    at('<MediaHomeCard open={mediaUnlocked && !seated} />'),
     at('<strong>{INSTRUCTOR_HOME_TITLE}</strong>'),
     at('<ProHomeCopy />'),
   ];
@@ -66,7 +66,7 @@ test('Student card uses the blue belt rail instead of the leather spine', () => 
   assert.match(css, /\.belt-rail--blue \{\s*--belt-fill: #2a5cf0;/);
 });
 
-test('Media card is display-only, locked, purple, $29.99, and links to /media', () => {
+test('Media card: locked is display-only purple $29.99 linking to /media; open reads the media door', () => {
   assert.equal(MEDIA_HOME_TITLE, 'Advantage Media Edition');
   assert.equal(MEDIA_HOME_DESCRIPTION, 'Scoreboard, round timer, and media console.');
   assert.equal(MEDIA_PRICE_LINE, '$29.99 one-time');
@@ -74,7 +74,11 @@ test('Media card is display-only, locked, purple, $29.99, and links to /media', 
   const card = home.slice(home.indexOf('function MediaHomeCard'), home.indexOf('function HomeDescription'));
   assert.match(card, /mode-card mode-card--media mode-card--locked/);
   assert.match(card, /<BeltRail kind="purple" \/>/);
-  assert.equal(card.match(/to=\{MEDIA_HOME_PATH\}/g)?.length, 1);
+  // Open (media door, from #332): whole card + "Open Media" both go to /media. Locked: whole card only.
+  assert.match(home, /const mediaUnlocked = useMediaUnlocked\(\);/);
+  assert.match(card, />\s*Open Media\s*</);
+  assert.equal(card.match(/to=\{MEDIA_HOME_PATH\}/g)?.length, 3);
+  assert.doesNotMatch(card, /Learn more/);
   // No checkout or unlock on this card; the alpha email line is the shared edition note.
   assert.doesNotMatch(card, /onClick|Unlock|checkout/i);
   assert.match(css, /\.belt-rail--purple \{\s*--belt-fill: #6b2d91;/);

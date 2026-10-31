@@ -4,6 +4,7 @@
  * the amnesty instant, and only for the keys in legacyUnlock.ts.
  */
 
+import { CLIENT_APP_VERSION } from './appCapability.ts';
 import {
   base64UrlToBytes,
   verifyToken,
@@ -15,6 +16,7 @@ import {
   amnestyOpen,
   COACH_RELOCK_KEY,
   LEGACY_AMNESTY_ENDS_AT,
+  MEDIA_RELOCK_KEY,
   noteLegacyAccess,
   PRO_RELOCK_KEY,
   retireLegacyUnlockFlags,
@@ -30,7 +32,8 @@ export const ENTITLEMENT_TOKEN_KEY = 'advantage.entitlement.token';
 export const ENTITLEMENT_CLOCK_KEY = 'advantage.entitlement.clock';
 export const ENTITLEMENT_CONFIG_KEY = 'advantage.entitlement.config';
 export const ENTITLEMENT_DEVICE_KEY = 'advantage.device.id';
-export const APP_VERSION = '2';
+/** Version 3 understands the Media Edition door. See src/lib/appCapability.ts. */
+export const APP_VERSION = CLIENT_APP_VERSION;
 
 const ACCESS_EVENT = 'advantage-access';
 const listeners = new Set<() => void>();
@@ -158,11 +161,20 @@ function relocked(door: Door): boolean {
   if (door === 'pro') return readItem(PRO_RELOCK_KEY) === '1';
   if (door === 'coach') return readItem(COACH_RELOCK_KEY) === '1';
   if (door === 'white') return readItem(WHITE_RELOCK_KEY) === '1';
+  if (door === 'media') {
+    const mark = readItem(MEDIA_RELOCK_KEY);
+    // A Lock Pro from before Media existed set only the Pro marks. Treat that browser as
+    // Media-locked too until something reopens Media (which writes '0').
+    if (mark === null) return readItem(PRO_RELOCK_KEY) === '1';
+    return mark === '1';
+  }
   return readItem(STUDENT_RELOCK_KEY) === '1';
 }
 
 function legacyFlag(door: Door): boolean {
   if (!amnestyOpen(nowMs(), config.legacyAmnestyEndsAt)) return false;
+  // Media Edition is newer than the old on-device switches. It has no legacy flag.
+  if (door === 'media') return false;
   if (door === 'white') {
     if (readItem('advantage.whiteUnlocked') !== '1') return false;
     const expiry = readItem('advantage.whiteExpiresAt');
@@ -225,6 +237,9 @@ function tokenGrants(door: Door): boolean {
   if (paused && (door === 'student' || door === 'coach')) return false;
   // Tier rule from tierImplications.ts: Pro opens Coach, Student and White; Coach opens White.
   if (paused && door === 'white') return verified.grants.includes('white') && !verified.grants.includes('pro');
+  if (paused && door === 'media') return verified.grants.includes('media') && !verified.grants.includes('pro');
+  // Seats follow their invite preset for Media Console (paidChunkAccess.ts), not a Media door.
+  if (door === 'media' && (verified.tier === 'seat' || verified.src === 'seat')) return false;
   return impliedDoors(verified.grants).includes(door);
 }
 
@@ -327,23 +342,39 @@ const RELOCK_KEY_FOR: Readonly<Record<Door, string>> = {
   student: STUDENT_RELOCK_KEY,
   coach: COACH_RELOCK_KEY,
   pro: PRO_RELOCK_KEY,
+  media: MEDIA_RELOCK_KEY,
 };
 
 /** A new grant reopens every door it implies (tierImplications.ts) that a Lock button closed here. */
 export function clearRelocksFor(grants: readonly string[]): void {
-  const keys = impliedDoors(grants).map((door) => RELOCK_KEY_FOR[door]);
-  if (!keys.length) return;
-  keys.forEach(removeItem);
+  const doors = impliedDoors(grants);
+  if (!doors.length) return;
+  doors.forEach((door) => {
+    // '0' (not removed) so the pre-Media Lock Pro fallback in relocked() stops applying.
+    if (door === 'media') writeItem(MEDIA_RELOCK_KEY, '0');
+    else removeItem(RELOCK_KEY_FOR[door]);
+  });
   notifyEntitlement();
 }
 
 /**
- * Lock is symmetric with unlock: Lock Pro closes Pro, Coach, Student Edition and White
- * (and Media once it is in the table); Lock Coach closes Coach and White.
+ * Lock is symmetric with unlock: Lock Pro closes Pro, Coach, Student Edition, White and
+ * Media; Lock Coach closes Coach and White.
  * The relock marks win over the stored pass, owner-test doors, and legacy flags in doorOpen.
+ *
+ * keepOtherwiseOpen (used by Lock Media): an implied door stays open when another tier
+ * that is still open, and is not being locked, also opens it. So Lock Media with Coach or
+ * Pro still on closes only Media; Lock Media alone closes Media and its White.
  */
-export function relockImplied(door: Door): Door[] {
-  const doors = impliedDoors([door]);
+export function relockImplied(door: Door, options: { keepOtherwiseOpen?: boolean } = {}): Door[] {
+  const implied = impliedDoors([door]);
+  const doors = options.keepOtherwiseOpen
+    ? implied.filter(
+        (closed) =>
+          closed === door ||
+          !doorsThatOpen(closed).some((source) => !implied.includes(source) && doorOpen(source)),
+      )
+    : implied;
   doors.forEach((closed) => writeItem(RELOCK_KEY_FOR[closed], '1'));
   // The owner-test seat is part of Pro and Coach previews.
   dropOwnerTestDoors(door === 'pro' || door === 'coach' ? [...doors, 'seat'] : doors);

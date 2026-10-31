@@ -4,7 +4,8 @@ import { keyedHash, normalizeCode, normalizeEmail } from './codeCrypto.ts';
 import type { D1Database } from './d1.ts';
 import { expandGrants, tierForGrants } from './grantMatrix.ts';
 import { emailHint, recordPurchase } from './purchaseRecords.ts';
-import { API_PRODUCT_COACH, API_PRODUCT_ID, API_PRODUCT_PRO, API_PRODUCT_STUDENT } from './routes.ts';
+import { API_PRODUCT_COACH, API_PRODUCT_ID, API_PRODUCT_MEDIA, API_PRODUCT_PRO, API_PRODUCT_STUDENT } from './routes.ts';
+import { appVersionOf } from '../lib/appCapability.ts';
 import { issueToken } from './tokenIssue.ts';
 import {
   CAP_STORE_ERROR,
@@ -74,6 +75,7 @@ const PRODUCT_FOR_DOOR: Record<Door, string> = {
   student: API_PRODUCT_STUDENT,
   coach: API_PRODUCT_COACH,
   pro: API_PRODUCT_PRO,
+  media: API_PRODUCT_MEDIA,
 };
 
 export async function handleCodeRedeem(
@@ -172,6 +174,7 @@ export async function handleCodeRedeem(
         kind: 'code',
         grantEndsAt: expiresAt,
         emailHint: await emailHint(email, pepper),
+        appVersion: appVersionOf(request),
       },
       services.keyId,
     );

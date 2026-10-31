@@ -1,3 +1,4 @@
+import { appVersionHeaders } from './appCapability.ts';
 import { signRefreshProof } from './deviceProof.ts';
 import { ensureDeviceKey, devicePublicJwk } from './deviceKey.ts';
 import { acceptServerToken, clearEntitlementToken, ENTITLEMENT_TOKEN_KEY, markEntitlementOffline, readDeviceId } from './entitlement.ts';
@@ -23,7 +24,7 @@ export async function refreshEntitlement(): Promise<boolean> {
     }
     const response = await fetch('/api/token/refresh', {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...appVersionHeaders() },
       body: JSON.stringify(body),
     });
     const parsed = (await response.json()) as { ok?: boolean; token?: string; revoked?: boolean };
