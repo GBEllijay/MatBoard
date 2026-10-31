@@ -33,7 +33,7 @@ test('belt ladder is white, blue, purple, brown, black in rank order', () => {
       'Advantage White',
       'Advantage – Student Edition',
       'Advantage Academy Enhancement Edition',
-      'Advantage Instructor',
+      'Advantage Instructor Edition',
       'Advantage Pro',
     ],
   );
@@ -73,13 +73,13 @@ test('Coach reads Instructor in this section, with the same code, route, price a
   const coach = STOREFRONT_STEPS.find((s) => s.id === 'coach');
   const rung = STOREFRONT_BELT_LADDER.find((r) => r.id === 'coach');
   assert.ok(coach && rung);
-  assert.equal(rung.title, 'Advantage Instructor');
+  assert.equal(rung.title, 'Advantage Instructor Edition');
   assert.equal(rung.rankLabel, 'INSTRUCTOR');
   assert.equal(rung.blurb, coach.blurb);
   assert.equal(rung.cardPrice, '$29.99 one-time');
   assert.equal(rung.to, '/products');
   assert.equal(rung.status, 'Coming soon');
-  for (const r of STOREFRONT_BELT_LADDER.filter((x) => x.id !== 'pro')) {
+  for (const r of STOREFRONT_BELT_LADDER) {
     assert.doesNotMatch(`${r.title} ${r.rankLabel} ${r.blurb}`, /Coach/);
   }
   assert.doesNotMatch(STOREFRONT_LADDER_NOTE, /Coach/);
@@ -88,7 +88,7 @@ test('Coach reads Instructor in this section, with the same code, route, price a
   assert.equal(coach.title, 'Advantage Coach');
 });
 
-test('White and Pro tiles are unchanged', () => {
+test('White and Pro tiles are unchanged (Pro only reads Includes Instructor.)', () => {
   const [white, , , , pro] = STOREFRONT_BELT_LADDER;
   assert.deepEqual(
     { title: white.title, rankLabel: white.rankLabel, blurb: white.blurb, cardPrice: white.cardPrice, status: white.status, to: white.to },
@@ -99,8 +99,14 @@ test('White and Pro tiles are unchanged', () => {
   assert.ok(proStep);
   assert.deepEqual(
     { title: pro.title, rankLabel: pro.rankLabel, blurb: pro.blurb, cardPrice: pro.cardPrice, status: pro.status, to: pro.to },
-    { title: proStep.title, rankLabel: proStep.rankLabel, blurb: proStep.blurb, cardPrice: proStep.cardPrice, status: proStep.status, to: proStep.to },
+    { title: proStep.title, rankLabel: proStep.rankLabel, blurb: proStep.blurb.replace('Includes Coach.', 'Includes Instructor.'), cardPrice: proStep.cardPrice, status: proStep.status, to: proStep.to },
   );
+  assert.equal(
+    pro.blurb,
+    'Academy management, shared drive, events, pro shop, gallery, instructor collaboration and student seats. Includes Instructor.',
+  );
+  // The shared product copy (and its code name) is untouched.
+  assert.match(proStep.blurb, /Includes Coach\.$/);
   assert.equal(pro.cardPrice, '$99.99 + $5.99/mo');
   assert.equal(pro.to, '/products');
   // Black keeps the white / red / white bar class; White keeps the live card.

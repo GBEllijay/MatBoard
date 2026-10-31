@@ -83,7 +83,7 @@ export const STOREFRONT_BELT_LADDER: readonly BeltRung[] = [
     belt: 'brown',
     rank: '04',
     rankLabel: 'INSTRUCTOR',
-    title: 'Advantage Instructor',
+    title: 'Advantage Instructor Edition',
     blurb: coach.blurb,
     cardPrice: coach.cardPrice,
     status: coach.status,
@@ -95,7 +95,8 @@ export const STOREFRONT_BELT_LADDER: readonly BeltRung[] = [
     rank: '05',
     rankLabel: pro.rankLabel,
     title: pro.title,
-    blurb: pro.blurb,
+    // User-facing copy only: the Coach tier reads Instructor on this ladder.
+    blurb: pro.blurb.replace('Includes Coach.', 'Includes Instructor.'),
     cardPrice: pro.cardPrice,
     status: pro.status,
     to: pro.to,
