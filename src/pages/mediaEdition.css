@@ -1,0 +1,243 @@
+/* /media-edition. Scoped to .home--media so /buy and the other pages stay put. */
+
+.home.home--media {
+  overflow-x: clip;
+}
+
+.home--media .home__inner {
+  min-height: 0;
+}
+
+.home--media .home__inner:first-child {
+  padding-bottom: 1.75rem;
+}
+
+.home--media .home__inner + .media-band,
+.home--media .media-gallery + .home__inner {
+  margin-top: 0;
+}
+
+.home--media .media-gallery + .home__inner {
+  padding-top: 1.75rem;
+}
+
+/* Purple belt: the Media Console header cloth, not the lighter roster tip purple. */
+.home--media .belt-tip--purple {
+  --belt-cloth: #6b2d91;
+}
+
+.home.home--media .buy .media-edition__head h2,
+.home.home--media .buy .media-edition__head p,
+.home.home--media .buy .media-edition__head .buy__price {
+  color: #fff;
+}
+
+.home.home--media .buy .media-edition__head .buy__price span,
+.home.home--media .buy .media-edition__head p.buy__kicker {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.home.home--media .buy .media-edition__head p.media-edition__lead {
+  font-size: 1.05rem;
+  font-weight: 650;
+}
+
+.home--media .media-edition__cta .btn {
+  min-height: 52px;
+  text-decoration: none;
+  color: #14161c;
+}
+
+.home--media .media-edition__features .soon-ad__feature {
+  border-color: rgba(176, 132, 214, 0.28);
+  background: linear-gradient(145deg, rgba(107, 45, 145, 0.32), rgba(12, 17, 24, 0.42));
+}
+
+@media (min-width: 740px) {
+  .home--media .media-edition__features {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* White band: scoreboard and round timer, with the Student Edition journal cover as the mark. */
+.home--media .media-band {
+  position: relative;
+  z-index: 1;
+  background: #f7f7f5;
+  color: #14161c;
+  border-block: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.home--media .media-band__inner {
+  display: grid;
+  gap: 1.25rem;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem;
+}
+
+.home--media .media-band__brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.home--media .media-band__brand h2 {
+  margin: 0.15rem 0 0.3rem;
+  color: #14161c;
+  font-size: clamp(1.25rem, 3.6vw, 1.7rem);
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.home--media .media-band__brand p {
+  margin: 0;
+  color: #3d414c;
+  line-height: 1.4;
+}
+
+.home--media .media-band__eyebrow {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.home--media p.media-band__eyebrow {
+  color: #6b2d91;
+}
+
+/* Same leather, stitching, elastic, ribbon and Advantage deboss as the Student hub journal (.s-journal). */
+.home--media .media-band__notebook {
+  position: relative;
+  flex: 0 0 auto;
+  width: 5.5rem;
+  height: 7rem;
+  border-radius: 6px 14px 14px 6px;
+  background-color: #161616;
+  background-image:
+    url('/student/black-leather-grain.png'),
+    radial-gradient(ellipse at 18% 0%, rgba(255, 255, 255, 0.08), transparent 42%),
+    linear-gradient(180deg, #2b2b2b, #191919 55%, #101010);
+  background-size: 180px 180px, auto, auto;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.home--media .media-band__notebook::before {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border-radius: 4px 10px 10px 4px;
+  border: 1.5px dashed rgba(198, 198, 198, 0.55);
+  z-index: 2;
+}
+
+.home--media .media-band__elastic {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 14px;
+  width: 9px;
+  background: linear-gradient(90deg, #141414, #2c2c2c 42%, #0c0c0c);
+  box-shadow: -1px 0 0 rgba(255, 255, 255, 0.08), 2px 0 5px rgba(0, 0, 0, 0.45);
+  z-index: 3;
+}
+
+.home--media .media-band__stamp {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  width: 46px;
+  height: 46px;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.34);
+  -webkit-mask: url('/student/advantage-deboss-mask.png') center / contain no-repeat;
+  mask: url('/student/advantage-deboss-mask.png') center / contain no-repeat;
+  z-index: 3;
+}
+
+.home--media .media-band__ribbon {
+  position: absolute;
+  left: 16px;
+  bottom: -10px;
+  width: 10px;
+  height: 14px;
+  background: #6b2d91;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%);
+  z-index: 1;
+}
+
+.home--media .media-band__shots {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.home--media .media-band__shot,
+.home--media .media-gallery figure {
+  margin: 0;
+}
+
+.home--media .media-band__shot img,
+.home--media .media-gallery img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 12px;
+  box-shadow: 0 14px 30px -16px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.home--media .media-band__shot figcaption {
+  margin-top: 0.4rem;
+  color: #3d414c;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+@media (min-width: 900px) {
+  .home--media .media-band__inner {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    align-items: center;
+    gap: 2.5rem;
+    padding: 2.75rem 2rem;
+  }
+}
+
+/* Gallery directly under the band: a plain grid. There is no lightbox component in the app. */
+.home--media .media-gallery {
+  position: relative;
+  z-index: 1;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.75rem 1.25rem 0;
+}
+
+.home--media .media-gallery__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home--media .media-gallery figcaption {
+  width: fit-content;
+  margin-top: 0.5rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 8px;
+  background: rgba(14, 23, 38, 0.9);
+  color: #eef2f8;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+@media (min-width: 640px) {
+  .home--media .media-gallery__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .home--media .media-gallery {
+    padding-inline: 2rem;
+  }
+}

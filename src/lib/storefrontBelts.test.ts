@@ -139,7 +139,7 @@ test('White is unchanged; Pro keeps its title, price, belt and link with the own
   assert.match(tsx, /step\.id === 'white' \? ' sf-step--live' : ''/);
 });
 
-test('Media Edition (purple) has no product: display price only, no checkout, the tile is the alpha request', () => {
+test('Media Edition (purple) has no product: display price only, no checkout, the tile opens the Media Edition page', () => {
   const academy = STOREFRONT_BELT_LADDER.find((r) => r.id === 'academy');
   assert.ok(academy);
   assert.equal(academy.blurb, 'Scoreboard, round timer, and media console.');
@@ -155,7 +155,8 @@ test('Media Edition (purple) has no product: display price only, no checkout, th
   // Display only: no Academy product exists in Stripe.
   assert.equal(academy.cardPrice, '$29.99 one-time');
   assert.equal(academy.status, 'Coming soon');
-  assert.equal(academy.to, null);
+  assert.equal(academy.to, '/media-edition');
+  // The mail-link branch stays for any future rung without a page.
   assert.match(tsx, /if \(step\.to === null\)[\s\S]*?href=\{alphaRequestMailto\(\)\}/);
   // The section keeps its heading and the alpha button.
   assert.equal(STOREFRONT_PROGRESS_HEADING, 'Start with White. Grow into Pro.');

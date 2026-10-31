@@ -85,6 +85,7 @@ import { ProLockedPage } from './pages/ProLocked';
 import { bootEntitlement } from './lib/entitlement';
 import { BuyCoachPage, BuyProPage, BuyStudentPage } from './pages/BuyTier';
 import { BuyWhitePage } from './pages/BuyWhite';
+import { MediaEditionPage } from './pages/MediaEdition';
 import { RestoreAccessPage } from './pages/RestoreAccess';
 import { WhitePage } from './pages/White';
 import { MediaHubPage } from './pages/MediaHub';
@@ -348,6 +349,7 @@ export default function App() {
         }
       />
       <Route path="/buy" element={<BuyWhitePage />} />
+      <Route path="/media-edition" element={<MediaEditionPage />} />
       <Route path="/restore" element={<RestoreAccessPage />} />
       <Route path="/pro/paused" element={<ProLockedPage />} />
       <Route
