@@ -464,6 +464,11 @@ export type ProSurfaceInput = {
   programDirectorSeat: boolean;
   /** Invite granted Daily Lesson Plan or Daily Training Videos. */
   coachMenus: boolean;
+  /**
+   * Media Edition door on this browser (src/lib/mediaUnlock.ts). Pro includes it.
+   * Left out by older callers, it follows proUnlocked as before.
+   */
+  mediaUnlocked?: boolean;
 };
 
 /**
@@ -474,7 +479,8 @@ export type ProSurfaceInput = {
  * this browser's Pro unlock is off. A seat with none of those stays shut.
  */
 export function mediaConsoleDoorOpen(input: ProSurfaceInput): boolean {
-  if (!input.seated) return input.proUnlocked;
+  // No seat: the Media door (Media Edition, or Pro which includes it). Lock Media closes it.
+  if (!input.seated) return input.mediaUnlocked ?? input.proUnlocked;
   return input.seatGrantsMedia;
 }
 
@@ -500,7 +506,11 @@ export function coachUnlimitedDoorOpen(input: ProSurfaceInput): boolean {
 
 /** Hubs this browser may show. A seat never receives owner-only hubs. */
 export function visibleProHubs(input: ProSurfaceInput): readonly (typeof PRO_HUBS)[number][] {
-  if (!input.seated) return input.proUnlocked ? PRO_HUBS : [];
+  if (!input.seated) {
+    if (!input.proUnlocked) return [];
+    // Lock Media with Pro on hides the Media Console hub; Pro's other hubs stay.
+    return mediaConsoleDoorOpen(input) ? PRO_HUBS : PRO_HUBS.filter((hub) => !hub.to.startsWith('/slideshow'));
+  }
   const hubs: (typeof PRO_HUBS)[number][] = [];
   if (mediaConsoleDoorOpen(input)) {
     const media = PRO_HUBS.find((hub) => hub.to.startsWith('/slideshow'));

@@ -118,7 +118,7 @@ test('/api/config reports code setup as counts only, never hashes or ids', async
   const response = handlePublicConfig(new Request('http://localhost/api/config'), { CODE_HASH_PEPPER: pepper, CODE_CATALOG: catalog }, null);
   const text = await response.text();
   const body = JSON.parse(text) as { codes: Record<string, unknown> };
-  assert.deepEqual(body.codes, { pepperSet: true, catalogSet: true, catalogLoaded: true, entries: 2, rejected: 1, kinds: { owner: 0, 'alpha-coach': 1, 'alpha-pro': 1, 'alpha-student': 0, 'free-white': 0 }, duplicates: 0, problem: null });
+  assert.deepEqual(body.codes, { pepperSet: true, catalogSet: true, catalogLoaded: true, entries: 2, rejected: 1, kinds: { owner: 0, 'alpha-coach': 1, 'alpha-pro': 1, 'alpha-student': 0, 'free-white': 0, 'alpha-media': 0 }, duplicates: 0, problem: null });
   const hash = (JSON.parse(pro.record) as { hash: string }).hash;
   const id = (JSON.parse(pro.record) as { id: string }).id;
   assert.equal(text.includes(hash), false);
@@ -128,8 +128,8 @@ test('/api/config reports code setup as counts only, never hashes or ids', async
   assert.equal(text.includes(pro.code), false);
 
   const empty = (await handlePublicConfig(new Request('http://localhost/api/config'), {}, null).json()) as { codes: unknown };
-  assert.deepEqual(empty.codes, { pepperSet: false, catalogSet: false, catalogLoaded: false, entries: 0, rejected: 0, kinds: { owner: 0, 'alpha-coach': 0, 'alpha-pro': 0, 'alpha-student': 0, 'free-white': 0 }, duplicates: 0, problem: null });
-  assert.deepEqual(codeCatalogStatus('garbage'), { catalogSet: true, catalogLoaded: false, entries: 0, rejected: 1, kinds: { owner: 0, 'alpha-coach': 0, 'alpha-pro': 0, 'alpha-student': 0, 'free-white': 0 }, duplicates: 0, problem: 'not-json' });
+  assert.deepEqual(empty.codes, { pepperSet: false, catalogSet: false, catalogLoaded: false, entries: 0, rejected: 0, kinds: { owner: 0, 'alpha-coach': 0, 'alpha-pro': 0, 'alpha-student': 0, 'free-white': 0, 'alpha-media': 0 }, duplicates: 0, problem: null });
+  assert.deepEqual(codeCatalogStatus('garbage'), { catalogSet: true, catalogLoaded: false, entries: 0, rejected: 1, kinds: { owner: 0, 'alpha-coach': 0, 'alpha-pro': 0, 'alpha-student': 0, 'free-white': 0, 'alpha-media': 0 }, duplicates: 0, problem: 'not-json' });
   assert.equal(codeCatalogStatus(pro.code).problem, 'looks-like-a-plain-code');
   assert.equal(codeCatalogStatus(`code:${hash}`).problem, 'hash-without-record');
   assert.equal(codeCatalogStatus(hash).problem, 'hash-without-record');
@@ -149,7 +149,7 @@ test('/api/config counts usable records by kind so a missing or expired owner ro
   const status = codeCatalogStatus([owner.record, JSON.stringify(ownerRow), pro.record, white.record, expiredOwner, retiredPro].join('\n'));
   assert.equal(status.entries, 5);
   assert.equal(status.duplicates, 1);
-  assert.deepEqual(status.kinds, { owner: 1, 'alpha-coach': 0, 'alpha-pro': 1, 'alpha-student': 0, 'free-white': 1 });
+  assert.deepEqual(status.kinds, { owner: 1, 'alpha-coach': 0, 'alpha-pro': 1, 'alpha-student': 0, 'free-white': 1, 'alpha-media': 0 });
   const text = JSON.stringify(status);
   for (const row of [owner, pro, white]) {
     assert.equal(text.includes(row.code), false);

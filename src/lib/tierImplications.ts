@@ -8,13 +8,14 @@ import { DOORS, type Door } from './entitlementToken.ts';
  *   - Phase 4 paid screens (src/lib/paidChunkAccess.ts proGrantOpen, read by functions/paid)
  *
  * Locked owner rule (Oct 30, 2026): each tier unlocks everything below it.
- *   Pro   = Pro + Coach/Instructor + Student Edition + White (+ Media Edition, once it exists)
+ *   Pro   = Pro + Coach/Instructor + Student Edition + White + Media Edition
  *   Coach = Coach/Instructor + White
+ *   Media = Media Edition (Media Console) + White (Scoreboard and Round Timer)
  *   Student Edition is a separate journal product. It opens only itself.
  *   White opens only itself.
  *
- * Adding Media Edition later: add 'media' to DOORS in entitlementToken.ts, then put it in
- * the pro row below (the MEDIA slot). Every gate above picks it up from here.
+ * Media Edition (Oct 31, 2026): 'media' is a door in entitlementToken.ts DOORS, its own row
+ * opens Media + White, and the pro row includes it. Coach does not open Media.
  */
 export const IMPLIED_DOORS: Readonly<Record<Door, readonly Door[]>> = {
   white: ['white'],
@@ -25,8 +26,9 @@ export const IMPLIED_DOORS: Readonly<Record<Door, readonly Door[]>> = {
     'coach',
     'student',
     'white',
-    // MEDIA slot: 'media',
+    'media',
   ],
+  media: ['media', 'white'],
 };
 
 /** Every door the given grants open, in DOORS order. Unknown names are dropped. */

@@ -1,3 +1,4 @@
+import { appVersionHeaders } from '../lib/appCapability';
 import { useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { HomeMark } from '../components/HomeMark';
@@ -48,7 +49,7 @@ export function RestoreAccessPage() {
       const publicJwk = await devicePublicJwk();
       const response = await fetch('/api/restore/verify', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', ...appVersionHeaders() },
         body: JSON.stringify({
           challengeId,
           code: code.trim(),
