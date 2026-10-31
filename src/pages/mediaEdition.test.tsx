@@ -14,6 +14,7 @@ import { MediaEditionGate } from '../components/MediaEditionGate.tsx';
 import { SuiteMenuLinks } from '../components/SuiteMenuLinks.tsx';
 import { COMPETITION_PRO_MENU, MEDIA_EDITION_MENU } from '../lib/productNames.ts';
 import { MediaEditionPage } from './MediaEdition.tsx';
+import { MediaEditionHubPage } from './MediaEditionHub.tsx';
 import { StorefrontPage } from './Storefront.tsx';
 
 const dom = new Window({ url: 'http://localhost/media' });
@@ -55,6 +56,7 @@ function mount(entry: string, open = false) {
           />
           <Route path="/media-edition" element={<Navigate to="/media" replace />} />
           <Route path="/suite-menu" element={<SuiteMenuLinks links={COMPETITION_PRO_MENU} label="suite" />} />
+          <Route path="/hub" element={<MediaEditionHubPage />} />
           <Route path="/edition-menu" element={<SuiteMenuLinks links={MEDIA_EDITION_MENU} label="edition" />} />
         </Routes>
       </MemoryRouter>,
@@ -150,28 +152,65 @@ test('a Pro or owner pass on /media gets the paid console, not the marketing pag
   m.done();
 });
 
-test('Media Edition buttons render like /suite: stacked pro-hub links in order', () => {
-  const hrefs = (entry: string) => {
+test('Media Edition hub buttons render like /suite: stacked pro-hub links in order, with subtitles', () => {
+  const read = (entry: string) => {
     const m = mount(entry);
     const links = [...m.host.querySelectorAll('nav.suite__nav > a.pro-hub')].map((a) => ({
-      title: a.textContent,
+      title: a.querySelector('.pro-hub__label > span:first-child')?.textContent ?? a.textContent,
+      sub: a.querySelector('.pro-hub__sub')?.textContent ?? null,
       href: a.getAttribute('href'),
       rail: a.querySelector('.belt-rail')?.className,
     }));
     m.done();
     return links;
   };
-  const edition = hrefs('/edition-menu');
-  const suite = hrefs('/suite-menu');
+  const edition = read('/edition-menu');
+  const suite = read('/suite-menu');
   assert.deepEqual(
     edition.map((l) => [l.title, l.href]),
     [
-      ['Media Console', '/slideshow?folder=gallery'],
       ['Scoreboard', '/match/control?from=suite'],
       ['Round Timer', '/training/control?from=suite'],
+      ['Media Console', '/slideshow?folder=gallery'],
     ],
   );
-  assert.match(edition[0].rail ?? '', /belt-rail--purple/);
-  // Scoreboard and Round Timer are the same rendered buttons as on /suite.
-  assert.deepEqual(edition.slice(1), suite.filter((l) => l.title === 'Scoreboard' || l.title === 'Round Timer'));
+  assert.deepEqual(
+    edition.map((l) => l.sub),
+    [
+      'Live match scoring. Easily cast to your gym TV.',
+      'Rounds and rest. Easily cast to your gym TV.',
+      'Slideshows, schedule, and events. Easily cast to your gym TV.',
+    ],
+  );
+  assert.match(edition[2].rail ?? '', /belt-rail--purple/);
+  // Scoreboard and Round Timer: same link, belt rail and title as on /suite.
+  const fromSuite = suite.filter((l) => l.title === 'Scoreboard' || l.title === 'Round Timer');
+  assert.deepEqual(
+    edition.slice(0, 2).map(({ sub: _s, ...rest }) => rest),
+    fromSuite.map(({ sub: _s, ...rest }) => rest),
+  );
+  // /suite buttons stay single-line.
+  for (const l of suite) assert.equal(l.sub, null, l.title);
+});
+
+test('unlocked hub is a clean menu: purple belt title on top, then three buttons, no gallery', () => {
+  const m = mount('/hub');
+  const { host } = m;
+  assert.equal(document.title, 'Advantage Media Edition');
+  const belt = host.querySelector('header.belt-header.belt-header--purple h2');
+  assert.equal(belt?.textContent, 'Advantage Media Edition');
+  const nav = host.querySelector('nav.suite__nav');
+  assert.ok(nav);
+  // Belt comes before the buttons.
+  assert.ok(belt!.compareDocumentPosition(nav!) & 4);
+  const titles = [...nav!.querySelectorAll('a.pro-hub .pro-hub__label > span:first-child')].map((n) => n.textContent);
+  assert.deepEqual(titles, ['Scoreboard', 'Round Timer', 'Media Console']);
+  assert.equal(host.querySelectorAll('a.pro-hub').length, 3);
+  // No gallery, folder tiles, marketing price or alpha CTA on the menu.
+  assert.equal(host.querySelector('.media-gallery, figure'), null);
+  // The only image is the Advantage home mark logo, as on /white and /suite.
+  assert.deepEqual([...host.querySelectorAll('img')].map((i) => i.className), ['home__logo']);
+  assert.equal(host.querySelector('.buy, .buy__card'), null);
+  assert.doesNotMatch(host.textContent ?? '', /\$29\.99|Request an alpha code|Gallery|Pro Shop|Class Schedule/);
+  m.done();
 });

@@ -32,8 +32,7 @@ import {
 } from '../lib/eventSlides';
 import { readGymLogo } from '../lib/gymLogo';
 import { seatPermissionAllows } from '../lib/instructorSeats';
-import { MEDIA_CONSOLE_INSTRUCTIONS, MEDIA_CONSOLE_NAME, MEDIA_EDITION_MENU } from '../lib/productNames';
-import { SuiteMenuLinks } from '../components/SuiteMenuLinks';
+import { MEDIA_CONSOLE_INSTRUCTIONS, MEDIA_CONSOLE_NAME } from '../lib/productNames';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import {
@@ -125,13 +124,7 @@ import {
   type ShopCastMode,
 } from '../lib/shopSlides';
 
-/**
- * Media Console. `edition` is the /media screen for Advantage Media Edition:
- * the same console as Pro's Media Console hub (gallery setup open), with the
- * purple belt titled Advantage Media Edition and the stacked Media Console,
- * Scoreboard and Round Timer buttons under it.
- */
-export function ScreensaverPage({ edition = false }: { edition?: boolean } = {}) {
+export function ScreensaverPage() {
   const seat = useCurrentSeat();
   const [photos, setPhotos] = useState<StoredPhoto[]>([]);
   const [urlById, setUrlById] = useState<Record<string, string>>({});
@@ -180,7 +173,7 @@ export function ScreensaverPage({ edition = false }: { edition?: boolean } = {})
   const navigate = useNavigate();
   const back = useSubmenuBack() ?? '/pro';
   const [searchParams] = useSearchParams();
-  const folderParam = searchParams.get('folder') ?? (edition ? 'gallery' : null);
+  const folderParam = searchParams.get('folder');
   const requestedFolder =
     folderParam === 'videos' ? 'gallery' : isFolderId(folderParam) ? folderParam : null;
 
@@ -662,12 +655,7 @@ export function ScreensaverPage({ edition = false }: { edition?: boolean } = {})
   const beltInSheet = showBelt && galleryPage && options;
   const beltHeader = (
     <div className={galleryPage ? 'saver-belt saver-belt--flow' : 'saver-belt'}>
-      <BeltHeader kind="purple" title={edition ? 'Advantage Media Edition' : 'Advantage - Media Console'} />
-      {edition ? (
-        <div className="saver-edition">
-          <SuiteMenuLinks links={MEDIA_EDITION_MENU} label="Media Edition console buttons" />
-        </div>
-      ) : null}
+      <BeltHeader kind="purple" title="Advantage - Media Console" />
     </div>
   );
 

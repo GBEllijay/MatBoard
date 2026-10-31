@@ -49,12 +49,12 @@ test('/media is gated by the same Media Console door as /slideshow', () => {
   const paid = read('../components/PaidScreen.tsx');
   assert.match(
     paid,
-    /const loadMediaEdition = \(\) =>\s*import\('\.\.\/pages\/Screensaver\.tsx'\)\.then\(\(mod\) => \(\{ node: <mod\.ScreensaverPage edition \/> \}\)\);/,
+    /const loadMediaEdition = \(\) =>\s*import\('\.\.\/pages\/MediaEditionHub\.tsx'\)\.then\(\(mod\) => \(\{ node: <mod\.MediaEditionHubPage \/> \}\)\);/,
   );
   assert.match(paid, /export function PaidMediaEditionPage\(\) \{\s*return <PaidImport chunk="media-console" load=\{loadMediaEdition\} \/>;/);
   // Nothing public imports the paid page module directly.
-  assert.doesNotMatch(gate, /pages\/Screensaver/);
-  assert.doesNotMatch(app, /from '\.\/pages\/Screensaver'/);
+  assert.doesNotMatch(gate, /pages\/(Screensaver|MediaEditionHub)/);
+  assert.doesNotMatch(app, /from '\.\/pages\/(Screensaver|MediaEditionHub)'/);
 });
 
 test('title, price and lead match the homepage card', () => {

@@ -2522,12 +2522,6 @@ span.role-plan__mark {
   -webkit-overflow-scrolling: touch;
 }
 
-/* Media Edition (/media): the stacked buttons under the belt take taps. */
-.saver-edition {
-  margin-top: 0.75rem;
-  pointer-events: auto;
-}
-
 .saver.saver--belt > .saver-belt:not(.saver-belt--flow),
 .saver.saver--belt > .play-exit,
 .saver.saver--belt > .saver-batch {

@@ -112,3 +112,18 @@
     padding-inline: 2rem;
   }
 }
+
+/* Unlocked /media hub: one subtitle line under each button title. */
+.home--media-hub .pro-hub__label {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.home--media-hub .pro-hub__sub {
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.3;
+  color: rgba(20, 22, 28, 0.68);
+}

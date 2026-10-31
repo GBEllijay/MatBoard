@@ -324,6 +324,8 @@ export type SuiteMenuLink = {
   readonly to: string;
   readonly belt: 'tournament' | 'black' | 'purple';
   readonly clearBout: boolean;
+  /** Optional second line under the title. /suite buttons have none. */
+  readonly sub?: string;
 };
 
 const suiteMenuLink = (title: string) => {
@@ -333,14 +335,22 @@ const suiteMenuLink = (title: string) => {
 };
 
 /**
- * Media Edition buttons, top to bottom. Scoreboard and Round Timer are the
- * Tournament Management Pro entries themselves, so they open the same screens.
- * Media Console opens the same page as the Pro hub's Media Console.
+ * Media Edition hub buttons (/media), top to bottom: Scoreboard, Round Timer,
+ * Media Console. Scoreboard and Round Timer are the Tournament Management Pro
+ * entries (same path, ?from=suite, belt and bout reset), so they open the same
+ * screens. Each hub button adds one short subtitle line.
+ * Media Console opens the same full page as the Pro hub's Media Console.
  */
 export const MEDIA_EDITION_MENU: readonly SuiteMenuLink[] = [
-  { title: MEDIA_CONSOLE_NAME, to: '/slideshow?folder=gallery', belt: 'purple', clearBout: false },
-  suiteMenuLink('Scoreboard'),
-  suiteMenuLink('Round Timer'),
+  { ...suiteMenuLink('Scoreboard'), sub: 'Live match scoring. Easily cast to your gym TV.' },
+  { ...suiteMenuLink('Round Timer'), sub: 'Rounds and rest. Easily cast to your gym TV.' },
+  {
+    title: MEDIA_CONSOLE_NAME,
+    to: '/slideshow?folder=gallery',
+    belt: 'purple',
+    clearBout: false,
+    sub: 'Slideshows, schedule, and events. Easily cast to your gym TV.',
+  },
 ];
 
 /** Bottom-of-page guidance on the Media Console manage screen. */

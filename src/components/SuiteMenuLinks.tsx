@@ -18,7 +18,14 @@ export function SuiteMenuLinks({ links, label }: { links: readonly SuiteMenuLink
           onClick={link.clearBout ? () => unlinkBracketBout() : undefined}
         >
           {link.belt ? <BeltRail kind={link.belt} /> : null}
-          <span>{link.title}</span>
+          {link.sub ? (
+            <span className="pro-hub__label">
+              <span>{link.title}</span>
+              <span className="pro-hub__sub">{link.sub}</span>
+            </span>
+          ) : (
+            <span>{link.title}</span>
+          )}
         </Link>
       ))}
     </nav>
