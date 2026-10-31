@@ -24,13 +24,12 @@ async function pair(): Promise<{ secret: string; publicJwk: PublicJwk; kid: stri
   return { secret: JSON.stringify(privateJwk), publicJwk: { kty: 'EC', crv: 'P-256', x: publicJwk.x, y: publicJwk.y }, kid: 'k1' };
 }
 
-test('grant matrix opens Coach and Student for Pro and keeps White closed', () => {
+test('grant matrix: Pro opens Coach, Student and White; Coach opens White', () => {
   assert.deepEqual(grantsForProduct('advantage-white'), ['white']);
   assert.deepEqual(grantsForProduct('advantage-student'), ['student']);
-  assert.deepEqual(grantsForProduct('advantage-coach'), ['coach']);
-  assert.deepEqual(grantsForProduct('advantage-pro'), ['student', 'coach', 'pro']);
-  assert.deepEqual(expandGrants(['pro']), ['student', 'coach', 'pro']);
-  assert.equal(expandGrants(['pro']).includes('white'), false);
+  assert.deepEqual(grantsForProduct('advantage-coach'), ['white', 'coach']);
+  assert.deepEqual(grantsForProduct('advantage-pro'), ['white', 'student', 'coach', 'pro']);
+  assert.deepEqual(expandGrants(['pro']), ['white', 'student', 'coach', 'pro']);
   assert.deepEqual(expandGrants(['white', 'student', 'coach', 'pro']), ['white', 'student', 'coach', 'pro']);
   assert.equal(LEGACY_UNLOCK_AMNESTY_DAYS, 45);
   assert.equal(Date.parse(LEGACY_AMNESTY_ENDS_AT) - Date.parse('2026-10-28T00:00:00.000Z'), 45 * 24 * 60 * 60 * 1000);

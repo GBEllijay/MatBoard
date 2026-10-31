@@ -68,17 +68,19 @@ test('query params do not unlock or lock Pro', () => {
   resetUnlocks();
 });
 
-test('setting Pro still opens Student Edition and does not open White by itself', () => {
+test('setting Pro opens Student Edition, Coach and White (Pro includes everything below it)', () => {
   resetUnlocks();
   setProUnlocked(true);
   assert.equal(isProUnlocked(), true);
   assert.equal(isStudentEditionUnlocked(), true);
-  assert.equal(isCoachUnlocked(), false);
-  assert.equal(isWhiteUnlocked(), false);
+  assert.equal(isCoachUnlocked(), true);
+  assert.equal(isWhiteUnlocked(), true);
   assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: true, coach: false, white: false }), true);
   lockPro();
   assert.equal(isProUnlocked(), false);
   assert.equal(isStudentEditionUnlocked(), false);
+  assert.equal(isCoachUnlocked(), false);
+  assert.equal(isWhiteUnlocked(), false);
   assert.equal(localStorage.getItem(COACH_UNLOCK_STORAGE_KEY), null);
   assert.equal(localStorage.getItem(WHITE_UNLOCK_STORAGE_KEY), null);
 });

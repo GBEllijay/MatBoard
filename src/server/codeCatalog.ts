@@ -91,6 +91,8 @@ export type CatalogParse = {
   badHash: number;
   /** False when the value was set but nothing in it could be read. */
   readable: boolean;
+  /** Rows whose hash was already in the catalog. Only one of them is kept. */
+  duplicates?: number;
 };
 
 function rejectReason(raw: unknown): 'kind' | 'hash' {
@@ -204,13 +206,15 @@ export function parseCodeCatalogDetailed(raw: string | undefined | null): Catalo
   const byHash = new Map<string, CodeRecord>();
   let badKind = 0;
   let badHash = 0;
+  let duplicates = 0;
   for (const row of rows) {
     const record = parseCodeRecord(row);
+    if (record && byHash.has(record.hash)) duplicates += 1;
     if (record) byHash.set(record.hash, record);
     else if (rejectReason(row) === 'kind') badKind += 1;
     else badHash += 1;
   }
-  return { records: [...byHash.values()], rejected: badKind + badHash, badKind, badHash, readable: true };
+  return { records: [...byHash.values()], rejected: badKind + badHash, badKind, badHash, readable: true, duplicates };
 }
 
 export function parseCodeCatalog(raw: string | undefined | null): CodeRecord[] {
@@ -224,6 +228,13 @@ export type CatalogStatus = {
   catalogLoaded: boolean;
   entries: number;
   rejected: number;
+  /**
+   * Loaded records by kind, so the owner can see an owner, alpha, or free White row is really there.
+   * Counts only. Never a hash, id, or code.
+   */
+  kinds: Record<CodeKind, number>;
+  /** Pasted rows that repeat a hash already in the catalog. */
+  duplicates: number;
   /** One plain-language reason when nothing loaded, otherwise null. Never echoes the value. */
   problem: null | 'not-json' | 'looks-like-a-plain-code' | 'hash-without-record' | 'bad-kind' | 'bad-hash';
 };
@@ -241,11 +252,20 @@ export function codeCatalogStatus(raw: string | undefined | null): CatalogStatus
     else if (parsed.badKind) problem = 'bad-kind';
     else if (parsed.badHash) problem = 'bad-hash';
   }
+  const kinds = Object.fromEntries(CODE_KINDS.map((kind) => [kind, 0])) as Record<CodeKind, number>;
+  const now = Date.now();
+  for (const record of parsed.records) {
+    if (record.retired) continue;
+    if (record.expiresAt && Date.parse(record.expiresAt) <= now) continue;
+    kinds[record.kind] += 1;
+  }
   return {
     catalogSet,
     catalogLoaded: parsed.records.length > 0,
     entries: parsed.records.length,
     rejected: parsed.rejected + (parsed.readable ? 0 : 1),
+    kinds,
+    duplicates: parsed.duplicates ?? 0,
     problem,
   };
 }

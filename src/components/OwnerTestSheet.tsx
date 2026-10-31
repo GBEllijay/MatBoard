@@ -1,5 +1,5 @@
 import { type FormEvent, useState } from 'react';
-import { clearOwnerTestUnlock, submitOwnerTest } from '../lib/codeRedeemClient';
+import { clearOwnerTestUnlock, submitOwnerTest, submitOwnerTestOrCode } from '../lib/codeRedeemClient';
 import { Sheet } from './Sheet';
 
 const TIERS = [
@@ -41,14 +41,14 @@ export function OwnerTestSheet({ open, onClose }: Props) {
     setPending(true);
     setError('');
     setNote('');
-    void submitOwnerTest({ secret, tier, days }).then((result) => {
+    void submitOwnerTestOrCode({ secret, tier, days }).then((result) => {
       setPending(false);
       if (!result.ok) {
         setError(result.error);
         return;
       }
       setSecret('');
-      setNote('Test unlock is on for this browser.');
+      setNote(result.via === 'code' ? 'That was an unlock code, not the test secret. It is redeemed on this browser.' : 'Test unlock is on for this browser.');
     });
   };
 
