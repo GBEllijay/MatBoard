@@ -44,11 +44,14 @@ test('belt ladder is white, blue, purple, brown, black in rank order', () => {
 
 test('?belts=a embroiders JOURNAL on the blue belt, ?belts=b is the plain blue belt', () => {
   assert.deepEqual([...BELTS_VARIANTS], ['a', 'b']);
-  assert.equal(DEFAULT_BELTS_VARIANT, 'a');
+  // Owner approved B (plain blue belt) as the default; ?belts=a stays reachable.
+  assert.equal(DEFAULT_BELTS_VARIANT, 'b');
+  assert.equal(beltsVariantOf(''), 'b');
   assert.equal(beltsVariantOf('a'), 'a');
   assert.equal(beltsVariantOf(' B '), 'b');
-  assert.equal(beltsVariantOf(null), 'a');
-  assert.equal(beltsVariantOf('z'), 'a');
+  assert.equal(beltsVariantOf(null), 'b');
+  assert.equal(beltsVariantOf('z'), 'b');
+  assert.equal(beltsVariantOf(' A '), 'a');
   const student = STOREFRONT_BELT_LADDER.find((r) => r.id === 'student');
   assert.equal(student?.blurb, 'A personal BJJ training journal.');
   assert.equal(student?.cardPrice, '$19.99 one-time');
@@ -79,7 +82,7 @@ test('Coach reads Instructor in this section, with the same code name, id and ro
   assert.ok(coach && rung);
   assert.equal(rung.title, 'Advantage Instructor Edition');
   assert.equal(rung.rankLabel, 'INSTRUCTOR');
-  assert.equal(rung.blurb, 'Daily lesson plans, videos, and enhanced training tools. Includes White.');
+  assert.equal(rung.blurb, 'Daily lesson plans, videos, and enhanced training tools.');
   // $49.99 is display only on this tile; the Coach product copy (and Stripe) still says $29.99.
   assert.equal(rung.cardPrice, '$49.99 one-time');
   assert.equal(coach.cardPrice, '$29.99 one-time');
@@ -92,6 +95,17 @@ test('Coach reads Instructor in this section, with the same code name, id and ro
   assert.match(STOREFRONT_LADDER_NOTE, /Instructor/);
   // The code name is unchanged.
   assert.equal(coach.title, 'Advantage Coach');
+});
+
+test('every tier except Pro is priced one-time; Pro is $99.99 + $5.99/mo', () => {
+  assert.deepEqual(
+    STOREFRONT_BELT_LADDER.map((r) => r.cardPrice),
+    ['$9.99 one-time', '$19.99 one-time', '$29.99 one-time', '$49.99 one-time', '$99.99 + $5.99/mo'],
+  );
+  assert.deepEqual(
+    STOREFRONT_BELT_LADDER.map((r) => r.detail ?? null),
+    [null, null, null, null, 'Includes instructor communication, distribution and tournament management.'],
+  );
 });
 
 test('White is unchanged; Pro keeps its title, price, belt and link with Instructor wording', () => {
@@ -131,9 +145,9 @@ test('Academy Enhancement has no product: display price only, no checkout, the t
   const academy = STOREFRONT_BELT_LADDER.find((r) => r.id === 'academy');
   assert.ok(academy);
   assert.equal(academy.blurb, 'Scoreboard, round timer, and media console.');
-  assert.equal(academy.detail, 'Full Media Console included: gallery, class schedule, pro shop and events.');
+  assert.equal(academy.detail, undefined);
   // Display only: no Academy product exists in Stripe.
-  assert.equal(academy.cardPrice, '$29.99');
+  assert.equal(academy.cardPrice, '$29.99 one-time');
   assert.equal(academy.status, 'Coming soon');
   assert.equal(academy.to, null);
   assert.match(tsx, /if \(step\.to === null\)[\s\S]*?href=\{alphaRequestMailto\(\)\}/);

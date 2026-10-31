@@ -8,8 +8,8 @@ import { STOREFRONT_STEPS, type StorefrontStep } from './storefront.ts';
 export const BELTS_VARIANTS = ['a', 'b'] as const;
 export type BeltsVariant = (typeof BELTS_VARIANTS)[number];
 
-/** a: blue belt with JOURNAL embroidered and a small journal emblem. b: plain blue belt. */
-export const DEFAULT_BELTS_VARIANT: BeltsVariant = 'a';
+/** b (default, owner-approved): plain blue belt. a: blue belt with JOURNAL embroidered and a small journal emblem. */
+export const DEFAULT_BELTS_VARIANT: BeltsVariant = 'b';
 
 export function beltsVariantOf(raw: string | null | undefined): BeltsVariant {
   const v = (raw ?? '').trim().toLowerCase();
@@ -83,9 +83,8 @@ export const STOREFRONT_BELT_LADDER: readonly BeltRung[] = [
     rankLabel: 'ACADEMY',
     title: 'Advantage Academy Enhancement Edition',
     blurb: 'Scoreboard, round timer, and media console.',
-    detail: 'Full Media Console included: gallery, class schedule, pro shop and events.',
     // Display only: there is no Academy product in Stripe.
-    cardPrice: '$29.99',
+    cardPrice: '$29.99 one-time',
     status: 'Coming soon',
     to: null,
   },
@@ -95,7 +94,7 @@ export const STOREFRONT_BELT_LADDER: readonly BeltRung[] = [
     rank: '04',
     rankLabel: 'INSTRUCTOR',
     title: 'Advantage Instructor Edition',
-    blurb: 'Daily lesson plans, videos, and enhanced training tools. Includes White.',
+    blurb: 'Daily lesson plans, videos, and enhanced training tools.',
     // Display only on this tile: Stripe still charges the Coach product at $29.99.
     cardPrice: '$49.99 one-time',
     status: coach.status,
