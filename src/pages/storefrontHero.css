@@ -432,7 +432,7 @@
     flex-direction: column;
     align-items: stretch;
     min-height: 0;
-    padding: 20px 20px 36px;
+    padding: 10px 20px 36px;
     gap: 0;
   }
 
@@ -1019,16 +1019,23 @@
   display: none;
 }
 
+/* Two equal columns: the text card and the board/timer stack are the same width.
+   The left edge stays where the card always sat (1360px frame, 48px inset). The right
+   edge is the same as the .sf-wrap content edge below (1200px max, 40px padding),
+   so the board, timer and the mat picture share one right edge. */
 .home.home--store .sfh--e .sfh-inner {
   display: grid;
-  grid-template-columns: minmax(0, 40%) minmax(0, 60%);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: center;
   gap: 24px;
+  max-width: none;
+  padding-left: max(48px, calc(50% - 632px));
+  padding-right: max(40px, calc(50% - 560px));
   min-height: min(700px, calc(100svh - 40px));
 }
 
 .home.home--store .sfh--e .sfh-text {
-  max-width: 540px;
+  max-width: none;
   padding: 32px 36px 30px;
   border-radius: 24px;
   background: rgba(0, 0, 0, 0.6);
@@ -1041,7 +1048,7 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
-  width: 86%;
+  width: 100%;
 }
 
 /* Same bezel, radius and shadow on both blocks. */
@@ -1059,11 +1066,8 @@
   box-shadow: none;
 }
 
-/* The timer block shows the whole 16:9 round timer, so both blocks are the same size.
-   The stage is narrowed so the pair fits on a 900px-tall screen. */
-.home.home--store .sfh--e .sfh-stage {
-  width: 76%;
-}
+/* The timer block shows the whole 16:9 round timer, so both blocks are the same size
+   and fill the column, matching the text card's width. */
 
 @media (max-width: 900px) {
   .home.home--store .sfh--e .sfh-inner {
@@ -1071,7 +1075,7 @@
     flex-direction: column;
     align-items: stretch;
     min-height: 0;
-    padding: 20px 20px 36px;
+    padding: 10px 20px 36px;
     gap: 0;
   }
 
@@ -1082,8 +1086,8 @@
   .home.home--store .sfh--e .sfh-brand { order: 1; }
   .home.home--store .sfh--e .sfh-title { order: 2; }
   .home.home--store .sfh--e .sfh-lead { order: 3; }
-  .home.home--store .sfh--e .sfh-stage { order: 4; margin-top: 16px; width: 100%; gap: 10px; }
-  .home.home--store .sfh--e .sfh-cta { order: 5; margin-top: 16px; position: relative; z-index: 2; }
+  .home.home--store .sfh--e .sfh-stage { order: 4; margin-top: 10px; width: 100%; gap: 6px; }
+  .home.home--store .sfh--e .sfh-cta { order: 5; margin-top: 6px; position: relative; z-index: 2; }
   .home.home--store .sfh--e .sfh-sub { order: 6; margin-top: 18px; text-align: center; }
 
   .home.home--store .sfh--e .sfh-brand,
@@ -1135,9 +1139,9 @@
     border-radius: 8px;
   }
 
-  /* Both 16:9 blocks shrink together so the button stays above the fold. */
+  /* Both 16:9 blocks are the full width of the text card above them. */
   .home.home--store .sfh--e .sfh-stage {
-    width: min(100%, 300px);
-    align-self: center;
+    width: 100%;
+    align-self: stretch;
   }
 }

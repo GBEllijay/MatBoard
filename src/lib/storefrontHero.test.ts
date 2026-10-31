@@ -4,6 +4,7 @@ import test from 'node:test';
 import { DEFAULT_HERO_VARIANT, HERO_VARIANTS, heroVariantOf } from './storefrontHero.ts';
 import { preservesAppHomeQuery } from './submenuNav.ts';
 
+const storefrontCss = readFileSync(new URL('../pages/storefront.css', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../pages/storefrontHero.css', import.meta.url), 'utf8');
 const tsx = readFileSync(new URL('../pages/StorefrontHero.tsx', import.meta.url), 'utf8');
 
@@ -94,8 +95,25 @@ test('E: board and the whole black round timer stacked as two equal 16:9 blocks 
   assert.match(rule('.home.home--store .sf-hero.sfh--e'), /background: transparent/);
   assert.match(css, /\.sfh--e \.sfh-text \{[^}]*background: rgba\(0, 0, 0, 0\.6\);/);
   assert.match(rule('.home.home--store .sfh--e .sfh-stage'), /flex-direction: column;[^}]*gap: 14px;/);
-  // Neither block is cropped: both frames keep the shared 16:9 ratio and the stage is narrowed instead.
+  // Neither block is cropped or stretched: both frames keep the shared 16:9 ratio.
   assert.match(rule('.home.home--store .sfh-frame'), /aspect-ratio: 16 \/ 9/);
-  assert.match(css, /\.sfh--e \.sfh-stage \{\s*width: 76%;/);
-  assert.match(css, /\.sfh--e \.sfh-stage \{\s*width: min\(100%, 300px\);/);
+});
+
+test('hero e: board and timer are the text card width and share the mat picture right edge', () => {
+  const inner = rule('.home.home--store .sfh--e .sfh-inner');
+  // Two equal columns: card | stacked board + timer.
+  assert.match(inner, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
+  assert.match(inner, /max-width: none;/);
+  // Left edge unchanged (1360px frame, 48px inset).
+  assert.match(inner, /padding-left: max\(48px, calc\(50% - 632px\)\);/);
+  // Right edge = .sf-wrap content edge (1200px max, 40px padding), where the mat picture ends.
+  assert.match(inner, /padding-right: max\(40px, calc\(50% - 560px\)\);/);
+  assert.match(storefrontCss, /\.home\.home--store \.sf-wrap \{\s*max-width: 1200px;\s*margin: 0 auto;\s*padding: 0 40px;/);
+  // The card fills its column; the stage fills the other, so they match.
+  assert.match(css, /\.sfh--e \.sfh-text \{\s*max-width: none;/);
+  assert.match(rule('.home.home--store .sfh--e .sfh-stage'), /width: 100%;/);
+  assert.doesNotMatch(css, /\.sfh--e \.sfh-stage \{\s*width: (76|86)%;/);
+  // Phone: full card width instead of the old 300px cap.
+  assert.doesNotMatch(css, /\.sfh--e \.sfh-stage \{\s*width: min\(100%, 300px\);/);
+  assert.match(css, /\.sfh--e \.sfh-stage \{\s*width: 100%;\s*align-self: stretch;/);
 });
