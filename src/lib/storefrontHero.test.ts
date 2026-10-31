@@ -79,15 +79,20 @@ test('C on the mats: transparent hero, black text backdrop, stacked app cards be
   assert.doesNotMatch(rule('.home.home--store .sfh-frame--tv'), /filter|opacity/);
 });
 
-test('E: board and live round timer stacked as two equal blocks on the mats, no cards', () => {
+test('E: board and the whole black round timer stacked as two equal 16:9 blocks on the mats, no cards', () => {
   const e = tsx.slice(tsx.indexOf("variant === 'e'"));
   assert.equal((e.match(/className="sfh-block/g) ?? []).length, 2);
-  assert.match(e, /ROUND_TIMER_LIVE\.src/);
-  assert.doesNotMatch(e, /ROUND_TIMER\.src|<Card /);
-  assert.match(e, /sfh-timer-label">Win by Advantage</);
+  assert.match(e, /<Shot shot=\{SCOREBOARD\}[^>]*className="sfh-frame--block"/);
+  assert.match(e, /<Shot shot=\{ROUND_TIMER\}[^>]*className="sfh-frame--block"/);
+  assert.match(tsx, /const ROUND_TIMER = \{ src: '\/storefront\/round-timer\.png', width: 1280, height: 720 \}/);
+  assert.doesNotMatch(e, /ROUND_TIMER_LIVE|sfh-timer-label|sfh-frame--wide|<Card /);
+  assert.doesNotMatch(css, /sfh-timer-label|sfh-frame--wide/);
   assert.match(e, /<Copy \/>/);
   assert.match(rule('.home.home--store .sf-hero.sfh--e'), /background: transparent/);
   assert.match(css, /\.sfh--e \.sfh-text \{[^}]*background: rgba\(0, 0, 0, 0\.6\);/);
   assert.match(rule('.home.home--store .sfh--e .sfh-stage'), /flex-direction: column;[^}]*gap: 14px;/);
-  assert.match(rule('.home.home--store .sfh-frame--wide'), /aspect-ratio: 16 \/ 5\.5/);
+  // Neither block is cropped: both frames keep the shared 16:9 ratio and the stage is narrowed instead.
+  assert.match(rule('.home.home--store .sfh-frame'), /aspect-ratio: 16 \/ 9/);
+  assert.match(css, /\.sfh--e \.sfh-stage \{\s*width: 76%;/);
+  assert.match(css, /\.sfh--e \.sfh-stage \{\s*width: min\(100%, 300px\);/);
 });

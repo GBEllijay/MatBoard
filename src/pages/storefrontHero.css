@@ -1059,28 +1059,10 @@
   box-shadow: none;
 }
 
-/* The timer block keeps the board's width and a deliberate 16:5.5 strip, digits centered. */
-.home.home--store .sfh-frame--wide {
-  aspect-ratio: 16 / 5.5;
-}
-
-.home.home--store .sfh-frame--wide img {
-  object-position: 50% 47%;
-}
-
-.home.home--store .sfh-timer-label {
-  position: absolute;
-  top: 14px;
-  left: 0;
-  right: 0;
-  text-align: center;
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-  font-size: 15px;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: #fff;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.55);
+/* The timer block shows the whole 16:9 round timer, so both blocks are the same size.
+   The stage is narrowed so the pair fits on a 900px-tall screen. */
+.home.home--store .sfh--e .sfh-stage {
+  width: 76%;
 }
 
 @media (max-width: 900px) {
@@ -1153,8 +1135,9 @@
     border-radius: 8px;
   }
 
-  .home.home--store .sfh-timer-label {
-    top: 8px;
-    font-size: 11px;
+  /* Both 16:9 blocks shrink together so the button stays above the fold. */
+  .home.home--store .sfh--e .sfh-stage {
+    width: min(100%, 300px);
+    align-self: center;
   }
 }

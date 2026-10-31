@@ -181,16 +181,7 @@ export function StorefrontHero({ unlocked }: { unlocked: boolean }) {
               <Shot shot={SCOREBOARD} alt="Advantage scoreboard with two competitors and a 05:00 match clock" className="sfh-frame--block" />
             </div>
             <div className="sfh-block sfh-block--timer">
-              <figure className="sfh-frame sfh-frame--block sfh-frame--wide">
-                <img
-                  src={ROUND_TIMER_LIVE.src}
-                  alt="Advantage round timer at 03:12 on the mat skin"
-                  width={ROUND_TIMER_LIVE.width}
-                  height={ROUND_TIMER_LIVE.height}
-                  draggable={false}
-                />
-                <figcaption className="sfh-timer-label">Win by Advantage</figcaption>
-              </figure>
+              <Shot shot={ROUND_TIMER} alt="Advantage round timer showing round 1 of 5 at 05:00" className="sfh-frame--block" />
             </div>
           </div>
         </div>
