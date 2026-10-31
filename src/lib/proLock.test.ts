@@ -107,7 +107,7 @@ test('a locked Pro token keeps one-time doors and an export does not touch media
   assert.equal(doorOpen('pro'), true);
   assert.equal(doorOpen('student'), true);
   assert.equal(doorOpen('coach'), true);
-  assert.equal(doorOpen('white'), false);
+  assert.equal(doorOpen('white'), true, 'Pro includes White while Pro is open');
   setEntitlementClockForTests(() => Date.parse('2026-10-09T00:00:00.000Z'));
   assert.equal(doorOpen('pro'), false);
   assert.equal(doorOpen('white'), false);

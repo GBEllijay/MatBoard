@@ -54,6 +54,8 @@ export async function redeemAccessCode(code: string, email = ''): Promise<Redeem
     if (!response.ok || !body.ok) return { ok: false, error: body.error || "That code didn't work." };
     if (body.token) await acceptServerToken(body.token);
     if (!applyServerGrant(body) && !body.token) return { ok: false, error: "That code didn't work." };
+    // Reopen every door the code implies that a Lock button closed here (tierImplications.ts).
+    clearRelocksFor(Array.isArray(body.grants) ? body.grants.filter((door) => typeof door === 'string') : []);
     return { ok: true };
   } catch {
     return { ok: false, error: 'Could not check that code. Check your connection and try again.' };

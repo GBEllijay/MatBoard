@@ -1,8 +1,7 @@
 /** Pro door on this browser. A server redeem or checkout confirm sets the flag. URL params do not. */
 
-import { doorOpen, notifyEntitlement, subscribeEntitlement } from './entitlement.ts';
+import { clearRelocksFor, doorOpen, notifyEntitlement, relockImplied, subscribeEntitlement } from './entitlement.ts';
 import { PRO_RELOCK_KEY } from './legacyUnlock.ts';
-import { dropOwnerTestDoors, readOwnerTestGrant } from './ownerTestGrant.ts';
 import { setStudentEditionUnlocked } from './studentUnlock.ts';
 
 export const PRO_UNLOCK_STORAGE_KEY = 'advantage.proUnlocked';
@@ -47,6 +46,8 @@ function syncPaidScreens(open: boolean): void {
 }
 
 export function setProUnlocked(unlocked: boolean): void {
+  // Unlock is symmetric with Lock Pro: reopen every door below Pro that a Lock closed here.
+  if (unlocked) clearRelocksFor(['pro']);
   writeFlag(unlocked);
   syncPaidScreens(unlocked);
 }
@@ -66,13 +67,12 @@ export function tryProductOwnerUnlock(_product: 'coach' | 'pro' | 'student', _co
 }
 
 export function lockPro(): void {
-  // The owner-test seat is a Pro preview. It kept Media Console and Coach open after Lock Pro.
-  // A Pro-only owner test carries Student Edition as part of Pro, so that goes too.
-  // An "all" owner test granted Student Edition on its own, and it stays.
-  const proOnlyTest = readOwnerTestGrant()?.tier === 'pro';
-  dropOwnerTestDoors(proOnlyTest ? ['pro', 'seat', 'student'] : ['pro', 'seat']);
+  // Tier rule (tierImplications.ts): Lock Pro closes Coach, Student Edition and White too,
+  // including the owner-test seat and any owner-test doors.
+  relockImplied('pro');
   // writeFlag also clears the Student Edition grant that follows Pro.
   writeFlag(false);
+  // Wipes the Phase 4 paid-screen cache and the /paid cookie.
   syncPaidScreens(false);
 }
 

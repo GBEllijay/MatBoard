@@ -139,9 +139,10 @@ test('owner test all, Lock Pro, then owner test again reopens everything', async
   assert.equal(readCurrentSeat(), null, 'Lock Pro removes the fake owner-test seat');
   assert.equal(ownerTestActive('seat'), false);
   assert.equal(mediaConsoleOpen(), false, 'Media Console closes with Pro');
-  assert.equal(isCoachUnlocked(), true, 'Coach stays');
-  assert.equal(isWhiteUnlocked(), true, 'White stays');
-  assert.equal(isStudentEditionUnlocked(), true, 'Student Edition stays when it was granted on its own');
+  // Tier rule: Lock Pro closes everything below Pro.
+  assert.equal(isCoachUnlocked(), false, 'Coach closes with Pro');
+  assert.equal(isWhiteUnlocked(), false, 'White closes with Pro');
+  assert.equal(isStudentEditionUnlocked(), false, 'Student Edition closes with Pro');
 
   await runOwnerTest();
   assertAllOpen('after Lock Pro');
@@ -149,7 +150,7 @@ test('owner test all, Lock Pro, then owner test again reopens everything', async
   teardown();
 });
 
-test('Lock Coach closes Coach and leaves Pro, White, and Student Edition', async () => {
+test('Lock Coach closes Coach and White and leaves Pro and Student Edition', async () => {
   await signedSetup();
   await runOwnerTest();
   lockCoach();
@@ -158,7 +159,7 @@ test('Lock Coach closes Coach and leaves Pro, White, and Student Edition', async
   assert.equal(readCurrentSeat(), null, 'the owner-test seat no longer holds the Coach card open');
   assert.equal(coachDoorOpen(false, isCoachUnlocked(), Boolean(readCurrentSeat())), false);
   assert.equal(isProUnlocked(), true);
-  assert.equal(isWhiteUnlocked(), true);
+  assert.equal(isWhiteUnlocked(), false, 'Coach includes White, so Lock Coach closes White');
   assert.equal(isStudentEditionUnlocked(), true);
 
   await runOwnerTest();
@@ -220,14 +221,15 @@ test('without a signing key the session record alone follows each Lock', async (
   mockOwnerTestServer(() => ownerTestResponse(null, 'all', ALL));
   await runOwnerTest();
   assertAllOpen('degraded owner test');
-  lockPro();
-  assert.deepEqual(readOwnerTestGrant()?.grants, ['white', 'student', 'coach']);
-  lockCoach();
-  assert.deepEqual(readOwnerTestGrant()?.grants, ['white', 'student']);
   lockStudentEditionBrowser();
-  assert.deepEqual(readOwnerTestGrant()?.grants, ['white']);
-  dropOwnerTestDoors(['white']);
+  assert.deepEqual(readOwnerTestGrant()?.grants, ['white', 'coach', 'pro', 'seat']);
+  lockCoach();
+  assert.deepEqual(readOwnerTestGrant()?.grants, ['pro'], 'Lock Coach drops Coach, White and the seat');
+  dropOwnerTestDoors(['pro']);
   assert.equal(readOwnerTestGrant(), null, 'an empty record is removed');
+  await runOwnerTest();
+  lockPro();
+  assert.equal(readOwnerTestGrant(), null, 'Lock Pro drops every door below Pro');
   await runOwnerTest();
   assertAllOpen('degraded owner test again');
   teardown();

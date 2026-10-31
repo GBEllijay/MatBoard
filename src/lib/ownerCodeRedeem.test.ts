@@ -94,14 +94,15 @@ test('an owner code from the generator opens White, Student, Coach and Pro, even
   for (const door of ['white', 'student', 'coach', 'pro'] as const) assert.equal(entitlementSnapshot().claims?.grants.includes(door), true, `token ${door}`);
 });
 
-test('the alpha-pro code still opens Pro, Coach and Student and leaves White closed', async () => {
+test('the alpha-pro code opens Pro, Coach, Student and White (Pro includes everything below it)', async () => {
   await setup();
   const result = await redeemAccessCode(CODES['alpha-pro']);
   assert.deepEqual(result, { ok: true });
   assert.equal(isProUnlocked(), true);
   assert.equal(isCoachUnlocked(), true);
   assert.equal(isStudentEditionUnlocked(), true);
-  assert.equal(isWhiteUnlocked(), false);
+  assert.equal(isWhiteUnlocked(), true);
+  for (const door of ['white', 'student', 'coach', 'pro'] as const) assert.equal(entitlementSnapshot().claims?.grants.includes(door), true, `pass ${door}`);
 });
 
 test('the free White code opens White after Lock White', async () => {
