@@ -94,7 +94,11 @@ test('not for sale: no checkout, Stripe, code kind or entitlement; CTA is the al
   );
   for (const file of ['../server/entitlements.ts', '../server/stripeCheckout.ts']) {
     const p = new URL(file, import.meta.url);
-    if (existsSync(p)) assert.doesNotMatch(readFileSync(p, 'utf8'), /media-edition|mediaEdition|Media Edition/);
+    // Code only: #332 leaves a comment-only "price spot" note in stripeCheckout.ts.
+    if (existsSync(p)) {
+      const code = readFileSync(p, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+      assert.doesNotMatch(code, /media-edition|mediaEdition|Media Edition/);
+    }
   }
 });
 
