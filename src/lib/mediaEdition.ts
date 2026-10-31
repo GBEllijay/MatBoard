@@ -16,7 +16,10 @@ import { alphaAccessNote } from './productPrices.ts';
 import { MEDIA_CONSOLE_NAME } from './productNames.ts';
 import { WHITE_INCLUDED } from './whitePurchase.ts';
 
-export const MEDIA_EDITION_PATH = '/media-edition';
+export const MEDIA_EDITION_PATH = '/media';
+
+/** First preview address. It redirects to MEDIA_EDITION_PATH. */
+export const MEDIA_EDITION_OLD_PATH = '/media-edition';
 
 export const MEDIA_EDITION_NAME = 'Advantage Media Edition';
 

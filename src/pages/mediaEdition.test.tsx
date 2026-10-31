@@ -1,17 +1,22 @@
 /**
- * /media-edition renders: title, $29.99 one-time, purple belt, alpha CTA, the
- * white band, and the gallery in order. The homepage Media card opens it.
+ * /media for a locked visitor renders the marketing page: title, $29.99
+ * one-time, purple belt, alpha CTA, the white band, and the gallery in order.
+ * A Pro or owner pass gets the paid console instead. /media-edition redirects.
+ * The homepage Media card opens /media.
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Window } from 'happy-dom';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { MemoryRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { MediaEditionGate } from '../components/MediaEditionGate.tsx';
+import { SuiteMenuLinks } from '../components/SuiteMenuLinks.tsx';
+import { COMPETITION_PRO_MENU, MEDIA_EDITION_MENU } from '../lib/productNames.ts';
 import { MediaEditionPage } from './MediaEdition.tsx';
 import { StorefrontPage } from './Storefront.tsx';
 
-const dom = new Window({ url: 'http://localhost/media-edition' });
+const dom = new Window({ url: 'http://localhost/media' });
 const view = dom as unknown as Window & typeof globalThis;
 
 function installGlobal(key: string, value: unknown) {
@@ -34,7 +39,7 @@ function Where() {
   return null;
 }
 
-function mount(entry: string) {
+function mount(entry: string, open = false) {
   const host = document.createElement('div');
   document.body.appendChild(host);
   const root = createRoot(host);
@@ -44,7 +49,13 @@ function mount(entry: string) {
         <Where />
         <Routes>
           <Route path="/" element={<StorefrontPage />} />
-          <Route path="/media-edition" element={<MediaEditionPage />} />
+          <Route
+            path="/media"
+            element={<MediaEditionGate open={open} paid={<p data-paid-console="">paid console</p>} />}
+          />
+          <Route path="/media-edition" element={<Navigate to="/media" replace />} />
+          <Route path="/suite-menu" element={<SuiteMenuLinks links={COMPETITION_PRO_MENU} label="suite" />} />
+          <Route path="/edition-menu" element={<SuiteMenuLinks links={MEDIA_EDITION_MENU} label="edition" />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -59,7 +70,7 @@ function mount(entry: string) {
 }
 
 test('route renders the Media Edition page with its title, price, belt and CTA', () => {
-  const m = mount('/media-edition');
+  const m = mount('/media');
   const { host } = m;
   assert.equal(document.title, 'Advantage Media Edition');
   assert.ok(host.querySelector('main.home--media'));
@@ -80,7 +91,7 @@ test('route renders the Media Edition page with its title, price, belt and CTA',
 });
 
 test('white band then gallery, images in order', () => {
-  const m = mount('/media-edition');
+  const m = mount('/media');
   const { host } = m;
   const band = host.querySelector('section.media-band');
   const gallery = host.querySelector('section.media-gallery');
@@ -101,7 +112,7 @@ test('white band then gallery, images in order', () => {
 });
 
 test('feature list renders the real Media Console features', () => {
-  const m = mount('/media-edition');
+  const m = mount('/media');
   const titles = [...m.host.querySelectorAll('.media-edition__features strong')].map((n) => n.textContent);
   assert.deepEqual(titles, ['Gallery', 'Class Schedule', 'Pro Shop', 'Events', 'Play order and timing', 'Video sound', 'Gym logo', 'Stays on this device']);
   const included = [...m.host.querySelectorAll('.buy__block ul li')].map((n) => n.textContent);
@@ -109,15 +120,63 @@ test('feature list renders the real Media Console features', () => {
   m.done();
 });
 
-test('homepage Media Edition card links to /media-edition and lands on the page', () => {
+test('homepage Media Edition card links to /media and lands on the page', () => {
   const m = mount('/');
-  const links = [...m.host.querySelectorAll('a')].filter((a) => a.getAttribute('href') === '/media-edition');
+  const links = [...m.host.querySelectorAll('a')].filter((a) => a.getAttribute('href') === '/media');
   assert.equal(links.length, 1);
   assert.match(links[0].textContent ?? '', /Advantage Media Edition/);
   act(() => {
     links[0].dispatchEvent(new view.MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }) as unknown as Event);
   });
-  assert.equal(path, '/media-edition');
+  assert.equal(path, '/media');
   assert.equal(m.host.querySelector('header.buy__card--belt h2')?.textContent, 'Advantage Media Edition');
   m.done();
+});
+
+test('/media-edition redirects to /media', () => {
+  const m = mount('/media-edition');
+  assert.equal(path, '/media');
+  assert.equal(m.host.querySelector('header.buy__card--belt h2')?.textContent, 'Advantage Media Edition');
+  m.done();
+});
+
+test('locked /media shows the marketing page and not the paid console', () => {
+  const m = mount('/media', false);
+  assert.ok(m.host.querySelector('.home--media'));
+  assert.match(m.host.textContent ?? "", /\$29\.99 USD — one-time/);
+  assert.equal(m.host.querySelector('[data-paid-console]'), null);
+  m.done();
+});
+
+test('a Pro or owner pass on /media gets the paid console, not the marketing page', () => {
+  const m = mount('/media', true);
+  assert.ok(m.host.querySelector('[data-paid-console]'));
+  assert.equal(m.host.querySelector('.home--media'), null);
+  m.done();
+});
+
+test('Media Edition buttons render like /suite: stacked pro-hub links in order', () => {
+  const hrefs = (entry: string) => {
+    const m = mount(entry);
+    const links = [...m.host.querySelectorAll('nav.suite__nav > a.pro-hub')].map((a) => ({
+      title: a.textContent,
+      href: a.getAttribute('href'),
+      rail: a.querySelector('.belt-rail')?.className,
+    }));
+    m.done();
+    return links;
+  };
+  const edition = hrefs('/edition-menu');
+  const suite = hrefs('/suite-menu');
+  assert.deepEqual(
+    edition.map((l) => [l.title, l.href]),
+    [
+      ['Media Console', '/slideshow?folder=gallery'],
+      ['Scoreboard', '/match/control?from=suite'],
+      ['Round Timer', '/training/control?from=suite'],
+    ],
+  );
+  assert.match(edition[0].rail ?? '', /belt-rail--purple/);
+  // Scoreboard and Round Timer are the same rendered buttons as on /suite.
+  assert.deepEqual(edition.slice(1), suite.filter((l) => l.title === 'Scoreboard' || l.title === 'Round Timer'));
 });

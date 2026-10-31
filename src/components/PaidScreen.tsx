@@ -127,6 +127,8 @@ function PaidImport({ chunk, load }: { chunk: PaidChunkId; load: () => Promise<L
 
 const loadPro = () => import('../pages/Pro.tsx').then((mod) => ({ node: <mod.ProPage /> }));
 const loadScreensaver = () => import('../pages/Screensaver.tsx').then((mod) => ({ node: <mod.ScreensaverPage /> }));
+const loadMediaEdition = () =>
+  import('../pages/Screensaver.tsx').then((mod) => ({ node: <mod.ScreensaverPage edition /> }));
 const loadSchedule = () => import('../pages/Schedule.tsx').then((mod) => ({ node: <mod.SchedulePage /> }));
 const loadClassHistory = () => import('../pages/ClassHistory.tsx').then((mod) => ({ node: <mod.ClassHistoryPage /> }));
 const loadCoachUnlimited = () =>
@@ -140,6 +142,11 @@ export function PaidProPage() {
 
 export function PaidScreensaverPage() {
   return <PaidImport chunk="media-console" load={loadScreensaver} />;
+}
+
+/** /media for a Pro or owner pass: the Media Console in its Media Edition dress. */
+export function PaidMediaEditionPage() {
+  return <PaidImport chunk="media-console" load={loadMediaEdition} />;
 }
 
 export function PaidSchedulePage() {

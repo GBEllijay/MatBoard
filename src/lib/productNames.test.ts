@@ -565,5 +565,7 @@ test('a media grant opens Media Console with Pro locked; a seat without one stay
     MEDIA_FOLDER_ROUTES.map((route) => route.path),
     ['/gallery', '/events', '/proshop', '/pro-shop'],
   );
-  assert.deepEqual([...MEDIA_CONSOLE_ROUTES], ['/media', '/media-console', '/console']);
+  assert.deepEqual([...MEDIA_CONSOLE_ROUTES], ['/media-console', '/console']);
+  // /media is the Media Edition screen now, not a /pro alias.
+  assert.equal((MEDIA_CONSOLE_ROUTES as readonly string[]).includes('/media'), false);
 });

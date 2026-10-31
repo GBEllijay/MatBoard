@@ -12,6 +12,7 @@ import {
   MEDIA_EDITION_LEAD,
   MEDIA_EDITION_LIST_PRICE_CENTS,
   MEDIA_EDITION_NAME,
+  MEDIA_EDITION_OLD_PATH,
   MEDIA_EDITION_PATH,
   MEDIA_EDITION_PRICE_DETAIL,
   MEDIA_EDITION_PRICE_LINE,
@@ -27,11 +28,34 @@ const page = read('../pages/MediaEdition.tsx');
 const css = read('../pages/mediaEdition.css');
 const indexCss = read('../index.css');
 
-test('Media Edition has a public route at /media-edition', () => {
-  assert.equal(MEDIA_EDITION_PATH, '/media-edition');
-  assert.match(app, /<Route path="\/media-edition" element=\{<MediaEditionPage \/>\} \/>/);
-  // Public like /buy: not wrapped in a gated route component.
-  assert.doesNotMatch(app, /path="\/media-edition" element=\{<[A-Za-z]*Route/);
+test('Media Edition lives at /media and /media-edition redirects there', () => {
+  assert.equal(MEDIA_EDITION_PATH, '/media');
+  assert.equal(MEDIA_EDITION_OLD_PATH, '/media-edition');
+  assert.match(app, /<Route path=\{MEDIA_EDITION_PATH\} element=\{<MediaEditionRoute \/>\} \/>/);
+  assert.match(
+    app,
+    /<Route path=\{MEDIA_EDITION_OLD_PATH\} element=\{<Navigate to=\{MEDIA_EDITION_PATH\} replace \/>\} \/>/,
+  );
+  // The old public page is no longer mounted on its own address.
+  assert.doesNotMatch(app, /<Route path="\/media-edition"/);
+});
+
+test('/media is gated by the same Media Console door as /slideshow', () => {
+  const route = app.slice(app.indexOf('function MediaEditionRoute()'));
+  assert.match(route.slice(0, 200), /return <MediaEditionGate open=\{mediaConsoleDoorOpen\(door\)\} \/>;/);
+  const gate = read('../components/MediaEditionGate.tsx');
+  assert.match(gate, /if \(!open\) return <MediaEditionPage \/>;/);
+  assert.match(gate, /<PaidMediaEditionPage \/>/);
+  // The paid console comes through the paid-screen import, media-console chunk.
+  const paid = read('../components/PaidScreen.tsx');
+  assert.match(
+    paid,
+    /const loadMediaEdition = \(\) =>\s*import\('\.\.\/pages\/Screensaver\.tsx'\)\.then\(\(mod\) => \(\{ node: <mod\.ScreensaverPage edition \/> \}\)\);/,
+  );
+  assert.match(paid, /export function PaidMediaEditionPage\(\) \{\s*return <PaidImport chunk="media-console" load=\{loadMediaEdition\} \/>;/);
+  // Nothing public imports the paid page module directly.
+  assert.doesNotMatch(gate, /pages\/Screensaver/);
+  assert.doesNotMatch(app, /from '\.\/pages\/Screensaver'/);
 });
 
 test('title, price and lead match the homepage card', () => {

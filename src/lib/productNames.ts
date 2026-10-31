@@ -318,6 +318,31 @@ export const COMPETITION_PRO_MENU = [
   },
 ] as const;
 
+/** One stacked button on the Tournament Management Pro menu. */
+export type SuiteMenuLink = {
+  readonly title: string;
+  readonly to: string;
+  readonly belt: 'tournament' | 'black' | 'purple';
+  readonly clearBout: boolean;
+};
+
+const suiteMenuLink = (title: string) => {
+  const link = COMPETITION_PRO_MENU.find((item) => item.title === title);
+  if (!link) throw new Error(`Missing suite menu link: ${title}`);
+  return link;
+};
+
+/**
+ * Media Edition buttons, top to bottom. Scoreboard and Round Timer are the
+ * Tournament Management Pro entries themselves, so they open the same screens.
+ * Media Console opens the same page as the Pro hub's Media Console.
+ */
+export const MEDIA_EDITION_MENU: readonly SuiteMenuLink[] = [
+  { title: MEDIA_CONSOLE_NAME, to: '/slideshow?folder=gallery', belt: 'purple', clearBout: false },
+  suiteMenuLink('Scoreboard'),
+  suiteMenuLink('Round Timer'),
+];
+
 /** Bottom-of-page guidance on the Media Console manage screen. */
 export const MEDIA_CONSOLE_INSTRUCTIONS = [
   'Gold On means that folder plays on the TV.',
@@ -557,7 +582,11 @@ export const MEDIA_FOLDER_ROUTES: readonly { path: string; folder: MediaFolderId
 ];
 
 /** Paths that open the seat's Media Console on `/pro`. */
-export const MEDIA_CONSOLE_ROUTES = ['/media', '/media-console', '/console'] as const;
+/**
+ * Short aliases that open the seat console home. `/media` used to be one; it is
+ * now the Media Edition screen (MEDIA_EDITION_PATH in lib/mediaEdition).
+ */
+export const MEDIA_CONSOLE_ROUTES = ['/media-console', '/console'] as const;
 
 /**
  * Home button when any Pro hub is open.

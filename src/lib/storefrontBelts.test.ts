@@ -155,7 +155,7 @@ test('Media Edition (purple) has no product: display price only, no checkout, th
   // Display only: no Academy product exists in Stripe.
   assert.equal(academy.cardPrice, '$29.99 one-time');
   assert.equal(academy.status, 'Coming soon');
-  assert.equal(academy.to, '/media-edition');
+  assert.equal(academy.to, '/media');
   // The mail-link branch stays for any future rung without a page.
   assert.match(tsx, /if \(step\.to === null\)[\s\S]*?href=\{alphaRequestMailto\(\)\}/);
   // The section keeps its heading and the alpha button.
