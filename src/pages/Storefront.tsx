@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { UpdateToLatestButton } from '../components/UpdateToLatestButton';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import {
@@ -9,22 +9,28 @@ import {
   alphaRequestMailto,
 } from '../lib/siteFooter';
 import {
-  STOREFRONT_ALPHA_NOTE,
   STOREFRONT_NAV,
   STOREFRONT_POINTS,
   STOREFRONT_PROGRESS_EYEBROW,
   STOREFRONT_PROGRESS_HEADING,
-  STOREFRONT_STEPS,
   STOREFRONT_TIMER,
   STOREFRONT_WOODBLOCKS,
-  type StorefrontStep,
 } from '../lib/storefront';
+import {
+  STOREFRONT_BELT_LADDER,
+  STOREFRONT_LADDER_NOTE,
+  beltsVariantOf,
+  type BeltRung,
+  type BeltsVariant,
+} from '../lib/storefrontBelts';
 import { PRODUCTS_PATH } from '../lib/productNames';
 import { StorefrontHero } from './StorefrontHero';
 import './storefront.css';
 
 export function StorefrontPage() {
   const unlocked = useWhiteUnlocked();
+  const [params] = useSearchParams();
+  const belts = beltsVariantOf(params.get('belts'));
 
   return (
     <main className="home home--store">
@@ -74,7 +80,7 @@ export function StorefrontPage() {
           </div>
         </section>
 
-        <section className="sf-prog" aria-labelledby="store-progress">
+        <section className="sf-prog" id="progression" aria-labelledby="store-progress" data-belts={belts}>
           <div className="sf-prog-head">
             <div>
               <div className="sf-eyebrow">{STOREFRONT_PROGRESS_EYEBROW}</div>
@@ -89,11 +95,11 @@ export function StorefrontPage() {
             </a>
           </div>
           <div className="sf-steps">
-            {STOREFRONT_STEPS.map((step) => (
-              <ProgressStep key={step.id} step={step} />
+            {STOREFRONT_BELT_LADDER.map((rung) => (
+              <ProgressStep key={rung.id} step={rung} belts={belts} />
             ))}
           </div>
-          <p className="sf-note">{STOREFRONT_ALPHA_NOTE}</p>
+          <p className="sf-note">{STOREFRONT_LADDER_NOTE}</p>
         </section>
       </div>
 
@@ -149,7 +155,7 @@ function Woodblock({
   );
 }
 
-function ProgressStep({ step }: { step: StorefrontStep }) {
+function ProgressStep({ step, belts }: { step: BeltRung; belts: BeltsVariant }) {
   const body = (
     <>
       <div className="sf-rank">
@@ -157,15 +163,20 @@ function ProgressStep({ step }: { step: StorefrontStep }) {
         {step.rankLabel}
       </div>
       <div className="sf-beltcol">
-        <div className="sf-belt-box">{step.id === 'student' ? <StudentBinder /> : <Belt id={step.id} />}</div>
+        <div className="sf-belt-box">
+          <Belt color={step.belt} journal={step.id === 'student' && belts === 'a'} />
+        </div>
       </div>
       <div className="sf-info">
         <div>
           <h3>{step.title}</h3>
           <p>{step.blurb}</p>
+          {step.detail ? <p className="sf-step-detail">{step.detail}</p> : null}
         </div>
         <div className="sf-meta">
-          <div className={step.status === 'Available now' ? 'sf-price-now' : 'sf-price-soon'}>{step.cardPrice}</div>
+          {step.cardPrice ? (
+            <div className={step.status === 'Available now' ? 'sf-price-now' : 'sf-price-soon'}>{step.cardPrice}</div>
+          ) : null}
           <span className={step.status === 'Available now' ? 'sf-status sf-status--now' : 'sf-status sf-status--soon'}>
             {step.status}
           </span>
@@ -175,6 +186,14 @@ function ProgressStep({ step }: { step: StorefrontStep }) {
   );
 
   const className = `sf-step${step.id === 'white' ? ' sf-step--live' : ''} sf-step--${step.id}`;
+  if (step.to === null) {
+    // No product yet: the tile is the alpha request, same as the section button.
+    return (
+      <a className={className} href={alphaRequestMailto()}>
+        {body}
+      </a>
+    );
+  }
   return (
     <Link className={className} to={step.to}>
       {body}
@@ -201,17 +220,20 @@ function FooterFeedback() {
   );
 }
 
-function Belt({ id }: { id: 'white' | 'coach' | 'pro' }) {
-  const kind = id === 'coach' ? 'blue' : id;
-  return <div className={`sf-belt sf-belt--${kind}`} />;
-}
-
-/** Flat leather bar. The left edge mirrors the right groove; Journal is a flat stamp inside the same box. */
-function StudentBinder() {
+/** One belt set: same box, weave, stitch line and black rank bar. Black keeps its white / red / white bar. */
+function Belt({ color, journal = false }: { color: BeltRung['belt']; journal?: boolean }) {
+  const kind = color === 'black' ? 'pro' : color;
   return (
-    <div className="sf-leather" data-binder="student">
-      <span className="sf-leather-edge sf-leather-edge--left" aria-hidden="true" />
-      <span className="sf-journal">Journal</span>
+    <div className={`sf-belt sf-belt--${kind}${journal ? ' sf-belt--journal' : ''}`} data-belt={color}>
+      {journal ? (
+        <span className="sf-embroidery" aria-hidden="true">
+          <svg className="sf-embroidery-mark" viewBox="0 0 24 24" width="20" height="20">
+            <path d="M4 5.5C6.6 4.4 9.4 4.4 12 6c2.6-1.6 5.4-1.6 8-.5v13c-2.6-1.1-5.4-1.1-8 .5-2.6-1.6-5.4-1.6-8-.5z" />
+            <path d="M12 6v13" />
+          </svg>
+          JOURNAL
+        </span>
+      ) : null}
     </div>
   );
 }

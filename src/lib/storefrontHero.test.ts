@@ -26,9 +26,12 @@ test('hero variant comes from ?hero= and falls back to the default', () => {
   assert.equal(heroVariantOf('z'), DEFAULT_HERO_VARIANT);
 });
 
-test('a, b, c and d stay selectable, e is added, and the default does not move', () => {
+test('a, b, c and d stay selectable, and e (mats + board + timer) is the default', () => {
   assert.deepEqual([...HERO_VARIANTS], ['a', 'b', 'c', 'd', 'e']);
-  assert.equal(DEFAULT_HERO_VARIANT, 'a');
+  assert.equal(DEFAULT_HERO_VARIANT, 'e');
+  assert.equal(heroVariantOf(null), 'e');
+  assert.equal(heroVariantOf(''), 'e');
+  assert.equal(heroVariantOf('a'), 'a');
   for (const v of HERO_VARIANTS) assert.match(tsx, new RegExp(`variant === '${v}'`));
 });
 
