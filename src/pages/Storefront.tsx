@@ -10,9 +10,6 @@ import {
 } from '../lib/siteFooter';
 import {
   STOREFRONT_ALPHA_NOTE,
-  STOREFRONT_BUY_LABEL,
-  STOREFRONT_BUY_PATH,
-  STOREFRONT_HERO,
   STOREFRONT_NAV,
   STOREFRONT_POINTS,
   STOREFRONT_PROGRESS_EYEBROW,
@@ -23,6 +20,7 @@ import {
   type StorefrontStep,
 } from '../lib/storefront';
 import { PRODUCTS_PATH } from '../lib/productNames';
+import { StorefrontHero } from './StorefrontHero';
 import './storefront.css';
 
 export function StorefrontPage() {
@@ -32,10 +30,6 @@ export function StorefrontPage() {
     <main className="home home--store">
       <div className="sf-scroll">
       <header className="sf-pin">
-        <Link className="sf-portrait-brand" to="/" aria-label="Home">
-          <img src="/advantage-icon.png" alt="" width={112} height={112} draggable={false} />
-          <span className="sf-portrait-word">Advantage</span>
-        </Link>
         <div className="sf-topbar">
           <div className="sf-wrap">
             <nav className="sf-nav" aria-label="On this page">
@@ -51,62 +45,7 @@ export function StorefrontPage() {
         </div>
       </header>
 
-      <section className="sf-hero" aria-label="Advantage scoreboard">
-        <div className="sf-boardbox">
-          <div className="sf-sbwrap">
-            <div className="sf-sb">
-              <div className="sf-sb-row sf-c1">
-                <div className="sf-sb-name sf-hero-name">
-                  <div className="sf-hero-brand">
-                    <img src="/advantage-icon.png" alt="" width={44} height={44} draggable={false} />
-                    <span>Advantage</span>
-                  </div>
-                  <span className="sf-nm1">Competitor 1</span>
-                </div>
-                <ScoreTile kind="pts" label="POINTS" />
-                <ScoreTile kind="adv" label="ADVANTAGES" />
-                <ScoreTile kind="pen" label="PENALTIES" />
-              </div>
-              <div className="sf-sb-clock">
-                <span>STOP</span>
-                <b>{STOREFRONT_HERO.clock}</b>
-                <span>PAUSED</span>
-              </div>
-              <div className="sf-sb-row sf-c2">
-                <div className="sf-sb-name">Competitor 2</div>
-                <ScoreTile kind="pts" label="POINTS" />
-                <ScoreTile kind="adv" label="ADVANTAGES" />
-                <ScoreTile kind="pen" label="PENALTIES" />
-              </div>
-            </div>
-          </div>
-          <div className="sf-fade" />
-          <div className="sf-copy">
-            <div className="sf-wrap sf-copy-row">
-              <div>
-                <h1>{STOREFRONT_HERO.title}</h1>
-                <h2 className="sf-lead">
-                  {STOREFRONT_HERO.leadBeforeBreak}
-                  <br />
-                  {STOREFRONT_HERO.leadAfterBreak}
-                </h2>
-                <p className="sf-sub">{STOREFRONT_HERO.sub}</p>
-              </div>
-              <div className="sf-cta">
-                <Link className="sf-buy" to={STOREFRONT_BUY_PATH}>
-                  {STOREFRONT_BUY_LABEL}
-                </Link>
-                <div className="sf-fine">{STOREFRONT_HERO.fine}</div>
-                {unlocked ? (
-                  <Link className="sf-open" to="/white">
-                    Open White
-                  </Link>
-                ) : null}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <StorefrontHero unlocked={unlocked} />
 
       <section className="sf-band" id="scoreboard" aria-label="Scoreboard">
         <div className="sf-tex" aria-hidden="true" />
@@ -186,15 +125,6 @@ export function StorefrontPage() {
       </footer>
       </div>
     </main>
-  );
-}
-
-function ScoreTile({ kind, label }: { kind: 'pts' | 'adv' | 'pen'; label: string }) {
-  return (
-    <div className={`sf-sb-tile sf-t-${kind}`}>
-      <small>{label}</small>
-      <b>0</b>
-    </div>
   );
 }
 
