@@ -22,6 +22,7 @@ import {
   GYM_CONSOLE_NAME,
   INSTRUCTOR_COLLAB_HUB_LABEL,
   INSTRUCTOR_COACH_ENTRY,
+  PRO_INSTRUCTOR_HUB_LABEL,
   MEDIA_CONSOLE_NAME,
   PRO_LADDER_DETAIL,
   STUDENT_EDITION_NAME,
@@ -142,14 +143,14 @@ test('Pro ad lists the live Pro hubs and keeps launch pricing off the feature co
   assert.equal(PRO_CONSOLE_PREVIEW_LABEL, 'Advantage Pro');
   assert.equal(
     PRO_CONSOLE_PREVIEW_NOTE,
-    'Media Console, Advantage Coach Unlimited, instructor invites, and Tournament Management Pro.',
+    'Media Console, Advantage Instructor Edition, instructor invites, and Tournament Management Pro.',
   );
   assert.doesNotMatch(PRO_CONSOLE_PREVIEW_NOTE, /placeholder|wireframe|coming/i);
   assert.match(text, /Coming Soon/);
   assert.match(text, /Media Console/);
   assert.deepEqual(
     COMING_SOON_ADS.pro.features.map((feature) => feature.title),
-    [MEDIA_CONSOLE_NAME, INSTRUCTOR_COACH_ENTRY, INSTRUCTOR_COLLAB_HUB_LABEL, TOURNAMENT_MANAGEMENT_PRO_LABEL],
+    [MEDIA_CONSOLE_NAME, PRO_INSTRUCTOR_HUB_LABEL, INSTRUCTOR_COLLAB_HUB_LABEL, TOURNAMENT_MANAGEMENT_PRO_LABEL],
   );
   assert.doesNotMatch(text, /Cast to your Gym TV/i);
   assert.doesNotMatch(text, /ProShop Inventory/);
@@ -162,7 +163,7 @@ test('Pro ad lists the live Pro hubs and keeps launch pricing off the feature co
   assert.match(tournamentFeature?.body ?? '', /Pro brackets/);
   assert.doesNotMatch(tournamentFeature?.body ?? '', /roster/i);
   const unlimitedFeature = COMING_SOON_ADS.pro.features.find(
-    (feature) => feature.title === INSTRUCTOR_COACH_ENTRY,
+    (feature) => feature.title === PRO_INSTRUCTOR_HUB_LABEL,
   );
   assert.match(unlimitedFeature?.body ?? '', /Competition Class Curriculum/);
   assert.match(unlimitedFeature?.body ?? '', /Google Drive/);
@@ -170,7 +171,10 @@ test('Pro ad lists the live Pro hubs and keeps launch pricing off the feature co
   assert.doesNotMatch(text, /Match Controller/);
   assert.doesNotMatch(text, /Round Controller/);
   assert.match(text, /Class Schedule/);
-  assert.match(text, /Advantage Coach Unlimited/);
+  // Display only: Pro's feature list says Instructor Edition, not Coach Unlimited.
+  assert.match(text, /Advantage Instructor Edition/);
+  assert.doesNotMatch(text, /Advantage Coach Unlimited/);
+  assert.equal(INSTRUCTOR_COACH_ENTRY, 'Advantage Coach Unlimited');
   assert.match(text, /Instructor Invitation and Access Management/);
   assert.doesNotMatch(text, /Competitor Management System/);
   assert.doesNotMatch(text, /competitor roster/i);

@@ -227,6 +227,12 @@ export const INSTRUCTOR_COLLAB_HUB_LABEL = 'Instructor Invitation and Access Man
 /** Pro hub that replaced Competitor Management System. Opens Unlimited tools. */
 export const INSTRUCTOR_COACH_ENTRY = 'Advantage Coach Unlimited';
 
+/**
+ * Display label for that hub in Pro's feature lists (Pro console hubs, Pro Coming Soon ad).
+ * Text only: the Coach Unlimited screen, route, kinds and entitlements keep their names.
+ */
+export const PRO_INSTRUCTOR_HUB_LABEL = 'Advantage Instructor Edition';
+
 /** Pro gym-TV cast hub. Same screen Gallery opens. Not a rename of the Owner Console. */
 export const MEDIA_CONSOLE_NAME = 'Media Console';
 
@@ -236,7 +242,7 @@ export const MEDIA_CONSOLE_NAME = 'Media Console';
  */
 export const PRO_HUBS = [
   { title: MEDIA_CONSOLE_NAME, to: '/slideshow?folder=gallery', belt: 'purple' },
-  { title: INSTRUCTOR_COACH_ENTRY, to: COACH_UNLIMITED_PATH, belt: 'brown' },
+  { title: PRO_INSTRUCTOR_HUB_LABEL, to: COACH_UNLIMITED_PATH, belt: 'brown' },
   { title: INSTRUCTOR_COLLAB_HUB_LABEL, to: '/instructors', belt: 'black' },
   { title: TOURNAMENT_MANAGEMENT_PRO_LABEL, to: '/suite', belt: 'tournament' },
 ] as const;

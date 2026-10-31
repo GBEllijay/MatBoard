@@ -44,6 +44,7 @@ import {
   INSTRUCTOR_COLLAB_HUB_LABEL,
   INSTRUCTOR_COLLAB_NAME,
   INSTRUCTOR_COACH_ENTRY,
+  PRO_INSTRUCTOR_HUB_LABEL,
   UNLIMITED_LESSON_PATH,
   MATCH_CONTROLLER_PATH,
   MEDIA_CONSOLE_INSTRUCTIONS,
@@ -265,8 +266,13 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   assert.ok(!COACH_UNLIMITED_TOOLS.some((tool) => tool.to.startsWith('/coaching-tools')));
   assert.deepEqual(
     PRO_HUBS.map((hub) => hub.title),
-    [MEDIA_CONSOLE_NAME, INSTRUCTOR_COACH_ENTRY, INSTRUCTOR_COLLAB_HUB_LABEL, TOURNAMENT_MANAGEMENT_PRO_LABEL],
+    [MEDIA_CONSOLE_NAME, PRO_INSTRUCTOR_HUB_LABEL, INSTRUCTOR_COLLAB_HUB_LABEL, TOURNAMENT_MANAGEMENT_PRO_LABEL],
   );
+  // Pro's list reads Instructor Edition; the Coach Unlimited screen keeps its own name and route.
+  assert.equal(PRO_INSTRUCTOR_HUB_LABEL, 'Advantage Instructor Edition');
+  assert.equal(PRO_HUBS[1].title, 'Advantage Instructor Edition');
+  assert.equal(PRO_HUBS[1].to, '/coach-unlimited');
+  assert.ok(!PRO_HUBS.some((hub) => /Coach Unlimited/.test(hub.title)));
   assert.deepEqual(
     PRO_HUBS.map((hub) => hub.to),
     ['/slideshow?folder=gallery', '/coach-unlimited', '/instructors', '/suite'],
