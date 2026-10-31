@@ -53,8 +53,9 @@ test('hand-edited flags, URL params, and demo mode do not grant a tier after amn
   setProUnlocked(true);
   assert.equal(isProUnlocked(), true);
   assert.equal(isStudentEditionUnlocked(), true);
-  assert.equal(isCoachUnlocked(), false);
-  assert.equal(isWhiteUnlocked(), false);
+  // Tier rule: Pro opens Coach and White too, during amnesty as well.
+  assert.equal(isCoachUnlocked(), true);
+  assert.equal(isWhiteUnlocked(), true);
 
   setEntitlementClockForTests(() => Date.parse('2027-01-01T00:00:00.000Z'));
   local.setItem('advantage.proUnlocked', '1');

@@ -10,6 +10,7 @@
  */
 
 import type { EntitlementClaims } from './entitlementToken.ts';
+import { impliedDoors } from './tierImplications.ts';
 
 export const PAID_CHUNK_IDS = ['pro-console', 'media-console', 'lesson-cloud', 'coach-unlimited'] as const;
 export type PaidChunkId = (typeof PAID_CHUNK_IDS)[number];
@@ -43,7 +44,7 @@ function seatToken(claims: EntitlementClaims): boolean {
  * subscription claim, so a Pro grant stays open until the token itself expires.
  */
 export function proGrantOpen(claims: EntitlementClaims, nowMs: number): boolean {
-  if (!claims.grants.includes('pro')) return false;
+  if (!impliedDoors(claims.grants).includes('pro')) return false;
   const subs = claims.subs;
   if (!subs) return true;
   if (subs.state === 'locked') return false;

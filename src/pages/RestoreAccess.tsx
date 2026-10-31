@@ -3,7 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
 import { devicePublicJwk } from '../lib/deviceKey';
-import { acceptServerToken, clearEntitlementToken, entitlementSnapshot, readDeviceId } from '../lib/entitlement';
+import { clearEntitlementToken, entitlementSnapshot, readDeviceId } from '../lib/entitlement';
+import { acceptRestoredToken } from '../lib/restoreAccept';
 import { isWhiteRestoreEmail, restoreWhiteByEmail } from '../lib/whiteUnlock';
 
 /**
@@ -61,7 +62,7 @@ export function RestoreAccessPage() {
         setPending(false);
         return;
       }
-      const accepted = await acceptServerToken(body.token);
+      const accepted = await acceptRestoredToken(body.token);
       setNote(accepted ? 'This device is restored.' : "That code didn't work.");
     } catch {
       setError('Could not reach the server. Check your connection and try again.');

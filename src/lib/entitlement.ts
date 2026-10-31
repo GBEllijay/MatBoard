@@ -21,8 +21,10 @@ import {
   STUDENT_RELOCK_KEY,
   WHITE_RELOCK_KEY,
 } from './legacyUnlock.ts';
-import { ownerTestActive, subscribeOwnerTest } from './ownerTestGrant.ts';
+import { dropOwnerTestDoors, ownerTestActive, subscribeOwnerTest } from './ownerTestGrant.ts';
 import { noteSeatSunset } from './seatSunset.ts';
+
+import { doorsThatOpen, impliedDoors } from './tierImplications.ts';
 
 export const ENTITLEMENT_TOKEN_KEY = 'advantage.entitlement.token';
 export const ENTITLEMENT_CLOCK_KEY = 'advantage.entitlement.clock';
@@ -221,9 +223,9 @@ function tokenGrants(door: Door): boolean {
   if (paused && door === 'pro') return false;
   if (paused && verified.subs?.state === 'locked') return verified.grants.includes(door);
   if (paused && (door === 'student' || door === 'coach')) return false;
-  if (door === 'student' && (verified.grants.includes('student') || verified.grants.includes('pro'))) return true;
-  if (door === 'coach' && verified.grants.includes('pro')) return true;
-  return verified.grants.includes(door);
+  // Tier rule from tierImplications.ts: Pro opens Coach, Student and White; Coach opens White.
+  if (paused && door === 'white') return verified.grants.includes('white') && !verified.grants.includes('pro');
+  return impliedDoors(verified.grants).includes(door);
 }
 
 /** Doors that are open on this device right now. */
@@ -234,9 +236,9 @@ export function amnestyStillOpen(): boolean {
 export function doorOpen(door: Door): boolean {
   if (relocked(door)) return false;
   if (tokenGrants(door)) return true;
-  if (ownerTestActive(door)) return true;
-  if (door === 'student' && ownerTestActive('pro')) return true;
-  return legacyFlag(door);
+  const sources = doorsThatOpen(door);
+  if (sources.some((source) => ownerTestActive(source))) return true;
+  return sources.some((source) => legacyFlag(source));
 }
 
 export function entitlementSnapshot(): {
@@ -317,18 +319,36 @@ export function clearOwnerTestToken(): boolean {
 
 /**
  * A fresh server grant (owner test or a confirmed checkout token) clears the
- * testing Lock marks for the doors it opens. Pro also opens Student Edition
- * and Coach, so it clears those marks too. Other marks stay.
+ * testing Lock marks for the doors it opens, using the tier table in
+ * tierImplications.ts (Pro clears Pro, Coach, Student Edition and White). Other marks stay.
  */
+const RELOCK_KEY_FOR: Readonly<Record<Door, string>> = {
+  white: WHITE_RELOCK_KEY,
+  student: STUDENT_RELOCK_KEY,
+  coach: COACH_RELOCK_KEY,
+  pro: PRO_RELOCK_KEY,
+};
+
+/** A new grant reopens every door it implies (tierImplications.ts) that a Lock button closed here. */
 export function clearRelocksFor(grants: readonly string[]): void {
-  const keys: string[] = [];
-  if (grants.includes('pro')) keys.push(PRO_RELOCK_KEY);
-  if (grants.includes('coach') || grants.includes('pro')) keys.push(COACH_RELOCK_KEY);
-  if (grants.includes('white')) keys.push(WHITE_RELOCK_KEY);
-  if (grants.includes('student') || grants.includes('pro')) keys.push(STUDENT_RELOCK_KEY);
+  const keys = impliedDoors(grants).map((door) => RELOCK_KEY_FOR[door]);
   if (!keys.length) return;
   keys.forEach(removeItem);
   notifyEntitlement();
+}
+
+/**
+ * Lock is symmetric with unlock: Lock Pro closes Pro, Coach, Student Edition and White
+ * (and Media once it is in the table); Lock Coach closes Coach and White.
+ * The relock marks win over the stored pass, owner-test doors, and legacy flags in doorOpen.
+ */
+export function relockImplied(door: Door): Door[] {
+  const doors = impliedDoors([door]);
+  doors.forEach((closed) => writeItem(RELOCK_KEY_FOR[closed], '1'));
+  // The owner-test seat is part of Pro and Coach previews.
+  dropOwnerTestDoors(door === 'pro' || door === 'coach' ? [...doors, 'seat'] : doors);
+  notifyEntitlement();
+  return doors;
 }
 
 export async function loadPublicConfig(): Promise<void> {
