@@ -26,6 +26,8 @@
   --sf-pen: #c8102e;
   --sf-belt-white: #f4f1ea;
   --sf-belt-blue: #2a5cf0;
+  --sf-belt-purple: #6b2d91; /* Same cloth as the Pro gallery's purple belt header. */
+  --sf-belt-brown: #6b3a1f; /* Same cloth as the brown belt header. */
   --sf-belt-black: #0a0b0e;
   --sf-belt-red: #ef4444;
   --sf-bar: #14161c;
@@ -681,71 +683,45 @@
   border-color: rgba(255, 255, 255, 0.07);
 }
 
-.home.home--store .sf-leather {
-  position: relative;
-  height: 100%;
-  width: 100%;
-  background:
-    radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.05), transparent 40%),
-    repeating-radial-gradient(circle at 3px 3px, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 4px),
-    linear-gradient(#26272b, #151619);
+.home.home--store .sf-belt--purple {
+  --sf-fill: var(--sf-belt-purple);
 }
 
-.home.home--store .sf-leather::before {
-  content: "";
+.home.home--store .sf-belt--brown {
+  --sf-fill: var(--sf-belt-brown);
+}
+
+/* ?belts=a: JOURNAL embroidered on the blue belt, centered on the cloth left of the rank bar. */
+.home.home--store .sf-embroidery {
   position: absolute;
-  left: 8px;
-  right: 8px;
-  top: 24%;
-  bottom: 24%;
-  border-top: 1.5px dashed rgba(200, 200, 205, 0.28);
-  border-bottom: 1.5px dashed rgba(200, 200, 205, 0.28);
-  pointer-events: none;
-}
-
-.home.home--store .sf-leather::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  right: 11%;
-  width: 12px;
-  background: linear-gradient(90deg, #0c0d0f, #2a2b30 50%, #0c0d0f);
-}
-
-/* Same groove as the right edge, on the left. Inside the bar, so the box does not grow. */
-.home.home--store .sf-leather-edge {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 12px;
-  background: linear-gradient(90deg, #0c0d0f, #2a2b30 50%, #0c0d0f);
-  pointer-events: none;
-}
-
-.home.home--store .sf-leather-edge--left {
-  left: 11%;
-}
-
-.home.home--store .sf-journal {
-  position: absolute;
-  left: 50%;
   top: 50%;
+  left: 40%;
   z-index: 1;
-  transform: translate(-50%, -58%);
-  margin: 0;
-  padding: 0;
-  font-family: "Great Vibes", cursive;
-  font-size: 30px;
-  font-weight: 400;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transform: translate(-50%, -50%);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 800;
   line-height: 1;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.3em;
   white-space: nowrap;
-  color: #5a5f69;
+  color: #eef0f6;
   text-shadow:
-    -0.6px -0.75px 0 #05060a,
-    0.7px 0.95px 0 rgba(255, 255, 255, 0.55);
+    0 1px 0 rgba(4, 10, 30, 0.75),
+    0 -0.5px 0 rgba(255, 255, 255, 0.35);
   pointer-events: none;
+}
+
+.home.home--store .sf-embroidery-mark {
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-dasharray: 2.2 1.2;
+  filter: drop-shadow(0 1px 0 rgba(4, 10, 30, 0.75));
 }
 
 .home.home--store .sf-info {
@@ -1053,9 +1029,14 @@
     height: 34px;
   }
 
-  .home.home--store .sf-journal {
-    font-size: 22px;
-    transform: translate(-50%, -60%);
+  .home.home--store .sf-embroidery {
+    font-size: 12px;
+    gap: 6px;
+  }
+
+  .home.home--store .sf-embroidery-mark {
+    width: 14px;
+    height: 14px;
   }
 
   .home.home--store .sf-info {
