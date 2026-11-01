@@ -3,9 +3,11 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import { Chrome } from '../components/Chrome';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { PlayExitMark } from '../components/PlayExitMark';
+import { PolishedTimer } from '../components/PolishedTimer';
 import { Sheet } from '../components/Sheet';
 import { TrainingOptions } from '../components/TrainingOptions';
 import { useInterval } from '../hooks/useClock';
+import { usePolishedSkinsUnlocked } from '../hooks/usePolishedSkins';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useSuiteOrigin } from '../hooks/useSuiteOrigin';
 import { useWakeLock } from '../hooks/useWakeLock';
@@ -15,12 +17,14 @@ import { formatMmSs } from '../lib/format';
 import { fullscreenElement } from '../lib/fullscreen';
 import { wantsRoundsFullscreen } from '../lib/roundsFullscreen';
 import { safeTimerReturn } from '../lib/timerReturn';
-import { trainingUsesAdvantageSkin } from '../lib/trainingSkin';
+import { isPolishedTrainingSkin, trainingUsesAdvantageSkin, visibleTrainingSkin } from '../lib/trainingSkin';
 import { remainingTraining, tickTraining, toggleTrainingClock } from '../lib/trainingStore';
 
 export function TrainingPage() {
   const training = useTrainingState();
-  const skin = useTrainingSkin();
+  /** A polished pick paints only with Media Edition or above here; otherwise Classic. */
+  const skin = visibleTrainingSkin(useTrainingSkin(), usePolishedSkinsUnlocked());
+  const polished = isPolishedTrainingSkin(skin) ? skin : null;
   const [options, setOptions] = useState(false);
   const [, setTick] = useState(0);
   const remaining = remainingTraining(training);
@@ -79,10 +83,10 @@ export function TrainingPage() {
     <main
       className={`training training--${training.phase}${
         trainingUsesAdvantageSkin(skin) ? ' training--themed' : ''
-      }${suite.fromSuite ? ' origin-suite' : ''}${fs.className ? ` ${fs.className}` : ''}`}
+      }${polished ? ' training--polished' : ''}${suite.fromSuite ? ' origin-suite' : ''}${fs.className ? ` ${fs.className}` : ''}`}
       onClick={(event) => {
         const target = event.target as HTMLElement;
-        if (target.closest('.sheet, .training__clock, .training__phase, .chrome, .btn, input, fieldset, label, .play-fs, .play-exit')) return;
+        if (target.closest('.sheet, .training__clock, .training__phase, .tm-clock, .tm-phase, .chrome, .btn, input, fieldset, label, .play-fs, .play-exit')) return;
         setOptions(true);
       }}
     >
@@ -102,20 +106,37 @@ export function TrainingPage() {
           onToggle={() => void fs.toggle()}
         />
       </div>
-      <button
-        type="button"
-        className="training__phase"
-        aria-label={`${training.phase === 'work' ? 'Work' : 'Break'} · ${roundLabel}. ${
-          fs.active ? 'Tap to exit fullscreen' : 'Tap for fullscreen'
-        }`}
-        onClick={onRoundLabel}
-      >
-        {training.phase === 'work' ? 'Work' : 'Break'} · {roundLabel}
-      </button>
-      <button type="button" className="training__clock" onClick={onClock}>
-        {formatMmSs(remaining)}
-      </button>
-      <p className="training__hint">Tap the clock to start or pause. Tap the round line for fullscreen. Tap anywhere else for options.</p>
+      {polished ? (
+        <PolishedTimer
+          slug={polished}
+          rest={training.phase === 'break'}
+          remainingMs={remaining}
+          workMs={training.workMs}
+          breakMs={training.breakMs}
+          round={training.currentRound}
+          phaseLine={`${training.phase === 'work' ? 'WORK' : 'REST'} · ${roundLabel.toUpperCase()}`}
+          phaseLabel={`${training.phase === 'work' ? 'Work' : 'Break'} · ${roundLabel}. ${fs.active ? 'Tap to exit fullscreen' : 'Tap for fullscreen'}`}
+          onPhase={onRoundLabel}
+          onClock={onClock}
+        />
+      ) : (
+        <>
+          <button
+            type="button"
+            className="training__phase"
+            aria-label={`${training.phase === 'work' ? 'Work' : 'Break'} · ${roundLabel}. ${
+              fs.active ? 'Tap to exit fullscreen' : 'Tap for fullscreen'
+            }`}
+            onClick={onRoundLabel}
+          >
+            {training.phase === 'work' ? 'Work' : 'Break'} · {roundLabel}
+          </button>
+          <button type="button" className="training__clock" onClick={onClock}>
+            {formatMmSs(remaining)}
+          </button>
+          <p className="training__hint">Tap the clock to start or pause. Tap the round line for fullscreen. Tap anywhere else for options.</p>
+        </>
+      )}
 
       <Sheet open={options} title="Training options" onClose={() => setOptions(false)}>
         <TrainingOptions onReset={() => setOptions(false)} />

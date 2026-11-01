@@ -11,7 +11,9 @@ import {
 } from '../lib/audio';
 import { formatMinuteInput, formatMmSs, formatMss, parseTypedDurationMs } from '../lib/format';
 import { dispatchMatch } from '../lib/matchStore';
-import { setTrainingSkin } from '../lib/trainingSkin';
+import { usePolishedSkinsUnlocked } from '../hooks/usePolishedSkins';
+import { setTrainingSkin, visibleTrainingSkin } from '../lib/trainingSkin';
+import { TimerSkinPicker } from './TimerSkinPicker';
 import {
   BREAK_PRESETS_MS,
   isBreakPreset,
@@ -34,7 +36,8 @@ import {
 export function TrainingOptions({ onReset }: { onReset?: () => void }) {
   const training = useTrainingState();
   const audio = useAudioPrefs();
-  const skin = useTrainingSkin();
+  /** A locked polished pick shows as Classic, which is what the timer paints. */
+  const skin = visibleTrainingSkin(useTrainingSkin(), usePolishedSkinsUnlocked());
   const [customWorkOpen, setCustomWorkOpen] = useState(false);
   const [customBreakOpen, setCustomBreakOpen] = useState(false);
   const customWork = !isWorkPreset(training.workMs);
@@ -284,6 +287,7 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
             Advantage
           </button>
         </div>
+        <TimerSkinPicker buttonClassName="preset" />
       </fieldset>
 
       <button

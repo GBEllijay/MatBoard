@@ -1,0 +1,237 @@
+/*
+ * App frame for the polished skins. Loaded before each skin's scoped CSS, so a skin rule
+ * of equal weight still wins. Resets app button, link, and chip styles inside the skin.
+ * The root fills its page (.display / .training are position: relative), so app banners
+ * above the page stay visible and the page chrome (z-index above 0) stays on top.
+ */
+.skin-root[data-skin] {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.skin-root[data-skin] .sb,
+.skin-root[data-skin] .tm {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+}
+
+/* One column that never grows past the screen (long names or divisions ellipsize). */
+.skin-root[data-skin] .sb {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.skin-root[data-skin] .sb > * {
+  min-width: 0;
+}
+
+.skin-root .skin-deco {
+  display: contents;
+}
+
+.skin-root--loading {
+  visibility: hidden;
+}
+
+.skin-root .sk-btn {
+  appearance: none;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  padding: 0;
+  min-height: 0;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-align: inherit;
+  box-shadow: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.skin-root .sk-btn:focus-visible {
+  outline: 3px solid #fcc000;
+  outline-offset: 2px;
+}
+
+.skin-root .chip {
+  display: inline-block;
+  min-height: 0;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.skin-root .sk-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.skin-root .name a,
+.skin-root .gym a,
+.skin-root .hdr a,
+.skin-root .band a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Belts the mock did not draw. Blue and purple come from the skin. */
+.skin-root .belt.white { background: #f4f4f4; color: #111; }
+.skin-root .belt.grey, .skin-root .belt.gray { background: #8b8f97; color: #fff; }
+.skin-root .belt.yellow { background: #f2c418; color: #111; }
+.skin-root .belt.orange { background: #f07d1a; color: #111; }
+.skin-root .belt.green { background: #2f9a46; color: #fff; }
+.skin-root .belt.brown { background: #6e4424; color: #fff; }
+.skin-root .belt.black { background: #121212; color: #fff; }
+.skin-root .belt.black i { background: #d0141a; }
+.skin-root .belt.custom { background: #44506a; color: #fff; }
+
+/* Phone portrait: stack the name above the three tiles; cap vh sizes by width. */
+@media (orientation: portrait) {
+  /* The header row also clears the display chip row (Home, Skin, Fullscreen, Controller). */
+  .skin-root[data-skin] .sb {
+    grid-template-rows: calc(5vh + 3.2rem) 1fr 11vh 1fr;
+  }
+  .skin-root[data-skin] .sb > .hdr {
+    align-self: end;
+  }
+  .skin-root[data-skin] .row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: auto 1fr;
+  }
+  .skin-root[data-skin] .row .id {
+    grid-column: 1 / -1;
+    padding-left: 3vw;
+    padding-right: 2vw;
+  }
+  .skin-root[data-skin] .row .name {
+    font-size: min(6vh, 8.5vw);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .skin-root[data-skin] .row .gym,
+  .skin-root[data-skin] .row .belt {
+    font-size: min(2.4vh, 3.6vw);
+  }
+  .skin-root[data-skin] .row .tile .lab {
+    font-size: min(2.2vh, 3.1vw);
+  }
+  .skin-root[data-skin] .row .tile .num {
+    font-size: min(17vh, 24vw);
+  }
+  .skin-root[data-skin] .hdr .mat,
+  .skin-root[data-skin] .hdr .div {
+    font-size: min(2.2vh, 3.2vw);
+  }
+  /* .tm-clock lifts these over the skins' own (0,3,0) digit rules. */
+  .skin-root[data-skin] .tm .digits.tm-clock {
+    font-size: min(40vh, 26vw);
+  }
+  .skin-root[data-skin='brasil'] .tm .digits.tm-clock,
+  .skin-root[data-skin='kids-sticker'] .tm .digits.tm-clock,
+  .skin-root[data-skin='reggae'] .tm .digits.tm-clock {
+    font-size: min(30vh, 20vw);
+  }
+  .skin-root[data-skin] .band.band {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  }
+  .skin-root[data-skin] .band > * {
+    min-width: 0;
+  }
+  .skin-root[data-skin] .band .clock.clock {
+    font-size: min(9vh, 12.5vw);
+  }
+  .skin-root[data-skin] .band .state.state,
+  .skin-root[data-skin] .band .status.status {
+    font-size: min(2vh, 3vw);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* Heavy Metal's centred wordmark would sit under the chip row. */
+  .skin-root[data-skin='heavy-metal'] .sb .wordmark {
+    display: none;
+  }
+  .skin-root[data-skin] .tm .phase {
+    font-size: min(3.6vh, 3.4vw);
+    top: 14vh;
+  }
+  .skin-root[data-skin] .tm .logo {
+    height: min(9vh, 14vw);
+    width: min(9vh, 14vw);
+  }
+}
+
+/* Psychedelic on a phone: its wide Syne labels, padded clock pill, and plate need tighter sizes. */
+@media (orientation: portrait) {
+  .skin-root[data-skin='psychedelic'] .hdr .mat {
+    font-size: min(2.1vh, 3vw);
+    white-space: nowrap;
+  }
+  /* Syne is too wide for a phone column, so the small caps switch to Inter 800 here. */
+  .skin-root[data-skin='psychedelic'] .hdr .div {
+    min-width: 0;
+    font-family: Inter, system-ui, sans-serif;
+    font-size: max(min(1.8vh, 2.6vw), 12px);
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .skin-root[data-skin='psychedelic'] .row .tile .lab {
+    font-family: Inter, system-ui, sans-serif;
+    font-size: max(min(1.9vh, 2.6vw), 12px);
+    letter-spacing: 0.02em;
+  }
+  .skin-root[data-skin='psychedelic'] .band .clock.clock {
+    font-size: min(7vh, 9.5vw);
+    padding: 0.2vh 2.6vw 0.8vh 2.4vw;
+  }
+  .skin-root[data-skin='psychedelic'] .band .state.state,
+  .skin-root[data-skin='psychedelic'] .band .status.status {
+    font-size: min(1.8vh, 2.6vw);
+    letter-spacing: 0.06em;
+    padding: 0.6vh 1.8vw;
+  }
+  /* Op-art rings sized to the phone and centred on the band; the eyes need landscape room. */
+  .skin-root[data-skin='psychedelic'] .sb .op {
+    top: calc(52.9vh + 25px);
+    width: 120vw;
+    height: 120vw;
+    margin: -60vw 0 0 -60vw;
+  }
+  .skin-root[data-skin='psychedelic'] .sb .beye {
+    display: none;
+  }
+  .skin-root[data-skin='psychedelic'] .tm .plate {
+    width: 90vw;
+  }
+  .skin-root[data-skin='psychedelic'] .tm .digits.tm-clock {
+    font-size: min(30vh, 19vw);
+    padding-right: 1vw;
+  }
+  .skin-root[data-skin='psychedelic'] .tm .next {
+    font-size: min(2.7vh, 3.4vw);
+    letter-spacing: 0.06em;
+  }
+}
+
+/* The app's exit mark already shows the gym logo at the timer's top-left. */
+.training--polished .skin-root[data-skin] .tm .logo {
+  visibility: hidden;
+}

@@ -1,0 +1,131 @@
+/* GENERATED from the polished mock (base.css + themes/psychedelic.css), scoped to [data-skin="psychedelic"]. Do not edit by hand. */
+/* Shared layout for all scoreboard + timer skins. All sizes in vh/vw so 1280x600 and 844x390 scale the same. */
+[data-skin="psychedelic"],[data-skin="psychedelic"] *{box-sizing:border-box}
+[data-skin="psychedelic"]{margin:0;width:100vw;height:100vh;overflow:hidden;-webkit-font-smoothing:antialiased}
+[data-skin="psychedelic"]{font-family:Inter,system-ui,sans-serif}
+[data-skin="psychedelic"] .num,[data-skin="psychedelic"] .clock,[data-skin="psychedelic"] .digits{font-variant-numeric:tabular-nums}
+
+/* ---------- SCOREBOARD ---------- */
+[data-skin="psychedelic"] .sb{position:relative;width:100vw;height:100vh;padding:1.8vh 2vh 2vh;display:grid;
+  grid-template-rows:5.5vh 1fr 15vh 1fr;gap:1.6vh;isolation:isolate}
+[data-skin="psychedelic"] .hdr{display:flex;align-items:center;gap:1.6vh;position:relative;z-index:2}
+[data-skin="psychedelic"] .logo{height:5.5vh;width:5.5vh;border-radius:50%;display:block;flex:none}
+[data-skin="psychedelic"] .hdr .mat{font-size:2.4vh;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+[data-skin="psychedelic"] .hdr .div{font-size:2.3vh;font-weight:600;letter-spacing:.12em;text-transform:uppercase;opacity:.7;margin-left:auto}
+[data-skin="psychedelic"] .row{position:relative;display:grid;grid-template-columns:30% 1.3fr 1fr 1fr;gap:1.4vh;padding:1.4vh;min-height:0;z-index:1}
+[data-skin="psychedelic"] .id{display:flex;flex-direction:column;justify-content:center;gap:1.3vh;padding-left:2.4vh;min-width:0}
+[data-skin="psychedelic"] .name{font-size:6vh;font-weight:800;line-height:1;white-space:nowrap;letter-spacing:-.01em}
+[data-skin="psychedelic"] .meta{display:flex;align-items:center;gap:1.4vh;min-width:0}
+[data-skin="psychedelic"] .belt{display:inline-flex;align-items:center;height:4.4vh;padding:0 1.6vh 0 1.2vh;gap:1vh;border-radius:99px;
+  font-size:2.3vh;font-weight:800;letter-spacing:.1em;flex:none}
+[data-skin="psychedelic"] .belt i{display:block;width:2.6vh;height:1.6vh;border-radius:.4vh;background:#111}
+[data-skin="psychedelic"] .belt.blue{background:#1f56d6;color:#fff}
+[data-skin="psychedelic"] .belt.purple{background:#6b2fb3;color:#fff}
+[data-skin="psychedelic"] .gym{font-size:2.6vh;font-weight:600;white-space:nowrap;opacity:.8}
+[data-skin="psychedelic"] .tile{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+  padding:1.6vh .6vh .4vh;min-width:0;overflow:hidden}
+[data-skin="psychedelic"] .lab{font-size:max(2.7vh,12px);font-weight:800;letter-spacing:.12em;line-height:1;white-space:nowrap}
+[data-skin="psychedelic"] .num{font-size:21vh;font-weight:800;line-height:.82;letter-spacing:-.02em}
+[data-skin="psychedelic"] .band{position:relative;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 3vh;z-index:1}
+[data-skin="psychedelic"] .band .state{font-size:3vh;font-weight:800;letter-spacing:.12em;justify-self:start}
+[data-skin="psychedelic"] .band .status{font-size:3vh;font-weight:800;letter-spacing:.12em;justify-self:end}
+[data-skin="psychedelic"] .clock{font-size:13.5vh;font-weight:800;line-height:1;letter-spacing:-.01em}
+
+/* ---------- TIMER ---------- */
+[data-skin="psychedelic"] .tm{position:relative;width:100vw;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;isolation:isolate;overflow:hidden}
+[data-skin="psychedelic"] .tm .logo{position:absolute;left:4.4vh;top:3.4vh;height:9vh;width:9vh;z-index:5}
+[data-skin="psychedelic"] .tm .phase{position:absolute;top:4.6vh;left:0;right:0;text-align:center;font-size:3.6vh;font-weight:800;letter-spacing:.16em;z-index:5}
+[data-skin="psychedelic"] .digits{font-size:40vh;font-weight:800;line-height:1;letter-spacing:-.01em;position:relative;z-index:3}
+
+/* polish: progress fraction (--p, 1 = full) is set inline on .tm; min label size floor */
+[data-skin="psychedelic"] .tm{--p:1}
+
+/* 08 Psychedelic — Fillmore poster x liquid chrome. Assets: assets/psy-liquid.jpg (scoreboard), assets/psy-tunnel.jpg (timer).
+   Fonts (Google): Monoton (melty headers, warped by the inline SVG #melt filter), Shrikhand (names + digits), Syne 800 (labels/meta). */
+[data-skin="psychedelic"]{--mag:#FF2BD6;--lime:#B6FF00;--tang:#FF8A00;--uv:#6A00FF;--turq:#00E5D4;--ink:#14002B;--white:#FFFFFF}
+[data-skin="psychedelic"]{background:#1A0040;color:var(--white);font-family:Syne,Inter,sans-serif}
+[data-skin="psychedelic"] .bg{position:absolute;inset:0;z-index:0;background:url(./assets/psy-liquid.jpg) center/cover}
+/* concentric op-art rings behind the clock */
+[data-skin="psychedelic"] .op{position:absolute;left:50%;top:53.45vh;width:150vh;height:150vh;margin:-75vh 0 0 -75vh;z-index:0;pointer-events:none;
+  background:repeating-radial-gradient(circle,#0A0014 0 1.6vh,var(--white) 1.6vh 3.2vh);opacity:.9;
+  -webkit-mask:radial-gradient(closest-side,#000 25%,transparent 60%);mask:radial-gradient(closest-side,#000 25%,transparent 60%)}
+[data-skin="psychedelic"] .beye{position:absolute;top:47.2vh;width:12.5vh;height:12.5vh;z-index:3;filter:drop-shadow(.6vh .6vh 0 var(--ink))}
+[data-skin="psychedelic"] .beye.l{left:calc(50% - 36vh)}[data-skin="psychedelic"] .beye.r{left:calc(50% + 23.5vh)}
+/* header */
+[data-skin="psychedelic"] .hdr .mat{font-family:Monoton;font-weight:400;font-size:4.6vh;letter-spacing:.06em;text-transform:uppercase;color:var(--lime);line-height:1;
+  filter:url(#melt) drop-shadow(.35vh .35vh 0 var(--mag)) drop-shadow(.35vh .35vh 0 var(--ink))}
+[data-skin="psychedelic"] .hdr .div{font-family:Syne;font-weight:800;font-size:2.3vh;letter-spacing:.14em;opacity:1;color:var(--white);background:var(--ink);padding:.6vh 1.6vh;border-radius:99px;box-shadow:0 0 0 .25vh var(--turq)}
+[data-skin="psychedelic"] .logo{box-shadow:0 0 0 .3vh var(--ink),0 0 0 .7vh var(--lime),0 0 0 1vh var(--mag)}
+/* rows: solid ultraviolet-black plates with clashing offset outlines */
+[data-skin="psychedelic"] .row{background:linear-gradient(135deg,#1C0045,#0E0024);border-radius:3vh;border:.5vh solid var(--white);
+  box-shadow:.8vh .8vh 0 var(--mag),1.6vh 1.6vh 0 var(--lime);margin-right:1.6vh;padding:1.2vh 1.2vh 1.2vh 1.4vh}
+[data-skin="psychedelic"] .c2{box-shadow:.8vh .8vh 0 var(--turq),1.6vh 1.6vh 0 var(--tang)}
+[data-skin="psychedelic"] .id{padding-left:2vh}
+[data-skin="psychedelic"] .name{font-family:Shrikhand;font-weight:400;font-size:6vh;letter-spacing:0;color:var(--white);text-shadow:.35vh .35vh 0 var(--mag),.7vh .7vh 0 var(--uv)}
+[data-skin="psychedelic"] .c2 .name{text-shadow:.35vh .35vh 0 var(--turq),.7vh .7vh 0 var(--uv)}
+[data-skin="psychedelic"] .gym{font-family:Syne;font-weight:700;font-size:2.6vh;opacity:.95}
+[data-skin="psychedelic"] .belt{font-family:Syne;font-weight:800;box-shadow:0 0 0 .25vh var(--white)}
+/* tiles: clearly differentiated acid trio, solid so the digits sit on calm colour */
+[data-skin="psychedelic"] .tile{background:var(--c);border-radius:2.2vh;border:.45vh solid var(--ink);box-shadow:inset 0 -1.2vh 0 rgba(0,0,0,.14)}
+[data-skin="psychedelic"] .pts{--c:var(--lime);--t:var(--ink)}
+[data-skin="psychedelic"] .adv{--c:var(--tang);--t:var(--ink)}
+[data-skin="psychedelic"] .pen{--c:#FF1F4F;--t:var(--white)}
+[data-skin="psychedelic"] .lab{font-family:Syne;font-weight:800;font-size:max(2.8vh,12px);letter-spacing:.12em;color:var(--t)}
+[data-skin="psychedelic"] .num{font-family:Shrikhand;font-weight:400;font-size:19vh;line-height:.92;letter-spacing:0;color:var(--t);margin-bottom:.8vh;padding-right:1vh}
+[data-skin="psychedelic"] .pts .num,[data-skin="psychedelic"] .adv .num{text-shadow:.6vh .6vh 0 rgba(255,255,255,.55)}
+[data-skin="psychedelic"] .pen .num{text-shadow:.6vh .6vh 0 var(--ink)}
+/* band */
+[data-skin="psychedelic"] .clock{font-family:Shrikhand;font-weight:400;font-size:11.4vh;line-height:1;letter-spacing:0;color:var(--white);background:var(--ink);
+  padding:.4vh 3.6vh 1.2vh 3.2vh;border-radius:99px;border:.5vh solid var(--white);
+  box-shadow:.7vh .7vh 0 var(--mag),1.4vh 1.4vh 0 var(--lime);text-shadow:.45vh .45vh 0 var(--uv)}
+[data-skin="psychedelic"] .band .state,[data-skin="psychedelic"] .band .status{font-family:Syne;font-weight:800;font-size:2.9vh;letter-spacing:.14em;padding:.8vh 2vh;border-radius:99px;border:.35vh solid var(--ink);box-shadow:.5vh .5vh 0 var(--ink)}
+[data-skin="psychedelic"] .band .state{background:var(--turq);color:var(--ink)}
+[data-skin="psychedelic"] .band .status{background:var(--white);color:#C8002E}
+
+/* ---------- TIMER ---------- */
+[data-skin="psychedelic"] .tm .bg{background:url(./assets/psy-tunnel.jpg) center/cover}
+[data-skin="psychedelic"] .spiral{position:absolute;left:50%;top:50%;width:220vh;height:220vh;margin:-110vh 0 0 -110vh;z-index:1;pointer-events:none;
+  background:repeating-conic-gradient(from 0deg,rgba(10,0,20,.35) 0 6deg,transparent 6deg 12deg);
+  -webkit-mask:radial-gradient(closest-side,transparent 20%,#000 70%);mask:radial-gradient(closest-side,transparent 20%,#000 70%)}
+[data-skin="psychedelic"] .tm .logo{box-shadow:0 0 0 .4vh var(--ink),0 0 0 .9vh var(--lime),0 0 0 1.3vh var(--mag)}
+[data-skin="psychedelic"] .tm .phase{left:50%;right:auto;transform:translateX(-50%);top:4.2vh;font-family:Syne;font-weight:800;font-size:3.2vh;letter-spacing:.14em;white-space:nowrap;
+  color:var(--ink);background:var(--lime);padding:.8vh 2.8vh;border-radius:99px;border:.4vh solid var(--ink);box-shadow:.6vh .6vh 0 var(--mag)}
+[data-skin="psychedelic"] .plate{position:relative;z-index:3;margin-top:7.4vh;width:74vw;display:flex;flex-direction:column;align-items:center;padding:1.8vh 0 3vh;
+  background:var(--ink);border:.6vh solid var(--white);border-radius:7vh;box-shadow:1vh 1vh 0 var(--mag),2vh 2vh 0 var(--turq),0 0 8vh rgba(0,0,0,.6)}
+[data-skin="psychedelic"] .drips{position:absolute;left:0;right:0;top:100%;height:0;z-index:-1}
+[data-skin="psychedelic"] .drips i{position:absolute;top:-2vh;width:3.4vh;background:var(--white);border-radius:0 0 99px 99px}
+[data-skin="psychedelic"] .drips i::after{content:"";position:absolute;left:.6vh;right:.6vh;top:0;bottom:.6vh;background:var(--ink);border-radius:0 0 99px 99px}
+[data-skin="psychedelic"] .drips i:nth-child(1){left:14%;height:8vh}[data-skin="psychedelic"] .drips i:nth-child(2){left:23%;height:4.4vh;width:2.6vh}[data-skin="psychedelic"] .drips i:nth-child(3){left:41%;height:10vh}
+[data-skin="psychedelic"] .drips i:nth-child(4){left:58%;height:5.2vh;width:2.8vh}[data-skin="psychedelic"] .drips i:nth-child(5){left:71%;height:9vh}[data-skin="psychedelic"] .drips i:nth-child(6){left:83%;height:4vh;width:2.4vh}
+[data-skin="psychedelic"] .tm .title{font-family:Monoton;font-size:6.2vh;line-height:1.1;color:var(--lime);letter-spacing:.06em;filter:url(#melt) drop-shadow(.35vh .35vh 0 var(--mag))}
+[data-skin="psychedelic"] .tm .digits{font-family:Shrikhand;font-weight:400;font-size:28vh;line-height:1.06;letter-spacing:0;color:var(--white);margin-top:-.4vh;padding-right:2vh;
+  text-shadow:.7vh .7vh 0 var(--mag),1.4vh 1.4vh 0 var(--uv)}
+[data-skin="psychedelic"] .pbar{position:relative;width:76%;height:3.8vh;border-radius:99px;background:#2A0A50;border:.4vh solid var(--white);margin-top:1.2vh}
+[data-skin="psychedelic"] .pbar .fill{position:absolute;left:0;top:0;bottom:0;width:calc(var(--p) * 100%);border-radius:99px;
+  background:repeating-linear-gradient(115deg,var(--mag) 0 2.4vh,var(--tang) 2.4vh 4.8vh,var(--lime) 4.8vh 7.2vh,var(--turq) 7.2vh 9.6vh,var(--uv) 9.6vh 12vh)}
+[data-skin="psychedelic"] .pbar .knob{position:absolute;top:50%;left:calc(var(--p) * 100%);width:8vh;height:8vh;margin:-4vh 0 0 -4vh}
+[data-skin="psychedelic"] .pbar .knob svg{width:100%;height:100%;display:block;filter:drop-shadow(.4vh .4vh 0 var(--ink))}
+[data-skin="psychedelic"] .next{font-family:Syne;font-weight:800;font-size:2.7vh;letter-spacing:.16em;color:var(--white);margin-top:2.4vh}
+[data-skin="psychedelic"] .tm.rest .phase{background:var(--turq)}
+[data-skin="psychedelic"] .tm.rest .title{color:var(--turq)}
+[data-skin="psychedelic"] .tm.rest .digits{text-shadow:.7vh .7vh 0 var(--lime),1.4vh 1.4vh 0 var(--uv)}
+[data-skin="psychedelic"] .tm.rest .pbar .fill{background:repeating-linear-gradient(115deg,var(--turq) 0 2.4vh,var(--uv) 2.4vh 4.8vh,var(--mag) 4.8vh 7.2vh)}
+/* Live-only motion note for Bill (PNG is static): slow hue drift + rotating spiral, disabled for reduced motion. */
+@media (prefers-reduced-motion:no-preference){
+  [data-skin="psychedelic"] .bg{animation:psy-hue 60s linear infinite}
+  [data-skin="psychedelic"] .spiral{animation:psy-spin 90s linear infinite}
+}
+@keyframes psy-hue{to{filter:hue-rotate(360deg)}}
+@keyframes psy-spin{to{transform:rotate(360deg)}}
+[data-skin="psychedelic"] .hdr .mat{font-size:5vh;filter:url(#meltS) drop-shadow(.3vh .3vh 0 var(--mag)) drop-shadow(.3vh .3vh 0 var(--ink))}
+[data-skin="psychedelic"] .tm .title{font-size:6.6vh;filter:url(#meltS) drop-shadow(.35vh .35vh 0 var(--mag))}
+[data-skin="psychedelic"] .spiral{background:repeating-conic-gradient(from 0deg,rgba(10,0,20,.22) 0 6deg,transparent 6deg 12deg)}
+[data-skin="psychedelic"] .drips{z-index:1;filter:drop-shadow(1vh 1vh 0 var(--mag))}
+[data-skin="psychedelic"] .drips i{top:-.1vh;background:var(--ink);border:.6vh solid var(--white);border-top:0;width:5vh}
+[data-skin="psychedelic"] .drips i::after{display:none}
+[data-skin="psychedelic"] .drips i:nth-child(1){height:8vh;width:5.4vh}[data-skin="psychedelic"] .drips i:nth-child(2){height:4.4vh;width:3.6vh}[data-skin="psychedelic"] .drips i:nth-child(3){height:11vh;width:6vh}
+[data-skin="psychedelic"] .drips i:nth-child(4){height:5.6vh;width:4vh}[data-skin="psychedelic"] .drips i:nth-child(5){height:9vh;width:5.2vh}[data-skin="psychedelic"] .drips i:nth-child(6){height:4.4vh;width:3.4vh}
+[data-skin="psychedelic"] .sb{padding:1.8vh 2.2vh 3.6vh 2vh}
+[data-skin="psychedelic"] .hdr{gap:2.6vh}
+[data-skin="psychedelic"] .lab{letter-spacing:.06em}
+

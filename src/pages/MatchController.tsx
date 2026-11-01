@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
+import { ScoreboardSkinPicker } from '../components/ScoreboardSkinPicker';
 import { ScoreboardSkinSwitcher } from '../components/ScoreboardSkinSwitcher';
 import { Sheet } from '../components/Sheet';
 import { OutcomeCalls, OutcomePickSheet, useOutcomeSheet } from '../components/OutcomeCalls';
@@ -162,10 +163,11 @@ export function MatchControllerPage() {
         }
       />
 
-      {plainWhite || board.kidsSkin ? null : (
+      {board.kidsSkin ? null : (
         <section className="kids-switch-panel" aria-label="Scoreboard skin">
           <p className="cue-preview-label">Scoreboard skin</p>
-          <ScoreboardSkinSwitcher skin={match.skin} />
+          {plainWhite ? null : <ScoreboardSkinSwitcher skin={match.skin} />}
+          <ScoreboardSkinPicker />
         </section>
       )}
 

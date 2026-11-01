@@ -1,6 +1,12 @@
-/** Round timer look. Classic is the familiar black board; Advantage is the mat theme. */
+/**
+ * Round timer look. Classic is the familiar black board; Advantage is the mat theme.
+ * The polished skins (polishedSkins.ts) are Media Edition and above. The pick is
+ * remembered on this device; a polished pick that is locked here paints Classic.
+ */
 
-export type TrainingSkin = 'classic' | 'themed';
+import { isPolishedSkinSlug, type PolishedSkinSlug } from './polishedSkins.ts';
+
+export type TrainingSkin = 'classic' | 'themed' | PolishedSkinSlug;
 
 export const TRAINING_SKIN_KEY = 'matboard.trainingSkin.v1';
 export const DEFAULT_TRAINING_SKIN: TrainingSkin = 'classic';
@@ -8,7 +14,7 @@ export const DEFAULT_TRAINING_SKIN: TrainingSkin = 'classic';
 const listeners = new Set<() => void>();
 
 function isSkin(value: string | null): value is TrainingSkin {
-  return value === 'classic' || value === 'themed';
+  return value === 'classic' || value === 'themed' || isPolishedSkinSlug(value);
 }
 
 function readSkin(): TrainingSkin {
@@ -50,6 +56,16 @@ export function setTrainingSkin(skin: TrainingSkin): void {
  */
 export function trainingUsesAdvantageSkin(skin: TrainingSkin): boolean {
   return skin === 'themed';
+}
+
+export function isPolishedTrainingSkin(skin: TrainingSkin): skin is PolishedSkinSlug {
+  return isPolishedSkinSlug(skin);
+}
+
+/** Skin the timer paints on this browser. A locked polished pick falls back to Classic. */
+export function visibleTrainingSkin(skin: TrainingSkin, polishedOpen: boolean): TrainingSkin {
+  if (isPolishedSkinSlug(skin) && !polishedOpen) return DEFAULT_TRAINING_SKIN;
+  return skin;
 }
 
 if (typeof window !== 'undefined') {

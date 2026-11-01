@@ -1,0 +1,91 @@
+/* GENERATED from the polished mock (base.css + themes/kids-sticker.css), scoped to [data-skin="kids-sticker"]. Do not edit by hand. */
+/* Shared layout for all scoreboard + timer skins. All sizes in vh/vw so 1280x600 and 844x390 scale the same. */
+[data-skin="kids-sticker"],[data-skin="kids-sticker"] *{box-sizing:border-box}
+[data-skin="kids-sticker"]{margin:0;width:100vw;height:100vh;overflow:hidden;-webkit-font-smoothing:antialiased}
+[data-skin="kids-sticker"]{font-family:Inter,system-ui,sans-serif}
+[data-skin="kids-sticker"] .num,[data-skin="kids-sticker"] .clock,[data-skin="kids-sticker"] .digits{font-variant-numeric:tabular-nums}
+
+/* ---------- SCOREBOARD ---------- */
+[data-skin="kids-sticker"] .sb{position:relative;width:100vw;height:100vh;padding:1.8vh 2vh 2vh;display:grid;
+  grid-template-rows:5.5vh 1fr 15vh 1fr;gap:1.6vh;isolation:isolate}
+[data-skin="kids-sticker"] .hdr{display:flex;align-items:center;gap:1.6vh;position:relative;z-index:2}
+[data-skin="kids-sticker"] .logo{height:5.5vh;width:5.5vh;border-radius:50%;display:block;flex:none}
+[data-skin="kids-sticker"] .hdr .mat{font-size:2.4vh;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+[data-skin="kids-sticker"] .hdr .div{font-size:2.3vh;font-weight:600;letter-spacing:.12em;text-transform:uppercase;opacity:.7;margin-left:auto}
+[data-skin="kids-sticker"] .row{position:relative;display:grid;grid-template-columns:30% 1.3fr 1fr 1fr;gap:1.4vh;padding:1.4vh;min-height:0;z-index:1}
+[data-skin="kids-sticker"] .id{display:flex;flex-direction:column;justify-content:center;gap:1.3vh;padding-left:2.4vh;min-width:0}
+[data-skin="kids-sticker"] .name{font-size:6vh;font-weight:800;line-height:1;white-space:nowrap;letter-spacing:-.01em}
+[data-skin="kids-sticker"] .meta{display:flex;align-items:center;gap:1.4vh;min-width:0}
+[data-skin="kids-sticker"] .belt{display:inline-flex;align-items:center;height:4.4vh;padding:0 1.6vh 0 1.2vh;gap:1vh;border-radius:99px;
+  font-size:2.3vh;font-weight:800;letter-spacing:.1em;flex:none}
+[data-skin="kids-sticker"] .belt i{display:block;width:2.6vh;height:1.6vh;border-radius:.4vh;background:#111}
+[data-skin="kids-sticker"] .belt.blue{background:#1f56d6;color:#fff}
+[data-skin="kids-sticker"] .belt.purple{background:#6b2fb3;color:#fff}
+[data-skin="kids-sticker"] .gym{font-size:2.6vh;font-weight:600;white-space:nowrap;opacity:.8}
+[data-skin="kids-sticker"] .tile{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+  padding:1.6vh .6vh .4vh;min-width:0;overflow:hidden}
+[data-skin="kids-sticker"] .lab{font-size:max(2.7vh,12px);font-weight:800;letter-spacing:.12em;line-height:1;white-space:nowrap}
+[data-skin="kids-sticker"] .num{font-size:21vh;font-weight:800;line-height:.82;letter-spacing:-.02em}
+[data-skin="kids-sticker"] .band{position:relative;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 3vh;z-index:1}
+[data-skin="kids-sticker"] .band .state{font-size:3vh;font-weight:800;letter-spacing:.12em;justify-self:start}
+[data-skin="kids-sticker"] .band .status{font-size:3vh;font-weight:800;letter-spacing:.12em;justify-self:end}
+[data-skin="kids-sticker"] .clock{font-size:13.5vh;font-weight:800;line-height:1;letter-spacing:-.01em}
+
+/* ---------- TIMER ---------- */
+[data-skin="kids-sticker"] .tm{position:relative;width:100vw;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;isolation:isolate;overflow:hidden}
+[data-skin="kids-sticker"] .tm .logo{position:absolute;left:4.4vh;top:3.4vh;height:9vh;width:9vh;z-index:5}
+[data-skin="kids-sticker"] .tm .phase{position:absolute;top:4.6vh;left:0;right:0;text-align:center;font-size:3.6vh;font-weight:800;letter-spacing:.16em;z-index:5}
+[data-skin="kids-sticker"] .digits{font-size:40vh;font-weight:800;line-height:1;letter-spacing:-.01em;position:relative;z-index:3}
+
+/* polish: progress fraction (--p, 1 = full) is set inline on .tm; min label size floor */
+[data-skin="kids-sticker"] .tm{--p:1}
+
+/* 02 Kids Sticker / Cartoon */
+[data-skin="kids-sticker"]{--ink:#1D1D2B}
+[data-skin="kids-sticker"]{background:#8FD3FF radial-gradient(rgba(255,255,255,.55) 22%,transparent 24%) 0 0/3.2vh 3.2vh;color:var(--ink);font-family:"Lilita One",Fredoka,sans-serif}
+[data-skin="kids-sticker"] .dec{position:absolute;display:block;pointer-events:none}
+[data-skin="kids-sticker"] .bg{position:absolute;inset:0;z-index:0;overflow:hidden}
+[data-skin="kids-sticker"] .bg .dec{z-index:0}
+[data-skin="kids-sticker"] .burst{display:flex;align-items:center;justify-content:center}
+[data-skin="kids-sticker"] .burst svg{position:absolute;inset:0;width:100%;height:100%}
+[data-skin="kids-sticker"] .hdr .mat{font-family:"Luckiest Guy";font-size:2.6vh;line-height:1;letter-spacing:.06em;background:#fff;border:.45vh solid var(--ink);box-shadow:.5vh .5vh 0 var(--ink);padding:.6vh 1.8vh .2vh;border-radius:1.4vh;transform:rotate(-2deg)}
+[data-skin="kids-sticker"] .hdr .div{font-family:"Luckiest Guy";font-size:2.5vh;letter-spacing:.06em;opacity:1;color:var(--ink)}
+[data-skin="kids-sticker"] .logo{box-shadow:0 0 0 .45vh var(--ink),.5vh .5vh 0 .45vh var(--ink)}
+[data-skin="kids-sticker"] .row{border:.6vh solid var(--ink);border-radius:3vh;box-shadow:1vh 1vh 0 var(--ink);margin-right:1vh}
+[data-skin="kids-sticker"] .c1{background:#4F8BFF;color:#fff;transform:rotate(-.5deg)}
+[data-skin="kids-sticker"] .c2{background:#fff;transform:rotate(.4deg)}
+[data-skin="kids-sticker"] .name{font-family:"Lilita One";font-weight:400;font-size:6.6vh;letter-spacing:.01em}
+[data-skin="kids-sticker"] .c1 .name{color:#fff;-webkit-text-stroke:.45vh var(--ink);paint-order:stroke fill;text-shadow:.45vh .45vh 0 var(--ink)}
+[data-skin="kids-sticker"] .gym{font-family:"Luckiest Guy";font-size:2.7vh;letter-spacing:.05em;opacity:1}
+[data-skin="kids-sticker"] .belt{font-family:"Luckiest Guy";font-weight:400;font-size:2.5vh;padding-top:.4vh;border:.4vh solid var(--ink);box-shadow:.35vh .35vh 0 var(--ink)}
+[data-skin="kids-sticker"] .belt i{margin-top:-.4vh}
+[data-skin="kids-sticker"] .tile{border:.5vh solid var(--ink);border-radius:2.4vh;box-shadow:.6vh .6vh 0 var(--ink);overflow:visible;padding-top:1.4vh}
+[data-skin="kids-sticker"] .pts{background:#6EE26A;transform:rotate(-1.6deg)}
+[data-skin="kids-sticker"] .adv{background:#FF9F40;transform:rotate(1.2deg)}
+[data-skin="kids-sticker"] .pen{background:#FF5C6C;transform:rotate(-1deg)}
+[data-skin="kids-sticker"] .lab{font-family:"Luckiest Guy";font-weight:400;font-size:max(3vh,12px);letter-spacing:.06em;color:var(--ink);background:#fff;border:.35vh solid var(--ink);padding:.6vh 1.4vh .1vh;border-radius:99px}
+[data-skin="kids-sticker"] .num{font-family:"Lilita One";font-weight:400;font-size:20vh;color:#fff;-webkit-text-stroke:1vh var(--ink);paint-order:stroke fill;text-shadow:.8vh .8vh 0 var(--ink);line-height:.9;margin-bottom:.4vh}
+[data-skin="kids-sticker"] .band .state,[data-skin="kids-sticker"] .band .status{font-family:"Luckiest Guy";font-weight:400;font-size:3.2vh;letter-spacing:.06em;padding:1vh 2.2vh .4vh;border:.45vh solid var(--ink);box-shadow:.5vh .5vh 0 var(--ink);border-radius:1.6vh}
+[data-skin="kids-sticker"] .band .state{background:#6EE26A;transform:rotate(-3deg)}
+[data-skin="kids-sticker"] .band .status{background:#fff;transform:rotate(3deg)}
+[data-skin="kids-sticker"] .clock{font-family:"Lilita One";font-weight:400;font-size:12.5vh;background:#fff;border:.6vh solid var(--ink);box-shadow:.8vh .8vh 0 var(--ink);border-radius:2.6vh;padding:0 3.6vh;line-height:1.05;transform:rotate(-1deg)}
+/* timer */
+[data-skin="kids-sticker"] .tm .phase{left:50%;right:auto;transform:translateX(-50%) rotate(-2deg);white-space:nowrap;font-family:"Lilita One";font-weight:400;font-size:3.8vh;letter-spacing:.08em;
+  background:#fff;border:.5vh solid var(--ink);box-shadow:.6vh .6vh 0 var(--ink);padding:1.2vh 3vh .5vh;border-radius:2vh;top:4vh}
+[data-skin="kids-sticker"] .tm .digits{display:flex;align-items:center;font-family:"Lilita One";font-weight:400;font-size:40vh;margin-top:5vh;line-height:1}
+[data-skin="kids-sticker"] .tm .digits b{font-weight:400;display:inline-block;color:#fff;-webkit-text-stroke:1.6vh var(--ink);paint-order:stroke fill;text-shadow:1.4vh 1.4vh 0 var(--ink);transform:translateY(var(--y)) rotate(var(--r))}
+[data-skin="kids-sticker"] .tm .digits b.colon{margin:0 -.5vh;transform:translateY(-1vh)}
+[data-skin="kids-sticker"] .tm .sub{position:relative;z-index:4;margin-top:1vh}
+[data-skin="kids-sticker"] .tm .chip{font-family:"Luckiest Guy";font-size:3.2vh;letter-spacing:.06em;background:#6EE26A;border:.45vh solid var(--ink);box-shadow:.5vh .5vh 0 var(--ink);padding:.9vh 2.4vh .3vh;border-radius:1.6vh;display:inline-block;transform:rotate(1.5deg)}
+[data-skin="kids-sticker"] .cloud{display:none}
+
+/* polish: keep hard shadows + tilts inside the viewport at every size */
+[data-skin="kids-sticker"] .sb{padding:1.8vh 3.2vh 3.4vh 2.4vh}
+[data-skin="kids-sticker"] .row{margin-right:0}
+[data-skin="kids-sticker"] .tm .digits{margin-top:3vh}
+[data-skin="kids-sticker"] .tm .sub{display:flex;align-items:center;gap:2.4vh;margin-top:.6vh}
+[data-skin="kids-sticker"] .sbar{width:34vh;height:4.4vh;background:#fff;border:.5vh solid var(--ink);border-radius:99px;box-shadow:.5vh .5vh 0 var(--ink);padding:.5vh;transform:rotate(-1.5deg)}
+[data-skin="kids-sticker"] .sbar i{display:block;height:100%;width:calc(var(--p)*100%);border-radius:99px;background:repeating-linear-gradient(-45deg,#4F8BFF 0 1.4vh,#3A74F0 1.4vh 2.8vh);box-shadow:inset 0 0 0 .3vh var(--ink)}
+[data-skin="kids-sticker"] .tm.rest .sbar i{background:repeating-linear-gradient(-45deg,#6EE26A 0 1.4vh,#4FCB4B 1.4vh 2.8vh)}
+[data-skin="kids-sticker"] .tm.rest .chip{background:#FFFFFF}
+
