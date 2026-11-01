@@ -143,7 +143,7 @@ test('Coach Unlimited tools go back to Coach Unlimited and home to the tier pick
     await expect.poll(() => pathOf(page)).toBe('/coach-unlimited');
   }
 
-  const unlimitedTools = ['Competitor Roster'] as const;
+  const unlimitedTools = ['Student Roster'] as const;
   for (const name of unlimitedTools) {
     await page.goto('/coach-unlimited');
     await openLink(page, name);

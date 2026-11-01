@@ -175,5 +175,5 @@ test('hub keeps Lock Media for a browser holding the Media door', () => {
 
 test('/media hub: all three buttons wear the purple belt; /suite belts are unchanged', () => {
   assert.deepEqual(MEDIA_EDITION_MENU.map((link) => link.belt), ['purple', 'purple', 'purple']);
-  assert.deepEqual(COMPETITION_PRO_MENU.map((link) => link.belt), ['tournament', 'tournament', 'black', 'black']);
+  assert.deepEqual(COMPETITION_PRO_MENU.map((link) => link.belt), ['tournament', 'tournament', 'tournament', 'black', 'black']);
 });

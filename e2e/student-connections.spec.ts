@@ -136,7 +136,7 @@ test('Pro shows an academy pathway when a drive folder is connected', async ({ p
   await page.goto('/coach-unlimited');
   const entry = page.getByRole('link', { name: 'Connect to my academy', exact: true });
   await expect(entry).toBeVisible();
-  const roster = page.getByRole('link', { name: 'Competitor Roster', exact: true });
+  const roster = page.getByRole('link', { name: 'Student Roster', exact: true });
   const entryBox = await entry.boundingBox();
   const rosterBox = await roster.boundingBox();
   expect(entryBox && rosterBox).toBeTruthy();

@@ -5,6 +5,7 @@
  * Covers both the client route gate and the server paid-chunk gate.
  */
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { CLIENT_APP_VERSION } from './appCapability.ts';
 import { isCoachUnlimitedUnlocked } from './coachUnlock.ts';
@@ -142,6 +143,17 @@ test('seats are unchanged: the coach door never opens Coach Unlimited for a seat
   assert.equal(coachUnlimitedDoorOpen({ ...seat, proUnlocked: true, coachMenus: false }), false);
   assert.equal(coachUnlimitedDoorOpen({ ...seat, proUnlocked: true }), true);
   assert.deepEqual(visibleProHubs({ ...seat, proUnlocked: true }).map((hub) => hub.to), [COACH_UNLIMITED_PATH]);
+});
+
+test('/student-roster is the Coach Unlimited gate and does not open a roster store', () => {
+  const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+  const route = app.slice(app.indexOf('path="/student-roster"'), app.indexOf('path="/coach-unlimited/academy"'));
+  assert.match(route, /<CoachUnlimitedRoute>\s*<StudentRosterPlaceholderPage \/>\s*<\/CoachUnlimitedRoute>/);
+  const page = readFileSync(new URL('../pages/StudentRosterPlaceholder.tsx', import.meta.url), 'utf8');
+  assert.match(page, /title="Student Roster"/);
+  assert.match(page, /Coming soon\./);
+  assert.match(page, /PlayExitMark to=\{COACH_UNLIMITED_PATH\}/);
+  assert.doesNotMatch(page, /rosterStore|useRosterState|localStorage/);
 });
 
 test('callers that leave coachUnlocked out keep the old Pro-only rule', () => {
