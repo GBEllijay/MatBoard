@@ -1,7 +1,7 @@
 import http from 'node:http';
 import net from 'node:net';
 import type { Socket } from 'node:net';
-import type { BrowserContext, Page } from '@playwright/test';
+import { expect, type BrowserContext, type Page } from '@playwright/test';
 import { issueToken } from '../src/server/tokenIssue.ts';
 
 /** vite preview (production build) listens here; the tests talk to the proxy. */
@@ -132,12 +132,16 @@ export async function installWithPass(context: BrowserContext): Promise<{ page: 
     return Boolean(token) && config.includes('"kty"');
   });
   // A Pro pass may open every paid screen: wait until each listed file is saved.
+  // page.waitForFunction treats a returned Promise as success, so an async
+  // check would return before the files were actually stored.
   const files = Object.keys(((await (await page.request.get(`${BASE}/paid/manifest.json`)).json()) as { files: object }).files);
-  await page.waitForFunction(async (expected) => {
-    const cache = await caches.open('paid-chunks');
-    const saved = new Set((await cache.keys()).map((request) => new URL(request.url).pathname));
-    return expected.every((name) => saved.has(`/paid/${name}`));
-  }, files);
+  await expect.poll(async () => {
+    return page.evaluate(async (expected) => {
+      const cache = await caches.open('paid-chunks');
+      const saved = new Set((await cache.keys()).map((request) => new URL(request.url).pathname));
+      return expected.every((name) => saved.has(`/paid/${name}`));
+    }, files);
+  }).toBe(true);
   return { page, token };
 }
 
