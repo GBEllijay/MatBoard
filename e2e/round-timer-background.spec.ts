@@ -7,7 +7,7 @@ const BG = path.join(here, 'fixtures', 'timer-bg.jpg');
 const LOGO = path.join(here, 'fixtures', 'gym-logo.png');
 const LOGO_2 = path.join(here, 'fixtures', 'gym-logo-2.png');
 
-type Access = 'white' | 'student' | 'media' | 'pro' | 'owner';
+type Access = 'white' | 'student' | 'media' | 'instructor' | 'pro' | 'owner';
 
 /** Sets this browser's doors the same way the app stores them, then opens /training. */
 async function openTimerAs(page: Page, access: Access, url = '/training') {
@@ -30,6 +30,8 @@ async function openTimerAs(page: Page, access: Access, url = '/training') {
       localStorage.setItem('advantage.whiteUnlocked', '1');
     }
     if (who === 'media') ownerTest(['media'], 'media');
+    // Instructor (coach) alone: Media comes only from the shared tier ladder (tierImplications.ts).
+    if (who === 'instructor') ownerTest(['coach'], 'coach');
     if (who === 'pro') localStorage.setItem('advantage.proUnlocked', '1');
     if (who === 'owner') ownerTest(['white', 'student', 'coach', 'pro', 'media'], 'owner');
   }, access);
@@ -152,7 +154,7 @@ for (const access of ['white', 'student'] as const) {
   });
 }
 
-for (const access of ['media', 'pro', 'owner'] as const) {
+for (const access of ['media', 'instructor', 'pro', 'owner'] as const) {
   test(`round timer gate: ${access} gets Background & logo`, async ({ page }) => {
     await openTimerAs(page, access);
     await openOptions(page);
