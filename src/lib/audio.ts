@@ -1,40 +1,24 @@
 const STORAGE_KEY = 'matboard.audio.v1';
 
-export type EndCue = 'buzzer' | 'parou';
+export type EndCue = 'buzzer' | 'bell' | 'parou';
 
-export type BuzzerSound = 'classic' | 'arena' | 'airhorn' | 'bell' | 'triple';
+/** Synthesized end sounds (Parou is the recorded voice take). */
+export type BuzzerSound = Exclude<EndCue, 'parou'>;
 
 export type AudioPrefs = {
   muted: boolean;
   volume: number;
   vibrate: boolean;
+  /** End-of-round / end-of-match cue. One per device; Timer and Scoreboard share it. */
   endCue: EndCue;
-  /** Which synthesized buzzer the "Buzzer" end cue plays. Per device. */
-  buzzerSound: BuzzerSound;
   /** Drive the limiter harder for loud rooms (denser, slightly grittier). */
   extraLoud: boolean;
 };
 
-/**
- * Buzzer sounds the owner can compare. All are synthesized here with Web Audio
- * (no sample files, no licensing). `classic` is the original buzzer, boosted.
- */
-export const BUZZER_SOUND_OPTIONS: { id: BuzzerSound; label: string; hint: string }[] = [
-  { id: 'classic', label: 'Original buzzer', hint: 'Today\'s buzzer, louder and brighter' },
-  { id: 'arena', label: 'Arena horn', hint: 'Basketball / gym scoreboard horn' },
-  { id: 'airhorn', label: 'Air horn', hint: 'Two air-horn blasts' },
-  { id: 'bell', label: 'Boxing bell', hint: 'Ding-ding-ding' },
-  { id: 'triple', label: 'Triple beep', hint: 'Three sharp high beeps' },
-];
-
-const BUZZER_IDS = new Set<string>(BUZZER_SOUND_OPTIONS.map((o) => o.id));
-
-export function parseBuzzerSound(value: unknown, fallback: BuzzerSound = 'classic'): BuzzerSound {
-  return typeof value === 'string' && BUZZER_IDS.has(value) ? (value as BuzzerSound) : fallback;
-}
-
+/** The three end-cue buttons on the Timer and Scoreboard settings. */
 export const END_CUE_OPTIONS: { id: EndCue; label: string }[] = [
   { id: 'buzzer', label: 'Buzzer' },
+  { id: 'bell', label: 'Bell' },
   { id: 'parou', label: 'PAROU! ("STOP!")' },
 ];
 
@@ -56,7 +40,6 @@ const DEFAULT_PREFS: AudioPrefs = {
   volume: 1,
   vibrate: true,
   endCue: 'buzzer',
-  buzzerSound: 'classic',
   extraLoud: false,
 };
 
@@ -70,7 +53,7 @@ function loadPrefs(): AudioPrefs {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { ...DEFAULT_PREFS };
-    const parsed = JSON.parse(raw) as Partial<AudioPrefs> & { loudV2?: boolean };
+    const parsed = JSON.parse(raw) as Partial<AudioPrefs> & { loudV2?: boolean; buzzerSound?: unknown };
     let volume = clampVolume(Number(parsed.volume ?? DEFAULT_PREFS.volume));
     // Before the louder cues, the slider defaulted to 80%. Devices that never
     // moved it get full volume once; a slider moved anywhere else is kept.
@@ -79,8 +62,7 @@ function loadPrefs(): AudioPrefs {
       muted: Boolean(parsed.muted),
       volume,
       vibrate: parsed.vibrate !== false,
-      endCue: parseEndCue(parsed.endCue),
-      buzzerSound: parseBuzzerSound(parsed.buzzerSound),
+      endCue: migrateEndCue(parsed.endCue, parsed.buzzerSound),
       extraLoud: parsed.extraLoud === true,
     };
   } catch {
@@ -108,7 +90,19 @@ export function subscribeAudioPrefs(fn: () => void): () => void {
 }
 
 export function parseEndCue(value: unknown, fallback: EndCue = DEFAULT_PREFS.endCue): EndCue {
-  return value === 'parou' || value === 'buzzer' ? value : fallback;
+  return value === 'parou' || value === 'buzzer' || value === 'bell' ? value : fallback;
+}
+
+/**
+ * Draft builds of the louder-buzzer change saved a separate `buzzerSound`
+ * (classic / arena / airhorn / bell / triple). Only the bell survived, so a
+ * saved Boxing bell becomes the Bell cue and every other sound becomes Buzzer.
+ * A saved Parou choice always wins.
+ */
+export function migrateEndCue(endCue: unknown, legacyBuzzerSound?: unknown): EndCue {
+  const cue = parseEndCue(endCue);
+  if (cue === 'buzzer' && legacyBuzzerSound === 'bell') return 'bell';
+  return cue;
 }
 
 export function patchAudioPrefs(partial: Partial<AudioPrefs>): void {
@@ -117,7 +111,6 @@ export function patchAudioPrefs(partial: Partial<AudioPrefs>): void {
     ...partial,
     volume: clampVolume(partial.volume ?? prefs.volume),
     endCue: parseEndCue(partial.endCue ?? prefs.endCue),
-    buzzerSound: parseBuzzerSound(partial.buzzerSound ?? prefs.buzzerSound),
     extraLoud: partial.extraLoud ?? prefs.extraLoud,
   };
   persist();
@@ -167,9 +160,9 @@ function getContext(): AudioContext {
   return ctx;
 }
 
-function getMaster(): GainNode {
+function getMaster(sound: 'bell' | 'other' = 'other'): GainNode {
   getContext();
-  applyLoudness(master!, ctx!);
+  applyLoudness(master!, ctx!, loudnessMode(prefs.extraLoud, sound));
   return master!.input;
 }
 
@@ -178,9 +171,17 @@ type MasterBus = {
   drive: GainNode;
   clip: WaveShaperNode;
   output: GainNode;
-  extraLoud: boolean | null;
+  mode: LoudnessMode | null;
   volume: number | null;
 };
+
+type LoudnessMode = 'normal' | 'extra' | 'extraBell';
+
+/** Which loudness profile a cue uses. Bell gets its own Extra loud profile. */
+export function loudnessMode(extraLoud: boolean, sound: 'bell' | 'other' = 'other'): LoudnessMode {
+  if (!extraLoud) return 'normal';
+  return sound === 'bell' ? 'extraBell' : 'extra';
+}
 
 /**
  * Loudness chain: drive -> compressor -> makeup -> soft limiter -> volume.
@@ -194,6 +195,12 @@ type MasterBus = {
 export const LOUDNESS = {
   normal: { drive: 1, clipK: 1.6 },
   extra: { drive: 2.2, clipK: 2.6 },
+  /**
+   * Extra loud for the Bell. Its inharmonic partials turn into audible
+   * intermodulation "crunch" when pushed into the clipper, so it gets a
+   * gentler push than the buzzer (still louder than normal).
+   */
+  extraBell: { drive: 1.6, clipK: 1.6 },
   makeup: 1.9,
   ceiling: 0.97,
 } as const;
@@ -228,16 +235,15 @@ function buildMaster(audio: BaseAudioContext): MasterBus {
   makeup.connect(clip);
   clip.connect(output);
   output.connect(audio.destination);
-  return { input, drive, clip, output, extraLoud: null, volume: null };
+  return { input, drive, clip, output, mode: null, volume: null };
 }
 
-function applyLoudness(bus: MasterBus, audio: BaseAudioContext): void {
-  const extra = prefs.extraLoud;
-  if (bus.extraLoud !== extra) {
-    const mode = extra ? LOUDNESS.extra : LOUDNESS.normal;
-    bus.drive.gain.setValueAtTime(mode.drive, audio.currentTime);
-    bus.clip.curve = makeSoftClipCurve(mode.clipK);
-    bus.extraLoud = extra;
+function applyLoudness(bus: MasterBus, audio: BaseAudioContext, mode: LoudnessMode): void {
+  if (bus.mode !== mode) {
+    const profile = LOUDNESS[mode];
+    bus.drive.gain.setValueAtTime(profile.drive, audio.currentTime);
+    bus.clip.curve = makeSoftClipCurve(profile.clipK);
+    bus.mode = mode;
   }
   const volume = masterGain();
   if (bus.volume !== volume) {
@@ -289,9 +295,6 @@ type OscVoice = {
   gain: number;
   delay?: number;
   slideTo?: number;
-  /** Start at this pitch and glide up/down to `freq` over `bendTime` (air-horn "blat"). */
-  bendFrom?: number;
-  bendTime?: number;
   attack?: number;
   release?: number;
   detune?: number;
@@ -317,7 +320,7 @@ type NoiseVoice = {
 
 export type Voice = OscVoice | NoiseVoice;
 
-function playVoices(voices: Voice[]): void {
+function playVoices(voices: Voice[], sound: 'bell' | 'other' = 'other'): void {
   let audio: AudioContext;
   try {
     audio = getContext();
@@ -327,7 +330,7 @@ function playVoices(voices: Voice[]): void {
   const volume = masterGain();
   if (volume <= 0) return;
   const now = audio.currentTime;
-  const bus = getMaster();
+  const bus = getMaster(sound);
   // Volume is applied after the limiter (see applyLoudness), so voices are
   // always mixed at their designed level and the limiter sees a steady input.
   for (const voice of voices) {
@@ -373,12 +376,7 @@ function scheduleOsc(
   const filter = audio.createBiquadFilter();
   osc.type = voice.type;
   const start = now + (voice.delay ?? 0);
-  if (voice.bendFrom != null) {
-    osc.frequency.setValueAtTime(voice.bendFrom, start);
-    osc.frequency.exponentialRampToValueAtTime(voice.freq, start + (voice.bendTime ?? 0.06));
-  } else {
-    osc.frequency.setValueAtTime(voice.freq, start);
-  }
+  osc.frequency.setValueAtTime(voice.freq, start);
   if (voice.detune != null) osc.detune.setValueAtTime(voice.detune, start);
   if (voice.slideTo != null) {
     osc.frequency.exponentialRampToValueAtTime(Math.max(20, voice.slideTo), start + voice.duration);
@@ -445,9 +443,9 @@ async function playAfterResume(play: () => void): Promise<void> {
   }
 }
 
-function playCue(voices: Voice[], vibe: number[]): void {
+function playCue(voices: Voice[], vibe: number[], sound: 'bell' | 'other' = 'other'): void {
   buzz(vibe);
-  void playAfterResume(() => playVoices(voices));
+  void playAfterResume(() => playVoices(voices, sound));
 }
 
 /**
@@ -499,33 +497,6 @@ function classicBuzzerVoices(duration: number): Voice[] {
   ];
 }
 
-/** Basketball / gym scoreboard horn: a harsh sawtooth chord with buzz. */
-function arenaHornVoices(duration: number): Voice[] {
-  const tail = 0.1;
-  const rasp = { raspHz: 55, raspDepth: 0.22 };
-  return [
-    { freq: 311, duration, type: 'sawtooth', gain: 0.3, attack: 0.01, release: tail, filterFreq: 6000, ...rasp },
-    { freq: 466, duration, type: 'sawtooth', gain: 0.26, attack: 0.01, release: tail, filterFreq: 6000, ...rasp },
-    { freq: 622, duration, type: 'square', gain: 0.2, attack: 0.01, release: tail, filterFreq: 5000, ...rasp },
-    { freq: 2490, duration, type: 'square', gain: 0.18, attack: 0.01, release: tail, filterFreq: 4200, filterType: 'lowpass' },
-    { kind: 'noise', duration, gain: 0.1, attack: 0.01, release: tail, filterType: 'bandpass', filterFreq: 2800, filterQ: 2 },
-  ];
-}
-
-/** Air horn: two blasts of detuned saws that "blat" up to pitch. */
-function airHornVoices(duration: number): Voice[] {
-  const blast = (delay: number, len: number): Voice[] => [
-    { freq: 466, bendFrom: 380, bendTime: 0.07, duration: len, delay, type: 'sawtooth', gain: 0.26, attack: 0.012, release: 0.08, filterFreq: 7000, detune: -8 },
-    { freq: 466, bendFrom: 380, bendTime: 0.07, duration: len, delay, type: 'sawtooth', gain: 0.26, attack: 0.012, release: 0.08, filterFreq: 7000, detune: 9 },
-    { freq: 587, bendFrom: 480, bendTime: 0.07, duration: len, delay, type: 'sawtooth', gain: 0.24, attack: 0.012, release: 0.08, filterFreq: 7000 },
-    { freq: 1864, duration: len, delay, type: 'square', gain: 0.16, attack: 0.02, release: 0.08, filterFreq: 4500 },
-    { freq: 2796, duration: len, delay, type: 'square', gain: 0.08, attack: 0.02, release: 0.08, filterFreq: 5000 },
-  ];
-  const first = 0.42;
-  const gap = 0.1;
-  return [...blast(0, first), ...blast(first + gap, Math.max(0.5, duration - first - gap))];
-}
-
 /** Boxing bell: three strikes of an inharmonic bell (partials 0.9-3.2 kHz). */
 function boxingBellVoices(strikes: number): Voice[] {
   const f0 = 900;
@@ -549,57 +520,37 @@ function boxingBellVoices(strikes: number): Voice[] {
   return voices;
 }
 
-/** Sharp triple beep: 2.5 kHz squares, right where phone speakers are loudest. */
-function tripleBeepVoices(longLast: number): Voice[] {
-  const beep = (delay: number, len: number): Voice[] => [
-    { freq: 2500, duration: len, delay, type: 'square', gain: 0.4, attack: 0.003, release: 0.02, filterFreq: 7000 },
-    { freq: 1250, duration: len, delay, type: 'square', gain: 0.22, attack: 0.003, release: 0.02, filterFreq: 5000 },
-  ];
-  return [...beep(0, 0.2), ...beep(0.3, 0.2), ...beep(0.6, longLast)];
-}
-
-/** Seconds of sound for each buzzer (training / match), used for follow-up timing. */
+/** Seconds of sound for each synthesized end cue (training / match), used for follow-up timing. */
 export const BUZZER_LENGTH_S: Record<BuzzerSound, { training: number; match: number }> = {
-  classic: { training: 1.15, match: 1.55 },
-  arena: { training: 1.2, match: 1.6 },
-  airhorn: { training: 1.25, match: 1.6 },
+  buzzer: { training: 1.15, match: 1.55 },
   bell: { training: 1.7, match: 2.3 },
-  triple: { training: 0.95, match: 1.1 },
 };
 
 export function buzzerVoices(sound: BuzzerSound, kind: 'match' | 'training' = 'training'): Voice[] {
-  const len = BUZZER_LENGTH_S[sound][kind];
-  switch (sound) {
-    case 'arena':
-      return arenaHornVoices(len);
-    case 'airhorn':
-      return airHornVoices(len);
-    case 'bell':
-      return boxingBellVoices(kind === 'match' ? 5 : 3);
-    case 'triple':
-      return tripleBeepVoices(kind === 'match' ? 0.5 : 0.35);
-    case 'classic':
-    default:
-      return classicBuzzerVoices(len);
-  }
+  if (sound === 'bell') return boxingBellVoices(kind === 'match' ? 5 : 3);
+  return classicBuzzerVoices(BUZZER_LENGTH_S.buzzer[kind]);
 }
 
 const MATCH_END_VIBE = [280, 70, 280, 70, 420];
 const TRAIN_END_VIBE = [220, 80, 220, 80, 320];
 
-/** Training / round-end buzzer: the sound picked in Buzzer sound (default Classic). */
-export function playEndBuzzer(sound: BuzzerSound = prefs.buzzerSound): void {
-  playCue(buzzerVoices(sound, 'training'), TRAIN_END_VIBE);
+function soundOf(sound: BuzzerSound): 'bell' | 'other' {
+  return sound === 'bell' ? 'bell' : 'other';
 }
 
-/** Match clock hit 0:00. Same picked buzzer, held a bit longer. */
-export function playMatchEndBuzzer(sound: BuzzerSound = prefs.buzzerSound): void {
-  playCue(buzzerVoices(sound, 'match'), MATCH_END_VIBE);
+/** Synth end sound for the selected cue; Parou falls back to the buzzer. */
+function synthFor(cue: EndCue): BuzzerSound {
+  return cue === 'bell' ? 'bell' : 'buzzer';
 }
 
-/** Settings "Test" button for one buzzer option (does not change the saved choice). */
-export function previewBuzzerSound(sound: BuzzerSound): void {
-  playEndBuzzer(parseBuzzerSound(sound));
+/** Training / round-end synth cue (Buzzer by default, or Bell). */
+export function playEndBuzzer(sound: BuzzerSound = synthFor(prefs.endCue)): void {
+  playCue(buzzerVoices(sound, 'training'), TRAIN_END_VIBE, soundOf(sound));
+}
+
+/** Match clock hit 0:00. Same sound, held a bit longer. */
+export function playMatchEndBuzzer(sound: BuzzerSound = synthFor(prefs.endCue)): void {
+  playCue(buzzerVoices(sound, 'match'), MATCH_END_VIBE, soundOf(sound));
 }
 
 async function loadParouBuffer(): Promise<AudioBuffer | null> {
@@ -643,19 +594,20 @@ function playParouCue(kind: 'match' | 'training'): void {
         startParou(buffer);
         return;
       }
-      playVoices(buzzerVoices(prefs.buzzerSound, kind));
+      playVoices(buzzerVoices('buzzer', kind));
     });
   });
 }
 
-/** Play the user-selected end cue (synth buzzer or the “Parou… stop” take). */
+/** Play the user-selected end cue (Buzzer, Bell, or the “Parou… stop” take). */
 export function playSelectedEndCue(kind: 'match' | 'training' = 'match', cue: EndCue = prefs.endCue): void {
-  if (parseEndCue(cue) === 'parou') {
+  const selected = parseEndCue(cue);
+  if (selected === 'parou') {
     playParouCue(kind);
     return;
   }
-  if (kind === 'match') playMatchEndBuzzer();
-  else playEndBuzzer();
+  if (kind === 'match') playMatchEndBuzzer(selected);
+  else playEndBuzzer(selected);
 }
 
 /** Time to wait after a Training end cue before a back-to-back start cue (classic buzzer). */
@@ -664,5 +616,5 @@ export const END_BUZZER_MS = 1250;
 export function endCueFollowMs(): number {
   // Full take is ~3.5s (speech ends ~2.4s). Wait it out before the next start cue.
   if (prefs.endCue === 'parou') return 3700;
-  return Math.max(END_BUZZER_MS, Math.round(BUZZER_LENGTH_S[prefs.buzzerSound].training * 1000) + 100);
+  return Math.max(END_BUZZER_MS, Math.round(BUZZER_LENGTH_S[synthFor(prefs.endCue)].training * 1000) + 100);
 }

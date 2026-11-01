@@ -1,18 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAudioPrefs, useTrainingSkin, useTrainingState } from '../hooks/useStores';
-import {
-  BUZZER_SOUND_OPTIONS,
-  END_CUE_OPTIONS,
-  patchAudioPrefs,
-  previewBuzzerSound,
-  playSelectedEndCue,
-  playStartCue,
-  playWarningCue,
-  unlockAudio,
-  type EndCue,
-} from '../lib/audio';
+import { patchAudioPrefs, playSelectedEndCue, playStartCue, playWarningCue, unlockAudio } from '../lib/audio';
+import { EndCueControls } from './EndCueControls';
 import { formatMinuteInput, formatMmSs, formatMss, parseTypedDurationMs } from '../lib/format';
-import { dispatchMatch } from '../lib/matchStore';
 import { setTrainingSkin } from '../lib/trainingSkin';
 import {
   BREAK_PRESETS_MS,
@@ -48,13 +38,6 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
 
   const previewCue = (play: () => void) => {
     void unlockAudio().then(play);
-  };
-
-  // Selection only. Switching cues mid-round must not play a stop sound.
-  // Preview cues below are what play the sound.
-  const chooseEndCue = (cue: EndCue) => {
-    patchAudioPrefs({ endCue: cue });
-    dispatchMatch({ type: 'setEndCue', value: cue });
   };
 
   return (
@@ -189,50 +172,7 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
           />
           Training end sound
         </label>
-        <div className="cue-preview">
-          <p className="cue-preview-label">Training end cue</p>
-          <div className="presets presets--end-cue" role="radiogroup" aria-label="Training end cue">
-            {END_CUE_OPTIONS.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                role="radio"
-                aria-checked={audio.endCue === option.id}
-                className={`preset${audio.endCue === option.id ? ' preset--on' : ''}`}
-                onClick={() => chooseEndCue(option.id)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="cue-preview">
-          <p className="cue-preview-label">Buzzer sound</p>
-          <div className="buzzer-options" role="radiogroup" aria-label="Buzzer sound">
-            {BUZZER_SOUND_OPTIONS.map((option) => (
-              <div className="buzzer-option" key={option.id}>
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={audio.buzzerSound === option.id}
-                  className={`preset buzzer-option__pick${audio.buzzerSound === option.id ? ' preset--on' : ''}`}
-                  onClick={() => patchAudioPrefs({ buzzerSound: option.id })}
-                >
-                  <span className="buzzer-option__label">{option.label}</span>
-                  <span className="buzzer-option__hint">{option.hint}</span>
-                </button>
-                <button
-                  type="button"
-                  className="preset buzzer-option__test"
-                  aria-label={`Test ${option.label}`}
-                  onClick={() => previewCue(() => previewBuzzerSound(option.id))}
-                >
-                  Test
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
+        <EndCueControls label="Training end cue" value={audio.endCue} />
         <div className="cue-preview">
           <p className="cue-preview-label">Preview cues</p>
           <div className="presets presets--three" role="group" aria-label="Preview cues">
@@ -280,14 +220,6 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
             value={audio.volume}
             onChange={(e) => patchAudioPrefs({ volume: Number(e.target.value), muted: false })}
           />
-        </label>
-        <label className="toggle">
-          <input
-            type="checkbox"
-            checked={audio.extraLoud}
-            onChange={(e) => patchAudioPrefs({ extraLoud: e.target.checked })}
-          />
-          Extra loud (for rooms with music)
         </label>
         <label className="toggle">
           <input

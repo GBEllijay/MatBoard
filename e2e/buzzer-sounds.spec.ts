@@ -1,8 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
 
 /**
- * Round timer Buzzer sound picker. AudioContext is swapped for an
- * OfflineAudioContext so a Test tap can be rendered and its loudness measured.
+ * End cue (Buzzer / Bell / Parou) + Extra loud on the Timer and Scoreboard.
+ * AudioContext is swapped for an OfflineAudioContext so a preview tap can be
+ * rendered and its loudness measured.
  */
 async function prep(page: Page, saved?: object) {
   await page.addInitScript((prefs) => {
@@ -50,68 +51,118 @@ async function renderedLevels(page: Page) {
   });
 }
 
-test('Rounds controller: five buzzer sounds, each with a Test button; choice is remembered', async ({ page }) => {
+const CUES = ['Buzzer', 'Bell', 'PAROU! ("STOP!")'];
+const EXTRA = 'Extra loud (for rooms with music)';
+
+const timerCues = (page: Page) => page.getByRole('radiogroup', { name: 'Training end cue' });
+const boardCues = (page: Page) => page.getByRole('radiogroup', { name: 'Match end cue' });
+const timerEnd = (page: Page) => page.getByRole('group', { name: 'Preview cues' }).getByRole('button', { name: 'End' });
+const boardEnd = (page: Page) => page.getByRole('group', { name: 'Preview match cues' }).getByRole('button', { name: 'End' });
+const oscCount = (page: Page) => page.evaluate(() => (window as unknown as { __osc: () => number }).__osc());
+
+test('Timer: three end cue buttons + Extra loud; old Buzzer sound list is gone; choice is remembered', async ({ page }) => {
   await prep(page);
   await page.goto('/training/control');
-  const group = page.getByRole('radiogroup', { name: 'Buzzer sound' });
-  await expect(group.getByRole('radio')).toHaveText([
-    /Original buzzer/,
-    /Arena horn/,
-    /Air horn/,
-    /Boxing bell/,
-    /Triple beep/,
-  ]);
-  await expect(group.getByRole('radio', { name: /Original buzzer/ })).toHaveAttribute('aria-checked', 'true');
-  for (const name of ['Original buzzer', 'Arena horn', 'Air horn', 'Boxing bell', 'Triple beep']) {
-    await expect(page.getByRole('button', { name: `Test ${name}` })).toBeVisible();
-  }
+  await expect(timerCues(page).getByRole('radio')).toHaveText(CUES);
+  await expect(timerCues(page).getByRole('radio', { name: 'Buzzer', exact: true })).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByRole('radiogroup', { name: 'Buzzer sound' })).toHaveCount(0);
+  await expect(page.getByText(/Arena horn|Air horn|Triple beep/)).toHaveCount(0);
+  await expect(page.getByLabel(EXTRA)).not.toBeChecked();
 
-  await group.getByRole('radio', { name: /Air horn/ }).click();
-  await expect(group.getByRole('radio', { name: /Air horn/ })).toHaveAttribute('aria-checked', 'true');
-  await page.getByLabel('Extra loud (for rooms with music)').check();
+  await timerCues(page).getByRole('radio', { name: 'Bell' }).click();
+  await page.getByLabel(EXTRA).check();
   await page.reload();
-  await expect(page.getByRole('radiogroup', { name: 'Buzzer sound' }).getByRole('radio', { name: /Air horn/ })).toHaveAttribute('aria-checked', 'true');
-  await expect(page.getByLabel('Extra loud (for rooms with music)')).toBeChecked();
+  await expect(timerCues(page).getByRole('radio', { name: 'Bell' })).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByLabel(EXTRA)).toBeChecked();
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('matboard.audio.v1') ?? '{}'));
-  expect(saved.buzzerSound).toBe('airhorn');
-  // The existing end-cue choice is untouched by picking a buzzer sound.
-  await expect(page.getByRole('radiogroup', { name: 'Training end cue' }).getByRole('radio', { name: 'Buzzer' })).toHaveAttribute('aria-checked', 'true');
+  expect(saved.endCue).toBe('bell');
+  expect(saved.extraLoud).toBe(true);
+  // Existing sound controls are still there.
+  for (const label of ['Mute', 'Vibrate']) await expect(page.getByLabel(label, { exact: true })).toBeVisible();
+  await expect(page.getByRole('slider')).toBeVisible();
 });
 
-test('Test plays the sound without changing the saved choice, loud but unclipped', async ({ page }) => {
+test('Scoreboard has the same control, in sync with the Timer on this device', async ({ page }) => {
   await prep(page);
   await page.goto('/training/control');
-  await page.getByRole('button', { name: 'Test Triple beep' }).click();
-  await expect.poll(() => page.evaluate(() => (window as unknown as { __osc: () => number }).__osc())).toBeGreaterThan(0);
+  await timerCues(page).getByRole('radio', { name: 'Bell' }).click();
+  await page.getByLabel(EXTRA).check();
+
+  await page.goto('/match/control');
+  await expect(boardCues(page).getByRole('radio')).toHaveText(CUES);
+  await expect(boardCues(page).getByRole('radio', { name: 'Bell' })).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByLabel(EXTRA)).toBeChecked();
+
+  await boardCues(page).getByRole('radio', { name: /PAROU/ }).click();
+  await page.getByLabel(EXTRA).uncheck();
+  await page.goto('/training/control');
+  await expect(timerCues(page).getByRole('radio', { name: /PAROU/ })).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByLabel(EXTRA)).not.toBeChecked();
+});
+
+test('Picking a cue does not play it; the End preview plays the Bell loud but unclipped', async ({ page }) => {
+  await prep(page);
+  await page.goto('/training/control');
+  await timerCues(page).getByRole('radio', { name: 'Bell' }).click();
+  await page.waitForTimeout(150);
+  expect(await oscCount(page)).toBe(0);
+  await timerEnd(page).click();
+  await expect.poll(() => oscCount(page)).toBeGreaterThan(0);
   const { peakDb, rmsDb } = await renderedLevels(page);
   expect(peakDb).toBeLessThan(0);
   expect(peakDb).toBeGreaterThan(-1.5);
-  expect(rmsDb).toBeGreaterThan(-9);
-  await expect(page.getByRole('radiogroup', { name: 'Buzzer sound' }).getByRole('radio', { name: /Original buzzer/ })).toHaveAttribute('aria-checked', 'true');
+  expect(rmsDb).toBeGreaterThan(-16);
 });
 
-test('Original buzzer at full volume is louder than the old buzzer (old: -8.4 dBFS RMS)', async ({ page }) => {
+test('Scoreboard End preview follows the choice (Bell)', async ({ page }) => {
+  await prep(page, { endCue: 'bell', loudV2: true });
+  await page.goto('/match/control');
+  await boardEnd(page).click();
+  await expect.poll(() => oscCount(page)).toBeGreaterThan(0);
+  const { peakDb } = await renderedLevels(page);
+  expect(peakDb).toBeLessThan(0);
+  expect(peakDb).toBeGreaterThan(-1.5);
+});
+
+test('Buzzer at full volume is louder than the old buzzer (old: -8.4 dBFS RMS)', async ({ page }) => {
   await prep(page);
   await page.goto('/training/control');
-  await page.getByRole('button', { name: 'Test Original buzzer' }).click();
+  await timerEnd(page).click();
   const { peakDb, rmsDb } = await renderedLevels(page);
   expect(peakDb).toBeLessThan(0);
   expect(rmsDb).toBeGreaterThan(-7.5);
 });
 
+test('saved draft buzzer sounds migrate: Triple beep -> Buzzer, Boxing bell -> Bell, Parou kept', async ({ page }) => {
+  await prep(page, { endCue: 'buzzer', buzzerSound: 'triple', loudV2: true });
+  await page.goto('/training/control');
+  await expect(timerCues(page).getByRole('radio', { name: 'Buzzer', exact: true })).toHaveAttribute('aria-checked', 'true');
+
+  const bell = await page.context().newPage();
+  await prep(bell, { endCue: 'buzzer', buzzerSound: 'bell', loudV2: true });
+  await bell.goto('/training/control');
+  await expect(timerCues(bell).getByRole('radio', { name: 'Bell' })).toHaveAttribute('aria-checked', 'true');
+
+  await bell.evaluate(() => {
+    localStorage.setItem('matboard.audio.v1', JSON.stringify({ endCue: 'parou', buzzerSound: 'arena', loudV2: true }));
+  });
+  await bell.reload();
+  await expect(timerCues(bell).getByRole('radio', { name: /PAROU/ })).toHaveAttribute('aria-checked', 'true');
+});
+
 test('volume slider still scales the sound', async ({ page }) => {
   await prep(page, { volume: 0.25, loudV2: true });
   await page.goto('/training/control');
-  await page.getByRole('button', { name: 'Test Original buzzer' }).click();
+  await timerEnd(page).click();
   const quiet = await renderedLevels(page);
   expect(quiet.peakDb).toBeLessThan(-10);
   expect(quiet.peakDb).toBeGreaterThan(-14);
 });
 
-test('Mute silences the Test buttons', async ({ page }) => {
+test('Mute silences the End preview', async ({ page }) => {
   await prep(page, { muted: true, loudV2: true });
   await page.goto('/training/control');
-  await page.getByRole('button', { name: 'Test Arena horn' }).click();
+  await timerEnd(page).click();
   await page.waitForTimeout(200);
-  expect(await page.evaluate(() => (window as unknown as { __osc: () => number }).__osc())).toBe(0);
+  expect(await oscCount(page)).toBe(0);
 });
