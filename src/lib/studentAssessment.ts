@@ -121,6 +121,39 @@ export function removeAssessment(state: AssessmentState, id: string): Assessment
 }
 
 /**
+ * A saved check-in for this date is the record.
+ * Today, with no check-in yet, starts from the fundamentals tracker.
+ * Any other empty date stays blank, so today's levels are not written onto the past.
+ * Nothing here writes storage. The student still saves the day they want kept.
+ */
+export function assessmentDraftScores(
+  entries: readonly AssessmentEntry[],
+  date: string,
+  today: string,
+  tracker: Partial<AssessmentScores>,
+): Partial<AssessmentScores> {
+  const saved = entries.find((entry) => entry.date === date);
+  if (saved) return { ...saved.scores };
+  if (date !== today) return {};
+  const next: Partial<AssessmentScores> = {};
+  for (const area of ASSESSMENT_AREAS) {
+    const value = tracker[area.id];
+    if (isAssessmentScore(value)) next[area.id] = value;
+  }
+  return next;
+}
+
+/** The open draft wins. With nothing typed, the chart uses the saved day, then the latest day. */
+export function assessmentChartScores(
+  draft: Partial<AssessmentScores>,
+  savedOnDate: AssessmentScores | undefined,
+  latest: AssessmentScores | undefined,
+): Partial<AssessmentScores> | null {
+  if (ASSESSMENT_AREAS.some((area) => isAssessmentScore(draft[area.id]))) return draft;
+  return savedOnDate ?? latest ?? null;
+}
+
+/**
  * Checkpoints on the belt the student wears. An area links only when that
  * belt's rubric uses one of the area's words. Later belts are not a fallback,
  * so a white belt does not open a blue checkpoint.

@@ -4,7 +4,7 @@ import { exportProgressPacket } from './progress/format.ts';
 import { addTournament } from './studentCompetition.ts';
 import { addJournalClip, addJournalEntry, blankStudentReport, loadStudentReport, setStudentProfile } from './studentEdition.ts';
 import { setRankLineage } from './studentRank.ts';
-import { saveAssessment } from './studentAssessment.ts';
+import { loadAssessments, saveAssessment } from './studentAssessment.ts';
 import {
   BACKUP_BEFORE_CLEAR,
   BACKUP_NOT_A_BACKUP,
@@ -505,4 +505,63 @@ test('selfie and gym logo are in the backup and progress PDF only when their swi
   clearStudentMemory(storage);
   assert.equal(readProfilePortrait(storage), null);
   assert.equal(readStudentGymLogo(storage), null);
+});
+
+test('an older journal backup still loads its self-assessment', async () => {
+  const report = blankStudentReport(4);
+  const older = {
+    advantage: 'student-journal-backup',
+    version: 1,
+    exportedAt: '2024-05-01T00:00:00.000Z',
+    report: JSON.parse(exportProgressPacket(report)),
+    assessment: {
+      entries: [
+        {
+          id: 'old.assess',
+          date: '2024-05-01',
+          note: 'kept from an older phone',
+          scores: { guard: 1, passing: 2, takedowns: 3, escapes: 4, submissions: 5, conditioning: 1, mindset: 2 },
+        },
+      ],
+    },
+    scouting: [],
+    rankPhotos: emptyRankPhotoStore(),
+    bracketPhotos: {},
+    coachPlan: null,
+    coachFeedback: null,
+    films: [],
+  };
+  const parsed = parseStudentBackup(JSON.stringify(older));
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok) return;
+  assert.equal(parsed.file.assessment.entries[0]?.note, 'kept from an older phone');
+  const storage = memory();
+  applyBackupToMemory(storage, parsed.file, 'replace', { rank: emptyRankPhotoStore(), bracket: {} });
+  const loaded = loadAssessments(storage);
+  assert.equal(loaded.entries[0]?.date, '2024-05-01');
+  assert.equal(loaded.entries[0]?.scores.guard, 1);
+  assert.equal(loaded.entries[0]?.scores.mindset, 2);
+  const built = await buildStudentBackup({
+    report: parsed.file.report,
+    assessment: loaded,
+    scouting: [],
+    rankPhotos: emptyRankPhotoStore(),
+    bracketPhotos: {},
+    shelf: { plan: null, feedback: null },
+    films: [],
+    blobs: [],
+    includeVideos: false,
+    now: new Date('2024-05-02T00:00:00Z'),
+    recordStamp: false,
+  });
+  assert.match(built.json, /kept from an older phone/);
+  assert.match(built.csv, /kept from an older phone/);
+  assert.equal(pdfIncludes(built.assessmentPdf, 'kept from an older phone'), true);
+  assert.equal(pdfIncludes(built.assessmentPdf, 'Guard'), true);
+
+  const withoutAssessment = { ...older, assessment: undefined };
+  const missing = parseStudentBackup(JSON.stringify(withoutAssessment));
+  assert.equal(missing.ok, true);
+  if (!missing.ok) return;
+  assert.deepEqual(missing.file.assessment.entries, []);
 });

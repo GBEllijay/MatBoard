@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ASSESSMENT_AREAS, type AssessmentScores } from '../lib/studentAssessment';
+import { ASSESSMENT_AREAS, isAssessmentScore, type AssessmentScore, type AssessmentScores } from '../lib/studentAssessment';
 import { radarPoint, radarPoints, radarSeriesLabel, selfAssessmentShapeLabel } from '../lib/radarChart';
 
 export type RadarSeries = {
@@ -14,18 +14,26 @@ export function RadarChart({
   series,
   title = 'Shape',
   empty = 'Save a check-in to see your shape.',
+  note,
 }: {
-  scores?: AssessmentScores | null;
+  scores?: Partial<AssessmentScores> | null;
   series?: RadarSeries[];
   title?: string;
   empty?: string;
+  note?: string;
 }) {
-  if (!series) return <SingleRadar scores={scores} />;
+  if (!series) return <SingleRadar scores={scores} note={note} />;
   return <SeriesRadar series={series} title={title} empty={empty} />;
 }
 
-function SingleRadar({ scores }: { scores: AssessmentScores | null }) {
-  const shape = scores ? radarPoints(ASSESSMENT_AREAS.map((area) => scores[area.id])) : '';
+function rated(scores: Partial<AssessmentScores> | null, id: (typeof ASSESSMENT_AREAS)[number]['id']): AssessmentScore | null {
+  const value = scores?.[id];
+  return isAssessmentScore(value) ? value : null;
+}
+
+function SingleRadar({ scores, note }: { scores: Partial<AssessmentScores> | null; note?: string }) {
+  const any = ASSESSMENT_AREAS.some((area) => rated(scores, area.id) !== null);
+  const shape = any ? radarPoints(ASSESSMENT_AREAS.map((area) => rated(scores, area.id) ?? 0)) : '';
   return (
     <div className="assess-visual">
       <h3>Shape</h3>
@@ -36,11 +44,12 @@ function SingleRadar({ scores }: { scores: AssessmentScores | null }) {
         {ASSESSMENT_AREAS.map((area) => (
           <li key={area.id}>
             <span>{area.label}</span>
-            <span>{scores ? scores[area.id] : '—'}</span>
+            <span>{rated(scores, area.id) ?? '—'}</span>
           </li>
         ))}
       </ul>
-      {scores ? null : <p className="student-quiet">Save a check-in to see your shape.</p>}
+      {note ? <p className="student-quiet">{note}</p> : null}
+      {any ? null : <p className="student-quiet">Save a check-in to see your shape.</p>}
     </div>
   );
 }

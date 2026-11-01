@@ -10,6 +10,8 @@ import {
   ASSESSMENT_MAX,
   ASSESSMENT_STORAGE_KEY,
   assessmentAverage,
+  assessmentChartScores,
+  assessmentDraftScores,
   assessmentTrend,
   checkpointLinks,
   emptyAssessments,
@@ -175,4 +177,42 @@ test('the competitor skin keeps 56px targets and leaves the hub notebook alone',
   assert.match(hubLink, /Patrick Hand/);
   assert.match(hubLink, /#f4f0e4/);
   assert.equal(ASSESSMENT_AREAS.length, 7);
+});
+
+test('an older assessment file still loads, and a saved day beats the tracker', () => {
+  const storage = memory();
+  const older = JSON.stringify({
+    entries: [
+      {
+        id: 'old.1',
+        date: '2024-05-01',
+        note: 'kept from an older phone',
+        scores: { guard: 1, passing: 2, takedowns: 3, escapes: 4, submissions: 5, conditioning: 1, mindset: 2 },
+      },
+    ],
+  });
+  storage.setItem(ASSESSMENT_STORAGE_KEY, older);
+  const loaded = loadAssessments(storage);
+  assert.equal(loaded.entries.length, 1);
+  assert.equal(loaded.entries[0].note, 'kept from an older phone');
+  assert.equal(loaded.entries[0].scores.guard, 1);
+  assert.equal(loaded.entries[0].scores.mindset, 2);
+  const written = writeAssessments(storage, loaded);
+  assert.equal(written.entries[0].id, 'old.1');
+  assert.equal(written.entries[0].scores.submissions, 5);
+  assert.match(storage.getItem(ASSESSMENT_STORAGE_KEY) ?? '', /kept from an older phone/);
+
+  const tracker = { guard: 5 as const, passing: 5 as const, takedowns: 5 as const, escapes: 5 as const, submissions: 5 as const, conditioning: 5 as const };
+  const savedDay = assessmentDraftScores(loaded.entries, '2024-05-01', '2026-11-01', tracker);
+  assert.equal(savedDay.guard, 1);
+  assert.equal(savedDay.mindset, 2);
+  const today = assessmentDraftScores(loaded.entries, '2026-11-01', '2026-11-01', tracker);
+  assert.equal(today.guard, 5);
+  assert.equal(today.mindset, undefined);
+  const otherDay = assessmentDraftScores(loaded.entries, '2026-10-01', '2026-11-01', tracker);
+  assert.deepEqual(otherDay, {});
+  assert.equal(assessmentChartScores(today, undefined, loaded.entries[0].scores)?.guard, 5);
+  assert.equal(assessmentChartScores({}, loaded.entries[0].scores, undefined)?.guard, 1);
+  assert.equal(assessmentChartScores({}, undefined, loaded.entries[0].scores)?.mindset, 2);
+  assert.equal(assessmentChartScores({}, undefined, undefined), null);
 });
