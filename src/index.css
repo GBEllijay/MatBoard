@@ -16489,6 +16489,60 @@ a.plan-pick {
   }
 }
 
+/* Phone landscape (anything landscape that is not the TV block below).
+   The cards were sitting under a fixed 2.55rem ring gap and a wide
+   "Advantages / Penalties" header, so they shrank to short strips at the bottom
+   of the panel. Use the portrait headers (Points / Adv / Pen), keep only the ring
+   crown above the card, and let the cards fill the panel height like portrait. */
+@media (orientation: landscape) and (max-height: 559px), (orientation: landscape) and (max-width: 899px) {
+  .scoreboard-skin--old-school.display .score__label--short {
+    display: block;
+  }
+
+  .scoreboard-skin--old-school.display .score__label--wide {
+    display: none;
+  }
+
+  .scoreboard-skin--old-school.display .score__label {
+    font-size: clamp(0.78rem, 3.4vh, 1rem);
+    line-height: 1.1;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .scoreboard-skin--old-school.display .bout__scores {
+    padding: 0.4rem 0.7rem 0.75rem;
+  }
+
+  .scoreboard-skin--old-school.display .score {
+    gap: 0.1rem;
+  }
+
+  .scoreboard-skin--old-school.display .score--points {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .scoreboard-skin--old-school.display .score--advantages {
+    height: 82%;
+    min-height: 0;
+  }
+
+  .scoreboard-skin--old-school.display .score--disadvantages {
+    height: 68%;
+    min-height: 0;
+  }
+
+  /* Just the ring crown (about 14% of the ring width) above each card. */
+  .scoreboard-skin--old-school.display .flap {
+    padding-top: clamp(0.8rem, 4.4vh, 1.15rem);
+  }
+
+  .scoreboard-skin--old-school.display .flap__face {
+    font-size: 76cqh;
+  }
+}
+
 @media (min-width: 1100px) and (min-height: 700px) {
   .scoreboard-skin--old-school.display .display__mid--stack .clock-btn {
     font-size: clamp(3.6rem, 7.2vw, 6.4rem);
