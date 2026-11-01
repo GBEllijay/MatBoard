@@ -750,16 +750,14 @@ button.mode-card__hit {
   filter: none;
 }
 
-/* Unlocked Media card only (the locked card no longer carries --feature): purple edge, soft glow, bolder title. */
+/* Unlocked Media card only (the locked card no longer carries --feature): bolder title.
+   No purple hue (owner, Nov 2026): it keeps the neutral fill, edge, and shadow of the other
+   product cards; only the purple belt rail on the left marks it. */
 .mode-card--media.mode-card--feature {
   opacity: 1;
-  border: 1px solid rgba(107, 45, 145, 0.85);
-  background: linear-gradient(160deg, #3a2550 0%, #1d1529 50%, #0f0c18 100%);
-  box-shadow: 0 0 0 1px rgba(107, 45, 145, 0.35), 0 10px 32px rgba(107, 45, 145, 0.32);
 }
 .mode-card--media.mode-card--feature > strong {
   font-weight: 800;
-  color: #f1e6fb;
   filter: none;
 }
 

@@ -92,15 +92,21 @@ test('Instructor card on /products shows $49.99 one-time, matching the belt ladd
   assert.equal(rung?.cardPrice, INSTRUCTOR_DISPLAY_PRICE_LINE);
 });
 
-test('locked Media card looks like the other locked cards; the unlocked card keeps the feature edge', () => {
+test('Media card on /products has no purple hue, locked or unlocked; only the purple belt rail marks it', () => {
   assert.match(home, /className="mode-card mode-card--media mode-card--locked">/);
   assert.doesNotMatch(home, /mode-card--media mode-card--locked mode-card--feature/);
   assert.match(home, /<BeltRail kind="purple" \/>/);
   const base = css.match(/\n\.mode-card--media \{[^}]*\}/)?.[0] ?? '';
   assert.ok(base, 'base .mode-card--media rule');
   assert.doesNotMatch(base, /#2c2438|176, 150, 204|107, 45, 145|box-shadow/);
-  assert.match(css, /\.mode-card--media\.mode-card--feature \{[^}]*rgba\(107, 45, 145/);
-  assert.match(css, /\.mode-card--media\.mode-card--feature > strong \{[^}]*font-weight: 800/);
+  const feature = css.match(/\.mode-card--media\.mode-card--feature \{[^}]*\}/)?.[0] ?? '';
+  assert.ok(feature, 'unlocked .mode-card--media.mode-card--feature rule');
+  assert.doesNotMatch(feature, /107, 45, 145|#3a2550|#1d1529|#0f0c18|background|border|box-shadow/);
+  const title = css.match(/\.mode-card--media\.mode-card--feature > strong \{[^}]*\}/)?.[0] ?? '';
+  assert.match(title, /font-weight: 800/);
+  assert.doesNotMatch(title, /#f1e6fb|color:/);
+  // The purple belt rail stays (Media is the purple belt).
+  assert.match(css, /\.belt-rail--purple \{\s*--belt-fill: #6b2d91;/);
 });
 
 test('Instructor and Pro read "Learn more about <name>"; Media has no learn-more button; existing controls stay', () => {
