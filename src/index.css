@@ -4530,6 +4530,40 @@ label {
   color: var(--muted);
 }
 
+.buzzer-options {
+  display: grid;
+  gap: 0.45rem;
+  width: 100%;
+  margin: 0.35rem 0 0;
+}
+
+.buzzer-option {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.45rem;
+}
+
+.buzzer-option__pick {
+  display: grid;
+  justify-items: start;
+  gap: 0.1rem;
+  min-width: 0;
+  min-height: 56px;
+  padding: 0.45rem 0.7rem;
+  text-align: left;
+}
+
+.buzzer-option__hint {
+  font-size: 0.8rem;
+  font-weight: 600;
+  opacity: 0.75;
+}
+
+.buzzer-option__test {
+  min-width: 76px;
+  min-height: 56px;
+}
+
 .cue-preview .presets {
   margin: 0.35rem 0 0;
 }

@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAudioPrefs, useTrainingSkin, useTrainingState } from '../hooks/useStores';
 import {
+  BUZZER_SOUND_OPTIONS,
   END_CUE_OPTIONS,
   patchAudioPrefs,
+  previewBuzzerSound,
   playSelectedEndCue,
   playStartCue,
   playWarningCue,
@@ -205,6 +207,33 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
           </div>
         </div>
         <div className="cue-preview">
+          <p className="cue-preview-label">Buzzer sound</p>
+          <div className="buzzer-options" role="radiogroup" aria-label="Buzzer sound">
+            {BUZZER_SOUND_OPTIONS.map((option) => (
+              <div className="buzzer-option" key={option.id}>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={audio.buzzerSound === option.id}
+                  className={`preset buzzer-option__pick${audio.buzzerSound === option.id ? ' preset--on' : ''}`}
+                  onClick={() => patchAudioPrefs({ buzzerSound: option.id })}
+                >
+                  <span className="buzzer-option__label">{option.label}</span>
+                  <span className="buzzer-option__hint">{option.hint}</span>
+                </button>
+                <button
+                  type="button"
+                  className="preset buzzer-option__test"
+                  aria-label={`Test ${option.label}`}
+                  onClick={() => previewCue(() => previewBuzzerSound(option.id))}
+                >
+                  Test
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="cue-preview">
           <p className="cue-preview-label">Preview cues</p>
           <div className="presets presets--three" role="group" aria-label="Preview cues">
             <button
@@ -251,6 +280,14 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
             value={audio.volume}
             onChange={(e) => patchAudioPrefs({ volume: Number(e.target.value), muted: false })}
           />
+        </label>
+        <label className="toggle">
+          <input
+            type="checkbox"
+            checked={audio.extraLoud}
+            onChange={(e) => patchAudioPrefs({ extraLoud: e.target.checked })}
+          />
+          Extra loud (for rooms with music)
         </label>
         <label className="toggle">
           <input
