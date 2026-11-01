@@ -235,3 +235,85 @@
 .training--polished .skin-root[data-skin] .tm .logo {
   visibility: hidden;
 }
+
+/* Visionary on a phone: fit the halo to the width and keep the band chips inside their columns. */
+@media (orientation: portrait) {
+  .skin-root[data-skin='visionary'] .hdr .mat {
+    white-space: nowrap;
+  }
+  .skin-root[data-skin='visionary'] .hdr .div {
+    min-width: 0;
+    font-size: max(min(1.8vh, 2.6vw), 11px);
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .skin-root[data-skin='visionary'] .row .tile .lab {
+    font-size: max(min(1.9vh, 2.6vw), 11px);
+    letter-spacing: 0.04em;
+  }
+  .skin-root[data-skin='visionary'] .band .clock.clock {
+    font-size: min(7.5vh, 10.5vw);
+    padding-left: 2.4vw;
+    padding-right: 2.4vw;
+  }
+  .skin-root[data-skin='visionary'] .band .state.state,
+  .skin-root[data-skin='visionary'] .band .status.status {
+    font-size: max(min(1.8vh, 2.6vw), 11px);
+    letter-spacing: 0.06em;
+    padding: 0.6vh 1.8vw;
+  }
+  .skin-root[data-skin='visionary'] .sb .beye {
+    display: none;
+  }
+  .skin-root[data-skin='visionary'] .halo-wrap {
+    top: 50vh;
+    width: 86vw;
+    height: 86vw;
+    margin: -43vw 0 0 -43vw;
+  }
+  .skin-root[data-skin='visionary'] .keye {
+    width: min(10vh, 12vw);
+    height: min(10vh, 12vw);
+    margin: max(-5vh, -6vw) 0 0 max(-5vh, -6vw);
+  }
+  .skin-root[data-skin='visionary'] .disc {
+    inset: min(5vh, 6vw);
+  }
+  .skin-root[data-skin='visionary'] .tm .title {
+    font-size: min(4.6vh, 6.4vw);
+  }
+  .skin-root[data-skin='visionary'] .tm .digits.tm-clock {
+    font-size: min(30vh, 17vw);
+  }
+  .skin-root[data-skin='visionary'] .tm .next {
+    max-width: 62vw;
+    font-size: max(min(2.4vh, 3vw), 11px);
+    letter-spacing: 0.08em;
+    text-align: center;
+    line-height: 1.35;
+  }
+}
+
+/* Calçadão on a phone: the panel and its flag bar fit the width. */
+@media (orientation: portrait) {
+  .skin-root[data-skin='calcadao'] .tm .panel {
+    max-width: 88vw;
+    padding: 2.4vh 5vw 3vh;
+  }
+  .skin-root[data-skin='calcadao'] .tm .digits.tm-clock {
+    font-size: min(30vh, 21vw);
+  }
+  .skin-root[data-skin='calcadao'] .cbar {
+    width: 66vw;
+  }
+  .skin-root[data-skin='calcadao'] .cbar i {
+    background-size: 66vw 100%;
+  }
+  .skin-root[data-skin='calcadao'] .cnext {
+    font-size: max(min(2.4vh, 3vw), 11px);
+    letter-spacing: 0.14em;
+    text-align: center;
+  }
+}

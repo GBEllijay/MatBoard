@@ -1,36 +1,29 @@
 import { useMatchBoard } from '../hooks/useMatchBoard';
 import { useMatchState } from '../hooks/useStores';
 import { dispatchMatch } from '../lib/matchStore';
-import {
-  POLISHED_SCOREBOARD_SKINS,
-  pickerBaseScoreboardSkins,
-  parseScoreboardSkin,
-} from '../lib/scoreboardSkin';
+import { parseScoreboardSkin, scoreboardPickerSkins } from '../lib/scoreboardSkin';
 import { EXISTING_SKIN_THUMBS, polishedThumb } from '../skins/thumbs';
 import { SkinPicker, type SkinPickerOption } from './SkinPicker';
 
 /**
  * Scoreboard Skin popup for the Display and Controller.
- * Lists the skins this board already offered, then the polished skins (locked below Media Edition).
+ * Media Edition and above only: lists the skins this board already offered (Mock Tournament,
+ * plus Old School and Quick Result on suite boards), then the polished skins. Without Media it
+ * renders nothing and the board keeps its old controls (no lock tiles, no upsell).
  * The pick is stored with the match on this device, so Display and cast follow it.
  */
 export function ScoreboardSkinPicker({ buttonClassName }: { buttonClassName?: string }) {
   const match = useMatchState();
   const board = useMatchBoard();
-  if (board.kidsSkin) return null;
-  const options: SkinPickerOption[] = [
-    ...pickerBaseScoreboardSkins(board.plainWhite).map((skin) => ({
-      id: skin.id,
-      label: skin.label,
-      thumb: EXISTING_SKIN_THUMBS[skin.id as keyof typeof EXISTING_SKIN_THUMBS],
-    })),
-    ...POLISHED_SCOREBOARD_SKINS.map((skin) => ({
-      id: skin.id,
-      label: skin.label,
-      thumb: polishedThumb(skin.slug, 'scoreboard'),
-      locked: !board.polishedOpen,
-    })),
-  ];
+  // Without Media the board keeps its old controls exactly (no Skins button anywhere).
+  if (board.kidsSkin || !board.polishedOpen) return null;
+  const options: SkinPickerOption[] = scoreboardPickerSkins(board.plainWhite, board.polishedOpen).map((skin) => ({
+    id: skin.id,
+    label: skin.label,
+    thumb: skin.slug
+      ? polishedThumb(skin.slug, 'scoreboard')
+      : EXISTING_SKIN_THUMBS[skin.id as keyof typeof EXISTING_SKIN_THUMBS],
+  }));
   return (
     <SkinPicker
       label="Scoreboard skins"

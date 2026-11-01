@@ -1,19 +1,27 @@
 import { usePolishedSkinsUnlocked } from '../hooks/usePolishedSkins';
 import { useTrainingSkin } from '../hooks/useStores';
-import { POLISHED_SKINS } from '../lib/polishedSkins';
-import { setTrainingSkin, visibleTrainingSkin, type TrainingSkin } from '../lib/trainingSkin';
+import type { PolishedTimerSlug } from '../lib/polishedSkins';
+import { setTrainingSkin, timerPickerSkins, visibleTrainingSkin, type TrainingSkin } from '../lib/trainingSkin';
 import { EXISTING_SKIN_THUMBS, polishedThumb } from '../skins/thumbs';
 import { SkinPicker, type SkinPickerOption } from './SkinPicker';
 
-/** Round timer Skin popup: Classic, Advantage, then the polished skins (locked below Media Edition). Remembered on this device. */
+/**
+ * Round timer Skin popup: Classic, Advantage, then the polished skins when this browser has
+ * Media Edition or above, where this Skins button replaces the Classic / Advantage toggle.
+ * Without it there is no popup at all (no lock tiles); the toggle stays as before. Remembered on this device.
+ */
 export function TimerSkinPicker({ buttonClassName }: { buttonClassName?: string }) {
   const skin = useTrainingSkin();
   const open = usePolishedSkinsUnlocked();
-  const options: SkinPickerOption[] = [
-    { id: 'classic', label: 'Classic', thumb: EXISTING_SKIN_THUMBS.classic },
-    { id: 'themed', label: 'Advantage', thumb: EXISTING_SKIN_THUMBS.themed },
-    ...POLISHED_SKINS.map((s) => ({ id: s.slug, label: s.label, thumb: polishedThumb(s.slug, 'timer'), locked: !open })),
-  ];
+  // Without Media the Classic / Advantage toggle stays exactly as before and there is no popup.
+  if (!open) return null;
+  const options: SkinPickerOption[] = timerPickerSkins(open).map((s) => ({
+    id: s.id,
+    label: s.label,
+    thumb: s.polished
+      ? polishedThumb(s.id as PolishedTimerSlug, 'timer')
+      : EXISTING_SKIN_THUMBS[s.id as keyof typeof EXISTING_SKIN_THUMBS],
+  }));
   return (
     <SkinPicker
       label="Timer skins"

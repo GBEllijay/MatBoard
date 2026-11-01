@@ -1,9 +1,9 @@
 import type { MouseEvent, ReactNode } from 'react';
 import { usePolishedSkinModule, useViewportSize } from '../hooks/usePolishedSkins';
 import { formatMmSs, formatMss } from '../lib/format';
-import type { PolishedSkinSlug } from '../lib/polishedSkins';
+import type { PolishedTimerSlug } from '../lib/polishedSkins';
 import { brasilRing, keynoteRing } from '../skins/polished/ring';
-import { metalTimerTitle, psychedelicTimerTitle, reggaeTimerTitle, timerNextLine, timerProgress } from '../skins/polished/timerText';
+import { metalTimerTitle, psychedelicTimerTitle, reggaeTimerTitle, timerNextLine, timerProgress, visionaryTimerTitle } from '../skins/polished/timerText';
 
 const STAR =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.8l3.1 6.6 7.1.9-5.2 4.9 1.4 7.1L12 17.8l-6.4 3.5 1.4-7.1L1.8 9.3l7.1-.9z" fill="#fff" stroke="#2A1A7A" stroke-width="1.6" stroke-linejoin="round"/></svg>';
@@ -33,7 +33,7 @@ export function PolishedTimer({
   onClock,
   children,
 }: {
-  slug: PolishedSkinSlug;
+  slug: PolishedTimerSlug;
   rest: boolean;
   remainingMs: number;
   workMs: number;
@@ -188,6 +188,33 @@ export function PolishedTimer({
             {mod?.KNOB_EYE ? <span className="knob" dangerouslySetInnerHTML={{ __html: mod.KNOB_EYE }} /> : null}
           </div>
           <div className="next">{next}</div>
+        </div>
+      );
+      break;
+    case 'calcadao':
+      inner = (
+        <div className="panel">
+          {clockBtn(digits)}
+          <div className="cbar">
+            <i />
+          </div>
+          <div className="cnext">{next}</div>
+        </div>
+      );
+      break;
+    case 'visionary':
+      inner = (
+        <div className="halo-wrap">
+          <div className="ticks" />
+          <div className="ring track" />
+          <div className="ring fill" />
+          {mod?.VIS_KNOB_EYE ? <div className="knob" dangerouslySetInnerHTML={{ __html: mod.VIS_KNOB_EYE }} /> : null}
+          <div className="disc">
+            {mod?.VIS_DISC_FLOWER ? <span style={{ display: 'contents' }} dangerouslySetInnerHTML={{ __html: mod.VIS_DISC_FLOWER }} /> : null}
+            <div className="title">{visionaryTimerTitle(rest, round)}</div>
+            {clockBtn(digits)}
+            <div className="next">{next}</div>
+          </div>
         </div>
       );
       break;

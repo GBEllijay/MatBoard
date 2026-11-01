@@ -1,18 +1,20 @@
 /**
  * Polished skins for the match scoreboard and the round timer.
- * Eight looks from the owner's polished mock: Kids Arcade, Kids Sticker, Keynote,
- * Heavy Metal ("up to 11"), Brasil, Woodblock, Reggae, Psychedelic.
+ * Nine families from the owner's polished mock: Kids Arcade, Kids Sticker, Keynote,
+ * Heavy Metal ("up to 11"), Brasil (plus the timer-only Calçadão variant), Woodblock,
+ * Reggae, Psychedelic, Visionary.
  *
  * Tier rule: Media Edition and every tier above it. The gate is the existing /media
  * entitlement check, so it opens exactly where the Media door is open (Media, Pro, owner;
  * Instructor once the helper's "higher tiers include lower ones" change lands).
- * White and Student get none of them. This only reads doors; it never grants or stores one.
+ * White and Student get none of them: the pickers leave them out entirely (no lock tiles,
+ * no upsell). This only reads doors; it never grants or stores one.
  *
  * Mock-Tournament, Old School, and Quick Result are not part of this list and stay
  * exactly where they were.
  */
 
-import { MEDIA_HOME_PATH, mediaConsoleDoorOpen, type ProSurfaceInput } from './productNames.ts';
+import { mediaConsoleDoorOpen, type ProSurfaceInput } from './productNames.ts';
 
 export const POLISHED_SKINS = [
   { slug: 'kids-arcade', id: 'KIDS_ARCADE', label: 'Kids Arcade' },
@@ -23,17 +25,28 @@ export const POLISHED_SKINS = [
   { slug: 'woodblock', id: 'WOODBLOCK', label: 'Woodblock' },
   { slug: 'reggae', id: 'REGGAE', label: 'Reggae' },
   { slug: 'psychedelic', id: 'PSYCHEDELIC', label: 'Psychedelic' },
+  { slug: 'visionary', id: 'VISIONARY', label: 'Visionary' },
 ] as const;
+
+/** 05b Calçadão: a Brasil variant the mock draws for the round timer only (no scoreboard). */
+export const POLISHED_TIMER_ONLY_SKINS = [{ slug: 'calcadao', label: 'Calçadão' }] as const;
 
 export type PolishedSkin = (typeof POLISHED_SKINS)[number];
 export type PolishedSkinSlug = PolishedSkin['slug'];
 export type PolishedSkinId = PolishedSkin['id'];
 
-/** Locked tile note in the picker. Keep it short. */
-export const POLISHED_SKIN_UNLOCK_NOTE = 'Unlock with Media Edition';
+export type PolishedTimerSlug = PolishedSkinSlug | (typeof POLISHED_TIMER_ONLY_SKINS)[number]['slug'];
 
-/** Media Edition buy page. /media shows the $29.99 page to a browser without Media. */
-export const POLISHED_SKIN_BUY_PATH = MEDIA_HOME_PATH;
+/** Round timer picker order: the families, with Calçadão right after Brasil. */
+export const POLISHED_TIMER_SKINS: readonly { slug: PolishedTimerSlug; label: string }[] = POLISHED_SKINS.flatMap<{ slug: PolishedTimerSlug; label: string }>((skin) =>
+  skin.slug === 'brasil'
+    ? [{ slug: skin.slug, label: skin.label }, ...POLISHED_TIMER_ONLY_SKINS]
+    : [{ slug: skin.slug, label: skin.label }],
+);
+
+export function isPolishedTimerSlug(value: unknown): value is PolishedTimerSlug {
+  return POLISHED_TIMER_SKINS.some((skin) => skin.slug === value);
+}
 
 export function isPolishedSkinSlug(value: unknown): value is PolishedSkinSlug {
   return POLISHED_SKINS.some((skin) => skin.slug === value);

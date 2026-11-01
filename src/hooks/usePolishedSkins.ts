@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { polishedSkinsUnlocked, type PolishedSkinSlug } from '../lib/polishedSkins';
+import { polishedSkinsUnlocked, type PolishedTimerSlug } from '../lib/polishedSkins';
 import { loadedPolishedSkin, loadPolishedSkin, type PolishedSkinModule } from '../skins/polished/load';
 import { useSeatDoor } from './useSeatDoor';
 
@@ -12,8 +12,8 @@ export function usePolishedSkinsUnlocked(): boolean {
 }
 
 /** The skin's CSS, fonts, and decorations, loaded on first use. Null while loading. */
-export function usePolishedSkinModule(slug: PolishedSkinSlug | null): PolishedSkinModule | null {
-  const [mod, setMod] = useState<{ slug: PolishedSkinSlug; mod: PolishedSkinModule } | null>(() => {
+export function usePolishedSkinModule(slug: PolishedTimerSlug | null): PolishedSkinModule | null {
+  const [mod, setMod] = useState<{ slug: PolishedTimerSlug; mod: PolishedSkinModule } | null>(() => {
     const hit = slug ? loadedPolishedSkin(slug) : null;
     return slug && hit ? { slug, mod: hit } : null;
   });

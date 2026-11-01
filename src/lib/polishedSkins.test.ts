@@ -2,21 +2,28 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   POLISHED_SKINS,
-  POLISHED_SKIN_BUY_PATH,
-  POLISHED_SKIN_UNLOCK_NOTE,
+  POLISHED_TIMER_SKINS,
   polishedSkinAccessFromDoors,
   polishedSkinsUnlocked,
 } from './polishedSkins.ts';
-import { MEDIA_HOME_PATH, mediaConsoleDoorOpen } from './productNames.ts';
+import { mediaConsoleDoorOpen } from './productNames.ts';
 import {
   DEFAULT_SCOREBOARD_SKIN,
   SCOREBOARD_SKIN,
   SELECTABLE_SCOREBOARD_SKINS,
   parseScoreboardSkin,
   pickerBaseScoreboardSkins,
+  scoreboardPickerSkins,
   visibleScoreboardSkin,
 } from './scoreboardSkin.ts';
-import { DEFAULT_TRAINING_SKIN, TRAINING_SKIN_KEY, getTrainingSkin, setTrainingSkin, visibleTrainingSkin } from './trainingSkin.ts';
+import {
+  DEFAULT_TRAINING_SKIN,
+  TRAINING_SKIN_KEY,
+  getTrainingSkin,
+  setTrainingSkin,
+  timerPickerSkins,
+  visibleTrainingSkin,
+} from './trainingSkin.ts';
 import { expandGrants, grantsForProduct } from '../server/grantMatrix.ts';
 import { grantsForKind } from '../server/codeCatalog.ts';
 import { API_PRODUCT_COACH, API_PRODUCT_ID, API_PRODUCT_MEDIA, API_PRODUCT_PRO, API_PRODUCT_STUDENT } from '../server/routes.ts';
@@ -32,7 +39,15 @@ import { CLIENT_APP_VERSION } from './appCapability.ts';
 import { isMediaUnlocked } from './mediaUnlock.ts';
 import { isProUnlocked } from './proUnlock.ts';
 import { impliedDoors } from './tierImplications.ts';
-import { metalTimerTitle, psychedelicTimerTitle, reggaeTimerTitle, romanRound, timerNextLine, timerProgress } from '../skins/polished/timerText.ts';
+import {
+  metalTimerTitle,
+  psychedelicTimerTitle,
+  reggaeTimerTitle,
+  romanRound,
+  timerNextLine,
+  timerProgress,
+  visionaryTimerTitle,
+} from '../skins/polished/timerText.ts';
 import { brasilRing, keynoteRing, lerpHex } from '../skins/polished/ring.ts';
 
 function memoryStorage() {
@@ -61,13 +76,36 @@ const PRODUCTS = [
   ['Pro', API_PRODUCT_PRO, true],
 ] as const;
 
-test('the eight polished skins, in picker order', () => {
+test('the nine polished families in picker order; Calçadão is a timer-only option after Brasil', () => {
   assert.deepEqual(
     POLISHED_SKINS.map((s) => s.label),
-    ['Kids Arcade', 'Kids Sticker', 'Keynote', 'Heavy Metal', 'Brasil', 'Woodblock', 'Reggae', 'Psychedelic'],
+    ['Kids Arcade', 'Kids Sticker', 'Keynote', 'Heavy Metal', 'Brasil', 'Woodblock', 'Reggae', 'Psychedelic', 'Visionary'],
   );
-  assert.equal(POLISHED_SKIN_UNLOCK_NOTE, 'Unlock with Media Edition');
-  assert.equal(POLISHED_SKIN_BUY_PATH, MEDIA_HOME_PATH);
+  assert.deepEqual(
+    POLISHED_TIMER_SKINS.map((s) => s.label),
+    ['Kids Arcade', 'Kids Sticker', 'Keynote', 'Heavy Metal', 'Brasil', 'Calçadão', 'Woodblock', 'Reggae', 'Psychedelic', 'Visionary'],
+  );
+  assert.equal(parseScoreboardSkin('calcadao'), DEFAULT_SCOREBOARD_SKIN, 'no Calçadão scoreboard');
+  assert.equal(parseScoreboardSkin('CALCADAO'), DEFAULT_SCOREBOARD_SKIN, 'no Calçadão scoreboard');
+});
+
+test('pickers: without Media the new skins are absent (not locked); with Media they follow the existing ones', () => {
+  for (const [name, product, open] of PRODUCTS) {
+    const access = polishedSkinAccessFromDoors(grantsForProduct(product));
+    const gate = polishedSkinsUnlocked(access);
+    assert.equal(gate, open, name);
+    const board = scoreboardPickerSkins(false, gate).map((s) => s.id);
+    const timer = timerPickerSkins(gate).map((s) => s.id);
+    if (open) {
+      assert.deepEqual(board, [...SELECTABLE_SCOREBOARD_SKINS.map((s) => s.id), ...POLISHED_SKINS.map((s) => s.id)], `${name} board`);
+      assert.deepEqual(timer, ['classic', 'themed', ...POLISHED_TIMER_SKINS.map((s) => s.slug)], `${name} timer`);
+    } else {
+      assert.deepEqual(board, SELECTABLE_SCOREBOARD_SKINS.map((s) => s.id), `${name} board: existing three only`);
+      assert.deepEqual(timer, ['classic', 'themed'], `${name} timer: Classic and Advantage only`);
+      // Plain White board: Mock-Tournament alone, so the popup renders nothing (as today).
+      assert.deepEqual(scoreboardPickerSkins(true, gate).map((s) => s.id), [SCOREBOARD_SKIN.MOCK_TOURNAMENT], `${name} plain White`);
+    }
+  }
 });
 
 test('tier rule from the real grant table: White and Student locked; Media, Pro, owner open; Instructor follows Media', () => {
@@ -193,7 +231,9 @@ test('saved picks survive a reload; a locked one paints the default and is kept 
   assert.equal(getTrainingSkin(), DEFAULT_TRAINING_SKIN);
 });
 
-test('timer text: Reggae rest reads "Rest Easy", Psychedelic "Far Out"; Metal counts in Roman numerals', () => {
+test('timer text: Reggae rest reads "Rest Easy", Psychedelic "Far Out", Visionary "Breathe"; Metal counts in Roman numerals', () => {
+  assert.equal(visionaryTimerTitle(true, 4), 'Breathe');
+  assert.equal(visionaryTimerTitle(false, 4), 'Round 4');
   assert.equal(reggaeTimerTitle(true, 3), 'Rest Easy');
   assert.equal(reggaeTimerTitle(false, 3), 'Round 3');
   assert.equal(psychedelicTimerTitle(true, 2), 'Far Out');
@@ -231,4 +271,18 @@ test('Psychedelic motion runs only when the device allows motion', async () => {
   assert.match(block[1], /\.spiral\{animation:psy-spin 90s/);
   // No animation anywhere else, so reduce (or no preference support) means a still screen.
   assert.equal(css.split('animation:').length - 1, 2);
+});
+
+test('Visionary motion runs only when the device allows motion', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const css = await readFile(new URL('../skins/polished/visionary.css', import.meta.url), 'utf8');
+  const at = css.indexOf('@media (prefers-reduced-motion:no-preference){');
+  assert.ok(at >= 0, 'motion sits inside prefers-reduced-motion: no-preference');
+  const block = css.slice(at);
+  assert.match(block, /animation:vis-pulse 6s/);
+  assert.match(block, /animation:vis-breathe 6s/);
+  assert.match(block, /animation:vis-hue 40s/);
+  // No animation before the block, so reduce (or no preference support) means a still screen.
+  assert.equal(css.slice(0, at).split('animation:').length - 1, 0);
+  assert.equal(css.split('animation:').length - 1, 3);
 });

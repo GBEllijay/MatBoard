@@ -11,7 +11,7 @@
  */
 
 import { SUITE_FROM, UNLIMITED_FROM, withHubFrom } from './productNames.ts';
-import { POLISHED_SKINS, isPolishedSkinId } from './polishedSkins.ts';
+import { POLISHED_SKINS, isPolishedSkinId, type PolishedSkinSlug } from './polishedSkins.ts';
 
 /**
  * Old School matches the owner's tabletop flip boards: large points cards,
@@ -38,6 +38,7 @@ export const SCOREBOARD_SKIN = {
   WOODBLOCK: 'WOODBLOCK',
   REGGAE: 'REGGAE',
   PSYCHEDELIC: 'PSYCHEDELIC',
+  VISIONARY: 'VISIONARY',
 } as const;
 
 export type ScoreboardSkinId = (typeof SCOREBOARD_SKIN)[keyof typeof SCOREBOARD_SKIN];
@@ -89,9 +90,10 @@ const SKIN_CLASS: Record<ScoreboardSkinId, string> = {
   [SCOREBOARD_SKIN.WOODBLOCK]: 'scoreboard-skin--mock-tournament',
   [SCOREBOARD_SKIN.REGGAE]: 'scoreboard-skin--mock-tournament',
   [SCOREBOARD_SKIN.PSYCHEDELIC]: 'scoreboard-skin--mock-tournament',
+  [SCOREBOARD_SKIN.VISIONARY]: 'scoreboard-skin--mock-tournament',
 };
 
-/** Polished skins in picker order. Locked below Media Edition. */
+/** Polished skins in picker order. Listed only for Media Edition and above. */
 export const POLISHED_SCOREBOARD_SKINS = POLISHED_SKINS.map((skin) => ({
   id: skin.id as ScoreboardSkinId,
   slug: skin.slug,
@@ -109,6 +111,20 @@ export function isPolishedScoreboardSkin(value: unknown): boolean {
  */
 export function pickerBaseScoreboardSkins(plainWhite: boolean) {
   return plainWhite ? SELECTABLE_SCOREBOARD_SKINS.slice(0, 1) : SELECTABLE_SCOREBOARD_SKINS;
+}
+
+/**
+ * Everything the Scoreboard Skin popup lists: the existing skins, then the polished ones
+ * only when this browser has Media Edition or above. Without it they are absent, not locked.
+ */
+export function scoreboardPickerSkins(
+  plainWhite: boolean,
+  polishedOpen: boolean,
+): readonly { id: ScoreboardSkinId; label: string; slug?: PolishedSkinSlug }[] {
+  return [
+    ...pickerBaseScoreboardSkins(plainWhite).map((skin) => ({ id: skin.id, label: skin.label })),
+    ...(polishedOpen ? POLISHED_SCOREBOARD_SKINS : []),
+  ];
 }
 
 export function isSelectableScoreboardSkin(value: unknown): value is ScoreboardSkinId {

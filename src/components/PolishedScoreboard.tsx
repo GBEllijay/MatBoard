@@ -101,7 +101,7 @@ export function PolishedScoreboard({
   return (
     <div className={`skin-root skin-root--board${mod ? '' : ' skin-root--loading'}`} data-skin={slug}>
       <div className="sb">
-        {mod ? <div className="skin-deco" dangerouslySetInnerHTML={{ __html: mod.SCOREBOARD_DECO }} /> : null}
+        {mod ? <div className="skin-deco" dangerouslySetInnerHTML={{ __html: mod.SCOREBOARD_DECO ?? '' }} /> : null}
         <header className="hdr">
           <img className="logo" src="/card-logo.png" alt="Advantage" />
           <span className="mat">{mat}</span>

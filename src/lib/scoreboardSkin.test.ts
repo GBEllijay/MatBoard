@@ -39,6 +39,7 @@ test('Mock-Tournament Skin is the default Match scoreboard', () => {
     'PSYCHEDELIC',
     'QUICK_RESULT',
     'REGGAE',
+    'VISIONARY',
     'WOODBLOCK',
   ]);
   assert.equal(OLD_SCHOOL_SKIN_NAME, 'Old School');

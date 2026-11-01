@@ -35,3 +35,8 @@ export function reggaeTimerTitle(rest: boolean, round: number): string {
 export function psychedelicTimerTitle(rest: boolean, round: number): string {
   return rest ? 'Far Out' : `Round ${round}`;
 }
+
+/** Visionary title: "Round 3" while working, "Breathe" on the break (owner's mock). */
+export function visionaryTimerTitle(rest: boolean, round: number): string {
+  return rest ? 'Breathe' : `Round ${round}`;
+}

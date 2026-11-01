@@ -1,19 +1,16 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { POLISHED_SKIN_BUY_PATH, POLISHED_SKIN_UNLOCK_NOTE } from '../lib/polishedSkins';
 import './skinPicker.css';
 
 export type SkinPickerOption = {
   id: string;
   label: string;
   thumb: string;
-  /** Media Edition and above. Shown with a lock and the buy link when the browser lacks it. */
-  locked?: boolean;
 };
 
 /**
- * Skin button that opens a thumbnail popup, styled like the brackets Skin picker.
- * Locked tiles cannot be chosen; they say "Unlock with Media Edition" and link to /media.
+ * Skins button that opens a thumbnail popup, styled like the brackets Skin picker.
+ * Shown only with Media Edition or above, where it replaces the old skin toggle in the same spot.
+ * Callers pass only the skins this browser may use; there are no locked tiles.
  */
 export function SkinPicker({
   label,
@@ -36,7 +33,6 @@ export function SkinPicker({
   const pickerRef = useRef<HTMLDivElement>(null);
   const pickerId = useId();
   const current = options.find((option) => option.id === value);
-  const anyLocked = options.some((option) => option.locked);
 
   useLayoutEffect(() => {
     const root = rootRef.current;
@@ -102,7 +98,7 @@ export function SkinPicker({
         aria-label={current ? `${label}, ${current.label}` : label}
         onClick={() => setOpen((v) => !v)}
       >
-        Skin
+        Skins
       </button>
       {open ? (
         <div id={pickerId} ref={pickerRef} className="skin-pick__picker" role="dialog" aria-label={label}>
@@ -115,46 +111,23 @@ export function SkinPicker({
                   type="button"
                   role="radio"
                   aria-checked={selected}
-                  aria-disabled={option.locked ? true : undefined}
                   data-skin-option={option.id}
-                  className={`skin-pick__thumb${selected ? ' is-on' : ''}${option.locked ? ' is-locked' : ''}`}
+                  className={`skin-pick__thumb${selected ? ' is-on' : ''}`}
                   onClick={() => {
-                    if (option.locked) return;
                     onChoose(option.id);
                     setOpen(false);
                   }}
                 >
                   <span className="skin-pick__img">
                     <img src={option.thumb} alt="" loading="lazy" />
-                    {option.locked ? (
-                      <span className="skin-pick__lock" aria-hidden="true">
-                        <svg viewBox="0 0 24 24">
-                          <path
-                            d="M7 10V7.5a5 5 0 0 1 10 0V10M5.5 10h13v10h-13z"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </span>
-                    ) : null}
                   </span>
                   <span className="skin-pick__name">
                     {option.label}
-                    {option.locked ? <span className="sr-only"> (locked)</span> : null}
                   </span>
                 </button>
               );
             })}
           </div>
-          {anyLocked ? (
-            <p className="skin-pick__note">
-              <Link to={POLISHED_SKIN_BUY_PATH} className="skin-pick__unlock" onClick={() => setOpen(false)}>
-                {POLISHED_SKIN_UNLOCK_NOTE}
-              </Link>
-            </p>
-          ) : null}
         </div>
       ) : null}
     </div>

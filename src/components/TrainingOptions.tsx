@@ -37,7 +37,8 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
   const training = useTrainingState();
   const audio = useAudioPrefs();
   /** A locked polished pick shows as Classic, which is what the timer paints. */
-  const skin = visibleTrainingSkin(useTrainingSkin(), usePolishedSkinsUnlocked());
+  const polishedOpen = usePolishedSkinsUnlocked();
+  const skin = visibleTrainingSkin(useTrainingSkin(), polishedOpen);
   const [customWorkOpen, setCustomWorkOpen] = useState(false);
   const [customBreakOpen, setCustomBreakOpen] = useState(false);
   const customWork = !isWorkPreset(training.workMs);
@@ -267,27 +268,31 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
 
       <fieldset>
         <legend>Skin</legend>
-        <div className="presets presets--split" role="radiogroup" aria-label="Timer skin">
-          <button
-            type="button"
-            role="radio"
-            aria-checked={skin === 'classic'}
-            className={`preset${skin === 'classic' ? ' preset--on' : ''}`}
-            onClick={() => setTrainingSkin('classic')}
-          >
-            Classic
-          </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={skin === 'themed'}
-            className={`preset${skin === 'themed' ? ' preset--on' : ''}`}
-            onClick={() => setTrainingSkin('themed')}
-          >
-            Advantage
-          </button>
-        </div>
-        <TimerSkinPicker buttonClassName="preset" />
+        {/* Media Edition and above: one Skins button in place of the Classic / Advantage toggle. */}
+        {polishedOpen ? (
+          <TimerSkinPicker buttonClassName="preset" />
+        ) : (
+          <div className="presets presets--split" role="radiogroup" aria-label="Timer skin">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={skin === 'classic'}
+              className={`preset${skin === 'classic' ? ' preset--on' : ''}`}
+              onClick={() => setTrainingSkin('classic')}
+            >
+              Classic
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={skin === 'themed'}
+              className={`preset${skin === 'themed' ? ' preset--on' : ''}`}
+              onClick={() => setTrainingSkin('themed')}
+            >
+              Advantage
+            </button>
+          </div>
+        )}
       </fieldset>
 
       <button

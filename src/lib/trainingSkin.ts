@@ -4,9 +4,9 @@
  * remembered on this device; a polished pick that is locked here paints Classic.
  */
 
-import { isPolishedSkinSlug, type PolishedSkinSlug } from './polishedSkins.ts';
+import { POLISHED_TIMER_SKINS, isPolishedTimerSlug, type PolishedTimerSlug } from './polishedSkins.ts';
 
-export type TrainingSkin = 'classic' | 'themed' | PolishedSkinSlug;
+export type TrainingSkin = 'classic' | 'themed' | PolishedTimerSlug;
 
 export const TRAINING_SKIN_KEY = 'matboard.trainingSkin.v1';
 export const DEFAULT_TRAINING_SKIN: TrainingSkin = 'classic';
@@ -14,7 +14,7 @@ export const DEFAULT_TRAINING_SKIN: TrainingSkin = 'classic';
 const listeners = new Set<() => void>();
 
 function isSkin(value: string | null): value is TrainingSkin {
-  return value === 'classic' || value === 'themed' || isPolishedSkinSlug(value);
+  return value === 'classic' || value === 'themed' || isPolishedTimerSlug(value);
 }
 
 function readSkin(): TrainingSkin {
@@ -58,13 +58,13 @@ export function trainingUsesAdvantageSkin(skin: TrainingSkin): boolean {
   return skin === 'themed';
 }
 
-export function isPolishedTrainingSkin(skin: TrainingSkin): skin is PolishedSkinSlug {
-  return isPolishedSkinSlug(skin);
+export function isPolishedTrainingSkin(skin: TrainingSkin): skin is PolishedTimerSlug {
+  return isPolishedTimerSlug(skin);
 }
 
 /** Skin the timer paints on this browser. A locked polished pick falls back to Classic. */
 export function visibleTrainingSkin(skin: TrainingSkin, polishedOpen: boolean): TrainingSkin {
-  if (isPolishedSkinSlug(skin) && !polishedOpen) return DEFAULT_TRAINING_SKIN;
+  if (isPolishedTimerSlug(skin) && !polishedOpen) return DEFAULT_TRAINING_SKIN;
   return skin;
 }
 
@@ -74,4 +74,16 @@ if (typeof window !== 'undefined') {
       listeners.forEach((fn) => fn());
     }
   });
+}
+
+/**
+ * Everything the Timer Skin popup lists: Classic, Advantage, then the polished skins
+ * (Calçadão after Brasil) only when this browser has Media Edition or above.
+ */
+export function timerPickerSkins(polishedOpen: boolean): readonly { id: TrainingSkin; label: string; polished: boolean }[] {
+  return [
+    { id: 'classic', label: 'Classic', polished: false },
+    { id: 'themed', label: 'Advantage', polished: false },
+    ...(polishedOpen ? POLISHED_TIMER_SKINS.map((skin) => ({ id: skin.slug, label: skin.label, polished: true })) : []),
+  ];
 }

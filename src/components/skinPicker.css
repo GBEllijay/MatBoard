@@ -46,9 +46,6 @@
   background: rgba(0, 78, 186, 0.35);
 }
 
-.skin-pick__thumb.is-locked {
-  cursor: not-allowed;
-}
 
 .skin-pick__img {
   position: relative;
@@ -64,22 +61,8 @@
   background: #1a2436;
 }
 
-.skin-pick__thumb.is-locked img {
-  filter: grayscale(0.85) brightness(0.55);
-}
 
-.skin-pick__lock {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  color: #fcc000;
-}
 
-.skin-pick__lock svg {
-  width: 1.35rem;
-  height: 1.35rem;
-}
 
 .skin-pick__name {
   font-size: 0.68rem;
@@ -88,24 +71,5 @@
   text-align: center;
 }
 
-.skin-pick__thumb.is-locked .skin-pick__name {
-  opacity: 0.7;
-}
 
-.skin-pick__note {
-  margin: 0.55rem 0 0;
-  text-align: center;
-}
 
-.skin-pick__unlock {
-  display: inline-flex;
-  align-items: center;
-  min-height: 40px;
-  padding: 0.35rem 0.9rem;
-  border-radius: 999px;
-  background: var(--cta-bg, #fcc000);
-  color: var(--cta-ink, #102048);
-  -webkit-text-fill-color: var(--cta-ink, #102048);
-  font-size: 0.82rem;
-  font-weight: 800;
-}

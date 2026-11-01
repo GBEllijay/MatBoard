@@ -1,4 +1,4 @@
-import { POLISHED_SKINS, type PolishedSkinSlug } from '../lib/polishedSkins';
+import { POLISHED_SKINS, type PolishedTimerSlug } from '../lib/polishedSkins';
 import mockTournament from './thumbs/mock-tournament.jpg';
 import oldSchool from './thumbs/old-school.jpg';
 import quickResult from './thumbs/quick-result.jpg';
@@ -20,6 +20,9 @@ import reggaeSb from './polished/thumbs/reggae-scoreboard.jpg';
 import reggaeTm from './polished/thumbs/reggae-timer.jpg';
 import psychedelicSb from './polished/thumbs/psychedelic-scoreboard.jpg';
 import psychedelicTm from './polished/thumbs/psychedelic-timer.jpg';
+import visionarySb from './polished/thumbs/visionary-scoreboard.jpg';
+import visionaryTm from './polished/thumbs/visionary-timer.jpg';
+import calcadaoTm from './polished/thumbs/calcadao-timer.jpg';
 
 export const EXISTING_SKIN_THUMBS = {
   MOCK_TOURNAMENT: mockTournament,
@@ -29,7 +32,8 @@ export const EXISTING_SKIN_THUMBS = {
   themed: advantage,
 } as const;
 
-const POLISHED: Record<PolishedSkinSlug, { scoreboard: string; timer: string }> = {
+/** Calçadão is timer-only, so its scoreboard thumb is never shown; it reuses the timer one. */
+const POLISHED: Record<PolishedTimerSlug, { scoreboard: string; timer: string }> = {
   'kids-arcade': { scoreboard: arcadeSb, timer: arcadeTm },
   'kids-sticker': { scoreboard: stickerSb, timer: stickerTm },
   keynote: { scoreboard: keynoteSb, timer: keynoteTm },
@@ -38,9 +42,11 @@ const POLISHED: Record<PolishedSkinSlug, { scoreboard: string; timer: string }> 
   woodblock: { scoreboard: woodSb, timer: woodTm },
   reggae: { scoreboard: reggaeSb, timer: reggaeTm },
   psychedelic: { scoreboard: psychedelicSb, timer: psychedelicTm },
+  visionary: { scoreboard: visionarySb, timer: visionaryTm },
+  calcadao: { scoreboard: calcadaoTm, timer: calcadaoTm },
 };
 
-export function polishedThumb(slug: PolishedSkinSlug, kind: 'scoreboard' | 'timer'): string {
+export function polishedThumb(slug: PolishedTimerSlug, kind: 'scoreboard' | 'timer'): string {
   return POLISHED[slug][kind];
 }
 
