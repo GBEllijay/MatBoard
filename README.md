@@ -32,6 +32,8 @@ Public testers land on three product cards. **Advantage White** is the live path
 
 This is not a login. Address-bar shortcuts do not unlock a tier. Codes are checked on the server. See `docs/paywall-phase-plan.md` for the owner setup (pepper, catalog, and the owner test secret) before a deploy.
 
+Tier ladder: White < Student < Media < Instructor (Coach) < Pro. Owning a tier, bought or through its alpha code, opens every tier below it (Instructor opens Media, Student and White; Media opens Student and White; Student opens White; Pro opens all). The rule lives in `src/lib/tierImplications.ts`, so every client door, server grant and paid-content gate agrees. Coach Unlimited is separate: Instructor and alpha-coach open it; White, Student and Media do not. Lock buttons close the same set a tier opens.
+
 **Advantage Pro**
 
 1. On `/products`, tap **Owner test unlock**, enter the Cloudflare secret, and choose Pro. That is the owner's own testing door.
