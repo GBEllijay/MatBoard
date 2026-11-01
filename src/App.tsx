@@ -73,6 +73,7 @@ import { TechniquesPage } from './pages/Techniques';
 import { TermsPage } from './pages/Terms';
 import { RankingsPage } from './pages/Rankings';
 import { TournamentPage } from './pages/Tournament';
+import { StudentRosterPlaceholderPage } from './pages/StudentRosterPlaceholder';
 import { TournamentSuitePage } from './pages/TournamentSuite';
 import { TrainingNotesPage } from './pages/TrainingNotes';
 import { TrainingControllerPage } from './pages/TrainingController';
@@ -510,6 +511,14 @@ export default function App() {
         element={
           <CoachUnlimitedRoute>
             <PaidCoachUnlimitedPage />
+          </CoachUnlimitedRoute>
+        }
+      />
+      <Route
+        path="/student-roster"
+        element={
+          <CoachUnlimitedRoute>
+            <StudentRosterPlaceholderPage />
           </CoachUnlimitedRoute>
         }
       />

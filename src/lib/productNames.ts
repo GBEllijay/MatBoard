@@ -1,4 +1,4 @@
-import { COMPETITOR_ROSTER_LABEL, TECHNIQUE_TREE_LABEL, TRAINING_NOTES_LABEL } from './coachCopy.ts';
+import { COMPETITOR_ROSTER_LABEL, STUDENT_ROSTER_LABEL, TECHNIQUE_TREE_LABEL, TRAINING_NOTES_LABEL } from './coachCopy.ts';
 
 /** User-facing Advantage Pro console name. Keep this exact apostrophe. */
 export const GYM_CONSOLE_NAME = "Gym Owner and Instructor's Console";
@@ -151,8 +151,13 @@ export const COACH_HUBS = [
   { title: 'Daily Training Videos', to: COACH_VIDEOS_PATH, belt: 'coach' as const },
   { title: TECHNIQUE_TREE_LABEL, to: COACH_TREE_PATH, belt: 'coach' as const },
   { title: 'Student Roster', to: STUDENT_ROSTER_PATH, belt: 'coach' as const },
+  // Instructor Edition has no Pro door, so /suite is closed. This is the competitor list those users can still open.
+  { title: COMPETITOR_ROSTER_LABEL, to: `/roster?from=${COACH_BOARD_FROM}`, belt: 'tournament' as const },
   { title: MOCK_TOURNAMENT_NAME, to: `/tournament?from=${COACH_BOARD_FROM}`, belt: 'tournament' as const },
 ] as const;
+
+/** Placeholder for the future master student list. No roster data. Same gate as Coach Unlimited. */
+export const STUDENT_ROSTER_PLACEHOLDER_PATH = '/student-roster';
 
 /**
  * Limited Coach opens `/notes` with no plan flag.
@@ -178,9 +183,9 @@ export function coachingToolsMenu(unlimited: boolean) {
 /**
  * Advantage Coach Unlimited menu, top to bottom.
  * Daily Lesson Plan is the Unlimited plan that can be uploaded for review.
- * Competitor Roster sits under Technique Tree and opens the same list as Competitor Management System.
+ * Student Roster is a placeholder for the future master student list. It does not open the competitor list.
  * The four brown rails wear 0-3 white stripes, counted from the tip up toward the header's 4.
- * Scoreboard and Round Timer are the Tournament Management Pro controllers, with the same black belt.
+ * Scoreboard and Round Timer are the Competition and Tournament Management controllers, with the same black belt.
  * `from=unlimited` sends Back to Coach Unlimited, not the Suite.
  * Sunday review and Drive cards stay on the page, under this menu.
  * Competition Class Curriculum opens from the Daily Lesson Plan template picker.
@@ -189,7 +194,7 @@ export const COACH_UNLIMITED_TOOLS = [
   { title: TRAINING_NOTES_LABEL, to: UNLIMITED_LESSON_PATH, belt: 'brown' as const, stripes: 0 as const, clearBout: false as const },
   { title: 'Daily Training Videos', to: UNLIMITED_VIDEOS_PATH, belt: 'brown' as const, stripes: 1 as const, clearBout: false as const },
   { title: TECHNIQUE_TREE_LABEL, to: UNLIMITED_TREE_PATH, belt: 'brown' as const, stripes: 2 as const, clearBout: false as const },
-  { title: COMPETITOR_ROSTER_LABEL, to: UNLIMITED_ROSTER_PATH, belt: 'brown' as const, stripes: 3 as const, clearBout: false as const },
+  { title: STUDENT_ROSTER_LABEL, to: STUDENT_ROSTER_PLACEHOLDER_PATH, belt: 'brown' as const, stripes: 3 as const, clearBout: false as const },
   { title: 'Scoreboard', to: '/match/control?from=unlimited', belt: 'black' as const, clearBout: true as const },
   { title: 'Round Timer', to: '/training/control?from=unlimited', belt: 'black' as const, clearBout: false as const },
 ] as const;
@@ -204,6 +209,7 @@ export const COACH_UNLIMITED_TOOLS = [
  */
 export const COMPETITION_MENU = [
   { title: COMPETITOR_SYSTEM_NAME, to: '/competitors?from=competition', belt: 'tournament' as const },
+  { title: COMPETITOR_ROSTER_LABEL, to: '/roster?from=competition', belt: 'tournament' as const },
   { title: MOCK_TOURNAMENT_NAME, to: '/tournament', belt: 'tournament' as const },
   { title: 'Scoreboard', to: '/match/control', belt: 'tournament' as const, clearBout: true as const },
   { title: 'Round Timer', to: '/training', belt: 'tournament' as const },
@@ -323,6 +329,12 @@ export const COMPETITION_PRO_MENU = [
   {
     title: COMPETITOR_SYSTEM_NAME,
     to: withSuiteFrom('/competitors', true),
+    belt: 'tournament' as const,
+    clearBout: false,
+  },
+  {
+    title: COMPETITOR_ROSTER_LABEL,
+    to: withSuiteFrom('/roster', true),
     belt: 'tournament' as const,
     clearBout: false,
   },
