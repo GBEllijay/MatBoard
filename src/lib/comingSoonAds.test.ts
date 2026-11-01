@@ -140,7 +140,7 @@ test('Pro ad lists the live Pro hubs and keeps launch pricing off the feature co
   assert.equal(PRO_CONSOLE_PREVIEW_LABEL, 'Advantage Pro');
   assert.equal(
     PRO_CONSOLE_PREVIEW_NOTE,
-    'Media Console, Advantage Instructor Edition, instructor invites, and Tournament Management Pro.',
+    'Media Console, Advantage Instructor Edition, instructor invites, and Competition and Tournament Management.',
   );
   assert.doesNotMatch(PRO_CONSOLE_PREVIEW_NOTE, /placeholder|wireframe|coming/i);
   assert.match(text, /Coming Soon/);

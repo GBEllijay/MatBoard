@@ -259,12 +259,13 @@ test('a direct /student visit stays closed, and sign out still leaves the seat',
     );
   });
   await page.goto('/products');
-  await expect(page.getByRole('button', { name: 'Sign out of seat' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sign out of seat' })).toHaveCount(0);
+  await expect(page.getByText('Signed in as')).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Open Coach', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Advantage Student Edition, coming soon' })).toBeVisible();
-  await page.getByRole('button', { name: 'Sign out of seat' }).click();
-  await expect(page.getByText('Signed out')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Advantage Instructor Edition, coming soon' })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Sign out of seat' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Open Coach', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/buy');
 });
 
@@ -288,7 +289,7 @@ test('Student Edition owner unlock opens the hub from the locked card', async ({
 
   const openStudent = page.getByRole('link', { name: 'Open Student Edition', exact: true });
   await expect(openStudent).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Open Coach', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open Advantage Instructor Edition', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/white');
   await openStudent.click();
   await expect(page).toHaveURL(/\/student$/);
@@ -299,7 +300,7 @@ test('Student Edition owner unlock opens the hub from the locked card', async ({
   await page.getByRole('button', { name: 'Lock Pro' }).click();
   await page.goto('/products');
   await expect(page.getByRole('button', { name: 'Advantage Student Edition, coming soon' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Open Coach', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open Advantage Instructor Edition', exact: true })).toBeVisible();
   await page.goto('/student');
   await expect(page.getByRole('link', { name: 'Training & Journal', exact: true })).toHaveCount(0);
 });
@@ -333,7 +334,7 @@ test('the Pro owner code opens the Student Edition card', async ({ page }) => {
 
   const openStudent = page.getByRole('link', { name: 'Open Student Edition', exact: true });
   await expect(openStudent).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Open Coach', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open Advantage Instructor Edition', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/buy');
   await openStudent.click();
   await expect(page).toHaveURL(/\/student$/);
@@ -366,7 +367,7 @@ test('the full owner unlock code opens the Student Edition hub', async ({ page }
   await page.getByRole('button', { name: 'Lock Pro' }).click();
   await page.goto('/products');
   await expect(page.getByRole('button', { name: 'Advantage Student Edition, coming soon' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Open Coach', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open Advantage Instructor Edition', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/white');
   await page.goto('/student');
   await expect(page.getByRole('link', { name: 'Training & Journal', exact: true })).toHaveCount(0);

@@ -26,6 +26,11 @@ function readToken(): string {
   }
 }
 
+/** False once a newer pass has replaced `token`. A stale sync must not clear that pass's cookie. */
+function storedTokenIs(token: string): boolean {
+  return readToken() === token;
+}
+
 export function armPaidChunkRequest(token: string, expSeconds: number): void {
   if (typeof document === 'undefined') return;
   const maxAge = Math.max(60, Math.min(24 * 60 * 60, expSeconds - Math.floor(Date.now() / 1000)));
@@ -105,13 +110,16 @@ async function prefetchOne(url: string, token: string): Promise<void> {
  */
 export async function syncPaidChunkCache(claims: EntitlementClaims, token: string): Promise<void> {
   if (typeof caches === 'undefined') return;
+  if (!storedTokenIs(token)) return;
   const allowed = new Set(filesForAllowedChunks(claims, PAID_CHUNK_FILES, entitlementNowMs()));
   try {
+    if (!storedTokenIs(token)) return;
     if (claims.subs?.state === 'locked') await caches.delete(PAID_CHUNK_CACHE);
     else await dropUnlisted(allowed);
   } catch {
     /* ignore a missing Cache Storage */
   }
+  if (!storedTokenIs(token)) return;
   if (!token || allowed.size === 0) {
     clearPaidCookie();
     return;

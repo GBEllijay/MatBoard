@@ -66,7 +66,7 @@ test('Coach card shows the Instructor Edition title on a brown belt; ids stay co
   assert.doesNotMatch(home, /<strong>Advantage Coach<\/strong>/);
   assert.equal(home.match(/<BeltRail kind="brown" \/>\s*<strong>\{INSTRUCTOR_HOME_TITLE\}<\/strong>/g)?.length, 2);
   assert.match(home, /mode-card mode-card--coach"/);
-  assert.match(home, /: '\/coach'/);
+  assert.match(home, /instructorUnlimited \? COACH_UNLIMITED_PATH : '\/coach'/);
   assert.match(home, /setSoon\('coach'\)/);
   // Same brown as the homepage belt ladder's Instructor tile.
   assert.match(css, /\.belt-rail--brown \{\s*--belt-fill: #6b3a1f;/);
