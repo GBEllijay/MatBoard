@@ -137,11 +137,10 @@ test('feature list renders the real Media Console features', () => {
 
 test('homepage Media Edition card links to /media and lands on the page', () => {
   const m = mount('/');
-  const links = [...m.host.querySelectorAll('a')].filter((a) => a.getAttribute('href') === '/media');
-  assert.equal(links.length, 1);
-  assert.match(links[0].textContent ?? '', /Advantage Media Edition/);
+  const learn = [...m.host.querySelectorAll('a')].find((a) => (a.textContent ?? '').includes('Learn more about Media Edition'));
+  assert.equal(learn?.getAttribute('href'), '/media');
   act(() => {
-    links[0].dispatchEvent(new view.MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }) as unknown as Event);
+    learn?.dispatchEvent(new view.MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }) as unknown as Event);
   });
   assert.equal(path, '/media');
   assert.equal(m.host.querySelector('header.buy__card--belt h2')?.textContent, 'Advantage Media Edition');

@@ -11,6 +11,18 @@ const back = readFileSync(new URL('../components/HistoryBackMark.tsx', import.me
 const css = readFileSync(new URL('../index.css', import.meta.url), 'utf8');
 const storefrontCss = readFileSync(new URL('../pages/storefront.css', import.meta.url), 'utf8');
 
+test('/products title is centered on the card column at narrow and portrait widths', () => {
+  const at = css.indexOf('@media (max-width: 739px)');
+  assert.ok(at > 0);
+  const block = css.slice(at, at + 1800);
+  assert.match(block, /\(max-width: 1099px\) and \(orientation: portrait\)/);
+  assert.match(block, /\(orientation: landscape\) and \(max-height: 520px\)/);
+  assert.match(block, /\.home--ladder \.home__mark \{[^}]*align-self: stretch;[^}]*text-align: center;/);
+  assert.match(block, /\.home--ladder \.home__mark > p \{[^}]*text-align: center;/);
+  // Wide brand column stays left-aligned.
+  assert.match(css, /@media \(min-width: 740px\) and \(orientation: landscape\), \(min-width: 1100px\) \{[\s\S]*?\.home__mark \{[^}]*text-align: left;/);
+});
+
 test('/products center logo is a router link to the homepage', () => {
   assert.match(home, /<HomeMark to="\/" motto=\{HOME_MOTTO\}/);
 });
@@ -44,6 +56,7 @@ test('/products cards follow the belt ladder order: White, Student, Media, Instr
     at('<MediaHomeCard open={mediaUnlocked && !seated} />'),
     at('<strong>{INSTRUCTOR_HOME_TITLE}</strong>'),
     at('<ProHomeCopy />'),
+    at('<ProPlusCloudCard'),
   ];
   assert.deepEqual([...order].sort((a, b) => a - b), order);
 });
@@ -53,7 +66,7 @@ test('Coach card shows the Instructor Edition title on a brown belt; ids stay co
   assert.doesNotMatch(home, /<strong>Advantage Coach<\/strong>/);
   assert.equal(home.match(/<BeltRail kind="brown" \/>\s*<strong>\{INSTRUCTOR_HOME_TITLE\}<\/strong>/g)?.length, 2);
   assert.match(home, /mode-card mode-card--coach"/);
-  assert.match(home, /to="\/coach"/);
+  assert.match(home, /: '\/coach'/);
   assert.match(home, /setSoon\('coach'\)/);
   // Same brown as the homepage belt ladder's Instructor tile.
   assert.match(css, /\.belt-rail--brown \{\s*--belt-fill: #6b3a1f;/);
@@ -71,14 +84,14 @@ test('Media card: locked is display-only purple $29.99 linking to /media; open r
   assert.equal(MEDIA_HOME_DESCRIPTION, 'Scoreboard, round timer, and media console.');
   assert.equal(MEDIA_PRICE_LINE, '$29.99 one-time');
   assert.equal(MEDIA_HOME_PATH, '/media');
-  const card = home.slice(home.indexOf('function MediaHomeCard'), home.indexOf('function HomeDescription'));
+  const card = home.slice(home.indexOf('function MediaHomeCard'), home.indexOf('function ProPlusCloudCard'));
   assert.match(card, /mode-card mode-card--media mode-card--locked/);
   assert.match(card, /<BeltRail kind="purple" \/>/);
-  // Open (media door, from #332): whole card + "Open Media" both go to /media. Locked: whole card only.
+  // Open (media door): "Open Media Edition" goes to /media. Locked Learn more opens the same preview.
   assert.match(home, /const mediaUnlocked = useMediaUnlocked\(\);/);
-  assert.match(card, />\s*Open Media\s*</);
-  assert.equal(card.match(/to=\{MEDIA_HOME_PATH\}/g)?.length, 3);
-  assert.doesNotMatch(card, /Learn more/);
+  assert.match(card, />\s*Open Media Edition\s*</);
+  assert.match(card, />\s*Learn more about Media Edition\s*</);
+  assert.match(card, /to=\{TIER_BUY_PATHS\.media\}/);
   // No checkout or unlock on this card; the alpha email line is the shared edition note.
   assert.doesNotMatch(card, /onClick|Unlock|checkout/i);
   assert.match(css, /\.belt-rail--purple \{\s*--belt-fill: #6b2d91;/);
@@ -109,16 +122,32 @@ test('Media card on /products has no purple hue, locked or unlocked; only the pu
   assert.match(css, /\.belt-rail--purple \{\s*--belt-fill: #6b2d91;/);
 });
 
-test('Instructor and Pro read "Learn more about <name>"; Media has no learn-more button; existing controls stay', () => {
-  assert.doesNotMatch(home, /Learn more about Media/);
-  assert.match(home, /<Link className="mode-card__hit" to=\{MEDIA_HOME_PATH\}/);
-  assert.equal(home.match(/setSoon\('coach'\)\}>\s*Learn more about Instructor Edition/g)?.length, 2);
-  assert.equal(home.match(/setSoon\('pro'\)\}>\s*Learn more about Advantage Pro/g)?.length, 2);
-  assert.match(home, /Open Coach/);
-  assert.match(home, /\{consoleLabel\}/);
+test('Locked cards keep Learn more; unlocked cards do not. Open labels follow the Student pattern', () => {
+  assert.match(home, /Learn more about Media Edition/);
+  assert.match(home, /to=\{TIER_BUY_PATHS\.media\}/);
+  assert.equal(home.match(/setSoon\('coach'\)\}>\s*Learn more about Instructor Edition/g)?.length, 1);
+  assert.equal(home.match(/setSoon\('pro'\)\}>\s*Learn more about Advantage Pro/g)?.length, 1);
+  assert.match(home, /Try the demo/);
+  assert.match(home, /Open White/);
+  assert.match(home, /Open Student Edition/);
+  assert.match(home, /Open Media Edition/);
+  assert.match(home, /Open Advantage Instructor Edition/);
+  assert.match(home, /Open Pro Console/);
+  assert.match(home, /\{PRO_PLUS_CLOUD_OPEN_LABEL\}/);
+  assert.match(home, /COACH_UNLIMITED_PATH/);
+  // A seat that cannot open Coach Unlimited still has a working Coach door.
+  assert.match(home, /: '\/coach'/);
+  assert.match(home, /: 'Open Coach'/);
+  const unlockedCoach = home.slice(home.indexOf('mode-card mode-card--coach">'), home.indexOf('mode-card mode-card--coach mode-card--locked'));
+  assert.doesNotMatch(unlockedCoach, /Learn more/);
+  const unlockedPro = home.slice(home.indexOf('mode-card mode-card--pro">'), home.indexOf('mode-card mode-card--pro mode-card--locked'));
+  assert.doesNotMatch(unlockedPro, /Learn more/);
   assert.match(home, /Owner test unlock/);
   assert.match(home, /aria-label=\{`\$\{INSTRUCTOR_HOME_TITLE\}, coming soon`\}/);
   assert.match(home, /aria-label="Advantage Pro, coming soon"/);
+  assert.match(home, /PRO_DRIVE_NOTE/);
+  assert.match(home, /bar="striped"/);
+  assert.match(home, /bar="red"/);
 });
 
 test('Pro card on /products says "Includes all Advantage products."', async () => {

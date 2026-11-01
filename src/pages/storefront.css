@@ -673,14 +673,56 @@
   --sf-fill: var(--sf-belt-blue);
 }
 
-.home.home--store .sf-belt--pro {
+/* Advantage Pro: plain black cloth and a red rank bar. Drawn here because the ladder had no red-bar asset. */
+.home.home--store .sf-belt--red-bar {
+  background:
+    repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.25) 0, rgba(255, 255, 255, 0.07) 1px, rgba(0, 0, 0, 0.25) 3px),
+    linear-gradient(to right, var(--sf-belt-black) 0 80%, var(--sf-belt-red) 80% 93%, var(--sf-belt-black) 93%);
+}
+
+.home.home--store .sf-belt--red-bar::before {
+  border-color: rgba(255, 255, 255, 0.07);
+}
+
+/* Advantage Pro Plus Cloud: the previous Pro bar, white | red | white. */
+.home.home--store .sf-belt--striped {
   background:
     repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.25) 0, rgba(255, 255, 255, 0.07) 1px, rgba(0, 0, 0, 0.25) 3px),
     linear-gradient(to right, var(--sf-belt-black) 0 80%, #f4f1ea 80% 82%, var(--sf-belt-red) 82% 91%, #f4f1ea 91% 93%, var(--sf-belt-black) 93%);
 }
 
-.home.home--store .sf-belt--pro::before {
+.home.home--store .sf-belt--striped::before {
   border-color: rgba(255, 255, 255, 0.07);
+}
+
+.home.home--store .sf-step {
+  position: relative;
+}
+
+.home.home--store .sf-step__hit {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+}
+
+.home.home--store .sf-learn {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 12px;
+  min-height: 40px;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  background: #fff;
+  color: #0e1726;
+  font-weight: 700;
+  font-size: 0.95rem;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
 }
 
 .home.home--store .sf-belt--purple {

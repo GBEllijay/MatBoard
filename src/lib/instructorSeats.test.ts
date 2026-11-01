@@ -857,7 +857,8 @@ test('a Program Director invite stores gallery, events, and Pro Shop even when p
   const pro = readFileSync(new URL('../pages/Pro.tsx', import.meta.url), 'utf8');
   const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
   assert.match(home, /homeConsoleLabel\(door\)/);
-  assert.match(home, /\{consoleLabel\}/);
+  // The products Pro card always says Open Pro Console. The seat's hub list is unchanged.
+  assert.match(home, /Open Pro Console/);
   assert.match(pro, /consoleHubs\(door, door\.seat\?\.permissions/);
   assert.match(pro, /MEDIA_CONSOLE_NAME/);
   assert.match(app, /MEDIA_FOLDER_ROUTES/);

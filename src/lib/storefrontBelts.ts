@@ -1,10 +1,11 @@
 import { MEDIA_EDITION_PATH } from './mediaEdition.ts';
-import { INSTRUCTOR_DISPLAY_PRICE_LINE } from './productPrices.ts';
+import { PRO_DRIVE_NOTE, PRO_PLUS_CLOUD_DESCRIPTION, PRO_PLUS_CLOUD_NAME } from './productNames.ts';
+import { INSTRUCTOR_DISPLAY_PRICE_LINE, PRO_PLUS_CLOUD_PRICE_LINE } from './productPrices.ts';
 import { STOREFRONT_STEPS, type StorefrontStep } from './storefront.ts';
 import { TIER_BUY_PATHS } from './tierBuyPages.ts';
 
 /**
- * Homepage belt ladder: five belts in rank order, replacing the four progression tiles.
+ * Homepage belt ladder: six belts in rank order, replacing the four progression tiles.
  * Product ids, kinds and entitlements are unchanged. Student, Instructor and Pro open
  * their public tier buy pages (lib/tierBuyPages). Only the Coach tile's
  * user-facing words say Instructor here.
@@ -22,16 +23,27 @@ export function beltsVariantOf(raw: string | null | undefined): BeltsVariant {
 
 export type BeltColor = 'white' | 'blue' | 'purple' | 'brown' | 'black';
 
+/**
+ * Card belt art. `rank` is the colored belt's black bar.
+ * `red` is a plain black belt with a red bar (Advantage Pro).
+ * `striped` is the black belt with white | red | white (Advantage Pro Plus Cloud).
+ */
+export type BeltBar = 'rank' | 'red' | 'striped';
+
 export type BeltRung = {
-  /** Existing product id where there is one. Academy has no product. */
-  id: StorefrontStep['id'] | 'academy';
+  /** Existing product id where there is one. Academy and Pro Plus Cloud have no product. */
+  id: StorefrontStep['id'] | 'academy' | 'pro-cloud';
   belt: BeltColor;
+  /** Defaults to the colored belt's black rank bar. */
+  bar?: BeltBar;
   rank: string;
   rankLabel: string;
   title: string;
   blurb: string;
   /** Optional second line of plain text under the blurb. */
   detail?: string;
+  /** Visible control on this tile, when the tile is not one big link. */
+  learnLabel?: string;
   /** Empty when there is no product price yet. */
   cardPrice: string;
   status: StorefrontStep['status'];
@@ -82,6 +94,7 @@ export const STOREFRONT_BELT_LADDER: readonly BeltRung[] = [
     rankLabel: 'MEDIA',
     title: 'Advantage Media Edition',
     blurb: 'Scoreboard, round timer, and media console.',
+    learnLabel: 'Learn more about Media Edition',
     // Display only: there is no Media (id academy) product in Stripe.
     cardPrice: '$29.99 one-time',
     status: 'Coming soon',
@@ -109,10 +122,25 @@ export const STOREFRONT_BELT_LADDER: readonly BeltRung[] = [
     // Homepage ladder copy only; the shared Pro product copy is unchanged.
     blurb:
       'Academy Enhancement Software for Gym Owners and Jiu-Jitsu Professionals.',
+    detail: PRO_DRIVE_NOTE,
     cardPrice: pro.cardPrice,
     status: pro.status,
     to: TIER_BUY_PATHS.pro,
+    bar: 'red',
+  },
+  {
+    id: 'pro-cloud',
+    belt: 'black',
+    bar: 'striped',
+    rank: '06',
+    rankLabel: 'PRO+',
+    title: PRO_PLUS_CLOUD_NAME,
+    blurb: PRO_PLUS_CLOUD_DESCRIPTION,
+    cardPrice: PRO_PLUS_CLOUD_PRICE_LINE,
+    status: 'Coming soon',
+    // No product page and no checkout. The tile is the alpha-code email.
+    to: null,
   },
 ];
 
-export const STOREFRONT_LADDER_NOTE = 'Student, Media, Instructor and Pro are in alpha testing.';
+export const STOREFRONT_LADDER_NOTE = 'Student, Media, Instructor, Pro and Pro Plus Cloud are in alpha testing.';

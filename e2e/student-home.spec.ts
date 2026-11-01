@@ -27,6 +27,7 @@ test('home picker keeps White, Instructor (coach), and Pro, with locked Student 
     'Advantage Media Edition',
     'Advantage Instructor Edition',
     'Advantage Pro',
+    'Advantage Pro Plus Cloud',
   ]);
 
   const white = page.locator('.mode-card--white');
@@ -36,7 +37,7 @@ test('home picker keeps White, Instructor (coach), and Pro, with locked Student 
   await expect(white).toContainText('White is in alpha testing.');
   await expect(white).not.toContainText(/free/i);
   await expect(page.locator('.mode-card--coach')).toContainText('Coach is in alpha testing.');
-  await expect(page.locator('.mode-card--pro')).toContainText('Pro is in alpha testing.');
+  await expect(page.locator('.mode-card--pro:not(.mode-card--cloud)')).toContainText('Pro is in alpha testing.');
   await expect(page.locator('.mode-card--student')).toContainText('Student Edition is in alpha testing.');
 
   const student = page.locator('.mode-card--student');
