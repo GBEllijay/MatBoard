@@ -14,18 +14,18 @@ import { preservesAppHomeQuery } from './submenuNav.ts';
 const tsx = readFileSync(new URL('../pages/Storefront.tsx', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../pages/storefront.css', import.meta.url), 'utf8');
 
-test('belt ladder is white, blue, purple, brown, black in rank order', () => {
+test('belt ladder is white, blue, purple, brown, black, black in rank order', () => {
   assert.deepEqual(
     STOREFRONT_BELT_LADDER.map((r) => r.belt),
-    ['white', 'blue', 'purple', 'brown', 'black'],
+    ['white', 'blue', 'purple', 'brown', 'black', 'black'],
   );
   assert.deepEqual(
     STOREFRONT_BELT_LADDER.map((r) => r.id),
-    ['white', 'student', 'academy', 'coach', 'pro'],
+    ['white', 'student', 'academy', 'coach', 'pro', 'pro-cloud'],
   );
   assert.deepEqual(
     STOREFRONT_BELT_LADDER.map((r) => r.rank),
-    ['01', '02', '03', '04', '05'],
+    ['01', '02', '03', '04', '05', '06'],
   );
   assert.deepEqual(
     STOREFRONT_BELT_LADDER.map((r) => r.title),
@@ -35,6 +35,7 @@ test('belt ladder is white, blue, purple, brown, black in rank order', () => {
       'Advantage Media Edition',
       'Advantage Instructor Edition',
       'Advantage Pro',
+      'Advantage Pro Plus Cloud',
     ],
   );
   assert.match(tsx, /STOREFRONT_BELT_LADDER\.map/);
@@ -98,14 +99,14 @@ test('Coach reads Instructor in this section, with the same code name, id and ro
   assert.equal(coach.title, 'Advantage Coach');
 });
 
-test('every tier except Pro is priced one-time; Pro is $99.99 + $5.99/mo', () => {
+test('every tier except Pro and Pro Plus Cloud is priced one-time; Pro is $99.99 + $5.99/mo; Cloud is $5.99/month', () => {
   assert.deepEqual(
     STOREFRONT_BELT_LADDER.map((r) => r.cardPrice),
-    ['$9.99 one-time', '$19.99 one-time', '$29.99 one-time', '$49.99 one-time', '$99.99 + $5.99/mo'],
+    ['$9.99 one-time', '$19.99 one-time', '$29.99 one-time', '$49.99 one-time', '$99.99 + $5.99/mo', '$5.99/month'],
   );
   assert.deepEqual(
     STOREFRONT_BELT_LADDER.map((r) => r.detail ?? null),
-    [null, null, null, null, null],
+    [null, null, null, null, 'Requires your own Google Drive or OneDrive. Advantage does not host it.', null],
   );
 });
 
@@ -132,15 +133,26 @@ test('White is unchanged; Pro keeps its title, price, belt and link with the own
     'Academy Enhancement Software for Gym Owners and Jiu-Jitsu Professionals.',
   );
   assert.doesNotMatch(pro.blurb, /Management Console|giftable codes|instructor seats|Includes Instructor/);
-  assert.equal(pro.detail, undefined);
+  assert.equal(pro.detail, 'Requires your own Google Drive or OneDrive. Advantage does not host it.');
+  assert.equal(pro.bar, 'red');
   assert.doesNotMatch(pro.blurb, /Includes/);
   // The shared product copy (and its code name) is untouched.
   assert.match(proStep.blurb, /Includes Coach\.$/);
   assert.equal(pro.cardPrice, '$99.99 + $5.99/mo');
   assert.equal(pro.to, '/editions/pro');
-  // Black keeps the white / red / white bar class; White keeps the live card.
-  assert.match(tsx, /color === 'black' \? 'pro' : color/);
+  // Pro is the plain red bar. Pro Plus Cloud keeps white | red | white. White keeps the live card.
+  assert.match(tsx, /bar === 'striped' \? 'striped' : bar === 'red' \? 'red-bar' : color/);
+  assert.match(css, /\.sf-belt--red-bar/);
+  assert.match(css, /\.sf-belt--striped/);
   assert.match(tsx, /step\.id === 'white' \? ' sf-step--live' : ''/);
+  const cloud = STOREFRONT_BELT_LADDER.find((r) => r.id === 'pro-cloud');
+  assert.ok(cloud);
+  assert.equal(cloud.bar, 'striped');
+  assert.equal(cloud.cardPrice, '$5.99/month');
+  assert.equal(cloud.status, 'Coming soon');
+  assert.equal(cloud.to, null);
+  assert.match(cloud.blurb, /Cloudflare/);
+  assert.doesNotMatch(`${cloud.title} ${cloud.blurb}`, /checkout|Stripe/i);
 });
 
 test('Media Edition (purple) has no product: display price only, no checkout, the tile opens the Media Edition page', () => {
@@ -154,7 +166,10 @@ test('Media Edition (purple) has no product: display price only, no checkout, th
   for (const r of STOREFRONT_BELT_LADDER) {
     assert.doesNotMatch(`${r.title} ${r.rankLabel}`, /Academy Enhancement Edition|ACADEMY/);
   }
-  assert.equal(STOREFRONT_LADDER_NOTE, 'Student, Media, Instructor and Pro are in alpha testing.');
+  assert.equal(STOREFRONT_LADDER_NOTE, 'Student, Media, Instructor, Pro and Pro Plus Cloud are in alpha testing.');
+  const media = STOREFRONT_BELT_LADDER.find((r) => r.id === 'academy');
+  assert.equal(media?.learnLabel, 'Learn more about Media Edition');
+  assert.match(tsx, /className="sf-learn"/);
   assert.doesNotMatch(STOREFRONT_LADDER_NOTE, /Academy Enhancement/);
   // Display only: no Academy product exists in Stripe.
   assert.equal(academy.cardPrice, '$29.99 one-time');

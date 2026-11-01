@@ -59,6 +59,23 @@ export const PRO_HOME_LINES = [
   'Academy management with a shared drive, events, pro shop, and gallery, plus instructor collaboration and student seats. Includes all Advantage products.',
 ] as const;
 
+/** One line under the Pro card. Advantage does not host this drive. */
+export const PRO_DRIVE_NOTE =
+  'Requires your own Google Drive or OneDrive. Advantage does not host it.';
+
+/** Display name for the hosted-storage plan. No checkout product. */
+export const PRO_PLUS_CLOUD_NAME = 'Advantage Pro Plus Cloud';
+
+/** Public page the unlocked card opens. Display only: not a paid chunk. */
+export const PRO_PLUS_CLOUD_PATH = '/pro-plus-cloud';
+
+/** Home and /products card body. */
+export const PRO_PLUS_CLOUD_DESCRIPTION =
+  'Advantage-hosted storage on Cloudflare. Your own Google Drive stays on Advantage Pro.';
+
+/** Unlocked card button. Owner and alpha only; there is no checkout. */
+export const PRO_PLUS_CLOUD_OPEN_LABEL = 'Open Pro Cloud Plus Console';
+
 /** In-app edition picker. The public storefront lives at `/`. */
 export const PRODUCTS_PATH = '/products';
 

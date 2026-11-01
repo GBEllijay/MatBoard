@@ -57,10 +57,13 @@ test('belt colors match the homepage ladder cloth', () => {
     assert.match(tiersCss, new RegExp(`\\.belt-tip--ladder\\.belt-tip--${belt} \\{[^}]*${hex}`, 'i'), belt);
   }
   // Ladder rungs and tier pages agree on the belt for each tier.
+  // Pro Plus Cloud is a display card, not a tier buy page, so it is not in TIER_LADDER.
   assert.deepEqual(
-    STOREFRONT_BELT_LADDER.map((r) => r.belt),
-    TIER_LADDER.map((t) => (t.belt === 'black' ? 'black' : t.belt)),
+    STOREFRONT_BELT_LADDER.filter((r) => r.id !== 'pro-cloud').map((r) => r.belt),
+    TIER_LADDER.map((t) => t.belt),
   );
+  assert.equal(STOREFRONT_BELT_LADDER.at(-1)?.id, 'pro-cloud');
+  assert.equal(STOREFRONT_BELT_LADDER.at(-1)?.belt, 'black');
 });
 
 test('higherTiers: only the tiers above, Pro has none', () => {
@@ -121,8 +124,9 @@ test('/products: locked Student, Instructor and Pro cards open their tier pages;
   assert.match(home, /to=\{TIER_BUY_PATHS\.instructor\}\s*aria-label=\{`\$\{INSTRUCTOR_HOME_TITLE\}, coming soon`\}/);
   assert.match(home, /<Link className="mode-card__hit" to=\{TIER_BUY_PATHS\.pro\} aria-label="Advantage Pro, coming soon" \/>/);
   assert.match(home, /onClick=\{onSoon\}>\s*Learn more about Student Edition/);
-  assert.equal(home.match(/setSoon\('coach'\)\}>\s*Learn more about Instructor Edition/g)?.length, 2);
-  assert.equal(home.match(/setSoon\('pro'\)\}>\s*Learn more about Advantage Pro/g)?.length, 2);
+  assert.equal(home.match(/setSoon\('coach'\)\}>\s*Learn more about Instructor Edition/g)?.length, 1);
+  assert.equal(home.match(/setSoon\('pro'\)\}>\s*Learn more about Advantage Pro/g)?.length, 1);
+  assert.match(home, /Learn more about Media Edition/);
   assert.match(home, /Try the demo/);
   assert.match(home, /Owner test unlock/);
 });

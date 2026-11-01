@@ -84,7 +84,7 @@ test('re-lock White and Student Edition, then the codes open them again', async 
   await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/buy');
   await expect(page.getByRole('link', { name: 'Buy — $9.99' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Open Student Edition', exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Open Instructor Edition', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open Advantage Instructor Edition', exact: true })).toBeVisible();
   await page.screenshot({ path: `${ARTIFACTS}/white-locked-products.png`, fullPage: true });
 
   await page.evaluate(() => {
@@ -102,7 +102,7 @@ test('re-lock White and Student Edition, then the codes open them again', async 
   await expect(page).toHaveURL(/\/products$/);
   await expect(page.getByRole('button', { name: 'Advantage Student Edition, coming soon' })).toBeVisible();
   await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/white');
-  await expect(page.getByRole('link', { name: 'Open Instructor Edition', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open Advantage Instructor Edition', exact: true })).toBeVisible();
   await page.screenshot({ path: `${ARTIFACTS}/student-locked-products.png`, fullPage: true });
 
   await page.goto('/student');
@@ -153,7 +153,7 @@ test('re-lock White and Student Edition, then the codes open them again', async 
   await page.getByRole('button', { name: 'Lock Pro' }).click();
   await page.goto('/products');
   await expect(page.getByRole('button', { name: 'Advantage Pro, coming soon' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Open Instructor Edition', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open Advantage Instructor Edition', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/white');
 
   await page.goto('/coach');

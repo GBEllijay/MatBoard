@@ -34,7 +34,7 @@ test('hero e stacks the real round timer asset under the board', () => {
 
 test('combined ladder strings and prices are final', () => {
   const rows = STOREFRONT_BELT_LADDER.map((r) => [r.belt, r.title, r.blurb, r.cardPrice]);
-  assert.deepEqual(rows.map((r) => r[0]), ['white', 'blue', 'purple', 'brown', 'black']);
+  assert.deepEqual(rows.map((r) => r[0]), ['white', 'blue', 'purple', 'brown', 'black', 'black']);
   const byId = Object.fromEntries(STOREFRONT_BELT_LADDER.map((r) => [r.id, r]));
   assert.equal(byId.white.blurb, 'BJJ scoreboard and round timer.');
   assert.equal(byId.white.cardPrice, '$9.99 one-time');
@@ -49,8 +49,12 @@ test('combined ladder strings and prices are final', () => {
   assert.equal(byId.coach.cardPrice, '$49.99 one-time');
   assert.equal(byId.pro.blurb, 'Academy Enhancement Software for Gym Owners and Jiu-Jitsu Professionals.');
   assert.equal(byId.pro.cardPrice, '$99.99 + $5.99/mo');
+  assert.equal(byId.pro.detail, 'Requires your own Google Drive or OneDrive. Advantage does not host it.');
+  assert.equal(byId['pro-cloud'].title, 'Advantage Pro Plus Cloud');
+  assert.equal(byId['pro-cloud'].cardPrice, '$5.99/month');
+  assert.equal(byId['pro-cloud'].to, null);
   for (const r of STOREFRONT_BELT_LADDER) {
-    if (r.id !== 'pro') assert.match(r.cardPrice ?? '', /one-time$/);
+    if (r.id !== 'pro' && r.id !== 'pro-cloud') assert.match(r.cardPrice ?? '', /one-time$/);
   }
 });
 
