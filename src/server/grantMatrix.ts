@@ -4,7 +4,7 @@ import { API_PRODUCT_COACH, API_PRODUCT_ID, API_PRODUCT_MEDIA, API_PRODUCT_PRO, 
 
 /**
  * Server side of the tier rule in src/lib/tierImplications.ts (the single table).
- * Pro opens Coach, Student Edition, White and Media. Coach opens White. Media opens White.
+ * Ladder: White < Student < Media < Instructor (coach) < Pro; each tier opens every tier below it.
  * Every code kind, Stripe product, owner test, refresh and restore goes through here,
  * so the signed pass always carries the implied doors.
  */
@@ -13,8 +13,8 @@ export function expandGrants(grants: readonly string[]): Door[] {
 }
 
 export function grantsForProduct(product: string): Door[] {
-  if (product === API_PRODUCT_ID) return ['white'];
-  if (product === API_PRODUCT_STUDENT) return ['student'];
+  if (product === API_PRODUCT_ID) return expandGrants(['white']);
+  if (product === API_PRODUCT_STUDENT) return expandGrants(['student']);
   if (product === API_PRODUCT_COACH) return expandGrants(['coach']);
   if (product === API_PRODUCT_PRO) return expandGrants(['pro']);
   if (product === API_PRODUCT_MEDIA) return expandGrants(['media']);

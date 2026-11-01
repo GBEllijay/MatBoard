@@ -6,6 +6,13 @@ export const STUDENT_LIST_PRICE_CENTS = 1999;
 /** One-time Advantage Coach list price. Checkout exists; the public home does not sell it. */
 export const COACH_LIST_PRICE_CENTS = 2999;
 
+/**
+ * One-time Instructor Edition (checkout product `coach`) price: STRIPE_PRICE_INSTRUCTOR.
+ * /buy/coach shows this amount and the server refuses to start coach Checkout unless the
+ * configured Stripe price has exactly this unit_amount.
+ */
+export const INSTRUCTOR_LIST_PRICE_CENTS = 4999;
+
 /** One-time Advantage Pro list price. The previous list price was not stored in this repo. */
 export const PRO_LIST_PRICE_CENTS = 9999;
 
@@ -16,7 +23,7 @@ export const STUDENT_PRICE_LINE = '$19.99 one-time';
 
 export const COACH_PRICE_LINE = '$29.99 one-time';
 
-/** Display only: Instructor Edition (id coach) card price on /products and the homepage belt ladder. Stripe and COACH_LIST_PRICE_CENTS are unchanged. */
+/** Instructor Edition (id coach) price line on /products and the homepage belt ladder. Matches INSTRUCTOR_LIST_PRICE_CENTS. */
 export const INSTRUCTOR_DISPLAY_PRICE_LINE = '$49.99 one-time';
 
 /** Display only. Media is not for sale and has no Stripe product. Matches the homepage belt ladder. */

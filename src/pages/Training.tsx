@@ -9,13 +9,16 @@ import { useInterval } from '../hooks/useClock';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useSuiteOrigin } from '../hooks/useSuiteOrigin';
 import { useWakeLock } from '../hooks/useWakeLock';
+import { useGymLogo } from '../hooks/useGymBrand';
 import { useTrainingSkin, useTrainingState } from '../hooks/useStores';
+import { useEffectiveTimerBackdrop, useTimerBackgroundUrl } from '../hooks/useTimerBackdrop';
 import { unlockAudio } from '../lib/audio';
 import { formatMmSs } from '../lib/format';
 import { fullscreenElement } from '../lib/fullscreen';
 import { wantsRoundsFullscreen } from '../lib/roundsFullscreen';
 import { safeTimerReturn } from '../lib/timerReturn';
 import { trainingUsesAdvantageSkin } from '../lib/trainingSkin';
+import { timerBackdropClasses, timerGymLogoSrc } from '../lib/timerBackdrop';
 import { remainingTraining, tickTraining, toggleTrainingClock } from '../lib/trainingStore';
 
 export function TrainingPage() {
@@ -33,6 +36,11 @@ export function TrainingPage() {
   const location = useLocation();
   const arriveFullscreen = wantsRoundsFullscreen(location.state);
   const enterFullscreen = fs.enter;
+  // Media and up. A locked device shows the default background and no logo (data kept).
+  const { prefs: backdrop } = useEffectiveTimerBackdrop();
+  const backgroundUrl = useTimerBackgroundUrl(backdrop.backgroundStamp);
+  const gymLogo = timerGymLogoSrc(backdrop, useGymLogo());
+  const backdropClass = timerBackdropClasses(Boolean(backgroundUrl), backdrop, Boolean(gymLogo));
 
   // Phone controller "Rounds" tap: make sure the timer is fullscreen on arrival.
   useEffect(() => {
@@ -79,15 +87,32 @@ export function TrainingPage() {
     <main
       className={`training training--${training.phase}${
         trainingUsesAdvantageSkin(skin) ? ' training--themed' : ''
-      }${suite.fromSuite ? ' origin-suite' : ''}${fs.className ? ` ${fs.className}` : ''}`}
+      }${backdropClass ? ` ${backdropClass}` : ''}${suite.fromSuite ? ' origin-suite' : ''}${
+        fs.className ? ` ${fs.className}` : ''
+      }`}
       onClick={(event) => {
         const target = event.target as HTMLElement;
-        if (target.closest('.sheet, .training__clock, .training__phase, .chrome, .btn, input, fieldset, label, .play-fs, .play-exit')) return;
+        if (target.closest('.sheet, .training__clock, .training__phase, .chrome, .btn, input, fieldset, label, .play-fs, .play-exit, .training__gym-logo')) return;
         setOptions(true);
       }}
     >
+      {backgroundUrl ? (
+        <>
+          <div
+            className="training__backdrop"
+            aria-hidden="true"
+            style={{ backgroundImage: `url("${backgroundUrl}")` }}
+          />
+          <div className="training__scrim" aria-hidden="true" />
+        </>
+      ) : null}
       <Chrome ghost title="" />
       <PlayExitMark to={exitTo} onExit={exitTraining} />
+      {gymLogo ? (
+        <div className="training__gym-logo">
+          <img src={gymLogo} alt="Gym logo" draggable={false} />
+        </div>
+      ) : null}
       {back ? (
         <Link className="btn training__back" to={back}>
           Back to curriculum

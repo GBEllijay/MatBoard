@@ -24,10 +24,10 @@ async function pair(): Promise<{ secret: string; publicJwk: PublicJwk; kid: stri
   return { secret: JSON.stringify(privateJwk), publicJwk: { kty: 'EC', crv: 'P-256', x: publicJwk.x, y: publicJwk.y }, kid: 'k1' };
 }
 
-test('grant matrix: Pro opens Coach, Student and White; Coach opens White', () => {
+test('grant matrix follows the ladder: Pro opens all; Coach opens Media, Student, White; Student opens White', () => {
   assert.deepEqual(grantsForProduct('advantage-white'), ['white']);
-  assert.deepEqual(grantsForProduct('advantage-student'), ['student']);
-  assert.deepEqual(grantsForProduct('advantage-coach'), ['white', 'coach']);
+  assert.deepEqual(grantsForProduct('advantage-student'), ['white', 'student']);
+  assert.deepEqual(grantsForProduct('advantage-coach'), ['white', 'student', 'coach', 'media']);
   assert.deepEqual(grantsForProduct('advantage-pro'), ['white', 'student', 'coach', 'pro', 'media']);
   assert.deepEqual(expandGrants(['pro']), ['white', 'student', 'coach', 'pro', 'media']);
   assert.deepEqual(expandGrants(['white', 'student', 'coach', 'pro']), ['white', 'student', 'coach', 'pro', 'media']);
@@ -235,8 +235,12 @@ test('checkout stores the nonce hash and redeem rejects a mismatched nonce', asy
       method: 'POST',
       body: JSON.stringify({ product: 'coach', nonceHash }),
     }),
-    { STRIPE_SECRET_KEY: 'sk_test_123', STRIPE_PRICE_COACH: 'price_coach' },
-    async (_input, init) => {
+    { STRIPE_SECRET_KEY: 'sk_test_123', STRIPE_PRICE_INSTRUCTOR: 'price_coach' },
+    async (input, init) => {
+      // Coach checkout first reads the Instructor price (read-only) to confirm it is $49.99.
+      if (String(input).includes('/v1/prices/')) {
+        return new Response(JSON.stringify({ id: 'price_coach', unit_amount: 4999, currency: 'usd', product: 'prod_coach' }), { status: 200 });
+      }
       sent = String(init?.body ?? '');
       return new Response(JSON.stringify({ id: 'cs_test_nonce', url: 'https://checkout.stripe.com/c/pay/cs_test_nonce' }), {
         status: 200,

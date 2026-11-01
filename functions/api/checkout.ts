@@ -4,5 +4,7 @@ import { pagesEntitlementStore, type PagesEnv } from '../pagesEnv.ts';
 type PagesContext = { request: Request; env: PagesEnv };
 
 export async function onRequest(context: PagesContext): Promise<Response> {
-  return handleCheckout(context.request, context.env, fetch, pagesEntitlementStore(context.env));
+  return handleCheckout(context.request, context.env, fetch, pagesEntitlementStore(context.env), {
+    db: context.env.ENTITLEMENTS_DB ?? null,
+  });
 }

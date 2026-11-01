@@ -235,7 +235,7 @@ function tokenGrants(door: Door): boolean {
   if (paused && door === 'pro') return false;
   if (paused && verified.subs?.state === 'locked') return verified.grants.includes(door);
   if (paused && (door === 'student' || door === 'coach')) return false;
-  // Tier rule from tierImplications.ts: Pro opens Coach, Student and White; Coach opens White.
+  // Tier rule from tierImplications.ts (owner 2026-11-01): every tier opens every tier below it (White < Student < Media < Coach < Pro).
   if (paused && door === 'white') return verified.grants.includes('white') && !verified.grants.includes('pro');
   if (paused && door === 'media') return verified.grants.includes('media') && !verified.grants.includes('pro');
   // Seats follow their invite preset for Media Console (paidChunkAccess.ts), not a Media door.

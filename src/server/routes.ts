@@ -11,14 +11,15 @@ export const API_PRODUCT_COACH = 'advantage-coach';
 export const API_PRODUCT_PRO = 'advantage-pro';
 
 /**
- * Media Edition grant rows (codes and owner today). There is NO Stripe product yet.
- * FUTURE STRIPE SPOT: when the owner creates the $29.99 one-time Media Edition price,
- * wire its price ID through the same env pattern as the other products
- * (see src/server/stripeCheckout.ts, "MEDIA EDITION PRICE SPOT"). Nothing reads one today.
+ * Media Edition: code and owner grant rows, and Stripe metadata for gated Media
+ * Checkout ($29.99 one-time, env STRIPE_PRICE_MEDIA). grantsForProduct maps it to Media + White.
  */
 export const API_PRODUCT_MEDIA = 'advantage-media';
 
 export const API_CHECKOUT_PATH = '/api/checkout';
+
+/** Upgrade price for one email and tier. Returns only the prices, never purchase rows. */
+export const API_UPGRADE_QUOTE_PATH = '/api/upgrade-quote';
 
 export const API_ENTITLEMENT_PATH = '/api/entitlement';
 
