@@ -6,6 +6,7 @@ import { SeatSessionChrome, useCurrentSeat } from './components/SeatSessionBar';
 import { useCoachUnlocked } from './hooks/useCoachUnlocked';
 import { useKeepFocusedFieldVisible } from './hooks/useKeepFocusedFieldVisible';
 import { useProUnlocked } from './hooks/useProUnlocked';
+import { useMediaUnlocked } from './hooks/useMediaUnlocked';
 import { useSeatDoor } from './hooks/useSeatDoor';
 import { useStudentEditionUnlocked } from './hooks/useStudentEditionUnlocked';
 import { useWhiteUnlocked } from './hooks/useWhiteUnlocked';
@@ -83,7 +84,7 @@ import { acceptSignedSeat } from './lib/seatClient';
 import { isSignedSeatInvite } from './lib/seatSunset';
 import { ProLockedPage } from './pages/ProLocked';
 import { bootEntitlement } from './lib/entitlement';
-import { BuyCoachPage, BuyProPage, BuyStudentPage } from './pages/BuyTier';
+import { BuyCoachPage, BuyMediaPage, BuyProPage, BuyStudentPage } from './pages/BuyTier';
 import { BuyWhitePage } from './pages/BuyWhite';
 import { BuyInstructorEditionPage, BuyProEditionPage, BuyStudentEditionPage } from './pages/BuyEdition';
 import { MediaEditionGate } from './components/MediaEditionGate';
@@ -265,6 +266,19 @@ function MediaConsoleEntryRoute() {
   return <Navigate to="/pro" replace />;
 }
 
+/** Media checkout, gated like Student: an open Media (or Pro) door, or a Stripe return to confirm. */
+function BuyMediaRoute({ children }: { children: ReactNode }) {
+  const [params] = useSearchParams();
+  const seated = useCurrentSeat() !== null;
+  const media = useMediaUnlocked();
+  const pro = useProUnlocked();
+  const open = media || pro;
+  if (!open && !studentPurchaseReturn(params)) {
+    return <Navigate to={closedOrPaused(seated)} replace />;
+  }
+  return children;
+}
+
 function CoachRoute({ children }: { children: ReactNode }) {
   const coach = useCoachUnlocked();
   const pro = useProUnlocked();
@@ -384,6 +398,14 @@ export default function App() {
           <CoachRoute>
             <BuyCoachPage />
           </CoachRoute>
+        }
+      />
+      <Route
+        path="/buy/media"
+        element={
+          <BuyMediaRoute>
+            <BuyMediaPage />
+          </BuyMediaRoute>
         }
       />
       <Route

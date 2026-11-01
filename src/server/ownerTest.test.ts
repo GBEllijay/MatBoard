@@ -79,7 +79,8 @@ test('owner test seat and pro passes can load the paid screens they open', async
     assert.ok(claims, tier);
     const proOpen = body.grants.includes('pro');
     assert.equal(paidChunkAllowed(claims!, 'pro-console', now), proOpen, tier);
-    assert.equal(paidChunkAllowed(claims!, 'coach-unlimited', now), proOpen, tier);
+    // Coach Unlimited is the Instructor Edition: a direct coach grant opens it too (owner 2026-11-01).
+    assert.equal(paidChunkAllowed(claims!, 'coach-unlimited', now), proOpen || body.grants.includes('coach'), tier);
   }
 });
 

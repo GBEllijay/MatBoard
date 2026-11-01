@@ -129,16 +129,17 @@ function payload(token: string): { grants: string[]; tier: string } {
   return JSON.parse(Buffer.from(part.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'));
 }
 
-test('redeeming alpha-media opens Media Console, Scoreboard and Timer; Pro, Coach and Student stay locked', async () => {
+test('redeeming alpha-media opens Media Console, Scoreboard, Timer and Student Edition (ladder); Pro and Coach stay locked', async () => {
   const { requests } = await setup();
   assert.deepEqual(await redeemAccessCode(MEDIA_CODE), { ok: true });
   assert.equal(requests[0].headers.get(APP_VERSION_HEADER), CLIENT_APP_VERSION, 'the client says it understands media');
-  assert.deepEqual(surfaces(), { media: true, white: true, console: true, liveTools: true, pro: false, coach: false, student: false });
+  // Ladder (owner 2026-11-01): Media opens Student Edition and White too.
+  assert.deepEqual(surfaces(), { media: true, white: true, console: true, liveTools: true, pro: false, coach: false, student: true });
   assert.equal(paidChunkGrant(claims(), 'media-console', Date.now()), true);
   assert.equal(paidChunkGrant(claims(), 'pro-console', Date.now()), false);
   assert.equal(paidChunkGrant(claims(), 'lesson-cloud', Date.now()), false);
   assert.equal(paidChunkGrant(claims(), 'coach-unlimited', Date.now()), false);
-  assert.deepEqual([...claims().grants].sort(), ['media', 'white']);
+  assert.deepEqual([...claims().grants].sort(), ['media', 'student', 'white']);
 });
 
 test('Lock Media closes Media Console, Scoreboard and Timer, and the code reopens them with no stray marks', async () => {
@@ -152,7 +153,7 @@ test('Lock Media closes Media Console, Scoreboard and Timer, and the code reopen
     assert.equal(local.getItem(WHITE_RELOCK_KEY), '1');
     assert.equal(local.getItem(PRO_RELOCK_KEY), null, 'Lock Media never marks Pro');
     assert.equal(local.getItem(COACH_RELOCK_KEY), null);
-    assert.equal(local.getItem(STUDENT_RELOCK_KEY), null);
+    assert.equal(local.getItem(STUDENT_RELOCK_KEY), '1', 'Media includes Student Edition, so Lock Media closes it too');
   }
   assert.deepEqual(await redeemAccessCode(MEDIA_CODE), { ok: true });
   assert.equal(surfaces().media, true);
@@ -242,7 +243,7 @@ test('old clients: a pass for an app without the version header omits media and 
   assert.equal(tierForGrants(['white', 'media'], 'code'), 'alpha');
 });
 
-test('old clients: redeeming alpha-media without the header still opens White and leaves media out', async () => {
+test('old clients: redeeming alpha-media without the header still opens White and Student and leaves media out', async () => {
   const { env, db, ledger } = await setup();
   const response = await handleCodeRedeem(
     new Request('https://advantagebjjtimer.test/api/codes/redeem', {
@@ -255,7 +256,7 @@ test('old clients: redeeming alpha-media without the header still opens White an
   assert.equal(response.status, 200);
   const body = (await response.json()) as { token?: string };
   assert.ok(body.token);
-  assert.deepEqual(payload(body.token as string).grants, ['white']);
+  assert.deepEqual(payload(body.token as string).grants, ['white', 'student']);
 });
 
 test('seats follow their preset: a seat pass never opens the Media door', async () => {

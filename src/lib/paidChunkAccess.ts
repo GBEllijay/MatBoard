@@ -6,7 +6,8 @@
  * Seat presets match the signed invite. A Program Director keeps Media Console
  * when Pro is locked. A lesson seat keeps Lesson Cloud when Pro is locked.
  * A Media Edition grant opens only Media Console (one-time, no subscription rules).
- * Coach Unlimited stays shut until Pro is open. A custom seat has no preset on
+ * Coach Unlimited (Instructor Edition) opens for Pro or a direct coach grant
+ * (Instructor or legacy Coach purchase, alpha-coach code, owner). Seats are unchanged. A custom seat has no preset on
  * the token, so the server cannot see its toggles and allows the seat screens.
  */
 
@@ -73,6 +74,17 @@ export function mediaGrantOpen(claims: EntitlementClaims, nowMs: number): boolea
   return true;
 }
 
+/**
+ * Instructor Edition opens Coach Unlimited (owner 2026-11-01). A direct coach grant
+ * counts (Instructor or legacy Coach purchase, alpha-coach code, owner). A Pro pass
+ * lists coach too, so when the pass carries Pro the coach grant follows Pro's
+ * subscription state instead: a locked Pro stays shut, as before.
+ */
+export function coachUnlimitedGrant(claims: EntitlementClaims): boolean {
+  if (seatToken(claims)) return false;
+  return claims.grants.includes('coach') && !claims.grants.includes('pro');
+}
+
 /** Grant check only. Ignores token expiry so offline grace can reuse it. */
 export function paidChunkGrant(claims: EntitlementClaims, chunk: PaidChunkId, nowMs: number): boolean {
   const pro = proGrantOpen(claims, nowMs);
@@ -91,7 +103,7 @@ export function paidChunkGrant(claims: EntitlementClaims, chunk: PaidChunkId, no
     return !seated && pro;
   }
   if (chunk === 'coach-unlimited') {
-    if (!seated) return pro;
+    if (!seated) return pro || coachUnlimitedGrant(claims);
     return pro && (lessonPreset || customSeat);
   }
   if (!seated) return pro;

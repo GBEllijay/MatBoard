@@ -35,42 +35,44 @@ const local = memoryStorage();
 Object.defineProperty(globalThis, 'localStorage', { value: local, configurable: true });
 Object.defineProperty(globalThis, 'sessionStorage', { value: memoryStorage(), configurable: true });
 
-test('the tier table is pinned: Pro opens everything below it, Coach opens White', () => {
+test('the tier table is pinned to the ladder: every tier opens every tier below it', () => {
+  // Owner 2026-11-01: "Every higher tier unlocks the lower tiers." White < Student < Media < Coach < Pro.
   assert.deepEqual(impliedDoors(['pro']), ['white', 'student', 'coach', 'pro', 'media']);
-  assert.deepEqual(impliedDoors(['media']), ['white', 'media']);
-  assert.deepEqual(impliedDoors(['coach']), ['white', 'coach']);
+  assert.deepEqual(impliedDoors(['coach']), ['white', 'student', 'coach', 'media']);
+  assert.deepEqual(impliedDoors(['media']), ['white', 'student', 'media']);
+  assert.deepEqual(impliedDoors(['student']), ['white', 'student']);
   assert.deepEqual(impliedDoors(['white']), ['white']);
-  // Student Edition is a separate journal product and opens only itself (unchanged on purpose).
-  assert.deepEqual(impliedDoors(['student']), ['student']);
   assert.deepEqual(impliedDoors(['bogus', 'seat']), []);
-  assert.deepEqual(doorsThatOpen('white'), ['white', 'coach', 'pro', 'media']);
-  assert.deepEqual(doorsThatOpen('media'), ['pro', 'media']);
-  assert.deepEqual(doorsThatOpen('student'), ['student', 'pro']);
+  assert.deepEqual(doorsThatOpen('white'), ['white', 'student', 'coach', 'pro', 'media']);
+  assert.deepEqual(doorsThatOpen('student'), ['student', 'coach', 'pro', 'media']);
+  assert.deepEqual(doorsThatOpen('media'), ['coach', 'pro', 'media']);
+  assert.deepEqual(doorsThatOpen('coach'), ['coach', 'pro']);
   assert.deepEqual(doorsThatOpen('pro'), ['pro']);
   for (const [door, row] of Object.entries(IMPLIED_DOORS)) assert.equal(row.includes(door as never), true, `${door} opens itself`);
 });
 
-test('Media Edition: Pro includes Media; Media opens Media and White only', () => {
+test('Media Edition: Pro and Instructor include Media; Media opens Student and White, not Coach or Pro', () => {
   assert.equal(impliedDoors(['pro']).includes('media'), true);
-  assert.deepEqual(impliedDoors(['media']), ['white', 'media']);
-  assert.equal(impliedDoors(['coach']).includes('media'), false);
+  assert.equal(impliedDoors(['coach']).includes('media'), true);
+  assert.deepEqual(impliedDoors(['media']), ['white', 'student', 'media']);
+  assert.equal(impliedDoors(['student']).includes('media'), false);
   assert.equal(impliedDoors(['white']).includes('media'), false);
 });
 
 test('server: every Stripe product and code kind carries its implied doors in the pass scope', () => {
   assert.deepEqual(grantsForProduct('advantage-white'), ['white']);
-  assert.deepEqual(grantsForProduct('advantage-student'), ['student']);
-  assert.deepEqual(grantsForProduct('advantage-coach'), ['white', 'coach']);
+  assert.deepEqual(grantsForProduct('advantage-student'), ['white', 'student']);
+  assert.deepEqual(grantsForProduct('advantage-coach'), ['white', 'student', 'coach', 'media']);
   assert.deepEqual(grantsForProduct('advantage-pro'), ['white', 'student', 'coach', 'pro', 'media']);
-  assert.deepEqual(grantsForProduct('advantage-media'), ['white', 'media']);
+  assert.deepEqual(grantsForProduct('advantage-media'), ['white', 'student', 'media']);
   const byKind = Object.fromEntries(CODE_KINDS.map((kind) => [kind, expandGrants(grantsForKind(kind))]));
   assert.deepEqual(byKind, {
     owner: ['white', 'student', 'coach', 'pro', 'media'],
-    'alpha-coach': ['white', 'coach'],
+    'alpha-coach': ['white', 'student', 'coach', 'media'],
     'alpha-pro': ['white', 'student', 'coach', 'pro', 'media'],
-    'alpha-student': ['student'],
+    'alpha-student': ['white', 'student'],
     'free-white': ['white'],
-    'alpha-media': ['white', 'media'],
+    'alpha-media': ['white', 'student', 'media'],
   });
 });
 
@@ -121,10 +123,13 @@ test('a signed Pro pass opens every door and the Phase 4 Pro check, Lock Pro clo
   assert.equal(isCoachUnlocked(), false);
   assert.equal(isWhiteUnlocked(), false, 'Lock Coach closes White');
   assert.equal(isProUnlocked(), true, 'Lock Coach leaves Pro');
-  assert.equal(isStudentEditionUnlocked(), true, 'Lock Coach leaves Student Edition');
+  assert.equal(isStudentEditionUnlocked(), false, 'Coach includes Student Edition (ladder), so Lock Coach closes it');
+  assert.equal(doorOpen('media'), false, 'Coach includes Media (ladder), so Lock Coach closes it');
   clearRelocksFor(['coach']);
   assert.equal(isCoachUnlocked(), true);
   assert.equal(isWhiteUnlocked(), true);
+  assert.equal(isStudentEditionUnlocked(), true);
+  assert.equal(doorOpen('media'), true);
   setEntitlementClockForTests(null);
   setEntitlementConfigForTests(null);
   clearEntitlementToken();
