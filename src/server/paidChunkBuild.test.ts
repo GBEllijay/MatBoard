@@ -66,4 +66,25 @@ test('paid screen code is outside the precache and the public bundle', { timeout
   assert.ok(precacheUrls.length > 5);
   for (const url of precacheUrls) assert.equal(url.includes('paid/'), false, url);
   assert.match(sw, /paid-chunks/);
+
+  // Home-screen install: public manifest, opens fullscreen, icons ship, linked from index.html.
+  const manifest = JSON.parse(readFileSync(join(dist, 'manifest.webmanifest'), 'utf8')) as {
+    name: string;
+    short_name: string;
+    display: string;
+    display_override: string[];
+    start_url: string;
+    scope: string;
+    icons: { src: string; sizes: string }[];
+  };
+  assert.equal(manifest.name, 'Advantage');
+  assert.equal(manifest.short_name, 'Advantage');
+  assert.equal(manifest.display, 'fullscreen');
+  assert.deepEqual(manifest.display_override, ['fullscreen', 'standalone']);
+  assert.equal(manifest.start_url, '/');
+  assert.equal(manifest.scope, '/');
+  for (const size of ['192x192', '512x512']) assert.ok(manifest.icons.some((icon) => icon.sizes === size), size);
+  for (const icon of manifest.icons) assert.ok(statSync(join(dist, icon.src)).size > 0, icon.src);
+  assert.match(html, /<link rel="manifest" href="\/manifest\.webmanifest">/);
+  assert.match(html, /<meta name="theme-color" content="#0b0d10"/);
 });

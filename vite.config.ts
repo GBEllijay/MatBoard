@@ -54,8 +54,10 @@ export default defineConfig({
         description: "Gym match scoreboard, round timer, and Gym Owner and Instructor's Console.",
         theme_color: '#0b0d10',
         background_color: '#0b0d10',
-        display: 'standalone',
-        display_override: ['standalone', 'fullscreen'],
+        // Home-screen app opens fullscreen: no Android status bar or battery
+        // row. Browsers without fullscreen app mode fall back to standalone.
+        display: 'fullscreen',
+        display_override: ['fullscreen', 'standalone'],
         orientation: 'any',
         start_url: '/',
         scope: '/',
