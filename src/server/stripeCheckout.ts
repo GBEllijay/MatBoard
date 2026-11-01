@@ -1,7 +1,8 @@
 import { CHECKOUT_BUY_PATH, isCheckoutProduct, type CheckoutProduct } from '../lib/checkoutProducts.ts';
 import { HALF_OFF_CODE } from '../lib/halfOff.ts';
+import { INSTRUCTOR_LIST_PRICE_CENTS } from '../lib/productPrices.ts';
 import { normalizeEmail } from './entitlements.ts';
-import { API_PRODUCT_COACH, API_PRODUCT_ID, API_PRODUCT_PRO, API_PRODUCT_STUDENT } from './routes.ts';
+import { API_PRODUCT_COACH, API_PRODUCT_ID, API_PRODUCT_MEDIA, API_PRODUCT_PRO, API_PRODUCT_STUDENT } from './routes.ts';
 import type { BillingEventKind } from './subscriptionAccess.ts';
 import { readCurrentPeriodEnd, readPriceIds } from './stripeSubscription.ts';
 
@@ -12,7 +13,15 @@ export type StripeRuntimeEnv = {
   STRIPE_WEBHOOK_SECRET?: string;
   STRIPE_PRICE_WHITE?: string;
   STRIPE_PRICE_STUDENT?: string;
+  /** Legacy $29.99 Coach price. No longer sold by Checkout; old purchases still grant coach. */
   STRIPE_PRICE_COACH?: string;
+  /**
+   * Instructor Edition ($49.99 one-time). Internally tier `coach`. The only price coach
+   * Checkout sells. When blank, coach Checkout returns 503 (it never falls back to $29.99).
+   */
+  STRIPE_PRICE_INSTRUCTOR?: string;
+  /** Media Edition ($29.99 one-time). */
+  STRIPE_PRICE_MEDIA?: string;
   STRIPE_PRICE_PRO?: string;
   STRIPE_PRICE_PRO_MONTHLY?: string;
   /**
@@ -45,6 +54,7 @@ const PRODUCT_META: Record<CheckoutProduct, string> = {
   student: API_PRODUCT_STUDENT,
   coach: API_PRODUCT_COACH,
   pro: API_PRODUCT_PRO,
+  media: API_PRODUCT_MEDIA,
 };
 
 const CHECKOUT_MODE: Record<CheckoutProduct, 'payment' | 'subscription'> = {
@@ -52,15 +62,12 @@ const CHECKOUT_MODE: Record<CheckoutProduct, 'payment' | 'subscription'> = {
   student: 'payment',
   coach: 'payment',
   pro: 'subscription',
+  media: 'payment',
 };
 
 /*
- * MEDIA EDITION PRICE SPOT (not wired, no Stripe product exists yet).
- * When the owner creates the $29.99 one-time Media Edition price in Stripe:
- *   1. add STRIPE_PRICE_MEDIA?: string to StripeRuntimeEnv,
- *   2. add 'media' to CheckoutProduct with ['STRIPE_PRICE_MEDIA'] here,
- *   3. send metadata product API_PRODUCT_MEDIA ('advantage-media'); the webhook,
- *      grantsForProduct, restore and refresh already map it to Media + White.
+ * Media Edition: STRIPE_PRICE_MEDIA, metadata product API_PRODUCT_MEDIA ('advantage-media').
+ * The webhook, session redeem, grantsForProduct, restore and refresh map it to Media + White.
  */
 
 /**
@@ -71,15 +78,33 @@ const CHECKOUT_MODE: Record<CheckoutProduct, 'payment' | 'subscription'> = {
 const PRICE_ENV_KEYS: Record<CheckoutProduct, (keyof StripeRuntimeEnv)[]> = {
   white: ['STRIPE_PRICE_WHITE'],
   student: ['STRIPE_PRICE_STUDENT'],
-  coach: ['STRIPE_PRICE_COACH'],
+  coach: ['STRIPE_PRICE_INSTRUCTOR'],
   pro: ['STRIPE_PRICE_PRO', 'STRIPE_PRICE_PRO_MONTHLY'],
+  media: ['STRIPE_PRICE_MEDIA'],
+};
+
+/**
+ * Env names read for this product. Coach (Instructor Edition) reads only
+ * STRIPE_PRICE_INSTRUCTOR so /buy/coach can never show $49.99 and charge $29.99.
+ */
+export function priceEnvKeys(_env: StripeRuntimeEnv, product: CheckoutProduct): (keyof StripeRuntimeEnv)[] {
+  return PRICE_ENV_KEYS[product];
+}
+
+/**
+ * Amount the buy page shows for a product whose Stripe price must match it exactly.
+ * Checkout reads the configured price (read-only GET) and refuses a mismatch.
+ */
+export const EXPECTED_ONE_TIME_CENTS: Partial<Record<CheckoutProduct, number>> = {
+  coach: INSTRUCTOR_LIST_PRICE_CENTS,
 };
 
 const CONFIG_HINT: Record<CheckoutProduct, string> = {
   white: 'STRIPE_SECRET_KEY and STRIPE_PRICE_WHITE',
   student: 'STRIPE_SECRET_KEY and STRIPE_PRICE_STUDENT',
-  coach: 'STRIPE_SECRET_KEY and STRIPE_PRICE_COACH',
+  coach: 'STRIPE_SECRET_KEY and STRIPE_PRICE_INSTRUCTOR',
   pro: 'STRIPE_SECRET_KEY, STRIPE_PRICE_PRO, and STRIPE_PRICE_PRO_MONTHLY',
+  media: 'STRIPE_SECRET_KEY and STRIPE_PRICE_MEDIA',
 };
 
 /**
@@ -94,11 +119,11 @@ export function readOptionalProMonthlyDiscountPrice(env: StripeRuntimeEnv): stri
 
 export function readCheckoutProduct(raw: unknown): CheckoutProduct | { error: string } {
   if (raw === undefined || raw === null) return 'white';
-  if (typeof raw !== 'string') return { error: 'Product must be white, student, coach, or pro.' };
+  if (typeof raw !== 'string') return { error: 'Product must be white, student, coach, media, or pro.' };
   const product = raw.trim().toLowerCase();
   if (!product) return 'white';
   if (isCheckoutProduct(product)) return product;
-  return { error: 'Product must be white, student, coach, or pro.' };
+  return { error: 'Product must be white, student, coach, media, or pro.' };
 }
 
 export function checkoutFormFields(input: {
@@ -110,6 +135,10 @@ export function checkoutFormFields(input: {
   promotionCodeId?: string;
   /** SHA-256 hex of the browser nonce. Stored as Stripe client_reference_id. */
   clientReferenceId?: string;
+  /** Single-use upgrade-credit coupon. Wins over promotionCodeId (Stripe allows one discount). */
+  couponId?: string;
+  /** Set with an upgrade coupon so the receipt goes to the email the credit was quoted for. */
+  customerEmail?: string;
 }): URLSearchParams {
   const params = new URLSearchParams();
   params.set('mode', input.mode);
@@ -129,8 +158,12 @@ export function checkoutFormFields(input: {
   if (input.clientReferenceId && /^[a-f0-9]{64}$/.test(input.clientReferenceId)) {
     params.set('client_reference_id', input.clientReferenceId);
   }
-  if (input.promotionCodeId) params.set('discounts[0][promotion_code]', input.promotionCodeId);
+  if (input.couponId) {
+    params.set('discounts[0][coupon]', input.couponId);
+    params.set('metadata[upgrade_coupon]', input.couponId);
+  } else if (input.promotionCodeId) params.set('discounts[0][promotion_code]', input.promotionCodeId);
   else params.set('allow_promotion_codes', 'true');
+  if (input.customerEmail) params.set('customer_email', input.customerEmail);
   return params;
 }
 
@@ -179,7 +212,7 @@ export function readStripeConfig(
   product: CheckoutProduct = 'white',
 ): { secret: string; priceIds: string[]; mode: 'payment' | 'subscription'; productId: string } | { error: string } {
   const secret = env.STRIPE_SECRET_KEY?.trim() ?? '';
-  const keys = PRICE_ENV_KEYS[product];
+  const keys = priceEnvKeys(env, product);
   const priceIds = keys.map((key) => (env[key] ?? '').trim());
   if (!secret || priceIds.some((price) => !price)) {
     return { error: `Stripe is not configured. Set ${CONFIG_HINT[product]}.` };
@@ -211,7 +244,7 @@ export function stripeErrorMessage(status: number, body: string): string {
   return `Stripe request failed (${status}).`;
 }
 
-async function stripeRequest(
+export async function stripeRequest(
   secret: string,
   path: string,
   init: { method: 'GET' | 'POST'; body?: string },
@@ -391,6 +424,7 @@ export type StripeEntitlementDecision =
   | { action: 'record'; purchase: CheckoutPurchase }
   | { action: 'record-student'; purchase: CheckoutPurchase }
   | { action: 'record-coach'; purchase: CheckoutPurchase }
+  | { action: 'record-media'; purchase: CheckoutPurchase }
   | { action: 'grant-pro'; grant: ProCheckoutGrant }
   | { action: 'sync-pro'; sync: ProSubscriptionSync }
   | { action: 'revoke-onetime'; revocation: OneTimeRevocation }
@@ -503,7 +537,12 @@ function checkoutDecision(row: Record<string, unknown>): StripeEntitlementDecisi
   const product = readMetaProduct(row);
   const paid = row.payment_status === 'paid' || row.payment_status === 'no_payment_required';
   if (row.mode === 'payment') {
-    if (product !== API_PRODUCT_ID && product !== API_PRODUCT_STUDENT && product !== API_PRODUCT_COACH) {
+    if (
+      product !== API_PRODUCT_ID &&
+      product !== API_PRODUCT_STUDENT &&
+      product !== API_PRODUCT_COACH &&
+      product !== API_PRODUCT_MEDIA
+    ) {
       return { action: 'ignore' };
     }
     if (!paid) return { action: 'ignore' };
@@ -516,6 +555,7 @@ function checkoutDecision(row: Record<string, unknown>): StripeEntitlementDecisi
     };
     if (product === API_PRODUCT_STUDENT) return { action: 'record-student', purchase };
     if (product === API_PRODUCT_COACH) return { action: 'record-coach', purchase };
+    if (product === API_PRODUCT_MEDIA) return { action: 'record-media', purchase };
     return { action: 'record', purchase };
   }
   if (row.mode === 'subscription' && product === API_PRODUCT_PRO) {

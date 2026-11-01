@@ -6,7 +6,9 @@ import {
   isLiveSeat,
   type InstructorSeat,
 } from '../lib/instructorSeats.ts';
+import { isCoachUnlimitedUnlocked, subscribeCoachUnlock } from '../lib/coachUnlock.ts';
 import { type ProSurfaceInput } from '../lib/productNames.ts';
+import { useSyncExternalStore } from 'react';
 import { useMediaUnlocked } from './useMediaUnlocked.ts';
 import { useProUnlocked } from './useProUnlocked.ts';
 
@@ -18,6 +20,8 @@ export type SeatDoor = ProSurfaceInput & {
 export function useSeatDoor(): SeatDoor {
   const proUnlocked = useProUnlocked();
   const mediaUnlocked = useMediaUnlocked();
+  // Coach door store without useCoachUnlocked's URL-query side effects (a URL never opens coach).
+  const coachUnlocked = useSyncExternalStore(subscribeCoachUnlock, isCoachUnlimitedUnlocked, isCoachUnlimitedUnlocked);
   const seat = useCurrentSeat();
   return {
     proUnlocked,
@@ -27,5 +31,6 @@ export function useSeatDoor(): SeatDoor {
     programDirectorSeat: isProgramDirectorSeat(seat),
     coachMenus: seatGrantsCoachMenus(seat),
     mediaUnlocked,
+    coachUnlocked,
   };
 }

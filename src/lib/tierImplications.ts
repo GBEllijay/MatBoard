@@ -7,28 +7,25 @@ import { DOORS, type Door } from './entitlementToken.ts';
  *   - client gates (src/lib/entitlement.ts doorOpen, src/lib/serverGrant.ts)
  *   - Phase 4 paid screens (src/lib/paidChunkAccess.ts proGrantOpen, read by functions/paid)
  *
- * Locked owner rule (Oct 30, 2026): each tier unlocks everything below it.
- *   Pro   = Pro + Coach/Instructor + Student Edition + White + Media Edition
- *   Coach = Coach/Instructor + White
- *   Media = Media Edition (Media Console) + White (Scoreboard and Round Timer)
- *   Student Edition is a separate journal product. It opens only itself.
- *   White opens only itself.
+ * Locked owner rule (Oct 30, 2026; ladder confirmed Nov 1, 2026: "Every higher tier unlocks
+ * the lower tiers."): White < Student Edition < Media Edition < Instructor (coach) < Pro.
+ * Owning a tier (bought, alpha code, owner test, or a legacy flag) opens every tier below it.
+ *   Pro     = Pro + Instructor/Coach + Media Edition + Student Edition + White
+ *   Coach   = Instructor/Coach + Media Edition + Student Edition + White
+ *   Media   = Media Edition (Media Console) + Student Edition + White
+ *   Student = Student Edition + White
+ *   White   = White
  *
- * Media Edition (Oct 31, 2026): 'media' is a door in entitlementToken.ts DOORS, its own row
- * opens Media + White, and the pro row includes it. Coach does not open Media.
+ * Not part of this table (unchanged): Coach Unlimited opens for Pro or a direct coach grant
+ * (paidChunkAccess.ts coachUnlimitedGrant), never for White, Student or Media. Seats keep their
+ * invite presets for Media Console. Upgrade credit reads purchases, not this table, for the price.
  */
 export const IMPLIED_DOORS: Readonly<Record<Door, readonly Door[]>> = {
   white: ['white'],
-  student: ['student'],
-  coach: ['coach', 'white'],
-  pro: [
-    'pro',
-    'coach',
-    'student',
-    'white',
-    'media',
-  ],
-  media: ['media', 'white'],
+  student: ['student', 'white'],
+  media: ['media', 'student', 'white'],
+  coach: ['coach', 'media', 'student', 'white'],
+  pro: ['pro', 'coach', 'media', 'student', 'white'],
 };
 
 /** Every door the given grants open, in DOORS order. Unknown names are dropped. */

@@ -1,4 +1,4 @@
-import { API_PRODUCT_COACH, API_PRODUCT_ID, API_PRODUCT_PRO, API_PRODUCT_STUDENT } from './routes.ts';
+import { API_PRODUCT_COACH, API_PRODUCT_ID, API_PRODUCT_MEDIA, API_PRODUCT_PRO, API_PRODUCT_STUDENT } from './routes.ts';
 
 export type WhiteEntitlement = {
   email: string;
@@ -29,6 +29,16 @@ export type CoachEntitlement = {
   createdAt: string;
 };
 
+/** One-time Advantage Media Edition. Recorded beside White, Student, and Coach. */
+export type MediaEntitlement = {
+  email: string;
+  sessionId: string;
+  product: typeof API_PRODUCT_MEDIA;
+  amountTotal: number | null;
+  currency: string | null;
+  createdAt: string;
+};
+
 /** Advantage Pro subscription. `active` is entitled; `inactive` is canceled or unpaid. */
 export type ProEntitlementStatus = 'active' | 'inactive';
 
@@ -51,6 +61,8 @@ export type EntitlementIndex = {
   studentEmails: Record<string, string>;
   coachSessions: Record<string, CoachEntitlement>;
   coachEmails: Record<string, string>;
+  mediaSessions: Record<string, MediaEntitlement>;
+  mediaEmails: Record<string, string>;
   proSessions: Record<string, ProEntitlement>;
   proEmails: Record<string, string>;
   proSubscriptions: Record<string, string>;
@@ -66,6 +78,9 @@ export type EntitlementStore = {
   saveCoach(record: CoachEntitlement): Promise<CoachEntitlement>;
   findCoachByEmail(email: string): Promise<CoachEntitlement | null>;
   findCoachBySessionId(sessionId: string): Promise<CoachEntitlement | null>;
+  saveMedia(record: MediaEntitlement): Promise<MediaEntitlement>;
+  findMediaByEmail(email: string): Promise<MediaEntitlement | null>;
+  findMediaBySessionId(sessionId: string): Promise<MediaEntitlement | null>;
   savePro(record: ProEntitlement): Promise<ProEntitlement>;
   findProByEmail(email: string): Promise<ProEntitlement | null>;
   findProBySessionId(sessionId: string): Promise<ProEntitlement | null>;
@@ -98,6 +113,8 @@ export function emptyEntitlementIndex(): EntitlementIndex {
     studentEmails: {},
     coachSessions: {},
     coachEmails: {},
+    mediaSessions: {},
+    mediaEmails: {},
     proSessions: {},
     proEmails: {},
     proSubscriptions: {},
@@ -181,6 +198,8 @@ export function parseEntitlementIndex(raw: string): EntitlementIndex {
     studentEmails?: unknown;
     coachSessions?: unknown;
     coachEmails?: unknown;
+    mediaSessions?: unknown;
+    mediaEmails?: unknown;
     proSessions?: unknown;
     proEmails?: unknown;
   };
@@ -190,6 +209,8 @@ export function parseEntitlementIndex(raw: string): EntitlementIndex {
   const studentEmails: Record<string, string> = {};
   const coachSessions: Record<string, CoachEntitlement> = {};
   const coachEmails: Record<string, string> = {};
+  const mediaSessions: Record<string, MediaEntitlement> = {};
+  const mediaEmails: Record<string, string> = {};
   const proSessions: Record<string, ProEntitlement> = {};
   const proEmails: Record<string, string> = {};
   const proSubscriptions: Record<string, string> = {};
@@ -226,6 +247,17 @@ export function parseEntitlementIndex(raw: string): EntitlementIndex {
       if (typeof sessionId === 'string' && coachSessions[sessionId]) coachEmails[normalizeEmail(email)] = sessionId;
     }
   }
+  if (body.mediaSessions && typeof body.mediaSessions === 'object') {
+    for (const value of Object.values(body.mediaSessions)) {
+      const record = parseMediaEntitlement(value);
+      if (record) mediaSessions[record.sessionId] = record;
+    }
+  }
+  if (body.mediaEmails && typeof body.mediaEmails === 'object') {
+    for (const [email, sessionId] of Object.entries(body.mediaEmails)) {
+      if (typeof sessionId === 'string' && mediaSessions[sessionId]) mediaEmails[normalizeEmail(email)] = sessionId;
+    }
+  }
   if (body.proSessions && typeof body.proSessions === 'object') {
     for (const value of Object.values(body.proSessions)) {
       const record = parseProEntitlement(value);
@@ -246,6 +278,8 @@ export function parseEntitlementIndex(raw: string): EntitlementIndex {
     studentEmails,
     coachSessions,
     coachEmails,
+    mediaSessions,
+    mediaEmails,
     proSessions,
     proEmails,
     proSubscriptions,
@@ -321,6 +355,48 @@ export function coachEntitlementByEmail(index: EntitlementIndex, email: string):
 
 export function coachEntitlementBySession(index: EntitlementIndex, sessionId: string): CoachEntitlement | null {
   return index.coachSessions[sessionId] ?? null;
+}
+
+export function parseMediaEntitlement(raw: unknown): MediaEntitlement | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const row = raw as Record<string, unknown>;
+  if (row.product !== API_PRODUCT_MEDIA) return null;
+  if (typeof row.sessionId !== 'string' || !row.sessionId) return null;
+  if (typeof row.email !== 'string') return null;
+  if (typeof row.createdAt !== 'string' || !row.createdAt) return null;
+  return {
+    email: normalizeEmail(row.email),
+    sessionId: row.sessionId,
+    product: API_PRODUCT_MEDIA,
+    amountTotal: typeof row.amountTotal === 'number' ? row.amountTotal : null,
+    currency: typeof row.currency === 'string' ? row.currency : null,
+    createdAt: row.createdAt,
+  };
+}
+
+/** Insert a Media Edition purchase. The same Checkout session is stored once. */
+export function applyMediaEntitlement(index: EntitlementIndex, record: MediaEntitlement): MediaEntitlement {
+  const existing = index.mediaSessions[record.sessionId];
+  if (existing) return existing;
+  const stored = parseMediaEntitlement(record);
+  if (!stored) throw new Error('Media entitlement record is not valid.');
+  index.mediaSessions[stored.sessionId] = stored;
+  if (stored.email) {
+    const currentId = index.mediaEmails[stored.email];
+    const current = currentId ? index.mediaSessions[currentId] : undefined;
+    if (!current || current.createdAt <= stored.createdAt) index.mediaEmails[stored.email] = stored.sessionId;
+  }
+  return stored;
+}
+
+export function mediaEntitlementByEmail(index: EntitlementIndex, email: string): MediaEntitlement | null {
+  const sessionId = index.mediaEmails[normalizeEmail(email)];
+  if (!sessionId) return null;
+  return index.mediaSessions[sessionId] ?? null;
+}
+
+export function mediaEntitlementBySession(index: EntitlementIndex, sessionId: string): MediaEntitlement | null {
+  return index.mediaSessions[sessionId] ?? null;
 }
 
 export function studentEntitlementByEmail(index: EntitlementIndex, email: string): StudentEntitlement | null {
@@ -425,6 +501,15 @@ export function memoryEntitlementStore(initial?: EntitlementIndex): EntitlementS
     async findCoachBySessionId(sessionId) {
       return coachEntitlementBySession(index, sessionId);
     },
+    async saveMedia(record) {
+      return applyMediaEntitlement(index, record);
+    },
+    async findMediaByEmail(email) {
+      return mediaEntitlementByEmail(index, email);
+    },
+    async findMediaBySessionId(sessionId) {
+      return mediaEntitlementBySession(index, sessionId);
+    },
     async savePro(record) {
       return applyProEntitlement(index, record);
     },
@@ -503,6 +588,21 @@ export function kvEntitlementStore(kv: KvBinding): EntitlementStore {
       return (
         (await readPurchaseKey(kv, API_PRODUCT_COACH, sessionId, parseCoachEntitlement)) ??
         coachEntitlementBySession(await read(), sessionId)
+      );
+    },
+    async saveMedia(record) {
+      const index = await read();
+      const stored = applyMediaEntitlement(index, record);
+      await writeIndex(index, stored.product, stored.sessionId, stored);
+      return stored;
+    },
+    async findMediaByEmail(email) {
+      return mediaEntitlementByEmail(await read(), email);
+    },
+    async findMediaBySessionId(sessionId) {
+      return (
+        (await readPurchaseKey(kv, API_PRODUCT_MEDIA, sessionId, parseMediaEntitlement)) ??
+        mediaEntitlementBySession(await read(), sessionId)
       );
     },
     async savePro(record) {
