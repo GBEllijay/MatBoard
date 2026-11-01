@@ -12,7 +12,7 @@ const MARKERS = [
   'Photo interval presets',
   'That file is not a picture this board can keep.',
   'This lesson could not be opened.',
-  'Advantage - Coach Unlimited',
+  'Lesson drafts waiting for Google Drive',
   'No class photo was submitted with this plan.',
   // Unlocked /media hub menu (MediaEditionHub.tsx).
   'Advantage Media Edition menu',

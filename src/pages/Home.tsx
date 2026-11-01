@@ -31,6 +31,7 @@ import {
   STUDENT_EDITION_NAME,
   STUDENT_HOME_DESCRIPTION,
   WHITE_HOME_DESCRIPTION,
+  COACH_UNLIMITED_PATH,
   coachDoorOpen,
   homeConsoleLabel,
 } from '../lib/productNames';
@@ -125,7 +126,7 @@ export function HomePage() {
             <article className="mode-card mode-card--coach">
               <Link
                 className="mode-card__hit"
-                to="/coach"
+                to={seated ? '/coach' : COACH_UNLIMITED_PATH}
                 tabIndex={-1}
                 aria-label={`Open ${INSTRUCTOR_HOME_TITLE}`}
               />
@@ -133,8 +134,8 @@ export function HomePage() {
               <strong>{INSTRUCTOR_HOME_TITLE}</strong>
               <HomeDescription text={COACH_HOME_DESCRIPTION} />
               <div className="mode-card__actions">
-                <Link className="btn btn--white" to="/coach">
-                  Open Coach
+                <Link className="btn btn--white" to={seated ? '/coach' : COACH_UNLIMITED_PATH}>
+                  {seated ? 'Open Coach' : 'Open Instructor Edition'}
                 </Link>
                 <button type="button" className="btn btn--ghost mode-card__learn" onClick={() => setSoon('coach')}>
                   Learn more about Instructor Edition

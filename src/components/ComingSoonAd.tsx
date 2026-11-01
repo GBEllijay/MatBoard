@@ -116,7 +116,7 @@ function ProConsolePreview() {
     <figure className="soon-ad__preview">
       <img
         src="/pro-console-preview.png"
-        alt="Advantage Pro home with Advantage Pro on the black belt, then Media Console, Advantage Coach Unlimited, Instructor Invitation and Access Management, and Tournament Management Pro"
+        alt="Advantage Pro home with Advantage Pro on the black belt, then Media Console, Advantage Instructor Edition, Instructor Invitation and Access Management, and Tournament Management Pro"
         width={840}
         height={1660}
       />

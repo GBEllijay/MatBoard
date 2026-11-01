@@ -180,14 +180,18 @@ export function coachingToolsMenu(unlimited: boolean) {
  * Daily Lesson Plan is the Unlimited plan that can be uploaded for review.
  * Competitor Roster sits under Technique Tree and opens the same list as Competitor Management System.
  * The four brown rails wear 0-3 white stripes, counted from the tip up toward the header's 4.
+ * Scoreboard and Round Timer are the Tournament Management Pro controllers, with the same black belt.
+ * `from=unlimited` sends Back to Coach Unlimited, not the Suite.
  * Sunday review and Drive cards stay on the page, under this menu.
  * Competition Class Curriculum opens from the Daily Lesson Plan template picker.
  */
 export const COACH_UNLIMITED_TOOLS = [
-  { title: TRAINING_NOTES_LABEL, to: UNLIMITED_LESSON_PATH, belt: 'brown' as const, stripes: 0 as const },
-  { title: 'Daily Training Videos', to: UNLIMITED_VIDEOS_PATH, belt: 'brown' as const, stripes: 1 as const },
-  { title: TECHNIQUE_TREE_LABEL, to: UNLIMITED_TREE_PATH, belt: 'brown' as const, stripes: 2 as const },
-  { title: COMPETITOR_ROSTER_LABEL, to: UNLIMITED_ROSTER_PATH, belt: 'brown' as const, stripes: 3 as const },
+  { title: TRAINING_NOTES_LABEL, to: UNLIMITED_LESSON_PATH, belt: 'brown' as const, stripes: 0 as const, clearBout: false as const },
+  { title: 'Daily Training Videos', to: UNLIMITED_VIDEOS_PATH, belt: 'brown' as const, stripes: 1 as const, clearBout: false as const },
+  { title: TECHNIQUE_TREE_LABEL, to: UNLIMITED_TREE_PATH, belt: 'brown' as const, stripes: 2 as const, clearBout: false as const },
+  { title: COMPETITOR_ROSTER_LABEL, to: UNLIMITED_ROSTER_PATH, belt: 'brown' as const, stripes: 3 as const, clearBout: false as const },
+  { title: 'Scoreboard', to: '/match/control?from=unlimited', belt: 'black' as const, clearBout: true as const },
+  { title: 'Round Timer', to: '/training/control?from=unlimited', belt: 'black' as const, clearBout: false as const },
 ] as const;
 
 /**

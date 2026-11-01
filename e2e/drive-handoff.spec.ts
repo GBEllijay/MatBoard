@@ -122,8 +122,10 @@ test('a locked browser accepts an invite from the gym folder', async ({ page }) 
   await page.reload();
   await expect(page).not.toHaveURL(/coming-soon/);
   await page.getByRole('button', { name: 'Check the gym folder' }).click();
-  await expect(page.getByText('Signed in as coach@gym.test')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sign out of seat' })).toHaveCount(0);
+  await expect(page.getByText('Signed in as')).toHaveCount(0);
   await expect(page).toHaveURL(/\/products$/);
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('matboard.pro.instructorSeatSession.v1'))).toBeTruthy();
   const unlocked = await page.evaluate(() => ({
     pro: localStorage.getItem('advantage.proUnlocked'),
     coach: localStorage.getItem('advantage.coachUnlocked'),
@@ -166,16 +168,17 @@ test('the same browser still accepts an invite with Coach locked', async ({ page
     );
   });
   await page.goto('/instructors?invite=same-device-token');
-  await expect(page.getByText('Signed in as coach@gym.test')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sign out of seat' })).toHaveCount(0);
+  await expect(page.getByText('Signed in as')).toHaveCount(0);
   await expect(page).not.toHaveURL(/coming-soon/);
   const unlocks = await page.evaluate(() => ({
     pro: localStorage.getItem('advantage.proUnlocked'),
     coach: localStorage.getItem('advantage.coachUnlocked'),
+    seat: localStorage.getItem('matboard.pro.instructorSeatSession.v1'),
   }));
   expect(unlocks.pro).toBeNull();
   expect(unlocks.coach).toBeNull();
-  await page.getByRole('button', { name: 'Sign out of seat' }).click();
-  await expect(page.getByText('Signed out')).toBeVisible();
+  expect(unlocks.seat).toContain('seat-same');
 });
 
 test('the owner issues an invite and the coach submits through the gym folder', async ({ page }) => {

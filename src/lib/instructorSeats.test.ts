@@ -434,8 +434,9 @@ test('four binder presets fill the toggles and stay overridable', () => {
   assert.equal(instructorSeatAdjusted(null, adjusted), false);
   assert.match(SEAT_ADJUSTED_NOTE, /role defaults/);
   const bar = readFileSync(new URL('../components/SeatSessionBar.tsx', import.meta.url), 'utf8');
-  assert.match(bar, /SEAT_ADJUSTED_NOTE/);
-  assert.match(bar, /instructorSeatAdjusted/);
+  assert.match(bar, /return null/);
+  assert.doesNotMatch(bar, /SEAT_ADJUSTED_NOTE/);
+  assert.match(readFileSync(new URL('./instructorSeats.ts', import.meta.url), 'utf8'), /export const SEAT_ADJUSTED_NOTE/);
   assert.equal(instructorSeatBinderLabel(null, adjusted), 'Custom binder');
   assert.equal(instructorSeatBinderLabel('assistant-coach', assistant), 'Assistant coach');
   assert.deepEqual(
@@ -791,9 +792,9 @@ test('seat chrome stays off the gym TV and purchase prompts follow the live seat
   assert.match(pro, /purchasePromptsHidden\(seat\)/);
   assert.match(pro, /Buy Advantage Pro/);
   assert.match(home, /purchasePromptsHidden\(seat\)/);
-  assert.match(bar, /Sign out of seat/);
-  assert.match(bar, /Signed out/);
-  assert.match(bar, /seat-session-dock/);
+  assert.match(bar, /return null/);
+  assert.doesNotMatch(bar, /Signed in as/);
+  assert.match(read('../lib/instructorSeats.ts'), /export function signOutInstructorSeat/);
   assert.match(invite, /preset\.detail\.map/);
   assert.match(invite, /cloud and sharing match the owner/);
   assert.match(invite, /Owner only · Soft beta/);

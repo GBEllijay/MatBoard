@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
+import { rankSeatDoor } from './ownerPassRank.ts';
+import type { EntitlementClaims } from './entitlementToken.ts';
 import {
   SITE_ALPHA_LINE,
   SITE_FEEDBACK_EMAIL,
@@ -245,18 +248,24 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   assert.equal(COMPETITOR_ROSTER_PATH, '/roster?from=competitors');
   assert.deepEqual(
     COACH_UNLIMITED_TOOLS.map((tool) => tool.title),
-    ['Daily Lesson Plan', 'Daily Training Videos', 'Technique Tree', 'Competitor Roster'],
+    ['Daily Lesson Plan', 'Daily Training Videos', 'Technique Tree', 'Competitor Roster', 'Scoreboard', 'Round Timer'],
   );
+  assert.equal(COACH_UNLIMITED_TOOLS[4].to, withHubFrom(MATCH_CONTROLLER_PATH, 'unlimited'));
+  assert.equal(COACH_UNLIMITED_TOOLS[5].to, withHubFrom(ROUND_CONTROLLER_PATH, 'unlimited'));
+  assert.equal(COACH_UNLIMITED_TOOLS[4].belt, 'black');
+  assert.equal(COACH_UNLIMITED_TOOLS[5].belt, 'black');
+  assert.equal(COACH_UNLIMITED_TOOLS[4].clearBout, true);
+  assert.equal(COACH_UNLIMITED_TOOLS[3].title, 'Competitor Roster');
   assert.equal(COACH_UNLIMITED_TOOLS[0].to, UNLIMITED_LESSON_PATH);
   assert.equal(COACH_UNLIMITED_TOOLS[1].to, UNLIMITED_VIDEOS_PATH);
   assert.equal(COACH_UNLIMITED_TOOLS[2].to, UNLIMITED_TREE_PATH);
   assert.deepEqual(
     COACH_UNLIMITED_TOOLS.map((tool) => tool.belt),
-    ['brown', 'brown', 'brown', 'brown'],
+    ['brown', 'brown', 'brown', 'brown', 'black', 'black'],
   );
   assert.deepEqual(
     COACH_UNLIMITED_TOOLS.map((tool) => ('stripes' in tool ? tool.stripes : null)),
-    [0, 1, 2, 3],
+    [0, 1, 2, 3, null, null],
   );
   assert.equal(COACH_UNLIMITED_TOOLS[3].to, UNLIMITED_ROSTER_PATH);
   assert.equal(UNLIMITED_ROSTER_PATH, '/roster?from=unlimited');
@@ -568,4 +577,64 @@ test('a media grant opens Media Console with Pro locked; a seat without one stay
   assert.deepEqual([...MEDIA_CONSOLE_ROUTES], ['/media-console', '/console']);
   // /media is the Media Edition screen now, not a /pro alias.
   assert.equal((MEDIA_CONSOLE_ROUTES as readonly string[]).includes('/media'), false);
+});
+
+const PRO_BUTTONS = [
+  'Media Console',
+  'Advantage Instructor Edition',
+  'Instructor Invitation and Access Management',
+  'Tournament Management Pro',
+] as const;
+
+test('Pro console buttons stay those four labels, in that order, for owner, Pro, and a seat', () => {
+  assert.deepEqual(PRO_HUBS.map((hub) => hub.title), [...PRO_BUTTONS]);
+  assert.deepEqual(
+    PRO_HUBS.map((hub) => hub.belt),
+    ['purple', 'brown', 'black', 'tournament'],
+  );
+  assert.equal(PRO_HUBS[1].to, '/coach-unlimited');
+  assert.ok(!PRO_HUBS.some((hub) => hub.title === 'Advantage Coach Unlimited' || hub.title === COMPETITOR_SYSTEM_NAME));
+
+  const menus = { galleryUpload: true, eventsAccess: true, proShopAccess: true };
+  const seated = {
+    proUnlocked: true,
+    seated: true,
+    seatGrantsMedia: true,
+    programDirectorSeat: false,
+    coachMenus: true,
+    seat: { id: 'owner-test-seat' },
+  };
+  const pass = (src: 'owner' | 'code' | 'stripe'): EntitlementClaims =>
+    ({
+      src,
+      tier: src === 'code' ? 'alpha' : src === 'owner' ? 'owner' : 'pro',
+      grants: ['white', 'student', 'coach', 'pro', 'media'],
+      subs: src === 'stripe' ? { state: 'active' } : undefined,
+    }) as EntitlementClaims;
+
+  for (const src of ['owner', 'code', 'stripe'] as const) {
+    const ranked = rankSeatDoor(seated, pass(src));
+    assert.equal(ranked.seated, false, src);
+    assert.deepEqual(
+      consoleHubs(ranked, menus).map((hub) => hub.title),
+      [...PRO_BUTTONS],
+      src,
+    );
+  }
+
+  const seatOnly = rankSeatDoor(seated, { src: 'seat', tier: 'seat', grants: [], subs: { state: 'locked' } } as EntitlementClaims);
+  assert.equal(seatOnly.seated, true);
+  const seatTitles = consoleHubs(seatOnly, menus).map((hub) => hub.title);
+  assert.deepEqual(seatTitles, ['Gallery', 'Events', 'Pro Shop', 'Advantage Instructor Edition']);
+  assert.ok(!seatTitles.includes('Advantage Coach Unlimited'));
+
+  const locked = rankSeatDoor(seated, { ...pass('stripe'), subs: { state: 'locked' } } as EntitlementClaims);
+  assert.equal(locked.seated, true);
+
+  const proPage = readFileSync(new URL('../pages/Pro.tsx', import.meta.url), 'utf8');
+  const soon = readFileSync(new URL('../components/ComingSoonAd.tsx', import.meta.url), 'utf8');
+  assert.match(proPage, /consoleHubs\(door/);
+  assert.doesNotMatch(proPage, /Advantage Coach Unlimited/);
+  assert.match(soon, /Advantage Instructor Edition/);
+  assert.doesNotMatch(soon, /Advantage Coach Unlimited/);
 });
