@@ -12,6 +12,7 @@ import {
 import { formatMinuteInput, formatMmSs, formatMss, parseTypedDurationMs } from '../lib/format';
 import { dispatchMatch } from '../lib/matchStore';
 import { setTrainingSkin } from '../lib/trainingSkin';
+import { TimerBackdropOptions } from './TimerBackdropOptions';
 import {
   BREAK_PRESETS_MS,
   isBreakPreset,
@@ -30,7 +31,7 @@ import {
   WORK_PRESETS_MIN,
 } from '../lib/trainingStore';
 
-/** Round length, break, count, sound, and skin. Shared by the display sheet and the Rounds controller. */
+/** Round length, break, count, sound, skin, and background & logo. Shared by the display sheet and the Rounds controller. */
 export function TrainingOptions({ onReset }: { onReset?: () => void }) {
   const training = useTrainingState();
   const audio = useAudioPrefs();
@@ -285,6 +286,8 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
           </button>
         </div>
       </fieldset>
+
+      <TimerBackdropOptions />
 
       <button
         type="button"
