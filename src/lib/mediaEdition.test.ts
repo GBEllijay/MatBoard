@@ -41,7 +41,10 @@ test('Media Edition lives at /media and /media-edition redirects there', () => {
 
 test('/media is gated by the same Media Console door as /slideshow', () => {
   const route = app.slice(app.indexOf('function MediaEditionRoute()'));
-  assert.match(route.slice(0, 200), /return <MediaEditionGate open=\{mediaConsoleDoorOpen\(door\)\} \/>;/);
+  assert.match(
+    route.slice(0, 280),
+    /return <MediaEditionGate open=\{paidDoorAgrees\('media-console', mediaConsoleDoorOpen\(door\)\)\} \/>;/,
+  );
   const gate = read('../components/MediaEditionGate.tsx');
   assert.match(gate, /if \(!open\) return <MediaEditionPage \/>;/);
   assert.match(gate, /<PaidMediaEditionPage \/>/);

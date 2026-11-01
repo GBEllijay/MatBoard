@@ -41,7 +41,9 @@ import {
   coachDoorOpen,
   coachUnlimitedDoorOpen,
   homeConsoleLabel,
+  proConsoleEntryOpen,
 } from '../lib/productNames';
+import { entitlementNowMs, entitlementSnapshot } from '../lib/entitlement';
 import { purchasePromptsHidden } from '../lib/instructorSeats';
 import {
   INSTRUCTOR_DISPLAY_PRICE_LINE,
@@ -63,6 +65,8 @@ export function HomePage() {
   const door = useSeatDoor();
   const proUnlocked = door.proUnlocked;
   const consoleLabel = homeConsoleLabel(door);
+  const access = entitlementSnapshot();
+  const consoleOpen = proConsoleEntryOpen(door, access.claims, entitlementNowMs(), access.amnesty);
   const whiteUnlocked = useWhiteUnlocked();
   const coachUnlocked = useCoachUnlocked();
   const studentUnlocked = useStudentEditionUnlocked();
@@ -172,7 +176,7 @@ export function HomePage() {
             </article>
           )}
 
-          {consoleLabel ? (
+          {consoleOpen && consoleLabel ? (
             <article className="mode-card mode-card--pro">
               <Link
                 className="mode-card__hit"

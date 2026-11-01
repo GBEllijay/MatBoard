@@ -82,7 +82,8 @@ import { TrainingControllerPage } from './pages/TrainingController';
 import { TrainingPage } from './pages/Training';
 import { LegacyAccessNotice } from './components/LegacyAccessNotice';
 import { PaymentGraceBanner } from './components/PaymentGraceBanner';
-import { bootEntitlement, entitlementReady, entitlementSnapshot, proAccessPaused, subscribeEntitlement } from './lib/entitlement';
+import { bootEntitlement, entitlementNowMs, entitlementReady, entitlementSnapshot, proAccessPaused, subscribeEntitlement } from './lib/entitlement';
+import { paidChunkMenuAgrees, type PaidChunkId } from './lib/paidChunkAccess';
 import { proPlusCloudStripePro } from './lib/proPlusCloud';
 import { acceptSignedSeat } from './lib/seatClient';
 import { isSignedSeatInvite } from './lib/seatSunset';
@@ -141,6 +142,23 @@ function consumeInviteDoorNow(): void {
 consumeInviteDoorNow();
 
 /**
+ * The route may render a paid screen only when the menu door is open AND the
+ * signed token would be granted that chunk. A refused token goes home instead
+ * of the "could not be loaded" screen. No token during amnesty still reaches
+ * the confirm screen; the import is not sent.
+ */
+function paidDoorAgrees(chunk: PaidChunkId, doorOpen: boolean): boolean {
+  const snap = entitlementSnapshot();
+  return paidChunkMenuAgrees({
+    claims: snap.claims,
+    chunk,
+    nowMs: entitlementNowMs(),
+    doorOpen,
+    amnesty: snap.amnesty,
+  });
+}
+
+/**
  * Advantage Pro Plus Cloud. The same check as the /products card.
  * A closed visit never paints this page. Stripe Pro goes to /pro.
  * Everyone else uses the existing closed-door redirect.
@@ -158,26 +176,31 @@ function ProPlusCloudRoute() {
 /** Full Pro hubs a seat is allowed to see. Owner-only hubs stay out. */
 function ProConsoleRoute({ children }: { children: ReactNode }) {
   const door = useSeatDoor();
-  if (visibleProHubs(door).length === 0) return <GuardRedirect to={closedOrPaused(door.seated)} />;
+  if (!paidDoorAgrees('pro-console', visibleProHubs(door).length > 0)) {
+    return <GuardRedirect to={closedOrPaused(door.seated)} />;
+  }
   return children;
 }
 
 /** Gallery, Events, and Pro Shop. Program Director opens this with Pro locked. */
 function MediaConsoleRoute({ children }: { children: ReactNode }) {
   const door = useSeatDoor();
-  if (!mediaConsoleDoorOpen(door)) return <GuardRedirect to={closedOrPaused(door.seated)} />;
+  if (!paidDoorAgrees('media-console', mediaConsoleDoorOpen(door))) {
+    return <GuardRedirect to={closedOrPaused(door.seated)} />;
+  }
   return children;
 }
 
 /**
  * /media, the one Media Edition hub. A browser whose Media door is open (a Media
- * pass, Pro, or owner) gets the paid hub menu. Everyone else sees the public
- * $29.99 marketing page, never the paid chunk and never a raw 401.
+ * pass, Pro, or owner) and whose token can download the chunk gets the paid hub
+ * menu. Everyone else sees the public $29.99 marketing page, never the paid
+ * chunk and never a raw 401.
  * MediaEditionGate checks a saved pass first, so a refresh does not flash the marketing page.
  */
 function MediaEditionRoute() {
   const door = useSeatDoor();
-  return <MediaEditionGate open={mediaConsoleDoorOpen(door)} />;
+  return <MediaEditionGate open={paidDoorAgrees('media-console', mediaConsoleDoorOpen(door))} />;
 }
 
 /** Tournament suite and invite admin. A signed-in seat does not open these. */
@@ -190,7 +213,9 @@ function OwnerProRoute({ children }: { children: ReactNode }) {
 /** Coach Unlimited hub. A seat needs Pro on and a lesson or videos menu. */
 function CoachUnlimitedRoute({ children }: { children: ReactNode }) {
   const door = useSeatDoor();
-  if (!coachUnlimitedDoorOpen(door)) return <GuardRedirect to={closedOrPaused(door.seated)} />;
+  if (!paidDoorAgrees('coach-unlimited', coachUnlimitedDoorOpen(door))) {
+    return <GuardRedirect to={closedOrPaused(door.seated)} />;
+  }
   return children;
 }
 
@@ -206,7 +231,7 @@ function LessonCloudRoute({ children }: { children: ReactNode }) {
     door.seat,
     seatMenuAllowed(door.seat, 'dailyLessonPlanAccess'),
   );
-  if (!open) return <GuardRedirect to={closedOrPaused(door.seated)} />;
+  if (!paidDoorAgrees('lesson-cloud', open)) return <GuardRedirect to={closedOrPaused(door.seated)} />;
   return children;
 }
 
@@ -269,7 +294,8 @@ function WhiteLiveRoute({ children }: { children: ReactNode }) {
 /** Gallery, Events, or Pro Shop. A closed seat goes home. An unseated visitor sees Coming soon. */
 function MediaFolderRoute({ folder }: { folder: MediaFolderId }) {
   const door = useSeatDoor();
-  if (!mediaFolderDoorOpen(door, door.seat?.permissions ?? null, folder)) {
+  const open = mediaFolderDoorOpen(door, door.seat?.permissions ?? null, folder);
+  if (!paidDoorAgrees('media-console', open)) {
     return <GuardRedirect to={closedOrPaused(door.seated)} />;
   }
   return <Navigate to={`/slideshow?folder=${folder}`} replace />;
@@ -281,8 +307,11 @@ function MediaFolderRoute({ folder }: { folder: MediaFolderId }) {
  */
 function MediaConsoleEntryRoute() {
   const door = useSeatDoor();
-  if (!mediaConsoleDoorOpen(door)) return <GuardRedirect to={closedOrPaused(door.seated)} />;
+  if (!paidDoorAgrees('media-console', mediaConsoleDoorOpen(door))) {
+    return <GuardRedirect to={closedOrPaused(door.seated)} />;
+  }
   if (!door.seated && !door.proUnlocked) return <Navigate to={MEDIA_EDITION_PATH} replace />;
+  if (!paidDoorAgrees('pro-console', true)) return <Navigate to={MEDIA_EDITION_PATH} replace />;
   return <Navigate to="/pro" replace />;
 }
 

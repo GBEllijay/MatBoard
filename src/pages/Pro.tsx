@@ -8,7 +8,8 @@ import { SiteFooter } from '../components/SiteFooter';
 import { useSeatDoor } from '../hooks/useSeatDoor';
 import { CHECKOUT_BUY_PATH } from '../lib/checkoutProducts';
 import { PRO_LIST_PRICE_CENTS, PRO_MONTHLY_PRICE_CENTS } from '../lib/productPrices';
-import { MEDIA_CONSOLE_NAME, PRO_LADDER_DETAIL, PRODUCTS_PATH, consoleHubs } from '../lib/productNames';
+import { entitlementNowMs, entitlementSnapshot } from '../lib/entitlement';
+import { MEDIA_CONSOLE_NAME, PRO_LADDER_DETAIL, PRODUCTS_PATH, consoleHubs, grantedConsoleHubs } from '../lib/productNames';
 import { formatUsdFromCents } from '../lib/whitePurchase';
 import { purchasePromptsHidden } from '../lib/instructorSeats';
 import { lockMedia } from '../lib/mediaUnlock';
@@ -18,7 +19,13 @@ import { AcademyPathwayPanel } from '../components/AcademyPathwayPanel';
 export function ProPage() {
   const navigate = useNavigate();
   const door = useSeatDoor();
-  const hubs = consoleHubs(door, door.seat?.permissions ?? null);
+  const access = entitlementSnapshot();
+  const hubs = grantedConsoleHubs(
+    consoleHubs(door, door.seat?.permissions ?? null),
+    access.claims,
+    entitlementNowMs(),
+    access.amnesty,
+  );
   const seat = useCurrentSeat();
   const mediaSeat = hubs.length > 0 && hubs.every((hub) => hub.belt === 'purple');
 

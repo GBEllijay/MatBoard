@@ -1,3 +1,5 @@
+import type { EntitlementClaims } from './entitlementToken.ts';
+import { paidChunkForHref, paidChunkMenuAgrees } from './paidChunkAccess.ts';
 import { COMPETITOR_ROSTER_LABEL, STUDENT_ROSTER_LABEL, TECHNIQUE_TREE_LABEL, TRAINING_NOTES_LABEL } from './coachCopy.ts';
 
 /** User-facing Advantage Pro console name. Keep this exact apostrophe. */
@@ -743,6 +745,41 @@ export function consoleHubs(
     ...surfaces.map((surface) => ({ title: surface.title, to: surface.to, belt: surface.belt })),
     ...visibleProHubs(input).filter((hub) => !hub.to.startsWith('/slideshow')),
   ];
+}
+
+/**
+ * Home and /pro may offer a hub only when the signed token can download it.
+ * Owner pages that are not paid chunks (invites, suite) stay.
+ * With no token during amnesty, the existing list stays so the confirm screen
+ * can still open. A refused chunk is dropped, so the link is never shown.
+ */
+export function grantedConsoleHubs(
+  hubs: readonly ConsoleHub[],
+  claims: EntitlementClaims | null,
+  nowMs: number,
+  amnesty: boolean,
+): ConsoleHub[] {
+  return hubs.filter((hub) => {
+    const chunk = paidChunkForHref(hub.to);
+    if (!chunk) return true;
+    return paidChunkMenuAgrees({ claims, chunk, nowMs, doorOpen: true, amnesty });
+  });
+}
+
+/** /pro loads the pro-console chunk. The link exists only when that chunk would be granted. */
+export function proConsoleEntryOpen(
+  input: ProSurfaceInput,
+  claims: EntitlementClaims | null,
+  nowMs: number,
+  amnesty: boolean,
+): boolean {
+  return paidChunkMenuAgrees({
+    claims,
+    chunk: 'pro-console',
+    nowMs,
+    doorOpen: visibleProHubs(input).length > 0,
+    amnesty,
+  });
 }
 
 /**
