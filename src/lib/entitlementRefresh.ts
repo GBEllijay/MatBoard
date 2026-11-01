@@ -1,7 +1,7 @@
 import { appVersionHeaders } from './appCapability.ts';
 import { signRefreshProof } from './deviceProof.ts';
 import { ensureDeviceKey, devicePublicJwk } from './deviceKey.ts';
-import { acceptServerToken, clearEntitlementToken, ENTITLEMENT_TOKEN_KEY, markEntitlementOffline, readDeviceId } from './entitlement.ts';
+import { acceptServerToken, bootTimeoutSignal, clearEntitlementToken, ENTITLEMENT_TOKEN_KEY, markEntitlementOffline, readDeviceId } from './entitlement.ts';
 
 function readStoredToken(): string {
   try {
@@ -34,6 +34,7 @@ export async function refreshEntitlement(): Promise<boolean> {
       method: 'POST',
       headers: { 'content-type': 'application/json', ...appVersionHeaders() },
       body: JSON.stringify(body),
+      signal: bootTimeoutSignal(),
     });
     const parsed = (await response.json()) as { ok?: boolean; token?: string; revoked?: boolean };
     if (readStoredToken() !== sent) return false;
