@@ -377,10 +377,40 @@
 
 :is(.student.student--rank, .s-belt-mark) .rank-stripe-thumb {
   position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
+  z-index: 4;
+  left: 50%;
+  bottom: 4px;
+  width: 20px;
+  height: 20px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+
+:is(.student.student--rank, .s-belt-mark) .rank-stripe-saved {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 8px 4px 0;
+}
+
+:is(.student.student--rank, .s-belt-mark) .rank-stripe-saved__thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #1c1c1e;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85);
+}
+
+:is(.student.student--rank, .s-belt-mark) .rank-photo-saved {
+  margin: 8px 4px 0;
+  color: #c7c7cc;
+  font-size: 15px;
 }
 
 :is(.student.student--rank, .s-belt-mark) .ibar-switch {

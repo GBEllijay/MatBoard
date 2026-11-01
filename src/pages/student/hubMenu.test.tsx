@@ -110,6 +110,28 @@ test('the hub is five groups and has no Menu card', () => {
   unmount(hub);
 });
 
+test('the hub header shows a profile photo that stays on this phone', () => {
+  const portrait = 'data:image/jpeg;base64,AAAA';
+  localStorage.setItem('matboard.studentPortrait.v1', JSON.stringify({ version: 1, dataUrl: portrait }));
+  const hub = mount(<StudentHub />, '/student?student=1');
+  try {
+    const header = hub.host.querySelector('.s-hub__avatar');
+    assert.ok(header);
+    assert.equal(header?.getAttribute('alt'), 'Profile photo');
+    assert.equal(header?.getAttribute('src'), portrait);
+    assert.equal(hub.host.querySelector('.s-profile__avatar')?.getAttribute('src'), portrait);
+    const progress = mount(<ProgressMenu />, '/student/progress?student=1');
+    try {
+      assert.equal(progress.host.querySelector('.s-profile__avatar')?.getAttribute('src'), portrait);
+    } finally {
+      unmount(progress);
+    }
+  } finally {
+    localStorage.removeItem('matboard.studentPortrait.v1');
+    unmount(hub);
+  }
+});
+
 test('the hub opens with the blue Student belt header', () => {
   const hub = mount(<StudentHub />, '/student?student=1');
   const belt = hub.host.querySelector('nav.s-hub > .belt-header.belt-header--blue');

@@ -32,6 +32,7 @@ import {
 } from '../../lib/studentHubMenu';
 import { backupStampLabel, readStudentBackupStamp } from '../../lib/studentBackupStamp';
 import { subscribeStudentJournal } from '../../lib/studentDemo';
+import { readProfilePortrait } from '../../lib/profilePortrait';
 import { reportIdentity } from '../../lib/studentReport';
 import type { StudentProgressReport } from '../../lib/progress/types';
 import { useStudentFile, useStudentPath } from './chrome';
@@ -46,11 +47,18 @@ function profileCardNote(report: StudentProgressReport): string {
   return `${identity.name} · ${identity.gym} · ${started}`;
 }
 
+function LocalProfilePhoto({ className }: { className: string }) {
+  const portrait = readProfilePortrait();
+  if (!portrait) return null;
+  return <img className={className} src={portrait} alt="Profile photo" />;
+}
+
 export function ProfileCard() {
   const to = useStudentPath();
   const { report } = useStudentFile();
   return (
     <Link className="s-profile" to={to('/student/profile')} aria-label="My profile">
+      <LocalProfilePhoto className="s-profile__avatar" />
       <span className="s-profile__text">
         <strong>My profile</strong>
         <small>{profileCardNote(report)}</small>
@@ -76,6 +84,7 @@ export function StudentHub() {
   }, []);
   const coachNote = academy ? `Connected to ${academy.folderName}` : 'Academy, a file for your coach, and import';
   const worn = wornBeltPreview(report);
+  const portrait = readProfilePortrait();
 
   return (
     <main className="home home--student student-menu-home">
@@ -83,7 +92,8 @@ export function StudentHub() {
         <HomeMark to={home} />
         <nav className="s-hub" aria-label="Advantage Student Edition">
           <BeltHeader kind="blue" title={STUDENT_EDITION_HUB_TITLE} />
-          <header className="s-hub__intro">
+          <header className={portrait ? 's-hub__intro s-hub__intro--photo' : 's-hub__intro'}>
+            {portrait ? <img className="s-hub__avatar" src={portrait} alt="Profile photo" /> : null}
             <p>{STUDENT_HOME_DESCRIPTION}</p>
           </header>
           <ProfileCard />

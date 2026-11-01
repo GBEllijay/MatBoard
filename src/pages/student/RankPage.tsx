@@ -105,6 +105,7 @@ export function RankPage() {
   const [error, setError] = useState('');
   const [dropId, setDropId] = useState('');
   const [photos, setPhotos] = useState<RankPhotoStore>(() => loadRankPictures());
+  const [photoSavedKey, setPhotoSavedKey] = useState('');
   const rank = rankOf(report);
   const rungs = ladderRungs(report);
   const unlocked = coralRanksUnlocked(report.profile.belt);
@@ -124,13 +125,15 @@ export function RankPage() {
     }
   };
 
-  const savePhoto = async (file: File | undefined, save: (image: string) => RankPhotoStore) => {
+  const savePhoto = async (file: File | undefined, save: (image: string) => RankPhotoStore, savedKey: string) => {
     if (!file) return;
     try {
       const image = await rankPhotoFromFile(file);
       setPhotos(save(image));
       setError('');
+      setPhotoSavedKey(savedKey);
     } catch (err) {
+      setPhotoSavedKey('');
       setError(err instanceof Error ? err.message : 'Could not save that photo.');
     }
   };
@@ -169,7 +172,8 @@ export function RankPage() {
               report={report}
               run={run}
               photos={photos}
-              onBeltPhoto={(beltId, file) => void savePhoto(file, (image) => addKidsBeltPhoto(photos, beltId, image))}
+              onBeltPhoto={(beltId, file) => void savePhoto(file, (image) => addKidsBeltPhoto(photos, beltId, image), `kids:${beltId}`)}
+              photoSavedKey={photoSavedKey}
               onRemoveBeltPhoto={(beltId, index) => setPhotos(removeKidsBeltPhoto(photos, beltId, index))}
               onGraduate={(choice) => {
                 setPendingMode('');
@@ -229,7 +233,8 @@ export function RankPage() {
                               if (rung.current) run(setRankTapeDate(report, slot - 1, value));
                               else if (rung.historyId) run(setRankHistoryTapeDate(report, rung.historyId, slot - 1, value));
                             }}
-                            onPhoto={(file) => void savePhoto(file, (image) => addTapePhoto(photos, rung.belt, slot - 1, image))}
+                            savedNote={photoSavedKey === `tape:${rung.belt}:${slot}`}
+                            onPhoto={(file) => void savePhoto(file, (image) => addTapePhoto(photos, rung.belt, slot - 1, image), `tape:${rung.belt}:${slot}`)}
                             onRemovePhoto={(index) => setPhotos(removeTapePhoto(photos, rung.belt, slot - 1, index))}
                           />
                         );
@@ -243,6 +248,8 @@ export function RankPage() {
                     </div>
                     {rung.belt === 'black' ? <span className="belt__end" aria-hidden="true" /> : null}
                   </div>
+                  <StripePhotoMarks label={rung.label} slots={slots} photosFor={(index) => tapePhotos(photos, rung.belt, index)} />
+                  <PhotoSavedLine show={photoSavedKey.startsWith(`tape:${rung.belt}:`)} />
                   <div className="rung__foot">
                     <label className={rung.awardedOn ? 'achieved' : 'achieved is-empty'}>
                       Achieved <b>{rung.awardedOn ? formatAchieved(rung.awardedOn) : 'Add date'}</b>
@@ -270,7 +277,7 @@ export function RankPage() {
                         onChange={(event) => {
                           const file = event.target.files?.[0];
                           event.target.value = '';
-                          void savePhoto(file, (image) => addBeltPhoto(photos, rung.belt, image));
+                          void savePhoto(file, (image) => addBeltPhoto(photos, rung.belt, image), `belt:${rung.belt}`);
                         }}
                       />
                     </label>
@@ -281,6 +288,7 @@ export function RankPage() {
                     alt={(index) => `${rung.label} photo ${index + 1}`}
                     onRemove={(index) => setPhotos(removeBeltPhoto(photos, rung.belt, index))}
                   />
+                  <PhotoSavedLine show={photoSavedKey === `belt:${rung.belt}`} />
                   {rung.belt === 'black' ? (
                     <>
                       <button
@@ -468,6 +476,7 @@ function StripeSlot({
   slot,
   photos,
   error,
+  savedNote,
   onTap,
   onDate,
   onPhoto,
@@ -477,6 +486,7 @@ function StripeSlot({
   slot: number;
   photos: string[];
   error: string;
+  savedNote: boolean;
   onTap: () => void;
   onDate: (value: string) => void;
   onPhoto: (file: File | undefined) => void;
@@ -520,6 +530,7 @@ function StripeSlot({
           date={date}
           photos={photos}
           error={error}
+          savedNote={savedNote}
           countName={rung.current ? countControl.name : ''}
           onTap={onTap}
           onDate={onDate}
@@ -540,6 +551,7 @@ function StripeEditor({
   date,
   photos,
   error,
+  savedNote,
   countName,
   onTap,
   onDate,
@@ -554,6 +566,7 @@ function StripeEditor({
   date: string;
   photos: string[];
   error: string;
+  savedNote: boolean;
   countName: string;
   onTap: () => void;
   onDate: (value: string) => void;
@@ -606,14 +619,17 @@ function StripeEditor({
           </button>
         ) : null}
         {on ? (
-          <PhotoRow
-            photos={photos}
-            addLabel={`Add ${rung.label} stripe ${slot} photo`}
-            removeLabel={(index) => `Remove ${rung.label} stripe ${slot} photo ${index + 1}`}
-            alt={(index) => `${rung.label} stripe ${slot} photo ${index + 1}`}
-            onPhoto={onPhoto}
-            onRemove={onRemovePhoto}
-          />
+          <>
+            <PhotoRow
+              photos={photos}
+              addLabel={`Add ${rung.label} stripe ${slot} photo`}
+              removeLabel={(index) => `Remove ${rung.label} stripe ${slot} photo ${index + 1}`}
+              alt={(index) => `${rung.label} stripe ${slot} photo ${index + 1}`}
+              onPhoto={onPhoto}
+              onRemove={onRemovePhoto}
+            />
+            <PhotoSavedLine show={savedNote} />
+          </>
         ) : null}
         {error ? <p role="alert">{error}</p> : null}
         <div className="student-actions">
@@ -625,6 +641,35 @@ function StripeEditor({
     </div>
   );
   return createPortal(editor, document.body);
+}
+
+function StripePhotoMarks({
+  label,
+  slots,
+  photosFor,
+}: {
+  label: string;
+  slots: number;
+  photosFor: (index: number) => string[];
+}) {
+  const marks = Array.from({ length: slots }, (_, index) => ({ index, image: photosFor(index)[0] ?? '' })).filter((mark) => mark.image);
+  if (!marks.length) return null;
+  return (
+    <div className="rank-stripe-saved" aria-label={`${label} stripe photos`}>
+      {marks.map((mark) => (
+        <img key={mark.index} className="rank-stripe-saved__thumb" src={mark.image} alt={`${label} stripe ${mark.index + 1} photo`} />
+      ))}
+    </div>
+  );
+}
+
+function PhotoSavedLine({ show }: { show: boolean }) {
+  if (!show) return null;
+  return (
+    <p className="rank-photo-saved" role="status">
+      Saved on this phone. Shows on your belt page.
+    </p>
+  );
 }
 
 function PhotoList({
@@ -860,6 +905,7 @@ function KidsRank({
   photos,
   onBeltPhoto,
   onRemoveBeltPhoto,
+  photoSavedKey,
   onGraduate,
   lineage,
   progressLink,
@@ -869,6 +915,7 @@ function KidsRank({
   photos: RankPhotoStore;
   onBeltPhoto: (beltId: string, file: File | undefined) => void;
   onRemoveBeltPhoto: (beltId: string, index: number) => void;
+  photoSavedKey: string;
   onGraduate: (choice: 'white' | 'blue' | 'purple') => void;
   lineage: ReactNode;
   progressLink: ReactNode;
@@ -1082,6 +1129,7 @@ function KidsRank({
               alt={(index) => `${rung.label} photo ${index + 1}`}
               onRemove={(index) => onRemoveBeltPhoto(rung.beltId, index)}
             />
+            <PhotoSavedLine show={photoSavedKey === `kids:${rung.beltId}`} />
             {note ? (
               <p className="kids-age kids-age--note" role="status">
                 {note}

@@ -1635,6 +1635,12 @@ input.sr-only.student-film-file {
   margin: 0 0 0.7rem;
 }
 
+.rank-photo-saved {
+  margin: 0.45rem 0 0;
+  color: #3d3128;
+  font-size: 1rem;
+}
+
 .rank-stripe-editor__panel label {
   display: grid;
   gap: 0.15rem;

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { beltModeOf, setBeltMode, setBirthYear } from '../../lib/beltBook';
-import { headerVisibility, readProfileMarks } from '../../lib/profileMarks';
 import { StudentMarks, useStudentFile } from './chrome';
 import { ProfileCornerMarks, ProfileMedia, ProfileSwitches, useProfileMedia } from './ProfileIdentity';
 import { StudentProfileFields, TrainingSettings } from './ProfileFields';
@@ -11,8 +10,7 @@ export function ProfilePage() {
   const { report, commit } = useStudentFile();
   const media = useProfileMedia();
   const kids = beltModeOf(report) === 'kids';
-  const marks = headerVisibility(kids ? 'kids' : 'adult', readProfileMarks());
-  const showPhoto = Boolean(media.portrait) && (!kids || marks.selfie);
+  const showPhoto = Boolean(media.portrait);
   const gymName = report.profile.gymName.trim();
   const marked = Boolean(showPhoto || media.logo || (kids && gymName));
   return (

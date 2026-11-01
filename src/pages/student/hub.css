@@ -38,6 +38,36 @@
   padding: 0 2px 4px;
 }
 
+.s-hub__intro--photo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.s-hub__intro--photo p {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.s-hub__avatar,
+.s-profile__avatar {
+  flex: none;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #102033;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+
+.s-hub__avatar {
+  width: 64px;
+  height: 64px;
+}
+
+.s-profile__avatar {
+  width: 48px;
+  height: 48px;
+}
+
 .s-hub__intro h2,
 .s-hub__intro p,
 .s-tile strong,
