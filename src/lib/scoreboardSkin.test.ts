@@ -137,3 +137,21 @@ test('Mock-Tournament eyedrop colors are the stylesheet tokens', () => {
   assert.match(tv, /aspect-ratio:\s*auto/);
   assert.match(tv, /--flap-ring-w:\s*min\(94%,\s*100cqh\)/);
 });
+
+test('Old School phone landscape fills the panel with the portrait Adv/Pen headers', () => {
+  const css = fs.readFileSync(new URL('../index.css', import.meta.url), 'utf8');
+  const query =
+    '@media (orientation: landscape) and (max-height: 559px), (orientation: landscape) and (max-width: 899px) {';
+  const start = css.indexOf(query);
+  assert.ok(start > 0, 'phone landscape block exists');
+  const block = css.slice(start, css.indexOf('\n}\n', start));
+  // Short headers instead of the truncated "ADVANT..." / "PENA..." wide copy.
+  assert.match(block, /\.scoreboard-skin--old-school\.display \.score__label--short \{\s*display:\s*block;/);
+  assert.match(block, /\.scoreboard-skin--old-school\.display \.score__label--wide \{\s*display:\s*none;/);
+  // Only the ring crown sits above the card, not the old fixed 2.55rem gap.
+  assert.match(block, /\.flap \{\s*padding-top:\s*clamp\(0\.8rem,\s*4\.4vh,\s*1\.15rem\);/);
+  assert.doesNotMatch(block, /2\.55rem/);
+  assert.match(block, /\.score--points \{\s*height:\s*100%;/);
+  // The TV block (min-width 900px and min-height 560px) still comes after and is untouched.
+  assert.ok(css.lastIndexOf('(min-width: 900px) and (min-height: 560px)') > start);
+});
