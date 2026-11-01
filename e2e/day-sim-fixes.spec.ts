@@ -49,14 +49,18 @@ async function shot(page: Page, name: string) {
   await page.screenshot({ path: `/opt/cursor/artifacts/${name}.png`, fullPage: false });
 }
 
+/** Media and up pick skins from one Skins button; White keeps the Classic / Advantage toggle. */
+const skinControl = (page: Page) =>
+  page.getByRole('radio', { name: 'Classic' }).or(page.getByRole('button', { name: /^Timer skins/ }));
+
 async function openTrainingOptions(page: Page) {
-  const classic = page.getByRole('radio', { name: 'Classic' });
-  if (await classic.isVisible()) return;
+  const control = skinControl(page);
+  if (await control.isVisible()) return;
   const main = page.locator('main.training');
   const box = await main.boundingBox();
   expect(box).toBeTruthy();
   await main.click({ position: { x: 28, y: Math.min(180, box!.height - 24) } });
-  await expect(classic).toBeVisible();
+  await expect(control).toBeVisible();
 }
 
 async function boardStyle(page: Page, selector: string) {
@@ -67,6 +71,13 @@ async function boardStyle(page: Page, selector: string) {
 }
 
 async function pickSkin(page: Page, skin: 'Classic' | 'Advantage') {
+  const popup = page.getByRole('button', { name: /^Timer skins/ });
+  if (await popup.isVisible()) {
+    await popup.click();
+    await page.getByRole('dialog', { name: 'Timer skins' }).getByRole('radio', { name: skin }).click();
+    await expect(page.getByRole('button', { name: `Timer skins, ${skin}` })).toBeVisible();
+    return;
+  }
   await page.getByRole('radio', { name: skin }).click();
   await expect(page.getByRole('radio', { name: skin })).toHaveAttribute('aria-checked', 'true');
 }

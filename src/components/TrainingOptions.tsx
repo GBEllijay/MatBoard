@@ -3,8 +3,10 @@ import { useAudioPrefs, useTrainingSkin, useTrainingState } from '../hooks/useSt
 import { patchAudioPrefs, playSelectedEndCue, playStartCue, playWarningCue, unlockAudio } from '../lib/audio';
 import { EndCueControls } from './EndCueControls';
 import { formatMinuteInput, formatMmSs, formatMss, parseTypedDurationMs } from '../lib/format';
-import { setTrainingSkin } from '../lib/trainingSkin';
+import { usePolishedSkinsUnlocked } from '../hooks/usePolishedSkins';
+import { setTrainingSkin, visibleTrainingSkin } from '../lib/trainingSkin';
 import { TimerBackdropOptions } from './TimerBackdropOptions';
+import { TimerSkinPicker } from './TimerSkinPicker';
 import {
   BREAK_PRESETS_MS,
   isBreakPreset,
@@ -27,7 +29,9 @@ import {
 export function TrainingOptions({ onReset }: { onReset?: () => void }) {
   const training = useTrainingState();
   const audio = useAudioPrefs();
-  const skin = useTrainingSkin();
+  /** A locked polished pick shows as Classic, which is what the timer paints. */
+  const polishedOpen = usePolishedSkinsUnlocked();
+  const skin = visibleTrainingSkin(useTrainingSkin(), polishedOpen);
   const [customWorkOpen, setCustomWorkOpen] = useState(false);
   const [customBreakOpen, setCustomBreakOpen] = useState(false);
   const customWork = !isWorkPreset(training.workMs);
@@ -234,26 +238,31 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
 
       <fieldset>
         <legend>Skin</legend>
-        <div className="presets presets--split" role="radiogroup" aria-label="Timer skin">
-          <button
-            type="button"
-            role="radio"
-            aria-checked={skin === 'classic'}
-            className={`preset${skin === 'classic' ? ' preset--on' : ''}`}
-            onClick={() => setTrainingSkin('classic')}
-          >
-            Classic
-          </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={skin === 'themed'}
-            className={`preset${skin === 'themed' ? ' preset--on' : ''}`}
-            onClick={() => setTrainingSkin('themed')}
-          >
-            Advantage
-          </button>
-        </div>
+        {/* Media Edition and above: one Skins button in place of the Classic / Advantage toggle. */}
+        {polishedOpen ? (
+          <TimerSkinPicker buttonClassName="preset" />
+        ) : (
+          <div className="presets presets--split" role="radiogroup" aria-label="Timer skin">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={skin === 'classic'}
+              className={`preset${skin === 'classic' ? ' preset--on' : ''}`}
+              onClick={() => setTrainingSkin('classic')}
+            >
+              Classic
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={skin === 'themed'}
+              className={`preset${skin === 'themed' ? ' preset--on' : ''}`}
+              onClick={() => setTrainingSkin('themed')}
+            >
+              Advantage
+            </button>
+          </div>
+        )}
       </fieldset>
 
       <TimerBackdropOptions />

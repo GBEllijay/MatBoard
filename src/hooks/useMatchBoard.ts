@@ -12,6 +12,7 @@ import {
   type ScoreboardSkinId,
 } from '../lib/scoreboardSkin';
 import { useCoachUnlocked } from './useCoachUnlocked';
+import { usePolishedSkinsUnlocked } from './usePolishedSkins';
 import { useProUnlocked } from './useProUnlocked';
 import { useSuiteOrigin } from './useSuiteOrigin';
 import { useMatchState } from './useStores';
@@ -36,6 +37,8 @@ export function useMatchBoard() {
   const plainWhite = isPlainWhiteScoreboard(suite.fromSuite, Boolean(linkedId), whiteBoard);
   const showCarlos = masterCarlosOnScoreboard(suite.fromSuite);
   const kidsSkin = kidsSkinFromSearch(searchParams);
+  /** Media Edition and above: the polished skins paint and can be picked. */
+  const polishedOpen = usePolishedSkinsUnlocked();
 
   const originPath = (path: string) =>
     withKidsSkin(
@@ -44,7 +47,7 @@ export function useMatchBoard() {
     );
 
   const skinFor = (skin: ScoreboardSkinId) =>
-    visibleScoreboardSkin(skin, suite.fromSuite, Boolean(linkedId), whiteBoard);
+    visibleScoreboardSkin(skin, suite.fromSuite, Boolean(linkedId), whiteBoard, polishedOpen);
 
-  return { suite, linkedId, plainWhite, showCarlos, whiteBoard, kidsSkin, originPath, skinFor };
+  return { suite, linkedId, plainWhite, showCarlos, whiteBoard, kidsSkin, polishedOpen, originPath, skinFor };
 }
