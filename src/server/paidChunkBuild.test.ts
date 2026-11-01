@@ -67,6 +67,29 @@ test('paid screen code is outside the precache and the public bundle', { timeout
   for (const url of precacheUrls) assert.equal(url.includes('paid/'), false, url);
   assert.match(sw, /paid-chunks/);
 
+  // Full offline install (owner 2026-11-01): the shell and every static asset
+  // the app loads are precached, so a cold offline open works after any gap.
+  const precached = new Set(precacheUrls);
+  assert.ok(precached.has('index.html'), 'index.html must be precached for the offline app shell');
+  assert.ok(precached.has('manifest.webmanifest'));
+  for (const url of ['fonts/Inter-Regular.ttf', 'fonts/Inter-Bold.ttf', 'fonts/GreatVibes-Regular.ttf', 'fonts/PatrickHand-Regular.ttf']) {
+    assert.ok(precached.has(url), `${url} must be precached`);
+  }
+  assert.ok(precacheUrls.some((url) => /^assets\/.+\.woff$/.test(url)), 'storefront .woff fallbacks must be precached');
+  assert.ok(precacheUrls.some((url) => /^assets\/.+\.woff2$/.test(url)));
+  assert.ok(precacheUrls.some((url) => /^assets\/workbox-window.+\.js$/.test(url)), 'registerSW chunk must be precached');
+  for (const file of publicFiles) {
+    const rel = file.slice(dist.length + 1).split(sep).join('/');
+    if (!/\.(?:js|css|png|jpe?g|svg|webp|woff2?|ttf|mp3|ico)$/.test(rel)) continue;
+    if (/^(?:sw\.js|workbox-[^/]+\.js|branding\/|card-|half-off)/.test(rel)) continue;
+    assert.ok(precached.has(rel), `${rel} is shipped but not precached`);
+  }
+  // Navigations: network first, precached shell on failure or after 4s. No 24h expiry.
+  assert.match(sw, /app-shell-nav/);
+  assert.match(sw, /caches\.match\("\/index\.html",\{ignoreSearch:!0\}\)/);
+  assert.equal(sw.includes('maxAgeSeconds:86400'), false, 'pages must not expire after 24h');
+  assert.equal(/createHandlerBoundToURL/.test(sw), false, 'no cache-first navigation fallback');
+
   // Home-screen install: public manifest, opens fullscreen, icons ship, linked from index.html.
   const manifest = JSON.parse(readFileSync(join(dist, 'manifest.webmanifest'), 'utf8')) as {
     name: string;

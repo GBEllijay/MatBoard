@@ -76,6 +76,31 @@ export function entitlementReady(): boolean {
   return bootReady;
 }
 
+/**
+ * True when a guard may decide. A browser with no saved pass has nothing to
+ * check. A browser with a saved pass waits for bootEntitlement to verify it,
+ * so a refresh or deep link does not bounce to /buy or /coming-soon first.
+ */
+export function entitlementSettled(): boolean {
+  return bootReady || !readItem(ENTITLEMENT_TOKEN_KEY);
+}
+
+/** Network calls made during boot give up after this, and count as unreachable. */
+export const BOOT_NETWORK_TIMEOUT_MS = 8000;
+
+/** A fetch signal that aborts after `ms`. Falls back when AbortSignal.timeout is missing. */
+export function bootTimeoutSignal(ms = BOOT_NETWORK_TIMEOUT_MS): AbortSignal | undefined {
+  try {
+    if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') return AbortSignal.timeout(ms);
+    if (typeof AbortController === 'undefined') return undefined;
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), ms);
+    return controller.signal;
+  } catch {
+    return undefined;
+  }
+}
+
 export function setEntitlementReadyForTests(ready: boolean): void {
   bootReady = ready;
 }
@@ -384,7 +409,7 @@ export function relockImplied(door: Door, options: { keepOtherwiseOpen?: boolean
 
 export async function loadPublicConfig(): Promise<void> {
   try {
-    const response = await fetch('/api/config', { headers: { accept: 'application/json' } });
+    const response = await fetch('/api/config', { headers: { accept: 'application/json' }, signal: bootTimeoutSignal() });
     if (!response.ok) return;
     const body = (await response.json()) as {
       signing?: boolean;
@@ -449,27 +474,34 @@ export function bootEntitlement(): void {
   noteLegacyAccess();
   retireLegacyUnlockFlags(nowMs(), config.legacyAmnestyEndsAt);
   void (async () => {
-    await loadPublicConfig();
-    retireLegacyUnlockFlags(nowMs(), config.legacyAmnestyEndsAt);
-    await reverifyStored();
-    noteClock(nowMs());
-    if (verified) {
-      const claims = verified;
-      const token = readItem(ENTITLEMENT_TOKEN_KEY) ?? '';
-      void import('./paidChunkCache.ts')
-        .then((mod) => mod.syncPaidChunkCache(claims, token))
-        .catch(() => undefined);
-    }
-    if (verified && nowMs() >= verified.refresh_after * 1000) {
-      try {
-        const { refreshEntitlement } = await import('./entitlementRefresh.ts');
-        await refreshEntitlement();
-      } catch {
-        offline = true;
+    // Guards wait on bootReady (entitlementSettled), so it must flip even when
+    // a step throws. A failed check leaves `verified` as it was (null on boot).
+    try {
+      await loadPublicConfig();
+      retireLegacyUnlockFlags(nowMs(), config.legacyAmnestyEndsAt);
+      await reverifyStored();
+      noteClock(nowMs());
+      if (verified) {
+        const claims = verified;
+        const token = readItem(ENTITLEMENT_TOKEN_KEY) ?? '';
+        void import('./paidChunkCache.ts')
+          .then((mod) => mod.syncPaidChunkCache(claims, token))
+          .catch(() => undefined);
       }
+      if (verified && nowMs() >= verified.refresh_after * 1000) {
+        try {
+          const { refreshEntitlement } = await import('./entitlementRefresh.ts');
+          await refreshEntitlement();
+        } catch {
+          offline = true;
+        }
+      }
+    } catch {
+      /* keep whatever was verified; guards decide on that */
+    } finally {
+      bootReady = true;
+      notifyEntitlement();
     }
-    bootReady = true;
-    notifyEntitlement();
   })();
 }
 

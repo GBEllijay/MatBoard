@@ -81,16 +81,23 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // index.html used to be precached and served cache-first for every
-        // navigation (createHandlerBoundToURL). Returning browsers kept that
-        // shell; a fresh profile with no worker saw the new deploy.
-        // Navigations now try the network first. Hashed JS/CSS and media stay
-        // precached so an offline gym TV can still open the last good build.
-        globPatterns: ['**/*.{js,css,ico,png,jpg,svg,woff2,webp,mp3}'],
+        // Full offline install (owner 2026-11-01). Everything the app shell
+        // needs is precached when the service worker installs: index.html, the
+        // hashed JS/CSS chunks, icons, images, sounds, and the decorative fonts
+        // (fonts/*.ttf, the .woff fallbacks). The precache is keyed by content
+        // revision, so it stays until the next deploy replaces it.
+        //
+        // Navigations still go to the network first (a fresh deploy shows up
+        // right away online). Only when the network fails or takes longer than
+        // 4s does the worker answer with the precached index.html for that
+        // app route. /api, /paid, /card and /half-off never get the app shell.
+        globPatterns: ['index.html', '**/*.{js,css,ico,png,jpg,jpeg,svg,woff,woff2,ttf,otf,webp,mp3,wav,ogg,webmanifest}'],
         globIgnores: [
           '**/branding/**',
-          '**/sw.js',
-          '**/workbox-*.js',
+          // Only the root worker files. The workbox-window chunk in /assets is
+          // loaded by registerSW and must be precached like any other chunk.
+          'sw.js',
+          'workbox-*.js',
           '**/version.json',
           '**/card.html',
           '**/card-logo.*',
@@ -101,7 +108,12 @@ export default defineConfig({
           'paid/**',
           '**/paid/**',
         ],
+        // Biggest app chunk is ~1.7 MB; keep headroom so nothing is silently skipped.
+        maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
+        // Workbox's own fallback route is cache-first. The 'app-shell-nav' route below
+        // keeps network-first navigations and uses the precached shell offline.
         navigateFallback: null,
+        // Inert while navigateFallback is null; the app-shell-nav route below applies the same exclusions.
         // /card is the lightweight card.html page. Keep it off any app-shell fallback.
         navigateFallbackDenylist: [/^\/api\//, /^\/paid\//, /^\/card\/?(?:$|\?)/, /^\/half-off\/?(?:$|\?)/],
         skipWaiting: true,
@@ -115,17 +127,48 @@ export default defineConfig({
             handler: 'CacheFirst',
             options: {
               cacheName: 'paid-chunks',
+              // The server answers paid files with Vary: Authorization, Cookie for
+              // shared HTTP caches. A screen's own import carries neither header, so
+              // a copy saved by the authorized prefetch would never match offline.
+              // Cache Storage is this browser's own; the token check in
+              // preparePaidImport still decides whether the import may run.
+              matchOptions: { ignoreVary: true },
               expiration: { maxEntries: 40, maxAgeSeconds: 60 * 60 * 24 * 30 },
               cacheableResponse: { statuses: [200] },
             },
           },
           {
-            urlPattern: ({ request }) => request.mode === 'navigate',
+            // App routes (every path the SPA serves through /* /index.html).
+            // Fresh from the network when it answers within 4s; otherwise the
+            // precached index.html of this deploy, which always matches the
+            // precached JS/CSS. No per-URL HTML copy is kept, so an old page can
+            // never point at chunks a newer deploy has already cleaned up.
+            urlPattern: ({ request, url }) =>
+              request.mode === 'navigate' && !/^\/(?:api|paid)\//.test(url.pathname) && !/^\/(?:card|half-off)(?:\/|\.html)?$/.test(url.pathname),
+            handler: 'NetworkFirst',
+            options: {
+              // Nothing is ever written here (cacheWillUpdate returns null). The
+              // lookup that NetworkFirst makes on failure or timeout is answered
+              // with the precached shell instead.
+              cacheName: 'app-shell-nav',
+              networkTimeoutSeconds: 4,
+              plugins: [
+                {
+                  cacheWillUpdate: async () => null,
+                  cachedResponseWillBeUsed: async ({ cachedResponse }) =>
+                    cachedResponse ?? (await caches.match('/index.html', { ignoreSearch: true })) ?? null,
+                },
+              ],
+            },
+          },
+          {
+            // /card and /half-off are their own small pages. Last good copy offline.
+            urlPattern: ({ request, url }) => request.mode === 'navigate' && /^\/(?:card|half-off)(?:\/|\.html)?$/.test(url.pathname),
             handler: 'NetworkFirst',
             options: {
               cacheName: 'pages',
               networkTimeoutSeconds: 4,
-              expiration: { maxEntries: 24, maxAgeSeconds: 60 * 60 * 24 },
+              expiration: { maxEntries: 8 },
               cacheableResponse: { statuses: [200] },
             },
           },

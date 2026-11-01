@@ -3,9 +3,10 @@
  * after a token is accepted. The lock and revoke paths delete that cache.
  */
 
-import { entitlementNowMs, entitlementReady, entitlementSnapshot, ENTITLEMENT_TOKEN_KEY } from './entitlement.ts';
+import { clockRolledBack, entitlementNowMs, entitlementReady, entitlementSnapshot, ENTITLEMENT_TOKEN_KEY } from './entitlement.ts';
 import {
   filesForAllowedChunks,
+  filesToKeepOffline,
   PAID_CHUNK_CACHE,
   PAID_CHUNK_COOKIE,
   PAID_CHUNK_LABELS,
@@ -56,6 +57,7 @@ export function preparePaidImport(chunk: PaidChunkId): PaidLoadBlock | null {
     chunk,
     nowMs: entitlementNowMs(),
     offline,
+    clockRolledBack: clockRolledBack(entitlementNowMs()),
   });
   if (block === 'pending') return block;
   if (block) {
@@ -87,6 +89,15 @@ async function dropUnlisted(allowed: ReadonlySet<string>): Promise<void> {
   );
 }
 
+async function savedPaidFiles(): Promise<Set<string>> {
+  try {
+    const cache = await caches.open(PAID_CHUNK_CACHE);
+    return new Set((await cache.keys()).map((request) => new URL(request.url).pathname));
+  } catch {
+    return new Set();
+  }
+}
+
 async function prefetchOne(url: string, token: string): Promise<void> {
   const response = await fetch(url, {
     credentials: 'same-origin',
@@ -99,16 +110,22 @@ async function prefetchOne(url: string, token: string): Promise<void> {
 }
 
 /**
- * Drop saved chunks this token cannot open, then fetch the ones it can.
- * A locked token clears the cache first. Seat screens that stay open are
- * fetched again when the network is up.
+ * Drop saved chunks this token may no longer keep, then fetch the ones the
+ * server will hand out. An expired token inside its offline window keeps its
+ * saved copies (filesToKeepOffline) so a gym that stays offline past exp can
+ * still open them; the server still refuses a new download until a refresh.
+ * A locked token clears the cache first. A rolled-back clock changes nothing
+ * here: the copies stay put but preparePaidImport refuses to open them.
  */
 export async function syncPaidChunkCache(claims: EntitlementClaims, token: string): Promise<void> {
   if (typeof caches === 'undefined') return;
-  const allowed = new Set(filesForAllowedChunks(claims, PAID_CHUNK_FILES, entitlementNowMs()));
+  const now = entitlementNowMs();
+  const rolledBack = clockRolledBack(now);
+  const keep = new Set(filesToKeepOffline(claims, PAID_CHUNK_FILES, now));
+  const allowed = new Set(rolledBack ? [] : filesForAllowedChunks(claims, PAID_CHUNK_FILES, now));
   try {
     if (claims.subs?.state === 'locked') await caches.delete(PAID_CHUNK_CACHE);
-    else await dropUnlisted(allowed);
+    else if (!rolledBack) await dropUnlisted(keep);
   } catch {
     /* ignore a missing Cache Storage */
   }
@@ -117,12 +134,16 @@ export async function syncPaidChunkCache(claims: EntitlementClaims, token: strin
     return;
   }
   armPaidChunkRequest(token, claims.exp);
+  // Paid file names carry a content hash, so a saved copy is already current.
+  // Fetching it again would rewrite the entry while an open screen may be
+  // reading it (offline that read then fails), so only missing files are fetched.
+  const saved = await savedPaidFiles();
   await Promise.all(
-    [...allowed].map(async (url) => {
+    [...allowed].filter((url) => !saved.has(url)).map(async (url) => {
       try {
         await prefetchOne(url, token);
       } catch {
-        /* offline: a copy cleared above stays empty until the next online refresh */
+        /* offline: the saved copy (if any) stays until the next online refresh */
       }
     }),
   );
