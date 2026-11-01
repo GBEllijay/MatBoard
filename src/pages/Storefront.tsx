@@ -164,7 +164,7 @@ function ProgressStep({ step, belts }: { step: BeltRung; belts: BeltsVariant }) 
       </div>
       <div className="sf-beltcol">
         <div className="sf-belt-box">
-          <Belt color={step.belt} journal={step.id === 'student' && belts === 'a'} />
+          <Belt color={step.belt} bar={step.bar} journal={step.id === 'student' && belts === 'a'} />
         </div>
       </div>
       <div className="sf-info">
@@ -172,6 +172,11 @@ function ProgressStep({ step, belts }: { step: BeltRung; belts: BeltsVariant }) 
           <h3>{step.title}</h3>
           <p>{step.blurb}</p>
           {step.detail ? <p className="sf-step-detail">{step.detail}</p> : null}
+          {step.learnLabel && step.to ? (
+            <Link className="sf-learn" to={step.to}>
+              {step.learnLabel}
+            </Link>
+          ) : null}
         </div>
         <div className="sf-meta">
           {step.cardPrice ? (
@@ -186,6 +191,15 @@ function ProgressStep({ step, belts }: { step: BeltRung; belts: BeltsVariant }) 
   );
 
   const className = `sf-step${step.id === 'white' ? ' sf-step--live' : ''} sf-step--${step.id}`;
+  if (step.learnLabel && step.to) {
+    // The Learn more control is the button. The rest of the tile opens the same page.
+    return (
+      <article className={className}>
+        <Link className="sf-step__hit" to={step.to} tabIndex={-1} aria-hidden="true" />
+        {body}
+      </article>
+    );
+  }
   if (step.to === null) {
     // No product yet: the tile is the alpha request, same as the section button.
     return (
@@ -220,11 +234,22 @@ function FooterFeedback() {
   );
 }
 
-/** One belt set: same box, weave, stitch line and black rank bar. Black keeps its white / red / white bar. */
-function Belt({ color, journal = false }: { color: BeltRung['belt']; journal?: boolean }) {
-  const kind = color === 'black' ? 'pro' : color;
+/**
+ * One belt set: same box, weave, stitch line and rank bar.
+ * Pro is a plain black belt with a red bar. Pro Plus Cloud keeps the white | red | white bar.
+ */
+function Belt({
+  color,
+  bar = 'rank',
+  journal = false,
+}: {
+  color: BeltRung['belt'];
+  bar?: BeltRung['bar'];
+  journal?: boolean;
+}) {
+  const kind = bar === 'striped' ? 'striped' : bar === 'red' ? 'red-bar' : color;
   return (
-    <div className={`sf-belt sf-belt--${kind}${journal ? ' sf-belt--journal' : ''}`} data-belt={color}>
+    <div className={`sf-belt sf-belt--${kind}${journal ? ' sf-belt--journal' : ''}`} data-belt={color} data-belt-bar={bar}>
       {journal ? (
         <span className="sf-embroidery" aria-hidden="true">
           <svg className="sf-embroidery-mark" viewBox="0 0 24 24" width="20" height="20">

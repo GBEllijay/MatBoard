@@ -49,6 +49,7 @@ test('/products belt accents and order match the homepage ladder', async ({ page
     'Advantage Media Edition',
     'Advantage Instructor Edition',
     'Advantage Pro',
+    'Advantage Pro Plus Cloud',
   ]);
   const fill = (sel: string) =>
     page.locator(`${sel} > .belt-rail`).evaluate((el) => getComputedStyle(el).getPropertyValue('--belt-fill').trim());

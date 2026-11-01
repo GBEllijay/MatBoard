@@ -31,6 +31,12 @@ export const MEDIA_PRICE_LINE = '$29.99 one-time';
 
 export const PRO_PRICE_LINE = '$99.99 one-time, plus $5.99/month';
 
+/**
+ * Display only. Advantage Pro Plus Cloud is the $5.99/month hosted-storage plan.
+ * No Stripe price is wired for it, and this line must not be sent to Checkout.
+ */
+export const PRO_PLUS_CLOUD_PRICE_LINE = '$5.99/month';
+
 /** Locked-card alpha line. The address is the existing support inbox. */
 export function alphaAccessNote(product: string): string {
   return `${product} is in alpha testing. Email ${SITE_FEEDBACK_EMAIL} to request an alpha code.`;

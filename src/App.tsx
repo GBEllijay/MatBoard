@@ -53,6 +53,7 @@ import { CompetitionReadyPage } from './pages/CompetitionReady';
 import { CompetitorManagementPage } from './pages/CompetitorManagement';
 import { GamePlanPage } from './pages/GamePlan';
 import { HomePage } from './pages/Home';
+import { ProPlusCloudPage } from './pages/ProPlusCloud';
 import { StorefrontPage } from './pages/Storefront';
 import { PrivacyPage } from './pages/Privacy';
 import { InstructorCollaborationPage } from './pages/InstructorCollaboration';
@@ -73,6 +74,7 @@ import { TechniquesPage } from './pages/Techniques';
 import { TermsPage } from './pages/Terms';
 import { RankingsPage } from './pages/Rankings';
 import { TournamentPage } from './pages/Tournament';
+import { StudentRosterPlaceholderPage } from './pages/StudentRosterPlaceholder';
 import { TournamentSuitePage } from './pages/TournamentSuite';
 import { TrainingNotesPage } from './pages/TrainingNotes';
 import { TrainingControllerPage } from './pages/TrainingController';
@@ -366,6 +368,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<PublicHomeRoute />} />
       <Route path="/products" element={<HomePage />} />
+      <Route path="/pro-plus-cloud" element={<ProPlusCloudPage />} />
       <Route path="/editions" element={<EditionsRedirect />} />
       <Route
         path="/white"
@@ -512,6 +515,14 @@ export default function App() {
         element={
           <CoachUnlimitedRoute>
             <PaidCoachUnlimitedPage />
+          </CoachUnlimitedRoute>
+        }
+      />
+      <Route
+        path="/student-roster"
+        element={
+          <CoachUnlimitedRoute>
+            <StudentRosterPlaceholderPage />
           </CoachUnlimitedRoute>
         }
       />

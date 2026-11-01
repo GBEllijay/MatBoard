@@ -134,6 +134,10 @@ test('Coach hub tools go back to Coach even when Pro is unlocked', () => {
 
 test('Competitor Roster follows the menu that opened it', () => {
   assert.equal(submenuBackTarget({ pathname: '/roster', search: 'from=competitors', ...pro }), '/competitors');
+  assert.equal(submenuBackTarget({ pathname: '/roster', search: 'from=suite', ...pro }), '/suite');
+  assert.equal(submenuBackTarget({ pathname: '/roster', search: 'from=coach' }), '/coach');
+  assert.equal(submenuBackTarget({ pathname: '/roster', search: 'from=competition' }), '/competition');
+  assert.equal(submenuBackTarget({ pathname: '/student-roster', ...pro }), '/coach-unlimited');
   assert.equal(submenuBackTarget({ pathname: '/roster', search: 'from=unlimited', ...pro }), '/coach-unlimited');
   assert.equal(submenuBackTarget({ pathname: '/competitors', search: 'from=suite', ...pro }), '/suite');
   assert.equal(submenuBackTarget({ pathname: '/competitors', search: 'from=competition' }), '/competition');

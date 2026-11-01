@@ -467,6 +467,32 @@ label.btn {
   --belt-edge: rgba(255, 255, 255, 0.34);
 }
 
+/* Pro Plus Cloud card: black belt, white stripe, red bar, white stripe. Same art as the old Pro bar. */
+.belt-rail--black.belt-rail--striped {
+  background:
+    var(--belt-weave),
+    linear-gradient(
+      to right,
+      transparent 0,
+      transparent calc(var(--belt-rail-width) - 1px),
+      var(--belt-edge) calc(var(--belt-rail-width) - 1px),
+      var(--belt-edge) var(--belt-rail-width),
+      transparent var(--belt-rail-width)
+    ),
+    linear-gradient(
+      to top,
+      #0a0b0e 0,
+      #0a0b0e var(--belt-corner),
+      #f4f1ea var(--belt-corner),
+      #f4f1ea calc(var(--belt-corner) + 0.18rem),
+      #ef4444 calc(var(--belt-corner) + 0.18rem),
+      #ef4444 calc(var(--belt-corner) + 0.9rem),
+      #f4f1ea calc(var(--belt-corner) + 0.9rem),
+      #f4f1ea calc(var(--belt-corner) + 1.08rem),
+      #0a0b0e calc(var(--belt-corner) + 1.08rem)
+    );
+}
+
 /* Same-gi corner belts: forest + bright yellow blocks only — no tip stack. */
 .belt-rail--tournament {
   --belt-fill: #1c6b30;
@@ -3347,6 +3373,37 @@ span.role-plan__mark {
 
   .home__hint {
     font-size: 0.82rem;
+  }
+}
+
+/*
+ * /products title on a narrow screen or a portrait phone.
+ * The mark was shrink-wrapped and left-aligned beside the cards.
+ * Stretch it to the card column and center the words. The logo stays on its own size.
+ * The wide brand column (740px landscape, or 1100px and up) keeps text-align left.
+ */
+@media (max-width: 739px),
+  (max-width: 1099px) and (orientation: portrait),
+  (orientation: landscape) and (max-height: 520px) {
+  .home--ladder .home__mark {
+    align-self: stretch;
+    width: 100%;
+    box-sizing: border-box;
+    display: block;
+    grid-template-columns: none;
+    text-align: center;
+    margin-inline: auto;
+  }
+
+  .home--ladder .home__brand,
+  .home--ladder .home__mark h1,
+  .home--ladder .home__motto,
+  .home--ladder .home__mark > p {
+    grid-column: auto;
+    width: 100%;
+    max-width: none;
+    margin-inline: auto;
+    text-align: center;
   }
 }
 

@@ -16,6 +16,7 @@ import {
   MEDIA_EDITION_PRICE_DETAIL,
 } from '../lib/mediaEdition';
 import { MEDIA_CONSOLE_NAME, PRODUCTS_PATH } from '../lib/productNames';
+import { POLISHED_SKINS, POLISHED_TIMER_ONLY_SKINS } from '../lib/polishedSkins';
 import { EDITION_ALPHA_NOTE, EDITION_EMAIL_DISPLAY } from '../lib/productPrices';
 import { alphaRequestMailto } from '../lib/siteFooter';
 import { formatUsdFromCents } from '../lib/whitePurchase';
@@ -77,6 +78,30 @@ export function MediaEditionPage() {
 
       <div className="home__inner">
         <article className="buy media-edition">
+          <section className="buy__card" aria-label="What Media Edition is">
+            <div className="buy__block">
+              <h3>What it is</h3>
+              <p>
+                Media Edition is the gym-TV tier. It is a live scoreboard, a round timer, and a media console. Cast the
+                board or the timer to the gym TV and keep the controller on a phone.
+              </p>
+            </div>
+            <div className="buy__block">
+              <h3>Scoreboard and round timer</h3>
+              <p>
+                The scoreboard and the round timer include these looks:{' '}
+                {[...POLISHED_SKINS.map((skin) => skin.label), ...POLISHED_TIMER_ONLY_SKINS.map((skin) => `${skin.label} (round timer)`)].join(
+                  ', ',
+                )}
+                .
+              </p>
+            </div>
+            <div className="buy__block">
+              <h3>Media console</h3>
+              <p>The media console plays on the gym TV: a gallery, the class schedule, the pro shop, and events.</p>
+            </div>
+          </section>
+
           <section className="buy__card">
             <div className="buy__block">
               <h3>Included</h3>

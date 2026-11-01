@@ -11,6 +11,7 @@ import { useCurrentSeat } from '../components/SeatSessionBar';
 import { Sheet } from '../components/Sheet';
 import { SiteFooter } from '../components/SiteFooter';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
+import { useProPlusCloudUnlocked } from '../hooks/useProPlusCloud';
 import { useSeatDoor } from '../hooks/useSeatDoor';
 import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
 import { useMediaUnlocked } from '../hooks/useMediaUnlocked';
@@ -22,17 +23,23 @@ import {
 import { studentDemoMode, studentEditionEntitled, studentEditionOpen } from '../lib/studentEdition';
 import {
   COACH_HOME_DESCRIPTION,
+  COACH_UNLIMITED_PATH,
   HOME_MOTTO,
   INSTRUCTOR_HOME_TITLE,
   MEDIA_HOME_DESCRIPTION,
   MEDIA_HOME_PATH,
   MEDIA_HOME_TITLE,
+  PRO_DRIVE_NOTE,
   PRO_HOME_LINES,
+  PRO_PLUS_CLOUD_DESCRIPTION,
+  PRO_PLUS_CLOUD_NAME,
+  PRO_PLUS_CLOUD_OPEN_LABEL,
+  PRO_PLUS_CLOUD_PATH,
   STUDENT_EDITION_NAME,
   STUDENT_HOME_DESCRIPTION,
   WHITE_HOME_DESCRIPTION,
-  COACH_UNLIMITED_PATH,
   coachDoorOpen,
+  coachUnlimitedDoorOpen,
   homeConsoleLabel,
 } from '../lib/productNames';
 import { purchasePromptsHidden } from '../lib/instructorSeats';
@@ -41,6 +48,7 @@ import {
   EDITION_ALPHA_NOTE,
   EDITION_EMAIL_DISPLAY,
   MEDIA_PRICE_LINE,
+  PRO_PLUS_CLOUD_PRICE_LINE,
   PRO_PRICE_LINE,
   STUDENT_ALPHA_ACCESS_NOTE,
   STUDENT_PRICE_LINE,
@@ -48,6 +56,7 @@ import {
 } from '../lib/productPrices';
 import { WHITE_PRICE_LABEL } from '../lib/whitePurchase';
 import { whiteEntryPath } from '../lib/whiteUnlock';
+import { alphaRequestMailto } from '../lib/siteFooter';
 import { TIER_BUY_PATHS } from '../lib/tierBuyPages';
 
 export function HomePage() {
@@ -72,6 +81,10 @@ export function HomePage() {
   const studentOpen = studentEditionOpen(params, studentOwner);
   const studentDemo = studentDemoMode(params, studentOwner) || !studentEditionEntitled(studentOwner);
   const studentTo = studentPreview || !studentEditionEntitled(studentOwner) ? '/student?student=1' : '/student';
+  const cloudOpen = useProPlusCloudUnlocked();
+  const instructorUnlimited = coachUnlimitedDoorOpen(door);
+  const instructorOpenTo = instructorUnlimited ? COACH_UNLIMITED_PATH : '/coach';
+  const instructorOpenLabel = instructorUnlimited ? 'Open Advantage Instructor Edition' : 'Open Coach';
   const [unlockOpen, setUnlockOpen] = useState<'coach' | 'pro' | 'student' | null>(null);
   const [ownerTestOpen, setOwnerTestOpen] = useState(false);
   const [soon, setSoon] = useState<SoonProduct | null>(null);
@@ -126,20 +139,17 @@ export function HomePage() {
             <article className="mode-card mode-card--coach">
               <Link
                 className="mode-card__hit"
-                to={seated ? '/coach' : COACH_UNLIMITED_PATH}
+                to={instructorOpenTo}
                 tabIndex={-1}
-                aria-label={`Open ${INSTRUCTOR_HOME_TITLE}`}
+                aria-label={instructorOpenLabel}
               />
               <BeltRail kind="brown" />
               <strong>{INSTRUCTOR_HOME_TITLE}</strong>
               <HomeDescription text={COACH_HOME_DESCRIPTION} />
               <div className="mode-card__actions">
-                <Link className="btn btn--white" to={seated ? '/coach' : COACH_UNLIMITED_PATH}>
-                  {seated ? 'Open Coach' : 'Open Instructor Edition'}
+                <Link className="btn btn--white" to={instructorOpenTo}>
+                  {instructorOpenLabel}
                 </Link>
-                <button type="button" className="btn btn--ghost mode-card__learn" onClick={() => setSoon('coach')}>
-                  Learn more about Instructor Edition
-                </button>
               </div>
             </article>
           ) : (
@@ -168,16 +178,13 @@ export function HomePage() {
                 className="mode-card__hit"
                 to="/pro"
                 tabIndex={-1}
-                aria-label={consoleLabel}
+                aria-label="Open Pro Console"
               />
               <ProHomeCopy />
               <div className="mode-card__actions">
                 <Link className="btn btn--white" to="/pro">
-                  {consoleLabel}
+                  Open Pro Console
                 </Link>
-                <button type="button" className="btn btn--ghost mode-card__learn" onClick={() => setSoon('pro')}>
-                  Learn more about Advantage Pro
-                </button>
               </div>
             </article>
           ) : (
@@ -193,6 +200,8 @@ export function HomePage() {
               </div>
             </article>
           )}
+
+          <ProPlusCloudCard open={cloudOpen} />
         </nav>
 
         <div className="home__hints">
@@ -293,22 +302,21 @@ function StudentHomeCard({
 }
 
 /**
- * Advantage Media Edition on /products. Open reads the Media door (useMediaUnlocked):
- * an alpha-media code, or Pro which includes Media. The whole card (keyboard-focusable when
- * locked) opens /media; there is no learn-more button. Locked shows the price and the alpha
- * line with no buy button, since there is no Media product in Stripe yet.
+ * Advantage Media Edition on /products. Open reads the Media door (useMediaUnlocked).
+ * Locked shows the price, the alpha line, and Learn more, which opens the Media preview.
+ * There is no Media product in Stripe, so there is no buy button.
  */
 function MediaHomeCard({ open }: { open: boolean }) {
   if (open) {
     return (
       <article className="mode-card mode-card--media mode-card--feature">
-        <Link className="mode-card__hit" to={MEDIA_HOME_PATH} tabIndex={-1} aria-label={`Open ${MEDIA_HOME_TITLE}`} />
+        <Link className="mode-card__hit" to={MEDIA_HOME_PATH} tabIndex={-1} aria-label="Open Media Edition" />
         <BeltRail kind="purple" />
         <strong>{MEDIA_HOME_TITLE}</strong>
         <HomeDescription text={MEDIA_HOME_DESCRIPTION} />
         <div className="mode-card__actions">
           <Link className="btn btn--white" to={MEDIA_HOME_PATH}>
-            Open Media
+            Open Media Edition
           </Link>
         </div>
       </article>
@@ -316,11 +324,45 @@ function MediaHomeCard({ open }: { open: boolean }) {
   }
   return (
     <article className="mode-card mode-card--media mode-card--locked">
-      <Link className="mode-card__hit" to={MEDIA_HOME_PATH} aria-label={`${MEDIA_HOME_TITLE}, open the Media page`} />
+      <Link className="mode-card__hit" to={TIER_BUY_PATHS.media} aria-label="Advantage Media Edition, coming soon" />
       <BeltRail kind="purple" />
       <strong>{MEDIA_HOME_TITLE}</strong>
       <HomeDescription text={MEDIA_HOME_DESCRIPTION} />
       <p className="mode-card__price">{MEDIA_PRICE_LINE}</p>
+      <AlphaAccessNote note={EDITION_ALPHA_NOTE} display={EDITION_EMAIL_DISPLAY} />
+      <div className="mode-card__actions">
+        <Link className="btn btn--white mode-card__learn" to={TIER_BUY_PATHS.media}>
+          Learn more about Media Edition
+        </Link>
+      </div>
+    </article>
+  );
+}
+
+/** Hosted-storage plan. Open only for an owner or an alpha pass. Nothing is sold from this card. */
+function ProPlusCloudCard({ open }: { open: boolean }) {
+  if (open) {
+    return (
+      <article className="mode-card mode-card--pro mode-card--cloud">
+        <Link className="mode-card__hit" to={PRO_PLUS_CLOUD_PATH} tabIndex={-1} aria-label={PRO_PLUS_CLOUD_OPEN_LABEL} />
+        <BeltRail kind="black" bar="striped" />
+        <strong>{PRO_PLUS_CLOUD_NAME}</strong>
+        <HomeDescription text={PRO_PLUS_CLOUD_DESCRIPTION} />
+        <div className="mode-card__actions">
+          <Link className="btn btn--white" to={PRO_PLUS_CLOUD_PATH}>
+            {PRO_PLUS_CLOUD_OPEN_LABEL}
+          </Link>
+        </div>
+      </article>
+    );
+  }
+  return (
+    <article className="mode-card mode-card--pro mode-card--cloud mode-card--locked">
+      <a className="mode-card__hit" href={alphaRequestMailto()} aria-label="Advantage Pro Plus Cloud, coming soon" />
+      <BeltRail kind="black" bar="striped" />
+      <strong>{PRO_PLUS_CLOUD_NAME}</strong>
+      <HomeDescription text={PRO_PLUS_CLOUD_DESCRIPTION} />
+      <p className="mode-card__price">{PRO_PLUS_CLOUD_PRICE_LINE}</p>
       <AlphaAccessNote note={EDITION_ALPHA_NOTE} display={EDITION_EMAIL_DISPLAY} />
     </article>
   );
@@ -347,9 +389,9 @@ function HomeLines({ lines }: { lines: readonly string[] }) {
 function ProHomeCopy() {
   return (
     <>
-      <BeltRail kind="black" />
+      <BeltRail kind="black" bar="red" />
       <strong>Advantage Pro</strong>
-      <HomeLines lines={PRO_HOME_LINES} />
+      <HomeLines lines={[...PRO_HOME_LINES, PRO_DRIVE_NOTE]} />
     </>
   );
 }
