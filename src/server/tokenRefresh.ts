@@ -136,7 +136,14 @@ export async function handleTokenRefresh(
       absoluteExp,
       emailHint: claims.eh,
       thumbprint: claims.cnf,
-      subs: claims.src === 'seat' || doors.includes('pro') || subs?.state === 'locked' || subs?.state === 'grace' ? subs : undefined,
+      // Owner and owner-test passes are not subscriptions. A seat refresh must
+      // not leave a subs claim on them, or Pro Console closes while the grant is still pro.
+      subs:
+        claims.src === 'owner'
+          ? undefined
+          : claims.src === 'seat' || doors.includes('pro') || subs?.state === 'locked' || subs?.state === 'grace'
+            ? subs
+            : undefined,
       gym: claims.gym,
       sid: claims.sid,
       preset: claims.preset,

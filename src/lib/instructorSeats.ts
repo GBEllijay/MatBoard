@@ -17,7 +17,7 @@
 
 import { readGymName } from './gymName.ts';
 import { legacySeatBlocked } from './seatSunset.ts';
-import { ownerTestActive, subscribeOwnerTest } from './ownerTestGrant.ts';
+import { dropOwnerTestDoors, ownerTestActive, subscribeOwnerTest } from './ownerTestGrant.ts';
 import { SITE_FEEDBACK_EMAIL } from './siteFooter.ts';
 
 /** Default Pro budget for open coach, program director, and instructor seats. */
@@ -727,25 +727,16 @@ export function stripInviteFromAddress(): void {
 
 function armSignedOutToast(): void {
   signedOutToast = true;
+  // Do not store this. A refresh used to bring the "Signed out" strip back
+  // over the logo on every page.
   try {
-    if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(SIGNED_OUT_TOAST_KEY, '1');
+    if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(SIGNED_OUT_TOAST_KEY);
   } catch {
     /* the in-memory toast still shows in this tab */
   }
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new Event(TOAST_EVENT));
 }
-
-function restoreSignedOutToast(): void {
-  try {
-    if (typeof sessionStorage === 'undefined') return;
-    if (sessionStorage.getItem(SIGNED_OUT_TOAST_KEY) === '1') signedOutToast = true;
-  } catch {
-    /* ignore */
-  }
-}
-
-restoreSignedOutToast();
 
 export function readSignedOutToast(): boolean {
   return signedOutToast;
@@ -858,6 +849,8 @@ export function readCurrentSeat(): InstructorSeat | null {
   const id = readSessionSeatId();
   const seat = id ? readArchive().seats.find((row) => row.id === id) : undefined;
   const liveSeat = seat && seat.status !== 'revoked' && !legacySeatBlocked(seat.inviteToken) ? cloneSeat(seat) : null;
+  // Owner test "All tiers" includes a seat preview. It stays signed in while the
+  // owner pass is on. The banner is hidden separately. Sign out drops the preview.
   const live = liveSeat ?? (ownerTestActive('seat') ? ownerTestPreviewSeat() : null);
   const key = live
     ? `${live.id}:${live.status}:${live.presetId ?? ''}:${live.email}:${JSON.stringify(live.permissions)}`
@@ -895,6 +888,9 @@ export function signOutInstructorSeat(): void {
   const seat = id ? readArchive().seats.find((row) => row.id === id) : undefined;
   if (seat) writeSignedOutBlock({ version: 1, token: seat.inviteToken, seatId: seat.id });
   clearDurableSeatSession();
+  // The Owner test preview seat is not in the archive. Drop only that door so
+  // Sign out actually ends it, and leave Pro on the same owner-test grant.
+  dropOwnerTestDoors(['seat']);
   armSignedOutToast();
   stripInviteFromAddress();
   emitSession();

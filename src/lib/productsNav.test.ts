@@ -53,7 +53,7 @@ test('Coach card shows the Instructor Edition title on a brown belt; ids stay co
   assert.doesNotMatch(home, /<strong>Advantage Coach<\/strong>/);
   assert.equal(home.match(/<BeltRail kind="brown" \/>\s*<strong>\{INSTRUCTOR_HOME_TITLE\}<\/strong>/g)?.length, 2);
   assert.match(home, /mode-card mode-card--coach"/);
-  assert.match(home, /to="\/coach"/);
+  assert.match(home, /seated \? '\/coach' : COACH_UNLIMITED_PATH/);
   assert.match(home, /setSoon\('coach'\)/);
   // Same brown as the homepage belt ladder's Instructor tile.
   assert.match(css, /\.belt-rail--brown \{\s*--belt-fill: #6b3a1f;/);
@@ -114,6 +114,8 @@ test('Instructor and Pro read "Learn more about <name>"; Media has no learn-more
   assert.match(home, /<Link className="mode-card__hit" to=\{MEDIA_HOME_PATH\}/);
   assert.equal(home.match(/setSoon\('coach'\)\}>\s*Learn more about Instructor Edition/g)?.length, 2);
   assert.equal(home.match(/setSoon\('pro'\)\}>\s*Learn more about Advantage Pro/g)?.length, 2);
+  assert.match(home, /Open Instructor Edition/);
+  assert.match(home, /COACH_UNLIMITED_PATH/);
   assert.match(home, /Open Coach/);
   assert.match(home, /\{consoleLabel\}/);
   assert.match(home, /Owner test unlock/);

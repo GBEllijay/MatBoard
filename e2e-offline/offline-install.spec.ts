@@ -36,8 +36,8 @@ async function expectRoute(page: Page, route: (typeof LIVE_ROUTES)[number] | '/p
   if (route === '/match') await expect(page.getByRole('link', { name: 'Edit Blue name on Controller' })).toBeVisible();
   else if (route === '/training') await expect(page.getByRole('button', { name: /Work ·/ })).toBeVisible();
   else if (route === '/tournament') await expect(page.getByRole('heading', { name: 'Tournament Software' })).toBeVisible();
-  else if (route === '/suite') await expect(page.getByRole('heading', { name: 'Tournament Management Pro' })).toBeVisible();
-  else if (route === '/coach-unlimited') await expect(page.getByRole('heading', { name: 'Advantage - Coach Unlimited' })).toBeVisible();
+  else if (route === '/suite') await expect(page.getByRole('heading', { name: 'Competition and Tournament Management', exact: true })).toBeVisible();
+  else if (route === '/coach-unlimited') await expect(page.getByRole('heading', { name: 'Instructor Edition', exact: true })).toBeVisible();
   else await expect(page.getByRole('navigation', { name: 'Products' })).toBeVisible();
   await expect(page).toHaveURL(new RegExp(`${route.replace('/', '\\/')}$`));
   await expect(page.getByTestId('entitlement-wait')).toHaveCount(0);

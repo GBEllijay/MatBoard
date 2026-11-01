@@ -62,7 +62,7 @@ export const PRO_CONSOLE_PREVIEW_LABEL = 'Advantage Pro';
 
 /** One line under that shot. The picture is the live four-hub console, not a wireframe. */
 export const PRO_CONSOLE_PREVIEW_NOTE =
-  'Media Console, Advantage Instructor Edition, instructor invites, and Tournament Management Pro.';
+  'Media Console, Advantage Instructor Edition, instructor invites, and Competition and Tournament Management.';
 
 /** Shown on Coming soon. Not a checkout button. */
 export const COACH_LAUNCH_PRICE_NOTE = `Price: ${INSTRUCTOR_DISPLAY_PRICE_LINE} when it launches. Not for sale on this page.`;
