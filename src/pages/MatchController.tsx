@@ -14,15 +14,8 @@ import { useMatchBoard } from '../hooks/useMatchBoard';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useMatchState } from '../hooks/useStores';
 import { CARLOS_THRESHOLD_MAX, CARLOS_THRESHOLD_MIN, type CarlosCelebrationPrefs } from '../lib/carlosCelebration';
-import {
-  END_CUE_OPTIONS,
-  patchAudioPrefs,
-  playSelectedEndCue,
-  playStartCue,
-  playWarningCue,
-  unlockAudio,
-  type EndCue,
-} from '../lib/audio';
+import { playSelectedEndCue, playStartCue, playWarningCue, unlockAudio } from '../lib/audio';
+import { EndCueControls } from '../components/EndCueControls';
 import { declareMatchOutcome, scoreboardPath, visibleOutcomeBanner } from '../lib/bracketBout';
 import { kidsBoardClass } from '../lib/kidsScoreboard';
 import { openDisplayWindow, openOrCastDisplay } from '../lib/cast';
@@ -103,13 +96,6 @@ export function MatchControllerPage() {
     if (!Number.isFinite(minutes) || minutes <= 0 || minutes > 180) return;
     dispatchMatch({ type: 'setDuration', durationMs: minutesToMs(minutes) });
     setCustomOpen(false);
-  };
-
-  // Selection only. Switching cues mid-match must not play a stop sound.
-  // Preview cues below are what play the sound.
-  const chooseMatchEndCue = (cue: EndCue) => {
-    patchAudioPrefs({ endCue: cue });
-    dispatchMatch({ type: 'setEndCue', value: cue });
   };
 
   const onCast = async () => {
@@ -297,23 +283,7 @@ export function MatchControllerPage() {
             />
             Match end sound
           </label>
-          <div className="cue-preview">
-            <p className="cue-preview-label">Match end cue</p>
-            <div className="presets presets--end-cue" role="radiogroup" aria-label="Match end cue">
-              {END_CUE_OPTIONS.map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={match.endCue === option.id}
-                  className={`preset${match.endCue === option.id ? ' preset--on' : ''}`}
-                  onClick={() => chooseMatchEndCue(option.id)}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </div>
+          <EndCueControls label="Match end cue" value={match.endCue} />
           <div className="cue-preview">
             <p className="cue-preview-label">Preview cues</p>
             <div className="presets presets--three" role="group" aria-label="Preview match cues">

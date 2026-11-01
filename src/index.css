@@ -4455,7 +4455,7 @@ main.tree:has(> .tier-home) > .tree__bar {
 
 .presets--end-cue {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 0.8fr) minmax(0, 1.4fr);
   width: 100%;
   gap: 0.55rem;
 }
