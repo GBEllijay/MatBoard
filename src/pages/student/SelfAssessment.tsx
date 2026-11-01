@@ -1,25 +1,32 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { RadarChart } from '../../components/RadarChart';
+import { fundamentalAssessmentScores } from '../../lib/fundamentals';
 import type { StudentProgressReport } from '../../lib/progress/types';
 import { subscribeStudentJournal } from '../../lib/studentDemo';
-import { todayIso } from '../../lib/studentEdition';
+import { fundamentalsBoard, todayIso } from '../../lib/studentEdition';
 import { useScrollToHash } from './chrome';
 import {
   ASSESSMENT_AREAS,
   assessmentAverage,
+  assessmentChartScores,
+  assessmentDraftScores,
   assessmentTrend,
   checkpointLinks,
+  isAssessmentScore,
   loadAssessments,
   removeAssessment,
   saveAssessment,
   writeAssessments,
   type AssessmentEntry,
-  type AssessmentScore,
   type AssessmentScores,
 } from '../../lib/studentAssessment';
 
 type PathFn = (path: string) => string;
+
+function trackerScores(report: StudentProgressReport): Partial<AssessmentScores> {
+  return fundamentalAssessmentScores(fundamentalsBoard(report).flatMap((category) => category.items));
+}
 
 export function SelfAssessment({ report, to }: { report: StudentProgressReport; to: PathFn }) {
   useScrollToHash();
@@ -29,17 +36,21 @@ export function SelfAssessment({ report, to }: { report: StudentProgressReport; 
   const [entries, setEntries] = useState(initial.entries);
   const [date, setDate] = useState(today);
   const [note, setNote] = useState(todayEntry?.note ?? '');
-  const [scores, setScores] = useState<Partial<AssessmentScores>>(todayEntry ? { ...todayEntry.scores } : {});
+  const [scores, setScores] = useState<Partial<AssessmentScores>>(() => assessmentDraftScores(initial.entries, today, today, trackerScores(report)));
   const [error, setError] = useState('');
   const [confirming, setConfirming] = useState<string | null>(null);
   const entriesRef = useRef(entries);
   entriesRef.current = entries;
+  const dateRef = useRef(date);
+  dateRef.current = date;
+  const reportRef = useRef(report);
+  reportRef.current = report;
   useEffect(() => {
     return subscribeStudentJournal(() => {
       const next = loadAssessments(localStorage);
       if (entriesRef.current.length > 0 && next.entries.length === 0) {
         setNote('');
-        setScores({});
+        setScores(assessmentDraftScores([], dateRef.current, todayIso(), trackerScores(reportRef.current)));
         setError('');
       }
       setEntries((current) => (sameEntries(current, next.entries) ? current : next.entries));
@@ -47,15 +58,18 @@ export function SelfAssessment({ report, to }: { report: StudentProgressReport; 
   }, []);
   const links = checkpointLinks(report);
   const savedOnDate = entries.find((entry) => entry.date === date);
-  const draftReady = ASSESSMENT_AREAS.every((area) => isTap(scores[area.id]));
-  const radarScores = draftReady ? (scores as AssessmentScores) : (savedOnDate?.scores ?? entries[0]?.scores ?? null);
+  const radarScores = assessmentChartScores(scores, savedOnDate?.scores, entries[0]?.scores);
   const trend = assessmentTrend(entries);
+  const mindsetOpen =
+    !savedOnDate &&
+    !isAssessmentScore(scores.mindset) &&
+    ASSESSMENT_AREAS.some((area) => area.id !== 'mindset' && isAssessmentScore(scores[area.id]));
 
   const applyDate = (value: string) => {
     const found = entries.find((entry) => entry.date === value);
     setDate(value);
     setNote(found?.note ?? '');
-    setScores(found ? { ...found.scores } : {});
+    setScores(assessmentDraftScores(entries, value, today, trackerScores(report)));
     setError('');
   };
 
@@ -74,6 +88,9 @@ export function SelfAssessment({ report, to }: { report: StudentProgressReport; 
       <div className="assess-lead">
         <h1>Self-assessment</h1>
         <p className="student-quiet">Rate the work in front of you. 1 is early. 5 is ready to rely on. Saved on this phone by date.</p>
+        <p className="student-quiet">
+          Today's ratings start from Fundamentals. Mindset is rated on this page. A day you already saved stays as you saved it.
+        </p>
       </div>
 
       {entries.length ? (
@@ -84,7 +101,10 @@ export function SelfAssessment({ report, to }: { report: StudentProgressReport; 
       ) : null}
 
       <div className="assess-visuals">
-        <RadarChart scores={radarScores} />
+        <RadarChart
+          scores={radarScores}
+          note={mindsetOpen ? 'Mindset is not on the Fundamentals list. Rate it here, then save this day.' : undefined}
+        />
         <Trend points={trend} />
       </div>
 
@@ -153,7 +173,7 @@ export function SelfAssessment({ report, to }: { report: StudentProgressReport; 
                 setConfirming(null);
                 if (entry.date === date) {
                   setNote('');
-                  setScores({});
+                  setScores(assessmentDraftScores(next.entries, date, today, trackerScores(report)));
                 }
               }}
             />
@@ -170,10 +190,6 @@ function sameEntries(left: AssessmentEntry[], right: AssessmentEntry[]): boolean
     const other = right[index];
     return other && entry.id === other.id && entry.date === other.date && entry.note === other.note;
   });
-}
-
-function isTap(value: unknown): value is AssessmentScore {
-  return value === 1 || value === 2 || value === 3 || value === 4 || value === 5;
 }
 
 function HistoryRow({

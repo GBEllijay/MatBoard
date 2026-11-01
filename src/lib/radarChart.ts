@@ -4,7 +4,7 @@
  * refactor does not move the shape.
  */
 
-import { ASSESSMENT_AREAS, type AssessmentScores } from './studentAssessment.ts';
+import { ASSESSMENT_AREAS, isAssessmentScore, type AssessmentScores } from './studentAssessment.ts';
 
 export const RADAR_CENTER = 160;
 export const RADAR_RADIUS = 108;
@@ -24,9 +24,14 @@ export function radarPoints(values: readonly number[], radius = RADAR_RADIUS): s
     .join(' ');
 }
 
-export function selfAssessmentShapeLabel(scores: AssessmentScores | null): string {
-  if (!scores) return 'Self-assessment shape. No saved ratings yet.';
-  const bits = ASSESSMENT_AREAS.map((area) => `${area.label} ${scores[area.id]}`).join(', ');
+export function selfAssessmentShapeLabel(scores: Partial<AssessmentScores> | null): string {
+  if (!scores || !ASSESSMENT_AREAS.some((area) => isAssessmentScore(scores[area.id]))) {
+    return 'Self-assessment shape. No saved ratings yet.';
+  }
+  const bits = ASSESSMENT_AREAS.map((area) => {
+    const value = scores[area.id];
+    return isAssessmentScore(value) ? `${area.label} ${value}` : `${area.label} not rated`;
+  }).join(', ');
   return `Self-assessment shape, ${bits}`;
 }
 
