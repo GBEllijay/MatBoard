@@ -131,7 +131,11 @@ export default defineConfig({
           {
             // Saved after an authorized fetch. Offline opens use this copy.
             // The browser's token check is the offline gate (D10).
-            urlPattern: /\/paid\/.+\.(?:js|css)$/,
+            // The prefetch itself sends Authorization. This route must not also
+            // store that response: a second write races the page's cache.put and
+            // can drop the file before an offline import reads it.
+            urlPattern: ({ request, url }: { request: { headers?: { has?: (name: string) => boolean } }; url: { pathname: string } }) =>
+              request.headers?.has?.('authorization') !== true && /\/paid\/.+\.(?:js|css)$/.test(url.pathname),
             handler: 'CacheFirst',
             options: {
               cacheName: 'paid-chunks',

@@ -91,6 +91,7 @@ test('paid screen code is outside the precache and the public bundle', { timeout
   assert.equal(sw.includes('maxAgeSeconds:86400'), false, 'pages must not expire after 24h');
   assert.equal(/createHandlerBoundToURL/.test(sw), false, 'no cache-first navigation fallback');
   assert.match(sw, /ignoreVary:!0/, 'a saved paid file must match an import that sends no Authorization header');
+  assert.match(sw, /has\("authorization"\)/, 'the worker must not cache the authorized prefetch; the page writes that copy once');
   const sounds = publicFiles.filter((file) => file.includes(`${sep}sounds${sep}`) && file.endsWith('.mp3'));
   assert.ok(sounds.length >= 9, `the shipped sound files should all be in the build (saw ${sounds.length})`);
   for (const file of sounds) {

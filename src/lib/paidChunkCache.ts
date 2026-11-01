@@ -109,7 +109,7 @@ async function prefetchOne(url: string, token: string): Promise<void> {
     headers: { Authorization: `Bearer ${token}` },
     cache: 'reload',
   });
-  if (!response.ok) return;
+  if (!response.ok || !storedTokenIs(token)) return;
   const cache = await caches.open(PAID_CHUNK_CACHE);
   await cache.put(url, response.clone());
 }
