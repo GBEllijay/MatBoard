@@ -4,6 +4,7 @@
  * An undated stripe does not show a stand-in date.
  */
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { Window } from 'happy-dom';
 import { act, type ReactNode } from 'react';
@@ -209,6 +210,30 @@ test('tapping a stripe opens an editor for an optional date and photo', async ()
     await click([...dialog.querySelectorAll('button')].find((button) => button.textContent === 'Close') as HTMLButtonElement);
     assert.equal(document.querySelector('[role="dialog"]'), null);
     assert.equal(labeled('Stripe 2').getAttribute('aria-pressed'), 'true');
+  } finally {
+    unmount(mounted);
+  }
+});
+
+test('a saved stripe photo stays visible on the belt', () => {
+  const css = readFileSync('src/pages/student/beltWeave.css', 'utf8');
+  const start = css.indexOf(':is(.student.student--rank, .s-belt-mark) .rank-stripe-thumb');
+  const rule = css.slice(start, css.indexOf('}', start));
+  assert.doesNotMatch(rule, /clip:\s*rect/);
+  assert.match(rule, /border-radius:\s*50%/);
+  assert.match(rule, /width:\s*20px/);
+  const report = setRankTapeCount(blankStudentReport(18), 1, 19);
+  saveStudentReport(localStorage, report);
+  localStorage.setItem(RANK_PHOTO_KEY, JSON.stringify({ tapes: { white: [[STRIPE_PHOTO], [], [], []] } }));
+  const mounted = mount(<RankPage />);
+  try {
+    const onBelt = document.querySelector('img.rank-stripe-saved__thumb');
+    assert.ok(onBelt instanceof HTMLImageElement);
+    assert.equal(onBelt.getAttribute('alt'), 'White stripe 1 photo');
+    assert.equal(onBelt.getAttribute('src'), STRIPE_PHOTO);
+    const badge = document.querySelector('img.rank-stripe-thumb');
+    assert.ok(badge instanceof HTMLImageElement);
+    assert.equal(badge.getAttribute('src'), STRIPE_PHOTO);
   } finally {
     unmount(mounted);
   }
@@ -661,17 +686,12 @@ test('Carlos congratulates a blue-belt graduation once, and not a white or purpl
   }
 });
 
-test('a kids profile shows the gym name instead of a photo until a parent turns the photo on', async () => {
+test('a kids profile shows her photo on this phone, and reports stay off until a parent turns that on', async () => {
   const report = setBeltMode(blankStudentReport(50), 'kids', 51);
   report.profile.gymName = 'North Gym';
   saveStudentReport(localStorage, report);
-  localStorage.setItem(
-    'matboard.studentPortrait.v1',
-    JSON.stringify({
-      version: 1,
-      dataUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
-    }),
-  );
+  const portrait = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  localStorage.setItem('matboard.studentPortrait.v1', JSON.stringify({ version: 1, dataUrl: portrait }));
   const mounted = mount(<ProfilePage />, '/student/profile?student=1');
   try {
     assert.ok(document.querySelector('[aria-label="Kid or Adult"]'));
@@ -682,12 +702,31 @@ test('a kids profile shows the gym name instead of a photo until a parent turns 
     assert.match(document.body.textContent ?? '', /Illegal under 16/);
     assert.match(document.body.textContent ?? '', /coach or parent/);
     assert.doesNotMatch(document.body.textContent ?? '', /Gracie Barra|Alliance/);
-    assert.equal(document.querySelector('img[alt="Profile photo"]'), null);
-    assert.match(document.querySelector('.profile-corner__name')?.textContent ?? '', /North Gym/);
+    const avatar = document.querySelector('img.profile-avatar');
+    assert.ok(avatar instanceof HTMLImageElement);
+    assert.equal(avatar.getAttribute('src'), portrait);
+    assert.equal(document.querySelector('.profile-corner img[alt="Profile photo"]')?.getAttribute('src'), portrait);
+    assert.match(document.body.textContent ?? '', /Change photo/);
+    assert.equal(buttonNamed('Remove photo').textContent?.trim(), 'Remove photo');
+    const photoSwitch = [...document.querySelectorAll('[role="switch"]')].find((node) => node.textContent?.includes('Photo on reports'));
+    assert.equal(photoSwitch?.getAttribute('aria-checked'), 'false');
     await click(buttonNamed('Adult'));
     assert.match(document.body.textContent ?? '', /Your history stays/);
     await click(buttonNamed('Stay'));
     assert.equal(buttonNamed('Kid').getAttribute('aria-pressed'), 'true');
+  } finally {
+    unmount(mounted);
+  }
+});
+
+test('a kids profile with no photo shows the gym name in the corner', () => {
+  const report = setBeltMode(blankStudentReport(52), 'kids', 53);
+  report.profile.gymName = 'North Gym';
+  saveStudentReport(localStorage, report);
+  const mounted = mount(<ProfilePage />, '/student/profile?student=1');
+  try {
+    assert.equal(document.querySelector('img.profile-avatar'), null);
+    assert.match(document.querySelector('.profile-corner__name')?.textContent ?? '', /North Gym/);
   } finally {
     unmount(mounted);
   }
