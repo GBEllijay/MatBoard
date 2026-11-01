@@ -8,6 +8,7 @@ import { HomeMark } from '../components/HomeMark';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { useCurrentSeat } from '../components/SeatSessionBar';
 import { SiteFooter } from '../components/SiteFooter';
+import { unlinkBracketBout } from '../lib/bracketBout';
 import { coachToolVisible } from '../lib/instructorSeats';
 import {
   lessonRevisionLabel,
@@ -56,11 +57,16 @@ export function CoachUnlimitedPage() {
         <PlayExitMark to="/pro" />
         <HomeMark to={PRODUCTS_PATH} />
         <section className="suite instructor-hub">
-          <BeltHeader kind="brown" worn title="Advantage - Coach Unlimited" />
+          <BeltHeader kind="brown" worn title="Instructor Edition" />
           <nav className="instructor-jumps" aria-label={INSTRUCTOR_COACH_ENTRY}>
             <div className="pro-hubs">
               {tools.map((tool) => (
-                <Link key={tool.to} className="pro-hub" to={tool.to}>
+                <Link
+                  key={tool.to}
+                  className="pro-hub"
+                  to={tool.to}
+                  onClick={tool.clearBout ? () => unlinkBracketBout() : undefined}
+                >
                   <BeltRail kind={tool.belt} stripes={'stripes' in tool ? tool.stripes : undefined} />
                   <span>{tool.title}</span>
                 </Link>

@@ -187,7 +187,7 @@ test('Coach Unlimited and Pro lesson plans use the same hide screen', async ({ p
   await expect(page).toHaveURL(/\/coach-unlimited$/);
 
   await page.goto('/pro');
-  await page.getByRole('link', { name: 'Advantage Coach Unlimited', exact: true }).click();
+  await page.getByRole('link', { name: 'Advantage Instructor Edition', exact: true }).click();
   await page.getByRole('link', { name: 'Daily Lesson Plan', exact: true }).click();
   await openLesson(page, page.url());
   await expect(page).toHaveURL(/plan=unlimited/);

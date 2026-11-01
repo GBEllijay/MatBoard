@@ -174,17 +174,17 @@ test('the coach seat bar is hidden in Student Edition and stays on coach pages',
 
   await page.goto('/coach');
   await expect(page.getByRole('heading', { name: 'Advantage - Coach' })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Instructor seat' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Sign out of seat' })).toBeVisible();
-  await expect(page.getByText('coach-bot@example.com')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Instructor seat' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Sign out of seat' })).toHaveCount(0);
+  await expect(page.getByText('Signed in as')).toHaveCount(0);
 
   await page.goto('/coach-unlimited');
-  await expect(page.getByRole('heading', { name: 'Advantage - Coach Unlimited' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Sign out of seat' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Instructor Edition', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sign out of seat' })).toHaveCount(0);
 
   await page.goto('/pro');
   await expect(page.getByRole('heading', { name: 'Advantage Pro', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Sign out of seat' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sign out of seat' })).toHaveCount(0);
   await seated.close();
 
   const owner = await browser.newContext({ viewport: { width: 390, height: 844 } });

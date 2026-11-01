@@ -1,4 +1,5 @@
-import { ENTITLEMENT_TOKEN_KEY, acceptServerToken, readDeviceId } from './entitlement.ts';
+import { ENTITLEMENT_TOKEN_KEY, acceptServerToken, entitlementSnapshot, readDeviceId } from './entitlement.ts';
+import { ownerPassOutranksSeat } from './ownerPassRank.ts';
 import {
   acceptInstructorInvite,
   installAcceptedSeat,
@@ -111,6 +112,8 @@ export async function acceptSignedSeat(invite: string): Promise<boolean> {
       presetId: preset,
       inviteToken: invite,
     });
+    // The seat stays signed in locally. It must not replace an owner or alpha-pro pass.
+    if (ownerPassOutranksSeat(entitlementSnapshot().claims)) return true;
     return acceptServerToken(body.token);
   } catch {
     return false;

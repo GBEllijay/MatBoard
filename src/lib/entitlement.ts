@@ -457,7 +457,11 @@ export function bootEntitlement(): void {
       const claims = verified;
       const token = readItem(ENTITLEMENT_TOKEN_KEY) ?? '';
       void import('./paidChunkCache.ts')
-        .then((mod) => mod.syncPaidChunkCache(claims, token))
+        .then((mod) => {
+          // Owner test or a code can land while this import is still loading.
+          if ((readItem(ENTITLEMENT_TOKEN_KEY) ?? '') !== token) return;
+          return mod.syncPaidChunkCache(claims, token);
+        })
         .catch(() => undefined);
     }
     if (verified && nowMs() >= verified.refresh_after * 1000) {
