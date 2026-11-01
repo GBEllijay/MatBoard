@@ -10,7 +10,7 @@ import { initRankingSync } from './lib/rankingStore';
 import { initRosterSync } from './lib/rosterStore';
 import { initScheduleSync } from './lib/scheduleStore';
 import { initTournamentSync } from './lib/tournamentStore';
-import { requestPersistentStorage, setPlaybackAudioSession } from './lib/offlineShell';
+import { setPlaybackAudioSession, watchInstalledPersistence } from './lib/offlineShell';
 import './index.css';
 
 installStudentMockGuard();
@@ -21,7 +21,7 @@ initRankingSync();
 void initScheduleSync();
 registerSW({ immediate: true });
 setPlaybackAudioSession();
-void requestPersistentStorage().catch(() => undefined);
+watchInstalledPersistence();
 
 void settleOneDriveRedirect()
   .catch(() => undefined)

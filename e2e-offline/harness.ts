@@ -1,4 +1,5 @@
 import http from 'node:http';
+import net from 'node:net';
 import type { Socket } from 'node:net';
 import type { BrowserContext, Page } from '@playwright/test';
 import { issueToken } from '../src/server/tokenIssue.ts';
@@ -123,6 +124,13 @@ export async function installWithPass(context: BrowserContext): Promise<{ page: 
     { deviceId, token },
   );
   await page.reload();
+  // The offline launch has to verify this pass from the saved public key.
+  // A missing key, or a pass the check deleted, must fail here rather than hang.
+  await page.waitForFunction(() => {
+    const token = localStorage.getItem('advantage.entitlement.token');
+    const config = localStorage.getItem('advantage.entitlement.config') ?? '';
+    return Boolean(token) && config.includes('"kty"');
+  });
   // A Pro pass may open every paid screen: wait until each listed file is saved.
   const files = Object.keys(((await (await page.request.get(`${BASE}/paid/manifest.json`)).json()) as { files: object }).files);
   await page.waitForFunction(async (expected) => {
@@ -131,6 +139,20 @@ export async function installWithPass(context: BrowserContext): Promise<{ page: 
     return expected.every((name) => saved.has(`/paid/${name}`));
   }, files);
   return { page, token };
+}
+
+/** The browser's front door is gone. context.setOffline alone does not stop the worker. */
+export async function assertProxyDown(): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const socket = net.connect({ host: '127.0.0.1', port: PROXY_PORT });
+    const finish = (error?: Error) => {
+      socket.destroy();
+      if (error) reject(error);
+      else resolve();
+    };
+    socket.on('connect', () => finish(new Error('offline test left the server accepting connections')));
+    socket.on('error', () => finish());
+  });
 }
 
 /** Every URL the tab passed through, client-side redirects included. */

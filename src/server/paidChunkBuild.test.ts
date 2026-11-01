@@ -85,10 +85,18 @@ test('paid screen code is outside the precache and the public bundle', { timeout
     assert.ok(precached.has(rel), `${rel} is shipped but not precached`);
   }
   // Navigations: network first, precached shell on failure or after 4s. No 24h expiry.
-  assert.match(sw, /app-shell-nav/);
+  // "/" is not mapped onto index.html by the precache (that path is cache-first).
+  assert.match(sw, /directoryIndex:null/);
   assert.match(sw, /caches\.match\("\/index\.html",\{ignoreSearch:!0\}\)/);
   assert.equal(sw.includes('maxAgeSeconds:86400'), false, 'pages must not expire after 24h');
   assert.equal(/createHandlerBoundToURL/.test(sw), false, 'no cache-first navigation fallback');
+  assert.match(sw, /ignoreVary:!0/, 'a saved paid file must match an import that sends no Authorization header');
+  const sounds = publicFiles.filter((file) => file.includes(`${sep}sounds${sep}`) && file.endsWith('.mp3'));
+  assert.ok(sounds.length >= 9, `the shipped sound files should all be in the build (saw ${sounds.length})`);
+  for (const file of sounds) {
+    const rel = file.slice(dist.length + 1).split(sep).join('/');
+    assert.ok(precached.has(rel), `${rel} must be precached`);
+  }
 
   // Home-screen install: public manifest, opens fullscreen, icons ship, linked from index.html.
   const manifest = JSON.parse(readFileSync(join(dist, 'manifest.webmanifest'), 'utf8')) as {

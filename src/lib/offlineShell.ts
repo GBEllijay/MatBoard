@@ -69,3 +69,33 @@ export function setPlaybackAudioSession(
     return false;
   }
 }
+
+type InstallEventTarget = {
+  addEventListener?: (type: string, listener: () => void) => void;
+};
+
+/**
+ * Ask once for this launch, and again when the coach installs from this tab.
+ * `ask(true)` means "this tab just became an install", even if display-mode
+ * has not flipped yet. A missing event target is ignored.
+ */
+export function bindAppInstalledPersistence(
+  ask: (installed?: boolean) => void,
+  target: InstallEventTarget | undefined,
+): void {
+  ask();
+  try {
+    target?.addEventListener?.('appinstalled', () => ask(true));
+  } catch {
+    /* a browser without the event is unchanged */
+  }
+}
+
+/** Persistent storage for an installed window, including an install that happens on this visit. */
+export function watchInstalledPersistence(
+  target: InstallEventTarget | undefined = typeof window === 'undefined' ? undefined : window,
+): void {
+  bindAppInstalledPersistence((installed) => {
+    void requestPersistentStorage(installed).catch(() => undefined);
+  }, target);
+}

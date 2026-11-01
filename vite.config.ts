@@ -1,10 +1,17 @@
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { createAppShellHandler, createAppShellNavigation } from './src/server/appShellSw.ts';
 import { cardPagePlugin } from './src/server/cardPagePlugin.ts';
 import { halfOffPagePlugin } from './src/server/halfOffPagePlugin.ts';
 import { paidChunkPlugin } from './src/server/paidChunkPlugin.ts';
+import { ONETIME_FAIL_OPEN_DAYS, ONETIME_TOKEN_DAYS } from './src/server/paywallDecisions.ts';
 import { whitePurchaseApiPlugin } from './src/server/devApiPlugin.ts';
+
+const appShellNavigation = createAppShellNavigation();
+const appShellHandler = createAppShellHandler();
+/** Saved paid files may sit this long. Matches the longest offline window already issued (30-day token + 90-day fail-open). Opening them still depends on the pass. */
+const PAID_CHUNK_CACHE_MAX_AGE_SECONDS = (ONETIME_TOKEN_DAYS + ONETIME_FAIL_OPEN_DAYS) * 24 * 60 * 60;
 
 /** Build id written into the app and into /version.json (Cache-Control: no-store). */
 function matboardBuildStamp(): Plugin {
@@ -110,11 +117,12 @@ export default defineConfig({
         ],
         // Biggest app chunk is ~1.7 MB; keep headroom so nothing is silently skipped.
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
-        // Workbox's own fallback route is cache-first. The 'app-shell-nav' route below
-        // keeps network-first navigations and uses the precached shell offline.
+        // Workbox's own fallback route is cache-first. appShellHandler below is
+        // network-first and uses the precached shell only when the network fails.
         navigateFallback: null,
-        // Inert while navigateFallback is null; the app-shell-nav route below applies the same exclusions.
-        // /card is the lightweight card.html page. Keep it off any app-shell fallback.
+        // Do not map "/" onto the precached index.html. That match is cache-first,
+        // so the home screen would ignore the network until the next worker.
+        directoryIndex: null,
         navigateFallbackDenylist: [/^\/api\//, /^\/paid\//, /^\/card\/?(?:$|\?)/, /^\/half-off\/?(?:$|\?)/],
         skipWaiting: true,
         clientsClaim: true,
@@ -133,7 +141,7 @@ export default defineConfig({
               // Cache Storage is this browser's own; the token check in
               // preparePaidImport still decides whether the import may run.
               matchOptions: { ignoreVary: true },
-              expiration: { maxEntries: 40, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              expiration: { maxEntries: 40, maxAgeSeconds: PAID_CHUNK_CACHE_MAX_AGE_SECONDS },
               cacheableResponse: { statuses: [200] },
             },
           },
@@ -143,23 +151,9 @@ export default defineConfig({
             // precached index.html of this deploy, which always matches the
             // precached JS/CSS. No per-URL HTML copy is kept, so an old page can
             // never point at chunks a newer deploy has already cleaned up.
-            urlPattern: ({ request, url }) =>
-              request.mode === 'navigate' && !/^\/(?:api|paid)\//.test(url.pathname) && !/^\/(?:card|half-off)(?:\/|\.html)?$/.test(url.pathname),
-            handler: 'NetworkFirst',
-            options: {
-              // Nothing is ever written here (cacheWillUpdate returns null). The
-              // lookup that NetworkFirst makes on failure or timeout is answered
-              // with the precached shell instead.
-              cacheName: 'app-shell-nav',
-              networkTimeoutSeconds: 4,
-              plugins: [
-                {
-                  cacheWillUpdate: async () => null,
-                  cachedResponseWillBeUsed: async ({ cachedResponse }) =>
-                    cachedResponse ?? (await caches.match('/index.html', { ignoreSearch: true })) ?? null,
-                },
-              ],
-            },
+            // /api and /paid are excluded. /card and /half-off are separate pages.
+            urlPattern: appShellNavigation,
+            handler: appShellHandler,
           },
           {
             // /card and /half-off are their own small pages. Last good copy offline.

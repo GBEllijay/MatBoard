@@ -89,13 +89,57 @@ test('a rolled-back clock never opens a paid screen', () => {
 });
 
 test('route guards wait only while a saved pass is being checked', async () => {
-  const { entitlementSettled, setEntitlementReadyForTests, ENTITLEMENT_TOKEN_KEY } = await import('./entitlement.ts');
+  const { entitlementReady, entitlementSettled, setEntitlementReadyForTests, ENTITLEMENT_TOKEN_KEY } = await import('./entitlement.ts');
+  const wasReady = entitlementReady();
   local.clear();
   setEntitlementReadyForTests(false);
-  assert.equal(entitlementSettled(), true, 'no saved pass: nothing to wait for, redirect as before');
-  local.setItem(ENTITLEMENT_TOKEN_KEY, 'saved.pass.value');
-  assert.equal(entitlementSettled(), false, 'saved pass not checked yet: wait');
-  setEntitlementReadyForTests(true);
-  assert.equal(entitlementSettled(), true);
+  try {
+    assert.equal(entitlementSettled(), true, 'no saved pass: nothing to wait for, redirect as before');
+    local.setItem(ENTITLEMENT_TOKEN_KEY, 'saved.pass.value');
+    assert.equal(entitlementSettled(), false, 'saved pass not checked yet: wait');
+    setEntitlementReadyForTests(true);
+    assert.equal(entitlementSettled(), true);
+  } finally {
+    local.clear();
+    setEntitlementReadyForTests(wasReady);
+  }
+});
+
+test('a saved pass still settles when the network throws, so a guard cannot wait forever', async () => {
+  const {
+    bootEntitlement,
+    entitlementReady,
+    entitlementSettled,
+    setEntitlementReadyForTests,
+    setEntitlementConfigForTests,
+    markEntitlementOffline,
+    clearEntitlementToken,
+    ENTITLEMENT_TOKEN_KEY,
+  } = await import('./entitlement.ts');
+  const wasReady = entitlementReady();
+  const originalFetch = globalThis.fetch;
   local.clear();
+  local.setItem(ENTITLEMENT_TOKEN_KEY, 'saved.pass.value');
+  setEntitlementReadyForTests(false);
+  setEntitlementConfigForTests(null);
+  globalThis.fetch = async () => {
+    throw new Error('offline');
+  };
+  try {
+    bootEntitlement();
+    const started = Date.now();
+    while (!entitlementReady() && Date.now() - started < 2000) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    assert.equal(entitlementReady(), true);
+    assert.equal(entitlementSettled(), true);
+    assert.equal(local.getItem(ENTITLEMENT_TOKEN_KEY), 'saved.pass.value', 'an unreachable check must not delete the saved pass');
+  } finally {
+    globalThis.fetch = originalFetch;
+    local.clear();
+    clearEntitlementToken();
+    setEntitlementConfigForTests(null);
+    markEntitlementOffline(false);
+    setEntitlementReadyForTests(wasReady);
+  }
 });
