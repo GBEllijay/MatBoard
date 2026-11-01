@@ -18,7 +18,8 @@ import {
   PRO_MONTHLY_PRICE_CENTS,
   STUDENT_LIST_PRICE_CENTS,
 } from '../lib/productPrices';
-import { PRODUCTS_PATH, STUDENT_EDITION_NAME } from '../lib/productNames';
+import { COACH_UNLIMITED_PATH, INSTRUCTOR_HOME_TITLE, PRODUCTS_PATH, STUDENT_EDITION_NAME } from '../lib/productNames';
+import { TIER_BUY_PATHS } from '../lib/tierBuyPages';
 import { rememberStudentPurchase, STUDENT_PRODUCT_ID, studentEditionEntitled } from '../lib/studentEdition';
 import { buyCheckoutBody } from '../lib/halfOff';
 import type { WhiteEntitlementStatus } from '../lib/whiteEntitlementClient';
@@ -35,7 +36,9 @@ type TierCopy = {
   priceLabel: string;
   priceDetail: string;
   buttonPrice: string;
-  belt: 'grey' | 'blue' | 'black';
+  belt: 'grey' | 'blue' | 'brown' | 'black';
+  /** Public "what's included" page for this tier, when it has one. */
+  infoPath?: string;
   theme: 'white' | 'coach' | 'pro';
   openPath: string;
   openLabel: string;
@@ -55,14 +58,17 @@ const TIERS: Record<TierCopy['product'], TierCopy> = {
   },
   coach: {
     product: 'coach',
-    title: 'Advantage Coach',
+    // Display name only. The checkout product, entitlement key and Stripe price stay "coach".
+    title: INSTRUCTOR_HOME_TITLE,
     priceLabel: COACH_PRICE,
     priceDetail: 'USD — One Time Purchase',
     buttonPrice: COACH_PRICE,
-    belt: 'blue',
+    belt: 'brown',
     theme: 'coach',
-    openPath: '/coach',
-    openLabel: 'Open Coach',
+    // Owner 2026-11-01: the Instructor open link goes to Coach Unlimited (route and gate unchanged).
+    openPath: COACH_UNLIMITED_PATH,
+    openLabel: 'Open Instructor Edition',
+    infoPath: TIER_BUY_PATHS.instructor,
   },
   pro: {
     product: 'pro',
@@ -188,7 +194,7 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
                         ? 'Advantage Student Edition is unlocked on this device.'
                         : "That payment isn't confirmed. Nothing was unlocked."
                       : record?.entitled
-                        ? 'Advantage Coach is unlocked on this device.'
+                        ? `${INSTRUCTOR_HOME_TITLE} is unlocked on this device.`
                         : "That payment isn't confirmed. Nothing was unlocked."}
               </p>
             ) : null}
@@ -213,6 +219,12 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
               <Link to="/privacy">Privacy Policy</Link>
               {' · '}
               <Link to={openPath}>{tier.openLabel}</Link>
+              {tier.infoPath ? (
+                <>
+                  {' · '}
+                  <Link to={tier.infoPath}>See what’s included</Link>
+                </>
+              ) : null}
             </p>
           </form>
         </article>

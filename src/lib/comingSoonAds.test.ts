@@ -59,16 +59,16 @@ function coachSplashText(): string {
 test('Coach ad lists basic Coach tools, student roster, and no checkout price', () => {
   const text = adText('coach');
   const splash = coachSplashText();
-  assert.equal(COMING_SOON_ADS.coach.title, 'Advantage Coach');
+  assert.equal(COMING_SOON_ADS.coach.title, 'Advantage Instructor Edition');
   assert.equal(COMING_SOON_ADS.coach.kicker, '');
   assert.equal(COMING_SOON_LABEL, 'Coming Soon');
   assert.doesNotMatch(splash, /coming soon/i);
   assert.doesNotMatch(text, /coming soon/i);
-  assert.match(COMING_SOON_ADS.coach.lead, /Tools and templates for coaches/);
-  assert.equal(COMING_SOON_ADS.coach.includes, 'Includes everything in Advantage White.');
+  assert.match(COMING_SOON_ADS.coach.lead, /downloadable Daily Lesson Plan/);
+  assert.equal(COMING_SOON_ADS.coach.includes, 'Includes everything in Media, Student and White.');
   assert.match(COMING_SOON_ADS.coach.aside ?? '', /Competition Class Curriculum/);
   assert.match(COMING_SOON_ADS.coach.aside ?? '', /Competition Team Management/);
-  assert.equal(COACH_PREVIEW_LABEL, 'Advantage Coach');
+  assert.equal(COACH_PREVIEW_LABEL, 'Advantage Instructor Edition');
   assert.equal(
     COACH_PREVIEW_NOTE,
     'Daily Lesson Plan, training videos, Technique Tree, Student Roster, and a plain mock tournament.',
@@ -84,7 +84,7 @@ test('Coach ad lists basic Coach tools, student roster, and no checkout price', 
   assert.match(text, /Division/);
   assert.match(text, /gym name or nickname/);
   assert.match(text, /last promotion/);
-  assert.match(text, /No photo on basic Coach/);
+  assert.match(text, /No photo on Instructor Edition/);
   assert.match(text, /No skins and no rankings/);
   assert.doesNotMatch(text, /competitor roster/i);
   assert.doesNotMatch(text, /Daily Techniques/);
@@ -97,7 +97,7 @@ test('Coach ad lists basic Coach tools, student roster, and no checkout price', 
   assert.doesNotMatch(text, /\$\d/);
   assert.equal(
     COACH_LAUNCH_PRICE_NOTE,
-    'Price: $29.99 one-time when it launches. Not for sale on this page.',
+    'Price: $49.99 one-time when it launches. Not for sale on this page.',
   );
   assert.equal(
     ALPHA_TRIAL_NOTE,
@@ -105,10 +105,11 @@ test('Coach ad lists basic Coach tools, student roster, and no checkout price', 
   );
   assert.equal(
     COACH_ALPHA_ACCESS_NOTE,
-    'Coach is in alpha testing. Email advantageappllc@gmail.com to request an alpha code.',
+    'Instructor Edition is in alpha testing. Email advantageappllc@gmail.com to request an alpha code.',
   );
   assert.match(splash, /Email advantageappllc@gmail.com to request an alpha code/);
-  assert.match(splash, /\$29\.99 one-time when it launches/);
+  assert.match(splash, /\$49\.99 one-time when it launches/);
+  assert.doesNotMatch(splash, /Advantage Coach|basic Coach/);
   const splashSource = readFileSync(new URL('../components/ComingSoonAd.tsx', import.meta.url), 'utf8');
   assert.match(splashSource, /ad\.kicker \? <p className="soon-ad__kicker">\{ad\.kicker\}<\/p> : null/);
   assert.doesNotMatch(splashSource, /coming soon/i);
@@ -135,7 +136,7 @@ test('Pro ad lists the live Pro hubs and keeps launch pricing off the feature co
   const text = adText('pro');
   assert.equal(COMING_SOON_ADS.pro.title, 'Advantage Pro');
   assert.equal(COMING_SOON_ADS.pro.lead, PRO_LADDER_DETAIL);
-  assert.equal(COMING_SOON_ADS.pro.includes, 'Includes everything in Advantage Coach and Advantage White.');
+  assert.equal(COMING_SOON_ADS.pro.includes, 'Includes everything in Instructor Edition, Media, Student and White.');
   assert.equal(PRO_CONSOLE_PREVIEW_LABEL, 'Advantage Pro');
   assert.equal(
     PRO_CONSOLE_PREVIEW_NOTE,

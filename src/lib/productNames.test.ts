@@ -100,12 +100,12 @@ test('Home ladder details keep White meaning and a plain Pro subtitle', () => {
   );
   assert.equal(
     COACH_HOME_DESCRIPTION,
-    'Daily lesson plans, training videos, and a technique tree. Includes everything in Advantage White.',
+    'Downloadable daily lesson plans, training videos, and a technique tree. Includes everything in Media, Student and White.',
   );
   assert.doesNotMatch(WHITE_HOME_DESCRIPTION, /White —/);
-  assert.match(COACH_HOME_DESCRIPTION, /lesson plans/);
+  assert.match(COACH_HOME_DESCRIPTION, /^Downloadable daily lesson plans/);
   assert.match(COACH_HOME_DESCRIPTION, /technique tree/);
-  assert.match(COACH_HOME_DESCRIPTION, /everything in Advantage White/);
+  assert.match(COACH_HOME_DESCRIPTION, /everything in Media, Student and White/);
   assert.doesNotMatch(WHITE_HOME_DESCRIPTION, /student/i);
   assert.doesNotMatch(COACH_HOME_DESCRIPTION, /competitor roster/i);
   assert.equal(STUDENT_EDITION_NAME, 'Advantage – Student Edition');

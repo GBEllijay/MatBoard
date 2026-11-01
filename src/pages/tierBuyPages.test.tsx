@@ -10,6 +10,7 @@ import { createRoot } from 'react-dom/client';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { BuyInstructorEditionPage, BuyProEditionPage, BuyStudentEditionPage } from './BuyEdition.tsx';
 import { BuyWhitePage } from './BuyWhite.tsx';
+import { BuyCoachPage } from './BuyTier.tsx';
 
 const dom = new Window({ url: 'http://localhost/buy' });
 const view = dom as unknown as Window & typeof globalThis;
@@ -38,6 +39,7 @@ function mount(entry: string) {
           <Route path="/editions/student" element={<BuyStudentEditionPage />} />
           <Route path="/editions/instructor" element={<BuyInstructorEditionPage />} />
           <Route path="/editions/pro" element={<BuyProEditionPage />} />
+          <Route path="/buy/coach" element={<BuyCoachPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -112,4 +114,66 @@ test('/editions/pro: black belt, $99.99 + $5.99/mo, includes all, alpha line, no
   assert.ok(m.host.querySelector('form.buy__restore'));
   assert.equal(m.host.querySelector('[data-higher-tiers]'), null);
   m.done();
+});
+
+// Regression (owner report 2026-10-31): the Instructor Edition buy page showed Advantage Coach,
+// a blue belt, and an "Open Coach" link. The internal key stays coach; only display changes.
+test('/editions/instructor is its own Instructor page: Daily Lesson Plan first, includes Media/Student/White, no Coach copy', () => {
+  const m = mount('/editions/instructor');
+  const text = m.host.textContent ?? '';
+  assert.doesNotMatch(text, /Advantage Coach|basic Coach|Open Coach/);
+  assert.doesNotMatch(text, /Includes everything in Advantage White\./);
+  assert.match(text, /Includes everything in Media, Student and White\./);
+  const features = [...m.host.querySelectorAll('.buy__features li strong')].map((n) => n.textContent);
+  assert.equal(features[0], 'Daily Lesson Plan');
+  assert.match(m.host.querySelector('.buy__features li')?.textContent ?? '', /Download/);
+  assert.ok(m.host.querySelector('.belt-tip[data-belt="brown"]'));
+  assert.equal(m.host.querySelector('.belt-tip--blue'), null);
+  // Only Pro above it; never a lower tier.
+  const links = [...m.host.querySelectorAll('[data-higher-tiers] a.buy__more')].map((a) => a.getAttribute('href'));
+  assert.deepEqual(links, ['/editions/pro']);
+  m.done();
+});
+
+test('/buy/coach (Stripe return + gated checkout) shows Instructor Edition, brown belt; checkout unchanged', () => {
+  localStorage.clear();
+  const m = mount('/buy/coach');
+  const text = m.host.textContent ?? '';
+  assert.equal(m.host.querySelector('header h2')?.textContent, 'Advantage Instructor Edition');
+  assert.doesNotMatch(text, /Advantage Coach|Open Coach/);
+  assert.ok(m.host.querySelector('header .belt-tip--brown'));
+  assert.equal(m.host.querySelector('.belt-tip--blue'), null);
+  // Checkout button still there and still the Coach Stripe price (no Stripe change in this PR).
+  assert.ok([...m.host.querySelectorAll('button')].some((b) => /Continue to checkout — \$29\.99/.test(b.textContent ?? '')));
+  // Owner 2026-11-01: Open link targets Coach Unlimited; visible label stays Instructor Edition.
+  const open = [...m.host.querySelectorAll('a')].find((a) => a.textContent === 'Open Instructor Edition');
+  assert.equal(open?.getAttribute('href'), '/coach-unlimited');
+  assert.equal(m.host.querySelector('a[href="/coach"]'), null);
+  assert.doesNotMatch(m.host.querySelector('header')?.textContent ?? '', /Coach Unlimited|Advantage Coach/);
+  assert.ok(m.host.querySelector('a[href="/editions/instructor"]'));
+  m.done();
+});
+
+test('/editions/instructor brown header reads "Advantage Instructor Edition", never Coach Unlimited or Advantage Coach', () => {
+  localStorage.clear();
+  const m = mount('/editions/instructor');
+  const header = m.host.querySelector('header.buy__card--tier-brown');
+  assert.ok(header, 'brown belt header');
+  assert.equal(header?.querySelector('h2')?.textContent, 'Advantage Instructor Edition');
+  assert.doesNotMatch(header?.textContent ?? '', /Coach Unlimited|Advantage Coach/);
+  // Locked: no open link.
+  assert.equal(m.host.querySelector('[data-instructor-open]'), null);
+  m.done();
+});
+
+test('/editions/instructor open link targets /coach-unlimited once Instructor (coach) is unlocked', () => {
+  localStorage.clear();
+  localStorage.setItem('advantage.coachUnlocked', '1');
+  const m = mount('/editions/instructor');
+  const open = m.host.querySelector('[data-instructor-open]');
+  assert.equal(open?.getAttribute('href'), '/coach-unlimited');
+  assert.equal(open?.textContent, 'Open Advantage Instructor Edition');
+  assert.equal(m.host.querySelector('h2')?.textContent, 'Advantage Instructor Edition');
+  m.done();
+  localStorage.clear();
 });

@@ -39,7 +39,7 @@ export const EDITION_ALPHA_NOTE = `In alpha testing. Email ${SITE_FEEDBACK_EMAIL
 /** Display casing for the edition cards' mailto link text. */
 export const EDITION_EMAIL_DISPLAY = 'advantageappLLC@gmail.com';
 
-export const COACH_ALPHA_ACCESS_NOTE = alphaAccessNote('Coach');
+export const COACH_ALPHA_ACCESS_NOTE = alphaAccessNote('Instructor Edition');
 
 export const PRO_ALPHA_ACCESS_NOTE = alphaAccessNote('Pro');
 

@@ -13,7 +13,7 @@ import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import { withCheckoutNonce } from '../lib/codeRedeemClient';
 import { buyCheckoutBody } from '../lib/halfOff';
 import { MEDIA_EDITION_CTA_LABEL } from '../lib/mediaEdition';
-import { PRODUCTS_PATH } from '../lib/productNames';
+import { COACH_UNLIMITED_PATH, PRODUCTS_PATH } from '../lib/productNames';
 import { STUDENT_LIST_PRICE_CENTS } from '../lib/productPrices';
 import { alphaRequestMailto } from '../lib/siteFooter';
 import { studentEditionEntitled } from '../lib/studentEdition';
@@ -111,6 +111,12 @@ export function BuyEditionPage({ tier }: { tier: EditionBuyTier }) {
               </a>
             )}
             {entry.alpha ? <AlphaAccessNote note={entry.alpha.note} display={entry.alpha.display} /> : null}
+            {tier === 'instructor' && (coach || pro) ? (
+              // Owner 2026-11-01: Instructor's open link goes to Coach Unlimited. Label stays Instructor.
+              <Link className="btn btn--ghost" to={COACH_UNLIMITED_PATH} data-instructor-open>
+                Open {entry.name}
+              </Link>
+            ) : null}
             {tier === 'student' ? (
               <Link className="btn btn--ghost" to="/student?student=1">
                 Try the demo
