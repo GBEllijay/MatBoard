@@ -76,6 +76,36 @@ export const PRO_PLUS_CLOUD_DESCRIPTION =
 /** Unlocked card button. Owner and alpha only; there is no checkout. */
 export const PRO_PLUS_CLOUD_OPEN_LABEL = 'Open Pro Cloud Plus Console';
 
+/**
+ * Belt line under Advantage Pro Plus Cloud.
+ * Separate from PRO_LADDER_DETAIL, which stays the Advantage Pro blurb.
+ */
+export const PRO_PLUS_CLOUD_BELT_BLURB = 'Gym Owner and Instructors Console, with Advantage Cloud.';
+
+/** Heading of the static block under the four hubs. */
+export const ADVANTAGE_CLOUD_HEADING = 'Advantage Cloud';
+
+/** Status beside that heading. Plain text, not a control. */
+export const ADVANTAGE_CLOUD_STATUS = 'Coming soon';
+
+/** Lead above the four upload steps. */
+export const ADVANTAGE_CLOUD_UPLOAD_LEAD = 'How uploading will work';
+
+/** The four upload steps. No button runs them yet. */
+export const ADVANTAGE_CLOUD_UPLOAD_STEPS = [
+  'Pick a photo or video on this phone.',
+  'Add it from Media Console, Gallery, Events, or Pro Shop.',
+  'Advantage saves that file in Advantage Cloud.',
+  'The gym TV plays it from Advantage Cloud.',
+] as const;
+
+/**
+ * Note under the steps. This plan does not use the gym's own drive,
+ * and Advantage App LLC does not host a drive the gym owns.
+ */
+export const ADVANTAGE_CLOUD_DRIVE_NOTE =
+  'This subscription does not need Google Drive or OneDrive. Advantage hosts Advantage Cloud. Advantage App LLC does not host or manage a drive you own yourself.';
+
 /** In-app edition picker. The public storefront lives at `/`. */
 export const PRODUCTS_PATH = '/products';
 

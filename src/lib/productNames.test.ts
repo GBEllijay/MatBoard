@@ -17,6 +17,14 @@ import {
   PRO_HOME_DETAIL,
   PRO_HOME_LINES,
   PRO_LADDER_DETAIL,
+  PRO_PLUS_CLOUD_BELT_BLURB,
+  PRO_PLUS_CLOUD_NAME,
+  PRO_PLUS_CLOUD_PATH,
+  ADVANTAGE_CLOUD_DRIVE_NOTE,
+  ADVANTAGE_CLOUD_HEADING,
+  ADVANTAGE_CLOUD_STATUS,
+  ADVANTAGE_CLOUD_UPLOAD_LEAD,
+  ADVANTAGE_CLOUD_UPLOAD_STEPS,
   COACH_HOME_DESCRIPTION,
   STUDENT_EDITION_NAME,
   STUDENT_HOME_DESCRIPTION,
@@ -640,4 +648,41 @@ test('Pro console buttons stay those four labels, in that order, for owner, Pro,
   assert.doesNotMatch(proPage, /Advantage Coach Unlimited/);
   assert.match(soon, /Advantage Instructor Edition/);
   assert.doesNotMatch(soon, /Advantage Coach Unlimited/);
+});
+
+test('Pro Plus Cloud copy stays off the Advantage Pro blurb', () => {
+  assert.equal(PRO_LADDER_DETAIL, 'Gym Owner and Instructors Console');
+  assert.equal(PRO_PLUS_CLOUD_NAME, 'Advantage Pro Plus Cloud');
+  assert.equal(PRO_PLUS_CLOUD_PATH, '/pro-plus-cloud');
+  assert.equal(PRO_PLUS_CLOUD_BELT_BLURB, 'Gym Owner and Instructors Console, with Advantage Cloud.');
+  assert.notEqual(PRO_PLUS_CLOUD_BELT_BLURB, PRO_LADDER_DETAIL);
+  assert.equal(ADVANTAGE_CLOUD_HEADING, 'Advantage Cloud');
+  assert.equal(ADVANTAGE_CLOUD_STATUS, 'Coming soon');
+  assert.equal(ADVANTAGE_CLOUD_UPLOAD_LEAD, 'How uploading will work');
+  assert.deepEqual(
+    [...ADVANTAGE_CLOUD_UPLOAD_STEPS],
+    [
+      'Pick a photo or video on this phone.',
+      'Add it from Media Console, Gallery, Events, or Pro Shop.',
+      'Advantage saves that file in Advantage Cloud.',
+      'The gym TV plays it from Advantage Cloud.',
+    ],
+  );
+  assert.equal(
+    ADVANTAGE_CLOUD_DRIVE_NOTE,
+    'This subscription does not need Google Drive or OneDrive. Advantage hosts Advantage Cloud. Advantage App LLC does not host or manage a drive you own yourself.',
+  );
+  assert.deepEqual(
+    PRO_HUBS.map((hub) => hub.title),
+    [
+      'Media Console',
+      'Advantage Instructor Edition',
+      'Instructor Invitation and Access Management',
+      'Competition and Tournament Management',
+    ],
+  );
+  assert.deepEqual(
+    PRO_HUBS.map((hub) => hub.belt),
+    ['purple', 'brown', 'black', 'tournament'],
+  );
 });
