@@ -11,7 +11,7 @@ import { useSuiteOrigin } from '../hooks/useSuiteOrigin';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useGymLogo } from '../hooks/useGymBrand';
 import { useTrainingSkin, useTrainingState } from '../hooks/useStores';
-import { useTimerBackdropPrefs, useTimerBackgroundUrl } from '../hooks/useTimerBackdrop';
+import { useEffectiveTimerBackdrop, useTimerBackgroundUrl } from '../hooks/useTimerBackdrop';
 import { unlockAudio } from '../lib/audio';
 import { formatMmSs } from '../lib/format';
 import { fullscreenElement } from '../lib/fullscreen';
@@ -36,7 +36,8 @@ export function TrainingPage() {
   const location = useLocation();
   const arriveFullscreen = wantsRoundsFullscreen(location.state);
   const enterFullscreen = fs.enter;
-  const backdrop = useTimerBackdropPrefs();
+  // Media and up. A locked device shows the default background and no logo (data kept).
+  const { prefs: backdrop } = useEffectiveTimerBackdrop();
   const backgroundUrl = useTimerBackgroundUrl(backdrop.backgroundStamp);
   const gymLogo = timerGymLogoSrc(backdrop, useGymLogo());
   const backdropClass = timerBackdropClasses(Boolean(backgroundUrl), backdrop, Boolean(gymLogo));

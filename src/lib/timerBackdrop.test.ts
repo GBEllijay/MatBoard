@@ -12,8 +12,11 @@ import {
   setTimerShowGymLogo,
   subscribeTimerBackdrop,
   timerBackdropClasses,
+  timerBackdropForAccess,
   timerGymLogoSrc,
 } from './timerBackdrop.ts';
+import { mediaConsoleDoorOpen } from './productNames.ts';
+import { doorsThatOpen, impliedDoors } from './tierImplications.ts';
 
 function memoryStorage() {
   const store = new Map<string, string>();
@@ -135,4 +138,62 @@ test('CSS: picture and scrim sit under the controls; logo mirrors the exit mark'
   assert.match(css, /\.training__gym-logo \{[^}]*width: 64px;[^}]*height: 64px;/);
   assert.match(css, /\.training__gym-logo img \{[^}]*width: var\(--mark-back\);/);
   assert.match(css, /\.training--gym-logo \.play-fs-slot \{/);
+});
+
+test('Media gate: without Media the timer shows the default background and no logo, data kept', () => {
+  const saved = normalizeTimerBackdrop({ version: 1, backgroundStamp: 42, showGymLogo: true, scrim: 'strong' });
+  const copy = JSON.stringify(saved);
+  const locked = timerBackdropForAccess(saved, false);
+  assert.equal(locked.backgroundStamp, null);
+  assert.equal(locked.showGymLogo, false);
+  assert.equal(locked.scrim, 'strong');
+  assert.equal(JSON.stringify(saved), copy, 'saved prefs are not changed');
+  assert.equal(timerBackdropForAccess(saved, true), saved);
+  assert.equal(timerGymLogoSrc(locked, 'data:image/png;base64,AAAA'), null);
+  assert.equal(timerBackdropClasses(false, locked, false), '');
+});
+
+test('Media gate: White and Student do not get it; Media, Pro and owner unlock do', () => {
+  const door = (grants: string[]) => ({
+    proUnlocked: impliedDoors(grants).includes('pro'),
+    mediaUnlocked: impliedDoors(grants).includes('media'),
+    seated: false,
+    seatGrantsMedia: false,
+    programDirectorSeat: false,
+    coachMenus: false,
+  });
+  assert.equal(mediaConsoleDoorOpen(door(['white'])), false, 'White');
+  assert.equal(mediaConsoleDoorOpen(door(['student'])), false, 'Student');
+  assert.equal(mediaConsoleDoorOpen(door(['student', 'white'])), false, 'Student + White');
+  assert.equal(mediaConsoleDoorOpen(door(['media'])), true, 'Media');
+  assert.equal(mediaConsoleDoorOpen(door(['pro'])), true, 'Pro');
+  assert.equal(mediaConsoleDoorOpen(door(['white', 'student', 'coach', 'pro', 'media'])), true, 'owner unlock');
+  const openers = doorsThatOpen('media');
+  assert.ok(openers.includes('media') && openers.includes('pro'));
+  assert.ok(!openers.includes('white') && !openers.includes('student'));
+});
+
+test('Media gate uses the shared Media door check, never a tier list', () => {
+  const hook = fs.readFileSync(new URL('../hooks/useTimerBackdrop.ts', import.meta.url), 'utf8');
+  const options = fs.readFileSync(new URL('../components/TimerBackdropOptions.tsx', import.meta.url), 'utf8');
+  const training = fs.readFileSync(new URL('../pages/Training.tsx', import.meta.url), 'utf8');
+  assert.match(hook, /return mediaConsoleDoorOpen\(useSeatDoor\(\)\);/);
+  for (const src of [hook, options]) {
+    assert.doesNotMatch(src, /useProUnlocked|useCoachUnlocked|useWhiteUnlocked|'coach'|'instructor'|'pro'/);
+  }
+  assert.match(options, /useEffectiveTimerBackdrop\(\)/);
+  assert.match(options, /if \(!unlocked\) return null;/, 'no Media door: the section is absent');
+  assert.doesNotMatch(options, /Unlock with|MEDIA_EDITION_PATH|timer-backdrop--locked/, 'no lock state or upsell');
+  assert.match(training, /useEffectiveTimerBackdrop\(\)/);
+  assert.doesNotMatch(training, /useTimerBackdropPrefs\(\)/);
+  assert.doesNotMatch(options + hook, /clearTimerBackground\(\)[^;]*unlocked|!unlocked[^\n]*clear/, 'locking never deletes the picture');
+});
+
+test('Timer logo: shared gym logo by default, Replace logo once one exists', () => {
+  const options = fs.readFileSync(new URL('../components/TimerBackdropOptions.tsx', import.meta.url), 'utf8');
+  assert.match(options, /useGymLogo\(\)/);
+  assert.match(options, /await saveGymLogoFile\(file\)/);
+  assert.match(options, /Replace logo/);
+  assert.match(options, /Add gym logo/);
+  assert.match(options, /Pro \/ Media Console/);
 });

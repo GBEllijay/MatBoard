@@ -4892,6 +4892,10 @@ label {
   background: rgba(255, 255, 255, 0.06);
 }
 
+.timer-backdrop__logo > span {
+  flex: 1 1 auto;
+}
+
 .timer-backdrop__note,
 .timer-backdrop__hint {
   font-size: 0.85rem;

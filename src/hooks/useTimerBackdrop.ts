@@ -1,6 +1,9 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { mediaConsoleDoorOpen } from '../lib/productNames';
+import { useSeatDoor } from './useSeatDoor';
 import {
   getTimerBackdrop,
+  timerBackdropForAccess,
   readTimerBackground,
   subscribeTimerBackdrop,
   type TimerBackdropPrefs,
@@ -8,6 +11,23 @@ import {
 
 export function useTimerBackdropPrefs(): TimerBackdropPrefs {
   return useSyncExternalStore(subscribeTimerBackdrop, getTimerBackdrop, getTimerBackdrop);
+}
+
+/**
+ * Background & logo are Media and up. Same check as the /media route and Media Console
+ * (mediaConsoleDoorOpen over the Media door), so Pro, the owner unlock and any tier that
+ * implies Media (tierImplications.ts) open it with no list kept here.
+ */
+export function useTimerBackdropUnlocked(): boolean {
+  return mediaConsoleDoorOpen(useSeatDoor());
+}
+
+/** Saved prefs as this device may show them: locked devices get the default (data kept). */
+export function useEffectiveTimerBackdrop(): { prefs: TimerBackdropPrefs; unlocked: boolean } {
+  const saved = useTimerBackdropPrefs();
+  const unlocked = useTimerBackdropUnlocked();
+  const prefs = useMemo(() => timerBackdropForAccess(saved, unlocked), [saved, unlocked]);
+  return { prefs, unlocked };
 }
 
 /**

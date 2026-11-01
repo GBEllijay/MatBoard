@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { DeviceMediaInput } from './DeviceMediaInput';
 import { useGymLogo } from '../hooks/useGymBrand';
-import { useTimerBackdropPrefs, useTimerBackgroundUrl } from '../hooks/useTimerBackdrop';
+import { useEffectiveTimerBackdrop, useTimerBackgroundUrl } from '../hooks/useTimerBackdrop';
 import { saveGymLogoFile } from '../lib/gymLogo';
 import { PHOTO_PICKER_ACCEPT } from '../lib/mediaPicker';
 import { quotaAddNote } from '../lib/storageQuota';
@@ -25,7 +25,8 @@ const LOGO_INPUT_ID = 'timer-logo-library';
  * focused input cannot scroll the options sheet into an empty frame.
  */
 export function TimerBackdropOptions() {
-  const prefs = useTimerBackdropPrefs();
+  // Media and up (owner, Nov 1 2026). Without it the prefs read as default and the blob is not loaded.
+  const { prefs, unlocked } = useEffectiveTimerBackdrop();
   const bgUrl = useTimerBackgroundUrl(prefs.backgroundStamp);
   const gymLogo = useGymLogo();
   const bgRef = useRef<HTMLInputElement>(null);
@@ -65,6 +66,9 @@ export function TimerBackdropOptions() {
       setNote(quotaAddNote(error) ?? 'That file is not a photo this logo can keep.');
     }
   };
+
+  // No Media door (White, Student): the section is not shown at all. No lock, no upsell.
+  if (!unlocked) return null;
 
   return (
     <fieldset className="timer-backdrop">
@@ -135,14 +139,17 @@ export function TimerBackdropOptions() {
       {gymLogo ? (
         <div className="timer-backdrop__logo">
           <img className="timer-backdrop__logo-thumb" src={gymLogo} alt="Gym logo" />
-          <span>Uses the gym logo saved in Media Console.</span>
+          <span>Uses the gym logo saved in Pro / Media Console.</span>
+          <button type="button" className="btn btn--ghost" onClick={() => logoRef.current?.click()}>
+            Replace logo
+          </button>
         </div>
       ) : (
         <div className="timer-backdrop__logo">
           <button type="button" className="btn btn--ghost" onClick={() => logoRef.current?.click()}>
             Add gym logo
           </button>
-          <span>No gym logo saved yet. It is shared with Media Console.</span>
+          <span>No gym logo saved yet. It is shared with Pro / Media Console.</span>
         </div>
       )}
 

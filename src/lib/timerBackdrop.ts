@@ -136,6 +136,17 @@ if (typeof window !== 'undefined') {
 }
 
 /** The corner logo shows only when the toggle is on and a gym logo is saved. */
+/**
+ * Media gate (owner, Nov 1 2026): the custom background, dim and gym logo are Media and up.
+ * A device that loses the Media door shows the skin default and no logo. This only changes
+ * what is shown. The saved picture and settings stay on the device and come back on unlock.
+ */
+export function timerBackdropForAccess(prefs: TimerBackdropPrefs, unlocked: boolean): TimerBackdropPrefs {
+  if (unlocked) return prefs;
+  if (prefs.backgroundStamp == null && !prefs.showGymLogo) return prefs;
+  return { ...prefs, backgroundStamp: null, showGymLogo: false };
+}
+
 export function timerGymLogoSrc(prefs: TimerBackdropPrefs, gymLogo: string | null | undefined): string | null {
   if (!prefs.showGymLogo) return null;
   const logo = gymLogo?.trim() ?? '';
