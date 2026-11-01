@@ -157,12 +157,15 @@ test('one Media hub: /media serves Media pass, Pro and owner; /console sends Med
   assert.equal(existsSync(new URL('../pages/MediaHub.tsx', import.meta.url)), false);
   assert.doesNotMatch(app, /MediaHubPage|pages\/MediaHub'/);
   const route = app.slice(app.indexOf('function MediaEditionRoute()'));
-  assert.match(route.slice(0, 200), /return <MediaEditionGate open=\{mediaConsoleDoorOpen\(door\)\} \/>;/);
-  const entry = app.slice(app.indexOf('function MediaConsoleEntryRoute()'));
   assert.match(
-    entry.slice(0, 400),
-    /if \(!door\.seated && !door\.proUnlocked\) return <Navigate to=\{MEDIA_EDITION_PATH\} replace \/>;\s*return <Navigate to="\/pro" replace \/>;/,
+    route.slice(0, 280),
+    /return <MediaEditionGate open=\{paidDoorAgrees\('media-console', mediaConsoleDoorOpen\(door\)\)\} \/>;/,
   );
+  const entry = app.slice(app.indexOf('function MediaConsoleEntryRoute()'));
+  assert.match(entry, /paidDoorAgrees\('media-console', mediaConsoleDoorOpen\(door\)\)/);
+  assert.match(entry, /if \(!door\.seated && !door\.proUnlocked\) return <Navigate to=\{MEDIA_EDITION_PATH\} replace \/>;/);
+  assert.match(entry, /paidDoorAgrees\('pro-console', true\)/);
+  assert.match(entry, /return <Navigate to="\/pro" replace \/>;/);
 });
 
 test('hub keeps Lock Media for a browser holding the Media door', () => {

@@ -140,6 +140,69 @@ export function paidChunkAllowedForClient(
   return false;
 }
 
+/**
+ * The menu and the chunk grant have to name the same screen.
+ * A closed door stays closed. With no token, the door may still open the
+ * confirm screen during amnesty (the import is not sent). With a token, the
+ * door opens only when paidChunkGrant would release that chunk. A coach preset
+ * with Pro closed is not shown Pro Console or Media Console: the token does
+ * not include those hubs, and widening the grant would open them for every
+ * coach seat.
+ */
+export function paidChunkMenuAgrees(input: {
+  claims: EntitlementClaims | null;
+  chunk: PaidChunkId;
+  nowMs: number;
+  doorOpen: boolean;
+  amnesty: boolean;
+}): boolean {
+  if (!input.doorOpen) return false;
+  if (!input.claims) return input.amnesty;
+  return paidChunkGrant(input.claims, input.chunk, input.nowMs);
+}
+
+/** Paid chunk a hub or route downloads. Null when the page is not a paid chunk. */
+export function paidChunkForHref(href: string): PaidChunkId | null {
+  const path = href.split(/[?#]/, 1)[0];
+  if (path === '/pro' || path === '/console' || path === '/media-console') return 'pro-console';
+  if (
+    path === '/media' ||
+    path === '/slideshow' ||
+    path === '/screensaver' ||
+    path === '/schedule' ||
+    path === '/gallery' ||
+    path === '/events' ||
+    path === '/proshop' ||
+    path === '/pro-shop'
+  ) {
+    return 'media-console';
+  }
+  if (path === '/class-history') return 'lesson-cloud';
+  if (path === '/coach-unlimited' || path.startsWith('/coach-unlimited/') || path === '/review') return 'coach-unlimited';
+  return null;
+}
+
+/**
+ * A dynamic import failed. Network drops and stale chunk URLs are worth one
+ * retry. A second failure, or anything else, is the fallback.
+ */
+export function paidImportRetryable(error: unknown, offline: boolean): boolean {
+  if (offline) return true;
+  const message = error instanceof Error ? `${error.name} ${error.message}` : String(error ?? '');
+  return /failed to fetch|networkerror|network request failed|load failed|dynamically imported module|importing a module script failed|chunkloaderror|mime type|unexpected token/i.test(
+    message,
+  );
+}
+
+export function paidImportFailure(
+  error: unknown,
+  offline: boolean,
+  alreadyRetried: boolean,
+): 'retry' | 'offline' | 'failed' {
+  if (!alreadyRetried && paidImportRetryable(error, offline)) return 'retry';
+  return offline ? 'offline' : 'failed';
+}
+
 export type PaidLoadBlock = 'confirm' | 'failed' | 'offline' | 'pending';
 
 /**
