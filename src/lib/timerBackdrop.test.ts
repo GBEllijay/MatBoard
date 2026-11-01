@@ -1,0 +1,138 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import test from 'node:test';
+import {
+  DEFAULT_TIMER_BACKDROP,
+  TIMER_BACKDROP_KEY,
+  TIMER_BACKGROUND_MAX_EDGE,
+  getTimerBackdrop,
+  normalizeTimerBackdrop,
+  patchTimerBackdrop,
+  setTimerScrim,
+  setTimerShowGymLogo,
+  subscribeTimerBackdrop,
+  timerBackdropClasses,
+  timerGymLogoSrc,
+} from './timerBackdrop.ts';
+
+function memoryStorage() {
+  const store = new Map<string, string>();
+  return {
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      store.set(key, value);
+    },
+    removeItem: (key: string) => {
+      store.delete(key);
+    },
+  };
+}
+
+const storage = memoryStorage();
+Object.defineProperty(globalThis, 'localStorage', { value: storage, configurable: true });
+
+const read = (path: string) => fs.readFileSync(new URL(path, import.meta.url), 'utf8');
+
+test('Timer backdrop defaults: skin background, gym logo off, medium dim', () => {
+  storage.removeItem(TIMER_BACKDROP_KEY);
+  const prefs = getTimerBackdrop();
+  assert.equal(prefs.backgroundStamp, null);
+  assert.equal(prefs.showGymLogo, false);
+  assert.equal(prefs.scrim, 'medium');
+  assert.deepEqual(DEFAULT_TIMER_BACKDROP.showGymLogo, false);
+});
+
+test('Junk stored prefs fall back to defaults', () => {
+  assert.deepEqual(normalizeTimerBackdrop(null), DEFAULT_TIMER_BACKDROP);
+  assert.deepEqual(normalizeTimerBackdrop({ showGymLogo: 'yes', scrim: 'neon', backgroundStamp: -4 }), DEFAULT_TIMER_BACKDROP);
+  storage.setItem(TIMER_BACKDROP_KEY, '{not json');
+  assert.deepEqual(getTimerBackdrop(), DEFAULT_TIMER_BACKDROP);
+});
+
+test('Logo toggle and dim level persist and notify listeners', () => {
+  storage.removeItem(TIMER_BACKDROP_KEY);
+  let calls = 0;
+  const off = subscribeTimerBackdrop(() => {
+    calls += 1;
+  });
+  setTimerShowGymLogo(true);
+  setTimerScrim('strong');
+  off();
+  assert.equal(calls, 2);
+  const saved = JSON.parse(storage.getItem(TIMER_BACKDROP_KEY) ?? '{}');
+  assert.equal(saved.showGymLogo, true);
+  assert.equal(saved.scrim, 'strong');
+  assert.equal(getTimerBackdrop().showGymLogo, true);
+  setTimerShowGymLogo(false);
+  assert.equal(getTimerBackdrop().showGymLogo, false);
+  assert.equal(getTimerBackdrop().scrim, 'strong', 'turning the logo off keeps the dim level');
+});
+
+test('Snapshot is stable between reads (useSyncExternalStore)', () => {
+  patchTimerBackdrop({ backgroundStamp: 123 });
+  assert.equal(getTimerBackdrop(), getTimerBackdrop());
+});
+
+test('Corner logo shows only when the toggle is on and a gym logo is saved', () => {
+  const on = { ...DEFAULT_TIMER_BACKDROP, showGymLogo: true };
+  assert.equal(timerGymLogoSrc(DEFAULT_TIMER_BACKDROP, 'data:image/png;base64,AA'), null);
+  assert.equal(timerGymLogoSrc(on, null), null);
+  assert.equal(timerGymLogoSrc(on, ''), null);
+  assert.equal(timerGymLogoSrc(on, 'javascript:alert(1)'), null);
+  assert.equal(timerGymLogoSrc(on, 'data:image/png;base64,AA'), 'data:image/png;base64,AA');
+});
+
+test('Display classes only appear when something custom is set', () => {
+  assert.equal(timerBackdropClasses(false, DEFAULT_TIMER_BACKDROP, false), '');
+  assert.equal(
+    timerBackdropClasses(true, { ...DEFAULT_TIMER_BACKDROP, scrim: 'light' }, true),
+    'training--custom-bg training--scrim-light training--gym-logo',
+  );
+});
+
+test('Background is scaled to a TV edge before it is stored', () => {
+  assert.equal(TIMER_BACKGROUND_MAX_EDGE, 1920);
+});
+
+test('Regression: round timer display keeps every existing control', () => {
+  const page = read('../pages/Training.tsx');
+  for (const needle of [
+    '<PlayExitMark to={exitTo} onExit={exitTraining} />',
+    '<FullscreenChip',
+    'className="training__phase"',
+    'className="training__clock"',
+    'Back to curriculum',
+    '<TrainingOptions onReset',
+    'trainingUsesAdvantageSkin(skin)',
+    'wantsRoundsFullscreen',
+  ]) {
+    assert.ok(page.includes(needle), `Training.tsx still has ${needle}`);
+  }
+  assert.ok(page.includes('training__backdrop'));
+  assert.ok(page.includes('training__gym-logo'));
+});
+
+test('Regression: timer options keep length, break, rounds, sound, skin, reset, and add Background & logo', () => {
+  const options = read('../components/TrainingOptions.tsx');
+  for (const needle of ['Round length', 'Break', 'Rounds', 'Sound', 'Timer skin', 'Reset session', '<TimerBackdropOptions />']) {
+    assert.ok(options.includes(needle), `TrainingOptions still has ${needle}`);
+  }
+  const controller = read('../pages/TrainingController.tsx');
+  assert.ok(controller.includes('<TrainingOptions />'), 'controller still renders the shared options');
+});
+
+test('Timer backdrop reuses the Media Console gym logo, never a copy', () => {
+  const src = read('./timerBackdrop.ts');
+  assert.ok(!src.includes('GYM_LOGO_STORAGE_KEY') && !src.includes("'matboard.gymLogo.v1'"), 'no second logo key');
+  const panel = read('../components/TimerBackdropOptions.tsx');
+  assert.ok(panel.includes('useGymLogo'));
+  assert.ok(panel.includes('saveGymLogoFile'));
+});
+
+test('CSS: picture and scrim sit under the controls; logo mirrors the exit mark', () => {
+  const css = read('../index.css');
+  assert.match(css, /\.training__backdrop,\s*\.training__scrim \{[^}]*position: fixed;[^}]*z-index: 0;/);
+  assert.match(css, /\.training__gym-logo \{[^}]*width: 64px;[^}]*height: 64px;/);
+  assert.match(css, /\.training__gym-logo img \{[^}]*width: var\(--mark-back\);/);
+  assert.match(css, /\.training--gym-logo \.play-fs-slot \{/);
+});
