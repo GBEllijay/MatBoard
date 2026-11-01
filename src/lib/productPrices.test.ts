@@ -43,7 +43,7 @@ test('Student Edition is $19.99 one-time and checkout uses that display price', 
   );
   assert.doesNotMatch(STUDENT_ALPHA_ACCESS_NOTE, /free/i);
   assert.doesNotMatch(STUDENT_PRICE_LINE, /Coach/);
-  assert.deepEqual([...CHECKOUT_PRODUCTS], ['white', 'student', 'coach', 'pro']);
+  assert.deepEqual([...CHECKOUT_PRODUCTS], ['white', 'student', 'coach', 'pro', 'media']);
 });
 
 test('alpha access uses the existing support address', () => {

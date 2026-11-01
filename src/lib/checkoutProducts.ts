@@ -1,6 +1,7 @@
 /** Checkout product keys. Price ids stay in server env, never in this file. */
 
-export const CHECKOUT_PRODUCTS = ['white', 'student', 'coach', 'pro'] as const;
+/** Media Edition joined in Nov 2026 (STRIPE_PRICE_MEDIA). `coach` is the Instructor Edition internally. */
+export const CHECKOUT_PRODUCTS = ['white', 'student', 'coach', 'pro', 'media'] as const;
 
 export type CheckoutProduct = (typeof CHECKOUT_PRODUCTS)[number];
 
@@ -10,6 +11,7 @@ export const CHECKOUT_BUY_PATH: Record<CheckoutProduct, string> = {
   student: '/buy/student',
   coach: '/buy/coach',
   pro: '/buy/pro',
+  media: '/buy/media',
 };
 
 export function isCheckoutProduct(value: string): value is CheckoutProduct {

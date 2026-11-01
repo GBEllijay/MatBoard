@@ -13,6 +13,7 @@ const PRODUCT_GRANTS: Record<string, string[]> = {
   'advantage-student': ['student'],
   'advantage-coach': ['coach'],
   'advantage-pro': ['pro', 'student'],
+  'advantage-media': ['media'],
 };
 
 function json(status: number, body: unknown): Response {

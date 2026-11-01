@@ -150,7 +150,7 @@ test('owner test all, Lock Pro, then owner test again reopens everything', async
   teardown();
 });
 
-test('Lock Coach closes Coach and White and leaves Pro and Student Edition', async () => {
+test('Lock Coach closes Coach and every tier below it (Media, Student Edition, White) and leaves Pro', async () => {
   await signedSetup();
   await runOwnerTest();
   lockCoach();
@@ -160,7 +160,7 @@ test('Lock Coach closes Coach and White and leaves Pro and Student Edition', asy
   assert.equal(coachDoorOpen(false, isCoachUnlocked(), Boolean(readCurrentSeat())), false);
   assert.equal(isProUnlocked(), true);
   assert.equal(isWhiteUnlocked(), false, 'Coach includes White, so Lock Coach closes White');
-  assert.equal(isStudentEditionUnlocked(), true);
+  assert.equal(isStudentEditionUnlocked(), false, 'Coach includes Student Edition (ladder), so Lock Coach closes it');
 
   await runOwnerTest();
   assertAllOpen('after Lock Coach');

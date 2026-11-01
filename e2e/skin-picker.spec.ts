@@ -11,8 +11,6 @@ import { IMPLIED_DOORS } from '../src/lib/tierImplications';
 
 const POLISHED = ['Kids Arcade', 'Kids Sticker', 'Keynote', 'Heavy Metal', 'Brasil', 'Woodblock', 'Reggae', 'Psychedelic', 'Visionary'];
 const POLISHED_TIMER = [...POLISHED.slice(0, 5), 'Calçadão', ...POLISHED.slice(5)];
-/** Instructor follows the Media door in the tier table (PR #339 adds it). */
-const COACH_HAS_MEDIA = (IMPLIED_DOORS.coach as readonly string[]).includes('media');
 
 function matchState(skin = 'MOCK_TOURNAMENT') {
   return {
@@ -108,20 +106,70 @@ test('White timer options: only Classic and Advantage, no popup, lock tiles or u
   await expect(group.getByRole('radio', { name: 'Classic' })).toHaveAttribute('aria-checked', 'true');
 });
 
-test(`Instructor (legacy coach) follows the Media check: ${COACH_HAS_MEDIA ? 'listed' : 'absent until PR #339'}`, async ({ page }) => {
+test('the tier ladder gives Instructor (coach) the Media door', () => {
+  expect(IMPLIED_DOORS.coach).toContain('media');
+});
+
+test('Instructor (legacy coach flag): the controller gets the Skins button and the new families', async ({ page }) => {
   await seed(page, 'coach', { 'matboard.match.v1': JSON.stringify(matchState()) });
   await page.goto('/match/control');
   await expect(page.getByRole('button', { name: 'Reset clock' })).toBeVisible();
-  if (!COACH_HAS_MEDIA) {
-    // Same board as today: Mock-Tournament only, so no picker and no upsell.
-    await expect(page.getByRole('button', { name: /^Scoreboard skins/ })).toHaveCount(0);
-    await expect(page.getByText('Unlock with Media Edition')).toHaveCount(0);
-    return;
-  }
   await page.getByRole('button', { name: /^Scoreboard skins/ }).click();
   const dialog = page.getByRole('dialog', { name: 'Scoreboard skins' });
   await expect(dialog.getByRole('radio')).toHaveText(['Mock-Tournament', ...POLISHED]);
   await expect(dialog.getByRole('link')).toHaveCount(0);
+});
+
+/** Instructor through a coach-only grant: no Media, Pro, White or Student flag; Media comes from the tier table. */
+async function seedCoachOnlyGrant(page: Page, extra: Record<string, string> = {}) {
+  await page.addInitScript(
+    ({ extra }) => {
+      if (sessionStorage.getItem('skin-picker-seeded')) return;
+      sessionStorage.setItem('skin-picker-seeded', '1');
+      for (const key of ['advantage.proUnlocked', 'advantage.whiteUnlocked', 'advantage.studentEditionUnlocked', 'advantage.coachUnlocked']) {
+        localStorage.removeItem(key);
+      }
+      sessionStorage.setItem(
+        'advantage.ownerTest.v1',
+        JSON.stringify({ v: 1, source: 'owner-test', grants: ['coach'], tier: 'coach', expiresAt: new Date(Date.now() + 3_600_000).toISOString() }),
+      );
+      localStorage.setItem('advantage.legacyNoticeDismissed', '1');
+      localStorage.setItem('matboard.tvTip.v1', '1');
+      for (const [k, v] of Object.entries(extra)) localStorage.setItem(k, v);
+    },
+    { extra },
+  );
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+}
+
+test('Instructor (coach-only grant): Skins button on the timer and the scoreboard via the tier table', async ({ page }) => {
+  await seedCoachOnlyGrant(page, {
+    'matboard.training.v1': JSON.stringify(trainingState()),
+    'matboard.trainingSkin.v1': 'themed',
+    'matboard.match.v1': JSON.stringify(matchState()),
+  });
+  await page.goto('/training/control');
+  // Timer: the Classic / Advantage toggle is replaced by the Skins button; the choice carries over.
+  await expect(page.getByRole('radiogroup', { name: 'Timer skin' })).toHaveCount(0);
+  const fieldset = page.getByRole('group', { name: 'Skin' });
+  const button = fieldset.getByRole('button', { name: 'Timer skins, Advantage' });
+  await expect(button).toHaveText('Skins');
+  await button.click();
+  const dialog = page.getByRole('dialog', { name: 'Timer skins' });
+  await expect(dialog.getByRole('radio')).toHaveText(['Classic', 'Advantage', ...POLISHED_TIMER]);
+  await expect(dialog.getByRole('radio', { name: 'Advantage' })).toHaveAttribute('aria-checked', 'true');
+  await expect(dialog.getByRole('link')).toHaveCount(0);
+  await dialog.getByRole('radio', { name: 'Reggae' }).click();
+  expect(await page.evaluate(() => localStorage.getItem('matboard.trainingSkin.v1'))).toBe('reggae');
+  await page.keyboard.press('Escape');
+  // Background & logo (PR #340) stays in the same Options, next to the Skins control.
+  await expect(page.locator('legend', { hasText: 'Background & logo' }).first()).toBeVisible();
+
+  // Scoreboard controller: the same grant opens the Skins button there too.
+  await page.goto('/match/control');
+  await expect(page.getByRole('button', { name: 'Reset clock' })).toBeVisible();
+  await page.getByRole('button', { name: /^Scoreboard skins/ }).click();
+  await expect(page.getByRole('dialog', { name: 'Scoreboard skins' }).getByRole('radio')).toHaveText(['Mock-Tournament', ...POLISHED]);
 });
 
 for (const tier of ['pro'] as const) {

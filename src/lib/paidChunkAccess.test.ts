@@ -81,12 +81,14 @@ test('cancel-at-period-end blocks the screens after the period end', () => {
   );
 });
 
-test('a full owner code opens every paid screen and a coach or student purchase opens none', () => {
+test('a full owner code opens every paid screen; a coach (Instructor) purchase opens Media Console and Coach Unlimited; student opens none', () => {
   assert.deepEqual(
     allowed(claims({ grants: ['white', 'student', 'coach', 'pro'], tier: 'owner', src: 'owner' })),
     [...PAID_CHUNK_IDS],
   );
-  assert.deepEqual(allowed(claims({ grants: ['coach'], tier: 'coach', src: 'stripe' })), []);
+  // Owner 2026-11-01: Coach Unlimited is the Instructor Edition.
+  // Ladder (owner 2026-11-01): Instructor includes Media Edition, so Media Console opens too.
+  assert.deepEqual(allowed(claims({ grants: ['coach'], tier: 'coach', src: 'stripe' })), ['media-console', 'coach-unlimited']);
   assert.deepEqual(allowed(claims({ grants: ['student'], tier: 'student', src: 'stripe' })), []);
   assert.deepEqual(allowed(claims({ grants: ['white'], tier: 'white', src: 'free' })), []);
 });

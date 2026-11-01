@@ -4735,6 +4735,174 @@ label {
   right: 1rem;
 }
 
+/* Round timer custom background (on-device picture) + gym logo corner.
+   Layers: skin colour on main.training → .training__backdrop → .training__scrim → controls.
+   Any skin (Classic, Advantage, a future data-skin) keeps painting main.training underneath. */
+.training__backdrop,
+.training__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.training__backdrop {
+  background-color: #050505;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.training__scrim {
+  --scrim-edge: 0.5;
+  --scrim-core: 0.62;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 50%, rgba(0, 0, 0, var(--scrim-core)) 0%, rgba(0, 0, 0, var(--scrim-edge)) 100%);
+}
+
+.training--scrim-light .training__scrim {
+  --scrim-edge: 0.28;
+  --scrim-core: 0.42;
+}
+
+.training--scrim-strong .training__scrim {
+  --scrim-edge: 0.68;
+  --scrim-core: 0.8;
+}
+
+.training--break .training__scrim {
+  background:
+    linear-gradient(rgba(40, 26, 6, 0.22), rgba(40, 26, 6, 0.22)),
+    radial-gradient(ellipse 70% 60% at 50% 50%, rgba(0, 0, 0, var(--scrim-core)) 0%, rgba(0, 0, 0, var(--scrim-edge)) 100%);
+}
+
+.training--custom-bg .training__clock,
+.training--custom-bg .training__phase,
+.training--custom-bg .training__hint {
+  position: relative;
+  z-index: 1;
+}
+
+.training--custom-bg .training__phase,
+.training--custom-bg .training__hint {
+  position: absolute;
+}
+
+.training--custom-bg .training__clock {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.55), 0 6px 28px rgba(0, 0, 0, 0.75);
+}
+
+.training--custom-bg .training__phase,
+.training--custom-bg .training__hint {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+}
+
+/* Gym logo: mirrors .play-exit (same 64px hit box, 44px mark, corner inset) on the right. */
+.training__gym-logo {
+  position: fixed;
+  top: calc(0.2rem + var(--safe-t));
+  right: calc(0.15rem + var(--safe-r));
+  z-index: 6;
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: radial-gradient(circle at 50% 48%, rgba(8, 10, 16, 0.28) 0%, rgba(8, 10, 16, 0.1) 46%, transparent 70%);
+  opacity: 0.9;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.training__gym-logo img {
+  width: var(--mark-back);
+  height: var(--mark-back);
+  object-fit: contain;
+  display: block;
+  border-radius: 8px;
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.45)) drop-shadow(0 1px 6px rgba(0, 0, 0, 0.7));
+}
+
+/* The Fullscreen chip shares the top-right corner. Park it just left of the logo. */
+.training--gym-logo .play-fs-slot {
+  right: calc(0.55rem + 64px + var(--safe-r));
+}
+
+/* Round timer options: background preview. */
+.timer-backdrop__row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.timer-backdrop__preview {
+  width: 128px;
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background-color: #050505;
+  background-size: cover;
+  background-position: center;
+  display: grid;
+  place-items: center;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.timer-backdrop__preview.has-image::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.timer-backdrop__preview-clock {
+  position: relative;
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.6rem;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+}
+
+.timer-backdrop__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  flex: 1 1 10rem;
+}
+
+.timer-backdrop__logo {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+
+.timer-backdrop__logo-thumb {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.timer-backdrop__logo > span {
+  flex: 1 1 auto;
+}
+
+.timer-backdrop__note,
+.timer-backdrop__hint {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  margin: 0.5rem 0 0;
+}
+
 .sheet {
   position: fixed;
   inset: 0;

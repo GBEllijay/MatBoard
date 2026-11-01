@@ -11,6 +11,10 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { BuyInstructorEditionPage, BuyProEditionPage, BuyStudentEditionPage } from './BuyEdition.tsx';
 import { BuyWhitePage } from './BuyWhite.tsx';
 import { BuyCoachPage } from './BuyTier.tsx';
+import { EXPECTED_ONE_TIME_CENTS } from '../server/stripeCheckout.ts';
+import { INSTRUCTOR_LIST_PRICE_CENTS } from '../lib/productPrices.ts';
+import { INSTRUCTOR_DISPLAY_PRICE_CENTS } from '../lib/tierBuyPages.ts';
+import { formatUsdFromCents } from '../lib/whitePurchase.ts';
 
 const dom = new Window({ url: 'http://localhost/buy' });
 const view = dom as unknown as Window & typeof globalThis;
@@ -135,7 +139,7 @@ test('/editions/instructor is its own Instructor page: Daily Lesson Plan first, 
   m.done();
 });
 
-test('/buy/coach (Stripe return + gated checkout) shows Instructor Edition, brown belt; checkout unchanged', () => {
+test('/buy/coach (Stripe return + gated checkout) shows Instructor Edition, brown belt, $49.99 checkout', () => {
   localStorage.clear();
   const m = mount('/buy/coach');
   const text = m.host.textContent ?? '';
@@ -143,8 +147,9 @@ test('/buy/coach (Stripe return + gated checkout) shows Instructor Edition, brow
   assert.doesNotMatch(text, /Advantage Coach|Open Coach/);
   assert.ok(m.host.querySelector('header .belt-tip--brown'));
   assert.equal(m.host.querySelector('.belt-tip--blue'), null);
-  // Checkout button still there and still the Coach Stripe price (no Stripe change in this PR).
-  assert.ok([...m.host.querySelectorAll('button')].some((b) => /Continue to checkout — \$29\.99/.test(b.textContent ?? '')));
+  // Checkout button shows the Instructor price (STRIPE_PRICE_INSTRUCTOR), never the old $29.99.
+  assert.ok([...m.host.querySelectorAll('button')].some((b) => /Continue to checkout — \$49\.99/.test(b.textContent ?? '')));
+  assert.doesNotMatch(text, /\$29\.99/);
   // Owner 2026-11-01: Open link targets Coach Unlimited; visible label stays Instructor Edition.
   const open = [...m.host.querySelectorAll('a')].find((a) => a.textContent === 'Open Instructor Edition');
   assert.equal(open?.getAttribute('href'), '/coach-unlimited');
@@ -176,4 +181,19 @@ test('/editions/instructor open link targets /coach-unlimited once Instructor (c
   assert.equal(m.host.querySelector('h2')?.textContent, 'Advantage Instructor Edition');
   m.done();
   localStorage.clear();
+});
+
+test('/buy/coach displayed price equals the Instructor price coach Checkout charges', () => {
+  localStorage.clear();
+  const m = mount('/buy/coach');
+  const shown = formatUsdFromCents(INSTRUCTOR_LIST_PRICE_CENTS);
+  assert.equal(shown, '$49.99');
+  assert.equal(INSTRUCTOR_DISPLAY_PRICE_CENTS, INSTRUCTOR_LIST_PRICE_CENTS);
+  // The server refuses coach Checkout unless STRIPE_PRICE_INSTRUCTOR's unit_amount is this amount.
+  assert.equal(EXPECTED_ONE_TIME_CENTS.coach, INSTRUCTOR_LIST_PRICE_CENTS);
+  const header = m.host.querySelector('header')?.textContent ?? '';
+  assert.ok(header.includes(shown), header);
+  const button = [...m.host.querySelectorAll('button')].find((b) => /Continue to checkout/.test(b.textContent ?? ''));
+  assert.ok(button?.textContent?.includes(shown));
+  m.done();
 });
