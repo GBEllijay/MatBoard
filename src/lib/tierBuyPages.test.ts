@@ -149,3 +149,12 @@ test('tier pages import no Stripe, unlock-code, entitlement-write or OAuth modul
     assert.doesNotMatch(code(src), /from '[^']*(stripe|unlockCodes|codeRedeem'|entitlements|oauth|drive)[^']*'/i);
   }
 });
+
+// Regression (owner report 2026-10-31): Coach hub "Buy" opened the old Advantage Coach page.
+test('Coach hub buy link opens the Instructor buy page; checkout product key stays coach', () => {
+  const coach = readFileSync(new URL('../pages/Coach.tsx', import.meta.url), 'utf8');
+  assert.match(coach, /to=\{TIER_BUY_PATHS\.instructor\}/);
+  assert.doesNotMatch(coach, /Buy Advantage Coach/);
+  const checkout = readFileSync(new URL('./checkoutProducts.ts', import.meta.url), 'utf8');
+  assert.match(checkout, /coach: '\/buy\/coach'/);
+});

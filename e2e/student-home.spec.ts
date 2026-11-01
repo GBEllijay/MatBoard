@@ -63,9 +63,9 @@ test('home picker keeps White, Instructor (coach), and Pro, with locked Student 
   await expect(dialog).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Advantage Instructor Edition, coming soon' }).click();
-  await expect(page.getByRole('dialog', { name: 'Advantage Coach' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Advantage Instructor Edition' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Owner unlock' })).toBeVisible();
-  await expect(page.getByText('Price: $29.99 one-time when it launches. Not for sale on this page.')).toBeVisible();
+  await expect(page.getByText('Price: $49.99 one-time when it launches. Not for sale on this page.')).toBeVisible();
   await page.getByRole('button', { name: 'Got it' }).click();
 
   await page.getByRole('button', { name: 'Advantage Pro, coming soon' }).click();

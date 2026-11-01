@@ -787,7 +787,7 @@ test('seat chrome stays off the gym TV and purchase prompts follow the live seat
   const invite = read('../components/InstructorInvitePanel.tsx');
   const unlimited = read('../pages/CoachUnlimited.tsx');
   assert.match(coach, /purchasePromptsHidden\(seat\)/);
-  assert.match(coach, /Buy Advantage Coach/);
+  assert.match(coach, /Buy \$\{INSTRUCTOR_HOME_TITLE\}/);
   assert.match(pro, /purchasePromptsHidden\(seat\)/);
   assert.match(pro, /Buy Advantage Pro/);
   assert.match(home, /purchasePromptsHidden\(seat\)/);

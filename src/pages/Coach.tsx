@@ -9,10 +9,9 @@ import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { BASIC_COACH_BELT_LINES } from '../lib/coachCopy';
 import { lockCoach } from '../lib/coachUnlock';
 import { coachToolVisible, purchasePromptsHidden } from '../lib/instructorSeats';
-import { CHECKOUT_BUY_PATH } from '../lib/checkoutProducts';
-import { COACH_LIST_PRICE_CENTS } from '../lib/productPrices';
-import { COACH_HUBS, PRODUCTS_PATH } from '../lib/productNames';
-import { formatUsdFromCents } from '../lib/whitePurchase';
+import { INSTRUCTOR_DISPLAY_PRICE_LINE } from '../lib/productPrices';
+import { COACH_HUBS, INSTRUCTOR_HOME_TITLE, PRODUCTS_PATH } from '../lib/productNames';
+import { TIER_BUY_PATHS } from '../lib/tierBuyPages';
 
 export function CoachPage() {
   const navigate = useNavigate();
@@ -57,8 +56,8 @@ export function CoachPage() {
           </InstructionsButton>
           {purchasePromptsHidden(seat) ? null : (
             <p className="home__soon">
-              <Link className="home__text-btn" to={CHECKOUT_BUY_PATH.coach}>
-                {`Buy Advantage Coach — ${formatUsdFromCents(COACH_LIST_PRICE_CENTS)}`}
+              <Link className="home__text-btn" to={TIER_BUY_PATHS.instructor}>
+                {`Buy ${INSTRUCTOR_HOME_TITLE} — ${INSTRUCTOR_DISPLAY_PRICE_LINE}`}
               </Link>
             </p>
           )}

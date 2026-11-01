@@ -53,7 +53,7 @@ test('alpha access uses the existing support address', () => {
   );
   assert.equal(
     COACH_ALPHA_ACCESS_NOTE,
-    'Coach is in alpha testing. Email advantageappllc@gmail.com to request an alpha code.',
+    'Instructor Edition is in alpha testing. Email advantageappllc@gmail.com to request an alpha code.',
   );
   assert.equal(
     PRO_ALPHA_ACCESS_NOTE,
