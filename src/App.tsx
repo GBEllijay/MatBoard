@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useSyncExternalStore, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useNavigate, useSearchParams } from 'react-router-dom';
 import { InviteHandoffAccept } from './components/InviteHandoffAccept';
 import { OneDriveConnectResume } from './components/OneDriveConnectResume';
@@ -9,6 +9,7 @@ import { useProUnlocked } from './hooks/useProUnlocked';
 import { useMediaUnlocked } from './hooks/useMediaUnlocked';
 import { useSeatDoor } from './hooks/useSeatDoor';
 import { useStudentEditionUnlocked } from './hooks/useStudentEditionUnlocked';
+import { useProPlusCloudUnlocked } from './hooks/useProPlusCloud';
 import { useWhiteUnlocked } from './hooks/useWhiteUnlocked';
 import { consumeCoachUnlockQueryNow } from './lib/coachUnlock';
 import {
@@ -81,12 +82,12 @@ import { TrainingControllerPage } from './pages/TrainingController';
 import { TrainingPage } from './pages/Training';
 import { LegacyAccessNotice } from './components/LegacyAccessNotice';
 import { PaymentGraceBanner } from './components/PaymentGraceBanner';
-import { entitlementNowMs, entitlementSnapshot, proAccessPaused } from './lib/entitlement';
+import { bootEntitlement, entitlementNowMs, entitlementReady, entitlementSnapshot, proAccessPaused, subscribeEntitlement } from './lib/entitlement';
 import { paidChunkMenuAgrees, type PaidChunkId } from './lib/paidChunkAccess';
+import { proPlusCloudStripePro } from './lib/proPlusCloud';
 import { acceptSignedSeat } from './lib/seatClient';
 import { isSignedSeatInvite } from './lib/seatSunset';
 import { ProLockedPage } from './pages/ProLocked';
-import { bootEntitlement } from './lib/entitlement';
 import { BuyCoachPage, BuyMediaPage, BuyProPage, BuyStudentPage } from './pages/BuyTier';
 import { BuyWhitePage } from './pages/BuyWhite';
 import { BuyInstructorEditionPage, BuyProEditionPage, BuyStudentEditionPage } from './pages/BuyEdition';
@@ -155,6 +156,21 @@ function paidDoorAgrees(chunk: PaidChunkId, doorOpen: boolean): boolean {
     doorOpen,
     amnesty: snap.amnesty,
   });
+}
+
+/**
+ * Advantage Pro Plus Cloud. The same check as the /products card.
+ * A closed visit never paints this page. Stripe Pro goes to /pro.
+ * Everyone else uses the existing closed-door redirect.
+ */
+function ProPlusCloudRoute() {
+  const open = useProPlusCloudUnlocked();
+  const ready = useSyncExternalStore(subscribeEntitlement, entitlementReady, () => false);
+  const door = useSeatDoor();
+  if (open) return <ProPlusCloudPage />;
+  if (!ready) return null;
+  if (proPlusCloudStripePro(entitlementSnapshot().claims)) return <Navigate to="/pro" replace />;
+  return <Navigate to={closedOrPaused(door.seated)} replace />;
 }
 
 /** Full Pro hubs a seat is allowed to see. Owner-only hubs stay out. */
@@ -397,7 +413,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<PublicHomeRoute />} />
       <Route path="/products" element={<HomePage />} />
-      <Route path="/pro-plus-cloud" element={<ProPlusCloudPage />} />
+      <Route path="/pro-plus-cloud" element={<ProPlusCloudRoute />} />
       <Route path="/editions" element={<EditionsRedirect />} />
       <Route
         path="/white"
