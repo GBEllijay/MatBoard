@@ -2,6 +2,7 @@ import type { D1Database } from './d1.ts';
 import {
   type CoachEntitlement,
   type EntitlementStore,
+  type MediaEntitlement,
   type ProEntitlement,
   type StudentEntitlement,
   type WhiteEntitlement,
@@ -11,8 +12,18 @@ import { lookupCheckoutSessionId, revokeOneTimePurchase } from './refundRevoke.t
 import { applySubscriptionSnapshot } from './subscriptionSync.ts';
 import { canceledSnapshot, fetchStripeSubscription, type StripeSubscriptionSnapshot } from './stripeSubscription.ts';
 import { isHalfOffCheckoutFlag } from '../lib/halfOff.ts';
-import { API_PRODUCT_COACH, API_PRODUCT_ID, API_PRODUCT_PRO, API_PRODUCT_STUDENT } from './routes.ts';
+import { API_PRODUCT_COACH, API_PRODUCT_ID, API_PRODUCT_MEDIA, API_PRODUCT_PRO, API_PRODUCT_STUDENT } from './routes.ts';
 import {
+  createUpgradeCoupon,
+  creditBeatsHalfOff,
+  fetchOneTimePrice,
+  planUpgrade,
+  readUpgradeEmail,
+  upgradeCouponFields,
+  type UpgradePlan,
+} from './upgradeCredit.ts';
+import {
+  EXPECTED_ONE_TIME_CENTS,
   checkoutFormFields,
   checkoutReturnUrls,
   createCheckoutSession,
@@ -54,8 +65,8 @@ export async function handleCheckout(
   env: StripeRuntimeEnv,
   fetchImpl: typeof fetch = fetch,
   store: EntitlementStore | null = null,
+  extras: { db?: D1Database | null; now?: () => Date } = {},
 ): Promise<Response> {
-  void store;
   if (request.method !== 'POST') return methodNotAllowed('POST');
   const raw = await request.text();
   if (raw.length > 4_000) return json(413, { error: 'Checkout request is too large.' });
@@ -84,8 +95,36 @@ export async function handleCheckout(
   if ('error' in config) return json(503, { error: config.error });
   const urls = checkoutReturnUrls(request.url, env, product);
   if ('error' in urls) return json(503, { error: urls.error });
+  // Optional. Without an email Checkout is exactly the pre-credit flow.
+  const emailField = (body as { email?: unknown }).email;
+  let email: string | null = null;
+  if (emailField !== undefined && emailField !== null && emailField !== '') {
+    email = readUpgradeEmail(emailField);
+    if (!email) return json(400, { error: 'Enter a valid email.' });
+  }
 
   try {
+    let plan: UpgradePlan = { kind: 'none' };
+    if (email) {
+      plan = await planUpgrade({
+        target: product,
+        email,
+        secret: config.secret,
+        priceIds: config.priceIds,
+        store,
+        db: extras.db ?? null,
+        fetchImpl,
+      });
+      if (plan.kind === 'owned') return json(409, { error: plan.message, owned: true });
+    }
+    const expectedCents = EXPECTED_ONE_TIME_CENTS[product];
+    if (expectedCents !== undefined) {
+      // Instructor: the page shows $49.99, so never open a session at any other amount.
+      const price = plan.kind === 'credit' ? plan.price : await fetchOneTimePrice(config.secret, config.priceIds[0], fetchImpl);
+      if (price.unitAmount !== expectedCents || price.currency.toLowerCase() !== 'usd') {
+        return json(503, { error: 'Instructor Edition checkout is not configured. No charge was made.' });
+      }
+    }
     let promotionCodeId: string | undefined;
     if (halfOff) {
       // Allowlist is MEIA inside the lookup. A promotionCode on the same body is ignored.
@@ -96,6 +135,27 @@ export async function handleCheckout(
       if (!found) return json(400, { error: 'That promo code is not active.' });
       promotionCodeId = found;
     }
+    let couponId: string | undefined;
+    if (plan.kind === 'credit') {
+      // One discount per session: a typed promo the buyer chose stays; MEIA stays unless the credit saves more.
+      const typedPromoWins = Boolean(promotionCodeId) && !halfOff;
+      const halfOffWins = Boolean(promotionCodeId) && halfOff && !creditBeatsHalfOff(plan.creditCents, plan.listPriceCents);
+      if (!typedPromoWins && !halfOffWins) {
+        const nowSeconds = Math.floor((extras.now ?? (() => new Date()))().getTime() / 1000);
+        couponId = await createUpgradeCoupon(
+          config.secret,
+          upgradeCouponFields({
+            creditCents: plan.creditCents,
+            currency: plan.price.currency,
+            productId: plan.price.productId,
+            tier: product,
+            nowSeconds,
+          }),
+          fetchImpl,
+        );
+        promotionCodeId = undefined;
+      }
+    }
     const nonceHash = (body as { nonceHash?: unknown }).nonceHash;
     const fields = checkoutFormFields({
       priceIds: config.priceIds,
@@ -105,6 +165,8 @@ export async function handleCheckout(
       cancelUrl: urls.cancelUrl,
       promotionCodeId,
       clientReferenceId: typeof nonceHash === 'string' ? nonceHash.trim() : undefined,
+      couponId,
+      customerEmail: couponId && email ? email : undefined,
     });
     const session = await createCheckoutSession(config.secret, fields, fetchImpl);
     return json(200, { url: session.url, id: session.id });
@@ -271,6 +333,29 @@ export async function handleWebhook(
       createdAt: stamp,
     };
     const stored = await store.saveCoach(record);
+    await mirrorPurchase(extras, {
+      email: stored.email,
+      product: stored.product,
+      source: 'stripe_payment',
+      sourceRef: stored.sessionId,
+      sessionId: stored.sessionId,
+      now: now(),
+    });
+    if (eventId && extras.db) {
+      await extras.db.prepare(`INSERT OR IGNORE INTO stripe_events (event_id, received_at) VALUES (?, ?)`).bind(eventId, stamp).run();
+    }
+    return json(200, { received: true, sessionId: stored.sessionId });
+  }
+  if (parsed.action === 'record-media') {
+    const record: MediaEntitlement = {
+      email: parsed.purchase.email,
+      sessionId: parsed.purchase.sessionId,
+      product: API_PRODUCT_MEDIA,
+      amountTotal: parsed.purchase.amountTotal,
+      currency: parsed.purchase.currency,
+      createdAt: stamp,
+    };
+    const stored = await store.saveMedia(record);
     await mirrorPurchase(extras, {
       email: stored.email,
       product: stored.product,

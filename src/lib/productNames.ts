@@ -524,6 +524,12 @@ export type ProSurfaceInput = {
    * Left out by older callers, it follows proUnlocked as before.
    */
   mediaUnlocked?: boolean;
+  /**
+   * Instructor Edition (coach) door on this browser (src/lib/coachUnlock.ts): an Instructor
+   * or legacy Coach purchase, the alpha-coach code, owner, or Pro. White, Student and Media
+   * never open it. Opens Coach Unlimited only when unseated. Left out, nothing changes.
+   */
+  coachUnlocked?: boolean;
 };
 
 /**
@@ -549,13 +555,13 @@ export function closedDoorPath(seated: boolean): typeof PRODUCTS_PATH | '/coming
 }
 
 /**
- * Advantage Coach Unlimited hub.
- * No seat: browser Pro unlock.
- * A seat: Pro unlock plus a lesson or videos menu on the invite.
+ * Advantage Coach Unlimited hub (Instructor Edition, owner 2026-11-01).
+ * No seat: browser Pro unlock, or the Instructor (coach) door.
+ * A seat: Pro unlock plus a lesson or videos menu on the invite (unchanged).
  * Media Console is not this hub.
  */
 export function coachUnlimitedDoorOpen(input: ProSurfaceInput): boolean {
-  if (!input.seated) return input.proUnlocked;
+  if (!input.seated) return input.proUnlocked || input.coachUnlocked === true;
   return input.proUnlocked && input.coachMenus;
 }
 

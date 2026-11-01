@@ -27,6 +27,7 @@ import {
 import {
   EDITION_ALPHA_NOTE,
   EDITION_EMAIL_DISPLAY,
+  INSTRUCTOR_LIST_PRICE_CENTS,
   PRO_LIST_PRICE_CENTS,
   PRO_MONTHLY_PRICE_CENTS,
   STUDENT_ALPHA_ACCESS_NOTE,
@@ -69,8 +70,8 @@ export const TIER_BUY_PATHS = {
   pro: '/editions/pro',
 } as const satisfies Record<TierId, string>;
 
-/** Instructor display price. Stripe still charges the Coach product at COACH_LIST_PRICE_CENTS. */
-export const INSTRUCTOR_DISPLAY_PRICE_CENTS = 4999;
+/** Instructor display price. Same constant coach Checkout verifies against STRIPE_PRICE_INSTRUCTOR. */
+export const INSTRUCTOR_DISPLAY_PRICE_CENTS = INSTRUCTOR_LIST_PRICE_CENTS;
 
 /** Same line as PRO_HOME_LINES ends with, and the owner's Pro page line. */
 export const PRO_INCLUDES_ALL = 'Includes all Advantage products.';

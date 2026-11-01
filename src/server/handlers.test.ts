@@ -10,11 +10,24 @@ const env: StripeRuntimeEnv = {
   STRIPE_WEBHOOK_SECRET: 'whsec_test',
   STRIPE_PRICE_WHITE: 'price_white',
   STRIPE_PRICE_STUDENT: 'price_student',
-  STRIPE_PRICE_COACH: 'price_coach',
+  STRIPE_PRICE_COACH: 'price_coach_legacy',
+  STRIPE_PRICE_INSTRUCTOR: 'price_coach',
   STRIPE_PRICE_PRO: 'price_pro',
   STRIPE_PRICE_PRO_MONTHLY: 'price_pro_monthly',
   STRIPE_PRICE_PRO_MONTHLY_DISCOUNT: 'price_kept_monthly',
 };
+
+/** Coach checkout reads the Instructor price first (read-only GET) and needs it to be $49.99. */
+function withInstructorPrice(fetchImpl: typeof fetch): typeof fetch {
+  return async (input, init) => {
+    if (String(input).includes('/v1/prices/')) {
+      return new Response(JSON.stringify({ id: 'price_coach', unit_amount: 4999, currency: 'usd', product: 'prod_coach' }), {
+        status: 200,
+      });
+    }
+    return fetchImpl(input, init);
+  };
+}
 
 function jsonRequest(url: string, body: unknown): Request {
   return new Request(url, {
@@ -119,7 +132,7 @@ test('Coach checkout is a one-time hosted session', async () => {
       STRIPE_SUCCESS_URL: 'https://advantagebjjtimer.com/buy?checkout=success&session_id={CHECKOUT_SESSION_ID}',
       STRIPE_CANCEL_URL: 'https://advantagebjjtimer.com/buy?checkout=cancel',
     },
-    fetchImpl,
+    withInstructorPrice(fetchImpl),
   );
   assert.equal(response.status, 200);
   const body = (await response.json()) as { url: string };
@@ -162,7 +175,7 @@ test('Coach checkout names the missing Price id', async () => {
   );
   assert.equal(response.status, 503);
   const body = (await response.json()) as { error: string };
-  assert.match(body.error, /STRIPE_PRICE_COACH/);
+  assert.match(body.error, /STRIPE_PRICE_INSTRUCTOR/);
 });
 
 test('Pro checkout requires both Price ids', async () => {
@@ -182,7 +195,7 @@ test('an unknown product does not open Checkout', async () => {
   );
   assert.equal(response.status, 400);
   const body = (await response.json()) as { error: string };
-  assert.match(body.error, /white, student, coach, or pro/);
+  assert.match(body.error, /white, student, coach, media, or pro/);
 });
 
 test('a code on Coach checkout is a Stripe promo lookup, not a local grant', async () => {
@@ -190,7 +203,7 @@ test('a code on Coach checkout is a Stripe promo lookup, not a local grant', asy
   const response = await handleCheckout(
     jsonRequest('http://localhost/api/checkout', { product: 'coach', promotionCode: 'not-a-stripe-code' }),
     env,
-    async () => new Response(JSON.stringify({ data: [] }), { status: 200 }),
+    withInstructorPrice(async () => new Response(JSON.stringify({ data: [] }), { status: 200 })),
     store,
   );
   assert.equal(response.status, 400);
@@ -328,7 +341,7 @@ test('half off discounts White, Student, Coach, and Pro without changing prices'
     const response = await handleCheckout(
       jsonRequest('https://advantagebjjtimer.com/api/checkout', { product: item.product, halfOff: true }),
       env,
-      fetchImpl,
+      withInstructorPrice(fetchImpl),
     );
     assert.equal(response.status, 200);
   }

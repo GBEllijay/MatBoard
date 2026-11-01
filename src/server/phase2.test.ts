@@ -235,8 +235,12 @@ test('checkout stores the nonce hash and redeem rejects a mismatched nonce', asy
       method: 'POST',
       body: JSON.stringify({ product: 'coach', nonceHash }),
     }),
-    { STRIPE_SECRET_KEY: 'sk_test_123', STRIPE_PRICE_COACH: 'price_coach' },
-    async (_input, init) => {
+    { STRIPE_SECRET_KEY: 'sk_test_123', STRIPE_PRICE_INSTRUCTOR: 'price_coach' },
+    async (input, init) => {
+      // Coach checkout first reads the Instructor price (read-only) to confirm it is $49.99.
+      if (String(input).includes('/v1/prices/')) {
+        return new Response(JSON.stringify({ id: 'price_coach', unit_amount: 4999, currency: 'usd', product: 'prod_coach' }), { status: 200 });
+      }
       sent = String(init?.body ?? '');
       return new Response(JSON.stringify({ id: 'cs_test_nonce', url: 'https://checkout.stripe.com/c/pay/cs_test_nonce' }), {
         status: 200,

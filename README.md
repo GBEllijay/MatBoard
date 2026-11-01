@@ -111,7 +111,9 @@ Use the Stripe test-mode toggle. Then:
    | `STRIPE_WEBHOOK_SECRET` | **Secret** (encrypt) | Webhook signature for White and Pro |
    | `STRIPE_PRICE_WHITE` | Server variable (not public) | White one-time price |
    | `STRIPE_PRICE_STUDENT` | Server variable (not public) | Student Edition one-time price |
-   | `STRIPE_PRICE_COACH` | Server variable (not public) | Coach one-time price |
+   | `STRIPE_PRICE_COACH` | Server variable (not public) | Legacy Coach one-time price ($29.99). Not sold by Checkout anymore; old purchases still grant coach |
+   | `STRIPE_PRICE_INSTRUCTOR` | Server variable (not public) | Instructor Edition ($49.99) one-time price. Required for coach Checkout (503 when empty; must be 4999 USD in Stripe) |
+   | `STRIPE_PRICE_MEDIA` | Server variable (not public) | Media Edition ($29.99) one-time price |
    | `STRIPE_PRICE_PRO` | Server variable (not public) | Pro one-time price |
    | `STRIPE_PRICE_PRO_MONTHLY` | Server variable (not public) | Pro $5.99/month price |
    | `STRIPE_PRICE_PRO_MONTHLY_DISCOUNT` | Optional. Not read by Checkout | Reserved for a future discount price id |
@@ -131,7 +133,7 @@ Copy `.env.example` to `.env` for local dev. `.env` is gitignored.
 5. Deliver the webhook (`stripe listen --forward-to localhost:5173/api/stripe/webhook`, or the Dashboard endpoint). The buy page confirms the session with Stripe. A made-up `session_id` does not unlock.
 6. The purchase row is in `.data/white-entitlements.json` locally. `GET /api/entitlement` stays generic.
 
-Student Edition is a **one-time $19.99 USD** product (`mode=payment`, `STRIPE_PRICE_STUDENT`). Coach is a **one-time $29.99 USD** product (`mode=payment`, `STRIPE_PRICE_COACH`). Pro is **one Checkout session** with two line items: one-time **$99.99 USD** (`STRIPE_PRICE_PRO`) plus **$5.99 USD per month** (`STRIPE_PRICE_PRO_MONTHLY`). Stripe mixed carts use `mode=subscription`. `STRIPE_PRICE_PRO_MONTHLY_DISCOUNT` is optional and is not sent to Checkout. It is reserved for a future discount price id. Do not put a price id in source.
+Student Edition is a **one-time $19.99 USD** product (`mode=payment`, `STRIPE_PRICE_STUDENT`). Instructor Edition (checkout product `coach`) is a **one-time $49.99 USD** product (`mode=payment`, `STRIPE_PRICE_INSTRUCTOR`); Checkout returns 503 if that env is empty or its Stripe price is not 4999 USD, so it never charges the legacy $29.99 `STRIPE_PRICE_COACH`. Instructor (and legacy Coach) purchases and the alpha-coach code open Coach Unlimited; Pro still does. Pro is **one Checkout session** with two line items: one-time **$99.99 USD** (`STRIPE_PRICE_PRO`) plus **$5.99 USD per month** (`STRIPE_PRICE_PRO_MONTHLY`). Stripe mixed carts use `mode=subscription`. `STRIPE_PRICE_PRO_MONTHLY_DISCOUNT` is optional and is not sent to Checkout. It is reserved for a future discount price id. Do not put a price id in source.
 
 The home **Advantage White** card opens `/buy` until this device is unlocked, then it opens `/white`. Public home cards do not sell Coach or Pro. Those cards open Coming soon details (features, launch price, and a request for an alpha testing code at advantageappllc@gmail.com) and do not link to Checkout. `/buy/coach` and `/buy/pro` use the same door as `/coach` and `/pro` (owner unlock or, for Coach, an instructor seat). Until that door is open, those URLs go to Coming soon. The unlocked Coach and Pro pages link to checkout. White at `/buy` stays the only public purchase. `/buy/student` uses a real Student Edition or Pro grant. `?student=1` is the demo and does not open checkout. Until that door is open, `/buy/student` goes to Coming soon, except a Stripe success return, which still renders so the server can confirm the session. The return URL does not unlock by itself. The checkout button on `/buy` and `/buy/student` stays hidden until that door is open.
 
@@ -143,12 +145,16 @@ A paid Pro Checkout session (`checkout.session.completed`, `mode=subscription`, 
 
 `GET /api/entitlement` answers every email and session with the same generic message. It does not return a product, an email, or a session id. Coach purchases are still not stored by the webhook. Student Edition does not include Coach. A success page calls `POST /api/checkout-confirm` instead.
 
+### Upgrade credit
+
+`POST /api/checkout` accepts an optional `email`. When that email has a paid Stripe purchase of a lower tier (White < Student < Media < Instructor < Pro), Checkout gets a single-use coupon created at runtime (`amount_off` = the most that email actually paid for one lower tier, `duration=once`, `max_redemptions=1`, `redeem_by` 25 hours, `applies_to` the tier's one-time price product) in `discounts`, instead of `allow_promotion_codes`. The credit is capped so at least $0.50 is charged. Codes and alpha unlocks earn no credit, and refunded or non-USD purchases are skipped. Pro's credit only offsets the $99.99 one-time line; the $5.99/month price is unchanged. A typed promo code keeps its own discount instead of the credit; MEIA half off stays unless the credit saves more. If that email already owns the tier (or one that includes it), Checkout returns 409 with a message. Without an email, Checkout is unchanged. `POST /api/upgrade-quote { tier, email }` returns `{ listPriceCents, upgradePriceCents, creditApplied }` or `{ owned: true, message }` for the "Upgrade for $X" button. It reads the price from Stripe and never creates a coupon.
+
 ### Price ids for Student Edition, Coach, and Pro
 
 1. **Advantage Pro → one-time price, USD 99.99.** Copy the Price id to `STRIPE_PRICE_PRO`.
 2. **Same product → recurring price, USD 5.99, billed monthly.** Copy that Price id to `STRIPE_PRICE_PRO_MONTHLY`. Both ids go on the same Checkout session. `STRIPE_PRICE_PRO_MONTHLY_DISCOUNT` is optional and is not read by Checkout. It can hold a future discount price id.
 3. **Advantage Student Edition → one-time price, USD 19.99.** Copy the Price id to `STRIPE_PRICE_STUDENT`.
-4. **Advantage Coach → one-time price, USD 29.99.** Copy the Price id to `STRIPE_PRICE_COACH`.
+4. **Instructor Edition → one-time price, USD 49.99.** Copy the Price id to `STRIPE_PRICE_INSTRUCTOR`. (`STRIPE_PRICE_COACH`, the legacy $29.99 price, is no longer sold.)
 5. **White promotion codes** (the public buy page does not show the code text). White Checkout still sends `allow_promotion_codes=true` unless a code was attached by the server. Create these coupons, restricted to Advantage White, if they are not already in the Dashboard:
 
    | Customer pays | Amount off the $9.99 price | Duration |

@@ -36,7 +36,7 @@ export const HALF_OFF_OG_IMAGE_WIDTH = 2400;
 
 export const HALF_OFF_OG_IMAGE_HEIGHT = 1260;
 
-const CHECKOUT_PRODUCTS = ['white', 'student', 'coach', 'pro'] as const;
+const CHECKOUT_PRODUCTS = ['white', 'student', 'coach', 'pro', 'media'] as const;
 
 export type HalfOffCheckoutProduct = (typeof CHECKOUT_PRODUCTS)[number];
 

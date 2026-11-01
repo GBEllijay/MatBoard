@@ -19,6 +19,7 @@ import {
   handleSeatSync,
 } from './seats.ts';
 import { handleTokenRefresh } from './tokenRefresh.ts';
+import { handleUpgradeQuote } from './upgradeCredit.ts';
 import { MemoryRedemptionLedger } from './redemptionLedger.ts';
 import { MICROSOFT_CLIENT_API, publicMicrosoftClientIdFromEnv } from '../lib/microsoftClientPublic.ts';
 import {
@@ -40,6 +41,7 @@ import {
   API_RESTORE_VERIFY_PATH,
   API_SESSION_REDEEM_PATH,
   API_TOKEN_REFRESH_PATH,
+  API_UPGRADE_QUOTE_PATH,
   API_WEBHOOK_PATH,
 } from './routes.ts';
 import type { EntitlementStore } from './entitlements.ts';
@@ -93,6 +95,8 @@ function stripeEnv(mode: string, root: string): StripeRuntimeEnv & {
     STRIPE_PRICE_WHITE: pick('STRIPE_PRICE_WHITE'),
     STRIPE_PRICE_STUDENT: pick('STRIPE_PRICE_STUDENT'),
     STRIPE_PRICE_COACH: pick('STRIPE_PRICE_COACH'),
+    STRIPE_PRICE_INSTRUCTOR: pick('STRIPE_PRICE_INSTRUCTOR'),
+    STRIPE_PRICE_MEDIA: pick('STRIPE_PRICE_MEDIA'),
     STRIPE_PRICE_PRO: pick('STRIPE_PRICE_PRO'),
     STRIPE_PRICE_PRO_MONTHLY: pick('STRIPE_PRICE_PRO_MONTHLY'),
     STRIPE_PRICE_PRO_MONTHLY_DISCOUNT: pick('STRIPE_PRICE_PRO_MONTHLY_DISCOUNT'),
@@ -194,6 +198,7 @@ function attach(
     }
     const api =
       path === API_CHECKOUT_PATH ||
+      path === API_UPGRADE_QUOTE_PATH ||
       path === API_ENTITLEMENT_PATH ||
       path === API_WEBHOOK_PATH ||
       path === API_CODES_REDEEM_PATH ||
@@ -225,8 +230,10 @@ function attach(
       };
       const response =
         path === API_CHECKOUT_PATH
-          ? await handleCheckout(request, env, fetch, store)
-          : path === API_WEBHOOK_PATH
+          ? await handleCheckout(request, env, fetch, store, { db: devDb })
+          : path === API_UPGRADE_QUOTE_PATH
+            ? await handleUpgradeQuote(request, env, store, devDb, fetch)
+            : path === API_WEBHOOK_PATH
             ? await handleWebhook(request, env, store, () => new Date(), {
                 db: devDb,
                 pepper: env.CODE_HASH_PEPPER,

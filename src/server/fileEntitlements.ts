@@ -3,6 +3,7 @@ import { dirname } from 'node:path';
 import {
   applyEntitlement,
   applyCoachEntitlement,
+  applyMediaEntitlement,
   applyProEntitlement,
   applyStudentEntitlement,
   coachEntitlementByEmail,
@@ -10,6 +11,8 @@ import {
   emptyEntitlementIndex,
   entitlementByEmail,
   entitlementBySession,
+  mediaEntitlementByEmail,
+  mediaEntitlementBySession,
   parseEntitlementIndex,
   proEntitlementByEmail,
   proEntitlementBySession,
@@ -18,6 +21,7 @@ import {
   studentEntitlementBySession,
   type CoachEntitlement,
   type EntitlementStore,
+  type MediaEntitlement,
   type ProEntitlement,
   type StudentEntitlement,
   type WhiteEntitlement,
@@ -91,6 +95,20 @@ export function fileEntitlementStore(filePath: string): EntitlementStore {
     },
     findCoachBySessionId(sessionId) {
       return run(() => coachEntitlementBySession(read(), sessionId));
+    },
+    saveMedia(record: MediaEntitlement) {
+      return run(() => {
+        const index = read();
+        const stored = applyMediaEntitlement(index, record);
+        write(index);
+        return stored;
+      });
+    },
+    findMediaByEmail(email) {
+      return run(() => mediaEntitlementByEmail(read(), email));
+    },
+    findMediaBySessionId(sessionId) {
+      return run(() => mediaEntitlementBySession(read(), sessionId));
     },
     savePro(record: ProEntitlement) {
       return run(() => {
