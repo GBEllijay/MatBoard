@@ -219,7 +219,10 @@ export function paidImportBlock(input: {
   chunk: PaidChunkId;
   nowMs: number;
   offline: boolean;
+  /** The device clock moved back past the last seen time. Never open a paid screen then. */
+  clockRolledBack?: boolean;
 }): PaidLoadBlock | null {
+  if (input.clockRolledBack && input.claims) return 'failed';
   if (!input.claims) {
     if (!input.ready) return 'pending';
     return input.amnesty ? 'confirm' : 'failed';
@@ -240,4 +243,27 @@ export function filesForAllowedChunks(
     for (const file of files[id] ?? []) allowed.add(file);
   }
   return [...allowed];
+}
+
+/**
+ * Saved paid chunks the browser may keep in Cache Storage.
+ * Same grant rule as the client opener (paidChunkAllowedForClient) with the
+ * offline window applied: a fresh token keeps its screens, and an expired token
+ * keeps them only until exp + offline_grace (or fail_open_until). Past that, or
+ * with a locked subscription, the copy is dropped. Keeping a file does not open
+ * it: preparePaidImport still runs the client rule, which needs the browser to
+ * be offline once the token has expired, and the route guard still applies.
+ */
+export function filesToKeepOffline(
+  claims: EntitlementClaims,
+  files: Readonly<Record<string, readonly string[]>>,
+  nowMs: number,
+): string[] {
+  if (claims.subs?.state === 'locked') return [];
+  const keep = new Set<string>();
+  for (const id of PAID_CHUNK_IDS) {
+    if (!paidChunkAllowedForClient(claims, id, nowMs, true)) continue;
+    for (const file of files[id] ?? []) keep.add(file);
+  }
+  return [...keep];
 }

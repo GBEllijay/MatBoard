@@ -91,6 +91,7 @@ import { BuyCoachPage, BuyMediaPage, BuyProPage, BuyStudentPage } from './pages/
 import { BuyWhitePage } from './pages/BuyWhite';
 import { BuyInstructorEditionPage, BuyProEditionPage, BuyStudentEditionPage } from './pages/BuyEdition';
 import { MediaEditionGate } from './components/MediaEditionGate';
+import { GuardRedirect } from './components/GuardRedirect';
 import { MEDIA_EDITION_OLD_PATH, MEDIA_EDITION_PATH } from './lib/mediaEdition';
 import { RestoreAccessPage } from './pages/RestoreAccess';
 import { WhitePage } from './pages/White';
@@ -160,7 +161,7 @@ function paidDoorAgrees(chunk: PaidChunkId, doorOpen: boolean): boolean {
 function ProConsoleRoute({ children }: { children: ReactNode }) {
   const door = useSeatDoor();
   if (!paidDoorAgrees('pro-console', visibleProHubs(door).length > 0)) {
-    return <Navigate to={closedOrPaused(door.seated)} replace />;
+    return <GuardRedirect to={closedOrPaused(door.seated)} />;
   }
   return children;
 }
@@ -169,7 +170,7 @@ function ProConsoleRoute({ children }: { children: ReactNode }) {
 function MediaConsoleRoute({ children }: { children: ReactNode }) {
   const door = useSeatDoor();
   if (!paidDoorAgrees('media-console', mediaConsoleDoorOpen(door))) {
-    return <Navigate to={closedOrPaused(door.seated)} replace />;
+    return <GuardRedirect to={closedOrPaused(door.seated)} />;
   }
   return children;
 }
@@ -179,6 +180,7 @@ function MediaConsoleRoute({ children }: { children: ReactNode }) {
  * pass, Pro, or owner) and whose token can download the chunk gets the paid hub
  * menu. Everyone else sees the public $29.99 marketing page, never the paid
  * chunk and never a raw 401.
+ * MediaEditionGate checks a saved pass first, so a refresh does not flash the marketing page.
  */
 function MediaEditionRoute() {
   const door = useSeatDoor();
@@ -188,7 +190,7 @@ function MediaEditionRoute() {
 /** Tournament suite and invite admin. A signed-in seat does not open these. */
 function OwnerProRoute({ children }: { children: ReactNode }) {
   const door = useSeatDoor();
-  if (!ownerProHubOpen(door.proUnlocked, door.seated)) return <Navigate to={closedOrPaused(door.seated)} replace />;
+  if (!ownerProHubOpen(door.proUnlocked, door.seated)) return <GuardRedirect to={closedOrPaused(door.seated)} />;
   return children;
 }
 
@@ -196,7 +198,7 @@ function OwnerProRoute({ children }: { children: ReactNode }) {
 function CoachUnlimitedRoute({ children }: { children: ReactNode }) {
   const door = useSeatDoor();
   if (!paidDoorAgrees('coach-unlimited', coachUnlimitedDoorOpen(door))) {
-    return <Navigate to={closedOrPaused(door.seated)} replace />;
+    return <GuardRedirect to={closedOrPaused(door.seated)} />;
   }
   return children;
 }
@@ -213,7 +215,7 @@ function LessonCloudRoute({ children }: { children: ReactNode }) {
     door.seat,
     seatMenuAllowed(door.seat, 'dailyLessonPlanAccess'),
   );
-  if (!paidDoorAgrees('lesson-cloud', open)) return <Navigate to={closedOrPaused(door.seated)} replace />;
+  if (!paidDoorAgrees('lesson-cloud', open)) return <GuardRedirect to={closedOrPaused(door.seated)} />;
   return children;
 }
 
@@ -225,7 +227,7 @@ function BuyProRoute({ children }: { children: ReactNode }) {
   const door = useSeatDoor();
   const [params] = useSearchParams();
   if (!door.proUnlocked && !door.programDirectorSeat && !proPurchaseReturn(params)) {
-    return <Navigate to={closedOrPaused(door.seated)} replace />;
+    return <GuardRedirect to={closedOrPaused(door.seated)} />;
   }
   return children;
 }
@@ -245,7 +247,7 @@ function BuyStudentRoute({ children }: { children: ReactNode }) {
     student: useStudentEditionUnlocked(),
   });
   if (!open && !studentPurchaseReturn(params)) {
-    return <Navigate to={closedOrPaused(seated)} replace />;
+    return <GuardRedirect to={closedOrPaused(seated)} />;
   }
   return children;
 }
@@ -253,7 +255,7 @@ function BuyStudentRoute({ children }: { children: ReactNode }) {
 /** Advantage White hub and roster. A confirmed purchase or a server code opens them. */
 function WhiteHubRoute({ children }: { children: ReactNode }) {
   const unlocked = useWhiteUnlocked();
-  if (!whiteHubAllowed(unlocked)) return <Navigate to={WHITE_BUY_PATH} replace />;
+  if (!whiteHubAllowed(unlocked)) return <GuardRedirect to={WHITE_BUY_PATH} />;
   return children;
 }
 
@@ -268,7 +270,7 @@ function WhiteLiveRoute({ children }: { children: ReactNode }) {
   const seated = useCurrentSeat() !== null;
   const coachDoor = coachDoorOpen(pro, coach, seated);
   if (!whiteLiveToolsAllowed({ whiteUnlocked, coachDoor, proDoor: proDoorOpen(pro) })) {
-    return <Navigate to={WHITE_BUY_PATH} replace />;
+    return <GuardRedirect to={WHITE_BUY_PATH} />;
   }
   return children;
 }
@@ -278,7 +280,7 @@ function MediaFolderRoute({ folder }: { folder: MediaFolderId }) {
   const door = useSeatDoor();
   const open = mediaFolderDoorOpen(door, door.seat?.permissions ?? null, folder);
   if (!paidDoorAgrees('media-console', open)) {
-    return <Navigate to={closedOrPaused(door.seated)} replace />;
+    return <GuardRedirect to={closedOrPaused(door.seated)} />;
   }
   return <Navigate to={`/slideshow?folder=${folder}`} replace />;
 }
@@ -290,7 +292,7 @@ function MediaFolderRoute({ folder }: { folder: MediaFolderId }) {
 function MediaConsoleEntryRoute() {
   const door = useSeatDoor();
   if (!paidDoorAgrees('media-console', mediaConsoleDoorOpen(door))) {
-    return <Navigate to={closedOrPaused(door.seated)} replace />;
+    return <GuardRedirect to={closedOrPaused(door.seated)} />;
   }
   if (!door.seated && !door.proUnlocked) return <Navigate to={MEDIA_EDITION_PATH} replace />;
   if (!paidDoorAgrees('pro-console', true)) return <Navigate to={MEDIA_EDITION_PATH} replace />;
@@ -305,7 +307,7 @@ function BuyMediaRoute({ children }: { children: ReactNode }) {
   const pro = useProUnlocked();
   const open = media || pro;
   if (!open && !studentPurchaseReturn(params)) {
-    return <Navigate to={closedOrPaused(seated)} replace />;
+    return <GuardRedirect to={closedOrPaused(seated)} />;
   }
   return children;
 }
@@ -314,7 +316,7 @@ function CoachRoute({ children }: { children: ReactNode }) {
   const coach = useCoachUnlocked();
   const pro = useProUnlocked();
   const seated = useCurrentSeat() !== null;
-  if (!coachDoorOpen(pro, coach, seated)) return <Navigate to={closedOrPaused(seated)} replace />;
+  if (!coachDoorOpen(pro, coach, seated)) return <GuardRedirect to={closedOrPaused(seated)} />;
   return children;
 }
 
