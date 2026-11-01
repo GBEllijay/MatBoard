@@ -158,9 +158,9 @@ test('Coach Unlimited tools go back to Coach Unlimited and home to the tier pick
 test('Pro menus go back to Pro and home to the tier picker', async ({ page }) => {
   await unlock(page);
   const proMenus = [
-    'Advantage Coach Unlimited',
+    'Advantage Instructor Edition',
     'Instructor Invitation and Access Management',
-    'Tournament Management Pro',
+    'Competition and Tournament Management',
   ] as const;
   for (const name of proMenus) {
     await page.goto('/pro');
@@ -334,7 +334,7 @@ test('Class Schedule goes back to Media Console; the center home stays off the p
   await expect.poll(() => pathOf(page)).toBe('/slideshow?folder=gallery');
 });
 
-test('Tournament Management Pro and CMS tiles go back one level and home to the tier picker', async ({ page }) => {
+test('Competition and Tournament Management and CMS tiles go back one level and home to the tier picker', async ({ page }) => {
   await unlock(page);
 
   await page.goto('/suite');

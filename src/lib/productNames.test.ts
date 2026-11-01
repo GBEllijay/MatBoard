@@ -293,8 +293,8 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   );
   assert.equal(MATCH_CONTROLLER_PATH, '/match/control');
   assert.equal(ROUND_CONTROLLER_PATH, '/training/control');
-  assert.equal(TOURNAMENT_MANAGEMENT_PRO_LABEL, 'Tournament Management Pro');
-  assert.equal(PRO_HUBS[3].title, 'Tournament Management Pro');
+  assert.equal(TOURNAMENT_MANAGEMENT_PRO_LABEL, 'Competition and Tournament Management');
+  assert.equal(PRO_HUBS[3].title, 'Competition and Tournament Management');
   assert.equal(COMPETITION_MANAGEMENT_PRO_LABEL, 'Competition Management Pro');
   assert.equal(
     TOURNAMENT_MANAGEMENT_PRO_LEAD,
@@ -583,7 +583,7 @@ const PRO_BUTTONS = [
   'Media Console',
   'Advantage Instructor Edition',
   'Instructor Invitation and Access Management',
-  'Tournament Management Pro',
+  'Competition and Tournament Management',
 ] as const;
 
 test('Pro console buttons stay those four labels, in that order, for owner, Pro, and a seat', () => {

@@ -10,7 +10,7 @@ const SCROLLING_MENUS: { path: string; heading: string; logo: string }[] = [
   { path: '/coach', heading: 'Advantage - Coach', logo: '.home__logo' },
   { path: '/coach-unlimited', heading: 'Instructor Edition', logo: '.home__logo' },
   { path: '/instructors', heading: 'Instructor Invitations and Access Management', logo: '.home__logo' },
-  { path: '/suite', heading: 'Tournament Management Pro', logo: '.home__logo' },
+  { path: '/suite', heading: 'Competition and Tournament Management', logo: '.home__logo' },
   { path: '/white', heading: 'Advantage - White', logo: '.home__logo' },
 ];
 

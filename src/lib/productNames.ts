@@ -229,7 +229,7 @@ export const TOURNAMENT_SUITE_NAME = 'In-House Tournament Management Suite';
  * Fourth Advantage Pro hub button and the heading on the page it opens.
  * The Coming Soon ad keeps COMPETITION_MANAGEMENT_PRO_LABEL.
  */
-export const TOURNAMENT_MANAGEMENT_PRO_LABEL = 'Tournament Management Pro';
+export const TOURNAMENT_MANAGEMENT_PRO_LABEL = 'Competition and Tournament Management';
 
 /**
  * Lead under that heading. Rankings stay on Competitor Management System.
@@ -306,7 +306,7 @@ export function withSuiteFrom(path: string, fromSuite: boolean): string {
 }
 
 /**
- * Tournament Management Pro folder, top to bottom.
+ * Competition and Tournament Management folder, top to bottom.
  * Brackets and Competitor Management System use the yellow/green competition belt.
  * Scoreboard and Round Timer use the black belt. Both stay title-only.
  * Brackets opens the same mock-tournament board.
