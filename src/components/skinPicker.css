@@ -1,0 +1,75 @@
+/* Skin picker popup for the scoreboard and round timer. Same look as the brackets Skin picker. */
+.skin-pick {
+  position: relative;
+  flex: 0 0 auto;
+  justify-self: start;
+}
+
+.skin-pick__picker {
+  position: fixed;
+  z-index: 60;
+  overflow: auto;
+  padding: 0.65rem;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: #0e1624;
+  color: #f7f4ee;
+  -webkit-text-fill-color: #f7f4ee;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.4);
+  text-align: left;
+  font-size: 1rem;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.skin-pick__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.skin-pick__thumb {
+  position: relative;
+  display: grid;
+  gap: 0.22rem;
+  min-height: 0;
+  padding: 0.22rem;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  background: transparent;
+  color: #f7f4ee;
+  -webkit-text-fill-color: #f7f4ee;
+}
+
+.skin-pick__thumb.is-on {
+  border-color: var(--logo-blue);
+  background: rgba(0, 78, 186, 0.35);
+}
+
+
+.skin-pick__img {
+  position: relative;
+  display: block;
+}
+
+.skin-pick__thumb img {
+  display: block;
+  width: 100%;
+  height: 3.35rem;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #1a2436;
+}
+
+
+
+
+.skin-pick__name {
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+}
+
+
+
