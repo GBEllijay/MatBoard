@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import {
   addStudents,
   addStudent,
+  assignImportedRosterCards,
   beltChipKey,
   beltTipRankBar,
   canPrefill,
@@ -43,6 +44,8 @@ import {
   type Student,
 } from './rosterStore.ts';
 import { StorageQuotaError } from './storageQuota.ts';
+import { importRosterCsv, rosterCsvTemplate, serializeRosterCsv } from './rosterCsv.ts';
+import { STUDENT_NOTES_LABEL } from './coachCopy.ts';
 
 function student(partial: Partial<Student> & Pick<Student, 'id' | 'name'>): Student {
   return {
@@ -397,6 +400,138 @@ describe('addStudents', () => {
       getRoster().students.map((row) => row.name),
       ['Alex', 'Sam'],
     );
+    assert.equal(added.every((row) => row.rosterList === undefined), true);
+    resetRoster();
+  });
+});
+
+describe('student and competitor CSV lists stay separate', () => {
+  it('round-trips student rows, keeps the template columns, and leaves competitor cards untouched', () => {
+    resetRoster();
+    const competitor = addStudent({
+      name: 'Alex Rivera',
+      belt: 'Purple',
+      division: 'Adult Purple',
+      gym: 'Alliance',
+      lastPromotion: '2024-01-01',
+      lastPromotionDetail: 'purple belt',
+      note: 'Competitor note',
+    });
+    assert.ok(competitor);
+    const existingStudent = addStudent(
+      {
+        name: 'Sam Cole',
+        belt: 'Blue',
+        division: 'Adult Blue',
+        gym: 'Atos',
+        lastPromotion: '2025-02-02',
+        lastPromotionDetail: '',
+        note: 'Student note',
+      },
+      { rosterList: 'student' },
+    );
+    assert.ok(existingStudent);
+
+    const template = rosterCsvTemplate();
+    assert.equal(
+      template.startsWith(
+        'Name,Belt,Division,Gym name / nickname,Last promotion,Last promotion detail,Notes,Check In\r\n',
+      ),
+      true,
+    );
+    const blank = template.split('\r\n').filter((line) => line.length);
+    assert.equal(blank.length, 4);
+    assert.equal(blank.slice(1).every((line) => line === ',,,,,,,'), true);
+
+    const csv = [
+      'Name,Belt,Division,Gym name / nickname,Last promotion,Last promotion detail,Notes,Check In',
+      'Alex Rivera,White,Kids Gi,GB Ellijay,2026-04-01,"3rd stripe, white belt",New student,Yes',
+      'Ada Cruz,Brown,Adult Brown,Checkmat,2026-03-03,brown belt,Tape,No',
+    ].join('\r\n');
+    const parsed = importRosterCsv(csv);
+    assert.equal(parsed.error, undefined);
+    assert.equal(parsed.imported, 2);
+
+    const competitorsBefore = competitorCards(getRoster().students).map((row) => ({ ...row }));
+    const samBefore = { ...studentRosterCards(getRoster().students)[0] };
+    addStudents(parsed.students, { rosterList: 'student' });
+
+    assert.deepEqual(competitorCards(getRoster().students), competitorsBefore);
+    assert.equal(competitorCards(getRoster().students)[0]?.id, competitor.id);
+    assert.equal(competitorCards(getRoster().students)[0]?.belt, 'Purple');
+    assert.equal(competitorCards(getRoster().students)[0]?.note, 'Competitor note');
+    assert.equal(competitorCards(getRoster().students)[0]?.rosterList, undefined);
+
+    const students = studentRosterCards(getRoster().students);
+    assert.deepEqual(
+      students.map((row) => row.name).sort(),
+      ['Ada Cruz', 'Alex Rivera', 'Sam Cole'],
+    );
+    const studentAlex = students.find((row) => row.name === 'Alex Rivera');
+    assert.ok(studentAlex);
+    assert.equal(studentAlex.rosterList, 'student');
+    assert.equal(studentAlex.belt, 'White');
+    assert.equal(studentAlex.note, 'New student');
+    assert.equal(studentAlex.checkedIn, true);
+    assert.notEqual(studentAlex.id, competitor.id);
+    const sam = students.find((row) => row.name === 'Sam Cole');
+    assert.deepEqual(sam, samBefore);
+
+    const exported = serializeRosterCsv(studentRosterCards(getRoster().students), STUDENT_NOTES_LABEL);
+    assert.match(
+      exported,
+      /^Name,Belt,Division,Gym name \/ nickname,Last promotion,Last promotion detail,Student Notes,Check In/,
+    );
+    assert.doesNotMatch(exported, /Competitor note/);
+    assert.match(exported, /Ada Cruz,Brown,Adult Brown,Checkmat,2026-03-03,brown belt,Tape,No/);
+    assert.match(exported, /Alex Rivera,White,Kids Gi,GB Ellijay,2026-04-01,"3rd stripe, white belt",New student,Yes/);
+    assert.match(exported, /Sam Cole,Blue,Adult Blue,Atos,2025-02-02,,Student note,No/);
+
+    const roundTrip = importRosterCsv(exported);
+    assert.equal(roundTrip.error, undefined);
+    assert.equal(roundTrip.imported, 3);
+    assert.equal(roundTrip.students.find((row) => row.name === 'Alex Rivera')?.note, 'New student');
+    assert.equal(roundTrip.students.find((row) => row.name === 'Ada Cruz')?.belt, 'Brown');
+    assert.equal(roundTrip.students.every((row) => row.rosterList === undefined), true);
+
+    const studentsBeforeCompetitorImport = studentRosterCards(getRoster().students).map((row) => ({ ...row }));
+    addStudents(roundTrip.students, { rosterList: 'competitor' });
+    assert.deepEqual(studentRosterCards(getRoster().students), studentsBeforeCompetitorImport);
+    const competitors = competitorCards(getRoster().students);
+    assert.equal(competitors.find((row) => row.id === competitor.id)?.belt, 'Purple');
+    assert.equal(competitors.find((row) => row.id === competitor.id)?.rosterList, undefined);
+    const importedSam = competitors.find((row) => row.name === 'Sam Cole' && row.id !== existingStudent.id);
+    assert.ok(importedSam);
+    assert.equal(importedSam.rosterList, undefined);
+    assert.equal(importedSam.belt, 'Blue');
+    assert.equal(importedSam.note, 'Student note');
+    assert.equal(studentRosterCards(getRoster().students).find((row) => row.id === existingStudent.id)?.note, 'Student note');
+    resetRoster();
+  });
+
+  it('strips a student tag from a competitor import and does not retag the student who shares that name', () => {
+    resetRoster();
+    const studentCard = addStudent(
+      { name: 'Alex Rivera', belt: 'White', division: '', gym: '', lastPromotion: '', note: 'Keep' },
+      { rosterList: 'student' },
+    );
+    assert.ok(studentCard);
+    const tagged = student({
+      id: studentCard.id,
+      name: 'Alex Rivera',
+      belt: 'Black',
+      note: 'Should not replace the student',
+      rosterList: 'student',
+    });
+    const { students, added } = assignImportedRosterCards(getRoster().students, [tagged], 'competitor');
+    assert.equal(added.length, 1);
+    assert.equal(added[0]?.rosterList, undefined);
+    assert.equal(added[0]?.belt, 'Black');
+    assert.notEqual(added[0]?.id, studentCard.id);
+    const stillStudent = students.find((row) => row.id === studentCard.id);
+    assert.equal(stillStudent?.rosterList, 'student');
+    assert.equal(stillStudent?.belt, 'White');
+    assert.equal(stillStudent?.note, 'Keep');
     resetRoster();
   });
 });

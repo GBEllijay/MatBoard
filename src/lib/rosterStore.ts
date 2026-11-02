@@ -69,6 +69,8 @@ export type Student = {
   /**
    * Coach Student Roster. Omitted on Competitor Roster cards, including older saves,
    * so an existing competitor list stays a competitor list.
+   * The same name may exist on both lists. Those are two cards. Import onto one
+   * list does not update, remove, or retag the card on the other list.
    */
   rosterList?: 'student';
 };
@@ -760,11 +762,45 @@ export function addStudent(draft: StudentDraft, options?: { rosterList?: 'studen
   return card;
 }
 
-/** Append already-validated cards in one write. Used by CSV import. */
-export function addStudents(students: Student[]): Student[] {
+/**
+ * Append already-validated CSV cards onto one list, in one write.
+ *
+ * A person who is already on the other list keeps that card. This does not
+ * update it, remove it, or change its `rosterList` tag. The imported name is
+ * a new card on the list being imported, so one person can be on both lists.
+ * Importing that name again on the same list appends another card there.
+ * Competitor Roster import has always appended, and Student Roster import does too.
+ */
+export function addStudents(
+  students: Student[],
+  options?: { rosterList?: 'student' | 'competitor' },
+): Student[] {
   if (!students.length) return [];
-  commit(sortStudents([...state.students, ...students]));
-  return students;
+  const list = options?.rosterList === 'student' ? 'student' : 'competitor';
+  const next = assignImportedRosterCards(state.students, students, list);
+  commit(next.students);
+  return next.added;
+}
+
+/** Pure list split used by {@link addStudents}. Existing cards are copied through unchanged. */
+export function assignImportedRosterCards(
+  existing: readonly Student[],
+  imported: readonly Student[],
+  list: 'student' | 'competitor',
+): { students: Student[]; added: Student[] } {
+  const used = new Set(existing.map((row) => row.id));
+  const added = imported.map((row) => importedRosterCard(row, list, used));
+  return { students: sortStudents([...existing, ...added]), added };
+}
+
+function importedRosterCard(row: Student, list: 'student' | 'competitor', used: Set<string>): Student {
+  let id = row.id.trim();
+  if (!id || used.has(id)) id = createStudentId();
+  used.add(id);
+  if (list === 'student') return { ...row, id, rosterList: 'student' };
+  const competitor: Student = { ...row, id };
+  delete competitor.rosterList;
+  return competitor;
 }
 
 export function updateStudent(id: string, draft: Partial<StudentDraft>): Student | null {
