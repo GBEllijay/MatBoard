@@ -3,10 +3,12 @@ import { subscribeDriveBinding, readDriveBinding } from '../lib/googleDrive';
 import { chooseGymHome, playingFromCopy, probeAdvantageCloud, type GymHomeId } from '../lib/gymHome';
 import { readOneDriveBinding, subscribeOneDriveBinding } from '../lib/oneDrive';
 import { readCloudLapse } from '../lib/cloudLapse';
+import { mediaConductAccepted } from '../lib/mediaConduct';
 import { proPlusCloudUnlocked, subscribeProPlusCloud } from '../lib/proPlusCloud';
 
 function snapshotHome(cloudBound: boolean): GymHomeId {
-  const plusCloudActive = proPlusCloudUnlocked();
+  const conduct = typeof localStorage === 'undefined' || mediaConductAccepted(localStorage);
+  const plusCloudActive = proPlusCloudUnlocked() && conduct;
   const lapsed = typeof localStorage !== 'undefined' && readCloudLapse(localStorage, Date.now(), plusCloudActive).phase !== 'hidden';
   return chooseGymHome({
     plusCloudActive,

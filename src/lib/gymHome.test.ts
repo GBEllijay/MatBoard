@@ -47,4 +47,6 @@ test('Google Photos stays the album picker and gallery bytes are not a public bu
   assert.doesNotMatch(worker, /r2\.dev/);
   assert.match(worker, /gallery\/approved/);
   assert.match(worker, /unbound/);
+  assert.match(worker, /cloudflare-cdn-cache-control/);
+  assert.match(worker, /authorization/);
 });

@@ -44,7 +44,11 @@ export async function onRequest(context: { request: Request; env: Env }): Promis
     status: 200,
     headers: {
       'content-type': object.httpMetadata?.contentType || 'application/octet-stream',
-      'cache-control': 'private, max-age=300',
+      // The browser still sends Authorization. Cloudflare may cache the image
+      // on advantagebjjtimer.com so the CSAM Scanning Tool can see it.
+      'cache-control': 'private, no-store',
+      'cloudflare-cdn-cache-control': 'public, max-age=86400',
+      vary: 'authorization',
     },
   });
 }

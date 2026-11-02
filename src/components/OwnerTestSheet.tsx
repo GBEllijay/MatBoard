@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from 'react';
 import { clearOwnerTestUnlock, submitOwnerTest, submitOwnerTestOrCode } from '../lib/codeRedeemClient';
+import { SecretField } from './SecretField';
 import { Sheet } from './Sheet';
 
 const TIERS = [
@@ -67,20 +68,16 @@ export function OwnerTestSheet({ open, onClose }: Props) {
         Unlocks a tier on this phone or computer so you can test. It is not a customer code, and the address bar cannot turn it on.
       </p>
       <form className="home__unlock-form" onSubmit={submit}>
-        <label>
-          <span className="sr-only">Owner test secret</span>
-          <input
-            type="password"
-            name="owner-test-secret"
-            autoComplete="off"
-            placeholder="Owner test secret"
-            value={secret}
-            onChange={(event) => {
-              setSecret(event.target.value);
-              if (error) setError('');
-            }}
-          />
-        </label>
+        <SecretField
+          label="Owner test secret"
+          name="owner-test-secret"
+          placeholder="Owner test secret"
+          value={secret}
+          onChange={(value) => {
+            setSecret(value);
+            if (error) setError('');
+          }}
+        />
         <label>
           <span className="sr-only">Tier</span>
           <select name="owner-test-tier" value={tier} onChange={(event) => setTier(event.target.value as (typeof TIERS)[number][0])}>
