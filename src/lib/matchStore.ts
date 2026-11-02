@@ -6,6 +6,13 @@ import {
   parseGrandmasterPrefs,
   type GrandmasterCelebrationPrefs,
 } from './grandmasterCelebration';
+import {
+  DEFAULT_DQ_DISAPPOINTED,
+  dqDisappointedFromSync,
+  mergeDqDisappointed,
+  parseDqDisappointed,
+  type DqDisappointedPrefs,
+} from './dqDisappointed';
 import { clamp, minutesToMs, secondsToMs } from './format';
 import { DEFAULT_SCOREBOARD_SKIN, parseScoreboardSkin, type ScoreboardSkinId } from './scoreboardSkin';
 import {
@@ -81,6 +88,8 @@ export type MatchState = {
   skin: ScoreboardSkinId;
   /** Optional grandmaster cheer on the scoreboard. Off until the controller turns it on. */
   grandmaster: GrandmasterCelebrationPrefs;
+  /** Optional one-shot reaction when a DQ is recorded. Off until the controller turns it on. */
+  dqDisappointed: DqDisappointedPrefs;
   /** Last Win (Submission / Points / Decision) or DQ (Technical / Medical). Survives reload; flash does not. */
   outcome: MatchOutcome | null;
   /** Brief center splash; not restored after reload. */
@@ -107,6 +116,7 @@ export type MatchAction =
   | { type: 'setAutoAnnounce'; value: boolean }
   | { type: 'setSkin'; value: ScoreboardSkinId }
   | { type: 'setGrandmaster'; value: Partial<GrandmasterCelebrationPrefs> }
+  | { type: 'setDqDisappointed'; value: Partial<DqDisappointedPrefs> }
   | { type: 'setOutcomeFlash'; value: OutcomeFlash | null }
   | {
       type: 'loadBracketBout';
@@ -178,6 +188,7 @@ export function defaultMatch(): MatchState {
     autoAnnounce: true,
     skin: DEFAULT_SCOREBOARD_SKIN,
     grandmaster: { ...DEFAULT_GRANDMASTER_PREFS },
+    dqDisappointed: { ...DEFAULT_DQ_DISAPPOINTED },
     outcome: null,
     outcomeFlash: null,
     revision: 1,
@@ -220,6 +231,7 @@ function loadState(): MatchState {
         grandmaster: parsed.grandmaster,
         [LEGACY_GRANDMASTER_PREFS_KEY]: legacyCheer,
       }),
+      dqDisappointed: parseDqDisappointed(parsed.dqDisappointed),
       outcome: parseMatchOutcome(parsed.outcome),
       outcomeFlash: null,
       revision: Number(parsed.revision ?? 1),
@@ -252,6 +264,7 @@ function clone(s: MatchState): MatchState {
             grandmaster: incoming.grandmaster,
             [LEGACY_GRANDMASTER_PREFS_KEY]: legacyCheer,
           }),
+    dqDisappointed: dqDisappointedFromSync(state.dqDisappointed, incoming.dqDisappointed),
   };
   delete (next as { padHeaders?: unknown }).padHeaders;
   delete (next as Record<string, unknown>)[LEGACY_GRANDMASTER_PREFS_KEY];
@@ -493,6 +506,16 @@ function applyAction(current: MatchState, action: MatchAction): MatchState {
         return current;
       }
       return bumpRevision({ ...current, grandmaster });
+    }
+    case 'setDqDisappointed': {
+      const dqDisappointed = mergeDqDisappointed(current.dqDisappointed, action.value);
+      if (
+        dqDisappointed.enabled === current.dqDisappointed.enabled &&
+        dqDisappointed.playedAt === current.dqDisappointed.playedAt
+      ) {
+        return current;
+      }
+      return bumpRevision({ ...current, dqDisappointed });
     }
     case 'setOutcomeFlash':
       return bumpRevision({ ...current, outcomeFlash: action.value });

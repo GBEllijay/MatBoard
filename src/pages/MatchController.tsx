@@ -330,7 +330,21 @@ export function MatchControllerPage() {
           />
           Auto-announce winner
         </label>
-        {board.showGrandmaster ? <GrandmasterControls prefs={match.grandmaster} /> : null}
+        {board.showGrandmaster ? (
+          <div className="reaction-settings">
+            <GrandmasterControls prefs={match.grandmaster} />
+            <label className="toggle dq-reaction-toggle">
+              <input
+                type="checkbox"
+                checked={match.dqDisappointed.enabled}
+                onChange={(e) =>
+                  dispatchMatch({ type: 'setDqDisappointed', value: { enabled: e.target.checked } })
+                }
+              />
+              DQ reaction
+            </label>
+          </div>
+        ) : null}
         {castNote ? <p className="cast-note">{castNote}</p> : null}
       </section>
 
