@@ -295,3 +295,38 @@ test('a DQ does not bring the grandmaster out', async ({ browser }) => {
   await expect(opened.page.getByText('Bom trabalho!')).toHaveCount(0);
   await opened.context.close();
 });
+
+test('a DQ with the cheer and the reaction on shows only the DQ figure', async ({ browser }) => {
+  const match = {
+    ...pointsMatch(4),
+    grandmaster: { enabled: true, onWin: true, onPoints: true, pointsThreshold: 1 },
+    dqDisappointed: { enabled: true, playedAt: null },
+    outcome: { call: 'dq', reason: 'technical', side: 'blue', source: 'manual', at: 11 },
+  };
+  for (const viewport of [
+    { width: 1440, height: 900 },
+    { width: 390, height: 844 },
+  ]) {
+    const opened = await openSeeded(browser, viewport.width, viewport.height, { 'matboard.match.v1': match });
+    await opened.page.goto('/match?from=suite');
+    await expect(opened.page.locator('.kids-grandmaster')).toHaveCount(0);
+    await expect(opened.page.locator('.dq-disappointed')).toHaveCount(1);
+    const covered = await opened.page.evaluate(() => {
+      const figure = document.querySelector('.dq-disappointed__figure');
+      const opponent = document.querySelector('.bout--white');
+      if (!(figure instanceof HTMLElement) || !(opponent instanceof HTMLElement)) return ['missing'];
+      const cover = figure.getBoundingClientRect();
+      const hits: string[] = [];
+      for (const card of opponent.querySelectorAll('.score')) {
+        if (!(card instanceof HTMLElement)) continue;
+        const box = card.getBoundingClientRect();
+        const ix = Math.min(box.right, cover.right) - Math.max(box.left, cover.left);
+        const iy = Math.min(box.bottom, cover.bottom) - Math.max(box.top, cover.top);
+        if (ix > 1 && iy > 1) hits.push(`${Math.round(ix)}x${Math.round(iy)}`);
+      }
+      return hits;
+    });
+    expect(covered, covered.join(' | ')).toEqual([]);
+    await opened.context.close();
+  }
+});

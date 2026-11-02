@@ -333,16 +333,20 @@ export function MatchControllerPage() {
         {board.showGrandmaster ? (
           <div className="reaction-settings">
             <GrandmasterControls prefs={match.grandmaster} />
-            <label className="toggle dq-reaction-toggle">
-              <input
-                type="checkbox"
-                checked={match.dqDisappointed.enabled}
-                onChange={(e) =>
-                  dispatchMatch({ type: 'setDqDisappointed', value: { enabled: e.target.checked } })
-                }
-              />
-              DQ reaction
-            </label>
+            <fieldset className="grandmaster-controls">
+              <legend>DQ reaction</legend>
+              <label className="toggle">
+                <input
+                  type="checkbox"
+                  checked={match.dqDisappointed.enabled}
+                  onChange={(e) =>
+                    dispatchMatch({ type: 'setDqDisappointed', value: { enabled: e.target.checked } })
+                  }
+                />
+                Show on the scoreboard
+              </label>
+              <p className="cast-note">Plays once on the scoreboard when a competitor is disqualified.</p>
+            </fieldset>
           </div>
         ) : null}
         {castNote ? <p className="cast-note">{castNote}</p> : null}

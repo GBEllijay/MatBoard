@@ -16533,10 +16533,6 @@ a.plan-pick {
   gap: 0.35rem;
 }
 
-.dq-reaction-toggle {
-  margin-top: 0.15rem;
-}
-
 /* One walk-off on a recorded DQ. Taps pass through to the board and the splash. */
 .dq-disappointed {
   position: absolute;

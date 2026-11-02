@@ -364,7 +364,9 @@ export function MatchDisplayPage() {
       {grandmaster.show && masterId ? (
         <GrandmasterCheer lines={grandmaster.lines} masterId={forcedMaster ?? masterId} board />
       ) : null}
-      {showDq ? <DqDisappointedPopup key={dqLocalAt} onFinished={finishDq} /> : null}
+      {showDq && match.outcome?.call === 'dq' ? (
+        <DqDisappointedPopup key={dqLocalAt} side={match.outcome.side} onFinished={finishDq} />
+      ) : null}
     </main>
   );
 }

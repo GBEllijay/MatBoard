@@ -14,6 +14,7 @@ import {
   dqDisappointedShouldPlay,
   parseDqDisappointed,
 } from './dqDisappointed.ts';
+import { DEFAULT_GRANDMASTER_PREFS, matchGrandmasterView } from './grandmasterCelebration.ts';
 
 const dq = { call: 'dq' as const, at: 40 };
 const win = { call: 'win' as const, at: 40 };
@@ -71,6 +72,27 @@ test('reduced motion and missing VP9 alpha use the still, including Safari and i
   assert.equal(DQ_DISAPPOINTED_VIDEO, '/assets/kids/dq-disappointed-walkoff.webm');
   assert.ok(DQ_DISAPPOINTED_STILL_MS < DQ_DISAPPOINTED_SAFETY_MS);
   assert.ok(DQ_DISAPPOINTED_SAFETY_MS > 7_750);
+});
+
+test('a DQ with both switches on keeps the cheer off and plays the reaction', () => {
+  const outcome = { call: 'dq' as const, reason: 'technical' as const, side: 'blue' as const, source: 'manual' as const, at: 9 };
+  assert.equal(
+    matchGrandmasterView({
+      prefs: { ...DEFAULT_GRANDMASTER_PREFS, enabled: true, onPoints: true, pointsThreshold: 1 },
+      outcome,
+      blueName: 'Mia Santos',
+      whiteName: 'Leo Park',
+      bluePoints: 4,
+      whitePoints: 0,
+      matchComplete: true,
+    }).show,
+    false,
+  );
+  assert.equal(dqDisappointedShouldPlay({ prefs: { enabled: true, playedAt: null }, outcome }), true);
+  const controller = readFileSync(new URL('../pages/MatchController.tsx', import.meta.url), 'utf8');
+  assert.match(controller, /<legend>DQ reaction<\/legend>/);
+  assert.match(controller, /Plays once on the scoreboard when a competitor is disqualified\./);
+  assert.match(controller, /Slides in after a win, or when the score passes the total\./);
 });
 
 test('the popup dismisses on ended, times out, and does not take taps', () => {
