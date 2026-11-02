@@ -3,6 +3,7 @@ import { SEAT_SUNSET_ENDS_AT } from '../lib/seatSunset.ts';
 import type { D1Database } from './d1.ts';
 import { expandGrants } from './grantMatrix.ts';
 import { INSTRUCTOR_SEAT_CAP } from './paywallDecisions.ts';
+import { instructorAllowanceForLicense, readHalfOffCode } from './proBundle.ts';
 import { claimForAccess } from './subscriptionAccess.ts';
 import { accessForLicense } from './subscriptionSync.ts';
 import { issueToken, signingMaterial } from './tokenIssue.ts';
@@ -74,6 +75,14 @@ async function readOwner(request: Request, env: SeatEnv): Promise<{ licenseId: s
   return { licenseId: claims.sub, deviceId: claims.did };
 }
 
+async function seatAllowance(db: D1Database, licenseId: string): Promise<number> {
+  try {
+    return await instructorAllowanceForLicense(db, licenseId);
+  } catch {
+    return INSTRUCTOR_SEAT_CAP;
+  }
+}
+
 async function openSeatCount(db: D1Database, licenseId: string): Promise<number> {
   const row = await db
     .prepare(
@@ -123,6 +132,7 @@ export async function handleSeatIssue(
   const body = (await request.json()) as { email?: unknown; preset?: unknown };
   const email = labelOf(body.email);
   if (!email) return json(400, { ok: false, error: "Enter the instructor's email." });
+  const cap = await seatAllowance(db, owner.licenseId);
   const stamp = now();
   const id = crypto.randomUUID();
   const nonce = crypto.randomUUID();
@@ -148,16 +158,16 @@ export async function handleSeatIssue(
       new Date(exp * 1000).toISOString(),
       nonce,
       owner.licenseId,
-      INSTRUCTOR_SEAT_CAP,
+      cap,
     )
     .run();
   if (!inserted.meta.changes) {
-    return json(409, { ok: false, reason: 'cap', error: `All ${INSTRUCTOR_SEAT_CAP} seats are in use.` });
+    return json(409, { ok: false, reason: 'cap', error: `All ${cap} instructor seats are in use.` });
   }
   const used = await openSeatCount(db, owner.licenseId);
   const invite = await signInvite(env, { gym: owner.licenseId, sid: id, preset, nonce, exp });
   if (!invite) return json(503, { ok: false, error: 'Entitlement signing is not set up yet. Set ENTITLEMENT_SIGNING_KEY.' });
-  return json(200, { ok: true, seatId: id, invite, email, preset, status: 'pending', used: used + 1, cap: INSTRUCTOR_SEAT_CAP });
+  return json(200, { ok: true, seatId: id, invite, email, preset, status: 'pending', used: used + 1, cap });
 }
 
 type InvitePayload = { typ?: string; gym?: string; sid?: string; preset?: string; nonce?: string; exp?: number; v?: number };
@@ -338,7 +348,16 @@ export async function handleSeatList(request: Request, env: SeatEnv, db: D1Datab
     legacy: row.legacy === 1,
   }));
   const used = seats.filter((seat) => OPEN_STATUSES.includes(seat.status)).length;
-  return json(200, { ok: true, seats, used, cap: INSTRUCTOR_SEAT_CAP });
+  const cap = await seatAllowance(db, owner.licenseId);
+  const half = await readHalfOffCode(db, owner.licenseId);
+  return json(200, {
+    ok: true,
+    seats,
+    used,
+    cap,
+    halfOffCode: half?.code ?? null,
+    halfOffUsesLeft: half ? Math.max(0, half.maxUses - half.instructorUses - half.studentUses) : null,
+  });
 }
 
 type SyncSeat = { id?: unknown; inviteToken?: unknown; email?: unknown; preset?: unknown; status?: unknown };
@@ -358,7 +377,8 @@ export async function handleSeatSync(
   const stamp = now().toISOString();
   const sunsetAt = sunset(env);
   let registered = 0;
-  for (const seat of incoming.slice(0, INSTRUCTOR_SEAT_CAP + 5)) {
+  const cap = await seatAllowance(db, owner.licenseId);
+  for (const seat of incoming.slice(0, cap + 5)) {
     const inviteToken = typeof seat.inviteToken === 'string' ? seat.inviteToken.trim() : '';
     const rawId = typeof seat.id === 'string' ? seat.id.trim() : '';
     const id = (inviteToken || rawId).slice(0, 120);
@@ -367,7 +387,7 @@ export async function handleSeatSync(
     if (existing) continue;
     const used = await openSeatCount(db, owner.licenseId);
     const status = seat.status === 'revoked' ? 'revoked' : seat.status === 'active' ? 'claimed' : 'pending';
-    if (status !== 'revoked' && used >= INSTRUCTOR_SEAT_CAP) continue;
+    if (status !== 'revoked' && used >= cap) continue;
     await db
       .prepare(
         `INSERT INTO seats (
@@ -387,7 +407,7 @@ export async function handleSeatSync(
       .run();
     registered += 1;
   }
-  return json(200, { ok: true, registered, sunsetAt, cap: INSTRUCTOR_SEAT_CAP });
+  return json(200, { ok: true, registered, sunsetAt, cap });
 }
 
 export async function refreshSeat(

@@ -3,6 +3,7 @@ import { EVENT_QR_CAP, normalizeQrLinks } from '../lib/eventSlides';
 import { isItemPlayEnabled, moveItemIds } from '../lib/playlist';
 import { GALLERY_NEXT_CLASS, GALLERY_SHOW_ON_DATE } from '../lib/gallerySchedule';
 import { localDateKey } from '../lib/trainingNotesStore';
+import { ABUSE_EMAIL, reportPhotoHref } from '../lib/mediaConduct';
 import { buyLinkForQr, slideMarksForList } from '../lib/shopSlides';
 
 export type FolderListConfig = {
@@ -660,6 +661,13 @@ function FolderItemRow({
           <span aria-hidden="true">↓</span>
           <span>Down</span>
         </button>
+        {item.folderId === 'gallery' ? (
+          <p>
+            <a href={reportPhotoHref(item.id)}>Report this photo</a>
+            {' · '}
+            <a href={`mailto:${ABUSE_EMAIL}`}>{ABUSE_EMAIL}</a>
+          </p>
+        ) : null}
         <button
           type="button"
           className="btn btn--ghost folder-row__remove saver__remove"

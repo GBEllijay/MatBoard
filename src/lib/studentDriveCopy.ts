@@ -1,8 +1,8 @@
 /**
  * Student Edition copies into a folder the student already linked.
- * Filmed moves reuse the Daily Training Videos upload: friendly name,
- * Videos/{date} folder, resumable Google upload. OneDrive uses the same
- * names and date folders. Backups are files in a Student Journal folder.
+ * A filmed move goes to `students/{code}/inbox/{date}/`. It does not go in
+ * `videos/daily` or the gym gallery. Students have no gallery upload.
+ * Backups are files in a Student Journal folder.
  * This does not write the Coach / Pro gym binding.
  */
 
@@ -13,13 +13,13 @@ import {
   type AcademyProvider,
   type StudentDriveLink,
 } from './academyPathway.ts';
-import { VIDEOS_FOLDER_NAME, videoDateFolderName } from './driveVideoNames.ts';
+import { publishGymFile } from './gymPublish.ts';
+import { safePathSegment } from './gymTree.ts';
 import {
   downloadDriveFile,
   findOrCreateChildFolder,
   requestDriveToken,
   saveDriveBytes,
-  uploadTrainingVideos,
 } from './googleDrive.ts';
 import {
   createOneDriveFolder,
@@ -30,20 +30,30 @@ import {
 import { FILM_DRIVE_FAIL_ERROR, FILM_PLAY_DRIVE, type StudentFilm } from './studentFilm.ts';
 
 export const STUDENT_JOURNAL_FOLDER = 'Student Journal';
+export const STUDENT_CODE_KEY = 'matboard.studentEdition.studentCode.v1';
+
+export function readStudentCode(storage: MemoryStore | null | undefined): string {
+  try {
+    return safePathSegment(storage?.getItem(STUDENT_CODE_KEY) ?? '', '');
+  } catch {
+    return '';
+  }
+}
 
 type MemoryStore = { getItem: (key: string) => string | null };
+
+function studentCodeForUpload(): string {
+  if (typeof localStorage === 'undefined') return 'this-phone';
+  const saved = readStudentCode(localStorage);
+  if (saved) return saved;
+  return 'this-phone';
+}
 
 export function studentDriveTarget(
   storage: MemoryStore,
   where: 'academy' | 'personal',
 ): StudentDriveLink | null {
   return where === 'academy' ? loadAcademyLink(storage) : loadPersonalDrive(storage);
-}
-
-function clipNumberFromFilmName(name: string): number {
-  const match = name.match(/clip\s+(\d+)/i);
-  const value = match ? Number(match[1]) : 1;
-  return Number.isFinite(value) && value > 0 ? value : 1;
 }
 
 async function googleToken(): Promise<string | null> {
@@ -61,47 +71,23 @@ export async function uploadStudentFilm(input: {
   bytes: Blob;
 }): Promise<{ driveFileId: string } | { error: string }> {
   const dateKey = input.film.date;
-  if (input.link.provider === 'googleDrive') {
-    const token = await googleToken();
-    if (!token) return { error: driveSignInError('googleDrive') };
-    try {
-      const [result] = await uploadTrainingVideos({
-        token,
-        rootFolderId: input.link.folderId,
-        dateKey,
-        videos: [
-          {
-            localClipId: input.film.id,
-            name: input.film.fileName,
-            mime: input.film.mime,
-            bytes: input.bytes,
-            section: 'technique',
-            index: 0,
-            lessonTitle: input.film.technique,
-            clipNumber: clipNumberFromFilmName(input.film.fileName),
-          },
-        ],
-      });
-      if (!result || result.failed || !result.driveFileId) return { error: FILM_DRIVE_FAIL_ERROR };
-      return { driveFileId: result.driveFileId };
-    } catch {
-      return { error: FILM_DRIVE_FAIL_ERROR };
-    }
+  const published = await publishGymFile({
+    purpose: 'student-file',
+    role: 'student',
+    kind: 'video',
+    dateKey,
+    fileName: input.film.fileName,
+    bytes: input.bytes,
+    mime: input.film.mime,
+    studentCode: studentCodeForUpload(),
+    target: { provider: input.link.provider, folderId: input.link.folderId },
+  });
+  if (!published.route.ok) return { error: FILM_DRIVE_FAIL_ERROR };
+  if (published.home === 'phone') {
+    return { error: driveSignInError(input.link.provider) };
   }
-  const session = readOneDriveSession();
-  if (!session) return { error: driveSignInError('oneDrive') };
-  try {
-    const videos = await createOneDriveFolder(session.token, VIDEOS_FOLDER_NAME, fetch, input.link.folderId);
-    const dateFolder = await createOneDriveFolder(session.token, videoDateFolderName(dateKey), fetch, videos.id);
-    const saved = await saveOneDriveBytes(
-      session.token,
-      { name: input.film.fileName, bytes: input.bytes, mime: input.film.mime },
-      dateFolder.id,
-    );
-    return { driveFileId: saved.id };
-  } catch {
-    return { error: FILM_DRIVE_FAIL_ERROR };
-  }
+  if (published.failed || !published.remoteId) return { error: FILM_DRIVE_FAIL_ERROR };
+  return { driveFileId: published.remoteId };
 }
 
 export async function downloadStudentFilm(film: StudentFilm): Promise<Blob> {
