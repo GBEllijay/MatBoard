@@ -2,7 +2,6 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AlphaCodeEntry, redeemAlphaCode } from '../components/AlphaCodeEntry';
 import { HalfOffCheckoutNote } from '../components/HalfOffCheckoutNote';
-import { SecretField } from '../components/SecretField';
 import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
 import { HigherTierList } from '../components/TierBuyParts';
