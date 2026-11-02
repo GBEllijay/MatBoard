@@ -6,7 +6,7 @@
  * Basic Coach bracket bouts (Score from Mock Tournament) use that same plain board.
  * The Pro tournament suite (`from=suite`) keeps Mock-Tournament, Quick Result, and Old School.
  * A linked bout that is not basic Coach — Coach Unlimited, which is Pro-unlocked —
- * also keeps the stored skin. Master Carlos is not a skin; the Pro suite owns him.
+ * also keeps the stored skin. The grandmaster cheer is not a skin; the Pro suite owns it.
  * Quick Result is that same tournament board with Win and DQ under each gym name.
  * LIGHT and KIDS stay reserved.
  * Kids' Scoreboards paints the Pro bracket, not this skin.

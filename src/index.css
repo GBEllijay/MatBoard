@@ -3938,6 +3938,21 @@ main.tree:has(> .tier-home) > .tree__bar {
   text-align: center;
 }
 
+/* Phones and tablets, and only while a band figure is up. 1024+ stays centered and gold. */
+@media (max-width: 1023px) {
+  .display--band-figure .display-splash__card {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding-right: var(--band-figure-gutter, 0px);
+  }
+
+  .display--band-figure .display-splash__name,
+  .display--band-figure .display-splash__line {
+    overflow-wrap: break-word;
+  }
+}
+
 .display-splash--blue .display-splash__card {
   animation: display-splash-float-blue 0.7s cubic-bezier(0.16, 0.84, 0.22, 1) both;
 }
@@ -15588,7 +15603,7 @@ a.plan-pick {
   border: 1px solid rgba(255, 255, 255, 0.62);
 }
 
-/* The corner mark floats on the bracket. Carlos ignores pointers, so the mark still goes back. */
+/* The corner mark floats on the bracket. The grandmaster cheer ignores pointers, so the mark still goes back. */
 .tournament--kids > .play-exit {
   z-index: 25;
 }
@@ -16162,7 +16177,7 @@ a.plan-pick {
   color: #24185a;
 }
 
-.kids-carlos {
+.kids-grandmaster {
   position: fixed;
   inset: 0;
   /* Above the bracket toolbar (22/23) so the slide-in stays in front on a short TV. */
@@ -16171,13 +16186,10 @@ a.plan-pick {
   overflow: hidden;
 }
 
-/* Head box of public/assets/kids/carlos.webp. The cheer bubble must miss this rect. */
-.kids-carlos__face {
+/* Face and raised-hand boxes. Each master sets the rects inline from the measured art. */
+.kids-grandmaster__face,
+.kids-grandmaster__avoid {
   position: absolute;
-  left: 22%;
-  top: 2%;
-  width: 50%;
-  height: 40%;
   pointer-events: none;
 }
 
@@ -16195,7 +16207,7 @@ a.plan-pick {
   pointer-events: none;
 }
 
-.kids-carlos--corner {
+.kids-grandmaster--corner {
   position: relative;
   inset: auto;
   z-index: auto;
@@ -16207,7 +16219,7 @@ a.plan-pick {
   overflow: hidden;
 }
 
-.kids-carlos--corner .kids-carlos__figure {
+.kids-grandmaster--corner .kids-grandmaster__figure {
   position: relative;
   left: auto;
   bottom: auto;
@@ -16218,23 +16230,23 @@ a.plan-pick {
   width: auto;
   height: 4.35rem;
   margin: 0;
-  animation: kids-carlos-corner-in 0.45s cubic-bezier(0.16, 0.84, 0.32, 1) both;
+  animation: kids-grandmaster-corner-in 0.45s cubic-bezier(0.16, 0.84, 0.32, 1) both;
 }
 
-.kids-carlos--corner .kids-carlos__portrait {
+.kids-grandmaster--corner .kids-grandmaster__portrait {
   flex: 0 0 auto;
   width: calc(4.35rem * 845 / 1200);
   height: 4.35rem;
   aspect-ratio: auto;
 }
 
-.kids-carlos--corner .kids-carlos__portrait img {
+.kids-grandmaster--corner .kids-grandmaster__portrait img {
   width: 100%;
   height: 100%;
 }
 
-.kids-carlos--corner .kids-carlos__bubble {
-  --carlos-bubble-shift: 0px;
+.kids-grandmaster--corner .kids-grandmaster__bubble {
+  --grandmaster-bubble-shift: 0px;
   position: relative;
   top: auto;
   left: auto;
@@ -16249,16 +16261,16 @@ a.plan-pick {
   line-height: 1.1;
 }
 
-.kids-carlos--corner .kids-carlos__cheer,
-.kids-carlos--corner .kids-carlos__name,
-.kids-carlos--corner .kids-carlos__score {
+.kids-grandmaster--corner .kids-grandmaster__cheer,
+.kids-grandmaster--corner .kids-grandmaster__name,
+.kids-grandmaster--corner .kids-grandmaster__score {
   max-width: 11.5rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.kids-carlos--corner .kids-carlos__bubble::after {
+.kids-grandmaster--corner .kids-grandmaster__bubble::after {
   left: -0.42rem;
   right: auto;
   bottom: 0.45rem;
@@ -16267,11 +16279,11 @@ a.plan-pick {
   border-left-width: 0;
 }
 
-.kids-carlos--corner .kids-confetti {
+.kids-grandmaster--corner .kids-confetti {
   display: none;
 }
 
-@keyframes kids-carlos-corner-in {
+@keyframes kids-grandmaster-corner-in {
   from {
     transform: translateY(30%);
   }
@@ -16281,36 +16293,60 @@ a.plan-pick {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .kids-carlos--corner .kids-carlos__figure {
+  .kids-grandmaster--corner .kids-grandmaster__figure {
     animation: none;
   }
 }
 
-/* Match scoreboard: full-body slide-in on the right, same size as before.
-   The bubble sits to the left of his head, with the tail pointing at his shoulder. */
-.kids-carlos--board {
+/* Match scoreboard: the figure stands at the right end of the clock band.
+   The bubble sits to his left, tail pointing at his shoulder. */
+.kids-grandmaster--board {
   position: absolute;
   z-index: 20;
 }
 
-.kids-carlos--board .kids-carlos__figure {
+.kids-grandmaster--board .kids-grandmaster__figure {
   left: auto;
-  right: 0;
-  width: min(24vw, 280px);
-  animation-name: kids-carlos-in-right;
+  right: 0.4rem;
+  /* Feet near the clock band before layout measures the empty right end. */
+  bottom: calc(50% - 5rem);
+  width: min(16vw, 200px);
+  animation-name: kids-grandmaster-in-right;
 }
 
-.kids-carlos--board .kids-carlos__bubble {
-  --carlos-bubble-shift: 0px;
-  top: 0;
-  right: calc(78% + 0.75rem);
-  bottom: auto;
+.kids-grandmaster--board .kids-grandmaster__bubble {
+  --grandmaster-bubble-shift: 0px;
+  top: 6%;
+  right: calc(100% + 0.45rem);
   left: auto;
-  max-width: min(14rem, 36vw, calc(100vw - 0.82 * min(24vw, 280px) - 1.4rem));
+  bottom: auto;
+  min-width: 180px;
+  max-width: min(16rem, 46vw);
   transform: none;
 }
 
-.kids-carlos--board .kids-carlos__bubble::after {
+/* The splash already says the result. The corner cheer keeps its bubble. 1024+ keeps this one. */
+@media (max-width: 1023px) {
+  .kids-grandmaster--board .kids-grandmaster__bubble {
+    display: none;
+  }
+
+  /* Same box the layout pass writes, so the first paint is already the final size. */
+  .kids-grandmaster--board .kids-grandmaster__figure {
+    width: 106px;
+    right: 0;
+  }
+}
+
+.kids-grandmaster--board .kids-grandmaster__name {
+  display: block;
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kids-grandmaster--board .kids-grandmaster__bubble::after {
   left: auto;
   right: -0.42rem;
   bottom: 0.55rem;
@@ -16320,7 +16356,7 @@ a.plan-pick {
   border-bottom-width: 0.42rem;
 }
 
-@keyframes kids-carlos-in-right {
+@keyframes kids-grandmaster-in-right {
   from {
     transform: translateX(110%);
   }
@@ -16330,27 +16366,27 @@ a.plan-pick {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .kids-carlos--board .kids-carlos__figure {
+  .kids-grandmaster--board .kids-grandmaster__figure {
     animation: none;
   }
 }
 
-.kids-carlos__figure {
+.kids-grandmaster__figure {
   position: absolute;
   left: 0;
   bottom: 0;
   width: min(34vw, 420px);
   margin: 0;
-  animation: kids-carlos-in 0.72s cubic-bezier(0.16, 0.84, 0.32, 1) both;
+  animation: kids-grandmaster-in 0.72s cubic-bezier(0.16, 0.84, 0.32, 1) both;
 }
 
-.kids-carlos__portrait {
+.kids-grandmaster__portrait {
   position: relative;
   width: 100%;
   aspect-ratio: 845 / 1200;
 }
 
-.kids-carlos__portrait img {
+.kids-grandmaster__portrait img {
   display: block;
   width: 100%;
   height: 100%;
@@ -16358,15 +16394,54 @@ a.plan-pick {
   filter: drop-shadow(0 16px 22px rgba(0, 0, 0, 0.28));
 }
 
-/* Shared by every Carlos speech bubble. The scoreboard and the corner each
-   place this card off his face. */
-.kids-carlos__bubble {
-  --carlos-bubble-shift: 1.6rem;
+/* Nod frame swaps onto the rest frame. Holds, no long cross-fade, then frame 1. */
+.kids-grandmaster__frame--nod {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  animation: kids-grandmaster-nod 3.4s linear 0.35s 1 both;
+}
+
+@keyframes kids-grandmaster-nod {
+  0%,
+  13% {
+    opacity: 0;
+  }
+  13.1%,
+  28% {
+    opacity: 1;
+  }
+  28.1%,
+  41% {
+    opacity: 0;
+  }
+  41.1%,
+  56% {
+    opacity: 1;
+  }
+  56.1%,
+  69% {
+    opacity: 0;
+  }
+  69.1%,
+  84% {
+    opacity: 1;
+  }
+  84.1%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Shared by every grandmaster speech bubble. The scoreboard and the corner each
+   place this card off the face. */
+.kids-grandmaster__bubble {
+  --grandmaster-bubble-shift: 1.6rem;
   position: absolute;
   z-index: 2;
   top: 4%;
   left: 74%;
-  transform: translateX(var(--carlos-bubble-shift));
+  transform: translateX(var(--grandmaster-bubble-shift));
   display: grid;
   justify-items: start;
   gap: 0.08rem;
@@ -16383,12 +16458,12 @@ a.plan-pick {
   box-shadow: 0 10px 24px rgba(16, 24, 40, 0.18);
 }
 
-.kids-carlos__score {
+.kids-grandmaster__score {
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.03em;
 }
 
-.kids-carlos__bubble::after {
+.kids-grandmaster__bubble::after {
   content: '';
   position: absolute;
   left: 1.1rem;
@@ -16414,7 +16489,7 @@ a.plan-pick {
   animation-iteration-count: infinite;
 }
 
-@keyframes kids-carlos-in {
+@keyframes kids-grandmaster-in {
   from {
     transform: translateX(-110%);
   }
@@ -16434,7 +16509,7 @@ a.plan-pick {
   }
 }
 
-.kids-carlos--dismiss .kids-carlos__dismiss {
+.kids-grandmaster--dismiss .kids-grandmaster__dismiss {
   pointer-events: auto;
   position: absolute;
   z-index: 3;
@@ -16448,8 +16523,13 @@ a.plan-pick {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .kids-carlos__figure {
+  .kids-grandmaster__figure {
     animation: none;
+  }
+
+  .kids-grandmaster__frame--nod {
+    animation: none;
+    opacity: 0;
   }
 
   .kids-confetti {
@@ -16457,12 +16537,12 @@ a.plan-pick {
   }
 }
 
-/* Master Carlos controls on the match controller. */
-.carlos-controls .cast-note {
+/* Grandmaster cheer controls on the match controller. */
+.grandmaster-controls .cast-note {
   margin: 0.15rem 0 0.45rem;
 }
 
-.carlos-threshold {
+.grandmaster-threshold {
   display: flex;
   align-items: center;
   gap: 0.55rem;
@@ -16470,7 +16550,7 @@ a.plan-pick {
   font-weight: 800;
 }
 
-.carlos-threshold input {
+.grandmaster-threshold input {
   width: 4.75rem;
   min-height: 48px;
   text-align: center;

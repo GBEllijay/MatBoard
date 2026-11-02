@@ -3,7 +3,7 @@
  * Pro suite and Coach Unlimited share the Skin picker and wallpaper.
  * Plain Coach mock tournaments stay on the plain Bright/Dark tree.
  * The existing tree stays. A skin is only a wallpaper behind frosted name bubbles.
- * Grand Master Carlos is a corner win celebration, never a live-match graphic.
+ * The grandmaster cheer is a corner win celebration, never a live-match graphic.
  */
 
 import { SUITE_FROM, UNLIMITED_FROM } from './productNames.ts';
@@ -14,7 +14,6 @@ export const KIDS_SCOREBOARDS_NAME = "Kids' Scoreboards";
 export const KIDS_BRACKETS_SKINS_LABEL = 'Kids Brackets Skins';
 export const KIDS_WIN_CHEER = 'Bom trabalho!';
 export const KIDS_MODE_KEY = 'matboard.kidsScoreboard.v1';
-export const CARLOS_ASSET = '/assets/kids/carlos.webp';
 
 export const KIDS_SKINS = [
   { id: 'dinos', label: 'Dinos' },
@@ -30,7 +29,7 @@ export type KidsSkinId = (typeof KIDS_SKINS)[number]['id'];
 export type KidsScoreboardPrefs = {
   enabled: boolean;
   skin: KidsSkinId;
-  /** Grand Master Carlos after a champion. Off leaves the corner empty. */
+  /** Grandmaster cheer after a champion. Off leaves the corner empty. */
   mascot: boolean;
 };
 
@@ -115,7 +114,7 @@ export function setKidsMascot(mascot: boolean): void {
 }
 
 /**
- * Carlos and other skin chrome stay off during fullscreen, an open sheet
+ * The grandmaster cheer and other skin chrome stay off during fullscreen, an open sheet
  * (especially win method), or a linked unscored bout. That chrome used to sit
  * on Decision. The toolbar Skin button does not use this — see
  * `kidsSkinButtonSuppressed`.
@@ -142,7 +141,7 @@ export function kidsBracketScoring(liveMatchId: string | null, hasResult: boolea
   return liveMatchId != null && liveMatchId !== '' && !hasResult;
 }
 
-/** Carlos only in the corner, and only when skin chrome is allowed to show. */
+/** The grandmaster cheer only in the corner, and only when skin chrome is allowed to show. */
 export function kidsShowMascot(
   enabled: boolean,
   mascot: boolean,
@@ -200,7 +199,7 @@ export function withKidsSkin(path: string, skin: KidsSkinId | null): string {
 }
 
 /**
- * Carlos only after the championship bout has a winner. A stored champion name
+ * The grandmaster cheer only after the championship bout has a winner. A stored champion name
  * wins; otherwise the finalist's slot name or the same placeholder the card
  * already shows. A live bout (no final result, no champion) keeps him off.
  */
@@ -212,7 +211,7 @@ export function kidsResolvedChampion(board: TournamentState): string {
   return displayBoutName(board, 'final-0', result.winnerSide);
 }
 
-/** Carlos only after a champion is decided. A live bout keeps him off the tree. */
+/** The grandmaster cheer only after a champion is decided. A live bout keeps it off the tree. */
 export function kidsShowWin(enabled: boolean, championName: string): boolean {
   return enabled && championName.trim().length > 0;
 }

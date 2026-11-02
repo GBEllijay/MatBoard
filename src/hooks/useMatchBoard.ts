@@ -1,6 +1,6 @@
 import { useSearchParams } from 'react-router-dom';
 import { linkedBracketMatchId } from '../lib/bracketBout';
-import { masterCarlosOnScoreboard } from '../lib/carlosCelebration';
+import { grandmasterOnScoreboard } from '../lib/grandmasterCelebration';
 import { kidsSkinFromSearch, withKidsSkin } from '../lib/kidsScoreboard';
 import { isBasicCoach } from '../lib/productNames';
 import {
@@ -19,9 +19,9 @@ import { useMatchState } from './useStores';
 
 /**
  * Scoreboard and controller origin.
- * Pro suite (`from=suite`) keeps skins and Master Carlos.
+ * Pro suite (`from=suite`) keeps skins and the grandmaster cheer.
  * Basic Coach linked bouts paint the Advantage White board.
- * Coach Unlimited keeps the linked-bout skin and does not show Carlos.
+ * Coach Unlimited keeps the linked-bout skin and does not show the grandmaster cheer.
  */
 export function useMatchBoard() {
   const [searchParams] = useSearchParams();
@@ -35,7 +35,7 @@ export function useMatchBoard() {
     isCoachWhiteBoardSearch(searchParams),
   );
   const plainWhite = isPlainWhiteScoreboard(suite.fromSuite, Boolean(linkedId), whiteBoard);
-  const showCarlos = masterCarlosOnScoreboard(suite.fromSuite);
+  const showGrandmaster = grandmasterOnScoreboard(suite.fromSuite);
   const kidsSkin = kidsSkinFromSearch(searchParams);
   /** Media Edition and above: the polished skins paint and can be picked. */
   const polishedOpen = usePolishedSkinsUnlocked();
@@ -51,5 +51,5 @@ export function useMatchBoard() {
   const skinFor = (skin: ScoreboardSkinId) =>
     visibleScoreboardSkin(skin, suite.fromSuite, Boolean(linkedId), whiteBoard, polishedOpen, whiteBaseSkins);
 
-  return { suite, linkedId, plainWhite, showCarlos, whiteBoard, kidsSkin, polishedOpen, whiteBaseSkins, originPath, skinFor };
+  return { suite, linkedId, plainWhite, showGrandmaster, whiteBoard, kidsSkin, polishedOpen, whiteBaseSkins, originPath, skinFor };
 }

@@ -35,7 +35,7 @@ function matchState() {
     bracketMatchId: 'final-0',
     autoAnnounce: false,
     skin: 'MOCK_TOURNAMENT',
-    carlos: { enabled: false, onWin: false, onPoints: false, pointsThreshold: 8 },
+    grandmaster: { enabled: false, onWin: false, onPoints: false, pointsThreshold: 8 },
     outcome: null,
     outcomeFlash: null,
     revision: 4,

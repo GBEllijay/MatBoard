@@ -71,7 +71,7 @@ import {
   graduateToAdult,
   type LadderRung,
 } from '../../lib/studentRank';
-import { CarlosCheer } from '../../components/CarlosCheer';
+import { GrandmasterCheer } from '../../components/GrandmasterCheer';
 import { StudentMarks, useScrollToHash, useStudentFile, useStudentPath } from './chrome';
 import { kidsClothStyle } from './wornBelt';
 import { StudentProfileFields } from './ProfileFields';
@@ -142,7 +142,7 @@ export function RankPage() {
     <main className="student student-frame student--arena student--rank">
       <StudentMarks />
       {coachCheer ? (
-        <CarlosCheer lines={['Congratulations, Coach!', 'The blue belt is yours.']} onDismiss={() => setCoachCheer(false)} />
+        <GrandmasterCheer lines={['Congratulations, Coach!', 'The blue belt is yours.']} onDismiss={() => setCoachCheer(false)} />
       ) : null}
       <div className="arena-scroll">
         <header className="arena-hero rank-hero">
