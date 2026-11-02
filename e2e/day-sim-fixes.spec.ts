@@ -49,7 +49,7 @@ async function shot(page: Page, name: string) {
   await page.screenshot({ path: `/opt/cursor/artifacts/${name}.png`, fullPage: false });
 }
 
-/** Media and up pick skins from one Skins button; White keeps the Classic / Advantage toggle. */
+/** Media and up pick Classic and Advantage from the Skins button. This test is signed in as Pro. */
 const skinControl = (page: Page) =>
   page.getByRole('radio', { name: 'Classic' }).or(page.getByRole('button', { name: /^Timer skins/ }));
 

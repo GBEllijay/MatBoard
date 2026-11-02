@@ -7,17 +7,16 @@ import { SkinPicker, type SkinPickerOption } from './SkinPicker';
 
 /**
  * Scoreboard Skin popup for the Display and Controller.
- * Media Edition and above only: lists the skins this board already offered (Mock Tournament,
- * plus Old School and Quick Result on suite boards), then the polished skins. Without Media it
- * renders nothing and the board keeps its old controls (no lock tiles, no upsell).
+ * Advantage White (no higher tier): Mock-Tournament, Old School, and Quick Result.
+ * Media Edition and above: the skins this board already offered, then the polished skins.
+ * Anyone else keeps the old controls (no Skins button, no lock tiles, no upsell).
  * The pick is stored with the match on this device, so Display and cast follow it.
  */
 export function ScoreboardSkinPicker({ buttonClassName }: { buttonClassName?: string }) {
   const match = useMatchState();
   const board = useMatchBoard();
-  // Without Media the board keeps its old controls exactly (no Skins button anywhere).
-  if (board.kidsSkin || !board.polishedOpen) return null;
-  const options: SkinPickerOption[] = scoreboardPickerSkins(board.plainWhite, board.polishedOpen).map((skin) => ({
+  if (board.kidsSkin || (!board.polishedOpen && !board.whiteBaseSkins)) return null;
+  const options: SkinPickerOption[] = scoreboardPickerSkins(board.plainWhite, board.polishedOpen, board.whiteBaseSkins).map((skin) => ({
     id: skin.id,
     label: skin.label,
     thumb: skin.slug

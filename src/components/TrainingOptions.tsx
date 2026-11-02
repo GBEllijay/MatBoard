@@ -3,7 +3,7 @@ import { useAudioPrefs, useTrainingSkin, useTrainingState } from '../hooks/useSt
 import { patchAudioPrefs, playSelectedEndCue, playStartCue, playWarningCue, unlockAudio } from '../lib/audio';
 import { EndCueControls } from './EndCueControls';
 import { formatMinuteInput, formatMmSs, formatMss, parseTypedDurationMs } from '../lib/format';
-import { usePolishedSkinsUnlocked } from '../hooks/usePolishedSkins';
+import { usePolishedSkinsUnlocked, useWhiteBaseSkins } from '../hooks/usePolishedSkins';
 import { setTrainingSkin, visibleTrainingSkin } from '../lib/trainingSkin';
 import { TimerBackdropOptions } from './TimerBackdropOptions';
 import { TimerSkinPicker } from './TimerSkinPicker';
@@ -29,9 +29,10 @@ import {
 export function TrainingOptions({ onReset }: { onReset?: () => void }) {
   const training = useTrainingState();
   const audio = useAudioPrefs();
-  /** A locked polished pick shows as Classic, which is what the timer paints. */
+  /** A locked polished pick shows as Classic, which is what the timer paints. White shows Mock-Tournament. */
   const polishedOpen = usePolishedSkinsUnlocked();
-  const skin = visibleTrainingSkin(useTrainingSkin(), polishedOpen);
+  const whiteBase = useWhiteBaseSkins();
+  const skin = visibleTrainingSkin(useTrainingSkin(), polishedOpen, whiteBase);
   const [customWorkOpen, setCustomWorkOpen] = useState(false);
   const [customBreakOpen, setCustomBreakOpen] = useState(false);
   const customWork = !isWorkPreset(training.workMs);
@@ -238,8 +239,8 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
 
       <fieldset>
         <legend>Skin</legend>
-        {/* Media Edition and above: one Skins button in place of the Classic / Advantage toggle. */}
-        {polishedOpen ? (
+        {/* Media and above, and Advantage White: one Skins button. Student keeps the Classic / Advantage toggle. */}
+        {polishedOpen || whiteBase ? (
           <TimerSkinPicker buttonClassName="preset" />
         ) : (
           <div className="presets presets--split" role="radiogroup" aria-label="Timer skin">

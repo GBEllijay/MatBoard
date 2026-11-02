@@ -7,7 +7,7 @@ import { PolishedTimer } from '../components/PolishedTimer';
 import { Sheet } from '../components/Sheet';
 import { TrainingOptions } from '../components/TrainingOptions';
 import { useInterval } from '../hooks/useClock';
-import { usePolishedSkinsUnlocked } from '../hooks/usePolishedSkins';
+import { usePolishedSkinsUnlocked, useWhiteBaseSkins } from '../hooks/usePolishedSkins';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useSuiteOrigin } from '../hooks/useSuiteOrigin';
 import { useWakeLock } from '../hooks/useWakeLock';
@@ -19,14 +19,15 @@ import { formatMmSs } from '../lib/format';
 import { fullscreenElement } from '../lib/fullscreen';
 import { wantsRoundsFullscreen } from '../lib/roundsFullscreen';
 import { safeTimerReturn } from '../lib/timerReturn';
-import { isPolishedTrainingSkin, trainingUsesAdvantageSkin, visibleTrainingSkin } from '../lib/trainingSkin';
+import { isPolishedTrainingSkin, trainingUsesAdvantageSkin, visibleTrainingSkin, whiteTimerSurfaceClass } from '../lib/trainingSkin';
 import { timerBackdropClasses, timerGymLogoSrc } from '../lib/timerBackdrop';
 import { remainingTraining, tickTraining, toggleTrainingClock } from '../lib/trainingStore';
 
 export function TrainingPage() {
   const training = useTrainingState();
-  /** A polished pick paints only with Media Edition or above here; otherwise Classic. */
-  const skin = visibleTrainingSkin(useTrainingSkin(), usePolishedSkinsUnlocked());
+  /** A polished pick paints only with Media Edition or above. White paints one of its three base skins. */
+  const skin = visibleTrainingSkin(useTrainingSkin(), usePolishedSkinsUnlocked(), useWhiteBaseSkins());
+  const whiteSurface = whiteTimerSurfaceClass(skin);
   const polished = isPolishedTrainingSkin(skin) ? skin : null;
   const [options, setOptions] = useState(false);
   const [, setTick] = useState(0);
@@ -91,7 +92,7 @@ export function TrainingPage() {
     <main
       className={`training training--${training.phase}${
         trainingUsesAdvantageSkin(skin) ? ' training--themed' : ''
-      }${polished ? ' training--polished' : ''}${backdropClass ? ` ${backdropClass}` : ''}${
+      }${whiteSurface ? ` ${whiteSurface}` : ''}${polished ? ' training--polished' : ''}${backdropClass ? ` ${backdropClass}` : ''}${
         suite.fromSuite ? ' origin-suite' : ''
       }${fs.className ? ` ${fs.className}` : ''}`}
       onClick={(event) => {
