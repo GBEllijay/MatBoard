@@ -4,11 +4,9 @@
  * can carry the invite text to another browser. Advantage does not email the
  * link and does not host the files.
  *
- * Pro's default seat budget is 10 open seats (invited or active). Revoked seats
- * free a slot. Every role uses that budget, including assistant coach. A
- * signed-in seat cannot issue invites. Program directors do not get a path to
- * invite assistants. Owners who need more seats ask by email; this build does
- * not sell extra seats.
+ * Pro includes 5 free instructor seats. Half-off uses can add more, up to 105.
+ * The old fixed cap of 10 is retired. Revoked seats free a slot. A signed-in
+ * seat cannot issue invites. Program directors do not get a path to invite assistants.
  *
  * This app has no separate gym id. The Media Console gym name
  * (`matboard.gymName.v1`) is the gym identity when one is saved. A blank name
@@ -16,12 +14,13 @@
  */
 
 import { readGymName } from './gymName.ts';
+import { FREE_INSTRUCTOR_SEATS, instructorSeatAllowance } from './proBundleMath.ts';
 import { legacySeatBlocked } from './seatSunset.ts';
 import { dropOwnerTestDoors, ownerTestActive, subscribeOwnerTest } from './ownerTestGrant.ts';
 import { SITE_FEEDBACK_EMAIL } from './siteFooter.ts';
 
-/** Default Pro budget for open coach, program director, and instructor seats. */
-export const PRO_INSTRUCTOR_SEAT_CAP = 10;
+/** Free instructor seats on Pro before any half-off use. */
+export const PRO_INSTRUCTOR_SEAT_CAP = FREE_INSTRUCTOR_SEATS;
 
 /** Shown next to the seat count. Not a checkout. */
 export const PRO_SEAT_CAP_REQUEST_NOTE = `Additional seats may be available for authorization upon owner request. Email ${SITE_FEEDBACK_EMAIL}.`;
@@ -543,13 +542,13 @@ export function countOpenInstructorSeats(seats: readonly Pick<InstructorSeat, 's
   return seats.filter((seat) => instructorSeatOccupiesCap(seat.status)).length;
 }
 
-export function proSeatUsageLabel(used: number): string {
-  return `${used} of ${PRO_INSTRUCTOR_SEAT_CAP} seats used`;
+export function proSeatUsageLabel(used: number, allowance = instructorSeatAllowance(0)): string {
+  return `${used} of ${allowance} free instructor seats used`;
 }
 
-export function proSeatsRemaining(used: number): number {
+export function proSeatsRemaining(used: number, allowance = instructorSeatAllowance(0)): number {
   const open = Number.isFinite(used) ? Math.max(0, Math.floor(used)) : 0;
-  return Math.max(0, PRO_INSTRUCTOR_SEAT_CAP - open);
+  return Math.max(0, allowance - open);
 }
 
 /** Remaining open seats. One seat stays singular. */
@@ -563,8 +562,8 @@ export function proSeatCapNear(used: number): boolean {
   return proSeatsRemaining(used) <= 2;
 }
 
-export function proSeatCapBlockedCopy(): string {
-  return `All ${PRO_INSTRUCTOR_SEAT_CAP} seats are in use. Revoke a seat to issue another invite. ${PRO_SEAT_CAP_REQUEST_NOTE}`;
+export function proSeatCapBlockedCopy(allowance = instructorSeatAllowance(0)): string {
+  return `All ${allowance} free instructor seats are in use. Revoke a seat to issue another invite. ${PRO_SEAT_CAP_REQUEST_NOTE}`;
 }
 
 export function issueInstructorInvite(input: {
@@ -575,13 +574,15 @@ export function issueInstructorInvite(input: {
   now?: number;
   token?: string;
   id?: string;
+  /** Half-off uses already spent on Instructor. The free allowance is 5. */
+  allowanceUses?: number;
 }): IssueInviteResult {
   const email = normalizeInviteEmail(input.email);
   if (!isInviteEmail(email)) return { ok: false, reason: 'email' };
   if (readCurrentSeat()) return { ok: false, reason: 'owner' };
   const archive = readArchive();
   if (openEmailTaken(archive.seats, email)) return { ok: false, reason: 'duplicate' };
-  if (countOpenInstructorSeats(archive.seats) >= PRO_INSTRUCTOR_SEAT_CAP) {
+  if (countOpenInstructorSeats(archive.seats) >= instructorSeatAllowance(input.allowanceUses ?? 0)) {
     return { ok: false, reason: 'cap' };
   }
   const token = input.token?.trim() || newId();

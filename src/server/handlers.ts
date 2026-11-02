@@ -8,6 +8,7 @@ import {
   type WhiteEntitlement,
 } from './entitlements.ts';
 import { recordPurchase } from './purchaseRecords.ts';
+import { ensureHalfOffCode } from './proBundle.ts';
 import { lookupCheckoutSessionId, revokeOneTimePurchase } from './refundRevoke.ts';
 import { applySubscriptionSnapshot } from './subscriptionSync.ts';
 import { canceledSnapshot, fetchStripeSubscription, type StripeSubscriptionSnapshot } from './stripeSubscription.ts';
@@ -220,9 +221,9 @@ async function mirrorPurchase(
     status?: 'active' | 'inactive';
     now: Date;
   },
-): Promise<void> {
-  if (!extras.db) return;
-  await recordPurchase(extras.db, {
+): Promise<string | null> {
+  if (!extras.db) return null;
+  const saved = await recordPurchase(extras.db, {
     email: input.email,
     product: input.product,
     source: input.source,
@@ -233,6 +234,7 @@ async function mirrorPurchase(
     now: input.now,
     status: input.status ?? 'active',
   });
+  return saved.licenseId;
 }
 
 export async function handleWebhook(
@@ -381,7 +383,7 @@ export async function handleWebhook(
       createdAt: stamp,
       updatedAt: stamp,
     });
-    await mirrorPurchase(extras, {
+    const licenseId = await mirrorPurchase(extras, {
       email: stored.email,
       product: stored.product,
       source: 'stripe_subscription',
@@ -391,6 +393,7 @@ export async function handleWebhook(
       status: 'active',
       now: now(),
     });
+    if (extras.db && licenseId) await ensureHalfOffCode(extras.db, licenseId, now());
     if (eventId && extras.db) {
       await extras.db.prepare(`INSERT OR IGNORE INTO stripe_events (event_id, received_at) VALUES (?, ?)`).bind(eventId, stamp).run();
     }

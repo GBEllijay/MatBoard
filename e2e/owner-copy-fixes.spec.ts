@@ -194,10 +194,10 @@ test('the coach seat bar is hidden in Student Edition and stays on coach pages',
   });
   await ownerPage.goto('/instructors');
   await expect(ownerPage.getByRole('heading', { name: 'Instructor Invitations and Access Management' })).toBeVisible();
-  await expect(ownerPage.locator('.invite-seat-cap__count')).toHaveText('0 of 10 seats used');
-  await expect(ownerPage.locator('.invite-seat-cap__remaining')).toHaveText('10 seats remaining');
-  await expect(ownerPage.locator('.binder-list__seats')).toContainText('0 of 10 seats used');
-  await expect(ownerPage.locator('.binder-list__seats')).toContainText('10 seats remaining');
+  await expect(ownerPage.locator('.invite-seat-cap__count')).toHaveText('0 of 5 free instructor seats used');
+  await expect(ownerPage.locator('.invite-seat-cap__remaining')).toHaveText('5 seats remaining');
+  await expect(ownerPage.locator('.binder-list__seats')).toContainText('0 of 5 free instructor seats used');
+  await expect(ownerPage.locator('.binder-list__seats')).toContainText('5 seats remaining');
   await expect(ownerPage.getByRole('button', { name: 'Issue invite' })).toBeVisible();
   await owner.close();
 });
