@@ -47,6 +47,7 @@ import {
   type DrivePickKind,
 } from '../lib/driveMediaPicker';
 import { formatMss, secondsToMs } from '../lib/format';
+import { publishGymFile } from '../lib/gymPublish';
 import { GALLERY_LINK_DONE, galleryItemShows, nextClassFromDays } from '../lib/gallerySchedule';
 import { downloadDriveFile, getDriveBindingSnapshot, requestDriveToken, subscribeDriveBinding } from '../lib/googleDrive';
 import {
@@ -616,6 +617,23 @@ export function ScreensaverPage() {
       } else {
         setBatchStatus(null);
         setPickerNote(large ? LARGE_MEDIA_NOTE : '');
+      }
+      if (added) {
+        const purpose = folderId === 'gallery' ? 'gallery' : folderId === 'shop' ? 'pro-shop' : folderId === 'events' ? 'events' : '';
+        if (purpose) {
+          const dateKey = localDateKey();
+          for (const file of matched) {
+            await publishGymFile({
+              purpose,
+              role: 'owner',
+              kind: file.type.startsWith('video/') ? 'video' : 'photo',
+              dateKey,
+              fileName: file.name || (purpose === 'pro-shop' ? 'product-card' : 'photo'),
+              bytes: file,
+              mime: file.type || (file.type.startsWith('video/') ? 'video/mp4' : 'image/jpeg'),
+            }).catch(() => undefined);
+          }
+        }
       }
       await refresh();
       if (added) setPlaying(true);

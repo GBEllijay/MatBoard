@@ -94,6 +94,7 @@ export function ClassPhotoPromotions({ dateKey, readOnly = false }: { dateKey: s
     <aside className="notes__distribute notes__class-photos" aria-label={CLASS_PHOTO_PROMOTIONS_LABEL}>
       <h2>{CLASS_PHOTO_PROMOTIONS_LABEL}</h2>
       {readOnly ? null : <p>{CLASS_PHOTO_PROMOTIONS_LEAD}</p>}
+      {readOnly ? null : <p>{CLASS_PHOTO_PROMOTIONS_STAY}</p>}
       {readOnly ? null : (
         <button
           type="button"
