@@ -87,15 +87,31 @@ export function pickGrandmaster(previous: GrandmasterId | null, random: () => nu
   return pool[index];
 }
 
-/** Same previous master and cheer key always resolve to the same next master. */
-export function grandmasterForCheer(previous: GrandmasterId | null, cheerKey: string): GrandmasterId {
+function mixCheerKey(cheerKey: string): number {
   let hash = 2166136261;
   for (let i = 0; i < cheerKey.length; i += 1) {
     hash ^= cheerKey.charCodeAt(i);
     hash = Math.imul(hash, 16777619);
   }
-  const unit = (hash >>> 0) / 4294967296;
-  return pickGrandmaster(previous, () => unit);
+  let h = hash >>> 0;
+  h ^= h >>> 16;
+  h = Math.imul(h, 0x7feb352d);
+  h ^= h >>> 15;
+  h = Math.imul(h, 0x846ca68b);
+  h ^= h >>> 16;
+  return h >>> 0;
+}
+
+/**
+ * Same previous master and cheer key always resolve to the same next master.
+ * After the first cheer, step two places around the five. That step is coprime
+ * with the set, so every master appears before one repeats, and nearby bout
+ * numbers cannot collapse onto a two-master loop.
+ */
+export function grandmasterForCheer(previous: GrandmasterId | null, cheerKey: string): GrandmasterId {
+  if (!previous) return GRANDMASTER_IDS[mixCheerKey(cheerKey) % GRANDMASTER_IDS.length];
+  const start = GRANDMASTER_IDS.indexOf(previous);
+  return GRANDMASTER_IDS[(start + 2) % GRANDMASTER_IDS.length];
 }
 
 /**

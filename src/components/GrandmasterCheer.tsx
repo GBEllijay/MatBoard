@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   grandmasterById,
   isGrandmasterId,
@@ -34,6 +34,58 @@ function boxStyle(box: { left: number; top: number; width: number; height: numbe
   };
 }
 
+/** Keep the board figure and its bubble off every score, advantage, and penalty card. */
+function layoutBoardCheer(root: HTMLElement) {
+  const display = root.closest('.display');
+  const figure = root.querySelector('.kids-grandmaster__figure');
+  const bubble = root.querySelector('.kids-grandmaster__bubble');
+  if (!(display instanceof HTMLElement) || !(figure instanceof HTMLElement) || !(bubble instanceof HTMLElement)) return;
+  const bout = display.querySelector('.bout--white');
+  if (!(bout instanceof HTMLElement)) return;
+  const d = display.getBoundingClientRect();
+  const b = bout.getBoundingClientRect();
+  const scores = [...bout.querySelectorAll('.score')].filter((node): node is HTMLElement => node instanceof HTMLElement);
+  if (!scores.length) return;
+  const rects = scores.map((node) => node.getBoundingClientRect());
+  const scoreLeft = Math.min(...rects.map((rect) => rect.left));
+  const scoreTop = Math.min(...rects.map((rect) => rect.top));
+  const stacked = scoreLeft < b.left + 64;
+  const pad = 8;
+  const safeLeft = (stacked ? d.left : b.left) + pad;
+  const safeRight = (stacked ? d.right : scoreLeft) - pad;
+  let safeTop = b.top + pad;
+  const safeBottom = (stacked ? scoreTop : b.bottom) - pad;
+  if (stacked) {
+    const upper = [...display.querySelectorAll('.bout--blue .score')].filter(
+      (node): node is HTMLElement => node instanceof HTMLElement,
+    );
+    if (upper.length) {
+      const floor = Math.max(...upper.map((node) => node.getBoundingClientRect().bottom));
+      safeTop = Math.max(safeTop, floor + pad);
+    }
+  }
+  const safeW = Math.max(96, safeRight - safeLeft);
+  const safeH = Math.max(96, safeBottom - safeTop);
+  const bubbleW = Math.min(256, Math.max(180, Math.floor(safeW * 0.46)));
+  let figW = Math.min(220, safeH * (845 / 1200), Math.max(96, safeW - bubbleW - 12));
+  let figH = figW * (1200 / 845);
+  if (figH > safeH) {
+    figH = safeH;
+    figW = Math.max(96, figH * (845 / 1200));
+  }
+  figure.style.width = `${Math.round(figW)}px`;
+  figure.style.left = `${Math.round(safeLeft - d.left)}px`;
+  figure.style.right = 'auto';
+  figure.style.bottom = `${Math.round(d.bottom - safeBottom)}px`;
+  bubble.style.minWidth = '180px';
+  bubble.style.maxWidth = `${Math.round(Math.max(180, Math.min(bubbleW, safeW - 12)))}px`;
+  bubble.style.left = 'calc(100% + 0.4rem)';
+  bubble.style.right = 'auto';
+  bubble.style.top = '8%';
+  bubble.style.bottom = 'auto';
+  bubble.style.transform = 'none';
+}
+
 /** Query hook so a test can show one master on the TV and the controller together. */
 export function grandmasterIdFromLocation(): GrandmasterId | null {
   if (typeof window === 'undefined') return null;
@@ -62,6 +114,7 @@ export function GrandmasterCheer({
   /** Synced pick. When omitted, this cheer chooses once and skips the master shown last. */
   masterId?: GrandmasterId | null;
 }) {
+  const rootRef = useRef<HTMLDivElement>(null);
   const forced = grandmasterIdFromLocation();
   const [localPick] = useState<GrandmasterId>(() => forced ?? masterId ?? pickGrandmaster(readLastGrandmasterId()));
   const id = forced ?? masterId ?? localPick;
@@ -73,8 +126,19 @@ export function GrandmasterCheer({
     writeLastGrandmasterId(id);
   }, [forced, id]);
 
+  useLayoutEffect(() => {
+    if (!board) return;
+    const root = rootRef.current;
+    if (!root) return;
+    const place = () => layoutBoardCheer(root);
+    place();
+    window.addEventListener('resize', place);
+    return () => window.removeEventListener('resize', place);
+  }, [board, id, lines]);
+
   return (
     <div
+      ref={rootRef}
       className={`kids-grandmaster kids-grandmaster--${id}${board ? ' kids-grandmaster--board' : ''}${corner ? ' kids-grandmaster--corner' : ''}${onDismiss ? ' kids-grandmaster--dismiss' : ''}`}
       data-grandmaster={id}
       role="status"

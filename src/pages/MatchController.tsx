@@ -483,10 +483,7 @@ function GrandmasterControls({ prefs }: { prefs: GrandmasterCelebrationPrefs }) 
         />
         Show on the scoreboard
       </label>
-      <p className="cast-note">
-        Optional for every kids’ training match. The grandmaster slides in on this scoreboard only when the match ends —
-        for a win, or if points went over the total during the bout. Off means no Grandmaster cheer from these triggers.
-      </p>
+      <p className="cast-note">Slides in after a win, or when the score passes the total.</p>
       {prefs.enabled ? (
         <>
           <label className="toggle">
