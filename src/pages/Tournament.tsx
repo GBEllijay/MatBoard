@@ -271,7 +271,7 @@ export function TournamentPage() {
         {kidsOn ? (
           <>
             {KIDS_BRACKETS_SKINS_LABEL} paints this bracket. Skin under the bracket opens the backgrounds.
-            Grand Master Carlos stays in the corner after a champion, with "Bom trabalho!" Turn him off from Skin.
+            Grandmaster cheer stays in the corner after a champion, with "Bom trabalho!" Turn it off from Skin.
           </>
         ) : (
           <>

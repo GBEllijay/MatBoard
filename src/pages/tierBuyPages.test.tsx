@@ -74,9 +74,17 @@ test('/buy: White checkout stays; other products are Student, Media, Instructor,
   assert.doesNotMatch(m.host.textContent ?? '', /Advantage Coach/);
   const links = [...m.host.querySelectorAll('[data-higher-tiers] a.buy__more')].map((a) => a.getAttribute('href'));
   assert.deepEqual(links, ['/editions/student', '/media', '/editions/instructor', '/editions/pro']);
-  // White checkout and restore are still on /buy.
+  // White checkout stays. Restore is still a button to /restore. The email sits with the code.
   assert.ok([...m.host.querySelectorAll('button')].some((b) => /checkout/i.test(b.textContent ?? '')));
-  assert.ok(m.host.querySelector('input[type="email"]') && m.host.querySelector('a[href="/restore"]'));
+  const restore = m.host.querySelector('.buy__restore');
+  assert.ok(restore);
+  assert.equal(restore.querySelector('input'), null);
+  assert.equal([...restore.querySelectorAll('button')].some((b) => b.textContent?.trim() === 'Restore'), true);
+  assert.match(restore.textContent ?? '', /Already purchased\? Enter the email from checkout\./);
+  const email = m.host.querySelector('form.alpha-code__form input[type="email"]');
+  assert.equal(email?.getAttribute('aria-label'), 'Email');
+  assert.ok(m.host.querySelector('a[href^="mailto:advantageappllc@gmail.com"]'));
+  assert.ok([...m.host.querySelectorAll('form.alpha-code__form button')].some((b) => b.textContent === 'Unlock'));
   m.done();
 });
 
@@ -86,7 +94,10 @@ test('/editions/student: blue belt, $19.99, no checkout unless entitled, demo, r
   const header = m.host.querySelector('header.buy__card--tier');
   assert.ok(header?.querySelector('.belt-tip.buy__belt[data-belt="blue"]'));
   assert.match(header?.textContent ?? '', /\$19\.99/);
-  assert.equal(m.host.querySelector('section.buy__checkout form'), null);
+  assert.equal(m.host.querySelector('header.buy__card--tier .buy__kicker')?.textContent, 'Alpha');
+  assert.doesNotMatch(m.host.querySelector('header.buy__card--tier')?.textContent ?? '', /Coming soon/);
+  assert.equal(m.host.querySelector('section.buy__checkout form:not(.alpha-code__form)'), null);
+  assert.ok(m.host.querySelector('form.alpha-code__form input[name="code"]'));
   assert.ok(m.host.querySelector('section.buy__checkout a[href^="mailto:"]'));
   assert.ok(m.host.querySelector('a[href="/student?student=1"]'));
   assert.ok(m.host.querySelector('form.buy__restore'));
@@ -101,7 +112,10 @@ test('/editions/instructor: brown belt, $49.99, alpha line, no checkout, only Pr
   assert.equal(header?.querySelector('h2')?.textContent, 'Advantage Instructor Edition');
   assert.match(header?.textContent ?? '', /\$49\.99/);
   assert.match(m.host.querySelector('section.buy__checkout')?.textContent ?? '', ALPHA);
-  assert.equal(m.host.querySelector('section.buy__checkout form'), null);
+  assert.equal(m.host.querySelector('section.buy__checkout form:not(.alpha-code__form)'), null);
+  assert.ok(m.host.querySelector('form.alpha-code__form input[name="code"]'));
+  assert.ok(m.host.querySelector('a[href^="mailto:advantageappllc@gmail.com"]'));
+  assert.match(m.host.textContent ?? '', /Requires gym setup with a third-party drive/);
   assert.ok(m.host.querySelector('form.buy__restore'));
   assert.deepEqual(higher(m.host), ['pro']);
   m.done();
@@ -114,7 +128,9 @@ test('/editions/pro: black belt, $99.99 + $5.99/mo, includes all, alpha line, no
   assert.match(header?.textContent ?? '', /\$99\.99 \+ \$5\.99\/mo/);
   assert.match(header?.textContent ?? '', /Includes all Advantage products\./);
   assert.match(m.host.querySelector('section.buy__checkout')?.textContent ?? '', ALPHA);
-  assert.equal(m.host.querySelector('section.buy__checkout form'), null);
+  assert.equal(m.host.querySelector('section.buy__checkout form:not(.alpha-code__form)'), null);
+  assert.ok(m.host.querySelector('form.alpha-code__form input[name="code"]'));
+  assert.ok(m.host.querySelector('a[href^="mailto:advantageappllc@gmail.com"]'));
   assert.ok(m.host.querySelector('form.buy__restore'));
   assert.equal(m.host.querySelector('[data-higher-tiers]'), null);
   m.done();

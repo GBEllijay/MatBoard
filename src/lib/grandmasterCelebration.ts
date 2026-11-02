@@ -1,44 +1,57 @@
 /**
- * Optional Master Carlos on the match scoreboard.
- * Pro suite only (`from=suite`). Coach and Coach Unlimited never show him.
- * Off by default. He appears only after the bout is over: a recorded win
+ * Optional grandmaster cheer on the match scoreboard.
+ * Pro suite only (`from=suite`). Coach and Coach Unlimited never show it.
+ * Off by default. It appears only after the bout is over: a recorded win
  * (including a referee-decision win, once that call is wired), or a point
- * total that was crossed during the match. A live score never brings him out.
+ * total that was crossed during the match. A live score never brings it out.
  * Kids' Scoreboards finals still celebrate a bracket champion on their own
  * and do not use this gate. That overlay is Pro suite only as well.
  */
 
 import { KIDS_WIN_CHEER, kidsPointsLine, kidsWinLines } from './kidsScoreboard.ts';
+import { isGrandmasterId, type GrandmasterId } from './grandmasters.ts';
 import type { MatchOutcome, Side } from './outcomes.ts';
 
-/** Master Carlos on the match scoreboard and its controller. Pro suite only. */
-export function masterCarlosOnScoreboard(fromSuite: boolean): boolean {
+/** Grandmaster cheer on the match scoreboard and its controller. Pro suite only. */
+export function grandmasterOnScoreboard(fromSuite: boolean): boolean {
   return fromSuite;
 }
 
-export const DEFAULT_CARLOS_POINTS_THRESHOLD = 10;
-export const CARLOS_THRESHOLD_MIN = 1;
-export const CARLOS_THRESHOLD_MAX = 98;
+export const DEFAULT_GRANDMASTER_POINTS_THRESHOLD = 10;
+export const GRANDMASTER_THRESHOLD_MIN = 1;
+export const GRANDMASTER_THRESHOLD_MAX = 98;
 
-export type CarlosCelebrationPrefs = {
-  /** Master switch. Off means no Carlos from a match win or a point threshold. */
+/** Previous save key for this block. Read once, then the match is stored under `grandmaster`. */
+export const LEGACY_GRANDMASTER_PREFS_KEY = 'carlos' as const;
+
+export type GrandmasterCelebrationPrefs = {
+  /** Master switch. Off means no grandmaster cheer from a match win or a point threshold. */
   enabled: boolean;
   /** Slide in at match end when this match has a winner (not a DQ). */
   onWin: boolean;
   /** Slide in at match end when a competitor's points went over `pointsThreshold`. */
   onPoints: boolean;
-  /** At match end, Carlos appears when points are greater than this number. */
+  /** At match end, the grandmaster appears when points are greater than this number. */
   pointsThreshold: number;
+  /** Master on screen for `cheerKey`. Null until a cheer has been picked. */
+  masterId: GrandmasterId | null;
+  /** Identity of the cheer that owns `masterId`. */
+  cheerKey: string | null;
+  /** Advances when a bout is reset so the next cheer is a new pick. */
+  boutSerial: number;
 };
 
-export const DEFAULT_CARLOS_PREFS: CarlosCelebrationPrefs = {
+export const DEFAULT_GRANDMASTER_PREFS: GrandmasterCelebrationPrefs = {
   enabled: false,
   onWin: true,
   onPoints: true,
-  pointsThreshold: DEFAULT_CARLOS_POINTS_THRESHOLD,
+  pointsThreshold: DEFAULT_GRANDMASTER_POINTS_THRESHOLD,
+  masterId: null,
+  cheerKey: null,
+  boutSerial: 0,
 };
 
-export type CarlosMatchView = {
+export type GrandmasterMatchView = {
   show: boolean;
   lines: readonly string[];
 };
@@ -48,22 +61,56 @@ const FALLBACK_NAME: Record<Side, string> = {
   white: 'Competitor 2',
 };
 
-export function parseCarlosThreshold(value: unknown): number {
+export function parseGrandmasterThreshold(value: unknown): number {
   const n = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
-  if (!Number.isInteger(n) || n < CARLOS_THRESHOLD_MIN || n > CARLOS_THRESHOLD_MAX) {
-    return DEFAULT_CARLOS_POINTS_THRESHOLD;
+  if (!Number.isInteger(n) || n < GRANDMASTER_THRESHOLD_MIN || n > GRANDMASTER_THRESHOLD_MAX) {
+    return DEFAULT_GRANDMASTER_POINTS_THRESHOLD;
   }
   return n;
 }
 
-export function parseCarlosPrefs(raw: unknown): CarlosCelebrationPrefs {
-  if (!raw || typeof raw !== 'object') return { ...DEFAULT_CARLOS_PREFS };
+function parseBoutSerial(value: unknown): number {
+  const n = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
+  if (!Number.isInteger(n) || n < 0 || n > 1_000_000) return 0;
+  return n;
+}
+
+export function parseGrandmasterPrefs(raw: unknown): GrandmasterCelebrationPrefs {
+  if (!raw || typeof raw !== 'object') return { ...DEFAULT_GRANDMASTER_PREFS };
   const row = raw as Record<string, unknown>;
+  const cheerKey = typeof row.cheerKey === 'string' && row.cheerKey ? row.cheerKey : null;
   return {
     enabled: row.enabled === true,
     onWin: row.onWin !== false,
     onPoints: row.onPoints !== false,
-    pointsThreshold: parseCarlosThreshold(row.pointsThreshold),
+    pointsThreshold: parseGrandmasterThreshold(row.pointsThreshold),
+    masterId: isGrandmasterId(row.masterId) ? row.masterId : null,
+    cheerKey,
+    boutSerial: parseBoutSerial(row.boutSerial),
+  };
+}
+
+/**
+ * Cheer prefs from a stored match. The current key wins. A save that only has
+ * the previous key is read once so a switch that was on stays on.
+ */
+export function grandmasterPrefsFromStored(stored: unknown): GrandmasterCelebrationPrefs {
+  if (!stored || typeof stored !== 'object') return { ...DEFAULT_GRANDMASTER_PREFS };
+  const row = stored as Record<string, unknown>;
+  if (row.grandmaster != null) return parseGrandmasterPrefs(row.grandmaster);
+  return parseGrandmasterPrefs(row[LEGACY_GRANDMASTER_PREFS_KEY]);
+}
+
+/** Stable id for the cheer on this bout. A reset advances the serial, which starts a new pick. */
+export function grandmasterCheerKey(boutSerial: number): string {
+  return `bout:${boutSerial}`;
+}
+
+export function advanceGrandmasterBout(prefs: GrandmasterCelebrationPrefs): GrandmasterCelebrationPrefs {
+  return {
+    ...prefs,
+    boutSerial: prefs.boutSerial + 1,
+    cheerKey: null,
   };
 }
 
@@ -91,7 +138,7 @@ function pointsSide(bluePoints: number, whitePoints: number, threshold: number):
  * clock with time left is still mid-match.
  * Kids' Scoreboards finals do not use this. They wait for a champion.
  */
-export function carlosMatchComplete(input: {
+export function grandmasterMatchComplete(input: {
   running: boolean;
   remainingMs: number;
   outcome: MatchOutcome | null;
@@ -104,8 +151,8 @@ export function carlosMatchComplete(input: {
  * Outcome shape for a referee-decision win.
  * Display already asks for a referee when the clock ends tied (`needsRefDecision`).
  * Awarding that win is not built yet — do not add that UI here. When it exists,
- * pass the winning side as `refDecisionSide` into `matchCarlosView` with the bout
- * complete, or record this outcome. Carlos then uses the same match-end win cheer.
+ * pass the winning side as `refDecisionSide` into `matchGrandmasterView` with the bout
+ * complete, or record this outcome. The grandmaster then uses the same match-end win cheer.
  * Ignored while the bout is still running. Finals do not use this hook.
  */
 export function refereeDecisionWin(side: Side, at = 0): MatchOutcome {
@@ -118,7 +165,7 @@ export function refereeDecisionWin(side: Side, at = 0): MatchOutcome {
   };
 }
 
-function carlosOutcome(input: {
+function grandmasterOutcome(input: {
   outcome: MatchOutcome | null;
   matchComplete: boolean;
   refDecisionSide?: Side | null;
@@ -138,25 +185,27 @@ function carlosOutcome(input: {
  * Crossing the threshold mid-match stays quiet.
  * `refDecisionSide` uses the win cheer, and only after the bout is over.
  */
-export function matchCarlosView(input: {
-  prefs: CarlosCelebrationPrefs;
+export function matchGrandmasterView(input: {
+  prefs: GrandmasterCelebrationPrefs;
   outcome: MatchOutcome | null;
   blueName: string;
   whiteName: string;
   bluePoints: number;
   whitePoints: number;
-  /** Clock at 0:00, or a result already recorded. See `carlosMatchComplete`. */
+  /** Clock at 0:00, or a result already recorded. See `grandmasterMatchComplete`. */
   matchComplete: boolean;
   /**
    * Reserved for a referee-decision win that is not already in `outcome`.
    * Honored only when `matchComplete` is true. See `refereeDecisionWin`.
    */
   refDecisionSide?: Side | null;
-}): CarlosMatchView {
-  const hidden: CarlosMatchView = { show: false, lines: [] };
+}): GrandmasterMatchView {
+  const hidden: GrandmasterMatchView = { show: false, lines: [] };
   if (!input.prefs.enabled) return hidden;
+  // A disqualification has its own reaction. Points on that athlete are not a cheer.
+  if (input.outcome?.call === 'dq') return hidden;
 
-  const outcome = carlosOutcome(input);
+  const outcome = grandmasterOutcome(input);
 
   if (input.prefs.onWin && outcome?.call === 'win') {
     const side = outcome.side;

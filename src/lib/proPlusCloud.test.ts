@@ -140,7 +140,7 @@ test('the products card still uses this gate, and the open card is a plain link'
   assert.match(home, /useProPlusCloudUnlocked/);
   assert.match(home, /\{PRO_PLUS_CLOUD_OPEN_LABEL\}/);
   assert.match(home, /to=\{PRO_PLUS_CLOUD_PATH\}/);
-  assert.match(home, /Advantage Pro Plus Cloud, coming soon/);
+  assert.match(home, /aria-label=\{\`\$\{PRO_PLUS_CLOUD_NAME\}, coming soon\`\}/);
   assert.match(home, /PRO_PLUS_CLOUD_PRICE_LINE/);
   assert.doesNotMatch(home, /Continue to checkout/);
   const card = home.slice(home.indexOf('function ProPlusCloudCard'), home.length);

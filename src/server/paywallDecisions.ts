@@ -31,10 +31,10 @@ export const PRO_DEVICES_PER_LICENSE = 5;
 export const DEVICE_ACTIVE_DAYS = 60;
 
 /**
- * Instructor seats. The cap is the existing client budget. Server enforcement
- * of seats is a later phase. One device per seat unless the owner raises this.
+ * Free instructor seats included with Pro. Half-off uses add more, up to 105.
+ * The old fixed cap of 10 is retired. One device per seat unless the owner raises this.
  */
-export const INSTRUCTOR_SEAT_CAP = 10;
+export const INSTRUCTOR_SEAT_CAP = 5;
 export const DEVICES_PER_INSTRUCTOR_SEAT = 1;
 
 /** Seat email is a label for the invited person, not a login. */

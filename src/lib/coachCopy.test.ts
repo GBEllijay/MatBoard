@@ -53,6 +53,8 @@ import {
   ROSTER_LEAD_COACH,
   ROSTER_LEAD_PRO,
   rosterCsvAvailable,
+  STUDENT_ROSTER_CSV_DEVICE_NOTE,
+  STUDENT_ROSTER_CSV_INSTRUCTIONS,
 } from './coachCopy.ts';
 
 function allCopy(): string {
@@ -214,6 +216,10 @@ test('Coach CMS roster shows CSV and keeps manual roster language', () => {
     "Fill in one person per row and save as CSV UTF-8, not .xlsx. Belt is required: White, Blue, Purple, Brown, Black, or Coral; kids Grey, Yellow, Orange, or Green. Spellings like 'black belt' or 'BB' work too.",
   );
   assert.doesNotMatch(`${ROSTER_CSV_DEVICE_NOTE}\n${ROSTER_CSV_INSTRUCTIONS}`, /UTF-8|accent/i);
+  assert.match(STUDENT_ROSTER_CSV_INSTRUCTIONS, /student name and a belt/);
+  assert.match(STUDENT_ROSTER_CSV_INSTRUCTIONS, /Student Notes/);
+  assert.match(STUDENT_ROSTER_CSV_DEVICE_NOTE, /stays on this device/);
+  assert.doesNotMatch(`${STUDENT_ROSTER_CSV_INSTRUCTIONS}\n${STUDENT_ROSTER_CSV_DEVICE_NOTE}`, /coming soon|locked|grey/i);
 });
 
 test('Coach Daily Lesson Plan copy stays on this device and does not name a day count', () => {

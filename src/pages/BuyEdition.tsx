@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { AlphaAccessNote } from '../components/AlphaAccessNote';
+import { AlphaCodeEntry } from '../components/AlphaCodeEntry';
 import { HalfOffCheckoutNote } from '../components/HalfOffCheckoutNote';
 import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
@@ -12,10 +13,8 @@ import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import { withCheckoutNonce } from '../lib/codeRedeemClient';
 import { buyCheckoutBody } from '../lib/halfOff';
-import { MEDIA_EDITION_CTA_LABEL } from '../lib/mediaEdition';
-import { COACH_UNLIMITED_PATH, PRODUCTS_PATH } from '../lib/productNames';
+import { COACH_UNLIMITED_PATH, INSTRUCTOR_DRIVE_REQUIREMENT, PRODUCTS_PATH } from '../lib/productNames';
 import { STUDENT_LIST_PRICE_CENTS } from '../lib/productPrices';
-import { alphaRequestMailto } from '../lib/siteFooter';
 import { studentEditionEntitled } from '../lib/studentEdition';
 import { PRO_INCLUDES_ALL, tierEntry } from '../lib/tierBuyPages';
 import { WHITE_CHECKOUT_API, formatUsdFromCents } from '../lib/whitePurchase';
@@ -80,9 +79,10 @@ export function BuyEditionPage({ tier }: { tier: EditionBuyTier }) {
         <article className="buy">
           <header className={`buy__card buy__card--belt buy__card--tier buy__card--tier-${entry.belt}`}>
             <TierBeltIcon belt={entry.belt} big />
-            <p className="buy__kicker">{studentOpen ? 'Alpha' : 'Coming soon'}</p>
+            <p className="buy__kicker">{tier === 'student' ? 'Alpha' : 'Coming soon'}</p>
             <h2>{entry.name}</h2>
             <p className="buy__lead">{entry.lead}</p>
+            {tier === 'instructor' ? <p>{INSTRUCTOR_DRIVE_REQUIREMENT}</p> : null}
             {tier === 'pro' ? <p className="buy__includes-all">{PRO_INCLUDES_ALL}</p> : null}
             <p className="buy__price">
               {entry.price} <span>{entry.priceDetail}</span>
@@ -96,6 +96,7 @@ export function BuyEditionPage({ tier }: { tier: EditionBuyTier }) {
                 {studentError}
               </p>
             ) : null}
+            <AlphaCodeEntry tier={tier === 'instructor' ? 'instructor' : tier} />
             {studentOpen ? (
               <form onSubmit={(event) => void onStudentSubmit(event)}>
                 <HalfOffCheckoutNote active={halfOff} />
@@ -105,11 +106,7 @@ export function BuyEditionPage({ tier }: { tier: EditionBuyTier }) {
                     : `Continue to checkout — ${formatUsdFromCents(STUDENT_LIST_PRICE_CENTS)}`}
                 </button>
               </form>
-            ) : (
-              <a className="btn btn--white" href={alphaRequestMailto()}>
-                {MEDIA_EDITION_CTA_LABEL}
-              </a>
-            )}
+            ) : null}
             {entry.alpha ? <AlphaAccessNote note={entry.alpha.note} display={entry.alpha.display} /> : null}
             {tier === 'instructor' && (coach || pro) ? (
               // Owner 2026-11-01: Instructor's open link goes to Coach Unlimited. Label stays Instructor.

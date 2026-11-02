@@ -17,7 +17,9 @@ import {
   PRO_HOME_DETAIL,
   PRO_HOME_LINES,
   PRO_LADDER_DETAIL,
+  INSTRUCTOR_DRIVE_REQUIREMENT,
   PRO_PLUS_CLOUD_BELT_BLURB,
+  PRO_PLUS_CLOUD_DESCRIPTION,
   PRO_PLUS_CLOUD_NAME,
   PRO_PLUS_CLOUD_PATH,
   ADVANTAGE_CLOUD_DRIVE_NOTE,
@@ -34,6 +36,7 @@ import {
   coachToolsOpen,
   coachUnlimitedDoorOpen,
   isBasicCoach,
+  isCoachStudentRoster,
   isPlainCoachTournament,
   MEDIA_CONSOLE_ROUTES,
   MEDIA_FOLDER_ROUTES,
@@ -277,6 +280,11 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
     [0, 1, 2, 3, null, null],
   );
   assert.equal(COACH_UNLIMITED_TOOLS[3].to, '/student-roster');
+  assert.equal(isCoachStudentRoster('/student-roster', null), true);
+  assert.equal(isCoachStudentRoster('/roster', 'students'), true);
+  assert.equal(isCoachStudentRoster('/roster', 'competitors'), false);
+  assert.equal(isCoachStudentRoster('/roster', 'unlimited'), false);
+  assert.equal(isCoachStudentRoster('/roster', 'coach'), false);
   assert.equal(UNLIMITED_ROSTER_PATH, '/roster?from=unlimited');
   assert.notEqual(COACH_UNLIMITED_TOOLS[3].to, COMPETITOR_ROSTER_PATH);
   assert.equal(COACH_UNLIMITED_TOOLS[3].belt, 'brown');
@@ -652,7 +660,16 @@ test('Pro console buttons stay those four labels, in that order, for owner, Pro,
 
 test('Pro Plus Cloud copy stays off the Advantage Pro blurb', () => {
   assert.equal(PRO_LADDER_DETAIL, 'Gym Owner and Instructors Console');
-  assert.equal(PRO_PLUS_CLOUD_NAME, 'Advantage Pro Plus Cloud');
+  assert.equal(PRO_PLUS_CLOUD_NAME, 'Advantage Pro + Cloud');
+  assert.equal(
+    PRO_PLUS_CLOUD_DESCRIPTION,
+    'Advantage hosted cross-platform communication. Easiest way to use Advantage.',
+  );
+  assert.equal(
+    INSTRUCTOR_DRIVE_REQUIREMENT,
+    'Requires gym setup with a third-party drive (Google Drive, OneDrive, or Dropbox). Advantage does not host it.',
+  );
+  assert.doesNotMatch(PRO_PLUS_CLOUD_DESCRIPTION, /Cloudflare/);
   assert.equal(PRO_PLUS_CLOUD_PATH, '/pro-plus-cloud');
   assert.equal(PRO_PLUS_CLOUD_BELT_BLURB, 'Gym Owner and Instructors Console, with Advantage Cloud.');
   assert.notEqual(PRO_PLUS_CLOUD_BELT_BLURB, PRO_LADDER_DETAIL);

@@ -100,6 +100,7 @@ const HEADER_ALIASES: Record<string, HeaderField> = {
   note: 'note',
   'short note': 'note',
   'competitor notes': 'note',
+  'student notes': 'note',
   comments: 'note',
   comment: 'note',
   'check in': 'checkedIn',
@@ -348,9 +349,17 @@ export function csvField(value: string): string {
   return value;
 }
 
-export function serializeRosterCsv(rows: RosterCsvRow[]): string {
+/**
+ * Competitor export writes Competitor Notes. Student export writes Student Notes.
+ * Import accepts both, plus the template's Notes header.
+ */
+export function serializeRosterCsv(
+  rows: RosterCsvRow[],
+  notesHeader: string = ROSTER_CSV_HEADERS[6],
+): string {
+  const headers = ROSTER_CSV_HEADERS.map((header, index) => (index === 6 ? notesHeader : header));
   const lines = [
-    ROSTER_CSV_HEADERS.join(','),
+    headers.join(','),
     ...rows.map((row) =>
       [
         row.name,

@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ChangeEvent, type RefObject } from 'react';
-import { PICKER_CANCEL_GRACE_MS, emptyChangeWasCancel } from '../lib/mediaPicker';
+import { PICKER_CANCEL_GRACE_MS, emptyChangeWasCancel, holdPickerFiles } from '../lib/mediaPicker';
 
 /** A focused file input can keep an empty frame up after the system picker closes. */
 function releasePickerFocus(node: HTMLInputElement): void {
@@ -63,12 +63,18 @@ export function DeviceMediaInput({
 
   const onChange = (event: ChangeEvent<HTMLInputElement>) => {
     const snapshot = event.target.files ? Array.from(event.target.files) : [];
-    event.target.value = '';
-    releasePickerFocus(event.target);
+    const node = event.target;
     if (snapshot.length > 0) {
-      void onFiles(snapshot);
+      void holdPickerFiles(snapshot).then((held) => {
+        node.value = '';
+        releasePickerFocus(node);
+        if (!alive.current) return;
+        void onFiles(held);
+      });
       return;
     }
+    node.value = '';
+    releasePickerFocus(node);
     const changeAt = Date.now();
     window.setTimeout(() => {
       if (!alive.current) return;

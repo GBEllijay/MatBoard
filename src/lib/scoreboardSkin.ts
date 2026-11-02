@@ -1,10 +1,12 @@
 /**
  * Match scoreboard skins. Mock-Tournament is the default.
- * Advantage White Live Bout is Mock-Tournament only — no skin picker.
- * Basic Coach bracket bouts (Score from Mock Tournament) use that same White board.
+ * Advantage White, and no tier above it, offers Mock-Tournament, Old School, and Quick Result.
+ * A plain Live Bout for every other tier is Mock-Tournament only — no skin picker —
+ * unless Media Edition or above adds the polished families on top of Mock-Tournament.
+ * Basic Coach bracket bouts (Score from Mock Tournament) use that same plain board.
  * The Pro tournament suite (`from=suite`) keeps Mock-Tournament, Quick Result, and Old School.
  * A linked bout that is not basic Coach — Coach Unlimited, which is Pro-unlocked —
- * also keeps the stored skin. Master Carlos is not a skin; the Pro suite owns him.
+ * also keeps the stored skin. The grandmaster cheer is not a skin; the Pro suite owns it.
  * Quick Result is that same tournament board with Win and DQ under each gym name.
  * LIGHT and KIDS stay reserved.
  * Kids' Scoreboards paints the Pro bracket, not this skin.
@@ -114,13 +116,20 @@ export function pickerBaseScoreboardSkins(plainWhite: boolean) {
 }
 
 /**
- * Everything the Scoreboard Skin popup lists: the existing skins, then the polished ones
- * only when this browser has Media Edition or above. Without it they are absent, not locked.
+ * Everything the Scoreboard Skin popup lists.
+ * White (no higher tier): Mock-Tournament, Old School, and Quick Result. The polished
+ * families are absent, not locked, on a plain Live Bout and on a suite board.
+ * Everyone else: the skins this board already offered, then the polished ones only
+ * when this browser has Media Edition or above. Without it they are absent, not locked.
  */
 export function scoreboardPickerSkins(
   plainWhite: boolean,
   polishedOpen: boolean,
+  whiteBaseSkins = false,
 ): readonly { id: ScoreboardSkinId; label: string; slug?: PolishedSkinSlug }[] {
+  if (whiteBaseSkins) {
+    return SELECTABLE_SCOREBOARD_SKINS.map((skin) => ({ id: skin.id, label: skin.label }));
+  }
   return [
     ...pickerBaseScoreboardSkins(plainWhite).map((skin) => ({ id: skin.id, label: skin.label })),
     ...(polishedOpen ? POLISHED_SCOREBOARD_SKINS : []),
@@ -205,7 +214,10 @@ export function isPlainWhiteScoreboard(
 
 /**
  * Skin the White, Coach, or suite board should paint.
- * White never follows a stored Old School or Quick Result pick.
+ * Advantage White (no higher tier) paints Mock-Tournament, Old School, or Quick Result
+ * even on a plain Live Bout. A polished pick falls back to Mock-Tournament there.
+ * Every other plain Live Bout stays on Mock-Tournament, including a stored Old School
+ * or Quick Result pick.
  * A polished pick paints on any board when this browser has Media Edition or above
  * (`polishedOpen`). When it is locked here, the board falls back to the default.
  */
@@ -215,8 +227,10 @@ export function visibleScoreboardSkin(
   linkedBout: boolean,
   coachWhiteBoard = false,
   polishedOpen = false,
+  whiteBaseSkins = false,
 ): ScoreboardSkinId {
   if (isPolishedSkinId(skin)) return polishedOpen ? skin : DEFAULT_SCOREBOARD_SKIN;
+  if (whiteBaseSkins && isSelectableScoreboardSkin(skin)) return skin;
   return isPlainWhiteScoreboard(fromSuite, linkedBout, coachWhiteBoard) ? DEFAULT_SCOREBOARD_SKIN : skin;
 }
 

@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { AlphaAccessNote } from '../components/AlphaAccessNote';
+import { AlphaCodeEntry } from '../components/AlphaCodeEntry';
 import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
 import { HigherTierList } from '../components/TierBuyParts';
 import {
-  MEDIA_EDITION_CTA_LABEL,
   MEDIA_EDITION_FEATURES,
   MEDIA_EDITION_GALLERY,
   MEDIA_EDITION_INCLUDED,
@@ -18,7 +18,6 @@ import {
 import { MEDIA_CONSOLE_NAME, PRODUCTS_PATH } from '../lib/productNames';
 import { POLISHED_SKINS, POLISHED_TIMER_ONLY_SKINS } from '../lib/polishedSkins';
 import { EDITION_ALPHA_NOTE, EDITION_EMAIL_DISPLAY } from '../lib/productPrices';
-import { alphaRequestMailto } from '../lib/siteFooter';
 import { formatUsdFromCents } from '../lib/whitePurchase';
 import './mediaEdition.css';
 
@@ -55,9 +54,7 @@ export function MediaEditionPage() {
           </header>
 
           <section className="buy__card media-edition__cta" aria-label="Alpha access">
-            <a className="btn btn--white" href={alphaRequestMailto()}>
-              {MEDIA_EDITION_CTA_LABEL}
-            </a>
+            <AlphaCodeEntry tier="media" />
             <AlphaAccessNote note={EDITION_ALPHA_NOTE} display={EDITION_EMAIL_DISPLAY} />
           </section>
         </article>

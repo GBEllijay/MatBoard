@@ -1,6 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { AlphaAccessNote } from './AlphaAccessNote';
+import { LEARN_MORE } from '../lib/learnMore';
 import { higherTiers, type TierBelt, type TierBuyEntry, type TierId } from '../lib/tierBuyPages';
 import { restoreWhiteByEmail } from '../lib/whiteUnlock';
 import '../pages/buyTiers.css';
@@ -48,7 +49,7 @@ export function TierCard({
       {children}
       {tier.alpha ? <AlphaAccessNote note={tier.alpha.note} display={tier.alpha.display} /> : null}
       <Link className="buy__more" to={tier.path}>
-        See what’s included
+        {LEARN_MORE[tier.id].label}
       </Link>
     </section>
   );
@@ -77,7 +78,7 @@ export function HigherTierList({
   );
 }
 
-/** Same restore form as /buy (restoreWhiteByEmail restores every purchase on that email). */
+/** Email restore on the tier buy pages. restoreWhiteByEmail restores every purchase on that email. /buy sends people to /restore instead. */
 export function TierRestoreCard({ label }: { label: string }) {
   const [email, setEmail] = useState('');
   const [pending, setPending] = useState(false);

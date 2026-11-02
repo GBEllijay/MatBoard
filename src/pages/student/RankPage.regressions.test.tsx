@@ -630,26 +630,26 @@ test('the 16-year prompt starts the adult belt and keeps kids belts under Earlie
     assert.equal(stored.beltBook?.templateId, 'adult-ibjjf@1');
     assert.equal(stored.beltBook?.kids?.beltId, 'orange');
     assert.equal(stored.beltBook?.kids?.tapeCount, 2);
-    const cheer = document.querySelector('.kids-carlos');
+    const cheer = document.querySelector('.kids-grandmaster');
     assert.ok(cheer instanceof HTMLElement);
     assert.match(cheer.textContent ?? '', /Congratulations, Coach!/);
     assert.match(cheer.textContent ?? '', /The blue belt is yours\./);
-    assert.equal(cheer.querySelector('img')?.getAttribute('src'), '/assets/kids/carlos.webp');
+    assert.match(cheer.querySelector('img')?.getAttribute('src') ?? '', /^\/assets\/kids\/grandmaster-(?:classic|[a-d])\.webp$/);
     await click(buttonNamed('Got it'));
-    assert.equal(document.querySelector('.kids-carlos'), null);
+    assert.equal(document.querySelector('.kids-grandmaster'), null);
   } finally {
     unmount(mounted);
   }
   const again = mount(<RankPage />);
   try {
-    assert.equal(document.querySelector('.kids-carlos'), null);
+    assert.equal(document.querySelector('.kids-grandmaster'), null);
     assert.equal(document.body.textContent?.includes('Congratulations, Coach!'), false);
   } finally {
     unmount(again);
   }
 });
 
-test('Carlos congratulates a blue-belt graduation once, and not a white or purple choice', async () => {
+test('The grandmaster congratulates a blue-belt graduation once, and not a white or purple choice', async () => {
   const at16 = (beltId: 'white' | 'green') => {
     let report = setBeltMode(blankStudentReport(40), 'kids', 41);
     report = setBirthYear(report, new Date().getFullYear() - 16, 42);
@@ -661,7 +661,7 @@ test('Carlos congratulates a blue-belt graduation once, and not a white or purpl
   try {
     await click(buttonNamed('Stay on white'));
     assert.equal(buttonNamed('White').getAttribute('aria-pressed'), 'true');
-    assert.equal(document.querySelector('.kids-carlos'), null);
+    assert.equal(document.querySelector('.kids-grandmaster'), null);
   } finally {
     unmount(white);
   }
@@ -670,7 +670,7 @@ test('Carlos congratulates a blue-belt graduation once, and not a white or purpl
   try {
     await click(buttonNamed('Start at purple'));
     assert.equal(buttonNamed('Purple').getAttribute('aria-pressed'), 'true');
-    assert.equal(document.querySelector('.kids-carlos'), null);
+    assert.equal(document.querySelector('.kids-grandmaster'), null);
   } finally {
     unmount(purple);
   }
@@ -678,9 +678,9 @@ test('Carlos congratulates a blue-belt graduation once, and not a white or purpl
   const blue = mount(<RankPage />);
   try {
     await click(buttonNamed('Start at blue'));
-    assert.match(document.querySelector('.kids-carlos')?.textContent ?? '', /Coach/);
+    assert.match(document.querySelector('.kids-grandmaster')?.textContent ?? '', /Coach/);
     await click(buttonNamed('Got it'));
-    assert.equal(document.querySelector('.kids-carlos'), null);
+    assert.equal(document.querySelector('.kids-grandmaster'), null);
   } finally {
     unmount(blue);
   }

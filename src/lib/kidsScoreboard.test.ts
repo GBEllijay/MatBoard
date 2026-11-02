@@ -11,7 +11,6 @@ import {
   slotName,
 } from './tournamentStore.ts';
 import {
-  CARLOS_ASSET,
   KIDS_BRACKETS_SKINS_LABEL,
   KIDS_MODE_KEY,
   KIDS_SCOREBOARDS_NAME,
@@ -64,7 +63,6 @@ test("Kids' Scoreboards is off until this device turns it on", () => {
   assert.equal(KIDS_SCOREBOARDS_NAME, "Kids' Scoreboards");
   assert.equal(KIDS_BRACKETS_SKINS_LABEL, 'Kids Brackets Skins');
   assert.equal(KIDS_WIN_CHEER, 'Bom trabalho!');
-  assert.equal(CARLOS_ASSET, '/assets/kids/carlos.webp');
   assert.deepEqual(getKidsScoreboard(), { enabled: false, skin: 'dinos', mascot: true });
   assert.deepEqual(
     KIDS_SKINS.map((skin) => skin.label),
@@ -135,7 +133,7 @@ test('Skin button stays enabled after a linked bout returns to the bracket', () 
   assert.equal(kidsSkinButtonSuppressed({ fullscreen: true, sheetOpen: true }), true);
 });
 
-test('Carlos appears only after a champion, with a stored score like 12-0', () => {
+test('The grandmaster appears only after a champion, with a stored score like 12-0', () => {
   assert.equal(kidsShowWin(false, 'Mia Santos'), false);
   assert.equal(kidsShowWin(true, ''), false);
   assert.equal(kidsShowWin(true, '   '), false);
@@ -197,7 +195,7 @@ test('A championship finish over 10 points celebrates even when finalist slots w
   assert.equal(kidsWinState(true, openFinal).scoreLine, '14-0');
 });
 
-test('Carlos stays off during an earlier live bout, and a scoreboard name fills an empty finalist', () => {
+test('The grandmaster stays off during an earlier live bout, and a scoreboard name fills an empty finalist', () => {
   let board = defaultTournament(4);
   board = applySlotName(board, 'sf-0-a', 'Mia Santos');
   board = applySlotName(board, 'sf-0-b', 'Leo Park');

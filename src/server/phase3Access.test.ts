@@ -276,7 +276,7 @@ test('billing portal returns a Stripe url and seats do not get one', async () =>
   assert.equal(denied.status, 403);
 });
 
-test('seats cap at 10, inherit the owner status, and keep email as a label', async () => {
+test('seats start at 5 free, inherit the owner status, and keep email as a label', async () => {
   const keys = await pair();
   const db = sqliteD1();
   const now = new Date('2026-10-04T00:00:00.000Z');
@@ -330,7 +330,7 @@ test('seats cap at 10, inherit the owner status, and keep email as a label', asy
   assert.equal(legacy.status, 200);
 
   let lastInvite = '';
-  for (let index = 0; index < 9; index += 1) {
+  for (let index = 0; index < 4; index += 1) {
     const issued = await handleSeatIssue(
       new Request('http://localhost/api/seats/issue', {
         method: 'POST',
@@ -353,6 +353,23 @@ test('seats cap at 10, inherit the owner status, and keep email as a label', asy
     () => now,
   );
   assert.equal(blocked.status, 409);
+  await db
+    .prepare(
+      `INSERT INTO half_off_codes (license_id, code, max_uses, instructor_uses, student_uses, created_at)
+       VALUES (?, 'ADVH-TESTCODE01', 100, 1, 0, ?)`,
+    )
+    .bind(license?.licenseId ?? '', now.toISOString())
+    .run();
+  const withHalfOff = await handleSeatIssue(
+    new Request('http://localhost/api/seats/issue', {
+      method: 'POST',
+      body: JSON.stringify({ token: owner, email: 'half@gym.test', preset: 'coach' }),
+    }),
+    signing,
+    db,
+    () => now,
+  );
+  assert.equal(withHalfOff.status, 200);
   const identities = await db.prepare(`SELECT COUNT(*) AS total FROM identities WHERE stripe_customer_id IS NULL AND email_hash IS NOT NULL`).bind().first<{ total: number }>();
   const seatIdentity = await db.prepare(`SELECT id FROM identities WHERE email_hash IS NOT NULL AND license_id <> ?`).bind(license?.licenseId).first();
   assert.equal(seatIdentity, null);
@@ -371,7 +388,7 @@ test('seats cap at 10, inherit the owner status, and keep email as a label', asy
   );
   assert.equal(accepted.status, 200);
   const acceptedBody = (await accepted.json()) as { token: string; email: string };
-  assert.equal(acceptedBody.email, 'coach8@gym.test');
+  assert.equal(acceptedBody.email, 'coach3@gym.test');
   const seatClaims = await verifyToken(acceptedBody.token, [{ kid: 'k1', jwk: keys.publicJwk }]);
   assert.equal(seatClaims?.tier, 'seat');
   assert.equal(seatClaims?.subs?.state, 'grace');

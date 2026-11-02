@@ -773,9 +773,9 @@ test('progress csv rows match the header and proficiency is the fundamentals lev
 test('the license plan is recorded for a later step', () => {
   assert.equal(ACADEMY_MEMBER_CODE_LABEL, 'Academy Member');
   assert.equal(ACADEMY_MEMBER_DISCOUNT_PERCENT, 25);
-  assert.equal(PRO_INCLUDED_STUDENT_LICENSES, 10);
+  assert.equal(PRO_INCLUDED_STUDENT_LICENSES, 5);
   assert.equal(
     STUDENT_LICENSE_MORE_NOTE,
-    'Gyms can email advantageappllc@gmail.com to purchase additional Student Edition licenses at a discount.',
+    'Each Pro license includes a half-off code for 100 Instructor or Student licenses. After 100 uses, email advantageappllc@gmail.com.',
   );
 });

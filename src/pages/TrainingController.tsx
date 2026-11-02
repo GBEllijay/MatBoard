@@ -6,12 +6,13 @@ import { TrainingOptions } from '../components/TrainingOptions';
 import { useInterval } from '../hooks/useClock';
 import { useSuiteOrigin } from '../hooks/useSuiteOrigin';
 import { useWakeLock } from '../hooks/useWakeLock';
+import { usePolishedSkinsUnlocked, useWhiteBaseSkins } from '../hooks/usePolishedSkins';
 import { useTrainingSkin, useTrainingState } from '../hooks/useStores';
 import { unlockAudio } from '../lib/audio';
 import { formatMmSs } from '../lib/format';
 import { fullscreenSupported, requestPageFullscreen } from '../lib/fullscreen';
 import { ROUNDS_FULLSCREEN_STATE, readRoundsDeviceEnv, roundsChipAction, roundsDisplayPath } from '../lib/roundsFullscreen';
-import { trainingUsesAdvantageSkin } from '../lib/trainingSkin';
+import { trainingUsesAdvantageSkin, visibleTrainingSkin, whiteTimerControllerClass } from '../lib/trainingSkin';
 import { remainingTraining, tickTraining, toggleTrainingClock } from '../lib/trainingStore';
 
 function openRoundsWindow(fromSuite: boolean): void {
@@ -21,7 +22,8 @@ function openRoundsWindow(fromSuite: boolean): void {
 /** Fat-thumb remote for the rounds timer. The gym TV stays on /training. */
 export function TrainingControllerPage() {
   const training = useTrainingState();
-  const skin = useTrainingSkin();
+  const skin = visibleTrainingSkin(useTrainingSkin(), usePolishedSkinsUnlocked(), useWhiteBaseSkins());
+  const whiteSurface = whiteTimerControllerClass(skin);
   const suite = useSuiteOrigin();
   const navigate = useNavigate();
   const [, setTick] = useState(0);
@@ -65,8 +67,10 @@ export function TrainingControllerPage() {
   return (
     <main
       className={`controller training-control${
-        trainingUsesAdvantageSkin(skin) ? '' : ' controller--classic'
-      }${training.phase === 'break' ? ' controller--break' : ''}${suite.fromSuite ? ' origin-suite' : ''}`}
+        trainingUsesAdvantageSkin(skin) || whiteSurface ? '' : ' controller--classic'
+      }${whiteSurface ? ` ${whiteSurface}` : ''}${training.phase === 'break' ? ' controller--break' : ''}${
+        suite.fromSuite ? ' origin-suite' : ''
+      }`}
     >
       <PlayExitMark to={suite.homePath} />
       <Chrome

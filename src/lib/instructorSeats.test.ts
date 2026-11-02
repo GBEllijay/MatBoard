@@ -269,18 +269,17 @@ test('junk storage is ignored', () => {
   });
 });
 
-test('Pro stops at 10 open seats and a revoke frees one', () => {
+test('Pro stops at 5 free instructor seats and a revoke frees one', () => {
   reset();
-  assert.equal(PRO_INSTRUCTOR_SEAT_CAP, 10);
-  assert.equal(proSeatUsageLabel(4), '4 of 10 seats used');
-  assert.equal(proSeatUsageLabel(5), '5 of 10 seats used');
-  assert.equal(proSeatsRemaining(5), 5);
-  assert.equal(proSeatRemainingLabel(5), '5 seats remaining');
-  assert.equal(proSeatRemainingLabel(9), '1 seat remaining');
-  assert.equal(proSeatRemainingLabel(10), '0 seats remaining');
-  assert.equal(proSeatCapNear(5), false);
-  assert.equal(proSeatCapNear(8), true);
-  assert.equal(proSeatCapNear(10), true);
+  assert.equal(PRO_INSTRUCTOR_SEAT_CAP, 5);
+  assert.equal(proSeatUsageLabel(4), '4 of 5 free instructor seats used');
+  assert.equal(proSeatUsageLabel(5), '5 of 5 free instructor seats used');
+  assert.equal(proSeatsRemaining(4), 1);
+  assert.equal(proSeatRemainingLabel(4), '1 seat remaining');
+  assert.equal(proSeatRemainingLabel(5), '0 seats remaining');
+  assert.equal(proSeatCapNear(2), false);
+  assert.equal(proSeatCapNear(3), true);
+  assert.equal(proSeatCapNear(5), true);
   assert.equal(
     PRO_SEAT_CAP_REQUEST_NOTE,
     `Additional seats may be available for authorization upon owner request. Email ${SITE_FEEDBACK_EMAIL}.`,
@@ -288,7 +287,7 @@ test('Pro stops at 10 open seats and a revoke frees one', () => {
   assert.match(PRO_SEAT_CAP_REQUEST_NOTE, /advantageappllc@gmail.com/);
   assert.equal(
     proSeatCapBlockedCopy(),
-    `All 10 seats are in use. Revoke a seat to issue another invite. ${PRO_SEAT_CAP_REQUEST_NOTE}`,
+    `All 5 free instructor seats are in use. Revoke a seat to issue another invite. ${PRO_SEAT_CAP_REQUEST_NOTE}`,
   );
 
   const presets: InstructorPresetId[] = ['coach', 'program-director', 'instructors', 'assistant-coach'];
@@ -304,8 +303,8 @@ test('Pro stops at 10 open seats and a revoke frees one', () => {
     });
     assert.equal(issued.ok, true);
   }
-  assert.equal(countOpenInstructorSeats(listInstructorSeats()), 10);
-  assert.equal(listInstructorSeats()[0].email, 'seat9@gym.com');
+  assert.equal(countOpenInstructorSeats(listInstructorSeats()), 5);
+  assert.equal(listInstructorSeats()[0].email, 'seat4@gym.com');
 
   const blocked = issueInstructorInvite({
     email: 'extra@gym.com',
@@ -314,12 +313,12 @@ test('Pro stops at 10 open seats and a revoke frees one', () => {
     origin: 'https://advantage.test',
   });
   assert.deepEqual(blocked, { ok: false, reason: 'cap' });
-  assert.equal(listInstructorSeats().length, 10);
+  assert.equal(listInstructorSeats().length, 5);
 
   const held = listInstructorSeats().find((seat) => seat.email === 'seat0@gym.com');
   assert.ok(held);
   assert.equal(revokeInstructorSeat(held.id).ok, true);
-  assert.equal(countOpenInstructorSeats(listInstructorSeats()), 9);
+  assert.equal(countOpenInstructorSeats(listInstructorSeats()), 4);
   const again = issueInstructorInvite({
     email: 'extra@gym.com',
     presetId: 'coach',
@@ -328,7 +327,7 @@ test('Pro stops at 10 open seats and a revoke frees one', () => {
   });
   assert.equal(again.ok, true);
   if (!again.ok) return;
-  assert.equal(countOpenInstructorSeats(listInstructorSeats()), 10);
+  assert.equal(countOpenInstructorSeats(listInstructorSeats()), 5);
 });
 
 test('a signed-in coach, program director, or instructor cannot issue invites', () => {

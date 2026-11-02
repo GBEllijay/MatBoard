@@ -1,4 +1,18 @@
-import { DEFAULT_CARLOS_PREFS, parseCarlosPrefs, type CarlosCelebrationPrefs } from './carlosCelebration';
+import {
+  advanceGrandmasterBout,
+  DEFAULT_GRANDMASTER_PREFS,
+  grandmasterPrefsFromStored,
+  LEGACY_GRANDMASTER_PREFS_KEY,
+  parseGrandmasterPrefs,
+  type GrandmasterCelebrationPrefs,
+} from './grandmasterCelebration';
+import {
+  DEFAULT_DQ_DISAPPOINTED,
+  dqDisappointedFromSync,
+  mergeDqDisappointed,
+  parseDqDisappointed,
+  type DqDisappointedPrefs,
+} from './dqDisappointed';
 import { clamp, minutesToMs, secondsToMs } from './format';
 import { DEFAULT_SCOREBOARD_SKIN, parseScoreboardSkin, type ScoreboardSkinId } from './scoreboardSkin';
 import {
@@ -72,8 +86,10 @@ export type MatchState = {
   autoAnnounce: boolean;
   /** Mock-Tournament, Quick Result, or Old School. Travels with the match so Display follows the controller. */
   skin: ScoreboardSkinId;
-  /** Optional Master Carlos on the scoreboard. Off until the controller turns it on. */
-  carlos: CarlosCelebrationPrefs;
+  /** Optional grandmaster cheer on the scoreboard. Off until the controller turns it on. */
+  grandmaster: GrandmasterCelebrationPrefs;
+  /** Optional one-shot reaction when a DQ is recorded. Off until the controller turns it on. */
+  dqDisappointed: DqDisappointedPrefs;
   /** Last Win (Submission / Points / Decision) or DQ (Technical / Medical). Survives reload; flash does not. */
   outcome: MatchOutcome | null;
   /** Brief center splash; not restored after reload. */
@@ -99,7 +115,8 @@ export type MatchAction =
   | { type: 'setBracketMatchId'; value: string | null }
   | { type: 'setAutoAnnounce'; value: boolean }
   | { type: 'setSkin'; value: ScoreboardSkinId }
-  | { type: 'setCarlos'; value: Partial<CarlosCelebrationPrefs> }
+  | { type: 'setGrandmaster'; value: Partial<GrandmasterCelebrationPrefs> }
+  | { type: 'setDqDisappointed'; value: Partial<DqDisappointedPrefs> }
   | { type: 'setOutcomeFlash'; value: OutcomeFlash | null }
   | {
       type: 'loadBracketBout';
@@ -170,7 +187,8 @@ export function defaultMatch(): MatchState {
     bracketMatchId: null,
     autoAnnounce: true,
     skin: DEFAULT_SCOREBOARD_SKIN,
-    carlos: { ...DEFAULT_CARLOS_PREFS },
+    grandmaster: { ...DEFAULT_GRANDMASTER_PREFS },
+    dqDisappointed: { ...DEFAULT_DQ_DISAPPOINTED },
     outcome: null,
     outcomeFlash: null,
     revision: 1,
@@ -181,11 +199,14 @@ function loadState(): MatchState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultMatch();
-    const stored = JSON.parse(raw) as Partial<MatchState> & { padHeaders?: unknown };
+    const stored = JSON.parse(raw) as Partial<MatchState> & { padHeaders?: unknown } & Record<string, unknown>;
+    const legacyCheer = stored[LEGACY_GRANDMASTER_PREFS_KEY];
+    const hadLegacyOnly = stored.grandmaster == null && legacyCheer != null;
     const parsed: Partial<MatchState> = { ...stored };
     delete (parsed as { padHeaders?: unknown }).padHeaders;
+    delete (parsed as Record<string, unknown>)[LEGACY_GRANDMASTER_PREFS_KEY];
     const base = defaultMatch();
-    return {
+    const next: MatchState = {
       ...base,
       ...parsed,
       blue: {
@@ -206,26 +227,47 @@ function loadState(): MatchState {
       bracketMatchId: typeof parsed.bracketMatchId === 'string' ? parsed.bracketMatchId : null,
       autoAnnounce: parsed.autoAnnounce !== false,
       skin: parseScoreboardSkin(parsed.skin),
-      carlos: parseCarlosPrefs(parsed.carlos),
+      grandmaster: grandmasterPrefsFromStored({
+        grandmaster: parsed.grandmaster,
+        [LEGACY_GRANDMASTER_PREFS_KEY]: legacyCheer,
+      }),
+      dqDisappointed: parseDqDisappointed(parsed.dqDisappointed),
       outcome: parseMatchOutcome(parsed.outcome),
       outcomeFlash: null,
       revision: Number(parsed.revision ?? 1),
     };
+    if (hadLegacyOnly) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        /* the in-memory cheer switch still honors the old save */
+      }
+    }
+    return next;
   } catch {
     return defaultMatch();
   }
 }
 
 function clone(s: MatchState): MatchState {
-  const incoming = s as MatchState & { padHeaders?: unknown; skin?: unknown; carlos?: unknown };
+  const incoming = s as MatchState & { padHeaders?: unknown; skin?: unknown } & Record<string, unknown>;
+  const legacyCheer = incoming[LEGACY_GRANDMASTER_PREFS_KEY];
   const next: MatchState = {
     ...s,
     blue: { ...s.blue },
     white: { ...s.white },
     skin: incoming.skin == null ? state.skin : parseScoreboardSkin(incoming.skin),
-    carlos: incoming.carlos == null ? { ...state.carlos } : parseCarlosPrefs(incoming.carlos),
+    grandmaster:
+      incoming.grandmaster == null && legacyCheer == null
+        ? { ...state.grandmaster }
+        : grandmasterPrefsFromStored({
+            grandmaster: incoming.grandmaster,
+            [LEGACY_GRANDMASTER_PREFS_KEY]: legacyCheer,
+          }),
+    dqDisappointed: dqDisappointedFromSync(state.dqDisappointed, incoming.dqDisappointed),
   };
   delete (next as { padHeaders?: unknown }).padHeaders;
+  delete (next as Record<string, unknown>)[LEGACY_GRANDMASTER_PREFS_KEY];
   return next;
 }
 
@@ -345,6 +387,7 @@ function applyAction(current: MatchState, action: MatchAction): MatchState {
         return bumpRevision(
           withoutOutcome({
             ...current,
+            grandmaster: advanceGrandmasterBout(current.grandmaster),
             running: true,
             remainingMs: current.durationMs,
             startedAt: Date.now(),
@@ -364,6 +407,7 @@ function applyAction(current: MatchState, action: MatchAction): MatchState {
       return bumpRevision(
         withoutOutcome({
           ...current,
+          grandmaster: advanceGrandmasterBout(current.grandmaster),
           running: false,
           remainingMs: current.durationMs,
           startedAt: null,
@@ -385,6 +429,7 @@ function applyAction(current: MatchState, action: MatchAction): MatchState {
       return bumpRevision(
         withoutOutcome({
           ...current,
+          grandmaster: advanceGrandmasterBout(current.grandmaster),
           blue: { ...current.blue, points: 0, advantages: 0, disadvantages: 0 },
           white: { ...current.white, points: 0, advantages: 0, disadvantages: 0 },
         }),
@@ -393,6 +438,7 @@ function applyAction(current: MatchState, action: MatchAction): MatchState {
       return bumpRevision(
         withoutOutcome({
           ...current,
+          grandmaster: advanceGrandmasterBout(current.grandmaster),
           durationMs: action.durationMs,
           remainingMs: action.durationMs,
           running: false,
@@ -437,17 +483,47 @@ function applyAction(current: MatchState, action: MatchAction): MatchState {
       if (skin === current.skin) return current;
       return bumpRevision({ ...current, skin });
     }
-    case 'setCarlos':
-      return bumpRevision({
-        ...current,
-        carlos: parseCarlosPrefs({ ...current.carlos, ...action.value }),
+    case 'setGrandmaster': {
+      const patch = action.value;
+      const keepMaster =
+        patch.cheerKey != null &&
+        patch.cheerKey === current.grandmaster.cheerKey &&
+        current.grandmaster.masterId != null;
+      const grandmaster = parseGrandmasterPrefs({
+        ...current.grandmaster,
+        ...patch,
+        ...(keepMaster ? { masterId: current.grandmaster.masterId } : {}),
       });
+      if (
+        grandmaster.enabled === current.grandmaster.enabled &&
+        grandmaster.onWin === current.grandmaster.onWin &&
+        grandmaster.onPoints === current.grandmaster.onPoints &&
+        grandmaster.pointsThreshold === current.grandmaster.pointsThreshold &&
+        grandmaster.masterId === current.grandmaster.masterId &&
+        grandmaster.cheerKey === current.grandmaster.cheerKey &&
+        grandmaster.boutSerial === current.grandmaster.boutSerial
+      ) {
+        return current;
+      }
+      return bumpRevision({ ...current, grandmaster });
+    }
+    case 'setDqDisappointed': {
+      const dqDisappointed = mergeDqDisappointed(current.dqDisappointed, action.value);
+      if (
+        dqDisappointed.enabled === current.dqDisappointed.enabled &&
+        dqDisappointed.playedAt === current.dqDisappointed.playedAt
+      ) {
+        return current;
+      }
+      return bumpRevision({ ...current, dqDisappointed });
+    }
     case 'setOutcomeFlash':
       return bumpRevision({ ...current, outcomeFlash: action.value });
     case 'loadBracketBout':
       return bumpRevision(
         withoutOutcome({
           ...current,
+          grandmaster: advanceGrandmasterBout(current.grandmaster),
           blue: { name: action.blueName, gym: action.blueGym, rank: '', points: 0, advantages: 0, disadvantages: 0 },
           white: { name: action.whiteName, gym: action.whiteGym, rank: '', points: 0, advantages: 0, disadvantages: 0 },
           round: action.round,

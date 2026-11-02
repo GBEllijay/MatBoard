@@ -50,9 +50,10 @@ test('combined ladder strings and prices are final', () => {
   assert.equal(byId.pro.blurb, 'Academy Enhancement Software for Gym Owners and Jiu-Jitsu Professionals.');
   assert.equal(byId.pro.cardPrice, '$99.99 + $5.99/mo');
   assert.equal(byId.pro.detail, 'Requires your own Google Drive or OneDrive. Advantage does not host it.');
-  assert.equal(byId['pro-cloud'].title, 'Advantage Pro Plus Cloud');
+  assert.equal(byId['pro-cloud'].title, 'Advantage Pro + Cloud');
   assert.equal(byId['pro-cloud'].cardPrice, '$5.99/month');
-  assert.equal(byId['pro-cloud'].to, null);
+  assert.equal(byId['pro-cloud'].to, '/editions/pro-cloud');
+  assert.equal(byId.coach.detail, 'Requires gym setup with a third-party drive (Google Drive, OneDrive, or Dropbox). Advantage does not host it.');
   for (const r of STOREFRONT_BELT_LADDER) {
     if (r.id !== 'pro' && r.id !== 'pro-cloud') assert.match(r.cardPrice ?? '', /one-time$/);
   }
@@ -67,7 +68,7 @@ test('every ladder card links somewhere that exists (no 404s)', () => {
   for (const r of STOREFRONT_BELT_LADDER) {
     if (r.to === null) continue;
     assert.ok(
-      [STOREFRONT_BUY_PATH, PRODUCTS_PATH, '/media', '/editions/student', '/editions/instructor', '/editions/pro'].includes(r.to),
+      [STOREFRONT_BUY_PATH, PRODUCTS_PATH, '/media', '/editions/student', '/editions/instructor', '/editions/pro', '/editions/pro-cloud'].includes(r.to),
       `${r.id} -> ${r.to}`,
     );
     const routed = r.to === '/media' ? /<Route path=\{MEDIA_EDITION_PATH\}/ : new RegExp(`path="${r.to}"`);

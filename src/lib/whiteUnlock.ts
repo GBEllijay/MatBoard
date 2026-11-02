@@ -114,7 +114,14 @@ export function isWhiteRestoreEmail(raw: string): boolean {
   return true;
 }
 
-export type WhiteRestoreResult = { ok: true; message: string } | { ok: false; error: string };
+/** /restore, with the buy-page email filled in when it is a usable address. */
+export function restoreHref(email: string): string {
+  const trimmed = email.trim();
+  if (!isWhiteRestoreEmail(trimmed)) return '/restore';
+  return `/restore?email=${encodeURIComponent(trimmed)}`;
+}
+
+export type WhiteRestoreResult = { ok: true; message: string; challengeId: string } | { ok: false; error: string };
 
 /**
  * Asks the server to email a one-time code. The answer does not say whether
@@ -134,11 +141,15 @@ export async function restoreWhiteByEmail(
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ email: trimmed, turnstileToken: turnstileToken || undefined }),
     });
-    const body = (await response.json()) as { ok?: boolean; message?: string; error?: string };
+    const body = (await response.json()) as { ok?: boolean; message?: string; error?: string; challengeId?: unknown };
     if (!response.ok || !body.ok) {
       return { ok: false, error: body.error || 'Restore is not available yet.' };
     }
-    return { ok: true, message: body.message || "If that address has a purchase, we've emailed a code." };
+    return {
+      ok: true,
+      message: body.message || "If that address has a purchase, we've emailed a code.",
+      challengeId: typeof body.challengeId === 'string' ? body.challengeId : '',
+    };
   } catch {
     return { ok: false, error: 'Could not reach the server. Check your connection and try again.' };
   }

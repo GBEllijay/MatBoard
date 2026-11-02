@@ -150,7 +150,7 @@ export function KidsScoreboardSwitcher({
               aria-pressed={prefs.mascot}
               onClick={() => setKidsMascot(!prefs.mascot)}
             >
-              Carlos
+              Grandmaster cheer
             </button>
           </div>
         </div>

@@ -15,6 +15,7 @@ import { purchasePromptsHidden } from '../lib/instructorSeats';
 import { lockMedia } from '../lib/mediaUnlock';
 import { lockPro } from '../lib/proUnlock';
 import { AcademyPathwayPanel } from '../components/AcademyPathwayPanel';
+import { CloudLapseNotice } from '../components/CloudLapseNotice';
 
 export function ProPage() {
   const navigate = useNavigate();
@@ -33,6 +34,7 @@ export function ProPage() {
     <main className="home home--pro">
       <div className="home__inner">
         <HomeMark to={PRODUCTS_PATH} />
+        <CloudLapseNotice />
 
         <nav className="home__modes" aria-label="Advantage Pro">
           <BeltHeader

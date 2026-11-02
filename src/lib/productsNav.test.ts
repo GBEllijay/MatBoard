@@ -67,7 +67,8 @@ test('Coach card shows the Instructor Edition title on a brown belt; ids stay co
   assert.equal(home.match(/<BeltRail kind="brown" \/>\s*<strong>\{INSTRUCTOR_HOME_TITLE\}<\/strong>/g)?.length, 2);
   assert.match(home, /mode-card mode-card--coach"/);
   assert.match(home, /instructorUnlimited \? COACH_UNLIMITED_PATH : '\/coach'/);
-  assert.match(home, /setSoon\('coach'\)/);
+  assert.match(home, /<LearnMoreLink tier="instructor" \/>/);
+  assert.doesNotMatch(home, /setSoon\('coach'\)/);
   // Same brown as the homepage belt ladder's Instructor tile.
   assert.match(css, /\.belt-rail--brown \{\s*--belt-fill: #6b3a1f;/);
   assert.match(storefrontCss, /--sf-belt-brown: #6b3a1f;/);
@@ -90,7 +91,7 @@ test('Media card: locked is display-only purple $29.99 linking to /media; open r
   // Open (media door): "Open Media Edition" goes to /media. Locked Learn more opens the same preview.
   assert.match(home, /const mediaUnlocked = useMediaUnlocked\(\);/);
   assert.match(card, />\s*Open Media Edition\s*</);
-  assert.match(card, />\s*Learn more about Media Edition\s*</);
+  assert.match(card, /<LearnMoreLink tier="media" \/>/);
   assert.match(card, /to=\{TIER_BUY_PATHS\.media\}/);
   // No checkout or unlock on this card; the alpha email line is the shared edition note.
   assert.doesNotMatch(card, /onClick|Unlock|checkout/i);
@@ -122,11 +123,9 @@ test('Media card on /products has no purple hue, locked or unlocked; only the pu
   assert.match(css, /\.belt-rail--purple \{\s*--belt-fill: #6b2d91;/);
 });
 
-test('Locked cards keep Learn more; unlocked cards do not. Open labels follow the Student pattern', () => {
-  assert.match(home, /Learn more about Media Edition/);
+test('Every product card has Learn more when locked and when open. Open labels follow the Student pattern', () => {
+  assert.match(home, /<LearnMoreLink tier="media" \/>/);
   assert.match(home, /to=\{TIER_BUY_PATHS\.media\}/);
-  assert.equal(home.match(/setSoon\('coach'\)\}>\s*Learn more about Instructor Edition/g)?.length, 1);
-  assert.equal(home.match(/setSoon\('pro'\)\}>\s*Learn more about Advantage Pro/g)?.length, 1);
   assert.match(home, /Try the demo/);
   assert.match(home, /Open White/);
   assert.match(home, /Open Student Edition/);
@@ -139,9 +138,11 @@ test('Locked cards keep Learn more; unlocked cards do not. Open labels follow th
   assert.match(home, /: '\/coach'/);
   assert.match(home, /: 'Open Coach'/);
   const unlockedCoach = home.slice(home.indexOf('mode-card mode-card--coach">'), home.indexOf('mode-card mode-card--coach mode-card--locked'));
-  assert.doesNotMatch(unlockedCoach, /Learn more/);
+  assert.match(unlockedCoach, /<LearnMoreLink tier="instructor" \/>/);
   const unlockedPro = home.slice(home.indexOf('mode-card mode-card--pro">'), home.indexOf('mode-card mode-card--pro mode-card--locked'));
-  assert.doesNotMatch(unlockedPro, /Learn more/);
+  assert.match(unlockedPro, /<LearnMoreLink tier="pro" \/>/);
+  const unlockedMedia = home.slice(home.indexOf('mode-card mode-card--media mode-card--feature'), home.indexOf('mode-card mode-card--media mode-card--locked'));
+  assert.match(unlockedMedia, /<LearnMoreLink tier="media" \/>/);
   assert.match(home, /Owner test unlock/);
   assert.match(home, /aria-label=\{`\$\{INSTRUCTOR_HOME_TITLE\}, coming soon`\}/);
   assert.match(home, /aria-label="Advantage Pro, coming soon"/);

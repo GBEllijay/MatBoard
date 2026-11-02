@@ -16,6 +16,7 @@ import {
   higherTiers,
   tierEntry,
 } from './tierBuyPages.ts';
+import { LEARN_MORE } from './learnMore.ts';
 import { EDITION_ALPHA_NOTE } from './productPrices.ts';
 
 const read = (p: string) => readFileSync(new URL(p, import.meta.url), 'utf8');
@@ -29,6 +30,21 @@ const storefrontCss = read('../pages/storefront.css');
 const tiersCss = read('../pages/buyTiers.css');
 const studentMenus = read('../pages/student/StudentMenus.tsx');
 const code = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+
+test('every tier has a Learn more label and a description page', () => {
+  assert.equal(LEARN_MORE.white.label, 'Learn more about Advantage White');
+  assert.equal(LEARN_MORE.white.to, '/buy');
+  assert.equal(LEARN_MORE.student.label, 'Learn more about Student Edition');
+  assert.equal(LEARN_MORE.student.to, '/editions/student');
+  assert.equal(LEARN_MORE.media.label, 'Learn more about Media Edition');
+  assert.equal(LEARN_MORE.media.to, '/editions/media');
+  assert.equal(LEARN_MORE.instructor.label, 'Learn more about Instructor Edition');
+  assert.equal(LEARN_MORE.instructor.to, '/editions/instructor');
+  assert.equal(LEARN_MORE.pro.label, 'Learn more about Advantage Pro');
+  assert.equal(LEARN_MORE.pro.to, '/editions/pro');
+  assert.equal(LEARN_MORE.proCloud.label, 'Learn more about Advantage Pro + Cloud');
+  assert.equal(LEARN_MORE.proCloud.to, '/editions/pro-cloud');
+});
 
 test('ladder order, names, belts and prices match the owner brief', () => {
   assert.deepEqual(
@@ -95,7 +111,9 @@ test('tier paths route in App; gated /buy/* checkouts are untouched', () => {
 test('/buy keeps White checkout, promo, restore and Student checkout; higher tiers follow', () => {
   assert.match(buy, /<HigherTierList\s+from="white"/);
   assert.match(buy, /WHITE_CHECKOUT_API/);
-  assert.match(buy, /restoreWhiteByEmail|TierRestoreCard|buy__restore/);
+  assert.match(buy, /restoreHref\(accessEmail\)/);
+  assert.match(buy, /buy__restore/);
+  assert.doesNotMatch(buy, /restoreWhiteByEmail/);
   assert.match(buy, /studentOpen \?/);
   assert.match(buy, /HalfOffCheckoutNote/);
   assert.doesNotMatch(buy, /<ComingSoonAd/);
@@ -119,16 +137,19 @@ test('Instructor and Pro pages have no checkout; Student checkout only when enti
   assert.doesNotMatch(code(parts), /fetch\(WHITE_CHECKOUT_API/);
 });
 
-test('/products: locked Student, Instructor and Pro cards open their tier pages; sheets stay reachable', () => {
+test('/products: locked Student, Instructor and Pro cards open their tier pages; Learn more is on every card', () => {
   assert.match(home, /<Link className="mode-card__hit" to=\{TIER_BUY_PATHS\.student\} aria-label="Advantage Student Edition, coming soon" \/>/);
   assert.match(home, /to=\{TIER_BUY_PATHS\.instructor\}\s*aria-label=\{`\$\{INSTRUCTOR_HOME_TITLE\}, coming soon`\}/);
   assert.match(home, /<Link className="mode-card__hit" to=\{TIER_BUY_PATHS\.pro\} aria-label="Advantage Pro, coming soon" \/>/);
-  assert.match(home, /onClick=\{onSoon\}>\s*Learn more about Student Edition/);
-  assert.equal(home.match(/setSoon\('coach'\)\}>\s*Learn more about Instructor Edition/g)?.length, 1);
-  assert.equal(home.match(/setSoon\('pro'\)\}>\s*Learn more about Advantage Pro/g)?.length, 1);
-  assert.match(home, /Learn more about Media Edition/);
+  assert.equal(home.match(/<LearnMoreLink tier="white" \/>/g)?.length, 2);
+  assert.equal(home.match(/<LearnMoreLink tier="student" \/>/g)?.length, 2);
+  assert.equal(home.match(/<LearnMoreLink tier="media" \/>/g)?.length, 2);
+  assert.equal(home.match(/<LearnMoreLink tier="instructor" \/>/g)?.length, 2);
+  assert.equal(home.match(/<LearnMoreLink tier="pro" \/>/g)?.length, 2);
+  assert.equal(home.match(/<LearnMoreLink tier="proCloud" \/>/g)?.length, 2);
   assert.match(home, /Try the demo/);
   assert.match(home, /Owner test unlock/);
+  assert.doesNotMatch(home, /setSoon\(/);
 });
 
 test('homepage ladder opens tier pages; White and Media keep their wiring; picker stays on /products', () => {

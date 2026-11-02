@@ -65,15 +65,22 @@ export const PRO_HOME_LINES = [
 export const PRO_DRIVE_NOTE =
   'Requires your own Google Drive or OneDrive. Advantage does not host it.';
 
-/** Display name for the hosted-storage plan. No checkout product. */
-export const PRO_PLUS_CLOUD_NAME = 'Advantage Pro Plus Cloud';
+/** Instructor Edition requirement. Advantage does not host the gym drive. */
+export const INSTRUCTOR_DRIVE_REQUIREMENT =
+  'Requires gym setup with a third-party drive (Google Drive, OneDrive, or Dropbox). Advantage does not host it.';
+
+/** Display name for the hosted-storage plan. No checkout product. The constant name stays. */
+export const PRO_PLUS_CLOUD_NAME = 'Advantage Pro + Cloud';
 
 /** Public page the unlocked card opens. Display only: not a paid chunk. */
 export const PRO_PLUS_CLOUD_PATH = '/pro-plus-cloud';
 
+/** Public description page. Not the unlocked menu. */
+export const PRO_PLUS_CLOUD_INFO_PATH = '/editions/pro-cloud';
+
 /** Home and /products card body. */
 export const PRO_PLUS_CLOUD_DESCRIPTION =
-  'Advantage-hosted storage on Cloudflare. Your own Google Drive stays on Advantage Pro.';
+  'Advantage hosted cross-platform communication. Easiest way to use Advantage.';
 
 /** Unlocked card button. Owner and alpha only; there is no checkout. */
 export const PRO_PLUS_CLOUD_OPEN_LABEL = 'Open Pro Cloud Plus Console';
@@ -205,8 +212,17 @@ export const COACH_HUBS = [
   { title: MOCK_TOURNAMENT_NAME, to: `/tournament?from=${COACH_BOARD_FROM}`, belt: 'tournament' as const },
 ] as const;
 
-/** Placeholder for the future master student list. No roster data. Same gate as Coach Unlimited. */
-export const STUDENT_ROSTER_PLACEHOLDER_PATH = '/student-roster';
+/**
+ * Instructor Edition Student Roster. Same student cards as {@link STUDENT_ROSTER_PATH}.
+ * This path stays on the Coach Unlimited route gate (Instructor Edition and above).
+ * It does not open the Competitor Roster.
+ */
+export const STUDENT_ROSTER_MENU_PATH = '/student-roster';
+
+/** True for the Instructor Edition route and the basic Coach `?from=students` list. */
+export function isCoachStudentRoster(pathname: string, from: string | null): boolean {
+  return pathname === STUDENT_ROSTER_MENU_PATH || from === 'students';
+}
 
 /**
  * Limited Coach opens `/notes` with no plan flag.
@@ -232,7 +248,7 @@ export function coachingToolsMenu(unlimited: boolean) {
 /**
  * Advantage Coach Unlimited menu, top to bottom.
  * Daily Lesson Plan is the Unlimited plan that can be uploaded for review.
- * Student Roster is a placeholder for the future master student list. It does not open the competitor list.
+ * Student Roster opens the student list (names, belts, and the other roster-card fields). It does not open the competitor list.
  * The four brown rails wear 0-3 white stripes, counted from the tip up toward the header's 4.
  * Scoreboard and Round Timer are the Competition and Tournament Management controllers, with the same black belt.
  * `from=unlimited` sends Back to Coach Unlimited, not the Suite.
@@ -243,7 +259,7 @@ export const COACH_UNLIMITED_TOOLS = [
   { title: TRAINING_NOTES_LABEL, to: UNLIMITED_LESSON_PATH, belt: 'brown' as const, stripes: 0 as const, clearBout: false as const },
   { title: 'Daily Training Videos', to: UNLIMITED_VIDEOS_PATH, belt: 'brown' as const, stripes: 1 as const, clearBout: false as const },
   { title: TECHNIQUE_TREE_LABEL, to: UNLIMITED_TREE_PATH, belt: 'brown' as const, stripes: 2 as const, clearBout: false as const },
-  { title: STUDENT_ROSTER_LABEL, to: STUDENT_ROSTER_PLACEHOLDER_PATH, belt: 'brown' as const, stripes: 3 as const, clearBout: false as const },
+  { title: STUDENT_ROSTER_LABEL, to: STUDENT_ROSTER_MENU_PATH, belt: 'brown' as const, stripes: 3 as const, clearBout: false as const },
   { title: 'Scoreboard', to: '/match/control?from=unlimited', belt: 'black' as const, clearBout: true as const },
   { title: 'Round Timer', to: '/training/control?from=unlimited', belt: 'black' as const, clearBout: false as const },
 ] as const;

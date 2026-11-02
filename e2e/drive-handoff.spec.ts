@@ -301,7 +301,7 @@ test('the review inbox reads a submission from the gym folder', async ({ page })
   await page.getByRole('button', { name: 'Approve', exact: true }).click();
   await expect(page.getByRole('article', { name: 'This submission' }).getByText('Approved', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Approve', exact: true })).toHaveCSS('background-color', 'rgb(0, 78, 186)');
-  await page.getByRole('button', { name: 'Add approved photo to Gallery' }).click();
+  await page.getByRole('button', { name: 'Approve for the gallery' }).click();
   await expect(page.getByText('That photo is not on this device.')).toBeVisible();
   await page.getByLabel('Note to the coach').fill('Show the knee cut.');
   await page.getByRole('button', { name: 'Request changes', exact: true }).click();

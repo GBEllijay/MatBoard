@@ -13,7 +13,11 @@ import { useInterval } from '../hooks/useClock';
 import { useMatchBoard } from '../hooks/useMatchBoard';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useMatchState } from '../hooks/useStores';
-import { CARLOS_THRESHOLD_MAX, CARLOS_THRESHOLD_MIN, type CarlosCelebrationPrefs } from '../lib/carlosCelebration';
+import {
+  GRANDMASTER_THRESHOLD_MAX,
+  GRANDMASTER_THRESHOLD_MIN,
+  type GrandmasterCelebrationPrefs,
+} from '../lib/grandmasterCelebration';
 import { playSelectedEndCue, playStartCue, playWarningCue, unlockAudio } from '../lib/audio';
 import { EndCueControls } from '../components/EndCueControls';
 import { declareMatchOutcome, scoreboardPath, visibleOutcomeBanner } from '../lib/bracketBout';
@@ -149,11 +153,11 @@ export function MatchControllerPage() {
         }
       />
 
-      {board.kidsSkin || (plainWhite && !board.polishedOpen) ? null : (
+      {board.kidsSkin || (plainWhite && !board.polishedOpen && !board.whiteBaseSkins) ? null : (
         <section className="kids-switch-panel" aria-label="Scoreboard skin">
           <p className="cue-preview-label">Scoreboard skin</p>
-          {/* Media Edition and above: one Skins button in place of the old toggle. */}
-          {board.polishedOpen ? <ScoreboardSkinPicker /> : <ScoreboardSkinSwitcher skin={match.skin} />}
+          {/* Media and above, and Advantage White: one Skins button. A suite board below Media keeps the toggle. */}
+          {board.polishedOpen || board.whiteBaseSkins ? <ScoreboardSkinPicker /> : <ScoreboardSkinSwitcher skin={match.skin} />}
         </section>
       )}
 
@@ -326,7 +330,25 @@ export function MatchControllerPage() {
           />
           Auto-announce winner
         </label>
-        {board.showCarlos ? <CarlosControls prefs={match.carlos} /> : null}
+        {board.showGrandmaster ? (
+          <div className="reaction-settings">
+            <GrandmasterControls prefs={match.grandmaster} />
+            <fieldset className="grandmaster-controls">
+              <legend>DQ reaction</legend>
+              <label className="toggle">
+                <input
+                  type="checkbox"
+                  checked={match.dqDisappointed.enabled}
+                  onChange={(e) =>
+                    dispatchMatch({ type: 'setDqDisappointed', value: { enabled: e.target.checked } })
+                  }
+                />
+                Show on the scoreboard
+              </label>
+              <p className="cast-note">Plays once on the scoreboard when a competitor is disqualified.</p>
+            </fieldset>
+          </div>
+        ) : null}
         {castNote ? <p className="cast-note">{castNote}</p> : null}
       </section>
 
@@ -447,7 +469,7 @@ export function MatchControllerPage() {
   );
 }
 
-function CarlosControls({ prefs }: { prefs: CarlosCelebrationPrefs }) {
+function GrandmasterControls({ prefs }: { prefs: GrandmasterCelebrationPrefs }) {
   const [draft, setDraft] = useState(String(prefs.pointsThreshold));
 
   useEffect(() => {
@@ -455,27 +477,24 @@ function CarlosControls({ prefs }: { prefs: CarlosCelebrationPrefs }) {
   }, [prefs.pointsThreshold]);
 
   return (
-    <fieldset className="carlos-controls">
-      <legend>Master Carlos</legend>
+    <fieldset className="grandmaster-controls">
+      <legend>Grandmaster cheer</legend>
       <label className="toggle">
         <input
           type="checkbox"
           checked={prefs.enabled}
-          onChange={(e) => dispatchMatch({ type: 'setCarlos', value: { enabled: e.target.checked } })}
+          onChange={(e) => dispatchMatch({ type: 'setGrandmaster', value: { enabled: e.target.checked } })}
         />
         Show on the scoreboard
       </label>
-      <p className="cast-note">
-        Optional for every kids’ training match. He slides in on this scoreboard only when the match ends —
-        for a win, or if points went over the total during the bout. Off means no Carlos from these triggers.
-      </p>
+      <p className="cast-note">Slides in after a win, or when the score passes the total.</p>
       {prefs.enabled ? (
         <>
           <label className="toggle">
             <input
               type="checkbox"
               checked={prefs.onWin}
-              onChange={(e) => dispatchMatch({ type: 'setCarlos', value: { onWin: e.target.checked } })}
+              onChange={(e) => dispatchMatch({ type: 'setGrandmaster', value: { onWin: e.target.checked } })}
             />
             On a match win
           </label>
@@ -483,11 +502,11 @@ function CarlosControls({ prefs }: { prefs: CarlosCelebrationPrefs }) {
             <input
               type="checkbox"
               checked={prefs.onPoints}
-              onChange={(e) => dispatchMatch({ type: 'setCarlos', value: { onPoints: e.target.checked } })}
+              onChange={(e) => dispatchMatch({ type: 'setGrandmaster', value: { onPoints: e.target.checked } })}
             />
             At match end, if points went over a total
           </label>
-          <label className="carlos-threshold">
+          <label className="grandmaster-threshold">
             Over
             <input
               inputMode="numeric"
@@ -497,13 +516,13 @@ function CarlosControls({ prefs }: { prefs: CarlosCelebrationPrefs }) {
                 const next = e.target.value.replace(/\D/g, '').slice(0, 2);
                 setDraft(next);
                 const n = Number(next);
-                if (Number.isInteger(n) && n >= CARLOS_THRESHOLD_MIN && n <= CARLOS_THRESHOLD_MAX) {
-                  dispatchMatch({ type: 'setCarlos', value: { pointsThreshold: n } });
+                if (Number.isInteger(n) && n >= GRANDMASTER_THRESHOLD_MIN && n <= GRANDMASTER_THRESHOLD_MAX) {
+                  dispatchMatch({ type: 'setGrandmaster', value: { pointsThreshold: n } });
                 }
               }}
               onBlur={() => {
                 const n = Number(draft);
-                if (!Number.isInteger(n) || n < CARLOS_THRESHOLD_MIN || n > CARLOS_THRESHOLD_MAX) {
+                if (!Number.isInteger(n) || n < GRANDMASTER_THRESHOLD_MIN || n > GRANDMASTER_THRESHOLD_MAX) {
                   setDraft(String(prefs.pointsThreshold));
                 }
               }}

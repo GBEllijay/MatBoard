@@ -1,11 +1,12 @@
-import { useCallback, useState, type MouseEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type MouseEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { OutcomeCalls, OutcomePickSheet, useOutcomeSheet } from '../components/OutcomeCalls';
 import { OutcomeSplash } from '../components/OutcomeSplash';
 import { TvTip } from '../components/TvTip';
 import { RankChip } from '../components/RankChip';
-import { CarlosCheer } from '../components/CarlosCheer';
+import { DqDisappointedPopup } from '../components/DqDisappointedPopup';
+import { GrandmasterCheer, grandmasterIdFromLocation } from '../components/GrandmasterCheer';
 import { PolishedScoreboard } from '../components/PolishedScoreboard';
 import { ScoreBox } from '../components/ScoreBox';
 import { ScoreboardSkinPicker } from '../components/ScoreboardSkinPicker';
@@ -23,7 +24,9 @@ import { competitorFocus, type DisplayFocus } from '../lib/matchFocus';
 import { dispatchMatch, expireMatchClock, remainingNow, type Side } from '../lib/matchStore';
 import { needsRefDecision } from '../lib/outcomes';
 import { formatMmSs } from '../lib/format';
-import { carlosMatchComplete, matchCarlosView } from '../lib/carlosCelebration';
+import { dqDisappointedShouldPlay } from '../lib/dqDisappointed';
+import { grandmasterCheerKey, grandmasterMatchComplete, matchGrandmasterView } from '../lib/grandmasterCelebration';
+import { resolveGrandmasterId } from '../lib/grandmasters';
 import { kidsBoardClass } from '../lib/kidsScoreboard';
 import { polishedSkinById } from '../lib/polishedSkins';
 import { SCOREBOARD_SKIN, scoreboardSkinClass } from '../lib/scoreboardSkin';
@@ -86,21 +89,42 @@ export function MatchDisplayPage() {
   const boardCalls = skin === SCOREBOARD_SKIN.QUICK_RESULT;
   /** Media Edition and above. skinFor already fell back to the default when locked here. */
   const polished = board.kidsSkin ? null : polishedSkinById(skin);
-  const carlos = board.showCarlos
-    ? matchCarlosView({
-        prefs: match.carlos,
+  const grandmaster = board.showGrandmaster
+    ? matchGrandmasterView({
+        prefs: match.grandmaster,
         outcome: match.outcome,
         blueName: match.blue.name,
         whiteName: match.white.name,
         bluePoints: match.blue.points,
         whitePoints: match.white.points,
-        matchComplete: carlosMatchComplete({
+        matchComplete: grandmasterMatchComplete({
           running: match.running,
           remainingMs: remaining,
           outcome: match.outcome,
         }),
       })
     : { show: false, lines: [] as string[] };
+  const cheerKey = grandmaster.show ? grandmasterCheerKey(match.grandmaster.boutSerial) : null;
+  const forcedMaster = grandmasterIdFromLocation();
+  const masterId = cheerKey ? resolveGrandmasterId(match.grandmaster, cheerKey) : null;
+  useEffect(() => {
+    if (forcedMaster || !cheerKey || !masterId) return;
+    if (match.grandmaster.cheerKey === cheerKey && match.grandmaster.masterId === masterId) return;
+    dispatchMatch({ type: 'setGrandmaster', value: { masterId, cheerKey } });
+  }, [forcedMaster, cheerKey, masterId, match.grandmaster.cheerKey, match.grandmaster.masterId]);
+
+  const dqAt = match.outcome?.call === 'dq' ? match.outcome.at : null;
+  const dqReady =
+    board.showGrandmaster &&
+    dqDisappointedShouldPlay({ prefs: match.dqDisappointed, outcome: match.outcome });
+  const [dqLocalAt, setDqLocalAt] = useState<number | null>(null);
+  useEffect(() => {
+    if (!dqReady || dqAt == null || dqLocalAt === dqAt) return;
+    setDqLocalAt(dqAt);
+    dispatchMatch({ type: 'setDqDisappointed', value: { playedAt: dqAt } });
+  }, [dqReady, dqAt, dqLocalAt]);
+  const finishDq = useCallback(() => setDqLocalAt(null), []);
+  const showDq = dqLocalAt != null && dqAt === dqLocalAt && match.dqDisappointed.enabled;
 
   const clockControl = (
     <button type="button" className="clock-btn" onClick={toggleClock} aria-label="Start or pause match clock">
@@ -337,7 +361,12 @@ export function MatchDisplayPage() {
       ) : null}
 
       {splash ? <OutcomeSplash outcome={splash} name={splashName} /> : null}
-      {carlos.show ? <CarlosCheer lines={carlos.lines} board /> : null}
+      {grandmaster.show && masterId ? (
+        <GrandmasterCheer lines={grandmaster.lines} masterId={forcedMaster ?? masterId} board />
+      ) : null}
+      {showDq && match.outcome?.call === 'dq' ? (
+        <DqDisappointedPopup key={dqLocalAt} side={match.outcome.side} onFinished={finishDq} />
+      ) : null}
     </main>
   );
 }
