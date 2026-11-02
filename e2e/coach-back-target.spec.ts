@@ -48,7 +48,10 @@ test('Coach Unlimited and Pro keep their own back target', async ({ page }) => {
   await page.goto('/coach-unlimited');
   await page.getByRole('link', { name: 'Student Roster', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Student Roster', exact: true })).toBeVisible();
-  await expect(page.getByText('Coming soon.', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Download template' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Import CSV' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Export CSV' })).toBeVisible();
+  await expect(page.getByText('Coming soon.', { exact: true })).toHaveCount(0);
   const rosterBack = page.getByRole('link', { name: BACK });
   await expect(rosterBack).toHaveAttribute('href', '/coach-unlimited');
   await rosterBack.click();

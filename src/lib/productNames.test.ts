@@ -34,6 +34,7 @@ import {
   coachToolsOpen,
   coachUnlimitedDoorOpen,
   isBasicCoach,
+  isCoachStudentRoster,
   isPlainCoachTournament,
   MEDIA_CONSOLE_ROUTES,
   MEDIA_FOLDER_ROUTES,
@@ -277,6 +278,11 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
     [0, 1, 2, 3, null, null],
   );
   assert.equal(COACH_UNLIMITED_TOOLS[3].to, '/student-roster');
+  assert.equal(isCoachStudentRoster('/student-roster', null), true);
+  assert.equal(isCoachStudentRoster('/roster', 'students'), true);
+  assert.equal(isCoachStudentRoster('/roster', 'competitors'), false);
+  assert.equal(isCoachStudentRoster('/roster', 'unlimited'), false);
+  assert.equal(isCoachStudentRoster('/roster', 'coach'), false);
   assert.equal(UNLIMITED_ROSTER_PATH, '/roster?from=unlimited');
   assert.notEqual(COACH_UNLIMITED_TOOLS[3].to, COMPETITOR_ROSTER_PATH);
   assert.equal(COACH_UNLIMITED_TOOLS[3].belt, 'brown');

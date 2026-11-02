@@ -421,6 +421,11 @@ describe('serializeRosterCsv', () => {
 
     const named = importRosterCsv('Name,Belt,Competitor Notes\nAlex,Purple,Tape the knee\n');
     assert.equal(named.students[0]?.note, 'Tape the knee');
+
+    const studentHeader = importRosterCsv('Name,Belt,Student Notes\nAda,White,Tape\n');
+    assert.equal(studentHeader.imported, 1);
+    assert.equal(studentHeader.students[0]?.note, 'Tape');
+    assert.equal(studentHeader.students[0]?.rosterList, undefined);
   });
 });
 

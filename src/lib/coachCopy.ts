@@ -118,13 +118,22 @@ export const ROSTER_CSV_DEVICE_NOTE =
 export const ROSTER_CSV_INSTRUCTIONS =
   'Each row needs a competitor name and a belt. A row missing either one is left out. Division, Gym name / nickname, Last promotion, Last promotion detail, and Check In can be blank. Competitor Notes are included when the row has them. Face photos stay on this device and are not in the CSV.';
 
+/** Same columns as the competitor instructions, in Student Roster wording. */
+export const STUDENT_ROSTER_CSV_INSTRUCTIONS =
+  'Each row needs a student name and a belt. A row missing either one is left out. Division, Gym name / nickname, Last promotion, Last promotion detail, and Check In can be blank. Student Notes are included when the row has them. The Student Roster has no face photo, and the CSV does not include one.';
+
+/** Short line under the Student Roster CSV buttons. */
+export const STUDENT_ROSTER_CSV_DEVICE_NOTE =
+  'The roster stays on this device. CSV is for backup or a move. The Student Roster has no face photo, and the CSV does not include one.';
+
 /** Plain text beside the Competitor Roster template download. */
 export const ROSTER_CSV_TEMPLATE_NOTE =
   "Fill in one person per row and save as CSV UTF-8, not .xlsx. Belt is required: White, Blue, Purple, Brown, Black, or Coral; kids Grey, Yellow, Orange, or Green. Spellings like 'black belt' or 'BB' work too.";
 
 /**
  * CSV import, export, and the downloadable template.
- * Shown on the Competitor Management roster for Coach and for Pro.
+ * Shown on Competitor Roster and Student Roster when Instructor Edition or Pro is unlocked.
+ * White, Student, and Media do not open those rosters, so the buttons stay off those tiers.
  */
 export function rosterCsvAvailable(proUnlocked: boolean, coachUnlocked: boolean): boolean {
   return proUnlocked || coachUnlocked;

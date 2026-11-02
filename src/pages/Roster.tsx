@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useCurrentSeat } from '../components/SeatSessionBar';
 import { EmptyHint } from '../components/EmptyHint';
 import { ImportStudentProgress, StudentCompetitionPlan } from '../components/StudentCompetitionPlan';
@@ -12,7 +12,7 @@ import { useToolboxParent } from '../hooks/useToolboxParent';
 import { BeltTip } from '../components/BeltTip';
 import { Sheet } from '../components/Sheet';
 import { useRosterState } from '../hooks/useStores';
-import { COMPETITOR_SYSTEM_NAME } from '../lib/productNames';
+import { COMPETITOR_SYSTEM_NAME, isCoachStudentRoster } from '../lib/productNames';
 import { competitorPhotoFromFile } from '../lib/competitorPhoto';
 import { PHOTO_PICKER_ACCEPT, VIDEO_CAPTURE } from '../lib/mediaPicker';
 import { quotaAddNote } from '../lib/storageQuota';
@@ -33,6 +33,8 @@ import {
   ROSTER_LEAD_COACH,
   ROSTER_LEAD_PRO,
   STUDENT_NOTES_LABEL,
+  STUDENT_ROSTER_CSV_DEVICE_NOTE,
+  STUDENT_ROSTER_CSV_INSTRUCTIONS,
   STUDENT_ROSTER_LABEL,
   rosterCsvAvailable,
 } from '../lib/coachCopy';
@@ -89,14 +91,15 @@ export function RosterPage() {
   const proUnlocked = useProUnlocked();
   const coachUnlocked = useCoachUnlocked();
   useCoachPageSwipe();
+  const { pathname } = useLocation();
   const [searchParams] = useSearchParams();
   const fromCompetitors = searchParams.get('from') === 'competitors';
-  const studentRoster = searchParams.get('from') === 'students';
+  const studentRoster = isCoachStudentRoster(pathname, searchParams.get('from'));
   const coachRoster =
     !studentRoster &&
     !fromCompetitors &&
     (searchParams.get('from') === 'coach' || (coachUnlocked && !proUnlocked));
-  const showCsv = !studentRoster && rosterCsvAvailable(proUnlocked, coachUnlocked);
+  const showCsv = rosterCsvAvailable(proUnlocked, coachUnlocked);
   const exitPath = useSubmenuBack() ?? parent.path;
   const csvRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
@@ -131,7 +134,7 @@ export function RosterPage() {
           return;
         }
         try {
-          addStudents(result.students);
+          addStudents(result.students, { rosterList: studentRoster ? 'student' : 'competitor' });
         } catch (error) {
           setCsvNote(quotaAddNote(error) ?? 'Could not save those names on this device.');
           return;
@@ -150,7 +153,12 @@ export function RosterPage() {
           <button
             type="button"
             className="btn btn--ghost"
-            onClick={() => downloadRosterCsv('advantage-roster-template.csv', rosterCsvTemplate())}
+            onClick={() =>
+              downloadRosterCsv(
+                studentRoster ? 'advantage-student-roster-template.csv' : 'advantage-roster-template.csv',
+                rosterCsvTemplate(),
+              )
+            }
           >
             Download template
           </button>
@@ -163,16 +171,21 @@ export function RosterPage() {
             <button
               type="button"
               className="btn btn--ghost"
-              onClick={() => downloadRosterCsv('advantage-roster.csv', serializeRosterCsv(listed))}
+              onClick={() =>
+                downloadRosterCsv(
+                  studentRoster ? 'advantage-student-roster.csv' : 'advantage-roster.csv',
+                  serializeRosterCsv(listed, studentRoster ? STUDENT_NOTES_LABEL : undefined),
+                )
+              }
             >
               Export CSV
             </button>
           ) : null}
         </div>
-        <CsvInstructions />
+        <CsvInstructions text={studentRoster ? STUDENT_ROSTER_CSV_INSTRUCTIONS : ROSTER_CSV_INSTRUCTIONS} />
       </div>
       <p className="roster__csv-template">{ROSTER_CSV_TEMPLATE_NOTE}</p>
-      <p className="roster__csv-hint">{ROSTER_CSV_DEVICE_NOTE}</p>
+      <p className="roster__csv-hint">{studentRoster ? STUDENT_ROSTER_CSV_DEVICE_NOTE : ROSTER_CSV_DEVICE_NOTE}</p>
       {csvNote ? (
         <p className="roster__csv-summary" role="status">
           {csvNote}
@@ -336,7 +349,7 @@ export function RosterPage() {
   );
 }
 
-function CsvInstructions() {
+function CsvInstructions({ text }: { text: string }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [pinned, setPinned] = useState(false);
   const [hover, setHover] = useState(false);
@@ -376,7 +389,7 @@ function CsvInstructions() {
       </button>
       {open ? (
         <p id="roster-csv-instructions" className="roster__instructions-pop" role="tooltip">
-          {ROSTER_CSV_INSTRUCTIONS}
+          {text}
         </p>
       ) : null}
     </div>

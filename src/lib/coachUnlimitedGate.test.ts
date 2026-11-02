@@ -5,7 +5,7 @@
  * Covers both the client route gate and the server paid-chunk gate.
  */
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 import { CLIENT_APP_VERSION } from './appCapability.ts';
 import { isCoachUnlimitedUnlocked } from './coachUnlock.ts';
@@ -145,15 +145,20 @@ test('seats are unchanged: the coach door never opens Coach Unlimited for a seat
   assert.deepEqual(visibleProHubs({ ...seat, proUnlocked: true }).map((hub) => hub.to), [COACH_UNLIMITED_PATH]);
 });
 
-test('/student-roster is the Coach Unlimited gate and does not open a roster store', () => {
+test('/student-roster stays on the Coach Unlimited gate and opens the real student roster', () => {
   const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
   const route = app.slice(app.indexOf('path="/student-roster"'), app.indexOf('path="/coach-unlimited/academy"'));
-  assert.match(route, /<CoachUnlimitedRoute>\s*<StudentRosterPlaceholderPage \/>\s*<\/CoachUnlimitedRoute>/);
-  const page = readFileSync(new URL('../pages/StudentRosterPlaceholder.tsx', import.meta.url), 'utf8');
-  assert.match(page, /title="Student Roster"/);
-  assert.match(page, /Coming soon\./);
-  assert.match(page, /PlayExitMark to=\{COACH_UNLIMITED_PATH\}/);
-  assert.doesNotMatch(page, /rosterStore|useRosterState|localStorage/);
+  assert.match(route, /<CoachUnlimitedRoute>\s*<RosterPage \/>\s*<\/CoachUnlimitedRoute>/);
+  assert.doesNotMatch(route, /StudentRosterPlaceholder|Coming soon/);
+  assert.doesNotMatch(app, /StudentRosterPlaceholderPage/);
+  const roster = readFileSync(new URL('../pages/Roster.tsx', import.meta.url), 'utf8');
+  assert.match(roster, /isCoachStudentRoster\(pathname, searchParams\.get\('from'\)\)/);
+  assert.match(roster, /const showCsv = rosterCsvAvailable\(proUnlocked, coachUnlocked\)/);
+  assert.doesNotMatch(roster, /showCsv = !studentRoster/);
+  assert.match(roster, /addStudents\(result\.students, \{ rosterList: studentRoster \? 'student' : 'competitor' \}\)/);
+  assert.match(roster, /serializeRosterCsv\(listed, studentRoster \? STUDENT_NOTES_LABEL : undefined\)/);
+  assert.doesNotMatch(roster, /Coming soon/);
+  assert.equal(existsSync(new URL('../pages/StudentRosterPlaceholder.tsx', import.meta.url)), false);
 });
 
 test('callers that leave coachUnlocked out keep the old Pro-only rule', () => {

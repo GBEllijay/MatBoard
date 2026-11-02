@@ -205,8 +205,17 @@ export const COACH_HUBS = [
   { title: MOCK_TOURNAMENT_NAME, to: `/tournament?from=${COACH_BOARD_FROM}`, belt: 'tournament' as const },
 ] as const;
 
-/** Placeholder for the future master student list. No roster data. Same gate as Coach Unlimited. */
-export const STUDENT_ROSTER_PLACEHOLDER_PATH = '/student-roster';
+/**
+ * Instructor Edition Student Roster. Same student cards as {@link STUDENT_ROSTER_PATH}.
+ * This path stays on the Coach Unlimited route gate (Instructor Edition and above).
+ * It does not open the Competitor Roster.
+ */
+export const STUDENT_ROSTER_MENU_PATH = '/student-roster';
+
+/** True for the Instructor Edition route and the basic Coach `?from=students` list. */
+export function isCoachStudentRoster(pathname: string, from: string | null): boolean {
+  return pathname === STUDENT_ROSTER_MENU_PATH || from === 'students';
+}
 
 /**
  * Limited Coach opens `/notes` with no plan flag.
@@ -232,7 +241,7 @@ export function coachingToolsMenu(unlimited: boolean) {
 /**
  * Advantage Coach Unlimited menu, top to bottom.
  * Daily Lesson Plan is the Unlimited plan that can be uploaded for review.
- * Student Roster is a placeholder for the future master student list. It does not open the competitor list.
+ * Student Roster opens the student list (names, belts, and the other roster-card fields). It does not open the competitor list.
  * The four brown rails wear 0-3 white stripes, counted from the tip up toward the header's 4.
  * Scoreboard and Round Timer are the Competition and Tournament Management controllers, with the same black belt.
  * `from=unlimited` sends Back to Coach Unlimited, not the Suite.
@@ -243,7 +252,7 @@ export const COACH_UNLIMITED_TOOLS = [
   { title: TRAINING_NOTES_LABEL, to: UNLIMITED_LESSON_PATH, belt: 'brown' as const, stripes: 0 as const, clearBout: false as const },
   { title: 'Daily Training Videos', to: UNLIMITED_VIDEOS_PATH, belt: 'brown' as const, stripes: 1 as const, clearBout: false as const },
   { title: TECHNIQUE_TREE_LABEL, to: UNLIMITED_TREE_PATH, belt: 'brown' as const, stripes: 2 as const, clearBout: false as const },
-  { title: STUDENT_ROSTER_LABEL, to: STUDENT_ROSTER_PLACEHOLDER_PATH, belt: 'brown' as const, stripes: 3 as const, clearBout: false as const },
+  { title: STUDENT_ROSTER_LABEL, to: STUDENT_ROSTER_MENU_PATH, belt: 'brown' as const, stripes: 3 as const, clearBout: false as const },
   { title: 'Scoreboard', to: '/match/control?from=unlimited', belt: 'black' as const, clearBout: true as const },
   { title: 'Round Timer', to: '/training/control?from=unlimited', belt: 'black' as const, clearBout: false as const },
 ] as const;
