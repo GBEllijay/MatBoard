@@ -16558,6 +16558,47 @@ a.plan-pick {
   font-weight: 800;
 }
 
+.reaction-settings {
+  display: grid;
+  gap: 16px;
+}
+
+/* One walk-off on a recorded DQ. Taps pass through to the board and the splash. */
+.dq-disappointed {
+  position: absolute;
+  inset: 0;
+  z-index: 16;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.dq-disappointed__figure {
+  position: absolute;
+  right: 0;
+  /* Feet near the clock band before layout measures the empty right end. */
+  bottom: calc(50% - 5rem);
+  width: min(16vw, 200px);
+  aspect-ratio: 845 / 1200;
+  pointer-events: none;
+}
+
+/* Same reserved box as the cheer, from the first paint. 1024+ keeps the measured slot. */
+@media (max-width: 1023px) {
+  .dq-disappointed__figure {
+    width: 106px;
+  }
+}
+
+.dq-disappointed__figure img,
+.dq-disappointed__figure video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  background: transparent;
+  pointer-events: none;
+}
+
 /* Old School — tabletop flip-card board.
    Blue competitor: white digits on blue cards.
    White competitor: white digits on red cards.
