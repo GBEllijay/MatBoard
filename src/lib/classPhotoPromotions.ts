@@ -6,12 +6,11 @@
  * object store `items`. One row is one photo or video for a lesson date.
  * The phone copy stays so the section can preview it offline.
  *
- * Drive folder: `{connected root}/{YYYY-MM-DD}/class-photos/`
- * (`CLASS_PHOTOS_FOLDER`). That date bucket already exists for class history.
- * File names start with `advantage-class-photo-promotions-`.
- * `appProperties.advantage` is `class-photo-promotions`
- * (`CLASS_PHOTO_PROMOTIONS_ROLE`).
- * Bytes go to the gym's Google Drive, not to an Advantage server.
+ * Shared copy: `gallery/approved/{date}/` when approval is off, or
+ * `gallery/pending/{date}/` when approval is on. A short video uses that
+ * same gallery path. It does not go in `videos/daily` or `class-photos`.
+ * The phone keeps a copy. An approved item is also added to the local Gallery
+ * so the slideshow can play it. Advantage does not host the bytes here.
  *
  * Capture reuses Gallery / Daily Training inputs: Take photo
  * (`image/*` + capture), Record (`video/*` + capture), and Pick from gallery
@@ -19,12 +18,10 @@
  */
 
 import { shrinkPhotoForStore } from './imageShrink.ts';
-import {
-  CLASS_PHOTO_PROMOTIONS_ROLE,
-  publishClassPhotoPromotions,
-  type ClassPhotoPromotionUpload,
-} from './googleDrive.ts';
-import { isAcceptedVideoFile } from './photoStore.ts';
+import { publishGymFile } from './gymPublish.ts';
+import { GALLERY_ROUTE_NOTE } from './gymTree.ts';
+import { CLASS_PHOTO_PROMOTIONS_ROLE } from './googleDrive.ts';
+import { addFolderFiles, isAcceptedVideoFile } from './photoStore.ts';
 import { assertOriginRoom, isStorageQuotaError, StorageQuotaError } from './storageQuota.ts';
 
 export const CLASS_PHOTO_PROMOTIONS_DB = 'matboard-class-photo-promotions';
@@ -34,12 +31,11 @@ export const CLASS_PHOTO_PROMOTIONS_LABEL = "Today's class photo / promotions";
 export const CLASS_PHOTO_PROMOTIONS_ADD = 'Add photo or video';
 export const CLASS_PHOTO_PROMOTIONS_LEAD =
   'A class photo or a short clip. Take photo, Record, or Pick from gallery.';
-export const CLASS_PHOTO_PROMOTIONS_STAY =
-  "Photos and clips stay on this phone. When the gym Google Drive folder is connected, a copy goes in today's class-photos folder. Advantage does not host them.";
+export const CLASS_PHOTO_PROMOTIONS_STAY = `${GALLERY_ROUTE_NOTE} Photos and clips stay on this phone. When Google Drive or OneDrive is connected, the copy goes in the gallery folder there. Advantage does not host them.`;
 export const CLASS_PHOTO_PROMOTIONS_SAVED_DRIVE =
-  "Saved in today's class-photos folder on Google Drive. A copy stays on this phone.";
+  'Saved in the gallery folder. A copy stays on this phone.';
 export const CLASS_PHOTO_PROMOTIONS_SAVED_PHONE =
-  "Saved on this phone. Connect the gym Google Drive folder to copy it into today's class-photos folder.";
+  'Saved on this phone. Connect Google Drive or OneDrive to use the same gallery on another device.';
 export const CLASS_PHOTO_PROMOTIONS_FAILED =
   'Saved on this phone. Google Drive could not take this file.';
 export const CLASS_PHOTO_PROMOTIONS_SKIPPED =
@@ -204,28 +200,37 @@ export async function addClassPhotoPromotionFiles(
   if (!saved.length) {
     return { saved: 0, uploaded: 0, failed: 0, skipped, needsDrive: false };
   }
-  const uploads: ClassPhotoPromotionUpload[] = saved.map((item) => ({
-    localId: item.id,
-    name: item.name,
-    mime: item.mime,
-    bytes: item.blob,
-    kind: item.kind,
-  }));
-  const results = await publishClassPhotoPromotions({ dateKey, items: uploads });
-  if (!results) {
-    return { saved: saved.length, uploaded: 0, failed: 0, skipped, needsDrive: true };
-  }
   let uploaded = 0;
   let failed = 0;
-  for (const result of results) {
-    if (result.failed || !result.driveFileId) {
+  let needsDrive = true;
+  for (const item of saved) {
+    const published = await publishGymFile({
+      purpose: 'gallery',
+      role: 'owner',
+      kind: item.kind,
+      dateKey,
+      fileName: item.name,
+      bytes: item.blob,
+      mime: item.mime,
+    });
+    if (published.route.ok && published.route.lane !== 'pending') {
+      try {
+        const file = new File([item.blob], item.name, { type: item.mime });
+        await addFolderFiles([file], 'gallery');
+      } catch {
+        /* The class-photo copy on this phone is already stored. */
+      }
+    }
+    if (!published.route.ok || published.home === 'phone') continue;
+    needsDrive = false;
+    if (published.failed || !published.remoteId) {
       failed += 1;
       continue;
     }
     uploaded += 1;
-    await setDriveFileId(result.localId, result.driveFileId);
+    await setDriveFileId(item.id, published.remoteId);
   }
-  return { saved: saved.length, uploaded, failed, skipped, needsDrive: false };
+  return { saved: saved.length, uploaded, failed, skipped, needsDrive: needsDrive && uploaded === 0 && failed === 0 };
 }
 
 export { CLASS_PHOTO_PROMOTIONS_ROLE };

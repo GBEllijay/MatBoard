@@ -59,7 +59,7 @@ const COPY: Record<
     capture: PHOTO_CAPTURE_LABEL,
     captureHint: 'Open the camera in photo mode',
     libraryHint: 'Choose a photo or video in Google Photos or on this phone',
-    stay: "Photos and clips stay on this phone. When the gym Google Drive folder is connected, a copy goes in today's class-photos folder.",
+    stay: 'Photos and clips stay on this phone. A copy goes in the gallery folder, not the instructor video folder.',
   },
 };
 
