@@ -1,0 +1,14 @@
+# Bindings for local Wrangler. Production Pages uses the dashboard bindings
+# with these same names. See docs/advantage-cloud-bindings.md.
+# Do not put secrets in this file.
+name = "advantage-bjj-timer"
+compatibility_date = "2026-11-01"
+pages_build_output_dir = "dist"
+
+# Private gym files. No public r2.dev URL.
+[[r2_buckets]]
+binding = "GYM_MEDIA"
+bucket_name = "advantage-gym-media"
+
+# The D1 database already exists: advantage-entitlements, binding ENTITLEMENTS_DB.
+# database_id is on the dashboard. Do not invent one here.

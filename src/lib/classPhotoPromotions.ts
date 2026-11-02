@@ -17,6 +17,7 @@
  * (`image/*,video/*`, no capture).
  */
 
+import { galleryHoldExpired, playsInGallery, readGalleryApproval } from './galleryApproval.ts';
 import { shrinkPhotoForStore } from './imageShrink.ts';
 import { publishGymFile } from './gymPublish.ts';
 import { GALLERY_ROUTE_NOTE } from './gymTree.ts';
@@ -44,6 +45,7 @@ export const CLASS_PHOTO_PROMOTIONS_SKIPPED =
 const DB_VERSION = 1;
 
 export type ClassPhotoPromotionKind = 'photo' | 'video';
+export type ClassPhotoLane = 'pending' | 'approved' | 'rejected';
 
 export type ClassPhotoPromotionItem = {
   id: string;
@@ -54,6 +56,8 @@ export type ClassPhotoPromotionItem = {
   blob: Blob;
   addedAt: number;
   driveFileId: string | null;
+  /** Missing on rows saved before the gallery switch. Those stay approved. */
+  lane?: ClassPhotoLane;
 };
 
 export type AddClassPhotoPromotionsResult = {
@@ -111,6 +115,11 @@ function isItem(value: unknown): value is ClassPhotoPromotionItem {
   );
 }
 
+export function classPhotoLane(item: Pick<ClassPhotoPromotionItem, 'lane'>): ClassPhotoLane {
+  if (item.lane === 'pending' || item.lane === 'rejected' || item.lane === 'approved') return item.lane;
+  return 'approved';
+}
+
 export async function getClassPhotoPromotion(id: string): Promise<ClassPhotoPromotionItem | null> {
   if (!id) return null;
   const db = await openDb();
@@ -123,7 +132,20 @@ export async function getClassPhotoPromotion(id: string): Promise<ClassPhotoProm
   return isItem(row) ? row : null;
 }
 
+export async function listPendingClassPhotos(): Promise<ClassPhotoPromotionItem[]> {
+  await purgeExpiredClassPhotos().catch(() => 0);
+  const db = await openDb();
+  const raw = await new Promise<unknown[]>((resolve, reject) => {
+    const tx = db.transaction(CLASS_PHOTO_PROMOTIONS_STORE, 'readonly');
+    const req = tx.objectStore(CLASS_PHOTO_PROMOTIONS_STORE).getAll();
+    req.onsuccess = () => resolve((req.result as unknown[]) ?? []);
+    req.onerror = () => reject(req.error);
+  });
+  return raw.filter(isItem).filter((item) => classPhotoLane(item) === 'pending');
+}
+
 export async function listClassPhotoPromotions(dateKey: string): Promise<ClassPhotoPromotionItem[]> {
+  await purgeExpiredClassPhotos().catch(() => 0);
   const db = await openDb();
   const raw = await new Promise<unknown[]>((resolve, reject) => {
     const tx = db.transaction(CLASS_PHOTO_PROMOTIONS_STORE, 'readonly');
@@ -135,6 +157,37 @@ export async function listClassPhotoPromotions(dateKey: string): Promise<ClassPh
     .filter(isItem)
     .filter((item) => item.dateKey === dateKey)
     .sort((a, b) => a.addedAt - b.addedAt || a.id.localeCompare(b.id));
+}
+
+async function deleteItem(id: string): Promise<void> {
+  const db = await openDb();
+  const tx = db.transaction(CLASS_PHOTO_PROMOTIONS_STORE, 'readwrite');
+  tx.objectStore(CLASS_PHOTO_PROMOTIONS_STORE).delete(id);
+  await txDone(tx);
+}
+
+/** Drop pending and rejected copies older than a month. Approved items stay. */
+export async function purgeExpiredClassPhotos(now = Date.now()): Promise<number> {
+  const db = await openDb();
+  const raw = await new Promise<unknown[]>((resolve, reject) => {
+    const tx = db.transaction(CLASS_PHOTO_PROMOTIONS_STORE, 'readonly');
+    const req = tx.objectStore(CLASS_PHOTO_PROMOTIONS_STORE).getAll();
+    req.onsuccess = () => resolve((req.result as unknown[]) ?? []);
+    req.onerror = () => reject(req.error);
+  });
+  const expired = raw.filter(isItem).filter((item) => {
+    const lane = classPhotoLane(item);
+    return (lane === 'pending' || lane === 'rejected') && galleryHoldExpired(item.addedAt, now);
+  });
+  for (const item of expired) await deleteItem(item.id);
+  return expired.length;
+}
+
+export async function setClassPhotoLane(id: string, lane: ClassPhotoLane): Promise<void> {
+  const existing = await getClassPhotoPromotion(id);
+  if (!existing) return;
+  existing.lane = lane;
+  await putItem(existing);
 }
 
 async function putItem(item: ClassPhotoPromotionItem): Promise<void> {
@@ -200,10 +253,13 @@ export async function addClassPhotoPromotionFiles(
   if (!saved.length) {
     return { saved: 0, uploaded: 0, failed: 0, skipped, needsDrive: false };
   }
+  const approvalRequired = readGalleryApproval(typeof localStorage === 'undefined' ? null : localStorage).required;
   let uploaded = 0;
   let failed = 0;
   let needsDrive = true;
   for (const item of saved) {
+    item.lane = approvalRequired ? 'pending' : 'approved';
+    await putItem(item);
     const published = await publishGymFile({
       purpose: 'gallery',
       role: 'owner',
@@ -212,8 +268,9 @@ export async function addClassPhotoPromotionFiles(
       fileName: item.name,
       bytes: item.blob,
       mime: item.mime,
+      approvalRequired,
     });
-    if (published.route.ok && published.route.lane !== 'pending') {
+    if (published.route.ok && playsInGallery(published.route.lane)) {
       try {
         const file = new File([item.blob], item.name, { type: item.mime });
         await addFolderFiles([file], 'gallery');
