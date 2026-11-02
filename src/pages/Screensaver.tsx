@@ -47,6 +47,8 @@ import {
   type DrivePickKind,
 } from '../lib/driveMediaPicker';
 import { formatMss, secondsToMs } from '../lib/format';
+import { publishGymFile } from '../lib/gymPublish';
+import { PlayingFromLine } from '../components/PlayingFromLine';
 import { GALLERY_LINK_DONE, galleryItemShows, nextClassFromDays } from '../lib/gallerySchedule';
 import { downloadDriveFile, getDriveBindingSnapshot, requestDriveToken, subscribeDriveBinding } from '../lib/googleDrive';
 import {
@@ -613,9 +615,29 @@ export function ScreensaverPage() {
       const large = picked.some((file) => file.size >= LARGE_MEDIA_BYTES);
       if (feedback) {
         showBatchError(folderId, feedback);
+      } else if (added) {
+        setBatchStatus({ tone: 'saved', text: 'Saved' });
+        setPickerNote(large ? LARGE_MEDIA_NOTE : '');
       } else {
         setBatchStatus(null);
-        setPickerNote(large ? LARGE_MEDIA_NOTE : '');
+        setPickerNote('');
+      }
+      if (added) {
+        const purpose = folderId === 'gallery' ? 'gallery' : folderId === 'shop' ? 'pro-shop' : folderId === 'events' ? 'events' : '';
+        if (purpose) {
+          const dateKey = localDateKey();
+          for (const file of matched) {
+            await publishGymFile({
+              purpose,
+              role: 'owner',
+              kind: file.type.startsWith('video/') ? 'video' : 'photo',
+              dateKey,
+              fileName: file.name || (purpose === 'pro-shop' ? 'product-card' : 'photo'),
+              bytes: file,
+              mime: file.type || (file.type.startsWith('video/') ? 'video/mp4' : 'image/jpeg'),
+            }).catch(() => undefined);
+          }
+        }
       }
       await refresh();
       if (added) setPlaying(true);
@@ -742,6 +764,7 @@ export function ScreensaverPage() {
       ) : (
         <div className="saver__empty" onClick={(e) => e.stopPropagation()}>
           <h1>{hubTitle}</h1>
+          <PlayingFromLine />
           <p>{emptyCopy}</p>
           {focusConfig.ready && focusEmpty && focusCanUpload ? (
             <>
@@ -795,6 +818,7 @@ export function ScreensaverPage() {
         }
       >
         {beltInSheet ? beltHeader : null}
+        <PlayingFromLine />
         {options && batchStatus ? (
           <BatchStatus panel status={batchStatus} onDismiss={() => setBatchStatus(null)} />
         ) : null}
@@ -1197,7 +1221,7 @@ export function ScreensaverPage() {
   );
 }
 
-type BatchNotice = { tone: 'progress' | 'error'; text: string };
+type BatchNotice = { tone: 'progress' | 'error' | 'saved'; text: string };
 
 function savedCount(error: unknown): number {
   if (error && typeof error === 'object' && 'saved' in error && typeof error.saved === 'number') {

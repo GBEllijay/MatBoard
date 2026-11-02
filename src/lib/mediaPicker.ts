@@ -34,6 +34,23 @@ export const VIDEO_RECORD_ACCEPT = 'video/*';
 export const PHOTO_PICKER_ACCEPT = 'image/*';
 
 /**
+ * Copy picker bytes before the input is cleared. iOS can drop a camera File
+ * when the input value is reset, so the first save used to come up empty.
+ */
+export async function holdPickerFiles(files: readonly File[]): Promise<File[]> {
+  const held: File[] = [];
+  for (const file of files) {
+    try {
+      const bytes = await file.arrayBuffer();
+      held.push(new File([bytes], file.name || 'photo', { type: file.type, lastModified: file.lastModified }));
+    } catch {
+      held.push(file);
+    }
+  }
+  return held;
+}
+
+/**
  * Library pick for a section that accepts a photo or a video.
  * No `capture` on this input. A combined accept on a capture input makes
  * Chrome Android skip the camera, so Take photo and Record stay separate.

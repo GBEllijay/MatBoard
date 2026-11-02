@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { BeltHeader } from '../components/BeltHeader';
+import { PlusCloudConduct } from '../components/PlusCloudConduct';
 import { HomeMark } from '../components/HomeMark';
 import { InstructionsButton } from '../components/InstructionsButton';
 import { PlayExitMark } from '../components/PlayExitMark';
@@ -42,6 +43,7 @@ export function ProPlusCloudPage() {
       <div className="home__inner">
         <PlayExitMark to={PRODUCTS_PATH} />
         <HomeMark to={PRODUCTS_PATH} />
+        <PlusCloudConduct />
 
         <nav className="home__modes" aria-label={PRO_PLUS_CLOUD_NAME}>
           <BeltHeader kind="black" worn title={PRO_PLUS_CLOUD_NAME} blurb={PRO_PLUS_CLOUD_BELT_BLURB} />

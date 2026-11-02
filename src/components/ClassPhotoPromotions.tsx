@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { DeviceMediaInput } from './DeviceMediaInput';
+import { PlayingFromLine } from './PlayingFromLine';
 import { MediaSourceSheet } from './VideoSourceSheet';
 import {
   addClassPhotoPromotionFiles,
@@ -94,6 +95,8 @@ export function ClassPhotoPromotions({ dateKey, readOnly = false }: { dateKey: s
     <aside className="notes__distribute notes__class-photos" aria-label={CLASS_PHOTO_PROMOTIONS_LABEL}>
       <h2>{CLASS_PHOTO_PROMOTIONS_LABEL}</h2>
       {readOnly ? null : <p>{CLASS_PHOTO_PROMOTIONS_LEAD}</p>}
+      {readOnly ? null : <p>{CLASS_PHOTO_PROMOTIONS_STAY}</p>}
+      <PlayingFromLine />
       {readOnly ? null : (
         <button
           type="button"

@@ -272,12 +272,12 @@ export type LicenseSource = '' | (typeof LICENSE_SOURCES)[number];
 export const ACADEMY_MEMBER_CODE_LABEL = 'Academy Member';
 export const ACADEMY_MEMBER_DISCOUNT_PERCENT = 25;
 
-/** Free Student Edition licenses included with Pro. The head instructor sends them. */
-export const PRO_INCLUDED_STUDENT_LICENSES = 10;
+/** Free Student Edition licenses included with Pro. Half-off uses can add more, up to 105. */
+export const PRO_INCLUDED_STUDENT_LICENSES = 5;
 
 /** Copy for a later screen. Not shown in this step. */
 export const STUDENT_LICENSE_MORE_NOTE =
-  'Gyms can email advantageappllc@gmail.com to purchase additional Student Edition licenses at a discount.';
+  'Each Pro license includes a half-off code for 100 Instructor or Student licenses. After 100 uses, email advantageappllc@gmail.com.';
 
 export type StudentProfile = {
   id: string;

@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from 'react';
 import { redeemAccessCode } from '../lib/codeRedeemClient';
 import { GYM_CONSOLE_NAME } from '../lib/productNames';
+import { SecretField } from './SecretField';
 import { Sheet } from './Sheet';
 
 type Product = 'coach' | 'pro' | 'student';
@@ -70,20 +71,16 @@ export function ProUnlockSheet({ open, onClose, product = 'pro' }: Props) {
     <Sheet open={open} title={copy.title} onClose={close}>
       <p className="home__unlock-copy">{copy.body}</p>
       <form className="home__unlock-form" onSubmit={submit}>
-        <label>
-          <span className="sr-only">Owner unlock code</span>
-          <input
-            type="password"
-            name={copy.name}
-            autoComplete="off"
-            placeholder={copy.placeholder}
-            value={code}
-            onChange={(event) => {
-              setCode(event.target.value);
-              if (error) setError('');
-            }}
-          />
-        </label>
+        <SecretField
+          label="Owner unlock code"
+          name={copy.name}
+          placeholder={copy.placeholder}
+          value={code}
+          onChange={(value) => {
+            setCode(value);
+            if (error) setError('');
+          }}
+        />
         {error ? <p className="home__unlock-error">{error}</p> : null}
         <button type="submit" className="btn" disabled={pending}>
           {pending ? 'Checking…' : copy.submit}
