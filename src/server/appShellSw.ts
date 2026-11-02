@@ -31,20 +31,36 @@ export function createAppShellNavigation(): (ctx: { request: { mode?: string }; 
  * Network first. A failed, slow (4s), or non-OK response uses the precached
  * index.html from this deploy. Nothing is written to a page cache, so an old
  * HTML file cannot point at chunks a newer deploy removed.
+ *
+ * The navigation request is fetched as-is, with no RequestInit. Chrome throws
+ * "Cannot construct a Request with a Request whose mode is 'navigate' and a
+ * non-empty RequestInit" when an init (such as an AbortSignal) is passed, which
+ * sent every deep link to the fallback. The 4s limit is a race instead.
+ * A cached shell that was saved through a redirect (Pages sends /index.html to
+ * / with a 308) is copied into a plain response, because Chrome refuses a
+ * redirected response for a navigation with ERR_FAILED.
  */
 export const APP_SHELL_HANDLER_SOURCE = `async function appShellHandler({ request }) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 4000);
+  let timer;
   try {
-    const response = await fetch(request, { signal: controller.signal });
-    if (response && response.ok) return response;
+    const response = await Promise.race([
+      fetch(request),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error("timeout")), 4000);
+      }),
+    ]);
+    if (response && response.ok && !response.redirected) return response;
   } catch {
     /* offline, slow, or the server is gone */
   } finally {
     clearTimeout(timer);
   }
   const shell = await caches.match("/index.html", { ignoreSearch: true });
-  if (shell) return shell;
+  if (shell) {
+    if (!shell.redirected) return shell;
+    const body = await shell.blob();
+    return new Response(body, { status: shell.status, statusText: shell.statusText, headers: shell.headers });
+  }
   return new Response("Offline", { status: 503, headers: { "content-type": "text/plain;charset=UTF-8" } });
 }`;
 
