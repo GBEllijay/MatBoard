@@ -95,7 +95,9 @@ test('tier paths route in App; gated /buy/* checkouts are untouched', () => {
 test('/buy keeps White checkout, promo, restore and Student checkout; higher tiers follow', () => {
   assert.match(buy, /<HigherTierList\s+from="white"/);
   assert.match(buy, /WHITE_CHECKOUT_API/);
-  assert.match(buy, /restoreWhiteByEmail|TierRestoreCard|buy__restore/);
+  assert.match(buy, /navigate\('\/restore'\)/);
+  assert.match(buy, /buy__restore/);
+  assert.doesNotMatch(buy, /restoreWhiteByEmail/);
   assert.match(buy, /studentOpen \?/);
   assert.match(buy, /HalfOffCheckoutNote/);
   assert.doesNotMatch(buy, /<ComingSoonAd/);

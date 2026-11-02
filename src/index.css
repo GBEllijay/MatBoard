@@ -17237,6 +17237,16 @@ a.plan-pick {
   font-weight: 700;
 }
 
+.restore__turnstile {
+  min-height: 65px;
+  margin: 0.25rem 0 0.75rem;
+}
+
+.restore__turnstile:empty {
+  min-height: 0;
+  margin: 0;
+}
+
 .buy__code input,
 .buy__field input {
   width: 100%;

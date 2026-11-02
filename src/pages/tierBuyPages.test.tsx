@@ -74,9 +74,14 @@ test('/buy: White checkout stays; other products are Student, Media, Instructor,
   assert.doesNotMatch(m.host.textContent ?? '', /Advantage Coach/);
   const links = [...m.host.querySelectorAll('[data-higher-tiers] a.buy__more')].map((a) => a.getAttribute('href'));
   assert.deepEqual(links, ['/editions/student', '/media', '/editions/instructor', '/editions/pro']);
-  // White checkout and restore are still on /buy.
+  // White checkout stays. Restore is a button to /restore, with no email box on this page.
   assert.ok([...m.host.querySelectorAll('button')].some((b) => /checkout/i.test(b.textContent ?? '')));
-  assert.ok(m.host.querySelector('input[type="email"]') && m.host.querySelector('a[href="/restore"]'));
+  const restore = m.host.querySelector('.buy__restore');
+  assert.ok(restore);
+  assert.equal(restore.querySelector('input'), null);
+  assert.equal([...restore.querySelectorAll('button')].some((b) => b.textContent?.trim() === 'Restore'), true);
+  assert.match(restore.textContent ?? '', /Already purchased\? Enter the email from checkout\./);
+  assert.equal(m.host.querySelector('input[type="email"]'), null);
   m.done();
 });
 

@@ -77,7 +77,12 @@ test('re-lock White and Student Edition, then the codes open them again', async 
   await expect(page).toHaveURL(/\/buy$/);
   await expect(page.getByRole('button', { name: 'Continue to checkout — $9.99' })).toBeVisible();
   await expect(page.getByText('Advantage White is unlocked on this device.')).toHaveCount(0);
-  await expect(page.getByRole('heading', { name: 'Already purchased?' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Restore', exact: true })).toBeVisible();
+  await expect(
+    page.getByText(
+      'Already purchased? Enter the email from checkout. If it matches the purchase, we will email a one-time code.',
+    ),
+  ).toBeVisible();
   await page.screenshot({ path: `${ARTIFACTS}/white-locked-buy.png`, fullPage: true });
 
   await page.goto('/products');

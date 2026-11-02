@@ -77,7 +77,7 @@ export function HigherTierList({
   );
 }
 
-/** Same restore form as /buy (restoreWhiteByEmail restores every purchase on that email). */
+/** Email restore on the tier buy pages. restoreWhiteByEmail restores every purchase on that email. /buy sends people to /restore instead. */
 export function TierRestoreCard({ label }: { label: string }) {
   const [email, setEmail] = useState('');
   const [pending, setPending] = useState(false);

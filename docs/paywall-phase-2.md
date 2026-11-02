@@ -54,7 +54,16 @@ The script prints SQL with email hashes, not emails. Do not commit `index.json`.
    - `RESEND_API_KEY` secret
    - `EMAIL_FROM` = `contact@advantagebjjtimer.com` (this is the default)
    - `TURNSTILE_SECRET_KEY` secret and `TURNSTILE_SITE_KEY` (public, not a secret)
+   - In the Cloudflare Turnstile dashboard, the widget's allowed hostnames must include every host that serves `/restore` (`advantagebjjtimer.com`, plus `matboard.pages.dev` if previews should be able to send a code).
 10. Optional `MIN_APP_VERSION` (default `2`) and `LEGACY_AMNESTY_ENDS_AT`.
+
+### Restore flow
+
+- `/buy` shows a short note and a **Restore** button that opens `/restore`. It has no email box of its own.
+- `/restore` loads Turnstile from `challenges.cloudflare.com` (explicit render, site key from `/api/config`), sends the token with `POST /api/restore/request`, and resets the widget after every attempt.
+- `POST /api/restore/request` always answers `{ ok, message, challengeId }` with the same message. With no purchase the id is random and unstored, so verify answers "That code didn't work."
+- The email carries only the code, with no link. The page keeps the challenge id in localStorage for 15 minutes and shows the code box and Confirm on the same page. Old `/restore?challenge=` links still work.
+- Unchanged: 3 requests per email per hour, 10 per IP per hour, 15-minute codes, 5 attempts, device limits, and grants.
 
 `EMAIL_PROVIDER=dry-run` skips the network and does not log the message. Use it only to see the route respond. Tests inject an in-memory sender and must not set `RESEND_API_KEY`.
 
