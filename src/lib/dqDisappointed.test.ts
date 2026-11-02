@@ -107,4 +107,5 @@ test('the popup dismisses on ended, times out, and does not take taps', () => {
   assert.ok(start >= 0);
   const block = css.slice(start, start + 280);
   assert.match(block, /pointer-events:\s*none/);
+  assert.match(css, /\.reaction-settings\s*\{[^}]*gap:\s*16px/);
 });

@@ -16532,7 +16532,7 @@ a.plan-pick {
 
 .reaction-settings {
   display: grid;
-  gap: 0.35rem;
+  gap: 16px;
 }
 
 /* One walk-off on a recorded DQ. Taps pass through to the board and the splash. */
@@ -16547,8 +16547,9 @@ a.plan-pick {
 .dq-disappointed__figure {
   position: absolute;
   right: 0;
-  bottom: 0;
-  width: min(24vw, 280px);
+  /* Feet near the clock band before layout measures the empty right end. */
+  bottom: calc(50% - 5rem);
+  width: min(16vw, 200px);
   aspect-ratio: 845 / 1200;
   pointer-events: none;
 }

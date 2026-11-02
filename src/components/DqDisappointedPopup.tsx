@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { placeBandFigure } from './GrandmasterCheer';
 import {
   DQ_DISAPPOINTED_SAFETY_MS,
   DQ_DISAPPOINTED_STILL,
@@ -6,40 +7,6 @@ import {
   DQ_DISAPPOINTED_VIDEO,
   readDqDisappointedMedia,
 } from '../lib/dqDisappointed';
-
-/** Sit on the disqualified athlete's row, clear of every score card. */
-function layoutDqFigure(root: HTMLElement, side: 'blue' | 'white') {
-  const display = root.closest('.display');
-  const figure = root.querySelector('.dq-disappointed__figure');
-  if (!(display instanceof HTMLElement) || !(figure instanceof HTMLElement)) return;
-  const bout = display.querySelector(side === 'blue' ? '.bout--blue' : '.bout--white');
-  if (!(bout instanceof HTMLElement)) return;
-  const d = display.getBoundingClientRect();
-  const b = bout.getBoundingClientRect();
-  const scores = [...bout.querySelectorAll('.score')].filter((node): node is HTMLElement => node instanceof HTMLElement);
-  if (!scores.length) return;
-  const rects = scores.map((node) => node.getBoundingClientRect());
-  const scoreLeft = Math.min(...rects.map((rect) => rect.left));
-  const scoreTop = Math.min(...rects.map((rect) => rect.top));
-  const stacked = scoreLeft < b.left + 64;
-  const pad = 8;
-  const safeLeft = b.left + pad;
-  const safeRight = (stacked ? b.right : scoreLeft) - pad;
-  const safeTop = b.top + pad;
-  const safeBottom = (stacked ? scoreTop : b.bottom) - pad;
-  const safeW = Math.max(72, safeRight - safeLeft);
-  const safeH = Math.max(72, safeBottom - safeTop);
-  let figH = Math.min(safeH, 340);
-  let figW = figH * (845 / 1200);
-  if (figW > safeW) {
-    figW = safeW;
-    figH = figW * (1200 / 845);
-  }
-  figure.style.width = `${Math.round(figW)}px`;
-  figure.style.left = `${Math.round(safeLeft - d.left)}px`;
-  figure.style.right = 'auto';
-  figure.style.bottom = `${Math.round(d.bottom - safeBottom)}px`;
-}
 
 /**
  * One walk-off when a DQ is recorded. Taps pass through to the board.
@@ -74,11 +41,20 @@ export function DqDisappointedPopup({
   useLayoutEffect(() => {
     const root = rootRef.current;
     if (!root) return;
-    const place = () => layoutDqFigure(root, side);
+    const figure = root.querySelector('.dq-disappointed__figure');
+    if (!(figure instanceof HTMLElement)) return;
+    let alive = true;
+    const place = () => {
+      if (alive) placeBandFigure(root, figure, null);
+    };
     place();
     window.addEventListener('resize', place);
-    return () => window.removeEventListener('resize', place);
-  }, [side, still]);
+    void document.fonts?.ready.then(place);
+    return () => {
+      alive = false;
+      window.removeEventListener('resize', place);
+    };
+  }, [still]);
 
   return (
     <div ref={rootRef} className={`dq-disappointed dq-disappointed--${side}`} role="status" aria-label="DQ reaction">

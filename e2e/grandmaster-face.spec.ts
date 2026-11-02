@@ -370,3 +370,47 @@ test('a DQ with the cheer and the reaction on shows only the DQ figure', async (
     await opened.context.close();
   }
 });
+
+test('the DQ figure stays off names, gyms, score cards, and Home', async ({ browser }) => {
+  const viewports = [
+    { width: 1440, height: 900 },
+    { width: 390, height: 844 },
+  ];
+  for (const side of ['blue', 'white'] as const) {
+    for (const viewport of viewports) {
+      const match = {
+        ...pointsMatch(4),
+        dqDisappointed: { enabled: true, playedAt: null },
+        outcome: { call: 'dq', reason: 'technical', side, source: 'manual', at: 21 },
+      };
+      const opened = await openSeeded(browser, viewport.width, viewport.height, { 'matboard.match.v1': match });
+      await opened.page.goto('/match?from=suite');
+      const dismiss = opened.page.getByRole('button', { name: 'Dismiss' });
+      if (await dismiss.count()) await dismiss.click();
+      await expect(opened.page.locator('.dq-disappointed__figure')).toBeVisible();
+      const hits = await opened.page.evaluate(() => {
+        const figure = document.querySelector('.dq-disappointed__figure');
+        if (!(figure instanceof HTMLElement)) return ['missing figure'];
+        const cover = figure.getBoundingClientRect();
+        const hits: string[] = [];
+        for (const node of document.querySelectorAll('.bout__who h1, .bout__who p, .display .score, .display__chrome a')) {
+          if (!(node instanceof HTMLElement)) continue;
+          const box = node.getBoundingClientRect();
+          if (box.width < 2 || box.height < 2) continue;
+          const ix = Math.min(cover.right, box.right) - Math.max(cover.left, box.left);
+          const iy = Math.min(cover.bottom, box.bottom) - Math.max(cover.top, box.top);
+          if (ix > 1 && iy > 1) {
+            const label = (node.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 32);
+            hits.push(`${label || node.className} ${Math.round(ix)}x${Math.round(iy)}`);
+          }
+        }
+        if (cover.right < window.innerWidth - 12) {
+          hits.push(`figure ends at ${Math.round(cover.right)} of ${window.innerWidth}`);
+        }
+        return hits;
+      });
+      expect(hits, `${side} ${viewport.width}x${viewport.height}: ${hits.join(' | ')}`).toEqual([]);
+      await opened.context.close();
+    }
+  }
+});
