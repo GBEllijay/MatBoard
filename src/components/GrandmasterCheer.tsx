@@ -34,56 +34,240 @@ function boxStyle(box: { left: number; top: number; width: number; height: numbe
   };
 }
 
-/** Keep the board figure and its bubble off every score, advantage, and penalty card. */
-function layoutBoardCheer(root: HTMLElement) {
-  const display = root.closest('.display');
-  const figure = root.querySelector('.kids-grandmaster__figure');
-  const bubble = root.querySelector('.kids-grandmaster__bubble');
-  if (!(display instanceof HTMLElement) || !(figure instanceof HTMLElement) || !(bubble instanceof HTMLElement)) return;
-  const bout = display.querySelector('.bout--white');
-  if (!(bout instanceof HTMLElement)) return;
-  const d = display.getBoundingClientRect();
-  const b = bout.getBoundingClientRect();
-  const scores = [...bout.querySelectorAll('.score')].filter((node): node is HTMLElement => node instanceof HTMLElement);
-  if (!scores.length) return;
-  const rects = scores.map((node) => node.getBoundingClientRect());
-  const scoreLeft = Math.min(...rects.map((rect) => rect.left));
-  const scoreTop = Math.min(...rects.map((rect) => rect.top));
-  const stacked = scoreLeft < b.left + 64;
-  const pad = 8;
-  const safeLeft = (stacked ? d.left : b.left) + pad;
-  const safeRight = (stacked ? d.right : scoreLeft) - pad;
-  let safeTop = b.top + pad;
-  const safeBottom = (stacked ? scoreTop : b.bottom) - pad;
-  if (stacked) {
-    const upper = [...display.querySelectorAll('.bout--blue .score')].filter(
-      (node): node is HTMLElement => node instanceof HTMLElement,
-    );
-    if (upper.length) {
-      const floor = Math.max(...upper.map((node) => node.getBoundingClientRect().bottom));
-      safeTop = Math.max(safeTop, floor + pad);
+type Box = { left: number; top: number; right: number; bottom: number };
+
+function overlaps(a: Box, b: Box): boolean {
+  const ix = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+  const iy = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+  return ix > 1 && iy > 1;
+}
+
+function boxOf(node: Element): Box {
+  const rect = node.getBoundingClientRect();
+  return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom };
+}
+
+function tightBox(node: HTMLElement): Box {
+  const range = document.createRange();
+  range.selectNodeContents(node);
+  const rect = range.getBoundingClientRect();
+  if (rect.width > 2 && rect.height > 2) {
+    return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom };
+  }
+  return boxOf(node);
+}
+
+function visibleBoxes(nodes: Element[], tight: boolean): Box[] {
+  return nodes
+    .filter((node): node is HTMLElement => node instanceof HTMLElement)
+    .map((node) => (tight ? tightBox(node) : boxOf(node)))
+    .filter((box) => box.right - box.left > 2 && box.bottom - box.top > 2);
+}
+
+function padBox(box: Box, amount: number): Box {
+  return {
+    left: box.left - amount,
+    top: box.top - amount,
+    right: box.right + amount,
+    bottom: box.bottom + amount,
+  };
+}
+
+/** Names, gyms, score cards, and the header links (Home, Controller). Never covered. */
+function hardObstacles(display: HTMLElement): Box[] {
+  return [
+    ...visibleBoxes([...display.querySelectorAll('.score, .display__chrome a')], false),
+    ...visibleBoxes([...display.querySelectorAll('.bout__who h1, .bout__who p')], false),
+  ].map((box) => padBox(box, 4));
+}
+
+type Weighted = { box: Box; weight: number };
+
+/**
+ * Clock digits and the round label. The winner splash counts more, so the
+ * bubble steps off "Winner by submission" when another spot is open.
+ * The right-hand clock status ("Ended" / "Paused") is not listed: that word
+ * sits in the empty end of the band, which is where the figure stands.
+ */
+function softObstacles(display: HTMLElement): Weighted[] {
+  const pad = (boxes: Box[], weight: number) => boxes.map((box) => ({ box: padBox(box, 2), weight }));
+  return [
+    ...pad(visibleBoxes([...display.querySelectorAll('.clock-btn, .display__meta')], true), 1),
+    ...pad(
+      visibleBoxes([...display.querySelectorAll('.display-splash__name, .display-splash__line')], true),
+      4,
+    ),
+  ];
+}
+
+type Slot = { box: Box; speechTop: number; rank: number };
+
+function betterSlot(next: Slot, prev: Slot): boolean {
+  if (next.rank !== prev.rank) return next.rank < prev.rank;
+  if (next.box.right > prev.box.right + 12) return true;
+  if (prev.box.right > next.box.right + 12) return false;
+  const nextH = next.box.bottom - next.box.top;
+  const prevH = prev.box.bottom - prev.box.top;
+  if (nextH > prevH + 8) return true;
+  if (prevH > nextH + 8) return false;
+  return Math.abs(next.speechTop - next.box.top) < Math.abs(prev.speechTop - prev.box.top);
+}
+
+/**
+ * Right end of the clock band, feet on the band's bottom edge.
+ * The body may rise into the row above only while it still misses every hard obstacle.
+ * `speech` is the bubble to the figure's left; pass zeros when the figure has none.
+ */
+function softCost(target: Box, soft: Weighted[]): number {
+  let cost = 0;
+  for (const block of soft) {
+    if (overlaps(target, block.box)) cost += block.weight;
+  }
+  return cost;
+}
+
+function findBandSlot(
+  displayBox: Box,
+  bandBox: Box,
+  hard: Box[],
+  soft: Weighted[],
+  speechW: number,
+  speechH: number,
+  rightInset: number,
+): Slot | null {
+  const aspect = 845 / 1200;
+  const margin = 8;
+  const bandHeight = bandBox.bottom - bandBox.top;
+  if (bandHeight < 48) return null;
+  const minHeight = Math.min(96, Math.max(64, bandHeight * 0.7));
+  const maxHeight = Math.min(280, Math.max(bandHeight, bandHeight + 48));
+  let best: Slot | null = null;
+
+  for (let height = maxHeight; height >= minHeight; height -= 8) {
+    const width = height * aspect;
+    for (let right = displayBox.right - rightInset; right - width >= displayBox.left + margin; right -= 8) {
+      const left = right - width;
+      const bottom = bandBox.bottom;
+      const top = bottom - height;
+      const box = { left, top, right, bottom };
+      if (top < displayBox.top + margin || left < displayBox.left + margin) continue;
+      if (hard.some((block) => overlaps(box, block))) continue;
+      const figureCost = softCost(box, soft) * 3;
+      if (speechH <= 0) {
+        const candidate = { box, speechTop: top, rank: figureCost };
+        if (!best || betterSlot(candidate, best)) best = candidate;
+        continue;
+      }
+      const speechLeft = left - speechW;
+      if (speechLeft < displayBox.left + 2) continue;
+      const speechTopMin = displayBox.top + margin;
+      const speechTopMax = Math.min(displayBox.bottom - speechH - margin, bottom - 4);
+      for (let speechTop = speechTopMin; speechTop <= speechTopMax; speechTop += 14) {
+        const speech = { left: speechLeft, top: speechTop, right: left - 8, bottom: speechTop + speechH };
+        if (hard.some((block) => overlaps(speech, block))) continue;
+        const candidate = { box, speechTop, rank: figureCost + softCost(speech, soft) };
+        if (!best || betterSlot(candidate, best)) best = candidate;
+      }
     }
   }
-  const safeW = Math.max(96, safeRight - safeLeft);
-  const safeH = Math.max(96, safeBottom - safeTop);
-  const bubbleW = Math.min(256, Math.max(180, Math.floor(safeW * 0.46)));
-  let figW = Math.min(220, safeH * (845 / 1200), Math.max(96, safeW - bubbleW - 12));
-  let figH = figW * (1200 / 845);
-  if (figH > safeH) {
-    figH = safeH;
-    figW = Math.max(96, figH * (845 / 1200));
+  return best;
+}
+
+/**
+ * Last resort: stand in the gap between the name text and the Points card,
+ * sized down so the figure and its bubble both fit there.
+ */
+function findRowSlot(
+  display: HTMLElement,
+  displayBox: Box,
+  hard: Box[],
+  soft: Weighted[],
+  speechW: number,
+  speechH: number,
+): Slot | null {
+  const aspect = 845 / 1200;
+  let best: Slot | null = null;
+  for (const bout of display.querySelectorAll('.bout')) {
+    if (!(bout instanceof HTMLElement)) continue;
+    const who = bout.querySelector('.bout__who h1');
+    const points = bout.querySelector('.score');
+    if (!(who instanceof HTMLElement) || !(points instanceof HTMLElement)) continue;
+    const name = tightBox(who);
+    const card = boxOf(points);
+    const boutBox = boxOf(bout);
+    const gapLeft = name.right + 8;
+    const gapRight = card.left - 8;
+    if (gapRight - gapLeft < 56) continue;
+    let width = gapRight - gapLeft - speechW;
+    if (width < 48) width = Math.min(gapRight - gapLeft - 8, 96);
+    let height = width / aspect;
+    const maxHeight = Math.max(48, boutBox.bottom - boutBox.top - 8);
+    if (height > maxHeight) {
+      height = maxHeight;
+      width = height * aspect;
+    }
+    const bottom = Math.min(boutBox.bottom - 4, displayBox.bottom - 8);
+    const top = bottom - height;
+    const right = gapRight;
+    const left = right - width;
+    const box = { left, top, right, bottom };
+    const speechTop = Math.max(top + 4, displayBox.top + 4);
+    const speech = { left: left - speechW, top: speechTop, right: left - 8, bottom: speechTop + speechH };
+    const blocks = speech.left < gapLeft ? [box] : [box, speech];
+    const covers = (block: Box) => blocks.some((part) => overlaps(part, block));
+    if (hard.some(covers)) continue;
+    if (box.top < displayBox.top || box.left < displayBox.left) continue;
+    const candidate = { box, speechTop, rank: 20 + softCost(box, soft) };
+    if (!best || betterSlot(candidate, best)) best = candidate;
   }
-  figure.style.width = `${Math.round(figW)}px`;
-  figure.style.left = `${Math.round(safeLeft - d.left)}px`;
+  return best;
+}
+
+/**
+ * Right end of the clock band. Feet on the band's bottom edge, rising into the
+ * row above only while the body still misses every name, gym, score card, and
+ * header link. A bubble sits to the figure's left. With no bubble the canvas
+ * meets the right screen edge so a walk-off leaves the screen.
+ */
+export function placeBandFigure(root: HTMLElement, figure: HTMLElement, bubble: HTMLElement | null): boolean {
+  const display = root.closest('.display');
+  const band = display?.querySelector('.display__mid');
+  if (!(display instanceof HTMLElement) || !(band instanceof HTMLElement)) return false;
+  const displayBox = boxOf(display);
+  const bandBox = boxOf(band);
+  const hard = hardObstacles(display);
+  const soft = softObstacles(display);
+  const bubbleBox = bubble?.getBoundingClientRect();
+  const speechW = bubble ? Math.ceil(Math.max(180, bubbleBox?.width ?? 180) + 16) : 0;
+  const speechH = bubble ? Math.ceil(Math.max(72, bubbleBox?.height ?? 72) + 8) : 0;
+  const rightInset = bubble ? 8 : 0;
+  const placed =
+    findBandSlot(displayBox, bandBox, hard, soft, speechW, speechH, rightInset) ??
+    (bubble ? findRowSlot(display, displayBox, hard, soft, speechW, speechH) : null);
+  if (!placed) return false;
+  const rootBox = boxOf(root);
+  figure.style.width = `${Math.round(placed.box.right - placed.box.left)}px`;
+  figure.style.left = `${Math.round(placed.box.left - rootBox.left)}px`;
   figure.style.right = 'auto';
-  figure.style.bottom = `${Math.round(d.bottom - safeBottom)}px`;
-  bubble.style.minWidth = '180px';
-  bubble.style.maxWidth = `${Math.round(Math.max(180, Math.min(bubbleW, safeW - 12)))}px`;
-  bubble.style.left = 'calc(100% + 0.4rem)';
-  bubble.style.right = 'auto';
-  bubble.style.top = '8%';
-  bubble.style.bottom = 'auto';
-  bubble.style.transform = 'none';
+  figure.style.top = 'auto';
+  figure.style.bottom = `${Math.round(rootBox.bottom - placed.box.bottom)}px`;
+  if (bubble) {
+    bubble.style.minWidth = '180px';
+    bubble.style.maxWidth = '16rem';
+    bubble.style.left = 'auto';
+    bubble.style.right = 'calc(100% + 0.45rem)';
+    bubble.style.top = `${Math.round(placed.speechTop - placed.box.top)}px`;
+    bubble.style.bottom = 'auto';
+    bubble.style.transform = 'none';
+  }
+  return true;
+}
+
+function layoutBoardCheer(root: HTMLElement) {
+  const figure = root.querySelector('.kids-grandmaster__figure');
+  const bubble = root.querySelector('.kids-grandmaster__bubble');
+  if (!(figure instanceof HTMLElement) || !(bubble instanceof HTMLElement)) return;
+  placeBandFigure(root, figure, bubble);
 }
 
 /** Query hook so a test can show one master on the TV and the controller together. */
@@ -130,10 +314,23 @@ export function GrandmasterCheer({
     if (!board) return;
     const root = rootRef.current;
     if (!root) return;
-    const place = () => layoutBoardCheer(root);
+    let alive = true;
+    const place = () => {
+      if (alive) layoutBoardCheer(root);
+    };
     place();
     window.addEventListener('resize', place);
-    return () => window.removeEventListener('resize', place);
+    void document.fonts?.ready.then(place);
+    const splash = root.closest('.display')?.querySelector('.display-splash__card');
+    const onSplash = () => place();
+    splash?.addEventListener('animationend', onSplash);
+    const splashTimer = splash ? window.setTimeout(onSplash, 750) : 0;
+    return () => {
+      alive = false;
+      window.removeEventListener('resize', place);
+      splash?.removeEventListener('animationend', onSplash);
+      window.clearTimeout(splashTimer);
+    };
   }, [board, id, lines]);
 
   return (
