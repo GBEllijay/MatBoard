@@ -30,6 +30,7 @@ import {
   type SeatStatus,
 } from '../lib/instructorSeats';
 import { issueSeatWithServer, syncLegacySeats } from '../lib/seatClient';
+import { GalleryApprovalSwitch } from './GalleryApprovalSwitch';
 
 type IssuedLink = {
   email: string;
@@ -126,6 +127,7 @@ export function InstructorInvitePanel() {
   if (currentSeat) {
     return (
       <section className="invite-owner-only" aria-label="Instructor invites">
+        <GalleryApprovalSwitch viewer={{ role: 'seat', presetId: currentSeat.presetId }} />
         <p>Only the gym owner can issue invites. This seat cannot create or send them.</p>
       </section>
     );
@@ -187,6 +189,7 @@ export function InstructorInvitePanel() {
       <form className="invite-stack" onSubmit={submitInvite}>
         <div className="invite-form">
           <p className="invite-form__kicker">Owner only · Soft beta</p>
+          <GalleryApprovalSwitch viewer={{ role: 'owner' }} />
           <strong>Generate instructor invite</strong>
           <span className="invite-form__note">
             Pick a role, then change any switch for this person. The role chooses which menus
