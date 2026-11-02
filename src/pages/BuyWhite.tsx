@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { AlphaCodeEntry, redeemAlphaCode } from '../components/AlphaCodeEntry';
 import { HalfOffCheckoutNote } from '../components/HalfOffCheckoutNote';
-import { SecretField } from '../components/SecretField';
 import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
 import { HigherTierList } from '../components/TierBuyParts';
@@ -10,7 +10,7 @@ import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
-import { afterFailedUnlock, confirmCheckoutSession, redeemAccessCode, withCheckoutNonce } from '../lib/codeRedeemClient';
+import { confirmCheckoutSession, withCheckoutNonce } from '../lib/codeRedeemClient';
 import type { WhiteEntitlementStatus } from '../lib/whiteEntitlementClient';
 import { STUDENT_LIST_PRICE_CENTS } from '../lib/productPrices';
 import { PRODUCTS_PATH } from '../lib/productNames';
@@ -25,7 +25,7 @@ import {
   WHITE_STRIPE_NOTE,
   formatUsdFromCents,
 } from '../lib/whitePurchase';
-import { rememberWhitePurchase } from '../lib/whiteUnlock';
+import { rememberWhitePurchase, restoreHref } from '../lib/whiteUnlock';
 
 /** The /buy restore panel. The email and the person check live on /restore. */
 export const BUY_RESTORE_COPY =
@@ -42,6 +42,7 @@ export function BuyWhitePage() {
   const [freeUnlock, setFreeUnlock] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [promoInput, setPromoInput] = useState('');
+  const [accessEmail, setAccessEmail] = useState('');
   const navigate = useNavigate();
   const [studentPending, setStudentPending] = useState(false);
   const [studentError, setStudentError] = useState<string | null>(null);
@@ -85,7 +86,7 @@ export function BuyWhitePage() {
   useEffect(() => {
     if (!code) return;
     let active = true;
-    void redeemAccessCode(code).then((result) => {
+    void redeemAlphaCode({ tier: 'white', code, email: accessEmail, navigate }).then((result) => {
       if (!active) return;
       setParams(
         (prev) => {
@@ -95,12 +96,14 @@ export function BuyWhitePage() {
         },
         { replace: true },
       );
-      if (result.ok) {
+      if (result.status === 'unlocked') {
         setFreeUnlock(true);
         return;
       }
-      setPromoInput(code);
-      setError(result.error);
+      if (result.status === 'error') {
+        setPromoInput(code);
+        setError(result.error);
+      }
     });
     return () => {
       active = false;
@@ -131,28 +134,7 @@ export function BuyWhitePage() {
     }
   }
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (pending) return;
-    setError(null);
-    const typed = promoInput.trim();
-    if (unlocked && !typed) return;
-    if (typed) {
-      setPending(true);
-      const redeemed = await redeemAccessCode(typed);
-      if (redeemed.ok) {
-        setPending(false);
-        setFreeUnlock(true);
-        setPromoInput('');
-        return;
-      }
-      const next = afterFailedUnlock(typed, redeemed.error);
-      if (next.action === 'show') {
-        setPending(false);
-        setError(next.error);
-        return;
-      }
-    }
+  async function startCheckout(typed: string) {
     setPending(true);
     try {
       const response = await fetch(WHITE_CHECKOUT_API, {
@@ -173,6 +155,28 @@ export function BuyWhitePage() {
     }
   }
 
+  async function onCheckoutClick() {
+    if (pending) return;
+    setError(null);
+    const typed = promoInput.trim();
+    if (unlocked && !typed) return;
+    if (typed) {
+      setPending(true);
+      const result = await redeemAlphaCode({
+        tier: 'white',
+        code: typed,
+        email: accessEmail,
+        navigate,
+        onPromoCheckout: startCheckout,
+      });
+      if (result.status === 'error') setError(result.error);
+      if (result.status === 'unlocked') setPromoInput('');
+      if (result.status !== 'checkout') setPending(false);
+      return;
+    }
+    await startCheckout('');
+  }
+
   return (
     <main className="home home--white home--buy">
       <div className="home__inner">
@@ -190,7 +194,7 @@ export function BuyWhitePage() {
             <p>{WHITE_STRIPE_NOTE}</p>
           </header>
 
-          <form className="buy__card buy__checkout" onSubmit={(event) => void onSubmit(event)}>
+          <section className="buy__card buy__checkout" aria-label="Checkout">
             <HalfOffCheckoutNote active={halfOff} />
             {checkout === 'success' ? (
               <p className="buy__status buy__status--ok" role="status">
@@ -221,15 +225,17 @@ export function BuyWhitePage() {
                 {error}
               </p>
             ) : null}
-            <SecretField
-              id="promotion-code"
-              label="Unlock or promo code"
-              name="promotionCode"
-              value={promoInput}
-              onChange={setPromoInput}
-              autoCapitalize="characters"
-              spellCheck={false}
-              placeholder="Optional"
+            <AlphaCodeEntry
+              tier="white"
+              showEmail
+              email={accessEmail}
+              onEmailChange={setAccessEmail}
+              code={promoInput}
+              onCodeChange={setPromoInput}
+              codeId="promotion-code"
+              codeName="promotionCode"
+              codeLabel="Unlock or promo code"
+              onPromoCheckout={startCheckout}
             />
             <p className="buy__hint">
               Optional. An unlock code opens Advantage White on this device. A promo code applies at Stripe checkout.
@@ -240,7 +246,7 @@ export function BuyWhitePage() {
               </Link>
             ) : null}
             {!unlocked || promoInput.trim() ? (
-              <button className="btn btn--white" type="submit" disabled={pending}>
+              <button className="btn btn--white" type="button" onClick={() => void onCheckoutClick()} disabled={pending}>
                 {pending
                   ? 'Opening checkout…'
                   : unlocked
@@ -255,7 +261,7 @@ export function BuyWhitePage() {
               {' · '}
               <Link to={PRODUCTS_PATH}>All editions</Link>
             </p>
-          </form>
+          </section>
 
           <section className="buy__card">
             <div className="buy__block">
@@ -279,7 +285,7 @@ export function BuyWhitePage() {
           {unlocked ? null : (
             <section className="buy__card buy__restore" aria-label="Already purchased">
               <p>{BUY_RESTORE_COPY}</p>
-              <button className="btn btn--white" type="button" onClick={() => navigate('/restore')}>
+              <button className="btn btn--white" type="button" onClick={() => navigate(restoreHref(accessEmail))}>
                 Restore
               </button>
             </section>

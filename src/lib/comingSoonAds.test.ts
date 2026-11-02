@@ -119,7 +119,9 @@ test('Coach ad lists basic Coach tools, student roster, and no checkout price', 
   assert.match(buy, /<HigherTierList\s+from="white"/);
   assert.doesNotMatch(buy, /<h2>Advantage Coach<\/h2>/);
   const home = readFileSync(new URL('../pages/Home.tsx', import.meta.url), 'utf8');
-  assert.match(home, /<ComingSoonAd product=\{soon\} \/>/);
+  // Learn more opens the tier page. The coming-soon sheet is no longer the products-page control.
+  assert.match(home, /<LearnMoreLink tier="instructor" \/>/);
+  assert.doesNotMatch(home, /<ComingSoonAd /);
   assert.doesNotMatch(PRODUCT_TEASERS.coach, /\$\d/);
   assert.equal(PRODUCT_TEASERS.coach, COACH_HOME_TEASER);
   assert.equal(PRODUCT_TEASERS.coachUnlocked, COACH_HOME_TEASER);

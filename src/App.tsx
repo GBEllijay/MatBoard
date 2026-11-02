@@ -90,6 +90,8 @@ import { ProLockedPage } from './pages/ProLocked';
 import { BuyCoachPage, BuyMediaPage, BuyProPage, BuyStudentPage } from './pages/BuyTier';
 import { BuyWhitePage } from './pages/BuyWhite';
 import { BuyInstructorEditionPage, BuyProEditionPage, BuyStudentEditionPage } from './pages/BuyEdition';
+import { MediaEditionPage } from './pages/MediaEdition';
+import { ProPlusCloudInfoPage } from './pages/ProPlusCloudInfo';
 import { MediaEditionGate } from './components/MediaEditionGate';
 import { GuardRedirect } from './components/GuardRedirect';
 import { MEDIA_EDITION_OLD_PATH, MEDIA_EDITION_PATH } from './lib/mediaEdition';
@@ -430,7 +432,8 @@ export default function App() {
       <Route path="/editions/student" element={<BuyStudentEditionPage />} />
       <Route path="/editions/instructor" element={<BuyInstructorEditionPage />} />
       <Route path="/editions/pro" element={<BuyProEditionPage />} />
-      <Route path="/editions/media" element={<Navigate to={MEDIA_EDITION_PATH} replace />} />
+      <Route path="/editions/media" element={<MediaEditionPage />} />
+      <Route path="/editions/pro-cloud" element={<ProPlusCloudInfoPage />} />
       <Route path="/editions/white" element={<Navigate to="/buy" replace />} />
       <Route path="/pro/paused" element={<ProLockedPage />} />
       <Route

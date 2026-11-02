@@ -27,7 +27,8 @@ export function RestoreAccessPage({ deps = {} }: { deps?: RestoreDeps } = {}) {
   const [params] = useSearchParams();
   const linkChallenge = params.get('challenge') ?? '';
   const [challengeId, setChallengeId] = useState(() => linkChallenge || readRestoreChallenge());
-  const [email, setEmail] = useState('');
+  const presetEmail = params.get('email') ?? '';
+  const [email, setEmail] = useState(() => (isWhiteRestoreEmail(presetEmail) ? presetEmail.trim() : ''));
   const [code, setCode] = useState('');
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);

@@ -37,9 +37,9 @@ test('/products locked cards: Media Learn more, Student demo stays, no Pro Plus 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/products');
   const media = page.locator('.mode-card--media');
-  await expect(media.getByRole('link', { name: 'Learn more about Media Edition' })).toHaveAttribute('href', '/media');
+  await expect(media.getByRole('link', { name: 'Learn more about Media Edition' })).toHaveAttribute('href', '/editions/media');
   await expect(page.getByRole('link', { name: 'Try the demo' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Open Pro Cloud Plus Console' })).toHaveCount(0);
   await expect(page.locator('.mode-card--cloud')).toContainText('$5.99/month');
-  await expect(page.getByRole('link', { name: 'Advantage Pro Plus Cloud, coming soon' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Advantage Pro + Cloud, coming soon' })).toBeVisible();
 });

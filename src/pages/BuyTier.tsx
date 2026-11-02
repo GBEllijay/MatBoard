@@ -12,6 +12,7 @@ import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import type { CheckoutProduct } from '../lib/checkoutProducts';
 import { confirmCheckoutSession, withCheckoutNonce } from '../lib/codeRedeemClient';
+import { LEARN_MORE } from '../lib/learnMore';
 import { PRO_PRODUCT_ID, proPurchaseEntitled } from '../lib/proEntitlement';
 import { setProUnlocked } from '../lib/proUnlock';
 import {
@@ -278,7 +279,7 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
               {tier.infoPath ? (
                 <>
                   {' · '}
-                  <Link to={tier.infoPath}>See what’s included</Link>
+                  <Link to={tier.infoPath}>{LEARN_MORE.instructor.label}</Link>
                 </>
               ) : null}
             </p>

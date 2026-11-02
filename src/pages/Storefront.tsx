@@ -172,8 +172,8 @@ function ProgressStep({ step, belts }: { step: BeltRung; belts: BeltsVariant }) 
           <h3>{step.title}</h3>
           <p>{step.blurb}</p>
           {step.detail ? <p className="sf-step-detail">{step.detail}</p> : null}
-          {step.learnLabel && step.to ? (
-            <Link className="sf-learn" to={step.to}>
+          {step.learnLabel && (step.learnTo ?? step.to) ? (
+            <Link className="sf-learn" to={step.learnTo ?? step.to ?? ''}>
               {step.learnLabel}
             </Link>
           ) : null}
@@ -191,11 +191,11 @@ function ProgressStep({ step, belts }: { step: BeltRung; belts: BeltsVariant }) 
   );
 
   const className = `sf-step${step.id === 'white' ? ' sf-step--live' : ''} sf-step--${step.id}`;
-  if (step.learnLabel && step.to) {
-    // The Learn more control is the button. The rest of the tile opens the same page.
+  if (step.learnLabel && (step.learnTo ?? step.to)) {
+    // The Learn more control is the button. The rest of the tile opens `to` when it has one.
     return (
       <article className={className}>
-        <Link className="sf-step__hit" to={step.to} tabIndex={-1} aria-hidden="true" />
+        {step.to ? <Link className="sf-step__hit" to={step.to} tabIndex={-1} aria-hidden="true" /> : null}
         {body}
       </article>
     );

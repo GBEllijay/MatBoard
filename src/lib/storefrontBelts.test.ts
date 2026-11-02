@@ -35,7 +35,7 @@ test('belt ladder is white, blue, purple, brown, black, black in rank order', ()
       'Advantage Media Edition',
       'Advantage Instructor Edition',
       'Advantage Pro',
-      'Advantage Pro Plus Cloud',
+      'Advantage Pro + Cloud',
     ],
   );
   assert.match(tsx, /STOREFRONT_BELT_LADDER\.map/);
@@ -106,7 +106,14 @@ test('every tier except Pro and Pro Plus Cloud is priced one-time; Pro is $99.99
   );
   assert.deepEqual(
     STOREFRONT_BELT_LADDER.map((r) => r.detail ?? null),
-    [null, null, null, null, 'Requires your own Google Drive or OneDrive. Advantage does not host it.', null],
+    [
+      null,
+      null,
+      null,
+      'Requires gym setup with a third-party drive (Google Drive, OneDrive, or Dropbox). Advantage does not host it.',
+      'Requires your own Google Drive or OneDrive. Advantage does not host it.',
+      null,
+    ],
   );
 });
 
@@ -150,9 +157,9 @@ test('White is unchanged; Pro keeps its title, price, belt and link with the own
   assert.equal(cloud.bar, 'striped');
   assert.equal(cloud.cardPrice, '$5.99/month');
   assert.equal(cloud.status, 'Coming soon');
-  assert.equal(cloud.to, null);
-  assert.match(cloud.blurb, /Cloudflare/);
-  assert.doesNotMatch(`${cloud.title} ${cloud.blurb}`, /checkout|Stripe/i);
+  assert.equal(cloud.to, '/editions/pro-cloud');
+  assert.equal(cloud.blurb, 'Advantage hosted cross-platform communication. Easiest way to use Advantage.');
+  assert.doesNotMatch(`${cloud.title} ${cloud.blurb}`, /Cloudflare|checkout|Stripe/i);
 });
 
 test('Media Edition (purple) has no product: display price only, no checkout, the tile opens the Media Edition page', () => {
@@ -166,7 +173,7 @@ test('Media Edition (purple) has no product: display price only, no checkout, th
   for (const r of STOREFRONT_BELT_LADDER) {
     assert.doesNotMatch(`${r.title} ${r.rankLabel}`, /Academy Enhancement Edition|ACADEMY/);
   }
-  assert.equal(STOREFRONT_LADDER_NOTE, 'Student, Media, Instructor, Pro and Pro Plus Cloud are in alpha testing.');
+  assert.equal(STOREFRONT_LADDER_NOTE, 'Student, Media, Instructor, Pro and Advantage Pro + Cloud are in alpha testing.');
   const media = STOREFRONT_BELT_LADDER.find((r) => r.id === 'academy');
   assert.equal(media?.learnLabel, 'Learn more about Media Edition');
   assert.match(tsx, /className="sf-learn"/);

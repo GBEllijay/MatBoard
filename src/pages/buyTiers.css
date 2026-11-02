@@ -52,6 +52,17 @@
     0 12px 28px rgba(0, 0, 0, 0.28);
 }
 
+.alpha-code,
+.alpha-code__form {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.buy .alpha-code a.btn,
+.alpha-code a.btn {
+  text-decoration: none;
+}
+
 .buy__checkout .btn {
   min-height: 52px;
   text-decoration: none;
