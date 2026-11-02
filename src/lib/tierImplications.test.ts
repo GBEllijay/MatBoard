@@ -121,10 +121,10 @@ test('a signed Pro pass opens every door and the Phase 4 Pro check, Lock Pro clo
 
   lockCoach();
   assert.equal(isCoachUnlocked(), false);
-  assert.equal(isWhiteUnlocked(), false, 'Lock Coach closes White');
   assert.equal(isProUnlocked(), true, 'Lock Coach leaves Pro');
-  assert.equal(isStudentEditionUnlocked(), false, 'Coach includes Student Edition (ladder), so Lock Coach closes it');
-  assert.equal(doorOpen('media'), false, 'Coach includes Media (ladder), so Lock Coach closes it');
+  assert.equal(isWhiteUnlocked(), true, 'Pro is still open, so White stays open');
+  assert.equal(isStudentEditionUnlocked(), true, 'Pro keeps Student Edition open');
+  assert.equal(doorOpen('media'), true, 'Pro keeps Media open');
   clearRelocksFor(['coach']);
   assert.equal(isCoachUnlocked(), true);
   assert.equal(isWhiteUnlocked(), true);

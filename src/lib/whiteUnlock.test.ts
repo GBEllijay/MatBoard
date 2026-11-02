@@ -91,10 +91,11 @@ test('lockWhite clears only this browser White flag and the code can open it aga
 
   lockWhite();
 
-  assert.equal(isWhiteUnlocked(), false);
+  // Pro, Coach, and Student flags are still set, so the ladder keeps White open.
+  assert.equal(isWhiteUnlocked(), true);
   assert.equal(localStorage.getItem(WHITE_UNLOCK_STORAGE_KEY), null);
-  assert.equal(whiteHubAllowed(isWhiteUnlocked()), false);
-  assert.equal(whiteEntryPath(isWhiteUnlocked()), '/buy');
+  assert.equal(whiteHubAllowed(isWhiteUnlocked()), true);
+  assert.equal(whiteEntryPath(isWhiteUnlocked()), '/white');
   assert.equal(localStorage.getItem('advantage.proUnlocked'), '1');
   assert.equal(localStorage.getItem('advantage.coachUnlocked'), '1');
   assert.equal(localStorage.getItem(STUDENT_EDITION_UNLOCK_STORAGE_KEY), '1');
@@ -109,7 +110,7 @@ test('lockWhite clears only this browser White flag and the code can open it aga
   assert.equal(whiteEntryPath(isWhiteUnlocked()), '/white');
 
   lockWhite();
-  assert.equal(isWhiteUnlocked(), false);
+  assert.equal(isWhiteUnlocked(), true, 'Pro is still open, so Lock White does not shut White');
   setProUnlocked(true);
   setWhiteUnlocked(true);
   assert.equal(isWhiteUnlocked(), true);
@@ -119,6 +120,10 @@ test('lockWhite clears only this browser White flag and the code can open it aga
 });
 
 test('restore rejects a bad email before lookup and reports a failed lookup', async () => {
+  localStorage.removeItem('advantage.proUnlocked');
+  localStorage.removeItem('advantage.coachUnlocked');
+  localStorage.removeItem('advantage.studentEditionUnlocked');
+  localStorage.removeItem('advantage.studentUnlocked');
   setWhiteUnlocked(false);
   const invalid = await restoreWhiteByEmail('not-an-email');
   assert.deepEqual(invalid, { ok: false, error: 'Enter the email from your purchase.' });

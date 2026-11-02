@@ -137,7 +137,8 @@ export function HomePage() {
             onSoon={() => setSoon('student')}
           />
 
-          <MediaHomeCard open={mediaUnlocked && !seated} />
+          {/* A live seat hides purchase prompts elsewhere. It must not shut Media when a higher tier or the owner pass already opened that door. A seat token never opens the door. */}
+          <MediaHomeCard open={mediaUnlocked} />
 
           {coachOpen ? (
             <article className="mode-card mode-card--coach">

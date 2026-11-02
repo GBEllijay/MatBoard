@@ -15,10 +15,11 @@ export function subscribeMediaUnlock(fn: () => void): () => void {
 }
 
 /**
- * Lock Media is symmetric with unlock: it closes Media and the White it implies.
- * White stays open when Coach or Pro is still open on this browser, since those tiers
- * include White too. Media's White and a separately bought White are the same door in
- * the pass, so a separate White comes back with Restore or its code.
+ * Lock Media closes Media, and Student and White when no higher tier is open.
+ * An open Instructor or Pro door keeps Media open (tierImplications.ts): the relock
+ * mark is stored, and it holds only after that higher door is closed. Someone who
+ * owns only Media stays locked. White stays open when Coach or Pro is still open,
+ * since those tiers include White too.
  */
 export function lockMedia(): void {
   relockImplied('media', { keepOtherwiseOpen: true });

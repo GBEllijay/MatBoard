@@ -28,6 +28,9 @@ import { noteSeatSunset } from './seatSunset.ts';
 
 import { doorsThatOpen, impliedDoors } from './tierImplications.ts';
 
+/** License id the server signs into an owner-test token (`sub`). */
+export const OWNER_TEST_LICENSE_ID = 'owner-test';
+
 export const ENTITLEMENT_TOKEN_KEY = 'advantage.entitlement.token';
 export const ENTITLEMENT_CLOCK_KEY = 'advantage.entitlement.clock';
 export const ENTITLEMENT_CONFIG_KEY = 'advantage.entitlement.config';
@@ -182,18 +185,63 @@ export function clockRolledBack(ms = nowMs()): boolean {
   return previous > 0 && ms + 5 * 60 * 1000 < previous;
 }
 
-function relocked(door: Door): boolean {
+function relockMark(door: Door): boolean {
   if (door === 'pro') return readItem(PRO_RELOCK_KEY) === '1';
   if (door === 'coach') return readItem(COACH_RELOCK_KEY) === '1';
   if (door === 'white') return readItem(WHITE_RELOCK_KEY) === '1';
+  if (door === 'media') return readItem(MEDIA_RELOCK_KEY) === '1';
+  return readItem(STUDENT_RELOCK_KEY) === '1';
+}
+
+function seatTokenActive(): boolean {
+  return Boolean(verified && tokenUsable(verified, nowMs()) && (verified.tier === 'seat' || verified.src === 'seat'));
+}
+
+/**
+ * Owner test, or a signed owner pass, is open for a door at Media or above.
+ * A seat token is not an owner pass. Pro's own relock does not count as closed here:
+ * the caller uses this only to ignore the pre-Media Lock Pro fallback.
+ */
+function ownerPassActive(): boolean {
+  if (ownerTestActive('pro') || ownerTestActive('coach') || ownerTestActive('media')) return true;
+  if (!verified || !tokenUsable(verified, nowMs())) return false;
+  if (verified.tier === 'seat' || verified.src === 'seat') return false;
+  const owner = verified.src === 'owner' || verified.tier === 'owner' || verified.sub === OWNER_TEST_LICENSE_ID;
+  if (!owner) return false;
+  return impliedDoors(verified.grants).some((door) => door === 'pro' || door === 'coach' || door === 'media');
+}
+
+/** True when this door is open only because the signed token is a seat. */
+function seatExplainsDoor(door: Door): boolean {
+  if (!seatTokenActive()) return false;
+  const sources = doorsThatOpen(door);
+  if (sources.some((source) => ownerTestActive(source) || legacyFlag(source))) return false;
+  return true;
+}
+
+/**
+ * A strictly higher door is open on its own. Seat tokens do not count: a seat follows
+ * its invite preset for Media Console and must not reopen the Media door.
+ */
+function higherDoorOpen(door: Door): boolean {
+  return doorsThatOpen(door).some((source) => source !== door && doorOpen(source) && !seatExplainsDoor(source));
+}
+
+function relocked(door: Door): boolean {
+  // Lock Pro and Lock Coach still close that door. A higher tier does not reopen them.
+  if (door === 'pro' || door === 'coach') return relockMark(door);
   if (door === 'media') {
     const mark = readItem(MEDIA_RELOCK_KEY);
-    // A Lock Pro from before Media existed set only the Pro marks. Treat that browser as
-    // Media-locked too until something reopens Media (which writes '0').
-    if (mark === null) return readItem(PRO_RELOCK_KEY) === '1';
+    // A Lock Pro from before Media existed set only the Pro mark. Keep Media shut until a
+    // grant writes '0', unless an owner pass is open (that pass includes Media).
+    if (mark === null && readItem(PRO_RELOCK_KEY) === '1') return !ownerPassActive();
+    if (mark === '1' && higherDoorOpen(door)) return false;
     return mark === '1';
   }
-  return readItem(STUDENT_RELOCK_KEY) === '1';
+  // Student and White: the same stale-relock rule. An open higher tier reopens them.
+  // With no higher door open, Lock Student, Lock White, and Lock Media still hold.
+  if (relockMark(door) && higherDoorOpen(door)) return false;
+  return relockMark(door);
 }
 
 function legacyFlag(door: Door): boolean {
@@ -331,9 +379,6 @@ export function clearEntitlementToken(): void {
     .catch(() => undefined);
 }
 
-/** License id the server signs into an owner-test token (`sub`). */
-export const OWNER_TEST_LICENSE_ID = 'owner-test';
-
 function storedTokenSubject(): string | null {
   const token = readItem(ENTITLEMENT_TOKEN_KEY);
   const part = token?.split('.')[1];
@@ -383,13 +428,13 @@ export function clearRelocksFor(grants: readonly string[]): void {
 }
 
 /**
- * Lock is symmetric with unlock: Lock Pro closes Pro, Coach, Student Edition, White and
- * Media; Lock Coach closes Coach and White.
- * The relock marks win over the stored pass, owner-test doors, and legacy flags in doorOpen.
+ * Lock writes the marks. Lock Pro closes Pro and every door below it. Lock Coach closes
+ * the Coach door (a higher Pro door does not reopen Coach). White, Student, and Media
+ * marks do not stay shut while a higher door is open; doorOpen applies the ladder.
  *
- * keepOtherwiseOpen (used by Lock Media): an implied door stays open when another tier
- * that is still open, and is not being locked, also opens it. So Lock Media with Coach or
- * Pro still on closes only Media; Lock Media alone closes Media and its White.
+ * keepOtherwiseOpen (used by Lock Media): don't mark Student or White when Coach or Pro
+ * is still open. The Media mark is still written. It holds only when no higher door is open,
+ * so Lock Media locks someone who owns only Media.
  */
 export function relockImplied(door: Door, options: { keepOtherwiseOpen?: boolean } = {}): Door[] {
   const implied = impliedDoors([door]);
