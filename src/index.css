@@ -3938,6 +3938,21 @@ main.tree:has(> .tier-home) > .tree__bar {
   text-align: center;
 }
 
+/* Phone only, and only while a band figure is up. The 1440 splash stays centered and gold. */
+@media (max-width: 599px) {
+  .display--band-figure .display-splash__card {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding-right: var(--band-figure-gutter, 0px);
+  }
+
+  .display--band-figure .display-splash__name,
+  .display--band-figure .display-splash__line {
+    overflow-wrap: break-word;
+  }
+}
+
 .display-splash--blue .display-splash__card {
   animation: display-splash-float-blue 0.7s cubic-bezier(0.16, 0.84, 0.22, 1) both;
 }
@@ -16308,6 +16323,13 @@ a.plan-pick {
   min-width: 180px;
   max-width: min(16rem, 46vw);
   transform: none;
+}
+
+/* The phone splash already says the result. The corner cheer keeps its bubble. */
+@media (max-width: 599px) {
+  .kids-grandmaster--board .kids-grandmaster__bubble {
+    display: none;
+  }
 }
 
 .kids-grandmaster--board .kids-grandmaster__name {

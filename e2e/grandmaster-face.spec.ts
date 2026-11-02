@@ -112,6 +112,14 @@ async function expectBubbleClear(page: Page) {
   expect(report.hits, report.hits.join(' | ')).toEqual([]);
 }
 
+/** Board cheer under 600px has no bubble. The figure stays in the 100–110px face range. */
+async function expectPhoneBoardFigure(page: Page) {
+  await expect(page.locator('.kids-grandmaster--board .kids-grandmaster__bubble')).toHaveCount(0);
+  const width = await page.locator('.kids-grandmaster__figure').evaluate((el) => el.getBoundingClientRect().width);
+  expect(width).toBeGreaterThanOrEqual(100);
+  expect(width).toBeLessThanOrEqual(110);
+}
+
 async function expectFullscreenClear(page: Page) {
   const hits = await page.evaluate(() => {
     const button = document.querySelector('.play-fs');
@@ -157,9 +165,13 @@ test('points-scored cheer keeps text off each grandmaster’s face', async ({ br
         'src',
         `/assets/kids/grandmaster-${master}.webp`,
       );
-      await expect(board.page.locator('.kids-grandmaster__score')).toHaveText('4');
-      await expect(board.page.locator('.kids-grandmaster__cheer')).toHaveText('Bom trabalho!');
-      await expect(board.page.locator('.kids-grandmaster__name')).toHaveText('Mia Santos');
+      if (viewport.width <= 599) {
+        await expectPhoneBoardFigure(board.page);
+      } else {
+        await expect(board.page.locator('.kids-grandmaster__score')).toHaveText('4');
+        await expect(board.page.locator('.kids-grandmaster__cheer')).toHaveText('Bom trabalho!');
+        await expect(board.page.locator('.kids-grandmaster__name')).toHaveText('Mia Santos');
+      }
       if (master === 'd') {
         const nod = board.page.locator('.kids-grandmaster__frame--nod');
         await expect(nod).toHaveAttribute('src', '/assets/kids/grandmaster-d-nod.webp');
@@ -167,7 +179,7 @@ test('points-scored cheer keeps text off each grandmaster’s face', async ({ br
       } else {
         await expect(board.page.locator('.kids-grandmaster__frame--nod')).toHaveCount(0);
       }
-      await expectBubbleClear(board.page);
+      if (viewport.width > 599) await expectBubbleClear(board.page);
       await expectFullscreenClear(board.page);
       await board.context.close();
 
@@ -177,9 +189,13 @@ test('points-scored cheer keeps text off each grandmaster’s face', async ({ br
         'src',
         `/assets/kids/grandmaster-${master}.webp`,
       );
-      await expect(kids.page.locator('.kids-grandmaster__score')).toHaveText('4');
       await expect(kids.page.locator('.display')).toHaveClass(/kids-board--dinos/);
-      await expectBubbleClear(kids.page);
+      if (viewport.width <= 599) {
+        await expectPhoneBoardFigure(kids.page);
+      } else {
+        await expect(kids.page.locator('.kids-grandmaster__score')).toHaveText('4');
+        await expectBubbleClear(kids.page);
+      }
       await expectFullscreenClear(kids.page);
       await kids.context.close();
     }
@@ -196,8 +212,12 @@ test('2-point and 3-point cheers use the same points trigger', async ({ browser 
         'matboard.match.v1': pointsMatch(points),
       });
       await opened.page.goto('/match?from=suite');
-      await expect(opened.page.locator('.kids-grandmaster__score')).toHaveText(String(points));
-      await expectBubbleClear(opened.page);
+      if (viewport.width <= 599) {
+        await expectPhoneBoardFigure(opened.page);
+      } else {
+        await expect(opened.page.locator('.kids-grandmaster__score')).toHaveText(String(points));
+        await expectBubbleClear(opened.page);
+      }
       await opened.context.close();
     }
   }
@@ -298,8 +318,12 @@ test('board cheer stays off names, gyms, score cards, and Home', async ({ browse
       const hits = await board.page.evaluate(() => {
         const figure = document.querySelector('.kids-grandmaster__figure');
         const bubble = document.querySelector('.kids-grandmaster__bubble');
-        if (!(figure instanceof HTMLElement) || !(bubble instanceof HTMLElement)) return ['missing figure'];
-        const covers = [figure.getBoundingClientRect(), bubble.getBoundingClientRect()];
+        if (!(figure instanceof HTMLElement)) return ['missing figure'];
+        if (window.innerWidth > 599 && !(bubble instanceof HTMLElement)) return ['missing bubble'];
+        const covers = [figure.getBoundingClientRect()];
+        if (bubble instanceof HTMLElement && getComputedStyle(bubble).display !== 'none') {
+          covers.push(bubble.getBoundingClientRect());
+        }
         const hits: string[] = [];
         const blockers = document.querySelectorAll('.bout__who h1, .bout__who p, .display .score, .display__chrome a');
         for (const node of blockers) {
@@ -316,8 +340,161 @@ test('board cheer stays off names, gyms, score cards, and Home', async ({ browse
         return hits;
       });
       expect(hits, `${master} ${viewport.width}x${viewport.height}: ${hits.join(' | ')}`).toEqual([]);
-      await expectBubbleClear(board.page);
+      if (viewport.width <= 599) await expectPhoneBoardFigure(board.page);
+      else await expectBubbleClear(board.page);
       await board.context.close();
+    }
+  }
+});
+
+const LONG_LINES = ['Winner by submission', 'Winner by referee decision', 'Disqualified — Technical'] as const;
+
+async function beginOutcome(
+  page: Page,
+  outcome: { call: 'win'; method: 'submission'; side: 'blue' | 'white' },
+  holdMs = 0,
+) {
+  await page.evaluate(
+    ({ row, holdMs: hold }) => {
+      const at = Date.now() + hold;
+      const channel = new BroadcastChannel('matboard-match-v1');
+      channel.postMessage({
+        type: 'action',
+        action: {
+          type: 'beginOutcome',
+          outcome: { ...row, source: 'manual', at },
+          flash: { kind: row.call, side: row.side, at },
+        },
+      });
+      channel.close();
+    },
+    { row: outcome, holdMs },
+  );
+}
+
+async function bannerHitsFigure(page: Page) {
+  return page.evaluate(() => {
+    const figure = document.querySelector('.kids-grandmaster__figure');
+    if (!(figure instanceof HTMLElement)) return ['missing figure'];
+    const cover = figure.getBoundingClientRect();
+    const hits: string[] = [];
+    for (const node of document.querySelectorAll('.display-splash__name, .display-splash__line')) {
+      if (!(node instanceof HTMLElement)) continue;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const label = (node.textContent || '').replace(/\s+/g, ' ').trim();
+      for (const rect of range.getClientRects()) {
+        if (rect.width < 1 || rect.height < 1) continue;
+        const ix = Math.min(cover.right, rect.right) - Math.max(cover.left, rect.left);
+        const iy = Math.min(cover.bottom, rect.bottom) - Math.max(cover.top, rect.top);
+        if (ix > 1 && iy > 1) hits.push(`${label} ${Math.round(ix)}x${Math.round(iy)}`);
+      }
+    }
+    return hits;
+  });
+}
+
+async function statusWordVisible(page: Page, word: 'Paused' | 'Ended') {
+  const report = await page.evaluate((expected) => {
+    const hint = document.querySelector('.display__clock-hint');
+    if (!(hint instanceof HTMLElement)) return { ok: false, reasons: ['missing status'] };
+    const text = (hint.textContent || '').replace(/\s+/g, ' ').trim();
+    const reasons: string[] = [];
+    if (text !== expected) reasons.push(`text ${text}`);
+    const range = document.createRange();
+    range.selectNodeContents(hint);
+    const rect = range.getBoundingClientRect();
+    const host = hint.getBoundingClientRect();
+    if (rect.width < 12 || rect.height < 8) reasons.push(`tiny ${Math.round(rect.width)}x${Math.round(rect.height)}`);
+    if (rect.left < -1 || rect.right > window.innerWidth + 1 || rect.top < -1 || rect.bottom > window.innerHeight + 1) {
+      reasons.push('offscreen');
+    }
+    if (rect.left < host.left - 1 || rect.right > host.right + 1) reasons.push('clipped');
+    const style = getComputedStyle(hint);
+    if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) < 0.9) {
+      reasons.push(`hidden ${style.display} ${style.visibility} ${style.opacity}`);
+    }
+    if (document.querySelector('.display--band-figure')) reasons.push('gutter still reserved');
+    return { ok: reasons.length === 0, reasons };
+  }, word);
+  expect(report.ok, report.reasons.join(' | ')).toBe(true);
+}
+
+test('phone banner stays beside the figure and the status word returns when it leaves', async ({ browser }) => {
+  const viewports = [
+    { width: 390, height: 844 },
+    { width: 1440, height: 900 },
+  ] as const;
+  const sides = [
+    { side: 'blue' as const, word: 'Paused' as const, remainingMs: 120000 },
+    { side: 'white' as const, word: 'Ended' as const, remainingMs: 0 },
+  ];
+
+  for (const master of MASTERS) {
+    for (const viewport of viewports) {
+      for (const row of sides) {
+        const opened = await openSeeded(browser, viewport.width, viewport.height, {
+          'matboard.match.v1': {
+            ...pointsMatch(4, { remainingMs: row.remainingMs }),
+            white: {
+              ...pointsMatch(4).white,
+              points: 2,
+            },
+            grandmaster: { enabled: true, onWin: true, onPoints: true, pointsThreshold: 1 },
+          },
+        });
+        await opened.page.goto(`/match?from=suite&grandmaster=${master}`);
+        await expect(opened.page.locator('.clock-btn')).toBeVisible();
+        await beginOutcome(opened.page, { call: 'win', method: 'submission', side: row.side }, 30_000);
+        const splash = opened.page.locator('.display-splash__line');
+        await expect(splash).toHaveText('Winner by submission');
+        await expect(opened.page.locator('.kids-grandmaster')).toHaveAttribute('data-grandmaster', master);
+        const gold = await splash.evaluate((el) => getComputedStyle(el).color);
+        expect(gold, `${master} ${viewport.width}`).toBe('rgb(240, 194, 75)');
+
+        if (viewport.width <= 599) {
+          await expectPhoneBoardFigure(opened.page);
+          const gutter = await opened.page.locator('.display').evaluate((el) => getComputedStyle(el).getPropertyValue('--band-figure-gutter').trim());
+          expect(Number.parseFloat(gutter)).toBeGreaterThanOrEqual(100);
+          for (const line of LONG_LINES) {
+            await opened.page.evaluate((next) => {
+              const node = document.querySelector('.display-splash__line');
+              if (node) node.textContent = next;
+              window.dispatchEvent(new Event('resize'));
+            }, line);
+            const hits = await bannerHitsFigure(opened.page);
+            expect(hits, `${master} ${row.side} ${line}: ${hits.join(' | ')}`).toEqual([]);
+          }
+        } else {
+          await expect(opened.page.locator('.kids-grandmaster__bubble')).toBeVisible();
+          await expect(opened.page.locator('.display--band-figure')).toHaveCount(0);
+          const width = await opened.page.locator('.kids-grandmaster__figure').evaluate((el) => el.getBoundingClientRect().width);
+          expect(width).toBeGreaterThan(110);
+          const padding = await opened.page.locator('.display-splash__card').evaluate((el) => getComputedStyle(el).paddingRight);
+          expect(padding).toBe('0px');
+        }
+
+        await opened.page.evaluate(() => {
+          const channel = new BroadcastChannel('matboard-match-v1');
+          channel.postMessage({
+            type: 'action',
+            action: { type: 'setOutcomeFlash', value: null },
+          });
+          channel.close();
+        });
+        await expect(opened.page.locator('.display-splash')).toHaveCount(0);
+        await opened.page.evaluate(() => {
+          const channel = new BroadcastChannel('matboard-match-v1');
+          channel.postMessage({
+            type: 'action',
+            action: { type: 'setGrandmaster', value: { enabled: false } },
+          });
+          channel.close();
+        });
+        await expect(opened.page.locator('.kids-grandmaster')).toHaveCount(0);
+        await statusWordVisible(opened.page, row.word);
+        await opened.context.close();
+      }
     }
   }
 });
