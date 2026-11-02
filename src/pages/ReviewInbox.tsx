@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { DriveHandoffCheck, DriveHandoffGuide, useDriveConnected } from '../components/DriveHandoffGuide';
+import { GalleryReviewQueue } from '../components/GalleryReviewQueue';
 import { HomeMark } from '../components/HomeMark';
 import { PRODUCTS_PATH } from '../lib/productNames';
 import { PlayExitMark } from '../components/PlayExitMark';
@@ -127,6 +128,7 @@ export function ReviewInboxPage() {
           <DriveHandoffCheck on={handoffChecked} onClick={checkFolder} />
           {driveConnected ? null : <DriveHandoffGuide />}
           {handoffNote ? <p role="status">{handoffNote}</p> : null}
+          <GalleryReviewQueue />
           {inbox.length ? (
             <ul className="plan-card__revisions" aria-label="Submissions">
               {inbox.map((item) => (

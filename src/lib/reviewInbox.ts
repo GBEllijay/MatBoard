@@ -39,7 +39,7 @@ export const REVIEW_SUBMITTED =
 export const REVIEW_APPROVE = 'Approve';
 export const REVIEW_CHANGES = 'Request changes';
 export const REVIEW_REJECT = 'Reject';
-export const REVIEW_GALLERY = 'Add approved photo to Gallery';
+export const REVIEW_GALLERY = 'Approve for the gallery';
 export const REVIEW_GALLERY_DONE =
   'That photo is in the Gallery on this device. Advantage does not host it.';
 export const REVIEW_GALLERY_MISSING =
