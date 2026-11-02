@@ -16582,6 +16582,13 @@ a.plan-pick {
   pointer-events: none;
 }
 
+/* Same reserved box as the cheer, from the first paint. 1024+ keeps the measured slot. */
+@media (max-width: 1023px) {
+  .dq-disappointed__figure {
+    width: 106px;
+  }
+}
+
 .dq-disappointed__figure img,
 .dq-disappointed__figure video {
   display: block;

@@ -142,10 +142,16 @@ async function expectFullscreenClear(page: Page) {
   expect(hits, hits.join(' | ')).toEqual([]);
 }
 
-async function openSeeded(browser: Browser, width: number, height: number, storage: Record<string, unknown>) {
+async function openSeeded(
+  browser: Browser,
+  width: number,
+  height: number,
+  storage: Record<string, unknown>,
+  motion: 'reduce' | 'no-preference' = 'reduce',
+) {
   const context = await browser.newContext({ viewport: { width, height } });
   const page = await context.newPage();
-  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.emulateMedia({ reducedMotion: motion });
   await seed(page, storage);
   return { context, page };
 }
@@ -589,6 +595,10 @@ test('the DQ figure stays off names, gyms, score cards, and Home', async ({ brow
   const viewports = [
     { width: 1440, height: 900 },
     { width: 390, height: 844 },
+    { width: 600, height: 900 },
+    { width: 768, height: 1024 },
+    { width: 820, height: 1180 },
+    { width: 1023, height: 768 },
   ];
   for (const side of ['blue', 'white'] as const) {
     for (const viewport of viewports) {
@@ -632,6 +642,13 @@ test('the DQ figure stays off names, gyms, score cards, and Home', async ({ brow
 test('phone DQ banner stays clear and the popup is placed again when the banner ends', async ({ browser }) => {
   const viewports = [
     { width: 390, height: 844 },
+    { width: 600, height: 900 },
+    { width: 601, height: 900 },
+    { width: 680, height: 900 },
+    { width: 768, height: 1024 },
+    { width: 820, height: 1180 },
+    { width: 900, height: 1200 },
+    { width: 1023, height: 768 },
     { width: 1440, height: 900 },
   ] as const;
   const sides = [
@@ -671,7 +688,7 @@ test('phone DQ banner stays clear and the popup is placed again when the banner 
       const places = Number(await opened.page.locator('.dq-disappointed').getAttribute('data-place-count'));
       expect(places, `${viewport.width} ${row.side}`).toBeGreaterThanOrEqual(2);
 
-      if (viewport.width <= 599) {
+      if (viewport.width <= 1023) {
         const width = await opened.page.locator('.dq-disappointed__figure').evaluate((el) => el.getBoundingClientRect().width);
         expect(width).toBeGreaterThanOrEqual(100);
         expect(width).toBeLessThanOrEqual(110);
@@ -723,5 +740,79 @@ test('phone DQ banner stays clear and the popup is placed again when the banner 
       await statusWordVisible(opened.page, row.word);
       await opened.context.close();
     }
+  }
+});
+
+test('the DQ figure keeps its box from the first paint until it starts to leave', async ({ browser }) => {
+  const cases = [
+    { width: 390, height: 844, motion: 'reduce' as const },
+    { width: 600, height: 900, motion: 'reduce' as const },
+    { width: 768, height: 1024, motion: 'reduce' as const },
+    { width: 768, height: 1024, motion: 'no-preference' as const },
+    { width: 820, height: 1180, motion: 'reduce' as const },
+    { width: 1023, height: 768, motion: 'reduce' as const },
+  ];
+  for (const viewport of cases) {
+    const opened = await openSeeded(
+      browser,
+      viewport.width,
+      viewport.height,
+      {
+        'matboard.match.v1': {
+          ...pointsMatch(4, { remainingMs: 120000 }),
+          dqDisappointed: { enabled: true, playedAt: null },
+        },
+      },
+      viewport.motion,
+    );
+    await opened.page.goto('/match?from=suite');
+    const dismiss = opened.page.getByRole('button', { name: 'Dismiss' });
+    if (await dismiss.count()) await dismiss.click();
+    await expect(opened.page.locator('.clock-btn')).toBeVisible();
+    await opened.page.evaluate(() => {
+      const at = Date.now() + 30_000;
+      const channel = new BroadcastChannel('matboard-match-v1');
+      channel.postMessage({
+        type: 'action',
+        action: {
+          type: 'beginOutcome',
+          outcome: { call: 'dq', reason: 'technical', side: 'blue', source: 'manual', at },
+          flash: { kind: 'dq', side: 'blue', at },
+        },
+      });
+      channel.close();
+    });
+    await expect(opened.page.locator('.dq-disappointed__figure')).toBeVisible();
+    await opened.page.evaluate(() => {
+      const samples: { x: number; y: number; w: number; h: number }[] = [];
+      const grab = () => {
+        const fig = document.querySelector('.dq-disappointed__figure');
+        if (!(fig instanceof HTMLElement)) return;
+        const rect = fig.getBoundingClientRect();
+        samples.push({ x: rect.x, y: rect.y, w: rect.width, h: rect.height });
+      };
+      grab();
+      const id = window.setInterval(grab, 100);
+      (window as unknown as { __dqTrack: { samples: typeof samples; id: number } }).__dqTrack = { samples, id };
+    });
+    await opened.page.waitForTimeout(1600);
+    const samples = await opened.page.evaluate(() => {
+      const track = (window as unknown as { __dqTrack: { samples: { x: number; y: number; w: number; h: number }[]; id: number } }).__dqTrack;
+      window.clearInterval(track.id);
+      return track.samples;
+    });
+    expect(samples.length, `${viewport.width} ${viewport.motion}`).toBeGreaterThan(10);
+    const first = samples[0];
+    expect(first.w).toBeGreaterThanOrEqual(100);
+    const drifted = samples.filter(
+      (sample) =>
+        Math.abs(sample.x - first.x) > 4 ||
+        Math.abs(sample.y - first.y) > 4 ||
+        Math.abs(sample.w - first.w) > 4 ||
+        Math.abs(sample.h - first.h) > 4,
+    );
+    expect(drifted, `${viewport.width} ${viewport.motion} moved ${JSON.stringify(drifted[0])} from ${JSON.stringify(first)}`).toEqual([]);
+    await expect(opened.page.locator('.dq-disappointed')).toHaveCount(1);
+    await opened.context.close();
   }
 });
