@@ -7,6 +7,8 @@ const VIEWPORTS = [
   { name: 'tv', width: 1920, height: 1080 },
 ] as const;
 
+const MASTERS = ['classic', 'a', 'b', 'c', 'd'] as const;
+
 function pointsMatch(points: number, extra?: { advantages?: number; disadvantages?: number; remainingMs?: number }) {
   return {
     blue: {
@@ -39,7 +41,7 @@ function pointsMatch(points: number, extra?: { advantages?: number; disadvantage
     bracketMatchId: null,
     autoAnnounce: false,
     skin: 'mock-tournament',
-    carlos: { enabled: true, onWin: false, onPoints: true, pointsThreshold: 1 },
+    grandmaster: { enabled: true, onWin: false, onPoints: true, pointsThreshold: 1 },
     outcome: null,
     outcomeFlash: null,
     revision: 4,
@@ -57,8 +59,8 @@ async function seed(page: Page, storage: Record<string, unknown>) {
 
 async function bubbleClearOfFace(page: Page) {
   return page.evaluate(() => {
-    const face = document.querySelector('.kids-carlos__face');
-    const bubble = document.querySelector('.kids-carlos__bubble');
+    const face = document.querySelector('.kids-grandmaster__face');
+    const bubble = document.querySelector('.kids-grandmaster__bubble');
     if (!(face instanceof HTMLElement) || !(bubble instanceof HTMLElement)) {
       return { shown: false, tiny: false, hits: ['missing face or bubble'] };
     }
@@ -66,9 +68,16 @@ async function bubbleClearOfFace(page: Page) {
     const br = bubble.getBoundingClientRect();
     const hits: string[] = [];
     if (fr.width < 20 || fr.height < 20) hits.push(`face ${Math.round(fr.width)}x${Math.round(fr.height)}`);
-    const ix = Math.min(fr.right, br.right) - Math.max(fr.left, br.left);
-    const iy = Math.min(fr.bottom, br.bottom) - Math.max(fr.top, br.top);
-    if (ix > 1 && iy > 1) hits.push(`bubble overlaps face by ${Math.round(ix)}x${Math.round(iy)}`);
+    const boxes = [face, ...document.querySelectorAll('.kids-grandmaster__avoid')];
+    boxes.forEach((node, index) => {
+      if (!(node instanceof HTMLElement)) return;
+      const box = node.getBoundingClientRect();
+      const ix = Math.min(box.right, br.right) - Math.max(box.left, br.left);
+      const iy = Math.min(box.bottom, br.bottom) - Math.max(box.top, br.top);
+      if (ix > 1 && iy > 1) {
+        hits.push(`bubble overlaps ${index === 0 ? 'face' : 'hand'} by ${Math.round(ix)}x${Math.round(iy)}`);
+      }
+    });
     const view = { w: window.innerWidth, h: window.innerHeight };
     if (br.left < -1 || br.top < -1 || br.right > view.w + 1 || br.bottom > view.h + 1) {
       hits.push(
@@ -81,7 +90,7 @@ async function bubbleClearOfFace(page: Page) {
 
 async function expectBubbleClear(page: Page) {
   const report = await bubbleClearOfFace(page);
-  expect(report.shown, 'Carlos face and bubble').toBe(true);
+  expect(report.shown, 'grandmaster face and bubble').toBe(true);
   expect(report.hits, report.hits.join(' | ')).toEqual([]);
 }
 
@@ -115,29 +124,47 @@ async function openSeeded(browser: Browser, width: number, height: number, stora
   return { context, page };
 }
 
-test('points-scored cheer keeps text off Carlos’s face', async ({ browser }) => {
+test('points-scored cheer keeps text off each grandmaster’s face', async ({ browser }) => {
   const storage = {
     'matboard.match.v1': pointsMatch(4),
     'matboard.kidsScoreboard.v1': { enabled: true, skin: 'dinos', mascot: true },
   };
 
-  for (const viewport of VIEWPORTS) {
-    const board = await openSeeded(browser, viewport.width, viewport.height, storage);
-    await board.page.goto('/match?from=suite');
-    await expect(board.page.locator('.kids-carlos__score')).toHaveText('4');
-    await expect(board.page.locator('.kids-carlos__cheer')).toHaveText('Bom trabalho!');
-    await expect(board.page.locator('.kids-carlos__name')).toHaveText('Mia Santos');
-    await expectBubbleClear(board.page);
-    await expectFullscreenClear(board.page);
-    await board.context.close();
+  for (const master of MASTERS) {
+    for (const viewport of VIEWPORTS) {
+      const board = await openSeeded(browser, viewport.width, viewport.height, storage);
+      await board.page.goto(`/match?from=suite&grandmaster=${master}`);
+      await expect(board.page.locator('.kids-grandmaster')).toHaveAttribute('data-grandmaster', master);
+      await expect(board.page.locator('.kids-grandmaster__frame').first()).toHaveAttribute(
+        'src',
+        `/assets/kids/grandmaster-${master}.webp`,
+      );
+      await expect(board.page.locator('.kids-grandmaster__score')).toHaveText('4');
+      await expect(board.page.locator('.kids-grandmaster__cheer')).toHaveText('Bom trabalho!');
+      await expect(board.page.locator('.kids-grandmaster__name')).toHaveText('Mia Santos');
+      if (master === 'd') {
+        const nod = board.page.locator('.kids-grandmaster__frame--nod');
+        await expect(nod).toHaveAttribute('src', '/assets/kids/grandmaster-d-nod.webp');
+        await expect(nod).toHaveCSS('opacity', '0');
+      } else {
+        await expect(board.page.locator('.kids-grandmaster__frame--nod')).toHaveCount(0);
+      }
+      await expectBubbleClear(board.page);
+      await expectFullscreenClear(board.page);
+      await board.context.close();
 
-    const kids = await openSeeded(browser, viewport.width, viewport.height, storage);
-    await kids.page.goto('/match?from=suite&kids=dinos');
-    await expect(kids.page.locator('.kids-carlos__score')).toHaveText('4');
-    await expect(kids.page.locator('.display')).toHaveClass(/kids-board--dinos/);
-    await expectBubbleClear(kids.page);
-    await expectFullscreenClear(kids.page);
-    await kids.context.close();
+      const kids = await openSeeded(browser, viewport.width, viewport.height, storage);
+      await kids.page.goto(`/match?from=suite&kids=dinos&grandmaster=${master}`);
+      await expect(kids.page.locator('.kids-grandmaster__frame').first()).toHaveAttribute(
+        'src',
+        `/assets/kids/grandmaster-${master}.webp`,
+      );
+      await expect(kids.page.locator('.kids-grandmaster__score')).toHaveText('4');
+      await expect(kids.page.locator('.display')).toHaveClass(/kids-board--dinos/);
+      await expectBubbleClear(kids.page);
+      await expectFullscreenClear(kids.page);
+      await kids.context.close();
+    }
   }
 });
 
@@ -151,21 +178,21 @@ test('2-point and 3-point cheers use the same points trigger', async ({ browser 
         'matboard.match.v1': pointsMatch(points),
       });
       await opened.page.goto('/match?from=suite');
-      await expect(opened.page.locator('.kids-carlos__score')).toHaveText(String(points));
+      await expect(opened.page.locator('.kids-grandmaster__score')).toHaveText(String(points));
       await expectBubbleClear(opened.page);
       await opened.context.close();
     }
   }
 });
 
-test('advantages and penalties do not bring Carlos out', async ({ browser }) => {
+test('advantages and penalties do not bring the grandmaster out', async ({ browser }) => {
   const opened = await openSeeded(browser, 1280, 800, {
     'matboard.match.v1': pointsMatch(0, { advantages: 4, disadvantages: 3 }),
   });
   await opened.page.goto('/match?from=suite');
   await expect(opened.page.locator('.score--advantages .score__value').first()).toHaveText('4');
   await expect(opened.page.locator('.score--disadvantages .score__value').first()).toHaveText('3');
-  await expect(opened.page.locator('.kids-carlos')).toHaveCount(0);
+  await expect(opened.page.locator('.kids-grandmaster')).toHaveCount(0);
   await opened.context.close();
 });
 
@@ -175,11 +202,11 @@ test('points over the threshold stay hidden until the match ends', async ({ brow
   });
   await opened.page.goto('/match?from=suite');
   await expect(opened.page.locator('.clock-btn')).toHaveText('02:00');
-  await expect(opened.page.locator('.kids-carlos')).toHaveCount(0);
+  await expect(opened.page.locator('.kids-grandmaster')).toHaveCount(0);
   await opened.context.close();
 });
 
-test('post-champion corner keeps text off Carlos’s face', async ({ browser }) => {
+test('post-champion corner keeps text off each grandmaster’s face', async ({ browser }) => {
   const storage = {
     'matboard.kidsScoreboard.v1': { enabled: true, skin: 'dinos', mascot: true },
     'matboard.match.v1': pointsMatch(0, { remainingMs: 300000 }),
@@ -220,13 +247,21 @@ test('post-champion corner keeps text off Carlos’s face', async ({ browser }) 
     },
   };
 
-  for (const viewport of VIEWPORTS) {
-    const opened = await openSeeded(browser, viewport.width, viewport.height, storage);
-    await opened.page.goto('/tournament?from=suite');
-    await expect(opened.page.locator('.kids-carlos--corner .kids-carlos__cheer')).toHaveText('Bom trabalho!');
-    await expect(opened.page.locator('.kids-carlos--corner .kids-carlos__name')).toHaveText('Mia Santos');
-    await expect(opened.page.locator('.kids-carlos--corner .kids-carlos__score')).toHaveText('4-2');
-    await expectBubbleClear(opened.page);
-    await opened.context.close();
+  for (const master of MASTERS) {
+    for (const viewport of VIEWPORTS) {
+      const opened = await openSeeded(browser, viewport.width, viewport.height, storage);
+      await opened.page.goto(`/tournament?from=suite&grandmaster=${master}`);
+      await expect(opened.page.locator('.kids-grandmaster--corner')).toHaveAttribute('data-grandmaster', master);
+      await expect(opened.page.locator('.kids-grandmaster__frame').first()).toHaveAttribute(
+        'src',
+        `/assets/kids/grandmaster-${master}.webp`,
+      );
+      await expect(opened.page.locator('.kids-grandmaster--corner .kids-grandmaster__cheer')).toHaveText('Bom trabalho!');
+      await expect(opened.page.locator('.kids-grandmaster--corner .kids-grandmaster__name')).toHaveText('Mia Santos');
+      await expect(opened.page.locator('.kids-grandmaster--corner .kids-grandmaster__score')).toHaveText('4-2');
+      if (master === 'd') await expect(opened.page.locator('.kids-grandmaster__frame--nod')).toHaveCSS('opacity', '0');
+      await expectBubbleClear(opened.page);
+      await opened.context.close();
+    }
   }
 });

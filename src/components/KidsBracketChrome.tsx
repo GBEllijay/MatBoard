@@ -3,7 +3,7 @@ import { useInterval } from '../hooks/useClock';
 import { formatMss } from '../lib/format';
 import { remainingNow, type MatchState } from '../lib/matchStore';
 import { BRACKET_NAME_MAX } from '../lib/tournamentStore';
-import { CarlosCheer } from './CarlosCheer';
+import { GrandmasterCheer } from './GrandmasterCheer';
 
 function KidsLiveClock({
   match,
@@ -65,7 +65,7 @@ export function KidsBracketChrome({
 export function KidsMascotDock({ lines }: { lines: readonly string[] }) {
   return (
     <div className="kids-mascot-dock">
-      <CarlosCheer lines={lines} corner />
+      <GrandmasterCheer key={lines.join('|')} lines={lines} corner />
     </div>
   );
 }
