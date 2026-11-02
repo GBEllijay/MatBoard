@@ -144,7 +144,7 @@ test('Sunday review opens the inbox and the coach can submit', async ({ page }) 
   await approve.click();
   await expect(card.getByText('Approved', { exact: true })).toBeVisible();
   expect(await fillColor(approve)).toBe('rgb(0, 78, 186)');
-  await page.getByRole('button', { name: 'Add approved photo to Gallery' }).click();
+  await page.getByRole('button', { name: 'Approve for the gallery' }).click();
   await expect(page.getByText('That photo is in the Gallery on this device.')).toBeVisible();
   await shot(page, 'review-inbox-desktop');
   await page.getByRole('link', { name: 'Back to Coach Unlimited' }).click();

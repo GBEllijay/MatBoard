@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { appVersionHeaders } from '../lib/appCapability';
 import { Link, useSearchParams } from 'react-router-dom';
 import { HomeMark } from '../components/HomeMark';
+import { SecretField } from '../components/SecretField';
 import { SiteFooter } from '../components/SiteFooter';
 import { devicePublicJwk } from '../lib/deviceKey';
 import { clearEntitlementToken, entitlementSnapshot, readDeviceId } from '../lib/entitlement';
@@ -262,17 +263,15 @@ export function RestoreAccessPage({ deps = {} }: { deps?: RestoreDeps } = {}) {
           </form>
           {challengeId ? (
             <form className="buy__card" onSubmit={(event) => void onConfirm(event)}>
-              <label className="buy__field">
-                <span>Code from the email</span>
-                <input
-                  name="code"
-                  autoComplete="one-time-code"
-                  autoCapitalize="characters"
-                  spellCheck={false}
-                  value={code}
-                  onChange={(event) => setCode(event.target.value)}
-                />
-              </label>
+              <SecretField
+                label="Code from the email"
+                name="code"
+                autoComplete="one-time-code"
+                autoCapitalize="characters"
+                spellCheck={false}
+                value={code}
+                onChange={setCode}
+              />
               <button className="btn btn--white" type="submit" disabled={pending}>
                 Confirm
               </button>

@@ -6,17 +6,19 @@
  * holds one `YYYY-MM-DD` folder per lesson date. Each date folder holds
  * `lesson-plans`, `training-videos`, `technique-trees`, `class-photos`,
  * `roster`, and `tournament-results`. Lesson JSON goes in `lesson-plans`.
- * New technique clips go in `Videos/YYYY-MM-DD (Ddd)/` with a readable file
- * name. Clips already stored flat in the root, or in `training-videos`, stay
+ * New technique clips go in `videos/daily/{YYYY-MM-DD}/` with a readable file
+ * name. Clips already stored flat in the root, in `Videos/`, or in `training-videos`, stay
  * where they are and are still listed.
- * Today's class photo / promotions (a photo or a video) goes in `class-photos`
- * under names that start with `advantage-class-photo-promotions-`.
+ * New class photos and short clips go to `gallery/approved` or `gallery/pending`.
+ * They do not go in `videos/`. The old `class-photos` bucket is still listed.
+ * New daily training videos go in `videos/daily/{date}/`. Clips already in
+ * `Videos/` or `training-videos` stay where they are and are still listed.
  * Photo and video bytes are never sent to an Advantage server. This module
  * talks to Google from the browser only. There is no sample class list —
  * the calendar renders files Drive returns, or an empty state.
  *
- * Approval mode and trust mode are not implemented here. This client does not
- * create a pending queue or a shared pool, and it does not move files between them.
+ * Gallery approval chooses `gallery/pending` or `gallery/approved` before upload.
+ * This client does not invent a second gym folder. One connected root holds the tree.
  *
  * The public browser client id comes from `VITE_GOOGLE_CLIENT_ID` at build
  * time. Advantage hosts that one Web client. Gym owners never paste an id,
@@ -53,6 +55,7 @@ import {
   presentDriveVideo,
   videoDateFolderName,
 } from './driveVideoNames.ts';
+import { lessonWeekId, weeksReadyToArchive } from './gymTree.ts';
 import { parseLessonPayload } from './lessonPackage.ts';
 import { localDateKey } from './trainingNotesStore.ts';
 import type { TrainingNotesPlan } from './trainingNotesStore.ts';
@@ -1448,6 +1451,42 @@ async function listFriendlyVideoFiles(
   return [...loose, ...stamped];
 }
 
+/**
+ * New daily lane: `videos/daily/{YYYY-MM-DD}/`.
+ * A gym that has not used this lane yet has no `videos` folder. That is not an error.
+ */
+async function listDailyLaneVideos(
+  token: string,
+  rootFiles: readonly DriveFileMeta[],
+  fetcher: DriveFetch,
+  dateKey?: string,
+): Promise<DriveFileMeta[]> {
+  const videosFolder = rootFiles.find(
+    (file) => file.mimeType === DRIVE_FOLDER_MIME && file.name === 'videos',
+  );
+  if (!videosFolder) return [];
+  const children = await listFolderFiles(token, videosFolder.id, fetcher);
+  const daily = children.find((file) => file.mimeType === DRIVE_FOLDER_MIME && file.name === 'daily');
+  if (!daily) return [];
+  const dates = await listFolderFiles(token, daily.id, fetcher);
+  const dateFolders = dates.filter((file) => {
+    if (file.mimeType !== DRIVE_FOLDER_MIME || !DATE_FOLDER_NAME.test(file.name)) return false;
+    return dateKey ? file.name === dateKey : true;
+  });
+  if (dateFolders.length === 0) return [];
+  const nested = await listFilesInParents(
+    token,
+    dateFolders.map((file) => file.id),
+    fetcher,
+  );
+  const dateById = new Map(dateFolders.map((file) => [file.id, file.name] as const));
+  return nested.map((file) => {
+    const parent = file.parents?.find((id) => dateById.has(id));
+    const date = parent ? dateById.get(parent) : undefined;
+    return date ? stampVideoFolderDate(file, date) : file;
+  });
+}
+
 function isDriveVideo(file: DriveFileMeta): boolean {
   return file.mimeType.toLowerCase().startsWith('video/') && Boolean(file.id);
 }
@@ -1517,7 +1556,13 @@ export async function loadClassHistory(
   } catch {
     friendlyVideos = [];
   }
-  const files = mergeDriveFiles([rootFiles, nestedLessonFiles, friendlyVideos]);
+  let dailyVideos: DriveFileMeta[] = [];
+  try {
+    dailyVideos = await listDailyLaneVideos(token, rootFiles, fetcher);
+  } catch {
+    dailyVideos = [];
+  }
+  const files = mergeDriveFiles([rootFiles, nestedLessonFiles, friendlyVideos, dailyVideos]);
   const lessons: { fileId: string; doc: DriveLessonDocument }[] = [];
   const lessonFiles = [
     ...rootFiles.filter(isLessonFile).slice(0, 40),
@@ -1595,6 +1640,11 @@ export async function loadDriveDayPackage(
   videoFiles.push(
     ...rootFiles.filter((file) => isDriveVideo(file) && driveVideoDateKey(file) === dateKey),
   );
+  try {
+    videoFiles.push(...(await listDailyLaneVideos(token, rootFiles, fetcher, dateKey)));
+  } catch {
+    /* An old folder layout still returns the clips already collected. */
+  }
   const lessons: DriveLessonDocument[] = [];
   const seenLessons = new Set<string>();
   for (const file of lessonFiles) {
@@ -1691,6 +1741,57 @@ export async function saveDriveBytes(
     fetcher,
   });
   const id = await finishResumableUpload({ token, location, mime, bytes: file.bytes, fetcher });
+  return { id, name };
+}
+
+/** Create each folder in a gym-tree path and return the last folder id. */
+export async function ensureDriveRelativeFolder(
+  token: string,
+  rootFolderId: string,
+  segments: readonly string[],
+  fetcher: DriveFetch = fetch,
+): Promise<string> {
+  let parent = rootFolderId;
+  for (const name of segments) {
+    const folder = await findOrCreateChildFolder(token, parent, name, fetcher, {
+      advantageRole: 'gym-tree',
+      segment: name,
+    });
+    parent = folder.id;
+  }
+  return parent;
+}
+
+/**
+ * Write bytes at a relative gym-tree path under the connected root.
+ * The path's file name is the Drive file name. Parent folders are created.
+ */
+export async function uploadGymTreeBytes(input: {
+  token: string;
+  rootFolderId: string;
+  relativePath: string;
+  bytes: Blob;
+  mime: string;
+  appProperties?: Record<string, string>;
+  fetcher?: DriveFetch;
+}): Promise<{ id: string; name: string }> {
+  const fetcher = input.fetcher ?? fetch;
+  const segments = input.relativePath.split('/').filter(Boolean);
+  const name = segments.pop() ?? '';
+  if (!name) throw new Error('Google Drive needs a file name.');
+  const parentId = await ensureDriveRelativeFolder(input.token, input.rootFolderId, segments, fetcher);
+  const mime = input.mime.trim() || 'application/octet-stream';
+  const existingId = await findFileIdInParent(input.token, parentId, name, fetcher);
+  const id = await putResumableMediaFile({
+    token: input.token,
+    parentId,
+    name,
+    mime,
+    bytes: input.bytes,
+    appProperties: input.appProperties ?? { advantage: 'gym-tree' },
+    existingId,
+    fetcher,
+  });
   return { id, name };
 }
 
@@ -2105,7 +2206,8 @@ function uploadTrainingVideoDeduped(input: {
 }
 
 /**
- * Copy technique clips into `{root}/Videos/{YYYY-MM-DD (Ddd)}/`.
+ * Copy technique clips into `{root}/videos/daily/{YYYY-MM-DD}/`.
+ * Older clips in `Videos/{date}` and `{date}/training-videos/` are not moved.
  * Uses a resumable upload so files over the multipart 5 MB cap still land.
  * One failure does not throw: that clip is marked failed and the rest continue.
  * Bytes are sent only to Google. The phone copy is not deleted here.
@@ -2129,21 +2231,12 @@ export async function uploadTrainingVideos(input: {
   }
   let parentId: string;
   try {
-    const videosRoot = await findOrCreateChildFolder(
+    parentId = await ensureDriveRelativeFolder(
       input.token,
       input.rootFolderId,
-      VIDEOS_FOLDER_NAME,
+      ['videos', 'daily', input.dateKey],
       fetcher,
-      { advantageRole: 'videos' },
     );
-    const dateFolder = await findOrCreateChildFolder(
-      input.token,
-      videosRoot.id,
-      videoDateFolderName(input.dateKey),
-      fetcher,
-      { advantageRole: 'video-date', date: input.dateKey },
-    );
-    parentId = dateFolder.id;
   } catch {
     input.onProgress?.(0, total);
     return failedAll();
@@ -2494,7 +2587,49 @@ export async function renameDriveFile(
 }
 
 /**
- * Write one lesson JSON into `{connected root}/{date}/lesson-plans/`.
+ * Move a finished lesson week from `lessons/current/{week}` to
+ * `lessons/archive/{year}/{week}`. The current week stays. Old date buckets stay.
+ */
+export async function archivePastLessonWeeks(input: {
+  token: string;
+  rootFolderId: string;
+  todayKey: string;
+  fetcher?: DriveFetch;
+}): Promise<string[]> {
+  const fetcher = input.fetcher ?? fetch;
+  const rootFiles = await listFolderFiles(input.token, input.rootFolderId, fetcher);
+  const lessons = rootFiles.find((file) => file.mimeType === DRIVE_FOLDER_MIME && file.name === 'lessons');
+  if (!lessons) return [];
+  const lessonChildren = await listFolderFiles(input.token, lessons.id, fetcher);
+  const current = lessonChildren.find((file) => file.mimeType === DRIVE_FOLDER_MIME && file.name === 'current');
+  if (!current) return [];
+  const weeks = await listFolderFiles(input.token, current.id, fetcher);
+  const moving = weeksReadyToArchive(
+    weeks.filter((file) => file.mimeType === DRIVE_FOLDER_MIME).map((file) => file.name),
+    input.todayKey,
+  );
+  if (!moving.length) return [];
+  const archiveId = await ensureDriveRelativeFolder(input.token, input.rootFolderId, ['lessons', 'archive'], fetcher);
+  const moved: string[] = [];
+  for (const weekId of moving) {
+    const year = weekId.slice(0, 4);
+    const yearId = await ensureDriveRelativeFolder(input.token, archiveId, [year], fetcher);
+    const folder = weeks.find((file) => file.name === weekId);
+    if (!folder) continue;
+    await driveJson(
+      input.token,
+      `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(folder.id)}?addParents=${encodeURIComponent(yearId)}&removeParents=${encodeURIComponent(current.id)}`,
+      { method: 'PATCH', body: '{}' },
+      fetcher,
+    );
+    moved.push(weekId);
+  }
+  return moved;
+}
+
+/**
+ * Write one lesson JSON into `lessons/current/{week}/{date}.json`.
+ * Also keeps the older `{date}/lesson-plans/` copy so Class history still opens it.
  * Returns null when this browser has not connected Drive — the phone copy remains.
  */
 export async function publishLessonToDrive(document: DriveLessonDocument): Promise<{
@@ -2506,5 +2641,22 @@ export async function publishLessonToDrive(document: DriveLessonDocument): Promi
   if (!binding) return null;
   const token = await requestDriveToken('silent');
   if (!token) return null;
-  return upsertLessonFile({ token, folderId: binding.folderId, document });
+  const saved = await upsertLessonFile({ token, folderId: binding.folderId, document });
+  const week = lessonWeekId(document.date);
+  if (week) {
+    try {
+      await archivePastLessonWeeks({ token, rootFolderId: binding.folderId, todayKey: document.date });
+      await uploadGymTreeBytes({
+        token,
+        rootFolderId: binding.folderId,
+        relativePath: `lessons/current/${week}/${document.date}.json`,
+        bytes: new Blob([JSON.stringify(document)], { type: 'application/json' }),
+        mime: 'application/json',
+        appProperties: lessonAppProperties(document),
+      });
+    } catch {
+      /* The lesson-plans copy is already stored. The phone draft remains. */
+    }
+  }
+  return saved;
 }

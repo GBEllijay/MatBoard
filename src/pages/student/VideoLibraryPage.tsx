@@ -292,6 +292,7 @@ function FilmAMove({ onSaved }: { onSaved: () => void }) {
   return (
     <section className="student-film" aria-label="Film a move">
       <h2>Film a move</h2>
+      <p>This file goes to your student inbox. It is not added to the gym gallery or the instructor video folder.</p>
       <p className="student-quiet">
         Record a coach or partner showing the night&apos;s technique, or pick a video already on this phone. The name is the date plus the technique you type.
       </p>

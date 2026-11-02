@@ -1166,7 +1166,7 @@ describe('date folder tree', { concurrency: false }, () => {
     );
   });
 
-  test('uploadTrainingVideos writes bytes into Videos/date and retries the same file', async () => {
+  test('uploadTrainingVideos writes bytes into videos/daily/date and retries the same file', async () => {
     const drive = createFakeDrive('upload');
     const marker = 'VIDEO-BYTES-MARKER';
     const progress: number[] = [];
@@ -1188,10 +1188,13 @@ describe('date folder tree', { concurrency: false }, () => {
     });
     assert.equal(first?.failed, false);
     assert.ok(first?.driveFileId);
-    const videosFolder = drive.files.find((file) => file.name === 'Videos');
-    const dateFolder = drive.files.find((file) => file.name === '2026-09-28 (Mon)');
+    const videosFolder = drive.files.find((file) => file.name === 'videos');
+    const dailyFolder = drive.files.find((file) => file.name === 'daily');
+    const dateFolder = drive.files.find((file) => file.name === '2026-09-28' && file.parents[0] === dailyFolder?.id);
     assert.ok(videosFolder);
-    assert.equal(dateFolder?.parents[0], videosFolder?.id);
+    assert.equal(dailyFolder?.parents[0], videosFolder?.id);
+    assert.equal(dateFolder?.parents[0], dailyFolder?.id);
+    assert.equal(drive.files.some((file) => file.name === 'Videos'), false);
     const stored = drive.files.find((file) => file.id === first?.driveFileId);
     assert.equal(stored?.parents[0], dateFolder?.id);
     assert.equal(stored?.mimeType, 'video/mp4');
@@ -1596,7 +1599,9 @@ test('a friendly upload uses the lesson title and keeps the clip id out of the n
   assert.equal(stored?.name, '2026-10-13 GB1 Armbar from guard - clip 3.mp4');
   assert.doesNotMatch(stored?.name ?? '', /0f018a78/);
   assert.equal(stored?.description, 'advantage-clip:0f018a78-clip');
-  assert.equal(drive.files.find((file) => file.name === '2026-10-13 (Tue)')?.parents[0], drive.files.find((file) => file.name === 'Videos')?.id);
+  const daily = drive.files.find((file) => file.name === 'daily');
+  assert.equal(drive.files.find((file) => file.name === '2026-10-13' && file.parents[0] === daily?.id)?.parents[0], daily?.id);
+  assert.equal(drive.files.some((file) => file.name === 'Videos'), false);
   const pack = await loadDriveDayPackage('token', 'root-named', '2026-10-13', drive.fetcher);
   assert.deepEqual(pack.videos.map((file) => file.id), [saved?.driveFileId]);
 });

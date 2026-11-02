@@ -6,6 +6,8 @@
  */
 
 export const STORED_PHOTO_MAX_EDGE = 1920;
+/** Tried when a large phone photo cannot be encoded at the TV edge. */
+export const STORED_PHOTO_FALLBACK_EDGE = 1280;
 /** JPEG / WebP encode quality. Enough for a product photo on a gym TV. */
 export const STORED_PHOTO_QUALITY = 0.82;
 /**
@@ -104,7 +106,7 @@ export async function shrinkImageFile(file: File, options: ShrinkImageOptions): 
  */
 export async function shrinkPhotoForStore(file: File): Promise<Blob> {
   if (file.type.startsWith('video/') || file.type === 'image/gif') return file;
-  const shrunk = await shrinkImageFile(file, {
+  const options = {
     maxEdge: STORED_PHOTO_MAX_EDGE,
     quality: STORED_PHOTO_QUALITY,
     passthroughBytes: DISPLAY_SAFE.has(file.type) ? STORED_PHOTO_PASSTHROUGH_BYTES : 0,
@@ -113,7 +115,11 @@ export async function shrinkPhotoForStore(file: File): Promise<Blob> {
     opaqueBackground: '#ffffff',
     orient: true,
     smooth: true,
-  });
+  };
+  let shrunk = await shrinkImageFile(file, options);
+  if (shrunk === file && file.size >= 1_500_000) {
+    shrunk = await shrinkImageFile(file, { ...options, maxEdge: STORED_PHOTO_FALLBACK_EDGE, passthroughBytes: 0 });
+  }
   if (shrunk === file) return file;
   if (DISPLAY_SAFE.has(file.type) && shrunk.size >= file.size) return file;
   return shrunk;
