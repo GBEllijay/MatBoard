@@ -78,6 +78,22 @@ async function bubbleClearOfFace(page: Page) {
         hits.push(`bubble overlaps ${index === 0 ? 'face' : 'hand'} by ${Math.round(ix)}x${Math.round(iy)}`);
       }
     });
+    const boardCheer = document.querySelector('.kids-grandmaster--board');
+    if (boardCheer) {
+      const figure = document.querySelector('.kids-grandmaster__figure');
+      const blockers = [figure, bubble].filter((node): node is HTMLElement => node instanceof HTMLElement);
+      for (const card of document.querySelectorAll('.display .score')) {
+        if (!(card instanceof HTMLElement)) continue;
+        const box = card.getBoundingClientRect();
+        if (box.width < 2 || box.height < 2) continue;
+        for (const node of blockers) {
+          const cover = node.getBoundingClientRect();
+          const ix = Math.min(box.right, cover.right) - Math.max(box.left, cover.left);
+          const iy = Math.min(box.bottom, cover.bottom) - Math.max(box.top, cover.top);
+          if (ix > 1 && iy > 1) hits.push(`cheer covers ${card.className} by ${Math.round(ix)}x${Math.round(iy)}`);
+        }
+      }
+    }
     const view = { w: window.innerWidth, h: window.innerHeight };
     if (br.left < -1 || br.top < -1 || br.right > view.w + 1 || br.bottom > view.h + 1) {
       hits.push(
@@ -264,4 +280,18 @@ test('post-champion corner keeps text off each grandmaster’s face', async ({ b
       await opened.context.close();
     }
   }
+});
+
+test('a DQ does not bring the grandmaster out', async ({ browser }) => {
+  const match = {
+    ...pointsMatch(4),
+    grandmaster: { enabled: true, onWin: true, onPoints: true, pointsThreshold: 1 },
+    outcome: { call: 'dq', reason: 'technical', side: 'blue', source: 'manual', at: 9 },
+  };
+  const opened = await openSeeded(browser, 1440, 900, { 'matboard.match.v1': match });
+  await opened.page.goto('/match?from=suite');
+  await expect(opened.page.locator('.score__value').first()).toHaveText('4');
+  await expect(opened.page.locator('.kids-grandmaster')).toHaveCount(0);
+  await expect(opened.page.getByText('Bom trabalho!')).toHaveCount(0);
+  await opened.context.close();
 });

@@ -202,6 +202,8 @@ export function matchGrandmasterView(input: {
 }): GrandmasterMatchView {
   const hidden: GrandmasterMatchView = { show: false, lines: [] };
   if (!input.prefs.enabled) return hidden;
+  // A disqualification has its own reaction. Points on that athlete are not a cheer.
+  if (input.outcome?.call === 'dq') return hidden;
 
   const outcome = grandmasterOutcome(input);
 

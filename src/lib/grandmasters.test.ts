@@ -30,6 +30,30 @@ test('five masters rotate and never repeat the one just shown', () => {
   assert.equal(all.size, GRANDMASTER_IDS.length);
 });
 
+test('fifty bouts use every master, with no immediate repeat and no long gap', () => {
+  let previous: GrandmasterId | null = null;
+  const seen: GrandmasterId[] = [];
+  for (let bout = 0; bout < 50; bout += 1) {
+    const next = grandmasterForCheer(previous, `bout:${bout}`);
+    if (previous) assert.notEqual(next, previous);
+    seen.push(next);
+    previous = next;
+  }
+  for (const id of GRANDMASTER_IDS) assert.ok(seen.includes(id), id);
+  for (const id of GRANDMASTER_IDS) {
+    let gap = 0;
+    let longest = 0;
+    for (const shown of seen) {
+      if (shown === id) gap = 0;
+      else {
+        gap += 1;
+        longest = Math.max(longest, gap);
+      }
+    }
+    assert.ok(longest <= 8, `${id} missing for ${longest}`);
+  }
+});
+
 test('a cheer key picks the same master on every screen, then a new cheer moves on', () => {
   const first = grandmasterForCheer('classic', 'bout:1');
   assert.equal(grandmasterForCheer('classic', 'bout:1'), first);

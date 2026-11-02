@@ -16291,35 +16291,38 @@ a.plan-pick {
 }
 
 .kids-grandmaster--board .kids-grandmaster__figure {
-  left: auto;
-  right: 0;
-  width: min(24vw, 280px);
-  animation-name: kids-grandmaster-in-right;
+  left: 0.6rem;
+  right: auto;
+  width: min(18vw, 210px);
+  animation-name: kids-grandmaster-in;
 }
 
 .kids-grandmaster--board .kids-grandmaster__bubble {
   --grandmaster-bubble-shift: 0px;
-  top: 0;
-  right: calc(78% + 0.75rem);
+  top: 8%;
+  left: calc(100% + 0.4rem);
+  right: auto;
   bottom: auto;
-  left: auto;
-  max-width: min(14rem, 36vw, calc(100vw - 0.82 * min(24vw, 280px) - 1.4rem));
+  min-width: 180px;
+  max-width: min(16rem, 46vw);
   transform: none;
 }
 
-/* Raised hand on the viewer's left. Sit the card just outside the portrait. */
-.kids-grandmaster--board.kids-grandmaster--a .kids-grandmaster__bubble,
-.kids-grandmaster--board.kids-grandmaster--c .kids-grandmaster__bubble {
-  right: calc(100% + 0.55rem);
+.kids-grandmaster--board .kids-grandmaster__name {
+  display: block;
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .kids-grandmaster--board .kids-grandmaster__bubble::after {
-  left: auto;
-  right: -0.42rem;
+  left: -0.42rem;
+  right: auto;
   bottom: 0.55rem;
   border: 0.42rem solid transparent;
-  border-left-color: #fff;
-  border-right-width: 0;
+  border-right-color: #fff;
+  border-left-width: 0;
   border-bottom-width: 0.42rem;
 }
 
@@ -16361,25 +16364,42 @@ a.plan-pick {
   filter: drop-shadow(0 16px 22px rgba(0, 0, 0, 0.28));
 }
 
-/* Nod frame sits on the rest frame. Three nods, then it stays on frame 1. */
+/* Nod frame swaps onto the rest frame. Holds, no long cross-fade, then frame 1. */
 .kids-grandmaster__frame--nod {
   position: absolute;
   inset: 0;
   opacity: 0;
-  animation: kids-grandmaster-nod 4.05s ease-in-out 0.4s 1 both;
+  animation: kids-grandmaster-nod 3.4s linear 0.35s 1 both;
 }
 
 @keyframes kids-grandmaster-nod {
   0%,
-  33%,
-  66%,
-  100% {
+  13% {
     opacity: 0;
   }
-  22%,
-  55%,
-  88% {
+  13.1%,
+  28% {
     opacity: 1;
+  }
+  28.1%,
+  41% {
+    opacity: 0;
+  }
+  41.1%,
+  56% {
+    opacity: 1;
+  }
+  56.1%,
+  69% {
+    opacity: 0;
+  }
+  69.1%,
+  84% {
+    opacity: 1;
+  }
+  84.1%,
+  100% {
+    opacity: 0;
   }
 }
 

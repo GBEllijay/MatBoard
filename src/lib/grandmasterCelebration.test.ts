@@ -53,6 +53,15 @@ test('A match win brings the grandmaster out with Bom trabalho and the score', (
   assert.deepEqual(view.lines, ['Bom trabalho!', 'Mia Santos', '12-0']);
 });
 
+test('a DQ stays quiet even when that athlete is over the points total', () => {
+  const dq: MatchOutcome = { call: 'dq', reason: 'technical', side: 'blue', source: 'manual', at: 3 };
+  const prefs: GrandmasterCelebrationPrefs = { ...base.prefs, onWin: true, onPoints: true, pointsThreshold: 1 };
+  assert.equal(
+    matchGrandmasterView({ ...base, prefs, outcome: dq, bluePoints: 4, whitePoints: 0, matchComplete: true }).show,
+    false,
+  );
+});
+
 test('DQ is not a win trigger, and the win trigger can be turned off alone', () => {
   const dq: MatchOutcome = { call: 'dq', reason: 'technical', side: 'white', source: 'manual', at: 2 };
   assert.equal(matchGrandmasterView({ ...base, outcome: dq, bluePoints: 4 }).show, false);
