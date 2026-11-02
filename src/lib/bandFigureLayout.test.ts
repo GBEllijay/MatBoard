@@ -11,12 +11,16 @@ import {
 
 const MASTERS = ['classic', 'a', 'b', 'c', 'd'] as const;
 
-test('phone widths are under 600 and 1440 is unchanged', () => {
-  assert.equal(BAND_FIGURE_PHONE_MAX_PX, 599);
-  assert.equal(isPhoneBand(390), true);
-  assert.equal(isPhoneBand(599), true);
-  assert.equal(isPhoneBand(600), false);
+test('tablets through 1023px use the fixed figure and 1024+ stays desktop', () => {
+  assert.equal(BAND_FIGURE_PHONE_MAX_PX, 1023);
+  for (const width of [390, 430, 599, 600, 601, 680, 768, 820, 900, 1023]) {
+    assert.equal(isPhoneBand(width), true, String(width));
+    assert.equal(boardCheerShowsBubble(width), false, String(width));
+  }
+  assert.equal(isPhoneBand(1024), false);
   assert.equal(isPhoneBand(1440), false);
+  assert.equal(boardCheerShowsBubble(1024), true);
+  assert.equal(boardCheerShowsBubble(1440), true);
 });
 
 test('every master gets a 100–110px phone figure on the right edge of the band', () => {
@@ -36,8 +40,10 @@ test('every master gets a 100–110px phone figure on the right edge of the band
 
 test('the desktop board keeps its bubble and reserves no gutter', () => {
   assert.equal(boardCheerShowsBubble(1440), true);
-  assert.equal(boardCheerShowsBubble(844), true);
+  assert.equal(boardCheerShowsBubble(1024), true);
   assert.equal(splashFigureGutter(1440, 180, true), 0);
+  assert.equal(splashFigureGutter(768, 106, true), 106);
+  assert.equal(splashFigureGutter(1024, 180, true), 0);
   assert.equal(splashFigureGutter(390, 106, false), 0);
   assert.equal(splashFigureGutter(390, 0, true), 0);
 });

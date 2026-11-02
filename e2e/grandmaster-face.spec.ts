@@ -165,7 +165,7 @@ test('points-scored cheer keeps text off each grandmaster’s face', async ({ br
         'src',
         `/assets/kids/grandmaster-${master}.webp`,
       );
-      if (viewport.width <= 599) {
+      if (viewport.width <= 1023) {
         await expectPhoneBoardFigure(board.page);
       } else {
         await expect(board.page.locator('.kids-grandmaster__score')).toHaveText('4');
@@ -179,7 +179,7 @@ test('points-scored cheer keeps text off each grandmaster’s face', async ({ br
       } else {
         await expect(board.page.locator('.kids-grandmaster__frame--nod')).toHaveCount(0);
       }
-      if (viewport.width > 599) await expectBubbleClear(board.page);
+      if (viewport.width > 1023) await expectBubbleClear(board.page);
       await expectFullscreenClear(board.page);
       await board.context.close();
 
@@ -190,7 +190,7 @@ test('points-scored cheer keeps text off each grandmaster’s face', async ({ br
         `/assets/kids/grandmaster-${master}.webp`,
       );
       await expect(kids.page.locator('.display')).toHaveClass(/kids-board--dinos/);
-      if (viewport.width <= 599) {
+      if (viewport.width <= 1023) {
         await expectPhoneBoardFigure(kids.page);
       } else {
         await expect(kids.page.locator('.kids-grandmaster__score')).toHaveText('4');
@@ -212,7 +212,7 @@ test('2-point and 3-point cheers use the same points trigger', async ({ browser 
         'matboard.match.v1': pointsMatch(points),
       });
       await opened.page.goto('/match?from=suite');
-      if (viewport.width <= 599) {
+      if (viewport.width <= 1023) {
         await expectPhoneBoardFigure(opened.page);
       } else {
         await expect(opened.page.locator('.kids-grandmaster__score')).toHaveText(String(points));
@@ -309,6 +309,10 @@ test('board cheer stays off names, gyms, score cards, and Home', async ({ browse
   const viewports = [
     { width: 1440, height: 900 },
     { width: 390, height: 844 },
+    { width: 600, height: 900 },
+    { width: 768, height: 1024 },
+    { width: 820, height: 1180 },
+    { width: 1023, height: 768 },
   ];
   for (const master of MASTERS) {
     for (const viewport of viewports) {
@@ -319,7 +323,7 @@ test('board cheer stays off names, gyms, score cards, and Home', async ({ browse
         const figure = document.querySelector('.kids-grandmaster__figure');
         const bubble = document.querySelector('.kids-grandmaster__bubble');
         if (!(figure instanceof HTMLElement)) return ['missing figure'];
-        if (window.innerWidth > 599 && !(bubble instanceof HTMLElement)) return ['missing bubble'];
+        if (window.innerWidth > 1023 && !(bubble instanceof HTMLElement)) return ['missing bubble'];
         const covers = [figure.getBoundingClientRect()];
         if (bubble instanceof HTMLElement && getComputedStyle(bubble).display !== 'none') {
           covers.push(bubble.getBoundingClientRect());
@@ -340,7 +344,7 @@ test('board cheer stays off names, gyms, score cards, and Home', async ({ browse
         return hits;
       });
       expect(hits, `${master} ${viewport.width}x${viewport.height}: ${hits.join(' | ')}`).toEqual([]);
-      if (viewport.width <= 599) await expectPhoneBoardFigure(board.page);
+      if (viewport.width <= 1023) await expectPhoneBoardFigure(board.page);
       else await expectBubbleClear(board.page);
       await board.context.close();
     }
@@ -420,9 +424,16 @@ async function statusWordVisible(page: Page, word: 'Paused' | 'Ended') {
   expect(report.ok, report.reasons.join(' | ')).toBe(true);
 }
 
-test('phone banner stays beside the figure and the status word returns when it leaves', async ({ browser }) => {
+test('narrow boards keep the banner beside the figure and restore the status word', async ({ browser }) => {
   const viewports = [
     { width: 390, height: 844 },
+    { width: 600, height: 900 },
+    { width: 601, height: 900 },
+    { width: 680, height: 900 },
+    { width: 768, height: 1024 },
+    { width: 820, height: 1180 },
+    { width: 900, height: 1200 },
+    { width: 1023, height: 768 },
     { width: 1440, height: 900 },
   ] as const;
   const sides = [
@@ -452,7 +463,7 @@ test('phone banner stays beside the figure and the status word returns when it l
         const gold = await splash.evaluate((el) => getComputedStyle(el).color);
         expect(gold, `${master} ${viewport.width}`).toBe('rgb(240, 194, 75)');
 
-        if (viewport.width <= 599) {
+        if (viewport.width <= 1023) {
           await expectPhoneBoardFigure(opened.page);
           const gutter = await opened.page.locator('.display').evaluate((el) => getComputedStyle(el).getPropertyValue('--band-figure-gutter').trim());
           expect(Number.parseFloat(gutter)).toBeGreaterThanOrEqual(100);
@@ -496,6 +507,32 @@ test('phone banner stays beside the figure and the status word returns when it l
         await opened.context.close();
       }
     }
+  }
+});
+
+test('a cheer lays out a handful of times, not on every clock tick', async ({ browser }) => {
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 768, height: 1024 },
+    { width: 1440, height: 900 },
+  ]) {
+    const opened = await openSeeded(browser, viewport.width, viewport.height, {
+      'matboard.match.v1': {
+        ...pointsMatch(4),
+        grandmaster: { enabled: true, onWin: true, onPoints: true, pointsThreshold: 1 },
+      },
+    });
+    await opened.page.goto('/match?from=suite&grandmaster=classic');
+    await expect(opened.page.locator('.clock-btn')).toBeVisible();
+    await beginOutcome(opened.page, { call: 'win', method: 'submission', side: 'blue' }, 30_000);
+    await expect(opened.page.locator('.kids-grandmaster')).toBeVisible();
+    await opened.page.waitForTimeout(5000);
+    const passes = Number(await opened.page.locator('.kids-grandmaster').getAttribute('data-place-count'));
+    expect(passes, `${viewport.width} laid out ${passes} times`).toBeGreaterThan(0);
+    expect(passes, `${viewport.width} laid out ${passes} times`).toBeLessThan(10);
+    if (viewport.width <= 1023) await expect(opened.page.locator('.kids-grandmaster__bubble')).toHaveCount(0);
+    else await expect(opened.page.locator('.kids-grandmaster__bubble')).toBeVisible();
+    await opened.context.close();
   }
 });
 

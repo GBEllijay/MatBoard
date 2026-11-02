@@ -1,11 +1,11 @@
 /**
- * Phone band-figure rules for the scoreboard cheer and the DQ walk-off.
- * Desktop (1440) keeps the measured slot and the speech bubble. These helpers
- * only change widths under 600px.
+ * Narrow band-figure rules for the scoreboard cheer and the DQ walk-off.
+ * Phones and tablets (through 1023px) share one fixed figure. Desktop 1024+
+ * keeps the measured slot and the speech bubble.
  */
 
-/** Viewports at or below this width use the phone figure. Matches `@media (max-width: 599px)`. */
-export const BAND_FIGURE_PHONE_MAX_PX = 599;
+/** Viewports at or below this width use the fixed figure. Matches `@media (max-width: 1023px)`. */
+export const BAND_FIGURE_PHONE_MAX_PX = 1023;
 
 /**
  * Phone figure width. Wide enough that the face reads, narrow enough that the
@@ -20,7 +20,7 @@ export function isPhoneBand(viewportWidth: number): boolean {
   return viewportWidth <= BAND_FIGURE_PHONE_MAX_PX;
 }
 
-/** The board cheer bubble repeats the splash. It stays on the desktop board and in the bracket corner. */
+/** The board cheer bubble repeats the splash. It stays on the 1024+ board and in the bracket corner. */
 export function boardCheerShowsBubble(viewportWidth: number): boolean {
   return !isPhoneBand(viewportWidth);
 }
