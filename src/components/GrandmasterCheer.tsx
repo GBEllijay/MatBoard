@@ -1,5 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
+  BAND_FIGURE_PHONE_MAX_PX,
+  PHONE_BAND_FIGURE_WIDTH_PX,
+  isPhoneBand,
+  phoneBandFigureBox,
+  splashFigureGutter,
+} from '../lib/bandFigureLayout';
+import {
   grandmasterById,
   isGrandmasterId,
   pickGrandmaster,
@@ -223,11 +230,111 @@ function findRowSlot(
   return best;
 }
 
+const gutterWatch = new WeakMap<HTMLElement, MutationObserver>();
+
+/** Drop the phone splash inset. Desktop never sets it. Safe to call twice. */
+export function clearBandFigureGutter(display: HTMLElement): void {
+  display.classList.remove('display--band-figure');
+  display.style.removeProperty('--band-figure-gutter');
+  for (const node of display.querySelectorAll('.display-splash__name, .display-splash__line')) {
+    if (node instanceof HTMLElement) node.style.fontSize = '';
+  }
+}
+
+function untrackGutter(root: HTMLElement) {
+  const prev = gutterWatch.get(root);
+  prev?.disconnect();
+  gutterWatch.delete(root);
+}
+
+/** Clear the gutter in the same turn the figure node leaves the board. */
+function trackGutterUntilLeave(root: HTMLElement, display: HTMLElement) {
+  untrackGutter(root);
+  const parent = root.parentElement;
+  if (!parent) return;
+  const obs = new MutationObserver(() => {
+    if (!root.isConnected) {
+      clearBandFigureGutter(display);
+      obs.disconnect();
+      gutterWatch.delete(root);
+    }
+  });
+  obs.observe(parent, { childList: true });
+  gutterWatch.set(root, obs);
+}
+
+function bumpPlaceCount(root: HTMLElement) {
+  const next = Number(root.dataset.placeCount ?? '0') + 1;
+  root.dataset.placeCount = String(next);
+}
+
+function textHitsFigure(node: HTMLElement, figure: DOMRect): boolean {
+  const range = document.createRange();
+  range.selectNodeContents(node);
+  const fig = { left: figure.left, top: figure.top, right: figure.right, bottom: figure.bottom };
+  for (const rect of range.getClientRects()) {
+    if (rect.width < 1 || rect.height < 1) continue;
+    const box = { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom };
+    if (overlaps(box, fig)) return true;
+  }
+  return false;
+}
+
+/** After the gutter is reserved, shrink a line that still runs under the figure. */
+function relaxSplashBeside(display: HTMLElement, figure: HTMLElement) {
+  const figureBox = figure.getBoundingClientRect();
+  const nodes = [...display.querySelectorAll('.display-splash__name, .display-splash__line')].filter(
+    (node): node is HTMLElement => node instanceof HTMLElement,
+  );
+  for (const node of nodes) node.style.fontSize = '';
+  for (const node of nodes) {
+    if (!textHitsFigure(node, figureBox)) continue;
+    const start = parseFloat(getComputedStyle(node).fontSize);
+    if (!Number.isFinite(start)) continue;
+    for (let size = Math.floor(start); size >= 13; size -= 1) {
+      node.style.fontSize = `${size}px`;
+      if (!textHitsFigure(node, figureBox)) break;
+    }
+  }
+}
+
+function reservePhoneGutter(root: HTMLElement, display: HTMLElement, figure: HTMLElement) {
+  const viewportWidth = display.getBoundingClientRect().width;
+  const gutter = splashFigureGutter(viewportWidth, figure.getBoundingClientRect().width, true);
+  if (gutter <= 0) {
+    clearBandFigureGutter(display);
+    untrackGutter(root);
+    return;
+  }
+  display.classList.add('display--band-figure');
+  display.style.setProperty('--band-figure-gutter', `${gutter}px`);
+  relaxSplashBeside(display, figure);
+  trackGutterUntilLeave(root, display);
+}
+
+/**
+ * Re-measure once the outcome banner has finished flying in.
+ * The first pass can see the card mid-animation. Cheer and DQ both use this.
+ */
+export function watchSplashSettle(display: HTMLElement, place: () => void): () => void {
+  const splash = display.querySelector('.display-splash__card');
+  if (!(splash instanceof HTMLElement)) return () => {};
+  const onSplash = () => place();
+  splash.addEventListener('animationend', onSplash);
+  const timer = window.setTimeout(onSplash, 750);
+  return () => {
+    splash.removeEventListener('animationend', onSplash);
+    window.clearTimeout(timer);
+  };
+}
+
 /**
  * Right end of the clock band. Feet on the band's bottom edge, rising into the
  * row above only while the body still misses every name, gym, score card, and
  * header link. A bubble sits to the figure's left. With no bubble the canvas
  * meets the right screen edge so a walk-off leaves the screen.
+ * Under 600px the figure is a fixed width with no bubble, and the splash keeps
+ * that width as padding so the banner wraps beside it.
  */
 export function placeBandFigure(root: HTMLElement, figure: HTMLElement, bubble: HTMLElement | null): boolean {
   const display = root.closest('.display');
@@ -235,6 +342,24 @@ export function placeBandFigure(root: HTMLElement, figure: HTMLElement, bubble: 
   if (!(display instanceof HTMLElement) || !(band instanceof HTMLElement)) return false;
   const displayBox = boxOf(display);
   const bandBox = boxOf(band);
+  const viewportWidth = displayBox.right - displayBox.left;
+  if (isPhoneBand(viewportWidth)) {
+    const phone = phoneBandFigureBox(displayBox, bandBox.bottom);
+    const bandHeight = bandBox.bottom - bandBox.top;
+    if (bandHeight >= 48 && phone.top >= displayBox.top - 1) {
+      const rootBox = boxOf(root);
+      figure.style.width = `${PHONE_BAND_FIGURE_WIDTH_PX}px`;
+      figure.style.left = `${Math.round(phone.left - rootBox.left)}px`;
+      figure.style.right = 'auto';
+      figure.style.top = 'auto';
+      figure.style.bottom = `${Math.round(rootBox.bottom - phone.bottom)}px`;
+      reservePhoneGutter(root, display, figure);
+      bumpPlaceCount(root);
+      return true;
+    }
+  }
+  clearBandFigureGutter(display);
+  untrackGutter(root);
   const hard = hardObstacles(display);
   const soft = softObstacles(display);
   const bubbleBox = bubble?.getBoundingClientRect();
@@ -260,14 +385,31 @@ export function placeBandFigure(root: HTMLElement, figure: HTMLElement, bubble: 
     bubble.style.bottom = 'auto';
     bubble.style.transform = 'none';
   }
+  bumpPlaceCount(root);
   return true;
 }
 
 function layoutBoardCheer(root: HTMLElement) {
   const figure = root.querySelector('.kids-grandmaster__figure');
-  const bubble = root.querySelector('.kids-grandmaster__bubble');
-  if (!(figure instanceof HTMLElement) || !(bubble instanceof HTMLElement)) return;
+  if (!(figure instanceof HTMLElement)) return;
+  const bubbleNode = root.querySelector('.kids-grandmaster__bubble');
+  const bubble = bubbleNode instanceof HTMLElement ? bubbleNode : null;
   placeBandFigure(root, figure, bubble);
+}
+
+function usePhoneBand(): boolean {
+  const query = `(max-width: ${BAND_FIGURE_PHONE_MAX_PX}px)`;
+  const [phone, setPhone] = useState(() =>
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia(query).matches : false,
+  );
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    const onChange = () => setPhone(media.matches);
+    onChange();
+    media.addEventListener('change', onChange);
+    return () => media.removeEventListener('change', onChange);
+  }, [query]);
+  return phone;
 }
 
 /** Query hook so a test can show one master on the TV and the controller together. */
@@ -304,6 +446,8 @@ export function GrandmasterCheer({
   const id = forced ?? masterId ?? localPick;
   const master = grandmasterById(id);
   const lastIsScore = lines.length > 2;
+  const phoneBand = usePhoneBand();
+  const showBubble = !(board && phoneBand);
 
   useEffect(() => {
     if (forced) return;
@@ -321,17 +465,15 @@ export function GrandmasterCheer({
     place();
     window.addEventListener('resize', place);
     void document.fonts?.ready.then(place);
-    const splash = root.closest('.display')?.querySelector('.display-splash__card');
-    const onSplash = () => place();
-    splash?.addEventListener('animationend', onSplash);
-    const splashTimer = splash ? window.setTimeout(onSplash, 750) : 0;
+    const display = root.closest('.display');
+    const stopSplash = display instanceof HTMLElement ? watchSplashSettle(display, place) : () => {};
     return () => {
       alive = false;
       window.removeEventListener('resize', place);
-      splash?.removeEventListener('animationend', onSplash);
-      window.clearTimeout(splashTimer);
+      stopSplash();
+      if (display instanceof HTMLElement) clearBandFigureGutter(display);
     };
-  }, [board, id, lines]);
+  }, [board, id, lines, showBubble]);
 
   return (
     <div
@@ -355,22 +497,24 @@ export function GrandmasterCheer({
         ))}
       </div>
       <figure className="kids-grandmaster__figure">
-        <p className="kids-grandmaster__bubble">
-          {lines.map((line, index) => (
-            <span
-              key={`${index}-${line}`}
-              className={
-                index === 0
-                  ? 'kids-grandmaster__cheer'
-                  : lastIsScore && index === lines.length - 1
-                    ? 'kids-grandmaster__score'
-                    : 'kids-grandmaster__name'
-              }
-            >
-              {line}
-            </span>
-          ))}
-        </p>
+        {showBubble ? (
+          <p className="kids-grandmaster__bubble">
+            {lines.map((line, index) => (
+              <span
+                key={`${index}-${line}`}
+                className={
+                  index === 0
+                    ? 'kids-grandmaster__cheer'
+                    : lastIsScore && index === lines.length - 1
+                      ? 'kids-grandmaster__score'
+                      : 'kids-grandmaster__name'
+                }
+              >
+                {line}
+              </span>
+            ))}
+          </p>
+        ) : null}
         <div className="kids-grandmaster__portrait">
           <img className="kids-grandmaster__frame" src={master.src} alt="" width={845} height={1200} />
           {master.nodSrc ? (
