@@ -591,3 +591,100 @@ test('the DQ figure stays off names, gyms, score cards, and Home', async ({ brow
     }
   }
 });
+
+test('phone DQ banner stays clear and the popup is placed again when the banner ends', async ({ browser }) => {
+  const viewports = [
+    { width: 390, height: 844 },
+    { width: 1440, height: 900 },
+  ] as const;
+  const sides = [
+    { side: 'blue' as const, word: 'Paused' as const, remainingMs: 120000 },
+    { side: 'white' as const, word: 'Ended' as const, remainingMs: 0 },
+  ];
+
+  for (const viewport of viewports) {
+    for (const row of sides) {
+      const opened = await openSeeded(browser, viewport.width, viewport.height, {
+        'matboard.match.v1': {
+          ...pointsMatch(4, { remainingMs: row.remainingMs }),
+          grandmaster: { enabled: true, onWin: true, onPoints: true, pointsThreshold: 1 },
+          dqDisappointed: { enabled: true, playedAt: null },
+        },
+      });
+      await opened.page.goto('/match?from=suite');
+      const dismiss = opened.page.getByRole('button', { name: 'Dismiss' });
+      if (await dismiss.count()) await dismiss.click();
+      await expect(opened.page.locator('.clock-btn')).toBeVisible();
+      await opened.page.evaluate((side) => {
+        const at = Date.now() + 30_000;
+        const channel = new BroadcastChannel('matboard-match-v1');
+        channel.postMessage({
+          type: 'action',
+          action: {
+            type: 'beginOutcome',
+            outcome: { call: 'dq', reason: 'technical', side, source: 'manual', at },
+            flash: { kind: 'dq', side, at },
+          },
+        });
+        channel.close();
+      }, row.side);
+      await expect(opened.page.locator('.kids-grandmaster')).toHaveCount(0);
+      await expect(opened.page.locator('.display-splash__line')).toHaveText('Disqualified — Technical');
+      await expect(opened.page.locator('.display-splash__card[data-band-settled]')).toBeAttached();
+      const places = Number(await opened.page.locator('.dq-disappointed').getAttribute('data-place-count'));
+      expect(places, `${viewport.width} ${row.side}`).toBeGreaterThanOrEqual(2);
+
+      if (viewport.width <= 599) {
+        const width = await opened.page.locator('.dq-disappointed__figure').evaluate((el) => el.getBoundingClientRect().width);
+        expect(width).toBeGreaterThanOrEqual(100);
+        expect(width).toBeLessThanOrEqual(110);
+        const gutter = await opened.page
+          .locator('.display')
+          .evaluate((el) => getComputedStyle(el).getPropertyValue('--band-figure-gutter').trim());
+        expect(Number.parseFloat(gutter)).toBeGreaterThanOrEqual(100);
+        for (const line of ['Disqualified — Technical', 'Winner by referee decision']) {
+          await opened.page.evaluate((next) => {
+            const node = document.querySelector('.display-splash__line');
+            if (node) node.textContent = next;
+            window.dispatchEvent(new Event('resize'));
+          }, line);
+          const hits = await opened.page.evaluate(() => {
+            const figure = document.querySelector('.dq-disappointed__figure');
+            if (!(figure instanceof HTMLElement)) return ['missing figure'];
+            const cover = figure.getBoundingClientRect();
+            const hits: string[] = [];
+            for (const node of document.querySelectorAll('.display-splash__name, .display-splash__line')) {
+              if (!(node instanceof HTMLElement)) continue;
+              const range = document.createRange();
+              range.selectNodeContents(node);
+              const label = (node.textContent || '').replace(/\s+/g, ' ').trim();
+              for (const rect of range.getClientRects()) {
+                const ix = Math.min(cover.right, rect.right) - Math.max(cover.left, rect.left);
+                const iy = Math.min(cover.bottom, rect.bottom) - Math.max(cover.top, rect.top);
+                if (ix > 1 && iy > 1) hits.push(`${label} ${Math.round(ix)}x${Math.round(iy)}`);
+              }
+            }
+            return hits;
+          });
+          expect(hits, `${viewport.width} ${row.side} ${line}: ${hits.join(' | ')}`).toEqual([]);
+        }
+      } else {
+        await expect(opened.page.locator('.display--band-figure')).toHaveCount(0);
+        const width = await opened.page.locator('.dq-disappointed__figure').evaluate((el) => el.getBoundingClientRect().width);
+        expect(width).toBeGreaterThan(110);
+        const padding = await opened.page.locator('.display-splash__card').evaluate((el) => getComputedStyle(el).paddingRight);
+        expect(padding).toBe('0px');
+      }
+
+      await opened.page.evaluate(() => {
+        const channel = new BroadcastChannel('matboard-match-v1');
+        channel.postMessage({ type: 'action', action: { type: 'setOutcomeFlash', value: null } });
+        channel.close();
+      });
+      await expect(opened.page.locator('.display-splash')).toHaveCount(0);
+      await expect(opened.page.locator('.dq-disappointed')).toHaveCount(0);
+      await statusWordVisible(opened.page, row.word);
+      await opened.context.close();
+    }
+  }
+});

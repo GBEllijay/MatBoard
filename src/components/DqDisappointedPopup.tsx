@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { placeBandFigure } from './GrandmasterCheer';
+import { clearBandFigureGutter, placeBandFigure, watchSplashSettle } from './GrandmasterCheer';
 import {
   DQ_DISAPPOINTED_SAFETY_MS,
   DQ_DISAPPOINTED_STILL,
@@ -50,9 +50,13 @@ export function DqDisappointedPopup({
     place();
     window.addEventListener('resize', place);
     void document.fonts?.ready.then(place);
+    const display = root.closest('.display');
+    const stopSplash = display instanceof HTMLElement ? watchSplashSettle(display, place) : () => {};
     return () => {
       alive = false;
       window.removeEventListener('resize', place);
+      stopSplash();
+      if (display instanceof HTMLElement) clearBandFigureGutter(display);
     };
   }, [still]);
 
