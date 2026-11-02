@@ -1,5 +1,12 @@
+import { LEARN_MORE, MEDIA_INFO_PATH } from './learnMore.ts';
 import { MEDIA_EDITION_PATH } from './mediaEdition.ts';
-import { PRO_DRIVE_NOTE, PRO_PLUS_CLOUD_DESCRIPTION, PRO_PLUS_CLOUD_NAME } from './productNames.ts';
+import {
+  INSTRUCTOR_DRIVE_REQUIREMENT,
+  PRO_DRIVE_NOTE,
+  PRO_PLUS_CLOUD_DESCRIPTION,
+  PRO_PLUS_CLOUD_INFO_PATH,
+  PRO_PLUS_CLOUD_NAME,
+} from './productNames.ts';
 import { INSTRUCTOR_DISPLAY_PRICE_LINE, PRO_PLUS_CLOUD_PRICE_LINE } from './productPrices.ts';
 import { STOREFRONT_STEPS, type StorefrontStep } from './storefront.ts';
 import { TIER_BUY_PATHS } from './tierBuyPages.ts';
@@ -44,11 +51,18 @@ export type BeltRung = {
   detail?: string;
   /** Visible control on this tile, when the tile is not one big link. */
   learnLabel?: string;
+  /** Learn more target when it differs from `to`. */
+  learnTo?: string;
   /** Empty when there is no product price yet. */
   cardPrice: string;
   status: StorefrontStep['status'];
   /** Router path, or null for the alpha-request mail link. */
-  to: StorefrontStep['to'] | (typeof TIER_BUY_PATHS)[keyof typeof TIER_BUY_PATHS] | typeof MEDIA_EDITION_PATH | null;
+  to:
+    | StorefrontStep['to']
+    | (typeof TIER_BUY_PATHS)[keyof typeof TIER_BUY_PATHS]
+    | typeof MEDIA_EDITION_PATH
+    | typeof PRO_PLUS_CLOUD_INFO_PATH
+    | null;
 };
 
 function step(id: StorefrontStep['id']): StorefrontStep {
@@ -73,6 +87,7 @@ export const STOREFRONT_BELT_LADDER: readonly BeltRung[] = [
     cardPrice: white.cardPrice,
     status: white.status,
     to: white.to,
+    learnLabel: LEARN_MORE.white.label,
   },
   {
     id: 'student',
@@ -86,6 +101,7 @@ export const STOREFRONT_BELT_LADDER: readonly BeltRung[] = [
     status: student.status,
     // Student Edition buy page. White and Media were already wired.
     to: TIER_BUY_PATHS.student,
+    learnLabel: LEARN_MORE.student.label,
   },
   {
     id: 'academy',
@@ -94,7 +110,8 @@ export const STOREFRONT_BELT_LADDER: readonly BeltRung[] = [
     rankLabel: 'MEDIA',
     title: 'Advantage Media Edition',
     blurb: 'Scoreboard, round timer, and media console.',
-    learnLabel: 'Learn more about Media Edition',
+    learnLabel: LEARN_MORE.media.label,
+    learnTo: MEDIA_INFO_PATH,
     // Display only: there is no Media (id academy) product in Stripe.
     cardPrice: '$29.99 one-time',
     status: 'Coming soon',
@@ -109,9 +126,11 @@ export const STOREFRONT_BELT_LADDER: readonly BeltRung[] = [
     title: 'Advantage Instructor Edition',
     blurb: 'Daily lesson plans, videos, and enhanced training tools.',
     // Display only on this tile: Stripe still charges the Coach product at $29.99.
+    detail: INSTRUCTOR_DRIVE_REQUIREMENT,
     cardPrice: INSTRUCTOR_DISPLAY_PRICE_LINE,
     status: coach.status,
     to: TIER_BUY_PATHS.instructor,
+    learnLabel: LEARN_MORE.instructor.label,
   },
   {
     id: 'pro',
@@ -126,6 +145,7 @@ export const STOREFRONT_BELT_LADDER: readonly BeltRung[] = [
     cardPrice: pro.cardPrice,
     status: pro.status,
     to: TIER_BUY_PATHS.pro,
+    learnLabel: LEARN_MORE.pro.label,
     bar: 'red',
   },
   {
@@ -138,9 +158,9 @@ export const STOREFRONT_BELT_LADDER: readonly BeltRung[] = [
     blurb: PRO_PLUS_CLOUD_DESCRIPTION,
     cardPrice: PRO_PLUS_CLOUD_PRICE_LINE,
     status: 'Coming soon',
-    // No product page and no checkout. The tile is the alpha-code email.
-    to: null,
+    to: PRO_PLUS_CLOUD_INFO_PATH,
+    learnLabel: LEARN_MORE.proCloud.label,
   },
 ];
 
-export const STOREFRONT_LADDER_NOTE = 'Student, Media, Instructor, Pro and Pro Plus Cloud are in alpha testing.';
+export const STOREFRONT_LADDER_NOTE = 'Student, Media, Instructor, Pro and Advantage Pro + Cloud are in alpha testing.';

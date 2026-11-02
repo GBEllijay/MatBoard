@@ -27,11 +27,11 @@ test('home picker keeps White, Instructor (coach), and Pro, with locked Student 
     'Advantage Media Edition',
     'Advantage Instructor Edition',
     'Advantage Pro',
-    'Advantage Pro Plus Cloud',
+    'Advantage Pro + Cloud',
   ]);
 
   const white = page.locator('.mode-card--white');
-  await expect(white.getByRole('link', { name: 'Advantage White' })).toHaveAttribute('href', '/buy');
+  await expect(white.getByRole('link', { name: 'Advantage White', exact: true })).toHaveAttribute('href', '/buy');
   await expect(white.getByRole('link', { name: 'Buy — $9.99' })).toHaveAttribute('href', '/buy');
   await expect(white.getByRole('link', { name: 'advantageappllc@gmail.com' })).toBeVisible();
   await expect(white).toContainText('White is in alpha testing.');

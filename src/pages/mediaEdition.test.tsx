@@ -55,6 +55,7 @@ function mount(entry: string, open = false) {
             element={<MediaEditionGate open={open} paid={<p data-paid-console="">paid console</p>} />}
           />
           <Route path="/media-edition" element={<Navigate to="/media" replace />} />
+          <Route path="/editions/media" element={<MediaEditionPage />} />
           <Route path="/suite-menu" element={<SuiteMenuLinks links={COMPETITION_PRO_MENU} label="suite" />} />
           <Route path="/hub" element={<MediaEditionHubPage />} />
           <Route path="/edition-menu" element={<SuiteMenuLinks links={MEDIA_EDITION_MENU} label="edition" />} />
@@ -83,10 +84,11 @@ test('route renders the Media Edition page with its title, price, belt and CTA',
   const cta = host.querySelector('a.btn.btn--white') as HTMLAnchorElement | null;
   assert.equal(cta?.textContent, 'Request an alpha code');
   assert.match(cta?.getAttribute('href') ?? '', /^mailto:advantageappllc@gmail\.com/);
+  assert.ok(host.querySelector('form.alpha-code__form input[name="code"]'));
   assert.match(host.textContent ?? '', /In alpha testing\. Email advantageappLLC@gmail\.com for a free alpha code\./);
   assert.match(host.textContent ?? '', /Includes everything in Advantage White\./);
-  // Not for sale: no checkout form or buy button on the page.
-  assert.equal(host.querySelector('form'), null);
+  // Not for sale: the only form is the alpha code box. No checkout or buy button.
+  assert.equal(host.querySelector('form:not(.alpha-code__form)'), null);
   for (const b of host.querySelectorAll('button')) assert.doesNotMatch(b.textContent ?? '', /buy|checkout|pay|purchase/i);
   assert.doesNotMatch(host.innerHTML, /checkout\.stripe|\/api\/.*checkout/i);
   m.done();
@@ -106,7 +108,7 @@ test('tier template: Restore link, then only the higher tiers (Instructor, Pro)'
   // Restore comes after the Media card and before the higher tiers.
   const order = [...host.querySelectorAll('section.buy__restore, [data-higher-tiers]')];
   assert.equal(order[0], restore.closest('section'));
-  assert.equal(host.querySelector('form'), null);
+  assert.equal(host.querySelector('form:not(.alpha-code__form)'), null);
   m.done();
 });
 
@@ -135,14 +137,14 @@ test('feature list renders the real Media Console features', () => {
   m.done();
 });
 
-test('homepage Media Edition card links to /media and lands on the page', () => {
+test('homepage Media Edition Learn more opens the description page', () => {
   const m = mount('/');
   const learn = [...m.host.querySelectorAll('a')].find((a) => (a.textContent ?? '').includes('Learn more about Media Edition'));
-  assert.equal(learn?.getAttribute('href'), '/media');
+  assert.equal(learn?.getAttribute('href'), '/editions/media');
   act(() => {
     learn?.dispatchEvent(new view.MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }) as unknown as Event);
   });
-  assert.equal(path, '/media');
+  assert.equal(path, '/editions/media');
   assert.equal(m.host.querySelector('header.buy__card--belt h2')?.textContent, 'Advantage Media Edition');
   m.done();
 });

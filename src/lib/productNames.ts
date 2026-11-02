@@ -65,15 +65,22 @@ export const PRO_HOME_LINES = [
 export const PRO_DRIVE_NOTE =
   'Requires your own Google Drive or OneDrive. Advantage does not host it.';
 
-/** Display name for the hosted-storage plan. No checkout product. */
-export const PRO_PLUS_CLOUD_NAME = 'Advantage Pro Plus Cloud';
+/** Instructor Edition requirement. Advantage does not host the gym drive. */
+export const INSTRUCTOR_DRIVE_REQUIREMENT =
+  'Requires gym setup with a third-party drive (Google Drive, OneDrive, or Dropbox). Advantage does not host it.';
+
+/** Display name for the hosted-storage plan. No checkout product. The constant name stays. */
+export const PRO_PLUS_CLOUD_NAME = 'Advantage Pro + Cloud';
 
 /** Public page the unlocked card opens. Display only: not a paid chunk. */
 export const PRO_PLUS_CLOUD_PATH = '/pro-plus-cloud';
 
+/** Public description page. Not the unlocked menu. */
+export const PRO_PLUS_CLOUD_INFO_PATH = '/editions/pro-cloud';
+
 /** Home and /products card body. */
 export const PRO_PLUS_CLOUD_DESCRIPTION =
-  'Advantage-hosted storage on Cloudflare. Your own Google Drive stays on Advantage Pro.';
+  'Advantage hosted cross-platform communication. Easiest way to use Advantage.';
 
 /** Unlocked card button. Owner and alpha only; there is no checkout. */
 export const PRO_PLUS_CLOUD_OPEN_LABEL = 'Open Pro Cloud Plus Console';

@@ -89,7 +89,10 @@ test('purple belt is the Media Console cloth #6b2d91', () => {
 test('not for sale: no checkout, Stripe, code kind or entitlement; CTA is the alpha email', () => {
   const code = page.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
   assert.doesNotMatch(code, /checkout|stripe|redeem|entitle|WHITE_CHECKOUT_API|fetch\(/i);
-  assert.match(page, /href=\{alphaRequestMailto\(\)\}/);
+  assert.match(page, /<AlphaCodeEntry tier="media" \/>/);
+  const entry = readFileSync(new URL('../components/AlphaCodeEntry.tsx', import.meta.url), 'utf8');
+  assert.match(entry, /href=\{alphaRequestMailto\(\)\}/);
+  assert.match(entry, /redeemAccessCode\(/);
   // Owner alpha line for the tier buy pages (feat/tier-buy-pages). The Media constant is kept.
   assert.match(page, /<AlphaAccessNote note=\{EDITION_ALPHA_NOTE\} display=\{EDITION_EMAIL_DISPLAY\} \/>/);
   assert.equal(

@@ -64,7 +64,7 @@ function fakeTurnstile() {
 
 function Where() {
   const location = useLocation();
-  return <p data-testid="where">{location.pathname}</p>;
+  return <p data-testid="where">{`${location.pathname}${location.search}`}</p>;
 }
 
 async function mount(node: ReactNode, entry: string): Promise<{ root: Root; host: HTMLElement }> {
@@ -138,7 +138,7 @@ test.beforeEach(() => {
   sessionStorage.clear();
 });
 
-test('/buy has no restore email box and its Restore button opens /restore', async () => {
+test('/buy email is sent with a code and Restore opens /restore with that email', async () => {
   const mounted = await mount(<BuyWhitePage />, '/buy');
   const { host } = mounted;
   assert.ok(host.textContent?.includes(BUY_RESTORE_COPY));
@@ -159,6 +159,27 @@ test('/buy has no restore email box and its Restore button opens /restore', asyn
     calls.some((call) => call.url.includes('/api/restore/request')),
     false,
   );
+  unmount(mounted);
+});
+
+test('White unlock box sends the email with the code and shows the server error', async () => {
+  respond = () => ({ ok: false, error: "That code didn't work." });
+  const mounted = await mount(<BuyWhitePage />, '/buy');
+  const { host } = mounted;
+  const code = host.querySelector('#promotion-code') as HTMLInputElement;
+  const email = host.querySelector('input[name="email"]') as HTMLInputElement;
+  assert.ok(code && email);
+  await setInput(code, 'ABCD-EFGH-IJKL-MNOP-QR');
+  await setInput(email, 'fan@gym.test');
+  await submit(host.querySelector('form.alpha-code__form') as HTMLFormElement);
+  const redeem = calls.find((call) => call.url.includes('/api/codes/redeem'));
+  assert.ok(redeem, 'redeem request');
+  assert.equal(redeem?.body?.email, 'fan@gym.test');
+  assert.equal(redeem?.body?.code, 'ABCD-EFGH-IJKL-MNOP-QR');
+  assert.match(host.textContent ?? '', /That code didn't work\./);
+  const restore = button(host, 'Restore');
+  await act(async () => restore.click());
+  assert.equal(host.querySelector('[data-testid="where"]')?.textContent, '/restore?email=fan%40gym.test');
   unmount(mounted);
 });
 

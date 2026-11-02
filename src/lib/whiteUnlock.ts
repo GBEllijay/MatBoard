@@ -114,6 +114,13 @@ export function isWhiteRestoreEmail(raw: string): boolean {
   return true;
 }
 
+/** /restore, with the buy-page email filled in when it is a usable address. */
+export function restoreHref(email: string): string {
+  const trimmed = email.trim();
+  if (!isWhiteRestoreEmail(trimmed)) return '/restore';
+  return `/restore?email=${encodeURIComponent(trimmed)}`;
+}
+
 export type WhiteRestoreResult = { ok: true; message: string; challengeId: string } | { ok: false; error: string };
 
 /**

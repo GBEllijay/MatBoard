@@ -3,12 +3,10 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { HistoryBackMark } from '../components/HistoryBackMark';
 import { AlphaAccessNote } from '../components/AlphaAccessNote';
 import { BeltRail } from '../components/BeltRail';
-import { ComingSoonAd, ComingSoonAdActions } from '../components/ComingSoonAd';
 import { HomeMark } from '../components/HomeMark';
+import { LearnMoreLink } from '../components/LearnMoreLink';
 import { OwnerTestSheet } from '../components/OwnerTestSheet';
-import { ProUnlockSheet } from '../components/ProUnlockSheet';
 import { useCurrentSeat } from '../components/SeatSessionBar';
-import { Sheet } from '../components/Sheet';
 import { SiteFooter } from '../components/SiteFooter';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProPlusCloudUnlocked } from '../hooks/useProPlusCloud';
@@ -16,15 +14,12 @@ import { useSeatDoor } from '../hooks/useSeatDoor';
 import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
 import { useMediaUnlocked } from '../hooks/useMediaUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
-import {
-  COMING_SOON_ADS,
-  type SoonProduct,
-} from '../lib/comingSoonAds';
 import { studentDemoMode, studentEditionEntitled, studentEditionOpen } from '../lib/studentEdition';
 import {
   COACH_HOME_DESCRIPTION,
   COACH_UNLIMITED_PATH,
   HOME_MOTTO,
+  INSTRUCTOR_DRIVE_REQUIREMENT,
   INSTRUCTOR_HOME_TITLE,
   MEDIA_HOME_DESCRIPTION,
   MEDIA_HOME_PATH,
@@ -32,6 +27,7 @@ import {
   PRO_DRIVE_NOTE,
   PRO_HOME_LINES,
   PRO_PLUS_CLOUD_DESCRIPTION,
+  PRO_PLUS_CLOUD_INFO_PATH,
   PRO_PLUS_CLOUD_NAME,
   PRO_PLUS_CLOUD_OPEN_LABEL,
   PRO_PLUS_CLOUD_PATH,
@@ -58,7 +54,6 @@ import {
 } from '../lib/productPrices';
 import { WHITE_PRICE_LABEL } from '../lib/whitePurchase';
 import { whiteEntryPath } from '../lib/whiteUnlock';
-import { alphaRequestMailto } from '../lib/siteFooter';
 import { TIER_BUY_PATHS } from '../lib/tierBuyPages';
 
 export function HomePage() {
@@ -89,14 +84,7 @@ export function HomePage() {
   const instructorUnlimited = coachUnlimitedDoorOpen(door);
   const instructorOpenTo = instructorUnlimited ? COACH_UNLIMITED_PATH : '/coach';
   const instructorOpenLabel = instructorUnlimited ? 'Open Advantage Instructor Edition' : 'Open Coach';
-  const [unlockOpen, setUnlockOpen] = useState<'coach' | 'pro' | 'student' | null>(null);
   const [ownerTestOpen, setOwnerTestOpen] = useState(false);
-  const [soon, setSoon] = useState<SoonProduct | null>(null);
-
-  const openUnlock = (product: 'coach' | 'pro' | 'student') => {
-    setSoon(null);
-    setUnlockOpen(product);
-  };
 
   return (
     <main className="home home--ladder">
@@ -107,14 +95,18 @@ export function HomePage() {
 
         <nav className="home__modes" aria-label="Products">
           {whiteUnlocked ? (
-            <Link className="mode-card mode-card--white" to={whiteEntryPath(true)}>
+            <article className="mode-card mode-card--white">
+              <Link className="mode-card__hit" to={whiteEntryPath(true)} tabIndex={-1} aria-label="Open White" />
               <BeltRail kind="white" />
               <strong>Advantage White</strong>
               <HomeDescription text={WHITE_HOME_DESCRIPTION} />
               <span className="mode-card__actions">
-                <span className="btn btn--white">Open White</span>
+                <Link className="btn btn--white" to={whiteEntryPath(true)}>
+                  Open White
+                </Link>
+                <LearnMoreLink tier="white" />
               </span>
-            </Link>
+            </article>
           ) : (
             <article className="mode-card mode-card--white">
               <Link className="mode-card__hit" to={whiteEntryPath(false)} aria-label="Advantage White" />
@@ -125,17 +117,13 @@ export function HomePage() {
                 <Link className="btn btn--white" to={whiteEntryPath(false)}>
                   {`Buy — ${WHITE_PRICE_LABEL}`}
                 </Link>
+                <LearnMoreLink tier="white" />
               </span>
               <AlphaAccessNote note={WHITE_ALPHA_ACCESS_NOTE} />
             </article>
           )}
 
-          <StudentHomeCard
-            open={studentOpen}
-            demo={studentDemo}
-            to={studentTo}
-            onSoon={() => setSoon('student')}
-          />
+          <StudentHomeCard open={studentOpen} demo={studentDemo} to={studentTo} />
 
           <MediaHomeCard open={mediaUnlocked && !seated} />
 
@@ -150,10 +138,12 @@ export function HomePage() {
               <BeltRail kind="brown" />
               <strong>{INSTRUCTOR_HOME_TITLE}</strong>
               <HomeDescription text={COACH_HOME_DESCRIPTION} />
+              <HomeDescription text={INSTRUCTOR_DRIVE_REQUIREMENT} />
               <div className="mode-card__actions">
                 <Link className="btn btn--white" to={instructorOpenTo}>
                   {instructorOpenLabel}
                 </Link>
+                <LearnMoreLink tier="instructor" />
               </div>
             </article>
           ) : (
@@ -166,12 +156,11 @@ export function HomePage() {
               <BeltRail kind="brown" />
               <strong>{INSTRUCTOR_HOME_TITLE}</strong>
               <HomeDescription text={COACH_HOME_DESCRIPTION} />
+              <HomeDescription text={INSTRUCTOR_DRIVE_REQUIREMENT} />
               <p className="mode-card__price">{INSTRUCTOR_DISPLAY_PRICE_LINE}</p>
               <AlphaAccessNote note={EDITION_ALPHA_NOTE} display={EDITION_EMAIL_DISPLAY} />
               <div className="mode-card__actions">
-                <button type="button" className="btn btn--white mode-card__learn" onClick={() => setSoon('coach')}>
-                  Learn more about Instructor Edition
-                </button>
+                <LearnMoreLink tier="instructor" />
               </div>
             </article>
           )}
@@ -189,6 +178,7 @@ export function HomePage() {
                 <Link className="btn btn--white" to="/pro">
                   Open Pro Console
                 </Link>
+                <LearnMoreLink tier="pro" />
               </div>
             </article>
           ) : (
@@ -198,9 +188,7 @@ export function HomePage() {
               {seated ? null : <p className="mode-card__price">{PRO_PRICE_LINE}</p>}
               <AlphaAccessNote note={EDITION_ALPHA_NOTE} display={EDITION_EMAIL_DISPLAY} />
               <div className="mode-card__actions">
-                <button type="button" className="btn btn--white mode-card__learn" onClick={() => setSoon('pro')}>
-                  Learn more about Advantage Pro
-                </button>
+                <LearnMoreLink tier="pro" />
               </div>
             </article>
           )}
@@ -221,35 +209,6 @@ export function HomePage() {
         <SiteFooter />
       </div>
 
-      <Sheet
-        className="sheet--ad"
-        open={soon !== null}
-        title={soon ? COMING_SOON_ADS[soon].title : 'Coming soon'}
-        onClose={() => setSoon(null)}
-        footer={
-          soon ? (
-            <ComingSoonAdActions
-              product={soon}
-              onDismiss={() => setSoon(null)}
-              extraAction={
-                soon === 'coach' || soon === 'pro' || soon === 'student'
-                  ? {
-                      label: 'Owner unlock',
-                      onClick: () => openUnlock(soon),
-                    }
-                  : undefined
-              }
-            />
-          ) : null
-        }
-      >
-        {soon ? <ComingSoonAd product={soon} /> : null}
-      </Sheet>
-      <ProUnlockSheet
-        product={unlockOpen ?? 'pro'}
-        open={unlockOpen !== null}
-        onClose={() => setUnlockOpen(null)}
-      />
       <OwnerTestSheet open={ownerTestOpen} onClose={() => setOwnerTestOpen(false)} />
     </main>
   );
@@ -259,12 +218,10 @@ function StudentHomeCard({
   open,
   demo,
   to,
-  onSoon,
 }: {
   open: boolean;
   demo: boolean;
   to: string;
-  onSoon: () => void;
 }) {
   const body = (
     <>
@@ -282,6 +239,7 @@ function StudentHomeCard({
           <Link className="btn btn--white" to={to}>
             {demo ? 'Open demo' : 'Open Student Edition'}
           </Link>
+          <LearnMoreLink tier="student" />
         </div>
       </article>
     );
@@ -295,10 +253,7 @@ function StudentHomeCard({
         <Link className="btn btn--white" to="/student?student=1">
           Try the demo
         </Link>
-        {/* The card hit opens the Student buy page; this keeps the Student sheet (and its Owner unlock). */}
-        <button type="button" className="btn btn--ghost mode-card__learn" onClick={onSoon}>
-          Learn more about Student Edition
-        </button>
+        <LearnMoreLink tier="student" />
       </div>
       <AlphaAccessNote note={STUDENT_ALPHA_ACCESS_NOTE} />
     </article>
@@ -322,6 +277,7 @@ function MediaHomeCard({ open }: { open: boolean }) {
           <Link className="btn btn--white" to={MEDIA_HOME_PATH}>
             Open Media Edition
           </Link>
+          <LearnMoreLink tier="media" />
         </div>
       </article>
     );
@@ -335,9 +291,7 @@ function MediaHomeCard({ open }: { open: boolean }) {
       <p className="mode-card__price">{MEDIA_PRICE_LINE}</p>
       <AlphaAccessNote note={EDITION_ALPHA_NOTE} display={EDITION_EMAIL_DISPLAY} />
       <div className="mode-card__actions">
-        <Link className="btn btn--white mode-card__learn" to={TIER_BUY_PATHS.media}>
-          Learn more about Media Edition
-        </Link>
+        <LearnMoreLink tier="media" />
       </div>
     </article>
   );
@@ -356,18 +310,22 @@ function ProPlusCloudCard({ open }: { open: boolean }) {
           <Link className="btn btn--white" to={PRO_PLUS_CLOUD_PATH}>
             {PRO_PLUS_CLOUD_OPEN_LABEL}
           </Link>
+          <LearnMoreLink tier="proCloud" />
         </div>
       </article>
     );
   }
   return (
     <article className="mode-card mode-card--pro mode-card--cloud mode-card--locked">
-      <a className="mode-card__hit" href={alphaRequestMailto()} aria-label="Advantage Pro Plus Cloud, coming soon" />
+      <Link className="mode-card__hit" to={PRO_PLUS_CLOUD_INFO_PATH} aria-label={`${PRO_PLUS_CLOUD_NAME}, coming soon`} />
       <BeltRail kind="black" bar="striped" />
       <strong>{PRO_PLUS_CLOUD_NAME}</strong>
       <HomeDescription text={PRO_PLUS_CLOUD_DESCRIPTION} />
       <p className="mode-card__price">{PRO_PLUS_CLOUD_PRICE_LINE}</p>
       <AlphaAccessNote note={EDITION_ALPHA_NOTE} display={EDITION_EMAIL_DISPLAY} />
+      <div className="mode-card__actions">
+        <LearnMoreLink tier="proCloud" />
+      </div>
     </article>
   );
 }
