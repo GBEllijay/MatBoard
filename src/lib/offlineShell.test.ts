@@ -108,3 +108,76 @@ test('a dead or failing navigation falls back to the precached index, and a good
     Object.defineProperty(globalThis, 'caches', { configurable: true, value: originalCaches });
   }
 });
+
+test('navigations are fetched with no RequestInit, so Chrome does not reject deep links', async () => {
+  const handler = createAppShellHandler();
+  const originalFetch = globalThis.fetch;
+  const originalCaches = globalThis.caches;
+  let matched = 0;
+  Object.defineProperty(globalThis, 'caches', {
+    configurable: true,
+    value: {
+      match: async () => {
+        matched += 1;
+        return new Response('shell', { status: 200 });
+      },
+    },
+  });
+  try {
+    // Chrome: a navigate-mode Request plus any init throws a TypeError.
+    globalThis.fetch = async (_input: unknown, init?: unknown) => {
+      if (init !== undefined) throw new TypeError("Cannot construct a Request with a Request whose mode is 'navigate' and a non-empty RequestInit.");
+      return new Response('live deep link', { status: 200 });
+    };
+    for (const path of ['/pro', '/instructors', '/slideshow?folder=gallery', '/terms']) {
+      const res = await handler({ request: new Request(`https://gym.example${path}`) });
+      assert.equal(await res.text(), 'live deep link', path);
+    }
+    assert.equal(matched, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+    Object.defineProperty(globalThis, 'caches', { configurable: true, value: originalCaches });
+  }
+});
+
+test('a slow network still falls back to the shell after 4 seconds', async () => {
+  const handler = createAppShellHandler();
+  const originalFetch = globalThis.fetch;
+  const originalCaches = globalThis.caches;
+  const originalSetTimeout = globalThis.setTimeout;
+  Object.defineProperty(globalThis, 'caches', {
+    configurable: true,
+    value: { match: async () => new Response('shell', { status: 200 }) },
+  });
+  try {
+    globalThis.setTimeout = ((fn: () => void) => originalSetTimeout(fn, 0)) as typeof setTimeout;
+    globalThis.fetch = () => new Promise<Response>(() => {});
+    const res = await handler({ request: new Request('https://gym.example/pro') });
+    assert.equal(await res.text(), 'shell');
+  } finally {
+    globalThis.setTimeout = originalSetTimeout;
+    globalThis.fetch = originalFetch;
+    Object.defineProperty(globalThis, 'caches', { configurable: true, value: originalCaches });
+  }
+});
+
+test('a shell cached through a redirect is served as a plain response', async () => {
+  const handler = createAppShellHandler();
+  const originalFetch = globalThis.fetch;
+  const originalCaches = globalThis.caches;
+  const redirected = new Response('shell', { status: 200, headers: { 'content-type': 'text/html' } });
+  Object.defineProperty(redirected, 'redirected', { value: true });
+  Object.defineProperty(globalThis, 'caches', { configurable: true, value: { match: async () => redirected } });
+  try {
+    globalThis.fetch = async () => {
+      throw new Error('offline');
+    };
+    const res = await handler({ request: new Request('https://gym.example/notes') });
+    assert.equal(res.redirected, false);
+    assert.equal(res.status, 200);
+    assert.equal(await res.text(), 'shell');
+  } finally {
+    globalThis.fetch = originalFetch;
+    Object.defineProperty(globalThis, 'caches', { configurable: true, value: originalCaches });
+  }
+});
