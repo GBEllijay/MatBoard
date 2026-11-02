@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } fr
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { ClassPhotoPromotions } from '../components/ClassPhotoPromotions';
 import { GalleryPendingNotice } from '../components/GalleryPendingNotice';
+import { CloudLapseNotice } from '../components/CloudLapseNotice';
 import { DriveVideoFolders } from '../components/DriveVideoFolders';
 import { CompetitionCurriculumPage } from './CompetitionCurriculum';
 import { CardHideScreen, LessonCoverProvider, LessonScreenHide } from '../components/LessonScreenCover';
@@ -1341,6 +1342,7 @@ export function TrainingNotesPage() {
             </aside>
           </>
         ) : null}
+        {showDistribute ? <CloudLapseNotice /> : null}
         {showDistribute ? <GalleryPendingNotice dateKey={viewKey} /> : null}
         {showDistribute ? <ClassPhotoPromotions dateKey={viewKey} readOnly={!editingToday} /> : null}
         </>

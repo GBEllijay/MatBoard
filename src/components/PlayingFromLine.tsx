@@ -2,12 +2,16 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import { subscribeDriveBinding, readDriveBinding } from '../lib/googleDrive';
 import { chooseGymHome, playingFromCopy, probeAdvantageCloud, type GymHomeId } from '../lib/gymHome';
 import { readOneDriveBinding, subscribeOneDriveBinding } from '../lib/oneDrive';
+import { readCloudLapse } from '../lib/cloudLapse';
 import { proPlusCloudUnlocked, subscribeProPlusCloud } from '../lib/proPlusCloud';
 
 function snapshotHome(cloudBound: boolean): GymHomeId {
+  const plusCloudActive = proPlusCloudUnlocked();
+  const lapsed = typeof localStorage !== 'undefined' && readCloudLapse(localStorage, Date.now(), plusCloudActive).phase !== 'hidden';
   return chooseGymHome({
-    plusCloudActive: proPlusCloudUnlocked(),
+    plusCloudActive,
     cloudBound,
+    cloudLapsed: lapsed,
     driveConnected: Boolean(readDriveBinding()),
     oneDriveConnected: Boolean(readOneDriveBinding()),
   });
