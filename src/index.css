@@ -263,6 +263,25 @@ label.btn {
   background-image: none;
 }
 
+/* White tier timer skins. Same three base looks as the scoreboard picker. */
+.controller.controller--wt-mock,
+.controller.controller--wt-mock.controller--break {
+  background: #2728b5;
+  background-image: none;
+}
+
+.controller.controller--wt-old,
+.controller.controller--wt-old.controller--break {
+  background: #111111;
+  background-image: none;
+}
+
+.controller.controller--wt-quick,
+.controller.controller--wt-quick.controller--break {
+  background: #223bca;
+  background-image: none;
+}
+
 .home {
   min-height: 100dvh;
   isolation: isolate;
@@ -4813,6 +4832,33 @@ label {
 
 .training--themed .training__phase {
   color: #fff;
+}
+
+/* White tier timer skins. Mock-Tournament uses the tournament blue. Old School is the matte board. Quick Result keeps that blue with the advantage orange phase line. */
+.training.training--wt-mock,
+.training.training--wt-mock.training--break {
+  background: #2728b5;
+  background-image: none;
+}
+
+.training.training--wt-old,
+.training.training--wt-old.training--break {
+  background: #111111;
+  background-image: none;
+}
+
+.training.training--wt-old .training__phase {
+  color: #ef3d2c;
+}
+
+.training.training--wt-quick,
+.training.training--wt-quick.training--break {
+  background: #2728b5;
+  background-image: none;
+}
+
+.training.training--wt-quick .training__phase {
+  color: #fc9c36;
 }
 
 .training__clock {

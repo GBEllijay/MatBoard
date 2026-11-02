@@ -1,5 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import { subscribeEntitlement } from '../lib/entitlement';
+import { isCoachUnlocked } from '../lib/coachUnlock';
+import { isMediaUnlocked } from '../lib/mediaUnlock';
 import { polishedSkinsUnlocked, type PolishedTimerSlug } from '../lib/polishedSkins';
+import { isProUnlocked } from '../lib/proUnlock';
+import { isStudentEditionUnlocked } from '../lib/studentUnlock';
+import { isWhiteUnlocked } from '../lib/whiteUnlock';
+import { whiteBaseSkinTier } from '../lib/whiteSkinTier';
 import { loadedPolishedSkin, loadPolishedSkin, type PolishedSkinModule } from '../skins/polished/load';
 import { useSeatDoor } from './useSeatDoor';
 
@@ -9,6 +16,21 @@ import { useSeatDoor } from './useSeatDoor';
  */
 export function usePolishedSkinsUnlocked(): boolean {
   return polishedSkinsUnlocked(useSeatDoor());
+}
+
+function readWhiteBaseSkinTier(): boolean {
+  return whiteBaseSkinTier({
+    white: isWhiteUnlocked(),
+    student: isStudentEditionUnlocked(),
+    media: isMediaUnlocked(),
+    coach: isCoachUnlocked(),
+    pro: isProUnlocked(),
+  });
+}
+
+/** Advantage White with no higher door. Same doors the rest of the app already reads. */
+export function useWhiteBaseSkins(): boolean {
+  return useSyncExternalStore(subscribeEntitlement, readWhiteBaseSkinTier, readWhiteBaseSkinTier);
 }
 
 /** The skin's CSS, fonts, and decorations, loaded on first use. Null while loading. */

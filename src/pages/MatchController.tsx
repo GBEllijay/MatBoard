@@ -149,11 +149,11 @@ export function MatchControllerPage() {
         }
       />
 
-      {board.kidsSkin || (plainWhite && !board.polishedOpen) ? null : (
+      {board.kidsSkin || (plainWhite && !board.polishedOpen && !board.whiteBaseSkins) ? null : (
         <section className="kids-switch-panel" aria-label="Scoreboard skin">
           <p className="cue-preview-label">Scoreboard skin</p>
-          {/* Media Edition and above: one Skins button in place of the old toggle. */}
-          {board.polishedOpen ? <ScoreboardSkinPicker /> : <ScoreboardSkinSwitcher skin={match.skin} />}
+          {/* Media and above, and Advantage White: one Skins button. A suite board below Media keeps the toggle. */}
+          {board.polishedOpen || board.whiteBaseSkins ? <ScoreboardSkinPicker /> : <ScoreboardSkinSwitcher skin={match.skin} />}
         </section>
       )}
 
