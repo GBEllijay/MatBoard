@@ -48,6 +48,7 @@ import {
 } from '../lib/driveMediaPicker';
 import { formatMss, secondsToMs } from '../lib/format';
 import { publishGymFile } from '../lib/gymPublish';
+import { PlayingFromLine } from '../components/PlayingFromLine';
 import { GALLERY_LINK_DONE, galleryItemShows, nextClassFromDays } from '../lib/gallerySchedule';
 import { downloadDriveFile, getDriveBindingSnapshot, requestDriveToken, subscribeDriveBinding } from '../lib/googleDrive';
 import {
@@ -760,6 +761,7 @@ export function ScreensaverPage() {
       ) : (
         <div className="saver__empty" onClick={(e) => e.stopPropagation()}>
           <h1>{hubTitle}</h1>
+          <PlayingFromLine />
           <p>{emptyCopy}</p>
           {focusConfig.ready && focusEmpty && focusCanUpload ? (
             <>
@@ -813,6 +815,7 @@ export function ScreensaverPage() {
         }
       >
         {beltInSheet ? beltHeader : null}
+        <PlayingFromLine />
         {options && batchStatus ? (
           <BatchStatus panel status={batchStatus} onDismiss={() => setBatchStatus(null)} />
         ) : null}
