@@ -5,6 +5,7 @@ import { OutcomeCalls, OutcomePickSheet, useOutcomeSheet } from '../components/O
 import { OutcomeSplash } from '../components/OutcomeSplash';
 import { TvTip } from '../components/TvTip';
 import { RankChip } from '../components/RankChip';
+import { DqDisappointedPopup } from '../components/DqDisappointedPopup';
 import { GrandmasterCheer, grandmasterIdFromLocation } from '../components/GrandmasterCheer';
 import { PolishedScoreboard } from '../components/PolishedScoreboard';
 import { ScoreBox } from '../components/ScoreBox';
@@ -23,6 +24,7 @@ import { competitorFocus, type DisplayFocus } from '../lib/matchFocus';
 import { dispatchMatch, expireMatchClock, remainingNow, type Side } from '../lib/matchStore';
 import { needsRefDecision } from '../lib/outcomes';
 import { formatMmSs } from '../lib/format';
+import { dqDisappointedShouldPlay } from '../lib/dqDisappointed';
 import { grandmasterCheerKey, grandmasterMatchComplete, matchGrandmasterView } from '../lib/grandmasterCelebration';
 import { resolveGrandmasterId } from '../lib/grandmasters';
 import { kidsBoardClass } from '../lib/kidsScoreboard';
@@ -110,6 +112,19 @@ export function MatchDisplayPage() {
     if (match.grandmaster.cheerKey === cheerKey && match.grandmaster.masterId === masterId) return;
     dispatchMatch({ type: 'setGrandmaster', value: { masterId, cheerKey } });
   }, [forcedMaster, cheerKey, masterId, match.grandmaster.cheerKey, match.grandmaster.masterId]);
+
+  const dqAt = match.outcome?.call === 'dq' ? match.outcome.at : null;
+  const dqReady =
+    board.showGrandmaster &&
+    dqDisappointedShouldPlay({ prefs: match.dqDisappointed, outcome: match.outcome });
+  const [dqLocalAt, setDqLocalAt] = useState<number | null>(null);
+  useEffect(() => {
+    if (!dqReady || dqAt == null || dqLocalAt === dqAt) return;
+    setDqLocalAt(dqAt);
+    dispatchMatch({ type: 'setDqDisappointed', value: { playedAt: dqAt } });
+  }, [dqReady, dqAt, dqLocalAt]);
+  const finishDq = useCallback(() => setDqLocalAt(null), []);
+  const showDq = dqLocalAt != null && dqAt === dqLocalAt && match.dqDisappointed.enabled;
 
   const clockControl = (
     <button type="button" className="clock-btn" onClick={toggleClock} aria-label="Start or pause match clock">
@@ -348,6 +363,9 @@ export function MatchDisplayPage() {
       {splash ? <OutcomeSplash outcome={splash} name={splashName} /> : null}
       {grandmaster.show && masterId ? (
         <GrandmasterCheer lines={grandmaster.lines} masterId={forcedMaster ?? masterId} board />
+      ) : null}
+      {showDq && match.outcome?.call === 'dq' ? (
+        <DqDisappointedPopup key={dqLocalAt} side={match.outcome.side} onFinished={finishDq} />
       ) : null}
     </main>
   );

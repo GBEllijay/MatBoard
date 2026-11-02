@@ -319,7 +319,10 @@ function reservePhoneGutter(root: HTMLElement, display: HTMLElement, figure: HTM
 export function watchSplashSettle(display: HTMLElement, place: () => void): () => void {
   const splash = display.querySelector('.display-splash__card');
   if (!(splash instanceof HTMLElement)) return () => {};
-  const onSplash = () => place();
+  const onSplash = () => {
+    splash.dataset.bandSettled = '1';
+    place();
+  };
   splash.addEventListener('animationend', onSplash);
   const timer = window.setTimeout(onSplash, 750);
   return () => {
