@@ -153,7 +153,7 @@ test('an issued invite keeps the picked role, seat count, and permission edit', 
   await unlock(page);
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/instructors');
-  await expect(page.locator('.invite-seat-cap__count')).toHaveText('0 of 10 seats used');
+  await expect(page.locator('.invite-seat-cap__count')).toHaveText('0 of 5 free instructor seats used');
 
   await page.getByLabel('Instructor email').fill('coach@gym.test');
   await page.getByRole('radio', { name: ROLES[2].radio }).click();
@@ -161,9 +161,9 @@ test('an issued invite keeps the picked role, seat count, and permission edit', 
   await page.getByRole('button', { name: 'Issue invite' }).click();
   await expect(page.getByRole('textbox', { name: 'Invite link', exact: true })).toBeVisible();
   await expect(page.locator('.invite-link')).toContainText('Coach Unlimited');
-  await expect(page.locator('.invite-seat-cap__count')).toHaveText('1 of 10 seats used');
-  await expect(page.locator('.binder-list__seats')).toContainText('1 of 10 seats used');
-  await expect(page.locator('.binder-list__seats')).toContainText('9 seats remaining');
+  await expect(page.locator('.invite-seat-cap__count')).toHaveText('1 of 5 free instructor seats used');
+  await expect(page.locator('.binder-list__seats')).toContainText('1 of 5 free instructor seats used');
+  await expect(page.locator('.binder-list__seats')).toContainText('4 seats remaining');
   await expect(page.getByText('Coach · adjusted', { exact: true })).toBeVisible();
 
   const others = [
@@ -175,7 +175,7 @@ test('an issued invite keeps the picked role, seat count, and permission edit', 
     await page.getByLabel('Instructor email').fill(item.email);
     await page.getByRole('radio', { name: item.role.radio }).click();
     await page.getByRole('button', { name: 'Issue invite' }).click();
-    await expect(page.locator('.invite-seat-cap__count')).toHaveText(`${index + 2} of 10 seats used`);
+    await expect(page.locator('.invite-seat-cap__count')).toHaveText(`${index + 2} of 5 free instructor seats used`);
     await expect(page.getByText(item.role.label, { exact: true }).first()).toBeVisible();
   }
 
@@ -218,7 +218,7 @@ test('an issued invite keeps the picked role, seat count, and permission edit', 
   expect(saved?.presetId).toBe('program-director');
   expect(saved?.permissions.galleryUpload).toBe(true);
   expect(saved?.permissions.eventsAccess).toBe(true);
-  await expect(page.locator('.invite-seat-cap__count')).toHaveText('4 of 10 seats used');
+  await expect(page.locator('.invite-seat-cap__count')).toHaveText('4 of 5 free instructor seats used');
 });
 
 test('mobile binder row peeks and scrolls to the last role', async ({ page }) => {

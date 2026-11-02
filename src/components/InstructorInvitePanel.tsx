@@ -192,6 +192,7 @@ export function InstructorInvitePanel() {
           <GalleryApprovalSwitch viewer={{ role: 'owner' }} />
           <strong>Generate instructor invite</strong>
           <span className="invite-form__note">
+            Pro includes 5 free instructor seats and 5 free Student Edition licenses.
             Pick a role, then change any switch for this person. The role chooses which menus
             open. Inside those menus, cloud and sharing match the owner. The link stays on this
             device until the gym Google Drive folder carries it. Nothing is emailed or billed.
