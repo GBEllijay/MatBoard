@@ -317,3 +317,21 @@
     text-align: center;
   }
 }
+
+/*
+ * Decoration never takes a tap (found by e2e/skin-function-sweep.spec.ts).
+ * These layers paint over a button. They stay visible but taps go through to the button under them.
+ * - Visionary timer: the full-size layer that turns the eye round the ring sits over the center clock.
+ * - Brasil timer: the white progress ring SVG (z-index 4) sits over the center clock.
+ * - Brasil board, phone portrait: the clock's diamonds and side padding cover the status pill
+ *   ("Paused"/"Start"), so a tap there missed it and opened the Controller. Only the clock wrapper
+ *   lets taps through; the clock button inside it still takes them.
+ */
+.skin-root[data-skin='visionary'] .halo-wrap .knob,
+.skin-root[data-skin='brasil'] .gring,
+.skin-root[data-skin='brasil'] .sb .band > .clock {
+  pointer-events: none;
+}
+.skin-root[data-skin='brasil'] .sb .band > .clock > * {
+  pointer-events: auto;
+}
