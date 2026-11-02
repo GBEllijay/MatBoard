@@ -105,6 +105,8 @@ async function bubbleClearOfFace(page: Page) {
 }
 
 async function expectBubbleClear(page: Page) {
+  const dismiss = page.getByRole('button', { name: 'Dismiss' });
+  if (await dismiss.count()) await dismiss.click();
   const report = await bubbleClearOfFace(page);
   expect(report.shown, 'grandmaster face and bubble').toBe(true);
   expect(report.hits, report.hits.join(' | ')).toEqual([]);
@@ -278,6 +280,44 @@ test('post-champion corner keeps text off each grandmaster’s face', async ({ b
       if (master === 'd') await expect(opened.page.locator('.kids-grandmaster__frame--nod')).toHaveCSS('opacity', '0');
       await expectBubbleClear(opened.page);
       await opened.context.close();
+    }
+  }
+});
+
+test('board cheer stays off names, gyms, score cards, and Home', async ({ browser }) => {
+  const storage = { 'matboard.match.v1': pointsMatch(4) };
+  const viewports = [
+    { width: 1440, height: 900 },
+    { width: 390, height: 844 },
+  ];
+  for (const master of MASTERS) {
+    for (const viewport of viewports) {
+      const board = await openSeeded(browser, viewport.width, viewport.height, storage);
+      await board.page.goto(`/match?from=suite&grandmaster=${master}`);
+      await expect(board.page.locator('.kids-grandmaster')).toHaveAttribute('data-grandmaster', master);
+      const hits = await board.page.evaluate(() => {
+        const figure = document.querySelector('.kids-grandmaster__figure');
+        const bubble = document.querySelector('.kids-grandmaster__bubble');
+        if (!(figure instanceof HTMLElement) || !(bubble instanceof HTMLElement)) return ['missing figure'];
+        const covers = [figure.getBoundingClientRect(), bubble.getBoundingClientRect()];
+        const hits: string[] = [];
+        const blockers = document.querySelectorAll('.bout__who h1, .bout__who p, .display .score, .display__chrome a');
+        for (const node of blockers) {
+          if (!(node instanceof HTMLElement)) continue;
+          const box = node.getBoundingClientRect();
+          if (box.width < 2 || box.height < 2) continue;
+          const label = (node.innerText || node.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 32);
+          for (const cover of covers) {
+            const ix = Math.min(cover.right, box.right) - Math.max(cover.left, box.left);
+            const iy = Math.min(cover.bottom, box.bottom) - Math.max(cover.top, box.top);
+            if (ix > 1 && iy > 1) hits.push(`${label || node.className} ${Math.round(ix)}x${Math.round(iy)}`);
+          }
+        }
+        return hits;
+      });
+      expect(hits, `${master} ${viewport.width}x${viewport.height}: ${hits.join(' | ')}`).toEqual([]);
+      await expectBubbleClear(board.page);
+      await board.context.close();
     }
   }
 });
