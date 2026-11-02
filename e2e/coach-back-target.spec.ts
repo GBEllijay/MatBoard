@@ -45,17 +45,24 @@ test('Coach Unlimited and Pro keep their own back target', async ({ page }) => {
     await openToolAndBack(page, '/coach-unlimited', name, '/coach-unlimited');
   }
 
-  await openToolAndBack(page, '/coach-unlimited', 'Competitor Roster', '/coach-unlimited');
+  await page.goto('/coach-unlimited');
+  await page.getByRole('link', { name: 'Student Roster', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Student Roster', exact: true })).toBeVisible();
+  await expect(page.getByText('Coming soon.', { exact: true })).toBeVisible();
+  const rosterBack = page.getByRole('link', { name: BACK });
+  await expect(rosterBack).toHaveAttribute('href', '/coach-unlimited');
+  await rosterBack.click();
+  await expect(page).toHaveURL(/\/coach-unlimited$/);
 
   await page.goto('/pro');
-  await page.getByRole('link', { name: 'Advantage Coach Unlimited', exact: true }).click();
+  await page.getByRole('link', { name: 'Advantage Instructor Edition', exact: true }).click();
   await expect(page).toHaveURL(/\/coach-unlimited$/);
   await page.getByRole('link', { name: 'Daily Training Videos', exact: true }).click();
   await page.getByRole('link', { name: BACK }).click();
   await expect(page).toHaveURL(/\/coach-unlimited$/);
 
   await page.goto('/pro');
-  await page.getByRole('link', { name: 'Tournament Management Pro', exact: true }).click();
+  await page.getByRole('link', { name: 'Competition and Tournament Management', exact: true }).click();
   await expect(page).toHaveURL(/\/suite$/);
   await page.getByRole('link', { name: 'Brackets-Tournament Software', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Tournament Software' })).toBeVisible();

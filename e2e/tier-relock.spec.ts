@@ -77,14 +77,19 @@ test('re-lock White and Student Edition, then the codes open them again', async 
   await expect(page).toHaveURL(/\/buy$/);
   await expect(page.getByRole('button', { name: 'Continue to checkout — $9.99' })).toBeVisible();
   await expect(page.getByText('Advantage White is unlocked on this device.')).toHaveCount(0);
-  await expect(page.getByRole('heading', { name: 'Already purchased?' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Restore', exact: true })).toBeVisible();
+  await expect(
+    page.getByText(
+      'Already purchased? Enter the email from checkout. If it matches the purchase, we will email a one-time code.',
+    ),
+  ).toBeVisible();
   await page.screenshot({ path: `${ARTIFACTS}/white-locked-buy.png`, fullPage: true });
 
   await page.goto('/products');
   await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/buy');
   await expect(page.getByRole('link', { name: 'Buy — $9.99' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Open Student Edition', exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Open Coach', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open Advantage Instructor Edition', exact: true })).toBeVisible();
   await page.screenshot({ path: `${ARTIFACTS}/white-locked-products.png`, fullPage: true });
 
   await page.evaluate(() => {
@@ -102,7 +107,7 @@ test('re-lock White and Student Edition, then the codes open them again', async 
   await expect(page).toHaveURL(/\/products$/);
   await expect(page.getByRole('button', { name: 'Advantage Student Edition, coming soon' })).toBeVisible();
   await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/white');
-  await expect(page.getByRole('link', { name: 'Open Coach', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open Advantage Instructor Edition', exact: true })).toBeVisible();
   await page.screenshot({ path: `${ARTIFACTS}/student-locked-products.png`, fullPage: true });
 
   await page.goto('/student');
@@ -153,14 +158,14 @@ test('re-lock White and Student Edition, then the codes open them again', async 
   await page.getByRole('button', { name: 'Lock Pro' }).click();
   await page.goto('/products');
   await expect(page.getByRole('button', { name: 'Advantage Pro, coming soon' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Open Coach', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open Advantage Instructor Edition', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/white');
 
   await page.goto('/coach');
   await expect(page.getByRole('button', { name: 'Lock Coach' })).toHaveClass(/home__text-btn/);
   await page.getByRole('button', { name: 'Lock Coach' }).click();
   await page.goto('/products');
-  await expect(page.getByRole('button', { name: 'Advantage Coach, coming soon' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Advantage Instructor Edition, coming soon' })).toBeVisible();
   await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/white');
 
   const after = await page.evaluate(() => localStorage.getItem('matboard.studentEdition.v1'));

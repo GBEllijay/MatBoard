@@ -1,3 +1,4 @@
+import { impliedDoors } from './tierImplications.ts';
 import { doorOpen, notifyEntitlement, subscribeEntitlement } from './entitlement.ts';
 import { WHITE_RELOCK_KEY } from './legacyUnlock.ts';
 import { lockStudentEdition } from './studentUnlock.ts';
@@ -73,13 +74,13 @@ export function lockWhite(): void {
 /** Keep a server-confirmed Stripe result on this device so /white opens. */
 export function rememberWhitePurchase(status: { entitled: boolean; grants?: string[] }): boolean {
   if (!status.entitled) return false;
-  if (status.grants && !status.grants.includes('white')) return false;
+  if (status.grants && !impliedDoors(status.grants).includes('white')) return false;
   setWhiteExpiry(null);
   writeFlag(true);
   return true;
 }
 
-/** Advantage White hub and roster. Coach and Pro doors do not open these. */
+/** Advantage White hub and roster. `whiteUnlocked` already includes Coach and Pro (tierImplications.ts). */
 export function whiteHubAllowed(whiteUnlocked: boolean): boolean {
   return whiteUnlocked;
 }

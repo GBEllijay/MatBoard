@@ -23,10 +23,49 @@
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
 }
 
+/* Student hub belt: the Student tier blue from the homepage ladder. */
+.s-hub .belt-header--blue .belt-header__belt {
+  --cloth: #2a5cf0;
+}
+
+.s-hub .belt-header {
+  margin: 0;
+}
+
 .s-hub__intro {
   display: grid;
   gap: 8px;
   padding: 0 2px 4px;
+}
+
+.s-hub__intro--photo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.s-hub__intro--photo p {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.s-hub__avatar,
+.s-profile__avatar {
+  flex: none;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #102033;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+
+.s-hub__avatar {
+  width: 64px;
+  height: 64px;
+}
+
+.s-profile__avatar {
+  width: 48px;
+  height: 48px;
 }
 
 .s-hub__intro h2,

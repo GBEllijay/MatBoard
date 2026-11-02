@@ -1,4 +1,6 @@
-import { COMPETITOR_ROSTER_LABEL, TECHNIQUE_TREE_LABEL, TRAINING_NOTES_LABEL } from './coachCopy.ts';
+import type { EntitlementClaims } from './entitlementToken.ts';
+import { paidChunkForHref, paidChunkMenuAgrees } from './paidChunkAccess.ts';
+import { COMPETITOR_ROSTER_LABEL, STUDENT_ROSTER_LABEL, TECHNIQUE_TREE_LABEL, TRAINING_NOTES_LABEL } from './coachCopy.ts';
 
 /** User-facing Advantage Pro console name. Keep this exact apostrophe. */
 export const GYM_CONSOLE_NAME = "Gym Owner and Instructor's Console";
@@ -17,9 +19,27 @@ export const STUDENT_EDITION_NAME = 'Advantage – Student Edition';
 export const STUDENT_HOME_DESCRIPTION =
   'A personal BJJ training journal with rank and stripes, fundamentals proficiency, and competitor prep.';
 
+/** Blue belt title at the top of the Student hub (/student), like the /media and /pro belts. */
+export const STUDENT_EDITION_HUB_TITLE = 'Advantage Student Edition';
+
 /** Home Coach card body. The only line under the Advantage Coach title. */
 export const COACH_HOME_DESCRIPTION =
-  'Daily lesson plans, training videos, and a technique tree. Includes everything in Advantage White.';
+  'Downloadable daily lesson plans, training videos, and a technique tree. Includes everything in Media, Student and White.';
+
+/** /products title on the Coach card (brown belt). Display only: code kind, entitlement, routes and ids stay `coach`. */
+export const INSTRUCTOR_HOME_TITLE = 'Advantage Instructor Edition';
+
+/** /products Media card (purple belt). Display only: no Media product, code kind, or entitlement exists. */
+export const MEDIA_HOME_TITLE = 'Advantage Media Edition';
+
+/**
+ * /products Media card link. The Media Edition page is built on draft PR #330.
+ * Note: on main `/media` is also a Media Console shortcut (MEDIA_CONSOLE_ROUTES) until that page owns it.
+ */
+export const MEDIA_HOME_PATH = '/media';
+
+/** /products Media card body. Same words as the homepage belt ladder's Media tile. */
+export const MEDIA_HOME_DESCRIPTION = 'Scoreboard, round timer, and media console.';
 
 /** Line under the black Advantage Pro belt. Not the Owner Console page title. */
 export const PRO_LADDER_DETAIL = 'Gym Owner and Instructors Console';
@@ -38,8 +58,55 @@ export const PRO_HOME_DETAIL = `${GYM_CONSOLE_NAME} — Coming Soon`;
  * The longer appetite copy stays in PRO_COMING_SOON_LINES and off this card.
  */
 export const PRO_HOME_LINES = [
-  'Academy management with a shared drive, events, pro shop, and gallery, plus instructor collaboration and student seats. Includes everything in Advantage Coach.',
+  'Academy management with a shared drive, events, pro shop, and gallery, plus instructor collaboration and student seats. Includes all Advantage products.',
 ] as const;
+
+/** One line under the Pro card. Advantage does not host this drive. */
+export const PRO_DRIVE_NOTE =
+  'Requires your own Google Drive or OneDrive. Advantage does not host it.';
+
+/** Display name for the hosted-storage plan. No checkout product. */
+export const PRO_PLUS_CLOUD_NAME = 'Advantage Pro Plus Cloud';
+
+/** Public page the unlocked card opens. Display only: not a paid chunk. */
+export const PRO_PLUS_CLOUD_PATH = '/pro-plus-cloud';
+
+/** Home and /products card body. */
+export const PRO_PLUS_CLOUD_DESCRIPTION =
+  'Advantage-hosted storage on Cloudflare. Your own Google Drive stays on Advantage Pro.';
+
+/** Unlocked card button. Owner and alpha only; there is no checkout. */
+export const PRO_PLUS_CLOUD_OPEN_LABEL = 'Open Pro Cloud Plus Console';
+
+/**
+ * Belt line under Advantage Pro Plus Cloud.
+ * Separate from PRO_LADDER_DETAIL, which stays the Advantage Pro blurb.
+ */
+export const PRO_PLUS_CLOUD_BELT_BLURB = 'Gym Owner and Instructors Console, with Advantage Cloud.';
+
+/** Heading of the static block under the four hubs. */
+export const ADVANTAGE_CLOUD_HEADING = 'Advantage Cloud';
+
+/** Status beside that heading. Plain text, not a control. */
+export const ADVANTAGE_CLOUD_STATUS = 'Coming soon';
+
+/** Lead above the four upload steps. */
+export const ADVANTAGE_CLOUD_UPLOAD_LEAD = 'How uploading will work';
+
+/** The four upload steps. No button runs them yet. */
+export const ADVANTAGE_CLOUD_UPLOAD_STEPS = [
+  'Pick a photo or video on this phone.',
+  'Add it from Media Console, Gallery, Events, or Pro Shop.',
+  'Advantage saves that file in Advantage Cloud.',
+  'The gym TV plays it from Advantage Cloud.',
+] as const;
+
+/**
+ * Note under the steps. This plan does not use the gym's own drive,
+ * and Advantage App LLC does not host a drive the gym owns.
+ */
+export const ADVANTAGE_CLOUD_DRIVE_NOTE =
+  'This subscription does not need Google Drive or OneDrive. Advantage hosts Advantage Cloud. Advantage App LLC does not host or manage a drive you own yourself.';
 
 /** In-app edition picker. The public storefront lives at `/`. */
 export const PRODUCTS_PATH = '/products';
@@ -133,8 +200,13 @@ export const COACH_HUBS = [
   { title: 'Daily Training Videos', to: COACH_VIDEOS_PATH, belt: 'coach' as const },
   { title: TECHNIQUE_TREE_LABEL, to: COACH_TREE_PATH, belt: 'coach' as const },
   { title: 'Student Roster', to: STUDENT_ROSTER_PATH, belt: 'coach' as const },
+  // Instructor Edition has no Pro door, so /suite is closed. This is the competitor list those users can still open.
+  { title: COMPETITOR_ROSTER_LABEL, to: `/roster?from=${COACH_BOARD_FROM}`, belt: 'tournament' as const },
   { title: MOCK_TOURNAMENT_NAME, to: `/tournament?from=${COACH_BOARD_FROM}`, belt: 'tournament' as const },
 ] as const;
+
+/** Placeholder for the future master student list. No roster data. Same gate as Coach Unlimited. */
+export const STUDENT_ROSTER_PLACEHOLDER_PATH = '/student-roster';
 
 /**
  * Limited Coach opens `/notes` with no plan flag.
@@ -160,16 +232,20 @@ export function coachingToolsMenu(unlimited: boolean) {
 /**
  * Advantage Coach Unlimited menu, top to bottom.
  * Daily Lesson Plan is the Unlimited plan that can be uploaded for review.
- * Competitor Roster sits under Technique Tree and opens the same list as Competitor Management System.
+ * Student Roster is a placeholder for the future master student list. It does not open the competitor list.
  * The four brown rails wear 0-3 white stripes, counted from the tip up toward the header's 4.
+ * Scoreboard and Round Timer are the Competition and Tournament Management controllers, with the same black belt.
+ * `from=unlimited` sends Back to Coach Unlimited, not the Suite.
  * Sunday review and Drive cards stay on the page, under this menu.
  * Competition Class Curriculum opens from the Daily Lesson Plan template picker.
  */
 export const COACH_UNLIMITED_TOOLS = [
-  { title: TRAINING_NOTES_LABEL, to: UNLIMITED_LESSON_PATH, belt: 'brown' as const, stripes: 0 as const },
-  { title: 'Daily Training Videos', to: UNLIMITED_VIDEOS_PATH, belt: 'brown' as const, stripes: 1 as const },
-  { title: TECHNIQUE_TREE_LABEL, to: UNLIMITED_TREE_PATH, belt: 'brown' as const, stripes: 2 as const },
-  { title: COMPETITOR_ROSTER_LABEL, to: UNLIMITED_ROSTER_PATH, belt: 'brown' as const, stripes: 3 as const },
+  { title: TRAINING_NOTES_LABEL, to: UNLIMITED_LESSON_PATH, belt: 'brown' as const, stripes: 0 as const, clearBout: false as const },
+  { title: 'Daily Training Videos', to: UNLIMITED_VIDEOS_PATH, belt: 'brown' as const, stripes: 1 as const, clearBout: false as const },
+  { title: TECHNIQUE_TREE_LABEL, to: UNLIMITED_TREE_PATH, belt: 'brown' as const, stripes: 2 as const, clearBout: false as const },
+  { title: STUDENT_ROSTER_LABEL, to: STUDENT_ROSTER_PLACEHOLDER_PATH, belt: 'brown' as const, stripes: 3 as const, clearBout: false as const },
+  { title: 'Scoreboard', to: '/match/control?from=unlimited', belt: 'black' as const, clearBout: true as const },
+  { title: 'Round Timer', to: '/training/control?from=unlimited', belt: 'black' as const, clearBout: false as const },
 ] as const;
 
 /**
@@ -182,6 +258,7 @@ export const COACH_UNLIMITED_TOOLS = [
  */
 export const COMPETITION_MENU = [
   { title: COMPETITOR_SYSTEM_NAME, to: '/competitors?from=competition', belt: 'tournament' as const },
+  { title: COMPETITOR_ROSTER_LABEL, to: '/roster?from=competition', belt: 'tournament' as const },
   { title: MOCK_TOURNAMENT_NAME, to: '/tournament', belt: 'tournament' as const },
   { title: 'Scoreboard', to: '/match/control', belt: 'tournament' as const, clearBout: true as const },
   { title: 'Round Timer', to: '/training', belt: 'tournament' as const },
@@ -207,7 +284,7 @@ export const TOURNAMENT_SUITE_NAME = 'In-House Tournament Management Suite';
  * Fourth Advantage Pro hub button and the heading on the page it opens.
  * The Coming Soon ad keeps COMPETITION_MANAGEMENT_PRO_LABEL.
  */
-export const TOURNAMENT_MANAGEMENT_PRO_LABEL = 'Tournament Management Pro';
+export const TOURNAMENT_MANAGEMENT_PRO_LABEL = 'Competition and Tournament Management';
 
 /**
  * Lead under that heading. Rankings stay on Competitor Management System.
@@ -227,6 +304,12 @@ export const INSTRUCTOR_COLLAB_HUB_LABEL = 'Instructor Invitation and Access Man
 /** Pro hub that replaced Competitor Management System. Opens Unlimited tools. */
 export const INSTRUCTOR_COACH_ENTRY = 'Advantage Coach Unlimited';
 
+/**
+ * Display label for that hub in Pro's feature lists (Pro console hubs, Pro Coming Soon ad).
+ * Text only: the Coach Unlimited screen, route, kinds and entitlements keep their names.
+ */
+export const PRO_INSTRUCTOR_HUB_LABEL = 'Advantage Instructor Edition';
+
 /** Pro gym-TV cast hub. Same screen Gallery opens. Not a rename of the Owner Console. */
 export const MEDIA_CONSOLE_NAME = 'Media Console';
 
@@ -236,7 +319,7 @@ export const MEDIA_CONSOLE_NAME = 'Media Console';
  */
 export const PRO_HUBS = [
   { title: MEDIA_CONSOLE_NAME, to: '/slideshow?folder=gallery', belt: 'purple' },
-  { title: INSTRUCTOR_COACH_ENTRY, to: COACH_UNLIMITED_PATH, belt: 'brown' },
+  { title: PRO_INSTRUCTOR_HUB_LABEL, to: COACH_UNLIMITED_PATH, belt: 'brown' },
   { title: INSTRUCTOR_COLLAB_HUB_LABEL, to: '/instructors', belt: 'black' },
   { title: TOURNAMENT_MANAGEMENT_PRO_LABEL, to: '/suite', belt: 'tournament' },
 ] as const;
@@ -278,7 +361,7 @@ export function withSuiteFrom(path: string, fromSuite: boolean): string {
 }
 
 /**
- * Tournament Management Pro folder, top to bottom.
+ * Competition and Tournament Management folder, top to bottom.
  * Brackets and Competitor Management System use the yellow/green competition belt.
  * Scoreboard and Round Timer use the black belt. Both stay title-only.
  * Brackets opens the same mock-tournament board.
@@ -299,6 +382,12 @@ export const COMPETITION_PRO_MENU = [
     clearBout: false,
   },
   {
+    title: COMPETITOR_ROSTER_LABEL,
+    to: withSuiteFrom('/roster', true),
+    belt: 'tournament' as const,
+    clearBout: false,
+  },
+  {
     title: 'Scoreboard',
     to: withSuiteFrom(MATCH_CONTROLLER_PATH, true),
     belt: 'black' as const,
@@ -311,6 +400,43 @@ export const COMPETITION_PRO_MENU = [
     clearBout: false,
   },
 ] as const;
+
+/** One stacked button on the Tournament Management Pro menu. */
+export type SuiteMenuLink = {
+  readonly title: string;
+  readonly to: string;
+  readonly belt: 'tournament' | 'black' | 'purple';
+  readonly clearBout: boolean;
+  /** Optional second line under the title. /suite buttons have none. */
+  readonly sub?: string;
+};
+
+const suiteMenuLink = (title: string) => {
+  const link = COMPETITION_PRO_MENU.find((item) => item.title === title);
+  if (!link) throw new Error(`Missing suite menu link: ${title}`);
+  return link;
+};
+
+/**
+ * Media Edition hub buttons (/media), top to bottom: Scoreboard, Round Timer,
+ * Media Console. Scoreboard and Round Timer are the Tournament Management Pro
+ * entries (same path, ?from=suite, belt and bout reset), so they open the same
+ * screens. Each hub button adds one short subtitle line, and all three wear the
+ * purple Media belt accent (the /suite entries keep their black belts).
+ * Media Console opens the same full page as the Pro hub's Media Console.
+ */
+export const MEDIA_EDITION_MENU: readonly SuiteMenuLink[] = [
+  // Hub only: purple belt accent so all three /media buttons match. /suite keeps black.
+  { ...suiteMenuLink('Scoreboard'), belt: 'purple', sub: 'Live match scoring. Easily cast to your gym TV.' },
+  { ...suiteMenuLink('Round Timer'), belt: 'purple', sub: 'Rounds and rest. Easily cast to your gym TV.' },
+  {
+    title: MEDIA_CONSOLE_NAME,
+    to: '/slideshow?folder=gallery',
+    belt: 'purple',
+    clearBout: false,
+    sub: 'Slideshows, schedule, and events. Easily cast to your gym TV.',
+  },
+];
 
 /** Bottom-of-page guidance on the Media Console manage screen. */
 export const MEDIA_CONSOLE_INSTRUCTIONS = [
@@ -458,6 +584,17 @@ export type ProSurfaceInput = {
   programDirectorSeat: boolean;
   /** Invite granted Daily Lesson Plan or Daily Training Videos. */
   coachMenus: boolean;
+  /**
+   * Media Edition door on this browser (src/lib/mediaUnlock.ts). Pro includes it.
+   * Left out by older callers, it follows proUnlocked as before.
+   */
+  mediaUnlocked?: boolean;
+  /**
+   * Instructor Edition (coach) door on this browser (src/lib/coachUnlock.ts): an Instructor
+   * or legacy Coach purchase, the alpha-coach code, owner, or Pro. White, Student and Media
+   * never open it. Opens Coach Unlimited only when unseated. Left out, nothing changes.
+   */
+  coachUnlocked?: boolean;
 };
 
 /**
@@ -468,7 +605,8 @@ export type ProSurfaceInput = {
  * this browser's Pro unlock is off. A seat with none of those stays shut.
  */
 export function mediaConsoleDoorOpen(input: ProSurfaceInput): boolean {
-  if (!input.seated) return input.proUnlocked;
+  // No seat: the Media door (Media Edition, or Pro which includes it). Lock Media closes it.
+  if (!input.seated) return input.mediaUnlocked ?? input.proUnlocked;
   return input.seatGrantsMedia;
 }
 
@@ -482,19 +620,23 @@ export function closedDoorPath(seated: boolean): typeof PRODUCTS_PATH | '/coming
 }
 
 /**
- * Advantage Coach Unlimited hub.
- * No seat: browser Pro unlock.
- * A seat: Pro unlock plus a lesson or videos menu on the invite.
+ * Advantage Coach Unlimited hub (Instructor Edition, owner 2026-11-01).
+ * No seat: browser Pro unlock, or the Instructor (coach) door.
+ * A seat: Pro unlock plus a lesson or videos menu on the invite (unchanged).
  * Media Console is not this hub.
  */
 export function coachUnlimitedDoorOpen(input: ProSurfaceInput): boolean {
-  if (!input.seated) return input.proUnlocked;
+  if (!input.seated) return input.proUnlocked || input.coachUnlocked === true;
   return input.proUnlocked && input.coachMenus;
 }
 
 /** Hubs this browser may show. A seat never receives owner-only hubs. */
 export function visibleProHubs(input: ProSurfaceInput): readonly (typeof PRO_HUBS)[number][] {
-  if (!input.seated) return input.proUnlocked ? PRO_HUBS : [];
+  if (!input.seated) {
+    if (!input.proUnlocked) return [];
+    // Lock Media with Pro on hides the Media Console hub; Pro's other hubs stay.
+    return mediaConsoleDoorOpen(input) ? PRO_HUBS : PRO_HUBS.filter((hub) => !hub.to.startsWith('/slideshow'));
+  }
   const hubs: (typeof PRO_HUBS)[number][] = [];
   if (mediaConsoleDoorOpen(input)) {
     const media = PRO_HUBS.find((hub) => hub.to.startsWith('/slideshow'));
@@ -541,7 +683,11 @@ export const MEDIA_FOLDER_ROUTES: readonly { path: string; folder: MediaFolderId
 ];
 
 /** Paths that open the seat's Media Console on `/pro`. */
-export const MEDIA_CONSOLE_ROUTES = ['/media', '/media-console', '/console'] as const;
+/**
+ * Short aliases that open the seat console home. `/media` used to be one; it is
+ * now the Media Edition screen (MEDIA_EDITION_PATH in lib/mediaEdition).
+ */
+export const MEDIA_CONSOLE_ROUTES = ['/media-console', '/console'] as const;
 
 /**
  * Home button when any Pro hub is open.
@@ -599,6 +745,41 @@ export function consoleHubs(
     ...surfaces.map((surface) => ({ title: surface.title, to: surface.to, belt: surface.belt })),
     ...visibleProHubs(input).filter((hub) => !hub.to.startsWith('/slideshow')),
   ];
+}
+
+/**
+ * Home and /pro may offer a hub only when the signed token can download it.
+ * Owner pages that are not paid chunks (invites, suite) stay.
+ * With no token during amnesty, the existing list stays so the confirm screen
+ * can still open. A refused chunk is dropped, so the link is never shown.
+ */
+export function grantedConsoleHubs(
+  hubs: readonly ConsoleHub[],
+  claims: EntitlementClaims | null,
+  nowMs: number,
+  amnesty: boolean,
+): ConsoleHub[] {
+  return hubs.filter((hub) => {
+    const chunk = paidChunkForHref(hub.to);
+    if (!chunk) return true;
+    return paidChunkMenuAgrees({ claims, chunk, nowMs, doorOpen: true, amnesty });
+  });
+}
+
+/** /pro loads the pro-console chunk. The link exists only when that chunk would be granted. */
+export function proConsoleEntryOpen(
+  input: ProSurfaceInput,
+  claims: EntitlementClaims | null,
+  nowMs: number,
+  amnesty: boolean,
+): boolean {
+  return paidChunkMenuAgrees({
+    claims,
+    chunk: 'pro-console',
+    nowMs,
+    doorOpen: visibleProHubs(input).length > 0,
+    amnesty,
+  });
 }
 
 /**

@@ -221,6 +221,19 @@ label.btn {
   text-transform: uppercase;
 }
 
+.chrome__brand--button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  padding: 0.35rem 0;
+  min-height: 40px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .chrome__right {
   display: flex;
   flex-wrap: wrap;
@@ -452,6 +465,32 @@ label.btn {
   --belt-tip: #ef4444;
   --belt-tip-2: #0a0b0e;
   --belt-edge: rgba(255, 255, 255, 0.34);
+}
+
+/* Pro Plus Cloud card: black belt, white stripe, red bar, white stripe. Same art as the old Pro bar. */
+.belt-rail--black.belt-rail--striped {
+  background:
+    var(--belt-weave),
+    linear-gradient(
+      to right,
+      transparent 0,
+      transparent calc(var(--belt-rail-width) - 1px),
+      var(--belt-edge) calc(var(--belt-rail-width) - 1px),
+      var(--belt-edge) var(--belt-rail-width),
+      transparent var(--belt-rail-width)
+    ),
+    linear-gradient(
+      to top,
+      #0a0b0e 0,
+      #0a0b0e var(--belt-corner),
+      #f4f1ea var(--belt-corner),
+      #f4f1ea calc(var(--belt-corner) + 0.18rem),
+      #ef4444 calc(var(--belt-corner) + 0.18rem),
+      #ef4444 calc(var(--belt-corner) + 0.9rem),
+      #f4f1ea calc(var(--belt-corner) + 0.9rem),
+      #f4f1ea calc(var(--belt-corner) + 1.08rem),
+      #0a0b0e calc(var(--belt-corner) + 1.08rem)
+    );
 }
 
 /* Same-gi corner belts: forest + bright yellow blocks only — no tip stack. */
@@ -740,6 +779,27 @@ button.mode-card__hit {
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.36);
 }
 
+/* Learn-more buttons sit above the card hit layer and never get grayed. */
+.mode-card__learn {
+  position: relative;
+  z-index: 2;
+  white-space: normal;
+}
+.mode-card--locked > .mode-card__actions {
+  filter: none;
+}
+
+/* Unlocked Media card only (the locked card no longer carries --feature): bolder title.
+   No purple hue (owner, Nov 2026): it keeps the neutral fill, edge, and shadow of the other
+   product cards; only the purple belt rail on the left marks it. */
+.mode-card--media.mode-card--feature {
+  opacity: 1;
+}
+.mode-card--media.mode-card--feature > strong {
+  font-weight: 800;
+  filter: none;
+}
+
 /* Keep copy grayed without washing out the left-rail belt wink. */
 .mode-card--locked > :not(.belt-rail):not(.leather-spine):not(.alpha-access):not(.mode-card__price) {
   filter: saturate(0.45);
@@ -823,6 +883,14 @@ button.mode-card__hit {
   border-color: rgba(140, 168, 148, 0.18);
 }
 
+/* Media tier on /products. Locked it matches the other locked cards: neutral fill,
+   no purple tint or glow; only the purple belt rail on the left marks it. */
+.mode-card--media {
+  min-height: 10.5rem;
+  background: linear-gradient(145deg, #2a3546 0%, #151c28 48%, #0c1118 100%);
+  border-color: rgba(168, 188, 214, 0.2);
+}
+
 .mode-card--saver,
 .mode-card--pro {
   background: linear-gradient(145deg, #2a3546 0%, #151c28 48%, #0c1118 100%);
@@ -835,7 +903,6 @@ button.mode-card__hit {
 
 .mode-card--student {
   min-height: 10.5rem;
-  padding-left: 1.55rem;
   background:
     url('/student/black-leather-grain.png'),
     linear-gradient(165deg, #2c2c2c 0%, #161616 48%, #0c0c0c 100%);
@@ -847,8 +914,8 @@ button.mode-card__hit {
   border-color: rgba(198, 198, 198, 0.48);
 }
 
+/* Blue belt rail like the other tiers (the leather spine is gone), so no extra spine padding. */
 .home--ladder .mode-card.mode-card--student {
-  padding-left: 1.55rem;
   overflow: hidden;
 }
 
@@ -925,7 +992,8 @@ button.mode-card__hit {
 .home--ladder .mode-card--white .mode-card__actions,
 .home--ladder .mode-card--coach .mode-card__actions,
 .home--ladder .mode-card--pro .mode-card__actions,
-.home--ladder .mode-card--student .mode-card__actions {
+.home--ladder .mode-card--student .mode-card__actions,
+.home--ladder .mode-card--media .mode-card__actions {
   grid-template-columns: 1fr;
 }
 
@@ -1668,10 +1736,14 @@ button.mode-card__hit {
   }
 }
 
+/* In the page, under the pinned center logo and the top-left back mark.
+   Not sticky and not above those marks, so it cannot cover them. */
 .seat-session-dock {
-  position: sticky;
-  top: 0;
-  z-index: 45;
+  position: relative;
+  z-index: 20;
+  padding-top: calc(var(--mark-home-clear) + var(--safe-t));
+  background: transparent;
+  pointer-events: none;
 }
 
 @media print {
@@ -1689,7 +1761,8 @@ button.mode-card__hit {
   justify-content: space-between;
   gap: 0.75rem;
   margin: 0;
-  padding: calc(0.55rem + var(--safe-t)) calc(0.85rem + var(--safe-r)) 0.55rem calc(0.85rem + var(--safe-l));
+  pointer-events: auto;
+  padding: 0.55rem calc(0.85rem + var(--safe-r)) 0.55rem calc(0.85rem + var(--safe-l));
   background: rgba(7, 8, 11, 0.94);
   border-bottom: 1px solid var(--line);
   color: var(--ink);
@@ -1723,12 +1796,12 @@ button.mode-card__hit {
 }
 
 .seat-toast {
-  position: fixed;
-  top: calc(0.85rem + var(--safe-t));
-  left: 50%;
-  z-index: 60;
-  transform: translateX(-50%);
-  margin: 0;
+  position: relative;
+  z-index: 20;
+  width: max-content;
+  max-width: calc(100% - 1.5rem);
+  margin: 0.45rem auto 0;
+  pointer-events: none;
   padding: 0.7rem 1.1rem;
   border-radius: 999px;
   background: var(--logo-yellow);
@@ -2094,6 +2167,67 @@ span.role-plan__mark {
 .pro-hub .belt-rail {
   --belt-rail-width: 8px;
   --belt-block: 0.55rem;
+}
+
+/* Coming soon Advantage Cloud. Plain text on a hub card. Not a control. */
+.home__modes > .cloud-soon {
+  grid-column: 1 / -1;
+}
+
+.cloud-soon {
+  display: grid;
+  gap: 0.7rem;
+  width: 100%;
+  margin-top: 1rem;
+  padding: 1.15rem 1.2rem 1.25rem;
+  border-radius: 18px;
+  background: var(--white);
+  color: var(--white-ink);
+  text-align: left;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+}
+
+.cloud-soon__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.35rem 0.85rem;
+}
+
+.cloud-soon h2,
+.cloud-soon h3 {
+  margin: 0;
+  color: var(--white-ink);
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.cloud-soon h2 {
+  font-size: clamp(1.25rem, 3vw, 1.55rem);
+}
+
+.cloud-soon h3 {
+  font-size: 1.02rem;
+}
+
+.home .cloud-soon p,
+.home .cloud-soon li {
+  margin: 0;
+  color: var(--white-ink);
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.home .cloud-soon .plan-card__kicker {
+  color: #8a5a12;
+}
+
+.cloud-soon ol {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.35rem;
 }
 
 /* Shared belt headers. Cloth colors are the existing belt-rail accents. */
@@ -2509,6 +2643,56 @@ span.role-plan__mark {
 
 .saver--belt .sheet.sheet--dock-footer .sheet__panel {
   max-height: 100%;
+}
+
+/* Media Console setup screen (/slideshow, /screensaver with the belt showing):
+   the page scrolls as one. The purple belt, the corner mark, the batch note and
+   the options panel all move with it. Only the panel's "Media Console" bar with
+   Close stays pinned. Playback with the sheet closed (saver--play without
+   saver--belt) and fullscreen TV mode keep their own rules. */
+.saver.saver--belt {
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.saver.saver--belt > .saver-belt:not(.saver-belt--flow),
+.saver.saver--belt > .play-exit,
+.saver.saver--belt > .saver-batch {
+  position: absolute;
+}
+
+.saver.saver--belt > .sheet.sheet--dock-footer {
+  position: absolute;
+  align-items: start;
+}
+
+.saver.saver--belt > .sheet.sheet--dock-footer .sheet__panel {
+  max-height: none;
+  min-height: 100%;
+  overflow: visible;
+  display: block;
+}
+
+.saver.saver--belt > .sheet.sheet--dock-footer .sheet__body {
+  overflow: visible;
+  min-height: 0;
+}
+
+.saver.saver--belt > .sheet.sheet--dock-footer .sheet__head {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  margin: -1rem -1rem 0.8rem;
+  padding: 1rem 1rem 0.6rem;
+  border-radius: 24px 24px 0 0;
+  background: rgba(14, 22, 36, 0.97);
+  /* Cover the scroller's top padding once the bar is pinned. */
+  box-shadow: 0 -3rem 0 0 rgba(14, 22, 36, 0.97);
+}
+
+.saver.saver--belt .saver-batch--panel {
+  position: static;
 }
 
 /* Coach hub tiles: title left, still life right, Open at the corner. */
@@ -3250,6 +3434,37 @@ span.role-plan__mark {
 
   .home__hint {
     font-size: 0.82rem;
+  }
+}
+
+/*
+ * /products title on a narrow screen or a portrait phone.
+ * The mark was shrink-wrapped and left-aligned beside the cards.
+ * Stretch it to the card column and center the words. The logo stays on its own size.
+ * The wide brand column (740px landscape, or 1100px and up) keeps text-align left.
+ */
+@media (max-width: 739px),
+  (max-width: 1099px) and (orientation: portrait),
+  (orientation: landscape) and (max-height: 520px) {
+  .home--ladder .home__mark {
+    align-self: stretch;
+    width: 100%;
+    box-sizing: border-box;
+    display: block;
+    grid-template-columns: none;
+    text-align: center;
+    margin-inline: auto;
+  }
+
+  .home--ladder .home__brand,
+  .home--ladder .home__mark h1,
+  .home--ladder .home__motto,
+  .home--ladder .home__mark > p {
+    grid-column: auto;
+    width: 100%;
+    max-width: none;
+    margin-inline: auto;
+    text-align: center;
   }
 }
 
@@ -4363,7 +4578,7 @@ main.tree:has(> .tier-home) > .tree__bar {
 
 .presets--end-cue {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 0.8fr) minmax(0, 1.4fr);
   width: 100%;
   gap: 0.55rem;
 }
@@ -4613,6 +4828,14 @@ label {
 }
 
 .training__phase {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  margin: 0;
+  padding-block: 0;
   position: absolute;
   top: calc(4.2rem + var(--safe-t));
   left: 0;
@@ -4633,6 +4856,174 @@ label {
   bottom: calc(1.2rem + var(--safe-b));
   left: 1rem;
   right: 1rem;
+}
+
+/* Round timer custom background (on-device picture) + gym logo corner.
+   Layers: skin colour on main.training → .training__backdrop → .training__scrim → controls.
+   Any skin (Classic, Advantage, a future data-skin) keeps painting main.training underneath. */
+.training__backdrop,
+.training__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.training__backdrop {
+  background-color: #050505;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.training__scrim {
+  --scrim-edge: 0.5;
+  --scrim-core: 0.62;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 50%, rgba(0, 0, 0, var(--scrim-core)) 0%, rgba(0, 0, 0, var(--scrim-edge)) 100%);
+}
+
+.training--scrim-light .training__scrim {
+  --scrim-edge: 0.28;
+  --scrim-core: 0.42;
+}
+
+.training--scrim-strong .training__scrim {
+  --scrim-edge: 0.68;
+  --scrim-core: 0.8;
+}
+
+.training--break .training__scrim {
+  background:
+    linear-gradient(rgba(40, 26, 6, 0.22), rgba(40, 26, 6, 0.22)),
+    radial-gradient(ellipse 70% 60% at 50% 50%, rgba(0, 0, 0, var(--scrim-core)) 0%, rgba(0, 0, 0, var(--scrim-edge)) 100%);
+}
+
+.training--custom-bg .training__clock,
+.training--custom-bg .training__phase,
+.training--custom-bg .training__hint {
+  position: relative;
+  z-index: 1;
+}
+
+.training--custom-bg .training__phase,
+.training--custom-bg .training__hint {
+  position: absolute;
+}
+
+.training--custom-bg .training__clock {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.55), 0 6px 28px rgba(0, 0, 0, 0.75);
+}
+
+.training--custom-bg .training__phase,
+.training--custom-bg .training__hint {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+}
+
+/* Gym logo: mirrors .play-exit (same 64px hit box, 44px mark, corner inset) on the right. */
+.training__gym-logo {
+  position: fixed;
+  top: calc(0.2rem + var(--safe-t));
+  right: calc(0.15rem + var(--safe-r));
+  z-index: 6;
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: radial-gradient(circle at 50% 48%, rgba(8, 10, 16, 0.28) 0%, rgba(8, 10, 16, 0.1) 46%, transparent 70%);
+  opacity: 0.9;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.training__gym-logo img {
+  width: var(--mark-back);
+  height: var(--mark-back);
+  object-fit: contain;
+  display: block;
+  border-radius: 8px;
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.45)) drop-shadow(0 1px 6px rgba(0, 0, 0, 0.7));
+}
+
+/* The Fullscreen chip shares the top-right corner. Park it just left of the logo. */
+.training--gym-logo .play-fs-slot {
+  right: calc(0.55rem + 64px + var(--safe-r));
+}
+
+/* Round timer options: background preview. */
+.timer-backdrop__row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.timer-backdrop__preview {
+  width: 128px;
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background-color: #050505;
+  background-size: cover;
+  background-position: center;
+  display: grid;
+  place-items: center;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.timer-backdrop__preview.has-image::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.timer-backdrop__preview-clock {
+  position: relative;
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.6rem;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+}
+
+.timer-backdrop__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  flex: 1 1 10rem;
+}
+
+.timer-backdrop__logo {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+
+.timer-backdrop__logo-thumb {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.timer-backdrop__logo > span {
+  flex: 1 1 auto;
+}
+
+.timer-backdrop__note,
+.timer-backdrop__hint {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  margin: 0.5rem 0 0;
 }
 
 .sheet {
@@ -16389,6 +16780,60 @@ a.plan-pick {
   }
 }
 
+/* Phone landscape (anything landscape that is not the TV block below).
+   The cards were sitting under a fixed 2.55rem ring gap and a wide
+   "Advantages / Penalties" header, so they shrank to short strips at the bottom
+   of the panel. Use the portrait headers (Points / Adv / Pen), keep only the ring
+   crown above the card, and let the cards fill the panel height like portrait. */
+@media (orientation: landscape) and (max-height: 559px), (orientation: landscape) and (max-width: 899px) {
+  .scoreboard-skin--old-school.display .score__label--short {
+    display: block;
+  }
+
+  .scoreboard-skin--old-school.display .score__label--wide {
+    display: none;
+  }
+
+  .scoreboard-skin--old-school.display .score__label {
+    font-size: clamp(0.78rem, 3.4vh, 1rem);
+    line-height: 1.1;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .scoreboard-skin--old-school.display .bout__scores {
+    padding: 0.4rem 0.7rem 0.75rem;
+  }
+
+  .scoreboard-skin--old-school.display .score {
+    gap: 0.1rem;
+  }
+
+  .scoreboard-skin--old-school.display .score--points {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .scoreboard-skin--old-school.display .score--advantages {
+    height: 82%;
+    min-height: 0;
+  }
+
+  .scoreboard-skin--old-school.display .score--disadvantages {
+    height: 68%;
+    min-height: 0;
+  }
+
+  /* Just the ring crown (about 14% of the ring width) above each card. */
+  .scoreboard-skin--old-school.display .flap {
+    padding-top: clamp(0.8rem, 4.4vh, 1.15rem);
+  }
+
+  .scoreboard-skin--old-school.display .flap__face {
+    font-size: 76cqh;
+  }
+}
+
 @media (min-width: 1100px) and (min-height: 700px) {
   .scoreboard-skin--old-school.display .display__mid--stack .clock-btn {
     font-size: clamp(3.6rem, 7.2vw, 6.4rem);
@@ -16785,6 +17230,13 @@ a.plan-pick {
 }
 
 .buy__code,
+.buy__field {
+  display: grid;
+  gap: 0.4rem;
+  color: var(--ink);
+  font-weight: 700;
+}
+
 .restore__turnstile {
   min-height: 65px;
   margin: 0.25rem 0 0.75rem;
@@ -16793,13 +17245,6 @@ a.plan-pick {
 .restore__turnstile:empty {
   min-height: 0;
   margin: 0;
-}
-
-.buy__field {
-  display: grid;
-  gap: 0.4rem;
-  color: var(--ink);
-  font-weight: 700;
 }
 
 .buy__code input,

@@ -1,16 +1,24 @@
 const STORAGE_KEY = 'matboard.audio.v1';
 
-export type EndCue = 'buzzer' | 'parou';
+export type EndCue = 'buzzer' | 'bell' | 'parou';
+
+/** Synthesized end sounds (Parou is the recorded voice take). */
+export type BuzzerSound = Exclude<EndCue, 'parou'>;
 
 export type AudioPrefs = {
   muted: boolean;
   volume: number;
   vibrate: boolean;
+  /** End-of-round / end-of-match cue. One per device; Timer and Scoreboard share it. */
   endCue: EndCue;
+  /** Drive the limiter harder for loud rooms (denser, slightly grittier). */
+  extraLoud: boolean;
 };
 
+/** The three end-cue buttons on the Timer and Scoreboard settings. */
 export const END_CUE_OPTIONS: { id: EndCue; label: string }[] = [
   { id: 'buzzer', label: 'Buzzer' },
+  { id: 'bell', label: 'Bell' },
   { id: 'parou', label: 'PAROU! ("STOP!")' },
 ];
 
@@ -29,10 +37,14 @@ const PAROU_CUE_GAIN = 1;
 
 const DEFAULT_PREFS: AudioPrefs = {
   muted: false,
-  volume: 0.8,
+  volume: 1,
   vibrate: true,
   endCue: 'buzzer',
+  extraLoud: false,
 };
+
+/** Old default slider position. Saved prefs still sitting on it move to full once. */
+const LEGACY_DEFAULT_VOLUME = 0.8;
 
 let prefs: AudioPrefs = loadPrefs();
 const listeners = new Set<() => void>();
@@ -41,12 +53,17 @@ function loadPrefs(): AudioPrefs {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { ...DEFAULT_PREFS };
-    const parsed = JSON.parse(raw) as Partial<AudioPrefs>;
+    const parsed = JSON.parse(raw) as Partial<AudioPrefs> & { loudV2?: boolean; buzzerSound?: unknown };
+    let volume = clampVolume(Number(parsed.volume ?? DEFAULT_PREFS.volume));
+    // Before the louder cues, the slider defaulted to 80%. Devices that never
+    // moved it get full volume once; a slider moved anywhere else is kept.
+    if (!parsed.loudV2 && volume === LEGACY_DEFAULT_VOLUME) volume = 1;
     return {
       muted: Boolean(parsed.muted),
-      volume: clampVolume(Number(parsed.volume ?? DEFAULT_PREFS.volume)),
+      volume,
       vibrate: parsed.vibrate !== false,
-      endCue: parseEndCue(parsed.endCue),
+      endCue: migrateEndCue(parsed.endCue, parsed.buzzerSound),
+      extraLoud: parsed.extraLoud === true,
     };
   } catch {
     return { ...DEFAULT_PREFS };
@@ -59,7 +76,7 @@ function clampVolume(n: number): number {
 }
 
 function persist(): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...prefs, loudV2: true }));
   listeners.forEach((fn) => fn());
 }
 
@@ -73,7 +90,19 @@ export function subscribeAudioPrefs(fn: () => void): () => void {
 }
 
 export function parseEndCue(value: unknown, fallback: EndCue = DEFAULT_PREFS.endCue): EndCue {
-  return value === 'parou' || value === 'buzzer' ? value : fallback;
+  return value === 'parou' || value === 'buzzer' || value === 'bell' ? value : fallback;
+}
+
+/**
+ * Draft builds of the louder-buzzer change saved a separate `buzzerSound`
+ * (classic / arena / airhorn / bell / triple). Only the bell survived, so a
+ * saved Boxing bell becomes the Bell cue and every other sound becomes Buzzer.
+ * A saved Parou choice always wins.
+ */
+export function migrateEndCue(endCue: unknown, legacyBuzzerSound?: unknown): EndCue {
+  const cue = parseEndCue(endCue);
+  if (cue === 'buzzer' && legacyBuzzerSound === 'bell') return 'bell';
+  return cue;
 }
 
 export function patchAudioPrefs(partial: Partial<AudioPrefs>): void {
@@ -82,12 +111,13 @@ export function patchAudioPrefs(partial: Partial<AudioPrefs>): void {
     ...partial,
     volume: clampVolume(partial.volume ?? prefs.volume),
     endCue: parseEndCue(partial.endCue ?? prefs.endCue),
+    extraLoud: partial.extraLoud ?? prefs.extraLoud,
   };
   persist();
 }
 
 let ctx: AudioContext | null = null;
-let master: GainNode | null = null;
+let master: MasterBus | null = null;
 let noiseBuffer: AudioBuffer | null = null;
 let parouBuffer: AudioBuffer | null = null;
 let parouLoad: Promise<AudioBuffer | null> | null = null;
@@ -130,44 +160,101 @@ function getContext(): AudioContext {
   return ctx;
 }
 
-function getMaster(): GainNode {
+function getMaster(sound: 'bell' | 'other' = 'other'): GainNode {
   getContext();
-  return master!;
+  applyLoudness(master!, ctx!, loudnessMode(prefs.extraLoud, sound));
+  return master!.input;
+}
+
+type MasterBus = {
+  input: GainNode;
+  drive: GainNode;
+  clip: WaveShaperNode;
+  output: GainNode;
+  mode: LoudnessMode | null;
+  volume: number | null;
+};
+
+type LoudnessMode = 'normal' | 'extra' | 'extraBell';
+
+/** Which loudness profile a cue uses. Bell gets its own Extra loud profile. */
+export function loudnessMode(extraLoud: boolean, sound: 'bell' | 'other' = 'other'): LoudnessMode {
+  if (!extraLoud) return 'normal';
+  return sound === 'bell' ? 'extraBell' : 'extra';
 }
 
 /**
- * Voices mix into a compressor + soft clipper so gym-level buzzers stay
- * present without DAC clipping.
+ * Loudness chain: drive -> compressor -> makeup -> soft limiter -> volume.
+ *
+ * Cues are mixed near full scale, the compressor squeezes peaks so the
+ * makeup gain can lift the average (perceived) level, and a tanh soft
+ * limiter keeps the final peak just under 0 dBFS so phones do not crackle.
+ * The user's volume slider is applied after the limiter, so 100% really is
+ * full scale and lower settings are a clean linear trim.
  */
-function buildMaster(audio: AudioContext): GainNode {
+export const LOUDNESS = {
+  normal: { drive: 1, clipK: 1.6 },
+  extra: { drive: 2.2, clipK: 2.6 },
+  /**
+   * Extra loud for the Bell. Its inharmonic partials turn into audible
+   * intermodulation "crunch" when pushed into the clipper, so it gets a
+   * gentler push than the buzzer (still louder than normal).
+   */
+  extraBell: { drive: 1.6, clipK: 1.6 },
+  makeup: 1.9,
+  ceiling: 0.97,
+} as const;
+
+function buildMaster(audio: BaseAudioContext): MasterBus {
   const input = audio.createGain();
   input.gain.value = 1;
 
+  const drive = audio.createGain();
+  drive.gain.value = LOUDNESS.normal.drive;
+
   const compressor = audio.createDynamicsCompressor();
-  compressor.threshold.value = -14;
-  compressor.knee.value = 10;
-  compressor.ratio.value = 6;
-  compressor.attack.value = 0.004;
-  compressor.release.value = 0.16;
+  compressor.threshold.value = -20;
+  compressor.knee.value = 6;
+  compressor.ratio.value = 10;
+  compressor.attack.value = 0.002;
+  compressor.release.value = 0.12;
+
+  const makeup = audio.createGain();
+  makeup.gain.value = LOUDNESS.makeup;
 
   const clip = audio.createWaveShaper();
-  clip.curve = makeSoftClipCurve();
-  clip.oversample = '2x';
+  clip.curve = makeSoftClipCurve(LOUDNESS.normal.clipK);
+  clip.oversample = '4x';
 
   const output = audio.createGain();
-  output.gain.value = 0.92;
+  output.gain.value = LOUDNESS.ceiling;
 
-  input.connect(compressor);
-  compressor.connect(clip);
+  input.connect(drive);
+  drive.connect(compressor);
+  compressor.connect(makeup);
+  makeup.connect(clip);
   clip.connect(output);
   output.connect(audio.destination);
-  return input;
+  return { input, drive, clip, output, mode: null, volume: null };
 }
 
-function makeSoftClipCurve() {
+function applyLoudness(bus: MasterBus, audio: BaseAudioContext, mode: LoudnessMode): void {
+  if (bus.mode !== mode) {
+    const profile = LOUDNESS[mode];
+    bus.drive.gain.setValueAtTime(profile.drive, audio.currentTime);
+    bus.clip.curve = makeSoftClipCurve(profile.clipK);
+    bus.mode = mode;
+  }
+  const volume = masterGain();
+  if (bus.volume !== volume) {
+    bus.output.gain.setValueAtTime(LOUDNESS.ceiling * volume, audio.currentTime);
+    bus.volume = volume;
+  }
+}
+
+function makeSoftClipCurve(k: number) {
   const n = 4096;
   const curve = new Float32Array(n);
-  const k = 1.15;
   const denom = Math.tanh(k);
   for (let i = 0; i < n; i++) {
     const x = (i * 2) / n - 1;
@@ -231,9 +318,9 @@ type NoiseVoice = {
   filterQ?: number;
 };
 
-type Voice = OscVoice | NoiseVoice;
+export type Voice = OscVoice | NoiseVoice;
 
-function playVoices(voices: Voice[]): void {
+function playVoices(voices: Voice[], sound: 'bell' | 'other' = 'other'): void {
   let audio: AudioContext;
   try {
     audio = getContext();
@@ -243,13 +330,14 @@ function playVoices(voices: Voice[]): void {
   const volume = masterGain();
   if (volume <= 0) return;
   const now = audio.currentTime;
-  const bus = getMaster();
-
+  const bus = getMaster(sound);
+  // Volume is applied after the limiter (see applyLoudness), so voices are
+  // always mixed at their designed level and the limiter sees a steady input.
   for (const voice of voices) {
     if (voice.kind === 'noise') {
-      scheduleNoise(audio, bus, now, volume, voice);
+      scheduleNoise(audio, bus, now, 1, voice);
     } else {
-      scheduleOsc(audio, bus, now, volume, voice);
+      scheduleOsc(audio, bus, now, 1, voice);
     }
   }
 }
@@ -355,117 +443,114 @@ async function playAfterResume(play: () => void): Promise<void> {
   }
 }
 
-function playCue(voices: Voice[], vibe: number[]): void {
+function playCue(voices: Voice[], vibe: number[], sound: 'bell' | 'other' = 'other'): void {
   buzz(vibe);
-  void playAfterResume(() => playVoices(voices));
+  void playAfterResume(() => playVoices(voices, sound));
 }
 
 /**
- * Original gym "go" — two rising sine notes (not a sampled whistle).
- * Brighter and shorter than the warning ticks.
+ * Original gym "go": two rising notes, now in the 1.5-2.4 kHz band phone
+ * speakers reproduce well (the old 784 Hz sines were mostly lost on phones).
  */
+export function startCueVoices(): Voice[] {
+  return [
+    { freq: 784, duration: 0.14, type: 'triangle', gain: 0.32, attack: 0.006, release: 0.04, filterFreq: 6000 },
+    { freq: 1568, duration: 0.14, type: 'square', gain: 0.3, attack: 0.006, release: 0.04, filterFreq: 5200 },
+    { freq: 1175, duration: 0.24, type: 'triangle', gain: 0.34, delay: 0.16, attack: 0.006, release: 0.06, filterFreq: 6000 },
+    { freq: 2350, duration: 0.24, type: 'square', gain: 0.32, delay: 0.16, attack: 0.006, release: 0.06, filterFreq: 6000 },
+  ];
+}
+
 export function playStartCue(): void {
-  playCue(
-    [
-      { freq: 784, duration: 0.11, type: 'sine', gain: 0.18, attack: 0.008, release: 0.04, filterFreq: 7000 },
-      { freq: 1568, duration: 0.11, type: 'sine', gain: 0.05, attack: 0.008, release: 0.04, filterFreq: 8000 },
-      { freq: 1175, duration: 0.18, type: 'sine', gain: 0.22, delay: 0.13, attack: 0.008, release: 0.05, filterFreq: 7000 },
-      { freq: 2350, duration: 0.18, type: 'sine', gain: 0.06, delay: 0.13, attack: 0.008, release: 0.05, filterFreq: 8000 },
-    ],
-    [18, 30, 18],
-  );
+  playCue(startCueVoices(), [18, 30, 18]);
 }
 
 /**
- * Original 10-second warning — three light staccato ticks on one pitch.
- * Distinct from the rising start cue and much lighter than the end buzzer.
+ * Original 10-second warning: three staccato ticks on one pitch, plus an
+ * octave-up square so the ticks cut through floor music.
  */
-export function playWarningCue(): void {
-  playCue(
-    [
-      { freq: 1047, duration: 0.07, type: 'triangle', gain: 0.14, attack: 0.004, release: 0.03, filterFreq: 4200 },
-      { freq: 1047, duration: 0.07, type: 'triangle', gain: 0.14, delay: 0.13, attack: 0.004, release: 0.03, filterFreq: 4200 },
-      { freq: 1047, duration: 0.09, type: 'triangle', gain: 0.16, delay: 0.26, attack: 0.004, release: 0.04, filterFreq: 4200 },
-    ],
-    [40, 40, 40, 40, 80],
-  );
+export function warningCueVoices(): Voice[] {
+  const tick = (delay: number, duration: number): Voice[] => [
+    { freq: 1047, duration, type: 'triangle', gain: 0.3, delay, attack: 0.003, release: 0.03, filterFreq: 5000 },
+    { freq: 2093, duration, type: 'square', gain: 0.3, delay, attack: 0.003, release: 0.03, filterFreq: 5200 },
+  ];
+  return [...tick(0, 0.09), ...tick(0.15, 0.09), ...tick(0.3, 0.12)];
 }
 
-function endBuzzerVoices(duration: number, level: number): Voice[] {
+export function playWarningCue(): void {
+  playCue(warningCueVoices(), [40, 40, 40, 40, 80]);
+}
+
+/** Original electric square-wave buzzer, boosted: open filter + 2-4 kHz presence. */
+function classicBuzzerVoices(duration: number): Voice[] {
   const body = duration;
   const tail = 0.12;
+  const rasp = { raspHz: 23, raspDepth: 0.18 };
   return [
-    {
-      kind: 'noise',
-      duration: 0.045,
-      gain: 0.1 * level,
-      attack: 0.002,
-      release: 0.03,
-      filterType: 'bandpass',
-      filterFreq: 1400,
-      filterQ: 1.4,
-    },
-    {
-      freq: 392,
-      duration: body,
-      type: 'square',
-      gain: 0.4 * level,
-      attack: 0.01,
-      release: tail,
-      filterFreq: 2200,
-      filterQ: 0.8,
-      raspHz: 23,
-      raspDepth: 0.18,
-    },
-    {
-      freq: 406,
-      duration: body,
-      type: 'square',
-      gain: 0.34 * level,
-      attack: 0.01,
-      release: tail,
-      filterFreq: 2200,
-      filterQ: 0.8,
-      raspHz: 23,
-      raspDepth: 0.16,
-    },
-    {
-      freq: 196,
-      duration: body,
-      type: 'sawtooth',
-      gain: 0.2 * level,
-      attack: 0.012,
-      release: tail,
-      filterFreq: 900,
-      filterQ: 0.6,
-    },
-    {
-      freq: 784,
-      duration: body * 0.22,
-      type: 'triangle',
-      gain: 0.1 * level,
-      delay: 0.02,
-      attack: 0.006,
-      release: 0.05,
-      filterFreq: 3200,
-    },
+    { kind: 'noise', duration: 0.05, gain: 0.3, attack: 0.002, release: 0.03, filterType: 'bandpass', filterFreq: 2600, filterQ: 1.2 },
+    { freq: 392, duration: body, type: 'square', gain: 0.34, attack: 0.008, release: tail, filterFreq: 5000, filterQ: 0.7, ...rasp },
+    { freq: 406, duration: body, type: 'square', gain: 0.28, attack: 0.008, release: tail, filterFreq: 5000, filterQ: 0.7, ...rasp },
+    { freq: 196, duration: body, type: 'sawtooth', gain: 0.14, attack: 0.01, release: tail, filterFreq: 1400, filterQ: 0.6 },
+    { freq: 784, duration: body, type: 'square', gain: 0.14, attack: 0.008, release: tail, filterFreq: 4200, ...rasp },
+    { freq: 1568, duration: body, type: 'square', gain: 0.22, attack: 0.008, release: tail, filterFreq: 4500, ...rasp },
+    { freq: 2352, duration: body, type: 'square', gain: 0.12, attack: 0.008, release: tail, filterFreq: 5000, ...rasp },
   ];
+}
+
+/** Boxing bell: three strikes of an inharmonic bell (partials 0.9-3.2 kHz). */
+function boxingBellVoices(strikes: number): Voice[] {
+  const f0 = 900;
+  const partials: [number, number][] = [
+    [1, 0.3],
+    [1.48, 0.26],
+    [2.0, 0.26],
+    [2.76, 0.2],
+    [3.5, 0.12],
+  ];
+  const voices: Voice[] = [];
+  for (let i = 0; i < strikes; i++) {
+    const delay = i * 0.3;
+    const last = i === strikes - 1;
+    const ring = last ? 1.1 : 0.55;
+    voices.push({ kind: 'noise', duration: 0.03, gain: 0.25, delay, attack: 0.001, release: 0.025, filterType: 'highpass', filterFreq: 2500, filterQ: 0.7 });
+    for (const [ratio, gain] of partials) {
+      voices.push({ freq: f0 * ratio, duration: ring, type: 'sine', gain, delay, attack: 0.002, release: ring - 0.01, filterFreq: 9000 });
+    }
+  }
+  return voices;
+}
+
+/** Seconds of sound for each synthesized end cue (training / match), used for follow-up timing. */
+export const BUZZER_LENGTH_S: Record<BuzzerSound, { training: number; match: number }> = {
+  buzzer: { training: 1.15, match: 1.55 },
+  bell: { training: 1.7, match: 2.3 },
+};
+
+export function buzzerVoices(sound: BuzzerSound, kind: 'match' | 'training' = 'training'): Voice[] {
+  if (sound === 'bell') return boxingBellVoices(kind === 'match' ? 5 : 3);
+  return classicBuzzerVoices(BUZZER_LENGTH_S.buzzer[kind]);
 }
 
 const MATCH_END_VIBE = [280, 70, 280, 70, 420];
 const TRAIN_END_VIBE = [220, 80, 220, 80, 320];
 
-/** Training / round-end buzzer — original electric square-wave horn. */
-export function playEndBuzzer(): void {
-  playCue(endBuzzerVoices(1.05, 1), TRAIN_END_VIBE);
+function soundOf(sound: BuzzerSound): 'bell' | 'other' {
+  return sound === 'bell' ? 'bell' : 'other';
 }
 
-/**
- * Match clock hit 0:00. Same original buzzer character as Training, held
- * longer and a bit more present so it cuts through a gym without clipping.
- */
-export function playMatchEndBuzzer(): void {
-  playCue(endBuzzerVoices(1.45, 1.12), MATCH_END_VIBE);
+/** Synth end sound for the selected cue; Parou falls back to the buzzer. */
+function synthFor(cue: EndCue): BuzzerSound {
+  return cue === 'bell' ? 'bell' : 'buzzer';
+}
+
+/** Training / round-end synth cue (Buzzer by default, or Bell). */
+export function playEndBuzzer(sound: BuzzerSound = synthFor(prefs.endCue)): void {
+  playCue(buzzerVoices(sound, 'training'), TRAIN_END_VIBE, soundOf(sound));
+}
+
+/** Match clock hit 0:00. Same sound, held a bit longer. */
+export function playMatchEndBuzzer(sound: BuzzerSound = synthFor(prefs.endCue)): void {
+  playCue(buzzerVoices(sound, 'match'), MATCH_END_VIBE, soundOf(sound));
 }
 
 async function loadParouBuffer(): Promise<AudioBuffer | null> {
@@ -490,14 +575,14 @@ async function loadParouBuffer(): Promise<AudioBuffer | null> {
 
 function startParou(buffer: AudioBuffer): void {
   const audio = getContext();
-  const volume = masterGain();
-  if (volume <= 0) return;
+  if (masterGain() <= 0) return;
+  const bus = getMaster();
   const src = audio.createBufferSource();
   const amp = audio.createGain();
   src.buffer = buffer;
-  amp.gain.value = volume * PAROU_CUE_GAIN;
+  amp.gain.value = PAROU_CUE_GAIN;
   src.connect(amp);
-  amp.connect(getMaster());
+  amp.connect(bus);
   src.start();
 }
 
@@ -509,26 +594,27 @@ function playParouCue(kind: 'match' | 'training'): void {
         startParou(buffer);
         return;
       }
-      playVoices(endBuzzerVoices(kind === 'match' ? 1.45 : 1.05, kind === 'match' ? 1.12 : 1));
+      playVoices(buzzerVoices('buzzer', kind));
     });
   });
 }
 
-/** Play the user-selected end cue (synth buzzer or the “Parou… stop” take). */
+/** Play the user-selected end cue (Buzzer, Bell, or the “Parou… stop” take). */
 export function playSelectedEndCue(kind: 'match' | 'training' = 'match', cue: EndCue = prefs.endCue): void {
-  if (parseEndCue(cue) === 'parou') {
+  const selected = parseEndCue(cue);
+  if (selected === 'parou') {
     playParouCue(kind);
     return;
   }
-  if (kind === 'match') playMatchEndBuzzer();
-  else playEndBuzzer();
+  if (kind === 'match') playMatchEndBuzzer(selected);
+  else playEndBuzzer(selected);
 }
 
-/** Time to wait after a Training end cue before a back-to-back start cue. */
-export const END_BUZZER_MS = 1100;
+/** Time to wait after a Training end cue before a back-to-back start cue (classic buzzer). */
+export const END_BUZZER_MS = 1250;
 
 export function endCueFollowMs(): number {
   // Full take is ~3.5s (speech ends ~2.4s). Wait it out before the next start cue.
   if (prefs.endCue === 'parou') return 3700;
-  return END_BUZZER_MS;
+  return Math.max(END_BUZZER_MS, Math.round(BUZZER_LENGTH_S[synthFor(prefs.endCue)].training * 1000) + 100);
 }

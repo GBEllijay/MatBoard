@@ -2,7 +2,7 @@
 
 export const OWNER_TEST_STORAGE_KEY = 'advantage.ownerTest.v1';
 
-export type OwnerTestDoor = 'white' | 'student' | 'coach' | 'pro' | 'seat';
+export type OwnerTestDoor = 'white' | 'student' | 'coach' | 'pro' | 'media' | 'seat';
 
 export type OwnerTestGrant = {
   v: 1;
@@ -31,7 +31,7 @@ function parse(raw: string | null): OwnerTestGrant | null {
     if (typeof value.expiresAt !== 'string' || Date.parse(value.expiresAt) <= Date.now()) return null;
     if (!Array.isArray(value.grants)) return null;
     const grants = value.grants.filter((door): door is OwnerTestDoor =>
-      door === 'white' || door === 'student' || door === 'coach' || door === 'pro' || door === 'seat',
+      door === 'white' || door === 'student' || door === 'coach' || door === 'pro' || door === 'media' || door === 'seat',
     );
     return { v: 1, source: 'owner-test', grants, expiresAt: value.expiresAt, tier: typeof value.tier === 'string' ? value.tier : '' };
   } catch {
@@ -52,7 +52,7 @@ export function applyOwnerTestGrant(input: { grants?: unknown; expiresAt?: unkno
   if (!store) return false;
   const grants = Array.isArray(input.grants)
     ? input.grants.filter((door): door is OwnerTestDoor =>
-        door === 'white' || door === 'student' || door === 'coach' || door === 'pro' || door === 'seat',
+        door === 'white' || door === 'student' || door === 'coach' || door === 'pro' || door === 'media' || door === 'seat',
       )
     : [];
   if (!grants.length || typeof input.expiresAt !== 'string') return false;

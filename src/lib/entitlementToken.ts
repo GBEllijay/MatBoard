@@ -4,10 +4,15 @@ export const TOKEN_ISS = 'advantage';
 export const TOKEN_AUD = 'advantagebjjtimer.com';
 export const TOKEN_VERSION = 1;
 
-export const DOORS = ['white', 'student', 'coach', 'pro'] as const;
+/**
+ * 'media' (Media Edition) is last so the older four keep their order.
+ * Clients before MEDIA_APP_VERSION reject a pass with an unknown door, so the
+ * server leaves 'media' out of their passes (src/server/tokenIssue.ts passGrantsForApp).
+ */
+export const DOORS = ['white', 'student', 'coach', 'pro', 'media'] as const;
 export type Door = (typeof DOORS)[number];
 
-export type TokenTier = 'owner' | 'pro' | 'coach' | 'student' | 'white' | 'seat' | 'alpha';
+export type TokenTier = 'owner' | 'pro' | 'coach' | 'student' | 'white' | 'media' | 'seat' | 'alpha';
 export type TokenSource = 'stripe' | 'code' | 'free' | 'owner' | 'seat';
 
 /** Present so Phase 3 can lock Pro without changing the token shape. */
@@ -84,7 +89,7 @@ export function parsePrivateJwk(raw: string | undefined | null): PrivateJwk | nu
 }
 
 function isDoor(value: unknown): value is Door {
-  return value === 'white' || value === 'student' || value === 'coach' || value === 'pro';
+  return (DOORS as readonly unknown[]).includes(value);
 }
 
 function isTier(value: unknown): value is TokenTier {
@@ -94,6 +99,7 @@ function isTier(value: unknown): value is TokenTier {
     value === 'coach' ||
     value === 'student' ||
     value === 'white' ||
+    value === 'media' ||
     value === 'seat' ||
     value === 'alpha'
   );

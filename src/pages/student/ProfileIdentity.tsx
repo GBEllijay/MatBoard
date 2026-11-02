@@ -49,7 +49,7 @@ export function useProfileMedia() {
       const saved = await portraitFromFile(file);
       await saveProfilePortrait(saved);
       setPortrait(saved);
-      remember('Photo saved on this phone.');
+      remember('Saved on this phone. Shows on your profile.');
     } catch (err) {
       fail(err);
     }
@@ -116,12 +116,13 @@ export function ProfileMedia({ media, kids = false }: { media: ReturnType<typeof
   return (
     <div className="profile-identity">
       <section className="profile-card profile-photo" aria-label="Profile photo">
+        {portrait ? <img className="profile-avatar" src={portrait} alt="Profile photo" /> : null}
         <div className="profile-photo__copy">
           <h2>Photo</h2>
           <p>
             {kids
-              ? 'Off for kids. The corner shows the gym logo, or the gym name when there is no logo. A parent can turn a photo on for reports.'
-              : 'Optional. Stays on this phone. Nothing is uploaded unless you export a report or a backup with the switch on.'}
+              ? 'Stays on this phone and shows on your profile. Nothing is uploaded. A parent can turn it on for reports.'
+              : 'Optional. Stays on this phone and shows on your profile. Nothing is uploaded unless you export a report or a backup with the switch on.'}
           </p>
         </div>
         <div className="profile-photo__actions">
@@ -129,7 +130,7 @@ export function ProfileMedia({ media, kids = false }: { media: ReturnType<typeof
             Take photo
           </label>
           <label className="profile-action" htmlFor={PORTRAIT_LIBRARY}>
-            Choose photo
+            {portrait ? 'Change photo' : 'Choose photo'}
           </label>
           {portrait ? (
             <button type="button" className="profile-action profile-action--quiet" onClick={removePortrait}>

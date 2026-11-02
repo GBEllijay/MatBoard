@@ -28,7 +28,7 @@ test('storefront sells White once and sends Buy Now to the existing checkout', (
   assert.equal(STOREFRONT_BUY_LABEL, 'Buy Advantage White — $9.99');
   assert.equal(STOREFRONT_HERO.title, 'Win by Advantage.');
   assert.equal(STOREFRONT_HERO.clock, '05:00');
-  assert.match(STOREFRONT_HERO.leadBeforeBreak, /scoreboard and timer/);
+  assert.equal(STOREFRONT_HERO.leadBeforeBreak, 'Your gym scoreboard, round timer, and management software.');
   assert.match(STOREFRONT_HERO.leadAfterBreak, /from your phone/);
 });
 
@@ -114,8 +114,8 @@ test('coming soon stays Student, Coach, Pro and does not sell Coach or Pro', () 
   assert.equal(STOREFRONT_COMING_SOON[2]?.status, 'Coming soon');
   assert.equal(STOREFRONT_COMING_SOON.some((item) => item.forSale), false);
   assert.match(STUDENT_HOME_DESCRIPTION, /rank and stripes/);
-  assert.match(COACH_HOME_DESCRIPTION, /everything in Advantage White/);
-  assert.match(PRO_HOME_LINES.join(' '), /everything in Advantage Coach/);
+  assert.match(COACH_HOME_DESCRIPTION, /everything in Media, Student and White/);
+  assert.match(PRO_HOME_LINES.join(' '), /Includes all Advantage products\./);
   assert.notEqual(STOREFRONT_COMING_SOON[0]?.blurb, STUDENT_HOME_DESCRIPTION);
 });
 

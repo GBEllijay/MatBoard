@@ -4,6 +4,7 @@ import { secretMatches } from './codeCrypto.ts';
 import { expandGrants } from './grantMatrix.ts';
 import { GENERIC_CODE_FAILURE } from './paywallDecisions.ts';
 import { allowAttempt, clientIp, rateBucket, rateLimitedResponse, OWNER_TEST_LIMIT } from './rateLimit.ts';
+import { appVersionOf } from '../lib/appCapability.ts';
 import { issueToken } from './tokenIssue.ts';
 
 export type OwnerTestEnv = {
@@ -13,15 +14,16 @@ export type OwnerTestEnv = {
   ENTITLEMENT_KEY_ID?: string;
 };
 
-const DOORS: readonly GrantDoor[] = ['white', 'student', 'coach', 'pro', 'seat'];
+const DOORS: readonly GrantDoor[] = ['white', 'student', 'coach', 'pro', 'media', 'seat'];
 
 const TIER_GRANTS: Record<string, GrantDoor[]> = {
   white: ['white'],
   student: ['student'],
   coach: ['coach'],
   pro: ['pro', 'student'],
+  media: ['media'],
   seat: ['seat'],
-  all: ['white', 'student', 'coach', 'pro', 'seat'],
+  all: ['white', 'student', 'coach', 'pro', 'media', 'seat'],
 };
 
 const JSON_HEADERS = {
@@ -108,6 +110,7 @@ export async function handleOwnerTest(
         now: stamp,
         kind: 'owner-test',
         ownerTestSeconds: days * 24 * 60 * 60,
+        appVersion: appVersionOf(request),
       },
       services.keyId ?? env.ENTITLEMENT_KEY_ID,
     );

@@ -1,6 +1,5 @@
-import { doorOpen, notifyEntitlement, subscribeEntitlement } from './entitlement.ts';
+import { clearRelocksFor, doorOpen, entitlementSnapshot, notifyEntitlement, relockImplied, subscribeEntitlement } from './entitlement.ts';
 import { COACH_RELOCK_KEY } from './legacyUnlock.ts';
-import { dropOwnerTestDoors } from './ownerTestGrant.ts';
 import { syncPaidScreensAfterLock } from './paidScreenSync.ts';
 import { lockStudentEdition } from './studentUnlock.ts';
 
@@ -30,6 +29,18 @@ export function isCoachUnlocked(): boolean {
   return doorOpen('coach');
 }
 
+/**
+ * Coach door for the Coach Unlimited gate. Same as isCoachUnlocked, except a pass that
+ * carries Pro follows the Pro door, so a locked Pro subscription does not reach Coach
+ * Unlimited through its bundled coach grant (matches paidChunkAccess.coachUnlimitedGrant).
+ */
+export function isCoachUnlimitedUnlocked(): boolean {
+  if (!doorOpen('coach')) return false;
+  const claims = entitlementSnapshot().claims;
+  if (claims?.grants.includes('pro') && !doorOpen('pro')) return false;
+  return true;
+}
+
 export function subscribeCoachUnlock(fn: () => void): () => void {
   listeners.add(fn);
   const off = subscribeEntitlement(fn);
@@ -40,6 +51,8 @@ export function subscribeCoachUnlock(fn: () => void): () => void {
 }
 
 export function setCoachUnlocked(unlocked: boolean): void {
+  // Unlock is symmetric with Lock Coach: reopen Coach and White.
+  if (unlocked) clearRelocksFor(['coach']);
   writeFlag(unlocked);
 }
 
@@ -55,7 +68,8 @@ export function tryCoachUnlock(_code: string): boolean {
 
 export function lockCoach(): void {
   // The owner-test seat opens the Coach card on its own, so Lock Coach drops it with Coach.
-  dropOwnerTestDoors(['coach', 'seat']);
+  // Tier rule (tierImplications.ts): Lock Coach closes White too.
+  relockImplied('coach');
   writeFlag(false);
   lockStudentEdition();
   // Pro still includes Coach Unlimited, so re-sync rather than wipe while Pro is open.

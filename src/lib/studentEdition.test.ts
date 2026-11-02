@@ -81,18 +81,19 @@ test('preview flag opens Student Edition without unlocking other products', () =
   resetUnlocks();
 });
 
-test('a Pro unlock opens Student Edition and the Coach-only code does not', () => {
+test('a Pro unlock opens Student Edition, and so does a Coach (Instructor) unlock (ladder)', () => {
   resetUnlocks();
   setProUnlocked(true);
   assert.equal(isProUnlocked(), true);
-  assert.equal(isCoachUnlocked(), false);
-  assert.equal(isWhiteUnlocked(), false);
+  assert.equal(isCoachUnlocked(), true);
+  assert.equal(isWhiteUnlocked(), true);
   assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: true, coach: false, white: false }), true);
   assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: false, coach: false, white: false }), true);
   resetUnlocks();
   setCoachUnlocked(true);
   assert.equal(isCoachUnlocked(), true);
-  assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: false, coach: true, white: false }), false);
+  assert.equal(isWhiteUnlocked(), true, 'Coach includes White');
+  assert.equal(isStudentEditionUnlocked(), true, 'Coach includes Student Edition');
   resetUnlocks();
 });
 
@@ -187,19 +188,27 @@ test('locking Student Edition clears only this browser unlock and keeps journal,
   assert.equal(localStorage.getItem(STUDENT_EDITION_STORAGE_KEY), before);
 
   lockPro();
-  assert.equal(isStudentEditionRelocked(), false);
+  // Tier rule: Lock Pro closes Coach, Student Edition and White too.
+  assert.equal(isStudentEditionRelocked(), true);
   assert.equal(isProUnlocked(), false);
-  assert.equal(isCoachUnlocked(), true);
-  assert.equal(isWhiteUnlocked(), true);
-  assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: false, coach: true, white: true }), false);
+  assert.equal(isCoachUnlocked(), false);
+  assert.equal(isWhiteUnlocked(), false);
+  assert.equal(isStudentEditionUnlocked(), false);
+  assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: false, coach: false, white: false }), false);
   assert.equal(localStorage.getItem(STUDENT_EDITION_STORAGE_KEY), before);
 
   setProUnlocked(true);
+  assert.equal(isStudentEditionRelocked(), false, 'unlocking Pro reopens Student Edition');
+  assert.equal(isCoachUnlocked(), true, 'unlocking Pro reopens Coach');
+  assert.equal(isWhiteUnlocked(), true, 'unlocking Pro reopens White');
   lockCoach();
-  assert.equal(isStudentEditionRelocked(), false);
+  // Ladder: Coach includes Student Edition, so Lock Coach closes it too.
+  assert.equal(isStudentEditionRelocked(), true);
   assert.equal(isCoachUnlocked(), false);
+  assert.equal(isWhiteUnlocked(), false, 'Lock Coach closes White');
   assert.equal(isProUnlocked(), true);
-  assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: true, coach: false, white: true }), true);
+  // Same as White: the Lock Coach test mark closes Student Edition even while Pro is open.
+  assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: true, coach: false, white: true }), false);
   assert.equal(localStorage.getItem(STUDENT_EDITION_STORAGE_KEY), before);
   assert.equal(localStorage.getItem(DRIVE_BINDING_KEY), '{"folderId":"keep-folder"}');
   resetUnlocks();

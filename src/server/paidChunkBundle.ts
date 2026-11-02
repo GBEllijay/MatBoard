@@ -10,6 +10,7 @@ import { PAID_CHUNK_IDS, isPaidChunkId, type PaidChunkId } from '../lib/paidChun
 export const PAID_PAGE_MODULES: Readonly<Record<string, PaidChunkId>> = {
   '/src/pages/Pro.tsx': 'pro-console',
   '/src/pages/Screensaver.tsx': 'media-console',
+  '/src/pages/MediaEditionHub.tsx': 'media-console',
   '/src/pages/Schedule.tsx': 'media-console',
   '/src/pages/ClassHistory.tsx': 'lesson-cloud',
   '/src/pages/CoachUnlimited.tsx': 'coach-unlimited',

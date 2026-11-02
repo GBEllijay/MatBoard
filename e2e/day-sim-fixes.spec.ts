@@ -49,14 +49,18 @@ async function shot(page: Page, name: string) {
   await page.screenshot({ path: `/opt/cursor/artifacts/${name}.png`, fullPage: false });
 }
 
+/** Media and up pick skins from one Skins button; White keeps the Classic / Advantage toggle. */
+const skinControl = (page: Page) =>
+  page.getByRole('radio', { name: 'Classic' }).or(page.getByRole('button', { name: /^Timer skins/ }));
+
 async function openTrainingOptions(page: Page) {
-  const classic = page.getByRole('radio', { name: 'Classic' });
-  if (await classic.isVisible()) return;
+  const control = skinControl(page);
+  if (await control.isVisible()) return;
   const main = page.locator('main.training');
   const box = await main.boundingBox();
   expect(box).toBeTruthy();
   await main.click({ position: { x: 28, y: Math.min(180, box!.height - 24) } });
-  await expect(classic).toBeVisible();
+  await expect(control).toBeVisible();
 }
 
 async function boardStyle(page: Page, selector: string) {
@@ -67,6 +71,13 @@ async function boardStyle(page: Page, selector: string) {
 }
 
 async function pickSkin(page: Page, skin: 'Classic' | 'Advantage') {
+  const popup = page.getByRole('button', { name: /^Timer skins/ });
+  if (await popup.isVisible()) {
+    await popup.click();
+    await page.getByRole('dialog', { name: 'Timer skins' }).getByRole('radio', { name: skin }).click();
+    await expect(page.getByRole('button', { name: `Timer skins, ${skin}` })).toBeVisible();
+    return;
+  }
   await page.getByRole('radio', { name: skin }).click();
   await expect(page.getByRole('radio', { name: skin })).toHaveAttribute('aria-checked', 'true');
 }
@@ -154,8 +165,8 @@ test('a Gallery seat opens Gallery and an adjusted seat explains the label', asy
   });
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/products');
-  await expect(page.getByText('Coach · adjusted')).toBeVisible();
-  await expect(page.getByText("The owner changed this seat's permissions from the role defaults.")).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sign out of seat' })).toHaveCount(0);
+  await expect(page.getByText('Coach · adjusted')).toHaveCount(0);
   await shot(page, 'seat-adjusted-desktop');
   await page.locator('.mode-card__actions').getByRole('link', { name: 'Open Media Console' }).click();
   await expect(page).toHaveURL(/\/pro$/);
@@ -176,7 +187,7 @@ test('a Gallery seat opens Gallery and an adjusted seat explains the label', asy
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/products');
-  await expect(page.getByText("The owner changed this seat's permissions from the role defaults.")).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sign out of seat' })).toHaveCount(0);
   await shot(page, 'seat-adjusted-phone');
   await page.goto('/gallery');
   await expect(page).toHaveURL(/folder=gallery/);
@@ -184,8 +195,9 @@ test('a Gallery seat opens Gallery and an adjusted seat explains the label', asy
   await shot(page, 'gallery-seat-phone');
 
   await page.goto('/products');
-  await page.getByRole('button', { name: 'Sign out of seat' }).click();
+  await expect(page.getByRole('button', { name: 'Sign out of seat' })).toHaveCount(0);
   await expect(page.getByText('Signed in as')).toHaveCount(0);
+  await expect(page.getByText('Signed out')).toHaveCount(0);
 });
 
 test('a seat without Gallery stays out of Gallery and off Coming soon', async ({ page }) => {

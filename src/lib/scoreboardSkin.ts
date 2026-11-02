@@ -11,6 +11,7 @@
  */
 
 import { SUITE_FROM, UNLIMITED_FROM, withHubFrom } from './productNames.ts';
+import { POLISHED_SKINS, isPolishedSkinId, type PolishedSkinSlug } from './polishedSkins.ts';
 
 /**
  * Old School matches the owner's tabletop flip boards: large points cards,
@@ -28,6 +29,16 @@ export const SCOREBOARD_SKIN = {
   OLD_SCHOOL: 'OLD_SCHOOL',
   /** Tournament board with Win and DQ under each gym name. Pro skin picker only. */
   QUICK_RESULT: 'QUICK_RESULT',
+  /** Polished skins (polishedSkins.ts). Media Edition and above only. */
+  KIDS_ARCADE: 'KIDS_ARCADE',
+  KIDS_STICKER: 'KIDS_STICKER',
+  KEYNOTE: 'KEYNOTE',
+  HEAVY_METAL: 'HEAVY_METAL',
+  BRASIL: 'BRASIL',
+  WOODBLOCK: 'WOODBLOCK',
+  REGGAE: 'REGGAE',
+  PSYCHEDELIC: 'PSYCHEDELIC',
+  VISIONARY: 'VISIONARY',
 } as const;
 
 export type ScoreboardSkinId = (typeof SCOREBOARD_SKIN)[keyof typeof SCOREBOARD_SKIN];
@@ -70,15 +81,60 @@ const SKIN_CLASS: Record<ScoreboardSkinId, string> = {
   [SCOREBOARD_SKIN.OLD_SCHOOL]: 'scoreboard-skin--old-school',
   /* Same painted board as Mock-Tournament. Win and DQ are the only addition. */
   [SCOREBOARD_SKIN.QUICK_RESULT]: 'scoreboard-skin--mock-tournament',
+  /* Polished skins paint their own board on the display. The controller keeps the default look. */
+  [SCOREBOARD_SKIN.KIDS_ARCADE]: 'scoreboard-skin--mock-tournament',
+  [SCOREBOARD_SKIN.KIDS_STICKER]: 'scoreboard-skin--mock-tournament',
+  [SCOREBOARD_SKIN.KEYNOTE]: 'scoreboard-skin--mock-tournament',
+  [SCOREBOARD_SKIN.HEAVY_METAL]: 'scoreboard-skin--mock-tournament',
+  [SCOREBOARD_SKIN.BRASIL]: 'scoreboard-skin--mock-tournament',
+  [SCOREBOARD_SKIN.WOODBLOCK]: 'scoreboard-skin--mock-tournament',
+  [SCOREBOARD_SKIN.REGGAE]: 'scoreboard-skin--mock-tournament',
+  [SCOREBOARD_SKIN.PSYCHEDELIC]: 'scoreboard-skin--mock-tournament',
+  [SCOREBOARD_SKIN.VISIONARY]: 'scoreboard-skin--mock-tournament',
 };
+
+/** Polished skins in picker order. Listed only for Media Edition and above. */
+export const POLISHED_SCOREBOARD_SKINS = POLISHED_SKINS.map((skin) => ({
+  id: skin.id as ScoreboardSkinId,
+  slug: skin.slug,
+  label: skin.label,
+}));
+
+export function isPolishedScoreboardSkin(value: unknown): boolean {
+  return isPolishedSkinId(value);
+}
+
+/**
+ * Existing skins the picker lists before the polished ones.
+ * The plain White board keeps Mock-Tournament only, as before.
+ * The Pro suite and Coach Unlimited keep all three.
+ */
+export function pickerBaseScoreboardSkins(plainWhite: boolean) {
+  return plainWhite ? SELECTABLE_SCOREBOARD_SKINS.slice(0, 1) : SELECTABLE_SCOREBOARD_SKINS;
+}
+
+/**
+ * Everything the Scoreboard Skin popup lists: the existing skins, then the polished ones
+ * only when this browser has Media Edition or above. Without it they are absent, not locked.
+ */
+export function scoreboardPickerSkins(
+  plainWhite: boolean,
+  polishedOpen: boolean,
+): readonly { id: ScoreboardSkinId; label: string; slug?: PolishedSkinSlug }[] {
+  return [
+    ...pickerBaseScoreboardSkins(plainWhite).map((skin) => ({ id: skin.id, label: skin.label })),
+    ...(polishedOpen ? POLISHED_SCOREBOARD_SKINS : []),
+  ];
+}
 
 export function isSelectableScoreboardSkin(value: unknown): value is ScoreboardSkinId {
   return SELECTABLE_SCOREBOARD_SKINS.some((skin) => skin.id === value);
 }
 
-/** Unknown or reserved ids fall back to Mock-Tournament. */
+/** Unknown or reserved ids fall back to Mock-Tournament. A polished pick is kept; the board gates it. */
 export function parseScoreboardSkin(value: unknown): ScoreboardSkinId {
-  return isSelectableScoreboardSkin(value) ? value : DEFAULT_SCOREBOARD_SKIN;
+  if (isSelectableScoreboardSkin(value)) return value;
+  return isPolishedSkinId(value) ? (value as ScoreboardSkinId) : DEFAULT_SCOREBOARD_SKIN;
 }
 
 /** Class hook for the active skin. */
@@ -147,13 +203,20 @@ export function isPlainWhiteScoreboard(
   return coachWhiteBoard;
 }
 
-/** Skin the White, Coach, or suite board should paint. White never follows a stored skin pick. */
+/**
+ * Skin the White, Coach, or suite board should paint.
+ * White never follows a stored Old School or Quick Result pick.
+ * A polished pick paints on any board when this browser has Media Edition or above
+ * (`polishedOpen`). When it is locked here, the board falls back to the default.
+ */
 export function visibleScoreboardSkin(
   skin: ScoreboardSkinId,
   fromSuite: boolean,
   linkedBout: boolean,
   coachWhiteBoard = false,
+  polishedOpen = false,
 ): ScoreboardSkinId {
+  if (isPolishedSkinId(skin)) return polishedOpen ? skin : DEFAULT_SCOREBOARD_SKIN;
   return isPlainWhiteScoreboard(fromSuite, linkedBout, coachWhiteBoard) ? DEFAULT_SCOREBOARD_SKIN : skin;
 }
 

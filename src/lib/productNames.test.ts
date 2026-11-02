@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
+import { rankSeatDoor } from './ownerPassRank.ts';
+import type { EntitlementClaims } from './entitlementToken.ts';
 import {
   SITE_ALPHA_LINE,
   SITE_FEEDBACK_EMAIL,
@@ -14,6 +17,14 @@ import {
   PRO_HOME_DETAIL,
   PRO_HOME_LINES,
   PRO_LADDER_DETAIL,
+  PRO_PLUS_CLOUD_BELT_BLURB,
+  PRO_PLUS_CLOUD_NAME,
+  PRO_PLUS_CLOUD_PATH,
+  ADVANTAGE_CLOUD_DRIVE_NOTE,
+  ADVANTAGE_CLOUD_HEADING,
+  ADVANTAGE_CLOUD_STATUS,
+  ADVANTAGE_CLOUD_UPLOAD_LEAD,
+  ADVANTAGE_CLOUD_UPLOAD_STEPS,
   COACH_HOME_DESCRIPTION,
   STUDENT_EDITION_NAME,
   STUDENT_HOME_DESCRIPTION,
@@ -44,6 +55,7 @@ import {
   INSTRUCTOR_COLLAB_HUB_LABEL,
   INSTRUCTOR_COLLAB_NAME,
   INSTRUCTOR_COACH_ENTRY,
+  PRO_INSTRUCTOR_HUB_LABEL,
   UNLIMITED_LESSON_PATH,
   MATCH_CONTROLLER_PATH,
   MEDIA_CONSOLE_INSTRUCTIONS,
@@ -99,12 +111,12 @@ test('Home ladder details keep White meaning and a plain Pro subtitle', () => {
   );
   assert.equal(
     COACH_HOME_DESCRIPTION,
-    'Daily lesson plans, training videos, and a technique tree. Includes everything in Advantage White.',
+    'Downloadable daily lesson plans, training videos, and a technique tree. Includes everything in Media, Student and White.',
   );
   assert.doesNotMatch(WHITE_HOME_DESCRIPTION, /White —/);
-  assert.match(COACH_HOME_DESCRIPTION, /lesson plans/);
+  assert.match(COACH_HOME_DESCRIPTION, /^Downloadable daily lesson plans/);
   assert.match(COACH_HOME_DESCRIPTION, /technique tree/);
-  assert.match(COACH_HOME_DESCRIPTION, /everything in Advantage White/);
+  assert.match(COACH_HOME_DESCRIPTION, /everything in Media, Student and White/);
   assert.doesNotMatch(WHITE_HOME_DESCRIPTION, /student/i);
   assert.doesNotMatch(COACH_HOME_DESCRIPTION, /competitor roster/i);
   assert.equal(STUDENT_EDITION_NAME, 'Advantage – Student Edition');
@@ -162,7 +174,7 @@ test('Coach hub is Coaching Tools then Competition Team Management', () => {
   assert.doesNotMatch(`${COACHING_TOOLS_DETAIL}\n${COACHING_TOOLS_LEAD}`, /student/i);
   assert.deepEqual(
     COACH_HUBS.map((hub) => hub.title),
-    ['Daily Lesson Plan', 'Daily Training Videos', 'Technique Tree', 'Student Roster', 'Mock Tournament'],
+    ['Daily Lesson Plan', 'Daily Training Videos', 'Technique Tree', 'Student Roster', 'Competitor Roster', 'Mock Tournament'],
   );
   assert.deepEqual(
     COACH_HUBS.map((hub) => hub.to),
@@ -171,12 +183,13 @@ test('Coach hub is Coaching Tools then Competition Team Management', () => {
       '/techniques?from=coach',
       '/technique-tree?from=coach',
       '/roster?from=students',
+      '/roster?from=coach',
       '/tournament?from=coach',
     ],
   );
   assert.deepEqual(
     COACH_HUBS.map((hub) => hub.belt),
-    ['coach', 'coach', 'coach', 'coach', 'tournament'],
+    ['coach', 'coach', 'coach', 'coach', 'tournament', 'tournament'],
   );
   assert.ok(!COACH_HUBS.some((hub) => hub.title === 'Coaching Tools' || hub.title === COMPETITION_MANAGEMENT_LABEL));
   assert.ok(!COACH_HUBS.some((hub) => /curriculum/i.test(hub.title)));
@@ -205,15 +218,15 @@ test('Coach hub is Coaching Tools then Competition Team Management', () => {
   );
   assert.deepEqual(
     COMPETITION_MENU.map((item) => item.title),
-    ['Competitor Management System', 'Mock Tournament', 'Scoreboard', 'Round Timer'],
+    ['Competitor Management System', 'Competitor Roster', 'Mock Tournament', 'Scoreboard', 'Round Timer'],
   );
   assert.deepEqual(
     COMPETITION_MENU.map((item) => item.to),
-    ['/competitors?from=competition', '/tournament', '/match/control', '/training'],
+    ['/competitors?from=competition', '/roster?from=competition', '/tournament', '/match/control', '/training'],
   );
-  assert.equal(COMPETITION_MENU[2].to, MATCH_CONTROLLER_PATH);
-  assert.equal('clearBout' in COMPETITION_MENU[2] && COMPETITION_MENU[2].clearBout, true);
-  assert.equal(COMPETITION_MENU[3].to, '/training');
+  assert.equal(COMPETITION_MENU[3].to, MATCH_CONTROLLER_PATH);
+  assert.equal('clearBout' in COMPETITION_MENU[3] && COMPETITION_MENU[3].clearBout, true);
+  assert.equal(COMPETITION_MENU[4].to, '/training');
   assert.ok(!COMPETITION_MENU.some((item) => item.to === '/match'));
   assert.ok(!COMPETITION_MENU.some((item) => item.to.startsWith('/training/control')));
   const menuOrder = COMPETITION_MENU.map((item) => item.title);
@@ -222,7 +235,7 @@ test('Coach hub is Coaching Tools then Competition Team Management', () => {
   assert.ok(menuOrder.indexOf('Scoreboard') < menuOrder.indexOf('Round Timer'));
   assert.deepEqual(
     COMPETITION_MENU.map((item) => item.belt),
-    ['tournament', 'tournament', 'tournament', 'tournament'],
+    ['tournament', 'tournament', 'tournament', 'tournament', 'tournament'],
   );
   assert.equal(COMPETITION_MENU_PRO.length, 0);
   assert.doesNotMatch(COMPETITION_MANAGEMENT_LABEL, /student|GB Members|Coming Soon/i);
@@ -244,29 +257,40 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   assert.equal(COMPETITOR_ROSTER_PATH, '/roster?from=competitors');
   assert.deepEqual(
     COACH_UNLIMITED_TOOLS.map((tool) => tool.title),
-    ['Daily Lesson Plan', 'Daily Training Videos', 'Technique Tree', 'Competitor Roster'],
+    ['Daily Lesson Plan', 'Daily Training Videos', 'Technique Tree', 'Student Roster', 'Scoreboard', 'Round Timer'],
   );
+  assert.equal(COACH_UNLIMITED_TOOLS[4].to, withHubFrom(MATCH_CONTROLLER_PATH, 'unlimited'));
+  assert.equal(COACH_UNLIMITED_TOOLS[5].to, withHubFrom(ROUND_CONTROLLER_PATH, 'unlimited'));
+  assert.equal(COACH_UNLIMITED_TOOLS[4].belt, 'black');
+  assert.equal(COACH_UNLIMITED_TOOLS[5].belt, 'black');
+  assert.equal(COACH_UNLIMITED_TOOLS[4].clearBout, true);
+  assert.equal(COACH_UNLIMITED_TOOLS[3].title, 'Student Roster');
   assert.equal(COACH_UNLIMITED_TOOLS[0].to, UNLIMITED_LESSON_PATH);
   assert.equal(COACH_UNLIMITED_TOOLS[1].to, UNLIMITED_VIDEOS_PATH);
   assert.equal(COACH_UNLIMITED_TOOLS[2].to, UNLIMITED_TREE_PATH);
   assert.deepEqual(
     COACH_UNLIMITED_TOOLS.map((tool) => tool.belt),
-    ['brown', 'brown', 'brown', 'brown'],
+    ['brown', 'brown', 'brown', 'brown', 'black', 'black'],
   );
   assert.deepEqual(
     COACH_UNLIMITED_TOOLS.map((tool) => ('stripes' in tool ? tool.stripes : null)),
-    [0, 1, 2, 3],
+    [0, 1, 2, 3, null, null],
   );
-  assert.equal(COACH_UNLIMITED_TOOLS[3].to, UNLIMITED_ROSTER_PATH);
+  assert.equal(COACH_UNLIMITED_TOOLS[3].to, '/student-roster');
   assert.equal(UNLIMITED_ROSTER_PATH, '/roster?from=unlimited');
-  assert.notEqual(UNLIMITED_ROSTER_PATH, COMPETITOR_ROSTER_PATH);
+  assert.notEqual(COACH_UNLIMITED_TOOLS[3].to, COMPETITOR_ROSTER_PATH);
   assert.equal(COACH_UNLIMITED_TOOLS[3].belt, 'brown');
   assert.ok(!COACH_UNLIMITED_TOOLS.some((tool) => /curriculum/i.test(tool.title) || tool.to.includes('competition-curriculum')));
   assert.ok(!COACH_UNLIMITED_TOOLS.some((tool) => tool.to.startsWith('/coaching-tools')));
   assert.deepEqual(
     PRO_HUBS.map((hub) => hub.title),
-    [MEDIA_CONSOLE_NAME, INSTRUCTOR_COACH_ENTRY, INSTRUCTOR_COLLAB_HUB_LABEL, TOURNAMENT_MANAGEMENT_PRO_LABEL],
+    [MEDIA_CONSOLE_NAME, PRO_INSTRUCTOR_HUB_LABEL, INSTRUCTOR_COLLAB_HUB_LABEL, TOURNAMENT_MANAGEMENT_PRO_LABEL],
   );
+  // Pro's list reads Instructor Edition; the Coach Unlimited screen keeps its own name and route.
+  assert.equal(PRO_INSTRUCTOR_HUB_LABEL, 'Advantage Instructor Edition');
+  assert.equal(PRO_HUBS[1].title, 'Advantage Instructor Edition');
+  assert.equal(PRO_HUBS[1].to, '/coach-unlimited');
+  assert.ok(!PRO_HUBS.some((hub) => /Coach Unlimited/.test(hub.title)));
   assert.deepEqual(
     PRO_HUBS.map((hub) => hub.to),
     ['/slideshow?folder=gallery', '/coach-unlimited', '/instructors', '/suite'],
@@ -278,8 +302,8 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   );
   assert.equal(MATCH_CONTROLLER_PATH, '/match/control');
   assert.equal(ROUND_CONTROLLER_PATH, '/training/control');
-  assert.equal(TOURNAMENT_MANAGEMENT_PRO_LABEL, 'Tournament Management Pro');
-  assert.equal(PRO_HUBS[3].title, 'Tournament Management Pro');
+  assert.equal(TOURNAMENT_MANAGEMENT_PRO_LABEL, 'Competition and Tournament Management');
+  assert.equal(PRO_HUBS[3].title, 'Competition and Tournament Management');
   assert.equal(COMPETITION_MANAGEMENT_PRO_LABEL, 'Competition Management Pro');
   assert.equal(
     TOURNAMENT_MANAGEMENT_PRO_LEAD,
@@ -288,14 +312,16 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   assert.doesNotMatch(TOURNAMENT_MANAGEMENT_PRO_LEAD, /roster/i);
   assert.deepEqual(
     COMPETITION_PRO_MENU.map((item) => item.title),
-    ['Brackets-Tournament Software', 'Competitor Management System', 'Scoreboard', 'Round Timer'],
+    ['Brackets-Tournament Software', 'Competitor Management System', 'Competitor Roster', 'Scoreboard', 'Round Timer'],
   );
-  assert.ok(!COMPETITION_PRO_MENU.some((item) => /roster/i.test(item.title)));
+  assert.equal(COMPETITION_PRO_MENU[2].to, '/roster?from=suite');
+  assert.notEqual(COMPETITION_PRO_MENU[1].to, COMPETITION_PRO_MENU[2].to);
   assert.deepEqual(
     COMPETITION_PRO_MENU.map((item) => item.to),
     [
       withSuiteFrom('/tournament', true),
       withSuiteFrom('/competitors', true),
+      withSuiteFrom('/roster', true),
       withSuiteFrom(MATCH_CONTROLLER_PATH, true),
       withSuiteFrom(ROUND_CONTROLLER_PATH, true),
     ],
@@ -304,11 +330,11 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   assert.equal(COMPETITION_PRO_MENU[1].to, '/competitors?from=suite');
   assert.deepEqual(
     COMPETITION_PRO_MENU.map((item) => item.belt),
-    ['tournament', 'tournament', 'black', 'black'],
+    ['tournament', 'tournament', 'tournament', 'black', 'black'],
   );
   assert.deepEqual(
     COMPETITION_PRO_MENU.map((item) => item.clearBout),
-    [false, false, true, false],
+    [false, false, false, true, false],
   );
 });
 
@@ -334,13 +360,13 @@ test('Owner tournament tool is Tournament Software; Coach keeps Mock Tournament'
 
 test('Home Pro card describes the console without a Coming Soon line', () => {
   assert.deepEqual(PRO_HOME_LINES, [
-    'Academy management with a shared drive, events, pro shop, and gallery, plus instructor collaboration and student seats. Includes everything in Advantage Coach.',
+    'Academy management with a shared drive, events, pro shop, and gallery, plus instructor collaboration and student seats. Includes all Advantage products.',
   ]);
   const home = PRO_HOME_LINES.join('\n');
   assert.match(home, /shared drive/);
   assert.match(home, /instructor collaboration/);
   assert.match(home, /student seats/);
-  assert.match(home, /everything in Advantage Coach/);
+  assert.match(home, /Includes all Advantage products\./);
   assert.doesNotMatch(home, /Coming Soon/);
   assert.doesNotMatch(PRO_HOME_LINES[0], /^Pro\b/);
   assert.equal(PRO_HOME_DETAIL, `${GYM_CONSOLE_NAME} — Coming Soon`);
@@ -559,5 +585,104 @@ test('a media grant opens Media Console with Pro locked; a seat without one stay
     MEDIA_FOLDER_ROUTES.map((route) => route.path),
     ['/gallery', '/events', '/proshop', '/pro-shop'],
   );
-  assert.deepEqual([...MEDIA_CONSOLE_ROUTES], ['/media', '/media-console', '/console']);
+  assert.deepEqual([...MEDIA_CONSOLE_ROUTES], ['/media-console', '/console']);
+  // /media is the Media Edition screen now, not a /pro alias.
+  assert.equal((MEDIA_CONSOLE_ROUTES as readonly string[]).includes('/media'), false);
+});
+
+const PRO_BUTTONS = [
+  'Media Console',
+  'Advantage Instructor Edition',
+  'Instructor Invitation and Access Management',
+  'Competition and Tournament Management',
+] as const;
+
+test('Pro console buttons stay those four labels, in that order, for owner, Pro, and a seat', () => {
+  assert.deepEqual(PRO_HUBS.map((hub) => hub.title), [...PRO_BUTTONS]);
+  assert.deepEqual(
+    PRO_HUBS.map((hub) => hub.belt),
+    ['purple', 'brown', 'black', 'tournament'],
+  );
+  assert.equal(PRO_HUBS[1].to, '/coach-unlimited');
+  assert.ok(!PRO_HUBS.some((hub) => hub.title === 'Advantage Coach Unlimited' || hub.title === COMPETITOR_SYSTEM_NAME));
+
+  const menus = { galleryUpload: true, eventsAccess: true, proShopAccess: true };
+  const seated = {
+    proUnlocked: true,
+    seated: true,
+    seatGrantsMedia: true,
+    programDirectorSeat: false,
+    coachMenus: true,
+    seat: { id: 'owner-test-seat' },
+  };
+  const pass = (src: 'owner' | 'code' | 'stripe'): EntitlementClaims =>
+    ({
+      src,
+      tier: src === 'code' ? 'alpha' : src === 'owner' ? 'owner' : 'pro',
+      grants: ['white', 'student', 'coach', 'pro', 'media'],
+      subs: src === 'stripe' ? { state: 'active' } : undefined,
+    }) as EntitlementClaims;
+
+  for (const src of ['owner', 'code', 'stripe'] as const) {
+    const ranked = rankSeatDoor(seated, pass(src));
+    assert.equal(ranked.seated, false, src);
+    assert.deepEqual(
+      consoleHubs(ranked, menus).map((hub) => hub.title),
+      [...PRO_BUTTONS],
+      src,
+    );
+  }
+
+  const seatOnly = rankSeatDoor(seated, { src: 'seat', tier: 'seat', grants: [], subs: { state: 'locked' } } as EntitlementClaims);
+  assert.equal(seatOnly.seated, true);
+  const seatTitles = consoleHubs(seatOnly, menus).map((hub) => hub.title);
+  assert.deepEqual(seatTitles, ['Gallery', 'Events', 'Pro Shop', 'Advantage Instructor Edition']);
+  assert.ok(!seatTitles.includes('Advantage Coach Unlimited'));
+
+  const locked = rankSeatDoor(seated, { ...pass('stripe'), subs: { state: 'locked' } } as EntitlementClaims);
+  assert.equal(locked.seated, true);
+
+  const proPage = readFileSync(new URL('../pages/Pro.tsx', import.meta.url), 'utf8');
+  const soon = readFileSync(new URL('../components/ComingSoonAd.tsx', import.meta.url), 'utf8');
+  assert.match(proPage, /consoleHubs\(door/);
+  assert.doesNotMatch(proPage, /Advantage Coach Unlimited/);
+  assert.match(soon, /Advantage Instructor Edition/);
+  assert.doesNotMatch(soon, /Advantage Coach Unlimited/);
+});
+
+test('Pro Plus Cloud copy stays off the Advantage Pro blurb', () => {
+  assert.equal(PRO_LADDER_DETAIL, 'Gym Owner and Instructors Console');
+  assert.equal(PRO_PLUS_CLOUD_NAME, 'Advantage Pro Plus Cloud');
+  assert.equal(PRO_PLUS_CLOUD_PATH, '/pro-plus-cloud');
+  assert.equal(PRO_PLUS_CLOUD_BELT_BLURB, 'Gym Owner and Instructors Console, with Advantage Cloud.');
+  assert.notEqual(PRO_PLUS_CLOUD_BELT_BLURB, PRO_LADDER_DETAIL);
+  assert.equal(ADVANTAGE_CLOUD_HEADING, 'Advantage Cloud');
+  assert.equal(ADVANTAGE_CLOUD_STATUS, 'Coming soon');
+  assert.equal(ADVANTAGE_CLOUD_UPLOAD_LEAD, 'How uploading will work');
+  assert.deepEqual(
+    [...ADVANTAGE_CLOUD_UPLOAD_STEPS],
+    [
+      'Pick a photo or video on this phone.',
+      'Add it from Media Console, Gallery, Events, or Pro Shop.',
+      'Advantage saves that file in Advantage Cloud.',
+      'The gym TV plays it from Advantage Cloud.',
+    ],
+  );
+  assert.equal(
+    ADVANTAGE_CLOUD_DRIVE_NOTE,
+    'This subscription does not need Google Drive or OneDrive. Advantage hosts Advantage Cloud. Advantage App LLC does not host or manage a drive you own yourself.',
+  );
+  assert.deepEqual(
+    PRO_HUBS.map((hub) => hub.title),
+    [
+      'Media Console',
+      'Advantage Instructor Edition',
+      'Instructor Invitation and Access Management',
+      'Competition and Tournament Management',
+    ],
+  );
+  assert.deepEqual(
+    PRO_HUBS.map((hub) => hub.belt),
+    ['purple', 'brown', 'black', 'tournament'],
+  );
 });

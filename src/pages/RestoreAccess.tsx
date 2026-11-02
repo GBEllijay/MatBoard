@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { appVersionHeaders } from '../lib/appCapability';
 import { Link, useSearchParams } from 'react-router-dom';
 import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
 import { devicePublicJwk } from '../lib/deviceKey';
-import { acceptServerToken, clearEntitlementToken, entitlementSnapshot, readDeviceId } from '../lib/entitlement';
+import { clearEntitlementToken, entitlementSnapshot, readDeviceId } from '../lib/entitlement';
+import { acceptRestoredToken } from '../lib/restoreAccept';
 import { clearRestoreChallenge, readRestoreChallenge, saveRestoreChallenge } from '../lib/restoreChallenge';
 import { fetchTurnstileSiteKey, loadTurnstile, type TurnstileApi } from '../lib/turnstile';
 import { isWhiteRestoreEmail, restoreWhiteByEmail } from '../lib/whiteUnlock';
@@ -158,7 +160,7 @@ export function RestoreAccessPage({ deps = {} }: { deps?: RestoreDeps } = {}) {
       const publicJwk = await devicePublicJwk();
       const response = await fetch('/api/restore/verify', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', ...appVersionHeaders() },
         body: JSON.stringify({
           challengeId,
           code: code.trim(),
@@ -172,7 +174,7 @@ export function RestoreAccessPage({ deps = {} }: { deps?: RestoreDeps } = {}) {
         setPending(false);
         return;
       }
-      const accepted = await acceptServerToken(body.token);
+      const accepted = await acceptRestoredToken(body.token);
       if (accepted) {
         clearRestoreChallenge();
         setChallengeId('');

@@ -4,7 +4,7 @@
  *
  *   CODE_HASH_PEPPER='…' node --experimental-strip-types scripts/generate-unlock-codes.ts --kind owner
  *
- * Kinds: owner, alpha-coach, alpha-pro, alpha-student, free-white
+ * Kinds: owner, alpha-coach, alpha-pro, alpha-student, free-white, alpha-media
  */
 
 import { keyedHash, normalizeCode } from '../src/server/codeCrypto.ts';

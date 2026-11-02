@@ -5,11 +5,14 @@
  *
  * Seat presets match the signed invite. A Program Director keeps Media Console
  * when Pro is locked. A lesson seat keeps Lesson Cloud when Pro is locked.
- * Coach Unlimited stays shut until Pro is open. A custom seat has no preset on
+ * A Media Edition grant opens only Media Console (one-time, no subscription rules).
+ * Coach Unlimited (Instructor Edition) opens for Pro or a direct coach grant
+ * (Instructor or legacy Coach purchase, alpha-coach code, owner). Seats are unchanged. A custom seat has no preset on
  * the token, so the server cannot see its toggles and allows the seat screens.
  */
 
 import type { EntitlementClaims } from './entitlementToken.ts';
+import { impliedDoors } from './tierImplications.ts';
 
 export const PAID_CHUNK_IDS = ['pro-console', 'media-console', 'lesson-cloud', 'coach-unlimited'] as const;
 export type PaidChunkId = (typeof PAID_CHUNK_IDS)[number];
@@ -43,7 +46,7 @@ function seatToken(claims: EntitlementClaims): boolean {
  * subscription claim, so a Pro grant stays open until the token itself expires.
  */
 export function proGrantOpen(claims: EntitlementClaims, nowMs: number): boolean {
-  if (!claims.grants.includes('pro')) return false;
+  if (!impliedDoors(claims.grants).includes('pro')) return false;
   const subs = claims.subs;
   if (!subs) return true;
   if (subs.state === 'locked') return false;
@@ -58,6 +61,30 @@ export function proGrantOpen(claims: EntitlementClaims, nowMs: number): boolean 
   return subs.state === 'active' || subs.state === 'grace';
 }
 
+/**
+ * Media Edition is open. A one-time Media grant (code today, $29.99 later) has no
+ * subscription rules. When the pass also carries Pro, Media came with Pro and follows
+ * Pro's subscription state (same as White under a paused Pro). Seats use their preset.
+ */
+export function mediaGrantOpen(claims: EntitlementClaims, nowMs: number): boolean {
+  if (seatToken(claims)) return false;
+  const doors = impliedDoors(claims.grants);
+  if (!doors.includes('media')) return false;
+  if (doors.includes('pro') && claims.grants.includes('pro')) return proGrantOpen(claims, nowMs);
+  return true;
+}
+
+/**
+ * Instructor Edition opens Coach Unlimited (owner 2026-11-01). A direct coach grant
+ * counts (Instructor or legacy Coach purchase, alpha-coach code, owner). A Pro pass
+ * lists coach too, so when the pass carries Pro the coach grant follows Pro's
+ * subscription state instead: a locked Pro stays shut, as before.
+ */
+export function coachUnlimitedGrant(claims: EntitlementClaims): boolean {
+  if (seatToken(claims)) return false;
+  return claims.grants.includes('coach') && !claims.grants.includes('pro');
+}
+
 /** Grant check only. Ignores token expiry so offline grace can reuse it. */
 export function paidChunkGrant(claims: EntitlementClaims, chunk: PaidChunkId, nowMs: number): boolean {
   const pro = proGrantOpen(claims, nowMs);
@@ -69,14 +96,14 @@ export function paidChunkGrant(claims: EntitlementClaims, chunk: PaidChunkId, no
 
   if (chunk === 'media-console') {
     if (seated) return mediaPreset || customSeat;
-    return pro;
+    return pro || mediaGrantOpen(claims, nowMs);
   }
   if (chunk === 'lesson-cloud') {
     if (seated && (lessonPreset || customSeat)) return true;
     return !seated && pro;
   }
   if (chunk === 'coach-unlimited') {
-    if (!seated) return pro;
+    if (!seated) return pro || coachUnlimitedGrant(claims);
     return pro && (lessonPreset || customSeat);
   }
   if (!seated) return pro;
@@ -113,6 +140,69 @@ export function paidChunkAllowedForClient(
   return false;
 }
 
+/**
+ * The menu and the chunk grant have to name the same screen.
+ * A closed door stays closed. With no token, the door may still open the
+ * confirm screen during amnesty (the import is not sent). With a token, the
+ * door opens only when paidChunkGrant would release that chunk. A coach preset
+ * with Pro closed is not shown Pro Console or Media Console: the token does
+ * not include those hubs, and widening the grant would open them for every
+ * coach seat.
+ */
+export function paidChunkMenuAgrees(input: {
+  claims: EntitlementClaims | null;
+  chunk: PaidChunkId;
+  nowMs: number;
+  doorOpen: boolean;
+  amnesty: boolean;
+}): boolean {
+  if (!input.doorOpen) return false;
+  if (!input.claims) return input.amnesty;
+  return paidChunkGrant(input.claims, input.chunk, input.nowMs);
+}
+
+/** Paid chunk a hub or route downloads. Null when the page is not a paid chunk. */
+export function paidChunkForHref(href: string): PaidChunkId | null {
+  const path = href.split(/[?#]/, 1)[0];
+  if (path === '/pro' || path === '/console' || path === '/media-console') return 'pro-console';
+  if (
+    path === '/media' ||
+    path === '/slideshow' ||
+    path === '/screensaver' ||
+    path === '/schedule' ||
+    path === '/gallery' ||
+    path === '/events' ||
+    path === '/proshop' ||
+    path === '/pro-shop'
+  ) {
+    return 'media-console';
+  }
+  if (path === '/class-history') return 'lesson-cloud';
+  if (path === '/coach-unlimited' || path.startsWith('/coach-unlimited/') || path === '/review') return 'coach-unlimited';
+  return null;
+}
+
+/**
+ * A dynamic import failed. Network drops and stale chunk URLs are worth one
+ * retry. A second failure, or anything else, is the fallback.
+ */
+export function paidImportRetryable(error: unknown, offline: boolean): boolean {
+  if (offline) return true;
+  const message = error instanceof Error ? `${error.name} ${error.message}` : String(error ?? '');
+  return /failed to fetch|networkerror|network request failed|load failed|dynamically imported module|importing a module script failed|chunkloaderror|mime type|unexpected token/i.test(
+    message,
+  );
+}
+
+export function paidImportFailure(
+  error: unknown,
+  offline: boolean,
+  alreadyRetried: boolean,
+): 'retry' | 'offline' | 'failed' {
+  if (!alreadyRetried && paidImportRetryable(error, offline)) return 'retry';
+  return offline ? 'offline' : 'failed';
+}
+
 export type PaidLoadBlock = 'confirm' | 'failed' | 'offline' | 'pending';
 
 /**
@@ -129,7 +219,10 @@ export function paidImportBlock(input: {
   chunk: PaidChunkId;
   nowMs: number;
   offline: boolean;
+  /** The device clock moved back past the last seen time. Never open a paid screen then. */
+  clockRolledBack?: boolean;
 }): PaidLoadBlock | null {
+  if (input.clockRolledBack && input.claims) return 'failed';
   if (!input.claims) {
     if (!input.ready) return 'pending';
     return input.amnesty ? 'confirm' : 'failed';
@@ -150,4 +243,27 @@ export function filesForAllowedChunks(
     for (const file of files[id] ?? []) allowed.add(file);
   }
   return [...allowed];
+}
+
+/**
+ * Saved paid chunks the browser may keep in Cache Storage.
+ * Same grant rule as the client opener (paidChunkAllowedForClient) with the
+ * offline window applied: a fresh token keeps its screens, and an expired token
+ * keeps them only until exp + offline_grace (or fail_open_until). Past that, or
+ * with a locked subscription, the copy is dropped. Keeping a file does not open
+ * it: preparePaidImport still runs the client rule, which needs the browser to
+ * be offline once the token has expired, and the route guard still applies.
+ */
+export function filesToKeepOffline(
+  claims: EntitlementClaims,
+  files: Readonly<Record<string, readonly string[]>>,
+  nowMs: number,
+): string[] {
+  if (claims.subs?.state === 'locked') return [];
+  const keep = new Set<string>();
+  for (const id of PAID_CHUNK_IDS) {
+    if (!paidChunkAllowedForClient(claims, id, nowMs, true)) continue;
+    for (const file of files[id] ?? []) keep.add(file);
+  }
+  return [...keep];
 }

@@ -24,6 +24,7 @@ export const PRO_RELOCK_KEY = 'advantage.proRelocked';
 export const COACH_RELOCK_KEY = 'advantage.coachRelocked';
 export const WHITE_RELOCK_KEY = 'advantage.whiteRelocked';
 export const STUDENT_RELOCK_KEY = 'advantage.studentEditionRelocked';
+export const MEDIA_RELOCK_KEY = 'advantage.mediaRelocked';
 
 export const LEGACY_NOTICE_KEY = 'advantage.legacyNotice.v1';
 export const LEGACY_NOTICE_DISMISSED_KEY = 'advantage.legacyNoticeDismissed';

@@ -1,10 +1,8 @@
-import { Link } from 'react-router-dom';
 import { BeltHeader } from '../components/BeltHeader';
-import { BeltRail } from '../components/BeltRail';
 import { HomeMark } from '../components/HomeMark';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { SiteFooter } from '../components/SiteFooter';
-import { unlinkBracketBout } from '../lib/bracketBout';
+import { SuiteMenuLinks } from '../components/SuiteMenuLinks';
 import {
   COMPETITION_PRO_MENU,
   PRODUCTS_PATH,
@@ -24,19 +22,7 @@ export function TournamentSuitePage() {
             title={TOURNAMENT_MANAGEMENT_PRO_LABEL}
             blurb={TOURNAMENT_MANAGEMENT_PRO_LEAD}
           />
-          <nav className="suite__nav" aria-label={TOURNAMENT_MANAGEMENT_PRO_LABEL}>
-            {COMPETITION_PRO_MENU.map((link) => (
-              <Link
-                key={link.title}
-                className="pro-hub"
-                to={link.to}
-                onClick={link.clearBout ? () => unlinkBracketBout() : undefined}
-              >
-                {link.belt ? <BeltRail kind={link.belt} /> : null}
-                <span>{link.title}</span>
-              </Link>
-            ))}
-          </nav>
+          <SuiteMenuLinks links={COMPETITION_PRO_MENU} label={TOURNAMENT_MANAGEMENT_PRO_LABEL} />
         </section>
         <SiteFooter />
       </div>

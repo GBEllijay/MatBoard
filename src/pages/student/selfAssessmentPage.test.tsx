@@ -4,9 +4,14 @@
  * Self-assessment controls:
  * Back. Hold for Home. Home.
  * Heading Self-assessment. Lead sentence.
+ * Sentence: today's ratings start from Fundamentals. Mindset is rated here.
+ *   A saved day stays as saved.
  * Latest average when a check-in exists.
  * Radar chart. Trend chart.
+ * Mindset hint when Fundamentals filled the other areas and Mindset is empty.
  * Self-assessment date. Changing the date loads that day's note and ratings.
+ *   Today with no saved check-in reloads the Fundamentals draft.
+ *   Another empty date stays blank.
  * Guard, Passing, Takedowns, Escapes, Submissions, Conditioning, Mindset.
  * Each area: rating 1–5, pressed state, and Open: {benchmark} benchmark
  * only when the belt the student wears has that checkpoint.
@@ -39,10 +44,10 @@ import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { radarPoints, selfAssessmentShapeLabel } from '../../lib/radarChart.ts';
-import { ASSESSMENT_STORAGE_KEY, type AssessmentScores } from '../../lib/studentAssessment.ts';
+import { ASSESSMENT_STORAGE_KEY, saveAssessment, writeAssessments, type AssessmentScores } from '../../lib/studentAssessment.ts';
 import { installStudentMockGuard, resetStudentMockGuardForTests } from '../../lib/studentDemo.ts';
 import { STUDENT_BACKUP_STAMP_KEY } from '../../lib/studentBackupStamp.ts';
-import { blankStudentReport, saveStudentReport, todayIso } from '../../lib/studentEdition.ts';
+import { blankStudentReport, saveStudentReport, setFundamentalLevel, todayIso } from '../../lib/studentEdition.ts';
 import { withStarterRubric } from '../../lib/studentTools.ts';
 import { CompetitorPage } from './CompetitorPage.tsx';
 import { PrintReportPage } from './PrintReportPage.tsx';
@@ -383,4 +388,100 @@ test('the print route still shows the self-assessment report', () => {
   control(host, 'button', 'Download PDF');
   assert.equal(labeled(host, 'Back. Hold for Home.').getAttribute('href'), '/student/backup?student=1');
   unmount(mounted);
+});
+
+test('fundamentals levels show on the chart without retyping, and a saved day is kept', () => {
+  localStorage.clear();
+  let report = withStarterRubric(blankStudentReport());
+  const mark = (catalogItemId: string, categoryId: string, name: string, level: 0 | 1 | 2 | 3 | 4 | 5, now: number) => {
+    report = setFundamentalLevel(report, { catalogItemId, categoryId, name }, level, now);
+  };
+  mark('sweep.scissor', 'sweeps', 'Scissor sweep', 4, 11);
+  mark('sweep.hip-bump', 'sweeps', 'Hip bump sweep', 0, 12);
+  mark('pass.knee-slice', 'passes', 'Knee slice pass', 2, 13);
+  mark('td.double-leg', 'takedowns', 'Double leg', 5, 14);
+  mark('escape.mount', 'escapes', 'Mount escape', 3, 15);
+  mark('sub.armbar-guard', 'submissions', 'Armbar from guard', 1, 16);
+  mark('move.shrimp', 'movement', 'Shrimp', 4, 17);
+  saveStudentReport(localStorage, report);
+  writeAssessments(
+    localStorage,
+    saveAssessment(
+      { entries: [] },
+      {
+        date: '2024-05-01',
+        note: 'kept from an older phone',
+        scores: { guard: 2, passing: 2, takedowns: 2, escapes: 2, submissions: 2, conditioning: 2, mindset: 2 },
+      },
+      20,
+    ),
+  );
+
+  const mounted = mount(<SelfAssessmentPage />);
+  const { host } = mounted;
+  assert.match(host.textContent ?? '', /Today's ratings start from Fundamentals/);
+  assert.match(host.textContent ?? '', /kept from an older phone/);
+  assert.equal(labeled(host, 'Guard 4').getAttribute('aria-pressed'), 'true');
+  assert.equal(labeled(host, 'Passing 2').getAttribute('aria-pressed'), 'true');
+  assert.equal(labeled(host, 'Takedowns 5').getAttribute('aria-pressed'), 'true');
+  assert.equal(labeled(host, 'Escapes 3').getAttribute('aria-pressed'), 'true');
+  assert.equal(labeled(host, 'Submissions 1').getAttribute('aria-pressed'), 'true');
+  assert.equal(labeled(host, 'Conditioning 4').getAttribute('aria-pressed'), 'true');
+  for (const score of [1, 2, 3, 4, 5]) {
+    assert.equal(labeled(host, `Mindset ${score}`).getAttribute('aria-pressed'), 'false');
+  }
+  const shape = host.querySelector('svg.assess-chart');
+  assert.equal(
+    shape?.getAttribute('aria-label'),
+    selfAssessmentShapeLabel({ guard: 4, passing: 2, takedowns: 5, escapes: 3, submissions: 1, conditioning: 4 }),
+  );
+  assert.equal(shape?.querySelector('polygon.assess-chart__shape')?.getAttribute('points'), radarPoints([4, 2, 5, 3, 1, 4, 0]));
+  assert.match(host.textContent ?? '', /Mindset is not on the Fundamentals list/);
+  const beforeSave = localStorage.getItem(ASSESSMENT_STORAGE_KEY) ?? '';
+  assert.match(beforeSave, /kept from an older phone/);
+  assert.equal(beforeSave.includes(todayIso()), false);
+
+  act(() => {
+    control(host, 'button', 'Save self-assessment').click();
+  });
+  assert.match(labeled(host, 'Self-assessment').textContent ?? '', /Rate Mindset from 1 to 5/);
+  assert.equal(localStorage.getItem(ASSESSMENT_STORAGE_KEY)?.includes(todayIso()), false);
+
+  act(() => {
+    labeled(host, 'Mindset 2').click();
+  });
+  setControl(labeled(host, 'Self-assessment note') as HTMLTextAreaElement, 'from fundamentals');
+  act(() => {
+    control(host, 'button', 'Save self-assessment').click();
+  });
+  const savedText = localStorage.getItem(ASSESSMENT_STORAGE_KEY) ?? '';
+  assert.match(savedText, /from fundamentals/);
+  assert.match(savedText, /kept from an older phone/);
+  assert.equal(labeled(host, 'Guard 4').getAttribute('aria-pressed'), 'true');
+  assert.equal(labeled(host, 'Mindset 2').getAttribute('aria-pressed'), 'true');
+  unmount(mounted);
+
+  report = setFundamentalLevel(report, { catalogItemId: 'sweep.scissor', categoryId: 'sweeps', name: 'Scissor sweep' }, 1, 30);
+  saveStudentReport(localStorage, report);
+  const again = mount(<SelfAssessmentPage />);
+  assert.equal(labeled(again.host, 'Guard 4').getAttribute('aria-pressed'), 'true');
+  assert.match(again.host.textContent ?? '', /from fundamentals/);
+  setControl(labeled(again.host, 'Self-assessment date') as HTMLInputElement, '2020-01-02');
+  assert.equal(labeled(again.host, 'Guard 4').getAttribute('aria-pressed'), 'false');
+  assert.equal((labeled(again.host, 'Self-assessment note') as HTMLTextAreaElement).value, '');
+  setControl(labeled(again.host, 'Self-assessment date') as HTMLInputElement, todayIso());
+  assert.equal(labeled(again.host, 'Guard 4').getAttribute('aria-pressed'), 'true');
+  assert.equal((labeled(again.host, 'Self-assessment note') as HTMLTextAreaElement).value, 'from fundamentals');
+
+  const day = todayIso();
+  act(() => {
+    control(again.host, 'button', `Remove check-in ${day}`).click();
+  });
+  act(() => {
+    control(again.host, 'button', `Confirm remove check-in ${day}`).click();
+  });
+  assert.equal(labeled(again.host, 'Guard 1').getAttribute('aria-pressed'), 'true');
+  assert.equal(localStorage.getItem(ASSESSMENT_STORAGE_KEY)?.includes('from fundamentals'), false);
+  assert.match(localStorage.getItem(ASSESSMENT_STORAGE_KEY) ?? '', /kept from an older phone/);
+  unmount(again);
 });

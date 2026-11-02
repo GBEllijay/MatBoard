@@ -6,7 +6,9 @@ import { OutcomeSplash } from '../components/OutcomeSplash';
 import { TvTip } from '../components/TvTip';
 import { RankChip } from '../components/RankChip';
 import { CarlosCheer } from '../components/CarlosCheer';
+import { PolishedScoreboard } from '../components/PolishedScoreboard';
 import { ScoreBox } from '../components/ScoreBox';
+import { ScoreboardSkinPicker } from '../components/ScoreboardSkinPicker';
 import { useBoutQuerySync, useBracketOutcomeReturn } from '../hooks/useBracketBoutReturn';
 import { useInterval } from '../hooks/useClock';
 import { useMatchBoard } from '../hooks/useMatchBoard';
@@ -23,6 +25,7 @@ import { needsRefDecision } from '../lib/outcomes';
 import { formatMmSs } from '../lib/format';
 import { carlosMatchComplete, matchCarlosView } from '../lib/carlosCelebration';
 import { kidsBoardClass } from '../lib/kidsScoreboard';
+import { polishedSkinById } from '../lib/polishedSkins';
 import { SCOREBOARD_SKIN, scoreboardSkinClass } from '../lib/scoreboardSkin';
 
 export function MatchDisplayPage() {
@@ -81,6 +84,8 @@ export function MatchDisplayPage() {
   const skin = board.skinFor(match.skin);
   const flap = skin === SCOREBOARD_SKIN.OLD_SCHOOL;
   const boardCalls = skin === SCOREBOARD_SKIN.QUICK_RESULT;
+  /** Media Edition and above. skinFor already fell back to the default when locked here. */
+  const polished = board.kidsSkin ? null : polishedSkinById(skin);
   const carlos = board.showCarlos
     ? matchCarlosView({
         prefs: match.carlos,
@@ -118,7 +123,7 @@ export function MatchDisplayPage() {
 
   return (
     <main
-      className={`display ${scoreboardSkinClass(skin)}${board.kidsSkin ? ` ${kidsBoardClass(board.kidsSkin)}` : ''}${linkedId ? ' display--linked' : ''}${splash ? ' display--splash' : ''}${
+      className={`display ${scoreboardSkinClass(skin)}${polished ? ' display--polished' : ''}${board.kidsSkin ? ` ${kidsBoardClass(board.kidsSkin)}` : ''}${linkedId ? ' display--linked' : ''}${splash ? ' display--splash' : ''}${
         suite.fromSuite ? ' origin-suite' : ''
       }${fs.className ? ` ${fs.className}` : ''}`}
       onPointerDown={() => {
@@ -135,6 +140,7 @@ export function MatchDisplayPage() {
           )}
         </div>
         <div className="display__chrome-end">
+          <ScoreboardSkinPicker />
           {fs.active ? null : (
             <FullscreenChip
               supported={fs.supported}
@@ -169,69 +175,144 @@ export function MatchDisplayPage() {
       ) : null}
       <TvTip onFullscreen={() => void fs.enter()} />
 
-      <CompetitorBand
-        side="blue"
-        name={match.blue.name}
-        gym={match.blue.gym}
-        rank={match.blue.rank}
-        points={match.blue.points}
-        advantages={match.blue.advantages}
-        disadvantages={match.blue.disadvantages}
-        fallbackName="Competitor 1"
-        linked={Boolean(linkedId)}
-        flap={flap}
-        onOpenController={openController}
-        calls={
-          boardCalls
-            ? {
-                disabled: flashing,
-                highlight: refNeeded,
-                onWin: () => outcomeSheet.openWin('blue', 'Blue'),
-                onDq: () => outcomeSheet.openDq('blue', 'Blue'),
-              }
-            : undefined
-        }
-      />
-
-      <section className={`display__mid${flap ? ' display__mid--stack' : ''}`}>
-        {flap ? clockControl : null}
-        <div className="display__meta">
-          {roundLine ? (
-            <ControllerFocusLink focus="round" label="Edit round on Controller" onOpen={openController}>
-              {roundLine}
+      {polished ? (
+        <PolishedScoreboard
+          slug={polished.slug}
+          mat={
+            roundLine ? (
+              <ControllerFocusLink focus="round" label="Edit round on Controller" onOpen={openController}>
+                {roundLine}
+              </ControllerFocusLink>
+            ) : (
+              'Live bout'
+            )
+          }
+          division={
+            <ControllerFocusLink focus="division" label="Edit division on Controller" onOpen={openController}>
+              {match.division || 'Open'}
             </ControllerFocusLink>
-          ) : null}
-          <ControllerFocusLink focus="division" label="Edit division on Controller" onOpen={openController}>
-            {match.division || 'Open'}
-          </ControllerFocusLink>
-        </div>
-        {flap ? null : clockControl}
-        {statusControl}
-      </section>
+          }
+          state="Match"
+          clock={
+            <button type="button" className="sk-btn" onClick={toggleClock} aria-label="Start or pause match clock">
+              {formatMmSs(remaining)}
+            </button>
+          }
+          status={
+            refNeeded ? (
+              <button type="button" className="sk-btn sk-ref" onClick={() => openController('outcome')}>
+                Referee decision
+              </button>
+            ) : (
+              <button type="button" className="sk-btn" onClick={toggleClock} aria-label={clockStatusAction}>
+                {clockStatus}
+              </button>
+            )
+          }
+          rows={[
+            {
+              side: 'blue',
+              name: (
+                <ControllerFocusLink focus={competitorFocus('blue', 'name')} label="Edit Blue name on Controller" onOpen={openController}>
+                  {match.blue.name || 'Competitor 1'}
+                </ControllerFocusLink>
+              ),
+              gym: (
+                <ControllerFocusLink focus={competitorFocus('blue', 'gym')} label="Edit Blue gym on Controller" onOpen={openController}>
+                  {match.blue.gym || '\u00a0'}
+                </ControllerFocusLink>
+              ),
+              rank: match.blue.rank,
+              points: match.blue.points,
+              advantages: match.blue.advantages,
+              disadvantages: match.blue.disadvantages,
+            },
+            {
+              side: 'white',
+              name: (
+                <ControllerFocusLink focus={competitorFocus('white', 'name')} label="Edit White name on Controller" onOpen={openController}>
+                  {match.white.name || 'Competitor 2'}
+                </ControllerFocusLink>
+              ),
+              gym: (
+                <ControllerFocusLink focus={competitorFocus('white', 'gym')} label="Edit White gym on Controller" onOpen={openController}>
+                  {match.white.gym || '\u00a0'}
+                </ControllerFocusLink>
+              ),
+              rank: match.white.rank,
+              points: match.white.points,
+              advantages: match.white.advantages,
+              disadvantages: match.white.disadvantages,
+            },
+          ]}
+        />
+      ) : (
+        <>
+          <CompetitorBand
+            side="blue"
+            name={match.blue.name}
+            gym={match.blue.gym}
+            rank={match.blue.rank}
+            points={match.blue.points}
+            advantages={match.blue.advantages}
+            disadvantages={match.blue.disadvantages}
+            fallbackName="Competitor 1"
+            linked={Boolean(linkedId)}
+            flap={flap}
+            onOpenController={openController}
+            calls={
+              boardCalls
+                ? {
+                    disabled: flashing,
+                    highlight: refNeeded,
+                    onWin: () => outcomeSheet.openWin('blue', 'Blue'),
+                    onDq: () => outcomeSheet.openDq('blue', 'Blue'),
+                  }
+                : undefined
+            }
+          />
 
-      <CompetitorBand
-        side="white"
-        name={match.white.name}
-        gym={match.white.gym}
-        rank={match.white.rank}
-        points={match.white.points}
-        advantages={match.white.advantages}
-        disadvantages={match.white.disadvantages}
-        fallbackName="Competitor 2"
-        linked={Boolean(linkedId)}
-        flap={flap}
-        onOpenController={openController}
-        calls={
-          boardCalls
-            ? {
-                disabled: flashing,
-                highlight: refNeeded,
-                onWin: () => outcomeSheet.openWin('white', 'White'),
-                onDq: () => outcomeSheet.openDq('white', 'White'),
-              }
-            : undefined
-        }
-      />
+          <section className={`display__mid${flap ? ' display__mid--stack' : ''}`}>
+            {flap ? clockControl : null}
+            <div className="display__meta">
+              {roundLine ? (
+                <ControllerFocusLink focus="round" label="Edit round on Controller" onOpen={openController}>
+                  {roundLine}
+                </ControllerFocusLink>
+              ) : null}
+              <ControllerFocusLink focus="division" label="Edit division on Controller" onOpen={openController}>
+                {match.division || 'Open'}
+              </ControllerFocusLink>
+            </div>
+            {flap ? null : clockControl}
+            {statusControl}
+          </section>
+
+          <CompetitorBand
+            side="white"
+            name={match.white.name}
+            gym={match.white.gym}
+            rank={match.white.rank}
+            points={match.white.points}
+            advantages={match.white.advantages}
+            disadvantages={match.white.disadvantages}
+            fallbackName="Competitor 2"
+            linked={Boolean(linkedId)}
+            flap={flap}
+            onOpenController={openController}
+            calls={
+              boardCalls
+                ? {
+                    disabled: flashing,
+                    highlight: refNeeded,
+                    onWin: () => outcomeSheet.openWin('white', 'White'),
+                    onDq: () => outcomeSheet.openDq('white', 'White'),
+                  }
+                : undefined
+            }
+          />
+        </>
+      )}
 
       {boardCalls ? (
         <OutcomePickSheet

@@ -177,7 +177,9 @@ async function ownerAccess(db: D1Database, env: SeatEnv, gymLicenseId: string, n
 }
 
 function seatDoors(entitled: boolean): Door[] {
-  return entitled ? expandGrants(['pro']) : [];
+  // Seats keep their preset menus. Media Edition is a separate one-time door, so a seat
+  // pass leaves it out and Media Console still follows the preset (paidChunkAccess.ts).
+  return entitled ? expandGrants(['pro']).filter((door) => door !== 'media') : [];
 }
 
 export async function issueSeatToken(

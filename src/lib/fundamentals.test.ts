@@ -3,6 +3,7 @@ import test from 'node:test';
 import { FUNDAMENTALS_CATALOG } from './progress/catalog.ts';
 import {
   assessmentAreaForMove,
+  fundamentalAssessmentScores,
   checkpointForMove,
   checkpointLinkBelts,
   clipsForMove,
@@ -15,9 +16,8 @@ import {
   proficiencySummary,
   sortFundamentalRows,
 } from './fundamentals.ts';
-import type { FundamentalRow } from './studentEdition.ts';
+import { blankStudentReport, fundamentalsBoard, hideFundamental, setFundamentalLevel, type FundamentalRow } from './studentEdition.ts';
 import { withStarterRubric } from './studentTools.ts';
-import { blankStudentReport } from './studentEdition.ts';
 import type { JournalClip } from './progress/types.ts';
 import type { StudentFilm } from './studentFilm.ts';
 
@@ -97,8 +97,13 @@ test('moves link to a checkpoint, a self-assessment area, and a matching clip', 
   assert.equal(backEscape?.checkpointName, 'Back escape');
   assert.equal(assessmentAreaForMove('sweeps', 'Scissor sweep'), 'guard');
   assert.equal(assessmentAreaForMove('positions', 'Closed guard'), 'guard');
-  assert.equal(assessmentAreaForMove('positions', 'Mount'), '');
+  assert.equal(assessmentAreaForMove('positions', 'Mount'), 'passing');
+  assert.equal(assessmentAreaForMove('positions', 'Top pin', 'pos.mount'), 'passing');
   assert.equal(assessmentAreaForMove('passes', 'Knee slice pass'), 'passing');
+  assert.equal(assessmentAreaForMove('movement', 'Shrimp'), 'conditioning');
+  assert.equal(assessmentAreaForMove('defense', 'Sprawl', 'def.sprawl'), 'takedowns');
+  assert.equal(assessmentAreaForMove('defense', 'Submission defense', 'def.submission-defense'), 'escapes');
+  assert.equal(assessmentAreaForMove('positions', 'Back control', 'pos.back-control'), 'submissions');
 
   const clips: JournalClip[] = [
     { id: 'clip-scissor', url: 'https://example.com/scissor', description: 'Scissor sweep detail', note: '', createdAt: 1, updatedAt: 1 },
@@ -195,4 +200,47 @@ test('checkpoint links stay on the belt being worn or the next belt', () => {
   assert.equal(checkpointForMove(levels, 'escape.back', 'white')?.checkpointName, 'Back escape');
   assert.equal(checkpointForMove(levels, 'td.double-leg', 'green')?.checkpointId, 'checkpoint.green.takedowns');
   assert.equal(checkpointForMove(levels, 'td.double-leg', 'grey'), null);
+});
+
+test('fundamentals levels average into the chart and skip hidden or unstarted moves', () => {
+  assert.equal(assessmentAreaForMove('positions', 'Standing', 'pos.standing'), 'takedowns');
+  assert.equal(assessmentAreaForMove('positions', 'Turtle', 'pos.turtle'), 'escapes');
+  assert.equal(assessmentAreaForMove('defense', 'Guard retention', 'def.guard-retention'), 'guard');
+  assert.equal(assessmentAreaForMove('sweeps', 'Lasso'), 'guard');
+  assert.equal(assessmentAreaForMove('positions', 'Truck'), '');
+  assert.equal(assessmentAreaForMove('movement', 'Jump rope'), 'conditioning');
+
+  const scores = fundamentalAssessmentScores([
+    { catalogItemId: 'sweep.scissor', categoryId: 'sweeps', name: 'Scissor sweep', level: 4 },
+    { catalogItemId: 'sweep.hip-bump', categoryId: 'sweeps', name: 'Hip bump sweep', level: 0 },
+    { catalogItemId: 'pos.closed-guard', categoryId: 'positions', name: 'Closed guard', level: 2 },
+    { catalogItemId: 'pass.knee-slice', categoryId: 'passes', name: 'Knee slice pass', level: 2 },
+    { catalogItemId: 'pos.mount', categoryId: 'positions', name: 'Mount', level: 4 },
+    { catalogItemId: 'td.double-leg', categoryId: 'takedowns', name: 'Double leg', level: 5 },
+    { catalogItemId: 'pos.standing', categoryId: 'positions', name: 'Standing', level: 1 },
+    { catalogItemId: 'escape.mount', categoryId: 'escapes', name: 'Mount escape', level: 1 },
+    { catalogItemId: 'escape.side-control', categoryId: 'escapes', name: 'Side control escape', level: 2 },
+    { catalogItemId: 'sub.armbar-guard', categoryId: 'submissions', name: 'Armbar from guard', level: 1 },
+    { catalogItemId: 'move.shrimp', categoryId: 'movement', name: 'Shrimp', level: 4 },
+    { catalogItemId: '', categoryId: 'positions', name: 'Truck', level: 5 },
+  ]);
+  assert.equal(scores.guard, 3);
+  assert.equal(scores.passing, 3);
+  assert.equal(scores.takedowns, 3);
+  assert.equal(scores.escapes, 2);
+  assert.equal(scores.submissions, 1);
+  assert.equal(scores.conditioning, 4);
+  assert.equal(scores.mindset, undefined);
+  assert.equal(fundamentalAssessmentScores([{ catalogItemId: 'sweep.scissor', categoryId: 'sweeps', name: 'Scissor sweep', level: 0 }]).guard, undefined);
+  assert.equal(
+    fundamentalAssessmentScores([{ catalogItemId: 'sweep.scissor', categoryId: 'sweeps', name: 'Scissor sweep', level: fundamentalLevelOf({ learnedOn: '2024-04-01' }) }]).guard,
+    3,
+  );
+
+  let report = blankStudentReport(10);
+  report = setFundamentalLevel(report, { catalogItemId: 'sweep.scissor', categoryId: 'sweeps', name: 'Scissor sweep' }, 4, 11);
+  report = setFundamentalLevel(report, { catalogItemId: 'sweep.hip-bump', categoryId: 'sweeps', name: 'Hip bump sweep' }, 2, 12);
+  report = hideFundamental(report, { catalogItemId: 'sweep.hip-bump', categoryId: 'sweeps', name: 'Hip bump sweep' }, 13);
+  const visible = fundamentalAssessmentScores(fundamentalsBoard(report).flatMap((category) => category.items));
+  assert.equal(visible.guard, 4);
 });

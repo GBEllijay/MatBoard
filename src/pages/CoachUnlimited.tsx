@@ -7,7 +7,10 @@ import { DriveConnectCard } from '../components/DriveConnectCard';
 import { HomeMark } from '../components/HomeMark';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { useCurrentSeat } from '../components/SeatSessionBar';
+import { useSeatDoor } from '../hooks/useSeatDoor';
+import { entitlementNowMs, entitlementSnapshot } from '../lib/entitlement';
 import { SiteFooter } from '../components/SiteFooter';
+import { unlinkBracketBout } from '../lib/bracketBout';
 import { coachToolVisible } from '../lib/instructorSeats';
 import {
   lessonRevisionLabel,
@@ -18,7 +21,7 @@ import {
   OWNER_DRIVE_TITLE,
   type LessonRevision,
 } from '../lib/lessonDrive';
-import { COACH_UNLIMITED_TOOLS, INSTRUCTOR_COACH_ENTRY, PRODUCTS_PATH } from '../lib/productNames';
+import { COACH_UNLIMITED_TOOLS, INSTRUCTOR_COACH_ENTRY, PRODUCTS_PATH, proConsoleEntryOpen } from '../lib/productNames';
 
 /** Same pathway screen as the Pro page: link, QR, copy, and share folder. */
 export function AcademyPathwayPage() {
@@ -43,6 +46,9 @@ export function AcademyPathwayPage() {
  */
 export function CoachUnlimitedPage() {
   const seat = useCurrentSeat();
+  const door = useSeatDoor();
+  const access = entitlementSnapshot();
+  const backTo = proConsoleEntryOpen(door, access.claims, entitlementNowMs(), access.amnesty) ? '/pro' : PRODUCTS_PATH;
   const [revisions, setRevisions] = useState<LessonRevision[]>([]);
   useEffect(() => {
     setRevisions(listLessonRevisions());
@@ -53,14 +59,19 @@ export function CoachUnlimitedPage() {
   return (
     <main className="home home--pro home--suite">
       <div className="home__inner">
-        <PlayExitMark to="/pro" />
+        <PlayExitMark to={backTo} />
         <HomeMark to={PRODUCTS_PATH} />
         <section className="suite instructor-hub">
-          <BeltHeader kind="brown" worn title="Advantage - Coach Unlimited" />
+          <BeltHeader kind="brown" worn title="Instructor Edition" />
           <nav className="instructor-jumps" aria-label={INSTRUCTOR_COACH_ENTRY}>
             <div className="pro-hubs">
               {tools.map((tool) => (
-                <Link key={tool.to} className="pro-hub" to={tool.to}>
+                <Link
+                  key={tool.to}
+                  className="pro-hub"
+                  to={tool.to}
+                  onClick={tool.clearBout ? () => unlinkBracketBout() : undefined}
+                >
                   <BeltRail kind={tool.belt} stripes={'stripes' in tool ? tool.stripes : undefined} />
                   <span>{tool.title}</span>
                 </Link>

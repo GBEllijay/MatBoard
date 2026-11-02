@@ -38,9 +38,8 @@ function signed(payload: string, now: Date): Request {
   });
 }
 
-test('Pro still opens Student and Coach, and the owner test unlock still works', async () => {
-  assert.deepEqual(expandGrants(['pro']), ['student', 'coach', 'pro']);
-  assert.equal(expandGrants(['pro']).includes('white'), false);
+test('Pro opens White, Student and Coach, and the owner test unlock still works', async () => {
+  assert.deepEqual(expandGrants(['pro']), ['white', 'student', 'coach', 'pro', 'media']);
   const response = await handleOwnerTest(
     new Request('http://localhost/api/owner-test', {
       method: 'POST',
@@ -123,6 +122,9 @@ test('full refund and a lost dispute revoke a one-time purchase; a partial refun
     async saveCoach(record: never) { return record; },
     async findCoachByEmail() { return null; },
     async findCoachBySessionId() { return null; },
+    async saveMedia(record: never) { return record; },
+    async findMediaByEmail() { return null; },
+    async findMediaBySessionId() { return null; },
     async savePro(record: never) { return record; },
     async findProByEmail() { return null; },
     async findProBySessionId() { return null; },

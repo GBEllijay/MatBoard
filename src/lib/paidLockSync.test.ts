@@ -30,8 +30,8 @@ function body(source: string, name: string): string {
 test('Lock Pro drops the owner-test Pro doors and clears the cached paid screens', () => {
   const pro = read('src/lib/proUnlock.ts');
   const lock = body(pro, 'lockPro');
-  assert.match(lock, /dropOwnerTestDoors\(/);
-  assert.match(lock, /'seat'/);
+  // relockImplied('pro') drops every owner-test door below Pro, including the seat.
+  assert.match(lock, /relockImplied\('pro'\)/);
   assert.match(lock, /writeFlag\(false\)/);
   assert.match(lock, /syncPaidScreens\(false\)/);
   assert.match(pro, /mod\.clearPaidChunkCache\(\)/);

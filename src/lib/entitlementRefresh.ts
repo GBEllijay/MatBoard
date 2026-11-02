@@ -1,17 +1,26 @@
+import { appVersionHeaders } from './appCapability.ts';
 import { signRefreshProof } from './deviceProof.ts';
 import { ensureDeviceKey, devicePublicJwk } from './deviceKey.ts';
-import { acceptServerToken, clearEntitlementToken, ENTITLEMENT_TOKEN_KEY, markEntitlementOffline, readDeviceId } from './entitlement.ts';
+import { acceptServerToken, bootTimeoutSignal, clearEntitlementToken, ENTITLEMENT_TOKEN_KEY, markEntitlementOffline, readDeviceId } from './entitlement.ts';
 
-/** Ask the server for a fresh token. A failure leaves the current token in place. */
-export async function refreshEntitlement(): Promise<boolean> {
-  let token = '';
+function readStoredToken(): string {
   try {
-    token = localStorage.getItem(ENTITLEMENT_TOKEN_KEY) ?? '';
+    return localStorage.getItem(ENTITLEMENT_TOKEN_KEY) ?? '';
   } catch {
-    return false;
+    return '';
   }
-  if (!token) return false;
-  const body: Record<string, unknown> = { token, deviceId: readDeviceId() };
+}
+
+/**
+ * Ask the server for a fresh token. A failure leaves the current token in place.
+ * A newer pass saved while this request was in flight (owner test, alpha-pro
+ * code, checkout) is left alone. The late response must not clear it or put
+ * the previous seat token back.
+ */
+export async function refreshEntitlement(): Promise<boolean> {
+  const sent = readStoredToken();
+  if (!sent) return false;
+  const body: Record<string, unknown> = { token: sent, deviceId: readDeviceId() };
   try {
     const pair = await ensureDeviceKey();
     const publicJwk = await devicePublicJwk();
@@ -23,10 +32,12 @@ export async function refreshEntitlement(): Promise<boolean> {
     }
     const response = await fetch('/api/token/refresh', {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...appVersionHeaders() },
       body: JSON.stringify(body),
+      signal: bootTimeoutSignal(),
     });
     const parsed = (await response.json()) as { ok?: boolean; token?: string; revoked?: boolean };
+    if (readStoredToken() !== sent) return false;
     if (parsed.revoked) {
       clearEntitlementToken();
       return false;
@@ -35,6 +46,7 @@ export async function refreshEntitlement(): Promise<boolean> {
       markEntitlementOffline(true);
       return false;
     }
+    if (readStoredToken() !== sent) return false;
     markEntitlementOffline(false);
     return acceptServerToken(parsed.token);
   } catch {

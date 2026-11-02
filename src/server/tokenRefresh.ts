@@ -7,6 +7,7 @@ import { accessForLicense } from './subscriptionSync.ts';
 import { doorsFromStored, grantsForLicense, type StoredGrant } from './purchaseRecords.ts';
 import { API_PRODUCT_PRO } from './routes.ts';
 import { refreshSeat } from './seats.ts';
+import { appVersionOf } from '../lib/appCapability.ts';
 import { issueToken, signingMaterial } from './tokenIssue.ts';
 import type { StripeRuntimeEnv } from './stripeCheckout.ts';
 
@@ -135,11 +136,19 @@ export async function handleTokenRefresh(
       absoluteExp,
       emailHint: claims.eh,
       thumbprint: claims.cnf,
-      subs: claims.src === 'seat' || doors.includes('pro') || subs?.state === 'locked' || subs?.state === 'grace' ? subs : undefined,
+      // Owner and owner-test passes are not subscriptions. A seat refresh must
+      // not leave a subs claim on them, or Pro Console closes while the grant is still pro.
+      subs:
+        claims.src === 'owner'
+          ? undefined
+          : claims.src === 'seat' || doors.includes('pro') || subs?.state === 'locked' || subs?.state === 'grace'
+            ? subs
+            : undefined,
       gym: claims.gym,
       sid: claims.sid,
       preset: claims.preset,
       grantEndsAt: claims.src === 'free' && claims.fail_open_until ? new Date(claims.fail_open_until * 1000).toISOString() : null,
+      appVersion: appVersionOf(request),
     },
     env.ENTITLEMENT_KEY_ID,
   );

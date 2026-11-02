@@ -63,12 +63,54 @@ type SortableRow = {
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+/**
+ * Fundamentals checklist → self-assessment chart.
+ *
+ * The progress tracker is the Fundamentals page (`/student/fundamentals`).
+ * Each move's level is saved on the progress file checklist, 0 through 5.
+ * Self-assessment ratings are 1 through 5. Level 0 (not started) is left out.
+ * A chart score is the average of the started moves in that area, rounded to
+ * the nearest whole number from 1 to 5.
+ *
+ * Guard: sweeps; guard positions (closed, open, half, butterfly); guard retention.
+ * Passing: passes; mount, side control, knee on belly, north-south, scarf hold.
+ * Takedowns: takedowns; standing; sprawl.
+ * Escapes: escapes; turtle; submission defense.
+ * Submissions: submissions; back control.
+ * Conditioning: the Movement list (breakfalls, shrimp, bridge, technical stand-up),
+ *   including a custom movement line.
+ * Mindset: no fundamentals list. It is rated only on Self-assessment.
+ *
+ * A custom line follows its category. A custom position or defense line follows
+ * the name. A name that matches none of these is left out.
+ * Rank stripes and the standing A/B/C game are not 1–5 area scores, so they
+ * are not copied onto the chart.
+ */
 const CATEGORY_AREA: Record<string, string> = {
   sweeps: 'guard',
   escapes: 'escapes',
   passes: 'passing',
   submissions: 'submissions',
   takedowns: 'takedowns',
+  movement: 'conditioning',
+};
+
+const ITEM_AREA: Record<string, string> = {
+  'pos.closed-guard': 'guard',
+  'pos.open-guard': 'guard',
+  'pos.half-guard': 'guard',
+  'pos.butterfly-guard': 'guard',
+  'pos.mount': 'passing',
+  'pos.side-control': 'passing',
+  'pos.knee-on-belly': 'passing',
+  'pos.north-south': 'passing',
+  'pos.scarf-hold': 'passing',
+  'pos.back-control': 'submissions',
+  'pos.standing': 'takedowns',
+  'pos.turtle': 'escapes',
+  'def.guard-retention': 'guard',
+  'def.submission-defense': 'escapes',
+  'def.sprawl': 'takedowns',
 };
 
 const AREA_LABEL: Record<string, string> = {
@@ -77,6 +119,26 @@ const AREA_LABEL: Record<string, string> = {
   takedowns: 'Takedowns',
   escapes: 'Escapes',
   submissions: 'Submissions',
+  conditioning: 'Conditioning',
+};
+
+export type FundamentalChartScore = 1 | 2 | 3 | 4 | 5;
+
+export type FundamentalChartScores = Partial<{
+  guard: FundamentalChartScore;
+  passing: FundamentalChartScore;
+  takedowns: FundamentalChartScore;
+  escapes: FundamentalChartScore;
+  submissions: FundamentalChartScore;
+  conditioning: FundamentalChartScore;
+  mindset: FundamentalChartScore;
+}>;
+
+export type FundamentalScoreRow = {
+  catalogItemId: string;
+  categoryId: string;
+  name: string;
+  level: FundamentalLevel;
 };
 
 export function isFundamentalLevel(value: unknown): value is FundamentalLevel {
@@ -133,9 +195,53 @@ export function formatFundamentalUpdated(updatedAt: number): string {
   return `${year}-${month}-${day}`;
 }
 
-export function assessmentAreaForMove(categoryId: string, name: string): string {
-  if (categoryId === 'positions' && /\bguard\b/i.test(name)) return 'guard';
-  return CATEGORY_AREA[categoryId] ?? '';
+export function assessmentAreaForMove(categoryId: string, name: string, catalogItemId = ''): string {
+  if (catalogItemId && ITEM_AREA[catalogItemId]) return ITEM_AREA[catalogItemId];
+  if (CATEGORY_AREA[categoryId]) return CATEGORY_AREA[categoryId];
+  if (categoryId === 'positions' || categoryId === 'defense' || categoryId === '') return areaFromName(name);
+  return '';
+}
+
+function areaFromName(name: string): string {
+  const text = name.trim().toLowerCase();
+  if (/\bguard\b/.test(text)) return 'guard';
+  if (/\bsprawl\b/.test(text)) return 'takedowns';
+  if (/\bturtle\b/.test(text)) return 'escapes';
+  if (/\bstanding\b/.test(text)) return 'takedowns';
+  if (/submission defense/.test(text)) return 'escapes';
+  if (/\b(mount|scarf)\b/.test(text) || /side control|knee on belly|north-south|north south/.test(text)) return 'passing';
+  if (/\bback\b/.test(text)) return 'submissions';
+  return '';
+}
+
+function isChartScore(value: number): value is FundamentalChartScore {
+  return value === 1 || value === 2 || value === 3 || value === 4 || value === 5;
+}
+
+/** Started fundamentals (level 1–5) averaged into the seven chart areas. Mindset stays empty. */
+export function fundamentalAssessmentScores(rows: readonly FundamentalScoreRow[]): FundamentalChartScores {
+  const buckets = new Map<string, number[]>();
+  for (const row of rows) {
+    if (row.level < 1) continue;
+    const area = assessmentAreaForMove(row.categoryId, row.name, row.catalogItemId);
+    if (!area || area === 'mindset') continue;
+    const list = buckets.get(area) ?? [];
+    list.push(row.level);
+    buckets.set(area, list);
+  }
+  const scores: FundamentalChartScores = {};
+  for (const [area, levels] of buckets) {
+    const rounded = Math.round(levels.reduce((sum, level) => sum + level, 0) / levels.length);
+    const clamped = Math.min(5, Math.max(1, rounded));
+    if (!isChartScore(clamped)) continue;
+    if (area === 'guard') scores.guard = clamped;
+    else if (area === 'passing') scores.passing = clamped;
+    else if (area === 'takedowns') scores.takedowns = clamped;
+    else if (area === 'escapes') scores.escapes = clamped;
+    else if (area === 'submissions') scores.submissions = clamped;
+    else if (area === 'conditioning') scores.conditioning = clamped;
+  }
+  return scores;
 }
 
 export function assessmentAreaLabel(areaId: string): string {
@@ -237,7 +343,7 @@ export function moveLinks(input: {
   to: (path: string) => string;
 }): FundamentalMoveLink[] {
   const links: FundamentalMoveLink[] = [];
-  const area = assessmentAreaForMove(input.item.categoryId, input.item.name);
+  const area = assessmentAreaForMove(input.item.categoryId, input.item.name, input.item.catalogItemId);
   const areaLabel = assessmentAreaLabel(area);
   if (area && areaLabel) {
     links.push({

@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useSyncExternalStore, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useNavigate, useSearchParams } from 'react-router-dom';
 import { InviteHandoffAccept } from './components/InviteHandoffAccept';
 import { OneDriveConnectResume } from './components/OneDriveConnectResume';
@@ -6,8 +6,10 @@ import { SeatSessionChrome, useCurrentSeat } from './components/SeatSessionBar';
 import { useCoachUnlocked } from './hooks/useCoachUnlocked';
 import { useKeepFocusedFieldVisible } from './hooks/useKeepFocusedFieldVisible';
 import { useProUnlocked } from './hooks/useProUnlocked';
+import { useMediaUnlocked } from './hooks/useMediaUnlocked';
 import { useSeatDoor } from './hooks/useSeatDoor';
 import { useStudentEditionUnlocked } from './hooks/useStudentEditionUnlocked';
+import { useProPlusCloudUnlocked } from './hooks/useProPlusCloud';
 import { useWhiteUnlocked } from './hooks/useWhiteUnlocked';
 import { consumeCoachUnlockQueryNow } from './lib/coachUnlock';
 import {
@@ -52,6 +54,7 @@ import { CompetitionReadyPage } from './pages/CompetitionReady';
 import { CompetitorManagementPage } from './pages/CompetitorManagement';
 import { GamePlanPage } from './pages/GamePlan';
 import { HomePage } from './pages/Home';
+import { ProPlusCloudPage } from './pages/ProPlusCloud';
 import { StorefrontPage } from './pages/Storefront';
 import { PrivacyPage } from './pages/Privacy';
 import { InstructorCollaborationPage } from './pages/InstructorCollaboration';
@@ -72,19 +75,25 @@ import { TechniquesPage } from './pages/Techniques';
 import { TermsPage } from './pages/Terms';
 import { RankingsPage } from './pages/Rankings';
 import { TournamentPage } from './pages/Tournament';
+import { StudentRosterPlaceholderPage } from './pages/StudentRosterPlaceholder';
 import { TournamentSuitePage } from './pages/TournamentSuite';
 import { TrainingNotesPage } from './pages/TrainingNotes';
 import { TrainingControllerPage } from './pages/TrainingController';
 import { TrainingPage } from './pages/Training';
 import { LegacyAccessNotice } from './components/LegacyAccessNotice';
 import { PaymentGraceBanner } from './components/PaymentGraceBanner';
-import { proAccessPaused } from './lib/entitlement';
+import { bootEntitlement, entitlementNowMs, entitlementReady, entitlementSnapshot, proAccessPaused, subscribeEntitlement } from './lib/entitlement';
+import { paidChunkMenuAgrees, type PaidChunkId } from './lib/paidChunkAccess';
+import { proPlusCloudStripePro } from './lib/proPlusCloud';
 import { acceptSignedSeat } from './lib/seatClient';
 import { isSignedSeatInvite } from './lib/seatSunset';
 import { ProLockedPage } from './pages/ProLocked';
-import { bootEntitlement } from './lib/entitlement';
-import { BuyCoachPage, BuyProPage, BuyStudentPage } from './pages/BuyTier';
+import { BuyCoachPage, BuyMediaPage, BuyProPage, BuyStudentPage } from './pages/BuyTier';
 import { BuyWhitePage } from './pages/BuyWhite';
+import { BuyInstructorEditionPage, BuyProEditionPage, BuyStudentEditionPage } from './pages/BuyEdition';
+import { MediaEditionGate } from './components/MediaEditionGate';
+import { GuardRedirect } from './components/GuardRedirect';
+import { MEDIA_EDITION_OLD_PATH, MEDIA_EDITION_PATH } from './lib/mediaEdition';
 import { RestoreAccessPage } from './pages/RestoreAccess';
 import { WhitePage } from './pages/White';
 import { WhiteRosterPage } from './pages/WhiteRoster';
@@ -132,31 +141,81 @@ function consumeInviteDoorNow(): void {
 
 consumeInviteDoorNow();
 
+/**
+ * The route may render a paid screen only when the menu door is open AND the
+ * signed token would be granted that chunk. A refused token goes home instead
+ * of the "could not be loaded" screen. No token during amnesty still reaches
+ * the confirm screen; the import is not sent.
+ */
+function paidDoorAgrees(chunk: PaidChunkId, doorOpen: boolean): boolean {
+  const snap = entitlementSnapshot();
+  return paidChunkMenuAgrees({
+    claims: snap.claims,
+    chunk,
+    nowMs: entitlementNowMs(),
+    doorOpen,
+    amnesty: snap.amnesty,
+  });
+}
+
+/**
+ * Advantage Pro Plus Cloud. The same check as the /products card.
+ * A closed visit never paints this page. Stripe Pro goes to /pro.
+ * Everyone else uses the existing closed-door redirect.
+ */
+function ProPlusCloudRoute() {
+  const open = useProPlusCloudUnlocked();
+  const ready = useSyncExternalStore(subscribeEntitlement, entitlementReady, () => false);
+  const door = useSeatDoor();
+  if (open) return <ProPlusCloudPage />;
+  if (!ready) return null;
+  if (proPlusCloudStripePro(entitlementSnapshot().claims)) return <Navigate to="/pro" replace />;
+  return <Navigate to={closedOrPaused(door.seated)} replace />;
+}
+
 /** Full Pro hubs a seat is allowed to see. Owner-only hubs stay out. */
 function ProConsoleRoute({ children }: { children: ReactNode }) {
   const door = useSeatDoor();
-  if (visibleProHubs(door).length === 0) return <Navigate to={closedOrPaused(door.seated)} replace />;
+  if (!paidDoorAgrees('pro-console', visibleProHubs(door).length > 0)) {
+    return <GuardRedirect to={closedOrPaused(door.seated)} />;
+  }
   return children;
 }
 
 /** Gallery, Events, and Pro Shop. Program Director opens this with Pro locked. */
 function MediaConsoleRoute({ children }: { children: ReactNode }) {
   const door = useSeatDoor();
-  if (!mediaConsoleDoorOpen(door)) return <Navigate to={closedOrPaused(door.seated)} replace />;
+  if (!paidDoorAgrees('media-console', mediaConsoleDoorOpen(door))) {
+    return <GuardRedirect to={closedOrPaused(door.seated)} />;
+  }
   return children;
+}
+
+/**
+ * /media, the one Media Edition hub. A browser whose Media door is open (a Media
+ * pass, Pro, or owner) and whose token can download the chunk gets the paid hub
+ * menu. Everyone else sees the public $29.99 marketing page, never the paid
+ * chunk and never a raw 401.
+ * MediaEditionGate checks a saved pass first, so a refresh does not flash the marketing page.
+ */
+function MediaEditionRoute() {
+  const door = useSeatDoor();
+  return <MediaEditionGate open={paidDoorAgrees('media-console', mediaConsoleDoorOpen(door))} />;
 }
 
 /** Tournament suite and invite admin. A signed-in seat does not open these. */
 function OwnerProRoute({ children }: { children: ReactNode }) {
   const door = useSeatDoor();
-  if (!ownerProHubOpen(door.proUnlocked, door.seated)) return <Navigate to={closedOrPaused(door.seated)} replace />;
+  if (!ownerProHubOpen(door.proUnlocked, door.seated)) return <GuardRedirect to={closedOrPaused(door.seated)} />;
   return children;
 }
 
 /** Coach Unlimited hub. A seat needs Pro on and a lesson or videos menu. */
 function CoachUnlimitedRoute({ children }: { children: ReactNode }) {
   const door = useSeatDoor();
-  if (!coachUnlimitedDoorOpen(door)) return <Navigate to={closedOrPaused(door.seated)} replace />;
+  if (!paidDoorAgrees('coach-unlimited', coachUnlimitedDoorOpen(door))) {
+    return <GuardRedirect to={closedOrPaused(door.seated)} />;
+  }
   return children;
 }
 
@@ -172,7 +231,7 @@ function LessonCloudRoute({ children }: { children: ReactNode }) {
     door.seat,
     seatMenuAllowed(door.seat, 'dailyLessonPlanAccess'),
   );
-  if (!open) return <Navigate to={closedOrPaused(door.seated)} replace />;
+  if (!paidDoorAgrees('lesson-cloud', open)) return <GuardRedirect to={closedOrPaused(door.seated)} />;
   return children;
 }
 
@@ -184,7 +243,7 @@ function BuyProRoute({ children }: { children: ReactNode }) {
   const door = useSeatDoor();
   const [params] = useSearchParams();
   if (!door.proUnlocked && !door.programDirectorSeat && !proPurchaseReturn(params)) {
-    return <Navigate to={closedOrPaused(door.seated)} replace />;
+    return <GuardRedirect to={closedOrPaused(door.seated)} />;
   }
   return children;
 }
@@ -204,7 +263,7 @@ function BuyStudentRoute({ children }: { children: ReactNode }) {
     student: useStudentEditionUnlocked(),
   });
   if (!open && !studentPurchaseReturn(params)) {
-    return <Navigate to={closedOrPaused(seated)} replace />;
+    return <GuardRedirect to={closedOrPaused(seated)} />;
   }
   return children;
 }
@@ -212,7 +271,7 @@ function BuyStudentRoute({ children }: { children: ReactNode }) {
 /** Advantage White hub and roster. A confirmed purchase or a server code opens them. */
 function WhiteHubRoute({ children }: { children: ReactNode }) {
   const unlocked = useWhiteUnlocked();
-  if (!whiteHubAllowed(unlocked)) return <Navigate to={WHITE_BUY_PATH} replace />;
+  if (!whiteHubAllowed(unlocked)) return <GuardRedirect to={WHITE_BUY_PATH} />;
   return children;
 }
 
@@ -227,7 +286,7 @@ function WhiteLiveRoute({ children }: { children: ReactNode }) {
   const seated = useCurrentSeat() !== null;
   const coachDoor = coachDoorOpen(pro, coach, seated);
   if (!whiteLiveToolsAllowed({ whiteUnlocked, coachDoor, proDoor: proDoorOpen(pro) })) {
-    return <Navigate to={WHITE_BUY_PATH} replace />;
+    return <GuardRedirect to={WHITE_BUY_PATH} />;
   }
   return children;
 }
@@ -235,24 +294,45 @@ function WhiteLiveRoute({ children }: { children: ReactNode }) {
 /** Gallery, Events, or Pro Shop. A closed seat goes home. An unseated visitor sees Coming soon. */
 function MediaFolderRoute({ folder }: { folder: MediaFolderId }) {
   const door = useSeatDoor();
-  if (!mediaFolderDoorOpen(door, door.seat?.permissions ?? null, folder)) {
-    return <Navigate to={closedOrPaused(door.seated)} replace />;
+  const open = mediaFolderDoorOpen(door, door.seat?.permissions ?? null, folder);
+  if (!paidDoorAgrees('media-console', open)) {
+    return <GuardRedirect to={closedOrPaused(door.seated)} />;
   }
   return <Navigate to={`/slideshow?folder=${folder}`} replace />;
 }
 
-/** `/media`, `/console`, and `/media-console` open the same seat console as home. */
+/**
+ * `/console` and `/media-console` open the same seat console as home. `/media` is Media Edition.
+ * A Media Edition browser without Pro goes to the one Media hub at /media, never /pro (the Pro Console).
+ */
 function MediaConsoleEntryRoute() {
   const door = useSeatDoor();
-  if (!mediaConsoleDoorOpen(door)) return <Navigate to={closedOrPaused(door.seated)} replace />;
+  if (!paidDoorAgrees('media-console', mediaConsoleDoorOpen(door))) {
+    return <GuardRedirect to={closedOrPaused(door.seated)} />;
+  }
+  if (!door.seated && !door.proUnlocked) return <Navigate to={MEDIA_EDITION_PATH} replace />;
+  if (!paidDoorAgrees('pro-console', true)) return <Navigate to={MEDIA_EDITION_PATH} replace />;
   return <Navigate to="/pro" replace />;
+}
+
+/** Media checkout, gated like Student: an open Media (or Pro) door, or a Stripe return to confirm. */
+function BuyMediaRoute({ children }: { children: ReactNode }) {
+  const [params] = useSearchParams();
+  const seated = useCurrentSeat() !== null;
+  const media = useMediaUnlocked();
+  const pro = useProUnlocked();
+  const open = media || pro;
+  if (!open && !studentPurchaseReturn(params)) {
+    return <GuardRedirect to={closedOrPaused(seated)} />;
+  }
+  return children;
 }
 
 function CoachRoute({ children }: { children: ReactNode }) {
   const coach = useCoachUnlocked();
   const pro = useProUnlocked();
   const seated = useCurrentSeat() !== null;
-  if (!coachDoorOpen(pro, coach, seated)) return <Navigate to={closedOrPaused(seated)} replace />;
+  if (!coachDoorOpen(pro, coach, seated)) return <GuardRedirect to={closedOrPaused(seated)} />;
   return children;
 }
 
@@ -333,6 +413,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<PublicHomeRoute />} />
       <Route path="/products" element={<HomePage />} />
+      <Route path="/pro-plus-cloud" element={<ProPlusCloudRoute />} />
       <Route path="/editions" element={<EditionsRedirect />} />
       <Route
         path="/white"
@@ -343,7 +424,15 @@ export default function App() {
         }
       />
       <Route path="/buy" element={<BuyWhitePage />} />
+      <Route path={MEDIA_EDITION_PATH} element={<MediaEditionRoute />} />
+      <Route path={MEDIA_EDITION_OLD_PATH} element={<Navigate to={MEDIA_EDITION_PATH} replace />} />
       <Route path="/restore" element={<RestoreAccessPage />} />
+      {/* Public tier buy pages (display + alpha line). The gated /buy/student, /buy/coach and /buy/pro checkouts are unchanged. */}
+      <Route path="/editions/student" element={<BuyStudentEditionPage />} />
+      <Route path="/editions/instructor" element={<BuyInstructorEditionPage />} />
+      <Route path="/editions/pro" element={<BuyProEditionPage />} />
+      <Route path="/editions/media" element={<Navigate to={MEDIA_EDITION_PATH} replace />} />
+      <Route path="/editions/white" element={<Navigate to="/buy" replace />} />
       <Route path="/pro/paused" element={<ProLockedPage />} />
       <Route
         path="/buy/student"
@@ -359,6 +448,14 @@ export default function App() {
           <CoachRoute>
             <BuyCoachPage />
           </CoachRoute>
+        }
+      />
+      <Route
+        path="/buy/media"
+        element={
+          <BuyMediaRoute>
+            <BuyMediaPage />
+          </BuyMediaRoute>
         }
       />
       <Route
@@ -463,6 +560,14 @@ export default function App() {
         element={
           <CoachUnlimitedRoute>
             <PaidCoachUnlimitedPage />
+          </CoachUnlimitedRoute>
+        }
+      />
+      <Route
+        path="/student-roster"
+        element={
+          <CoachUnlimitedRoute>
+            <StudentRosterPlaceholderPage />
           </CoachUnlimitedRoute>
         }
       />

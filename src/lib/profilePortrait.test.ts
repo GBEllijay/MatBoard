@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { packetCarriesBytes } from './progress/format.ts';
+import { blankStudentReport } from './studentEdition.ts';
+import { progressReportFiles } from './studentTools.ts';
 import {
   clearProfilePortrait,
   portraitFromFile,
@@ -62,6 +65,16 @@ test('a remote address is not kept as the profile photo', () => {
   const storage = memory();
   assert.throws(() => writeProfilePortraitSync('https://example.com/face.jpg', storage), /too-large/);
   assert.equal(readProfilePortrait(storage), null);
+});
+
+test('a profile photo stays out of the progress file', () => {
+  const storage = memory();
+  writeProfilePortraitSync(SELFIE, storage);
+  const files = progressReportFiles(blankStudentReport(), [], storage);
+  assert.equal(files.json.includes(SELFIE), false);
+  assert.equal(files.json.includes('portrait'), false);
+  assert.equal(packetCarriesBytes(JSON.parse(files.json)), false);
+  assert.equal(readProfilePortrait(storage), SELFIE);
 });
 
 test('a profile photo rejects a file that is not a picture', async () => {

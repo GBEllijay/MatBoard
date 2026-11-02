@@ -434,8 +434,9 @@ test('four binder presets fill the toggles and stay overridable', () => {
   assert.equal(instructorSeatAdjusted(null, adjusted), false);
   assert.match(SEAT_ADJUSTED_NOTE, /role defaults/);
   const bar = readFileSync(new URL('../components/SeatSessionBar.tsx', import.meta.url), 'utf8');
-  assert.match(bar, /SEAT_ADJUSTED_NOTE/);
-  assert.match(bar, /instructorSeatAdjusted/);
+  assert.match(bar, /return null/);
+  assert.doesNotMatch(bar, /SEAT_ADJUSTED_NOTE/);
+  assert.match(readFileSync(new URL('./instructorSeats.ts', import.meta.url), 'utf8'), /export const SEAT_ADJUSTED_NOTE/);
   assert.equal(instructorSeatBinderLabel(null, adjusted), 'Custom binder');
   assert.equal(instructorSeatBinderLabel('assistant-coach', assistant), 'Assistant coach');
   assert.deepEqual(
@@ -787,13 +788,13 @@ test('seat chrome stays off the gym TV and purchase prompts follow the live seat
   const invite = read('../components/InstructorInvitePanel.tsx');
   const unlimited = read('../pages/CoachUnlimited.tsx');
   assert.match(coach, /purchasePromptsHidden\(seat\)/);
-  assert.match(coach, /Buy Advantage Coach/);
+  assert.match(coach, /Buy \$\{INSTRUCTOR_HOME_TITLE\}/);
   assert.match(pro, /purchasePromptsHidden\(seat\)/);
   assert.match(pro, /Buy Advantage Pro/);
   assert.match(home, /purchasePromptsHidden\(seat\)/);
-  assert.match(bar, /Sign out of seat/);
-  assert.match(bar, /Signed out/);
-  assert.match(bar, /seat-session-dock/);
+  assert.match(bar, /return null/);
+  assert.doesNotMatch(bar, /Signed in as/);
+  assert.match(read('../lib/instructorSeats.ts'), /export function signOutInstructorSeat/);
   assert.match(invite, /preset\.detail\.map/);
   assert.match(invite, /cloud and sharing match the owner/);
   assert.match(invite, /Owner only · Soft beta/);
@@ -857,7 +858,8 @@ test('a Program Director invite stores gallery, events, and Pro Shop even when p
   const pro = readFileSync(new URL('../pages/Pro.tsx', import.meta.url), 'utf8');
   const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
   assert.match(home, /homeConsoleLabel\(door\)/);
-  assert.match(home, /\{consoleLabel\}/);
+  // The products Pro card always says Open Pro Console. The seat's hub list is unchanged.
+  assert.match(home, /Open Pro Console/);
   assert.match(pro, /consoleHubs\(door, door\.seat\?\.permissions/);
   assert.match(pro, /MEDIA_CONSOLE_NAME/);
   assert.match(app, /MEDIA_FOLDER_ROUTES/);

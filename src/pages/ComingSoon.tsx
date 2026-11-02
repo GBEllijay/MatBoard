@@ -10,14 +10,22 @@ import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useSeatDoor } from '../hooks/useSeatDoor';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import { lockCoach } from '../lib/coachUnlock';
-import { COACH_HUBS, PRODUCTS_PATH, coachDoorOpen, consoleHubs } from '../lib/productNames';
+import { lockMedia } from '../lib/mediaUnlock';
+import { entitlementNowMs, entitlementSnapshot } from '../lib/entitlement';
+import { COACH_HUBS, PRODUCTS_PATH, coachDoorOpen, consoleHubs, grantedConsoleHubs } from '../lib/productNames';
 import { lockPro } from '../lib/proUnlock';
 import { whiteEntryPath } from '../lib/whiteUnlock';
 
 export function ComingSoonPage() {
   const door = useSeatDoor();
   const proUnlocked = door.proUnlocked;
-  const proHubs = consoleHubs(door, door.seat?.permissions ?? null);
+  const access = entitlementSnapshot();
+  const proHubs = grantedConsoleHubs(
+    consoleHubs(door, door.seat?.permissions ?? null),
+    access.claims,
+    entitlementNowMs(),
+    access.amnesty,
+  );
   const whiteUnlocked = useWhiteUnlocked();
   const coachUnlocked = useCoachUnlocked();
   const seated = useCurrentSeat() !== null;
@@ -76,6 +84,11 @@ export function ComingSoonPage() {
             {coachUnlocked ? (
               <button type="button" className="btn btn--ghost" onClick={() => lockCoach()}>
                 Lock Coach
+              </button>
+            ) : null}
+            {door.mediaUnlocked ? (
+              <button type="button" className="btn btn--ghost" onClick={() => lockMedia()}>
+                Lock Media
               </button>
             ) : null}
           </nav>

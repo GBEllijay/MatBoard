@@ -32,6 +32,10 @@ test('the self-assessment shape label stays the original sentence', () => {
     selfAssessmentShapeLabel(fives),
     'Self-assessment shape, Guard 5, Passing 5, Takedowns 5, Escapes 5, Submissions 5, Conditioning 5, Mindset 5',
   );
+  assert.equal(
+    selfAssessmentShapeLabel({ guard: 4, passing: 2, takedowns: 5, escapes: 3, submissions: 1, conditioning: 4 }),
+    'Self-assessment shape, Guard 4, Passing 2, Takedowns 5, Escapes 3, Submissions 1, Conditioning 4, Mindset not rated',
+  );
 });
 
 test('an overlay label names Me and the opponent', () => {

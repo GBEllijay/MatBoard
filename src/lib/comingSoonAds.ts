@@ -7,15 +7,16 @@ import {
 } from './coachCopy.ts';
 import {
   GYM_CONSOLE_NAME,
+  INSTRUCTOR_HOME_TITLE,
   INSTRUCTOR_COLLAB_HUB_LABEL,
-  INSTRUCTOR_COACH_ENTRY,
+  PRO_INSTRUCTOR_HUB_LABEL,
   MEDIA_CONSOLE_NAME,
   PRO_LADDER_DETAIL,
   STUDENT_EDITION_NAME,
   STUDENT_HOME_DESCRIPTION,
   TOURNAMENT_MANAGEMENT_PRO_LABEL,
 } from './productNames.ts';
-import { COACH_PRICE_LINE, PRO_PRICE_LINE, STUDENT_PRICE_LINE } from './productPrices.ts';
+import { INSTRUCTOR_DISPLAY_PRICE_LINE, PRO_PRICE_LINE, STUDENT_PRICE_LINE } from './productPrices.ts';
 import { SITE_FEEDBACK_EMAIL } from './siteFooter.ts';
 
 export type SoonProduct = 'coach' | 'pro' | 'student';
@@ -35,11 +36,22 @@ export type ComingSoonAdCopy = {
   dismiss: string;
 };
 
+/** Instructor Edition (internal key coach) buy-page and sheet lead. Leads with the downloadable Daily Lesson Plan. */
+export const INSTRUCTOR_EDITION_LEAD =
+  "Tools and templates for instructors. Plan today's class with a downloadable Daily Lesson Plan and loop training videos.";
+
+/** Instructor Edition sits above Media on the ladder. */
+export const INSTRUCTOR_EDITION_INCLUDES = 'Includes everything in Media, Student and White.';
+
+/** First Instructor feature: the Daily Lesson Plan, with its download and Drive save. */
+export const INSTRUCTOR_LESSON_PLAN_BODY =
+  "Plan today's class on this phone — warm-up, techniques, cool-down, and closing. Download today's lesson videos and save the plan to your Google Drive.";
+
 /** Locked Pro and Student splash gold label. Coach does not use this. */
 export const COMING_SOON_LABEL = 'Coming Soon';
 
-/** Caption on the locked Coach shot of the unlocked Coach home. */
-export const COACH_PREVIEW_LABEL = 'Advantage Coach';
+/** Caption on the locked Instructor Edition shot of the unlocked Coach home (internal key stays coach). */
+export const COACH_PREVIEW_LABEL = INSTRUCTOR_HOME_TITLE;
 
 /** One line under that shot. The picture is the live Coach button list. */
 export const COACH_PREVIEW_NOTE =
@@ -50,10 +62,10 @@ export const PRO_CONSOLE_PREVIEW_LABEL = 'Advantage Pro';
 
 /** One line under that shot. The picture is the live four-hub console, not a wireframe. */
 export const PRO_CONSOLE_PREVIEW_NOTE =
-  'Media Console, Advantage Coach Unlimited, instructor invites, and Tournament Management Pro.';
+  'Media Console, Advantage Instructor Edition, instructor invites, and Competition and Tournament Management.';
 
 /** Shown on Coming soon. Not a checkout button. */
-export const COACH_LAUNCH_PRICE_NOTE = `Price: ${COACH_PRICE_LINE} when it launches. Not for sale on this page.`;
+export const COACH_LAUNCH_PRICE_NOTE = `Price: ${INSTRUCTOR_DISPLAY_PRICE_LINE} when it launches. Not for sale on this page.`;
 
 /** Shown on Coming soon. Not a checkout button. Numbers stay the locked Pro prices. */
 export const PRO_LAUNCH_PRICE_NOTE = `Price: ${PRO_PRICE_LINE} when it launches. Not for sale on this page.`;
@@ -79,16 +91,16 @@ export const PRODUCT_TEASERS = {
 
 export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
   coach: {
-    title: 'Advantage Coach',
+    title: INSTRUCTOR_HOME_TITLE,
     kicker: '',
-    lead: "Tools and templates for coaches. Plan today's class and loop training videos.",
-    includes: 'Includes everything in Advantage White.',
+    lead: INSTRUCTOR_EDITION_LEAD,
+    includes: INSTRUCTOR_EDITION_INCLUDES,
     aside:
-      'Basic Coach does not include Competition Class Curriculum or Competition Team Management.',
+      'Instructor Edition does not include Competition Class Curriculum or Competition Team Management.',
     features: [
       {
         title: TRAINING_NOTES_LABEL,
-        body: "Plan today's class on this phone — warm-up, techniques, cool-down, and closing. Saved on this device.",
+        body: INSTRUCTOR_LESSON_PLAN_BODY,
       },
       {
         title: 'Daily Training Videos',
@@ -100,7 +112,7 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
       },
       {
         title: STUDENT_ROSTER_LABEL,
-        body: `Name, belt, other belt, Division, gym name or nickname, last promotion, and ${STUDENT_NOTES_LABEL}. No photo on basic Coach.`,
+        body: `Name, belt, other belt, Division, gym name or nickname, last promotion, and ${STUDENT_NOTES_LABEL}. No photo on Instructor Edition.`,
       },
       {
         title: 'Mock Tournament',
@@ -113,14 +125,14 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
     title: 'Advantage Pro',
     kicker: COMING_SOON_LABEL,
     lead: PRO_LADDER_DETAIL,
-    includes: 'Includes everything in Advantage Coach and Advantage White.',
+    includes: 'Includes everything in Instructor Edition, Media, Student and White.',
     features: [
       {
         title: MEDIA_CONSOLE_NAME,
         body: 'Gallery, Class Schedule, Pro Shop, and Events on the gym TV.',
       },
       {
-        title: INSTRUCTOR_COACH_ENTRY,
+        title: PRO_INSTRUCTOR_HUB_LABEL,
         body: 'Daily Lesson Plan, Daily Training Videos, Technique Tree, and Competition Class Curriculum. Google Drive is an extra folder when this tier is unlocked.',
       },
       {

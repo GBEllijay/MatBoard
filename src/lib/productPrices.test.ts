@@ -43,7 +43,7 @@ test('Student Edition is $19.99 one-time and checkout uses that display price', 
   );
   assert.doesNotMatch(STUDENT_ALPHA_ACCESS_NOTE, /free/i);
   assert.doesNotMatch(STUDENT_PRICE_LINE, /Coach/);
-  assert.deepEqual([...CHECKOUT_PRODUCTS], ['white', 'student', 'coach', 'pro']);
+  assert.deepEqual([...CHECKOUT_PRODUCTS], ['white', 'student', 'coach', 'pro', 'media']);
 });
 
 test('alpha access uses the existing support address', () => {
@@ -53,7 +53,7 @@ test('alpha access uses the existing support address', () => {
   );
   assert.equal(
     COACH_ALPHA_ACCESS_NOTE,
-    'Coach is in alpha testing. Email advantageappllc@gmail.com to request an alpha code.',
+    'Instructor Edition is in alpha testing. Email advantageappllc@gmail.com to request an alpha code.',
   );
   assert.equal(
     PRO_ALPHA_ACCESS_NOTE,

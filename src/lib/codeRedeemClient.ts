@@ -1,3 +1,4 @@
+import { appVersionHeaders } from './appCapability.ts';
 import { checkoutNonceHash, currentCheckoutNonce } from './checkoutNonce.ts';
 import { devicePublicJwk } from './deviceKey.ts';
 import { acceptServerToken, clearOwnerTestToken, clearRelocksFor, readDeviceId } from './entitlement.ts';
@@ -9,6 +10,27 @@ const API_SESSION_REDEEM_PATH = '/api/session/redeem';
 const API_OWNER_TEST_PATH = '/api/owner-test';
 
 export type RedeemResult = { ok: true } | { ok: false; error: string };
+
+export const GENERIC_CODE_ERROR = "That code didn't work.";
+export const UNLOCK_CODE_NO_MATCH = "That unlock code didn't match. Type it exactly as it was given, or ask for a new one.";
+export const UNLOCK_CODE_MISMATCH_ERROR = `${UNLOCK_CODE_NO_MATCH} It was not sent to checkout as a promo code.`;
+
+/**
+ * True when the text has the shape scripts/generate-unlock-codes.ts prints:
+ * 18 letters and digits without 0, 1, O or I, in groups of four. Spaces, dashes and case do not matter.
+ * Stripe promo codes like HALF50 do not have this shape.
+ */
+export function looksLikeUnlockCode(text: string): boolean {
+  const compact = text.normalize('NFKC').replace(/[\s-]+/g, '').toUpperCase();
+  return /^[A-HJ-NP-Z2-9]{18}$/.test(compact);
+}
+
+/** What the /buy code box should do after the server said no to a typed code. */
+export function afterFailedUnlock(typed: string, error: string): { action: 'show'; error: string } | { action: 'checkout' } {
+  if (error !== GENERIC_CODE_ERROR) return { action: 'show', error };
+  if (looksLikeUnlockCode(typed)) return { action: 'show', error: UNLOCK_CODE_MISMATCH_ERROR };
+  return { action: 'checkout' };
+}
 
 async function readError(response: Response, fallback: string): Promise<string> {
   try {
@@ -25,7 +47,7 @@ export async function redeemAccessCode(code: string, email = ''): Promise<Redeem
     const publicJwk = await devicePublicJwk();
     const response = await fetch(API_CODES_REDEEM_PATH, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...appVersionHeaders() },
       body: JSON.stringify({ code, email: email || undefined, deviceId: readDeviceId(), publicJwk }),
     });
     if (response.status === 429) return { ok: false, error: await readError(response, 'Too many attempts. Wait a few minutes and try again.') };
@@ -33,6 +55,8 @@ export async function redeemAccessCode(code: string, email = ''): Promise<Redeem
     if (!response.ok || !body.ok) return { ok: false, error: body.error || "That code didn't work." };
     if (body.token) await acceptServerToken(body.token);
     if (!applyServerGrant(body) && !body.token) return { ok: false, error: "That code didn't work." };
+    // Reopen every door the code implies that a Lock button closed here (tierImplications.ts).
+    clearRelocksFor(Array.isArray(body.grants) ? body.grants.filter((door) => typeof door === 'string') : []);
     return { ok: true };
   } catch {
     return { ok: false, error: 'Could not check that code. Check your connection and try again.' };
@@ -46,7 +70,7 @@ export async function confirmCheckoutSession(sessionId: string): Promise<
     const publicJwk = await devicePublicJwk();
     const response = await fetch(API_SESSION_REDEEM_PATH, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...appVersionHeaders() },
       body: JSON.stringify({
         sessionId,
         nonce: currentCheckoutNonce(),
@@ -86,6 +110,19 @@ export function clearOwnerTestUnlock(): void {
   clearOwnerTestToken();
 }
 
+/**
+ * The Owner test box takes the owner test secret. If someone types an owner or alpha
+ * unlock code there instead, try it as an unlock code so the wrong box is not a dead end.
+ */
+export async function submitOwnerTestOrCode(input: { secret: string; tier: string; days: number }): Promise<RedeemResult & { via?: 'owner-test' | 'code' }> {
+  const tested = await submitOwnerTest(input);
+  if (tested.ok) return { ok: true, via: 'owner-test' };
+  if (tested.error !== GENERIC_CODE_ERROR || !looksLikeUnlockCode(input.secret)) return tested;
+  const redeemed = await redeemAccessCode(input.secret);
+  if (redeemed.ok) return { ok: true, via: 'code' };
+  return redeemed.error === GENERIC_CODE_ERROR ? { ok: false, error: UNLOCK_CODE_NO_MATCH } : redeemed;
+}
+
 export async function submitOwnerTest(input: {
   secret: string;
   tier: string;
@@ -99,7 +136,7 @@ export async function submitOwnerTest(input: {
   try {
     const response = await fetch(API_OWNER_TEST_PATH, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...appVersionHeaders() },
       body: JSON.stringify({
         secret: input.secret,
         tier: input.tier,

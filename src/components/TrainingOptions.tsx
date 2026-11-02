@@ -1,17 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAudioPrefs, useTrainingSkin, useTrainingState } from '../hooks/useStores';
-import {
-  END_CUE_OPTIONS,
-  patchAudioPrefs,
-  playSelectedEndCue,
-  playStartCue,
-  playWarningCue,
-  unlockAudio,
-  type EndCue,
-} from '../lib/audio';
+import { patchAudioPrefs, playSelectedEndCue, playStartCue, playWarningCue, unlockAudio } from '../lib/audio';
+import { EndCueControls } from './EndCueControls';
 import { formatMinuteInput, formatMmSs, formatMss, parseTypedDurationMs } from '../lib/format';
-import { dispatchMatch } from '../lib/matchStore';
-import { setTrainingSkin } from '../lib/trainingSkin';
+import { usePolishedSkinsUnlocked } from '../hooks/usePolishedSkins';
+import { setTrainingSkin, visibleTrainingSkin } from '../lib/trainingSkin';
+import { TimerBackdropOptions } from './TimerBackdropOptions';
+import { TimerSkinPicker } from './TimerSkinPicker';
 import {
   BREAK_PRESETS_MS,
   isBreakPreset,
@@ -30,11 +25,13 @@ import {
   WORK_PRESETS_MIN,
 } from '../lib/trainingStore';
 
-/** Round length, break, count, sound, and skin. Shared by the display sheet and the Rounds controller. */
+/** Round length, break, count, sound, skin, and background & logo. Shared by the display sheet and the Rounds controller. */
 export function TrainingOptions({ onReset }: { onReset?: () => void }) {
   const training = useTrainingState();
   const audio = useAudioPrefs();
-  const skin = useTrainingSkin();
+  /** A locked polished pick shows as Classic, which is what the timer paints. */
+  const polishedOpen = usePolishedSkinsUnlocked();
+  const skin = visibleTrainingSkin(useTrainingSkin(), polishedOpen);
   const [customWorkOpen, setCustomWorkOpen] = useState(false);
   const [customBreakOpen, setCustomBreakOpen] = useState(false);
   const customWork = !isWorkPreset(training.workMs);
@@ -46,13 +43,6 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
 
   const previewCue = (play: () => void) => {
     void unlockAudio().then(play);
-  };
-
-  // Selection only. Switching cues mid-round must not play a stop sound.
-  // Preview cues below are what play the sound.
-  const chooseEndCue = (cue: EndCue) => {
-    patchAudioPrefs({ endCue: cue });
-    dispatchMatch({ type: 'setEndCue', value: cue });
   };
 
   return (
@@ -187,23 +177,7 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
           />
           Training end sound
         </label>
-        <div className="cue-preview">
-          <p className="cue-preview-label">Training end cue</p>
-          <div className="presets presets--end-cue" role="radiogroup" aria-label="Training end cue">
-            {END_CUE_OPTIONS.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                role="radio"
-                aria-checked={audio.endCue === option.id}
-                className={`preset${audio.endCue === option.id ? ' preset--on' : ''}`}
-                onClick={() => chooseEndCue(option.id)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <EndCueControls label="Training end cue" value={audio.endCue} />
         <div className="cue-preview">
           <p className="cue-preview-label">Preview cues</p>
           <div className="presets presets--three" role="group" aria-label="Preview cues">
@@ -264,27 +238,34 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
 
       <fieldset>
         <legend>Skin</legend>
-        <div className="presets presets--split" role="radiogroup" aria-label="Timer skin">
-          <button
-            type="button"
-            role="radio"
-            aria-checked={skin === 'classic'}
-            className={`preset${skin === 'classic' ? ' preset--on' : ''}`}
-            onClick={() => setTrainingSkin('classic')}
-          >
-            Classic
-          </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={skin === 'themed'}
-            className={`preset${skin === 'themed' ? ' preset--on' : ''}`}
-            onClick={() => setTrainingSkin('themed')}
-          >
-            Advantage
-          </button>
-        </div>
+        {/* Media Edition and above: one Skins button in place of the Classic / Advantage toggle. */}
+        {polishedOpen ? (
+          <TimerSkinPicker buttonClassName="preset" />
+        ) : (
+          <div className="presets presets--split" role="radiogroup" aria-label="Timer skin">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={skin === 'classic'}
+              className={`preset${skin === 'classic' ? ' preset--on' : ''}`}
+              onClick={() => setTrainingSkin('classic')}
+            >
+              Classic
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={skin === 'themed'}
+              className={`preset${skin === 'themed' ? ' preset--on' : ''}`}
+              onClick={() => setTrainingSkin('themed')}
+            >
+              Advantage
+            </button>
+          </div>
+        )}
       </fieldset>
+
+      <TimerBackdropOptions />
 
       <button
         type="button"

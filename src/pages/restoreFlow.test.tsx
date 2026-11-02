@@ -30,14 +30,19 @@ installGlobal('HTMLElement', view.HTMLElement);
 installGlobal('navigator', view.navigator);
 installGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 
-type Call = { url: string; body: Record<string, unknown> | null };
+type Call = { url: string; body: Record<string, unknown> | null; headers: Record<string, string> };
 let calls: Call[] = [];
 let respond: (url: string, body: Record<string, unknown> | null) => unknown = () => ({});
 
 installGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
   const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as Record<string, unknown>) : null;
-  calls.push({ url, body });
+  const headers = new Headers(init?.headers);
+  calls.push({
+    url,
+    body,
+    headers: Object.fromEntries([...headers.entries()].map(([name, value]) => [name.toLowerCase(), value])),
+  });
   return new Response(JSON.stringify(respond(url, body)), { status: 200, headers: { 'content-type': 'application/json' } });
 });
 
@@ -206,6 +211,7 @@ test('Confirm uses the stored challenge id with no URL parameter', async () => {
   assert.ok(verify);
   assert.equal(verify.body?.challengeId, 'stored-challenge');
   assert.equal(verify.body?.code, 'ABCD1234');
+  assert.equal(verify.headers['x-advantage-app'], '3');
   assert.ok(host.textContent?.includes("That code didn't work."));
   unmount(mounted);
 });

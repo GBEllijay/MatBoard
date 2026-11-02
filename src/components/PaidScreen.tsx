@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { subscribeEntitlement } from '../lib/entitlement';
 import { refreshEntitlement } from '../lib/entitlementRefresh';
 import { paidChunkLabel, preparePaidImport, type PaidLoadBlock } from '../lib/paidChunkCache';
-import type { PaidChunkId } from '../lib/paidChunkAccess';
+import { paidImportFailure, type PaidChunkId } from '../lib/paidChunkAccess';
+import { PRODUCTS_PATH } from '../lib/productNames';
 
 type Loaded = { node: ReactNode };
 
@@ -25,7 +26,7 @@ function PaidChunkMessage({
         ? `Confirm your access to open ${label}. Restore, or enter your code, then try again.`
         : kind === 'offline'
           ? `${label} is not saved on this browser yet. Connect, then try again.`
-          : `${label} could not be loaded. Refresh your access, or restore it, then try again.`;
+          : `${label} didn't open. Go back to products, or refresh your access and try again.`;
 
   async function refresh() {
     setPending(true);
@@ -49,7 +50,12 @@ function PaidChunkMessage({
           {kind === 'loading' ? null : (
             <>
               <p>
-                <button className="btn btn--white" type="button" onClick={onRetry} disabled={pending}>
+                <Link className="btn btn--white" to={PRODUCTS_PATH}>
+                  Back to products
+                </Link>
+              </p>
+              <p>
+                <button className="btn btn--ghost" type="button" onClick={onRetry} disabled={pending}>
                   Try again
                 </button>
               </p>
@@ -84,6 +90,7 @@ function PaidImport({ chunk, load }: { chunk: PaidChunkId; load: () => Promise<L
   useEffect(() => {
     let cancel = false;
     let started = false;
+    let retried = false;
     const run = () => {
       if (cancel || started) return;
       const blocked = preparePaidImport(chunk);
@@ -101,9 +108,17 @@ function PaidImport({ chunk, load }: { chunk: PaidChunkId; load: () => Promise<L
         .then((result) => {
           if (!cancel) setView({ status: 'ready', node: result.node });
         })
-        .catch(() => {
+        .catch((error: unknown) => {
           if (cancel) return;
           const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+          // One retry for a dropped connection or a stale cached chunk URL.
+          // A refused token does not throw here; it is the blocked screen above.
+          if (paidImportFailure(error, offline, retried) === 'retry') {
+            retried = true;
+            started = false;
+            run();
+            return;
+          }
           setView({ status: 'blocked', reason: offline ? 'offline' : 'failed' });
         });
     };
@@ -127,6 +142,8 @@ function PaidImport({ chunk, load }: { chunk: PaidChunkId; load: () => Promise<L
 
 const loadPro = () => import('../pages/Pro.tsx').then((mod) => ({ node: <mod.ProPage /> }));
 const loadScreensaver = () => import('../pages/Screensaver.tsx').then((mod) => ({ node: <mod.ScreensaverPage /> }));
+const loadMediaEdition = () =>
+  import('../pages/MediaEditionHub.tsx').then((mod) => ({ node: <mod.MediaEditionHubPage /> }));
 const loadSchedule = () => import('../pages/Schedule.tsx').then((mod) => ({ node: <mod.SchedulePage /> }));
 const loadClassHistory = () => import('../pages/ClassHistory.tsx').then((mod) => ({ node: <mod.ClassHistoryPage /> }));
 const loadCoachUnlimited = () =>
@@ -140,6 +157,11 @@ export function PaidProPage() {
 
 export function PaidScreensaverPage() {
   return <PaidImport chunk="media-console" load={loadScreensaver} />;
+}
+
+/** Unlocked /media: the Advantage Media Edition menu (Scoreboard, Round Timer, Media Console). */
+export function PaidMediaEditionPage() {
+  return <PaidImport chunk="media-console" load={loadMediaEdition} />;
 }
 
 export function PaidSchedulePage() {

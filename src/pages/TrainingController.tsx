@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { TrainingOptions } from '../components/TrainingOptions';
@@ -9,12 +9,13 @@ import { useWakeLock } from '../hooks/useWakeLock';
 import { useTrainingSkin, useTrainingState } from '../hooks/useStores';
 import { unlockAudio } from '../lib/audio';
 import { formatMmSs } from '../lib/format';
+import { fullscreenSupported, requestPageFullscreen } from '../lib/fullscreen';
+import { ROUNDS_FULLSCREEN_STATE, readRoundsDeviceEnv, roundsChipAction, roundsDisplayPath } from '../lib/roundsFullscreen';
 import { trainingUsesAdvantageSkin } from '../lib/trainingSkin';
 import { remainingTraining, tickTraining, toggleTrainingClock } from '../lib/trainingStore';
 
 function openRoundsWindow(fromSuite: boolean): void {
-  const path = fromSuite ? '/training?from=suite' : '/training';
-  window.open(path, 'matboard-rounds', 'popup,noopener,noreferrer,width=1280,height=720');
+  window.open(roundsDisplayPath(fromSuite), 'matboard-rounds', 'popup,noopener,noreferrer,width=1280,height=720');
 }
 
 /** Fat-thumb remote for the rounds timer. The gym TV stays on /training. */
@@ -22,6 +23,7 @@ export function TrainingControllerPage() {
   const training = useTrainingState();
   const skin = useTrainingSkin();
   const suite = useSuiteOrigin();
+  const navigate = useNavigate();
   const [, setTick] = useState(0);
   const remaining = remainingTraining(training);
 
@@ -47,6 +49,19 @@ export function TrainingControllerPage() {
       });
   };
 
+  /**
+   * Phone / installed app: fullscreen rounds display in this window (asked for
+   * inside the tap, so Android allows it). Desktop browser: the TV popup, as before.
+   */
+  const openRounds = () => {
+    if (roundsChipAction(readRoundsDeviceEnv()) === 'popup') {
+      openRoundsWindow(suite.fromSuite);
+      return;
+    }
+    if (fullscreenSupported()) void requestPageFullscreen();
+    navigate(roundsDisplayPath(suite.fromSuite), { state: ROUNDS_FULLSCREEN_STATE });
+  };
+
   return (
     <main
       className={`controller training-control${
@@ -56,8 +71,10 @@ export function TrainingControllerPage() {
       <PlayExitMark to={suite.homePath} />
       <Chrome
         title="Rounds"
+        onTitleClick={openRounds}
+        titleLabel="Rounds: open the round timer fullscreen"
         right={
-          <button type="button" className="chip chip--gold" onClick={() => openRoundsWindow(suite.fromSuite)}>
+          <button type="button" className="chip chip--gold" onClick={openRounds}>
             Rounds
           </button>
         }

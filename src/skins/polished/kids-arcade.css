@@ -1,0 +1,85 @@
+/* GENERATED from the polished mock (base.css + themes/kids-arcade.css), scoped to [data-skin="kids-arcade"]. Do not edit by hand. */
+/* Shared layout for all scoreboard + timer skins. All sizes in vh/vw so 1280x600 and 844x390 scale the same. */
+[data-skin="kids-arcade"],[data-skin="kids-arcade"] *{box-sizing:border-box}
+[data-skin="kids-arcade"]{margin:0;width:100vw;height:100vh;overflow:hidden;-webkit-font-smoothing:antialiased}
+[data-skin="kids-arcade"]{font-family:Inter,system-ui,sans-serif}
+[data-skin="kids-arcade"] .num,[data-skin="kids-arcade"] .clock,[data-skin="kids-arcade"] .digits{font-variant-numeric:tabular-nums}
+
+/* ---------- SCOREBOARD ---------- */
+[data-skin="kids-arcade"] .sb{position:relative;width:100vw;height:100vh;padding:1.8vh 2vh 2vh;display:grid;
+  grid-template-rows:5.5vh 1fr 15vh 1fr;gap:1.6vh;isolation:isolate}
+[data-skin="kids-arcade"] .hdr{display:flex;align-items:center;gap:1.6vh;position:relative;z-index:2}
+[data-skin="kids-arcade"] .logo{height:5.5vh;width:5.5vh;border-radius:50%;display:block;flex:none}
+[data-skin="kids-arcade"] .hdr .mat{font-size:2.4vh;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+[data-skin="kids-arcade"] .hdr .div{font-size:2.3vh;font-weight:600;letter-spacing:.12em;text-transform:uppercase;opacity:.7;margin-left:auto}
+[data-skin="kids-arcade"] .row{position:relative;display:grid;grid-template-columns:30% 1.3fr 1fr 1fr;gap:1.4vh;padding:1.4vh;min-height:0;z-index:1}
+[data-skin="kids-arcade"] .id{display:flex;flex-direction:column;justify-content:center;gap:1.3vh;padding-left:2.4vh;min-width:0}
+[data-skin="kids-arcade"] .name{font-size:6vh;font-weight:800;line-height:1;white-space:nowrap;letter-spacing:-.01em}
+[data-skin="kids-arcade"] .meta{display:flex;align-items:center;gap:1.4vh;min-width:0}
+[data-skin="kids-arcade"] .belt{display:inline-flex;align-items:center;height:4.4vh;padding:0 1.6vh 0 1.2vh;gap:1vh;border-radius:99px;
+  font-size:2.3vh;font-weight:800;letter-spacing:.1em;flex:none}
+[data-skin="kids-arcade"] .belt i{display:block;width:2.6vh;height:1.6vh;border-radius:.4vh;background:#111}
+[data-skin="kids-arcade"] .belt.blue{background:#1f56d6;color:#fff}
+[data-skin="kids-arcade"] .belt.purple{background:#6b2fb3;color:#fff}
+[data-skin="kids-arcade"] .gym{font-size:2.6vh;font-weight:600;white-space:nowrap;opacity:.8}
+[data-skin="kids-arcade"] .tile{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+  padding:1.6vh .6vh .4vh;min-width:0;overflow:hidden}
+[data-skin="kids-arcade"] .lab{font-size:max(2.7vh,12px);font-weight:800;letter-spacing:.12em;line-height:1;white-space:nowrap}
+[data-skin="kids-arcade"] .num{font-size:21vh;font-weight:800;line-height:.82;letter-spacing:-.02em}
+[data-skin="kids-arcade"] .band{position:relative;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 3vh;z-index:1}
+[data-skin="kids-arcade"] .band .state{font-size:3vh;font-weight:800;letter-spacing:.12em;justify-self:start}
+[data-skin="kids-arcade"] .band .status{font-size:3vh;font-weight:800;letter-spacing:.12em;justify-self:end}
+[data-skin="kids-arcade"] .clock{font-size:13.5vh;font-weight:800;line-height:1;letter-spacing:-.01em}
+
+/* ---------- TIMER ---------- */
+[data-skin="kids-arcade"] .tm{position:relative;width:100vw;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;isolation:isolate;overflow:hidden}
+[data-skin="kids-arcade"] .tm .logo{position:absolute;left:4.4vh;top:3.4vh;height:9vh;width:9vh;z-index:5}
+[data-skin="kids-arcade"] .tm .phase{position:absolute;top:4.6vh;left:0;right:0;text-align:center;font-size:3.6vh;font-weight:800;letter-spacing:.16em;z-index:5}
+[data-skin="kids-arcade"] .digits{font-size:40vh;font-weight:800;line-height:1;letter-spacing:-.01em;position:relative;z-index:3}
+
+/* polish: progress fraction (--p, 1 = full) is set inline on .tm; min label size floor */
+[data-skin="kids-arcade"] .tm{--p:1}
+
+/* 01 Kids Arcade */
+[data-skin="kids-arcade"]{background:radial-gradient(120% 90% at 20% 0%,#4B2FD6 0%,#2E1C8F 45%,#1A1155 100%);color:#fff;font-family:Fredoka,Inter,sans-serif}
+[data-skin="kids-arcade"] .dec{position:absolute;display:block;pointer-events:none}
+[data-skin="kids-arcade"] .dot{border-radius:50%}
+[data-skin="kids-arcade"] .bg{position:absolute;inset:0;z-index:0;overflow:hidden}
+[data-skin="kids-arcade"] .band-stars{position:absolute;inset:0;z-index:2;pointer-events:none}
+[data-skin="kids-arcade"] .hdr .mat{background:#fff;color:#2E1C8F;padding:.7vh 2vh;border-radius:99px;font-weight:700;font-size:2.4vh;line-height:1;box-shadow:0 .4vh 0 #B79CFF}
+[data-skin="kids-arcade"] .hdr .div{opacity:.9;font-weight:600}
+[data-skin="kids-arcade"] .row{border-radius:3.4vh}
+[data-skin="kids-arcade"] .c1{background:linear-gradient(180deg,#4D9BFF,#2D6FF2);box-shadow:0 1vh 0 #1B44B3,inset 0 .4vh 0 rgba(255,255,255,.35)}
+[data-skin="kids-arcade"] .c2{background:linear-gradient(180deg,#FFFFFF,#F1ECFF);color:#2E1C8F;box-shadow:0 1vh 0 #9C86E8,inset 0 .4vh 0 #fff}
+[data-skin="kids-arcade"] .name{font-weight:700;font-size:6.4vh;letter-spacing:0}
+[data-skin="kids-arcade"] .gym{font-weight:600}
+[data-skin="kids-arcade"] .belt{font-family:Fredoka;font-weight:700;border:.4vh solid rgba(255,255,255,.85);box-shadow:0 .4vh 0 rgba(0,0,0,.18)}
+[data-skin="kids-arcade"] .tile{border-radius:2.8vh;padding-top:1.8vh}
+[data-skin="kids-arcade"] .tile .lab{font-weight:700;font-size:max(2.8vh,12px);letter-spacing:.1em;color:#fff;background:rgba(0,0,0,.16);padding:.7vh 1.6vh;border-radius:99px}
+[data-skin="kids-arcade"] .num{font-family:Fredoka;font-weight:700;font-size:21vh;color:#fff;text-shadow:0 .7vh 0 rgba(0,0,0,.2)}
+[data-skin="kids-arcade"] .pts{background:linear-gradient(180deg,#34D97B,#1FB862);box-shadow:0 .9vh 0 #12814A,inset 0 .4vh 0 rgba(255,255,255,.35)}
+[data-skin="kids-arcade"] .adv{background:linear-gradient(180deg,#FFA040,#FF7F1A);box-shadow:0 .9vh 0 #B9530A,inset 0 .4vh 0 rgba(255,255,255,.35)}
+[data-skin="kids-arcade"] .pen{background:linear-gradient(180deg,#FF5C86,#F0335F);box-shadow:0 .9vh 0 #A5143E,inset 0 .4vh 0 rgba(255,255,255,.35)}
+[data-skin="kids-arcade"] .band{padding:0 1vh}
+[data-skin="kids-arcade"] .clock{font-family:Fredoka;font-weight:700;font-size:12vh;background:#140B3D;padding:.6vh 5vh .2vh;border-radius:99px;
+  box-shadow:0 .8vh 0 #0B0626,inset 0 0 0 .5vh rgba(255,255,255,.14);line-height:1.08}
+[data-skin="kids-arcade"] .band .state,[data-skin="kids-arcade"] .band .status{font-weight:700;font-size:3vh;padding:1vh 2.4vh;border-radius:99px}
+[data-skin="kids-arcade"] .band .state{background:#7C5CFF;box-shadow:0 .5vh 0 #4A2FC2}
+[data-skin="kids-arcade"] .band .status{background:#fff;color:#2E1C8F;box-shadow:0 .5vh 0 #9C86E8}
+/* timer */
+[data-skin="kids-arcade"] .tm .phase{left:50%;right:auto;transform:translateX(-50%);white-space:nowrap;background:#fff;color:#2E1C8F;font-family:Fredoka;font-weight:700;
+  padding:1.2vh 3.4vh;border-radius:99px;box-shadow:0 .6vh 0 #B79CFF;font-size:3.4vh;letter-spacing:.12em}
+[data-skin="kids-arcade"] .tm .digits{font-family:Fredoka;font-weight:700;font-size:38vh;color:#fff;text-shadow:0 1.4vh 0 #170C52;margin-top:4vh;line-height:.95}
+[data-skin="kids-arcade"] .bar{position:relative;z-index:3;width:74vw;height:8vh;margin-top:4vh;background:#140B3D;border-radius:99px;padding:1.1vh;box-shadow:0 .8vh 0 #0B0626,inset 0 0 0 .4vh rgba(255,255,255,.12)}
+[data-skin="kids-arcade"] .fill{position:relative;height:100%;width:calc(var(--p)*100%);min-width:6vh;border-radius:99px;background:repeating-linear-gradient(-45deg,#3DD6FF 0 2.2vh,#22BDF5 2.2vh 4.4vh);box-shadow:inset 0 .5vh 0 rgba(255,255,255,.45)}
+[data-skin="kids-arcade"] .knob{position:absolute;right:-2.8vh;top:50%;transform:translateY(-50%);width:9vh;height:9vh;filter:drop-shadow(0 .5vh 0 #0B0626)}
+[data-skin="kids-arcade"] .knob svg{width:100%;height:100%}
+[data-skin="kids-arcade"] .sub{position:relative;z-index:3;display:flex;gap:2vh;margin-top:3.6vh}
+[data-skin="kids-arcade"] .chip{font-weight:700;font-size:2.8vh;letter-spacing:.1em;padding:.9vh 2.4vh;border-radius:99px}
+[data-skin="kids-arcade"] .chip{background:rgba(255,255,255,.12);color:#fff;box-shadow:inset 0 0 0 .3vh rgba(255,255,255,.28)}
+[data-skin="kids-arcade"] .chip.work.on{background:#3DD6FF;color:#140B3D;box-shadow:0 .5vh 0 #1B8FC2}
+[data-skin="kids-arcade"] .chip.rest.on{background:#FF5CA8;color:#fff;box-shadow:0 .5vh 0 #B8246E}
+
+[data-skin="kids-arcade"] .tm.rest .fill{background:repeating-linear-gradient(-45deg,#FF5CA8 0 2.2vh,#F03E92 2.2vh 4.4vh)}
+[data-skin="kids-arcade"] .tm.rest .phase{color:#B8246E}
+
