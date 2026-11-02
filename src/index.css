@@ -3938,8 +3938,8 @@ main.tree:has(> .tier-home) > .tree__bar {
   text-align: center;
 }
 
-/* Phone only, and only while a band figure is up. The 1440 splash stays centered and gold. */
-@media (max-width: 599px) {
+/* Phones and tablets, and only while a band figure is up. 1024+ stays centered and gold. */
+@media (max-width: 1023px) {
   .display--band-figure .display-splash__card {
     width: 100%;
     max-width: 100%;
@@ -16325,10 +16325,16 @@ a.plan-pick {
   transform: none;
 }
 
-/* The phone splash already says the result. The corner cheer keeps its bubble. */
-@media (max-width: 599px) {
+/* The splash already says the result. The corner cheer keeps its bubble. 1024+ keeps this one. */
+@media (max-width: 1023px) {
   .kids-grandmaster--board .kids-grandmaster__bubble {
     display: none;
+  }
+
+  /* Same box the layout pass writes, so the first paint is already the final size. */
+  .kids-grandmaster--board .kids-grandmaster__figure {
+    width: 106px;
+    right: 0;
   }
 }
 

@@ -331,13 +331,34 @@ export function watchSplashSettle(display: HTMLElement, place: () => void): () =
   };
 }
 
+/** Re-place when the board's box changes. A clock tick does not change that box. */
+export function watchBandSize(display: HTMLElement, place: () => void): () => void {
+  let width = Math.round(display.getBoundingClientRect().width);
+  let height = Math.round(display.getBoundingClientRect().height);
+  const observer = new ResizeObserver(() => {
+    const box = display.getBoundingClientRect();
+    const nextWidth = Math.round(box.width);
+    const nextHeight = Math.round(box.height);
+    if (nextWidth === width && nextHeight === height) return;
+    width = nextWidth;
+    height = nextHeight;
+    place();
+  });
+  observer.observe(display);
+  return () => observer.disconnect();
+}
+
+function writeStyle(node: HTMLElement, prop: string, value: string) {
+  if (node.style.getPropertyValue(prop) !== value) node.style.setProperty(prop, value);
+}
+
 /**
  * Right end of the clock band. Feet on the band's bottom edge, rising into the
  * row above only while the body still misses every name, gym, score card, and
  * header link. A bubble sits to the figure's left. With no bubble the canvas
  * meets the right screen edge so a walk-off leaves the screen.
- * Under 600px the figure is a fixed width with no bubble, and the splash keeps
- * that width as padding so the banner wraps beside it.
+ * Through 1023px the figure is a fixed width with no bubble, reserved on the
+ * first pass, and the splash keeps that width as padding. 1024+ is unchanged.
  */
 export function placeBandFigure(root: HTMLElement, figure: HTMLElement, bubble: HTMLElement | null): boolean {
   const display = root.closest('.display');
@@ -351,11 +372,11 @@ export function placeBandFigure(root: HTMLElement, figure: HTMLElement, bubble: 
     const bandHeight = bandBox.bottom - bandBox.top;
     if (bandHeight >= 48 && phone.top >= displayBox.top - 1) {
       const rootBox = boxOf(root);
-      figure.style.width = `${PHONE_BAND_FIGURE_WIDTH_PX}px`;
-      figure.style.left = `${Math.round(phone.left - rootBox.left)}px`;
-      figure.style.right = 'auto';
-      figure.style.top = 'auto';
-      figure.style.bottom = `${Math.round(rootBox.bottom - phone.bottom)}px`;
+      writeStyle(figure, 'width', `${PHONE_BAND_FIGURE_WIDTH_PX}px`);
+      writeStyle(figure, 'left', `${Math.round(phone.left - rootBox.left)}px`);
+      writeStyle(figure, 'right', 'auto');
+      writeStyle(figure, 'top', 'auto');
+      writeStyle(figure, 'bottom', `${Math.round(rootBox.bottom - phone.bottom)}px`);
       reservePhoneGutter(root, display, figure);
       bumpPlaceCount(root);
       return true;
@@ -374,19 +395,19 @@ export function placeBandFigure(root: HTMLElement, figure: HTMLElement, bubble: 
     (bubble ? findRowSlot(display, displayBox, hard, soft, speechW, speechH) : null);
   if (!placed) return false;
   const rootBox = boxOf(root);
-  figure.style.width = `${Math.round(placed.box.right - placed.box.left)}px`;
-  figure.style.left = `${Math.round(placed.box.left - rootBox.left)}px`;
-  figure.style.right = 'auto';
-  figure.style.top = 'auto';
-  figure.style.bottom = `${Math.round(rootBox.bottom - placed.box.bottom)}px`;
+  writeStyle(figure, 'width', `${Math.round(placed.box.right - placed.box.left)}px`);
+  writeStyle(figure, 'left', `${Math.round(placed.box.left - rootBox.left)}px`);
+  writeStyle(figure, 'right', 'auto');
+  writeStyle(figure, 'top', 'auto');
+  writeStyle(figure, 'bottom', `${Math.round(rootBox.bottom - placed.box.bottom)}px`);
   if (bubble) {
-    bubble.style.minWidth = '180px';
-    bubble.style.maxWidth = '16rem';
-    bubble.style.left = 'auto';
-    bubble.style.right = 'calc(100% + 0.45rem)';
-    bubble.style.top = `${Math.round(placed.speechTop - placed.box.top)}px`;
-    bubble.style.bottom = 'auto';
-    bubble.style.transform = 'none';
+    writeStyle(bubble, 'min-width', '180px');
+    writeStyle(bubble, 'max-width', '16rem');
+    writeStyle(bubble, 'left', 'auto');
+    writeStyle(bubble, 'right', 'calc(100% + 0.45rem)');
+    writeStyle(bubble, 'top', `${Math.round(placed.speechTop - placed.box.top)}px`);
+    writeStyle(bubble, 'bottom', 'auto');
+    writeStyle(bubble, 'transform', 'none');
   }
   bumpPlaceCount(root);
   return true;
@@ -451,6 +472,7 @@ export function GrandmasterCheer({
   const lastIsScore = lines.length > 2;
   const phoneBand = usePhoneBand();
   const showBubble = !(board && phoneBand);
+  const lineKey = lines.join('\n');
 
   useEffect(() => {
     if (forced) return;
@@ -466,17 +488,21 @@ export function GrandmasterCheer({
       if (alive) layoutBoardCheer(root);
     };
     place();
-    window.addEventListener('resize', place);
-    void document.fonts?.ready.then(place);
     const display = root.closest('.display');
+    const stopSize = display instanceof HTMLElement ? watchBandSize(display, place) : () => {};
+    let cancelFonts = false;
+    void document.fonts?.ready.then(() => {
+      if (!cancelFonts) place();
+    });
     const stopSplash = display instanceof HTMLElement ? watchSplashSettle(display, place) : () => {};
     return () => {
       alive = false;
-      window.removeEventListener('resize', place);
+      cancelFonts = true;
+      stopSize();
       stopSplash();
       if (display instanceof HTMLElement) clearBandFigureGutter(display);
     };
-  }, [board, id, lines, showBubble]);
+  }, [board, id, lineKey, showBubble]);
 
   return (
     <div
