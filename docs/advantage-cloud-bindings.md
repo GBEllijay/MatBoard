@@ -14,3 +14,11 @@ Do not create a second D1 database. Seats and licenses already use `advantage-en
 `wrangler.toml` in this repo names the R2 binding. It does not contain the D1 database id. Copy that id from the existing D1 database if you add this project to Wrangler locally.
 
 No Stripe product, price, or coupon is created here.
+
+## Safety steps for the owner
+
+1. Turn on Cloudflare's CSAM Scanning Tool for the zone `advantagebjjtimer.com`. Gallery images are served from `/api/gym/media` on that zone, not from a public bucket URL.
+2. Set the Cloudflare account abuse contact to a monitored address. Cloudflare expects a reply to abuse reports within 24 hours.
+3. The in-app report address is `advantageappllc@gmail.com`.
+4. Have an attorney review `docs/legal/plus-cloud-terms-DRAFT.md` before Cloud launch. The file is marked for attorney review.
+5. Register a DMCA designated agent with the US Copyright Office.

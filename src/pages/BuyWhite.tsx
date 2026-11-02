@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { HalfOffCheckoutNote } from '../components/HalfOffCheckoutNote';
+import { SecretField } from '../components/SecretField';
 import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
 import { HigherTierList } from '../components/TierBuyParts';
@@ -220,21 +221,16 @@ export function BuyWhitePage() {
                 {error}
               </p>
             ) : null}
-            <label className="buy__code" htmlFor="promotion-code">
-              Unlock or promo code
-              <input
-                id="promotion-code"
-                name="promotionCode"
-                value={promoInput}
-                onChange={(event) => setPromoInput(event.target.value)}
-                autoComplete="off"
-                autoCapitalize="characters"
-                spellCheck={false}
-                enterKeyHint="done"
-                aria-label="Unlock or promo code"
-                placeholder="Optional"
-              />
-            </label>
+            <SecretField
+              id="promotion-code"
+              label="Unlock or promo code"
+              name="promotionCode"
+              value={promoInput}
+              onChange={setPromoInput}
+              autoCapitalize="characters"
+              spellCheck={false}
+              placeholder="Optional"
+            />
             <p className="buy__hint">
               Optional. An unlock code opens Advantage White on this device. A promo code applies at Stripe checkout.
             </p>

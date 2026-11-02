@@ -615,9 +615,12 @@ export function ScreensaverPage() {
       const large = picked.some((file) => file.size >= LARGE_MEDIA_BYTES);
       if (feedback) {
         showBatchError(folderId, feedback);
+      } else if (added) {
+        setBatchStatus({ tone: 'saved', text: 'Saved' });
+        setPickerNote(large ? LARGE_MEDIA_NOTE : '');
       } else {
         setBatchStatus(null);
-        setPickerNote(large ? LARGE_MEDIA_NOTE : '');
+        setPickerNote('');
       }
       if (added) {
         const purpose = folderId === 'gallery' ? 'gallery' : folderId === 'shop' ? 'pro-shop' : folderId === 'events' ? 'events' : '';
@@ -1218,7 +1221,7 @@ export function ScreensaverPage() {
   );
 }
 
-type BatchNotice = { tone: 'progress' | 'error'; text: string };
+type BatchNotice = { tone: 'progress' | 'error' | 'saved'; text: string };
 
 function savedCount(error: unknown): number {
   if (error && typeof error === 'object' && 'saved' in error && typeof error.saved === 'number') {
