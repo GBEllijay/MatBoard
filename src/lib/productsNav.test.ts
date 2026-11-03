@@ -53,7 +53,7 @@ test('/products cards follow the belt ladder order: White, Student, Media, Instr
   const order = [
     at('<strong>Advantage White</strong>'),
     at('<StudentHomeCard'),
-    at('<MediaHomeCard open={mediaUnlocked && !seated} />'),
+    at('<MediaHomeCard open={mediaUnlocked} />'),
     at('<strong>{INSTRUCTOR_HOME_TITLE}</strong>'),
     at('<ProHomeCopy />'),
     at('<ProPlusCloudCard'),

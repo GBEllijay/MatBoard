@@ -157,13 +157,14 @@ test('locking Student Edition clears only this browser unlock and keeps journal,
 
   lockStudentEditionBrowser();
 
-  assert.equal(isStudentEditionUnlocked(), false);
-  assert.equal(isStudentPurchased(), false);
   assert.equal(isStudentEditionRelocked(), true);
+  assert.equal(isStudentPurchased(), false);
   assert.equal(isProUnlocked(), true);
   assert.equal(isCoachUnlocked(), true);
   assert.equal(isWhiteUnlocked(), true);
-  assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: true, coach: true, white: true, student: true }), false);
+  // Pro is open, so the testing mark does not shut the journal.
+  assert.equal(isStudentEditionUnlocked(), true);
+  assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: true, coach: true, white: true, student: true }), true);
   assert.equal(studentEditionOpen(new URLSearchParams('student=1'), { pro: true, coach: true, white: true }), true);
   assert.equal(localStorage.getItem(STUDENT_EDITION_STORAGE_KEY), before);
   assert.equal(localStorage.getItem(DRIVE_BINDING_KEY), '{"folderId":"keep-folder"}');
@@ -202,13 +203,12 @@ test('locking Student Edition clears only this browser unlock and keeps journal,
   assert.equal(isCoachUnlocked(), true, 'unlocking Pro reopens Coach');
   assert.equal(isWhiteUnlocked(), true, 'unlocking Pro reopens White');
   lockCoach();
-  // Ladder: Coach includes Student Edition, so Lock Coach closes it too.
+  // Lock Coach closes the Coach door. Pro is still open, so Student and White stay open.
   assert.equal(isStudentEditionRelocked(), true);
   assert.equal(isCoachUnlocked(), false);
-  assert.equal(isWhiteUnlocked(), false, 'Lock Coach closes White');
   assert.equal(isProUnlocked(), true);
-  // Same as White: the Lock Coach test mark closes Student Edition even while Pro is open.
-  assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: true, coach: false, white: true }), false);
+  assert.equal(isWhiteUnlocked(), true, 'Pro keeps White open');
+  assert.equal(studentEditionOpen(new URLSearchParams(''), { pro: true, coach: false, white: true }), true);
   assert.equal(localStorage.getItem(STUDENT_EDITION_STORAGE_KEY), before);
   assert.equal(localStorage.getItem(DRIVE_BINDING_KEY), '{"folderId":"keep-folder"}');
   resetUnlocks();

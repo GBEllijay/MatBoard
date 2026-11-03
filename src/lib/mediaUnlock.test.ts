@@ -161,14 +161,15 @@ test('Lock Media closes Media Console, Scoreboard and Timer, and the code reopen
   assert.equal(local.getItem(MEDIA_RELOCK_KEY), '0');
 });
 
-test('Lock Media keeps White when Coach is still open; Lock Coach after it closes White', async () => {
+test('Lock Media stays open while Coach is open; Lock Coach after it closes White and Media', async () => {
   await setup();
   await acceptPass(['coach', 'media']);
   lockMedia();
-  assert.equal(isMediaUnlocked(), false);
+  assert.equal(isMediaUnlocked(), true, 'Coach is open, so a Media relock does not shut Media');
   assert.equal(isWhiteUnlocked(), true, 'Coach includes White');
   assert.equal(isCoachUnlocked(), true);
   lockCoach();
+  assert.equal(isMediaUnlocked(), false, 'Coach was the higher door');
   assert.equal(isWhiteUnlocked(), false);
   clearRelocksFor(['coach', 'media']);
   assert.equal(isMediaUnlocked(), true);
@@ -176,16 +177,16 @@ test('Lock Media keeps White when Coach is still open; Lock Coach after it close
   assert.equal(isWhiteUnlocked(), true);
 });
 
-test('Pro implies Media; Lock Pro closes Media; Lock Media with Pro on closes only Media', async () => {
+test('Pro implies Media; Lock Pro closes Media; Lock Media does not shut Media while Pro is open', async () => {
   await setup();
   await acceptPass(['pro']);
   assert.equal(isMediaUnlocked(), true);
   assert.equal(paidChunkGrant(claims(), 'media-console', Date.now()), true);
   lockMedia();
-  assert.equal(isMediaUnlocked(), false);
+  assert.equal(isMediaUnlocked(), true, 'Pro is open, so Lock Media does not shut Media');
   assert.equal(isProUnlocked(), true);
   assert.equal(isWhiteUnlocked(), true, 'Pro still opens White');
-  assert.equal(surfaces().console, false, 'Lock Media hides the Media Console hub');
+  assert.equal(surfaces().console, true, 'the Media hub stays open while Pro is open');
   clearRelocksFor(['pro']);
   assert.equal(isMediaUnlocked(), true);
   lockPro();

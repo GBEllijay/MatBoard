@@ -168,7 +168,9 @@ export function studentEditionEntitled(owner: {
   white: boolean;
   student?: boolean;
 }): boolean {
-  if (isStudentEditionRelocked()) return false;
+  // The testing mark still closes Student Edition when nothing above it is open.
+  // An open Media, Instructor, or Pro door reopens it (doorOpen applies the ladder).
+  if (isStudentEditionRelocked() && !isStudentEditionUnlocked()) return false;
   if (owner.student || isStudentEditionUnlocked()) return true;
   if (isStudentPurchased()) return true;
   return owner.pro;
