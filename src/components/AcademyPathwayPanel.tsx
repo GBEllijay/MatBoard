@@ -13,6 +13,7 @@ import {
   type AcademyPathway,
 } from '../lib/academyPathway';
 import { cloudStorage } from '../lib/cloudStorage';
+import { licenseIdFromStoredToken } from '../lib/studentInboxClient';
 import { readGymName } from '../lib/gymName';
 import { readDriveBinding, requestDriveToken, subscribeDriveBinding } from '../lib/googleDrive';
 import { readOneDriveBinding, readOneDriveSession } from '../lib/oneDrive';
@@ -54,6 +55,7 @@ export function AcademyPathwayPanel() {
 
   const reload = useCallback(() => {
     const gymName = readGymName();
+    const license = licenseIdFromStoredToken() ?? undefined;
     const pathways: AcademyPathway[] = [];
     const google = readDriveBinding();
     if (google) {
@@ -62,6 +64,7 @@ export function AcademyPathwayPanel() {
         folderId: google.folderId,
         folderName: google.folderName,
         gymName,
+        license,
       });
       if (pathway) pathways.push(pathway);
     }
@@ -72,6 +75,7 @@ export function AcademyPathwayPanel() {
         folderId: one.folderId,
         folderName: one.folderName,
         gymName,
+        license,
       });
       if (pathway) pathways.push(pathway);
     }

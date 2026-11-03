@@ -36,6 +36,7 @@ import {
   type CalendarRepeat,
   type CoachFeedbackPacket,
   type CoachGymBrand,
+  type CoachRankUpdatePacket,
   type CoachPlanFocus,
   type CoachPlanPacket,
   type CoachSuggestion,
@@ -1029,6 +1030,13 @@ export type CoachImportResult = {
   gym: CoachGymBrand | null;
   /** The gym handout. It does not replace a coach plan already on the phone. */
   gymBrandOnly?: boolean;
+  /**
+   * A rank update waiting for Accept or Dismiss.
+   * The report is unchanged until the student accepts.
+   */
+  pendingRankUpdate?: CoachRankUpdatePacket;
+  /** Student inbox code carried beside a rank file, when the coach had one. */
+  inboxPass?: string;
 };
 
 /** Shown when the student picks the progress file Make a file for my coach just downloaded. */
@@ -1092,7 +1100,7 @@ export function applyCoachFile(report: StudentProgressReport, shelf: CoachShelf,
       `This JSON file is not a coach plan or coach feedback file. ${COACH_IMPORT_TAKES}`,
     );
   }
-  const record = raw as { advantage?: unknown; kind?: unknown };
+  const record = raw as { advantage?: unknown; kind?: unknown; inboxPass?: unknown };
   const gym = readTravelingGym(raw);
   if (record.advantage === 'student-journal-backup') return refusedCoachFile(report, shelf, BACKUP_PICKER_MESSAGE);
   if (record.kind === 'student-progress-report') {
@@ -1108,6 +1116,33 @@ export function applyCoachFile(report: StudentProgressReport, shelf: CoachShelf,
       error: '',
       pendingReport: parsed.value,
       gym,
+    };
+  }
+  if (record.kind === 'coach-rank-update') {
+    const parsed = parseProgressPacket(text);
+    if (!parsed.ok || parsed.value.kind !== 'coach-rank-update') {
+      if (!parsed.ok && parsed.errors.some((line) => line.includes('cannot set student marks'))) {
+        return refusedCoachFile(
+          report,
+          shelf,
+          'This coach file tries to set student marks, checkpoints, journal, or goals. A coach file cannot do that, so it was not imported.',
+        );
+      }
+      const detail = parsed.ok ? 'It could not be read.' : parsed.errors.join(' ');
+      return refusedCoachFile(report, shelf, `${detail} It was not imported.`);
+    }
+    if (parsed.value.studentId !== report.studentId) {
+      return refusedCoachFile(report, shelf, 'A coach file for a different student was left out.');
+    }
+    const inboxPass = typeof record.inboxPass === 'string' ? record.inboxPass.trim() : '';
+    return {
+      report,
+      shelf,
+      message: 'Your coach recorded a rank update. Accept or dismiss it. Your checklist was not changed.',
+      error: '',
+      gym,
+      pendingRankUpdate: parsed.value,
+      ...(inboxPass ? { inboxPass } : {}),
     };
   }
   if (record.kind !== 'coach-plan' && record.kind !== 'coach-feedback') {

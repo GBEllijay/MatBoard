@@ -12,7 +12,9 @@ import {
   SEND_TO_COACH_MERGE_PROMPT,
   SHARE_SUBJECT,
 } from '../../lib/studentTools';
+import { queueCoachUpdate } from '../../lib/coachRankUpdate';
 import { COACH_FILE_HINT, COACH_FILE_LABEL } from '../../lib/studentHubMenu';
+import { saveInboxPass } from '../../lib/studentInboxClient';
 import { setStudentProfile } from '../../lib/studentEdition';
 import { writeStudentGymLogo } from '../../lib/studentGymMark';
 import { LeatherHeader, StudentMarks, useScrollToHash, useStudentFile, useStudentPath } from './chrome';
@@ -120,7 +122,7 @@ export function SharePage() {
           <section className="student-import-confirm" id="import">
             <h2>Import from coach</h2>
             <p>
-              This takes a coach plan or coach feedback file. That is the JSON file a coach sends back to you. It is not the progress file from Make a file for my coach.
+              This takes a coach plan or coach feedback file. That is the JSON file a coach sends back to you. It is not the progress file from Make a file for my coach. A rank update file also imports here and waits for Accept or Dismiss.
             </p>
             <p>
               A coach plan or coach feedback file is a suggestion. Importing it does not change your rubric marks, checkpoints, journal, or goals. A gym name or logo in the file is added when it is there, and ignored when an older file does not have one. You can replace or remove the logo on My profile. You can still merge a progress file into the journal on this phone after you confirm. A backup from Back up my journal restores from Connections.
@@ -145,6 +147,16 @@ export function SharePage() {
                     setError('');
                     setImportNote('');
                     setSendNote('');
+                    return;
+                  }
+                  if (result.pendingRankUpdate) {
+                    queueCoachUpdate(localStorage, result.pendingRankUpdate);
+                    if (result.inboxPass) saveInboxPass(localStorage, result.inboxPass);
+                    setPendingOwn(null);
+                    setPendingGym(null);
+                    setError('');
+                    setSendNote('');
+                    setImportNote(result.message);
                     return;
                   }
                   setPendingOwn(null);
