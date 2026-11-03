@@ -11,6 +11,7 @@ import { LessonVersionHistory } from '../components/LessonVersionHistory';
 import { PlanDateNav } from '../components/PlanDateNav';
 import { CoachPlanExport } from '../components/CoachPlanExport';
 import { CollaborationGate, useCurrentSeat } from '../components/SeatSessionBar';
+import { AdvantageCloudPanel } from '../components/AdvantageCloudMedia';
 import { LessonMediaRail } from '../components/LessonMediaRail';
 import { OpenMyDrive } from '../components/OpenMyDrive';
 import { PlayExitMark } from '../components/PlayExitMark';
@@ -68,12 +69,14 @@ import {
   DISTRIBUTE_LEAD,
   flushLessonDriveDraft,
   getDriveNotice,
+  lessonPlanForDrive,
   lessonDraftRevisionId,
   markLessonDistribution,
   mediaRefsFromVideoPlan,
   scheduleLessonDriveDraft,
   subscribeDriveNotice,
 } from '../lib/lessonDrive';
+import { cloudUploadSelected, scheduleCloudLessonSave } from '../lib/advantageCloudMedia';
 import { REVIEW_SUBMIT, REVIEW_SUBMITTED, REVIEW_VERSION_LEAD, listPlanVersions, submitForReview } from '../lib/reviewInbox';
 import {
   isLiveSeat,
@@ -470,13 +473,17 @@ export function TrainingNotesPage() {
       : dayVideos
         ? mediaRefsFromVideoPlan(dayVideos.plan)
         : [];
+    const saveToCloud = cloudUploadSelected();
     scheduleLessonDriveDraft({
-      proSuite: unlimitedPlan,
+      proSuite: unlimitedPlan && !saveToCloud,
       dateKey: todayKey,
       coachName: saved.plan.coachName,
       plan: saved.plan,
       media,
     });
+    if (saveToCloud) {
+      scheduleCloudLessonSave({ dateKey: todayKey, json: JSON.stringify(lessonPlanForDrive(saved.plan)) });
+    }
     return saved;
   };
 
@@ -717,6 +724,7 @@ export function TrainingNotesPage() {
 
       {lessonBlocked ? null : (
       <div className="notes__plan">
+        <AdvantageCloudPanel purpose="lesson" dateKey={viewKey} planJson={JSON.stringify(lessonPlanForDrive(plan))} />
         <LessonTemplatePicker
           template={activeLessonTemplate(plan)}
           competitionAllowed={competitionAllowed}

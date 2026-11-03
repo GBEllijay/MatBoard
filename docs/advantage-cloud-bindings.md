@@ -13,6 +13,13 @@ Do not create a second D1 database. Seats and licenses already use `advantage-en
 
 `wrangler.toml` in this repo names the R2 binding. It does not contain the D1 database id. Copy that id from the existing D1 database if you add this project to Wrangler locally.
 
+Daily videos and lesson-plan media upload through `/api/gym/cloud`. The browser does not get a public bucket URL. Set these Pages variables if you want a cap other than the default:
+
+- `GYM_MEDIA_CAP_BYTES` — total bytes in the bucket before an upload is refused. Default `8000000000` (8 GB).
+- `GYM_MEDIA_MAX_UPLOAD_BYTES` — largest one file. Default `512000000` (512 MB).
+
+Videos larger than 8 MB are sent in parts. Each part except the last is 8 MB.
+
 No Stripe product, price, or coupon is created here.
 
 ## Safety steps for the owner
