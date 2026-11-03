@@ -26,4 +26,11 @@ Every gallery item has "Report this photo." The contact address is advantageappl
 
 ## DMCA
 
-Advantage will register a DMCA designated agent with the US Copyright Office before Cloud launch. That registration is an owner step, not part of this draft.
+Advantage App, LLC has a designated agent registered with the US Copyright Office to receive notices of claimed copyright infringement under the DMCA (17 U.S.C. 512(c)). Send notices to:
+
+Copyright Agent, Advantage App, LLC
+81 Ward Lane, STE 7, Ellijay, GA 30540
+Phone: (706) 889-0463
+Email: advantageappllc@gmail.com
+
+A notice must include the items listed in 17 U.S.C. 512(c)(3). Advantage removes or disables access to material identified in a valid notice and may close the accounts of repeat infringers.

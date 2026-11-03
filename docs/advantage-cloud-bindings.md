@@ -21,4 +21,4 @@ No Stripe product, price, or coupon is created here.
 2. Set the Cloudflare account abuse contact to a monitored address. Cloudflare expects a reply to abuse reports within 24 hours.
 3. The in-app report address is `advantageappllc@gmail.com`.
 4. Have an attorney review `docs/legal/plus-cloud-terms-DRAFT.md` before Cloud launch. The file is marked for attorney review.
-5. Register a DMCA designated agent with the US Copyright Office.
+5. DMCA designated agent: registered with the US Copyright Office on 2026-11-02. Renew by 2029-11-02.
