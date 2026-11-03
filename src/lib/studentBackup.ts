@@ -370,7 +370,8 @@ export function parseStudentBackup(text: string): { ok: true; file: StudentBacku
     record.kind === 'student-progress-report' ||
     record.kind === 'coach-plan' ||
     record.kind === 'coach-feedback' ||
-    record.kind === 'coach-rank-update'
+    record.kind === 'coach-rank-update' ||
+    record.kind === 'coach-competition-update'
   ) {
     return { ok: false, error: BACKUP_NOT_A_BACKUP };
   }

@@ -11,6 +11,8 @@ import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useToolboxParent } from '../hooks/useToolboxParent';
 import { BeltTip } from '../components/BeltTip';
 import { LinkStudentSheet, SendRankUpdateSheet } from '../components/CoachStudentLink';
+import { GuestArchive } from '../components/GuestArchive';
+import { SendCompetitionSheet, type CompetitionSendDraft } from '../components/SendCompetitionSheet';
 import { Sheet } from '../components/Sheet';
 import { useRosterState } from '../hooks/useStores';
 import { COMPETITOR_SYSTEM_NAME, isCoachStudentRoster } from '../lib/productNames';
@@ -47,6 +49,7 @@ import {
   serializeRosterCsv,
   withUtf8Bom,
 } from '../lib/rosterCsv';
+import { competitionSendOffer } from '../lib/coachCompetitionUpdate';
 import { rankSendOffer } from '../lib/coachRankUpdate';
 import { seatPermissionAllows } from '../lib/instructorSeats';
 import { readGymName } from '../lib/gymName';
@@ -61,6 +64,7 @@ import {
   isKnownBelt,
   draftFromStudent,
   emptyDraft,
+  linkCompetitorToRosterStudent,
   formatPromotion,
   removeStudent,
   searchStudents,
@@ -111,6 +115,9 @@ export function RosterPage() {
   const [saveError, setSaveError] = useState('');
   const [linkTarget, setLinkTarget] = useState<Student | null>(null);
   const [sendTarget, setSendTarget] = useState<Student | null>(null);
+  const [samePerson, setSamePerson] = useState<Student | null>(null);
+  const [competitionSend, setCompetitionSend] = useState<{ studentId: string; draft: CompetitionSendDraft } | null>(null);
+  const [linkNote, setLinkNote] = useState('');
   const listed = useMemo(
     () => (studentRoster ? studentRosterCards(roster.students) : competitorCards(roster.students)),
     [roster.students, studentRoster],
@@ -280,6 +287,23 @@ export function RosterPage() {
               }}
               onToggleCheckIn={() => setCheckedIn(competitor.id, !competitor.checkedIn)}
               onLink={() => setLinkTarget(competitor)}
+              onSamePerson={() => setSamePerson(competitor)}
+              onSendCompetition={() =>
+                setCompetitionSend({
+                  studentId: competitor.linkedStudentId ?? '',
+                  draft: {
+                    tournamentName: '',
+                    date: new Date().toISOString().slice(0, 10),
+                    location: '',
+                    division: competitor.division,
+                    weightClass: '',
+                    opponent: '',
+                    result: 'win',
+                    method: '',
+                    note: '',
+                  },
+                })
+              }
             />
           ))}
         </ul>
@@ -352,8 +376,39 @@ export function RosterPage() {
           }
         }}
       />
+      {studentRoster ? null : <GuestArchive />}
       <LinkStudentSheet key={linkTarget?.id ?? 'link'} student={linkTarget} onClose={() => setLinkTarget(null)} />
       <SendRankUpdateSheet key={sendTarget?.id ?? 'send'} student={sendTarget} onClose={() => setSendTarget(null)} />
+      <Sheet open={Boolean(samePerson)} title="Same person as a roster student" onClose={() => setSamePerson(null)} portal>
+        <p>This link is one time. Pick the Student Roster card for this competitor. Guests are not listed.</p>
+        {linkNote ? <p role="status">{linkNote}</p> : null}
+        <ul className="roster__list">
+          {studentRosterCards(roster.students).map((student) => (
+            <li key={student.id}>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  if (!samePerson) return;
+                  const result = linkCompetitorToRosterStudent(samePerson.id, student.id);
+                  setLinkNote(result.ok ? `${samePerson.name} is linked to ${student.name}.` : result.error);
+                  if (result.ok) setSamePerson(null);
+                }}
+              >
+                This competitor is the same person as roster student {student.name}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </Sheet>
+      {competitionSend ? (
+        <SendCompetitionSheet
+          open
+          studentId={competitionSend.studentId}
+          initial={competitionSend.draft}
+          onClose={() => setCompetitionSend(null)}
+        />
+      ) : null}
     </main>
   );
 }
@@ -416,6 +471,8 @@ function StudentCard({
   onConfirmRemove,
   onToggleCheckIn,
   onLink,
+  onSamePerson,
+  onSendCompetition,
 }: {
   student: Student;
   studentRoster: boolean;
@@ -427,6 +484,8 @@ function StudentCard({
   onConfirmRemove: () => void;
   onToggleCheckIn: () => void;
   onLink: () => void;
+  onSamePerson: () => void;
+  onSendCompetition: () => void;
 }) {
   const promoted = formatPromotion(student.lastPromotion);
   const promotionDetail = student.lastPromotionDetail.trim();
@@ -492,6 +551,16 @@ function StudentCard({
             {studentRoster ? (
               <button type="button" className="btn btn--ghost" onClick={onLink}>
                 Link to student
+              </button>
+            ) : null}
+            {!studentRoster && !student.guestId && !student.linkedStudentId ? (
+              <button type="button" className="btn btn--ghost" onClick={onSamePerson}>
+                Same person as a roster student
+              </button>
+            ) : null}
+            {!studentRoster && competitionSendOffer(student) === 'send' ? (
+              <button type="button" className="btn" onClick={onSendCompetition}>
+                Send to student
               </button>
             ) : null}
             <button type="button" className="btn btn--ghost" onClick={onAskRemove}>

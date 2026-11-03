@@ -7,7 +7,9 @@
 import { ENTITLEMENT_TOKEN_KEY } from './entitlement.ts';
 import { base64UrlToBytes } from './entitlementToken.ts';
 import { exportProgressPacket, progressHandoffFileName } from './progress/format.ts';
-import type { CoachRankUpdatePacket } from './progress/types.ts';
+import type { CoachCompetitionUpdatePacket, CoachRankUpdatePacket } from './progress/types.ts';
+
+export type InboxPacket = CoachRankUpdatePacket | CoachCompetitionUpdatePacket;
 
 export const INBOX_PASS_KEY = 'matboard.studentEdition.inboxPass.v1';
 export const ACADEMY_LICENSE_KEY = 'matboard.studentEdition.academyLicense.v1';
@@ -66,7 +68,7 @@ export function saveAcademyLicense(storage: MemoryStore, license: string | undef
   storage.setItem(ACADEMY_LICENSE_KEY, license);
 }
 
-export function rankUpdateFile(packet: CoachRankUpdatePacket): { name: string; json: string } {
+export function rankUpdateFile(packet: InboxPacket): { name: string; json: string } {
   return { name: progressHandoffFileName(packet), json: exportProgressPacket(packet) };
 }
 
@@ -83,7 +85,7 @@ export async function probeGymInbox(fetchImpl: typeof fetch = fetch): Promise<'b
 }
 
 export async function deliverRankUpdate(
-  packet: CoachRankUpdatePacket,
+  packet: InboxPacket,
   options: { fetchImpl?: typeof fetch; token?: string | null; license?: string | null } = {},
 ): Promise<InboxDelivery> {
   const file = rankUpdateFile(packet);

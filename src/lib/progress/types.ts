@@ -187,6 +187,7 @@ export const PROGRESS_PACKET_KINDS = [
   'coach-plan',
   'coach-feedback',
   'coach-rank-update',
+  'coach-competition-update',
 ] as const;
 export type ProgressPacketKind = (typeof PROGRESS_PACKET_KINDS)[number];
 
@@ -813,7 +814,42 @@ export type CoachRankUpdatePacket = PacketBase & {
   updateId: string;
 };
 
-export type ProgressPacket = StudentProgressReport | CoachPlanPacket | CoachFeedbackPacket | CoachRankUpdatePacket;
+/**
+ * Coach → student. One tournament and the matches the coach recorded.
+ * Check-in, readiness, roster notes, and photos are not in this file.
+ * Accepting it does not remove a match the student already wrote.
+ */
+export type CoachCompetitionMatch = {
+  opponent: string;
+  result: MatchResult;
+  method: MatchMethod;
+  note: string;
+};
+
+export type CoachCompetitionUpdate = {
+  tournamentName: string;
+  /** YYYY-MM-DD. */
+  date: string;
+  location: string;
+  division: string;
+  weightClass: string;
+  matches: CoachCompetitionMatch[];
+};
+
+export type CoachCompetitionUpdatePacket = PacketBase & {
+  kind: 'coach-competition-update';
+  competitionUpdate: CoachCompetitionUpdate;
+  gym?: CoachGymBrand;
+  issuedAt: number;
+  updateId: string;
+};
+
+export type ProgressPacket =
+  | StudentProgressReport
+  | CoachPlanPacket
+  | CoachFeedbackPacket
+  | CoachRankUpdatePacket
+  | CoachCompetitionUpdatePacket;
 
 export type ProgressParse =
   | { ok: true; value: ProgressPacket }

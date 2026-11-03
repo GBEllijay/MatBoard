@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { buildCoachCompetitionUpdate } from '../lib/coachCompetitionUpdate.ts';
 import { buildCoachRankUpdate } from '../lib/coachRankUpdate.ts';
 import type { PrivateJwk, PublicJwk } from '../lib/entitlementToken.ts';
 import { exportProgressPacket } from '../lib/progress/format.ts';
@@ -217,4 +218,35 @@ test('inbox access follows owner, upload seats, and the student pass', async () 
     pass,
   );
   assert.equal(clearedAgain.status, 200);
+
+  const competition = buildCoachCompetitionUpdate({
+    studentId: STUDENT,
+    tournamentName: 'Mock tournament',
+    date: '2026-11-03',
+    division: 'Adult Blue',
+    weightClass: 'Middle',
+    matches: [{ opponent: 'Sam', result: 'win', method: 'sub', note: '' }],
+    now: 60,
+    updateId: 'comp-nov3',
+  });
+  if (!competition.ok) throw new Error(competition.error);
+  const compWrite = await call(
+    bucket,
+    keys.secret,
+    'POST',
+    'https://advantage.test/api/gym/inbox',
+    { action: 'write', license: LICENSE, studentId: STUDENT, packet: competition.packet },
+    owner,
+  );
+  assert.equal(compWrite.status, 200);
+  assert.equal(bucket.objects.has(inboxObjectKey(LICENSE, STUDENT, 'comp-nov3')), true);
+  const guestWrite = await call(
+    bucket,
+    keys.secret,
+    'POST',
+    'https://advantage.test/api/gym/inbox',
+    { action: 'write', license: LICENSE, studentId: STUDENT, packet: { ...competition.packet, checklist: [] } },
+    owner,
+  );
+  assert.equal(guestWrite.status, 400);
 });
