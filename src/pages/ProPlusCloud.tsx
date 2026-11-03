@@ -1,18 +1,15 @@
 import { useEffect } from 'react';
+import { AdvantageCloudHome } from '../components/AdvantageCloudHome';
 import { BeltHeader } from '../components/BeltHeader';
 import { PlusCloudConduct } from '../components/PlusCloudConduct';
 import { HomeMark } from '../components/HomeMark';
 import { InstructionsButton } from '../components/InstructionsButton';
+import { InstructorInvitePanel } from '../components/InstructorInvitePanel';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { ProToolboxCard } from '../components/ProToolboxCard';
 import { SiteFooter } from '../components/SiteFooter';
 import { useSeatDoor } from '../hooks/useSeatDoor';
 import {
-  ADVANTAGE_CLOUD_DRIVE_NOTE,
-  ADVANTAGE_CLOUD_HEADING,
-  ADVANTAGE_CLOUD_STATUS,
-  ADVANTAGE_CLOUD_UPLOAD_LEAD,
-  ADVANTAGE_CLOUD_UPLOAD_STEPS,
   MEDIA_CONSOLE_NAME,
   PRODUCTS_PATH,
   PRO_PLUS_CLOUD_BELT_BLURB,
@@ -24,7 +21,7 @@ import {
 /**
  * Advantage Pro Plus Cloud menu. Same four hubs as Advantage Pro.
  * The header stays the worn black belt: white stripe, red bar, white stripe.
- * The cloud block is plain text. Nothing here connects a drive or starts checkout.
+ * Advantage Cloud status, upload links, and the instructor invite live under the hubs.
  */
 export function ProPlusCloudPage() {
   const door = useSeatDoor();
@@ -48,19 +45,8 @@ export function ProPlusCloudPage() {
         <nav className="home__modes" aria-label={PRO_PLUS_CLOUD_NAME}>
           <BeltHeader kind="black" worn title={PRO_PLUS_CLOUD_NAME} blurb={PRO_PLUS_CLOUD_BELT_BLURB} />
           <ProToolboxCard hubs={hubs} label={`${PRO_PLUS_CLOUD_NAME} hubs`} />
-          <section className="cloud-soon" aria-label={ADVANTAGE_CLOUD_HEADING} data-cloud-block="advantage-cloud">
-            <div className="cloud-soon__row">
-              <h2>{ADVANTAGE_CLOUD_HEADING}</h2>
-              <p className="plan-card__kicker">{ADVANTAGE_CLOUD_STATUS}</p>
-            </div>
-            <h3>{ADVANTAGE_CLOUD_UPLOAD_LEAD}</h3>
-            <ol>
-              {ADVANTAGE_CLOUD_UPLOAD_STEPS.map((step) => (
-                <li key={step}>{step}</li>
-              ))}
-            </ol>
-            <p>{ADVANTAGE_CLOUD_DRIVE_NOTE}</p>
-          </section>
+          <AdvantageCloudHome />
+          <InstructorInvitePanel />
         </nav>
 
         <div className="home__hints">

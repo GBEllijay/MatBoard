@@ -2,8 +2,12 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
+  CLOUD_HOME_CONNECTED,
+  CLOUD_HOME_UNBOUND,
+  CLOUD_ROLE_HOME,
   CLOUD_ROLE_MESSAGE,
   CLOUD_SAVED_MESSAGE,
+  loadAdvantageCloudHome,
   uploadAdvantageCloudFile,
   DEFAULT_CLOUD_CAP_BYTES,
   DEFAULT_MAX_UPLOAD_BYTES,
@@ -148,6 +152,54 @@ test('Advantage Cloud is an added choice and does not replace Drive, OneDrive, o
   assert.match(panel, /Save this lesson plan/);
   assert.doesNotMatch(panel, /Upgrade|locked|greyed|coming soon/i);
   assert.equal(CLOUD_SAVED_MESSAGE.includes('Advantage Cloud'), true);
+});
+
+test('the head instructor home says when Cloud is unbound, connected, or how full it is', async () => {
+  const unbound = await loadAdvantageCloudHome(async () => new Response(JSON.stringify({ ok: false }), { status: 503 }));
+  assert.deepEqual(unbound, { phase: 'unbound' });
+  assert.match(CLOUD_HOME_UNBOUND, /not connected/);
+  assert.doesNotMatch(CLOUD_HOME_UNBOUND, /Coming soon/);
+
+  const connected = await loadAdvantageCloudHome(async (input) => {
+    const url = String(input);
+    if (url.includes('probe=1')) return new Response(JSON.stringify({ ok: true, bound: true }), { status: 200 });
+    return new Response('Sign in required.', { status: 401 });
+  });
+  assert.deepEqual(connected, { phase: 'connected' });
+  assert.match(CLOUD_HOME_CONNECTED, /connected/);
+  assert.match(CLOUD_ROLE_HOME, /assistant coach can play and download/i);
+  assert.match(CLOUD_ROLE_HOME, /Coach, and Instructors can upload/);
+
+  const memory = new Map<string, string>([['advantage.entitlement.token', 'signed-token']]);
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: {
+      getItem: (key: string) => memory.get(key) ?? null,
+      setItem: (key: string, value: string) => void memory.set(key, value),
+      removeItem: (key: string) => void memory.delete(key),
+    },
+  });
+  const ready = await loadAdvantageCloudHome(async (input, init) => {
+    const url = String(input);
+    if (url.includes('probe=1')) return new Response(JSON.stringify({ ok: true, bound: true }), { status: 200 });
+    assert.match(String(init?.headers && (init.headers as { authorization?: string }).authorization), /Bearer signed/);
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        cloud: true,
+        canUpload: true,
+        licenseUsedBytes: 1800000,
+        bucketUsedBytes: 2400000,
+        capBytes: 8000000000,
+      }),
+      { status: 200 },
+    );
+  });
+  assert.equal(ready.phase, 'ready');
+  if (ready.phase === 'ready') {
+    assert.equal(ready.licenseUsedBytes, 1800000);
+    assert.equal(ready.capBytes, 8000000000);
+  }
 });
 
 test('a file larger than one part is uploaded in chunks', async () => {

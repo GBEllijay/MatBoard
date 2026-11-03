@@ -2188,12 +2188,13 @@ span.role-plan__mark {
   --belt-block: 0.55rem;
 }
 
-/* Coming soon Advantage Cloud. Plain text on a hub card. Not a control. */
-.home__modes > .cloud-soon {
+/* Live Advantage Cloud home under the four Pro hubs. */
+.home__modes > .cloud-home,
+.home__modes > .invite-panel {
   grid-column: 1 / -1;
 }
 
-.cloud-soon {
+.cloud-home {
   display: grid;
   gap: 0.7rem;
   width: 100%;
@@ -2206,47 +2207,32 @@ span.role-plan__mark {
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
 }
 
-.cloud-soon__row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.35rem 0.85rem;
-}
-
-.cloud-soon h2,
-.cloud-soon h3 {
+.cloud-home h2 {
   margin: 0;
   color: var(--white-ink);
   letter-spacing: -0.03em;
   line-height: 1.2;
-}
-
-.cloud-soon h2 {
   font-size: clamp(1.25rem, 3vw, 1.55rem);
 }
 
-.cloud-soon h3 {
-  font-size: 1.02rem;
-}
-
-.home .cloud-soon p,
-.home .cloud-soon li {
+.home .cloud-home p {
   margin: 0;
   color: var(--white-ink);
   font-weight: 600;
   line-height: 1.45;
 }
 
-.home .cloud-soon .plan-card__kicker {
-  color: #8a5a12;
+.cloud-home__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
 }
 
-.cloud-soon ol {
-  margin: 0;
-  padding-left: 1.25rem;
-  display: grid;
-  gap: 0.35rem;
+.invite-link__qr {
+  width: 180px;
+  height: 180px;
+  background: #fff;
+  border-radius: 12px;
 }
 
 /* Shared belt headers. Cloth colors are the existing belt-rail accents. */

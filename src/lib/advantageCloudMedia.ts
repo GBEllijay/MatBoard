@@ -28,6 +28,11 @@ export const CLOUD_SIGN_IN_MESSAGE = 'Sign in on this device to use Advantage Cl
 export const CLOUD_ROLE_MESSAGE = 'Assistant coaches can play and download these files. A coach uploads them.';
 export const CLOUD_SAVED_MESSAGE = 'Saved to Advantage Cloud. This phone keeps a copy.';
 export const CLOUD_UNAVAILABLE_MESSAGE = 'Advantage Cloud is not on this license.';
+export const CLOUD_HOME_UNBOUND = 'Advantage Cloud is not connected on this site.';
+export const CLOUD_HOME_CONNECTED =
+  'Advantage Cloud is connected. Sign in on this device to see how much space this license is using.';
+export const CLOUD_ROLE_HOME =
+  'The gym owner, a Coach, and Instructors can upload daily videos and lesson-plan media. An assistant coach can play and download them. A program director does not use this lane.';
 
 export type CloudMediaPurpose = 'daily-video' | 'lesson' | 'lesson-media';
 export type CloudMediaHome = 'device' | 'advantage-cloud';
@@ -239,6 +244,51 @@ export type CloudFileRow = {
   size: number;
   mime: string;
 };
+
+export type CloudHomeView =
+  | { phase: 'unbound' }
+  | { phase: 'connected' }
+  | {
+      phase: 'ready';
+      canUpload: boolean;
+      licenseUsedBytes: number;
+      bucketUsedBytes: number;
+      capBytes: number;
+    };
+
+/** Probe the bucket, then read this license's space when the device is signed in. */
+export async function loadAdvantageCloudHome(fetcher: CloudFetcher = fetch): Promise<CloudHomeView> {
+  let bound = false;
+  try {
+    const probe = await fetcher('/api/gym/media?probe=1');
+    if (probe.ok) {
+      const body = (await probe.json()) as { bound?: unknown };
+      bound = body.bound === true;
+    }
+  } catch {
+    bound = false;
+  }
+  if (!bound) return { phase: 'unbound' };
+  const token = readCloudBearer();
+  if (!token) return { phase: 'connected' };
+  try {
+    const response = await fetcher('/api/gym/cloud?op=status', {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) return { phase: 'connected' };
+    const body = (await response.json()) as CloudStatusBody;
+    if (!body.cloud) return { phase: 'connected' };
+    return {
+      phase: 'ready',
+      canUpload: Boolean(body.canUpload),
+      licenseUsedBytes: body.licenseUsedBytes ?? 0,
+      bucketUsedBytes: body.bucketUsedBytes ?? 0,
+      capBytes: body.capBytes ?? DEFAULT_CLOUD_CAP_BYTES,
+    };
+  } catch {
+    return { phase: 'connected' };
+  }
+}
 
 export type CloudStatusBody = {
   ok: true;
