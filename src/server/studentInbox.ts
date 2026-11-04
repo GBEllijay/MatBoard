@@ -20,7 +20,10 @@ import { readCoachAssessment, readCoachBeltProgress, readCoachNote } from '../li
 import { photoReadyToSend, readPhotoSubmission } from '../lib/rosterPhotoApproval.ts';
 import { cardShareReadyToSend, readStudentCardShare } from '../lib/studentCardShare.ts';
 import { readTournamentRegistration } from '../lib/studentEvents.ts';
+import { freeStudentGrantClosed } from './studentLicenses.ts';
+import { STUDENT_LICENSE_REVOKED_MESSAGE } from '../lib/studentLicensePool.ts';
 import { signingMaterial } from './tokenIssue.ts';
+import type { D1Database } from './d1.ts';
 
 export const INBOX_PACKET_KINDS = [
   'coach-rank-update',
@@ -95,6 +98,7 @@ export type StudentInboxEnv = {
   GYM_MEDIA?: InboxBucket;
   ENTITLEMENT_SIGNING_KEY?: string;
   ENTITLEMENT_KEY_ID?: string;
+  ENTITLEMENTS_DB?: D1Database | null;
 };
 
 export type StudentInboxPass = {
@@ -428,6 +432,10 @@ export async function handleStudentInbox(
   const material = signingMaterial(env.ENTITLEMENT_SIGNING_KEY, env.ENTITLEMENT_KEY_ID);
   if (!material) return json(503, { ok: false, error: 'Entitlement signing is not set up yet. Set ENTITLEMENT_SIGNING_KEY.' });
   const keys = [{ kid: material.kid, jwk: material.publicJwk }];
+  const closedFree = async (studentId: string): Promise<Response | null> => {
+    if (!(await freeStudentGrantClosed(env.ENTITLEMENTS_DB ?? null, studentId, now()))) return null;
+    return json(403, { ok: false, error: STUDENT_LICENSE_REVOKED_MESSAGE });
+  };
 
   if (request.method === 'POST') {
     let body: {
@@ -461,6 +469,8 @@ export async function handleStudentInbox(
       if (!studentPassAllows(pass, license, studentId, Math.floor(now().getTime() / 1000))) {
         return json(403, { ok: false, error: 'Only this student can send a photo to the coach.' });
       }
+      const photoClosed = await closedFree(studentId);
+      if (photoClosed) return photoClosed;
       const submission = readPhotoSubmission(body.submission);
       if (!submission || submission.studentId !== studentId) {
         return json(400, { ok: false, error: 'That is not a profile photo for this student.' });
@@ -504,6 +514,8 @@ export async function handleStudentInbox(
       if (!studentPassAllows(pass, license, studentId, Math.floor(now().getTime() / 1000))) {
         return json(403, { ok: false, error: 'Only this student can tell the coach about their tournament.' });
       }
+      const eventClosed = await closedFree(studentId);
+      if (eventClosed) return eventClosed;
       const event = readTournamentRegistration(body.event);
       if (!event || event.studentId !== studentId) {
         return json(400, { ok: false, error: 'That is not a tournament registration for this student.' });
@@ -658,6 +670,8 @@ export async function handleStudentInbox(
     if (!studentPassAllows(pass, license, studentId, Math.floor(now().getTime() / 1000))) {
       return json(403, { ok: false, error: 'A student can read and clear only their own inbox.' });
     }
+    const inboxClosed = await closedFree(studentId);
+    if (inboxClosed) return inboxClosed;
     if (request.method === 'DELETE') {
       const updateId = url.searchParams.get('updateId') ?? '';
       if (!ID_RE.test(updateId)) return json(400, { ok: false, error: 'Missing update id.' });

@@ -15,6 +15,7 @@ import {
   touchDevice,
 } from './purchaseRecords.ts';
 import { appVersionOf } from '../lib/appCapability.ts';
+import { freeStudentRestoreShape } from './studentLicenses.ts';
 import { issueToken, signingMaterial } from './tokenIssue.ts';
 
 const JSON_HEADERS = {
@@ -233,21 +234,33 @@ export async function handleRestoreVerify(
   const active = await touchDevice(db, { licenseId: identity.licenseId, deviceId, thumbprint: thumbprint ?? null, now: now() });
   void active;
   const pro = doors.includes('pro');
+  // A license that is only a free Student claim restores as that claim, including
+  // the gym link. Every other license keeps the token it had before.
+  const studentClaim = await freeStudentRestoreShape(db, identity.licenseId, now(), env);
   const token = await issueToken(env.ENTITLEMENT_SIGNING_KEY, {
     licenseId: identity.licenseId,
     grants: doors,
-    tier: tierForGrants(doors, pro ? 'stripe' : 'code'),
-    src: pro ? 'stripe' : 'code',
+    tier: studentClaim ? 'student' : tierForGrants(doors, pro ? 'stripe' : 'code'),
+    src: studentClaim ? 'free' : pro ? 'stripe' : 'code',
     deviceId,
     now: now(),
-    kind: pro ? 'pro' : 'onetime',
+    kind: studentClaim ? 'onetime' : pro ? 'pro' : 'onetime',
     emailHint: row.emailHash.slice(0, 16),
     thumbprint,
-    subs: pro ? { state: 'active' } : undefined,
+    subs: studentClaim ? undefined : pro ? { state: 'active' } : undefined,
+    gym: studentClaim?.gym,
+    preset: studentClaim?.preset,
     appVersion: appVersionOf(request),
   }, env.ENTITLEMENT_KEY_ID);
   if (!token) return json(503, { ok: false, error: RESTORE_UNAVAILABLE });
-  return json(200, { ok: true, entitled: true, grants: doors, token, deviceId });
+  return json(200, {
+    ok: true,
+    entitled: true,
+    grants: doors,
+    token,
+    deviceId,
+    ...(studentClaim?.studentPass ? { studentPass: studentClaim.studentPass } : {}),
+  });
 }
 
 export async function handleRevokeOtherDevices(

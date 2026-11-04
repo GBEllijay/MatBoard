@@ -260,6 +260,43 @@ test('master gym logo swaps into the one slot on both pages live, and reset retu
   m.done();
 });
 
+test('Pro owner keeps the academy pathway and can see the free Student license pool', async () => {
+  reset();
+  grant(['pro']);
+  localStorage.setItem(DRIVE_BINDING_KEY, JSON.stringify({ folderId: 'driveFolder123', folderName: 'Gym Academy' }));
+  localStorage.setItem('advantage.entitlement.token', 'owner.token.value');
+  const previous = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (url.includes('/api/student-licenses/list')) {
+      return new Response(JSON.stringify({ ok: true, role: 'owner', left: 4, cap: 5, claims: [], halfOff: null }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+    return new Response('{}', { status: 503 });
+  };
+  const m = await mount(<StudentSharePage />);
+  globalThis.fetch = previous;
+  const input = m.host.querySelector('input[aria-label="Student Edition link"]') as HTMLInputElement | null;
+  const pathway = academyPathway({ provider: 'googleDrive', folderId: 'driveFolder123', folderName: 'Gym Academy', gymName: '' });
+  assert.ok(pathway);
+  assert.equal(input?.value, academyPathwayUrl(pathway, ORIGIN));
+  assert.match(m.host.textContent ?? '', /4 of 5 free Student licenses left/);
+  assert.match(m.host.textContent ?? '', /Give a free Student license/);
+  m.done();
+});
+
+test('Instructor Edition keeps the academy link and does not issue from the Pro pool', async () => {
+  reset();
+  grant(['coach']);
+  localStorage.setItem(DRIVE_BINDING_KEY, JSON.stringify({ folderId: 'driveFolder123', folderName: 'Gym Academy' }));
+  const m = await mount(<StudentSharePage />);
+  assert.ok(m.host.querySelector('input[aria-label="Student Edition link"]'));
+  assert.equal(m.host.querySelector('[data-student-license]'), null);
+  m.done();
+});
+
 test('share logo helper: raster gym logo or Advantage, SVG refused', () => {
   assert.equal(resolveShareLogo(null), '/advantage-icon.png');
   assert.equal(resolveShareLogo('data:image/svg+xml;base64,AAAA'), '/advantage-icon.png');

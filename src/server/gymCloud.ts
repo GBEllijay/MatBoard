@@ -40,6 +40,7 @@ import {
   type CloudFileRow,
   type CloudMediaPurpose,
 } from '../lib/advantageCloudMedia.ts';
+import { STUDENT_CLOUD_REFUSED, STUDENT_LICENSE_PRESET } from '../lib/studentLicensePool.ts';
 import { verifyToken, type EntitlementClaims } from '../lib/entitlementToken.ts';
 import type { D1Database } from './d1.ts';
 import { grantOpen, grantsForLicense } from './purchaseRecords.ts';
@@ -171,6 +172,8 @@ async function readActor(request: Request, env: GymCloudEnv, now: Date): Promise
 }
 
 async function actorForClaims(env: GymCloudEnv, claims: EntitlementClaims, now: Date): Promise<Actor | Response> {
+  // A free Student license is not the gym owner and not a coach seat.
+  if (claims.preset === STUDENT_LICENSE_PRESET) return json(403, { ok: false, error: STUDENT_CLOUD_REFUSED });
   const seat = claims.src === 'seat' || claims.tier === 'seat';
   const licenseId = seat ? claims.gym || claims.sub : claims.sub;
   if (!licenseId) return json(401, { ok: false, error: CLOUD_SIGN_IN_MESSAGE });
