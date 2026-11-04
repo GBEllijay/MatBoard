@@ -117,8 +117,12 @@ Use the Stripe test-mode toggle. Then:
    | `STRIPE_PRICE_INSTRUCTOR` | Server variable (not public) | Instructor Edition ($49.99) one-time price. Required for coach Checkout (503 when empty; must be 4999 USD in Stripe) |
    | `STRIPE_PRICE_MEDIA` | Server variable (not public) | Media Edition ($29.99) one-time price |
    | `STRIPE_PRICE_PRO` | Server variable (not public) | Pro one-time price |
-   | `STRIPE_PRICE_PRO_MONTHLY` | Server variable (not public) | Pro $5.99/month price |
-   | `STRIPE_PRICE_PRO_MONTHLY_DISCOUNT` | Optional. Not read by Checkout | Reserved for a future discount price id |
+   | `STRIPE_PRICE_PRO_MONTHLY` | Server variable (not public) | Pro Cloud $5.99/month price. Also the fallback when an edition Cloud price is unset |
+   | `STRIPE_PRICE_PRO_MONTHLY_DISCOUNT` | Optional. Not read by Checkout | Reserved for a future Pro Cloud half-off price id |
+   | `STRIPE_PRICE_INSTRUCTOR_CLOUD_MONTHLY` | Optional server variable | Instructor Cloud $5.99/month. Falls back to `STRIPE_PRICE_PRO_MONTHLY` |
+   | `STRIPE_PRICE_INSTRUCTOR_CLOUD_MONTHLY_DISCOUNT` | Optional. Not read by Checkout | Reserved for a future Instructor Cloud half-off price |
+   | `STRIPE_PRICE_MEDIA_CLOUD_MONTHLY` | Server variable, required for Media Cloud | Media Cloud $2.99/month (recurring). No fallback: unset means Media Cloud checkout is refused |
+   | `STRIPE_PRICE_MEDIA_CLOUD_MONTHLY_DISCOUNT` | Optional. Not read by Checkout | Reserved for a future Media Cloud half-off price |
    | `STRIPE_SUCCESS_URL` | Optional server variable | White success URL override |
    | `STRIPE_CANCEL_URL` | Optional server variable | White cancel URL override |
 
@@ -154,7 +158,7 @@ A paid Pro Checkout session (`checkout.session.completed`, `mode=subscription`, 
 ### Price ids for Student Edition, Coach, and Pro
 
 1. **Advantage Pro → one-time price, USD 99.99.** Copy the Price id to `STRIPE_PRICE_PRO`.
-2. **Same product → recurring price, USD 5.99, billed monthly.** Copy that Price id to `STRIPE_PRICE_PRO_MONTHLY`. Both ids go on the same Checkout session. `STRIPE_PRICE_PRO_MONTHLY_DISCOUNT` is optional and is not read by Checkout. It can hold a future discount price id.
+2. **Same product → recurring price, USD 5.99, billed monthly.** Copy that Price id to `STRIPE_PRICE_PRO_MONTHLY`. Both ids go on the same Pro Checkout session when Cloud is checked. `STRIPE_PRICE_PRO_MONTHLY_DISCOUNT` is optional and is not read by Checkout. It can hold a future half-off price id. Instructor Cloud uses `STRIPE_PRICE_INSTRUCTOR_CLOUD_MONTHLY` (and optional `STRIPE_PRICE_INSTRUCTOR_CLOUD_MONTHLY_DISCOUNT`). Media Cloud uses `STRIPE_PRICE_MEDIA_CLOUD_MONTHLY` (and optional `STRIPE_PRICE_MEDIA_CLOUD_MONTHLY_DISCOUNT`). Those discount ids are not sent by Checkout. When the Instructor monthly var is empty, Checkout uses `STRIPE_PRICE_PRO_MONTHLY`. Media never falls back, because Media Cloud is $2.99 and the Pro monthly price is $5.99. Checkout refuses any Cloud monthly price whose amount is not that edition's: Media $2.99, Instructor $5.99, Pro $5.99. The edition prices are not Pro prices.
 3. **Advantage Student Edition → one-time price, USD 19.99.** Copy the Price id to `STRIPE_PRICE_STUDENT`.
 4. **Instructor Edition → one-time price, USD 49.99.** Copy the Price id to `STRIPE_PRICE_INSTRUCTOR`. (`STRIPE_PRICE_COACH`, the legacy $29.99 price, is no longer sold.)
 5. **White promotion codes** (the public buy page does not show the code text). White Checkout still sends `allow_promotion_codes=true` unless a code was attached by the server. Create these coupons, restricted to Advantage White, if they are not already in the Dashboard:

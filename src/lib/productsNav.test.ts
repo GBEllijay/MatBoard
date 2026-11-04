@@ -56,7 +56,6 @@ test('/products cards follow the belt ladder order: White, Student, Media, Instr
     at('<MediaHomeCard open={mediaUnlocked} />'),
     at('<strong>{INSTRUCTOR_HOME_TITLE}</strong>'),
     at('<ProHomeCopy />'),
-    at('<ProPlusCloudCard'),
   ];
   assert.deepEqual([...order].sort((a, b) => a - b), order);
 });
@@ -132,9 +131,8 @@ test('Locked product cards have Learn more; unlocked cards show only their Open 
   assert.match(home, /Open Media Edition/);
   assert.match(home, /Open Advantage Instructor Edition/);
   assert.match(home, /Open Pro Console/);
-  assert.match(home, /\{PRO_PLUS_CLOUD_OPEN_LABEL\}/);
+  assert.match(home, /PRO_PLUS_CLOUD_OPEN_LABEL/);
   assert.match(home, /COACH_UNLIMITED_PATH/);
-  // A seat that cannot open Coach Unlimited still has a working Coach door.
   assert.match(home, /: '\/coach'/);
   assert.match(home, /: 'Open Coach'/);
   const unlockedCoach = home.slice(home.indexOf('mode-card mode-card--coach">'), home.indexOf('mode-card mode-card--coach mode-card--locked'));
@@ -146,19 +144,16 @@ test('Locked product cards have Learn more; unlocked cards show only their Open 
   const unlockedWhite = home.slice(home.indexOf('whiteUnlocked ? ('), home.indexOf(') : (', home.indexOf('whiteUnlocked ? (')));
   assert.match(unlockedWhite, /Open White/);
   assert.doesNotMatch(unlockedWhite, /LearnMoreLink/);
-  const cloud = home.slice(home.indexOf('function ProPlusCloudCard'));
-  const unlockedCloud = cloud.slice(0, cloud.indexOf('mode-card--locked'));
-  assert.match(unlockedCloud, /PRO_PLUS_CLOUD_OPEN_LABEL/);
-  assert.doesNotMatch(unlockedCloud, /LearnMoreLink/);
   const student = home.slice(home.indexOf('function StudentHomeCard'));
   const unlockedStudent = student.slice(student.indexOf('if (open)'), student.indexOf('mode-card--locked'));
   assert.match(unlockedStudent, /\{demo \? <LearnMoreLink tier="student" \/> : null\}/);
   assert.match(home, /Owner test unlock/);
-  assert.match(home, /aria-label=\{`\$\{INSTRUCTOR_HOME_TITLE\}, coming soon`\}/);
-  assert.match(home, /aria-label="Advantage Pro, coming soon"/);
+  assert.match(home, /ALPHA_PRODUCT_STATUS/);
+  assert.doesNotMatch(home, /coming soon/i);
   assert.match(home, /PRO_DRIVE_NOTE/);
-  assert.match(home, /bar="striped"/);
-  assert.match(home, /bar="red"/);
+  assert.match(home, /CLOUD_ADDON_LINE/);
+  assert.match(home, /<BeltRail kind="black" bar="striped" \/>/);
+  assert.doesNotMatch(home, /function ProPlusCloudCard/);
 });
 
 test('Pro card on /products says "Includes all Advantage products."', async () => {
@@ -173,8 +168,9 @@ test('Media, Instructor and Pro show one shared alpha line directly under the pr
   assert.equal(p.EDITION_EMAIL_DISPLAY, 'advantageappLLC@gmail.com');
   const n = '<AlphaAccessNote note={EDITION_ALPHA_NOTE} display={EDITION_EMAIL_DISPLAY} />';
   const esc = n.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
-  assert.match(home, new RegExp(`\\{MEDIA_PRICE_LINE\\}</p>\\s*${esc}`));
-  assert.match(home, new RegExp(`\\{INSTRUCTOR_DISPLAY_PRICE_LINE\\}</p>\\s*${esc}`));
-  assert.match(home, new RegExp(`\\{PRO_PRICE_LINE\\}</p>\\}\\s*${esc}`));
+  assert.match(home, new RegExp(`\\{MEDIA_PRICE_LINE\\}</p>\\s*<p className="mode-card__price">\\{CLOUD_ADDON_LINE\\}</p>\\s*${esc}`));
+  assert.match(home, new RegExp(`\\{INSTRUCTOR_DISPLAY_PRICE_LINE\\}</p>\\s*<p className="mode-card__price">\\{CLOUD_ADDON_LINE\\}</p>\\s*${esc}`));
+  assert.match(home, /PRO_PRICE_LINE/);
+  assert.match(home, /<HomeDescription text=\{CLOUD_ADDON_LINE\} \/>/);
   assert.doesNotMatch(home, /COACH_ALPHA_ACCESS_NOTE|PRO_ALPHA_ACCESS_NOTE/);
 });

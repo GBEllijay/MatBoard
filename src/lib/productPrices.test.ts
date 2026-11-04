@@ -18,18 +18,16 @@ import {
   WHITE_ALPHA_ACCESS_NOTE,
 } from './productPrices.ts';
 
-test('Coach is $29.99 one-time and Pro is $99.99 plus $5.99/month', () => {
+test('Coach is $29.99 one-time and Pro is $99.99 one-time', () => {
   assert.equal(COACH_LIST_PRICE_CENTS, 2999);
   assert.equal(PRO_LIST_PRICE_CENTS, 9999);
   assert.equal(PRO_MONTHLY_PRICE_CENTS, 599);
   assert.notEqual(PRO_LIST_PRICE_CENTS, 6999);
   assert.equal(COACH_PRICE_LINE, `${formatUsdFromCents(COACH_LIST_PRICE_CENTS)} one-time`);
   assert.equal(COACH_PRICE_LINE, '$29.99 one-time');
-  assert.equal(
-    PRO_PRICE_LINE,
-    `${formatUsdFromCents(PRO_LIST_PRICE_CENTS)} one-time, plus ${formatUsdFromCents(PRO_MONTHLY_PRICE_CENTS)}/month`,
-  );
-  assert.equal(PRO_PRICE_LINE, '$99.99 one-time, plus $5.99/month');
+  assert.equal(PRO_PRICE_LINE, `${formatUsdFromCents(PRO_LIST_PRICE_CENTS)} one-time`);
+  assert.equal(PRO_PRICE_LINE, '$99.99 one-time');
+  assert.equal(PRO_MONTHLY_PRICE_CENTS, 599);
   assert.doesNotMatch(`${COACH_PRICE_LINE}\n${PRO_PRICE_LINE}`, /69\.99|6999|\$2\.99/);
 });
 

@@ -74,7 +74,7 @@ export function ToolboxFolder({
         <FolderChevron />
         <span className="saver-folder__title">
           {folder.label}
-          {folder.ready ? null : <small>Coming soon</small>}
+          {folder.ready ? null : <small>This product is in alpha</small>}
         </span>
         <button
           type="button"
