@@ -3,6 +3,7 @@ import { usePolishedSkinModule, useViewportSize } from '../hooks/usePolishedSkin
 import { formatMmSs, formatMss } from '../lib/format';
 import type { PolishedTimerSlug } from '../lib/polishedSkins';
 import { brasilRing, keynoteRing } from '../skins/polished/ring';
+import { isPosterSkin, posterSplitsNums, posterTimerTitle } from '../skins/polished/posterSkins';
 import { metalTimerTitle, psychedelicTimerTitle, reggaeTimerTitle, timerNextLine, timerProgress, visionaryTimerTitle } from '../skins/polished/timerText';
 
 const STAR =
@@ -202,6 +203,37 @@ export function PolishedTimer({
         </div>
       );
       break;
+    case 'creature-anime':
+    case 'idol-hunters':
+    case 'shinobi-anime': {
+      const title = posterTimerTitle(slug, rest, round);
+      const titleText = posterSplitsNums(slug)
+        ? title.split(/(\d+)/).map((part, index) =>
+            /^\d+$/.test(part) ? (
+              <span key={index} className="n">
+                {part}
+              </span>
+            ) : (
+              <span key={index}>{part}</span>
+            ),
+          )
+        : title;
+      inner = (
+        <>
+          <div className="title">
+            {mod?.POSTER?.titleBrush ? <span dangerouslySetInnerHTML={{ __html: mod.POSTER.titleBrush }} /> : null}
+            <span>{titleText}</span>
+          </div>
+          <div className="dplate">{clockBtn(digits)}</div>
+          <div className="meter">
+            <i className="fill" />
+            {mod?.POSTER?.meterKnob ? <span dangerouslySetInnerHTML={{ __html: mod.POSTER.meterKnob }} /> : null}
+          </div>
+          <div className="next">{next}</div>
+        </>
+      );
+      break;
+    }
     case 'visionary':
       inner = (
         <div className="halo-wrap">
@@ -221,7 +253,7 @@ export function PolishedTimer({
   }
 
   return (
-    <div className={`skin-root skin-root--timer${mod ? '' : ' skin-root--loading'}`} data-skin={slug}>
+    <div className={`skin-root skin-root--timer${isPosterSkin(slug) ? ' skin-root--poster' : ''}${mod ? '' : ' skin-root--loading'}`} data-skin={slug}>
       <div className={`tm${rest ? ' rest' : ''}`} style={{ ['--p' as string]: p.toFixed(4) }}>
         {deco ? <div className="skin-deco" dangerouslySetInnerHTML={{ __html: deco }} /> : null}
         <img className="logo" src="/card-logo.png" alt="Advantage" />

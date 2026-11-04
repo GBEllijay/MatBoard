@@ -1,0 +1,217 @@
+/* Chrome Inferno lessons, loaded last so they win over the theme and skin-root.
+   At a portrait tablet the score rows keep about 20vh and the digits about 15vh.
+   The name, header, and clock band shrink. The header stays one line and ellipsizes.
+   A narrow phone follows the approved 390-wide wrap, still with a 20vh tile floor. */
+
+@media (orientation: portrait) {
+  .skin-root.skin-root--poster .sb {
+    padding: calc(0.4rem + 2.6rem) 2.6vw 1.4vw;
+    grid-template-rows: auto minmax(20vh, 1fr) auto minmax(20vh, 1fr);
+    gap: 1vh;
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
+  }
+
+  .play--fs .skin-root.skin-root--poster .sb,
+  .play--landscape .skin-root.skin-root--poster .sb {
+    padding-top: 1.4vw;
+  }
+
+  .skin-root.skin-root--poster .row {
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto minmax(20vh, 1fr);
+    gap: 0.8vh;
+    padding: 0.8vh 1.4vw 0.6vh 3.4vw;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .skin-root.skin-root--poster .id {
+    grid-column: 1 / -1;
+    gap: 0.4vh;
+    padding-left: 1vw;
+  }
+
+  .skin-root.skin-root--poster .row .name {
+    font-size: 3.4vh;
+  }
+
+  .skin-root.skin-root--poster .row .tile {
+    min-height: 0;
+    height: 100%;
+    padding: 0.6vh 0.2vh 0.8vh;
+  }
+
+  .skin-root.skin-root--poster .row .tile .lab {
+    font-size: 1.7vh;
+    letter-spacing: 0.06em;
+  }
+
+  .skin-root.skin-root--poster .row .tile .num {
+    font-size: 15vh;
+    line-height: 0.82;
+  }
+
+  .skin-root.skin-root--poster .belt {
+    height: 3vh;
+    font-size: 1.6vh;
+  }
+
+  .skin-root.skin-root--poster .gym,
+  .skin-root.skin-root--poster .side b {
+    font-size: 1.7vh;
+  }
+
+  .skin-root.skin-root--poster .hdr .logo {
+    height: 5.2vh;
+    width: 5.2vh;
+  }
+
+  .skin-root.skin-root--poster .wm {
+    font-size: 3vh;
+  }
+
+  .skin-root.skin-root--poster .hdr .mat {
+    font-size: 2.6vh;
+  }
+
+  .skin-root.skin-root--poster .hdr .div {
+    font-size: 1.7vh;
+    letter-spacing: 0.08em;
+    padding: 0.4vh 1.2vh;
+  }
+
+  .skin-root.skin-root--poster .hdr .crest {
+    height: 6.4vh;
+    width: 6.4vh;
+  }
+
+  .skin-root.skin-root--poster .sb .band.band {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    row-gap: 0.8vh;
+    height: auto;
+    min-height: 0;
+    padding: 0;
+    align-content: center;
+  }
+
+  .skin-root.skin-root--poster .plate {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    justify-self: center;
+  }
+
+  .skin-root.skin-root--poster .band .state,
+  .skin-root.skin-root--poster .band .status {
+    grid-row: 2;
+    margin: 0;
+  }
+
+  .skin-root.skin-root--poster .plate {
+    height: auto;
+    padding: 0.4vh 3vw;
+  }
+
+  .skin-root.skin-root--poster .plate .clock .sk-btn {
+    font-size: 6.4vh;
+  }
+
+  .skin-root.skin-root--poster .band .state,
+  .skin-root.skin-root--poster .band .status .sk-btn {
+    font-size: 1.6vh;
+    padding: 0.5vh 1.4vh;
+  }
+
+  .skin-root.skin-root--poster .band .state,
+  .skin-root.skin-root--poster .band .status {
+    margin: 0;
+  }
+
+  .skin-root.skin-root--poster .band .mascot {
+    height: 12vh;
+    width: 12vh;
+  }
+}
+
+/* Phone: the approved wrap. Division takes the second line. Score rows stay protected. */
+@media (orientation: portrait) and (max-width: 520px) {
+  .skin-root.skin-root--poster .hdr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    row-gap: 0.6vw;
+    height: auto;
+    overflow: visible;
+  }
+
+  .skin-root.skin-root--poster .lead {
+    display: contents;
+  }
+
+  .skin-root.skin-root--poster .hdr .logo {
+    order: 1;
+    height: 9vw;
+    width: 9vw;
+  }
+
+  .skin-root.skin-root--poster .wm {
+    order: 2;
+    font-size: 6.2vw;
+  }
+
+  .skin-root.skin-root--poster .hdr .crest {
+    order: 3;
+    height: 11vw;
+    width: 11vw;
+    margin-left: auto;
+  }
+
+  .skin-root.skin-root--poster .hdr .mat {
+    order: 4;
+    flex: none;
+    margin-left: 1.4vw;
+    font-size: 5.4vw;
+    max-width: 28vw;
+  }
+
+  .skin-root.skin-root--poster .hdr .div {
+    order: 5;
+    flex-basis: 100%;
+    justify-self: center;
+    text-align: center;
+    margin: 0 auto;
+    font-size: 3vw;
+  }
+
+  .skin-root.skin-root--poster .row .name {
+    font-size: 7.2vw;
+  }
+
+  .skin-root.skin-root--poster .row .tile .num {
+    font-size: 22vw;
+    line-height: 0.9;
+  }
+
+  .skin-root.skin-root--poster .sb .band.band {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    row-gap: 1.2vw;
+  }
+
+  .skin-root.skin-root--poster .plate {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    justify-self: center;
+  }
+
+  .skin-root.skin-root--poster .band .state,
+  .skin-root.skin-root--poster .band .status {
+    grid-row: 2;
+  }
+
+  .skin-root.skin-root--poster .plate .clock .sk-btn {
+    font-size: 14vw;
+  }
+}

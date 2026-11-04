@@ -8,6 +8,7 @@ import { RankChip } from '../components/RankChip';
 import { DqDisappointedPopup } from '../components/DqDisappointedPopup';
 import { GrandmasterCheer, grandmasterIdFromLocation } from '../components/GrandmasterCheer';
 import { PolishedScoreboard } from '../components/PolishedScoreboard';
+import { posterBoardState } from '../skins/polished/posterSkins';
 import { ScoreBox } from '../components/ScoreBox';
 import { ScoreboardSkinPicker } from '../components/ScoreboardSkinPicker';
 import { useBoutQuerySync, useBracketOutcomeReturn } from '../hooks/useBracketBoutReturn';
@@ -216,7 +217,9 @@ export function MatchDisplayPage() {
               {match.division || 'Open'}
             </ControllerFocusLink>
           }
-          state="Match"
+          state={
+            posterBoardState(polished.slug, match.outcome?.call === 'win' || match.outcome?.call === 'dq') ?? 'Match'
+          }
           clock={
             <button type="button" className="sk-btn" onClick={toggleClock} aria-label="Start or pause match clock">
               {formatMmSs(remaining)}

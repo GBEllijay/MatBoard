@@ -28,7 +28,9 @@ test('Mock-Tournament Skin is the default Match scoreboard', () => {
   assert.equal(scoreboardSkinClass(SCOREBOARD_SKIN.MOCK_TOURNAMENT), 'scoreboard-skin--mock-tournament');
   assert.deepEqual(Object.keys(SCOREBOARD_SKIN).sort(), [
     'BRASIL',
+    'CREATURE_ANIME',
     'HEAVY_METAL',
+    'IDOL_HUNTERS',
     'KEYNOTE',
     'KIDS',
     'KIDS_ARCADE',
@@ -39,6 +41,7 @@ test('Mock-Tournament Skin is the default Match scoreboard', () => {
     'PSYCHEDELIC',
     'QUICK_RESULT',
     'REGGAE',
+    'SHINOBI_ANIME',
     'VISIONARY',
     'WOODBLOCK',
   ]);

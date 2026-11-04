@@ -1,0 +1,487 @@
+/* Shared frame for the poster skins. Theme files paint color and art on top.
+   Loaded after skin-root.css and before each theme. */
+
+.skin-root--poster {
+  color: #fff;
+  -webkit-font-smoothing: antialiased;
+}
+
+.skin-root--poster,
+.skin-root--poster * {
+  box-sizing: border-box;
+}
+
+.skin-root--poster .num,
+.skin-root--poster .clock,
+.skin-root--poster .digits,
+.skin-root--poster .tm-clock {
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  background: none;
+}
+
+.skin-root--poster .bg,
+.skin-root--poster .fx,
+.skin-root--poster .petals,
+.skin-root--poster .spark,
+.skin-root--poster .petal,
+.skin-root--poster .mascot,
+.skin-root--poster .rail,
+.skin-root--poster .crest,
+.skin-root--poster .bandfx,
+.skin-root--poster .rod,
+.skin-root--poster .rowbrush,
+.skin-root--poster .wmbrush,
+.skin-root--poster .titlebrush,
+.skin-root--poster .meter .knob {
+  pointer-events: none;
+}
+
+.skin-root--poster .bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-position: center;
+  background-size: cover;
+}
+
+.skin-root--poster .fx,
+.skin-root--poster .petals {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.skin-root--poster .spark {
+  position: absolute;
+  clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
+}
+
+.skin-root--poster .petal {
+  position: absolute;
+  border-radius: 100% 0 100% 0;
+  background: linear-gradient(135deg, #ffd3e6, #ff6fa8);
+}
+
+.skin-root--poster .sb {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  padding: 1.6vh 2.4vh 2.4vh;
+  display: grid;
+  grid-template-rows: 8vh minmax(0, 1fr) 16vh minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2vh;
+  isolation: isolate;
+}
+
+/* Round on the left of the crest, division on the right. Equal columns keep the crest centered. */
+.skin-root--poster .hdr {
+  position: relative;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 1.4vh;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.skin-root--poster .lead {
+  display: flex;
+  align-items: center;
+  gap: 1.2vh;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.skin-root--poster .hdr .logo {
+  height: 6.4vh;
+  width: 6.4vh;
+  border-radius: 50%;
+  flex: none;
+}
+
+.skin-root--poster .wm {
+  position: relative;
+  font-size: 5vh;
+  line-height: 1;
+  flex: none;
+  white-space: nowrap;
+}
+
+.skin-root--poster .hdr .mat {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 4.4vh;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.skin-root--poster .hdr .mat,
+.skin-root--poster .hdr .mat a,
+.skin-root--poster .hdr .div,
+.skin-root--poster .hdr .div a {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.skin-root--poster .hdr .mat a,
+.skin-root--poster .hdr .div a {
+  display: inline-block;
+  vertical-align: bottom;
+}
+
+.skin-root--poster .hdr .div {
+  justify-self: end;
+  font-weight: 700;
+  font-size: 2.2vh;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.7vh 1.6vh;
+  border-radius: 5vh;
+}
+
+.skin-root--poster .hdr .crest {
+  justify-self: center;
+  display: block;
+  height: 10.4vh;
+  width: 10.4vh;
+  background: var(--crest, none) center / contain no-repeat;
+  z-index: 2;
+}
+
+.skin-root--poster .row {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: minmax(0, 1.85fr) minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1.6vh;
+  padding: 1.6vh 1.6vh 1.6vh 4vh;
+  min-height: 0;
+  min-width: 0;
+}
+
+.skin-root--poster .rail {
+  position: absolute;
+  left: 1.4vh;
+  top: 2vh;
+  bottom: 2vh;
+  width: 1.3vh;
+  border-radius: 1vh;
+  z-index: 3;
+}
+
+.skin-root--poster .id {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1vh;
+  padding-left: 1.2vh;
+  min-width: 0;
+}
+
+.skin-root--poster .side b {
+  display: inline-block;
+  font-weight: 800;
+  font-size: 2.4vh;
+  letter-spacing: 0.22em;
+  padding: 0.45vh 1.3vh 0.45vh 1.6vh;
+  border-radius: 5vh;
+  line-height: 1.1;
+}
+
+.skin-root--poster .name {
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 5.6vh;
+  line-height: 1;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.skin-root--poster .name.is-wrap {
+  white-space: normal;
+  line-height: 1.02;
+  text-wrap: balance;
+  max-height: 2.1em;
+}
+
+.skin-root--poster .meta {
+  display: flex;
+  align-items: center;
+  gap: 1.4vh;
+  min-width: 0;
+}
+
+.skin-root--poster .belt {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8vh;
+  height: 4vh;
+  padding: 0 1.4vh 0 0.9vh;
+  border-radius: 5vh;
+  font-weight: 800;
+  font-size: 2.1vh;
+  letter-spacing: 0.08em;
+  flex: none;
+}
+
+.skin-root--poster .belt i {
+  width: 2.8vh;
+  height: 1.3vh;
+  background: #111;
+  border-radius: 0.3vh;
+}
+
+.skin-root--poster .gym {
+  font-weight: 700;
+  font-size: 2.5vh;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skin-root--poster .tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.2vh 0.4vh 1vh;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.skin-root--poster .lab {
+  font-weight: 800;
+  font-size: 2.6vh;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.skin-root--poster .num {
+  font-size: 20vh;
+  line-height: 0.9;
+}
+
+.skin-root--poster .band {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  padding: 0 2vh;
+  min-width: 0;
+}
+
+.skin-root--poster .band > * {
+  min-width: 0;
+}
+
+.skin-root--poster .bandfx {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.skin-root--poster .band .state,
+.skin-root--poster .band .status {
+  position: relative;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+}
+
+.skin-root--poster .band .state {
+  margin-left: 14vh;
+}
+
+.skin-root--poster .band .status {
+  margin-right: 14vh;
+}
+
+.skin-root--poster .band .state {
+  justify-self: start;
+}
+
+.skin-root--poster .band .status {
+  justify-self: end;
+}
+
+.skin-root--poster .band .state,
+.skin-root--poster .band .status .sk-btn {
+  font-weight: 800;
+  font-size: 2.8vh;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 0.9vh 2.2vh;
+  border-radius: 5vh;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* A decided bout shows FINAL and hides the paused control, which would be a false state. */
+.skin-root--poster .band.is-final .status {
+  visibility: hidden;
+}
+
+.skin-root--poster .plate {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 15vh;
+  padding: 0 4vh;
+}
+
+.skin-root--poster .plate .clock {
+  display: flex;
+}
+
+.skin-root--poster .plate .clock .sk-btn {
+  font-size: 12.6vh;
+  line-height: 1;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+}
+
+.skin-root--poster .mascot {
+  position: absolute;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  z-index: 2;
+}
+
+/* Timer shell. The phase button and the digits stay live controls. */
+.skin-root--poster .tm {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.skin-root--poster .tm .crest {
+  position: absolute;
+  left: 50%;
+  top: 2.2vh;
+  transform: translateX(-50%);
+  height: 16vh;
+  width: 16vh;
+  background: var(--crest, none) center / contain no-repeat;
+  z-index: 4;
+}
+
+.skin-root--poster .tm .phase {
+  position: absolute;
+  right: 3.2vh;
+  top: 3.2vh;
+  z-index: 6;
+  max-width: 42vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 800;
+  font-size: 2.6vh;
+  letter-spacing: 0.12em;
+  padding: 1vh 2.2vh;
+  border-radius: 5vh;
+}
+
+.skin-root--poster .tm .title {
+  position: absolute;
+  left: 8vw;
+  right: 8vw;
+  top: 19vh;
+  text-align: center;
+  z-index: 4;
+  font-size: 6.6vh;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.skin-root--poster .tm .dplate {
+  position: absolute;
+  left: 50%;
+  top: 28vh;
+  transform: translateX(-50%);
+  z-index: 4;
+  height: 42vh;
+  padding: 0 5vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.skin-root--poster .tm .digits,
+.skin-root--poster .tm .tm-clock {
+  font-size: 34vh;
+  line-height: 0.95;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+}
+
+.skin-root--poster .tm .meter {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 78vh;
+  width: 52vw;
+  height: 4.2vh;
+  z-index: 4;
+  border-radius: 5vh;
+  overflow: hidden;
+}
+
+.skin-root--poster .tm .meter .fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: calc(var(--p) * 100%);
+  border-radius: inherit;
+}
+
+.skin-root--poster .tm .next {
+  position: absolute;
+  left: 4vw;
+  right: 4vw;
+  top: 86vh;
+  text-align: center;
+  z-index: 4;
+  font-weight: 800;
+  font-size: 2.8vh;
+  letter-spacing: 0.16em;
+  pointer-events: none;
+}
+
+.skin-root--poster .tm .mascot {
+  z-index: 3;
+  bottom: 2vh;
+  height: 34vh;
+  width: 30vh;
+}
+
+.skin-root--poster .tm .t-l {
+  left: 1vw;
+}
+
+.skin-root--poster .tm .t-r {
+  right: 1vw;
+}

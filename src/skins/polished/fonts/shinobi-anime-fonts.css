@@ -1,0 +1,44 @@
+/* Shinobi Anime. Anton for every numeral. Dela Gothic One for headings. Ma Shan Zheng for 忍 only. OFL. */
+@font-face {
+  font-family: 'Anton';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./anton/anton-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Big Shoulders Display';
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url('./big-shoulders-display/big-shoulders-display-latin-900-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Oswald';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./oswald/oswald-latin-600-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Oswald';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./oswald/oswald-latin-700-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Dela Gothic One';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./dela-gothic-one/dela-gothic-one-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Ma Shan Zheng';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./ma-shan-zheng/ma-shan-zheng-shinobi-400-normal.woff2') format('woff2');
+  unicode-range: U+5FCD;
+}
