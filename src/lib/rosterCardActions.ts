@@ -141,8 +141,9 @@ export function personCheckedIn(id: string, storage?: MemoryStore | null): boole
  */
 export function setPersonCheckedIn(id: string, on: boolean, storage?: MemoryStore | null): Student | null {
   const partner = checkInPartner(id, storage);
-  const next = setCheckedIn(id, on);
-  if (next && partner && partner.checkedIn !== on) setCheckedIn(partner.id, on);
+  const personKey = partner ? [id, partner.id].sort().join('|') : undefined;
+  const next = setCheckedIn(id, on, personKey ? { personKey } : undefined);
+  if (next && partner && partner.checkedIn !== on) setCheckedIn(partner.id, on, personKey ? { personKey } : undefined);
   return next;
 }
 

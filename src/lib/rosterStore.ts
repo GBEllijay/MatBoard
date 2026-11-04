@@ -27,6 +27,7 @@ import {
   type GameLinkFlag,
   type GameSection,
 } from './gamePlan.ts';
+import { recordCheckIn, recordStudentAdded, recordStudentArchived, recordStudentDeleted, recordStudentRestored } from './gymEventLog.ts';
 import { isStableStudentId } from './studentIdentity.ts';
 import { isStorageQuotaError, StorageQuotaError } from './storageQuota.ts';
 
@@ -110,6 +111,12 @@ export type Student = {
    * While set, the card shows initials and every photo upload, share, and approval is blocked.
    */
   noPhotos?: NoPhotosBy;
+  /**
+   * Set when this card was archived from the roster. The card stays on this
+   * device so academy tracking can keep the id. Omitted while the card is active.
+   */
+  archivedAt?: string;
+  archivedReason?: 'left' | 'paused' | 'moved' | 'other';
 };
 
 export type NoPhotosBy = 'coach' | 'family';
@@ -451,12 +458,26 @@ export function isStudentRosterCard(student: Pick<Student, 'rosterList'>): boole
   return student.rosterList === 'student';
 }
 
+export function isArchivedStudent(student: Pick<Student, 'archivedAt'>): boolean {
+  return typeof student.archivedAt === 'string' && student.archivedAt.length > 0;
+}
+
 export function studentRosterCards(students: Student[]): Student[] {
-  return students.filter(isStudentRosterCard);
+  return students.filter((student) => isStudentRosterCard(student) && !isArchivedStudent(student));
 }
 
 export function competitorCards(students: Student[]): Student[] {
-  return students.filter((student) => !isStudentRosterCard(student));
+  return students.filter((student) => !isStudentRosterCard(student) && !isArchivedStudent(student));
+}
+
+/** Cards hidden from the working roster, still on this device. */
+export function archivedStudents(students: Student[], list: 'student' | 'competitor'): Student[] {
+  return sortStudents(
+    students.filter((student) => {
+      if (!isArchivedStudent(student)) return false;
+      return list === 'student' ? isStudentRosterCard(student) : !isStudentRosterCard(student);
+    }),
+  );
 }
 
 export function canPrefill(student: Pick<Student, 'name' | 'belt'>): boolean {
@@ -582,10 +603,19 @@ export function normalizeStudent(raw: unknown): Student | null {
   const stripes = clipStripes(row.stripes);
   if (stripes !== undefined) card.stripes = stripes;
   copySyncSettings(row, card);
+  copyArchive(row, card);
   return card;
 }
 
 const CARD_PHOTO_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/;
+
+const ARCHIVE_REASONS = ['left', 'paused', 'moved', 'other'] as const;
+
+function copyArchive(from: Partial<Student>, to: Student): void {
+  if (typeof from.archivedAt !== 'string' || !/^\d{4}-\d{2}-\d{2}/.test(from.archivedAt)) return;
+  to.archivedAt = from.archivedAt;
+  if (ARCHIVE_REASONS.some((reason) => reason === from.archivedReason)) to.archivedReason = from.archivedReason;
+}
 
 function copySyncSettings(from: Partial<Student>, to: Student): void {
   if (from.coachSync === 'off') to.coachSync = 'off';
@@ -873,6 +903,7 @@ export function addStudent(draft: StudentDraft, options?: { rosterList?: 'studen
   if (!next) return null;
   const card = options?.rosterList === 'student' ? { ...next, rosterList: 'student' as const } : next;
   commit(sortStudents([...state.students, card]));
+  recordStudentAdded(card);
   return card;
 }
 
@@ -893,6 +924,7 @@ export function addStudents(
   const list = options?.rosterList === 'student' ? 'student' : 'competitor';
   const next = assignImportedRosterCards(state.students, students, list);
   commit(next.students);
+  for (const row of next.added) recordStudentAdded(row);
   return next.added;
 }
 
@@ -946,6 +978,7 @@ function preserveRosterCard(current: Student, next: Student, draft: Partial<Stud
   const stripes = draft.stripes !== undefined ? clipStripes(draft.stripes) : current.stripes;
   if (stripes !== undefined) card.stripes = stripes;
   copySyncSettings(current, card);
+  copyArchive(current, card);
   // No photos: an editor upload never lands on the card.
   if (card.noPhotos) card.photo = '';
   return card;
@@ -1025,11 +1058,37 @@ export function linkRosterCard(id: string, studentId: string): Student | null {
   return next;
 }
 
-export function setCheckedIn(id: string, checkedIn: boolean): Student | null {
+export function setCheckedIn(id: string, checkedIn: boolean, options?: { personKey?: string }): Student | null {
   const current = state.students.find((row) => row.id === id);
   if (!current) return null;
   const next = { ...current, checkedIn };
   commit(state.students.map((row) => (row.id === id ? next : row)));
+  if (checkedIn && !current.checkedIn) recordCheckIn(id, options?.personKey || current.linkedStudentId || id);
+  return next;
+}
+
+export type RosterArchiveReason = (typeof ARCHIVE_REASONS)[number];
+
+/** Hide this card from the working roster and keep the id for academy tracking. */
+export function archiveStudent(id: string, reason: RosterArchiveReason = 'left', options?: { record?: boolean }): Student | null {
+  const current = state.students.find((row) => row.id === id);
+  if (!current) return null;
+  if (current.archivedAt) return current;
+  const next: Student = { ...current, archivedAt: new Date().toISOString(), archivedReason: reason, checkedIn: false };
+  commit(state.students.map((row) => (row.id === id ? next : row)));
+  if (options?.record !== false) recordStudentArchived(id, reason);
+  return next;
+}
+
+/** Put an archived card back on the working roster. */
+export function restoreStudent(id: string, options?: { record?: boolean }): Student | null {
+  const current = state.students.find((row) => row.id === id);
+  if (!current?.archivedAt) return current ?? null;
+  const next: Student = { ...current, checkedIn: false };
+  delete next.archivedAt;
+  delete next.archivedReason;
+  commit(state.students.map((row) => (row.id === id ? next : row)));
+  if (options?.record !== false) recordStudentRestored(id);
   return next;
 }
 
@@ -1104,7 +1163,8 @@ export function restoreReadyItem(studentId: string, itemId: ReadyItemId): void {
   });
 }
 
-export function removeStudent(id: string): void {
+export function removeStudent(id: string, options?: { record?: boolean }): void {
+  const current = state.students.find((row) => row.id === id);
   siblings = dropSiblingCompetitor(siblings, id);
   const gamePlans = { ...state.gamePlans };
   delete gamePlans[id];
@@ -1118,6 +1178,7 @@ export function removeStudent(id: string): void {
     ready,
     competitionPlans,
   );
+  if (current && options?.record !== false) recordStudentDeleted(id);
 }
 
 /**

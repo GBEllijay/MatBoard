@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { ClassPhotoPromotions } from '../components/ClassPhotoPromotions';
+import { TaughtToggle } from '../components/TaughtToggle';
 import { GalleryPendingNotice } from '../components/GalleryPendingNotice';
 import { CloudLapseNotice } from '../components/CloudLapseNotice';
 import { DriveVideoFolders } from '../components/DriveVideoFolders';
@@ -1400,6 +1401,8 @@ export function TrainingNotesPage() {
             </button>
           </div>
         ) : null}
+
+        <TaughtToggle plan={plan} dateKey={viewKey} />
 
         {editingToday && planHasContent(plan) ? (
           <aside className="notes__distribute" aria-label="Submit for review">
