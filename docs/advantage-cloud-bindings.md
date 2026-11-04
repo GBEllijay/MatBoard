@@ -15,6 +15,10 @@ Do not create a second D1 database. Seats and licenses already use `advantage-en
 
 No Stripe product, price, or coupon is created here.
 
+## Student inbox
+
+Rank updates use the same private `GYM_MEDIA` bucket. The object key is `groups/<license>/students/<studentId>/inbox/<updateId>.json`. `GET /api/gym/inbox?probe=1` returns unbound when the bucket is missing, and the coach saves a file instead. Only the gym owner, or a Coach or Instructors seat, can write. A student inbox code can read and clear only that student's folder.
+
 ## Safety steps for the owner
 
 1. Turn on Cloudflare's CSAM Scanning Tool for the zone `advantagebjjtimer.com`. Gallery images are served from `/api/gym/media` on that zone, not from a public bucket URL.

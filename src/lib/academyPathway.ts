@@ -32,6 +32,8 @@ export type AcademyPathway = {
   folderId: string;
   folderName: string;
   gymName: string;
+  /** Plus Cloud license id, when the coach's phone has one. Older links omit it. */
+  license?: string;
 };
 
 export type StudentDriveLink = {
@@ -108,21 +110,27 @@ function isProvider(value: unknown): value is AcademyProvider {
   return value === 'googleDrive' || value === 'oneDrive';
 }
 
+const LICENSE_RE = /^[A-Za-z0-9_-]{8,80}$/;
+
 export function academyPathway(input: {
   provider: AcademyProvider;
   folderId: string;
   folderName: string;
   gymName?: string;
+  license?: string;
 }): AcademyPathway | null {
   const folderId = input.folderId.trim();
   if (!isProvider(input.provider) || !FOLDER_ID.test(folderId)) return null;
-  return {
+  const pathway: AcademyPathway = {
     v: ACADEMY_PATHWAY_VERSION,
     provider: input.provider,
     folderId,
     folderName: clip(input.folderName, 120) || 'Academy folder',
     gymName: clip(input.gymName ?? '', 80),
   };
+  const license = (input.license ?? '').trim();
+  if (LICENSE_RE.test(license)) pathway.license = license;
+  return pathway;
 }
 
 function encodeToken(pathway: AcademyPathway): string {
@@ -145,6 +153,7 @@ function decodeToken(token: string): AcademyPathway | null {
       folderId: parsed.folderId ?? '',
       folderName: parsed.folderName ?? '',
       gymName: parsed.gymName ?? '',
+      license: parsed.license,
     });
   } catch {
     return null;

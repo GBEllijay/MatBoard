@@ -10,6 +10,7 @@ import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useToolboxParent } from '../hooks/useToolboxParent';
 import { BeltTip } from '../components/BeltTip';
+import { LinkStudentSheet, SendRankUpdateSheet } from '../components/CoachStudentLink';
 import { Sheet } from '../components/Sheet';
 import { useRosterState } from '../hooks/useStores';
 import { COMPETITOR_SYSTEM_NAME, isCoachStudentRoster } from '../lib/productNames';
@@ -46,6 +47,7 @@ import {
   serializeRosterCsv,
   withUtf8Bom,
 } from '../lib/rosterCsv';
+import { rankSendOffer } from '../lib/coachRankUpdate';
 import { seatPermissionAllows } from '../lib/instructorSeats';
 import { readGymName } from '../lib/gymName';
 import {
@@ -107,6 +109,8 @@ export function RosterPage() {
   const [pendingRemove, setPendingRemove] = useState<string | null>(null);
   const [csvNote, setCsvNote] = useState('');
   const [saveError, setSaveError] = useState('');
+  const [linkTarget, setLinkTarget] = useState<Student | null>(null);
+  const [sendTarget, setSendTarget] = useState<Student | null>(null);
   const listed = useMemo(
     () => (studentRoster ? studentRosterCards(roster.students) : competitorCards(roster.students)),
     [roster.students, studentRoster],
@@ -275,6 +279,7 @@ export function RosterPage() {
                 setPendingRemove(null);
               }}
               onToggleCheckIn={() => setCheckedIn(competitor.id, !competitor.checkedIn)}
+              onLink={() => setLinkTarget(competitor)}
             />
           ))}
         </ul>
@@ -328,12 +333,14 @@ export function RosterPage() {
         onSave={() => {
           if (!editor) return;
           try {
+            const before = editor.id ? roster.students.find((row) => row.id === editor.id) ?? null : null;
             const saved = editor.id
               ? updateStudent(editor.id, editor.draft)
               : addStudent(editor.draft, studentRoster ? { rosterList: 'student' } : undefined);
             if (saved) {
               setSaveError('');
               setEditor(null);
+              if (studentRoster && before && rankSendOffer(before, saved) === 'send') setSendTarget(saved);
             }
           } catch (error) {
             setSaveError(
@@ -345,6 +352,8 @@ export function RosterPage() {
           }
         }}
       />
+      <LinkStudentSheet key={linkTarget?.id ?? 'link'} student={linkTarget} onClose={() => setLinkTarget(null)} />
+      <SendRankUpdateSheet key={sendTarget?.id ?? 'send'} student={sendTarget} onClose={() => setSendTarget(null)} />
     </main>
   );
 }
@@ -406,6 +415,7 @@ function StudentCard({
   onCancelRemove,
   onConfirmRemove,
   onToggleCheckIn,
+  onLink,
 }: {
   student: Student;
   studentRoster: boolean;
@@ -416,6 +426,7 @@ function StudentCard({
   onCancelRemove: () => void;
   onConfirmRemove: () => void;
   onToggleCheckIn: () => void;
+  onLink: () => void;
 }) {
   const promoted = formatPromotion(student.lastPromotion);
   const promotionDetail = student.lastPromotionDetail.trim();
@@ -456,6 +467,10 @@ function StudentCard({
         {student.division ? <p className="roster-card__meta">{student.division}</p> : null}
         {student.gym ? <p className="roster-card__meta">{student.gym}</p> : null}
         {promotionLine ? <p className="roster-card__meta roster-card__promotion">{promotionLine}</p> : null}
+        {studentRoster && student.stripes ? <p className="roster-card__meta">Stripe {student.stripes}</p> : null}
+        {studentRoster && student.linkedStudentId ? (
+          <p className="roster-card__meta">Linked to {student.linkedStudentId}</p>
+        ) : null}
         {student.note ? <p className="roster-card__note">{student.note}</p> : null}
         {plan ? <StudentCompetitionPlan plan={plan} /> : null}
         {studentRoster ? null : <ImportStudentProgress competitorId={student.id} competitorName={student.name} />}
@@ -474,6 +489,11 @@ function StudentCard({
             <button type="button" className="btn" onClick={onEdit}>
               Edit
             </button>
+            {studentRoster ? (
+              <button type="button" className="btn btn--ghost" onClick={onLink}>
+                Link to student
+              </button>
+            ) : null}
             <button type="button" className="btn btn--ghost" onClick={onAskRemove}>
               Remove
             </button>
@@ -692,6 +712,23 @@ function StudentEditor({
             autoComplete="off"
           />
         </label>
+        {studentRoster ? (
+          <label>
+            Stripes
+            <select
+              aria-label="Stripes"
+              value={String(draft.stripes ?? 0)}
+              onChange={(event) => patch({ stripes: Number(event.target.value) })}
+            >
+              <option value={0}>No stripe</option>
+              <option value={1}>Stripe 1</option>
+              <option value={2}>Stripe 2</option>
+              <option value={3}>Stripe 3</option>
+              <option value={4}>Stripe 4</option>
+            </select>
+            <span className="roster-edit__hint">Saving stripes does not check off belt skills. The student owns that list.</span>
+          </label>
+        ) : null}
       </div>
       <label>
         {studentRoster ? STUDENT_NOTES_LABEL : 'Competitor Notes'}

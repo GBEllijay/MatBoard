@@ -182,7 +182,12 @@ export type CalendarKind = (typeof CALENDAR_KINDS)[number];
 export const CALENDAR_REPEATS = ['none', 'weekly', 'biweekly', 'monthly'] as const;
 export type CalendarRepeat = (typeof CALENDAR_REPEATS)[number];
 
-export const PROGRESS_PACKET_KINDS = ['student-progress-report', 'coach-plan', 'coach-feedback'] as const;
+export const PROGRESS_PACKET_KINDS = [
+  'student-progress-report',
+  'coach-plan',
+  'coach-feedback',
+  'coach-rank-update',
+] as const;
 export type ProgressPacketKind = (typeof PROGRESS_PACKET_KINDS)[number];
 
 export const PROGRESS_ID_MAX = 80;
@@ -783,7 +788,32 @@ export type CoachFeedbackPacket = PacketBase & {
   gym?: CoachGymBrand;
 };
 
-export type ProgressPacket = StudentProgressReport | CoachPlanPacket | CoachFeedbackPacket;
+/**
+ * Coach → student. The belt, stripe count, and promotion date the coach recorded.
+ * `stripeCount` is the stripe number (0 to 4). The file does not use a stripes key;
+ * progress files reject that key. Accepting this does not mark checklist skills.
+ */
+export type CoachRankUpdate = {
+  belt: ProgressBelt;
+  stripeCount: number;
+  /** YYYY-MM-DD. */
+  promotionDate: string;
+  /** Optional coach note. Empty when the coach left it blank. */
+  note: string;
+};
+
+export type CoachRankUpdatePacket = PacketBase & {
+  kind: 'coach-rank-update';
+  rankUpdate: CoachRankUpdate;
+  /** Optional. Absent when the coach had no gym name or logo. */
+  gym?: CoachGymBrand;
+  /** When the coach issued this update, in milliseconds. */
+  issuedAt: number;
+  /** Idempotency id. Accepting or dismissing this id once is final. */
+  updateId: string;
+};
+
+export type ProgressPacket = StudentProgressReport | CoachPlanPacket | CoachFeedbackPacket | CoachRankUpdatePacket;
 
 export type ProgressParse =
   | { ok: true; value: ProgressPacket }
