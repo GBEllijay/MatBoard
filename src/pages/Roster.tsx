@@ -5,6 +5,8 @@ import { readStoredEntitlementToken } from '../lib/studentInboxClient';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useCurrentSeat } from '../components/SeatSessionBar';
+import { RosterBackupTools } from '../components/RosterBackupTools';
+import { applyCsvCardFields, csvCardLookup, csvCardRows } from '../lib/rosterCardFields';
 import { EmptyHint } from '../components/EmptyHint';
 import { ImportStudentProgress, StudentCompetitionPlan } from '../components/StudentCompetitionPlan';
 import { SubmenuMarks } from '../components/TierHomeMark';
@@ -151,7 +153,9 @@ export function RosterPage() {
           return;
         }
         try {
-          addStudents(result.students, { rosterList: studentRoster ? 'student' : 'competitor' });
+          const added = addStudents(result.students, { rosterList: studentRoster ? 'student' : 'competitor' });
+          // Belt achieved, Last stripe awarded, Training start date, Gi / No-Gi / Both land on the new cards.
+          applyCsvCardFields(csvCardRows(result.students, added, result.cardFields));
         } catch (error) {
           setCsvNote(quotaAddNote(error) ?? 'Could not save those names on this device.');
           return;
@@ -191,7 +195,7 @@ export function RosterPage() {
               onClick={() =>
                 downloadRosterCsv(
                   studentRoster ? 'advantage-student-roster.csv' : 'advantage-roster.csv',
-                  serializeRosterCsv(listed, studentRoster ? STUDENT_NOTES_LABEL : undefined),
+                  serializeRosterCsv(listed, studentRoster ? STUDENT_NOTES_LABEL : undefined, csvCardLookup()),
                 )
               }
             >
@@ -203,6 +207,7 @@ export function RosterPage() {
       </div>
       <p className="roster__csv-template">{ROSTER_CSV_TEMPLATE_NOTE}</p>
       <p className="roster__csv-hint">{studentRoster ? STUDENT_ROSTER_CSV_DEVICE_NOTE : ROSTER_CSV_DEVICE_NOTE}</p>
+      <RosterBackupTools seat={seat} canExport={showRosterSubmit} canImport={showRosterPull} />
       {csvNote ? (
         <p className="roster__csv-summary" role="status">
           {csvNote}

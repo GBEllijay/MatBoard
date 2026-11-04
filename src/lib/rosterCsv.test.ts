@@ -345,13 +345,13 @@ describe('serializeRosterCsv', () => {
     assert.equal(csv.includes('Alex Rivera'), false);
     assert.equal(
       csv.startsWith(
-        'Name,Belt,Division,Gym name / nickname,Last promotion,Last promotion detail,Notes,Check In\r\n',
+        'Name,Belt,Division,Gym name / nickname,Last promotion,Last promotion detail,Notes,Check In,Belt achieved,Last stripe awarded,Stripes,Training start date,Gi / No-Gi / Both\r\n',
       ),
       true,
     );
     const lines = csv.split('\r\n').filter((line) => line.length);
     assert.equal(lines.length, 4);
-    assert.equal(lines.slice(1).every((line) => line === ',,,,,,,'), true);
+    assert.equal(lines.slice(1).every((line) => line === ',,,,,,,,,,,,'), true);
     const rows = parseCsv(csv, detectCsvDelimiter(csv));
     assert.equal(rows.length, 1);
     assert.equal(rows[0]?.[0], 'Name');
