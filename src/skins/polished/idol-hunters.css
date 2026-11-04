@@ -1,0 +1,318 @@
+/* Idol Hunters. Heart-mic crest only. Digits stay solid white Anton. */
+.skin-root[data-skin='idol-hunters'] {
+  --pts: #5fffe0;
+  --adv: #ff8be6;
+  --pen: #ff8fa6;
+  --mag: #ff2ec4;
+  --vio: #8b5cff;
+  --teal: #21e6ff;
+  --crest: url(./assets/idol-hunters/crest.webp);
+  font-family: Unbounded, sans-serif;
+  background: #140a2a;
+}
+
+.skin-root[data-skin='idol-hunters'] .sb .bg {
+  background-image: radial-gradient(70% 60% at 50% 55%, rgba(10, 4, 24, 0.55), rgba(10, 4, 24, 0.25) 80%),
+    linear-gradient(180deg, rgba(10, 4, 24, 0.2), rgba(10, 4, 24, 0.45)),
+    url(./assets/idol-hunters/stage@2560.webp);
+}
+
+.skin-root[data-skin='idol-hunters'] .tm .bg {
+  background-image: radial-gradient(55% 55% at 50% 55%, rgba(10, 4, 24, 0.55), rgba(10, 4, 24, 0.15) 85%),
+    url(./assets/idol-hunters/sky@2560.webp);
+}
+
+.skin-root[data-skin='idol-hunters'] .num,
+.skin-root[data-skin='idol-hunters'] .clock,
+.skin-root[data-skin='idol-hunters'] .digits,
+.skin-root[data-skin='idol-hunters'] .tm-clock,
+.skin-root[data-skin='idol-hunters'] .plate .clock .sk-btn {
+  font-family: Anton, sans-serif;
+  font-weight: 400;
+}
+
+.skin-root[data-skin='idol-hunters'] .name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 800;
+  font-size: 6.2vh;
+  letter-spacing: 0.01em;
+  color: #fff;
+  text-shadow: 0 0.3vh 0 #000, 0 0 1.2vh rgba(0, 0, 0, 0.8);
+}
+
+.skin-root[data-skin='idol-hunters'] .wm,
+.skin-root[data-skin='idol-hunters'] .hdr .mat,
+.skin-root[data-skin='idol-hunters'] .hdr .mat a,
+.skin-root[data-skin='idol-hunters'] .tm .title {
+  font-family: Unbounded, sans-serif;
+  font-weight: 900;
+  background: linear-gradient(90deg, #ffffff, #ffd1f4 35%, #ff6ad9 60%, #7ff4ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0.2vh 0 #000) drop-shadow(0 0 1.2vh rgba(255, 46, 196, 0.85));
+}
+
+.skin-root[data-skin='idol-hunters'] .side b,
+.skin-root[data-skin='idol-hunters'] .lab,
+.skin-root[data-skin='idol-hunters'] .gym,
+.skin-root[data-skin='idol-hunters'] .belt,
+.skin-root[data-skin='idol-hunters'] .band .state,
+.skin-root[data-skin='idol-hunters'] .band .sk-btn,
+.skin-root[data-skin='idol-hunters'] .tm .phase,
+.skin-root[data-skin='idol-hunters'] .tm .next {
+  font-family: Unbounded, sans-serif;
+}
+
+.skin-root[data-skin='idol-hunters'] .hdr .logo {
+  box-shadow: 0 0 0 0.3vh #fff, 0 0 1.6vh var(--mag);
+}
+
+.skin-root[data-skin='idol-hunters'] .hdr .div {
+  background: rgba(20, 10, 42, 0.9);
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  font-family: Unbounded, sans-serif;
+  font-weight: 700;
+  font-size: 1.8vh;
+  box-shadow: inset 0 0 0 0.25vh var(--teal), 0 0 1.4vh rgba(33, 230, 255, 0.55);
+}
+
+.skin-root[data-skin='idol-hunters'] .hdr .crest,
+.skin-root[data-skin='idol-hunters'] .tm .crest {
+  filter: drop-shadow(0 0 1.4vh rgba(255, 46, 196, 0.7));
+}
+
+.skin-root[data-skin='idol-hunters'] .row {
+  border-radius: 2.2vh;
+  border: 0.45vh solid transparent;
+  background:
+    linear-gradient(180deg, rgba(28, 12, 58, 0.92), rgba(12, 5, 28, 0.94)) padding-box,
+    linear-gradient(100deg, var(--mag), var(--vio) 45%, var(--teal)) border-box;
+  box-shadow: 0 0 2.4vh rgba(255, 46, 196, 0.4);
+}
+
+.skin-root[data-skin='idol-hunters'] .c1 .id {
+  background: linear-gradient(90deg, rgba(40, 90, 255, 0.55), rgba(40, 90, 255, 0.08) 78%, transparent);
+  border-radius: 1.4vh;
+}
+
+.skin-root[data-skin='idol-hunters'] .c2 .id {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.04) 78%, transparent);
+  border-radius: 1.4vh;
+}
+
+.skin-root[data-skin='idol-hunters'] .c1 .rail {
+  background: linear-gradient(180deg, #9fc0ff, #2a62ff);
+  box-shadow: 0 0 1.6vh #3a70ff;
+}
+
+.skin-root[data-skin='idol-hunters'] .c2 .rail {
+  background: #fff;
+  box-shadow: 0 0 1.6vh rgba(255, 255, 255, 0.85);
+}
+
+.skin-root[data-skin='idol-hunters'] .c1 .side b {
+  background: #1846c4;
+  color: #fff;
+  box-shadow: 0 0 1.2vh rgba(60, 110, 255, 0.9), inset 0 0 0 0.18vh #a9c2ff;
+}
+
+.skin-root[data-skin='idol-hunters'] .c2 .side b {
+  background: #fff;
+  color: #1a0b33;
+  box-shadow: 0 0 1.2vh rgba(255, 255, 255, 0.75);
+}
+
+.skin-root[data-skin='idol-hunters'] .gym {
+  color: #e9ddff;
+  font-weight: 600;
+  font-size: 2.2vh;
+}
+
+.skin-root[data-skin='idol-hunters'] .belt {
+  background: #153fc4;
+  color: #fff;
+  font-size: 1.8vh;
+}
+
+.skin-root[data-skin='idol-hunters'] .tile {
+  background: linear-gradient(180deg, #1c0e38, #0d0620);
+  border-radius: 1.6vh;
+  box-shadow: inset 0 0 0 0.22vh rgba(255, 255, 255, 0.12);
+}
+
+.skin-root[data-skin='idol-hunters'] .pts .lab {
+  color: var(--pts);
+}
+
+.skin-root[data-skin='idol-hunters'] .adv .lab {
+  color: var(--adv);
+}
+
+.skin-root[data-skin='idol-hunters'] .pen .lab {
+  color: var(--pen);
+}
+
+.skin-root[data-skin='idol-hunters'] .lab {
+  font-size: 2.1vh;
+}
+
+.skin-root[data-skin='idol-hunters'] .num {
+  font-size: 17vh;
+  text-shadow: 0 0.4vh 0 #000, 0 0 1vh color-mix(in srgb, var(--c, #fff) 55%, transparent);
+}
+
+.skin-root[data-skin='idol-hunters'] .pts {
+  --c: var(--pts);
+}
+
+.skin-root[data-skin='idol-hunters'] .adv {
+  --c: var(--adv);
+}
+
+.skin-root[data-skin='idol-hunters'] .pen {
+  --c: var(--pen);
+}
+
+.skin-root[data-skin='idol-hunters'] .tile::before {
+  content: '';
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 0;
+  height: 0.4vh;
+  background: linear-gradient(90deg, transparent, var(--c, #fff), transparent);
+}
+
+.skin-root[data-skin='idol-hunters'] .plate {
+  background:
+    linear-gradient(180deg, #1c0e38, #0d0620) padding-box,
+    linear-gradient(100deg, var(--mag), var(--vio) 45%, var(--teal)) border-box;
+  border: 0.5vh solid transparent;
+  border-radius: 2.6vh;
+  box-shadow: 0 0 3vh rgba(255, 46, 196, 0.65);
+}
+
+.skin-root[data-skin='idol-hunters'] .plate .clock .sk-btn,
+.skin-root[data-skin='idol-hunters'] .tm .tm-clock {
+  text-shadow: 0 0.35vh 0 #000, 0 0 1.8vh rgba(255, 120, 230, 0.85);
+}
+
+.skin-root[data-skin='idol-hunters'] .band .state {
+  background: #140a2a;
+  color: #fff;
+  box-shadow: inset 0 0 0 0.25vh var(--teal);
+  font-size: 2vh;
+}
+
+.skin-root[data-skin='idol-hunters'] .band .status .sk-btn {
+  background: #a3125a;
+  color: #fff;
+  box-shadow: inset 0 0 0 0.25vh #ff9be0;
+  font-size: 2vh;
+}
+
+.skin-root[data-skin='idol-hunters'] .band .bust {
+  top: 50%;
+  height: 16vh;
+  width: 14vh;
+  transform: translateY(-50%);
+  -webkit-mask-image: linear-gradient(180deg, #000 72%, transparent);
+  mask-image: linear-gradient(180deg, #000 72%, transparent);
+}
+
+.skin-root[data-skin='idol-hunters'] .band .m-l {
+  left: 0;
+  background-image: url(./assets/idol-hunters/hero-ribbon.webp);
+  background-position: center top;
+  background-size: auto 64vh;
+}
+
+.skin-root[data-skin='idol-hunters'] .band .m-r {
+  right: 0;
+  background-image: url(./assets/idol-hunters/hero-blade.webp);
+  background-position: center top;
+  background-size: auto 64vh;
+}
+
+.skin-root[data-skin='idol-hunters'] .tm .phase {
+  background: #a3125a;
+  color: #fff;
+  box-shadow: inset 0 0 0 0.28vh #ff9be0;
+  font-size: 2.2vh;
+}
+
+.skin-root[data-skin='idol-hunters'] .tm.rest .phase {
+  background: #1846c4;
+  box-shadow: inset 0 0 0 0.28vh #a9c2ff;
+}
+
+.skin-root[data-skin='idol-hunters'] .tm .dplate {
+  background:
+    linear-gradient(180deg, rgba(28, 12, 58, 0.94), rgba(12, 5, 28, 0.96)) padding-box,
+    linear-gradient(100deg, var(--mag), var(--vio) 45%, var(--teal)) border-box;
+  border: 0.7vh solid transparent;
+  border-radius: 4vh;
+  box-shadow: 0 0 4vh rgba(255, 46, 196, 0.6);
+}
+
+.skin-root[data-skin='idol-hunters'] .tm .meter {
+  overflow: visible;
+  background: #120826;
+  box-shadow: inset 0 0 0 0.25vh rgba(255, 255, 255, 0.25);
+}
+
+.skin-root[data-skin='idol-hunters'] .tm .meter .fill {
+  background: linear-gradient(90deg, var(--mag), var(--vio) 50%, var(--teal));
+}
+
+.skin-root[data-skin='idol-hunters'] .tm .meter .fill::after {
+  content: '';
+  position: absolute;
+  right: 0.4vh;
+  top: 50%;
+  width: 2.6vh;
+  height: 2.6vh;
+  margin-top: -1.3vh;
+  background: #fff;
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+}
+
+.skin-root[data-skin='idol-hunters'] .tm.rest .meter .fill {
+  background: linear-gradient(90deg, #2a62ff, var(--teal));
+}
+
+.skin-root[data-skin='idol-hunters'] .tm.rest .digits,
+.skin-root[data-skin='idol-hunters'] .tm.rest .tm-clock {
+  text-shadow: 0 0.5vh 0 #000, 0 0 2.4vh rgba(33, 230, 255, 0.8);
+}
+
+.skin-root[data-skin='idol-hunters'] .tm .next {
+  color: #fff;
+  text-shadow: 0 0 1vh rgba(255, 46, 196, 0.85), 0 0.25vh 0 #000;
+  font-size: 2.2vh;
+}
+
+.skin-root[data-skin='idol-hunters'] .tm .mascot {
+  height: 52vh;
+  width: 28vh;
+  bottom: 0;
+  filter: drop-shadow(0 0 1.6vh rgba(255, 46, 196, 0.5));
+}
+
+.skin-root[data-skin='idol-hunters'] .tm .t-l {
+  background-image: url(./assets/idol-hunters/hero-ribbon.webp);
+}
+
+.skin-root[data-skin='idol-hunters'] .tm .t-r {
+  background-image: url(./assets/idol-hunters/hero-blade.webp);
+}
+
+.skin-root[data-skin='idol-hunters'] .tm.rest .t-r {
+  background-image: url(./assets/idol-hunters/spirit.webp);
+  height: 34vh;
+  width: 28vh;
+  bottom: 4vh;
+}

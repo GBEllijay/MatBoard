@@ -34,6 +34,9 @@ const TIMER_SKINS = [
   ['reggae', 'Reggae'],
   ['psychedelic', 'Psychedelic'],
   ['visionary', 'Visionary'],
+  ['creature-anime', 'Creature Anime'],
+  ['idol-hunters', 'Idol Hunters'],
+  ['shinobi-anime', 'Shinobi Anime'],
 ] as const;
 
 /** [stored id, picker label, suite board]. Old School and Quick Result live on the suite board. */
@@ -50,6 +53,9 @@ const BOARD_SKINS = [
   ['REGGAE', 'Reggae', false],
   ['PSYCHEDELIC', 'Psychedelic', false],
   ['VISIONARY', 'Visionary', false],
+  ['CREATURE_ANIME', 'Creature Anime', false],
+  ['IDOL_HUNTERS', 'Idol Hunters', false],
+  ['SHINOBI_ANIME', 'Shinobi Anime', false],
 ] as const;
 
 function trainingState() {

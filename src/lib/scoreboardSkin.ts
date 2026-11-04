@@ -42,6 +42,9 @@ export const SCOREBOARD_SKIN = {
   REGGAE: 'REGGAE',
   PSYCHEDELIC: 'PSYCHEDELIC',
   VISIONARY: 'VISIONARY',
+  CREATURE_ANIME: 'CREATURE_ANIME',
+  IDOL_HUNTERS: 'IDOL_HUNTERS',
+  SHINOBI_ANIME: 'SHINOBI_ANIME',
 } as const;
 
 export type ScoreboardSkinId = (typeof SCOREBOARD_SKIN)[keyof typeof SCOREBOARD_SKIN];
@@ -97,6 +100,9 @@ const SKIN_CLASS: Record<ScoreboardSkinId, string> = {
   [SCOREBOARD_SKIN.REGGAE]: 'scoreboard-skin--mock-tournament',
   [SCOREBOARD_SKIN.PSYCHEDELIC]: 'scoreboard-skin--mock-tournament',
   [SCOREBOARD_SKIN.VISIONARY]: 'scoreboard-skin--mock-tournament',
+  [SCOREBOARD_SKIN.CREATURE_ANIME]: 'scoreboard-skin--mock-tournament',
+  [SCOREBOARD_SKIN.IDOL_HUNTERS]: 'scoreboard-skin--mock-tournament',
+  [SCOREBOARD_SKIN.SHINOBI_ANIME]: 'scoreboard-skin--mock-tournament',
 };
 
 /** Polished skins in picker order. Listed only for Media Edition and above. */

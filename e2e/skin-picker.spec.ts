@@ -10,7 +10,7 @@ import { IMPLIED_DOORS } from '../src/lib/tierImplications';
  * on suite scoreboards). With Media one Skins button replaces those toggles in the same spot.
  */
 
-const POLISHED = ['Kids Arcade', 'Kids Sticker', 'Keynote', 'Heavy Metal', 'Brasil', 'Woodblock', 'Reggae', 'Psychedelic', 'Visionary'];
+const POLISHED = ['Kids Arcade', 'Kids Sticker', 'Keynote', 'Heavy Metal', 'Brasil', 'Woodblock', 'Reggae', 'Psychedelic', 'Visionary', 'Creature Anime', 'Idol Hunters', 'Shinobi Anime'];
 const POLISHED_TIMER = [...POLISHED.slice(0, 5), 'Calçadão', ...POLISHED.slice(5)];
 
 function matchState(skin = 'MOCK_TOURNAMENT') {

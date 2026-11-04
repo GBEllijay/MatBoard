@@ -1,0 +1,36 @@
+/* Idol Hunters. Anton for numerals. Barlow Condensed for names. Unbounded for headings and labels. OFL. */
+@font-face {
+  font-family: 'Anton';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./anton/anton-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Barlow Condensed';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('./barlow-condensed/barlow-condensed-latin-800-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Unbounded';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./unbounded/unbounded-latin-700-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Unbounded';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('./unbounded/unbounded-latin-800-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Unbounded';
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url('./unbounded/unbounded-latin-900-normal.woff2') format('woff2');
+}

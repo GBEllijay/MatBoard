@@ -1,8 +1,8 @@
 /**
  * Polished skins for the match scoreboard and the round timer.
- * Nine families from the owner's polished mock: Kids Arcade, Kids Sticker, Keynote,
+ * Families from the owner's polished mock: Kids Arcade, Kids Sticker, Keynote,
  * Heavy Metal ("up to 11"), Brasil (plus the timer-only Calçadão variant), Woodblock,
- * Reggae, Psychedelic, Visionary.
+ * Reggae, Psychedelic, Visionary, then Creature Anime, Idol Hunters, and Shinobi Anime.
  *
  * Tier rule: Media Edition and every tier above it. The gate is the existing /media
  * entitlement check, so it opens exactly where the Media door is open (Media, Pro, owner;
@@ -26,6 +26,9 @@ export const POLISHED_SKINS = [
   { slug: 'reggae', id: 'REGGAE', label: 'Reggae' },
   { slug: 'psychedelic', id: 'PSYCHEDELIC', label: 'Psychedelic' },
   { slug: 'visionary', id: 'VISIONARY', label: 'Visionary' },
+  { slug: 'creature-anime', id: 'CREATURE_ANIME', label: 'Creature Anime' },
+  { slug: 'idol-hunters', id: 'IDOL_HUNTERS', label: 'Idol Hunters' },
+  { slug: 'shinobi-anime', id: 'SHINOBI_ANIME', label: 'Shinobi Anime' },
 ] as const;
 
 /** 05b Calçadão: a Brasil variant the mock draws for the round timer only (no scoreboard). */

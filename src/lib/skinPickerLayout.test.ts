@@ -87,7 +87,8 @@ test('White sees three Advantage skins and My skins stays hidden while empty', (
 test('Media Edition lists the skins it already had, with no empty My skins section', () => {
   const timer = timerPickerSkins(true, false);
   const plain = scoreboardPickerSkins(true, true, false);
-  assert.equal(timer.length, 12);
+  const timerCount = 2 + POLISHED_TIMER_SKINS.length;
+  assert.equal(timer.length, timerCount);
   assert.deepEqual(
     timer.map((skin) => skin.id),
     ['classic', 'themed', ...POLISHED_TIMER_SKINS.map((skin) => skin.slug)],
@@ -98,12 +99,12 @@ test('Media Edition lists the skins it already had, with no empty My skins secti
     groups.map((group) => group.label),
     ['Advantage skins'],
   );
-  assert.equal(groups[0]?.options.length, 12);
+  assert.equal(groups[0]?.options.length, timerCount);
   const coming = groupSkinPickerOptions([
     ...timer.map((skin) => ({ id: skin.id })),
     ...COMING_ANIME.map((label) => ({ id: label })),
   ]);
-  assert.equal(coming[0]?.options.length, 18);
+  assert.equal(coming[0]?.options.length, timerCount + COMING_ANIME.length);
   assert.equal(POLISHED_TIMER_SKINS.some((skin) => COMING_ANIME.includes(skin.label)), false);
 });
 

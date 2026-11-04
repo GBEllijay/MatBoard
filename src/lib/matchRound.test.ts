@@ -39,7 +39,7 @@ test('known rounds display once, and a linked custom label stays as typed', () =
   assert.equal(roundDisplay('1', true), 'Round 1');
   assert.equal(roundDisplay('Quarterfinal', false), 'Quarterfinal');
   assert.equal(roundDisplay('Final', true), 'Final');
-  assert.equal(roundDisplay(' Finals ', false), 'Round Finals');
+  assert.equal(roundDisplay(' Finals ', false), 'Finals'); // #382: named rounds are not prefixed with "Round"
   assert.equal(roundDisplay('Semifinals', true), 'Semifinals');
   assert.equal(roundDisplay('', true), '');
 });

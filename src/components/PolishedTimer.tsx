@@ -3,7 +3,20 @@ import { usePolishedSkinModule, useViewportSize } from '../hooks/usePolishedSkin
 import { formatMmSs, formatMss } from '../lib/format';
 import type { PolishedTimerSlug } from '../lib/polishedSkins';
 import { brasilRing, keynoteRing } from '../skins/polished/ring';
+import { isPosterSkin, posterSplitsNums, posterTimerTitle } from '../skins/polished/posterSkins';
 import { metalTimerTitle, psychedelicTimerTitle, reggaeTimerTitle, timerNextLine, timerProgress, visionaryTimerTitle } from '../skins/polished/timerText';
+
+/** Hide the endless tag on a narrow poster timer. The accessible name stays the full line. */
+function posterPhaseLine(phaseLine: string): ReactNode {
+  const match = /^(.*?)\s*·\s*ENDLESS$/i.exec(phaseLine);
+  if (!match) return phaseLine;
+  return (
+    <>
+      {match[1]}
+      <span className="phase-endless"> · ENDLESS</span>
+    </>
+  );
+}
 
 const STAR =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.8l3.1 6.6 7.1.9-5.2 4.9 1.4 7.1L12 17.8l-6.4 3.5 1.4-7.1L1.8 9.3l7.1-.9z" fill="#fff" stroke="#2A1A7A" stroke-width="1.6" stroke-linejoin="round"/></svg>';
@@ -202,6 +215,37 @@ export function PolishedTimer({
         </div>
       );
       break;
+    case 'creature-anime':
+    case 'idol-hunters':
+    case 'shinobi-anime': {
+      const title = posterTimerTitle(slug, rest, round);
+      const titleText = posterSplitsNums(slug)
+        ? title.split(/(\d+)/).map((part, index) =>
+            /^\d+$/.test(part) ? (
+              <span key={index} className="n">
+                {part}
+              </span>
+            ) : (
+              <span key={index}>{part}</span>
+            ),
+          )
+        : title;
+      inner = (
+        <>
+          <div className="title">
+            {mod?.POSTER?.titleBrush ? <span dangerouslySetInnerHTML={{ __html: mod.POSTER.titleBrush }} /> : null}
+            <span>{titleText}</span>
+          </div>
+          <div className="dplate">{clockBtn(digits)}</div>
+          <div className="meter">
+            <i className="fill" />
+            {mod?.POSTER?.meterKnob ? <span dangerouslySetInnerHTML={{ __html: mod.POSTER.meterKnob }} /> : null}
+          </div>
+          <div className="next">{next}</div>
+        </>
+      );
+      break;
+    }
     case 'visionary':
       inner = (
         <div className="halo-wrap">
@@ -221,12 +265,12 @@ export function PolishedTimer({
   }
 
   return (
-    <div className={`skin-root skin-root--timer${mod ? '' : ' skin-root--loading'}`} data-skin={slug}>
+    <div className={`skin-root skin-root--timer${isPosterSkin(slug) ? ' skin-root--poster' : ''}${mod ? '' : ' skin-root--loading'}`} data-skin={slug}>
       <div className={`tm${rest ? ' rest' : ''}`} style={{ ['--p' as string]: p.toFixed(4) }}>
         {deco ? <div className="skin-deco" dangerouslySetInnerHTML={{ __html: deco }} /> : null}
         <img className="logo" src="/card-logo.png" alt="Advantage" />
         <button type="button" className="phase sk-btn tm-phase" aria-label={phaseLabel} onClick={onPhase}>
-          {phaseLine}
+          {isPosterSkin(slug) ? posterPhaseLine(phaseLine) : phaseLine}
         </button>
         {inner}
         {children}
