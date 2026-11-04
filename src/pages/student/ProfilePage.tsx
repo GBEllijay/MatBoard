@@ -6,6 +6,7 @@ import { StudentCardPreview } from '../../components/rosterCard/StudentCardPrevi
 import { ShareCardWithCoach, cardShareAvailable } from '../../components/StudentToCoachShare';
 import { ProfileCornerMarks, ProfileMedia, ProfileSwitches, useProfileMedia } from './ProfileIdentity';
 import { StudentProfileFields, TrainingSettings } from './ProfileFields';
+import { StudentCompetitorSwitch } from './StudentCompetitorSwitch';
 import './profile.css';
 
 /** Name, gym, start date, birth year, Kid or Adult, optional photo, and gym logo. Saved on this phone. */
@@ -27,7 +28,7 @@ export function ProfilePage() {
         <header className={marked ? 'arena-hero profile-hero profile-hero--marks' : 'arena-hero profile-hero'}>
           <div className="profile-hero__copy">
             <h1>My profile</h1>
-            <p>Your name, gym, and training start date print on the progress report. A photo is optional and stays on this phone.</p>
+            <p>Tap any part of your card to fill it in. It all stays on this phone.</p>
           </div>
           <ProfileCornerMarks
             portrait={showPhoto ? media.portrait : null}
@@ -48,6 +49,7 @@ export function ProfilePage() {
               setPreview(true);
             }}
           />
+          <StudentCompetitorSwitch report={report} />
           <TrainingSettings report={report} commit={commit} />
           <ProfileSwitches report={report} />
           <StudentNoPhotosSwitch studentId={report.studentId} />

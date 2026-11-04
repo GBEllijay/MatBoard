@@ -361,3 +361,22 @@
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   font-size: 14px;
 }
+
+/* "I'm a competitor" switch and its summary. */
+.profile-competitor__summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+.profile-competitor__summary .s-chip {
+  font-size: 13px;
+}
+.profile-competitor__open {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
+  font-weight: 700;
+}
