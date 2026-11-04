@@ -2,6 +2,7 @@
    Scroll or swipe up and down; cards snap and slide as they pass. Tapping a face opens
    the full card. Every row control stays on the mini card, 44px or taller. */
 .rolodex {
+  position: relative;
   margin: 0 auto 2rem;
   max-width: 760px;
 }
@@ -10,7 +11,8 @@
   padding: 6px 4px 12vh;
   max-height: min(78vh, 880px);
   overflow-y: auto;
-  overscroll-behavior: contain;
+  /* auto, not contain: a vertical swipe that starts on a card must chain to the page. */
+  overscroll-behavior: auto;
   scroll-snap-type: y proximity;
   scroll-padding-top: 6px;
   gap: 14px;
@@ -18,12 +20,25 @@
   background: var(--cb-board);
   box-shadow: inset 0 0 0 1px var(--cb-line);
   padding-left: 10px;
-  padding-right: 10px;
+  padding-right: 34px;
   padding-top: 12px;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 .rolodex .rolodex__list > li {
   scroll-snap-align: start;
   scroll-margin-top: 12px;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 240px;
+}
+/* The view-timeline flip used to leave a transformed layer under the finger, so a
+   vertical swipe on a card never reached this scroller or the page. pan-y keeps
+   taps and the horizontal coach swipe, and lets the browser scroll. */
+.rolodex .roster-card,
+.rolodex .roster-card button,
+.rolodex .roster-card a,
+.rolodex .roster-card h2 {
+  touch-action: pan-y;
 }
 .rolodex .roster-card {
   position: relative;
@@ -224,11 +239,18 @@
     transform: none !important;
   }
 }
+/* Touch screens: the flip transform captures the gesture before the list can scroll. */
+@media (hover: none) and (pointer: coarse) {
+  .rolodex .rolodex__list > li > .roster-card {
+    animation: none !important;
+    transform: none !important;
+  }
+}
 @media (max-width: 600px) {
   .rolodex .rolodex__list {
     max-height: 72vh;
     padding-left: 6px;
-    padding-right: 6px;
+    padding-right: 30px;
   }
   .rolodex .roster-card {
     padding: 12px 10px 10px;
@@ -264,4 +286,56 @@
 }
 .rolodex .roster-card .belt-mark__name {
   font-size: 12px;
+}
+
+/* A–Z jump strip. Sits in the list's right padding so it does not cover Check In. */
+.roster-index {
+  position: absolute;
+  z-index: 3;
+  top: 10px;
+  right: 2px;
+  bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  width: 28px;
+  touch-action: none;
+  user-select: none;
+}
+.roster-index__letter {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--cb-link, #8fb6ff);
+  font: 700 12px/1 Inter, ui-sans-serif, system-ui, sans-serif;
+  cursor: pointer;
+}
+.roster-index__letter.is-empty {
+  color: var(--cb-muted, #b9c3d4);
+  opacity: 0.35;
+  cursor: default;
+}
+.roster-index__bubble {
+  position: fixed;
+  z-index: 30;
+  width: 84px;
+  height: 84px;
+  margin-top: -42px;
+  margin-left: -96px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: #004eba;
+  color: #fff;
+  font: 800 42px/1 Inter, ui-sans-serif, system-ui, sans-serif;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
 }

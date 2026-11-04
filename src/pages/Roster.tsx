@@ -2,7 +2,7 @@ import { CoachSyncSheet } from '../components/CoachSyncSheet';
 import { PendingCardShares } from '../components/CoachStudentInbox';
 import { syncActorFromToken, syncSendGate } from '../lib/coachSync';
 import { readStoredEntitlementToken } from '../lib/studentInboxClient';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { ensureGymBackfill } from '../lib/gymBackfill';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useCurrentSeat } from '../components/SeatSessionBar';
@@ -18,6 +18,7 @@ import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useToolboxParent } from '../hooks/useToolboxParent';
 import { BeltTip } from '../components/BeltTip';
 import { RankBelt } from '../components/rosterCard/RankBelt';
+import { RosterIndex } from '../components/rosterCard/RosterIndex';
 import { LinkStudentSheet, SendRankUpdateSheet } from '../components/CoachStudentLink';
 import { GuestArchive } from '../components/GuestArchive';
 import { SendCompetitionSheet, type CompetitionSendDraft } from '../components/SendCompetitionSheet';
@@ -26,7 +27,8 @@ import { registrationText, RosterCardSheet, startStudentAppSync } from '../compo
 import { CardLookSetting } from '../components/rosterCard/CardLookSetting';
 import { readCardLook, type CardLook } from '../lib/cardLook';
 import { CompetitionCard } from '../components/rosterCard/CompetitionCard';
-import { initialsOf } from '../lib/rosterCard';
+import { initialsOf, rosterStripeCount, rosterStripeMax } from '../lib/rosterCard';
+import { readRosterSort, rosterIndex, rosterIndexLetter, sortRoster, writeRosterSort, type RosterSortMode } from '../lib/rosterIndex';
 import '../components/rosterCard/rolodex.css';
 import '../components/rosterCard/coachClipboard.css';
 import '../components/rosterCard/cardEntry.css';
@@ -131,7 +133,9 @@ export function RosterPage() {
   const exitPath = useSubmenuBack() ?? parent.path;
   const csvRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
-  const [editor, setEditor] = useState<{ id: string | null; draft: StudentDraft } | null>(null);
+  const [sortMode, setSortMode] = useState<RosterSortMode>(() => readRosterSort(localStorage));
+  const [editor, setEditor] = useState<{ id: string | null; draft: StudentDraft; focusStripes?: boolean } | null>(null);
+  const listRef = useRef<HTMLUListElement>(null);
   const [pendingRemove, setPendingRemove] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   useEffect(() => {
@@ -161,13 +165,24 @@ export function RosterPage() {
     () => (studentRoster ? studentRosterCards(roster.students) : competitorCards(roster.students)),
     [roster.students, studentRoster],
   );
-  const competitors = useMemo(
-    () =>
-      query.trim()
-        ? searchStudents(listed, query, studentRoster ? undefined : roster.competitionPlans)
-        : listed,
-    [query, listed, studentRoster, roster.competitionPlans],
-  );
+  const competitors = useMemo(() => {
+    const matched = query.trim()
+      ? searchStudents(listed, query, studentRoster ? undefined : roster.competitionPlans)
+      : listed;
+    return sortRoster(matched, sortMode);
+  }, [query, listed, studentRoster, roster.competitionPlans, sortMode]);
+  const indexLetters = useMemo(() => rosterIndex(competitors, sortMode), [competitors, sortMode]);
+  const chooseSort = (mode: RosterSortMode) => {
+    setSortMode(mode);
+    writeRosterSort(mode, localStorage);
+  };
+  const jumpToLetter = (letter: string) => {
+    const list = listRef.current;
+    const target = list?.querySelector<HTMLElement>(`[data-roster-letter="${letter}"]`);
+    if (!list || !target) return;
+    const top = target.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop;
+    list.scrollTo({ top, behavior: 'smooth' });
+  };
   const openAdd = () => setEditor({ id: null, draft: { ...emptyDraft(), gym: readGymName() } });
 
   const onImportFiles = (files: FileList | null) => {
@@ -301,6 +316,7 @@ export function RosterPage() {
       {studentRoster ? <CardLookSetting /> : null}
 
       {listed.length ? (
+      <div className="roster__find">
       <label className="roster__search">
         Find
         <input
@@ -311,22 +327,37 @@ export function RosterPage() {
           autoComplete="off"
         />
       </label>
+      <div className="roster__sort" role="radiogroup" aria-label="Sort" data-testid="roster-sort">
+        <span className="roster__sort-label">Sort</span>
+        <button type="button" role="radio" aria-checked={sortMode === 'last'} onClick={() => chooseSort('last')}>
+          Last name
+        </button>
+        <button type="button" role="radio" aria-checked={sortMode === 'first'} onClick={() => chooseSort('first')}>
+          First name
+        </button>
+      </div>
+      </div>
       ) : null}
 
       {competitors.length ? (
         <div className="clipboard rolodex" data-style={look.style} data-skin={look.skin} data-testid="rolodex">
         <ul
+          ref={listRef}
           className="roster__list rolodex__list"
           aria-label={studentRoster ? 'Student roster cards' : 'Competitor Roster cards'}
         >
-          {competitors.map((competitor) => (
-            <StudentCard
+          {competitors.map((competitor, index) => {
+            const letter = rosterIndexLetter(competitor.name, sortMode);
+            const previous = index > 0 ? rosterIndexLetter(competitors[index - 1].name, sortMode) : '';
+            return (
+            <RosterCardSlot
               key={competitor.id}
+              indexLetter={letter !== previous ? letter : undefined}
               student={competitor}
               studentRoster={studentRoster}
               plan={studentRoster ? undefined : roster.competitionPlans[competitor.id]}
               pending={pendingRemove === competitor.id}
-              onEdit={() => setEditor({ id: competitor.id, draft: draftFromStudent(competitor) })}
+              onEdit={() => setEditor({ id: competitor.id, draft: draftWithStripes(competitor) })}
               onAskRemove={() => setPendingRemove(competitor.id)}
               onCancelRemove={() => setPendingRemove(null)}
               onConfirmRemove={(reason) => {
@@ -380,8 +411,10 @@ export function RosterPage() {
                 })
               }
             />
-          ))}
+            );
+          })}
         </ul>
+        <RosterIndex letters={indexLetters} onJump={jumpToLetter} />
         </div>
       ) : (
         <EmptyHint
@@ -468,6 +501,7 @@ export function RosterPage() {
         noPhotos={Boolean(editor?.id && roster.students.find((row) => row.id === editor.id)?.noPhotos)}
         draft={editor?.draft ?? emptyDraft()}
         saveError={saveError}
+        focusStripes={Boolean(editor?.focusStripes)}
         onChange={(draft) => setEditor((current) => (current ? { ...current, draft } : current))}
         onClose={() => {
           setSaveError('');
@@ -511,7 +545,7 @@ export function RosterPage() {
         <RosterCardSheet
           student={cardStudent}
           onClose={() => setCardTarget(null)}
-          onEditBelt={(student) => setEditor({ id: student.id, draft: draftFromStudent(student) })}
+          onEditBelt={(student) => setEditor({ id: student.id, draft: draftWithStripes(student), focusStripes: true })}
           onLink={(student) => setLinkTarget(student)}
           onOpenPhotos={(student) => setSyncTarget(student)}
           competitorRosterOpen={competitorRosterOpen}
@@ -651,6 +685,13 @@ function CsvInstructions({ text }: { text: string }) {
  * Check In is the person's one check-in. Linked to a competitor card, both cards change
  * together; unlinked, it lives on the Student Roster card. Competitor on or off.
  */
+/** Promotion stripes, or the coach rank log when this card has never saved a stripe count. */
+function draftWithStripes(student: Student): StudentDraft {
+  const draft = draftFromStudent(student);
+  if (draft.stripes === undefined) draft.stripes = rosterStripeCount(student, readRosterCard(student.id).coachRank);
+  return draft;
+}
+
 export function studentCheckInFor(rosterId: string, open: boolean): { checkedIn: boolean; onToggle: () => { text: string; error?: true } } | undefined {
   if (!open) return undefined;
   const checkedIn = personCheckedIn(rosterId);
@@ -707,6 +748,7 @@ function CompetitionCardSheet({
 
 export function StudentCard({
   student,
+  indexLetter,
   studentRoster,
   plan,
   pending,
@@ -729,6 +771,8 @@ export function StudentCard({
   onOpenFace,
 }: {
   student: Student;
+  /** Set on the first card of each A–Z letter so the index can jump to it. */
+  indexLetter?: string;
   studentRoster: boolean;
   plan?: ReturnType<typeof useRosterState>['competitionPlans'][string];
   pending: boolean;
@@ -773,7 +817,7 @@ export function StudentCard({
         : '';
 
   return (
-    <li>
+    <li data-roster-letter={indexLetter}>
       <article className={`roster-card${onOpenFace ? ' rolodex-card' : ''}`}>
         <header className="roster-card__head">
           <div className="roster-card__identity">
@@ -1012,6 +1056,23 @@ export function StudentCard({
   );
 }
 
+const RosterStudentCard = memo(StudentCard, (prev, next) => {
+  if (prev.student !== next.student) return false;
+  if (prev.pending !== next.pending || prev.studentRoster !== next.studentRoster) return false;
+  if (prev.plan !== next.plan || prev.sendAllowed !== next.sendAllowed) return false;
+  if (prev.indexLetter !== next.indexLetter) return false;
+  if (prev.competitorSwitch?.on !== next.competitorSwitch?.on) return false;
+  if (prev.studentCheckIn?.checkedIn !== next.studentCheckIn?.checkedIn) return false;
+  const prevNotices = prev.notices ?? [];
+  const nextNotices = next.notices ?? [];
+  if (prevNotices.length !== nextNotices.length) return false;
+  return prevNotices.every((notice, index) => notice.id === nextNotices[index]?.id && notice.text === nextNotices[index]?.text);
+});
+
+function RosterCardSlot(props: Parameters<typeof StudentCard>[0]) {
+  return <RosterStudentCard {...props} />;
+}
+
 const COMPETITOR_PHOTO_CAPTURE_ID = 'competitor-photo-capture';
 const COMPETITOR_PHOTO_LIBRARY_ID = 'competitor-photo-library';
 
@@ -1031,6 +1092,7 @@ function StudentEditor({
   noPhotos = false,
   draft,
   saveError,
+  focusStripes = false,
   onChange,
   onClose,
   onSave,
@@ -1042,6 +1104,8 @@ function StudentEditor({
   noPhotos?: boolean;
   draft: StudentDraft;
   saveError: string;
+  /** Opened from the card's belt: the Promotion stripes control is the belt. */
+  focusStripes?: boolean;
   onChange: (draft: StudentDraft) => void;
   onClose: () => void;
   onSave: () => void;
@@ -1055,6 +1119,7 @@ function StudentEditor({
   const [chooserOpen, setChooserOpen] = useState(false);
   const [photoNote, setPhotoNote] = useState('');
   const [photoBusy, setPhotoBusy] = useState(false);
+  const stripesRef = useRef<HTMLSelectElement>(null);
 
   useEffect(() => {
     if (open) return;
@@ -1062,6 +1127,12 @@ function StudentEditor({
     setPhotoNote('');
     setPhotoBusy(false);
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !focusStripes) return;
+    stripesRef.current?.focus();
+    stripesRef.current?.scrollIntoView?.({ block: 'center' });
+  }, [open, focusStripes]);
 
   const onPhotoFiles = async (files: readonly File[]) => {
     const file = files[0];
@@ -1113,7 +1184,7 @@ function StudentEditor({
 
   return (
     <>
-    <Sheet open={open} title={title} onClose={onClose} className="sheet--clipboard sheet--card-entry" footer={footer}>
+    <Sheet open={open} title={title} onClose={onClose} className="sheet--clipboard sheet--card-entry" footer={footer} portal stacked>
       <div className="clipboard card-entry" data-style={look.style} data-skin={look.skin} data-testid="card-entry" data-blank={isNew && !draft.name.trim() && !draft.belt.trim() ? 'true' : undefined}>
         <div className="clipboard__board">
           <div className="clipboard__clip" aria-hidden="true" />
@@ -1180,7 +1251,11 @@ function StudentEditor({
               </div>
               <div className="clipboard__brow card-entry__brow">
                 <button type="button" className="card-entry__tap card-entry__beltslot" data-testid="card-entry-belt-slot" onClick={focusBelts}>
-                  {draft.belt.trim() ? <BeltTip belt={draft.belt} /> : <span className="card-entry__ghost">Tap to pick belt</span>}
+                  {draft.belt.trim() ? (
+                    <RankBelt student={{ belt: draft.belt, stripes: draft.stripes ?? 0, lastPromotion: draft.lastPromotion }} />
+                  ) : (
+                    <span className="card-entry__ghost">Tap to pick belt</span>
+                  )}
                 </button>
               </div>
             </header>
@@ -1205,7 +1280,7 @@ function StudentEditor({
                       aria-checked={draft.belt === belt}
                       className={`preset${draft.belt === belt ? ' preset--on' : ''}`}
                       data-belt={belt.toLowerCase()}
-                      onClick={() => patch({ belt })}
+                      onClick={() => patch({ belt, stripes: Math.min(draft.stripes ?? 0, rosterStripeMax(belt)) })}
                     >
                       {belt}
                     </button>
@@ -1220,7 +1295,7 @@ function StudentEditor({
                       aria-checked={draft.belt === belt}
                       className={`preset${draft.belt === belt ? ' preset--on' : ''}`}
                       data-belt={belt.toLowerCase()}
-                      onClick={() => patch({ belt })}
+                      onClick={() => patch({ belt, stripes: Math.min(draft.stripes ?? 0, rosterStripeMax(belt)) })}
                     >
                       {belt}
                     </button>
@@ -1230,7 +1305,10 @@ function StudentEditor({
                   Other belt
                   <input
                     value={isKnownBelt(draft.belt) ? '' : draft.belt}
-                    onChange={(event) => patch({ belt: event.target.value })}
+                    onChange={(event) => {
+                      const belt = event.target.value;
+                      patch({ belt, stripes: Math.min(draft.stripes ?? 0, rosterStripeMax(belt)) });
+                    }}
                     placeholder="Optional — type a custom rank"
                     aria-label="Other belt"
                   />
@@ -1283,17 +1361,19 @@ function StudentEditor({
                   <label className="card-entry__cell card-entry__cell--wide">
                     Stripes
                     <select
+                      ref={stripesRef}
                       aria-label="Stripes"
-                      value={String(draft.stripes ?? 0)}
+                      value={String(Math.min(draft.stripes ?? 0, rosterStripeMax(draft.belt)))}
                       onChange={(event) => patch({ stripes: Number(event.target.value) })}
                     >
                       <option value={0}>No stripe</option>
-                      <option value={1}>Stripe 1</option>
-                      <option value={2}>Stripe 2</option>
-                      <option value={3}>Stripe 3</option>
-                      <option value={4}>Stripe 4</option>
+                      {Array.from({ length: rosterStripeMax(draft.belt) }, (_, index) => index + 1).map((count) => (
+                        <option key={count} value={count}>
+                          Stripe {count}
+                        </option>
+                      ))}
                     </select>
-                    <span className="roster-edit__hint">Saving stripes does not check off belt skills. The student owns that list.</span>
+                    <span className="roster-edit__hint">The belt above uses this stripe count. Saving stripes does not check off belt skills. The student owns that list.</span>
                   </label>
                 ) : null}
               </div>

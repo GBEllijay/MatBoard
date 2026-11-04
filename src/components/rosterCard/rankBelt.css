@@ -2,8 +2,14 @@
 .rank-belt {
   display: block;
   width: 100%;
-  max-width: 340px;
+  max-width: 100%;
   min-width: 0;
+}
+.rank-belt .s-belt-mark .belt {
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
 }
 .rank-belt .s-belt-mark {
   display: block;
@@ -42,8 +48,9 @@
   margin: 2px 0;
 }
 .rolodex .rolodex-card__buttons {
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 6px;
+  max-width: 100%;
 }
 .rolodex .rolodex-card__buttons .roster-card__competitor,
 .rolodex .roster-card .rolodex-card__buttons .btn.roster-card__checkin {

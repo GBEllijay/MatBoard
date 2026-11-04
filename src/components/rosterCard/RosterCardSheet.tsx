@@ -9,7 +9,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Sheet } from '../Sheet';
 import { CoachClipboardCard, type AssessmentView } from './CoachClipboardCard';
 import { downloadJsonFile, todayIso } from './fileSave';
-import { assessmentSummary, benchmarkItems, cardBelt, cardDate, coachRankSource, dateFacts, initialsOf, promotionDates } from '../../lib/rosterCard';
+import { assessmentSummary, benchmarkItems, cardBelt, cardDate, coachRankSource, dateFacts, initialsOf, promotionDates, rosterStripeCount } from '../../lib/rosterCard';
 import { readPrivateCoachNotes, readRosterCard, subscribeRosterCards, updateRosterCard, writePrivateCoachNotes } from '../../lib/rosterCardStore';
 import { removeLinkedCompetitorCard, shownCardPhoto, personCheckedIn, toggleCompetitor as toggleCompetitorAction, toggleStudentCheckIn } from '../../lib/rosterCardActions';
 import { beltProgressFromCard, studentSnapshotFromFile } from '../../lib/rosterCardSync';
@@ -146,7 +146,8 @@ export function RosterCardBody({
   const studentId = student.linkedStudentId ?? '';
   const gym = { name: gymName, logo: gymLogo ?? undefined, cardLook: cardLookCode(look) };
 
-  const source = coachRankSource(student, record.coachRank);
+  const stripes = rosterStripeCount(student, record.coachRank);
+  const source = coachRankSource({ ...student, stripes }, record.coachRank);
   const belt = cardBelt(source);
   const dates = dateFacts(promotionDates(source));
   const summary = assessmentSummary(record.coachAssessments, [], view);

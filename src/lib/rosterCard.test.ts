@@ -10,6 +10,8 @@ import {
   dateFacts,
   initialsOf,
   promotionDates,
+  rosterStripeCount,
+  rosterStripeMax,
 } from './rosterCard.ts';
 import { nextCoachRankLog, readRosterCard, recordRosterRankChange, readPrivateCoachNotes, writePrivateCoachNotes, updateRosterCard, removeRosterCard, ROSTER_CARD_KEY } from './rosterCardStore.ts';
 import { emptyRank, emptyTapeDates } from './studentRank.ts';
@@ -104,6 +106,8 @@ test('roster student rank source: adult and kids belts draw with the existing be
   assert.equal(promotionDates(kids).beltAchievedOn, '2026-02-02');
   assert.equal(cardBelt(kids).system, 'kids');
   assert.equal(cardBelt(kids).belt, 'grey');
+  assert.equal(cardBelt(kids).slots.length, 4, 'grey uses the compact 4-slot bar, not 11 marks');
+  assert.ok(cardBelt(kids).slots.every((slot) => !slot.on));
   // A log for an older belt is ignored.
   const stale = coachRankSource({ belt: 'Blue', stripes: 2, lastPromotion: '' }, { belt: 'White', awardedOn: '2020-01-01', stripeDates: ['2020-02-02'] });
   assert.equal(promotionDates(stale).beltAchievedOn, '');
@@ -176,4 +180,26 @@ test('benchmarks: coach confirms, student marks show as waiting for the coach', 
 test('initials', () => {
   assert.equal(initialsOf('Maya Lopez'), 'ML');
   assert.equal(initialsOf(''), '?');
+});
+
+test('promotion stripes and the belt are one count', () => {
+  assert.equal(rosterStripeMax('Blue'), 4);
+  assert.equal(rosterStripeMax('Grey'), 11);
+  const oliver = { belt: 'Blue', stripes: 1, lastPromotion: '2026-09-01' };
+  assert.equal(rosterStripeCount(oliver, { belt: 'Blue', awardedOn: '2026-01-01', stripeDates: [] }), 1);
+  const belt = cardBelt(coachRankSource(oliver));
+  assert.equal(belt.slots.filter((slot) => slot.on).length, 1);
+  assert.equal(belt.slots.length, 4);
+  assert.equal(rosterStripeCount({ belt: 'Blue' }, { belt: 'Blue', awardedOn: '2026-01-01', stripeDates: ['2026-09-01'] }), 1);
+  assert.equal(rosterStripeCount({ belt: 'Blue', stripes: 0 }, { belt: 'Blue', awardedOn: '2026-01-01', stripeDates: ['2026-09-01'] }), 0);
+});
+
+test('a grey belt repaints the compact slots white, then red, then black', () => {
+  const none = cardBelt(coachRankSource({ belt: 'Grey', stripes: 0, lastPromotion: '' }));
+  assert.equal(none.slots.length, 4);
+  assert.ok(none.slots.every((slot) => !slot.on));
+  const six = cardBelt(coachRankSource({ belt: 'Grey', stripes: 6, lastPromotion: '' }));
+  assert.equal(six.slots.length, 4);
+  assert.deepEqual(six.slots.map((slot) => slot.color), ['#d21f1f', '#d21f1f', '#f4f1ea', '#f4f1ea']);
+  assert.ok(six.slots.every((slot) => slot.on));
 });

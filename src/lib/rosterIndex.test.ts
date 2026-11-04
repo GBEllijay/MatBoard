@@ -1,0 +1,134 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import test from 'node:test';
+import {
+  compareRosterNames,
+  letterAtClientY,
+  readRosterSort,
+  rosterIndex,
+  rosterIndexLetter,
+  rosterSwipeIntent,
+  sortRoster,
+  writeRosterSort,
+  ROSTER_SORT_KEY,
+} from './rosterIndex.ts';
+
+const FIRSTS = ['Micah', 'Oliver', 'Ana', 'Bea', 'Chris', 'Dana', 'Evan', 'Fran', 'Gus', 'Hana'];
+const LASTS = ['Bates', 'Tibbetts', 'Nguyen', 'Ortiz', 'Young', 'Adler', 'Quinn', 'Ibarra', 'Shaw', 'Cho'];
+
+/** Screenshot and test fixture only. Not written into the app's roster. */
+function demoRoster(count = 100): { id: string; name: string; belt: string; division: string }[] {
+  const rows = [];
+  for (let index = 0; index < count; index += 1) {
+    const first = FIRSTS[index % FIRSTS.length];
+    const last = LASTS[index % LASTS.length];
+    const single = index % 17 === 0;
+    rows.push({
+      id: `demo-${index}`,
+      name: single ? first : `${first} ${last}`,
+      belt: index % 11 === 0 ? 'Grey' : index % 5 === 0 ? 'Blue' : 'White',
+      division: index % 2 === 0 ? 'Kids' : 'Adult',
+    });
+  }
+  rows.push({ id: 'blank', name: '   ', belt: 'White', division: '' });
+  rows.push({ id: 'symbol', name: '123', belt: 'White', division: '' });
+  return rows;
+}
+
+test('last name is the default sort and first name stays available', () => {
+  const rows = [
+    { id: '1', name: 'Micah Bates' },
+    { id: '2', name: 'Oliver Tibbetts' },
+    { id: '3', name: 'Sam' },
+    { id: '4', name: 'Ana Adler' },
+  ];
+  assert.deepEqual(sortRoster(rows, 'last').map((row) => row.name), ['Ana Adler', 'Micah Bates', 'Sam', 'Oliver Tibbetts']);
+  assert.deepEqual(sortRoster(rows, 'first').map((row) => row.name), ['Ana Adler', 'Micah Bates', 'Oliver Tibbetts', 'Sam']);
+  assert.ok(compareRosterNames('Zoe Adams', 'Amy Zion', 'last') < 0);
+  const memory = store();
+  assert.equal(readRosterSort(memory), 'last');
+  writeRosterSort('first', memory);
+  assert.equal(memory.getItem(ROSTER_SORT_KEY), 'first');
+  assert.equal(readRosterSort(memory), 'first');
+  writeRosterSort('last', memory);
+  assert.equal(readRosterSort(memory), 'last');
+});
+
+test('single-word names sort on that word and blank names go last', () => {
+  const rows = [
+    { id: 'a', name: 'Zoe' },
+    { id: 'b', name: '' },
+    { id: 'c', name: '  ' },
+    { id: 'd', name: 'Amy Ng' },
+  ];
+  assert.deepEqual(sortRoster(rows, 'last').map((row) => row.id), ['d', 'a', 'b', 'c']);
+  assert.equal(rosterIndexLetter('Sam', 'last'), 'S');
+  assert.equal(rosterIndexLetter('Sam', 'first'), 'S');
+  assert.equal(rosterIndexLetter('Oliver Tibbetts', 'last'), 'T');
+  assert.equal(rosterIndexLetter('Oliver Tibbetts', 'first'), 'O');
+  assert.equal(rosterIndexLetter('', 'last'), '#');
+  assert.equal(rosterIndexLetter('Émile', 'first'), 'E');
+});
+
+test('A-Z index maps letters to the first student and dims empty letters', () => {
+  const rows = demoRoster(100);
+  const index = rosterIndex(rows, 'last');
+  assert.equal(index.length, 27);
+  const tee = index.find((row) => row.letter === 'T');
+  assert.ok(tee && tee.count > 0 && tee.firstId);
+  const sorted = sortRoster(rows, 'last');
+  assert.equal(sorted.find((row) => rosterIndexLetter(row.name, 'last') === 'T')?.id, tee?.firstId);
+  const empty = index.filter((row) => row.count === 0);
+  assert.ok(empty.length > 0, 'a 100-name demo still leaves some letters empty');
+  assert.ok(empty.every((row) => row.firstId === null));
+  const hash = index.find((row) => row.letter === '#');
+  assert.equal(hash?.count, 2);
+  assert.equal(hash?.firstId, 'symbol');
+});
+
+test('the index follows the Find filter and the active sort', () => {
+  const rows = demoRoster(100);
+  const matched = rows.filter((row) => row.belt === 'Blue');
+  const last = rosterIndex(matched, 'last');
+  const first = rosterIndex(matched, 'first');
+  const byLast = sortRoster(matched, 'last');
+  const byFirst = sortRoster(matched, 'first');
+  assert.ok(matched.length > 0 && matched.length < rows.length);
+  assert.equal(last.find((row) => row.letter === 'B')?.firstId, byLast.find((row) => rosterIndexLetter(row.name, 'last') === 'B')?.id);
+  assert.equal(first.find((row) => row.letter === 'M')?.firstId, byFirst.find((row) => rosterIndexLetter(row.name, 'first') === 'M')?.id);
+  assert.notEqual(last.find((row) => row.letter === 'T')?.count, rosterIndex(rows, 'last').find((row) => row.letter === 'T')?.count);
+  assert.equal(rosterIndexLetter('Oliver Tibbetts', 'last'), 'T');
+  assert.equal(rosterIndexLetter('Oliver Tibbetts', 'first'), 'O');
+  const none = rosterIndex(rows.filter((row) => row.name === 'nobody'), 'last');
+  assert.ok(none.every((row) => row.count === 0));
+});
+
+test('a vertical swipe on a card scrolls and does not get captured', () => {
+  assert.equal(rosterSwipeIntent(0, 48), 'scroll');
+  assert.equal(rosterSwipeIntent(4, 36), 'scroll');
+  assert.equal(rosterSwipeIntent(2, 3), 'tap');
+  assert.equal(rosterSwipeIntent(80, 10), 'horizontal');
+  assert.equal(letterAtClientY([
+    { letter: 'A', top: 0, bottom: 20 },
+    { letter: 'B', top: 20, bottom: 40 },
+    { letter: 'C', top: 40, bottom: 60 },
+  ], 28), 'B');
+  const css = readFileSync('src/components/rosterCard/rolodex.css', 'utf8');
+  assert.match(css, /\.rolodex \.roster-card,\s*\n\.rolodex \.roster-card button[\s\S]*touch-action:\s*pan-y/);
+  assert.match(css, /overscroll-behavior:\s*auto/);
+  assert.doesNotMatch(css, /overscroll-behavior:\s*contain/);
+  assert.match(css, /pointer:\s*coarse\)[\s\S]*animation:\s*none/);
+  const page = readFileSync('src/pages/Roster.tsx', 'utf8');
+  assert.match(page, /portal stacked/);
+  assert.match(page, /data-testid="card-entry-belt-slot"[\s\S]*<RankBelt student=\{\{ belt: draft\.belt, stripes: draft\.stripes/);
+  assert.match(page, /Sort/);
+  assert.match(page, /readRosterSort/);
+});
+
+function store() {
+  const data = new Map<string, string>();
+  return {
+    getItem: (key: string) => data.get(key) ?? null,
+    setItem: (key: string, value: string) => void data.set(key, value),
+  };
+}

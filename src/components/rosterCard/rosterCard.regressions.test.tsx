@@ -934,3 +934,34 @@ test('Rolodex and Competition card: the belt under the name shows the rank strip
 function RankBeltProbe({ id }: { id: string }) {
   return <li><RankBelt student={fresh(id)} /></li>;
 }
+
+test('mini card, open card, and edit belt share the promotion stripe count', () => {
+  localStorage.clear();
+  resetRoster();
+  const oliver = addStudent({ name: 'Oliver Tibbetts', belt: 'Blue', stripes: 1, division: 'Adult', gym: 'Gracie Barra Ellijay', lastPromotion: '2026-09-26', lastPromotionDetail: '', note: '', photo: '' }, { rosterList: 'student' });
+  assert.ok(oliver);
+  updateStudent(oliver.id, { stripes: 1, lastPromotion: '2026-09-26' });
+  let m = mount(<ul><RankBeltProbe id={oliver.id} /></ul>);
+  const blue = document.querySelector('[data-testid="rank-belt"]') as HTMLElement;
+  assert.equal(blue.getAttribute('data-stripes'), '1');
+  assert.equal(blue.querySelectorAll('.stripe.is-on').length, 1);
+  assert.equal(blue.querySelectorAll('.stripe').length, 4);
+  unmount(m);
+
+  const micah = addStudent({ name: 'Micah Bates', belt: 'Grey', stripes: 0, division: 'Kids', gym: 'Gracie Barra Ellijay', lastPromotion: '', lastPromotionDetail: '', note: '', photo: '' }, { rosterList: 'student' });
+  assert.ok(micah);
+  m = mount(<ul><RankBeltProbe id={micah.id} /></ul>);
+  const grey = document.querySelector('[data-testid="rank-belt"]') as HTMLElement;
+  assert.equal(grey.querySelector('.s-belt-mark')?.getAttribute('data-system'), 'kids');
+  assert.equal(grey.querySelectorAll('.stripe').length, 4, 'grey does not draw 11 stripe marks');
+  assert.equal(grey.querySelectorAll('.stripe.is-on').length, 0);
+  assert.equal(grey.querySelector('.belt--kids') instanceof HTMLElement, true);
+  unmount(m);
+
+  const page = readFileSync('src/pages/Roster.tsx', 'utf8');
+  assert.match(page, /focusStripes/);
+  assert.match(page, /portal stacked/);
+  const css = readFileSync('src/components/rosterCard/coachClipboard.css', 'utf8');
+  assert.match(css, /grid-column:\s*1\s*\/\s*-1/);
+  assert.match(css, /button\.clipboard__belt[\s\S]*z-index:\s*2/);
+});

@@ -217,7 +217,7 @@
   align-items: center;
 }
 .clipboard__belt {
-  max-width: 400px;
+  max-width: 100%;
   flex: 1;
   min-width: 0;
 }
@@ -867,8 +867,12 @@
     letter-spacing: 0.1em;
   }
   .clipboard__hdr > .clipboard__brow {
-    grid-column: 2 / 4;
-    margin-top: 6px;
+    grid-column: 1 / -1;
+    grid-row: 3;
+    margin-top: 8px;
+    min-width: 0;
+    position: relative;
+    z-index: 2;
   }
   .clipboard__crest img {
     width: 46px;
@@ -1251,8 +1255,17 @@
   outline-offset: 2px;
 }
 .clipboard button.clipboard__belt {
-  display: inline-flex;
+  position: relative;
+  z-index: 2;
+  display: flex;
   align-items: center;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+.clipboard__belt .s-belt-mark .belt {
+  width: 100%;
+  max-width: 100%;
 }
 .clipboard .clipboard__pencil {
   width: 44px;

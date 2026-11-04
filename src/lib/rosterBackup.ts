@@ -91,7 +91,8 @@ export function lightNormalizeRoster(raw: unknown): BackupRoster {
     if (s.rosterList === 'student') student.rosterList = 'student';
     if (typeof s.linkedStudentId === 'string' && ID_RE.test(s.linkedStudentId)) student.linkedStudentId = s.linkedStudentId;
     if (typeof s.guestId === 'string' && ID_RE.test(s.guestId)) student.guestId = s.guestId;
-    if (typeof s.stripes === 'number' && Number.isInteger(s.stripes) && s.stripes >= 0 && s.stripes <= 4) student.stripes = s.stripes;
+    // Same ceiling as rosterStore ROSTER_STRIPE_CAP (kids belts store up to 11 tapes).
+    if (typeof s.stripes === 'number' && Number.isInteger(s.stripes) && s.stripes >= 0 && s.stripes <= 11) student.stripes = s.stripes;
     if (s.coachSync === 'off') student.coachSync = 'off';
     if (s.parentPhotoApproval === true) student.parentPhotoApproval = true;
     if (typeof s.cardPhotoId === 'string' && ID_RE.test(s.cardPhotoId)) student.cardPhotoId = s.cardPhotoId;
