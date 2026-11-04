@@ -103,7 +103,8 @@ describe('roster CSV card columns', () => {
       csvCardLookup(storage),
     );
     assert.doesNotMatch(csv, /SECRET/);
-    assert.doesNotMatch(csv.toLowerCase(), /photo|data:image/);
+    // The only photo text allowed is the No photos column header (#395); never a photo itself.
+    assert.doesNotMatch(csv.toLowerCase().replace(/,no photos(\r\n)/, '$1'), /photo|data:image/);
     assert.match(csv, /public note/);
   });
 });
@@ -114,6 +115,8 @@ test('a scouting Style column is not read as Gi / No-Gi / Both, and the base hea
   assert.equal(result.students.length, 1);
   assert.equal(Object.keys(result.cardFields ?? {}).length, 0);
   assert.equal(ROSTER_CSV_HEADERS.length, 8);
-  assert.equal(ROSTER_CSV_EXPORT_HEADERS.length, 13);
+  // 8 base + 5 card columns (#394) + No photos (#395).
+  assert.equal(ROSTER_CSV_EXPORT_HEADERS.length, 14);
+  assert.equal(ROSTER_CSV_EXPORT_HEADERS[13], 'No photos');
   assert.equal(serializeRosterCsv([]).split('\r\n').find((line) => line.startsWith('Name')), ROSTER_CSV_EXPORT_HEADERS.join(','));
 });

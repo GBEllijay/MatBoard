@@ -132,6 +132,10 @@ export function CoachSyncSheet({
   const decide = async (photoId: string, decision: 'approve' | 'decline') => {
     const review = reviews.find((row) => row.submission.photoId === photoId);
     if (!review) return;
+    if (decision === 'approve' && student?.noPhotos) {
+      setStatus('No photos is on for this student.');
+      return;
+    }
     const result = decidePhoto(review, approver, decision);
     if (!result.ok) {
       setStatus(
@@ -154,6 +158,10 @@ export function CoachSyncSheet({
 
   const useOnCard = (photoId: string) => {
     if (!student) return;
+    if (student.noPhotos) {
+      setStatus('No photos is on for this student.');
+      return;
+    }
     const chosen = chooseCardPhoto(reviews, photoId, approver);
     if (!chosen.ok) {
       setStatus(chosen.reason === 'not-head-coach' ? 'Only the head coach picks the card photo.' : 'Approve this photo first.');
@@ -346,8 +354,9 @@ export function CoachSyncSheet({
             </button>
           </fieldset>
 
-          <fieldset>
+          <fieldset disabled={Boolean(student.noPhotos)}>
             <legend>Profile photos</legend>
+            {student.noPhotos ? <p role="status">No photos is on for this student. Photos are not taken or approved.</p> : null}
             <button type="button" className="btn btn--ghost" onClick={() => void loadPhotos()}>
               Check for photos
             </button>

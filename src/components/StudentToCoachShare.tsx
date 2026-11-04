@@ -23,6 +23,14 @@ import {
   tournamentRegistrationFile,
 } from '../lib/studentEvents';
 import { loadStudentReport } from '../lib/studentEdition';
+import { loadAcademyLink } from '../lib/academyPathway';
+import { readAcademyLicense } from '../lib/studentInboxClient';
+import { readStudentNoPhotos } from '../lib/studentPhotoFlag';
+
+/** The gym takes card shares: Pro or Plus Cloud (academy license) or a gym Drive folder link. */
+export function cardShareAvailable(storage: Pick<Storage, 'getItem'> = localStorage): boolean {
+  return Boolean(loadAcademyLink(storage)) || Boolean(readAcademyLicense(storage));
+}
 
 function saveFile(file: { name: string; json: string }): void {
   const url = URL.createObjectURL(new Blob([file.json], { type: 'application/json' }));
@@ -78,6 +86,7 @@ export function ShareCardWithCoach({
 }: {
   /** Send my ID to coach sends no photo. */
   withPhoto?: boolean;
+  /** Button text. My profile uses 'Upload for coach approval to add to student card'. */
   label?: string;
   buttonClassName?: string;
   note?: string;
@@ -90,7 +99,8 @@ export function ShareCardWithCoach({
   const [busy, setBusy] = useState(false);
 
   const start = () => {
-    const portrait = withPhoto ? readProfilePortrait() : null;
+    // Send my ID sends no photo; Don't allow photos also sends none.
+    const portrait = withPhoto && !readStudentNoPhotos(localStorage).on ? readProfilePortrait() : null;
     const draft = studentCardShareDraft(localStorage, loadStudentReport(localStorage), {
       photo: portrait && photoImageFits(portrait) ? portrait : null,
     });

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { parentGateOn, readParentGate } from '../lib/parentGate';
 import { createPhotoSubmission, parentApprovePhoto } from '../lib/rosterPhotoApproval';
 import { readInboxPass, studentIdFromInboxPass, submitStudentPhoto } from '../lib/studentInboxClient';
+import { readStudentNoPhotos } from '../lib/studentPhotoFlag';
 
 /**
  * Student → head coach profile photo. When Parent approvals is on, a parent
@@ -14,7 +15,8 @@ export function SendPhotoToCoach({ portrait }: { portrait: string | null }) {
   const [busy, setBusy] = useState(false);
   const pass = readInboxPass(localStorage);
   const studentId = pass ? studentIdFromInboxPass(pass) : null;
-  if (!portrait || !pass || !studentId) return null;
+  // Don't allow photos (student or parent) blocks the send entirely.
+  if (!portrait || !pass || !studentId || readStudentNoPhotos(localStorage).on) return null;
   const parentRequired = parentGateOn(localStorage);
 
   const send = async () => {

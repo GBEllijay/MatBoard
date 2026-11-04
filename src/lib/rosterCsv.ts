@@ -35,7 +35,9 @@ export const ROSTER_CSV_HEADERS = [
  * What Export CSV writes: the base columns, then the optional card columns.
  * ROSTER_CSV_HEADERS stays the base eight because the scouting CSV appends its own columns after them.
  */
-export const ROSTER_CSV_EXPORT_HEADERS = [...ROSTER_CSV_HEADERS, ...ROSTER_CSV_CARD_HEADERS] as const;
+/** Last column of a roster export. Family = the student or a parent set it; Coach = the coach did. */
+export const NO_PHOTOS_HEADER = 'No photos';
+export const ROSTER_CSV_EXPORT_HEADERS = [...ROSTER_CSV_HEADERS, ...ROSTER_CSV_CARD_HEADERS, NO_PHOTOS_HEADER] as const;
 export const ROSTER_CSV_SEP_LINE = 'sep=,';
 export const ROSTER_CSV_WORKBOOK_ERROR =
   'That looks like an Excel workbook. Save as CSV UTF-8 (comma-separated), then import.';
@@ -57,7 +59,20 @@ export type RosterCsvRow = Pick<
   Student,
   'name' | 'belt' | 'division' | 'gym' | 'lastPromotion' | 'lastPromotionDetail' | 'note' | 'checkedIn'
 > &
-  Partial<Pick<Student, 'id' | 'stripes'>>;
+  Partial<Pick<Student, 'id' | 'stripes' | 'noPhotos'>>;
+
+export function formatNoPhotos(value: Student['noPhotos']): string {
+  if (value === 'family') return 'Family';
+  if (value === 'coach') return 'Coach';
+  return '';
+}
+
+export function parseNoPhotos(value: string): Student['noPhotos'] {
+  const text = value.trim().toLowerCase();
+  if (!text || ['no', 'false', '0', 'n', 'off'].includes(text)) return undefined;
+  if (text.includes('family') || text.includes('parent') || text.includes('student')) return 'family';
+  return 'coach';
+}
 
 export type RosterCsvImport = {
   students: Student[];
@@ -87,7 +102,8 @@ type HeaderField =
   | 'lastStripeOn'
   | 'stripes'
   | 'trainingStartedOn'
-  | 'trainingStyle';
+  | 'trainingStyle'
+  | 'noPhotos';
 
 const HEADER_ALIASES: Record<string, HeaderField> = {
   name: 'name',
@@ -172,6 +188,9 @@ const HEADER_ALIASES: Record<string, HeaderField> = {
   'gi no gi': 'trainingStyle',
   'gi nogi': 'trainingStyle',
   'training style': 'trainingStyle',
+  'no photos': 'noPhotos',
+  'no photo': 'noPhotos',
+  nophotos: 'noPhotos',
 };
 
 /** CSV stripes: a whole number 0–4. Anything else is left blank. */
@@ -443,6 +462,7 @@ export function serializeRosterCsv(
         row.note,
         formatCheckedIn(row.checkedIn),
         ...cardColumns(row, cardFor(row)),
+        formatNoPhotos(row.noPhotos),
       ]
         .map(csvField)
         .join(','),
@@ -711,6 +731,7 @@ function importParsedRows(rows: string[][], options: ImportOptions): RosterCsvIm
     note: string;
     checkedIn: string;
     extra?: CardCells;
+    noPhotos?: Student['noPhotos'];
   }) => {
     const next = studentFromInput(input);
     if (next) {
@@ -718,6 +739,10 @@ function importParsedRows(rows: string[][], options: ImportOptions): RosterCsvIm
       if (stripes !== undefined) next.stripes = stripes;
       const card = input.extra ? cardFieldsFromCells(input.extra) : null;
       if (card) cardFields[next.id] = card;
+      if (input.noPhotos) {
+        next.noPhotos = input.noPhotos;
+        next.photo = '';
+      }
       students.push(next);
       return true;
     }
@@ -798,7 +823,8 @@ function importParsedRows(rows: string[][], options: ImportOptions): RosterCsvIm
       skippedReasons.push('missing name');
       continue;
     }
-    for (const person of people) pushStudent(person);
+    const noPhotos = parseNoPhotos(cell(row, columns.noPhotos));
+    for (const person of people) pushStudent(noPhotos ? { ...person, noPhotos } : person);
   }
 
   const skippedDetail = skippedReasons.length

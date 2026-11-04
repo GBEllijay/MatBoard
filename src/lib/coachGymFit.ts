@@ -26,6 +26,8 @@ export function readTravelingGym(raw: unknown): CoachGymBrand | null {
   const brand: CoachGymBrand = logo ? { name, logo } : { name };
   const ids = readGymIds(gym.ids);
   if (ids.length) brand.ids = ids;
+  const look = typeof gym.cardLook === 'string' && /^(clipboard|fighter)-(dark|light)$/.test(gym.cardLook) ? gym.cardLook : '';
+  if (look) brand.cardLook = look;
   return brand;
 }
 

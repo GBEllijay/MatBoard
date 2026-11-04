@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { beltModeOf, setBeltMode, setBirthYear } from '../../lib/beltBook';
-import { StudentMarks, useStudentFile } from './chrome';
+import { StudentMarks, useStudentFile, useStudentPath } from './chrome';
+import { StudentNoPhotosSwitch } from '../../components/rosterCard/StudentNoPhotos';
+import { StudentCardPreview } from '../../components/rosterCard/StudentCardPreview';
+import { ShareCardWithCoach, cardShareAvailable } from '../../components/StudentToCoachShare';
 import { ProfileCornerMarks, ProfileMedia, ProfileSwitches, useProfileMedia } from './ProfileIdentity';
 import { StudentProfileFields, TrainingSettings } from './ProfileFields';
 import './profile.css';
@@ -13,6 +16,10 @@ export function ProfilePage() {
   const showPhoto = Boolean(media.portrait);
   const gymName = report.profile.gymName.trim();
   const marked = Boolean(showPhoto || media.logo || (kids && gymName));
+  const to = useStudentPath();
+  const [saveSlot, setSaveSlot] = useState<HTMLElement | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [preview, setPreview] = useState(false);
   return (
     <main className="student student-frame student--arena student--profile">
       <StudentMarks />
@@ -31,10 +38,38 @@ export function ProfilePage() {
         <div className="profile-stack">
           <ProfileMedia media={media} kids={kids} />
           <KidAdultFields report={report} commit={commit} />
-          <StudentProfileFields report={report} commit={commit} variant="page" />
+          <StudentProfileFields
+            report={report}
+            commit={commit}
+            variant="page"
+            saveSlot={saveSlot}
+            onSaved={() => {
+              setSaved(true);
+              setPreview(true);
+            }}
+          />
           <TrainingSettings report={report} commit={commit} />
           <ProfileSwitches report={report} />
+          <StudentNoPhotosSwitch studentId={report.studentId} />
+          {/* Save profile renders here: last on the page, reachable at 390px. */}
+          <div ref={setSaveSlot} className="profile-save-slot" data-testid="profile-save-slot" />
+          {saved ? (
+            <section className="profile-card profile-after-save" aria-label="After saving">
+              <button type="button" className="ink-btn" onClick={() => setPreview(true)}>
+                Preview my card
+              </button>
+              {cardShareAvailable() ? <ShareCardWithCoach label="Upload for coach approval to add to student card" /> : null}
+            </section>
+          ) : null}
         </div>
+        <StudentCardPreview
+          open={preview}
+          report={report}
+          portrait={showPhoto ? media.portrait : null}
+          logo={media.logo}
+          onClose={() => setPreview(false)}
+          to={to}
+        />
       </div>
     </main>
   );

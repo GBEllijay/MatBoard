@@ -783,6 +783,8 @@ export type CoachGymBrand = {
    * uses it to refuse that gym's packets.
    */
   ids?: string[];
+  /** Gym's roster card look, e.g. 'clipboard-dark'. The student's card follows it. */
+  cardLook?: string;
 };
 
 export type CoachPlanPacket = PacketBase & {
