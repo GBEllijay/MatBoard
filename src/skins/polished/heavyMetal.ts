@@ -30,6 +30,20 @@ export function metalBoardState(state: string): string {
   return value.toLowerCase() === 'match' ? 'OPEN' : state;
 }
 
+const NAMED_ROUND = /^(?:quarterfinal|semifinal|final)s?$/i;
+
+/**
+ * Numbered rounds stay "Round 1". A named round drops the prefix: "Round Semifinal" is "Semifinal".
+ * Other skins keep the shared "Round …" line. This is only the Heavy Metal heading.
+ */
+export function metalRoundLabel(line: string): string {
+  const value = line.trim().replace(/\s+/g, ' ');
+  const match = /^Round (.+)$/i.exec(value);
+  if (!match) return value;
+  const name = match[1].trim();
+  return NAMED_ROUND.test(name) ? name : value;
+}
+
 export type MetalFacePart = { kind: 'chrome' | 'num'; value: string };
 
 /**

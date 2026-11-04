@@ -11,6 +11,7 @@ import {
   metalFaceParts,
   metalMeterLit,
   metalPhaseParts,
+  metalRoundLabel,
   metalTimerTitle,
   sideChipLabel,
 } from '../skins/polished/heavyMetal.ts';
@@ -72,6 +73,15 @@ test('Metal Mania headings put numerals in Anton, and clocks stay plain Anton', 
   assert.match(css, /\.trail \{[^}]*justify-content: flex-end/);
   assert.match(css, /\.hdr \.mat a \{[^}]*overflow: hidden;[^}]*white-space: nowrap;[^}]*text-overflow: ellipsis/);
   assert.match(css, /font-size: 92cqh/);
+  assert.match(css, /\.digit--pair \{[^}]*font-size: min\(92cqh, 86cqi\)/);
+  assert.match(css, /padding: 0\.6vh max\(6px, 0\.6vw\)/);
+  assert.match(css, /\.hdr \.mat \{[^}]*min-width: 8\.5em/);
+  assert.equal(metalRoundLabel('Round 1'), 'Round 1');
+  assert.equal(metalRoundLabel('Round Semifinal'), 'Semifinal');
+  assert.equal(metalRoundLabel('Round Final'), 'Final');
+  assert.equal(metalRoundLabel('Round Quarterfinal'), 'Quarterfinal');
+  assert.equal(metalRoundLabel('Round Finals'), 'Finals');
+  assert.equal(metalRoundLabel('Semifinal'), 'Semifinal');
   assert.match(css, /\.row \.tile \.lab \{[^}]*text-align: center/);
   assert.match(css, /\.row \.tile \.digit \{[^}]*text-align: center/);
   assert.match(css, /\.row \.tile \{[^}]*grid-template-rows: auto minmax\(0, 1fr\)/);
@@ -124,4 +134,44 @@ test('the Chrome Inferno meter is 30 live segments and 04:40 of 05:00 lights 28'
   const timer = read('../components/PolishedTimer.tsx');
   assert.match(timer, /METAL_METER_SEGMENTS/);
   assert.match(timer, /className=\{i < lit \? 'on' : undefined\}/);
+});
+
+test('two-digit scores fit a 109px tile at 390', async () => {
+  const { chromium } = await import('@playwright/test');
+  const browser = await chromium.launch();
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  const root = new URL('../skins/polished/', import.meta.url);
+  const tile = (score: string, pair: boolean) =>
+    `<button class="tile pts" style="width:109px;height:160px"><span class="lab">POINTS</span><span class="num"><span class="digit${pair ? ' digit--pair' : ''}">${score}</span></span></button>`;
+  await page.setContent(`<!doctype html>
+    <link rel="stylesheet" href="${new URL('fonts/chrome-inferno-fonts.css', root)}">
+    <link rel="stylesheet" href="${new URL('heavy-metal.css', root)}">
+    <div class="skin-root" data-skin="heavy-metal" style="width:390px;height:844px">
+      <div class="sb"><section class="row c1" style="height:220px">
+        ${tile('12', true)}${tile('10', true)}${tile('4', false)}
+      </section></div>
+    </div>`);
+  await page.evaluate(() => document.fonts.ready);
+  const fit = await page.evaluate(() =>
+    [...document.querySelectorAll('.tile')].map((el) => {
+      const tileBox = el.getBoundingClientRect();
+      const digit = el.querySelector('.digit').getBoundingClientRect();
+      return {
+        score: el.querySelector('.digit').textContent,
+        tile: Math.round(tileBox.width),
+        left: digit.left - tileBox.left,
+        right: tileBox.right - digit.right,
+        font: parseFloat(getComputedStyle(el.querySelector('.digit')).fontSize),
+      };
+    }),
+  );
+  await browser.close();
+  for (const row of fit.filter((row) => row.score !== '4')) {
+    assert.ok(row.left >= 6, `${row.score} left padding ${row.left.toFixed(1)}px`);
+    assert.ok(row.right >= 6, `${row.score} right padding ${row.right.toFixed(1)}px`);
+  }
+  const single = fit.find((row) => row.score === '4');
+  const pair = fit.find((row) => row.score === '12');
+  assert.ok(single && pair);
+  assert.ok(single.font + 0.5 >= pair.font, 'a single digit stays on the height size');
 });

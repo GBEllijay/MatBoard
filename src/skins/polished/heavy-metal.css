@@ -182,7 +182,8 @@
   display: flex;
   flex: 0 1 auto;
   margin-left: 0;
-  min-width: 0;
+  /* Floor so "Semifinal" and "Round 1" are not squeezed into "Round…". */
+  min-width: 8.5em;
   max-width: 100%;
   overflow: hidden;
   font-family: "Metal Mania", cursive;
@@ -837,6 +838,7 @@
     align-self: center;
     font-size: 2.4vh;
     margin-left: 1.2vh;
+    min-width: 0;
     max-width: 34%;
   }
 
@@ -930,7 +932,7 @@
     height: 100%;
     min-height: 0;
     overflow: hidden;
-    padding: 0.6vh 0.6vw 0.7vh;
+    padding: 0.6vh max(6px, 0.6vw) 0.7vh;
   }
 
   .skin-root.skin-root[data-skin="heavy-metal"] .row .tile .lab {
@@ -961,6 +963,11 @@
     font-size: 92cqh;
     line-height: 0.82;
     text-align: center;
+  }
+
+  /* Two Anton digits are about 1.12em wide. Cap them by the tile width so a 109px phone tile keeps ~6px each side. */
+  .skin-root.skin-root[data-skin="heavy-metal"] .row .tile .digit--pair {
+    font-size: min(92cqh, 86cqi);
   }
 
   .skin-root[data-skin="heavy-metal"] .sb .band.band {

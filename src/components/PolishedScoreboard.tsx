@@ -4,7 +4,7 @@ import { usePolishedSkinModule } from '../hooks/usePolishedSkins';
 import { dispatchMatch, type ScoreKind, type Side } from '../lib/matchStore';
 import type { PolishedSkinSlug } from '../lib/polishedSkins';
 import { beltChipKey, canonicalBelt } from '../lib/rosterStore';
-import { metalBoardState, metalFaceParts, sideChipLabel } from '../skins/polished/heavyMetal';
+import { metalBoardState, metalFaceParts, metalRoundLabel, sideChipLabel } from '../skins/polished/heavyMetal';
 
 export type PolishedRow = {
   side: Side;
@@ -38,7 +38,7 @@ function PolishedTile({ side, kind, value }: { side: Side; kind: ScoreKind; valu
     >
       <span className="lab">{l.lab}</span>
       <span className="num">
-        <span className="digit">{value}</span>
+        <span className={Math.abs(value) >= 10 ? 'digit digit--pair' : 'digit'}>{value}</span>
       </span>
     </button>
   );
@@ -51,7 +51,7 @@ function MetalFace({ children }: { children: ReactNode }) {
 
 function paintMetal(node: ReactNode): ReactNode {
   if (typeof node === 'string' || typeof node === 'number') {
-    return metalFaceParts(String(node)).map((part, index) =>
+    return metalFaceParts(metalRoundLabel(String(node))).map((part, index) =>
       part.kind === 'num' ? (
         <span key={index} className="n">
           {part.value}
