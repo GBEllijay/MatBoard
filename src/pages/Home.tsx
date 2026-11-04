@@ -104,7 +104,6 @@ export function HomePage() {
                 <Link className="btn btn--white" to={whiteEntryPath(true)}>
                   Open White
                 </Link>
-                <LearnMoreLink tier="white" />
               </span>
             </article>
           ) : (
@@ -144,7 +143,6 @@ export function HomePage() {
                 <Link className="btn btn--white" to={instructorOpenTo}>
                   {instructorOpenLabel}
                 </Link>
-                <LearnMoreLink tier="instructor" />
               </div>
             </article>
           ) : (
@@ -179,7 +177,6 @@ export function HomePage() {
                 <Link className="btn btn--white" to="/pro">
                   Open Pro Console
                 </Link>
-                <LearnMoreLink tier="pro" />
               </div>
             </article>
           ) : (
@@ -240,7 +237,7 @@ function StudentHomeCard({
           <Link className="btn btn--white" to={to}>
             {demo ? 'Open demo' : 'Open Student Edition'}
           </Link>
-          <LearnMoreLink tier="student" />
+          {demo ? <LearnMoreLink tier="student" /> : null}
         </div>
       </article>
     );
@@ -264,6 +261,7 @@ function StudentHomeCard({
 /**
  * Advantage Media Edition on /products. Open reads the Media door (useMediaUnlocked).
  * Locked shows the price, the alpha line, and Learn more, which opens the Media preview.
+ * Unlocked shows only the Open button (no Learn more).
  * There is no Media product in Stripe, so there is no buy button.
  */
 function MediaHomeCard({ open }: { open: boolean }) {
@@ -278,7 +276,6 @@ function MediaHomeCard({ open }: { open: boolean }) {
           <Link className="btn btn--white" to={MEDIA_HOME_PATH}>
             Open Media Edition
           </Link>
-          <LearnMoreLink tier="media" />
         </div>
       </article>
     );
@@ -311,7 +308,6 @@ function ProPlusCloudCard({ open }: { open: boolean }) {
           <Link className="btn btn--white" to={PRO_PLUS_CLOUD_PATH}>
             {PRO_PLUS_CLOUD_OPEN_LABEL}
           </Link>
-          <LearnMoreLink tier="proCloud" />
         </div>
       </article>
     );

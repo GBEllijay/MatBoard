@@ -137,16 +137,16 @@ test('Instructor and Pro pages have no checkout; Student checkout only when enti
   assert.doesNotMatch(code(parts), /fetch\(WHITE_CHECKOUT_API/);
 });
 
-test('/products: locked Student, Instructor and Pro cards open their tier pages; Learn more is on every card', () => {
+test('/products: locked Student, Instructor and Pro cards open their tier pages; Learn more is on every locked card only', () => {
   assert.match(home, /<Link className="mode-card__hit" to=\{TIER_BUY_PATHS\.student\} aria-label="Advantage Student Edition, coming soon" \/>/);
   assert.match(home, /to=\{TIER_BUY_PATHS\.instructor\}\s*aria-label=\{`\$\{INSTRUCTOR_HOME_TITLE\}, coming soon`\}/);
   assert.match(home, /<Link className="mode-card__hit" to=\{TIER_BUY_PATHS\.pro\} aria-label="Advantage Pro, coming soon" \/>/);
-  assert.equal(home.match(/<LearnMoreLink tier="white" \/>/g)?.length, 2);
-  assert.equal(home.match(/<LearnMoreLink tier="student" \/>/g)?.length, 2);
-  assert.equal(home.match(/<LearnMoreLink tier="media" \/>/g)?.length, 2);
-  assert.equal(home.match(/<LearnMoreLink tier="instructor" \/>/g)?.length, 2);
-  assert.equal(home.match(/<LearnMoreLink tier="pro" \/>/g)?.length, 2);
-  assert.equal(home.match(/<LearnMoreLink tier="proCloud" \/>/g)?.length, 2);
+  assert.equal(home.match(/<LearnMoreLink tier="white" \/>/g)?.length, 1);
+  assert.equal(home.match(/<LearnMoreLink tier="student" \/>/g)?.length, 2); // locked card + demo only
+  assert.equal(home.match(/<LearnMoreLink tier="media" \/>/g)?.length, 1);
+  assert.equal(home.match(/<LearnMoreLink tier="instructor" \/>/g)?.length, 1);
+  assert.equal(home.match(/<LearnMoreLink tier="pro" \/>/g)?.length, 1);
+  assert.equal(home.match(/<LearnMoreLink tier="proCloud" \/>/g)?.length, 1);
   assert.match(home, /Try the demo/);
   assert.match(home, /Owner test unlock/);
   assert.doesNotMatch(home, /setSoon\(/);
