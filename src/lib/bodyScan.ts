@@ -203,28 +203,29 @@ export function bodyScanHref(zone: string): string {
   return `/student?zone=${encodeURIComponent(zone || 'other')}&scan=1#body-scan`;
 }
 
-/** Hologram silhouette: one generic, androgynous outline (no body-type picker). */
-/** Zone centers in a 120×260 figure box. x follows the shoulder/hip width. */
-const BASE_Y: Record<BodyZone, number> = {
-  neck: 44, shoulderL: 58, shoulderR: 58, elbowL: 100, elbowR: 100, wristL: 138, wristR: 138,
-  ribs: 86, hips: 128, kneeL: 186, kneeR: 186, ankleL: 238, ankleR: 238, upperBack: 70, lowerBack: 112,
-};
+/**
+ * Hologram V2 silhouette (approved mockup), one androgynous body with the type-2 frame:
+ * shoulders pulled in, hips a touch wider, softer waist. Coordinates are the mockup's
+ * 200×400 figure box (center x = 100); the floor rings sit at y = 410.
+ */
 export const BODY_FRAME = { shoulder: 23, hip: 21 } as const;
-/** Viewer's left = student's right on the front view. */
+const V2_HALF: readonly (readonly [number, number])[] = [
+  [9, 56], [10, 66], [25, 72], [39, 78], [46, 90], [50, 118], [53, 148], [54, 160], [56, 188], [58, 212], [57, 222], [61, 234], [55, 250], [47, 249], [44, 233], [46, 221], [42, 192], [38, 163], [36, 132], [33, 114],
+  [35, 140], [33, 176], [41, 198], [42, 238], [36, 288], [32, 304], [34, 330], [27, 368], [22, 382], [28, 394], [11, 397], [12, 383], [12, 368], [10, 330], [12, 300], [8, 252], [0, 214],
+];
+export function bodyOutlinePath(cx = 100): string {
+  const right = V2_HALF.map(([x, y]) => [cx + x, y]);
+  const left = [...V2_HALF.slice(0, -1)].reverse().map(([x, y]) => [cx - x, y]);
+  return 'M' + [...right, ...left].map(([x, y]) => `${x} ${y}`).join(' L') + 'Z';
+}
+const ZONE_V2: Record<BodyZone, [number, number]> = {
+  neck: [0, 62], shoulderR: [-38, 86], shoulderL: [38, 86], elbowR: [-50, 160], elbowL: [50, 160], wristR: [-55, 214], wristL: [55, 214],
+  ribs: [0, 130], hips: [0, 204], kneeR: [-22, 304], kneeL: [22, 304], ankleR: [-18, 374], ankleL: [18, 374], upperBack: [0, 96], lowerBack: [0, 182],
+};
+/** Zone center on the V2 figure. Viewer's left = student's right on the front view. */
 export function zonePoint(zone: BodyZone): { x: number; y: number } {
-  const { shoulder, hip } = BODY_FRAME;
-  const cx = 60;
-  const arm = shoulder + 6;
-  const legX = hip * 0.55;
-  const x: Record<BodyZone, number> = {
-    neck: cx, ribs: cx, hips: cx, upperBack: cx, lowerBack: cx,
-    shoulderR: cx - shoulder + 4, shoulderL: cx + shoulder - 4,
-    elbowR: cx - arm, elbowL: cx + arm,
-    wristR: cx - arm - 3, wristL: cx + arm + 3,
-    kneeR: cx - legX, kneeL: cx + legX,
-    ankleR: cx - legX, ankleL: cx + legX,
-  };
-  return { x: x[zone], y: BASE_Y[zone] };
+  const [dx, y] = ZONE_V2[zone];
+  return { x: 100 + dx, y };
 }
 
 /** Color meanings for the "What the colors mean" sheet. */
