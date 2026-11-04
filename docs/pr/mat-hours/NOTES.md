@@ -86,3 +86,8 @@ Every shot was checked: no sideways scroll, smallest text 12px, smallest tap tar
 - Flag already present since 3ae6fa4: `src/lib/fundamentalsConfig.ts` → `FUNDAMENTALS_REQUIRED_FOR_BELT = true`. Routed through `checkpointFilled()` in `studentTools.ts` (default param), which feeds `checkpointShare`/`checkpointState`/`beltRequirementProgress` and the report's "Met". No other fundamentals-required checks exist.
 - Test strengthened (`journalRound.test.ts`): default blocks on an unmet fundamentals requirement (= explicit `true`); `false` lets coach-met requirements decide.
 - Techniques drilled confirmed last in both the new-entry and edit forms (after Partners, Drills, Rolls, Notes, Stop doing), covered by the regression test.
+
+## Merge with main after #399 (2:09 PM)
+- `package.json`: took main's test script (adds `competitionCard.test.ts`) and re-appended the mat-hours tests (`matHours.test.ts`, `journalRound.test.ts`, `run-mat-hours-regressions.mjs`).
+- `src/pages/student/ProfilePage.tsx`: kept both imports. `ProfileMatHoursStat` moved out of the stack into a new optional `stats` slot on #399's `ProfileCardFace`. It renders as "Card stats" directly under the face, outside the face section, so #399's rules still hold: face controls use visible text only, and nothing collides with the face.
+- Regression: mat hours sit in the card stats right after `profile-card-face`. Screenshot: `after-conflict-profile-390.png`.

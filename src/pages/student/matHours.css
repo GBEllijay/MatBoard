@@ -177,3 +177,7 @@
 .mat-time__other { display: grid; gap: 0.3rem; margin: 0.5rem 0; }
 .mat-time__other input { min-height: 44px; font-size: 16px; }
 .mat-time__stepper .wheel-value { min-height: 44px; min-width: 6rem; }
+
+/* Mat hours stat on the #399 profile card face. */
+.profile-face__stats { margin: -4px 0 16px; }
+.profile-face__stats .card-stat--mat-hours { margin: 0; }

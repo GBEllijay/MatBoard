@@ -243,6 +243,9 @@ test('hub has no mat hours tile; profile shows stat, streak and report link; rep
   const profile = mount(<StudentEditionPage />, '/student/profile?student=1');
   const section = profile.host.querySelector('[data-testid="profile-mat-hours"]') as HTMLElement;
   assert.ok(section);
+  const stats = section.closest('[data-testid="profile-face-stats"]') as HTMLElement;
+  assert.ok(stats, 'mat hours sit in the card stats (#399 card face)');
+  assert.equal(stats.previousElementSibling?.getAttribute('data-testid'), 'profile-card-face', 'stats directly under the card face');
   assert.match(section.querySelector('[data-testid="mat-hours"]')?.textContent ?? '', /1 mat hour|1\.0 mat hours|mat hour/);
   assert.match(section.querySelector('[data-testid="profile-streak"]')?.textContent ?? '', /of 2 sessions|paused/);
   assert.equal(labeled(section, 'My report card').getAttribute('href'), '/student/report?student=1');
