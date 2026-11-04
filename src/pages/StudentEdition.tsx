@@ -32,6 +32,8 @@ import { ScoutingPage } from './student/ScoutingPage';
 import { VideoLibraryPage } from './student/VideoLibraryPage';
 import { WeightPage } from './student/WeightPage';
 import { CoachUpdateInbox } from '../components/CoachUpdateInbox';
+import { GymLogoPrompt } from '../components/GymLogoPrompt';
+import { ParentApprovals } from '../components/ParentApprovals';
 import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './student/chrome';
 import { ageIllegalTechniques } from '../lib/studentBenchmarks';
 import { studentScreen } from '../lib/studentHubMenu';
@@ -142,6 +144,8 @@ export function StudentEditionPage() {
     <>
       {demo ? <StudentDemoBanner /> : null}
       <CoachUpdateInbox />
+      <GymLogoPrompt />
+      <ParentApprovals />
       {screen}
     </>
   );

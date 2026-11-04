@@ -7,6 +7,7 @@
 
 import { parseMmSs } from './format.ts';
 import { asRecord, clampText } from './plainValue.ts';
+import { cleanClip, cleanReviewSlot, type ReplayClipRef, type ReviewSlot } from './replayAnalysis.ts';
 import {
   CLASS_DESIGNATION_MAX,
   CLASS_TIME_MAX,
@@ -48,7 +49,15 @@ export const SUGGESTED_KINDS = ['warmup', 'body', 'takedown', 'specific', 'live'
 
 export type SuggestedKind = (typeof SUGGESTED_KINDS)[number];
 export type CurriculumKind = SuggestedKind | 'custom';
-export type CurriculumTiming = 'timer' | 'video';
+/** Timer only, looping video, or record a clip for replay analysis. */
+export type CurriculumTiming = 'timer' | 'video' | 'replay';
+export const CURRICULUM_TIMINGS: readonly CurriculumTiming[] = ['timer', 'video', 'replay'];
+export const CURRICULUM_TIMING_LABELS: Record<CurriculumTiming, string> = {
+  timer: 'Timer only',
+  video: 'Looping video',
+  replay: 'Record for replay',
+};
+export const RECORD_FOR_REVIEW_LABEL = 'Record for Review';
 
 export type CurriculumBlock = {
   id: string;
@@ -65,6 +74,10 @@ export type CurriculumBlock = {
   mediaName: string;
   treeId?: string;
   rounds: number;
+  /** Sparring and added blocks: keep the timer and also record a clip for review. */
+  recordReview?: boolean;
+  /** Replay clip on this device (plus where a copy was saved). Only the ref is stored here. */
+  replayClip?: ReplayClipRef;
 };
 
 export type CurriculumPlan = {
@@ -75,6 +88,8 @@ export type CurriculumPlan = {
   classTime: string;
   blocks: CurriculumBlock[];
   closing: string;
+  /** Record for Review on the Closing section. Absent when off with no clip. */
+  closingReview?: ReviewSlot;
   locked: boolean;
 };
 
@@ -133,6 +148,25 @@ export function blockNotesLabel(kind: CurriculumKind): string {
 
 export function blockOffersClock(kind: CurriculumKind): boolean {
   return kind === 'warmup' || kind === 'body' || kind === 'takedown' || kind === 'specific' || kind === 'custom';
+}
+
+/** Lesson sections that can carry "Record for Review": curriculum kinds plus the Intro and Closing (outro) sections. */
+export type ReviewToggleKind = CurriculumKind | 'intro' | 'closing';
+
+/**
+ * "Record for Review" switch (owner decision): sparring (Live Rounds), added
+ * blocks such as Bag Work or Cardio, Specific Training, Intro, and Closing
+ * (the outro block in every template). Not on Cool down, warm-up, body
+ * movement, or technique/takedown blocks.
+ */
+export function blockOffersReviewToggle(kind: ReviewToggleKind): boolean {
+  return kind === 'live' || kind === 'custom' || kind === 'specific' || kind === 'intro' || kind === 'closing';
+}
+
+/** The block shows the replay recorder: its mode is "Record for replay", or Record for Review is on. */
+export function blockWantsReplay(block: Pick<CurriculumBlock, 'kind' | 'timing' | 'recordReview'>): boolean {
+  if (blockOffersClock(block.kind) && block.timing === 'replay') return true;
+  return blockOffersReviewToggle(block.kind) && block.recordReview === true;
 }
 
 export function blockOffersTree(kind: CurriculumKind): boolean {
@@ -222,6 +256,8 @@ function blockSignature(block: CurriculumBlock): string {
     block.clipId ?? '',
     block.treeId ?? '',
     block.kind === 'live' ? String(block.rounds) : '',
+    block.recordReview ? 'review' : '',
+    block.replayClip?.localId ?? '',
   ].join('\u0001');
 }
 
@@ -252,7 +288,7 @@ function sanitizeBlock(value: unknown): { block: CurriculumBlock; repaired: bool
   const expected = normalizeExpectedDuration(clampText(raw?.expected, EXPECTED_MAX)).slice(0, EXPECTED_MAX);
   if (raw && (raw.title !== title || raw.notes !== notes || raw.expected !== expected)) repaired = true;
   if (raw && raw.waterBreak !== true && raw.waterBreak !== false) repaired = true;
-  const timing: CurriculumTiming = raw?.timing === 'video' ? 'video' : 'timer';
+  const timing: CurriculumTiming = raw?.timing === 'video' ? 'video' : raw?.timing === 'replay' ? 'replay' : 'timer';
   if (raw && raw.timing !== timing) repaired = true;
   let clipId: string | null = null;
   if (typeof raw?.clipId === 'string' && raw.clipId.trim()) clipId = raw.clipId.trim().slice(0, 80);
@@ -270,6 +306,14 @@ function sanitizeBlock(value: unknown): { block: CurriculumBlock; repaired: bool
   }
   const rounds = clampRounds(raw?.rounds);
   if (raw && raw.rounds !== rounds) repaired = true;
+  const recordReview = blockOffersReviewToggle(kind) && raw?.recordReview === true;
+  if (raw && raw.recordReview != null && raw.recordReview !== recordReview) repaired = true;
+  let replayClip: ReplayClipRef | undefined;
+  if (raw && raw.replayClip != null) {
+    const cleaned = cleanClip(raw.replayClip);
+    replayClip = cleaned.clip ?? undefined;
+    if (!replayClip || cleaned.repaired) repaired = true;
+  }
   return {
     repaired,
     block: {
@@ -284,6 +328,8 @@ function sanitizeBlock(value: unknown): { block: CurriculumBlock; repaired: bool
       mediaName,
       rounds,
       ...(treeId ? { treeId } : {}),
+      ...(recordReview ? { recordReview } : {}),
+      ...(replayClip ? { replayClip } : {}),
     },
   };
 }
@@ -321,6 +367,8 @@ export function sanitizeCurriculum(input: unknown): { plan: CurriculumPlan; repa
   const classTime = clampText(raw?.classTime, CLASS_TIME_MAX);
   const closing = clampText(raw?.closing, CLOSING_MAX);
   const locked = raw?.locked === true;
+  const closingSlot = cleanReviewSlot(raw?.closingReview);
+  if (closingSlot.repaired) repaired = true;
   if (
     raw &&
     (raw.coachName !== coachName ||
@@ -341,18 +389,27 @@ export function sanitizeCurriculum(input: unknown): { plan: CurriculumPlan; repa
       classTime,
       blocks,
       closing,
+      ...(closingSlot.slot ? { closingReview: closingSlot.slot } : {}),
       locked,
     },
   };
 }
 
 export function copyCurriculum(source: CurriculumPlan): CurriculumPlan {
-  const { plan } = sanitizeCurriculum(source);
+  const { plan: sanitized } = sanitizeCurriculum(source);
+  const { closingReview: sourceClosing, ...plan } = sanitized;
+  const closingReview = sourceClosing?.recordReview ? { recordReview: true } : undefined;
   return {
     ...plan,
     id: createId('curriculum'),
     locked: false,
-    blocks: plan.blocks.map((block) => ({ ...block, id: createId('block') })),
+    // Owner decision: a copy starts with no replay clips (mode and Record for Review stay).
+    blocks: plan.blocks.map((block) => {
+      const { replayClip: _clip, ...rest } = block;
+      void _clip;
+      return { ...rest, id: createId('block') };
+    }),
+    ...(closingReview ? { closingReview } : {}),
   };
 }
 

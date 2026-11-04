@@ -1,20 +1,16 @@
+import { importCoachText } from '../../lib/coachInbound';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { CoachGymBrand, StudentProgressReport } from '../../lib/progress/types';
 import {
-  applyCoachFile,
-  loadCoachShelf,
   mergeOwnStudentFile,
   OWN_SEND_FILE_MESSAGE,
   progressReportFiles,
   sampleCoachPlanFile,
-  saveCoachShelf,
   SEND_TO_COACH_MERGE_PROMPT,
   SHARE_SUBJECT,
 } from '../../lib/studentTools';
-import { queueCoachUpdate } from '../../lib/coachRankUpdate';
 import { COACH_FILE_HINT, COACH_FILE_LABEL } from '../../lib/studentHubMenu';
-import { saveInboxPass } from '../../lib/studentInboxClient';
 import { setStudentProfile } from '../../lib/studentEdition';
 import { writeStudentGymLogo } from '../../lib/studentGymMark';
 import { LeatherHeader, StudentMarks, useScrollToHash, useStudentFile, useStudentPath } from './chrome';
@@ -33,7 +29,6 @@ export function SharePage() {
   const to = useStudentPath();
   const { report, commit } = useStudentFile();
   useScrollToHash();
-  const [shelf, setShelf] = useState(() => loadCoachShelf(localStorage));
   const [includeCsv, setIncludeCsv] = useState(false);
   const [sendNote, setSendNote] = useState('');
   const [importNote, setImportNote] = useState('');
@@ -140,40 +135,28 @@ export function SharePage() {
                 event.target.value = '';
                 if (!file) return;
                 void file.text().then((text) => {
-                  const result = applyCoachFile(report, shelf, text);
-                  if (result.pendingReport) {
-                    setPendingOwn(result.pendingReport);
-                    setPendingGym(result.gym);
+                  const outcome = importCoachText(localStorage, report, text);
+                  if (outcome.kind === 'own-file') {
+                    setPendingOwn(outcome.pendingReport);
+                    setPendingGym(outcome.gym);
                     setError('');
                     setImportNote('');
                     setSendNote('');
-                    return;
-                  }
-                  if (result.pendingRankUpdate || result.pendingCompetitionUpdate) {
-                    const pending = result.pendingRankUpdate ?? result.pendingCompetitionUpdate;
-                    if (pending) queueCoachUpdate(localStorage, pending);
-                    if (result.inboxPass) saveInboxPass(localStorage, result.inboxPass);
-                    setPendingOwn(null);
-                    setPendingGym(null);
-                    setError('');
-                    setSendNote('');
-                    setImportNote(result.message);
                     return;
                   }
                   setPendingOwn(null);
                   setPendingGym(null);
-                  if (result.error) {
-                    setError(result.error);
+                  if (outcome.kind === 'error') {
+                    setError(outcome.error);
                     setImportNote('');
                     return;
                   }
-                  if (result.gym?.logo) writeStudentGymLogo(result.gym.logo);
-                  if (result.report !== report) commit(result.report);
-                  saveCoachShelf(localStorage, result.shelf);
-                  setShelf(result.shelf);
+                  if (outcome.kind === 'applied') {
+                    if (outcome.report !== report) commit(outcome.report);
+                  }
                   setError('');
                   setSendNote('');
-                  setImportNote(result.message);
+                  setImportNote(outcome.message);
                 });
               }}
             />

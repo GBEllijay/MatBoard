@@ -90,6 +90,19 @@ export type Student = {
    * 0 means the coach saved the belt with no stripe. This is not a checklist.
    */
   stripes?: number;
+  /**
+   * Coach sync for this student. Omitted means on (older cards keep sending).
+   * 'off' keeps the card fully local: no rank, competition, belt progress,
+   * assessment, or photo packet is offered or sent by any route.
+   */
+  coachSync?: 'off';
+  /**
+   * When true, a profile photo the student sends needs a parent's approval
+   * before the head coach may approve it. Omitted means off.
+   */
+  parentPhotoApproval?: true;
+  /** Approved photo the head coach chose for this card. Omitted until one is chosen. */
+  cardPhotoId?: string;
 };
 
 /** Weekend checklist items. Missing or false means Off. */
@@ -559,7 +572,16 @@ export function normalizeStudent(raw: unknown): Student | null {
   if (isStableStudentId(guestId) || /^guest-[A-Za-z0-9._-]{1,74}$/.test(guestId)) card.guestId = guestId;
   const stripes = clipStripes(row.stripes);
   if (stripes !== undefined) card.stripes = stripes;
+  copySyncSettings(row, card);
   return card;
+}
+
+const CARD_PHOTO_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/;
+
+function copySyncSettings(from: Partial<Student>, to: Student): void {
+  if (from.coachSync === 'off') to.coachSync = 'off';
+  if (from.parentPhotoApproval === true) to.parentPhotoApproval = true;
+  if (typeof from.cardPhotoId === 'string' && CARD_PHOTO_ID_RE.test(from.cardPhotoId)) to.cardPhotoId = from.cardPhotoId;
 }
 
 function readyIsBlank(ready: CompetitorReady): boolean {
@@ -873,7 +895,37 @@ function preserveRosterCard(current: Student, next: Student, draft: Partial<Stud
   if (current.guestId) card.guestId = current.guestId;
   const stripes = draft.stripes !== undefined ? clipStripes(draft.stripes) : current.stripes;
   if (stripes !== undefined) card.stripes = stripes;
+  copySyncSettings(current, card);
   return card;
+}
+
+/**
+ * Per-student coach sync switches. Only these fields change.
+ * Turning sync off sends nothing; it does not delete anything already sent.
+ */
+export function setCardSyncSettings(
+  id: string,
+  settings: { coachSync?: 'on' | 'off'; parentPhotoApproval?: boolean },
+): Student | null {
+  const current = state.students.find((row) => row.id === id);
+  if (!current) return null;
+  const next: Student = { ...current };
+  if (settings.coachSync === 'off') next.coachSync = 'off';
+  if (settings.coachSync === 'on') delete next.coachSync;
+  if (settings.parentPhotoApproval === true) next.parentPhotoApproval = true;
+  if (settings.parentPhotoApproval === false) delete next.parentPhotoApproval;
+  commit(state.students.map((row) => (row.id === id ? next : row)));
+  return next;
+}
+
+/** The head coach picked an approved photo for this card. The image stays on this device. */
+export function setCardPhoto(id: string, photoId: string, image: string): Student | null {
+  const current = state.students.find((row) => row.id === id);
+  if (!current || !CARD_PHOTO_ID_RE.test(photoId)) return null;
+  if (!/^data:image\/(?:jpeg|png|webp);base64,/.test(image)) return null;
+  const next: Student = { ...current, photo: image, cardPhotoId: photoId };
+  commit(state.students.map((row) => (row.id === id ? next : row)));
+  return next;
 }
 
 /** One-time: this competitor card is the same person as a Student Roster card. */

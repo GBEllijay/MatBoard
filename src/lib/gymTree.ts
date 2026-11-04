@@ -26,6 +26,7 @@ export const GYM_PURPOSES = [
   'handoff-review',
   'technique-tree',
   'roster',
+  'student-photo',
 ] as const;
 export type GymPurpose = (typeof GYM_PURPOSES)[number];
 
@@ -151,7 +152,8 @@ export function routeUpload(input: {
   const purpose = input.purpose;
   if (purpose === 'gallery' && input.role === 'student') return { ok: false, reason: 'students-no-gallery' };
   if (purpose === 'gallery' && input.role === 'none') return { ok: false, reason: 'role-hidden' };
-  if (purpose === 'daily-video' && (input.role === 'student' || input.role === 'program-director' || input.role === 'none')) {
+  // A program director may drop a video in the day's daily videos for instructors. Lesson plans stay closed.
+  if (purpose === 'daily-video' && (input.role === 'student' || input.role === 'none')) {
     return { ok: false, reason: input.role === 'student' ? 'students-no-daily-video' : 'role-hidden' };
   }
   if (purpose === 'lesson' && (input.role === 'student' || input.role === 'program-director' || input.role === 'none')) {
@@ -242,6 +244,22 @@ export function routeUpload(input: {
       kind: 'json',
       fileName: `${input.dateKey}.json`,
       path: `students/${code}/from-instructor/${input.dateKey}.json`,
+    };
+  }
+
+  if (purpose === 'student-photo') {
+    // Head coach only, after an explicit publish. Never an automatic upload.
+    if (input.role !== 'owner' && input.role !== 'instructor') return { ok: false, reason: 'role-hidden' };
+    const code = safePathSegment(input.studentCode ?? '', '');
+    if (!code) return { ok: false, reason: 'missing-student-code' };
+    const fileName = fileNameOf(input.fileName, 'student-photo');
+    return {
+      ok: true,
+      purpose,
+      lane: null,
+      kind: 'photo',
+      fileName,
+      path: `students/${code}/photos/approved/${fileName}`,
     };
   }
 

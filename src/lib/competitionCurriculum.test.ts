@@ -176,8 +176,12 @@ test('the curriculum page keeps the requested copy and does not edit Daily Lesso
   assert.equal(CURRICULUM_ADD_EXAMPLES, 'Cardio, Bag Work, Sparring');
   assert.match(page, /Competition Class Designation/);
   assert.match(page, /Open round timer/);
-  assert.match(page, /Timer only/);
-  assert.match(page, /Looping video/);
+  // Mode labels live in competitionCurriculum.ts (Timer only / Looping video / Record for replay).
+  assert.match(page, /CURRICULUM_TIMING_LABELS\[timing\]/);
+  const lib = readFileSync(new URL('./competitionCurriculum.ts', import.meta.url), 'utf8');
+  assert.match(lib, /Timer only/);
+  assert.match(lib, /Looping video/);
+  assert.match(lib, /Record for replay/);
   assert.match(page, /techniquesPathForCurriculum/);
   assert.doesNotMatch(page, /function LoopOverlay/);
   const videos = readFileSync(new URL('../pages/Techniques.tsx', import.meta.url), 'utf8');

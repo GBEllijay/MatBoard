@@ -2,12 +2,20 @@ import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { DeviceMediaInput } from '../../components/DeviceMediaInput';
+import { SendPhotoToCoach } from '../../components/SendPhotoToCoach';
 import { beltModeOf } from '../../lib/beltBook';
 import { PHOTO_PICKER_ACCEPT } from '../../lib/mediaPicker';
 import { headerVisibility, readProfileMarks, writeProfileMark, type ProfileMark } from '../../lib/profileMarks';
 import { clearProfilePortrait, portraitFromFile, readProfilePortrait, saveProfilePortrait } from '../../lib/profilePortrait';
 import { quotaAddNote } from '../../lib/storageQuota';
-import { clearStudentGymLogo, readStudentGymLogo, saveStudentGymLogoFile } from '../../lib/studentGymMark';
+import {
+  chooseStudentLogo,
+  clearStudentGymLogo,
+  readGymLogoSync,
+  readStudentGymLogo,
+  saveStudentGymLogoFile,
+  studentLogoChoice,
+} from '../../lib/studentGymMark';
 import type { StudentProgressReport } from '../../lib/progress/types';
 import { useStudentPath } from './chrome';
 
@@ -81,8 +89,22 @@ export function useProfileMedia() {
     },
     removeLogo: () => {
       clearStudentGymLogo();
+      chooseStudentLogo('default');
       setLogo(null);
       remember('Gym logo removed from this phone.');
+    },
+    /** Shown when the gym has sent a logo. Reverts to it at any time. */
+    gymLogoAvailable: Boolean(readGymLogoSync().latest),
+    logoChoice: studentLogoChoice(),
+    useGymLogo: () => {
+      chooseStudentLogo('gym');
+      setLogo(readStudentGymLogo());
+      remember('Showing your gym logo.');
+    },
+    useAdvantageDefault: () => {
+      chooseStudentLogo('default');
+      setLogo(null);
+      remember('Showing the Advantage logo.');
     },
     portraitCapture,
     portraitLibrary,
@@ -138,6 +160,7 @@ export function ProfileMedia({ media, kids = false }: { media: ReturnType<typeof
             </button>
           ) : null}
         </div>
+        <SendPhotoToCoach portrait={portrait} />
       </section>
 
       <section className="profile-card profile-logo" aria-label="Gym logo">
@@ -155,6 +178,16 @@ export function ProfileMedia({ media, kids = false }: { media: ReturnType<typeof
           {logo ? (
             <button type="button" className="profile-action profile-action--quiet" onClick={removeLogo}>
               Remove logo
+            </button>
+          ) : null}
+          {media.gymLogoAvailable && media.logoChoice !== 'gym' ? (
+            <button type="button" className="profile-action profile-action--quiet" onClick={media.useGymLogo}>
+              Use my gym logo
+            </button>
+          ) : null}
+          {logo ? (
+            <button type="button" className="profile-action profile-action--quiet" onClick={media.useAdvantageDefault}>
+              Use Advantage logo
             </button>
           ) : null}
         </div>

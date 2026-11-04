@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import {
   DRIVE_PICK_BESIDE_PHOTOS,
   PICK_FROM_DRIVE_LABEL,
@@ -36,6 +37,8 @@ type Props = {
   onPickDrive?: () => void;
   /** Media Console. Opens the connected Google Photos library. */
   onPickPhotos?: () => void;
+  /** Shown under the stay line, above the picks. Media Console uses it for where a video goes. */
+  children?: ReactNode;
   onClose: () => void;
 };
 
@@ -84,6 +87,7 @@ export function MediaSourceSheet({
   driveConnectHint,
   onPickDrive,
   onPickPhotos,
+  children,
   onClose,
 }: Props) {
   const copy = COPY[kind];
@@ -93,6 +97,7 @@ export function MediaSourceSheet({
   return (
     <Sheet open={open} title={title} onClose={onClose} stacked={stacked}>
       <p className="saver-sound-hint">{stayLine}</p>
+      {children}
       <div className="outcome-picks" role="list">
         <label htmlFor={captureInputId} className="btn outcome-pick outcome-pick--submission">
           <strong>{photoAndVideo ? PHOTO_CAPTURE_LABEL : copy.capture}</strong>
