@@ -1,0 +1,266 @@
+/* Arcade cards, VS, and fighters. The page grid lives in poster.css so it wins the shared rows. */
+
+.skin-root.skin-root--arcade .row {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto 1fr;
+  grid-template-rows: auto 1fr auto;
+  align-content: stretch;
+  gap: 0.8vh 0.6vh;
+  padding: 1vh;
+  min-height: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.skin-root.skin-root--arcade .id {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.5vh 1vh;
+  align-items: center;
+  width: 100%;
+  background: rgba(10, 10, 22, 0.88);
+  border: 0.35vh solid #1c46cc;
+  padding: 0.8vh;
+}
+
+.skin-root.skin-root--arcade .row.c2 .id {
+  border-color: #f4f6fb;
+}
+
+.skin-root.skin-root--arcade .row.c1 {
+  grid-template-columns: auto auto auto minmax(0, 1fr);
+}
+.skin-root.skin-root--arcade .row.c2 {
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+}
+.skin-root.skin-root--arcade .row.c1 .pts { grid-column: 1; grid-row: 3; }
+.skin-root.skin-root--arcade .row.c2 .pts { grid-column: 2; grid-row: 3; }
+.skin-root.skin-root--arcade .row.c1 .adv { grid-column: 2; grid-row: 3; }
+.skin-root.skin-root--arcade .row.c2 .adv { grid-column: 3; grid-row: 3; }
+.skin-root.skin-root--arcade .row.c1 .pen { grid-column: 3; grid-row: 3; }
+.skin-root.skin-root--arcade .row.c2 .pen { grid-column: 4; grid-row: 3; }
+
+.skin-root.skin-root--arcade .tile {
+  width: max-content;
+  min-width: 12vh;
+  height: auto;
+  min-height: 0;
+  padding: 0.4vh 0.6vh 0.6vh;
+  flex: none;
+}
+
+.skin-root.skin-root--arcade .num,
+.skin-root.skin-root--arcade .row .tile .num {
+  font-size: 9vh;
+  line-height: 0.85;
+}
+
+.skin-root.skin-root--arcade .lab {
+  font-size: 2.2vh;
+}
+
+.skin-root.skin-root--arcade .ptag {
+  font-family: Kanit, sans-serif;
+  font-weight: 800;
+}
+
+.skin-root.skin-root--arcade .sil {
+  grid-row: 1 / span 3;
+  grid-column: 1;
+  margin-top: 3.2vh;
+  width: 7vh;
+  height: 9vh;
+  max-height: none;
+  background: currentColor;
+  clip-path: polygon(30% 0, 70% 0, 78% 18%, 62% 22%, 88% 100%, 12% 100%, 38% 22%, 22% 18%);
+}
+
+.skin-root.skin-root--arcade .c1 .sil { color: #1c46cc; }
+.skin-root.skin-root--arcade .c2 .sil { color: #f4f6fb; }
+
+.skin-root.skin-root--arcade .ptag { grid-row: 1; grid-column: 1; }
+.skin-root.skin-root--arcade .side { grid-column: 2; grid-row: 1; }
+.skin-root.skin-root--arcade .name { grid-column: 2; grid-row: 2; font-size: 3.4vh; }
+.skin-root.skin-root--arcade .meta { grid-column: 2; grid-row: 3; }
+
+.skin-root.skin-root--arcade .band {
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-areas:
+    'vs vs'
+    'clock clock'
+    'open paused'
+    'pips pips';
+  justify-content: center;
+  align-content: center;
+  justify-items: center;
+  gap: 0.8vh 1.2vh;
+  padding: 0;
+  margin: 0;
+}
+
+.skin-root.skin-root--arcade .vs {
+  grid-area: vs;
+  justify-self: center;
+  font-size: 3.6vh;
+}
+
+.skin-root.skin-root--arcade .pips {
+  grid-area: pips;
+  justify-self: center;
+}
+
+.skin-root.skin-root--arcade .plate {
+  grid-area: clock;
+  height: auto;
+  min-height: 0;
+  margin: 0;
+}
+
+.skin-root.skin-root--arcade .band .state {
+  grid-area: open;
+  margin: 0;
+  justify-self: end;
+}
+
+.skin-root.skin-root--arcade .band .status {
+  grid-area: paused;
+  margin: 0;
+  justify-self: start;
+}
+
+.skin-root.skin-root--arcade .fighter {
+  position: absolute;
+  bottom: 0;
+  width: 26vh;
+  height: 86vh;
+  z-index: 2;
+  pointer-events: none;
+  background-position: center bottom;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+.skin-root.skin-root--arcade .fighter.f1 {
+  left: 0.4vh;
+  background-image: url(./assets/arcade-fighter/fighter-blue.webp);
+}
+.skin-root.skin-root--arcade .fighter.f2 {
+  right: 0.4vh;
+  background-image: url(./assets/arcade-fighter/fighter-white.webp);
+}
+
+@media (orientation: portrait) {
+  .skin-root.skin-root--arcade .row,
+  .skin-root.skin-root--arcade .row.c1,
+  .skin-root.skin-root--arcade .row.c2 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: auto minmax(0, 18%) auto;
+    background: #0a0a16;
+    border: 0.4vh solid #1c46cc;
+    overflow: hidden;
+  }
+
+  .skin-root.skin-root--arcade .row.c1 .pts,
+  .skin-root.skin-root--arcade .row.c2 .pts { grid-column: 1; }
+  .skin-root.skin-root--arcade .row.c1 .adv,
+  .skin-root.skin-root--arcade .row.c2 .adv { grid-column: 2; }
+  .skin-root.skin-root--arcade .row.c1 .pen,
+  .skin-root.skin-root--arcade .row.c2 .pen { grid-column: 3; }
+
+  .skin-root.skin-root--arcade .row.c2 { border-color: #f4f6fb; }
+
+  .skin-root.skin-root--arcade .sil { display: none; }
+
+  .skin-root.skin-root--arcade .row::after {
+    content: '';
+    grid-row: 2;
+    grid-column: 1 / -1;
+    justify-self: center;
+    align-self: center;
+    width: auto;
+    height: 100%;
+    aspect-ratio: 7 / 9;
+    background: #1c46cc;
+    clip-path: polygon(30% 0, 70% 0, 78% 18%, 62% 22%, 88% 100%, 12% 100%, 38% 22%, 22% 18%);
+  }
+
+  .skin-root.skin-root--arcade .row.c2::after { background: #f4f6fb; }
+
+  .skin-root.skin-root--arcade .pts,
+  .skin-root.skin-root--arcade .adv,
+  .skin-root.skin-root--arcade .pen {
+    grid-row: 3;
+  }
+
+  .skin-root.skin-root--poster.skin-root--arcade .row .lab {
+    flex: none;
+    font-size: min(1.6vh, 2.4vw);
+    letter-spacing: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  .skin-root.skin-root--poster.skin-root--arcade .row .tile {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    height: 100%;
+    min-height: 12vh;
+    overflow: hidden;
+  }
+
+  .skin-root.skin-root--arcade .tile {
+    width: 100%;
+  }
+
+  .skin-root.skin-root--arcade .row .tile .num {
+    font-size: min(4.8vh, 7vw);
+    line-height: 0.9;
+  }
+}
+
+@media (max-width: 820px) {
+  .skin-root.skin-root--poster.skin-root--arcade .adv .lab {
+    font-size: 0;
+    line-height: 0;
+  }
+  .skin-root.skin-root--poster.skin-root--arcade .adv .lab::after {
+    content: 'ADV';
+    font-size: min(1.8vh, 2.6vw);
+    line-height: 1;
+  }
+}
+
+@media (max-width: 480px) {
+  .skin-root.skin-root--arcade .row.c1,
+  .skin-root.skin-root--arcade .row.c2 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .skin-root.skin-root--arcade .id,
+  .skin-root.skin-root--arcade .name,
+  .skin-root.skin-root--arcade .meta {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+  .skin-root.skin-root--arcade .row.c1 .pts,
+  .skin-root.skin-root--arcade .row.c2 .pts { grid-column: 1; }
+  .skin-root.skin-root--arcade .row.c1 .adv,
+  .skin-root.skin-root--arcade .row.c2 .adv { grid-column: 2; }
+  .skin-root.skin-root--arcade .row.c1 .pen,
+  .skin-root.skin-root--arcade .row.c2 .pen { grid-column: 3; }
+  .skin-root.skin-root--poster.skin-root--arcade .pts .lab,
+  .skin-root.skin-root--poster.skin-root--arcade .pen .lab,
+  .skin-root.skin-root--poster.skin-root--arcade .adv .lab {
+    font-size: 0;
+    line-height: 0;
+  }
+  .skin-root.skin-root--poster.skin-root--arcade .pts .lab::after { content: 'PTS'; font-size: min(1.8vh, 3.2vw); line-height: 1; }
+  .skin-root.skin-root--poster.skin-root--arcade .pen .lab::after { content: 'PEN'; font-size: min(1.8vh, 3.2vw); line-height: 1; }
+  .skin-root.skin-root--poster.skin-root--arcade .adv .lab::after { content: 'ADV'; font-size: min(1.8vh, 3.2vw); line-height: 1; }
+}

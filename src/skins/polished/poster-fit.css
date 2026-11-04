@@ -319,4 +319,116 @@
   .skin-root.skin-root--poster .phase-endless {
     display: none;
   }
+
+  /* Dungeon and Mech: the short pill sits in the gap under the crest, and the title moves below it. */
+  .skin-root[data-skin='dungeon-quest'] .tm .phase,
+  .skin-root[data-skin='mech-battle'] .tm .phase {
+    position: absolute;
+    top: 18.6vh;
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    margin: 0;
+    max-width: 70vw;
+    text-align: center;
+    z-index: 6;
+  }
+
+  .skin-root[data-skin='dungeon-quest'] .tm .title,
+  .skin-root[data-skin='mech-battle'] .tm .title {
+    top: 25vh;
+  }
+
+  .skin-root[data-skin='dungeon-quest'] .tm .dplate,
+  .skin-root[data-skin='mech-battle'] .tm .dplate {
+    top: 32vh;
+  }
+}
+
+/* Arcade portrait: the card keeps the scores, and the silhouette stays a quarter of the card. */
+@media (orientation: portrait) {
+  .skin-root.skin-root--poster.skin-root--arcade .sb {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto minmax(0, 1fr);
+    padding: calc(0.4rem + 2.6rem) 2.4vw 1.2vw;
+    overflow: hidden;
+  }
+
+  .skin-root.skin-root--poster.skin-root--arcade .hdr {
+    grid-row: 1;
+    grid-column: 1;
+  }
+
+  .skin-root.skin-root--poster.skin-root--arcade .row.c1 {
+    grid-row: 2;
+    grid-column: 1;
+  }
+
+  .skin-root.skin-root--poster.skin-root--arcade .band {
+    grid-row: 3;
+    grid-column: 1;
+  }
+
+  .skin-root.skin-root--poster.skin-root--arcade .row.c2 {
+    grid-row: 4;
+    grid-column: 1;
+  }
+
+  .skin-root.skin-root--poster.skin-root--arcade .fighter {
+    display: none;
+  }
+
+  .skin-root.skin-root--poster.skin-root--arcade .row {
+    min-height: 0;
+    overflow: hidden;
+    grid-template-rows: auto minmax(0, 18%) auto;
+    background: #0a0a16;
+    border-width: 0.4vh;
+  }
+
+  .skin-root.skin-root--poster.skin-root--arcade .sil {
+    display: none;
+  }
+
+  .skin-root.skin-root--poster.skin-root--arcade .row::after {
+    content: '';
+    grid-row: 2;
+    grid-column: 1 / -1;
+    justify-self: center;
+    align-self: center;
+    width: auto;
+    height: 100%;
+    aspect-ratio: 7 / 9;
+    background: #1c46cc;
+    clip-path: polygon(30% 0, 70% 0, 78% 18%, 62% 22%, 88% 100%, 12% 100%, 38% 22%, 22% 18%);
+  }
+
+  .skin-root.skin-root--poster.skin-root--arcade .row.c2::after {
+    background: #f4f6fb;
+  }
+
+  .skin-root.skin-root--poster.skin-root--arcade .pts,
+  .skin-root.skin-root--poster.skin-root--arcade .adv,
+  .skin-root.skin-root--poster.skin-root--arcade .pen {
+    grid-row: 3;
+  }
+
+  .skin-root.skin-root--poster.skin-root--arcade .row .tile .num {
+    font-size: min(8vh, 12vw);
+  }
+}
+
+@media (orientation: portrait) {
+  .skin-root.skin-root--poster[data-skin='dungeon-quest'] .sb {
+    padding-top: calc(0.4rem + 2.6rem);
+    grid-template-rows: auto minmax(0, 1fr) auto minmax(0, 1fr);
+  }
+
+  .skin-root[data-skin='dungeon-quest'] .name {
+    font-size: min(5.4vh, 7.2vw);
+  }
+
+  .skin-root[data-skin='dungeon-quest'] .row .tile .num {
+    font-size: min(13vh, 16vw);
+  }
 }

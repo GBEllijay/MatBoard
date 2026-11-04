@@ -1,0 +1,251 @@
+/* Dungeon Quest. Score digits are dark Anton on cream. Heading digits are Grenze, not Cinzel. */
+.skin-root[data-skin='dungeon-quest'] {
+  --ink: #1c1108;
+  --parch: #f1e2bc;
+  --gold: #e7c474;
+  --pts: #1e5b2c;
+  --adv: #1d3f8c;
+  --pen: #8c1a1a;
+  --crest: url(./assets/dungeon-quest/crest.webp);
+  font-family: Cinzel, serif;
+  background: #1a120c;
+  color: var(--ink);
+}
+
+.skin-root[data-skin='dungeon-quest'] .sb .bg {
+  background-image: linear-gradient(180deg, rgba(20, 12, 8, 0.35), rgba(20, 12, 8, 0.15) 30%, rgba(20, 12, 8, 0.55)),
+    url(./assets/dungeon-quest/bg@2560.webp);
+}
+
+.skin-root[data-skin='dungeon-quest'] .tm .bg {
+  background-image: radial-gradient(60% 60% at 50% 40%, rgba(8, 6, 4, 0.25), rgba(8, 6, 4, 0.55)),
+    url(./assets/dungeon-quest/timer-bg@2560.webp);
+}
+
+.skin-root[data-skin='dungeon-quest'] .num,
+.skin-root[data-skin='dungeon-quest'] .plate .clock .sk-btn,
+.skin-root[data-skin='dungeon-quest'] .tm .tm-clock {
+  font-family: Anton, sans-serif;
+  font-weight: 400;
+}
+
+.skin-root[data-skin='dungeon-quest'] .embers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.skin-root[data-skin='dungeon-quest'].skin-root--board .sb {
+  padding-top: 0.4vh;
+  grid-template-rows: auto minmax(0, 1fr) 13vh minmax(0, 1fr);
+}
+
+@media (min-width: 901px) {
+  .skin-root[data-skin='dungeon-quest'].skin-root--board .sb {
+    grid-template-rows: minmax(15vh, auto) minmax(0, 1fr) 13vh minmax(0, 1fr);
+  }
+}
+
+.skin-root[data-skin='dungeon-quest'] .row {
+  align-self: stretch;
+  height: auto;
+}
+
+.skin-root[data-skin='dungeon-quest'] .hdr {
+  align-self: start;
+}
+
+.skin-root[data-skin='dungeon-quest'] .tile {
+  container-type: size;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.skin-root[data-skin='dungeon-quest'] .num {
+  color: var(--ink);
+  -webkit-text-fill-color: var(--ink);
+  text-shadow: none;
+  font-size: 14vh;
+  font-size: 72cqh;
+  line-height: 1;
+}
+
+.skin-root[data-skin='dungeon-quest'] .row { overflow: hidden; }
+.skin-root[data-skin='dungeon-quest'] .plate { height: 11vh; }
+.skin-root[data-skin='dungeon-quest'] .plate .clock .sk-btn { font-size: 7.2vh; }
+
+.skin-root[data-skin='dungeon-quest'] .die {
+  position: absolute;
+  top: calc(50% + 1.6vh);
+  width: 7.4vh;
+  height: 7.4vh;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.skin-root[data-skin='dungeon-quest'] .die.l { left: calc(50% - 30vh); transform: rotate(-10deg); }
+.skin-root[data-skin='dungeon-quest'] .die.r { right: calc(50% - 30vh); transform: rotate(12deg); }
+.skin-root[data-skin='dungeon-quest'] .die svg { width: 100%; height: 100%; display: block; }
+.skin-root[data-skin='dungeon-quest'] .die b {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 42%;
+  text-align: center;
+  font-family: Grenze, serif;
+  font-weight: 800;
+  font-size: 2.4vh;
+  color: #fff3d6;
+}
+
+.skin-root[data-skin='dungeon-quest'] .torch {
+  position: absolute;
+  top: 42%;
+  width: 28vh;
+  height: 16vh;
+  margin-top: -8vh;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(closest-side, rgba(255, 150, 50, 0.35), transparent 70%);
+}
+
+.skin-root[data-skin='dungeon-quest'] .torch.l { left: calc(50% - 42vh); }
+.skin-root[data-skin='dungeon-quest'] .torch.r { right: calc(50% - 42vh); }
+
+.skin-root[data-skin='dungeon-quest'] .tm .phase {
+  font-family: Anton, sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+}
+
+.skin-root[data-skin='dungeon-quest'] .n {
+  font-family: Grenze, serif;
+  font-weight: 800;
+  color: var(--gold);
+  -webkit-text-fill-color: var(--gold);
+}
+
+.skin-root[data-skin='dungeon-quest'] .wm,
+.skin-root[data-skin='dungeon-quest'] .hdr .mat,
+.skin-root[data-skin='dungeon-quest'] .hdr .mat a,
+.skin-root[data-skin='dungeon-quest'] .tm .title {
+  font-family: 'Cinzel Decorative', Cinzel, serif;
+  color: var(--gold);
+  -webkit-text-fill-color: var(--gold);
+  text-shadow: 0 0.25vh 0 #000;
+}
+
+.skin-root[data-skin='dungeon-quest'] .name {
+  font-family: 'Big Shoulders Display', sans-serif;
+  font-weight: 900;
+  color: var(--ink);
+  -webkit-text-fill-color: var(--ink);
+  font-size: 6.6vh;
+}
+
+@media (max-width: 1100px) {
+  .skin-root[data-skin='dungeon-quest'] .name {
+    font-size: min(4.6vh, 4.8vw);
+  }
+}
+
+@media (max-width: 900px) {
+  .skin-root[data-skin='dungeon-quest'].skin-root--board .sb {
+    grid-template-rows: auto minmax(0, 1fr) auto minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .skin-root[data-skin='dungeon-quest'] .die {
+    display: none;
+  }
+}
+
+.skin-root[data-skin='dungeon-quest'] .side b,
+.skin-root[data-skin='dungeon-quest'] .belt,
+.skin-root[data-skin='dungeon-quest'] .gym,
+.skin-root[data-skin='dungeon-quest'] .band .state,
+.skin-root[data-skin='dungeon-quest'] .band .sk-btn,
+.skin-root[data-skin='dungeon-quest'] .lab {
+  font-family: Oswald, sans-serif;
+}
+
+.skin-root[data-skin='dungeon-quest'] .hdr .div {
+  font-family: Cinzel, serif;
+  color: #f6edd4;
+  background: #2a1c10;
+  border: 0.2vh solid var(--gold);
+}
+
+.skin-root[data-skin='dungeon-quest'] .row {
+  background: linear-gradient(180deg, rgba(255, 248, 230, 0.2), rgba(90, 60, 30, 0.15)), url(./assets/dungeon-quest/parchment@2560.webp) center / cover;
+  border: 0.7vh solid #5c3b22;
+  border-radius: 0.6vh;
+  box-shadow: inset 0 0 0 0.35vh #e7c474, 0 0.6vh 0 #2a1a0e;
+}
+
+.skin-root[data-skin='dungeon-quest'] .c1 .rail { background: #1c46cc; }
+.skin-root[data-skin='dungeon-quest'] .c2 .rail { background: #f4f1ea; border: 0.2vh solid #0e1726; }
+
+.skin-root[data-skin='dungeon-quest'] .c1 .side b { background: #1c46cc; color: #fff; border-radius: 0.4vh; }
+.skin-root[data-skin='dungeon-quest'] .c2 .side b { background: #fff; color: #0e1726; box-shadow: inset 0 0 0 0.18vh #0e1726; border-radius: 0.4vh; }
+
+.skin-root[data-skin='dungeon-quest'] .gym { color: #3a2410; }
+.skin-root[data-skin='dungeon-quest'] .belt { background: #1c46cc; color: #fff; border-radius: 0.4vh; }
+
+.skin-root[data-skin='dungeon-quest'] .tile {
+  background: #fbf3de;
+  border-radius: 0.5vh;
+  box-shadow: inset 0 0 0 0.35vh var(--c, #5c3b22);
+}
+
+.skin-root[data-skin='dungeon-quest'] .pts { --c: var(--pts); }
+.skin-root[data-skin='dungeon-quest'] .adv { --c: var(--adv); }
+.skin-root[data-skin='dungeon-quest'] .pen { --c: var(--pen); }
+
+.skin-root[data-skin='dungeon-quest'] .lab {
+  color: #fff;
+  background: var(--c);
+  width: 100%;
+  text-align: center;
+  padding: 0.5vh 0;
+  font-size: 2vh;
+}
+
+.skin-root[data-skin='dungeon-quest'] .plate {
+  background: #0f0b07;
+  border-radius: 0.8vh;
+  box-shadow: inset 0 0 0 0.35vh var(--gold), 0 0.5vh 0 #000;
+}
+
+.skin-root[data-skin='dungeon-quest'] .plate .clock .sk-btn,
+.skin-root[data-skin='dungeon-quest'] .tm .tm-clock {
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+}
+
+.skin-root[data-skin='dungeon-quest'] .band .state {
+  background: #f6edd4;
+  color: var(--ink);
+  box-shadow: inset 0 0 0 0.2vh var(--gold);
+}
+
+.skin-root[data-skin='dungeon-quest'] .band .status .sk-btn {
+  background: #8c1a1a;
+  color: #fff;
+  box-shadow: inset 0 0 0 0.2vh var(--gold);
+}
+
+.skin-root[data-skin='dungeon-quest'] .tm .title { font-size: 5.4vh; }
+.skin-root[data-skin='dungeon-quest'] .tm .dplate {
+  background: #0f0b07;
+  border-radius: 1vh;
+  box-shadow: inset 0 0 0 0.45vh var(--gold);
+}
+.skin-root[data-skin='dungeon-quest'] .tm .phase { background: #8c1a1a; color: #fff; box-shadow: inset 0 0 0 0.2vh var(--gold); }
+.skin-root[data-skin='dungeon-quest'] .tm.rest .phase { background: #1d3f8c; }
+.skin-root[data-skin='dungeon-quest'] .tm .meter { background: #1a120c; box-shadow: inset 0 0 0 0.25vh var(--gold); }
+.skin-root[data-skin='dungeon-quest'] .tm .meter .fill { background: linear-gradient(90deg, #8c1a1a, #c4482a); }
+.skin-root[data-skin='dungeon-quest'] .tm.rest .meter .fill { background: linear-gradient(90deg, #1d3f8c, #2d5bd8); }
+.skin-root[data-skin='dungeon-quest'] .tm .next { color: var(--gold); font-family: Cinzel, serif; letter-spacing: 0.12em; }

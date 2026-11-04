@@ -1,0 +1,5 @@
+@font-face { font-family: Oxanium; font-style: normal; font-weight: 800; font-display: swap; src: url('./oxanium/oxanium-latin-800-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Saira SemiCondensed'; font-style: normal; font-weight: 800; font-display: swap; src: url('./saira-semi-condensed/saira-semi-condensed-latin-800-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Russo One'; font-style: normal; font-weight: 400; font-display: swap; src: url('./russo-one/russo-one-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Chakra Petch'; font-style: normal; font-weight: 600; font-display: swap; src: url('./chakra-petch/chakra-petch-latin-600-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Chakra Petch'; font-style: normal; font-weight: 700; font-display: swap; src: url('./chakra-petch/chakra-petch-latin-700-normal.woff2') format('woff2'); }

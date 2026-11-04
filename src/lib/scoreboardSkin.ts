@@ -45,6 +45,9 @@ export const SCOREBOARD_SKIN = {
   CREATURE_ANIME: 'CREATURE_ANIME',
   IDOL_HUNTERS: 'IDOL_HUNTERS',
   SHINOBI_ANIME: 'SHINOBI_ANIME',
+  DUNGEON_QUEST: 'DUNGEON_QUEST',
+  MECH_BATTLE: 'MECH_BATTLE',
+  ARCADE_FIGHTER: 'ARCADE_FIGHTER',
 } as const;
 
 export type ScoreboardSkinId = (typeof SCOREBOARD_SKIN)[keyof typeof SCOREBOARD_SKIN];
@@ -103,6 +106,9 @@ const SKIN_CLASS: Record<ScoreboardSkinId, string> = {
   [SCOREBOARD_SKIN.CREATURE_ANIME]: 'scoreboard-skin--mock-tournament',
   [SCOREBOARD_SKIN.IDOL_HUNTERS]: 'scoreboard-skin--mock-tournament',
   [SCOREBOARD_SKIN.SHINOBI_ANIME]: 'scoreboard-skin--mock-tournament',
+  [SCOREBOARD_SKIN.DUNGEON_QUEST]: 'scoreboard-skin--mock-tournament',
+  [SCOREBOARD_SKIN.MECH_BATTLE]: 'scoreboard-skin--mock-tournament',
+  [SCOREBOARD_SKIN.ARCADE_FIGHTER]: 'scoreboard-skin--mock-tournament',
 };
 
 /** Polished skins in picker order. Listed only for Media Edition and above. */

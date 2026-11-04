@@ -29,6 +29,9 @@ export const POLISHED_SKINS = [
   { slug: 'creature-anime', id: 'CREATURE_ANIME', label: 'Creature Anime' },
   { slug: 'idol-hunters', id: 'IDOL_HUNTERS', label: 'Idol Hunters' },
   { slug: 'shinobi-anime', id: 'SHINOBI_ANIME', label: 'Shinobi Anime' },
+  { slug: 'dungeon-quest', id: 'DUNGEON_QUEST', label: 'Dungeon Quest' },
+  { slug: 'mech-battle', id: 'MECH_BATTLE', label: 'Mech Battle' },
+  { slug: 'arcade-fighter', id: 'ARCADE_FIGHTER', label: 'Arcade Fighter' },
 ] as const;
 
 /** 05b Calçadão: a Brasil variant the mock draws for the round timer only (no scoreboard). */

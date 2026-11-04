@@ -1,0 +1,87 @@
+/* Arcade Fighter colors. Digits stay solid white Anton. Layout is arcade-layout.css. */
+.skin-root[data-skin='arcade-fighter'] {
+  --pts: #ffd23f;
+  --adv: #35e0ff;
+  --pen: #ff6b78;
+  --blue: #1c46cc;
+  font-family: Kanit, sans-serif;
+  background: #07060c;
+  color: #fff;
+}
+
+.skin-root[data-skin='arcade-fighter'] .sb .bg {
+  background-image: radial-gradient(70% 70% at 50% 45%, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.55)),
+    url(./assets/arcade-fighter/bg@2560.webp);
+}
+
+.skin-root[data-skin='arcade-fighter'] .tm .bg {
+  background-image: radial-gradient(60% 60% at 50% 50%, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.6)),
+    url(./assets/arcade-fighter/timer-bg@2560.webp);
+}
+
+.skin-root[data-skin='arcade-fighter'] .num,
+.skin-root[data-skin='arcade-fighter'] .plate .clock .sk-btn,
+.skin-root[data-skin='arcade-fighter'] .tm .tm-clock {
+  font-family: Anton, sans-serif;
+  font-weight: 400;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  text-shadow: none;
+}
+
+.skin-root[data-skin='arcade-fighter'] .wm { font-size: 2.2vh; flex: none; }
+.skin-root[data-skin='arcade-fighter'] .hdr .mat { font-size: 2vh; }
+
+.skin-root[data-skin='arcade-fighter'] .wm,
+.skin-root[data-skin='arcade-fighter'] .hdr .mat,
+.skin-root[data-skin='arcade-fighter'] .vs {
+  font-family: Bungee, sans-serif;
+  color: #fff;
+  text-shadow: 0.25vh 0.25vh 0 #000;
+}
+
+.skin-root[data-skin='arcade-fighter'] .name,
+.skin-root[data-skin='arcade-fighter'] .side b,
+.skin-root[data-skin='arcade-fighter'] .belt,
+.skin-root[data-skin='arcade-fighter'] .gym,
+.skin-root[data-skin='arcade-fighter'] .band .state,
+.skin-root[data-skin='arcade-fighter'] .band .sk-btn {
+  font-family: Kanit, sans-serif;
+}
+
+.skin-root[data-skin='arcade-fighter'] .lab,
+.skin-root[data-skin='arcade-fighter'] .ptag,
+.skin-root[data-skin='arcade-fighter'] .tm .title,
+.skin-root[data-skin='arcade-fighter'] .tm .next {
+  font-family: 'Press Start 2P', monospace;
+}
+
+.skin-root[data-skin='arcade-fighter'] .lab { font-size: 1.5vh; letter-spacing: 0; }
+.skin-root[data-skin='arcade-fighter'] .pts .lab { color: #111; background: var(--pts); }
+.skin-root[data-skin='arcade-fighter'] .adv .lab { color: #111; background: var(--adv); }
+.skin-root[data-skin='arcade-fighter'] .pen .lab { color: #111; background: var(--pen); }
+
+.skin-root[data-skin='arcade-fighter'] .tile { background: #07060c; }
+.skin-root[data-skin='arcade-fighter'] .num { font-size: 12vh; }
+
+.skin-root[data-skin='arcade-fighter'] .c1 .side b,
+.skin-root[data-skin='arcade-fighter'] .c1 .belt { background: var(--blue); color: #fff; border-radius: 0.3vh; }
+.skin-root[data-skin='arcade-fighter'] .c2 .side b { background: #fff; color: #0e1726; border-radius: 0.3vh; }
+.skin-root[data-skin='arcade-fighter'] .c2 .belt { background: #fff; color: #0e1726; border-radius: 0.3vh; }
+.skin-root[data-skin='arcade-fighter'] .gym { color: #d9dce8; }
+.skin-root[data-skin='arcade-fighter'] .name { color: #fff; font-size: 4.2vh; }
+
+.skin-root[data-skin='arcade-fighter'] .plate { background: #04030a; box-shadow: inset 0 0 0 0.4vh #ffd23f; }
+.skin-root[data-skin='arcade-fighter'] .band .state { background: #0a0a16; color: #fff; box-shadow: inset 0 0 0 0.18vh #ffd23f; }
+.skin-root[data-skin='arcade-fighter'] .band .status .sk-btn { background: #a10e18; color: #fff; }
+
+.skin-root[data-skin='arcade-fighter'] .tm .phase { background: #a10e18; color: #fff; font-family: Kanit, sans-serif; }
+.skin-root[data-skin='arcade-fighter'] .tm.rest .phase { background: #1c46cc; }
+.skin-root[data-skin='arcade-fighter'] .tm .title { font-size: 3.2vh; color: #ffd23f; }
+.skin-root[data-skin='arcade-fighter'] .tm .dplate { background: #04030a; box-shadow: inset 0 0 0 0.5vh #ffd23f; }
+.skin-root[data-skin='arcade-fighter'] .tm .meter { background: #0a0a16; }
+.skin-root[data-skin='arcade-fighter'] .tm .meter .fill { background: #ffd23f; }
+.skin-root[data-skin='arcade-fighter'] .tm.rest .meter .fill { background: #35e0ff; }
+.skin-root[data-skin='arcade-fighter'] .tm .next { color: #ffd23f; font-size: 1.6vh; letter-spacing: 0.08em; }
+.skin-root[data-skin='arcade-fighter'] .tm .t-l { background-image: url(./assets/arcade-fighter/fighter-blue.webp); height: 70vh; width: 28vh; }
+.skin-root[data-skin='arcade-fighter'] .tm .t-r { background-image: url(./assets/arcade-fighter/fighter-white.webp); height: 70vh; width: 28vh; }

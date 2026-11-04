@@ -37,6 +37,9 @@ const TIMER_SKINS = [
   ['creature-anime', 'Creature Anime'],
   ['idol-hunters', 'Idol Hunters'],
   ['shinobi-anime', 'Shinobi Anime'],
+  ['dungeon-quest', 'Dungeon Quest'],
+  ['mech-battle', 'Mech Battle'],
+  ['arcade-fighter', 'Arcade Fighter'],
 ] as const;
 
 /** [stored id, picker label, suite board]. Old School and Quick Result live on the suite board. */
@@ -56,6 +59,9 @@ const BOARD_SKINS = [
   ['CREATURE_ANIME', 'Creature Anime', false],
   ['IDOL_HUNTERS', 'Idol Hunters', false],
   ['SHINOBI_ANIME', 'Shinobi Anime', false],
+  ['DUNGEON_QUEST', 'Dungeon Quest', false],
+  ['MECH_BATTLE', 'Mech Battle', false],
+  ['ARCADE_FIGHTER', 'Arcade Fighter', false],
 ] as const;
 
 function trainingState() {
