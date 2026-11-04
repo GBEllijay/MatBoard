@@ -153,7 +153,7 @@ test('Competitor Roster copy names bout competitors and skips franchise disclaim
   );
   assert.equal(
     RANKINGS_RESULTS_CARD,
-    'Save and catalogue your tournament results. Keeps names, dates, divisions, placements, and win records for ranking calculations. Full auto-bracketing and seeding coming soon.',
+    'Save and catalogue your tournament results. Keeps names, dates, divisions, placements, and win records for ranking calculations. Full auto-bracketing and seeding is in alpha.',
   );
   assert.equal(
     ROSTER_LEAD_PRO,

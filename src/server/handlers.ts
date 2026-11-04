@@ -24,6 +24,7 @@ import {
   type UpgradePlan,
 } from './upgradeCredit.ts';
 import {
+  EXPECTED_CLOUD_MONTHLY_CENTS,
   EXPECTED_ONE_TIME_CENTS,
   checkoutFormFields,
   checkoutReturnUrls,
@@ -33,6 +34,9 @@ import {
   normalizePromoCode,
   purchaseFromStripeEvent,
   readCheckoutProduct,
+  isCloudAddonProduct,
+  readCloudAddon,
+  readCloudAddonCart,
   readStripeConfig,
   verifyStripeSignature,
   type StripeRuntimeEnv,
@@ -91,8 +95,13 @@ export async function handleCheckout(
   const halfOff = isHalfOffCheckoutFlag((body as { halfOff?: unknown }).halfOff);
   const product = readCheckoutProduct((body as { product?: unknown }).product);
   if (typeof product !== 'string') return json(400, { error: product.error });
+  const cloudFlag = readCloudAddon((body as { cloud?: unknown }).cloud, product);
+  if (typeof cloudFlag !== 'boolean') return json(400, { error: cloudFlag.error });
 
-  const config = readStripeConfig(env, product);
+  if (cloudFlag && !isCloudAddonProduct(product)) {
+    return json(400, { error: 'Advantage Cloud is an add-on for Media, Instructor, and Pro only. No charge was made.' });
+  }
+  const config = cloudFlag && isCloudAddonProduct(product) ? readCloudAddonCart(env, product) : readStripeConfig(env, product);
   if ('error' in config) return json(503, { error: config.error });
   const urls = checkoutReturnUrls(request.url, env, product);
   if ('error' in urls) return json(503, { error: urls.error });
@@ -120,10 +129,18 @@ export async function handleCheckout(
     }
     const expectedCents = EXPECTED_ONE_TIME_CENTS[product];
     if (expectedCents !== undefined) {
-      // Instructor: the page shows $49.99, so never open a session at any other amount.
+      // The page shows this amount, so never open a session at any other one-time amount.
       const price = plan.kind === 'credit' ? plan.price : await fetchOneTimePrice(config.secret, config.priceIds[0], fetchImpl);
       if (price.unitAmount !== expectedCents || price.currency.toLowerCase() !== 'usd') {
-        return json(503, { error: 'Instructor Edition checkout is not configured. No charge was made.' });
+        const name = product === 'coach' ? 'Instructor Edition' : product === 'media' ? 'Media Edition' : 'Advantage Pro';
+        return json(503, { error: `${name} checkout is not configured. No charge was made.` });
+      }
+    }
+    if (cloudFlag && isCloudAddonProduct(product)) {
+      // Per edition: Media Cloud is $2.99, Instructor and Pro Cloud are $5.99.
+      const monthly = await fetchOneTimePrice(config.secret, config.priceIds[1], fetchImpl);
+      if (monthly.unitAmount !== EXPECTED_CLOUD_MONTHLY_CENTS[product] || monthly.currency.toLowerCase() !== 'usd') {
+        return json(503, { error: 'Advantage Cloud checkout is not configured. No charge was made.' });
       }
     }
     let promotionCodeId: string | undefined;
@@ -168,6 +185,7 @@ export async function handleCheckout(
       clientReferenceId: typeof nonceHash === 'string' ? nonceHash.trim() : undefined,
       couponId,
       customerEmail: couponId && email ? email : undefined,
+      cloud: cloudFlag,
     });
     const session = await createCheckoutSession(config.secret, fields, fetchImpl);
     return json(200, { url: session.url, id: session.id });
@@ -267,7 +285,7 @@ export async function handleWebhook(
       .first<{ eventId: string }>();
     if (seen) return json(200, { received: true, duplicate: true });
   }
-  const parsed = purchaseFromStripeEvent(event);
+  const parsed = purchaseFromStripeEvent(event, env);
   if (parsed.action === 'invalid') return json(400, { error: 'Webhook event is not valid.' });
   if (parsed.action === 'ignore') return json(200, { received: true, ignored: true });
   if (parsed.action === 'retry') {
@@ -346,7 +364,21 @@ export async function handleWebhook(
     if (eventId && extras.db) {
       await extras.db.prepare(`INSERT OR IGNORE INTO stripe_events (event_id, received_at) VALUES (?, ?)`).bind(eventId, stamp).run();
     }
-    return json(200, { received: true, sessionId: stored.sessionId });
+    return json(200, { received: true, sessionId: stored.sessionId, ...(parsed.cloud ? { cloud: true } : {}) });
+  }
+  if (parsed.action === 'record-pro') {
+    const licenseId = await mirrorPurchase(extras, {
+      email: parsed.purchase.email,
+      product: API_PRODUCT_PRO,
+      source: 'stripe_payment',
+      sourceRef: parsed.purchase.sessionId,
+      sessionId: parsed.purchase.sessionId,
+      now: now(),
+    });
+    if (eventId && extras.db) {
+      await extras.db.prepare(`INSERT OR IGNORE INTO stripe_events (event_id, received_at) VALUES (?, ?)`).bind(eventId, stamp).run();
+    }
+    return json(200, { received: true, sessionId: parsed.purchase.sessionId, product: API_PRODUCT_PRO, licenseId });
   }
   if (parsed.action === 'record-media') {
     const record: MediaEntitlement = {
@@ -369,7 +401,7 @@ export async function handleWebhook(
     if (eventId && extras.db) {
       await extras.db.prepare(`INSERT OR IGNORE INTO stripe_events (event_id, received_at) VALUES (?, ?)`).bind(eventId, stamp).run();
     }
-    return json(200, { received: true, sessionId: stored.sessionId });
+    return json(200, { received: true, sessionId: stored.sessionId, ...(parsed.cloud ? { cloud: true } : {}) });
   }
   if (parsed.action === 'grant-pro') {
     const stored = await store.savePro({
@@ -397,7 +429,17 @@ export async function handleWebhook(
     if (eventId && extras.db) {
       await extras.db.prepare(`INSERT OR IGNORE INTO stripe_events (event_id, received_at) VALUES (?, ?)`).bind(eventId, stamp).run();
     }
-    return json(200, { received: true, sessionId: stored.sessionId, entitled: true });
+    return json(200, { received: true, sessionId: stored.sessionId, entitled: true, ...(parsed.cloud ? { cloud: true } : {}) });
+  }
+  if (parsed.action === 'sync-cloud') {
+    await rememberEvent(extras, eventId, stamp);
+    return json(200, {
+      received: true,
+      cloud: parsed.entitled,
+      edition: parsed.edition,
+      entitled: parsed.entitled,
+      pro: false,
+    });
   }
   if (parsed.action === 'revoke-onetime') {
     if (!parsed.revocation.revoke) {

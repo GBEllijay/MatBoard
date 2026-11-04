@@ -38,7 +38,7 @@ type StripeSession = {
   customer?: string | { id?: string };
   customer_details?: { email?: string };
   customer_email?: string;
-  metadata?: { product?: string };
+  metadata?: { product?: string; cloud?: string };
   subscription?: string | { id?: string };
 };
 
@@ -126,7 +126,7 @@ export async function handleSessionRedeem(
   if (!session.client_reference_id || session.client_reference_id !== nonceHash) return json(400, UNCONFIRMED);
 
   const stamp = now();
-  const source: PurchaseSource = product === API_PRODUCT_PRO ? 'stripe_subscription' : 'stripe_payment';
+  const source: PurchaseSource = session.mode === 'subscription' ? 'stripe_subscription' : 'stripe_payment';
   let licenseId: string = crypto.randomUUID();
   if (db) {
     const recorded = await recordPurchase(db, {
@@ -160,6 +160,8 @@ export async function handleSessionRedeem(
   }
   const doors = expandGrants(grants) as Door[];
   const hint = await emailHint(emailOf(session), pepper);
+  const cloud = session.metadata?.cloud === '1';
+  const subscription = session.mode === 'subscription';
   const token = await issueToken(
     env.ENTITLEMENT_SIGNING_KEY,
     {
@@ -169,10 +171,10 @@ export async function handleSessionRedeem(
       src: 'stripe',
       deviceId,
       now: stamp,
-      kind: product === API_PRODUCT_PRO ? 'pro' : 'onetime',
+      kind: product === API_PRODUCT_PRO && subscription ? 'pro' : 'onetime',
       emailHint: hint,
       thumbprint,
-      subs: product === API_PRODUCT_PRO ? { state: 'active' } : undefined,
+      subs: cloud ? { state: 'active', cloud: true } : product === API_PRODUCT_PRO && subscription ? { state: 'active' } : undefined,
       appVersion: appVersionOf(request),
     },
     env.ENTITLEMENT_KEY_ID,

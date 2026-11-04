@@ -113,7 +113,12 @@ export async function handleTokenRefresh(
     doors = doorsForRefresh(rows, view ? view.access.entitled : null);
     if (view) subs = claimForAccess(view.access);
     else if (doors.includes('pro')) subs = { state: 'active' };
+    else if (claims.subs?.cloud && doors.length) subs = { state: 'active', cloud: true };
     else subs = undefined;
+    // A locked or canceled subscription drops Cloud. An active one keeps it.
+    if ((subs?.state === 'active' || subs?.state === 'grace') && claims.subs?.cloud) {
+      subs = { ...subs, cloud: true };
+    }
     if (!doors.length && subs?.state !== 'locked') {
       return json(401, { ok: false, revoked: true, error: 'This access is no longer active.' });
     }
@@ -141,7 +146,7 @@ export async function handleTokenRefresh(
       subs:
         claims.src === 'owner'
           ? undefined
-          : claims.src === 'seat' || doors.includes('pro') || subs?.state === 'locked' || subs?.state === 'grace'
+          : claims.src === 'seat' || doors.includes('pro') || subs?.cloud === true || subs?.state === 'locked' || subs?.state === 'grace'
             ? subs
             : undefined,
       gym: claims.gym,

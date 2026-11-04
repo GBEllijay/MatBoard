@@ -89,7 +89,7 @@ test('Coach reads Instructor in this section, with the same code name, id and ro
   assert.equal(coach.cardPrice, '$29.99 one-time');
   assert.equal(rung.to, '/editions/instructor');
   assert.equal(coach.to, '/products');
-  assert.equal(rung.status, 'Coming soon');
+  assert.equal(rung.status, 'This product is in alpha');
   for (const r of STOREFRONT_BELT_LADDER) {
     assert.doesNotMatch(`${r.title} ${r.rankLabel} ${r.blurb} ${r.detail ?? ''}`, /Coach/);
   }
@@ -102,7 +102,7 @@ test('Coach reads Instructor in this section, with the same code name, id and ro
 test('every tier except Pro and Pro Plus Cloud is priced one-time; Pro is $99.99 + $5.99/mo; Cloud is $5.99/month', () => {
   assert.deepEqual(
     STOREFRONT_BELT_LADDER.map((r) => r.cardPrice),
-    ['$9.99 one-time', '$19.99 one-time', '$29.99 one-time', '$49.99 one-time', '$99.99 + $5.99/mo', '$5.99/month'],
+    ['$9.99 one-time', '$19.99 one-time', '$29.99 one-time', '$49.99 one-time', '$99.99 one-time', '$5.99/month'],
   );
   assert.deepEqual(
     STOREFRONT_BELT_LADDER.map((r) => r.detail ?? null),
@@ -145,7 +145,7 @@ test('White is unchanged; Pro keeps its title, price, belt and link with the own
   assert.doesNotMatch(pro.blurb, /Includes/);
   // The shared product copy (and its code name) is untouched.
   assert.match(proStep.blurb, /Includes Coach\.$/);
-  assert.equal(pro.cardPrice, '$99.99 + $5.99/mo');
+  assert.equal(pro.cardPrice, '$99.99 one-time');
   assert.equal(pro.to, '/editions/pro');
   // Pro is the plain red bar. Pro Plus Cloud keeps white | red | white. White keeps the live card.
   assert.match(tsx, /bar === 'striped' \? 'striped' : bar === 'red' \? 'red-bar' : color/);
@@ -156,7 +156,7 @@ test('White is unchanged; Pro keeps its title, price, belt and link with the own
   assert.ok(cloud);
   assert.equal(cloud.bar, 'striped');
   assert.equal(cloud.cardPrice, '$5.99/month');
-  assert.equal(cloud.status, 'Coming soon');
+  assert.equal(cloud.status, 'This product is in alpha');
   assert.equal(cloud.to, '/editions/pro-cloud');
   assert.equal(cloud.blurb, 'Advantage hosted cross-platform communication. Easiest way to use Advantage.');
   assert.doesNotMatch(`${cloud.title} ${cloud.blurb}`, /Cloudflare|checkout|Stripe/i);
@@ -180,7 +180,7 @@ test('Media Edition (purple) has no product: display price only, no checkout, th
   assert.doesNotMatch(STOREFRONT_LADDER_NOTE, /Academy Enhancement/);
   // Display only: no Academy product exists in Stripe.
   assert.equal(academy.cardPrice, '$29.99 one-time');
-  assert.equal(academy.status, 'Coming soon');
+  assert.equal(academy.status, 'This product is in alpha');
   assert.equal(academy.to, '/media');
   // The mail-link branch stays for any future rung without a page.
   assert.match(tsx, /if \(step\.to === null\)[\s\S]*?href=\{alphaRequestMailto\(\)\}/);
