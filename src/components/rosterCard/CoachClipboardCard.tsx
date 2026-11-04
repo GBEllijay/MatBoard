@@ -146,16 +146,35 @@ export function CoachClipboardCard(props: ClipboardCardProps) {
             </div>
             <div className="clipboard__who">
               <div className="clipboard__k">{props.kicker}</div>
-              <h2 className="clipboard__n">{props.name || 'Add your name'}</h2>
+              <h2 className="clipboard__n">
+                {props.onEditBelt ? (
+                  <button type="button" className="clipboard__tap clipboard__tap--name" aria-describedby={`${tabsId}-tap`} onClick={props.onEditBelt}>
+                    {props.name || 'Add your name'}
+                  </button>
+                ) : (
+                  props.name || 'Add your name'
+                )}
+              </h2>
+              {props.onEditBelt ? (
+                <span id={`${tabsId}-tap`} className="clipboard__sr">
+                  Tap the name or belt to change details
+                </span>
+              ) : null}
             </div>
             <div className="clipboard__crest">
               <img src={props.gymLogo || ADVANTAGE_MARK_SRC} alt={props.gymLogo ? `${props.gymName || 'Gym'} logo` : 'Advantage'} />
               <small>{props.gymName || 'Gym not set'}</small>
             </div>
             <div className="clipboard__brow">
-              <span className="clipboard__belt">
-                <WornBeltMark preview={props.belt} />
-              </span>
+              {props.onEditBelt ? (
+                <button type="button" className="clipboard__belt clipboard__tap" aria-label="Change belt and stripes" onClick={props.onEditBelt}>
+                  <WornBeltMark preview={props.belt} />
+                </button>
+              ) : (
+                <span className="clipboard__belt">
+                  <WornBeltMark preview={props.belt} />
+                </span>
+              )}
               {props.onEditBelt ? (
                 <button type="button" className="clipboard__pencil" aria-label="Edit belt and stripes" onClick={props.onEditBelt}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -511,7 +530,7 @@ function shape(scores: Record<string, AssessmentScore> | null): string {
   return ASSESSMENT_AREAS.map((area, index) => point(index, scores[area.id] ?? 0)).join(' ');
 }
 
-function CardRadar({ coach, self }: { coach: Record<string, AssessmentScore> | null; self: Record<string, AssessmentScore> | null }) {
+export function CardRadar({ coach, self }: { coach: Record<string, AssessmentScore> | null; self: Record<string, AssessmentScore> | null }) {
   return (
     <svg viewBox="0 0 310 194" className="clipboard__radar" role="img" aria-label="Assessment shape">
       {[1, 2, 3, 4, 5].map((ring) => (

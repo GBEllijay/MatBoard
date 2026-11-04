@@ -2700,6 +2700,9 @@ input.sr-only.student-film-file {
 
 .student-demo-banner a {
   flex: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   color: inherit;
   font-weight: 700;
 }

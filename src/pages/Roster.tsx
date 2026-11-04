@@ -16,12 +16,19 @@ import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useToolboxParent } from '../hooks/useToolboxParent';
 import { BeltTip } from '../components/BeltTip';
+import { RankBelt } from '../components/rosterCard/RankBelt';
 import { LinkStudentSheet, SendRankUpdateSheet } from '../components/CoachStudentLink';
 import { GuestArchive } from '../components/GuestArchive';
 import { SendCompetitionSheet, type CompetitionSendDraft } from '../components/SendCompetitionSheet';
 import { Sheet } from '../components/Sheet';
 import { registrationText, RosterCardSheet, startStudentAppSync } from '../components/rosterCard/RosterCardSheet';
 import { CardLookSetting } from '../components/rosterCard/CardLookSetting';
+import { readCardLook, type CardLook } from '../lib/cardLook';
+import { CompetitionCard } from '../components/rosterCard/CompetitionCard';
+import { initialsOf } from '../lib/rosterCard';
+import '../components/rosterCard/rolodex.css';
+import '../components/rosterCard/coachClipboard.css';
+import '../components/rosterCard/cardEntry.css';
 import { dismissCardNotice, getCardNotices, subscribeCardSync } from '../lib/cardSync';
 import { coachDoorOpen } from '../lib/productNames';
 import { readRosterCard, recordRosterRankChange, removeRosterCard, subscribeRosterCards } from '../lib/rosterCardStore';
@@ -132,12 +139,15 @@ export function RosterPage() {
   const [competitionSend, setCompetitionSend] = useState<{ studentId: string; draft: CompetitionSendDraft } | null>(null);
   const [linkNote, setLinkNote] = useState('');
   const [cardTarget, setCardTarget] = useState<string | null>(null);
+  const [compCardTarget, setCompCardTarget] = useState<string | null>(null);
   const [syncOffer, setSyncOffer] = useState<Student | null>(null);
   const [, setNoticeTick] = useState(0);
   useEffect(() => subscribeCardSync(() => setNoticeTick((value) => value + 1)), []);
   // The row Competitor switch reads the card store.
   useEffect(() => subscribeRosterCards(() => setNoticeTick((value) => value + 1)), []);
   const competitorRosterOpen = coachDoorOpen(proUnlocked, coachUnlocked, seat !== null);
+  const look = readCardLook();
+  const compStudent = compCardTarget ? roster.students.find((row) => row.id === compCardTarget) ?? null : null;
   const cardStudent = cardTarget ? roster.students.find((row) => row.id === cardTarget) ?? null : null;
   const listed = useMemo(
     () => (studentRoster ? studentRosterCards(roster.students) : competitorCards(roster.students)),
@@ -296,7 +306,11 @@ export function RosterPage() {
       ) : null}
 
       {competitors.length ? (
-        <ul className="roster__list">
+        <div className="clipboard rolodex" data-style={look.style} data-skin={look.skin} data-testid="rolodex">
+        <ul
+          className="roster__list rolodex__list"
+          aria-label={studentRoster ? 'Student roster cards' : 'Competitor Roster cards'}
+        >
           {competitors.map((competitor) => (
             <StudentCard
               key={competitor.id}
@@ -313,6 +327,7 @@ export function RosterPage() {
                 setPendingRemove(null);
               }}
               onOpenCard={studentRoster ? () => setCardTarget(competitor.id) : undefined}
+              onOpenFace={studentRoster ? () => setCardTarget(competitor.id) : () => setCompCardTarget(competitor.id)}
               notices={
                 competitor.linkedStudentId && !competitor.guestId
                   ? getCardNotices(competitor.id, { roster: roster.students }).map((notice) => ({ id: notice.eventId, text: registrationText(notice) }))
@@ -354,6 +369,7 @@ export function RosterPage() {
             />
           ))}
         </ul>
+        </div>
       ) : (
         <EmptyHint
           title={
@@ -447,6 +463,20 @@ export function RosterPage() {
           onOpenCompetitorRoster={() => {
             setCardTarget(null);
             navigate('/roster');
+          }}
+        />
+      ) : null}
+      {!studentRoster && compStudent ? (
+        <CompetitionCardSheet
+          student={compStudent}
+          plan={roster.competitionPlans[compStudent.id] ?? null}
+          rosterStudents={roster.students}
+          look={look}
+          onClose={() => setCompCardTarget(null)}
+          onToggleCheckIn={() => setPersonCheckedIn(compStudent.id, !compStudent.checkedIn)}
+          onChangeDetails={() => {
+            setCompCardTarget(null);
+            setEditor({ id: compStudent.id, draft: draftFromStudent(compStudent) });
           }}
         />
       ) : null}
@@ -579,6 +609,47 @@ export function studentCheckInFor(rosterId: string, open: boolean): { checkedIn:
   };
 }
 
+/** Competitor Roster: the full Competition card, opened from the Rolodex face. */
+function CompetitionCardSheet({
+  student,
+  plan,
+  rosterStudents,
+  look,
+  onClose,
+  onToggleCheckIn,
+  onChangeDetails,
+}: {
+  student: Student;
+  plan: ReturnType<typeof useRosterState>['competitionPlans'][string] | null;
+  rosterStudents: readonly Student[];
+  look: CardLook;
+  onClose: () => void;
+  onToggleCheckIn: () => void;
+  onChangeDetails: () => void;
+}) {
+  // The Student roster card this competitor card was made from, if any, carries the coach's assessments.
+  const source = rosterStudents.find(
+    (row) => row.rosterList === 'student' && readRosterCard(row.id).competitorCardId === student.id,
+  );
+  const latest = source
+    ? [...readRosterCard(source.id).coachAssessments].sort((a, b) => b.date.localeCompare(a.date))[0]
+    : undefined;
+  return (
+    <Sheet open title={`${student.name} · Competition card`} onClose={onClose} className="sheet--clipboard sheet--comp-card" portal>
+      <CompetitionCard
+        student={student}
+        plan={plan}
+        look={look}
+        gymName={readGymName()}
+        coachScores={latest ? latest.scores : null}
+        coachScoredOn={latest?.date}
+        checkIn={{ checkedIn: student.checkedIn, onToggle: onToggleCheckIn }}
+        onChangeDetails={onChangeDetails}
+      />
+    </Sheet>
+  );
+}
+
 export function StudentCard({
   student,
   studentRoster,
@@ -599,6 +670,7 @@ export function StudentCard({
   sendAllowed,
   competitorSwitch,
   studentCheckIn,
+  onOpenFace,
 }: {
   student: Student;
   studentRoster: boolean;
@@ -627,6 +699,8 @@ export function StudentCard({
   competitorSwitch?: { on: boolean; onToggle: () => { text: string; error?: true } };
   /** Student Roster only, while Competitor is on: Check In on the linked competitor card. */
   studentCheckIn?: { checkedIn: boolean; onToggle: () => { text: string; error?: true } };
+  /** Rolodex: the face (photo slot and name) opens the full card. */
+  onOpenFace?: () => void;
 }) {
   const [competitorNote, setCompetitorNote] = useState<{ text: string; error?: boolean } | null>(null);
   const promoted = formatPromotion(student.lastPromotion);
@@ -641,14 +715,38 @@ export function StudentCard({
 
   return (
     <li>
-      <article className="roster-card">
+      <article className={`roster-card${onOpenFace ? ' rolodex-card' : ''}`}>
         <header className="roster-card__head">
           <div className="roster-card__identity">
-            {studentRoster || !student.photo ? null : (
+            {onOpenFace ? (
+              <button
+                type="button"
+                className="rolodex-card__face"
+                aria-label={`Open ${student.name} ${studentRoster ? 'Student roster card' : 'Competition card'}`}
+                onClick={onOpenFace}
+              >
+                {studentRoster || !student.photo || student.noPhotos ? (
+                  <span className="rolodex-card__initials" aria-hidden="true">
+                    {initialsOf(student.name)}
+                  </span>
+                ) : (
+                  <img className="roster-card__photo" src={student.photo} alt={`${student.name} photo`} />
+                )}
+              </button>
+            ) : studentRoster || !student.photo ? null : (
               <img className="roster-card__photo" src={student.photo} alt={`${student.name} photo`} />
             )}
             <div className="roster-card__who">
-              <h2>{student.name}</h2>
+              {onOpenFace ? (
+                <span className="rolodex-card__kicker" aria-hidden="true">
+                  {studentRoster ? 'Student roster card' : 'Competition card'}
+                </span>
+              ) : null}
+              <h2 onClick={onOpenFace}>{student.name}</h2>
+              {onOpenFace ? (
+                <>
+                  <RankBelt student={student} />
+                  <div className="rolodex-card__buttons">
               {studentRoster ? null : (
                 <button
                   type="button"
@@ -661,10 +759,6 @@ export function StudentCard({
                   Check In
                 </button>
               )}
-            </div>
-          </div>
-          <div className="roster-card__belt-row">
-            <BeltTip belt={student.belt} />
             {competitorSwitch ? (
               <button
                 type="button"
@@ -697,7 +791,63 @@ export function StudentCard({
                 Check In
               </button>
             ) : null}
+                  </div>
+                </>
+              ) : (
+                <>
+              {studentRoster ? null : (
+                <button
+                  type="button"
+                  className={`btn roster-card__checkin${student.checkedIn ? '' : ' btn--ghost'}`}
+                  aria-pressed={student.checkedIn}
+                  aria-label={`Check In ${student.name}`}
+                  title="Here for today's tournament"
+                  onClick={onToggleCheckIn}
+                >
+                  Check In
+                </button>
+              )}
+                </>
+              )}
+            </div>
           </div>
+          {onOpenFace ? null : (
+            <div className="roster-card__belt-row">
+              <BeltTip belt={student.belt} />
+              {competitorSwitch ? (
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={competitorSwitch.on}
+                  aria-label={`Add ${student.name} to Competitor Roster`}
+                  title="Add to Competitor Roster"
+                  className={`roster-card__competitor${competitorSwitch.on ? ' roster-card__competitor--on' : ''}`}
+                  onClick={() => {
+                    const result = competitorSwitch.onToggle();
+                    setCompetitorNote({ text: result.text, error: Boolean(result.error) });
+                  }}
+                >
+                  <span className="roster-card__competitor-track" aria-hidden="true" />
+                  Competitor
+                </button>
+              ) : null}
+              {studentCheckIn ? (
+                <button
+                  type="button"
+                  className={`btn roster-card__checkin${studentCheckIn.checkedIn ? '' : ' btn--ghost'}`}
+                  aria-pressed={studentCheckIn.checkedIn}
+                  aria-label={`Check In ${student.name}`}
+                  title="Here for today's tournament"
+                  onClick={() => {
+                    const result = studentCheckIn.onToggle();
+                    setCompetitorNote({ text: result.text, error: Boolean(result.error) });
+                  }}
+                >
+                  Check In
+                </button>
+              ) : null}
+            </div>
+          )}
         </header>
         {competitorNote ? (
           <p className={`roster-card__meta${competitorNote.error ? ' roster-card__meta--error' : ''}`} role="status">
@@ -842,192 +992,242 @@ function StudentEditor({
     }
   };
 
-  return (
-    <>
-    <Sheet open={open} title={title} onClose={onClose}>
-      <p className="roster-edit__copy">
-        {studentRoster ? (
-          <>
-            Name and belt are enough to save a student. Division is optional and stays on this card.
-            {' '}
-            {COMPETITOR_GYM_LABEL} is one field for a gym name or a nickname. {STUDENT_NOTES_LABEL} stay
-            on this card.
-          </>
-        ) : (
-          <>
-            Name and belt are enough to prefill a match. Division is optional and stays on this card.
-            {' '}
-            {COMPETITOR_GYM_LABEL} is optional and shows on the scoreboard and brackets. A new competitor
-            starts with the Media Console gym name when one is saved. A face photo is optional, stays on
-            this device, and is not included in CSV. Competitor Notes stay on this card.
-          </>
-        )}
-      </p>
-      {studentRoster || !noPhotos ? null : (
-        <p className="roster-edit__hint" data-testid="editor-no-photos">
-          <strong>No photos</strong> · photos are off for this student.
-        </p>
-      )}
-      {studentRoster || noPhotos ? null : <div className="roster-edit__photo">
-        {draft.photo ? (
-          <img className="roster-edit__photo-img" src={draft.photo} alt="Competitor face photo" />
-        ) : (
-          <span className="roster-edit__photo-empty">No photo</span>
-        )}
-        <div className="roster-edit__photo-actions">
-          <button type="button" className="btn" disabled={photoBusy} onClick={() => setChooserOpen(true)}>
-            {photoBusy ? 'Adding photo…' : draft.photo ? 'Change photo' : 'Add photo'}
-          </button>
-          {draft.photo ? (
-            <button
-              type="button"
-              className="btn btn--ghost"
-              onClick={() => {
-                setPhotoNote('');
-                patch({ photo: '' });
-              }}
-            >
-              Remove photo
-            </button>
-          ) : null}
-          <p className="roster-edit__hint">Take a photo or pick one from this device.</p>
-          {photoNote ? <p className="roster-edit__error">{photoNote}</p> : null}
-        </div>
-      </div>}
-      <label>
-        Name
-        <input
-          value={draft.name}
-          onChange={(event) => patch({ name: event.target.value })}
-          placeholder="Required"
-          aria-label={studentRoster ? 'Student name' : 'Competitor name'}
-          autoComplete="off"
-        />
-      </label>
-      <fieldset className="roster-edit__belts">
-        <legend>Belt rank</legend>
-        <p className="roster-edit__hint">
-          {studentRoster
-            ? 'Required. Pick a belt, or type one under Other belt.'
-            : 'Required to pick this competitor into Match or a bracket.'}
-        </p>
-        {draft.belt.trim() ? <BeltTip belt={draft.belt} /> : null}
-        <div className="presets roster-edit__belt-row" role="radiogroup" aria-label="Adult belts">
-          {ADULT_BELTS.map((belt) => (
-            <button
-              key={belt}
-              type="button"
-              role="radio"
-              aria-checked={draft.belt === belt}
-              className={`preset${draft.belt === belt ? ' preset--on' : ''}`}
-              onClick={() => patch({ belt })}
-            >
-              {belt}
-            </button>
-          ))}
-        </div>
-        <div className="presets roster-edit__belt-row" role="radiogroup" aria-label="Kids belts">
-          {KIDS_BELTS.map((belt) => (
-            <button
-              key={belt}
-              type="button"
-              role="radio"
-              aria-checked={draft.belt === belt}
-              className={`preset${draft.belt === belt ? ' preset--on' : ''}`}
-              onClick={() => patch({ belt })}
-            >
-              {belt}
-            </button>
-          ))}
-        </div>
-        <label>
-          Other belt
-          <input
-            value={isKnownBelt(draft.belt) ? '' : draft.belt}
-            onChange={(event) => patch({ belt: event.target.value })}
-            placeholder="Optional — type a custom rank"
-            aria-label="Other belt"
-          />
-        </label>
-      </fieldset>
-      <label>
-        Division
-        <input
-          value={draft.division}
-          onChange={(event) => patch({ division: event.target.value })}
-          placeholder="Adult Blue, Kids Gi — optional"
-          aria-label="Division"
-          autoComplete="off"
-        />
-      </label>
-      <label>
-        {COMPETITOR_GYM_LABEL}
-        <input
-          value={draft.gym}
-          onChange={(event) => patch({ gym: event.target.value })}
-          placeholder="School, academy, or nickname — optional"
-          aria-label={COMPETITOR_GYM_LABEL}
-          autoComplete="off"
-        />
-      </label>
-      <div className="roster-edit__promotion">
-        <label className="roster-edit__promotion-date">
-          Last promotion
-          <input
-            type="date"
-            value={draft.lastPromotion}
-            onChange={(event) => patch({ lastPromotion: event.target.value })}
-            aria-label="Last promotion"
-          />
-        </label>
-        <label className="roster-edit__promotion-detail">
-          Last promotion detail
-          <input
-            value={draft.lastPromotionDetail ?? ''}
-            onChange={(event) => patch({ lastPromotionDetail: event.target.value })}
-            placeholder="e.g. 3rd stripe, white belt"
-            aria-label="Last promotion detail"
-            maxLength={LAST_PROMOTION_DETAIL_MAX}
-            autoComplete="off"
-          />
-        </label>
-        {studentRoster ? (
-          <label>
-            Stripes
-            <select
-              aria-label="Stripes"
-              value={String(draft.stripes ?? 0)}
-              onChange={(event) => patch({ stripes: Number(event.target.value) })}
-            >
-              <option value={0}>No stripe</option>
-              <option value={1}>Stripe 1</option>
-              <option value={2}>Stripe 2</option>
-              <option value={3}>Stripe 3</option>
-              <option value={4}>Stripe 4</option>
-            </select>
-            <span className="roster-edit__hint">Saving stripes does not check off belt skills. The student owns that list.</span>
-          </label>
-        ) : null}
-      </div>
-      <label>
-        {studentRoster ? STUDENT_NOTES_LABEL : 'Competitor Notes'}
-        <textarea
-          value={draft.note}
-          onChange={(event) => patch({ note: event.target.value })}
-          placeholder="Stays on this card"
-          rows={6}
-          maxLength={NOTE_MAX}
-          aria-label={studentRoster ? STUDENT_NOTES_LABEL : 'Competitor Notes'}
-        />
-        <span className="roster-edit__count">
-          {draft.note.trim().length}/{NOTE_MAX}
-        </span>
-      </label>
+  const look = readCardLook();
+  const isNew = /^Add /.test(title);
+  const initials = draft.name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('');
+  const rackRef = useRef<HTMLFieldSetElement>(null);
+  const focusBelts = () => {
+    const rack = rackRef.current;
+    if (!rack) return;
+    rack.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+    const pick = rack.querySelector<HTMLButtonElement>('[role="radio"][aria-checked="true"]') ?? rack.querySelector<HTMLButtonElement>('[role="radio"]');
+    pick?.focus();
+  };
+  const footer = (
+    <div className="card-entry__footer" data-testid="card-entry-footer">
       {!ready ? <p className="roster-edit__error">Add a name and a belt to save.</p> : null}
       {saveError ? <p className="roster-edit__error">{saveError}</p> : null}
-      <button type="button" className="btn" disabled={!ready || photoBusy} onClick={onSave}>
-        {studentRoster ? 'Save student' : 'Save competitor'}
-      </button>
+      <div className="card-entry__actions">
+        <button type="button" className="btn btn--ghost card-entry__cancel" onClick={onClose}>
+          Cancel
+        </button>
+        <button type="button" className="btn card-entry__save" disabled={!ready || photoBusy} onClick={onSave}>
+          {studentRoster ? 'Save student' : 'Save competitor'}
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+    <Sheet open={open} title={title} onClose={onClose} className="sheet--clipboard sheet--card-entry" footer={footer}>
+      <div className="clipboard card-entry" data-style={look.style} data-skin={look.skin} data-testid="card-entry" data-blank={isNew && !draft.name.trim() && !draft.belt.trim() ? 'true' : undefined}>
+        <div className="clipboard__board">
+          <div className="clipboard__clip" aria-hidden="true" />
+          <article className="clipboard__sheet card-entry__sheet" aria-label={draft.name.trim() ? `${draft.name.trim()} card` : 'Blank card'}>
+            <header className="clipboard__hdr card-entry__hdr">
+              <div className="clipboard__idc card-entry__idc">
+                {studentRoster ? (
+                  <span className="clipboard__initials card-entry__slot card-entry__slot--photo" data-testid="card-entry-photo-slot" aria-label={initials ? 'Initials' : 'No photo yet'}>
+                    {initials || <span className="card-entry__ghost">Photo</span>}
+                  </span>
+                ) : noPhotos ? (
+                  <>
+                    <span className="clipboard__initials card-entry__slot card-entry__slot--photo" aria-label="No photo yet">
+                      {initials || <span className="card-entry__ghost">AB</span>}
+                    </span>
+                    <span className="clipboard__nophotos">No photos</span>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="card-entry__slot card-entry__slot--photo card-entry__tap"
+                      data-testid="card-entry-photo-slot"
+                      disabled={photoBusy}
+                      aria-label={photoBusy ? 'Adding photo…' : draft.photo ? 'Change photo' : 'Add photo'}
+                      onClick={() => setChooserOpen(true)}
+                    >
+                      {draft.photo ? (
+                        <img className="roster-edit__photo-img clipboard__photo" src={draft.photo} alt="Competitor face photo" />
+                      ) : (
+                        <span className="card-entry__ghost">{photoBusy ? 'Adding…' : '+ Photo'}</span>
+                      )}
+                    </button>
+                    {draft.photo ? (
+                      <button
+                        type="button"
+                        className="card-entry__mini"
+                        onClick={() => {
+                          setPhotoNote('');
+                          patch({ photo: '' });
+                        }}
+                      >
+                        Remove photo
+                      </button>
+                    ) : null}
+                  </>
+                )}
+              </div>
+              <div className="clipboard__who card-entry__who">
+                <div className="clipboard__k">
+                  {studentRoster ? 'Student roster card' : 'Competition card'} · {isNew ? 'New' : 'Editing'}
+                </div>
+                <label className="card-entry__namefield">
+                  <span className="card-entry__lbl">Name</span>
+                  <input
+                    className="card-entry__name"
+                    value={draft.name}
+                    onChange={(event) => patch({ name: event.target.value })}
+                    placeholder="Tap to add name"
+                    aria-label={studentRoster ? 'Student name' : 'Competitor name'}
+                    autoComplete="off"
+                  />
+                </label>
+              </div>
+              <div className="clipboard__brow card-entry__brow">
+                <button type="button" className="card-entry__tap card-entry__beltslot" data-testid="card-entry-belt-slot" onClick={focusBelts}>
+                  {draft.belt.trim() ? <BeltTip belt={draft.belt} /> : <span className="card-entry__ghost">Tap to pick belt</span>}
+                </button>
+              </div>
+            </header>
+            {studentRoster || !noPhotos ? null : (
+              <p className="roster-edit__hint card-entry__note" data-testid="editor-no-photos">
+                <strong>No photos</strong> · photos are off for this student.
+              </p>
+            )}
+            {photoNote ? <p className="roster-edit__error card-entry__note">{photoNote}</p> : null}
+            <div className="card-entry__body">
+              <fieldset className="roster-edit__belts card-entry__rack" ref={rackRef}>
+                <legend>Belt rank</legend>
+                <p className="roster-edit__hint">
+                  {studentRoster ? 'Required. Pick one, or type it under Other belt.' : 'Required to pick this competitor into Match or a bracket.'}
+                </p>
+                <div className="presets roster-edit__belt-row" role="radiogroup" aria-label="Adult belts">
+                  {ADULT_BELTS.map((belt) => (
+                    <button
+                      key={belt}
+                      type="button"
+                      role="radio"
+                      aria-checked={draft.belt === belt}
+                      className={`preset${draft.belt === belt ? ' preset--on' : ''}`}
+                      data-belt={belt.toLowerCase()}
+                      onClick={() => patch({ belt })}
+                    >
+                      {belt}
+                    </button>
+                  ))}
+                </div>
+                <div className="presets roster-edit__belt-row" role="radiogroup" aria-label="Kids belts">
+                  {KIDS_BELTS.map((belt) => (
+                    <button
+                      key={belt}
+                      type="button"
+                      role="radio"
+                      aria-checked={draft.belt === belt}
+                      className={`preset${draft.belt === belt ? ' preset--on' : ''}`}
+                      data-belt={belt.toLowerCase()}
+                      onClick={() => patch({ belt })}
+                    >
+                      {belt}
+                    </button>
+                  ))}
+                </div>
+                <label className="card-entry__cell">
+                  Other belt
+                  <input
+                    value={isKnownBelt(draft.belt) ? '' : draft.belt}
+                    onChange={(event) => patch({ belt: event.target.value })}
+                    placeholder="Optional — type a custom rank"
+                    aria-label="Other belt"
+                  />
+                </label>
+              </fieldset>
+              <div className="card-entry__facts">
+                <label className="card-entry__cell">
+                  Division
+                  <input
+                    value={draft.division}
+                    onChange={(event) => patch({ division: event.target.value })}
+                    placeholder="Adult Blue, Kids Gi — optional"
+                    aria-label="Division"
+                    autoComplete="off"
+                  />
+                </label>
+                <label className="card-entry__cell">
+                  {COMPETITOR_GYM_LABEL}
+                  <input
+                    value={draft.gym}
+                    onChange={(event) => patch({ gym: event.target.value })}
+                    placeholder={studentRoster ? 'School or nickname — optional' : 'Shows on scoreboard — optional'}
+                    aria-label={COMPETITOR_GYM_LABEL}
+                    autoComplete="off"
+                  />
+                </label>
+              </div>
+              <div className="roster-edit__promotion card-entry__facts">
+                <label className="roster-edit__promotion-date card-entry__cell">
+                  Last promotion
+                  <input
+                    type="date"
+                    value={draft.lastPromotion}
+                    onChange={(event) => patch({ lastPromotion: event.target.value })}
+                    aria-label="Last promotion"
+                  />
+                </label>
+                <label className="roster-edit__promotion-detail card-entry__cell">
+                  Last promotion detail
+                  <input
+                    value={draft.lastPromotionDetail ?? ''}
+                    onChange={(event) => patch({ lastPromotionDetail: event.target.value })}
+                    placeholder="e.g. 3rd stripe, white belt"
+                    aria-label="Last promotion detail"
+                    maxLength={LAST_PROMOTION_DETAIL_MAX}
+                    autoComplete="off"
+                  />
+                </label>
+                {studentRoster ? (
+                  <label className="card-entry__cell card-entry__cell--wide">
+                    Stripes
+                    <select
+                      aria-label="Stripes"
+                      value={String(draft.stripes ?? 0)}
+                      onChange={(event) => patch({ stripes: Number(event.target.value) })}
+                    >
+                      <option value={0}>No stripe</option>
+                      <option value={1}>Stripe 1</option>
+                      <option value={2}>Stripe 2</option>
+                      <option value={3}>Stripe 3</option>
+                      <option value={4}>Stripe 4</option>
+                    </select>
+                    <span className="roster-edit__hint">Saving stripes does not check off belt skills. The student owns that list.</span>
+                  </label>
+                ) : null}
+              </div>
+              <label className="card-entry__cell card-entry__notes">
+                {studentRoster ? STUDENT_NOTES_LABEL : 'Competitor Notes'}
+                <textarea
+                  value={draft.note}
+                  onChange={(event) => patch({ note: event.target.value })}
+                  placeholder={studentRoster ? 'Stays on this card' : 'Stays on this card. Photo stays on this device, not in CSV.'}
+                  rows={5}
+                  maxLength={NOTE_MAX}
+                  aria-label={studentRoster ? STUDENT_NOTES_LABEL : 'Competitor Notes'}
+                />
+                <span className="roster-edit__count">
+                  {draft.note.trim().length}/{NOTE_MAX}
+                </span>
+              </label>
+            </div>
+          </article>
+        </div>
+      </div>
     </Sheet>
     {studentRoster ? null : (
       <>

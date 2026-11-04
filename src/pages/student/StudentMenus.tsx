@@ -14,6 +14,7 @@ import {
 import { lockStudentEditionBrowser } from '../../lib/studentUnlock';
 import { tierHomeHref } from '../../lib/submenuNav';
 import { todayIso } from '../../lib/studentEdition';
+import { useStudentCompetitor } from '../../hooks/useStudentCompetitor';
 import { wornBeltPreview } from '../../lib/studentRank';
 import {
   ADD_TOURNAMENT_LABEL,
@@ -76,6 +77,7 @@ export function StudentHub() {
   const home = tierHomeHref(params.toString());
   const { report } = useStudentFile();
   const summary = competitorHubSummary(report, todayIso());
+  const [competitor] = useStudentCompetitor();
   const academy = loadAcademyLink(localStorage);
   const [stamp, setStamp] = useState(() => backupStampLabel(readStudentBackupStamp(localStorage)));
   useEffect(() => {
@@ -131,17 +133,19 @@ export function StudentHub() {
               <span>{`${worn.percent}%`}</span>
             </span>
           </div>
-          <Link className="s-tile s-navy s-compete" to={to('/student/compete')} aria-label={COMPETE_GROUP_LABEL}>
-            <BracketArt />
-            <span className="s-tile__text">
-              <strong>{COMPETE_GROUP_LABEL}</strong>
-              <small>Tournaments, weight, opponents, results</small>
-              <span className="s-chips">
-                <span className="s-chip">{summary.next}</span>
-                <span className="s-chip">{summary.record}</span>
+          {competitor ? (
+            <Link className="s-tile s-navy s-compete" to={to('/student/compete')} aria-label={COMPETE_GROUP_LABEL}>
+              <BracketArt />
+              <span className="s-tile__text">
+                <strong>{COMPETE_GROUP_LABEL}</strong>
+                <small>Tournaments, weight, opponents, results</small>
+                <span className="s-chips">
+                  <span className="s-chip">{summary.next}</span>
+                  <span className="s-chip">{summary.record}</span>
+                </span>
               </span>
-            </span>
-          </Link>
+            </Link>
+          ) : null}
           <Link className="s-tile s-binder" to={to('/student/coach')} aria-label={COACH_GROUP_LABEL}>
             <BinderDecor />
             <span className="s-tile__text">

@@ -261,7 +261,7 @@ export function ProfileSwitches({ report }: { report: StudentProgressReport }) {
       <p className="profile-mode">
         These switches follow {kids ? 'Kids' : 'Adult'} on <Link to={to('/student/rank')}>My rank</Link>.
       </p>
-      <Switch
+      <ProfileSwitch
         on={visible.selfie}
         label="Photo on reports and backups"
         note={
@@ -271,7 +271,7 @@ export function ProfileSwitches({ report }: { report: StudentProgressReport }) {
         }
         onToggle={() => toggle('selfie')}
       />
-      <Switch
+      <ProfileSwitch
         on={visible.logo}
         label="Gym logo on reports and backups"
         note="The gym name stays on the report. The logo file is included only while this is on."
@@ -286,7 +286,7 @@ export function ProfileSwitches({ report }: { report: StudentProgressReport }) {
   );
 }
 
-function Switch({
+export function ProfileSwitch({
   on,
   label,
   note,

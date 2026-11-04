@@ -1,0 +1,60 @@
+/* Read-only full belt with stripes under the name: Rolodex mini cards and the Competition card. */
+.rank-belt {
+  display: block;
+  width: 100%;
+  max-width: 340px;
+  min-width: 0;
+}
+.rank-belt .s-belt-mark {
+  display: block;
+}
+.rank-belt .s-belt-mark .belt {
+  --h: 40px;
+  --slot: 22px;
+  margin: 0;
+  border-radius: 8px;
+}
+.rank-belt .s-belt-mark .belt.belt--kids {
+  --slot: 14px;
+}
+.rank-belt .s-belt-mark .belt__name {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rank-belt .s-belt-mark .mini-belt {
+  display: block;
+  height: 34px;
+  border-radius: 8px;
+}
+/* Competitor and Check In sit under the belt on the Rolodex mini card. */
+.rolodex-card__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.rolodex-card__buttons:empty {
+  display: none;
+}
+.roster-card__who > .rank-belt {
+  margin: 2px 0;
+}
+.rolodex .rolodex-card__buttons {
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+.rolodex .rolodex-card__buttons .roster-card__competitor,
+.rolodex .roster-card .rolodex-card__buttons .btn.roster-card__checkin {
+  flex: 0 1 auto;
+  min-width: 0;
+  min-height: 44px;
+  padding-left: 10px;
+  padding-right: 10px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.rolodex .roster-card__who {
+  min-width: 0;
+}
