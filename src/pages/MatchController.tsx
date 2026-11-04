@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
 import { ScoreboardSkinPicker } from '../components/ScoreboardSkinPicker';
@@ -23,33 +23,33 @@ import { EndCueControls } from '../components/EndCueControls';
 import { declareMatchOutcome, scoreboardPath, visibleOutcomeBanner } from '../lib/bracketBout';
 import { kidsBoardClass } from '../lib/kidsScoreboard';
 import { openDisplayWindow, openOrCastDisplay } from '../lib/cast';
-import { minutesToMs, formatMmSs, secondsToMs } from '../lib/format';
+import { formatMmSs } from '../lib/format';
+import { isListedRound, MATCH_ROUND_OPTIONS } from '../lib/matchRound';
+import { durationOptions, MATCH_LENGTH_RANGE } from '../lib/timeWheel';
+import { WheelPicker } from '../components/WheelPicker';
 import { competitorFocus, displayFocusId, parseDisplayFocus } from '../lib/matchFocus';
 import {
-  CLOCK_NUDGES_SEC,
   dispatchMatch,
   expireMatchClock,
   remainingCapMs,
   remainingNow,
-  TIME_PRESETS_MIN,
   type ScoreKind,
   type Side,
 } from '../lib/matchStore';
 import { needsRefDecision, outcomeSubtitle } from '../lib/outcomes';
+
+const MATCH_LENGTH_OPTIONS = durationOptions(MATCH_LENGTH_RANGE);
 import { scoreboardSkinClass } from '../lib/scoreboardSkin';
 
 export function MatchControllerPage() {
   const match = useMatchState();
   const [, setTick] = useState(0);
-  const [customOpen, setCustomOpen] = useState(false);
-  const [customMinutes, setCustomMinutes] = useState('4');
   const [castNote, setCastNote] = useState('');
   const [tvHelpOpen, setTvHelpOpen] = useState(false);
   const [searchParams] = useSearchParams();
   const board = useMatchBoard();
   const suite = board.suite;
   const remaining = remainingNow(match);
-  const durationIsPreset = TIME_PRESETS_MIN.some((minutes) => match.durationMs === minutesToMs(minutes));
   const focusParam = searchParams.get('focus');
   const linkedId = board.linkedId;
   const plainWhite = board.plainWhite;
@@ -90,17 +90,6 @@ export function MatchControllerPage() {
     100,
     true,
   );
-
-  const setPreset = (minutes: number) => {
-    dispatchMatch({ type: 'setDuration', durationMs: minutesToMs(minutes) });
-  };
-
-  const applyCustom = () => {
-    const minutes = Number(customMinutes);
-    if (!Number.isFinite(minutes) || minutes <= 0 || minutes > 180) return;
-    dispatchMatch({ type: 'setDuration', durationMs: minutesToMs(minutes) });
-    setCustomOpen(false);
-  };
 
   const onCast = async () => {
     void unlockAudio();
@@ -172,25 +161,21 @@ export function MatchControllerPage() {
         >
           {formatMmSs(remaining)}
         </button>
-        <div className="clock-nudges" role="group" aria-label="Adjust remaining time">
-          {CLOCK_NUDGES_SEC.map((seconds) => {
-            const atFloor = remaining <= 0;
-            const atCeil = remaining >= remainingCapMs(match.durationMs);
-            const disabled = seconds < 0 ? atFloor : atCeil;
-            const label = `${seconds < 0 ? '−' : '+'}${Math.abs(seconds)}s`;
-            return (
-              <button
-                key={seconds}
-                type="button"
-                className="clock-nudge"
-                disabled={disabled}
-                aria-label={seconds < 0 ? `Subtract ${Math.abs(seconds)} seconds` : `Add ${seconds} seconds`}
-                onClick={() => dispatchMatch({ type: 'adjustClock', deltaMs: secondsToMs(seconds) })}
-              >
-                {label}
-              </button>
-            );
-          })}
+        <div className="clock-seconds" role="group" aria-label="Adjust remaining time">
+          <SecondStep
+            deltaMs={-1_000}
+            label="Subtract one second"
+            disabled={remaining <= 0}
+          >
+            −
+          </SecondStep>
+          <SecondStep
+            deltaMs={1_000}
+            label="Add one second"
+            disabled={remaining >= remainingCapMs(match.durationMs)}
+          >
+            +
+          </SecondStep>
         </div>
         <div className="controller__clock-actions">
           <button type="button" className="btn" onClick={() => dispatchMatch({ type: 'toggleClock' })}>
@@ -203,59 +188,48 @@ export function MatchControllerPage() {
             Reset scores
           </button>
         </div>
-        <div className="presets presets--match-length" role="group" aria-label="Match length presets">
-          {TIME_PRESETS_MIN.map((minutes) => (
-            <button
-              key={minutes}
-              type="button"
-              className={`preset${match.durationMs === minutesToMs(minutes) ? ' preset--on' : ''}`}
-              aria-label={`${minutes} minutes`}
-              onClick={() => setPreset(minutes)}
-            >
-              {minutes}
-            </button>
-          ))}
-          <button
-            type="button"
-            className={`preset${!durationIsPreset ? ' preset--on' : ''}`}
-            aria-expanded={customOpen}
-            onClick={() => setCustomOpen((v) => !v)}
-          >
-            Custom
-          </button>
-        </div>
-        {customOpen ? (
-          <div className="custom-time">
-            <label>
-              Minutes
-              <input
-                inputMode="decimal"
-                value={customMinutes}
-                onChange={(e) => setCustomMinutes(e.target.value)}
-              />
-            </label>
-            <button type="button" className="btn" onClick={applyCustom}>
-              Set
-            </button>
-          </div>
-        ) : null}
+        <WheelPicker
+          label="Match length"
+          value={match.durationMs}
+          options={MATCH_LENGTH_OPTIONS}
+          onChange={(durationMs) => dispatchMatch({ type: 'setDuration', durationMs })}
+        />
 
         <div className="controller__meta">
           <label>
             Round
-            <input
+            <select
               id={displayFocusId('round')}
+              aria-label="Round"
               value={match.round}
-              placeholder="Optional"
               onChange={(e) => dispatchMatch({ type: 'setField', field: 'round', value: e.target.value })}
-            />
+            >
+              <option value="">Optional</option>
+              {MATCH_ROUND_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+              {match.round && !isListedRound(match.round) ? <option value={match.round}>{match.round}</option> : null}
+            </select>
           </label>
           <label>
             Division
             <input
               id={displayFocusId('division')}
+              aria-label="Division"
               value={match.division}
               onChange={(e) => dispatchMatch({ type: 'setField', field: 'division', value: e.target.value })}
+              placeholder="Optional"
+            />
+          </label>
+          <label>
+            Weight
+            <input
+              id={displayFocusId('weight')}
+              aria-label="Weight"
+              value={match.weight}
+              onChange={(e) => dispatchMatch({ type: 'setField', field: 'weight', value: e.target.value })}
               placeholder="Optional"
             />
           </label>
@@ -466,6 +440,52 @@ export function MatchControllerPage() {
         </div>
       </Sheet>
     </main>
+  );
+}
+
+function SecondStep({
+  deltaMs,
+  label,
+  disabled,
+  children,
+}: {
+  deltaMs: number;
+  label: string;
+  disabled: boolean;
+  children: string;
+}) {
+  const delay = useRef<number | null>(null);
+  const repeat = useRef<number | null>(null);
+  const stop = () => {
+    if (delay.current != null) window.clearTimeout(delay.current);
+    if (repeat.current != null) window.clearInterval(repeat.current);
+    delay.current = null;
+    repeat.current = null;
+  };
+  useEffect(() => stop, []);
+  const fire = () => dispatchMatch({ type: 'adjustClock', deltaMs });
+  return (
+    <button
+      type="button"
+      className="clock-second"
+      aria-label={label}
+      disabled={disabled}
+      onPointerDown={(event) => {
+        if (disabled || (event.button !== 0 && event.pointerType === 'mouse')) return;
+        fire();
+        event.currentTarget.setPointerCapture(event.pointerId);
+        stop();
+        delay.current = window.setTimeout(() => {
+          repeat.current = window.setInterval(fire, 80);
+        }, 350);
+      }}
+      onPointerUp={stop}
+      onPointerCancel={stop}
+      onLostPointerCapture={stop}
+      onContextMenu={(event) => event.preventDefault()}
+    >
+      {children}
+    </button>
   );
 }
 

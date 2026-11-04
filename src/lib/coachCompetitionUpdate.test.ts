@@ -85,6 +85,35 @@ test('accept creates a tournament, and a repeated match stays until the student 
   assert.equal(keptStudentMatch(both.report, 'Sam')?.note, 'mine');
 });
 
+test('scoreboard round rides the packet into a bracket note, and division and weight still fill the tournament', () => {
+  const built = buildCoachCompetitionUpdate({
+    studentId: 'stu-alex',
+    tournamentName: 'Mock tournament',
+    date: '2026-11-03',
+    location: 'Ellijay',
+    division: 'Adult Blue',
+    weightClass: 'Feather',
+    matches: [{ opponent: 'Sam', result: 'win', method: 'points', note: '', round: 'Final' }],
+    now: 50,
+    updateId: 'comp-final',
+  });
+  assert.equal(built.ok, true);
+  if (!built.ok) return;
+  const parsed = parseProgressPacket(exportProgressPacket(built.packet));
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok || parsed.value.kind !== 'coach-competition-update') return;
+  assert.equal(parsed.value.competitionUpdate.division, 'Adult Blue');
+  assert.equal(parsed.value.competitionUpdate.weightClass, 'Feather');
+  assert.equal(parsed.value.competitionUpdate.matches[0].round, 'Final');
+  const report = assignStudentId(blankStudentReport(1), 'stu-alex', 1);
+  const accepted = acceptCoachCompetitionUpdate(report, parsed.value, emptyUpdateLedger(), {}, 80);
+  assert.equal(accepted.report.competition?.tournaments[0]?.division, 'Adult Blue');
+  assert.equal(accepted.report.competition?.tournaments[0]?.weightClass, 'Feather');
+  assert.equal(accepted.report.competition?.results[0]?.bracket[0]?.round, 'Final');
+  assert.equal(accepted.report.competition?.results[0]?.bracket[0]?.name, 'Sam');
+  assert.equal(accepted.report.competition?.results[0]?.matches[0]?.opponent, 'Sam');
+});
+
 test('an unlinked card and a guest card do not offer a competition send', () => {
   assert.equal(competitionSendOffer({ rosterList: undefined, linkedStudentId: undefined, guestId: undefined }), 'noop');
   assert.equal(competitionSendOffer({ linkedStudentId: 'stu-alex', guestId: 'guest-1' }), 'noop');

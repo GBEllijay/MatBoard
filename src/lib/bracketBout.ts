@@ -1,6 +1,7 @@
 /** Wire a mock-bracket bout to the live Match scoreboard (same device, Phase 1 store). */
 
 import { controllerFocusPath, type DisplayFocus } from './matchFocus';
+import { roundFromBracket } from './matchRound';
 import { rosterGymForName } from './rosterStore';
 import { dispatchMatch, getMatch, type OutcomeFlash, type Side } from './matchStore';
 import {
@@ -63,7 +64,7 @@ export function openBracketBout(matchId: BracketMatchId): void {
     whiteName,
     blueGym: rosterGymForName(slotName(tournament, slotId(matchId, 'a'))),
     whiteGym: rosterGymForName(slotName(tournament, slotId(matchId, 'b'))),
-    round: '',
+    round: roundFromBracket(matchId, tournament.size),
     division: tournament.title.trim(),
   });
 }
