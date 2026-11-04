@@ -31,6 +31,7 @@ import { readOneDriveBinding } from '../lib/oneDrive';
 import { COACH_UNLIMITED_PATH, PRODUCTS_PATH } from '../lib/productNames';
 import { qrDataUrl } from '../lib/qr';
 import { licenseIdFromStoredToken } from '../lib/studentInboxClient';
+import { StudentLicenseOwnerPanel, StudentLicenseSeatShow } from './StudentLicenseShare';
 
 function origin(): string {
   return typeof window === 'undefined' ? '' : window.location.origin;
@@ -126,7 +127,7 @@ function FramedQr({ link, kind, caption, title }: { link: string; kind: ShareKin
   );
 }
 
-function ShareShell({ kind, children }: { kind: ShareKind; children: ReactNode }) {
+function ShareShell({ kind, children, seatShow = false }: { kind: ShareKind; children: ReactNode; seatShow?: boolean }) {
   const kinds = useShareKinds();
   const header = kind === 'instructor' ? INSTRUCTOR_SHARE_HEADER : STUDENT_SHARE_HEADER;
   const other: ShareKind = kind === 'instructor' ? 'student' : 'instructor';
@@ -143,7 +144,7 @@ function ShareShell({ kind, children }: { kind: ShareKind; children: ReactNode }
         </nav>
         <section className="suite license-share__page" aria-label={header}>
           <BeltHeader kind={kind === 'instructor' ? 'black' : 'blue'} worn={kind === 'instructor'} title={header} />
-          {kinds.includes(kind) ? (
+          {kinds.includes(kind) || seatShow ? (
             <>
               {children}
               {kinds.includes(other) ? (
@@ -273,11 +274,22 @@ export function InstructorSharePage() {
   );
 }
 
-/** Advantage Student Edition share page: the academy pathway QR and link. */
+/** Advantage Student Edition share page: the academy pathway QR, plus a free Student license. */
 export function StudentSharePage() {
+  const door = useSeatDoor();
+  const coachUnlocked = useSyncExternalStore(subscribeCoachUnlock, isCoachUnlimitedUnlocked, isCoachUnlimitedUnlocked);
+  const kinds = licenseShareKinds({ proUnlocked: door.proUnlocked, coachUnlocked, seated: door.seated });
+  const seatShow = door.seated && !kinds.includes('student');
   return (
-    <ShareShell kind="student">
-      <StudentShareBody />
+    <ShareShell kind="student" seatShow={seatShow}>
+      {seatShow ? (
+        <StudentLicenseSeatShow />
+      ) : (
+        <>
+          <StudentShareBody />
+          {door.proUnlocked ? <StudentLicenseOwnerPanel /> : null}
+        </>
+      )}
     </ShareShell>
   );
 }

@@ -8,6 +8,8 @@ import { cloudAccessForLicense } from './cloudSubscription.ts';
 import { doorsFromStored, grantsForLicense, type StoredGrant } from './purchaseRecords.ts';
 import { API_PRODUCT_PRO } from './routes.ts';
 import { refreshSeat } from './seats.ts';
+import { freeStudentGrantClosed } from './studentLicenses.ts';
+import { STUDENT_LICENSE_PRESET } from '../lib/studentLicensePool.ts';
 import { appVersionOf } from '../lib/appCapability.ts';
 import { issueToken, signingMaterial } from './tokenIssue.ts';
 import type { StripeRuntimeEnv } from './stripeCheckout.ts';
@@ -108,6 +110,19 @@ export async function handleTokenRefresh(
     doors = seat.doors;
     subs = seat.subs;
     kind = 'seat';
+  } else if (claims.preset === STUDENT_LICENSE_PRESET && db) {
+    // This pass stays Student Edition only. It does not pick up other grants
+    // on the same license, and a revoked free license does not refresh.
+    const rows = await grantsForLicense(db, claims.sub, stamp);
+    const open = rows.some(
+      (row) => row.source === 'free' && row.product === 'advantage-student' && (row.sourceRef ?? '').startsWith('student-code:'),
+    );
+    if (!open || (await freeStudentGrantClosed(db, claims.sub, stamp))) {
+      return json(401, { ok: false, revoked: true, error: 'This free Student license was revoked.' });
+    }
+    doors = expandGrants(['student']);
+    kind = 'onetime';
+    subs = undefined;
   } else if (db) {
     const rows = await grantsForLicense(db, claims.sub, stamp);
     const view = await accessForLicense(db, claims.sub, stamp, { env, fetchImpl, pepper: env.CODE_HASH_PEPPER });
@@ -139,7 +154,14 @@ export async function handleTokenRefresh(
     {
       licenseId: claims.sub,
       grants: doors,
-      tier: claims.src === 'owner' ? 'owner' : claims.src === 'seat' ? 'seat' : tierForGrants(doors, claims.src === 'code' || claims.src === 'free' ? 'code' : 'stripe'),
+      tier:
+        claims.preset === STUDENT_LICENSE_PRESET
+          ? 'student'
+          : claims.src === 'owner'
+            ? 'owner'
+            : claims.src === 'seat'
+              ? 'seat'
+              : tierForGrants(doors, claims.src === 'code' || claims.src === 'free' ? 'code' : 'stripe'),
       src: claims.src,
       deviceId: claims.did,
       now: stamp,
