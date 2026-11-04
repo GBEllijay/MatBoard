@@ -182,10 +182,12 @@ test('home: /student keeps the live branded header, then card → radar → meda
   const nav = q(m.host, 'nav.s-hub')!;
   assert.ok(nav, 'hub nav');
   assert.ok(nav.querySelector('.belt-header, [class*="belt-header"]'), 'Student Edition belt bar');
-  assert.ok(q(nav, '.s-hub__intro'), 'description line');
-  assert.equal(q(nav, '.s-hub__intro img, .s-hub__avatar'), null, 'no profile photo in the branded top');
+  assert.equal(q(nav, '.s-hub__intro, .s-hub__avatar'), null, 'no photo + description section');
+  assert.equal(text.includes('A personal BJJ training journal'), false, 'no description line');
+  assert.equal(q(nav, '.s-profile, [aria-label="My profile"]'), null, 'no My profile card; the sheet is the profile');
+  assert.match(q(m.host, '[data-testid="profile-edit-link"]')?.getAttribute('href') ?? '', /\/student\/profile/, 'edit link keeps the profile reachable');
   assert.equal(text.includes('MatBoard'), false, 'no internal name');
-  const order = ['.s-hub__intro', '[data-testid="student-home"]', '[data-testid="profile-card-face"]', '[data-testid="card-radar"]', '[data-testid="card-medals"]', '[data-testid="mat-hours-row"]', '[data-testid="body-scan"]', '.s-journal'];
+  const order = ['.belt-header', '[data-testid="student-home"]', '[data-testid="profile-card-face"]', '[data-testid="card-radar"]', '[data-testid="card-medals"]', '[data-testid="mat-hours-row"]', '[data-testid="body-scan"]', '.s-journal'];
   const els = order.map((sel) => { const el = nav.querySelector(sel); assert.ok(el, `present: ${sel}`); return el!; });
   for (let i = 1; i < els.length; i++) {
     if (i === 2) continue; // card face sits inside student-home

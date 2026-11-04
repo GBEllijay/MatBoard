@@ -82,3 +82,4 @@
 .mh-row--home .mh-frame { width: 96px; height: 96px; flex: 0 0 96px; padding: 6px; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 4px; }
 .mh-row--home .streak-badge { flex: 1 1 140px; min-width: 0; }
 .mh-row--home .streak-badge { padding: 6px 10px; box-shadow: 0 0 0 1px rgba(255, 154, 46, 0.35), 0 0 14px rgba(255, 154, 46, 0.25); }
+.profile-face__edit { display: inline-flex; align-items: center; min-height: 44px; font-size: 13px; font-weight: 700; color: #6ea8ff; text-decoration: none; }

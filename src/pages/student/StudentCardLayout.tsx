@@ -236,7 +236,7 @@ export function StudentCardLayout({ portrait, logo, to, home = false, streak }: 
   if (home) {
     return (
       <div className="student-card-layout student-card-layout--home" data-testid="student-card-layout">
-        <ProfileCardFace report={report} portrait={portrait} logo={logo} to={to} />
+        <ProfileCardFace report={report} portrait={portrait} logo={logo} to={to} editHref={to('/student/profile')} />
         <CardRadar to={to} />
         <CardMedals report={report} to={to} rail />
         <div className="mh-row mh-row--home" data-testid="mat-hours-row">

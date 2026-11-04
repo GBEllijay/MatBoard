@@ -96,12 +96,15 @@ export function StudentHub({ sheet }: { sheet?: React.ReactNode } = {}) {
         <HomeMark to={home} />
         <nav className="s-hub" aria-label="Advantage Student Edition">
           <BeltHeader kind="blue" title={STUDENT_EDITION_HUB_TITLE} />
+          {sheet ?? (
+            <>
           <header className={portrait ? 's-hub__intro s-hub__intro--photo' : 's-hub__intro'}>
             {portrait ? <img className="s-hub__avatar" src={portrait} alt="Profile photo" /> : null}
             <p>{STUDENT_HOME_DESCRIPTION}</p>
           </header>
-          {sheet}
           <ProfileCard />
+            </>
+          )}
           <Link className="s-tile s-journal" to={to('/student/training')} aria-label={TRAINING_GROUP_LABEL}>
             <JournalDecor />
             <span className="s-tile__text">
