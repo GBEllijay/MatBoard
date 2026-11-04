@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { BeltHeader } from '../components/BeltHeader';
+import { EditionLadder } from '../components/EditionLadder';
 import { HomeMark } from '../components/HomeMark';
 import { InstructionsButton } from '../components/InstructionsButton';
 import { ProToolboxCard } from '../components/ProToolboxCard';
@@ -106,6 +107,7 @@ export function ProPage() {
             </p>
           )}
         </div>
+        <EditionLadder page="pro" />
         <SiteFooter />
       </div>
     </main>

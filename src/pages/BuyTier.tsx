@@ -25,6 +25,7 @@ import { INSTRUCTOR_DISPLAY_PRICE_CENTS, TIER_BUY_PATHS } from '../lib/tierBuyPa
 import { rememberStudentPurchase, STUDENT_PRODUCT_ID, studentEditionEntitled } from '../lib/studentEdition';
 import { buyCheckoutBody } from '../lib/halfOff';
 import { MEDIA_EDITION_LIST_PRICE_CENTS, MEDIA_EDITION_NAME } from '../lib/mediaEdition';
+import { readKnownPurchaseEmail } from '../lib/editionLadder';
 import { upgradeButtonPrice, type UpgradeQuoteResult } from '../lib/upgradeQuoteClient';
 import type { WhiteEntitlementStatus } from '../lib/whiteEntitlementClient';
 import { formatUsdFromCents, WHITE_CHECKOUT_API, WHITE_STRIPE_NOTE } from '../lib/whitePurchase';
@@ -117,7 +118,7 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
     student: useStudentEditionUnlocked(),
   });
   const mediaDoor = useMediaUnlocked();
-  const [upgradeEmail, setUpgradeEmail] = useState('');
+  const [upgradeEmail, setUpgradeEmail] = useState(() => readKnownPurchaseEmail(params.toString()) ?? '');
   const [quote, setQuote] = useState<UpgradeQuoteResult | null>(null);
   const showCheckout =
     tier.product === 'pro'

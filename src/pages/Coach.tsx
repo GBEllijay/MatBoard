@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { BeltHeader } from '../components/BeltHeader';
+import { EditionLadder } from '../components/EditionLadder';
 import { BeltRail } from '../components/BeltRail';
 import { InviteAccept, useCurrentSeat } from '../components/SeatSessionBar';
 import { HomeMark } from '../components/HomeMark';
@@ -81,6 +82,7 @@ export function CoachPage() {
             </p>
           ) : null}
         </div>
+        <EditionLadder page="instructor" />
         <SiteFooter />
       </div>
     </main>

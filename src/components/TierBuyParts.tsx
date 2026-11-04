@@ -2,6 +2,8 @@ import { useState, type FormEvent, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { AlphaAccessNote } from './AlphaAccessNote';
 import { LEARN_MORE } from '../lib/learnMore';
+import { PRO_PLUS_CLOUD_DESCRIPTION, PRO_PLUS_CLOUD_INFO_PATH, PRO_PLUS_CLOUD_NAME } from '../lib/productNames';
+import { EDITION_ALPHA_NOTE, EDITION_EMAIL_DISPLAY, PRO_PLUS_CLOUD_PRICE_LINE } from '../lib/productPrices';
 import { higherTiers, type TierBelt, type TierBuyEntry, type TierId } from '../lib/tierBuyPages';
 import { restoreWhiteByEmail } from '../lib/whiteUnlock';
 import '../pages/buyTiers.css';
@@ -50,6 +52,34 @@ export function TierCard({
       {tier.alpha ? <AlphaAccessNote note={tier.alpha.note} display={tier.alpha.display} /> : null}
       <Link className="buy__more" to={tier.path}>
         {LEARN_MORE[tier.id].label}
+      </Link>
+    </section>
+  );
+}
+
+/**
+ * Pro Plus Cloud on the White buy page. Same Coming soon card as the products
+ * ladder. No checkout: the info page is the existing link.
+ */
+export function ProCloudBuyCard() {
+  return (
+    <section className="buy__card buy__soon buy__tier buy__tier--pro-cloud" aria-label={PRO_PLUS_CLOUD_NAME} data-tier="pro-cloud">
+      <div className="buy__soon-head">
+        <span className="belt-tip belt-tip--black belt-tip--ladder" aria-hidden="true" data-belt="black">
+          <span className="belt-tip__bar belt-tip__bar--red" />
+        </span>
+        <span>
+          <span className="buy__kicker">Coming soon</span>
+          <h2>{PRO_PLUS_CLOUD_NAME}</h2>
+        </span>
+      </div>
+      <p className="buy__price">
+        {PRO_PLUS_CLOUD_PRICE_LINE} <span>USD — monthly, when it launches</span>
+      </p>
+      <p>{PRO_PLUS_CLOUD_DESCRIPTION}</p>
+      <AlphaAccessNote note={EDITION_ALPHA_NOTE} display={EDITION_EMAIL_DISPLAY} />
+      <Link className="buy__more" to={PRO_PLUS_CLOUD_INFO_PATH}>
+        {LEARN_MORE.proCloud.label}
       </Link>
     </section>
   );

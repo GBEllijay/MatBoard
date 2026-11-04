@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  PURCHASE_CREDIT_NOTE,
   requestUpgradeQuote,
   upgradeQuoteNote,
   type UpgradeQuoteResult,
@@ -38,6 +39,9 @@ export function UpgradeQuote({
 
   return (
     <div className="buy__upgrade" data-testid="upgrade-quote">
+      <p className="buy__credit-note" data-testid="purchase-credit-note">
+        {PURCHASE_CREDIT_NOTE}
+      </p>
       <label className="buy__field">
         <span>Already bought an edition? Purchase email (optional)</span>
         <input

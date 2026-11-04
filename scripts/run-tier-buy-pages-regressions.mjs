@@ -6,7 +6,7 @@ import { paidChunksStub } from './paidChunksStub.mjs';
 
 mkdirSync('node_modules/.cache', { recursive: true });
 
-const entries = ['src/pages/tierBuyPages.test.tsx', 'src/pages/whiteUpgrade.test.tsx'];
+const entries = ['src/pages/tierBuyPages.test.tsx', 'src/pages/whiteUpgrade.test.tsx', 'src/pages/editionLadder.test.tsx'];
 let status = 0;
 for (const entry of entries) {
   const outfile = resolve('node_modules/.cache', `${entry.replaceAll('/', '-')}.mjs`);

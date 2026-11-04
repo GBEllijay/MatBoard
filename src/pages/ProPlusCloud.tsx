@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { AdvantageCloudHome } from '../components/AdvantageCloudHome';
+import { EditionLadder } from '../components/EditionLadder';
 import { BeltHeader } from '../components/BeltHeader';
 import { PlusCloudConduct } from '../components/PlusCloudConduct';
 import { HomeMark } from '../components/HomeMark';
@@ -63,6 +64,7 @@ export function ProPlusCloudPage() {
             </p>
           </InstructionsButton>
         </div>
+        <EditionLadder page="pro-cloud" />
         <SiteFooter />
       </div>
     </main>

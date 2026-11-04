@@ -7,6 +7,10 @@ import { formatUsdFromCents } from './whitePurchase.ts';
 
 export const UPGRADE_QUOTE_API = '/api/upgrade-quote';
 
+/** Shown above the purchase-email field, and on a ladder rung that has no quote yet. */
+export const PURCHASE_CREDIT_NOTE =
+  "Your earlier purchase is credited. Enter the email you bought with, and you'll only pay the difference.";
+
 export type UpgradeQuoteResult =
   | { kind: 'quote'; listPriceCents: number; upgradePriceCents: number; creditApplied: number }
   | { kind: 'owned'; message: string }
