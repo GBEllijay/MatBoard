@@ -251,6 +251,7 @@ export type StudentScreen =
   | 'calendar-day'
   | 'rubric'
   | 'profile'
+  | 'report'
   | 'rank'
   | 'share'
   | 'self-assessment'
@@ -281,6 +282,7 @@ export function studentScreen(rest: string): StudentScreen {
     case 'fundamentals':
     case 'calendar':
     case 'profile':
+    case 'report':
     case 'rank':
     case 'share':
     case 'self-assessment':

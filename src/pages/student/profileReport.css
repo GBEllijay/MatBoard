@@ -1,0 +1,20 @@
+.report { display: grid; gap: 20px; max-width: 720px; margin: 0 auto; padding: 4px 16px 16px; overflow-wrap: anywhere; }
+.report__head { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+.report__kicker { margin: 0; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.8; }
+.report__name { margin: 2px 0; font-size: 22px; }
+.report__meta { margin: 0; font-size: 14px; }
+.report__section { display: grid; gap: 12px; padding: 16px; border-radius: 12px; background: rgba(255, 255, 255, 0.55); border: 1px solid rgba(20, 30, 60, 0.12); }
+.report__title { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; font-size: 16px; }
+.report__source { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: #e8edf7; color: #1b2a4a; }
+.report__source--coach { background: #fdeccf; color: #5a3b00; }
+.report__stats { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+.report__stat { display: grid; gap: 2px; margin: 0; font-size: 14px; }
+.report__stat span { font-size: 13px; color: #2c3550; }
+.report__target { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14px; }
+.report__chip { min-height: 44px; min-width: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid #1b2a4a; background: #fff; font: inherit; font-size: 14px; }
+.report__chip[aria-pressed='true'] { background: #1b2a4a; color: #fff; }
+.report__more summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-size: 14px; font-weight: 600; }
+.report__more ul { margin: 0; padding-left: 18px; font-size: 13px; }
+.report__private { margin: 0; font-size: 12px; color: #2c3550; }
+.report__back { display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; }
+.report .mat-hours { max-width: 100%; }

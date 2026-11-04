@@ -48,6 +48,9 @@ export function WheelPicker({
     if (!wheelNode) return;
     let timer = 0;
     const commit = () => {
+      // scrollend and the scroll debounce can both fire for one move. Commit once,
+      // so a tapped or arrowed value is not re-snapped by the second call.
+      window.clearTimeout(timer);
       const centered = Math.min(options.length - 1, Math.max(0, Math.round(wheelNode.scrollTop / ITEM_PX)));
       const index = precise.current ? centered : detentIndex(centered, options, wheelGestureSpeed(samples.current));
       precise.current = false;

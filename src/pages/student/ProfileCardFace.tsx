@@ -4,7 +4,7 @@
  * Each part jumps to the field below that fills it in; the belt opens My rank.
  * Read-only: nothing here saves. Save profile stays last on the page.
  */
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { WornBeltMark } from './wornBelt';
 import { cardBelt, cardDate, initialsOf } from '../../lib/rosterCard';
@@ -49,11 +49,14 @@ export function ProfileCardFace({
   portrait,
   logo,
   to,
+  stats,
 }: {
   report: StudentProgressReport;
   portrait: string | null;
   logo: string | null;
   to: (path: string) => string;
+  /** Optional card stats (e.g. mat hours), shown under the rows on the face. */
+  stats?: ReactNode;
 }) {
   const look = useMemo(() => {
     const overlay = readCoachOverlay(localStorage);
@@ -67,6 +70,7 @@ export function ProfileCardFace({
   const belt = cardBelt(report);
   const photo = portrait && !noPhotos ? portrait : '';
   return (
+    <>
     <section className="profile-face" aria-labelledby="profile-face-title" data-testid="profile-card-face">
       <h2 id="profile-face-title" className="clipboard__sr">Your card face</h2>
       <div className="clipboard profile-face__card" data-mode="student" data-style={look.style} data-skin={look.skin}>
@@ -109,5 +113,8 @@ export function ProfileCardFace({
         </div>
       </div>
     </section>
+    {/* Card stats sit right under the face, outside it, so the face keeps its own read-only, visible-text controls. */}
+    {stats ? <section className="profile-face__stats" aria-label="Card stats" data-testid="profile-face-stats">{stats}</section> : null}
+    </>
   );
 }

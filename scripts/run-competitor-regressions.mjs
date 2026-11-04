@@ -8,6 +8,7 @@ const outfile = '.regression-cache/competitor-arena.test.mjs';
 await build({
   entryPoints: ['src/pages/student/competitorArena.test.tsx'],
   bundle: true,
+  loader: { '.css': 'empty' },
   format: 'esm',
   platform: 'node',
   outfile,

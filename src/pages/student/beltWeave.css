@@ -1,6 +1,6 @@
 /* Woven belts for My rank. Variant B, black bar at 57%, from the approved mock. */
 
-:is(.student.student--rank, .s-belt-mark) :where(.rung button) {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) :where(.rung button) {
   font: inherit;
   color: inherit;
   background: none;
@@ -10,11 +10,11 @@
   cursor: pointer;
 }
 
-:is(.student.student--rank, .s-belt-mark) :where(.rung button:disabled) {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) :where(.rung button:disabled) {
   cursor: default;
 }
 
-:is(.student.student--rank, .s-belt-mark) .belt {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .belt {
   --h: 64px;
   --slot: 44px;
   --barw: calc(var(--slot) * 4 + 12px);
@@ -26,7 +26,7 @@
   filter: drop-shadow(0 4px 5px rgba(0, 0, 0, 0.6));
 }
 
-:is(.student.student--rank, .s-belt-mark) .belt__body {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .belt__body {
   position: relative;
   flex: 1 1 auto;
   min-width: 0;
@@ -47,8 +47,8 @@
   box-shadow: inset 0 0 0 1px var(--edge), inset 2px 0 0 rgba(255, 255, 255, 0.14), inset 0 -2px 0 rgba(0, 0, 0, 0.25);
 }
 
-:is(.student.student--rank, .s-belt-mark) .belt__body::before,
-:is(.student.student--rank, .s-belt-mark) .belt__bar::before {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .belt__body::before,
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .belt__bar::before {
   content: '';
   position: absolute;
   top: 0;
@@ -64,7 +64,7 @@
     linear-gradient(var(--stitch), var(--stitch)) 0 89% / 100% 1px no-repeat;
 }
 
-:is(.student.student--rank, .s-belt-mark) .belt__name {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .belt__name {
   position: relative;
   z-index: 3;
   font-size: 19px;
@@ -74,7 +74,7 @@
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
 }
 
-:is(.student.student--rank, .s-belt-mark) .belt__sub {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .belt__sub {
   position: relative;
   z-index: 3;
   margin-top: 3px;
@@ -86,13 +86,13 @@
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
 }
 
-:is(.student.student--rank, .s-belt-mark) .rung--white .belt__name,
-:is(.student.student--rank, .s-belt-mark) .rung--white .belt__sub {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .rung--white .belt__name,
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .rung--white .belt__sub {
   color: #1d1d1f;
   text-shadow: none;
 }
 
-:is(.student.student--rank, .s-belt-mark) .belt__bar {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .belt__bar {
   position: relative;
   flex: 0 0 var(--barw);
   display: flex;
@@ -110,11 +110,11 @@
   box-shadow: inset 0 0 0 1px var(--bar-edge), inset -2px 0 0 rgba(255, 255, 255, 0.12), -4px 0 5px -2px rgba(0, 0, 0, 0.55);
 }
 
-:is(.student.student--rank, .s-belt-mark) .rung:not(.rung--black) .belt__bar {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .rung:not(.rung--black) .belt__bar {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), inset -2px 0 0 rgba(255, 255, 255, 0.1), -4px 0 5px -2px rgba(0, 0, 0, 0.55);
 }
 
-:is(.student.student--rank, .s-belt-mark) .belt__bar::before {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .belt__bar::before {
   left: 0;
   background:
     linear-gradient(var(--bar-stitch), var(--bar-stitch)) 0 11% / 100% 1px no-repeat,
@@ -159,52 +159,52 @@
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.7), 1px 0 0 rgba(0, 0, 0, 0.35), -1px 0 0 rgba(0, 0, 0, 0.25);
 }
 
-:is(.student.student--rank, .s-belt-mark) .rung.is-current .belt {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .rung.is-current .belt {
   box-shadow: 0 0 0 2px #1c1c1e, 0 0 0 5px #004eba, 0 0 22px 6px rgba(0, 78, 186, 0.6);
 }
 
-:is(.student.student--rank, .s-belt-mark) .rung--white {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .rung--white {
   --cloth: #f1eee5;
   --edge: #c9c3b3;
   --stitch: #bdb6a4;
 }
-:is(.student.student--rank, .s-belt-mark) .rung--blue {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .rung--blue {
   --cloth: #1d4ed8;
   --edge: #12349b;
   --stitch: rgba(255, 255, 255, 0.38);
 }
-:is(.student.student--rank, .s-belt-mark) .rung--purple {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .rung--purple {
   --cloth: #7a3ec8;
   --edge: #53268f;
   --stitch: rgba(255, 255, 255, 0.34);
 }
-:is(.student.student--rank, .s-belt-mark) .rung--brown {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .rung--brown {
   --cloth: #7b4a2a;
   --edge: #4f2f18;
   --stitch: rgba(255, 255, 255, 0.3);
 }
-:is(.student.student--rank, .s-belt-mark) .rung--black {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .rung--black {
   --cloth: #232326;
   --edge: rgba(255, 255, 255, 0.2);
   --stitch: rgba(255, 255, 255, 0.2);
 }
-:is(.student.student--rank, .s-belt-mark) .rung {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .rung {
   --bar: #101012;
   --bar-edge: #000;
   --bar-stitch: rgba(255, 255, 255, 0.22);
 }
-:is(.student.student--rank, .s-belt-mark) .rung--black {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .rung--black {
   --bar: #d3161b;
   --bar-edge: #8c0c10;
   --bar-stitch: rgba(255, 255, 255, 0.42);
 }
 
 /* Black ends like the other belts: red rank bar, then a short black cloth tip. */
-:is(.student.student--rank, .s-belt-mark) .rung--black .belt__bar {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .rung--black .belt__bar {
   border-radius: 0;
 }
 
-:is(.student.student--rank, .s-belt-mark) .belt__end {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .belt__end {
   position: relative;
   z-index: 1;
   flex: 0 0 22px;
@@ -219,7 +219,7 @@
   box-shadow: inset 0 0 0 1px var(--edge), inset -2px 0 0 rgba(255, 255, 255, 0.12);
 }
 
-:is(.student.student--rank, .s-belt-mark) .belt__end::before {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .belt__end::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -231,29 +231,29 @@
     linear-gradient(var(--stitch), var(--stitch)) 0 89% / 100% 1px no-repeat;
 }
 
-:is(.student.student--rank, .s-belt-mark) .belt--slim57 .belt__bar {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .belt--slim57 .belt__bar {
   flex: 0 0 57%;
   padding: 0;
   justify-content: stretch;
 }
-:is(.student.student--rank, .s-belt-mark) .belt--slim57 .stripe {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .belt--slim57 .stripe {
   flex: 1 1 0;
   width: auto;
   min-width: 0;
 }
-:is(.student.student--rank, .s-belt-mark) .belt--slim57 .tape {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .belt--slim57 .tape {
   width: 7px;
   margin-left: -3.5px;
 }
-:is(.student.student--rank, .s-belt-mark) .belt--slim57 .belt__sub {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .belt--slim57 .belt__sub {
   font-size: 10px;
   letter-spacing: 0.04em;
   white-space: nowrap;
 }
-:is(.student.student--rank, .s-belt-mark) .belt[data-instructor-bars='on'] {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .belt[data-instructor-bars='on'] {
   --ib: 18px;
 }
-:is(.student.student--rank, .s-belt-mark) .belt--slim57[data-instructor-bars='on'] .belt__bar {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .belt--slim57[data-instructor-bars='on'] .belt__bar {
   flex-basis: calc(57% + 2 * var(--ib));
   padding: 0 var(--ib);
 }
@@ -290,7 +290,7 @@
   right: calc(100% + 4px);
 }
 
-:is(.student.student--rank, .s-belt-mark) .rung__foot {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .rung__foot {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -641,12 +641,12 @@
 }
 
 @media (min-width: 700px) {
-  :is(.student.student--rank, .s-belt-mark) .belt {
+  :is(.student.student--rank, .s-belt-mark, .mat-hours) .belt {
     --h: 76px;
     --slot: 56px;
     --barw: calc(var(--slot) * 4 + 16px);
   }
-  :is(.student.student--rank, .s-belt-mark) .belt__name {
+  :is(.student.student--rank, .s-belt-mark, .mat-hours) .belt__name {
     font-size: 22px;
   }
   :is(.student.student--rank, .s-belt-mark) .tape {
@@ -655,17 +655,17 @@
     top: 11px;
     bottom: 11px;
   }
-  :is(.student.student--rank, .s-belt-mark) .belt--slim57 .belt__bar {
+  :is(.student.student--rank, .s-belt-mark, .mat-hours) .belt--slim57 .belt__bar {
     flex-basis: 36%;
   }
-  :is(.student.student--rank, .s-belt-mark) .belt--slim57 .tape {
+  :is(.student.student--rank, .s-belt-mark, .mat-hours) .belt--slim57 .tape {
     width: 8px;
     margin-left: -4px;
   }
-  :is(.student.student--rank, .s-belt-mark) .belt[data-instructor-bars='on'] {
+  :is(.student.student--rank, .s-belt-mark, .mat-hours) .belt[data-instructor-bars='on'] {
     --ib: 22px;
   }
-  :is(.student.student--rank, .s-belt-mark) .belt--slim57[data-instructor-bars='on'] .belt__bar {
+  :is(.student.student--rank, .s-belt-mark, .mat-hours) .belt--slim57[data-instructor-bars='on'] .belt__bar {
     flex-basis: calc(36% + 2 * var(--ib));
   }
   :is(.student.student--rank, .s-belt-mark) .ibar {
@@ -692,32 +692,32 @@
   top: 6px;
   bottom: 6px;
 }
-:is(.student.student--rank, .s-belt-mark) .belt.belt--kids .stripe:not(.is-on) .tape {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .belt.belt--kids .stripe:not(.is-on) .tape {
   background: color-mix(in srgb, var(--tape, #f4f1ea) 28%, transparent);
   border-color: color-mix(in srgb, var(--tape, #f4f1ea) 70%, transparent);
 }
 
 /* Kids belts use the adult woven row. The center band is the half-color stripe. */
-:is(.student.student--rank, .s-belt-mark) .belt.belt--kids .belt__name {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .belt.belt--kids .belt__name {
   font-size: 15px;
   letter-spacing: -0.04em;
   line-height: 1.05;
 }
-:is(.student.student--rank, .s-belt-mark) .belt.belt--kids .belt__body {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .belt.belt--kids .belt__body {
   padding: 0 8px 0 12px;
 }
-:is(.student.student--rank, .s-belt-mark) .belt.belt--kids[data-center='white'] .belt__body,
-:is(.student.student--rank, .s-belt-mark) .belt.belt--kids[data-center='black'] .belt__body {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .belt.belt--kids[data-center='white'] .belt__body,
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .belt.belt--kids[data-center='black'] .belt__body {
   justify-content: space-between;
   padding-top: 5px;
   padding-bottom: 4px;
 }
-:is(.student.student--rank, .s-belt-mark) .belt.belt--kids[data-center='white'] .belt__sub,
-:is(.student.student--rank, .s-belt-mark) .belt.belt--kids[data-center='black'] .belt__sub {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .belt.belt--kids[data-center='white'] .belt__sub,
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .belt.belt--kids[data-center='black'] .belt__sub {
   margin-top: 0;
 }
-:is(.student.student--rank, .s-belt-mark) .belt.belt--kids[data-center='white'] .belt__body::after,
-:is(.student.student--rank, .s-belt-mark) .belt.belt--kids[data-center='black'] .belt__body::after {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .belt.belt--kids[data-center='white'] .belt__body::after,
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .belt.belt--kids[data-center='black'] .belt__body::after {
   content: '';
   position: absolute;
   z-index: 1;
@@ -729,12 +729,12 @@
   pointer-events: none;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), inset 0 -1px 0 rgba(0, 0, 0, 0.28);
 }
-:is(.student.student--rank, .s-belt-mark) .rung--kids-ink-navy .belt__name,
-:is(.student.student--rank, .s-belt-mark) .rung--kids-ink-navy .belt__sub {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .rung--kids-ink-navy .belt__name,
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .rung--kids-ink-navy .belt__sub {
   color: #0e1726;
   text-shadow: none;
 }
-:is(.student.student--rank, .s-belt-mark) .belt.belt--kids .stripe.is-on .tape {
+:is(.student.student--rank, .s-belt-mark, .mat-hours) .belt.belt--kids .stripe.is-on .tape {
   border: 0;
   background:
     repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.1) 0 1px, transparent 1px 3px),

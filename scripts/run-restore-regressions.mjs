@@ -9,6 +9,7 @@ const outfile = resolve('node_modules/.cache/restore-flow.test.mjs');
 await build({
   entryPoints: ['src/pages/restoreFlow.test.tsx'],
   bundle: true,
+  loader: { '.css': 'empty' },
   format: 'esm',
   platform: 'node',
   outfile,

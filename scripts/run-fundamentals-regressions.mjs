@@ -8,6 +8,7 @@ const outfile = '.regression-cache/fundamentals-arena.test.mjs';
 await build({
   entryPoints: ['src/pages/student/fundamentalsArena.test.tsx'],
   bundle: true,
+  loader: { '.css': 'empty' },
   format: 'esm',
   platform: 'node',
   outfile,

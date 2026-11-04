@@ -1,0 +1,29 @@
+/* Journal: technique lines, binder pages, search hits. Self-contained (no ProfilePage overlap with #399). */
+.journal-techniques { margin-top: 1.25rem; padding-top: 0.75rem; border-top: 1px dashed rgba(40, 60, 120, 0.35); }
+.technique-line { display: grid; gap: 0.4rem; padding: 0.6rem 0; border-bottom: 1px solid rgba(40, 60, 120, 0.15); }
+.technique-line__head { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.technique-line__head input { flex: 1 1 12rem; min-width: 0; min-height: 44px; font-size: 16px; }
+.technique-line__head button { min-height: 44px; }
+.technique-line__link { display: flex; align-items: center; gap: 0.5rem; min-height: 44px; font-size: 14px; }
+.technique-line__link input { width: 22px; height: 22px; }
+
+.binder-pages { display: grid; gap: 1rem; }
+.binder-page {
+  position: relative; padding: 0.9rem 0.9rem 2rem 3rem; background: #fdfcf6; color: #1e2a44;
+  border-radius: 4px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18); overflow-wrap: anywhere;
+  --rule: 1.9em; line-height: var(--rule); font-size: 15px;
+  background-image:
+    linear-gradient(90deg, transparent 2.4rem, rgba(210, 60, 60, 0.55) 2.4rem 2.5rem, transparent 2.5rem),
+    repeating-linear-gradient(transparent 0 calc(var(--rule) - 1px), rgba(70, 110, 190, 0.3) calc(var(--rule) - 1px) var(--rule));
+  background-position: 0 0, 0 0.9rem;
+}
+.binder-page__holes { position: absolute; left: 0.8rem; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: space-around; }
+.binder-page__holes i { display: block; width: 0.8rem; height: 0.8rem; border-radius: 50%; background: #d9d6cc; box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35); }
+.binder-page__row { display: block; min-height: var(--rule); white-space: pre-wrap; }
+.binder-page__row--cont { padding-left: 1em; }
+.binder-page__number { position: absolute; right: 0.9rem; bottom: 0.4rem; font-size: 12px; color: #5a6480; }
+
+mark.journal-hit { background: #ffe26a; color: inherit; border-radius: 2px; padding: 0 1px; }
+
+.technique-line .ink--tech input { min-height: 44px; }
+.technique-line .student-pick { min-height: 44px; }

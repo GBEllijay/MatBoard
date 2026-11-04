@@ -6,6 +6,7 @@ import { StudentCardPreview } from '../../components/rosterCard/StudentCardPrevi
 import { ShareCardWithCoach, cardShareAvailable } from '../../components/StudentToCoachShare';
 import { ProfileCornerMarks, ProfileMedia, ProfileSwitches, useProfileMedia } from './ProfileIdentity';
 import { StudentProfileFields, TrainingSettings } from './ProfileFields';
+import { ProfileMatHoursStat } from './MatQuickAdd';
 import { StudentCompetitorSwitch } from './StudentCompetitorSwitch';
 import { ProfileCardFace } from './ProfileCardFace';
 import './profile.css';
@@ -37,7 +38,7 @@ export function ProfilePage() {
             name={kids && !media.logo && !showPhoto ? gymName : ''}
           />
         </header>
-        <ProfileCardFace report={report} portrait={showPhoto ? media.portrait : null} logo={media.logo} to={to} />
+        <ProfileCardFace report={report} portrait={showPhoto ? media.portrait : null} logo={media.logo} to={to} stats={<ProfileMatHoursStat to={to} />} />
         <div className="profile-stack">
           <ProfileMedia media={media} kids={kids} />
           <KidAdultFields report={report} commit={commit} />
