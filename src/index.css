@@ -4716,7 +4716,9 @@ main.tree:has(> .tier-home) > .tree__bar {
 .wheel-scroller {
   height: 240px;
   overflow-y: auto;
-  scroll-snap-type: y mandatory;
+  /* Per-row snapping is off. iOS Safari ends a flick on the next snapped row.
+     The list coasts, then the picker centers the settled row in script. */
+  scroll-snap-type: none;
   scroll-padding-block: 96px;
   padding-block: 96px;
   overscroll-behavior: contain;
@@ -4747,7 +4749,8 @@ main.tree:has(> .tier-home) > .tree__bar {
   font-size: 1.35rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  scroll-snap-align: center;
+  scroll-snap-align: none;
+  touch-action: pan-y;
   cursor: pointer;
 }
 

@@ -2,6 +2,8 @@
  * Expected duration on a Daily Lesson Plan or Competition Class block.
  * Whole minutes, 1 through 120. The coach picks them on the shared scroll wheel
  * (`WheelPicker`), the same wheel the round timer uses.
+ * 5, 10, 15, 20, 30, 45, and 60 minutes are chips above the wheel.
+ * 5, 10, and 15 are slow-scroll detents. A fast flick passes through them.
  *
  * Stored value is a minute count such as "8". Older saves used free text:
  * "8:00", "1:30", "8 min", "10 minutes". Those migrate to a whole minute.
@@ -33,14 +35,32 @@ export const DEFAULT_EXPECTED_MINUTES = 5;
 export type ExpectedMinuteOption = {
   value: number;
   label: string;
+  /** Chip above the wheel. */
+  snap?: boolean;
+  /** Slow-scroll catch, same two-row radius as the round timer's tens marks. */
+  detent?: boolean;
 };
+
+/** Chips above the expected-duration wheel. */
+export const EXPECTED_SNAP_MINUTES = [5, 10, 15, 20, 30, 45, 60] as const;
+
+/** Slow-scroll catches. Fast flicks do not land here unless they stop on the row. */
+export const EXPECTED_DETENT_MINUTES = [5, 10, 15] as const;
+
+const EXPECTED_SNAP_SET = new Set<number>(EXPECTED_SNAP_MINUTES);
+const EXPECTED_DETENT_SET = new Set<number>(EXPECTED_DETENT_MINUTES);
 
 /** One row per minute. Labels are "5 min", never m:ss. */
 export const EXPECTED_MINUTE_OPTIONS: readonly ExpectedMinuteOption[] = Array.from(
   { length: EXPECTED_MAX_MINUTES - EXPECTED_MIN_MINUTES + 1 },
   (_, index) => {
     const value = EXPECTED_MIN_MINUTES + index;
-    return { value, label: `${value} min` };
+    return {
+      value,
+      label: `${value} min`,
+      snap: EXPECTED_SNAP_SET.has(value),
+      detent: EXPECTED_DETENT_SET.has(value),
+    };
   },
 );
 

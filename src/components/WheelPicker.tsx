@@ -1,12 +1,23 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { detentIndex, wheelGestureSpeed, type WheelOption, type WheelSample } from '../lib/timeWheel';
+import {
+  centeredScrollTop,
+  settleRowIndex,
+  shouldSettleWheel,
+  wheelDeltaPx,
+  wheelGestureSpeed,
+  WHEEL_ITEM_PX,
+  WHEEL_WINDOW_PX,
+  type WheelOption,
+  type WheelSample,
+} from '../lib/timeWheel';
 import { Sheet } from './Sheet';
-
-const ITEM_PX = 48;
 
 /**
  * Large tappable value that opens an iOS-style wheel.
- * Touch scrolls natively. Mouse drag and the mouse wheel move the same column.
+ * Touch flicks coast with native momentum. Mandatory per-row snapping is off,
+ * because iOS Safari stops that flick on the next row. When the coast ends,
+ * the nearest row is centered. A slow scroll can still catch a detent.
+ * Mouse drag is 1:1. The mouse wheel and trackpad move in proportion to the delta.
  * The centered row is the value.
  */
 export function WheelPicker({
@@ -28,8 +39,15 @@ export function WheelPicker({
   const scroller = useRef<HTMLDivElement>(null);
   const valueRef = useRef(value);
   const samples = useRef<WheelSample[]>([]);
-  /** Keyboard and a tapped row land on that second. A scroll may catch a tens mark. */
+  /** Keyboard, a chip, and a tapped row land on that row. A scroll may catch a detent. */
   const precise = useRef(false);
+  /** Smooth chip scroll. A mid-glide sample must not commit the row it is passing. */
+  const glide = useRef(false);
+  const glideTarget = useRef<number | null>(null);
+  const glideWaits = useRef(0);
+  /** Scroll offset when this gesture started. A tap that never moves stays put. */
+  const gestureStart = useRef(0);
+  const gesture = useRef({ moved: false, top: 0, y: 0 });
   const listId = useId();
   valueRef.current = value;
   const selected = options.find((option) => option.value === value) ?? options[0];
@@ -42,39 +60,154 @@ export function WheelPicker({
 
   useEffect(() => {
     if (!wheelNode) return;
-    precise.current = true;
     const index = Math.max(0, options.findIndex((option) => option.value === valueRef.current));
-    wheelNode.scrollTop = index * ITEM_PX;
+    const target = centeredScrollTop(index, WHEEL_ITEM_PX);
+    precise.current = true;
+    wheelNode.scrollTop = target;
+    precise.current = false;
+    gestureStart.current = target;
+    gesture.current = { moved: false, top: target, y: 0 };
   }, [wheelNode, options]);
 
   useEffect(() => {
     if (!wheelNode) return;
     let timer = 0;
+    let pointerDown = false;
+    let settling = false;
+    let settled = false;
+    /** Ignore the scroll event caused by our own centering write. */
+    let suppressTop = -1;
+
     const commit = () => {
-      // scrollend and the scroll debounce can both fire for one move. Commit once,
-      // so a tapped or arrowed value is not re-snapped by the second call.
       window.clearTimeout(timer);
-      const centered = Math.min(options.length - 1, Math.max(0, Math.round(wheelNode.scrollTop / ITEM_PX)));
-      const index = precise.current ? centered : detentIndex(centered, options, wheelGestureSpeed(samples.current));
+      timer = 0;
+      if (pointerDown || settling || settled) return;
+      const gliding = glide.current && glideTarget.current != null && Math.abs(wheelNode.scrollTop - glideTarget.current) > 0.5;
+      if (gliding) {
+        glideWaits.current += 1;
+        if (glideWaits.current < 15) {
+          timer = window.setTimeout(commit, 80);
+          return;
+        }
+        const target = glideTarget.current ?? wheelNode.scrollTop;
+        suppressTop = target;
+        settling = true;
+        wheelNode.scrollTop = target;
+        settling = false;
+        glide.current = false;
+        glideTarget.current = null;
+        precise.current = false;
+        samples.current = [];
+        settled = true;
+        gestureStart.current = target;
+        return;
+      }
+      if (!shouldSettleWheel(wheelNode.scrollTop, options.length, samples.current, precise.current, gestureStart.current, WHEEL_ITEM_PX)) {
+        precise.current = false;
+        samples.current = [];
+        glide.current = false;
+        glideTarget.current = null;
+        settled = true;
+        return;
+      }
+      const index = settleRowIndex(wheelNode.scrollTop, options, wheelGestureSpeed(samples.current), precise.current, WHEEL_ITEM_PX);
       precise.current = false;
       samples.current = [];
-      if (index !== centered) wheelNode.scrollTop = index * ITEM_PX;
+      glide.current = false;
+      glideTarget.current = null;
+      settled = true;
+      const target = centeredScrollTop(index, WHEEL_ITEM_PX);
+      gestureStart.current = target;
+      if (Math.abs(wheelNode.scrollTop - target) > 0.5) {
+        suppressTop = target;
+        settling = true;
+        wheelNode.scrollTop = target;
+        settling = false;
+      }
       const next = options[index];
       if (next && next.value !== valueRef.current) onChange(next.value);
     };
-    const onScroll = () => {
-      samples.current.push({ t: performance.now(), top: wheelNode.scrollTop });
-      const cutoff = performance.now() - 320;
-      while (samples.current.length > 2 && samples.current[0].t < cutoff) samples.current.shift();
+
+    const arm = () => {
       window.clearTimeout(timer);
       timer = window.setTimeout(commit, 80);
     };
+
+    const onScroll = () => {
+      if (settling) return;
+      if (suppressTop >= 0 && Math.abs(wheelNode.scrollTop - suppressTop) <= 0.5) return;
+      suppressTop = -1;
+      settled = false;
+      if (pointerDown && Math.abs(wheelNode.scrollTop - gesture.current.top) > 4) gesture.current.moved = true;
+      if (glide.current) {
+        arm();
+        return;
+      }
+      samples.current.push({ t: performance.now(), top: wheelNode.scrollTop });
+      const cutoff = performance.now() - 320;
+      while (samples.current.length > 2 && samples.current[0].t < cutoff) samples.current.shift();
+      if (pointerDown) {
+        window.clearTimeout(timer);
+        timer = 0;
+        return;
+      }
+      arm();
+    };
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.pointerType === 'mouse' && event.button !== 0) return;
+      pointerDown = true;
+      settled = false;
+      suppressTop = -1;
+      glide.current = false;
+      glideTarget.current = null;
+      gesture.current = { moved: false, top: wheelNode.scrollTop, y: event.clientY };
+      gestureStart.current = wheelNode.scrollTop;
+      window.clearTimeout(timer);
+      timer = 0;
+    };
+
+    const onPointerMove = (event: PointerEvent) => {
+      if (!pointerDown) return;
+      if (Math.abs(event.clientY - gesture.current.y) > 4) gesture.current.moved = true;
+    };
+
+    const onPointerEnd = (event: PointerEvent) => {
+      if (event.pointerType === 'mouse' && event.button !== 0) return;
+      if (!pointerDown) return;
+      pointerDown = false;
+      arm();
+    };
+
+    const onWheel = (event: WheelEvent) => {
+      if (event.ctrlKey || !event.cancelable) return;
+      const px = wheelDeltaPx(event.deltaY, event.deltaMode, WHEEL_ITEM_PX, wheelNode.clientHeight || WHEEL_WINDOW_PX);
+      if (!px) return;
+      event.preventDefault();
+      suppressTop = -1;
+      precise.current = false;
+      glide.current = false;
+      glideTarget.current = null;
+      settled = false;
+      wheelNode.scrollTop += px;
+    };
+
     wheelNode.addEventListener('scroll', onScroll, { passive: true });
     wheelNode.addEventListener('scrollend', commit);
+    wheelNode.addEventListener('pointerdown', onPointerDown);
+    wheelNode.addEventListener('pointermove', onPointerMove);
+    wheelNode.addEventListener('pointerup', onPointerEnd);
+    wheelNode.addEventListener('pointercancel', onPointerEnd);
+    wheelNode.addEventListener('wheel', onWheel, { passive: false });
     return () => {
       window.clearTimeout(timer);
       wheelNode.removeEventListener('scroll', onScroll);
       wheelNode.removeEventListener('scrollend', commit);
+      wheelNode.removeEventListener('pointerdown', onPointerDown);
+      wheelNode.removeEventListener('pointermove', onPointerMove);
+      wheelNode.removeEventListener('pointerup', onPointerEnd);
+      wheelNode.removeEventListener('pointercancel', onPointerEnd);
+      wheelNode.removeEventListener('wheel', onWheel);
     };
   }, [wheelNode, onChange, options]);
 
@@ -82,7 +215,19 @@ export function WheelPicker({
     const el = scroller.current;
     const index = options.findIndex((option) => option.value === next);
     if (!el || index < 0) return;
-    el.scrollTo({ top: index * ITEM_PX, behavior });
+    precise.current = true;
+    const target = centeredScrollTop(index, WHEEL_ITEM_PX);
+    if (Math.abs(el.scrollTop - target) <= 0.5) {
+      precise.current = false;
+      gestureStart.current = target;
+      glide.current = false;
+      glideTarget.current = null;
+      return;
+    }
+    glide.current = behavior === 'smooth';
+    glideTarget.current = behavior === 'smooth' ? target : null;
+    glideWaits.current = 0;
+    el.scrollTo({ top: target, behavior });
   };
 
   const drag = useRef<{ id: number; y: number; top: number; moved: boolean } | null>(null);
@@ -118,6 +263,7 @@ export function WheelPicker({
                 type="button"
                 className={`preset${option.value === value ? ' preset--on' : ''}`}
                 onClick={() => {
+                  precise.current = true;
                   onChange(option.value);
                   scrollTo(option.value, 'smooth');
                 }}
@@ -181,6 +327,7 @@ export function WheelPicker({
                 aria-selected={option.value === value}
                 className={`wheel-item${option.value === value ? ' wheel-item--on' : ''}${option.detent ? ' wheel-item--mark' : ''}${option.snap ? ' wheel-item--snap' : ''}`}
                 onClick={() => {
+                  if (gesture.current.moved) return;
                   precise.current = true;
                   onChange(option.value);
                   scrollTo(option.value, 'auto');
