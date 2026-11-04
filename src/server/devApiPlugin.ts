@@ -18,6 +18,12 @@ import {
   handleSeatRevoke,
   handleSeatSync,
 } from './seats.ts';
+import {
+  handleStudentLicenseClaim,
+  handleStudentLicenseIssue,
+  handleStudentLicenseList,
+  handleStudentLicenseRevoke,
+} from './studentLicenses.ts';
 import { handleTokenRefresh } from './tokenRefresh.ts';
 import { handleUpgradeQuote } from './upgradeCredit.ts';
 import { MemoryRedemptionLedger } from './redemptionLedger.ts';
@@ -35,6 +41,10 @@ import {
   API_SEATS_RESET_PATH,
   API_SEATS_REVOKE_PATH,
   API_SEATS_SYNC_PATH,
+  API_STUDENT_LICENSES_CLAIM_PATH,
+  API_STUDENT_LICENSES_ISSUE_PATH,
+  API_STUDENT_LICENSES_LIST_PATH,
+  API_STUDENT_LICENSES_REVOKE_PATH,
   API_ENTITLEMENT_PATH,
   API_OWNER_TEST_PATH,
   API_RESTORE_REQUEST_PATH,
@@ -220,7 +230,11 @@ function attach(
       path === API_SEATS_REVOKE_PATH ||
       path === API_SEATS_RESET_PATH ||
       path === API_SEATS_LIST_PATH ||
-      path === API_SEATS_SYNC_PATH;
+      path === API_SEATS_SYNC_PATH ||
+      path === API_STUDENT_LICENSES_ISSUE_PATH ||
+      path === API_STUDENT_LICENSES_LIST_PATH ||
+      path === API_STUDENT_LICENSES_REVOKE_PATH ||
+      path === API_STUDENT_LICENSES_CLAIM_PATH;
     if (!api) {
       next();
       return;
@@ -267,8 +281,16 @@ function attach(
                                   ? await handleSeatReset(request, env, devDb)
                                   : path === API_SEATS_LIST_PATH
                                     ? await handleSeatList(request, env, devDb)
-                                    : path === API_SEATS_SYNC_PATH
-                                      ? await handleSeatSync(request, env, devDb)
+                            : path === API_SEATS_SYNC_PATH
+                              ? await handleSeatSync(request, env, devDb)
+                              : path === API_STUDENT_LICENSES_ISSUE_PATH
+                                ? await handleStudentLicenseIssue(request, env, devDb)
+                                : path === API_STUDENT_LICENSES_LIST_PATH
+                                  ? await handleStudentLicenseList(request, env, devDb)
+                                  : path === API_STUDENT_LICENSES_REVOKE_PATH
+                                    ? await handleStudentLicenseRevoke(request, env, devDb)
+                                    : path === API_STUDENT_LICENSES_CLAIM_PATH
+                                      ? await handleStudentLicenseClaim(request, env, devDb)
                                       : path === API_RESTORE_REQUEST_PATH
                                         ? await handleRestoreRequest(request, env, devDb, emailSenderFromEnv(env))
                                         : path === API_RESTORE_VERIFY_PATH

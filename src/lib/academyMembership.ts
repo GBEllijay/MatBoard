@@ -153,6 +153,43 @@ export function joinAcademy(
   return next;
 }
 
+/**
+ * Connect this phone to a gym by its license id, including Advantage Cloud
+ * when the claim included one. A folder link is not required. The same gym
+ * keeps a folder that was already saved.
+ */
+export function joinCloudAcademy(
+  storage: MemoryStore,
+  input: { license: string; gymName?: string },
+  now = Date.now(),
+): AcademyMembership | null {
+  const license = input.license.trim();
+  if (!/^[A-Za-z0-9_-]{8,80}$/.test(license)) return null;
+  saveAcademyLicense(storage, license);
+  const ids = gymIdsFor(null, license);
+  const before = readMembership(storage);
+  const same = Boolean(before.current?.ids.some((id) => ids.includes(id)));
+  const next: AcademyMembership = {
+    v: 1,
+    current: {
+      ids: same ? readGymIds([...(before.current?.ids ?? []), ...ids]) : ids,
+      name: clip(input.gymName, 80) || (same ? before.current?.name ?? '' : ''),
+      provider: same ? before.current?.provider ?? null : null,
+      since: same && before.current?.since ? before.current.since : now,
+    },
+    left: before.left.filter((row) => !row.ids.some((id) => ids.includes(id))),
+    previous:
+      before.current && !same
+        ? before.current
+        : before.previous && !before.previous.ids.some((id) => ids.includes(id))
+          ? before.previous
+          : null,
+  };
+  writeMembership(storage, next);
+  clearAcademyStale(storage);
+  return next;
+}
+
 /** Same gym, another folder in it (the folder picker). The license stays. */
 export function moveAcademyFolder(storage: MemoryStore, folderId: string): void {
   const before = readMembership(storage);
