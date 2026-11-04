@@ -52,14 +52,14 @@ Object.defineProperty(globalThis, 'localStorage', {
 
 const TODAY = '2026-11-04';
 
-test('expected duration is whole minutes from 1 to 120, default 5', () => {
+test('expected duration is whole minutes from 1 to 60, default 5', () => {
   assert.equal(EXPECTED_MIN_MINUTES, 1);
-  assert.equal(EXPECTED_MAX_MINUTES, 120);
+  assert.equal(EXPECTED_MAX_MINUTES, 60);
   assert.equal(DEFAULT_EXPECTED_MINUTES, 5);
-  assert.equal(EXPECTED_MINUTE_OPTIONS.length, 120);
+  assert.equal(EXPECTED_MINUTE_OPTIONS.length, 60);
   assert.equal(EXPECTED_MINUTE_OPTIONS[0]?.label, '1 min');
   assert.equal(EXPECTED_MINUTE_OPTIONS[4]?.value, 5);
-  assert.equal(EXPECTED_MINUTE_OPTIONS.at(-1)?.label, '120 min');
+  assert.equal(EXPECTED_MINUTE_OPTIONS.at(-1)?.label, '60 min');
   assert.equal(EXPECTED_MINUTE_OPTIONS.some((option) => option.label.includes(':')), false);
   assert.equal(expectedMinutes(''), 5);
   assert.equal(expectedMinutes(createTechnique().expected), 5);
@@ -83,8 +83,8 @@ test('old m:ss and minute phrases migrate to whole minutes', () => {
   assert.equal(migrateExpectedDuration('3 mins'), '3');
   assert.equal(migrateExpectedDuration('8.5'), '9');
   assert.equal(migrateExpectedDuration('0'), '1');
-  assert.equal(migrateExpectedDuration('200'), '120');
-  assert.equal(migrateExpectedDuration('90:00'), '90');
+  assert.equal(migrateExpectedDuration('200'), '60');
+  assert.equal(migrateExpectedDuration('90:00'), '60');
   assert.equal(migrateExpectedDuration(''), '');
   assert.equal(migrateExpectedDuration('  '), '');
   assert.equal(migrateExpectedDuration('soon'), 'soon');
@@ -169,7 +169,7 @@ test('the lesson duration is the video loop unless a manual length wins', () => 
   assert.equal(stored.plan.blocks[0]?.expected, '8');
 });
 
-test('expected duration chips are 5, 10, 15, 20, 30, 45, and 60, and 5, 10, 15 catch a slow scroll', () => {
+test('expected duration has no chips, and 5, 10, 15 catch a slow scroll', () => {
   assert.deepEqual(
     EXPECTED_MINUTE_OPTIONS.filter((option) => option.snap).map((option) => option.value),
     [...EXPECTED_SNAP_MINUTES],
@@ -178,9 +178,9 @@ test('expected duration chips are 5, 10, 15, 20, 30, 45, and 60, and 5, 10, 15 c
     EXPECTED_MINUTE_OPTIONS.filter((option) => option.detent).map((option) => option.value),
     [...EXPECTED_DETENT_MINUTES],
   );
-  assert.deepEqual([...EXPECTED_SNAP_MINUTES], [5, 10, 15, 20, 30, 45, 60]);
+  assert.deepEqual([...EXPECTED_SNAP_MINUTES], []);
   assert.deepEqual([...EXPECTED_DETENT_MINUTES], [5, 10, 15]);
-  for (const minute of [1, 8, 9, 12, 16, 18, 25, 40, 90, 120]) {
+  for (const minute of [1, 8, 9, 12, 16, 18, 20, 25, 30, 40, 45, 60]) {
     const option = EXPECTED_MINUTE_OPTIONS.find((row) => row.value === minute);
     assert.equal(option?.snap, false, `${minute} min chip`);
     assert.equal(option?.detent, false, `${minute} min detent`);

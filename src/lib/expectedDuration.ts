@@ -1,8 +1,8 @@
 /**
  * Expected duration on a Daily Lesson Plan or Competition Class block.
- * Whole minutes, 1 through 120. The coach picks them on the shared scroll wheel
+ * Whole minutes, 1 through 60. The coach picks them on the shared scroll wheel
  * (`WheelPicker`), the same wheel the round timer uses.
- * 5, 10, 15, 20, 30, 45, and 60 minutes are chips above the wheel.
+ * No quick-pick chips: the wheel alone, to keep the block uncluttered.
  * 5, 10, and 15 are slow-scroll detents. A fast flick passes through them.
  *
  * Stored value is a minute count such as "8". Older saves used free text:
@@ -29,7 +29,7 @@
 import { DEFAULT_DRILL_SEC } from './techniqueLogic.ts';
 
 export const EXPECTED_MIN_MINUTES = 1;
-export const EXPECTED_MAX_MINUTES = 120;
+export const EXPECTED_MAX_MINUTES = 60;
 export const DEFAULT_EXPECTED_MINUTES = 5;
 
 export type ExpectedMinuteOption = {
@@ -41,8 +41,8 @@ export type ExpectedMinuteOption = {
   detent?: boolean;
 };
 
-/** Chips above the expected-duration wheel. */
-export const EXPECTED_SNAP_MINUTES = [5, 10, 15, 20, 30, 45, 60] as const;
+/** No chips above the expected-duration wheel (owner: less clutter). */
+export const EXPECTED_SNAP_MINUTES: readonly number[] = [];
 
 /** Slow-scroll catches. Fast flicks do not land here unless they stop on the row. */
 export const EXPECTED_DETENT_MINUTES = [5, 10, 15] as const;
