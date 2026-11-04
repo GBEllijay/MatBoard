@@ -18,6 +18,9 @@ import {
 } from './trainingSkin.ts';
 import { whiteBaseSkinTier } from './whiteSkinTier.ts';
 
+// Scrolling picker regressions run with this file so `npm test` picks them up.
+import './skinPickerLayout.test.ts';
+
 function memoryStorage() {
   const store = new Map<string, string>();
   return {
