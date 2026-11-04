@@ -585,3 +585,325 @@ test('custom skins sync under the license cap and the existing byte cap', async 
   assert.equal(overCap.status, 409);
   assert.match(await overCap.text(), /full/);
 });
+
+async function seatToken(secret: string, sid: string, preset: string): Promise<string> {
+  return token(secret, {
+    licenseId: 'owner-test',
+    grants: ['pro'],
+    tier: 'seat',
+    src: 'seat',
+    deviceId: `device-${sid}`,
+    now,
+    kind: 'seat',
+    gym: 'owner-test',
+    sid,
+    preset,
+  } as Parameters<typeof issueToken>[1]);
+}
+
+function cloudFetcher(env: GymCloudEnv): typeof fetch {
+  return async (input, init) => {
+    const raw = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+    return handleGymCloud(new Request(raw, init), env, () => now);
+  };
+}
+
+async function pendingFor(env: GymCloudEnv, bearer: string): Promise<{ status: number; rows: { path: string; status: string; seatId: string }[] }> {
+  const response = await call(env, '/api/gym/cloud?op=pending', {}, bearer);
+  const body = (await response.json()) as { pending?: { path: string; status: string; seatId: string }[] };
+  return { status: response.status, rows: body.pending ?? [] };
+}
+
+function decide(env: GymCloudEnv, bearer: string, action: 'approve' | 'decline', key: string): Promise<Response> {
+  return call(env, '/api/gym/cloud', { method: 'POST', body: JSON.stringify({ action, key }) }, bearer);
+}
+
+test('replay uploads from an assistant coach and a program director land pending; only the owner decides', async () => {
+  const secret = await signingSecret();
+  const bucket = new MemoryBucket();
+  const env: GymCloudEnv = { GYM_MEDIA: bucket, ENTITLEMENT_SIGNING_KEY: secret, ENTITLEMENT_KEY_ID: 'k1' };
+  const owner = await token(secret, {
+    licenseId: 'owner-test',
+    grants: ['white', 'student', 'coach', 'pro'],
+    tier: 'pro',
+    src: 'code',
+    deviceId: 'device-owner',
+    now,
+    kind: 'code',
+  });
+  const assistant = await seatToken(secret, 'seat-assistant', 'assistant-coach');
+  const director = await seatToken(secret, 'seat-pd', 'program-director');
+  const coach = await seatToken(secret, 'seat-coach', 'coach');
+  const fetcher = cloudFetcher(env);
+
+  const assistantStatus = (await (await call(env, '/api/gym/cloud?op=status', {}, assistant)).json()) as { canUpload: boolean; replayUpload: string };
+  assert.equal(assistantStatus.canUpload, false);
+  assert.equal(assistantStatus.replayUpload, 'pending');
+  const pdStatus = (await (await call(env, '/api/gym/cloud?op=status', {}, director)).json()) as { cloud: boolean; replayUpload: string };
+  assert.equal(pdStatus.cloud, false, 'PD still has no Cloud library');
+  assert.equal(pdStatus.replayUpload, 'pending');
+
+  // Assistant: pending, not lesson media.
+  const sent = await uploadAdvantageCloudFile({
+    purpose: 'replay-pending',
+    dateKey: '2026-11-03',
+    file: new Blob([Uint8Array.from([1, 2, 3])], { type: 'video/mp4' }),
+    fileName: 'round2.mp4',
+    mime: 'video/mp4',
+    token: assistant,
+    fetcher,
+  });
+  assert.equal(sent.ok, true);
+  if (!sent.ok) return;
+  assert.equal(sent.path, 'pending/replays/seat-assistant/2026-11-03/round2.mp4');
+  assert.equal([...bucket.objects.keys()].some((key) => key.includes('/media/')), false);
+
+  // PD: pending too (replay only).
+  const pdSent = await uploadAdvantageCloudFile({
+    purpose: 'replay-pending',
+    dateKey: '2026-11-03',
+    file: new Blob([Uint8Array.from([7, 7])], { type: 'image/png' }),
+    fileName: 'frame.png',
+    mime: 'image/png',
+    token: director,
+    fetcher,
+  });
+  assert.equal(pdSent.ok, true);
+  if (!pdSent.ok) return;
+  assert.equal(pdSent.path, 'pending/replays/seat-pd/2026-11-03/frame.png');
+
+  // Pending seats cannot use any other upload purpose.
+  for (const bearer of [assistant, director]) {
+    const other = await uploadAdvantageCloudFile({
+      purpose: 'lesson-media',
+      dateKey: '2026-11-03',
+      file: new Blob([Uint8Array.from([1])], { type: 'video/mp4' }),
+      fileName: 'sneak.mp4',
+      mime: 'video/mp4',
+      token: bearer,
+      fetcher,
+    });
+    assert.equal(other.ok, false);
+  }
+  // A pending seat cannot PUT into another seat's pending folder.
+  const crossKey = encodeURIComponent('groups/owner-test/pending/replays/seat-assistant/2026-11-03/x.mp4');
+  const cross = await call(env, `/api/gym/cloud?key=${crossKey}`, { method: 'PUT', body: new Uint8Array([1]) }, director);
+  assert.notEqual(cross.status, 200);
+
+  // Visibility: owner sees both, each seat only its own, Coach none; the lesson list shows neither.
+  assert.deepEqual((await pendingFor(env, owner)).rows.map((row) => row.seatId).sort(), ['seat-assistant', 'seat-pd']);
+  assert.deepEqual((await pendingFor(env, assistant)).rows.map((row) => row.path), [sent.path]);
+  assert.deepEqual((await pendingFor(env, director)).rows.map((row) => row.path), [pdSent.path]);
+  assert.equal((await pendingFor(env, coach)).status, 403);
+  const lessonList = (await (await call(env, '/api/gym/cloud?op=list&purpose=lesson&date=2026-11-03', {}, coach)).json()) as { files: unknown[] };
+  assert.equal(lessonList.files.length, 0);
+  assert.equal((await call(env, `/api/gym/cloud?op=file&path=${encodeURIComponent(sent.path)}`, {}, coach)).status, 404);
+  assert.equal((await call(env, `/api/gym/cloud?op=file&path=${encodeURIComponent(sent.path)}`, {}, director)).status, 404);
+  assert.equal((await call(env, `/api/gym/cloud?op=file&path=${encodeURIComponent(sent.path)}`, {}, assistant)).status, 200);
+  assert.equal((await call(env, `/api/gym/cloud?op=file&path=${encodeURIComponent(sent.path)}`, {}, owner)).status, 200);
+
+  // Only the owner decides.
+  assert.equal((await decide(env, assistant, 'approve', sent.path)).status, 403);
+  assert.equal((await decide(env, coach, 'approve', sent.path)).status, 403);
+
+  // Approve: normal lesson media.
+  const approved = await decide(env, owner, 'approve', sent.path);
+  assert.equal(approved.status, 200);
+  const approvedBody = (await approved.json()) as { path: string };
+  assert.match(approvedBody.path, /^lessons\/current\/.+\/media\/2026-11-03\/round2\.mp4$/);
+  assert.equal(bucket.objects.has(`groups/owner-test/${approvedBody.path}`), true);
+  const afterApprove = (await (await call(env, '/api/gym/cloud?op=list&purpose=lesson&date=2026-11-03', {}, coach)).json()) as { files: { name: string }[] };
+  assert.deepEqual(afterApprove.files.map((file) => file.name), ['round2.mp4']);
+
+  // Decline: marked, never deleted.
+  const declined = await decide(env, owner, 'decline', pdSent.path);
+  assert.equal(declined.status, 200);
+  assert.equal(bucket.objects.has(`groups/owner-test/${pdSent.path}`), true);
+  assert.equal([...bucket.objects.keys()].some((key) => key.endsWith('/media/2026-11-03/frame.png')), false);
+  const statuses = Object.fromEntries((await pendingFor(env, owner)).rows.map((row) => [row.seatId, row.status]));
+  assert.deepEqual(statuses, { 'seat-assistant': 'approved', 'seat-pd': 'declined' });
+
+  // Coach keeps direct upload.
+  const direct = await uploadAdvantageCloudFile({
+    purpose: 'lesson-media',
+    dateKey: '2026-11-03',
+    file: new Blob([Uint8Array.from([5])], { type: 'video/mp4' }),
+    fileName: 'coach.mp4',
+    mime: 'video/mp4',
+    token: coach,
+    fetcher,
+  });
+  assert.equal(direct.ok, true);
+  if (direct.ok) assert.match(direct.path, /^lessons\/current\/.+\/media\/2026-11-03\/coach\.mp4$/);
+});
+
+test('a revoked program director seat cannot send a pending replay', async () => {
+  const secret = await signingSecret();
+  const env: GymCloudEnv = {
+    GYM_MEDIA: new MemoryBucket(),
+    ENTITLEMENT_SIGNING_KEY: secret,
+    ENTITLEMENT_KEY_ID: 'k1',
+    ENTITLEMENTS_DB: fakeDb({
+      grants: [
+        { licenseId: 'owner-test', product: 'advantage-pro', source: 'code', sourceRef: 'code:1', status: 'active', endsAt: null, revokedAt: null },
+      ],
+      seat: { status: 'claimed', revokedAt: '2026-11-01T00:00:00.000Z' },
+    }),
+  };
+  const director = await seatToken(secret, 'seat-pd', 'program-director');
+  const sent = await uploadAdvantageCloudFile({
+    purpose: 'replay-pending',
+    dateKey: '2026-11-03',
+    file: new Blob([Uint8Array.from([1])], { type: 'video/mp4' }),
+    fileName: 'late.mp4',
+    mime: 'video/mp4',
+    token: director,
+    fetcher: cloudFetcher(env),
+  });
+  assert.equal(sent.ok, false);
+});
+
+test('a program director can only drop a video into today\'s daily videos, and a revoked or non-Plus-Cloud PD is refused', async () => {
+  const secret = await signingSecret();
+  const bucket = new MemoryBucket();
+  bucket.objects.set('groups/lic-code/lessons/current/2026-W45/2026-11-03.json', {
+    bytes: Uint8Array.from([1, 2]),
+    type: 'application/json',
+  });
+  const grants = [
+    {
+      licenseId: 'lic-code',
+      product: 'advantage-pro',
+      source: 'code',
+      sourceRef: 'code:1',
+      status: 'active',
+      endsAt: null,
+      revokedAt: null,
+    },
+  ];
+  const env: GymCloudEnv = {
+    GYM_MEDIA: bucket,
+    ENTITLEMENT_SIGNING_KEY: secret,
+    ENTITLEMENT_KEY_ID: 'k1',
+    ENTITLEMENTS_DB: fakeDb({ grants, seat: { status: 'claimed', revokedAt: null } }),
+  };
+  const pd = await token(secret, {
+    licenseId: 'lic-code',
+    grants: ['pro'],
+    tier: 'seat',
+    src: 'seat',
+    deviceId: 'device-pd',
+    now,
+    kind: 'seat',
+    gym: 'lic-code',
+    sid: 'seat-pd',
+    preset: 'program-director',
+  });
+  const post = (body: Record<string, unknown>, e: GymCloudEnv = env) =>
+    call(e, '/api/gym/cloud', { method: 'POST', body: JSON.stringify(body) }, pd);
+
+  const status = await call(env, '/api/gym/cloud?op=status', {}, pd);
+  assert.equal(status.status, 200);
+  const statusBody = (await status.json()) as { cloud: boolean; dailyVideoDrop?: boolean; canUpload?: boolean };
+  assert.equal(statusBody.cloud, false, 'PD does not open the Cloud file list');
+  assert.equal(statusBody.dailyVideoDrop, true);
+  assert.notEqual(statusBody.canUpload, true);
+
+  // Reading Cloud stays closed.
+  assert.equal((await call(env, '/api/gym/cloud?op=list&purpose=daily-video&date=2026-11-03', {}, pd)).status, 403);
+  assert.equal(
+    (await call(env, `/api/gym/cloud?op=file&path=${encodeURIComponent('lessons/current/2026-W45/2026-11-03.json')}`, {}, pd)).status,
+    403,
+  );
+
+  // Lesson plans and lesson media are refused.
+  for (const purpose of ['lesson', 'lesson-media']) {
+    const refused = await post({ action: 'start', purpose, dateKey: '2026-11-03', fileName: 'x.mp4', size: 4, mime: 'video/mp4' });
+    assert.equal(refused.status, 403, purpose);
+  }
+  // Writing straight to a lesson key is refused.
+  const sneaky = await call(
+    env,
+    `/api/gym/cloud?op=put&key=${encodeURIComponent('groups/lic-code/lessons/current/2026-W45/2026-11-03.json')}`,
+    { method: 'PUT', body: 'xx', headers: { 'content-type': 'video/mp4' } },
+    pd,
+  );
+  assert.equal(sneaky.status, 403);
+  assert.deepEqual([...bucket.objects.get('groups/lic-code/lessons/current/2026-W45/2026-11-03.json')!.bytes], [1, 2]);
+  const skin = await post({ action: 'delete-skin', id: 'any' });
+  assert.equal(skin.status, 403);
+
+  // Today's daily video goes in.
+  const started = await post({
+    action: 'start',
+    purpose: 'daily-video',
+    dateKey: '2026-11-03',
+    fileName: 'morning drill.mp4',
+    size: 4,
+    mime: 'video/mp4',
+  });
+  assert.equal(started.status, 200);
+  const opened = (await started.json()) as { key: string; path: string; mode: string };
+  assert.match(opened.path, /^videos\/daily\/2026-11-03\//);
+  const put = await call(
+    env,
+    `/api/gym/cloud?op=put&key=${encodeURIComponent(opened.key)}`,
+    { method: 'PUT', body: Uint8Array.from([1, 2, 3, 4]), headers: { 'content-type': 'video/mp4' } },
+    pd,
+  );
+  assert.equal(put.status, 200);
+  assert.ok(bucket.objects.has(opened.key));
+  // The same name again is refused instead of replacing the video already there.
+  const again = await post({
+    action: 'start',
+    purpose: 'daily-video',
+    dateKey: '2026-11-03',
+    fileName: 'morning drill.mp4',
+    size: 4,
+    mime: 'video/mp4',
+  });
+  assert.equal(again.status, 409);
+  // A non-video type on a daily key is never stored as that type.
+  const notVideo = await call(
+    env,
+    `/api/gym/cloud?op=put&key=${encodeURIComponent('groups/lic-code/videos/daily/2026-11-03/x.mp4')}`,
+    { method: 'PUT', body: 'hi', headers: { 'content-type': 'text/html' } },
+    pd,
+  );
+  if (notVideo.status === 200) {
+    assert.notEqual(bucket.objects.get('groups/lic-code/videos/daily/2026-11-03/x.mp4')?.type, 'text/html');
+  } else {
+    assert.equal(notVideo.status, 400);
+  }
+
+  // A revoked PD seat is refused before anything else.
+  const revokedEnv: GymCloudEnv = {
+    ...env,
+    ENTITLEMENTS_DB: fakeDb({ grants, seat: { status: 'claimed', revokedAt: '2026-11-01T00:00:00.000Z' } }),
+  };
+  assert.equal((await call(revokedEnv, '/api/gym/cloud?op=status', {}, pd)).status, 403);
+  const revokedStart = await post(
+    { action: 'start', purpose: 'daily-video', dateKey: '2026-11-03', fileName: 'a.mp4', size: 4, mime: 'video/mp4' },
+    revokedEnv,
+  );
+  assert.equal(revokedStart.status, 403);
+
+  // Without Plus Cloud the drop is not offered and not accepted.
+  const noCloudEnv: GymCloudEnv = {
+    ...env,
+    ENTITLEMENTS_DB: fakeDb({
+      grants: [{ ...grants[0], source: 'stripe_subscription', sourceRef: 'sub_1' }],
+      seat: { status: 'claimed', revokedAt: null },
+    }),
+  };
+  const noCloud = await call(noCloudEnv, '/api/gym/cloud?op=status', {}, pd);
+  assert.equal(noCloud.status, 200);
+  const noCloudBody = (await noCloud.json()) as { cloud: boolean; dailyVideoDrop?: boolean };
+  assert.equal(noCloudBody.cloud, false);
+  assert.notEqual(noCloudBody.dailyVideoDrop, true);
+  const noCloudStart = await post(
+    { action: 'start', purpose: 'daily-video', dateKey: '2026-11-03', fileName: 'a.mp4', size: 4, mime: 'video/mp4' },
+    noCloudEnv,
+  );
+  assert.equal(noCloudStart.status, 403);
+});

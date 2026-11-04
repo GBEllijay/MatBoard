@@ -79,6 +79,7 @@ import {
   withStarterRubric,
 } from '../../lib/studentTools';
 import { COACH_FILE_LABEL } from '../../lib/studentHubMenu';
+import { readCoachOverlay } from '../../lib/coachSync';
 import { StudentMarks, useScrollToHash, useStudentFile, useStudentPath } from './chrome';
 
 export function BeltPage() {
@@ -86,6 +87,7 @@ export function BeltPage() {
   const { hash } = useLocation();
   const { report, commit } = useStudentFile();
   const [shelf] = useState(() => loadCoachShelf(localStorage));
+  const [coachNotes] = useState(() => readCoachOverlay(localStorage).notes);
   const [error, setError] = useState('');
   useEffect(() => {
     try {
@@ -302,7 +304,7 @@ export function BeltPage() {
             <p className="student-quiet">
               Suggestions only. Copy a line into your personal goals if you want it. Your practical benchmarks stay as you marked them.
             </p>
-            {!shelf.plan && !shelf.feedback ? <p>Nothing from your coach on this phone yet.</p> : null}
+            {!shelf.plan && !shelf.feedback && !coachNotes.length ? <p>Nothing from your coach on this phone yet.</p> : null}
             {shelf.plan ? (
               <article className="ink">
                 <h3>{shelf.plan.plan.title || 'Work on before next promotion'}</h3>
@@ -342,6 +344,29 @@ export function BeltPage() {
                     </button>
                   </div>
                 ))}
+              </article>
+            ) : null}
+            {coachNotes.length ? (
+              <article className="ink" aria-label="Suggestions from coach">
+                <h3>Suggestions from coach</h3>
+                {[...coachNotes].reverse().map((line) => {
+                  const suggestion = { id: line.updateId, targetId: '', note: line.note };
+                  return (
+                    <div key={line.updateId} className="coach-line">
+                      <p>{line.note}</p>
+                      <p className="student-quiet">Journal {line.journalDate}</p>
+                      <button
+                        type="button"
+                        className="ink-btn"
+                        aria-label={`Copy ${line.note} to my personal goals`}
+                        disabled={goalCopied(report, suggestion.id)}
+                        onClick={() => run(copySuggestionToGoal(report, suggestion, Date.now(), adultPath ? undefined : currentKidsBelt(report).beltId))}
+                      >
+                        {goalCopied(report, suggestion.id) ? 'Copied' : 'Copy to my personal goals'}
+                      </button>
+                    </div>
+                  );
+                })}
               </article>
             ) : null}
           </section>

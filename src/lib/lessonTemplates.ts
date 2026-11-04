@@ -4,6 +4,8 @@
  * specific training, cool down, and closing.
  * Kids starts from that and puts a Game between Technique 1 and Technique 2
  * in place of Technique 3.
+ * Private lesson is Adult trimmed for one student: intro, warm-up, two
+ * techniques, specific training, and closing (no cool down).
  * Competition points this plan at the Competition Class Curriculum. That
  * curriculum keeps its own saved days.
  * A template only sets the starting blocks. The coach can reorder, add, and
@@ -23,13 +25,15 @@ import {
   type TrainingNotesPlan,
 } from './trainingNotesStore.ts';
 import { clampText } from './plainValue.ts';
+import { MAX_REPLAYS, cleanReplay, createReplay, replayHasContent, replayHeading, type ReplayBlock } from './replayAnalysis.ts';
 
-export const LESSON_TEMPLATES = ['adult', 'kids', 'competition'] as const;
+export const LESSON_TEMPLATES = ['adult', 'kids', 'private', 'competition'] as const;
 export type LessonTemplateId = (typeof LESSON_TEMPLATES)[number];
 
 export const LESSON_TEMPLATE_LABELS: Record<LessonTemplateId, string> = {
   adult: 'Adult class',
   kids: 'Kids class',
+  private: 'Private lesson',
   competition: 'Competition class',
 };
 
@@ -41,7 +45,9 @@ export type PlanSectionKind = (typeof SECTION_KINDS)[number];
 export type PlanBlock =
   | { kind: PlanSectionKind }
   | { kind: 'technique'; id: string }
-  | { kind: 'game'; id: string };
+  | { kind: 'game'; id: string }
+  /** Video replay analysis card. Text lives in `plan.replays`, the clip on this device. */
+  | { kind: 'replay'; id: string };
 
 export type GameBlock = {
   id: string;
@@ -70,7 +76,7 @@ export function createGame(): GameBlock {
 }
 
 export function isLessonTemplate(value: unknown): value is LessonTemplateId {
-  return value === 'adult' || value === 'kids' || value === 'competition';
+  return value === 'adult' || value === 'kids' || value === 'private' || value === 'competition';
 }
 
 export function activeLessonTemplate(plan: Pick<TrainingNotesPlan, 'template'>): LessonTemplateId {
@@ -82,9 +88,10 @@ export function gameHasContent(game: GameBlock): boolean {
 }
 
 /** A chosen template or a saved block list is part of the plan, even before any notes. */
-export function planStructureStored(plan: Pick<TrainingNotesPlan, 'template' | 'blocks' | 'games'>): boolean {
+export function planStructureStored(plan: Pick<TrainingNotesPlan, 'template' | 'blocks' | 'games' | 'replays'>): boolean {
   if (plan.template) return true;
   if (plan.blocks) return true;
+  if (plan.replays?.some(replayHasContent)) return true;
   return Boolean(plan.games?.some(gameHasContent));
 }
 
@@ -119,8 +126,10 @@ function techniqueIds(blocks: readonly PlanBlock[]): string[] {
   return blocks.filter((block) => block.kind === 'technique').map((block) => block.id);
 }
 
+/** Replay cards ride along through a template change, so they do not count against "already applied". */
 function blockSignature(blocks: readonly PlanBlock[]): string {
   return blocks
+    .filter((block) => block.kind !== 'replay')
     .map((block) => (block.kind === 'technique' ? `technique:${block.id}` : block.kind === 'game' ? 'game' : block.kind))
     .join('|');
 }
@@ -135,12 +144,18 @@ function kidsSignature(plan: TrainingNotesPlan): string {
   return ['intro', 'warmup', ids[0] ? `technique:${ids[0]}` : 'technique:', 'game', ids[1] ? `technique:${ids[1]}` : 'technique:', 'specific', 'cooldown', 'closing'].join('|');
 }
 
+function privateSignature(plan: TrainingNotesPlan): string {
+  const ids = plan.techniques.slice(0, 2).map((tech) => tech.id);
+  return ['intro', 'warmup', ...ids.map((id) => `technique:${id}`), 'specific', 'closing'].join('|');
+}
+
 export function templateAlreadyApplied(plan: TrainingNotesPlan, template: LessonTemplateId): boolean {
   if (template === 'competition') return plan.template === 'competition';
   const current = plan.template ?? 'adult';
   if (current !== template) return false;
   if (!plan.blocks) return template === 'adult';
-  const starter = template === 'kids' ? kidsSignature(plan) : adultSignature(plan);
+  const starter =
+    template === 'kids' ? kidsSignature(plan) : template === 'private' ? privateSignature(plan) : adultSignature(plan);
   return blockSignature(plan.blocks) === starter;
 }
 
@@ -186,6 +201,9 @@ function withStructure(
   };
   if (games) next.games = games;
   else delete next.games;
+  const replays = replaysFor(plan, blocks);
+  if (replays.length) next.replays = replays;
+  else delete next.replays;
   if (videos) next.videos = videos;
   else if (plan.videos) next.videos = videos ?? [];
   return next;
@@ -214,15 +232,41 @@ function kidsStarter(plan: TrainingNotesPlan): { blocks: PlanBlock[]; techniques
   return { techniques, games: [game], blocks };
 }
 
+/** Private lesson: Adult without Technique 3 and Cool down. */
+function privateStarter(plan: TrainingNotesPlan): { blocks: PlanBlock[]; techniques: TechniqueBlock[] } {
+  const techniques = plan.techniques.slice(0, 2).map((tech) => ({ ...tech }));
+  while (techniques.length < 2) techniques.push(createTechnique());
+  const blocks: PlanBlock[] = [
+    { kind: 'intro' },
+    { kind: 'warmup' },
+    ...techniques.map((tech) => ({ kind: 'technique' as const, id: tech.id })),
+    { kind: 'specific' },
+    { kind: 'closing' },
+  ];
+  return { techniques, blocks };
+}
+
+/** Replay cards already on the plan, in order, so a template change keeps them (and their clips) at the end. */
+function keptReplayBlocks(plan: TrainingNotesPlan): PlanBlock[] {
+  return (plan.blocks ?? []).filter((block) => block.kind === 'replay');
+}
+
 /** Replace the starting blocks. Shared notes on blocks that remain stay put. */
 export function applyLessonTemplate(plan: TrainingNotesPlan, template: LessonTemplateId): TrainingNotesPlan {
   if (template === 'competition') return { ...plan, template: 'competition' };
+  const replays = keptReplayBlocks(plan);
   if (template === 'kids') {
     const starter = kidsStarter(plan);
-    return withStructure(plan, starter.blocks, starter.techniques, starter.games, 'kids');
+    return withStructure(plan, [...starter.blocks, ...replays], starter.techniques, starter.games, 'kids');
+  }
+  if (template === 'private') {
+    const starter = privateStarter(plan);
+    const next = withStructure(plan, [...starter.blocks, ...replays], starter.techniques, undefined, 'private');
+    delete next.games;
+    return next;
   }
   const starter = adultStarter(plan);
-  const next = withStructure(plan, starter.blocks, starter.techniques, undefined, 'adult');
+  const next = withStructure(plan, [...starter.blocks, ...replays], starter.techniques, undefined, 'adult');
   delete next.games;
   return next;
 }
@@ -241,6 +285,21 @@ function gamesFor(plan: TrainingNotesPlan, blocks: readonly PlanBlock[]): GameBl
     if (game) games.push(game);
   }
   return games;
+}
+
+function replaysFor(plan: TrainingNotesPlan, blocks: readonly PlanBlock[]): ReplayBlock[] {
+  const byId = new Map((plan.replays ?? []).map((replay) => [replay.id, replay]));
+  const replays: ReplayBlock[] = [];
+  for (const block of blocks) {
+    if (block.kind !== 'replay') continue;
+    const replay = byId.get(block.id);
+    if (replay) replays.push(replay);
+  }
+  return replays;
+}
+
+export function replayCount(plan: TrainingNotesPlan): number {
+  return lessonBlocks(plan).filter((block) => block.kind === 'replay').length;
 }
 
 function techniquesFor(plan: TrainingNotesPlan, blocks: readonly PlanBlock[]): TechniqueBlock[] {
@@ -292,6 +351,51 @@ export function addLessonGame(plan: TrainingNotesPlan): TrainingNotesPlan {
   return withStructure(listed, blocks, techniquesFor(listed, blocks), games, listed.template ?? 'adult');
 }
 
+/** Adds a Video replay analysis card at the bottom. It can be moved like any other block. */
+export function addLessonReplay(plan: TrainingNotesPlan): TrainingNotesPlan {
+  if (replayCount(plan) >= MAX_REPLAYS) return plan;
+  const listed = ensureListed(plan);
+  const replay = createReplay();
+  const blocks = [...(listed.blocks ?? []), { kind: 'replay' as const, id: replay.id }];
+  const pool: TrainingNotesPlan = { ...listed, replays: [...(listed.replays ?? []), replay] };
+  return withStructure(pool, blocks, techniquesFor(listed, blocks), listed.games ? gamesFor(listed, blocks) : undefined, listed.template ?? 'adult');
+}
+
+export function updateLessonReplay(plan: TrainingNotesPlan, id: string, patch: Partial<Omit<ReplayBlock, 'id'>>): TrainingNotesPlan {
+  if (!plan.replays?.some((replay) => replay.id === id)) return plan;
+  return {
+    ...plan,
+    replays: plan.replays.map((replay) => {
+      if (replay.id !== id) return replay;
+      const next: ReplayBlock = { ...replay, ...patch, id };
+      if (patch.clip === undefined && Object.prototype.hasOwnProperty.call(patch, 'clip')) delete next.clip;
+      return next;
+    }),
+  };
+}
+
+/**
+ * Competition shows its curriculum in place of the block list, so replay cards
+ * there sit under it and move among themselves: swap with the nearest replay
+ * card above or below.
+ */
+export function moveReplayAmongReplays(plan: TrainingNotesPlan, id: string, direction: -1 | 1): TrainingNotesPlan {
+  const blocks = lessonBlocks(plan);
+  const from = blocks.findIndex((block) => block.kind === 'replay' && block.id === id);
+  if (from < 0) return plan;
+  let to = from + direction;
+  while (to >= 0 && to < blocks.length && blocks[to].kind !== 'replay') to += direction;
+  if (to < 0 || to >= blocks.length) return plan;
+  const next = [...blocks];
+  [next[from], next[to]] = [next[to], next[from]];
+  return commitBlocks(ensureListed(plan), next);
+}
+
+export function removeLessonReplay(plan: TrainingNotesPlan, id: string): TrainingNotesPlan {
+  const index = lessonBlocks(plan).findIndex((block) => block.kind === 'replay' && block.id === id);
+  return index < 0 ? plan : removeLessonBlock(plan, index);
+}
+
 export function removeLessonBlock(plan: TrainingNotesPlan, index: number): TrainingNotesPlan {
   const listed = ensureListed(plan);
   const blocks = listed.blocks ? [...listed.blocks] : [];
@@ -300,7 +404,8 @@ export function removeLessonBlock(plan: TrainingNotesPlan, index: number): Train
   return commitBlocks(listed, blocks);
 }
 
-export function blockHeading(block: PlanBlock, techniqueOrdinal: number, gameOrdinal: number): string {
+export function blockHeading(block: PlanBlock, techniqueOrdinal: number, gameOrdinal: number, replayOrdinal = 1): string {
+  if (block.kind === 'replay') return replayHeading(replayOrdinal);
   if (block.kind === 'technique') return `Technique / Drill ${techniqueOrdinal}`;
   if (block.kind === 'game') return gameOrdinal === 1 ? 'Game' : `Game ${gameOrdinal}`;
   if (block.kind === 'intro') return 'Intro';
@@ -311,7 +416,7 @@ export function blockHeading(block: PlanBlock, techniqueOrdinal: number, gameOrd
 }
 
 export function blockKey(block: PlanBlock, index: number): string {
-  if (block.kind === 'technique' || block.kind === 'game') return `${block.kind}:${block.id}`;
+  if (block.kind === 'technique' || block.kind === 'game' || block.kind === 'replay') return `${block.kind}:${block.id}`;
   return `${block.kind}:${index}`;
 }
 
@@ -343,6 +448,7 @@ export function sanitizeLessonStructure(
   template: LessonTemplateId | undefined;
   blocks: PlanBlock[] | undefined;
   games: GameBlock[] | undefined;
+  replays: ReplayBlock[] | undefined;
   techniques: TechniqueBlock[];
   repaired: boolean;
 } {
@@ -380,7 +486,29 @@ export function sanitizeLessonStructure(
     }
   }
 
+  let replays: ReplayBlock[] | undefined;
+  if (raw && Object.prototype.hasOwnProperty.call(raw, 'replays')) {
+    replays = [];
+    if (!Array.isArray(raw.replays)) repaired = true;
+    else {
+      const seen = new Set<string>();
+      for (const item of raw.replays) {
+        const next = cleanReplay(item);
+        if (!next || seen.has(next.replay.id)) {
+          repaired = true;
+          continue;
+        }
+        if (next.repaired) repaired = true;
+        seen.add(next.replay.id);
+        replays.push(next.replay);
+        if (replays.length >= MAX_REPLAYS) break;
+      }
+      if (replays.length !== raw.replays.length) repaired = true;
+    }
+  }
+
   const gameIds = new Set((games ?? []).map((game) => game.id));
+  const replayIds = new Set((replays ?? []).map((replay) => replay.id));
   const techniqueIdsPresent = new Set(techniques.map((tech) => tech.id));
   let blocks: PlanBlock[] | undefined;
   if (raw && Object.prototype.hasOwnProperty.call(raw, 'blocks')) {
@@ -407,7 +535,7 @@ export function sanitizeLessonStructure(
           next.push({ kind: row.kind });
           continue;
         }
-        if (row.kind !== 'technique' && row.kind !== 'game') {
+        if (row.kind !== 'technique' && row.kind !== 'game' && row.kind !== 'replay') {
           repaired = true;
           continue;
         }
@@ -421,6 +549,10 @@ export function sanitizeLessonStructure(
           continue;
         }
         if (row.kind === 'game' && !gameIds.has(id)) {
+          repaired = true;
+          continue;
+        }
+        if (row.kind === 'replay' && !replayIds.has(id)) {
           repaired = true;
           continue;
         }
@@ -448,6 +580,14 @@ export function sanitizeLessonStructure(
       repaired = true;
     }
   }
+  if (replays) {
+    const used = new Set((blocks ?? []).filter((block) => block.kind === 'replay').map((block) => block.id));
+    if (replays.some((replay) => !used.has(replay.id))) {
+      replays = replays.filter((replay) => used.has(replay.id));
+      repaired = true;
+    }
+    if (!replays.length) replays = undefined;
+  }
 
-  return { template, blocks, games, techniques: aligned, repaired };
+  return { template, blocks, games, replays, techniques: aligned, repaired };
 }

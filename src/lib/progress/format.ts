@@ -11,6 +11,7 @@ import { fundamentalLevelOf, isFundamentalLevel } from '../fundamentals.ts';
 import { highDatesForCount } from '../blackBeltDegrees.ts';
 import { dedupeRankHistory, expandLineage, stripeDateText } from '../studentRank.ts';
 import { asRecord } from '../plainValue.ts';
+import { readCoachAssessment, readCoachBeltProgress, readCoachNote } from './syncPackets.ts';
 import { canonicalFundamentalsCatalogId } from './catalog.ts';
 import { emptyCompetition, seedGamesFromJournal } from './competition.ts';
 import { shareTournaments } from '../sharedTournaments.ts';
@@ -90,6 +91,10 @@ import {
   type CoachGymBrand,
   type CoachPlan,
   type CoachCompetitionUpdatePacket,
+  type CoachBeltProgressPacket,
+  type CoachAssessmentPacket,
+  type CoachGymLogoPacket,
+  type CoachNotePacket,
   type CoachRankUpdatePacket,
   type CoachPlanFocus,
   type CoachPlanPacket,
@@ -277,8 +282,24 @@ export function parseProgressValue(raw: unknown): ProgressParse {
     if (beltBook.book) value.beltBook = beltBook.book;
     return errors.length ? { ok: false, errors } : { ok: true, value };
   }
-  if (kind === 'coach-plan' || kind === 'coach-feedback' || kind === 'coach-rank-update' || kind === 'coach-competition-update') {
-    if (carriesStudentMark(record) || ((kind === 'coach-rank-update' || kind === 'coach-competition-update') && carriesChecklist(record))) {
+  if (
+    kind === 'coach-plan' ||
+    kind === 'coach-feedback' ||
+    kind === 'coach-rank-update' ||
+    kind === 'coach-competition-update' ||
+    kind === 'coach-belt-progress-update' ||
+    kind === 'coach-assessment-update' ||
+    kind === 'coach-gym-logo-update' ||
+    kind === 'coach-note-update'
+  ) {
+    const typedUpdate =
+      kind === 'coach-rank-update' ||
+      kind === 'coach-competition-update' ||
+      kind === 'coach-belt-progress-update' ||
+      kind === 'coach-assessment-update' ||
+      kind === 'coach-gym-logo-update' ||
+      kind === 'coach-note-update';
+    if (carriesStudentMark(record) || (typedUpdate && carriesChecklist(record))) {
       errors.push('A coach file cannot set student marks, checkpoints, journal, or goals.');
     }
   }
@@ -323,6 +344,72 @@ export function parseProgressValue(raw: unknown): ProgressParse {
     };
     const gym = attachGym(record);
     if (gym) value.gym = gym;
+    return errors.length ? { ok: false, errors } : { ok: true, value };
+  }
+  if (kind === 'coach-belt-progress-update') {
+    const value: CoachBeltProgressPacket = {
+      schemaVersion: PROGRESS_SCHEMA_VERSION,
+      kind,
+      id,
+      studentId,
+      updatedAt,
+      beltProgress: readCoachBeltProgress(record.beltProgress, errors),
+      issuedAt: readTime(record.issuedAt, 'issuedAt', errors),
+      updateId: readId(record.updateId, 'Update id', errors),
+    };
+    const gym = attachGym(record);
+    if (gym) value.gym = gym;
+    return errors.length ? { ok: false, errors } : { ok: true, value };
+  }
+  if (kind === 'coach-assessment-update') {
+    const value: CoachAssessmentPacket = {
+      schemaVersion: PROGRESS_SCHEMA_VERSION,
+      kind,
+      id,
+      studentId,
+      updatedAt,
+      assessment: readCoachAssessment(record.assessment, errors),
+      issuedAt: readTime(record.issuedAt, 'issuedAt', errors),
+      updateId: readId(record.updateId, 'Update id', errors),
+    };
+    const gym = attachGym(record);
+    if (gym) value.gym = gym;
+    return errors.length ? { ok: false, errors } : { ok: true, value };
+  }
+  if (kind === 'coach-note-update') {
+    const value: CoachNotePacket = {
+      schemaVersion: PROGRESS_SCHEMA_VERSION,
+      kind,
+      id,
+      studentId,
+      updatedAt,
+      coachNote: readCoachNote(record.coachNote, errors),
+      issuedAt: readTime(record.issuedAt, 'issuedAt', errors),
+      updateId: readId(record.updateId, 'Update id', errors),
+    };
+    const gym = attachGym(record);
+    if (gym) value.gym = gym;
+    return errors.length ? { ok: false, errors } : { ok: true, value };
+  }
+  if (kind === 'coach-gym-logo-update') {
+    const gym = attachGym(record);
+    const logoRow = asRecord(record.gymLogo);
+    const logoVersion = logoRow?.logoVersion;
+    if (!gym?.logo) errors.push('A gym logo update needs a logo that fits.');
+    if (typeof logoVersion !== 'number' || !Number.isFinite(logoVersion) || logoVersion < 0) {
+      errors.push('A gym logo update needs a version.');
+    }
+    const value: CoachGymLogoPacket = {
+      schemaVersion: PROGRESS_SCHEMA_VERSION,
+      kind,
+      id,
+      studentId,
+      updatedAt,
+      gymLogo: { logoVersion: typeof logoVersion === 'number' ? logoVersion : 0 },
+      gym: { name: gym?.name ?? '', logo: gym?.logo ?? '' },
+      issuedAt: readTime(record.issuedAt, 'issuedAt', errors),
+      updateId: readId(record.updateId, 'Update id', errors),
+    };
     return errors.length ? { ok: false, errors } : { ok: true, value };
   }
   if (kind !== 'coach-feedback') {

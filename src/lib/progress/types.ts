@@ -188,6 +188,10 @@ export const PROGRESS_PACKET_KINDS = [
   'coach-feedback',
   'coach-rank-update',
   'coach-competition-update',
+  'coach-belt-progress-update',
+  'coach-assessment-update',
+  'coach-gym-logo-update',
+  'coach-note-update',
 ] as const;
 export type ProgressPacketKind = (typeof PROGRESS_PACKET_KINDS)[number];
 
@@ -846,12 +850,113 @@ export type CoachCompetitionUpdatePacket = PacketBase & {
   updateId: string;
 };
 
+/**
+ * Coach → student. Where the coach sees the student on each belt benchmark.
+ * It never checks off the student's own items: the student's checklist,
+ * rubric, and benchmark marks stay theirs. This lands in a separate coach
+ * overlay beside them. The status key is `coachStatus`, never `met`.
+ */
+export const COACH_BENCHMARK_STATUSES = ['not-yet', 'working', 'ready'] as const;
+export type CoachBenchmarkStatus = (typeof COACH_BENCHMARK_STATUSES)[number];
+
+export type CoachBenchmarkView = {
+  /** Benchmark or checkpoint id on the student's belt. */
+  targetId: string;
+  name: string;
+  coachStatus: CoachBenchmarkStatus;
+  note: string;
+};
+
+export type CoachBeltProgress = {
+  /** Canonical belt id this progress is for. */
+  belt: string;
+  /** YYYY-MM-DD. */
+  issuedOn: string;
+  note: string;
+  benchmarks: CoachBenchmarkView[];
+};
+
+export type CoachBeltProgressPacket = PacketBase & {
+  kind: 'coach-belt-progress-update';
+  beltProgress: CoachBeltProgress;
+  gym?: CoachGymBrand;
+  issuedAt: number;
+  updateId: string;
+};
+
+/**
+ * Coach → student. One coach assessment of strengths and weaknesses.
+ * Accepted entries build a coach trend beside the student's own
+ * self-assessment. The student's own entries are never changed.
+ */
+export type CoachAssessment = {
+  /** YYYY-MM-DD. */
+  date: string;
+  note: string;
+  /** Area id to a 1-5 score. Only known areas are kept. */
+  scores: Record<string, number>;
+  strengths: string;
+  weaknesses: string;
+};
+
+export type CoachAssessmentPacket = PacketBase & {
+  kind: 'coach-assessment-update';
+  assessment: CoachAssessment;
+  gym?: CoachGymBrand;
+  issuedAt: number;
+  updateId: string;
+};
+
+/**
+ * Coach → student. The gym's master logo (gallery master slot), versioned.
+ * Not a blocking accept card: the student sees an optional "Update?" prompt
+ * and may always keep their own logo or the Advantage default. Newest
+ * version wins. The bytes ride in `gym.logo`, the one image a coach file may carry.
+ */
+export type CoachGymLogoPacket = PacketBase & {
+  kind: 'coach-gym-logo-update';
+  gymLogo: {
+    /** Higher wins. The coach's master version, in milliseconds. */
+    logoVersion: number;
+  };
+  gym: { name: string; logo: string };
+  issuedAt: number;
+  updateId: string;
+};
+
+/**
+ * Coach → student. A training note the coach sends on purpose (never automatic).
+ * On accept it is appended as a coach-labeled block to the student's journal
+ * entry for `journalDate` (a new entry for that day if none), never replacing
+ * the student's text, and shows under Suggestions from coach.
+ * The field is `coachNote`, never `journal`, so the coach-file guard still holds.
+ */
+export type CoachNote = {
+  /** YYYY-MM-DD the coach wrote it. */
+  issuedOn: string;
+  /** Optional YYYY-MM-DD journal day. Empty means issuedOn. */
+  journalDate: string;
+  note: string;
+};
+
+export type CoachNotePacket = PacketBase & {
+  kind: 'coach-note-update';
+  coachNote: CoachNote;
+  gym?: CoachGymBrand;
+  issuedAt: number;
+  updateId: string;
+};
+
 export type ProgressPacket =
   | StudentProgressReport
   | CoachPlanPacket
   | CoachFeedbackPacket
   | CoachRankUpdatePacket
-  | CoachCompetitionUpdatePacket;
+  | CoachCompetitionUpdatePacket
+  | CoachBeltProgressPacket
+  | CoachAssessmentPacket
+  | CoachGymLogoPacket
+  | CoachNotePacket;
 
 export type ProgressParse =
   | { ok: true; value: ProgressPacket }

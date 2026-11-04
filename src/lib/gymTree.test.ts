@@ -72,6 +72,36 @@ test('students cannot upload into the gallery or the daily video lane', () => {
   assert.deepEqual(video, { ok: false, reason: 'students-no-daily-video' });
 });
 
+test('a program director can send to the daily video lane but not lesson plans', () => {
+  const daily = routeUpload({
+    purpose: 'daily-video',
+    role: 'program-director',
+    kind: 'video',
+    dateKey: '2026-11-04',
+    fileName: 'morning drill.mp4',
+  });
+  assert.equal(daily.ok, true);
+  if (daily.ok) assert.match(daily.path, /^videos\/daily\/2026-11-04\//);
+  const lesson = routeUpload({
+    purpose: 'lesson',
+    role: 'program-director',
+    kind: 'video',
+    dateKey: '2026-11-04',
+    fileName: 'plan.json',
+  });
+  assert.equal(lesson.ok, false);
+  const gallery = routeUpload({
+    purpose: 'gallery',
+    role: 'program-director',
+    kind: 'video',
+    dateKey: '2026-11-04',
+    fileName: 'class.mp4',
+    approvalRequired: true,
+  });
+  assert.equal(gallery.ok, true);
+  if (gallery.ok) assert.match(gallery.path, /^gallery\/pending\//);
+});
+
 test('a missing purpose does not fall into the last folder', () => {
   const missing = routeUpload({
     purpose: '',
@@ -155,4 +185,17 @@ test('class photos and student films no longer use the instructor video lane', (
   assert.match(films, /purpose: 'student-file'/);
   assert.doesNotMatch(films, /uploadTrainingVideos/);
   assert.match(films, /students do not upload class photos|Students have no gallery upload/i);
+});
+
+test('student-photo route: head coach only, into the approved photos folder', () => {
+  const routed = routeUpload({ purpose: 'student-photo', kind: 'photo', dateKey: '2026-11-04', role: 'owner', fileName: 'photo-1.png', studentCode: 'stu-alex' });
+  assert.equal(routed.ok && routed.path, 'students/stu-alex/photos/approved/photo-1.png');
+  const instructor = routeUpload({ purpose: 'student-photo', kind: 'photo', dateKey: '2026-11-04', role: 'instructor', fileName: 'p.png', studentCode: 'stu-alex' });
+  assert.equal(instructor.ok, true);
+  for (const role of ['coach', 'assistant'] as const) {
+    const refused = routeUpload({ purpose: 'student-photo', kind: 'photo', dateKey: '2026-11-04', role, fileName: 'p.png', studentCode: 'stu-alex' });
+    assert.deepEqual(refused, { ok: false, reason: 'role-hidden' });
+  }
+  const noCode = routeUpload({ purpose: 'student-photo', kind: 'photo', dateKey: '2026-11-04', role: 'owner', fileName: 'p.png' });
+  assert.deepEqual(noCode, { ok: false, reason: 'missing-student-code' });
 });
