@@ -4,7 +4,7 @@ import { buildCoachCompetitionUpdate } from '../lib/coachCompetitionUpdate';
 import { coachGymLogoFits } from '../lib/coachGymFit';
 import { readGymLogo } from '../lib/gymLogo';
 import { readGymName } from '../lib/gymName';
-import { deliverRankUpdate } from '../lib/studentInboxClient';
+import { sendCardSync } from '../lib/cardSync';
 import type { CoachGymBrand, MatchMethod, MatchResult } from '../lib/progress/types';
 
 export type CompetitionSendDraft = {
@@ -85,13 +85,17 @@ export function SendCompetitionSheet({
         setStatus(built.error);
         return;
       }
-      const delivery = await deliverRankUpdate(built.packet);
+      const delivery = await sendCardSync(studentId, built.packet);
+      if (delivery.mode === 'blocked') {
+        setStatus(delivery.reason);
+        return;
+      }
       if (delivery.mode === 'file') {
         downloadText(delivery.name, delivery.json);
         setStatus(delivery.reason);
         return;
       }
-      setStatus('Sent to the student inbox.');
+      setStatus(delivery.mode === 'folder' ? 'Saved in the gym folder for the student.' : 'Sent to the student inbox.');
     } finally {
       setBusy(false);
     }

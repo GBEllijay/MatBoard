@@ -1,3 +1,7 @@
+import { CoachSyncSheet } from '../components/CoachSyncSheet';
+import { PendingCardShares } from '../components/CoachStudentInbox';
+import { syncActorFromToken, syncSendGate } from '../lib/coachSync';
+import { readStoredEntitlementToken } from '../lib/studentInboxClient';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useCurrentSeat } from '../components/SeatSessionBar';
@@ -115,6 +119,8 @@ export function RosterPage() {
   const [saveError, setSaveError] = useState('');
   const [linkTarget, setLinkTarget] = useState<Student | null>(null);
   const [sendTarget, setSendTarget] = useState<Student | null>(null);
+  const [syncTarget, setSyncTarget] = useState<Student | null>(null);
+  const syncActor = syncActorFromToken(readStoredEntitlementToken());
   const [samePerson, setSamePerson] = useState<Student | null>(null);
   const [competitionSend, setCompetitionSend] = useState<{ studentId: string; draft: CompetitionSendDraft } | null>(null);
   const [linkNote, setLinkNote] = useState('');
@@ -288,6 +294,8 @@ export function RosterPage() {
               onToggleCheckIn={() => setCheckedIn(competitor.id, !competitor.checkedIn)}
               onLink={() => setLinkTarget(competitor)}
               onSamePerson={() => setSamePerson(competitor)}
+              onCoachSync={() => setSyncTarget(competitor)}
+              sendAllowed={syncSendGate(competitor, syncActor, roster.students) === 'send'}
               onSendCompetition={() =>
                 setCompetitionSend({
                   studentId: competitor.linkedStudentId ?? '',
@@ -364,7 +372,14 @@ export function RosterPage() {
             if (saved) {
               setSaveError('');
               setEditor(null);
-              if (studentRoster && before && rankSendOffer(before, saved) === 'send') setSendTarget(saved);
+              if (
+                studentRoster &&
+                before &&
+                rankSendOffer(before, saved) === 'send' &&
+                syncSendGate(saved, syncActor, roster.students) === 'send'
+              ) {
+                setSendTarget(saved);
+              }
             }
           } catch (error) {
             setSaveError(
@@ -376,9 +391,15 @@ export function RosterPage() {
           }
         }}
       />
-      {studentRoster ? null : <GuestArchive />}
+      {studentRoster ? <PendingCardShares roster={roster.students} /> : <GuestArchive />}
       <LinkStudentSheet key={linkTarget?.id ?? 'link'} student={linkTarget} onClose={() => setLinkTarget(null)} />
       <SendRankUpdateSheet key={sendTarget?.id ?? 'send'} student={sendTarget} onClose={() => setSendTarget(null)} />
+      <CoachSyncSheet
+        key={syncTarget?.id ?? 'sync'}
+        student={syncTarget ? roster.students.find((row) => row.id === syncTarget.id) ?? null : null}
+        roster={roster.students}
+        onClose={() => setSyncTarget(null)}
+      />
       <Sheet open={Boolean(samePerson)} title="Same person as a roster student" onClose={() => setSamePerson(null)} portal>
         <p>This link is one time. Pick the Student Roster card for this competitor. Guests are not listed.</p>
         {linkNote ? <p role="status">{linkNote}</p> : null}
@@ -473,6 +494,8 @@ function StudentCard({
   onLink,
   onSamePerson,
   onSendCompetition,
+  onCoachSync,
+  sendAllowed,
 }: {
   student: Student;
   studentRoster: boolean;
@@ -486,6 +509,9 @@ function StudentCard({
   onLink: () => void;
   onSamePerson: () => void;
   onSendCompetition: () => void;
+  onCoachSync: () => void;
+  /** False when coach sync is off for this student or this seat cannot send. */
+  sendAllowed: boolean;
 }) {
   const promoted = formatPromotion(student.lastPromotion);
   const promotionDetail = student.lastPromotionDetail.trim();
@@ -558,7 +584,12 @@ function StudentCard({
                 Same person as a roster student
               </button>
             ) : null}
-            {!studentRoster && competitionSendOffer(student) === 'send' ? (
+            {student.linkedStudentId && !student.guestId ? (
+              <button type="button" className="btn btn--ghost" onClick={onCoachSync}>
+                Coach sync
+              </button>
+            ) : null}
+            {!studentRoster && competitionSendOffer(student) === 'send' && sendAllowed ? (
               <button type="button" className="btn" onClick={onSendCompetition}>
                 Send to student
               </button>
