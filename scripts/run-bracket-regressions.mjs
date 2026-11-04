@@ -24,7 +24,7 @@ await build({
   external: ['node:test', 'node:assert', 'node:assert/strict'],
   jsx: 'automatic',
   // The polished skin chunks (reached through MatchDisplay) carry background art and fonts.
-  loader: { '.jpg': 'empty', '.png': 'empty', '.webp': 'empty' },
+  loader: { '.woff2': 'empty', '.woff': 'empty', '.jpg': 'empty', '.png': 'empty', '.webp': 'empty' },
   logLevel: 'silent',
   plugins: [paidChunksStub, skinFontsStub],
 });
